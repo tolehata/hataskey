@@ -3,7 +3,7 @@
 旗鯖独自フォーク (CherryPick-Hata) のチェンジログです。  
 本家 CherryPick のチェンジログは [CHANGELOG.md](./CHANGELOG.md) を参照してください。
 
-## CherryPick hata-10.0 (2026/03/09)
+## hata-10.0 (2026/03/09)
 
 ### セキュリティ
 - Misskey 2026.3.1のセキュリティ修正を適用
