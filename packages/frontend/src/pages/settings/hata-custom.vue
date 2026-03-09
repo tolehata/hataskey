@@ -129,8 +129,8 @@ function useLocalStorageString(key: string, defaultValue: string) {
 // ▲▲▲ ヘルパー関数ここまで ▲▲▲
 
 // 各設定項目を LocalStorage にバインド
-const showHashtagButtonInPostForm = useLocalStorageBool('showHashtagButtonInPostForm', true);
-const showDrawingButtonInPostForm = useLocalStorageBool('showDrawingButtonInPostForm', true);
+const showHashtagButtonInPostForm = prefer.model('showHashtagButtonInPostForm');
+const showDrawingButtonInPostForm = prefer.model('showDrawingButtonInPostForm');
 const showLoginBonusPopup = useLocalStorageBool('showLoginBonusPopup', true);
 
 const timelineAnimationDirection = useLocalStorageString('timelineAnimationDirection', 'left');
