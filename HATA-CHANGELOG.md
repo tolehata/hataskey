@@ -1,4 +1,4 @@
-# 🏳️ HATA-CHANGELOG
+#  HATA-CHANGELOG
 
 旗鯖独自フォーク (CherryPick-Hata) のチェンジログです。  
 本家 CherryPick のチェンジログは [CHANGELOG.md](./CHANGELOG.md) を参照してください。
