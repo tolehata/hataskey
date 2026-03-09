@@ -417,3 +417,5 @@ export type FilterUnionByProperty<
 	Property extends string | number | symbol,
 	Condition,
 > = Union extends Record<Property, Condition> ? Union : never;
+
+export type Awaitable<T> = T | Promise<T>;

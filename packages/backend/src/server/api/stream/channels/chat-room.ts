@@ -3,11 +3,13 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
+import { DI } from '@/di-symbols.js';
 import { bindThis } from '@/decorators.js';
 import type { GlobalEvents } from '@/core/GlobalEventService.js';
 import type { JsonObject } from '@/misc/json-value.js';
 import { ChatService } from '@/core/ChatService.js';
+import type { ChatRoomsRepository } from '@/models/_.js';
 import Channel, { type MiChannelService } from '../channel.js';
 
 class ChatRoomChannel extends Channel {
@@ -19,6 +21,7 @@ class ChatRoomChannel extends Channel {
 
 	constructor(
 		private chatService: ChatService,
+		private chatRoomsRepository: ChatRoomsRepository,
 
 		id: string,
 		connection: Channel['connection'],
@@ -27,11 +30,23 @@ class ChatRoomChannel extends Channel {
 	}
 
 	@bindThis
-	public async init(params: JsonObject) {
-		if (typeof params.roomId !== 'string') return;
+	public async init(params: JsonObject): Promise<boolean> {
+		if (typeof params.roomId !== 'string') return false;
+		if (!this.user) return false;
+
 		this.roomId = params.roomId;
 
+		// Check room exists
+		const room = await this.chatRoomsRepository.findOneBy({ id: this.roomId });
+		if (!room) return false;
+
+		// Check membership
+		const isMember = await this.chatService.isRoomMember(room, this.user.id);
+		if (!isMember && room.ownerId !== this.user.id) return false;
+
 		this.subscriber.on(`chatRoomStream:${this.roomId}`, this.onEvent);
+
+		return true;
 	}
 
 	@bindThis
@@ -63,6 +78,9 @@ export class ChatRoomChannelService implements MiChannelService<true> {
 	public readonly kind = ChatRoomChannel.kind;
 
 	constructor(
+		@Inject(DI.chatRoomsRepository)
+		private chatRoomsRepository: ChatRoomsRepository,
+
 		private chatService: ChatService,
 	) {
 	}
@@ -71,6 +89,7 @@ export class ChatRoomChannelService implements MiChannelService<true> {
 	public create(id: string, connection: Channel['connection']): ChatRoomChannel {
 		return new ChatRoomChannel(
 			this.chatService,
+			this.chatRoomsRepository,
 			id,
 			connection,
 		);

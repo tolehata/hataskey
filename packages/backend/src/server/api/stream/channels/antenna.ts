@@ -4,6 +4,9 @@
  */
 
 import { Injectable } from '@nestjs/common';
+import type { AntennasRepository } from '@/models/_.js';
+import { DI } from '@/di-symbols.js';
+import { Inject } from '@nestjs/common';
 import { NoteEntityService } from '@/core/entities/NoteEntityService.js';
 import { bindThis } from '@/decorators.js';
 import type { GlobalEvents } from '@/core/GlobalEventService.js';
@@ -19,6 +22,7 @@ class AntennaChannel extends Channel {
 
 	constructor(
 		private noteEntityService: NoteEntityService,
+		private antennasRepository: AntennasRepository,
 
 		id: string,
 		connection: Channel['connection'],
@@ -28,12 +32,25 @@ class AntennaChannel extends Channel {
 	}
 
 	@bindThis
-	public async init(params: JsonObject) {
-		if (typeof params.antennaId !== 'string') return;
+	public async init(params: JsonObject): Promise<boolean> {
+		if (typeof params.antennaId !== 'string') return false;
+		if (!this.user) return false;
+
 		this.antennaId = params.antennaId;
+
+		const antennaExists = await this.antennasRepository.exists({
+			where: {
+				id: this.antennaId,
+				userId: this.user.id,
+			},
+		});
+
+		if (!antennaExists) return false;
 
 		// Subscribe stream
 		this.subscriber.on(`antennaStream:${this.antennaId}`, this.onEvent);
+
+		return true;
 	}
 
 	@bindThis
@@ -63,6 +80,9 @@ export class AntennaChannelService implements MiChannelService<true> {
 	public readonly kind = AntennaChannel.kind;
 
 	constructor(
+		@Inject(DI.antennasRepository)
+		private antennasRepository: AntennasRepository,
+
 		private noteEntityService: NoteEntityService,
 	) {
 	}
@@ -71,6 +91,7 @@ export class AntennaChannelService implements MiChannelService<true> {
 	public create(id: string, connection: Channel['connection']): AntennaChannel {
 		return new AntennaChannel(
 			this.noteEntityService,
+			this.antennasRepository,
 			id,
 			connection,
 		);
