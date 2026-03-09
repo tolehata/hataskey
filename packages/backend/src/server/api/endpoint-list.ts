@@ -475,3 +475,14 @@ export * as 'chat/history' from './endpoints/chat/history.js';
 export * as 'chat/read-all' from './endpoints/chat/read-all.js';
 export * as 'users/translate' from './endpoints/users/translate.js';
 export * as 'v2/admin/emoji/list' from './endpoints/v2/admin/emoji/list.js';
+export * as 'hata/login-ranking' from './endpoints/hata/login-ranking.js';
+
+export * as 'registration/apply' from './endpoints/registration/apply.js';
+export * as 'admin/registration-applications' from './endpoints/admin/registration-applications.js';
+export * as 'admin/approve-registration' from './endpoints/admin/approve-registration.js';
+export * as 'admin/reject-registration' from './endpoints/admin/reject-registration.js';
+export * as 'hatask/events/create' from './endpoints/hatask/events/create.js';
+export * as 'hatask/events/list' from './endpoints/hatask/events/list.js';
+export * as 'hatask/events/rsvp' from './endpoints/hatask/events/rsvp.js';
+export * as 'hatask/events/delete' from './endpoints/hatask/events/delete.js';
+export * as 'hatask/events/close' from './endpoints/hatask/events/close.js';

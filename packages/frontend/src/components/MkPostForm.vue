@@ -14,8 +14,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 	<header :class="$style.header">
 		<div :class="$style.headerLeft">
 			<button v-if="!fixed" :class="$style.cancel" class="_button" @click="cancel"><i class="ti ti-x"></i></button>
-			<button v-click-anime v-tooltip="i18n.ts.account" :class="[$style.account, { [$style.fixed]: fixed }]" class="_button" @click="openAccountMenu">
-				<img :class="[$style.avatar, { [$style.square]: prefer.s.squareAvatars }]" :src="(postAccount ?? $i).avatarUrl"/>
+			 <button v-click-anime v-tooltip="i18n.ts.account" :class="[$style.account, { [$style.fixed]: fixed }]" class="_button" @click="openAccountMenu">
+	                 <img :class="[$style.avatar, { [$style.square]: prefer.s.squareAvatars }]" :src="currentAccountAvatar"/>
+	                 <span v-if="useExternalAccount" :class="$style.externalBadge">🦐</span>
 			</button>
 		</div>
 		<div :class="$style.headerRight">
@@ -55,6 +56,14 @@ SPDX-License-Identifier: AGPL-3.0-only
 		</div>
 	</header>
 	<MkNoteSimple v-if="replyTargetNote" :class="$style.targetNote" :note="replyTargetNote" :enableNoteClick="false"/>
+        <div v-else-if="externalReplyTarget" :class="$style.targetNote">
+	  <div :class="$style.externalTargetNote">
+            <span :class="$style.externalBadgeInline">🦐</span>
+            <b>@{{ externalReplyTarget.user.username }}@{{ externalReplyTarget.user.host || externalHost }}</b> 
+            <span>へのリプライ</span>
+	  </div>
+	  <div v-if="externalReplyTarget.text" :class="$style.externalTargetText">{{ externalReplyTarget.text }}</div>
+        </div>
 	<MkNoteSimple v-if="renoteTargetNote" :class="$style.targetNote" :note="renoteTargetNote" :enableNoteClick="false"/>
 	<div v-if="quoteId" :class="$style.withQuote"><i class="ti ti-quote"></i> {{ i18n.ts.quoteAttached }}<button class="_button" @click="quoteId = null; renoteTargetNote = null;"><i class="ti ti-x"></i></button></div>
 	<MkEventEditor v-if="event" v-model="event" @destroyed="event = null"/>
@@ -115,9 +124,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<button v-tooltip="i18n.ts.attachFile + ' (' + i18n.ts.fromDrive + ')'" class="_button" :class="$style.footerButton" @click="chooseFileFromDrive"><i class="ti ti-cloud-download"></i></button>
 			<button v-if="!props.updateMode" v-tooltip="i18n.ts.poll" class="_button" :class="[$style.footerButton, { [$style.footerButtonActive]: poll }]" @click="togglePoll"><i class="ti ti-chart-arrows"></i></button>
 			<button v-tooltip="i18n.ts.useCw" class="_button" :class="[$style.footerButton, { [$style.footerButtonActive]: useCw }]" @click="useCw = !useCw"><i class="ti ti-eye-off"></i></button>
-			<button v-tooltip="i18n.ts.hashtags" class="_button" :class="[$style.footerButton, { [$style.footerButtonActive]: withHashtags }]" @click="withHashtags = !withHashtags"><i class="ti ti-hash"></i></button>
+			<button v-if="prefer.s.showHashtagButtonInPostForm" v-tooltip="i18n.ts.hashtags" class="_button" :class="[$style.footerButton, { [$style.footerButtonActive]: withHashtags }]" @click="withHashtags = !withHashtags"><i class="ti ti-hash"></i></button>
 			<button v-tooltip="i18n.ts.mention" class="_button" :class="$style.footerButton" @click="insertMention"><i class="ti ti-at"></i></button>
-			<button v-tooltip="i18n.ts.event" class="_button" :class="$style.footerButton" @click="toggleEvent"><i class="ti ti-calendar"></i></button>
+                        <button v-if="prefer.s.showEventButtonInPostForm" v-tooltip="i18n.ts.event" class="_button" :class="$style.footerButton" @click="toggleEvent"><i class="ti ti-calendar"></i></button>
+                        <button v-if="prefer.s.showDrawingButtonInPostForm" v-tooltip="'お絵描き'" class="_button" :class="$style.footerButton" @click="openDrawingTool"><i class="ti ti-palette"></i></button>
 			<button v-if="showAddMfmFunction" v-tooltip="i18n.ts.addMfmFunction" class="_button" :class="$style.footerButton" @click="insertMfmFunction"><i class="ti ti-palette"></i></button>
 			<button v-if="postFormActions.length > 0" v-tooltip="i18n.ts.plugins" class="_button" :class="$style.footerButton" @click="showActions"><i class="ti ti-plug"></i></button>
 		</div>
@@ -132,6 +142,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
+import { getExternalAccount, isExternalAccountLinked, callExternalApi, uploadDriveFilesToExternal } from '@/utility/external-api.js';
 import { inject, watch, nextTick, onMounted, defineAsyncComponent, provide, shallowRef, ref, computed, useTemplateRef, onUnmounted } from 'vue';
 import * as mfm from 'mfc-js';
 import * as Misskey from 'cherrypick-js';
@@ -152,13 +163,15 @@ import MkNotePreview from '@/components/MkNotePreview.vue';
 import XPostFormAttaches from '@/components/MkPostFormAttaches.vue';
 import XTextCounter from '@/components/MkPostForm.TextCounter.vue';
 import MkPollEditor from '@/components/MkPollEditor.vue';
+import * as os from '@/os.js';
+import MkDrawingTool from '@/components/MkDrawingTool.vue';
+const MkExternalReactionPicker = defineAsyncComponent(() => import('@/components/MkExternalReactionPicker.vue'));
 import MkEventEditor from '@/components/MkEventEditor.vue';
 import MkScheduledNoteDelete from '@/components/MkScheduledNoteDelete.vue';
 import MkNoteSimple from '@/components/MkNoteSimple.vue';
 import { extractMentions } from '@/utility/extract-mentions.js';
 import { formatTimeString } from '@/utility/format-time-string.js';
 import { Autocomplete } from '@/utility/autocomplete.js';
-import * as os from '@/os.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { chooseDriveFile } from '@/utility/drive.js';
 import { store } from '@/store.js';
@@ -576,6 +589,14 @@ function chooseFileFromDrive(ev: MouseEvent) {
 	});
 }
 
+function openDrawingTool() {
+	os.popup(MkDrawingTool, {}, {
+		done: async (file: File) => {
+			const uploaded = await uploader.upload(file, file.name);
+		},
+	}, 'closed');
+}
+
 function detachFile(id) {
 	files.value = files.value.filter(x => x.id !== id);
 }
@@ -801,6 +822,9 @@ function clear() {
 	saveToDraft.value = false;
 	disableRightClick.value = false;
 	deliveryTargets.value = null;
+	externalReplyTarget.value = null;
+	externalRenoteTarget.value = null;
+	useExternalAccount.value = false;
 }
 
 function onKeydown(ev: KeyboardEvent) {
@@ -1208,6 +1232,78 @@ async function post(ev?: MouseEvent) {
 	}
 
 	posting.value = true;
+
+	// 外部アカウントでの投稿
+	if (useExternalAccount.value) {
+		if (!externalAccount.value) {
+			await os.alert({
+				type: 'error',
+				text: '外部アカウントが連携されていません',
+			});
+			posting.value = false;
+			return;
+		}
+
+		try {
+			// ファイルがある場合は外部サーバーにアップロード
+			let externalFileIds: string[] | undefined;
+			if (files.value.length > 0) {
+				try {
+					externalFileIds = await uploadDriveFilesToExternal(files.value);
+				} catch (uploadErr) {
+					console.error('External file upload error:', uploadErr);
+					const { canceled } = await os.confirm({
+						type: 'warning',
+						text: 'ファイルのアップロードに失敗しました。ファイルなしで投稿しますか？',
+					});
+					if (canceled) {
+						posting.value = false;
+						return;
+					}
+				}
+			}
+
+			const externalPostData = {
+				text: postData.text,
+				cw: postData.cw,
+				visibility: postData.visibility,
+				localOnly: postData.localOnly,
+				replyId: externalReplyTarget.value?.id,
+				renoteId: externalRenoteTarget.value?.id,
+				fileIds: externalFileIds,
+			};
+
+			await callExternalApi('notes/create', externalPostData);
+
+			if (props.freezeAfterPosted) {
+				posted.value = true;
+			} else {
+				clear();
+			}
+
+			nextTick(() => {
+				deleteDraft();
+				emit('posted');
+
+				if (externalReplyTarget.value) os.toast('🦐 リプライしました', 'reply');
+				else if (externalRenoteTarget.value) os.toast('🦐 引用しました', 'quote');
+				else os.toast('🦐 投稿しました', 'posted');
+
+				posting.value = false;
+				useExternalAccount.value = false;
+			});
+		} catch (err) {
+			console.error('External post error:', err);
+			await os.alert({
+				type: 'error',
+				text: '外部サーバーへの投稿に失敗しました',
+			});
+			posting.value = false;
+		}
+
+		return;
+	}
+
 	misskeyApi(props.updateMode ? 'notes/update' : 'notes/create', postData, token).then((res) => {
 		if (props.freezeAfterPosted) {
 			posted.value = true;
@@ -1319,6 +1415,29 @@ async function insertEmoji(ev: MouseEvent) {
 	const target = ev.currentTarget ?? ev.target;
 	if (target == null) return;
 
+	// 外部アカウント使用時は外部サーバーの絵文字ピッカーを使用
+	if (useExternalAccount.value) {
+		let pos = textareaEl.value?.selectionStart ?? 0;
+		let posEnd = textareaEl.value?.selectionEnd ?? text.value.length;
+		const { dispose } = os.popup(MkExternalReactionPicker, {
+			anchorElement: target as HTMLElement,
+		}, {
+			done: (emoji: string) => {
+				const textBefore = text.value.substring(0, pos);
+				const textAfter = text.value.substring(posEnd);
+				text.value = textBefore + emoji + textAfter;
+				pos += emoji.length;
+				posEnd += emoji.length;
+			},
+			closed: () => {
+				dispose();
+				textAreaReadOnly.value = false;
+				nextTick(() => focus());
+			},
+		});
+		return;
+	}
+
 	// emojiPickerはダイアログが閉じずにtextareaとやりとりするので、
 	// focustrapをかけているとinsertTextAtCursorが効かない
 	// そのため、投稿フォームのテキストに直接注入する
@@ -1380,6 +1499,22 @@ async function openMfmCheatSheet() {
 }
 
 const postAccount = ref<Misskey.entities.UserDetailed | null>(null);
+const useExternalAccount = ref(props.initialUseExternalAccount ?? false);
+const externalReplyTarget = shallowRef(props.externalReply ?? null);
+const externalRenoteTarget = shallowRef(props.externalRenote ?? null);
+
+// 外部サーバー情報
+const externalAccount = computed(() => getExternalAccount());
+const externalHost = computed(() => externalAccount.value?.host ?? '');
+const isExternalLinked = computed(() => isExternalAccountLinked());
+
+// 現在のアカウントのアバター
+const currentAccountAvatar = computed(() => {
+	if (useExternalAccount.value && externalAccount.value) {
+		return `https://${externalAccount.value.host}/identicon/${externalAccount.value.userId}`;
+	}
+	return (postAccount.value ?? $i).avatarUrl;
+});
 
 async function openAccountMenu(ev: MouseEvent) {
 	if (props.mock) return;
@@ -1482,6 +1617,20 @@ async function openAccountMenu(ev: MouseEvent) {
 		},
 	});
 
+       const externalItems: MenuItem[] = [];
+                if (isExternalLinked.value && externalAccount.value) {
+	        externalItems.push({ type: 'divider' });
+	        externalItems.push({
+		  type: 'button',
+		  text: `🦐 @${externalAccount.value.username}@${externalAccount.value.host}`,
+		  icon: useExternalAccount.value ? 'ti ti-check' : undefined,
+		  action: () => {
+	            useExternalAccount.value = true;
+		    postAccount.value = null;
+		  },
+	   });
+        }
+
 	os.popupMenu([{
 		type: 'button',
 		text: i18n.ts._drafts.listDrafts,
@@ -1496,7 +1645,7 @@ async function openAccountMenu(ev: MouseEvent) {
 		action: () => {
 			showDraftsDialog(true);
 		},
-	}, { type: 'divider' }, ...items], (ev.currentTarget ?? ev.target ?? undefined) as HTMLElement | undefined);
+	}, { type: 'divider' }, ...items, ...externalItems], (ev.currentTarget ?? ev.target ?? undefined) as HTMLElement | undefined);
 }
 
 function showPerUploadItemMenu(item: UploaderItem, ev: MouseEvent) {
@@ -1730,6 +1879,7 @@ defineExpose({
 }
 
 .account {
+  position: relative;
 }
 
 .avatar {
@@ -2155,4 +2305,33 @@ html[data-color-scheme=light] .preview {
 		gap: 0;
 	}
 }
+
+// 外部アカウント関連のスタイル
+.externalBadge {
+	position: absolute;
+	bottom: -2px;
+	right: -2px;
+	font-size: 12px;
+	line-height: 1;
+}
+
+.externalBadgeInline {
+	margin-right: 4px;
+}
+
+.externalTargetNote {
+	padding: 8px 12px;
+	background: var(--MI_THEME-panel);
+	border-radius: 8px;
+	font-size: 0.9em;
+}
+
+.externalTargetText {
+	margin-top: 4px;
+	opacity: 0.7;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
 </style>

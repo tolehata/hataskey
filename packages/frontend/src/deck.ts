@@ -56,7 +56,7 @@ export type Column = {
 	channelId?: string;
 	roleId?: string;
 	excludeTypes?: typeof notificationTypes[number][];
-	tl?: BasicTimelineType;
+	tl?: BasicTimelineType | 'ohtl' | 'oltl';
 	withRenotes?: boolean;
 	withReplies?: boolean;
 	withSensitive?: boolean;

@@ -19,7 +19,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<div v-html="instance.description || i18n.ts.headlineMisskey"></div>
 			</div>
 			<div v-if="instance.disableRegistration || instance.federation !== 'all'" :class="$style.mainWarn" class="_gaps_s">
-				<MkInfo v-if="instance.disableRegistration" warn>{{ i18n.ts.invitationRequiredToRegister }}</MkInfo>
+				<MkInfo v-if="instance.disableRegistration">招待コードをお持ちでない方も、参加申請を行うことでサーバーに登録できます。</MkInfo>
 				<MkInfo v-if="instance.federation === 'specified'" warn>{{ i18n.ts.federationSpecified }}</MkInfo>
 				<MkInfo v-else-if="instance.federation === 'none'" warn>{{ i18n.ts.federationDisabled }}</MkInfo>
 			</div>
@@ -59,7 +59,7 @@ import * as Misskey from 'cherrypick-js';
 import { instanceName } from '@@/js/config.js';
 import type { MenuItem } from '@/types/menu.js';
 import XSigninDialog from '@/components/MkSigninDialog.vue';
-import XSignupDialog from '@/components/MkSignupDialog.vue';
+import XSignupBranchDialog from '@/components/MkSignupBranchDialog.vue';
 import MkButton from '@/components/MkButton.vue';
 import MkStreamingNotesTimeline from '@/components/MkStreamingNotesTimeline.vue';
 import MkInfo from '@/components/MkInfo.vue';
@@ -89,7 +89,7 @@ function signin() {
 }
 
 function signup() {
-	const { dispose } = os.popup(XSignupDialog, {
+	const { dispose } = os.popup(XSignupBranchDialog, {
 		autoSet: true,
 	}, {
 		closed: () => dispose(),

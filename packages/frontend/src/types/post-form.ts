@@ -1,9 +1,26 @@
 /*
- * SPDX-FileCopyrightText: syuilo and misskey-project
+ * SPDX-FileCopyrightText: base: syuilo and misskey-project modifier: tolehata
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
 import * as Misskey from 'cherrypick-js';
+
+export interface ExternalNote {
+	id: string;
+	text: string | null;
+	cw: string | null;
+	user: {
+		id: string;
+		username: string;
+		host: string | null;
+		name: string | null;
+		avatarUrl: string | null;
+	};
+	createdAt: string;
+	files?: any[];
+	replyId?: string | null;
+	renoteId?: string | null;
+}
 
 export interface PostFormProps {
 	reply?: Misskey.entities.Note | null;
@@ -27,4 +44,8 @@ export interface PostFormProps {
 	initialNote?: Misskey.entities.Note;
 	instant?: boolean;
 	updateMode?: boolean;
+	// 外部サーバーへの投稿用
+	externalReply?: ExternalNote | null;
+	externalRenote?: ExternalNote | null;
+	initialUseExternalAccount?: boolean;
 }

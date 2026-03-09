@@ -38,6 +38,7 @@ import XReaction from '@/components/MkReactionsViewer.reaction.vue';
 import { $i } from '@/i.js';
 import { prefer } from '@/preferences.js';
 import { customEmojisMap } from '@/custom-emojis.js';
+import { checkMuted as isEmojiMuted } from '@/utility/emoji-mute.js';
 import { DI } from '@/di.js';
 
 const props = withDefaults(defineProps<{
@@ -82,13 +83,21 @@ function canReact(reaction: string) {
 }
 
 watch([() => props.reactions, () => props.maxNumber], ([newSource, maxNumber]) => {
+	// ミュート絵文字を除外
+	const filteredSource: Record<string, number> = {};
+	for (const [reaction, count] of Object.entries(newSource)) {
+		if (!isEmojiMuted(reaction).value) {
+			filteredSource[reaction] = count;
+		}
+	}
+
 	let newReactions: [string, number][] = [];
-	hasMoreReactions.value = Object.keys(newSource).length > maxNumber;
+	hasMoreReactions.value = Object.keys(filteredSource).length > maxNumber;
 
 	for (let i = 0; i < _reactions.value.length; i++) {
 		const reaction = _reactions.value[i][0];
-		if (reaction in newSource && newSource[reaction] !== 0) {
-			_reactions.value[i][1] = newSource[reaction];
+		if (reaction in filteredSource && filteredSource[reaction] !== 0) {
+			_reactions.value[i][1] = filteredSource[reaction];
 			newReactions.push(_reactions.value[i]);
 		}
 	}
@@ -96,7 +105,7 @@ watch([() => props.reactions, () => props.maxNumber], ([newSource, maxNumber]) =
 	const newReactionsNames = newReactions.map(([x]) => x);
 	newReactions = [
 		...newReactions,
-		...Object.entries(newSource)
+		...Object.entries(filteredSource)
 			.sort(([emojiA, countA], [emojiB, countB]) => {
 				if (prefer.s.showAvailableReactionsFirstInNote) {
 					if (!canReact(emojiA) && canReact(emojiB)) return 1;
@@ -112,7 +121,7 @@ watch([() => props.reactions, () => props.maxNumber], ([newSource, maxNumber]) =
 	newReactions = newReactions.slice(0, props.maxNumber);
 
 	if (props.myReaction && !newReactions.map(([x]) => x).includes(props.myReaction)) {
-		newReactions.push([props.myReaction, newSource[props.myReaction]]);
+		newReactions.push([props.myReaction, filteredSource[props.myReaction]]);
 	}
 
 	_reactions.value = newReactions;

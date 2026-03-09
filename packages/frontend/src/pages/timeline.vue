@@ -9,13 +9,29 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<MkTip v-if="isBasicTimeline(src)" :k="`tl.${src}`" style="margin-bottom: var(--MI-margin);">
 			{{ i18n.ts._timelineDescription[src] }}
 		</MkTip>
+		<MkTip v-else-if="src === 'ohtl' || src === 'oltl'" k="tl.external" style="margin-bottom: var(--MI-margin);">
+			🦐 外部サーバー（{{ prefer.s['external.host'] }}）の{{ src === 'ohtl' ? 'ホーム' : 'ローカル' }}タイムラインを表示しています
+		</MkTip>
 		<MkInfo v-if="schedulePostList > 0" style="margin-bottom: var(--MI-margin);">
 			<button type="button" :class="$style.checkSchedulePostList" @click="showDraftMenu(true)">
 				{{ i18n.tsx.thereIsSchedulePost({ n: schedulePostList }) }}
 			</button>
 		</MkInfo>
 		<MkPostForm v-if="prefer.r.showFixedPostForm.value" :class="$style.postForm" class="_panel" fixed style="margin-bottom: var(--MI-margin);"/>
-		<div v-if="!isAvailableBasicTimeline(src) && !src.startsWith('list:')" :class="[$style.disabled, $style.tl]">
+		
+		<!-- 外部タイムライン -->
+		<MkExternalTimeline
+			v-if="(src === 'ohtl' || src === 'oltl') && isExternalEnabled"
+			ref="externalTlComponent"
+			:key="src"
+			:class="$style.tl"
+			:src="src"
+			:host="externalHost"
+			:token="externalToken"
+			:sound="true"
+		/>
+		<!-- 通常のタイムライン -->
+		<div v-else-if="!isAvailableBasicTimeline(src) && !src.startsWith('list:') && src !== 'ohtl' && src !== 'oltl'" :class="[$style.disabled, $style.tl]">
 			<p :class="$style.disabledTitle">
 				<i class="ti ti-circle-minus"></i>
 				{{ i18n.ts._disabledTimeline.title }}
@@ -23,7 +39,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<p :class="$style.disabledDescription">{{ i18n.ts._disabledTimeline.description }}</p>
 		</div>
 		<MkStreamingNotesTimeline
-			v-else
+			v-else-if="src !== 'ohtl' && src !== 'oltl'"
 			ref="tlComponent"
 			:key="src + withRenotes + withReplies + onlyFiles + onlyCats + withSensitive"
 			:class="$style.tl"
@@ -46,6 +62,7 @@ import type { Tab } from '@/components/global/MkPageHeader.tabs.vue';
 import type { MenuItem } from '@/types/menu.js';
 import type { BasicTimelineType } from '@/timelines.js';
 import MkStreamingNotesTimeline from '@/components/MkStreamingNotesTimeline.vue';
+import MkExternalTimeline from '@/components/MkExternalTimeline.vue';
 import MkPostForm from '@/components/MkPostForm.vue';
 import * as os from '@/os.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
@@ -64,6 +81,17 @@ import { suggestReload } from '@/utility/reload-suggest.js';
 import { isFriendly } from '@/utility/is-friendly.js';
 import MkInfo from '@/components/MkInfo.vue';
 
+// 外部サーバー連携設定
+const isExternalEnabled = computed(() => {
+	return prefer.s['external.enabled'] && prefer.s['external.token'] != null;
+});
+const externalHost = computed(() => prefer.s['external.host'] || '');
+const externalToken = computed(() => prefer.s['external.token'] || '');
+const enableOHTL = computed(() => prefer.s['external.enableOHTL']);
+const enableOLTL = computed(() => prefer.s['external.enableOLTL']);
+
+const externalTlComponent = useTemplateRef('externalTlComponent');
+
 const DESKTOP_THRESHOLD = 1100;
 const MOBILE_THRESHOLD = 500;
 
@@ -80,7 +108,7 @@ const schedulePostList = $i ? (await misskeyApi('notes/drafts/list', { scheduled
 
 const tlComponent = useTemplateRef('tlComponent');
 
-type TimelinePageSrc = BasicTimelineType | `list:${string}`;
+type TimelinePageSrc = BasicTimelineType | `list:${string}` | 'ohtl' | 'oltl';
 
 const srcWhenNotSignin = ref<'local' | 'global'>(isAvailableBasicTimeline('local') ? 'local' : 'global');
 const src = computed<TimelinePageSrc>({
@@ -605,6 +633,16 @@ const headerTabs = computed(() => [...(prefer.r.pinnedUserLists.value.map(l => (
 	title: i18n.ts.channel,
 	iconOnly: true,
 	onClick: chooseChannel,
+}] : []), ...(isExternalEnabled.value && enableOHTL.value ? [{
+	key: 'ohtl',
+	title: '🦐 OHTL',
+	icon: 'ti ti-home',
+	iconOnly: false,
+}] : []), ...(isExternalEnabled.value && enableOLTL.value ? [{
+	key: 'oltl',
+	title: '🦐 OLTL',
+	icon: 'ti ti-planet',
+	iconOnly: false,
 }] : [])] as Tab[]);
 
 const headerTabsWhenNotLogin = computed(() => [...availableBasicTimelines().map(tl => ({

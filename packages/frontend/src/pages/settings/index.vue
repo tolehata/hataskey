@@ -154,7 +154,12 @@ const menuDef = computed<SuperMenuDef[]>(() => [{
 		text: i18n.ts.other,
 		to: '/settings/other',
 		active: currentPage.value?.route.name === 'other',
-	}],
+        }, {
+                icon: 'ti ti-flag',
+                text: '旗鯖独自機能',
+                to: '/settings/hata-custom',
+                active: currentPage.value?.route.name === 'hata-custom',
+        }],
 }, {
 	items: [{
 		type: 'button',

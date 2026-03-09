@@ -32,8 +32,11 @@ import { unisonReload } from '@/utility/unison-reload.js';
 import { userName } from '@/filters/user.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import * as os from '@/os.js';
+import { cleanupStaleUiElements } from '@/utility/ui-cleanup.js';
 
 export async function mainBoot() {
+	cleanupStaleUiElements();
+
 	const { isClientUpdated, isClientMigrated, lastVersion } = await common(async () => {
 		let uiStyle = ui;
 		const searchParams = new URLSearchParams(window.location.search);
@@ -56,6 +59,9 @@ export async function mainBoot() {
 			case 'visitor':
 				rootComponent = await import('@/ui/visitor.vue').then(x => x.default);
 				break;
+                                                case 'simple':
+                                rootComponent = await import('@/ui/simple.vue').then(x => x.default);
+                                break;
 			case 'default':
 				rootComponent = await import('@/ui/universal.vue').then(x => x.default);
 				break;

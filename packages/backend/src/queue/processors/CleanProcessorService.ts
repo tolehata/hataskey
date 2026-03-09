@@ -6,7 +6,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { In, LessThan } from 'typeorm';
 import { DI } from '@/di-symbols.js';
-import type { AntennasRepository, RoleAssignmentsRepository, UserIpsRepository } from '@/models/_.js';
+import type { AntennasRepository, RegistrationApplicationsRepository, RoleAssignmentsRepository, UserIpsRepository } from '@/models/_.js';
 import type Logger from '@/logger.js';
 import { bindThis } from '@/decorators.js';
 import { IdService } from '@/core/IdService.js';
@@ -28,6 +28,9 @@ export class CleanProcessorService {
 
 		@Inject(DI.antennasRepository)
 		private antennasRepository: AntennasRepository,
+
+		@Inject(DI.registrationApplicationsRepository)
+		private registrationApplicationsRepository: RegistrationApplicationsRepository,
 
 		@Inject(DI.roleAssignmentsRepository)
 		private roleAssignmentsRepository: RoleAssignmentsRepository,
@@ -68,6 +71,18 @@ export class CleanProcessorService {
 		}
 
 		this.reversiService.cleanOutdatedGames();
+
+		// 古い登録申請のクリーンアップ
+		// pending: 30日経過で削除
+		this.registrationApplicationsRepository.delete({
+			status: 'pending',
+			createdAt: LessThan(new Date(Date.now() - 1000 * 60 * 60 * 24 * 30)),
+		});
+		// rejected: 90日経過で削除
+		this.registrationApplicationsRepository.delete({
+			status: 'rejected',
+			createdAt: LessThan(new Date(Date.now() - 1000 * 60 * 60 * 24 * 90)),
+		});
 
 		this.logger.succ('Cleaned.');
 	}

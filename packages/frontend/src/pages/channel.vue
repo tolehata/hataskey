@@ -1,6 +1,6 @@
-<!--
+<!--Container cherrypick-redis-1        Healthy                             5.9s
 SPDX-FileCopyrightText: syuilo and misskey-project
-SPDX-License-Identifier: AGPL-3.0-only
+SPDX-License-Identifier: AGPL-3.0-only  Created                             0.1s
 -->
 
 <template>
@@ -34,7 +34,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<div v-if="channel && tab === 'timeline'" class="_gaps">
 			<MkInfo v-if="channel.isArchived" warn>{{ i18n.ts.thisChannelArchived }}</MkInfo>
 
-			<!-- スマホ・タブレットの場合、キーボードが表示されると投稿が見づらくなるので、デスクトップ場合のみ自動でフォーカスを当てる -->
+			<!-- スマホ・タブレットの場合、キーボードが表示されると 投稿が見づらくなるので、デスクトップ場合のみ自動でフォーカスを当てる -->
 			<MkPostForm v-if="$i && prefer.r.showFixedPostFormInChannel.value" :channel="channel" class="post-form _panel" fixed :autofocus="deviceKind === 'desktop'"/>
 
 			<MkStreamingNotesTimeline :key="channelId" src="channel" :channel="channelId"/>
@@ -286,6 +286,7 @@ definePage(() => ({
 	backdrop-filter: var(--MI-blur, blur(15px));
 	background: color(from var(--MI_THEME-bg) srgb r g b / 0.5);
 	border-top: solid 0.5px var(--MI_THEME-divider);
+	padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 70px);
 }
 
 .bannerContainer {

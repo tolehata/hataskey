@@ -36,6 +36,7 @@ import { defineAsyncComponent, provide, onMounted, computed, ref, onUnmounted } 
 import { instanceName } from '@@/js/config.js';
 import { isLink } from '@@/js/is-link.js';
 import XCommon from './_common_/common.vue';
+import { showLoginBonusIfNeeded } from './_common_/common.js';
 import type { PageMetadata } from '@/page.js';
 import XMobileFooterMenu from '@/ui/_common_/mobile-footer-menu.vue';
 import XPreferenceRestore from '@/ui/_common_/PreferenceRestore.vue';
@@ -103,6 +104,19 @@ if (window.innerWidth > 1024) {
 		window.location.reload();
 	}
 }
+
+onMounted(() => {
+	// ログインボーナスダイアログを表示（設定を尊重）
+	showLoginBonusIfNeeded();
+});
+
+onMounted(() => {
+	if (tempUI) {
+		miLocalStorage.setItem('ui', tempUI);
+		miLocalStorage.removeItem('ui_temp');
+		window.location.reload();
+	}
+});
 
 onMounted(() => {
 	if (!isDesktop.value) {

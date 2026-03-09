@@ -7,6 +7,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import type { UserProfilesRepository } from '@/models/_.js';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import { UserEntityService } from '@/core/entities/UserEntityService.js';
+import { AchievementService } from '@/core/AchievementService.js';
 import { DI } from '@/di-symbols.js';
 import { ApiError } from '../error.js';
 
@@ -45,6 +46,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		private userProfilesRepository: UserProfilesRepository,
 
 		private userEntityService: UserEntityService,
+		private achievementService: AchievementService,
 	) {
 		super(meta, paramDef, async (ps, user, token, flashToken) => {
 			const isSecure = token == null && flashToken == null;
@@ -52,7 +54,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 			const now = new Date();
 			const today = `${now.getFullYear()}/${now.getMonth() + 1}/${now.getDate()}`;
 
-			// 渡ってきている user はキャッシュされていて古い可能性があるので改めて取得
+			// 渡ってきている user はキャッシュされていて古い可能性 があるので改めて取得
 			const userProfile = await this.userProfilesRepository.findOne({
 				where: {
 					userId: user.id,
@@ -69,6 +71,32 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 					loggedInDates: [...userProfile.loggedInDates, today],
 				});
 				userProfile.loggedInDates = [...userProfile.loggedInDates, today];
+
+				// ログインボーナス：ログイン日数に応じた実績を解放
+				const loginDays = userProfile.loggedInDates.length;
+				const loginAchievements: { days: number; achievement: string }[] = [
+					{ days: 3, achievement: 'login3' },
+					{ days: 7, achievement: 'login7' },
+					{ days: 15, achievement: 'login15' },
+					{ days: 30, achievement: 'login30' },
+					{ days: 60, achievement: 'login60' },
+					{ days: 100, achievement: 'login100' },
+					{ days: 200, achievement: 'login200' },
+					{ days: 300, achievement: 'login300' },
+					{ days: 400, achievement: 'login400' },
+					{ days: 500, achievement: 'login500' },
+					{ days: 600, achievement: 'login600' },
+					{ days: 700, achievement: 'login700' },
+					{ days: 800, achievement: 'login800' },
+					{ days: 900, achievement: 'login900' },
+					{ days: 1000, achievement: 'login1000' },
+				];
+
+				for (const { days, achievement } of loginAchievements) {
+					if (loginDays >= days) {
+						this.achievementService.create(user.id, achievement as any);
+					}
+				}
 			}
 
 			return await this.userEntityService.pack(userProfile.user!, userProfile.user!, {

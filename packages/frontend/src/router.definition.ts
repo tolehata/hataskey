@@ -199,6 +199,18 @@ export const ROUTE_DEF = [{
 		path: '/other',
 		name: 'other',
 		component: page(() => import('@/pages/settings/other.vue')),
+        }, {
+                path: '/hata-custom',
+                name: 'hata-custom',
+                component: page(() => import('@/pages/settings/hata-custom.vue')),
+	}, {
+		path: '/external-account',
+		name: 'external-account',
+		component: page(() => import('@/pages/settings/external-account.vue')),
+	}, {
+		path: '/hidden-reactions',
+		name: 'hidden-reactions',
+		component: page(() => import('@/pages/settings/hidden-reactions-manage.vue')),
 	}, {
 		path: '/account-stats',
 		name: 'other',
@@ -528,6 +540,14 @@ export const ROUTE_DEF = [{
 		name: 'update',
 		component: page(() => import('@/pages/admin/update.vue')),
 	}, {
+		path: '/hata-modifications',
+		name: 'hata-modifications',
+		component: page(() => import('@/pages/admin/hata-modifications.vue')),
+	}, {
+		path: '/registration-applications',
+		name: 'registration-applications',
+		component: page(() => import('@/pages/admin/registration-applications.vue')),
+	}, {
 		path: '/',
 		component: page(() => import('@/pages/_empty_.vue')),
 	}],
@@ -640,6 +660,14 @@ export const ROUTE_DEF = [{
 	path: '/redirect-test',
 	redirect: $i ? `@${$i.username}` : '/',
 	loginRequired: true,
+}, {
+	path: '/hatask',
+	component: page(() => import('@/pages/hatask.vue')),
+	loginRequired: true,
+}, {
+	path: '/hata-docs',
+	component: page(() => import('@/pages/hata-docs.vue')),
+	loginRequired: false,
 }, {
 	path: '/:(*)',
 	component: page(() => import('@/pages/not-found.vue')),

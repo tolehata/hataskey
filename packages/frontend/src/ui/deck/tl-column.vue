@@ -6,17 +6,37 @@ SPDX-License-Identifier: AGPL-3.0-only
 <template>
 <XColumn :menu="menu" :column="column" :isStacked="isStacked" :refresher="reloadTimeline">
 	<template #header>
-		<i v-if="column.tl != null" :class="basicTimelineIconClass(column.tl)"/>
-		<span style="margin-left: 8px;">{{ column.name || (column.tl ? i18n.ts._timelines[column.tl] : null) || i18n.ts._deck._columns.tl }}</span>
+		<i v-if="column.tl != null" :class="timelineIcon"/>
+		<span style="margin-left: 8px;">{{ column.name || timelineName || i18n.ts._deck._columns.tl }}</span>
 	</template>
 
-	<div v-if="!isAvailableBasicTimeline(column.tl)" :class="$style.disabled">
+	<!-- 外部タイムライン -->
+	<MkExternalTimeline
+		v-if="isExternalTimeline && isExternalEnabled"
+		ref="externalTimeline"
+		:key="column.tl"
+		:src="column.tl"
+		:host="externalHost"
+		:token="externalToken"
+		:sound="true"
+	/>
+	<!-- 外部タイムライン未連携時 -->
+	<div v-else-if="isExternalTimeline && !isExternalEnabled" :class="$style.disabled">
+		<p :class="$style.disabledTitle">
+			<i class="ti ti-link-off"></i>
+			外部サーバー未連携
+		</p>
+		<p :class="$style.disabledDescription">設定から外部サーバーと連携してください</p>
+	</div>
+	<!-- 通常タイムライン無効時 -->
+	<div v-else-if="!isAvailableBasicTimeline(column.tl)" :class="$style.disabled">
 		<p :class="$style.disabledTitle">
 			<i class="ti ti-circle-minus"></i>
 			{{ i18n.ts._disabledTimeline.title }}
 		</p>
 		<p :class="$style.disabledDescription">{{ i18n.ts._disabledTimeline.description }}</p>
 	</div>
+	<!-- 通常タイムライン -->
 	<MkStreamingNotesTimeline
 		v-else-if="column.tl"
 		ref="timeline"
@@ -41,10 +61,12 @@ import type { MenuItem } from '@/types/menu.js';
 import type { SoundStore } from '@/preferences/def.js';
 import { removeColumn, updateColumn } from '@/deck.js';
 import MkStreamingNotesTimeline from '@/components/MkStreamingNotesTimeline.vue';
+import MkExternalTimeline from '@/components/MkExternalTimeline.vue';
 import * as os from '@/os.js';
 import { i18n } from '@/i18n.js';
 import { hasWithReplies, isAvailableBasicTimeline, basicTimelineIconClass } from '@/timelines.js';
 import { soundSettingsButton } from '@/ui/deck/tl-note-notification.js';
+import { prefer } from '@/preferences.js';
 
 const props = defineProps<{
 	column: Column;
@@ -52,8 +74,41 @@ const props = defineProps<{
 }>();
 
 const timeline = useTemplateRef('timeline');
+const externalTimeline = useTemplateRef('externalTimeline');
+
+// 外部サーバー連携設定
+const isExternalEnabled = computed(() => {
+	return prefer.s['external.enabled'] && prefer.s['external.token'] != null;
+});
+const externalHost = computed(() => prefer.s['external.host'] || '');
+const externalToken = computed(() => prefer.s['external.token'] || '');
+const enableOHTL = computed(() => prefer.s['external.enableOHTL']);
+const enableOLTL = computed(() => prefer.s['external.enableOLTL']);
+
+// 外部タイムラインかどうか
+const isExternalTimeline = computed(() => {
+	return props.column.tl === 'ohtl' || props.column.tl === 'oltl';
+});
+
+// タイムラインアイコン
+const timelineIcon = computed(() => {
+	if (props.column.tl === 'ohtl') return 'ti ti-home';
+	if (props.column.tl === 'oltl') return 'ti ti-planet';
+	return basicTimelineIconClass(props.column.tl);
+});
+
+// タイムライン名
+const timelineName = computed(() => {
+	if (props.column.tl === 'ohtl') return '🦐 OHTL';
+	if (props.column.tl === 'oltl') return '🦐 OLTL';
+	return props.column.tl ? i18n.ts._timelines[props.column.tl] : null;
+});
 
 async function reloadTimeline() {
+	if (isExternalTimeline.value) {
+		await externalTimeline.value?.reloadTimeline();
+		return;
+	}
 	await timeline.value?.reloadTimeline();
 }
 
@@ -105,21 +160,38 @@ onMounted(() => {
 });
 
 async function setType() {
+	// 基本タイムラインの選択肢
+	const items: { value: string; label: string }[] = [{
+		value: 'home', label: i18n.ts._timelines.home,
+	}, {
+		value: 'local', label: i18n.ts._timelines.local,
+	}, {
+		value: 'social', label: i18n.ts._timelines.social,
+	}, {
+		value: 'global', label: i18n.ts._timelines.global,
+	}, {
+		value: 'media', label: i18n.ts._timelines.media,
+	}, {
+		value: 'bubble', label: i18n.ts._timelines.bubble,
+	}];
+
+	// 外部サーバー連携が有効な場合、OHTL/OLTLを追加
+	if (isExternalEnabled.value) {
+		if (enableOHTL.value) {
+			items.push({
+				value: 'ohtl', label: '🦐 OHTL (外部ホーム)',
+			});
+		}
+		if (enableOLTL.value) {
+			items.push({
+				value: 'oltl', label: '🦐 OLTL (外部ローカル)',
+			});
+		}
+	}
+
 	const { canceled, result: src } = await os.select({
 		title: i18n.ts.timeline,
-		items: [{
-			value: 'home', label: i18n.ts._timelines.home,
-		}, {
-			value: 'local', label: i18n.ts._timelines.local,
-		}, {
-			value: 'social', label: i18n.ts._timelines.social,
-		}, {
-			value: 'global', label: i18n.ts._timelines.global,
-		}, {
-			value: 'media', label: i18n.ts._timelines.media,
-		}, {
-			value: 'bubble', label: i18n.ts._timelines.bubble,
-		}],
+		items,
 	});
 	if (canceled) {
 		if (props.column.tl == null) {
@@ -140,7 +212,20 @@ const menu = computed<MenuItem[]>(() => {
 		icon: 'ti ti-pencil',
 		text: i18n.ts.timeline,
 		action: setType,
-	}, {
+	});
+
+	// 外部タイムラインの場合はサウンド設定のみ
+	if (isExternalTimeline.value) {
+		menuItems.push({
+			icon: 'ti ti-bell',
+			text: i18n.ts._deck.newNoteNotificationSettings,
+			action: () => soundSettingsButton(soundSetting),
+		});
+		return menuItems;
+	}
+
+	// 通常タイムラインの場合
+	menuItems.push({
 		icon: 'ti ti-bell',
 		text: i18n.ts._deck.newNoteNotificationSettings,
 		action: () => soundSettingsButton(soundSetting),

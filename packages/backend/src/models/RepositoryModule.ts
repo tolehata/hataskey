@@ -90,6 +90,9 @@ import {
 	MiChatApproval,
 } from './_.js';
 import { NoteHistory } from './NoteHistory.js';
+import { MiRegistrationApplication } from './RegistrationApplication.js';
+import { MiHataskEvent } from './HataskEvent.js';
+import { MiHataskRsvp } from './HataskRsvp.js';
 import type { Provider } from '@nestjs/common';
 import type { DataSource } from 'typeorm';
 
@@ -579,6 +582,24 @@ const $noteHistoryRepository: Provider = {
 	inject: [DI.db],
 };
 
+const $registrationApplicationsRepository: Provider = {
+	provide: DI.registrationApplicationsRepository,
+	useFactory: (db: DataSource) => db.getRepository(MiRegistrationApplication).extend(miRepository as MiRepository<MiRegistrationApplication>),
+	inject: [DI.db],
+};
+
+const $hataskEventsRepository: Provider = {
+	provide: DI.hataskEventsRepository,
+	useFactory: (db: DataSource) => db.getRepository(MiHataskEvent).extend(miRepository as MiRepository<MiHataskEvent>),
+	inject: [DI.db],
+};
+
+const $hataskRsvpsRepository: Provider = {
+	provide: DI.hataskRsvpsRepository,
+	useFactory: (db: DataSource) => db.getRepository(MiHataskRsvp).extend(miRepository as MiRepository<MiHataskRsvp>),
+	inject: [DI.db],
+};
+
 @Module({
 	imports: [],
 	providers: [
@@ -663,6 +684,9 @@ const $noteHistoryRepository: Provider = {
 		$reversiGamesRepository,
 		$abuseReportResolversRepository,
 		$noteHistoryRepository,
+		$registrationApplicationsRepository,
+		$hataskEventsRepository,
+		$hataskRsvpsRepository,
 	],
 	exports: [
 		$usersRepository,
@@ -746,6 +770,9 @@ const $noteHistoryRepository: Provider = {
 		$reversiGamesRepository,
 		$abuseReportResolversRepository,
 		$noteHistoryRepository,
+		$registrationApplicationsRepository,
+		$hataskEventsRepository,
+		$hataskRsvpsRepository,
 	],
 })
 export class RepositoryModule {

@@ -98,6 +98,9 @@ import { MiUserPublickey } from '@/models/UserPublickey.js';
 import { MiUserSecurityKey } from '@/models/UserSecurityKey.js';
 import { MiWebhook } from '@/models/Webhook.js';
 import { NoteHistory } from '@/models/NoteHistory.js';
+import { MiRegistrationApplication } from '@/models/RegistrationApplication.js';
+import { MiHataskEvent } from '@/models/HataskEvent.js';
+import { MiHataskRsvp } from '@/models/HataskRsvp.js';
 import type { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity.js';
 
 export interface MiRepository<T extends ObjectLiteral> {
@@ -245,6 +248,9 @@ export {
 	MiChatApproval,
 	MiBubbleGameRecord,
 	MiReversiGame,
+	MiRegistrationApplication,
+	MiHataskEvent,
+	MiHataskRsvp,
 };
 
 export type AbuseReportResolversRepository = Repository<MiAbuseReportResolver> & MiRepository<MiAbuseReportResolver>;
@@ -330,4 +336,7 @@ export type ChatApprovalsRepository = Repository<MiChatApproval> & MiRepository<
 export type BubbleGameRecordsRepository = Repository<MiBubbleGameRecord> & MiRepository<MiBubbleGameRecord>;
 export type ReversiGamesRepository = Repository<MiReversiGame> & MiRepository<MiReversiGame>;
 export type NoteHistoryRepository = Repository<NoteHistory> & MiRepository<NoteHistory>;
+export type RegistrationApplicationsRepository = Repository<MiRegistrationApplication> & MiRepository<MiRegistrationApplication>;
+export type HataskEventsRepository = Repository<MiHataskEvent> & MiRepository<MiHataskEvent>;
+export type HataskRsvpsRepository = Repository<MiHataskRsvp> & MiRepository<MiHataskRsvp>;
 

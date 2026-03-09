@@ -250,6 +250,16 @@ const menuDef = computed<SuperMenuDef[]>(() => [{
 		text: i18n.ts.database,
 		to: '/admin/database',
 		active: currentPage.value?.route.name === 'database',
+	}, {
+		icon: 'ti ti-user-check',
+		text: '登録申請管理',
+		to: '/admin/registration-applications',
+		active: currentPage.value?.route.name === 'registration-applications',
+	}, {
+		icon: 'ti ti-git-compare',
+		text: '旗鯖改変一覧',
+		to: '/admin/hata-modifications',
+		active: currentPage.value?.route.name === 'hata-modifications',
 	}],
 }]);
 

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { computed, reactive } from 'vue';
+import { computed, reactive, defineAsyncComponent } from 'vue';
 import { ui } from '@@/js/config.js';
 import { clearCache } from './utility/clear-cache.js';
 import { $i } from '@/i.js';
@@ -43,6 +43,26 @@ export const navbarItemDef = reactive({
 		icon: 'ti ti-user-plus',
 		indicated: computed(() => $i != null && $i.hasPendingReceivedFollowRequest),
 		to: '/my/follow-requests',
+	},
+	portal: {
+		title: '旗鯖ポータル',
+		icon: 'ti ti-world',
+		show: computed(() => true),
+		action: () => {
+			window.open('https://home.tolehata.net', '_blank');
+		},
+	},
+	hatask: {
+		title: 'Hatask',
+		icon: 'ti ti-layout-dashboard',
+		show: computed(() => $i != null),
+		to: '/hatask',
+	},
+	hataDocs: {
+		title: '旗鯖機能解説',
+		icon: 'ti ti-book',
+		show: computed(() => true),
+		to: '/hata-docs',
 	},
 	explore: {
 		title: i18n.ts.explore,
@@ -144,32 +164,13 @@ export const navbarItemDef = reactive({
 	ui: {
 		title: i18n.ts.switchUi,
 		icon: 'ti ti-devices',
-		action: (ev: MouseEvent) => {
-			os.popupMenu([{
-				text: 'Friendly',
-				active: ui === 'friendly' || ui === null,
-				action: () => {
-					miLocalStorage.setItem('ui', 'friendly');
-					unisonReload();
-				},
-			}, {
-				text: 'Misskey',
-				active: ui === 'default',
-				action: () => {
-					miLocalStorage.setItem('ui', 'default');
-					unisonReload();
-				},
-			}, {
-				text: i18n.ts.deck,
-				active: ui === 'deck',
-				action: () => {
-					miLocalStorage.setItem('ui', 'deck');
-					unisonReload();
-				},
-			}], ev.currentTarget ?? ev.target);
-		},
-	},
-	help: {
+                action: async (ev: MouseEvent) => {
+                    const { defineAsyncComponent } = await import('vue');
+                    // 即座に MkUISetup.vue を開く
+                    os.popup(defineAsyncComponent(() => import('@/components/MkUISetup.vue')), {}, {}, 'closed');
+                },
+         },	
+         help: {
 		title: i18n.ts.help,
 		icon: 'ti ti-help-circle',
 		action: (ev) => {

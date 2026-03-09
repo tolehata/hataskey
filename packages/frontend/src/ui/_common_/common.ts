@@ -5,6 +5,7 @@
 
 import { defineAsyncComponent } from 'vue';
 import { host } from '@@/js/config.js';
+import { miLocalStorage } from '@/local-storage.js';
 import type { MenuItem } from '@/types/menu.js';
 import * as os from '@/os.js';
 import { instance } from '@/instance.js';
@@ -213,4 +214,22 @@ export function openToolsMenu(ev: MouseEvent) {
 	os.popupMenu(toolsMenuItems(), ev.currentTarget ?? ev.target, {
 		align: 'left',
 	});
+}
+
+// ログインボーナスダイアログを表示
+export function showLoginBonusIfNeeded() {
+	if (!$i) return;
+	if (!prefer.s.showLoginBonusPopup) return;
+	
+	const today = new Date();
+	const todayStr = `${today.getFullYear()}/${today.getMonth() + 1}/${today.getDate()}`;
+	const lastShown = miLocalStorage.getItem('loginBonusLastShown');
+	
+	if (lastShown !== todayStr) {
+		miLocalStorage.setItem('loginBonusLastShown', todayStr);
+		// 少し遅延させて表示（起動直後は避ける）
+		setTimeout(() => {
+			os.popup(defineAsyncComponent(() => import('@/components/MkLoginBonusDialog.vue')), {}, {}, 'closed');
+		}, 1500);
+	}
 }

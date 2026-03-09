@@ -44,7 +44,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			:class="[$style.notes, { [$style.noGap]: noGap, '_gaps': !noGap }]"
 			:enterActiveClass="$style.transition_x_enterActive"
 			:leaveActiveClass="$style.transition_x_leaveActive"
-			:enterFromClass="$style.transition_x_enterFrom"
+			:enterFromClass="currentAnimationDirection === 'left' ? $style.transition_x_enterFrom_left : currentAnimationDirection === 'right' ? $style.transition_x_enterFrom_right : $style.transition_x_enterFrom_top"
 			:leaveToClass="$style.transition_x_leaveTo"
 			:moveClass="$style.transition_x_move"
 			tag="div"
@@ -123,6 +123,30 @@ const handleResize = () => {
 window.addEventListener('resize', handleResize);
 
 const noGap = !prefer.s.showGapBetweenNotesInTimeline;
+
+// タイムラインアニメーション方向
+const animationDirections = ['top', 'left', 'right'] as const;
+const currentAnimationDirection = ref<'top' | 'left' | 'right'>(
+	prefer.s.timelineAnimationDirection === 'random' 
+		? animationDirections[Math.floor(Math.random() * animationDirections.length)]
+		: (prefer.s.timelineAnimationDirection ?? 'top') as 'top' | 'left' | 'right'
+);
+
+// ノートが追加されるたびにランダムの場合は方向を更新
+const updateAnimationDirection = () => {
+	if (prefer.s.timelineAnimationDirection === 'random') {
+		currentAnimationDirection.value = animationDirections[Math.floor(Math.random() * animationDirections.length)];
+	}
+};
+
+// 設定変更を監視して反映
+watch(() => prefer.s.timelineAnimationDirection, (newDirection) => {
+	if (newDirection === 'random') {
+		currentAnimationDirection.value = animationDirections[Math.floor(Math.random() * animationDirections.length)];
+	} else {
+		currentAnimationDirection.value = (newDirection ?? 'top') as 'top' | 'left' | 'right';
+	}
+});
 
 const props = withDefaults(defineProps<{
 	src: BasicTimelineType | 'mentions' | 'directs' | 'list' | 'antenna' | 'channel' | 'role';
@@ -351,6 +375,9 @@ function releaseQueue() {
 }
 
 function prepend(note: Misskey.entities.Note & MisskeyEntity) {
+	// ランダムモードの場合、ノート追加時にアニメーション方向を更新
+	updateAnimationDirection();
+
 	adInsertionCounter++;
 
 	if (instance.notesPerOneAd > 0 && adInsertionCounter % instance.notesPerOneAd === 0) {
@@ -549,9 +576,22 @@ defineExpose({
 	transition: height 0.2s cubic-bezier(0,.5,.5,1), opacity 0.2s cubic-bezier(0,.5,.5,1);
 }
 
-.transition_x_enterFrom {
+/* 上からスライド（デフォルト） */
+.transition_x_enterFrom_top {
 	opacity: 0;
 	transform: translateY(max(-64px, -100%));
+}
+
+/* 左からスライド */
+.transition_x_enterFrom_left {
+	opacity: 0;
+	transform: translateX(-100%);
+}
+
+/* 右からスライド */
+.transition_x_enterFrom_right {
+	opacity: 0;
+	transform: translateX(100%);
 }
 
 @supports (interpolate-size: allow-keywords) {

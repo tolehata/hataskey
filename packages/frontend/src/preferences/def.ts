@@ -188,6 +188,9 @@ export const PREF_DEF = definePreferences({
 			'notifications',
 			'chat',
 			'favorites',
+                        'portal',
+			'hatask',
+			'hataDocs',
 			'explore',
 			'followRequests',
 			'-',
@@ -195,7 +198,6 @@ export const PREF_DEF = definePreferences({
 			'channels',
 			'search',
 			'-',
-			'support',
 		],
 	},
 	statusbars: {
@@ -723,7 +725,10 @@ export const PREF_DEF = definePreferences({
 		default: true,
 	},
 	expandOnNoteClick: {
-		default: true,
+		default: false,
+        },
+        timelineAnimationDirection: {
+                default: 'top' as 'top' | 'left' | 'right' | 'random',
 	},
 	expandOnNoteClickBehavior: {
 		default: 'click' as 'click' | 'doubleClick',
@@ -745,7 +750,23 @@ export const PREF_DEF = definePreferences({
 	},
 	renameTheButtonInPostFormToNyaManualSet: {
 		default: false,
+        },
+        showHashtagButtonInPostForm: {
+                default: true,
+        },
+        showEventButtonInPostForm: {
+                default: true,
 	},
+        showDrawingButtonInPostForm: {
+		default: true,
+	},
+        useSimpleTL: {
+        default: false,
+	},
+        simpleTLLastListId: {
+        default: null as string | null,
+        hidden: true, // 設定画面には出さない
+        },
 	enableWidgetsArea: {
 		default: true,
 	},
@@ -757,6 +778,32 @@ export const PREF_DEF = definePreferences({
 	},
 	friendlyUiShowAvatarDecorationsInNavBtn: {
 		default: false,
+	},
+	// ログインボーナスポップアップ表示設定（旗鯖独自機能）
+	showLoginBonusPopup: {
+		default: true,
+	},
+	// 外部サーバー連携（旗鯖独自機能）
+	'external.enabled': {
+		default: false,
+	},
+	'external.host': {
+		default: 'mk.shrimpia.network' as string,
+	},
+	'external.token': {
+		default: null as string | null,
+	},
+	'external.userId': {
+		default: null as string | null,
+	},
+	'external.username': {
+		default: null as string | null,
+	},
+	'external.enableOHTL': {
+		default: true,
+	},
+	'external.enableOLTL': {
+		default: true,
 	},
 	//#endregion
 

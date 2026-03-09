@@ -42,6 +42,7 @@ import { DI } from '@/di.js';
 import { noteEvents } from '@/composables/use-note-capture.js';
 import { mute as muteEmoji, unmute as unmuteEmoji, checkMuted as isEmojiMuted } from '@/utility/emoji-mute.js';
 import { haptic } from '@/utility/haptic.js';
+import { hideReaction, unhideReaction, isReactionHidden } from '@/utility/hidden-reactions.js';
 import { copyToClipboard } from '@/utility/copy-to-clipboard.js';
 
 const props = defineProps<{
@@ -276,6 +277,20 @@ async function menu(ev) {
 	menuItems.push({
 		type: 'label',
 		text: `:${reactionName.value}:`,
+	});
+
+	// リアクション非表示/表示
+	const hidden = isReactionHidden(props.noteId, props.reaction);
+	menuItems.push({
+		text: hidden ? 'このリアクションを表示' : 'このリアクションを非表示',
+		icon: hidden ? 'ti ti-eye' : 'ti ti-eye-off',
+		action: () => {
+			if (hidden) {
+				unhideReaction(props.noteId, props.reaction);
+			} else {
+				hideReaction(props.noteId, props.reaction);
+			}
+		},
 	});
 
 	if (canGetInfo.value) {

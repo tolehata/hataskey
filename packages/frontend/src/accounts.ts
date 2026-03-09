@@ -377,7 +377,7 @@ export function getAccountWithSigninDialog(): Promise<{ id: string, token: strin
 
 export function getAccountWithSignupDialog(): Promise<{ id: string, token: string } | null> {
 	return new Promise((resolve) => {
-		const { dispose } = popup(defineAsyncComponent(() => import('@/components/MkSignupDialog.vue')), {}, {
+		const { dispose } = popup(defineAsyncComponent(() => import('@/components/MkSignupBranchDialog.vue')), {}, {
 			done: async (res: Misskey.entities.SignupResponse) => {
 				const user = JSON.parse(JSON.stringify(res));
 				delete user.token;
