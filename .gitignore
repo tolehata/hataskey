@@ -83,3 +83,6 @@ vite.config.local-dev.ts.timestamp-*
 
 # Serena
 .serena
+/tarball/
+/compose.yml
+*.save
