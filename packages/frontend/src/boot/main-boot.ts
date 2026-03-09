@@ -453,5 +453,17 @@ export async function mainBoot() {
 	} as const satisfies Keymap;
 	window.document.addEventListener('keydown', makeHotkey(keymap), { passive: false });
 
+	// Hatask: openOnStart設定が有効なら起動時にHataskを表示
+	if ($i) {
+		try {
+			const hataskSettings = await misskeyApi('i/registry/get', { key: 'settings', scope: ['client', 'hatask'] });
+			if (hataskSettings && hataskSettings.openOnStart) {
+				mainRouter.push('/hatask');
+			}
+		} catch {
+			// settings未作成の場合はスキップ
+		}
+	}
+
 	initializeSw();
 }
