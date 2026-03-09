@@ -20,7 +20,7 @@ SPDX-License-Identifier: AGPL-3.0-only
         </div>
     </div>
     <!-- Page view header -->
-    <header v-show="isPageView" :class="$style.pageHeader">
+    <header v-show="isPageView && !isNavTargetPage" :class="$style.pageHeader">
         <button :class="$style.pageBackBtn" @click="goHome"><i class="ti ti-arrow-left"></i></button>
         <div :class="$style.pageTitle">{{ pageMetadata?.title ?? '' }}</div>
         <div style="width: 38px;"></div>
@@ -40,7 +40,7 @@ SPDX-License-Identifier: AGPL-3.0-only
     </div>
 
     <!-- 通常TL: サイドバー + ナビバー + 投稿ボタン -->
-    <div :class="[$style.bottomBar, footerIsDark ? $style.bottomBarDark : $style.bottomBarLight, { [$style.bottomBarHidden]: !showBottomBar }]" v-show="!isHataskPage && !isExternalTab && !isPageView">
+    <div :class="[$style.bottomBar, footerIsDark ? $style.bottomBarDark : $style.bottomBarLight, { [$style.bottomBarHidden]: !showBottomBar }]" v-show="!isHataskPage && !isExternalTab && (!isPageView || isNavTargetPage)">
         <button :class="$style.sideBtn" @click="drawerMenuShowing = true"><i class="ti ti-menu-2"></i></button>
         <div :class="$style.navPill">
             <button @click="openSearch" :class="[$style.navBtn, { [$style.navActive]: isSearchPage }]"><i class="ti ti-search"></i></button>
@@ -51,7 +51,7 @@ SPDX-License-Identifier: AGPL-3.0-only
             </button>
             <button @click="goToHatask" :class="[$style.navBtn, { [$style.navActive]: isHataskPage }]"><i class="ti ti-eye"></i></button>
         </div>
-        <button v-if="!isPageView" :class="$style.sideBtn" @click="onPostClick"><i class="ti ti-pencil"></i></button>
+        <button v-if="!isPageView || isNavTargetPage" :class="$style.sideBtn" @click="onPostClick"><i class="ti ti-pencil"></i></button>
         <div v-else style="width:48px;"></div>
     </div>
 
@@ -202,6 +202,7 @@ const isSearchPage = computed(()=>{ const r=mainRouter.currentRoute.value; retur
 const isNotifPage = computed(()=>mainRouter.currentRoute.value.path==='/my/notifications');
 const isHataskPage = computed(()=>{ const p=mainRouter.currentRoute.value.path; return p==='/hatask'||p==='/hata-docs'; });
 const isExternalTab = computed(()=>tab.value==='ohtl'||tab.value==='oltl');
+const isNavTargetPage = computed(()=>isSearchPage.value||isNotifPage.value);
 const isHomeTL = computed(()=>!isPageView.value&&!isSearchPage.value&&!isNotifPage.value&&!isHataskPage.value);
 
 const checkIsPageView = ()=>{ isPageView.value = !HOME_ROUTES.has(mainRouter.currentRoute.value.name as string); };
