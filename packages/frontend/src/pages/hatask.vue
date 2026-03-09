@@ -641,8 +641,10 @@ const sortOptions=[{id:'manual',label:'手動'},{id:'dueAsc',label:'期日↑'},
 // Flora data now in hatask-flora.ts
 
 
-async function registryGet<T>(key:string,fb:T):Promise<T>{try{const v=await misskeyApi('i/registry/get',{key,scope:SCOPE});return(v!=null?v:fb)as T}catch{return fb}}
-async function registrySet(key:string,value:unknown):Promise<void>{await misskeyApi('i/registry/set',{key,value,scope:SCOPE})}
+const dataLoaded = ref(false);
+const loadedKeys = new Set<string>();
+async function registryGet<T>(key:string,fb:T):Promise<T>{try{const v=await misskeyApi('i/registry/get',{key,scope:SCOPE});loadedKeys.add(key);return(v!=null?v:fb)as T}catch{return fb}}
+async function registrySet(key:string,value:unknown):Promise<void>{if(!dataLoaded.value&&!loadedKeys.has(key))return;await misskeyApi('i/registry/set',{key,value,scope:SCOPE})}
 
 const activeTab=ref('home');const isSaving=ref(false);const showSettings=ref(false);const showSearch=ref(false);
 
@@ -1257,26 +1259,32 @@ nextTick(() => {
   } catch {}
 });
 const initFlower = pickRandomFlora();
-const [t, fo, m, fl, g, s, ev] = await Promise.all([
+const defaultFlower = { emoji: initFlower.emoji, name: generateFlowerName(initFlower), progress: 0, startedAt: Date.now(), totalMinutes: 0 };
+const defaultSettings = { bgTheme: 'ocean', darkMode: false, autoTheme: true, weekStart: 'mon', showClock: true, showEvents: true, showFlower: true, showMoodSummary: true, moodRemind: true, moodRemindTimes: ['昼 12:00', '寝る前 23:00'], openOnStart: false };
+
+// 各データを個別に取得（1つの失敗が他に影響しないようにする）
+const loadResults = await Promise.allSettled([
   registryGet('todos', []),
   registryGet('folders', []),
   registryGet('moods', []),
-  registryGet('flower', { emoji: initFlower.emoji, name: generateFlowerName(initFlower), progress: 0, startedAt: Date.now(), totalMinutes: 0 }),
+  registryGet('flower', defaultFlower),
   registryGet('gallery', []),
-  registryGet('settings', { bgTheme: 'ocean', darkMode: false, autoTheme: true, weekStart: 'mon', showClock: true, showEvents: true, showFlower: true, showMoodSummary: true, moodRemind: true, moodRemindTimes: ['昼 12:00', '寝る前 23:00'], openOnStart: false }),
+  registryGet('settings', defaultSettings),
   registryGet('events', []),
 ]);
-todos.value = t as any;
-folders.value = fo as any;
-moods.value = m as any;
-flower.value = fl as any;
-gallery.value = g as any;
-settings.value = s as any;
+// 取得成功したデータのみ代入（失敗したキーは初期値のまま → registrySetガードで保護）
+if (loadResults[0].status === 'fulfilled' && loadedKeys.has('todos')) todos.value = loadResults[0].value as any;
+if (loadResults[1].status === 'fulfilled' && loadedKeys.has('folders')) folders.value = loadResults[1].value as any;
+if (loadResults[2].status === 'fulfilled' && loadedKeys.has('moods')) moods.value = loadResults[2].value as any;
+if (loadResults[3].status === 'fulfilled' && loadedKeys.has('flower')) flower.value = loadResults[3].value as any;
+if (loadResults[4].status === 'fulfilled' && loadedKeys.has('gallery')) gallery.value = loadResults[4].value as any;
+if (loadResults[5].status === 'fulfilled' && loadedKeys.has('settings')) settings.value = loadResults[5].value as any;
+if (loadResults[6].status === 'fulfilled' && loadedKeys.has('events')) events.value = loadResults[6].value as any;
+dataLoaded.value = true;
 // 削除済みテーマのマイグレーション
 if (settings.value.bgTheme === 'warm' || settings.value.bgTheme === 'sunset') {
   settings.value.bgTheme = 'ocean';
 }
-events.value = ev as any;
 // Restore section order
 if (settings.value.sectionOrder && Array.isArray(settings.value.sectionOrder)) {
   const saved = settings.value.sectionOrder;
