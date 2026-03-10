@@ -173,11 +173,11 @@ export default class Connection {
 
 	@bindThis
 	private async onNoteStreamMessage(data: GlobalEvents['note']['payload']) {
-		if (data.body.visibility === 'specified' && !data.body.visibleUserIds.includes(this.user!.id)) {
+		if (data.body.visibility === 'specified' && data.body.userId !== this.user!.id && !data.body.visibleUserIds.includes(this.user!.id)) {
 			return;
 		}
 
-		if (data.body.visibility === 'followers' && !Object.hasOwn(this.following, data.body.userId)) {
+		if (data.body.visibility === 'followers' && data.body.userId !== this.user!.id && !Object.hasOwn(this.following, data.body.userId)) {
 			return;
 		}
 
