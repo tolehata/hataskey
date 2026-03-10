@@ -7,7 +7,7 @@
 CherryPick-Hata は、[CherryPick](https://github.com/kokonect-link/cherrypick)（Misskeyフォーク）をベースに、旗鯖（旗池2丁目）向けの独自機能を多数追加したフォークです。
 
 - **ベースバージョン**: CherryPick 4.17.0
-- **最新リリース**: hata-0.9
+- **最新リリース**: hata-10.0
 - **インスタンス**: [旗池2丁目](https://misskey.hatachanoima.net/)
 - **チェンジログ（Web）**: [home.tolehata.net/changelog](https://home.tolehata.net/changelog)
 - **チェンジログ（リポジトリ）**: [HATA-CHANGELOG.md](./HATA-CHANGELOG.md)
