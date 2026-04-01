@@ -1351,8 +1351,9 @@ function emitUpdReaction(emoji: string, delta: number) {
 }
 
 .article {
+    background: transparent !important;
     position: relative;
-    padding: 28px 32px;
+    padding: 10px 10px 6px;
     -webkit-tap-highlight-color: transparent;
 }
 
@@ -1390,8 +1391,27 @@ function emitUpdReaction(emoji: string, delta: number) {
 }
 
 .main {
+    background: color-mix(in srgb, var(--MI_THEME-panel) 85%, var(--MI_THEME-fg));
+    border-radius: 16px;
+    border: 1.5px solid color-mix(in srgb, var(--MI_THEME-divider) 80%, transparent);
+    padding: 12px 14px;
+    box-shadow: 0 1px 8px rgba(0,0,0,.06);
+    position: relative;
     flex: 1;
     min-width: 0;
+
+    &::before {
+        content: '';
+        position: absolute;
+        top: -7px;
+        left: 16px;
+        width: 0;
+        height: 0;
+        border-left: 7px solid transparent;
+        border-right: 7px solid transparent;
+        border-bottom: 7px solid color-mix(in srgb, var(--MI_THEME-panel) 85%, var(--MI_THEME-fg));
+        z-index: 1;
+    }
 }
 
 .cw {
