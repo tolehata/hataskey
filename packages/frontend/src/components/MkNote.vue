@@ -1391,22 +1391,39 @@ function emitUpdReaction(emoji: string, delta: number) {
 	background: var(--MI_THEME-panel);
 	border-radius: 16px;
 	border: none;
-	padding: 12px 14px;
+	padding: 12px;
 	box-shadow: 0 2px 16px rgba(0,0,0,.06), 0 0 0 1px color-mix(in srgb, var(--MI_THEME-divider) 40%, transparent);
-	transition: box-shadow .2s ease, border-color .2s ease;
+	transition: box-shadow .2s ease;
 	position: relative;
 
 	&:hover {
-		box-shadow: 0 3px 16px rgba(0,0,0,.12);
-		border-color: color-mix(in srgb, var(--MI_THEME-accent) 30%, var(--MI_THEME-divider));
+		box-shadow: 0 3px 20px rgba(0,0,0,.12);
 	}
 
+	/* 中枠: flex container（本文を囲む） - 薄いテーマカラー+丸み */
 	& > div {
-		background: color-mix(in srgb, var(--MI_THEME-accent) 5%, var(--MI_THEME-panel)) !important;
-		border: none !important;
-		box-shadow: none !important;
-		border-radius: 0 !important;
+		background: color-mix(in srgb, var(--MI_THEME-accent) 5%, var(--MI_THEME-panel));
+		border-radius: 12px;
+		padding: 10px 12px;
+		margin-bottom: 6px;
 	}
+
+	/* 小枠: showGapBodyOfTheNoteのコンテンツ（本文テキスト部分）*/
+	& > div > div > div:last-child {
+		background: color-mix(in srgb, var(--MI_THEME-accent) 10%, var(--MI_THEME-panel));
+		border-radius: 10px;
+		padding: 10px 12px;
+	}
+
+	/* reactions+footer wrapper - 丸み+薄い背景 */
+	& > div:last-child {
+		background: color-mix(in srgb, var(--MI_THEME-accent) 3%, var(--MI_THEME-panel));
+		border-radius: 12px;
+		padding: 8px 12px;
+		margin-bottom: 0;
+	}
+
+	/* 吹き出し突起（右下） */
 	&::after {
 		content: '';
 		position: absolute;
