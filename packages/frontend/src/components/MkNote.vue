@@ -64,7 +64,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<Mfm :text="getNoteSummary(appearNote)" :plain="true" :nowrap="true" :author="appearNote.user" :nyaize="'respect'" :class="[$style.collapsedRenoteTargetText, { [$style.showReplyTargetNoteInSemiTransparent]: prefer.s.showReplyTargetNoteInSemiTransparent }]" @click="renoteCollapsed ? renoteCollapsed = false : replyCollapsed ? replyCollapsed = false : ''"/>
 	</div>
 	<article v-else :class="$style.article" :style="{ cursor: expandOnNoteClick ? 'pointer' : '', paddingTop: prefer.s.showSubNoteFooterButton && appearNote.reply && (!renoteCollapsed && !replyCollapsed && ((!notification && (forceShowReplyTargetNote || prefer.s.showReplyTargetNote)) || (notification && prefer.s.showReplyInNotification))) ? '14px' : '' }" @click.stop="noteClick" @dblclick.stop="noteDblClick" @contextmenu.stop="onContextmenu">
-		<div :class="$style.bubbleArrow"></div>
 		<div :class="$style.bubbleBody">
 		<div :style="prefer.s.showGapBodyOfTheNote ? null : 'padding-bottom: 10px;'" style="display: flex;">
 			<div v-if="appearNote.channel" :class="$style.colorBar" :style="{ background: appearNote.channel.color }"></div>
@@ -1383,18 +1382,6 @@ function emitUpdReaction(emoji: string, delta: number) {
 	min-width: 0;
 }
 
-.bubbleArrow {
-	position: absolute;
-	top: -7px;
-	left: 16px;
-	width: 0;
-	height: 0;
-	border-left: 7px solid transparent;
-	border-right: 7px solid transparent;
-	border-bottom: 7px solid color-mix(in srgb, var(--MI_THEME-panel) 85%, var(--MI_THEME-fg));
-	z-index: 1;
-}
-
 .bubbleBody {
 	background: color-mix(in srgb, var(--MI_THEME-panel) 85%, var(--MI_THEME-fg));
 	border-radius: 16px;
@@ -1407,6 +1394,19 @@ function emitUpdReaction(emoji: string, delta: number) {
 	&:hover {
 		box-shadow: 0 3px 16px rgba(0,0,0,.12);
 		border-color: color-mix(in srgb, var(--MI_THEME-accent) 30%, var(--MI_THEME-divider));
+	}
+
+	&::after {
+		content: '';
+		position: absolute;
+		bottom: -7px;
+		right: 16px;
+		width: 0;
+		height: 0;
+		border-left: 7px solid transparent;
+		border-right: 7px solid transparent;
+		border-top: 7px solid color-mix(in srgb, var(--MI_THEME-panel) 85%, var(--MI_THEME-fg));
+		z-index: 1;
 	}
 }
 
