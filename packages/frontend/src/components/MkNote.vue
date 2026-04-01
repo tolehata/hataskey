@@ -138,7 +138,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 										:class="$style.poll"
 										isTranslation
 										@click.stop
-									/>
+                <template #label>アバタークリックで直接プロフィールへ</template>
 									<div v-if="'translator' in translation && translation.translator === 'ctav3'" style="margin-top: 10px; padding: 0 0 15px;">
 										<img v-if="!store.s.darkMode" src="/client-assets/color-short.svg" alt="" style="float: right;">
 										<img v-else src="/client-assets/white-short.svg" alt="" style="float: right;"/>
@@ -1404,7 +1404,7 @@ function emitUpdReaction(emoji: string, delta: number) {
 
 	/* 中枠: flex container（本文を囲む） - 薄いテーマカラー+丸み */
 	& > div {
-		background: color-mix(in srgb, var(--MI_THEME-accent) 4%, var(--MI_THEME-panel));
+		background: color-mix(in srgb, var(--MI_THEME-accent) 2%, var(--MI_THEME-panel));
 		border-radius: 12px;
 		padding: 10px 12px;
 		margin-bottom: 0;
@@ -1413,7 +1413,7 @@ function emitUpdReaction(emoji: string, delta: number) {
 
 	/* reactions+footer wrapper - 少し暗めのテーマカラー+丸み */
 	& > div:last-child {
-		background: color-mix(in srgb, var(--MI_THEME-accent) 4%, var(--MI_THEME-panel));
+		background: color-mix(in srgb, var(--MI_THEME-accent) 2%, var(--MI_THEME-panel));
 		border-radius: 12px;
 		padding: 8px 12px;
 		margin-bottom: 0;
