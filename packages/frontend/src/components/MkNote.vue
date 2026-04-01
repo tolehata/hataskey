@@ -1396,18 +1396,12 @@ function emitUpdReaction(emoji: string, delta: number) {
 
 	/* 中枠: flex container（本文を囲む） - 薄いテーマカラー+丸み */
 	& > div {
-		background: color-mix(in srgb, var(--MI_THEME-accent) 5%, var(--MI_THEME-panel));
+		background: color-mix(in srgb, var(--MI_THEME-accent) 4%, var(--MI_THEME-panel));
 		border-radius: 12px;
 		padding: 10px 12px;
 		margin-bottom: 0;
 	}
 
-	/* 小枠: showGapBodyOfTheNoteのコンテンツ（本文テキスト部分）*/
-	& > div > div > div:last-child {
-		background: color-mix(in srgb, var(--MI_THEME-accent) 10%, var(--MI_THEME-panel));
-		border-radius: 10px;
-		padding: 10px 12px;
-	}
 
 	/* reactions+footer wrapper - 少し暗めのテーマカラー+丸み */
 	& > div:last-child {
@@ -1417,6 +1411,12 @@ function emitUpdReaction(emoji: string, delta: number) {
 		margin-bottom: 0;
 	}
 
+	/* 空のdivは背景を消す */
+	& > div:empty,
+	& > div > div:empty {
+		background: transparent !important;
+		padding: 0 !important;
+	}
 	/* 吹き出し突起（右下） */
 	&::after {
 		content: '';
