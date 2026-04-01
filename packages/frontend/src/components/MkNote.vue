@@ -1138,13 +1138,7 @@ function emitUpdReaction(emoji: string, delta: number) {
 	position: relative;
 	font-size: 1.05em;
 	overflow: visible;
-
-	& > div {
-		background: color-mix(in srgb, var(--MI_THEME-accent) 5%, var(--MI_THEME-panel)) !important;
-		border: none !important;
-		box-shadow: none !important;
-		border-radius: 0 !important;
-	}
+	margin-bottom: 8px;
 	&::after {
 		content: "";
 		pointer-events: none;
@@ -1392,7 +1386,7 @@ function emitUpdReaction(emoji: string, delta: number) {
 	border-radius: 16px;
 	border: none;
 	padding: 12px;
-	box-shadow: 0 2px 16px rgba(0,0,0,.06), 0 0 0 1px color-mix(in srgb, var(--MI_THEME-divider) 40%, transparent);
+	box-shadow: 0 2px 16px rgba(0,0,0,.06);
 	transition: box-shadow .2s ease;
 	position: relative;
 
@@ -1405,7 +1399,7 @@ function emitUpdReaction(emoji: string, delta: number) {
 		background: color-mix(in srgb, var(--MI_THEME-accent) 5%, var(--MI_THEME-panel));
 		border-radius: 12px;
 		padding: 10px 12px;
-		margin-bottom: 6px;
+		margin-bottom: 0;
 	}
 
 	/* 小枠: showGapBodyOfTheNoteのコンテンツ（本文テキスト部分）*/
@@ -1415,9 +1409,9 @@ function emitUpdReaction(emoji: string, delta: number) {
 		padding: 10px 12px;
 	}
 
-	/* reactions+footer wrapper - 丸み+薄い背景 */
+	/* reactions+footer wrapper - 少し暗めのテーマカラー+丸み */
 	& > div:last-child {
-		background: color-mix(in srgb, var(--MI_THEME-accent) 3%, var(--MI_THEME-panel));
+		background: color-mix(in srgb, var(--MI_THEME-accent) 8%, var(--MI_THEME-panel));
 		border-radius: 12px;
 		padding: 8px 12px;
 		margin-bottom: 0;
