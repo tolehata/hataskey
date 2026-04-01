@@ -832,61 +832,67 @@ defineExpose({
 <style lang="scss">
 /* ===== 吹き出しデザイン（data-bubble="on"時） ===== */
 [data-bubble="on"] {
-	background: transparent !important;
+        background: transparent !important;
 }
 [data-bubble="on"] > div {
-	border-bottom: none !important;
-	background: transparent !important;
-	border-radius: 0 !important;
+        border-bottom: none !important;
+        background: transparent !important;
+        border-radius: 0 !important;
 }
-
-/* ノートのarticle内の構造に吹き出しスタイルを適用 */
 [data-bubble="on"] article {
-	padding: 10px 10px 6px !important;
-	background: transparent !important;
-	border-bottom: none !important;
+        padding: 10px 10px 6px !important;
+        background: transparent !important;
+        border-bottom: none !important;
 }
-
-/* .main（アバターの右側コンテンツ）に吹き出し背景 */
+/* .main: 本文+リアクション+フッター部分のみ吹き出し（角丸下部） */
 [data-bubble="on"] article > div > div:last-child {
-	background: color-mix(in srgb, var(--MI_THEME-panel) 85%, var(--MI_THEME-fg));
-	border-radius: 16px;
-	border: 1.5px solid color-mix(in srgb, var(--MI_THEME-divider) 80%, transparent);
-	padding: 12px 14px;
-	box-shadow: 0 1px 8px rgba(0,0,0,.06);
-	transition: box-shadow .2s ease, border-color .2s ease;
-	position: relative;
+        background: color-mix(in srgb, var(--MI_THEME-panel) 85%, var(--MI_THEME-fg));
+        border-radius: 0 0 16px 16px;
+        border: 1.5px solid color-mix(in srgb, var(--MI_THEME-divider) 80%, transparent);
+        border-top: none;
+        padding: 8px 14px 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,.06);
+        position: relative;
 }
 [data-bubble="on"] article > div > div:last-child:hover {
-	box-shadow: 0 3px 16px rgba(0,0,0,.12);
-	border-color: color-mix(in srgb, var(--MI_THEME-accent) 30%, var(--MI_THEME-divider));
+        box-shadow: 0 3px 16px rgba(0,0,0,.12);
 }
-
-/* 吹き出し三角矢印（疑似要素） */
-[data-bubble="on"] article > div > div:last-child::before {
-	content: '';
-	position: absolute;
-	top: -7px;
-	left: 16px;
-	width: 0;
-	height: 0;
-	border-left: 7px solid transparent;
-	border-right: 7px solid transparent;
-	border-bottom: 7px solid color-mix(in srgb, var(--MI_THEME-panel) 85%, var(--MI_THEME-fg));
-	z-index: 1;
+/* ヘッダー（名前・時刻）: 吹き出しの上部として角丸上部+背景 */
+[data-bubble="on"] article > div > div:last-child > :first-child {
+        margin: -8px -14px 8px -14px;
+        padding: 10px 14px 6px;
+        background: color-mix(in srgb, var(--MI_THEME-panel) 85%, var(--MI_THEME-fg));
+        border-radius: 16px 16px 0 0;
+        border: 1.5px solid color-mix(in srgb, var(--MI_THEME-divider) 80%, transparent);
+        border-bottom: none;
+        position: relative;
 }
-
-/* colorBar がある場合（チャンネル投稿）は矢印をずらさない */
-
-/* モバイル対応 */
+/* 吹き出し三角矢印（ヘッダー左上） */
+[data-bubble="on"] article > div > div:last-child > :first-child::before {
+        content: '';
+        position: absolute;
+        top: -7px;
+        left: 16px;
+        width: 0;
+        height: 0;
+        border-left: 7px solid transparent;
+        border-right: 7px solid transparent;
+        border-bottom: 7px solid color-mix(in srgb, var(--MI_THEME-panel) 85%, var(--MI_THEME-fg));
+        z-index: 1;
+}
 @media (max-width: 700px) {
-	[data-bubble="on"] article {
-		padding: 8px 6px 5px !important;
-	}
-	[data-bubble="on"] article > div > div:last-child {
-		padding: 10px 12px;
-		border-radius: 14px;
-	}
+        [data-bubble="on"] article {
+                padding: 8px 6px 5px !important;
+        }
+        [data-bubble="on"] article > div > div:last-child {
+                padding: 6px 12px 10px;
+                border-radius: 0 0 14px 14px;
+        }
+        [data-bubble="on"] article > div > div:last-child > :first-child {
+                margin: -6px -12px 6px -12px;
+                padding: 8px 12px 4px;
+                border-radius: 14px 14px 0 0;
+        }
 }
 
 /* ===== ノート間隔: compact ===== */
