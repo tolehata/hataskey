@@ -56,6 +56,8 @@ SPDX-License-Identifier: AGPL-3.0-only
             <div v-if="appearNote.channel" :class="$style.colorBar" :style="{ background: appearNote.channel.color }"></div>
             <MkAvatar v-if="!prefer.s.hideAvatarsInNote" :class="[$style.avatar, prefer.s.useStickyIcons ? $style.useSticky : null, { [$style.avatarReplyTo]: appearNote.reply, [$style.showEl]: !appearNote.reply && (showEl && ['hideHeaderOnly', 'hideHeaderFloatBtn', 'hide'].includes(<string>prefer.s.displayHeaderNavBarWhenScroll)) && mainRouter.currentRoute.value.name === 'index', [$style.showElTab]: !appearNote.reply && (showEl && ['hideHeaderOnly', 'hideHeaderFloatBtn', 'hide'].includes(<string>prefer.s.displayHeaderNavBarWhenScroll)) && mainRouter.currentRoute.value.name !== 'index' }]" :user="appearNote.user" :link="false" :preview="!mock" noteClick @click="onAvatarClick"/>
             <div :class="$style.main">
+                <div :class="$style.bubbleArrow"></div>
+                <div :class="$style.bubbleBody">
                 <MkNoteHeader :note="appearNote" :mini="true" @nameClick="openUserPanel"/>
                 <div v-if="prefer.s.showGapBodyOfTheNote" :style="prefer.s.showGapBodyOfTheNote ? 'margin-top: 4px;' : null" style="container-type: inline-size;">
                     <MkInfo v-if="appearNote.deleteAt != null" warn :class="$style.deleteAt">
@@ -347,6 +349,7 @@ SPDX-License-Identifier: AGPL-3.0-only
                     <i class="ti ti-dots"></i>
                 </button>
             </footer>
+                </div>
         </div>
     </article>
 </div>
@@ -1196,7 +1199,7 @@ function emitUpdReaction(emoji: string, delta: number) {
         z-index: 1;
     }
 
-    &:hover > .article > .main > .footer > .footerButton {
+    &:hover > .article > .main > .bubbleBody > .footer > .footerButton {
         color: var(--MI_THEME-fg);
     }
 
@@ -1391,26 +1394,34 @@ function emitUpdReaction(emoji: string, delta: number) {
 }
 
 .main {
+    flex: 1;
+    min-width: 0;
+    position: relative;
+}
+
+.bubbleArrow {
+    position: absolute;
+    top: -7px;
+    left: 16px;
+    width: 0;
+    height: 0;
+    border-left: 7px solid transparent;
+    border-right: 7px solid transparent;
+    border-bottom: 7px solid color-mix(in srgb, var(--MI_THEME-panel) 85%, var(--MI_THEME-fg));
+    z-index: 1;
+}
+
+.bubbleBody {
     background: color-mix(in srgb, var(--MI_THEME-panel) 85%, var(--MI_THEME-fg));
     border-radius: 16px;
     border: 1.5px solid color-mix(in srgb, var(--MI_THEME-divider) 80%, transparent);
     padding: 12px 14px;
     box-shadow: 0 1px 8px rgba(0,0,0,.06);
-    position: relative;
-    flex: 1;
-    min-width: 0;
+    transition: box-shadow .2s ease, border-color .2s ease;
 
-    &::before {
-        content: '';
-        position: absolute;
-        top: -7px;
-        left: 16px;
-        width: 0;
-        height: 0;
-        border-left: 7px solid transparent;
-        border-right: 7px solid transparent;
-        border-bottom: 7px solid color-mix(in srgb, var(--MI_THEME-panel) 85%, var(--MI_THEME-fg));
-        z-index: 1;
+    &:hover {
+        box-shadow: 0 3px 16px rgba(0,0,0,.12);
+        border-color: color-mix(in srgb, var(--MI_THEME-accent) 30%, var(--MI_THEME-divider));
     }
 }
 
@@ -1574,7 +1585,7 @@ function emitUpdReaction(emoji: string, delta: number) {
     }
 
     .article {
-        padding: 24px 26px;
+        padding: 10px 10px 6px;
     }
 
     .avatar {
@@ -1589,7 +1600,7 @@ function emitUpdReaction(emoji: string, delta: number) {
     }
 
     .article {
-        padding: 23px 25px;
+        padding: 10px 10px 6px;
     }
 
     .avatar {
@@ -1622,7 +1633,7 @@ function emitUpdReaction(emoji: string, delta: number) {
     }
 
     .article {
-        padding: 22px 24px;
+        padding: 8px 8px 5px;
     }
 }
 
