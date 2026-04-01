@@ -1137,8 +1137,7 @@ function emitUpdReaction(emoji: string, delta: number) {
 .root {
 	position: relative;
 	font-size: 1.05em;
-	overflow: clip;
-	contain: content;
+	overflow: visible;
 
 	& > div {
 		background: color-mix(in srgb, var(--MI_THEME-accent) 5%, var(--MI_THEME-panel)) !important;
@@ -1391,9 +1390,9 @@ function emitUpdReaction(emoji: string, delta: number) {
 .bubbleBody {
 	background: var(--MI_THEME-panel);
 	border-radius: 16px;
-	border: 1.5px solid color-mix(in srgb, var(--MI_THEME-divider) 80%, transparent);
+	border: none;
 	padding: 12px 14px;
-	box-shadow: 0 1px 8px rgba(0,0,0,.06);
+	box-shadow: 0 2px 16px rgba(0,0,0,.06), 0 0 0 1px color-mix(in srgb, var(--MI_THEME-divider) 40%, transparent);
 	transition: box-shadow .2s ease, border-color .2s ease;
 	position: relative;
 
