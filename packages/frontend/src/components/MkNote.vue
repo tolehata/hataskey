@@ -297,7 +297,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<MkReactionsViewer
 				v-if="appearNote.reactionAcceptance !== 'likeOnly'"
 				style="margin-top: 6px;"
-				:reactions="$appearNote.reactions"
+				:reactions="displayedReactions"
 				:reactionEmojis="$appearNote.reactionEmojis"
 				:myReaction="$appearNote.myReaction"
 				:noteId="appearNote.id"
@@ -447,6 +447,7 @@ import { isEnabledUrlPreview } from '@/utility/url-preview.js';
 import { focusPrev, focusNext } from '@/utility/focus.js';
 import { getAppearNote } from '@/utility/get-appear-note.js';
 import { prefer } from '@/preferences.js';
+import { filterHiddenReactions, hiddenReactionsVersion } from '@/utility/hidden-reactions.js';
 import { getPluginHandlers } from '@/plugin.js';
 import { DI } from '@/di.js';
 import { globalEvents } from '@/events.js';
@@ -731,6 +732,13 @@ watch(() => viewTextSource.value, () => {
 });
 
 // ===== 旗鯖独自: ユーザーパネル（アバタークリック） =====
+
+const displayedReactions = computed(() => {
+	hiddenReactionsVersion.value;
+	if (!$appearNote.reactions) return {};
+	return filterHiddenReactions(appearNote.id, $appearNote.reactions);
+});
+
 function openUserPanel(userId: string) {
 	if (prefer.s['simpleUi.directProfile']) {
 		mainRouter.push(userPage(appearNote.user));
