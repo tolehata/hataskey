@@ -38,7 +38,12 @@
         <FormSection>
             <template #label>タイムライン</template>
             <div style="font-weight:bold;margin-bottom:8px;">新規ノートのアニメーション方向</div>
-            <MkRadios v-model="timelineAnimationDirection" :options="timelineAnimationOptions" />
+            <MkRadios v-model="timelineAnimationDirection">
+                <option value="top">上からスライド</option>
+                <option value="left">左からスライド</option>
+                <option value="right">右からスライド</option>
+                <option value="random">ランダム</option>
+            </MkRadios>
         </FormSection>
         <FormSection>
             <template #label>投稿フォーム</template>
@@ -135,6 +140,13 @@
             <MkSwitch v-model="directProfile">
                 <template #label>アバタークリックで直接プロフィールへ（シンプルUI）</template>
                 <template #caption>ONにするとシンプルUIでアバタークリック時にユーザーパネルを経由せず、直接プロフィールページに遷移します。標準UIでは元々直接プロフィールに遷移します。</template>
+            </MkSwitch>
+        </FormSection>
+        <FormSection>
+            <template #label>吹き出し表示</template>
+            <MkSwitch v-model="disableBubbleInDeck">
+                <template #label>デッキUIで吹き出し表示を無効にする</template>
+                <template #caption>ONにするとデッキUIではタイムラインの吹き出しデザインが適用されず、標準のカード表示になります。</template>
             </MkSwitch>
         </FormSection>
         </template>

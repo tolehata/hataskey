@@ -729,13 +729,13 @@ defineExpose({
 
 .bubbleArrow {
 	position: absolute;
-	top: 12px;
-	left: -8px;
+	top: -7px;
+	left: 16px;
 	width: 0;
 	height: 0;
-	border-top: 7px solid transparent;
-	border-bottom: 7px solid transparent;
-	border-right: 8px solid color-mix(in srgb, var(--MI_THEME-panel) 85%, var(--MI_THEME-fg));
+	border-left: 7px solid transparent;
+	border-right: 7px solid transparent;
+	border-bottom: 7px solid color-mix(in srgb, var(--MI_THEME-panel) 85%, var(--MI_THEME-fg));
 	z-index: 1;
 }
 
