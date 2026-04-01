@@ -1383,7 +1383,7 @@ function emitUpdReaction(emoji: string, delta: number) {
 }
 
 .bubbleBody {
-	background: color-mix(in srgb, var(--MI_THEME-panel) 85%, var(--MI_THEME-fg));
+	background: var(--MI_THEME-panel);
 	border-radius: 16px;
 	border: 1.5px solid color-mix(in srgb, var(--MI_THEME-divider) 80%, transparent);
 	padding: 12px 14px;
@@ -1405,7 +1405,7 @@ function emitUpdReaction(emoji: string, delta: number) {
 		height: 0;
 		border-left: 7px solid transparent;
 		border-right: 7px solid transparent;
-		border-top: 7px solid color-mix(in srgb, var(--MI_THEME-panel) 85%, var(--MI_THEME-fg));
+		border-top: 7px solid var(--MI_THEME-panel);
 		z-index: 1;
 	}
 }
