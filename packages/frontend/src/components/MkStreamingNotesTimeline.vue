@@ -42,7 +42,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<component
 			:is="prefer.s.animation ? TransitionGroup : 'div'"
 			:class="[$style.notes, { [$style.noGap]: noGap, '_gaps': !noGap }]"
-			data-bubble="on"
+			:data-bubble="bubbleEnabled ? 'on' : undefined"
 			:data-spacing="noteSpacingValue"
 			:data-anim-dir="animDirValue"
 			:enterActiveClass="$style.transition_x_enterActive"
@@ -98,6 +98,7 @@ import * as sound from '@/utility/sound.js';
 import { $i } from '@/i.js';
 import { instance } from '@/instance.js';
 import { prefer } from '@/preferences.js';
+import { miLocalStorage } from '@/local-storage.js';
 import { store } from '@/store.js';
 import MkNote from '@/components/MkNote.vue';
 import MkButton from '@/components/MkButton.vue';
@@ -180,6 +181,13 @@ provide('inChannel', computed(() => props.src === 'channel'));
 
 // 旗鯖独自: ノート間隔（リアクティブ）
 const noteSpacingValue = computed(() => prefer.r['simpleUi.noteSpacing']?.value ?? 'moderate');
+
+// 旗鯖独自: 吹き出し有効判定（デッキUIで無効化設定時はoff）
+const isDeckUi = miLocalStorage.getItem('ui') === 'deck';
+const bubbleEnabled = computed(() => {
+    if (isDeckUi && prefer.r['simpleUi.disableBubbleInDeck']?.value) return false;
+    return true;
+});
 
 // 旗鯖独自: アニメーション方向（リアクティブ — data-anim-dir属性で制御）
 const animDir = computed(() => prefer.r.timelineAnimationDirection?.value ?? 'left');

@@ -214,6 +214,7 @@ const widgetBorder = prefer.model('simpleUi.widgetBorder');
 const glassEffect = prefer.model('simpleUi.glassEffect');
 const directProfile = prefer.model('simpleUi.directProfile');
 const noteSpacing = prefer.model('simpleUi.noteSpacing');
+const disableBubbleInDeck = prefer.model('simpleUi.disableBubbleInDeck');
 
 const spacingOptions = [
     { value: 'compact', label: '詰める', previewMargin: '2px 0' },

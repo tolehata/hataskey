@@ -848,6 +848,9 @@ export const PREF_DEF = definePreferences({
 	'simpleUi.noteSpacing': {
 		default: 'moderate' as 'compact' | 'moderate' | 'wide',
 	},
+	'simpleUi.disableBubbleInDeck': {
+		default: true,
+	},
 	// ======== シンプルUI設定ここまで ========
 	//#endregion
 
