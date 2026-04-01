@@ -1140,6 +1140,12 @@ function emitUpdReaction(emoji: string, delta: number) {
 	overflow: clip;
 	contain: content;
 
+	& > div {
+		background: transparent !important;
+		border: none !important;
+		box-shadow: none !important;
+		border-radius: 0 !important;
+	}
 	&::after {
 		content: "";
 		pointer-events: none;
@@ -1396,6 +1402,12 @@ function emitUpdReaction(emoji: string, delta: number) {
 		border-color: color-mix(in srgb, var(--MI_THEME-accent) 30%, var(--MI_THEME-divider));
 	}
 
+	& > div {
+		background: transparent !important;
+		border: none !important;
+		box-shadow: none !important;
+		border-radius: 0 !important;
+	}
 	&::after {
 		content: '';
 		position: absolute;
