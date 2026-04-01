@@ -9,26 +9,22 @@
 
         <div :class="$style.optionsGrid">
             <button :class="$style.optionCard" @click="select('simple')">
-                <div :class="[$style.badge, $style.badgeRec]">Recommended for Mobile</div>
                 <div :class="$style.cardIcon"><i class="ti ti-device-mobile"></i></div>
-                <div :class="$style.cardTitle">モダンシンプルUI</div>
+                <div :class="$style.cardTitle">Hata UI</div>
                 <div :class="$style.cardDesc">
-                    旗鯖標準のUIです。スマホではこのUIの使用を強く推奨します。
+                    旗鯖オリジナルのUIです。端末を問わず利用でき、旗鯖ならではのUI体験ができます。
                 </div>
             </button>
 
             <button :class="$style.optionCard" @click="select('default')">
-                <div :class="[$style.badge, $style.badgeStd]">Standard</div>
                 <div :class="$style.cardIcon"><i class="ti ti-layout-navbar"></i></div>
-                <div :class="$style.cardTitle">デフォルトUI</div>
+                <div :class="$style.cardTitle">Misskey UI</div>
                 <div :class="$style.cardDesc">
-                    Misskeyの標準的なUIです。PC/タブレットでの使用をおすすめします。<br>
-                    <span :class="$style.warn">なお、スマホでも使用できますが、表示に不具合を生じる場合があります。</span>
+                    MisskeyのUIを使用できます。ただし、旗鯖は多くのMisskey機能をカスタマイズしているため意図しない動作が発生することがあります。
                 </div>
             </button>
 
             <button :class="$style.optionCard" @click="select('deck')">
-                <div :class="[$style.badge, $style.badgePc]">PC Power User</div>
                 <div :class="$style.cardIcon"><i class="ti ti-columns"></i></div>
                 <div :class="$style.cardTitle">デッキUI</div>
                 <div :class="$style.cardDesc">
@@ -62,7 +58,6 @@ const close = () => {
 };
 
 const select = (type: 'simple' | 'default' | 'deck') => {
-    // 1. 設定を保存
     miLocalStorage.setItem('ui', type);
     miLocalStorage.setItem('ui_setup_completed', 'true');
     location.reload();
@@ -71,17 +66,14 @@ const select = (type: 'simple' | 'default' | 'deck') => {
 
 <style lang="scss" module>
 .root {
-    /* 背景を半透明の黒、ぼかし効果 */
     background-color: rgba(0, 0, 0, 0.65) !important;
     backdrop-filter: blur(24px) !important;
     -webkit-backdrop-filter: blur(24px) !important;
     color: #fff !important;
-    
     border-radius: 24px;
     padding: 32px;
     width: 100%;
     max-width: 900px;
-    /* 外枠 */
     border: 2px solid rgba(255, 255, 255, 0.2) !important;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
 }
@@ -123,10 +115,7 @@ const select = (type: 'simple' | 'default' | 'deck') => {
 .optionCard {
     position: relative;
     background-color: rgba(255, 255, 255, 0.08) !important;
-    
-    /* ★修正: 枠線を太く、はっきりと表示 (2px solid) */
     border: 2px solid rgba(255, 255, 255, 0.4) !important;
-    
     color: #fff !important;
     border-radius: 16px;
     padding: 28px 20px 20px;
@@ -141,7 +130,6 @@ const select = (type: 'simple' | 'default' | 'deck') => {
 
     &:hover,
     &:active {
-        /* ホバー時はアクセントカラーの枠線にする */
         border-color: var(--accent) !important;
         background-color: rgba(255, 255, 255, 0.15) !important;
         transform: translateY(-2px);
@@ -168,29 +156,6 @@ const select = (type: 'simple' | 'default' | 'deck') => {
     color: rgba(255, 255, 255, 0.9) !important;
 }
 
-.warn {
-    display: block;
-    margin-top: 8px;
-    color: #ff6b6b !important;
-    font-weight: bold;
-    font-size: 0.9em;
-}
-
-.badge {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    font-size: 0.65em;
-    padding: 3px 8px;
-    border-radius: 99px;
-    font-weight: bold;
-    color: #fff !important;
-}
-
-.badgeRec { background: var(--accent); }
-.badgeStd { background: #666; }
-.badgePc { background: #555; }
-
 .cancelArea {
     margin-top: 24px;
     text-align: center;
@@ -199,7 +164,6 @@ const select = (type: 'simple' | 'default' | 'deck') => {
 .cancelButton {
     padding: 8px 24px;
     background: transparent !important;
-    /* キャンセルボタンにも薄い枠線を追加 */
     border: 1px solid rgba(255, 255, 255, 0.5) !important;
     color: #fff !important;
 
