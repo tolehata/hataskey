@@ -133,8 +133,8 @@
         <FormSection>
             <template #label>タイムライン操作</template>
             <MkSwitch v-model="directProfile">
-                <template #label>アバタークリックで直接プロフィールへ</template>
-                <template #caption>ONにするとユーザーパネルを経由せず、直接プロフィールページに遷移します。シンプルUIでは上部の戻るボタンでタイムラインに戻れます。</template>
+                <template #label>アバタークリックで直接プロフィールへ（シンプルUI）</template>
+                <template #caption>ONにするとシンプルUIでアバタークリック時にユーザーパネルを経由せず、直接プロフィールページに遷移します。標準UIでは元々直接プロフィールに遷移します。</template>
             </MkSwitch>
         </FormSection>
         </template>

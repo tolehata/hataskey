@@ -54,7 +54,7 @@ SPDX-License-Identifier: AGPL-3.0-only
     <article v-else :class="$style.article" :style="{ cursor: expandOnNoteClick ? 'pointer' : '', paddingTop: prefer.s.showSubNoteFooterButton && appearNote.reply && (!renoteCollapsed && !replyCollapsed && ((!notification && (forceShowReplyTargetNote || prefer.s.showReplyTargetNote)) || (notification && prefer.s.showReplyInNotification))) ? '14px' : '' }" @click.stop="noteClick" @dblclick.stop="noteDblClick" @contextmenu.stop="onContextmenu">
         <div :style="prefer.s.showGapBodyOfTheNote ? null : 'padding-bottom: 10px;'" style="display: flex;">
             <div v-if="appearNote.channel" :class="$style.colorBar" :style="{ background: appearNote.channel.color }"></div>
-            <MkAvatar v-if="!prefer.s.hideAvatarsInNote" :class="[$style.avatar, prefer.s.useStickyIcons ? $style.useSticky : null, { [$style.avatarReplyTo]: appearNote.reply, [$style.showEl]: !appearNote.reply && (showEl && ['hideHeaderOnly', 'hideHeaderFloatBtn', 'hide'].includes(<string>prefer.s.displayHeaderNavBarWhenScroll)) && mainRouter.currentRoute.value.name === 'index', [$style.showElTab]: !appearNote.reply && (showEl && ['hideHeaderOnly', 'hideHeaderFloatBtn', 'hide'].includes(<string>prefer.s.displayHeaderNavBarWhenScroll)) && mainRouter.currentRoute.value.name !== 'index' }]" :user="appearNote.user" :link="!mock" :preview="!mock" noteClick/>
+            <MkAvatar v-if="!prefer.s.hideAvatarsInNote" :class="[$style.avatar, prefer.s.useStickyIcons ? $style.useSticky : null, { [$style.avatarReplyTo]: appearNote.reply, [$style.showEl]: !appearNote.reply && (showEl && ['hideHeaderOnly', 'hideHeaderFloatBtn', 'hide'].includes(<string>prefer.s.displayHeaderNavBarWhenScroll)) && mainRouter.currentRoute.value.name === 'index', [$style.showElTab]: !appearNote.reply && (showEl && ['hideHeaderOnly', 'hideHeaderFloatBtn', 'hide'].includes(<string>prefer.s.displayHeaderNavBarWhenScroll)) && mainRouter.currentRoute.value.name !== 'index' }]" :user="appearNote.user" :link="false" :preview="!mock" noteClick @click="onAvatarClick"/>
             <div :class="$style.main">
                 <MkNoteHeader :note="appearNote" :mini="true"/>
                 <div v-if="prefer.s.showGapBodyOfTheNote" :style="prefer.s.showGapBodyOfTheNote ? 'margin-top: 4px;' : null" style="container-type: inline-size;">
@@ -719,6 +719,32 @@ watch(() => viewTextSource.value, () => {
     collapsed.value = false;
 });
 
+// ===== 旗鯖独自: ユーザーパネル（アバタークリック） =====
+function openUserPanel(userId: string) {
+    // directProfile ON → 直接プロフィールページに遷移
+    if (prefer.s['simpleUi.directProfile']) {
+        mainRouter.push(userPage(appearNote.user));
+        return;
+    }
+    // simple.vue等がカスタムイベントを処理する場合はそちらに任せる
+    const ev = new CustomEvent('simple-user-panel', { detail: { userId }, cancelable: true });
+    window.dispatchEvent(ev);
+    // 誰もpreventDefaultしなかった場合 → ポップアップで表示
+    if (!ev.defaultPrevented) {
+        import('@/components/MkSimpleUserPanel.vue').then(m => {
+            const { dispose } = os.popup(m.default, {
+                userId,
+                isMobile: window.innerWidth < 700,
+            }, {
+                close: () => dispose(),
+            });
+        });
+    }
+}
+function onAvatarClick() {
+    openUserPanel(appearNote.userId);
+}
+
 function noteClick(ev: MouseEvent) {
     if (!expandOnNoteClick.value || window.getSelection()?.toString() !== '' || prefer.s.expandOnNoteClickBehavior === 'doubleClick') ev.stopPropagation();
     else router.pushByPath(notePage(appearNote));
@@ -1349,6 +1375,7 @@ function emitUpdReaction(emoji: string, delta: number) {
     height: 58px;
     background: var(--MI_THEME-panel);
     transition: top 0.5s;
+    cursor: pointer;
 
     &.useSticky {
         position: sticky !important;
