@@ -1405,7 +1405,7 @@ function emitUpdReaction(emoji: string, delta: number) {
 
 	/* reactions+footer wrapper - 少し暗めのテーマカラー+丸み */
 	& > div:last-child {
-		background: color-mix(in srgb, var(--MI_THEME-accent) 8%, var(--MI_THEME-panel));
+		background: color-mix(in srgb, var(--MI_THEME-accent) 4%, var(--MI_THEME-panel));
 		border-radius: 12px;
 		padding: 8px 12px;
 		margin-bottom: 0;
