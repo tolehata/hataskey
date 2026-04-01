@@ -1268,7 +1268,7 @@ function emitUpdReaction(emoji: string, delta: number) {
 	width: 28px;
 	height: 28px;
 	margin: 0 8px 0 0;
-	background: var(--MI_THEME-panel);
+	background: color-mix(in srgb, var(--MI_THEME-accent) 5%, var(--MI_THEME-panel));
 }
 
 .renoteText {
@@ -1316,7 +1316,7 @@ function emitUpdReaction(emoji: string, delta: number) {
 	width: 28px;
 	height: 28px;
 	margin: 0 8px 0 0;
-	background: var(--MI_THEME-panel);
+	background: color-mix(in srgb, var(--MI_THEME-accent) 5%, var(--MI_THEME-panel));
 }
 
 .collapsedRenoteTargetText {
@@ -1360,7 +1360,7 @@ function emitUpdReaction(emoji: string, delta: number) {
 	margin: 0 14px 0 0;
 	width: 58px;
 	height: 58px;
-	background: var(--MI_THEME-panel);
+	background: color-mix(in srgb, var(--MI_THEME-accent) 5%, var(--MI_THEME-panel));
 	transition: top 0.5s;
 	cursor: pointer;
 
@@ -1382,7 +1382,7 @@ function emitUpdReaction(emoji: string, delta: number) {
 }
 
 .bubbleBody {
-	background: var(--MI_THEME-panel);
+	background: color-mix(in srgb, var(--MI_THEME-accent) 5%, var(--MI_THEME-panel));
 	border-radius: 16px;
 	border: none;
 	padding: 12px;
@@ -1427,7 +1427,7 @@ function emitUpdReaction(emoji: string, delta: number) {
 		height: 0;
 		border-left: 7px solid transparent;
 		border-right: 7px solid transparent;
-		border-top: 7px solid var(--MI_THEME-panel);
+		border-top: 7px solid color-mix(in srgb, var(--MI_THEME-accent) 5%, var(--MI_THEME-panel));
 		z-index: 1;
 	}
 }
@@ -1480,7 +1480,7 @@ function emitUpdReaction(emoji: string, delta: number) {
 
 .collapsedLabel {
 	display: inline-block;
-	background: var(--MI_THEME-panel);
+	background: color-mix(in srgb, var(--MI_THEME-accent) 5%, var(--MI_THEME-panel));
 	padding: 6px 10px;
 	font-size: 0.8em;
 	border-radius: 999px;
