@@ -52,7 +52,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 	:enterFromClass="prefer.s.animation ? $style.transition_widgetsDrawer_enterFrom : ''"
 	:leaveToClass="prefer.s.animation ? $style.transition_widgetsDrawer_leaveTo : ''"
 >
-	<div v-if="widgetsShowing" :class="$style.widgetsDrawer">
+	<div v-if="widgetsShowing" :class="$style.widgetsDrawer" data-widget-border="on">
 		<button class="_button" :class="$style.widgetsCloseButton" @click="widgetsShowing = false"><i class="ti ti-x"></i></button>
 		<XWidgets/>
 	</div>

@@ -418,7 +418,7 @@ definePage(() => ({ title: 'つみつみタワー', icon: 'ti ti-building' }));
 .overScore { font-size: 1.1rem; font-weight: 700; margin-bottom: 6px; }
 .newRecord { font-size: 1rem; font-weight: 700; color: var(--MI_THEME-accent); margin-bottom: 14px; animation: pulse 1s infinite; }
 @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.08); } }
-.overBtns { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.overBtns { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; align-items: center; }
 </style>
 
 <style>

@@ -42,8 +42,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<component
 			:is="prefer.s.animation ? TransitionGroup : 'div'"
 			:class="[$style.notes, { [$style.noGap]: noGap, '_gaps': !noGap }]"
-			:data-bubble="isSimpleUi ? 'on' : undefined"
-			:data-spacing="isSimpleUi ? noteSpacingValue : undefined"
+			data-bubble="on"
+			:data-spacing="noteSpacingValue"
 			:data-anim-dir="animDirValue"
 			:enterActiveClass="$style.transition_x_enterActive"
 			:leaveActiveClass="$style.transition_x_leaveActive"
@@ -98,7 +98,6 @@ import * as sound from '@/utility/sound.js';
 import { $i } from '@/i.js';
 import { instance } from '@/instance.js';
 import { prefer } from '@/preferences.js';
-import { miLocalStorage } from '@/local-storage.js';
 import { store } from '@/store.js';
 import MkNote from '@/components/MkNote.vue';
 import MkButton from '@/components/MkButton.vue';
@@ -181,9 +180,6 @@ provide('inChannel', computed(() => props.src === 'channel'));
 
 // 旗鯖独自: ノート間隔（リアクティブ）
 const noteSpacingValue = computed(() => prefer.r['simpleUi.noteSpacing']?.value ?? 'moderate');
-
-// 旗鯖独自: Simple UIかどうか（吹き出しデザインの条件分岐用）
-const isSimpleUi = miLocalStorage.getItem('ui') === 'simple';
 
 // 旗鯖独自: アニメーション方向（リアクティブ — data-anim-dir属性で制御）
 const animDir = computed(() => prefer.r.timelineAnimationDirection?.value ?? 'left');
