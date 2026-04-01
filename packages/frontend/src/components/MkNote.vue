@@ -1141,7 +1141,7 @@ function emitUpdReaction(emoji: string, delta: number) {
 	contain: content;
 
 	& > div {
-		background: transparent !important;
+		background: color-mix(in srgb, var(--MI_THEME-accent) 5%, var(--MI_THEME-panel)) !important;
 		border: none !important;
 		box-shadow: none !important;
 		border-radius: 0 !important;
@@ -1344,7 +1344,7 @@ function emitUpdReaction(emoji: string, delta: number) {
 }
 
 .article {
-	background: transparent !important;
+	background: color-mix(in srgb, var(--MI_THEME-accent) 5%, var(--MI_THEME-panel)) !important;
 	position: relative;
 	padding: 10px 10px 6px;
 	-webkit-tap-highlight-color: transparent;
@@ -1403,7 +1403,7 @@ function emitUpdReaction(emoji: string, delta: number) {
 	}
 
 	& > div {
-		background: transparent !important;
+		background: color-mix(in srgb, var(--MI_THEME-accent) 5%, var(--MI_THEME-panel)) !important;
 		border: none !important;
 		box-shadow: none !important;
 		border-radius: 0 !important;
