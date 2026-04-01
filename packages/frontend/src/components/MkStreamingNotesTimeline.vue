@@ -42,9 +42,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<component
 			:is="prefer.s.animation ? TransitionGroup : 'div'"
 			:class="[$style.notes, { [$style.noGap]: noGap, '_gaps': !noGap }]"
+			:data-bubble="isSimpleUi ? 'on' : undefined"
+			:data-spacing="isSimpleUi ? noteSpacingValue : undefined"
+			:data-anim-dir="animDirValue"
 			:enterActiveClass="$style.transition_x_enterActive"
 			:leaveActiveClass="$style.transition_x_leaveActive"
-			:enterFromClass="currentAnimationDirection === 'left' ? $style.transition_x_enterFrom_left : currentAnimationDirection === 'right' ? $style.transition_x_enterFrom_right : $style.transition_x_enterFrom_top"
+			:enterFromClass="'hata-tl-enterFrom'"
 			:leaveToClass="$style.transition_x_leaveTo"
 			:moveClass="$style.transition_x_move"
 			tag="div"
@@ -95,6 +98,7 @@ import * as sound from '@/utility/sound.js';
 import { $i } from '@/i.js';
 import { instance } from '@/instance.js';
 import { prefer } from '@/preferences.js';
+import { miLocalStorage } from '@/local-storage.js';
 import { store } from '@/store.js';
 import MkNote from '@/components/MkNote.vue';
 import MkButton from '@/components/MkButton.vue';
@@ -174,6 +178,24 @@ const props = withDefaults(defineProps<{
 provide('inTimeline', true);
 provide('tl_withSensitive', computed(() => props.withSensitive));
 provide('inChannel', computed(() => props.src === 'channel'));
+
+// 旗鯖独自: ノート間隔（リアクティブ）
+const noteSpacingValue = computed(() => prefer.r['simpleUi.noteSpacing']?.value ?? 'moderate');
+
+// 旗鯖独自: Simple UIかどうか（吹き出しデザインの条件分岐用）
+const isSimpleUi = miLocalStorage.getItem('ui') === 'simple';
+
+// 旗鯖独自: アニメーション方向（リアクティブ — data-anim-dir属性で制御）
+const animDir = computed(() => prefer.r.timelineAnimationDirection?.value ?? 'left');
+const randomDirRef = ref<'top'|'left'|'right'>('left');
+const animDirValue = computed(() => {
+    if (animDir.value === 'random') return randomDirRef.value;
+    return animDir.value;
+});
+function updateRandomDir() {
+    const dirs: ('top'|'left'|'right')[] = ['top', 'left', 'right'];
+    randomDirRef.value = dirs[Math.floor(Math.random() * 3)];
+}
 
 let paginator: IPaginator<Misskey.entities.Note>;
 
@@ -368,6 +390,7 @@ useGlobalEvent('noteDeleted', (noteId) => {
 });
 
 function releaseQueue() {
+	updateRandomDir(); // 旗鯖: ランダム方向更新
 	haptic();
 	paginator.releaseQueue();
 	scrollToTop(rootEl.value!);
@@ -377,6 +400,7 @@ function releaseQueue() {
 function prepend(note: Misskey.entities.Note & MisskeyEntity) {
 	// ランダムモードの場合、ノート追加時にアニメーション方向を更新
 	updateAnimationDirection();
+	updateRandomDir(); // 旗鯖: ランダム方向更新
 
 	adInsertionCounter++;
 
@@ -805,5 +829,70 @@ defineExpose({
 	.mediaGrid {
 		grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
 	}
+}
+</style>
+
+<!-- 旗鯖独自: グローバルCSS（CSS Modulesバイパス） -->
+<style lang="scss">
+/* ===== 吹き出しデザイン（data-bubble="on"時） ===== */
+[data-bubble="on"] {
+	background: transparent !important;
+}
+[data-bubble="on"] > div {
+	border-bottom: none !important;
+}
+
+/* ===== ノート間隔: compact ===== */
+[data-spacing="compact"] article {
+	margin-top: 0px !important;
+	margin-bottom: 0px !important;
+	padding-top: 4px !important;
+	padding-bottom: 2px !important;
+}
+[data-spacing="compact"] article > div:last-child > div:nth-child(2) {
+	padding-top: 6px !important;
+	padding-bottom: 6px !important;
+}
+@media (max-width: 700px) {
+	[data-spacing="compact"] article {
+		margin-top: 0px !important;
+		margin-bottom: 0px !important;
+		padding-top: 4px !important;
+		padding-bottom: 2px !important;
+	}
+}
+
+/* ===== ノート間隔: wide ===== */
+[data-spacing="wide"] article {
+	margin-top: 8px !important;
+	margin-bottom: 8px !important;
+	padding-top: 14px !important;
+	padding-bottom: 10px !important;
+}
+@media (max-width: 700px) {
+	[data-spacing="wide"] article {
+		margin-top: 6px !important;
+		margin-bottom: 6px !important;
+		padding-top: 10px !important;
+		padding-bottom: 8px !important;
+	}
+}
+
+/* ===== ノートアニメーション方向（グローバルクラス） ===== */
+[data-anim-dir="top"] .hata-tl-enterFrom {
+	opacity: 0;
+	transform: translateY(max(-64px, -100%));
+}
+[data-anim-dir="left"] .hata-tl-enterFrom {
+	opacity: 0;
+	transform: translateX(max(-64px, -100%));
+}
+[data-anim-dir="right"] .hata-tl-enterFrom {
+	opacity: 0;
+	transform: translateX(min(64px, 100%));
+}
+.hata-tl-enterFrom {
+	opacity: 0;
+	transform: translateX(max(-64px, -100%));
 }
 </style>

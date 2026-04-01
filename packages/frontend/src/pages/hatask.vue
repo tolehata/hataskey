@@ -73,6 +73,10 @@
           <div class="htk-app-icon-img" style="background:linear-gradient(135deg,#60a5fa,#3b82f6)"><i class="ti ti-book" style="font-size:1.6rem;color:#fff"></i></div>
           <div class="htk-app-icon-name">機能解説</div>
         </button>
+        <button class="htk-app-icon" @click="openHatalyze">
+          <div class="htk-app-icon-img" style="background:linear-gradient(135deg,#f59e0b,#d97706)"><i class="ti ti-mood-search" style="font-size:1.6rem;color:#fff"></i></div>
+          <div class="htk-app-icon-name">HATAlyze</div>
+        </button>
       </div>
     </div></div>
     <div v-if="sec==='loginDays' && settings.showLoginDays!==false" class="htk-lg htk-anim"><div class="htk-gc htk-login-card"><div class="htk-login-top"><div class="htk-login-days-n">{{loginDays}}</div><div class="htk-login-days-l">日目</div></div><div v-if="loginRanking>0" class="htk-login-rank"><span>🏆</span> サーバー内 <strong>{{loginRanking}}位</strong><span v-if="loginTotal>0" class="htk-login-total"> / {{loginTotal}}人</span></div><div class="htk-login-msg">{{loginMessage}}</div><div class="htk-login-next"><span>🎯</span> 次の実績まで: <strong>{{loginNextReward}}</strong>日</div></div></div>
@@ -663,7 +667,7 @@ watch(activeTab, () => {
 });
 const showMoodDisclaimer=ref(false);const showFlowerInfo=ref(false);const showMoodNote=ref(true);const showMoodRemind=ref(false);
 const moodSelectedEmoji=ref('');const rootEl=ref<HTMLElement|null>(null);
-const showTutorial=ref(false);const tutStep=ref(0);const tutTotalSteps=11;
+const showTutorial=ref(false);const tutStep=ref(0);const tutTotalSteps=10;
 const isMobile=ref(window.innerWidth<=1024);
 // ===== Spotlight tutorial system =====
 const PAD=14;
@@ -793,6 +797,7 @@ function cleanupHataskState(){
 }
 function openHataSettings(){cleanupHataskState();const router=useRouter();router.push('/settings/hata-custom')}
 function openHataDocs(){cleanupHataskState();const router=useRouter();router.push('/hata-docs')}
+function openHatalyze(){window.open('https://kanjo-bunseki.tolehata.net','_blank')}
 function handleBack(){
 if(activeTab.value!=='home'){activeTab.value='home';return}
 goBackToTimeline();

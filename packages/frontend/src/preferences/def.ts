@@ -728,7 +728,7 @@ export const PREF_DEF = definePreferences({
 		default: false,
         },
         timelineAnimationDirection: {
-                default: 'top' as 'top' | 'left' | 'right' | 'random',
+                default: 'left' as 'top' | 'left' | 'right' | 'random',
 	},
 	expandOnNoteClickBehavior: {
 		default: 'click' as 'click' | 'doubleClick',
@@ -805,6 +805,50 @@ export const PREF_DEF = definePreferences({
 	'external.enableOLTL': {
 		default: true,
 	},
+	// ======== シンプルUI設定 ========
+	'simpleUi.topNav': {
+		default: [
+			{ id: 'following', icon: 'ti ti-home', label: 'ホーム', visible: true },
+			{ id: 'local', icon: 'ti ti-planet', label: 'ローカル', visible: true },
+			{ id: 'social', icon: 'ti ti-users', label: 'ソーシャル', visible: false },
+			{ id: 'mixed', icon: 'ti ti-universe', label: 'グローバル', visible: true },
+		] as { id: string; icon: string; label: string; visible: boolean }[],
+	},
+	'simpleUi.bottomNav': {
+		default: [
+			{ id: 'search', icon: 'ti ti-search', label: '検索', visible: true },
+			{ id: 'home', icon: 'ti ti-home', label: 'ホーム', visible: true },
+			{ id: 'notifications', icon: 'ti ti-bell', label: '通知', visible: true },
+			{ id: 'hatask', icon: 'ti ti-eye', label: '独自機能', visible: true },
+			{ id: 'widgets', icon: 'ti ti-apps', label: 'ウィジェット', visible: false },
+		] as { id: string; icon: string; label: string; visible: boolean }[],
+	},
+	'simpleUi.sidebar': {
+		default: [
+			{ id: 'timeline', icon: 'ti ti-home', label: 'タイムライン' },
+			{ id: 'notifications', icon: 'ti ti-bell', label: '通知' },
+			{ id: 'search', icon: 'ti ti-search', label: '検索' },
+			{ id: 'hatask', icon: 'ti ti-eye', label: '独自機能' },
+			{ id: 'lists', icon: 'ti ti-list', label: 'リスト' },
+			{ id: 'channels', icon: 'ti ti-device-tv', label: 'チャンネル' },
+			{ id: 'antennas', icon: 'ti ti-antenna', label: 'アンテナ' },
+			{ id: 'drive', icon: 'ti ti-cloud', label: 'ドライブ' },
+			{ id: 'more', icon: 'ti ti-dots', label: 'もっと' },
+		] as { id: string; icon: string; label: string }[],
+	},
+	'simpleUi.widgetBorder': {
+		default: true,
+	},
+	'simpleUi.directProfile': {
+		default: false,
+	},
+	'simpleUi.glassEffect': {
+		default: true,
+	},
+	'simpleUi.noteSpacing': {
+		default: 'moderate' as 'compact' | 'moderate' | 'wide',
+	},
+	// ======== シンプルUI設定ここまで ========
 	//#endregion
 
 	'experimental.stackingRouterView': {

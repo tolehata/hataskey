@@ -22,7 +22,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<XMobileFooterMenu v-if="isMobile" ref="navFooter" v-model:drawerMenuShowing="drawerMenuShowing" v-model:widgetsShowing="widgetsShowing"/>
 		</div>
 
-		<div v-if="isDesktop && !pageMetadata?.needWideArea && prefer.s.enableWidgetsArea" :class="$style.widgets">
+		<div v-if="isDesktop && !pageMetadata?.needWideArea && prefer.s.enableWidgetsArea" :class="$style.widgets" :data-widget-border="prefer.r['simpleUi.widgetBorder']?.value ? 'on' : 'off'">
 			<XWidgets/>
 		</div>
 

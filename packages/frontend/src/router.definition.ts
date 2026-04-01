@@ -634,6 +634,14 @@ export const ROUTE_DEF = [{
 	component: page(() => import('@/pages/drop-and-fusion.vue')),
 	loginRequired: true,
 }, {
+	path: '/stacking-game',
+	component: page(() => import('@/pages/stacking-game.vue')),
+	loginRequired: true,
+}, {
+	path: '/stacking-game/play',
+	component: page(() => import('@/pages/stacking-game.game.vue')),
+	loginRequired: true,
+}, {
 	path: '/reversi',
 	component: page(() => import('@/pages/reversi/index.vue')),
 	loginRequired: false,

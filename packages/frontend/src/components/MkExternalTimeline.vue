@@ -35,6 +35,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<component
 			:is="prefer.s.animation ? TransitionGroup : 'div'"
 			:class="[$style.notes, { [$style.noGap]: noGap, '_gaps': !noGap }]"
+			data-bubble="on"
 			:enterActiveClass="$style.transition_x_enterActive"
 			:leaveActiveClass="$style.transition_x_leaveActive"
 			:enterFromClass="$style.transition_x_enterFrom"

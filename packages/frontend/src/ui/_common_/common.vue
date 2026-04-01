@@ -462,4 +462,16 @@ if ($i) {
 	pointer-events: none;
 	user-select: none;
 }
+
+/* 旗鯖独自: ウィジェット枠線（data-widget-border="on"時のみ） */
+[data-widget-border="on"] ._panel {
+	border: none !important;
+	border-radius: 14px !important;
+	box-shadow: 0 0 0 2.5px color-mix(in srgb, var(--MI_THEME-accent) 45%, transparent), 0 0 16px color-mix(in srgb, var(--MI_THEME-accent) 20%, transparent), 0 2px 8px rgba(0,0,0,.06) !important;
+	transition: box-shadow .3s ease;
+	margin-bottom: 10px;
+}
+[data-widget-border="on"] ._panel:hover {
+	box-shadow: 0 0 0 2.5px var(--MI_THEME-accent), 0 0 24px color-mix(in srgb, var(--MI_THEME-accent) 30%, transparent), 0 4px 16px rgba(0,0,0,.08) !important;
+}
 </style>

@@ -67,7 +67,10 @@ export async function common(createVue: () => Promise<App<Element>>) {
 	let isClientMigrated = false;
 	const showPushNotificationDialog = miLocalStorage.getItem('showPushNotificationDialog');
 
-	if (miLocalStorage.getItem('ui') === null) miLocalStorage.setItem('ui', 'friendly');
+	if (miLocalStorage.getItem('ui') === null) miLocalStorage.setItem('ui', 'simple');
+
+	// 旗鯖: FriendlyUIユーザーをSimple UIに強制移行
+	if (miLocalStorage.getItem('ui') === 'friendly') miLocalStorage.setItem('ui', 'simple');
 
 	if (instance.swPublickey && ('PushManager' in window) && $i && $i.token && showPushNotificationDialog == null) {
 		const { dispose } = popup(defineAsyncComponent(() => import('@/components/MkPushNotification.vue')), {}, {

@@ -5,36 +5,41 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <template>
 <article :class="$style.root">
+	<!-- アバター（吹き出しの外） -->
+	<MkA v-if="note.user" :class="$style.avatar" :to="`https://${host}/@${note.user.username}`" target="_blank">
+		<img :class="$style.avatarImg" :src="note.user.avatarUrl" :alt="note.user.username"/>
+	</MkA>
 	<div :class="$style.main">
-		<div :class="$style.header">
-			<MkA v-if="note.user" :class="$style.avatar" :to="`https://${host}/@${note.user.username}`" target="_blank">
-				<img :class="$style.avatarImg" :src="note.user.avatarUrl" :alt="note.user.username"/>
-			</MkA>
-			<div :class="$style.headerBody">
-				<div :class="$style.headerTop">
-					<span :class="$style.name">
-						{{ note.user?.name || note.user?.username }}
-					</span>
-					<span :class="$style.username">
-						@{{ note.user?.username }}@{{ host }}
-					</span>
-				</div>
-				<div :class="$style.headerBottom">
-					<MkA :to="`https://${host}/notes/${note.id}`" target="_blank" :class="$style.time">
-						<MkTime :time="note.createdAt"/>
-					</MkA>
-					<span :class="$style.externalBadge" :title="'外部サーバー: ' + host">
-						🔗
-					</span>
-					<span v-if="visibilityInfo" :class="$style.visibilityBadge" :title="visibilityInfo.label">
-						<i :class="visibilityInfo.icon"></i>
-					</span>
-					<span v-if="localOnlyBadge" :class="$style.visibilityBadge" :title="localOnlyBadge.label">
-						<i :class="localOnlyBadge.icon"></i>
-					</span>
+		<!-- 吹き出し矢印 -->
+		<div :class="$style.bubbleArrow"></div>
+		<!-- 吹き出し本体 -->
+		<div :class="$style.bubbleBody">
+			<div :class="$style.header">
+				<div :class="$style.headerBody">
+					<div :class="$style.headerTop">
+						<span :class="$style.name">
+							{{ note.user?.name || note.user?.username }}
+						</span>
+						<span :class="$style.username">
+							@{{ note.user?.username }}@{{ host }}
+						</span>
+					</div>
+					<div :class="$style.headerBottom">
+						<MkA :to="`https://${host}/notes/${note.id}`" target="_blank" :class="$style.time">
+							<MkTime :time="note.createdAt"/>
+						</MkA>
+						<span :class="$style.externalBadge" :title="'外部サーバー: ' + host">
+							🔗
+						</span>
+						<span v-if="visibilityInfo" :class="$style.visibilityBadge" :title="visibilityInfo.label">
+							<i :class="visibilityInfo.icon"></i>
+						</span>
+						<span v-if="localOnlyBadge" :class="$style.visibilityBadge" :title="localOnlyBadge.label">
+							<i :class="localOnlyBadge.icon"></i>
+						</span>
+					</div>
 				</div>
 			</div>
-		</div>
 
 		<div v-if="note.cw != null" :class="$style.cw">
 			<span>{{ note.cw }}</span>
@@ -155,6 +160,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<button :class="$style.footerButton" @click="showNoteMenu" :title="'メニュー'">
 				<i class="ti ti-dots"></i>
 			</button>
+		</div>
 		</div>
 	</div>
 </article>
@@ -693,30 +699,66 @@ defineExpose({
 
 <style lang="scss" module>
 .root {
-	padding: 16px;
+	padding: 10px 10px 6px;
 	font-size: 0.95em;
-}
-
-.main {
 	display: flex;
-	flex-direction: column;
-	gap: 8px;
-}
-
-.header {
-	display: flex;
-	gap: 12px;
+	align-items: flex-start;
+	gap: 0;
 }
 
 .avatar {
 	flex-shrink: 0;
+	margin-top: 2px;
+	margin-right: 0;
 }
 
 .avatarImg {
-	width: 46px;
-	height: 46px;
-	border-radius: 8px;
+	width: 40px;
+	height: 40px;
+	border-radius: 50%;
 	object-fit: cover;
+}
+
+.main {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	position: relative;
+}
+
+.bubbleArrow {
+	position: absolute;
+	top: 12px;
+	left: -8px;
+	width: 0;
+	height: 0;
+	border-top: 7px solid transparent;
+	border-bottom: 7px solid transparent;
+	border-right: 8px solid color-mix(in srgb, var(--MI_THEME-panel) 85%, var(--MI_THEME-fg));
+	z-index: 1;
+}
+
+.bubbleBody {
+	background: color-mix(in srgb, var(--MI_THEME-panel) 85%, var(--MI_THEME-fg));
+	border-radius: 16px;
+	border: 1.5px solid color-mix(in srgb, var(--MI_THEME-divider) 80%, transparent);
+	padding: 12px 14px;
+	box-shadow: 0 1px 8px rgba(0,0,0,.06);
+	transition: box-shadow .2s ease, border-color .2s ease;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+
+	&:hover {
+		box-shadow: 0 3px 16px rgba(0,0,0,.12);
+		border-color: color-mix(in srgb, var(--MI_THEME-accent) 30%, var(--MI_THEME-divider));
+	}
+}
+
+.header {
+	display: flex;
+	gap: 8px;
 }
 
 .headerBody {
@@ -970,6 +1012,24 @@ defineExpose({
 	display: flex;
 	gap: 16px;
 	margin-top: 4px;
+}
+
+// ===== モバイル対応 =====
+@container (max-width: 700px) {
+	.root {
+		padding: 8px 6px 5px;
+	}
+	.avatarImg {
+		width: 36px;
+		height: 36px;
+	}
+	.bubbleBody {
+		padding: 10px 12px;
+		border-radius: 14px;
+	}
+	.bubbleArrow {
+		top: 10px;
+	}
 }
 
 .footerButton {
