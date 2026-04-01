@@ -866,6 +866,10 @@ defineExpose({
 	box-shadow: 0 3px 16px rgba(0,0,0,.12);
 	border-color: color-mix(in srgb, var(--MI_THEME-accent) 30%, var(--MI_THEME-divider));
 }
+/* 吹き出し内のヘッダーとコンテンツの隙間を詰める */
+[data-bubble="on"] article > div > div:last-child > div {
+        margin-top: 0 !important;
+}
 /* 吹き出し三角矢印（左上） */
 [data-bubble="on"] article > div > div:last-child::before {
 	content: '';
