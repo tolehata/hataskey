@@ -69,8 +69,14 @@ export async function common(createVue: () => Promise<App<Element>>) {
 
 	if (miLocalStorage.getItem('ui') === null) miLocalStorage.setItem('ui', 'simple');
 
-	// 旗鯖: FriendlyUIユーザーをSimple UIに強制移行
-	if (miLocalStorage.getItem('ui') === 'friendly') miLocalStorage.setItem('ui', 'simple');
+	// 旗鯖: デッキUI以外のユーザーをSimple UIに一度だけ強制移行
+	if (!miLocalStorage.getItem('hata_ui_migrated')) {
+		const currentUi = miLocalStorage.getItem('ui');
+		if (currentUi !== 'deck' && currentUi !== 'simple') {
+			miLocalStorage.setItem('ui', 'simple');
+		}
+		miLocalStorage.setItem('hata_ui_migrated', '1');
+	}
 
 	if (instance.swPublickey && ('PushManager' in window) && $i && $i.token && showPushNotificationDialog == null) {
 		const { dispose } = popup(defineAsyncComponent(() => import('@/components/MkPushNotification.vue')), {}, {

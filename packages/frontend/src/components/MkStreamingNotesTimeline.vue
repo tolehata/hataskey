@@ -848,7 +848,7 @@ defineExpose({
 }
 
 /* .main（アバターの右側コンテンツ）に吹き出し背景 */
-[data-bubble="on"] article > div > div:nth-child(2) {
+[data-bubble="on"] article > div > div:last-child {
 	background: color-mix(in srgb, var(--MI_THEME-panel) 85%, var(--MI_THEME-fg));
 	border-radius: 16px;
 	border: 1.5px solid color-mix(in srgb, var(--MI_THEME-divider) 80%, transparent);
@@ -857,22 +857,22 @@ defineExpose({
 	transition: box-shadow .2s ease, border-color .2s ease;
 	position: relative;
 }
-[data-bubble="on"] article > div > div:nth-child(2):hover {
+[data-bubble="on"] article > div > div:last-child:hover {
 	box-shadow: 0 3px 16px rgba(0,0,0,.12);
 	border-color: color-mix(in srgb, var(--MI_THEME-accent) 30%, var(--MI_THEME-divider));
 }
 
 /* 吹き出し三角矢印（疑似要素） */
-[data-bubble="on"] article > div > div:nth-child(2)::before {
+[data-bubble="on"] article > div > div:last-child::before {
 	content: '';
 	position: absolute;
-	top: 14px;
-	left: -8px;
+	top: -7px;
+	left: 16px;
 	width: 0;
 	height: 0;
-	border-top: 7px solid transparent;
-	border-bottom: 7px solid transparent;
-	border-right: 8px solid color-mix(in srgb, var(--MI_THEME-panel) 85%, var(--MI_THEME-fg));
+	border-left: 7px solid transparent;
+	border-right: 7px solid transparent;
+	border-bottom: 7px solid color-mix(in srgb, var(--MI_THEME-panel) 85%, var(--MI_THEME-fg));
 	z-index: 1;
 }
 
@@ -883,7 +883,7 @@ defineExpose({
 	[data-bubble="on"] article {
 		padding: 8px 6px 5px !important;
 	}
-	[data-bubble="on"] article > div > div:nth-child(2) {
+	[data-bubble="on"] article > div > div:last-child {
 		padding: 10px 12px;
 		border-radius: 14px;
 	}
