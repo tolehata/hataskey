@@ -180,8 +180,11 @@ provide('inTimeline', true);
 provide('tl_withSensitive', computed(() => props.withSensitive));
 provide('inChannel', computed(() => props.src === 'channel'));
 
-// 旗鯖独自: ノート間隔（リアクティブ）
-const noteSpacingValue = computed(() => prefer.r['simpleUi.noteSpacing']?.value ?? 'moderate');
+// 旗鯖独自: ノート間隔（リアクティブ、デッキUIでは自動的にwideに）
+const noteSpacingValue = computed(() => {
+    if (miLocalStorage.getItem('ui') === 'deck') return 'wide';
+    return prefer.r['simpleUi.noteSpacing']?.value ?? 'moderate';
+});
 
 // 旗鯖独自: 吹き出し有効判定（デッキUIで無効化設定時はoff）
 const isDeckUi = miLocalStorage.getItem('ui') === 'deck';
