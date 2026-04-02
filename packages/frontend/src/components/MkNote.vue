@@ -70,7 +70,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<MkAvatar v-if="!prefer.s.hideAvatarsInNote" :class="[$style.avatar, prefer.s.useStickyIcons ? $style.useSticky : null, { [$style.avatarReplyTo]: appearNote.reply, [$style.showEl]: !appearNote.reply && (showEl && ['hideHeaderOnly', 'hideHeaderFloatBtn', 'hide'].includes(<string>prefer.s.displayHeaderNavBarWhenScroll)) && mainRouter.currentRoute.value.name === 'index', [$style.showElTab]: !appearNote.reply && (showEl && ['hideHeaderOnly', 'hideHeaderFloatBtn', 'hide'].includes(<string>prefer.s.displayHeaderNavBarWhenScroll)) && mainRouter.currentRoute.value.name !== 'index' }]" :user="appearNote.user" :link="false" :preview="!mock" noteClick @click="onAvatarClick"/>
 			<div :class="$style.main">
 				<MkNoteHeader :note="appearNote" :mini="true" @nameClick="openUserPanel"/>
-				<div v-if="prefer.s.showGapBodyOfTheNote" :class="$style.noteContent" :style="prefer.s.showGapBodyOfTheNote ? 'margin-top: 4px;' : null" style="container-type: inline-size;">
+				<div v-if="prefer.s.showGapBodyOfTheNote" data-note-content :class="$style.noteContent" :style="prefer.s.showGapBodyOfTheNote ? 'margin-top: 4px;' : null" style="container-type: inline-size;">
 					<MkInfo v-if="appearNote.deleteAt != null" warn :class="$style.deleteAt">
 						<I18n :src="i18n.ts.scheduledToDeleteOnX" tag="span">
 							<template #x>
@@ -182,7 +182,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</div>
 			</div>
 		</div>
-		<div v-if="!prefer.s.showGapBodyOfTheNote" :class="$style.noteContent" style="container-type: inline-size;">
+		<div v-if="!prefer.s.showGapBodyOfTheNote" data-note-content :class="$style.noteContent" style="container-type: inline-size;">
 			<MkInfo v-if="appearNote.deleteAt != null" warn :class="$style.deleteAt">
 				<I18n :src="i18n.ts.scheduledToDeleteOnX" tag="span">
 					<template #x>
@@ -293,7 +293,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<MkA v-if="appearNote.channel && !inChannel" :class="$style.channel" :to="`/channels/${appearNote.channel.id}`"><i class="ti ti-device-tv"></i> {{ appearNote.channel.name }}</MkA>
 		</div>
 		<div v-if="appearNote.renoteId" :class="$style.quote"><MkNoteSimple :note="appearNote?.renote ?? null" :class="$style.quoteNote"/></div>
-		<div>
+		<div data-reactions-footer>
 			<MkReactionsViewer
 				v-if="appearNote.reactionAcceptance !== 'likeOnly'"
 				style="margin-top: 6px;"
@@ -1345,7 +1345,6 @@ function emitUpdReaction(emoji: string, delta: number) {
 }
 
 .article {
-	background: color-mix(in srgb, var(--MI_THEME-accent) 5%, var(--MI_THEME-panel)) !important;
 	position: relative;
 	padding: 10px 10px 6px;
 	-webkit-tap-highlight-color: transparent;
@@ -1390,62 +1389,7 @@ function emitUpdReaction(emoji: string, delta: number) {
 }
 
 .bubbleBody {
-	background: var(--MI_THEME-panel);
-	border-radius: 16px;
-	border: none;
-	padding: 12px;
-	box-shadow: 0 2px 16px rgba(0,0,0,.06);
-	transition: box-shadow .2s ease;
 	position: relative;
-
-	&:hover {
-		box-shadow: 0 3px 20px rgba(0,0,0,.12);
-	}
-
-	/* flex container - 透明（ヘッダーに背景を付けない） */
-	& > div {
-		background: transparent;
-		border-radius: 0;
-		padding: 0;
-		margin-bottom: 0;
-	}
-
-	/* reactions+footer wrapper - コンパクト */
-	& > div:last-child {
-		background: transparent;
-		border: none;
-		border-radius: 0;
-		padding: 4px 12px 2px;
-		margin-bottom: 0;
-	}
-
-	/* 空のdivは背景を消す */
-	& > div:empty,
-	& > div > div:empty {
-		background: transparent !important;
-		padding: 0 !important;
-	}
-
-	/* 吹き出し突起（アバターの真下） */
-	&::after {
-		content: '';
-		position: absolute;
-		bottom: -7px;
-		left: 40px;
-		width: 0;
-		height: 0;
-		border-left: 7px solid transparent;
-		border-right: 7px solid transparent;
-		border-top: 7px solid var(--MI_THEME-panel);
-		z-index: 1;
-	}
-}
-
-/* 本文エリアのみテーマカラー背景 */
-.noteContent {
-	background: color-mix(in srgb, var(--MI_THEME-accent) 5%, var(--MI_THEME-panel));
-	border-radius: 12px;
-	padding: 10px 12px;
 }
 
 .cw {

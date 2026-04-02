@@ -887,18 +887,19 @@ defineExpose({
 	padding: 0 !important;
 }
 
-/* 本文エリア: .noteContent相当（.main内のcontainer div） */
-[data-bubble="on"] article > div > div > div:last-child > div[style*="container-type"] {
+/* 本文エリア */
+[data-bubble="on"] [data-note-content] {
 	background: color-mix(in srgb, var(--MI_THEME-accent) 5%, var(--MI_THEME-panel)) !important;
 	border-radius: 12px !important;
 	padding: 10px 12px !important;
-	border: 1px solid color-mix(in srgb, var(--MI_THEME-accent) 15%, transparent) !important;
+	border: 1.5px solid color-mix(in srgb, var(--MI_THEME-accent) 20%, transparent) !important;
 	position: relative !important;
 	z-index: 1 !important;
+	margin-top: 4px !important;
 }
 
 /* 本文の吹き出し突起（アバター直下、上向き） */
-[data-bubble="on"] article > div > div > div:last-child > div[style*="container-type"]::after {
+[data-bubble="on"] [data-note-content]::after {
 	content: '' !important;
 	display: block !important;
 	position: absolute !important;
@@ -909,26 +910,27 @@ defineExpose({
 	border-left: 6px solid transparent !important;
 	border-right: 6px solid transparent !important;
 	border-bottom: 6px solid color-mix(in srgb, var(--MI_THEME-accent) 5%, var(--MI_THEME-panel)) !important;
+	filter: drop-shadow(0 -1px 0 color-mix(in srgb, var(--MI_THEME-accent) 20%, transparent)) !important;
 	z-index: 1 !important;
 }
 
 /* リアクション+フッター wrapper */
-[data-bubble="on"] article > div > div:last-child {
+[data-bubble="on"] [data-reactions-footer] {
 	background: transparent !important;
 	padding: 4px 12px 2px !important;
 }
 
 /* リアクション枠の吹き出し */
-[data-bubble="on"] article > div > div:last-child > div:first-child {
+[data-bubble="on"] [data-reactions-footer] > div:first-child {
 	background: color-mix(in srgb, var(--MI_THEME-accent) 3%, var(--MI_THEME-panel)) !important;
 	border-radius: 10px !important;
 	padding: 6px 10px !important;
-	border: 1px solid color-mix(in srgb, var(--MI_THEME-accent) 10%, transparent) !important;
+	border: 1.5px solid color-mix(in srgb, var(--MI_THEME-accent) 15%, transparent) !important;
 	position: relative !important;
 	z-index: 2 !important;
 }
 /* リアクション枠の突起（上辺中央、上向き） */
-[data-bubble="on"] article > div > div:last-child > div:first-child::before {
+[data-bubble="on"] [data-reactions-footer] > div:first-child::before {
 	content: '' !important;
 	display: block !important;
 	position: absolute !important;
@@ -940,6 +942,7 @@ defineExpose({
 	border-left: 5px solid transparent !important;
 	border-right: 5px solid transparent !important;
 	border-bottom: 5px solid color-mix(in srgb, var(--MI_THEME-accent) 3%, var(--MI_THEME-panel)) !important;
+	filter: drop-shadow(0 -1px 0 color-mix(in srgb, var(--MI_THEME-accent) 10%, transparent)) !important;
 	z-index: 1 !important;
 }
 
