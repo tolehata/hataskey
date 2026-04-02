@@ -138,6 +138,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 										:class="$style.poll"
 										isTranslation
 										@click.stop
+										/>
 									<div v-if="'translator' in translation && translation.translator === 'ctav3'" style="margin-top: 10px; padding: 0 0 15px;">
 										<img v-if="!store.s.darkMode" src="/client-assets/color-short.svg" alt="" style="float: right;">
 										<img v-else src="/client-assets/white-short.svg" alt="" style="float: right;"/>
@@ -1145,7 +1146,7 @@ function emitUpdReaction(emoji: string, delta: number) {
 	position: relative;
 	font-size: 1.05em;
 	overflow: visible;
-	margin-bottom: 8px;
+	margin-bottom: 12px;
 	&::after {
 		content: "";
 		pointer-events: none;
@@ -1389,7 +1390,7 @@ function emitUpdReaction(emoji: string, delta: number) {
 }
 
 .bubbleBody {
-	background: color-mix(in srgb, var(--MI_THEME-accent) 5%, var(--MI_THEME-panel));
+	background: var(--MI_THEME-panel);
 	border-radius: 16px;
 	border: none;
 	padding: 12px;
@@ -1401,20 +1402,20 @@ function emitUpdReaction(emoji: string, delta: number) {
 		box-shadow: 0 3px 20px rgba(0,0,0,.12);
 	}
 
-	/* 中枠: flex container（本文を囲む） - 薄いテーマカラー+丸み */
+	/* 中枠: flex container（本文を囲む） - テーマカラー背景+丸み */
 	& > div {
-		background: color-mix(in srgb, var(--MI_THEME-accent) 2%, var(--MI_THEME-panel));
+		background: color-mix(in srgb, var(--MI_THEME-accent) 5%, var(--MI_THEME-panel));
 		border-radius: 12px;
 		padding: 10px 12px;
 		margin-bottom: 0;
 	}
 
-
-	/* reactions+footer wrapper - 少し暗めのテーマカラー+丸み */
+	/* reactions+footer wrapper - 透明（枠なし） */
 	& > div:last-child {
-		background: color-mix(in srgb, var(--MI_THEME-accent) 2%, var(--MI_THEME-panel));
-		border-radius: 12px;
-		padding: 8px 12px;
+		background: transparent;
+		border: none;
+		border-radius: 0;
+		padding: 8px 12px 4px;
 		margin-bottom: 0;
 	}
 
@@ -1424,17 +1425,18 @@ function emitUpdReaction(emoji: string, delta: number) {
 		background: transparent !important;
 		padding: 0 !important;
 	}
-	/* 吹き出し突起（右下） */
+
+	/* 吹き出し突起（アバターの真下） */
 	&::after {
 		content: '';
 		position: absolute;
 		bottom: -7px;
-		right: 16px;
+		left: 40px;
 		width: 0;
 		height: 0;
 		border-left: 7px solid transparent;
 		border-right: 7px solid transparent;
-		border-top: 7px solid color-mix(in srgb, var(--MI_THEME-accent) 5%, var(--MI_THEME-panel));
+		border-top: 7px solid var(--MI_THEME-panel);
 		z-index: 1;
 	}
 }
@@ -1517,7 +1519,7 @@ function emitUpdReaction(emoji: string, delta: number) {
 	border: solid 0.5px var(--MI_THEME-divider);
 	border-radius: var(--MI-radius);
 	padding: 12px;
-	margin-bottom: 8px;
+	margin-bottom: 12px;
 }
 
 .urlPreview {
@@ -1550,11 +1552,11 @@ function emitUpdReaction(emoji: string, delta: number) {
 
 .footerButton {
 	margin: 0;
-	padding: 8px;
+	padding: 8px 4px;
 	color: color-mix(in srgb, var(--MI_THEME-panel), var(--MI_THEME-fg) 70%); // opacityなど不透明度で表現するとレンダリングパフォーマンスに影響するので通常の色の混合で代用
 
 	&:not(:last-child) {
-		margin-right: 10px;
+		margin-right: 2px;
 	}
 
 	&:hover {
