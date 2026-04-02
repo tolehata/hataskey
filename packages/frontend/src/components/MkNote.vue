@@ -1402,7 +1402,7 @@ function emitUpdReaction(emoji: string, delta: number) {
 		box-shadow: 0 3px 20px rgba(0,0,0,.12);
 	}
 
-	/* 中枠: flex container（本文を囲む） - テーマカラー背景+丸み */
+	/* 中枠: flex container（本文を囲む） - 薄いテーマカラー+丸み */
 	& > div {
 		background: color-mix(in srgb, var(--MI_THEME-accent) 5%, var(--MI_THEME-panel));
 		border-radius: 12px;
@@ -1410,10 +1410,10 @@ function emitUpdReaction(emoji: string, delta: number) {
 		margin-bottom: 0;
 	}
 
-	/* reactions+footer wrapper - 透明（枠なし） */
+
+	/* reactions+footer wrapper - 少し暗めのテーマカラー+丸み */
 	& > div:last-child {
 		background: transparent;
-		border: none;
 		border-radius: 0;
 		padding: 8px 12px 4px;
 		margin-bottom: 0;
@@ -1425,8 +1425,7 @@ function emitUpdReaction(emoji: string, delta: number) {
 		background: transparent !important;
 		padding: 0 !important;
 	}
-
-	/* 吹き出し突起（アバターの真下） */
+	/* 吹き出し突起（右下） */
 	&::after {
 		content: '';
 		position: absolute;
