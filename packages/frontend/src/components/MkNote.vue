@@ -1503,11 +1503,11 @@ function emitUpdReaction(emoji: string, delta: number) {
 
 .footerButton {
 	margin: 0;
-	padding: 6px 4px;
+	padding: 8px;
 	color: color-mix(in srgb, var(--MI_THEME-panel), var(--MI_THEME-fg) 70%); // opacityなど不透明度で表現するとレンダリングパフォーマンスに影響するので通常の色の混合で代用
 
 	&:not(:last-child) {
-		margin-right: 2px;
+		margin-right: 10px;
 	}
 
 	&:hover {

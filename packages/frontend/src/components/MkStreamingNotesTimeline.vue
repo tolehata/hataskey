@@ -1035,7 +1035,7 @@ defineExpose({
 
 /* ===== デッキUI時の投稿間区切り線 ===== */
 [data-deck-ui="on"] > div {
-	border-bottom: 1px dashed color-mix(in srgb, var(--MI_THEME-divider) 80%, transparent) !important;
+	border-bottom: 2px solid var(--MI_THEME-divider) !important;
 	padding-bottom: 8px !important;
 }
 [data-deck-ui="on"] > div:last-child {
