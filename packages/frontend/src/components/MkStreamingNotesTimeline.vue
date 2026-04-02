@@ -42,6 +42,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<component
 			:is="prefer.s.animation ? TransitionGroup : 'div'"
 			:class="[$style.notes, { [$style.noGap]: noGap, '_gaps': !noGap }]"
+			:data-deck-ui="isDeckUi ? 'on' : undefined"
 			:data-bubble="bubbleEnabled ? 'on' : undefined"
 			:data-spacing="noteSpacingValue"
 			:data-classic-spacing="classicSpacingEnabled ? 'on' : undefined"
@@ -1030,6 +1031,15 @@ defineExpose({
 		padding-top: 10px !important;
 		padding-bottom: 8px !important;
 	}
+}
+
+/* ===== デッキUI時の投稿間区切り線 ===== */
+[data-deck-ui="on"] > div {
+	border-bottom: 1px dashed color-mix(in srgb, var(--MI_THEME-divider) 80%, transparent) !important;
+	padding-bottom: 8px !important;
+}
+[data-deck-ui="on"] > div:last-child {
+	border-bottom: none !important;
 }
 
 /* ===== ノートアニメーション方向（グローバルクラス） ===== */
