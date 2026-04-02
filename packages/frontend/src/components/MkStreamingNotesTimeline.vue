@@ -846,7 +846,7 @@ defineExpose({
 <style lang="scss">
 /* ===== 吹き出しデザイン（data-bubble="on"時） ===== */
 [data-bubble="on"] {
-	background: var(--MI_THEME-bg) !important;
+	background: transparent !important;
 }
 [data-bubble="on"] > div {
 	border-bottom: none !important;
