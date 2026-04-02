@@ -933,12 +933,7 @@ defineExpose({
 	z-index: 2 !important;
 	gap: 4px !important;
 }
-/* リアクション枠内の各リアクションをコンパクトに */
-[data-bubble="on"] [data-reactions-footer] > div:first-child > * {
-	margin: 0 !important;
-	padding: 2px 4px !important;
-	font-size: 0.9em !important;
-}
+
 /* リアクション枠の突起（上辺中央、上向き） */
 [data-bubble="on"] [data-reactions-footer] > div:first-child::before {
 	content: '' !important;

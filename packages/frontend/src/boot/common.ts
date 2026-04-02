@@ -78,6 +78,15 @@ export async function common(createVue: () => Promise<App<Element>>) {
 		miLocalStorage.setItem('hata_ui_migrated', '1');
 	}
 
+	// 旗鯖: classicNoteSpacingを一度だけ強制ON
+	if (!miLocalStorage.getItem('hata_classic_spacing_migrated')) {
+		const { prefer } = await import('@/preferences.js');
+		if (!prefer.s['simpleUi.classicNoteSpacing']) {
+			prefer.commit('simpleUi.classicNoteSpacing', true);
+		}
+		miLocalStorage.setItem('hata_classic_spacing_migrated', '1');
+	}
+
 	if (instance.swPublickey && ('PushManager' in window) && $i && $i.token && showPushNotificationDialog == null) {
 		const { dispose } = popup(defineAsyncComponent(() => import('@/components/MkPushNotification.vue')), {}, {
 			closed: () => dispose(),
