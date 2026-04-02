@@ -1390,7 +1390,7 @@ function emitUpdReaction(emoji: string, delta: number) {
 }
 
 .bubbleBody {
-	background: color-mix(in srgb, var(--MI_THEME-accent) 5%, var(--MI_THEME-panel));
+	background: var(--MI_THEME-panel);
 	border-radius: 16px;
 	border: none;
 	padding: 12px;
@@ -1402,20 +1402,20 @@ function emitUpdReaction(emoji: string, delta: number) {
 		box-shadow: 0 3px 20px rgba(0,0,0,.12);
 	}
 
-	/* 中枠: flex container（本文を囲む） - 薄いテーマカラー+丸み */
+	/* 中枠: flex container（本文を囲む） - テーマカラー背景+丸み */
 	& > div {
-		background: var(--MI_THEME-bg);
+		background: color-mix(in srgb, var(--MI_THEME-accent) 5%, var(--MI_THEME-panel));
 		border-radius: 12px;
 		padding: 10px 12px;
 		margin-bottom: 0;
 	}
 
-
-	/* reactions+footer wrapper - 少し暗めのテーマカラー+丸み */
+	/* reactions+footer wrapper - 透明（枠なし） */
 	& > div:last-child {
-		background: var(--MI_THEME-bg);
-		border-radius: 12px;
-		padding: 8px 12px;
+		background: transparent;
+		border: none;
+		border-radius: 0;
+		padding: 8px 12px 4px;
 		margin-bottom: 0;
 	}
 
@@ -1425,17 +1425,18 @@ function emitUpdReaction(emoji: string, delta: number) {
 		background: transparent !important;
 		padding: 0 !important;
 	}
-	/* 吹き出し突起（右下） */
+
+	/* 吹き出し突起（アバターの真下） */
 	&::after {
 		content: '';
 		position: absolute;
 		bottom: -7px;
-		right: 16px;
+		left: 40px;
 		width: 0;
 		height: 0;
 		border-left: 7px solid transparent;
 		border-right: 7px solid transparent;
-		border-top: 7px solid color-mix(in srgb, var(--MI_THEME-accent) 5%, var(--MI_THEME-panel));
+		border-top: 7px solid var(--MI_THEME-panel);
 		z-index: 1;
 	}
 }
