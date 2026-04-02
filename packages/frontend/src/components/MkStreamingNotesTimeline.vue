@@ -846,7 +846,7 @@ defineExpose({
 <style lang="scss">
 /* ===== 吹き出しデザイン（data-bubble="on"時） ===== */
 [data-bubble="on"] {
-	background: transparent !important;
+	background: var(--MI_THEME-bg) !important;
 }
 [data-bubble="on"] > div {
 	border-bottom: none !important;
@@ -925,10 +925,17 @@ defineExpose({
 [data-bubble="on"] [data-reactions-footer] > div:first-child {
 	background: color-mix(in srgb, var(--MI_THEME-accent) 3%, var(--MI_THEME-panel)) !important;
 	border-radius: 10px !important;
-	padding: 6px 10px !important;
+	padding: 4px 8px !important;
 	border: 2px solid color-mix(in srgb, var(--MI_THEME-accent) 20%, transparent) !important;
 	position: relative !important;
 	z-index: 2 !important;
+	gap: 4px !important;
+}
+/* リアクション枠内の各リアクションをコンパクトに */
+[data-bubble="on"] [data-reactions-footer] > div:first-child > * {
+	margin: 0 !important;
+	padding: 2px 4px !important;
+	font-size: 0.9em !important;
 }
 /* リアクション枠の突起（上辺中央、上向き） */
 [data-bubble="on"] [data-reactions-footer] > div:first-child::before {
