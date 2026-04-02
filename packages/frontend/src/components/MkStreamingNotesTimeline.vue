@@ -844,20 +844,6 @@ defineExpose({
 
 <!-- 旗鯖独自: グローバルCSS（CSS Modulesバイパス） -->
 <style lang="scss">
-/* ===== 吹き出し無効化時のリセット ===== */
-:not([data-bubble="on"]) article {
-	background: var(--MI_THEME-panel) !important;
-}
-:not([data-bubble="on"]) article > div {
-	background: transparent !important;
-	box-shadow: none !important;
-	border-radius: 0 !important;
-	padding: 0 !important;
-}
-:not([data-bubble="on"]) article > div::after {
-	display: none !important;
-}
-
 /* ===== 吹き出しデザイン（data-bubble="on"時） ===== */
 [data-bubble="on"] {
 	background: transparent !important;
@@ -872,48 +858,115 @@ defineExpose({
 	background: transparent !important;
 	border-bottom: none !important;
 }
-/* .main 全体を1つの吹き出しとして表示 */
+
+/* 大枠: bubbleBody（article直下のdiv） */
+[data-bubble="on"] article > div {
+	background: var(--MI_THEME-panel) !important;
+	border-radius: 16px !important;
+	padding: 12px !important;
+	box-shadow: 0 2px 16px rgba(0,0,0,.06) !important;
+	transition: box-shadow .2s ease !important;
+	position: relative !important;
+	margin-bottom: 10px !important;
+}
+[data-bubble="on"] article > div:hover {
+	box-shadow: 0 3px 20px rgba(0,0,0,.12) !important;
+}
+
+/* 大枠には突起なし */
+[data-bubble="on"] article > div::after {
+	display: none !important;
+}
+
+/* flex container（アバター+main）を透明に */
+[data-bubble="on"] article > div > div {
+	background: transparent !important;
+	border: none !important;
+	box-shadow: none !important;
+	border-radius: 0 !important;
+	padding: 0 !important;
+}
+
+/* 本文エリア: .noteContent相当（.main内のcontainer div） */
+[data-bubble="on"] article > div > div > div:last-child > div[style*="container-type"] {
+	background: color-mix(in srgb, var(--MI_THEME-accent) 5%, var(--MI_THEME-panel)) !important;
+	border-radius: 12px !important;
+	padding: 10px 12px !important;
+	border: 1px solid color-mix(in srgb, var(--MI_THEME-accent) 15%, transparent) !important;
+	position: relative !important;
+	z-index: 1 !important;
+}
+
+/* 本文の吹き出し突起（アバター直下、上向き） */
+[data-bubble="on"] article > div > div > div:last-child > div[style*="container-type"]::after {
+	content: '' !important;
+	display: block !important;
+	position: absolute !important;
+	top: -6px !important;
+	left: 40px !important;
+	width: 0 !important;
+	height: 0 !important;
+	border-left: 6px solid transparent !important;
+	border-right: 6px solid transparent !important;
+	border-bottom: 6px solid color-mix(in srgb, var(--MI_THEME-accent) 5%, var(--MI_THEME-panel)) !important;
+	z-index: 1 !important;
+}
+
+/* リアクション+フッター wrapper */
 [data-bubble="on"] article > div > div:last-child {
-	background: color-mix(in srgb, var(--MI_THEME-panel) 85%, var(--MI_THEME-fg));
-	border-radius: 16px;
-	border: 1.5px solid color-mix(in srgb, var(--MI_THEME-divider) 80%, transparent);
-	padding: 12px 14px;
-	box-shadow: 0 1px 8px rgba(0,0,0,.06);
-	transition: box-shadow .2s ease, border-color .2s ease;
-	position: relative;
+	background: transparent !important;
+	padding: 4px 12px 2px !important;
 }
-[data-bubble="on"] article > div > div:last-child:hover {
-	box-shadow: 0 3px 16px rgba(0,0,0,.12);
-	border-color: color-mix(in srgb, var(--MI_THEME-accent) 30%, var(--MI_THEME-divider));
+
+/* リアクション枠の吹き出し */
+[data-bubble="on"] article > div > div:last-child > div:first-child {
+	background: color-mix(in srgb, var(--MI_THEME-accent) 3%, var(--MI_THEME-panel)) !important;
+	border-radius: 10px !important;
+	padding: 6px 10px !important;
+	border: 1px solid color-mix(in srgb, var(--MI_THEME-accent) 10%, transparent) !important;
+	position: relative !important;
+	z-index: 2 !important;
 }
-/* 吹き出し内のヘッダーとコンテンツの隙間を詰める */
-[data-bubble="on"] article > div > div:last-child > div {
-        margin-top: 0 !important;
+/* リアクション枠の突起（上辺中央、上向き） */
+[data-bubble="on"] article > div > div:last-child > div:first-child::before {
+	content: '' !important;
+	display: block !important;
+	position: absolute !important;
+	top: -5px !important;
+	left: 50% !important;
+	transform: translateX(-50%) !important;
+	width: 0 !important;
+	height: 0 !important;
+	border-left: 5px solid transparent !important;
+	border-right: 5px solid transparent !important;
+	border-bottom: 5px solid color-mix(in srgb, var(--MI_THEME-accent) 3%, var(--MI_THEME-panel)) !important;
+	z-index: 1 !important;
 }
-/* 吹き出し三角矢印（左上） */
-[data-bubble="on"] article > div > div:last-child::before {
-	content: '';
-	position: absolute;
-	top: -7px;
-	left: 16px;
-	width: 0;
-	height: 0;
-	border-left: 7px solid transparent;
-	border-right: 7px solid transparent;
-	border-bottom: 7px solid color-mix(in srgb, var(--MI_THEME-panel) 85%, var(--MI_THEME-fg));
-	z-index: 1;
+
+/* フッターボタン */
+[data-bubble="on"] footer {
+	margin: 4px 0 -8px !important;
 }
+[data-bubble="on"] footer button {
+	padding: 6px 4px !important;
+}
+[data-bubble="on"] footer button + button {
+	margin-left: 2px !important;
+}
+
 @media (max-width: 700px) {
 	[data-bubble="on"] article {
 		padding: 8px 6px 5px !important;
 	}
-	[data-bubble="on"] article > div > div:last-child {
-		padding: 10px 12px;
-		border-radius: 14px;
+	[data-bubble="on"] article > div {
+		padding: 10px !important;
+		border-radius: 14px !important;
 	}
-	[data-bubble="on"] article > div > div:last-child::before {
-		left: 12px;
-	}
+}
+
+/* ===== 吹き出し無効化時 ===== */
+:not([data-bubble="on"]) article {
+	background: var(--MI_THEME-panel) !important;
 }
 
 /* ===== クラシック投稿間隔 ===== */
