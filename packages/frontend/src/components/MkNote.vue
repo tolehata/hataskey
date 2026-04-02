@@ -70,7 +70,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<MkAvatar v-if="!prefer.s.hideAvatarsInNote" :class="[$style.avatar, prefer.s.useStickyIcons ? $style.useSticky : null, { [$style.avatarReplyTo]: appearNote.reply, [$style.showEl]: !appearNote.reply && (showEl && ['hideHeaderOnly', 'hideHeaderFloatBtn', 'hide'].includes(<string>prefer.s.displayHeaderNavBarWhenScroll)) && mainRouter.currentRoute.value.name === 'index', [$style.showElTab]: !appearNote.reply && (showEl && ['hideHeaderOnly', 'hideHeaderFloatBtn', 'hide'].includes(<string>prefer.s.displayHeaderNavBarWhenScroll)) && mainRouter.currentRoute.value.name !== 'index' }]" :user="appearNote.user" :link="false" :preview="!mock" noteClick @click="onAvatarClick"/>
 			<div :class="$style.main">
 				<MkNoteHeader :note="appearNote" :mini="true" @nameClick="openUserPanel"/>
-				<div v-if="prefer.s.showGapBodyOfTheNote" :style="prefer.s.showGapBodyOfTheNote ? 'margin-top: 4px;' : null" style="container-type: inline-size;">
+				<div v-if="prefer.s.showGapBodyOfTheNote" :class="$style.noteContent" :style="prefer.s.showGapBodyOfTheNote ? 'margin-top: 4px;' : null" style="container-type: inline-size;">
 					<MkInfo v-if="appearNote.deleteAt != null" warn :class="$style.deleteAt">
 						<I18n :src="i18n.ts.scheduledToDeleteOnX" tag="span">
 							<template #x>
@@ -182,7 +182,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</div>
 			</div>
 		</div>
-		<div v-if="!prefer.s.showGapBodyOfTheNote" style="container-type: inline-size;">
+		<div v-if="!prefer.s.showGapBodyOfTheNote" :class="$style.noteContent" style="container-type: inline-size;">
 			<MkInfo v-if="appearNote.deleteAt != null" warn :class="$style.deleteAt">
 				<I18n :src="i18n.ts.scheduledToDeleteOnX" tag="span">
 					<template #x>
@@ -1402,20 +1402,20 @@ function emitUpdReaction(emoji: string, delta: number) {
 		box-shadow: 0 3px 20px rgba(0,0,0,.12);
 	}
 
-	/* 中枠: flex container（本文を囲む） - テーマカラー背景+丸み */
+	/* flex container - 透明（ヘッダーに背景を付けない） */
 	& > div {
-		background: color-mix(in srgb, var(--MI_THEME-accent) 5%, var(--MI_THEME-panel));
-		border-radius: 12px;
-		padding: 10px 12px;
+		background: transparent;
+		border-radius: 0;
+		padding: 0;
 		margin-bottom: 0;
 	}
 
-	/* reactions+footer wrapper - 透明（枠なし） */
+	/* reactions+footer wrapper - コンパクト */
 	& > div:last-child {
 		background: transparent;
 		border: none;
 		border-radius: 0;
-		padding: 8px 12px 4px;
+		padding: 4px 12px 2px;
 		margin-bottom: 0;
 	}
 
@@ -1439,6 +1439,13 @@ function emitUpdReaction(emoji: string, delta: number) {
 		border-top: 7px solid var(--MI_THEME-panel);
 		z-index: 1;
 	}
+}
+
+/* 本文エリアのみテーマカラー背景 */
+.noteContent {
+	background: color-mix(in srgb, var(--MI_THEME-accent) 5%, var(--MI_THEME-panel));
+	border-radius: 12px;
+	padding: 10px 12px;
 }
 
 .cw {
@@ -1547,12 +1554,12 @@ function emitUpdReaction(emoji: string, delta: number) {
 }
 
 .footer {
-	margin: 7px 0 -14px;
+	margin: 4px 0 -8px;
 }
 
 .footerButton {
 	margin: 0;
-	padding: 8px 4px;
+	padding: 6px 4px;
 	color: color-mix(in srgb, var(--MI_THEME-panel), var(--MI_THEME-fg) 70%); // opacityなど不透明度で表現するとレンダリングパフォーマンスに影響するので通常の色の混合で代用
 
 	&:not(:last-child) {

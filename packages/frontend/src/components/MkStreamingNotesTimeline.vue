@@ -844,6 +844,20 @@ defineExpose({
 
 <!-- 旗鯖独自: グローバルCSS（CSS Modulesバイパス） -->
 <style lang="scss">
+/* ===== 吹き出し無効化時のリセット ===== */
+:not([data-bubble="on"]) article {
+	background: var(--MI_THEME-panel) !important;
+}
+:not([data-bubble="on"]) article > div {
+	background: transparent !important;
+	box-shadow: none !important;
+	border-radius: 0 !important;
+	padding: 0 !important;
+}
+:not([data-bubble="on"]) article > div::after {
+	display: none !important;
+}
+
 /* ===== 吹き出しデザイン（data-bubble="on"時） ===== */
 [data-bubble="on"] {
 	background: transparent !important;
