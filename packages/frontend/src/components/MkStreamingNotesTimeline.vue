@@ -862,7 +862,7 @@ defineExpose({
 /* 大枠: bubbleBody（article直下のdiv） */
 [data-bubble="on"] article > div {
 	background: var(--MI_THEME-panel) !important;
-	border-radius: 16px !important;
+	border-radius: 20px !important;
 	padding: 12px !important;
 	box-shadow: 0 2px 16px rgba(0,0,0,.06) !important;
 	border: 2px solid color-mix(in srgb, var(--MI_THEME-divider) 60%, transparent) !important;
@@ -964,7 +964,7 @@ defineExpose({
 	}
 	[data-bubble="on"] article > div {
 		padding: 10px !important;
-		border-radius: 14px !important;
+		border-radius: 18px !important;
 	}
 }
 
@@ -979,6 +979,14 @@ defineExpose({
 }
 [data-classic-spacing="on"] > div {
 	margin-bottom: 0 !important;
+}
+[data-classic-spacing="on"] > div > div {
+	border-bottom: 1px solid var(--MI_THEME-divider) !important;
+	padding-bottom: 8px !important;
+	margin-bottom: 8px !important;
+}
+[data-classic-spacing="on"] > div > div:last-child {
+	border-bottom: none !important;
 }
 
 /* ===== ノート間隔: compact ===== */
