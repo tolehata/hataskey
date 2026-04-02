@@ -865,6 +865,7 @@ defineExpose({
 	border-radius: 16px !important;
 	padding: 12px !important;
 	box-shadow: 0 2px 16px rgba(0,0,0,.06) !important;
+	border: 2px solid color-mix(in srgb, var(--MI_THEME-divider) 60%, transparent) !important;
 	transition: box-shadow .2s ease !important;
 	position: relative !important;
 	margin-bottom: 10px !important;
@@ -892,7 +893,7 @@ defineExpose({
 	background: color-mix(in srgb, var(--MI_THEME-accent) 5%, var(--MI_THEME-panel)) !important;
 	border-radius: 12px !important;
 	padding: 10px 12px !important;
-	border: 1.5px solid color-mix(in srgb, var(--MI_THEME-accent) 20%, transparent) !important;
+	border: 2px solid color-mix(in srgb, var(--MI_THEME-accent) 25%, transparent) !important;
 	position: relative !important;
 	z-index: 1 !important;
 	margin-top: 4px !important;
@@ -910,7 +911,7 @@ defineExpose({
 	border-left: 6px solid transparent !important;
 	border-right: 6px solid transparent !important;
 	border-bottom: 6px solid color-mix(in srgb, var(--MI_THEME-accent) 5%, var(--MI_THEME-panel)) !important;
-	filter: drop-shadow(0 -1px 0 color-mix(in srgb, var(--MI_THEME-accent) 20%, transparent)) !important;
+	filter: drop-shadow(0 -1.5px 0 color-mix(in srgb, var(--MI_THEME-accent) 25%, transparent)) !important;
 	z-index: 1 !important;
 }
 
@@ -925,7 +926,7 @@ defineExpose({
 	background: color-mix(in srgb, var(--MI_THEME-accent) 3%, var(--MI_THEME-panel)) !important;
 	border-radius: 10px !important;
 	padding: 6px 10px !important;
-	border: 1.5px solid color-mix(in srgb, var(--MI_THEME-accent) 15%, transparent) !important;
+	border: 2px solid color-mix(in srgb, var(--MI_THEME-accent) 20%, transparent) !important;
 	position: relative !important;
 	z-index: 2 !important;
 }
@@ -942,7 +943,7 @@ defineExpose({
 	border-left: 5px solid transparent !important;
 	border-right: 5px solid transparent !important;
 	border-bottom: 5px solid color-mix(in srgb, var(--MI_THEME-accent) 3%, var(--MI_THEME-panel)) !important;
-	filter: drop-shadow(0 -1px 0 color-mix(in srgb, var(--MI_THEME-accent) 10%, transparent)) !important;
+	filter: drop-shadow(0 -1.5px 0 color-mix(in srgb, var(--MI_THEME-accent) 20%, transparent)) !important;
 	z-index: 1 !important;
 }
 
