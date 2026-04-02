@@ -849,9 +849,11 @@ defineExpose({
 	background: transparent !important;
 }
 [data-bubble="on"] > div {
-	border-bottom: none !important;
+	border: none !important;
 	background: transparent !important;
 	border-radius: 0 !important;
+	box-shadow: none !important;
+	outline: none !important;
 }
 [data-bubble="on"] article {
 	padding: 10px 10px 6px !important;
