@@ -44,6 +44,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			:class="[$style.notes, { [$style.noGap]: noGap, '_gaps': !noGap }]"
 			:data-bubble="bubbleEnabled ? 'on' : undefined"
 			:data-spacing="noteSpacingValue"
+			:data-classic-spacing="classicSpacingEnabled ? 'on' : undefined"
 			:data-anim-dir="animDirValue"
 			:enterActiveClass="$style.transition_x_enterActive"
 			:leaveActiveClass="$style.transition_x_leaveActive"
@@ -184,10 +185,15 @@ const noteSpacingValue = computed(() => prefer.r['simpleUi.noteSpacing']?.value 
 
 // 旗鯖独自: 吹き出し有効判定（デッキUIで無効化設定時はoff）
 const isDeckUi = miLocalStorage.getItem('ui') === 'deck';
+const isDefaultUi = miLocalStorage.getItem('ui') === 'default';
 const bubbleEnabled = computed(() => {
     if (isDeckUi && prefer.r['simpleUi.disableBubbleInDeck']?.value) return false;
+    if (isDefaultUi && prefer.r['simpleUi.disableBubbleInDefault']?.value) return false;
     return true;
 });
+
+// 旗鯖独自: クラシック投稿間隔
+const classicSpacingEnabled = computed(() => prefer.r['simpleUi.classicNoteSpacing']?.value ?? false);
 
 // 旗鯖独自: アニメーション方向（リアクティブ — data-anim-dir属性で制御）
 const animDir = computed(() => prefer.r.timelineAnimationDirection?.value ?? 'left');
@@ -894,6 +900,14 @@ defineExpose({
 	[data-bubble="on"] article > div > div:last-child::before {
 		left: 12px;
 	}
+}
+
+/* ===== クラシック投稿間隔 ===== */
+[data-classic-spacing="on"] {
+	gap: 0 !important;
+}
+[data-classic-spacing="on"] > div {
+	margin-bottom: 0 !important;
 }
 
 /* ===== ノート間隔: compact ===== */

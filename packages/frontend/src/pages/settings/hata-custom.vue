@@ -148,6 +148,17 @@
                 <template #label>デッキUIで吹き出し表示を無効にする</template>
                 <template #caption>ONにするとデッキUIではタイムラインの吹き出しデザインが適用されず、標準のカード表示になります。</template>
             </MkSwitch>
+            <MkSwitch v-model="disableBubbleInDefault">
+                <template #label>Misskey UIで吹き出し表示を無効にする</template>
+                <template #caption>ONにするとMisskey UI（デフォルトUI）ではタイムラインの吹き出しデザインが適用されず、標準のカード表示になります。</template>
+            </MkSwitch>
+        </FormSection>
+        <FormSection>
+            <template #label>投稿間隔</template>
+            <MkSwitch v-model="classicNoteSpacing">
+                <template #label>従来のMisskey風の投稿間隔を使用する</template>
+                <template #caption>ONにするとタイムラインの投稿間隔が従来のMisskeyと同じ間隔になります。</template>
+            </MkSwitch>
         </FormSection>
         </template>
     </div>
@@ -227,6 +238,8 @@ const glassEffect = prefer.model('simpleUi.glassEffect');
 const directProfile = prefer.model('simpleUi.directProfile');
 const noteSpacing = prefer.model('simpleUi.noteSpacing');
 const disableBubbleInDeck = prefer.model('simpleUi.disableBubbleInDeck');
+const disableBubbleInDefault = prefer.model('simpleUi.disableBubbleInDefault');
+const classicNoteSpacing = prefer.model('simpleUi.classicNoteSpacing');
 
 const spacingOptions = [
     { value: 'compact', label: '詰める', previewMargin: '2px 0' },
