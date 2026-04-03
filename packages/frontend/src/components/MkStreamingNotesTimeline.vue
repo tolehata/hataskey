@@ -191,6 +191,8 @@ const noteSpacingValue = computed(() => {
 const isDeckUi = miLocalStorage.getItem('ui') === 'deck';
 const isDefaultUi = miLocalStorage.getItem('ui') === 'default';
 const bubbleEnabled = computed(() => {
+    // チャンネルTLでは強制的に吹き出しON
+    if (props.src === 'channel') return true;
     if (isDeckUi && prefer.r['simpleUi.disableBubbleInDeck']?.value) return false;
     if (isDefaultUi && prefer.r['simpleUi.disableBubbleInDefault']?.value) return false;
     return true;

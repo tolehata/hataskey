@@ -122,6 +122,13 @@
         </template>
         <template v-if="activeCat === 'accessibility'">
         <FormSection first>
+            <template #label>投稿間隔</template>
+            <MkSwitch v-model="classicNoteSpacing">
+                <template #label>従来のMisskey風の投稿間隔を使用する</template>
+                <template #caption>ONにするとタイムラインの投稿間隔が従来のMisskeyと同じ間隔になります。</template>
+            </MkSwitch>
+        </FormSection>
+        <FormSection>
             <template #label>表示効果</template>
             <MkSwitch v-model="glassEffect">
                 <template #label>すりガラス効果を有効にする</template>
@@ -151,13 +158,6 @@
             <MkSwitch v-model="disableBubbleInDefault">
                 <template #label>Misskey UIで吹き出し表示を無効にする</template>
                 <template #caption>ONにするとMisskey UI（デフォルトUI）ではタイムラインの吹き出しデザインが適用されず、標準のカード表示になります。</template>
-            </MkSwitch>
-        </FormSection>
-        <FormSection>
-            <template #label>投稿間隔</template>
-            <MkSwitch v-model="classicNoteSpacing">
-                <template #label>従来のMisskey風の投稿間隔を使用する</template>
-                <template #caption>ONにするとタイムラインの投稿間隔が従来のMisskeyと同じ間隔になります。</template>
             </MkSwitch>
         </FormSection>
         </template>
