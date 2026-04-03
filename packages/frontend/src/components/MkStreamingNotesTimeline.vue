@@ -905,19 +905,19 @@ defineExpose({
 	margin-top: 4px !important;
 }
 
-/* 本文の吹き出し突起（アバター直下、上向き） */
+/* 本文の吹き出し突起（左向き、アイコンが呟いているように） */
 [data-bubble="on"] [data-note-content]::after {
 	content: '' !important;
 	display: block !important;
 	position: absolute !important;
-	top: -6px !important;
-	left: 40px !important;
+	top: 12px !important;
+	left: -6px !important;
 	width: 0 !important;
 	height: 0 !important;
-	border-left: 6px solid transparent !important;
-	border-right: 6px solid transparent !important;
-	border-bottom: 6px solid color-mix(in srgb, var(--MI_THEME-accent) 5%, var(--MI_THEME-panel)) !important;
-	filter: drop-shadow(0 -1.5px 0 color-mix(in srgb, var(--MI_THEME-accent) 25%, transparent)) !important;
+	border-top: 6px solid transparent !important;
+	border-bottom: 6px solid transparent !important;
+	border-right: 6px solid color-mix(in srgb, var(--MI_THEME-accent) 5%, var(--MI_THEME-panel)) !important;
+	filter: drop-shadow(-1.5px 0 0 color-mix(in srgb, var(--MI_THEME-accent) 25%, transparent)) !important;
 	z-index: 1 !important;
 }
 
@@ -925,34 +925,6 @@ defineExpose({
 [data-bubble="on"] [data-reactions-footer] {
 	background: transparent !important;
 	padding: 4px 12px 2px !important;
-}
-
-/* リアクション枠の吹き出し */
-[data-bubble="on"] [data-reactions-footer] > div:first-child {
-	background: color-mix(in srgb, var(--MI_THEME-accent) 3%, var(--MI_THEME-panel)) !important;
-	border-radius: 10px !important;
-	padding: 4px 8px !important;
-	border: 2px solid color-mix(in srgb, var(--MI_THEME-accent) 20%, transparent) !important;
-	position: relative !important;
-	z-index: 2 !important;
-	gap: 4px !important;
-}
-
-/* リアクション枠の突起（上辺中央、上向き） */
-[data-bubble="on"] [data-reactions-footer] > div:first-child::before {
-	content: '' !important;
-	display: block !important;
-	position: absolute !important;
-	top: -5px !important;
-	left: 50% !important;
-	transform: translateX(-50%) !important;
-	width: 0 !important;
-	height: 0 !important;
-	border-left: 5px solid transparent !important;
-	border-right: 5px solid transparent !important;
-	border-bottom: 5px solid color-mix(in srgb, var(--MI_THEME-accent) 3%, var(--MI_THEME-panel)) !important;
-	filter: drop-shadow(0 -1.5px 0 color-mix(in srgb, var(--MI_THEME-accent) 20%, transparent)) !important;
-	z-index: 1 !important;
 }
 
 /* フッターボタン */
