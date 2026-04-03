@@ -10,10 +10,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<img :class="$style.avatarImg" :src="note.user.avatarUrl" :alt="note.user.username"/>
 	</MkA>
 	<div :class="$style.main">
-		<!-- 吹き出し矢印 -->
-		<div :class="$style.bubbleArrow"></div>
-		<!-- 吹き出し本体 -->
-		<div :class="$style.bubbleBody">
+		<div>
 			<div :class="$style.header">
 				<div :class="$style.headerBody">
 					<div :class="$style.headerTop">
@@ -728,32 +725,13 @@ defineExpose({
 }
 
 .bubbleArrow {
-	position: absolute;
-	top: -7px;
-	left: 16px;
-	width: 0;
-	height: 0;
-	border-left: 7px solid transparent;
-	border-right: 7px solid transparent;
-	border-bottom: 7px solid color-mix(in srgb, var(--MI_THEME-panel) 85%, var(--MI_THEME-fg));
-	z-index: 1;
+	display: none;
 }
 
 .bubbleBody {
-	background: color-mix(in srgb, var(--MI_THEME-panel) 85%, var(--MI_THEME-fg));
-	border-radius: 16px;
-	border: 1.5px solid color-mix(in srgb, var(--MI_THEME-divider) 80%, transparent);
-	padding: 12px 14px;
-	box-shadow: 0 1px 8px rgba(0,0,0,.06);
-	transition: box-shadow .2s ease, border-color .2s ease;
 	display: flex;
 	flex-direction: column;
 	gap: 8px;
-
-	&:hover {
-		box-shadow: 0 3px 16px rgba(0,0,0,.12);
-		border-color: color-mix(in srgb, var(--MI_THEME-accent) 30%, var(--MI_THEME-divider));
-	}
 }
 
 .header {
@@ -1022,13 +1000,6 @@ defineExpose({
 	.avatarImg {
 		width: 36px;
 		height: 36px;
-	}
-	.bubbleBody {
-		padding: 10px 12px;
-		border-radius: 14px;
-	}
-	.bubbleArrow {
-		top: 10px;
 	}
 }
 
