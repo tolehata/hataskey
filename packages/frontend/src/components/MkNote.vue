@@ -1145,7 +1145,7 @@ function emitUpdReaction(emoji: string, delta: number) {
 .root {
 	position: relative;
 	font-size: 1.05em;
-	overflow: visible;
+	overflow: clip;
 	margin-bottom: 12px;
 	&::after {
 		content: "";
