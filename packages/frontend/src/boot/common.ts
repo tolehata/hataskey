@@ -79,6 +79,15 @@ export async function common(createVue: () => Promise<App<Element>>) {
 	}
 
 	// 旗鯖: classicNoteSpacingを一度だけ強制ON
+	// 旗鯖: showGapBodyOfTheNoteを一度だけ強制ON
+	if (!miLocalStorage.getItem('hata_gap_body_migrated')) {
+		const { prefer: preferGap } = await import('@/preferences.js');
+		if (!preferGap.s.showGapBodyOfTheNote) {
+			preferGap.commit('showGapBodyOfTheNote', true);
+		}
+		miLocalStorage.setItem('hata_gap_body_migrated', '1');
+	}
+
 	if (!miLocalStorage.getItem('hata_classic_spacing_migrated')) {
 		const { prefer } = await import('@/preferences.js');
 		if (!prefer.s['simpleUi.classicNoteSpacing']) {
