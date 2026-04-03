@@ -559,7 +559,7 @@ export const PREF_DEF = definePreferences({
 		default: true,
 	},
 	showGapBodyOfTheNote: {
-		default: false,
+		default: true,
 	},
 	showReplyButtonInNoteFooter: {
 		default: true,
