@@ -685,7 +685,7 @@ defineExpose({
 
 .new2 {
 	position: sticky;
-	top: calc(var(--MI-stickyTop, 0px) + 8px);
+	top: calc(var(--MI-stickyTop, 0px) + 60px);
 	z-index: 1000;
 	width: 100%;
 	margin: calc(-0.675em - 8px) 0;
