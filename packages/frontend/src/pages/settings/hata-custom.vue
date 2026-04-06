@@ -204,7 +204,7 @@ function moveArr(arr: any[], idx: number, dir: number) {
 // ===== 旗鯖全体 =====
 const showHashtagButtonInPostForm = useLSBool('showHashtagButtonInPostForm', true);
 const showDrawingButtonInPostForm = useLSBool('showDrawingButtonInPostForm', true);
-const showLoginBonusPopup = useLSBool('showLoginBonusPopup', true);
+const showLoginBonusPopup = prefer.model('showLoginBonusPopup');
 const timelineAnimationDirection = prefer.model('timelineAnimationDirection');
 const timelineAnimationOptions = [
     { value: 'top', label: '上からスライド' }, { value: 'left', label: '左からスライド' },
