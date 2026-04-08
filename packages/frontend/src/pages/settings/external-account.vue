@@ -200,7 +200,7 @@ async function startMiAuth() {
 	// 接続先に応じた免責事項ポップアップを表示
 	if (isHataSaba(host)) {
 		// 旗鯖同士の場合
-		const { canceled } = await os.actions({
+		const { canceled, result } = await os.actions({
 			type: 'info',
 			title: '旗鯖間アカウント連携',
 			text: 'お使いの別の旗鯖アカウントへ接続します。\n\n旗鯖同士のご利用の場合は利用規約とプライバシーポリシーは旗鯖と同様の規約が適用されます。',
@@ -209,10 +209,10 @@ async function startMiAuth() {
 				{ value: 'cancel', text: 'キャンセル' },
 			],
 		});
-		if (canceled) return;
+		if (canceled || result === 'cancel') return;
 	} else {
 		// シュリンピア等の外部サーバーの場合
-		const { canceled } = await os.actions({
+		const { canceled, result } = await os.actions({
 			type: 'warning',
 			title: '外部サーバー連携の免責事項',
 			text: `この機能を有効にして ${host} にアクセスし、いかなる損害を被ったとしても旗鯖は責任を負いません。\n\nまた、外部アカウントを使用し、外部サーバーに対して行った行為は外部サーバーの各種規約が適用され、旗鯖の利用規約・プライバシーポリシーの適用外となります。\n\n連携前に、接続先の各種利用規約をご確認ください。`,
@@ -221,7 +221,7 @@ async function startMiAuth() {
 				{ value: 'cancel', text: '今はやめておく' },
 			],
 		});
-		if (canceled) return;
+		if (canceled || result === 'cancel') return;
 	}
 
 	linking.value = true;
