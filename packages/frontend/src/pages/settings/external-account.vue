@@ -4,32 +4,36 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 
 <template>
-<SearchMarker path="/settings/external-account" label="シュリンピア連携" :keywords="['external', 'shrimpia', 'ohtl', 'oltl', 'timeline']" icon="ti ti-link">
+<SearchMarker path="/settings/external-account" label="外部アカウント連携" :keywords="['external', 'shrimpia', 'ohtl', 'oltl', 'timeline', '外部']" icon="ti ti-link">
 	<div class="_gaps_m">
 		<FormSection first>
-			<template #label>🦐 シュリンピア連携</template>
+			<template #label><i class="ti ti-link"></i> 外部アカウント連携</template>
 
 			<div class="_gaps_s">
 				<MkInfo>
-					Shrimpiaと連携するとシュリンピアのタイムラインを表示したり、ノートの作成・リアクション・リプライ・リノートができます。
+					外部サーバーと連携すると、外部サーバーのタイムラインを表示したり、ノートの作成・リアクション・リプライ・リノートができます。
 				</MkInfo>
 
 				<MkSwitch :modelValue="externalEnabled" @update:modelValue="onToggleEnabled">
-					<template #label>シュリンピア連携を有効にする</template>
+					<template #label>外部アカウント連携を有効にする</template>
 				</MkSwitch>
 			</div>
 		</FormSection>
 
 		<FormSection v-if="externalEnabled">
-			<template #label>シュリンピアアカウント連携</template>
+			<template #label>アカウント連携</template>
 
 			<div v-if="!isLinked" class="_gaps_s">
-				<div style="font-size: 0.9em; opacity: 0.8;">
-					シュリンピアアカウントへMiAuthを使用して安全に認証します。
+				<!-- 接続先選択 -->
+				<div style="font-size: 0.9em; opacity: 0.8; margin-bottom: 4px;">
+					接続先サーバーを選択してください。
 				</div>
+				<MkSelect v-model="selectedHost" :items="hostOptions">
+					<template #label>接続先</template>
+				</MkSelect>
 
-				<MkButton :disabled="linking" primary @click="startMiAuth">
-					<i class="ti ti-link"></i> {{ linking ? 'シュリンピアと連携中...' : 'シュリンピアアカウントと連携' }}
+				<MkButton :disabled="linking || !selectedHost" primary @click="startMiAuth">
+					<i class="ti ti-link"></i> {{ linking ? '連携中...' : '外部アカウントと連携' }}
 				</MkButton>
 			</div>
 
@@ -55,23 +59,23 @@ SPDX-License-Identifier: AGPL-3.0-only
 		</FormSection>
 
 		<FormSection v-if="externalEnabled && isLinked">
-			<template #label>シュリンピアタイムライン設定</template>
+			<template #label>外部タイムライン設定</template>
 
 			<div class="_gaps_s">
 				<MkSwitch v-model="enableOHTL">
-					<template #label>🦐 外部ホームタイムライン (OHTL) を表示</template>
-					<template #caption>シュリンピアでフォローしているユーザーのノートを表示</template>
+					<template #label><i class="ti ti-home"></i> 外部ホームタイムライン (OHTL) を表示</template>
+					<template #caption>連携先でフォローしているユーザーのノートを表示</template>
 				</MkSwitch>
 
 				<MkSwitch v-model="enableOLTL">
-					<template #label>🦐 外部ローカルタイムライン (OLTL) を表示</template>
-					<template #caption>シュリンピアのローカルタイムラインを表示</template>
+					<template #label><i class="ti ti-planet"></i> 外部ローカルタイムライン (OLTL) を表示</template>
+					<template #caption>連携先のローカルタイムラインを表示</template>
 				</MkSwitch>
 			</div>
 		</FormSection>
 
 		<FormSection v-if="externalEnabled && isLinked">
-			<template #label>🦐 外部TLリアクション お気に入り絵文字</template>
+			<template #label><i class="ti ti-star"></i> 外部TLリアクション お気に入り絵文字</template>
 			<div class="_gaps_s">
 				<div style="font-size: 0.9em; opacity: 0.8; margin-bottom: 8px;">
 					外部TLのリアクションピッカーで表示されるお気に入り絵文字を管理します。<br/>
@@ -114,11 +118,13 @@ import { ref, computed, defineAsyncComponent, onMounted } from 'vue';
 import MkSwitch from '@/components/MkSwitch.vue';
 import MkButton from '@/components/MkButton.vue';
 import MkInfo from '@/components/MkInfo.vue';
+import MkSelect from '@/components/MkSelect.vue';
 import FormSection from '@/components/form/section.vue';
 import { prefer } from '@/preferences.js';
 import { definePage } from '@/page.js';
 import * as os from '@/os.js';
 import { genId } from '@/utility/id.js';
+import { hostname } from '@@/js/config.js';
 import { getExternalFavoriteEmojis, setExternalFavoriteEmojis, removeExternalFavoriteEmoji, getExternalCustomEmojis } from '@/utility/external-api.js';
 import type { ExternalCustomEmoji } from '@/utility/external-api.js';
 
@@ -129,6 +135,7 @@ const externalHost = prefer.model('external.host');
 const externalToken = prefer.model('external.token');
 const externalUserId = prefer.model('external.userId');
 const externalUsername = prefer.model('external.username');
+const externalAvatarUrl = prefer.model('external.avatarUrl');
 const enableOHTL = prefer.model('external.enableOHTL');
 const enableOLTL = prefer.model('external.enableOLTL');
 
@@ -138,64 +145,102 @@ const isLinked = computed(() => {
 	return externalToken.value != null && externalUserId.value != null;
 });
 
-// ===== 有効化トグル（免責ポップアップ付き） =====
+// ===== 接続先候補 =====
+// 現在のインスタンスに応じて、接続先候補を動的に生成
+const HATACHI_3 = 'o.hata.blog';
+const HATACHI_2 = 'misskey.hatachanoima.net';
+const SHRIMPIA = 'mk.shrimpia.network';
+
+const isHatachi3 = computed(() => hostname === HATACHI_3);
+const isHatachi2 = computed(() => hostname === HATACHI_2);
+
+const hostOptions = computed(() => {
+	const options: { value: string; label: string }[] = [];
+	const currentHost = hostname;
+
+	// 旗池2丁目（自分自身でなければ追加）
+	if (currentHost !== HATACHI_2) {
+		options.push({ value: HATACHI_2, label: `旗池2丁目 (${HATACHI_2})` });
+	}
+
+	// 旗池3丁目（自分自身でなければ追加）
+	if (currentHost !== HATACHI_3) {
+		options.push({ value: HATACHI_3, label: `旗池3丁目 (${HATACHI_3})` });
+	}
+
+	// シュリンピアは常に選択肢に含める（自分自身でなければ）
+	if (currentHost !== SHRIMPIA) {
+		options.push({ value: SHRIMPIA, label: `シュリンピア (${SHRIMPIA})` });
+	}
+
+	return options;
+});
+
+const selectedHost = ref(hostOptions.value.length > 0 ? hostOptions.value[0].value : '');
+
+// 選択中のホストが旗鯖かどうか
+function isHataSaba(host: string): boolean {
+	return host === HATACHI_2 || host === HATACHI_3;
+}
+
+// ===== 有効化トグル =====
 async function onToggleEnabled(newValue: boolean) {
 	if (newValue) {
-		// 有効にする場合は免責事項を表示
-		const { canceled } = await os.actions({
-			type: 'warning',
-			title: 'シュリンピア連携の免責事項',
-			text: 'この機能を有効にしてシュリンピアにアクセスし、いかなる損害を被ったとしても旗鯖は責任を負いません。\n\nまた、シュリンピアアカウントを使用し、シュリンピアに対して行った行為はシュリンピアの各種規約が適用され、旗鯖の利用規約・プライバシーポリシーの適用外となります。\n\n連携前に、シュリンピアの各種利用規約をご確認ください。',
-			actions: [
-				{
-					value: 'ok',
-					text: 'わかりました（このボタンを押すと、機能が有効になります）',
-					primary: true,
-				},
-				{
-					value: 'cancel',
-					text: '今はやめておく',
-				},
-			],
-		});
-
-		if (canceled) return;
-
 		externalEnabled.value = true;
 	} else {
 		externalEnabled.value = false;
 	}
 }
 
+// ===== MiAuth =====
 async function startMiAuth() {
+	const host = selectedHost.value;
+	if (!host) return;
+
+	// 接続先に応じた免責事項ポップアップを表示
+	if (isHataSaba(host)) {
+		// 旗鯖同士の場合
+		const { canceled } = await os.actions({
+			type: 'info',
+			title: '旗鯖間アカウント連携',
+			text: 'お使いの別の旗鯖アカウントへ接続します。\n\n旗鯖同士のご利用の場合は利用規約とプライバシーポリシーは旗鯖と同様の規約が適用されます。',
+			actions: [
+				{ value: 'ok', text: '連携を開始する', primary: true },
+				{ value: 'cancel', text: 'キャンセル' },
+			],
+		});
+		if (canceled) return;
+	} else {
+		// シュリンピア等の外部サーバーの場合
+		const { canceled } = await os.actions({
+			type: 'warning',
+			title: '外部サーバー連携の免責事項',
+			text: `この機能を有効にして ${host} にアクセスし、いかなる損害を被ったとしても旗鯖は責任を負いません。\n\nまた、外部アカウントを使用し、外部サーバーに対して行った行為は外部サーバーの各種規約が適用され、旗鯖の利用規約・プライバシーポリシーの適用外となります。\n\n連携前に、接続先の各種利用規約をご確認ください。`,
+			actions: [
+				{ value: 'ok', text: 'わかりました（連携を開始する）', primary: true },
+				{ value: 'cancel', text: '今はやめておく' },
+			],
+		});
+		if (canceled) return;
+	}
+
 	linking.value = true;
 
 	try {
-		// MiAuth用のセッションIDを生成
 		const sessionId = genId();
-		
-		// ホスト名は固定でシュリンピア
-		const host = 'mk.shrimpia.network';
 		const callbackUrl = `${window.location.origin}/settings/external-account?miauth=${sessionId}`;
 		const permissions = ['read:account', 'read:following', 'write:notes', 'write:reactions', 'read:notifications'].join(',');
-		
+
 		const miAuthUrl = `https://${host}/miauth/${sessionId}?name=${encodeURIComponent('旗鯖連携')}&callback=${encodeURIComponent(callbackUrl)}&permission=${permissions}`;
 
-		// セッションIDをローカルストレージに保存
 		localStorage.setItem('miauth_session', sessionId);
 		localStorage.setItem('miauth_host', host);
 
-		// ホスト名を保存
 		externalHost.value = host;
-
-		// MiAuth画面を開く
 		window.location.href = miAuthUrl;
 	} catch (err) {
 		console.error('MiAuth error:', err);
-		os.alert({
-			type: 'error',
-			text: '連携の開始に失敗しました',
-		});
+		os.alert({ type: 'error', text: '連携の開始に失敗しました' });
 		linking.value = false;
 	}
 }
@@ -203,7 +248,7 @@ async function startMiAuth() {
 async function unlinkAccount() {
 	const { canceled } = await os.confirm({
 		type: 'warning',
-		text: 'シュリンピアとの連携を解除しますか？',
+		text: '外部アカウントとの連携を解除しますか？',
 	});
 
 	if (canceled) return;
@@ -211,6 +256,7 @@ async function unlinkAccount() {
 	externalToken.value = null;
 	externalUserId.value = null;
 	externalUsername.value = null;
+	externalAvatarUrl.value = null;
 
 	os.success();
 }
@@ -260,7 +306,7 @@ function addExtFavEmojiFromPicker() {
 async function handleMiAuthCallback() {
 	const url = new URL(window.location.href);
 	const sessionParam = url.searchParams.get('miauth');
-	
+
 	if (!sessionParam) return;
 
 	const savedSession = localStorage.getItem('miauth_session');
@@ -271,12 +317,10 @@ async function handleMiAuthCallback() {
 		return;
 	}
 
-	// URLからパラメータを削除
 	url.searchParams.delete('miauth');
 	window.history.replaceState({}, '', url.toString());
 
 	try {
-		// MiAuthトークンを取得
 		const res = await fetch(`https://${savedHost}/api/miauth/${savedSession}/check`, {
 			method: 'POST',
 		});
@@ -291,27 +335,22 @@ async function handleMiAuthCallback() {
 			throw new Error('Invalid MiAuth response');
 		}
 
-		// トークンとユーザー情報を保存
 		externalHost.value = savedHost;
 		externalToken.value = data.token;
 		externalUserId.value = data.user.id;
 		externalUsername.value = data.user.username;
+		externalAvatarUrl.value = data.user.avatarUrl ?? null;
 
-		// ローカルストレージをクリーンアップ
 		localStorage.removeItem('miauth_session');
 		localStorage.removeItem('miauth_host');
 
 		os.success();
 	} catch (err) {
 		console.error('MiAuth callback error:', err);
-		os.alert({
-			type: 'error',
-			text: '連携の完了に失敗しました',
-		});
+		os.alert({ type: 'error', text: '連携の完了に失敗しました' });
 	}
 }
 
-// コンポーネントマウント時にコールバックを処理 & 絵文字をロード
 onMounted(async () => {
 	handleMiAuthCallback();
 	loadExtFavEmojis();
@@ -325,7 +364,7 @@ onMounted(async () => {
 });
 
 definePage({
-	title: 'シュリンピア連携',
+	title: '外部アカウント連携',
 	icon: 'ti ti-link',
 });
 </script>

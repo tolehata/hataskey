@@ -6,17 +6,17 @@ SPDX-License-Identifier: AGPL-3.0-only
 <template>
 <article :class="$style.root">
 	<!-- アバター（吹き出しの外） -->
-	<MkA v-if="note.user" :class="$style.avatar" :to="`https://${host}/@${note.user.username}`" target="_blank">
+	<button v-if="note.user" :class="$style.avatar" class="_button" @click="openUserPopup">
 		<img :class="$style.avatarImg" :src="note.user.avatarUrl" :alt="note.user.username"/>
-	</MkA>
+	</button>
 	<div :class="$style.main">
 		<div>
 			<div :class="$style.header">
 				<div :class="$style.headerBody">
 					<div :class="$style.headerTop">
-						<span :class="$style.name">
+						<button :class="$style.name" class="_button" @click="openUserPopup">
 							{{ note.user?.name || note.user?.username }}
-						</span>
+						</button>
 						<span :class="$style.username">
 							@{{ note.user?.username }}@{{ host }}
 						</span>
@@ -172,6 +172,7 @@ import { getExternalEmojiUrlMap, getExternalAccount } from '@/utility/external-a
 import { addExternalRecentReaction } from '@/utility/external-api.js';
 
 const MkExternalReactionPicker = defineAsyncComponent(() => import('@/components/MkExternalReactionPicker.vue'));
+const MkExternalUserPopup = defineAsyncComponent(() => import('@/components/MkExternalUserPopup.vue'));
 
 const props = defineProps<{
 	note: any;
@@ -647,6 +648,17 @@ function openInExternal() {
 	window.open(`https://${props.host}/notes/${props.note.id}`, '_blank');
 }
 
+function openUserPopup() {
+	const { dispose } = os.popup(MkExternalUserPopup, {
+		userId: props.note.user?.id ?? props.note.userId,
+		host: props.host,
+		token: props.token,
+		initialUser: props.note.user,
+	}, {
+		closed: () => dispose(),
+	});
+}
+
 // ===== ノート削除 =====
 async function deleteNote() {
 	const { canceled } = await os.confirm({
@@ -756,6 +768,11 @@ defineExpose({
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+	cursor: pointer;
+
+	&:hover {
+		text-decoration: underline;
+	}
 }
 
 .username {

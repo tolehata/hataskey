@@ -16,7 +16,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<button v-if="!fixed" :class="$style.cancel" class="_button" @click="cancel"><i class="ti ti-x"></i></button>
 			 <button v-click-anime v-tooltip="i18n.ts.account" :class="[$style.account, { [$style.fixed]: fixed }]" class="_button" @click="openAccountMenu">
 	                 <img :class="[$style.avatar, { [$style.square]: prefer.s.squareAvatars }]" :src="currentAccountAvatar"/>
-	                 <span v-if="useExternalAccount" :class="$style.externalBadge">🦐</span>
+	                 <span v-if="useExternalAccount" :class="$style.externalBadge"><i class="ti ti-external-link" style="font-size: 0.7em;"></i></span>
 			</button>
 		</div>
 		<div :class="$style.headerRight">
@@ -58,7 +58,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 	<MkNoteSimple v-if="replyTargetNote" :class="$style.targetNote" :note="replyTargetNote" :enableNoteClick="false"/>
         <div v-else-if="externalReplyTarget" :class="$style.targetNote">
 	  <div :class="$style.externalTargetNote">
-            <span :class="$style.externalBadgeInline">🦐</span>
+            <span :class="$style.externalBadgeInline"><i class="ti ti-external-link"></i></span>
             <b>@{{ externalReplyTarget.user.username }}@{{ externalReplyTarget.user.host || externalHost }}</b> 
             <span>へのリプライ</span>
 	  </div>
@@ -1285,9 +1285,9 @@ async function post(ev?: MouseEvent) {
 				deleteDraft();
 				emit('posted');
 
-				if (externalReplyTarget.value) os.toast('🦐 リプライしました', 'reply');
-				else if (externalRenoteTarget.value) os.toast('🦐 引用しました', 'quote');
-				else os.toast('🦐 投稿しました', 'posted');
+				if (externalReplyTarget.value) os.toast('リプライしました（外部）', 'reply');
+				else if (externalRenoteTarget.value) os.toast('引用しました（外部）', 'quote');
+				else os.toast('投稿しました（外部）', 'posted');
 
 				posting.value = false;
 				useExternalAccount.value = false;
@@ -1511,7 +1511,7 @@ const isExternalLinked = computed(() => isExternalAccountLinked());
 // 現在のアカウントのアバター
 const currentAccountAvatar = computed(() => {
 	if (useExternalAccount.value && externalAccount.value) {
-		return `https://${externalAccount.value.host}/identicon/${externalAccount.value.userId}`;
+		return externalAccount.value.avatarUrl ?? `https://${externalAccount.value.host}/identicon/${externalAccount.value.userId}`;
 	}
 	return (postAccount.value ?? $i).avatarUrl;
 });
@@ -1622,7 +1622,7 @@ async function openAccountMenu(ev: MouseEvent) {
 	        externalItems.push({ type: 'divider' });
 	        externalItems.push({
 		  type: 'button',
-		  text: `🦐 @${externalAccount.value.username}@${externalAccount.value.host}`,
+		  text: `🔗 @${externalAccount.value.username}@${externalAccount.value.host}`,
 		  icon: useExternalAccount.value ? 'ti ti-check' : undefined,
 		  action: () => {
 	            useExternalAccount.value = true;

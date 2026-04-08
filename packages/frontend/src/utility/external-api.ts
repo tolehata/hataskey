@@ -10,6 +10,7 @@ export interface ExternalAccount {
 	token: string;
 	userId: string;
 	username: string;
+	avatarUrl: string | null;
 }
 
 export interface ExternalCustomEmoji {
@@ -31,10 +32,11 @@ export function getExternalAccount(): ExternalAccount | null {
 	const token = prefer.s['external.token'];
 	const userId = prefer.s['external.userId'];
 	const username = prefer.s['external.username'];
+	const avatarUrl = prefer.s['external.avatarUrl'] ?? null;
 
 	if (!host || !token || !userId || !username) return null;
 
-	return { host, token, userId, username };
+	return { host, token, userId, username, avatarUrl };
 }
 
 /**
@@ -105,10 +107,39 @@ export async function callExternalApiGet<T = any>(
 	return res.json();
 }
 
-// ===== カスタム絵文字キャッシュ =====
+// ===== カスタム絵文字キャッシュ（インメモリ + localStorage 永続化） =====
 let emojiCache: { host: string; emojis: ExternalCustomEmoji[]; fetchedAt: number } | null = null;
 let emojiUrlMapCache: { host: string; map: Record<string, string> } | null = null;
 const EMOJI_CACHE_TTL = 30 * 60 * 1000; // 30分
+const EMOJI_STORAGE_KEY = 'externalEmojiCache';
+const EMOJI_URL_MAP_STORAGE_KEY = 'externalEmojiUrlMapCache';
+
+function restoreEmojiCacheFromStorage(): void {
+	try {
+		const stored = localStorage.getItem(EMOJI_STORAGE_KEY);
+		if (stored) {
+			const parsed = JSON.parse(stored);
+			if (parsed && parsed.host && Array.isArray(parsed.emojis) && typeof parsed.fetchedAt === 'number') {
+				emojiCache = parsed;
+			}
+		}
+		const storedMap = localStorage.getItem(EMOJI_URL_MAP_STORAGE_KEY);
+		if (storedMap) {
+			const parsed = JSON.parse(storedMap);
+			if (parsed && parsed.host && typeof parsed.map === 'object') {
+				emojiUrlMapCache = parsed;
+			}
+		}
+	} catch { /* ignore */ }
+}
+restoreEmojiCacheFromStorage();
+
+function saveEmojiCacheToStorage(): void {
+	try { if (emojiCache) localStorage.setItem(EMOJI_STORAGE_KEY, JSON.stringify(emojiCache)); } catch { /* ignore */ }
+}
+function saveEmojiUrlMapCacheToStorage(): void {
+	try { if (emojiUrlMapCache) localStorage.setItem(EMOJI_URL_MAP_STORAGE_KEY, JSON.stringify(emojiUrlMapCache)); } catch { /* ignore */ }
+}
 
 /**
  * 外部サーバーのカスタム絵文字一覧を取得（キャッシュ付き）
@@ -178,6 +209,10 @@ export async function getExternalCustomEmojis(forceRefresh = false): Promise<Ext
 		// URLマップキャッシュも更新
 		emojiUrlMapCache = null;
 
+		// localStorage にも永続化
+		saveEmojiCacheToStorage();
+		try { localStorage.removeItem(EMOJI_URL_MAP_STORAGE_KEY); } catch { /* ignore */ }
+
 		console.log(`[external-api] Loaded ${emojis.length} custom emojis from ${acc.host}`);
 		return emojis;
 	} catch (err) {
@@ -221,6 +256,7 @@ export async function getExternalEmojiUrlMap(): Promise<Record<string, string>> 
 	}
 
 	emojiUrlMapCache = { host: acc.host, map };
+	saveEmojiUrlMapCacheToStorage();
 	return map;
 }
 
@@ -243,6 +279,10 @@ export async function preloadExternalEmojiMap(): Promise<void> {
 export function clearExternalEmojiCache(): void {
 	emojiCache = null;
 	emojiUrlMapCache = null;
+	try {
+		localStorage.removeItem(EMOJI_STORAGE_KEY);
+		localStorage.removeItem(EMOJI_URL_MAP_STORAGE_KEY);
+	} catch { /* ignore */ }
 }
 
 /**

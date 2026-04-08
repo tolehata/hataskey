@@ -14,10 +14,10 @@
         <!-- ===== 旗鯖全体 ===== -->
         <template v-if="activeCat === 'general'">
         <FormSection first>
-            <template #label>シュリンピア連携</template>
+            <template #label>外部アカウント連携</template>
             <FormLink to="/settings/external-account">
                 <template #icon><i class="ti ti-link"></i></template>
-                シュリンピア連携設定
+                外部アカウント連携設定
                 <template #suffix><span v-if="isExternalLinked" :class="$style.linkedBadge"><i class="ti ti-check"></i> 連携済み</span></template>
             </FormLink>
         </FormSection>

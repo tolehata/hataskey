@@ -788,7 +788,7 @@ export const PREF_DEF = definePreferences({
 		default: false,
 	},
 	'external.host': {
-		default: 'mk.shrimpia.network' as string,
+		default: '' as string,
 	},
 	'external.token': {
 		default: null as string | null,
@@ -797,6 +797,9 @@ export const PREF_DEF = definePreferences({
 		default: null as string | null,
 	},
 	'external.username': {
+		default: null as string | null,
+	},
+	'external.avatarUrl': {
 		default: null as string | null,
 	},
 	'external.enableOHTL': {
