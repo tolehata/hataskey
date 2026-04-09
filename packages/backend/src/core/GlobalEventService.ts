@@ -457,7 +457,6 @@ export class GlobalEventService {
 	}
 
 	@bindThis
-	@bindThis
 	public publishStackingGameRoomStream(roomId: string, type: string, value?: any): void {
 		this.publish(`stackingGameRoomStream:${roomId}`, type, typeof value === 'undefined' ? null : value);
 	}
