@@ -1,0 +1,59 @@
+name: Lint
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    container:
+      image: node:24.10.0-bookworm
+    strategy:
+      matrix:
+        workspace:
+          - backend
+          - frontend
+          - frontend-shared
+          - frontend-builder
+          - frontend-embed
+          - icons-subsetter
+          - sw
+          - cherrypick-js
+          - misskey-bubble-game
+          - misskey-reversi
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - name: Enable pnpm via corepack
+        run: corepack enable && corepack prepare pnpm@10.18.2 --activate
+      - name: Install dependencies
+        run: pnpm i --no-frozen-lockfile
+      - name: Run ESLint
+        run: pnpm --filter ${{ matrix.workspace }} run eslint
+
+  typecheck:
+    runs-on: ubuntu-latest
+    container:
+      image: node:24.10.0-bookworm
+    strategy:
+      matrix:
+        workspace:
+          - backend
+          - frontend
+          - sw
+          - cherrypick-js
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - name: Enable pnpm via corepack
+        run: corepack enable && corepack prepare pnpm@10.18.2 --activate
+      - name: Install dependencies
+        run: pnpm i --no-frozen-lockfile
+      - name: Build dependencies
+        run: pnpm --filter "${{ matrix.workspace }}^..." run build
+      - name: Run typecheck
+        run: pnpm --filter ${{ matrix.workspace }} run typecheck

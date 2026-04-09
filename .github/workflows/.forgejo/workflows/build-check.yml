@@ -1,0 +1,27 @@
+name: Build Check
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+    name: Production build
+    runs-on: ubuntu-latest
+    container:
+      image: node:24.10.0-bookworm
+    env:
+      NODE_ENV: production
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - name: Enable pnpm via corepack
+        run: corepack enable && corepack prepare pnpm@10.18.2 --activate
+      - name: Install dependencies
+        run: pnpm i --no-frozen-lockfile
+      - name: Copy config
+        run: cp .github/misskey/test.yml .config/default.yml
+      - name: Build
+        run: pnpm build
