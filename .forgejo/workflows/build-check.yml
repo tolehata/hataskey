@@ -22,6 +22,6 @@ jobs:
       - name: Install dependencies
         run: pnpm i --no-frozen-lockfile
       - name: Copy config
-        run: cp .github/misskey/test.yml .config/default.yml
+        run: cp .github/cherrypick/test.yml .config/default.yml
       - name: Build
         run: pnpm build
