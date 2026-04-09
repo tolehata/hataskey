@@ -28,6 +28,8 @@ export async function fetchMutedUsers(): Promise<void> {
 				});
 				if (!res || res.length === 0) break;
 				for (const m of res) {
+					// サーバー管理者・モデレーターはモデレーションのためミュート対象から除外
+					if (m.mutee && (m.mutee.isAdmin || m.mutee.isModerator)) continue;
 					if (m.muteeId) ids.add(m.muteeId);
 				}
 				if (res.length < 100) break;
