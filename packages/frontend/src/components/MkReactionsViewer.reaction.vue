@@ -32,6 +32,8 @@ import * as os from '@/os.js';
 import { misskeyApi, misskeyApiGet } from '@/utility/misskey-api.js';
 import { useTooltip } from '@/composables/use-tooltip.js';
 import { $i } from '@/i.js';
+import { isMutedUser } from '@/utility/muted-users.js';
+import { prefer } from '@/preferences.js';
 import MkReactionEffect from '@/components/MkReactionEffect.vue';
 import { i18n } from '@/i18n.js';
 import * as sound from '@/utility/sound.js';
@@ -430,7 +432,11 @@ if (!mock) {
 			_cacheKey_: props.count,
 		});
 
-		const users = reactions.map(x => x.user);
+		let users = reactions.map(x => x.user);
+		// ミュートユーザーを非表示（旗鯖独自機能）
+		if (prefer.s.hideMutedUserReactions) {
+			users = users.filter(u => u && !isMutedUser(u.id));
+		}
 
 		const { dispose } = os.popup(XDetails, {
 			showing,

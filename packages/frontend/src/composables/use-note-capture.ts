@@ -12,6 +12,7 @@ import { $i } from '@/i.js';
 import { store } from '@/store.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { prefer } from '@/preferences.js';
+import { isMutedUser, fetchMutedUsers } from '@/utility/muted-users.js';
 import { globalEvents } from '@/events.js';
 
 export const noteEvents = new EventEmitter<{
@@ -206,6 +207,9 @@ export function useNoteCapture(props: {
 	} {
 	const { note, parentNote, mock } = props;
 
+	// ミュートユーザーリストの初期化（旗鯖独自機能）
+	if (prefer.s.hideMutedUserReactions) fetchMutedUsers();
+
 	const $note = reactive<ReactiveNoteData>({
 		reactions: Object.entries(note.reactions).reduce((acc, [name, count]) => {
 			// Normalize reactions
@@ -232,6 +236,9 @@ export function useNoteCapture(props: {
 	let latestPollVotedKey: string | null = null;
 
 	function onReacted(ctx: { userId: Misskey.entities.User['id']; reaction: string; emoji?: { name: string; url: string; }; }): void {
+		// ミュートユーザーのリアクションを無視（旗鯖独自機能）
+		if (prefer.s.hideMutedUserReactions && isMutedUser(ctx.userId)) return;
+
 		let normalizedName = ctx.reaction.replace(/^:(\w+):$/, ':$1@.:');
 		normalizedName = normalizedName.match('\u200d') ? normalizedName : normalizedName.replace(/\ufe0f/g, '');
 		if (reactionUserMap.has(ctx.userId) && reactionUserMap.get(ctx.userId) === normalizedName) return;

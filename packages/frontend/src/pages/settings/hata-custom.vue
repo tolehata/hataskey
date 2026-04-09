@@ -34,6 +34,10 @@
                 非表示リアクション管理
                 <template #suffix><span v-if="hiddenReactionCount > 0" :class="$style.countBadge">{{ hiddenReactionCount }}件</span></template>
             </FormLink>
+            <MkSwitch v-model="hideMutedUserReactions">
+                <template #label>ミュートしたユーザーのリアクションを非表示にする</template>
+                <template #caption>ミュートとブロック設定でミュートしたユーザーのリアクションが、自分や他の人のノートに表示されなくなります（リアルタイム受信分）。</template>
+            </MkSwitch>
         </FormSection>
         <FormSection>
             <template #label>タイムライン</template>
@@ -216,6 +220,7 @@ const openUiSetup = async () => {
 };
 const isExternalLinked = computed(() => prefer.s['external.enabled'] && prefer.s['external.token'] != null);
 const hiddenReactionCount = computed(() => { hiddenReactionsVersion.value; return getHiddenReactions().length; });
+const hideMutedUserReactions = prefer.model('hideMutedUserReactions');
 
 // ===== シンプルUI（prefer同期） =====
 const topNavItems = ref([...prefer.s['simpleUi.topNav']]);

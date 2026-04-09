@@ -783,6 +783,10 @@ export const PREF_DEF = definePreferences({
 	showLoginBonusPopup: {
 		default: true,
 	},
+	// ミュートしたユーザーのリアクションを非表示（旗鯖独自機能）
+	hideMutedUserReactions: {
+		default: false,
+	},
 	// 外部サーバー連携（旗鯖独自機能）
 	'external.enabled': {
 		default: false,
