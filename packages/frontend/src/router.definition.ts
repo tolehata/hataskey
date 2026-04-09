@@ -642,6 +642,42 @@ export const ROUTE_DEF = [{
 	component: page(() => import('@/pages/stacking-game.game.vue')),
 	loginRequired: true,
 }, {
+	path: '/stacking-game/ai',
+	component: page(() => import('@/pages/stacking-game.ai.vue')),
+	loginRequired: true,
+}, {
+	path: '/stacking-game/lobby',
+	component: page(() => import('@/pages/stacking-game.lobby.vue')),
+	loginRequired: true,
+}, {
+	path: '/stacking-game/battle',
+	component: page(() => import('@/pages/stacking-game.battle.vue')),
+	loginRequired: true,
+}, {
+	path: '/whack-emoji',
+	component: page(() => import('@/pages/whack-emoji.vue')),
+	loginRequired: true,
+}, {
+	path: '/whack-emoji/play',
+	component: page(() => import('@/pages/whack-emoji.game.vue')),
+	loginRequired: true,
+}, {
+	path: '/whack-emoji/lobby',
+	component: page(() => import('@/pages/whack-emoji.lobby.vue')),
+	loginRequired: true,
+}, {
+	path: '/whack-emoji/battle',
+	component: page(() => import('@/pages/whack-emoji.battle.vue')),
+	loginRequired: true,
+}, {
+	path: '/emoji-shoot',
+	component: page(() => import('@/pages/emoji-shoot.vue')),
+	loginRequired: true,
+}, {
+	path: '/emoji-shoot/play',
+	component: page(() => import('@/pages/emoji-shoot.game.vue')),
+	loginRequired: true,
+}, {
 	path: '/reversi',
 	component: page(() => import('@/pages/reversi/index.vue')),
 	loginRequired: false,

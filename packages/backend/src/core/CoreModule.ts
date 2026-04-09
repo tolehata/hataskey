@@ -80,6 +80,8 @@ import { ChannelFollowingService } from './ChannelFollowingService.js';
 import { ChatService } from './ChatService.js';
 import { RegistryApiService } from './RegistryApiService.js';
 import { ReversiService } from './ReversiService.js';
+import { StackingGameRoomService } from './StackingGameRoomService.js';
+import { WhackEmojiRoomService } from './WhackEmojiRoomService.js';
 import { PageService } from './PageService.js';
 import { ActivityPubAccessControlService } from './ActivityPubAccessControlService.js';
 
@@ -238,6 +240,8 @@ const $ChannelFollowingService: Provider = { provide: 'ChannelFollowingService',
 const $ChatService: Provider = { provide: 'ChatService', useExisting: ChatService };
 const $RegistryApiService: Provider = { provide: 'RegistryApiService', useExisting: RegistryApiService };
 const $ReversiService: Provider = { provide: 'ReversiService', useExisting: ReversiService };
+const $StackingGameRoomService: Provider = { provide: 'StackingGameRoomService', useExisting: StackingGameRoomService };
+const $WhackEmojiRoomService: Provider = { provide: 'WhackEmojiRoomService', useExisting: WhackEmojiRoomService };
 const $PageService: Provider = { provide: 'PageService', useExisting: PageService };
 const $ActivityPubAccessControlService: Provider = { provide: 'ActivityPubAccessControlService', useExisting: ActivityPubAccessControlService };
 
@@ -398,6 +402,8 @@ const $ApEventService: Provider = { provide: 'ApEventService', useExisting: ApEv
 		ChatService,
 		RegistryApiService,
 		ReversiService,
+		StackingGameRoomService,
+		WhackEmojiRoomService,
 		PageService,
 		NoteHistorySerivce,
 		ActivityPubAccessControlService,
@@ -555,6 +561,8 @@ const $ApEventService: Provider = { provide: 'ApEventService', useExisting: ApEv
 		$ChatService,
 		$RegistryApiService,
 		$ReversiService,
+		$StackingGameRoomService,
+		$WhackEmojiRoomService,
 		$PageService,
 		$ActivityPubAccessControlService,
 
@@ -712,6 +720,8 @@ const $ApEventService: Provider = { provide: 'ApEventService', useExisting: ApEv
 		ChatService,
 		RegistryApiService,
 		ReversiService,
+		StackingGameRoomService,
+		WhackEmojiRoomService,
 		PageService,
 		NoteHistorySerivce,
 		ActivityPubAccessControlService,
@@ -867,6 +877,8 @@ const $ApEventService: Provider = { provide: 'ApEventService', useExisting: ApEv
 		$ChatService,
 		$RegistryApiService,
 		$ReversiService,
+		$StackingGameRoomService,
+		$WhackEmojiRoomService,
 		$PageService,
 		$ActivityPubAccessControlService,
 

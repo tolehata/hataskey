@@ -340,6 +340,14 @@ export type GlobalEvents = {
 		name: `reversiGameStream:${MiReversiGame['id']}`;
 		payload: EventTypesToEventPayload<ReversiGameEventTypes>;
 	};
+	stackingGameRoom: {
+		name: `stackingGameRoomStream:${string}`;
+		payload: { type: string; body: any };
+	};
+	whackEmojiRoom: {
+		name: `whackEmojiRoomStream:${string}`;
+		payload: { type: string; body: any };
+	};
 };
 
 // API event definitions
@@ -449,6 +457,16 @@ export class GlobalEventService {
 	}
 
 	@bindThis
+	@bindThis
+	public publishStackingGameRoomStream(roomId: string, type: string, value?: any): void {
+		this.publish(`stackingGameRoomStream:${roomId}`, type, typeof value === 'undefined' ? null : value);
+	}
+
+	@bindThis
+	public publishWhackEmojiRoomStream(roomId: string, type: string, value?: any): void {
+		this.publish(`whackEmojiRoomStream:${roomId}`, type, typeof value === 'undefined' ? null : value);
+	}
+
 	public publishReversiGameStream<K extends keyof ReversiGameEventTypes>(gameId: MiReversiGame['id'], type: K, value?: ReversiGameEventTypes[K]): void {
 		this.publish(`reversiGameStream:${gameId}`, type, typeof value === 'undefined' ? null : value);
 	}

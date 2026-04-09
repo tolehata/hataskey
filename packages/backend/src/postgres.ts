@@ -93,6 +93,11 @@ import { MiChatRoomMembership } from '@/models/ChatRoomMembership.js';
 import { MiChatRoomInvitation } from '@/models/ChatRoomInvitation.js';
 import { MiBubbleGameRecord } from '@/models/BubbleGameRecord.js';
 import { MiReversiGame } from '@/models/ReversiGame.js';
+import { MiStackingGameRecord } from '@/models/StackingGameRecord.js';
+import { MiWhackEmojiRecord } from '@/models/WhackEmojiRecord.js';
+import { MiStackingGameRoom } from '@/models/StackingGameRoom.js';
+import { MiWhackEmojiRoom } from '@/models/WhackEmojiRoom.js';
+import { MiEmojiShootRecord } from '@/models/EmojiShootRecord.js';
 import { MiChatApproval } from '@/models/ChatApproval.js';
 import { MiSystemAccount } from '@/models/SystemAccount.js';
 import { NoteHistory } from '@/models/NoteHistory.js';
@@ -276,6 +281,11 @@ export const entities = [
 	MiChatApproval,
 	MiBubbleGameRecord,
 	MiReversiGame,
+	MiStackingGameRecord,
+	MiWhackEmojiRecord,
+	MiStackingGameRoom,
+	MiWhackEmojiRoom,
+	MiEmojiShootRecord,
 	NoteHistory,
 	...charts,
 ];

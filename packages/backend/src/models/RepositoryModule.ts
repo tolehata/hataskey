@@ -60,6 +60,11 @@ import {
 	miRepository,
 	MiRetentionAggregation,
 	MiReversiGame,
+	MiStackingGameRecord,
+	MiWhackEmojiRecord,
+	MiStackingGameRoom,
+	MiWhackEmojiRoom,
+	MiEmojiShootRecord,
 	MiRole,
 	MiRoleAssignment,
 	MiSignin,
@@ -570,6 +575,13 @@ const $reversiGamesRepository: Provider = {
 	inject: [DI.db],
 };
 
+
+const $stackingGameRecordsRepository: Provider = { provide: DI.stackingGameRecordsRepository, useFactory: (db: DataSource) => db.getRepository(MiStackingGameRecord).extend(miRepository as MiRepository<MiStackingGameRecord>), inject: [DI.db] };
+const $whackEmojiRecordsRepository: Provider = { provide: DI.whackEmojiRecordsRepository, useFactory: (db: DataSource) => db.getRepository(MiWhackEmojiRecord).extend(miRepository as MiRepository<MiWhackEmojiRecord>), inject: [DI.db] };
+const $stackingGameRoomsRepository: Provider = { provide: DI.stackingGameRoomsRepository, useFactory: (db: DataSource) => db.getRepository(MiStackingGameRoom).extend(miRepository as MiRepository<MiStackingGameRoom>), inject: [DI.db] };
+const $whackEmojiRoomsRepository: Provider = { provide: DI.whackEmojiRoomsRepository, useFactory: (db: DataSource) => db.getRepository(MiWhackEmojiRoom).extend(miRepository as MiRepository<MiWhackEmojiRoom>), inject: [DI.db] };
+const $emojiShootRecordsRepository: Provider = { provide: DI.emojiShootRecordsRepository, useFactory: (db: DataSource) => db.getRepository(MiEmojiShootRecord).extend(miRepository as MiRepository<MiEmojiShootRecord>), inject: [DI.db] };
+
 const $abuseReportResolversRepository: Provider = {
 	provide: DI.abuseReportResolversRepository,
 	useFactory: (db: DataSource) => db.getRepository(MiAbuseReportResolver).extend(miRepository as MiRepository<MiAbuseReportResolver>),
@@ -682,6 +694,11 @@ const $hataskRsvpsRepository: Provider = {
 		$chatApprovalsRepository,
 		$bubbleGameRecordsRepository,
 		$reversiGamesRepository,
+		$stackingGameRecordsRepository,
+		$whackEmojiRecordsRepository,
+		$stackingGameRoomsRepository,
+		$whackEmojiRoomsRepository,
+		$emojiShootRecordsRepository,
 		$abuseReportResolversRepository,
 		$noteHistoryRepository,
 		$registrationApplicationsRepository,
@@ -768,6 +785,11 @@ const $hataskRsvpsRepository: Provider = {
 		$chatApprovalsRepository,
 		$bubbleGameRecordsRepository,
 		$reversiGamesRepository,
+		$stackingGameRecordsRepository,
+		$whackEmojiRecordsRepository,
+		$stackingGameRoomsRepository,
+		$whackEmojiRoomsRepository,
+		$emojiShootRecordsRepository,
 		$abuseReportResolversRepository,
 		$noteHistoryRepository,
 		$registrationApplicationsRepository,

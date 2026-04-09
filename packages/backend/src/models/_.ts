@@ -74,6 +74,11 @@ import { MiRelay } from '@/models/Relay.js';
 import { MiRenoteMuting } from '@/models/RenoteMuting.js';
 import { MiRetentionAggregation } from '@/models/RetentionAggregation.js';
 import { MiReversiGame } from '@/models/ReversiGame.js';
+import { MiStackingGameRecord } from '@/models/StackingGameRecord.js';
+import { MiWhackEmojiRecord } from '@/models/WhackEmojiRecord.js';
+import { MiStackingGameRoom } from '@/models/StackingGameRoom.js';
+import { MiWhackEmojiRoom } from '@/models/WhackEmojiRoom.js';
+import { MiEmojiShootRecord } from '@/models/EmojiShootRecord.js';
 import { MiRole } from '@/models/Role.js';
 import { MiRoleAssignment } from '@/models/RoleAssignment.js';
 import { MiSignin } from '@/models/Signin.js';
@@ -248,6 +253,11 @@ export {
 	MiChatApproval,
 	MiBubbleGameRecord,
 	MiReversiGame,
+	MiStackingGameRecord,
+	MiWhackEmojiRecord,
+	MiStackingGameRoom,
+	MiWhackEmojiRoom,
+	MiEmojiShootRecord,
 	MiRegistrationApplication,
 	MiHataskEvent,
 	MiHataskRsvp,
@@ -335,6 +345,11 @@ export type ChatRoomInvitationsRepository = Repository<MiChatRoomInvitation> & M
 export type ChatApprovalsRepository = Repository<MiChatApproval> & MiRepository<MiChatApproval>;
 export type BubbleGameRecordsRepository = Repository<MiBubbleGameRecord> & MiRepository<MiBubbleGameRecord>;
 export type ReversiGamesRepository = Repository<MiReversiGame> & MiRepository<MiReversiGame>;
+export type StackingGameRecordsRepository = Repository<MiStackingGameRecord> & MiRepository<MiStackingGameRecord>;
+export type WhackEmojiRecordsRepository = Repository<MiWhackEmojiRecord> & MiRepository<MiWhackEmojiRecord>;
+export type StackingGameRoomsRepository = Repository<MiStackingGameRoom> & MiRepository<MiStackingGameRoom>;
+export type WhackEmojiRoomsRepository = Repository<MiWhackEmojiRoom> & MiRepository<MiWhackEmojiRoom>;
+export type EmojiShootRecordsRepository = Repository<MiEmojiShootRecord> & MiRepository<MiEmojiShootRecord>;
 export type NoteHistoryRepository = Repository<NoteHistory> & MiRepository<NoteHistory>;
 export type RegistrationApplicationsRepository = Repository<MiRegistrationApplication> & MiRepository<MiRegistrationApplication>;
 export type HataskEventsRepository = Repository<MiHataskEvent> & MiRepository<MiHataskEvent>;
