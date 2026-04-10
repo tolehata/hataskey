@@ -102,11 +102,12 @@ let dropped = new Set<number>();
 let emojiPool: EmojiItem[] = [];
 // 全ボディの描画情報を管理（スプライトを使わず自前描画で統一サイズ化）
 let bodyTextures = new Map<number, { img: HTMLImageElement }>();
-let rafId = 0;
+
+const containerWidth = ref(GW);
+let resizeObserver: ResizeObserver | null = null;
 
 function getScale(): number {
-	if (!containerEl.value) return 1;
-	return containerEl.value.clientWidth / GW;
+	return containerWidth.value / GW;
 }
 
 const guideStyle = computed(() => ({ left: (guideXRatio.value * 100) + '%' }));
@@ -162,7 +163,7 @@ function createEmojiTexture(char: string): string {
 function animationLoop() {
 	if (!render?.canvas) return;
 	const ctx = render.context as CanvasRenderingContext2D;
-	if (!ctx) { rafId = requestAnimationFrame(animationLoop); return; }
+	if (!ctx) return;
 
 	// 全絵文字ボディを統一サイズで描画
 	for (const [bodyId, tex] of bodyTextures) {
@@ -175,13 +176,10 @@ function animationLoop() {
 		ctx.drawImage(tex.img, -half, -half, EMOJI_RENDER_SIZE, EMOJI_RENDER_SIZE);
 		ctx.restore();
 	}
-
-	rafId = requestAnimationFrame(animationLoop);
 }
 
 async function initGame() {
 	if (engine) { Matter.Render.stop(render); Matter.Runner.stop(runner); Matter.Engine.clear(engine); }
-	if (rafId) cancelAnimationFrame(rafId);
 	bodyTextures.clear();
 	score.value = 0; isGameOver.value = false; isNewRecord.value = false; ready.value = false;
 	dropped = new Set(); blockCount.value = 0; lastDrop = 0; guideXRatio.value = 0.5;
@@ -189,9 +187,11 @@ async function initGame() {
 	await buildPool();
 
 	engine = Matter.Engine.create({ gravity: { x: 0, y: 1.2 }, enableSleeping: true });
+	// pixelRatio は常に 1 に固定。canvas は CSS で DOM サイズにフィットさせるので
+	// devicePixelRatio を渡すと内部解像度と物理座標がずれてスケーリング崩壊する。
 	render = Matter.Render.create({
 		element: containerEl.value!, canvas: canvasEl.value!, engine,
-		options: { width: GW, height: GH, wireframes: false, background: 'transparent', pixelRatio: window.devicePixelRatio || 1, showSleeping: false } as any,
+		options: { width: GW, height: GH, wireframes: false, background: 'transparent', pixelRatio: 1, showSleeping: false } as any,
 	});
 
 	// 台
@@ -226,7 +226,9 @@ async function initGame() {
 
 	runner = Matter.Runner.create({ delta: 1000 / 60 });
 	Matter.Render.run(render); Matter.Runner.run(runner, engine);
-	rafId = requestAnimationFrame(animationLoop);
+
+	// afterRender で絵文字を重ね描き（独立 RAF だと描画タイミングがずれる）
+	Matter.Events.on(render, 'afterRender', animationLoop);
 	currentEmoji.value = pickNext();
 	nextEmoji.value = pickNext();
 	nextTick(() => {
@@ -302,9 +304,20 @@ function onTouchMove(e: TouchEvent) {
 function restart() { initGame(); }
 function goBack() { mainRouter.push('/stacking-game'); }
 
-onMounted(() => { initGame(); });
+onMounted(() => {
+	initGame();
+	if (containerEl.value) {
+		containerWidth.value = containerEl.value.clientWidth;
+		resizeObserver = new ResizeObserver((entries) => {
+			for (const entry of entries) {
+				containerWidth.value = entry.contentRect.width;
+			}
+		});
+		resizeObserver.observe(containerEl.value);
+	}
+});
 onUnmounted(() => {
-	if (rafId) cancelAnimationFrame(rafId);
+	resizeObserver?.disconnect();
 	if (render) Matter.Render.stop(render);
 	if (runner) Matter.Runner.stop(runner);
 	if (engine) Matter.Engine.clear(engine);
