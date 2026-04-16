@@ -135,20 +135,6 @@ SPDX-License-Identifier: AGPL-3.0-only
         <!-- ===== Hatasaba UI ===== -->
         <template v-if="activeCat === 'simpleUi'">
         <FormSection first>
-            <template #label>ノートの間隔</template>
-            <div style="font-size:.85em;opacity:.7;margin-bottom:12px;">タイムラインの投稿同士の間隔を調整します。即座に反映されます。</div>
-            <div :class="$style.spacingOptions">
-                <button v-for="opt in spacingOptions" :key="opt.value" :class="[$style.spacingCard, noteSpacing === opt.value && $style.spacingCardOn]" @click="noteSpacing = opt.value">
-                    <div :class="$style.spacingPreview">
-                        <div :class="$style.spacingBubble" :style="{ margin: opt.previewMargin }"></div>
-                        <div :class="$style.spacingBubble" :style="{ margin: opt.previewMargin }"></div>
-                        <div :class="$style.spacingBubble" :style="{ margin: opt.previewMargin }"></div>
-                    </div>
-                    <div :class="$style.spacingLabel">{{ opt.label }}</div>
-                </button>
-            </div>
-        </FormSection>
-        <FormSection>
             <template #label>上部ナビバー（タイムラインタブ）</template>
             <div style="font-size:.85em;opacity:.7;margin-bottom:8px;">表示するタブとその順番を設定します。</div>
             <div :class="$style.reorderList">

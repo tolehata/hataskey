@@ -238,15 +238,36 @@ const mergedEmojiUrls = computed(() => {
 		}
 	}
 
+	// note.user の絵文字（ユーザー名やプロフィールのカスタム絵文字）
+	// 連合先ユーザーの場合は特に重要
+	if (props.note.user?.emojis) {
+		if (Array.isArray(props.note.user.emojis)) {
+			for (const emoji of props.note.user.emojis) {
+				if (emoji.name && emoji.url) {
+					map[emoji.name] = emoji.url;
+				}
+			}
+		} else {
+			Object.assign(map, props.note.user.emojis);
+		}
+	}
+
 	// reactionEmojis
 	if (props.note.reactionEmojis) {
 		Object.assign(map, props.note.reactionEmojis);
 	}
 
+	// ユーザーの連合先ホスト（存在すればそちらを優先）
+	const userHost = props.note.user?.host as string | null | undefined;
+
 	// Proxy: マップに無い絵文字名でも外部サーバーの直URLを返す
 	return new Proxy(map, {
 		get(target, prop: string) {
 			if (prop in target) return target[prop];
+			// 連合先ユーザー: その連合先サーバーの絵文字URLをフォールバック
+			if (userHost) {
+				return `https://${userHost}/emoji/${prop}.webp`;
+			}
 			// 外部サーバーの絵文字直URL（/emoji/{name}.webp）をフォールバック
 			return `https://${props.host}/emoji/${prop}.webp`;
 		},

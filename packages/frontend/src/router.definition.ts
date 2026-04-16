@@ -717,6 +717,11 @@ export const ROUTE_DEF = [{
 	component: page(() => import('@/pages/hata-docs.vue')),
 	loginRequired: false,
 }, {
+	path: '/hata-whats-new',
+	name: 'hata-whats-new',
+	component: page(() => import('@/pages/hata-whats-new.vue')),
+	loginRequired: false,
+}, {
 	path: '/:(*)',
 	component: page(() => import('@/pages/not-found.vue')),
 }] as const satisfies RouteDef[];

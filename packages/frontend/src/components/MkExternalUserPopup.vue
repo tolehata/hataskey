@@ -252,10 +252,19 @@ onMounted(async () => {
 	border-top: 1px solid var(--MI_THEME-divider);
 	border-bottom: 1px solid var(--MI_THEME-divider);
 	margin-top: 12px;
-	display: -webkit-box;
-	-webkit-line-clamp: 6;
-	-webkit-box-orient: vertical;
-	overflow: hidden;
+	max-height: 180px;
+	overflow-y: auto;
+	word-wrap: break-word;
+	overflow-wrap: break-word;
+
+	/* スクロールバー見た目調整 */
+	&::-webkit-scrollbar {
+		width: 4px;
+	}
+	&::-webkit-scrollbar-thumb {
+		background: color-mix(in srgb, var(--MI_THEME-fg) 20%, transparent);
+		border-radius: 2px;
+	}
 }
 
 .noDescription {

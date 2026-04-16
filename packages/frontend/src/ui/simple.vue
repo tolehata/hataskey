@@ -477,6 +477,12 @@ const goToLists = ()=>{ mainRouter.push('/my/lists'); };
 const goToChannels = ()=>{ mainRouter.push('/channels'); };
 const goToAntennas = ()=>{ mainRouter.push('/my/antennas'); };
 const goToDrive = ()=>{ mainRouter.push('/my/drive'); };
+const goToAnnouncements = ()=>{ mainRouter.push('/announcements'); };
+const goToWhatsNew = ()=>{ mainRouter.push('/hata-whats-new'); };
+const openUiSetup = async ()=>{
+    const { defineAsyncComponent: dac } = await import('vue');
+    os.popup(dac(() => import('@/components/MkUISetup.vue')), {}, {}, 'closed');
+};
 const goToSettings = ()=>{ mainRouter.push('/settings'); };
 const goToAdmin = ()=>{ mainRouter.push('/admin'); };
 
@@ -487,6 +493,8 @@ function sidebarItemClick(id: string, ev?: MouseEvent) {
         timeline: goHome, notifications: ()=>goToNotifications(), search: ()=>openSearch(),
         hatask: ()=>goToHatask(), lists: ()=>goToLists(), channels: ()=>goToChannels(),
         antennas: ()=>goToAntennas(), drive: ()=>goToDrive(),
+        announcements: ()=>goToAnnouncements(), uiSetup: ()=>openUiSetup(),
+        whatsNew: ()=>goToWhatsNew(),
         more: () => { if (ev) openMore(ev); },
     };
     if (map[id]) map[id]();
@@ -498,6 +506,8 @@ function sidebarItemActive(id: string): boolean {
         hatask: isHataskPage.value, lists: isListPage.value,
         channels: isChannelPage.value, antennas: isAntennaPage.value,
         drive: isDrivePage.value,
+        announcements: mainRouter.currentRoute.value.path.startsWith('/announcements'),
+        whatsNew: mainRouter.currentRoute.value.path.startsWith('/hata-whats-new'),
     } as Record<string, boolean>)[id] ?? false;
 }
 
