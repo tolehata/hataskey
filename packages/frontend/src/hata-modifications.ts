@@ -229,7 +229,7 @@ export const modificationsData: ModificationsData = {
 		// ===== hata-0.7 (2026/02/11) =====
 		{
 			id: 'modern-simple-ui',
-			title: 'Modern Simple UI',
+			title: 'Hatasaba UI',
 			description: 'スマホ操作に特化した超軽量・高速なインターフェース。左右スワイプでのTL切り替え、タブ型UI対応。hata-0.8で外部タイムライン（🦐H/🦐L）タブを追加、OHTL/OLTLの個別設定対応。(hata-0.7 追加、hata-0.8 拡張)',
 			category: 'feature',
 			files: [
@@ -237,7 +237,7 @@ export const modificationsData: ModificationsData = {
 					path: 'packages/frontend/src/ui/simple.vue',
 					type: 'added',
 					lines: '1-*',
-					summary: 'Modern Simple UI本体',
+					summary: 'Hatasaba UI本体',
 				},
 				{
 					path: 'packages/frontend/src/preferences/def.ts',
@@ -270,7 +270,7 @@ export const modificationsData: ModificationsData = {
 		{
 			id: 'external-timeline',
 			title: '外部タイムライン（OHTL/OLTL）',
-			description: 'シュリンピア連携済みの場合、外部サーバーのホームTL/ローカルTLを表示。更新間隔の最適化、画像クリックで別タブ展開対応。シンプルUIではスワイプ操作でも切り替え可能。(hata-0.7 追加、hata-0.8 拡張・修正)',
+			description: 'シュリンピア連携済みの場合、外部サーバーのホームTL/ローカルTLを表示。更新間隔の最適化、画像クリックで別タブ展開対応。Hatasaba UIではスワイプ操作でも切り替え可能。(hata-0.7 追加、hata-0.8 拡張・修正)',
 			category: 'feature',
 			files: [
 				{

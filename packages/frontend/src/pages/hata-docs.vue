@@ -89,15 +89,15 @@ const categories = [
 		id: 'external', iconClass: 'ti ti-link', label: '外部アカウント連携',
 		docs: [
 			{ iconClass: 'ti ti-link', title: '外部アカウント連携とは', body: `外部サーバー（旗鯖の別インスタンスやシュリンピアなど）と連携して、旗鯖から直接外部サーバーのタイムラインを見たり、投稿・リアクション・リプライ・リノートができる機能です。<br><br>MiAuth認証で安全にアカウント連携を行います。<br><br><b>接続先の選択肢:</b><ul><li>旗鯖の別インスタンス（旗池2丁目 ↔ 旗池3丁目）</li><li>シュリンピア (mk.shrimpia.network)</li></ul>`, tips: ['旗鯖同士の場合は旗鯖の利用規約が適用されます', '外部サーバーの場合は接続先の規約が適用されます'], link: '/settings/external-account', linkLabel: '連携設定を開く' },
-			{ iconClass: 'ti ti-device-tv', title: '外部タイムライン (OHTL / OLTL)', body: `連携後、2種類の外部タイムラインが利用可能になります。<br><br><b>OHTL（外部ホームTL）</b>: 連携先でフォローしているユーザーのノートを表示します。<br><br><b>OLTL（外部ローカルTL）</b>: 連携先のローカルタイムラインを表示します。<br><br>タイムラインタブに追加され、通常のタイムラインと同じ感覚で切り替えて使えます。`, tips: ['外部TLからそのまま投稿・リアクション・リプライ・リノートが可能', 'シンプルTLでは＋マークのタブでアクセスできます'], link: '/settings/external-account' },
+			{ iconClass: 'ti ti-device-tv', title: '外部タイムライン (OHTL / OLTL)', body: `連携後、2種類の外部タイムラインが利用可能になります。<br><br><b>OHTL（外部ホームTL）</b>: 連携先でフォローしているユーザーのノートを表示します。<br><br><b>OLTL（外部ローカルTL）</b>: 連携先のローカルタイムラインを表示します。<br><br>タイムラインタブに追加され、通常のタイムラインと同じ感覚で切り替えて使えます。`, tips: ['外部TLからそのまま投稿・リアクション・リプライ・リノートが可能', 'Hatasaba UIでは＋マークのタブでアクセスできます'], link: '/settings/external-account' },
 			{ iconClass: 'ti ti-star', title: 'お気に入りリアクション絵文字', body: `外部TLのリアクションピッカーに表示されるお気に入り絵文字を管理できます。<br><br>よく使う絵文字を登録しておくと、リアクションピッカーの先頭に表示されて素早くリアクションできます。`, link: '/settings/external-account', linkLabel: 'お気に入り絵文字を管理' },
 		],
 	},
 	{
 		id: 'ui', iconClass: 'ti ti-palette', label: 'UI・デザイン',
 		docs: [
-			{ iconClass: 'ti ti-device-mobile', title: 'UI切り替え', body: `旗池2丁目では複数のUIモードを選択できます。<br><br><b>デフォルトUI</b>: CherryPick / Misskey標準のUIです。左サイドバーにナビゲーションが表示されます。<br><br><b>シンプルTL</b>: 旗鯖独自のモバイルフレンドリーなUIです。タイムラインに特化したシンプルな画面構成で、スワイプでのタブ切り替えが可能です。<br><br><b>デッキUI</b>: 複数カラムを横に並べて表示するパワーユーザー向けUIです。`, tips: ['シンプルTLはスマホでの利用に最適化されています', 'UIモードはいつでも変更できます'], link: '/settings/hata-custom', linkLabel: '旗鯖設定を開く' },
-			{ iconClass: 'ti ti-layout-list', title: 'シンプルTL（モダンシンプルUI）', body: `旗鯖オリジナルのタイムライン特化型UIです。<br><br>画面上部のタブでHTL（ホーム）・LTL（ローカル）・GTL（グローバル）をワンタップで切り替えられます。外部アカウント連携時は＋H（外部ホーム）・＋L（外部ローカル）タブも追加されます。<br><br><b>特徴:</b><ul><li>スワイプでタイムライン切り替え</li><li>画面下部のピル型ナビバーから主要機能へアクセス</li><li>スクロール時にナビバーが自動で隠れて画面を広く使えます</li><li>KeepAliveでタブ切り替え時の再読み込みを防止</li></ul>`, tips: ['ドロワーメニューからサイドバーを開けます', '外部TLの通知や投稿もシンプルTL内のピル型ボタンで操作可能'] },
+			{ iconClass: 'ti ti-device-mobile', title: 'UI切り替え', body: `旗池2丁目では複数のUIモードを選択できます。<br><br><b>デフォルトUI</b>: CherryPick / Misskey標準のUIです。左サイドバーにナビゲーションが表示されます。<br><br><b>Hatasaba UI</b>: 旗鯖独自のモバイルフレンドリーなUIです。タイムラインに特化したシンプルな画面構成で、スワイプでのタブ切り替えが可能です。<br><br><b>デッキUI</b>: 複数カラムを横に並べて表示するパワーユーザー向けUIです。`, tips: ['Hatasaba UIはスマホでの利用に最適化されています', 'UIモードはいつでも変更できます'], link: '/settings/hata-custom', linkLabel: '旗鯖設定を開く' },
+			{ iconClass: 'ti ti-layout-list', title: 'Hatasaba UI', body: `旗鯖オリジナルのタイムライン特化型UIです。<br><br>画面上部のタブでHTL（ホーム）・LTL（ローカル）・GTL（グローバル）をワンタップで切り替えられます。外部アカウント連携時は＋H（外部ホーム）・＋L（外部ローカル）タブも追加されます。<br><br><b>特徴:</b><ul><li>スワイプでタイムライン切り替え</li><li>画面下部のピル型ナビバーから主要機能へアクセス</li><li>スクロール時にナビバーが自動で隠れて画面を広く使えます</li><li>KeepAliveでタブ切り替え時の再読み込みを防止</li></ul>`, tips: ['ドロワーメニューからサイドバーを開けます', '外部TLの通知や投稿もHatasaba UI内のピル型ボタンで操作可能'] },
 			{ iconClass: 'ti ti-movie', title: 'タイムラインアニメーション', body: `タイムラインに新しいノートが表示される際のアニメーション方向を変更できます。<br><br><b>上からスライド</b>: 標準的なアニメーション<br><b>左からスライド</b>: デフォルト設定<br><b>右からスライド</b>: 逆方向から登場<br><b>ランダム</b>: 毎回違う方向から飛んでくるので楽しいです`, link: '/settings/hata-custom', linkLabel: '設定を変更する' },
 			{ iconClass: 'ti ti-eye-off', title: 'リアクション絵文字の非表示', body: `ノートについたリアクション絵文字を個別に非表示にできます。<br><br><b>PC</b>: リアクション絵文字を右クリック →「この絵文字を非表示」<br><b>スマホ</b>: ノートの「…」メニュー →「リアクション絵文字を非表示」から選択`, link: '/settings/hidden-reactions', linkLabel: '非表示リアクション管理' },
 		],

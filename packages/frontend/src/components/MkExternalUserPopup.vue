@@ -28,7 +28,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 			<!-- 名前・ユーザー名 -->
 			<div :class="$style.nameArea">
-				<div :class="$style.name">{{ user.name || user.username }}</div>
+				<div :class="$style.name"><Mfm :text="user.name || user.username" :plain="true" :nyaize="false" :author="mfmAuthor" :emojiUrls="emojiUrls"/></div>
 				<div :class="$style.username">@{{ user.username }}@{{ host }}</div>
 			</div>
 

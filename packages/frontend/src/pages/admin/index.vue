@@ -260,6 +260,11 @@ const menuDef = computed<SuperMenuDef[]>(() => [{
 		text: '旗鯖改変一覧',
 		to: '/admin/hata-modifications',
 		active: currentPage.value?.route.name === 'hata-modifications',
+	}, {
+		icon: 'ti ti-shield-check',
+		text: '同意管理',
+		to: '/admin/consent-manager',
+		active: currentPage.value?.route.name === 'consent-manager',
 	}],
 }]);
 

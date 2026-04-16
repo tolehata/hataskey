@@ -72,6 +72,7 @@ import MkPullToRefresh from '@/components/MkPullToRefresh.vue';
 import MkExternalNote from '@/components/MkExternalNote.vue';
 import { prefer } from '@/preferences.js';
 import { i18n } from '@/i18n.js';
+import { misskeyApi } from '@/utility/misskey-api.js';
 import * as sound from '@/utility/sound.js';
 import * as os from '@/os.js';
 import { preloadExternalEmojiMap, callExternalApi, getExternalAccount } from '@/utility/external-api.js';
@@ -538,6 +539,12 @@ function cleanupTeleportedElements() {
 }
 
 onMounted(async () => {
+	// 既存ユーザー対策: 外部TL表示中なのに同意フラグが立っていない場合は自動で記録
+	if (!prefer.s['hataConsent.externalTl']) {
+		prefer.commit('hataConsent.externalTl', true);
+		prefer.commit('hataConsent.externalTlDate', new Date().toISOString());
+		misskeyApi('hata/consent/update', { type: 'externalTl', agree: true }).catch(console.error);
+	}
 	// 前回の外部TL/Hataskの残骸をクリーンアップ（UI切り替え対策）
 	try {
 		delete document.body.dataset.hataskActive;

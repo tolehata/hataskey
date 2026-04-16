@@ -122,6 +122,7 @@ import MkSelect from '@/components/MkSelect.vue';
 import FormSection from '@/components/form/section.vue';
 import { prefer } from '@/preferences.js';
 import { definePage } from '@/page.js';
+import { misskeyApi } from '@/utility/misskey-api.js';
 import * as os from '@/os.js';
 import { genId } from '@/utility/id.js';
 import { hostname } from '@@/js/config.js';
@@ -344,6 +345,11 @@ async function handleMiAuthCallback() {
 		localStorage.removeItem('miauth_session');
 		localStorage.removeItem('miauth_host');
 
+		// 外部TL同意をサーバーに記録
+		prefer.commit('hataConsent.externalTl', true);
+		prefer.commit('hataConsent.externalTlDate', new Date().toISOString());
+		misskeyApi('hata/consent/update', { type: 'externalTl', agree: true }).catch(console.error);
+
 		os.success();
 	} catch (err) {
 		console.error('MiAuth callback error:', err);
@@ -355,6 +361,12 @@ onMounted(async () => {
 	handleMiAuthCallback();
 	loadExtFavEmojis();
 	if (isLinked.value) {
+		// 既存ユーザー対策: 連携済みなのに同意フラグが立っていない場合は自動で記録
+		if (!prefer.s['hataConsent.externalTl']) {
+			prefer.commit('hataConsent.externalTl', true);
+			prefer.commit('hataConsent.externalTlDate', new Date().toISOString());
+			misskeyApi('hata/consent/update', { type: 'externalTl', agree: true }).catch(console.error);
+		}
 		try {
 			extCustomEmojis.value = await getExternalCustomEmojis();
 		} catch (e) {

@@ -492,6 +492,8 @@ export * as 'chat/read-all' from './endpoints/chat/read-all.js';
 export * as 'users/translate' from './endpoints/users/translate.js';
 export * as 'v2/admin/emoji/list' from './endpoints/v2/admin/emoji/list.js';
 export * as 'hata/login-ranking' from './endpoints/hata/login-ranking.js';
+export * as 'hata/consent/update' from './endpoints/hata/consent/update.js';
+export * as 'admin/hata/consent-list' from './endpoints/admin/hata/consent-list.js';
 
 export * as 'registration/apply' from './endpoints/registration/apply.js';
 export * as 'admin/registration-applications' from './endpoints/admin/registration-applications.js';

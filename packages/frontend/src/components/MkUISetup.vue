@@ -10,7 +10,7 @@
         <div :class="$style.optionsGrid">
             <button :class="$style.optionCard" @click="select('simple')">
                 <div :class="$style.cardIcon"><i class="ti ti-device-mobile"></i></div>
-                <div :class="$style.cardTitle">Hata UI</div>
+                <div :class="$style.cardTitle">Hatasaba UI</div>
                 <div :class="$style.cardDesc">
                     旗鯖オリジナルのUIです。端末を問わず利用でき、旗鯖ならではのUI体験ができます。
                 </div>

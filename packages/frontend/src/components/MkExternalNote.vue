@@ -15,19 +15,14 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<div :class="$style.headerBody">
 					<div :class="$style.headerTop">
 						<button :class="$style.name" class="_button" @click="openUserPopup">
-							{{ note.user?.name || note.user?.username }}
+							<Mfm :text="note.user?.name || note.user?.username" :plain="true" :nyaize="false" :author="mfmAuthor" :emojiUrls="mergedEmojiUrls"/>
 						</button>
 						<span :class="$style.username">
 							@{{ note.user?.username }}@{{ host }}
 						</span>
-					</div>
-					<div :class="$style.headerBottom">
 						<MkA :to="`https://${host}/notes/${note.id}`" target="_blank" :class="$style.time">
 							<MkTime :time="note.createdAt"/>
 						</MkA>
-						<span :class="$style.externalBadge" :title="'外部サーバー: ' + host">
-							🔗
-						</span>
 						<span v-if="visibilityInfo" :class="$style.visibilityBadge" :title="visibilityInfo.label">
 							<i :class="visibilityInfo.icon"></i>
 						</span>
@@ -56,40 +51,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 				/>
 			</div>
 
-			<!-- ファイル表示（画像・動画・音声対応） -->
-			<div v-if="note.files && note.files.length > 0" :class="$style.files">
-				<div v-for="file in note.files" :key="file.id" :class="$style.file">
-					<!-- 画像: クリックで拡大表示 -->
-					<img
-						v-if="isImage(file)"
-						:src="file.thumbnailUrl || file.url"
-						:alt="file.name"
-						:class="$style.fileImg"
-						loading="lazy"
-						@click="openImage(file)"
-					/>
-					<!-- 動画 -->
-					<video
-						v-else-if="isVideo(file)"
-						:src="file.url"
-						:class="$style.fileVideo"
-						controls
-						preload="metadata"
-						:poster="file.thumbnailUrl"
-					/>
-					<!-- 音声 -->
-					<div v-else-if="isAudio(file)" :class="$style.fileAudio">
-						<i class="ti ti-music"></i>
-						<span :class="$style.fileAudioName">{{ file.name }}</span>
-						<audio :src="file.url" controls preload="metadata" :class="$style.audioPlayer"/>
-					</div>
-					<!-- その他 -->
-					<a v-else :href="file.url" target="_blank" :class="$style.fileOther">
-						<i class="ti ti-file"></i>
-						{{ file.name }}
-					</a>
-				</div>
-			</div>
+			<!-- ファイル表示（Misskeyメディアプレーヤー使用） -->
+			<MkMediaList v-if="note.files && note.files.length > 0" :mediaList="normalizedFiles"/>
 
 			<div v-if="note.renote" :class="$style.renote">
 				<div :class="$style.renoteHeader">
@@ -166,6 +129,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 <script lang="ts" setup>
 import { ref, computed, defineAsyncComponent, reactive, onMounted, useTemplateRef } from 'vue';
 import MkReactionIcon from '@/components/MkReactionIcon.vue';
+import MkMediaList from '@/components/MkMediaList.vue';
 import * as os from '@/os.js';
 import { i18n } from '@/i18n.js';
 import { getExternalEmojiUrlMap, getExternalAccount } from '@/utility/external-api.js';
@@ -305,23 +269,26 @@ const totalReactionCount = computed(() => {
 	return Object.values(reactions).reduce((a, b) => a + b, 0);
 });
 
-// ===== ファイル種別判定 =====
-function isImage(file: any): boolean {
-	return file.type?.startsWith('image/') ?? false;
-}
-
-function isVideo(file: any): boolean {
-	return file.type?.startsWith('video/') ?? false;
-}
-
-function isAudio(file: any): boolean {
-	return file.type?.startsWith('audio/') ?? false;
-}
-
-// ===== 画像拡大表示 =====
-function openImage(file: any) {
-	window.open(file.url, '_blank');
-}
+// ===== 外部ファイルをMkMediaList用に正規化 =====
+const normalizedFiles = computed(() => {
+	if (!props.note.files || !Array.isArray(props.note.files)) return [];
+	return props.note.files.map((file: any) => ({
+		id: file.id ?? file.url,
+		createdAt: file.createdAt ?? props.note.createdAt,
+		name: file.name ?? 'unknown',
+		type: file.type ?? 'application/octet-stream',
+		size: file.size ?? 0,
+		md5: file.md5 ?? '',
+		url: file.url,
+		thumbnailUrl: file.thumbnailUrl ?? null,
+		blurhash: file.blurhash ?? null,
+		comment: file.comment ?? null,
+		isSensitive: file.isSensitive ?? false,
+		properties: file.properties ?? {},
+		userId: file.userId ?? null,
+		folderId: file.folderId ?? null,
+	}));
+});
 
 // ===== 外部API呼び出し =====
 async function callExternalApi(endpoint: string, params: Record<string, any> = {}) {
@@ -783,25 +750,14 @@ defineExpose({
 	white-space: nowrap;
 }
 
-.headerBottom {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	margin-top: 2px;
-}
-
 .time {
 	font-size: 0.85em;
 	opacity: 0.7;
+	margin-left: auto;
 
 	&:hover {
 		text-decoration: underline;
 	}
-}
-
-.externalBadge {
-	font-size: 0.9em;
-	cursor: help;
 }
 
 .visibilityBadge {
@@ -843,81 +799,6 @@ defineExpose({
 	line-height: 1.6;
 	word-wrap: break-word;
 	overflow-wrap: break-word;
-}
-
-// ===== ファイル表示 =====
-.files {
-	display: grid;
-	grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-	gap: 8px;
-	margin-top: 8px;
-}
-
-.file {
-	border-radius: 8px;
-	overflow: hidden;
-}
-
-.fileImg {
-	width: 100%;
-	height: auto;
-	max-height: 300px;
-	object-fit: cover;
-	cursor: zoom-in;
-	transition: opacity 0.2s;
-
-	&:hover {
-		opacity: 0.85;
-	}
-}
-
-.fileVideo {
-	width: 100%;
-	max-height: 400px;
-	border-radius: 8px;
-	background: #000;
-}
-
-.fileAudio {
-	display: flex;
-	flex-direction: column;
-	gap: 8px;
-	padding: 12px;
-	background: var(--MI_THEME-buttonBg);
-	border-radius: 8px;
-
-	> i {
-		font-size: 1.2em;
-		opacity: 0.7;
-	}
-}
-
-.fileAudioName {
-	font-size: 0.85em;
-	opacity: 0.8;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-
-.audioPlayer {
-	width: 100%;
-	height: 36px;
-}
-
-.fileOther {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	padding: 12px;
-	background: var(--MI_THEME-buttonBg);
-	color: var(--MI_THEME-fg);
-	text-decoration: none;
-	border-radius: 8px;
-
-	&:hover {
-		background: var(--MI_THEME-buttonHoverBg);
-	}
 }
 
 // ===== リノート =====

@@ -33,9 +33,13 @@ import { userName } from '@/filters/user.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import * as os from '@/os.js';
 import { cleanupStaleUiElements } from '@/utility/ui-cleanup.js';
+import { initHataFontWatcher } from '@/scripts/hata-font-manager.js';
 
 export async function mainBoot() {
 	cleanupStaleUiElements();
+
+	// 旗鯖フォント初期化
+	initHataFontWatcher();
 
 	const { isClientUpdated, isClientMigrated, lastVersion } = await common(async () => {
 		let uiStyle = ui;

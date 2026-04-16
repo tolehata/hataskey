@@ -127,7 +127,10 @@ interface Cell {
 	occupied: boolean; // 絵文字が完全に消えるまでtrue（重複スポーン防止）
 	timer: ReturnType<typeof setTimeout> | null;
 	graceTimer: ReturnType<typeof setTimeout> | null;
+	spawnId: number; // 各スポーンのユニークID（タイマー競合防止）
 }
+
+let nextSpawnId = 0;
 
 function getDiffParams(diff: number) {
 	const t = (diff - 1) / 9;
@@ -174,6 +177,7 @@ const cells = reactive<Cell[]>(
 	Array.from({ length: CELL_COUNT }, () => ({
 		visible: false, emoji: null, hitGlow: false, missGlow: false,
 		graceHittable: false, occupied: false, timer: null, graceTimer: null,
+		spawnId: 0,
 	}))
 );
 
@@ -182,6 +186,7 @@ const aiCells = reactive<Cell[]>(
 	Array.from({ length: CELL_COUNT }, () => ({
 		visible: false, emoji: null, hitGlow: false, missGlow: false,
 		graceHittable: false, occupied: false, timer: null, graceTimer: null,
+		spawnId: 0,
 	}))
 );
 
@@ -232,10 +237,12 @@ function pickEmoji(): EmojiItem { return emojiPool[Math.floor(Math.random() * em
 function clearCell(cell: Cell) {
 	cell.visible = false;
 	cell.graceHittable = false;
-	cell.occupied = false;
 	cell.emoji = null;
+	cell.spawnId = 0;
 	if (cell.timer) { clearTimeout(cell.timer); cell.timer = null; }
 	if (cell.graceTimer) { clearTimeout(cell.graceTimer); cell.graceTimer = null; }
+	// occupiedはアニメーション完了後に解放（CSS transition 150ms + 余裕）
+	setTimeout(() => { cell.occupied = false; }, 200);
 }
 
 // ===== ゲームロジック =====
@@ -252,11 +259,14 @@ function spawnMole() {
 
 	const target = freeCells[Math.floor(Math.random() * freeCells.length)];
 	const cell = target.c;
+	const sid = ++nextSpawnId;
 	cell.emoji = pickEmoji();
 	cell.visible = true;
 	cell.occupied = true;
+	cell.spawnId = sid;
 
 	cell.timer = setTimeout(() => {
+		if (cell.spawnId !== sid) return; // 既に別のスポーンに入れ替わっている
 		cell.visible = false;
 		cell.graceHittable = true;
 		cell.timer = null;
@@ -266,14 +276,17 @@ function spawnMole() {
 			lives.value--;
 			misses.value++;
 			cell.missGlow = true;
-			setTimeout(() => { cell.missGlow = false; }, 500);
+			const missSid = sid;
+			setTimeout(() => { if (cell.spawnId === missSid) cell.missGlow = false; }, 500);
 			if (lives.value <= 0) { endGame(); return; }
 		}
 
 		cell.graceTimer = setTimeout(() => {
+			if (cell.spawnId !== sid) return;
 			cell.graceHittable = false;
 			cell.emoji = null;
 			cell.occupied = false;
+			cell.spawnId = 0;
 			cell.graceTimer = null;
 		}, 200);
 	}, params.visibleDuration);
@@ -287,6 +300,7 @@ function whack(index: number) {
 
 	if (cell.visible || cell.graceHittable) {
 		// ヒット
+		const hitSid = cell.spawnId;
 		clearCell(cell);
 		score.value += params.scorePerHit;
 		hits.value++;
@@ -304,7 +318,7 @@ function whack(index: number) {
 		}
 
 		cell.hitGlow = true;
-		setTimeout(() => { cell.hitGlow = false; }, 500);
+		setTimeout(() => { if (cell.spawnId === 0 || cell.spawnId === hitSid) cell.hitGlow = false; }, 500);
 	} else {
 		// ミス（空叩き）
 		misses.value++;
@@ -316,8 +330,9 @@ function whack(index: number) {
 			score.value = Math.max(0, score.value - params.missPenalty);
 		}
 
+		const missSid = cell.spawnId;
 		cell.missGlow = true;
-		setTimeout(() => { cell.missGlow = false; }, 500);
+		setTimeout(() => { if (cell.spawnId === missSid) cell.missGlow = false; }, 500);
 	}
 }
 
@@ -325,10 +340,11 @@ function whack(index: number) {
 function aiClearCell(cell: Cell) {
 	cell.visible = false;
 	cell.graceHittable = false;
-	cell.occupied = false;
 	cell.emoji = null;
+	cell.spawnId = 0;
 	if (cell.timer) { clearTimeout(cell.timer); cell.timer = null; }
 	if (cell.graceTimer) { clearTimeout(cell.graceTimer); cell.graceTimer = null; }
+	setTimeout(() => { cell.occupied = false; }, 200);
 }
 
 function aiSpawnMole() {
@@ -343,9 +359,11 @@ function aiSpawnMole() {
 
 	const target = freeCells[Math.floor(Math.random() * freeCells.length)];
 	const cell = target.c;
+	const sid = ++nextSpawnId;
 	cell.emoji = pickEmoji();
 	cell.visible = true;
 	cell.occupied = true;
+	cell.spawnId = sid;
 
 	// AIが叩くかどうかを判定
 	const ai = getAiParams(aiMode.value);
@@ -353,15 +371,18 @@ function aiSpawnMole() {
 
 	cell.timer = setTimeout(() => {
 		// 時間切れ: もぐらが引っ込む前にAIが叩けなかった
+		if (cell.spawnId !== sid) return;
 		if (!cell.visible) return; // 既にAIが叩いた
 		cell.visible = false;
 		cell.graceHittable = false;
 		// AI押しそびれ = ミス演出
 		cell.missGlow = true;
-		setTimeout(() => { cell.missGlow = false; }, 500);
+		setTimeout(() => { if (cell.spawnId === sid) cell.missGlow = false; }, 500);
 		cell.graceTimer = setTimeout(() => {
+			if (cell.spawnId !== sid) return;
 			cell.emoji = null;
 			cell.occupied = false;
+			cell.spawnId = 0;
 			cell.graceTimer = null;
 		}, 200);
 		cell.timer = null;
@@ -369,7 +390,7 @@ function aiSpawnMole() {
 
 	// AIが叩く試行
 	setTimeout(() => {
-		if (gameOver.value || !cell.visible) return;
+		if (gameOver.value || cell.spawnId !== sid || !cell.visible) return;
 		if (Math.random() < ai.hitRate) {
 			// ヒット
 			const curLvl = isEndless.value ? currentLevel.value : difficulty.value;
@@ -378,10 +399,12 @@ function aiSpawnMole() {
 			if (cell.timer) { clearTimeout(cell.timer); cell.timer = null; }
 			cell.visible = false;
 			cell.hitGlow = true;
-			setTimeout(() => { cell.hitGlow = false; }, 500);
+			setTimeout(() => { if (cell.spawnId === sid) cell.hitGlow = false; }, 500);
 			cell.graceTimer = setTimeout(() => {
+				if (cell.spawnId !== sid) return;
 				cell.emoji = null;
 				cell.occupied = false;
+				cell.spawnId = 0;
 				cell.graceTimer = null;
 			}, 200);
 		}
@@ -474,6 +497,7 @@ function initGame() {
 		cell.visible = false; cell.emoji = null;
 		cell.hitGlow = false; cell.missGlow = false;
 		cell.graceHittable = false; cell.occupied = false;
+		cell.spawnId = 0;
 		if (cell.timer) { clearTimeout(cell.timer); cell.timer = null; }
 		if (cell.graceTimer) { clearTimeout(cell.graceTimer); cell.graceTimer = null; }
 	}

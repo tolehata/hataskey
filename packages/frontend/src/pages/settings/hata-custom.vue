@@ -1,5 +1,10 @@
+<!--
+SPDX-FileCopyrightText: Tolehata
+SPDX-License-Identifier: AGPL-3.0-only
+-->
+
 <template>
-<SearchMarker path="/settings/hata-custom" label="旗鯖独自機能" :keywords="['hata', 'custom', 'simple', 'widget', 'timeline']" icon="ti ti-flag">
+<SearchMarker path="/settings/hata-custom" label="旗鯖独自機能" :keywords="['hata', 'custom', 'simple', 'widget', 'timeline', 'font']" icon="ti ti-flag">
     <div class="_gaps_m">
         <MkFeatureBanner icon="/client-assets/package_3d.png" color="#e74040">
             旗鯖独自の機能設定です。カテゴリごとに設定を管理できます。
@@ -60,9 +65,90 @@
         </FormSection>
         </template>
 
-        <!-- ===== シンプルUI ===== -->
+        <!-- ===== フォント ===== -->
+        <template v-if="activeCat === 'font'">
+        <FormSection first>
+            <template #label>UIフォント選択</template>
+            <div style="font-size:.85em;opacity:.7;margin-bottom:12px;">
+                UI全体のフォントを変更できます。すべてのプリセットフォントは SIL Open Font License 1.1 で提供されており、
+                Google Fonts CDN から直接読み込まれます。サーバーにフォントデータは保存されません。
+            </div>
+            <div :class="$style.fontGrid">
+                <button
+                    v-for="preset in fontPresets"
+                    :key="preset.id"
+                    :class="[$style.fontCard, fontId === preset.id && $style.fontCardOn]"
+                    @click="onFontChange(preset.id)"
+                >
+                    <div :class="$style.fontSample" :style="{ fontFamily: preset.family + ', sans-serif' }">
+                        旗鯖へようこそ！ The quick brown fox
+                    </div>
+                    <div :class="$style.fontSampleSub" :style="{ fontFamily: preset.family + ', sans-serif' }">
+                        あいうえお かきくけこ ABCDEFG 0123456789
+                    </div>
+                    <div :class="$style.fontName">{{ preset.label }}</div>
+                    <div :class="$style.fontMeta">
+                        <span :class="$style.fontLicense"><i class="ti ti-license"></i> {{ preset.license }}</span>
+                        <span :class="$style.fontAuthor">{{ preset.author }}</span>
+                    </div>
+                </button>
+
+                <!-- システムフォント -->
+                <button
+                    :class="[$style.fontCard, fontId === 'system' && $style.fontCardOn]"
+                    @click="onFontChange('system')"
+                >
+                    <div :class="$style.fontSample">旗鯖へようこそ！ The quick brown fox</div>
+                    <div :class="$style.fontSampleSub">あいうえお かきくけこ ABCDEFG 0123456789</div>
+                    <div :class="$style.fontName">システムフォント</div>
+                    <div :class="$style.fontMeta">
+                        <span :class="$style.fontLicense">OS標準フォントを使用</span>
+                    </div>
+                </button>
+            </div>
+        </FormSection>
+
+        <FormSection>
+            <template #label>カスタムフォント（ドライブから）</template>
+            <div style="font-size:.85em;opacity:.7;margin-bottom:12px;">
+                ドライブにアップロードしたフォントファイル（.ttf, .otf, .woff2）を使用できます。<br>
+                使用には免責事項への同意が必要です。
+            </div>
+            <div v-if="fontId === 'custom' && customFontName" :class="$style.customFontStatus">
+                <i class="ti ti-typography"></i>
+                現在のカスタムフォント: <strong>{{ customFontName }}</strong>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <button class="_buttonPrimary" @click="openDrivePicker" style="padding:10px 20px;font-weight:bold;">
+                    <i class="ti ti-upload"></i> ドライブからフォントを選択
+                </button>
+                <button class="_buttonGradate" @click="resetToDefault" style="padding:10px 20px;">
+                    <i class="ti ti-arrow-back"></i> 既定に戻す
+                </button>
+            </div>
+            <div v-if="customFontConsent" :class="$style.consentNote">
+                <i class="ti ti-check"></i> フォント免責事項に同意済み
+            </div>
+        </FormSection>
+        </template>
+
+        <!-- ===== Hatasaba UI ===== -->
         <template v-if="activeCat === 'simpleUi'">
         <FormSection first>
+            <template #label>ノートの間隔</template>
+            <div style="font-size:.85em;opacity:.7;margin-bottom:12px;">タイムラインの投稿同士の間隔を調整します。即座に反映されます。</div>
+            <div :class="$style.spacingOptions">
+                <button v-for="opt in spacingOptions" :key="opt.value" :class="[$style.spacingCard, noteSpacing === opt.value && $style.spacingCardOn]" @click="noteSpacing = opt.value">
+                    <div :class="$style.spacingPreview">
+                        <div :class="$style.spacingBubble" :style="{ margin: opt.previewMargin }"></div>
+                        <div :class="$style.spacingBubble" :style="{ margin: opt.previewMargin }"></div>
+                        <div :class="$style.spacingBubble" :style="{ margin: opt.previewMargin }"></div>
+                    </div>
+                    <div :class="$style.spacingLabel">{{ opt.label }}</div>
+                </button>
+            </div>
+        </FormSection>
+        <FormSection>
             <template #label>上部ナビバー（タイムラインタブ）</template>
             <div style="font-size:.85em;opacity:.7;margin-bottom:8px;">表示するタブとその順番を設定します。</div>
             <div :class="$style.reorderList">
@@ -147,7 +233,7 @@
             <template #label>タイムライン操作</template>
             <MkSwitch v-model="directProfile">
                 <template #label>アバタークリックで直接プロフィールへ</template>
-                <template #caption>ONにするとアバターや名前をクリックした際にユーザーパネルを経由せず、直接プロフィールページに遷移します。全てのUIで動作します。</template>
+                <template #caption>ONにするとユーザーパネルを経由せず、直接プロフィールページに遷移します。Hatasaba UIでは上部の戻るボタンでタイムラインに戻れます。</template>
             </MkSwitch>
         </FormSection>
         <FormSection>
@@ -178,13 +264,22 @@ import { miLocalStorage } from '@/local-storage.js';
 import { prefer } from '@/preferences.js';
 import { definePage } from '@/page.js';
 import { getHiddenReactions, hiddenReactionsVersion } from '@/utility/hidden-reactions.js';
+import { HATA_FONT_PRESETS, applyHataFont, type HataFontId } from '@/scripts/hata-font-manager.js';
+import { chooseDriveFile } from '@/utility/drive.js';
+import { misskeyApi } from '@/utility/misskey-api.js';
 
 const categories = [
     { id: 'general', icon: 'ti ti-flag', label: '旗鯖全体' },
-    { id: 'simpleUi', icon: 'ti ti-device-mobile', label: 'シンプルUI' },
+    { id: 'font', icon: 'ti ti-typography', label: 'フォント' },
+    { id: 'simpleUi', icon: 'ti ti-device-mobile', label: 'Hatasaba UI' },
     { id: 'accessibility', icon: 'ti ti-accessible', label: 'アクセシビリティ' },
 ];
 const activeCat = ref('general');
+
+// フォントタブに切り替えたらプリロード開始
+watch(activeCat, (v) => {
+    if (v === 'font') preloadAllFonts();
+});
 
 // LS helpers (旗鯖全体設定用 — これらは元々LocalStorage)
 function useLSBool(key: string, def: boolean) {
@@ -205,10 +300,81 @@ function moveArr(arr: any[], idx: number, dir: number) {
     [arr[idx], arr[ni]] = [arr[ni], arr[idx]];
 }
 
+// ===== フォント設定 =====
+const fontId = prefer.model('hataFont.id');
+const customFontUrl = prefer.model('hataFont.customUrl');
+const customFontName = prefer.model('hataFont.customName');
+const customFontConsent = prefer.model('hataFont.customFontConsent');
+
+const fontPresets = HATA_FONT_PRESETS;
+const fontsPreloaded = ref(false);
+
+// フォントタブを開いた時にすべてのプリセットフォントをプリロード
+function preloadAllFonts() {
+    if (fontsPreloaded.value) return;
+    for (const preset of HATA_FONT_PRESETS) {
+        if (preset.googleFontsQuery) {
+            const link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = `https://fonts.googleapis.com/css2?family=${preset.googleFontsQuery}&display=swap`;
+            link.dataset.hataPreview = preset.id;
+            document.head.appendChild(link);
+        }
+    }
+    fontsPreloaded.value = true;
+}
+
+function onFontChange(id: HataFontId) {
+    fontId.value = id;
+    applyHataFont();
+}
+
+async function openDrivePicker() {
+    // 免責事項の同意確認
+    if (!customFontConsent.value) {
+        const { canceled } = await os.confirm({
+            type: 'warning',
+            title: 'フォント使用に関する免責事項',
+            text: [
+                '自前のフォントを使用する場合、以下の事項に同意する必要があります。',
+                '',
+                '・使用しようとしているフォントのライセンスを確認し、使用条件に違反していないことを確認してください。',
+                '・ライセンスに違反したフォントを使用し、何らかの不利益を被ったとしても、サーバー管理者は一切の責任を負いません。',
+                '・フォントの表示品質や互換性についてもサーバー管理者は保証しません。',
+                '',
+                '同意しますか？',
+            ].join('\n'),
+        });
+        if (canceled) return;
+        customFontConsent.value = true;
+        prefer.commit('hataConsent.customFont', true);
+        prefer.commit('hataConsent.customFontDate', new Date().toISOString());
+        // サーバーに同意を記録
+        misskeyApi('hata/consent/update', { type: 'customFont', agree: true }).catch(console.error);
+    }
+
+    // ドライブファイルピッカーを開く
+    const files = await chooseDriveFile({ multiple: false }).catch(() => []);
+    if (files.length > 0) {
+        const file = files[0];
+        customFontUrl.value = file.url;
+        customFontName.value = file.name.replace(/\.(ttf|otf|woff2?|eot)$/i, '');
+        fontId.value = 'custom';
+        applyHataFont();
+    }
+}
+
+function resetToDefault() {
+    fontId.value = 'zen-kaku';
+    customFontUrl.value = '';
+    customFontName.value = '';
+    applyHataFont();
+}
+
 // ===== 旗鯖全体 =====
 const showHashtagButtonInPostForm = useLSBool('showHashtagButtonInPostForm', true);
 const showDrawingButtonInPostForm = useLSBool('showDrawingButtonInPostForm', true);
-const showLoginBonusPopup = prefer.model('showLoginBonusPopup');
+const showLoginBonusPopup = useLSBool('showLoginBonusPopup', true);
 const timelineAnimationDirection = prefer.model('timelineAnimationDirection');
 const timelineAnimationOptions = [
     { value: 'top', label: '上からスライド' }, { value: 'left', label: '左からスライド' },
@@ -293,4 +459,30 @@ definePage({ title: '旗鯖独自機能', icon: 'ti ti-flag' });
     background:color-mix(in srgb, var(--MI_THEME-fg) 15%, transparent);
 }
 .spacingLabel { font-size:.82rem; font-weight:600; color:var(--MI_THEME-fg); }
+
+/* ===== フォント設定 ===== */
+.fontGrid { display: flex; flex-direction: column; gap: 8px; }
+.fontCard {
+    display: flex; flex-direction: column; gap: 6px; padding: 14px 16px;
+    border-radius: 12px; border: 2px solid var(--MI_THEME-divider);
+    background: var(--MI_THEME-panel); cursor: pointer; text-align: left;
+    transition: all .2s; font-family: inherit;
+    &:hover { border-color: color-mix(in srgb, var(--MI_THEME-accent) 40%, var(--MI_THEME-divider)); }
+}
+.fontCardOn { border-color: var(--MI_THEME-accent); background: var(--MI_THEME-accentedBg); }
+.fontSample { font-size: 1.4em; line-height: 1.5; margin-bottom: 2px; }
+.fontSampleSub { font-size: 0.92em; line-height: 1.4; opacity: 0.6; margin-bottom: 6px; }
+.fontName { font-size: .88rem; font-weight: 600; }
+.fontMeta { display: flex; flex-direction: column; gap: 2px; }
+.fontLicense { font-size: .72rem; opacity: .5; display: flex; align-items: center; gap: 4px; }
+.fontAuthor { font-size: .72rem; opacity: .4; }
+.customFontStatus {
+    padding: 10px 14px; border-radius: 10px; margin-bottom: 8px;
+    background: var(--MI_THEME-accentedBg); font-size: .88rem;
+    display: flex; align-items: center; gap: 6px;
+}
+.consentNote {
+    margin-top: 8px; font-size: .82rem; opacity: .6;
+    display: flex; align-items: center; gap: 4px; color: var(--MI_THEME-success);
+}
 </style>

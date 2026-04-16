@@ -278,6 +278,32 @@ export class MiUserProfile {
 		unlockedAt: number;
 	}[];
 
+	// ======== 旗鯖同意管理 ========
+	@Column('boolean', {
+		default: false,
+		comment: '外部TL使用同意フラグ',
+	})
+	public hataConsentExternalTl: boolean;
+
+	@Column('timestamp with time zone', {
+		nullable: true,
+		comment: '外部TL同意日時',
+	})
+	public hataConsentExternalTlDate: Date | null;
+
+	@Column('boolean', {
+		default: false,
+		comment: 'カスタムフォント免責同意フラグ',
+	})
+	public hataConsentCustomFont: boolean;
+
+	@Column('timestamp with time zone', {
+		nullable: true,
+		comment: 'カスタムフォント免責同意日時',
+	})
+	public hataConsentCustomFontDate: Date | null;
+	// ======== 旗鯖同意管理ここまで ========
+
 	//#region Denormalized fields
 	@Index()
 	@Column('varchar', {

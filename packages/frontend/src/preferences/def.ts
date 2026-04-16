@@ -867,6 +867,34 @@ export const PREF_DEF = definePreferences({
 	// ======== シンプルUI設定ここまで ========
 	//#endregion
 
+	// ======== フォント設定 ========
+	'hataFont.id': {
+		default: 'zen-kaku' as 'zen-kaku' | 'm-plus-1p' | 'dotgothic16' | 'train-one' | 'ibm-plex-sans-jp' | 'custom' | 'system',
+	},
+	'hataFont.customUrl': {
+		default: '' as string,
+	},
+	'hataFont.customName': {
+		default: '' as string,
+	},
+	'hataFont.customFontConsent': {
+		default: false as boolean,
+	},
+	// ======== 同意管理フラグ ========
+	'hataConsent.externalTl': {
+		default: false as boolean,
+	},
+	'hataConsent.externalTlDate': {
+		default: '' as string,
+	},
+	'hataConsent.customFont': {
+		default: false as boolean,
+	},
+	'hataConsent.customFontDate': {
+		default: '' as string,
+	},
+	// ======== 旗鯖独自機能ここまで ========
+
 	'experimental.stackingRouterView': {
 		default: false,
 	},
