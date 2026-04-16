@@ -111,14 +111,6 @@ onMounted(() => {
 });
 
 onMounted(() => {
-	if (tempUI) {
-		miLocalStorage.setItem('ui', tempUI);
-		miLocalStorage.removeItem('ui_temp');
-		window.location.reload();
-	}
-});
-
-onMounted(() => {
 	if (!isDesktop.value) {
 		window.addEventListener('resize', () => {
 			if (window.innerWidth >= DESKTOP_THRESHOLD) isDesktop.value = true;

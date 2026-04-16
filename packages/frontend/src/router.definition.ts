@@ -540,10 +540,6 @@ export const ROUTE_DEF = [{
 		name: 'update',
 		component: page(() => import('@/pages/admin/update.vue')),
 	}, {
-		path: '/hata-modifications',
-		name: 'hata-modifications',
-		component: page(() => import('@/pages/admin/hata-modifications.vue')),
-	}, {
 		path: '/consent-manager',
 		name: 'consent-manager',
 		component: page(() => import('@/pages/admin/consent-manager.vue')),

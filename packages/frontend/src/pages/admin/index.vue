@@ -256,11 +256,6 @@ const menuDef = computed<SuperMenuDef[]>(() => [{
 		to: '/admin/registration-applications',
 		active: currentPage.value?.route.name === 'registration-applications',
 	}, {
-		icon: 'ti ti-git-compare',
-		text: '旗鯖改変一覧',
-		to: '/admin/hata-modifications',
-		active: currentPage.value?.route.name === 'hata-modifications',
-	}, {
 		icon: 'ti ti-shield-check',
 		text: '同意管理',
 		to: '/admin/consent-manager',

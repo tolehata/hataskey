@@ -4,9 +4,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 
 <template>
-<MkStickyContainer>
-	<template #header><MkPageHeader :actions="headerActions" :tabs="headerTabs"/></template>
-	<MkSpacer :contentMax="900">
+<PageWithHeader :actions="headerActions" :tabs="headerTabs">
+	<div class="_spacer" style="--MI_SPACER-w: 900px; --MI_SPACER-min: 20px;">
 		<!-- ヒーローセクション -->
 		<div :class="$style.hero">
 			<div :class="$style.heroSparkle" aria-hidden="true">
@@ -32,7 +31,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 		<!-- 機能カードグリッド -->
 		<div :class="$style.featureGrid">
-			<article v-for="(f, idx) in filteredFeatures" :key="f.id" :class="[$style.featureCard, $style[`cardTheme_${f.theme}`]]" :style="{ animationDelay: `${idx * 60}ms` }">
+			<article v-for="(f, idx) in filteredFeatures" :key="f.id" :class="$style.featureCard" :style="{ animationDelay: `${idx * 60}ms`, '--cardAccent': themeColor(f.theme) }">
 				<div :class="$style.cardHeader">
 					<div :class="$style.cardIcon">
 						<i :class="f.icon"></i>
@@ -78,15 +77,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<i class="ti ti-external-link"></i>
 			</a>
 		</div>
-	</MkSpacer>
-</MkStickyContainer>
+	</div>
+</PageWithHeader>
 </template>
 
 <script lang="ts" setup>
 import { ref, computed } from 'vue';
-import MkStickyContainer from '@/components/global/MkStickyContainer.vue';
-import MkPageHeader from '@/components/global/MkPageHeader.vue';
-import MkSpacer from '@/components/global/MkSpacer.vue';
 import { definePage } from '@/page.js';
 
 definePage(() => ({
@@ -254,6 +250,19 @@ function sparkleStyle(n: number) {
 		top: `${(seed * 3) % 90}%`,
 		animationDelay: `${(seed % 40) / 10}s`,
 	};
+}
+
+// カードテーマ色（CSS変数として渡す）
+const themeColorMap: Record<string, string> = {
+	sky: '#0ea5e9',
+	pink: '#ec4899',
+	mint: '#10b981',
+	amber: '#f59e0b',
+	violet: '#8b5cf6',
+	rose: '#f43f5e',
+};
+function themeColor(theme: string): string {
+	return themeColorMap[theme] ?? themeColorMap.sky;
 }
 </script>
 
