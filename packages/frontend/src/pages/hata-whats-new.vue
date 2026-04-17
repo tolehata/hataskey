@@ -8,9 +8,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 	<div class="_spacer" style="--MI_SPACER-w: 900px; --MI_SPACER-min: 20px;">
 		<!-- ヒーローセクション -->
 		<div :class="$style.hero">
-			<div :class="$style.heroSparkle" aria-hidden="true">
-				<span v-for="n in 12" :key="n" :class="$style.sparkle" :style="sparkleStyle(n)"></span>
-			</div>
 			<div :class="$style.heroContent">
 				<div :class="$style.heroBadge">
 					<i class="ti ti-sparkles"></i>
@@ -243,15 +240,6 @@ const filteredFeatures = computed(() => {
 });
 
 // きらめき装飾の位置をランダム化
-function sparkleStyle(n: number) {
-	const seed = n * 137;
-	return {
-		left: `${(seed * 7) % 95}%`,
-		top: `${(seed * 3) % 90}%`,
-		animationDelay: `${(seed % 40) / 10}s`,
-	};
-}
-
 // カードテーマ色（CSS変数として渡す）
 const themeColorMap: Record<string, string> = {
 	sky: '#0ea5e9',
@@ -279,28 +267,6 @@ function themeColor(theme: string): string {
 	);
 	overflow: hidden;
 	text-align: center;
-}
-
-.heroSparkle {
-	position: absolute;
-	inset: 0;
-	pointer-events: none;
-}
-
-.sparkle {
-	position: absolute;
-	width: 6px;
-	height: 6px;
-	background: var(--MI_THEME-accent);
-	border-radius: 50%;
-	opacity: 0;
-	animation: sparkle 4s ease-in-out infinite;
-	box-shadow: 0 0 8px var(--MI_THEME-accent);
-}
-
-@keyframes sparkle {
-	0%, 100% { opacity: 0; transform: scale(0.5); }
-	50% { opacity: 0.8; transform: scale(1.2); }
 }
 
 .heroContent {

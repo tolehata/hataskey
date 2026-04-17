@@ -10,6 +10,7 @@ import { $i } from '@/i.js';
 const mutedUserIds = ref<Set<string>>(new Set());
 let fetched = false;
 let fetchPromise: Promise<void> | null = null;
+const pendingReactionsByNote = new Map<string, Set<string>>(); // noteId -> Set<userId>
 
 export async function fetchMutedUsers(): Promise<void> {
 	if (!$i) return;
@@ -49,6 +50,14 @@ export async function fetchMutedUsers(): Promise<void> {
 
 export function isMutedUser(userId: string): boolean {
 	return mutedUserIds.value.has(userId);
+}
+
+/**
+ * ミュートリスト未取得時は「判定不能=trueにせず、falseを返す」運用だと取りこぼしが発生するため、
+ * 「未取得時かつmuteリスト取得中」であることを呼び出し側が判別できるようにする。
+ */
+export function isMutedUsersReady(): boolean {
+	return fetched;
 }
 
 export function invalidateMutedUsers(): void {

@@ -87,7 +87,7 @@ const modal = useTemplateRef('modal');
 const user = ref<any>(null);
 const loading = ref(true);
 const errorMsg = ref<string | null>(null);
-const emojiUrls = ref<Record<string, string>>({});
+const externalEmojiMap = ref<Record<string, string>>({});
 
 const mfmAuthor = computed(() => {
 	if (!user.value) return undefined;
@@ -95,6 +95,49 @@ const mfmAuthor = computed(() => {
 		...user.value,
 		host: user.value.host || props.host,
 	};
+});
+
+// ユーザー名やプロフィールに含まれるカスタム絵文字を解決
+// - 接続先サーバーの絵文字マップ (externalEmojiMap) を基本に
+// - user.emojis に含まれる絵文字を最優先でマージ
+// - 連合先ユーザーの場合は user.host のURLをフォールバックに
+const emojiUrls = computed(() => {
+	const map: Record<string, string> = {};
+
+	// 接続先サーバーの全絵文字キャッシュ
+	Object.assign(map, externalEmojiMap.value);
+
+	// user.emojis（連合先ユーザーの絵文字含む）
+	if (user.value?.emojis) {
+		if (Array.isArray(user.value.emojis)) {
+			for (const emoji of user.value.emojis) {
+				if (emoji.name && emoji.url) {
+					map[emoji.name] = emoji.url;
+				}
+			}
+		} else {
+			Object.assign(map, user.value.emojis);
+		}
+	}
+
+	// ユーザーの連合先ホスト
+	const userHost = user.value?.host as string | null | undefined;
+
+	// Proxy: マップに無い絵文字名でも直URLをフォールバック
+	return new Proxy(map, {
+		get(target, prop: string) {
+			if (prop in target) return target[prop];
+			// 連合先ユーザー: 連合先サーバーの絵文字URLをフォールバック
+			if (userHost) {
+				return `https://${userHost}/emoji/${prop}.webp`;
+			}
+			// 接続先サーバーの絵文字直URLをフォールバック
+			return `https://${props.host}/emoji/${prop}.webp`;
+		},
+		has(target, prop: string) {
+			return true;
+		},
+	});
 });
 
 function formatNumber(n: number | undefined | null): string {
@@ -115,7 +158,7 @@ function openExternal() {
 onMounted(async () => {
 	// 絵文字マップの取得（キャッシュから即座に返る）
 	try {
-		emojiUrls.value = await getExternalEmojiUrlMap();
+		externalEmojiMap.value = await getExternalEmojiUrlMap();
 	} catch { /* ignore */ }
 
 	// ユーザー情報取得

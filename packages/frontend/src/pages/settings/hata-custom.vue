@@ -373,6 +373,14 @@ const openUiSetup = async () => {
 const isExternalLinked = computed(() => prefer.s['external.enabled'] && prefer.s['external.token'] != null);
 const hiddenReactionCount = computed(() => { hiddenReactionsVersion.value; return getHiddenReactions().length; });
 const hideMutedUserReactions = prefer.model('hideMutedUserReactions');
+// OFF→ON時にミュートリストを即座に取得（取りこぼし防止）
+watch(hideMutedUserReactions, async (newVal) => {
+    if (newVal) {
+        const { fetchMutedUsers, invalidateMutedUsers } = await import('@/utility/muted-users.js');
+        invalidateMutedUsers();
+        fetchMutedUsers();
+    }
+});
 
 // ===== シンプルUI（prefer同期） =====
 const topNavItems = ref([...prefer.s['simpleUi.topNav']]);

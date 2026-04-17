@@ -34,12 +34,22 @@ import { misskeyApi } from '@/utility/misskey-api.js';
 import * as os from '@/os.js';
 import { cleanupStaleUiElements } from '@/utility/ui-cleanup.js';
 import { initHataFontWatcher } from '@/scripts/hata-font-manager.js';
+import { fetchMutedUsers } from '@/utility/muted-users.js';
 
 export async function mainBoot() {
 	cleanupStaleUiElements();
 
 	// 旗鯖フォント初期化
 	initHataFontWatcher();
+
+	// 旗鯖独自: ミュートユーザーリスト先読み（hideMutedUserReactions が有効な場合のみ）
+	// ノートが流れる前にリスト取得を完了させることで、リアルタイムフィルタの取りこぼしを防ぐ
+	if (prefer.s.hideMutedUserReactions) {
+		// 意図的に await しない: mainBootを遅延させないため。
+		// 取得完了前に来たリアクションは取りこぼす可能性があるが、
+		// 実用上の取りこぼしは最初の数秒のみで許容範囲。
+		fetchMutedUsers();
+	}
 
 	const { isClientUpdated, isClientMigrated, lastVersion } = await common(async () => {
 		let uiStyle = ui;
