@@ -96,6 +96,32 @@ export async function common(createVue: () => Promise<App<Element>>) {
 		miLocalStorage.setItem('hata_classic_spacing_migrated', '1');
 	}
 
+	// 旗鯖: サイドバーに「お知らせ」「UI切り替え」を自動追加（既存ユーザー向け）
+	if (!miLocalStorage.getItem('hata_sidebar_v2_migrated')) {
+		const { prefer: preferSidebar } = await import('@/preferences.js');
+		const current = [...(preferSidebar.s['simpleUi.sidebar'] ?? [])];
+		const has = (id: string) => current.some(i => i && i.id === id);
+		let changed = false;
+		// 「もっと」の直前に挿入（無ければ末尾に追加）
+		const moreIdx = current.findIndex(i => i && i.id === 'more');
+		const insertAt = moreIdx >= 0 ? moreIdx : current.length;
+		if (!has('uiSetup')) {
+			current.splice(insertAt, 0, { id: 'uiSetup', icon: 'ti ti-wand', label: 'UI切り替え' });
+			changed = true;
+		}
+		if (!has('announcements')) {
+			// 再検索（uiSetup追加で位置が変わってる可能性があるため）
+			const newMoreIdx = current.findIndex(i => i && i.id === 'more');
+			const insertPos = newMoreIdx >= 0 ? newMoreIdx : current.length;
+			current.splice(insertPos, 0, { id: 'announcements', icon: 'ti ti-speakerphone', label: 'お知らせ' });
+			changed = true;
+		}
+		if (changed) {
+			preferSidebar.commit('simpleUi.sidebar', current);
+		}
+		miLocalStorage.setItem('hata_sidebar_v2_migrated', '1');
+	}
+
 	if (instance.swPublickey && ('PushManager' in window) && $i && $i.token && showPushNotificationDialog == null) {
 		const { dispose } = popup(defineAsyncComponent(() => import('@/components/MkPushNotification.vue')), {}, {
 			closed: () => dispose(),
