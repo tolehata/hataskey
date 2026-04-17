@@ -129,6 +129,7 @@ interface Cell {
 	graceTimer: ReturnType<typeof setTimeout> | null;
 	hitGlowTimer: ReturnType<typeof setTimeout> | null;
 	missGlowTimer: ReturnType<typeof setTimeout> | null;
+	clearTimer: ReturnType<typeof setTimeout> | null; // occupied解放の遅延タイマー（spawn時にキャンセル可能にする）
 	spawnId: number; // 各スポーンのユニークID（タイマー競合防止）
 }
 
@@ -179,7 +180,7 @@ const cells = reactive<Cell[]>(
 	Array.from({ length: CELL_COUNT }, () => ({
 		visible: false, emoji: null, hitGlow: false, missGlow: false,
 		graceHittable: false, occupied: false, timer: null, graceTimer: null,
-		hitGlowTimer: null, missGlowTimer: null,
+		hitGlowTimer: null, missGlowTimer: null, clearTimer: null,
 		spawnId: 0,
 	}))
 );
@@ -189,7 +190,7 @@ const aiCells = reactive<Cell[]>(
 	Array.from({ length: CELL_COUNT }, () => ({
 		visible: false, emoji: null, hitGlow: false, missGlow: false,
 		graceHittable: false, occupied: false, timer: null, graceTimer: null,
-		hitGlowTimer: null, missGlowTimer: null,
+		hitGlowTimer: null, missGlowTimer: null, clearTimer: null,
 		spawnId: 0,
 	}))
 );
@@ -264,7 +265,12 @@ function clearCell(cell: Cell) {
 	if (cell.timer) { clearTimeout(cell.timer); cell.timer = null; }
 	if (cell.graceTimer) { clearTimeout(cell.graceTimer); cell.graceTimer = null; }
 	// occupiedはアニメーション完了後に解放（CSS transition + 余裕）
-	setTimeout(() => { cell.occupied = false; }, 400);
+	// 既存の解放タイマーをキャンセルしてから新規セット（暴発防止）
+	if (cell.clearTimer) { clearTimeout(cell.clearTimer); }
+	cell.clearTimer = setTimeout(() => {
+		cell.occupied = false;
+		cell.clearTimer = null;
+	}, 400);
 }
 
 // ===== ゲームロジック =====
@@ -282,6 +288,8 @@ function spawnMole() {
 	const target = freeCells[Math.floor(Math.random() * freeCells.length)];
 	const cell = target.c;
 	const sid = ++nextSpawnId;
+	// 過去の解放タイマーが残っていれば確実にキャンセル（spawn後の暴発防止）
+	if (cell.clearTimer) { clearTimeout(cell.clearTimer); cell.clearTimer = null; }
 	cell.emoji = pickEmoji();
 	cell.visible = true;
 	cell.occupied = true;
@@ -360,7 +368,11 @@ function aiClearCell(cell: Cell) {
 	cell.spawnId = 0;
 	if (cell.timer) { clearTimeout(cell.timer); cell.timer = null; }
 	if (cell.graceTimer) { clearTimeout(cell.graceTimer); cell.graceTimer = null; }
-	setTimeout(() => { cell.occupied = false; }, 400);
+	if (cell.clearTimer) { clearTimeout(cell.clearTimer); }
+	cell.clearTimer = setTimeout(() => {
+		cell.occupied = false;
+		cell.clearTimer = null;
+	}, 400);
 }
 
 function aiSpawnMole() {
@@ -376,6 +388,7 @@ function aiSpawnMole() {
 	const target = freeCells[Math.floor(Math.random() * freeCells.length)];
 	const cell = target.c;
 	const sid = ++nextSpawnId;
+	if (cell.clearTimer) { clearTimeout(cell.clearTimer); cell.clearTimer = null; }
 	cell.emoji = pickEmoji();
 	cell.visible = true;
 	cell.occupied = true;
@@ -516,6 +529,7 @@ function initGame() {
 		if (cell.graceTimer) { clearTimeout(cell.graceTimer); cell.graceTimer = null; }
 		if (cell.hitGlowTimer) { clearTimeout(cell.hitGlowTimer); cell.hitGlowTimer = null; }
 		if (cell.missGlowTimer) { clearTimeout(cell.missGlowTimer); cell.missGlowTimer = null; }
+		if (cell.clearTimer) { clearTimeout(cell.clearTimer); cell.clearTimer = null; }
 	}
 	for (const cell of aiCells) { aiClearCell(cell); }
 
@@ -536,6 +550,7 @@ onUnmounted(() => {
 		if (cell.graceTimer) clearTimeout(cell.graceTimer);
 		if (cell.hitGlowTimer) clearTimeout(cell.hitGlowTimer);
 		if (cell.missGlowTimer) clearTimeout(cell.missGlowTimer);
+		if (cell.clearTimer) clearTimeout(cell.clearTimer);
 	}
 	for (const cell of aiCells) { aiClearCell(cell); }
 });
