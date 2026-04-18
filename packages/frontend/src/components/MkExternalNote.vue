@@ -18,7 +18,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 							<Mfm :text="note.user?.name || note.user?.username" :plain="true" :nyaize="false" :author="mfmAuthor" :emojiUrls="mergedEmojiUrls"/>
 						</button>
 						<span :class="$style.username">
-							@{{ note.user?.username }}@{{ host }}
+							@{{ note.user?.username }}@{{ note.user?.host || host }}
 						</span>
 						<MkA :to="`https://${host}/notes/${note.id}`" target="_blank" :class="$style.time">
 							<MkTime :time="note.createdAt"/>

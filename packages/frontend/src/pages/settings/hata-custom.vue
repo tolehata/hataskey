@@ -196,9 +196,9 @@ SPDX-License-Identifier: AGPL-3.0-only
                     <div :class="$style.spacingLabel">{{ opt.label }}</div>
                 </button>
             </div>
-            <MkSwitch v-model="classicNoteSpacing">
+            <MkSwitch v-model="classicNoteSpacing" :disabled="disableBubbleInDefault">
                 <template #label>従来のMisskey風の投稿間隔を使用する</template>
-                <template #caption>ONにするとタイムラインの投稿間隔が従来のMisskeyと同じ間隔になります。</template>
+                <template #caption>ONにするとタイムラインの投稿間隔が従来のMisskeyと同じ間隔になります。<br><span v-if="disableBubbleInDefault" style="color: var(--MI_THEME-warn);">※「Misskey UIで吹き出し表示を無効にする」がONの場合、この設定は使用できません。</span></template>
             </MkSwitch>
         </FormSection>
         <FormSection>
@@ -402,6 +402,30 @@ const noteSpacing = prefer.model('simpleUi.noteSpacing');
 const disableBubbleInDeck = prefer.model('simpleUi.disableBubbleInDeck');
 const disableBubbleInDefault = prefer.model('simpleUi.disableBubbleInDefault');
 const classicNoteSpacing = prefer.model('simpleUi.classicNoteSpacing');
+
+// Misskey UIの吹き出しを無効化した場合、従来のMisskey風投稿間隔は使えなくなるため、
+// 一旦OFFに落としつつ、元の値を記憶。再度吹き出しを有効化したら元に戻す。
+const savedClassicNoteSpacing = ref<boolean | null>(null);
+watch(disableBubbleInDefault, (isDisabled, wasDisabled) => {
+    if (isDisabled && !wasDisabled) {
+        // 吹き出しを無効化 → 現在の値を保存して強制OFF
+        savedClassicNoteSpacing.value = classicNoteSpacing.value;
+        if (classicNoteSpacing.value) {
+            classicNoteSpacing.value = false;
+        }
+    } else if (!isDisabled && wasDisabled) {
+        // 吹き出しを再度有効化 → 保存した値に復元
+        if (savedClassicNoteSpacing.value !== null) {
+            classicNoteSpacing.value = savedClassicNoteSpacing.value;
+            savedClassicNoteSpacing.value = null;
+        }
+    }
+});
+// 起動時に既に disableBubbleInDefault が true の場合は、classicNoteSpacing を強制 OFF にする
+if (disableBubbleInDefault.value && classicNoteSpacing.value) {
+    savedClassicNoteSpacing.value = classicNoteSpacing.value;
+    classicNoteSpacing.value = false;
+}
 
 const spacingOptions = [
     { value: 'compact', label: '詰める', previewMargin: '2px 0' },
