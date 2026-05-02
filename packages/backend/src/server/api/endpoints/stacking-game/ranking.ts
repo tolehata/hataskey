@@ -4,16 +4,28 @@
  */
 
 import { Inject, Injectable } from '@nestjs/common';
+import ms from 'ms';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import type { StackingGameRecordsRepository } from '@/models/_.js';
 import { DI } from '@/di-symbols.js';
 import { UserEntityService } from '@/core/entities/UserEntityService.js';
+import { ApiError } from '@/server/api/error.js';
+
+const ALLOWED_GAME_MODES = new Set<string>([
+	'sprint', 'marathon', 'endless', 'battle', 'training', 'classic', 'custom',
+]);
 
 export const meta = {
 	allowGet: true,
 	cacheSec: 60,
 
+	limit: {
+		duration: ms('1minute'),
+		max: 60,
+	},
+
 	errors: {
+		invalidGameMode: { message: 'Invalid game mode.', code: 'INVALID_GAME_MODE', id: 'e0000001-0001-0001-0001-000000000003' },
 	},
 
 	res: {
@@ -52,7 +64,7 @@ export const meta = {
 export const paramDef = {
 	type: 'object',
 	properties: {
-		gameMode: { type: 'string' },
+		gameMode: { type: 'string', minLength: 1, maxLength: 32 },
 	},
 	required: ['gameMode'],
 } as const;
@@ -66,6 +78,9 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		private userEntityService: UserEntityService,
 	) {
 		super(meta, paramDef, async (ps) => {
+			if (!ALLOWED_GAME_MODES.has(ps.gameMode)) {
+				throw new ApiError(meta.errors.invalidGameMode);
+			}
 			// 各ユーザーのベストスコアのみ取得（サブクエリで最高スコアのレコードIDを取得）
 			const records = await this.stackingGameRecordsRepository
 				.createQueryBuilder('r')

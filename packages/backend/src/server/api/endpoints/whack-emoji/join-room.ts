@@ -1,10 +1,21 @@
+/*
+ * SPDX-FileCopyrightText: Tolehata
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
 import { Injectable } from '@nestjs/common';
+import ms from 'ms';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import { WhackEmojiRoomService } from '@/core/WhackEmojiRoomService.js';
 import { ApiError } from '../../error.js';
 
 export const meta = {
-	requireCredential: true, kind: 'write:account',
+	requireCredential: true,
+	kind: 'write:account',
+	limit: {
+		duration: ms('1hour'),
+		max: 60,
+		minInterval: ms('1sec'),
+	},
 	errors: {
 		noSuchRoom: { message: 'No such room.', code: 'NO_SUCH_ROOM', id: 'b1c2d3e4-whack-room-not-found' },
 		cannotJoinOwnRoom: { message: 'Cannot join own room.', code: 'CANNOT_JOIN_OWN_ROOM', id: 'b1c2d3e6-whack-own-room' },

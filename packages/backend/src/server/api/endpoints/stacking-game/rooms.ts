@@ -4,12 +4,17 @@
  */
 
 import { Injectable } from '@nestjs/common';
+import ms from 'ms';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import { StackingGameRoomService } from '@/core/StackingGameRoomService.js';
 
 export const meta = {
 	allowGet: true,
 	cacheSec: 5,
+	limit: {
+		duration: ms('1minute'),
+		max: 120,
+	},
 } as const;
 
 export const paramDef = {

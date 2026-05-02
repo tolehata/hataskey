@@ -20,9 +20,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<span :class="$style.username">
 							@{{ note.user?.username }}@{{ note.user?.host || host }}
 						</span>
-						<MkA :to="`https://${host}/notes/${note.id}`" target="_blank" :class="$style.time">
+						<MkA v-if="safeNoteUrl" :to="safeNoteUrl" target="_blank" :class="$style.time">
 							<MkTime :time="note.createdAt"/>
 						</MkA>
+						<span v-else :class="$style.time">
+							<MkTime :time="note.createdAt"/>
+						</span>
 						<span v-if="visibilityInfo" :class="$style.visibilityBadge" :title="visibilityInfo.label">
 							<i :class="visibilityInfo.icon"></i>
 						</span>
@@ -153,6 +156,27 @@ const showContent = ref(false);
 const myReaction = ref<string | null>(props.note.myReaction || null);
 const reactionBtnEl = useTemplateRef('reactionBtnEl');
 const reactionAddBtnEl = useTemplateRef('reactionAddBtnEl');
+
+// SECURITY: 外部サーバー由来の note.id / host を URL に組み立てる際は厳格に検証。
+// note.id が想定外の文字 (改行、引用符、 javascript: スキームの種となる文字等) を
+// 含む場合はリンクを生成しない。
+const safeHost = computed<string | null>(() => {
+	const h = props.host;
+	if (typeof h !== 'string' || h.length === 0 || h.length > 253) return null;
+	if (!/^[a-z0-9.\-]+(?::[1-9][0-9]{0,4})?$/i.test(h)) return null;
+	return h;
+});
+const safeNoteId = computed<string | null>(() => {
+	const id = props.note?.id;
+	if (typeof id !== 'string' || id.length === 0 || id.length > 64) return null;
+	// Misskey/CherryPick の note id は基本的に [a-z0-9] のみ
+	if (!/^[A-Za-z0-9]+$/.test(id)) return null;
+	return id;
+});
+const safeNoteUrl = computed<string | null>(() => {
+	if (!safeHost.value || !safeNoteId.value) return null;
+	return `https://${safeHost.value}/notes/${safeNoteId.value}`;
+});
 
 // 自分のノートかどうか判定
 const isMine = computed(() => {

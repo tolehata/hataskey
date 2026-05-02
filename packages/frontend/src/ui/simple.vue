@@ -28,7 +28,7 @@ SPDX-License-Identifier: AGPL-3.0-only
             <div :class="$style.sbNav">
                 <button v-for="item in sidebarOrder" :key="item.id" :class="[$style.sbItem, { [$style.sbActive]: sidebarItemActive(item.id) }]" @click="sidebarItemClick(item.id, $event)">
                     <i :class="[item.icon, $style.sbIcon]"></i><span :class="$style.sbLabel">{{ item.label }}</span>
-                    <span v-if="item.id==='notifications' && hasUnreadNotif" :class="$style.sbDot"></span>
+                    <span v-if="item.id==='notifications' && hasUnreadNotif" :class="$style.sbBadge">{{ unreadNotifCount > 0 ? (unreadNotifCount > 99 ? '99+' : unreadNotifCount) : '' }}</span>
                 </button>
             </div>
 
@@ -84,14 +84,32 @@ SPDX-License-Identifier: AGPL-3.0-only
             </button>
             <div :class="$style.topPill">
                 <template v-for="item in visibleTopTabs" :key="item.id">
-                    <button :class="[$style.topTabBtn, { [$style.topTabActive]: tab === item.id }]" @click="switchTab(item.id as TabType)"><i :class="item.icon"></i></button>
+                    <button :class="[$style.topTabBtn, { [$style.topTabActive]: tab === item.id }]" @click="switchTab(item.id as TabType)">
+                        <i :class="item.icon"></i>
+                        <span v-if="tab === item.id" :class="$style.topTabLabel">{{ item.label }}</span>
+                    </button>
                 </template>
-                <button v-if="showOHTL" :class="[$style.topTabBtn, $style.topTabExt, { [$style.topTabActive]: tab === 'ohtl' }]" @click="switchTab('ohtl')"><i class="ti ti-home"></i></button>
-                <button v-if="showOLTL" :class="[$style.topTabBtn, $style.topTabExt, { [$style.topTabActive]: tab === 'oltl' }]" @click="switchTab('oltl')"><i class="ti ti-planet"></i></button>
+                <button v-if="showOHTL" :class="[$style.topTabBtn, $style.topTabExt, { [$style.topTabActive]: tab === 'ohtl' }]" @click="switchTab('ohtl')">
+                    <i class="ti ti-home"></i>
+                    <span v-if="tab === 'ohtl'" :class="$style.topTabLabel">外部ホーム</span>
+                </button>
+                <button v-if="showOLTL" :class="[$style.topTabBtn, $style.topTabExt, { [$style.topTabActive]: tab === 'oltl' }]" @click="switchTab('oltl')">
+                    <i class="ti ti-planet"></i>
+                    <span v-if="tab === 'oltl'" :class="$style.topTabLabel">外部ローカル</span>
+                </button>
                 <div :class="$style.topTabDivider"></div>
-                <button :class="[$style.topTabBtn, { [$style.topTabActive]: isListPage }]" @click="goToLists"><i class="ti ti-list"></i></button>
-                <button :class="[$style.topTabBtn, { [$style.topTabActive]: isChannelPage }]" @click="goToChannels"><i class="ti ti-device-tv"></i></button>
-                <button :class="[$style.topTabBtn, { [$style.topTabActive]: isAntennaPage }]" @click="goToAntennas"><i class="ti ti-antenna"></i></button>
+                <button :class="[$style.topTabBtn, { [$style.topTabActive]: isListPage }]" @click="goToLists">
+                    <i class="ti ti-list"></i>
+                    <span v-if="isListPage" :class="$style.topTabLabel">リスト</span>
+                </button>
+                <button :class="[$style.topTabBtn, { [$style.topTabActive]: isChannelPage }]" @click="goToChannels">
+                    <i class="ti ti-device-tv"></i>
+                    <span v-if="isChannelPage" :class="$style.topTabLabel">チャンネル</span>
+                </button>
+                <button :class="[$style.topTabBtn, { [$style.topTabActive]: isAntennaPage }]" @click="goToAntennas">
+                    <i class="ti ti-antenna"></i>
+                    <span v-if="isAntennaPage" :class="$style.topTabLabel">アンテナ</span>
+                </button>
             </div>
         </div>
         <!-- Page view header -->
@@ -126,7 +144,8 @@ SPDX-License-Identifier: AGPL-3.0-only
                     <button v-else-if="item.id==='home'" @click="goHome" :class="[$style.navBtn, { [$style.navActive]: isHomeTL }]"><i class="ti ti-home"></i></button>
                     <button v-else-if="item.id==='notifications'" @click="goToNotifications" :class="[$style.navBtn, { [$style.navActive]: isNotifPage }]">
                         <i class="ti ti-bell"></i>
-                        <span v-if="hasUnreadNotif" :class="$style.badge"></span>
+                        <span v-if="hasUnreadNotif && unreadNotifCount > 0" :class="$style.badgeCount">{{ unreadNotifCount > 99 ? '99+' : unreadNotifCount }}</span>
+                        <span v-else-if="hasUnreadNotif" :class="$style.badge"></span>
                     </button>
                     <button v-else-if="item.id==='hatask'" @click="goToHatask" :class="[$style.navBtn, { [$style.navActive]: isHataskPage }]"><i class="ti ti-eye"></i></button>
                     <button v-else-if="item.id==='widgets'" @click="widgetsShowing = true" :class="$style.navBtn"><i class="ti ti-apps"></i></button>
@@ -188,7 +207,7 @@ SPDX-License-Identifier: AGPL-3.0-only
                     <div :class="$style.sbNav">
                         <button v-for="item in sidebarOrder" :key="item.id" :class="[$style.sbItem, { [$style.sbActive]: sidebarItemActive(item.id) }]" @click="sidebarItemClick(item.id, $event)">
                             <i :class="[item.icon, $style.sbIcon]"></i><span :class="$style.sbLabel">{{ item.label }}</span>
-                            <span v-if="item.id==='notifications' && hasUnreadNotif" :class="$style.sbDot"></span>
+                            <span v-if="item.id==='notifications' && hasUnreadNotif" :class="$style.sbBadge">{{ unreadNotifCount > 0 ? (unreadNotifCount > 99 ? '99+' : unreadNotifCount) : '' }}</span>
                         </button>
                     </div>
                     <div :class="$style.sbDivider"></div>
@@ -401,7 +420,7 @@ mainRouter.on('change', ()=>{
     simpleDrawerShowing.value = false;
     showBottomBar.value = true;
     showTopBar.value = true;
-    if (mainRouter.currentRoute.value.path==='/my/notifications') hasUnreadNotif.value=false;
+    if (mainRouter.currentRoute.value.path==='/my/notifications') { hasUnreadNotif.value=false; unreadNotifCount.value=0; }
     // テーマ再検出（ページ遷移でテーマが変わる場合）
     setTimeout(detectThemeBrightness, 100);
 });
@@ -472,7 +491,7 @@ const goBack = ()=>{
 };
 const openSearch = ()=>{ mainRouter.push('/search'); };
 const goToHatask = ()=>{ mainRouter.push('/hatask'); };
-const goToNotifications = ()=>{ hasUnreadNotif.value=false; mainRouter.push('/my/notifications'); };
+const goToNotifications = ()=>{ hasUnreadNotif.value=false; unreadNotifCount.value=0; mainRouter.push('/my/notifications'); };
 const goToLists = ()=>{ mainRouter.push('/my/lists'); };
 const goToChannels = ()=>{ mainRouter.push('/channels'); };
 const goToAntennas = ()=>{ mainRouter.push('/my/antennas'); };
@@ -591,17 +610,69 @@ function toggleRealtimeMode() {
 const userPanelUserId = ref<string|null>(null);
 
 // ===== 通知バッジ =====
+// hasUnreadNotif: 未読通知の有無 (boolean)
+// unreadNotifCount: 未読通知の件数 (number) - 表示用
 const hasUnreadNotif = ref(false);
+const unreadNotifCount = ref(0);
 let mainCh:any = null;
-const checkUnread = async()=>{ try{ const r=await os.api('i/notifications',{limit:1,following:true}); if(r.length>0&&!r[0].isRead)hasUnreadNotif.value=true; }catch{} };
+let unreadPollTimer: ReturnType<typeof setInterval>|null = null;
+
+// $i.unreadNotificationsCount を最優先で参照、無ければ i/notifications を1件取得して isRead で判定
+const checkUnread = async()=>{
+    try {
+        // $i に未読件数があればそれを使う（最も正確）
+        if ($i && typeof $i.unreadNotificationsCount === 'number') {
+            unreadNotifCount.value = $i.unreadNotificationsCount;
+            hasUnreadNotif.value = $i.unreadNotificationsCount > 0;
+            return;
+        }
+        // フォールバック: 直近1件を取得して未読判定（following:true は付けない）
+        const r = await os.api('i/notifications', { limit: 1 });
+        if (Array.isArray(r) && r.length > 0 && !r[0].isRead) {
+            hasUnreadNotif.value = true;
+            // 件数は取れないので 0 のまま（ドット表示）
+        } else {
+            hasUnreadNotif.value = false;
+            unreadNotifCount.value = 0;
+        }
+    } catch {}
+};
+
 const initStream = ()=>{
     try {
         if(mainCh || !os.stream)return;
         mainCh=os.stream.useChannel('main');
-        mainCh.on('notification',()=>{ if(mainRouter.currentRoute.value.path!=='/my/notifications')hasUnreadNotif.value=true; });
-        mainCh.on('unreadNotification',()=>{ if(mainRouter.currentRoute.value.path!=='/my/notifications')hasUnreadNotif.value=true; });
-        mainCh.on('readAllNotifications',()=>{ hasUnreadNotif.value=false; });
+        mainCh.on('notification',()=>{
+            if (mainRouter.currentRoute.value.path === '/my/notifications') return;
+            hasUnreadNotif.value = true;
+            // $i から件数を再取得
+            if ($i && typeof $i.unreadNotificationsCount === 'number') {
+                unreadNotifCount.value = $i.unreadNotificationsCount;
+            } else {
+                unreadNotifCount.value++;
+            }
+        });
+        mainCh.on('unreadNotification',()=>{
+            if (mainRouter.currentRoute.value.path === '/my/notifications') return;
+            hasUnreadNotif.value = true;
+            if ($i && typeof $i.unreadNotificationsCount === 'number') {
+                unreadNotifCount.value = $i.unreadNotificationsCount;
+            }
+        });
+        mainCh.on('readAllNotifications',()=>{
+            hasUnreadNotif.value = false;
+            unreadNotifCount.value = 0;
+        });
     } catch(e) { console.warn('Stream init failed:', e); }
+};
+
+// $i.unreadNotificationsCount を定期的にポーリング（ストリーム不調時の保険）
+const startUnreadPoll = ()=>{
+    if (unreadPollTimer) return;
+    unreadPollTimer = setInterval(checkUnread, 60000);
+};
+const stopUnreadPoll = ()=>{
+    if (unreadPollTimer) { clearInterval(unreadPollTimer); unreadPollTimer = null; }
 };
 
 // ===== ユーザーパネルイベントリスナー =====
@@ -623,8 +694,8 @@ function onSimpleUserPanel(ev: Event) {
     }
 }
 
-onMounted(()=>{ cleanupStaleUiElements(); checkIsPageView(); checkUnread(); window.addEventListener('simple-user-panel', onSimpleUserPanel); nextTick(()=>{ initStream(); startThemeWatch(); }); window.addEventListener('ext-tl-notif-count', onExtNotifCount); });
-onUnmounted(()=>{ mainCh?.dispose(); mainCh=null; stopThemeWatch(); if(scrollTimer)clearTimeout(scrollTimer); window.removeEventListener('ext-tl-notif-count', onExtNotifCount); window.removeEventListener('resize', onResize); window.removeEventListener('simple-user-panel', onSimpleUserPanel); });
+onMounted(()=>{ cleanupStaleUiElements(); checkIsPageView(); checkUnread(); startUnreadPoll(); window.addEventListener('simple-user-panel', onSimpleUserPanel); nextTick(()=>{ initStream(); startThemeWatch(); }); window.addEventListener('ext-tl-notif-count', onExtNotifCount); });
+onUnmounted(()=>{ mainCh?.dispose(); mainCh=null; stopUnreadPoll(); stopThemeWatch(); if(scrollTimer)clearTimeout(scrollTimer); window.removeEventListener('ext-tl-notif-count', onExtNotifCount); window.removeEventListener('resize', onResize); window.removeEventListener('simple-user-panel', onSimpleUserPanel); });
 </script>
 
 <style lang="scss" module>
@@ -795,6 +866,22 @@ onUnmounted(()=>{ mainCh?.dispose(); mainCh=null; stopThemeWatch(); if(scrollTim
     height:7px;
     border-radius:50%;
     background:var(--MI_THEME-indicator, #f44);
+}
+.sbBadge {
+    position:absolute;
+    top:6px;
+    right:10px;
+    min-width:18px;
+    height:18px;
+    padding:0 5px;
+    border-radius:9px;
+    background:var(--MI_THEME-indicator, #f44);
+    color:#fff;
+    font-size:10px;
+    font-weight:700;
+    line-height:18px;
+    text-align:center;
+    box-sizing:border-box;
 }
 .sbDivider {
     height:1px;
@@ -1082,15 +1169,23 @@ onUnmounted(()=>{ mainCh?.dispose(); mainCh=null; stopThemeWatch(); if(scrollTim
     box-shadow:0 4px 24px rgba(0,0,0,.06),0 0 0 .5px rgba(0,0,0,.06) inset;
 }
 .topTabBtn {
-    width:40px; height:40px; border-radius:50%; background:transparent; border:none;
+    min-width:40px; height:40px; border-radius:9999px; background:transparent; border:none;
     font-size:1.1em; cursor:pointer; display:flex; align-items:center; justify-content:center;
-    transition:all .2s; font-family:inherit; padding:0; flex-shrink:0;
+    gap:6px; padding:0 12px;
+    transition:all .25s ease; font-family:inherit; flex-shrink:0;
+    box-sizing:border-box;
 }
 .topBarDark .topTabBtn { color:rgba(255,255,255,.4); }
 .topBarLight .topTabBtn { color:rgba(0,0,0,.38); }
 .topTabActive { color:var(--MI_THEME-accent) !important; }
 .topBarDark .topTabActive { background:rgba(255,255,255,.1); }
 .topBarLight .topTabActive { background:rgba(0,0,0,.06); }
+// アクティブタブのテキストラベル
+.topTabLabel {
+    font-size:.78em; font-weight:600; line-height:1;
+    white-space:nowrap; max-width:100px;
+    overflow:hidden; text-overflow:ellipsis;
+}
 // 外部TL (OH/OL) のアイコン色を変えて区別
 .topTabExt { color:var(--MI_THEME-accent) !important; opacity:.45; }
 .topTabExt.topTabActive { opacity:1; }
@@ -1196,6 +1291,11 @@ onUnmounted(()=>{ mainCh?.dispose(); mainCh=null; stopThemeWatch(); if(scrollTim
 .sideBtn:active { transform:scale(.9); }
 
 .badge { position:absolute; top:8px; right:8px; width:8px; height:8px; background:var(--MI_THEME-indicator); border-radius:50%; }
+.badgeCount {
+    position:absolute; top:2px; right:0; min-width:16px; height:16px; padding:0 4px; border-radius:8px;
+    background:var(--MI_THEME-indicator, #f44); color:#fff; font-size:.6em; font-weight:700;
+    display:flex; align-items:center; justify-content:center; line-height:1;
+}
 .extBadge {
     position:absolute; top:2px; right:0; min-width:16px; height:16px; padding:0 4px; border-radius:8px;
     background:#e74040; color:#fff; font-size:.6em; font-weight:700;

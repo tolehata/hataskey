@@ -88,6 +88,17 @@ export class WhackEmojiRoomService {
 		});
 	}
 
+	/**
+	 * 指定ユーザーが該当ルームの参加者かどうか。
+	 * チャネル接続時の認可チェックに使用。
+	 */
+	@bindThis
+	public async isMember(roomId: string, userId: string): Promise<boolean> {
+		const room = await this.whackEmojiRoomsRepository.findOneBy({ id: roomId });
+		if (!room) return false;
+		return room.host1Id === userId || room.host2Id === userId;
+	}
+
 	@bindThis
 	public async reportScore(roomId: string, userId: string, score: number, hits: number) {
 		const room = await this.whackEmojiRoomsRepository.findOneBy({ id: roomId });

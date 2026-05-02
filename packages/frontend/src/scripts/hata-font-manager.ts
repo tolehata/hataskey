@@ -86,6 +86,8 @@ let currentCustomStyleEl: HTMLStyleElement | null = null;
 
 /**
  * Google Fonts の <link> タグを <head> に挿入
+ *
+ * SECURITY: query はプリセット由来のはずだが、念の為制御文字や URL 区切り文字を除外。
  */
 function loadGoogleFont(query: string): void {
 	// 既存のフォントlinkを除去
@@ -93,6 +95,10 @@ function loadGoogleFont(query: string): void {
 		currentLinkEl.remove();
 		currentLinkEl = null;
 	}
+
+	// URL に注入されると望ましくない文字を弾く
+	if (typeof query !== 'string' || query.length === 0 || query.length > 200) return;
+	if (/[\u0000-\u001F"'`<>\\#?&]/.test(query)) return;
 
 	const link = document.createElement('link');
 	link.rel = 'stylesheet';
@@ -103,7 +109,42 @@ function loadGoogleFont(query: string): void {
 }
 
 /**
+ * 自鯖ドライブと同じ origin (location.origin) のフォント URL のみ許可。
+ * これにより
+ *   - SSRF / トラッキング用の外部 URL を弾く
+ *   - data:, javascript:, blob:, vbscript: 等の危険スキームを弾く
+ */
+function isSafeFontUrl(url: unknown): url is string {
+	if (typeof url !== 'string') return false;
+	if (url.length === 0 || url.length > 2048) return false;
+	if (/[\u0000-\u001F"'`<>\\]/.test(url)) return false;
+	try {
+		const u = new URL(url, location.origin);
+		// 同 origin のみ許可 (自鯖ドライブを想定)
+		if (u.origin !== location.origin) return false;
+		// http/https のみ
+		if (u.protocol !== 'http:' && u.protocol !== 'https:') return false;
+		return true;
+	} catch {
+		return false;
+	}
+}
+
+/** font-family 名は英数字 + 一部記号のみ許可 */
+function sanitizeFontName(name: unknown): string {
+	if (typeof name !== 'string' || name.length === 0) return 'HataCustomFont';
+	// CSS 文字列リテラル内に直接書く想定のため、引用符・改行・バックスラッシュ・コメント記号を除外
+	const cleaned = name.replace(/[^\w\s\-\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]/g, '').trim();
+	if (cleaned.length === 0) return 'HataCustomFont';
+	return cleaned.slice(0, 64);
+}
+
+/**
  * ドライブURLから自前フォントを @font-face で読み込む
+ *
+ * SECURITY:
+ *  - url は同 origin のみ許可 (CSS injection / SSRF 防止)
+ *  - fontName は英数字 + 日本語のみ許可 (CSS 文字列エスケープのため)
  */
 function loadCustomFont(url: string, fontName: string): void {
 	if (currentCustomStyleEl) {
@@ -111,11 +152,18 @@ function loadCustomFont(url: string, fontName: string): void {
 		currentCustomStyleEl = null;
 	}
 
+	if (!isSafeFontUrl(url)) {
+		console.warn('[hata-font-manager] Refused to load font from unsafe URL');
+		return;
+	}
+	const safeName = sanitizeFontName(fontName);
+
 	const style = document.createElement('style');
 	style.id = 'hata-custom-font';
+	// safeName / url ともにサニタイズ済みだが、念のため CSS リテラルコンテキストで使用
 	style.textContent = `
 @font-face {
-	font-family: '${fontName}';
+	font-family: '${safeName}';
 	src: url('${url}');
 	font-display: swap;
 }
@@ -157,8 +205,8 @@ export function applyHataFont(): void {
 	}
 
 	if (fontId === 'custom') {
-		if (!customConsent || !customUrl) {
-			// 同意なし or URL未設定 → 既定フォントへフォールバック
+		if (!customConsent || !customUrl || !isSafeFontUrl(customUrl)) {
+			// 同意なし / URL未設定 / URL不正 → 既定フォントへフォールバック
 			const defaultPreset = HATA_FONT_PRESETS[0];
 			if (defaultPreset.googleFontsQuery) loadGoogleFont(defaultPreset.googleFontsQuery);
 			applyFontFamily(defaultPreset.family);
@@ -169,9 +217,9 @@ export function applyHataFont(): void {
 			currentLinkEl.remove();
 			currentLinkEl = null;
 		}
-		const name = customName || 'HataCustomFont';
-		loadCustomFont(customUrl, name);
-		applyFontFamily(`'${name}'`);
+		const safeName = sanitizeFontName(customName || 'HataCustomFont');
+		loadCustomFont(customUrl, safeName);
+		applyFontFamily(`'${safeName}'`);
 		return;
 	}
 

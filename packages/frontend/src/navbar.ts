@@ -188,6 +188,11 @@ export const navbarItemDef = reactive({
 				target: '_blank',
 			}, {
 				type: 'link',
+				text: '旗鯖機能解説',
+				icon: 'ti ti-book',
+				to: '/hata-docs',
+			}, {
+				type: 'link',
 				text: i18n.ts._mfc.cheatSheet,
 				icon: 'ti ti-help-circle',
 				to: '/mfc-cheat-sheet',

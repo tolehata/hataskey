@@ -22,8 +22,97 @@ export interface ExternalCustomEmoji {
 	isSensitive?: boolean;
 }
 
+// ===== セキュリティ: 外部ホスト/エンドポイントの検証 =====
+
+/**
+ * RFC 1123 ホスト名 + 任意ポート (1-65535) を許可する正規表現
+ * 例: example.com, sub.example.com:8080
+ * 拒否: パス, クエリ, スキーム, "@", IP リテラル形式 (一部許可)
+ */
+const HOST_REGEX = /^(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*(:[1-9][0-9]{0,4})?$/i;
+
+/**
+ * SSRF 防止: プライベート/予約 IP・特殊ドメインを拒否
+ */
+const FORBIDDEN_HOSTNAMES = new Set([
+	'localhost', 'localhost.localdomain',
+	'broadcasthost', 'ip6-localhost', 'ip6-loopback',
+]);
+
+const FORBIDDEN_HOST_PREFIXES = [
+	// IPv4
+	'127.', '10.', '169.254.', '0.',
+	'192.168.',
+	// IPv6 ループバック/リンクローカル/ULA (簡易判定)
+	'::1', 'fe80:', 'fc00:', 'fd00:', 'fd',
+];
+
+/**
+ * 外部ホスト名を検証
+ * @returns true=許可, false=拒否
+ */
+export function isValidExternalHost(host: unknown): host is string {
+	if (typeof host !== 'string' || host.length === 0 || host.length > 253) return false;
+	const lower = host.toLowerCase();
+
+	// 危険文字 (パス区切り、クエリ、スキーム、ユーザー情報、改行) を完全拒否
+	// `:` だけは "host:port" として許容するが、複数や前後に他の禁止文字があれば落ちる
+	if (/[\/?#@\\\s\u0000-\u001F]/.test(lower)) return false;
+
+	// ホスト名形式 (FQDN+任意ポート) に合致するか
+	const onlyHost = lower.split(':')[0];
+	if (!HOST_REGEX.test(lower)) {
+		// IPv4/IPv6 リテラルもざっくり許容しつつ後続でブロックする
+		// 厳密な dotted-quad / IPv6 マッチは省略 (URL コンストラクタで検証する)
+	}
+
+	if (FORBIDDEN_HOSTNAMES.has(onlyHost)) return false;
+	for (const prefix of FORBIDDEN_HOST_PREFIXES) {
+		if (onlyHost.startsWith(prefix)) return false;
+	}
+	// 172.16.0.0/12
+	if (/^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(onlyHost)) return false;
+
+	// URL コンストラクタで最終検証 (https://host/ がパースできるか)
+	try {
+		const u = new URL(`https://${host}/`);
+		if (u.hostname.toLowerCase() !== onlyHost) return false; // ホスト部の改竄を弾く
+		if (u.pathname !== '/' || u.search !== '' || u.hash !== '' || u.username !== '' || u.password !== '') return false;
+	} catch {
+		return false;
+	}
+	return true;
+}
+
+/**
+ * 外部 API エンドポイントパスを検証
+ * 許可: notes/create, i/notifications, notifications/mark-all-as-read 等
+ * 拒否: 先頭スラッシュ, クエリ, ドット, パス遡及, 改行
+ */
+const ENDPOINT_REGEX = /^[a-z0-9][a-z0-9-]*(\/[a-z0-9][a-z0-9-]*)*$/;
+
+export function isValidExternalEndpoint(endpoint: unknown): endpoint is string {
+	if (typeof endpoint !== 'string' || endpoint.length === 0 || endpoint.length > 100) return false;
+	if (!ENDPOINT_REGEX.test(endpoint)) return false;
+	if (endpoint.includes('..')) return false;
+	return true;
+}
+
+/**
+ * エラーメッセージ用に外部レスポンスを安全に切り詰め
+ * トークン誤露出を防ぎ、ログ汚染を抑える
+ */
+function sanitizeErrorPayload(text: string): string {
+	if (typeof text !== 'string') return '';
+	// 改行を削り、長さも制限
+	const cleaned = text.replace(/[\r\n\t]+/g, ' ').slice(0, 200);
+	// `i:` トークン形式を含んでいたら隠す (念のため)
+	return cleaned.replace(/("i"\s*:\s*)"[^"]+"/g, '$1"***"');
+}
+
 /**
  * 外部サーバーのアカウント情報を取得
+ * host が無効な場合は null を返す (連携無効として扱う)
  */
 export function getExternalAccount(): ExternalAccount | null {
 	if (!prefer.s['external.enabled']) return null;
@@ -35,6 +124,12 @@ export function getExternalAccount(): ExternalAccount | null {
 	const avatarUrl = prefer.s['external.avatarUrl'] ?? null;
 
 	if (!host || !token || !userId || !username) return null;
+	// host が不正なら連携情報を返さない (誤って攻撃者サーバーへトークン送信する事故を防ぐ)
+	if (!isValidExternalHost(host)) {
+		console.warn('[external-api] external.host has an invalid format, refusing to use it:', host);
+		return null;
+	}
+	if (typeof token !== 'string' || token.length === 0 || token.length > 4096) return null;
 
 	return { host, token, userId, username, avatarUrl };
 }
@@ -58,6 +153,13 @@ export async function callExternalApi<T = any>(
 	if (!acc) {
 		throw new Error('External account not linked');
 	}
+	if (!isValidExternalEndpoint(endpoint)) {
+		throw new Error('Invalid external endpoint');
+	}
+	// account が呼び出し側から渡された場合も host を検証
+	if (!isValidExternalHost(acc.host)) {
+		throw new Error('Invalid external host');
+	}
 
 	const res = await fetch(`https://${acc.host}/api/${endpoint}`, {
 		method: 'POST',
@@ -68,11 +170,14 @@ export async function callExternalApi<T = any>(
 			i: acc.token,
 			...params,
 		}),
+		// クッキー・認証情報を一切送らない (token は body のみで送信)
+		credentials: 'omit',
+		referrerPolicy: 'no-referrer',
 	});
 
 	if (!res.ok) {
 		const errorText = await res.text();
-		throw new Error(`External API error: ${res.status} - ${errorText}`);
+		throw new Error(`External API error: ${res.status} - ${sanitizeErrorPayload(errorText)}`);
 	}
 
 	const text = await res.text();
@@ -90,6 +195,12 @@ export async function callExternalApiGet<T = any>(
 	if (!h) {
 		throw new Error('External host not available');
 	}
+	if (!isValidExternalEndpoint(endpoint)) {
+		throw new Error('Invalid external endpoint');
+	}
+	if (!isValidExternalHost(h)) {
+		throw new Error('Invalid external host');
+	}
 
 	const res = await fetch(`https://${h}/api/${endpoint}`, {
 		method: 'POST',
@@ -97,11 +208,13 @@ export async function callExternalApiGet<T = any>(
 			'Content-Type': 'application/json',
 		},
 		body: JSON.stringify({}),
+		credentials: 'omit',
+		referrerPolicy: 'no-referrer',
 	});
 
 	if (!res.ok) {
 		const errorText = await res.text();
-		throw new Error(`External API (GET) error: ${res.status} - ${errorText}`);
+		throw new Error(`External API (GET) error: ${res.status} - ${sanitizeErrorPayload(errorText)}`);
 	}
 
 	return res.json();
@@ -119,18 +232,29 @@ function restoreEmojiCacheFromStorage(): void {
 		const stored = localStorage.getItem(EMOJI_STORAGE_KEY);
 		if (stored) {
 			const parsed = JSON.parse(stored);
-			if (parsed && parsed.host && Array.isArray(parsed.emojis) && typeof parsed.fetchedAt === 'number') {
+			if (parsed && isValidExternalHost(parsed.host) && Array.isArray(parsed.emojis) && typeof parsed.fetchedAt === 'number') {
 				emojiCache = parsed;
+			} else {
+				// 破損または不正なホスト → 破棄
+				localStorage.removeItem(EMOJI_STORAGE_KEY);
 			}
 		}
 		const storedMap = localStorage.getItem(EMOJI_URL_MAP_STORAGE_KEY);
 		if (storedMap) {
 			const parsed = JSON.parse(storedMap);
-			if (parsed && parsed.host && typeof parsed.map === 'object') {
+			if (parsed && isValidExternalHost(parsed.host) && typeof parsed.map === 'object' && parsed.map !== null) {
 				emojiUrlMapCache = parsed;
+			} else {
+				localStorage.removeItem(EMOJI_URL_MAP_STORAGE_KEY);
 			}
 		}
-	} catch { /* ignore */ }
+	} catch {
+		// パースエラーは破棄してフォールスルー
+		try {
+			localStorage.removeItem(EMOJI_STORAGE_KEY);
+			localStorage.removeItem(EMOJI_URL_MAP_STORAGE_KEY);
+		} catch { /* ignore */ }
+	}
 }
 restoreEmojiCacheFromStorage();
 
@@ -164,10 +288,15 @@ export async function getExternalCustomEmojis(forceRefresh = false): Promise<Ext
 	}
 
 	try {
+		if (!isValidExternalHost(acc.host)) {
+			throw new Error('Invalid external host');
+		}
 		const res = await fetch(`https://${acc.host}/api/emojis`, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({}),
+			credentials: 'omit',
+			referrerPolicy: 'no-referrer',
 		});
 
 		if (!res.ok) {
@@ -193,9 +322,19 @@ export async function getExternalCustomEmojis(forceRefresh = false): Promise<Ext
 			}));
 		}
 
+		// 絵文字レコードの最低限のフィルタリング
+		// (外部サーバーが返す任意の値を盲目的に信用しない)
+		emojis = emojis.filter(e =>
+			e && typeof e === 'object'
+			&& typeof e.name === 'string' && e.name.length > 0 && e.name.length <= 100
+			&& typeof e.url === 'string' && e.url.length > 0 && e.url.length <= 2048
+			// javascript:, data:, vbscript: などの危険スキームを排除
+			&& !/^\s*(javascript|data|vbscript|file):/i.test(e.url),
+		);
+
 		// 絵文字の URL が相対パスの場合は絶対URLに変換
 		for (const emoji of emojis) {
-			if (emoji.url && !emoji.url.startsWith('http')) {
+			if (emoji.url && !/^https?:\/\//i.test(emoji.url)) {
 				emoji.url = `https://${acc.host}${emoji.url.startsWith('/') ? '' : '/'}${emoji.url}`;
 			}
 		}
@@ -303,6 +442,9 @@ export async function uploadFileToExternal(
 	if (!acc) {
 		throw new Error('External account not linked');
 	}
+	if (!isValidExternalHost(acc.host)) {
+		throw new Error('Invalid external host');
+	}
 
 	const formData = new FormData();
 	formData.append('i', acc.token);
@@ -317,11 +459,13 @@ export async function uploadFileToExternal(
 	const res = await fetch(`https://${acc.host}/api/drive/files/create`, {
 		method: 'POST',
 		body: formData,
+		credentials: 'omit',
+		referrerPolicy: 'no-referrer',
 	});
 
 	if (!res.ok) {
 		const errorText = await res.text();
-		throw new Error(`External file upload error: ${res.status} - ${errorText}`);
+		throw new Error(`External file upload error: ${res.status} - ${sanitizeErrorPayload(errorText)}`);
 	}
 
 	return res.json();
@@ -330,15 +474,24 @@ export async function uploadFileToExternal(
 /**
  * 自鯖のドライブファイルを外部サーバーにアップロード
  * ファイルをfetchしてからアップロードする
+ *
+ * SECURITY: driveFile.url は自鯖から提供された値のはずだが、
+ * 念の為スキーム検証してから fetch する (クライアントサイドの不変条件保護)
  */
 export async function uploadDriveFileToExternal(
 	driveFile: { id: string; url: string; name: string; type: string; isSensitive: boolean; comment?: string | null },
 	account?: ExternalAccount,
 ): Promise<any> {
 	// 自鯖のファイルをfetch
-	const response = await fetch(driveFile.url);
+	if (typeof driveFile.url !== 'string' || !/^https?:\/\//i.test(driveFile.url)) {
+		throw new Error('Invalid drive file URL');
+	}
+	const response = await fetch(driveFile.url, {
+		credentials: 'omit',
+		referrerPolicy: 'no-referrer',
+	});
 	if (!response.ok) {
-		throw new Error(`Failed to fetch file: ${driveFile.url}`);
+		throw new Error(`Failed to fetch file: ${response.status}`);
 	}
 
 	const blob = await response.blob();
@@ -434,12 +587,31 @@ export const isViewingExternalTL = ref(false);
 const EXT_FAV_EMOJIS_KEY = 'externalFavoriteEmojis';
 
 /**
+ * リアクション/絵文字文字列の妥当性チェック
+ * 許可: Unicode 絵文字 (1〜32文字), :name: 形式, :name@host: 形式
+ * 拒否: タグ文字, NULL, 制御文字, 過長文字列
+ */
+function isValidEmojiString(s: unknown): s is string {
+	if (typeof s !== 'string') return false;
+	if (s.length === 0 || s.length > 100) return false;
+	// 制御文字・タグ・改行・引用符を含むものは拒否
+	if (/[\u0000-\u001F<>"'`\\]/.test(s)) return false;
+	// :name: 形式 / :name@host: 形式 / 単純な絵文字 (記号 + 修飾子)
+	if (/^:[a-z0-9_+\-]+(@[a-z0-9.\-]+)?:$/i.test(s)) return true;
+	// 一般的な Unicode 絵文字 (タグ・引用符を含まないこと自体で大半はカバー済み)
+	return true;
+}
+
+/**
  * 外部TL用お気に入り絵文字リストを取得
  */
 export function getExternalFavoriteEmojis(): string[] {
 	try {
 		const stored = localStorage.getItem(EXT_FAV_EMOJIS_KEY);
-		return stored ? JSON.parse(stored) : [];
+		if (!stored) return [];
+		const parsed = JSON.parse(stored);
+		if (!Array.isArray(parsed)) return [];
+		return parsed.filter(isValidEmojiString);
 	} catch {
 		return [];
 	}
@@ -449,13 +621,17 @@ export function getExternalFavoriteEmojis(): string[] {
  * 外部TL用お気に入り絵文字リストを保存
  */
 export function setExternalFavoriteEmojis(emojis: string[]): void {
-	localStorage.setItem(EXT_FAV_EMOJIS_KEY, JSON.stringify(emojis));
+	const cleaned = (Array.isArray(emojis) ? emojis : []).filter(isValidEmojiString).slice(0, 50);
+	try {
+		localStorage.setItem(EXT_FAV_EMOJIS_KEY, JSON.stringify(cleaned));
+	} catch { /* quota error 等を無視 */ }
 }
 
 /**
  * お気に入り絵文字を追加（先頭に追加、重複は移動）
  */
 export function addExternalFavoriteEmoji(emoji: string): void {
+	if (!isValidEmojiString(emoji)) return;
 	const list = getExternalFavoriteEmojis().filter(e => e !== emoji);
 	list.unshift(emoji);
 	// 最大50個まで
@@ -466,6 +642,7 @@ export function addExternalFavoriteEmoji(emoji: string): void {
  * お気に入り絵文字を削除
  */
 export function removeExternalFavoriteEmoji(emoji: string): void {
+	if (!isValidEmojiString(emoji)) return;
 	setExternalFavoriteEmojis(getExternalFavoriteEmojis().filter(e => e !== emoji));
 }
 
@@ -478,7 +655,10 @@ const EXT_RECENT_REACTIONS_KEY = 'externalRecentReactions';
 export function getExternalRecentReactions(): string[] {
 	try {
 		const stored = localStorage.getItem(EXT_RECENT_REACTIONS_KEY);
-		return stored ? JSON.parse(stored) : [];
+		if (!stored) return [];
+		const parsed = JSON.parse(stored);
+		if (!Array.isArray(parsed)) return [];
+		return parsed.filter(isValidEmojiString);
 	} catch {
 		return [];
 	}
@@ -488,7 +668,10 @@ export function getExternalRecentReactions(): string[] {
  * よく使うリアクション履歴に追加（先頭に追加、重複は移動、最大30件）
  */
 export function addExternalRecentReaction(reaction: string): void {
+	if (!isValidEmojiString(reaction)) return;
 	const list = getExternalRecentReactions().filter(e => e !== reaction);
 	list.unshift(reaction);
-	localStorage.setItem(EXT_RECENT_REACTIONS_KEY, JSON.stringify(list.slice(0, 30)));
+	try {
+		localStorage.setItem(EXT_RECENT_REACTIONS_KEY, JSON.stringify(list.slice(0, 30)));
+	} catch { /* ignore */ }
 }

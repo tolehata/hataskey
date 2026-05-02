@@ -1,8 +1,21 @@
+/*
+ * SPDX-FileCopyrightText: Tolehata
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
 import { Injectable } from '@nestjs/common';
+import ms from 'ms';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import { WhackEmojiRoomService } from '@/core/WhackEmojiRoomService.js';
 
-export const meta = { requireCredential: true, kind: 'write:account' } as const;
+export const meta = {
+	requireCredential: true,
+	kind: 'write:account',
+	limit: {
+		duration: ms('1hour'),
+		max: 30,
+		minInterval: ms('5sec'),
+	},
+} as const;
 
 export const paramDef = {
 	type: 'object',

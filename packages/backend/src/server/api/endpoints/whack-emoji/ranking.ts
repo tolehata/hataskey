@@ -4,6 +4,7 @@
  */
 
 import { Inject, Injectable } from '@nestjs/common';
+import ms from 'ms';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import type { WhackEmojiRecordsRepository } from '@/models/_.js';
 import { DI } from '@/di-symbols.js';
@@ -12,6 +13,10 @@ import { UserEntityService } from '@/core/entities/UserEntityService.js';
 export const meta = {
 	allowGet: true,
 	cacheSec: 60,
+	limit: {
+		duration: ms('1minute'),
+		max: 60,
+	},
 	errors: {},
 	res: {
 		type: 'array',

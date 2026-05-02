@@ -4,6 +4,7 @@
  */
 
 import { Injectable } from '@nestjs/common';
+import ms from 'ms';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import { StackingGameRoomService } from '@/core/StackingGameRoomService.js';
 import { ApiError } from '../../error.js';
@@ -11,6 +12,11 @@ import { ApiError } from '../../error.js';
 export const meta = {
 	requireCredential: true,
 	kind: 'write:account',
+	limit: {
+		duration: ms('1hour'),
+		max: 60,
+		minInterval: ms('1sec'),
+	},
 	errors: {
 		noSuchRoom: { message: 'No such room.', code: 'NO_SUCH_ROOM', id: 'a1b2c3d4-stacking-room-not-found' },
 		cannotJoinOwnRoom: { message: 'Cannot join own room.', code: 'CANNOT_JOIN_OWN_ROOM', id: 'a1b2c3d6-stacking-own-room' },

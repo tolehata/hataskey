@@ -138,9 +138,12 @@ let nextSpawnId = 0;
 function getDiffParams(diff: number) {
 	const t = (diff - 1) / 9;
 	return {
-		spawnInterval: Math.round(1200 - t * 900),
-		visibleDuration: Math.round(2000 - t * 1500),
-		maxVisible: Math.min(Math.floor(1 + t * 3), 4),
+		// 最低 500ms 確保 (高難易度でも視認可能な最小間隔)
+		spawnInterval: Math.max(500, Math.round(1200 - t * 700)),
+		// 最低 700ms 表示 (反応する余裕を残す)
+		visibleDuration: Math.max(700, Math.round(2000 - t * 1300)),
+		// 最大 3個まで (4個同時は視認・操作困難につき緩和)
+		maxVisible: Math.min(Math.floor(1 + t * 2), 3),
 		scorePerHit: 10 + (diff - 1) * 5,
 		missPenalty: Math.round(5 + t * 10),
 	};
@@ -290,6 +293,9 @@ function spawnMole() {
 	const sid = ++nextSpawnId;
 	// 過去の解放タイマーが残っていれば確実にキャンセル（spawn後の暴発防止）
 	if (cell.clearTimer) { clearTimeout(cell.clearTimer); cell.clearTimer = null; }
+	// 過去の演出（前回の押しそびれ等）が残っていれば即座にリセット（新スポーンと混ざらないよう）
+	if (cell.missGlowTimer) { clearTimeout(cell.missGlowTimer); cell.missGlowTimer = null; cell.missGlow = false; }
+	if (cell.hitGlowTimer) { clearTimeout(cell.hitGlowTimer); cell.hitGlowTimer = null; cell.hitGlow = false; }
 	cell.emoji = pickEmoji();
 	cell.visible = true;
 	cell.occupied = true;
@@ -297,17 +303,24 @@ function spawnMole() {
 
 	cell.timer = setTimeout(() => {
 		if (cell.spawnId !== sid) return; // 既に別のスポーンに入れ替わっている
+
+		// エンドレス: 押しそびれ判定
+		// ★ visible=false にする前に missGlow を発火することで、
+		//    「絵文字が消えた後に空セルが赤く光って誤判定に見える」問題を回避
+		if (isEndless.value) {
+			triggerMissGlow(cell);
+			lives.value--;
+			misses.value++;
+			if (lives.value <= 0) {
+				cell.visible = false;
+				endGame();
+				return;
+			}
+		}
+
 		cell.visible = false;
 		cell.graceHittable = true;
 		cell.timer = null;
-
-		// エンドレス: 押しそびれた場合もライフ減少
-		if (isEndless.value) {
-			lives.value--;
-			misses.value++;
-			triggerMissGlow(cell);
-			if (lives.value <= 0) { endGame(); return; }
-		}
 
 		cell.graceTimer = setTimeout(() => {
 			if (cell.spawnId !== sid) return;
@@ -337,10 +350,15 @@ function whack(index: number) {
 			const newLvl = calcEndlessLevel();
 			if (newLvl !== currentLevel.value) {
 				currentLevel.value = newLvl;
-				// スポーン間隔を更新
+				// プレイヤー側スポーン間隔を更新
 				if (spawnTimer) clearInterval(spawnTimer);
 				const newParams = getDiffParams(newLvl);
 				spawnTimer = setInterval(spawnMole, newParams.spawnInterval);
+				// AI 側スポーン間隔も同期（漏れていたバグ修正）
+				if (aiMode.value && aiSpawnTimer) {
+					clearInterval(aiSpawnTimer);
+					aiSpawnTimer = setInterval(aiSpawnMole, newParams.spawnInterval);
+				}
 			}
 		}
 
@@ -389,6 +407,8 @@ function aiSpawnMole() {
 	const cell = target.c;
 	const sid = ++nextSpawnId;
 	if (cell.clearTimer) { clearTimeout(cell.clearTimer); cell.clearTimer = null; }
+	if (cell.missGlowTimer) { clearTimeout(cell.missGlowTimer); cell.missGlowTimer = null; cell.missGlow = false; }
+	if (cell.hitGlowTimer) { clearTimeout(cell.hitGlowTimer); cell.hitGlowTimer = null; cell.hitGlow = false; }
 	cell.emoji = pickEmoji();
 	cell.visible = true;
 	cell.occupied = true;

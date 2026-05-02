@@ -564,9 +564,9 @@ onMounted(async () => {
 	connectStream();
 	// 初期ポーリング開始（30秒間隔、ストリーム接続後に調整される）
 	startPolling(30000);
-	// 外部通知ポーリング開始
-	fetchExtNotifCount();
-	extNotifPollTimer = setInterval(fetchExtNotifCount, 60000);
+	// 外部通知ポーリング開始（既読直後はスキップ）
+	fetchExtNotifCountGuarded();
+	extNotifPollTimer = setInterval(fetchExtNotifCountGuarded, 60000);
 	// Simple UI からのイベントリスナー（KeepAlive時はonActivated/onDeactivatedで管理）
 	if (props.simpleUi) {
 		window.addEventListener('ext-tl-open-notif', onExtTlOpenNotif);
@@ -595,7 +595,8 @@ onUnmounted(() => {
 // KeepAlive対応: タブ切り替え時のアクティブ/非アクティブ制御
 onActivated(() => {
 	isActive.value = true;
-	fetchExtNotifCount();
+	// 直近既読時はガード関数経由で fetch スキップ → バッジ復活防止
+	fetchExtNotifCountGuarded();
 	// KeepAlive再活性化時にイベントリスナーを再登録（二重防止のため先にremove）
 	if (props.simpleUi) {
 		window.removeEventListener('ext-tl-open-notif', onExtTlOpenNotif);
@@ -633,14 +634,28 @@ async function fetchExtNotifCount() {
 		// Check against last-read timestamp to avoid showing already-seen notifications
 		const lastReadTs = localStorage.getItem('extNotifLastReadAt');
 		const lastReadTime = lastReadTs ? new Date(lastReadTs).getTime() : 0;
+		// クライアントとサーバー間の時刻ズレ吸収のため 2秒のバッファを設ける
+		// （これがないと mark-all-as-read 直後の通知が「既読時刻より僅かに新しい」と判定されバッジが復活する）
+		const READ_TIME_BUFFER_MS = 2000;
 		extNotifUnread.value = notifs.filter((n: any) => {
 			if (n.isRead) return false;
-			if (lastReadTime && new Date(n.createdAt).getTime() <= lastReadTime) return false;
+			if (lastReadTime && new Date(n.createdAt).getTime() <= lastReadTime + READ_TIME_BUFFER_MS) return false;
 			return true;
 		}).length;
 	} catch { extNotifUnread.value = 0; }
 	// Emit count to simple UI
 	if (props.simpleUi) window.dispatchEvent(new CustomEvent('ext-tl-notif-count', { detail: extNotifUnread.value }));
+}
+
+// 直近で既読化した直後 (5秒以内) は fetch をスキップ
+// → タブ切り替え/定期ポーリングでバッジが瞬間的に復活する問題を防ぐ
+function fetchExtNotifCountGuarded() {
+	const lastReadTs = localStorage.getItem('extNotifLastReadAt');
+	const lastReadTime = lastReadTs ? new Date(lastReadTs).getTime() : 0;
+	const RECENT_READ_GUARD_MS = 5000;
+	if (Date.now() - lastReadTime > RECENT_READ_GUARD_MS) {
+		fetchExtNotifCount();
+	}
 }
 
 async function toggleExternalNotifications() {
@@ -734,9 +749,12 @@ function createNotifPanel() {
 async function renderNotifPanel(body: HTMLElement) {
 	try {
 		await fetchExternalNotifications();
-		body.innerHTML = '';
+		body.textContent = '';
 		if (extNotifications.value.length === 0) {
-			body.innerHTML = '<div class="ext-notif-empty">通知はありません</div>';
+			const empty = document.createElement('div');
+			empty.className = 'ext-notif-empty';
+			empty.textContent = '通知はありません';
+			body.appendChild(empty);
 			return;
 		}
 		const list = document.createElement('div');
@@ -744,8 +762,29 @@ async function renderNotifPanel(body: HTMLElement) {
 		for (const n of extNotifications.value) {
 			const item = document.createElement('div');
 			item.className = 'ext-notif-item' + (!n.isRead ? ' ext-notif-unread' : '');
-			const avatar = n.user?.avatarUrl ? `<img class="ext-notif-avatar" src="${n.user.avatarUrl}"/>` : '';
-			const userName = n.user?.name || n.user?.username || '';
+
+			// アバター: src 属性として安全な URL のみ
+			if (n.user?.avatarUrl && typeof n.user.avatarUrl === 'string'
+				&& /^https?:\/\//i.test(n.user.avatarUrl) && n.user.avatarUrl.length <= 2048) {
+				const img = document.createElement('img');
+				img.className = 'ext-notif-avatar';
+				img.src = n.user.avatarUrl;
+				img.referrerPolicy = 'no-referrer';
+				img.alt = '';
+				item.appendChild(img);
+			}
+
+			const content = document.createElement('div');
+			content.className = 'ext-notif-content';
+
+			const userEl = document.createElement('div');
+			userEl.className = 'ext-notif-user';
+			// textContent でエスケープ
+			userEl.textContent = n.user?.name || n.user?.username || '';
+			content.appendChild(userEl);
+
+			const typeEl = document.createElement('div');
+			typeEl.className = 'ext-notif-type';
 			let typeText = n.type;
 			switch (n.type) {
 				case 'follow': typeText = 'フォローされました'; break;
@@ -753,18 +792,35 @@ async function renderNotifPanel(body: HTMLElement) {
 				case 'reply': typeText = '返信されました'; break;
 				case 'renote': typeText = 'リノートされました'; break;
 				case 'quote': typeText = '引用されました'; break;
-				case 'reaction': typeText = `リアクション: ${n.reaction || ''}`; break;
+				case 'reaction': typeText = `リアクション: ${typeof n.reaction === 'string' ? n.reaction : ''}`; break;
 				case 'followRequestAccepted': typeText = 'フォローリクエストが承認されました'; break;
 				case 'receiveFollowRequest': typeText = 'フォローリクエストが届きました'; break;
 			}
-			const noteText = n.note ? `<div class="ext-notif-note-text">${(n.note.text || '').slice(0, 80)}</div>` : '';
-			const time = formatExtNotifTime(n.createdAt);
-			item.innerHTML = `${avatar}<div class="ext-notif-content"><div class="ext-notif-user">${userName}</div><div class="ext-notif-type">${typeText}</div>${noteText}<div class="ext-notif-time">${time}</div></div>`;
+			typeEl.textContent = typeText;
+			content.appendChild(typeEl);
+
+			if (n.note && typeof n.note.text === 'string') {
+				const noteEl = document.createElement('div');
+				noteEl.className = 'ext-notif-note-text';
+				noteEl.textContent = n.note.text.slice(0, 80);
+				content.appendChild(noteEl);
+			}
+
+			const timeEl = document.createElement('div');
+			timeEl.className = 'ext-notif-time';
+			timeEl.textContent = formatExtNotifTime(n.createdAt);
+			content.appendChild(timeEl);
+
+			item.appendChild(content);
 			list.appendChild(item);
 		}
 		body.appendChild(list);
 	} catch {
-		body.innerHTML = '<div class="ext-notif-empty">読み込みに失敗しました</div>';
+		body.textContent = '';
+		const fail = document.createElement('div');
+		fail.className = 'ext-notif-empty';
+		fail.textContent = '読み込みに失敗しました';
+		body.appendChild(fail);
 	}
 }
 

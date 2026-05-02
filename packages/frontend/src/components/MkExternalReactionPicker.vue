@@ -22,7 +22,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 	@click="close()"
 	@closed="emit('closed')"
 >
-	<div :class="[$style.root, isDark ? $style.rootDark : $style.rootLight, { [$style.drawer]: type === 'drawer' }]" :style="{ maxHeight: maxHeight ? maxHeight + 'px' : '400px' }" @click.stop>
+	<div :class="[$style.root, isDark ? $style.rootDark : $style.rootLight, { [$style.drawer]: type === 'drawer' }]" :style="{ maxHeight: maxHeight ? Math.min(maxHeight, 320) + 'px' : '320px' }" @click.stop>
 		<!-- 検索バー -->
 		<div :class="$style.searchBox">
 			<i class="ti ti-search" :class="$style.searchIcon"></i>
@@ -125,8 +125,16 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<!-- カテゴリ別表示（検索時はフラット） -->
 				<template v-if="!searchQuery">
 					<div v-for="cat in categorizedEmojis" :key="cat.name" :class="$style.category">
-						<div :class="$style.categoryLabel">{{ cat.name || '未分類' }}</div>
-						<div :class="$style.emojiGrid">
+						<button
+							:class="[$style.categoryHeader, { [$style.categoryHeaderOpen]: openCategories.has(cat.name) }]"
+							class="_button"
+							@click="toggleCategory(cat.name)"
+						>
+							<i class="ti ti-chevron-right" :class="$style.categoryChevron"></i>
+							<span :class="$style.categoryHeaderLabel">{{ cat.name || '未分類' }}</span>
+							<span :class="$style.categoryHeaderCount">{{ cat.emojis.length }}</span>
+						</button>
+						<div v-if="openCategories.has(cat.name)" :class="$style.emojiGrid">
 							<button
 								v-for="emoji in cat.emojis"
 								:key="emoji.name"
@@ -161,8 +169,16 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<div v-else-if="activeTab === 'unicode'" :class="$style.content">
 			<template v-if="!searchQuery">
 				<div v-for="group in unicodeEmojiGroups" :key="group.name" :class="$style.category">
-					<div :class="$style.categoryLabel">{{ group.name }}</div>
-					<div :class="$style.emojiGrid">
+					<button
+						:class="[$style.categoryHeader, { [$style.categoryHeaderOpen]: openUnicodeCategories.has(group.name) }]"
+						class="_button"
+						@click="toggleUnicodeCategory(group.name)"
+					>
+						<i class="ti ti-chevron-right" :class="$style.categoryChevron"></i>
+						<span :class="$style.categoryHeaderLabel">{{ group.name }}</span>
+						<span :class="$style.categoryHeaderCount">{{ group.emojis.length }}</span>
+					</button>
+					<div v-if="openUnicodeCategories.has(group.name)" :class="$style.emojiGrid">
 						<button
 							v-for="emoji in group.emojis"
 							:key="emoji"
@@ -219,6 +235,31 @@ const customEmojis = ref<ExternalCustomEmoji[]>([]);
 const loadingEmojis = ref(true);
 const favoriteEmojis = ref<string[]>([]);
 const recentReactions = ref<string[]>([]);
+
+// アコーディオン状態（カテゴリプルダウン化）
+// 開いているカテゴリ名のセット。
+const openCategories = ref<Set<string>>(new Set());
+// Unicode は最初のグループ「😀 顔」だけ初期展開（操作のヒントになる）
+const openUnicodeCategories = ref<Set<string>>(new Set(['😀 顔']));
+
+function toggleCategory(name: string) {
+	if (openCategories.value.has(name)) {
+		openCategories.value.delete(name);
+	} else {
+		openCategories.value.add(name);
+	}
+	// reactiveに変更を伝える
+	openCategories.value = new Set(openCategories.value);
+}
+
+function toggleUnicodeCategory(name: string) {
+	if (openUnicodeCategories.value.has(name)) {
+		openUnicodeCategories.value.delete(name);
+	} else {
+		openUnicodeCategories.value.add(name);
+	}
+	openUnicodeCategories.value = new Set(openUnicodeCategories.value);
+}
 
 // ===== テーマ判定 =====
 const isDark = ref(true);
@@ -330,6 +371,10 @@ onMounted(async () => {
 	loadingEmojis.value = true;
 	try {
 		customEmojis.value = await getExternalCustomEmojis();
+		// 起動時に最初のカテゴリのみ自動展開（全閉じだと操作が分かりにくいため）
+		if (customEmojis.value.length > 0 && categorizedEmojis.value.length > 0) {
+			openCategories.value = new Set([categorizedEmojis.value[0].name]);
+		}
 	} catch (err) {
 		console.error('[ExternalReactionPicker] Failed to load emojis:', err);
 	} finally {
@@ -343,7 +388,7 @@ onMounted(async () => {
 
 <style lang="scss" module>
 .root {
-	width: 360px;
+	width: 290px;
 	max-width: 95vw;
 	display: flex;
 	flex-direction: column;
@@ -488,17 +533,63 @@ onMounted(async () => {
 }
 
 .category {
-	margin-bottom: 8px;
+	margin-bottom: 4px;
 }
 
+// アコーディオンヘッダー（カテゴリプルダウン）
+.categoryHeader {
+	display: flex;
+	align-items: center;
+	width: 100%;
+	padding: 8px 10px;
+	border-radius: 10px;
+	font-size: 0.78em;
+	font-weight: 600;
+	color: inherit;
+	background: transparent;
+	cursor: pointer;
+	transition: background .15s;
+	margin-bottom: 2px;
+}
+
+.rootDark .categoryHeader:hover {
+	background: rgba(255, 255, 255, .06);
+}
+
+.rootLight .categoryHeader:hover {
+	background: rgba(0, 0, 0, .04);
+}
+
+.categoryChevron {
+	font-size: 0.85em;
+	margin-right: 6px;
+	transition: transform .2s;
+	opacity: .6;
+}
+
+.categoryHeaderOpen .categoryChevron {
+	transform: rotate(90deg);
+	opacity: 1;
+}
+
+.categoryHeaderLabel {
+	flex: 1;
+	text-align: left;
+}
+
+.categoryHeaderCount {
+	font-size: 0.85em;
+	opacity: .4;
+	font-weight: 500;
+	padding-left: 6px;
+}
+
+// 検索時のフラット表示用 (現在は未使用だが念の為残す)
 .categoryLabel {
 	font-size: 0.72em;
 	font-weight: bold;
 	opacity: 0.4;
 	padding: 3px 4px 4px;
-	position: sticky;
-	top: 0;
-	z-index: 1;
 }
 
 .rootDark .categoryLabel {
@@ -511,17 +602,18 @@ onMounted(async () => {
 
 .emojiGrid {
 	display: grid;
-	grid-template-columns: repeat(auto-fill, minmax(42px, 1fr));
+	grid-template-columns: repeat(auto-fill, minmax(36px, 1fr));
 	gap: 2px;
+	padding: 2px 4px 6px;
 }
 
 .emojiBtn {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	width: 42px;
-	height: 42px;
-	border-radius: 10px;
+	width: 36px;
+	height: 36px;
+	border-radius: 8px;
 	cursor: pointer;
 	transition: background 0.15s, transform 0.1s;
 	color: inherit;
@@ -544,13 +636,13 @@ onMounted(async () => {
 }
 
 .emojiImg {
-	width: 30px;
-	height: 30px;
+	width: 26px;
+	height: 26px;
 	object-fit: contain;
 }
 
 .unicodeEmoji {
-	font-size: 1.4em;
+	font-size: 1.25em;
 	line-height: 1;
 }
 </style>

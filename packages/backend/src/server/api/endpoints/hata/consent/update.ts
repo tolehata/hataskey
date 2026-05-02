@@ -4,6 +4,7 @@
  */
 
 import { Inject, Injectable } from '@nestjs/common';
+import ms from 'ms';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import { DI } from '@/di-symbols.js';
 import type { UserProfilesRepository } from '@/models/_.js';
@@ -14,6 +15,12 @@ export const meta = {
 	requireCredential: true,
 
 	kind: 'write:account',
+
+	limit: {
+		duration: ms('1hour'),
+		max: 60,
+		minInterval: ms('1sec'),
+	},
 
 	res: {
 		type: 'object',

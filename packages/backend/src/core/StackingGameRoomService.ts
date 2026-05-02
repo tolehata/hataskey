@@ -100,6 +100,17 @@ export class StackingGameRoomService {
 		});
 	}
 
+	/**
+	 * 指定ユーザーが該当ルームの参加者かどうか。
+	 * チャネル接続時の認可チェックに使用。
+	 */
+	@bindThis
+	public async isMember(roomId: string, userId: string): Promise<boolean> {
+		const room = await this.stackingGameRoomsRepository.findOneBy({ id: roomId });
+		if (!room) return false;
+		return room.host1Id === userId || room.host2Id === userId;
+	}
+
 	@bindThis
 	public async reportDrop(roomId: string, userId: string, data: { dropX: number; emojiName: string; emojiUrl?: string; emojiChar?: string }) {
 		// 対戦相手と観戦者にドロップイベントを配信
