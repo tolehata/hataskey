@@ -99,6 +99,15 @@ export class RelayService {
 	}
 
 	@bindThis
+	public async isRelayActor(actor: { inbox: string | null; sharedInbox: string | null }): Promise<boolean> {
+		const relays = await this.getAcceptedRelays();
+		return relays.some(relay =>
+			(actor.inbox != null && relay.inbox === actor.inbox)
+			|| (actor.sharedInbox != null && relay.inbox === actor.sharedInbox),
+		);
+	}
+
+	@bindThis
 	public async deliverToRelays(user: { id: MiUser['id']; host: null; }, activity: any): Promise<void> {
 		if (activity == null) return;
 
