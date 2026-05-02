@@ -40,6 +40,39 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</div>
 				<h2 :class="$style.cardTitle">{{ f.title }}</h2>
 				<p :class="$style.cardDesc">{{ f.desc }}</p>
+
+				<!-- メディア（図解） -->
+				<div v-if="f.media === 'navbar-active-tab'" :class="$style.cardMedia">
+					<div :class="$style.demoNavbar">
+						<div :class="[$style.demoTab, $style.demoTabActive]">
+							<i class="ti ti-home"></i>
+							<span>ホーム</span>
+						</div>
+						<div :class="$style.demoTab"><i class="ti ti-message"></i></div>
+						<div :class="$style.demoTab"><i class="ti ti-bell"></i></div>
+						<div :class="$style.demoTab"><i class="ti ti-list"></i></div>
+						<div :class="$style.demoTab"><i class="ti ti-antenna"></i></div>
+					</div>
+					<div :class="$style.demoCaption">アクティブなタブだけアイコン+ラベルを併記</div>
+				</div>
+				<div v-else-if="f.media === 'misskey-update'" :class="$style.cardMedia">
+					<div :class="$style.demoVersionBox">
+						<div :class="$style.demoVersionRow">
+							<i class="ti ti-package"></i>
+							<span :class="$style.demoVersionLabel">本家 Misskey</span>
+							<span :class="$style.demoVersionTag">2026.5.0</span>
+						</div>
+						<div :class="$style.demoVersionArrow">
+							<i class="ti ti-arrow-down"></i>
+						</div>
+						<div :class="$style.demoVersionRow">
+							<i class="ti ti-flag"></i>
+							<span :class="$style.demoVersionLabel">旗鯖2丁目</span>
+							<span :class="[$style.demoVersionTag, $style.demoVersionTagAccent]">hata-11.2</span>
+						</div>
+					</div>
+				</div>
+
 				<div v-if="f.highlights && f.highlights.length" :class="$style.cardHighlights">
 					<div v-for="(h, i) in f.highlights" :key="i" :class="$style.highlight">
 						<i class="ti ti-check"></i>
@@ -94,6 +127,7 @@ const headerTabs = computed(() => []);
 const activeCat = ref('all');
 const categories = [
 	{ id: 'all', label: 'すべて', icon: 'ti ti-layout-grid' },
+	{ id: 'update', label: '総合アップデート', icon: 'ti ti-package' },
 	{ id: 'ui', label: 'UI/UX', icon: 'ti ti-palette' },
 	{ id: 'game', label: 'ゲーム', icon: 'ti ti-device-gamepad-2' },
 	{ id: 'tool', label: '便利ツール', icon: 'ti ti-tools' },
@@ -113,9 +147,34 @@ type Feature = {
 	highlights?: string[];
 	link?: string;
 	linkLabel?: string;
+	media?: 'navbar-active-tab' | 'misskey-update';
 };
 
 const features: Feature[] = [
+	{
+		id: 'misskey-2026.5.0',
+		category: 'update',
+		version: 'hata-11.2',
+		title: 'Misskey 2026.5.0 対応',
+		desc: '本家 Misskey 2026.5.0 のバグ修正を厳選して取り込みました。リレー経由ノートの表示、ノート通知の公開範囲、ULID処理、Inboxジョブ蓄積など各種不具合を解消しています。',
+		icon: 'ti ti-package',
+		theme: 'mint',
+		isNew: true,
+		highlights: ['本家由来のバグ修正を多数取り込み', 'ActivityPub 連合周りの安定性向上', '管理系ページの表示不具合修正'],
+		media: 'misskey-update',
+	},
+	{
+		id: 'navbar-active-tab',
+		category: 'ui',
+		version: 'hata-11.2',
+		title: 'Hatasaba UI 上部ナビバー機能改良',
+		desc: '上部ナビバーで現在開いているタブだけ、アイコンに加えてテキストラベルを併記するピル型デザインに刷新しました。今どこにいるかが一目で分かります。',
+		icon: 'ti ti-layout-navbar',
+		theme: 'pink',
+		isNew: true,
+		highlights: ['アクティブタブのみアイコン+ラベル併記', 'ピル形状で幅可変', '視認性アップ'],
+		media: 'navbar-active-tab',
+	},
 	{
 		id: 'whats-new',
 		category: 'ui',
@@ -465,6 +524,115 @@ function themeColor(theme: string): string {
 	flex-direction: column;
 	gap: 6px;
 	margin-bottom: 16px;
+}
+
+/* ===== カードメディア（図解） ===== */
+.cardMedia {
+	margin: 0 -4px 16px;
+	padding: 14px 12px 12px;
+	background: color-mix(in srgb, var(--cardAccent, var(--MI_THEME-accent)) 6%, transparent);
+	border-radius: 14px;
+	border: 1px solid color-mix(in srgb, var(--cardAccent, var(--MI_THEME-accent)) 16%, transparent);
+}
+
+/* --- 上部ナビバーデモ --- */
+.demoNavbar {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	padding: 8px 10px;
+	background: var(--MI_THEME-panel);
+	border-radius: 12px;
+	box-shadow: 0 2px 8px color-mix(in srgb, var(--MI_THEME-fg) 6%, transparent);
+}
+
+.demoTab {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	padding: 7px 10px;
+	font-size: 0.78em;
+	color: color-mix(in srgb, var(--MI_THEME-fg) 60%, transparent);
+	border-radius: 100px;
+	background: transparent;
+	transition: all 0.3s ease;
+
+	> i {
+		font-size: 1.1em;
+	}
+}
+
+.demoTabActive {
+	color: var(--cardAccent);
+	background: color-mix(in srgb, var(--cardAccent) 14%, transparent);
+	font-weight: 600;
+	padding-right: 14px;
+
+	> span {
+		display: inline;
+	}
+}
+
+.demoCaption {
+	margin-top: 10px;
+	text-align: center;
+	font-size: 0.75em;
+	opacity: 0.7;
+	color: var(--MI_THEME-fg);
+}
+
+/* --- バージョン更新図 --- */
+.demoVersionBox {
+	display: flex;
+	flex-direction: column;
+	align-items: stretch;
+	gap: 8px;
+}
+
+.demoVersionRow {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 10px 14px;
+	background: var(--MI_THEME-panel);
+	border-radius: 10px;
+
+	> i {
+		font-size: 1.1em;
+		color: var(--cardAccent);
+		flex-shrink: 0;
+	}
+}
+
+.demoVersionLabel {
+	flex: 1;
+	font-size: 0.85em;
+	font-weight: 600;
+}
+
+.demoVersionTag {
+	font-size: 0.78em;
+	font-weight: 700;
+	font-family: ui-monospace, "SF Mono", Menlo, monospace;
+	padding: 3px 10px;
+	background: color-mix(in srgb, var(--MI_THEME-fg) 8%, transparent);
+	border-radius: 100px;
+	letter-spacing: 0.02em;
+}
+
+.demoVersionTagAccent {
+	background: var(--cardAccent);
+	color: #fff;
+}
+
+.demoVersionArrow {
+	display: flex;
+	justify-content: center;
+	color: var(--cardAccent);
+	font-size: 1.1em;
+	opacity: 0.6;
 }
 
 .highlight {
