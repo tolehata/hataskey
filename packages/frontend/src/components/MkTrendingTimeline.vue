@@ -32,7 +32,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<span>{{ i18n.tsx._trending.newNotesAvailable({ n: newCount }) }}</span>
 	</div>
 
-	<MkNotesTimeline :paginator="paginator"/>
+	<MkNotesTimeline :paginator="paginator" :withControl="false" :onRefresh="reloadWithNewSeed"/>
 </div>
 </template>
 

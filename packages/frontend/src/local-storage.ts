@@ -37,6 +37,7 @@ export type Keys = (
 	'latestPreferencesUpdate' |
 	'hidePreferencesRestoreSuggestion' |
 	'isSafeMode' |
+	'hatasabaUiLastTab' | // 旗鯖fork: HatasabaUI で最後に開いていたタブ (再読み込み時の復元用)
 	`miux:${string}` |
 	`ui:folder:${string}` |
 	`themes:${string}` | // DEPRECATED

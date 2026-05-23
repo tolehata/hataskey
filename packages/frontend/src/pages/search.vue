@@ -490,7 +490,7 @@ definePage(() => ({
 	position: fixed;
 	left: 12px;
 	right: 12px;
-	bottom: calc(env(safe-area-inset-bottom, 0px) + 70px); /* mobile-footer-menu の上 */
+	bottom: calc(env(safe-area-inset-bottom, 0px) + 88px); /* mobile-footer-menu (約68px) の上に余白を確保 */
 	z-index: 100;
 	background: var(--MI_THEME-panel);
 	box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);

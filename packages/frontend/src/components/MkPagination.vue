@@ -69,6 +69,11 @@ const props = withDefaults(defineProps<{
 	autoLoad?: boolean;
 	pullToRefresh?: boolean;
 	withControl?: boolean;
+
+	// 旗鯖fork: 引っ張って更新時に paginator.reload() の代わりに呼ぶカスタム処理。
+	// TTL の「新 seed で再集計」のように、リロード前に追加処理が必要な場合に使う。
+	// 指定時も Promise を返すこと (MkPullToRefresh が完了を待つため)。
+	onRefresh?: () => Promise<void>;
 }>(), {
 	autoLoad: true,
 	direction: 'down',
@@ -77,7 +82,8 @@ const props = withDefaults(defineProps<{
 });
 
 function reload() {
-	props.paginator.reload();
+	if (props.onRefresh) return props.onRefresh();
+	return props.paginator.reload();
 }
 
 function onContextmenu(ev: MouseEvent) {

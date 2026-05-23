@@ -307,6 +307,7 @@ import { store } from '@/store.js';
 import { deepMerge } from '@/utility/merge.js';
 import { i18n } from '@/i18n.js';
 import { openInstanceMenu } from '@/ui/_common_/common.js';
+import { miLocalStorage } from '@/local-storage.js';
 
 const XWidgets = defineAsyncComponent(() => import('./_common_/widgets.vue'));
 const MkSimpleUserPanel = defineAsyncComponent(() => import('@/components/MkSimpleUserPanel.vue'));
@@ -457,7 +458,17 @@ mainRouter.on('change', ()=>{
 // ===== タブ =====
 // 旗鯖fork: 'trending' を追加 (トレンドタイムライン (TTL))
 type TabType='following'|'mixed'|'local'|'social'|'ohtl'|'oltl'|'trending';
-const tab = ref<TabType>('following');
+
+// 旗鯖fork: 再読み込み時に最後のタブを復元する。
+// ただし外部TL(ohtl/oltl)はトークンが無いと表示できず空タブになるため復元対象から除外し、
+// 復元できない場合は 'following' にフォールバックする。
+function getInitialTab(): TabType {
+	const saved = miLocalStorage.getItem('hatasabaUiLastTab') as TabType | null;
+	const restorable: TabType[] = ['following', 'mixed', 'local', 'social', 'trending'];
+	if (saved != null && restorable.includes(saved)) return saved;
+	return 'following';
+}
+const tab = ref<TabType>(getInitialTab());
 
 // ===== prefer連動: 上部タブ =====
 // 旗鯖fork: トレンドタブ (TTL) は専用トグル simpleUi.showTrendingTab で制御し、
@@ -511,7 +522,7 @@ const sidebarGroups = computed(() => {
     // グループの表示順を固定 (定義順に依存しないように)
     return groups.sort((a, b) => order.indexOf(a.key) - order.indexOf(b.key));
 });
-const switchTab = (t:TabType)=>{ if(tab.value===t){ if(contentEl.value) contentEl.value.scrollTo({top:0,behavior:'smooth'}); } else { tab.value=t; } };
+const switchTab = (t:TabType)=>{ if(tab.value===t){ if(contentEl.value) contentEl.value.scrollTo({top:0,behavior:'smooth'}); } else { tab.value=t; } if(t!=='ohtl'&&t!=='oltl') miLocalStorage.setItem('hatasabaUiLastTab', t); };
 
 // ===== アカウント切り替えメニュー =====
 async function openAccountMenu(ev: MouseEvent) {
@@ -819,6 +830,10 @@ function onSimpleUserPanel(ev: Event) {
 onMounted(()=>{
     cleanupStaleUiElements();
     checkIsPageView();
+    // 旗鯖fork: 復元したタブが現在の設定で表示可能か検証し、非表示なら先頭タブにフォールバック
+    if (!tabOrder.value.includes(tab.value)) {
+        tab.value = tabOrder.value[0] ?? 'following';
+    }
     // ストリームを先に初期化してから初期同期（接続未完了でもリスナー登録は有効）
     initStream();
     checkUnread();

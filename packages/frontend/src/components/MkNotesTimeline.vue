@@ -4,7 +4,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 
 <template>
-<MkPagination :paginator="paginator" :direction="direction" :autoLoad="autoLoad" :pullToRefresh="pullToRefresh" :withControl="withControl">
+<MkPagination :paginator="paginator" :direction="direction" :autoLoad="autoLoad" :pullToRefresh="pullToRefresh" :withControl="withControl" :onRefresh="onRefresh">
 	<template #empty><MkResult type="empty" :text="i18n.ts.noNotes"/></template>
 
 	<template #default="{ items: notes }">
@@ -58,6 +58,9 @@ const props = withDefaults(defineProps<{
 	withControl?: boolean;
 	notification?: boolean;
 	forceShowReplyTargetNote?: boolean;
+
+	// 旗鯖fork: 引っ張って更新時のカスタム処理 (TTL の新 seed 再集計用)。MkPagination に中継する。
+	onRefresh?: () => Promise<void>;
 }>(), {
 	autoLoad: true,
 	direction: 'down',
