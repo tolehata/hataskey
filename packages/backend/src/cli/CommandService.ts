@@ -9,6 +9,7 @@ import { DI } from '@/di-symbols.js';
 import type Logger from '@/logger.js';
 import { bindThis } from '@/decorators.js';
 import { MetaService } from '@/core/MetaService.js';
+import { TrendingService } from '@/core/TrendingService.js';
 
 @Injectable()
 export class CommandService {
@@ -19,6 +20,8 @@ export class CommandService {
 		private config: Config,
 
 		private metaService: MetaService,
+
+		private trendingService: TrendingService,
 	) {
 	}
 
@@ -44,6 +47,15 @@ export class CommandService {
 			turnstileSiteKey: null,
 			turnstileSecretKey: null,
 			enableTestcaptcha: false,
+		});
+	}
+
+	@bindThis
+	public async rebuildTrending() {
+		// 旗鯖fork: トレンドタイムライン(TTL)のRedisスコアキャッシュを過去7日間のDBから再構築する。
+		// 機能リリース直後やRedis消失時の初期化用。以降はリアクション/リノートでリアルタイムに加算される。
+		await this.trendingService.rebuildFromHistory({
+			info: (msg: string) => console.log(`[rebuild-trending] ${msg}`),
 		});
 	}
 }
