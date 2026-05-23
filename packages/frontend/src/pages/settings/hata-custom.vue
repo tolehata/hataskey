@@ -134,7 +134,15 @@ SPDX-License-Identifier: AGPL-3.0-only
 
         <!-- ===== Hatasaba UI ===== -->
         <template v-if="activeCat === 'simpleUi'">
+        <!-- 旗鯖fork: トレンドタイムライン (TTL) タブの表示トグル -->
         <FormSection first>
+            <template #label>トレンドタイムライン</template>
+            <div style="font-size:.85em;opacity:.7;margin-bottom:8px;">上部ナビバーの最左に「トレンド」タブを表示します。過去7日間でリアクションやリノートが多かった人気の投稿を、ランダムな順番で表示する発見系タイムラインです。</div>
+            <MkSwitch v-model="showTrendingTab">
+                <template #label>トレンドタブを表示する</template>
+            </MkSwitch>
+        </FormSection>
+        <FormSection>
             <template #label>上部ナビバー（タイムラインタブ）</template>
             <div style="font-size:.85em;opacity:.7;margin-bottom:8px;">表示するタブとその順番を設定します。</div>
             <div :class="$style.reorderList">
@@ -386,6 +394,12 @@ watch(hideMutedUserReactions, async (newVal) => {
 const topNavItems = ref([...prefer.s['simpleUi.topNav']]);
 function saveTopNav() { prefer.commit('simpleUi.topNav', [...topNavItems.value]); }
 watch(topNavItems, saveTopNav, { deep: true });
+
+// 旗鯖fork: トレンドタブ表示トグル
+const showTrendingTab = computed({
+    get: () => prefer.s['simpleUi.showTrendingTab'],
+    set: (v: boolean) => prefer.commit('simpleUi.showTrendingTab', v),
+});
 
 const bottomNavItems = ref([...prefer.s['simpleUi.bottomNav']]);
 function saveBottomNav() { prefer.commit('simpleUi.bottomNav', [...bottomNavItems.value]); }

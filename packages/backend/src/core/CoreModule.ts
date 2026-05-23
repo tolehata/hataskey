@@ -1,5 +1,7 @@
 /*
  * SPDX-FileCopyrightText: syuilo and misskey-project
+ * SPDX-FileCopyrightText: noridev and cherrypick-project
+ * SPDX-FileCopyrightText: Tolehata and hatasaba-project
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
@@ -75,6 +77,8 @@ import { FileInfoService } from './FileInfoService.js';
 import { SearchService } from './SearchService.js';
 import { ClipService } from './ClipService.js';
 import { FeaturedService } from './FeaturedService.js';
+// 旗鯖fork: トレンドタイムライン
+import { TrendingService } from './TrendingService.js';
 import { FanoutTimelineService } from './FanoutTimelineService.js';
 import { ChannelFollowingService } from './ChannelFollowingService.js';
 import { ChatService } from './ChatService.js';
@@ -234,6 +238,8 @@ const $FlashService: Provider = { provide: 'FlashService', useExisting: FlashSer
 const $SearchService: Provider = { provide: 'SearchService', useExisting: SearchService };
 const $ClipService: Provider = { provide: 'ClipService', useExisting: ClipService };
 const $FeaturedService: Provider = { provide: 'FeaturedService', useExisting: FeaturedService };
+// 旗鯖fork: トレンドタイムライン
+const $TrendingService: Provider = { provide: 'TrendingService', useExisting: TrendingService };
 const $FanoutTimelineService: Provider = { provide: 'FanoutTimelineService', useExisting: FanoutTimelineService };
 const $FanoutTimelineEndpointService: Provider = { provide: 'FanoutTimelineEndpointService', useExisting: FanoutTimelineEndpointService };
 const $ChannelFollowingService: Provider = { provide: 'ChannelFollowingService', useExisting: ChannelFollowingService };
@@ -396,6 +402,7 @@ const $ApEventService: Provider = { provide: 'ApEventService', useExisting: ApEv
 		SearchService,
 		ClipService,
 		FeaturedService,
+		TrendingService,
 		FanoutTimelineService,
 		FanoutTimelineEndpointService,
 		ChannelFollowingService,
@@ -555,6 +562,7 @@ const $ApEventService: Provider = { provide: 'ApEventService', useExisting: ApEv
 		$SearchService,
 		$ClipService,
 		$FeaturedService,
+		$TrendingService,
 		$FanoutTimelineService,
 		$FanoutTimelineEndpointService,
 		$ChannelFollowingService,
@@ -714,6 +722,7 @@ const $ApEventService: Provider = { provide: 'ApEventService', useExisting: ApEv
 		SearchService,
 		ClipService,
 		FeaturedService,
+		TrendingService,
 		FanoutTimelineService,
 		FanoutTimelineEndpointService,
 		ChannelFollowingService,
@@ -871,6 +880,7 @@ const $ApEventService: Provider = { provide: 'ApEventService', useExisting: ApEv
 		$SearchService,
 		$ClipService,
 		$FeaturedService,
+		$TrendingService,
 		$FanoutTimelineService,
 		$FanoutTimelineEndpointService,
 		$ChannelFollowingService,

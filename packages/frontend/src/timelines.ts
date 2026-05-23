@@ -1,5 +1,7 @@
 /*
  * SPDX-FileCopyrightText: syuilo and misskey-project
+ * SPDX-FileCopyrightText: noridev and cherrypick-project
+ * SPDX-FileCopyrightText: Tolehata and hatasaba-project
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
@@ -64,4 +66,24 @@ export function availableBasicTimelines(): BasicTimelineType[] {
 
 export function hasWithReplies(timeline: BasicTimelineType | undefined | null): boolean {
 	return timeline === 'local' || timeline === 'social';
+}
+
+// ============================================================================
+// 旗鯖fork: トレンドタイムライン (TTL) 用ヘルパー
+// ============================================================================
+//
+// TTL は basicTimelineTypes には含めない (専用コンポーネント MkTrendingTimeline.vue で
+// 描画する設計のため、ohtl/oltl と同じ独立扱い)。
+//
+// 将来 enableTrendingTimeline の preferences フラグで可否制御するように
+// 拡張する場合、この関数を更新するだけで OK。
+// ============================================================================
+
+export function isAvailableTrendingTimeline(): boolean {
+	// 現状: 常時利用可能。将来 prefer.s.enableTrendingTimeline 等を追加する場合はここで判定
+	return true;
+}
+
+export function trendingTimelineIconClass(): string {
+	return 'ti ti-flame';
 }

@@ -1,5 +1,7 @@
 <!--
 SPDX-FileCopyrightText: syuilo and misskey-project
+SPDX-FileCopyrightText: noridev and cherrypick-project
+SPDX-FileCopyrightText: Tolehata and hatasaba-project
 SPDX-License-Identifier: AGPL-3.0-only
 -->
 
@@ -37,7 +39,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<div><i class="ti ti-alert-triangle ti-fw"></i> {{ i18n.ts.cannotBeChangedLater }}</div>
 					<span v-if="usernameState === 'wait'" style="color:#999"><MkLoading :em="true"/> {{ i18n.ts.checking }}</span>
 					<span v-else-if="usernameState === 'ok'" style="color: var(--MI_THEME-success)"><i class="ti ti-check ti-fw"></i> {{ i18n.ts.available }}</span>
-					<span v-else-if="usernameState === 'unavailable'" style="color: var(--MI_THEME-error)"><i class="ti ti-alert-triangle ti-fw"></i> {{ i18n.ts.unavailable }}</span>
+					<span v-else-if="usernameState === 'unavailable'" style="color: var(--MI_THEME-error)"><i class="ti ti-alert-triangle ti-fw"></i> 既に申請中のIDか、既に使用されているIDです。</span>
 					<span v-else-if="usernameState === 'error'" style="color: var(--MI_THEME-error)"><i class="ti ti-alert-triangle ti-fw"></i> {{ i18n.ts.error }}</span>
 					<span v-else-if="usernameState === 'invalid-format'" style="color: var(--MI_THEME-error)"><i class="ti ti-alert-triangle ti-fw"></i> {{ i18n.ts.usernameInvalidFormat }}</span>
 				</template>
@@ -64,10 +66,15 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</MkInput>
 
 			<!-- 4. メールアドレス -->
-			<MkInput v-model="email" type="email" required>
+			<MkInput v-model="email" type="email" required @update:modelValue="onEmailChange">
 				<template #label>メールアドレス <span :class="$style.required">*必須</span></template>
 				<template #prefix><i class="ti ti-mail"></i></template>
 				<template #caption>
+					<!-- 旗鯖fork: メアド重複エラー表示 (送信時にサーバーから EMAIL_ALREADY_EXISTS が返ったら表示) -->
+					<div v-if="emailUnavailable" style="color: var(--MI_THEME-error);">
+						<i class="ti ti-alert-triangle ti-fw"></i>
+						このメールアドレスは過去90日以内に申請に使用されています。別のメールアドレスを使用してください。
+					</div>
 					<span style="color: var(--MI_THEME-fg); opacity: 0.8;">
 						<i class="ti ti-info-circle ti-fw"></i>
 						申請が承認された場合、このアドレスに通知が届きます。今後のセキュリティ通知にも使用されます。
@@ -107,6 +114,40 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<input v-model="agreePrivacy" type="checkbox" :class="$style.checkbox"/>
 					<a href="https://misskey.hatachanoima.net/@Hatacha/pages/privacy" target="_blank">プライバシーポリシー</a>に同意します
 				</label>
+			</div>
+
+			<!-- 旗鯖fork: プライバシー情報の取り扱い説明 (送信前の最終確認) -->
+			<div :class="$style.privacyNotice">
+				<div :class="$style.privacyNoticeHeader">
+					<i class="ti ti-info-circle"></i>
+					<span>プライバシー情報の取り扱いについて</span>
+				</div>
+				<div :class="$style.privacyNoticeBody">
+					<div :class="$style.privacyNoticeSection">
+						<div :class="$style.privacyNoticeSectionTitle">
+							<i class="ti ti-check" :class="$style.privacyIconApproved"></i>
+							<span>申請が承認された場合</span>
+						</div>
+						<p>ご入力いただいたメールアドレスは今後のセキュリティ通知等に使用されます。</p>
+					</div>
+
+					<div :class="$style.privacyNoticeSection">
+						<div :class="$style.privacyNoticeSectionTitle">
+							<i class="ti ti-x" :class="$style.privacyIconRejected"></i>
+							<span>申請が承認されなかった場合</span>
+						</div>
+						<ul>
+							<li>ご入力いただいた<strong>ID</strong>と<strong>パスワード</strong>はその時点で削除されます。</li>
+							<li><strong>メールアドレス</strong>は同一メールアドレスからの連続申請を拒否するため一定期間 (90日) 保持された後、削除されます。</li>
+							<li>登録申請許可に関するメールは送信されません。</li>
+						</ul>
+					</div>
+
+					<div :class="$style.privacyNoticeWarning">
+						<i class="ti ti-info-circle"></i>
+						<span>一度申請に使用したメールアドレスは、90日間は再申請に使えません。</span>
+					</div>
+				</div>
 			</div>
 
 			<!-- 送信ボタン -->
@@ -165,6 +206,16 @@ const testcaptchaResponse = ref<string | null>(null);
 // --- ユーザー名チェック ---
 const usernameState = ref<null | 'wait' | 'ok' | 'unavailable' | 'error' | 'invalid-format'>(null);
 const usernameAbortController = ref<null | AbortController>(null);
+
+// 旗鯖fork: メアド重複検出フラグ (送信時にサーバーから EMAIL_ALREADY_EXISTS が返った時に true)
+// メアドが変更されたら false にリセットする
+const emailUnavailable = ref(false);
+
+function onEmailChange() {
+	if (emailUnavailable.value) {
+		emailUnavailable.value = false;
+	}
+}
 
 // --- パスワード ---
 const passwordStrength = ref<'' | 'low' | 'medium' | 'high'>('');
@@ -285,7 +336,13 @@ async function onSubmit(): Promise<void> {
 		const code = err?.code;
 		if (code === 'USERNAME_ALREADY_EXISTS') {
 			usernameState.value = 'unavailable';
-			os.alert({ type: 'error', text: 'このユーザーIDは既に使用されています。' });
+			os.alert({ type: 'error', text: '既に申請中のIDか、既に使用されているIDです。別のIDを使用してください。' });
+		} else if (code === 'EMAIL_ALREADY_EXISTS') {
+			// 旗鯖fork: メアド重複時はフィールド下にも赤字表示し、モーダルでも通知
+			emailUnavailable.value = true;
+			os.alert({ type: 'error', text: 'このメールアドレスは過去90日以内に申請に使用されています。別のメールアドレスを使用してください。' });
+		} else if (code === 'INVALID_EMAIL') {
+			os.alert({ type: 'error', text: 'メールアドレスの形式が正しくありません。' });
 		} else if (code === 'CAPTCHA_FAILED') {
 			os.alert({ type: 'error', text: 'CAPTCHA認証に失敗しました。もう一度お試しください。' });
 		} else if (code === 'RATE_LIMIT_EXCEEDED') {
@@ -401,5 +458,96 @@ async function onSubmit(): Promise<void> {
 	width: 18px;
 	height: 18px;
 	accent-color: var(--MI_THEME-accent);
+}
+
+/* 旗鯖fork: プライバシー情報の取り扱い説明ボックス (送信前の最終確認) */
+.privacyNotice {
+	background: var(--MI_THEME-panel);
+	border: 1px solid var(--MI_THEME-divider);
+	border-radius: var(--MI-radius);
+	overflow: hidden;
+}
+
+.privacyNoticeHeader {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 12px 16px;
+	background: color-mix(in srgb, var(--MI_THEME-accent) 12%, transparent);
+	color: var(--MI_THEME-accent);
+	font-weight: bold;
+	font-size: 0.95em;
+	border-bottom: 1px solid var(--MI_THEME-divider);
+
+	> i {
+		font-size: 1.1em;
+	}
+}
+
+.privacyNoticeBody {
+	padding: 16px;
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+	font-size: 0.9em;
+	line-height: 1.7;
+}
+
+.privacyNoticeSection {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.privacyNoticeSectionTitle {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-weight: 500;
+}
+
+.privacyIconApproved {
+	color: var(--MI_THEME-success);
+}
+
+.privacyIconRejected {
+	color: var(--MI_THEME-error);
+}
+
+.privacyNoticeSection p {
+	margin: 0;
+	padding-left: 22px;
+}
+
+.privacyNoticeSection ul {
+	margin: 0;
+	padding-left: 22px;
+	list-style-position: inside;
+}
+
+.privacyNoticeSection ul li {
+	margin-bottom: 4px;
+}
+
+.privacyNoticeSection strong {
+	color: var(--MI_THEME-accent);
+	font-weight: 600;
+}
+
+.privacyNoticeWarning {
+	display: flex;
+	gap: 8px;
+	padding: 10px 12px;
+	background: color-mix(in srgb, var(--MI_THEME-warn) 12%, transparent);
+	border: 1px solid color-mix(in srgb, var(--MI_THEME-warn) 30%, transparent);
+	border-radius: 6px;
+	color: var(--MI_THEME-warn);
+	font-size: 0.85em;
+	line-height: 1.5;
+
+	> i {
+		flex-shrink: 0;
+		margin-top: 2px;
+	}
 }
 </style>

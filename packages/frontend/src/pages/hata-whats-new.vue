@@ -14,7 +14,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<span>What's New</span>
 				</div>
 				<h1 :class="$style.heroTitle">旗鯖に、<wbr/>新しい体験を。</h1>
-				<p :class="$style.heroSubtitle">旗池２丁目で使える最新の独自機能をピックアップしてご紹介します。</p>
+				<p :class="$style.heroSubtitle">{{ displayServerName }}で使える最新の独自機能をピックアップしてご紹介します。</p>
 			</div>
 		</div>
 
@@ -60,15 +60,15 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<div :class="$style.demoVersionRow">
 							<i class="ti ti-package"></i>
 							<span :class="$style.demoVersionLabel">本家 Misskey</span>
-							<span :class="$style.demoVersionTag">2026.5.0</span>
+							<span :class="$style.demoVersionTag">2026.5.1</span>
 						</div>
 						<div :class="$style.demoVersionArrow">
 							<i class="ti ti-arrow-down"></i>
 						</div>
 						<div :class="$style.demoVersionRow">
 							<i class="ti ti-flag"></i>
-							<span :class="$style.demoVersionLabel">旗鯖2丁目</span>
-							<span :class="[$style.demoVersionTag, $style.demoVersionTagAccent]">hata-11.2</span>
+							<span :class="$style.demoVersionLabel">{{ displayServerName }}</span>
+							<span :class="[$style.demoVersionTag, $style.demoVersionTagAccent]">hata-11.3</span>
 						</div>
 					</div>
 				</div>
@@ -114,6 +114,13 @@ SPDX-License-Identifier: AGPL-3.0-only
 <script lang="ts" setup>
 import { ref, computed } from 'vue';
 import { definePage } from '@/page.js';
+import { instance } from '@/instance.js';
+import { instanceName } from '@@/js/config.js';
+
+// 旗鯖fork: 表示用のサーバー名
+// 優先順: 管理者が設定した instance.name → 設定ファイル(config)の instanceName
+// → ハードコードフォールバック
+const displayServerName = computed(() => instance.name || instanceName || 'Hataskey');
 
 definePage(() => ({
 	title: '旗鯖新機能',
@@ -152,26 +159,216 @@ type Feature = {
 
 const features: Feature[] = [
 	{
+		id: 'pill-style-tabs',
+		category: 'ui',
+		version: 'hata-11.3',
+		title: '通知やみつけるなど6ページのタブが新デザインに',
+		desc: '通知、フォロー申請、チャンネル、お知らせ、みつける、メッセージのページのタブを、ふんわり浮いたボタン型(ピル型)に統一しました。スクロールしても上部に追従するので、タブ切り替えがいつでもしやすくなっています。',
+		icon: 'ti ti-layout-grid',
+		theme: 'lavender',
+		isNew: true,
+		highlights: [
+			'角丸ボタンの新デザインで6ページのタブを統一',
+			'スクロールしても画面上部に追従',
+			'背景がふんわり半透明で本文と馴染む',
+		],
+	},
+	{
+		id: 'notification-improvements',
+		category: 'enhance',
+		version: 'hata-11.3',
+		title: '通知の見やすさが大幅にアップ',
+		desc: '横長のカスタム絵文字が潰れて見えなかった問題を解消、同じ人がたくさんの投稿にリアクションしてくれた時はまとめて1つの通知にして見やすく、通知ページの「新規投稿」タブは廃止してすっきりさせました。',
+		icon: 'ti ti-bell',
+		theme: 'amber',
+		isNew: true,
+		highlights: [
+			'横長のカスタム絵文字も潰れず綺麗に表示',
+			'同じ人からの複数リアクションを1つの通知にまとめ',
+			'通知ページの「新規投稿」タブを廃止',
+		],
+	},
+	{
+		id: 'hatask-notification-evolution',
+		category: 'enhance',
+		version: 'hata-11.3',
+		title: 'hatask の通知をタップすると該当ページにジャンプ',
+		desc: 'カレンダーの予定通知や、きもち記録のリマインド通知に、分かりやすい絵文字アイコンが表示されるようになりました。さらに通知をタップすると、hatask のそのページにすぐ飛べるようになって便利になっています。',
+		icon: 'ti ti-heart',
+		theme: 'mint',
+		isNew: true,
+		highlights: [
+			'カレンダー通知に 📅 アイコン、きもち記録通知に ♡ アイコン',
+			'通知タップでカレンダー/きもちページに直接ジャンプ',
+			'hatask の他の機能でも今後同じ仕組みで遷移できるように',
+		],
+	},
+	{
+		id: 'hataskey-brand-login',
+		category: 'ui',
+		version: 'hata-11.3',
+		title: 'ブランド名「Hataskey」とログインページのロゴ刷新',
+		desc: '旗鯖fork のブランド名を「Hataskey」として正式に位置づけ、ログインページ左上のロゴを2段構成に刷新しました。1段目に「Hataskey」をテーマカラーで大きく、2段目に「A fork of [CherryPickロゴ]」を控えめに配置。背景のシェイプ装飾の上でもしっかり読めるよう、文字に細い縁取りとやわらかい影を加えて視認性を確保しています。',
+		icon: 'ti ti-sparkles',
+		theme: 'mint',
+		isNew: true,
+		highlights: [
+			'ログインページ左上に Hataskey ブランドロゴを2段構成で表示',
+			'1段目「Hataskey」はテーマカラー、2段目「A fork of CherryPick」は控えめ',
+			'背景のシェイプ上でも読めるよう、縁取り+やわらか影で視認性を確保',
+			'Righteous フォント(SIL OFL 1.1)を同梱して読み込み',
+		],
+	},
+	{
+		id: 'about-page-brand-logo',
+		category: 'ui',
+		version: 'hata-11.3',
+		title: 'about-misskey ページのブランドロゴ刷新',
+		desc: '「Hataskeyについて」ページの一番上の表示を、ログイン画面と同じ Hataskey ロゴに統一しました。サーバーアイコン未設定時に表示される単色アイコンは、ホーム画面に追加した際のアプリアイコンなどで引き続き使われます。',
+		icon: 'ti ti-typography',
+		theme: 'lavender',
+		isNew: true,
+		highlights: ['Righteousフォントとテーマアクセント色のブランド文字ロゴに統一', 'ログインページと一貫したデザイン体験', '@font-face をscope内に追加して about-misskey でも Righteous フォントを利用可能に'],
+	},
+	{
+		id: 'hatasaba-ui-fixed-post-form',
+		category: 'fix',
+		version: 'hata-11.3',
+		title: 'Hatasaba UI で投稿フォーム表示が機能しない問題を修正',
+		desc: 'Hatasaba UI で「タイムライン上部に投稿フォームを表示する」設定をONにしても投稿フォームが現れない不具合を修正しました。設定通りに、画面上部に投稿フォームが固定表示されるようになります。',
+		icon: 'ti ti-pencil',
+		theme: 'sky',
+		isNew: true,
+		highlights: ['timelineContainer 直下に MkPostForm を挿入', '外部TL(ohtl/oltl)タブでは非表示にする条件を併せて追加', '通常 Misskey UI と同じ挙動に統一'],
+	},
+	{
+		id: 'announcement-i18n-fix',
+		category: 'fix',
+		version: 'hata-11.3',
+		title: 'お知らせページの見出しが空表示になる問題を修正',
+		desc: 'お知らせページの「メンテナンス情報」「最新のお知らせ」といったセクション見出しが空っぽに表示される不具合を解消しました。各セクションのタイトルが正しく表示されます。',
+		icon: 'ti ti-megaphone',
+		theme: 'pink',
+		isNew: true,
+		highlights: ['maintenance / _announcement.latest / pinned / category系 / pin操作系 を追加', 'メンテナンス選択時の説明文(MkInfo)が正常に表示されるように', '管理者・利用者の両ページで文言欠落が解消'],
+	},
+	{
+		id: 'legacy-icon-migrate',
+		category: 'fix',
+		version: 'hata-11.3',
+		title: '旧 CherryPick アイコンが残存するサーバーの自動修正',
+		desc: '以前 CherryPick のキャラクターアイコンをそのままサーバーアイコンとして表示していたサーバーで、サーバー更新時に Hataskey の自動生成アイコンへ切り替わるようになりました。管理者の方が独自に設定したカスタムアイコンには影響しません。',
+		icon: 'ti ti-arrow-back-up',
+		theme: 'mint',
+		isNew: true,
+		highlights: ['対象は about-icon.png / cherrypick-icon を URL に含む iconUrl のみ', '管理者の任意設定アイコンは保護される', 'マイグレ後は ホスト名から決定論的に生成される単色SVGが表示される'],
+	},
+	{
+		id: 'misskey-2026.5.1',
+		category: 'update',
+		version: 'hata-11.3',
+		title: 'Misskey 2026.5.1 修正取り込み',
+		desc: '本家 Misskey 最新版から、通知の遅延・取りこぼしや、管理者向けロール設定画面の動きが改善される修正を取り込みました。フォロワー限定の投稿が通知されない、特定の条件で通知が10秒ほど遅れるといった問題が解消されています。',
+		icon: 'ti ti-bug-off',
+		theme: 'mint',
+		isNew: true,
+		highlights: ['ULID環境での通知遅延（約10秒）の解消', 'フォロワー限定投稿でメンションされた人に通知が飛ぶように修正', 'ロール設定画面でアサイン/解除がリロードなしで反映されるように'],
+		media: 'misskey-update',
+	},
+	{
+		id: 'search-redesign',
+		category: 'ui',
+		version: 'hata-11.3',
+		title: '検索メニューのデザイン刷新',
+		desc: 'タブ切り替えからプルダウン切り替えに変更し、検索バーをカプセル型デザインに刷新しました。PC・タブレットではヘッダ直下、スマホでは画面下部に固定表示されます。',
+		icon: 'ti ti-search',
+		theme: 'pink',
+		isNew: true,
+		highlights: ['検索対象 (ノート / ユーザー / イベント) はバー内のプルダウンで切替', 'テーマカラーの検索ボタン + オプションボタンを横並び配置', 'プロフィール画面の🔍ボタンからの検索フローも維持'],
+	},
+	{
+		id: 'announcements-redesign',
+		category: 'ui',
+		version: 'hata-11.3',
+		title: 'お知らせメニューのデザイン刷新 + メンテナンス情報',
+		desc: 'お知らせをカテゴリ別 (警告 / 成功 / 情報 / エラー / メンテナンス) で整理表示。最新お知らせとメンテナンス情報をトップでハイライトし、過去のお知らせも同様に分類されます。',
+		icon: 'ti ti-speakerphone',
+		theme: 'mint',
+		isNew: true,
+		highlights: ['カテゴリ別の整理表示で目的のお知らせを見つけやすく', 'メンテナンス情報はトップに赤枠で目立つ表示', 'コントロールパネルから「メンテナンス」種別で作成可能 (ピン留め機能は次バージョン予定)'],
+	},
+	{
+		id: 'announcements-pin',
+		category: 'feature',
+		version: 'hata-11.3',
+		title: 'お知らせのピン留め機能',
+		desc: '任意のお知らせを📌でピン留めできるようになりました。ピン留めしたお知らせはお知らせメニューのトップ(メンテナンス情報の上)に専用セクションで表示されます。',
+		icon: 'ti ti-pin',
+		theme: 'pink',
+		isNew: true,
+		highlights: ['複数件のピン留めに対応', '↑↓ボタンで並び替え可能', 'preferences保存なのでアカウント間で同期', '各お知らせカード右上のピンアイコンで操作', '削除されたお知らせのピン留めは自動でクリーンアップ'],
+	},
+	{
+		id: 'external-emoji-picker-smart',
+		category: 'federation',
+		version: 'hata-11.3',
+		title: '外部TL絵文字ピッカーをスマート化',
+		desc: '「最近使った」絵文字が読み込みエラーアイコンになる不具合を解消し、相手サーバーへの API リクエスト量を大幅に削減しました。',
+		icon: 'ti ti-mood-smile',
+		theme: 'sky',
+		isNew: true,
+		highlights: ['履歴・お気に入りに絵文字のホスト名と画像URLも保存(別サーバー切替でも復元)', 'ホストごとの絵文字URLマップを永続キャッシュ(24h TTL + 最大10ホストLRU)', '/api/emojis 取得をカスタムタブ開いた時のみに遅延化', '3段階フォールバック解決でAPI呼び出しゼロを最優先', '設定画面に「外部TL絵文字キャッシュをクリア」ボタンを追加'],
+	},
+	{
+		id: 'friendly-ui-removed',
+		category: 'fix',
+		version: 'hata-11.3',
+		title: 'Friendly UI の全面廃止',
+		desc: 'ウィンドウサイズの変更や設定操作の拍子で意図せず Friendly UI が表示されてしまう問題への根本対策として、旗鯖fork では Friendly UI を全面廃止しました。',
+		icon: 'ti ti-eraser',
+		theme: 'pink',
+		isNew: true,
+		highlights: ['friendly.vue とその関連ファイルを削除', 'main-boot.ts の UI フォールバックを simple に変更', 'localStorage の "friendly" 値を毎boot時に "simple" へ自動クリーンアップ', '設定画面の「Friendly UI」セクション(3項目)を削除', 'isFriendly() は常に false を返すため、参照側コードは安全に dead branch 化'],
+	},
+	{
+		id: 'support-menu-removed',
+		category: 'ui',
+		version: 'hata-11.3',
+		title: 'CherryPick支援メニューをサイドバーから撤去',
+		desc: 'サイドバーをスッキリさせるため、支援関連メニューはサーバーアイコンから開く「サーバー情報」ページに集約しました。CherryPick や Misskey 本家への寄付、スポンサー一覧などはこれまで通りアクセスできます。',
+		icon: 'ti ti-trash',
+		theme: 'pink',
+		isNew: true,
+		highlights: ['サイドバーから「CherryPickを支援する」項目を撤去', 'store.ts のサイドバーデフォルトから "support" を除外', '既存ユーザー設定からも自動クリーンアップ', '支援への導線は about-misskey に集約'],
+	},
+	{
+		id: 'fix-more-menu-hata-docs',
+		category: 'ui',
+		version: 'hata-11.3',
+		title: '「もっと!」メニュー残留問題を修正',
+		desc: 'hata-11.0 で旗鯖機能解説ボタンをサイドバーから「もっと!」/「ヘルプ」内に移設した際、環境によっては「もっと!」メニュー内にボタンが残留してしまう問題がありました。今回の更新で残留したボタンが自動的に除去されます。',
+		icon: 'ti ti-eraser',
+		theme: 'pink',
+		highlights: ['「もっと!」メニュー内の旗鯖機能解説ボタンを自動除去', '保存済みのサイドバー設定からも自動的にクリーンアップ', '旗鯖機能解説ページはヘルプメニュー (?) から引き続きアクセス可能'],
+	},
+	{
 		id: 'misskey-2026.5.0',
 		category: 'update',
 		version: 'hata-11.2',
 		title: 'Misskey 2026.5.0 対応',
-		desc: '本家 Misskey 2026.5.0 のバグ修正を厳選して取り込みました。リレー経由ノートの表示、ノート通知の公開範囲、ULID処理、Inboxジョブ蓄積など各種不具合を解消しています。',
+		desc: '本家 Misskey から各種バグ修正を取り込みました。連合サーバー経由で届くノートの表示や、公開範囲を絞った通知の挙動、ブロック済みサーバーからの受信処理など、見えにくい部分の安定性が向上しています。',
 		icon: 'ti ti-package',
 		theme: 'mint',
-		isNew: true,
 		highlights: ['本家由来のバグ修正を多数取り込み', 'ActivityPub 連合周りの安定性向上', '管理系ページの表示不具合修正'],
-		media: 'misskey-update',
 	},
 	{
 		id: 'navbar-active-tab',
 		category: 'ui',
 		version: 'hata-11.2',
 		title: 'Hatasaba UI 上部ナビバー機能改良',
-		desc: '上部ナビバーで現在開いているタブだけ、アイコンに加えてテキストラベルを併記するピル型デザインに刷新しました。今どこにいるかが一目で分かります。',
+		desc: '上部ナビバーで現在開いているタブだけ、アイコンとテキストの両方を表示するようになりました。今どの画面を見ているかが、ひと目で分かります。',
 		icon: 'ti ti-layout-navbar',
 		theme: 'pink',
-		isNew: true,
 		highlights: ['アクティブタブのみアイコン+ラベル併記', 'ピル形状で幅可変', '視認性アップ'],
 		media: 'navbar-active-tab',
 	},
@@ -202,7 +399,7 @@ const features: Feature[] = [
 		category: 'ui',
 		version: 'hata-11.1',
 		title: 'UIフォント変更機能',
-		desc: '好みのフォントに切り替えて、自分だけの旗鯖を演出。5種類のプリセット + カスタムフォント対応。',
+		desc: '画面全体の文字フォントを好みのものに切り替えて、自分だけの旗鯖を演出できます。あらかじめ用意された5種類から選ぶこともでき、自分でフォントを指定することもできます。',
 		icon: 'ti ti-typography',
 		theme: 'pink',
 		isNew: true,
@@ -215,7 +412,7 @@ const features: Feature[] = [
 		category: 'tool',
 		version: 'hata-11.1',
 		title: '同意管理システム',
-		desc: '外部TL利用やカスタムフォントなどの同意情報をサーバー側で安全に管理。透明性の向上を実現。',
+		desc: '外部TL利用やカスタムフォント表示など、利用にあたって同意が必要な機能をサーバー側でまとめて管理するようになりました。どの機能について同意したかが分かりやすく、いつでも確認・取り消しができます。',
 		icon: 'ti ti-shield-check',
 		theme: 'mint',
 		isNew: true,
@@ -261,7 +458,7 @@ const features: Feature[] = [
 		category: 'game',
 		version: 'hata-11.0',
 		title: 'カスタムエモジシュート',
-		desc: 'Wave制の絵文字弾幕シューティング。パワーアップアイテムでスコアを伸ばせ！',
+		desc: '次々と襲ってくる絵文字の大群を撃ち落とすシューティングゲーム。ウェーブを重ねるごとに難易度が上がり、パワーアップアイテムを集めてハイスコアを目指しましょう！',
 		icon: 'ti ti-rocket',
 		theme: 'violet',
 		highlights: ['長押し連射', '3種のパワーアップ', 'エンドレスWave'],

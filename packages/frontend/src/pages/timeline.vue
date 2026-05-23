@@ -1,5 +1,7 @@
 <!--
 SPDX-FileCopyrightText: syuilo and misskey-project
+SPDX-FileCopyrightText: noridev and cherrypick-project
+SPDX-FileCopyrightText: Tolehata and hatasaba-project
 SPDX-License-Identifier: AGPL-3.0-only
 -->
 
@@ -10,7 +12,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			{{ i18n.ts._timelineDescription[src] }}
 		</MkTip>
 		<MkTip v-else-if="src === 'ohtl' || src === 'oltl'" k="tl.external" style="margin-bottom: var(--MI-margin);">
-			🦐 外部サーバー（{{ prefer.s['external.host'] }}）の{{ src === 'ohtl' ? 'ホーム' : 'ローカル' }}タイムラインを表示しています
+			外部サーバー（{{ prefer.s['external.host'] }}）の{{ src === 'ohtl' ? 'ホーム' : 'ローカル' }}タイムラインを表示しています
 		</MkTip>
 		<MkInfo v-if="schedulePostList > 0" style="margin-bottom: var(--MI-margin);">
 			<button type="button" :class="$style.checkSchedulePostList" @click="showDraftMenu(true)">
@@ -31,15 +33,20 @@ SPDX-License-Identifier: AGPL-3.0-only
 			:sound="true"
 		/>
 		<!-- 通常のタイムライン -->
-		<div v-else-if="!isAvailableBasicTimeline(src) && !src.startsWith('list:') && src !== 'ohtl' && src !== 'oltl'" :class="[$style.disabled, $style.tl]">
+		<div v-else-if="!isAvailableBasicTimeline(src) && !src.startsWith('list:') && src !== 'ohtl' && src !== 'oltl' && src !== 'trending'" :class="[$style.disabled, $style.tl]">
 			<p :class="$style.disabledTitle">
 				<i class="ti ti-circle-minus"></i>
 				{{ i18n.ts._disabledTimeline.title }}
 			</p>
 			<p :class="$style.disabledDescription">{{ i18n.ts._disabledTimeline.description }}</p>
 		</div>
+		<MkTrendingTimeline
+			v-else-if="src === 'trending'"
+			ref="tlComponent"
+			:class="$style.tl"
+		/>
 		<MkStreamingNotesTimeline
-			v-else-if="src !== 'ohtl' && src !== 'oltl'"
+			v-else-if="src !== 'ohtl' && src !== 'oltl' && src !== 'trending'"
 			ref="tlComponent"
 			:key="src + withRenotes + withReplies + onlyFiles + onlyCats + withSensitive"
 			:class="$style.tl"
@@ -63,6 +70,8 @@ import type { MenuItem } from '@/types/menu.js';
 import type { BasicTimelineType } from '@/timelines.js';
 import MkStreamingNotesTimeline from '@/components/MkStreamingNotesTimeline.vue';
 import MkExternalTimeline from '@/components/MkExternalTimeline.vue';
+// 旗鯖fork: トレンドタイムライン (TTL)
+import MkTrendingTimeline from '@/components/MkTrendingTimeline.vue';
 import MkPostForm from '@/components/MkPostForm.vue';
 import * as os from '@/os.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
@@ -108,7 +117,7 @@ const schedulePostList = $i ? (await misskeyApi('notes/drafts/list', { scheduled
 
 const tlComponent = useTemplateRef('tlComponent');
 
-type TimelinePageSrc = BasicTimelineType | `list:${string}` | 'ohtl' | 'oltl';
+type TimelinePageSrc = BasicTimelineType | `list:${string}` | 'ohtl' | 'oltl' | 'trending';
 
 const srcWhenNotSignin = ref<'local' | 'global'>(isAvailableBasicTimeline('local') ? 'local' : 'global');
 const src = computed<TimelinePageSrc>({
@@ -174,7 +183,7 @@ const withSensitive = computed<boolean>({
 const showFixedPostForm = prefer.model('showFixedPostForm');
 
 const enableWidgetsArea = ref(prefer.s.enableWidgetsArea);
-const friendlyUiEnableNotificationsArea = ref(prefer.s.friendlyUiEnableNotificationsArea);
+// 旗鯖fork: Friendly UI 廃止のため friendlyUiEnableNotificationsArea ref は削除
 
 const enableHomeTimeline = ref(prefer.s.enableHomeTimeline);
 const enableLocalTimeline = ref(prefer.s.enableLocalTimeline);
@@ -200,10 +209,7 @@ watch(enableWidgetsArea, (x) => {
 	suggestReload();
 });
 
-watch(friendlyUiEnableNotificationsArea, (x) => {
-	prefer.commit('friendlyUiEnableNotificationsArea', x);
-	suggestReload();
-});
+// 旗鯖fork: Friendly UI 廃止のため friendlyUiEnableNotificationsArea watch は削除
 
 watch(enableHomeTimeline, (x) => {
 	prefer.commit('enableHomeTimeline', x);
@@ -417,27 +423,7 @@ const headerActions = computed(() => {
 		handler: (ev) => {
 			const menuItems: MenuItem[] = [];
 
-			if (isFriendly().value) {
-				menuItems.push({
-					type: 'parent',
-					icon: 'ti ti-layout-board',
-					text: 'Friendly UI',
-					children: async () => {
-						const friendlyUiChildMenu = [] as MenuItem[];
-
-						if (isDesktop.value) {
-							friendlyUiChildMenu.push({
-								type: 'switch',
-								icon: 'ti ti-layout-sidebar-right',
-								text: i18n.ts._cherrypick.friendlyUiEnableNotificationsArea,
-								ref: friendlyUiEnableNotificationsArea,
-							});
-						}
-
-						return friendlyUiChildMenu;
-					},
-				});
-			}
+			// 旗鯖fork: Friendly UI 廃止のため Friendly UI 切替メニューは削除
 
 			menuItems.push({
 				type: 'switch',
@@ -608,7 +594,15 @@ const headerActions = computed(() => {
 	return items;
 });
 
-const headerTabs = computed(() => [...(prefer.r.pinnedUserLists.value.map(l => ({
+const headerTabs = computed(() => [
+	// 旗鯖fork: トレンドタイムライン (TTL) を最左端に
+	{
+		key: 'trending',
+		title: i18n.ts._timelines.trending,
+		icon: 'ti ti-flame',
+		iconOnly: true,
+	},
+	...(prefer.r.pinnedUserLists.value.map(l => ({
 	key: 'list:' + l.id,
 	title: l.name,
 	icon: 'ti ti-star',
@@ -635,17 +629,25 @@ const headerTabs = computed(() => [...(prefer.r.pinnedUserLists.value.map(l => (
 	onClick: chooseChannel,
 }] : []), ...(isExternalEnabled.value && enableOHTL.value ? [{
 	key: 'ohtl',
-	title: '🦐 OHTL',
+	title: 'OHTL',
 	icon: 'ti ti-home',
 	iconOnly: false,
 }] : []), ...(isExternalEnabled.value && enableOLTL.value ? [{
 	key: 'oltl',
-	title: '🦐 OLTL',
+	title: 'OLTL',
 	icon: 'ti ti-planet',
 	iconOnly: false,
 }] : [])] as Tab[]);
 
-const headerTabsWhenNotLogin = computed(() => [...availableBasicTimelines().map(tl => ({
+const headerTabsWhenNotLogin = computed(() => [
+	// 旗鯖fork: 未ログインでもトレンドは見られる (公開ノートのみなので問題なし)
+	{
+		key: 'trending',
+		title: i18n.ts._timelines.trending,
+		icon: 'ti ti-flame',
+		iconOnly: true,
+	},
+	...availableBasicTimelines().map(tl => ({
 	key: tl,
 	title: i18n.ts._timelines[tl],
 	icon: basicTimelineIconClass(tl),
@@ -654,7 +656,8 @@ const headerTabsWhenNotLogin = computed(() => [...availableBasicTimelines().map(
 
 definePage(() => ({
 	title: i18n.ts.timeline,
-	icon: isBasicTimeline(src.value) ? basicTimelineIconClass(src.value) : 'ti ti-home',
+	// 旗鯖fork: トレンドタブのアイコン対応
+	icon: src.value === 'trending' ? 'ti ti-flame' : isBasicTimeline(src.value) ? basicTimelineIconClass(src.value) : 'ti ti-home',
 }));
 </script>
 

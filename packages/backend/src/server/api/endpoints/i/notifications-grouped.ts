@@ -112,6 +112,12 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				let prevGroupedNotification = groupedNotifications.at(-1)!;
 
 				if (prev.type === 'reaction' && notification.type === 'reaction' && prev.noteId === notification.noteId) {
+					// 旗鯖fork: prev がすでに groupedByUser に組み込まれている場合は、既存集約を尊重して新規エントリにする
+					// (reaction:grouped と reaction:groupedByUser の同時成立を防ぐ)
+					if (prevGroupedNotification.type === 'reaction:groupedByUser') {
+						groupedNotifications.push(notification);
+						continue;
+					}
 					if (prevGroupedNotification.type !== 'reaction:grouped') {
 						groupedNotifications[groupedNotifications.length - 1] = {
 							type: 'reaction:grouped',
@@ -128,6 +134,31 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 					(prevGroupedNotification as FilterUnionByProperty<MiGroupedNotification, 'type', 'reaction:grouped'>).reactions.push({
 						userId: notification.notifierId!,
 						reaction: notification.reaction!,
+					});
+					prevGroupedNotification.id = notification.id;
+					continue;
+				}
+				// 旗鯖fork: 同じユーザーから複数ノートへのリアクションを reaction:groupedByUser に集約
+				// 優先順位: 同じノート (reaction:grouped) が一致すれば既に上で処理済み、ここはそれ以外
+				if (prev.type === 'reaction' && notification.type === 'reaction' && prev.notifierId === notification.notifierId && prev.noteId !== notification.noteId) {
+					if (prevGroupedNotification.type !== 'reaction:groupedByUser') {
+						groupedNotifications[groupedNotifications.length - 1] = {
+							type: 'reaction:groupedByUser',
+							id: '',
+							createdAt: prev.createdAt,
+							notifierId: prev.notifierId!,
+							reactions: [{
+								noteId: prev.noteId!,
+								reaction: prev.reaction!,
+								createdAt: prev.createdAt,
+							}],
+						};
+						prevGroupedNotification = groupedNotifications.at(-1)!;
+					}
+					(prevGroupedNotification as FilterUnionByProperty<MiGroupedNotification, 'type', 'reaction:groupedByUser'>).reactions.push({
+						noteId: notification.noteId!,
+						reaction: notification.reaction!,
+						createdAt: notification.createdAt,
 					});
 					prevGroupedNotification.id = notification.id;
 					continue;

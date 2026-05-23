@@ -1,5 +1,7 @@
 /*
  * SPDX-FileCopyrightText: syuilo and misskey-project
+ * SPDX-FileCopyrightText: noridev and cherrypick-project
+ * SPDX-FileCopyrightText: Tolehata and hatasaba-project
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
@@ -26,6 +28,8 @@ import { UserBlockingService } from '@/core/UserBlockingService.js';
 import { CustomEmojiService } from '@/core/CustomEmojiService.js';
 import { RoleService } from '@/core/RoleService.js';
 import { FeaturedService } from '@/core/FeaturedService.js';
+// 旗鯖fork: トレンドタイムライン用 (リアクションスコアの加減算)
+import { TrendingService, SCORE_REACTION } from '@/core/TrendingService.js';
 import { trackPromise } from '@/misc/promise-tracker.js';
 import { isQuote, isRenote } from '@/misc/is-renote.js';
 import { ReactionsBufferingService } from '@/core/ReactionsBufferingService.js';
@@ -94,6 +98,8 @@ export class ReactionService {
 		private reactionsBufferingService: ReactionsBufferingService,
 		private idService: IdService,
 		private featuredService: FeaturedService,
+		// 旗鯖fork: トレンドタイムライン
+		private trendingService: TrendingService,
 		private globalEventService: GlobalEventService,
 		private apRendererService: ApRendererService,
 		private apDeliverManagerService: ApDeliverManagerService,
@@ -283,6 +289,13 @@ export class ReactionService {
 			trackPromise(dm.execute());
 		}
 		//#endregion
+
+		// 旗鯖fork: トレンドタイムライン用にスコアを加算
+		// 公開ノートかつリプライでない場合のみ対象
+		// 外部影響なし: Redis ZINCRBY のみ、ActivityPub fetch は発生しない
+		if (this.trendingService.isEligibleForTrending(note)) {
+			trackPromise(this.trendingService.addToRanking(note.id, SCORE_REACTION));
+		}
 	}
 
 	@bindThis
@@ -335,6 +348,12 @@ export class ReactionService {
 			trackPromise(dm.execute());
 		}
 		//#endregion
+
+		// 旗鯖fork: トレンドタイムライン用にスコアを減算 (悪用防止)
+		// リアクションが削除されたら、対応する +1 点をキャンセル
+		if (this.trendingService.isEligibleForTrending(note)) {
+			trackPromise(this.trendingService.addToRanking(note.id, -SCORE_REACTION));
+		}
 	}
 
 	/**

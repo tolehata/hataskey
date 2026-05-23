@@ -32,10 +32,6 @@ export const meta = {
 					type: 'integer',
 					optional: false, nullable: false,
 				},
-				gameMode: {
-					type: 'string',
-					optional: false, nullable: false,
-				},
 				createdAt: {
 					type: 'string', format: 'date-time',
 					optional: false, nullable: false,
@@ -48,7 +44,6 @@ export const meta = {
 export const paramDef = {
 	type: 'object',
 	properties: {
-		gameMode: { type: 'string' },
 		limit: { type: 'integer', minimum: 1, maximum: 50 },
 	},
 	required: [],
@@ -62,7 +57,6 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 	) {
 		super(meta, paramDef, async (ps, me) => {
 			const where: any = { userId: me.id };
-			if (ps.gameMode) where.gameMode = ps.gameMode;
 
 			const records = await this.stackingGameRecordsRepository.find({
 				where,
@@ -74,7 +68,6 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				id: r.id,
 				score: r.score,
 				blockCount: r.blockCount,
-				gameMode: r.gameMode,
 				createdAt: r.createdAt.toISOString(),
 			}));
 		});

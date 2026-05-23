@@ -37,7 +37,7 @@ export const packedAnnouncementSchema = {
 		icon: {
 			type: 'string',
 			optional: false, nullable: false,
-			enum: ['info', 'warning', 'error', 'success'],
+			enum: ['info', 'warning', 'error', 'success', 'maintenance'],
 		},
 		display: {
 			type: 'string',

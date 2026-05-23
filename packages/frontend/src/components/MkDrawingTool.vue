@@ -30,7 +30,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<div :class="$style.creditItem"><span>開発</span><strong>Tolehata</strong></div>
 					<div :class="$style.creditItem"><span>デバッグ/協力</span><strong>くりきんとん</strong></div>
 				</div>
-				<div :class="$style.version">Version 2.3</div>
+				<div :class="$style.version">Version 2.4</div>
 				<button :class="$style.primaryBtn" @click="showCredits = false">閉じる</button>
 			</div>
 		</div>
@@ -73,7 +73,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<button @click="zoom = Math.max(0.1, zoom - 0.1)"><i class="ti ti-zoom-out"></i></button>
 					<span>{{ Math.round(zoom * 100) }}%</span>
 					<button @click="zoom = Math.min(5, zoom + 0.1)"><i class="ti ti-zoom-in"></i></button>
-					<button @click="zoom = 1"><i class="ti ti-zoom-reset"></i></button>
+					<button @click="zoom = 1; panX = 0; panY = 0"><i class="ti ti-zoom-reset"></i></button>
 				</div>
 			</div>
 			<div :class="$style.headerRight">
@@ -100,8 +100,23 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</div>
 				<div :class="$style.card">
 					<h4>カラー</h4>
-					<div :class="$style.hueBar" :style="{ background: 'linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00)' }" @click="onHueClick"></div>
-					<div :class="$style.svBox" :style="{ background: `linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, hsl(${hsv.h}, 100%, 50%))` }" @click="onSvClick"></div>
+					<div :class="$style.colorWheel">
+						<div
+							ref="hueRing"
+							:class="$style.hueRing"
+							@pointerdown="onHuePointerDown"
+						>
+							<div :class="$style.hueHandle" :style="{ transform: `rotate(${hsv.h}deg) translate(var(--hueRadius)) rotate(-${hsv.h}deg)` }"></div>
+						</div>
+						<div
+							ref="svBox"
+							:class="$style.svBox"
+							:style="{ background: `linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, hsl(${hsv.h}, 100%, 50%))` }"
+							@pointerdown="onSvPointerDown"
+						>
+							<div :class="$style.svHandle" :style="{ left: hsv.s + '%', top: (100 - hsv.v) + '%' }"></div>
+						</div>
+					</div>
 					<div :class="$style.colorDisplay"><div :class="$style.colorSwatch" :style="{ background: color }"></div><input type="text" v-model="color" @change="colorToHsv"></div>
 				</div>
 				<div :class="$style.card">
@@ -135,7 +150,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<button @click="cancelLasso">キャンセル</button>
 				</div>
 				<div ref="scroller" :class="$style.scroller" @wheel.prevent="onWheel" @touchstart="onTouchStart" @touchmove="onTouchMove" @touchend="onTouchEnd">
-					<div :class="$style.canvasWrap" :style="{ width: canvasWidth * zoom + 'px', height: canvasHeight * zoom + 'px' }">
+					<div :class="$style.canvasWrap" :style="{ width: canvasWidth * zoom + 'px', height: canvasHeight * zoom + 'px', transform: `translate(${panX}px, ${panY}px)` }">
 						<canvas ref="canvas" :class="$style.canvas" :width="canvasWidth" :height="canvasHeight" :style="{ width: canvasWidth * zoom + 'px', height: canvasHeight * zoom + 'px', background: bgMode === 'transparent' ? 'repeating-conic-gradient(#ccc 0% 25%, #fff 0% 50%) 50% / 16px 16px' : bgMode, cursor: panMode ? (panning ? 'grabbing' : 'grab') : 'crosshair' }" @pointerdown="onPtrDown" @pointermove="onPtrMove" @pointerup="onPtrUp" @pointerleave="onPtrUp"></canvas>
 						<canvas ref="previewCanvas" :class="$style.preview" :width="canvasWidth" :height="canvasHeight" :style="{ width: canvasWidth * zoom + 'px', height: canvasHeight * zoom + 'px' }"></canvas>
 						<div v-if="lasso" :class="$style.lassoBox" :style="{ left: lasso.x * zoom + 'px', top: lasso.y * zoom + 'px', width: lasso.w * zoom + 'px', height: lasso.h * zoom + 'px', transform: `scale(${lasso.scale / 100}) rotate(${lasso.rotation}deg)` }" @pointerdown.stop="startLassoDrag">
@@ -155,11 +170,11 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<div :class="$style.layerHint">※上が手前、下が奥</div>
 					<div :class="$style.layers">
 						<div v-for="(ly, i) in layers" :key="ly.id" :class="[$style.layer, { [$style.active]: i === curLayer }]" @click="curLayer = i">
-							<canvas :class="$style.layerThumb" :width="60" :height="40" :ref="el => updateThumb(el as HTMLCanvasElement, ly)"></canvas>
+							<canvas :class="$style.layerThumb" :ref="el => updateThumb(el as HTMLCanvasElement, ly)"></canvas>
 							<div :class="$style.layerInfo">
 								<span v-if="editingLayerName !== i" :class="$style.layerName" @dblclick="editingLayerName = i">{{ ly.name }}</span>
 								<input v-else :class="$style.layerNameInput" v-model="ly.name" @blur="editingLayerName = -1" @keydown.enter="editingLayerName = -1" autofocus>
-								<button @click.stop="ly.visible = !ly.visible"><i :class="ly.visible ? 'ti ti-eye' : 'ti ti-eye-off'"></i></button>
+								<button @click.stop="ly.visible = !ly.visible; composite()"><i :class="ly.visible ? 'ti ti-eye' : 'ti ti-eye-off'"></i></button>
 							</div>
 							<div :class="$style.layerControls">
 								<select :class="$style.blendSelect" v-model="ly.blend" @change="composite()">
@@ -221,6 +236,8 @@ const previewCanvas = ref<HTMLCanvasElement>();
 const miniCanvas = ref<HTMLCanvasElement>();
 const lassoCanvas = ref<HTMLCanvasElement>();
 const transformCanvas = ref<HTMLCanvasElement>();
+const hueRing = ref<HTMLElement>();
+const svBox = ref<HTMLElement>();
 const scroller = ref<HTMLElement>();
 
 const canvasWidth = ref(800);
@@ -250,8 +267,11 @@ const panning = ref(false);
 const hsv = reactive({ h: 0, s: 0, v: 20 });
 const startPt = reactive({ x: 0, y: 0 });
 const lastPt = reactive({ x: 0, y: 0 });
-const panStart = reactive({ x: 0, y: 0, scrollX: 0, scrollY: 0 });
-const touch = reactive({ count: 0, pinching: false, panning: false, dist: 0, cx: 0, cy: 0, scrollX: 0, scrollY: 0 });
+const panStart = reactive({ x: 0, y: 0, panX: 0, panY: 0 });
+// 旗鯖fork: ハンドツールをスクロール方式からtransform(translate)方式に変更。スクロールバーの範囲に縛られず自由に移動可能
+const panX = ref(0);
+const panY = ref(0);
+const touch = reactive({ count: 0, pinching: false, panning: false, dist: 0, cx: 0, cy: 0, panX: 0, panY: 0 });
 const transform = reactive({ img: null as HTMLImageElement | null, scale: 100, rotation: 0, x: 0, y: 0 });
 
 const tools = [
@@ -293,8 +313,10 @@ const miniRect = computed(() => {
 	if (!scroller.value || !canvasWidth.value) return {};
 	const vw = scroller.value.clientWidth, vh = scroller.value.clientHeight;
 	const cw = canvasWidth.value * zoom.value, ch = canvasHeight.value * zoom.value;
-	const sx = scroller.value.scrollLeft, sy = scroller.value.scrollTop;
-	return { left: (sx / cw) * 160 + 'px', top: (sy / ch) * 100 + 'px', width: Math.min(160, (vw / cw) * 160) + 'px', height: Math.min(100, (vh / ch) * 100) + 'px' };
+	// transform方式: canvasは中央配置 + (panX,panY)。ビューポート左上が指すcanvas座標 = cw/2 - vw/2 - panX
+	const viewLeft = cw / 2 - vw / 2 - panX.value;
+	const viewTop = ch / 2 - vh / 2 - panY.value;
+	return { left: (viewLeft / cw) * 160 + 'px', top: (viewTop / ch) * 100 + 'px', width: Math.min(160, (vw / cw) * 160) + 'px', height: Math.min(100, (vh / ch) * 100) + 'px' };
 });
 
 onMounted(() => {
@@ -357,7 +379,7 @@ function updateMinimap() {
 	mx.drawImage(canvas.value, 0, 0, 160, 100);
 }
 
-function updateThumb(el: HTMLCanvasElement | null, ly: Layer) { if (el) { const x = el.getContext('2d')!; x.clearRect(0, 0, 60, 40); x.drawImage(ly.canvas, 0, 0, 60, 40); } }
+function updateThumb(el: HTMLCanvasElement | null, ly: Layer) { if (el) { const dpr = window.devicePixelRatio || 1; const w = 60, h = 40; if (el.width !== w * dpr || el.height !== h * dpr) { el.width = w * dpr; el.height = h * dpr; } const x = el.getContext('2d')!; x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high'; x.clearRect(0, 0, el.width, el.height); x.drawImage(ly.canvas, 0, 0, el.width, el.height); } }
 
 watch([curLayer, layers], () => { nextTick(() => { layers.value.forEach((ly, i) => { const el = document.querySelectorAll('.' + $style.layerThumb)[i] as HTMLCanvasElement; updateThumb(el, ly); }); }); }, { deep: true });
 
@@ -383,8 +405,44 @@ function restoreHistory() {
 
 function colorToHsv() { const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(color.value); if (!m) return; const r = parseInt(m[1], 16) / 255, g = parseInt(m[2], 16) / 255, b = parseInt(m[3], 16) / 255; const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn; hsv.v = mx * 100; hsv.s = mx ? (d / mx) * 100 : 0; if (!d) hsv.h = 0; else if (mx === r) hsv.h = ((g - b) / d + (g < b ? 6 : 0)) * 60; else if (mx === g) hsv.h = ((b - r) / d + 2) * 60; else hsv.h = ((r - g) / d + 4) * 60; }
 function hsvToColor() { const h = hsv.h / 360, s = hsv.s / 100, v = hsv.v / 100; let r = 0, g = 0, b = 0; const i = Math.floor(h * 6), f = h * 6 - i, p = v * (1 - s), q = v * (1 - f * s), t = v * (1 - (1 - f) * s); switch (i % 6) { case 0: r = v; g = t; b = p; break; case 1: r = q; g = v; b = p; break; case 2: r = p; g = v; b = t; break; case 3: r = p; g = q; b = v; break; case 4: r = t; g = p; b = v; break; case 5: r = v; g = p; b = q; break; } color.value = '#' + [r, g, b].map(x => Math.round(x * 255).toString(16).padStart(2, '0')).join(''); }
-function onHueClick(e: MouseEvent) { const r = (e.target as HTMLElement).getBoundingClientRect(); hsv.h = ((e.clientX - r.left) / r.width) * 360; hsvToColor(); }
-function onSvClick(e: MouseEvent) { const r = (e.target as HTMLElement).getBoundingClientRect(); hsv.s = ((e.clientX - r.left) / r.width) * 100; hsv.v = (1 - (e.clientY - r.top) / r.height) * 100; hsvToColor(); }
+function updateHueFromEvent(e: PointerEvent) {
+	if (!hueRing.value) return;
+	const r = hueRing.value.getBoundingClientRect();
+	const cx = r.left + r.width / 2;
+	const cy = r.top + r.height / 2;
+	// 中心からの角度を算出 (0deg=右、時計回り)。CSS conic-gradientの起点(上=0)に合わせて+90度補正
+	let deg = Math.atan2(e.clientY - cy, e.clientX - cx) * 180 / Math.PI + 90;
+	if (deg < 0) deg += 360;
+	hsv.h = deg;
+	hsvToColor();
+}
+function onHueMove(e: PointerEvent) { updateHueFromEvent(e); }
+function onHueUp() { window.removeEventListener('pointermove', onHueMove); window.removeEventListener('pointerup', onHueUp); }
+function onHuePointerDown(e: PointerEvent) {
+	// SVボックス内のクリックはhueリング操作にしない(svのpointerdownが先に拾う)
+	if (svBox.value && e.target && svBox.value.contains(e.target as Node)) return;
+	e.preventDefault();
+	updateHueFromEvent(e);
+	window.addEventListener('pointermove', onHueMove);
+	window.addEventListener('pointerup', onHueUp);
+}
+
+function updateSvFromEvent(e: PointerEvent) {
+	if (!svBox.value) return;
+	const r = svBox.value.getBoundingClientRect();
+	hsv.s = Math.min(100, Math.max(0, ((e.clientX - r.left) / r.width) * 100));
+	hsv.v = Math.min(100, Math.max(0, (1 - (e.clientY - r.top) / r.height) * 100));
+	hsvToColor();
+}
+function onSvMove(e: PointerEvent) { updateSvFromEvent(e); }
+function onSvUp() { window.removeEventListener('pointermove', onSvMove); window.removeEventListener('pointerup', onSvUp); }
+function onSvPointerDown(e: PointerEvent) {
+	e.preventDefault();
+	e.stopPropagation();
+	updateSvFromEvent(e);
+	window.addEventListener('pointermove', onSvMove);
+	window.addEventListener('pointerup', onSvUp);
+}
 
 function onWheel(e: WheelEvent) {
 	// マウスホイールでズーム（Ctrl不要）
@@ -401,14 +459,14 @@ function onTouchStart(e: TouchEvent) {
 		const t0 = e.touches[0], t1 = e.touches[1];
 		touch.dist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
 		touch.cx = (t0.clientX + t1.clientX) / 2; touch.cy = (t0.clientY + t1.clientY) / 2;
-		if (scroller.value) { touch.scrollX = scroller.value.scrollLeft; touch.scrollY = scroller.value.scrollTop; }
+		touch.panX = panX.value; touch.panY = panY.value;
 	} else if (e.touches.length >= 3) {
 		// 3本指: キャンバス移動
 		e.preventDefault(); touch.panning = true; touch.pinching = false;
 		const t0 = e.touches[0], t1 = e.touches[1], t2 = e.touches[2];
 		touch.cx = (t0.clientX + t1.clientX + t2.clientX) / 3;
 		touch.cy = (t0.clientY + t1.clientY + t2.clientY) / 3;
-		if (scroller.value) { touch.scrollX = scroller.value.scrollLeft; touch.scrollY = scroller.value.scrollTop; }
+		touch.panX = panX.value; touch.panY = panY.value;
 	}
 }
 
@@ -421,11 +479,9 @@ function onTouchMove(e: TouchEvent) {
 		const newCx = (t0.clientX + t1.clientX) / 2, newCy = (t0.clientY + t1.clientY) / 2;
 		const scale = newDist / touch.dist;
 		if (Math.abs(scale - 1) > 0.02) { zoom.value = Math.max(0.1, Math.min(10, zoom.value * scale)); touch.dist = newDist; }
-		if (scroller.value) {
-			scroller.value.scrollLeft = touch.scrollX + (touch.cx - newCx);
-			scroller.value.scrollTop = touch.scrollY + (touch.cy - newCy);
-			touch.scrollX = scroller.value.scrollLeft; touch.scrollY = scroller.value.scrollTop;
-		}
+		panX.value = touch.panX + (newCx - touch.cx);
+		panY.value = touch.panY + (newCy - touch.cy);
+		touch.panX = panX.value; touch.panY = panY.value;
 		touch.cx = newCx; touch.cy = newCy;
 	} else if (e.touches.length >= 3 && touch.panning) {
 		// 3本指: キャンバス移動
@@ -433,10 +489,8 @@ function onTouchMove(e: TouchEvent) {
 		const t0 = e.touches[0], t1 = e.touches[1], t2 = e.touches[2];
 		const newCx = (t0.clientX + t1.clientX + t2.clientX) / 3;
 		const newCy = (t0.clientY + t1.clientY + t2.clientY) / 3;
-		if (scroller.value) {
-			scroller.value.scrollLeft = touch.scrollX - (newCx - touch.cx);
-			scroller.value.scrollTop = touch.scrollY - (newCy - touch.cy);
-		}
+		panX.value = touch.panX + (newCx - touch.cx);
+		panY.value = touch.panY + (newCy - touch.cy);
 	}
 }
 
@@ -450,9 +504,11 @@ function onMiniDown(e: PointerEvent) { miniDragging.value = true; onMiniMove(e);
 function onMiniMove(e: PointerEvent) {
 	if (!miniDragging.value || !miniCanvas.value || !scroller.value) return;
 	const r = miniCanvas.value.getBoundingClientRect();
-	const xx = (e.clientX - r.left) / 160, yy = (e.clientY - r.top) / 100;
-	scroller.value.scrollLeft = xx * canvasWidth.value * zoom.value - scroller.value.clientWidth / 2;
-	scroller.value.scrollTop = yy * canvasHeight.value * zoom.value - scroller.value.clientHeight / 2;
+	const xx = Math.min(1, Math.max(0, (e.clientX - r.left) / 160)), yy = Math.min(1, Math.max(0, (e.clientY - r.top) / 100));
+	const cw = canvasWidth.value * zoom.value, ch = canvasHeight.value * zoom.value;
+	// クリックしたcanvas上の点(xx,yy)をビューポート中央に持ってくる pan を算出
+	panX.value = cw / 2 - xx * cw;
+	panY.value = ch / 2 - yy * ch;
 }
 function onMiniUp() { miniDragging.value = false; }
 
@@ -479,10 +535,8 @@ function onPtrDown(e: PointerEvent) {
 		panning.value = true;
 		panStart.x = e.clientX;
 		panStart.y = e.clientY;
-		if (scroller.value) {
-			panStart.scrollX = scroller.value.scrollLeft;
-			panStart.scrollY = scroller.value.scrollTop;
-		}
+		panStart.panX = panX.value;
+		panStart.panY = panY.value;
 		return;
 	}
 
@@ -500,10 +554,8 @@ function onPtrDown(e: PointerEvent) {
 function onPtrMove(e: PointerEvent) {
 	// PC版: ハンドツールモードの場合
 	if (panMode.value && panning.value && e.pointerType === 'mouse') {
-		if (scroller.value) {
-			scroller.value.scrollLeft = panStart.scrollX - (e.clientX - panStart.x);
-			scroller.value.scrollTop = panStart.scrollY - (e.clientY - panStart.y);
-		}
+		panX.value = panStart.panX + (e.clientX - panStart.x);
+		panY.value = panStart.panY + (e.clientY - panStart.y);
 		return;
 	}
 
@@ -775,7 +827,7 @@ function forceClose() { showCloseConfirm.value = false; modal.value?.close(); }
 <style lang="scss" module>
 .root { display: flex; flex-direction: column; width: 98vw; max-width: 1800px; height: 94vh; background: var(--MI_THEME-panel); border-radius: 20px; overflow: hidden; &.dark { background: #1a1a1a; color: #f0f0f0; .leftPanel, .rightPanel, .header, .footer, .toolbar, .card { background: #222; border-color: #333; } } }
 .overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 100; backdrop-filter: blur(4px); }
-.modalBox { background: var(--MI_THEME-panel); border-radius: 20px; padding: 28px; text-align: center; max-width: 90vw; max-width: 480px; box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
+.modalBox { background: var(--MI_THEME-panel); color: var(--MI_THEME-fg); border-radius: 20px; padding: 28px; text-align: center; max-width: 90vw; max-width: 480px; box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
 .modalHeader { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 20px; i { font-size: 28px; color: var(--MI_THEME-accent); } h2 { margin: 0; font-size: 20px; } }
 .modalBody { text-align: left; }
 .warningBanner { display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: #fff3cd; border-radius: 12px; margin-bottom: 20px; i { color: #856404; font-size: 20px; } span { color: #856404; font-size: 13px; } }
@@ -808,8 +860,58 @@ function forceClose() { showCloseConfirm.value = false; modal.value?.close(); }
 input[type="range"] { width: 100%; height: 6px; -webkit-appearance: none; background: var(--MI_THEME-divider); border-radius: 3px; outline: none; &::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; background: var(--MI_THEME-accent); border-radius: 50%; cursor: pointer; } }
 .brushPreview { display: flex; justify-content: center; align-items: center; height: 50px; margin-top: 10px; background: var(--MI_THEME-bg); border-radius: 10px; }
 .check { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 12px; cursor: pointer; }
-.hueBar { width: 100%; height: 20px; border-radius: 6px; cursor: crosshair; margin-bottom: 10px; }
-.svBox { width: 100%; height: 100px; border-radius: 10px; cursor: crosshair; }
+.colorWheel { position: relative; width: 200px; height: 200px; margin: 0 auto 12px; }
+.hueRing {
+	--hueRadius: 88px;
+	position: relative;
+	width: 200px;
+	height: 200px;
+	border-radius: 50%;
+	background: conic-gradient(from 0deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00);
+	/* 中央をくり抜いてリング状に */
+	-webkit-mask: radial-gradient(circle, transparent 64px, #000 65px);
+	mask: radial-gradient(circle, transparent 64px, #000 65px);
+	cursor: crosshair;
+	touch-action: none;
+}
+.hueHandle {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	width: 16px;
+	height: 16px;
+	margin: -8px 0 0 -8px;
+	border-radius: 50%;
+	background: transparent;
+	border: 3px solid #fff;
+	box-shadow: 0 0 0 1px rgba(0,0,0,0.4);
+	pointer-events: none;
+}
+.svBox {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	width: 96px;
+	height: 96px;
+	transform: translate(-50%, -50%);
+	border-radius: 8px;
+	cursor: crosshair;
+	touch-action: none;
+	/* リングのmaskの影響を受けないように別レイヤー扱い */
+	-webkit-mask: none;
+	mask: none;
+}
+.svHandle {
+	position: absolute;
+	width: 12px;
+	height: 12px;
+	margin: -6px 0 0 -6px;
+	border-radius: 50%;
+	background: transparent;
+	border: 2px solid #fff;
+	box-shadow: 0 0 0 1px rgba(0,0,0,0.5);
+	pointer-events: none;
+}
 .colorDisplay { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
 .colorSwatch { width: 36px; height: 36px; border-radius: 10px; border: 2px solid var(--MI_THEME-divider); }
 .colorDisplay input { flex: 1; padding: 10px; border: 1px solid var(--MI_THEME-divider); border-radius: 8px; background: var(--MI_THEME-bg); color: var(--MI_THEME-fg); font-family: monospace; font-size: 13px; }
@@ -818,7 +920,7 @@ input[type="range"] { width: 100%; height: 6px; -webkit-appearance: none; backgr
 .toolbar { display: flex; gap: 8px; padding: 10px; background: var(--MI_THEME-panel); border-bottom: 1px solid var(--MI_THEME-divider); flex-wrap: wrap; }
 .tbGroup { display: flex; gap: 2px; background: var(--MI_THEME-bg); padding: 4px; border-radius: 10px; button { padding: 8px 10px; border: none; border-radius: 8px; background: transparent; color: var(--MI_THEME-fg); cursor: pointer; &:hover { background: var(--MI_THEME-buttonHoverBg); } &:disabled { opacity: 0.3; cursor: not-allowed; } &.danger:hover { background: #e74c3c; color: #fff; } &.active { background: var(--MI_THEME-accent); color: #fff; } i { font-size: 16px; } } }
 .lassoBar { display: flex; align-items: center; gap: 16px; padding: 10px 16px; background: #fff8e1; border-bottom: 1px solid #ffca28; font-size: 12px; label { display: flex; align-items: center; gap: 8px; input { width: 100px; } } button { padding: 8px 16px; border: none; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 500; } }
-.scroller { flex: 1; overflow: auto; display: flex; align-items: center; justify-content: center; }
+.scroller { flex: 1; overflow: hidden; position: relative; display: flex; align-items: center; justify-content: center; }
 .canvasWrap { position: relative; flex-shrink: 0; }
 .canvas { display: block; background: #fff; box-shadow: 0 4px 24px rgba(0,0,0,0.3); touch-action: none; }
 .preview { position: absolute; top: 0; left: 0; pointer-events: none; }
@@ -828,7 +930,7 @@ input[type="range"] { width: 100%; height: 6px; -webkit-appearance: none; backgr
 .layers { display: flex; flex-direction: column; gap: 8px; max-height: 350px; overflow-y: auto; }
 .layerHint { font-size: 10px; opacity: 0.5; margin-bottom: 8px; text-align: center; }
 .layer { display: flex; flex-direction: column; gap: 8px; padding: 10px; background: var(--MI_THEME-bg); border-radius: 12px; cursor: pointer; border: 2px solid transparent; &:hover { background: var(--MI_THEME-buttonHoverBg); } &.active { border-color: var(--MI_THEME-accent); } }
-.layerThumb { border-radius: 6px; border: 1px solid var(--MI_THEME-divider); background: #fff; }
+.layerThumb { width: 60px; height: 40px; border-radius: 6px; border: 1px solid var(--MI_THEME-divider); background: #fff; }
 .layerInfo { display: flex; align-items: center; gap: 8px; }
 .layerName { font-size: 13px; font-weight: 500; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .layerNameInput { flex: 1; padding: 4px 8px; border: 1px solid var(--MI_THEME-accent); border-radius: 6px; background: var(--MI_THEME-panel); color: var(--MI_THEME-fg); font-size: 13px; }

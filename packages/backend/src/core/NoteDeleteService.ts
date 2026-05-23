@@ -1,5 +1,7 @@
 /*
  * SPDX-FileCopyrightText: syuilo and misskey-project
+ * SPDX-FileCopyrightText: noridev and cherrypick-project
+ * SPDX-FileCopyrightText: Tolehata and hatasaba-project
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
@@ -23,6 +25,8 @@ import { bindThis } from '@/decorators.js';
 import { SearchService } from '@/core/SearchService.js';
 import { ModerationLogService } from '@/core/ModerationLogService.js';
 import { isQuote, isRenote } from '@/misc/is-renote.js';
+// 旗鯖fork: トレンドタイムライン (削除時のスコアクリア)
+import { TrendingService, SCORE_RENOTE, SCORE_QUOTE_RENOTE } from '@/core/TrendingService.js';
 
 @Injectable()
 export class NoteDeleteService {
@@ -53,6 +57,8 @@ export class NoteDeleteService {
 		private notesChart: NotesChart,
 		private perUserNotesChart: PerUserNotesChart,
 		private instanceChart: InstanceChart,
+		// 旗鯖fork: トレンドタイムライン
+		private trendingService: TrendingService,
 	) {}
 
 	/**
@@ -62,6 +68,16 @@ export class NoteDeleteService {
 	 */
 	async delete(user: { id: MiUser['id']; uri: MiUser['uri']; host: MiUser['host']; isBot: MiUser['isBot']; }, note: MiNote, quiet = false, deleter?: MiUser) {
 		const deletedAt = new Date();
+
+		// 旗鯖fork: トレンドタイムライン用のスコアクリア
+		// 1. 削除されるノート自身に積まれたスコアを全バケットから削除
+		// 2. 削除されるノートがリノート/引用リノートなら、元ノートに積んだ +2/+3 をキャンセル
+		// 外部影響なし: Redis 操作のみ、ActivityPub fetch は発生しない
+		this.trendingService.clearNoteScore(note.id).catch(() => { /* ignore */ });
+		if (isRenote(note) && note.renoteId != null) {
+			const cancelScore = isQuote(note) ? -SCORE_QUOTE_RENOTE : -SCORE_RENOTE;
+			this.trendingService.addToRanking(note.renoteId, cancelScore).catch(() => { /* ignore */ });
+		}
 
 		if (note.replyId) {
 			await this.notesRepository.decrement({ id: note.replyId }, 'repliesCount', 1);

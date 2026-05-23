@@ -33,12 +33,12 @@ export class MiAnnouncement {
 	})
 	public imageUrl: string | null;
 
-	// info, warning, error, success
+	// info, warning, error, success, maintenance
 	@Column('varchar', {
 		length: 256, nullable: false,
 		default: 'info',
 	})
-	public icon: 'info' | 'warning' | 'error' | 'success';
+	public icon: 'info' | 'warning' | 'error' | 'success' | 'maintenance';
 
 	// normal ... お知らせページ掲載
 	// banner ... お知らせページ掲載 + バナー表示

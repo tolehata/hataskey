@@ -8,13 +8,15 @@ import * as Sentry from '@sentry/node';
 import { nodeProfilingIntegration } from '@sentry/profiling-node';
 import { envOption } from '@/env.js';
 import { loadConfig } from '@/config.js';
-import { jobQueue, server } from './common.js';
+import { initExtraThreadPool, jobQueue, server } from './common.js';
 
 /**
  * Init worker process
  */
 export async function workerMain() {
 	const config = loadConfig();
+
+	initExtraThreadPool(config);
 
 	if (config.sentryForBackend) {
 		Sentry.init({

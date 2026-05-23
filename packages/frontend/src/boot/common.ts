@@ -69,6 +69,15 @@ export async function common(createVue: () => Promise<App<Element>>) {
 
 	if (miLocalStorage.getItem('ui') === null) miLocalStorage.setItem('ui', 'simple');
 
+	// 旗鯖fork: friendly UI を全面廃止しているため、毎boot時にチェックして
+	// 'ui' === 'friendly' なら強制的に 'simple' に書き換える。
+	// friendly.vue 自体は削除されているため、放置すると main-boot のフォールバックで
+	// 同じく simple が選ばれるが、 localStorage の値が古いままだと UI 切替メニュー等で
+	// 混乱が生じるため、ここで都度クリーンアップする。
+	if (miLocalStorage.getItem('ui') === 'friendly') {
+		miLocalStorage.setItem('ui', 'simple');
+	}
+
 	// 旗鯖: デッキUI以外のユーザーをSimple UIに一度だけ強制移行
 	if (!miLocalStorage.getItem('hata_ui_migrated')) {
 		const currentUi = miLocalStorage.getItem('ui');
@@ -122,6 +131,64 @@ export async function common(createVue: () => Promise<App<Element>>) {
 		miLocalStorage.setItem('hata_sidebar_v2_migrated', '1');
 	}
 
+	// 旗鯖: サイドメニュー3グループ再編 (hata-11.x) — 既存ユーザーも新デフォルト構成へ強制移行
+	// 旧構成 (13項目フラット) から新構成 (基本機能/旗鯖独自/発見・交流の3グループ) に置き換える。
+	// chat/lists/antennas はサイドバーから外れ「もっと」(ランチパッド) からアクセス可能。
+	if (!miLocalStorage.getItem('hata_sidebar_v3_migrated')) {
+		const { prefer: preferSidebarV3 } = await import('@/preferences.js');
+		const { PREF_DEF } = await import('@/preferences/def.js');
+		// def.ts のデフォルト定義をそのまま採用 (二重管理を避ける)
+		const newDefault = PREF_DEF['simpleUi.sidebar'].default;
+		preferSidebarV3.commit('simpleUi.sidebar', JSON.parse(JSON.stringify(newDefault)));
+		miLocalStorage.setItem('hata_sidebar_v3_migrated', '1');
+	}
+
+	// 旗鯖: 「旗鯖機能解説 (hataDocs)」をユーザー設定から自動削除（既存ユーザー向け）
+	// hataDocs は navbar 定義から削除済みだが、過去にサイドバーや「もっと!」候補に
+	// 残っているケースがあるため、保存済みのユーザー設定からも除去する
+	if (!miLocalStorage.getItem('hata_docs_cleanup_migrated')) {
+		const { prefer: preferDocsCleanup } = await import('@/preferences.js');
+
+		// 1. navbar メニュー (prefer.s.menu) から 'hataDocs' を削除
+		const currentMenu = [...(preferDocsCleanup.s.menu ?? [])];
+		const filteredMenu = currentMenu.filter(item => item !== 'hataDocs');
+		if (filteredMenu.length !== currentMenu.length) {
+			preferDocsCleanup.commit('menu', filteredMenu);
+		}
+
+		// 2. SimpleUI サイドバー (prefer.s['simpleUi.sidebar']) からも念のため削除
+		const currentSidebar = [...(preferDocsCleanup.s['simpleUi.sidebar'] ?? [])];
+		const filteredSidebar = currentSidebar.filter(i => !(i && i.id === 'hataDocs'));
+		if (filteredSidebar.length !== currentSidebar.length) {
+			preferDocsCleanup.commit('simpleUi.sidebar', filteredSidebar);
+		}
+
+		miLocalStorage.setItem('hata_docs_cleanup_migrated', '1');
+	}
+
+	// 旗鯖fork: CherryPick 支援関連メニュー (support) をサイドバー / メニューから自動削除
+	// 旗鯖fork では支援関連の導線はサーバーアイコン → サーバー情報(about-misskey)に集約しているため、
+	// サイドバー / 「もっと」メニュー / SimpleUI サイドバーの全所から 'support' を除去する。
+	if (!miLocalStorage.getItem('hata_support_cleanup_migrated')) {
+		const { prefer: preferSupportCleanup } = await import('@/preferences.js');
+
+		// 1. navbar メニュー (prefer.s.menu) から 'support' を削除
+		const currentMenu = [...(preferSupportCleanup.s.menu ?? [])];
+		const filteredMenu = currentMenu.filter(item => item !== 'support');
+		if (filteredMenu.length !== currentMenu.length) {
+			preferSupportCleanup.commit('menu', filteredMenu);
+		}
+
+		// 2. SimpleUI サイドバー (prefer.s['simpleUi.sidebar']) からも削除
+		const currentSidebar = [...(preferSupportCleanup.s['simpleUi.sidebar'] ?? [])];
+		const filteredSidebar = currentSidebar.filter(i => !(i && i.id === 'support'));
+		if (filteredSidebar.length !== currentSidebar.length) {
+			preferSupportCleanup.commit('simpleUi.sidebar', filteredSidebar);
+		}
+
+		miLocalStorage.setItem('hata_support_cleanup_migrated', '1');
+	}
+
 	if (instance.swPublickey && ('PushManager' in window) && $i && $i.token && showPushNotificationDialog == null) {
 		const { dispose } = popup(defineAsyncComponent(() => import('@/components/MkPushNotification.vue')), {}, {
 			closed: () => dispose(),
@@ -133,7 +200,14 @@ export async function common(createVue: () => Promise<App<Element>>) {
 	const lastBasedMisskeyVersion = miLocalStorage.getItem('lastBasedMisskeyVersion');
 	if (lastVersion !== version || lastBasedMisskeyVersion !== basedMisskeyVersion) {
 		if (lastVersion == null) miLocalStorage.setItem('lastVersion', version);
-		else if (compareVersions(version, lastVersion) === 0 || compareVersions(version, lastVersion) === 1) miLocalStorage.setItem('lastVersion', version);
+		else {
+			try { // 変なバージョン文字列(別系統フォークからの移行等)でcompareVersionsがエラーになるのを防ぐ
+				if (compareVersions(version, lastVersion) === 0 || compareVersions(version, lastVersion) === 1) miLocalStorage.setItem('lastVersion', version);
+			} catch (err) {
+				// lastVersion が不正なsemver = 別系統からの移行とみなし、現在バージョンで上書き
+				miLocalStorage.setItem('lastVersion', version);
+			}
+		}
 		miLocalStorage.setItem('lastBasedMisskeyVersion', basedMisskeyVersion);
 
 		try { // 変なバージョン文字列来るとcompareVersionsでエラーになるため

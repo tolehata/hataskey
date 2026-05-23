@@ -4678,7 +4678,7 @@ export type components = {
             title: string;
             imageUrl: string | null;
             /** @enum {string} */
-            icon: 'info' | 'warning' | 'error' | 'success';
+            icon: 'info' | 'warning' | 'error' | 'success' | 'maintenance';
             /** @enum {string} */
             display: 'dialog' | 'normal' | 'banner';
             needConfirmationToRead: boolean;
@@ -5058,6 +5058,7 @@ export type components = {
             body: string;
             header: string | null;
             icon: string | null;
+            link: string | null;
         } | {
             /** Format: id */
             id: string;
@@ -5069,6 +5070,22 @@ export type components = {
             reactions: {
                 user: components['schemas']['UserLite'];
                 reaction: string;
+            }[];
+        } | {
+            /** Format: id */
+            id: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** @enum {string} */
+            type: 'reaction:groupedByUser';
+            user: components['schemas']['UserLite'];
+            /** Format: id */
+            userId: string;
+            reactions: {
+                note: components['schemas']['Note'];
+                reaction: string;
+                /** Format: date-time */
+                createdAt: string;
             }[];
         } | {
             /** Format: id */
@@ -5770,9 +5787,9 @@ export type components = {
             description: string | null;
             langs: string[];
             tosUrl: string | null;
-            /** @default https://github.com/kokonect-link/cherrypick */
+            /** @default https://code.tolehata.net/hatacha/cherrypick-hata */
             repositoryUrl: string | null;
-            /** @default https://github.com/kokonect-link/cherrypick/issues/new */
+            /** @default https://code.tolehata.net/hatacha/cherrypick-hata/issues */
             feedbackUrl: string | null;
             defaultDarkTheme: string | null;
             defaultLightTheme: string | null;
@@ -7292,7 +7309,7 @@ export interface operations {
                      * @default info
                      * @enum {string}
                      */
-                    icon?: 'info' | 'warning' | 'error' | 'success';
+                    icon?: 'info' | 'warning' | 'error' | 'success' | 'maintenance';
                     /**
                      * @default normal
                      * @enum {string}
@@ -7555,7 +7572,7 @@ export interface operations {
                     text?: string;
                     imageUrl?: string | null;
                     /** @enum {string} */
-                    icon?: 'info' | 'warning' | 'error' | 'success';
+                    icon?: 'info' | 'warning' | 'error' | 'success' | 'maintenance';
                     /** @enum {string} */
                     display?: 'normal' | 'banner' | 'dialog';
                     forExistingUsers?: boolean;

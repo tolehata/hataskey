@@ -1,5 +1,7 @@
 <!--
 SPDX-FileCopyrightText: syuilo and misskey-project
+SPDX-FileCopyrightText: noridev and cherrypick-project
+SPDX-FileCopyrightText: Tolehata and hatasaba-project
 SPDX-License-Identifier: AGPL-3.0-only
 -->
 
@@ -60,11 +62,13 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<div :class="$style.notice">
 						<ul>
 							<li>申請の承認には2〜3日ほどかかる場合があります。</li>
-							<li>申請が承認されなかった場合、メールは送信されません。</li>
+							<li>申請が承認されなかった場合、登録申請許可に関するメールは送信されません。</li>
 							<li>なお、申請の承認基準は公開していません。</li>
 						</ul>
 					</div>
-					<MkButton primary rounded @click="onClose">閉じる</MkButton>
+					<div :class="$style.completeButton">
+						<MkButton primary rounded @click="onClose">閉じる</MkButton>
+					</div>
 				</div>
 			</div>
 		</Transition>
@@ -162,6 +166,13 @@ function onApplicationComplete() {
 		color: var(--MI_THEME-fg);
 		line-height: 1.6;
 	}
+}
+
+/* 旗鯖fork: 完了画面の「閉じる」ボタンを中央寄せ (MkButton は block 幅のため text-align では中央化されない) */
+.completeButton {
+	display: flex;
+	justify-content: center;
+	margin-top: 16px;
 }
 
 .completeIcon {

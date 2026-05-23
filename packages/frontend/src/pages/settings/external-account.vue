@@ -109,6 +109,48 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</div>
 			</div>
 		</FormSection>
+
+		<!-- 旗鯖fork: 外部TL絵文字キャッシュの管理 -->
+		<FormSection v-if="externalEnabled">
+			<template #label><i class="ti ti-photo"></i> 外部TL絵文字キャッシュ</template>
+			<div class="_gaps_s">
+				<MkInfo>
+					外部TLでリアクションするときに表示される絵文字の画像URLを、お使いの端末に一時的に保存しておく仕組みです。<br/>
+					同じ外部サーバーに何度もアクセスする際、相手サーバーへの問い合わせを最小限に抑えるために使われます。
+				</MkInfo>
+
+				<div style="font-size: 0.9em; line-height: 1.6;">
+					<b style="display: block; margin-bottom: 4px;">📦 キャッシュされるもの</b>
+					<ul style="margin: 0 0 8px 1.2em; padding: 0; opacity: 0.85;">
+						<li>外部サーバーから取得した絵文字の <b>画像URL一覧</b>(画像本体は保存しません)</li>
+						<li>最大 <b>10サーバー分</b>まで保持(超えた場合は古いものから自動削除)</li>
+						<li>取得から <b>24時間</b>経過すると自動的に再取得</li>
+					</ul>
+					<b style="display: block; margin-bottom: 4px;">🗑️ クリアボタンを押すと</b>
+					<ul style="margin: 0 0 8px 1.2em; padding: 0; opacity: 0.85;">
+						<li>上記キャッシュをすべて削除します</li>
+						<li>次回ピッカーを開いた時、外部サーバーから絵文字一覧を再取得します</li>
+					</ul>
+					<b style="display: block; margin-bottom: 4px;">💡 こんな時に使ってください</b>
+					<ul style="margin: 0 0 8px 1.2em; padding: 0; opacity: 0.85;">
+						<li>絵文字が古い・新しく追加された絵文字が表示されない</li>
+						<li>削除された絵文字が表示され続けている</li>
+						<li>プライバシー上、保存されている情報を即座に消したい</li>
+					</ul>
+					<div style="opacity: 0.7; margin-top: 8px;">
+						<i class="ti ti-info-circle"></i>
+						<b>「最近使った」「お気に入り」の履歴は削除されません。</b>
+						あなたが実際に使用した絵文字の記録なので、別途管理されています。
+					</div>
+				</div>
+
+				<div>
+					<MkButton danger @click="clearEmojiCache">
+						<i class="ti ti-trash"></i> 絵文字キャッシュをクリア
+					</MkButton>
+				</div>
+			</div>
+		</FormSection>
 	</div>
 </SearchMarker>
 </template>
@@ -126,7 +168,7 @@ import { misskeyApi } from '@/utility/misskey-api.js';
 import * as os from '@/os.js';
 import { genId } from '@/utility/id.js';
 import { hostname } from '@@/js/config.js';
-import { getExternalFavoriteEmojis, setExternalFavoriteEmojis, removeExternalFavoriteEmoji, getExternalCustomEmojis } from '@/utility/external-api.js';
+import { getExternalFavoriteEmojis, setExternalFavoriteEmojis, removeExternalFavoriteEmoji, getExternalCustomEmojis, clearExternalEmojiCache } from '@/utility/external-api.js';
 import type { ExternalCustomEmoji } from '@/utility/external-api.js';
 
 const MkExternalReactionPicker = defineAsyncComponent(() => import('@/components/MkExternalReactionPicker.vue'));
@@ -280,6 +322,26 @@ function removeExtFavEmoji(index: number) {
 function clearExtFavEmojis() {
 	setExternalFavoriteEmojis([]);
 	loadExtFavEmojis();
+}
+
+/**
+ * 外部TL絵文字キャッシュをクリア
+ * - 現サーバーの絵文字一覧キャッシュ(emojiCache)
+ * - ホストごとの絵文字URLマップ(externalEmojiUrlMap)
+ * - 履歴/お気に入りは保持(ユーザーの能動的選択履歴のため)
+ */
+async function clearEmojiCache() {
+	const { canceled } = await os.confirm({
+		type: 'warning',
+		title: '外部TL絵文字キャッシュをクリアしますか?',
+		text: '保存されている外部サーバーの絵文字URL一覧をすべて削除します。\n\n' +
+			'次回ピッカーを開いた時に外部サーバーから絵文字一覧を再取得します。\n' +
+			'(相手サーバーへのリクエストが1回発生します)\n\n' +
+			'「最近使った」「お気に入り」の履歴は保持されます。',
+	});
+	if (canceled) return;
+	clearExternalEmojiCache();
+	os.success();
 }
 
 function getCustomEmojiUrl(reaction: string): string {

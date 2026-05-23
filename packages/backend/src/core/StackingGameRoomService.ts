@@ -27,7 +27,7 @@ export class StackingGameRoomService {
 	) {}
 
 	@bindThis
-	public async createRoom(user: MiUser, gameMode: string): Promise<MiStackingGameRoom> {
+	public async createRoom(user: MiUser): Promise<MiStackingGameRoom> {
 		// 既存の待機中ルームがあればそれを返す（重複作成防止）
 		const existing = await this.stackingGameRoomsRepository.findOne({
 			where: {
@@ -44,7 +44,6 @@ export class StackingGameRoomService {
 			createdAt: now,
 			host1Id: user.id,
 			host2Id: null,
-			gameMode,
 			state: 'waiting',
 			score1: 0, score2: 0,
 			blocks1: 0, blocks2: 0,
@@ -202,7 +201,6 @@ export class StackingGameRoomService {
 			host2: room.host2 ? await this.userEntityService.pack(room.host2, me) : null,
 			host1Id: room.host1Id,
 			host2Id: room.host2Id,
-			gameMode: room.gameMode,
 			state: room.state,
 			score1: room.score1,
 			score2: room.score2,

@@ -10,9 +10,14 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<MkAvatar v-else-if="['roleAssigned', 'achievementEarned', 'exportCompleted', 'login', 'createToken', 'scheduledNotePosted', 'scheduledNotePostFailed'].includes(notification.type)" :class="$style.icon" :user="$i" link preview/>
 		<div v-else-if="notification.type === 'reaction:grouped' && notification.note.reactionAcceptance === 'likeOnly'" :class="[$style.icon, $style.icon_reactionGroupHeart]"><i class="ti ti-heart" style="line-height: 1;"></i></div>
 		<div v-else-if="notification.type === 'reaction:grouped'" :class="[$style.icon, $style.icon_reactionGroup]"><i class="ti ti-plus" style="line-height: 1;"></i></div>
+		<!-- 旗鯖fork: reaction:groupedByUser はそのユーザーのアバターを表示 -->
+		<MkAvatar v-else-if="notification.type === 'reaction:groupedByUser'" :class="$style.icon" :user="notification.user" link preview/>
 		<div v-else-if="notification.type === 'renote:grouped'" :class="[$style.icon, $style.icon_renoteGroup]"><i class="ti ti-repeat" style="line-height: 1;"></i></div>
 		<div v-else-if="notification.type === 'note:grouped'" :class="[$style.icon, $style.icon_noteGroup]"><i class="ti ti-pencil" style="line-height: 1;"></i></div>
 		<MkAvatar v-else-if="'user' in notification" :class="$style.icon" :user="notification.user" link preview/>
+		<!-- 旗鯖fork: hatask 通知のアイコン (icon URL なしの app 通知を header で判別、文字を円形背景に表示) -->
+		<div v-else-if="notification.type === 'app' && !notification.icon && notification.header && /カレンダー|イベント|スケジュール|予定/.test(notification.header)" :class="[$style.icon, $style.icon_hataskCalendar]">📅</div>
+		<div v-else-if="notification.type === 'app' && !notification.icon && notification.header && /きもち|感情|気分|ムード|記録/.test(notification.header)" :class="[$style.icon, $style.icon_hataskHeart]">♡</div>
 		<img v-else-if="'icon' in notification && notification.icon != null" :class="[$style.icon, $style.icon_app]" :src="notification.icon" alt=""/>
 		<div
 			:class="[$style.subIcon, {
@@ -33,6 +38,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				[$style.t_createToken]: notification.type === 'createToken',
 				[$style.t_chatRoomInvitationReceived]: notification.type === 'chatRoomInvitationReceived',
 				[$style.t_roleAssigned]: notification.type === 'roleAssigned' && notification.role.iconUrl == null,
+				[$style.subIcon_reaction]: notification.type === 'reaction',
 			}]"
 		>
 			<i v-if="notification.type === 'follow'" class="ti ti-plus"></i>
@@ -81,6 +87,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<span v-else-if="notification.type === 'groupInvited'" :class="$style.headerText">{{ i18n.tsx._notification.youWereInvitedToGroup({ userName: notification.user.name ?? notification.user.username }) }}</span>
 			<span v-else-if="notification.type === 'reaction:grouped' && notification.note.reactionAcceptance === 'likeOnly'" :class="$style.headerText">{{ i18n.tsx._notification.likedBySomeUsers({ n: getActualReactedUsersCount(notification) }) }}</span>
 			<span v-else-if="notification.type === 'reaction:grouped'" :class="$style.headerText">{{ i18n.tsx._notification.reactedBySomeUsers({ n: getActualReactedUsersCount(notification) }) }}</span>
+			<!-- 旗鯖fork: 同じユーザーが複数ノートにリアクションしたグループ -->
+			<MkA v-else-if="notification.type === 'reaction:groupedByUser'" v-user-preview="notification.user.id" :class="$style.headerName" :to="userPage(notification.user)"><MkUserName :user="notification.user"/></MkA>
+			<span v-if="notification.type === 'reaction:groupedByUser'" :class="$style.headerText">{{ i18n.tsx._notification.reactedToMultipleNotes({ n: notification.reactions.length }) }}</span>
 			<span v-else-if="notification.type === 'renote:grouped'" :class="$style.headerText">{{ i18n.tsx._notification.renotedBySomeUsers({ n: notification.users.length }) }}</span>
 			<span v-else-if="notification.type === 'note:grouped'" :class="$style.headerText">{{ i18n.tsx._notification.notedBySomeUsers({ n: notification.noteIds.length }) }}</span>
 			<span v-else-if="notification.type === 'app'" :class="$style.headerText">{{ notification.header }}</span>
@@ -165,7 +174,11 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</template>
 			<span v-else-if="notification.type === 'test'" :class="$style.text">{{ i18n.ts._notification.notificationWillBeDisplayedLikeThis }}</span>
 			<span v-else-if="notification.type === 'app'" :class="$style.text">
-				<Mfm :text="notification.body" :nowrap="false"/>
+				<!-- 旗鯖fork: notification.link があればクリックで該当画面に遷移 (hatask 等の旗鯖独自機能向け) -->
+				<MkA v-if="notification.link" :to="notification.link" :class="$style.appLink">
+					<Mfm :text="notification.body" :nowrap="false"/>
+				</MkA>
+				<Mfm v-else :text="notification.body" :nowrap="false"/>
 			</span>
 
 			<div v-if="notification.type === 'reaction:grouped'">
@@ -180,6 +193,22 @@ SPDX-License-Identifier: AGPL-3.0-only
 						/>
 					</div>
 				</div>
+			</div>
+			<!-- 旗鯖fork: 同じユーザーから複数ノートへのリアクションをコンパクトに一覧表示 -->
+			<div v-else-if="notification.type === 'reaction:groupedByUser'" :class="$style.groupedByUserList">
+				<MkA v-for="(reaction, idx) of notification.reactions" :key="reaction.note.id + idx" :class="$style.groupedByUserItem" :to="notePage(reaction.note)" :title="getNoteSummary(reaction.note)">
+					<div :class="$style.groupedByUserReactionWrap">
+						<MkReactionIcon
+							:withTooltip="true"
+							:reaction="reaction.reaction.replace(/^:(\w+):$/, ':$1@.:')"
+							:noStyle="true"
+							style="width: 100%; height: 100% !important; object-fit: contain;"
+						/>
+					</div>
+					<span :class="$style.groupedByUserNoteSummary">
+						<Mfm :text="getNoteSummary(reaction.note)" :plain="true" :nowrap="true" :author="reaction.note.user"/>
+					</span>
+				</MkA>
 			</div>
 			<div v-else-if="notification.type === 'renote:grouped'">
 				<div v-for="user of notification.users" :key="user.id" :class="$style.reactionsItem">
@@ -306,7 +335,9 @@ const rejectGroupInvitation = () => {
 .icon_reactionGroup,
 .icon_reactionGroupHeart,
 .icon_renoteGroup,
-.icon_noteGroup {
+.icon_noteGroup,
+.icon_hataskCalendar,
+.icon_hataskHeart {
 	display: grid;
 	align-items: center;
 	justify-items: center;
@@ -333,6 +364,20 @@ const rejectGroupInvitation = () => {
 	background: var(--eventRenote);
 }
 
+/* 旗鯖fork: hatask 通知の文字アイコン (背景色はテーマアクセント / リアクションハートを流用) */
+.icon_hataskCalendar {
+	background: var(--MI_THEME-accent);
+	font-size: 18px;
+	line-height: 1;
+}
+
+.icon_hataskHeart {
+	background: var(--eventReactionHeart);
+	font-size: 22px;
+	font-weight: 700;
+	line-height: 1;
+}
+
 .icon_app {
 	border-radius: 6px;
 }
@@ -355,6 +400,26 @@ const rejectGroupInvitation = () => {
 
 	&:empty {
 		display: none;
+	}
+}
+
+/* 旗鯖fork: リアクション(特に横長カスタム絵文字)を潰さず表示するための専用バリアント */
+.subIcon_reaction {
+	width: auto;
+	min-width: 20px;
+	max-width: 60px;
+	height: 20px;
+	padding: 0 2px;
+	border-radius: 6px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	overflow: hidden;
+
+	img, :global(.mfm-emoji) {
+		max-width: 100%;
+		max-height: 100%;
+		object-fit: contain;
 	}
 }
 
@@ -465,10 +530,71 @@ const rejectGroupInvitation = () => {
 	opacity: 0.7;
 }
 
+/* 旗鯖fork: hatask 等の通知でクリック可能リンク (notification.link あり) のスタイル */
+.appLink {
+	display: block;
+	width: 100%;
+	color: inherit;
+	text-decoration: none;
+	cursor: pointer;
+	border-radius: 4px;
+	padding: 2px 4px;
+	margin: -2px -4px;
+	transition: background 0.15s;
+
+	&:hover {
+		background: var(--MI_THEME-accentedBg);
+		opacity: 1;
+	}
+}
+
 .quote {
 	vertical-align: super;
 	font-size: 50%;
 	opacity: 0.5;
+}
+
+/* 旗鯖fork: 同じユーザーから複数ノートへのリアクション一覧 (reaction:groupedByUser 用) */
+.groupedByUserList {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	margin-top: 4px;
+}
+
+.groupedByUserItem {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 6px 8px;
+	border-radius: 8px;
+	color: inherit;
+	text-decoration: none;
+	transition: background 0.15s;
+	min-width: 0;
+
+	&:hover {
+		background: var(--MI_THEME-accentedBg);
+	}
+}
+
+.groupedByUserReactionWrap {
+	flex: 0 0 auto;
+	width: 24px;
+	height: 24px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.groupedByUserNoteSummary {
+	flex: 1 1 auto;
+	min-width: 0;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	font-size: 0.9em;
+	opacity: 0.8;
 }
 
 .quote:first-child {
@@ -514,15 +640,29 @@ const rejectGroupInvitation = () => {
 	z-index: 1;
 	bottom: -2px;
 	right: -2px;
-	width: 20px;
+	/* 旗鯖fork: 横長カスタム絵文字を潰さず表示するため、円形→角丸長方形、width auto */
+	width: auto;
+	min-width: 20px;
+	max-width: 60px;
 	height: 20px;
+	padding: 0 2px;
 	box-sizing: border-box;
-	border-radius: 100%;
+	border-radius: 6px;
 	background: var(--MI_THEME-panel);
 	box-shadow: 0 0 0 3px var(--MI_THEME-panel);
 	font-size: 11px;
 	text-align: center;
 	color: #fff;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	overflow: hidden;
+
+	img, :global(.mfm-emoji) {
+		max-width: 100%;
+		max-height: 100%;
+		object-fit: contain;
+	}
 }
 
 @container (max-width: 600px) {

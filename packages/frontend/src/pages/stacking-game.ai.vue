@@ -78,7 +78,6 @@ import * as Matter from 'matter-js';
 import MkButton from '@/components/MkButton.vue';
 import { mainRouter } from '@/router.js';
 import { definePage } from '@/page.js';
-import { customEmojis } from '@/custom-emojis.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { $i } from '@/i.js';
 
@@ -169,21 +168,10 @@ const resultTitle = computed(() => {
 	return '🤝 引き分け！';
 });
 
-function getMode(): string {
-	return new URLSearchParams(window.location.search).get('mode') || 'custom';
-}
-
 function buildPool() {
-	const mode = getMode();
 	const pool: EmojiItem[] = [];
-	if (mode === 'custom' || mode === 'mix') {
-		const emojis = customEmojis.value;
-		const shuffled = [...emojis].sort(() => Math.random() - 0.5).slice(0, 60);
-		for (const e of shuffled) pool.push({ url: e.url, name: e.name, score: 10 });
-	}
-	if (mode === 'unicode' || mode === 'mix') {
-		for (const c of UNICODE_EMOJIS) pool.push({ char: c, name: c, score: 10 });
-	}
+	// 本家の絵文字系ゲームに倣い、カスタム絵文字は使用せず Unicode 絵文字のみを使用する
+	for (const c of UNICODE_EMOJIS) pool.push({ char: c, name: c, score: 10 });
 	if (pool.length === 0) {
 		for (const c of UNICODE_EMOJIS.slice(0, 20)) pool.push({ char: c, name: c, score: 10 });
 	}
@@ -423,7 +411,6 @@ function submitScore() {
 	if ($i) {
 		misskeyApi('stacking-game/register', {
 			score: playerScore.value,
-			gameMode: getMode() + '_ai_' + aiLevel.value,
 			blockCount: playerBlocks.value,
 		}).catch(() => {});
 	}

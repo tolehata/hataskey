@@ -24,6 +24,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<i v-else-if="announcement.icon === 'warning'" class="ti ti-alert-triangle" style="color: var(--MI_THEME-warn);"></i>
 						<i v-else-if="announcement.icon === 'error'" class="ti ti-circle-x" style="color: var(--MI_THEME-error);"></i>
 						<i v-else-if="announcement.icon === 'success'" class="ti ti-check" style="color: var(--MI_THEME-success);"></i>
+						<i v-else-if="announcement.icon === 'maintenance'" class="ti ti-tool" style="color: var(--MI_THEME-error);"></i>
 					</template>
 					<template #caption>{{ announcement.text }}</template>
 					<template #footer>
@@ -51,7 +52,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 							<option value="warning"><i class="ti ti-alert-triangle" style="color: var(--MI_THEME-warn);"></i></option>
 							<option value="error"><i class="ti ti-circle-x" style="color: var(--MI_THEME-error);"></i></option>
 							<option value="success"><i class="ti ti-check" style="color: var(--MI_THEME-success);"></i></option>
+							<option value="maintenance"><i class="ti ti-tool" style="color: var(--MI_THEME-error);"></i></option>
 						</MkRadios>
+						<MkInfo v-if="announcement.icon === 'maintenance'">{{ i18n.ts._announcement.maintenanceNote }}</MkInfo>
 						<MkRadios v-model="announcement.display">
 							<template #label>{{ i18n.ts.display }}</template>
 							<option value="normal">{{ i18n.ts.normal }}</option>

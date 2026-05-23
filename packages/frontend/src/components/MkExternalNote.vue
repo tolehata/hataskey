@@ -135,8 +135,7 @@ import MkReactionIcon from '@/components/MkReactionIcon.vue';
 import MkMediaList from '@/components/MkMediaList.vue';
 import * as os from '@/os.js';
 import { i18n } from '@/i18n.js';
-import { getExternalEmojiUrlMap, getExternalAccount } from '@/utility/external-api.js';
-import { addExternalRecentReaction } from '@/utility/external-api.js';
+import { getExternalEmojiUrlMap, getExternalAccount, addExternalRecentReaction, lookupExternalEmojiUrl } from '@/utility/external-api.js';
 
 const MkExternalReactionPicker = defineAsyncComponent(() => import('@/components/MkExternalReactionPicker.vue'));
 const MkExternalUserPopup = defineAsyncComponent(() => import('@/components/MkExternalUserPopup.vue'));
@@ -463,7 +462,22 @@ async function applyReaction(reaction: string) {
 		reactions[reaction] = (reactions[reaction] || 0) + 1;
 
 		emit('reactionChanged', props.note.id, reaction, oldReaction);
-		addExternalRecentReaction(reaction);
+
+		// 履歴に保存(host/url 付き):
+		//   - :name@host: 形式 → host 抽出、URL は既知マップから引く
+		//   - :name: 形式 → 外部TLの現サーバーhost + 現サーバーの絵文字マップから引く
+		//   - Unicode → host=null, url=null(従来挙動と同じ)
+		const m = reaction.match(/^:([^:]+?)(?:@([^:]+))?:$/);
+		if (m) {
+			const name = m[1];
+			const explicitHost = m[2] ?? null;
+			const acc = getExternalAccount();
+			const targetHost = explicitHost ?? acc?.host ?? null;
+			const url = targetHost ? lookupExternalEmojiUrl(targetHost, name) : null;
+			addExternalRecentReaction(reaction, targetHost, url);
+		} else {
+			addExternalRecentReaction(reaction);
+		}
 	} catch (err) {
 		console.error('Reaction error:', err);
 		os.alert({ type: 'error', text: 'リアクションに失敗しました' });

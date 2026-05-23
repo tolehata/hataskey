@@ -134,6 +134,7 @@ async function assign() {
 
 	await os.apiWithDialog('admin/roles/assign', { roleId: role.id, userId: user.id, expiresAt });
 	//role.users.push(user);
+	usersPaginator.reload();
 }
 
 async function unassign(user, ev) {
@@ -144,6 +145,7 @@ async function unassign(user, ev) {
 		action: async () => {
 			await os.apiWithDialog('admin/roles/unassign', { roleId: role.id, userId: user.id });
 			//role.users = role.users.filter(u => u.id !== user.id);
+			usersPaginator.reload();
 		},
 	}], ev.currentTarget ?? ev.target);
 }

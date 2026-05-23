@@ -1,5 +1,5 @@
 <!--
-SPDX-FileCopyrightText: syuilo and misskey-project
+SPDX-FileCopyrightText: syuilo and misskey-project / hatacha
 SPDX-License-Identifier: AGPL-3.0-only
 -->
 
@@ -9,9 +9,15 @@ SPDX-License-Identifier: AGPL-3.0-only
 	<XTimeline :class="$style.tl"/>
 	<div :class="$style.shape1"></div>
 	<div :class="$style.shape2"></div>
+	<!-- 旗鯖fork: Hataskey ブランドロゴ (Righteous フォント) + A fork of CherryPick -->
 	<div :class="$style.logoWrapper">
-		<div :class="$style.poweredBy">Powered by</div>
-		<img :src="cherrypicksvg" :class="$style.cherrypick"/>
+		<!-- 1段目: Hataskey (Righteous フォント、判子色、大きく) -->
+		<h1 :class="$style.brandName">Hataskey</h1>
+		<!-- 2段目: A fork of CherryPick (ロゴ) -->
+		<div :class="$style.brandSub">
+			<span :class="$style.brandSubText">A fork of</span>
+			<img :src="cherrypicksvg" :class="$style.brandSubLogo" alt="CherryPick"/>
+		</div>
 	</div>
 	<div :class="$style.contents">
 		<MkVisitorDashboard/>
@@ -35,7 +41,6 @@ import XTimeline from './welcome.timeline.vue';
 import MkMarqueeText from '@/components/MkMarqueeText.vue';
 import MkFeaturedPhotos from '@/components/MkFeaturedPhotos.vue';
 import cherrypicksvg from '/client-assets/cherrypick.svg';
-import misskeysvg from '/client-assets/misskey.svg';
 import { misskeyApiGet } from '@/utility/misskey-api.js';
 import MkVisitorDashboard from '@/components/MkVisitorDashboard.vue';
 import { getProxiedImageUrl } from '@/utility/media-proxy.js';
@@ -113,25 +118,80 @@ misskeyApiGet('federation/instances', {
 	opacity: 0.5;
 }
 
+/* ===== 旗鯖fork: Righteous フォント宣言 (Hataskey ブランド名用、OFL ライセンス) ===== */
+@font-face {
+	font-family: 'Righteous';
+	font-style: normal;
+	font-weight: 400;
+	font-display: swap;
+	src: url('/client-assets/Righteous-Regular.woff2') format('woff2');
+}
+
+/* ===== 旗鯖fork: ロゴラッパ ===== */
 .logoWrapper {
 	position: fixed;
 	top: 36px;
 	left: 36px;
 	flex: auto;
-	color: #fff;
 	user-select: none;
 	pointer-events: none;
-}
-
-.poweredBy {
-	margin-bottom: 2px;
-}
-
-.misskey, .cherrypick {
-	width: 120px;
 
 	@media (max-width: 450px) {
-		width: 100px;
+		top: 24px;
+		left: 24px;
+	}
+}
+
+/* 1段目: Hataskey ブランド名 (Righteous フォント、判子色) */
+.brandName {
+	margin: 0 0 6px 0;
+	padding: 0;
+	font-family: 'Righteous', system-ui, sans-serif;
+	font-size: 48px;
+	font-weight: 400;
+	line-height: 1;
+	letter-spacing: 0.02em;
+	color: var(--MI_THEME-accent);
+	/* 旗鯖fork: 背景シェイプ上での視認性確保
+	   - text-stroke で背景色 1px の縁取り(文字輪郭をはっきりさせる)
+	   - paint-order で stroke を fill の後ろに描画(文字本体が前面に)
+	   - ソフトな text-shadow で立体感を加える */
+	-webkit-text-stroke: 1px var(--MI_THEME-bg);
+	text-stroke: 1px var(--MI_THEME-bg);
+	paint-order: stroke fill;
+	text-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+
+	@media (max-width: 450px) {
+		font-size: 36px;
+	}
+}
+
+/* 2段目: A fork of CherryPick (ロゴ) */
+.brandSub {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	/* 旗鯖fork: 背景に薄白の半透明レイヤーを敷いて、シェイプ装飾の上でも視認性を確保 */
+	color: var(--MI_THEME-fg);
+	background: color-mix(in srgb, var(--MI_THEME-panel) 60%, transparent);
+	backdrop-filter: blur(8px);
+	padding: 4px 10px;
+	border-radius: 999px;
+	width: max-content;
+}
+
+.brandSubText {
+	font-size: 0.8em;
+	letter-spacing: 0.12em;
+	opacity: 0.85;
+}
+
+.brandSubLogo {
+	width: 80px;
+	flex-shrink: 0;
+
+	@media (max-width: 450px) {
+		width: 64px;
 	}
 }
 

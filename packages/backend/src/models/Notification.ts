@@ -143,6 +143,13 @@ export type MiNotification = {
 	customIcon: string | null;
 
 	/**
+	 * アプリ通知のクリック時の遷移先パス
+	 * 旗鯖fork: hatask等の旗鯖独自機能の通知をクリックすると該当画面に遷移できるようにするため。
+	 * セキュリティ上 '/' で始まる相対パスのみ許可される (絶対URLや javascript: は拒否)。
+	 */
+	customLink: string | null;
+
+	/**
 	 * アプリ通知のアプリ(のトークン)
 	 */
 	appAccessTokenId: MiAccessToken['id'] | null;
@@ -173,4 +180,19 @@ export type MiGroupedNotification = MiNotification | {
 	createdAt: string;
 	notifierIds: MiUser['id'][];
 	noteIds: string[];
+} | {
+	/**
+	 * 旗鯖fork: 同じユーザーから複数ノートへのリアクションをグルーピング
+	 * (本家の 'reaction:grouped' が "1ノートに複数ユーザー" を集約するのに対し、
+	 *  こちらは "1ユーザーから複数ノート" を集約する)
+	 */
+	type: 'reaction:groupedByUser';
+	id: string;
+	createdAt: string;
+	notifierId: MiUser['id'];
+	reactions: {
+		noteId: MiNote['id'];
+		reaction: string;
+		createdAt: string;
+	}[];
 };

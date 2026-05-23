@@ -64,7 +64,6 @@ import MkButton from '@/components/MkButton.vue';
 import { mainRouter } from '@/router.js';
 import { definePage } from '@/page.js';
 import { miLocalStorage } from '@/local-storage.js';
-import { customEmojis } from '@/custom-emojis.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { $i } from '@/i.js';
 
@@ -114,26 +113,14 @@ const guideStyle = computed(() => ({ left: (guideXRatio.value * 100) + '%' }));
 const guidePreviewPx = computed(() => EMOJI_RENDER_SIZE * getScale());
 const dangerLineStyle = computed(() => ({ top: ((DANGER_Y / GH) * 100) + '%' }));
 
-function getMode(): string {
-	const params = new URLSearchParams(window.location.search);
-	return params.get('mode') || 'custom';
-}
-
 // カスタム絵文字を固定サイズcanvasにプリレンダリング（スケーリング問題を回避）
 const TEX_SIZE = EMOJI_RENDER_SIZE * 2;
 
 async function buildPool() {
-	const mode = getMode();
 	const pool: EmojiItem[] = [];
-	if (mode === 'custom' || mode === 'mix') {
-		const emojis = customEmojis.value;
-		const shuffled = [...emojis].sort(() => Math.random() - 0.5).slice(0, 80);
-		for (const e of shuffled) pool.push({ url: e.url, name: e.name, score: 10 });
-	}
-	if (mode === 'unicode' || mode === 'mix') {
-		const shuffled = [...UNICODE_EMOJIS].sort(() => Math.random() - 0.5).slice(0, 40);
-		for (const c of shuffled) pool.push({ char: c, name: c, score: 10 });
-	}
+	// 本家の絵文字系ゲームに倣い、カスタム絵文字は使用せず Unicode 絵文字のみを使用する
+	const shuffled = [...UNICODE_EMOJIS].sort(() => Math.random() - 0.5).slice(0, 40);
+	for (const c of shuffled) pool.push({ char: c, name: c, score: 10 });
 	if (pool.length === 0) {
 		for (const c of UNICODE_EMOJIS.slice(0, 20)) pool.push({ char: c, name: c, score: 10 });
 	}
@@ -244,7 +231,7 @@ function gameOver() {
 		miLocalStorage.setItem('stackingGameHighScore', String(score.value));
 	}
 	if ($i) {
-		misskeyApi('stacking-game/register', { score: score.value, gameMode: getMode(), blockCount: blockCount.value })
+		misskeyApi('stacking-game/register', { score: score.value, blockCount: blockCount.value })
 			.catch(e => console.error('Failed to register score:', e));
 	}
 }

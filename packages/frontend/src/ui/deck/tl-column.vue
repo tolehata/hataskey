@@ -1,5 +1,7 @@
 <!--
 SPDX-FileCopyrightText: syuilo and misskey-project
+SPDX-FileCopyrightText: noridev and cherrypick-project
+SPDX-FileCopyrightText: Tolehata and hatasaba-project
 SPDX-License-Identifier: AGPL-3.0-only
 -->
 
@@ -28,6 +30,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 		</p>
 		<p :class="$style.disabledDescription">設定から外部サーバーと連携してください</p>
 	</div>
+	<!-- 旗鯖fork: トレンドタイムライン (TTL) -->
+	<MkTrendingTimeline
+		v-else-if="column.tl === 'trending'"
+		ref="trendingTimeline"
+		:key="'trending'"
+	/>
 	<!-- 通常タイムライン無効時 -->
 	<div v-else-if="!isAvailableBasicTimeline(column.tl)" :class="$style.disabled">
 		<p :class="$style.disabledTitle">
@@ -62,6 +70,8 @@ import type { SoundStore } from '@/preferences/def.js';
 import { removeColumn, updateColumn } from '@/deck.js';
 import MkStreamingNotesTimeline from '@/components/MkStreamingNotesTimeline.vue';
 import MkExternalTimeline from '@/components/MkExternalTimeline.vue';
+// 旗鯖fork: トレンドタイムライン (TTL)
+import MkTrendingTimeline from '@/components/MkTrendingTimeline.vue';
 import * as os from '@/os.js';
 import { i18n } from '@/i18n.js';
 import { hasWithReplies, isAvailableBasicTimeline, basicTimelineIconClass } from '@/timelines.js';
@@ -94,13 +104,17 @@ const isExternalTimeline = computed(() => {
 const timelineIcon = computed(() => {
 	if (props.column.tl === 'ohtl') return 'ti ti-home';
 	if (props.column.tl === 'oltl') return 'ti ti-planet';
+	// 旗鯖fork: トレンドタイムラインアイコン
+	if (props.column.tl === 'trending') return 'ti ti-flame';
 	return basicTimelineIconClass(props.column.tl);
 });
 
 // タイムライン名
 const timelineName = computed(() => {
-	if (props.column.tl === 'ohtl') return '🦐 OHTL';
-	if (props.column.tl === 'oltl') return '🦐 OLTL';
+	if (props.column.tl === 'ohtl') return 'OHTL';
+	if (props.column.tl === 'oltl') return 'OLTL';
+	// 旗鯖fork: トレンドタイムライン名
+	if (props.column.tl === 'trending') return i18n.ts._timelines.trending;
 	return props.column.tl ? i18n.ts._timelines[props.column.tl] : null;
 });
 
@@ -179,12 +193,12 @@ async function setType() {
 	if (isExternalEnabled.value) {
 		if (enableOHTL.value) {
 			items.push({
-				value: 'ohtl', label: '🦐 OHTL (外部ホーム)',
+				value: 'ohtl', label: 'OHTL (外部ホーム)',
 			});
 		}
 		if (enableOLTL.value) {
 			items.push({
-				value: 'oltl', label: '🦐 OLTL (外部ローカル)',
+				value: 'oltl', label: 'OLTL (外部ローカル)',
 			});
 		}
 	}

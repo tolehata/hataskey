@@ -12,6 +12,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<i v-else-if="announcement.icon === 'warning'" class="ti ti-alert-triangle" style="color: var(--MI_THEME-warn);"></i>
 				<i v-else-if="announcement.icon === 'error'" class="ti ti-circle-x" style="color: var(--MI_THEME-error);"></i>
 				<i v-else-if="announcement.icon === 'success'" class="ti ti-check" style="color: var(--MI_THEME-success);"></i>
+				<i v-else-if="announcement.icon === 'maintenance'" class="ti ti-tool" style="color: var(--MI_THEME-error);"></i>
 			</span>
 			<Mfm :text="announcement.title"/>
 		</div>
@@ -30,6 +31,15 @@ SPDX-License-Identifier: AGPL-3.0-only
 			>
 				{{ hasReachedBottom ? i18n.ts.close : i18n.ts.scrollToClose }}
 			</MkButton>
+			<!-- 旗鯖fork: お知らせ一覧画面へ遷移するボタン -->
+			<MkButton
+				rounded
+				full
+				:class="$style.toListButton"
+				@click="goToList"
+			>
+				<i class="ti ti-speakerphone"></i> {{ i18n.ts.goToAnnouncements }}
+			</MkButton>
 		</div>
 	</div>
 </MkModal>
@@ -45,6 +55,7 @@ import MkButton from '@/components/MkButton.vue';
 import { i18n } from '@/i18n.js';
 import { $i } from '@/i.js';
 import { updateCurrentAccountPartial } from '@/accounts.js';
+import { mainRouter } from '@/router.js';
 
 const props = defineProps<{
 	announcement: Misskey.entities.Announcement;
@@ -69,6 +80,13 @@ async function ok() {
 	updateCurrentAccountPartial({
 		unreadAnnouncements: $i!.unreadAnnouncements.filter(a => a.id !== props.announcement.id),
 	});
+}
+
+// 旗鯖fork: お知らせ一覧画面へ遷移する。既読化は明示的な「閉じる」(ok) のときだけ行い、
+// ここでは遷移のみとする (既読確認が必要なお知らせを遷移ボタンで勝手に既読にしないため)
+function goToList() {
+	modal.value?.close();
+	mainRouter.push('/announcements');
 }
 
 function onBgClick() {
@@ -155,9 +173,16 @@ onMounted(() => {
 	position: sticky;
 	bottom: 0;
 	left: -32px;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
 	backdrop-filter: var(--MI-blur, blur(15px));
 	background: color(from var(--MI_THEME-bg) srgb r g b / 0.5);
 	margin: 0 -32px;
 	padding: 24px 32px;
+}
+
+.toListButton {
+	// 「閉じる」ボタンより控えめな見た目 (primary なし)。間隔は .footer の gap で確保
 }
 </style>

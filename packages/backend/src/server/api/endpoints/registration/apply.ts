@@ -1,5 +1,7 @@
 /*
  * SPDX-FileCopyrightText: syuilo and misskey-project
+ * SPDX-FileCopyrightText: noridev and cherrypick-project
+ * SPDX-FileCopyrightText: Tolehata and hatasaba-project
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
@@ -54,6 +56,19 @@ export const meta = {
 			code: 'CAPTCHA_FAILED',
 			id: 'a0000001-0001-0001-0001-000000000005',
 		},
+		// 旗鯖fork: メールアドレス形式の検証エラー
+		invalidEmail: {
+			message: 'Invalid email format.',
+			code: 'INVALID_EMAIL',
+			id: 'a0000001-0001-0001-0001-000000000006',
+		},
+		// 旗鯖fork: 同一メールアドレスからの連続申請を拒否
+		// pending または rejected で email が残ってる場合に発火
+		emailAlreadyExists: {
+			message: 'This email address has been used for a recent application.',
+			code: 'EMAIL_ALREADY_EXISTS',
+			id: 'a0000001-0001-0001-0001-000000000007',
+		},
 	},
 
 	res: {
@@ -67,10 +82,11 @@ export const meta = {
 export const paramDef = {
 	type: 'object',
 	properties: {
-		username: { type: 'string', minLength: 1, maxLength: 128 },
-		password: { type: 'string', minLength: 1 },
+		username: { type: 'string', minLength: 1, maxLength: 20 },
+		// パスワード: bcrypt 仕様に合わせて最大 72 バイト相当 (実用上 64 文字制限)
+		password: { type: 'string', minLength: 8, maxLength: 64 },
 		reason: { type: 'string', minLength: 1, maxLength: 1024 },
-		email: { type: 'string', minLength: 1, maxLength: 256 },
+		email: { type: 'string', minLength: 5, maxLength: 256 },
 		'hcaptcha-response': { type: 'string', nullable: true },
 		'g-recaptcha-response': { type: 'string', nullable: true },
 		'turnstile-response': { type: 'string', nullable: true },
@@ -165,6 +181,18 @@ export default class extends Endpoint<typeof meta, typeof paramDef> {
 				throw new ApiError(meta.errors.reasonRequired);
 			}
 
+			// 旗鯖fork: メールアドレス形式の検証 (RFC 5322 を完全に検証するのは過剰なので、
+			// よくある明らかな誤入力・攻撃用文字列を弾く程度の実用的な検証)
+			const emailTrimmed = ps.email.trim();
+			// 制御文字・空白・複数 @ を弾き、最低限の @local 部 + ドメイン形式を要求
+			const emailValid = emailTrimmed.length >= 5
+				&& emailTrimmed.length <= 256
+				&& !/[\s\u0000-\u001F<>"'`\\]/.test(emailTrimmed)
+				&& /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTrimmed);
+			if (!emailValid) {
+				throw new ApiError(meta.errors.invalidEmail);
+			}
+
 			// 既存ユーザーとの重複
 			if (await this.usersRepository.exists({
 				where: { usernameLower: ps.username.toLowerCase(), host: IsNull() },
@@ -187,11 +215,32 @@ export default class extends Endpoint<typeof meta, typeof paramDef> {
 				throw new ApiError(meta.errors.usernameAlreadyExists);
 			}
 
-			// pending申請との重複
+			// 旗鯖fork: 申請中・申請拒否済みの username との重複チェック
+			// - pending: まだ未処理の申請があれば重複扱い (本来の重複防止)
+			// - rejected: 通常は reject 時に null セットされるので重複扱いされない
+			//   ただし、旧仕様 (今回のプライバシー保護改修前) で reject されて未クリーンアップ
+			//   なレコードには username が残ってるため、それを重複扱いする (一括クリーンアップ完了まで)
+			// 結果として、新仕様で reject された ID は他人 (本人含む) が即座に再利用できる
 			if (await this.registrationApplicationsRepository.exists({
-				where: { username: ps.username.toLowerCase(), status: 'pending' },
+				where: [
+					{ username: ps.username.toLowerCase(), status: 'pending' },
+					{ username: ps.username.toLowerCase(), status: 'rejected' },
+				],
 			})) {
 				throw new ApiError(meta.errors.usernameAlreadyExists);
+			}
+
+			// 旗鯖fork: 同一メールアドレスからの連続申請を拒否
+			// - pending: email が残ってる (まだ未処理) → 重複扱い
+			// - rejected: email が残ってる (90日以内、未クリーンアップ) → 重複扱い
+			// - rejected で email が null (90日経過で Clean Processor が削除済み) → 新規申請OK
+			if (await this.registrationApplicationsRepository.exists({
+				where: [
+					{ email: emailTrimmed, status: 'pending' },
+					{ email: emailTrimmed, status: 'rejected' },
+				],
+			})) {
+				throw new ApiError(meta.errors.emailAlreadyExists);
 			}
 
 			// パスワードハッシュ化
@@ -204,7 +253,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> {
 				username: ps.username.toLowerCase(),
 				hashedPassword,
 				reason: ps.reason.trim(),
-				email: ps.email.trim(),
+				email: emailTrimmed,
 				status: 'pending',
 				createdAt: new Date(),
 			});

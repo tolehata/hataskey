@@ -7,30 +7,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 <PageWithHeader :actions="headerActions" :tabs="headerTabs">
 	<div class="_spacer" style="--MI_SPACER-w: 700px; --MI_SPACER-min: 16px; --MI_SPACER-max: 32px;">
 		<div class="_gaps_m">
-			<div class="_panel" style="padding: 16px;">
-				<MkSwitch v-model="enableReceivePrerelease">
-					<template #label>{{ i18n.ts.enableReceivePrerelease }}</template>
-				</MkSwitch>
-			</div>
-
-			<template v-if="(version && version.length > 0) && (releasesCherryPick && releasesCherryPick.length > 0)">
-				<FormInfo v-if="compareVersions(version, releasesCherryPick[0].tag_name) > 0">{{ i18n.ts.youAreRunningBetaClient }}</FormInfo>
-				<FormInfo v-else-if="compareVersions(version, releasesCherryPick[0].tag_name) === 0" check>{{ i18n.ts.youAreRunningUpToDateClient }}</FormInfo>
-				<FormInfo v-else warn>{{ i18n.ts.newVersionOfClientAvailable }}</FormInfo>
-			</template>
-			<FormInfo v-else>{{ i18n.ts.loading }}</FormInfo>
-
 			<FormSection first>
 				<template #label>{{ instanceName }}</template>
 				<MkKeyValue @click="whatIsNewCherryPick">
 					<template #key>{{ i18n.ts.currentVersion }} <i class="ti ti-external-link"></i></template>
 					<template #value>{{ version }} <span :class="$style.commitHash" @click.stop="openCommitPage('kokonect-link/cherrypick', gitHash)">({{ gitHash.substring(0, 8) }})</span></template>
 				</MkKeyValue>
-				<MkKeyValue v-if="version < releasesCherryPick[0].tag_name && !skipVersion" style="margin-top: 10px;" @click="whatIsNewLatestCherryPick">
-					<template #key>{{ i18n.ts.latestVersion }} <i class="ti ti-external-link"></i></template>
-					<template #value>{{ releasesCherryPick[0].tag_name }} <span :class="$style.commitHash" @click.stop="openCommitPage('kokonect-link/cherrypick', cherryPickTagsMap.get(releasesCherryPick[0].tag_name) || '')">({{ (cherryPickTagsMap.get(releasesCherryPick[0].tag_name) || 'unknown').substring(0, 8) }})</span></template>
-				</MkKeyValue>
-				<MkButton v-if="releasesCherryPick.length > 0 && !skipVersion && (compareVersions(version, releasesCherryPick[0].tag_name) < 0)" style="margin-top: 10px;" @click="skipThisVersion">{{ i18n.ts.skipThisVersion }}</MkButton>
 			</FormSection>
 
 			<FormSection @click="whatIsNewLatestCherryPick">
@@ -64,32 +46,22 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { computed, ref, watch } from 'vue';
-import { version, instanceName, basedMisskeyVersion, gitHash } from '@@/js/config.js';
-import { compareVersions } from 'compare-versions';
-import * as os from '@/os.js';
-import { misskeyApi } from '@/utility/misskey-api.js';
+import { computed, ref } from 'vue';
+import { version, instanceName, gitHash } from '@@/js/config.js';
 import { definePage } from '@/page.js';
 import { i18n } from '@/i18n.js';
-import { fetchInstance } from '@/instance.js';
 import { openCommitPage, getCommitHashForRelease } from '@/utility/fetch-releases.js';
-import FormInfo from '@/components/MkInfo.vue';
 import FormSection from '@/components/form/section.vue';
 import MkKeyValue from '@/components/MkKeyValue.vue';
-import MkButton from '@/components/MkButton.vue';
-import MkSwitch from '@/components/MkSwitch.vue';
 
-const meta = await misskeyApi('admin/meta');
-
-const enableReceivePrerelease = ref(meta.enableReceivePrerelease);
-const skipVersion = ref(meta.skipVersion);
-const skipCherryPickVersion = ref(meta.skipCherryPickVersion);
+// CherryPick / Misskey の最新バージョンを GitHub Releases から取得（表示用トラッキング機能）
+// プレリリースは含めない（管理者通知機能を削除したため、プレリリース切替UIも削除済み）
 const cherryPickResponse = await window.fetch('https://api.github.com/repos/kokonect-link/cherrypick/releases');
 const cherryPickData = await cherryPickResponse.json();
-const releasesCherryPick = ref(meta.enableReceivePrerelease ? cherryPickData : cherryPickData.filter(x => !x.prerelease));
+const releasesCherryPick = ref(cherryPickData.filter(x => !x.prerelease));
 const misskeyResponse = await window.fetch('https://api.github.com/repos/misskey-dev/misskey/releases');
 const misskeyData = await misskeyResponse.json();
-const releasesMisskey = ref(meta.enableReceivePrerelease ? misskeyData : misskeyData.filter(x => !x.prerelease));
+const releasesMisskey = ref(misskeyData.filter(x => !x.prerelease));
 const cherryPickTagsMap = new Map<string, string>();
 const misskeyTagsMap = new Map<string, string>();
 
@@ -111,41 +83,9 @@ const whatIsNewLatestCherryPick = () => {
 	window.open(`https://github.com/kokonect-link/cherrypick/blob/develop/CHANGELOG_CHERRYPICK.md#${releasesCherryPick.value[0].tag_name.replace(/\./g, '')}`, '_blank');
 };
 
-/**
- * const whatIsNewMisskey = () => {
- * 	window.open(`https://misskey-hub.net/docs/releases/#_${basedMisskeyVersion.replace(/\./g, '')}`, '_blank');
- * };
- */
-
 const whatIsNewLatestMisskey = () => {
 	window.open(`https://github.com/misskey-dev/misskey/blob/develop/CHANGELOG.md#${releasesMisskey.value[0].tag_name.replace(/\./g, '')}`, '_blank');
 };
-
-function save() {
-	os.apiWithDialog('admin/update-meta', {
-		enableReceivePrerelease: enableReceivePrerelease.value,
-	}).then(() => {
-		fetchInstance(true);
-	});
-}
-
-function skipThisVersion() {
-	skipCherryPickVersion.value = releasesCherryPick.value[0].tag_name;
-	skipVersion.value = true;
-
-	os.apiWithDialog('admin/update-meta', {
-		skipVersion: skipVersion.value,
-		skipCherryPickVersion: skipCherryPickVersion.value,
-	}).then(() => {
-		fetchInstance(true);
-	});
-}
-
-watch([
-	enableReceivePrerelease,
-], () => {
-	save();
-});
 
 const headerActions = computed(() => []);
 

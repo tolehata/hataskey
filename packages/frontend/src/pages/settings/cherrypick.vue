@@ -133,52 +133,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</FormSection>
 		</SearchMarker>
 
-		<SearchMarker :keywords="['ui', 'show', 'display']">
-			<FormSection>
-				<template #label><SearchLabel>UI</SearchLabel></template>
-				<div class="_gaps_m">
-					<SearchMarker :keywords="['enable', 'widget']">
-						<MkPreferenceContainer k="enableWidgetsArea">
-							<MkSwitch v-model="enableWidgetsArea">
-								<template #label><SearchLabel>{{ i18n.ts._cherrypick.enableWidgetsArea }}</SearchLabel></template>
-							</MkSwitch>
-						</MkPreferenceContainer>
-					</SearchMarker>
-
-					<SearchMarker :keywords="['friendly']">
-						<div class="_gaps_s" style="margin: 0 10px;">
-							<div style="font-weight: bold; padding: 0.5em 0 0 0; margin: 0 0 8px 0;"><SearchLabel>Friendly UI</SearchLabel></div>
-
-							<SearchMarker :keywords="['enable', 'notification']">
-								<MkPreferenceContainer k="friendlyUiEnableNotificationsArea">
-									<MkSwitch v-model="friendlyUiEnableNotificationsArea">
-										<template #label><SearchLabel>{{ i18n.ts._cherrypick.friendlyUiEnableNotificationsArea }}</SearchLabel></template>
-									</MkSwitch>
-								</MkPreferenceContainer>
-							</SearchMarker>
-
-							<SearchMarker :keywords="['enable', 'long', 'press', 'open', 'account', 'menu']">
-								<MkPreferenceContainer k="enableLongPressOpenAccountMenu">
-									<MkSwitch v-model="enableLongPressOpenAccountMenu">
-										<template #label><SearchLabel>{{ i18n.ts._cherrypick.enableLongPressOpenAccountMenu }}</SearchLabel></template>
-										<template #caption><SearchText>{{ i18n.ts._cherrypick.enableLongPressOpenAccountMenuDescription }}</SearchText></template>
-									</MkSwitch>
-								</MkPreferenceContainer>
-							</SearchMarker>
-
-							<SearchMarker :keywords="['show', 'avatar', 'decoration', 'navbtn']">
-								<MkPreferenceContainer k="friendlyUiShowAvatarDecorationsInNavBtn">
-									<MkSwitch v-model="friendlyUiShowAvatarDecorationsInNavBtn">
-										<template #label><SearchLabel>{{ i18n.ts._cherrypick.friendlyUiShowAvatarDecorationsInNavBtn }}</SearchLabel></template>
-									</MkSwitch>
-								</MkPreferenceContainer>
-							</SearchMarker>
-						</div>
-					</SearchMarker>
-				</div>
-			</FormSection>
-		</SearchMarker>
-
 		<SearchMarker :keywords="['behavior', 'lab']">
 			<FormSection>
 				<template #label><i class="ti ti-flask"/> <SearchLabel>{{ i18n.ts.cherrypickLabs }}</SearchLabel></template>
@@ -215,10 +169,8 @@ const reactableRemoteReactionEnabled = prefer.model('reactableRemoteReactionEnab
 const showFollowingMessageInsteadOfButtonEnabled = prefer.model('showFollowingMessageInsteadOfButtonEnabled');
 const mobileHeaderChange = prefer.model('mobileHeaderChange');
 const renameTheButtonInPostFormToNya = prefer.model('renameTheButtonInPostFormToNya');
-const enableWidgetsArea = prefer.model('enableWidgetsArea');
-const friendlyUiEnableNotificationsArea = prefer.model('friendlyUiEnableNotificationsArea');
-const enableLongPressOpenAccountMenu = prefer.model('enableLongPressOpenAccountMenu');
-const friendlyUiShowAvatarDecorationsInNavBtn = prefer.model('friendlyUiShowAvatarDecorationsInNavBtn');
+// 旗鯖fork: UI セクション(enableWidgetsArea) および Friendly UI 関連は UI から完全廃止
+// (preferences/def.ts 側のキー定義は他コード(pref-migrate等)との整合のため残してある)
 
 watch([
 	renameTheButtonInPostFormToNya,
@@ -231,8 +183,6 @@ watch([
 	reactableRemoteReactionEnabled,
 	mobileHeaderChange,
 	renameTheButtonInPostFormToNya,
-	enableWidgetsArea,
-	friendlyUiEnableNotificationsArea,
 ], () => {
 	suggestReload();
 });

@@ -1,5 +1,7 @@
 /*
  * SPDX-FileCopyrightText: syuilo and misskey-project
+ * SPDX-FileCopyrightText: noridev and cherrypick-project
+ * SPDX-FileCopyrightText: Tolehata and hatasaba-project
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
@@ -285,7 +287,7 @@ export const PREF_DEF = definePreferences({
 		default: 'auto' as 'auto' | 'popup' | 'drawer',
 	},
 	squareAvatars: {
-		default: true,
+		default: false,
 	},
 	showAvatarDecorations: {
 		default: true,
@@ -524,7 +526,7 @@ export const PREF_DEF = definePreferences({
 		default: 8,
 	},
 	showUnreadNotificationsCount: {
-		default: false,
+		default: true,
 	},
 	setFederationAvatarShape: {
 		default: true,
@@ -813,6 +815,12 @@ export const PREF_DEF = definePreferences({
 		default: true,
 	},
 	// ======== シンプルUI設定 ========
+	// 旗鯖fork: HatasabaUI でのトレンドタイムライン (TTL) タブの表示/非表示
+	// デフォルト true (最左に表示)。topNav 設定とは独立して管理することで、
+	// 既存ユーザーの保存済み topNav 設定を変更せずにトレンドタブを出せる。
+	'simpleUi.showTrendingTab': {
+		default: true,
+	},
 	'simpleUi.topNav': {
 		default: [
 			{ id: 'following', icon: 'ti ti-home', label: 'ホーム', visible: true },
@@ -832,19 +840,26 @@ export const PREF_DEF = definePreferences({
 	},
 	'simpleUi.sidebar': {
 		default: [
-			{ id: 'timeline', icon: 'ti ti-home', label: 'タイムライン' },
-			{ id: 'notifications', icon: 'ti ti-bell', label: '通知' },
-			{ id: 'search', icon: 'ti ti-search', label: '検索' },
-			{ id: 'hatask', icon: 'ti ti-eye', label: '独自機能' },
-			{ id: 'whatsNew', icon: 'ti ti-sparkles', label: '旗鯖新機能' },
-			{ id: 'announcements', icon: 'ti ti-speakerphone', label: 'お知らせ' },
-			{ id: 'lists', icon: 'ti ti-list', label: 'リスト' },
-			{ id: 'channels', icon: 'ti ti-device-tv', label: 'チャンネル' },
-			{ id: 'antennas', icon: 'ti ti-antenna', label: 'アンテナ' },
-			{ id: 'drive', icon: 'ti ti-cloud', label: 'ドライブ' },
-			{ id: 'uiSetup', icon: 'ti ti-wand', label: 'UI切り替え' },
-			{ id: 'more', icon: 'ti ti-dots', label: 'もっと' },
-		] as { id: string; icon: string; label: string }[],
+			// 旗鯖fork: サイドメニューを3グループに再編 (基本機能 / 旗鯖独自 / 発見・交流)
+			// グループ1: 基本機能
+			{ id: 'timeline', icon: 'ti ti-home', label: 'タイムライン', group: 'basic' },
+			{ id: 'search', icon: 'ti ti-search', label: '検索', group: 'basic' },
+			{ id: 'notifications', icon: 'ti ti-bell', label: '通知', group: 'basic' },
+			{ id: 'announcements', icon: 'ti ti-speakerphone', label: 'お知らせ', group: 'basic' },
+			{ id: 'drive', icon: 'ti ti-cloud', label: 'ドライブ', group: 'basic' },
+			{ id: 'favorites', icon: 'ti ti-star', label: 'お気に入り', group: 'basic' },
+			// グループ2: 旗鯖独自
+			{ id: 'hatask', icon: 'ti ti-eye', label: 'Hatask', group: 'hata' },
+			{ id: 'portal', icon: 'ti ti-home-2', label: '旗鯖ポータル', group: 'hata', external: true, url: 'https://home.tolehata.net/' },
+			{ id: 'whatsNew', icon: 'ti ti-sparkles', label: '旗鯖新機能', group: 'hata' },
+			// グループ3: 発見・交流
+			{ id: 'uiSetup', icon: 'ti ti-wand', label: 'UI切り替え', group: 'discover' },
+			{ id: 'explore', icon: 'ti ti-hash', label: 'みつける', group: 'discover' },
+			{ id: 'followRequests', icon: 'ti ti-user-plus', label: 'フォロー申請', group: 'discover' },
+			{ id: 'channels', icon: 'ti ti-device-tv', label: 'チャンネル', group: 'discover' },
+			// 末尾: もっと (ランチパッド)
+			{ id: 'more', icon: 'ti ti-dots', label: 'もっと', group: 'more' },
+		] as { id: string; icon: string; label: string; group?: string; external?: boolean; url?: string }[],
 	},
 	'simpleUi.widgetBorder': {
 		default: true,
@@ -895,6 +910,10 @@ export const PREF_DEF = definePreferences({
 	},
 	'hataConsent.customFontDate': {
 		default: '' as string,
+	},
+	// ======== お知らせピン留め (旗鯖独自) ========
+	'hataPinnedAnnouncementIds': {
+		default: [] as string[],
 	},
 	// ======== 旗鯖独自機能ここまで ========
 

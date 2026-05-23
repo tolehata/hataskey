@@ -26,10 +26,19 @@ SPDX-License-Identifier: AGPL-3.0-only
 
             <!-- ナビ項目（prefer同期の並び順） -->
             <div :class="$style.sbNav">
-                <button v-for="item in sidebarOrder" :key="item.id" :class="[$style.sbItem, { [$style.sbActive]: sidebarItemActive(item.id) }]" @click="sidebarItemClick(item.id, $event)">
-                    <i :class="[item.icon, $style.sbIcon]"></i><span :class="$style.sbLabel">{{ item.label }}</span>
-                    <span v-if="item.id==='notifications' && hasUnreadNotif" :class="$style.sbBadge">{{ unreadNotifCount > 0 ? (unreadNotifCount > 99 ? '99+' : unreadNotifCount) : '' }}</span>
-                </button>
+                <template v-for="grp in sidebarGroups" :key="grp.key">
+                    <div v-if="grp.label" :class="$style.sbGroupLabel">{{ grp.label }}</div>
+                    <button v-for="item in grp.items" :key="item.id" :class="[$style.sbItem, { [$style.sbActive]: sidebarItemActive(item.id) }]" @click="sidebarItemClick(item.id, $event)">
+                        <i :class="[item.icon, $style.sbIcon]"></i><span :class="$style.sbLabel">{{ item.label }}</span>
+                        <template v-if="item.id==='notifications' && hasUnreadNotif">
+                            <span v-if="showUnreadNotifCount && unreadNotifCount > 0" :class="$style.sbBadge">{{ unreadNotifCount > 99 ? '99+' : unreadNotifCount }}</span>
+                            <span v-else :class="$style.sbNotifDot"></span>
+                        </template>
+                        <span v-if="item.id==='announcements' && hasUnreadAnnouncements" :class="$style.sbDot"></span>
+                        <!-- 旗鯖fork: メッセージ未読ドット -->
+                        <span v-if="item.id==='chat' && hasUnreadChat" :class="$style.sbNotifDot"></span>
+                    </button>
+                </template>
             </div>
 
             <div :class="$style.sbDivider"></div>
@@ -122,6 +131,8 @@ SPDX-License-Identifier: AGPL-3.0-only
         <div :class="$style.content" ref="contentEl" @scroll="onContentScroll">
             <Transition :name="$style.tlFade" mode="out-in">
                 <div v-show="!isPageView" :class="$style.timelineContainer" @touchstart="onTouchStart" @touchend="onTouchEnd" :key="tab + String(withRenotes) + String(withSensitive) + String(onlyFiles)">
+                    <!-- 旗鯖fork: 「タイムライン上部に投稿フォームを表示する」設定がONのとき、外部TL以外でMkPostFormを表示 -->
+                    <MkPostForm v-if="showFixedPostForm && !isExternalTab" :class="$style.fixedPostForm" class="_panel" fixed />
                     <KeepAlive>
                         <MkStreamingNotesTimeline v-if="tab === 'mixed'" src="global" key="mixed" :withRenotes="withRenotes" :withSensitive="withSensitive" :onlyFiles="onlyFiles" />
                         <MkStreamingNotesTimeline v-else-if="tab === 'local'" src="local" key="local" :withRenotes="withRenotes" :withSensitive="withSensitive" :onlyFiles="onlyFiles" />
@@ -129,6 +140,8 @@ SPDX-License-Identifier: AGPL-3.0-only
                         <MkStreamingNotesTimeline v-else-if="tab === 'following'" src="home" key="following" :withRenotes="withRenotes" :withSensitive="withSensitive" :onlyFiles="onlyFiles" />
                         <MkExternalTimeline v-else-if="tab === 'ohtl' && externalHost && externalToken" src="ohtl" :host="externalHost" :token="externalToken" :sound="true" :simpleUi="true" key="ohtl" />
                         <MkExternalTimeline v-else-if="tab === 'oltl' && externalHost && externalToken" src="oltl" :host="externalHost" :token="externalToken" :sound="true" :simpleUi="true" key="oltl" />
+                        <!-- 旗鯖fork: トレンドタイムライン (TTL) -->
+                        <MkTrendingTimeline v-else-if="tab === 'trending'" key="trending" />
                     </KeepAlive>
                 </div>
             </Transition>
@@ -144,8 +157,10 @@ SPDX-License-Identifier: AGPL-3.0-only
                     <button v-else-if="item.id==='home'" @click="goHome" :class="[$style.navBtn, { [$style.navActive]: isHomeTL }]"><i class="ti ti-home"></i></button>
                     <button v-else-if="item.id==='notifications'" @click="goToNotifications" :class="[$style.navBtn, { [$style.navActive]: isNotifPage }]">
                         <i class="ti ti-bell"></i>
-                        <span v-if="hasUnreadNotif && unreadNotifCount > 0" :class="$style.badgeCount">{{ unreadNotifCount > 99 ? '99+' : unreadNotifCount }}</span>
-                        <span v-else-if="hasUnreadNotif" :class="$style.badge"></span>
+                        <template v-if="hasUnreadNotif">
+                            <span v-if="showUnreadNotifCount && unreadNotifCount > 0" :class="$style.badgeCount">{{ unreadNotifCount > 99 ? '99+' : unreadNotifCount }}</span>
+                            <span v-else :class="$style.badge"></span>
+                        </template>
                     </button>
                     <button v-else-if="item.id==='hatask'" @click="goToHatask" :class="[$style.navBtn, { [$style.navActive]: isHataskPage }]"><i class="ti ti-eye"></i></button>
                     <button v-else-if="item.id==='widgets'" @click="widgetsShowing = true" :class="$style.navBtn"><i class="ti ti-apps"></i></button>
@@ -205,10 +220,19 @@ SPDX-License-Identifier: AGPL-3.0-only
                     </div>
                     <!-- ナビ項目（prefer同期の並び順） -->
                     <div :class="$style.sbNav">
-                        <button v-for="item in sidebarOrder" :key="item.id" :class="[$style.sbItem, { [$style.sbActive]: sidebarItemActive(item.id) }]" @click="sidebarItemClick(item.id, $event)">
-                            <i :class="[item.icon, $style.sbIcon]"></i><span :class="$style.sbLabel">{{ item.label }}</span>
-                            <span v-if="item.id==='notifications' && hasUnreadNotif" :class="$style.sbBadge">{{ unreadNotifCount > 0 ? (unreadNotifCount > 99 ? '99+' : unreadNotifCount) : '' }}</span>
-                        </button>
+                        <template v-for="grp in sidebarGroups" :key="grp.key">
+                            <div v-if="grp.label" :class="$style.sbGroupLabel">{{ grp.label }}</div>
+                            <button v-for="item in grp.items" :key="item.id" :class="[$style.sbItem, { [$style.sbActive]: sidebarItemActive(item.id) }]" @click="sidebarItemClick(item.id, $event)">
+                                <i :class="[item.icon, $style.sbIcon]"></i><span :class="$style.sbLabel">{{ item.label }}</span>
+                                <template v-if="item.id==='notifications' && hasUnreadNotif">
+                                    <span v-if="showUnreadNotifCount && unreadNotifCount > 0" :class="$style.sbBadge">{{ unreadNotifCount > 99 ? '99+' : unreadNotifCount }}</span>
+                                    <span v-else :class="$style.sbNotifDot"></span>
+                                </template>
+                                <span v-if="item.id==='announcements' && hasUnreadAnnouncements" :class="$style.sbDot"></span>
+                                <!-- 旗鯖fork: メッセージ未読ドット -->
+                                <span v-if="item.id==='chat' && hasUnreadChat" :class="$style.sbNotifDot"></span>
+                            </button>
+                        </template>
                     </div>
                     <div :class="$style.sbDivider"></div>
                     <div :class="$style.sbNav">
@@ -266,11 +290,14 @@ import { instanceName } from '@@/js/config.js';
 import XCommon from './_common_/common.vue';
 import MkStreamingNotesTimeline from '@/components/MkStreamingNotesTimeline.vue';
 import MkExternalTimeline from '@/components/MkExternalTimeline.vue';
+// 旗鯖fork: トレンドタイムライン (TTL)
+import MkTrendingTimeline from '@/components/MkTrendingTimeline.vue';
 import type { PageMetadata } from '@/page.js';
 import { provideMetadataReceiver, provideReactiveMetadata } from '@/page.js';
 import { mainRouter } from '@/router.js';
 import { DI } from '@/di.js';
 import * as os from '@/os.js';
+import { useStream } from '@/stream.js';
 import { $i } from '@/i.js';
 import { prefer } from '@/preferences.js';
 import { cleanupStaleUiElements } from '@/utility/ui-cleanup.js';
@@ -283,6 +310,8 @@ import { openInstanceMenu } from '@/ui/_common_/common.js';
 
 const XWidgets = defineAsyncComponent(() => import('./_common_/widgets.vue'));
 const MkSimpleUserPanel = defineAsyncComponent(() => import('@/components/MkSimpleUserPanel.vue'));
+// 旗鯖fork: 「タイムライン上部に投稿フォームを表示する」設定で使用
+const MkPostForm = defineAsyncComponent(() => import('@/components/MkPostForm.vue'));
 
 provide(DI.router, mainRouter);
 
@@ -426,11 +455,20 @@ mainRouter.on('change', ()=>{
 });
 
 // ===== タブ =====
-type TabType='following'|'mixed'|'local'|'social'|'ohtl'|'oltl';
+// 旗鯖fork: 'trending' を追加 (トレンドタイムライン (TTL))
+type TabType='following'|'mixed'|'local'|'social'|'ohtl'|'oltl'|'trending';
 const tab = ref<TabType>('following');
 
 // ===== prefer連動: 上部タブ =====
-const visibleTopTabs = computed(() => (prefer.r['simpleUi.topNav'].value as any[]).filter((t: any) => t.visible));
+// 旗鯖fork: トレンドタブ (TTL) は専用トグル simpleUi.showTrendingTab で制御し、
+// 有効時は topNav 設定とは独立して最左に差し込む (既存ユーザーの topNav 設定を変更しないため)
+const visibleTopTabs = computed(() => {
+    const saved = (prefer.r['simpleUi.topNav'].value as any[]).filter((t: any) => t.visible);
+    if (prefer.r['simpleUi.showTrendingTab'].value) {
+        return [{ id: 'trending', icon: 'ti ti-flame', label: 'トレンド', visible: true }, ...saved];
+    }
+    return saved;
+});
 const tabOrder = computed<TabType[]>(() => {
     const tabs: TabType[] = visibleTopTabs.value.map((t: any) => t.id as TabType);
     if (showOHTL.value) tabs.push('ohtl');
@@ -453,6 +491,26 @@ const glassEffect = computed(() => prefer.r['simpleUi.glassEffect'].value);
 
 // ===== prefer連動: サイドバー =====
 const sidebarOrder = computed(() => prefer.r['simpleUi.sidebar'].value as any[]);
+// 旗鯖fork: グループ見出しラベル
+const sidebarGroupLabels: Record<string, string> = {
+    basic: '基本機能',
+    hata: '旗鯖独自',
+    discover: '発見・交流',
+    more: '',
+};
+// 旗鯖fork: サイドバー項目をグループ単位にまとめる (group未指定の項目は 'basic' 扱いで後方互換)
+const sidebarGroups = computed(() => {
+    const order = ['basic', 'hata', 'discover', 'more'];
+    const groups: { key: string; label: string; items: any[] }[] = [];
+    for (const item of sidebarOrder.value) {
+        const g = item.group ?? 'basic';
+        let grp = groups.find(x => x.key === g);
+        if (!grp) { grp = { key: g, label: sidebarGroupLabels[g] ?? '', items: [] }; groups.push(grp); }
+        grp.items.push(item);
+    }
+    // グループの表示順を固定 (定義順に依存しないように)
+    return groups.sort((a, b) => order.indexOf(a.key) - order.indexOf(b.key));
+});
 const switchTab = (t:TabType)=>{ if(tab.value===t){ if(contentEl.value) contentEl.value.scrollTo({top:0,behavior:'smooth'}); } else { tab.value=t; } };
 
 // ===== アカウント切り替えメニュー =====
@@ -496,6 +554,8 @@ const goToLists = ()=>{ mainRouter.push('/my/lists'); };
 const goToChannels = ()=>{ mainRouter.push('/channels'); };
 const goToAntennas = ()=>{ mainRouter.push('/my/antennas'); };
 const goToDrive = ()=>{ mainRouter.push('/my/drive'); };
+// 旗鯖fork: メッセージ (チャット) へ遷移
+const goToChat = ()=>{ mainRouter.push('/chat'); };
 const goToAnnouncements = ()=>{ mainRouter.push('/announcements'); };
 const goToWhatsNew = ()=>{ mainRouter.push('/hata-whats-new'); };
 const openUiSetup = async ()=>{
@@ -508,12 +568,23 @@ const goToAdmin = ()=>{ mainRouter.push('/admin'); };
 // ===== サイドバー項目ヘルパー =====
 function sidebarItemClick(id: string, ev?: MouseEvent) {
     simpleDrawerShowing.value = false;
+    // 旗鯖fork: 外部リンク項目 (旗鯖ポータル等) は新しいタブで開く
+    const item = sidebarOrder.value.find((x: any) => x.id === id);
+    if (item?.external && item.url) {
+        window.open(item.url, '_blank', 'noopener');
+        return;
+    }
     const map: Record<string, ()=>void> = {
         timeline: goHome, notifications: ()=>goToNotifications(), search: ()=>openSearch(),
+        chat: ()=>goToChat(),
         hatask: ()=>goToHatask(), lists: ()=>goToLists(), channels: ()=>goToChannels(),
         antennas: ()=>goToAntennas(), drive: ()=>goToDrive(),
         announcements: ()=>goToAnnouncements(), uiSetup: ()=>openUiSetup(),
         whatsNew: ()=>goToWhatsNew(),
+        // 旗鯖fork: 新規追加項目
+        favorites: ()=>mainRouter.push('/my/favorites'),
+        explore: ()=>mainRouter.push('/explore'),
+        followRequests: ()=>mainRouter.push('/my/follow-requests'),
         more: () => { if (ev) openMore(ev); },
     };
     if (map[id]) map[id]();
@@ -522,11 +593,16 @@ function sidebarItemActive(id: string): boolean {
     return ({
         timeline: isHomeTL.value && !isPageView.value,
         notifications: isNotifPage.value, search: isSearchPage.value,
+        chat: isChatPage.value,
         hatask: isHataskPage.value, lists: isListPage.value,
         channels: isChannelPage.value, antennas: isAntennaPage.value,
         drive: isDrivePage.value,
         announcements: mainRouter.currentRoute.value.path.startsWith('/announcements'),
         whatsNew: mainRouter.currentRoute.value.path.startsWith('/hata-whats-new'),
+        // 旗鯖fork: 新規追加項目のアクティブ判定
+        favorites: mainRouter.currentRoute.value.path.startsWith('/my/favorites'),
+        explore: mainRouter.currentRoute.value.path.startsWith('/explore'),
+        followRequests: mainRouter.currentRoute.value.path.startsWith('/my/follow-requests'),
     } as Record<string, boolean>)[id] ?? false;
 }
 
@@ -536,6 +612,8 @@ const instanceIconUrl = computed(()=> instance.iconUrl || '/favicon.ico');
 
 // ===== ドライブページ判定 =====
 const isDrivePage = computed(()=>mainRouter.currentRoute.value.path.startsWith('/my/drive'));
+// 旗鯖fork: メッセージ (チャット) ページ判定
+const isChatPage = computed(()=>mainRouter.currentRoute.value.path.startsWith('/chat'));
 const isAdminPage = computed(()=>mainRouter.currentRoute.value.path.startsWith('/admin'));
 
 // ===== もっとメニュー（ランチパッド） =====
@@ -609,61 +687,105 @@ function toggleRealtimeMode() {
 // ===== ユーザーパネル =====
 const userPanelUserId = ref<string|null>(null);
 
-// ===== 通知バッジ =====
+// ===== 通知バッジ / お知らせ未読 =====
 // hasUnreadNotif: 未読通知の有無 (boolean)
 // unreadNotifCount: 未読通知の件数 (number) - 表示用
+// hasUnreadAnnouncements: 未読お知らせの有無 (computed) - 本家準拠で $i.hasUnreadAnnouncement を直接参照
 const hasUnreadNotif = ref(false);
 const unreadNotifCount = ref(0);
+const hasUnreadAnnouncements = computed(() => $i != null && $i.hasUnreadAnnouncement === true);
+// 旗鯖fork: 未読メッセージ (チャット) の有無
+const hasUnreadChat = computed(() => $i != null && $i.hasUnreadChatMessages === true);
+// 通知バッジに件数を表示するかどうかの preference 参照（既存設定との統合）
+// true: 件数バッジ表示 / false: ドットのみ表示
+const showUnreadNotifCount = computed(() => prefer.s.showUnreadNotificationsCount === true);
 let mainCh:any = null;
 let unreadPollTimer: ReturnType<typeof setInterval>|null = null;
 
-// $i.unreadNotificationsCount を最優先で参照、無ければ i/notifications を1件取得して isRead で判定
+// 通知の現在値を $i から同期（reactivity 補強）
+const syncUnreadFromI = ()=>{
+    if (!$i) return;
+    // 本家準拠: hasUnreadNotification (boolean) を最優先
+    if (typeof $i.hasUnreadNotification === 'boolean') {
+        hasUnreadNotif.value = $i.hasUnreadNotification;
+    }
+    if (typeof $i.unreadNotificationsCount === 'number') {
+        unreadNotifCount.value = $i.unreadNotificationsCount;
+        // hasUnreadNotification が無い古い環境のフォールバック
+        if (typeof $i.hasUnreadNotification !== 'boolean') {
+            hasUnreadNotif.value = $i.unreadNotificationsCount > 0;
+        }
+    }
+};
+
+// 初期状態の取得（$i に値があればそれを使い、無ければ API 取得）
 const checkUnread = async()=>{
     try {
-        // $i に未読件数があればそれを使う（最も正確）
-        if ($i && typeof $i.unreadNotificationsCount === 'number') {
-            unreadNotifCount.value = $i.unreadNotificationsCount;
-            hasUnreadNotif.value = $i.unreadNotificationsCount > 0;
-            return;
-        }
-        // フォールバック: 直近1件を取得して未読判定（following:true は付けない）
-        const r = await os.api('i/notifications', { limit: 1 });
-        if (Array.isArray(r) && r.length > 0 && !r[0].isRead) {
-            hasUnreadNotif.value = true;
-            // 件数は取れないので 0 のまま（ドット表示）
-        } else {
-            hasUnreadNotif.value = false;
-            unreadNotifCount.value = 0;
+        syncUnreadFromI();
+        // $i に何も値が無い場合のフォールバック: API で直近1件取得
+        if (!$i || (typeof $i.hasUnreadNotification !== 'boolean' && typeof $i.unreadNotificationsCount !== 'number')) {
+            const r = await os.api('i/notifications', { limit: 1 });
+            if (Array.isArray(r) && r.length > 0 && !r[0].isRead) {
+                hasUnreadNotif.value = true;
+            } else {
+                hasUnreadNotif.value = false;
+                unreadNotifCount.value = 0;
+            }
         }
     } catch {}
 };
 
+// useStream() でストリームのシングルトンを取得し、main チャンネルを購読
+// 接続未完了でも先にリスナーを登録しておけば、接続成立後に正しく発火する
 const initStream = ()=>{
+    if (mainCh) return; // 二重初期化防止
     try {
-        if(mainCh || !os.stream)return;
-        mainCh=os.stream.useChannel('main');
-        mainCh.on('notification',()=>{
-            if (mainRouter.currentRoute.value.path === '/my/notifications') return;
+        const stream = useStream();
+        if (!stream) {
+            console.warn('[hatasaba] useStream() returned null, scheduling retry');
+            setTimeout(initStream, 2000);
+            return;
+        }
+        mainCh = stream.useChannel('main');
+
+        // 新規通知
+        mainCh.on('notification', ()=>{
+            if (mainRouter.currentRoute.value.path.startsWith('/my/notifications')) return;
             hasUnreadNotif.value = true;
-            // $i から件数を再取得
-            if ($i && typeof $i.unreadNotificationsCount === 'number') {
+            // $i は本家の `meUpdated` イベント経由で自動更新される
+            // ここでは即時反応のためインクリメント or 同期
+            if (typeof $i?.unreadNotificationsCount === 'number') {
                 unreadNotifCount.value = $i.unreadNotificationsCount;
             } else {
                 unreadNotifCount.value++;
             }
         });
-        mainCh.on('unreadNotification',()=>{
-            if (mainRouter.currentRoute.value.path === '/my/notifications') return;
+
+        // 未読通知サマリ（接続復帰時など）
+        mainCh.on('unreadNotification', ()=>{
+            if (mainRouter.currentRoute.value.path.startsWith('/my/notifications')) return;
             hasUnreadNotif.value = true;
-            if ($i && typeof $i.unreadNotificationsCount === 'number') {
-                unreadNotifCount.value = $i.unreadNotificationsCount;
-            }
+            syncUnreadFromI();
         });
-        mainCh.on('readAllNotifications',()=>{
+
+        // 全て既読化
+        mainCh.on('readAllNotifications', ()=>{
             hasUnreadNotif.value = false;
             unreadNotifCount.value = 0;
         });
-    } catch(e) { console.warn('Stream init failed:', e); }
+
+        // 接続切断時のログのみ（ハンドラ自体は残る、再接続時に発火継続）
+        stream.on('_disconnected_', ()=>{
+            console.info('[hatasaba] stream disconnected (will auto-reconnect)');
+        });
+
+        // 接続成立後に1度同期しておく（$i に最新値があるはず）
+        syncUnreadFromI();
+    } catch(e) {
+        console.warn('[hatasaba] Stream init failed, retrying:', e);
+        mainCh = null;
+        setTimeout(initStream, 2000);
+    }
 };
 
 // $i.unreadNotificationsCount を定期的にポーリング（ストリーム不調時の保険）
@@ -694,8 +816,27 @@ function onSimpleUserPanel(ev: Event) {
     }
 }
 
-onMounted(()=>{ cleanupStaleUiElements(); checkIsPageView(); checkUnread(); startUnreadPoll(); window.addEventListener('simple-user-panel', onSimpleUserPanel); nextTick(()=>{ initStream(); startThemeWatch(); }); window.addEventListener('ext-tl-notif-count', onExtNotifCount); });
-onUnmounted(()=>{ mainCh?.dispose(); mainCh=null; stopUnreadPoll(); stopThemeWatch(); if(scrollTimer)clearTimeout(scrollTimer); window.removeEventListener('ext-tl-notif-count', onExtNotifCount); window.removeEventListener('resize', onResize); window.removeEventListener('simple-user-panel', onSimpleUserPanel); });
+onMounted(()=>{
+    cleanupStaleUiElements();
+    checkIsPageView();
+    // ストリームを先に初期化してから初期同期（接続未完了でもリスナー登録は有効）
+    initStream();
+    checkUnread();
+    startUnreadPoll();
+    window.addEventListener('simple-user-panel', onSimpleUserPanel);
+    nextTick(()=>{ startThemeWatch(); });
+    window.addEventListener('ext-tl-notif-count', onExtNotifCount);
+});
+onUnmounted(()=>{
+    mainCh?.dispose();
+    mainCh = null;
+    stopUnreadPoll();
+    stopThemeWatch();
+    if (scrollTimer) clearTimeout(scrollTimer);
+    window.removeEventListener('ext-tl-notif-count', onExtNotifCount);
+    window.removeEventListener('resize', onResize);
+    window.removeEventListener('simple-user-panel', onSimpleUserPanel);
+});
 </script>
 
 <style lang="scss" module>
@@ -858,15 +999,6 @@ onUnmounted(()=>{ mainCh?.dispose(); mainCh=null; stopUnreadPoll(); stopThemeWat
     text-overflow:ellipsis;
     white-space:nowrap;
 }
-.sbDot {
-    position:absolute;
-    top:10px;
-    left:28px;
-    width:7px;
-    height:7px;
-    border-radius:50%;
-    background:var(--MI_THEME-indicator, #f44);
-}
 .sbBadge {
     position:absolute;
     top:6px;
@@ -882,6 +1014,38 @@ onUnmounted(()=>{ mainCh?.dispose(); mainCh=null; stopUnreadPoll(); stopThemeWat
     line-height:18px;
     text-align:center;
     box-sizing:border-box;
+}
+.sbDot {
+    position:absolute;
+    top:10px;
+    right:14px;
+    width:8px;
+    height:8px;
+    border-radius:50%;
+    background:var(--MI_THEME-accent, #4c93e2);
+    box-shadow:0 0 0 2px var(--MI_THEME-panel, #fff);
+}
+.sbNotifDot {
+    position:absolute;
+    top:10px;
+    right:14px;
+    width:8px;
+    height:8px;
+    border-radius:50%;
+    background:var(--MI_THEME-indicator, #f44);
+    box-shadow:0 0 0 2px var(--MI_THEME-panel, #fff);
+}
+.sbGroupLabel {
+    font-size:11px;
+    font-weight:600;
+    opacity:0.5;
+    padding:4px 12px 2px;
+    margin-top:8px;
+    letter-spacing:0.04em;
+    user-select:none;
+}
+.sbGroupLabel:first-child {
+    margin-top:0;
 }
 .sbDivider {
     height:1px;
@@ -907,7 +1071,7 @@ onUnmounted(()=>{ mainCh?.dispose(); mainCh=null; stopUnreadPoll(); stopThemeWat
     padding:11px 0;
     border:none;
     border-radius:999px;
-    background:linear-gradient(135deg, var(--MI_THEME-buttonGradateA, var(--MI_THEME-accent)), var(--MI_THEME-buttonGradateB, var(--MI_THEME-accent)));
+    background:linear-gradient(135deg, var(--MI_THEME-accent), hsl(from var(--MI_THEME-accent) h s calc(l + 5)));
     color:var(--MI_THEME-fgOnAccent, #fff);
     font-family:inherit;
     font-size:.88rem;
@@ -1221,6 +1385,11 @@ onUnmounted(()=>{ mainCh?.dispose(); mainCh=null; stopUnreadPoll(); stopThemeWat
 }
 .desktopLayout .timelineContainer {
     padding-top:calc(56px);
+}
+/* 旗鯖fork: タイムライン上部固定投稿フォーム */
+.fixedPostForm {
+    margin: 0 auto var(--MI-margin) auto;
+    max-width: 800px;
 }
 .pageContainer { height:100%; overflow-y:auto; }
 

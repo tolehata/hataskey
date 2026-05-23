@@ -377,6 +377,32 @@
   </div></div>
 </div>
 
+<!-- ========== MEAL(食事記録) ========== -->
+<div v-if="activeTab==='meal'" class="htk-panels">
+  <div class="htk-lg htk-anim"><div class="htk-gc">
+    <h3 class="htk-sec-title">{{editingMeal?'記録を編集':'ごはんを記録'}} <button class="htk-info-btn" @click="showMealDisclaimerDialog">!</button></h3>
+    <div style="font-size:.72rem;opacity:.4;margin-bottom:10px">この機能は記録の補助用です。医療目的ではありません。</div>
+    <div class="htk-fg"><span class="htk-fl">いつのごはん？</span><div class="htk-meal-slots"><div v-for="s in mealSlots" :key="s.id" :class="['htk-meal-slot',selectedMealSlot===s.id&&'on']" @click="selectedMealSlot=s.id"><span class="htk-meal-slot-e">{{s.emoji}}</span><span class="htk-meal-slot-l">{{s.label}}</span></div></div></div>
+    <div class="htk-fg"><span class="htk-fl">どうだった？</span><div class="htk-meal-levels"><div v-for="l in mealLevels" :key="l.id" :class="['htk-meal-level',selectedMealLevel===l.id&&'on']" :style="selectedMealLevel===l.id?{borderColor:l.color,background:l.color+'22'}:{}" @click="selectedMealLevel=l.id"><span class="htk-meal-level-e">{{l.emoji}}</span><span class="htk-meal-level-l">{{l.label}}</span></div></div></div>
+    <!-- 理由は「少しだけ」「食べれなかった」のときだけ任意で。複数選択可。スキップしてもOK -->
+    <div v-if="selectedMealLevel!=='ate'" class="htk-fg"><span class="htk-fl">よかったら、理由も（任意・複数選べます）</span><div class="htk-meal-reasons"><span v-for="r in mealReasons" :key="r" :class="['htk-meal-reason',selectedMealReasons.includes(r)&&'on']" @click="toggleMealReason(r)">{{r}}</span></div></div>
+    <div class="htk-fg"><span class="htk-fl">ひとこと（任意）</span><textarea class="htk-inp" v-model="mealNote" placeholder="食べたものや、その時のことをメモ..."></textarea></div>
+    <div style="display:flex;gap:8px;margin-top:12px"><button class="htk-btn htk-primary" style="flex:1" @click="saveMeal" :disabled="isSaving">{{isSaving?'保存中...':(editingMeal?'更新':'記録する')}}</button><button v-if="editingMeal" class="htk-btn" @click="cancelEditMeal">キャンセル</button></div>
+  </div></div>
+
+  <!-- MEAL SUMMARY: 数値評価はしない。記録した行為を中立に労うのみ -->
+  <div v-if="settings.showMealSummary!==false" class="htk-lg htk-anim"><div class="htk-gc" style="text-align:center">
+    <div class="htk-meal-summary">{{mealSummaryMessage}}</div>
+  </div></div>
+
+  <div class="htk-lg htk-anim"><div class="htk-gc"><h3 class="htk-sec-title">ごはんの記録</h3>
+    <template v-if="meals.length"><div v-for="date in pagedMealDates" :key="date" class="htk-mood-dg"><div class="htk-mood-dg-h">{{formatMoodDate(String(date))}}<span v-if="mealsByDate[date].length>1" class="htk-mood-dg-c">{{mealsByDate[date].length}}件</span></div><div v-for="m in mealsByDate[date]" :key="m.id" class="htk-mood-en"><div class="htk-mood-en-t">{{m.time}}</div><span class="htk-mood-en-e">{{mealSlotInfo(m.slot).emoji}}</span><div class="htk-mood-en-ct"><div class="htk-meal-en-head"><span class="htk-meal-en-slot">{{mealSlotInfo(m.slot).label}}</span><span class="htk-meal-en-level" :style="{color:mealLevelInfo(m.level).color}">{{mealLevelInfo(m.level).emoji}} {{mealLevelInfo(m.level).label}}</span></div><div v-if="m.reasons&&m.reasons.length" class="htk-meal-en-reasons"><span v-for="r in m.reasons" :key="r" class="htk-meal-en-reason">{{r}}</span></div><div v-if="m.note" class="htk-mood-en-n">{{m.note}}</div></div><div class="htk-mood-en-acts"><button class="htk-mood-en-a" @click="startEditMeal(m)"><i class="ti ti-pencil"></i></button><button class="htk-mood-en-a del" @click="deleteMeal(m.id)">✕</button></div></div></div>
+    <div v-if="mealTotalPages>1" class="htk-pager"><button class="htk-btn htk-xs" :disabled="mealPage<=1" @click="mealPage--">&lt;</button><span class="htk-pager-t">{{mealPage}} / {{mealTotalPages}}</span><button class="htk-btn htk-xs" :disabled="mealPage>=mealTotalPages" @click="mealPage++">&gt;</button></div>
+    </template>
+    <div v-else class="htk-empty"><div class="htk-empI">⊘</div><div>まだ記録なし</div></div>
+  </div></div>
+</div>
+
 <!-- ========== GARDEN ========== -->
 <div v-if="activeTab==='garden'" class="htk-panels">
   <div class="htk-lg htk-anim"><div class="htk-gc" style="text-align:center;min-height:240px">
@@ -565,6 +591,7 @@
 
 <!-- MOOD DISCLAIMER MODAL -->
 <Teleport to="body"><div v-if="showMoodDisclaimer" class="htk-modal-ov" @click.self="showMoodDisclaimer=false"><div class="htk-lg htk-modal-c"><div class="htk-gc" style="padding:28px"><div style="text-align:center;font-size:2rem;margin-bottom:8px;text-shadow:none">ⓘ</div><div style="text-align:center;font-size:.92rem;font-weight:700;margin-bottom:10px">きもち記録について</div><div class="htk-popup-b">この機能は日々の気分を振り返るためのセルフケアツールです。<br><br>医療目的で開発されたものではなく、<strong>疾病の診断・治療・治癒、または身体の機能改善を保証するものではありません。</strong><br><br>心身の不調が続く場合は医療機関への受診をおすすめします。</div><div style="text-align:center;margin-top:14px"><button class="htk-btn htk-primary" @click="showMoodDisclaimer=false">了承する</button></div></div></div></div></Teleport>
+<Teleport to="body"><div v-if="showMealDisclaimer" class="htk-modal-ov" @click.self="ackMealDisclaimer"><div class="htk-lg htk-modal-c"><div class="htk-gc" style="padding:28px"><div style="text-align:center;font-size:2rem;margin-bottom:8px;text-shadow:none">ⓘ</div><div style="text-align:center;font-size:.92rem;font-weight:700;margin-bottom:10px">ごはん記録について</div><div class="htk-popup-b">{{mealDisclaimerText}}</div><div style="text-align:center;margin-top:14px"><button class="htk-btn htk-primary" @click="ackMealDisclaimer">了承する</button></div></div></div></div></Teleport>
 
 <!-- FLOWER INFO MODAL -->
 <Teleport to="body"><div v-if="showFlowerInfo" class="htk-modal-ov" @click.self="showFlowerInfo=false"><div class="htk-lg htk-modal-c"><div class="htk-gc" style="padding:28px"><div style="text-align:center;font-size:2rem;margin-bottom:8px;text-shadow:none">🌱</div><div style="text-align:center;font-size:.92rem;font-weight:700;margin-bottom:10px">お花の育て方</div><div class="htk-popup-b">このサーバーを使用していくにつれて、お花が成長していきます。<br><br>サーバーを開いている時間に応じて少しずつ成長します（約8-32時間）。<br><br>成長が完了すると名前を付けられます。育て終わった花の名前はいつでもギャラリーから変更できます。<br><br>全125種類以上のお花や奇妙なアイテムが用意されています。レアアイテムも！</div><div style="text-align:center;margin-top:14px"><button class="htk-btn htk-primary" @click="showFlowerInfo=false">わかった！</button></div></div></div></div></Teleport>
@@ -635,12 +662,19 @@ import { floraData, pickRandomFlora, generateFlowerName } from '@/utility/hatask
 const _getPhrase = (ctx?: any): string => { try { return getPhrase(ctx); } catch { return 'こんにちは！'; } };
 definePage(()=>({title:'Hatask',icon:'ti ti-checklist'}));
 const SCOPE=['client','hatask'];
-const tabs=[{id:'home',icon:'☰',label:'ホーム'},{id:'cal',icon:'◫',label:'カレンダー'},{id:'todo',icon:'☐',label:'ToDo'},{id:'mood',icon:'◉',label:'きもち'},{id:'garden',icon:'❋',label:'お庭'},{id:'eye',icon:'◎',label:'Eye'}];
+const tabs=[{id:'home',icon:'☰',label:'ホーム'},{id:'cal',icon:'◫',label:'カレンダー'},{id:'todo',icon:'☐',label:'ToDo'},{id:'mood',icon:'◉',label:'きもち'},{id:'meal',icon:'🍽',label:'ごはん'},{id:'garden',icon:'❋',label:'お庭'},{id:'eye',icon:'◎',label:'Eye'}];
 const showMobileNav=ref(true);
 const moodEmojis:Record<number,string>={1:'😢',2:'😞',3:'😐',4:'😊',5:'🥰'};
 const moodOptions=[{level:1,emoji:'😢',label:'つらい'},{level:2,emoji:'😞',label:'もやもや'},{level:3,emoji:'😐',label:'ふつう'},{level:4,emoji:'😊',label:'いい感じ'},{level:5,emoji:'🥰',label:'最高！'}];
 const moodEmojisExtra=['☀️','🌧️','⚡','🌈','🍵','🎵','💪','😴'];
 const moodRemindTimes=['朝 8:00','昼 12:00','夜 20:00','寝る前 23:00'];
+// ===== 食事記録(meal) 定数。医療目的ではない自己記録メモ。数値評価・カロリー計算はしない =====
+const mealSlots=[{id:'breakfast',emoji:'🌅',label:'朝'},{id:'lunch',emoji:'☀️',label:'昼'},{id:'dinner',emoji:'🌙',label:'夜'},{id:'snack',emoji:'🍪',label:'間食'}];
+// 3段階はすべて中立・等価に扱う。「食べれなかった」を否定的に強調しない
+const mealLevels=[{id:'ate',emoji:'🍚',label:'食べれた',color:'#85cdca'},{id:'little',emoji:'🥄',label:'少しだけ',color:'#e8a87c'},{id:'none',emoji:'🍵',label:'食べれなかった',color:'#c38d9e'}];
+// 「少しだけ」「食べれなかった」のときだけ任意で表示。複数選択可。体型・体重・カロリーに触れる選択肢は置かない
+const mealReasons=['食欲がなかった','体調がよくなかった','忙しくて時間がなかった','気分がのらなかった','用意できなかった','なんとなく'];
+const mealDisclaimerText='この機能は食事の記録を補助するためのもので、医療目的での利用は想定していません。診断・治療の代わりにはなりません。体調や食事について気になることがあれば、医師など専門家にご相談ください。本機能の利用によって生じたいかなる問題についても、開発者およびサーバー運営者は責任を負いません。';
 const eventColors=['#e27d60','#85cdca','#e8a87c','#c38d9e','#7bc67e','#f0c75e','#6cb4ee'];
 const eventEmojis=['⭐','💼','🎮','🔧','📚','🎂','✈️','🎨','🏃','🎤'];
 const notifyTimings=['15分前','30分前','1時間前','1日前'];
@@ -668,6 +702,12 @@ watch(activeTab, () => {
     document.documentElement.style.removeProperty('overflow');
     window.scrollTo({ top: window.scrollY }); // force scroll recalc
   });
+});
+// meal タブを初めて開いたとき、免責ダイアログを必ず表示する(既読フラグは registry settings に同期)
+watch(activeTab, (t) => {
+  if (t === 'meal' && dataLoaded.value && !settings.value.mealDisclaimerShown) {
+    showMealDisclaimer.value = true;
+  }
 });
 const showMoodDisclaimer=ref(false);const showFlowerInfo=ref(false);const showMoodNote=ref(true);const showMoodRemind=ref(false);
 const moodSelectedEmoji=ref('');const rootEl=ref<HTMLElement|null>(null);
@@ -981,6 +1021,15 @@ const selectedMoodLevel=ref(4);const moodNote=ref('');const editingMood=ref<any>
 const moods=ref<any[]>([]);
 const moodsByDate=computed(()=>{const g:Record<string,any[]>={};[...moods.value].sort((a,b)=>b.date.localeCompare(a.date)||b.time.localeCompare(a.time)).forEach(m=>{if(!g[m.date])g[m.date]=[];g[m.date].push(m)});return g});
 
+// Meal(食事記録) - mood と並列。医療目的ではない自己記録メモ。集計の数値化・スコア化はしない
+const selectedMealSlot=ref('breakfast');const selectedMealLevel=ref('ate');const selectedMealReasons=ref<string[]>([]);const mealNote=ref('');const editingMeal=ref<any>(null);
+const meals=ref<any[]>([]);
+const showMealDisclaimer=ref(false);
+const mealsByDate=computed(()=>{const g:Record<string,any[]>={};[...meals.value].sort((a,b)=>b.date.localeCompare(a.date)||b.time.localeCompare(a.time)).forEach(m=>{if(!g[m.date])g[m.date]=[];g[m.date].push(m)});return g});
+// サマリーは数値評価を出さない。記録した行為そのものを中立に肯定する労いのみ
+const mealTodayCount=computed(()=>{const today=new Date().toISOString().slice(0,10);return meals.value.filter(m=>m.date===today).length});
+const mealSummaryMessage=computed(()=>{const c=mealTodayCount.value;if(c===0)return'今日はまだ記録がありません。気が向いたときに、どうぞ。';if(c===1)return'今日はひとつ記録できたね。おつかれさま。';return'今日も記録できたね。おつかれさま。'});
+
 // ===== PAGINATION =====
 const ITEMS_PER_PAGE = 10;
 const moodPage = ref(1);
@@ -992,6 +1041,12 @@ const calListPage = ref(1);
 const moodDateKeys = computed(()=>Object.keys(moodsByDate.value));
 const moodTotalPages = computed(()=>Math.max(1,Math.ceil(moodDateKeys.value.length/ITEMS_PER_PAGE)));
 const pagedMoodDates = computed(()=>{const start=(moodPage.value-1)*ITEMS_PER_PAGE;return moodDateKeys.value.slice(start,start+ITEMS_PER_PAGE)});
+
+// Paginated meal dates
+const mealPage = ref(1);
+const mealDateKeys = computed(()=>Object.keys(mealsByDate.value));
+const mealTotalPages = computed(()=>Math.max(1,Math.ceil(mealDateKeys.value.length/ITEMS_PER_PAGE)));
+const pagedMealDates = computed(()=>{const start=(mealPage.value-1)*ITEMS_PER_PAGE;return mealDateKeys.value.slice(start,start+ITEMS_PER_PAGE)});
 
 // Paginated todos
 const todoTotalPages = computed(()=>Math.max(1,Math.ceil(sortedTodos.value.length/ITEMS_PER_PAGE)));
@@ -1152,6 +1207,24 @@ async function saveMood(){isSaving.value=true;try{if(editingMood.value){const id
 function startEditMood(m:any){editingMood.value=m;selectedMoodLevel.value=m.level;moodNote.value=m.note==='（ひとことなし）'?'':m.note;moodSelectedEmoji.value=m.emoji||'';showMoodNote.value=true;window.scrollTo({top:0,behavior:'smooth'})}
 function cancelEditMood(){editingMood.value=null;selectedMoodLevel.value=4;moodNote.value='';moodSelectedEmoji.value=''}
 async function deleteMood(id:string){const{canceled}=await os.confirm({type:'warning',text:'この記録を削除しますか？'});if(canceled)return;moods.value=moods.value.filter(m=>m.id!==id);await registrySet('moods',moods.value)}
+
+// ===== 食事記録(meal) ロジック。3段階は等価に扱い、数値評価・スコア化はしない =====
+function toggleMealReason(r:string){const i=selectedMealReasons.value.indexOf(r);if(i>=0)selectedMealReasons.value.splice(i,1);else selectedMealReasons.value.push(r)}
+function resetMealForm(){selectedMealSlot.value='breakfast';selectedMealLevel.value='ate';selectedMealReasons.value=[];mealNote.value='';editingMeal.value=null}
+async function saveMeal(){isSaving.value=true;try{
+  // 「食べれた」のときは理由を保存しない(尋問感を出さないため)
+  const reasons=selectedMealLevel.value==='ate'?[]:[...selectedMealReasons.value];
+  if(editingMeal.value){const idx=meals.value.findIndex(m=>m.id===editingMeal.value.id);if(idx>=0){meals.value[idx]={...meals.value[idx],slot:selectedMealSlot.value,level:selectedMealLevel.value,reasons,note:mealNote.value.trim()};}resetMealForm();await registrySet('meals',meals.value);os.toast('記録を更新しました')}
+  else{const now=new Date();meals.value.unshift({id:generateId(),slot:selectedMealSlot.value,level:selectedMealLevel.value,reasons,note:mealNote.value.trim(),date:now.toISOString().slice(0,10),time:`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`});resetMealForm();await registrySet('meals',meals.value);os.toast('記録できたね')}
+}finally{isSaving.value=false}}
+function startEditMeal(m:any){editingMeal.value=m;selectedMealSlot.value=m.slot;selectedMealLevel.value=m.level;selectedMealReasons.value=Array.isArray(m.reasons)?[...m.reasons]:[];mealNote.value=m.note||'';window.scrollTo({top:0,behavior:'smooth'})}
+function cancelEditMeal(){resetMealForm()}
+async function deleteMeal(id:string){const{canceled}=await os.confirm({type:'warning',text:'この記録を削除しますか？'});if(canceled)return;meals.value=meals.value.filter(m=>m.id!==id);await registrySet('meals',meals.value)}
+function mealSlotInfo(id:string){return mealSlots.find(s=>s.id===id)||{emoji:'🍽',label:''}}
+function mealLevelInfo(id:string){return mealLevels.find(l=>l.id===id)||{emoji:'🍽',label:'',color:'var(--MI_THEME-fg)'}}
+// 免責ダイアログ: 初回必ず表示、以降は!マークから手動表示
+async function showMealDisclaimerDialog(){showMealDisclaimer.value=true}
+async function ackMealDisclaimer(){showMealDisclaimer.value=false;if(!settings.value.mealDisclaimerShown){settings.value.mealDisclaimerShown=true;await registrySet('settings',settings.value)}}
 async function harvestFlower(){const autoName=generateFlowerName({emoji:flower.value.emoji,name:flower.value.name});const{canceled,result}=await os.inputText({title:'お花が咲きました！',text:'お花に名前をつけてあげましょう（自動生成名が入っています）:',default:autoName});if(canceled||!result)return;const flora=floraData.find(f=>f.emoji===flower.value.emoji);gallery.value.unshift({id:generateId(),emoji:flower.value.emoji,name:result,hanakotoba:flora?.hanakotoba||'',date:new Date().toLocaleDateString('ja-JP')});const nf=pickRandomFlora();flower.value={emoji:nf.emoji,name:generateFlowerName(nf),progress:0,startedAt:Date.now(),totalMinutes:0};await registrySet('gallery',gallery.value);await registrySet('flower',flower.value);os.toast('お花を収穫しました！')}
 async function renameFlower(fl:any){const{canceled,result}=await os.inputText({title:'お花の名前を変更',text:'新しい名前:',default:fl.name});if(!canceled&&result){fl.name=result;await registrySet('gallery',gallery.value)}}
 
@@ -1270,7 +1343,7 @@ nextTick(() => {
 });
 const initFlower = pickRandomFlora();
 const defaultFlower = { emoji: initFlower.emoji, name: generateFlowerName(initFlower), progress: 0, startedAt: Date.now(), totalMinutes: 0 };
-const defaultSettings = { bgTheme: 'ocean', darkMode: false, autoTheme: true, weekStart: 'mon', showClock: true, showEvents: true, showFlower: true, showMoodSummary: true, moodRemind: true, moodRemindTimes: ['昼 12:00', '寝る前 23:00'], openOnStart: false };
+const defaultSettings = { bgTheme: 'ocean', darkMode: false, autoTheme: true, weekStart: 'mon', showClock: true, showEvents: true, showFlower: true, showMoodSummary: true, moodRemind: true, moodRemindTimes: ['昼 12:00', '寝る前 23:00'], openOnStart: false, showMealSummary: true, mealDisclaimerShown: false };
 
 // 各データを個別に取得（1つの失敗が他に影響しないようにする）
 const loadResults = await Promise.allSettled([
@@ -1281,6 +1354,7 @@ const loadResults = await Promise.allSettled([
   registryGet('gallery', []),
   registryGet('settings', defaultSettings),
   registryGet('events', []),
+  registryGet('meals', []),
 ]);
 // 取得成功したデータのみ代入（失敗したキーは初期値のまま → registrySetガードで保護）
 if (loadResults[0].status === 'fulfilled' && loadedKeys.has('todos')) todos.value = loadResults[0].value as any;
@@ -1290,6 +1364,7 @@ if (loadResults[3].status === 'fulfilled' && loadedKeys.has('flower')) flower.va
 if (loadResults[4].status === 'fulfilled' && loadedKeys.has('gallery')) gallery.value = loadResults[4].value as any;
 if (loadResults[5].status === 'fulfilled' && loadedKeys.has('settings')) settings.value = loadResults[5].value as any;
 if (loadResults[6].status === 'fulfilled' && loadedKeys.has('events')) events.value = loadResults[6].value as any;
+if (loadResults[7].status === 'fulfilled' && loadedKeys.has('meals')) meals.value = loadResults[7].value as any;
 dataLoaded.value = true;
 // 削除済みテーマのマイグレーション
 if (settings.value.bgTheme === 'warm' || settings.value.bgTheme === 'sunset') {
@@ -1834,6 +1909,29 @@ select.htk-inp{appearance:none;cursor:pointer;padding-right:36px}
 @keyframes htkParticle{0%{opacity:0;transform:translateY(0) scale(0)}15%{opacity:1;transform:scale(1)}100%{opacity:0;transform:translateY(-200px) scale(0)}}
 @keyframes htkSpotPulse{0%,100%{box-shadow:0 0 20px rgba(232,168,124,.2),inset 0 0 20px rgba(232,168,124,.1)}50%{box-shadow:0 0 30px rgba(232,168,124,.35),inset 0 0 25px rgba(232,168,124,.15)}}
 @keyframes htkSpotTipIn{from{opacity:0;transform:translateY(14px) scale(.93)}to{opacity:1;transform:translateY(0) scale(1)}}
+
+/* ===== 食事記録(meal)。3段階は等価に扱い、否定的な色強調はしない ===== */
+.htk-meal-slots{display:flex;gap:6px;margin-top:6px}
+.htk-meal-slot{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;padding:8px 4px;border-radius:var(--radius-sm);border:1.5px solid var(--btn-border);background:var(--btn-bg);transition:all .25s var(--ease-spring)}
+.htk-meal-slot:hover{background:var(--hover-bg);transform:translateY(-2px)}
+.htk-meal-slot.on{background:color-mix(in srgb,var(--MI_THEME-accent) 16%,transparent);border-color:var(--MI_THEME-accent);transform:translateY(-2px) scale(1.03);box-shadow:0 0 0 1px var(--MI_THEME-accent) inset}
+.htk-meal-slot.on .htk-meal-slot-l{color:var(--MI_THEME-accent);font-weight:700}
+.htk-meal-slot.on .htk-meal-slot-e{transform:scale(1.12)}
+.htk-meal-slot-e{font-size:1.3rem;text-shadow:none;transition:transform .25s}.htk-meal-slot-l{font-size:.72rem;transition:color .2s}
+.htk-meal-levels{display:flex;gap:6px;margin-top:6px}
+.htk-meal-level{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;padding:10px 4px;border-radius:var(--radius-sm);border:1.5px solid var(--btn-border);background:var(--btn-bg);transition:all .25s var(--ease-spring)}
+.htk-meal-level:hover{background:var(--hover-bg);transform:translateY(-2px)}
+.htk-meal-level-e{font-size:1.5rem;text-shadow:none}.htk-meal-level-l{font-size:.74rem;font-weight:600}
+.htk-meal-reasons{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.htk-meal-reason{padding:4px 12px;border-radius:16px;font-size:.74rem;background:var(--btn-bg);border:1px solid var(--btn-border);cursor:pointer;transition:all .2s;backdrop-filter:blur(4px)}
+.htk-meal-reason:hover{background:var(--btn-hover)}
+.htk-meal-reason.on{background:rgba(133,205,202,.18);border-color:rgba(133,205,202,.4)}
+.htk-meal-summary{font-size:.86rem;line-height:1.7;opacity:.85;padding:6px 4px}
+.htk-meal-en-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.htk-meal-en-slot{font-size:.8rem;font-weight:700}
+.htk-meal-en-level{font-size:.76rem;font-weight:600}
+.htk-meal-en-reasons{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+.htk-meal-en-reason{padding:2px 8px;border-radius:12px;font-size:.66rem;background:var(--btn-bg);border:1px solid var(--btn-border);opacity:.85}
 
 </style>
 

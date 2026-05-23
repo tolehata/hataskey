@@ -84,7 +84,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 					@click="selectEmoji(emoji)"
 					@contextmenu.prevent="addFavorite(emoji)"
 				>
-					<img v-if="emoji.startsWith(':')" :src="getCustomEmojiUrl(emoji)" :alt="emoji" :class="$style.emojiImg" loading="lazy"/>
+					<template v-if="emoji.startsWith(':')">
+						<img v-if="getCustomEmojiUrl(emoji)" :src="getCustomEmojiUrl(emoji)" :alt="emoji" :class="$style.emojiImg" loading="lazy"/>
+						<span v-else :class="$style.unresolvedEmoji" :title="`画像が解決できませんでした: ${emoji}`">{{ emoji }}</span>
+					</template>
 					<span v-else :class="$style.unicodeEmoji">{{ emoji }}</span>
 				</button>
 			</div>
@@ -105,7 +108,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 					@click="selectEmoji(emoji)"
 					@contextmenu.prevent="removeFavorite(emoji)"
 				>
-					<img v-if="emoji.startsWith(':')" :src="getCustomEmojiUrl(emoji)" :alt="emoji" :class="$style.emojiImg" loading="lazy"/>
+					<template v-if="emoji.startsWith(':')">
+						<img v-if="getCustomEmojiUrl(emoji)" :src="getCustomEmojiUrl(emoji)" :alt="emoji" :class="$style.emojiImg" loading="lazy"/>
+						<span v-else :class="$style.unresolvedEmoji" :title="`画像が解決できませんでした: ${emoji}`">{{ emoji }}</span>
+					</template>
 					<span v-else :class="$style.unicodeEmoji">{{ emoji }}</span>
 				</button>
 			</div>
@@ -210,9 +216,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { ref, computed, onMounted, useTemplateRef, nextTick } from 'vue';
+import { ref, computed, onMounted, useTemplateRef, nextTick, watch } from 'vue';
 import MkModal from '@/components/MkModal.vue';
-import { getExternalCustomEmojis, getExternalFavoriteEmojis, setExternalFavoriteEmojis, addExternalFavoriteEmoji, removeExternalFavoriteEmoji, getExternalRecentReactions } from '@/utility/external-api.js';
+import { getExternalCustomEmojis, getExternalFavoriteEmojis, setExternalFavoriteEmojis, addExternalFavoriteEmoji, removeExternalFavoriteEmoji, getExternalRecentReactions, getExternalFavoriteEmojisDetailed, getExternalRecentReactionsDetailed, lookupExternalEmojiUrl, getExternalAccount, setExternalEmojiUrlMapForHost } from '@/utility/external-api.js';
 import type { ExternalCustomEmoji } from '@/utility/external-api.js';
 import * as os from '@/os.js';
 
@@ -313,8 +319,12 @@ const categorizedEmojis = computed(() => {
 });
 
 // ===== お気に入り管理 =====
+//
+// host/url を付与して保存することで、別の外部サーバー使用時にも復元可能にする(API不要)。
+// Unicode絵文字や URL 不明のものは host=null, url=null で保存(従来挙動と同じ)。
 function addFavorite(emoji: string) {
-	addExternalFavoriteEmoji(emoji);
+	const meta = resolveEmojiMeta(emoji);
+	addExternalFavoriteEmoji(emoji, meta.host, meta.url);
 	favoriteEmojis.value = getExternalFavoriteEmojis();
 	os.toast('⭐ お気に入りに追加しました');
 }
@@ -325,11 +335,78 @@ function removeFavorite(emoji: string) {
 	os.toast('お気に入りから削除しました');
 }
 
-// ===== カスタム絵文字URL取得（お気に入り・最近使った用） =====
+/**
+ * リアクション文字列から host と url を推測する補助関数
+ * - :name: 形式 → 現在の外部サーバーのhost + customEmojis[name].url
+ * - :name@host: 形式 → host + 既知マップ参照
+ * - Unicode → host=null, url=null
+ */
+function resolveEmojiMeta(reaction: string): { host: string | null; url: string | null } {
+	const match = reaction.match(/^:([^:]+?)(?:@([^:]+))?:$/);
+	if (!match) return { host: null, url: null }; // Unicode
+
+	const name = match[1];
+	const explicitHost = match[2] ?? null;
+	const acc = getExternalAccount();
+	const currentHost = acc?.host ?? null;
+
+	// 探索順: explicitHost指定 → 現サーバー
+	if (explicitHost) {
+		return { host: explicitHost, url: lookupExternalEmojiUrl(explicitHost, name) };
+	}
+	const emoji = customEmojis.value.find(e => e.name === name);
+	return {
+		host: currentHost,
+		url: emoji?.url ?? null,
+	};
+}
+
+// ===== 履歴/お気に入りエントリの索引(URL高速ルックアップ用) =====
+const favoriteEntriesIndex = computed(() => {
+	const idx = new Map<string, { host: string | null; url: string | null }>();
+	for (const e of getExternalFavoriteEmojisDetailed()) {
+		idx.set(e.reaction, { host: e.host, url: e.url });
+	}
+	return idx;
+});
+
+const recentEntriesIndex = computed(() => {
+	const idx = new Map<string, { host: string | null; url: string | null }>();
+	for (const e of getExternalRecentReactionsDetailed()) {
+		idx.set(e.reaction, { host: e.host, url: e.url });
+	}
+	return idx;
+});
+
+// ===== カスタム絵文字URL取得(お気に入り・最近使った用、3段階フォールバック) =====
+//
+// 1. 履歴/お気に入りに保存された URL を最優先(API呼び出し0、別サーバーで使った絵文字も復元可能)
+// 2. ホストごとの絵文字URLマップ(複数サーバー対応、24h TTL、最大10ホストLRU)
+// 3. 現在のカスタム絵文字一覧から検索(カスタムタブ開いた時にのみ取得済)
+//
+// すべて空振りなら '' を返し、呼び出し側で エラー画像へのフォールバック処理を実装する。
 function getCustomEmojiUrl(reaction: string): string {
-	const match = reaction.match(/^:([^:]+):$/);
+	const match = reaction.match(/^:([^:]+?)(?:@([^:]+))?:$/);
 	if (!match) return '';
 	const name = match[1];
+	const explicitHost = match[2] ?? null; // :name@host: 形式の場合
+
+	// レイヤー1: 履歴/お気に入りに保存された URL
+	const favEntry = favoriteEntriesIndex.value.get(reaction);
+	if (favEntry?.url) return favEntry.url;
+
+	const recEntry = recentEntriesIndex.value.get(reaction);
+	if (recEntry?.url) return recEntry.url;
+
+	// レイヤー2: ホストごとの絵文字URLマップから引く(API呼ばずに別ホストの絵文字を解決)
+	// ホストの優先順: explicitHost(:name@host: 形式) → 履歴/お気に入りに保存されたhost
+	const candidateHost = explicitHost ?? favEntry?.host ?? recEntry?.host ?? null;
+	if (candidateHost) {
+		const fromMap = lookupExternalEmojiUrl(candidateHost, name);
+		if (fromMap) return fromMap;
+	}
+
+	// レイヤー3: 現サーバー(カスタムタブで取得済みのもの)から探す
 	const emoji = customEmojis.value.find(e => e.name === name);
 	return emoji?.url ?? '';
 }
@@ -344,21 +421,68 @@ function close() {
 	modal.value?.close();
 }
 
+// ===== 遅延読込: カスタム絵文字一覧を必要なときだけ取得 =====
+let customEmojisLoadStarted = false;
+
+async function ensureCustomEmojisLoaded() {
+	if (customEmojisLoadStarted) return;
+	if (customEmojis.value.length > 0) return; // 既に読み込み済み
+	customEmojisLoadStarted = true;
+	loadingEmojis.value = true;
+	try {
+		customEmojis.value = await getExternalCustomEmojis();
+		// 起動時に最初のカテゴリのみ自動展開
+		if (customEmojis.value.length > 0 && categorizedEmojis.value.length > 0 && openCategories.value.size === 0) {
+			openCategories.value = new Set([categorizedEmojis.value[0].name]);
+		}
+		// 取得した絵文字一覧を name→URL マップとして永続キャッシュ(複数ホスト対応、24h TTL、LRU)
+		const acc = getExternalAccount();
+		if (acc?.host && customEmojis.value.length > 0) {
+			const map: Record<string, string> = {};
+			for (const e of customEmojis.value) {
+				if (e.name && e.url) map[e.name] = e.url;
+			}
+			setExternalEmojiUrlMapForHost(acc.host, map);
+		}
+	} catch (err) {
+		console.error('[ExternalReactionPicker] Failed to load emojis:', err);
+		customEmojisLoadStarted = false; // 失敗したら再試行可能に
+	} finally {
+		loadingEmojis.value = false;
+	}
+}
+
+// カスタムタブが選択されたら、未取得ならその時に取得を開始
+watch(activeTab, async (tab) => {
+	if (tab === 'custom') {
+		await ensureCustomEmojisLoaded();
+	}
+});
+
+// 検索開始時もカスタム絵文字が必要(ヒット対象なので)
+watch(searchQuery, async (q) => {
+	if (q && q.trim().length > 0) {
+		await ensureCustomEmojisLoaded();
+	}
+});
+
 // ===== 初期化 =====
 onMounted(async () => {
 	detectDark();
 
-	// お気に入り・履歴を読み込み
+	// お気に入り・履歴を読み込み(localStorageのみ、API呼ばない)
 	favoriteEmojis.value = getExternalFavoriteEmojis();
 	recentReactions.value = getExternalRecentReactions();
-	
-	// デフォルトタブ: よく使う → お気に入り → 外部絵文字
+
+	// デフォルトタブ: 履歴があれば履歴 → お気に入り → カスタム
 	if (recentReactions.value.length > 0) {
 		activeTab.value = 'recent';
 	} else if (favoriteEmojis.value.length > 0) {
 		activeTab.value = 'favorites';
 	} else {
+		// 履歴もお気に入りも無い場合はカスタムタブを初期表示し、その場で取得
 		activeTab.value = 'custom';
+		await ensureCustomEmojisLoaded();
 	}
 
 	// 初回表示時のヒント
@@ -366,19 +490,6 @@ onMounted(async () => {
 	if (!hintShown) {
 		localStorage.setItem('externalReactionPickerHintShown', 'true');
 		os.toast('💡 絵文字を長押し/右クリックでお気に入りに追加・削除できます');
-	}
-
-	loadingEmojis.value = true;
-	try {
-		customEmojis.value = await getExternalCustomEmojis();
-		// 起動時に最初のカテゴリのみ自動展開（全閉じだと操作が分かりにくいため）
-		if (customEmojis.value.length > 0 && categorizedEmojis.value.length > 0) {
-			openCategories.value = new Set([categorizedEmojis.value[0].name]);
-		}
-	} catch (err) {
-		console.error('[ExternalReactionPicker] Failed to load emojis:', err);
-	} finally {
-		loadingEmojis.value = false;
 	}
 
 	await nextTick();
@@ -644,5 +755,20 @@ onMounted(async () => {
 .unicodeEmoji {
 	font-size: 1.25em;
 	line-height: 1;
+}
+
+/* 旗鯖fork: 履歴/お気に入りに保存された絵文字のURLが解決できなかった場合のフォールバック表示 */
+/* 「壊れた画像」アイコンの代わりに、絵文字コードを半透明テキストとして表示 */
+.unresolvedEmoji {
+	display: inline-block;
+	font-size: 0.65em;
+	line-height: 1.05;
+	max-width: 32px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	opacity: 0.55;
+	font-family: monospace;
+	letter-spacing: -0.05em;
 }
 </style>

@@ -38,11 +38,10 @@ export type ModeratorInactivityRemainingTime = {
 };
 
 function generateModeratorInactivityMail(remainingTime: ModeratorInactivityRemainingTime) {
-	const subject = 'Moderator Inactivity Warning / モデレーター不在の通知 / 모더레이터 부재 안내';
+	const subject = 'Moderator Inactivity Warning / モデレーター不在の通知';
 
 	const timeVariant = remainingTime.asDays === 0 ? `${remainingTime.asHours} hours` : `${remainingTime.asDays} days`;
 	const timeVariantJa = remainingTime.asDays === 0 ? `${remainingTime.asHours} 時間` : `${remainingTime.asDays} 日間`;
-	const timeVariantKo = remainingTime.asDays === 0 ? `${remainingTime.asHours} 시간` : `${remainingTime.asDays} 일간`;
 	const message = [
 		'To Moderators,',
 		'',
@@ -55,13 +54,6 @@ function generateModeratorInactivityMail(remainingTime: ModeratorInactivityRemai
 		'',
 		`モデレーターが一定期間活動していないようです。あと${timeVariantJa}活動していない状態が続くと招待制に切り替わります。`,
 		'招待制に切り替わることを望まない場合は、CherryPickにログインして最終アクティブ日時を更新してください。',
-		'',
-		'---------------',
-		'',
-		'To 모더레이터 여러분께',
-		'',
-		`모더레이터가 일정 기간 동안 활동이 없는 것으로 추정돼요. 앞으로 ${timeVariantKo} 비활성 상태가 지속되면 자동으로 초대제로 전환돼요.`,
-		'초대제로 전환을 원하지 않는 경우, CherryPick에 로그인하여 마지막 활성 날짜를 업데이트해 주세요.',
 		'',
 	];
 
@@ -76,7 +68,7 @@ function generateModeratorInactivityMail(remainingTime: ModeratorInactivityRemai
 }
 
 function generateInvitationOnlyChangedMail(moderatorInactivityLimitDays: number) {
-	const subject = 'Change to Invitation-Only / 招待制に変更されました / 초대제로 변경되었습니다';
+	const subject = 'Change to Invitation-Only / 招待制に変更されました';
 
 	const message = [
 		'To Moderators,',
@@ -91,13 +83,6 @@ function generateInvitationOnlyChangedMail(moderatorInactivityLimitDays: number)
 		`モデレーターの活動が${moderatorInactivityLimitDays}日間検出されなかったため、招待制に変更されました。`,
 		'招待制を解除するには、コントロールパネルにアクセスする必要があります。',
 		'',
-		'---------------',
-		'',
-		'To 모더레이터 여러분께',
-		'',
-		`모더레이터가 ${moderatorInactivityLimitDays}일간 활동이 확인되지 않아 초대제로 변경되었어요.`,
-		'초대제를 해제하려면 `제어판 - 모더레이션`에 접속해서 변경해야 해요.',
-		'',
 	];
 
 	const html = message.join('<br>');
@@ -111,7 +96,7 @@ function generateInvitationOnlyChangedMail(moderatorInactivityLimitDays: number)
 }
 
 function generateDisablePublicNoteChangedMail(moderatorInactivityLimitDays: number) {
-	const subject = 'Change to Public Note Disabled / パブリック投稿が無効になりました / 공개 노트가 비활성화 되었습니다';
+	const subject = 'Change to Public Note Disabled / パブリック投稿が無効になりました';
 
 	const message = [
 		'To Moderators,',
@@ -125,13 +110,6 @@ function generateDisablePublicNoteChangedMail(moderatorInactivityLimitDays: numb
 		'',
 		`モデレーターの活動が${moderatorInactivityLimitDays}日間検出されなかったため、パブリック投稿が無効に変更されました。`,
 		'パブリック投稿無効を解除するには、コントロールパネルにアクセスする必要があります。',
-		'',
-		'---------------',
-		'',
-		'To 모더레이터 여러분께',
-		'',
-		`모더레이터가 ${moderatorInactivityLimitDays}일간 활동이 확인되지 않아 '공개 노트 허용'이 비활성화로 변경되었어요.`,
-		'다시 허용하려면 `제어판 - 역할`에 접속해서 변경해야 해요.',
 		'',
 	];
 

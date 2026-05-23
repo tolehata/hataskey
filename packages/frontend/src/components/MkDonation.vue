@@ -1,5 +1,7 @@
 <!--
 SPDX-FileCopyrightText: syuilo and misskey-project
+SPDX-FileCopyrightText: noridev and cherrypick-project
+SPDX-FileCopyrightText: Tolehata and hatasaba-project
 SPDX-License-Identifier: AGPL-3.0-only
 -->
 
@@ -23,7 +25,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</template>
 			</I18n>
 			<div style="margin-top: 0.2em;">
-				<a class="_link" @click="donateCherryPick">{{ i18n.ts.learnMore }}</a>
+				<a class="_link" @click="donateCherryPick">こちら</a>
 			</div>
 		</div>
 		<div class="_buttons">

@@ -131,6 +131,35 @@ export class NotificationEntityService implements OnModuleInit {
 				note: noteIfNeed,
 				reactions,
 			});
+		} else if (notification.type === 'reaction:groupedByUser') {
+			// 旗鯖fork: 同じユーザーから複数ノートへのリアクションをまとめて表示
+			const user = hint?.packedUsers != null
+				? hint.packedUsers.get(notification.notifierId)
+				: await this.userEntityService.pack(notification.notifierId, { id: meId });
+			if (!user) return null;
+
+			const reactions = (await Promise.all(notification.reactions.map(async reaction => {
+				const note = hint?.packedNotes != null
+					? hint.packedNotes.get(reaction.noteId)
+					: await this.noteEntityService.pack(reaction.noteId, { id: meId }, { detail: true }).catch(() => null);
+				if (!note) return null;
+				return {
+					note,
+					reaction: reaction.reaction,
+					createdAt: new Date(reaction.createdAt).toISOString(),
+				};
+			}))).filter(r => r != null);
+			// if all notes have been deleted, don't show this notification
+			if (reactions.length === 0) return null;
+
+			return await awaitAll({
+				id: notification.id,
+				createdAt: new Date(notification.createdAt).toISOString(),
+				type: notification.type,
+				user,
+				userId: notification.notifierId,
+				reactions,
+			});
 		} else if (notification.type === 'renote:grouped') {
 			const users = (await Promise.all(notification.userIds.map(userId => {
 				const packedUser = hint?.packedUsers != null ? hint.packedUsers.get(userId) : null;
@@ -226,6 +255,8 @@ export class NotificationEntityService implements OnModuleInit {
 				body: notification.customBody,
 				header: notification.customHeader,
 				icon: notification.customIcon,
+				// 旗鯖fork: クリック時の遷移先 (相対パス)
+				link: notification.customLink,
 			} : {}),
 		});
 	}
@@ -241,6 +272,14 @@ export class NotificationEntityService implements OnModuleInit {
 		validNotifications = await this.#filterValidNotifier(validNotifications, meId);
 
 		const noteIds = validNotifications.map(x => 'noteId' in x ? x.noteId : null).filter(x => x != null);
+		// 旗鯖fork: reaction:groupedByUser は内部に複数の noteId を持つため、別途バルク取得対象に追加
+		for (const notification of validNotifications) {
+			if (notification.type === 'reaction:groupedByUser') {
+				for (const r of notification.reactions) {
+					noteIds.push(r.noteId);
+				}
+			}
+		}
 		const notes = noteIds.length > 0 ? await this.notesRepository.find({
 			where: { id: In(noteIds) },
 			relations: ['user', 'reply', 'reply.user', 'renote', 'renote.user'],
@@ -258,6 +297,7 @@ export class NotificationEntityService implements OnModuleInit {
 			if (notification.type === 'reaction:grouped') userIds.push(...notification.reactions.map(x => x.userId));
 			if (notification.type === 'renote:grouped') userIds.push(...notification.userIds);
 			if (notification.type === 'note:grouped') userIds.push(...notification.notifierIds);
+			// 旗鯖fork: reaction:groupedByUser の notifierId は 'notifierId' in notification で既に含まれる (型上)
 		}
 		const users = userIds.length > 0 ? await this.usersRepository.find({
 			where: { id: In(userIds) },

@@ -17,7 +17,7 @@ import { loadConfig } from '@/config.js';
 import type { Config } from '@/config.js';
 import { showMachineInfo } from '@/misc/show-machine-info.js';
 import { envOption } from '@/env.js';
-import { jobQueue, server } from './common.js';
+import { initExtraThreadPool, jobQueue, server } from './common.js';
 
 const _filename = fileURLToPath(import.meta.url);
 const _dirname = dirname(_filename);
@@ -31,33 +31,26 @@ const themeColor = chalk.hex('#ffa9c3');
 
 function greet() {
 	if (!envOption.quiet) {
-		//#region CherryPick logo
+		//#region Hataskey logo
 		const v = `v${meta.version}`;
-		console.log(chalk.hex('#ffa9c3').bold('   _____ _                         ') + chalk.hex('#95e3e8').bold(' _____ _      _'));
-		console.log(chalk.hex('#ffa9c3').bold('  / ____| |                        ') + chalk.hex('#95e3e8').bold('|  __ (_)    | |'));
-		console.log(chalk.hex('#ffa9c3').bold(' | |    | |__   ___ _ __ _ __ _   _') + chalk.hex('#95e3e8').bold('| |__) |  ___| | __'));
-		console.log(chalk.hex('#ffa9c3').bold(' | |    | \'_ \\ / _ \\ \'__| \'__| | | ') + chalk.hex('#95e3e8').bold('|  ___/ |/ __| |/ /'));
-		console.log(chalk.hex('#ffa9c3').bold(' | |____| | | |  __/ |  | |  | |_| ') + chalk.hex('#95e3e8').bold('| |   | | (__|   <'));
-		console.log(chalk.hex('#ffa9c3').bold('  \\_____|_| |_|\\___|_|  |_|   \\__, ') + chalk.hex('#95e3e8').bold('|_|   |_|\\___|_|\\_\\'));
-		console.log(chalk.hex('#ffa9c3').bold('                               __/ |'));
-		console.log(chalk.hex('#ffa9c3').bold('                              |___/'));
+		console.log(chalk.hex('#95e3e8').bold(' _    _       _        ') + chalk.hex('#9ec23f').bold('    _              '));
+		console.log(chalk.hex('#95e3e8').bold('| |  | |     | |       ') + chalk.hex('#9ec23f').bold('   | |             '));
+		console.log(chalk.hex('#95e3e8').bold('| |__| | __ _| |_ __ _ ') + chalk.hex('#9ec23f').bold('___| | _____ _   _ '));
+		console.log(chalk.hex('#95e3e8').bold('|  __  |/ _` | __/ _` /') + chalk.hex('#9ec23f').bold(' __| |/ / _ \\ | | |'));
+		console.log(chalk.hex('#95e3e8').bold('| |  | | (_| | || (_| \\') + chalk.hex('#9ec23f').bold('__ \\   <  __/ |_| |'));
+		console.log(chalk.hex('#95e3e8').bold('|_|  |_|\\__,_|\\__\\__,_|') + chalk.hex('#9ec23f').bold('___/_|\\_\\___|\\__, |'));
+		console.log(chalk.hex('#95e3e8').bold('                       ') + chalk.hex('#9ec23f').bold('              __/ |'));
+		console.log(chalk.hex('#95e3e8').bold('                       ') + chalk.hex('#9ec23f').bold('             |___/ '));
 		//#endregion
 
-		console.log(chalk.hex('#ffa9c3').bold(' Cherry') + chalk.hex('#95e3e8').bold('Pick') + (' is an open-source decentralized microblogging platform based from') + (chalk.hex('#9ec23f').bold(' Misskey') + ('.')));
-		console.log(chalk.hex('#ffbb00')(' If you like ') + chalk.hex('#ffa9c3').bold('Cherry') + chalk.hex('#95e3e8').bold('Pick') + chalk.hex('#ffbb00')(', please donate to support development.'));
-		console.log(chalk.hex('#ffbb00')(' ・Patreon: https://www.patreon.com/noridev'));
-		console.log(chalk.hex('#ffbb00')(' ・Paypal: https://www.paypal.me/noridev'));
-		console.log(chalk.hex('#ffbb00')(' ・GitHub Sponsers: https://github.com/sponsors/noridev'));
-		console.log(chalk.hex('#ffbb00')(' ・Kakao Pay: https://qr.kakaopay.com/Ej9SHx6pQ'));
-		console.log(chalk.hex('#ffbb00')(' ・pixivFANBOX: https://noridev.fanbox.cc/plans'));
-		// console.log(chalk.hex('#ffa9c3').bold(' KOKO') + chalk.hex('#95e3e8').bold('NECT') + chalk.hex('#ffa9c3')(' with') + chalk.hex('#95e3e8').bold(' NoriDev.'));
+		console.log(chalk.hex('#95e3e8').bold(' Hata') + chalk.hex('#9ec23f').bold('skey') + (' is an open-source decentralized microblogging platform based on') + (chalk.hex('#95e3e8').bold(' Cherry') + chalk.hex('#9ec23f').bold('Pick') + (' and') + chalk.hex('#9ec23f').bold(' Misskey') + ('.')));
 
 		console.log('');
 		console.log(chalkTemplate`--- ${os.hostname()} {gray (PID: ${process.pid.toString()})} ---`);
 	}
 
-	bootLogger.info('Welcome to CherryPick!');
-	bootLogger.info(`CherryPick v${meta.version}`, null, true);
+	bootLogger.info('Welcome to Hataskey!');
+	bootLogger.info(`Hataskey v${meta.version}`, null, true);
 	bootLogger.info(`Based on Misskey v${meta.basedMisskeyVersion}`, null, true);
 }
 
@@ -82,6 +75,8 @@ export async function masterMain() {
 	}
 
 	bootLogger.succ(chalk.hex('#ffa9c3')('Cherry') + chalk.hex('#95e3e8')('Pick') + (' initialized'));
+
+	initExtraThreadPool(config);
 
 	if (config.sentryForBackend) {
 		Sentry.init({

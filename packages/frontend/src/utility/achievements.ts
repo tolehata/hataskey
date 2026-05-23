@@ -80,6 +80,7 @@ export const ACHIEVEMENT_TYPES = [
 	'justPlainLucky',
 	'setNameToSyuilo',
 	'setNameToNoriDev',
+	'setNameToHatacha',
 	'cookieClicked',
 	'brainDiver',
 	'smashTestNotificationButton',
@@ -425,6 +426,11 @@ export const ACHIEVEMENT_BADGES = {
 		frame: 'bronze',
 	},
 	'setNameToNoriDev': {
+		img: '/fluent-emoji/1f36e.png',
+		bg: 'linear-gradient(0deg, rgb(187 183 59), rgb(255 143 77))',
+		frame: 'bronze',
+	},
+	'setNameToHatacha': {
 		img: '/fluent-emoji/1f36e.png',
 		bg: 'linear-gradient(0deg, rgb(187 183 59), rgb(255 143 77))',
 		frame: 'bronze',

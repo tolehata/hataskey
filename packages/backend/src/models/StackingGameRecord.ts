@@ -28,11 +28,6 @@ export class MiStackingGameRecord {
 	@Column('timestamp with time zone')
 	public createdAt: Date;
 
-	@Column('varchar', {
-		length: 128,
-	})
-	public gameMode: string;
-
 	@Index()
 	@Column('integer')
 	public score: number;

@@ -36,9 +36,6 @@ export class MiStackingGameRoom {
 	@JoinColumn()
 	public host2: MiUser | null;
 
-	@Column('varchar', { length: 64, default: 'custom' })
-	public gameMode: string;
-
 	// waiting / playing / ended
 	@Index()
 	@Column('varchar', { length: 32, default: 'waiting' })

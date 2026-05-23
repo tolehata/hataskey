@@ -1,5 +1,7 @@
 /*
  * SPDX-FileCopyrightText: syuilo and misskey-project
+ * SPDX-FileCopyrightText: noridev and cherrypick-project
+ * SPDX-FileCopyrightText: Tolehata and hatasaba-project
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
@@ -50,6 +52,8 @@ import { DB_MAX_NOTE_TEXT_LENGTH } from '@/const.js';
 import { RoleService } from '@/core/RoleService.js';
 import { SearchService } from '@/core/SearchService.js';
 import { FeaturedService } from '@/core/FeaturedService.js';
+// 旗鯖fork: トレンドタイムライン (リノート/引用リノートスコアの加算)
+import { TrendingService, SCORE_RENOTE, SCORE_QUOTE_RENOTE } from '@/core/TrendingService.js';
 import { FanoutTimelineService } from '@/core/FanoutTimelineService.js';
 import { UtilityService } from '@/core/UtilityService.js';
 import { UserBlockingService } from '@/core/UserBlockingService.js';
@@ -121,8 +125,8 @@ class NotificationManager {
 				visibleUserIds = new Set(this.note.visibleUserIds.filter(id => targetUserIds.includes(id)));
 				break;
 
+			case 'followers': {
 			// TODO: フォロワー限定ノートにフォロワーではない人がメンションされた場合通知されるのが正しい挙動なのか確認（一部に挙動の不一致がありそう）。現状は通知されるためフィルタしない
-			// case 'followers': {
 			// 	const followers = await this.followingsRepository.find({
 			// 		where: {
 			// 			followeeId: this.note.userId,
@@ -132,8 +136,9 @@ class NotificationManager {
 			// 		select: ['followerId'],
 			// 	});
 			// 	visibleUserIds = new Set(followers.map(f => f.followerId));
-			// 	break;
-			// }
+				visibleUserIds = null;
+				break;
+			}
 
 			default:
 				visibleUserIds = new Set();
@@ -260,6 +265,8 @@ export class NoteCreateService implements OnApplicationShutdown {
 		private antennaService: AntennaService,
 		private webhookService: UserWebhookService,
 		private featuredService: FeaturedService,
+		// 旗鯖fork: トレンドタイムライン
+		private trendingService: TrendingService,
 		private remoteUserResolveService: RemoteUserResolveService,
 		private apDeliverManagerService: ApDeliverManagerService,
 		private apRendererService: ApRendererService,
@@ -828,6 +835,8 @@ export class NoteCreateService implements OnApplicationShutdown {
 
 		if (data.renote && data.renote.userId !== user.id && !user.isBot) {
 			this.incRenoteCount(data.renote);
+			// 旗鯖fork: トレンドタイムライン用にスコアを積む (引用リノートは +3、純粋リノートは +2)
+			this.updateTrendingForRenote(data.renote, this.isQuote(data as Parameters<typeof this.isQuote>[0]));
 		}
 
 		if (data.poll && data.poll.expiresAt) {
@@ -1010,6 +1019,23 @@ export class NoteCreateService implements OnApplicationShutdown {
 				}
 			}
 		}
+	}
+
+	/**
+	 * 旗鯖fork: トレンドタイムライン用、元ノートにリノート/引用リノートのスコアを積む
+	 *
+	 * - 元ノートが公開かつリプライでない場合のみスコア積む
+	 * - リノート: +2 点 / 引用リノート: +3 点
+	 * - 外部影響なし (Redis ZINCRBY のみ、ActivityPub fetch は発生しない)
+	 *
+	 * @param renote リノート/引用リノートで参照される元ノート
+	 * @param isQuote 引用リノート (true) か単純リノート (false) か
+	 */
+	@bindThis
+	private updateTrendingForRenote(renote: MiNote, isQuote: boolean) {
+		if (!this.trendingService.isEligibleForTrending(renote)) return;
+		const score = isQuote ? SCORE_QUOTE_RENOTE : SCORE_RENOTE;
+		this.trendingService.addToRanking(renote.id, score).catch(() => { /* ignore */ });
 	}
 
 	@bindThis

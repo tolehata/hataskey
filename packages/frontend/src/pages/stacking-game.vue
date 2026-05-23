@@ -17,13 +17,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 				<div class="_panel" :class="$style.menuCard">
 					<div class="_gaps" style="padding: 20px;">
-						<div style="font-weight:bold;">モードを選択</div>
-						<div :class="$style.modeList">
-							<button v-for="m in modes" :key="m.id" :class="[$style.modeBtn, selectedMode === m.id && $style.modeBtnOn]" @click="selectedMode = m.id">
-								<span :class="$style.modeEmoji">{{ m.emoji }}</span>
-								<span :class="$style.modeName">{{ m.label }}</span>
-							</button>
-						</div>
 						<MkButton primary gradate large rounded inline @click="startGame">
 							<i class="ti ti-player-play"></i> ソロプレイ
 						</MkButton>
@@ -88,11 +81,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<div class="_gaps_s" style="padding: 16px;">
 						<div style="display:flex;align-items:center;justify-content:space-between;">
 							<b> ランキング</b>
-							<div :class="$style.rankModeTabs">
-								<button v-for="m in modes" :key="m.id" :class="[$style.rankModeTab, rankingMode === m.id && $style.rankModeTabOn]" @click="rankingMode = m.id; fetchRanking();">
-									{{ m.emoji }}
-								</button>
-							</div>
 						</div>
 
 						<div v-if="rankingLoading" style="text-align:center;padding:16px;opacity:.5;">
@@ -132,7 +120,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 								<div :class="$style.myScoreVal">{{ s.score }}</div>
 								<div :class="$style.myScoreMeta">
 									<span>{{ s.blockCount }}個</span>
-									<span :class="$style.myScoreMode">{{ getModeLabel(s.gameMode) }}</span>
 									<span :class="$style.myScoreDate">{{ formatDate(s.createdAt) }}</span>
 								</div>
 							</div>
@@ -152,13 +139,6 @@ import { mainRouter } from '@/router.js';
 import { definePage } from '@/page.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 
-const modes = [
-	{ id: 'custom', emoji: '😺', label: 'カスタム絵文字' },
-	{ id: 'unicode', emoji: '🍎', label: 'Unicode絵文字' },
-	{ id: 'mix', emoji: '🎲', label: 'ミックス' },
-];
-const selectedMode = ref('custom');
-const rankingMode = ref('custom');
 const aiLevel = ref('easy');
 
 // ランキング
@@ -169,10 +149,6 @@ const rankingLoading = ref(false);
 const myScores = ref<any[]>([]);
 const myScoresLoading = ref(false);
 
-function getModeLabel(mode: string): string {
-	return modes.find(m => m.id === mode)?.label ?? mode;
-}
-
 function formatDate(iso: string): string {
 	const d = new Date(iso);
 	return `${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
@@ -181,7 +157,7 @@ function formatDate(iso: string): string {
 async function fetchRanking() {
 	rankingLoading.value = true;
 	try {
-		ranking.value = await misskeyApi('stacking-game/ranking', { gameMode: rankingMode.value }) as any;
+		ranking.value = await misskeyApi('stacking-game/ranking', {}) as any;
 	} catch (e) {
 		console.error('Failed to fetch ranking:', e);
 		ranking.value = [];
@@ -203,11 +179,11 @@ async function fetchMyScores() {
 }
 
 function startGame() {
-	mainRouter.push(`/stacking-game/play?mode=${selectedMode.value}`);
+	mainRouter.push('/stacking-game/play');
 }
 
 function startAiGame() {
-	mainRouter.push(`/stacking-game/ai?mode=${selectedMode.value}&ai=${aiLevel.value}`);
+	mainRouter.push(`/stacking-game/ai?ai=${aiLevel.value}`);
 }
 
 function goLobby() {
@@ -248,12 +224,6 @@ definePage(() => ({
 .howTo { text-align: left; font-size: .9em; line-height: 1.8; padding-left: 1.2em; margin: 0; }
 
 // ランキング
-.rankModeTabs { display: flex; gap: 4px; }
-.rankModeTab {
-	padding: 4px 10px; border-radius: 8px; border: 1.5px solid var(--MI_THEME-divider);
-	background: var(--MI_THEME-panel); cursor: pointer; font-size: 1rem; transition: all .15s;
-}
-.rankModeTabOn { border-color: var(--MI_THEME-accent); background: var(--MI_THEME-accentedBg); }
 .rankList { display: flex; flex-direction: column; gap: 2px; }
 .rankItem {
 	display: flex; align-items: center; gap: 10px; padding: 8px 4px;
@@ -278,6 +248,5 @@ definePage(() => ({
 }
 .myScoreVal { font-weight: 900; font-size: 1.1rem; color: var(--MI_THEME-accent); font-variant-numeric: tabular-nums; }
 .myScoreMeta { display: flex; gap: 8px; font-size: .75rem; opacity: .6; }
-.myScoreMode { }
 .myScoreDate { }
 </style>

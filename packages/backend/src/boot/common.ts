@@ -4,6 +4,7 @@
  */
 
 import { NestFactory } from '@nestjs/core';
+import { init } from 'slacc';
 import { ChartManagementService } from '@/core/chart/ChartManagementService.js';
 import { QueueProcessorService } from '@/queue/QueueProcessorService.js';
 import { NestLogger } from '@/NestLogger.js';
@@ -12,6 +13,19 @@ import { QueueStatsService } from '@/daemons/QueueStatsService.js';
 import { ServerStatsService } from '@/daemons/ServerStatsService.js';
 import { ServerService } from '@/server/ServerService.js';
 import { MainModule } from '@/MainModule.js';
+import type { Config } from '@/config.js';
+
+let slaccInitialized = false;
+
+export function initExtraThreadPool(config: Config) {
+	if (slaccInitialized) return;
+
+	const threadPoolSize = Math.max(config.threadPoolSize ?? 1, 1);
+
+	init(threadPoolSize);
+
+	slaccInitialized = true;
+}
 
 export async function server() {
 	const app = await NestFactory.createApplicationContext(MainModule, {

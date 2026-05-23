@@ -22,7 +22,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 	<FormSection>
 		<div class="_gaps_m">
 			<MkKeyValue :copy="`${version} (${gitHash})`">
-				<template #key>CherryPick</template>
+				<template #key>Hataskey</template>
 				<template #value>{{ version }} <span style="font-size: 11px; opacity: 0.5;">({{ gitHash.substring(0, 8) }})</span></template>
 			</MkKeyValue>
 			<div v-html="i18n.tsx.poweredByMisskeyDescription({ name: instance.name ?? host })">
@@ -31,7 +31,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<template #icon><i class="ti ti-info-circle"></i></template>
 				{{ i18n.ts.aboutMisskey }}
 			</FormLink>
-			<FormLink v-if="instance.repositoryUrl || instance.providesTarball" :to="instance.repositoryUrl || `/tarball/cherrypick-${version}.tar.gz`" external>
+			<FormLink v-if="instance.repositoryUrl" :to="instance.repositoryUrl" external>
 				<template #icon><i class="ti ti-code"></i></template>
 				{{ i18n.ts.sourceCode }}
 			</FormLink>
@@ -95,7 +95,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<button :class="$style.main" class="_button" @click="donateCherryPick">
 					<span :class="$style.icon"><i class="ti ti-pig-money"></i></span>
 					<!-- <span :class="$style.text">{{ i18n.tsx.supportThisInstance({ name: instance.name ?? host }) }}</span> -->
-					<span :class="$style.text">{{ i18n.tsx.supportThisInstance({ name: 'CherryPick' }) }}</span>
+					<span :class="$style.text">{{ i18n.tsx.supportThisInstance({ name: 'CherryPick(ベースソフトウェア)' }) }}</span>
 					<span :class="$style.suffix">
 						<i class="ti ti-external-link"></i>
 					</span>

@@ -122,6 +122,26 @@ export class ClientServerService {
 		//this.createServer = this.createServer.bind(this);
 	}
 
+	/**
+	 * インスタンスのURI/ホスト名をシードに HSL 色相を決定論的に生成し、
+	 * プレーン単色アイコンの data URI を返す
+	 * （iconUrl / app*IconUrl がどちらも未設定の場合のフォールバック用）
+	 */
+	@bindThis
+	private generatePlainIconDataUri(size: number): string {
+		const seed = this.meta.uri || this.config.host || 'hataskey';
+		let hash = 0;
+		for (let i = 0; i < seed.length; i++) {
+			hash = ((hash << 5) - hash) + seed.charCodeAt(i);
+			hash |= 0;
+		}
+		const hue = Math.abs(hash) % 360;
+		// 彩度60%・明度50% でライト/ダーク両モードで視認性確保
+		const color = `hsl(${hue}, 60%, 50%)`;
+		const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><rect width="${size}" height="${size}" fill="${color}"/></svg>`;
+		return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+	}
+
 	@bindThis
 	private async manifestHandler(reply: FastifyReply) {
 		let manifest = {
@@ -138,16 +158,18 @@ export class ClientServerService {
 			// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
 			'theme_color': this.meta.themeColor || '#ffa9c3',
 			'icons': [{
+				// 優先順位: app192IconUrl → iconUrl → プレーン単色SVG
 				// 空文字列の場合右辺を使いたいため
 				// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-				'src': this.meta.app192IconUrl || '/static-assets/icons/192.png',
+				'src': this.meta.app192IconUrl || this.meta.iconUrl || this.generatePlainIconDataUri(192),
 				'sizes': '192x192',
 				'type': 'image/png',
 				'purpose': 'maskable',
 			}, {
+				// 優先順位: app512IconUrl → iconUrl → プレーン単色SVG
 				// 空文字列の場合右辺を使いたいため
 				// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-				'src': this.meta.app512IconUrl || '/static-assets/icons/512.png',
+				'src': this.meta.app512IconUrl || this.meta.iconUrl || this.generatePlainIconDataUri(512),
 				'sizes': '512x512',
 				'type': 'image/png',
 				'purpose': 'maskable',

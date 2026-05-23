@@ -41,7 +41,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 								</div>
 								<div :class="$style.roomInfo">
 									<div :class="$style.roomName"><MkUserName v-if="room.host1" :user="room.host1"/><span v-else>???</span></div>
-									<div :class="$style.roomMeta">{{ room.gameMode }} モード</div>
 								</div>
 								<MkButton v-if="isMyRoom(room)" rounded small @click="goToMyRoom(room.id)">
 									<i class="ti ti-clock"></i> 待機中
@@ -88,7 +87,7 @@ async function fetchRooms() {
 async function createRoom() {
 	creating.value = true;
 	try {
-		const room = await misskeyApi('stacking-game/create-room', { gameMode: 'custom' }) as any;
+		const room = await misskeyApi('stacking-game/create-room', {}) as any;
 		mainRouter.push(`/stacking-game/battle?roomId=${room.id}`);
 	} catch (e) {
 		os.alert({ type: 'error', text: 'ルーム作成に失敗しました' });

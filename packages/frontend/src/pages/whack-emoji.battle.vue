@@ -99,7 +99,6 @@ import { ref, reactive, onMounted, onUnmounted, computed } from 'vue';
 import MkButton from '@/components/MkButton.vue';
 import { mainRouter } from '@/router.js';
 import { definePage } from '@/page.js';
-import { customEmojis } from '@/custom-emojis.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { useStream } from '@/stream.js';
 import { $i } from '@/i.js';
@@ -152,11 +151,7 @@ let myHits = 0;
 
 function buildPool() {
 	const pool: EmojiItem[] = [];
-	const emojis = customEmojis.value;
-	if (emojis.length > 0) {
-		const shuffled = [...emojis].sort(() => Math.random() - 0.5).slice(0, 40);
-		for (const e of shuffled) pool.push({ url: e.url, name: e.name });
-	}
+	// 本家の絵文字系ゲームに倣い、カスタム絵文字は使用せず Unicode 絵文字のみを使用する
 	const fb = ['🐹','🐰','🦊','🐻','🐼','🐨','🐸','🐵','🐱','🐶','🐷','🐮','🦁','🐯','🐺','🐲','🐴','🦄','🐙','🐳'];
 	for (const c of fb) pool.push({ char: c, name: c });
 	emojiPool = pool;

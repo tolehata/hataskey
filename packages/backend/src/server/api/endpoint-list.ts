@@ -1,5 +1,7 @@
 /*
  * SPDX-FileCopyrightText: syuilo and misskey-project
+ * SPDX-FileCopyrightText: noridev and cherrypick-project
+ * SPDX-FileCopyrightText: Tolehata and hatasaba-project
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
@@ -335,6 +337,9 @@ export * as 'notes/events/search' from './endpoints/notes/events/search.js';
 export * as 'notes/favorites/create' from './endpoints/notes/favorites/create.js';
 export * as 'notes/favorites/delete' from './endpoints/notes/favorites/delete.js';
 export * as 'notes/featured' from './endpoints/notes/featured.js';
+// 旗鯖fork: トレンドタイムライン (TTL)
+export * as 'notes/trending' from './endpoints/notes/trending.js';
+export * as 'notes/trending/check-new' from './endpoints/notes/trending-check-new.js';
 export * as 'notes/global-timeline' from './endpoints/notes/global-timeline.js';
 export * as 'notes/history' from './endpoints/notes/history.js';
 export * as 'notes/hybrid-timeline' from './endpoints/notes/hybrid-timeline.js';

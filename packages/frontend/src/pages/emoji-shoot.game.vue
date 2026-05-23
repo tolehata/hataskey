@@ -62,7 +62,6 @@ import MkButton from '@/components/MkButton.vue';
 import { mainRouter } from '@/router.js';
 import { definePage } from '@/page.js';
 import { miLocalStorage } from '@/local-storage.js';
-import { customEmojis } from '@/custom-emojis.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { $i } from '@/i.js';
 
@@ -142,19 +141,11 @@ let globalUpHandler: ((e: PointerEvent) => void) | null = null;
 
 function buildPool() {
 	const pool: EmojiData[] = [];
-	const emojis = customEmojis.value;
-	if (emojis.length > 0) {
-		const shuffled = [...emojis].sort(() => Math.random() - 0.5).slice(0, 60);
-		for (const e of shuffled) { const img = new Image(); img.src = e.url; pool.push({ url: e.url, img }); }
-	}
+	// 本家の絵文字系ゲームに倣い、カスタム絵文字は使用せず Unicode 絵文字のみを使用する
 	const fb = ['👾','👻','💀','🤖','👽','🦠','🎃','😈','🐉','🦇','🕷️','🔥','💣','⚡','🌀','☄️'];
 	for (const c of fb) pool.push({ char: c });
 	emojiPool = pool;
-	if (emojis.length > 0) {
-		const pe = emojis[Math.floor(Math.random() * emojis.length)];
-		playerImg = new Image(); playerImg.onload = () => { playerImgLoaded = true; }; playerImg.src = pe.url;
-		playerEmoji = { url: pe.url, img: playerImg };
-	}
+	// プレイヤー機体は固定の Unicode 絵文字(🚀)を使用する(playerEmoji の初期値のまま)
 }
 
 function pickEnemy(): EmojiData { return emojiPool[Math.floor(Math.random() * emojiPool.length)]; }

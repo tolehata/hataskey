@@ -421,6 +421,8 @@ export function clearExternalEmojiCache(): void {
 	try {
 		localStorage.removeItem(EMOJI_STORAGE_KEY);
 		localStorage.removeItem(EMOJI_URL_MAP_STORAGE_KEY);
+		// 複数ホスト対応の絵文字URLマップキャッシュも削除(旗鯖fork)
+		localStorage.removeItem(EXT_EMOJI_URL_MAP_KEY);
 	} catch { /* ignore */ }
 }
 
@@ -603,39 +605,43 @@ function isValidEmojiString(s: unknown): s is string {
 }
 
 /**
- * 外部TL用お気に入り絵文字リストを取得
+ * 外部TL用お気に入り絵文字リストを取得(後方互換: 旧 string[] / 新 EmojiEntry[])
+ *
+ * 戻り値は常に旧形式 string[](リアクション文字列のみ)。
+ * URL情報が必要な場合は getExternalFavoriteEmojisDetailed() を使う。
  */
 export function getExternalFavoriteEmojis(): string[] {
-	try {
-		const stored = localStorage.getItem(EXT_FAV_EMOJIS_KEY);
-		if (!stored) return [];
-		const parsed = JSON.parse(stored);
-		if (!Array.isArray(parsed)) return [];
-		return parsed.filter(isValidEmojiString);
-	} catch {
-		return [];
-	}
+	const detailed = getExternalFavoriteEmojisDetailed();
+	return detailed.map(e => e.reaction).filter(isValidEmojiString);
 }
 
 /**
- * 外部TL用お気に入り絵文字リストを保存
+ * 外部TL用お気に入り絵文字リストを保存(旧形式互換)
+ *
+ * 旧 string[] からの呼び出しでは host/url 情報なしで保存される。
+ * 旧呼び出し側は徐々に setExternalFavoriteEmojiDetailed() に移行を推奨。
  */
 export function setExternalFavoriteEmojis(emojis: string[]): void {
-	const cleaned = (Array.isArray(emojis) ? emojis : []).filter(isValidEmojiString).slice(0, 50);
+	const entries: ExternalEmojiEntry[] = (Array.isArray(emojis) ? emojis : [])
+		.filter(isValidEmojiString)
+		.slice(0, 50)
+		.map(reaction => ({ reaction, host: null, url: null }));
 	try {
-		localStorage.setItem(EXT_FAV_EMOJIS_KEY, JSON.stringify(cleaned));
+		localStorage.setItem(EXT_FAV_EMOJIS_KEY, JSON.stringify(entries));
 	} catch { /* quota error 等を無視 */ }
 }
 
 /**
- * お気に入り絵文字を追加（先頭に追加、重複は移動）
+ * お気に入り絵文字を追加(先頭に追加、重複は移動)。
+ * host/url が判明している場合は付与して保存することで、別サーバー切替時も復元可能。
  */
-export function addExternalFavoriteEmoji(emoji: string): void {
+export function addExternalFavoriteEmoji(emoji: string, host: string | null = null, url: string | null = null): void {
 	if (!isValidEmojiString(emoji)) return;
-	const list = getExternalFavoriteEmojis().filter(e => e !== emoji);
-	list.unshift(emoji);
-	// 最大50個まで
-	setExternalFavoriteEmojis(list.slice(0, 50));
+	const list = getExternalFavoriteEmojisDetailed().filter(e => e.reaction !== emoji);
+	list.unshift({ reaction: emoji, host, url });
+	try {
+		localStorage.setItem(EXT_FAV_EMOJIS_KEY, JSON.stringify(list.slice(0, 50)));
+	} catch { /* ignore */ }
 }
 
 /**
@@ -643,35 +649,210 @@ export function addExternalFavoriteEmoji(emoji: string): void {
  */
 export function removeExternalFavoriteEmoji(emoji: string): void {
 	if (!isValidEmojiString(emoji)) return;
-	setExternalFavoriteEmojis(getExternalFavoriteEmojis().filter(e => e !== emoji));
+	const list = getExternalFavoriteEmojisDetailed().filter(e => e.reaction !== emoji);
+	try {
+		localStorage.setItem(EXT_FAV_EMOJIS_KEY, JSON.stringify(list));
+	} catch { /* ignore */ }
 }
 
 // ===== 外部TL よく使うリアクション履歴 =====
 const EXT_RECENT_REACTIONS_KEY = 'externalRecentReactions';
 
 /**
- * よく使うリアクション履歴を取得
+ * よく使うリアクション履歴を取得(後方互換ラッパー、戻り値は string[])
  */
 export function getExternalRecentReactions(): string[] {
+	const detailed = getExternalRecentReactionsDetailed();
+	return detailed.map(e => e.reaction).filter(isValidEmojiString);
+}
+
+/**
+ * よく使うリアクション履歴に追加(先頭に追加、重複は移動、最大30件)
+ * host/url が判明している場合は付与して保存し、再表示時のAPIリクエストを削減する。
+ */
+export function addExternalRecentReaction(reaction: string, host: string | null = null, url: string | null = null): void {
+	if (!isValidEmojiString(reaction)) return;
+	const list = getExternalRecentReactionsDetailed().filter(e => e.reaction !== reaction);
+	list.unshift({ reaction, host, url, addedAt: Date.now() });
 	try {
-		const stored = localStorage.getItem(EXT_RECENT_REACTIONS_KEY);
+		localStorage.setItem(EXT_RECENT_REACTIONS_KEY, JSON.stringify(list.slice(0, 30)));
+	} catch { /* ignore */ }
+}
+
+// ===== 構造化された履歴/お気に入りのアクセサ =====
+
+/**
+ * 外部TL履歴/お気に入りのエントリ型
+ *
+ * - reaction: ':name:' / ':name@host:' / Unicode絵文字いずれか
+ * - host: カスタム絵文字を取得した外部サーバーのホスト名(Unicodeなら null)
+ * - url: 取得時の画像URL(永続URL想定、なければ null)
+ * - addedAt: 履歴のみ。お気に入りでは省略
+ */
+export interface ExternalEmojiEntry {
+	reaction: string;
+	host: string | null;
+	url: string | null;
+	addedAt?: number;
+}
+
+/**
+ * お気に入り絵文字を構造化形式で取得(旧 string[] からの自動マイグレーション付き)
+ */
+export function getExternalFavoriteEmojisDetailed(): ExternalEmojiEntry[] {
+	try {
+		const stored = localStorage.getItem(EXT_FAV_EMOJIS_KEY);
 		if (!stored) return [];
 		const parsed = JSON.parse(stored);
 		if (!Array.isArray(parsed)) return [];
-		return parsed.filter(isValidEmojiString);
+
+		// 旧形式 string[] からの移行: 文字列要素を Entry に変換
+		const migrated: ExternalEmojiEntry[] = parsed.map(item => {
+			if (typeof item === 'string') {
+				return { reaction: item, host: null, url: null };
+			}
+			if (item && typeof item === 'object' && typeof item.reaction === 'string') {
+				return {
+					reaction: item.reaction,
+					host: typeof item.host === 'string' ? item.host : null,
+					url: typeof item.url === 'string' ? item.url : null,
+				};
+			}
+			return null;
+		}).filter((e): e is ExternalEmojiEntry => e !== null && isValidEmojiString(e.reaction));
+
+		return migrated;
 	} catch {
 		return [];
 	}
 }
 
 /**
- * よく使うリアクション履歴に追加（先頭に追加、重複は移動、最大30件）
+ * 履歴(最近使ったリアクション)を構造化形式で取得
  */
-export function addExternalRecentReaction(reaction: string): void {
-	if (!isValidEmojiString(reaction)) return;
-	const list = getExternalRecentReactions().filter(e => e !== reaction);
-	list.unshift(reaction);
+export function getExternalRecentReactionsDetailed(): ExternalEmojiEntry[] {
 	try {
-		localStorage.setItem(EXT_RECENT_REACTIONS_KEY, JSON.stringify(list.slice(0, 30)));
-	} catch { /* ignore */ }
+		const stored = localStorage.getItem(EXT_RECENT_REACTIONS_KEY);
+		if (!stored) return [];
+		const parsed = JSON.parse(stored);
+		if (!Array.isArray(parsed)) return [];
+
+		const migrated: ExternalEmojiEntry[] = parsed.map(item => {
+			if (typeof item === 'string') {
+				return { reaction: item, host: null, url: null };
+			}
+			if (item && typeof item === 'object' && typeof item.reaction === 'string') {
+				return {
+					reaction: item.reaction,
+					host: typeof item.host === 'string' ? item.host : null,
+					url: typeof item.url === 'string' ? item.url : null,
+					addedAt: typeof item.addedAt === 'number' ? item.addedAt : undefined,
+				};
+			}
+			return null;
+		}).filter((e): e is ExternalEmojiEntry => e !== null && isValidEmojiString(e.reaction));
+
+		return migrated;
+	} catch {
+		return [];
+	}
 }
+
+// ===== ホストごとカスタム絵文字URLマップ(LRU管理、TTL付き) =====
+const EXT_EMOJI_URL_MAP_KEY = 'externalEmojiUrlMap';
+const EXT_EMOJI_URL_MAP_TTL = 24 * 60 * 60 * 1000; // 24時間
+const EXT_EMOJI_URL_MAP_MAX_HOSTS = 10; // 最大保持ホスト数(LRU)
+
+interface ExternalEmojiUrlMapEntry {
+	fetchedAt: number;
+	lastAccessedAt: number;
+	emojis: Record<string, string>; // name → url
+}
+
+type ExternalEmojiUrlMap = Record<string, ExternalEmojiUrlMapEntry>;
+
+/**
+ * 全ホスト分の絵文字URLマップを読み込む
+ */
+function loadEmojiUrlMap(): ExternalEmojiUrlMap {
+	try {
+		const stored = localStorage.getItem(EXT_EMOJI_URL_MAP_KEY);
+		if (!stored) return {};
+		const parsed = JSON.parse(stored);
+		if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+		return parsed as ExternalEmojiUrlMap;
+	} catch {
+		return {};
+	}
+}
+
+/**
+ * 全ホスト分の絵文字URLマップを保存(LRU処理含む)
+ */
+function saveEmojiUrlMap(map: ExternalEmojiUrlMap): void {
+	// LRU: lastAccessedAt が古い順にソートし、上限を超えたら削除
+	const entries = Object.entries(map);
+	if (entries.length > EXT_EMOJI_URL_MAP_MAX_HOSTS) {
+		entries.sort((a, b) => b[1].lastAccessedAt - a[1].lastAccessedAt);
+		const kept = Object.fromEntries(entries.slice(0, EXT_EMOJI_URL_MAP_MAX_HOSTS));
+		try {
+			localStorage.setItem(EXT_EMOJI_URL_MAP_KEY, JSON.stringify(kept));
+		} catch { /* ignore */ }
+		return;
+	}
+	try {
+		localStorage.setItem(EXT_EMOJI_URL_MAP_KEY, JSON.stringify(map));
+	} catch { /* quota error 等を無視 */ }
+}
+
+/**
+ * 指定ホストの絵文字URLマップを取得(TTL有効なら返す、切れていれば null)
+ *
+ * 取得成功時は lastAccessedAt を更新する(LRU管理用)。
+ */
+export function getExternalEmojiUrlMapForHost(host: string): Record<string, string> | null {
+	if (!host) return null;
+	const map = loadEmojiUrlMap();
+	const entry = map[host];
+	if (!entry) return null;
+	const now = Date.now();
+	if (now - entry.fetchedAt >= EXT_EMOJI_URL_MAP_TTL) {
+		// TTL切れ。クリーンアップは setExternalEmojiUrlMapForHost 側に任せる
+		return null;
+	}
+	// アクセス時刻を更新(LRU)
+	entry.lastAccessedAt = now;
+	map[host] = entry;
+	saveEmojiUrlMap(map);
+	return entry.emojis;
+}
+
+/**
+ * 指定ホストの絵文字URLマップを保存
+ *
+ * /api/emojis 取得直後に呼ばれる想定。LRUで最大ホスト数を超えると古いものから削除。
+ */
+export function setExternalEmojiUrlMapForHost(host: string, emojis: Record<string, string>): void {
+	if (!host || !emojis) return;
+	const map = loadEmojiUrlMap();
+	const now = Date.now();
+	map[host] = {
+		fetchedAt: now,
+		lastAccessedAt: now,
+		emojis,
+	};
+	saveEmojiUrlMap(map);
+}
+
+/**
+ * 指定ホストの絵文字URLマップから単一絵文字のURLを引く(API呼ばずに)
+ * 見つからなければ null
+ */
+export function lookupExternalEmojiUrl(host: string | null, name: string): string | null {
+	if (!host || !name) return null;
+	const map = getExternalEmojiUrlMapForHost(host);
+	if (!map) return null;
+	return map[name] ?? null;
+}
+
+

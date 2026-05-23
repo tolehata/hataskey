@@ -270,6 +270,9 @@ function save() {
 	if (profile.name === 'noridev' || profile.name === 'NoriDev' || profile.name === '노리' || profile.name === '노리데브') {
 		claimAchievement('setNameToNoriDev');
 	}
+	if (profile.name === 'hatacha') {
+		claimAchievement('setNameToHatacha');
+	}
 	if (profile.isCat && prefer.s.renameTheButtonInPostFormToNya) {
 		claimAchievement('markedAsCat');
 	} else if (profile.isCat && !prefer.s.renameTheButtonInPostFormToNya) {

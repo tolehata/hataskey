@@ -11655,6 +11655,20 @@ export interface Locale extends ILocale {
          * バブル
          */
         "bubble": string;
+        /**
+         * トレンド
+         */
+        "trending": string;
+    };
+    "_trending": {
+        /**
+         * 新しいトレンドノートが {n} 件あります
+         */
+        "newNotesAvailable": ParameterizedString<"n">;
+        /**
+         * トレンドノートが見つかりませんでした。しばらくしてから再度確認してください。
+         */
+        "empty": string;
     };
     "_play": {
         /**
@@ -12019,6 +12033,10 @@ export interface Locale extends ILocale {
          * {n}人がリアクションしました
          */
         "reactedBySomeUsers": ParameterizedString<"n">;
+        /**
+         * が{n}個のノートにリアクションしました
+         */
+        "reactedToMultipleNotes": ParameterizedString<"n">;
         /**
          * {n}人がいいねしました
          */

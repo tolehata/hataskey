@@ -60,12 +60,12 @@ export const packedMetaLiteSchema = {
 		repositoryUrl: {
 			type: 'string',
 			optional: false, nullable: true,
-			default: 'https://github.com/kokonect-link/cherrypick',
+			default: 'https://code.tolehata.net/hatacha/cherrypick-hata',
 		},
 		feedbackUrl: {
 			type: 'string',
 			optional: false, nullable: true,
-			default: 'https://github.com/kokonect-link/cherrypick/issues/new',
+			default: 'https://code.tolehata.net/hatacha/cherrypick-hata/issues',
 		},
 		defaultDarkTheme: {
 			type: 'string',

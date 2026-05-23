@@ -409,6 +409,11 @@ export const packedNotificationSchema = {
 				type: 'string',
 				optional: false, nullable: true,
 			},
+			// 旗鯖fork: クリック時の遷移先パス (相対パスのみ、'/' 始まり必須、null 許容)
+			link: {
+				type: 'string',
+				optional: false, nullable: true,
+			},
 		},
 	}, {
 		type: 'object',
@@ -441,6 +446,51 @@ export const packedNotificationSchema = {
 						},
 					},
 					required: ['user', 'reaction'],
+				},
+			},
+		},
+	}, {
+		// 旗鯖fork: 同じユーザーから複数ノートへのリアクションをまとめる新規グループタイプ
+		type: 'object',
+		properties: {
+			...baseSchema.properties,
+			type: {
+				type: 'string',
+				optional: false, nullable: false,
+				enum: ['reaction:groupedByUser'],
+			},
+			user: {
+				type: 'object',
+				ref: 'UserLite',
+				optional: false, nullable: false,
+			},
+			userId: {
+				type: 'string',
+				optional: false, nullable: false,
+				format: 'id',
+			},
+			reactions: {
+				type: 'array',
+				optional: false, nullable: false,
+				items: {
+					type: 'object',
+					properties: {
+						note: {
+							type: 'object',
+							ref: 'Note',
+							optional: false, nullable: false,
+						},
+						reaction: {
+							type: 'string',
+							optional: false, nullable: false,
+						},
+						createdAt: {
+							type: 'string',
+							optional: false, nullable: false,
+							format: 'date-time',
+						},
+					},
+					required: ['note', 'reaction', 'createdAt'],
 				},
 			},
 		},

@@ -1,5 +1,7 @@
 /*
  * SPDX-FileCopyrightText: syuilo and misskey-project
+ * SPDX-FileCopyrightText: noridev and cherrypick-project
+ * SPDX-FileCopyrightText: Tolehata and hatasaba-project
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
@@ -31,7 +33,7 @@ export const meta = {
 export const paramDef = {
 	type: 'object',
 	properties: {
-		applicationId: { type: 'string' },
+		applicationId: { type: 'string', minLength: 1, maxLength: 32 },
 	},
 	required: ['applicationId'],
 } as const;
@@ -55,10 +57,19 @@ export default class extends Endpoint<typeof meta, typeof paramDef> {
 				throw new ApiError(meta.errors.alreadyProcessed);
 			}
 
-			// 却下: ステータス更新のみ。メールは送信しない。
+			// 却下処理 (旗鯖fork: プライバシー強化)
+			// - ステータスを rejected に
+			// - username / hashedPassword は即時削除 (null セット)
+			// - email は重複申請拒否のため 90日 (CleanProcessorService の保持期間) は維持
+			// - personalDataDeletedAt に削除実行日時を記録
+			// - メール通知は送信しない
+			const now = new Date();
 			await this.registrationApplicationsRepository.update(application.id, {
 				status: 'rejected',
-				rejectedAt: new Date(),
+				rejectedAt: now,
+				username: null,
+				hashedPassword: null,
+				personalDataDeletedAt: now,
 			});
 
 			return { success: true };

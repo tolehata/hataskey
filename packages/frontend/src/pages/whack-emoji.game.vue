@@ -43,12 +43,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<div :class="aiMode ? $style.side : undefined">
 					<div v-if="aiMode" :class="$style.sideLabel">あなた ({{ score }})</div>
 					<div :class="$style.grid" :style="gridStyle">
-						<div v-for="(cell, i) in cells" :key="i"
-							:class="[$style.hole, cell.hitGlow && $style.hitGlow, cell.missGlow && $style.missGlow]"
+						<div v-for="(slot, i) in slots" :key="i"
+							:class="[$style.hole, slot.hitGlow && $style.hitGlow, slot.missGlow && $style.missGlow]"
 							@pointerdown.prevent="whack(i)">
-							<div :class="[$style.mole, cell.visible && $style.moleUp]">
-								<img v-if="cell.emoji?.url" :src="cell.emoji.url" :class="$style.moleImg" draggable="false"/>
-								<span v-else-if="cell.emoji?.char" :class="$style.moleChar">{{ cell.emoji.char }}</span>
+							<div :class="[$style.mole, moleAt(i) && $style.moleUp]">
+								<img v-if="moleAt(i)?.emoji?.url" :src="moleAt(i)!.emoji.url" :class="$style.moleImg" draggable="false"/>
+								<span v-else-if="moleAt(i)?.emoji?.char" :class="$style.moleChar">{{ moleAt(i)!.emoji.char }}</span>
 							</div>
 							<div :class="$style.holeRing"></div>
 						</div>
@@ -57,11 +57,11 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<div v-if="aiMode" :class="$style.side">
 					<div :class="[$style.sideLabel, $style.aiSideLabel]">AI ({{ aiScore }})</div>
 					<div :class="$style.grid" :style="gridStyle">
-						<div v-for="(cell, i) in aiCells" :key="'ai-'+i"
-							:class="[$style.hole, cell.hitGlow && $style.hitGlow, cell.missGlow && $style.missGlow]">
-							<div :class="[$style.mole, cell.visible && $style.moleUp]">
-								<img v-if="cell.emoji?.url" :src="cell.emoji.url" :class="$style.moleImg" draggable="false"/>
-								<span v-else-if="cell.emoji?.char" :class="$style.moleChar">{{ cell.emoji.char }}</span>
+						<div v-for="(slot, i) in aiSlots" :key="'ai-'+i"
+							:class="[$style.hole, slot.hitGlow && $style.hitGlow, slot.missGlow && $style.missGlow]">
+							<div :class="[$style.mole, aiMoleAt(i) && $style.moleUp]">
+								<img v-if="aiMoleAt(i)?.emoji?.url" :src="aiMoleAt(i)!.emoji.url" :class="$style.moleImg" draggable="false"/>
+								<span v-else-if="aiMoleAt(i)?.emoji?.char" :class="$style.moleChar">{{ aiMoleAt(i)!.emoji.char }}</span>
 							</div>
 							<div :class="$style.holeRing"></div>
 						</div>
@@ -102,7 +102,6 @@ import MkButton from '@/components/MkButton.vue';
 import { mainRouter } from '@/router.js';
 import { definePage } from '@/page.js';
 import { miLocalStorage } from '@/local-storage.js';
-import { customEmojis } from '@/custom-emojis.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { $i } from '@/i.js';
 
@@ -118,22 +117,30 @@ const LEVEL_UP_THRESHOLDS = [0, 5, 12, 22, 35, 50, 70, 95, 125, 160];
 
 type EmojiItem = { url?: string; char?: string; name: string };
 
-interface Cell {
-	visible: boolean;
-	emoji: EmojiItem | null;
+// 旗鯖fork: 絵文字基準の再構成
+// 表示枠(スロット)は演出状態だけを持つ軽量な存在にし、
+// 「画面に存在する絵文字」を Mole エンティティとして配列で管理する。
+// スロットは CSS Grid の格子(1fr)で配置されるため、位置を座標で持たず
+// スロット番号で管理する。これによりプレイ中にウィンドウサイズが変わっても
+// 座標計算がなく描画が崩れない。
+interface Slot {
 	hitGlow: boolean;
 	missGlow: boolean;
-	graceHittable: boolean;
-	occupied: boolean; // 絵文字が完全に消えるまでtrue（重複スポーン防止）
-	timer: ReturnType<typeof setTimeout> | null;
-	graceTimer: ReturnType<typeof setTimeout> | null;
 	hitGlowTimer: ReturnType<typeof setTimeout> | null;
 	missGlowTimer: ReturnType<typeof setTimeout> | null;
-	clearTimer: ReturnType<typeof setTimeout> | null; // occupied解放の遅延タイマー（spawn時にキャンセル可能にする）
-	spawnId: number; // 各スポーンのユニークID（タイマー競合防止）
 }
 
-let nextSpawnId = 0;
+interface Mole {
+	id: number; // エンティティの一意ID
+	slot: number; // 表示中のスロット番号 (0..CELL_COUNT-1)
+	emoji: EmojiItem;
+	phase: 'up' | 'grace'; // up=表示中(叩ける) / grace=引っ込んだ直後の猶予(まだ叩ける)
+	upTimer: ReturnType<typeof setTimeout> | null; // up→grace への遷移タイマー
+	graceTimer: ReturnType<typeof setTimeout> | null; // grace→消滅 への遷移タイマー
+	aiHitTried: boolean; // AI専用: 既に叩く試行をしたか
+}
+
+let nextMoleId = 0;
 
 function getDiffParams(diff: number) {
 	const t = (diff - 1) / 9;
@@ -174,32 +181,37 @@ const lives = ref(MAX_LIVES);
 
 const aiMode = ref('');
 const aiScore = ref(0);
-let aiTimer: ReturnType<typeof setInterval> | null = null;
-let aiSpawnTimer: ReturnType<typeof setInterval> | null = null;
 
 const isEndless = ref(false);
 
-const cells = reactive<Cell[]>(
-	Array.from({ length: CELL_COUNT }, () => ({
-		visible: false, emoji: null, hitGlow: false, missGlow: false,
-		graceHittable: false, occupied: false, timer: null, graceTimer: null,
-		hitGlowTimer: null, missGlowTimer: null, clearTimer: null,
-		spawnId: 0,
-	}))
-);
+// 表示枠(スロット)。演出状態のみを持つ
+function makeSlots(): Slot[] {
+	return Array.from({ length: CELL_COUNT }, () => ({
+		hitGlow: false, missGlow: false, hitGlowTimer: null, missGlowTimer: null,
+	}));
+}
 
-// AI独自の盤面
-const aiCells = reactive<Cell[]>(
-	Array.from({ length: CELL_COUNT }, () => ({
-		visible: false, emoji: null, hitGlow: false, missGlow: false,
-		graceHittable: false, occupied: false, timer: null, graceTimer: null,
-		hitGlowTimer: null, missGlowTimer: null, clearTimer: null,
-		spawnId: 0,
-	}))
-);
+const slots = reactive<Slot[]>(makeSlots());
+const aiSlots = reactive<Slot[]>(makeSlots());
+
+// 画面に存在する絵文字エンティティ
+const moles = reactive<Mole[]>([]);
+const aiMoles = reactive<Mole[]>([]);
+
+// テンプレートからスロット番号で「そこに居る絵文字」を引くためのヘルパー
+function moleAt(slot: number): Mole | undefined {
+	return moles.find(m => m.slot === slot);
+}
+function aiMoleAt(slot: number): Mole | undefined {
+	return aiMoles.find(m => m.slot === slot);
+}
 
 let emojiPool: EmojiItem[] = [];
-let spawnTimer: ReturnType<typeof setInterval> | null = null;
+// 旗鯖fork: 一定間隔の setInterval ではなく、1回出すごとに次回をジッター付きで予約する
+// 自己再帰スケジューラに変更。これにより「複数スロットからの完全に同時刻の一斉出現」が
+// 構造的に発生しなくなる(出現は必ず時間差になる)。
+let spawnScheduleTimer: ReturnType<typeof setTimeout> | null = null;
+let aiSpawnScheduleTimer: ReturnType<typeof setTimeout> | null = null;
 let countdownTimer: ReturnType<typeof setInterval> | null = null;
 
 const gridStyle = computed(() => ({
@@ -229,11 +241,7 @@ function calcEndlessLevel(): number {
 // ===== 絵文字プール =====
 function buildPool() {
 	const pool: EmojiItem[] = [];
-	const emojis = customEmojis.value;
-	if (emojis.length > 0) {
-		const shuffled = [...emojis].sort(() => Math.random() - 0.5).slice(0, 50);
-		for (const e of shuffled) pool.push({ url: e.url, name: e.name });
-	}
+	// 本家の絵文字系ゲームに倣い、カスタム絵文字は使用せず Unicode 絵文字のみを使用する
 	const fallback = ['🐹','🐰','🦊','🐻','🐼','🐨','🐸','🐵','🐱','🐶','🐷','🐮','🦁','🐯','🐺','🐲','🐴','🦄','🐙','🐳'];
 	for (const c of fallback) pool.push({ char: c, name: c });
 	emojiPool = pool;
@@ -241,128 +249,135 @@ function buildPool() {
 
 function pickEmoji(): EmojiItem { return emojiPool[Math.floor(Math.random() * emojiPool.length)]; }
 
-// ===== エフェクト制御ヘルパー =====
-function triggerHitGlow(cell: Cell, durationMs = 500) {
-	if (cell.hitGlowTimer) { clearTimeout(cell.hitGlowTimer); cell.hitGlowTimer = null; }
-	cell.hitGlow = true;
-	cell.hitGlowTimer = setTimeout(() => {
-		cell.hitGlow = false;
-		cell.hitGlowTimer = null;
+// ===== エフェクト制御ヘルパー（スロット単位） =====
+function triggerHitGlow(slot: Slot, durationMs = 500) {
+	if (slot.hitGlowTimer) { clearTimeout(slot.hitGlowTimer); slot.hitGlowTimer = null; }
+	slot.hitGlow = true;
+	slot.hitGlowTimer = setTimeout(() => {
+		slot.hitGlow = false;
+		slot.hitGlowTimer = null;
 	}, durationMs);
 }
-function triggerMissGlow(cell: Cell, durationMs = 500) {
-	if (cell.missGlowTimer) { clearTimeout(cell.missGlowTimer); cell.missGlowTimer = null; }
-	cell.missGlow = true;
-	cell.missGlowTimer = setTimeout(() => {
-		cell.missGlow = false;
-		cell.missGlowTimer = null;
+function triggerMissGlow(slot: Slot, durationMs = 500) {
+	if (slot.missGlowTimer) { clearTimeout(slot.missGlowTimer); slot.missGlowTimer = null; }
+	slot.missGlow = true;
+	slot.missGlowTimer = setTimeout(() => {
+		slot.missGlow = false;
+		slot.missGlowTimer = null;
 	}, durationMs);
 }
 
-// ===== セルを完全にクリアする =====
-function clearCell(cell: Cell) {
-	cell.visible = false;
-	cell.graceHittable = false;
-	cell.emoji = null;
-	cell.spawnId = 0;
-	if (cell.timer) { clearTimeout(cell.timer); cell.timer = null; }
-	if (cell.graceTimer) { clearTimeout(cell.graceTimer); cell.graceTimer = null; }
-	// occupiedはアニメーション完了後に解放（CSS transition + 余裕）
-	// 既存の解放タイマーをキャンセルしてから新規セット（暴発防止）
-	if (cell.clearTimer) { clearTimeout(cell.clearTimer); }
-	cell.clearTimer = setTimeout(() => {
-		cell.occupied = false;
-		cell.clearTimer = null;
-	}, 400);
+// ===== 絵文字エンティティのライフサイクル =====
+// あるmoleを配列から取り除く（タイマーも確実に解放）
+function removeMole(list: Mole[], mole: Mole) {
+	if (mole.upTimer) { clearTimeout(mole.upTimer); mole.upTimer = null; }
+	if (mole.graceTimer) { clearTimeout(mole.graceTimer); mole.graceTimer = null; }
+	const idx = list.indexOf(mole);
+	if (idx !== -1) list.splice(idx, 1);
 }
 
-// ===== ゲームロジック =====
+// 空いている（どのmoleも居ない）スロット番号の一覧を返す。
+// 1つのスロットには同時に1つの絵文字しか存在できないため、これで
+// 「同じスロットへの重なり出現」が構造的に発生しない。
+function freeSlotIndices(list: Mole[]): number[] {
+	const occupied = new Set(list.map(m => m.slot));
+	const free: number[] = [];
+	for (let i = 0; i < CELL_COUNT; i++) {
+		if (!occupied.has(i)) free.push(i);
+	}
+	return free;
+}
+
+// 次回出現までの待ち時間を、spawnInterval を基準に ±25% のジッターを載せて返す。
+// これにより「複数スロットからの完全に同時刻の一斉出現」が起きなくなる。
+function nextSpawnDelay(intervalMs: number): number {
+	const jitter = intervalMs * 0.25;
+	return Math.max(150, Math.round(intervalMs - jitter + Math.random() * jitter * 2));
+}
+
+// ===== ゲームロジック（プレイヤー） =====
 function spawnMole() {
 	if (gameOver.value || !gameStarted.value) return;
 	const lvl = isEndless.value ? currentLevel.value : difficulty.value;
 	const params = getDiffParams(lvl);
-	const visibleCount = cells.filter(c => c.visible).length;
-	if (visibleCount >= params.maxVisible) return;
 
-	// occupied（表示中 or grace中 or 消えアニメ中）でないセルだけ選ぶ
-	const freeCells = cells.map((c, i) => ({ c, i })).filter(x => !x.c.occupied);
-	if (freeCells.length === 0) return;
+	// 同時表示数の上限（A方式: 複数同時出現は許容するが上限で抑える）
+	if (moles.length >= params.maxVisible) return;
 
-	const target = freeCells[Math.floor(Math.random() * freeCells.length)];
-	const cell = target.c;
-	const sid = ++nextSpawnId;
-	// 過去の解放タイマーが残っていれば確実にキャンセル（spawn後の暴発防止）
-	if (cell.clearTimer) { clearTimeout(cell.clearTimer); cell.clearTimer = null; }
-	// 過去の演出（前回の押しそびれ等）が残っていれば即座にリセット（新スポーンと混ざらないよう）
-	if (cell.missGlowTimer) { clearTimeout(cell.missGlowTimer); cell.missGlowTimer = null; cell.missGlow = false; }
-	if (cell.hitGlowTimer) { clearTimeout(cell.hitGlowTimer); cell.hitGlowTimer = null; cell.hitGlow = false; }
-	cell.emoji = pickEmoji();
-	cell.visible = true;
-	cell.occupied = true;
-	cell.spawnId = sid;
+	const free = freeSlotIndices(moles);
+	if (free.length === 0) return;
 
-	cell.timer = setTimeout(() => {
-		if (cell.spawnId !== sid) return; // 既に別のスポーンに入れ替わっている
+	const slotIndex = free[Math.floor(Math.random() * free.length)];
+	const slot = slots[slotIndex];
+	// このスロットに残っている過去の演出をリセット（新しい絵文字と混ざらないように）
+	if (slot.missGlowTimer) { clearTimeout(slot.missGlowTimer); slot.missGlowTimer = null; slot.missGlow = false; }
+	if (slot.hitGlowTimer) { clearTimeout(slot.hitGlowTimer); slot.hitGlowTimer = null; slot.hitGlow = false; }
 
-		// エンドレス: 押しそびれ判定
-		// ★ visible=false にする前に missGlow を発火することで、
-		//    「絵文字が消えた後に空セルが赤く光って誤判定に見える」問題を回避
+	const mole: Mole = {
+		id: ++nextMoleId,
+		slot: slotIndex,
+		emoji: pickEmoji(),
+		phase: 'up',
+		upTimer: null,
+		graceTimer: null,
+		aiHitTried: false,
+	};
+	moles.push(mole);
+
+	mole.upTimer = setTimeout(() => {
+		// 押しそびれ（時間切れ）
+		// ★ phaseを変える前に missGlow を発火し、空スロットが光って見える誤認を防ぐ
 		if (isEndless.value) {
-			triggerMissGlow(cell);
+			triggerMissGlow(slot);
 			lives.value--;
 			misses.value++;
 			if (lives.value <= 0) {
-				cell.visible = false;
+				removeMole(moles, mole);
 				endGame();
 				return;
 			}
 		}
-
-		cell.visible = false;
-		cell.graceHittable = true;
-		cell.timer = null;
-
-		cell.graceTimer = setTimeout(() => {
-			if (cell.spawnId !== sid) return;
-			cell.graceHittable = false;
-			cell.emoji = null;
-			cell.occupied = false;
-			cell.spawnId = 0;
-			cell.graceTimer = null;
+		mole.phase = 'grace';
+		mole.upTimer = null;
+		mole.graceTimer = setTimeout(() => {
+			removeMole(moles, mole);
 		}, 200);
 	}, params.visibleDuration);
 }
 
-function whack(index: number) {
+// 自己再帰スケジューラ: 1回出すごとに次回をジッター付きで予約する
+function scheduleNextSpawn() {
 	if (gameOver.value || !gameStarted.value) return;
-	const cell = cells[index];
+	const lvl = isEndless.value ? currentLevel.value : difficulty.value;
+	const params = getDiffParams(lvl);
+	spawnScheduleTimer = setTimeout(() => {
+		spawnMole();
+		scheduleNextSpawn(); // 次回は最新のレベルの間隔で予約される
+	}, nextSpawnDelay(params.spawnInterval));
+}
+
+function whack(slotIndex: number) {
+	if (gameOver.value || !gameStarted.value) return;
+	const slot = slots[slotIndex];
 	const lvl = isEndless.value ? currentLevel.value : difficulty.value;
 	const params = getDiffParams(lvl);
 
-	if (cell.visible || cell.graceHittable) {
+	const mole = moleAt(slotIndex); // up でも grace でも叩ける（猶予期間を維持）
+	if (mole) {
 		// ヒット
-		clearCell(cell);
+		removeMole(moles, mole);
 		score.value += params.scorePerHit;
 		hits.value++;
 
-		// エンドレス: レベル更新
+		// エンドレス: レベル更新（スケジューラはタイマーを作り直さず、次回予約で新間隔を使う）
 		if (isEndless.value) {
 			const newLvl = calcEndlessLevel();
 			if (newLvl !== currentLevel.value) {
 				currentLevel.value = newLvl;
-				// プレイヤー側スポーン間隔を更新
-				if (spawnTimer) clearInterval(spawnTimer);
-				const newParams = getDiffParams(newLvl);
-				spawnTimer = setInterval(spawnMole, newParams.spawnInterval);
-				// AI 側スポーン間隔も同期（漏れていたバグ修正）
-				if (aiMode.value && aiSpawnTimer) {
-					clearInterval(aiSpawnTimer);
-					aiSpawnTimer = setInterval(aiSpawnMole, newParams.spawnInterval);
-				}
 			}
 		}
 
-		triggerHitGlow(cell);
+		triggerHitGlow(slot);
 	} else {
 		// ミス（空叩き）
 		misses.value++;
@@ -374,113 +389,95 @@ function whack(index: number) {
 			score.value = Math.max(0, score.value - params.missPenalty);
 		}
 
-		triggerMissGlow(cell);
+		triggerMissGlow(slot);
 	}
 }
 
 // ===== AI（独自盤面でプレイ） =====
-function aiClearCell(cell: Cell) {
-	cell.visible = false;
-	cell.graceHittable = false;
-	cell.emoji = null;
-	cell.spawnId = 0;
-	if (cell.timer) { clearTimeout(cell.timer); cell.timer = null; }
-	if (cell.graceTimer) { clearTimeout(cell.graceTimer); cell.graceTimer = null; }
-	if (cell.clearTimer) { clearTimeout(cell.clearTimer); }
-	cell.clearTimer = setTimeout(() => {
-		cell.occupied = false;
-		cell.clearTimer = null;
-	}, 400);
-}
-
 function aiSpawnMole() {
 	if (gameOver.value || !gameStarted.value) return;
 	const lvl = isEndless.value ? currentLevel.value : difficulty.value;
 	const params = getDiffParams(lvl);
-	const visibleCount = aiCells.filter(c => c.visible).length;
-	if (visibleCount >= params.maxVisible) return;
 
-	const freeCells = aiCells.map((c, i) => ({ c, i })).filter(x => !x.c.occupied);
-	if (freeCells.length === 0) return;
+	if (aiMoles.length >= params.maxVisible) return;
 
-	const target = freeCells[Math.floor(Math.random() * freeCells.length)];
-	const cell = target.c;
-	const sid = ++nextSpawnId;
-	if (cell.clearTimer) { clearTimeout(cell.clearTimer); cell.clearTimer = null; }
-	if (cell.missGlowTimer) { clearTimeout(cell.missGlowTimer); cell.missGlowTimer = null; cell.missGlow = false; }
-	if (cell.hitGlowTimer) { clearTimeout(cell.hitGlowTimer); cell.hitGlowTimer = null; cell.hitGlow = false; }
-	cell.emoji = pickEmoji();
-	cell.visible = true;
-	cell.occupied = true;
-	cell.spawnId = sid;
+	const free = freeSlotIndices(aiMoles);
+	if (free.length === 0) return;
 
-	// AIが叩くかどうかを判定
-	const ai = getAiParams(aiMode.value);
-	const reactionDelay = ai.reactionMs + Math.random() * ai.reactionMs * 0.5;
+	const slotIndex = free[Math.floor(Math.random() * free.length)];
+	const slot = aiSlots[slotIndex];
+	if (slot.missGlowTimer) { clearTimeout(slot.missGlowTimer); slot.missGlowTimer = null; slot.missGlow = false; }
+	if (slot.hitGlowTimer) { clearTimeout(slot.hitGlowTimer); slot.hitGlowTimer = null; slot.hitGlow = false; }
 
-	cell.timer = setTimeout(() => {
-		// 時間切れ: もぐらが引っ込む前にAIが叩けなかった
-		if (cell.spawnId !== sid) return;
-		if (!cell.visible) return; // 既にAIが叩いた
-		cell.visible = false;
-		cell.graceHittable = false;
-		// AI押しそびれ = ミス演出
-		triggerMissGlow(cell);
-		cell.graceTimer = setTimeout(() => {
-			if (cell.spawnId !== sid) return;
-			cell.emoji = null;
-			cell.occupied = false;
-			cell.spawnId = 0;
-			cell.graceTimer = null;
+	const mole: Mole = {
+		id: ++nextMoleId,
+		slot: slotIndex,
+		emoji: pickEmoji(),
+		phase: 'up',
+		upTimer: null,
+		graceTimer: null,
+		aiHitTried: false,
+	};
+	aiMoles.push(mole);
+
+	// 時間切れ（AIが叩けなかった）
+	mole.upTimer = setTimeout(() => {
+		triggerMissGlow(slot);
+		mole.phase = 'grace';
+		mole.upTimer = null;
+		mole.graceTimer = setTimeout(() => {
+			removeMole(aiMoles, mole);
 		}, 200);
-		cell.timer = null;
 	}, params.visibleDuration);
 
 	// AIが叩く試行
+	const ai = getAiParams(aiMode.value);
+	const reactionDelay = ai.reactionMs + Math.random() * ai.reactionMs * 0.5;
 	setTimeout(() => {
-		if (gameOver.value || cell.spawnId !== sid || !cell.visible) return;
+		if (gameOver.value || mole.aiHitTried || mole.phase !== 'up') return;
+		mole.aiHitTried = true;
 		if (Math.random() < ai.hitRate) {
 			// ヒット
 			const curLvl = isEndless.value ? currentLevel.value : difficulty.value;
 			const curParams = getDiffParams(curLvl);
 			aiScore.value += curParams.scorePerHit;
-			if (cell.timer) { clearTimeout(cell.timer); cell.timer = null; }
-			cell.visible = false;
-			triggerHitGlow(cell);
-			cell.graceTimer = setTimeout(() => {
-				if (cell.spawnId !== sid) return;
-				cell.emoji = null;
-				cell.occupied = false;
-				cell.spawnId = 0;
-				cell.graceTimer = null;
-			}, 200);
+			triggerHitGlow(slot);
+			removeMole(aiMoles, mole);
 		}
-		// hitRateに失敗 → 何もしない。timerで時間切れ処理される
+		// hitRate に失敗 → 何もしない。upTimer で時間切れ処理される
 	}, reactionDelay);
+}
+
+function scheduleNextAiSpawn() {
+	if (gameOver.value || !gameStarted.value || !aiMode.value) return;
+	const lvl = isEndless.value ? currentLevel.value : difficulty.value;
+	const params = getDiffParams(lvl);
+	aiSpawnScheduleTimer = setTimeout(() => {
+		aiSpawnMole();
+		scheduleNextAiSpawn();
+	}, nextSpawnDelay(params.spawnInterval));
 }
 
 function startAi() {
 	if (!aiMode.value) return;
-	const lvl = isEndless.value ? currentLevel.value : difficulty.value;
-	const params = getDiffParams(lvl);
-	aiSpawnTimer = setInterval(aiSpawnMole, params.spawnInterval);
+	scheduleNextAiSpawn();
 }
 
 function stopAi() {
-	if (aiTimer) { clearInterval(aiTimer); aiTimer = null; }
-	if (aiSpawnTimer) { clearInterval(aiSpawnTimer); aiSpawnTimer = null; }
-	for (const cell of aiCells) { aiClearCell(cell); }
+	if (aiSpawnScheduleTimer) { clearTimeout(aiSpawnScheduleTimer); aiSpawnScheduleTimer = null; }
+	for (const mole of [...aiMoles]) removeMole(aiMoles, mole);
 }
 
 // ===== タイマー =====
 function endGame() {
 	gameOver.value = true;
 	gameStarted.value = false;
-	if (spawnTimer) { clearInterval(spawnTimer); spawnTimer = null; }
+	if (spawnScheduleTimer) { clearTimeout(spawnScheduleTimer); spawnScheduleTimer = null; }
 	if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
 	stopAi();
 
-	for (const cell of cells) { clearCell(cell); }
+	for (const mole of [...moles]) removeMole(moles, mole);
+	for (const slot of slots) resetSlot(slot);
 
 	const key = getHighScoreKey();
 	const prev = parseInt(miLocalStorage.getItem(key) || '0', 10);
@@ -510,9 +507,7 @@ function startCountdown() {
 
 function beginPlay() {
 	gameStarted.value = true;
-	const lvl = isEndless.value ? currentLevel.value : difficulty.value;
-	const params = getDiffParams(lvl);
-	spawnTimer = setInterval(spawnMole, params.spawnInterval);
+	scheduleNextSpawn();
 
 	if (!isEndless.value) {
 		countdownTimer = setInterval(() => {
@@ -524,9 +519,17 @@ function beginPlay() {
 	if (aiMode.value) startAi();
 }
 
+// スロットの演出状態とタイマーを初期化する
+function resetSlot(slot: Slot) {
+	slot.hitGlow = false;
+	slot.missGlow = false;
+	if (slot.hitGlowTimer) { clearTimeout(slot.hitGlowTimer); slot.hitGlowTimer = null; }
+	if (slot.missGlowTimer) { clearTimeout(slot.missGlowTimer); slot.missGlowTimer = null; }
+}
+
 // ===== 初期化 =====
 function initGame() {
-	if (spawnTimer) { clearInterval(spawnTimer); spawnTimer = null; }
+	if (spawnScheduleTimer) { clearTimeout(spawnScheduleTimer); spawnScheduleTimer = null; }
 	if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
 	stopAi();
 
@@ -540,18 +543,12 @@ function initGame() {
 	lives.value = MAX_LIVES;
 	currentLevel.value = isEndless.value ? 1 : difficulty.value;
 
-	for (const cell of cells) {
-		cell.visible = false; cell.emoji = null;
-		cell.hitGlow = false; cell.missGlow = false;
-		cell.graceHittable = false; cell.occupied = false;
-		cell.spawnId = 0;
-		if (cell.timer) { clearTimeout(cell.timer); cell.timer = null; }
-		if (cell.graceTimer) { clearTimeout(cell.graceTimer); cell.graceTimer = null; }
-		if (cell.hitGlowTimer) { clearTimeout(cell.hitGlowTimer); cell.hitGlowTimer = null; }
-		if (cell.missGlowTimer) { clearTimeout(cell.missGlowTimer); cell.missGlowTimer = null; }
-		if (cell.clearTimer) { clearTimeout(cell.clearTimer); cell.clearTimer = null; }
-	}
-	for (const cell of aiCells) { aiClearCell(cell); }
+	// 全mole(タイマー含む)を破棄
+	for (const mole of [...moles]) removeMole(moles, mole);
+	for (const mole of [...aiMoles]) removeMole(aiMoles, mole);
+	// 全スロットの演出を初期化
+	for (const slot of slots) resetSlot(slot);
+	for (const slot of aiSlots) resetSlot(slot);
 
 	buildPool();
 	startCountdown();
@@ -562,17 +559,12 @@ function goBack() { mainRouter.push('/whack-emoji'); }
 
 onMounted(() => { initGame(); });
 onUnmounted(() => {
-	if (spawnTimer) clearInterval(spawnTimer);
+	if (spawnScheduleTimer) clearTimeout(spawnScheduleTimer);
 	if (countdownTimer) clearInterval(countdownTimer);
 	stopAi();
-	for (const cell of cells) {
-		if (cell.timer) clearTimeout(cell.timer);
-		if (cell.graceTimer) clearTimeout(cell.graceTimer);
-		if (cell.hitGlowTimer) clearTimeout(cell.hitGlowTimer);
-		if (cell.missGlowTimer) clearTimeout(cell.missGlowTimer);
-		if (cell.clearTimer) clearTimeout(cell.clearTimer);
-	}
-	for (const cell of aiCells) { aiClearCell(cell); }
+	for (const mole of [...moles]) removeMole(moles, mole);
+	for (const slot of slots) resetSlot(slot);
+	for (const slot of aiSlots) resetSlot(slot);
 });
 
 definePage(() => ({ title: '絵文字叩きゲーム', icon: 'ti ti-hammer' }));

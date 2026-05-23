@@ -10,9 +10,11 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<div class="_gaps_m znqjceqz">
 				<div v-panel class="about">
 					<div ref="containerEl" class="container" :class="{ playing: easterEggEngine != null }">
-						<img src="/client-assets/about-icon.png" alt="" class="icon" draggable="false" @load="iconLoaded" @click="gravity"/>
-						<div class="cherrypick">CherryPick</div>
-						<div class="version" @click="whatIsNewCherryPick">v{{ version }} <span class="commit-hash" @click.stop="openCommitPage('kokonect-link/cherrypick', gitHash)">({{ gitHash.substring(0, 8) }})</span></div>
+						<!-- 旗鯖fork: 旧アイコン(画像/ランダムカラー)を廃止し、ログインページと同じ Hataskey ブランドロゴ表示に統一 -->
+						<div class="brandLogo" @click="gravity">
+							<div class="brandLogoText">Hataskey</div>
+						</div>
+						<div class="version" @click="whatIsNewHataskey">v{{ version }} <span class="commit-hash" @click.stop="openHataskeyCommit(gitHash)">({{ gitHash.substring(0, 8) }})</span></div>
 						<div class="version" style="font-size: 11px;" @click="whatIsNewMisskey">v{{ basedMisskeyVersion }} (Based on Misskey)</div>
 						<span v-for="emoji in easterEggEmojis" :key="emoji.id" class="emoji" :data-physics-x="emoji.left" :data-physics-y="emoji.top" :class="{ _physics_circle_: !emoji.emoji.startsWith(':') }">
 							<MkCustomEmoji v-if="emoji.emoji[0] === ':'" class="emoji" :name="emoji.emoji" :normal="true" :noStyle="true" :fallbackToImage="true"/>
@@ -25,15 +27,20 @@ SPDX-License-Identifier: AGPL-3.0-only
 					{{ i18n.ts._aboutMisskey.about }}<br><a href="https://misskey-hub.net/docs/about-misskey/" target="_blank" class="_link">{{ i18n.ts.learnMore }}</a>
 				</div>
 				<div v-if="$i != null" style="text-align: center;">
-					<MkButton primary rounded inline @click="iLoveCherryPick">I <Mfm text="$[jelly ❤]"/> #CherryPick</MkButton>
+					<MkButton primary rounded inline @click="iLoveCherryPick">I <Mfm text="$[jelly ❤]"/> #Hataskey</MkButton>
 				</div>
-				<FormSection v-if="isKokonect">
-					<template #label>_KOKONECT_</template>
+				<FormSection>
+					<template #label>Hataskey</template>
 					<div class="_gaps_s">
-						<FormLink to="https://status.kokonect.link" external>
-							<template #icon><i class="ti ti-activity"></i></template>
-							{{ i18n.ts._aboutMisskey._kokonect.serverStatus }}
-							<template #suffix>Server Status</template>
+						<FormLink to="https://code.tolehata.net/explore/repos" external>
+							<template #icon><i class="ti ti-code"></i></template>
+							{{ i18n.ts._aboutMisskey.source }}
+							<template #suffix>Forgejo</template>
+						</FormLink>
+						<FormLink to="https://discord.gg/3dpwsnDmSS" external>
+							<template #icon><i class="ti ti-brand-discord"></i></template>
+							{{ i18n.ts._aboutMisskey._cherrypick.community }}
+							<template #suffix>Discord</template>
 						</FormLink>
 					</div>
 				</FormSection>
@@ -86,7 +93,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 						</FormLink>
 					</div>
 				</FormSection>
-				<FormSection v-if="instance.repositoryUrl !== 'https://github.com/kokonect-link/cherrypick'">
+				<FormSection v-if="instance.repositoryUrl !== 'https://code.tolehata.net/hatacha/cherrypick-hata'">
 					<div class="_gaps_s">
 						<MkInfo>
 							{{ i18n.tsx._aboutMisskey.thisIsModifiedVersion({ name: instance.name ?? host }) }}
@@ -95,18 +102,26 @@ SPDX-License-Identifier: AGPL-3.0-only
 							<template #icon><i class="ti ti-code"></i></template>
 							{{ i18n.ts._aboutMisskey.source }}
 						</FormLink>
-						<FormLink v-if="instance.providesTarball" :to="`/tarball/cherrypick-${version}.tar.gz`" external>
-							<template #icon><i class="ti ti-download"></i></template>
-							{{ i18n.ts._aboutMisskey.source }}
-							<template #suffix>Tarball</template>
-						</FormLink>
-						<MkInfo v-if="!instance.repositoryUrl && !instance.providesTarball" warn>
+						<MkInfo v-if="!instance.repositoryUrl" warn>
 							{{ i18n.ts.sourceCodeIsNotYetProvided }}
 						</MkInfo>
 					</div>
 				</FormSection>
 				<FormSection>
-					<template #label>{{ i18n.ts._aboutMisskey.projectMembers }}</template>
+					<template #label>Hataskeyプロジェクトメンバー</template>
+					<div :class="$style.contributors">
+						<a href="https://code.tolehata.net/hatacha" target="_blank" :class="$style.contributor">
+							<img src="https://code.tolehata.net/avatars/48a89d84fa2aa7df380278f910431b40" :class="$style.contributorAvatar">
+							<span :class="$style.contributorUsername">@Hatacha
+								<span :class="$style.contributorClient">
+									<span :class="$style.hataskey">Hataskey</span>
+								</span>
+							</span>
+						</a>
+					</div>
+				</FormSection>
+				<FormSection>
+					<template #label>CherryPickプロジェクトメンバー</template>
 					<div :class="$style.contributors">
 						<a href="https://github.com/noridev" target="_blank" :class="$style.contributor">
 							<img src="https://avatars.githubusercontent.com/u/11006910?v=4" :class="$style.contributorAvatar">
@@ -238,7 +253,21 @@ import { claimAchievement, claimedAchievements } from '@/utility/achievements.js
 import { $i } from '@/i.js';
 import { prefer } from '@/preferences.js';
 import { donateCherryPick } from '@/utility/donate-cherrypick.js';
-import { openCommitPage } from '@/utility/fetch-releases.js';
+
+// instance.uri (または host) をシードに HSL 色相を決定論的に生成
+// プレーン単色アイコン用（instance.iconUrl 未設定時のフォールバック）
+// host は 218 行目の import で既に取得済み
+const plainIconColor = computed(() => {
+	const seed = instance.uri || host || 'hataskey';
+	let hash = 0;
+	for (let i = 0; i < seed.length; i++) {
+		hash = ((hash << 5) - hash) + seed.charCodeAt(i);
+		hash |= 0;
+	}
+	const hue = Math.abs(hash) % 360;
+	// 彩度60%・明度50% でライト/ダーク両モードで視認性確保
+	return `hsl(${hue}, 60%, 50%)`;
+});
 
 const patronsWithIconWithCherryPick = [{
 	name: 'Etone Sabasappugawa',
@@ -398,6 +427,9 @@ const patronsWithIconWithMisskey = [{
 }, {
 	name: '大賀愛一郎',
 	icon: 'https://assets.misskey-hub.net/patrons/c701a797d1df4125970f25d3052250ac.jpg',
+}, {
+	name: '西野マチ',
+	icon: 'https://assets.misskey-hub.net/patrons/962ff1d2f3d040ed8973b62bbff84391.jpg',
 }];
 
 const patronsWithCherryPick = [
@@ -517,9 +549,8 @@ const patronsWithMisskey = [
 	'ほとラズ',
 	'スズカケン',
 	'蒼井よみこ',
+	'忍猫',
 ];
-
-let isKokonect = false;
 
 const thereIsTreasure = ref($i && !claimedAchievements.includes('foundTreasure'));
 
@@ -533,8 +564,14 @@ const easterEggEmojis = ref<{
 const easterEggEngine = ref<{ stop: () => void } | null>(null);
 const containerEl = useTemplateRef('containerEl');
 
-const whatIsNewCherryPick = () => {
-	window.open(`https://github.com/kokonect-link/cherrypick/blob/develop/CHANGELOG_CHERRYPICK.md#${version.replace(/\./g, '')}`, '_blank');
+const whatIsNewHataskey = () => {
+	window.open('https://code.tolehata.net/hatacha/cherrypick-hata/src/branch/master/HATA-CHANGELOG.md', '_blank');
+};
+
+const openHataskeyCommit = (hash: string) => {
+	if (hash && hash !== 'unknown') {
+		window.open(`https://code.tolehata.net/hatacha/cherrypick-hata/commit/${hash}`, '_blank');
+	}
 };
 
 const whatIsNewMisskey = () => {
@@ -568,7 +605,7 @@ function gravity() {
 
 function iLoveCherryPick() {
 	os.post({
-		initialText: 'I $[jelly ❤] #CherryPick',
+		initialText: 'I $[jelly ❤] #Hataskey',
 		instant: true,
 	});
 }
@@ -579,12 +616,10 @@ function getTreasure() {
 }
 
 onMounted(() => {
-	if (window.location.host === 'localhost:3000') isKokonect = true;
-	else if (window.location.host === '127.0.0.1:3000') isKokonect = true;
-	else if (window.location.host === '0.0.0.0:3000') isKokonect = true;
-	else if (window.location.host === 'kokonect.link') isKokonect = true;
-	else if (window.location.host === 'beta.kokonect.link') isKokonect = true;
-	else if (window.location.host === 'universe.noridev.moe') isKokonect = true;
+	// 旗鯖fork: アイコンを Hataskey ブランドロゴ表示に統一したため、
+	// <img> の load イベントが発火しない → 常に手動で iconLoaded() を呼んで
+	// イースターエッグ用の絵文字配列を初期化する
+	iconLoaded();
 });
 
 onBeforeUnmount(() => {
@@ -604,6 +639,16 @@ definePage(() => ({
 </script>
 
 <style lang="scss" scoped>
+/* 旗鯖fork: ログインページと同じ Righteous フォントを about-misskey でも使用するため宣言
+ * (scoped 内の @font-face はグローバルに展開される) */
+@font-face {
+	font-family: 'Righteous';
+	font-style: normal;
+	font-weight: 400;
+	font-display: swap;
+	src: url('/client-assets/Righteous-Regular.woff2') format('woff2');
+}
+
 .znqjceqz {
 	> .about {
 		position: relative;
@@ -649,6 +694,32 @@ definePage(() => ({
 				border-radius: 16px;
 				position: relative;
 				z-index: 1;
+			}
+
+			> .plainIcon {
+				height: 80px;
+				cursor: pointer;
+			}
+
+			/* 旗鯖fork: ログインページと同じ Hataskey ブランドロゴ表示 */
+			> .brandLogo {
+				display: flex;
+				justify-content: center;
+				align-items: center;
+				cursor: pointer;
+				position: relative;
+				z-index: 1;
+				margin: 0 auto;
+				padding: 8px 0;
+
+				> .brandLogoText {
+					font-family: 'Righteous', system-ui, sans-serif;
+					font-size: 56px;
+					font-weight: 400;
+					line-height: 1;
+					letter-spacing: 0.02em;
+					color: var(--MI_THEME-accent);
+				}
 			}
 
 			> .cherrypick {
@@ -750,6 +821,11 @@ definePage(() => ({
 
 	> .pick {
 		color: var(--CP-pick);
+	}
+
+	/* 旗鯖fork: Hataskey ブランド表記用カラー(判子色=テーマカラー) */
+	> .hataskey {
+		color: var(--MI_THEME-accent);
 	}
 }
 

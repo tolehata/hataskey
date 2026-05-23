@@ -79,8 +79,11 @@ export async function mainBoot() {
 			case 'default':
 				rootComponent = await import('@/ui/universal.vue').then(x => x.default);
 				break;
+			// 旗鯖fork: friendly UI を全面廃止。
+			// 旧 'friendly' 値が来た場合や未知の値は simple にフォールバックする。
+			case 'friendly':
 			default:
-				rootComponent = await import('@/ui/friendly.vue').then(x => x.default);
+				rootComponent = await import('@/ui/simple.vue').then(x => x.default);
 				break;
 		}
 
@@ -97,10 +100,20 @@ export async function mainBoot() {
 
 		// prefereces migration
 		// TODO: そのうち消す
-		if (lastVersion && (compareVersions('4.16.0-alpha.0', lastVersion) === 1)) {
-			console.log('Preferences migration');
+		if (lastVersion) {
+			let shouldMigrate = false;
+			try {
+				shouldMigrate = compareVersions('4.16.0-alpha.0', lastVersion) === 1;
+			} catch {
+				// lastVersion が semver として不正な場合(misskey-hata 等の別系統フォークからの移行)は
+				// 旧バージョンとみなして設定移行を実行する
+				shouldMigrate = true;
+			}
+			if (shouldMigrate) {
+				console.log('Preferences migration');
 
-			migrateOldSettings();
+				migrateOldSettings();
+			}
 		}
 	}
 

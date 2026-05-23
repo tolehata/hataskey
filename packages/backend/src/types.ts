@@ -53,6 +53,7 @@ export const notificationTypes = [
 export const groupedNotificationTypes = [
 	...notificationTypes,
 	'reaction:grouped',
+	'reaction:groupedByUser',
 	'renote:grouped',
 	'note:grouped',
 ] as const;

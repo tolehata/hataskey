@@ -1,5 +1,7 @@
 <!--
 SPDX-FileCopyrightText: syuilo and misskey-project
+SPDX-FileCopyrightText: noridev and cherrypick-project
+SPDX-FileCopyrightText: Tolehata and hatasaba-project
 SPDX-License-Identifier: AGPL-3.0-only
 -->
 
@@ -64,7 +66,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<MkA v-user-preview="appearNote.user.id" :class="$style.noteHeaderName" :to="userPage(appearNote.user)">
 							<MkUserName :nowrap="true" :user="appearNote.user"/>
 						</MkA>
-						<span v-if="appearNote.user.isLocked" :class="$style.userBadge"><i class="ti ti-lock"></i></span>
+						<!-- 旗鯖fork: フォロー許可制アカウント (isLocked) の🔒バッジは非表示 (旗茶くんの依頼、タイムラインと統一) -->
 						<span v-if="appearNote.user.isBot" :class="$style.userBadge"><i class="ti ti-robot"></i></span>
 						<span v-if="appearNote.user.isProxy" :class="$style.userBadge"><i class="ti ti-ghost"></i></span>
 						<span v-if="appearNote.user.badgeRoles" :class="$style.badgeRoles">

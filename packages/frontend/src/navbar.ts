@@ -13,7 +13,6 @@ import { lookup } from '@/utility/lookup.js';
 import * as os from '@/os.js';
 import { i18n } from '@/i18n.js';
 import { unisonReload } from '@/utility/unison-reload.js';
-import { donateCherryPick } from '@/utility/donate-cherrypick.js';
 
 export const navbarItemDef = reactive({
 	notifications: {
@@ -57,12 +56,6 @@ export const navbarItemDef = reactive({
 		icon: 'ti ti-layout-dashboard',
 		show: computed(() => $i != null),
 		to: '/hatask',
-	},
-	hataDocs: {
-		title: '旗鯖機能解説',
-		icon: 'ti ti-book',
-		show: computed(() => true),
-		to: '/hata-docs',
 	},
 	hataWhatsNew: {
 		title: '旗鯖新機能',
@@ -163,7 +156,7 @@ export const navbarItemDef = reactive({
 		to: '/my/achievements',
 	},
 	games: {
-		title: 'CherryPick Games',
+		title: 'Hataskey Games',
 		icon: 'ti ti-device-gamepad',
 		to: '/games',
 	},
@@ -231,12 +224,9 @@ export const navbarItemDef = reactive({
 		show: computed(() => $i != null),
 		to: `/@${$i?.username}`,
 	},
-	support: {
-		// title: i18n.tsx.supportThisInstance({ name: instance.name ?? host }),
-		title: i18n.tsx.supportThisInstance({ name: 'CherryPick' }),
-		icon: 'ti ti-pig-money',
-		action: (ev) => donateCherryPick(ev),
-	},
+	// 旗鯖fork: CherryPick の支援関連はサイドバーから撤去し、
+	// サーバーアイコン → サーバー情報(about-misskey)に集約しています。
+	// (旧 support 項目は削除されました)
 	cacheClear: {
 		title: i18n.ts.clearCache,
 		icon: 'ti ti-trash',
