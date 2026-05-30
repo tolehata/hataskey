@@ -62,6 +62,19 @@ export const paramDef = {
 		silence: { type: 'boolean', default: false },
 		needConfirmationToRead: { type: 'boolean', default: false },
 		userId: { type: 'string', format: 'misskey:id', nullable: true, default: null },
+		// 旗鯖fork: メンテ進捗バー (icon === 'maintenance' のときのみ意味を持つ)
+		// progressSteps: 各段階のラベル(string[4])。null なら機能を使わない
+		// progressCompleted: 各段階の完了状態(boolean[4])。null なら全段階未完了
+		progressSteps: {
+			type: 'array', nullable: true, default: null,
+			minItems: 4, maxItems: 4,
+			items: { type: 'string', minLength: 1, maxLength: 64 },
+		},
+		progressCompleted: {
+			type: 'array', nullable: true, default: null,
+			minItems: 4, maxItems: 4,
+			items: { type: 'boolean' },
+		},
 	},
 	required: ['title', 'text', 'imageUrl'],
 } as const;
@@ -84,6 +97,9 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				silence: ps.silence,
 				needConfirmationToRead: ps.needConfirmationToRead,
 				userId: ps.userId,
+				// 旗鯖fork: メンテ進捗バーは icon === 'maintenance' のときだけ保存する
+				progressSteps: ps.icon === 'maintenance' ? ps.progressSteps : null,
+				progressCompleted: ps.icon === 'maintenance' ? ps.progressCompleted : null,
 			}, me);
 
 			return packed;

@@ -39,6 +39,17 @@ export const paramDef = {
 		silence: { type: 'boolean' },
 		needConfirmationToRead: { type: 'boolean' },
 		isActive: { type: 'boolean' },
+		// 旗鯖fork: メンテ進捗バー (icon === 'maintenance' のときのみ意味を持つ)
+		progressSteps: {
+			type: 'array', nullable: true,
+			minItems: 4, maxItems: 4,
+			items: { type: 'string', minLength: 1, maxLength: 64 },
+		},
+		progressCompleted: {
+			type: 'array', nullable: true,
+			minItems: 4, maxItems: 4,
+			items: { type: 'boolean' },
+		},
 	},
 	required: ['id'],
 } as const;
@@ -56,6 +67,12 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 
 			if (announcement == null) throw new ApiError(meta.errors.noSuchAnnouncement);
 
+			// 旗鯖fork: メンテ進捗バーは icon === 'maintenance' のときだけ保存
+			// (カテゴリ変更で maintenance 以外になった場合は null に戻す)
+			const effectiveIcon = ps.icon ?? announcement.icon;
+			const progressSteps = effectiveIcon === 'maintenance' ? (ps.progressSteps !== undefined ? ps.progressSteps : announcement.progressSteps) : null;
+			const progressCompleted = effectiveIcon === 'maintenance' ? (ps.progressCompleted !== undefined ? ps.progressCompleted : announcement.progressCompleted) : null;
+
 			await this.announcementService.update(announcement, {
 				updatedAt: new Date(),
 				title: ps.title,
@@ -68,6 +85,8 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				silence: ps.silence,
 				needConfirmationToRead: ps.needConfirmationToRead,
 				isActive: ps.isActive,
+				progressSteps,
+				progressCompleted,
 			}, me);
 		});
 	}

@@ -56,6 +56,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 							</div>
 							<div :class="$style.content">
 								<Mfm :text="announcement.text" class="_selectable"/>
+								<!-- 旗鯖fork: メンテナンス進捗バー -->
+								<MkAnnouncementProgress
+									v-if="announcement.progressSteps"
+									:steps="announcement.progressSteps"
+									:completed="announcement.progressCompleted"
+								/>
 								<img v-if="announcement.imageUrl" :src="announcement.imageUrl"/>
 								<MkA :to="`/announcements/${announcement.id}`" :class="$style.metadataLink">
 									<div :class="$style.metadata">
@@ -90,6 +96,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 							</div>
 							<div :class="$style.content">
 								<Mfm :text="announcement.text" class="_selectable"/>
+								<!-- 旗鯖fork: メンテナンス進捗バー -->
+								<MkAnnouncementProgress
+									v-if="announcement.progressSteps"
+									:steps="announcement.progressSteps"
+									:completed="announcement.progressCompleted"
+								/>
 								<img v-if="announcement.imageUrl" :src="announcement.imageUrl"/>
 								<MkA :to="`/announcements/${announcement.id}`" :class="$style.metadataLink">
 									<div :class="$style.metadata">
@@ -237,6 +249,7 @@ import { ref, computed, markRaw, onMounted } from 'vue';
 import MkPagination from '@/components/MkPagination.vue';
 import MkButton from '@/components/MkButton.vue';
 import MkInfo from '@/components/MkInfo.vue';
+import MkAnnouncementProgress from '@/components/MkAnnouncementProgress.vue';
 import * as os from '@/os.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { i18n } from '@/i18n.js';

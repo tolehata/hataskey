@@ -3,6 +3,42 @@
 旗鯖独自フォーク (Hataskey-Hata) のチェンジログです。  
 ベースフォーク CherryPick のチェンジログは [CHANGELOG.md](./CHANGELOG.md) を参照してください。
 
+## hata-11.4
+
+hata-11.3 でブランド統一・Misskey 2026.5.2〜5.4 取り込みという大きな整備を行った直後のリリースとして、利用者体験を細かく整える方向の更新になります。新機能としてメンテナンスお知らせ向けに**進捗バー (4段階)** を追加したほか、hata-11.3 の積み残しだった複数のバグ修正と HatasabaUI の体験改善を中心に取り込みました。本家 Misskey からの追加取り込みはありません (前リリースで 2026.5.4 まで追従済み)。
+
+### 新機能
+
+- **メンテナンスお知らせに進捗バー (4段階) を追加**: メンテナンスカテゴリ (`icon === 'maintenance'`) のお知らせに、4段階の進捗バーをオプションで表示できるようにしました。各段階のラベルは管理者が自由に設定でき (例「サーバー停止」「DBバックアップ」「適用」「再開」)、コンパネ上で各段階に「完了」チェックを順に入れていくことで進捗を可視化できます。利用者画面では ●━●━○━○ のステップインジケーター型で表示し、完了済みは accent 色塗りつぶし + ✓、未完了は枠線+番号、現在進行中 (最後の完了の次) は accent 色のパルスアニメーションで強調されます。表示はお知らせ一覧画面 (`/my/announcements`) のメンテナンス枠とお知らせダイアログ (`MkAnnouncementDialog`) の2箇所、加えて詳細画面 (`/announcements/:id`) にも実装しています。
+  - DB: `announcement` テーブルに `progressSteps` (jsonb, `string[4] | null`) と `progressCompleted` (jsonb, `boolean[4] | null`) の2カラムを追加。マイグレーション `1780000000000-add-maintenance-progress-to-announcement.js`。両カラムとも nullable / default null のため既存お知らせには影響なし
+  - API: `admin/announcements/create` と `admin/announcements/update` の paramDef に2フィールドを追加 (`minItems: 4, maxItems: 4`)。`icon === 'maintenance'` 以外のときは自動的に null に強制 (カテゴリ変更で maintenance から外れた場合もクリアされる)
+  - Schema: `packedAnnouncementSchema` (`/models/json-schema/announcement.ts`) にもレスポンス型として追加
+  - フロント: 共通コンポーネント `MkAnnouncementProgress.vue` を新規作成し、コンパネ・一覧 (ピン留め枠とメンテナンスハイライト枠の両方)・詳細・ダイアログから呼び出す形に統一。「現在進行中」の判定は「最後の完了済みステップの次のステップ」で、チェックを飛ばしても矛盾なく動く実装
+
+### バグ修正
+
+- **リアクション通知の重複表示・欠落を修正**: `notifications-grouped.ts` のリアクション通知グルーピング処理が、直前1件としか比較しない「隣接比較方式」だったため、同じノートへのリアクションが時系列で飛び石になると複数グループに分裂していました。結果として (1) 同じ投稿のリアクション通知が重複表示される、(2) 分裂したグループが `slice(limit)` で切られて末尾のリアクションが欠落する、という2つの症状が出ていました。リアクションだけ「全体集約方式」に書き直し、`noteId` ごと→`notifierId` ごとの2段で集約してから時系列順に1グループ=1エントリで出力するように変更しました。renote/note のグルーピングは Misskey 標準の隣接比較を維持しています (これらは問題なし)。hata-11.3 で追加した `reaction:groupedByUser` 機能は維持されます
+- **ノートヘッダーの外部サーバーラベルが日時の下に表示される問題を修正**: `MkNoteHeader.vue` で `MkInstanceTicker` (外部サーバーラベル) が日時 `info` ブロックの後ろに別 div として置かれており、かつ属性指定が `:style="$style.info"` (CSSクラス名を `:style` に誤指定、正しくは `:class`) になっていたため、ラベルが日時の下に縦並びで表示されていました。ラベルを日時の左に配置するように DOM を組み替え、`.section:last-child` を `flex-direction: row; align-items: center; gap: 0.5em` の横並びに修正、`.ticker` クラスを新設しました
+- **ノートヘッダーでロール無しユーザーの表示名と @id の間が不自然に空く問題を修正**: `MkNoteHeader.vue` の `badgeRoles` の表示条件が `v-if="note.user.badgeRoles"` だけで、空配列 `[]` も JS の truthy 判定に引っかかるため、ロールが無いユーザーでも空の div が描画され、`margin-right: .5em` の余白だけが残っていました。`v-if="note.user.badgeRoles && note.user.badgeRoles.length > 0"` に変更し、空配列のときは描画しないように
+- **リアクション非表示メニューがモバイルの長押しで出ない問題を修正**: `MkReactionsViewer.reaction.vue` で、リアクションを長押しで開くメニュー (`stealReaction` 関数、`openEmojiMenu` から 500ms ディレイで呼ばれる) に「このリアクションを非表示/表示」項目が無く、右クリック (`menu` 関数) 側にしか実装されていませんでした。モバイルでは長押ししか使えないため、利用者には「絵文字ミュートしか出ない=非表示機能が消滅した」ように見えていました。長押し側メニューにも同項目を追加し、PC/モバイルで揃えました (`hidden-reactions.ts`・設定画面の管理リンク・`menu` 関数自体は元から正常に存在しており、長押しメニューへの項目追加漏れが原因でした)
+- **HatasabaUI サイドメニューの並び替えが画面に反映されない問題を修正**: `hata-custom.vue` の `moveArr` 関数が配列の分割代入 `[arr[idx], arr[ni]] = [arr[ni], arr[idx]]` で要素を入れ替えていましたが、Vue 3 のリアクティビティはインデックス直接代入を検知できないため、▲▼ボタンで並び替えても画面が再描画されませんでした。`splice` ベースの入れ替えに変更
+- **HatasabaUI 設定の「トレンドタブを表示する」トグルがクリックで反応しない問題を修正**: `hata-custom.vue` の `showTrendingTab` computed が getter で非リアクティブな `prefer.s['simpleUi.showTrendingTab']` を参照していたため、Vue の依存追跡が効かず、トグルしても画面が再描画されず (リロードしないと反映されない) 状態でした。`prefer.r['simpleUi.showTrendingTab'].value` (リアクティブ ref) に変更し、即時反映するように
+
+### UI/UX 改善
+
+- **ギャラリーページのタブを共通ピル型デザインに統一**: hata-11.3 でピル型タブに統一した10ページの一覧から漏れていたギャラリーページ (`gallery/index.vue`) も他ページと同じピル型タブに刷新しました。`PageWithHeader` の `:tabs="[]"` で旧ヘッダタブを無効化し、body 上部に共通仕様のピル型タブ (sticky top:0, backdrop blur, accent active state) を実装。ログイン状態での `headerTabs` / `headerTabsWhenNotLogin` 出し分けは維持しています
+- **トレンドタブを通常タブの右端 (外部TLの左) に移動**: HatasabaUI 上部タブの並び順を「通常タブ... → トレンド → 外部ホーム → 外部ローカル」に変更しました。従来は `visibleTopTabs` でトレンドタブを配列先頭に固定していたのを末尾配置に変更し、外部TL (ohtl/oltl) は後段の `tabOrder` で `push` されるため、結果としてトレンドが「通常タブの右端、外部TLの左」の位置に収まります
+- **サイドメニュー並び替えをグループ内限定に + グループラベル表示**: HatasabaUI サイドメニューの並び替え設定で、従来はグループ (基本 / Hatask / 発見・交流 / もっと) をまたいで自由に動かせていましたが、表示側のグループ強制再分類との組み合わせでラベル位置が崩れる懸念があったため、**グループ枠を固定とし、並び替えは各グループ内でのみ可能**に変更しました。`canMoveSidebar(idx, dir)` で隣接要素のグループを比較し、別グループなら境界として ▲▼ ボタンを `disabled` に。並び替えリストにグループラベル (`isSidebarGroupHead` / `sidebarGroupLabelOf`) を表示し、どの項目がどのグループに属するか可視化しています
+- **サイドメニュー下部 (投稿/アカウント) を固定化、メニュースクロールで隠れないように**: 従来は `sidebarInner` 全体が `overflow-y: auto` で、メニュー項目が増えると下部の「ノート」ボタンとアカウント表示も一緒にスクロールして隠れていました。`sidebarInner` を `overflow: hidden` に変更し、メニュー群を新設の `.sbScroll` (`flex:1; min-height:0; overflow-y:auto`) でラップ、`.sbBottom` (投稿+アカウント) は `flex-shrink: 0` で外側に固定する3層構成 (ロゴ上部固定 / メニュースクロール / 下部固定) にしました。PC のサイドバーとモバイルのドロワー両方に適用
+- **サイドメニューに「メッセージ」を追加 (既存ユーザー含む全員に反映)**: HatasabaUI サイドメニュー基本グループに「メッセージ」(`ti ti-messages`) を通知の直後に追加しました。`def.ts` のデフォルト変更だけでは保存済み `simpleUi.sidebar` を持つ既存ユーザーに反映されないため、`sidebarGroups` computed で「`sidebarOrder` に `chat` が無ければ基本グループの通知直後に動的注入する」方式 (トレンドタブと同じ手法) を採用しています。`def.ts` に `chat` がある新規ユーザーは `sidebarOrder` に持つため二重注入されません。クリック (`goToChat`) / 未読ドット (`hasUnreadChat`) / アクティブ判定 (`isChatPage`) は既存実装を流用
+
+### その他
+
+- **旗鯖新機能ページ (`hata-whats-new.vue`) に hata-11.3 までの主要トピックと Misskey 2026.5.2〜5.4 取り込みを追補**: hata-11.3 リリース時点で `hata-whats-new.vue` のカード掲載が一部の主要機能に追いついていなかったため、9 枚のカードを追加して利用者向けの履歴を整えました
+  - Misskey 取り込み: `misskey-2026.5.4` (CVE5件のセキュリティ修正) / `misskey-2026.5.2-5.3` (Unicode 17.0 / テーマプレビュー改善 / RSA署名高速化)
+  - hata-11.3 新機能の追補: ごはん記録機能 (`meal-log`) / 登録申請プライバシー保護 (`registration-privacy`) / お絵描きツール v2.4 (`drawing-tool-v24`、ダークモード文字視認性・カラーパレット改善・レイヤー表示トグル修正・プレビュー高解像度化) / 独自ゲームの Unicode 統一 (`games-unicode-only`、絵文字たたきの同時/重複出現バグ修正含む) / ノートヘッダーレイアウト (`note-header-layout`) / 実績「神様コンプレックス」(`achievement-hatacha`) / 自動送信メールの韓国語除去 (`email-no-korean`)
+- **`package.json` のバージョン表記を更新**: `2026.5.4-hata.11.3` → `2026.5.4-hata.11.4` に更新。`basedMisskeyVersion` (`2026.5.4`) と `codename` (`2026.7`) は変更なし
+
 ## hata-11.3
 
 このリリースで、旗鯖fork のブランド名を **CherryPick-Hata から Hataskey に正式移行**しました。

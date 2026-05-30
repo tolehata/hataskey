@@ -55,6 +55,22 @@ SPDX-License-Identifier: AGPL-3.0-only
 							<option value="maintenance"><i class="ti ti-tool" style="color: var(--MI_THEME-error);"></i></option>
 						</MkRadios>
 						<MkInfo v-if="announcement.icon === 'maintenance'">{{ i18n.ts._announcement.maintenanceNote }}</MkInfo>
+						<!-- 旗鯖fork: メンテナンス進捗バー(4段階) -->
+						<div v-if="announcement.icon === 'maintenance'" :class="$style.progressBlock">
+							<MkSwitch :modelValue="!!announcement.progressSteps" @update:modelValue="toggleProgress(announcement, $event)">
+								進捗バーを表示する
+								<template #caption>4段階のラベルと進捗を利用者に表示します。各段階の文言は自由に設定できます。</template>
+							</MkSwitch>
+							<div v-if="announcement.progressSteps" :class="$style.progressSteps">
+								<div v-for="(label, idx) in announcement.progressSteps" :key="idx" :class="$style.progressStepRow">
+									<span :class="$style.progressStepNum">{{ idx + 1 }}</span>
+									<MkInput v-model="announcement.progressSteps[idx]" :placeholder="`段階${idx + 1}のラベル`" style="flex:1;"/>
+									<MkSwitch :modelValue="(announcement.progressCompleted ?? [false,false,false,false])[idx]" @update:modelValue="setProgressCompleted(announcement, idx, $event)">
+										完了
+									</MkSwitch>
+								</div>
+							</div>
+						</div>
 						<MkRadios v-model="announcement.display">
 							<template #label>{{ i18n.ts.display }}</template>
 							<option value="normal">{{ i18n.ts.normal }}</option>
@@ -139,7 +155,27 @@ function add() {
 		forExistingUsers: false,
 		silence: false,
 		needConfirmationToRead: false,
+		// 旗鯖fork: メンテ進捗バー (icon === 'maintenance' のときのみ使用)
+		progressSteps: null,
+		progressCompleted: null,
 	});
+}
+
+// 旗鯖fork: メンテ進捗バーのON/OFFと完了状態を切り替えるヘルパー
+function toggleProgress(announcement: any, enabled: boolean) {
+	if (enabled) {
+		announcement.progressSteps = ['', '', '', ''];
+		announcement.progressCompleted = [false, false, false, false];
+	} else {
+		announcement.progressSteps = null;
+		announcement.progressCompleted = null;
+	}
+}
+function setProgressCompleted(announcement: any, idx: number, completed: boolean) {
+	if (!announcement.progressCompleted) {
+		announcement.progressCompleted = [false, false, false, false];
+	}
+	announcement.progressCompleted[idx] = completed;
 }
 
 function del(announcement) {
@@ -214,3 +250,38 @@ definePage(() => ({
 	icon: 'ti ti-speakerphone',
 }));
 </script>
+
+<style lang="scss" module>
+/* 旗鯖fork: メンテナンス進捗バー設定UI */
+.progressBlock {
+	margin: 10px 0;
+	padding: 12px;
+	border-radius: 10px;
+	background: var(--MI_THEME-bg);
+	border: 1px solid var(--MI_THEME-divider);
+}
+.progressSteps {
+	margin-top: 10px;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+.progressStepRow {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+}
+.progressStepNum {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	border-radius: 50%;
+	background: var(--MI_THEME-accent);
+	color: var(--MI_THEME-fgOnAccent);
+	font-weight: 700;
+	font-size: 0.85em;
+	flex-shrink: 0;
+}
+</style>

@@ -79,6 +79,23 @@ export class MiAnnouncement {
 	})
 	public userId: MiUser['id'] | null;
 
+	// 旗鯖fork: メンテナンスカテゴリ専用の進捗バー(4段階)
+	// progressSteps: 各段階のラベル (string[4])。null ならこの機能を使わない。
+	// progressCompleted: 各段階の完了状態 (boolean[4])。null なら全段階未完了として扱う。
+	@Column('jsonb', {
+		nullable: true,
+		default: null,
+		comment: '旗鯖fork: メンテ進捗バーの4段階ラベル (string[4])。',
+	})
+	public progressSteps: string[] | null;
+
+	@Column('jsonb', {
+		nullable: true,
+		default: null,
+		comment: '旗鯖fork: メンテ進捗バーの各段階の完了状態 (boolean[4])。',
+	})
+	public progressCompleted: boolean[] | null;
+
 	@ManyToOne(type => MiUser, {
 		onDelete: 'CASCADE',
 	})

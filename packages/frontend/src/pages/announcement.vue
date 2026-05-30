@@ -27,6 +27,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</div>
 				<div :class="$style.content">
 					<Mfm :text="announcement.text" class="_selectable"/>
+					<!-- 旗鯖fork: メンテナンス進捗バー -->
+					<MkAnnouncementProgress
+						v-if="announcement.icon === 'maintenance' && announcement.progressSteps"
+						:steps="announcement.progressSteps"
+						:completed="announcement.progressCompleted"
+					/>
 					<img v-if="announcement.imageUrl" :src="announcement.imageUrl"/>
 					<div style="margin-top: 8px; opacity: 0.7; font-size: 85%;">
 						{{ i18n.ts.createdAt }}: <MkTime :time="announcement.createdAt" mode="detail"/>
@@ -50,6 +56,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 import { ref, computed, watch } from 'vue';
 import * as Misskey from 'cherrypick-js';
 import MkButton from '@/components/MkButton.vue';
+import MkAnnouncementProgress from '@/components/MkAnnouncementProgress.vue';
 import * as os from '@/os.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { i18n } from '@/i18n.js';

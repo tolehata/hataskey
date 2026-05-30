@@ -55,6 +55,9 @@ export class AnnouncementEntityService {
 			forYou: announcement.userId === me?.id,
 			needConfirmationToRead: announcement.needConfirmationToRead,
 			silence: announcement.silence,
+			// 旗鯖fork: メンテ進捗バー (icon === 'maintenance' のときのみ意味を持つ)
+			progressSteps: announcement.progressSteps ?? null,
+			progressCompleted: announcement.progressCompleted ?? null,
 			isRead: announcement.isRead !== null ? announcement.isRead : undefined,
 		};
 	}

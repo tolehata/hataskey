@@ -16,13 +16,17 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<!-- 旗鯖fork: 承認制(フォロー許可制)アカウントを示す鍵アイコンはタイムラインのノートヘッダーでは非表示にする -->
 			<div v-if="note.user.isBot" :class="$style.userBadge"><i class="ti ti-robot"></i></div>
 			<div v-if="note.user.isProxy" :class="$style.userBadge"><i class="ti ti-ghost"></i></div>
-			<div v-if="note.user.badgeRoles" :class="$style.badgeRoles">
+			<div v-if="note.user.badgeRoles && note.user.badgeRoles.length > 0" :class="$style.badgeRoles">
 				<img v-for="(role, i) in note.user.badgeRoles" :key="i" v-tooltip="role.name" :class="$style.badgeRole" :src="role.iconUrl!"/>
 			</div>
 			<div :class="[$style.username, $style.nameClickable]" @click.stop="emit('nameClick', note.user.id)"><MkAcct :user="note.user"/></div>
 		</div>
 	</div>
 	<div :class="$style.section">
+		<!-- 旗鯖fork: 外部サーバーラベル(ticker)を日時の左に配置。
+		     旧実装は日時の info ブロックの後ろ(下)に別 div で置かれ、かつ :style に
+		     クラス名を渡していた(:class が正)ため、ラベルが日時の下に表示されていた。 -->
+		<div v-if="showTicker" :class="$style.ticker"><MkInstanceTicker :host="note.user.host" :instance="note.user.instance" @click.stop="showOnRemote"/></div>
 		<div :class="$style.info">
 			<span v-if="note.updatedAt" style="margin-right: 0.5em;"><i v-tooltip="i18n.tsx.noteUpdatedAt({ date: (new Date(note.updatedAt)).toLocaleDateString(), time: (new Date(note.updatedAt)).toLocaleTimeString() })" class="ti ti-pencil"></i></span>
 			<span v-if="note.deleteAt" style="margin-right: 0.5em;"><i v-tooltip="`${i18n.ts.scheduledNoteDelete}: ${(new Date(note.deleteAt)).toLocaleString()}`" class="ti ti-bomb"></i></span>
@@ -53,7 +57,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<MkTime :time="note.createdAt" :mode="prefer.s.enableAbsoluteTime ? 'absolute' : 'relative'" colored/>
 			</MkA>
 		</div>
-		<div :style="$style.info"><MkInstanceTicker v-if="showTicker" :host="note.user.host" :instance="note.user.instance" @click.stop="showOnRemote"/></div>
 	</div>
 </header>
 </template>
@@ -105,11 +108,19 @@ function showOnRemote() {
 
 	&:last-child {
 		display: flex;
-		align-items: flex-end;
+		flex-direction: row;
+		align-items: center;
 		margin-left: auto;
 		padding-left: 10px;
 		overflow: clip;
+		gap: 0.5em;
 	}
+}
+
+.ticker {
+	/* 旗鯖fork: 外部サーバーラベルを日時の左に並べる */
+	flex-shrink: 0;
+	overflow: hidden;
 }
 
 .name {

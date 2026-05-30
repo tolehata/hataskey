@@ -56,6 +56,17 @@ export const packedAnnouncementSchema = {
 			type: 'boolean',
 			optional: false, nullable: false,
 		},
+		// 旗鯖fork: メンテ進捗バー (icon === 'maintenance' のときのみ意味を持つ)
+		progressSteps: {
+			type: 'array',
+			optional: false, nullable: true,
+			items: { type: 'string' },
+		},
+		progressCompleted: {
+			type: 'array',
+			optional: false, nullable: true,
+			items: { type: 'boolean' },
+		},
 		isRead: {
 			type: 'boolean',
 			optional: true, nullable: false,

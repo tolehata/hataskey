@@ -186,6 +186,26 @@ function stealReaction(ev: MouseEvent) {
 		text: `:${reactionName.value}:`,
 	});
 
+	// 旗鯖fork: リアクション非表示/表示。
+	// 右クリック(menu関数)側にはあったが、長押しで開くこのメニュー(stealReaction、
+	// openEmojiMenu から呼ばれる)側に入れ忘れていたため、モバイルの長押しでは
+	// 「このリアクションを非表示」が出ず絵文字ミュート等しか表示されなかった。
+	// 両方のメニューに同じ項目を出すよう揃える。
+	{
+		const hidden = isReactionHidden(props.noteId, props.reaction);
+		menuItems.push({
+			text: hidden ? 'このリアクションを表示' : 'このリアクションを非表示',
+			icon: hidden ? 'ti ti-eye' : 'ti ti-eye-off',
+			action: () => {
+				if (hidden) {
+					unhideReaction(props.noteId, props.reaction);
+				} else {
+					hideReaction(props.noteId, props.reaction);
+				}
+			},
+		});
+	}
+
 	if (canGetInfo.value) {
 		menuItems.push({
 			text: i18n.ts.info,

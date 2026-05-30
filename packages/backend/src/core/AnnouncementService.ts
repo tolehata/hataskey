@@ -79,6 +79,9 @@ export class AnnouncementService {
 			silence: values.silence,
 			needConfirmationToRead: values.needConfirmationToRead,
 			userId: values.userId,
+			// 旗鯖fork: メンテ進捗バー
+			progressSteps: values.progressSteps ?? null,
+			progressCompleted: values.progressCompleted ?? null,
 		});
 
 		const packed = await this.announcementEntityService.pack(announcement);
@@ -133,6 +136,9 @@ export class AnnouncementService {
 			silence: values.silence,
 			needConfirmationToRead: values.needConfirmationToRead,
 			isActive: values.isActive,
+			// 旗鯖fork: メンテ進捗バー (undefined は変更なし、null は明示的に消す)
+			progressSteps: values.progressSteps,
+			progressCompleted: values.progressCompleted,
 		});
 
 		const after = await this.announcementsRepository.findOneByOrFail({ id: announcement.id });

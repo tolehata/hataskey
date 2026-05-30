@@ -177,16 +177,20 @@ SPDX-License-Identifier: AGPL-3.0-only
         </FormSection>
         <FormSection>
             <template #label>サイドメニューの並び替え</template>
-            <div style="font-size:.85em;opacity:.7;margin-bottom:8px;">PC/タブレットのサイドバーとモバイルのドロワーに反映されます。</div>
+            <div style="font-size:.85em;opacity:.7;margin-bottom:8px;">PC/タブレットのサイドバーとモバイルのドロワーに反映されます。並び替えは各グループ内でのみ可能です。</div>
             <div :class="$style.reorderList">
-                <div v-for="(item, idx) in sidebarItems" :key="item.id" :class="$style.reorderItem">
-                    <i :class="[item.icon, $style.reorderIcon]"></i>
-                    <span :class="$style.reorderLabel">{{ item.label }}</span>
-                    <div :class="$style.reorderBtns">
-                        <button :class="$style.reorderBtn" :disabled="idx===0" @click="moveArr(sidebarItems,idx,-1);saveSidebar()">▲</button>
-                        <button :class="$style.reorderBtn" :disabled="idx===sidebarItems.length-1" @click="moveArr(sidebarItems,idx,1);saveSidebar()">▼</button>
+                <template v-for="(item, idx) in sidebarItems" :key="item.id">
+                    <!-- 旗鯖fork: グループの先頭にラベルを表示 -->
+                    <div v-if="isSidebarGroupHead(idx)" :class="$style.reorderGroupLabel">{{ sidebarGroupLabelOf(item) }}</div>
+                    <div :class="$style.reorderItem">
+                        <i :class="[item.icon, $style.reorderIcon]"></i>
+                        <span :class="$style.reorderLabel">{{ item.label }}</span>
+                        <div :class="$style.reorderBtns">
+                            <button :class="$style.reorderBtn" :disabled="!canMoveSidebar(idx,-1)" @click="moveSidebarItem(idx,-1)">▲</button>
+                            <button :class="$style.reorderBtn" :disabled="!canMoveSidebar(idx,1)" @click="moveSidebarItem(idx,1)">▼</button>
+                        </div>
                     </div>
-                </div>
+                </template>
             </div>
         </FormSection>
         </template>
@@ -291,7 +295,10 @@ function useLSStr(key: string, def: string) {
 // 並び替えヘルパー
 function moveArr(arr: any[], idx: number, dir: number) {
     const ni = idx + dir; if (ni < 0 || ni >= arr.length) return;
-    [arr[idx], arr[ni]] = [arr[ni], arr[idx]];
+    // 旗鯖fork: インデックス直接代入 (arr[idx]=...) は Vue のリアクティビティで
+    // 検知されず並び替えが画面に反映されないため、splice で入れ替える。
+    const [moved] = arr.splice(idx, 1);
+    arr.splice(ni, 0, moved);
 }
 
 // ===== フォント設定 =====
@@ -396,8 +403,11 @@ function saveTopNav() { prefer.commit('simpleUi.topNav', [...topNavItems.value])
 watch(topNavItems, saveTopNav, { deep: true });
 
 // 旗鯖fork: トレンドタブ表示トグル
+// getter で prefer.s (非reactive) を使うと computed が依存追跡できず、
+// トグルしても画面が再描画されない(リロードで初めて反映)バグになる。
+// prefer.r[].value (reactive) を使って即時反映するようにする。
 const showTrendingTab = computed({
-    get: () => prefer.s['simpleUi.showTrendingTab'],
+    get: () => prefer.r['simpleUi.showTrendingTab'].value,
     set: (v: boolean) => prefer.commit('simpleUi.showTrendingTab', v),
 });
 
@@ -408,6 +418,41 @@ watch(bottomNavItems, saveBottomNav, { deep: true });
 const sidebarItems = ref([...prefer.s['simpleUi.sidebar']]);
 function saveSidebar() { prefer.commit('simpleUi.sidebar', [...sidebarItems.value]); }
 watch(sidebarItems, saveSidebar, { deep: true });
+
+// 旗鯖fork: サイドバーの並び替えはグループ内のみに制限する。
+// グループ枠 (basic/hata/discover/more) は固定とし、項目が別グループへ移動して
+// グループラベルの位置が崩れるのを防ぐ。
+const sidebarGroupLabels: Record<string, string> = {
+	basic: '基本機能',
+	hata: 'Hatask',
+	discover: '発見・交流',
+	more: '',
+};
+function sidebarGroupLabelOf(item: any): string {
+	return sidebarGroupLabels[item.group ?? 'basic'] ?? '';
+}
+// idx の項目がそのグループの先頭か (= 直前と異なるグループ、または先頭)
+function isSidebarGroupHead(idx: number): boolean {
+	const cur = sidebarItems.value[idx]?.group ?? 'basic';
+	if (idx === 0) return true;
+	const prev = sidebarItems.value[idx - 1]?.group ?? 'basic';
+	return cur !== prev;
+}
+// idx の項目を dir 方向に動かせるか (同一グループ内に隣接要素がある場合のみ)
+function canMoveSidebar(idx: number, dir: number): boolean {
+	const ni = idx + dir;
+	if (ni < 0 || ni >= sidebarItems.value.length) return false;
+	const cur = sidebarItems.value[idx]?.group ?? 'basic';
+	const next = sidebarItems.value[ni]?.group ?? 'basic';
+	return cur === next; // 隣が別グループなら境界なので動かせない
+}
+function moveSidebarItem(idx: number, dir: number) {
+	if (!canMoveSidebar(idx, dir)) return;
+	const ni = idx + dir;
+	const [moved] = sidebarItems.value.splice(idx, 1);
+	sidebarItems.value.splice(ni, 0, moved);
+	saveSidebar();
+}
 
 const widgetBorder = prefer.model('simpleUi.widgetBorder');
 const glassEffect = prefer.model('simpleUi.glassEffect');
@@ -462,6 +507,7 @@ definePage({ title: '旗鯖独自機能', icon: 'ti ti-flag' });
 }
 .catTabOn { background:var(--MI_THEME-accentedBg); color:var(--MI_THEME-accent); border-color:var(--MI_THEME-accent); font-weight:600; }
 .reorderList { display:flex; flex-direction:column; gap:4px; }
+.reorderGroupLabel { font-size:.78rem; font-weight:700; opacity:.6; margin:10px 4px 2px; }
 .reorderItem { display:flex; align-items:center; gap:8px; padding:8px 12px; background:var(--MI_THEME-panel); border-radius:10px; border:1px solid var(--MI_THEME-divider); }
 .reorderIcon { font-size:1rem; opacity:.6; width:20px; text-align:center; }
 .reorderLabel { flex:1; font-size:.88rem; font-weight:500; }

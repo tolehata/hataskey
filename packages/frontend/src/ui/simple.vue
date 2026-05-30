@@ -12,7 +12,7 @@ SPDX-License-Identifier: AGPL-3.0-only
             <img v-if="$i?.bannerUrl" :src="$i.bannerUrl" :class="$style.sidebarBannerImg" />
         </div>
         <div :class="$style.sidebarInner">
-            <!-- ロゴ & インスタンス名 & TL設定 -->
+            <!-- ロゴ & インスタンス名 & TL設定 (上部固定) -->
             <div :class="$style.sbLogoRow">
                 <div :class="$style.sbLogo" @click="openInstanceMenuMobile">
                     <img v-if="instanceIconUrl" :src="instanceIconUrl" :class="$style.sbLogoImg" />
@@ -24,6 +24,9 @@ SPDX-License-Identifier: AGPL-3.0-only
                 <button :class="$style.sbLogoAction" @click="openTlOptions"><i class="ti ti-adjustments"></i></button>
             </div>
 
+            <!-- 旗鯖fork: メニュー群はこのスクロール領域に閉じ込め、下部の投稿/アカウントは
+                 固定する。メニューが増えてもノート/アカウントがスクロールで隠れない。 -->
+            <div :class="$style.sbScroll">
             <!-- ナビ項目（prefer同期の並び順） -->
             <div :class="$style.sbNav">
                 <template v-for="grp in sidebarGroups" :key="grp.key">
@@ -64,11 +67,9 @@ SPDX-License-Identifier: AGPL-3.0-only
                     </button>
                 </div>
             </template>
+            </div>
 
-            <!-- スペーサー -->
-            <div :class="$style.sbSpacer"></div>
-
-            <!-- 下部: 投稿 + アカウント -->
+            <!-- 下部: 投稿 + アカウント (固定) -->
             <div :class="$style.sbBottom">
                 <button :class="$style.sbPostBtn" @click="onPostClick">
                     <i class="ti ti-pencil"></i><span>ノート</span>
@@ -218,6 +219,8 @@ SPDX-License-Identifier: AGPL-3.0-only
                         </div>
                         <button :class="$style.sbLogoAction" @click="openTlOptions"><i class="ti ti-adjustments"></i></button>
                     </div>
+                    <!-- 旗鯖fork: メニュー群をスクロール領域に、下部の投稿/アカウントを固定 -->
+                    <div :class="$style.sbScroll">
                     <!-- ナビ項目（prefer同期の並び順） -->
                     <div :class="$style.sbNav">
                         <template v-for="grp in sidebarGroups" :key="grp.key">
@@ -253,7 +256,7 @@ SPDX-License-Identifier: AGPL-3.0-only
                             </button>
                         </div>
                     </template>
-                    <div :class="$style.sbSpacer"></div>
+                    </div>
                     <div :class="$style.sbBottom">
                         <button :class="$style.sbPostBtn" @click="onPostClick(); simpleDrawerShowing = false">
                             <i class="ti ti-pencil"></i><span>ノート</span>
@@ -476,7 +479,10 @@ const tab = ref<TabType>(getInitialTab());
 const visibleTopTabs = computed(() => {
     const saved = (prefer.r['simpleUi.topNav'].value as any[]).filter((t: any) => t.visible);
     if (prefer.r['simpleUi.showTrendingTab'].value) {
-        return [{ id: 'trending', icon: 'ti ti-flame', label: 'トレンド', visible: true }, ...saved];
+        // 旗鯖fork: トレンドタブは通常タブの右端に置く。
+        // tabOrder で後段に ohtl/oltl(外部TL)が push されるため、
+        // 結果の並びは「通常タブ... → トレンド → 外部ホーム → 外部ローカル」となる。
+        return [...saved, { id: 'trending', icon: 'ti ti-flame', label: 'トレンド', visible: true }];
     }
     return saved;
 });
@@ -518,6 +524,19 @@ const sidebarGroups = computed(() => {
         let grp = groups.find(x => x.key === g);
         if (!grp) { grp = { key: g, label: sidebarGroupLabels[g] ?? '', items: [] }; groups.push(grp); }
         grp.items.push(item);
+    }
+    // 旗鯖fork: メッセージ(チャット)を基本グループに動的注入する。
+    // 既存ユーザーの保存済み simpleUi.sidebar には chat が含まれないため、
+    // def.ts のデフォルト変更だけでは既存ユーザーに出ない。保存済み設定を壊さず
+    // 全ユーザーに表示するため、ここで注入する (トレンドタブと同じ手法)。
+    if (!sidebarOrder.value.some((x: any) => x.id === 'chat')) {
+        let basic = groups.find(x => x.key === 'basic');
+        if (!basic) { basic = { key: 'basic', label: sidebarGroupLabels['basic'] ?? '', items: [] }; groups.push(basic); }
+        // 通知の直後に置く (なければ基本グループ末尾)
+        const notifIdx = basic.items.findIndex((x: any) => x.id === 'notifications');
+        const chatItem = { id: 'chat', icon: 'ti ti-messages', label: 'メッセージ', group: 'basic' };
+        if (notifIdx >= 0) basic.items.splice(notifIdx + 1, 0, chatItem);
+        else basic.items.push(chatItem);
     }
     // グループの表示順を固定 (定義順に依存しないように)
     return groups.sort((a, b) => order.indexOf(a.key) - order.indexOf(b.key));
@@ -902,12 +921,20 @@ onUnmounted(()=>{
     height:100%;
     padding:16px 12px;
     box-sizing:border-box;
+    overflow:hidden;
+    position:relative;
+    z-index:1;
+}
+.sbScroll {
+    /* 旗鯖fork: メニュー群だけをスクロールさせる領域。下部の投稿/アカウントは外側で固定。 */
+    flex:1;
+    min-height:0;
     overflow-y:auto;
     overflow-x:hidden;
     scrollbar-width:thin;
     scrollbar-color:rgba(128,128,128,.2) transparent;
-    position:relative;
-    z-index:1;
+    display:flex;
+    flex-direction:column;
 }
 .sbLogoRow {
     display:flex;
@@ -1077,6 +1104,7 @@ onUnmounted(()=>{
     padding-top:12px;
     border-top:1px solid var(--MI_THEME-divider);
     margin-top:8px;
+    flex-shrink:0;
 }
 .sbPostBtn {
     display:flex;

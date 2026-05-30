@@ -18,6 +18,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 		</div>
 		<div :class="$style.content">
 			<Mfm :text="announcement.text"/>
+			<!-- 旗鯖fork: メンテナンスお知らせの進捗バー(4段階) -->
+			<MkAnnouncementProgress
+				v-if="announcement.icon === 'maintenance' && announcement.progressSteps"
+				:steps="announcement.progressSteps"
+				:completed="announcement.progressCompleted"
+			/>
 			<img v-if="announcement.imageUrl" :src="announcement.imageUrl"/>
 		</div>
 		<div ref="bottomEl"></div>
@@ -52,6 +58,7 @@ import * as os from '@/os.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import MkModal from '@/components/MkModal.vue';
 import MkButton from '@/components/MkButton.vue';
+import MkAnnouncementProgress from '@/components/MkAnnouncementProgress.vue';
 import { i18n } from '@/i18n.js';
 import { $i } from '@/i.js';
 import { updateCurrentAccountPartial } from '@/accounts.js';

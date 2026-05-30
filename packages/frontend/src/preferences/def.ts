@@ -845,6 +845,7 @@ export const PREF_DEF = definePreferences({
 			{ id: 'timeline', icon: 'ti ti-home', label: 'タイムライン', group: 'basic' },
 			{ id: 'search', icon: 'ti ti-search', label: '検索', group: 'basic' },
 			{ id: 'notifications', icon: 'ti ti-bell', label: '通知', group: 'basic' },
+			{ id: 'chat', icon: 'ti ti-messages', label: 'メッセージ', group: 'basic' },
 			{ id: 'announcements', icon: 'ti ti-speakerphone', label: 'お知らせ', group: 'basic' },
 			{ id: 'drive', icon: 'ti ti-cloud', label: 'ドライブ', group: 'basic' },
 			{ id: 'favorites', icon: 'ti ti-star', label: 'お気に入り', group: 'basic' },
