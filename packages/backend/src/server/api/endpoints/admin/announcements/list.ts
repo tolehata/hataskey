@@ -85,6 +85,17 @@ export const meta = {
 					type: 'number',
 					optional: false, nullable: false,
 				},
+				// 旗鯖fork: メンテ進捗バー (icon === 'maintenance' のときのみ意味を持つ)
+				progressSteps: {
+					type: 'array',
+					optional: false, nullable: true,
+					items: { type: 'string' },
+				},
+				progressCompleted: {
+					type: 'array',
+					optional: false, nullable: true,
+					items: { type: 'boolean' },
+				},
 			},
 		},
 	},
@@ -156,6 +167,9 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				needConfirmationToRead: announcement.needConfirmationToRead,
 				userId: announcement.userId,
 				reads: reads.get(announcement)!,
+				// 旗鯖fork: メンテ進捗バー
+				progressSteps: announcement.progressSteps ?? null,
+				progressCompleted: announcement.progressCompleted ?? null,
 			}));
 		});
 	}

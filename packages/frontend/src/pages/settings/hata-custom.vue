@@ -144,7 +144,10 @@ SPDX-License-Identifier: AGPL-3.0-only
         </FormSection>
         <FormSection>
             <template #label>上部ナビバー（タイムラインタブ）</template>
-            <div style="font-size:.85em;opacity:.7;margin-bottom:8px;">表示するタブとその順番を設定します。</div>
+            <div :class="$style.reorderHead">
+                <div style="font-size:.85em;opacity:.7;flex:1;">表示するタブとその順番を設定します。</div>
+                <button :class="$style.resetBtn" @click="resetTopNav">並び替えを初期化</button>
+            </div>
             <div :class="$style.reorderList">
                 <div v-for="(item, idx) in topNavItems" :key="item.id" :class="$style.reorderItem">
                     <MkSwitch v-model="item.visible" style="margin:0;flex-shrink:0;transform:scale(.8);transform-origin:left center;" @update:modelValue="saveTopNav" />
@@ -159,7 +162,10 @@ SPDX-License-Identifier: AGPL-3.0-only
         </FormSection>
         <FormSection>
             <template #label>下部ナビバー</template>
-            <div style="font-size:.85em;opacity:.7;margin-bottom:8px;">表示する項目（最大4つ）と順番を設定します。</div>
+            <div :class="$style.reorderHead">
+                <div style="font-size:.85em;opacity:.7;flex:1;">表示する項目（最大4つ）と順番を設定します。</div>
+                <button :class="$style.resetBtn" @click="resetBottomNav">並び替えを初期化</button>
+            </div>
             <div :class="$style.reorderList">
                 <div v-for="(item, idx) in bottomNavItems" :key="item.id" :class="$style.reorderItem">
                     <MkSwitch v-model="item.visible" style="margin:0;flex-shrink:0;transform:scale(.8);transform-origin:left center;" @update:modelValue="saveBottomNav" />
@@ -177,12 +183,18 @@ SPDX-License-Identifier: AGPL-3.0-only
         </FormSection>
         <FormSection>
             <template #label>サイドメニューの並び替え</template>
-            <div style="font-size:.85em;opacity:.7;margin-bottom:8px;">PC/タブレットのサイドバーとモバイルのドロワーに反映されます。並び替えは各グループ内でのみ可能です。</div>
+            <div :class="$style.reorderHead">
+                <div style="font-size:.85em;opacity:.7;flex:1;">PC/タブレットのサイドバーとモバイルのドロワーに反映されます。並び替えは各グループ内でのみ可能です。スイッチで非表示にできます (一部の項目は常に表示)。</div>
+                <button :class="$style.resetBtn" @click="resetSidebar">並び替えを初期化</button>
+            </div>
             <div :class="$style.reorderList">
                 <template v-for="(item, idx) in sidebarItems" :key="item.id">
                     <!-- 旗鯖fork: グループの先頭にラベルを表示 -->
                     <div v-if="isSidebarGroupHead(idx)" :class="$style.reorderGroupLabel">{{ sidebarGroupLabelOf(item) }}</div>
-                    <div :class="$style.reorderItem">
+                    <div :class="[$style.reorderItem, isSidebarItemVisible(item) ? '' : $style.reorderItemHidden]">
+                        <!-- 旗鯖fork: 必須項目以外は visible トグル付き、必須項目は空白でレイアウトを揃える -->
+                        <MkSwitch v-if="!isSidebarItemRequired(item.id)" :modelValue="isSidebarItemVisible(item)" @update:modelValue="setSidebarItemVisible(idx, $event)" />
+                        <span v-else :class="$style.requiredLabel" v-tooltip="'この項目は常に表示されます'"><i class="ti ti-lock"></i></span>
                         <i :class="[item.icon, $style.reorderIcon]"></i>
                         <span :class="$style.reorderLabel">{{ item.label }}</span>
                         <div :class="$style.reorderBtns">
@@ -260,6 +272,7 @@ import MkFeatureBanner from '@/components/MkFeatureBanner.vue';
 import * as os from '@/os.js';
 import { miLocalStorage } from '@/local-storage.js';
 import { prefer } from '@/preferences.js';
+import { getInitialPrefValue } from '@/preferences/manager.js';
 import { definePage } from '@/page.js';
 import { getHiddenReactions, hiddenReactionsVersion } from '@/utility/hidden-reactions.js';
 import { HATA_FONT_PRESETS, applyHataFont, type HataFontId } from '@/scripts/hata-font-manager.js';
@@ -454,6 +467,47 @@ function moveSidebarItem(idx: number, dir: number) {
 	saveSidebar();
 }
 
+// 旗鯖fork: サイドバー項目の表示/非表示
+// 必須項目(タイムライン/通知/お知らせ/フォロー申請/もっと)は常に表示で、トグル不可。
+// 設定はそもそも sidebar 並び替え対象外なのでここでは扱わない。
+const REQUIRED_SIDEBAR_IDS = new Set(['timeline', 'notifications', 'announcements', 'followRequests', 'more']);
+function isSidebarItemRequired(id: string): boolean {
+	return REQUIRED_SIDEBAR_IDS.has(id);
+}
+// 既存ユーザー設定との互換: visible フィールドが無ければ true (表示) として扱う
+function isSidebarItemVisible(item: any): boolean {
+	if (isSidebarItemRequired(item.id)) return true;
+	return item.visible !== false;
+}
+function setSidebarItemVisible(idx: number, visible: boolean) {
+	const item = sidebarItems.value[idx];
+	if (!item) return;
+	if (isSidebarItemRequired(item.id)) return;
+	item.visible = visible;
+	saveSidebar();
+}
+
+// 旗鯖fork: 並び替え/表示状態を初期化するボタン用関数。
+// def.ts のデフォルトを採用する。
+async function resetTopNav() {
+	const { canceled } = await os.confirm({ type: 'warning', text: '上部ナビバーの並び順と表示状態をリセットしますか？' });
+	if (canceled) return;
+	topNavItems.value = JSON.parse(JSON.stringify(getInitialPrefValue('simpleUi.topNav')));
+	saveTopNav();
+}
+async function resetBottomNav() {
+	const { canceled } = await os.confirm({ type: 'warning', text: '下部ナビバーの並び順と表示状態をリセットしますか？' });
+	if (canceled) return;
+	bottomNavItems.value = JSON.parse(JSON.stringify(getInitialPrefValue('simpleUi.bottomNav')));
+	saveBottomNav();
+}
+async function resetSidebar() {
+	const { canceled } = await os.confirm({ type: 'warning', text: 'サイドメニューの並び順と表示状態をリセットしますか？' });
+	if (canceled) return;
+	sidebarItems.value = JSON.parse(JSON.stringify(getInitialPrefValue('simpleUi.sidebar')));
+	saveSidebar();
+}
+
 const widgetBorder = prefer.model('simpleUi.widgetBorder');
 const glassEffect = prefer.model('simpleUi.glassEffect');
 const directProfile = prefer.model('simpleUi.directProfile');
@@ -507,8 +561,32 @@ definePage({ title: '旗鯖独自機能', icon: 'ti ti-flag' });
 }
 .catTabOn { background:var(--MI_THEME-accentedBg); color:var(--MI_THEME-accent); border-color:var(--MI_THEME-accent); font-weight:600; }
 .reorderList { display:flex; flex-direction:column; gap:4px; }
+.reorderHead { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+.resetBtn {
+	flex-shrink: 0;
+	padding: 4px 12px;
+	border-radius: 6px;
+	border: 1px solid var(--MI_THEME-divider);
+	background: var(--MI_THEME-panel);
+	color: var(--MI_THEME-fg);
+	font-size: .8rem;
+	cursor: pointer;
+	transition: background .15s, color .15s;
+}
+.resetBtn:hover { background: var(--MI_THEME-buttonHoverBg); }
+.requiredLabel {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	opacity: .35;
+	font-size: .9em;
+	flex-shrink: 0;
+}
 .reorderGroupLabel { font-size:.78rem; font-weight:700; opacity:.6; margin:10px 4px 2px; }
 .reorderItem { display:flex; align-items:center; gap:8px; padding:8px 12px; background:var(--MI_THEME-panel); border-radius:10px; border:1px solid var(--MI_THEME-divider); }
+.reorderItemHidden { opacity: .45; }
 .reorderIcon { font-size:1rem; opacity:.6; width:20px; text-align:center; }
 .reorderLabel { flex:1; font-size:.88rem; font-weight:500; }
 .reorderBtns { display:flex; gap:2px; }

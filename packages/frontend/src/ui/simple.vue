@@ -516,10 +516,15 @@ const sidebarGroupLabels: Record<string, string> = {
     more: '',
 };
 // 旗鯖fork: サイドバー項目をグループ単位にまとめる (group未指定の項目は 'basic' 扱いで後方互換)
+// 旗鯖fork: visible === false の項目はサイドバーに表示しない。ただし必須項目
+// (timeline / notifications / announcements / followRequests / more) は強制表示。
+const REQUIRED_SIDEBAR_IDS = ['timeline', 'notifications', 'announcements', 'followRequests', 'more'];
 const sidebarGroups = computed(() => {
     const order = ['basic', 'hata', 'discover', 'more'];
     const groups: { key: string; label: string; items: any[] }[] = [];
     for (const item of sidebarOrder.value) {
+        // 旗鯖fork: visible:false は除外、ただし必須項目は強制的に表示
+        if (item.visible === false && !REQUIRED_SIDEBAR_IDS.includes(item.id)) continue;
         const g = item.group ?? 'basic';
         let grp = groups.find(x => x.key === g);
         if (!grp) { grp = { key: g, label: sidebarGroupLabels[g] ?? '', items: [] }; groups.push(grp); }
@@ -529,7 +534,9 @@ const sidebarGroups = computed(() => {
     // 既存ユーザーの保存済み simpleUi.sidebar には chat が含まれないため、
     // def.ts のデフォルト変更だけでは既存ユーザーに出ない。保存済み設定を壊さず
     // 全ユーザーに表示するため、ここで注入する (トレンドタブと同じ手法)。
-    if (!sidebarOrder.value.some((x: any) => x.id === 'chat')) {
+    // sidebarOrder に chat があってかつ visible:false の場合は注入しない (ユーザー意思を尊重)。
+    const chatInOrder = sidebarOrder.value.find((x: any) => x.id === 'chat');
+    if (!chatInOrder) {
         let basic = groups.find(x => x.key === 'basic');
         if (!basic) { basic = { key: 'basic', label: sidebarGroupLabels['basic'] ?? '', items: [] }; groups.push(basic); }
         // 通知の直後に置く (なければ基本グループ末尾)

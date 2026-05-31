@@ -121,6 +121,20 @@ function showOnRemote() {
 	/* 旗鯖fork: 外部サーバーラベルを日時の左に並べる */
 	flex-shrink: 0;
 	overflow: hidden;
+	display: flex;
+	align-items: center;
+
+	/* 旗鯖fork: MkInstanceTicker の .root には元々 margin-top: 5px が設定されている。
+	   これは「日時の下に別行で表示」されていた旧レイアウト用の余白で、
+	   日時の左に横並びにした現在のレイアウトでは垂直方向のズレ
+	   (ラベルが日時より少し下に表示される) の原因になるため、ここで打ち消す。
+	   CSS Modules の scope を超えて子コンポーネントの直接の子要素を狙うため
+	   `> :global(*)` を使う。MkNoteDetailed では別行表示のままなので
+	   そちらの margin-top は維持される (この打ち消しは MkNoteHeader 内の .ticker
+	   配下にのみ効く)。 */
+	> :global(*) {
+		margin-top: 0;
+	}
 }
 
 .name {

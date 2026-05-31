@@ -1809,7 +1809,7 @@ _group:
 
 _cherrypick:
   function: "独自機能"
-  functionDescription: "Hataskeyが追加する独自機能を有効または無効にします。"
+  functionDescription: "CherryPickが追加する独自機能を有効または無効にします。"
   nickname: "ニックネーム機能"
   nicknameDescription: "ユーザーページにて、ユーザーの名前をクリック/タップすることで好きなものに変更できるようになります。変更は自分にのみ反映されます。\n頻繁に名前を変更するユーザーを識別するときなどに使えます。"
   useEnterToSend: "Enterキーを押して送信"

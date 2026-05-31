@@ -42,6 +42,14 @@ export async function mainBoot() {
 	// 旗鯖フォント初期化
 	initHataFontWatcher();
 
+	// 旗鯖fork: 柔らかい転換アニメーションは強制ON。preference値が反転トグル仕様で、
+	// false = アニメーションON、true = アニメーションOFFという意味。
+	// 過去にユーザーが OFF (true) で保存していた場合に備えて、起動時に強制的に false へ上書きする。
+	// (設定画面のトグルも操作不可・常時ON表示に固定しているため、UIと挙動が一致する)
+	if (prefer.s.smoothTransitionAnimations !== false) {
+		prefer.commit('smoothTransitionAnimations', false);
+	}
+
 	// 旗鯖独自: ミュートユーザーリスト先読み（hideMutedUserReactions が有効な場合のみ）
 	// ノートが流れる前にリスト取得を完了させることで、リアルタイムフィルタの取りこぼしを防ぐ
 	if (prefer.s.hideMutedUserReactions) {

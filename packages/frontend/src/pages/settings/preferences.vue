@@ -1054,9 +1054,16 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 						<SearchMarker :keywords="['smooth', 'animation', 'motion', 'reduce']">
 							<MkPreferenceContainer k="smoothTransitionAnimations">
-								<MkSwitch :modelValue="!smoothTransitionAnimations" @update:modelValue="v => smoothTransitionAnimations = !v">
+								<!-- 旗鯖fork: 柔らかい転換アニメーションは強制ON。
+								     視覚的にはトグルONに見えるが、クリックしても変更されないようにしている。
+								     :modelValue="true" 固定 + @update:modelValue は空処理。
+								     表示固定だけでpreference値自体は触らない (DBに保存される値は元のまま)。 -->
+								<MkSwitch :modelValue="true" :disabled="true" @update:modelValue="() => {}">
 									<template #label><SearchLabel>{{ i18n.ts._settings.smoothTransitionAnimations }}</SearchLabel> <span class="_beta">CherryPick</span></template>
-									<template #caption><SearchText>{{ i18n.ts.turnOffToImprovePerformance }}</SearchText></template>
+									<template #caption>
+										<SearchText>{{ i18n.ts.turnOffToImprovePerformance }}</SearchText>
+										<div style="margin-top:4px;opacity:.7;font-size:.85em;"><i class="ti ti-lock" style="margin-right:4px;"></i>旗鯖では常時オンに固定されています</div>
+									</template>
 								</MkSwitch>
 							</MkPreferenceContainer>
 						</SearchMarker>

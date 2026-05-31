@@ -187,6 +187,9 @@ async function setType() {
 		value: 'media', label: i18n.ts._timelines.media,
 	}, {
 		value: 'bubble', label: i18n.ts._timelines.bubble,
+	}, {
+		// 旗鯖fork: トレンドタイムライン (TTL)。通常タブ群の後・外部TLの前に配置
+		value: 'trending', label: i18n.ts._timelines.trending,
 	}];
 
 	// 外部サーバー連携が有効な場合、OHTL/OLTLを追加

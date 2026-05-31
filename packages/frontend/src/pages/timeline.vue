@@ -595,13 +595,7 @@ const headerActions = computed(() => {
 });
 
 const headerTabs = computed(() => [
-	// 旗鯖fork: トレンドタイムライン (TTL) を最左端に
-	{
-		key: 'trending',
-		title: i18n.ts._timelines.trending,
-		icon: 'ti ti-flame',
-		iconOnly: true,
-	},
+	// 旗鯖fork: トレンドタブは通常タブ群の右端、外部TLの左に配置 (HatasabaUIと一貫)
 	...(prefer.r.pinnedUserLists.value.map(l => ({
 	key: 'list:' + l.id,
 	title: l.name,
@@ -627,7 +621,15 @@ const headerTabs = computed(() => [
 	title: i18n.ts.channel,
 	iconOnly: true,
 	onClick: chooseChannel,
-}] : []), ...(isExternalEnabled.value && enableOHTL.value ? [{
+}] : []),
+	// 旗鯖fork: トレンドタブ (通常タブ・リスト・アンテナ・チャンネルの後、外部TLの前)
+	{
+		key: 'trending',
+		title: i18n.ts._timelines.trending,
+		icon: 'ti ti-flame',
+		iconOnly: true,
+	},
+	...(isExternalEnabled.value && enableOHTL.value ? [{
 	key: 'ohtl',
 	title: 'OHTL',
 	icon: 'ti ti-home',
@@ -640,19 +642,20 @@ const headerTabs = computed(() => [
 }] : [])] as Tab[]);
 
 const headerTabsWhenNotLogin = computed(() => [
-	// 旗鯖fork: 未ログインでもトレンドは見られる (公開ノートのみなので問題なし)
+	// 旗鯖fork: 未ログイン時もトレンドは通常タブの右端に配置
+	...availableBasicTimelines().map(tl => ({
+	key: tl,
+	title: i18n.ts._timelines[tl],
+	icon: basicTimelineIconClass(tl),
+	iconOnly: true,
+})),
 	{
 		key: 'trending',
 		title: i18n.ts._timelines.trending,
 		icon: 'ti ti-flame',
 		iconOnly: true,
 	},
-	...availableBasicTimelines().map(tl => ({
-	key: tl,
-	title: i18n.ts._timelines[tl],
-	icon: basicTimelineIconClass(tl),
-	iconOnly: true,
-}))] as Tab[]);
+] as Tab[]);
 
 definePage(() => ({
 	title: i18n.ts.timeline,
