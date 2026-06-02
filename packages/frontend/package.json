@@ -147,6 +147,7 @@
 		"fast-glob": "3.3.3",
 		"happy-dom": "20.0.7",
 		"intersection-observer": "0.12.2",
+		"lightningcss": "1.32.0",
 		"micromatch": "4.0.8",
 		"minimatch": "10.0.3",
 		"msw": "2.11.5",
