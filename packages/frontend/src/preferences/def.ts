@@ -814,6 +814,10 @@ export const PREF_DEF = definePreferences({
 	'external.enableOLTL': {
 		default: true,
 	},
+	// 旗鯖fork: 外部通知のトースト無効化トグル。true の場合、WebSocket接続も行わない。
+	'external.disableNotificationToast': {
+		default: false,
+	},
 	// ======== シンプルUI設定 ========
 	// 旗鯖fork: HatasabaUI でのトレンドタイムライン (TTL) タブの表示/非表示
 	// デフォルト true (最左に表示)。topNav 設定とは独立して管理することで、

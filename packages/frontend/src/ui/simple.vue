@@ -40,6 +40,8 @@ SPDX-License-Identifier: AGPL-3.0-only
                         <span v-if="item.id==='announcements' && hasUnreadAnnouncements" :class="$style.sbDot"></span>
                         <!-- 旗鯖fork: メッセージ未読ドット -->
                         <span v-if="item.id==='chat' && hasUnreadChat" :class="$style.sbNotifDot"></span>
+                        <!-- 旗鯖fork: 外部通知の未読青ドット -->
+                        <span v-if="item.id==='externalNotifications' && extNotifHasUnread" :class="$style.sbExtDot"></span>
                     </button>
                 </template>
             </div>
@@ -175,11 +177,13 @@ SPDX-License-Identifier: AGPL-3.0-only
         <div :class="[$style.bottomBar, footerIsDark ? $style.bottomBarDark : $style.bottomBarLight, { [$style.bottomBarHidden]: !showBottomBar }]" v-show="!isDesktop && isExternalTab && !isPageView && !userPanelUserId">
             <button v-if="!isDesktop" :class="$style.sideBtn" @click="simpleDrawerShowing = true"><i class="ti ti-menu-2"></i></button>
             <div :class="$style.navPill">
-                <button @click="onExtPostClick" :class="$style.navBtn"><i class="ti ti-pencil"></i></button>
-                <button @click="openExtNotifPanel" :class="$style.navBtn">
+                <!-- 旗鯖fork: 外部通知ボタン (連携ON時のみ)。通知→ノート作成の順で横一列。
+                     新着がある場合は青ドット表示。押下で専用ページへ遷移しバッジ強制解除。 -->
+                <button v-if="isExternalLinked" @click="goToExternalNotifications" :class="$style.navBtn">
                     <i class="ti ti-bell"></i>
-                    <span v-if="extNotifCount > 0" :class="$style.extBadge">{{ extNotifCount > 99 ? '99+' : extNotifCount }}</span>
+                    <span v-if="extNotifHasUnread" :class="$style.extDot"></span>
                 </button>
+                <button @click="onExtPostClick" :class="$style.navBtn"><i class="ti ti-pencil"></i></button>
             </div>
         </div>
         </div>
@@ -429,10 +433,32 @@ const externalHost = computed(()=>prefer.s['external.host']||'');
 const externalToken = computed(()=>prefer.s['external.token']||'');
 const showOHTL = computed(()=>isExternalLinked.value&&prefer.s['external.enableOHTL']);
 const showOLTL = computed(()=>isExternalLinked.value&&prefer.s['external.enableOLTL']);
-const extNotifCount = ref(0);
+// 旗鯖fork: 外部通知の未読有無 (件数ではなくドット表示。件数はWS+ポーリングで二重カウントの恐れがあるため)
+const extNotifHasUnread = ref(false);
 function openExtNotifPanel() { window.dispatchEvent(new CustomEvent('ext-tl-open-notif')); }
+
+// 旗鯖fork: 外部通知専用ページへ遷移。遷移と同時にバッジを強制解除する
+// (ページ側でも既読化するが、UI即時反映のためここでも消す)
+function goToExternalNotifications() {
+    extNotifHasUnread.value = false;
+    mainRouter.push('/my/external-notifications');
+}
 function onExtPostClick() { window.dispatchEvent(new CustomEvent('ext-tl-post')); }
-function onExtNotifCount(e:Event) { extNotifCount.value = (e as CustomEvent).detail ?? 0; }
+// 旗鯖fork: ポーリング/既読イベント由来。detail===0(明示的既読化)の時だけドットを消す。
+// ポーリングで「未読あり」が来てもここではドットを点けない (タブ切替の度に復活するのを防ぐため)。
+// ドットを点けるのは WS リアルタイム受信 (onExtNotifRealtime) のみに一本化する。
+function onExtNotifCount(e:Event) {
+    const v = (e as CustomEvent).detail ?? 0;
+    if (v === 0) {
+        extNotifHasUnread.value = false;
+    }
+}
+// 旗鯖fork: WS経由でリアルタイム受信した外部通知で未読ドットを点ける
+// (現在外部通知ページを見ている場合は点けない=既読扱い)
+function onExtNotifRealtime() {
+    if (mainRouter.currentRoute.value.path.startsWith('/my/external-notifications')) return;
+    extNotifHasUnread.value = true;
+}
 
 // ===== ページ判定 =====
 const HOME_ROUTES = new Set(['index','timeline']);
@@ -545,6 +571,22 @@ const sidebarGroups = computed(() => {
         if (notifIdx >= 0) basic.items.splice(notifIdx + 1, 0, chatItem);
         else basic.items.push(chatItem);
     }
+    // 旗鯖fork: 外部通知を連携ON時のみ動的注入する。通知の直後に配置。
+    // 連携状態はリアクティブな isExternalLinked に依存するため、連携ON/OFFで即座に
+    // 出現/消滅する (リロード不要)。必須項目扱いでトグル不可 (並び替え対象にも出すが外せない)。
+    // 注入方式のため simpleUi.sidebar には保存されず、連携状態だけで表示が決まる。
+    if (isExternalLinked.value) {
+        let basic = groups.find(x => x.key === 'basic');
+        if (!basic) { basic = { key: 'basic', label: sidebarGroupLabels['basic'] ?? '', items: [] }; groups.push(basic); }
+        const notifIdx2 = basic.items.findIndex((x: any) => x.id === 'notifications');
+        const extNotifItem = { id: 'externalNotifications', icon: 'ti ti-bell', label: '外部通知', group: 'basic' };
+        // 通知の直後に置く (チャットより前)
+        if (notifIdx2 >= 0) {
+            basic.items.splice(notifIdx2 + 1, 0, extNotifItem);
+        } else {
+            basic.items.push(extNotifItem);
+        }
+    }
     // グループの表示順を固定 (定義順に依存しないように)
     return groups.sort((a, b) => order.indexOf(a.key) - order.indexOf(b.key));
 });
@@ -622,6 +664,8 @@ function sidebarItemClick(id: string, ev?: MouseEvent) {
         favorites: ()=>mainRouter.push('/my/favorites'),
         explore: ()=>mainRouter.push('/explore'),
         followRequests: ()=>mainRouter.push('/my/follow-requests'),
+        // 旗鯖fork: 外部通知専用ページへ
+        externalNotifications: ()=>mainRouter.push('/my/external-notifications'),
         more: () => { if (ev) openMore(ev); },
     };
     if (map[id]) map[id]();
@@ -640,6 +684,8 @@ function sidebarItemActive(id: string): boolean {
         favorites: mainRouter.currentRoute.value.path.startsWith('/my/favorites'),
         explore: mainRouter.currentRoute.value.path.startsWith('/explore'),
         followRequests: mainRouter.currentRoute.value.path.startsWith('/my/follow-requests'),
+        // 旗鯖fork: 外部通知ページのアクティブ判定
+        externalNotifications: mainRouter.currentRoute.value.path.startsWith('/my/external-notifications'),
     } as Record<string, boolean>)[id] ?? false;
 }
 
@@ -867,6 +913,23 @@ onMounted(()=>{
     window.addEventListener('simple-user-panel', onSimpleUserPanel);
     nextTick(()=>{ startThemeWatch(); });
     window.addEventListener('ext-tl-notif-count', onExtNotifCount);
+    window.addEventListener('external-notification', onExtNotifRealtime);
+    // 旗鯖fork: 起動時に1回だけ外部通知の未読有無を初期化 (WS受信前の既存未読を反映)
+    // 外部通知ページ閲覧中は除外。localStorage の lastReadAt 基準で未読判定。
+    if (isExternalLinked.value && !mainRouter.currentRoute.value.path.startsWith('/my/external-notifications')) {
+        (async () => {
+            try {
+                const { callExternalApi } = await import('@/utility/external-api.js');
+                const notifs = await callExternalApi('i/notifications', { limit: 20, markAsRead: false });
+                if (Array.isArray(notifs)) {
+                    const lastReadTs = localStorage.getItem('extNotifLastReadAt');
+                    const lastReadTime = lastReadTs ? new Date(lastReadTs).getTime() : 0;
+                    const hasUnread = notifs.some((n: any) => !lastReadTime || new Date(n.createdAt).getTime() > lastReadTime);
+                    extNotifHasUnread.value = hasUnread;
+                }
+            } catch { /* 取得失敗時はドットなし */ }
+        })();
+    }
 });
 onUnmounted(()=>{
     mainCh?.dispose();
@@ -875,6 +938,7 @@ onUnmounted(()=>{
     stopThemeWatch();
     if (scrollTimer) clearTimeout(scrollTimer);
     window.removeEventListener('ext-tl-notif-count', onExtNotifCount);
+    window.removeEventListener('external-notification', onExtNotifRealtime);
     window.removeEventListener('resize', onResize);
     window.removeEventListener('simple-user-panel', onSimpleUserPanel);
 });
@@ -1063,6 +1127,16 @@ onUnmounted(()=>{
     line-height:18px;
     text-align:center;
     box-sizing:border-box;
+}
+/* 旗鯖fork: 外部通知の未読青ドット (サイドメニュー用) */
+.sbExtDot {
+    position:absolute;
+    top:10px;
+    right:14px;
+    width:8px;
+    height:8px;
+    border-radius:50%;
+    background:#4a9eff;
 }
 .sbDot {
     position:absolute;
@@ -1307,9 +1381,18 @@ onUnmounted(()=>{
     z-index:1;
     height:100%;
     overflow-y:auto;
-    padding:16px 12px calc(16px + env(safe-area-inset-bottom, 0px));
+    /* 旗鯖fork: 下部の「ウィジェットを編集」ボタンが隠れないよう、padding-bottom を増やす */
+    padding:16px 12px calc(64px + env(safe-area-inset-bottom, 0px));
     scrollbar-width:thin;
     scrollbar-color:color-mix(in srgb, var(--MI_THEME-fg) 12%, transparent) transparent;
+
+    /* 旗鯖fork: サーバーメトリクス等のウィジェットでヘッダが sticky 設定されているため、
+       スクロール時にタイトルバーだけが分離して動いて見える問題があった。
+       ウィジェット領域内では sticky を打ち消して、コンテンツと一緒にスクロールするようにする。 */
+    :deep(.mkw-container > header) {
+        position: relative !important;
+        top: auto !important;
+    }
 
     // ウィジェットカード間のスタイル
     :deep(.mkw-container) {
@@ -1473,6 +1556,18 @@ onUnmounted(()=>{
 .navPill {
     display:flex; align-items:center; gap:4px; padding:6px 8px; border-radius:9999px;
     pointer-events:auto; transition:background .3s,box-shadow .3s;
+}
+
+/* 旗鯖fork: 外部通知ボタンの未読青ドット (モバイルナビ用) */
+.extDot {
+    position:absolute;
+    top:6px;
+    right:6px;
+    width:8px;
+    height:8px;
+    border-radius:50%;
+    background:#4a9eff;
+    border:1.5px solid var(--MI_THEME-panel);
 }
 .bottomBarDark .navPill {
     background:rgba(30,30,30,.78); backdrop-filter:blur(24px) saturate(1.4); -webkit-backdrop-filter:blur(24px) saturate(1.4);

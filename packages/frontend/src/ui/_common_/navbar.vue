@@ -21,7 +21,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<MkA v-tooltip.noDelay.right="i18n.ts.timeline" :class="$style.item" :activeClass="$style.active" to="/" exact>
 				<i :class="$style.itemIcon" class="ti ti-home ti-fw" style="viewTransitionName: navbar-homeIcon;"></i><span :class="$style.itemText">{{ i18n.ts.timeline }}</span>
 			</MkA>
-			<template v-for="item in prefer.r.menu.value">
+			<template v-for="item in displayMenu">
 				<div v-if="item === '-'" :class="$style.divider"></div>
 				<component
 					:is="navbarItemDef[item].to ? 'MkA' : 'button'"
@@ -144,6 +144,22 @@ const otherMenuItemIndicated = computed(() => {
 	return false;
 });
 const controlPanelIndicated = ref(false);
+
+// 旗鯖fork: 外部アカウント連携時に、menu に externalNotifications が無ければ
+// 通知の直後に動的注入する (既存ユーザーの保存済み menu 設定を壊さず反映)。
+const displayMenu = computed(() => {
+	const menu = [...prefer.r.menu.value];
+	const token = prefer.r['external.token']?.value;
+	const host = prefer.r['external.host']?.value;
+	const linked = token != null && host != null && host !== '';
+	if (linked && !menu.includes('externalNotifications')) {
+		const notifIdx = menu.indexOf('notifications');
+		if (notifIdx >= 0) menu.splice(notifIdx + 1, 0, 'externalNotifications');
+		else menu.unshift('externalNotifications');
+	}
+	// 連携OFF時に menu に含まれていても navbarItemDef.show=false で非表示になるのでフィルタ不要
+	return menu;
+});
 const bannerDisplay = ref(prefer.s.bannerDisplay);
 
 if ($i && ($i.isAdmin ?? $i.isModerator)) {
