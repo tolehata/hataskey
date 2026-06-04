@@ -130,6 +130,11 @@ export function getUserMenu(user: Misskey.entities.UserDetailed, router: Router 
 				user.isMuted = false;
 			});
 		} else {
+			// 旗鯖fork: サーバー管理者へのミュートはモデレーション上の理由で禁止
+			if (user.isAdmin) {
+				os.alert({ type: 'error', text: i18n.ts.cannotBlockOrMuteAdministrator });
+				return;
+			}
 			const { canceled, result: period } = await os.select({
 				title: i18n.ts.mutePeriod,
 				items: [{
@@ -154,30 +159,59 @@ export function getUserMenu(user: Misskey.entities.UserDetailed, router: Router 
 				: period === 'oneWeek' ? Date.now() + (1000 * 60 * 60 * 24 * 7)
 				: null;
 
-			os.apiWithDialog('mute/create', {
+			os.api('mute/create', {
 				userId: user.id,
 				expiresAt,
 			}).then(() => {
 				user.isMuted = true;
+			}).catch((err) => {
+				// 旗鯖fork: 管理者ミュート禁止エラーを日本語表示 (フロント事前チェックをすり抜けた場合の保険)
+				if (err.id === '9c1f6b3e-a4d2-4f3e-b1c8-2a2b3c4d5e6f' || err.code === 'CANNOT_MUTE_ADMINISTRATOR') {
+					os.alert({ type: 'error', text: i18n.ts.cannotBlockOrMuteAdministrator });
+				} else {
+					os.alert({ type: 'error', text: err.message ?? String(err) });
+				}
 			});
 		}
 	}
 
 	async function toggleRenoteMute() {
-		os.apiWithDialog(user.isRenoteMuted ? 'renote-mute/delete' : 'renote-mute/create', {
+		// 旗鯖fork: サーバー管理者へのリノートミュートはモデレーション上の理由で禁止
+		if (!user.isRenoteMuted && user.isAdmin) {
+			os.alert({ type: 'error', text: i18n.ts.cannotBlockOrMuteAdministrator });
+			return;
+		}
+		os.api(user.isRenoteMuted ? 'renote-mute/delete' : 'renote-mute/create', {
 			userId: user.id,
 		}).then(() => {
 			user.isRenoteMuted = !user.isRenoteMuted;
+		}).catch((err) => {
+			if (err.id === '9c1f6b3e-a4d2-4f3e-b1c8-3a2b3c4d5e6f' || err.code === 'CANNOT_RENOTE_MUTE_ADMINISTRATOR') {
+				os.alert({ type: 'error', text: i18n.ts.cannotBlockOrMuteAdministrator });
+			} else {
+				os.alert({ type: 'error', text: err.message ?? String(err) });
+			}
 		});
 	}
 
 	async function toggleBlock() {
+		// 旗鯖fork: サーバー管理者へのブロックはモデレーション上の理由で禁止
+		if (!user.isBlocking && user.isAdmin) {
+			os.alert({ type: 'error', text: i18n.ts.cannotBlockOrMuteAdministrator });
+			return;
+		}
 		if (!await getConfirmed(user.isBlocking ? i18n.ts.unblockConfirm : i18n.ts.blockConfirm)) return;
 
-		os.apiWithDialog(user.isBlocking ? 'blocking/delete' : 'blocking/create', {
+		os.api(user.isBlocking ? 'blocking/delete' : 'blocking/create', {
 			userId: user.id,
 		}).then(() => {
 			user.isBlocking = !user.isBlocking;
+		}).catch((err) => {
+			if (err.id === '9c1f6b3e-a4d2-4f3e-b1c8-1a2b3c4d5e6f' || err.code === 'CANNOT_BLOCK_ADMINISTRATOR') {
+				os.alert({ type: 'error', text: i18n.ts.cannotBlockOrMuteAdministrator });
+			} else {
+				os.alert({ type: 'error', text: err.message ?? String(err) });
+			}
 		});
 	}
 

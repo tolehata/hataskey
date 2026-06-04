@@ -9,11 +9,11 @@
 
 <div class="htk-app" @touchstart.passive="htkTouchStart" @touchmove.passive="htkTouchMove" @touchend="htkTouchEnd">
 <!-- HEADER: search left, title center, settings right -->
-<header class="htk-lg htk-header htk-anim"><div class="htk-gc" style="display:flex;align-items:center;justify-content:space-between;padding:14px 22px"><button class="htk-btn htk-icon-sq" @click="showSearch=true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></button><h1 style="font-size:1.35rem;font-weight:700;letter-spacing:.5px">Hatask</h1><button class="htk-btn htk-icon-sq" @click="showSettings=true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button></div></header>
+<header class="htk-lg htk-header htk-anim"><div class="htk-gc" style="display:flex;align-items:center;justify-content:space-between;padding:14px 22px"><button class="htk-btn htk-icon-sq" @click="showSearch=true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></button><h1 style="font-size:1.5rem;font-weight:400;letter-spacing:.5px;font-family:'Righteous',system-ui,sans-serif">Hatask</h1><button class="htk-btn htk-icon-sq" @click="showSettings=true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button></div></header>
 
 <!-- NAV (desktop: inline, mobile: teleported to body for proper fixed positioning) -->
-<nav class="htk-nav htk-nav-desktop htk-anim"><button v-for="tab in tabs" :key="tab.id" :class="['htk-nav-t',activeTab===tab.id&&'on']" @click="activeTab=tab.id"><span class="htk-ico">{{tab.icon}}</span>{{tab.label}}</button></nav>
-<Teleport to="body"><div v-if="showMobileNav" class="htk-nav-pad" :data-bg="settings.bgTheme" :data-mode="themeMode"></div><nav v-if="showMobileNav" class="htk-nav htk-nav-mobile" :data-bg="settings.bgTheme" :data-mode="themeMode" :inert="false"><button class="htk-nav-t htk-nav-back" @click="handleBack" title="戻る"><span class="htk-ico"><i class="ti ti-arrow-left" style="font-size:1rem"></i></span></button><button v-for="tab in tabs" :key="tab.id" :class="['htk-nav-t',activeTab===tab.id&&'on']" @click="activeTab=tab.id"><span class="htk-ico">{{tab.icon}}</span>{{tab.label}}</button></nav></Teleport>
+<nav class="htk-nav htk-nav-desktop htk-anim"><button v-for="tab in tabs" :key="tab.id" :class="['htk-nav-t',activeTab===tab.id&&'on']" @click="activeTab=tab.id"><span class="htk-ico"><i :class="tab.icon"></i></span>{{tab.label}}</button></nav>
+<Teleport to="body"><div v-if="showMobileNav" class="htk-nav-pad" :data-bg="settings.bgTheme" :data-mode="themeMode"></div><nav v-if="showMobileNav" class="htk-nav htk-nav-mobile" :data-bg="settings.bgTheme" :data-mode="themeMode" :inert="false"><button class="htk-nav-t htk-nav-back" @click="handleBack" title="戻る"><span class="htk-ico"><i class="ti ti-arrow-left" style="font-size:1rem"></i></span></button><button v-for="tab in tabs" :key="tab.id" :class="['htk-nav-t',activeTab===tab.id&&'on']" @click="activeTab=tab.id"><span class="htk-ico"><i :class="tab.icon"></i></span>{{tab.label}}</button></nav></Teleport>
 
 <!-- ========== HOME ========== -->
 <div v-if="activeTab==='home'" class="htk-dash">
@@ -662,7 +662,7 @@ import { floraData, pickRandomFlora, generateFlowerName } from '@/utility/hatask
 const _getPhrase = (ctx?: any): string => { try { return getPhrase(ctx); } catch { return 'こんにちは！'; } };
 definePage(()=>({title:'Hatask',icon:'ti ti-checklist'}));
 const SCOPE=['client','hatask'];
-const tabs=[{id:'home',icon:'☰',label:'ホーム'},{id:'cal',icon:'◫',label:'カレンダー'},{id:'todo',icon:'☐',label:'ToDo'},{id:'mood',icon:'◉',label:'きもち'},{id:'meal',icon:'🍽',label:'ごはん'},{id:'garden',icon:'❋',label:'お庭'},{id:'eye',icon:'◎',label:'Eye'}];
+const tabs=[{id:'home',icon:'ti ti-home',label:'ホーム'},{id:'cal',icon:'ti ti-calendar',label:'カレンダー'},{id:'todo',icon:'ti ti-checkbox',label:'ToDo'},{id:'mood',icon:'ti ti-mood-smile',label:'きもち'},{id:'meal',icon:'ti ti-bowl',label:'ごはん'},{id:'garden',icon:'ti ti-flower',label:'お庭'},{id:'eye',icon:'ti ti-eye',label:'Eye'}];
 const showMobileNav=ref(true);
 const moodEmojis:Record<number,string>={1:'😢',2:'😞',3:'😐',4:'😊',5:'🥰'};
 const moodOptions=[{level:1,emoji:'😢',label:'つらい'},{level:2,emoji:'😞',label:'もやもや'},{level:3,emoji:'😐',label:'ふつう'},{level:4,emoji:'😊',label:'いい感じ'},{level:5,emoji:'🥰',label:'最高！'}];
@@ -1937,6 +1937,15 @@ select.htk-inp{appearance:none;cursor:pointer;padding-right:36px}
 
 <!-- グローバルスタイル: Hatask起動時にMisskeyの標準ナビバーを非表示にする -->
 <style lang="scss">
+/* 旗鯖fork: Hataskタイトル用フォント (about-misskeyと同じ Righteous)。
+   グローバルスコープに置いて、Hataskページ内のロゴ表記で使えるようにする。 */
+@font-face {
+  font-family: 'Righteous';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/client-assets/Righteous-Regular.woff2') format('woff2');
+}
 /* JS側で data-htask-hidden を付与した要素を確実に非表示 */
 [data-htask-hidden] {
   display: none !important;

@@ -1370,9 +1370,15 @@ function emitUpdReaction(emoji: string, delta: number) {
 	background: color-mix(in srgb, var(--MI_THEME-accent) 5%, var(--MI_THEME-panel));
 	transition: top 0.5s;
 	cursor: pointer;
+	/* 旗鯖fork: 通常表示(非スクロール)時、flexの上端揃えだとアバター中心が
+	   吹き出しヘッダー(名前)の高さより上にズレるため、少し下げて中心を合わせる。
+	   align-self: flex-start を明示しつつ margin-top で微調整。 */
+	align-self: flex-start;
+	margin-top: 8px;
 
 	&.useSticky {
 		position: sticky !important;
+		/* スクロール追従で画面上端に貼り付く位置 */
 		top: calc(22px + var(--MI-stickyTop, 0px));
 		left: 0;
 	}
@@ -1380,6 +1386,7 @@ function emitUpdReaction(emoji: string, delta: number) {
 	&.avatarReplyTo {
 		position: relative !important;
 		top: 0 !important;
+		margin-top: 0;
 	}
 }
 

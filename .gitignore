@@ -86,3 +86,6 @@ vite.config.local-dev.ts.timestamp-*
 /tarball/
 /compose.yml
 *.save
+
+# Zone.Identifier
+*:Zone.Identifier

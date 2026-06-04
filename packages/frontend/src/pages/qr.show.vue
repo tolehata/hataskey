@@ -19,8 +19,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<div><MkCondensedLine :minScale="2 / 3">{{ acct }}</MkCondensedLine></div>
 			</div>
 		</div>
-		<img v-if="deviceMotionPermissionNeeded" v-flip :class="$style.logo" :src="cherrypicksvg" alt="CherryPick Logo" @click="requestDeviceMotion"/>
-		<img v-else v-flip :class="$style.logo" :src="cherrypicksvg" alt="CherryPick Logo"/>
+		<!-- 旗鯖fork: CherryPick ロゴを Hataskey ブランドロゴ(テキスト)に置換 -->
+		<div v-flip :class="$style.brandLogo" @click="deviceMotionPermissionNeeded ? requestDeviceMotion() : null">
+			<div :class="$style.brandLogoText">Hataskey</div>
+		</div>
 	</div>
 </div>
 </template>
@@ -34,7 +36,6 @@ import type { Directive } from 'vue';
 import { instance } from '@/instance.js';
 import { ensureSignin } from '@/i.js';
 import { userPage, userName } from '@/filters/user.js';
-import cherrypicksvg from '/client-assets/cherrypick.svg';
 import misskeysvg from '/client-assets/misskey.svg';
 import { getStaticImageUrl } from '@/utility/media-proxy.js';
 import { i18n } from '@/i18n.js';
@@ -217,6 +218,22 @@ $avatarSize: 58px;
 	margin: $s3 auto 0;
 	filter: drop-shadow(0 0 6px #0007);
 }
+
+/* 旗鯖fork: CherryPickロゴ画像を廃止しHataskeyブランドテキストロゴに
+   (「Hataskeyについて」ページと同じ Righteous フォントを使用。@font-face は下部の通常styleで定義) */
+.brandLogo {
+	margin: $s3 auto 0;
+	cursor: pointer;
+	user-select: none;
+}
+.brandLogoText {
+	font-family: 'Righteous', system-ui, sans-serif;
+	font-size: 44px;
+	line-height: 1;
+	color: var(--MI_THEME-accent, #f8c34a);
+	text-align: center;
+	filter: drop-shadow(0 0 6px #0007);
+}
 </style>
 
 <style lang="scss">
@@ -226,6 +243,16 @@ $avatarSize: 58px;
  */
 ._qrShowFlip {
 	transition: rotate .3s linear, scale .3s .15s step-start;
+}
+
+/* 旗鯖fork: Hataskeyブランドロゴ用フォント (about-misskeyと同じ Righteous)。
+   CSS Modules ではなく通常styleに置くことで font-family 名がハッシュ化されないようにする。 */
+@font-face {
+	font-family: 'Righteous';
+	font-style: normal;
+	font-weight: 400;
+	font-display: swap;
+	src: url('/client-assets/Righteous-Regular.woff2') format('woff2');
 }
 
 ._qrShowFlipFliped {

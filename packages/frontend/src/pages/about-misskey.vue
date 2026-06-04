@@ -32,10 +32,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<FormSection>
 					<template #label>Hataskey</template>
 					<div class="_gaps_s">
-						<FormLink to="https://code.tolehata.net/explore/repos" external>
+						<FormLink to="https://github.com/tolehata" external>
 							<template #icon><i class="ti ti-code"></i></template>
 							{{ i18n.ts._aboutMisskey.source }}
-							<template #suffix>Forgejo</template>
+							<template #suffix>GitHub</template>
 						</FormLink>
 						<FormLink to="https://discord.gg/3dpwsnDmSS" external>
 							<template #icon><i class="ti ti-brand-discord"></i></template>
@@ -93,7 +93,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 						</FormLink>
 					</div>
 				</FormSection>
-				<FormSection v-if="instance.repositoryUrl !== 'https://code.tolehata.net/hatacha/cherrypick-hata'">
+				<FormSection v-if="instance.repositoryUrl !== 'https://github.com/tolehata/hataskey'">
 					<div class="_gaps_s">
 						<MkInfo>
 							{{ i18n.tsx._aboutMisskey.thisIsModifiedVersion({ name: instance.name ?? host }) }}
@@ -110,8 +110,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<FormSection>
 					<template #label>Hataskeyプロジェクトメンバー</template>
 					<div :class="$style.contributors">
-						<a href="https://code.tolehata.net/hatacha" target="_blank" :class="$style.contributor">
-							<img src="https://code.tolehata.net/avatars/48a89d84fa2aa7df380278f910431b40" :class="$style.contributorAvatar">
+						<a href="https://github.com/tolehata" target="_blank" :class="$style.contributor">
+							<img src="https://github.com/tolehata.png" :class="$style.contributorAvatar">
 							<span :class="$style.contributorUsername">@Hatacha
 								<span :class="$style.contributorClient">
 									<span :class="$style.hataskey">Hataskey</span>
@@ -565,12 +565,12 @@ const easterEggEngine = ref<{ stop: () => void } | null>(null);
 const containerEl = useTemplateRef('containerEl');
 
 const whatIsNewHataskey = () => {
-	window.open('https://code.tolehata.net/hatacha/cherrypick-hata/src/branch/master/HATA-CHANGELOG.md', '_blank');
+	window.open('https://github.com/tolehata/hataskey/blob/master/HATA-CHANGELOG.md', '_blank');
 };
 
 const openHataskeyCommit = (hash: string) => {
 	if (hash && hash !== 'unknown') {
-		window.open(`https://code.tolehata.net/hatacha/cherrypick-hata/commit/${hash}`, '_blank');
+		window.open(`https://github.com/tolehata/hataskey/commit/${hash}`, '_blank');
 	}
 };
 
