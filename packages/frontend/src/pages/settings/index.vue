@@ -90,11 +90,6 @@ function skipAutoBackup() {
 
 const menuDef = computed<SuperMenuDef[]>(() => [{
 	items: [{
-		icon: 'ti ti-user',
-		text: i18n.ts.profile,
-		to: '/settings/profile',
-		active: currentPage.value?.route.name === 'profile',
-	}, {
 		icon: 'ti ti-lock-open',
 		text: i18n.ts.privacy,
 		to: '/settings/privacy',

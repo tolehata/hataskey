@@ -11,17 +11,13 @@ SPDX-License-Identifier: AGPL-3.0-only
 	:leaveToClass="prefer.s.animation ? $style.transition_popup_leaveTo : ''"
 	appear @afterLeave="emit('closed')"
 >
-	<div v-if="showing" :class="[$style.root, { _popup: !prefer.s.useBlurEffect || !prefer.s.useBlurEffectForModal || !prefer.s.removeModalBgColorForBlur, _popupAcrylic: prefer.s.useBlurEffect && prefer.s.useBlurEffectForModal && prefer.s.removeModalBgColorForBlur }]" class="_shadow" :style="isMobile ? { zIndex } : { zIndex, top: top + 'px', left: left + 'px' }" @mouseover="() => { emit('mouseover'); }" @mouseleave="() => { emit('mouseleave'); }">
+	<div v-if="showing" :class="[$style.root, { _popup: !prefer.s.useBlurEffect || !prefer.s.useBlurEffectForModal || !prefer.s.removeModalBgColorForBlur, _popupAcrylic: prefer.s.useBlurEffect && prefer.s.useBlurEffectForModal && prefer.s.removeModalBgColorForBlur }]" class="_shadow" :style="isMobile ? { zIndex } : { zIndex, top: top + 'px', left: left + 'px' }" @mouseover="() => { emit('mouseover'); }" @mouseleave="() => { if (!menuShowing) emit('mouseleave'); }">
 		<MkError v-if="error" @retry="fetchUser()"/>
 		<div v-else-if="user != null">
 			<div :class="$style.banner" :style="user.bannerUrl ? { backgroundImage: `url(${prefer.s.disableShowingAnimatedImages ? getStaticImageUrl(user.bannerUrl) : user.bannerUrl})` } : ''">
 				<span v-if="$i && $i.id != user.id && user.isFollowed" :class="$style.followed">{{ i18n.ts.followsYou }}</span>
 			</div>
-			<svg v-if="(!prefer.s.setFederationAvatarShape && !prefer.s.squareAvatars) || (prefer.s.setFederationAvatarShape && !user.setFederationAvatarShape && !prefer.s.squareAvatars) || (prefer.s.setFederationAvatarShape && user.setFederationAvatarShape && !user.isSquareAvatars)" viewBox="0 0 128 128" :class="$style.avatarBack">
-				<g transform="matrix(1.6,0,0,1.6,-38.4,-51.2)">
-					<path d="M64,32C81.661,32 96,46.339 96,64C95.891,72.184 104,72 104,72C104,72 74.096,80 64,80C52.755,80 24,72 24,72C24,72 31.854,72.018 32,64C32,46.339 46.339,32 64,32Z" style="fill: var(--MI_THEME-popup);"/>
-				</g>
-			</svg>
+			<!-- 旗鯖fork: アイコン背後の吹き出し風SVG装飾を削除 (項目18) -->
 			<MkAvatar :class="$style.avatar" :user="user" indicator/>
 			<div :class="$style.title">
 				<MkA :class="$style.name" :to="userPage(user)"><MkUserName :user="user" :nowrap="false"/></MkA>
@@ -98,10 +94,21 @@ const error = ref(false);
 const isMobile = ref(window.innerWidth <= 800);
 function updateIsMobile() { isMobile.value = window.innerWidth <= 800; }
 
+// 旗鯖fork: メニュー(...)を開いている間は mouseleave による自動クローズを抑制する。
+// メニューを開くとマウスがポップアップ外へ出て mouseleave が発火し、
+// ポップアップ本体が閉じてメニューだけ残る問題への対処 (項目17)。
+const menuShowing = ref(false);
+
 function showMenu(ev: MouseEvent) {
 	if (user.value == null) return;
 	const { menu, cleanup } = getUserMenu(user.value);
-	os.popupMenu(menu, ev.currentTarget ?? ev.target).finally(cleanup);
+	menuShowing.value = true;
+	os.popupMenu(menu, ev.currentTarget ?? ev.target).finally(() => {
+		cleanup();
+		// メニューを閉じたら抑制を解除。以降、マウスがポップアップ外に出れば
+		// 通常通り mouseleave → 自動クローズが効く。
+		menuShowing.value = false;
+	});
 }
 
 async function fetchUser() {
@@ -250,15 +257,6 @@ onUnmounted(() => {
 	background: rgba(0, 0, 0, 0.7);
 	font-size: 0.7em;
 	border-radius: 6px;
-}
-
-.avatarBack {
-	width: 100px;
-	position: absolute;
-	top: 28px;
-	left: 0;
-	right: 0;
-	margin: 0 auto;
 }
 
 .avatar {
