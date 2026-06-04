@@ -5787,9 +5787,9 @@ export type components = {
             description: string | null;
             langs: string[];
             tosUrl: string | null;
-            /** @default https://code.tolehata.net/hatacha/cherrypick-hata */
+            /** @default https://github.com/tolehata/hataskey */
             repositoryUrl: string | null;
-            /** @default https://code.tolehata.net/hatacha/cherrypick-hata/issues */
+            /** @default https://github.com/tolehata/hataskey/issues */
             feedbackUrl: string | null;
             defaultDarkTheme: string | null;
             defaultLightTheme: string | null;

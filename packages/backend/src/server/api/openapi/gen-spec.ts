@@ -19,7 +19,7 @@ export function genOpenapiSpec(config: Config, includeSelfRef = false) {
 
 		externalDocs: {
 			description: 'Repository',
-			url: 'https://code.tolehata.net/hatacha/cherrypick-hata',
+			url: 'https://github.com/tolehata/hataskey',
 		},
 
 		servers: [{
@@ -98,7 +98,7 @@ export function genOpenapiSpec(config: Config, includeSelfRef = false) {
 			description: desc,
 			externalDocs: {
 				description: 'Source code',
-				url: `https://code.tolehata.net/hatacha/cherrypick-hata/src/branch/master/packages/backend/src/server/api/endpoints/${endpoint.name}.ts`,
+				url: `https://github.com/tolehata/hataskey/blob/master/packages/backend/src/server/api/endpoints/${endpoint.name}.ts`,
 			},
 			...(endpoint.meta.tags ? {
 				tags: [endpoint.meta.tags[0]],

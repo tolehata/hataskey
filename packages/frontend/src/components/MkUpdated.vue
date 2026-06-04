@@ -60,7 +60,7 @@ const isBeta = version.includes('-beta') || version.includes('-alpha') || versio
 
 function whatIsNewCherryPick() {
 	// modal.value?.close();
-	window.open(`https://code.tolehata.net/hatacha/cherrypick-hata`, '_blank');
+	window.open(`https://github.com/tolehata/hataskey`, '_blank');
 }
 
 const close = async () => {

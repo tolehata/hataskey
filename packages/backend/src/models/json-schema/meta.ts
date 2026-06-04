@@ -60,12 +60,12 @@ export const packedMetaLiteSchema = {
 		repositoryUrl: {
 			type: 'string',
 			optional: false, nullable: true,
-			default: 'https://code.tolehata.net/hatacha/cherrypick-hata',
+			default: 'https://github.com/tolehata/hataskey',
 		},
 		feedbackUrl: {
 			type: 'string',
 			optional: false, nullable: true,
-			default: 'https://code.tolehata.net/hatacha/cherrypick-hata/issues',
+			default: 'https://github.com/tolehata/hataskey/issues',
 		},
 		defaultDarkTheme: {
 			type: 'string',

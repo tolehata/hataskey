@@ -17,14 +17,14 @@ export class MigrateRepositoryUrlToHataskey1775000000000 {
 		// repositoryUrl: GitHub 本家URL → Hataskey 公式URL
 		await queryRunner.query(`
 			UPDATE "meta"
-			SET "repositoryUrl" = 'https://code.tolehata.net/hatacha/cherrypick-hata'
+			SET "repositoryUrl" = 'https://github.com/tolehata/hataskey'
 			WHERE "repositoryUrl" = 'https://github.com/kokonect-link/cherrypick'
 		`);
 
 		// feedbackUrl: GitHub 本家URL(/issues/new) → Hataskey 公式URL(/issues)
 		await queryRunner.query(`
 			UPDATE "meta"
-			SET "feedbackUrl" = 'https://code.tolehata.net/hatacha/cherrypick-hata/issues'
+			SET "feedbackUrl" = 'https://github.com/tolehata/hataskey/issues'
 			WHERE "feedbackUrl" = 'https://github.com/kokonect-link/cherrypick/issues/new'
 		`);
 	}
@@ -36,13 +36,13 @@ export class MigrateRepositoryUrlToHataskey1775000000000 {
 		await queryRunner.query(`
 			UPDATE "meta"
 			SET "repositoryUrl" = 'https://github.com/kokonect-link/cherrypick'
-			WHERE "repositoryUrl" = 'https://code.tolehata.net/hatacha/cherrypick-hata'
+			WHERE "repositoryUrl" = 'https://github.com/tolehata/hataskey'
 		`);
 
 		await queryRunner.query(`
 			UPDATE "meta"
 			SET "feedbackUrl" = 'https://github.com/kokonect-link/cherrypick/issues/new'
-			WHERE "feedbackUrl" = 'https://code.tolehata.net/hatacha/cherrypick-hata/issues'
+			WHERE "feedbackUrl" = 'https://github.com/tolehata/hataskey/issues'
 		`);
 	}
 }

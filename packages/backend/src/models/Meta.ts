@@ -421,14 +421,14 @@ export class MiMeta {
 
 	@Column('varchar', {
 		length: 1024,
-		default: 'https://code.tolehata.net/hatacha/cherrypick-hata',
+		default: 'https://github.com/tolehata/hataskey',
 		nullable: true,
 	})
 	public repositoryUrl: string | null;
 
 	@Column('varchar', {
 		length: 1024,
-		default: 'https://code.tolehata.net/hatacha/cherrypick-hata/issues',
+		default: 'https://github.com/tolehata/hataskey/issues',
 		nullable: true,
 	})
 	public feedbackUrl: string | null;
