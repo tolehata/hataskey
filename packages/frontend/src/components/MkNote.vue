@@ -1374,7 +1374,7 @@ function emitUpdReaction(emoji: string, delta: number) {
 	   吹き出しヘッダー(名前)の高さより上にズレるため、少し下げて中心を合わせる。
 	   align-self: flex-start を明示しつつ margin-top で微調整。 */
 	align-self: flex-start;
-	margin-top: 8px;
+	margin-top: 16px;
 
 	&.useSticky {
 		position: sticky !important;

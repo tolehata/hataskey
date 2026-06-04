@@ -4,7 +4,7 @@
 
 <div class="htk-root" :data-bg="settings.bgTheme" :data-mode="themeMode" ref="rootEl">
 <div class="htk-scene"><div class="htk-orb htk-orbA"></div><div class="htk-orb htk-orbB"></div><div class="htk-orb htk-orbC"></div><div class="htk-orb htk-orbD"></div>
-<svg style="position:absolute;bottom:0;left:0;width:200%;min-width:1400px;height:100%" viewBox="0 0 1440 900" preserveAspectRatio="none"><path class="htk-swp1" fill="rgba(232,168,124,.12)" d="M0,640 C360,540 720,720 1080,580 C1260,510 1380,600 1440,580 L1440,900 L0,900Z"/><path class="htk-swp2" fill="rgba(133,205,202,.1)" d="M0,710 C240,650 480,770 720,690 C960,610 1200,740 1440,670 L1440,900 L0,900Z"/><path class="htk-swp3" fill="rgba(195,141,158,.08)" d="M0,770 C180,730 360,800 540,760 C720,720 900,790 1080,750 C1260,710 1380,770 1440,740 L1440,900 L0,900Z"/></svg>
+<svg style="position:absolute;bottom:0;left:-15%;width:230%;min-width:1600px;height:100%" viewBox="0 0 1440 900" preserveAspectRatio="none"><path class="htk-swp1" fill="rgba(232,168,124,.12)" d="M0,640 C360,540 720,720 1080,580 C1260,510 1380,600 1440,580 L1440,900 L0,900Z"/><path class="htk-swp2" fill="rgba(133,205,202,.1)" d="M0,710 C240,650 480,770 720,690 C960,610 1200,740 1440,670 L1440,900 L0,900Z"/><path class="htk-swp3" fill="rgba(195,141,158,.08)" d="M0,770 C180,730 360,800 540,760 C720,720 900,790 1080,750 C1260,710 1380,770 1440,740 L1440,900 L0,900Z"/></svg>
 </div>
 
 <div class="htk-app" @touchstart.passive="htkTouchStart" @touchmove.passive="htkTouchMove" @touchend="htkTouchEnd">
@@ -90,6 +90,8 @@
       <div v-else class="htk-empty" style="cursor:pointer" @click="activeTab='cal'"><div class="htk-empI">⊘</div><div>予定はありません</div></div>
     </div></div>
     <div v-if="sec==='mood' && settings.showMoodSummary!==false" class="htk-lg htk-anim"><div class="htk-gc" style="text-align:center"><h3 class="htk-sec-title">今週のきもち</h3><div class="htk-mood-wk" @click="activeTab='mood'" style="cursor:pointer"><div v-for="(m,i) in weekMoods" :key="i" class="htk-mood-wk-d"><span>{{m.emoji||'⊘'}}</span><span>{{m.day}}</span></div></div><div style="margin-top:10px"><button class="htk-btn htk-sm" @click.stop="activeTab='mood'">きもちを記録</button></div></div></div>
+    <!-- 旗鯖fork: ごはん記録セクション (項目4) -->
+    <div v-if="sec==='meal' && settings.showMealSection!==false" class="htk-lg htk-anim"><div class="htk-gc" style="text-align:center"><h3 class="htk-sec-title">ごはん記録</h3><div class="htk-meal-summary" style="margin:6px 0 12px">{{mealSummaryMessage}}</div><div style="font-size:.8rem;color:var(--text-3);margin-bottom:10px">今日の記録: {{mealTodayCount}}件</div><div><button class="htk-btn htk-sm" @click.stop="activeTab='meal'">ごはんを記録</button></div></div></div>
   </template>
   <div class="htk-lg htk-anim" style="grid-column:1/-1"><div class="htk-gc" style="text-align:center;padding:14px 22px"><button class="htk-btn htk-sm" style="opacity:.5" @click="showSettings=true">⚙ ホーム画面をカスタマイズ</button></div></div>
 </div>
@@ -424,7 +426,9 @@
 <!-- ========== EYE PAGE ========== -->
 <div v-if="activeTab==='eye'" class="htk-panels" style="padding-bottom:40px">
   <!-- Eye phrase (big) -->
-  <div class="htk-lg htk-anim"><div class="htk-gc htk-eye-page-top">
+  <div class="htk-lg htk-anim"><div class="htk-gc htk-eye-page-top" style="position:relative">
+    <!-- 旗鯖fork: AI生成文の注意事項を表示するiマーク (いつでも確認可能) -->
+    <button class="htk-eye-info-btn" @click="showEyeDisclaimer=true" title="Hatask Eyeについて" style="position:absolute;top:12px;right:12px;background:rgba(255,255,255,.15);border:none;border-radius:50%;width:30px;height:30px;cursor:pointer;color:inherit;display:flex;align-items:center;justify-content:center"><i class="ti ti-info-circle" style="font-size:1rem"></i></button>
     <div class="htk-eye-logo">◎</div>
     <div class="htk-eye-page-label">Hatask Eye</div>
     <Transition name="htk-eye-fade" mode="out-in">
@@ -509,6 +513,17 @@
   <div style="text-align:center;margin-top:12px"><button class="htk-btn htk-primary htk-sch-close" @click="showSearch=false">閉じる</button></div>
 </div></div></div></Teleport>
 
+<!-- 旗鯖fork: Hatask Eye 注意事項モーダル (初回表示 + iマードからいつでも) -->
+<Teleport to="body"><div v-if="showEyeDisclaimer" class="htk-modal-ov" @click.self="dismissEyeDisclaimer"><div class="htk-lg htk-modal-c" style="max-width:420px"><div class="htk-gc" style="padding:22px">
+  <h3 class="htk-sec-title" style="display:flex;align-items:center;gap:8px"><i class="ti ti-info-circle"></i> Hatask Eye について</h3>
+  <p style="line-height:1.7;font-size:.92rem;opacity:.9;margin:14px 0">
+    Hatask Eye が表示する分析やひとことは、<b>AIが自動生成した文章</b>です。<br>
+    内容の正確性は保証されず、<b>助言や占いのような表現もあくまでエンタメ</b>としてお楽しみください。<br>
+    健康・医療・専門的な判断が必要なことは、専門家にご相談ください。
+  </p>
+  <div style="text-align:center;margin-top:10px"><button class="htk-btn htk-primary" @click="dismissEyeDisclaimer">わかった</button></div>
+</div></div></div></Teleport>
+
 <!-- SETTINGS MODAL -->
 <Teleport to="body"><div v-if="showSettings" class="htk-modal-ov" @click.self="showSettings=false"><div class="htk-stg-wrap">
   <div class="htk-stg-topbar"><button class="htk-btn htk-stg-close-top" @click="showSettings=false"><i class="ti ti-x" style="font-size:1.1rem"></i></button></div>
@@ -517,11 +532,6 @@
   <div class="htk-lg htk-stg-card"><div class="htk-gc htk-stg-gc">
     <div class="htk-stg-label">背景テーマ</div>
     <div class="htk-bg-picker"><div v-for="bg in bgThemes" :key="bg.id" style="text-align:center"><div :class="['htk-bg-opt','htk-bg-'+bg.id,settings.bgTheme===bg.id&&'on']" @click="setBg(bg.id)"></div></div></div>
-  </div></div>
-
-  <div class="htk-lg htk-stg-card"><div class="htk-gc htk-stg-gc">
-    <div class="htk-stg-label">表示</div>
-    <div class="htk-stg-row"><span>ダークモード</span><button :class="['htk-tg-sw',settings.darkMode&&'on']" @click="toggleDarkMode"></button></div>
   </div></div>
 
   <div class="htk-lg htk-stg-card"><div class="htk-gc htk-stg-gc">
@@ -542,12 +552,14 @@
   </div></div>
 
   <div class="htk-lg htk-stg-card"><div class="htk-gc htk-stg-gc">
-    <div class="htk-stg-label">ホーム画面 - セクション並び替え</div>
-    <div class="htk-stg-desc">上下ボタンでホーム画面のセクション順を変更できます</div>
+    <div class="htk-stg-label">ホーム画面 - セクション表示と並び替え</div>
+    <div class="htk-stg-desc">トグルで表示/非表示、上下ボタンで順番を変更できます</div>
     <div class="htk-reorder-list">
       <div v-for="(sec,idx) in sectionOrder" :key="sec" class="htk-reorder-item">
         <span class="htk-reorder-handle">☰</span>
         <span class="htk-reorder-label">{{sectionLabels[sec]||sec}}</span>
+        <!-- 旗鯖fork: 表示ON/OFFトグルを統合 (項目5) -->
+        <button :class="['htk-tg-sw',isSectionVisible(sec)&&'on']" style="margin-right:8px" @click="toggleSectionVisible(sec)"></button>
         <div class="htk-reorder-btns">
           <button class="htk-reorder-btn" :disabled="idx===0" @click="moveSectionUp(idx)">▲</button>
           <button class="htk-reorder-btn" :disabled="idx===sectionOrder.length-1" @click="moveSectionDown(idx)">▼</button>
@@ -678,7 +690,7 @@ const mealDisclaimerText='この機能は食事の記録を補助するための
 const eventColors=['#e27d60','#85cdca','#e8a87c','#c38d9e','#7bc67e','#f0c75e','#6cb4ee'];
 const eventEmojis=['⭐','💼','🎮','🔧','📚','🎂','✈️','🎨','🏃','🎤'];
 const notifyTimings=['15分前','30分前','1時間前','1日前'];
-const bgThemes=[{id:'ocean',label:'オーシャン'},{id:'forest',label:'フォレスト'},{id:'night',label:'ナイト'}];
+const bgThemes=[{id:'purple',label:'パープル'},{id:'ocean',label:'オーシャン'},{id:'forest',label:'フォレスト'},{id:'night',label:'ナイト'}];
 const sortOptions=[{id:'manual',label:'手動'},{id:'dueAsc',label:'期日↑'},{id:'dueDesc',label:'期日↓'},{id:'new',label:'新しい順'}];
 // Flora data now in hatask-flora.ts
 
@@ -689,6 +701,8 @@ async function registryGet<T>(key:string,fb:T):Promise<T>{try{const v=await miss
 async function registrySet(key:string,value:unknown):Promise<void>{if(!dataLoaded.value&&!loadedKeys.has(key))return;await misskeyApi('i/registry/set',{key,value,scope:SCOPE})}
 
 const activeTab=ref('home');const isSaving=ref(false);const showSettings=ref(false);const showSearch=ref(false);
+// 旗鯖fork: Hatask Eye の注意事項モーダル表示状態
+const showEyeDisclaimer=ref(false);
 
 // タブ切り替え時にスクロール状態をリセット
 watch(activeTab, () => {
@@ -707,6 +721,10 @@ watch(activeTab, () => {
 watch(activeTab, (t) => {
   if (t === 'meal' && dataLoaded.value && !settings.value.mealDisclaimerShown) {
     showMealDisclaimer.value = true;
+  }
+  // 旗鯖fork: Hatask Eye 初回表示時に注意事項を出す
+  if (t === 'eye' && dataLoaded.value && !settings.value.eyeDisclaimerShown) {
+    showEyeDisclaimer.value = true;
   }
 });
 const showMoodDisclaimer=ref(false);const showFlowerInfo=ref(false);const showMoodNote=ref(true);const showMoodRemind=ref(false);
@@ -901,9 +919,9 @@ notifTimerIds.push(tid)
 }})
 }
 const currentTime=ref('');const currentDate=ref('');const eyePhrase=ref('こんにちは！');const editingEvent=ref<any>(null);let eyeTimer:ReturnType<typeof setInterval>|null=null;
-const defaultSectionOrder=['clock','eye','apps','loginDays','flower','events','mood'];
+const defaultSectionOrder=['clock','eye','apps','loginDays','flower','events','mood','meal'];
 const sectionOrder=ref<string[]>([...defaultSectionOrder]);
-const sectionLabels:Record<string,string>={clock:'日時表示',eye:'Hatask Eye',apps:'旗鯖独自アプリ',loginDays:'ログイン日数',flower:'お花',events:'直近の予定',mood:'今週のきもち'};
+const sectionLabels:Record<string,string>={clock:'日時表示',eye:'Hatask Eye',apps:'旗鯖独自アプリ',loginDays:'ログイン日数',flower:'お花',events:'直近の予定',mood:'今週のきもち',meal:'ごはん記録'};
 const draggingSectionIdx=ref<number|null>(null);
 const closedRsvpNotifs=ref<{eventId:string,emoji:string,title:string,goCount:number}[]>([]);
 const dismissedRsvpNotifs=ref<string[]>([]);
@@ -949,7 +967,8 @@ function startHtkThemeWatch(){
 }
 function stopHtkThemeWatch(){htk_themeObserver?.disconnect();htk_themeObserver=null}
 function toggleAutoTheme(){settings.value.autoTheme=!settings.value.autoTheme;saveSettings()}
-function toggleDarkMode(){settings.value.darkMode=!settings.value.darkMode;saveSettings()}
+// 旗鯖fork: Hatask Eye 注意事項を閉じる (初回表示フラグを保存して二度目以降は自動表示しない)
+function dismissEyeDisclaimer(){showEyeDisclaimer.value=false;settings.value.eyeDisclaimerShown=true;saveSettings()}
 function setBg(id:string){settings.value.bgTheme=id;saveSettings()}
 async function saveSettings(){await registrySet('settings',settings.value)}
 function toggleMoodRemindTime(t:string){if(!settings.value.moodRemindTimes)settings.value.moodRemindTimes=[];const i=settings.value.moodRemindTimes.indexOf(t);if(i>=0)settings.value.moodRemindTimes.splice(i,1);else settings.value.moodRemindTimes.push(t);saveSettings();scheduleMoodReminders()}
@@ -1184,6 +1203,10 @@ try{await misskeyApi('hatask/events/close',{eventId,closed:true});await loadShar
 // Section reorder functions
 function moveSectionUp(idx:number){if(idx<=0)return;const arr=[...sectionOrder.value];[arr[idx-1],arr[idx]]=[arr[idx],arr[idx-1]];sectionOrder.value=arr;settings.value.sectionOrder=arr;saveSettings()}
 function moveSectionDown(idx:number){if(idx>=sectionOrder.value.length-1)return;const arr=[...sectionOrder.value];[arr[idx],arr[idx+1]]=[arr[idx+1],arr[idx]];sectionOrder.value=arr;settings.value.sectionOrder=arr;saveSettings()}
+// 旗鯖fork: セクションID → 表示設定キーのマッピング (項目5: 表示ON/OFF統合)
+const sectionVisibilityKey:Record<string,string>={clock:'showClock',eye:'showEye',apps:'showApps',loginDays:'showLoginDays',flower:'showFlower',events:'showEvents',mood:'showMoodSummary',meal:'showMealSection'};
+function isSectionVisible(sec:string):boolean{const k=sectionVisibilityKey[sec];if(!k)return true;return settings.value[k]!==false}
+function toggleSectionVisible(sec:string){const k=sectionVisibilityKey[sec];if(!k)return;settings.value[k]=settings.value[k]===false?true:false;saveSettings()}
 function dismissRsvpNotif(eventId:string){dismissedRsvpNotifs.value.push(eventId);closedRsvpNotifs.value=closedRsvpNotifs.value.filter(n=>n.eventId!==eventId)}
 function checkClosedRsvps(){
 const myId=$i?.id;if(!myId)return;
@@ -1343,7 +1366,7 @@ nextTick(() => {
 });
 const initFlower = pickRandomFlora();
 const defaultFlower = { emoji: initFlower.emoji, name: generateFlowerName(initFlower), progress: 0, startedAt: Date.now(), totalMinutes: 0 };
-const defaultSettings = { bgTheme: 'ocean', darkMode: false, autoTheme: true, weekStart: 'mon', showClock: true, showEvents: true, showFlower: true, showMoodSummary: true, moodRemind: true, moodRemindTimes: ['昼 12:00', '寝る前 23:00'], openOnStart: false, showMealSummary: true, mealDisclaimerShown: false };
+const defaultSettings = { bgTheme: 'ocean', darkMode: false, autoTheme: true, weekStart: 'mon', showClock: true, showEvents: true, showFlower: true, showMoodSummary: true, showMealSection: true, moodRemind: true, moodRemindTimes: ['昼 12:00', '寝る前 23:00'], openOnStart: false, showMealSummary: true, mealDisclaimerShown: false, eyeDisclaimerShown: false };
 
 // 各データを個別に取得（1つの失敗が他に影響しないようにする）
 const loadResults = await Promise.allSettled([
@@ -1457,6 +1480,7 @@ notifTimerIds.forEach(id => clearTimeout(id));
 <style lang="scss" scoped>
 
 .htk-root{--radius-lg:28px;--radius-sm:14px;--radius-xs:10px;--primary:#e8a87c;--secondary:#85cdca;--accent:#e27d60;--success:#6ec072;--ease-spring:cubic-bezier(0.34,1.56,0.64,1);--ease-smooth:cubic-bezier(0.4,0,0.2,1);--tint-bg:rgba(255,255,255,.04);--outer-glow:0 0 24px -8px rgba(255,255,255,.1);--inner-glow:inset 0 0 14px -2px rgba(255,255,255,.15);--blur-amount:10px;--text-1:rgba(255,255,255,.95);--text-2:rgba(255,255,255,.7);--text-3:rgba(255,255,255,.45);--text-shadow:0 1px 4px rgba(0,0,0,.5);--divider:rgba(255,255,255,.08);--active-bg:rgba(255,255,255,.1);--hover-bg:rgba(255,255,255,.06);--btn-bg:rgba(255,255,255,.08);--btn-border:rgba(255,255,255,.15);--btn-hover:rgba(255,255,255,.14);--input-bg:rgba(255,255,255,.05);--input-border:rgba(255,255,255,.12);--input-focus:rgba(232,168,124,.45);position:relative;min-height:100dvh;overflow-x:hidden;overflow-y:visible}
+.htk-root[data-bg="purple"]{background:linear-gradient(145deg,#3a3744,#46424f 20%,#534e60 45%,#454150 70%,#3a3744);background-size:200% 200%;animation:htkBgFlow 25s ease-in-out infinite;--orb-a:rgba(83,78,96,.28);--orb-b:rgba(70,66,79,.24);--orb-c:rgba(69,65,80,.2);--orb-d:rgba(58,55,68,.16)}
 .htk-root[data-bg="ocean"]{background:linear-gradient(145deg,#2d6a8f,#48a9a6 20%,#5bc0be 45%,#3a7ca5 70%,#1e5f8a);background-size:200% 200%;animation:htkBgFlow 25s ease-in-out infinite;--orb-a:rgba(91,192,190,.35);--orb-b:rgba(72,169,166,.3);--orb-c:rgba(58,124,165,.25);--orb-d:rgba(45,106,143,.2)}
 .htk-root[data-bg="forest"]{background:linear-gradient(145deg,#2d5a27,#4a8f46 20%,#6bbd67 45%,#3d7a39 70%,#2a5226);background-size:200% 200%;animation:htkBgFlow 25s ease-in-out infinite;--orb-a:rgba(107,189,103,.35);--orb-b:rgba(74,143,70,.3);--orb-c:rgba(61,122,57,.25);--orb-d:rgba(45,90,39,.2)}
 .htk-root[data-bg="night"]{background:linear-gradient(145deg,#0f0c29,#302b63 20%,#24243e 45%,#1a1a3e 70%,#0f0c29);background-size:200% 200%;animation:htkBgFlow 30s ease-in-out infinite;--orb-a:rgba(48,43,99,.4);--orb-b:rgba(36,36,62,.35);--orb-c:rgba(80,60,120,.25);--orb-d:rgba(60,50,100,.2)}
@@ -1812,7 +1836,7 @@ select.htk-inp{appearance:none;cursor:pointer;padding-right:36px}
 .htk-bg-picker{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
 .htk-bg-opt{width:44px;height:44px;border-radius:12px;cursor:pointer;border:2px solid transparent;transition:all .2s}
 .htk-bg-opt:hover{transform:scale(1.08)}.htk-bg-opt.on{border-color:var(--text-1);box-shadow:0 0 12px rgba(128,128,128,.3)}
-.htk-bg-ocean{background:linear-gradient(135deg,#2d6a8f,#5bc0be)}.htk-bg-forest{background:linear-gradient(135deg,#2d5a27,#6bbd67)}.htk-bg-night{background:linear-gradient(135deg,#0f0c29,#302b63)}
+.htk-bg-purple{background:linear-gradient(135deg,#3a3744,#534e60)}.htk-bg-ocean{background:linear-gradient(135deg,#2d6a8f,#5bc0be)}.htk-bg-forest{background:linear-gradient(135deg,#2d5a27,#6bbd67)}.htk-bg-night{background:linear-gradient(135deg,#0f0c29,#302b63)}
 .htk-rl-box{padding:12px;background:rgba(234,185,68,.08);border:1px solid rgba(234,185,68,.15);border-radius:var(--radius-sm);margin-top:4px}
 .htk-rl-t{font-size:.78rem;font-weight:600;color:rgba(240,208,112,.9);margin-bottom:4px}
 .htk-rl-tbl{width:100%;margin-top:5px;border-collapse:collapse}
