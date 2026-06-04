@@ -224,8 +224,8 @@ async function addSecurityKey() {
 	if (auth2.canceled) return;
 
 	await os.apiWithDialog('i/2fa/key-done', {
-		password: auth.result.password,
-		token: auth.result.token,
+		password: auth2.result.password,
+		token: auth2.result.token,
 		name: name.result,
 		// @ts-expect-error cherrypick-js側に型がない
 		credential: credential.toJSON(),
