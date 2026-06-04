@@ -104,6 +104,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 	<span style="animation: dev-ticker-blink 2s infinite;">{{ i18n.ts.safeModeEnabled }}</span>&nbsp;
 	<button class="_textButton" style="pointer-events: all;" @click="exitSafeMode">{{ i18n.ts.turnItOff }}</button>
 </div>
+
+<!-- 旗鯖fork: 外部通知トースト (右下スライドイン、UI被らず) -->
+<XExternalNotificationToastContainer v-if="$i" />
 </template>
 
 <script lang="ts" setup>
@@ -128,6 +131,8 @@ import { haptic } from '@/utility/haptic.js';
 
 const XStreamIndicator = defineAsyncComponent(() => import('./stream-indicator.vue'));
 const XWidgets = defineAsyncComponent(() => import('./widgets.vue'));
+// 旗鯖fork: 外部通知トーストコンテナ (右下表示)
+const XExternalNotificationToastContainer = defineAsyncComponent(() => import('@/components/MkExternalNotificationToastContainer.vue'));
 
 const drawerMenuShowing = defineModel<boolean>('drawerMenuShowing');
 const widgetsShowing = defineModel<boolean>('widgetsShowing');

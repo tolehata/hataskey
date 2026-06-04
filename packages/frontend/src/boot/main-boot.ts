@@ -50,6 +50,11 @@ export async function mainBoot() {
 		prefer.commit('smoothTransitionAnimations', false);
 	}
 
+	// 旗鯖fork: 外部通知ストリームを起動 (外部アカウント連携中ならWS接続して通知をリアルタイム受信)
+	// visibilityState 'hidden' で切断、'visible' で再接続するアイドル管理付き
+	const { startExternalNotificationStream } = await import('@/utility/external-notification-stream.js');
+	startExternalNotificationStream();
+
 	// 旗鯖独自: ミュートユーザーリスト先読み（hideMutedUserReactions が有効な場合のみ）
 	// ノートが流れる前にリスト取得を完了させることで、リアルタイムフィルタの取りこぼしを防ぐ
 	if (prefer.s.hideMutedUserReactions) {

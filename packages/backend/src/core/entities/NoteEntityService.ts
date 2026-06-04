@@ -122,7 +122,11 @@ export class NoteEntityService implements OnModuleInit {
 	}
 
 	@bindThis
-	private treatVisibility(packedNote: Packed<'Note'>): Packed<'Note'>['visibility'] {
+	private treatVisibility(packedNote: Packed<'Note'>, meIsAdmin = false): Packed<'Note'>['visibility'] {
+		// 旗鯖fork: サーバー管理者はモデレーション上の理由で
+		// 「過去のノートをフォロワーのみ」の自動可視性変換をbypass
+		if (meIsAdmin) return packedNote.visibility;
+
 		if (packedNote.visibility === 'public' || packedNote.visibility === 'home') {
 			const followersOnlyBefore = packedNote.user.makeNotesFollowersOnlyBefore;
 			if ((followersOnlyBefore != null)
@@ -140,6 +144,12 @@ export class NoteEntityService implements OnModuleInit {
 	@bindThis
 	private async hideNote(packedNote: Packed<'Note'>, meId: MiUser['id'] | null): Promise<void> {
 		if (meId === packedNote.userId) return;
+
+		// 旗鯖fork: サーバー管理者はモデレーション上の理由で
+		// 「過去のノートを非公開化」の自動非表示化をbypass (要signin保護はそのまま)
+		if (meId != null && await this.roleService.isAdministrator({ id: meId })) {
+			return;
+		}
 
 		// TODO: isVisibleForMe を使うようにしても良さそう(型違うけど)
 		let hide = false;
@@ -520,7 +530,9 @@ export class NoteEntityService implements OnModuleInit {
 			} : {}),
 		});
 
-		this.treatVisibility(packed);
+		// 旗鯖fork: 管理者はノート可視性の自動変換をbypass (モデレーション目的)
+		const meIsAdmin = meId != null ? await this.roleService.isAdministrator({ id: meId }) : false;
+		this.treatVisibility(packed, meIsAdmin);
 
 		if (!opts.skipHide) {
 			await this.hideNote(packed, meId);

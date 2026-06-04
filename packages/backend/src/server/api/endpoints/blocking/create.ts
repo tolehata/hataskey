@@ -9,6 +9,7 @@ import { Endpoint } from '@/server/api/endpoint-base.js';
 import type { UsersRepository, BlockingsRepository } from '@/models/_.js';
 import { UserEntityService } from '@/core/entities/UserEntityService.js';
 import { UserBlockingService } from '@/core/UserBlockingService.js';
+import { RoleService } from '@/core/RoleService.js';
 import { DI } from '@/di-symbols.js';
 import { GetterService } from '@/server/api/GetterService.js';
 import { ApiError } from '../../error.js';
@@ -43,6 +44,13 @@ export const meta = {
 			code: 'ALREADY_BLOCKING',
 			id: '787fed64-acb9-464a-82eb-afbd745b9614',
 		},
+
+		// 旗鯖fork: サーバー管理者はモデレーション上の理由でブロック不可
+		cannotBlockAdministrator: {
+			message: 'You cannot block a server administrator due to moderation reasons.',
+			code: 'CANNOT_BLOCK_ADMINISTRATOR',
+			id: '9c1f6b3e-a4d2-4f3e-b1c8-1a2b3c4d5e6f',
+		},
 	},
 
 	res: {
@@ -72,6 +80,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		private userEntityService: UserEntityService,
 		private getterService: GetterService,
 		private userBlockingService: UserBlockingService,
+		private roleService: RoleService,
 	) {
 		super(meta, paramDef, async (ps, me) => {
 			const blocker = await this.usersRepository.findOneByOrFail({ id: me.id });
@@ -86,6 +95,11 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				if (err.id === '15348ddd-432d-49c2-8a5a-8069753becff') throw new ApiError(meta.errors.noSuchUser);
 				throw err;
 			});
+
+			// 旗鯖fork: サーバー管理者はモデレーション上の理由でブロック禁止
+			if (await this.roleService.isAdministrator(blockee)) {
+				throw new ApiError(meta.errors.cannotBlockAdministrator);
+			}
 
 			// Check if already blocking
 			const exist = await this.blockingsRepository.exists({

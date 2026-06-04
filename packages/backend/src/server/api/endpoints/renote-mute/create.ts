@@ -9,6 +9,7 @@ import { Endpoint } from '@/server/api/endpoint-base.js';
 import { DI } from '@/di-symbols.js';
 import { GetterService } from '@/server/api/GetterService.js';
 import { UserRenoteMutingService } from '@/core/UserRenoteMutingService.js';
+import { RoleService } from '@/core/RoleService.js';
 import type { RenoteMutingsRepository } from '@/models/_.js';
 import { ApiError } from '../../error.js';
 
@@ -43,6 +44,13 @@ export const meta = {
 			code: 'ALREADY_MUTING',
 			id: 'ccfecbe4-1f1c-4fc2-8a3d-c3ffee61cb7b',
 		},
+
+		// 旗鯖fork: サーバー管理者はモデレーション上の理由でリノートミュート不可
+		cannotRenoteMuteAdministrator: {
+			message: 'You cannot renote-mute a server administrator due to moderation reasons.',
+			code: 'CANNOT_RENOTE_MUTE_ADMINISTRATOR',
+			id: '9c1f6b3e-a4d2-4f3e-b1c8-3a2b3c4d5e6f',
+		},
 	},
 } as const;
 
@@ -62,6 +70,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 
 		private getterService: GetterService,
 		private userRenoteMutingService: UserRenoteMutingService,
+		private roleService: RoleService,
 	) {
 		super(meta, paramDef, async (ps, me) => {
 			const muter = me;
@@ -76,6 +85,11 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				if (err.id === '15348ddd-432d-49c2-8a5a-8069753becff') throw new ApiError(meta.errors.noSuchUser);
 				throw err;
 			});
+
+			// 旗鯖fork: サーバー管理者はモデレーション上の理由でリノートミュート禁止
+			if (await this.roleService.isAdministrator(mutee)) {
+				throw new ApiError(meta.errors.cannotRenoteMuteAdministrator);
+			}
 
 			// Check if already muting
 			const exist = await this.renoteMutingsRepository.exists({

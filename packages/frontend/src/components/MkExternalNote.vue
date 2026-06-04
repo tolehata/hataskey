@@ -545,10 +545,9 @@ function onReactionMouseLeave() {
 		clearTimeout(reactionTooltipTimer);
 		reactionTooltipTimer = null;
 	}
-	// タッチ操作中のツールチップは消さない（touchEndで3秒後に消す）
-	if (!reactionTipHideTimer) {
-		hideReactionTip();
-	}
+	// 旗鯖fork: 旧実装ではタッチ操作の3秒残留タイマー(reactionTipHideTimer)を考慮した
+	// ガードがあったが、その残留タイマーを廃止したため、ここは常にツールチップを消す。
+	hideReactionTip();
 }
 
 function onReactionTouchStart(ev: TouchEvent, reaction: string, count: number) {
@@ -564,12 +563,11 @@ function onReactionTouchEnd() {
 		clearTimeout(reactionTooltipTimer);
 		reactionTooltipTimer = null;
 	}
-	// On touch, keep tooltip visible for 3 seconds so users can read it
+	// 旗鯖fork: 指を離したらツールチップを即座に消す
+	// (旧仕様では3秒間残していたが、ユーザーから「指を離しても画面に残留する」と
+	//  報告があったため、PC のマウスリーブと同じく即座に消すように変更)
 	if (reactionTipVisible.value) {
-		if (reactionTipHideTimer) clearTimeout(reactionTipHideTimer);
-		reactionTipHideTimer = setTimeout(() => {
-			hideReactionTip();
-		}, 3000);
+		hideReactionTip();
 	}
 }
 

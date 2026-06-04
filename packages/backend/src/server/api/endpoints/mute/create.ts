@@ -10,6 +10,7 @@ import type { MutingsRepository } from '@/models/_.js';
 import { DI } from '@/di-symbols.js';
 import { GetterService } from '@/server/api/GetterService.js';
 import { UserMutingService } from '@/core/UserMutingService.js';
+import { RoleService } from '@/core/RoleService.js';
 import { ApiError } from '../../error.js';
 
 export const meta = {
@@ -43,6 +44,13 @@ export const meta = {
 			code: 'ALREADY_MUTING',
 			id: '7e7359cb-160c-4956-b08f-4d1c653cd007',
 		},
+
+		// 旗鯖fork: サーバー管理者はモデレーション上の理由でミュート不可
+		cannotMuteAdministrator: {
+			message: 'You cannot mute a server administrator due to moderation reasons.',
+			code: 'CANNOT_MUTE_ADMINISTRATOR',
+			id: '9c1f6b3e-a4d2-4f3e-b1c8-2a2b3c4d5e6f',
+		},
 	},
 } as const;
 
@@ -67,6 +75,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 
 		private getterService: GetterService,
 		private userMutingService: UserMutingService,
+		private roleService: RoleService,
 	) {
 		super(meta, paramDef, async (ps, me) => {
 			const muter = me;
@@ -81,6 +90,11 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				if (err.id === '15348ddd-432d-49c2-8a5a-8069753becff') throw new ApiError(meta.errors.noSuchUser);
 				throw err;
 			});
+
+			// 旗鯖fork: サーバー管理者はモデレーション上の理由でミュート禁止
+			if (await this.roleService.isAdministrator(mutee)) {
+				throw new ApiError(meta.errors.cannotMuteAdministrator);
+			}
 
 			// Check if already muting
 			const exist = await this.mutingsRepository.exists({

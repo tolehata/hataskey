@@ -14,18 +14,97 @@ import { TAB_ID } from '@/tab-id.js';
 
 const syncGroup = 'default';
 
+// ===== 旗鯖fork: 機密プリファレンスの簡易難読化 =====
+// localStorage を直接覗いた時にトークン文字列がそのまま見えるのを防ぐ。
+// (XSS等の積極的攻撃には対抗できない、あくまでカジュアル覗き見対策)
+// `OBF1:` プレフィックスで難読化済みを識別、無いものは旧形式(平文)として後方互換で扱う。
+const OBFUSCATE_KEY = 'hatasaba-external-token-key-v1';
+const SENSITIVE_PREF_KEYS = new Set(['external.token']);
+
+function xorBytes(input: Uint8Array, key: Uint8Array): Uint8Array {
+	const out = new Uint8Array(input.length);
+	for (let i = 0; i < input.length; i++) {
+		out[i] = input[i] ^ key[i % key.length];
+	}
+	return out;
+}
+
+function obfuscate(plaintext: string): string {
+	try {
+		const keyBytes = new TextEncoder().encode(OBFUSCATE_KEY);
+		const plainBytes = new TextEncoder().encode(plaintext);
+		const xored = xorBytes(plainBytes, keyBytes);
+		let bin = '';
+		for (let i = 0; i < xored.length; i++) bin += String.fromCharCode(xored[i]);
+		return 'OBF1:' + btoa(bin);
+	} catch {
+		return plaintext;
+	}
+}
+
+function deobfuscate(stored: string): string {
+	if (!stored.startsWith('OBF1:')) return stored;
+	try {
+		const b64 = stored.slice(5);
+		const bin = atob(b64);
+		const xored = new Uint8Array(bin.length);
+		for (let i = 0; i < bin.length; i++) xored[i] = bin.charCodeAt(i);
+		const keyBytes = new TextEncoder().encode(OBFUSCATE_KEY);
+		const plainBytes = xorBytes(xored, keyBytes);
+		return new TextDecoder().decode(plainBytes);
+	} catch {
+		return stored;
+	}
+}
+
+// profile.preferences[k] は配列。各要素は [scope, value, meta] のレコード。
+// 機密キーは全レコードの value(レコード[1])部分を変換する。
+function transformProfileForSave(profile: any): any {
+	if (!profile?.preferences) return profile;
+	const cloned = JSON.parse(JSON.stringify(profile));
+	for (const k of Object.keys(cloned.preferences)) {
+		if (!SENSITIVE_PREF_KEYS.has(k)) continue;
+		const records = cloned.preferences[k];
+		if (!Array.isArray(records)) continue;
+		for (const record of records) {
+			// record = [scope, value, meta]
+			if (Array.isArray(record) && typeof record[1] === 'string' && record[1] !== '' && !record[1].startsWith('OBF1:')) {
+				record[1] = obfuscate(record[1]);
+			}
+		}
+	}
+	return cloned;
+}
+
+function transformProfileForLoad(profile: any): any {
+	if (!profile?.preferences) return profile;
+	for (const k of Object.keys(profile.preferences)) {
+		if (!SENSITIVE_PREF_KEYS.has(k)) continue;
+		const records = profile.preferences[k];
+		if (!Array.isArray(records)) continue;
+		for (const record of records) {
+			if (Array.isArray(record) && typeof record[1] === 'string' && record[1].startsWith('OBF1:')) {
+				record[1] = deobfuscate(record[1]);
+			}
+		}
+	}
+	return profile;
+}
+
 const io: StorageProvider = {
 	load: () => {
 		const savedProfileRaw = miLocalStorage.getItem('preferences');
 		if (savedProfileRaw == null) {
 			return null;
 		} else {
-			return JSON.parse(savedProfileRaw);
+			const profile = JSON.parse(savedProfileRaw);
+			return transformProfileForLoad(profile);
 		}
 	},
 
 	save: (ctx) => {
-		miLocalStorage.setItem('preferences', JSON.stringify(ctx.profile));
+		const transformed = transformProfileForSave(ctx.profile);
+		miLocalStorage.setItem('preferences', JSON.stringify(transformed));
 		miLocalStorage.setItem('latestPreferencesUpdate', `${TAB_ID}/${Date.now()}`);
 	},
 

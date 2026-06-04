@@ -557,6 +557,12 @@ export const ROUTE_DEF = [{
 	component: page(() => import('@/pages/notifications.vue')),
 	loginRequired: true,
 }, {
+	// 旗鯖fork: 外部アカウント連携時に表示される、外部通知専用ページ
+	path: '/my/external-notifications',
+	name: 'my-external-notifications',
+	component: page(() => import('@/pages/external-notifications.vue')),
+	loginRequired: true,
+}, {
 	path: '/my/favorites',
 	name: 'my-favorites',
 	component: page(() => import('@/pages/favorites.vue')),

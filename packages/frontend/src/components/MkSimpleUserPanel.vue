@@ -95,6 +95,7 @@ import { ref, computed, watch, onMounted, reactive } from 'vue';
 import * as Misskey from 'cherrypick-js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import * as os from '@/os.js';
+import { i18n } from '@/i18n.js';
 import { mainRouter } from '@/router.js';
 import { $i } from '@/i.js';
 
@@ -184,6 +185,11 @@ async function toggleMute() {
     try {
         if (isMuted.value) { await misskeyApi('mute/delete', { userId: user.value.id }); isMuted.value = false; }
         else {
+            // 旗鯖fork: サーバー管理者へのミュートはモデレーション上の理由で禁止
+            if (user.value.isAdmin) {
+                os.alert({ type: 'error', text: i18n.ts.cannotBlockOrMuteAdministrator });
+                muteLoading.value = false; return;
+            }
             const { canceled } = await os.confirm({ type: 'warning', text: `@${user.value.username} をミュートしますか？` });
             if (canceled) { muteLoading.value = false; return; }
             await misskeyApi('mute/create', { userId: user.value.id }); isMuted.value = true;
@@ -197,6 +203,11 @@ async function toggleBlock() {
     try {
         if (isBlocked.value) { await misskeyApi('blocking/delete', { userId: user.value.id }); isBlocked.value = false; }
         else {
+            // 旗鯖fork: サーバー管理者へのブロックはモデレーション上の理由で禁止
+            if (user.value.isAdmin) {
+                os.alert({ type: 'error', text: i18n.ts.cannotBlockOrMuteAdministrator });
+                blockLoading.value = false; return;
+            }
             const { canceled } = await os.confirm({ type: 'warning', text: `@${user.value.username} をブロックしますか？` });
             if (canceled) { blockLoading.value = false; return; }
             await misskeyApi('blocking/create', { userId: user.value.id }); isBlocked.value = true;

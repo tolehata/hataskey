@@ -71,6 +71,13 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<template #label><i class="ti ti-planet"></i> 外部ローカルタイムライン (OLTL) を表示</template>
 					<template #caption>連携先のローカルタイムラインを表示</template>
 				</MkSwitch>
+
+				<!-- 旗鯖fork: 外部通知のトースト無効化トグル
+				     ONの時、WebSocket接続も行わない(リソース節約、通知バッジ更新も止まる) -->
+				<MkSwitch v-model="disableNotificationToast" @update:modelValue="onDisableNotifToastChange">
+					<template #label><i class="ti ti-bell-off"></i> 外部通知のポップアップを無効化</template>
+					<template #caption>ONの場合、外部アカウントからの通知ポップアップ(トースト)を表示しません。リアルタイム接続も停止するためリソースを節約できます。</template>
+				</MkSwitch>
 			</div>
 		</FormSection>
 
@@ -181,6 +188,14 @@ const externalUsername = prefer.model('external.username');
 const externalAvatarUrl = prefer.model('external.avatarUrl');
 const enableOHTL = prefer.model('external.enableOHTL');
 const enableOLTL = prefer.model('external.enableOLTL');
+// 旗鯖fork: 外部通知のトースト無効化トグル (ON時はWSも接続しない)
+const disableNotificationToast = prefer.model('external.disableNotificationToast');
+
+// トグル切替時にWSストリームを再起動 (ON→OFF: 接続開始、OFF→ON: 切断)
+async function onDisableNotifToastChange() {
+	const { restartExternalNotificationStream } = await import('@/utility/external-notification-stream.js');
+	restartExternalNotificationStream();
+}
 
 const linking = ref(false);
 
@@ -352,8 +367,13 @@ function getCustomEmojiUrl(reaction: string): string {
 	return emoji?.url ?? '';
 }
 
-function addExtFavEmojiFromPicker() {
-	const { dispose } = os.popup(MkExternalReactionPicker, {}, {
+function addExtFavEmojiFromPicker(ev: MouseEvent) {
+	// 旗鯖fork: anchorElement を渡してボタン周辺にピッカーを表示する
+	// (これがないと画面右サイドや下端にデフォルト位置で表示されてしまう)
+	const anchor = ev.currentTarget as HTMLElement;
+	const { dispose } = os.popup(MkExternalReactionPicker, {
+		anchorElement: anchor,
+	}, {
 		done: (reaction: string) => {
 			if (!reaction) return;
 			const list = getExternalFavoriteEmojis().filter(e => e !== reaction);

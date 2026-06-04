@@ -631,15 +631,14 @@ async function fetchExtNotifCount() {
 	try {
 		const notifs = await callExternalApi('i/notifications', { limit: 20, markAsRead: false });
 		if (!Array.isArray(notifs)) { extNotifUnread.value = 0; return; }
-		// Check against last-read timestamp to avoid showing already-seen notifications
+		// 旗鯖fork: 外部鯖の markAsRead 反映に遅延があるため、isRead フラグは信頼しない。
+		// localStorage の extNotifLastReadAt を唯一の判定基準とし、それより新しい通知のみカウント。
+		// これにより「閲覧直後にバッジが消えるが、5秒経過後の再マウントで復活する」問題を回避。
+		// (新しい通知が実際に来た場合は、その createdAt が lastReadTime より新しいので正しくカウントされる)
 		const lastReadTs = localStorage.getItem('extNotifLastReadAt');
 		const lastReadTime = lastReadTs ? new Date(lastReadTs).getTime() : 0;
-		// クライアントとサーバー間の時刻ズレ吸収のため 2秒のバッファを設ける
-		// （これがないと mark-all-as-read 直後の通知が「既読時刻より僅かに新しい」と判定されバッジが復活する）
-		const READ_TIME_BUFFER_MS = 2000;
 		extNotifUnread.value = notifs.filter((n: any) => {
-			if (n.isRead) return false;
-			if (lastReadTime && new Date(n.createdAt).getTime() <= lastReadTime + READ_TIME_BUFFER_MS) return false;
+			if (lastReadTime && new Date(n.createdAt).getTime() <= lastReadTime) return false;
 			return true;
 		}).length;
 	} catch { extNotifUnread.value = 0; }
