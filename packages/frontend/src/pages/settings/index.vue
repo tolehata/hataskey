@@ -15,6 +15,20 @@ SPDX-License-Identifier: AGPL-3.0-only
 							<div>{{ i18n.ts._preferencesBackup.autoPreferencesBackupIsNotEnabledForThisDevice }}</div>
 							<div><button class="_textButton" @click="enableAutoBackup">{{ i18n.ts.enable }}</button> | <button class="_textButton" @click="skipAutoBackup">{{ i18n.ts.skip }}</button></div>
 						</MkInfo>
+						<!-- 旗鯖fork: プロフィールボタン再設計 (左=プロフィール / 右=旗鯖独自機能) -->
+						<div v-if="$i" :class="$style.htkProfileRow">
+							<MkA :to="'/settings/profile'" :class="[$style.htkProfileBtn, { [$style.htkProfileBtnActive]: currentPage?.route.name === 'profile' }]">
+								<MkAvatar :class="$style.htkProfileAvatar" :user="$i" :link="false"/>
+								<div :class="$style.htkProfileText">
+									<div :class="$style.htkProfileName"><Mfm :text="$i.name || $i.username" :plain="true" :nyaize="false"/></div>
+									<div :class="$style.htkProfileId">@{{ $i.username }}</div>
+								</div>
+							</MkA>
+							<MkA :to="'/settings/hata-custom'" :class="[$style.htkHataBtn, { [$style.htkHataBtnActive]: currentPage?.route.name === 'hata-custom' }]">
+								<i class="ti ti-flag"></i>
+								<span>旗鯖独自機能</span>
+							</MkA>
+						</div>
 						<MkSuperMenu :def="menuDef" :grid="narrow" :searchIndex="searchIndex"></MkSuperMenu>
 					</div>
 				</div>
@@ -154,11 +168,6 @@ const menuDef = computed<SuperMenuDef[]>(() => [{
 		text: i18n.ts.other,
 		to: '/settings/other',
 		active: currentPage.value?.route.name === 'other',
-        }, {
-                icon: 'ti ti-flag',
-                text: '旗鯖独自機能',
-                to: '/settings/hata-custom',
-                active: currentPage.value?.route.name === 'hata-custom',
         }],
 }, {
 	items: [{
@@ -278,6 +287,105 @@ definePage(() => INFO.value);
 				min-width: 0;
 			}
 		}
+	}
+}
+</style>
+
+<style lang="scss" module>
+/* 旗鯖fork: プロフィールボタン再設計 (左=プロフィール / 右=旗鯖独自機能) */
+.htkProfileRow {
+	display: flex;
+	gap: 8px;
+	align-items: stretch;
+}
+
+.htkProfileBtn {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 12px 16px;
+	background: var(--MI_THEME-panel);
+	border: 1px solid var(--MI_THEME-divider);
+	border-radius: 14px;
+	text-decoration: none;
+	color: var(--MI_THEME-fg);
+	transition: border-color 0.15s, background 0.15s;
+
+	&:hover {
+		border-color: var(--MI_THEME-accent);
+		text-decoration: none;
+	}
+
+	&.htkProfileBtnActive {
+		border-color: var(--MI_THEME-accent);
+		background: var(--MI_THEME-accentedBg);
+	}
+}
+
+.htkProfileAvatar {
+	width: 44px;
+	height: 44px;
+	flex-shrink: 0;
+}
+
+.htkProfileText {
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	gap: 2px;
+}
+
+.htkProfileName {
+	font-weight: 700;
+	font-size: 0.95em;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.htkProfileId {
+	font-size: 0.8em;
+	opacity: 0.6;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.htkHataBtn {
+	flex-shrink: 0;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 4px;
+	width: 92px;
+	padding: 10px 8px;
+	background: var(--MI_THEME-panel);
+	border: 1px solid var(--MI_THEME-divider);
+	border-radius: 14px;
+	cursor: pointer;
+	color: var(--MI_THEME-fg);
+	font-family: inherit;
+	font-size: 0.78em;
+	text-align: center;
+	text-decoration: none;
+	transition: border-color 0.15s, background 0.15s;
+
+	&:hover {
+		border-color: var(--MI_THEME-accent);
+		text-decoration: none;
+	}
+
+	&.htkHataBtnActive {
+		border-color: var(--MI_THEME-accent);
+		background: var(--MI_THEME-accentedBg);
+	}
+
+	i {
+		font-size: 1.2em;
 	}
 }
 </style>

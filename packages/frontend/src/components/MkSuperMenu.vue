@@ -10,6 +10,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		v-model="searchQuery"
 		:placeholder="i18n.ts.search"
 		type="search"
+		class="htkSearchCapsule"
 		style="margin-bottom: 16px;"
 		@input.passive="searchOnInput"
 		@keydown="searchOnKeyDown"
@@ -246,6 +247,15 @@ function searchOnKeyDown(ev: KeyboardEvent) {
 </script>
 
 <style lang="scss" scoped>
+/* 旗鯖fork: 設定の検索ボックスを検索ページと同じカプセル型デザインに (見た目のみ)。
+   MkInput の input 要素 (.inputCore) を丸いカプセル型にする。 */
+.htkSearchCapsule {
+	:deep(input) {
+		border-radius: 999px !important;
+		padding-left: 16px;
+	}
+}
+
 .rrevdjwu {
 	> .group {
 		& + .group {

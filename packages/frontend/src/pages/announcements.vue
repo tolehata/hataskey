@@ -14,6 +14,15 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</button>
 		</div>
 	</div>
+	<!-- 旗鯖fork: 種類フィルターのピル (2段目)。メンテナンスはフィルターに関わらず常に表示。 -->
+	<div :class="[$style.htkPillTabs, $style.htkPillTabsSub]">
+		<div :class="$style.htkPillTabsInner">
+			<button v-for="f in typeFilters" :key="f.key" :class="[$style.htkPillTab, $style.htkPillTabSm, { [$style.htkPillTabActive]: typeFilter === f.key }]" @click="typeFilter = f.key">
+				<i v-if="f.icon" :class="f.icon"></i>
+				<span>{{ f.label }}</span>
+			</button>
+		</div>
+	</div>
 	<div class="_spacer" style="--MI_SPACER-w: 800px;">
 		<div class="_gaps">
 			<MkInfo v-if="$i && $i.hasUnreadAnnouncement && tab === 'current'" warn>{{ i18n.ts.youHaveUnreadAnnouncements }}</MkInfo>
@@ -311,7 +320,8 @@ function pinnedItems(items: any[]) {
 	const result: any[] = [];
 	for (const id of ids) {
 		const a = map.get(id);
-		if (a) result.push(a);
+		// 旗鯖fork: 種類フィルター適用時はその種類のピン留めのみ表示 (allなら全部)
+		if (a && (typeFilter.value === 'all' || a.icon === typeFilter.value)) result.push(a);
 	}
 	return result;
 }
@@ -356,12 +366,24 @@ onMounted(() => {
 // ===== カテゴリ定義 ===== //
 type CategoryKey = 'warning' | 'success' | 'info' | 'error' | 'maintenance';
 
+// 旗鯖fork: 種類フィルター (2段目のピル)。'all' は全種類表示。
+// メンテナンスはこのフィルターに関わらず常に表示する (下の maintenanceItems で制御)。
+const typeFilter = ref<'all' | CategoryKey>('all');
+const typeFilters = computed(() => [
+	{ key: 'all' as const, label: i18n.ts.all ?? 'すべて', icon: 'ti ti-list' },
+	{ key: 'info' as const, label: i18n.ts._announcement.categoryInfo, icon: 'ti ti-info-circle' },
+	{ key: 'warning' as const, label: i18n.ts._announcement.categoryWarning, icon: 'ti ti-alert-triangle' },
+	{ key: 'error' as const, label: i18n.ts._announcement.categoryError, icon: 'ti ti-circle-x' },
+	{ key: 'success' as const, label: i18n.ts._announcement.categorySuccess, icon: 'ti ti-check' },
+	{ key: 'maintenance' as const, label: i18n.ts.maintenance, icon: 'ti ti-tool' },
+]);
+
 const categoriesInOrder = computed(() => [
 	{ key: 'warning' as const, label: i18n.ts._announcement.categoryWarning, iconClass: 'ti ti-alert-triangle', iconStyle: 'color: var(--MI_THEME-warn);' },
 	{ key: 'success' as const, label: i18n.ts._announcement.categorySuccess, iconClass: 'ti ti-check', iconStyle: 'color: var(--MI_THEME-success);' },
 	{ key: 'info' as const, label: i18n.ts._announcement.categoryInfo, iconClass: 'ti ti-info-circle', iconStyle: 'color: var(--MI_THEME-accent);' },
 	{ key: 'error' as const, label: i18n.ts._announcement.categoryError, iconClass: 'ti ti-circle-x', iconStyle: 'color: var(--MI_THEME-error);' },
-]);
+].filter(c => typeFilter.value === 'all' || typeFilter.value === c.key));
 
 // 現在タブで「メンテナンス」(ピン留め除く)
 function maintenanceItems(items: any[]) {
@@ -372,7 +394,8 @@ function maintenanceItems(items: any[]) {
 // 現在タブで「最新の通常お知らせ」(メンテナンス・ピン留め除く)
 function latestItem(items: any[]): any | null {
 	if (tab.value !== 'current') return null;
-	const nonMaint = items.filter(a => a.icon !== 'maintenance' && !isPinned(a.id));
+	// 旗鯖fork: 種類フィルター適用時はその種類に絞る (allなら全種類から最新)
+	const nonMaint = items.filter(a => a.icon !== 'maintenance' && !isPinned(a.id) && (typeFilter.value === 'all' || a.icon === typeFilter.value));
 	if (nonMaint.length === 0) return null;
 	return nonMaint[0];
 }
@@ -710,5 +733,21 @@ definePage(() => ({
 		font-size: 1em;
 		line-height: 1;
 	}
+}
+
+/* 旗鯖fork: 種類フィルター用の2段目ピル */
+.htkPillTabsSub {
+	position: static;
+	padding-top: 0;
+	padding-bottom: 4px;
+	margin-bottom: 4px;
+	backdrop-filter: none;
+	-webkit-backdrop-filter: none;
+	background: transparent;
+}
+
+.htkPillTabSm {
+	padding: 4px 12px;
+	font-size: 0.82em;
 }
 </style>
