@@ -460,14 +460,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 										</MkPreferenceContainer>
 									</SearchMarker>
 
-									<SearchMarker :keywords="['like']">
-										<MkPreferenceContainer k="showLikeButtonInNoteFooter">
-											<MkSwitch v-model="showLikeButtonInNoteFooter">
-												<template #label><i class="ti ti-heart"></i> <SearchLabel>{{ i18n.ts.like }}</SearchLabel></template>
-											</MkSwitch>
-										</MkPreferenceContainer>
-									</SearchMarker>
-
 									<SearchMarker :keywords="['reaction', 'react']">
 										<MkPreferenceContainer k="showDoReactionButtonInNoteFooter">
 											<MkSwitch v-model="showDoReactionButtonInNoteFooter">
@@ -1493,7 +1485,6 @@ const showTranslateButtonInNote = prefer.model('showTranslateButtonInNote');
 const showGapBodyOfTheNote = prefer.model('showGapBodyOfTheNote');
 const showReplyButtonInNoteFooter = prefer.model('showReplyButtonInNoteFooter');
 const showRenoteButtonInNoteFooter = prefer.model('showRenoteButtonInNoteFooter');
-const showLikeButtonInNoteFooter = prefer.model('showLikeButtonInNoteFooter');
 const showDoReactionButtonInNoteFooter = prefer.model('showDoReactionButtonInNoteFooter');
 const showQuoteButtonInNoteFooter = prefer.model('showQuoteButtonInNoteFooter');
 const showMoreButtonInNoteFooter = prefer.model('showMoreButtonInNoteFooter');
@@ -1636,7 +1627,6 @@ watch([
 	alwaysShowCw,
 	showReplyButtonInNoteFooter,
 	showRenoteButtonInNoteFooter,
-	showLikeButtonInNoteFooter,
 	showDoReactionButtonInNoteFooter,
 	showQuoteButtonInNoteFooter,
 	showMoreButtonInNoteFooter,

@@ -50,6 +50,12 @@ export async function mainBoot() {
 		prefer.commit('smoothTransitionAnimations', false);
 	}
 
+	// 旗鯖fork: ノートのいいね♡ボタンは廃止。過去にユーザーが ON (true) で保存していた場合に備えて、
+	// 起動時に強制的に false へ上書きする (設定画面のトグルも削除済み)。
+	if (prefer.s.showLikeButtonInNoteFooter !== false) {
+		prefer.commit('showLikeButtonInNoteFooter', false);
+	}
+
 	// 旗鯖fork: 外部通知ストリームを起動 (外部アカウント連携中ならWS接続して通知をリアルタイム受信)
 	// visibilityState 'hidden' で切断、'visible' で再接続するアイドル管理付き
 	const { startExternalNotificationStream } = await import('@/utility/external-notification-stream.js');

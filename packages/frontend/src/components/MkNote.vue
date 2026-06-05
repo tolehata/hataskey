@@ -584,22 +584,37 @@ const utageHasReaction = computed(() => {
 const utageNow = ref(Date.now());
 const utageCreatedAt = new Date(appearNote.createdAt).getTime();
 
-// 「成功」確定フラグ。15分逃げ切った瞬間にtrueになり、以降の反応は無視する。
+// 確定フラグ。一度確定したら以降は覆らない。
+// - utageSucceeded: 15分逃げ切って成功確定。以降に反応が付いても成功のまま。
+// - utageFailed: 15分以内に反応を観測して失敗確定。
 const utageSucceeded = ref(false);
+const utageFailed = ref(false);
 
 // 宴の状態: 'none' | 'flashing' | 'failed' | 'success'
 const utageState = computed<'none' | 'flashing' | 'failed' | 'success'>(() => {
 	if (!isUtageTarget.value) return 'none';
 	const elapsed = utageNow.value - utageCreatedAt;
 	if (elapsed >= UTAGE_EXPIRE_MS) return 'none'; // 6時間超 → 平常
-	// 15分逃げ切り済み or 経過15分以上で反応なし → 成功 (反応の有無に関わらず成功固定)
-	if (utageSucceeded.value || elapsed >= UTAGE_FLASH_MS) {
-		return utageHasReaction.value && !utageSucceeded.value ? 'failed' : 'success';
-	}
+	// 確定済みなら覆さない (成功確定が優先)
+	if (utageSucceeded.value) return 'success';
+	if (utageFailed.value) return 'failed';
+	// 15分経過後: 「15分以内の反応」を観測していなければ成功扱い (後から開いた場合も成功優先)
+	if (elapsed >= UTAGE_FLASH_MS) return 'success';
 	// 15分以内: 反応が来ていれば失敗、なければ明滅継続
 	if (utageHasReaction.value) return 'failed';
 	return 'flashing';
 });
+
+// 15分以内に反応を観測したら失敗を確定 (以降の状態変化で覆らないように記録)。
+// immediate: マウント時に既に反応がある場合も初回判定する。
+watch(utageHasReaction, (has) => {
+	if (!has) return;
+	if (utageSucceeded.value) return; // 既に成功確定なら無視
+	const elapsed = Date.now() - utageCreatedAt;
+	if (elapsed < UTAGE_FLASH_MS) {
+		utageFailed.value = true;
+	}
+}, { immediate: true });
 
 let utageTimer: number | null = null;
 let utageTickTimer: number | null = null;

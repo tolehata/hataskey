@@ -569,7 +569,7 @@ export const PREF_DEF = definePreferences({
 		default: true,
 	},
 	showLikeButtonInNoteFooter: {
-		default: true,
+		default: false,
 	},
 	showDoReactionButtonInNoteFooter: {
 		default: true,
