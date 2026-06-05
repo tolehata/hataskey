@@ -180,6 +180,8 @@ const props = withDefaults(defineProps<{
 provide('inTimeline', true);
 provide('tl_withSensitive', computed(() => props.withSensitive));
 provide('inChannel', computed(() => props.src === 'channel'));
+// 旗鯖fork: C7 宴明滅機能。LTL(ローカルタイムライン)表示中かどうかをMkNoteへ伝える。
+provide('inLocalTimeline', computed(() => props.src === 'local'));
 
 // 旗鯖独自: ノート間隔（リアクティブ、デッキUIでは自動的にwideに）
 const noteSpacingValue = computed(() => {

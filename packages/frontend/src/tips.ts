@@ -18,6 +18,7 @@ export const TIPS = [
 	'tl.bubble',
 	'tl.trending',
 	'tl.external',
+	'note.utage',
 	'abuses',
 ] as const;
 

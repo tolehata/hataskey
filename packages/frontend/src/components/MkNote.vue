@@ -64,7 +64,14 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<Mfm :text="getNoteSummary(appearNote)" :plain="true" :nowrap="true" :author="appearNote.user" :nyaize="'respect'" :class="[$style.collapsedRenoteTargetText, { [$style.showReplyTargetNoteInSemiTransparent]: prefer.s.showReplyTargetNoteInSemiTransparent }]" @click="renoteCollapsed ? renoteCollapsed = false : replyCollapsed ? replyCollapsed = false : ''"/>
 	</div>
 	<article v-else :class="$style.article" :style="{ cursor: expandOnNoteClick ? 'pointer' : '', paddingTop: prefer.s.showSubNoteFooterButton && appearNote.reply && (!renoteCollapsed && !replyCollapsed && ((!notification && (forceShowReplyTargetNote || prefer.s.showReplyTargetNote)) || (notification && prefer.s.showReplyInNotification))) ? '14px' : '' }" @click.stop="noteClick" @dblclick.stop="noteDblClick" @contextmenu.stop="onContextmenu">
-		<div :class="$style.bubbleBody">
+		<!-- 旗鯖fork: C7 宴チュートリアル (自分の宴ノート初回のみ) -->
+		<MkTip v-if="showUtageTip" k="note.utage" style="margin-bottom: 8px;">
+			「宴」「うたげ」「utage」を含むノートをローカルTLに投稿すると、15分間ノートが明滅します。誰にも反応されずに15分逃げ切れたら<b style="color: var(--MI_THEME-success);">緑色で「成功」</b>、途中でリアクションなどの反応が来たら<b style="color: var(--MI_THEME-error);">赤色で「失敗...」</b>になります。
+		</MkTip>
+		<div :class="[$style.bubbleBody, { [$style.utageFlashing]: utageState === 'flashing', [$style.utageFailed]: utageState === 'failed', [$style.utageSuccess]: utageState === 'success' }]">
+		<!-- 旗鯖fork: C7 宴 結果バッジ (吹き出し右下隅) -->
+		<div v-if="utageState === 'failed'" :class="[$style.utageBadge, $style.utageBadgeFailed]">失敗...</div>
+		<div v-else-if="utageState === 'success'" :class="[$style.utageBadge, $style.utageBadgeSuccess]">成功</div>
 		<div :style="prefer.s.showGapBodyOfTheNote ? null : 'padding-bottom: 10px;'" style="display: flex;">
 			<div v-if="appearNote.channel" :class="$style.colorBar" :style="{ background: appearNote.channel.color }"></div>
 			<MkAvatar v-if="!prefer.s.hideAvatarsInNote" :class="[$style.avatar, prefer.s.useStickyIcons ? $style.useSticky : null, { [$style.avatarReplyTo]: appearNote.reply, [$style.showEl]: !appearNote.reply && (showEl && ['hideHeaderOnly', 'hideHeaderFloatBtn', 'hide'].includes(<string>prefer.s.displayHeaderNavBarWhenScroll)) && mainRouter.currentRoute.value.name === 'index', [$style.showElTab]: !appearNote.reply && (showEl && ['hideHeaderOnly', 'hideHeaderFloatBtn', 'hide'].includes(<string>prefer.s.displayHeaderNavBarWhenScroll)) && mainRouter.currentRoute.value.name !== 'index' }]" :user="appearNote.user" :link="false" :preview="!mock" noteClick @click="onAvatarClick"/>
@@ -398,8 +405,17 @@ SPDX-License-Identifier: AGPL-3.0-only
 </div>
 </template>
 
+<script lang="ts">
+import { ref as vueRef } from 'vue';
+
+// 旗鯖fork: C7 宴チュートリアル表示制御 (モジュールスコープ = 全MkNoteインスタンスで共有)。
+// 複数の宴ノートが同時に表示されても、チュートリアルは画面内で1つだけにするため、
+// 最初に表示権を取得したノートのIDをここで保持する。
+const utageTipOwnerId = vueRef<string | null>(null);
+</script>
+
 <script lang="ts" setup>
-import { computed, inject, onMounted, ref, useTemplateRef, watch, provide } from 'vue';
+import { computed, inject, onMounted, onUnmounted, ref, useTemplateRef, watch, provide } from 'vue';
 import * as mfm from 'mfc-js';
 import * as Misskey from 'cherrypick-js';
 import { isLink } from '@@/js/is-link.js';
@@ -483,6 +499,8 @@ const emit = defineEmits<{
 const inTimeline = inject<boolean>('inTimeline', false);
 const tl_withSensitive = inject<Ref<boolean>>('tl_withSensitive', ref(true));
 const inChannel = inject('inChannel', null);
+// 旗鯖fork: C7 宴明滅機能。LTL表示中かどうか(MkStreamingNotesTimelineからprovide)。
+const inLocalTimeline = inject<Ref<boolean> | null>('inLocalTimeline', null);
 const currentClip = inject<Ref<Misskey.entities.Clip> | null>('currentClip', null);
 
 let note = deepClone(props.note);
@@ -515,6 +533,113 @@ const { $note: $appearNote, subscribe: subscribeManuallyToNoteCapture } = useNot
 
 const rootEl = useTemplateRef('rootEl');
 const menuButton = useTemplateRef('menuButton');
+
+// =========================================================================
+// 旗鯖fork: C7 宴(うたげ)明滅機能
+// 本文に「宴」「うたげ」「utage」を含むローカルノートをLTLに投稿すると、
+// 投稿から15分間ノート全体が明滅する。15分逃げ切れば「成功」、
+// 途中で他者の反応(リアクション/リプライ/リノート)が来たら「失敗...」。
+// 6時間経過で演出は一切出さなくなる(平常ノートに戻る)。フロント完結。
+// =========================================================================
+const UTAGE_FLASH_MS = 15 * 60 * 1000; // 15分
+const UTAGE_EXPIRE_MS = 6 * 60 * 60 * 1000; // 6時間
+const UTAGE_REGEX = /宴|うたげ|ぅたげ|utage/i;
+
+// 本文(+CWやショートコード)に宴ワードを部分一致で含むか
+const utageTextMatched = computed(() => {
+	const t = `${appearNote.text ?? ''} ${appearNote.cw ?? ''}`;
+	return UTAGE_REGEX.test(t);
+});
+
+// このノートが宴演出の対象か (宴ワード + ローカルノート + LTL表示中)
+const isUtageTarget = computed(() => {
+	if (!utageTextMatched.value) return false;
+	if (appearNote.user.host != null) return false; // ローカルノートのみ
+	if (inLocalTimeline == null || !inLocalTimeline.value) return false; // LTL表示中のみ
+	return true;
+});
+
+// チュートリアル表示条件: 自分が投稿した宴ノートが対象。
+// 複数の宴ノートが同時表示されても画面内で1つだけ出すため、表示権(utageTipOwnerId)を持つ
+// インスタンスのみ表示する。表示済み(閉じた)管理は MkTip の k='note.utage' で行う。
+const isUtageTipCandidate = computed(() => {
+	return isUtageTarget.value && $i != null && appearNote.user.id === $i.id;
+});
+const showUtageTip = computed(() => {
+	return isUtageTipCandidate.value && utageTipOwnerId.value === appearNote.id;
+});
+
+// 反応があるか (誰のものでも・自分のリアクションも含む)。
+// 「反応されたら負け」のため、リアクションした本人の画面でも失敗が見えるよう、
+// 自分のリアクションも反応としてカウントする。reactionCount は $appearNote (reactive)
+// でリアルタイム更新されるので、リアクションが付いた瞬間に全員の画面で失敗化する。
+// リプライ・リノート数は静的な appearNote の値を使う (マウント時/リロード時に反映)。
+const utageHasReaction = computed(() => {
+	if (appearNote.repliesCount > 0) return true;
+	if (appearNote.renoteCount > 0) return true;
+	return $appearNote.reactionCount > 0;
+});
+
+// 投稿からの経過ms (リアクティブに更新)
+const utageNow = ref(Date.now());
+const utageCreatedAt = new Date(appearNote.createdAt).getTime();
+
+// 「成功」確定フラグ。15分逃げ切った瞬間にtrueになり、以降の反応は無視する。
+const utageSucceeded = ref(false);
+
+// 宴の状態: 'none' | 'flashing' | 'failed' | 'success'
+const utageState = computed<'none' | 'flashing' | 'failed' | 'success'>(() => {
+	if (!isUtageTarget.value) return 'none';
+	const elapsed = utageNow.value - utageCreatedAt;
+	if (elapsed >= UTAGE_EXPIRE_MS) return 'none'; // 6時間超 → 平常
+	// 15分逃げ切り済み or 経過15分以上で反応なし → 成功 (反応の有無に関わらず成功固定)
+	if (utageSucceeded.value || elapsed >= UTAGE_FLASH_MS) {
+		return utageHasReaction.value && !utageSucceeded.value ? 'failed' : 'success';
+	}
+	// 15分以内: 反応が来ていれば失敗、なければ明滅継続
+	if (utageHasReaction.value) return 'failed';
+	return 'flashing';
+});
+
+let utageTimer: number | null = null;
+let utageTickTimer: number | null = null;
+
+function setupUtage() {
+	if (!isUtageTarget.value) return;
+	const elapsed = Date.now() - utageCreatedAt;
+	if (elapsed >= UTAGE_EXPIRE_MS) return; // 6時間超は何もしない
+	// 既に反応がある(=失敗確定)場合はタイマー不要
+	if (elapsed < UTAGE_FLASH_MS && !utageHasReaction.value) {
+		// 残り時間で「15分逃げ切り」を判定するタイマー
+		const remain = UTAGE_FLASH_MS - elapsed;
+		utageTimer = window.setTimeout(() => {
+			// 15分時点で反応がなければ成功確定
+			if (!utageHasReaction.value) utageSucceeded.value = true;
+			utageNow.value = Date.now();
+		}, remain);
+	}
+}
+
+onMounted(() => {
+	setupUtage();
+	// チュートリアル表示権の取得: まだ誰も持っていなければ自分が取得 (画面内で1つだけ表示)
+	if (isUtageTipCandidate.value && utageTipOwnerId.value == null) {
+		utageTipOwnerId.value = appearNote.id;
+	}
+});
+
+onUnmounted(() => {
+	if (utageTimer != null) window.clearTimeout(utageTimer);
+	if (utageTickTimer != null) window.clearTimeout(utageTickTimer);
+	// 自分が表示権を持っていたら解放 (他の宴ノートが表示できるように)
+	if (utageTipOwnerId.value === appearNote.id) {
+		utageTipOwnerId.value = null;
+	}
+});
+// =========================================================================
+// C7 宴明滅機能ここまで
+// =========================================================================
+
 const renoteButton = useTemplateRef('renoteButton');
 const renoteTime = useTemplateRef('renoteTime');
 const reactButton = useTemplateRef('reactButton');
@@ -1349,6 +1474,88 @@ function emitUpdReaction(emoji: string, delta: number) {
 	padding: 10px 10px 6px;
 	-webkit-tap-highlight-color: transparent;
 }
+
+/* =======================================================================
+   旗鯖fork: C7 宴(うたげ)明滅機能のスタイル
+   ======================================================================= */
+/* 明滅中: 吹き出しの枠線(outline)の色を強弱させて脈動させる。
+   outlineは親のoverflow:clipに切られず、border-radiusにも沿うため両モードで安定して見える。
+   完全に透明にはせず薄く残すことで、チカチカせず「ふわっと脈打つ」目に優しい明滅にする。
+   主役は枠線の色。背景はごく薄く添えるだけ。--MI_THEME-accentはライト/ダーク両モードで
+   テーマの主色なので、不透明度の振り幅で両モードとも視認できる。 */
+.utageFlashing {
+	border-radius: 16px;
+	outline: 2px solid transparent;
+	outline-offset: 2px;
+	animation: utageFlash 2.4s ease-in-out infinite;
+}
+
+@keyframes utageFlash {
+	0%, 100% {
+		outline-color: color-mix(in srgb, var(--MI_THEME-accent) 18%, transparent);
+		background: color-mix(in srgb, var(--MI_THEME-accent) 2%, transparent);
+	}
+	50% {
+		outline-color: color-mix(in srgb, var(--MI_THEME-accent) 92%, transparent);
+		background: color-mix(in srgb, var(--MI_THEME-accent) 9%, transparent);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.utageFlashing {
+		animation: none;
+		outline-color: color-mix(in srgb, var(--MI_THEME-accent) 70%, transparent);
+		background: color-mix(in srgb, var(--MI_THEME-accent) 7%, transparent);
+	}
+}
+
+/* 失敗: 赤色の枠 (固定、明滅しない) */
+.utageFailed {
+	border-radius: 16px;
+	outline: 2px solid color-mix(in srgb, var(--MI_THEME-error) 80%, transparent);
+	outline-offset: 2px;
+	background: color-mix(in srgb, var(--MI_THEME-error) 9%, transparent);
+}
+
+/* 成功: 緑色の枠で軽く強調 (固定、明滅しない) */
+.utageSuccess {
+	border-radius: 16px;
+	outline: 2px solid color-mix(in srgb, var(--MI_THEME-success) 75%, transparent);
+	outline-offset: 2px;
+	background: color-mix(in srgb, var(--MI_THEME-success) 8%, transparent);
+}
+
+/* 結果バッジ (右下隅)。背景に関わらず読めるよう、太字+縁取り(text-shadow)で表現。 */
+.utageBadge {
+	position: absolute;
+	right: 12px;
+	bottom: 8px;
+	z-index: 3;
+	padding: 1px 8px;
+	border-radius: 999px;
+	font-size: 0.82em;
+	font-weight: 900;
+	pointer-events: none;
+	user-select: none;
+	/* 明暗どちらの背景でも文字が浮くよう、白縁取りと暗縁取りを重ねる */
+	text-shadow:
+		0 0 2px var(--MI_THEME-bg),
+		0 0 3px var(--MI_THEME-bg),
+		0 1px 2px rgba(0, 0, 0, 0.5),
+		0 0 4px rgba(255, 255, 255, 0.4);
+}
+
+/* 失敗: 赤文字 */
+.utageBadgeFailed {
+	color: var(--MI_THEME-error);
+}
+
+/* 成功: 緑文字 */
+.utageBadgeSuccess {
+	color: var(--MI_THEME-success);
+}
+/* C7 宴明滅機能ここまで */
+
 
 .colorBar {
 	position: absolute;
