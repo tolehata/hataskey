@@ -13,7 +13,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 >
 	<div v-if="pinned" :class="$style.tip"><i class="ti ti-pin"></i> {{ i18n.ts.pinnedNote }}</div>
 	<div v-if="isRenote || (appearNote.reply && prefer.s.collapseReplies)" :class="$style.renote">
-		<div v-if="note.channel" :class="$style.colorBar" :style="{ background: note.channel.color }"></div>
+		<div v-if="note.channel" :class="$style.colorBar" :style="{ borderLeftColor: note.channel.color }"></div>
 		<MkAvatar v-if="!prefer.s.hideAvatarsInNote" :class="$style.renoteAvatar" :user="note.user" link preview/>
 		<i :class="isRenote ? 'ti ti-repeat' : appearNote.reply ? 'ti ti-arrow-back-up' : ''" style="margin-right: 4px;"></i>
 		<I18n :src="isRenote ? i18n.ts.renotedBy : appearNote.reply ? i18n.ts.repliedBy : ''" tag="span" :class="$style.renoteText">
@@ -73,7 +73,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<div v-if="utageState === 'failed'" :class="[$style.utageBadge, $style.utageBadgeFailed]">失敗...</div>
 		<div v-else-if="utageState === 'success'" :class="[$style.utageBadge, $style.utageBadgeSuccess]">成功</div>
 		<div :style="prefer.s.showGapBodyOfTheNote ? null : 'padding-bottom: 10px;'" style="display: flex;">
-			<div v-if="appearNote.channel" :class="$style.colorBar" :style="{ background: appearNote.channel.color }"></div>
+			<div v-if="appearNote.channel" :class="$style.colorBar" :style="{ borderLeftColor: appearNote.channel.color }"></div>
 			<MkAvatar v-if="!prefer.s.hideAvatarsInNote" :class="[$style.avatar, prefer.s.useStickyIcons ? $style.useSticky : null, { [$style.avatarReplyTo]: appearNote.reply, [$style.showEl]: !appearNote.reply && (showEl && ['hideHeaderOnly', 'hideHeaderFloatBtn', 'hide'].includes(<string>prefer.s.displayHeaderNavBarWhenScroll)) && mainRouter.currentRoute.value.name === 'index', [$style.showElTab]: !appearNote.reply && (showEl && ['hideHeaderOnly', 'hideHeaderFloatBtn', 'hide'].includes(<string>prefer.s.displayHeaderNavBarWhenScroll)) && mainRouter.currentRoute.value.name !== 'index' }]" :user="appearNote.user" :link="false" :preview="!mock" noteClick @click="onAvatarClick"/>
 			<div :class="$style.main">
 				<MkNoteHeader :note="appearNote" :mini="true" @nameClick="openUserPanel"/>
@@ -1389,10 +1389,6 @@ function emitUpdReaction(emoji: string, delta: number) {
 	& + .article {
 		padding-top: 8px;
 	}
-
-	> .colorBar {
-		height: calc(100% - 6px);
-	}
 }
 
 .renoteAvatar {
@@ -1559,12 +1555,14 @@ function emitUpdReaction(emoji: string, delta: number) {
 
 .colorBar {
 	position: absolute;
-	top: 8px;
-	left: 8px;
-	width: 5px;
-	height: calc(100% - 16px);
-	border-radius: 999px;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	border-left: 5px solid transparent;
+	border-radius: var(--MI-radius);
 	pointer-events: none;
+	box-sizing: border-box;
 }
 
 .avatar {
@@ -1840,10 +1838,7 @@ function emitUpdReaction(emoji: string, delta: number) {
 	}
 
 	.colorBar {
-		top: 6px;
-		left: 6px;
-		width: 4px;
-		height: calc(100% - 12px);
+		border-left-width: 4px;
 	}
 }
 

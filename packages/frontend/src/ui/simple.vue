@@ -636,7 +636,6 @@ const goToDrive = ()=>{ mainRouter.push('/my/drive'); };
 // 旗鯖fork: メッセージ (チャット) へ遷移
 const goToChat = ()=>{ mainRouter.push('/chat'); };
 const goToAnnouncements = ()=>{ mainRouter.push('/announcements'); };
-const goToWhatsNew = ()=>{ mainRouter.push('/hata-whats-new'); };
 const openUiSetup = async ()=>{
     const { defineAsyncComponent: dac } = await import('vue');
     os.popup(dac(() => import('@/components/MkUISetup.vue')), {}, {}, 'closed');
@@ -659,7 +658,6 @@ function sidebarItemClick(id: string, ev?: MouseEvent) {
         hatask: ()=>goToHatask(), lists: ()=>goToLists(), channels: ()=>goToChannels(),
         antennas: ()=>goToAntennas(), drive: ()=>goToDrive(),
         announcements: ()=>goToAnnouncements(), uiSetup: ()=>openUiSetup(),
-        whatsNew: ()=>goToWhatsNew(),
         // 旗鯖fork: 新規追加項目
         favorites: ()=>mainRouter.push('/my/favorites'),
         explore: ()=>mainRouter.push('/explore'),
@@ -679,7 +677,6 @@ function sidebarItemActive(id: string): boolean {
         channels: isChannelPage.value, antennas: isAntennaPage.value,
         drive: isDrivePage.value,
         announcements: mainRouter.currentRoute.value.path.startsWith('/announcements'),
-        whatsNew: mainRouter.currentRoute.value.path.startsWith('/hata-whats-new'),
         // 旗鯖fork: 新規追加項目のアクティブ判定
         favorites: mainRouter.currentRoute.value.path.startsWith('/my/favorites'),
         explore: mainRouter.currentRoute.value.path.startsWith('/explore'),

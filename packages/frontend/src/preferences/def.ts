@@ -192,7 +192,6 @@ export const PREF_DEF = definePreferences({
 			'favorites',
                         'portal',
 			'hatask',
-			'hataWhatsNew',
 			'explore',
 			'followRequests',
 			'-',
@@ -856,7 +855,6 @@ export const PREF_DEF = definePreferences({
 			// グループ2: 旗鯖独自
 			{ id: 'hatask', icon: 'ti ti-eye', label: 'Hatask', group: 'hata' },
 			{ id: 'portal', icon: 'ti ti-home-2', label: '旗鯖ポータル', group: 'hata', external: true, url: 'https://home.tolehata.net/' },
-			{ id: 'whatsNew', icon: 'ti ti-sparkles', label: '旗鯖新機能', group: 'hata' },
 			// グループ3: 発見・交流
 			{ id: 'uiSetup', icon: 'ti ti-wand', label: 'UI切り替え', group: 'discover' },
 			{ id: 'explore', icon: 'ti ti-hash', label: 'みつける', group: 'discover' },

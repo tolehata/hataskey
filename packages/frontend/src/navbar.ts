@@ -70,12 +70,6 @@ export const navbarItemDef = reactive({
 		show: computed(() => $i != null),
 		to: '/hatask',
 	},
-	hataWhatsNew: {
-		title: '旗鯖新機能',
-		icon: 'ti ti-sparkles',
-		show: computed(() => true),
-		to: '/hata-whats-new',
-	},
 	explore: {
 		title: i18n.ts.explore,
 		icon: 'ti ti-hash',

@@ -92,6 +92,7 @@ const categories = [
 			{ iconClass: 'ti ti-link', title: '外部アカウント連携とは', body: `外部サーバー（旗鯖の別インスタンスやシュリンピアなど）と連携して、旗鯖から直接外部サーバーのタイムラインを見たり、投稿・リアクション・リプライ・リノートができる機能です。<br><br>MiAuth認証で安全にアカウント連携を行います。<br><br><b>接続先の選択肢:</b><ul><li>旗鯖の別インスタンス（旗池2丁目 ↔ 旗池3丁目）</li><li>シュリンピア (mk.shrimpia.network)</li></ul>`, tips: ['旗鯖同士の場合は旗鯖の利用規約が適用されます', '外部サーバーの場合は接続先の規約が適用されます'], link: '/settings/external-account', linkLabel: '連携設定を開く' },
 			{ iconClass: 'ti ti-device-tv', title: '外部タイムライン (OHTL / OLTL)', body: `連携後、2種類の外部タイムラインが利用可能になります。<br><br><b>OHTL（外部ホームTL）</b>: 連携先でフォローしているユーザーのノートを表示します。<br><br><b>OLTL（外部ローカルTL）</b>: 連携先のローカルタイムラインを表示します。<br><br>タイムラインタブに追加され、通常のタイムラインと同じ感覚で切り替えて使えます。`, tips: ['外部TLからそのまま投稿・リアクション・リプライ・リノートが可能', 'Hatasaba UIでは＋マークのタブでアクセスできます'], link: '/settings/external-account' },
 			{ iconClass: 'ti ti-star', title: 'お気に入りリアクション絵文字', body: `外部TLのリアクションピッカーに表示されるお気に入り絵文字を管理できます。<br><br>よく使う絵文字を登録しておくと、リアクションピッカーの先頭に表示されて素早くリアクションできます。`, link: '/settings/external-account', linkLabel: 'お気に入り絵文字を管理' },
+			{ iconClass: 'ti ti-bell-ringing', title: '外部アカウントの通知', body: `連携した外部サーバーで届いた通知を、旗鯖の画面上でリアルタイムに受け取れます。<br><br>新しい通知が届くとトースト（画面の端に出る小さな通知）でお知らせし、専用の通知ページで一覧を確認できます。外部TLのタブやHatasaba UIのピル型ボタンからアクセスできます。`, tips: ['通知はリアルタイムで届きます', '外部サーバーごとに通知が区別されます'], link: '/external-notifications', linkLabel: '外部通知ページを開く' },
 		],
 	},
 	{
@@ -116,16 +117,16 @@ const categories = [
 		id: 'posting', iconClass: 'ti ti-pencil', label: '投稿・フォーム',
 		docs: [
 			{ iconClass: 'ti ti-brush', title: 'お絵かきボタン', body: `投稿フォームにお絵かきボタンを表示できます。<br><br>ボタンを押すとお絵かきツールが開き、描いた絵をそのまま投稿に添付できます。<br><br>表示/非表示は旗鯖設定から切り替えられます。`, link: '/settings/hata-custom' },
+			{ iconClass: 'ti ti-confetti', title: '宴（うたげ）チャレンジ', body: `本文に「宴」「うたげ」「utage」を含むノートをローカルタイムライン（LTL）に投稿すると、そのノートが15分間ほんのり明滅する、ちょっとした遊び要素です。<br><br><b>ルールは「反応されたら負け」。</b>誰からもリアクション・リプライ・リノートなどの反応をされずに15分間逃げ切れたら<b style="color: var(--MI_THEME-success);">緑色で「成功」</b>、途中で誰かに反応されてしまったら<b style="color: var(--MI_THEME-error);">赤色で「失敗...」</b>と表示されます。<br><br>明滅やチャレンジの様子はLTLを見ているメンバー全員に見えます。静かに見守るもよし、あえて反応して邪魔するもよし。`, tips: ['LTLに表示されているときだけ明滅します', '投稿から6時間が過ぎると通常のノートに戻ります', '初めて宴ノートを投稿したときに遊び方の説明が表示されます'] },
 		],
 	},
 	{
 		id: 'games', iconClass: 'ti ti-device-gamepad-2', label: 'ゲーム',
 		docs: [
-			{ iconClass: 'ti ti-device-gamepad-2', title: 'Hataskey Games とは', body: `旗鯖に搭載されたミニゲーム集です。ゲーム一覧ページから各ゲームにアクセスできます。<br><br>絵文字を使った旗鯖オリジナルのゲームのほか、CherryPick / Misskey 標準のバブルゲームでも遊べます。スコアはランキングに登録され、他のメンバーと競えます。<br><br>旗鯖オリジナルゲームの絵文字は、本家の絵文字系ゲームに倣ってUnicode絵文字のみを使用しています。`, tips: ['ログインするとスコアがランキングに登録されます'], link: '/games', linkLabel: 'ゲーム一覧を開く' },
+			{ iconClass: 'ti ti-device-gamepad-2', title: 'Hataskey Games とは', body: `旗鯖に搭載されたミニゲーム集です。ゲーム一覧ページから各ゲームにアクセスできます。<br><br>絵文字を使った旗鯖オリジナルのゲームで遊べます。スコアはランキングに登録され、他のメンバーと競えます。<br><br>旗鯖オリジナルゲームの絵文字は、本家の絵文字系ゲームに倣ってUnicode絵文字のみを使用しています。`, tips: ['ログインするとスコアがランキングに登録されます'], link: '/games', linkLabel: 'ゲーム一覧を開く' },
 			{ iconClass: 'ti ti-building', title: 'つみつみタワー', body: `絵文字をどんどん積み上げてタワーを高くしていく、物理演算系の落ち物ゲームです。<br><br>ソロプレイのほか、CPU（AI）との対戦にも対応しています。AIの強さは複数段階から選べます。積み上げた高さ（スコア）がランキングに登録されます。`, tips: ['AI対戦では相手の強さを選べます', 'スコアはモードの区別なく1つのランキングに統合されます'], link: '/stacking-game', linkLabel: 'つみつみタワーで遊ぶ' },
 			{ iconClass: 'ti ti-hammer', title: '絵文字叩きゲーム', body: `次々に飛び出す絵文字を制限時間内に叩いていく、もぐらたたき系のゲームです。<br><br><b>通常モード</b>では制限時間内のスコアを競います。<b>エンドレスモード</b>ではライフ制で、叩き続けるほどレベルが上がり、絵文字の出現が速く・多くなっていきます。<br><br>CPU（AI）との対戦にも対応しています。`, tips: ['難易度やエンドレス・AI対戦は開始前に選べます', 'エンドレスは押しそびれるとライフが減ります', 'レベルが上がっても、同じ場所に絵文字が重なって出ることはありません'], link: '/whack-emoji', linkLabel: '絵文字叩きゲームで遊ぶ' },
 			{ iconClass: 'ti ti-rocket', title: 'カスタムエモジシュート', body: `迫ってくる絵文字を撃ち落とすシューティングゲームです。<br><br>ウェーブを重ねるごとに難易度が上がります。ノーマルモードのほか、不利な効果がかかるデバフモードもあります。`, tips: ['ウェーブが進むほど敵が増えます'], link: '/emoji-shoot', linkLabel: 'カスタムエモジシュートで遊ぶ' },
-			{ iconClass: 'ti ti-circle', title: 'バブルゲーム', body: `CherryPick / Misskey 標準のぷかぷかバブルゲームです。同じ絵文字同士をくっつけて、より大きな絵文字へと進化させていきます。<br><br>旗鯖オリジナルではありませんが、ゲーム一覧から一緒に遊べます。`, link: '/bubble-game', linkLabel: 'バブルゲームで遊ぶ' },
 		],
 	},
 	{
@@ -134,6 +135,7 @@ const categories = [
 			{ iconClass: 'ti ti-calendar-stats', title: 'ログイン日数・実績', body: `サーバーにログインするたびにカウントされるログイン日数をHataskのホーム画面で確認できます。<br><br>サーバー内のランキングや次の実績までの日数も表示されます。`, link: '/settings/hata-custom' },
 			{ iconClass: 'ti ti-search', title: 'Hatask内検索', body: `Hataskのヘッダーにある検索ボタンから、予定・ToDo・きもち記録などをまとめて検索できます。` },
 			{ iconClass: 'ti ti-school', title: 'スポットライトチュートリアル', body: `Hataskを初めて開いた時に表示されるインタラクティブなチュートリアルです。<br><br>各画面の主な機能をステップごとにハイライト表示しながら解説します。Hataskの設定画面からいつでも再表示できます。` },
+			{ iconClass: 'ti ti-speakerphone', title: 'お知らせの種類フィルター', body: `お知らせページでは、「現在 / 過去」の切り替えに加えて、お知らせの種類（情報・警告・エラー・完了・メンテナンス）で絞り込めます。<br><br>上段のタブで時系列を、下段のピルで種類を選べます。メンテナンス情報はフィルターに関わらず常に表示されます。`, link: '/announcements', linkLabel: 'お知らせを開く' },
 		],
 	},
 ];
