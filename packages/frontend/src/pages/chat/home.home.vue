@@ -15,6 +15,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		v-model="searchQuery"
 		:placeholder="i18n.ts._chat.searchMessages"
 		type="search"
+		class="htkSearchCapsule"
 	>
 		<template #prefix><i class="ti ti-search"></i></template>
 	</MkInput>
@@ -151,5 +152,15 @@ onUnmounted(() => {
 	padding: 12px;
 	border: solid 1px var(--MI_THEME-divider);
 	border-radius: 12px;
+}
+</style>
+
+<style lang="scss" scoped>
+/* 旗鯖fork: メッセージ検索ボックスを検索ページと同じカプセル型(角丸)に */
+.htkSearchCapsule {
+	:deep(input) {
+		border-radius: 999px !important;
+		padding-left: 16px;
+	}
 }
 </style>

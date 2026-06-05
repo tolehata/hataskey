@@ -17,15 +17,41 @@ SPDX-License-Identifier: AGPL-3.0-only
 	<div class="_spacer" style="--MI_SPACER-w: 1200px;">
 		<div v-if="tab === 'search'" :class="$style.searchRoot">
 			<div class="_gaps">
-				<MkInput ref="searchQueryEl" v-model="searchQuery" :large="true" :autofocus="true" type="search" @enter="search">
-					<template #prefix><i class="ti ti-search"></i></template>
-					<template v-if="searchQuery != ''" #suffix><button type="button" :class="$style.deleteBtn" tabindex="-1" @click="searchQuery = ''; searchQueryEl?.focus();"><i class="ti ti-x"></i></button></template>
-				</MkInput>
+				<!-- 旗鯖fork: 検索ページと同様の一体型カプセル検索バー -->
+				<div :class="$style.htkCapsule">
+					<i :class="$style.htkCapsuleIcon" class="ti ti-search"/>
+					<input
+						ref="searchQueryEl"
+						v-model="searchQuery"
+						type="search"
+						:class="$style.htkCapsuleInput"
+						:placeholder="i18n.ts.search"
+						:autofocus="true"
+						@keydown.enter.prevent="search"
+					/>
+					<button
+						v-if="searchQuery !== ''"
+						type="button"
+						:class="$style.htkCapsuleClear"
+						tabindex="-1"
+						aria-label="クリア"
+						@click="searchQuery = ''; searchQueryEl?.focus();"
+					>
+						<i class="ti ti-x"/>
+					</button>
+					<button
+						type="button"
+						:class="$style.htkCapsuleSearch"
+						:aria-label="i18n.ts.search"
+						@click="search"
+					>
+						<i class="ti ti-search"/>
+					</button>
+				</div>
 				<MkRadios v-model="searchType" @update:modelValue="search()">
 					<option value="nameAndDescription">{{ i18n.ts._channel.nameAndDescription }}</option>
 					<option value="nameOnly">{{ i18n.ts._channel.nameOnly }}</option>
 				</MkRadios>
-				<MkButton large primary gradate rounded @click="search">{{ i18n.ts.search }}</MkButton>
 			</div>
 
 			<MkFoldableSection v-if="channelPaginator">
@@ -271,6 +297,90 @@ definePage(() => ({
 	i {
 		font-size: 1em;
 		line-height: 1;
+	}
+}
+
+/* 旗鯖fork: 検索ページと同様の一体型カプセル検索バー */
+.htkCapsule {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	padding: 6px 6px 6px 14px;
+	background: var(--MI_THEME-panel);
+	border: 1px solid var(--MI_THEME-divider);
+	border-radius: 999px;
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+	transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.htkCapsule:focus-within {
+	border-color: var(--MI_THEME-accent);
+	box-shadow: 0 0 0 3px color(from var(--MI_THEME-accent) srgb r g b / 0.15);
+}
+
+.htkCapsuleIcon {
+	font-size: 1.1em;
+	opacity: 0.6;
+	flex-shrink: 0;
+}
+
+.htkCapsuleInput {
+	flex: 1;
+	min-width: 0;
+	padding: 8px 4px;
+	background: transparent;
+	border: none;
+	outline: none;
+	color: var(--MI_THEME-fg);
+	font-size: 15px;
+	font-family: inherit;
+
+	&::placeholder {
+		color: color(from var(--MI_THEME-fg) srgb r g b / 0.5);
+	}
+}
+
+.htkCapsuleClear {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	background: transparent;
+	border: none;
+	border-radius: 50%;
+	color: var(--MI_THEME-fg);
+	opacity: 0.55;
+	cursor: pointer;
+	flex-shrink: 0;
+	transition: opacity 0.1s, background 0.1s;
+
+	&:hover {
+		opacity: 1;
+		background: color(from var(--MI_THEME-fg) srgb r g b / 0.08);
+	}
+}
+
+.htkCapsuleSearch {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 36px;
+	height: 36px;
+	background: var(--MI_THEME-accent);
+	border: none;
+	border-radius: 50%;
+	color: var(--MI_THEME-fgOnAccent, #fff);
+	cursor: pointer;
+	flex-shrink: 0;
+	transition: filter 0.1s, transform 0.05s;
+
+	&:hover {
+		filter: brightness(1.08);
+	}
+
+	&:active {
+		transform: scale(0.96);
 	}
 }
 </style>

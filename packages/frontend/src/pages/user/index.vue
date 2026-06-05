@@ -4,8 +4,17 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 
 <template>
-<PageWithHeader v-model:tab="tab" :actions="headerActions" :tabs="headerTabs" :user="user" :swipable="true">
+<PageWithHeader v-model:tab="tab" :actions="[]" :tabs="[]" :user="user" :swipable="true">
 	<div v-if="user">
+		<!-- 旗鯖fork: プロフィールタブをピルケース型に (Hatasaba UI 統一デザイン) -->
+		<div :class="$style.htkPillTabs">
+			<div :class="$style.htkPillTabsInner" @wheel="onPillWheel">
+				<button v-for="t in headerTabs" :key="t.key" :class="[$style.htkPillTab, { [$style.htkPillTabActive]: tab === t.key }]" @click="tab = t.key">
+					<i v-if="t.icon" :class="t.icon"></i>
+					<span>{{ t.title }}</span>
+				</button>
+			</div>
+		</div>
 		<XHome v-if="tab === 'home'" :user="user" @showMoreFiles="() => { tab = 'files'; }"/>
 		<XNotes v-else-if="tab === 'notes'" :user="user"/>
 		<XFiles v-else-if="tab === 'files'" :user="user"/>
@@ -168,6 +177,16 @@ function menu(ev) {
 	os.popupMenu(menu, ev.currentTarget ?? ev.target).finally(cleanup);
 }
 
+// 旗鯖fork: タブが多くPC(マウスホイール)で横スクロールしづらいため、
+// 縦ホイールを横スクロールに変換する。横スクロール余地があるときだけ既定動作を奪う。
+function onPillWheel(ev: WheelEvent) {
+	const el = ev.currentTarget as HTMLElement;
+	if (el.scrollWidth <= el.clientWidth) return; // スクロール不要なら何もしない
+	if (ev.deltaY === 0) return;
+	el.scrollLeft += ev.deltaY;
+	ev.preventDefault();
+}
+
 definePage(() => ({
 	title: i18n.ts.user,
 	icon: 'ti ti-user',
@@ -183,3 +202,66 @@ definePage(() => ({
 	} : {},
 }));
 </script>
+
+<style lang="scss" module>
+/* 旗鯖fork: ピル型タブ (Hatasaba UI 統一デザイン) */
+.htkPillTabs {
+	position: sticky;
+	top: 0;
+	z-index: 50;
+	display: flex;
+	justify-content: center;
+	padding: 12px 16px;
+	background: color-mix(in srgb, var(--MI_THEME-bg) 80%, transparent);
+	backdrop-filter: blur(12px);
+	-webkit-backdrop-filter: blur(12px);
+	margin-bottom: 8px;
+}
+
+.htkPillTabsInner {
+	display: inline-flex;
+	gap: 4px;
+	padding: 4px;
+	background: var(--MI_THEME-panel);
+	border: 1px solid var(--MI_THEME-divider);
+	border-radius: 999px;
+	max-width: 100%;
+	overflow-x: auto;
+	-webkit-overflow-scrolling: touch;
+	scrollbar-width: none;
+
+	&::-webkit-scrollbar {
+		display: none;
+	}
+}
+
+.htkPillTab {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 6px 16px;
+	border: none;
+	background: transparent;
+	color: var(--MI_THEME-fg);
+	font-size: 0.9em;
+	font-weight: 500;
+	border-radius: 999px;
+	cursor: pointer;
+	white-space: nowrap;
+	transition: background 0.15s, color 0.15s;
+
+	&:hover {
+		background: var(--MI_THEME-accentedBg);
+	}
+
+	&.htkPillTabActive {
+		background: var(--MI_THEME-accent);
+		color: var(--MI_THEME-fgOnAccent);
+	}
+
+	i {
+		font-size: 1em;
+		line-height: 1;
+	}
+}
+</style>
