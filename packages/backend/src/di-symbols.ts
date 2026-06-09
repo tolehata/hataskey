@@ -106,5 +106,6 @@ export const DI = {
 	registrationApplicationsRepository: Symbol('registrationApplicationsRepository'),
 	hataskEventsRepository: Symbol('hataskEventsRepository'),
 	hataskRsvpsRepository: Symbol('hataskRsvpsRepository'),
+	utageSessionsRepository: Symbol('utageSessionsRepository'),
 	//#endregion
 };

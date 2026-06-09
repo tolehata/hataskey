@@ -98,6 +98,7 @@ import { NoteHistory } from './NoteHistory.js';
 import { MiRegistrationApplication } from './RegistrationApplication.js';
 import { MiHataskEvent } from './HataskEvent.js';
 import { MiHataskRsvp } from './HataskRsvp.js';
+import { MiUtageSession } from './UtageSession.js';
 import type { Provider } from '@nestjs/common';
 import type { DataSource } from 'typeorm';
 
@@ -612,6 +613,12 @@ const $hataskRsvpsRepository: Provider = {
 	inject: [DI.db],
 };
 
+const $utageSessionsRepository: Provider = {
+	provide: DI.utageSessionsRepository,
+	useFactory: (db: DataSource) => db.getRepository(MiUtageSession).extend(miRepository as MiRepository<MiUtageSession>),
+	inject: [DI.db],
+};
+
 @Module({
 	imports: [],
 	providers: [
@@ -704,6 +711,7 @@ const $hataskRsvpsRepository: Provider = {
 		$registrationApplicationsRepository,
 		$hataskEventsRepository,
 		$hataskRsvpsRepository,
+		$utageSessionsRepository,
 	],
 	exports: [
 		$usersRepository,
@@ -795,6 +803,7 @@ const $hataskRsvpsRepository: Provider = {
 		$registrationApplicationsRepository,
 		$hataskEventsRepository,
 		$hataskRsvpsRepository,
+		$utageSessionsRepository,
 	],
 })
 export class RepositoryModule {

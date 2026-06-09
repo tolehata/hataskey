@@ -17,6 +17,7 @@ import { CheckModeratorsActivityProcessorService } from '@/queue/processors/Chec
 import { UserWebhookDeliverProcessorService } from './processors/UserWebhookDeliverProcessorService.js';
 import { SystemWebhookDeliverProcessorService } from './processors/SystemWebhookDeliverProcessorService.js';
 import { EndedPollNotificationProcessorService } from './processors/EndedPollNotificationProcessorService.js';
+import { UtageResolveProcessorService } from './processors/UtageResolveProcessorService.js';
 import { PostScheduledNoteProcessorService } from './processors/PostScheduledNoteProcessorService.js';
 import { DeliverProcessorService } from './processors/DeliverProcessorService.js';
 import { InboxProcessorService } from './processors/InboxProcessorService.js';
@@ -95,6 +96,7 @@ export class QueueProcessorService implements OnApplicationShutdown {
 	private relationshipQueueWorker: Bull.Worker;
 	private objectStorageQueueWorker: Bull.Worker;
 	private endedPollNotificationQueueWorker: Bull.Worker;
+	private utageResolveQueueWorker: Bull.Worker;
 	private postScheduledNoteQueueWorker: Bull.Worker;
 	private scheduledNoteDeleteQueueWorker: Bull.Worker;
 
@@ -109,6 +111,7 @@ export class QueueProcessorService implements OnApplicationShutdown {
 		private userWebhookDeliverProcessorService: UserWebhookDeliverProcessorService,
 		private systemWebhookDeliverProcessorService: SystemWebhookDeliverProcessorService,
 		private endedPollNotificationProcessorService: EndedPollNotificationProcessorService,
+		private utageResolveProcessorService: UtageResolveProcessorService,
 		private postScheduledNoteProcessorService: PostScheduledNoteProcessorService,
 		private deliverProcessorService: DeliverProcessorService,
 		private inboxProcessorService: InboxProcessorService,
@@ -549,6 +552,21 @@ export class QueueProcessorService implements OnApplicationShutdown {
 		}
 		//#endregion
 
+		//#region utage resolve (旗鯖fork)
+		{
+			this.utageResolveQueueWorker = new Bull.Worker(QUEUE.UTAGE_RESOLVE, (job) => {
+				if (this.config.sentryForBackend) {
+					return Sentry.startSpan({ name: 'Queue: UtageResolve' }, () => this.utageResolveProcessorService.process(job));
+				} else {
+					return this.utageResolveProcessorService.process(job);
+				}
+			}, {
+				...baseWorkerOptions(this.config, QUEUE.UTAGE_RESOLVE, this.redisForJobQueue),
+				autorun: false,
+			});
+		}
+		//#endregion
+
 		//#region post scheduled note
 		{
 			this.postScheduledNoteQueueWorker = new Bull.Worker(QUEUE.POST_SCHEDULED_NOTE, async (job) => {
@@ -592,6 +610,7 @@ export class QueueProcessorService implements OnApplicationShutdown {
 			this.relationshipQueueWorker.run(),
 			this.objectStorageQueueWorker.run(),
 			this.endedPollNotificationQueueWorker.run(),
+			this.utageResolveQueueWorker.run(),
 			this.postScheduledNoteQueueWorker.run(),
 			this.scheduledNoteDeleteQueueWorker.run(),
 		]);
@@ -609,6 +628,7 @@ export class QueueProcessorService implements OnApplicationShutdown {
 			this.relationshipQueueWorker.close(),
 			this.objectStorageQueueWorker.close(),
 			this.endedPollNotificationQueueWorker.close(),
+			this.utageResolveQueueWorker.close(),
 			this.postScheduledNoteQueueWorker.close(),
 			this.scheduledNoteDeleteQueueWorker.close(),
 		]);

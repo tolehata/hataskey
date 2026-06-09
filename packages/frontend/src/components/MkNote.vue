@@ -539,10 +539,12 @@ const menuButton = useTemplateRef('menuButton');
 // 本文に「宴」「うたげ」「utage」を含むローカルノートをLTLに投稿すると、
 // 投稿から15分間ノート全体が明滅する。15分逃げ切れば「成功」、
 // 途中で他者の反応(リアクション/リプライ/リノート)が来たら「失敗...」。
-// 6時間経過で演出は一切出さなくなる(平常ノートに戻る)。フロント完結。
+// 判定はサーバー(utage_session)が行い、フロントは $appearNote.utageStatus を購読して
+// 描画するだけ。これによりリロード・別端末でも状態が一貫する(従来のフロント完結実装で
+// 起きていた「成功後の反応をリロードで失敗扱いしてしまう」現象を解消)。
+// なお演出(明滅・バッジ)はLTL表示中のみ。これはLTL限定のゲームであるため。
 // =========================================================================
-const UTAGE_FLASH_MS = 15 * 60 * 1000; // 15分
-const UTAGE_EXPIRE_MS = 6 * 60 * 60 * 1000; // 6時間
+const UTAGE_EXPIRE_MS = 6 * 60 * 60 * 1000; // 6時間 (これを過ぎたら演出を出さない)
 const UTAGE_REGEX = /宴|うたげ|ぅたげ|utage/i;
 
 // 本文(+CWやショートコード)に宴ワードを部分一致で含むか
@@ -569,74 +571,24 @@ const showUtageTip = computed(() => {
 	return isUtageTipCandidate.value && utageTipOwnerId.value === appearNote.id;
 });
 
-// 反応があるか (誰のものでも・自分のリアクションも含む)。
-// 「反応されたら負け」のため、リアクションした本人の画面でも失敗が見えるよう、
-// 自分のリアクションも反応としてカウントする。reactionCount は $appearNote (reactive)
-// でリアルタイム更新されるので、リアクションが付いた瞬間に全員の画面で失敗化する。
-// リプライ・リノート数は静的な appearNote の値を使う (マウント時/リロード時に反映)。
-const utageHasReaction = computed(() => {
-	if (appearNote.repliesCount > 0) return true;
-	if (appearNote.renoteCount > 0) return true;
-	return $appearNote.reactionCount > 0;
-});
-
-// 投稿からの経過ms (リアクティブに更新)
-const utageNow = ref(Date.now());
+// 投稿からの経過ms (6時間制約の判定用)
 const utageCreatedAt = new Date(appearNote.createdAt).getTime();
 
-// 確定フラグ。一度確定したら以降は覆らない。
-// - utageSucceeded: 15分逃げ切って成功確定。以降に反応が付いても成功のまま。
-// - utageFailed: 15分以内に反応を観測して失敗確定。
-const utageSucceeded = ref(false);
-const utageFailed = ref(false);
-
 // 宴の状態: 'none' | 'flashing' | 'failed' | 'success'
+// サーバーの判定結果($appearNote.utageStatus)をそのまま反映する。
+// running=明滅, succeeded=成功, failed=失敗。宴セッションが無い(undefined)= none。
 const utageState = computed<'none' | 'flashing' | 'failed' | 'success'>(() => {
 	if (!isUtageTarget.value) return 'none';
-	const elapsed = utageNow.value - utageCreatedAt;
-	if (elapsed >= UTAGE_EXPIRE_MS) return 'none'; // 6時間超 → 平常
-	// 確定済みなら覆さない (成功確定が優先)
-	if (utageSucceeded.value) return 'success';
-	if (utageFailed.value) return 'failed';
-	// 15分経過後: 「15分以内の反応」を観測していなければ成功扱い (後から開いた場合も成功優先)
-	if (elapsed >= UTAGE_FLASH_MS) return 'success';
-	// 15分以内: 反応が来ていれば失敗、なければ明滅継続
-	if (utageHasReaction.value) return 'failed';
-	return 'flashing';
+	if ((Date.now() - utageCreatedAt) >= UTAGE_EXPIRE_MS) return 'none'; // 6時間超 → 平常
+	switch ($appearNote.utageStatus) {
+		case 'succeeded': return 'success';
+		case 'failed': return 'failed';
+		case 'running': return 'flashing';
+		default: return 'none';
+	}
 });
 
-// 15分以内に反応を観測したら失敗を確定 (以降の状態変化で覆らないように記録)。
-// immediate: マウント時に既に反応がある場合も初回判定する。
-watch(utageHasReaction, (has) => {
-	if (!has) return;
-	if (utageSucceeded.value) return; // 既に成功確定なら無視
-	const elapsed = Date.now() - utageCreatedAt;
-	if (elapsed < UTAGE_FLASH_MS) {
-		utageFailed.value = true;
-	}
-}, { immediate: true });
-
-let utageTimer: number | null = null;
-let utageTickTimer: number | null = null;
-
-function setupUtage() {
-	if (!isUtageTarget.value) return;
-	const elapsed = Date.now() - utageCreatedAt;
-	if (elapsed >= UTAGE_EXPIRE_MS) return; // 6時間超は何もしない
-	// 既に反応がある(=失敗確定)場合はタイマー不要
-	if (elapsed < UTAGE_FLASH_MS && !utageHasReaction.value) {
-		// 残り時間で「15分逃げ切り」を判定するタイマー
-		const remain = UTAGE_FLASH_MS - elapsed;
-		utageTimer = window.setTimeout(() => {
-			// 15分時点で反応がなければ成功確定
-			if (!utageHasReaction.value) utageSucceeded.value = true;
-			utageNow.value = Date.now();
-		}, remain);
-	}
-}
-
 onMounted(() => {
-	setupUtage();
 	// チュートリアル表示権の取得: まだ誰も持っていなければ自分が取得 (画面内で1つだけ表示)
 	if (isUtageTipCandidate.value && utageTipOwnerId.value == null) {
 		utageTipOwnerId.value = appearNote.id;
@@ -644,8 +596,6 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
-	if (utageTimer != null) window.clearTimeout(utageTimer);
-	if (utageTickTimer != null) window.clearTimeout(utageTickTimer);
 	// 自分が表示権を持っていたら解放 (他の宴ノートが表示できるように)
 	if (utageTipOwnerId.value === appearNote.id) {
 		utageTipOwnerId.value = null;

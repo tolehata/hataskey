@@ -32,6 +32,7 @@ import type {
 	DbQueue,
 	DeliverQueue,
 	EndedPollNotificationQueue,
+	UtageResolveQueue,
 	PostScheduledNoteQueue,
 	InboxQueue,
 	ObjectStorageQueue,
@@ -100,6 +101,7 @@ export class QueueService implements OnModuleInit {
 
 		@Inject('queue:system') public systemQueue: SystemQueue,
 		@Inject('queue:endedPollNotification') public endedPollNotificationQueue: EndedPollNotificationQueue,
+		@Inject('queue:utageResolve') public utageResolveQueue: UtageResolveQueue,
 		@Inject('queue:postScheduledNote') public postScheduledNoteQueue: PostScheduledNoteQueue,
 		@Inject('queue:deliver') public deliverQueue: DeliverQueue,
 		@Inject('queue:inbox') public inboxQueue: InboxQueue,
@@ -264,6 +266,25 @@ export class QueueService implements OnModuleInit {
 			},
 			removeOnFail: {
 				age: 3600 * 24 * 7, // keep up to 7 days
+				count: 100,
+			},
+		});
+	}
+
+	// 旗鯖fork: 宴(うたげ)の成功確定ジョブを delay(=残り15分)後に発火するよう登録。
+	// 連合先には何も配送しない、サーバー内完結のジョブ。
+	@bindThis
+	public createUtageResolveJob(noteId: string, delay: number) {
+		return this.utageResolveQueue.add('resolve', {
+			noteId,
+		}, {
+			delay,
+			removeOnComplete: {
+				age: 3600 * 24, // keep up to 1 day
+				count: 100,
+			},
+			removeOnFail: {
+				age: 3600 * 24 * 3,
 				count: 100,
 			},
 		});
@@ -753,6 +774,7 @@ export class QueueService implements OnModuleInit {
 		switch (type) {
 			case 'system': return this.systemQueue;
 			case 'endedPollNotification': return this.endedPollNotificationQueue;
+			case 'utageResolve': return this.utageResolveQueue;
 			case 'postScheduledNote': return this.postScheduledNoteQueue;
 			case 'deliver': return this.deliverQueue;
 			case 'inbox': return this.inboxQueue;

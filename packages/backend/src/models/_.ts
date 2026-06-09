@@ -106,6 +106,7 @@ import { NoteHistory } from '@/models/NoteHistory.js';
 import { MiRegistrationApplication } from '@/models/RegistrationApplication.js';
 import { MiHataskEvent } from '@/models/HataskEvent.js';
 import { MiHataskRsvp } from '@/models/HataskRsvp.js';
+import { MiUtageSession } from '@/models/UtageSession.js';
 import type { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity.js';
 
 export interface MiRepository<T extends ObjectLiteral> {
@@ -261,6 +262,7 @@ export {
 	MiRegistrationApplication,
 	MiHataskEvent,
 	MiHataskRsvp,
+	MiUtageSession,
 };
 
 export type AbuseReportResolversRepository = Repository<MiAbuseReportResolver> & MiRepository<MiAbuseReportResolver>;
@@ -354,4 +356,5 @@ export type NoteHistoryRepository = Repository<NoteHistory> & MiRepository<NoteH
 export type RegistrationApplicationsRepository = Repository<MiRegistrationApplication> & MiRepository<MiRegistrationApplication>;
 export type HataskEventsRepository = Repository<MiHataskEvent> & MiRepository<MiHataskEvent>;
 export type HataskRsvpsRepository = Repository<MiHataskRsvp> & MiRepository<MiHataskRsvp>;
+export type UtageSessionsRepository = Repository<MiUtageSession> & MiRepository<MiUtageSession>;
 

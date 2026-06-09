@@ -42,6 +42,7 @@ import { UserWebhookService } from '@/core/UserWebhookService.js';
 import { HashtagService } from '@/core/HashtagService.js';
 import { AntennaService } from '@/core/AntennaService.js';
 import { QueueService } from '@/core/QueueService.js';
+import { UtageService } from '@/core/UtageService.js';
 import { NoteEntityService } from '@/core/entities/NoteEntityService.js';
 import { UserEntityService } from '@/core/entities/UserEntityService.js';
 import { ApRendererService } from '@/core/activitypub/ApRendererService.js';
@@ -257,6 +258,7 @@ export class NoteCreateService implements OnApplicationShutdown {
 		private idService: IdService,
 		private globalEventService: GlobalEventService,
 		private queueService: QueueService,
+		private utageService: UtageService,
 		private fanoutTimelineService: FanoutTimelineService,
 		private notificationService: NotificationService,
 		private relayService: RelayService,
@@ -854,6 +856,31 @@ export class NoteCreateService implements OnApplicationShutdown {
 					count: 100,
 				},
 			});
+		}
+
+		// 旗鯖fork: 宴(うたげ)セッションの作成。ローカル かつ 宴ワードを含むノートで
+		// running セッションを作り、15分後の成功確定ジョブを予約する。
+		this.utageService.onNoteCreated(note, user).catch(() => { /* 宴判定の失敗は投稿処理を妨げない */ });
+
+		// 旗鯖fork: リプライ・リノート(引用含む)は対象ノートへの「反応」なので、
+		// 対象が宴セッション中なら失敗確定させる。
+		if (data.reply != null) {
+			this.utageService.onReaction({
+				id: data.reply.id,
+				text: data.reply.text,
+				cw: data.reply.cw,
+				userId: data.reply.userId,
+				userHost: data.reply.userHost,
+			}).catch(() => { /* noop */ });
+		}
+		if (data.renote != null) {
+			this.utageService.onReaction({
+				id: data.renote.id,
+				text: data.renote.text,
+				cw: data.renote.cw,
+				userId: data.renote.userId,
+				userHost: data.renote.userHost,
+			}).catch(() => { /* noop */ });
 		}
 
 		if (!silent) {

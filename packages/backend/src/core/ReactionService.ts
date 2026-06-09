@@ -15,6 +15,7 @@ import { IdService } from '@/core/IdService.js';
 import type { MiNoteReaction } from '@/models/NoteReaction.js';
 import { isDuplicateKeyValueError } from '@/misc/is-duplicate-key-value-error.js';
 import { GlobalEventService } from '@/core/GlobalEventService.js';
+import { UtageService } from '@/core/UtageService.js';
 import { NotificationService } from '@/core/NotificationService.js';
 import PerUserReactionsChart from '@/core/chart/charts/per-user-reactions.js';
 import { emojiRegex } from '@/misc/emoji-regex.js';
@@ -101,6 +102,7 @@ export class ReactionService {
 		// 旗鯖fork: トレンドタイムライン
 		private trendingService: TrendingService,
 		private globalEventService: GlobalEventService,
+		private utageService: UtageService,
 		private apRendererService: ApRendererService,
 		private apDeliverManagerService: ApDeliverManagerService,
 		private notificationService: NotificationService,
@@ -259,6 +261,15 @@ export class ReactionService {
 			} : null,
 			userId: user.id,
 		});
+
+		// 旗鯖fork: 宴(うたげ)セッション中のノートにリアクションが付いたら失敗確定させる。
+		this.utageService.onReaction({
+			id: note.id,
+			text: note.text,
+			cw: note.cw,
+			userId: note.userId,
+			userHost: note.userHost,
+		}).catch(() => { /* 宴判定の失敗はリアクション処理を妨げない */ });
 
 		// リアクションされたユーザーがローカルユーザーなら通知を作成
 		if (note.userHost === null) {

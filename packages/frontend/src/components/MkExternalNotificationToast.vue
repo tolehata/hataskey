@@ -16,7 +16,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		</div>
 		<div :class="$style.body">
 			<div :class="$style.title">
-				<Mfm :text="displayName" :plain="true" :nyaize="false" :emojiUrls="emojiUrls"/><span :class="$style.action">{{ actionLabel }}</span>
+				<Mfm :text="displayName" :plain="true" :nyaize="false" :emojiUrls="emojiUrls" :author="author"/><span :class="$style.action">{{ actionLabel }}</span>
 			</div>
 			<div v-if="text" :class="$style.text">{{ text }}</div>
 			<div v-if="hint" :class="$style.hint">{{ hint }}</div>
@@ -95,6 +95,14 @@ const emojiUrls = computed(() => {
 	const map: Record<string, string> = {};
 	if (props.notification?.user?.emojis) Object.assign(map, props.notification.user.emojis);
 	return map;
+});
+
+// 旗鯖fork: <Mfm> に渡す author。host が null だと MkMfm が emojiUrls を
+// 参照せず外部サーバーの絵文字を解決できないため、host(外部サーバー)を補う。
+const author = computed(() => {
+	const n = props.notification;
+	const host = n?.user?.host ?? prefer.s['external.host'] ?? null;
+	return { host, emojis: n?.user?.emojis };
 });
 
 // 旗鯖fork: リアクション絵文字URL (カスタム絵文字の場合)

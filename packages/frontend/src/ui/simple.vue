@@ -942,7 +942,7 @@ onUnmounted(()=>{
 </script>
 
 <style lang="scss" module>
-.root { display:flex; flex-direction:column; height:100dvh; background:var(--MI_THEME-bg); overflow:hidden; user-select:none; }
+.root { display:flex; flex-direction:column; height:100dvh; background:var(--MI_THEME-bg); overflow:hidden; user-select:none; -webkit-tap-highlight-color:transparent; }
 
 // ===== デスクトップレイアウト =====
 .desktopLayout {

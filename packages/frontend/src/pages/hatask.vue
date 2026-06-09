@@ -46,9 +46,11 @@
     <div v-if="sec==='clock' && settings.showClock!==false" class="htk-lg htk-anim"><div class="htk-gc" style="text-align:center;padding:28px 20px"><div class="htk-dt-time">{{currentTime}}</div><div class="htk-dt-date">{{currentDate}}</div></div></div>
     <div v-if="sec==='eye' && settings.showEye!==false" class="htk-lg htk-anim" @click="activeTab='eye'" style="cursor:pointer"><div class="htk-gc htk-eye-card">
       <div class="htk-eye-label">Hatask Eye</div>
-      <Transition name="htk-eye-fade" mode="out-in">
-        <div class="htk-eye-phrase" :key="eyePhrase">{{eyePhrase}}</div>
-      </Transition>
+      <div class="htk-eye-phrase-wrap">
+        <Transition name="htk-eye-fade">
+          <div class="htk-eye-phrase" :key="eyePhrase">{{eyePhrase}}</div>
+        </Transition>
+      </div>
     </div></div>
     <div v-if="sec==='apps' && settings.showApps!==false" class="htk-lg htk-anim"><div class="htk-gc">
       <h3 class="htk-sec-title">旗鯖独自アプリ</h3>
@@ -427,9 +429,11 @@
     <button class="htk-eye-info-btn" @click="showEyeDisclaimer=true" title="Hatask Eyeについて" style="position:absolute;top:12px;right:12px;background:rgba(255,255,255,.15);border:none;border-radius:50%;width:30px;height:30px;cursor:pointer;color:inherit;display:flex;align-items:center;justify-content:center"><i class="ti ti-info-circle" style="font-size:1rem"></i></button>
     <div class="htk-eye-logo">◎</div>
     <div class="htk-eye-page-label">Hatask Eye</div>
-    <Transition name="htk-eye-fade" mode="out-in">
-      <div class="htk-eye-page-phrase" :key="eyePhrase">{{eyePhrase}}</div>
-    </Transition>
+    <div class="htk-eye-page-phrase-wrap">
+      <Transition name="htk-eye-fade">
+        <div class="htk-eye-page-phrase" :key="eyePhrase">{{eyePhrase}}</div>
+      </Transition>
+    </div>
   </div></div>
 
   <!-- 統計サマリー -->
@@ -1546,14 +1550,18 @@ select.htk-inp{appearance:none;cursor:pointer;padding-right:36px}
 .htk-dt-greet{font-size:.88rem;margin-top:12px;font-weight:500;line-height:1.5;white-space:pre-line}
 .htk-eye-card{text-align:center;padding:16px 20px}
 .htk-eye-label{font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:2px;opacity:.4;margin-bottom:8px}
-.htk-eye-phrase{font-size:.88rem;font-weight:500;line-height:1.6;white-space:pre-line;min-height:2.5em}
-.htk-eye-fade-enter-active,.htk-eye-fade-leave-active{transition:all .5s ease}
+.htk-eye-phrase-wrap{display:grid;min-height:2.5em}
+.htk-eye-phrase-wrap>*{grid-area:1/1}
+.htk-eye-phrase{font-size:.88rem;font-weight:500;line-height:1.6;white-space:pre-line}
+.htk-eye-page-phrase-wrap{display:grid;min-height:3em}
+.htk-eye-page-phrase-wrap>*{grid-area:1/1}
+.htk-eye-page-phrase{font-size:1rem;font-weight:500;line-height:1.7;white-space:pre-line}
+.htk-eye-fade-enter-active,.htk-eye-fade-leave-active{transition:opacity .5s ease,transform .5s ease}
 .htk-eye-fade-enter-from{opacity:0;transform:translateY(8px)}
 .htk-eye-fade-leave-to{opacity:0;transform:translateY(-8px)}
 .htk-eye-page-top{text-align:center;padding:28px 20px}
 .htk-eye-logo{font-size:2.5rem;opacity:.3;margin-bottom:4px}
 .htk-eye-page-label{font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:3px;opacity:.35;margin-bottom:12px}
-.htk-eye-page-phrase{font-size:1rem;font-weight:500;line-height:1.7;white-space:pre-line;min-height:3em}
 .htk-eye-stats{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:10px}
 .htk-eye-stat{text-align:center;padding:12px 8px;background:rgba(255,255,255,.04);border-radius:12px}
 .htk-eye-stat-n{font-size:1.4rem;font-weight:700;background:linear-gradient(135deg,#a78bfa,#60a5fa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}

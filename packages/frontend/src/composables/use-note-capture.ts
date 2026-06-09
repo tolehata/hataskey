@@ -19,6 +19,8 @@ export const noteEvents = new EventEmitter<{
 	[ev: `reacted:${string}`]: (ctx: { userId: Misskey.entities.User['id']; reaction: string; emoji?: { name: string; url: string; }; }) => void;
 	[ev: `unreacted:${string}`]: (ctx: { userId: Misskey.entities.User['id']; reaction: string; emoji?: { name: string; url: string; }; }) => void;
 	[ev: `pollVoted:${string}`]: (ctx: { userId: Misskey.entities.User['id']; choice: string; }) => void;
+	// 旗鯖fork: 宴(うたげ)の判定確定をノート単位で受け取る
+	[ev: `utageStatusUpdated:${string}`]: (ctx: { status: 'succeeded' | 'failed'; }) => void;
 }>();
 
 const fetchEvent = new EventEmitter<{
@@ -157,6 +159,14 @@ function realtimeSubscribe(props: {
 				break;
 			}
 
+			case 'utageStatusUpdated': {
+				// 旗鯖fork: 宴の判定確定 (succeeded/failed) をノート単位で配信
+				noteEvents.emit(`utageStatusUpdated:${id}`, {
+					status: body.status,
+				});
+				break;
+			}
+
 			case 'deleted': {
 				globalEvents.emit('noteDeleted', id);
 				break;
@@ -193,6 +203,9 @@ export type ReactiveNoteData = {
 	reactionEmojis: Misskey.entities.Note['reactionEmojis'];
 	myReaction: Misskey.entities.Note['myReaction'];
 	pollChoices: NonNullable<Misskey.entities.Note['poll']>['choices'];
+	// 旗鯖fork: 宴(うたげ)の判定状態。サーバーの pack 埋め込み(utageStatus)を初期値とし、
+	// utageStatusUpdated イベントで更新する。
+	utageStatus: 'running' | 'succeeded' | 'failed' | undefined;
 };
 
 const noReaction = Symbol();
@@ -225,11 +238,13 @@ export function useNoteCapture(props: {
 		reactionEmojis: note.reactionEmojis,
 		myReaction: note.myReaction,
 		pollChoices: note.poll?.choices ?? [],
+		utageStatus: (note as Misskey.entities.Note & { utageStatus?: 'running' | 'succeeded' | 'failed' }).utageStatus,
 	});
 
 	noteEvents.on(`reacted:${note.id}`, onReacted);
 	noteEvents.on(`unreacted:${note.id}`, onUnreacted);
 	noteEvents.on(`pollVoted:${note.id}`, onPollVoted);
+	noteEvents.on(`utageStatusUpdated:${note.id}`, onUtageStatusUpdated);
 
 	// 操作がダブっていないかどうかを簡易的に記録するためのMap
 	const reactionUserMap = new Map<Misskey.entities.User['id'], string | typeof noReaction>();
@@ -294,6 +309,13 @@ export function useNoteCapture(props: {
 		$note.pollChoices = choices;
 	}
 
+	// 旗鯖fork: 宴ステータス更新。一度 succeeded/failed に確定したら覆さない(成功優先)。
+	function onUtageStatusUpdated(ctx: { status: 'succeeded' | 'failed'; }): void {
+		if ($note.utageStatus === 'succeeded') return; // 成功確定は不可逆
+		if ($note.utageStatus === 'failed' && ctx.status !== 'succeeded') return;
+		$note.utageStatus = ctx.status;
+	}
+
 	function subscribe() {
 		if (mock) {
 			// モックモードでは購読しない
@@ -316,6 +338,7 @@ export function useNoteCapture(props: {
 		noteEvents.off(`reacted:${note.id}`, onReacted);
 		noteEvents.off(`unreacted:${note.id}`, onUnreacted);
 		noteEvents.off(`pollVoted:${note.id}`, onPollVoted);
+		noteEvents.off(`utageStatusUpdated:${note.id}`, onUtageStatusUpdated);
 	});
 
 	// 投稿からある程度経過している(=タイムラインを遡って表示した)ノートは、イベントが発生する可能性が低いためそもそも購読しない

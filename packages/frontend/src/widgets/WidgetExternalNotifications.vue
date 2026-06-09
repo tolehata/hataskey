@@ -4,15 +4,31 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 
 <!--
-旗鯖fork: 外部アカウント通知の専用ページ。
-外部TL連携 (external.token + external.host) がONの時のみアクセス可能。
-未連携時は external-account 設定ページにリダイレクトする。
+	旗鯖fork: 外部アカウント(external.token/host)の通知を表示するウィジェット。
+	全UI(default/universal/deck等)のウィジェット追加メニューから利用可能。
+	データソースは外部通知ページ(pages/external-notifications.vue)と同一:
+	  - マウント時に callExternalApi('i/notifications') で履歴取得
+	  - 'external-notification' CustomEvent(external-notification-stream.ts が
+	    window へ dispatch)を listen してリアルタイムに先頭追加
+	表示名のカスタム絵文字は <Mfm> に author(host付き)を渡すことで解決する
+	(author.host が null だと MkMfm が emojiUrls を参照せずショートコードのまま残るため)。
 -->
 
 <template>
-<PageWithHeader :actions="headerActions">
+<MkContainer :style="`height: ${widgetProps.height}px;`" :showHeader="widgetProps.showHeader" :scrollable="true" class="mkw-externalNotifications">
+	<template #icon><i class="ti ti-bell-ringing"></i></template>
+	<template #header>外部通知</template>
+	<template #func="{ buttonStyleClass }">
+		<button v-tooltip="'すべて既読'" class="_button" :class="buttonStyleClass" @click="markAllAsRead()"><i class="ti ti-check"></i></button>
+		<button v-tooltip="'更新'" class="_button" :class="buttonStyleClass" @click="fetchNotifications()"><i class="ti ti-refresh"></i></button>
+	</template>
+
 	<div :class="$style.root">
-		<div v-if="loading" :class="$style.loading">
+		<div v-if="!connected" :class="$style.empty">
+			<i class="ti ti-plug-connected-x" :class="$style.emptyIcon"></i>
+			<div :class="$style.emptyText">外部アカウントが未連携です</div>
+		</div>
+		<div v-else-if="loading" :class="$style.loading">
 			<MkLoading/>
 		</div>
 		<div v-else-if="notifications.length === 0" :class="$style.empty">
@@ -21,18 +37,15 @@ SPDX-License-Identifier: AGPL-3.0-only
 		</div>
 		<div v-else :class="$style.list">
 			<div v-for="n in notifications" :key="n.id" :class="$style.item" @click="onItemClick(n)">
-				<!-- 旗鯖fork: アバター画像 + リアクション絵文字のオーバーレイ -->
 				<div :class="$style.itemIconWrap">
 					<img v-if="n.user?.avatarUrl" :src="n.user.avatarUrl" :class="$style.itemAvatar" :alt="n.user?.username ?? ''"/>
 					<i v-else :class="[iconClassOf(n), $style.itemIcon]"></i>
-					<!-- リアクション通知は絵文字を右下にオーバーレイ -->
 					<div v-if="n.type === 'reaction' && n.reaction" :class="$style.itemReactionBadge">
 						<MkReactionIcon :reaction="normalizeReaction(n.reaction)" :emojiUrl="reactionEmojiUrl(n)"/>
 					</div>
 				</div>
 				<div :class="$style.itemBody">
 					<div :class="$style.itemHeader">
-						<!-- 表示名 (MFM対応、name優先、なければusername) -->
 						<span :class="$style.itemTitle">
 							<Mfm :text="displayNameOf(n)" :plain="true" :nyaize="false" :emojiUrls="emojiUrlsOf(n)" :author="authorOf(n)"/>
 							<span :class="$style.itemAction">{{ actionLabelOf(n) }}</span>
@@ -40,41 +53,64 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<span :class="$style.itemTime">{{ formatTime(n.createdAt) }}</span>
 					</div>
 					<div v-if="textOf(n)" :class="$style.itemText">{{ textOf(n) }}</div>
-					<div v-if="hintOf(n)" :class="$style.itemHint">{{ hintOf(n) }}</div>
 				</div>
 			</div>
 		</div>
 	</div>
-</PageWithHeader>
+</MkContainer>
 </template>
 
 <script lang="ts" setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
+import { useWidgetPropsManager } from './widget.js';
+import type { WidgetComponentEmits, WidgetComponentExpose, WidgetComponentProps } from './widget.js';
+import type { FormWithDefault, GetFormResultType } from '@/utility/form.js';
 import { prefer } from '@/preferences.js';
-import { mainRouter } from '@/router.js';
-import { callExternalApi } from '@/utility/external-api.js';
-import { getExternalEmojiUrlMap } from '@/utility/external-api.js';
-import { i18n } from '@/i18n.js';
-import { definePage } from '@/page.js';
-import MkLoading from '@/components/global/MkLoading.vue';
+import { callExternalApi, getExternalEmojiUrlMap } from '@/utility/external-api.js';
+import MkContainer from '@/components/MkContainer.vue';
 import MkReactionIcon from '@/components/MkReactionIcon.vue';
+
+const name = 'externalNotifications';
+
+const widgetPropsDef = {
+	showHeader: {
+		type: 'boolean',
+		default: true,
+	},
+	height: {
+		type: 'number',
+		default: 300,
+	},
+} satisfies FormWithDefault;
+
+type WidgetProps = GetFormResultType<typeof widgetPropsDef>;
+
+const props = defineProps<WidgetComponentProps<WidgetProps>>();
+const emit = defineEmits<WidgetComponentEmits<WidgetProps>>();
+
+const { widgetProps, configure } = useWidgetPropsManager(name,
+	widgetPropsDef,
+	props,
+	emit,
+);
 
 const notifications = ref<any[]>([]);
 const loading = ref(true);
-// 旗鯖fork: 外部サーバーのカスタム絵文字URLマップ (reactionEmojis に無い絵文字の解決用)
 const externalEmojiUrlMap = ref<Record<string, string>>({});
 
-// 旗鯖fork: 未連携時は external-account 設定ページへリダイレクト
 function checkConnected(): boolean {
 	const token = prefer.s['external.token'];
 	const host = prefer.s['external.host'];
 	return token != null && host !== '' && host != null;
 }
+const connected = ref(checkConnected());
 
 async function fetchNotifications() {
+	if (!checkConnected()) { connected.value = false; loading.value = false; return; }
+	connected.value = true;
 	loading.value = true;
 	try {
-		const result = await callExternalApi('i/notifications', { limit: 30 });
+		const result = await callExternalApi('i/notifications', { limit: 20 });
 		notifications.value = Array.isArray(result) ? result : [];
 	} catch (err) {
 		notifications.value = [];
@@ -87,32 +123,16 @@ async function markAllAsRead() {
 	try {
 		await callExternalApi('notifications/mark-all-as-read', {});
 		localStorage.setItem('extNotifLastReadAt', new Date().toISOString());
-		// バッジ消去イベントを発火 (HatasabaUI モバイル下部バッジ等)
 		window.dispatchEvent(new CustomEvent('ext-tl-notif-count', { detail: 0 }));
 	} catch {}
 }
 
 function onExternalNotification(ev: Event) {
-	// リアルタイム受信した通知を先頭に追加
 	const n = (ev as CustomEvent).detail;
 	if (!n?.id) return;
 	if (notifications.value.find(x => x.id === n.id)) return;
 	notifications.value.unshift(n);
 }
-
-const headerActions = computed(() => [{
-	icon: 'ti ti-check',
-	text: 'すべて既読',
-	handler: async () => {
-		await markAllAsRead();
-	},
-}, {
-	icon: 'ti ti-refresh',
-	text: '更新',
-	handler: async () => {
-		await fetchNotifications();
-	},
-}]);
 
 function iconClassOf(n: any): string {
 	const map: Record<string, string> = {
@@ -137,7 +157,6 @@ function displayNameOf(n: any): string {
 	return n?.user?.name || n?.user?.username || '誰か';
 }
 
-// 旗鯖fork: アクション文言 (表示名と分離してMFM名の後ろに付ける)
 function actionLabelOf(n: any): string {
 	const labels: Record<string, string> = {
 		'reaction': ' がリアクションしました',
@@ -163,38 +182,29 @@ function emojiUrlsOf(n: any): Record<string, string> {
 	return map;
 }
 
-// 旗鯖fork: <Mfm> に渡す author。
-// MkMfm はカスタム絵文字(emojiCode)の解決時、author?.host が null だと
-// emojiUrls を参照せず自インスタンス扱いになり、外部サーバー発の絵文字が
-// ショートコードのまま残る。標準の MkUserName と同様に author(host付き)を
-// 渡すことで emojiUrls 経由の url 解決を走らせ、絵文字を正しく描画する。
+// 旗鯖fork: <Mfm> に渡す author。host が null だと MkMfm が emojiUrls を
+// 参照せず外部サーバーの絵文字を解決できないため、host(外部サーバー)を補う。
 function authorOf(n: any): { host: string | null; emojis?: any } {
 	const host = n?.user?.host ?? prefer.s['external.host'] ?? null;
 	return { host, emojis: n?.user?.emojis };
 }
 
-// 旗鯖fork: リアクション文字列の正規化 (両端コロン等の処理は MkReactionIcon に任せる)
 function normalizeReaction(reaction: string): string {
 	return reaction;
 }
 
-// 旗鯖fork: リアクション絵文字のURL取得 (カスタム絵文字の場合)
 function reactionEmojiUrl(n: any): string | undefined {
 	if (!n?.reaction) return undefined;
-	// :name@host: or :name: 形式のカスタム絵文字
 	const m = n.reaction.match(/^:([^:]+):$/);
-	if (!m) return undefined; // Unicode絵文字はURL不要
+	if (!m) return undefined;
 	const emojiName = m[1];
 	const pureName = emojiName.includes('@') ? emojiName.split('@')[0] : emojiName;
 	const host = prefer.s['external.host'];
-
-	// 1. note付属の reactionEmojis から検索 (複数パターン)
 	if (n.note?.reactionEmojis) {
 		const e = n.note.reactionEmojis;
 		const found = e[emojiName] || e[pureName] || e[`${pureName}@${host}`] || e[`${pureName}@.`];
 		if (found) return found;
 	}
-	// 2. note付属の emojis からも検索
 	if (n.note?.emojis) {
 		if (Array.isArray(n.note.emojis)) {
 			const f = n.note.emojis.find((e: any) => e.name === pureName || e.name === emojiName);
@@ -204,10 +214,8 @@ function reactionEmojiUrl(n: any): string | undefined {
 			if (f) return f;
 		}
 	}
-	// 3. 外部サーバーの絵文字キャッシュから検索 (reactionEmojis に無い絵文字の本命)
 	const cached = externalEmojiUrlMap.value[pureName] || externalEmojiUrlMap.value[emojiName];
 	if (cached) return cached;
-	// 4. フォールバック: 外部サーバーの絵文字プロキシURL
 	if (host) return `https://${host}/emoji/${pureName}.webp`;
 	return undefined;
 }
@@ -216,17 +224,6 @@ function textOf(n: any): string {
 	if (n?.note?.text) return n.note.text;
 	if (n?.reaction) return n.reaction;
 	if (n?.body) return n.body;
-	return '';
-}
-
-// 旗鯖fork: フォロー許可リクエスト・セキュリティ系通知は連携先で対応が必要
-function hintOf(n: any): string {
-	if (n.type === 'receiveFollowRequest' || n.type === 'followRequestAccepted') {
-		return '※ フォロー申請の対応は連携先サーバーで行ってください';
-	}
-	if (n.type === 'app') {
-		return '※ 詳細は連携先サーバーで確認してください';
-	}
 	return '';
 }
 
@@ -242,22 +239,12 @@ function formatTime(ts: string): string {
 }
 
 function onItemClick(n: any) {
-	// クリック動作はノート関連の通知のみ意味があるが、現状は何もしない
-	// (外部鯖のノート遷移は MkExternalNote パネル経由の方が筋がいいため、別途検討)
+	// クリック動作は外部通知ページと同様、現状は何もしない
 }
 
 onMounted(async () => {
-	// 未連携ならリダイレクト
-	if (!checkConnected()) {
-		mainRouter.replace('/settings/external-account');
-		return;
-	}
 	await fetchNotifications();
-	// 旗鯖fork: 外部サーバーの絵文字URLマップを取得 (リアクション絵文字解決用)
-	try { externalEmojiUrlMap.value = await getExternalEmojiUrlMap(); } catch { /* 失敗時はフォールバックURLで対応 */ }
-	// 訪問時に既読化
-	await markAllAsRead();
-	// リアルタイム受信を listen
+	try { externalEmojiUrlMap.value = await getExternalEmojiUrlMap(); } catch { /* フォールバックURLで対応 */ }
 	window.addEventListener('external-notification', onExternalNotification);
 });
 
@@ -265,37 +252,36 @@ onUnmounted(() => {
 	window.removeEventListener('external-notification', onExternalNotification);
 });
 
-definePage(() => ({
-	title: '外部通知',
-	icon: 'ti ti-bell',
-}));
+defineExpose<WidgetComponentExpose>({
+	name,
+	configure,
+	id: props.widget ? props.widget.id : null,
+});
 </script>
 
 <style lang="scss" module>
 .root {
-	max-width: 700px;
-	margin: 0 auto;
-	padding: 16px;
+	padding: 8px;
 }
 .loading {
 	display: flex;
 	justify-content: center;
-	padding: 60px 0;
+	padding: 40px 0;
 }
 .empty {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	padding: 60px 16px;
+	padding: 40px 16px;
 	opacity: 0.7;
 }
 .emptyIcon {
-	font-size: 3em;
-	margin-bottom: 12px;
+	font-size: 2.4em;
+	margin-bottom: 10px;
 	opacity: 0.5;
 }
 .emptyText {
-	font-size: 0.95em;
+	font-size: 0.9em;
 }
 .list {
 	display: flex;
@@ -305,8 +291,8 @@ definePage(() => ({
 .item {
 	display: flex;
 	align-items: flex-start;
-	gap: 12px;
-	padding: 12px 14px;
+	gap: 10px;
+	padding: 10px 12px;
 	background: var(--MI_THEME-panel);
 	border: 1px solid var(--MI_THEME-divider);
 	border-left: 3px solid color-mix(in srgb, var(--MI_THEME-accent) 70%, #4a9eff);
@@ -319,8 +305,8 @@ definePage(() => ({
 }
 .itemIconWrap {
 	flex-shrink: 0;
-	width: 36px;
-	height: 36px;
+	width: 32px;
+	height: 32px;
 	border-radius: 50%;
 	background: color-mix(in srgb, var(--MI_THEME-accent) 12%, transparent);
 	display: flex;
@@ -328,50 +314,46 @@ definePage(() => ({
 	justify-content: center;
 	position: relative;
 }
-/* 旗鯖fork: アバター画像 */
 .itemAvatar {
-	width: 36px;
-	height: 36px;
+	width: 32px;
+	height: 32px;
 	border-radius: 50%;
 	object-fit: cover;
 }
-/* 旗鯖fork: リアクション絵文字を右下にオーバーレイ */
 .itemReactionBadge {
 	position: absolute;
 	right: -4px;
 	bottom: -4px;
-	width: 20px;
-	height: 20px;
+	width: 18px;
+	height: 18px;
 	border-radius: 50%;
 	background: var(--MI_THEME-panel);
 	border: 1.5px solid var(--MI_THEME-panel);
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	font-size: 13px;
+	font-size: 12px;
 	box-shadow: 0 1px 4px rgba(0,0,0,.15);
 	overflow: hidden;
 }
-/* 旗鯖fork: 内部の絵文字(img/span)を強制的にバッジサイズに収める */
 .itemReactionBadge :deep(img),
 .itemReactionBadge :deep(.mk-emoji),
 .itemReactionBadge :deep(span) {
-	width: 14px !important;
-	height: 14px !important;
-	max-width: 14px !important;
-	max-height: 14px !important;
+	width: 13px !important;
+	height: 13px !important;
+	max-width: 13px !important;
+	max-height: 13px !important;
 	object-fit: contain;
-	font-size: 12px !important;
+	font-size: 11px !important;
 	line-height: 1 !important;
 	margin: 0 !important;
 }
-/* 旗鯖fork: アクション文言 (表示名の後ろ) */
 .itemAction {
 	font-weight: 400;
 	opacity: 0.85;
 }
 .itemIcon {
-	font-size: 1.1em;
+	font-size: 1.05em;
 	color: var(--MI_THEME-accent);
 }
 .itemBody {
@@ -386,23 +368,19 @@ definePage(() => ({
 }
 .itemTitle {
 	font-weight: 700;
-	font-size: 0.92em;
+	font-size: 0.9em;
 }
 .itemTime {
-	font-size: 0.78em;
+	font-size: 0.76em;
 	opacity: 0.65;
 	flex-shrink: 0;
 }
 .itemText {
 	margin-top: 4px;
-	font-size: 0.88em;
-	opacity: 0.85;
-	overflow-wrap: anywhere;
-}
-.itemHint {
-	margin-top: 6px;
-	font-size: 0.78em;
-	color: var(--MI_THEME-warn, #e67e22);
-	opacity: 0.95;
+	font-size: 0.86em;
+	opacity: 0.9;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 </style>

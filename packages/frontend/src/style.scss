@@ -400,6 +400,16 @@ rt {
 	}
 }
 
+// 旗鯖fork: 独自UI(Hatask等)のタップハイライト矩形化を防ぐ。
+// 標準の tap-highlight reset は a / input,textarea / ._button のみが対象で、
+// .htk-* の <div @click> や ._button 非適用の <button> には効かず、
+// Androidで丸ボタンに薄青の矩形ハイライトが乗ってしまうため、ここで補う。
+// (HatasabaUI=simple.vue 側は .root に直接当てて子孫へ継承させている)
+[class^="htk-"], [class*=" htk-"] {
+	-webkit-tap-highlight-color: transparent;
+	tap-highlight-color: transparent;
+}
+
 ._buttonPrimary {
 	@extend ._button;
 	color: var(--MI_THEME-fgOnAccent);

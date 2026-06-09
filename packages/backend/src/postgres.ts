@@ -77,6 +77,7 @@ import { MiUserPublickey } from '@/models/UserPublickey.js';
 import { MiRegistrationApplication } from '@/models/RegistrationApplication.js';
 import { MiHataskEvent } from '@/models/HataskEvent.js';
 import { MiHataskRsvp } from '@/models/HataskRsvp.js';
+import { MiUtageSession } from '@/models/UtageSession.js';
 import { MiUserSecurityKey } from '@/models/UserSecurityKey.js';
 import { MiWebhook } from '@/models/Webhook.js';
 import { MiSystemWebhook } from '@/models/SystemWebhook.js';
@@ -214,6 +215,7 @@ export const entities = [
 	MiRegistrationApplication,
 	MiHataskEvent,
 	MiHataskRsvp,
+	MiUtageSession,
 	MiUserList,
 	MiUserListFavorite,
 	MiUserListMembership,

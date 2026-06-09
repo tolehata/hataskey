@@ -283,6 +283,12 @@ export const packedNoteSchema = {
 			optional: true, nullable: false,
 		},
 
+		utageStatus: {
+			type: 'string',
+			enum: ['running', 'succeeded', 'failed'],
+			optional: true, nullable: false,
+		},
+
 		myReaction: {
 			type: 'string',
 			optional: true, nullable: true,

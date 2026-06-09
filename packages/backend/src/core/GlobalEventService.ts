@@ -132,6 +132,11 @@ export interface NoteEventTypes {
 		reaction: string;
 		userId: MiUser['id'];
 	};
+	// 旗鯖fork: 宴(うたげ)の判定確定をノート単位で配信。フロントはこれを購読して
+	// リロード不要・全端末一貫で状態(succeeded/failed)を反映する。
+	utageStatusUpdated: {
+		status: 'succeeded' | 'failed';
+	};
 }
 type NoteStreamEventTypes = {
 	[key in keyof NoteEventTypes]: {
