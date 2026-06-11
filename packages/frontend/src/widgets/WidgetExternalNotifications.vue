@@ -120,10 +120,13 @@ async function fetchNotifications() {
 }
 
 async function markAllAsRead() {
+	// 旗鯖fork: ローカルのバッジ消去はリモートAPIの成否と切り離す。
+	// mark-all-as-read がスコープ不足等で失敗してもバッジが残らないように、
+	// 「見た」事実の記録とバッジ消去イベントを先に無条件で行う。
+	localStorage.setItem('extNotifLastReadAt', new Date().toISOString());
+	window.dispatchEvent(new CustomEvent('ext-tl-notif-count', { detail: 0 }));
 	try {
 		await callExternalApi('notifications/mark-all-as-read', {});
-		localStorage.setItem('extNotifLastReadAt', new Date().toISOString());
-		window.dispatchEvent(new CustomEvent('ext-tl-notif-count', { detail: 0 }));
 	} catch {}
 }
 

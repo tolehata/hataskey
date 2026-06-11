@@ -2846,6 +2846,7 @@ _widgets:
   instanceInfo: "Instance Information"
   memo: "Sticky notes"
   notifications: "Notifications"
+  externalNotifications: "External notifications"
   timeline: "Timeline"
   calendar: "Calendar"
   trends: "Trending"

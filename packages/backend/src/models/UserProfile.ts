@@ -302,6 +302,18 @@ export class MiUserProfile {
 		comment: 'カスタムフォント免責同意日時',
 	})
 	public hataConsentCustomFontDate: Date | null;
+
+	@Column('boolean', {
+		default: false,
+		comment: 'マスコット機能免責同意フラグ',
+	})
+	public hataConsentMascot: boolean;
+
+	@Column('timestamp with time zone', {
+		nullable: true,
+		comment: 'マスコット機能同意日時',
+	})
+	public hataConsentMascotDate: Date | null;
 	// ======== 旗鯖同意管理ここまで ========
 
 	//#region Denormalized fields

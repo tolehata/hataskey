@@ -84,11 +84,15 @@ async function fetchNotifications() {
 }
 
 async function markAllAsRead() {
+	// 旗鯖fork: ローカルのバッジ消去はリモートAPIの成否と切り離す。
+	// 以前は mark-all-as-read 成功後にのみイベントを飛ばしていたため、
+	// トークンのスコープ不足・レート制限・一時的な通信失敗のいずれかで
+	// API が落ちると catch {} に握り潰されてバッジが永遠に消えなかった。
+	// 「ユーザーが通知を見た」事実はこの時点で確定しているので先に消す。
+	localStorage.setItem('extNotifLastReadAt', new Date().toISOString());
+	window.dispatchEvent(new CustomEvent('ext-tl-notif-count', { detail: 0 }));
 	try {
 		await callExternalApi('notifications/mark-all-as-read', {});
-		localStorage.setItem('extNotifLastReadAt', new Date().toISOString());
-		// バッジ消去イベントを発火 (HatasabaUI モバイル下部バッジ等)
-		window.dispatchEvent(new CustomEvent('ext-tl-notif-count', { detail: 0 }));
 	} catch {}
 }
 
@@ -252,11 +256,12 @@ onMounted(async () => {
 		mainRouter.replace('/settings/external-account');
 		return;
 	}
+	// 旗鯖fork: 訪問時に既読化。fetch の完了/失敗を待たず、ページを開いた時点で
+	// 即座にバッジを消す (fetch が遅い・失敗するケースでもバッジが残らないように)
+	markAllAsRead();
 	await fetchNotifications();
 	// 旗鯖fork: 外部サーバーの絵文字URLマップを取得 (リアクション絵文字解決用)
 	try { externalEmojiUrlMap.value = await getExternalEmojiUrlMap(); } catch { /* 失敗時はフォールバックURLで対応 */ }
-	// 訪問時に既読化
-	await markAllAsRead();
 	// リアルタイム受信を listen
 	window.addEventListener('external-notification', onExternalNotification);
 });

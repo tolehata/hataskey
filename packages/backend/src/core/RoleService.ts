@@ -50,6 +50,10 @@ export type RolePolicies = {
 	canUseTranslator: boolean;
 	canUseAutoTranslate: boolean;
 	canHideAds: boolean;
+	// 旗鯖fork: マスコット機能の上限 (表情数/文言数/キャラクター数)
+	mascotMaxExpressions: number;
+	mascotMaxPhrases: number;
+	mascotMaxCharacters: number;
 	driveCapacityMb: number;
 	maxFileSizeMb: number;
 	alwaysMarkNsfw: boolean;
@@ -95,6 +99,9 @@ export const DEFAULT_POLICIES: RolePolicies = {
 	canUseTranslator: true,
 	canUseAutoTranslate: false,
 	canHideAds: false,
+	mascotMaxExpressions: 5,
+	mascotMaxPhrases: 10,
+	mascotMaxCharacters: 3,
 	driveCapacityMb: 100,
 	maxFileSizeMb: 30,
 	alwaysMarkNsfw: false,
@@ -423,6 +430,9 @@ export class RoleService implements OnApplicationShutdown, OnModuleInit {
 			canUseTranslator: calc('canUseTranslator', vs => vs.some(v => v === true)),
 			canUseAutoTranslate: calc('canUseAutoTranslate', vs => vs.some(v => v === true)),
 			canHideAds: calc('canHideAds', vs => vs.some(v => v === true)),
+			mascotMaxExpressions: calc('mascotMaxExpressions', vs => Math.max(...vs)),
+			mascotMaxPhrases: calc('mascotMaxPhrases', vs => Math.max(...vs)),
+			mascotMaxCharacters: calc('mascotMaxCharacters', vs => Math.max(...vs)),
 			driveCapacityMb: calc('driveCapacityMb', vs => Math.max(...vs)),
 			maxFileSizeMb: calc('maxFileSizeMb', vs => Math.max(...vs)),
 			alwaysMarkNsfw: calc('alwaysMarkNsfw', vs => vs.some(v => v === true)),

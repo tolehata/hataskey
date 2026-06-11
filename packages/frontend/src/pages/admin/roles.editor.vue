@@ -468,6 +468,64 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</div>
 			</MkFolder>
 
+			<!-- 旗鯖fork: マスコット機能の上限ポリシー -->
+			<MkFolder v-if="matchQuery(['マスコットの最大表情数', 'mascotMaxExpressions'])">
+				<template #label>マスコットの最大表情数</template>
+				<template #suffix>
+					<span v-if="role.policies.mascotMaxExpressions.useDefault" :class="$style.useDefaultLabel">{{ i18n.ts._role.useBaseValue }}</span>
+					<span v-else>{{ role.policies.mascotMaxExpressions.value }}</span>
+					<span :class="$style.priorityIndicator"><i :class="getPriorityIcon(role.policies.mascotMaxExpressions)"></i></span>
+				</template>
+				<div class="_gaps">
+					<MkSwitch v-model="role.policies.mascotMaxExpressions.useDefault" :readonly="readonly">
+						<template #label>{{ i18n.ts._role.useBaseValue }}</template>
+					</MkSwitch>
+					<MkInput v-model="role.policies.mascotMaxExpressions.value" :disabled="role.policies.mascotMaxExpressions.useDefault" type="number" :readonly="readonly">
+					</MkInput>
+					<MkRange v-model="role.policies.mascotMaxExpressions.priority" :min="0" :max="2" :step="1" easing :textConverter="(v) => v === 0 ? i18n.ts._role._priority.low : v === 1 ? i18n.ts._role._priority.middle : v === 2 ? i18n.ts._role._priority.high : ''">
+						<template #label>{{ i18n.ts._role.priority }}</template>
+					</MkRange>
+				</div>
+			</MkFolder>
+
+			<MkFolder v-if="matchQuery(['マスコットの最大文言数', 'mascotMaxPhrases'])">
+				<template #label>マスコットの最大文言数</template>
+				<template #suffix>
+					<span v-if="role.policies.mascotMaxPhrases.useDefault" :class="$style.useDefaultLabel">{{ i18n.ts._role.useBaseValue }}</span>
+					<span v-else>{{ role.policies.mascotMaxPhrases.value }}</span>
+					<span :class="$style.priorityIndicator"><i :class="getPriorityIcon(role.policies.mascotMaxPhrases)"></i></span>
+				</template>
+				<div class="_gaps">
+					<MkSwitch v-model="role.policies.mascotMaxPhrases.useDefault" :readonly="readonly">
+						<template #label>{{ i18n.ts._role.useBaseValue }}</template>
+					</MkSwitch>
+					<MkInput v-model="role.policies.mascotMaxPhrases.value" :disabled="role.policies.mascotMaxPhrases.useDefault" type="number" :readonly="readonly">
+					</MkInput>
+					<MkRange v-model="role.policies.mascotMaxPhrases.priority" :min="0" :max="2" :step="1" easing :textConverter="(v) => v === 0 ? i18n.ts._role._priority.low : v === 1 ? i18n.ts._role._priority.middle : v === 2 ? i18n.ts._role._priority.high : ''">
+						<template #label>{{ i18n.ts._role.priority }}</template>
+					</MkRange>
+				</div>
+			</MkFolder>
+
+			<MkFolder v-if="matchQuery(['マスコットの最大キャラクター数', 'mascotMaxCharacters'])">
+				<template #label>マスコットの最大キャラクター数</template>
+				<template #suffix>
+					<span v-if="role.policies.mascotMaxCharacters.useDefault" :class="$style.useDefaultLabel">{{ i18n.ts._role.useBaseValue }}</span>
+					<span v-else>{{ role.policies.mascotMaxCharacters.value }}</span>
+					<span :class="$style.priorityIndicator"><i :class="getPriorityIcon(role.policies.mascotMaxCharacters)"></i></span>
+				</template>
+				<div class="_gaps">
+					<MkSwitch v-model="role.policies.mascotMaxCharacters.useDefault" :readonly="readonly">
+						<template #label>{{ i18n.ts._role.useBaseValue }}</template>
+					</MkSwitch>
+					<MkInput v-model="role.policies.mascotMaxCharacters.value" :disabled="role.policies.mascotMaxCharacters.useDefault" type="number" :readonly="readonly">
+					</MkInput>
+					<MkRange v-model="role.policies.mascotMaxCharacters.priority" :min="0" :max="2" :step="1" easing :textConverter="(v) => v === 0 ? i18n.ts._role._priority.low : v === 1 ? i18n.ts._role._priority.middle : v === 2 ? i18n.ts._role._priority.high : ''">
+						<template #label>{{ i18n.ts._role.priority }}</template>
+					</MkRange>
+				</div>
+			</MkFolder>
+
 			<MkFolder v-if="matchQuery([i18n.ts._role._options.maxFileSize, 'maxFileSizeMb'])">
 				<template #label>{{ i18n.ts._role._options.maxFileSize }}</template>
 				<template #suffix>

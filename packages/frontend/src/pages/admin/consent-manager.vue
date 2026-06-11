@@ -17,6 +17,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<button :class="[$style.filterBtn, filterMode === 'all' && $style.filterBtnOn]" @click="setFilter('all')">すべて</button>
 					<button :class="[$style.filterBtn, filterMode === 'externalTl' && $style.filterBtnOn]" @click="setFilter('externalTl')">外部TL同意済み</button>
 					<button :class="[$style.filterBtn, filterMode === 'customFont' && $style.filterBtnOn]" @click="setFilter('customFont')">フォント免責同意済み</button>
+					<button :class="[$style.filterBtn, filterMode === 'mascot' && $style.filterBtnOn]" @click="setFilter('mascot')">マスコット同意済み</button>
 				</div>
 			</div>
 
@@ -58,6 +59,13 @@ SPDX-License-Identifier: AGPL-3.0-only
 							<span v-else :class="[$style.badge, $style.badgeGray]">
 								<i class="ti ti-typography-off"></i> フォント免責未同意
 							</span>
+							<span v-if="u.hataConsentMascot" :class="[$style.badge, $style.badgePurple]">
+								<i class="ti ti-mood-smile-beam"></i> マスコット同意済み
+								<span v-if="u.hataConsentMascotDate" :class="$style.badgeDate">{{ formatDate(u.hataConsentMascotDate) }}</span>
+							</span>
+							<span v-else :class="[$style.badge, $style.badgeGray]">
+								<i class="ti ti-mood-off"></i> マスコット未同意
+							</span>
 						</div>
 					</div>
 				</div>
@@ -81,7 +89,7 @@ const PAGE_SIZE = 50;
 
 const loading = ref(true);
 const searchQuery = ref('');
-const filterMode = ref<'all' | 'externalTl' | 'customFont'>('all');
+const filterMode = ref<'all' | 'externalTl' | 'customFont' | 'mascot'>('all');
 
 interface ConsentUser {
 	id: string;
@@ -92,6 +100,8 @@ interface ConsentUser {
 	hataConsentExternalTlDate: string | null;
 	hataConsentCustomFont: boolean;
 	hataConsentCustomFontDate: string | null;
+	hataConsentMascot: boolean;
+	hataConsentMascotDate: string | null;
 }
 
 const users = ref<ConsentUser[]>([]);
@@ -133,7 +143,7 @@ function loadMore() {
 	fetchUsers(false);
 }
 
-function setFilter(mode: 'all' | 'externalTl' | 'customFont') {
+function setFilter(mode: 'all' | 'externalTl' | 'customFont' | 'mascot') {
 	filterMode.value = mode;
 	fetchUsers(true);
 }
@@ -200,6 +210,7 @@ definePage({
 }
 .badgeGreen { background: color-mix(in srgb, var(--MI_THEME-success) 15%, transparent); color: var(--MI_THEME-success); }
 .badgeBlue { background: color-mix(in srgb, var(--MI_THEME-accent) 15%, transparent); color: var(--MI_THEME-accent); }
+.badgePurple { background: color-mix(in srgb, var(--MI_THEME-love) 15%, transparent); color: var(--MI_THEME-love); }
 .badgeGray { background: color-mix(in srgb, var(--MI_THEME-fg) 8%, transparent); color: var(--MI_THEME-fg); opacity: .5; }
 .badgeDate { font-size: .68rem; opacity: .7; margin-left: 2px; }
 .loadMoreWrap { text-align: center; padding: 12px; }

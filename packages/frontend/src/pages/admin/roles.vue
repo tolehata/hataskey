@@ -182,6 +182,31 @@ SPDX-License-Identifier: AGPL-3.0-only
 						</MkInput>
 					</MkFolder>
 
+					<!-- 旗鯖fork: マスコット機能の上限ポリシー -->
+					<MkFolder v-if="matchQuery(['マスコットの最大表情数', 'mascotMaxExpressions'])">
+						<template #label>マスコットの最大表情数</template>
+						<template #suffix>{{ policies.mascotMaxExpressions }}</template>
+						<MkInput v-model="policies.mascotMaxExpressions" type="number">
+							<template #caption>マスコット1キャラクターあたりに設定できる表情の最大数 (上限の目安: 8)</template>
+						</MkInput>
+					</MkFolder>
+
+					<MkFolder v-if="matchQuery(['マスコットの最大文言数', 'mascotMaxPhrases'])">
+						<template #label>マスコットの最大文言数</template>
+						<template #suffix>{{ policies.mascotMaxPhrases }}</template>
+						<MkInput v-model="policies.mascotMaxPhrases" type="number">
+							<template #caption>マスコットに設定できる文言の最大数 (上限の目安: 30)</template>
+						</MkInput>
+					</MkFolder>
+
+					<MkFolder v-if="matchQuery(['マスコットの最大キャラクター数', 'mascotMaxCharacters'])">
+						<template #label>マスコットの最大キャラクター数</template>
+						<template #suffix>{{ policies.mascotMaxCharacters }}</template>
+						<MkInput v-model="policies.mascotMaxCharacters" type="number">
+							<template #caption>登録・切替できるマスコットキャラクターの最大数</template>
+						</MkInput>
+					</MkFolder>
+
 					<MkFolder v-if="matchQuery([i18n.ts._role._options.maxFileSize, 'maxFileSizeMb'])">
 						<template #label>{{ i18n.ts._role._options.maxFileSize }}</template>
 						<template #suffix>{{ policies.maxFileSizeMb }}MB</template>

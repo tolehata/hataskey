@@ -25,7 +25,7 @@ export const paramDef = {
 		offset: { type: 'integer', default: 0 },
 		filter: {
 			type: 'string',
-			enum: ['all', 'externalTl', 'customFont'],
+			enum: ['all', 'externalTl', 'customFont', 'mascot'],
 			default: 'all',
 		},
 		username: { type: 'string', nullable: true, default: null },
@@ -70,6 +70,8 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				profileQuery.andWhere('profile."hataConsentExternalTl" = true');
 			} else if (ps.filter === 'customFont') {
 				profileQuery.andWhere('profile."hataConsentCustomFont" = true');
+			} else if (ps.filter === 'mascot') {
+				profileQuery.andWhere('profile."hataConsentMascot" = true');
 			}
 
 			const profiles = await profileQuery.getMany();
@@ -98,6 +100,8 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 						hataConsentExternalTlDate: p?.hataConsentExternalTlDate?.toISOString() ?? null,
 						hataConsentCustomFont: p?.hataConsentCustomFont ?? false,
 						hataConsentCustomFontDate: p?.hataConsentCustomFontDate?.toISOString() ?? null,
+						hataConsentMascot: p?.hataConsentMascot ?? false,
+						hataConsentMascotDate: p?.hataConsentMascotDate?.toISOString() ?? null,
 					};
 				}),
 				total,

@@ -2931,6 +2931,7 @@ _widgets:
   instanceInfo: "サーバー情報"
   memo: "付箋"
   notifications: "通知"
+  externalNotifications: "外部通知"
   timeline: "タイムライン"
   calendar: "カレンダー"
   trends: "トレンド"

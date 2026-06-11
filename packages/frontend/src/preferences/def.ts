@@ -873,6 +873,38 @@ export const PREF_DEF = definePreferences({
 	'simpleUi.glassEffect': {
 		default: true,
 	},
+	// 旗鯖fork: HatasabaUI デッキモード
+	'simpleUi.deckMode': {
+		default: false,
+	},
+	'simpleUi.deckLayout': {
+		default: 'row' as 'row' | 'grid2' | 'grid3' | 'stack',
+	},
+	'simpleUi.deckColumns': {
+		default: [
+			{ id: 'col-local', type: 'local', width: 380 },
+			{ id: 'col-home', type: 'home', width: 380 },
+			{ id: 'col-notifications', type: 'notifications', width: 340 },
+		] as { id: string; type: string; width: number; height?: number; name?: string; sourceId?: string; withRenotes?: boolean; borderColor?: string | null; fullWidth?: boolean; fullHeight?: boolean }[],
+	},
+	// 旗鯖fork: デッキのシート構成プロファイル(複数保存・切替)。
+	// 旧 deckColumns/deckLayout は後方互換のため残し、hatasaba-deck.vue 側で
+	// プロファイルが空のとき旧キーから自動マイグレーションする。
+	// locked: ロック中はカラムの追加/削除/移動/ドラッグを抑止する。
+	'simpleUi.deckProfiles': {
+		default: [] as {
+			id: string;
+			name: string;
+			layout: 'row' | 'grid2' | 'grid3' | 'stack';
+			columns: { id: string; type: string; width: number; height?: number; name?: string; sourceId?: string; withRenotes?: boolean; borderColor?: string | null; fullWidth?: boolean; fullHeight?: boolean }[];
+		}[],
+	},
+	'simpleUi.deckActiveProfile': {
+		default: '' as string,
+	},
+	'simpleUi.deckLocked': {
+		default: false,
+	},
 	'simpleUi.noteSpacing': {
 		default: 'moderate' as 'compact' | 'moderate' | 'wide',
 	},

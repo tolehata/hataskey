@@ -31,8 +31,17 @@ const isScrolling = ref(false);
 const scrollState = ref<null | 'intro' | 'loop'>(null);
 const notesMainContainerEl = useTemplateRef('notesMainContainerEl');
 
+// 旗鯖fork: notes/featured の取得失敗をハンドリングする。
+// 元実装は catch が無く、未認証のウェルカム画面初回表示時に notes/featured が
+// (サーバー側のキャッシュ未ウォーム等で) 失敗すると、未処理のPromise rejectが
+// エラー境界へ伝播してウェルカム画面の上半分が赤いエラー画面に落ちていた。
+// (一度成功するとサーバー側がキャッシュを持つため、以降は再発しない症状だった)
+// 失敗してもTLプレビューを空のままにするだけにし、赤エラーへ落とさない。
 misskeyApiGet('notes/featured').then(_notes => {
 	notes.value = _notes;
+}).catch(() => {
+	// 取得失敗時はプレビューを空のままにする(ウェルカム画面自体は正常表示)
+	notes.value = [];
 });
 
 function changeScrollState() {

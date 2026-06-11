@@ -76,6 +76,15 @@ SPDX-License-Identifier: AGPL-3.0-only
                 <button :class="$style.sbPostBtn" @click="onPostClick">
                     <i class="ti ti-pencil"></i><span>ノート</span>
                 </button>
+                <!-- 旗鯖fork: デッキモード切替トグル (アカウント表示の上) -->
+                <div :class="$style.sbModeToggle">
+                    <button :class="[$style.sbModeBtn, { [$style.sbModeActive]: !deckMode }]" v-tooltip="'シンプル表示'" @click="setDeckMode(false)">
+                        <i class="ti ti-device-mobile"></i>
+                    </button>
+                    <button :class="[$style.sbModeBtn, { [$style.sbModeActive]: deckMode }]" v-tooltip="'デッキ表示'" @click="setDeckMode(true)">
+                        <i class="ti ti-layout-columns"></i>
+                    </button>
+                </div>
                 <div :class="$style.sbBottomRow">
                     <button :class="$style.sbAccount" @click="openAccountMenu">
                         <img v-if="$i?.avatarUrl" :src="$i.avatarUrl" :class="$style.sbAvatarImg" />
@@ -89,7 +98,7 @@ SPDX-License-Identifier: AGPL-3.0-only
     <div :class="[$style.mainColumn, { [$style.mainColumnShifted]: isDesktop && userPanelUserId }]">
         <div :class="$style.mainColumnInner">
         <!-- Top pill navbar (timeline tabs) - scroll reactive -->
-        <div :class="[$style.topBar, footerIsDark ? $style.topBarDark : $style.topBarLight, { [$style.topBarHidden]: !showTopBar }]" v-show="!isPageView">
+        <div :class="[$style.topBar, footerIsDark ? $style.topBarDark : $style.topBarLight, { [$style.topBarHidden]: !showTopBar }]" v-show="!isPageView && !deckActive">
             <button :class="$style.avatarBtn" @click="openAccountMenu" v-if="!isDesktop">
                 <img v-if="$i?.avatarUrl" :src="$i.avatarUrl" :class="$style.avatarImg"/>
                 <i v-else class="ti ti-user"></i>
@@ -131,9 +140,9 @@ SPDX-License-Identifier: AGPL-3.0-only
             <div style="width: 38px;"></div>
         </header>
 
-        <div :class="$style.content" ref="contentEl" @scroll="onContentScroll">
+        <div :class="$style.content" ref="contentEl" @scroll="onContentScroll" @wheel="onContentWheel">
             <Transition :name="$style.tlFade" mode="out-in">
-                <div v-show="!isPageView" :class="$style.timelineContainer" @touchstart="onTouchStart" @touchend="onTouchEnd" :key="tab + String(withRenotes) + String(withSensitive) + String(onlyFiles)">
+                <div v-show="!isPageView && !deckActive" :class="$style.timelineContainer" @touchstart="onTouchStart" @touchend="onTouchEnd" :key="tab + String(withRenotes) + String(withSensitive) + String(onlyFiles)">
                     <!-- 旗鯖fork: 「タイムライン上部に投稿フォームを表示する」設定がONのとき、外部TL以外でMkPostFormを表示 -->
                     <MkPostForm v-if="showFixedPostForm && !isExternalTab" :class="$style.fixedPostForm" class="_panel" fixed />
                     <KeepAlive>
@@ -148,6 +157,8 @@ SPDX-License-Identifier: AGPL-3.0-only
                     </KeepAlive>
                 </div>
             </Transition>
+            <!-- 旗鯖fork: デッキモード (デスクトップのみ) -->
+            <HatasabaDeck v-if="deckActive" :class="$style.deckArea"/>
             <div v-show="isPageView" :class="$style.pageContainer"><RouterView /></div>
         </div>
 
@@ -317,6 +328,7 @@ import { openInstanceMenu } from '@/ui/_common_/common.js';
 import { miLocalStorage } from '@/local-storage.js';
 
 const XWidgets = defineAsyncComponent(() => import('./_common_/widgets.vue'));
+const HatasabaDeck = defineAsyncComponent(() => import('./_common_/hatasaba-deck.vue'));
 const MkSimpleUserPanel = defineAsyncComponent(() => import('@/components/MkSimpleUserPanel.vue'));
 // 旗鯖fork: 「タイムライン上部に投稿フォームを表示する」設定で使用
 const MkPostForm = defineAsyncComponent(() => import('@/components/MkPostForm.vue'));
@@ -340,6 +352,54 @@ provideReactiveMetadata(pageMetadata);
 
 const simpleDrawerShowing = ref(false);
 const widgetsShowing = ref(false);
+
+// 旗鯖fork: デッキモード (デスクトップのみ)。サイドメニュー下部のトグルで切替。
+const deckMode = prefer.r['simpleUi.deckMode'];
+const deckActive = computed(() => isDesktop.value && deckMode.value && !isPageView.value);
+function setDeckMode(v: boolean) {
+	prefer.commit('simpleUi.deckMode', v);
+}
+
+// 旗鯖fork: トラックパッドの横スクロールでタイムラインタブを切替。
+// macOSでは横スワイプがブラウザの「戻る/進む」履歴ジェスチャに化けてしまうため、
+// 横方向が優位なwheelイベントを preventDefault で食い、タブ切替に割り当てる
+// (CSS側の overscroll-behavior-x: none と併用)。
+let wheelAccX = 0;
+let wheelLockUntil = 0;
+const orderedWheelTabs = computed<string[]>(() => [
+	...visibleTopTabs.value.map((t: any) => t.id),
+	...(showOHTL.value ? ['ohtl'] : []),
+	...(showOLTL.value ? ['oltl'] : []),
+]);
+// ノート内のコードブロック等、横スクロール可能な子要素の上では奪わない
+function hasHScrollableAncestor(start: HTMLElement | null): boolean {
+	let el = start;
+	while (el && el !== contentEl.value) {
+		if (el.scrollWidth > el.clientWidth + 1) {
+			const ox = window.getComputedStyle(el).overflowX;
+			if (ox === 'auto' || ox === 'scroll') return true;
+		}
+		el = el.parentElement;
+	}
+	return false;
+}
+function onContentWheel(ev: WheelEvent) {
+	if (!isDesktop.value || isPageView.value || deckActive.value) return;
+	if (Math.abs(ev.deltaX) <= Math.abs(ev.deltaY) * 1.2) return; // 横方向優位のみ
+	if (hasHScrollableAncestor(ev.target as HTMLElement)) return;
+	ev.preventDefault(); // macの履歴スワイプ誤発火を抑止
+	const now = Date.now();
+	if (now < wheelLockUntil) return;
+	wheelAccX += ev.deltaX;
+	if (Math.abs(wheelAccX) < 90) return;
+	const dir = wheelAccX > 0 ? 1 : -1;
+	wheelAccX = 0;
+	wheelLockUntil = now + 350;
+	const tabs = orderedWheelTabs.value;
+	const idx = tabs.indexOf(tab.value);
+	const next = idx === -1 ? 0 : Math.min(tabs.length - 1, Math.max(0, idx + dir));
+	if (tabs[next] && tabs[next] !== tab.value) switchTab(tabs[next] as TabType);
+}
 
 // ===== デスクトップ判定 =====
 const DESKTOP_THRESHOLD = 1100;
@@ -1224,6 +1284,46 @@ onUnmounted(()=>{
     flex-shrink:0;
     &:hover { opacity:1; background:color-mix(in srgb, var(--MI_THEME-navFg) 8%, transparent); }
 }
+/* 旗鯖fork: デッキモード切替トグル */
+.sbModeToggle {
+    display:flex;
+    gap:2px;
+    padding:3px;
+    margin-bottom:8px;
+    border-radius:999px;
+    background:color-mix(in srgb, var(--MI_THEME-accent) 8%, transparent);
+}
+.sbModeBtn {
+    flex:1;
+    padding:6px 0;
+    border:none;
+    border-radius:999px;
+    background:none;
+    color:var(--MI_THEME-fg);
+    opacity:.55;
+    cursor:pointer;
+    font-size:1em;
+    transition:background .15s, opacity .15s;
+    &:hover { opacity:.85; }
+}
+.sbModeActive {
+    background:var(--MI_THEME-accent);
+    color:var(--MI_THEME-fgOnAccent);
+    opacity:1;
+    &:hover { opacity:1; }
+}
+/* 旗鯖fork: デッキモード表示領域 */
+.deckArea {
+    height:100%;
+}
+/* 旗鯖fork: macの履歴スワイプ(横オーバースクロール)による「戻る」誤発火を抑止 */
+.root {
+    overscroll-behavior-x:none;
+}
+.content {
+    overscroll-behavior-x:none;
+}
+
 .sbAccount {
     flex:1;
     min-width:0;
@@ -1378,10 +1478,18 @@ onUnmounted(()=>{
     z-index:1;
     height:100%;
     overflow-y:auto;
-    /* 旗鯖fork: 下部の「ウィジェットを編集」ボタンが隠れないよう、padding-bottom を増やす */
-    padding:16px 12px calc(64px + env(safe-area-inset-bottom, 0px));
+    /* 旗鯖fork: 下部余白は padding-bottom ではなく末尾要素(編集ボタン)の margin-bottom で確保する。
+       Firefox は overflow コンテナ末尾の padding-bottom をスクロール可能領域に含めないため、
+       padding-bottom だと「ウィジェットを編集」ボタンが画面外に隠れてスクロールしても見えなくなる
+       (Chrome では含まれるため再現しない)。実体のある margin で確保すれば全ブラウザで見切れない。 */
+    padding:16px 12px 0;
     scrollbar-width:thin;
     scrollbar-color:color-mix(in srgb, var(--MI_THEME-fg) 12%, transparent) transparent;
+
+    /* 旗鯖fork: 末尾の「ウィジェットを編集」ボタンに下余白を持たせ、Firefoxでも見切れないようにする */
+    :deep(> div > ._textButton:last-child) {
+        margin-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+    }
 
     /* 旗鯖fork: サーバーメトリクス等のウィジェットでヘッダが sticky 設定されているため、
        スクロール時にタイトルバーだけが分離して動いて見える問題があった。
