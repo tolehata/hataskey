@@ -33,10 +33,12 @@
 			<button :class="$style.profileBtn" @click="openProfileMenu($event)">
 				<i class="ti ti-layout-board"></i><span v-if="toolbarPos !== 'right'" :class="$style.profileName">{{ activeProfileName }}</span><i v-if="toolbarPos !== 'right'" class="ti ti-chevron-down" :class="$style.profileChevron"></i>
 			</button>
-			<div :class="$style.toolbarSpacer"></div>
 			<button :class="$style.iconBtn" v-tooltip="'すべてのカラムを更新'" @click="reloadAll"><i class="ti ti-refresh"></i></button>
 			<button :class="[$style.iconBtn, { [$style.iconBtnOn]: locked }]" v-tooltip="locked ? 'ロック中(タップで解除)' : 'カラム編集をロック'" @click="toggleLock"><i :class="locked ? 'ti ti-lock' : 'ti ti-lock-open'"></i></button>
 			<button :class="$style.iconBtn" v-tooltip="toolbarPosLabel" @click="cycleToolbarPos"><i :class="toolbarPosIcon"></i></button>
+			<button v-if="toolbarPos !== 'right'" :class="[$style.iconBtn, { [$style.iconBtnOn]: clockEnabled }]" v-tooltip="'時計の表示'" @click="toggleClock"><i class="ti ti-clock"></i></button>
+			<div v-if="showClock" :class="$style.clock">{{ clockText }}</div>
+			<div :class="$style.toolbarSpacer"></div>
 		</div>
 	</div>
 
@@ -153,7 +155,7 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, ref, onMounted, defineAsyncComponent, type Component } from 'vue';
+import { computed, ref, onMounted, onUnmounted, defineAsyncComponent, type Component } from 'vue';
 import * as os from '@/os.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { prefer } from '@/preferences.js';
@@ -220,6 +222,27 @@ function cycleToolbarPos() {
 }
 const toolbarPosIcon = computed(() => toolbarPos.value === 'top' ? 'ti ti-layout-navbar' : toolbarPos.value === 'bottom' ? 'ti ti-layout-bottombar' : 'ti ti-layout-sidebar-right');
 const toolbarPosLabel = computed(() => toolbarPos.value === 'top' ? 'ツールバー: 上' : toolbarPos.value === 'bottom' ? 'ツールバー: 下' : 'ツールバー: 右');
+// 時計(上下配置 かつ ツールバー表示時のみ)。ON/OFFは simpleUi.deckClock。
+const clockEnabled = computed<boolean>(() => prefer.r['simpleUi.deckClock']?.value as boolean ?? false);
+function toggleClock() { prefer.commit('simpleUi.deckClock', !clockEnabled.value); }
+const showClock = computed(() => clockEnabled.value && (toolbarPos.value === 'top' || toolbarPos.value === 'bottom'));
+const now = ref(new Date());
+let clockTimer: ReturnType<typeof setInterval> | null = null;
+const WEEKDAYS_JA = ['日', '月', '火', '水', '木', '金', '土'];
+const clockText = computed(() => {
+	const d = now.value;
+	const mon = d.getMonth() + 1;
+	const day = d.getDate();
+	const wd = WEEKDAYS_JA[d.getDay()];
+	const h24 = d.getHours();
+	const ampm = h24 < 12 ? '午前' : '午後';
+	const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+	const m = d.getMinutes().toString().padStart(2, '0');
+	const sec = d.getSeconds().toString().padStart(2, '0');
+	return `${mon}月${day}日(${wd}) ${ampm}${h12}時${m}分${sec}秒`;
+});
+onMounted(() => { clockTimer = setInterval(() => { now.value = new Date(); }, 1000); });
+onUnmounted(() => { if (clockTimer) clearInterval(clockTimer); });
 const locked = computed<boolean>(() => prefer.r['simpleUi.deckLocked'].value as boolean);
 function toggleLock() { prefer.commit('simpleUi.deckLocked', !locked.value); }
 
@@ -561,6 +584,11 @@ function onSlotDragEnd() { slotDragId.value = null; slotDragOverId.value = null;
 const tabDragOverId = ref<string | null>(null);
 function onTabDragOverTab(frameTabId: string, ev: DragEvent) {
 	if (locked.value || !dragSrc.value) return;
+	// 縦積み(slot内に複数frame)のとき、タブのdragoverが親frame/slotに伝播すると
+	// 親側のdragoverハンドラ(slot並び替え用)と競合し、下のframeのタブにドロップ
+	// できなくなる。ここで preventDefault + stopPropagation して親への伝播を断つ。
+	ev.preventDefault();
+	ev.stopPropagation();
 	tabDragOverId.value = frameTabId;
 	if (ev.dataTransfer) ev.dataTransfer.dropEffect = 'move';
 }
@@ -687,7 +715,7 @@ function onNewSlotDrop(ev: DragEvent) {
 	moveTab(dragSrc.value, { kind: 'newSlot' });
 	onTabDragEnd();
 }
-function onFrameDragOver(frameId: string, ev: DragEvent) { if (!locked.value && dragSrc.value) { dragOverFrame.value = frameId; if (ev.dataTransfer) ev.dataTransfer.dropEffect = 'move'; } }
+function onFrameDragOver(frameId: string, ev: DragEvent) { if (!locked.value && dragSrc.value) { ev.stopPropagation(); dragOverFrame.value = frameId; if (ev.dataTransfer) ev.dataTransfer.dropEffect = 'move'; } }
 function onSlotStackDragOver(slotId: string, ev: DragEvent) { if (!locked.value && dragSrc.value) { dragOverSlotStack.value = slotId; if (ev.dataTransfer) ev.dataTransfer.dropEffect = 'move'; } }
 
 // ===== カラム追加メニュー(末尾に新slot) =====
@@ -734,11 +762,40 @@ function columnTypeMenu(anchor: HTMLElement, onPick: (partial: Partial<DeckTab> 
 		{ text: '投稿フォーム', icon: 'ti ti-pencil-plus', action: () => onPick({ type: 'postForm' }) },
 	];
 }
-function addColumn(ev: MouseEvent) {
+async function addColumn(ev: MouseEvent) {
+	// os.popupMenu はアンカー基準で、横スクロールコンテナ内の右端ボタンだと
+	// 位置計算が崩れてメニューが見切れる(1行しか出ない)。標準deckと同じく
+	// os.select(中央ダイアログ)で種別を選ばせる。見切れず項目も多くても安全。
 	const anchor = (ev.currentTarget ?? ev.target) as HTMLElement;
-	// メニューはアンカー(追加ボタン)基準で開く。MkModal側に画面外はみ出しの
-	// 補正があるため、右端ボタンでも画面内に収まる。
-	os.popupMenu(columnTypeMenu(anchor, p => addSlotWithTab(p)), anchor);
+	const ext = externalReady.value;
+	const items = [
+		{ value: 'home', label: 'ホーム' },
+		{ value: 'local', label: 'ローカル' },
+		{ value: 'social', label: 'ソーシャル' },
+		{ value: 'global', label: 'グローバル' },
+		{ value: 'trending', label: 'トレンド' },
+		{ value: 'mentions', label: 'メンション' },
+		{ value: 'directs', label: '指名' },
+		{ value: 'list', label: 'リスト' },
+		{ value: 'antenna', label: 'アンテナ' },
+		{ value: 'channel', label: 'チャンネル' },
+		...(ext ? [
+			{ value: 'ohtl', label: '外部ホーム' },
+			{ value: 'oltl', label: '外部ローカル' },
+			{ value: 'externalNotifications', label: '外部通知' },
+		] : []),
+		{ value: 'notifications', label: '通知' },
+		{ value: 'widgets', label: 'ウィジェット' },
+		{ value: 'postForm', label: '投稿フォーム' },
+	];
+	const { canceled, result } = await os.select({ title: 'カラムを追加', items });
+	if (canceled || result == null) return;
+	const type = result as ColumnType;
+	// ID選択が要る種別は二段で選ぶ
+	if (type === 'list') { pickListId(anchor, (id, name) => addSlotWithTab({ type: 'list', sourceId: id, name })); return; }
+	if (type === 'antenna') { pickAntennaId(anchor, (id, name) => addSlotWithTab({ type: 'antenna', sourceId: id, name })); return; }
+	if (type === 'channel') { pickChannelId(anchor, (id, name) => addSlotWithTab({ type: 'channel', sourceId: id, name })); return; }
+	addSlotWithTab({ type });
 }
 
 const BORDER_PALETTE: { name: string; value: string }[] = [
@@ -936,6 +993,7 @@ function openProfileMenu(ev: MouseEvent) {
 .toolbarSpacer { flex: 1; }
 .iconBtn { flex-shrink: 0; width: 30px; height: 26px; border: 1px solid var(--MI_THEME-divider); border-radius: 999px; background: var(--MI_THEME-panel); color: var(--MI_THEME-fg); cursor: pointer; transition: background .15s, color .15s; &:hover { background: color-mix(in srgb, var(--MI_THEME-accent) 10%, var(--MI_THEME-panel)); } }
 .iconBtnOn { background: var(--MI_THEME-accent); color: var(--MI_THEME-fgOnAccent); border-color: transparent; }
+.clock { flex-shrink: 0; align-self: center; font-variant-numeric: tabular-nums; font-weight: 700; font-size: .95em; color: var(--MI_THEME-accent); padding: 0 8px; letter-spacing: .02em; }
 
 .deck { flex: 1; min-height: 0; padding: 14px; box-sizing: border-box; scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--MI_THEME-fg) 12%, transparent) transparent; }
 
