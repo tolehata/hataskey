@@ -60,7 +60,7 @@ const exampleNote = reactive<Misskey.entities.Note>({
 		onlineStatus: 'unknown',
 		badgeRoles: [],
 	},
-	text: 'just setting up my crpk',
+	text: 'just setting up my htsky',
 	cw: null,
 	visibility: 'public',
 	localOnly: false,
