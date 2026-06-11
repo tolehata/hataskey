@@ -945,6 +945,9 @@ export const PREF_DEF = definePreferences({
 	'simpleUi.deckToolbarPos': {
 		default: 'top' as 'top' | 'right' | 'bottom',
 	},
+	'simpleUi.deckClock': {
+		default: false,
+	},
 	'simpleUi.noteSpacing': {
 		default: 'moderate' as 'compact' | 'moderate' | 'wide',
 	},

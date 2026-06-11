@@ -286,7 +286,9 @@ definePage(() => ({
 	backdrop-filter: var(--MI-blur, blur(15px));
 	background: color(from var(--MI_THEME-bg) srgb r g b / 0.5);
 	border-top: solid 0.5px var(--MI_THEME-divider);
-	padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 70px);
+	/* 旗鯖fork: friendly.vue前提の +70px はボトムナビと被らないための余白だが、
+	   HatasabaUIではボトムナビ構成が異なり過剰な空白になる。safe-area + 控えめな余白に。 */
+	padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
 }
 
 .bannerContainer {

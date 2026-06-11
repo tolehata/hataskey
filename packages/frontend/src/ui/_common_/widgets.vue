@@ -5,10 +5,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <template>
 <div :class="$style.widgetsRoot">
-	<XWidgets :edit="editMode" :widgets="widgets" @addWidget="addWidget" @removeWidget="removeWidget" @updateWidget="updateWidget" @updateWidgets="updateWidgets" @exit="editMode = false"/>
-
+	<!-- 旗鯖fork: 編集ボタンを上部に配置。下部だとウィジェットが多い時に
+	     スクロールしきらないと見えず見切れるため、先頭に出して常に見えるようにする。 -->
 	<button v-if="editMode" class="_textButton" :class="$style.edit" style="font-size: 0.9em;" @click="editMode = false"><i class="ti ti-check"></i> {{ i18n.ts.editWidgetsExit }}</button>
 	<button v-else class="_textButton" data-cy-widget-edit :class="$style.edit" style="font-size: 0.9em;" @click="editMode = true"><i class="ti ti-pencil"></i> {{ i18n.ts.editWidgets }}</button>
+
+	<XWidgets :edit="editMode" :widgets="widgets" @addWidget="addWidget" @removeWidget="removeWidget" @updateWidget="updateWidget" @updateWidgets="updateWidgets" @exit="editMode = false"/>
 </div>
 </template>
 
