@@ -905,6 +905,46 @@ export const PREF_DEF = definePreferences({
 	'simpleUi.deckLocked': {
 		default: false,
 	},
+	// 旗鯖fork: デッキ D2 — 3階層モデル(slot→frame→tab)のプロファイル。
+	// 旧 simpleUi.deckProfiles(columns形式)は後方互換・ロールバック用に温存し、
+	// V2が空のとき旧データから一度だけ変換して埋める(hatasaba-deck.vue 側)。
+	// slot   = レイアウトの1マス(横並び:列 / グリッド:セル / 縦一列:段)
+	// frame  = スロット内に縦積みされる箱。tabsが複数ならタブ切替表示になる
+	// tab    = 表示内容(カラム本体)
+	'simpleUi.deckProfilesV2': {
+		default: [] as {
+			id: string;
+			name: string;
+			layout: 'row' | 'grid2' | 'grid3' | 'stack';
+			slots: {
+				id: string;
+				width: number;
+				height?: number;
+				fullWidth?: boolean;
+				fullHeight?: boolean;
+				frames: {
+					id: string;
+					activeTab?: string;
+					borderColor?: string | null;
+					tabs: {
+						id: string;
+						type: string;
+						name?: string;
+						sourceId?: string;
+						withRenotes?: boolean;
+						tabName?: string;
+					}[];
+				}[];
+			}[];
+		}[],
+	},
+	'simpleUi.deckActiveProfileV2': {
+		default: '' as string,
+	},
+	// 旗鯖fork: デッキのツールバー配置(上/右/下)。デフォルトは上。
+	'simpleUi.deckToolbarPos': {
+		default: 'top' as 'top' | 'right' | 'bottom',
+	},
 	'simpleUi.noteSpacing': {
 		default: 'moderate' as 'compact' | 'moderate' | 'wide',
 	},

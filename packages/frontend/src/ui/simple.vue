@@ -6,7 +6,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 <template>
 <div :class="[$style.root, { [$style.desktopLayout]: isDesktop }]">
     <!-- PC/タブレット: オリジナル左サイドバー -->
-    <nav v-if="isDesktop" :class="[$style.sidebar, { [$style.sidebarSolid]: !glassEffect }]">
+    <nav v-if="isDesktop" :class="[$style.sidebar, { [$style.sidebarSolid]: !glassEffect, [$style.sidebarDeckFolded]: deckActive }]">
         <!-- バナーすりガラス背景 -->
         <div v-if="glassEffect" :class="$style.sidebarBanner">
             <img v-if="$i?.bannerUrl" :src="$i.bannerUrl" :class="$style.sidebarBannerImg" />
@@ -289,7 +289,7 @@ SPDX-License-Identifier: AGPL-3.0-only
     </Teleport>
 
     <!-- PC/タブレット: 右ウィジェットバー -->
-    <div v-if="isDesktop" :class="[$style.desktopWidgets, { [$style.desktopWidgetsSolid]: !glassEffect }]" :data-widget-border="showWidgetBorder ? 'on' : 'off'">
+    <div v-if="isDesktop && !deckActive" :class="[$style.desktopWidgets, { [$style.desktopWidgetsSolid]: !glassEffect }]" :data-widget-border="showWidgetBorder ? 'on' : 'off'">
         <div v-if="glassEffect" :class="$style.desktopWidgetsBanner">
             <img v-if="$i?.bannerUrl" :src="$i.bannerUrl" :class="$style.desktopWidgetsBannerImg" />
         </div>
@@ -1021,6 +1021,48 @@ onUnmounted(()=>{
     position:relative;
     overflow:hidden;
 }
+/* 旗鯖fork: デッキモード時はサイドバーをアイコンのみの細表示に折り畳む(横幅を最大化) */
+.sidebarDeckFolded {
+    width:64px;
+    transition:width .2s ease;
+}
+.sidebarDeckFolded .sbLabel,
+.sidebarDeckFolded .sbGroupLabel,
+.sidebarDeckFolded .sbBadge,
+.sidebarDeckFolded .sbUsername,
+.sidebarDeckFolded .sidebarBanner {
+    display:none;
+}
+.sidebarDeckFolded .sbItem,
+.sidebarDeckFolded .sbPostBtn,
+.sidebarDeckFolded .sbAccount {
+    justify-content:center;
+    padding-left:0;
+    padding-right:0;
+    gap:0;
+}
+.sidebarDeckFolded .sidebarInner {
+    padding-left:8px;
+    padding-right:8px;
+}
+.sidebarDeckFolded .sbModeToggle {
+    flex-direction:column;
+    gap:4px;
+}
+/* 応急処置: 折り畳み時にメニューが縦に収まらず切れる問題を緩和。
+   下部(投稿/モード/アカウント)をコンパクトにし、メニュー領域(sbScroll)の可視範囲を確保。
+   本格対応(ペンのみ表示・リアルタイムのボタン化等)はサイドメニュー刷新(S1)で行う。 */
+.sidebarDeckFolded .sbBottom {
+    gap:4px;
+    padding-top:8px;
+    margin-top:4px;
+}
+.sidebarDeckFolded .sbPostBtn {
+    height:44px;
+}
+.sidebarDeckFolded .sbScroll {
+    overflow-y:auto;
+}
 .sidebarBanner {
     position:absolute;
     inset:0;
@@ -1554,7 +1596,7 @@ onUnmounted(()=>{
     box-shadow:0 4px 24px rgba(0,0,0,.06),0 0 0 .5px rgba(0,0,0,.06) inset; color:rgba(0,0,0,.45);
 }
 .avatarBtn:active { transform:scale(.9); }
-.avatarImg { width:100%; height:100%; object-fit:cover; border-radius:9999px; }
+.avatarImg { width:100%; height:100%; max-width:36px; max-height:36px; object-fit:cover; border-radius:9999px; }
 
 .topPill {
     display:flex; align-items:center; gap:2px; padding:4px 6px; border-radius:9999px;

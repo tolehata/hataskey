@@ -4,7 +4,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 
 <template>
-<div>
+<div :class="$style.widgetsRoot">
 	<XWidgets :edit="editMode" :widgets="widgets" @addWidget="addWidget" @removeWidget="removeWidget" @updateWidget="updateWidget" @updateWidgets="updateWidgets" @exit="editMode = false"/>
 
 	<button v-if="editMode" class="_textButton" :class="$style.edit" style="font-size: 0.9em;" @click="editMode = false"><i class="ti ti-check"></i> {{ i18n.ts.editWidgetsExit }}</button>
@@ -77,5 +77,13 @@ function updateWidgets(thisWidgets) {
 <style lang="scss" module>
 .edit {
 	width: 100%;
+}
+
+/* 旗鯖fork: ウィジェット欄内の MkContainer ヘッダの sticky 追従を無効化。
+   sticky のままだと一番上のウィジェットのタイトルバーだけがスクロールに張り付いて
+   動いて見える問題が起きる。MkContainer のヘッダクラスは CSS Modules でハッシュ化され
+   外部から狙えないため、素のグローバルクラス ._panel 直下の <header> 要素を対象にする。 */
+.widgetsRoot :global(._panel) > header {
+	position: static !important;
 }
 </style>
