@@ -37,6 +37,9 @@ export interface IObject {
 	sensitive?: boolean;
 	disableRightClick?: boolean;
 	deleteAt?: Date;
+	// 旗鯖fork: 本家ec6b1cc6(#17563) — ActivityPub画像添付に width/height メタデータを含める
+	width?: number;
+	height?: number;
 }
 
 /**
