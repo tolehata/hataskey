@@ -948,6 +948,17 @@ export const PREF_DEF = definePreferences({
 	'simpleUi.deckClock': {
 		default: false,
 	},
+	// 旗鯖fork: デッキRSSティッカーのフィード(端末ローカル/最大5/配列順=優先順位/フィードごとに色)。
+	// accountDependent を付けないことでサーバー同期されず端末ごとに保持される。
+	'simpleUi.deckRssFeeds': {
+		default: [] as { id: string; url: string; name?: string; color?: string }[],
+	},
+	'simpleUi.deckRssEnabled': {
+		default: false,
+	},
+	'simpleUi.deckOnlineUsers': {
+		default: false,
+	},
 	'simpleUi.noteSpacing': {
 		default: 'moderate' as 'compact' | 'moderate' | 'wide',
 	},
