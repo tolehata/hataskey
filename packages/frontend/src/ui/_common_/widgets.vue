@@ -79,6 +79,7 @@ function updateWidgets(thisWidgets) {
 <style lang="scss" module>
 .edit {
 	width: 100%;
+	margin-bottom: 12px;
 }
 
 /* 旗鯖fork: ウィジェット欄内の MkContainer ヘッダの sticky 追従を無効化。
