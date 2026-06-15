@@ -498,6 +498,8 @@ export * as 'users/translate' from './endpoints/users/translate.js';
 export * as 'v2/admin/emoji/list' from './endpoints/v2/admin/emoji/list.js';
 export * as 'hata/login-ranking' from './endpoints/hata/login-ranking.js';
 export * as 'hata/consent/update' from './endpoints/hata/consent/update.js';
+export * as 'hata/mascot/get' from './endpoints/hata/mascot/get.js';
+export * as 'hata/mascot/update' from './endpoints/hata/mascot/update.js';
 export * as 'admin/hata/consent-list' from './endpoints/admin/hata/consent-list.js';
 
 export * as 'registration/apply' from './endpoints/registration/apply.js';

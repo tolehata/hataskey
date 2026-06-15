@@ -316,6 +316,25 @@ export class MiUserProfile {
 	public hataConsentMascotDate: Date | null;
 	// ======== 旗鯖同意管理ここまで ========
 
+	// 旗鯖fork: マスコット機能のデータ(キャラ/表情/文言の紐付け)。
+	// 画像はドライブのURL参照のみ保持し、画像本体はクライアントがDLしてローカルにキャッシュする。
+	// 上限・XSS・URL検証は hata/mascot/update エンドポイントで強制する。
+	@Column('jsonb', {
+		default: {},
+		comment: '旗鯖マスコット機能のデータ(キャラ・表情・文言)',
+	})
+	public hataMascotData: {
+		characters?: {
+			id: string;
+			name: string;
+			expressions?: { id: string; label: string; url: string; driveFileId?: string | null }[];
+			phrases?: { id: string; text: string; expressionId: string | null }[];
+		}[];
+		activeCharacterId?: string | null;
+		showName?: boolean;
+		updatedAt?: number;
+	};
+
 	//#region Denormalized fields
 	@Index()
 	@Column('varchar', {

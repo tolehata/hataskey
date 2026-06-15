@@ -36,7 +36,7 @@ export const paramDef = {
 	properties: {
 		type: {
 			type: 'string',
-			enum: ['externalTl', 'customFont'],
+			enum: ['externalTl', 'customFont', 'mascot'],
 		},
 		agree: { type: 'boolean' },
 	},
@@ -61,6 +61,11 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				await this.userProfilesRepository.update(me.id, {
 					hataConsentCustomFont: ps.agree,
 					hataConsentCustomFontDate: ps.agree ? now : null,
+				});
+			} else if (ps.type === 'mascot') {
+				await this.userProfilesRepository.update(me.id, {
+					hataConsentMascot: ps.agree,
+					hataConsentMascotDate: ps.agree ? now : null,
 				});
 			}
 
