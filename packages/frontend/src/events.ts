@@ -29,6 +29,8 @@ type Events = {
 	hasRequireRefresh: (value: boolean) => void;
 	reloadTimeline: () => void;
 	reloadNotification: () => void;
+	// 旗鯖fork: 上部ナビバーの「デッキ設定」ボタンからデッキツールバーを開閉する
+	toggleDeckToolbar: () => void;
 };
 
 export const globalEvents = new EventEmitter<Events>();

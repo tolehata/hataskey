@@ -21,9 +21,9 @@
 
 <template>
 <div :class="[$style.deckWrap, toolbarPos === 'right' ? $style.deckWrapRight : toolbarPos === 'bottom' ? $style.deckWrapBottom : $style.deckWrapTop]">
-	<!-- 折り畳み式ツールバー -->
-	<div :class="$style.toolbarBar">
-		<button :class="[$style.toolbarToggle, { [$style.toolbarToggleOn]: toolbarOpen }]" v-tooltip="toolbarOpen ? 'ツールバーを隠す' : 'ツールバーを表示'" @click="toolbarOpen = !toolbarOpen">
+	<!-- 折り畳み式ツールバー (上部メニューモード時は、開いている時だけ表示) -->
+	<div v-if="!topNavMode || toolbarOpen" :class="$style.toolbarBar">
+		<button v-if="!topNavMode" :class="[$style.toolbarToggle, { [$style.toolbarToggleOn]: toolbarOpen }]" v-tooltip="toolbarOpen ? 'ツールバーを隠す' : 'ツールバーを表示'" @click="toolbarOpen = !toolbarOpen">
 			<i :class="toolbarOpen ? 'ti ti-chevron-up' : 'ti ti-adjustments-horizontal'"></i>
 		</button>
 		<div v-if="toolbarOpen" :class="$style.toolbarInner">
@@ -41,7 +41,7 @@
 			<button v-if="toolbarPos !== 'right'" :class="[$style.iconBtn, { [$style.iconBtnOn]: onlineEnabled }]" v-tooltip="'オンラインユーザー数の表示'" @click="toggleOnline"><i class="ti ti-users"></i></button>
 			<div v-if="showOnline && onlineCount != null" :class="$style.online"><span :class="$style.onlineDot"></span>{{ onlineCount }}人がオンラインです</div>
 			<button v-if="toolbarPos !== 'right'" :class="[$style.iconBtn, { [$style.iconBtnOn]: rssEnabled }]" v-tooltip="'RSSフィードの管理'" @click="openRssMenu($event)"><i class="ti ti-rss"></i></button>
-			<div v-if="showRssTicker" :class="$style.rssTicker">
+			<div v-if="showRssTicker" ref="rssTickerEl" :class="$style.rssTicker">
 				<Transition :name="$style.rssFade">
 					<div :key="rssOffset" :class="$style.rssItems">
 						<a v-for="item in visibleRssItems" :key="item.link" :class="$style.rssItem" :style="item.color ? { '--rssColor': item.color } : {}" :href="item.link" rel="nofollow noopener" target="_blank" :title="(item.feedName ? '[' + item.feedName + '] ' : '') + item.title">
@@ -50,7 +50,7 @@
 					</div>
 				</Transition>
 			</div>
-			<div :class="$style.toolbarSpacer"></div>
+			<div v-if="toolbarPos === 'right'" :class="$style.toolbarSpacer"></div>
 		</div>
 	</div>
 
@@ -85,7 +85,7 @@
 						<!-- 本体(アクティブタブ) -->
 						<div :class="['frameBody', $style.frameBody]">
 							<template v-for="tab in frame.tabs" :key="tab.id">
-								<div v-show="activeTabOf(frame).id === tab.id" :class="[$style.tabPane, { [$style.tabPanePostForm]: tab.type === 'postForm', [$style.tabPaneExtNotif]: tab.type === 'externalNotifications' }]">
+								<div v-show="activeTabOf(frame).id === tab.id" :class="[$style.tabPane, { [$style.tabPanePostForm]: tab.type === 'postForm', [$style.tabPaneExtNotif]: tab.type === 'externalNotifications', [$style.tabPaneWidgets]: tab.type === 'widgets' }]">
 									<component :is="resolveColumn(tab)" v-bind="columnProps(tab)" :ref="el => setColRef(tab.id, el)"/>
 								</div>
 							</template>
@@ -122,7 +122,7 @@
 						</div>
 						<div :class="['frameBody', $style.frameBody]">
 							<template v-for="tab in frame.tabs" :key="tab.id">
-								<div v-show="activeTabOf(frame).id === tab.id" :class="[$style.tabPane, { [$style.tabPanePostForm]: tab.type === 'postForm', [$style.tabPaneExtNotif]: tab.type === 'externalNotifications' }]"><component :is="resolveColumn(tab)" v-bind="columnProps(tab)" :ref="el => setColRef(tab.id, el)"/></div>
+								<div v-show="activeTabOf(frame).id === tab.id" :class="[$style.tabPane, { [$style.tabPanePostForm]: tab.type === 'postForm', [$style.tabPaneExtNotif]: tab.type === 'externalNotifications', [$style.tabPaneWidgets]: tab.type === 'widgets' }]"><component :is="resolveColumn(tab)" v-bind="columnProps(tab)" :ref="el => setColRef(tab.id, el)"/></div>
 							</template>
 						</div>
 					</div>
@@ -152,7 +152,7 @@
 						</div>
 						<div :class="['frameBody', $style.frameBody]">
 							<template v-for="tab in frame.tabs" :key="tab.id">
-								<div v-show="activeTabOf(frame).id === tab.id" :class="[$style.tabPane, { [$style.tabPanePostForm]: tab.type === 'postForm', [$style.tabPaneExtNotif]: tab.type === 'externalNotifications' }]"><component :is="resolveColumn(tab)" v-bind="columnProps(tab)" :ref="el => setColRef(tab.id, el)"/></div>
+								<div v-show="activeTabOf(frame).id === tab.id" :class="[$style.tabPane, { [$style.tabPanePostForm]: tab.type === 'postForm', [$style.tabPaneExtNotif]: tab.type === 'externalNotifications', [$style.tabPaneWidgets]: tab.type === 'widgets' }]"><component :is="resolveColumn(tab)" v-bind="columnProps(tab)" :ref="el => setColRef(tab.id, el)"/></div>
 							</template>
 						</div>
 					</div>
@@ -175,6 +175,7 @@
 <script lang="ts" setup>
 import { computed, ref, watch, onMounted, onUnmounted, defineAsyncComponent, type Component } from 'vue';
 import * as os from '@/os.js';
+import { mainRouter } from '@/router.js';
 import { misskeyApi, misskeyApiGet } from '@/utility/misskey-api.js';
 import { prefer } from '@/preferences.js';
 import { globalEvents } from '@/events.js';
@@ -231,7 +232,13 @@ const LAYOUTS: { id: DeckLayout; icon: string; label: string }[] = [
 	{ id: 'stack', icon: 'ti ti-layout-list', label: '縦一列' },
 ];
 
-const toolbarOpen = ref(false);
+const toolbarOpen = ref((prefer.r['simpleUi.topNavMode']?.value as boolean) ?? false);
+// 旗鯖fork: 上部メニューモードが有効な時は、デッキのツールバートグルボタンを隠し、
+// 上部ナビバーの「デッキ設定」ボタンからの globalEvents で開閉する。
+const topNavMode = computed(() => (prefer.r['simpleUi.topNavMode']?.value as boolean) ?? false);
+function onToggleDeckToolbar() { toolbarOpen.value = !toolbarOpen.value; }
+onMounted(() => { globalEvents.on('toggleDeckToolbar', onToggleDeckToolbar); });
+onUnmounted(() => { globalEvents.off('toggleDeckToolbar', onToggleDeckToolbar); });
 const toolbarPos = computed<'top' | 'right' | 'bottom'>(() => (prefer.r['simpleUi.deckToolbarPos']?.value as 'top' | 'right' | 'bottom') ?? 'top');
 function cycleToolbarPos() {
 	const order: ('top' | 'right' | 'bottom')[] = ['top', 'right', 'bottom'];
@@ -262,12 +269,26 @@ const clockText = computed(() => {
 onMounted(() => { clockTimer = setInterval(() => { now.value = new Date(); }, 1000); });
 onUnmounted(() => { if (clockTimer) clearInterval(clockTimer); });
 
+// 旗鯖fork: デッキ表示中は、各種ページ遷移をモーダルウィンドウで開く(従来のMisskeyデッキと同じ挙動)。
+// mainRouter.navHook を設定し、アンマウント時に解除する。
+let prevNavHook: typeof mainRouter.navHook = null;
+onMounted(() => {
+	prevNavHook = mainRouter.navHook;
+	mainRouter.navHook = (path, flag): boolean => {
+		if (flag === 'forcePage') return false;
+		os.pageWindow(path);
+		return true;
+	};
+});
+onUnmounted(() => { mainRouter.navHook = prevNavHook; });
+
 // ===== RSS ティッカー(端末ローカル/最大5フィード/優先順位=配列順/フィードごとに色) =====
 // 取得は既存の /api/fetch-rss(CORS回避済みプロキシ)。URLは保存せずその場で取得するだけ。
 // 保存先 simpleUi.deckRssFeeds は端末ローカル(サーバー同期なし)。
 // 表示は画面幅に応じて最大5記事を横並び。各記事はフィードの色を帯びる。
 const RSS_MAX_FEEDS = 5;
-const RSS_MAX_VISIBLE = 5; // 横並び表示の最大数(画面幅に応じてCSSで実際の表示数は調整)
+const RSS_MAX_VISIBLE = 8; // 横並び表示の最大数
+const RSS_ITEM_MIN = 100; // 1項目あたりの目安幅(px)。これでticker幅を割って件数を出す。
 type RssFeed = { id: string; url: string; name?: string; color?: string };
 type RssItem = { title: string; link: string; color?: string; feedName?: string };
 const rssFeeds = computed<RssFeed[]>(() => (prefer.r['simpleUi.deckRssFeeds']?.value as RssFeed[]) ?? []);
@@ -275,15 +296,26 @@ const rssEnabled = computed<boolean>(() => (prefer.r['simpleUi.deckRssEnabled']?
 const rssItems = ref<RssItem[]>([]);
 const rssOffset = ref(0); // 横並び表示の開始位置(スライドで進む)
 const rssFetching = ref(false);
+const rssTickerEl = ref<HTMLElement | null>(null);
+const rssTickerWidth = ref(0);
+let rssResizeObserver: ResizeObserver | null = null;
 let rssTickTimer: ReturnType<typeof setInterval> | null = null;
 let rssFetchTimer: ReturnType<typeof setInterval> | null = null;
 
 const showRssTicker = computed(() => rssEnabled.value && rssFeeds.value.length > 0 && rssItems.value.length > 0 && (toolbarPos.value === 'top' || toolbarPos.value === 'bottom'));
-// 横並びで見せる記事(最大5)。offsetから巡回で切り出す。
+// ticker の実幅から、収まる項目数を動的に算出する。全項目が均一幅で伸びるため、
+// 「1項目あたりの最小読める幅(RSS_ITEM_MIN)」で素直に割る。
+const rssVisibleCount = computed(() => {
+	const w = rssTickerWidth.value;
+	if (w <= 0) return Math.min(3, rssItems.value.length); // 初期描画時の暫定値
+	const n = Math.max(1, Math.floor(w / RSS_ITEM_MIN));
+	return Math.min(RSS_MAX_VISIBLE, n, rssItems.value.length);
+});
+// 横並びで見せる記事。offsetから巡回で切り出す。
 const visibleRssItems = computed<RssItem[]>(() => {
 	const all = rssItems.value;
 	if (all.length === 0) return [];
-	const n = Math.min(RSS_MAX_VISIBLE, all.length);
+	const n = rssVisibleCount.value;
 	const out: RssItem[] = [];
 	for (let i = 0; i < n; i++) out.push(all[(rssOffset.value + i) % all.length]);
 	return out;
@@ -325,9 +357,9 @@ function startRss() {
 	// RSSボタンが無効、フィード無し、または右配置(=RSS非表示)の間は受信を停止する。
 	if (!rssEnabled.value || rssFeeds.value.length === 0 || toolbarPos.value === 'right') return;
 	fetchAllRss();
-	// 横並び表示を一定間隔で1つずつスライド(縦スライドフェード)
+	// 横並び表示を一定間隔で1つずつスライド(縦スライドフェード)。表示数より項目が多い時のみ。
 	rssTickTimer = setInterval(() => {
-		if (rssItems.value.length > RSS_MAX_VISIBLE) rssOffset.value = (rssOffset.value + 1) % rssItems.value.length;
+		if (rssItems.value.length > rssVisibleCount.value) rssOffset.value = (rssOffset.value + 1) % rssItems.value.length;
 	}, 6000);
 	rssFetchTimer = setInterval(() => { fetchAllRss(); }, 10 * 60 * 1000);
 }
@@ -335,8 +367,28 @@ function stopRss() {
 	if (rssTickTimer) { clearInterval(rssTickTimer); rssTickTimer = null; }
 	if (rssFetchTimer) { clearInterval(rssFetchTimer); rssFetchTimer = null; }
 }
+// ticker の幅を監視して、表示数を動的に決める(途切れ防止)。
+function measureRssTicker() {
+	const el = rssTickerEl.value;
+	if (!el) return;
+	const w = el.clientWidth;
+	if (w > 0) rssTickerWidth.value = w;
+}
+function observeRssTicker() {
+	if (rssResizeObserver) { rssResizeObserver.disconnect(); rssResizeObserver = null; }
+	const el = rssTickerEl.value;
+	if (!el) return;
+	// 描画直後はレイアウト未確定で clientWidth が 0 のことがあるため、RAFで実測する。
+	window.requestAnimationFrame(() => { measureRssTicker(); window.requestAnimationFrame(measureRssTicker); });
+	rssResizeObserver = new ResizeObserver(() => { measureRssTicker(); });
+	rssResizeObserver.observe(el);
+}
+// tickerの出現/消滅に合わせてobserverを張り直す(DOM更新後に実行)
+watch(rssTickerEl, () => { observeRssTicker(); }, { flush: 'post' });
+// 項目が更新された時もDOM確定後に再実測(初期描画でwidth=0だった場合の保険)
+watch(rssItems, () => { window.requestAnimationFrame(measureRssTicker); }, { flush: 'post' });
 onMounted(() => { startRss(); });
-onUnmounted(() => { stopRss(); });
+onUnmounted(() => { stopRss(); if (rssResizeObserver) { rssResizeObserver.disconnect(); rssResizeObserver = null; } });
 watch([rssEnabled, rssFeeds, toolbarPos], () => { startRss(); });
 
 // RSS管理
@@ -1280,6 +1332,9 @@ function openProfileMenu(ev: MouseEvent) {
 }
 .toolbarToggleOn { background: var(--MI_THEME-accent); color: var(--MI_THEME-fgOnAccent); border-color: transparent; }
 .toolbarInner { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
+/* 旗鯖fork: 上部ナビバーモード&上部ツールバーの時は中央揃え。
+   RSSティッカー等のflex:1要素が余白を食うと中央揃えが効かないため、
+   中央揃え時は伸長を止めて自然幅にし、全体を中央に寄せる。 */
 .layoutPill { display: flex; gap: 2px; padding: 3px; border-radius: 999px; background: color-mix(in srgb, var(--MI_THEME-accent) 8%, transparent); }
 .layoutBtn { width: 32px; height: 24px; border: none; border-radius: 999px; background: none; color: var(--MI_THEME-fg); opacity: .55; cursor: pointer; transition: background .15s, opacity .15s; &:hover { opacity: .85; } }
 .layoutBtnOn { background: var(--MI_THEME-accent); color: var(--MI_THEME-fgOnAccent); opacity: 1; &:hover { opacity: 1; } }
@@ -1295,27 +1350,28 @@ function openProfileMenu(ev: MouseEvent) {
 
 /* RSSティッカー: 画面幅に応じて最大5記事を横並び。各記事はフィード色のドット付き。 */
 .rssTicker {
-	flex: 1; min-width: 0; max-width: 1400px; height: 30px; align-self: center; overflow: hidden;
+	flex: 1; min-width: 0; height: 30px; align-self: center; overflow: hidden;
 	display: flex; align-items: center; position: relative;
 }
 .rssItems { position: absolute; inset: 0; display: flex; align-items: center; gap: 6px; width: 100%; min-width: 0; overflow: hidden; padding-right: 4px; }
 .rssItem {
-	display: flex; align-items: center; gap: 6px; min-width: 110px; flex: 1 1 140px; max-width: 300px;
+	display: flex; align-items: center; gap: 6px; min-width: 0; flex: 1 1 0;
 	padding: 4px 10px; border-radius: 999px; text-decoration: none;
 	background: color-mix(in srgb, var(--rssColor, var(--MI_THEME-accent)) 12%, transparent);
 	color: var(--MI_THEME-fg); font-size: .8em; font-weight: 600; transition: background .15s;
 	&:hover { background: color-mix(in srgb, var(--rssColor, var(--MI_THEME-accent)) 22%, transparent); }
 }
+/* 旗鯖fork: 先頭フィードだけ広め(flex-grow比のみで広げる。min-widthは増やさないので
+   合計幅は変わらず、項目が途切れない)。 */
+.rssItem:first-child { flex-grow: 4; }
 /* 最初の項目は横広にして、見出し(ヘッド)が最低限読める長さを確保する */
-.rssItem:first-child { flex: 3 1 300px; min-width: 260px; max-width: 560px; }
 /* 最後尾の項目は残り幅に合わせて縮める(min-widthを解除)。固定min-widthのままだと
    枠からはみ出して途中でちぎれて見えるため。残り幅で省略表示にする。 */
 .rssItem:last-child { min-width: 0; }
 /* 画面が狭い時は表示数を絞る(2番目以降を隠す) */
-@media (max-width: 1000px) { .rssItem:nth-child(n+5) { display: none; } }
-@media (max-width: 820px) { .rssItem:nth-child(n+4) { display: none; } }
-@media (max-width: 680px) { .rssItem:nth-child(n+3) { display: none; } }
-@media (max-width: 540px) { .rssItem:nth-child(n+2) { display: none; } }
+/* 画面が本当に狭い時だけ末尾項目を隠す(通常は flex で画面幅いっぱいまで伸ばす) */
+@media (max-width: 700px) { .rssItem:nth-child(n+4) { display: none; } }
+@media (max-width: 520px) { .rssItem:nth-child(n+3) { display: none; } }
 .rssDot { flex-shrink: 0; width: 8px; height: 8px; border-radius: 999px; background: var(--rssColor, var(--MI_THEME-accent)); }
 .rssItemText { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* RSSは個々の要素を動かさず、ティッカー全体(rssItemsグループ)をクロスフェードで差し替える。
@@ -1433,6 +1489,20 @@ function openProfileMenu(ev: MouseEvent) {
 /* 外部通知カラム(単体)のときだけフレーム高いっぱいに広げる。ウィジェット欄の中の
    外部通知ウィジェットには効かせない(そちらは widgetProps.height の固定高さを尊重)。 */
 .tabPaneExtNotif :global(.mkw-externalNotifications) { height: 100% !important; }
+/* デッキのウィジェットカラムは、各ウィジェット(._panel)に余白・角丸・影を付けて
+   通常のウィジェットビューと同じく境界が分かるようにする。 */
+.tabPaneWidgets {
+	padding: 8px;
+	:global(._panel) {
+		border-radius: 12px !important;
+		border: 1px solid var(--MI_THEME-divider) !important;
+		background: var(--MI_THEME-panel) !important;
+		box-shadow: 0 2px 10px rgba(0,0,0,.05);
+		margin-bottom: 10px !important;
+		overflow: hidden;
+	}
+	:global(.mkw-container > header) { border-radius: 12px 12px 0 0; }
+}
 .tabPane :global(._deckColError) { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 40px 16px; color: var(--MI_THEME-fg); opacity: .6; font-size: .9em; text-align: center; }
 .tabPane :global(._deckColError i) { font-size: 1.8em; }
 
