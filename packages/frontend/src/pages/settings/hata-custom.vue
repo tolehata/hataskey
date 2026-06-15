@@ -218,6 +218,25 @@ SPDX-License-Identifier: AGPL-3.0-only
             </div>
         </FormSection>
         </template>
+        <template v-if="activeCat === 'hatask'">
+        <FormSection first>
+            <template #label>Hatask の設定</template>
+            <div style="font-size:.85em;opacity:.7;margin-bottom:12px;line-height:1.6;">Hatask（ライフログ）の設定です。背景テーマ・外観（ライト/ダーク）・ホーム画面のセクション表示と並び替え・データ同期などをここから変更できます。設定内容は Hatask 本体と同期します。</div>
+            <button class="_buttonPrimary" @click="openHataskSettings" style="padding:10px 20px;font-weight:bold;"><i class="ti ti-settings"></i> Hatask の設定を開く</button>
+        </FormSection>
+        <FormSection>
+            <template #label>Hatask を開く</template>
+            <div style="font-size:.85em;opacity:.7;margin-bottom:12px;">Hatask の画面を開きます。</div>
+            <button class="_button" @click="goToHatask" style="padding:10px 20px;"><i class="ti ti-external-link"></i> Hatask を開く</button>
+        </FormSection>
+        </template>
+        <template v-if="activeCat === 'mascot'">
+        <FormSection first>
+            <template #label>マスコット</template>
+            <div style="font-size:.85em;opacity:.7;margin-bottom:12px;line-height:1.6;">あなたが用意した画像をマスコットとして表示できる機能です。キャラクター・表情・文言（セリフ）を設定できます。画像はドライブから選択し、URLの参照のみを保存します。初回利用時に同意確認が表示されます。</div>
+            <button class="_buttonPrimary" @click="openMascotSettings" style="padding:10px 20px;font-weight:bold;"><i class="ti ti-mood-smile"></i> マスコットの設定を開く</button>
+        </FormSection>
+        </template>
         <template v-if="activeCat === 'accessibility'">
         <FormSection first>
             <template #label>ノートの間隔</template>
@@ -286,6 +305,7 @@ import FormSection from '@/components/form/section.vue';
 import FormLink from '@/components/form/link.vue';
 import MkFeatureBanner from '@/components/MkFeatureBanner.vue';
 import * as os from '@/os.js';
+import { mainRouter } from '@/router.js';
 import { miLocalStorage } from '@/local-storage.js';
 import { prefer } from '@/preferences.js';
 import { getInitialPrefValue } from '@/preferences/manager.js';
@@ -299,6 +319,8 @@ const categories = [
     { id: 'general', icon: 'ti ti-flag', label: '旗鯖全体' },
     { id: 'font', icon: 'ti ti-typography', label: 'フォント' },
     { id: 'simpleUi', icon: 'ti ti-device-mobile', label: 'Hatasaba UI' },
+    { id: 'hatask', icon: 'ti ti-checklist', label: 'Hatask' },
+    { id: 'mascot', icon: 'ti ti-mood-smile', label: 'マスコット' },
     { id: 'accessibility', icon: 'ti ti-accessible', label: 'アクセシビリティ' },
 ];
 const activeCat = ref('general');
@@ -418,6 +440,17 @@ const openUiSetup = async () => {
 const replayDeckTutorial = async () => {
     const { defineAsyncComponent: dac } = await import('vue');
     os.popup(dac(() => import('@/ui/_common_/HatasabaDeckTutorial.vue')), {}, {}, 'closed');
+};
+// 旗鯖fork: Hataskの設定を共有コンポーネントで開く(本体とregistry同期)
+const openHataskSettings = async () => {
+    const { defineAsyncComponent: dac } = await import('vue');
+    os.popup(dac(() => import('@/pages/HataskSettings.vue')), {}, {}, 'closed');
+};
+const goToHatask = () => { mainRouter.push('/hatask'); };
+// 旗鯖fork: マスコット設定を開く
+const openMascotSettings = async () => {
+    const { defineAsyncComponent: dac } = await import('vue');
+    os.popup(dac(() => import('@/pages/MkMascotSettings.vue')), {}, {}, 'closed');
 };
 const isExternalLinked = computed(() => prefer.s['external.enabled'] && prefer.s['external.token'] != null);
 const hiddenReactionCount = computed(() => { hiddenReactionsVersion.value; return getHiddenReactions().length; });
