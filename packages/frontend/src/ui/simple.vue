@@ -5,8 +5,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <template>
 <div :class="[$style.root, { [$style.desktopLayout]: isDesktop }]">
-    <!-- PC/タブレット: オリジナル左サイドバー -->
-    <nav v-if="isDesktop" :class="[$style.sidebar, { [$style.sidebarSolid]: !glassEffect, [$style.sidebarDeckFolded]: deckActive }]">
+    <!-- PC/タブレット: オリジナル左サイドバー (上部メニューモード時は隠す) -->
+    <nav v-if="isDesktop && !topNavActive" :class="[$style.sidebar, { [$style.sidebarSolid]: !glassEffect, [$style.sidebarDeckFolded]: deckActive }]">
         <!-- バナーすりガラス背景 -->
         <div v-if="glassEffect" :class="$style.sidebarBanner">
             <img v-if="$i?.bannerUrl" :src="$i.bannerUrl" :class="$style.sidebarBannerImg" />
@@ -21,7 +21,7 @@ SPDX-License-Identifier: AGPL-3.0-only
                         <span :class="$style.sbLogoText">{{ instanceNameStr }}</span>
                     </div>
                 </div>
-                <button :class="$style.sbLogoAction" @click="openTlOptions"><i class="ti ti-adjustments"></i></button>
+                <!-- 旗鯖fork: サーバーアイコン横のTLオプションメニューボタンは非表示 -->
             </div>
 
             <!-- 旗鯖fork: メニュー群はこのスクロール領域に閉じ込め、下部の投稿/アカウントは
@@ -56,7 +56,7 @@ SPDX-License-Identifier: AGPL-3.0-only
                 <button :class="[$style.sbItem, { [$style.sbActive]: isRealtimeMode }]" @click="toggleRealtimeMode">
                     <i :class="[isRealtimeMode ? 'ti ti-bolt' : 'ti ti-bolt-off', $style.sbIcon]"></i>
                     <span :class="$style.sbLabel">リアルタイム</span>
-                    <span :class="[$style.sbToggle, { [$style.sbToggleOn]: isRealtimeMode }]"></span>
+                    <span :class="[$style.sbOnOff, { [$style.sbOnOffOn]: isRealtimeMode }]">{{ isRealtimeMode ? 'ON' : 'OFF' }}</span>
                 </button>
             </div>
 
@@ -74,7 +74,7 @@ SPDX-License-Identifier: AGPL-3.0-only
             <!-- 下部: 投稿 + アカウント (固定) -->
             <div :class="$style.sbBottom">
                 <button :class="$style.sbPostBtn" @click="onPostClick">
-                    <i class="ti ti-pencil"></i><span>ノート</span>
+                    <i class="ti ti-pencil"></i>
                 </button>
                 <!-- 旗鯖fork: デッキモード切替トグル (アカウント表示の上) -->
                 <div :class="$style.sbModeToggle">
@@ -97,6 +97,34 @@ SPDX-License-Identifier: AGPL-3.0-only
 
     <div :class="[$style.mainColumn, { [$style.mainColumnShifted]: isDesktop && userPanelUserId }]">
         <div :class="$style.mainColumnInner">
+        <!-- 旗鯖fork: 上部メニューモードのナビバー(横並びピル型/常時固定)。デッキ併用時はこの下にデッキツールバーが来る。 -->
+        <nav v-if="topNavActive" :class="[$style.topNav, { [$style.topNavSolid]: !glassEffect }]">
+            <button :class="$style.topNavLogo" @click="openInstanceMenuMobile" v-tooltip="instance.name ?? 'インスタンス'">
+                <img v-if="instance.iconUrl" :src="instance.iconUrl" :class="$style.topNavLogoImg"/>
+                <i v-else class="ti ti-server"></i>
+            </button>
+            <button :class="[$style.topNavItem, { [$style.topNavItemActive]: isRealtimeMode }]" v-tooltip="isRealtimeMode ? 'リアルタイム: ON' : 'リアルタイム: OFF'" @click="toggleRealtimeMode">
+                <i :class="isRealtimeMode ? 'ti ti-bolt' : 'ti ti-bolt-off'"></i><span>リアルタイム</span>
+            </button>
+            <div :class="$style.topNavDivider"></div>
+            <div :class="$style.topNavScroll" @wheel.prevent="onTopNavWheel">
+                <template v-for="grp in sidebarGroups" :key="grp.key">
+                    <button v-for="item in grp.items" :key="item.id" :class="[$style.topNavItem, { [$style.topNavItemActive]: sidebarItemActive(item.id) }]" v-tooltip="item.label" @click="sidebarItemClick(item.id, $event)">
+                        <i :class="item.icon"></i><span>{{ item.label }}</span>
+                        <span v-if="item.id==='notifications' && hasUnreadNotif" :class="$style.topNavDot"></span>
+                        <span v-if="item.id==='announcements' && hasUnreadAnnouncements" :class="$style.topNavDot"></span>
+                        <span v-if="item.id==='chat' && hasUnreadChat" :class="$style.topNavDot"></span>
+                        <span v-if="item.id==='externalNotifications' && extNotifHasUnread" :class="$style.topNavDotBlue"></span>
+                    </button>
+                </template>
+                <button v-if="$i && ($i.isAdmin || $i.isModerator)" :class="[$style.topNavItem, { [$style.topNavItemActive]: isAdminPage }]" v-tooltip="'コントロールパネル'" @click="goToAdmin"><i class="ti ti-dashboard"></i><span>管理</span></button>
+            </div>
+            <div :class="$style.topNavDivider"></div>
+            <button v-if="deckActive" :class="$style.topNavItem" v-tooltip="'デッキ設定'" @click="globalEvents.emit('toggleDeckToolbar')"><i class="ti ti-layout-board"></i><span>デッキ</span></button>
+            <button :class="$style.topNavItem" v-tooltip="'設定'" @click="goToSettings"><i class="ti ti-settings"></i><span>設定</span></button>
+            <button :class="$style.topNavPost" v-tooltip="'ノート'" @click="onPostClick"><i class="ti ti-pencil"></i><span>ノート</span></button>
+            <button :class="$style.topNavAvatar" @click="openAccountMenu"><MkAvatar v-if="$i" :user="$i" :class="$style.topNavAvatarImg"/></button>
+        </nav>
         <!-- Top pill navbar (timeline tabs) - scroll reactive -->
         <div :class="[$style.topBar, footerIsDark ? $style.topBarDark : $style.topBarLight, { [$style.topBarHidden]: !showTopBar }]" v-show="!isPageView && !deckActive">
             <button :class="$style.avatarBtn" @click="openAccountMenu" v-if="!isDesktop">
@@ -157,8 +185,13 @@ SPDX-License-Identifier: AGPL-3.0-only
                     </KeepAlive>
                 </div>
             </Transition>
-            <!-- 旗鯖fork: デッキモード (デスクトップのみ) -->
-            <HatasabaDeck v-if="deckActive" :class="$style.deckArea"/>
+            <!-- 旗鯖fork: デッキモード (デスクトップのみ)。背景にヘッダー画像のぼかしを敷く(無効化可) -->
+            <div v-if="deckActive" :class="$style.deckArea">
+                <div v-if="glassEffect && !deckNoBannerBg && $i?.bannerUrl" :class="$style.deckBanner">
+                    <img :src="$i.bannerUrl" :class="$style.deckBannerImg" />
+                </div>
+                <HatasabaDeck :class="$style.deckAreaInner"/>
+            </div>
             <div v-show="isPageView" :class="$style.pageContainer"><RouterView /></div>
         </div>
 
@@ -303,9 +336,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { ref, computed, provide, onMounted, onUnmounted, nextTick, defineAsyncComponent } from 'vue';
+import { ref, computed, provide, onMounted, onUnmounted, nextTick, defineAsyncComponent, watch } from 'vue';
 import { instanceName } from '@@/js/config.js';
 import XCommon from './_common_/common.vue';
+import { globalEvents } from '@/events.js';
 import MkStreamingNotesTimeline from '@/components/MkStreamingNotesTimeline.vue';
 import MkExternalTimeline from '@/components/MkExternalTimeline.vue';
 // 旗鯖fork: トレンドタイムライン (TTL)
@@ -356,6 +390,20 @@ const widgetsShowing = ref(false);
 // 旗鯖fork: デッキモード (デスクトップのみ)。サイドメニュー下部のトグルで切替。
 const deckMode = prefer.r['simpleUi.deckMode'];
 const deckActive = computed(() => isDesktop.value && deckMode.value && !isPageView.value);
+// 旗鯖fork: デッキを初めて開いた時、チュートリアル(ウィザード)を表示する。
+// watch の登録は isDesktop/isPageView 定義後に行う(下方の onMounted 付近)。
+let deckTutorialShown = false;
+function maybeShowDeckTutorial() {
+	if (deckTutorialShown) return;
+	if (prefer.r['simpleUi.deckTutorialDone']?.value) return;
+	deckTutorialShown = true;
+	os.popup(defineAsyncComponent(() => import('./_common_/HatasabaDeckTutorial.vue')), {}, {}, 'closed');
+}
+// 旗鯖fork: 上部メニューモード(デスクトップのみ)。ONで左サイドバーを隠し上部ナビバーを出す。
+const topNavMode = prefer.r['simpleUi.topNavMode'];
+const topNavActive = computed(() => isDesktop.value && topNavMode.value && !isPageView.value);
+// 旗鯖fork: デッキ背景のヘッダー画像ぼかしを使わないオプション
+const deckNoBannerBg = computed(() => prefer.r['simpleUi.deckNoBannerBg'].value);
 function setDeckMode(v: boolean) {
 	prefer.commit('simpleUi.deckMode', v);
 }
@@ -675,6 +723,8 @@ const onTouchEnd = (e:TouchEvent)=>{
 };
 
 // ===== ナビゲーション =====
+// 旗鯖fork: 上部ナビバーの横スクロール(縦ホイール→横)
+const onTopNavWheel = (ev: WheelEvent)=>{ const el = ev.currentTarget as HTMLElement; el.scrollLeft += (Math.abs(ev.deltaY) > Math.abs(ev.deltaX) ? ev.deltaY : ev.deltaX); };
 const onPostClick = ()=>{ os.post({}); };
 const scrollToTop = ()=>{ if(contentEl.value) contentEl.value.scrollTo({ top:0, behavior:'smooth' }); };
 const goHome = ()=>{
@@ -956,6 +1006,9 @@ function onSimpleUserPanel(ev: Event) {
     }
 }
 
+// 旗鯖fork: デッキ初表示時にチュートリアルを出す監視(全変数定義後に登録)
+watch(deckActive, (v) => { if (v) maybeShowDeckTutorial(); }, { immediate: true });
+
 onMounted(()=>{
     cleanupStaleUiElements();
     checkIsPageView();
@@ -1030,6 +1083,9 @@ onUnmounted(()=>{
 .sidebarDeckFolded .sbGroupLabel,
 .sidebarDeckFolded .sbBadge,
 .sidebarDeckFolded .sbUsername,
+.sidebarDeckFolded .sbLogoWrap,
+.sidebarDeckFolded .sbLogoSub,
+.sidebarDeckFolded .sbLogoText,
 .sidebarDeckFolded .sidebarBanner {
     display:none;
 }
@@ -1357,6 +1413,32 @@ onUnmounted(()=>{
 /* 旗鯖fork: デッキモード表示領域 */
 .deckArea {
     height:100%;
+    position:relative;
+}
+/* 旗鯖fork: デッキ背景のヘッダー画像ぼかし */
+.deckBanner {
+    position:absolute;
+    inset:0;
+    z-index:0;
+    overflow:hidden;
+    &::after {
+        content:'';
+        position:absolute;
+        inset:0;
+        background:color-mix(in srgb, var(--MI_THEME-bg) 78%, transparent);
+    }
+}
+.deckBannerImg {
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    filter:blur(20px) saturate(1.2);
+    transform:scale(1.1);
+}
+.deckAreaInner {
+    position:relative;
+    z-index:1;
+    height:100%;
 }
 /* 旗鯖fork: macの履歴スワイプ(横オーバースクロール)による「戻る」誤発火を抑止 */
 .root {
@@ -1397,6 +1479,23 @@ onUnmounted(()=>{
     white-space:nowrap;
 }
 // リアルタイムモード用インラインスイッチ
+.sbOnOff {
+    margin-left:auto;
+    flex-shrink:0;
+    padding:2px 9px;
+    border-radius:999px;
+    font-size:.72em;
+    font-weight:700;
+    background:color-mix(in srgb, var(--MI_THEME-navFg) 14%, transparent);
+    color:var(--MI_THEME-navFg);
+    opacity:.6;
+    transition:background .2s, color .2s, opacity .2s;
+}
+.sbOnOffOn {
+    background:var(--MI_THEME-accent);
+    color:var(--MI_THEME-fgOnAccent);
+    opacity:1;
+}
 .sbToggle {
     margin-left:auto;
     width:32px;
@@ -1446,6 +1545,45 @@ onUnmounted(()=>{
     overflow:hidden;
     transition:flex .3s cubic-bezier(.22,1,.36,1);
 }
+/* 旗鯖fork: 上部メニューモードのナビバー */
+.topNav {
+    flex-shrink: 0; display: flex; align-items: center; gap: 6px;
+    padding: 8px 12px; position: sticky; top: 0; z-index: 50;
+    background: color-mix(in srgb, var(--MI_THEME-bg) 72%, transparent);
+    backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
+    border-bottom: 1px solid var(--MI_THEME-divider);
+}
+.topNavSolid { background: var(--MI_THEME-bg); backdrop-filter: none; -webkit-backdrop-filter: none; }
+.topNavScroll {
+    flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center; gap: 4px;
+    overflow-x: auto; scrollbar-width: none;
+    &::-webkit-scrollbar { display: none; }
+}
+.topNavItem {
+    flex-shrink: 0; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+    min-width: 56px; padding: 5px 10px; border: none; background: transparent; cursor: pointer;
+    border-radius: 12px; color: var(--MI_THEME-fg); opacity: .7; transition: background .12s, opacity .12s;
+    font-size: .68em; font-weight: 600; white-space: nowrap;
+    > i { font-size: 1.5em; }
+    &:hover { opacity: 1; background: color-mix(in srgb, var(--MI_THEME-accent) 10%, transparent); }
+}
+.topNavItemActive { opacity: 1; color: var(--MI_THEME-accent); background: color-mix(in srgb, var(--MI_THEME-accent) 14%, transparent); }
+.topNavLogo {
+    flex-shrink: 0; width: 40px; height: 40px; border-radius: 12px; border: none; cursor: pointer; overflow: hidden;
+    display: flex; align-items: center; justify-content: center; background: color-mix(in srgb, var(--MI_THEME-accent) 10%, transparent);
+    > i { font-size: 1.3em; color: var(--MI_THEME-accent); }
+}
+.topNavLogoImg { width: 100%; height: 100%; object-fit: cover; }
+.topNavDivider { flex-shrink: 0; width: 1px; height: 28px; background: var(--MI_THEME-divider); margin: 0 2px; }
+.topNavPost {
+    flex-shrink: 0; display: flex; align-items: center; gap: 6px; padding: 8px 16px; border: none; cursor: pointer;
+    border-radius: 999px; background: var(--MI_THEME-accent); color: var(--MI_THEME-fgOnAccent); font-weight: 700; font-size: .85em;
+    &:hover { opacity: .9; }
+}
+.topNavAvatar { flex-shrink: 0; width: 38px; height: 38px; padding: 0; border: none; background: transparent; cursor: pointer; border-radius: 999px; }
+.topNavAvatarImg { width: 38px; height: 38px; }
+.topNavDot { position: absolute; top: 4px; right: 10px; width: 7px; height: 7px; border-radius: 999px; background: var(--MI_THEME-accent); }
+.topNavDotBlue { position: absolute; top: 4px; right: 10px; width: 7px; height: 7px; border-radius: 999px; background: #4a9eff; }
 .mainColumnInner {
     flex:1;
     min-width:0;

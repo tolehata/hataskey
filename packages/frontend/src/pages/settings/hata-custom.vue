@@ -137,10 +137,22 @@ SPDX-License-Identifier: AGPL-3.0-only
         <!-- 旗鯖fork: トレンドタイムライン (TTL) タブの表示トグル -->
         <FormSection first>
             <template #label>トレンドタイムライン</template>
-            <div style="font-size:.85em;opacity:.7;margin-bottom:8px;">上部ナビバーの最左に「トレンド」タブを表示します。過去7日間でリアクションやリノートが多かった人気の投稿を、ランダムな順番で表示する発見系タイムラインです。</div>
             <MkSwitch v-model="showTrendingTab">
                 <template #label>トレンドタブを表示する</template>
+                <template #caption>上部ナビバーの最右に「トレンド」タブを表示します。過去7日間でリアクションやリノートが多かった人気の投稿を、ランダムな順番で表示する発見系タイムラインです。</template>
             </MkSwitch>
+        </FormSection>
+        <FormSection>
+            <template #label>メニューの表示位置</template>
+            <MkSwitch v-model="topNavMode">
+                <template #label>メニューを画面上部に表示する</template>
+                <template #caption>ONにすると、左側のサイドバーの代わりに、画面上部へ横並びのナビバー（アイコン＋ラベルのピル型メニュー）を表示します。デスクトップ表示でのみ有効です。デッキ表示と併用した場合は、ナビバーの下にデッキのツールバーが並びます。</template>
+            </MkSwitch>
+        </FormSection>
+        <FormSection>
+            <template #label>デッキUIのチュートリアル</template>
+            <div style="font-size:.85em;opacity:.7;margin-bottom:10px;line-height:1.6;">HatasabaUIデッキモードの初期設定（メニューの位置・ツールバーの位置・レイアウト）を、ウィザード形式でもう一度設定し直せます。</div>
+            <button class="_buttonPrimary" @click="replayDeckTutorial" style="padding:10px 20px;font-weight:bold;"><i class="ti ti-refresh"></i> チュートリアルをもう一度行う</button>
         </FormSection>
         <FormSection>
             <template #label>上部ナビバー（タイムラインタブ）</template>
@@ -230,6 +242,10 @@ SPDX-License-Identifier: AGPL-3.0-only
             <MkSwitch v-model="glassEffect">
                 <template #label>すりガラス効果を有効にする</template>
                 <template #caption>サイドメニューとウィジェットの背景にバナー画像のすりガラス表示を適用します。OFFにすると単色背景になり、描画負荷が軽減されます。</template>
+            </MkSwitch>
+            <MkSwitch v-model="deckNoBannerBg">
+                <template #label>デッキUIの背景にヘッダー画像のぼかしを使用しない</template>
+                <template #caption>ONにすると、HatasabaUIのデッキ表示の背景にプロフィールのヘッダー画像のぼかしを使わず、単色背景になります。描画負荷が軽減され、視認性が上がります。</template>
             </MkSwitch>
         </FormSection>
         <FormSection>
@@ -398,6 +414,11 @@ const openUiSetup = async () => {
     const { defineAsyncComponent: dac } = await import('vue');
     os.popup(dac(() => import('@/components/MkUISetup.vue')), {}, {}, 'closed');
 };
+// 旗鯖fork: デッキUIのチュートリアルをもう一度開く
+const replayDeckTutorial = async () => {
+    const { defineAsyncComponent: dac } = await import('vue');
+    os.popup(dac(() => import('@/ui/_common_/HatasabaDeckTutorial.vue')), {}, {}, 'closed');
+};
 const isExternalLinked = computed(() => prefer.s['external.enabled'] && prefer.s['external.token'] != null);
 const hiddenReactionCount = computed(() => { hiddenReactionsVersion.value; return getHiddenReactions().length; });
 const hideMutedUserReactions = prefer.model('hideMutedUserReactions');
@@ -422,6 +443,10 @@ watch(topNavItems, saveTopNav, { deep: true });
 const showTrendingTab = computed({
     get: () => prefer.r['simpleUi.showTrendingTab'].value,
     set: (v: boolean) => prefer.commit('simpleUi.showTrendingTab', v),
+});
+const topNavMode = computed({
+    get: () => prefer.r['simpleUi.topNavMode'].value,
+    set: (v: boolean) => prefer.commit('simpleUi.topNavMode', v),
 });
 
 const bottomNavItems = ref([...prefer.s['simpleUi.bottomNav']]);
@@ -510,6 +535,7 @@ async function resetSidebar() {
 
 const widgetBorder = prefer.model('simpleUi.widgetBorder');
 const glassEffect = prefer.model('simpleUi.glassEffect');
+const deckNoBannerBg = prefer.model('simpleUi.deckNoBannerBg');
 const directProfile = prefer.model('simpleUi.directProfile');
 const noteSpacing = prefer.model('simpleUi.noteSpacing');
 const disableBubbleInDeck = prefer.model('simpleUi.disableBubbleInDeck');

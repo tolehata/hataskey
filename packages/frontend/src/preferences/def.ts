@@ -877,6 +877,20 @@ export const PREF_DEF = definePreferences({
 	'simpleUi.deckMode': {
 		default: false,
 	},
+	// 旗鯖fork: 上部メニューモード。ONでサイドバーの代わりに画面上部へ
+	// 横並びピル型のナビバー(HatasabaUIナビバー)を出す。デスクトップのみ。
+	'simpleUi.topNavMode': {
+		default: false,
+	},
+	// 旗鯖fork: デッキUIの背景にヘッダー画像のぼかしを使うか(アクセシビリティ)。
+	// default false = ぼかし背景を使う。true = 使わない(無地背景)。
+	'simpleUi.deckNoBannerBg': {
+		default: false,
+	},
+	// 旗鯖fork: デッキUIの初回チュートリアルを表示済みか(端末ローカル)
+	'simpleUi.deckTutorialDone': {
+		default: false,
+	},
 	'simpleUi.deckLayout': {
 		default: 'row' as 'row' | 'grid2' | 'grid3' | 'stack',
 	},

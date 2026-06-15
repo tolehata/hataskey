@@ -290,13 +290,14 @@ definePage(() => INFO.value);
 /* 旗鯖fork: プロフィールボタン再設計 (左=プロフィール / 右=旗鯖独自機能) */
 .htkProfileRow {
 	display: flex;
+	flex-wrap: wrap;
 	gap: 8px;
 	align-items: stretch;
 }
 
 .htkProfileBtn {
-	flex: 1;
-	min-width: 0;
+	flex: 1 1 200px;
+	min-width: 200px;
 	display: flex;
 	align-items: center;
 	gap: 12px;
@@ -350,6 +351,8 @@ definePage(() => INFO.value);
 }
 
 .htkHataBtn {
+	flex: 1 1 auto;
+	min-width: 96px;
 	flex-shrink: 0;
 	display: flex;
 	flex-direction: column;
