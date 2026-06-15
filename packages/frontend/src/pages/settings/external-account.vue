@@ -208,6 +208,8 @@ const isLinked = computed(() => {
 const HATACHI_3 = 'o.hata.blog';
 const HATACHI_2 = 'misskey.hatachanoima.net';
 const SHRIMPIA = 'mk.shrimpia.network';
+// 旗鯖fork: 外部サーバー(旗鯖以外。接続先の規約が適用される)
+const LES_REQUIN = 'mi.les-requin.net';
 
 const isHatachi3 = computed(() => hostname === HATACHI_3);
 const isHatachi2 = computed(() => hostname === HATACHI_2);
@@ -229,6 +231,11 @@ const hostOptions = computed(() => {
 	// シュリンピアは常に選択肢に含める（自分自身でなければ）
 	if (currentHost !== SHRIMPIA) {
 		options.push({ value: SHRIMPIA, label: `シュリンピア (${SHRIMPIA})` });
+	}
+
+	// 旗鯖fork: les-requin(外部サーバー。接続先の規約が適用される)
+	if (currentHost !== LES_REQUIN) {
+		options.push({ value: LES_REQUIN, label: `les-requin (${LES_REQUIN})` });
 	}
 
 	return options;

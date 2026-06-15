@@ -413,7 +413,14 @@ function setDeckMode(v: boolean) {
 // 横方向が優位なwheelイベントを preventDefault で食い、タブ切替に割り当てる
 // (CSS側の overscroll-behavior-x: none と併用)。
 let wheelAccX = 0;
-let wheelLockUntil = 0;
+// 旗鯖fork: wheel(トラックパッド横スワイプ)とtouchの両方がタブ移動を起こすと
+// 1スワイプで2タブ動いてしまう。両者で共有するロックで二重発火を防ぐ。
+let tabSwitchLockUntil = 0;
+// 旗鯖fork: トラックパッドの大きな横スワイプは wheel イベントが連続で飛んでくるため、
+// ロック時間だけでは1ジェスチャ中に2回移動してしまう。
+// 「wheelが一定時間途切れたら1ジェスチャ終了」とみなし、1ジェスチャにつき1回だけ移動させる。
+let wheelGestureMoved = false; // この連続ジェスチャ中に既に1回移動したか
+let wheelEndTimer: ReturnType<typeof setTimeout> | null = null;
 const orderedWheelTabs = computed<string[]>(() => [
 	...visibleTopTabs.value.map((t: any) => t.id),
 	...(showOHTL.value ? ['ohtl'] : []),
@@ -436,13 +443,20 @@ function onContentWheel(ev: WheelEvent) {
 	if (Math.abs(ev.deltaX) <= Math.abs(ev.deltaY) * 1.2) return; // 横方向優位のみ
 	if (hasHScrollableAncestor(ev.target as HTMLElement)) return;
 	ev.preventDefault(); // macの履歴スワイプ誤発火を抑止
-	const now = Date.now();
-	if (now < wheelLockUntil) return;
+
+	// wheelが途切れたら1ジェスチャ終了とみなす。来るたびにタイマーをリセット。
+	if (wheelEndTimer) clearTimeout(wheelEndTimer);
+	wheelEndTimer = setTimeout(() => { wheelGestureMoved = false; wheelAccX = 0; wheelEndTimer = null; }, 150);
+
+	// このジェスチャ中に既に1回動いていたら、以降のwheelは溜めずに無視(=1ジェスチャ1タブ)
+	if (wheelGestureMoved) { wheelAccX = 0; return; }
+
 	wheelAccX += ev.deltaX;
 	if (Math.abs(wheelAccX) < 90) return;
 	const dir = wheelAccX > 0 ? 1 : -1;
 	wheelAccX = 0;
-	wheelLockUntil = now + 350;
+	wheelGestureMoved = true; // このジェスチャでは移動済み
+	tabSwitchLockUntil = Date.now() + 450; // touch側との二重発火も防ぐ
 	const tabs = orderedWheelTabs.value;
 	const idx = tabs.indexOf(tab.value);
 	const next = idx === -1 ? 0 : Math.min(tabs.length - 1, Math.max(0, idx + dir));
@@ -716,6 +730,9 @@ const onTouchEnd = (e:TouchEvent)=>{
     touchStartPos.value=null;
     if(Math.abs(dy)>Math.abs(dx)||Math.abs(dy)>50)return;
     if(Math.abs(dx)>60){
+        // 旗鯖fork: wheelとtouchの二重発火で2タブ動くのを防ぐ共通ロック
+        if(Date.now() < tabSwitchLockUntil) return;
+        tabSwitchLockUntil = Date.now() + 450;
         const idx=tabOrder.value.indexOf(tab.value);
         if(dx>0){if(idx>0)switchTab(tabOrder.value[idx-1]);else simpleDrawerShowing.value=true;}
         else{if(idx<tabOrder.value.length-1)switchTab(tabOrder.value[idx+1]);}
@@ -1441,6 +1458,11 @@ onUnmounted(()=>{
     height:100%;
 }
 /* 旗鯖fork: macの履歴スワイプ(横オーバースクロール)による「戻る」誤発火を抑止 */
+/* .root/.content だけでは Mac PWA のトラックパッド横スワイプ(履歴ナビ)が止まらないため、
+   html/body にもグローバルに overscroll-behavior-x:none を効かせる。 */
+:global(html), :global(body) {
+    overscroll-behavior-x: none;
+}
 .root {
     overscroll-behavior-x:none;
 }
@@ -1813,10 +1835,10 @@ onUnmounted(()=>{
 
 // ===== フェードトランジション =====
 .tlFade {
-    :global(&-enter-active) { transition:opacity .25s ease; }
-    :global(&-leave-active) { transition:opacity .15s ease; }
-    :global(&-enter-from),
-    :global(&-leave-to) { opacity:0; }
+    :global(&-enter-active) { transition:opacity .25s ease, transform .28s cubic-bezier(.22,1,.36,1); }
+    :global(&-leave-active) { transition:opacity .15s ease, transform .2s cubic-bezier(.22,1,.36,1); }
+    :global(&-enter-from) { opacity:0; transform:translateX(24px); }
+    :global(&-leave-to) { opacity:0; transform:translateX(-24px); }
 }
 
 // ===== ボトムバー =====
