@@ -238,6 +238,15 @@ export class ServerService implements OnApplicationShutdown {
 			}
 		});
 
+		// 旗鯖fork: サーバーアイコン未設定時のデフォルトアイコン。
+		// ホスト名をseedにidenticon(幾何学模様)を生成する。seedが固定のため
+		// 常に同じ模様(=実質固定)になる。meta.iconUrl が設定されればそちらが優先される。
+		fastify.get('/server-icon', async (request, reply) => {
+			reply.header('Content-Type', 'image/png');
+			reply.header('Cache-Control', 'public, max-age=604800');
+			return await genIdenticon(`server:${this.config.host}`);
+		});
+
 		fastify.register(this.clientServerService.createServer);
 
 		this.streamingApiServerService.attach(fastify.server);

@@ -108,7 +108,7 @@ export class MetaEntityService {
 			serverErrorImageUrl: instance.serverErrorImageUrl,
 			notFoundImageUrl: instance.notFoundImageUrl,
 			youBlockedImageUrl: instance.youBlockedImageUrl,
-			iconUrl: instance.iconUrl,
+			iconUrl: instance.iconUrl ?? `${this.config.url}/server-icon`,
 			backgroundImageUrl: instance.backgroundImageUrl,
 			logoImageUrl: instance.logoImageUrl,
 			maxNoteTextLength: MAX_NOTE_TEXT_LENGTH,
