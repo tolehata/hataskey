@@ -16,7 +16,14 @@
 <Teleport to="body"><div v-if="showMobileNav" class="htk-nav-pad" :data-bg="settings.bgTheme" :data-mode="themeMode"></div><nav v-if="showMobileNav" class="htk-nav htk-nav-mobile" :data-bg="settings.bgTheme" :data-mode="themeMode" :inert="false"><button class="htk-nav-t htk-nav-back" @click="handleBack" title="戻る"><span class="htk-ico"><i class="ti ti-arrow-left" style="font-size:1rem"></i></span></button><button v-for="tab in tabs" :key="tab.id" :class="['htk-nav-t',activeTab===tab.id&&'on']" @click="activeTab=tab.id"><span class="htk-ico"><i :class="tab.icon"></i></span>{{tab.label}}</button></nav></Teleport>
 
 <!-- ========== HOME ========== -->
-<div v-if="activeTab==='home'" class="htk-dash">
+<div v-if="activeTab==='home'">
+  <!-- 旗鯖fork: ホームの並び替えモード切替ボタン -->
+  <div class="htk-home-toolbar">
+    <button :class="['htk-btn','htk-sm',reorderMode&&'htk-sb-on']" @click="toggleReorderMode">
+      <i :class="reorderMode?'ti ti-check':'ti ti-arrows-sort'" style="margin-right:5px"></i>{{reorderMode?'並び替えを終わる':'並び替え'}}
+    </button>
+  </div>
+  <div class="htk-dash" :class="{'htk-dash-reorder':reorderMode}">
   <!-- RSVP (always top) -->
   <div v-if="pendingRsvps.length>0" class="htk-lg htk-anim"><div class="htk-gc">
     <h3 class="htk-sec-title">📩 参加確認が届いています</h3>
@@ -42,7 +49,10 @@
     </div>
   </div></div>
   <!-- Dynamic sections -->
-  <template v-for="sec in sectionOrder" :key="sec">
+  <template v-for="(sec,idx) in sectionOrder" :key="sec">
+   <div class="htk-sec-wrap" :class="{'htk-sec-draggable':reorderMode,'htk-reorder-dragover':reorderMode&&dragOverIdx===idx&&dragSecIdx!==null,'htk-reorder-dragging':reorderMode&&dragSecIdx===idx}"
+     :draggable="reorderMode" @dragstart="onSecDragStart(idx)" @dragover.prevent="onSecDragOver(idx)" @drop.prevent="onSecDrop(idx)" @dragend="onSecDragEnd">
+    <div v-if="reorderMode" class="htk-sec-draghandle"><i class="ti ti-grip-vertical"></i> {{sectionLabels[sec]||sec}}</div>
     <div v-if="sec==='clock' && settings.showClock!==false" class="htk-lg htk-anim"><div class="htk-gc" style="text-align:center;padding:28px 20px"><div class="htk-dt-time">{{currentTime}}</div><div class="htk-dt-date">{{currentDate}}</div></div></div>
     <div v-if="sec==='eye' && settings.showEye!==false" class="htk-lg htk-anim" @click="activeTab='eye'" style="cursor:pointer"><div class="htk-gc htk-eye-card">
       <div class="htk-eye-label">Hatask Eye</div>
@@ -90,8 +100,9 @@
     <div v-if="sec==='mood' && settings.showMoodSummary!==false" class="htk-lg htk-anim"><div class="htk-gc" style="text-align:center"><h3 class="htk-sec-title">今週のきもち</h3><div class="htk-mood-wk" @click="activeTab='mood'" style="cursor:pointer"><div v-for="(m,i) in weekMoods" :key="i" class="htk-mood-wk-d"><span>{{m.emoji||'⊘'}}</span><span>{{m.day}}</span></div></div><div style="margin-top:10px"><button class="htk-btn htk-sm" @click.stop="activeTab='mood'">きもちを記録</button></div></div></div>
     <!-- 旗鯖fork: ごはん記録セクション (項目4) -->
     <div v-if="sec==='meal' && settings.showMealSection!==false" class="htk-lg htk-anim"><div class="htk-gc" style="text-align:center"><h3 class="htk-sec-title">ごはん記録</h3><div class="htk-meal-summary" style="margin:6px 0 12px">{{mealSummaryMessage}}</div><div style="font-size:.8rem;color:var(--text-3);margin-bottom:10px">今日の記録: {{mealTodayCount}}件</div><div><button class="htk-btn htk-sm" @click.stop="activeTab='meal'">ごはんを記録</button></div></div></div>
+   </div>
   </template>
-  <div class="htk-lg htk-anim" style="grid-column:1/-1"><div class="htk-gc" style="text-align:center;padding:14px 22px"><button class="htk-btn htk-sm" style="opacity:.5" @click="showSettings=true">⚙ ホーム画面をカスタマイズ</button></div></div>
+</div>
 </div>
 
 <!-- ========== CALENDAR ========== -->
@@ -535,6 +546,13 @@
   </div></div>
 
   <div class="htk-lg htk-stg-card"><div class="htk-gc htk-stg-gc">
+    <div class="htk-stg-label">外観（ライト / ダーク）</div>
+    <div class="htk-stg-row"><span>自動（端末の設定に従う）</span><button :class="['htk-tg-sw',settings.autoTheme&&'on']" @click="settings.autoTheme=!settings.autoTheme;saveSettings()"></button></div>
+    <div class="htk-stg-row" v-if="!settings.autoTheme"><span>ダークモード</span><button :class="['htk-tg-sw',settings.darkMode&&'on']" @click="settings.darkMode=!settings.darkMode;saveSettings()"></button></div>
+    <div class="htk-stg-desc" style="margin-top:6px">ライトは白基調＋黒文字、ダークは黒基調＋白文字になります。背景のアニメーションは共通です。</div>
+  </div></div>
+
+  <div class="htk-lg htk-stg-card"><div class="htk-gc htk-stg-gc">
     <div class="htk-stg-label">カレンダー</div>
     <div class="htk-stg-row"><span>週の始まり</span><select class="htk-stg-sel" v-model="settings.weekStart" @change="saveSettings()"><option value="mon">月曜</option><option value="sun">日曜</option></select></div>
   </div></div>
@@ -553,10 +571,13 @@
 
   <div class="htk-lg htk-stg-card"><div class="htk-gc htk-stg-gc">
     <div class="htk-stg-label">ホーム画面 - セクション表示と並び替え</div>
-    <div class="htk-stg-desc">トグルで表示/非表示、上下ボタンで順番を変更できます</div>
+    <div class="htk-stg-desc">トグルで表示/非表示、ドラッグ（☰）または上下ボタンで順番を変更できます</div>
     <div class="htk-reorder-list">
-      <div v-for="(sec,idx) in sectionOrder" :key="sec" class="htk-reorder-item">
-        <span class="htk-reorder-handle">☰</span>
+      <div v-for="(sec,idx) in sectionOrder" :key="sec"
+        :class="['htk-reorder-item',{'htk-reorder-dragover':dragOverIdx===idx&&dragSecIdx!==null,'htk-reorder-dragging':dragSecIdx===idx}]"
+        draggable="true"
+        @dragstart="onSecDragStart(idx)" @dragover.prevent="onSecDragOver(idx)" @drop.prevent="onSecDrop(idx)" @dragend="onSecDragEnd">
+        <span class="htk-reorder-handle" style="cursor:grab">☰</span>
         <span class="htk-reorder-label">{{sectionLabels[sec]||sec}}</span>
         <!-- 旗鯖fork: 表示ON/OFFトグルを統合 (項目5) -->
         <button :class="['htk-tg-sw',isSectionVisible(sec)&&'on']" style="margin-right:8px" @click="toggleSectionVisible(sec)"></button>
@@ -574,6 +595,7 @@
     <div class="htk-stg-row"><span>予定</span><button class="htk-tg-sw on"></button></div>
     <div class="htk-stg-row"><span>きもち</span><button class="htk-tg-sw on"></button></div>
     <div class="htk-stg-row"><span>ToDo</span><button class="htk-tg-sw on"></button></div>
+    <div class="htk-stg-row"><span>ごはん</span><button class="htk-tg-sw on"></button></div>
     <div class="htk-stg-row"><span>お花</span><button class="htk-tg-sw on"></button></div>
   </div></div>
 
@@ -956,7 +978,11 @@ const misskeyTheme=ref(detectMisskeyTheme());
 // Hatask背景テーマに応じた文字色モード判定
 // ocean/forest/night = 暗い背景 → 常にdark（白文字）
 const themeMode=computed(()=>{
-  return 'dark';
+  // 旗鯖fork: 設定に従う。autoTheme時はOS/Misskeyのダーク判定、それ以外は darkMode トグルに従う。
+  if(settings.value.autoTheme){
+    return (prefersDark.value || misskeyTheme.value==='dark') ? 'dark' : 'light';
+  }
+  return settings.value.darkMode ? 'dark' : 'light';
 });
 function onMediaChange(e:MediaQueryListEvent){prefersDark.value=e.matches;misskeyTheme.value=detectMisskeyTheme()}
 let htk_themeObserver:MutationObserver|null=null;
@@ -1203,6 +1229,24 @@ try{await misskeyApi('hatask/events/close',{eventId,closed:true});await loadShar
 // Section reorder functions
 function moveSectionUp(idx:number){if(idx<=0)return;const arr=[...sectionOrder.value];[arr[idx-1],arr[idx]]=[arr[idx],arr[idx-1]];sectionOrder.value=arr;settings.value.sectionOrder=arr;saveSettings()}
 function moveSectionDown(idx:number){if(idx>=sectionOrder.value.length-1)return;const arr=[...sectionOrder.value];[arr[idx],arr[idx+1]]=[arr[idx+1],arr[idx]];sectionOrder.value=arr;settings.value.sectionOrder=arr;saveSettings()}
+// 旗鯖fork: ドラッグ並び替え(ホーム・設定 共通)。from番目をto番目へ移動して保存。
+function moveSection(from:number,to:number){
+  if(from===to||from<0||to<0||from>=sectionOrder.value.length||to>=sectionOrder.value.length)return;
+  const arr=[...sectionOrder.value];
+  const [moved]=arr.splice(from,1);
+  arr.splice(to,0,moved);
+  sectionOrder.value=arr;settings.value.sectionOrder=arr;saveSettings();
+}
+// ホーム画面の並び替えモード(ボタンでON/OFF。ON中は各セクションをドラッグできる)
+const reorderMode=ref(false);
+function toggleReorderMode(){reorderMode.value=!reorderMode.value}
+// ドラッグ中のインデックス(ホーム・設定 共通)
+const dragSecIdx=ref<number|null>(null);
+const dragOverIdx=ref<number|null>(null);
+function onSecDragStart(idx:number){dragSecIdx.value=idx}
+function onSecDragOver(idx:number){dragOverIdx.value=idx}
+function onSecDrop(idx:number){if(dragSecIdx.value!==null)moveSection(dragSecIdx.value,idx);dragSecIdx.value=null;dragOverIdx.value=null}
+function onSecDragEnd(){dragSecIdx.value=null;dragOverIdx.value=null}
 // 旗鯖fork: セクションID → 表示設定キーのマッピング (項目5: 表示ON/OFF統合)
 const sectionVisibilityKey:Record<string,string>={clock:'showClock',eye:'showEye',apps:'showApps',loginDays:'showLoginDays',flower:'showFlower',events:'showEvents',mood:'showMoodSummary',meal:'showMealSection'};
 function isSectionVisible(sec:string):boolean{const k=sectionVisibilityKey[sec];if(!k)return true;return settings.value[k]!==false}
@@ -1420,7 +1464,22 @@ updateEyePhrase();
 eyeTimer = setInterval(updateEyePhrase, 10000);
 growthInterval = setInterval(async () => {
   if (flower.value.progress >= 100) return;
-  flower.value.totalMinutes += 1;
+  // 旗鯖fork: 複数端末で「開いている時間」を合算して同期する。
+  // 各端末が独立に += して上書きすると最後の端末の値で上書きされてしまうため、
+  // 必ず registry から最新値を読み直し、それに この端末ぶんの +1 を足して保存する。
+  // これで他端末が育てたぶんも取り込まれ、累積が合算される。
+  try {
+    const latest = await registryGet<any>('flower', flower.value);
+    // 別の花に切り替わっている(収穫された)場合は、現在開いている花を優先して競合を避ける
+    if (latest && latest.startedAt === flower.value.startedAt && latest.emoji === flower.value.emoji) {
+      const base = typeof latest.totalMinutes === 'number' ? latest.totalMinutes : flower.value.totalMinutes;
+      flower.value.totalMinutes = base + 1;
+    } else {
+      flower.value.totalMinutes += 1;
+    }
+  } catch {
+    flower.value.totalMinutes += 1;
+  }
   flower.value.progress = Math.min(100, Math.floor((flower.value.totalMinutes / 1200) * 100));
   await registrySet('flower', flower.value);
 }, 60000);
@@ -1484,12 +1543,12 @@ notifTimerIds.forEach(id => clearTimeout(id));
 
 <style lang="scss" scoped>
 
-.htk-root{--radius-lg:28px;--radius-sm:14px;--radius-xs:10px;--primary:#e8a87c;--secondary:#85cdca;--accent:#e27d60;--success:#6ec072;--ease-spring:cubic-bezier(0.34,1.56,0.64,1);--ease-smooth:cubic-bezier(0.4,0,0.2,1);--tint-bg:rgba(255,255,255,.04);--outer-glow:0 0 24px -8px rgba(255,255,255,.1);--inner-glow:inset 0 0 14px -2px rgba(255,255,255,.15);--blur-amount:10px;--text-1:rgba(255,255,255,.95);--text-2:rgba(255,255,255,.7);--text-3:rgba(255,255,255,.45);--text-shadow:0 1px 4px rgba(0,0,0,.5);--divider:rgba(255,255,255,.08);--active-bg:rgba(255,255,255,.1);--hover-bg:rgba(255,255,255,.06);--btn-bg:rgba(255,255,255,.08);--btn-border:rgba(255,255,255,.15);--btn-hover:rgba(255,255,255,.14);--input-bg:rgba(255,255,255,.05);--input-border:rgba(255,255,255,.12);--input-focus:rgba(232,168,124,.45);position:relative;min-height:100dvh;overflow-x:hidden;overflow-y:visible}
+.htk-root{--radius-lg:28px;--radius-sm:14px;--radius-xs:10px;--primary:#e8a87c;--secondary:#85cdca;--accent:#e27d60;--success:#6ec072;--ease-spring:cubic-bezier(0.34,1.56,0.64,1);--ease-smooth:cubic-bezier(0.4,0,0.2,1);--tint-bg:rgba(255,255,255,.9);--outer-glow:0 4px 18px -8px rgba(0,0,0,.18);--inner-glow:0 0 0 1px rgba(0,0,0,.05) inset;--blur-amount:3px;--text-1:rgba(20,22,28,.96);--text-2:rgba(20,22,28,.66);--text-3:rgba(20,22,28,.42);--text-shadow:none;--divider:rgba(0,0,0,.1);--active-bg:rgba(0,0,0,.08);--hover-bg:rgba(0,0,0,.05);--btn-bg:rgba(0,0,0,.05);--btn-border:rgba(0,0,0,.12);--btn-hover:rgba(0,0,0,.09);--input-bg:rgba(255,255,255,.7);--input-border:rgba(0,0,0,.12);--input-focus:rgba(232,168,124,.55);--card-bg:rgba(255,255,255,.92);color:rgba(20,22,28,.96);position:relative;min-height:100dvh;overflow-x:hidden;overflow-y:visible}
 .htk-root[data-bg="purple"]{background:linear-gradient(145deg,#3a3744,#46424f 20%,#534e60 45%,#454150 70%,#3a3744);background-size:200% 200%;animation:htkBgFlow 25s ease-in-out infinite;--orb-a:rgba(83,78,96,.28);--orb-b:rgba(70,66,79,.24);--orb-c:rgba(69,65,80,.2);--orb-d:rgba(58,55,68,.16)}
 .htk-root[data-bg="ocean"]{background:linear-gradient(145deg,#2d6a8f,#48a9a6 20%,#5bc0be 45%,#3a7ca5 70%,#1e5f8a);background-size:200% 200%;animation:htkBgFlow 25s ease-in-out infinite;--orb-a:rgba(91,192,190,.35);--orb-b:rgba(72,169,166,.3);--orb-c:rgba(58,124,165,.25);--orb-d:rgba(45,106,143,.2)}
 .htk-root[data-bg="forest"]{background:linear-gradient(145deg,#2d5a27,#4a8f46 20%,#6bbd67 45%,#3d7a39 70%,#2a5226);background-size:200% 200%;animation:htkBgFlow 25s ease-in-out infinite;--orb-a:rgba(107,189,103,.35);--orb-b:rgba(74,143,70,.3);--orb-c:rgba(61,122,57,.25);--orb-d:rgba(45,90,39,.2)}
 .htk-root[data-bg="night"]{background:linear-gradient(145deg,#0f0c29,#302b63 20%,#24243e 45%,#1a1a3e 70%,#0f0c29);background-size:200% 200%;animation:htkBgFlow 30s ease-in-out infinite;--orb-a:rgba(48,43,99,.4);--orb-b:rgba(36,36,62,.35);--orb-c:rgba(80,60,120,.25);--orb-d:rgba(60,50,100,.2)}
-.htk-root[data-mode="dark"]{--tint-bg:rgba(255,255,255,.04);--outer-glow:0 0 24px -8px rgba(255,255,255,.1);--inner-glow:inset 0 0 14px -2px rgba(255,255,255,.15);--blur-amount:10px;--text-1:rgba(255,255,255,.95);--text-2:rgba(255,255,255,.7);--text-3:rgba(255,255,255,.45);--text-shadow:0 1px 4px rgba(0,0,0,.5);--divider:rgba(255,255,255,.08);--active-bg:rgba(255,255,255,.1);--hover-bg:rgba(255,255,255,.06);--btn-bg:rgba(255,255,255,.08);--btn-border:rgba(255,255,255,.15);--btn-hover:rgba(255,255,255,.14);--input-bg:rgba(255,255,255,.05);--input-border:rgba(255,255,255,.12);--input-focus:rgba(232,168,124,.45);--card-bg:rgba(0,0,0,.45);color:rgba(255,255,255,.95);text-shadow:0 1px 4px rgba(0,0,0,.5)}
+.htk-root[data-mode="dark"]{--tint-bg:rgba(18,20,26,.84);--outer-glow:0 4px 18px -6px rgba(0,0,0,.5);--inner-glow:0 0 0 1px rgba(255,255,255,.06) inset;--blur-amount:3px;--text-1:rgba(255,255,255,.95);--text-2:rgba(255,255,255,.7);--text-3:rgba(255,255,255,.45);--text-shadow:none;--divider:rgba(255,255,255,.09);--active-bg:rgba(255,255,255,.12);--hover-bg:rgba(255,255,255,.07);--btn-bg:rgba(255,255,255,.08);--btn-border:rgba(255,255,255,.12);--btn-hover:rgba(255,255,255,.15);--input-bg:rgba(255,255,255,.06);--input-border:rgba(255,255,255,.12);--input-focus:rgba(232,168,124,.5);--card-bg:rgba(14,16,22,.86);color:rgba(255,255,255,.95);text-shadow:none}
 .htk-root{color:var(--text-1,rgba(255,255,255,.95));text-shadow:var(--text-shadow,0 1px 4px rgba(0,0,0,.5))}
 /* ocean/forest/night are dark backgrounds → white text even when system light mode */
 .htk-scene{position:absolute;inset:0;z-index:0;pointer-events:none;overflow:hidden}
@@ -1510,18 +1569,18 @@ notifTimerIds.forEach(id => clearTimeout(id));
 .htk-app{max-width:1280px;margin:0 auto;padding:20px;position:relative;z-index:1}
 .htk-lg{position:relative;border-radius:var(--radius-lg);isolation:isolate;box-shadow:var(--outer-glow);transition:box-shadow .3s,transform .3s var(--ease-spring);margin-bottom:16px}
 .htk-lg::before{content:'';position:absolute;inset:0;z-index:0;border-radius:inherit;box-shadow:var(--inner-glow);background:var(--tint-bg);pointer-events:none}
-.htk-lg::after{content:'';position:absolute;inset:0;z-index:-1;border-radius:inherit;backdrop-filter:blur(var(--blur-amount));-webkit-backdrop-filter:blur(var(--blur-amount));filter:url(#htk-gfx);-webkit-filter:url(#htk-gfx);isolation:isolate;pointer-events:none}
+.htk-lg::after{content:'';position:absolute;inset:0;z-index:-1;border-radius:inherit;backdrop-filter:blur(var(--blur-amount));-webkit-backdrop-filter:blur(var(--blur-amount));isolation:isolate;pointer-events:none}
 .htk-lg:hover{box-shadow:var(--outer-glow),0 8px 32px -4px rgba(0,0,0,.08);transform:translateY(-1px)}
 .htk-lg-s{position:relative;border-radius:var(--radius-lg);isolation:isolate;box-shadow:var(--outer-glow);margin-bottom:16px}
 .htk-lg-s::before{content:'';position:absolute;inset:0;z-index:0;border-radius:inherit;box-shadow:var(--inner-glow);background:var(--tint-bg);pointer-events:none}
-.htk-lg-s::after{content:'';position:absolute;inset:0;z-index:-1;border-radius:inherit;backdrop-filter:blur(var(--blur-amount));-webkit-backdrop-filter:blur(var(--blur-amount));filter:url(#htk-gfx);-webkit-filter:url(#htk-gfx);isolation:isolate;pointer-events:none}
+.htk-lg-s::after{content:'';position:absolute;inset:0;z-index:-1;border-radius:inherit;backdrop-filter:blur(var(--blur-amount));-webkit-backdrop-filter:blur(var(--blur-amount));isolation:isolate;pointer-events:none}
 .htk-lg-in{position:relative;border-radius:var(--radius-xs);isolation:isolate;box-shadow:inset 0 0 8px -2px rgba(255,255,255,.3);padding:12px;margin-bottom:12px}
 .htk-lg-in::after{content:'';position:absolute;inset:0;z-index:-1;border-radius:inherit;backdrop-filter:blur(4px);pointer-events:none}
 .htk-gc{position:relative;z-index:10;padding:22px}
 .htk-header{margin-bottom:16px}
 .htk-nav{display:flex;gap:2px;padding:4px;position:relative;z-index:10}
-.htk-nav-desktop{border-radius:var(--radius-lg);isolation:isolate;margin-bottom:16px;background:rgba(255,255,255,.12);backdrop-filter:blur(24px) saturate(1.6);-webkit-backdrop-filter:blur(24px) saturate(1.6);box-shadow:0 2px 16px rgba(0,0,0,.08),0 0 0 1px rgba(255,255,255,.18) inset,0 1px 0 rgba(255,255,255,.25) inset;border:0.5px solid rgba(255,255,255,.2)}
-.htk-nav-desktop::before{content:'';position:absolute;inset:0;z-index:0;border-radius:inherit;background:linear-gradient(135deg,rgba(255,255,255,.18) 0%,rgba(255,255,255,.04) 50%,rgba(255,255,255,.1) 100%);pointer-events:none}
+.htk-nav-desktop{border-radius:var(--radius-lg);isolation:isolate;margin-bottom:16px;background:var(--tint-bg);backdrop-filter:blur(var(--blur-amount));-webkit-backdrop-filter:blur(var(--blur-amount));box-shadow:0 4px 18px -6px rgba(0,0,0,.35),0 0 0 1px rgba(255,255,255,.07) inset;border:1px solid var(--btn-border)}
+.htk-nav-desktop::before{content:'';position:absolute;inset:0;z-index:0;border-radius:inherit;background:none;pointer-events:none}
 .htk-nav-desktop::after{content:'';position:absolute;inset:0;z-index:-1;border-radius:inherit;backdrop-filter:blur(var(--blur-amount));-webkit-backdrop-filter:blur(var(--blur-amount));isolation:isolate;pointer-events:none}
 .htk-nav-mobile{display:none}
 .htk-nav-pad{display:none}
@@ -1536,14 +1595,14 @@ notifTimerIds.forEach(id => clearTimeout(id));
 .htk-empI{font-size:1.6rem;margin-bottom:4px;text-shadow:none;opacity:.6}
 .htk-info-btn{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:var(--btn-bg);border:1px solid var(--btn-border);color:var(--text-1);font-size:.75rem;font-weight:700;cursor:pointer;transition:all .2s;font-family:inherit;backdrop-filter:blur(6px);text-shadow:none;vertical-align:middle}
 .htk-info-btn:hover{background:var(--btn-hover);transform:scale(1.08)}
-.htk-btn{background:var(--btn-bg);border:1px solid var(--btn-border);color:var(--text-1,rgba(255,255,255,.95));text-shadow:var(--text-shadow,none);padding:10px 20px;border-radius:14px;font-family:inherit;font-size:.86rem;font-weight:700;cursor:pointer;backdrop-filter:blur(8px);transition:all .2s}
+.htk-btn{background:var(--btn-bg);border:1px solid var(--btn-border);color:var(--text-1,rgba(255,255,255,.95));text-shadow:var(--text-shadow,none);padding:10px 20px;border-radius:14px;font-family:inherit;font-size:.86rem;font-weight:700;cursor:pointer;backdrop-filter:blur(var(--blur-amount));transition:all .2s}
 .htk-btn:hover{background:var(--btn-hover)}.htk-btn:active{transform:scale(.97)}.htk-btn:disabled{opacity:.4;cursor:not-allowed}
 .htk-primary{background:rgba(232,168,124,.2);border-color:rgba(232,168,124,.35)}.htk-primary:hover{background:rgba(232,168,124,.35)}
 .htk-danger{background:rgba(224,85,112,.15);border-color:rgba(224,85,112,.25);color:#c03050}.htk-danger:hover{background:rgba(224,85,112,.28)}
 .htk-sm{padding:6px 14px;font-size:.78rem;border-radius:12px}.htk-xs{padding:4px 10px;font-size:.72rem;border-radius:10px}
 .htk-icon-sq{padding:8px 12px;font-size:1.05rem;line-height:1;text-shadow:none}
 .htk-sb-on{background:var(--active-bg) !important}
-.htk-inp{background:var(--input-bg);border:1px solid var(--input-border);color:var(--text-1,rgba(255,255,255,.95));text-shadow:var(--text-shadow,none);padding:10px 16px;border-radius:14px;font-family:inherit;font-size:.86rem;width:100%;outline:none;transition:all .25s;backdrop-filter:blur(6px);-webkit-appearance:none;-moz-appearance:none;appearance:none;box-sizing:border-box}
+.htk-inp{background:var(--input-bg);border:1px solid var(--input-border);color:var(--text-1,rgba(255,255,255,.95));text-shadow:var(--text-shadow,none);padding:10px 16px;border-radius:14px;font-family:inherit;font-size:.86rem;width:100%;outline:none;transition:all .25s;backdrop-filter:blur(var(--blur-amount));-webkit-appearance:none;-moz-appearance:none;appearance:none;box-sizing:border-box}
 .htk-inp:focus{border-color:var(--input-focus);box-shadow:0 0 0 3px rgba(232,168,124,.12)}
 .htk-inp::placeholder{color:var(--text-3);text-shadow:none}
 textarea.htk-inp{min-height:76px;resize:vertical}
@@ -1633,6 +1692,20 @@ select.htk-inp{appearance:none;cursor:pointer;padding-right:36px}
 .htk-rsvp-dismiss{background:none;border:none;color:var(--text-3);cursor:pointer;font-size:.8rem;padding:4px;opacity:.5}
 .htk-rsvp-dismiss:hover{opacity:1}
 .htk-reorder-list{display:flex;flex-direction:column;gap:4px;margin-top:6px}
+.htk-home-toolbar{display:flex;justify-content:flex-end;margin-bottom:12px}
+/* 旗鯖fork: 並び替えボタンの文字が背景と同系色でも読めるよう縁取り(明暗両対応) */
+.htk-home-toolbar .htk-btn{text-shadow:0 0 3px rgba(0,0,0,.5),0 0 3px rgba(255,255,255,.4);font-weight:700;}
+/* 旗鯖fork: ライトテーマ時は文字を白にして濃い縁取りで読ませる(黒地黒文字対策) */
+.htk-root:not([data-mode="dark"]) .htk-home-toolbar .htk-btn{color:#fff;text-shadow:0 0 2px rgba(0,0,0,.9),0 1px 3px rgba(0,0,0,.7);}
+.htk-dash-reorder .htk-sec-wrap{outline:2px dashed var(--btn-border);outline-offset:2px;border-radius:var(--radius-lg)}
+.htk-sec-wrap{position:relative;border-radius:var(--radius-lg)}
+.htk-sec-draggable{cursor:grab}
+.htk-sec-draggable:active{cursor:grabbing}
+.htk-sec-draghandle{display:flex;align-items:center;gap:6px;font-size:.78rem;font-weight:700;color:var(--text-2);padding:6px 10px;margin-bottom:6px;background:var(--btn-bg);border:1px solid var(--btn-border);border-radius:10px;text-shadow:0 0 3px rgba(0,0,0,.5),0 0 3px rgba(255,255,255,.4)}
+/* 旗鯖fork: ライトテーマ時は見出しも白文字+濃い縁取り */
+.htk-root:not([data-mode="dark"]) .htk-sec-draghandle{color:#fff;text-shadow:0 0 2px rgba(0,0,0,.9),0 1px 3px rgba(0,0,0,.7)}
+.htk-reorder-dragging{opacity:.45}
+.htk-reorder-dragover{outline:2px solid var(--primary) !important;outline-offset:2px}
 .htk-reorder-item{display:flex;align-items:center;gap:8px;padding:8px 10px;background:rgba(255,255,255,.06);border-radius:8px;font-size:.8rem;color:rgba(255,255,255,.75)}
 .htk-reorder-handle{opacity:.3;font-size:.9rem;cursor:default}
 .htk-reorder-label{flex:1;font-weight:500}
@@ -1716,7 +1789,7 @@ select.htk-inp{appearance:none;cursor:pointer;padding-right:36px}
 .htk-tg-sw::after{content:'';position:absolute;width:18px;height:18px;background:rgba(128,128,128,.5);border-radius:50%;top:2px;left:2px;transition:all .3s var(--ease-spring);box-shadow:0 1px 3px rgba(0,0,0,.2)}
 .htk-tg-sw.on{background:rgba(76,175,80,.55);border-color:rgba(76,175,80,.4)}.htk-tg-sw.on::after{left:22px;background:#fff;box-shadow:0 1px 4px rgba(76,175,80,.4)}
 .htk-nt-chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:4px}
-.htk-nt-chip{padding:4px 10px;border-radius:16px;font-size:.7rem;background:var(--btn-bg);border:1px solid var(--btn-border);cursor:pointer;transition:all .2s;backdrop-filter:blur(4px)}
+.htk-nt-chip{padding:4px 10px;border-radius:16px;font-size:.7rem;background:var(--btn-bg);border:1px solid var(--btn-border);cursor:pointer;transition:all .2s}
 .htk-nt-chip:hover{background:var(--btn-hover)}.htk-nt-chip.on{background:rgba(232,168,124,.18);border-color:rgba(232,168,124,.3)}
 .htk-emp-row{display:flex;gap:5px;flex-wrap:wrap;padding:6px}
 .htk-emp-i{font-size:1.15rem;cursor:pointer;padding:4px;border-radius:6px;transition:all .2s;text-shadow:none}
