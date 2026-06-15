@@ -666,6 +666,7 @@
 import { ref, computed, onMounted, onUnmounted, onBeforeUnmount, onActivated, onDeactivated, nextTick, watch, defineAsyncComponent } from 'vue';
 import { definePage } from '@/page.js';
 import * as os from '@/os.js';
+import { claimAchievement } from '@/utility/achievements.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { $i } from '@/i.js';
 import { useRouter } from '@/router.js';
@@ -1254,6 +1255,8 @@ let growthInterval:ReturnType<typeof setInterval>|null=null;
 let navProtectionObserver:MutationObserver|null=null;
 let navVisibilityTimer:ReturnType<typeof setInterval>|null=null;
 onMounted(async () => {
+// 旗鯖fork: Hataskを開いたら実績「Hataskへようこそ」を解除(冪等。既に解除済みなら何もしない)
+claimAchievement('welcomeToHatask');
 window.localStorage.setItem('hatask_initialized', '1');
 updateClock();
 clockInterval = setInterval(updateClock, 30000);
@@ -1428,6 +1431,9 @@ onDeactivated(() => {
 cleanupHataskState();
 });
 onActivated(() => {
+// 旗鯖fork: keep-alive復帰やウィンドウ遷移で onMounted が走らない場合に備え、
+// onActivated でも実績を解除する(claimAchievementは冪等)。
+claimAchievement('welcomeToHatask');
 showMobileNav.value = true;
 document.body.dataset.hataskActive = '1';
 // KeepAlive復帰時にMisskeyフッターを再非表示

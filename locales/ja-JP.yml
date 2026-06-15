@@ -2306,6 +2306,12 @@ _achievements:
       title: "ダブル🤯"
       description: "バブルゲームで最も大きいモノを2つ同時に出した"
       flavor: "これくらいの　おべんとばこに　🤯　🤯　ちょっとつめて"
+    _hatasabaDeckTutorial:
+      title: "これが新しいデッキUI？"
+      description: "お好みの設定でお使いください"
+    _welcomeToHatask:
+      title: "Hataskへようこそ"
+      description: "Welcome to Hatask"
 
 _role:
   new: "ロールの作成"

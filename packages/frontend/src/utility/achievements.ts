@@ -87,6 +87,8 @@ export const ACHIEVEMENT_TYPES = [
 	'tutorialCompleted',
 	'bubbleGameExplodingHead',
 	'bubbleGameDoubleExplodingHead',
+	'hatasabaDeckTutorial',
+	'welcomeToHatask',
 ] as const;
 
 export const ACHIEVEMENT_BADGES = {
@@ -489,6 +491,18 @@ export const ACHIEVEMENT_BADGES = {
 		img: '/fluent-emoji/1f92f.png',
 		bg: 'linear-gradient(0deg, rgb(255 77 77), rgb(247 155 214))',
 		frame: 'silver',
+	},
+	// 旗鯖fork: HatasabaデッキUIのチュートリアルを完了した
+	'hatasabaDeckTutorial': {
+		img: '/fluent-emoji/1f5c2.png',
+		bg: 'linear-gradient(0deg, rgb(118 110 255), rgb(0 212 255))',
+		frame: 'silver',
+	},
+	// 旗鯖fork: Hataskを初めて開いた
+	'welcomeToHatask': {
+		img: '/fluent-emoji/1f44b.png',
+		bg: 'linear-gradient(0deg, rgb(59 187 116), rgb(0 212 255))',
+		frame: 'bronze',
 	},
 /* @see <https://github.com/misskey-dev/misskey/pull/10365#discussion_r1155511107>
 } as const satisfies Record<typeof ACHIEVEMENT_TYPES[number], {
