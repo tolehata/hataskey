@@ -909,19 +909,33 @@ defineExpose({
 	margin-top: 4px !important;
 }
 
-/* 本文の吹き出し突起（左向き、アイコンが呟いているように） */
+/* 本文の吹き出し突起（左向き、アイコンが呟いているように）
+   端末ごとのにじみ(|が見える/枠線の太さがばらつく)を避けるため drop-shadow を使わず、
+   枠線色の三角(::before)と本文色の三角(::after)を重ね、本文色を本文側へ1pxめり込ませて継ぎ目を消す。 */
+[data-bubble="on"] [data-note-content]::before {
+	content: '' !important;
+	display: block !important;
+	position: absolute !important;
+	top: 11px !important;
+	left: -8px !important;
+	width: 0 !important;
+	height: 0 !important;
+	border-top: 7px solid transparent !important;
+	border-bottom: 7px solid transparent !important;
+	border-right: 8px solid color-mix(in srgb, var(--MI_THEME-accent) 25%, var(--MI_THEME-panel)) !important;
+	z-index: 0 !important;
+}
 [data-bubble="on"] [data-note-content]::after {
 	content: '' !important;
 	display: block !important;
 	position: absolute !important;
 	top: 12px !important;
-	left: -6px !important;
+	left: -5px !important;
 	width: 0 !important;
 	height: 0 !important;
 	border-top: 6px solid transparent !important;
 	border-bottom: 6px solid transparent !important;
-	border-right: 6px solid color-mix(in srgb, var(--MI_THEME-accent) 5%, var(--MI_THEME-panel)) !important;
-	filter: drop-shadow(-1.5px 0 0 color-mix(in srgb, var(--MI_THEME-accent) 25%, transparent)) !important;
+	border-right: 7px solid color-mix(in srgb, var(--MI_THEME-accent) 5%, var(--MI_THEME-panel)) !important;
 	z-index: 1 !important;
 }
 
