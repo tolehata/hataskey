@@ -41,19 +41,43 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 		<!-- 同意済み: 編集UI -->
 		<template v-else>
-			<!-- ===== プレビュー ===== -->
+			<!-- ===== プレビュー(吹き出し位置をドラッグで調整) ===== -->
 			<div :class="$style.preview">
-				<div v-if="previewExpression" :class="$style.previewStage">
-					<img :src="previewExpression.url" :class="$style.previewImg" :alt="previewExpression.label" />
+				<div :class="$style.previewStageWrap" ref="stageWrapEl">
+					<template v-if="previewExpression">
+						<img :src="previewExpression.url" :style="{ '--htk-motion-i': String(previewExpression.motionIntensity ?? 1) }" :class="[$style.previewImg, previewExpression.motion==='bounce' ? $style.motionBounce : previewExpression.motion==='shake' ? $style.motionShake : previewExpression.motion==='sway' ? $style.motionSway : previewExpression.motion==='spin' ? $style.motionSpin : '']" :alt="previewExpression.label" draggable="false" />
+						<!-- 吹き出し(ドラッグで位置調整。位置は表情ごとに保存) -->
+						<div
+							:class="[$style.previewBubble, bubbleTail==='right' ? $style.tail_right : $style.tail_left, draggingBubble && $style.previewBubbleDragging]"
+							:style="bubbleStyle"
+							@pointerdown="onBubblePointerDown"
+						>
+							<span v-if="previewPhraseText">{{ previewPhraseText }}</span>
+							<span v-else :class="$style.bubblePlaceholder">文言</span>
+							<span :class="$style.bubbleGrip" title="ドラッグで位置を調整"><i class="ti ti-arrows-move"></i></span>
+						</div>
+					</template>
+					<div v-else :class="$style.previewEmpty">
+						<i class="ti ti-photo"></i>
+						<span>立ち絵を追加するとここに表示されます</span>
+					</div>
 				</div>
-				<div v-else :class="$style.previewEmpty">
-					<i class="ti ti-photo"></i>
-					<span>立ち絵を追加するとここに表示されます</span>
-				</div>
-				<div :class="$style.previewSide">
+				<div :class="$style.previewMeta">
 					<div v-if="showName && activeChar?.name" :class="$style.previewName">{{ activeChar.name }}</div>
-					<div :class="$style.previewBubble">{{ previewPhraseText || 'ここに文言が表示されます' }}</div>
-					<div v-if="activeChar && activeChar.phrases.length > 0" :class="$style.previewHint">文言をタップすると切り替わります</div>
+					<div v-if="previewExpression" :class="$style.previewHint">吹き出しをドラッグすると、この立ち絵（{{ previewExpression.label || '無名' }}）での表示位置を調整できます。</div>
+					<div v-if="previewExpression" :class="$style.bubbleControls">
+						<div :class="$style.bubbleCtrlRow">
+							<span :class="$style.bubbleCtrlLabel">吹き出しサイズ</span>
+							<input type="range" min="0.6" max="1.6" step="0.05" :value="previewExpression.bubbleScale ?? 1" @input="setBubbleScale($event)" :class="$style.bubbleRange" />
+						</div>
+						<div :class="$style.bubbleCtrlRow">
+							<span :class="$style.bubbleCtrlLabel">しっぽの向き</span>
+							<div :class="$style.tailToggle">
+								<button :class="[$style.tailBtn, bubbleTail==='left' && $style.tailBtnOn]" @click="setBubbleTail('left')">左</button>
+								<button :class="[$style.tailBtn, bubbleTail==='right' && $style.tailBtnOn]" @click="setBubbleTail('right')">右</button>
+							</div>
+						</div>
+					</div>
 					<div :class="$style.previewChips">
 						<button
 							v-for="(p,pi) in (activeChar?.phrases ?? [])" :key="p.id"
@@ -67,6 +91,20 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<!-- ===== 全体設定 ===== -->
 			<div :class="$style.card">
 				<div :class="$style.row"><span>マスコットの名前を表示する</span><button :class="[$style.sw, showName && $style.swOn]" @click="showName=!showName"></button></div>
+			</div>
+
+			<!-- ===== マスコットが伝えること ===== -->
+			<div :class="$style.card">
+				<div :class="$style.label">マスコットが伝えること</div>
+				<div :class="$style.desc">マスコットに何を伝えてもらうかを選べます。</div>
+				<div :class="$style.row"><span>誕生日を祝う</span><button :class="[$style.sw, displaySettings.tellBirthday && $style.swOn]" @click="toggleDisplay('tellBirthday')"></button></div>
+				<div :class="$style.row"><span>通知を伝える</span><button :class="[$style.sw, displaySettings.tellNotifications && $style.swOn]" @click="toggleDisplay('tellNotifications')"></button></div>
+				<div :class="$style.row"><span>設定した文言をランダムに表示する</span><button :class="[$style.sw, displaySettings.tellRandomPhrases && $style.swOn]" @click="toggleDisplay('tellRandomPhrases')"></button></div>
+				<div :class="$style.row"><span>ログイン時に未読通知の件数を伝える</span><button :class="[$style.sw, displaySettings.tellUnreadOnLogin && $style.swOn]" @click="toggleDisplay('tellUnreadOnLogin')"></button></div>
+				<div :class="$style.row"><span>Hatask の通知を伝える</span><button :class="[$style.sw, displaySettings.tellHataskNotifications && $style.swOn]" @click="toggleDisplay('tellHataskNotifications')"></button></div>
+				<div :class="$style.subDivider"></div>
+				<div :class="$style.row"><span>通知を伝える間は標準の通知トーストを表示しない</span><button :class="[$style.sw, displaySettings.suppressStandardToast && $style.swOn]" @click="toggleDisplay('suppressStandardToast')"></button></div>
+				<div :class="$style.desc" style="margin-top:6px;margin-bottom:0">「通知を伝える」がオンのときに有効です。マスコットと標準トーストが二重に出るのを防ぎます。</div>
 			</div>
 
 			<!-- ===== キャラ切替 ===== -->
@@ -105,6 +143,17 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<div v-for="(e,ei) in activeChar.expressions" :key="e.id" :class="$style.expItem">
 							<img :src="e.url" :class="$style.expImg" :alt="e.label" />
 							<input :class="$style.expLabel" :value="e.label" maxlength="30" @input="onExpLabel(ei,$event)" placeholder="ラベル" />
+							<select :class="$style.expMotion" :value="e.motion ?? 'none'" @change="onExpMotion(ei,$event)">
+								<option value="none">動きなし</option>
+								<option value="bounce">ぴょんぴょん</option>
+								<option value="shake">ガクガク</option>
+								<option value="sway">ゆらゆら</option>
+								<option value="spin">回転</option>
+							</select>
+							<div v-if="e.motion && e.motion !== 'none' && e.motion !== 'spin'" :class="$style.expIntensity">
+								<span :class="$style.expIntensityLabel">強さ</span>
+								<input type="range" min="0.3" max="2" step="0.1" :value="e.motionIntensity ?? 1" @input="onExpIntensity(ei,$event)" :class="$style.expIntensityRange" />
+							</div>
 							<button :class="$style.expDel" @click="removeExpression(ei)"><i class="ti ti-x"></i></button>
 						</div>
 					</div>
@@ -161,11 +210,12 @@ import MkButton from '@/components/MkButton.vue';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { chooseDriveFile } from '@/utility/drive.js';
 import * as os from '@/os.js';
+import { displaySettings, loadDisplaySettings, saveDisplaySettings, type MascotDisplaySettings } from '@/utility/mascot-store.js';
 
 const emit = defineEmits<{ (ev:'closed'):void }>();
 const dialog = shallowRef<InstanceType<typeof MkModalWindow>>();
 
-type Expression = { id: string; label: string; url: string; driveFileId: string | null };
+type Expression = { id: string; label: string; url: string; driveFileId: string | null; bubbleX?: number; bubbleY?: number; bubbleScale?: number; bubbleTail?: 'left' | 'right'; motion?: 'none' | 'bounce' | 'shake' | 'sway' | 'spin'; motionIntensity?: number };
 type Phrase = { id: string; text: string; expressionId: string | null };
 type Character = { id: string; name: string; expressions: Expression[]; phrases: Phrase[] };
 
@@ -196,6 +246,67 @@ const previewExpression = computed<Expression | null>(() => {
 	return c.expressions[0] ?? null;
 });
 
+// ===== 吹き出し位置のドラッグ調整(表情ごとに保存) =====
+const stageWrapEl = ref<HTMLElement | null>(null);
+const draggingBubble = ref(false);
+
+// 現在の表情の吹き出し位置(0〜1)。未設定はデフォルト(上中央寄り)。
+const bubbleStyle = computed(() => {
+	const e = previewExpression.value;
+	const x = (e?.bubbleX ?? 0.5);
+	const y = (e?.bubbleY ?? 0.1);
+	const scale = (typeof e?.bubbleScale === 'number' ? e.bubbleScale : 1);
+	return {
+		left: (x * 100) + '%',
+		top: (y * 100) + '%',
+		fontSize: (0.85 * scale) + 'rem',
+	};
+});
+const bubbleTail = computed<'left' | 'right'>(() => (previewExpression.value?.bubbleTail === 'right' ? 'right' : 'left'));
+
+function setBubbleScale(ev: Event) {
+	const e = previewExpression.value; const c = activeChar.value;
+	if (!e || !c) return;
+	const v = parseFloat((ev.target as HTMLInputElement).value);
+	const target = c.expressions.find(x => x.id === e.id);
+	if (target) target.bubbleScale = Math.min(1.6, Math.max(0.6, v));
+}
+function setBubbleTail(tail: 'left' | 'right') {
+	const e = previewExpression.value; const c = activeChar.value;
+	if (!e || !c) return;
+	const target = c.expressions.find(x => x.id === e.id);
+	if (target) target.bubbleTail = tail;
+}
+
+// 動きクラスを静的参照で返す(CSS module動的アクセスを避ける)
+function onBubblePointerDown(ev: PointerEvent) {
+	const e = previewExpression.value;
+	const wrap = stageWrapEl.value;
+	if (!e || !wrap) return;
+	ev.preventDefault();
+	draggingBubble.value = true;
+	(ev.target as HTMLElement).setPointerCapture?.(ev.pointerId);
+
+	const move = (mv: PointerEvent) => {
+		const rect = wrap.getBoundingClientRect();
+		if (rect.width === 0 || rect.height === 0) return;
+		const x = Math.min(1, Math.max(0, (mv.clientX - rect.left) / rect.width));
+		const y = Math.min(1, Math.max(0, (mv.clientY - rect.top) / rect.height));
+		// 現在表情に書き込む(キャラ配列内の実体を更新)
+		const c = activeChar.value;
+		if (!c) return;
+		const target = c.expressions.find(x2 => x2.id === e.id);
+		if (target) { target.bubbleX = Math.round(x * 1000) / 1000; target.bubbleY = Math.round(y * 1000) / 1000; }
+	};
+	const up = () => {
+		draggingBubble.value = false;
+		window.removeEventListener('pointermove', move);
+		window.removeEventListener('pointerup', up);
+	};
+	window.addEventListener('pointermove', move);
+	window.addEventListener('pointerup', up);
+}
+
 // キャラ切替や文言削除で範囲外になったらプレビューをリセット
 watch([activeCharIdx, () => activeChar.value?.phrases.length], () => {
 	const len = activeChar.value?.phrases.length ?? 0;
@@ -205,6 +316,7 @@ watch([activeCharIdx, () => activeChar.value?.phrases.length], () => {
 function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
 
 onMounted(async () => {
+	await loadDisplaySettings();
 	try {
 		const res = await misskeyApi('hata/mascot/get', {});
 		consented.value = res.consented === true;
@@ -217,7 +329,7 @@ onMounted(async () => {
 		characters.value = Array.isArray(data.characters) ? data.characters.map((c:any) => ({
 			id: c.id ?? genId(),
 			name: c.name ?? '',
-			expressions: Array.isArray(c.expressions) ? c.expressions.map((e:any) => ({ id: e.id ?? genId(), label: e.label ?? '', url: e.url ?? '', driveFileId: e.driveFileId ?? null })) : [],
+			expressions: Array.isArray(c.expressions) ? c.expressions.map((e:any) => ({ id: e.id ?? genId(), label: e.label ?? '', url: e.url ?? '', driveFileId: e.driveFileId ?? null, bubbleX: typeof e.bubbleX === 'number' ? e.bubbleX : 0.5, bubbleY: typeof e.bubbleY === 'number' ? e.bubbleY : 0.1, bubbleScale: typeof e.bubbleScale === 'number' ? e.bubbleScale : 1, bubbleTail: e.bubbleTail === 'right' ? 'right' : 'left', motion: e.motion ?? 'none', motionIntensity: typeof e.motionIntensity === 'number' ? e.motionIntensity : 1 })) : [],
 			phrases: Array.isArray(c.phrases) ? c.phrases.map((p:any) => ({ id: p.id ?? genId(), text: p.text ?? '', expressionId: p.expressionId ?? null })) : [],
 		})) : [];
 		showName.value = data.showName === true;
@@ -271,9 +383,11 @@ async function addExpression() {
 		os.alert({ type: 'warning', text: '画像が大きすぎます（500KB以下にしてください）。' });
 		return;
 	}
-	c.expressions.push({ id: genId(), label: '', url: f.url, driveFileId: f.id });
+	c.expressions.push({ id: genId(), label: '', url: f.url, driveFileId: f.id, bubbleX: 0.5, bubbleY: 0.1, bubbleScale: 1, bubbleTail: 'left', motion: 'none', motionIntensity: 1 });
 }
 function onExpLabel(ei:number, ev:Event) { const c = activeChar.value; if (c) c.expressions[ei].label = (ev.target as HTMLInputElement).value; }
+function onExpMotion(ei:number, ev:Event) { const c = activeChar.value; if (c) c.expressions[ei].motion = (ev.target as HTMLSelectElement).value as any; }
+function onExpIntensity(ei:number, ev:Event) { const c = activeChar.value; if (c) c.expressions[ei].motionIntensity = Math.min(2, Math.max(0.3, parseFloat((ev.target as HTMLInputElement).value))); }
 function removeExpression(ei:number) {
 	const c = activeChar.value; if (!c) return;
 	const removed = c.expressions[ei];
@@ -286,6 +400,11 @@ function onPhraseText(pi:number, ev:Event) { const c = activeChar.value; if (c) 
 function setPhraseExp(pi:number, expId:string|null) { const c = activeChar.value; if (c) c.phrases[pi].expressionId = expId; }
 function removePhrase(pi:number) { const c = activeChar.value; if (c) c.phrases.splice(pi, 1); }
 
+function toggleDisplay(key: keyof MascotDisplaySettings) {
+	const next = { ...displaySettings.value, [key]: !displaySettings.value[key] };
+	saveDisplaySettings(next);
+}
+
 async function save() {
 	saving.value = true;
 	try {
@@ -293,7 +412,7 @@ async function save() {
 			characters: characters.value.map(c => ({
 				id: c.id,
 				name: c.name,
-				expressions: c.expressions.map(e => ({ id: e.id, label: e.label, url: e.url, driveFileId: e.driveFileId })),
+				expressions: c.expressions.map(e => ({ id: e.id, label: e.label, url: e.url, driveFileId: e.driveFileId, bubbleX: e.bubbleX, bubbleY: e.bubbleY, bubbleScale: e.bubbleScale, bubbleTail: e.bubbleTail, motion: e.motion, motionIntensity: e.motionIntensity })),
 				phrases: c.phrases.map(p => ({ id: p.id, text: p.text, expressionId: p.expressionId })),
 			})),
 			activeCharacterId: activeChar.value?.id ?? null,
@@ -323,14 +442,32 @@ async function save() {
 .footer { display:flex; justify-content:flex-end; gap:8px; padding-top:4px; }
 
 /* ===== プレビュー ===== */
-.preview { display:flex; gap:16px; background:linear-gradient(135deg, var(--MI_THEME-panel), var(--MI_THEME-bg)); border:1px solid var(--MI_THEME-divider); border-radius:16px; padding:16px; }
-.previewStage { width:140px; height:140px; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
-.previewImg { max-width:100%; max-height:100%; object-fit:contain; filter:drop-shadow(0 4px 12px rgba(0,0,0,.25)); }
-.previewEmpty { width:140px; height:140px; flex-shrink:0; display:flex; flex-direction:column; gap:8px; align-items:center; justify-content:center; border:1px dashed var(--MI_THEME-divider); border-radius:12px; opacity:.5; font-size:.75rem; text-align:center; i{ font-size:1.8rem; } }
-.previewSide { flex:1; min-width:0; display:flex; flex-direction:column; gap:8px; }
+.preview { display:flex; flex-direction:column; gap:14px; background:linear-gradient(135deg, var(--MI_THEME-panel), var(--MI_THEME-bg)); border:1px solid var(--MI_THEME-divider); border-radius:16px; padding:16px; }
+.previewStageWrap { position:relative; width:100%; aspect-ratio:16/10; max-height:320px; display:flex; align-items:center; justify-content:center; overflow:hidden; border-radius:12px; }
+.previewImg { max-width:70%; max-height:100%; object-fit:contain; filter:drop-shadow(0 4px 12px rgba(0,0,0,.25)); user-select:none; -webkit-user-drag:none; }
+.previewEmpty { width:100%; height:100%; display:flex; flex-direction:column; gap:8px; align-items:center; justify-content:center; border:1px dashed var(--MI_THEME-divider); border-radius:12px; opacity:.5; font-size:.75rem; text-align:center; i{ font-size:1.8rem; } }
+.previewMeta { display:flex; flex-direction:column; gap:8px; }
 .previewName { font-weight:700; font-size:.9rem; }
-.previewBubble { position:relative; background: var(--MI_THEME-bg); border:1px solid var(--MI_THEME-divider); border-radius:12px; padding:10px 14px; font-size:.9rem; line-height:1.5; min-height:1.5em; word-break:break-word; }
-.previewHint { font-size:.72rem; opacity:.5; }
+/* 吹き出し: 立ち絵の上に絶対配置。left/topはbubbleStyleで指定、transformで中心合わせ */
+.previewBubble { position:absolute; transform:translate(-50%,-50%); max-width:60%; background: var(--MI_THEME-bg); border:1px solid var(--MI_THEME-divider); border-radius:12px; padding:8px 12px; font-size:.85rem; line-height:1.5; word-break:break-word; cursor:grab; box-shadow:0 2px 10px rgba(0,0,0,.18); touch-action:none; }
+.previewBubble:active { cursor:grabbing; }
+/* しっぽ(三角形)。左右で位置を切り替え。本体と同じ背景+枠線で繋げて見せる */
+.previewBubble::after, .previewBubble::before { content:''; position:absolute; top:50%; width:0; height:0; border-style:solid; }
+.tail_left::before { right:100%; transform:translateY(-50%); border-width:8px 10px 8px 0; border-color:transparent var(--MI_THEME-divider) transparent transparent; margin-right:-1px; }
+.tail_left::after { right:100%; transform:translateY(-50%); border-width:7px 9px 7px 0; border-color:transparent var(--MI_THEME-bg) transparent transparent; }
+.tail_right::before { left:100%; transform:translateY(-50%); border-width:8px 0 8px 10px; border-color:transparent transparent transparent var(--MI_THEME-divider); margin-left:-1px; }
+.tail_right::after { left:100%; transform:translateY(-50%); border-width:7px 0 7px 9px; border-color:transparent transparent transparent var(--MI_THEME-bg); }
+.bubbleControls { display:flex; flex-direction:column; gap:8px; margin-top:4px; }
+.bubbleCtrlRow { display:flex; align-items:center; gap:12px; }
+.bubbleCtrlLabel { font-size:.78rem; opacity:.7; min-width:84px; }
+.bubbleRange { flex:1; accent-color: var(--MI_THEME-accent); }
+.tailToggle { display:flex; gap:4px; }
+.tailBtn { padding:4px 14px; border-radius:8px; border:1px solid var(--MI_THEME-divider); background: var(--MI_THEME-bg); color: var(--MI_THEME-fg); cursor:pointer; font-size:.8rem; }
+.tailBtnOn { background: var(--MI_THEME-accent); color: var(--MI_THEME-fgOnAccent); border-color: var(--MI_THEME-accent); }
+.previewBubbleDragging { outline:2px solid var(--MI_THEME-accent); opacity:.9; }
+.bubblePlaceholder { opacity:.45; }
+.bubbleGrip { position:absolute; right:-8px; bottom:-8px; width:20px; height:20px; border-radius:999px; background: var(--MI_THEME-accent); color: var(--MI_THEME-fgOnAccent); display:flex; align-items:center; justify-content:center; font-size:.6rem; }
+.previewHint { font-size:.72rem; opacity:.55; }
 .previewChips { display:flex; flex-wrap:wrap; gap:6px; margin-top:2px; }
 .previewChip { max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding:4px 10px; border-radius:999px; border:1px solid var(--MI_THEME-divider); background: var(--MI_THEME-bg); color: var(--MI_THEME-fg); cursor:pointer; font-size:.76rem; }
 .previewChipOn { background: var(--MI_THEME-accent); color: var(--MI_THEME-fgOnAccent); border-color: var(--MI_THEME-accent); }
@@ -349,6 +486,21 @@ async function save() {
 .expItem { position:relative; display:flex; flex-direction:column; gap:6px; padding:8px; background: var(--MI_THEME-bg); border:1px solid var(--MI_THEME-divider); border-radius:10px; }
 .expImg { width:100%; aspect-ratio:1; object-fit:contain; border-radius:6px; background: var(--MI_THEME-panelHighlight, rgba(128,128,128,.1)); }
 .expLabel { width:100%; box-sizing:border-box; background: var(--MI_THEME-panel); color: var(--MI_THEME-fg); border:1px solid var(--MI_THEME-divider); border-radius:6px; padding:4px 8px; font-size:.78rem; font-family:inherit; }
+.expMotion { width:100%; box-sizing:border-box; background: var(--MI_THEME-panel); color: var(--MI_THEME-fg); border:1px solid var(--MI_THEME-divider); border-radius:6px; padding:4px 8px; font-size:.74rem; font-family:inherit; }
+.expIntensity { display:flex; align-items:center; gap:6px; }
+.expIntensityLabel { font-size:.7rem; opacity:.6; flex-shrink:0; }
+.expIntensityRange { flex:1; min-width:0; accent-color: var(--MI_THEME-accent); }
+/* 立ち絵の動き */
+.motionBounce { animation: htkMascotBounce 1s ease-in-out infinite; }
+.motionShake { animation: htkMascotShake .35s linear infinite; }
+.motionSway { animation: htkMascotSway 2s ease-in-out infinite; }
+.motionSpin { animation: htkMascotSpin 3s linear infinite; }
+:global {
+	@keyframes htkMascotBounce { 0%,100%{ transform:translateY(0); } 50%{ transform:translateY(calc(-8% * var(--htk-motion-i, 1))); } }
+	@keyframes htkMascotShake { 0%,100%{ transform:translateX(0); } 25%{ transform:translateX(calc(-4px * var(--htk-motion-i, 1))); } 75%{ transform:translateX(calc(4px * var(--htk-motion-i, 1))); } }
+	@keyframes htkMascotSway { 0%,100%{ transform:rotate(calc(-4deg * var(--htk-motion-i, 1))); } 50%{ transform:rotate(calc(4deg * var(--htk-motion-i, 1))); } }
+	@keyframes htkMascotSpin { from{ transform:rotate(0); } to{ transform:rotate(360deg); } }
+}
 .expDel { position:absolute; top:4px; right:4px; width:22px; height:22px; border-radius:999px; border:none; background:rgba(0,0,0,.5); color:#fff; cursor:pointer; font-size:.7rem; display:flex; align-items:center; justify-content:center; }
 
 /* ===== 文言カード ===== */
@@ -368,4 +520,5 @@ async function save() {
 .sw::after { content:''; position:absolute; width:18px; height:18px; background:#fff; border-radius:50%; top:2px; left:2px; transition:left .25s cubic-bezier(0.34,1.56,0.64,1); box-shadow:0 1px 3px rgba(0,0,0,.2); }
 .swOn { background: var(--MI_THEME-accent); border-color: var(--MI_THEME-accent); }
 .swOn::after { left:22px; }
+.subDivider { height:1px; background: var(--MI_THEME-divider); margin:10px 0; opacity:.6; }
 </style>

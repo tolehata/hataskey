@@ -327,7 +327,7 @@ export class MiUserProfile {
 		characters?: {
 			id: string;
 			name: string;
-			expressions?: { id: string; label: string; url: string; driveFileId?: string | null }[];
+			expressions?: { id: string; label: string; url: string; driveFileId?: string | null; bubbleX?: number; bubbleY?: number; bubbleScale?: number; bubbleTail?: string; motion?: string; motionIntensity?: number }[];
 			phrases?: { id: string; text: string; expressionId: string | null }[];
 		}[];
 		activeCharacterId?: string | null;

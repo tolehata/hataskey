@@ -29,6 +29,18 @@ const PHRASE_MAX = 140;
 const IMAGE_MAX_BYTES = 500 * 1024; // 500KB
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 
+// 0〜1 にクランプ。数値でなければ fallback。
+function clamp01(v: unknown, fallback: number): number {
+	if (typeof v !== 'number' || Number.isNaN(v)) return fallback;
+	return Math.min(1, Math.max(0, v));
+}
+
+// min〜max にクランプ。数値でなければ fallback。
+function clampRange(v: unknown, min: number, max: number, fallback: number): number {
+	if (typeof v !== 'number' || Number.isNaN(v)) return fallback;
+	return Math.min(max, Math.max(min, v));
+}
+
 export const meta = {
 	tags: ['hata'],
 
@@ -114,6 +126,12 @@ export const paramDef = {
 								label: { type: 'string' },
 								url: { type: 'string' },
 								driveFileId: { type: 'string', nullable: true },
+								bubbleX: { type: 'number', nullable: true },
+								bubbleY: { type: 'number', nullable: true },
+								bubbleScale: { type: 'number', nullable: true },
+								bubbleTail: { type: 'string', nullable: true, enum: ['left', 'right'] },
+								motion: { type: 'string', nullable: true, enum: ['none', 'bounce', 'shake', 'sway', 'spin'] },
+								motionIntensity: { type: 'number', nullable: true },
 							},
 							required: ['id', 'label', 'url'],
 						},
@@ -187,6 +205,14 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 						label: this.sanitize(e.label, LABEL_MAX),
 						url: e.url,
 						driveFileId: e.driveFileId ?? null,
+						// 吹き出し位置(立ち絵に対する相対割合 0〜1)。未指定はデフォルト(上中央寄り)。
+						bubbleX: clamp01(e.bubbleX, 0.5),
+						bubbleY: clamp01(e.bubbleY, 0.1),
+						// 吹き出しサイズ(0.6〜1.6)としっぽの左右
+						bubbleScale: clampRange(e.bubbleScale, 0.6, 1.6, 1),
+						bubbleTail: (e.bubbleTail === 'right' ? 'right' : 'left'),
+						motion: (['bounce', 'shake', 'sway', 'spin'].includes(e.motion) ? e.motion : 'none'),
+						motionIntensity: clampRange(e.motionIntensity, 0.3, 2, 1),
 					};
 				});
 
