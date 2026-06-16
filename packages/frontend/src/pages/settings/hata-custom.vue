@@ -205,7 +205,7 @@ SPDX-License-Identifier: AGPL-3.0-only
                     <div v-if="isSidebarGroupHead(idx)" :class="$style.reorderGroupLabel">{{ sidebarGroupLabelOf(item) }}</div>
                     <div :class="[$style.reorderItem, isSidebarItemVisible(item) ? '' : $style.reorderItemHidden]">
                         <!-- 旗鯖fork: 必須項目以外は visible トグル付き、必須項目は空白でレイアウトを揃える -->
-                        <MkSwitch v-if="!isSidebarItemRequired(item.id)" :modelValue="isSidebarItemVisible(item)" @update:modelValue="setSidebarItemVisible(idx, $event)" />
+                        <MkSwitch v-if="!isSidebarItemRequired(item.id)" :modelValue="isSidebarItemVisible(item)" style="margin:0;flex-shrink:0;transform:scale(.8);transform-origin:left center;" @update:modelValue="setSidebarItemVisible(idx, $event)" />
                         <span v-else :class="$style.requiredLabel" v-tooltip="'この項目は常に表示されます'"><i class="ti ti-lock"></i></span>
                         <i :class="[item.icon, $style.reorderIcon]"></i>
                         <span :class="$style.reorderLabel">{{ item.label }}</span>

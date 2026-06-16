@@ -297,7 +297,8 @@ definePage(() => INFO.value);
 
 .htkProfileBtn {
 	flex: 1 1 200px;
-	min-width: 200px;
+	min-width: 0;
+	overflow: hidden;
 	display: flex;
 	align-items: center;
 	gap: 12px;
@@ -327,7 +328,9 @@ definePage(() => INFO.value);
 }
 
 .htkProfileText {
+	flex: 1 1 0;
 	min-width: 0;
+	overflow: hidden;
 	display: flex;
 	flex-direction: column;
 	justify-content: center;
