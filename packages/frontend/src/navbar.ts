@@ -70,6 +70,12 @@ export const navbarItemDef = reactive({
 		show: computed(() => $i != null),
 		to: '/hatask',
 	},
+	mascot: {
+		title: 'マスコット',
+		icon: 'ti ti-mood-smile',
+		show: computed(() => $i != null),
+		to: '/mascot',
+	},
 	explore: {
 		title: i18n.ts.explore,
 		icon: 'ti ti-hash',

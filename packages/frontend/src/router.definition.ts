@@ -715,6 +715,10 @@ export const ROUTE_DEF = [{
 	component: page(() => import('@/pages/hatask.vue')),
 	loginRequired: true,
 }, {
+	path: '/mascot',
+	component: page(() => import('@/pages/mascot.vue')),
+	loginRequired: true,
+}, {
 	path: '/hata-docs',
 	component: page(() => import('@/pages/hata-docs.vue')),
 	loginRequired: false,

@@ -192,6 +192,7 @@ export const PREF_DEF = definePreferences({
 			'favorites',
                         'portal',
 			'hatask',
+			'mascot',
 			'explore',
 			'followRequests',
 			'-',
