@@ -19,14 +19,16 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 		<div v-else :class="$style.stage">
 			<div :class="$style.imgWrap">
-				<Transition name="mascotImgFade" mode="out-in">
-					<img v-if="expUrl" :key="expUrl" :src="expUrl" :style="motionVarStyle" :class="[$style.img, currentExpression?.motion==='bounce' ? $style.motionBounce : currentExpression?.motion==='shake' ? $style.motionShake : currentExpression?.motion==='sway' ? $style.motionSway : currentExpression?.motion==='spin' ? $style.motionSpin : '']" :alt="expLabel" draggable="false" />
-					<div v-else :class="$style.noImg"><i class="ti ti-photo"></i></div>
-				</Transition>
-				<!-- 吹き出しを立ち絵の上に、表情ごとの位置(bubbleX/Y)で重ねる -->
-				<Transition name="mascotBubble">
-					<div v-if="phraseText" :key="phraseText" :class="[$style.bubble, bubbleTail==='right' ? $style.tail_right : $style.tail_left]" :style="bubbleStyle" @click="next">
-						{{ phraseText }}
+				<Transition name="mascotScene" mode="out-in">
+					<div :key="transitionKey" :class="$style.scene">
+						<img v-if="expUrl" :src="expUrl" :style="motionVarStyle" :class="[$style.img, motionName==='bounce' ? $style.motionBounce : motionName==='shake' ? $style.motionShake : motionName==='sway' ? $style.motionSway : motionName==='spin' ? $style.motionSpin : '']" :alt="expLabel" draggable="false" />
+						<div v-else :class="$style.noImg"><i class="ti ti-photo"></i></div>
+						<!-- 吹き出しを立ち絵の上に、表情ごとの位置(bubbleX/Y)で重ねる -->
+						<div v-if="phraseText" :class="[$style.bubble, bubbleTail==='right' ? $style.tail_right : $style.tail_left]" :style="bubbleStyle" @click="next">
+							{{ phraseText }}
+						</div>
+						<!-- ？小吹き出し(疑問トグルON時) -->
+						<div v-if="qEnabled" :class="[$style.qBubble, qTail==='right' ? $style.qtail_right : $style.qtail_left]" :style="qBubbleStyle">?</div>
 					</div>
 				</Transition>
 			</div>
@@ -34,6 +36,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<div v-if="!phraseText" :class="$style.bubbleEmpty">（文言が設定されていません）</div>
 			<div :class="$style.controls">
 				<MkButton rounded @click="next"><i class="ti ti-refresh"></i> 次の文言</MkButton>
+				<MkButton v-if="isBirthdayToday" rounded gradate @click="celebrateBirthday">🎂 誕生日を祝ってもらう</MkButton>
 				<MkButton rounded @click="openSettings"><i class="ti ti-settings"></i> 設定</MkButton>
 			</div>
 		</div>
@@ -42,15 +45,17 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { computed, onMounted, onActivated, onDeactivated, onUnmounted } from 'vue';
+import { computed, onMounted, onActivated, onDeactivated, onUnmounted, ref, watch } from 'vue';
 import MkButton from '@/components/MkButton.vue';
 import * as os from '@/os.js';
+import { $i } from '@/i.js';
 import { definePage } from '@/page.js';
 import {
 	mascotData, mascotLoaded, loadMascot,
 	activeCharacter, currentPhrase, currentExpression,
 	pickRandomPhrase, expressionDisplayUrl, escapeText,
-	displayText, displaySettings, loadDisplaySettings,
+	displayText, displaySettings, loadDisplaySettings, mascotVisible,
+	announceBirthday, announceUnread, announceCharBirthday, isCharBirthdayToday, clearAnnounce,
 } from '@/utility/mascot-store.js';
 
 const IDLE_MIN_MS = 5000; // 文言切替の最短間隔
@@ -58,19 +63,70 @@ const IDLE_MAX_MS = 12000; // 文言切替の最長間隔
 
 const character = computed(() => activeCharacter.value);
 const hasMascot = computed(() => !!character.value);
-const phraseText = computed(() => displayText.value ? escapeText(displayText.value) : '');
-const expUrl = computed(() => expressionDisplayUrl(currentExpression.value));
+// pending(storeが指す次の表示内容)
+const pendingPhraseText = computed(() => displayText.value ? escapeText(displayText.value) : '');
+const pendingExpUrl = computed(() => expressionDisplayUrl(currentExpression.value));
 const expLabel = computed(() => currentExpression.value?.label ?? '');
-// 吹き出し位置(表情ごとのbubbleX/Y、未設定は上中央寄り)
+
+// 実際に表示する内容(画像のデコード完了を待ってから pending を反映する)。
+// これにより「軽いテキストだけ先に出て、重い画像が遅れて出る」ズレを防ぐ。
+const shownUrl = ref('');
+const shownText = ref('');
+const shownExpression = ref<typeof currentExpression.value>(null);
+
+// 表示用に参照する値はすべて shown 系から導出する
+const expUrl = computed(() => shownUrl.value);
+const phraseText = computed(() => shownText.value);
+const transitionKey = computed(() => `${shownUrl.value}::${shownText.value}`);
+
+// 画像をプリロード&デコードしてから shown を更新する
+let applyToken = 0;
+async function applyPending() {
+	const token = ++applyToken;
+	const url = pendingExpUrl.value;
+	const text = pendingPhraseText.value;
+	const exp = currentExpression.value;
+	if (url) {
+		try {
+			const img = new Image();
+			img.src = url;
+			if (img.decode) await img.decode();
+		} catch { /* デコード失敗時もそのまま表示に進む */ }
+	}
+	// 待っている間に次の切替が来ていたら、この適用は破棄(最新優先)
+	if (token !== applyToken) return;
+	shownUrl.value = url;
+	shownText.value = text;
+	shownExpression.value = exp;
+}
+
+// pending(表情/文言)が変わったら、画像を用意してから表示を切り替える
+watch([pendingExpUrl, pendingPhraseText], () => { applyPending(); });
+
+// 吹き出し位置(表情ごとのbubbleX/Y、未設定は上中央寄り)。表示中の表情(shownExpression)基準。
 const bubbleStyle = computed(() => {
-	const e = currentExpression.value;
+	const e = shownExpression.value;
 	const x = (typeof e?.bubbleX === 'number' ? e.bubbleX : 0.5);
 	const y = (typeof e?.bubbleY === 'number' ? e.bubbleY : 0.1);
 	const scale = (typeof e?.bubbleScale === 'number' ? e.bubbleScale : 1);
-	return { left: (x * 100) + '%', top: (y * 100) + '%', fontSize: (1 * scale) + 'rem' };
+	const s: Record<string, string> = { left: (x * 100) + '%', top: (y * 100) + '%', fontSize: (0.85 * scale) + 'rem' };
+	if (e?.textColor) s.color = e.textColor;
+	return s;
 });
-const bubbleTail = computed<'left' | 'right'>(() => (currentExpression.value?.bubbleTail === 'right' ? 'right' : 'left'));
-const motionVarStyle = computed(() => ({ '--htk-motion-i': String(typeof currentExpression.value?.motionIntensity === 'number' ? currentExpression.value.motionIntensity : 1) }));
+const bubbleTail = computed<'left' | 'right'>(() => (shownExpression.value?.bubbleTail === 'right' ? 'right' : 'left'));
+const motionVarStyle = computed(() => ({ '--htk-motion-i': String(typeof shownExpression.value?.motionIntensity === 'number' ? shownExpression.value.motionIntensity : 1) }));
+const motionName = computed(() => shownExpression.value?.motion ?? 'none');
+const qEnabled = computed(() => shownExpression.value?.questionEnabled === true);
+const qTail = computed<'left' | 'right'>(() => (shownExpression.value?.qBubbleTail === 'right' ? 'right' : 'left'));
+const qBubbleStyle = computed(() => {
+	const e = shownExpression.value;
+	const x = (typeof e?.qBubbleX === 'number' ? e.qBubbleX : 0.7);
+	const y = (typeof e?.qBubbleY === 'number' ? e.qBubbleY : 0.05);
+	const scale = (typeof e?.qBubbleScale === 'number' ? e.qBubbleScale : 1);
+	const s: Record<string, string> = { left: (x * 100) + '%', top: (y * 100) + '%', fontSize: (1.1 * scale) + 'rem' };
+	if (e?.qTextColor) s.color = e.qTextColor;
+	return s;
+});
 
 let timer: ReturnType<typeof setTimeout> | null = null;
 function startTimer() {
@@ -80,7 +136,20 @@ function startTimer() {
 }
 function stopTimer() { if (timer) { clearTimeout(timer); timer = null; } }
 
-function next() { pickRandomPhrase(); startTimer(); }
+function next() { clearAnnounce(); pickRandomPhrase(); startTimer(); }
+
+// 今日が自分の誕生日か($i.birthday は 'YYYY-MM-DD')
+const isBirthdayToday = computed(() => {
+	const b = $i?.birthday;
+	if (!b) return false;
+	const parts = b.split('-');
+	if (parts.length < 3) return false;
+	const bm = parseInt(parts[1], 10);
+	const bd = parseInt(parts[2], 10);
+	const now = new Date();
+	return (now.getMonth() + 1) === bm && now.getDate() === bd;
+});
+function celebrateBirthday() { announceBirthday(); }
 
 function openSettings() {
 	import('@/pages/MkMascotSettings.vue').then(x => {
@@ -91,11 +160,29 @@ function openSettings() {
 onMounted(async () => {
 	await Promise.allSettled([loadMascot(), loadDisplaySettings()]);
 	pickRandomPhrase();
+	await applyPending();
 	startTimer();
+	mascotVisible.value = true;
+	announceOnOpen();
 });
-onActivated(() => startTimer());
-onDeactivated(() => stopTimer());
-onUnmounted(() => stopTimer());
+onActivated(() => { startTimer(); mascotVisible.value = true; announceOnOpen(); });
+onDeactivated(() => { stopTimer(); mascotVisible.value = false; });
+onUnmounted(() => { stopTimer(); mascotVisible.value = false; });
+
+// ページを開いたときの自動メッセージ。キャラ誕生日を最優先(1日1回・セッション中1回)、なければ未読件数。
+let charBirthdayAnnounced = false;
+function announceOnOpen() {
+	if (isCharBirthdayToday()) {
+		// 出っぱなしを防ぐため、開くたびではなくセッション中1回だけお祝いする
+		if (!charBirthdayAnnounced) {
+			charBirthdayAnnounced = true;
+			announceCharBirthday();
+		}
+		return;
+	}
+	const count = $i?.unreadNotificationsCount ?? 0;
+	announceUnread(count);
+}
 
 const headerActions = computed(() => [{
 	icon: 'ti ti-settings',
@@ -115,8 +202,9 @@ definePage(() => ({
 .emptyIcon { font-size:3rem; opacity:.4; }
 .emptyText { opacity:.7; }
 .stage { display:flex; flex-direction:column; align-items:center; gap:18px; padding:20px 0 40px; }
-.imgWrap { position:relative; width:min(70vw, 320px); height:min(70vw, 320px); display:flex; align-items:center; justify-content:center; }
-.img { max-width:100%; max-height:100%; object-fit:contain; filter:drop-shadow(0 8px 24px rgba(0,0,0,.25)); user-select:none; -webkit-user-drag:none; }
+.imgWrap { position:relative; width:min(86vw, 420px); aspect-ratio:4/3; max-height:440px; display:flex; align-items:center; justify-content:center; }
+.scene { position:relative; width:100%; height:100%; display:flex; align-items:center; justify-content:center; }
+.img { max-width:80%; max-height:100%; object-fit:contain; filter:drop-shadow(0 8px 24px rgba(0,0,0,.25)); user-select:none; -webkit-user-drag:none; }
 .noImg { width:100%; height:100%; display:flex; align-items:center; justify-content:center; border:1px dashed var(--MI_THEME-divider); border-radius:16px; opacity:.4; font-size:2rem; }
 .motionBounce { animation: htkMascotBounce 1s ease-in-out infinite; }
 .motionShake { animation: htkMascotShake .35s linear infinite; }
@@ -129,23 +217,23 @@ definePage(() => ({
 	@keyframes htkMascotSpin { from{ transform:rotate(0); } to{ transform:rotate(360deg); } }
 }
 .name { font-size:1.1rem; font-weight:700; }
-.bubble { position:absolute; transform:translate(-50%,-50%); max-width:min(80%, 320px); background: var(--MI_THEME-panel); border:1px solid var(--MI_THEME-divider); border-radius:16px; padding:12px 18px; font-size:1rem; line-height:1.6; text-align:center; cursor:pointer; transition:transform .1s; word-break:break-word; box-shadow:0 4px 16px rgba(0,0,0,.22); }
+.bubble { position:absolute; transform:translate(-50%,-50%); max-width:78%; background: var(--MI_THEME-panel); border:1px solid var(--MI_THEME-divider); border-radius:16px; padding:8px 12px; line-height:1.5; text-align:center; cursor:pointer; transition:transform .1s; word-break:break-word; white-space:pre-line; box-shadow:0 4px 16px rgba(0,0,0,.22); }
 .bubble:active { transform:translate(-50%,-50%) scale(.97); }
-.bubble::after, .bubble::before { content:''; position:absolute; top:50%; width:0; height:0; border-style:solid; }
-/* 左辺から左向き */
-.tail_left::before { right:100%; transform:translateY(-50%); border-width:9px 12px 9px 0; border-color:transparent var(--MI_THEME-divider) transparent transparent; margin-right:-1px; }
-.tail_left::after { right:100%; transform:translateY(-50%); border-width:8px 11px 8px 0; border-color:transparent var(--MI_THEME-panel) transparent transparent; }
-/* 右辺から右向き */
-.tail_right::before { left:100%; transform:translateY(-50%); border-width:9px 0 9px 12px; border-color:transparent transparent transparent var(--MI_THEME-divider); margin-left:-1px; }
-.tail_right::after { left:100%; transform:translateY(-50%); border-width:8px 0 8px 11px; border-color:transparent transparent transparent var(--MI_THEME-panel); }
+.bubble::after { content:''; position:absolute; top:50%; width:0; height:0; border-style:solid; }
+/* しっぽは本体色の単一三角。本体側に2pxめり込ませて継ぎ目を消す(枠線三角は重なりの線が出るため使わない) */
+.tail_left::after { right:100%; transform:translateY(-50%); border-width:8px 12px 8px 0; border-color:transparent var(--MI_THEME-panel) transparent transparent; margin-right:-2px; }
+.tail_right::after { left:100%; transform:translateY(-50%); border-width:8px 0 8px 12px; border-color:transparent transparent transparent var(--MI_THEME-panel); margin-left:-2px; }
+/* ？小吹き出し */
+.qBubble { position:absolute; transform:translate(-50%,-50%); min-width:1.6em; height:1.6em; display:flex; align-items:center; justify-content:center; background: var(--MI_THEME-panel); border:1px solid var(--MI_THEME-divider); border-radius:50%; font-weight:700; color: var(--MI_THEME-accent); box-shadow:0 2px 8px rgba(0,0,0,.2); }
+.qBubble::after { content:''; position:absolute; top:60%; width:0; height:0; border-style:solid; }
+.qtail_left::after { right:100%; transform:translateY(-50%); border-width:6px 9px 6px 0; border-color:transparent var(--MI_THEME-panel) transparent transparent; margin-right:-2px; }
+.qtail_right::after { left:100%; transform:translateY(-50%); border-width:6px 0 6px 9px; border-color:transparent transparent transparent var(--MI_THEME-panel); margin-left:-2px; }
 .bubbleEmpty { opacity:.5; font-size:.9rem; }
 .controls { display:flex; gap:10px; }
-/* 画像フェード切替 */
-:global(.mascotImgFade-enter-active), :global(.mascotImgFade-leave-active) { transition: opacity .45s ease; }
-:global(.mascotImgFade-enter-from), :global(.mascotImgFade-leave-to) { opacity: 0; }
-/* 吹き出し表示アニメ(フェード+ふわっと) */
-:global(.mascotBubble-enter-active) { transition: opacity .35s ease, transform .35s cubic-bezier(0.34,1.56,0.64,1); }
-:global(.mascotBubble-leave-active) { transition: opacity .2s ease; }
-:global(.mascotBubble-enter-from) { opacity: 0; transform: translate(-50%, calc(-50% + 8px)) scale(.92); }
-:global(.mascotBubble-leave-to) { opacity: 0; }
+/* シーン(画像+吹き出し+?)を1つのラッパーとして一括フェード。
+   別々のTransitionにすると軽いテキストが先に出てズレるため、まとめて遷移させる。 */
+:global(.mascotScene-enter-active) { transition: opacity .4s ease, transform .4s cubic-bezier(0.34,1.56,0.64,1); }
+:global(.mascotScene-leave-active) { transition: opacity .4s ease; }
+:global(.mascotScene-enter-from) { opacity: 0; transform: translateY(8px) scale(.97); }
+:global(.mascotScene-leave-to) { opacity: 0; }
 </style>

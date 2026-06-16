@@ -128,6 +128,7 @@ import { globalEvents } from '@/events.js';
 import { store } from '@/store.js';
 import XNavbar from '@/ui/_common_/navbar.vue';
 import { haptic } from '@/utility/haptic.js';
+import { announceNotification, shouldSuppressStandardToast, loadMascot, loadDisplaySettings } from '@/utility/mascot-store.js';
 
 const XStreamIndicator = defineAsyncComponent(() => import('./stream-indicator.vue'));
 const XWidgets = defineAsyncComponent(() => import('./widgets.vue'));
@@ -142,6 +143,9 @@ const dev = _DEV_;
 const notifications = ref<Misskey.entities.Notification[]>([]);
 
 function onNotification(notification: Misskey.entities.Notification, isClient = false) {
+	// 旗鯖fork: マスコットに通知を伝える(設定ON時)
+	announceNotification(notification);
+
 	if (window.document.visibilityState === 'visible') {
 		if (!isClient && notification.type !== 'test') {
 			// サーバーサイドのテスト通知の際は自動で既読をつけない（テストできないので）
@@ -150,14 +154,17 @@ function onNotification(notification: Misskey.entities.Notification, isClient = 
 			}
 		}
 
-		notifications.value.unshift(notification);
-		window.setTimeout(() => {
-			if (notifications.value.length > 3) notifications.value.pop();
-		}, 500);
+		// 旗鯖fork: マスコットが通知を伝える設定のときは標準トーストを出さない
+		if (!shouldSuppressStandardToast()) {
+			notifications.value.unshift(notification);
+			window.setTimeout(() => {
+				if (notifications.value.length > 3) notifications.value.pop();
+			}, 500);
 
-		window.setTimeout(() => {
-			notifications.value = notifications.value.filter(x => x.id !== notification.id);
-		}, 6000);
+			window.setTimeout(() => {
+				notifications.value = notifications.value.filter(x => x.id !== notification.id);
+			}, 6000);
+		}
 	}
 
 	sound.playMisskeySfx('notification');
@@ -172,6 +179,10 @@ function exitSafeMode() {
 }
 
 if ($i) {
+	// 旗鯖fork: マスコットが通知を伝えられるよう、データと表示設定を先読みする
+	loadMascot();
+	loadDisplaySettings();
+
 	if (store.s.realtimeMode) {
 		const connection = useStream().useChannel('main');
 		connection.on('notification', onNotification);

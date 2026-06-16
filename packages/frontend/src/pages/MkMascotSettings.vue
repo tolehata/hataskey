@@ -9,9 +9,11 @@ SPDX-License-Identifier: AGPL-3.0-only
 <template>
 <MkModalWindow
 	ref="dialog"
-	:width="620"
+	:width="1240"
 	:height="800"
-	:withOkButton="false"
+	:withOkButton="consented"
+	:okButtonDisabled="saving"
+	@ok="save"
 	@close="dialog?.close()"
 	@closed="emit('closed')"
 >
@@ -41,8 +43,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 		<!-- 同意済み: 編集UI -->
 		<template v-else>
+			<div :class="$style.layout">
 			<!-- ===== プレビュー(吹き出し位置をドラッグで調整) ===== -->
-			<div :class="$style.preview">
+			<div :class="[$style.preview, $style.colPreview]">
 				<div :class="$style.previewStageWrap" ref="stageWrapEl">
 					<template v-if="previewExpression">
 						<img :src="previewExpression.url" :style="{ '--htk-motion-i': String(previewExpression.motionIntensity ?? 1) }" :class="[$style.previewImg, previewExpression.motion==='bounce' ? $style.motionBounce : previewExpression.motion==='shake' ? $style.motionShake : previewExpression.motion==='sway' ? $style.motionSway : previewExpression.motion==='spin' ? $style.motionSpin : '']" :alt="previewExpression.label" draggable="false" />
@@ -56,6 +59,20 @@ SPDX-License-Identifier: AGPL-3.0-only
 							<span v-else :class="$style.bubblePlaceholder">文言</span>
 							<span :class="$style.bubbleGrip" title="ドラッグで位置を調整"><i class="ti ti-arrows-move"></i></span>
 						</div>
+						<!-- ？小吹き出し(疑問トグルON時。ドラッグで位置調整) -->
+						<div
+							v-if="previewExpression.questionEnabled"
+							:class="[$style.qBubble, qTail==='right' ? $style.qtail_right : $style.qtail_left, draggingQBubble && $style.previewBubbleDragging]"
+							:style="qBubbleStyle"
+							@pointerdown="onQBubblePointerDown"
+						><span :class="$style.qMark">?</span><span :class="$style.bubbleGrip" title="ドラッグで位置を調整"><i class="ti ti-arrows-move"></i></span></div>
+						<!-- ！小吹き出し(通知用プレビュー時、exclaimEnabled) -->
+						<div
+							v-if="notifyPreviewMode && previewExpression.exclaimEnabled"
+							:class="[$style.qBubble, eTail==='right' ? $style.qtail_right : $style.qtail_left, draggingEBubble && $style.previewBubbleDragging]"
+							:style="eBubbleStyle"
+							@pointerdown="onEBubblePointerDown"
+						><span :class="$style.qMark">!</span><span :class="$style.bubbleGrip" title="ドラッグで位置を調整"><i class="ti ti-arrows-move"></i></span></div>
 					</template>
 					<div v-else :class="$style.previewEmpty">
 						<i class="ti ti-photo"></i>
@@ -77,17 +94,55 @@ SPDX-License-Identifier: AGPL-3.0-only
 								<button :class="[$style.tailBtn, bubbleTail==='right' && $style.tailBtnOn]" @click="setBubbleTail('right')">右</button>
 							</div>
 						</div>
+						<div :class="$style.qDivider"></div>
+						<div :class="$style.bubbleCtrlRow">
+							<span :class="$style.bubbleCtrlLabel">？の吹き出し</span>
+							<button :class="[$style.sw, previewExpression.questionEnabled && $style.swOn]" @click="toggleQuestion"></button>
+						</div>
+						<template v-if="previewExpression.questionEnabled">
+							<div :class="$style.bubbleCtrlRow">
+								<span :class="$style.bubbleCtrlLabel">？のサイズ</span>
+								<input type="range" min="0.6" max="1.6" step="0.05" :value="previewExpression.qBubbleScale ?? 1" @input="setQBubbleScale($event)" :class="$style.bubbleRange" />
+							</div>
+							<div :class="$style.bubbleCtrlRow">
+								<span :class="$style.bubbleCtrlLabel">？のしっぽ</span>
+								<div :class="$style.tailToggle">
+									<button :class="[$style.tailBtn, qTail==='left' && $style.tailBtnOn]" @click="setQBubbleTail('left')">左</button>
+									<button :class="[$style.tailBtn, qTail==='right' && $style.tailBtnOn]" @click="setQBubbleTail('right')">右</button>
+								</div>
+							</div>
+							<div :class="$style.qHint">？の吹き出しもドラッグで位置を調整できます。</div>
+						</template>
 					</div>
-					<div :class="$style.previewChips">
-						<button
-							v-for="(p,pi) in (activeChar?.phrases ?? [])" :key="p.id"
-							:class="[$style.previewChip, previewPhraseIdx===pi && $style.previewChipOn]"
-							@click="previewPhraseIdx = pi"
-						>{{ p.text || '(空の文言)' }}</button>
+					<div v-if="(activeChar?.phrases?.length ?? 0) > 0 || activeChar?.notifyExpression || activeChar?.birthdayExpression" :class="$style.previewChipsWrap">
+						<div :class="$style.previewChipsLabel"><i class="ti ti-eye"></i> プレビューに表示する文言・表情を選ぶ</div>
+						<div :class="$style.previewChips">
+							<button
+								v-for="(p,pi) in (activeChar?.phrases ?? [])" :key="p.id"
+								:class="[$style.previewChip, (!notifyPreviewMode && !birthdayPreviewMode && !charBirthdayPreviewMode && previewPhraseIdx===pi) && $style.previewChipOn]"
+								@click="selectPreviewPhrase(pi)"
+							><i class="ti ti-message-2"></i> {{ p.text || '(空の文言)' }}</button>
+							<button
+								v-if="activeChar?.notifyExpression"
+								:class="[$style.previewChip, notifyPreviewMode && $style.previewChipOn]"
+								@click="selectNotifyPreview"
+							><i class="ti ti-bell"></i> 通知用</button>
+							<button
+								v-if="activeChar?.birthdayExpression"
+								:class="[$style.previewChip, birthdayPreviewMode && $style.previewChipOn]"
+								@click="selectBirthdayPreview"
+							><i class="ti ti-cake"></i> 誕生日用</button>
+							<button
+								v-if="activeChar?.charBirthdayEnabled && activeChar?.charBirthdayExpression"
+								:class="[$style.previewChip, charBirthdayPreviewMode && $style.previewChipOn]"
+								@click="selectCharBirthdayPreview"
+							>キャラ誕生日</button>
+						</div>
 					</div>
 				</div>
 			</div>
 
+			<div :class="$style.colSettings">
 			<!-- ===== 全体設定 ===== -->
 			<div :class="$style.card">
 				<div :class="$style.row"><span>マスコットの名前を表示する</span><button :class="[$style.sw, showName && $style.swOn]" @click="showName=!showName"></button></div>
@@ -105,7 +160,15 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<div :class="$style.subDivider"></div>
 				<div :class="$style.row"><span>通知を伝える間は標準の通知トーストを表示しない</span><button :class="[$style.sw, displaySettings.suppressStandardToast && $style.swOn]" @click="toggleDisplay('suppressStandardToast')"></button></div>
 				<div :class="$style.desc" style="margin-top:6px;margin-bottom:0">「通知を伝える」がオンのときに有効です。マスコットと標準トーストが二重に出るのを防ぎます。</div>
-			</div>
+					<div :class="$style.subDivider"></div>
+					<div :class="$style.row">
+						<span>通知用表情の表示時間</span>
+						<span :class="$style.durationCtrl">
+							<input type="number" min="1" max="60" :value="displaySettings.notifyDurationSec" @input="setNotifyDuration($event)" :class="$style.durationInput" /> 秒
+						</span>
+					</div>
+					<div :class="$style.desc" style="margin-top:6px;margin-bottom:0">通知が来てからマスコットが通知用表情を表示する時間です。表示中に次の通知が来ると時間がリセットされ、吹き出しの内容も最新の通知に更新されます。</div>
+				</div>
 
 			<!-- ===== キャラ切替 ===== -->
 			<div :class="$style.card">
@@ -154,6 +217,16 @@ SPDX-License-Identifier: AGPL-3.0-only
 								<span :class="$style.expIntensityLabel">強さ</span>
 								<input type="range" min="0.3" max="2" step="0.1" :value="e.motionIntensity ?? 1" @input="onExpIntensity(ei,$event)" :class="$style.expIntensityRange" />
 							</div>
+							<div :class="$style.colorRow">
+								<span :class="$style.colorLabel">文字色</span>
+								<input type="color" :value="e.textColor || '#000000'" @input="setExpTextColor(ei,$event)" :class="$style.colorInput" />
+								<button v-if="e.textColor" :class="$style.colorClear" @click="clearExpTextColor(ei)" title="既定色に戻す"><i class="ti ti-x"></i></button>
+							</div>
+							<div v-if="e.questionEnabled" :class="$style.colorRow">
+								<span :class="$style.colorLabel">？の色</span>
+								<input type="color" :value="e.qTextColor || '#000000'" @input="setExpQTextColor(ei,$event)" :class="$style.colorInput" />
+								<button v-if="e.qTextColor" :class="$style.colorClear" @click="clearExpQTextColor(ei)" title="既定色に戻す"><i class="ti ti-x"></i></button>
+							</div>
 							<button :class="$style.expDel" @click="removeExpression(ei)"><i class="ti ti-x"></i></button>
 						</div>
 					</div>
@@ -192,12 +265,156 @@ SPDX-License-Identifier: AGPL-3.0-only
 					</div>
 					<MkButton v-if="activeChar.phrases.length < limits.maxPhrases" rounded @click="addPhrase"><i class="ti ti-plus"></i> 文言を追加</MkButton>
 				</div>
-			</template>
 
-			<div :class="$style.footer">
-				<MkButton @click="dialog?.close()">閉じる</MkButton>
-				<MkButton primary gradate :disabled="saving" @click="save"><i class="ti ti-device-floppy"></i> 保存</MkButton>
-			</div>
+				</template>
+				</div><!-- /colSettings(中央) -->
+
+				<div :class="$style.colSpecial">
+				<template v-if="activeChar">
+				<!-- ===== 通知用の専用表情 ===== -->
+				<div :class="$style.card">
+					<div :class="$style.label">通知用の表情</div>
+					<div :class="$style.desc">通知が届いたときに表示する専用の立ち絵と文言です。「！」の小吹き出しも付けられます。</div>
+					<template v-if="activeChar.notifyExpression">
+						<div :class="$style.expItem" style="max-width:140px;">
+							<img :src="activeChar.notifyExpression.url || ''" :class="$style.expImg" />
+							<button :class="$style.expDel" @click="clearNotify"><i class="ti ti-x"></i></button>
+						</div>
+						<input :class="$style.expLabel" :value="activeChar.notifyExpression.label" maxlength="30" @input="onNotifyField('label',$event)" placeholder="ラベル(任意)" style="margin-top:8px;" />
+						<div :class="$style.desc" style="margin:8px 0 0">通知時の文言は<b>前置き</b>です。実際の通知内容（「○○さんがフォロー」など）は、この前置きの後に改行して自動でつながります。</div>
+						<input :class="$style.inp" :value="activeChar.notifyExpression.text" maxlength="140" @input="onNotifyField('text',$event)" placeholder="例：通知が届いたよ！" style="margin-top:6px;" />
+						<div :class="$style.colorRow" style="margin-top:8px;">
+							<span :class="$style.colorLabel">文字色</span>
+							<input type="color" :value="activeChar.notifyExpression.textColor || '#000000'" @input="setNotifyTextColor($event)" :class="$style.colorInput" />
+							<button v-if="activeChar.notifyExpression.textColor" :class="$style.colorClear" @click="clearNotifyTextColor" title="既定色に戻す"><i class="ti ti-x"></i></button>
+						</div>
+						<div :class="$style.bubbleCtrlRow" style="margin-top:8px;">
+							<span :class="$style.bubbleCtrlLabel">動き</span>
+							<select :class="$style.expMotion" :value="activeChar.notifyExpression.motion" @change="onNotifyField('motion',$event)">
+								<option value="none">動きなし</option>
+								<option value="bounce">ぴょんぴょん</option>
+								<option value="shake">ガクガク</option>
+								<option value="sway">ゆらゆら</option>
+								<option value="spin">回転</option>
+							</select>
+						</div>
+						<div v-if="activeChar.notifyExpression.motion !== 'none' && activeChar.notifyExpression.motion !== 'spin'" :class="$style.bubbleCtrlRow">
+							<span :class="$style.bubbleCtrlLabel">動きの強さ</span>
+							<input type="range" min="0.3" max="2" step="0.1" :value="activeChar.notifyExpression.motionIntensity" @input="onNotifyField('motionIntensity',$event)" :class="$style.bubbleRange" />
+						</div>
+						<div :class="$style.subDivider"></div>
+						<div :class="$style.bubbleCtrlRow">
+							<span :class="$style.bubbleCtrlLabel">「！」の吹き出し</span>
+							<button :class="[$style.sw, activeChar.notifyExpression.exclaimEnabled && $style.swOn]" @click="toggleNotifyExclaim"></button>
+						</div>
+						<template v-if="activeChar.notifyExpression.exclaimEnabled">
+							<div :class="$style.bubbleCtrlRow">
+								<span :class="$style.bubbleCtrlLabel">！のサイズ</span>
+								<input type="range" min="0.6" max="1.6" step="0.05" :value="activeChar.notifyExpression.eBubbleScale" @input="setNotifyEScale($event)" :class="$style.bubbleRange" />
+							</div>
+							<div :class="$style.bubbleCtrlRow">
+								<span :class="$style.bubbleCtrlLabel">！のしっぽ</span>
+								<div :class="$style.tailToggle">
+									<button :class="[$style.tailBtn, activeChar.notifyExpression.eBubbleTail==='left' && $style.tailBtnOn]" @click="setNotifyETail('left')">左</button>
+									<button :class="[$style.tailBtn, activeChar.notifyExpression.eBubbleTail==='right' && $style.tailBtnOn]" @click="setNotifyETail('right')">右</button>
+								</div>
+							</div>
+							<div :class="$style.colorRow">
+								<span :class="$style.colorLabel">！の色</span>
+								<input type="color" :value="activeChar.notifyExpression.eTextColor || '#000000'" @input="setNotifyETextColor($event)" :class="$style.colorInput" />
+								<button v-if="activeChar.notifyExpression.eTextColor" :class="$style.colorClear" @click="clearNotifyETextColor" title="既定色に戻す"><i class="ti ti-x"></i></button>
+							</div>
+						</template>
+						<div :class="$style.desc" style="margin:4px 0 0">プレビュー下の「🔔 通知用」を選ぶと、吹き出し・！の位置やサイズ・しっぽをドラッグや上のスライダーで調整できます。</div>
+					</template>
+					<MkButton v-else rounded @click="chooseNotifyImage"><i class="ti ti-plus"></i> 通知用の立ち絵を選ぶ</MkButton>
+				</div>
+
+				<!-- ===== 誕生日用の専用表情 ===== -->
+				<div :class="$style.card">
+					<div :class="$style.label">誕生日用の表情</div>
+					<div :class="$style.desc">誕生日にお祝いするときに表示する専用の立ち絵と文言です。</div>
+					<template v-if="activeChar.birthdayExpression">
+						<div :class="$style.expItem" style="max-width:140px;">
+							<img :src="activeChar.birthdayExpression.url || ''" :class="$style.expImg" />
+							<button :class="$style.expDel" @click="clearBirthday"><i class="ti ti-x"></i></button>
+						</div>
+						<input :class="$style.expLabel" :value="activeChar.birthdayExpression.label" maxlength="30" @input="onBirthdayField('label',$event)" placeholder="ラベル(任意)" style="margin-top:8px;" />
+						<input :class="$style.inp" :value="activeChar.birthdayExpression.text" maxlength="140" @input="onBirthdayField('text',$event)" placeholder="誕生日の文言" style="margin-top:8px;" />
+						<div :class="$style.colorRow" style="margin-top:8px;">
+							<span :class="$style.colorLabel">文字色</span>
+							<input type="color" :value="activeChar.birthdayExpression.textColor || '#000000'" @input="setBirthdayTextColor($event)" :class="$style.colorInput" />
+							<button v-if="activeChar.birthdayExpression.textColor" :class="$style.colorClear" @click="clearBirthdayTextColor" title="既定色に戻す"><i class="ti ti-x"></i></button>
+						</div>
+						<div :class="$style.bubbleCtrlRow" style="margin-top:8px;">
+							<span :class="$style.bubbleCtrlLabel">動き</span>
+							<select :class="$style.expMotion" :value="activeChar.birthdayExpression.motion" @change="onBirthdayField('motion',$event)">
+								<option value="none">動きなし</option>
+								<option value="bounce">ぴょんぴょん</option>
+								<option value="shake">ガクガク</option>
+								<option value="sway">ゆらゆら</option>
+								<option value="spin">回転</option>
+							</select>
+						</div>
+						<div v-if="activeChar.birthdayExpression.motion !== 'none' && activeChar.birthdayExpression.motion !== 'spin'" :class="$style.bubbleCtrlRow">
+							<span :class="$style.bubbleCtrlLabel">動きの強さ</span>
+							<input type="range" min="0.3" max="2" step="0.1" :value="activeChar.birthdayExpression.motionIntensity" @input="onBirthdayField('motionIntensity',$event)" :class="$style.bubbleRange" />
+						</div>
+						<div :class="$style.desc" style="margin:4px 0 0">プレビュー下の「🎂 誕生日用」を選ぶと、文言吹き出しの位置やサイズ・しっぽをドラッグや上のスライダーで調整できます。</div>
+					</template>
+					<MkButton v-else rounded @click="chooseBirthdayImage"><i class="ti ti-plus"></i> 誕生日用の立ち絵を選ぶ</MkButton>
+				</div>
+
+				<!-- ===== キャラ自身の誕生日 ===== -->
+				<div :class="$style.card">
+					<div :class="$style.cardHead">
+						<span :class="$style.label">キャラの誕生日</span>
+						<button :class="[$style.sw, activeChar.charBirthdayEnabled && $style.swOn]" @click="toggleCharBirthday"></button>
+					</div>
+					<div :class="$style.desc">このキャラ自身の誕生日です。設定した月日になると、専用の文言・表情でキャラがお祝いを伝えます（マスコットページを開いたとき）。</div>
+					<template v-if="activeChar.charBirthdayEnabled">
+						<div :class="$style.bubbleCtrlRow">
+							<span :class="$style.bubbleCtrlLabel">誕生日</span>
+							<span :class="$style.durationCtrl">
+								<input type="number" min="1" max="12" :value="activeChar.charBirthdayMonth ?? ''" @input="setCharBirthdayMonth($event)" :class="$style.durationInput" /> 月
+								<input type="number" min="1" max="31" :value="activeChar.charBirthdayDay ?? ''" @input="setCharBirthdayDay($event)" :class="$style.durationInput" /> 日
+							</span>
+						</div>
+						<div :class="$style.subDivider"></div>
+						<template v-if="activeChar.charBirthdayExpression">
+							<div :class="$style.expItem" style="max-width:140px;">
+								<img :src="activeChar.charBirthdayExpression.url || ''" :class="$style.expImg" />
+								<button :class="$style.expDel" @click="clearCharBirthday"><i class="ti ti-x"></i></button>
+							</div>
+							<input :class="$style.expLabel" :value="activeChar.charBirthdayExpression.label" maxlength="30" @input="onCharBirthdayField('label',$event)" placeholder="ラベル(任意)" style="margin-top:8px;" />
+							<input :class="$style.inp" :value="activeChar.charBirthdayExpression.text" maxlength="140" @input="onCharBirthdayField('text',$event)" placeholder="例：今日はわたしの誕生日なんだ！" style="margin-top:8px;" />
+							<div :class="$style.bubbleCtrlRow" style="margin-top:8px;">
+								<span :class="$style.bubbleCtrlLabel">動き</span>
+								<select :class="$style.expMotion" :value="activeChar.charBirthdayExpression.motion" @change="onCharBirthdayField('motion',$event)">
+									<option value="none">動きなし</option>
+									<option value="bounce">ぴょんぴょん</option>
+									<option value="shake">ガクガク</option>
+									<option value="sway">ゆらゆら</option>
+									<option value="spin">回転</option>
+								</select>
+							</div>
+							<div v-if="activeChar.charBirthdayExpression.motion !== 'none' && activeChar.charBirthdayExpression.motion !== 'spin'" :class="$style.bubbleCtrlRow">
+								<span :class="$style.bubbleCtrlLabel">動きの強さ</span>
+								<input type="range" min="0.3" max="2" step="0.1" :value="activeChar.charBirthdayExpression.motionIntensity" @input="onCharBirthdayField('motionIntensity',$event)" :class="$style.bubbleRange" />
+							</div>
+							<div :class="$style.colorRow">
+								<span :class="$style.colorLabel">文字色</span>
+								<input type="color" :value="activeChar.charBirthdayExpression.textColor || '#000000'" @input="setCharBirthdayTextColor($event)" :class="$style.colorInput" />
+								<button v-if="activeChar.charBirthdayExpression.textColor" :class="$style.colorClear" @click="clearCharBirthdayTextColor" title="既定色に戻す"><i class="ti ti-x"></i></button>
+							</div>
+							<div :class="$style.desc" style="margin:4px 0 0">プレビュー下の「キャラ誕生日」を選ぶと、文言吹き出しの位置やサイズ・しっぽを調整できます。</div>
+						</template>
+						<MkButton v-else rounded @click="chooseCharBirthdayImage"><i class="ti ti-plus"></i> キャラ誕生日用の立ち絵を選ぶ</MkButton>
+					</template>
+				</div>
+			</template>
+			</div><!-- /colSpecial(右) -->
+			</div><!-- /layout -->
 		</template>
 	</div>
 </MkModalWindow>
@@ -215,9 +432,11 @@ import { displaySettings, loadDisplaySettings, saveDisplaySettings, type MascotD
 const emit = defineEmits<{ (ev:'closed'):void }>();
 const dialog = shallowRef<InstanceType<typeof MkModalWindow>>();
 
-type Expression = { id: string; label: string; url: string; driveFileId: string | null; bubbleX?: number; bubbleY?: number; bubbleScale?: number; bubbleTail?: 'left' | 'right'; motion?: 'none' | 'bounce' | 'shake' | 'sway' | 'spin'; motionIntensity?: number };
+type Expression = { id: string; label: string; url: string; driveFileId: string | null; bubbleX?: number; bubbleY?: number; bubbleScale?: number; bubbleTail?: 'left' | 'right'; motion?: 'none' | 'bounce' | 'shake' | 'sway' | 'spin'; motionIntensity?: number; questionEnabled?: boolean; qBubbleX?: number; qBubbleY?: number; qBubbleScale?: number; qBubbleTail?: 'left' | 'right'; textColor?: string | null; qTextColor?: string | null };
 type Phrase = { id: string; text: string; expressionId: string | null };
-type Character = { id: string; name: string; expressions: Expression[]; phrases: Phrase[] };
+type NotifyExpression = { url: string | null; driveFileId: string | null; label: string; text: string; motion: 'none' | 'bounce' | 'shake' | 'sway' | 'spin'; motionIntensity: number; bubbleX: number; bubbleY: number; bubbleScale: number; bubbleTail: 'left' | 'right'; exclaimEnabled: boolean; eBubbleX: number; eBubbleY: number; eBubbleScale: number; eBubbleTail: 'left' | 'right'; textColor?: string | null; eTextColor?: string | null };
+type BirthdayExpression = { url: string | null; driveFileId: string | null; label: string; text: string; motion: 'none' | 'bounce' | 'shake' | 'sway' | 'spin'; motionIntensity: number; bubbleX: number; bubbleY: number; bubbleScale: number; bubbleTail: 'left' | 'right'; textColor?: string | null };
+type Character = { id: string; name: string; expressions: Expression[]; phrases: Phrase[]; notifyExpression: NotifyExpression | null; birthdayExpression: BirthdayExpression | null; charBirthdayEnabled: boolean; charBirthdayMonth: number | null; charBirthdayDay: number | null; charBirthdayExpression: BirthdayExpression | null };
 
 const loading = ref(true);
 const consented = ref(false);
@@ -234,10 +453,25 @@ const activeChar = computed<Character | null>(() => characters.value[activeCharI
 
 // プレビュー: 選択中の文言と、それに紐づく表情(なければ先頭表情)
 const previewPhrase = computed<Phrase | null>(() => activeChar.value?.phrases[previewPhraseIdx.value] ?? null);
-const previewPhraseText = computed<string>(() => previewPhrase.value?.text ?? '');
+const previewPhraseText = computed<string>(() => {
+	if (notifyPreviewMode.value && activeChar.value?.notifyExpression) return activeChar.value.notifyExpression.text ?? '';
+	if (birthdayPreviewMode.value && activeChar.value?.birthdayExpression) return activeChar.value.birthdayExpression.text ?? '';
+	if (charBirthdayPreviewMode.value && activeChar.value?.charBirthdayExpression) return activeChar.value.charBirthdayExpression.text ?? '';
+	return previewPhrase.value?.text ?? '';
+});
 const previewExpression = computed<Expression | null>(() => {
 	const c = activeChar.value;
 	if (!c) return null;
+	// 通知用プレビュー時は通知用表情を返す(Expression互換として扱う)
+	if (notifyPreviewMode.value && c.notifyExpression) {
+		return { id: '__notify__', ...c.notifyExpression } as unknown as Expression;
+	}
+	if (birthdayPreviewMode.value && c.birthdayExpression) {
+		return { id: '__birthday__', ...c.birthdayExpression } as unknown as Expression;
+	}
+	if (charBirthdayPreviewMode.value && c.charBirthdayExpression) {
+		return { id: '__charbirthday__', ...c.charBirthdayExpression } as unknown as Expression;
+	}
 	const linked = previewPhrase.value?.expressionId;
 	if (linked) {
 		const found = c.expressions.find(e => e.id === linked);
@@ -250,35 +484,141 @@ const previewExpression = computed<Expression | null>(() => {
 const stageWrapEl = ref<HTMLElement | null>(null);
 const draggingBubble = ref(false);
 
+// ドラッグ・スライダーの書き込み先。通知用プレビュー時は notifyExpression、
+// それ以外は expressions 内の実体オブジェクトを返す(どちらも bubble系フィールドを持つ)。
+function targetExpr(): any | null {
+	const c = activeChar.value;
+	if (!c) return null;
+	if (notifyPreviewMode.value) return c.notifyExpression ?? null;
+	if (birthdayPreviewMode.value) return c.birthdayExpression ?? null;
+	if (charBirthdayPreviewMode.value) return c.charBirthdayExpression ?? null;
+	const e = previewExpression.value;
+	if (!e) return null;
+	return c.expressions.find(x => x.id === e.id) ?? null;
+}
+
 // 現在の表情の吹き出し位置(0〜1)。未設定はデフォルト(上中央寄り)。
 const bubbleStyle = computed(() => {
 	const e = previewExpression.value;
 	const x = (e?.bubbleX ?? 0.5);
 	const y = (e?.bubbleY ?? 0.1);
 	const scale = (typeof e?.bubbleScale === 'number' ? e.bubbleScale : 1);
-	return {
+	const s: Record<string, string> = {
 		left: (x * 100) + '%',
 		top: (y * 100) + '%',
 		fontSize: (0.85 * scale) + 'rem',
 	};
+	if (e?.textColor) s.color = e.textColor;
+	return s;
 });
 const bubbleTail = computed<'left' | 'right'>(() => (previewExpression.value?.bubbleTail === 'right' ? 'right' : 'left'));
 
 function setBubbleScale(ev: Event) {
-	const e = previewExpression.value; const c = activeChar.value;
-	if (!e || !c) return;
+	const target = targetExpr();
+	if (!target) return;
 	const v = parseFloat((ev.target as HTMLInputElement).value);
-	const target = c.expressions.find(x => x.id === e.id);
-	if (target) target.bubbleScale = Math.min(1.6, Math.max(0.6, v));
+	target.bubbleScale = Math.min(1.6, Math.max(0.6, v));
 }
 function setBubbleTail(tail: 'left' | 'right') {
-	const e = previewExpression.value; const c = activeChar.value;
-	if (!e || !c) return;
-	const target = c.expressions.find(x => x.id === e.id);
+	const target = targetExpr();
 	if (target) target.bubbleTail = tail;
 }
 
-// 動きクラスを静的参照で返す(CSS module動的アクセスを避ける)
+// ===== ？小吹き出し =====
+const draggingQBubble = ref(false);
+const qBubbleStyle = computed(() => {
+	const e = previewExpression.value;
+	const x = (e?.qBubbleX ?? 0.7);
+	const y = (e?.qBubbleY ?? 0.05);
+	const scale = (typeof e?.qBubbleScale === 'number' ? e.qBubbleScale : 1);
+	const s: Record<string, string> = { left: (x * 100) + '%', top: (y * 100) + '%', fontSize: (1.1 * scale) + 'rem' };
+	if (e?.qTextColor) s.color = e.qTextColor;
+	return s;
+});
+const qTail = computed<'left' | 'right'>(() => (previewExpression.value?.qBubbleTail === 'right' ? 'right' : 'left'));
+function setQBubbleScale(ev: Event) {
+	const target = targetExpr();
+	if (!target) return;
+	const v = parseFloat((ev.target as HTMLInputElement).value);
+	target.qBubbleScale = Math.min(1.6, Math.max(0.6, v));
+}
+function setQBubbleTail(tail: 'left' | 'right') {
+	const target = targetExpr();
+	if (target) target.qBubbleTail = tail;
+}
+function toggleQuestion() {
+	const target = targetExpr();
+	if (target) target.questionEnabled = !target.questionEnabled;
+}
+function onQBubblePointerDown(ev: PointerEvent) {
+	const e = previewExpression.value;
+	const wrap = stageWrapEl.value;
+	if (!e || !wrap) return;
+	ev.preventDefault();
+	draggingQBubble.value = true;
+	(ev.target as HTMLElement).setPointerCapture?.(ev.pointerId);
+	const move = (mv: PointerEvent) => {
+		const rect = wrap.getBoundingClientRect();
+		if (rect.width === 0 || rect.height === 0) return;
+		const x = Math.min(1, Math.max(0, (mv.clientX - rect.left) / rect.width));
+		const y = Math.min(1, Math.max(0, (mv.clientY - rect.top) / rect.height));
+		const target = targetExpr();
+		if (target) { target.qBubbleX = Math.round(x * 1000) / 1000; target.qBubbleY = Math.round(y * 1000) / 1000; }
+	};
+	const up = () => {
+		draggingQBubble.value = false;
+		window.removeEventListener('pointermove', move);
+		window.removeEventListener('pointerup', up);
+	};
+	window.addEventListener('pointermove', move);
+	window.addEventListener('pointerup', up);
+}
+
+// ===== ！小吹き出し(通知用) =====
+const draggingEBubble = ref(false);
+const eBubbleStyle = computed(() => {
+	const e = previewExpression.value as any;
+	const x = (typeof e?.eBubbleX === 'number' ? e.eBubbleX : 0.7);
+	const y = (typeof e?.eBubbleY === 'number' ? e.eBubbleY : 0.05);
+	const scale = (typeof e?.eBubbleScale === 'number' ? e.eBubbleScale : 1);
+	const s: Record<string, string> = { left: (x * 100) + '%', top: (y * 100) + '%', fontSize: (1.1 * scale) + 'rem' };
+	if (e?.eTextColor) s.color = e.eTextColor;
+	return s;
+});
+const eTail = computed<'left' | 'right'>(() => ((previewExpression.value as any)?.eBubbleTail === 'right' ? 'right' : 'left'));
+function setEBubbleScale(ev: Event) {
+	const target = targetExpr();
+	if (!target) return;
+	const v = parseFloat((ev.target as HTMLInputElement).value);
+	target.eBubbleScale = Math.min(1.6, Math.max(0.6, v));
+}
+function setEBubbleTail(tail: 'left' | 'right') {
+	const target = targetExpr();
+	if (target) target.eBubbleTail = tail;
+}
+function onEBubblePointerDown(ev: PointerEvent) {
+	const wrap = stageWrapEl.value;
+	if (!wrap) return;
+	ev.preventDefault();
+	draggingEBubble.value = true;
+	(ev.target as HTMLElement).setPointerCapture?.(ev.pointerId);
+	const move = (mv: PointerEvent) => {
+		const rect = wrap.getBoundingClientRect();
+		if (rect.width === 0 || rect.height === 0) return;
+		const x = Math.min(1, Math.max(0, (mv.clientX - rect.left) / rect.width));
+		const y = Math.min(1, Math.max(0, (mv.clientY - rect.top) / rect.height));
+		const target = targetExpr();
+		if (target) { target.eBubbleX = Math.round(x * 1000) / 1000; target.eBubbleY = Math.round(y * 1000) / 1000; }
+	};
+	const up = () => {
+		draggingEBubble.value = false;
+		window.removeEventListener('pointermove', move);
+		window.removeEventListener('pointerup', up);
+	};
+	window.addEventListener('pointermove', move);
+	window.addEventListener('pointerup', up);
+}
+
 function onBubblePointerDown(ev: PointerEvent) {
 	const e = previewExpression.value;
 	const wrap = stageWrapEl.value;
@@ -293,9 +633,7 @@ function onBubblePointerDown(ev: PointerEvent) {
 		const x = Math.min(1, Math.max(0, (mv.clientX - rect.left) / rect.width));
 		const y = Math.min(1, Math.max(0, (mv.clientY - rect.top) / rect.height));
 		// 現在表情に書き込む(キャラ配列内の実体を更新)
-		const c = activeChar.value;
-		if (!c) return;
-		const target = c.expressions.find(x2 => x2.id === e.id);
+		const target = targetExpr();
 		if (target) { target.bubbleX = Math.round(x * 1000) / 1000; target.bubbleY = Math.round(y * 1000) / 1000; }
 	};
 	const up = () => {
@@ -329,8 +667,56 @@ onMounted(async () => {
 		characters.value = Array.isArray(data.characters) ? data.characters.map((c:any) => ({
 			id: c.id ?? genId(),
 			name: c.name ?? '',
-			expressions: Array.isArray(c.expressions) ? c.expressions.map((e:any) => ({ id: e.id ?? genId(), label: e.label ?? '', url: e.url ?? '', driveFileId: e.driveFileId ?? null, bubbleX: typeof e.bubbleX === 'number' ? e.bubbleX : 0.5, bubbleY: typeof e.bubbleY === 'number' ? e.bubbleY : 0.1, bubbleScale: typeof e.bubbleScale === 'number' ? e.bubbleScale : 1, bubbleTail: e.bubbleTail === 'right' ? 'right' : 'left', motion: e.motion ?? 'none', motionIntensity: typeof e.motionIntensity === 'number' ? e.motionIntensity : 1 })) : [],
+			expressions: Array.isArray(c.expressions) ? c.expressions.map((e:any) => ({ id: e.id ?? genId(), label: e.label ?? '', url: e.url ?? '', driveFileId: e.driveFileId ?? null, bubbleX: typeof e.bubbleX === 'number' ? e.bubbleX : 0.5, bubbleY: typeof e.bubbleY === 'number' ? e.bubbleY : 0.1, bubbleScale: typeof e.bubbleScale === 'number' ? e.bubbleScale : 1, bubbleTail: e.bubbleTail === 'right' ? 'right' : 'left', motion: e.motion ?? 'none', motionIntensity: typeof e.motionIntensity === 'number' ? e.motionIntensity : 1, questionEnabled: e.questionEnabled === true, qBubbleX: typeof e.qBubbleX === 'number' ? e.qBubbleX : 0.7, qBubbleY: typeof e.qBubbleY === 'number' ? e.qBubbleY : 0.05, qBubbleScale: typeof e.qBubbleScale === 'number' ? e.qBubbleScale : 1, qBubbleTail: e.qBubbleTail === 'right' ? 'right' : 'left', textColor: e.textColor ?? null, qTextColor: e.qTextColor ?? null })) : [],
 			phrases: Array.isArray(c.phrases) ? c.phrases.map((p:any) => ({ id: p.id ?? genId(), text: p.text ?? '', expressionId: p.expressionId ?? null })) : [],
+			notifyExpression: c.notifyExpression ? {
+				url: c.notifyExpression.url ?? null,
+				driveFileId: c.notifyExpression.driveFileId ?? null,
+				label: c.notifyExpression.label ?? '',
+				text: c.notifyExpression.text ?? '',
+				motion: c.notifyExpression.motion ?? 'none',
+				motionIntensity: typeof c.notifyExpression.motionIntensity === 'number' ? c.notifyExpression.motionIntensity : 1,
+				bubbleX: typeof c.notifyExpression.bubbleX === 'number' ? c.notifyExpression.bubbleX : 0.5,
+				bubbleY: typeof c.notifyExpression.bubbleY === 'number' ? c.notifyExpression.bubbleY : 0.1,
+				bubbleScale: typeof c.notifyExpression.bubbleScale === 'number' ? c.notifyExpression.bubbleScale : 1,
+				bubbleTail: c.notifyExpression.bubbleTail === 'right' ? 'right' : 'left',
+				exclaimEnabled: c.notifyExpression.exclaimEnabled === true,
+				eBubbleX: typeof c.notifyExpression.eBubbleX === 'number' ? c.notifyExpression.eBubbleX : 0.7,
+				eBubbleY: typeof c.notifyExpression.eBubbleY === 'number' ? c.notifyExpression.eBubbleY : 0.05,
+				eBubbleScale: typeof c.notifyExpression.eBubbleScale === 'number' ? c.notifyExpression.eBubbleScale : 1,
+				eBubbleTail: c.notifyExpression.eBubbleTail === 'right' ? 'right' : 'left',
+				textColor: c.notifyExpression.textColor ?? null,
+				eTextColor: c.notifyExpression.eTextColor ?? null,
+			} : null,
+			birthdayExpression: c.birthdayExpression ? {
+				url: c.birthdayExpression.url ?? null,
+				driveFileId: c.birthdayExpression.driveFileId ?? null,
+				label: c.birthdayExpression.label ?? '',
+				text: c.birthdayExpression.text ?? '',
+				motion: c.birthdayExpression.motion ?? 'none',
+				motionIntensity: typeof c.birthdayExpression.motionIntensity === 'number' ? c.birthdayExpression.motionIntensity : 1,
+				bubbleX: typeof c.birthdayExpression.bubbleX === 'number' ? c.birthdayExpression.bubbleX : 0.5,
+				bubbleY: typeof c.birthdayExpression.bubbleY === 'number' ? c.birthdayExpression.bubbleY : 0.1,
+				bubbleScale: typeof c.birthdayExpression.bubbleScale === 'number' ? c.birthdayExpression.bubbleScale : 1,
+				bubbleTail: c.birthdayExpression.bubbleTail === 'right' ? 'right' : 'left',
+				textColor: c.birthdayExpression.textColor ?? null,
+			} : null,
+			charBirthdayEnabled: c.charBirthdayEnabled === true,
+			charBirthdayMonth: typeof c.charBirthdayMonth === 'number' ? c.charBirthdayMonth : null,
+			charBirthdayDay: typeof c.charBirthdayDay === 'number' ? c.charBirthdayDay : null,
+			charBirthdayExpression: c.charBirthdayExpression ? {
+				url: c.charBirthdayExpression.url ?? null,
+				driveFileId: c.charBirthdayExpression.driveFileId ?? null,
+				label: c.charBirthdayExpression.label ?? '',
+				text: c.charBirthdayExpression.text ?? '',
+				motion: c.charBirthdayExpression.motion ?? 'none',
+				motionIntensity: typeof c.charBirthdayExpression.motionIntensity === 'number' ? c.charBirthdayExpression.motionIntensity : 1,
+				bubbleX: typeof c.charBirthdayExpression.bubbleX === 'number' ? c.charBirthdayExpression.bubbleX : 0.5,
+				bubbleY: typeof c.charBirthdayExpression.bubbleY === 'number' ? c.charBirthdayExpression.bubbleY : 0.1,
+				bubbleScale: typeof c.charBirthdayExpression.bubbleScale === 'number' ? c.charBirthdayExpression.bubbleScale : 1,
+				bubbleTail: c.charBirthdayExpression.bubbleTail === 'right' ? 'right' : 'left',
+				textColor: c.charBirthdayExpression.textColor ?? null,
+			} : null,
 		})) : [];
 		showName.value = data.showName === true;
 		const ai = characters.value.findIndex(c => c.id === data.activeCharacterId);
@@ -356,7 +742,7 @@ function selectChar(ci:number) { activeCharIdx.value = ci; previewPhraseIdx.valu
 
 function addCharacter() {
 	if (characters.value.length >= limits.value.maxCharacters) return;
-	characters.value.push({ id: genId(), name: '', expressions: [], phrases: [] });
+	characters.value.push({ id: genId(), name: '', expressions: [], phrases: [], notifyExpression: null, birthdayExpression: null, charBirthdayEnabled: false, charBirthdayMonth: null, charBirthdayDay: null, charBirthdayExpression: null });
 	activeCharIdx.value = characters.value.length - 1;
 	previewPhraseIdx.value = 0;
 }
@@ -383,9 +769,20 @@ async function addExpression() {
 		os.alert({ type: 'warning', text: '画像が大きすぎます（500KB以下にしてください）。' });
 		return;
 	}
-	c.expressions.push({ id: genId(), label: '', url: f.url, driveFileId: f.id, bubbleX: 0.5, bubbleY: 0.1, bubbleScale: 1, bubbleTail: 'left', motion: 'none', motionIntensity: 1 });
+	c.expressions.push({ id: genId(), label: '', url: f.url, driveFileId: f.id, bubbleX: 0.5, bubbleY: 0.1, bubbleScale: 1, bubbleTail: 'left', motion: 'none', motionIntensity: 1, questionEnabled: false, qBubbleX: 0.7, qBubbleY: 0.05, qBubbleScale: 1, qBubbleTail: 'left', textColor: null, qTextColor: null });
 }
 function onExpLabel(ei:number, ev:Event) { const c = activeChar.value; if (c) c.expressions[ei].label = (ev.target as HTMLInputElement).value; }
+// 文字色(表情ごと)。空/未指定はテーマ既定色。
+function setExpTextColor(ei:number, ev:Event) { const c = activeChar.value; if (c) c.expressions[ei].textColor = (ev.target as HTMLInputElement).value; }
+function setExpQTextColor(ei:number, ev:Event) { const c = activeChar.value; if (c) c.expressions[ei].qTextColor = (ev.target as HTMLInputElement).value; }
+function clearExpTextColor(ei:number) { const c = activeChar.value; if (c) c.expressions[ei].textColor = null; }
+function clearExpQTextColor(ei:number) { const c = activeChar.value; if (c) c.expressions[ei].qTextColor = null; }
+function setNotifyTextColor(ev:Event) { const c = activeChar.value; if (c && c.notifyExpression) c.notifyExpression.textColor = (ev.target as HTMLInputElement).value; }
+function setNotifyETextColor(ev:Event) { const c = activeChar.value; if (c && c.notifyExpression) c.notifyExpression.eTextColor = (ev.target as HTMLInputElement).value; }
+function clearNotifyTextColor() { const c = activeChar.value; if (c && c.notifyExpression) c.notifyExpression.textColor = null; }
+function clearNotifyETextColor() { const c = activeChar.value; if (c && c.notifyExpression) c.notifyExpression.eTextColor = null; }
+function setBirthdayTextColor(ev:Event) { const c = activeChar.value; if (c && c.birthdayExpression) c.birthdayExpression.textColor = (ev.target as HTMLInputElement).value; }
+function clearBirthdayTextColor() { const c = activeChar.value; if (c && c.birthdayExpression) c.birthdayExpression.textColor = null; }
 function onExpMotion(ei:number, ev:Event) { const c = activeChar.value; if (c) c.expressions[ei].motion = (ev.target as HTMLSelectElement).value as any; }
 function onExpIntensity(ei:number, ev:Event) { const c = activeChar.value; if (c) c.expressions[ei].motionIntensity = Math.min(2, Math.max(0.3, parseFloat((ev.target as HTMLInputElement).value))); }
 function removeExpression(ei:number) {
@@ -400,9 +797,111 @@ function onPhraseText(pi:number, ev:Event) { const c = activeChar.value; if (c) 
 function setPhraseExp(pi:number, expId:string|null) { const c = activeChar.value; if (c) c.phrases[pi].expressionId = expId; }
 function removePhrase(pi:number) { const c = activeChar.value; if (c) c.phrases.splice(pi, 1); }
 
+// ===== 通知用の専用表情 =====
+const notifyPreviewMode = ref(false);
+const birthdayPreviewMode = ref(false);
+const charBirthdayPreviewMode = ref(false);
+async function chooseNotifyImage() {
+	const c = activeChar.value;
+	if (!c) return;
+	const files = await chooseDriveFile({ multiple: false }).catch(() => []);
+	if (files.length === 0) return;
+	const f = files[0];
+	if (!f.type || !f.type.startsWith('image/')) { os.alert({ type: 'warning', text: '画像ファイルを選んでください。' }); return; }
+	if (typeof f.size === 'number' && f.size > 500 * 1024) { os.alert({ type: 'warning', text: '画像が大きすぎます（500KB以下にしてください）。' }); return; }
+	c.notifyExpression = {
+		url: f.url, driveFileId: f.id, label: '', text: '',
+		motion: 'none', motionIntensity: 1,
+		bubbleX: 0.5, bubbleY: 0.1, bubbleScale: 1, bubbleTail: 'left',
+		exclaimEnabled: false, eBubbleX: 0.7, eBubbleY: 0.05, eBubbleScale: 1, eBubbleTail: 'left',
+		textColor: null, eTextColor: null,
+	};
+	notifyPreviewMode.value = true;
+}
+function clearNotify() { const c = activeChar.value; if (c) { c.notifyExpression = null; notifyPreviewMode.value = false; } }
+function onNotifyField(key: string, ev: Event) {
+	const c = activeChar.value;
+	if (!c || !c.notifyExpression) return;
+	const t = ev.target as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
+	if (key === 'motionIntensity') { (c.notifyExpression as any)[key] = Math.min(2, Math.max(0.3, parseFloat(t.value))); }
+	else { (c.notifyExpression as any)[key] = t.value; }
+}
+function toggleNotifyExclaim() { const c = activeChar.value; if (c && c.notifyExpression) c.notifyExpression.exclaimEnabled = !c.notifyExpression.exclaimEnabled; }
+function setNotifyEScale(ev: Event) { const c = activeChar.value; if (c && c.notifyExpression) c.notifyExpression.eBubbleScale = Math.min(1.6, Math.max(0.6, parseFloat((ev.target as HTMLInputElement).value))); }
+function setNotifyETail(tail: 'left' | 'right') { const c = activeChar.value; if (c && c.notifyExpression) c.notifyExpression.eBubbleTail = tail; }
+function selectNotifyPreview() { birthdayPreviewMode.value = false; charBirthdayPreviewMode.value = false; notifyPreviewMode.value = true; }
+function selectPreviewPhrase(pi: number) { notifyPreviewMode.value = false; birthdayPreviewMode.value = false; charBirthdayPreviewMode.value = false; previewPhraseIdx.value = pi; }
+
+// ===== 誕生日用の専用表情(！なし) =====
+async function chooseBirthdayImage() {
+	const c = activeChar.value;
+	if (!c) return;
+	const files = await chooseDriveFile({ multiple: false }).catch(() => []);
+	if (files.length === 0) return;
+	const f = files[0];
+	if (!f.type || !f.type.startsWith('image/')) { os.alert({ type: 'warning', text: '画像ファイルを選んでください。' }); return; }
+	if (typeof f.size === 'number' && f.size > 500 * 1024) { os.alert({ type: 'warning', text: '画像が大きすぎます（500KB以下にしてください）。' }); return; }
+	c.birthdayExpression = {
+		url: f.url, driveFileId: f.id, label: '', text: '',
+		motion: 'none', motionIntensity: 1,
+		bubbleX: 0.5, bubbleY: 0.1, bubbleScale: 1, bubbleTail: 'left',
+		textColor: null,
+	};
+	notifyPreviewMode.value = false;
+	birthdayPreviewMode.value = true;
+}
+function clearBirthday() { const c = activeChar.value; if (c) { c.birthdayExpression = null; birthdayPreviewMode.value = false; } }
+function onBirthdayField(key: string, ev: Event) {
+	const c = activeChar.value;
+	if (!c || !c.birthdayExpression) return;
+	const t = ev.target as HTMLInputElement | HTMLSelectElement;
+	if (key === 'motionIntensity') { (c.birthdayExpression as any)[key] = Math.min(2, Math.max(0.3, parseFloat(t.value))); }
+	else { (c.birthdayExpression as any)[key] = t.value; }
+}
+function selectBirthdayPreview() { notifyPreviewMode.value = false; charBirthdayPreviewMode.value = false; birthdayPreviewMode.value = true; }
+
+// ===== キャラ自身の誕生日 =====
+function toggleCharBirthday() { const c = activeChar.value; if (c) c.charBirthdayEnabled = !c.charBirthdayEnabled; }
+function setCharBirthdayMonth(ev: Event) { const c = activeChar.value; if (!c) return; const v = parseInt((ev.target as HTMLInputElement).value, 10); c.charBirthdayMonth = (Number.isFinite(v) && v >= 1 && v <= 12) ? v : null; }
+function setCharBirthdayDay(ev: Event) { const c = activeChar.value; if (!c) return; const v = parseInt((ev.target as HTMLInputElement).value, 10); c.charBirthdayDay = (Number.isFinite(v) && v >= 1 && v <= 31) ? v : null; }
+async function chooseCharBirthdayImage() {
+	const c = activeChar.value;
+	if (!c) return;
+	const files = await chooseDriveFile({ multiple: false }).catch(() => []);
+	if (files.length === 0) return;
+	const f = files[0];
+	if (!f.type || !f.type.startsWith('image/')) { os.alert({ type: 'warning', text: '画像ファイルを選んでください。' }); return; }
+	if (typeof f.size === 'number' && f.size > 500 * 1024) { os.alert({ type: 'warning', text: '画像が大きすぎます（500KB以下にしてください）。' }); return; }
+	c.charBirthdayExpression = {
+		url: f.url, driveFileId: f.id, label: '', text: '',
+		motion: 'none', motionIntensity: 1,
+		bubbleX: 0.5, bubbleY: 0.1, bubbleScale: 1, bubbleTail: 'left',
+		textColor: null,
+	};
+	notifyPreviewMode.value = false;
+	birthdayPreviewMode.value = false;
+	charBirthdayPreviewMode.value = true;
+}
+function clearCharBirthday() { const c = activeChar.value; if (c) { c.charBirthdayExpression = null; charBirthdayPreviewMode.value = false; } }
+function onCharBirthdayField(key: string, ev: Event) {
+	const c = activeChar.value;
+	if (!c || !c.charBirthdayExpression) return;
+	const t = ev.target as HTMLInputElement | HTMLSelectElement;
+	if (key === 'motionIntensity') { (c.charBirthdayExpression as any)[key] = Math.min(2, Math.max(0.3, parseFloat(t.value))); }
+	else { (c.charBirthdayExpression as any)[key] = t.value; }
+}
+function setCharBirthdayTextColor(ev:Event) { const c = activeChar.value; if (c && c.charBirthdayExpression) c.charBirthdayExpression.textColor = (ev.target as HTMLInputElement).value; }
+function clearCharBirthdayTextColor() { const c = activeChar.value; if (c && c.charBirthdayExpression) c.charBirthdayExpression.textColor = null; }
+function selectCharBirthdayPreview() { notifyPreviewMode.value = false; birthdayPreviewMode.value = false; charBirthdayPreviewMode.value = true; }
+
 function toggleDisplay(key: keyof MascotDisplaySettings) {
 	const next = { ...displaySettings.value, [key]: !displaySettings.value[key] };
 	saveDisplaySettings(next);
+}
+function setNotifyDuration(ev: Event) {
+	const v = parseInt((ev.target as HTMLInputElement).value, 10);
+	const sec = Number.isFinite(v) ? Math.min(60, Math.max(1, v)) : 3;
+	saveDisplaySettings({ ...displaySettings.value, notifyDurationSec: sec });
 }
 
 async function save() {
@@ -412,8 +911,14 @@ async function save() {
 			characters: characters.value.map(c => ({
 				id: c.id,
 				name: c.name,
-				expressions: c.expressions.map(e => ({ id: e.id, label: e.label, url: e.url, driveFileId: e.driveFileId, bubbleX: e.bubbleX, bubbleY: e.bubbleY, bubbleScale: e.bubbleScale, bubbleTail: e.bubbleTail, motion: e.motion, motionIntensity: e.motionIntensity })),
+				expressions: c.expressions.map(e => ({ id: e.id, label: e.label, url: e.url, driveFileId: e.driveFileId, bubbleX: e.bubbleX, bubbleY: e.bubbleY, bubbleScale: e.bubbleScale, bubbleTail: e.bubbleTail, motion: e.motion, motionIntensity: e.motionIntensity, questionEnabled: e.questionEnabled, qBubbleX: e.qBubbleX, qBubbleY: e.qBubbleY, qBubbleScale: e.qBubbleScale, qBubbleTail: e.qBubbleTail, textColor: e.textColor ?? null, qTextColor: e.qTextColor ?? null })),
 				phrases: c.phrases.map(p => ({ id: p.id, text: p.text, expressionId: p.expressionId })),
+				notifyExpression: c.notifyExpression && (c.notifyExpression.url || c.notifyExpression.driveFileId) ? c.notifyExpression : null,
+				birthdayExpression: c.birthdayExpression && (c.birthdayExpression.url || c.birthdayExpression.driveFileId) ? c.birthdayExpression : null,
+				charBirthdayEnabled: c.charBirthdayEnabled,
+				charBirthdayMonth: c.charBirthdayMonth,
+				charBirthdayDay: c.charBirthdayDay,
+				charBirthdayExpression: c.charBirthdayExpression && (c.charBirthdayExpression.url || c.charBirthdayExpression.driveFileId) ? c.charBirthdayExpression : null,
 			})),
 			activeCharacterId: activeChar.value?.id ?? null,
 			showName: showName.value,
@@ -437,39 +942,73 @@ async function save() {
 .count { font-size:.8rem; opacity:.6; font-variant-numeric:tabular-nums; }
 .desc { font-size:.8rem; opacity:.65; line-height:1.6; margin-bottom:10px; }
 .empty { font-size:.83rem; opacity:.55; text-align:center; padding:14px; border:1px dashed var(--MI_THEME-divider); border-radius:10px; margin-bottom:10px; }
-.row { display:flex; align-items:center; justify-content:space-between; gap:10px; font-size:.9rem; }
+.row { display:flex; align-items:center; justify-content:space-between; gap:10px; font-size:.9rem; padding:7px 0; }
+.row + .row { border-top:1px solid var(--MI_THEME-divider); }
+/* レスポンシブ: 狭い→縦1列 / 中→プレビュー+設定の2列 / 広い→プレビュー+基本+特殊の3列 */
+.layout { display:flex; flex-direction:column; gap:14px; }
+.colPreview { flex:none; }
+.colSettings { display:flex; flex-direction:column; gap:14px; }
+.colSpecial { display:flex; flex-direction:column; gap:14px; }
+@media (min-width: 800px) {
+	.layout { flex-direction:row; flex-wrap:wrap; align-items:flex-start; }
+	.colPreview { position:sticky; top:8px; width:420px; flex:none; }
+	.colSettings { flex:1 1 320px; min-width:300px; }
+	.colSpecial { flex:1 1 100%; min-width:300px; }
+}
+@media (min-width: 1200px) {
+	.layout { flex-wrap:nowrap; }
+	.colPreview { width:420px; }
+	.colSettings { flex:1 1 0; min-width:300px; }
+	.colSpecial { flex:1 1 0; min-width:300px; }
+}
 .inp { width:100%; box-sizing:border-box; background: var(--MI_THEME-bg); color: var(--MI_THEME-fg); border:1px solid var(--MI_THEME-divider); border-radius:8px; padding:8px 12px; font-family:inherit; font-size:.9rem; }
 .footer { display:flex; justify-content:flex-end; gap:8px; padding-top:4px; }
 
 /* ===== プレビュー ===== */
 .preview { display:flex; flex-direction:column; gap:14px; background:linear-gradient(135deg, var(--MI_THEME-panel), var(--MI_THEME-bg)); border:1px solid var(--MI_THEME-divider); border-radius:16px; padding:16px; }
-.previewStageWrap { position:relative; width:100%; aspect-ratio:16/10; max-height:320px; display:flex; align-items:center; justify-content:center; overflow:hidden; border-radius:12px; }
-.previewImg { max-width:70%; max-height:100%; object-fit:contain; filter:drop-shadow(0 4px 12px rgba(0,0,0,.25)); user-select:none; -webkit-user-drag:none; }
+.previewStageWrap { position:relative; width:100%; aspect-ratio:4/3; max-height:440px; display:flex; align-items:center; justify-content:center; overflow:hidden; border-radius:12px; }
+.previewImg { max-width:80%; max-height:100%; object-fit:contain; filter:drop-shadow(0 4px 12px rgba(0,0,0,.25)); user-select:none; -webkit-user-drag:none; }
 .previewEmpty { width:100%; height:100%; display:flex; flex-direction:column; gap:8px; align-items:center; justify-content:center; border:1px dashed var(--MI_THEME-divider); border-radius:12px; opacity:.5; font-size:.75rem; text-align:center; i{ font-size:1.8rem; } }
 .previewMeta { display:flex; flex-direction:column; gap:8px; }
 .previewName { font-weight:700; font-size:.9rem; }
 /* 吹き出し: 立ち絵の上に絶対配置。left/topはbubbleStyleで指定、transformで中心合わせ */
-.previewBubble { position:absolute; transform:translate(-50%,-50%); max-width:60%; background: var(--MI_THEME-bg); border:1px solid var(--MI_THEME-divider); border-radius:12px; padding:8px 12px; font-size:.85rem; line-height:1.5; word-break:break-word; cursor:grab; box-shadow:0 2px 10px rgba(0,0,0,.18); touch-action:none; }
+.previewBubble { position:absolute; transform:translate(-50%,-50%); max-width:78%; background: var(--MI_THEME-bg); border:1px solid var(--MI_THEME-divider); border-radius:12px; padding:8px 12px; font-size:.85rem; line-height:1.5; word-break:break-word; cursor:grab; box-shadow:0 2px 10px rgba(0,0,0,.18); touch-action:none; }
 .previewBubble:active { cursor:grabbing; }
 /* しっぽ(三角形)。左右で位置を切り替え。本体と同じ背景+枠線で繋げて見せる */
-.previewBubble::after, .previewBubble::before { content:''; position:absolute; top:50%; width:0; height:0; border-style:solid; }
-.tail_left::before { right:100%; transform:translateY(-50%); border-width:8px 10px 8px 0; border-color:transparent var(--MI_THEME-divider) transparent transparent; margin-right:-1px; }
-.tail_left::after { right:100%; transform:translateY(-50%); border-width:7px 9px 7px 0; border-color:transparent var(--MI_THEME-bg) transparent transparent; }
-.tail_right::before { left:100%; transform:translateY(-50%); border-width:8px 0 8px 10px; border-color:transparent transparent transparent var(--MI_THEME-divider); margin-left:-1px; }
-.tail_right::after { left:100%; transform:translateY(-50%); border-width:7px 0 7px 9px; border-color:transparent transparent transparent var(--MI_THEME-bg); }
+.previewBubble::after { content:''; position:absolute; top:50%; width:0; height:0; border-style:solid; }
+.tail_left::after { right:100%; transform:translateY(-50%); border-width:7px 10px 7px 0; border-color:transparent var(--MI_THEME-bg) transparent transparent; margin-right:-2px; }
+.tail_right::after { left:100%; transform:translateY(-50%); border-width:7px 0 7px 10px; border-color:transparent transparent transparent var(--MI_THEME-bg); margin-left:-2px; }
 .bubbleControls { display:flex; flex-direction:column; gap:8px; margin-top:4px; }
 .bubbleCtrlRow { display:flex; align-items:center; gap:12px; }
+.colorRow { display:flex; align-items:center; gap:8px; margin-top:6px; }
+.colorLabel { font-size:.78rem; opacity:.75; min-width:3.5em; }
+.durationCtrl { display:flex; align-items:center; gap:6px; font-size:.85rem; }
+.durationInput { width:54px; box-sizing:border-box; background: var(--MI_THEME-bg); color: var(--MI_THEME-fg); border:1px solid var(--MI_THEME-divider); border-radius:6px; padding:4px 8px; font-family:inherit; font-size:.85rem; text-align:right; }
+.colorInput { width:36px; height:24px; padding:0; border:1px solid var(--MI_THEME-divider); border-radius:6px; background:none; cursor:pointer; }
+.colorClear { width:24px; height:24px; display:flex; align-items:center; justify-content:center; border:1px solid var(--MI_THEME-divider); border-radius:6px; background:var(--MI_THEME-bg); color:var(--MI_THEME-fg); cursor:pointer; font-size:.7rem; }
 .bubbleCtrlLabel { font-size:.78rem; opacity:.7; min-width:84px; }
 .bubbleRange { flex:1; accent-color: var(--MI_THEME-accent); }
 .tailToggle { display:flex; gap:4px; }
 .tailBtn { padding:4px 14px; border-radius:8px; border:1px solid var(--MI_THEME-divider); background: var(--MI_THEME-bg); color: var(--MI_THEME-fg); cursor:pointer; font-size:.8rem; }
 .tailBtnOn { background: var(--MI_THEME-accent); color: var(--MI_THEME-fgOnAccent); border-color: var(--MI_THEME-accent); }
 .previewBubbleDragging { outline:2px solid var(--MI_THEME-accent); opacity:.9; }
+/* ？小吹き出し */
+.qBubble { position:absolute; transform:translate(-50%,-50%); min-width:1.6em; height:1.6em; display:flex; align-items:center; justify-content:center; background: var(--MI_THEME-bg); border:1px solid var(--MI_THEME-divider); border-radius:50%; font-weight:700; color: var(--MI_THEME-accent); cursor:grab; box-shadow:0 2px 8px rgba(0,0,0,.18); touch-action:none; }
+.qMark { line-height:1; }
+.qBubble:active { cursor:grabbing; }
+.qBubble::after { content:''; position:absolute; top:60%; width:0; height:0; border-style:solid; }
+.qtail_left::after { right:100%; transform:translateY(-50%); border-width:5px 8px 5px 0; border-color:transparent var(--MI_THEME-bg) transparent transparent; margin-right:-2px; }
+.qtail_right::after { left:100%; transform:translateY(-50%); border-width:5px 0 5px 8px; border-color:transparent transparent transparent var(--MI_THEME-bg); margin-left:-2px; }
+.qDivider { height:1px; background: var(--MI_THEME-divider); opacity:.5; margin:2px 0; }
+.qHint { font-size:.7rem; opacity:.5; }
 .bubblePlaceholder { opacity:.45; }
 .bubbleGrip { position:absolute; right:-8px; bottom:-8px; width:20px; height:20px; border-radius:999px; background: var(--MI_THEME-accent); color: var(--MI_THEME-fgOnAccent); display:flex; align-items:center; justify-content:center; font-size:.6rem; }
 .previewHint { font-size:.72rem; opacity:.55; }
-.previewChips { display:flex; flex-wrap:wrap; gap:6px; margin-top:2px; }
-.previewChip { max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding:4px 10px; border-radius:999px; border:1px solid var(--MI_THEME-divider); background: var(--MI_THEME-bg); color: var(--MI_THEME-fg); cursor:pointer; font-size:.76rem; }
+.previewChipsWrap { display:flex; flex-direction:column; gap:6px; margin-top:10px; padding-top:10px; border-top:1px solid var(--MI_THEME-divider); }
+.previewChipsLabel { font-size:.78rem; opacity:.7; display:flex; align-items:center; gap:5px; }
+.previewChips { display:flex; flex-wrap:wrap; gap:6px; }
+.previewChip { display:inline-flex; align-items:center; gap:5px; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding:7px 14px; border-radius:10px; border:1px solid var(--MI_THEME-divider); background: var(--MI_THEME-panel); color: var(--MI_THEME-fg); cursor:pointer; font-size:.8rem; transition:background .15s, border-color .15s; }
+.previewChip:hover { border-color: var(--MI_THEME-accent); }
 .previewChipOn { background: var(--MI_THEME-accent); color: var(--MI_THEME-fgOnAccent); border-color: var(--MI_THEME-accent); }
 
 /* ===== キャラタブ ===== */
