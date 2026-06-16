@@ -132,6 +132,13 @@ export const paramDef = {
 								bubbleTail: { type: 'string', nullable: true, enum: ['left', 'right'] },
 								motion: { type: 'string', nullable: true, enum: ['none', 'bounce', 'shake', 'sway', 'spin'] },
 								motionIntensity: { type: 'number', nullable: true },
+								questionEnabled: { type: 'boolean', nullable: true },
+								qBubbleX: { type: 'number', nullable: true },
+								qBubbleY: { type: 'number', nullable: true },
+								qBubbleScale: { type: 'number', nullable: true },
+								qBubbleTail: { type: 'string', nullable: true, enum: ['left', 'right'] },
+								textColor: { type: 'string', nullable: true },
+								qTextColor: { type: 'string', nullable: true },
 							},
 							required: ['id', 'label', 'url'],
 						},
@@ -146,6 +153,66 @@ export const paramDef = {
 								expressionId: { type: 'string', nullable: true },
 							},
 							required: ['id', 'text'],
+						},
+					},
+					notifyExpression: {
+						type: 'object',
+						nullable: true,
+						properties: {
+							url: { type: 'string', nullable: true },
+							driveFileId: { type: 'string', nullable: true },
+							label: { type: 'string', nullable: true },
+							text: { type: 'string', nullable: true },
+							motion: { type: 'string', nullable: true, enum: ['none', 'bounce', 'shake', 'sway', 'spin'] },
+							motionIntensity: { type: 'number', nullable: true },
+							bubbleX: { type: 'number', nullable: true },
+							bubbleY: { type: 'number', nullable: true },
+							bubbleScale: { type: 'number', nullable: true },
+							bubbleTail: { type: 'string', nullable: true, enum: ['left', 'right'] },
+							exclaimEnabled: { type: 'boolean', nullable: true },
+							eBubbleX: { type: 'number', nullable: true },
+							eBubbleY: { type: 'number', nullable: true },
+							eBubbleScale: { type: 'number', nullable: true },
+							eBubbleTail: { type: 'string', nullable: true, enum: ['left', 'right'] },
+							textColor: { type: 'string', nullable: true },
+							eTextColor: { type: 'string', nullable: true },
+						},
+					},
+					birthdayExpression: {
+						type: 'object',
+						nullable: true,
+						properties: {
+							url: { type: 'string', nullable: true },
+							driveFileId: { type: 'string', nullable: true },
+							label: { type: 'string', nullable: true },
+							text: { type: 'string', nullable: true },
+							motion: { type: 'string', nullable: true, enum: ['none', 'bounce', 'shake', 'sway', 'spin'] },
+							motionIntensity: { type: 'number', nullable: true },
+							bubbleX: { type: 'number', nullable: true },
+							bubbleY: { type: 'number', nullable: true },
+							bubbleScale: { type: 'number', nullable: true },
+							bubbleTail: { type: 'string', nullable: true, enum: ['left', 'right'] },
+							textColor: { type: 'string', nullable: true },
+						},
+					},
+					charBirthdayEnabled: { type: 'boolean', nullable: true },
+					charBirthdayMonth: { type: 'number', nullable: true },
+					charBirthdayDay: { type: 'number', nullable: true },
+					charBirthdayExpression: {
+						type: 'object',
+						nullable: true,
+						properties: {
+							url: { type: 'string', nullable: true },
+							driveFileId: { type: 'string', nullable: true },
+							label: { type: 'string', nullable: true },
+							text: { type: 'string', nullable: true },
+							motion: { type: 'string', nullable: true, enum: ['none', 'bounce', 'shake', 'sway', 'spin'] },
+							motionIntensity: { type: 'number', nullable: true },
+							bubbleX: { type: 'number', nullable: true },
+							bubbleY: { type: 'number', nullable: true },
+							bubbleScale: { type: 'number', nullable: true },
+							bubbleTail: { type: 'string', nullable: true, enum: ['left', 'right'] },
+							textColor: { type: 'string', nullable: true },
 						},
 					},
 				},
@@ -213,6 +280,13 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 						bubbleTail: (e.bubbleTail === 'right' ? 'right' : 'left'),
 						motion: (['bounce', 'shake', 'sway', 'spin'].includes(e.motion) ? e.motion : 'none'),
 						motionIntensity: clampRange(e.motionIntensity, 0.3, 2, 1),
+						questionEnabled: e.questionEnabled === true,
+						qBubbleX: clamp01(e.qBubbleX, 0.7),
+						qBubbleY: clamp01(e.qBubbleY, 0.05),
+						qBubbleScale: clampRange(e.qBubbleScale, 0.6, 1.6, 1),
+						qBubbleTail: (e.qBubbleTail === 'right' ? 'right' : 'left'),
+						textColor: this.sanitizeColor((e as Record<string, any>).textColor),
+						qTextColor: this.sanitizeColor((e as Record<string, any>).qTextColor),
 					};
 				});
 
@@ -223,11 +297,93 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 					expressionId: (p.expressionId && expIds.has(p.expressionId)) ? p.expressionId : null,
 				}));
 
+				// 通知用の専用表情(フル装備 + ！小吹き出し)。画像URLは許可元のみ。
+				let cleanNotify: Record<string, unknown> | null = null;
+				const nx = (c as Record<string, any>).notifyExpression;
+				if (nx && (nx.url || nx.driveFileId)) {
+					if (nx.url && !this.isAllowedImageUrl(nx.url)) {
+						throw new ApiError(meta.errors.invalidImageUrl);
+					}
+					cleanNotify = {
+						url: nx.url ?? null,
+						driveFileId: nx.driveFileId ?? null,
+						label: this.sanitize(nx.label ?? '', LABEL_MAX),
+						text: this.sanitize(nx.text ?? '', PHRASE_MAX),
+						motion: (['bounce', 'shake', 'sway', 'spin'].includes(nx.motion) ? nx.motion : 'none'),
+						motionIntensity: clampRange(nx.motionIntensity, 0.3, 2, 1),
+						bubbleX: clamp01(nx.bubbleX, 0.5),
+						bubbleY: clamp01(nx.bubbleY, 0.1),
+						bubbleScale: clampRange(nx.bubbleScale, 0.6, 1.6, 1),
+						bubbleTail: (nx.bubbleTail === 'right' ? 'right' : 'left'),
+						exclaimEnabled: nx.exclaimEnabled === true,
+						eBubbleX: clamp01(nx.eBubbleX, 0.7),
+						eBubbleY: clamp01(nx.eBubbleY, 0.05),
+						eBubbleScale: clampRange(nx.eBubbleScale, 0.6, 1.6, 1),
+						eBubbleTail: (nx.eBubbleTail === 'right' ? 'right' : 'left'),
+						textColor: this.sanitizeColor(nx.textColor),
+						eTextColor: this.sanitizeColor(nx.eTextColor),
+					};
+				}
+
+				// 誕生日用の専用表情(フル装備、ただし！は無し)
+				let cleanBirthday: Record<string, unknown> | null = null;
+				const bx = (c as Record<string, any>).birthdayExpression;
+				if (bx && (bx.url || bx.driveFileId)) {
+					if (bx.url && !this.isAllowedImageUrl(bx.url)) {
+						throw new ApiError(meta.errors.invalidImageUrl);
+					}
+					cleanBirthday = {
+						url: bx.url ?? null,
+						driveFileId: bx.driveFileId ?? null,
+						label: this.sanitize(bx.label ?? '', LABEL_MAX),
+						text: this.sanitize(bx.text ?? '', PHRASE_MAX),
+						motion: (['bounce', 'shake', 'sway', 'spin'].includes(bx.motion) ? bx.motion : 'none'),
+						motionIntensity: clampRange(bx.motionIntensity, 0.3, 2, 1),
+						bubbleX: clamp01(bx.bubbleX, 0.5),
+						bubbleY: clamp01(bx.bubbleY, 0.1),
+						bubbleScale: clampRange(bx.bubbleScale, 0.6, 1.6, 1),
+						bubbleTail: (bx.bubbleTail === 'right' ? 'right' : 'left'),
+						textColor: this.sanitizeColor(bx.textColor),
+					};
+				}
+
+				// キャラ自身の誕生日(月日)と、その日に言う専用表情(！なし)
+				let cleanCharBirthday: Record<string, unknown> | null = null;
+				const cbx = (c as Record<string, any>).charBirthdayExpression;
+				if (cbx && (cbx.url || cbx.driveFileId)) {
+					if (cbx.url && !this.isAllowedImageUrl(cbx.url)) {
+						throw new ApiError(meta.errors.invalidImageUrl);
+					}
+					cleanCharBirthday = {
+						url: cbx.url ?? null,
+						driveFileId: cbx.driveFileId ?? null,
+						label: this.sanitize(cbx.label ?? '', LABEL_MAX),
+						text: this.sanitize(cbx.text ?? '', PHRASE_MAX),
+						motion: (['bounce', 'shake', 'sway', 'spin'].includes(cbx.motion) ? cbx.motion : 'none'),
+						motionIntensity: clampRange(cbx.motionIntensity, 0.3, 2, 1),
+						bubbleX: clamp01(cbx.bubbleX, 0.5),
+						bubbleY: clamp01(cbx.bubbleY, 0.1),
+						bubbleScale: clampRange(cbx.bubbleScale, 0.6, 1.6, 1),
+						bubbleTail: (cbx.bubbleTail === 'right' ? 'right' : 'left'),
+						textColor: this.sanitizeColor(cbx.textColor),
+					};
+				}
+				const cbMonthRaw = (c as Record<string, any>).charBirthdayMonth;
+				const cbDayRaw = (c as Record<string, any>).charBirthdayDay;
+				const charBirthdayMonth = (typeof cbMonthRaw === 'number' && cbMonthRaw >= 1 && cbMonthRaw <= 12) ? Math.floor(cbMonthRaw) : null;
+				const charBirthdayDay = (typeof cbDayRaw === 'number' && cbDayRaw >= 1 && cbDayRaw <= 31) ? Math.floor(cbDayRaw) : null;
+
 				return {
 					id: this.sanitize(c.id, 64),
 					name: this.sanitize(c.name, NAME_MAX),
 					expressions: cleanExpressions,
 					phrases: cleanPhrases,
+					notifyExpression: cleanNotify,
+					birthdayExpression: cleanBirthday,
+					charBirthdayEnabled: (c as Record<string, any>).charBirthdayEnabled === true,
+					charBirthdayMonth,
+					charBirthdayDay,
+					charBirthdayExpression: cleanCharBirthday,
 				};
 			});
 
@@ -240,7 +396,12 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 			//   サイズ(500KB以下)・タイプ(JPEG/PNG/WebP/GIF)・所有者(本人)を検証する。
 			//   ドライブは登録時にマジックバイトで type を判定済みなので、その type を信頼する。
 			const driveFileIds = Array.from(new Set(
-				characters.flatMap(c => c.expressions.map(e => e.driveFileId).filter((x): x is string => !!x)),
+				characters.flatMap(c => [
+					...c.expressions.map(e => e.driveFileId),
+					(c.notifyExpression as Record<string, any> | null)?.driveFileId ?? null,
+					(c.birthdayExpression as Record<string, any> | null)?.driveFileId ?? null,
+					(c.charBirthdayExpression as Record<string, any> | null)?.driveFileId ?? null,
+				].filter((x): x is string => !!x)),
 			));
 			if (driveFileIds.length > 0) {
 				const files = await this.driveFilesRepository.findBy({ id: In(driveFileIds) });
@@ -272,6 +433,15 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 
 			return { ok: true, updatedAt };
 		});
+	}
+
+	// 文字色のサニタイズ: #rgb / #rrggbb 形式のみ許可。それ以外(空含む)は null(テーマ既定色)。
+	@bindThis
+	private sanitizeColor(v: unknown): string | null {
+		if (typeof v !== 'string') return null;
+		const s = v.trim();
+		if (/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(s)) return s;
+		return null;
 	}
 
 	// テキストのサニタイズ: 長さ制限 + 制御文字(改行以外)除去。
