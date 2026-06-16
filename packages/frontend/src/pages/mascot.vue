@@ -36,7 +36,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<div v-if="!phraseText" :class="$style.bubbleEmpty">（文言が設定されていません）</div>
 			<div :class="$style.controls">
 				<MkButton rounded @click="next"><i class="ti ti-refresh"></i> 次の文言</MkButton>
-				<MkButton v-if="isBirthdayToday" rounded gradate @click="celebrateBirthday">🎂 誕生日を祝ってもらう</MkButton>
+				<MkButton v-if="isBirthdayToday" rounded gradate @click="celebrateBirthday"><i class="ti ti-cake"></i> 誕生日を祝ってもらう</MkButton>
 				<MkButton rounded @click="openSettings"><i class="ti ti-settings"></i> 設定</MkButton>
 			</div>
 		</div>
