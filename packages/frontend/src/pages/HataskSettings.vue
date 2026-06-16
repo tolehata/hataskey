@@ -47,6 +47,13 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</div>
 			</div>
 
+			<!-- きもち記録 -->
+			<div :class="$style.card">
+				<div :class="$style.label">きもち記録</div>
+				<div :class="$style.row"><span>リマインド通知</span><button :class="[$style.sw, settings.moodRemind && $style.swOn]" @click="toggle('moodRemind')"></button></div>
+				<div :class="$style.desc">記録がない日に、設定した時間帯にリマインド通知を送ります。時間帯の指定は Hatask の「きもち記録」設定から行えます。</div>
+			</div>
+
 			<!-- ホーム画面: セクション表示と並び替え(統合) -->
 			<div :class="$style.card">
 				<div :class="$style.label">ホーム画面 - セクション表示と並び替え</div>
@@ -114,7 +121,7 @@ const bgThemes = [
 const defaultSectionOrder = ['clock','eye','apps','loginDays','flower','events','mood','meal'];
 const sectionLabels:Record<string,string> = {clock:'日時表示',eye:'Hatask Eye',apps:'旗鯖独自アプリ',loginDays:'ログイン日数',flower:'お花',events:'直近の予定',mood:'今週のきもち',meal:'ごはん記録'};
 const sectionVisibilityKey:Record<string,string> = {clock:'showClock',eye:'showEye',apps:'showApps',loginDays:'showLoginDays',flower:'showFlower',events:'showEvents',mood:'showMoodSummary',meal:'showMealSection'};
-const defaultSettings:any = { bgTheme:'ocean', darkMode:false, autoTheme:true, weekStart:'mon', showClock:true, showEvents:true, showFlower:true, showMoodSummary:true, showMealSection:true, openOnStart:false };
+const defaultSettings:any = { bgTheme:'ocean', darkMode:false, autoTheme:true, weekStart:'mon', showClock:true, showEvents:true, showFlower:true, showMoodSummary:true, showMealSection:true, moodRemind:false, openOnStart:false };
 
 const loading = ref(true);
 const settings = ref<any>({ ...defaultSettings });
