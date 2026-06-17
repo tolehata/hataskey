@@ -347,7 +347,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 								<button v-if="activeChar.notifyExpression.eTextColor" :class="$style.colorClear" @click="clearNotifyETextColor" title="既定色に戻す"><i class="ti ti-x"></i></button>
 							</div>
 						</template>
-						<div :class="$style.desc" style="margin:4px 0 0">プレビュー下の「🔔 通知用」を選ぶと、吹き出し・！の位置やサイズ・しっぽをドラッグや上のスライダーで調整できます。</div>
+						<div :class="$style.desc" style="margin:4px 0 0">プレビュー下の「通知用」を選ぶと、吹き出し・！の位置やサイズ・しっぽをドラッグや上のスライダーで調整できます。</div>
 					</template>
 					<MkButton v-else rounded @click="chooseNotifyImage"><i class="ti ti-plus"></i> 通知用の立ち絵を選ぶ</MkButton>
 				</div>
@@ -406,7 +406,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 								<button v-if="activeChar.notifyExpression2.eTextColor" :class="$style.colorClear" @click="clearNotify2ETextColor" title="既定色に戻す"><i class="ti ti-x"></i></button>
 							</div>
 						</template>
-						<div :class="$style.desc" style="margin:4px 0 0">プレビュー下の「🔔 通知用2」を選ぶと、吹き出し・！の位置やサイズ・しっぽをドラッグや上のスライダーで調整できます。</div>
+						<div :class="$style.desc" style="margin:4px 0 0">プレビュー下の「通知用2」を選ぶと、吹き出し・！の位置やサイズ・しっぽをドラッグや上のスライダーで調整できます。</div>
 					</template>
 					<MkButton v-else rounded @click="chooseNotifyImage2"><i class="ti ti-plus"></i> 2つ目の通知用の立ち絵を選ぶ</MkButton>
 				</div>

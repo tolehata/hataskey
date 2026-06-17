@@ -17,7 +17,7 @@
 >
 	<div :class="$style.stage">
 		<!-- 立ち絵。背後の黒ぼかしはシルエットに沿った drop-shadow で表現(黒丸にしない) -->
-		<img :src="shownUrl" :class="[$style.img, motionName === 'bounce' ? $style.motionBounce : motionName === 'shake' ? $style.motionShake : motionName === 'sway' ? $style.motionSway : motionName === 'spin' ? $style.motionSpin : '']" :style="imgStyle" draggable="false" :alt="shownExpression?.label || 'mascot'" />
+		<img :src="shownUrl" :class="[$style.img, motionName === 'bounce' ? 'htkFloatMotionBounce' : motionName === 'shake' ? 'htkFloatMotionShake' : motionName === 'sway' ? 'htkFloatMotionSway' : motionName === 'spin' ? 'htkFloatMotionSpin' : '']" :style="imgStyle" draggable="false" :alt="shownExpression?.label || 'mascot'" />
 		<!-- 文言の吹き出し(表情ごとの位置に重ねる) -->
 		<div v-if="phraseText" :class="[$style.bubble, bubbleTail === 'right' ? $style.tail_right : $style.tail_left]" :style="bubbleStyle">{{ phraseText }}</div>
 		<!-- ？小吹き出し(疑問トグルON時) -->
@@ -262,11 +262,8 @@ watch(displaySettingsLoaded, (v) => { if (v) initPosition(); });
 	-webkit-user-drag: none;
 	pointer-events: none;
 }
-/* 立ち絵モーション。中央配置の translate(-50%,-50%) を保ったまま動かす(keyframesは素styleで固定値定義) */
-.motionBounce { animation: htkFloatBounce 1s ease-in-out infinite; }
-.motionShake { animation: htkFloatShake .35s linear infinite; }
-.motionSway { animation: htkFloatSway 2s ease-in-out infinite; }
-.motionSpin { animation: htkFloatSpin 3s linear infinite; }
+/* 立ち絵モーションのクラスとkeyframesは module 外の素style に置く(下部参照)。
+   module内に animation:htkFloat... を書くと keyframes名がハッシュ化され参照が切れるため。 */
 
 .bubble {
 	position: absolute;
@@ -313,8 +310,13 @@ watch(displaySettingsLoaded, (v) => { if (v) initPosition(); });
 </style>
 
 <style lang="scss">
-/* keyframes はグローバルに出す必要があるため module 外の素の style に置く。
+/* keyframes と モーションクラスはグローバルに出す必要があるため module 外の素の style に置く。
+   (module内に書くと animation の keyframes 参照名がハッシュ化されて参照切れになるため)
    中央配置の translate(-50%,-50%) を保ったまま動かす。calc/var は使わず固定値。 */
+.htkFloatMotionBounce { animation: htkFloatBounce 1s ease-in-out infinite; }
+.htkFloatMotionShake { animation: htkFloatShake .35s linear infinite; }
+.htkFloatMotionSway { animation: htkFloatSway 2s ease-in-out infinite; }
+.htkFloatMotionSpin { animation: htkFloatSpin 3s linear infinite; }
 @keyframes htkFloatBounce { 0%,100%{ transform:translate(-50%,-50%); } 50%{ transform:translate(-50%, calc(-50% - 8px)); } }
 @keyframes htkFloatShake { 0%,100%{ transform:translate(-50%,-50%); } 25%{ transform:translate(calc(-50% - 4px),-50%); } 75%{ transform:translate(calc(-50% + 4px),-50%); } }
 @keyframes htkFloatSway { 0%,100%{ transform:translate(-50%,-50%) rotate(-4deg); } 50%{ transform:translate(-50%,-50%) rotate(4deg); } }
