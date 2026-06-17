@@ -26,7 +26,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 
             <!-- 旗鯖fork: メニュー群はこのスクロール領域に閉じ込め、下部の投稿/アカウントは
                  固定する。メニューが増えてもノート/アカウントがスクロールで隠れない。 -->
-            <div :class="$style.sbScroll">
+            <div :class="[$style.sbScrollWrap, { [$style.fadeTop]: sbFadeTop, [$style.fadeBottom]: sbFadeBottom }]">
+            <div :class="$style.sbScroll" ref="sbScrollEl" @scroll="onSbScroll">
             <!-- ナビ項目（prefer同期の並び順） -->
             <div :class="$style.sbNav">
                 <template v-for="grp in sidebarGroups" :key="grp.key">
@@ -69,6 +70,9 @@ SPDX-License-Identifier: AGPL-3.0-only
                     </button>
                 </div>
             </template>
+            </div>
+            <div :class="$style.sbFadeTopEl"></div>
+            <div :class="$style.sbFadeBottomEl"></div>
             </div>
 
             <!-- 下部: 投稿 + アカウント (固定) -->
@@ -468,6 +472,7 @@ const DESKTOP_THRESHOLD = 1100;
 const isDesktop = ref(window.innerWidth >= DESKTOP_THRESHOLD);
 function onResize() {
     isDesktop.value = window.innerWidth >= DESKTOP_THRESHOLD;
+    nextTick(()=>{ updateSbFade(); });
 }
 window.addEventListener('resize', onResize);
 
@@ -533,6 +538,20 @@ function stopThemeWatch() {
 
 // ===== スクロール検知 =====
 const contentEl = ref<HTMLElement|null>(null);
+
+// 旗鯖fork: サイドメニューのスクロールバーを隠し、続きがある時だけ上下にフェードを出す
+const sbScrollEl = ref<HTMLElement|null>(null);
+const sbFadeTop = ref(false);
+const sbFadeBottom = ref(false);
+function updateSbFade() {
+    const el = sbScrollEl.value;
+    if (!el) { sbFadeTop.value = false; sbFadeBottom.value = false; return; }
+    const top = el.scrollTop;
+    const max = el.scrollHeight - el.clientHeight;
+    sbFadeTop.value = top > 1;
+    sbFadeBottom.value = top < max - 1;
+}
+function onSbScroll() { updateSbFade(); }
 const showBottomBar = ref(true);
 const showTopBar = ref(true);
 let lastScrollY = 0;
@@ -1039,6 +1058,7 @@ onMounted(()=>{
     startUnreadPoll();
     window.addEventListener('simple-user-panel', onSimpleUserPanel);
     nextTick(()=>{ startThemeWatch(); });
+    nextTick(()=>{ updateSbFade(); });
     window.addEventListener('ext-tl-notif-count', onExtNotifCount);
     window.addEventListener('external-notification', onExtNotifRealtime);
     // 旗鯖fork: 起動時に1回だけ外部通知の未読有無を初期化 (WS受信前の既存未読を反映)
@@ -1168,17 +1188,47 @@ onUnmounted(()=>{
     position:relative;
     z-index:1;
 }
+.sbScrollWrap {
+    /* 旗鯖fork: スクロール領域を内包し、上下のフェードを重ねる枠 */
+    position:relative;
+    flex:1;
+    min-height:0;
+    display:flex;
+    flex-direction:column;
+}
 .sbScroll {
     /* 旗鯖fork: メニュー群だけをスクロールさせる領域。下部の投稿/アカウントは外側で固定。 */
     flex:1;
     min-height:0;
     overflow-y:auto;
     overflow-x:hidden;
-    scrollbar-width:thin;
-    scrollbar-color:rgba(128,128,128,.2) transparent;
+    /* スクロールバーは非表示にし、代わりにフェードで続きを示す */
+    scrollbar-width:none;
+    -ms-overflow-style:none;
     display:flex;
     flex-direction:column;
 }
+.sbScroll::-webkit-scrollbar { width:0; height:0; display:none; }
+.sbFadeTopEl, .sbFadeBottomEl {
+    position:absolute;
+    left:0;
+    right:0;
+    height:28px;
+    pointer-events:none;
+    opacity:0;
+    transition:opacity .2s;
+    z-index:2;
+}
+.sbFadeTopEl {
+    top:0;
+    background:linear-gradient(to bottom, var(--MI_THEME-navBg), color-mix(in srgb, var(--MI_THEME-navBg) 0%, transparent));
+}
+.sbFadeBottomEl {
+    bottom:0;
+    background:linear-gradient(to top, var(--MI_THEME-navBg), color-mix(in srgb, var(--MI_THEME-navBg) 0%, transparent));
+}
+.fadeTop .sbFadeTopEl { opacity:1; }
+.fadeBottom .sbFadeBottomEl { opacity:1; }
 .sbLogoRow {
     display:flex;
     align-items:center;
