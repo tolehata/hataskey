@@ -282,6 +282,8 @@ export type MascotDisplaySettings = {
 	floatingY: number;                // フローティング位置Y(px、左上基準)
 	floatingBackdropOpacity: number;  // フローティングのぼかし背景の濃さ(0〜1、0で無効)
 	floatingBackdropColor: string;    // フローティングのぼかし背景の色(#rrggbb)
+	idleMinSec: number;               // 表情/文言の自動切替の最短間隔(秒)
+	idleMaxSec: number;               // 表情/文言の自動切替の最長間隔(秒)
 };
 
 export const defaultDisplaySettings: MascotDisplaySettings = {
@@ -298,6 +300,8 @@ export const defaultDisplaySettings: MascotDisplaySettings = {
 	floatingY: -1,
 	floatingBackdropOpacity: 0.25,
 	floatingBackdropColor: '#000000',
+	idleMinSec: 5,
+	idleMaxSec: 12,
 };
 
 export const displaySettings = ref<MascotDisplaySettings>({ ...defaultDisplaySettings });
@@ -322,6 +326,19 @@ export async function saveDisplaySettings(v: MascotDisplaySettings): Promise<voi
 export async function saveFloatingPosition(x: number, y: number): Promise<void> {
 	const v = { ...displaySettings.value, floatingX: Math.round(x), floatingY: Math.round(y) };
 	await saveDisplaySettings(v);
+}
+
+// 表情/文言の自動切替の次の遅延(ms)を、設定の最短〜最長からランダムに返す。
+// 専用ページ・フローティング共通。範囲は5秒〜1800秒(30分)にクランプし、min>maxなら入れ替える。
+export function nextIdleDelayMs(): number {
+	const IDLE_LIMIT_MIN = 5;
+	const IDLE_LIMIT_MAX = 1800;
+	let lo = typeof displaySettings.value.idleMinSec === 'number' ? displaySettings.value.idleMinSec : 5;
+	let hi = typeof displaySettings.value.idleMaxSec === 'number' ? displaySettings.value.idleMaxSec : 12;
+	lo = Math.min(Math.max(lo, IDLE_LIMIT_MIN), IDLE_LIMIT_MAX);
+	hi = Math.min(Math.max(hi, IDLE_LIMIT_MIN), IDLE_LIMIT_MAX);
+	if (lo > hi) { const t = lo; lo = hi; hi = t; }
+	return (lo + Math.random() * (hi - lo)) * 1000;
 }
 
 // 標準通知トーストを抑制すべきか(common.vue から参照)。

@@ -56,10 +56,9 @@ import {
 	pickRandomPhrase, expressionDisplayUrl, escapeText,
 	displayText, displaySettings, loadDisplaySettings, mascotVisible,
 	announceBirthday, announceUnread, announceCharBirthday, isCharBirthdayToday, clearAnnounce,
+	nextIdleDelayMs,
 } from '@/utility/mascot-store.js';
 
-const IDLE_MIN_MS = 5000; // 文言切替の最短間隔
-const IDLE_MAX_MS = 12000; // 文言切替の最長間隔
 
 const character = computed(() => activeCharacter.value);
 const hasMascot = computed(() => !!character.value);
@@ -131,7 +130,7 @@ const qBubbleStyle = computed(() => {
 let timer: ReturnType<typeof setTimeout> | null = null;
 function startTimer() {
 	stopTimer();
-	const delay = IDLE_MIN_MS + Math.random() * (IDLE_MAX_MS - IDLE_MIN_MS);
+	const delay = nextIdleDelayMs();
 	timer = setTimeout(() => { pickRandomPhrase(); startTimer(); }, delay);
 }
 function stopTimer() { if (timer) { clearTimeout(timer); timer = null; } }

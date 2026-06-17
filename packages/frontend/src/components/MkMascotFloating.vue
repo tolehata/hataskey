@@ -37,6 +37,7 @@ import {
 	displaySettings, displaySettingsLoaded, loadDisplaySettings,
 	saveFloatingPosition,
 	mascotVisible,
+	nextIdleDelayMs,
 } from '@/utility/mascot-store.js';
 
 const isDesktop = deviceKind === 'desktop';
@@ -198,17 +199,18 @@ function onResize() { clampToViewport(); }
 
 // ===== 通常時の自動ローテーション(一定間隔で文言/表情を切り替え) =====
 // announce中(通知/誕生日/未読の表示中)は切り替えない。
-const ROTATE_INTERVAL_MS = 20000;
-let rotateTimer: ReturnType<typeof setInterval> | null = null;
+// 専用ページと同じく、ランダムな間隔(5〜12秒)で文言と紐づく表情を切り替える。
+let rotateTimer: ReturnType<typeof setTimeout> | null = null;
 function startRotation() {
 	stopRotation();
-	rotateTimer = setInterval(() => {
-		if (announceMessage.value) return; // 通知等の表示中は維持
-		pickRandomPhrase();
-	}, ROTATE_INTERVAL_MS);
+	const delay = nextIdleDelayMs();
+	rotateTimer = setTimeout(() => {
+		if (!announceMessage.value) pickRandomPhrase(); // 通知等の表示中は維持
+		startRotation(); // 次の切替を予約(毎回ランダムな間隔)
+	}, delay);
 }
 function stopRotation() {
-	if (rotateTimer) { clearInterval(rotateTimer); rotateTimer = null; }
+	if (rotateTimer) { clearTimeout(rotateTimer); rotateTimer = null; }
 }
 
 onMounted(async () => {

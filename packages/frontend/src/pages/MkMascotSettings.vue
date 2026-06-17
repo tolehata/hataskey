@@ -174,6 +174,23 @@ SPDX-License-Identifier: AGPL-3.0-only
 					</div>
 					<div :class="$style.desc" style="margin-top:6px;margin-bottom:0">通知が来てからマスコットが通知用表情を表示する時間です。表示中に次の通知が来ると時間がリセットされ、吹き出しの内容も最新の通知に更新されます。</div>
 					<div :class="$style.subDivider"></div>
+					<div :class="$style.row" style="flex-wrap:wrap;gap:6px">
+						<span>表情・文言の入れ替わり間隔</span>
+						<span :class="$style.idlePresets">
+							<button :class="[$style.idlePreset, isIdlePreset(3,8) && $style.idlePresetOn]" @click="setIdlePreset(3,8)">頻繁</button>
+							<button :class="[$style.idlePreset, isIdlePreset(5,12) && $style.idlePresetOn]" @click="setIdlePreset(5,12)">標準</button>
+							<button :class="[$style.idlePreset, isIdlePreset(30,90) && $style.idlePresetOn]" @click="setIdlePreset(30,90)">控えめ</button>
+						</span>
+					</div>
+					<div :class="$style.row">
+						<span :class="$style.idleManualLabel">手動（秒）</span>
+						<span :class="$style.durationCtrl">
+							最短 <input type="number" min="5" max="1800" :value="displaySettings.idleMinSec" @input="setIdleMin($event)" :class="$style.durationInput" />
+							〜 最長 <input type="number" min="5" max="1800" :value="displaySettings.idleMaxSec" @input="setIdleMax($event)" :class="$style.durationInput" />
+						</span>
+					</div>
+					<div :class="$style.desc" style="margin-top:6px;margin-bottom:0">マスコットの表情と文言が自動で切り替わる間隔です。最短〜最長の範囲でランダムに切り替わります。間隔を長くすると、ちらちら動くのが気になる場合に落ち着きます（5秒〜1800秒/30分）。通知の表示中は切り替わりません。</div>
+					<div :class="$style.subDivider"></div>
 					<div :class="$style.row"><span>フローティング表示(デスクトップ)</span><button :class="[$style.sw, displaySettings.floatingEnabledDesktop && $style.swOn]" @click="toggleDisplay('floatingEnabledDesktop')"></button></div>
 					<div :class="$style.row"><span>フローティング表示(モバイル)</span><button :class="[$style.sw, displaySettings.floatingEnabledMobile && $style.swOn]" @click="toggleDisplay('floatingEnabledMobile')"></button></div>
 					<div :class="$style.desc" style="margin-top:6px;margin-bottom:0">どの画面でもマスコットを画面上に浮かべて表示します。ドラッグで移動でき、クリックで次の文言に切り替わります。通知・誕生日・未読も浮いたマスコットが伝えます。</div>
@@ -1044,6 +1061,23 @@ function setNotifyDuration(ev: Event) {
 	const sec = Number.isFinite(v) ? Math.min(60, Math.max(1, v)) : 3;
 	saveDisplaySettings({ ...displaySettings.value, notifyDurationSec: sec });
 }
+function clampIdle(v: number, fallback: number): number {
+	return Number.isFinite(v) ? Math.min(1800, Math.max(5, Math.round(v))) : fallback;
+}
+function setIdlePreset(min: number, max: number) {
+	saveDisplaySettings({ ...displaySettings.value, idleMinSec: min, idleMaxSec: max });
+}
+function isIdlePreset(min: number, max: number): boolean {
+	return displaySettings.value.idleMinSec === min && displaySettings.value.idleMaxSec === max;
+}
+function setIdleMin(ev: Event) {
+	const v = clampIdle(parseInt((ev.target as HTMLInputElement).value, 10), 5);
+	saveDisplaySettings({ ...displaySettings.value, idleMinSec: v });
+}
+function setIdleMax(ev: Event) {
+	const v = clampIdle(parseInt((ev.target as HTMLInputElement).value, 10), 12);
+	saveDisplaySettings({ ...displaySettings.value, idleMaxSec: v });
+}
 function setBackdropOpacity(ev: Event) {
 	const v = parseFloat((ev.target as HTMLInputElement).value);
 	const o = Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 0.25;
@@ -1138,6 +1172,11 @@ async function save() {
 .durationInput { width:54px; box-sizing:border-box; background: var(--MI_THEME-bg); color: var(--MI_THEME-fg); border:1px solid var(--MI_THEME-divider); border-radius:6px; padding:4px 8px; font-family:inherit; font-size:.85rem; text-align:right; }
 .backdropVal { min-width:42px; text-align:right; opacity:.8; }
 .backdropColor { width:42px; height:28px; padding:0; border:1px solid var(--MI_THEME-divider); border-radius:6px; background:none; cursor:pointer; }
+.idlePresets { display:flex; gap:6px; }
+.idlePreset { padding:4px 12px; border:1px solid var(--MI_THEME-divider); border-radius:999px; background:var(--MI_THEME-bg); color:var(--MI_THEME-fg); cursor:pointer; font-size:.85rem; }
+.idlePreset:hover { background:var(--MI_THEME-buttonHoverBg); }
+.idlePresetOn { background:var(--MI_THEME-accentedBg); border-color:var(--MI_THEME-accent); color:var(--MI_THEME-accent); font-weight:700; }
+.idleManualLabel { opacity:.85; }
 .colorInput { width:36px; height:24px; padding:0; border:1px solid var(--MI_THEME-divider); border-radius:6px; background:none; cursor:pointer; }
 .colorClear { width:24px; height:24px; display:flex; align-items:center; justify-content:center; border:1px solid var(--MI_THEME-divider); border-radius:6px; background:var(--MI_THEME-bg); color:var(--MI_THEME-fg); cursor:pointer; font-size:.7rem; }
 .bubbleCtrlLabel { font-size:.78rem; opacity:.7; min-width:84px; }
