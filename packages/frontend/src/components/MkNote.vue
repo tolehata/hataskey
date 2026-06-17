@@ -830,7 +830,10 @@ const displayedReactions = computed(() => {
 });
 
 function openUserPanel(userId: string) {
-	if (prefer.s['simpleUi.directProfile']) {
+	// HatasabaUIのデッキ表示中は、横幅の限られたカラム内でオリジナルユーザーパネルを出すと
+	// レイアウトと相性が悪いため、directProfile 設定に関わらず直接プロフィールを開く
+	const isDeckUi = prefer.s['simpleUi.deckMode'] === true;
+	if (isDeckUi || prefer.s['simpleUi.directProfile']) {
 		mainRouter.push(userPage(appearNote.user));
 		return;
 	}
