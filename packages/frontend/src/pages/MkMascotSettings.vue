@@ -68,7 +68,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 						><span :class="$style.qMark">?</span><span :class="$style.bubbleGrip" title="ドラッグで位置を調整"><i class="ti ti-arrows-move"></i></span></div>
 						<!-- ！小吹き出し(通知用プレビュー時、exclaimEnabled) -->
 						<div
-							v-if="notifyPreviewMode && previewExpression.exclaimEnabled"
+							v-if="(notifyPreviewMode || notify2PreviewMode) && previewExpression.exclaimEnabled"
 							:class="[$style.qBubble, eTail==='right' ? $style.qtail_right : $style.qtail_left, draggingEBubble && $style.previewBubbleDragging]"
 							:style="eBubbleStyle"
 							@pointerdown="onEBubblePointerDown"
@@ -119,7 +119,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<div :class="$style.previewChips">
 							<button
 								v-for="(p,pi) in (activeChar?.phrases ?? [])" :key="p.id"
-								:class="[$style.previewChip, (!notifyPreviewMode && !birthdayPreviewMode && !charBirthdayPreviewMode && previewPhraseIdx===pi) && $style.previewChipOn]"
+								:class="[$style.previewChip, (!notifyPreviewMode && !notify2PreviewMode && !birthdayPreviewMode && !charBirthdayPreviewMode && previewPhraseIdx===pi) && $style.previewChipOn]"
 								@click="selectPreviewPhrase(pi)"
 							><i class="ti ti-message-2"></i> {{ p.text || '(空の文言)' }}</button>
 							<button
@@ -127,6 +127,11 @@ SPDX-License-Identifier: AGPL-3.0-only
 								:class="[$style.previewChip, notifyPreviewMode && $style.previewChipOn]"
 								@click="selectNotifyPreview"
 							><i class="ti ti-bell"></i> 通知用</button>
+							<button
+								v-if="activeChar?.notifyExpression2"
+								:class="[$style.previewChip, notify2PreviewMode && $style.previewChipOn]"
+								@click="selectNotify2Preview"
+							><i class="ti ti-bell"></i> 通知用2</button>
 							<button
 								v-if="activeChar?.birthdayExpression"
 								:class="[$style.previewChip, birthdayPreviewMode && $style.previewChipOn]"
@@ -347,6 +352,65 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<MkButton v-else rounded @click="chooseNotifyImage"><i class="ti ti-plus"></i> 通知用の立ち絵を選ぶ</MkButton>
 				</div>
 
+				<!-- ===== 通知用の専用表情(2つ目) ===== -->
+				<div :class="$style.card">
+					<div :class="$style.label">通知用の表情(2つ目・任意)</div>
+					<div :class="$style.desc">2つ目の通知用表情です。設定すると、通知時に1つ目とランダムで切り替わります。</div>
+					<template v-if="activeChar.notifyExpression2">
+						<div :class="$style.expItem" style="max-width:140px;">
+							<img :src="activeChar.notifyExpression2.url || ''" :class="$style.expImg" />
+							<button :class="$style.expDel" @click="clearNotify2"><i class="ti ti-x"></i></button>
+						</div>
+						<input :class="$style.expLabel" :value="activeChar.notifyExpression2.label" maxlength="30" @input="onNotify2Field('label',$event)" placeholder="ラベル(任意)" style="margin-top:8px;" />
+						<div :class="$style.desc" style="margin:8px 0 0">通知時の文言は<b>前置き</b>です。実際の通知内容（「○○さんがフォロー」など）は、この前置きの後に改行して自動でつながります。</div>
+						<input :class="$style.inp" :value="activeChar.notifyExpression2.text" maxlength="140" @input="onNotify2Field('text',$event)" placeholder="例：通知が届いたよ！" style="margin-top:6px;" />
+						<div :class="$style.colorRow" style="margin-top:8px;">
+							<span :class="$style.colorLabel">文字色</span>
+							<input type="color" :value="activeChar.notifyExpression2.textColor || '#000000'" @input="setNotify2TextColor($event)" :class="$style.colorInput" />
+							<button v-if="activeChar.notifyExpression2.textColor" :class="$style.colorClear" @click="clearNotify2TextColor" title="既定色に戻す"><i class="ti ti-x"></i></button>
+						</div>
+						<div :class="$style.bubbleCtrlRow" style="margin-top:8px;">
+							<span :class="$style.bubbleCtrlLabel">動き</span>
+							<select :class="$style.expMotion" :value="activeChar.notifyExpression2.motion" @change="onNotify2Field('motion',$event)">
+								<option value="none">動きなし</option>
+								<option value="bounce">ぴょんぴょん</option>
+								<option value="shake">ガクガク</option>
+								<option value="sway">ゆらゆら</option>
+								<option value="spin">回転</option>
+							</select>
+						</div>
+						<div v-if="activeChar.notifyExpression2.motion !== 'none' && activeChar.notifyExpression2.motion !== 'spin'" :class="$style.bubbleCtrlRow">
+							<span :class="$style.bubbleCtrlLabel">動きの強さ</span>
+							<input type="range" min="0.3" max="2" step="0.1" :value="activeChar.notifyExpression2.motionIntensity" @input="onNotify2Field('motionIntensity',$event)" :class="$style.bubbleRange" />
+						</div>
+						<div :class="$style.subDivider"></div>
+						<div :class="$style.bubbleCtrlRow">
+							<span :class="$style.bubbleCtrlLabel">「！」の吹き出し</span>
+							<button :class="[$style.sw, activeChar.notifyExpression2.exclaimEnabled && $style.swOn]" @click="toggleNotify2Exclaim"></button>
+						</div>
+						<template v-if="activeChar.notifyExpression2.exclaimEnabled">
+							<div :class="$style.bubbleCtrlRow">
+								<span :class="$style.bubbleCtrlLabel">！のサイズ</span>
+								<input type="range" min="0.6" max="1.6" step="0.05" :value="activeChar.notifyExpression2.eBubbleScale" @input="setNotify2EScale($event)" :class="$style.bubbleRange" />
+							</div>
+							<div :class="$style.bubbleCtrlRow">
+								<span :class="$style.bubbleCtrlLabel">！のしっぽ</span>
+								<div :class="$style.tailToggle">
+									<button :class="[$style.tailBtn, activeChar.notifyExpression2.eBubbleTail==='left' && $style.tailBtnOn]" @click="setNotify2ETail('left')">左</button>
+									<button :class="[$style.tailBtn, activeChar.notifyExpression2.eBubbleTail==='right' && $style.tailBtnOn]" @click="setNotify2ETail('right')">右</button>
+								</div>
+							</div>
+							<div :class="$style.colorRow">
+								<span :class="$style.colorLabel">！の色</span>
+								<input type="color" :value="activeChar.notifyExpression2.eTextColor || '#000000'" @input="setNotify2ETextColor($event)" :class="$style.colorInput" />
+								<button v-if="activeChar.notifyExpression2.eTextColor" :class="$style.colorClear" @click="clearNotify2ETextColor" title="既定色に戻す"><i class="ti ti-x"></i></button>
+							</div>
+						</template>
+						<div :class="$style.desc" style="margin:4px 0 0">プレビュー下の「🔔 通知用2」を選ぶと、吹き出し・！の位置やサイズ・しっぽをドラッグや上のスライダーで調整できます。</div>
+					</template>
+					<MkButton v-else rounded @click="chooseNotifyImage2"><i class="ti ti-plus"></i> 2つ目の通知用の立ち絵を選ぶ</MkButton>
+				</div>
+
 				<!-- ===== 誕生日用の専用表情 ===== -->
 				<div :class="$style.card">
 					<div :class="$style.label">誕生日用の表情</div>
@@ -453,7 +517,7 @@ type Expression = { id: string; label: string; url: string; driveFileId: string 
 type Phrase = { id: string; text: string; expressionId: string | null };
 type NotifyExpression = { url: string | null; driveFileId: string | null; label: string; text: string; motion: 'none' | 'bounce' | 'shake' | 'sway' | 'spin'; motionIntensity: number; bubbleX: number; bubbleY: number; bubbleScale: number; bubbleTail: 'left' | 'right'; exclaimEnabled: boolean; eBubbleX: number; eBubbleY: number; eBubbleScale: number; eBubbleTail: 'left' | 'right'; textColor?: string | null; eTextColor?: string | null };
 type BirthdayExpression = { url: string | null; driveFileId: string | null; label: string; text: string; motion: 'none' | 'bounce' | 'shake' | 'sway' | 'spin'; motionIntensity: number; bubbleX: number; bubbleY: number; bubbleScale: number; bubbleTail: 'left' | 'right'; textColor?: string | null };
-type Character = { id: string; name: string; expressions: Expression[]; phrases: Phrase[]; notifyExpression: NotifyExpression | null; birthdayExpression: BirthdayExpression | null; charBirthdayEnabled: boolean; charBirthdayMonth: number | null; charBirthdayDay: number | null; charBirthdayExpression: BirthdayExpression | null };
+type Character = { id: string; name: string; expressions: Expression[]; phrases: Phrase[]; notifyExpression: NotifyExpression | null; notifyExpression2: NotifyExpression | null; birthdayExpression: BirthdayExpression | null; charBirthdayEnabled: boolean; charBirthdayMonth: number | null; charBirthdayDay: number | null; charBirthdayExpression: BirthdayExpression | null };
 
 const loading = ref(true);
 const consented = ref(false);
@@ -472,6 +536,7 @@ const activeChar = computed<Character | null>(() => characters.value[activeCharI
 const previewPhrase = computed<Phrase | null>(() => activeChar.value?.phrases[previewPhraseIdx.value] ?? null);
 const previewPhraseText = computed<string>(() => {
 	if (notifyPreviewMode.value && activeChar.value?.notifyExpression) return activeChar.value.notifyExpression.text ?? '';
+	if (notify2PreviewMode.value && activeChar.value?.notifyExpression2) return activeChar.value.notifyExpression2.text ?? '';
 	if (birthdayPreviewMode.value && activeChar.value?.birthdayExpression) return activeChar.value.birthdayExpression.text ?? '';
 	if (charBirthdayPreviewMode.value && activeChar.value?.charBirthdayExpression) return activeChar.value.charBirthdayExpression.text ?? '';
 	return previewPhrase.value?.text ?? '';
@@ -482,6 +547,9 @@ const previewExpression = computed<Expression | null>(() => {
 	// 通知用プレビュー時は通知用表情を返す(Expression互換として扱う)
 	if (notifyPreviewMode.value && c.notifyExpression) {
 		return { id: '__notify__', ...c.notifyExpression } as unknown as Expression;
+	}
+	if (notify2PreviewMode.value && c.notifyExpression2) {
+		return { id: '__notify2__', ...c.notifyExpression2 } as unknown as Expression;
 	}
 	if (birthdayPreviewMode.value && c.birthdayExpression) {
 		return { id: '__birthday__', ...c.birthdayExpression } as unknown as Expression;
@@ -507,6 +575,7 @@ function targetExpr(): any | null {
 	const c = activeChar.value;
 	if (!c) return null;
 	if (notifyPreviewMode.value) return c.notifyExpression ?? null;
+	if (notify2PreviewMode.value) return c.notifyExpression2 ?? null;
 	if (birthdayPreviewMode.value) return c.birthdayExpression ?? null;
 	if (charBirthdayPreviewMode.value) return c.charBirthdayExpression ?? null;
 	const e = previewExpression.value;
@@ -705,6 +774,25 @@ onMounted(async () => {
 				textColor: c.notifyExpression.textColor ?? null,
 				eTextColor: c.notifyExpression.eTextColor ?? null,
 			} : null,
+			notifyExpression2: c.notifyExpression2 ? {
+				url: c.notifyExpression2.url ?? null,
+				driveFileId: c.notifyExpression2.driveFileId ?? null,
+				label: c.notifyExpression2.label ?? '',
+				text: c.notifyExpression2.text ?? '',
+				motion: c.notifyExpression2.motion ?? 'none',
+				motionIntensity: typeof c.notifyExpression2.motionIntensity === 'number' ? c.notifyExpression2.motionIntensity : 1,
+				bubbleX: typeof c.notifyExpression2.bubbleX === 'number' ? c.notifyExpression2.bubbleX : 0.5,
+				bubbleY: typeof c.notifyExpression2.bubbleY === 'number' ? c.notifyExpression2.bubbleY : 0.1,
+				bubbleScale: typeof c.notifyExpression2.bubbleScale === 'number' ? c.notifyExpression2.bubbleScale : 1,
+				bubbleTail: c.notifyExpression2.bubbleTail === 'right' ? 'right' : 'left',
+				exclaimEnabled: c.notifyExpression2.exclaimEnabled === true,
+				eBubbleX: typeof c.notifyExpression2.eBubbleX === 'number' ? c.notifyExpression2.eBubbleX : 0.7,
+				eBubbleY: typeof c.notifyExpression2.eBubbleY === 'number' ? c.notifyExpression2.eBubbleY : 0.05,
+				eBubbleScale: typeof c.notifyExpression2.eBubbleScale === 'number' ? c.notifyExpression2.eBubbleScale : 1,
+				eBubbleTail: c.notifyExpression2.eBubbleTail === 'right' ? 'right' : 'left',
+				textColor: c.notifyExpression2.textColor ?? null,
+				eTextColor: c.notifyExpression2.eTextColor ?? null,
+			} : null,
 			birthdayExpression: c.birthdayExpression ? {
 				url: c.birthdayExpression.url ?? null,
 				driveFileId: c.birthdayExpression.driveFileId ?? null,
@@ -759,7 +847,7 @@ function selectChar(ci:number) { activeCharIdx.value = ci; previewPhraseIdx.valu
 
 function addCharacter() {
 	if (characters.value.length >= limits.value.maxCharacters) return;
-	characters.value.push({ id: genId(), name: '', expressions: [], phrases: [], notifyExpression: null, birthdayExpression: null, charBirthdayEnabled: false, charBirthdayMonth: null, charBirthdayDay: null, charBirthdayExpression: null });
+	characters.value.push({ id: genId(), name: '', expressions: [], phrases: [], notifyExpression: null, notifyExpression2: null, birthdayExpression: null, charBirthdayEnabled: false, charBirthdayMonth: null, charBirthdayDay: null, charBirthdayExpression: null });
 	activeCharIdx.value = characters.value.length - 1;
 	previewPhraseIdx.value = 0;
 }
@@ -816,6 +904,7 @@ function removePhrase(pi:number) { const c = activeChar.value; if (c) c.phrases.
 
 // ===== 通知用の専用表情 =====
 const notifyPreviewMode = ref(false);
+const notify2PreviewMode = ref(false);
 const birthdayPreviewMode = ref(false);
 const charBirthdayPreviewMode = ref(false);
 async function chooseNotifyImage() {
@@ -846,8 +935,43 @@ function onNotifyField(key: string, ev: Event) {
 function toggleNotifyExclaim() { const c = activeChar.value; if (c && c.notifyExpression) c.notifyExpression.exclaimEnabled = !c.notifyExpression.exclaimEnabled; }
 function setNotifyEScale(ev: Event) { const c = activeChar.value; if (c && c.notifyExpression) c.notifyExpression.eBubbleScale = Math.min(1.6, Math.max(0.6, parseFloat((ev.target as HTMLInputElement).value))); }
 function setNotifyETail(tail: 'left' | 'right') { const c = activeChar.value; if (c && c.notifyExpression) c.notifyExpression.eBubbleTail = tail; }
-function selectNotifyPreview() { birthdayPreviewMode.value = false; charBirthdayPreviewMode.value = false; notifyPreviewMode.value = true; }
-function selectPreviewPhrase(pi: number) { notifyPreviewMode.value = false; birthdayPreviewMode.value = false; charBirthdayPreviewMode.value = false; previewPhraseIdx.value = pi; }
+// ===== 通知用表情(2つ目) =====
+async function chooseNotifyImage2() {
+	const c = activeChar.value;
+	if (!c) return;
+	const files = await chooseDriveFile({ multiple: false }).catch(() => []);
+	if (files.length === 0) return;
+	const f = files[0];
+	if (!f.type || !f.type.startsWith('image/')) { os.alert({ type: 'warning', text: '画像ファイルを選んでください。' }); return; }
+	if (typeof f.size === 'number' && f.size > 500 * 1024) { os.alert({ type: 'warning', text: '画像が大きすぎます（500KB以下にしてください）。' }); return; }
+	c.notifyExpression2 = {
+		url: f.url, driveFileId: f.id, label: '', text: '',
+		motion: 'none', motionIntensity: 1,
+		bubbleX: 0.5, bubbleY: 0.1, bubbleScale: 1, bubbleTail: 'left',
+		exclaimEnabled: false, eBubbleX: 0.7, eBubbleY: 0.05, eBubbleScale: 1, eBubbleTail: 'left',
+		textColor: null, eTextColor: null,
+	};
+	notify2PreviewMode.value = true;
+	notifyPreviewMode.value = false; birthdayPreviewMode.value = false; charBirthdayPreviewMode.value = false;
+}
+function clearNotify2() { const c = activeChar.value; if (c) { c.notifyExpression2 = null; notify2PreviewMode.value = false; } }
+function onNotify2Field(key: string, ev: Event) {
+	const c = activeChar.value;
+	if (!c || !c.notifyExpression2) return;
+	const t = ev.target as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
+	if (key === 'motionIntensity') { (c.notifyExpression2 as any)[key] = Math.min(2, Math.max(0.3, parseFloat(t.value))); }
+	else { (c.notifyExpression2 as any)[key] = t.value; }
+}
+function setNotify2TextColor(ev:Event) { const c = activeChar.value; if (c && c.notifyExpression2) c.notifyExpression2.textColor = (ev.target as HTMLInputElement).value; }
+function setNotify2ETextColor(ev:Event) { const c = activeChar.value; if (c && c.notifyExpression2) c.notifyExpression2.eTextColor = (ev.target as HTMLInputElement).value; }
+function clearNotify2TextColor() { const c = activeChar.value; if (c && c.notifyExpression2) c.notifyExpression2.textColor = null; }
+function clearNotify2ETextColor() { const c = activeChar.value; if (c && c.notifyExpression2) c.notifyExpression2.eTextColor = null; }
+function toggleNotify2Exclaim() { const c = activeChar.value; if (c && c.notifyExpression2) c.notifyExpression2.exclaimEnabled = !c.notifyExpression2.exclaimEnabled; }
+function setNotify2EScale(ev: Event) { const c = activeChar.value; if (c && c.notifyExpression2) c.notifyExpression2.eBubbleScale = Math.min(1.6, Math.max(0.6, parseFloat((ev.target as HTMLInputElement).value))); }
+function setNotify2ETail(tail: 'left' | 'right') { const c = activeChar.value; if (c && c.notifyExpression2) c.notifyExpression2.eBubbleTail = tail; }
+function selectNotify2Preview() { notifyPreviewMode.value = false; birthdayPreviewMode.value = false; charBirthdayPreviewMode.value = false; notify2PreviewMode.value = true; }
+function selectNotifyPreview() { notify2PreviewMode.value = false; birthdayPreviewMode.value = false; charBirthdayPreviewMode.value = false; notifyPreviewMode.value = true; }
+function selectPreviewPhrase(pi: number) { notifyPreviewMode.value = false; notify2PreviewMode.value = false; birthdayPreviewMode.value = false; charBirthdayPreviewMode.value = false; previewPhraseIdx.value = pi; }
 
 // ===== 誕生日用の専用表情(！なし) =====
 async function chooseBirthdayImage() {
@@ -875,7 +999,7 @@ function onBirthdayField(key: string, ev: Event) {
 	if (key === 'motionIntensity') { (c.birthdayExpression as any)[key] = Math.min(2, Math.max(0.3, parseFloat(t.value))); }
 	else { (c.birthdayExpression as any)[key] = t.value; }
 }
-function selectBirthdayPreview() { notifyPreviewMode.value = false; charBirthdayPreviewMode.value = false; birthdayPreviewMode.value = true; }
+function selectBirthdayPreview() { notifyPreviewMode.value = false; notify2PreviewMode.value = false; charBirthdayPreviewMode.value = false; birthdayPreviewMode.value = true; }
 
 // ===== キャラ自身の誕生日 =====
 function toggleCharBirthday() { const c = activeChar.value; if (c) c.charBirthdayEnabled = !c.charBirthdayEnabled; }
@@ -909,7 +1033,7 @@ function onCharBirthdayField(key: string, ev: Event) {
 }
 function setCharBirthdayTextColor(ev:Event) { const c = activeChar.value; if (c && c.charBirthdayExpression) c.charBirthdayExpression.textColor = (ev.target as HTMLInputElement).value; }
 function clearCharBirthdayTextColor() { const c = activeChar.value; if (c && c.charBirthdayExpression) c.charBirthdayExpression.textColor = null; }
-function selectCharBirthdayPreview() { notifyPreviewMode.value = false; birthdayPreviewMode.value = false; charBirthdayPreviewMode.value = true; }
+function selectCharBirthdayPreview() { notifyPreviewMode.value = false; notify2PreviewMode.value = false; birthdayPreviewMode.value = false; charBirthdayPreviewMode.value = true; }
 
 function toggleDisplay(key: keyof MascotDisplaySettings) {
 	const next = { ...displaySettings.value, [key]: !displaySettings.value[key] };
@@ -941,6 +1065,7 @@ async function save() {
 				expressions: c.expressions.map(e => ({ id: e.id, label: e.label, url: e.url, driveFileId: e.driveFileId, bubbleX: e.bubbleX, bubbleY: e.bubbleY, bubbleScale: e.bubbleScale, bubbleTail: e.bubbleTail, motion: e.motion, motionIntensity: e.motionIntensity, questionEnabled: e.questionEnabled, qBubbleX: e.qBubbleX, qBubbleY: e.qBubbleY, qBubbleScale: e.qBubbleScale, qBubbleTail: e.qBubbleTail, textColor: e.textColor ?? null, qTextColor: e.qTextColor ?? null })),
 				phrases: c.phrases.map(p => ({ id: p.id, text: p.text, expressionId: p.expressionId })),
 				notifyExpression: c.notifyExpression && (c.notifyExpression.url || c.notifyExpression.driveFileId) ? c.notifyExpression : null,
+				notifyExpression2: c.notifyExpression2 && (c.notifyExpression2.url || c.notifyExpression2.driveFileId) ? c.notifyExpression2 : null,
 				birthdayExpression: c.birthdayExpression && (c.birthdayExpression.url || c.birthdayExpression.driveFileId) ? c.birthdayExpression : null,
 				charBirthdayEnabled: c.charBirthdayEnabled,
 				charBirthdayMonth: c.charBirthdayMonth,

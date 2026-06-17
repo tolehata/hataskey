@@ -178,6 +178,29 @@ export const paramDef = {
 							eTextColor: { type: 'string', nullable: true },
 						},
 					},
+					notifyExpression2: {
+						type: 'object',
+						nullable: true,
+						properties: {
+							url: { type: 'string', nullable: true },
+							driveFileId: { type: 'string', nullable: true },
+							label: { type: 'string', nullable: true },
+							text: { type: 'string', nullable: true },
+							motion: { type: 'string', nullable: true, enum: ['none', 'bounce', 'shake', 'sway', 'spin'] },
+							motionIntensity: { type: 'number', nullable: true },
+							bubbleX: { type: 'number', nullable: true },
+							bubbleY: { type: 'number', nullable: true },
+							bubbleScale: { type: 'number', nullable: true },
+							bubbleTail: { type: 'string', nullable: true, enum: ['left', 'right'] },
+							exclaimEnabled: { type: 'boolean', nullable: true },
+							eBubbleX: { type: 'number', nullable: true },
+							eBubbleY: { type: 'number', nullable: true },
+							eBubbleScale: { type: 'number', nullable: true },
+							eBubbleTail: { type: 'string', nullable: true, enum: ['left', 'right'] },
+							textColor: { type: 'string', nullable: true },
+							eTextColor: { type: 'string', nullable: true },
+						},
+					},
 					birthdayExpression: {
 						type: 'object',
 						nullable: true,
@@ -325,6 +348,34 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 					};
 				}
 
+				// 通知用の専用表情(2つ目)。通知時はこれと notifyExpression からランダムに選ばれる。
+				let cleanNotify2: Record<string, unknown> | null = null;
+				const nx2 = (c as Record<string, any>).notifyExpression2;
+				if (nx2 && (nx2.url || nx2.driveFileId)) {
+					if (nx2.url && !this.isAllowedImageUrl(nx2.url)) {
+						throw new ApiError(meta.errors.invalidImageUrl);
+					}
+					cleanNotify2 = {
+						url: nx2.url ?? null,
+						driveFileId: nx2.driveFileId ?? null,
+						label: this.sanitize(nx2.label ?? '', LABEL_MAX),
+						text: this.sanitize(nx2.text ?? '', PHRASE_MAX),
+						motion: (['bounce', 'shake', 'sway', 'spin'].includes(nx2.motion) ? nx2.motion : 'none'),
+						motionIntensity: clampRange(nx2.motionIntensity, 0.3, 2, 1),
+						bubbleX: clamp01(nx2.bubbleX, 0.5),
+						bubbleY: clamp01(nx2.bubbleY, 0.1),
+						bubbleScale: clampRange(nx2.bubbleScale, 0.6, 1.6, 1),
+						bubbleTail: (nx2.bubbleTail === 'right' ? 'right' : 'left'),
+						exclaimEnabled: nx2.exclaimEnabled === true,
+						eBubbleX: clamp01(nx2.eBubbleX, 0.7),
+						eBubbleY: clamp01(nx2.eBubbleY, 0.05),
+						eBubbleScale: clampRange(nx2.eBubbleScale, 0.6, 1.6, 1),
+						eBubbleTail: (nx2.eBubbleTail === 'right' ? 'right' : 'left'),
+						textColor: this.sanitizeColor(nx2.textColor),
+						eTextColor: this.sanitizeColor(nx2.eTextColor),
+					};
+				}
+
 				// 誕生日用の専用表情(フル装備、ただし！は無し)
 				let cleanBirthday: Record<string, unknown> | null = null;
 				const bx = (c as Record<string, any>).birthdayExpression;
@@ -379,6 +430,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 					expressions: cleanExpressions,
 					phrases: cleanPhrases,
 					notifyExpression: cleanNotify,
+					notifyExpression2: cleanNotify2,
 					birthdayExpression: cleanBirthday,
 					charBirthdayEnabled: (c as Record<string, any>).charBirthdayEnabled === true,
 					charBirthdayMonth,
@@ -399,6 +451,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				characters.flatMap(c => [
 					...c.expressions.map(e => e.driveFileId),
 					(c.notifyExpression as Record<string, any> | null)?.driveFileId ?? null,
+					(c.notifyExpression2 as Record<string, any> | null)?.driveFileId ?? null,
 					(c.birthdayExpression as Record<string, any> | null)?.driveFileId ?? null,
 					(c.charBirthdayExpression as Record<string, any> | null)?.driveFileId ?? null,
 				].filter((x): x is string => !!x)),

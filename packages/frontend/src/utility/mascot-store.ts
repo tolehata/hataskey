@@ -18,7 +18,7 @@ export type MascotExpression = { id: string; label: string; url: string; driveFi
 export type MascotPhrase = { id: string; text: string; expressionId: string | null };
 export type MascotNotifyExpression = { url?: string | null; driveFileId?: string | null; label?: string; text?: string; motion?: 'none' | 'bounce' | 'shake' | 'sway' | 'spin'; motionIntensity?: number; bubbleX?: number; bubbleY?: number; bubbleScale?: number; bubbleTail?: 'left' | 'right'; exclaimEnabled?: boolean; eBubbleX?: number; eBubbleY?: number; eBubbleScale?: number; eBubbleTail?: 'left' | 'right'; textColor?: string | null; eTextColor?: string | null };
 export type MascotBirthdayExpression = { url?: string | null; driveFileId?: string | null; label?: string; text?: string; motion?: 'none' | 'bounce' | 'shake' | 'sway' | 'spin'; motionIntensity?: number; bubbleX?: number; bubbleY?: number; bubbleScale?: number; bubbleTail?: 'left' | 'right'; textColor?: string | null };
-export type MascotCharacter = { id: string; name: string; expressions: MascotExpression[]; phrases: MascotPhrase[]; notifyExpression?: MascotNotifyExpression | null; birthdayExpression?: MascotBirthdayExpression | null; charBirthdayEnabled?: boolean; charBirthdayMonth?: number | null; charBirthdayDay?: number | null; charBirthdayExpression?: MascotBirthdayExpression | null };
+export type MascotCharacter = { id: string; name: string; expressions: MascotExpression[]; phrases: MascotPhrase[]; notifyExpression?: MascotNotifyExpression | null; notifyExpression2?: MascotNotifyExpression | null; birthdayExpression?: MascotBirthdayExpression | null; charBirthdayEnabled?: boolean; charBirthdayMonth?: number | null; charBirthdayDay?: number | null; charBirthdayExpression?: MascotBirthdayExpression | null };
 export type MascotData = {
 	characters: MascotCharacter[];
 	activeCharacterId: string | null;
@@ -169,8 +169,9 @@ export const currentExpression = computed<MascotExpression | null>(() => {
 	if (announceMessage.value) {
 		const t = announceMessage.value.expressionType;
 		// 通知用・誕生日用は専用スロットを最優先で使う
-		if (t === 'notify' && c.notifyExpression && (c.notifyExpression.url || c.notifyExpression.driveFileId)) {
-			return notifyToExpression(c.notifyExpression);
+		if (t === 'notify') {
+			const nx = pickNotifyExpressionByVariant(c, announceMessage.value.notifyVariant);
+			if (nx && (nx.url || nx.driveFileId)) return notifyToExpression(nx);
 		}
 		if (t === 'birthday' && c.birthdayExpression && (c.birthdayExpression.url || c.birthdayExpression.driveFileId)) {
 			return birthdayToExpression(c.birthdayExpression);
@@ -195,6 +196,30 @@ export const currentExpression = computed<MascotExpression | null>(() => {
 	}
 	return c.expressions[0] ?? null;
 });
+
+// 通知表情が有効か(画像が設定されているか)
+function isNotifyUsable(n: MascotNotifyExpression | null | undefined): boolean {
+	return !!(n && (n.url || n.driveFileId));
+}
+// 有効な通知表情の variant 一覧(0=notifyExpression, 1=notifyExpression2)
+function usableNotifyVariants(c: MascotCharacter): Array<0 | 1> {
+	const arr: Array<0 | 1> = [];
+	if (isNotifyUsable(c.notifyExpression)) arr.push(0);
+	if (isNotifyUsable(c.notifyExpression2)) arr.push(1);
+	return arr;
+}
+// variant 指定で通知表情を返す(未指定なら variant 0)
+function pickNotifyExpressionByVariant(c: MascotCharacter, variant: 0 | 1 | undefined): MascotNotifyExpression | null {
+	if (variant === 1) return c.notifyExpression2 ?? null;
+	return c.notifyExpression ?? null;
+}
+// 有効な通知表情からランダムに variant を選ぶ(両方有効ならランダム、片方ならそれ、無ければ null)
+export function chooseNotifyVariant(c: MascotCharacter | null): 0 | 1 | null {
+	if (!c) return null;
+	const vs = usableNotifyVariants(c);
+	if (vs.length === 0) return null;
+	return vs[Math.floor(Math.random() * vs.length)];
+}
 
 // 専用スロット(通知用/誕生日用)を MascotExpression 互換に変換
 function notifyToExpression(n: NonNullable<MascotCharacter['notifyExpression']>): MascotExpression {
@@ -315,12 +340,13 @@ export type AnnounceMessage = {
 	text: string;
 	expressionType?: ExpressionType | null;
 	expressionId?: string | null;
+	notifyVariant?: 0 | 1;  // 通知表情のどちらを使うか(0=notifyExpression, 1=notifyExpression2)
 };
 export const announceMessage = ref<AnnounceMessage | null>(null);
 let announceTimer: ReturnType<typeof setTimeout> | null = null;
 
-export function announce(text: string, opts: { expressionType?: ExpressionType | null; durationMs?: number } = {}): void {
-	announceMessage.value = { text, expressionType: opts.expressionType ?? 'notify' };
+export function announce(text: string, opts: { expressionType?: ExpressionType | null; durationMs?: number; notifyVariant?: 0 | 1 } = {}): void {
+	announceMessage.value = { text, expressionType: opts.expressionType ?? 'notify', notifyVariant: opts.notifyVariant };
 	if (announceTimer) clearTimeout(announceTimer);
 	announceTimer = setTimeout(() => { announceMessage.value = null; announceTimer = null; }, opts.durationMs ?? 8000);
 }
@@ -336,13 +362,37 @@ export function clearAnnounce(): void {
 // 表示時間は設定の notifyDurationSec(秒)。表示中に次の通知が来たらタイマーがリセットされ(延長)、
 // 吹き出しの内容も最新の通知に更新される(重ね掛け)。
 export function announceNotification(notification: NotificationLike | null | undefined): void {
-	if (!displaySettings.value.tellNotifications) return;
+	// app通知(Hataskのタスク/ToDo/きもち記録など)は専用フラグで制御。それ以外は通常の通知フラグ。
+	const isApp = notification?.type === 'app';
+	if (isApp) {
+		if (!displaySettings.value.tellHataskNotifications) return;
+	} else {
+		if (!displaySettings.value.tellNotifications) return;
+	}
 	const c = activeCharacter.value;
-	const preface = c?.notifyExpression?.text?.trim() ?? '';
+	// 有効な通知表情(2種)からランダムに選ぶ。選んだ方の文言を前置きにする。
+	const variant = chooseNotifyVariant(c);
+	const chosen = variant === 1 ? c?.notifyExpression2 : c?.notifyExpression;
+	const preface = chosen?.text?.trim() ?? '';
 	const content = notificationContentText(notification);
 	const text = preface ? `${preface}\n${content}` : content;
 	const sec = typeof displaySettings.value.notifyDurationSec === 'number' ? displaySettings.value.notifyDurationSec : 3;
-	announce(text, { expressionType: 'notify', durationMs: Math.max(1, sec) * 1000 });
+	announce(text, { expressionType: 'notify', durationMs: Math.max(1, sec) * 1000, notifyVariant: variant ?? 0 });
+}
+
+// 外部アカウントの通知をマスコットに伝える。標準通知と同じ構造なので notificationContentText を使う。
+// 「外部アカウントで」と前置きして、どこの通知か分かるようにする。
+export function announceExternalNotification(notification: NotificationLike | null | undefined): void {
+	if (!displaySettings.value.tellNotifications) return;
+	const c = activeCharacter.value;
+	const variant = chooseNotifyVariant(c);
+	const chosen = variant === 1 ? c?.notifyExpression2 : c?.notifyExpression;
+	const preface = chosen?.text?.trim() ?? '';
+	const content = notificationContentText(notification);
+	const body = `外部アカウントで${content}`;
+	const text = preface ? `${preface}\n${body}` : body;
+	const sec = typeof displaySettings.value.notifyDurationSec === 'number' ? displaySettings.value.notifyDurationSec : 3;
+	announce(text, { expressionType: 'notify', durationMs: Math.max(1, sec) * 1000, notifyVariant: variant ?? 0 });
 }
 
 type NotificationLike = {
@@ -350,6 +400,8 @@ type NotificationLike = {
 	user?: { name?: string | null; username?: string } | null;
 	users?: Array<{ name?: string | null; username?: string }> | null;
 	reaction?: string | null;
+	header?: string | null;
+	body?: string | null;
 } | null | undefined;
 
 // 通知内容(誰が何をしたか)を1行の文言にする。
@@ -375,7 +427,15 @@ function notificationContentText(n: NotificationLike): string {
 		case 'achievementEarned': return '実績を獲得したよ';
 		case 'roleAssigned': return 'ロールが付与されたよ';
 		case 'login': return 'ログインがあったよ';
-		case 'app': return '新しいお知らせが届いたよ';
+		case 'app': {
+			// Hatask等のアプリ通知。header(件名)/body(本文)があればそれを使う。
+			const head = (n?.header ?? '').trim();
+			const bdy = (n?.body ?? '').trim();
+			if (head && bdy) return `${head}：${bdy}`;
+			if (head) return head;
+			if (bdy) return bdy;
+			return '新しいお知らせが届いたよ';
+		}
 		case 'test': return 'これはテスト通知だよ';
 		default:
 			return '新しい通知が届いたよ';
