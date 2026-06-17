@@ -168,6 +168,23 @@ SPDX-License-Identifier: AGPL-3.0-only
 						</span>
 					</div>
 					<div :class="$style.desc" style="margin-top:6px;margin-bottom:0">通知が来てからマスコットが通知用表情を表示する時間です。表示中に次の通知が来ると時間がリセットされ、吹き出しの内容も最新の通知に更新されます。</div>
+					<div :class="$style.subDivider"></div>
+					<div :class="$style.row"><span>フローティング表示(デスクトップ)</span><button :class="[$style.sw, displaySettings.floatingEnabledDesktop && $style.swOn]" @click="toggleDisplay('floatingEnabledDesktop')"></button></div>
+					<div :class="$style.row"><span>フローティング表示(モバイル)</span><button :class="[$style.sw, displaySettings.floatingEnabledMobile && $style.swOn]" @click="toggleDisplay('floatingEnabledMobile')"></button></div>
+					<div :class="$style.desc" style="margin-top:6px;margin-bottom:0">どの画面でもマスコットを画面上に浮かべて表示します。ドラッグで移動でき、クリックで次の文言に切り替わります。通知・誕生日・未読も浮いたマスコットが伝えます。</div>
+					<div :class="$style.subDivider"></div>
+					<div :class="$style.row">
+						<span>フローティングのぼかし背景の濃さ</span>
+						<span :class="$style.durationCtrl">
+							<input type="range" min="0" max="1" step="0.05" :value="displaySettings.floatingBackdropOpacity" @input="setBackdropOpacity($event)" />
+							<span :class="$style.backdropVal">{{ Math.round((displaySettings.floatingBackdropOpacity ?? 0) * 100) }}%</span>
+						</span>
+					</div>
+					<div :class="$style.row">
+						<span>フローティングのぼかし背景の色</span>
+						<input type="color" :value="displaySettings.floatingBackdropColor || '#000000'" @input="setBackdropColor($event)" :class="$style.backdropColor" />
+					</div>
+					<div :class="$style.desc" style="margin-top:6px;margin-bottom:0">フローティング表示中のマスコットの背後に敷くぼかしの濃さと色です。濃さを0にすると無効になります。視認性が悪い背景のときに調整してください。</div>
 				</div>
 
 			<!-- ===== キャラ切替 ===== -->
@@ -903,6 +920,16 @@ function setNotifyDuration(ev: Event) {
 	const sec = Number.isFinite(v) ? Math.min(60, Math.max(1, v)) : 3;
 	saveDisplaySettings({ ...displaySettings.value, notifyDurationSec: sec });
 }
+function setBackdropOpacity(ev: Event) {
+	const v = parseFloat((ev.target as HTMLInputElement).value);
+	const o = Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 0.25;
+	saveDisplaySettings({ ...displaySettings.value, floatingBackdropOpacity: o });
+}
+function setBackdropColor(ev: Event) {
+	const v = (ev.target as HTMLInputElement).value;
+	const color = /^#[0-9a-f]{6}$/i.test(v) ? v : '#000000';
+	saveDisplaySettings({ ...displaySettings.value, floatingBackdropColor: color });
+}
 
 async function save() {
 	saving.value = true;
@@ -967,7 +994,7 @@ async function save() {
 /* ===== プレビュー ===== */
 .preview { display:flex; flex-direction:column; gap:14px; background:linear-gradient(135deg, var(--MI_THEME-panel), var(--MI_THEME-bg)); border:1px solid var(--MI_THEME-divider); border-radius:16px; padding:16px; }
 .previewStageWrap { position:relative; width:100%; aspect-ratio:4/3; max-height:440px; display:flex; align-items:center; justify-content:center; overflow:hidden; border-radius:12px; }
-.previewImg { max-width:80%; max-height:100%; object-fit:contain; filter:drop-shadow(0 4px 12px rgba(0,0,0,.25)); user-select:none; -webkit-user-drag:none; }
+.previewImg { max-width:55%; max-height:80%; object-fit:contain; filter:drop-shadow(0 4px 12px rgba(0,0,0,.25)); user-select:none; -webkit-user-drag:none; }
 .previewEmpty { width:100%; height:100%; display:flex; flex-direction:column; gap:8px; align-items:center; justify-content:center; border:1px dashed var(--MI_THEME-divider); border-radius:12px; opacity:.5; font-size:.75rem; text-align:center; i{ font-size:1.8rem; } }
 .previewMeta { display:flex; flex-direction:column; gap:8px; }
 .previewName { font-weight:700; font-size:.9rem; }
@@ -984,6 +1011,8 @@ async function save() {
 .colorLabel { font-size:.78rem; opacity:.75; min-width:3.5em; }
 .durationCtrl { display:flex; align-items:center; gap:6px; font-size:.85rem; }
 .durationInput { width:54px; box-sizing:border-box; background: var(--MI_THEME-bg); color: var(--MI_THEME-fg); border:1px solid var(--MI_THEME-divider); border-radius:6px; padding:4px 8px; font-family:inherit; font-size:.85rem; text-align:right; }
+.backdropVal { min-width:42px; text-align:right; opacity:.8; }
+.backdropColor { width:42px; height:28px; padding:0; border:1px solid var(--MI_THEME-divider); border-radius:6px; background:none; cursor:pointer; }
 .colorInput { width:36px; height:24px; padding:0; border:1px solid var(--MI_THEME-divider); border-radius:6px; background:none; cursor:pointer; }
 .colorClear { width:24px; height:24px; display:flex; align-items:center; justify-content:center; border:1px solid var(--MI_THEME-divider); border-radius:6px; background:var(--MI_THEME-bg); color:var(--MI_THEME-fg); cursor:pointer; font-size:.7rem; }
 .bubbleCtrlLabel { font-size:.78rem; opacity:.7; min-width:84px; }

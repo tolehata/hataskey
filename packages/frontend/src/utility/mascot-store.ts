@@ -255,6 +255,8 @@ export type MascotDisplaySettings = {
 	floatingEnabledMobile: boolean;   // モバイルでフローティング表示
 	floatingX: number;                // フローティング位置X(px、左上基準)
 	floatingY: number;                // フローティング位置Y(px、左上基準)
+	floatingBackdropOpacity: number;  // フローティングのぼかし背景の濃さ(0〜1、0で無効)
+	floatingBackdropColor: string;    // フローティングのぼかし背景の色(#rrggbb)
 };
 
 export const defaultDisplaySettings: MascotDisplaySettings = {
@@ -269,6 +271,8 @@ export const defaultDisplaySettings: MascotDisplaySettings = {
 	floatingEnabledMobile: false,
 	floatingX: -1,
 	floatingY: -1,
+	floatingBackdropOpacity: 0.25,
+	floatingBackdropColor: '#000000',
 };
 
 export const displaySettings = ref<MascotDisplaySettings>({ ...defaultDisplaySettings });
