@@ -251,6 +251,10 @@ export type MascotDisplaySettings = {
 	tellHataskNotifications: boolean; // Hataskの通知を伝える
 	suppressStandardToast: boolean;   // 通知を伝える時に標準トーストを無効化
 	notifyDurationSec: number;        // 通知用表情の表示秒数(デフォルト3)
+	floatingEnabledDesktop: boolean;  // デスクトップでフローティング表示
+	floatingEnabledMobile: boolean;   // モバイルでフローティング表示
+	floatingX: number;                // フローティング位置X(px、左上基準)
+	floatingY: number;                // フローティング位置Y(px、左上基準)
 };
 
 export const defaultDisplaySettings: MascotDisplaySettings = {
@@ -261,6 +265,10 @@ export const defaultDisplaySettings: MascotDisplaySettings = {
 	tellHataskNotifications: true,
 	suppressStandardToast: true,
 	notifyDurationSec: 3,
+	floatingEnabledDesktop: true,
+	floatingEnabledMobile: false,
+	floatingX: -1,
+	floatingY: -1,
 };
 
 export const displaySettings = ref<MascotDisplaySettings>({ ...defaultDisplaySettings });
@@ -279,6 +287,12 @@ export async function loadDisplaySettings(): Promise<void> {
 export async function saveDisplaySettings(v: MascotDisplaySettings): Promise<void> {
 	displaySettings.value = v;
 	try { await misskeyApi('i/registry/set', { key: SETTINGS_KEY, value: v, scope: SETTINGS_SCOPE }); } catch { /* noop */ }
+}
+
+// フローティング位置だけを更新して保存する(ドラッグ終了時に呼ぶ)。
+export async function saveFloatingPosition(x: number, y: number): Promise<void> {
+	const v = { ...displaySettings.value, floatingX: Math.round(x), floatingY: Math.round(y) };
+	await saveDisplaySettings(v);
 }
 
 // 標準通知トーストを抑制すべきか(common.vue から参照)。

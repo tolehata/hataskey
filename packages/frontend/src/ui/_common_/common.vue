@@ -107,6 +107,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <!-- 旗鯖fork: 外部通知トースト (右下スライドイン、UI被らず) -->
 <XExternalNotificationToastContainer v-if="$i" />
+
+<!-- 旗鯖fork: フローティングマスコット(段階C) -->
+<MkMascotFloating v-if="$i" />
 </template>
 
 <script lang="ts" setup>
@@ -134,6 +137,7 @@ const XStreamIndicator = defineAsyncComponent(() => import('./stream-indicator.v
 const XWidgets = defineAsyncComponent(() => import('./widgets.vue'));
 // 旗鯖fork: 外部通知トーストコンテナ (右下表示)
 const XExternalNotificationToastContainer = defineAsyncComponent(() => import('@/components/MkExternalNotificationToastContainer.vue'));
+const MkMascotFloating = defineAsyncComponent(() => import('@/components/MkMascotFloating.vue'));
 
 const drawerMenuShowing = defineModel<boolean>('drawerMenuShowing');
 const widgetsShowing = defineModel<boolean>('widgetsShowing');
