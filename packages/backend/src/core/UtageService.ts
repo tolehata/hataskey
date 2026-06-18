@@ -53,7 +53,10 @@ export class UtageService {
 		if (note.visibility !== 'public' && note.visibility !== 'home') return; // LTLに乗る範囲
 		if (!this.isUtageText(note)) return;
 
-		const startedAt = note.createdAt instanceof Date ? note.createdAt : new Date(note.createdAt);
+		// 旗鯖fork: note.createdAt カラムは廃止された(IDに生成時刻が埋め込まれている)ため、
+		// ノートIDから生成時刻を復元する。従来の note.createdAt 参照は undefined となり
+		// startedAt/expiresAt が Invalid Date になって insert が NOT NULL 制約で失敗していた。
+		const startedAt = this.idService.parse(note.id).date;
 		const expiresAt = new Date(startedAt.getTime() + UTAGE_FLASH_MS);
 
 		try {
@@ -68,6 +71,11 @@ export class UtageService {
 			});
 		} catch (err) {
 			// noteId は unique。二重作成(競合)は無視する。
+			// それ以外の例外(制約違反・型エラー等)は握り潰さずログに出す(原因特定のため)。
+			const msg = err instanceof Error ? err.message : String(err);
+			if (!/duplicate key|unique/i.test(msg)) {
+				console.error('[utage] onNoteCreated insert failed:', msg);
+			}
 			return;
 		}
 
