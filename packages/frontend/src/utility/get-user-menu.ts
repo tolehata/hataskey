@@ -159,7 +159,7 @@ export function getUserMenu(user: Misskey.entities.UserDetailed, router: Router 
 				: period === 'oneWeek' ? Date.now() + (1000 * 60 * 60 * 24 * 7)
 				: null;
 
-			os.api('mute/create', {
+			misskeyApi('mute/create', {
 				userId: user.id,
 				expiresAt,
 			}).then(() => {
@@ -181,7 +181,7 @@ export function getUserMenu(user: Misskey.entities.UserDetailed, router: Router 
 			os.alert({ type: 'error', text: i18n.ts.cannotBlockOrMuteAdministrator });
 			return;
 		}
-		os.api(user.isRenoteMuted ? 'renote-mute/delete' : 'renote-mute/create', {
+		misskeyApi(user.isRenoteMuted ? 'renote-mute/delete' : 'renote-mute/create', {
 			userId: user.id,
 		}).then(() => {
 			user.isRenoteMuted = !user.isRenoteMuted;
@@ -202,7 +202,7 @@ export function getUserMenu(user: Misskey.entities.UserDetailed, router: Router 
 		}
 		if (!await getConfirmed(user.isBlocking ? i18n.ts.unblockConfirm : i18n.ts.blockConfirm)) return;
 
-		os.api(user.isBlocking ? 'blocking/delete' : 'blocking/create', {
+		misskeyApi(user.isBlocking ? 'blocking/delete' : 'blocking/create', {
 			userId: user.id,
 		}).then(() => {
 			user.isBlocking = !user.isBlocking;
