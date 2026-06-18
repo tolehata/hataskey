@@ -187,6 +187,12 @@ onUnmounted(() => {
 	background: var(--MI_THEME-panelHeaderBg);
 	z-index: 2;
 	line-height: 1.4em;
+	/* 旗鯖fork: title と headerSub(操作ボタン)を横並びに。
+	   従来は headerSub を position:absolute で右上に置いていたが、親(.root)の
+	   contain:content により sticky が positioned 文脈にならず、ボタンが _panel 基準で
+	   ずれて表示される不具合があったため、flexレイアウトで確実に右寄せにする。 */
+	display: flex;
+	align-items: stretch;
 }
 
 @container style(--MI_THEME-panelHeaderBg: var(--MI_THEME-panel)) {
@@ -198,6 +204,8 @@ onUnmounted(() => {
 .title {
 	margin: 0;
 	padding: 12px 16px;
+	flex: 1 1 auto;
+	min-width: 0;
 
 	&:empty {
 		display: none;
@@ -209,11 +217,11 @@ onUnmounted(() => {
 }
 
 .headerSub {
-	position: absolute;
 	z-index: 2;
-	top: 0;
-	right: 0;
-	height: 100%;
+	flex: 0 0 auto;
+	margin-left: auto;
+	display: flex;
+	align-items: stretch;
 }
 
 .headerButton {
