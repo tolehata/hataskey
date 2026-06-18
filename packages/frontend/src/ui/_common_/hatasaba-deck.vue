@@ -1493,7 +1493,10 @@ function openProfileMenu(ev: MouseEvent) {
    通常のウィジェットビューと同じく境界が分かるようにする。 */
 .tabPaneWidgets {
 	padding: 8px;
-	:global(._panel) {
+	/* 各ウィジェットの最上位(.widget)だけに余白・角丸・影を付ける。
+	   :global(._panel) だと子孫すべての ._panel に当たり、ウィジェット内部の
+	   ボタンや行レイアウトを巻き込んで崩すため、.widget に限定する。 */
+	:global(.widget) {
 		border-radius: 12px !important;
 		border: 1px solid var(--MI_THEME-divider) !important;
 		background: var(--MI_THEME-panel) !important;
@@ -1501,7 +1504,7 @@ function openProfileMenu(ev: MouseEvent) {
 		margin-bottom: 10px !important;
 		overflow: hidden;
 	}
-	:global(.mkw-container > header) { border-radius: 12px 12px 0 0; }
+	:global(.widget > .mkw-container > header) { border-radius: 12px 12px 0 0; }
 }
 .tabPane :global(._deckColError) { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 40px 16px; color: var(--MI_THEME-fg); opacity: .6; font-size: .9em; text-align: center; }
 .tabPane :global(._deckColError i) { font-size: 1.8em; }

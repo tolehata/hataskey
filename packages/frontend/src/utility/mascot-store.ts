@@ -282,6 +282,9 @@ export type MascotDisplaySettings = {
 	floatingY: number;                // フローティング位置Y(px、左上基準)
 	floatingBackdropOpacity: number;  // フローティングのぼかし背景の濃さ(0〜1、0で無効)
 	floatingBackdropColor: string;    // フローティングのぼかし背景の色(#rrggbb)
+	floatingFlip: boolean;            // フローティングの立ち絵を左右反転
+	floatingOpacity: number;          // フローティング全体の透過度(0.1〜1)
+	floatingMinimizeCorner: 'left' | 'right'; // 最小化時に小ボタンを出す位置(左下/右下)
 	idleMinSec: number;               // 表情/文言の自動切替の最短間隔(秒)
 	idleMaxSec: number;               // 表情/文言の自動切替の最長間隔(秒)
 };
@@ -300,6 +303,9 @@ export const defaultDisplaySettings: MascotDisplaySettings = {
 	floatingY: -1,
 	floatingBackdropOpacity: 0.25,
 	floatingBackdropColor: '#000000',
+	floatingFlip: false,
+	floatingOpacity: 1,
+	floatingMinimizeCorner: 'right',
 	idleMinSec: 5,
 	idleMaxSec: 12,
 };

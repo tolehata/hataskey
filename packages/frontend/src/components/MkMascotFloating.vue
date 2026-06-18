@@ -7,17 +7,54 @@
 クリック(ドラッグでない)で次の文言へ。最小化は段階③、設定UIは段階④で追加する。
 -->
 <template>
+<!-- 最小化時: 左下/右下に小ボタンだけ残す -->
+<button
+	v-if="visible && shownUrl && minimized"
+	:class="[$style.miniBtn, minimizeCorner === 'left' ? $style.miniLeft : $style.miniRight]"
+	@click="restore"
+	title="マスコットを表示"
+>
+	<img :src="shownUrl" :class="$style.miniImg" draggable="false" alt="mascot" />
+</button>
+
+<!-- 通常表示 -->
 <div
-	v-if="visible && shownUrl"
+	v-if="visible && shownUrl && !minimized"
 	ref="rootEl"
 	:class="$style.root"
 	:style="rootStyle"
-	@pointerdown="onPointerDown"
-	@click="onClick"
 >
-	<div :class="$style.stage">
-		<!-- 立ち絵。背後の黒ぼかしはシルエットに沿った drop-shadow で表現(黒丸にしない) -->
-		<img :src="shownUrl" :class="[$style.img, motionName === 'bounce' ? 'htkFloatMotionBounce' : motionName === 'shake' ? 'htkFloatMotionShake' : motionName === 'sway' ? 'htkFloatMotionSway' : motionName === 'spin' ? 'htkFloatMotionSpin' : '']" :style="imgStyle" draggable="false" :alt="shownExpression?.label || 'mascot'" />
+	<!-- 操作ボタン(ホバー時に表示) -->
+	<div :class="$style.controls">
+		<button :class="$style.ctrlBtn" @click.stop="toggleQuickPanel" title="かんたん設定"><i class="ti ti-adjustments"></i></button>
+		<button :class="$style.ctrlBtn" @click.stop="minimize" title="最小化"><i class="ti ti-minus"></i></button>
+	</div>
+
+	<!-- かんたん設定パネル(吹き出し形式) -->
+	<div v-if="quickPanelOpen" :class="$style.quickPanel" @pointerdown.stop @click.stop>
+		<div :class="$style.qpRow">
+			<span>透過度</span>
+			<input type="range" min="0.1" max="1" step="0.05" :value="displaySettings.floatingOpacity" @input="setOpacity($event)" />
+		</div>
+		<div :class="$style.qpRow">
+			<span>左右反転</span>
+			<button :class="[$style.qpToggle, displaySettings.floatingFlip && $style.qpToggleOn]" @click="toggleFlip"></button>
+		</div>
+		<div :class="$style.qpRow">
+			<span>最小化の位置</span>
+			<span :class="$style.qpSeg">
+				<button :class="[$style.qpSegBtn, minimizeCorner === 'left' && $style.qpSegOn]" @click="setCorner('left')">左下</button>
+				<button :class="[$style.qpSegBtn, minimizeCorner === 'right' && $style.qpSegOn]" @click="setCorner('right')">右下</button>
+			</span>
+		</div>
+	</div>
+
+	<!-- ドラッグ&クリックの対象(立ち絵+吹き出し) -->
+	<div :class="$style.stage" @pointerdown="onPointerDown" @click="onClick">
+		<!-- 立ち絵。反転は外側ラッパーで行い、img本体の translate/motion transform を壊さない。 -->
+		<div :class="$style.imgFlip" :style="flipStyle">
+			<img :src="shownUrl" :class="[$style.img, motionName === 'bounce' ? 'htkFloatMotionBounce' : motionName === 'shake' ? 'htkFloatMotionShake' : motionName === 'sway' ? 'htkFloatMotionSway' : motionName === 'spin' ? 'htkFloatMotionSpin' : '']" :style="imgStyle" draggable="false" :alt="shownExpression?.label || 'mascot'" />
+		</div>
 		<!-- 文言の吹き出し(表情ごとの位置に重ねる) -->
 		<div v-if="phraseText" :class="[$style.bubble, bubbleTail === 'right' ? $style.tail_right : $style.tail_left]" :style="bubbleStyle">{{ phraseText }}</div>
 		<!-- ？小吹き出し(疑問トグルON時) -->
@@ -35,7 +72,7 @@ import {
 	expressionDisplayUrl, escapeText,
 	displayText, announceMessage,
 	displaySettings, displaySettingsLoaded, loadDisplaySettings,
-	saveFloatingPosition,
+	saveFloatingPosition, saveDisplaySettings,
 	mascotVisible,
 	nextIdleDelayMs,
 } from '@/utility/mascot-store.js';
@@ -152,6 +189,33 @@ function clampToViewport() {
 const rootStyle = computed(() => ({
 	left: posX.value + 'px',
 	top: posY.value + 'px',
+	opacity: String(clampOpacity(displaySettings.value.floatingOpacity)),
+}));
+
+// ===== 最小化 / 反転 / 透過度 / かんたん設定パネル =====
+const minimized = ref(false);          // セッション内のみ(リロードで復帰)
+const quickPanelOpen = ref(false);
+const minimizeCorner = computed<'left' | 'right'>(() => (displaySettings.value.floatingMinimizeCorner === 'left' ? 'left' : 'right'));
+
+function clampOpacity(v: unknown): number {
+	const n = typeof v === 'number' ? v : 1;
+	return Math.min(1, Math.max(0.1, n));
+}
+function minimize() { minimized.value = true; quickPanelOpen.value = false; }
+function restore() { minimized.value = false; }
+function toggleQuickPanel() { quickPanelOpen.value = !quickPanelOpen.value; }
+function setOpacity(ev: Event) {
+	const v = parseFloat((ev.target as HTMLInputElement).value);
+	saveDisplaySettings({ ...displaySettings.value, floatingOpacity: clampOpacity(v) });
+}
+function toggleFlip() {
+	saveDisplaySettings({ ...displaySettings.value, floatingFlip: !displaySettings.value.floatingFlip });
+}
+function setCorner(corner: 'left' | 'right') {
+	saveDisplaySettings({ ...displaySettings.value, floatingMinimizeCorner: corner });
+}
+const flipStyle = computed(() => ({
+	transform: displaySettings.value.floatingFlip ? 'scaleX(-1)' : 'none',
 }));
 
 // ===== ドラッグ移動 + クリックで次の文言 =====
@@ -239,11 +303,85 @@ watch(displaySettingsLoaded, (v) => { if (v) initPosition(); });
 	z-index: 2100;
 	width: 200px;
 	height: 150px;
-	cursor: grab;
 	user-select: none;
-	touch-action: none;
 }
-.root:active { cursor: grabbing; }
+.root:hover .controls { opacity: 1; pointer-events: auto; }
+
+/* 操作ボタン(ホバー時に表示) */
+.controls {
+	position: absolute;
+	top: 0;
+	right: 0;
+	display: flex;
+	gap: 4px;
+	z-index: 5;
+	opacity: 0;
+	pointer-events: none;
+	transition: opacity .15s;
+}
+.ctrlBtn {
+	width: 24px;
+	height: 24px;
+	border: none;
+	border-radius: 50%;
+	background: rgba(0,0,0,.45);
+	color: #fff;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: .8rem;
+}
+.ctrlBtn:hover { background: rgba(0,0,0,.65); }
+
+/* かんたん設定パネル(吹き出し形式) */
+.quickPanel {
+	position: absolute;
+	top: 26px;
+	right: 0;
+	z-index: 6;
+	min-width: 168px;
+	padding: 10px 12px;
+	background: var(--MI_THEME-panel);
+	border: 1px solid var(--MI_THEME-divider);
+	border-radius: 10px;
+	box-shadow: 0 4px 16px rgba(0,0,0,.3);
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	font-size: .8rem;
+}
+.qpRow { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.qpRow input[type=range] { width: 90px; }
+.qpToggle { width: 36px; height: 20px; border-radius: 999px; border: none; background: var(--MI_THEME-divider); position: relative; cursor: pointer; transition: background .15s; }
+.qpToggle::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform .15s; }
+.qpToggleOn { background: var(--MI_THEME-accent); }
+.qpToggleOn::after { transform: translateX(16px); }
+.qpSeg { display: inline-flex; border: 1px solid var(--MI_THEME-divider); border-radius: 6px; overflow: hidden; }
+.qpSegBtn { border: none; background: transparent; color: var(--MI_THEME-fg); padding: 3px 8px; cursor: pointer; font-size: .75rem; }
+.qpSegOn { background: var(--MI_THEME-accent); color: #fff; }
+
+/* 最小化時の小ボタン */
+.miniBtn {
+	position: fixed;
+	bottom: 16px;
+	z-index: 2100;
+	width: 48px;
+	height: 48px;
+	border: none;
+	border-radius: 50%;
+	background: var(--MI_THEME-panel);
+	box-shadow: 0 2px 10px rgba(0,0,0,.3);
+	cursor: pointer;
+	padding: 0;
+	overflow: hidden;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+.miniRight { right: 16px; }
+.miniLeft { left: 16px; }
+.miniImg { width: 100%; height: 100%; object-fit: contain; -webkit-user-drag: none; pointer-events: none; }
 
 /* 立ち絵+吹き出しの基準枠。プレビュー(MkMascotSettings)と同じ 4:3・画像55% に揃え、
    bubbleX/Y の指す位置をプレビューと完全一致させる(吹き出しは画像の外にも置ける)。 */
@@ -251,6 +389,16 @@ watch(displaySettingsLoaded, (v) => { if (v) initPosition(); });
 	position: relative;
 	width: 100%;
 	height: 100%;
+	cursor: grab;
+	touch-action: none;
+}
+.stage:active { cursor: grabbing; }
+
+/* 反転用ラッパー(立ち絵だけ反転、吹き出しの文字は反転させない) */
+.imgFlip {
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
 }
 
 .img {
