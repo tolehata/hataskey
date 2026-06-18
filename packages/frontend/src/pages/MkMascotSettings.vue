@@ -223,6 +223,15 @@ SPDX-License-Identifier: AGPL-3.0-only
 					</button>
 					<button v-if="characters.length < limits.maxCharacters" :class="$style.charAdd" @click="addCharacter"><i class="ti ti-plus"></i> 追加</button>
 				</div>
+				<div :class="$style.ioRow">
+					<button :class="$style.ioBtn" :disabled="!activeChar" @click="exportActiveCharacter"><i class="ti ti-download"></i> このキャラを書き出し</button>
+					<button :class="$style.ioBtn" :disabled="characters.length >= limits.maxCharacters" @click="importCharacterFromFile"><i class="ti ti-upload"></i> ファイルから読み込み</button>
+				</div>
+				<p :class="$style.ioDesc">
+					マスコットの設定を .hmtk ファイルとして書き出し・読み込みできます（画像はドライブのURLを参照するため、同じサーバーの方とのやり取りが前提です）。<br>
+					書き出したファイルを同じサーバーの方に渡すと、そのマスコットを使ってもらえます。<br>
+					読み込んだキャラは新しいキャラとして追加されます。他人が作ったマスコットを読み込むときは、作成した方の了承を得てください。
+				</p>
 			</div>
 
 			<template v-if="activeChar">
@@ -522,6 +531,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 import { ref, shallowRef, computed, watch, onMounted } from 'vue';
 import MkModalWindow from '@/components/MkModalWindow.vue';
 import MkButton from '@/components/MkButton.vue';
+import MkMascotImportSelectDialog from '@/components/MkMascotImportSelectDialog.vue';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { chooseDriveFile } from '@/utility/drive.js';
 import * as os from '@/os.js';
@@ -1117,6 +1127,226 @@ async function save() {
 		saving.value = false;
 	}
 }
+
+// ===== .hmtk インポート/エクスポート =====
+// 1キャラ単位で書き出し/読み込みする。Driveは経由せずローカルのDL/ファイル選択で完結するため
+// CORS は一切発生しない。画像はDriveのURL文字列のみ記録する(同一サーバー前提)。
+const HMTK_FORMAT = 'hmtk';
+const HMTK_VERSION = 1;
+type HmtkFile = {
+	format: typeof HMTK_FORMAT;
+	version: number;
+	exportedAt: number;
+	character: Character;
+	floating: {
+		floatingX: number; floatingY: number;
+		floatingBackdropOpacity: number; floatingBackdropColor: string;
+		floatingEnabledDesktop: boolean; floatingEnabledMobile: boolean;
+		idleMinSec: number; idleMaxSec: number;
+	};
+	showName: boolean;
+};
+
+// 色文字列を #rgb / #rrggbb のみ許容(それ以外は null)。サーバーの sanitizeColor と整合させる。
+function sanitizeColorOrNull(v: unknown): string | null {
+	if (typeof v !== 'string') return null;
+	return /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v) ? v : null;
+}
+function clampNum(v: unknown, min: number, max: number, fallback: number): number {
+	const n = typeof v === 'number' && Number.isFinite(v) ? v : fallback;
+	return Math.min(max, Math.max(min, n));
+}
+function asMotion(v: unknown): 'none' | 'bounce' | 'shake' | 'sway' | 'spin' {
+	return (v === 'bounce' || v === 'shake' || v === 'sway' || v === 'spin') ? v : 'none';
+}
+function asTail(v: unknown): 'left' | 'right' {
+	return v === 'right' ? 'right' : 'left';
+}
+
+// インポートしたキャラを内部の Character 型に正規化する(未知フィールド除去・型矯正・id振り直し)。
+// keepExprKeys/keepPhraseKeys が渡されたら、その元index(文字列)に該当する表情/文言だけを採用する。
+// 表情の id は振り直すが、文言→表情の紐付け(expressionId)は旧id→新idの対応表で復元する。
+function normalizeImportedCharacter(raw: any, keepExprKeys?: string[], keepPhraseKeys?: string[]): Character {
+	const rawExprs: any[] = Array.isArray(raw?.expressions) ? raw.expressions : [];
+	const rawPhrases: any[] = Array.isArray(raw?.phrases) ? raw.phrases : [];
+
+	// 採用する元indexの集合(未指定なら先頭から上限ぶん)。
+	const exprKeep = keepExprKeys ?? rawExprs.slice(0, limits.value.maxExpressions).map((_, i) => String(i));
+	const phraseKeep = keepPhraseKeys ?? rawPhrases.slice(0, limits.value.maxPhrases).map((_, i) => String(i));
+	const exprKeepSet = new Set(exprKeep);
+	const phraseKeepSet = new Set(phraseKeep);
+
+	// 旧expressionId -> 新id の対応表(紐付け復元用)。採用された表情のみ登録する。
+	const idMap = new Map<string, string>();
+	const expressions: Expression[] = [];
+	rawExprs.forEach((e: any, i: number) => {
+		if (!exprKeepSet.has(String(i))) return;
+		if (expressions.length >= limits.value.maxExpressions) return;
+		const newId = genId();
+		if (typeof e?.id === 'string') idMap.set(e.id, newId);
+		expressions.push({
+			id: newId, label: typeof e?.label === 'string' ? e.label : '', url: typeof e?.url === 'string' ? e.url : '', driveFileId: typeof e?.driveFileId === 'string' ? e.driveFileId : null,
+			bubbleX: clampNum(e?.bubbleX, 0, 1, 0.5), bubbleY: clampNum(e?.bubbleY, 0, 1, 0.1), bubbleScale: clampNum(e?.bubbleScale, 0.1, 5, 1), bubbleTail: asTail(e?.bubbleTail),
+			motion: asMotion(e?.motion), motionIntensity: clampNum(e?.motionIntensity, 0, 5, 1),
+			questionEnabled: e?.questionEnabled === true, qBubbleX: clampNum(e?.qBubbleX, 0, 1, 0.7), qBubbleY: clampNum(e?.qBubbleY, 0, 1, 0.05), qBubbleScale: clampNum(e?.qBubbleScale, 0.1, 5, 1), qBubbleTail: asTail(e?.qBubbleTail),
+			textColor: sanitizeColorOrNull(e?.textColor), qTextColor: sanitizeColorOrNull(e?.qTextColor),
+		});
+	});
+
+	// 文言は採用分だけ。expressionId は対応表で張り直す。対象表情が破棄された場合は null に落とす。
+	const phrases: Phrase[] = [];
+	rawPhrases.forEach((p: any, i: number) => {
+		if (!phraseKeepSet.has(String(i))) return;
+		if (phrases.length >= limits.value.maxPhrases) return;
+		const mapped = typeof p?.expressionId === 'string' ? (idMap.get(p.expressionId) ?? null) : null;
+		phrases.push({ id: genId(), text: typeof p?.text === 'string' ? p.text : '', expressionId: mapped });
+	});
+
+	const normNotify = (n: any): NotifyExpression | null => {
+		if (!n || (typeof n.url !== 'string' && typeof n.driveFileId !== 'string')) return null;
+		return {
+			url: typeof n.url === 'string' ? n.url : null, driveFileId: typeof n.driveFileId === 'string' ? n.driveFileId : null,
+			label: typeof n.label === 'string' ? n.label : '', text: typeof n.text === 'string' ? n.text : '',
+			motion: asMotion(n.motion), motionIntensity: clampNum(n.motionIntensity, 0, 5, 1),
+			bubbleX: clampNum(n.bubbleX, 0, 1, 0.5), bubbleY: clampNum(n.bubbleY, 0, 1, 0.1), bubbleScale: clampNum(n.bubbleScale, 0.1, 5, 1), bubbleTail: asTail(n.bubbleTail),
+			exclaimEnabled: n.exclaimEnabled === true, eBubbleX: clampNum(n.eBubbleX, 0, 1, 0.7), eBubbleY: clampNum(n.eBubbleY, 0, 1, 0.05), eBubbleScale: clampNum(n.eBubbleScale, 0.1, 5, 1), eBubbleTail: asTail(n.eBubbleTail),
+			textColor: sanitizeColorOrNull(n.textColor), eTextColor: sanitizeColorOrNull(n.eTextColor),
+		};
+	};
+	const normBirthday = (b: any): BirthdayExpression | null => {
+		if (!b || (typeof b.url !== 'string' && typeof b.driveFileId !== 'string')) return null;
+		return {
+			url: typeof b.url === 'string' ? b.url : null, driveFileId: typeof b.driveFileId === 'string' ? b.driveFileId : null,
+			label: typeof b.label === 'string' ? b.label : '', text: typeof b.text === 'string' ? b.text : '',
+			motion: asMotion(b.motion), motionIntensity: clampNum(b.motionIntensity, 0, 5, 1),
+			bubbleX: clampNum(b.bubbleX, 0, 1, 0.5), bubbleY: clampNum(b.bubbleY, 0, 1, 0.1), bubbleScale: clampNum(b.bubbleScale, 0.1, 5, 1), bubbleTail: asTail(b.bubbleTail),
+			textColor: sanitizeColorOrNull(b.textColor),
+		};
+	};
+	const bMonth = typeof raw?.charBirthdayMonth === 'number' ? Math.min(12, Math.max(1, Math.round(raw.charBirthdayMonth))) : null;
+	const bDay = typeof raw?.charBirthdayDay === 'number' ? Math.min(31, Math.max(1, Math.round(raw.charBirthdayDay))) : null;
+	return {
+		id: genId(),
+		name: typeof raw?.name === 'string' ? raw.name.slice(0, 50) : '',
+		expressions, phrases,
+		notifyExpression: normNotify(raw?.notifyExpression),
+		notifyExpression2: normNotify(raw?.notifyExpression2),
+		birthdayExpression: normBirthday(raw?.birthdayExpression),
+		charBirthdayEnabled: raw?.charBirthdayEnabled === true,
+		charBirthdayMonth: bMonth, charBirthdayDay: bDay,
+		charBirthdayExpression: normBirthday(raw?.charBirthdayExpression),
+	};
+}
+
+// 現在アクティブなキャラを .hmtk としてローカルにダウンロードする。
+function exportActiveCharacter() {
+	const c = activeChar.value;
+	if (!c) { os.alert({ type: 'warning', text: '書き出すキャラがいません。' }); return; }
+	const ds = displaySettings.value;
+	const payload: HmtkFile = {
+		format: HMTK_FORMAT,
+		version: HMTK_VERSION,
+		exportedAt: Date.now(),
+		character: JSON.parse(JSON.stringify(c)),
+		floating: {
+			floatingX: ds.floatingX, floatingY: ds.floatingY,
+			floatingBackdropOpacity: ds.floatingBackdropOpacity, floatingBackdropColor: ds.floatingBackdropColor,
+			floatingEnabledDesktop: ds.floatingEnabledDesktop, floatingEnabledMobile: ds.floatingEnabledMobile,
+			idleMinSec: ds.idleMinSec, idleMaxSec: ds.idleMaxSec,
+		},
+		showName: showName.value,
+	};
+	const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+	const url = URL.createObjectURL(blob);
+	const a = document.createElement('a');
+	const safeName = (c.name || 'mascot').replace(/[\\/:*?"<>|\s]/g, '_').slice(0, 40);
+	a.href = url;
+	a.download = `${safeName}.hmtk`;
+	document.body.appendChild(a);
+	a.click();
+	document.body.removeChild(a);
+	setTimeout(() => URL.revokeObjectURL(url), 1000);
+	os.toast('マスコットを書き出しました');
+}
+
+// ローカルの .hmtk を選んでキャラとして新規追加し、floating/showName も復元する。
+async function importCharacterFromFile() {
+	if (characters.value.length >= limits.value.maxCharacters) {
+		os.alert({ type: 'warning', text: `キャラはこれ以上追加できません（上限 ${limits.value.maxCharacters}）。` });
+		return;
+	}
+	const input = document.createElement('input');
+	input.type = 'file';
+	input.accept = '.hmtk,application/json';
+	input.onchange = async () => {
+		const file = input.files?.[0];
+		if (!file) return;
+		if (file.size > 1024 * 1024) { os.alert({ type: 'error', text: 'ファイルが大きすぎます（1MBまで）。' }); return; }
+		try {
+			const text = await file.text();
+			const data = JSON.parse(text) as Partial<HmtkFile>;
+			if (data?.format !== HMTK_FORMAT || !data?.character) {
+				os.alert({ type: 'error', text: '.hmtk ファイルとして読み込めませんでした。' });
+				return;
+			}
+			if (typeof data.version === 'number' && data.version > HMTK_VERSION) {
+				const go = await os.confirm({ type: 'warning', text: 'このファイルは新しいバージョンで作られています。読み込みを試みますか？' });
+				if (go.canceled) return;
+			}
+
+			// 読み込み先ロールの上限を超える場合は、残す表情/文言を選ばせる。
+			const rawExprs: any[] = Array.isArray(data.character.expressions) ? data.character.expressions : [];
+			const rawPhrases: any[] = Array.isArray(data.character.phrases) ? data.character.phrases : [];
+			const exprOver = rawExprs.length > limits.value.maxExpressions;
+			const phraseOver = rawPhrases.length > limits.value.maxPhrases;
+
+			let keepExprKeys: string[] | undefined;
+			let keepPhraseKeys: string[] | undefined;
+			if (exprOver || phraseOver) {
+				const result = await new Promise<{ canceled: true } | { canceled: false; expressionIds: string[]; phraseIds: string[] }>((resolve) => {
+					os.popup(MkMascotImportSelectDialog, {
+						expressions: rawExprs.map((e: any, i: number) => ({ key: String(i), label: typeof e?.label === 'string' ? e.label : '', url: typeof e?.url === 'string' ? e.url : '' })),
+						phrases: rawPhrases.map((p: any, i: number) => ({ key: String(i), text: typeof p?.text === 'string' ? p.text : '' })),
+						maxExpressions: limits.value.maxExpressions,
+						maxPhrases: limits.value.maxPhrases,
+					}, {
+						done: (r: { canceled: true } | { canceled: false; expressionIds: string[]; phraseIds: string[] }) => resolve(r),
+					});
+				});
+				if (result.canceled) return;
+				keepExprKeys = result.expressionIds;
+				keepPhraseKeys = result.phraseIds;
+			}
+
+			const imported = normalizeImportedCharacter(data.character, keepExprKeys, keepPhraseKeys);
+			characters.value.push(imported);
+			activeCharIdx.value = characters.value.length - 1;
+
+			// floating / showName も復元する(端末共通設定なので保存する)
+			if (data.floating) {
+				const f = data.floating;
+				const next: MascotDisplaySettings = {
+					...displaySettings.value,
+					floatingX: clampNum(f.floatingX, -100000, 100000, displaySettings.value.floatingX),
+					floatingY: clampNum(f.floatingY, -100000, 100000, displaySettings.value.floatingY),
+					floatingBackdropOpacity: clampNum(f.floatingBackdropOpacity, 0, 1, displaySettings.value.floatingBackdropOpacity),
+					floatingBackdropColor: sanitizeColorOrNull(f.floatingBackdropColor) ?? displaySettings.value.floatingBackdropColor,
+					floatingEnabledDesktop: typeof f.floatingEnabledDesktop === 'boolean' ? f.floatingEnabledDesktop : displaySettings.value.floatingEnabledDesktop,
+					floatingEnabledMobile: typeof f.floatingEnabledMobile === 'boolean' ? f.floatingEnabledMobile : displaySettings.value.floatingEnabledMobile,
+					idleMinSec: clampNum(f.idleMinSec, 5, 1800, displaySettings.value.idleMinSec),
+					idleMaxSec: clampNum(f.idleMaxSec, 5, 1800, displaySettings.value.idleMaxSec),
+				};
+				await saveDisplaySettings(next);
+			}
+			if (typeof data.showName === 'boolean') showName.value = data.showName;
+
+			os.toast('マスコットを読み込みました。内容を確認して保存してください。');
+		} catch {
+			os.alert({ type: 'error', text: 'ファイルの読み込みに失敗しました。形式を確認してください。' });
+		}
+	};
+	input.click();
+}
 </script>
 
 <style lang="scss" module>
@@ -1211,6 +1441,10 @@ async function save() {
 .charTabThumb { width:24px; height:24px; border-radius:50%; object-fit:cover; }
 .charTabThumbIcon { width:24px; height:24px; display:flex; align-items:center; justify-content:center; opacity:.5; }
 .charAdd { display:flex; align-items:center; gap:4px; padding:6px 12px; border-radius:999px; border:1px dashed var(--MI_THEME-divider); background:none; color: var(--MI_THEME-fg); cursor:pointer; font-size:.82rem; }
+.ioRow { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
+.ioBtn { display:flex; align-items:center; gap:5px; padding:7px 13px; border-radius:8px; border:1px solid var(--MI_THEME-divider); background:none; color: var(--MI_THEME-fg); cursor:pointer; font-size:.82rem; }
+.ioBtn:disabled { opacity:.4; cursor:not-allowed; }
+.ioDesc { font-size:.75rem; opacity:.6; line-height:1.6; margin:8px 0 0; }
 .delBtn { margin-top:10px; background:none; border:1px solid var(--MI_THEME-divider); color: var(--MI_THEME-error, #e2566d); border-radius:8px; padding:6px 12px; font-size:.8rem; cursor:pointer; }
 
 /* ===== 立ち絵グリッド ===== */
