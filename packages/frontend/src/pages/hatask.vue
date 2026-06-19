@@ -92,9 +92,21 @@
       </div>
     </div></div>
     <div v-if="sec==='loginDays' && settings.showLoginDays!==false" class="htk-lg htk-anim"><div class="htk-gc htk-login-card"><div class="htk-login-top"><div class="htk-login-days-n">{{loginDays}}</div><div class="htk-login-days-l">日目</div></div><div v-if="loginRanking>0" class="htk-login-rank"><span>🏆</span> サーバー内 <strong>{{loginRanking}}位</strong><span v-if="loginTotal>0" class="htk-login-total"> / {{loginTotal}}人</span></div><div class="htk-login-msg">{{loginMessage}}</div><div class="htk-login-next"><span>🎯</span> 次の実績まで: <strong>{{loginNextReward}}</strong>日</div></div></div>
-    <!-- 旗鯖fork(タスク8): マスコットカード。画像未設定時はその旨を表示。 -->
+    <!-- 旗鯖fork(タスク8/タスク2): マスコットカード(ミニ版)。
+         静止画+名前に加え、ランダム文言の吹き出し・立ち絵モーション・設定リンクを追加。
+         吹き出し座標(bubbleX/Y)はフローティング(MkMascotFloating)と揃えるため、画像を4:3の枠で囲い55%で配置する。
+         クリックで次の文言へ(通知/誕生日のannounceはカードでは出さず、設定文言のみローテ)。 -->
     <div v-if="sec==='mascot' && settings.showMascot!==false" class="htk-lg htk-anim"><div class="htk-gc" style="text-align:center"><h3 class="htk-sec-title">マスコット</h3>
-      <template v-if="mascotCardUrl"><img :src="mascotCardUrl" :alt="mascotCardName" style="max-width:55%;max-height:220px;object-fit:contain;margin:4px auto 0" draggable="false" /><div v-if="mascotCardName" style="font-weight:600;font-size:.9rem;margin-top:6px">{{mascotCardName}}</div></template>
+      <template v-if="mascotCardUrl">
+        <!-- 4:3の基準枠。フローティングの .stage と同じ比率・画像55%にして bubbleX/Y を一致させる -->
+        <div class="htk-mascot-stage" @click="onMascotCardClick" :title="mascotCardPhrase ? 'クリックで次の文言' : ''">
+          <img :src="mascotCardUrl" :class="['htk-mascot-img', mascotCardMotionClass]" :alt="mascotCardName" draggable="false" />
+          <!-- 文言の吹き出し(表情ごとの座標に重ねる。フローティングと同ロジック) -->
+          <div v-if="mascotCardPhrase" :class="['htk-mascot-bubble', mascotCardBubbleTail==='right' ? 'htk-mascot-tail-right' : 'htk-mascot-tail-left']" :style="mascotCardBubbleStyle">{{mascotCardPhrase}}</div>
+        </div>
+        <div v-if="mascotCardName" style="font-weight:600;font-size:.9rem;margin-top:6px">{{mascotCardName}}</div>
+        <div style="margin-top:10px"><button class="htk-btn htk-sm" @click.stop="goToMascotSettings"><i class="ti ti-adjustments" style="margin-right:4px"></i>マスコットの設定</button></div>
+      </template>
       <div v-else class="htk-empty"><div class="htk-empI">🖼️</div><div>マスコットの画像が存在しません</div></div>
     </div></div>
     <div v-if="sec==='flower' && settings.showFlower!==false" class="htk-lg htk-anim" @click="activeTab='garden'" style="cursor:pointer"><div class="htk-gc" style="text-align:center"><h3 class="htk-sec-title">育てているお花</h3><div class="htk-fl-ring"><svg viewBox="0 0 140 140"><circle class="htk-fl-track" cx="70" cy="70" r="60"/><circle class="htk-fl-bar" cx="70" cy="70" r="60" :style="{strokeDashoffset:377-377*(flower.progress/100)}"/></svg><div class="htk-fl-emo">{{flower.emoji}}</div></div><div style="font-weight:600;font-size:.9rem">{{flower.name}}</div><div style="font-size:.73rem;color:var(--text-3);margin-top:3px">成長度: {{flower.progress}}%</div></div></div>
@@ -700,7 +712,7 @@ import { $i } from '@/i.js';
 import { useRouter } from '@/router.js';
 import { getPhrase } from '@/utility/hatask-phrases.js';
 import { floraData, pickRandomFlora, generateFlowerName } from '@/utility/hatask-flora.js';
-import { activeCharacter as mascotActiveCharacter, expressionDisplayUrl, loadMascot, hatakMascotActive } from '@/utility/mascot-store.js';
+import { activeCharacter as mascotActiveCharacter, expressionDisplayUrl, loadMascot, hatakMascotActive, currentExpression as mascotCurrentExpression, currentPhrase as mascotCurrentPhrase, pickRandomPhrase as mascotPickRandomPhrase, displaySettings as mascotDisplaySettings, loadDisplaySettings as loadMascotDisplaySettings, nextIdleDelayMs as mascotNextIdleDelayMs, escapeText as mascotEscapeText } from '@/utility/mascot-store.js';
 const _getPhrase = (ctx?: any): string => { try { return getPhrase(ctx); } catch { return 'こんにちは！'; } };
 definePage(()=>({title:'Hatask',icon:'ti ti-checklist'}));
 const SCOPE=['client','hatask'];
@@ -883,6 +895,8 @@ function openPortal(){window.open('https://home.tolehata.net','_blank')}
 function cleanupHataskState(){
   // 旗鯖fork(タスク8): Hataskを離れたらフローティング連動フラグを下げる(フローティング復活)
   hatakMascotActive.value=false;
+  // 旗鯖fork(タスク2): カードの文言ローテタイマーを停止(残留防止)
+  stopMascotCardRotation();
   showMobileNav.value=false;
   if(navProtectionObserver){navProtectionObserver.disconnect();navProtectionObserver=null}
   if(navVisibilityTimer){clearInterval(navVisibilityTimer);navVisibilityTimer=null}
@@ -953,9 +967,47 @@ const currentTime=ref('');const currentDate=ref('');const eyePhrase=ref('こん�
 const defaultSectionOrder=['clock','eye','apps','loginDays','flower','events','mood','meal','mascot'];
 const sectionOrder=ref<string[]>([...defaultSectionOrder]);
 const sectionLabels:Record<string,string>={clock:'日時表示',eye:'Hatask Eye',apps:'旗鯖独自アプリ',loginDays:'ログイン日数',flower:'お花',events:'直近の予定',mood:'今週のきもち',meal:'ごはん記録',mascot:'マスコット'};
-// 旗鯖fork(タスク8): マスコットカードに出す画像URL(アクティブキャラの先頭の立ち絵)。未設定なら空。
+// 旗鯖fork(タスク8/タスク2): マスコットカード(ミニ版)。
+// 静止画ではなく現在の表情(currentExpression)に追従させ、設定文言をランダムローテで吹き出しに出す。
+// 吹き出し座標・motionはフローティング(MkMascotFloating)と同じロジック・同じグローバルmotionクラスを共有する。
+// announce(通知/誕生日/未読)はカードでは出さず、設定文言のみをローテする(論点①: 通知/誕生日除外)。
 const mascotCardName=computed(()=>mascotActiveCharacter.value?.name ?? '');
-const mascotCardUrl=computed(()=>{const c=mascotActiveCharacter.value;if(!c||c.expressions.length===0)return '';return expressionDisplayUrl(c.expressions[0]);});
+const mascotCardUrl=computed(()=>{const c=mascotActiveCharacter.value;if(!c||c.expressions.length===0)return '';return expressionDisplayUrl(mascotCurrentExpression.value ?? c.expressions[0]);});
+// 表示する文言(設定文言のローテのみ。announceは無視)。tellRandomPhrasesがOFFなら出さない。
+const mascotCardPhrase=computed(()=>{
+  if(mascotDisplaySettings.value.tellRandomPhrases===false)return '';
+  const t=mascotCurrentPhrase.value?.text ?? '';
+  return t ? mascotEscapeText(t) : '';
+});
+// 吹き出し座標(フローティングの bubbleStyle と同一ロジック)。表情ごとの bubbleX/Y/scale を枠基準%で配置。
+const mascotCardBubbleStyle=computed(()=>{
+  const e=mascotCurrentExpression.value;
+  const x=(typeof e?.bubbleX==='number'?e.bubbleX:0.5);
+  const y=(typeof e?.bubbleY==='number'?e.bubbleY:0.1);
+  const scale=(typeof e?.bubbleScale==='number'?e.bubbleScale:1);
+  const s:Record<string,string>={left:(x*100)+'%',top:(y*100)+'%',fontSize:(0.85*scale)+'rem'};
+  if(e?.textColor)s.color=e.textColor;
+  return s;
+});
+const mascotCardBubbleTail=computed<'left'|'right'>(()=>(mascotCurrentExpression.value?.bubbleTail==='right'?'right':'left'));
+// 立ち絵モーション(フローティングが定義済みのグローバルクラスをそのまま流用。論点②: 同じmotionをそのまま出す)。
+const mascotCardMotionClass=computed(()=>{
+  const m=mascotCurrentExpression.value?.motion ?? 'none';
+  return m==='bounce'?'htkFloatMotionBounce':m==='shake'?'htkFloatMotionShake':m==='sway'?'htkFloatMotionSway':m==='spin'?'htkFloatMotionSpin':'';
+});
+// カードのクリックで次の文言へ(フローティングと同じ操作感)。announceは使わないのでpickRandomPhraseのみ。
+function onMascotCardClick(){mascotPickRandomPhrase();}
+// マスコット専用設定(論点③)。/mascot は表示ページなので、設定は hata-custom と同じく
+// MkMascotSettings をポップアップで開く(Haskを離れないのでcleanup不要)。
+function goToMascotSettings(){os.popup(defineAsyncComponent(()=>import('@/pages/MkMascotSettings.vue')),{},{},'closed');}
+// カードの文言ローテ(論点①)。フローティングが非表示の間はフローティング側のローテが回らないため、カードが自前で回す。
+let mascotCardRotateTimer:ReturnType<typeof setTimeout>|null=null;
+function startMascotCardRotation(){
+  stopMascotCardRotation();
+  const delay=mascotNextIdleDelayMs();
+  mascotCardRotateTimer=setTimeout(()=>{mascotPickRandomPhrase();startMascotCardRotation();},delay);
+}
+function stopMascotCardRotation(){if(mascotCardRotateTimer){clearTimeout(mascotCardRotateTimer);mascotCardRotateTimer=null;}}
 const draggingSectionIdx=ref<number|null>(null);
 const closedRsvpNotifs=ref<{eventId:string,emoji:string,title:string,goCount:number}[]>([]);
 const dismissedRsvpNotifs=ref<string[]>([]);
@@ -1313,6 +1365,8 @@ let navVisibilityTimer:ReturnType<typeof setInterval>|null=null;
 onMounted(async () => {
 // 旗鯖fork(タスク8): マスコットカード用にデータを読み込み、Hatask表示中フラグを立てる(フローティング連動非表示)
 loadMascot();
+// 旗鯖fork(タスク2): カードの文言ローテに表示設定が要るためロードし、初期文言を選んでローテ開始
+loadMascotDisplaySettings().then(()=>{mascotPickRandomPhrase();startMascotCardRotation();});
 hatakMascotActive.value = true;
 // 旗鯖fork: Hataskを開いたら実績「Hataskへようこそ」を解除(冪等。既に解除済みなら何もしない)
 claimAchievement('welcomeToHatask');
@@ -1507,6 +1561,8 @@ cleanupHataskState();
 onActivated(() => {
 // 旗鯖fork(タスク8): keep-alive復帰時もフローティング連動フラグを立て直す
 hatakMascotActive.value = true;
+// 旗鯖fork(タスク2): keep-alive復帰時にカードの文言ローテを再開(onMountedが走らないため)
+startMascotCardRotation();
 // 旗鯖fork: keep-alive復帰やウィンドウ遷移で onMounted が走らない場合に備え、
 // onActivated でも実績を解除する(claimAchievementは冪等)。
 claimAchievement('welcomeToHatask');
@@ -1610,6 +1666,15 @@ notifTimerIds.forEach(id => clearTimeout(id));
 .htk-pager{display:flex;align-items:center;justify-content:center;gap:12px;padding:12px 0;font-size:.82rem;color:var(--text-2)}
 .htk-pager-t{min-width:60px;text-align:center;font-weight:600}
 .htk-empI{font-size:1.6rem;margin-bottom:4px;text-shadow:none;opacity:.6}
+/* 旗鯖fork(タスク2): マスコットカード(ミニ版)。
+   フローティング(MkMascotFloating)の .stage / .img / .bubble と同じ比率・座標系にして bubbleX/Y を一致させる。
+   枠は4:3、画像は max-width:55% で中央配置。motionクラス(htkFloatMotion*)はグローバル定義済みのものを流用する。 */
+.htk-mascot-stage{position:relative;width:100%;max-width:260px;margin:4px auto 0;aspect-ratio:4 / 3;cursor:pointer}
+.htk-mascot-img{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);max-width:55%;max-height:80%;object-fit:contain;-webkit-user-drag:none;pointer-events:none;filter:drop-shadow(0 4px 16px rgba(0,0,0,.3))}
+.htk-mascot-bubble{position:absolute;transform:translate(-50%,-50%);width:max-content;max-width:200px;padding:6px 10px;background:var(--card-bg);border:1px solid var(--divider);color:var(--text-1);border-radius:14px;line-height:1.4;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.25);white-space:pre-line;word-break:break-word;pointer-events:none;z-index:2;font-size:.85rem;backdrop-filter:blur(var(--blur-amount));-webkit-backdrop-filter:blur(var(--blur-amount))}
+.htk-mascot-bubble::after{content:'';position:absolute;top:50%;width:0;height:0;border-style:solid}
+.htk-mascot-tail-left::after{right:100%;transform:translateY(-50%);border-width:8px 12px 8px 0;border-color:transparent var(--card-bg) transparent transparent;margin-right:-2px}
+.htk-mascot-tail-right::after{left:100%;transform:translateY(-50%);border-width:8px 0 8px 12px;border-color:transparent transparent transparent var(--card-bg);margin-left:-2px}
 .htk-info-btn{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:var(--btn-bg);border:1px solid var(--btn-border);color:var(--text-1);font-size:.75rem;font-weight:700;cursor:pointer;transition:all .2s;font-family:inherit;backdrop-filter:blur(6px);text-shadow:none;vertical-align:middle}
 .htk-info-btn:hover{background:var(--btn-hover);transform:scale(1.08)}
 .htk-btn{background:var(--btn-bg);border:1px solid var(--btn-border);color:var(--text-1,rgba(255,255,255,.95));text-shadow:var(--text-shadow,none);padding:10px 20px;border-radius:14px;font-family:inherit;font-size:.86rem;font-weight:700;cursor:pointer;backdrop-filter:blur(var(--blur-amount));transition:all .2s}
