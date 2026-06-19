@@ -883,6 +883,14 @@ export const PREF_DEF = definePreferences({
 	'simpleUi.sidebarCollapsed': {
 		default: false,
 	},
+	// 旗鯖fork: デッキ表示が追加された旨のお知らせ吹き出しを表示済みか(端末ローカル)。
+	'simpleUi.deckAnnounceShown': {
+		default: false,
+	},
+	// 旗鯖fork: サイドメニュー縮小/拡大ボタンのお知らせ吹き出しを表示済みか(端末ローカル)。
+	'simpleUi.collapseAnnounceShown': {
+		default: false,
+	},
 	// 旗鯖fork: 上部メニューモード。ONでサイドバーの代わりに画面上部へ
 	// 横並びピル型のナビバー(HatasabaUIナビバー)を出す。デスクトップのみ。
 	'simpleUi.topNavMode': {

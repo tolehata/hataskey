@@ -6,7 +6,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 <template>
 <div :class="[$style.root, { [$style.desktopLayout]: isDesktop }]">
     <!-- PC/タブレット: オリジナル左サイドバー (上部メニューモード時は隠す) -->
-    <nav v-if="isDesktop && !topNavActive" :class="[$style.sidebar, { [$style.sidebarSolid]: !glassEffect, [$style.sidebarDeckFolded]: deckActive || sidebarCollapsed.value }]">
+    <nav v-if="isDesktop && !topNavActive" :class="[$style.sidebar, { [$style.sidebarSolid]: !glassEffect, [$style.sidebarDeckFolded]: deckActive || sidebarCollapsed }]">
         <!-- バナーすりガラス背景 -->
         <div v-if="glassEffect" :class="$style.sidebarBanner">
             <img v-if="$i?.bannerUrl" :src="$i.bannerUrl" :class="$style.sidebarBannerImg" />
@@ -21,8 +21,12 @@ SPDX-License-Identifier: AGPL-3.0-only
                         <span :class="$style.sbLogoText">{{ instanceNameStr }}</span>
                     </div>
                 </div>
-                <!-- 旗鯖fork: サーバーアイコン横のTLオプションメニューボタンは非表示 -->
+                <!-- 旗鯖fork(タスク6): 拡大表示時のみ、TL設定ボタンと縮小ボタンを表示。デッキ時(強制縮小)は出さない。 -->
+                <button v-if="!sidebarCollapsed && !deckActive" :class="$style.sbLogoAction" v-tooltip="'タイムライン設定'" @click.stop="openTlOptions"><i class="ti ti-adjustments"></i></button>
+                <button v-if="!sidebarCollapsed && !deckActive" ref="collapseAnchorEl" :class="$style.sbLogoAction" v-tooltip="'メニューを縮小'" @click.stop="toggleSidebarCollapse"><i class="ti ti-chevron-left"></i></button>
             </div>
+            <!-- 旗鯖fork(タスク6): 縮小表示時、サーバーアイコンの下に拡大ボタン[＞]を表示。デッキ時は出さない。 -->
+            <button v-if="sidebarCollapsed && !deckActive" :class="$style.sbExpandBtn" v-tooltip="'メニューを広げる'" @click.stop="toggleSidebarCollapse"><i class="ti ti-chevron-right"></i></button>
 
             <!-- 旗鯖fork: メニュー群はこのスクロール領域に閉じ込め、下部の投稿/アカウントは
                  固定する。メニューが増えてもノート/アカウントがスクロールで隠れない。 -->
@@ -80,13 +84,8 @@ SPDX-License-Identifier: AGPL-3.0-only
                 <button :class="$style.sbPostBtn" @click="onPostClick">
                     <i class="ti ti-pencil"></i>
                 </button>
-                <!-- 旗鯖fork(タスク6): 左サイドメニューの手動縮小/拡大。デッキ時は自動で畳まれるため隠す。 -->
-                <button v-if="!deckActive" :class="$style.sbCollapseBtn" v-tooltip="sidebarCollapsed.value ? 'メニューを広げる' : 'メニューを縮小'" @click="toggleSidebarCollapse">
-                    <i :class="sidebarCollapsed.value ? 'ti ti-chevron-right' : 'ti ti-chevron-left'"></i>
-                    <span :class="$style.sbLabel">{{ sidebarCollapsed.value ? '広げる' : '縮小' }}</span>
-                </button>
                 <!-- 旗鯖fork: デッキモード切替トグル (アカウント表示の上) -->
-                <div :class="$style.sbModeToggle">
+                <div :class="$style.sbModeToggle" ref="deckAnchorEl">
                     <button :class="[$style.sbModeBtn, { [$style.sbModeActive]: !deckMode }]" v-tooltip="'通常表示'" @click="setDeckMode(false)">
                         <i class="ti ti-device-mobile"></i>
                     </button>
@@ -129,10 +128,6 @@ SPDX-License-Identifier: AGPL-3.0-only
                 <button v-if="$i && ($i.isAdmin || $i.isModerator)" :class="[$style.topNavItem, { [$style.topNavItemActive]: isAdminPage }]" v-tooltip="'コントロールパネル'" @click="goToAdmin"><i class="ti ti-dashboard"></i><span>管理</span></button>
             </div>
             <div :class="$style.topNavDivider"></div>
-            <!-- 旗鯖fork(タスク4): topNav表示中はデッキ/通常の切替ボタンが無かったため、上部ナビバー右に追加 -->
-            <button :class="[$style.topNavItem, { [$style.topNavItemActive]: deckMode.value }]" v-tooltip="deckMode.value ? '通常表示に戻す' : 'デッキ表示'" @click="setDeckMode(!deckMode.value)">
-                <i :class="deckMode.value ? 'ti ti-device-mobile' : 'ti ti-layout-columns'"></i><span>{{ deckMode.value ? '通常' : 'デッキ' }}</span>
-            </button>
             <button v-if="deckActive" :class="$style.topNavItem" v-tooltip="'デッキ設定'" @click="globalEvents.emit('toggleDeckToolbar')"><i class="ti ti-layout-board"></i><span>デッキ</span></button>
             <button :class="$style.topNavItem" v-tooltip="'設定'" @click="goToSettings"><i class="ti ti-settings"></i><span>設定</span></button>
             <button :class="$style.topNavPost" v-tooltip="'ノート'" @click="onPostClick"><i class="ti ti-pencil"></i><span>ノート</span></button>
@@ -255,6 +250,20 @@ SPDX-License-Identifier: AGPL-3.0-only
     <Teleport to="body">
         <div v-if="!isDesktop && userPanelUserId" :class="$style.userPanelMobileOverlay" @click.self="userPanelUserId = null">
             <MkSimpleUserPanel :userId="userPanelUserId" :isMobile="true" :inline="true" @close="userPanelUserId = null" />
+        </div>
+    </Teleport>
+
+    <!-- 旗鯖fork: お知らせ吹き出しは body 直下に Teleport し、サイドメニューの overflow/スタッキングを回避 -->
+    <Teleport to="body">
+        <div v-if="deckAnnounceVisible && deckAnnPos" :class="$style.sbAnnounce" :style="{ top: deckAnnPos.top + 'px', left: deckAnnPos.left + 'px' }">
+            <div :class="$style.sbAnnounceText">HatasabaUIにデッキ表示が追加されました！</div>
+            <button :class="$style.sbAnnounceClose" @click="dismissDeckAnnounce"><i class="ti ti-x"></i></button>
+            <div :class="$style.sbAnnounceArrow"></div>
+        </div>
+        <div v-if="collapseAnnounceVisible && collapseAnnPos && !sidebarCollapsed && !deckActive" :class="$style.sbAnnounce" :style="{ top: collapseAnnPos.top + 'px', left: collapseAnnPos.left + 'px' }">
+            <div :class="$style.sbAnnounceText">ここでメニューを縮小・拡大できます</div>
+            <button :class="$style.sbAnnounceClose" @click="dismissCollapseAnnounce"><i class="ti ti-x"></i></button>
+            <div :class="$style.sbAnnounceArrow"></div>
         </div>
     </Teleport>
 
@@ -419,6 +428,7 @@ const topNavActive = computed(() => isDesktop.value && topNavMode.value && !isPa
 const deckNoBannerBg = computed(() => prefer.r['simpleUi.deckNoBannerBg'].value);
 function setDeckMode(v: boolean) {
 	prefer.commit('simpleUi.deckMode', v);
+	dismissDeckAnnounce();
 }
 
 // 旗鯖fork: 上部メニューモード(topNav)⇔左サイドメニューの切替。
@@ -432,6 +442,22 @@ function setTopNavMode(v: boolean) {
 const sidebarCollapsed = prefer.r['simpleUi.sidebarCollapsed'];
 function toggleSidebarCollapse() {
 	prefer.commit('simpleUi.sidebarCollapsed', !sidebarCollapsed.value);
+	dismissCollapseAnnounce();
+}
+
+// 旗鯖fork(タスク3): デッキ表示が追加された旨のお知らせ吹き出し。
+// デスクトップで未表示なら出し、閉じる/切替操作で二度と出さない。
+const deckAnnounceVisible = ref(false);
+function dismissDeckAnnounce() {
+	deckAnnounceVisible.value = false;
+	if (!prefer.s['simpleUi.deckAnnounceShown']) prefer.commit('simpleUi.deckAnnounceShown', true);
+}
+
+// 旗鯖fork: サイドメニュー縮小/拡大ボタンのお知らせ吹き出し(デッキお知らせと同形式)。
+const collapseAnnounceVisible = ref(false);
+function dismissCollapseAnnounce() {
+	collapseAnnounceVisible.value = false;
+	if (!prefer.s['simpleUi.collapseAnnounceShown']) prefer.commit('simpleUi.collapseAnnounceShown', true);
 }
 
 // 旗鯖fork: トラックパッドの横スクロールでタイムラインタブを切替。
@@ -494,7 +520,7 @@ const DESKTOP_THRESHOLD = 1100;
 const isDesktop = ref(window.innerWidth >= DESKTOP_THRESHOLD);
 function onResize() {
     isDesktop.value = window.innerWidth >= DESKTOP_THRESHOLD;
-    nextTick(()=>{ updateSbFade(); });
+    nextTick(()=>{ updateSbFade(); updateAnnouncePositions(); });
 }
 window.addEventListener('resize', onResize);
 
@@ -560,6 +586,23 @@ function stopThemeWatch() {
 
 // ===== スクロール検知 =====
 const contentEl = ref<HTMLElement|null>(null);
+
+// 旗鯖fork: お知らせ吹き出しはサイドメニューの overflow:hidden / スタッキングコンテキストに
+// 囚われてタイムラインに隠れるため、Teleport で body 直下に出し、アンカー要素の座標に fixed 配置する。
+const deckAnchorEl = ref<HTMLElement|null>(null);
+const collapseAnchorEl = ref<HTMLElement|null>(null);
+const deckAnnPos = ref<{ top: number; left: number } | null>(null);
+const collapseAnnPos = ref<{ top: number; left: number } | null>(null);
+function calcAnnPos(el: HTMLElement | null): { top: number; left: number } | null {
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    // 要素の右側・縦中央に出す(しっぽは吹き出し左辺=「く」の口)
+    return { top: r.top + r.height / 2, left: r.right + 12 };
+}
+function updateAnnouncePositions() {
+    if (deckAnnounceVisible.value) deckAnnPos.value = calcAnnPos(deckAnchorEl.value);
+    if (collapseAnnounceVisible.value) collapseAnnPos.value = calcAnnPos(collapseAnchorEl.value);
+}
 
 // 旗鯖fork: サイドメニューのスクロールバーを隠し、続きがある時だけ上下にフェードを出す
 const sbScrollEl = ref<HTMLElement|null>(null);
@@ -1069,9 +1112,22 @@ function onSimpleUserPanel(ev: Event) {
 // 旗鯖fork: デッキ初表示時にチュートリアルを出す監視(全変数定義後に登録)
 watch(deckActive, (v) => { if (v) maybeShowDeckTutorial(); }, { immediate: true });
 
+// 旗鯖fork: お知らせ吹き出しの表示時に、アンカー座標を計算して fixed 配置する
+watch([deckAnnounceVisible, collapseAnnounceVisible], () => {
+    nextTick(() => { updateAnnouncePositions(); });
+});
+
 onMounted(()=>{
     cleanupStaleUiElements();
     checkIsPageView();
+    // 旗鯖fork(タスク3): デスクトップで未表示なら、デッキ表示追加のお知らせ吹き出しを出す
+    if (isDesktop.value && !prefer.s['simpleUi.deckAnnounceShown']) {
+        deckAnnounceVisible.value = true;
+    }
+    // 旗鯖fork: デスクトップ通常表示(デッキでない)で未表示なら、縮小/拡大お知らせを出す
+    if (isDesktop.value && !deckActive.value && !prefer.s['simpleUi.collapseAnnounceShown']) {
+        collapseAnnounceVisible.value = true;
+    }
     // 旗鯖fork: 復元したタブが現在の設定で表示可能か検証し、非表示なら先頭タブにフォールバック
     if (!tabOrder.value.includes(tab.value)) {
         tab.value = tabOrder.value[0] ?? 'following';
@@ -1254,6 +1310,7 @@ onUnmounted(()=>{
 .fadeTop .sbFadeTopEl { opacity:1; }
 .fadeBottom .sbFadeBottomEl { opacity:1; }
 .sbLogoRow {
+    position:relative;
     display:flex;
     align-items:center;
     gap:4px;
@@ -1474,21 +1531,25 @@ onUnmounted(()=>{
     &:hover { opacity:1; background:color-mix(in srgb, var(--MI_THEME-navFg) 8%, transparent); }
 }
 /* 旗鯖fork: デッキモード切替トグル */
-.sbCollapseBtn {
+/* 旗鯖fork(タスク6): 縮小表示時にサーバーアイコン下に出す拡大ボタン[＞] */
+.sbExpandBtn {
     display:flex;
     align-items:center;
-    gap:12px;
-    padding:10px 12px;
-    border-radius:10px;
+    justify-content:center;
+    width:40px;
+    height:32px;
+    margin:0 auto 12px;
+    border-radius:8px;
     border:none;
-    background:transparent;
+    background:color-mix(in srgb, var(--MI_THEME-navFg) 8%, transparent);
+    color: var(--MI_THEME-navFg);
     cursor:pointer;
-    color: var(--MI_THEME-fg);
-    width:100%;
-    opacity:.75;
+    opacity:.7;
+    transition:all .2s;
 }
-.sbCollapseBtn:hover { background: var(--MI_THEME-accentedBg, rgba(134,179,0,.08)); opacity:1; }
+.sbExpandBtn:hover { opacity:1; background:color-mix(in srgb, var(--MI_THEME-navFg) 16%, transparent); }
 .sbModeToggle {
+    position: relative;
     display:flex;
     gap:2px;
     padding:3px;
@@ -1496,6 +1557,26 @@ onUnmounted(()=>{
     border-radius:999px;
     background:color-mix(in srgb, var(--MI_THEME-accent) 8%, transparent);
 }
+.sbAnnounce {
+    position:fixed;
+    transform:translateY(-50%);
+    width:210px;
+    display:flex;
+    align-items:flex-start;
+    gap:6px;
+    padding:10px 12px;
+    border-radius:12px;
+    background: var(--MI_THEME-accent);
+    color:#fff;
+    box-shadow:0 4px 16px rgba(0,0,0,.25);
+    z-index:3000;
+    animation: sbAnnouncePop .3s ease;
+}
+.sbAnnounceText { flex:1; font-size:.8rem; line-height:1.5; font-weight:600; }
+.sbAnnounceClose { flex:none; background:rgba(255,255,255,.2); border:none; color:#fff; border-radius:50%; width:22px; height:22px; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0; }
+.sbAnnounceClose:hover { background:rgba(255,255,255,.35); }
+.sbAnnounceArrow { position:absolute; left:-5px; top:50%; transform:translateY(-50%) rotate(45deg); width:12px; height:12px; background: var(--MI_THEME-accent); }
+@keyframes sbAnnouncePop { from { opacity:0; transform:translateY(-50%) translateX(-6px); } to { opacity:1; transform:translateY(-50%) translateX(0); } }
 .sbModeBtn {
     flex:1;
     padding:6px 0;
