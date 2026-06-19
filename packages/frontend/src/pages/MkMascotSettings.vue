@@ -17,7 +17,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 	@close="dialog?.close()"
 	@closed="emit('closed')"
 >
-	<template #header>マスコットの設定</template>
+	<template #header>
+		<span :class="$style.headerInner">
+			<span>マスコットの設定</span>
+			<button v-if="canUseMascot" :class="$style.termsBtn" class="_button" title="利用規約を確認" @click="showTerms"><i class="ti ti-file-text"></i> 利用規約</button>
+		</span>
+	</template>
 
 	<div :class="$style.root">
 		<div v-if="loading" :class="$style.loading">読み込み中…</div>
@@ -38,10 +43,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<div :class="$style.consentBody">
 				<p>用意した画像をマスコットとして表示できる機能です。利用する前に、以下に同意してください。</p>
 				<ul>
-					<li>画像の権利（著作権・肖像権など）を自分が持っている、または許諾を得ていることを確認してください。第三者の権利を侵害する画像は使用しないでください。</li>
-					<li>成人向け（性的・暴力的など）や公序良俗に反する画像は使用しないでください。</li>
-					<li>本機能の利用で生じた問題について、開発者およびサーバー運営者は責任を負いません。</li>
-					<li>不適切な画像が確認された場合、管理者が表示停止やデータ削除を行うことがあります。</li>
+					<li v-for="(t, i) in MASCOT_TERMS" :key="i">{{ t }}</li>
 				</ul>
 			</div>
 			<div :class="$style.consentBtns">
@@ -602,6 +604,21 @@ const consented = ref(false);
 const saving = ref(false);
 // 旗鯖fork: マスコット機能の利用可否(ロールポリシー)。未許可なら設定内容を出さない。
 const canUseMascot = computed(() => $i?.policies?.canUseMascot === true);
+// 旗鯖fork: 利用規約(同意ウィンドウと右上ボタンの両方から参照する)。
+const MASCOT_TERMS: string[] = [
+	'画像の権利（著作権・肖像権など）を自分が持っている、または許諾を得ていることを確認してください。第三者の権利を侵害する画像は使用しないでください。',
+	'成人向け（性的・暴力的など）や公序良俗に反する画像は使用しないでください。',
+	'本機能の利用で生じた問題について、開発者およびサーバー運営者は責任を負いません。',
+	'不適切な画像が確認された場合、管理者が表示停止やデータ削除を行うことがあります。',
+];
+// 右上ボタンから利用規約をいつでも確認できるようにする。
+function showTerms() {
+	os.alert({
+		type: 'info',
+		title: 'マスコット機能の利用規約',
+		text: MASCOT_TERMS.map((t, i) => `${i + 1}. ${t}`).join('\n\n'),
+	});
+}
 const characters = ref<Character[]>([]);
 const activeCharIdx = ref(0);
 const showName = ref(false);
@@ -1486,7 +1503,19 @@ async function importCharacterFromFile() {
 
 <style lang="scss" module>
 .root { display:flex; flex-direction:column; gap:14px; padding:18px 20px 22px; }
+/* 旗鯖fork: ヘッダー内のタイトルと利用規約ボタンの配置。タイトル左・ボタン右。
+   親(.title)が pointer-events:none のため、ボタン側で auto に戻す。 */
+.headerInner { display:flex; align-items:center; justify-content:space-between; gap:12px; width:100%; padding-right:16px; box-sizing:border-box; }
+.termsBtn { pointer-events:auto; display:inline-flex; align-items:center; gap:4px; font-size:.8rem; font-weight:600; padding:4px 10px; border-radius:999px; background:var(--MI_THEME-buttonBg); color:var(--MI_THEME-fg); white-space:nowrap; }
+.termsBtn:hover { background:var(--MI_THEME-buttonHoverBg); }
 .loading { padding:40px 0; text-align:center; opacity:.6; }
+/* 旗鯖fork: 同意ウィンドウ / 利用不可の案内。中央揃え・中央寄せで表示する。 */
+.consent { display:flex; flex-direction:column; align-items:center; text-align:center; gap:10px; padding:24px 20px; max-width:560px; margin:0 auto; }
+.consentIcon { font-size:2.4rem; opacity:.85; }
+.consentTitle { font-size:1.1rem; font-weight:700; }
+.consentBody { text-align:left; font-size:.88rem; line-height:1.7; opacity:.9; }
+.consentBody ul { margin:8px 0 0; padding-left:1.3em; }
+.consentBtns { display:flex; justify-content:center; gap:12px; flex-wrap:wrap; margin-top:8px; }
 .card { background: var(--MI_THEME-panel); border:1px solid var(--MI_THEME-divider); border-radius:14px; padding:14px 16px; }
 .validationCard { background: var(--MI_THEME-infoWarnBg, rgba(226,86,109,.1)); border:1px solid var(--MI_THEME-error, #e2566d); border-radius:12px; padding:12px 16px; }
 .validationHead { display:flex; align-items:center; gap:6px; font-weight:700; font-size:.9rem; color: var(--MI_THEME-error, #e2566d); margin-bottom:6px; }
