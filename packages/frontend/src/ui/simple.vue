@@ -6,7 +6,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 <template>
 <div :class="[$style.root, { [$style.desktopLayout]: isDesktop }]">
     <!-- PC/タブレット: オリジナル左サイドバー (上部メニューモード時は隠す) -->
-    <nav v-if="isDesktop && !topNavActive" :class="[$style.sidebar, { [$style.sidebarSolid]: !glassEffect, [$style.sidebarDeckFolded]: deckActive }]">
+    <nav v-if="isDesktop && !topNavActive" :class="[$style.sidebar, { [$style.sidebarSolid]: !glassEffect, [$style.sidebarDeckFolded]: deckActive || sidebarCollapsed.value }]">
         <!-- バナーすりガラス背景 -->
         <div v-if="glassEffect" :class="$style.sidebarBanner">
             <img v-if="$i?.bannerUrl" :src="$i.bannerUrl" :class="$style.sidebarBannerImg" />
@@ -80,6 +80,11 @@ SPDX-License-Identifier: AGPL-3.0-only
                 <button :class="$style.sbPostBtn" @click="onPostClick">
                     <i class="ti ti-pencil"></i>
                 </button>
+                <!-- 旗鯖fork(タスク6): 左サイドメニューの手動縮小/拡大。デッキ時は自動で畳まれるため隠す。 -->
+                <button v-if="!deckActive" :class="$style.sbCollapseBtn" v-tooltip="sidebarCollapsed.value ? 'メニューを広げる' : 'メニューを縮小'" @click="toggleSidebarCollapse">
+                    <i :class="sidebarCollapsed.value ? 'ti ti-chevron-right' : 'ti ti-chevron-left'"></i>
+                    <span :class="$style.sbLabel">{{ sidebarCollapsed.value ? '広げる' : '縮小' }}</span>
+                </button>
                 <!-- 旗鯖fork: デッキモード切替トグル (アカウント表示の上) -->
                 <div :class="$style.sbModeToggle">
                     <button :class="[$style.sbModeBtn, { [$style.sbModeActive]: !deckMode }]" v-tooltip="'通常表示'" @click="setDeckMode(false)">
@@ -124,6 +129,10 @@ SPDX-License-Identifier: AGPL-3.0-only
                 <button v-if="$i && ($i.isAdmin || $i.isModerator)" :class="[$style.topNavItem, { [$style.topNavItemActive]: isAdminPage }]" v-tooltip="'コントロールパネル'" @click="goToAdmin"><i class="ti ti-dashboard"></i><span>管理</span></button>
             </div>
             <div :class="$style.topNavDivider"></div>
+            <!-- 旗鯖fork(タスク4): topNav表示中はデッキ/通常の切替ボタンが無かったため、上部ナビバー右に追加 -->
+            <button :class="[$style.topNavItem, { [$style.topNavItemActive]: deckMode.value }]" v-tooltip="deckMode.value ? '通常表示に戻す' : 'デッキ表示'" @click="setDeckMode(!deckMode.value)">
+                <i :class="deckMode.value ? 'ti ti-device-mobile' : 'ti ti-layout-columns'"></i><span>{{ deckMode.value ? '通常' : 'デッキ' }}</span>
+            </button>
             <button v-if="deckActive" :class="$style.topNavItem" v-tooltip="'デッキ設定'" @click="globalEvents.emit('toggleDeckToolbar')"><i class="ti ti-layout-board"></i><span>デッキ</span></button>
             <button :class="$style.topNavItem" v-tooltip="'設定'" @click="goToSettings"><i class="ti ti-settings"></i><span>設定</span></button>
             <button :class="$style.topNavPost" v-tooltip="'ノート'" @click="onPostClick"><i class="ti ti-pencil"></i><span>ノート</span></button>
@@ -410,6 +419,19 @@ const topNavActive = computed(() => isDesktop.value && topNavMode.value && !isPa
 const deckNoBannerBg = computed(() => prefer.r['simpleUi.deckNoBannerBg'].value);
 function setDeckMode(v: boolean) {
 	prefer.commit('simpleUi.deckMode', v);
+}
+
+// 旗鯖fork: 上部メニューモード(topNav)⇔左サイドメニューの切替。
+// タスク4(上部ナビバー右ボタン)とタスク5(デッキUIメニュー)から共通で呼ぶ。
+function setTopNavMode(v: boolean) {
+	prefer.commit('simpleUi.topNavMode', v);
+}
+
+// 旗鯖fork: 左サイドメニューの手動縮小(折りたたみ)。
+// deckActive(デッキ時の自動折りたたみ)とは独立。どちらかが真なら畳む。
+const sidebarCollapsed = prefer.r['simpleUi.sidebarCollapsed'];
+function toggleSidebarCollapse() {
+	prefer.commit('simpleUi.sidebarCollapsed', !sidebarCollapsed.value);
 }
 
 // 旗鯖fork: トラックパッドの横スクロールでタイムラインタブを切替。
@@ -1452,6 +1474,20 @@ onUnmounted(()=>{
     &:hover { opacity:1; background:color-mix(in srgb, var(--MI_THEME-navFg) 8%, transparent); }
 }
 /* 旗鯖fork: デッキモード切替トグル */
+.sbCollapseBtn {
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:10px 12px;
+    border-radius:10px;
+    border:none;
+    background:transparent;
+    cursor:pointer;
+    color: var(--MI_THEME-fg);
+    width:100%;
+    opacity:.75;
+}
+.sbCollapseBtn:hover { background: var(--MI_THEME-accentedBg, rgba(134,179,0,.08)); opacity:1; }
 .sbModeToggle {
     display:flex;
     gap:2px;

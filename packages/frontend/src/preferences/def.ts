@@ -878,6 +878,11 @@ export const PREF_DEF = definePreferences({
 	'simpleUi.deckMode': {
 		default: false,
 	},
+	// 旗鯖fork: 通常HatasabaUI(左サイドメニュー)を手動で縮小(折りたたみ)するか。
+	// true = アイコンのみの細い表示。デスクトップのみ。
+	'simpleUi.sidebarCollapsed': {
+		default: false,
+	},
 	// 旗鯖fork: 上部メニューモード。ONでサイドバーの代わりに画面上部へ
 	// 横並びピル型のナビバー(HatasabaUIナビバー)を出す。デスクトップのみ。
 	'simpleUi.topNavMode': {

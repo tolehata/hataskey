@@ -36,6 +36,8 @@
 			<button :class="$style.iconBtn" v-tooltip="'すべてのカラムを更新'" @click="reloadAll"><i class="ti ti-refresh"></i></button>
 			<button :class="[$style.iconBtn, { [$style.iconBtnOn]: locked }]" v-tooltip="locked ? 'ロック中(タップで解除)' : 'カラム編集をロック'" @click="toggleLock"><i :class="locked ? 'ti ti-lock' : 'ti ti-lock-open'"></i></button>
 			<button :class="$style.iconBtn" v-tooltip="toolbarPosLabel" @click="cycleToolbarPos"><i :class="toolbarPosIcon"></i></button>
+			<!-- 旗鯖fork(タスク5): 上部メニュー(topNav)⇔左サイドメニューの切替 -->
+			<button :class="[$style.iconBtn, { [$style.iconBtnOn]: topNavMode }]" v-tooltip="topNavMode ? 'ナビ: 上部メニュー（左サイドに切替）' : 'ナビ: 左サイドメニュー（上部に切替）'" @click="toggleTopNavMode"><i :class="topNavMode ? 'ti ti-layout-navbar' : 'ti ti-layout-sidebar'"></i></button>
 			<button v-if="toolbarPos !== 'right'" :class="[$style.iconBtn, { [$style.iconBtnOn]: clockEnabled }]" v-tooltip="'時計の表示'" @click="toggleClock"><i class="ti ti-clock"></i></button>
 			<div v-if="showClock" :class="$style.clock">{{ clockText }}</div>
 			<button v-if="toolbarPos !== 'right'" :class="[$style.iconBtn, { [$style.iconBtnOn]: onlineEnabled }]" v-tooltip="'オンラインユーザー数の表示'" @click="toggleOnline"><i class="ti ti-users"></i></button>
@@ -469,6 +471,8 @@ onUnmounted(() => { stopOnline(); });
 watch([onlineEnabled, toolbarPos], () => { startOnline(); });
 const locked = computed<boolean>(() => prefer.r['simpleUi.deckLocked'].value as boolean);
 function toggleLock() { prefer.commit('simpleUi.deckLocked', !locked.value); }
+// 旗鯖fork(タスク5): 上部メニュー(topNav)⇔左サイドメニューの切替をデッキUIメニューからも行えるようにする。
+function toggleTopNavMode() { prefer.commit('simpleUi.topNavMode', !topNavMode.value); }
 
 function genId(prefix: string): string { return `${prefix}-${Date.now().toString(36)}-${Math.floor(Math.random() * 1e6).toString(36)}`; }
 
