@@ -127,17 +127,11 @@ class NotificationManager {
 				break;
 
 			case 'followers': {
-			// TODO: フォロワー限定ノートにフォロワーではない人がメンションされた場合通知されるのが正しい挙動なのか確認（一部に挙動の不一致がありそう）。現状は通知されるためフィルタしない
-			// 	const followers = await this.followingsRepository.find({
-			// 		where: {
-			// 			followeeId: this.note.userId,
-			// 			followerId: In(targetUserIds),
-			// 			isFollowerHibernated: false,
-			// 		},
-			// 		select: ['followerId'],
-			// 	});
-			// 	visibleUserIds = new Set(followers.map(f => f.followerId));
-				visibleUserIds = null;
+			// フォロワー限定ノートにフォロワー以外がメンションされた場合も通知する(フィルタしない)。
+			// 旗鯖fork: 以前は visibleUserIds = null としていたが、下の visibleUserIds.has() で
+			// null 参照例外になり notify() 全体が落ちて通知が1件も作られなかった(フォロワー限定の
+			// メンション通知が来ないバグ)。public/home と同様に対象を絞らず全メンション相手へ通知する。
+				visibleUserIds = new Set(targetUserIds);
 				break;
 			}
 
