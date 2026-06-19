@@ -950,7 +950,9 @@ const checkUnread = async()=>{
         syncUnreadFromI();
         // $i に何も値が無い場合のフォールバック: API で直近1件取得
         if (!$i || (typeof $i.hasUnreadNotification !== 'boolean' && typeof $i.unreadNotificationsCount !== 'number')) {
-            const r = await os.api('i/notifications', { limit: 1 });
+            // 旗鯖fork: os.api は存在しないため misskeyApi を動的importして使う(従来はcatchで握り潰され未読フォールバックが機能していなかった)
+            const { misskeyApi } = await import('@/utility/misskey-api.js');
+            const r = await misskeyApi('i/notifications', { limit: 1 });
             if (Array.isArray(r) && r.length > 0 && !r[0].isRead) {
                 hasUnreadNotif.value = true;
             } else {
