@@ -146,6 +146,11 @@ export const activeCharacter = computed<MascotCharacter | null>(() => {
 	return d.characters.find(c => c.id === d.activeCharacterId) ?? d.characters[0] ?? null;
 });
 
+// 旗鯖fork(タスク8): Hatask のホーム画面でマスコットカードを表示している間 true。
+// フローティングマスコット(MkMascotFloating)はこれが true の間は表示を抑制し、
+// 画面に2体並ばないようにする(連動非表示)。
+export const hatakMascotActive = ref(false);
+
 // 現在の文言・表情(ランダム選択)
 export const currentPhrase = ref<MascotPhrase | null>(null);
 

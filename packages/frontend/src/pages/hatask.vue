@@ -92,6 +92,11 @@
       </div>
     </div></div>
     <div v-if="sec==='loginDays' && settings.showLoginDays!==false" class="htk-lg htk-anim"><div class="htk-gc htk-login-card"><div class="htk-login-top"><div class="htk-login-days-n">{{loginDays}}</div><div class="htk-login-days-l">日目</div></div><div v-if="loginRanking>0" class="htk-login-rank"><span>🏆</span> サーバー内 <strong>{{loginRanking}}位</strong><span v-if="loginTotal>0" class="htk-login-total"> / {{loginTotal}}人</span></div><div class="htk-login-msg">{{loginMessage}}</div><div class="htk-login-next"><span>🎯</span> 次の実績まで: <strong>{{loginNextReward}}</strong>日</div></div></div>
+    <!-- 旗鯖fork(タスク8): マスコットカード。画像未設定時はその旨を表示。 -->
+    <div v-if="sec==='mascot' && settings.showMascot!==false" class="htk-lg htk-anim"><div class="htk-gc" style="text-align:center"><h3 class="htk-sec-title">マスコット</h3>
+      <template v-if="mascotCardUrl"><img :src="mascotCardUrl" :alt="mascotCardName" style="max-width:55%;max-height:220px;object-fit:contain;margin:4px auto 0" draggable="false" /><div v-if="mascotCardName" style="font-weight:600;font-size:.9rem;margin-top:6px">{{mascotCardName}}</div></template>
+      <div v-else class="htk-empty"><div class="htk-empI">🖼️</div><div>マスコットの画像が存在しません</div></div>
+    </div></div>
     <div v-if="sec==='flower' && settings.showFlower!==false" class="htk-lg htk-anim" @click="activeTab='garden'" style="cursor:pointer"><div class="htk-gc" style="text-align:center"><h3 class="htk-sec-title">育てているお花</h3><div class="htk-fl-ring"><svg viewBox="0 0 140 140"><circle class="htk-fl-track" cx="70" cy="70" r="60"/><circle class="htk-fl-bar" cx="70" cy="70" r="60" :style="{strokeDashoffset:377-377*(flower.progress/100)}"/></svg><div class="htk-fl-emo">{{flower.emoji}}</div></div><div style="font-weight:600;font-size:.9rem">{{flower.name}}</div><div style="font-size:.73rem;color:var(--text-3);margin-top:3px">成長度: {{flower.progress}}%</div></div></div>
     <div v-if="sec==='events' && settings.showEvents!==false" class="htk-lg htk-anim"><div class="htk-gc"><h3 class="htk-sec-title">直近の予定</h3>
       <template v-if="upcomingEvents.length"><div v-for="ev in upcomingEvents.slice(0,4)" :key="ev.id" class="htk-ev-row" @click="goToEvent(ev)"><div class="htk-ev-dot" :style="{background:ev.color}"></div><div class="htk-ev-info"><div class="htk-ev-title">{{ev.title}}</div><div class="htk-ev-time">{{ev.timeLabel}}</div></div></div></template>
@@ -567,6 +572,7 @@
     <div class="htk-stg-row"><span>直近の予定</span><button :class="['htk-tg-sw',settings.showEvents!==false&&'on']" @click="settings.showEvents=!(settings.showEvents!==false);saveSettings()"></button></div>
     <div class="htk-stg-row"><span>みんなの予定</span><button :class="['htk-tg-sw',settings.showPublicEvents!==false&&'on']" @click="settings.showPublicEvents=!(settings.showPublicEvents!==false);saveSettings()"></button></div>
     <div class="htk-stg-row"><span>きもちサマリー</span><button :class="['htk-tg-sw',settings.showMoodSummary!==false&&'on']" @click="settings.showMoodSummary=!(settings.showMoodSummary!==false);saveSettings()"></button></div>
+    <div class="htk-stg-row"><span>マスコット</span><button :class="['htk-tg-sw',settings.showMascot!==false&&'on']" @click="settings.showMascot=!(settings.showMascot!==false);saveSettings()"></button></div>
   </div></div>
 
   <div class="htk-lg htk-stg-card"><div class="htk-gc htk-stg-gc">
@@ -694,6 +700,7 @@ import { $i } from '@/i.js';
 import { useRouter } from '@/router.js';
 import { getPhrase } from '@/utility/hatask-phrases.js';
 import { floraData, pickRandomFlora, generateFlowerName } from '@/utility/hatask-flora.js';
+import { activeCharacter as mascotActiveCharacter, expressionDisplayUrl, loadMascot, hatakMascotActive } from '@/utility/mascot-store.js';
 const _getPhrase = (ctx?: any): string => { try { return getPhrase(ctx); } catch { return 'こんにちは！'; } };
 definePage(()=>({title:'Hatask',icon:'ti ti-checklist'}));
 const SCOPE=['client','hatask'];
@@ -874,6 +881,8 @@ function htkTouchEnd(e:TouchEvent){
 }
 function openPortal(){window.open('https://home.tolehata.net','_blank')}
 function cleanupHataskState(){
+  // 旗鯖fork(タスク8): Hataskを離れたらフローティング連動フラグを下げる(フローティング復活)
+  hatakMascotActive.value=false;
   showMobileNav.value=false;
   if(navProtectionObserver){navProtectionObserver.disconnect();navProtectionObserver=null}
   if(navVisibilityTimer){clearInterval(navVisibilityTimer);navVisibilityTimer=null}
@@ -941,9 +950,12 @@ notifTimerIds.push(tid)
 }})
 }
 const currentTime=ref('');const currentDate=ref('');const eyePhrase=ref('こんにちは！');const editingEvent=ref<any>(null);let eyeTimer:ReturnType<typeof setInterval>|null=null;
-const defaultSectionOrder=['clock','eye','apps','loginDays','flower','events','mood','meal'];
+const defaultSectionOrder=['clock','eye','apps','loginDays','flower','events','mood','meal','mascot'];
 const sectionOrder=ref<string[]>([...defaultSectionOrder]);
-const sectionLabels:Record<string,string>={clock:'日時表示',eye:'Hatask Eye',apps:'旗鯖独自アプリ',loginDays:'ログイン日数',flower:'お花',events:'直近の予定',mood:'今週のきもち',meal:'ごはん記録'};
+const sectionLabels:Record<string,string>={clock:'日時表示',eye:'Hatask Eye',apps:'旗鯖独自アプリ',loginDays:'ログイン日数',flower:'お花',events:'直近の予定',mood:'今週のきもち',meal:'ごはん記録',mascot:'マスコット'};
+// 旗鯖fork(タスク8): マスコットカードに出す画像URL(アクティブキャラの先頭の立ち絵)。未設定なら空。
+const mascotCardName=computed(()=>mascotActiveCharacter.value?.name ?? '');
+const mascotCardUrl=computed(()=>{const c=mascotActiveCharacter.value;if(!c||c.expressions.length===0)return '';return expressionDisplayUrl(c.expressions[0]);});
 const draggingSectionIdx=ref<number|null>(null);
 const closedRsvpNotifs=ref<{eventId:string,emoji:string,title:string,goCount:number}[]>([]);
 const dismissedRsvpNotifs=ref<string[]>([]);
@@ -1299,6 +1311,9 @@ let growthInterval:ReturnType<typeof setInterval>|null=null;
 let navProtectionObserver:MutationObserver|null=null;
 let navVisibilityTimer:ReturnType<typeof setInterval>|null=null;
 onMounted(async () => {
+// 旗鯖fork(タスク8): マスコットカード用にデータを読み込み、Hatask表示中フラグを立てる(フローティング連動非表示)
+loadMascot();
+hatakMascotActive.value = true;
 // 旗鯖fork: Hataskを開いたら実績「Hataskへようこそ」を解除(冪等。既に解除済みなら何もしない)
 claimAchievement('welcomeToHatask');
 window.localStorage.setItem('hatask_initialized', '1');
@@ -1490,6 +1505,8 @@ onDeactivated(() => {
 cleanupHataskState();
 });
 onActivated(() => {
+// 旗鯖fork(タスク8): keep-alive復帰時もフローティング連動フラグを立て直す
+hatakMascotActive.value = true;
 // 旗鯖fork: keep-alive復帰やウィンドウ遷移で onMounted が走らない場合に備え、
 // onActivated でも実績を解除する(claimAchievementは冪等)。
 claimAchievement('welcomeToHatask');
@@ -1607,7 +1624,8 @@ notifTimerIds.forEach(id => clearTimeout(id));
 .htk-inp::placeholder{color:var(--text-3);text-shadow:none}
 textarea.htk-inp{min-height:76px;resize:vertical}
 select.htk-inp{appearance:none;cursor:pointer;padding-right:36px}
-.htk-dash{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+.htk-dash{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:8px}
+.htk-dash .htk-lg{margin-bottom:0}
 .htk-panels{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 @media(max-width:900px){.htk-panels{grid-template-columns:1fr}}
 .htk-dt-time{font-size:3rem;font-weight:700;letter-spacing:-1px;line-height:1.1}

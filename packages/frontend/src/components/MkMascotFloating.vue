@@ -75,6 +75,7 @@ import {
 	saveFloatingPosition, saveDisplaySettings,
 	mascotVisible,
 	nextIdleDelayMs,
+	hatakMascotActive,
 } from '@/utility/mascot-store.js';
 
 const isDesktop = deviceKind === 'desktop';
@@ -82,6 +83,8 @@ const isDesktop = deviceKind === 'desktop';
 // 表示するか(デスクトップ/モバイルで別設定)
 const visible = computed(() => {
 	if (!mascotLoaded.value || !displaySettingsLoaded.value) return false;
+	// 旗鯖fork(タスク8): Hatask でマスコットカードを表示中は、フローティングを隠して2体並ぶのを防ぐ
+	if (hatakMascotActive.value) return false;
 	return isDesktop ? displaySettings.value.floatingEnabledDesktop : displaySettings.value.floatingEnabledMobile;
 });
 

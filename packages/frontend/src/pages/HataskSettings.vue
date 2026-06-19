@@ -118,10 +118,10 @@ const bgThemes = [
 	{id:'forest',label:'フォレスト',gradient:'linear-gradient(145deg,#2d5a27,#6bbd67)'},
 	{id:'night',label:'ナイト',gradient:'linear-gradient(145deg,#0f0c29,#302b63)'},
 ];
-const defaultSectionOrder = ['clock','eye','apps','loginDays','flower','events','mood','meal'];
-const sectionLabels:Record<string,string> = {clock:'日時表示',eye:'Hatask Eye',apps:'旗鯖独自アプリ',loginDays:'ログイン日数',flower:'お花',events:'直近の予定',mood:'今週のきもち',meal:'ごはん記録'};
-const sectionVisibilityKey:Record<string,string> = {clock:'showClock',eye:'showEye',apps:'showApps',loginDays:'showLoginDays',flower:'showFlower',events:'showEvents',mood:'showMoodSummary',meal:'showMealSection'};
-const defaultSettings:any = { bgTheme:'ocean', darkMode:false, autoTheme:true, weekStart:'mon', showClock:true, showEvents:true, showFlower:true, showMoodSummary:true, showMealSection:true, moodRemind:false, openOnStart:false };
+const defaultSectionOrder = ['clock','eye','apps','loginDays','flower','events','mood','meal','mascot'];
+const sectionLabels:Record<string,string> = {clock:'日時表示',eye:'Hatask Eye',apps:'旗鯖独自アプリ',loginDays:'ログイン日数',flower:'お花',events:'直近の予定',mood:'今週のきもち',meal:'ごはん記録',mascot:'マスコット'};
+const sectionVisibilityKey:Record<string,string> = {clock:'showClock',eye:'showEye',apps:'showApps',loginDays:'showLoginDays',flower:'showFlower',events:'showEvents',mood:'showMoodSummary',meal:'showMealSection',mascot:'showMascot'};
+const defaultSettings:any = { bgTheme:'ocean', darkMode:false, autoTheme:true, weekStart:'mon', showClock:true, showEvents:true, showFlower:true, showMoodSummary:true, showMealSection:true, showMascot:true, moodRemind:false, openOnStart:false };
 
 const loading = ref(true);
 const settings = ref<any>({ ...defaultSettings });
