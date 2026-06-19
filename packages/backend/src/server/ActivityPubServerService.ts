@@ -180,6 +180,14 @@ export class ActivityPubServerService {
 		}
 
 		const activity = request.body as IActivity;
+
+		// 旗鯖fork: 本家ae5d2d40(#17558) - actor を持たない不正な Inbox activity を早期に弾く
+		//   (actor-less な activity は認証できないので、キューに積む価値がない)
+		if (typeof activity !== 'object' || activity == null
+			|| !('actor' in activity) || activity.actor == null) {
+			reply.code(400);
+			return;
+		}
 		if (!activity.type || !signature.keyId) {
 			reply.code(400);
 			return;
