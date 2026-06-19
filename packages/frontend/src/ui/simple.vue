@@ -82,7 +82,7 @@ SPDX-License-Identifier: AGPL-3.0-only
                 </button>
                 <!-- 旗鯖fork: デッキモード切替トグル (アカウント表示の上) -->
                 <div :class="$style.sbModeToggle">
-                    <button :class="[$style.sbModeBtn, { [$style.sbModeActive]: !deckMode }]" v-tooltip="'シンプル表示'" @click="setDeckMode(false)">
+                    <button :class="[$style.sbModeBtn, { [$style.sbModeActive]: !deckMode }]" v-tooltip="'通常表示'" @click="setDeckMode(false)">
                         <i class="ti ti-device-mobile"></i>
                     </button>
                     <button :class="[$style.sbModeBtn, { [$style.sbModeActive]: deckMode }]" v-tooltip="'デッキ表示'" @click="setDeckMode(true)">
