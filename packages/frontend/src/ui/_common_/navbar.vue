@@ -158,7 +158,10 @@ const displayMenu = computed(() => {
 		else menu.unshift('externalNotifications');
 	}
 	// 連携OFF時に menu に含まれていても navbarItemDef.show=false で非表示になるのでフィルタ不要
-	return menu;
+	// 旗鯖fork: 削除済み項目(例: hataWhatsNew)が既存ユーザーの保存済み menu に残っていても、
+	// navbarItemDef に定義の無いIDは描画されないため、ここで除去してゴミを抱えないようにする。
+	// セパレータ('-')は navbarItemDef に無いが残す必要があるため除外条件から外す。
+	return menu.filter(item => item === '-' || item in navbarItemDef);
 });
 const bannerDisplay = ref(prefer.s.bannerDisplay);
 
