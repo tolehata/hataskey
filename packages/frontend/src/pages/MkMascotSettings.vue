@@ -51,6 +51,30 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</ul>
 			</div>
 			<div :class="$style.layout">
+			<!-- 旗鯖fork(タスク5): モバイル(縦1列)では最上部にキャラ切替カードを表示 -->
+			<div v-if="isMobileLayout" :class="$style.card">
+				<div :class="$style.cardHead">
+					<span :class="$style.label">キャラクター</span>
+					<span :class="$style.count">{{ characters.length }} / {{ limits.maxCharacters }}</span>
+				</div>
+				<div :class="$style.charTabs">
+					<button v-for="(c,ci) in characters" :key="c.id" :class="[$style.charTab, activeCharIdx===ci && $style.charTabOn]" @click="selectChar(ci)">
+						<img v-if="c.expressions[0]" :src="c.expressions[0].url" :class="$style.charTabThumb" />
+						<i v-else class="ti ti-user" :class="$style.charTabThumbIcon"></i>
+						<span>{{ c.name || '(無名)' }}</span>
+					</button>
+					<button v-if="characters.length < limits.maxCharacters" :class="$style.charAdd" @click="addCharacter"><i class="ti ti-plus"></i> 追加</button>
+				</div>
+				<div :class="$style.ioRow">
+					<button :class="$style.ioBtn" :disabled="!activeChar" @click="exportActiveCharacter"><i class="ti ti-download"></i> このキャラを書き出し</button>
+					<button :class="$style.ioBtn" :disabled="characters.length >= limits.maxCharacters" @click="importCharacterFromFile"><i class="ti ti-upload"></i> ファイルから読み込み</button>
+				</div>
+				<p :class="$style.ioDesc">
+					マスコットの設定を .hmtk ファイルとして書き出し・読み込みできます（画像はドライブのURLを参照するため、同じサーバーの方とのやり取りが前提です）。<br>
+					書き出したファイルを同じサーバーの方に渡すと、そのマスコットを使ってもらえます。<br>
+					読み込んだキャラは新しいキャラとして追加されます。他人が作ったマスコットを読み込むときは、作成した方の了承を得てください。
+				</p>
+			</div>
 			<!-- ===== プレビュー(吹き出し位置をドラッグで調整) ===== -->
 			<div :class="[$style.preview, $style.colPreview]">
 				<div :class="$style.previewStageWrap" ref="stageWrapEl">
@@ -216,30 +240,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<div :class="$style.desc" style="margin-top:6px;margin-bottom:0">フローティング表示中のマスコットの背後に敷くぼかしの濃さと色です。濃さを0にすると無効になります。視認性が悪い背景のときに調整してください。</div>
 				</div>
 
-			<!-- ===== キャラ切替 ===== -->
-			<div :class="$style.card">
-				<div :class="$style.cardHead">
-					<span :class="$style.label">キャラクター</span>
-					<span :class="$style.count">{{ characters.length }} / {{ limits.maxCharacters }}</span>
-				</div>
-				<div :class="$style.charTabs">
-					<button v-for="(c,ci) in characters" :key="c.id" :class="[$style.charTab, activeCharIdx===ci && $style.charTabOn]" @click="selectChar(ci)">
-						<img v-if="c.expressions[0]" :src="c.expressions[0].url" :class="$style.charTabThumb" />
-						<i v-else class="ti ti-user" :class="$style.charTabThumbIcon"></i>
-						<span>{{ c.name || '(無名)' }}</span>
-					</button>
-					<button v-if="characters.length < limits.maxCharacters" :class="$style.charAdd" @click="addCharacter"><i class="ti ti-plus"></i> 追加</button>
-				</div>
-				<div :class="$style.ioRow">
-					<button :class="$style.ioBtn" :disabled="!activeChar" @click="exportActiveCharacter"><i class="ti ti-download"></i> このキャラを書き出し</button>
-					<button :class="$style.ioBtn" :disabled="characters.length >= limits.maxCharacters" @click="importCharacterFromFile"><i class="ti ti-upload"></i> ファイルから読み込み</button>
-				</div>
-				<p :class="$style.ioDesc">
-					マスコットの設定を .hmtk ファイルとして書き出し・読み込みできます（画像はドライブのURLを参照するため、同じサーバーの方とのやり取りが前提です）。<br>
-					書き出したファイルを同じサーバーの方に渡すと、そのマスコットを使ってもらえます。<br>
-					読み込んだキャラは新しいキャラとして追加されます。他人が作ったマスコットを読み込むときは、作成した方の了承を得てください。
-				</p>
-			</div>
+			<!-- 旗鯖fork(タスク5): キャラ切替カードは layout 直下(モバイル)または colSpecial(非モバイル)に移動 -->
 
 			<template v-if="activeChar">
 				<!-- 名前 -->
@@ -325,6 +326,30 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</div><!-- /colSettings(中央) -->
 
 				<div :class="$style.colSpecial">
+				<!-- 旗鯖fork(タスク5): 非モバイル(横並び)では最右列(colSpecial)の先頭にキャラ切替カードを表示 -->
+				<div v-if="!isMobileLayout" :class="$style.card">
+					<div :class="$style.cardHead">
+						<span :class="$style.label">キャラクター</span>
+						<span :class="$style.count">{{ characters.length }} / {{ limits.maxCharacters }}</span>
+					</div>
+					<div :class="$style.charTabs">
+						<button v-for="(c,ci) in characters" :key="c.id" :class="[$style.charTab, activeCharIdx===ci && $style.charTabOn]" @click="selectChar(ci)">
+							<img v-if="c.expressions[0]" :src="c.expressions[0].url" :class="$style.charTabThumb" />
+							<i v-else class="ti ti-user" :class="$style.charTabThumbIcon"></i>
+							<span>{{ c.name || '(無名)' }}</span>
+						</button>
+						<button v-if="characters.length < limits.maxCharacters" :class="$style.charAdd" @click="addCharacter"><i class="ti ti-plus"></i> 追加</button>
+					</div>
+					<div :class="$style.ioRow">
+						<button :class="$style.ioBtn" :disabled="!activeChar" @click="exportActiveCharacter"><i class="ti ti-download"></i> このキャラを書き出し</button>
+						<button :class="$style.ioBtn" :disabled="characters.length >= limits.maxCharacters" @click="importCharacterFromFile"><i class="ti ti-upload"></i> ファイルから読み込み</button>
+					</div>
+					<p :class="$style.ioDesc">
+						マスコットの設定を .hmtk ファイルとして書き出し・読み込みできます（画像はドライブのURLを参照するため、同じサーバーの方とのやり取りが前提です）。<br>
+						書き出したファイルを同じサーバーの方に渡すと、そのマスコットを使ってもらえます。<br>
+						読み込んだキャラは新しいキャラとして追加されます。他人が作ったマスコットを読み込むときは、作成した方の了承を得てください。
+					</p>
+				</div>
 				<template v-if="activeChar">
 				<!-- ===== 通知用の専用表情 ===== -->
 				<div :class="$style.card">
@@ -535,7 +560,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { ref, shallowRef, computed, watch, onMounted } from 'vue';
+import { ref, shallowRef, computed, watch, onMounted, onUnmounted } from 'vue';
 import MkModalWindow from '@/components/MkModalWindow.vue';
 import MkButton from '@/components/MkButton.vue';
 import MkMascotImportSelectDialog from '@/components/MkMascotImportSelectDialog.vue';
@@ -546,6 +571,15 @@ import { displaySettings, loadDisplaySettings, saveDisplaySettings, type MascotD
 
 const emit = defineEmits<{ (ev:'closed'):void }>();
 const dialog = shallowRef<InstanceType<typeof MkModalWindow>>();
+
+// 旗鯖fork(タスク5): キャラ切替カードの描画位置を画面幅で出し分けるための判定。
+// CSSレイアウトのブレークポイント(800px)に合わせ、799px以下を「縦1列(モバイル)」とみなす。
+// モバイルではキャラ切替カードを最上部(プレビューより前)に、それ以外では最右列(colSpecial)の先頭に置く。
+const mobileLayoutQuery = window.matchMedia('(max-width: 799px)');
+const isMobileLayout = ref(mobileLayoutQuery.matches);
+function onMobileLayoutChange(e: MediaQueryListEvent) { isMobileLayout.value = e.matches; }
+onMounted(() => { mobileLayoutQuery.addEventListener('change', onMobileLayoutChange); });
+onUnmounted(() => { mobileLayoutQuery.removeEventListener('change', onMobileLayoutChange); });
 
 type Expression = { id: string; label: string; url: string; driveFileId: string | null; bubbleX?: number; bubbleY?: number; bubbleScale?: number; bubbleTail?: 'left' | 'right'; motion?: 'none' | 'bounce' | 'shake' | 'sway' | 'spin'; motionIntensity?: number; questionEnabled?: boolean; qBubbleX?: number; qBubbleY?: number; qBubbleScale?: number; qBubbleTail?: 'left' | 'right'; textColor?: string | null; qTextColor?: string | null };
 type Phrase = { id: string; text: string; expressionId: string | null };
