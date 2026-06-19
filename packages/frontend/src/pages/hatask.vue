@@ -96,7 +96,7 @@
          静止画+名前に加え、ランダム文言の吹き出し・立ち絵モーション・設定リンクを追加。
          吹き出し座標(bubbleX/Y)はフローティング(MkMascotFloating)と揃えるため、画像を4:3の枠で囲い55%で配置する。
          クリックで次の文言へ(通知/誕生日のannounceはカードでは出さず、設定文言のみローテ)。 -->
-    <div v-if="sec==='mascot' && settings.showMascot!==false" class="htk-lg htk-anim"><div class="htk-gc" style="text-align:center"><h3 class="htk-sec-title">マスコット</h3>
+    <div v-if="sec==='mascot' && settings.showMascot!==false && canUseMascot" class="htk-lg htk-anim"><div class="htk-gc" style="text-align:center"><h3 class="htk-sec-title">マスコット</h3>
       <template v-if="mascotCardUrl">
         <!-- 4:3の基準枠。フローティングの .stage と同じ比率・画像55%にして bubbleX/Y を一致させる -->
         <div class="htk-mascot-stage" @click="onMascotCardClick" :title="mascotCardPhrase ? 'クリックで次の文言' : ''">
@@ -972,6 +972,8 @@ const sectionLabels:Record<string,string>={clock:'日時表示',eye:'Hatask Eye'
 // 吹き出し座標・motionはフローティング(MkMascotFloating)と同じロジック・同じグローバルmotionクラスを共有する。
 // announce(通知/誕生日/未読)はカードでは出さず、設定文言のみをローテする(論点①: 通知/誕生日除外)。
 const mascotCardName=computed(()=>mascotActiveCharacter.value?.name ?? '');
+// 旗鯖fork: マスコット機能の利用可否(ロールポリシー)。未許可ならホームのマスコットカードを出さない。
+const canUseMascot=computed(()=>$i?.policies?.canUseMascot===true);
 const mascotCardUrl=computed(()=>{const c=mascotActiveCharacter.value;if(!c||c.expressions.length===0)return '';return expressionDisplayUrl(mascotCurrentExpression.value ?? c.expressions[0]);});
 // 表示する文言(設定文言のローテのみ。announceは無視)。tellRandomPhrasesがOFFなら出さない。
 const mascotCardPhrase=computed(()=>{
@@ -1365,8 +1367,8 @@ let navVisibilityTimer:ReturnType<typeof setInterval>|null=null;
 onMounted(async () => {
 // 旗鯖fork(タスク8): マスコットカード用にデータを読み込み、Hatask表示中フラグを立てる(フローティング連動非表示)
 loadMascot();
-// 旗鯖fork(タスク2): カードの文言ローテに表示設定が要るためロードし、初期文言を選んでローテ開始
-loadMascotDisplaySettings().then(()=>{mascotPickRandomPhrase();startMascotCardRotation();});
+// 旗鯖fork(タスク2): カードの文言ローテに表示設定が要るためロードし、初期文言を選んでローテ開始(利用許可時のみ)
+if(canUseMascot.value){loadMascotDisplaySettings().then(()=>{mascotPickRandomPhrase();startMascotCardRotation();});}
 hatakMascotActive.value = true;
 // 旗鯖fork: Hataskを開いたら実績「Hataskへようこそ」を解除(冪等。既に解除済みなら何もしない)
 claimAchievement('welcomeToHatask');
@@ -1561,8 +1563,8 @@ cleanupHataskState();
 onActivated(() => {
 // 旗鯖fork(タスク8): keep-alive復帰時もフローティング連動フラグを立て直す
 hatakMascotActive.value = true;
-// 旗鯖fork(タスク2): keep-alive復帰時にカードの文言ローテを再開(onMountedが走らないため)
-startMascotCardRotation();
+// 旗鯖fork(タスク2): keep-alive復帰時にカードの文言ローテを再開(onMountedが走らないため。利用許可時のみ)
+if(canUseMascot.value)startMascotCardRotation();
 // 旗鯖fork: keep-alive復帰やウィンドウ遷移で onMounted が走らない場合に備え、
 // onActivated でも実績を解除する(claimAchievementは冪等)。
 claimAchievement('welcomeToHatask');

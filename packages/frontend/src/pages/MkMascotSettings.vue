@@ -11,7 +11,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 	ref="dialog"
 	:width="1240"
 	:height="800"
-	:withOkButton="consented"
+	:withOkButton="consented && canUseMascot"
 	:okButtonDisabled="saving || !canSave"
 	@ok="save"
 	@close="dialog?.close()"
@@ -21,6 +21,15 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 	<div :class="$style.root">
 		<div v-if="loading" :class="$style.loading">読み込み中…</div>
+
+		<!-- 旗鯖fork: マスコット機能がロールで許可されていないユーザー向けの案内。設定内容は一切出さない。 -->
+		<div v-else-if="!canUseMascot" :class="$style.consent">
+			<div :class="$style.consentIcon"><i class="ti ti-lock"></i></div>
+			<div :class="$style.consentTitle">マスコット機能はご利用いただけません</div>
+			<div :class="$style.consentBody">
+				<p>お使いアカウントではマスコット機能は現在お使いいただけません。</p>
+			</div>
+		</div>
 
 		<!-- 未同意: 同意ダイアログ -->
 		<div v-else-if="!consented" :class="$style.consent">
@@ -354,7 +363,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<!-- ===== 通知用の専用表情 ===== -->
 				<div :class="$style.card">
 					<div :class="$style.label">通知用の表情</div>
-					<div :class="$style.desc">通知が届いたときに表示する専用の立ち絵と文言です。「！」の小吹き出しも付けられます。</div>
+					<div :class="$style.desc">通知が届いたときに表示する専用の立ち絵と文言です。「！」の小吹き出しも付けられます。画像は500KB以下（JPEG/PNG/WebP/GIF）です。</div>
 					<template v-if="activeChar.notifyExpression">
 						<div :class="$style.expItem" style="max-width:140px;">
 							<img :src="activeChar.notifyExpression.url || ''" :class="$style.expImg" />
@@ -413,7 +422,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<!-- ===== 通知用の専用表情(2つ目) ===== -->
 				<div :class="$style.card">
 					<div :class="$style.label">通知用の表情(2つ目・任意)</div>
-					<div :class="$style.desc">2つ目の通知用表情です。設定すると、通知時に1つ目とランダムで切り替わります。</div>
+					<div :class="$style.desc">2つ目の通知用表情です。設定すると、通知時に1つ目とランダムで切り替わります。画像は500KB以下（JPEG/PNG/WebP/GIF）です。</div>
 					<template v-if="activeChar.notifyExpression2">
 						<div :class="$style.expItem" style="max-width:140px;">
 							<img :src="activeChar.notifyExpression2.url || ''" :class="$style.expImg" />
@@ -472,7 +481,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<!-- ===== 誕生日用の専用表情 ===== -->
 				<div :class="$style.card">
 					<div :class="$style.label">誕生日用の表情</div>
-					<div :class="$style.desc">誕生日にお祝いするときに表示する専用の立ち絵と文言です。</div>
+					<div :class="$style.desc">誕生日にお祝いするときに表示する専用の立ち絵と文言です。画像は500KB以下（JPEG/PNG/WebP/GIF）です。</div>
 					<template v-if="activeChar.birthdayExpression">
 						<div :class="$style.expItem" style="max-width:140px;">
 							<img :src="activeChar.birthdayExpression.url || ''" :class="$style.expImg" />
@@ -567,6 +576,7 @@ import MkMascotImportSelectDialog from '@/components/MkMascotImportSelectDialog.
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { chooseDriveFile } from '@/utility/drive.js';
 import * as os from '@/os.js';
+import { $i } from '@/i.js';
 import { displaySettings, loadDisplaySettings, saveDisplaySettings, type MascotDisplaySettings } from '@/utility/mascot-store.js';
 
 const emit = defineEmits<{ (ev:'closed'):void }>();
@@ -590,6 +600,8 @@ type Character = { id: string; name: string; expressions: Expression[]; phrases:
 const loading = ref(true);
 const consented = ref(false);
 const saving = ref(false);
+// 旗鯖fork: マスコット機能の利用可否(ロールポリシー)。未許可なら設定内容を出さない。
+const canUseMascot = computed(() => $i?.policies?.canUseMascot === true);
 const characters = ref<Character[]>([]);
 const activeCharIdx = ref(0);
 const showName = ref(false);
@@ -1243,6 +1255,31 @@ function sanitizeColorOrNull(v: unknown): string | null {
 	if (typeof v !== 'string') return null;
 	return /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v) ? v : null;
 }
+// インポートされた画像URLを検証する。表示時に <img src> として使われるため、
+// javascript:/data:/vbscript:/file: などの危険スキームや、文字列でない値を弾く。
+// 許可するのは http(s) の絶対URL と、ドライブが返す '/' 始まりの相対パスのみ。
+// 不正・空の場合は '' を返す(画像なし扱い。インポートが失敗するのではなく、その画像だけ無効化される)。
+function sanitizeImageUrl(v: unknown): string {
+	if (typeof v !== 'string') return '';
+	const s = v.trim();
+	if (s === '' || s.length > 2048) return '';
+	// 相対パス(ドライブの /files/... 等)は許可
+	if (s.startsWith('/') && !s.startsWith('//')) return s;
+	try {
+		const u = new URL(s);
+		return (u.protocol === 'http:' || u.protocol === 'https:') ? s : '';
+	} catch {
+		// 絶対URLとしてパースできない(スキーム無しの裸文字列など)は弾く
+		return '';
+	}
+}
+// driveFileId は表示時に url のフォールバックキーになるだけだが、無制限の文字列を保持する必要はない。
+// 文字列でなければ null、長すぎるものも null に矯正する。
+function sanitizeDriveFileId(v: unknown): string | null {
+	if (typeof v !== 'string') return null;
+	const s = v.trim();
+	return (s !== '' && s.length <= 256) ? s : null;
+}
 function clampNum(v: unknown, min: number, max: number, fallback: number): number {
 	const n = typeof v === 'number' && Number.isFinite(v) ? v : fallback;
 	return Math.min(max, Math.max(min, n));
@@ -1276,7 +1313,7 @@ function normalizeImportedCharacter(raw: any, keepExprKeys?: string[], keepPhras
 		const newId = genId();
 		if (typeof e?.id === 'string') idMap.set(e.id, newId);
 		expressions.push({
-			id: newId, label: typeof e?.label === 'string' ? e.label : '', url: typeof e?.url === 'string' ? e.url : '', driveFileId: typeof e?.driveFileId === 'string' ? e.driveFileId : null,
+			id: newId, label: typeof e?.label === 'string' ? e.label : '', url: sanitizeImageUrl(e?.url), driveFileId: sanitizeDriveFileId(e?.driveFileId),
 			bubbleX: clampNum(e?.bubbleX, 0, 1, 0.5), bubbleY: clampNum(e?.bubbleY, 0, 1, 0.1), bubbleScale: clampNum(e?.bubbleScale, 0.1, 5, 1), bubbleTail: asTail(e?.bubbleTail),
 			motion: asMotion(e?.motion), motionIntensity: clampNum(e?.motionIntensity, 0, 5, 1),
 			questionEnabled: e?.questionEnabled === true, qBubbleX: clampNum(e?.qBubbleX, 0, 1, 0.7), qBubbleY: clampNum(e?.qBubbleY, 0, 1, 0.05), qBubbleScale: clampNum(e?.qBubbleScale, 0.1, 5, 1), qBubbleTail: asTail(e?.qBubbleTail),
@@ -1294,9 +1331,13 @@ function normalizeImportedCharacter(raw: any, keepExprKeys?: string[], keepPhras
 	});
 
 	const normNotify = (n: any): NotifyExpression | null => {
-		if (!n || (typeof n.url !== 'string' && typeof n.driveFileId !== 'string')) return null;
+		if (!n) return null;
+		const url = sanitizeImageUrl(n.url);
+		const driveFileId = sanitizeDriveFileId(n.driveFileId);
+		// サニタイズの結果、有効な画像参照が一つも残らなければ通知表情は保持しない(既存の意図を維持)
+		if (url === '' && driveFileId === null) return null;
 		return {
-			url: typeof n.url === 'string' ? n.url : null, driveFileId: typeof n.driveFileId === 'string' ? n.driveFileId : null,
+			url: url !== '' ? url : null, driveFileId,
 			label: typeof n.label === 'string' ? n.label : '', text: typeof n.text === 'string' ? n.text : '',
 			motion: asMotion(n.motion), motionIntensity: clampNum(n.motionIntensity, 0, 5, 1),
 			bubbleX: clampNum(n.bubbleX, 0, 1, 0.5), bubbleY: clampNum(n.bubbleY, 0, 1, 0.1), bubbleScale: clampNum(n.bubbleScale, 0.1, 5, 1), bubbleTail: asTail(n.bubbleTail),
@@ -1305,9 +1346,12 @@ function normalizeImportedCharacter(raw: any, keepExprKeys?: string[], keepPhras
 		};
 	};
 	const normBirthday = (b: any): BirthdayExpression | null => {
-		if (!b || (typeof b.url !== 'string' && typeof b.driveFileId !== 'string')) return null;
+		if (!b) return null;
+		const url = sanitizeImageUrl(b.url);
+		const driveFileId = sanitizeDriveFileId(b.driveFileId);
+		if (url === '' && driveFileId === null) return null;
 		return {
-			url: typeof b.url === 'string' ? b.url : null, driveFileId: typeof b.driveFileId === 'string' ? b.driveFileId : null,
+			url: url !== '' ? url : null, driveFileId,
 			label: typeof b.label === 'string' ? b.label : '', text: typeof b.text === 'string' ? b.text : '',
 			motion: asMotion(b.motion), motionIntensity: clampNum(b.motionIntensity, 0, 5, 1),
 			bubbleX: clampNum(b.bubbleX, 0, 1, 0.5), bubbleY: clampNum(b.bubbleY, 0, 1, 0.1), bubbleScale: clampNum(b.bubbleScale, 0.1, 5, 1), bubbleTail: asTail(b.bubbleTail),

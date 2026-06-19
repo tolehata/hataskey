@@ -36,6 +36,7 @@ export const meta = {
 				},
 			},
 			consented: { type: 'boolean' },
+			canUseMascot: { type: 'boolean' },
 		},
 	},
 } as const;
@@ -57,14 +58,19 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 			const profile = await this.userProfilesRepository.findOneByOrFail({ userId: me.id });
 			const policies = await this.roleService.getUserPolicies(me.id);
 
+			// 旗鯖fork: マスコット機能の利用がロールで許可されていなければ、データを返さない(空扱い)。
+			// フロントはこのフラグでも機能を出し分けるが、サーバーでもデータ自体を伏せる。
+			const allowed = policies.canUseMascot === true;
+
 			return {
-				data: profile.hataMascotData ?? {},
+				data: allowed ? (profile.hataMascotData ?? {}) : {},
 				limits: {
 					maxCharacters: policies.mascotMaxCharacters,
 					maxExpressions: policies.mascotMaxExpressions,
 					maxPhrases: policies.mascotMaxPhrases,
 				},
 				consented: profile.hataConsentMascot === true,
+				canUseMascot: allowed,
 			};
 		});
 	}

@@ -182,6 +182,16 @@ SPDX-License-Identifier: AGPL-3.0-only
 						</MkInput>
 					</MkFolder>
 
+					<!-- 旗鯖fork: マスコット機能の利用可否(デフォルト不許可) -->
+					<MkFolder v-if="matchQuery(['マスコット機能を利用できる', 'canUseMascot'])">
+						<template #label>マスコット機能を利用できる</template>
+						<template #suffix>{{ policies.canUseMascot ? i18n.ts.yes : i18n.ts.no }}</template>
+						<MkSwitch v-model="policies.canUseMascot">
+							<template #label>マスコット機能の利用を許可</template>
+							<template #caption>オフのロールに属するユーザーはマスコット機能を利用できません。デフォルトは不許可です。</template>
+						</MkSwitch>
+					</MkFolder>
+
 					<!-- 旗鯖fork: マスコット機能の上限ポリシー -->
 					<MkFolder v-if="matchQuery(['マスコットの最大表情数', 'mascotMaxExpressions'])">
 						<template #label>マスコットの最大表情数</template>

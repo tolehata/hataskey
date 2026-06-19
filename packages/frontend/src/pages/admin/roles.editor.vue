@@ -468,6 +468,27 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</div>
 			</MkFolder>
 
+			<!-- 旗鯖fork: マスコット機能の利用可否(デフォルト不許可) -->
+			<MkFolder v-if="matchQuery(['マスコット機能を利用できる', 'canUseMascot'])">
+				<template #label>マスコット機能を利用できる</template>
+				<template #suffix>
+					<span v-if="role.policies.canUseMascot.useDefault" :class="$style.useDefaultLabel">{{ i18n.ts._role.useBaseValue }}</span>
+					<span v-else>{{ role.policies.canUseMascot.value ? i18n.ts.yes : i18n.ts.no }}</span>
+					<span :class="$style.priorityIndicator"><i :class="getPriorityIcon(role.policies.canUseMascot)"></i></span>
+				</template>
+				<div class="_gaps">
+					<MkSwitch v-model="role.policies.canUseMascot.useDefault" :readonly="readonly">
+						<template #label>{{ i18n.ts._role.useBaseValue }}</template>
+					</MkSwitch>
+					<MkSwitch v-model="role.policies.canUseMascot.value" :disabled="role.policies.canUseMascot.useDefault" :readonly="readonly">
+						<template #label>マスコット機能の利用を許可</template>
+					</MkSwitch>
+					<MkRange v-model="role.policies.canUseMascot.priority" :min="0" :max="2" :step="1" easing :textConverter="(v) => v === 0 ? i18n.ts._role._priority.low : v === 1 ? i18n.ts._role._priority.middle : v === 2 ? i18n.ts._role._priority.high : ''">
+						<template #label>{{ i18n.ts._role.priority }}</template>
+					</MkRange>
+				</div>
+			</MkFolder>
+
 			<!-- 旗鯖fork: マスコット機能の上限ポリシー -->
 			<MkFolder v-if="matchQuery(['マスコットの最大表情数', 'mascotMaxExpressions'])">
 				<template #label>マスコットの最大表情数</template>

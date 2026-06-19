@@ -54,6 +54,8 @@ export type RolePolicies = {
 	mascotMaxExpressions: number;
 	mascotMaxPhrases: number;
 	mascotMaxCharacters: number;
+	// 旗鯖fork: マスコット機能そのものの利用可否(デフォルト不許可。許可ロールでのみ利用可)
+	canUseMascot: boolean;
 	driveCapacityMb: number;
 	maxFileSizeMb: number;
 	alwaysMarkNsfw: boolean;
@@ -102,6 +104,7 @@ export const DEFAULT_POLICIES: RolePolicies = {
 	mascotMaxExpressions: 5,
 	mascotMaxPhrases: 10,
 	mascotMaxCharacters: 3,
+	canUseMascot: false,
 	driveCapacityMb: 100,
 	maxFileSizeMb: 30,
 	alwaysMarkNsfw: false,
@@ -433,6 +436,7 @@ export class RoleService implements OnApplicationShutdown, OnModuleInit {
 			mascotMaxExpressions: calc('mascotMaxExpressions', vs => Math.max(...vs)),
 			mascotMaxPhrases: calc('mascotMaxPhrases', vs => Math.max(...vs)),
 			mascotMaxCharacters: calc('mascotMaxCharacters', vs => Math.max(...vs)),
+			canUseMascot: calc('canUseMascot', vs => vs.some(v => v === true)),
 			driveCapacityMb: calc('driveCapacityMb', vs => Math.max(...vs)),
 			maxFileSizeMb: calc('maxFileSizeMb', vs => Math.max(...vs)),
 			alwaysMarkNsfw: calc('alwaysMarkNsfw', vs => vs.some(v => v === true)),

@@ -11,6 +11,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 	<MkSpacer :contentMax="700">
 		<div v-if="!mascotLoaded" :class="$style.center">読み込み中…</div>
 
+		<!-- 旗鯖fork: マスコット機能がロールで許可されていないユーザー向けの案内。操作系は一切出さない。 -->
+		<div v-else-if="!canUseMascot" :class="$style.empty">
+			<i class="ti ti-lock" :class="$style.emptyIcon"></i>
+			<div :class="$style.emptyText">お使いアカウントではマスコット機能は現在お使いいただけません。</div>
+		</div>
+
 		<div v-else-if="!hasMascot" :class="$style.empty">
 			<i class="ti ti-mood-empty" :class="$style.emptyIcon"></i>
 			<div :class="$style.emptyText">まだマスコットが設定されていません。</div>
@@ -62,6 +68,8 @@ import {
 
 const character = computed(() => activeCharacter.value);
 const hasMascot = computed(() => !!character.value);
+// 旗鯖fork: マスコット機能の利用可否(ロールポリシー)。未許可ユーザーには機能を一切見せない。
+const canUseMascot = computed(() => $i?.policies?.canUseMascot === true);
 // pending(storeが指す次の表示内容)
 const pendingPhraseText = computed(() => displayText.value ? escapeText(displayText.value) : '');
 const pendingExpUrl = computed(() => expressionDisplayUrl(currentExpression.value));
@@ -151,6 +159,8 @@ const isBirthdayToday = computed(() => {
 function celebrateBirthday() { announceBirthday(); }
 
 function openSettings() {
+	// 旗鯖fork: 未許可ユーザーは設定ダイアログを開けない(UI非表示に加えた二重防御)
+	if (!canUseMascot.value) return;
 	import('@/pages/MkMascotSettings.vue').then(x => {
 		os.popup(x.default, {}, {}, 'closed');
 	});
@@ -183,11 +193,11 @@ function announceOnOpen() {
 	announceUnread(count);
 }
 
-const headerActions = computed(() => [{
+const headerActions = computed(() => canUseMascot.value ? [{
 	icon: 'ti ti-settings',
 	text: '設定',
 	handler: openSettings,
-}]);
+}] : []);
 
 definePage(() => ({
 	title: 'マスコット',

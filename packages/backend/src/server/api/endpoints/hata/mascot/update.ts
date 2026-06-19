@@ -55,6 +55,11 @@ export const meta = {
 	},
 
 	errors: {
+		forbidden: {
+			message: 'You are not allowed to use the mascot feature.',
+			code: 'MASCOT_FORBIDDEN',
+			id: 'b1a2c3d4-0001-0001-0001-000000000008',
+		},
 		notConsented: {
 			message: 'You have not consented to the mascot feature.',
 			code: 'MASCOT_NOT_CONSENTED',
@@ -268,6 +273,11 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 			}
 
 			const policies = await this.roleService.getUserPolicies(me.id);
+
+			// 旗鯖fork: マスコット機能の利用がロールで許可されていなければ拒否(フロントUIに加えた最終防衛線)
+			if (!policies.canUseMascot) {
+				throw new ApiError(meta.errors.forbidden);
+			}
 
 			// 上限チェック
 			if (ps.characters.length > policies.mascotMaxCharacters) {
