@@ -751,10 +751,16 @@ const sidebarGroupLabels: Record<string, string> = {
 // 旗鯖fork: visible === false の項目はサイドバーに表示しない。ただし必須項目
 // (timeline / notifications / announcements / followRequests / more) は強制表示。
 const REQUIRED_SIDEBAR_IDS = ['timeline', 'notifications', 'announcements', 'followRequests', 'more'];
+// 旗鯖fork: 過去に削除された(=コード側に対応する遷移処理が無い)サイドバー項目ID。
+// 既存ユーザーの simpleUi.sidebar 保存値に残っている場合、サイドメニュー/HatasabaUI上部ナビバー
+// の両方で描画されないよう除外する。将来別の項目が削除された場合はここに追記する。
+const DEAD_SIDEBAR_IDS = ['whatsNew'];
 const sidebarGroups = computed(() => {
     const order = ['basic', 'hata', 'discover', 'more'];
     const groups: { key: string; label: string; items: any[] }[] = [];
     for (const item of sidebarOrder.value) {
+        // 旗鯖fork: 削除済み項目(whatsNew等)は保存値に残っていても無視する
+        if (DEAD_SIDEBAR_IDS.includes(item.id)) continue;
         // 旗鯖fork: visible:false は除外、ただし必須項目は強制的に表示
         if (item.visible === false && !REQUIRED_SIDEBAR_IDS.includes(item.id)) continue;
         const g = item.group ?? 'basic';
