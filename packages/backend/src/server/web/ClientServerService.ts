@@ -128,7 +128,7 @@ export class ClientServerService {
 	 * （iconUrl / app*IconUrl がどちらも未設定の場合のフォールバック用）
 	 */
 	@bindThis
-	private generatePlainIconDataUri(size: number): string {
+	private generatePlainIconSvg(size: number): string {
 		const seed = this.meta.uri || this.config.host || 'hataskey';
 		let hash = 0;
 		for (let i = 0; i < seed.length; i++) {
@@ -138,8 +138,12 @@ export class ClientServerService {
 		const hue = Math.abs(hash) % 360;
 		// 彩度60%・明度50% でライト/ダーク両モードで視認性確保
 		const color = `hsl(${hue}, 60%, 50%)`;
-		const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><rect width="${size}" height="${size}" fill="${color}"/></svg>`;
-		return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+		return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><rect width="${size}" height="${size}" fill="${color}"/></svg>`;
+	}
+
+	@bindThis
+	private generatePlainIconDataUri(size: number): string {
+		return `data:image/svg+xml;utf8,${encodeURIComponent(this.generatePlainIconSvg(size))}`;
 	}
 
 	@bindThis
@@ -320,11 +324,30 @@ export class ClientServerService {
 		});
 
 		fastify.get('/favicon.ico', async (request, reply) => {
-			return reply.sendFile('/favicon.ico', staticAssets);
+			// 旗鯖fork: PWA manifest と挙動を揃える。iconUrl が設定されていればそこへ、
+			// 未設定ならインスタンス固有の動的生成アイコン(SVG)を返す。静的な CherryPick の
+			// favicon.ico は使わない(サーバーアイコンとファビコンの不整合を防ぐ)。
+			// 優先順位: app192IconUrl → iconUrl → 動的生成SVG
+			// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+			const url = this.meta.app192IconUrl || this.meta.iconUrl;
+			if (url) {
+				return reply.redirect(url);
+			}
+			reply.header('Cache-Control', 'max-age=300');
+			reply.type('image/svg+xml');
+			return reply.send(this.generatePlainIconSvg(192));
 		});
 
 		fastify.get('/apple-touch-icon.png', async (request, reply) => {
-			return reply.sendFile('/apple-touch-icon.png', staticAssets);
+			// 旗鯖fork: 同上。優先順位: app512IconUrl → iconUrl → 動的生成SVG
+			// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+			const url = this.meta.app512IconUrl || this.meta.iconUrl;
+			if (url) {
+				return reply.redirect(url);
+			}
+			reply.header('Cache-Control', 'max-age=300');
+			reply.type('image/svg+xml');
+			return reply.send(this.generatePlainIconSvg(512));
 		});
 
 		fastify.get<{ Params: { path: string } }>('/fluent-emoji/:path(.*)', async (request, reply) => {
