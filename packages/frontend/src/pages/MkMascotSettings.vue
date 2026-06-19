@@ -12,7 +12,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 	:width="1240"
 	:height="800"
 	:withOkButton="consented"
-	:okButtonDisabled="saving"
+	:okButtonDisabled="saving || !canSave"
 	@ok="save"
 	@close="dialog?.close()"
 	@closed="emit('closed')"
@@ -43,6 +43,13 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 		<!-- 同意済み: 編集UI -->
 		<template v-else>
+			<!-- 旗鯖fork: 保存をブロックしている設定ミスの一覧。解消すると保存ボタンが押せるようになる。 -->
+			<div v-if="validationErrors.length > 0" :class="$style.validationCard">
+				<div :class="$style.validationHead"><i class="ti ti-alert-triangle"></i> 設定に問題があるため保存できません</div>
+				<ul :class="$style.validationList">
+					<li v-for="(err, i) in validationErrors" :key="i">{{ err }}</li>
+				</ul>
+			</div>
 			<div :class="$style.layout">
 			<!-- ===== プレビュー(吹き出し位置をドラッグで調整) ===== -->
 			<div :class="[$style.preview, $style.colPreview]">
@@ -1099,7 +1106,57 @@ function setBackdropColor(ev: Event) {
 	saveDisplaySettings({ ...displaySettings.value, floatingBackdropColor: color });
 }
 
+// 旗鯖fork: 保存前バリデーション。マスコットを動かす上で支障が出る設定ミスを検出する。
+// エラーが1件でもあれば保存ボタンをグレアウトし、理由を画面に表示する。
+function hasImage(x: { url?: string | null; driveFileId?: string | null } | null | undefined): boolean {
+	return !!(x && ((typeof x.url === 'string' && x.url !== '') || (typeof x.driveFileId === 'string' && x.driveFileId !== '')));
+}
+const validationErrors = computed<string[]>(() => {
+	const errors: string[] = [];
+	for (const c of characters.value) {
+		const who = c.name && c.name !== '' ? `「${c.name}」` : '(無名のキャラ)';
+		// 表情が1つも無い
+		if (c.expressions.length === 0) {
+			errors.push(`${who}に立ち絵が1つもありません。`);
+		}
+		// 各表情に画像実体が無い
+		for (const e of c.expressions) {
+			if (!hasImage(e)) {
+				const lbl = e.label && e.label !== '' ? `「${e.label}」` : '(無題)';
+				errors.push(`${who}の立ち絵${lbl}に画像が指定されていません。`);
+			}
+		}
+		// 通知用表情: 設定枠があるのに画像が無い
+		if (c.notifyExpression != null && !hasImage(c.notifyExpression)) {
+			errors.push(`${who}の通知用の立ち絵に画像が指定されていません。`);
+		}
+		if (c.notifyExpression2 != null && !hasImage(c.notifyExpression2)) {
+			errors.push(`${who}の2つ目の通知用の立ち絵に画像が指定されていません。`);
+		}
+		// 誕生日表示
+		if (c.birthdayExpression != null && !hasImage(c.birthdayExpression)) {
+			errors.push(`${who}の誕生日用の立ち絵に画像が指定されていません。`);
+		}
+		// キャラ誕生日: 有効なのに月日が未入力
+		if (c.charBirthdayEnabled) {
+			if (c.charBirthdayMonth == null || c.charBirthdayDay == null) {
+				errors.push(`${who}のキャラクター誕生日が有効ですが、月日が入力されていません。`);
+			}
+			if (c.charBirthdayExpression != null && !hasImage(c.charBirthdayExpression)) {
+				errors.push(`${who}のキャラクター誕生日用の立ち絵に画像が指定されていません。`);
+			}
+		}
+	}
+	return errors;
+});
+const canSave = computed<boolean>(() => validationErrors.value.length === 0);
+
 async function save() {
+	// 旗鯖fork: 保険。UI上はボタンをグレアウトしているが、万一すり抜けても設定ミスは保存させない。
+	if (!canSave.value) {
+		os.alert({ type: 'error', text: validationErrors.value[0] ?? '設定に問題があります。' });
+		return;
+	}
 	saving.value = true;
 	try {
 		await misskeyApi('hata/mascot/update', {
@@ -1353,6 +1410,9 @@ async function importCharacterFromFile() {
 .root { display:flex; flex-direction:column; gap:14px; padding:18px 20px 22px; }
 .loading { padding:40px 0; text-align:center; opacity:.6; }
 .card { background: var(--MI_THEME-panel); border:1px solid var(--MI_THEME-divider); border-radius:14px; padding:14px 16px; }
+.validationCard { background: var(--MI_THEME-infoWarnBg, rgba(226,86,109,.1)); border:1px solid var(--MI_THEME-error, #e2566d); border-radius:12px; padding:12px 16px; }
+.validationHead { display:flex; align-items:center; gap:6px; font-weight:700; font-size:.9rem; color: var(--MI_THEME-error, #e2566d); margin-bottom:6px; }
+.validationList { margin:0; padding-left:1.4em; font-size:.83rem; line-height:1.7; }
 .cardHead { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
 .label { font-size:.95rem; font-weight:700; }
 .count { font-size:.8rem; opacity:.6; font-variant-numeric:tabular-nums; }
