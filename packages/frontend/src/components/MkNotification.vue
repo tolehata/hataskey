@@ -364,16 +364,22 @@ const rejectGroupInvitation = () => {
 	background: var(--eventRenote);
 }
 
-/* 旗鯖fork: hatask 通知の文字アイコン (背景色はテーマアクセント / リアクションハートを流用) */
+/* 旗鯖fork: hatask 通知の文字アイコン。
+   グループ通知系の共通定義(80%サイズ)を上書きして、アバター付き通知と同じ円サイズ(100%)に揃える。
+   背景円が大きくなった分、絵文字/文字も大きめに調整する。 */
 .icon_hataskCalendar {
 	background: var(--MI_THEME-accent);
-	font-size: 18px;
+	width: 100%;
+	height: 100%;
+	font-size: 24px;
 	line-height: 1;
 }
 
 .icon_hataskHeart {
 	background: var(--eventReactionHeart);
-	font-size: 22px;
+	width: 100%;
+	height: 100%;
+	font-size: 28px;
 	font-weight: 700;
 	line-height: 1;
 }
