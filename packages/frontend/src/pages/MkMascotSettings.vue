@@ -20,7 +20,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 	<template #header>
 		<span :class="$style.headerInner">
 			<span>マスコットの設定</span>
-			<button v-if="canUseMascot" :class="$style.termsBtn" class="_button" title="利用規約を確認" @click="showTerms"><i class="ti ti-file-text"></i> 利用規約</button>
+			<MkButton v-if="canUseMascot" :class="$style.termsBtn" rounded small @click="showTerms"><i class="ti ti-file-text"></i> 利用規約</MkButton>
 		</span>
 	</template>
 
@@ -1506,8 +1506,9 @@ async function importCharacterFromFile() {
 /* 旗鯖fork: ヘッダー内のタイトルと利用規約ボタンの配置。タイトル左・ボタン右。
    親(.title)が pointer-events:none のため、ボタン側で auto に戻す。 */
 .headerInner { display:flex; align-items:center; justify-content:space-between; gap:12px; width:100%; padding-right:16px; box-sizing:border-box; }
-.termsBtn { pointer-events:auto; display:inline-flex; align-items:center; gap:4px; font-size:.8rem; font-weight:600; padding:4px 10px; border-radius:999px; background:var(--MI_THEME-buttonBg); color:var(--MI_THEME-fg); white-space:nowrap; }
-.termsBtn:hover { background:var(--MI_THEME-buttonHoverBg); }
+/* 旗鯖fork: 規約ボタンは MkButton 本体で形を作るため、ここでは配置の補正だけに留める。
+   親(.title)が pointer-events:none のため、ボタン側で auto に戻す必要がある。 */
+.termsBtn { pointer-events:auto; white-space:nowrap; }
 .loading { padding:40px 0; text-align:center; opacity:.6; }
 /* 旗鯖fork: 同意ウィンドウ / 利用不可の案内。中央揃え・中央寄せで表示する。 */
 .consent { display:flex; flex-direction:column; align-items:center; text-align:center; gap:10px; padding:24px 20px; max-width:560px; margin:0 auto; }
