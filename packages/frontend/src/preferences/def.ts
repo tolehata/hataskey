@@ -1002,6 +1002,11 @@ export const PREF_DEF = definePreferences({
 	'simpleUi.disableBubbleInDefault': {
 		default: false,
 	},
+	// 旗鯖fork: HatasabaUI のデッキ表示モード (simpleUi.deckMode=ON) 時の吹き出し無効化トグル。
+	// 従来 Misskey デッキ UI (ui=deck) とは別 UI のため、別キーで管理する。
+	'simpleUi.disableBubbleInHatasabaDeck': {
+		default: true,
+	},
 	'simpleUi.classicNoteSpacing': {
 		default: false,
 	},

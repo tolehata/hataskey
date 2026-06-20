@@ -241,8 +241,12 @@ SPDX-License-Identifier: AGPL-3.0-only
         <FormSection first>
             <template #label>ノートの間隔</template>
             <div style="font-size:.85em;opacity:.7;margin-bottom:12px;">タイムラインの投稿同士の間隔を調整します。即座に反映されます。</div>
+            <!-- 旗鯖fork: デッキ表示時(従来デッキUI / HatasabaUIデッキ)はノート間隔を「詰める」に強制し、UI操作不能化する -->
+            <div v-if="isDeckLike" style="font-size:.82em;color:var(--MI_THEME-warn);margin-bottom:10px;padding:8px 10px;border:1px solid var(--MI_THEME-divider);border-radius:8px;background:var(--MI_THEME-panel);">
+                <i class="ti ti-info-circle" style="margin-right:4px;"></i>デッキ表示中は情報密度を保つため、ノートの間隔は「詰める」に固定されます。
+            </div>
             <div :class="$style.spacingOptions">
-                <button v-for="opt in spacingOptions" :key="opt.value" :class="[$style.spacingCard, noteSpacing === opt.value && $style.spacingCardOn]" @click="noteSpacing = opt.value">
+                <button v-for="opt in spacingOptions" :key="opt.value" :class="[$style.spacingCard, noteSpacing === opt.value && $style.spacingCardOn, isDeckLike && $style.spacingCardDisabled]" :disabled="isDeckLike" @click="!isDeckLike && (noteSpacing = opt.value)">
                     <div :class="$style.spacingPreview">
                         <div :class="$style.spacingBubble" :style="{ margin: opt.previewMargin }"></div>
                         <div :class="$style.spacingBubble" :style="{ margin: opt.previewMargin }"></div>
@@ -295,6 +299,11 @@ SPDX-License-Identifier: AGPL-3.0-only
             <MkSwitch v-model="disableBubbleInDefault">
                 <template #label>Misskey UIで吹き出し表示を無効にする</template>
                 <template #caption>ONにするとMisskey UI（デフォルトUI）ではタイムラインの吹き出しデザインが適用されず、標準のカード表示になります。</template>
+            </MkSwitch>
+            <!-- 旗鯖fork: HatasabaUIデッキ用 -->
+            <MkSwitch v-model="disableBubbleInHatasabaDeck">
+                <template #label>HatasabaUIデッキで吹き出し表示を無効にする</template>
+                <template #caption>ONにするとHatasabaUIのデッキ表示モードでも吹き出しデザインが適用されず、標準のカード表示になります。</template>
             </MkSwitch>
         </FormSection>
         </template>
@@ -580,6 +589,8 @@ const showPageHeader = prefer.model('simpleUi.showPageHeader');
 const noteSpacing = prefer.model('simpleUi.noteSpacing');
 const disableBubbleInDeck = prefer.model('simpleUi.disableBubbleInDeck');
 const disableBubbleInDefault = prefer.model('simpleUi.disableBubbleInDefault');
+// 旗鯖fork: HatasabaUIデッキ用の吹き出し無効化トグル
+const disableBubbleInHatasabaDeck = prefer.model('simpleUi.disableBubbleInHatasabaDeck');
 const classicNoteSpacing = prefer.model('simpleUi.classicNoteSpacing');
 
 // Misskey UIの吹き出しを無効化した場合、従来のMisskey風投稿間隔は使えなくなるため、
@@ -605,6 +616,33 @@ if (disableBubbleInDefault.value && classicNoteSpacing.value) {
     savedClassicNoteSpacing.value = classicNoteSpacing.value;
     classicNoteSpacing.value = false;
 }
+
+// 旗鯖fork: デッキ表示時はノート間隔を 'compact' に強制ON+UI操作不能化する。
+// - 従来デッキ UI (ui=deck) は localStorage で判定、ページ表示中の切替は無いためページマウント時に固定。
+// - HatasabaUI デッキ (ui=simple かつ simpleUi.deckMode=ON) は deckMode の切替に追随する。
+const currentUi = miLocalStorage.getItem('ui');
+const isLegacyDeckUi = currentUi === 'deck';
+const hatasabaDeckMode = computed(() => prefer.r['simpleUi.deckMode']?.value ?? false);
+const isDeckLike = computed(() => isLegacyDeckUi || (currentUi === 'simple' && hatasabaDeckMode.value));
+// デッキ時に noteSpacing が変えられても 'compact' に戻す。元の値を保存し、解除時に復元。
+const savedNoteSpacing = ref<'compact' | 'moderate' | 'wide' | null>(null);
+function enforceDeckSpacing() {
+    if (isDeckLike.value) {
+        if (noteSpacing.value !== 'compact') {
+            savedNoteSpacing.value = noteSpacing.value as 'compact' | 'moderate' | 'wide';
+            noteSpacing.value = 'compact';
+        }
+    } else {
+        // デッキ解除時に復元(保存値がある場合のみ)
+        if (savedNoteSpacing.value !== null) {
+            noteSpacing.value = savedNoteSpacing.value;
+            savedNoteSpacing.value = null;
+        }
+    }
+}
+// 起動時と deckMode の切替時に適用
+enforceDeckSpacing();
+watch(isDeckLike, () => { enforceDeckSpacing(); });
 
 const spacingOptions = [
     { value: 'compact', label: '詰める', previewMargin: '2px 0' },
@@ -671,6 +709,8 @@ definePage({ title: '旗鯖独自機能', icon: 'ti ti-flag' });
     &:hover { border-color:color-mix(in srgb, var(--MI_THEME-accent) 40%, var(--MI_THEME-divider)); }
 }
 .spacingCardOn { border-color:var(--MI_THEME-accent); background:var(--MI_THEME-accentedBg); }
+/* 旗鯖fork: デッキ表示時の操作不能スタイル */
+.spacingCardDisabled { opacity:.5; cursor:not-allowed; pointer-events:none; }
 .spacingPreview {
     width:100%; display:flex; flex-direction:column; align-items:stretch;
     background:color-mix(in srgb, var(--MI_THEME-fg) 5%, transparent); border-radius:8px; padding:6px;
