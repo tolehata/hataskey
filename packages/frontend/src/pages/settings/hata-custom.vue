@@ -266,6 +266,11 @@ SPDX-License-Identifier: AGPL-3.0-only
                 <template #label>デッキUIの背景にヘッダー画像のぼかしを使用しない</template>
                 <template #caption>ONにすると、HatasabaUIのデッキ表示の背景にプロフィールのヘッダー画像のぼかしを使わず、単色背景になります。描画負荷が軽減され、視認性が上がります。</template>
             </MkSwitch>
+            <!-- 旗鯖fork: HatasabaUIの追加ページヘッダー(タイトル+戻るボタン)。デフォルトOFFで二重表示を回避。 -->
+            <MkSwitch v-model="showPageHeader">
+                <template #label>HatasabaUIの追加ページヘッダーを表示する</template>
+                <template #caption>ONにすると、ページ上部にHatasabaUI独自のシンプルなヘッダー（ページタイトル＋戻るボタン）が追加で表示されます。OFFにするとページ自身のヘッダー（MkPageHeader）のみになり、タイトルの二重表示が解消されます。</template>
+            </MkSwitch>
         </FormSection>
         <FormSection>
             <template #label>ウィジェット</template>
@@ -570,6 +575,8 @@ const widgetBorder = prefer.model('simpleUi.widgetBorder');
 const glassEffect = prefer.model('simpleUi.glassEffect');
 const deckNoBannerBg = prefer.model('simpleUi.deckNoBannerBg');
 const directProfile = prefer.model('simpleUi.directProfile');
+// 旗鯖fork: HatasabaUI 追加ページヘッダー表示
+const showPageHeader = prefer.model('simpleUi.showPageHeader');
 const noteSpacing = prefer.model('simpleUi.noteSpacing');
 const disableBubbleInDeck = prefer.model('simpleUi.disableBubbleInDeck');
 const disableBubbleInDefault = prefer.model('simpleUi.disableBubbleInDefault');

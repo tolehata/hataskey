@@ -170,8 +170,8 @@ SPDX-License-Identifier: AGPL-3.0-only
             </div>
         </div>
         <!-- Page view header -->
-        <header v-show="isPageView" :class="$style.pageHeader">
-            <button :class="$style.pageBackBtn" @click="goBack"><i class="ti ti-arrow-left"></i></button>
+        <header v-show="isPageView && showPageHeader" :class="$style.pageHeader">
+            <button :class="$style.pageBackBtn" @click="goBack"><i class="ti ti-chevron-left"></i></button>
             <div :class="$style.pageTitle">{{ pageMetadata?.title ?? '' }}</div>
             <div style="width: 38px;"></div>
         </header>
@@ -737,6 +737,10 @@ const showWidgetBorder = computed(() => prefer.r['simpleUi.widgetBorder'].value)
 
 // ===== prefer連動: すりガラス効果 =====
 const glassEffect = computed(() => prefer.r['simpleUi.glassEffect'].value);
+// 旗鯖fork: HatasabaUI のページヘッダー(タイトル+戻るボタン)の表示制御。
+// デフォルト false: ページ自身の MkPageHeader と二重表示になるため非表示。
+// アクセシビリティ設定からON切替可能。
+const showPageHeader = computed(() => prefer.r['simpleUi.showPageHeader'].value);
 
 // ===== prefer連動: サイドバー =====
 const sidebarOrder = computed(() => prefer.r['simpleUi.sidebar'].value as any[]);

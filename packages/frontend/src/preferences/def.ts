@@ -874,6 +874,12 @@ export const PREF_DEF = definePreferences({
 	'simpleUi.glassEffect': {
 		default: true,
 	},
+	// 旗鯖fork: HatasabaUI のページヘッダー(ページタイトル+戻るボタン)を表示するか。
+	// ページ自身が MkPageHeader を持っているため、デフォルトでは非表示にしてタイトル二重表示を回避する。
+	// ONにすると HatasabaUI 独自のシンプルなヘッダーがページの上に追加で出る。
+	'simpleUi.showPageHeader': {
+		default: false,
+	},
 	// 旗鯖fork: HatasabaUI デッキモード
 	'simpleUi.deckMode': {
 		default: false,
