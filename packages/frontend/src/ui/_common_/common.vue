@@ -492,4 +492,15 @@ if ($i) {
 [data-widget-border="on"] ._panel:hover {
 	box-shadow: 0 0 0 2.5px var(--MI_THEME-accent), 0 0 24px color-mix(in srgb, var(--MI_THEME-accent) 30%, transparent), 0 4px 16px rgba(0,0,0,.08) !important;
 }
+/* 旗鯖fork: OFF時は淡い灰色枠で表示（ON時の見た目と統一感を保ちつつ色だけ無彩色に） */
+[data-widget-border="off"] ._panel {
+	border: none !important;
+	border-radius: 14px !important;
+	box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--MI_THEME-fg) 18%, transparent), 0 2px 8px rgba(0,0,0,.05) !important;
+	transition: box-shadow .3s ease;
+	margin-bottom: 10px;
+}
+[data-widget-border="off"] ._panel:hover {
+	box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--MI_THEME-fg) 28%, transparent), 0 4px 12px rgba(0,0,0,.06) !important;
+}
 </style>
