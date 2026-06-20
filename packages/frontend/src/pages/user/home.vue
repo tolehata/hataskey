@@ -89,6 +89,35 @@ SPDX-License-Identifier: AGPL-3.0-only
 								@input="adjustMemoTextarea"
 							/>
 						</div>
+						<!-- 旗鯖fork: 宴の成功回数バッジ。0回でも常時表示する(統計情報として固定枠を提供)。
+						     description の直上に配置(目立つ位置)。 -->
+						<div class="utageSuccessWrapper">
+							<div ref="utageBadgeRef" class="utageSuccessBadge">
+								<i class="ti ti-confetti utageSuccessIcon"></i>
+								<span class="utageSuccessLabel">宴の成功</span>
+								<span class="utageSuccessCount">{{ user.utageSuccessCount ?? 0 }}</span>
+								<span class="utageSuccessUnit">回</span>
+							</div>
+							<!-- 旗鯖fork: 初回アナウンス吹き出し。
+							     祖先の transform/will-change により position:fixed の基準がズレるため、
+							     Teleport で body 直下に出して真のビューポート基準にする。
+							     scoped CSS が効かないので、グローバルクラス(utageGlobalTip*)でスタイルを当てる。 -->
+							<Teleport to="body">
+								<div v-if="utageBadgeTipVisible && utageBadgeTipPos" :class="['utageGlobalTip', utageBadgeTipPos.mode === 'sheet' ? 'utageGlobalTipSheet' : (utageBadgeTipPos.placement === 'above' ? 'utageGlobalTipAbove' : 'utageGlobalTipBelow')]" :style="utageBadgeTipPos.mode === 'tooltip' ? { top: utageBadgeTipPos.top + 'px', left: utageBadgeTipPos.left + 'px' } : {}">
+									<div v-if="utageBadgeTipPos.mode === 'tooltip'" class="utageGlobalTipArrow" :style="{ left: utageBadgeTipPos.arrowLeft + 'px' }"></div>
+									<div class="utageGlobalTipBody">
+										<i class="ti ti-info-circle utageGlobalTipIcon"></i>
+										<div class="utageGlobalTipText">
+											<b>宴の成功回数を表示しています</b><br>
+											ローカルTLに「宴」「うたげ」「utage」を含むノートを投稿し、15分間誰にも反応されずに逃げ切れた回数です。プロフィールの統計として誰でも見られます。
+										</div>
+									</div>
+									<div class="utageGlobalTipFooter">
+										<button class="utageGlobalTipBtn" @click="dismissUtageBadgeTip">わかった</button>
+									</div>
+								</div>
+							</Teleport>
+						</div>
 						<div class="description">
 							<MkOmit>
 								<Mfm v-if="user.description" :text="user.description" :isNote="false" :author="user" :enableEmojiMenu="!!$i" class="_selectable"/>
@@ -253,6 +282,75 @@ const router = useRouter();
 
 const user = ref(props.user);
 const narrow = ref<null | boolean>(null);
+
+// 旗鯖fork: 宴成功バッジの初回アナウンス吹き出しの表示状態
+const utageBadgeTipVisible = ref(false);
+// 旗鯖fork: 吹き出しを position:fixed で配置する際の座標。
+// プロフィールの祖先に overflow:clip が掛かっているため、absolute だと下部が切られる。
+// バッジ要素の getBoundingClientRect() からビューポート基準の座標を計算する。
+const utageBadgeRef = useTemplateRef('utageBadgeRef');
+const utageBadgeTipPos = ref<{ mode: 'tooltip' | 'sheet'; top: number; left: number; right?: number; placement: 'below' | 'above'; arrowLeft: number } | null>(null);
+function updateUtageBadgeTipPos() {
+	if (!utageBadgeRef.value) return;
+	// 旗鯖fork: スマホ(画面狭幅)はバッジ追従ではなく画面下部にシート表示する。
+	// モバイルブラウザのアドレスバー伸縮や visualViewport との座標系違いで
+	// fixed の座標が安定しないため、画面下部固定の方が確実に見えて押せる。
+	const MOBILE_BREAKPOINT = 600;
+	if (window.innerWidth < MOBILE_BREAKPOINT) {
+		utageBadgeTipPos.value = {
+			mode: 'sheet',
+			top: 0, left: 0, // sheet モードでは未使用(CSSで bottom 固定)
+			placement: 'below', arrowLeft: 0, // sheet モードでは未使用(矢印非表示)
+		};
+		return;
+	}
+	const rect = (utageBadgeRef.value as HTMLElement).getBoundingClientRect();
+	// 吹き出し最大幅(CSSのmax-widthと一致させる) + 画面端マージン
+	const tipMaxWidth = Math.min(300, window.innerWidth - 48);
+	const margin = 8;
+	// 左端基準で配置するが、右端を超えそうなら左に寄せる
+	let left = rect.left;
+	if (left + tipMaxWidth + margin > window.innerWidth) {
+		left = Math.max(margin, window.innerWidth - tipMaxWidth - margin);
+	}
+	// 吹き出しの予想高さ(content + padding + footer = 約230px、長文時は350px程度)。
+	// 余裕を見て 260px 確保できなければ「上出し」に切り替える。
+	const estimatedTipHeight = 260;
+	const spaceBelow = window.innerHeight - rect.bottom;
+	const spaceAbove = rect.top;
+	let top: number;
+	let placement: 'below' | 'above';
+	if (spaceBelow >= estimatedTipHeight + 10 || spaceBelow >= spaceAbove) {
+		// 下に十分な余白がある or 下の方が広い → 下出し
+		top = rect.bottom + 10;
+		placement = 'below';
+	} else {
+		// 下に余裕無し+上の方が広い → 上出し
+		top = rect.top - estimatedTipHeight - 10;
+		if (top < margin) top = margin;
+		placement = 'above';
+	}
+	// 矢印はバッジの中心を指すよう、吹き出しの左端からのオフセットを動的計算する。
+	const badgeCenterX = rect.left + rect.width / 2;
+	const arrowSize = 10;
+	let arrowLeft = badgeCenterX - left - arrowSize / 2;
+	const arrowMin = 12;
+	const arrowMax = tipMaxWidth - 12 - arrowSize;
+	arrowLeft = Math.max(arrowMin, Math.min(arrowMax, arrowLeft));
+	utageBadgeTipPos.value = { mode: 'tooltip', top, left, placement, arrowLeft };
+}
+function dismissUtageBadgeTip() {
+	utageBadgeTipVisible.value = false;
+	// 二度と出さないため preference に記録(preferはマルチデバイス同期されるため媒体問わず通算1回)
+	if (!prefer.s['simpleUi.utageBadgeTipShown']) {
+		prefer.commit('simpleUi.utageBadgeTipShown', true);
+	}
+}
+// スクロール時は座標再計算(または閉じる)。リサイズも同様。
+function onUtageScrollOrResize() {
+	if (!utageBadgeTipVisible.value) return;
+	updateUtageBadgeTipPos();
+}
 const rootEl = useTemplateRef('rootEl');
 const bannerEl = useTemplateRef('bannerEl');
 const memoTextareaEl = useTemplateRef('memoTextareaEl');
@@ -395,6 +493,19 @@ function disposeBannerParallaxResizeObserver() {
 onMounted(() => {
 	narrow.value = rootEl.value!.clientWidth < 1000;
 
+	// 旗鯖fork: 宴成功バッジの初回アナウンス吹き出し。
+	// 自分/他人どちらのプロフィールでも、preferが未表示(false)なら1回だけ出す。
+	// 次のtickまで遅らせて、ページ遷移直後の連続描画と衝突しないようにする。
+	if (!prefer.s['simpleUi.utageBadgeTipShown']) {
+		nextTick(() => {
+			updateUtageBadgeTipPos();
+			utageBadgeTipVisible.value = true;
+		});
+	}
+	// 吹き出し表示中のスクロール/リサイズで座標を追従する
+	window.addEventListener('scroll', onUtageScrollOrResize, { passive: true, capture: true });
+	window.addEventListener('resize', onUtageScrollOrResize, { passive: true });
+
 	if (props.user.birthday) {
 		const m = new Date().getMonth() + 1;
 		const d = new Date().getDate();
@@ -435,6 +546,11 @@ onActivated(() => {
 });
 
 onUnmounted(disposeBannerParallaxResizeObserver);
+// 旗鯖fork: 宴バッジ吹き出しのscroll/resizeリスナーを解除
+onUnmounted(() => {
+	window.removeEventListener('scroll', onUtageScrollOrResize, { capture: true } as any);
+	window.removeEventListener('resize', onUtageScrollOrResize);
+});
 onDeactivated(disposeBannerParallaxResizeObserver);
 </script>
 
@@ -651,6 +767,49 @@ onDeactivated(disposeBannerParallaxResizeObserver);
 						background: transparent;
 						font-family: inherit;
 					}
+				}
+
+				/* 旗鯖fork: 宴の成功回数バッジ用ラッパー(吹き出しの位置基準) */
+				> .utageSuccessWrapper {
+					position: relative;
+					margin: 16px 24px 0 154px;
+					display: inline-block;
+
+					/* 宴の成功回数バッジ(目立つグラデーション枠) - もう一段小さめに */
+					> .utageSuccessBadge {
+						padding: 5px 10px;
+						display: inline-flex;
+						align-items: center;
+						gap: 5px;
+						font-size: 0.78em;
+						font-weight: 600;
+						color: var(--MI_THEME-fg);
+						background: linear-gradient(135deg, color-mix(in srgb, var(--MI_THEME-accent) 18%, transparent), color-mix(in srgb, var(--MI_THEME-accent) 8%, transparent));
+						border: 1.5px solid color-mix(in srgb, var(--MI_THEME-accent) 45%, transparent);
+						border-radius: 999px;
+						box-shadow: 0 2px 8px color-mix(in srgb, var(--MI_THEME-accent) 12%, transparent);
+
+						> .utageSuccessIcon {
+							font-size: 1em;
+							color: var(--MI_THEME-accent);
+						}
+						> .utageSuccessLabel {
+							opacity: 0.85;
+						}
+						> .utageSuccessCount {
+							font-size: 1em;
+							font-weight: 800;
+							color: var(--MI_THEME-accent);
+							font-variant-numeric: tabular-nums;
+						}
+						> .utageSuccessUnit {
+							opacity: 0.7;
+							font-size: 0.85em;
+						}
+					}
+
+					/* 旗鯖fork: 吹き出し本体(.utageGlobalTip*) は Teleport で body 直下に出るため、
+					   scoped CSS では効かない。<style>(scopedなし)ブロックでグローバル定義している。 */
 				}
 
 				> .description {
@@ -904,5 +1063,116 @@ onDeactivated(disposeBannerParallaxResizeObserver);
 .verifiedLink {
 	margin-left: 4px;
 	color: var(--MI_THEME-success);
+}
+</style>
+
+<style lang="scss">
+/* 旗鯖fork: 宴成功バッジの初回アナウンス吹き出し。
+   <Teleport to="body"> で body 直下に出すため scoped CSS が効かないので、
+   グローバルスコープでユニークなクラス名(.utageGlobalTip*)を使って定義する。 */
+.utageGlobalTip {
+	position: fixed;
+	z-index: 9999;
+	max-width: min(300px, calc(100vw - 48px));
+	min-width: 180px;
+	background: var(--MI_THEME-panel);
+	border: 1.5px solid color-mix(in srgb, var(--MI_THEME-accent) 50%, transparent);
+	border-radius: 10px;
+	box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+	padding: 10px 12px 8px;
+	animation: utageGlobalTipFadeIn 0.25s ease-out;
+
+	/* 旗鯖fork: スマホ時(画面下部シート表示)。バッジ追従ではなく画面下端固定。
+	   モバイルの座標系のブレ(visualViewport/アドレスバー伸縮)を完全に回避できる。 */
+	&.utageGlobalTipSheet {
+		top: auto !important;
+		left: 16px !important;
+		right: 16px;
+		bottom: 16px;
+		max-width: none;
+		min-width: 0;
+		padding: 14px 16px 12px;
+		border-radius: 14px;
+		box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.2);
+		animation: utageGlobalTipSheetSlideUp 0.3s ease-out;
+	}
+
+	> .utageGlobalTipArrow {
+		position: absolute;
+		/* left はJSから動的指定される(バッジ中心に追従) */
+		width: 10px;
+		height: 10px;
+		background: var(--MI_THEME-panel);
+	}
+	/* 下出し時: 矢印は吹き出しの上端で上向き */
+	&.utageGlobalTipBelow > .utageGlobalTipArrow {
+		top: -6px;
+		border-top: 1.5px solid color-mix(in srgb, var(--MI_THEME-accent) 50%, transparent);
+		border-left: 1.5px solid color-mix(in srgb, var(--MI_THEME-accent) 50%, transparent);
+		transform: rotate(45deg);
+	}
+	/* 上出し時: 矢印は吹き出しの下端で下向き */
+	&.utageGlobalTipAbove > .utageGlobalTipArrow {
+		bottom: -6px;
+		border-bottom: 1.5px solid color-mix(in srgb, var(--MI_THEME-accent) 50%, transparent);
+		border-right: 1.5px solid color-mix(in srgb, var(--MI_THEME-accent) 50%, transparent);
+		transform: rotate(45deg);
+	}
+	> .utageGlobalTipBody {
+		display: flex;
+		gap: 6px;
+		align-items: flex-start;
+		font-size: 0.85em;
+		line-height: 1.5;
+		color: var(--MI_THEME-fg);
+
+		> .utageGlobalTipIcon {
+			flex-shrink: 0;
+			font-size: 1.15em;
+			color: var(--MI_THEME-accent);
+			margin-top: 1px;
+		}
+		> .utageGlobalTipText {
+			flex: 1;
+			min-width: 0;
+			word-break: break-word;
+
+			b {
+				display: block;
+				margin-bottom: 3px;
+				font-size: 1em;
+			}
+		}
+	}
+	> .utageGlobalTipFooter {
+		margin-top: 8px;
+		text-align: center;
+
+		> .utageGlobalTipBtn {
+			padding: 5px 18px;
+			background: var(--MI_THEME-accent);
+			color: var(--MI_THEME-fgOnAccent);
+			border: none;
+			border-radius: 999px;
+			font-size: 0.85em;
+			font-weight: 700;
+			cursor: pointer;
+			font-family: inherit;
+			transition: opacity 0.15s;
+
+			&:hover {
+				opacity: 0.85;
+			}
+		}
+	}
+}
+
+@keyframes utageGlobalTipFadeIn {
+	from { opacity: 0; transform: translateY(-4px); }
+	to { opacity: 1; transform: translateY(0); }
+}
+@keyframes utageGlobalTipSheetSlideUp {
+	from { opacity: 0; transform: translateY(12px); }
+	to { opacity: 1; transform: translateY(0); }
 }
 </style>
