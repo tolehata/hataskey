@@ -64,7 +64,7 @@ const _history_ = ref<{ path: string; }[]>([{
 }]);
 const buttonsLeft = computed(() => {
 	return _history_.value.length > 1 ? [{
-		icon: 'ti ti-arrow-left',
+		icon: 'ti ti-chevron-left',
 		title: i18n.ts.goBack,
 		onClick: back,
 	}] : [];
