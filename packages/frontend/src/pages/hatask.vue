@@ -918,8 +918,10 @@ router.push('/');
 
 // ========== NOTIFICATION SYSTEM (Misskey API) ==========
 const notifTimerIds:number[]=[];
-async function sendNotification(header:string,body:string,icon?:string){
-try{await misskeyApi('notifications/create',{body,header:header||null,icon:icon||null});return true}catch(e){console.warn('Hatask notification error:',e);return false}
+// 旗鯖fork: 第4引数 link でクリック先パスを指定可能(デフォルト '/hatask' = 全hatask通知をhataskページに飛ばす)。
+// 呼び出し側で別のパスに飛ばしたい場合のみ link を明示すればよい。
+async function sendNotification(header:string,body:string,icon?:string,link:string='/hatask'){
+try{await misskeyApi('notifications/create',{body,header:header||null,icon:icon||null,link:link||null});return true}catch(e){console.warn('Hatask notification error:',e);return false}
 }
 async function sendTestNotification(){
 try{await misskeyApi('notifications/test-notification',{});os.toast('テスト通知を送信しました')}catch(e){console.warn('Test notification error:',e);os.toast('通知の送信に失敗しました')}
