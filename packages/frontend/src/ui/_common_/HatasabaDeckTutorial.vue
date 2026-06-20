@@ -84,6 +84,7 @@ import { ref, shallowRef } from 'vue';
 import MkModalWindow from '@/components/MkModalWindow.vue';
 import MkButton from '@/components/MkButton.vue';
 import { prefer } from '@/preferences.js';
+import { claimAchievement } from '@/utility/achievements.js';
 
 const emit = defineEmits<{
 	(ev: 'closed'): void;
@@ -119,12 +120,16 @@ function applyAll() {
 function finish() {
 	applyAll();
 	prefer.commit('simpleUi.deckTutorialDone', true);
+	// 旗鯖fork: チュートリアル完了で実績解除(冪等)
+	claimAchievement('hatasabaDeckTutorial');
 	dialog.value?.close();
 }
 
 function skip() {
 	// スキップでも完了フラグは立てる(毎回出ないように)。設定は変更しない。
 	prefer.commit('simpleUi.deckTutorialDone', true);
+	// 旗鯖fork: スキップも「完了」とみなして実績解除(完了フラグと挙動を揃える)
+	claimAchievement('hatasabaDeckTutorial');
 	dialog.value?.close();
 }
 </script>
