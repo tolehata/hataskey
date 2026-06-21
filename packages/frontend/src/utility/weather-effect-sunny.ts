@@ -25,8 +25,8 @@
 export class SunnyEffect {
 	// ===== 健康配慮のハードガード定数(安易に変更しないこと) =====
 	private static readonly FADE_MS = 2000;          // フェード時間
-	private static readonly GLOW_ALPHA = 0.56;       // レンズフレア中心の最大不透明度
-	private static readonly RAY_ALPHA = 0.32;        // 光芒の最大不透明度
+	private static readonly GLOW_ALPHA = 0.62;       // レンズフレア中心の最大不透明度
+	private static readonly RAY_ALPHA = 0.38;        // 光芒の最大不透明度
 	private static readonly DUST_ALPHA = 0.72;       // 光の粒の最大不透明度
 	private static readonly DUST_COUNT = 44;         // 漂う光の粒の数
 	private static readonly PULSE_PERIOD_MS = 9000;  // 脈動の周期(約9秒 = 明滅とは無縁の緩やかさ)
@@ -167,7 +167,7 @@ export class SunnyEffect {
 		this.rays = [];
 		for (let i = 0; i < SunnyEffect.RAY_COUNT; i++) {
 			this.rays.push({
-				angle: this.rand(Math.PI * 0.55, Math.PI * 0.95), // 右上光源から左下方向へ広がる帯
+				angle: this.rand(Math.PI * 0.5, Math.PI * 0.92), // 画面外右上の光源から下〜左下へ広がる帯
 				width: this.rand(0.04, 0.12),
 				lenScale: this.rand(0.7, 1.1),
 			});
@@ -186,7 +186,9 @@ export class SunnyEffect {
 
 	// 光源の位置(右上の隅やや外側)
 	private get sunX() { return this.widthCss * 0.82; }
-	private get sunY() { return this.heightCss * 0.1; }
+	// 光が集まる収束点(中心)が画面内に見えないよう、画面上端より外(マイナス)に置く。
+	// これで「画面外の上から光が射し込む」自然な見た目になる。
+	private get sunY() { return -this.heightCss * 0.18; }
 
 	// 旗鯖fork: マウス影divの位置と向きを更新する。
 	// 光源(右上)からポインタへ向かう方向に影を伸ばす(=ポインタの後ろ=左下に影が出る)。
@@ -266,10 +268,10 @@ export class SunnyEffect {
 		// ---- レンズフレア本体(放射状グラデ) ----
 		const glow = ctx.createRadialGradient(sx, sy, 0, sx, sy, maxR);
 		const ga = SunnyEffect.GLOW_ALPHA * pulse;
-		glow.addColorStop(0, `rgba(255,240,200,${ga})`);
-		glow.addColorStop(0.25, `rgba(255,230,170,${ga * 0.4})`);
-		glow.addColorStop(0.6, `rgba(255,228,160,${ga * 0.1})`);
-		glow.addColorStop(1, 'rgba(255,228,160,0)');
+		glow.addColorStop(0, `rgba(255,205,110,${ga})`);
+		glow.addColorStop(0.25, `rgba(255,190,90,${ga * 0.5})`);
+		glow.addColorStop(0.6, `rgba(255,180,80,${ga * 0.15})`);
+		glow.addColorStop(1, 'rgba(255,180,80,0)');
 		ctx.fillStyle = glow;
 		ctx.fillRect(0, 0, w, h);
 
@@ -285,8 +287,8 @@ export class SunnyEffect {
 			const a1 = ray.angle + ray.width + waver;
 			const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, len);
 			const ra = SunnyEffect.RAY_ALPHA * pulse * ray.lenScale;
-			grad.addColorStop(0, `rgba(255,244,210,${ra})`);
-			grad.addColorStop(1, 'rgba(255,244,210,0)');
+			grad.addColorStop(0, `rgba(255,200,100,${ra})`);
+			grad.addColorStop(1, 'rgba(255,200,100,0)');
 			ctx.fillStyle = grad;
 			ctx.beginPath();
 			ctx.moveTo(0, 0);
