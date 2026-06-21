@@ -1013,6 +1013,45 @@ export const PREF_DEF = definePreferences({
 	// ======== シンプルUI設定ここまで ========
 	//#endregion
 
+	// ======== 旗鯖fork: 天気エフェクト (weatherEffect) ========
+	// ノート本文の「雨」「雪」などの単語に応じて、タイムラインの背景に控えめな天気演出を出す機能。
+	// 光過敏症(光感受性てんかん)への配慮を最優先し、デフォルトはOFF。強い明滅・点滅は一切行わない。
+	// 機能全体のON/OFF。デフォルトON。初回エフェクト発火時にチュートリアルで無効化方法を案内する。
+	// 光や動きに敏感な人向けに、OSの prefers-reduced-motion: reduce 設定時は描画側で自動的に動きを止める。
+	'weatherEffect.enabled': {
+		default: true,
+	},
+	// 表示スコープ。'note' = 該当ノートが画面内にある間だけ控えめに表示、'global' = しっかり全体表示。
+	// ※ Step1では両モードとも「TL全体に1枚レイヤー」を敷き、強度・面積で差をつける実装。
+	'weatherEffect.scope': {
+		default: 'note' as 'note' | 'global',
+	},
+	// 粒子の強度(=量)。minimal=控えめ / moderate=標準 / lively=多め。
+	'weatherEffect.intensity': {
+		default: 'moderate' as 'minimal' | 'moderate' | 'lively',
+	},
+	// OSの「視差効果を減らす」(prefers-reduced-motion: reduce)に追従するか。デフォルトON(安全側)。
+	'weatherEffect.respectReducedMotion': {
+		default: true,
+	},
+	// 各天気種別の初回チップス表示済みフラグ(端末ローカル)。初めてそのエフェクトが発火した時に説明を出す。
+	'weatherEffect.firstTipShown.rain': {
+		default: false,
+	},
+	'weatherEffect.firstTipShown.heavyRain': {
+		default: false,
+	},
+	'weatherEffect.firstTipShown.snow': {
+		default: false,
+	},
+	'weatherEffect.firstTipShown.sunny': {
+		default: false,
+	},
+	'weatherEffect.firstTipShown.windy': {
+		default: false,
+	},
+	// ======== 天気エフェクトここまで ========
+
 	// ======== フォント設定 ========
 	'hataFont.id': {
 		default: 'zen-kaku' as 'zen-kaku' | 'm-plus-1p' | 'dotgothic16' | 'train-one' | 'ibm-plex-sans-jp' | 'custom' | 'system',

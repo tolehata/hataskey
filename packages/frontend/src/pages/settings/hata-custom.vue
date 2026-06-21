@@ -290,7 +290,7 @@ SPDX-License-Identifier: AGPL-3.0-only
                     <option value="global">しっかり（タイムライン全体）</option>
                 </MkRadios>
                 <div style="font-size:.82em;color:var(--MI_THEME-warn);padding:8px 10px;border:1px solid var(--MI_THEME-divider);border-radius:8px;background:var(--MI_THEME-panel);">
-                    ※ 現在は「雪」「雨」に対応しています（日差しは順次追加予定）。<br>
+                    ※ ノート本文の「雨」「雪」「晴れ」などの単語に応じて演出が変わります。<br>
                     ※ 演出は控えめに作っていますが、光や動きに少しでも違和感を覚えた場合は、すぐにこの設定をOFFにしてください。雷など強い閃光を伴う演出は安全のため実装していません。
                 </div>
             </div>

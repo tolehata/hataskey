@@ -5,6 +5,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <template>
 <div
+	data-htk-weather-postform
 	:class="[$style.root, { [$style.modal]: modal, _popup: modal && (!prefer.s.useBlurEffect || !prefer.s.useBlurEffectForModal || !prefer.s.removeModalBgColorForBlur), _popupAcrylic: modal && prefer.s.useBlurEffect && prefer.s.useBlurEffectForModal && prefer.s.removeModalBgColorForBlur }]"
 	@dragover.stop="onDragover"
 	@dragenter="onDragenter"

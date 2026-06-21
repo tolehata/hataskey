@@ -81,7 +81,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
             <!-- 下部: 投稿 + アカウント (固定) -->
             <div :class="$style.sbBottom">
-                <button :class="$style.sbPostBtn" @click="onPostClick">
+                <button :class="$style.sbPostBtn" data-cy-open-post-form @click="onPostClick">
                     <i class="ti ti-pencil"></i>
                 </button>
                 <!-- 旗鯖fork: デッキモード切替トグル (アカウント表示の上) -->
@@ -130,7 +130,7 @@ SPDX-License-Identifier: AGPL-3.0-only
             <div :class="$style.topNavDivider"></div>
             <button v-if="deckActive" :class="$style.topNavItem" v-tooltip="'デッキ設定'" @click="globalEvents.emit('toggleDeckToolbar')"><i class="ti ti-layout-board"></i><span>デッキ</span></button>
             <button :class="$style.topNavItem" v-tooltip="'設定'" @click="goToSettings"><i class="ti ti-settings"></i><span>設定</span></button>
-            <button :class="$style.topNavPost" v-tooltip="'ノート'" @click="onPostClick"><i class="ti ti-pencil"></i><span>ノート</span></button>
+            <button :class="$style.topNavPost" data-cy-open-post-form v-tooltip="'ノート'" @click="onPostClick"><i class="ti ti-pencil"></i><span>ノート</span></button>
             <button :class="$style.topNavAvatar" @click="openAccountMenu"><MkAvatar v-if="$i" :user="$i" :class="$style.topNavAvatarImg"/></button>
         </nav>
         <!-- Top pill navbar (timeline tabs) - scroll reactive -->
@@ -204,7 +204,7 @@ SPDX-License-Identifier: AGPL-3.0-only
         </div>
 
         <!-- 通常TL: ナビバー（モバイルのみ） -->
-        <div :class="[$style.bottomBar, footerIsDark ? $style.bottomBarDark : $style.bottomBarLight, { [$style.bottomBarHidden]: !showBottomBar || widgetsShowing }]" v-show="!isDesktop && !isHataskPage && !isExternalTab && (!isPageView || bottomNavHasPage) && !userPanelUserId">
+        <div data-htk-weather-footer :class="[$style.bottomBar, footerIsDark ? $style.bottomBarDark : $style.bottomBarLight, { [$style.bottomBarHidden]: !showBottomBar || widgetsShowing }]" v-show="!isDesktop && !isHataskPage && !isExternalTab && (!isPageView || bottomNavHasPage) && !userPanelUserId">
             <button v-if="!isDesktop" :class="$style.sideBtn" @click="simpleDrawerShowing = true"><i class="ti ti-menu-2"></i></button>
             <div :class="$style.navPill">
                 <template v-for="item in visibleBottomNav" :key="item.id">
@@ -221,12 +221,12 @@ SPDX-License-Identifier: AGPL-3.0-only
                     <button v-else-if="item.id==='widgets'" @click="widgetsShowing = true" :class="$style.navBtn"><i class="ti ti-apps"></i></button>
                 </template>
             </div>
-            <button v-if="!isPageView" :class="$style.sideBtn" @click="onPostClick"><i class="ti ti-pencil"></i></button>
+            <button v-if="!isPageView" :class="$style.sideBtn" data-cy-open-post-form @click="onPostClick"><i class="ti ti-pencil"></i></button>
             <div v-else style="width:48px;"></div>
         </div>
 
         <!-- 外部TL: 投稿 & 通知ボタン（モバイルのみ） -->
-        <div :class="[$style.bottomBar, footerIsDark ? $style.bottomBarDark : $style.bottomBarLight, { [$style.bottomBarHidden]: !showBottomBar }]" v-show="!isDesktop && isExternalTab && !isPageView && !userPanelUserId">
+        <div data-htk-weather-footer :class="[$style.bottomBar, footerIsDark ? $style.bottomBarDark : $style.bottomBarLight, { [$style.bottomBarHidden]: !showBottomBar }]" v-show="!isDesktop && isExternalTab && !isPageView && !userPanelUserId">
             <button v-if="!isDesktop" :class="$style.sideBtn" @click="simpleDrawerShowing = true"><i class="ti ti-menu-2"></i></button>
             <div :class="$style.navPill">
                 <!-- 旗鯖fork: 外部通知ボタン (連携ON時のみ)。通知→ノート作成の順で横一列。
