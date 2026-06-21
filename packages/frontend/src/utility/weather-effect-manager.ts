@@ -20,13 +20,23 @@
  */
 
 import { WeatherEffect } from '@/utility/weather-effect.js';
+import { RainEffect } from '@/utility/weather-effect-rain.js';
 import type { WeatherKind } from '@/utility/weather-effect-detector.js';
+
+// 雪(WeatherEffect)と雨(RainEffect)を統一的に扱うための共通インターフェース。
+// どちらも同じ4メソッドを持つ。
+interface IWeatherEffect {
+	render(): unknown;
+	fadeIn(): void;
+	fadeOut(onComplete?: () => void): void;
+	stop(): void;
+}
 
 class WeatherEffectManager {
 	private current: WeatherKind | null = null;
-	private effect: WeatherEffect | null = null;
+	private effect: IWeatherEffect | null = null;
 	// フェードアウト中の古いインスタンス(破棄待ち)。多重発火時の取りこぼし防止。
-	private retiring: WeatherEffect | null = null;
+	private retiring: IWeatherEffect | null = null;
 	private enabled = false;
 
 	/**
@@ -55,16 +65,21 @@ class WeatherEffectManager {
 
 		if (kind == null) return;
 
-		// Step A: snow のみ対応。それ以外は今は何もしない(将来ここに rain/sunny を追加)。
-		if (kind !== 'snow') return;
-
 		try {
-			const effect = new WeatherEffect({}); // {} = 雪モード(本家準拠)
+			let effect: IWeatherEffect | null = null;
+			if (kind === 'snow') {
+				effect = new WeatherEffect({}); // {} = 雪モード(本家準拠/WebGL)
+			} else if (kind === 'rain') {
+				effect = new RainEffect();      // 雨(自前2D Canvas)
+			} else {
+				// sunny は未対応(Step C予定)。何もしない。
+				return;
+			}
 			effect.render();
 			effect.fadeIn();
 			this.effect = effect;
 		} catch (error) {
-			// WebGL が使えない等で失敗しても、TLの動作には影響させない
+			// WebGL/Canvas が使えない等で失敗しても、TLの動作には影響させない
 			// eslint-disable-next-line no-console
 			console.error('Failed to start weather effect:', error);
 			this.effect = null;
