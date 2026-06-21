@@ -7,7 +7,7 @@
 Hataskey は、[CherryPick](https://github.com/kokonect-link/cherrypick)（Misskey フォーク）をベースに、旗鯖向けの独自機能を多数追加したフォークです。
 
 - **ベースバージョン**: Misskey 2026.5.4（CherryPick ベース）
-- **最新リリース**: [hata-11.4.5](https://github.com/tolehata/hataskey/releases/tag/hata-11.4.5)
+- **最新リリース**: [hata-11.6](https://github.com/tolehata/hataskey/releases/tag/hata-11.4.5)
 - **チェンジログ**: [HATA-CHANGELOG.md](./HATA-CHANGELOG.md)
 - **チェンジログ（Web・現在更新停止中）**: [home.tolehata.net/changelog](https://home.tolehata.net/changelog)
 
