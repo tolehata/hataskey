@@ -362,7 +362,10 @@ export async function mainBoot() {
 		}
 
 		const modifiedVersionMustProminentlyOfferInAgplV3Section13Read = miLocalStorage.getItem('modifiedVersionMustProminentlyOfferInAgplV3Section13Read');
-		if (modifiedVersionMustProminentlyOfferInAgplV3Section13Read !== 'true' && instance.repositoryUrl !== 'https://github.com/kokonect-link/cherrypick') {
+		// 旗鯖fork: 無改変とみなす公式リポジトリURLは tolehata/hataskey。
+		// これと一致する場合は「無改変版」とみなしAGPL第13条のソース開示ポップアップを出さない。
+		// (about-misskey.vue の判定と値を揃えること)
+		if (modifiedVersionMustProminentlyOfferInAgplV3Section13Read !== 'true' && instance.repositoryUrl !== 'https://github.com/tolehata/hataskey') {
 			const { dispose } = popup(defineAsyncComponent(() => import('@/components/MkSourceCodeAvailablePopup.vue')), {}, {
 				closed: () => dispose(),
 			});
