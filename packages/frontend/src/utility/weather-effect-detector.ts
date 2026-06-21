@@ -18,7 +18,7 @@
  *   - 予測可能でシンプル。ユーザーが文末に書いた現在の天気が反映されやすい。
  */
 
-export type WeatherKind = 'rain' | 'heavyRain' | 'snow' | 'sunny' | 'windy';
+export type WeatherKind = 'rain' | 'heavyRain' | 'snow' | 'sunny' | 'windy' | 'shootingStar';
 
 // 各天気種別の検出パターン。漢字+英語のみに絞り、ひらがな単独マッチは避ける。
 // 注意: heavyRain は rain より前に置き、「土砂降り」「豪雨」等を通常の雨より優先して判定する。
@@ -27,9 +27,25 @@ const WEATHER_PATTERNS: { kind: WeatherKind; regex: RegExp }[] = [
 	{ kind: 'heavyRain', regex: /土砂降り|豪雨|大雨|暴風雨|ゲリラ豪雨|集中豪雨|どしゃ降り|heavy rain|downpour|torrential/i },
 	{ kind: 'rain', regex: /雨|霧雨|小雨|夕立|rain|rainy/i },
 	{ kind: 'snow', regex: /雪|吹雪|降雪|snow|snowy/i },
-	{ kind: 'sunny', regex: /晴れ|晴天|快晴|日差し|陽射し|日射し|ピーカン|sunny|clear sky/i },
+	// 夜・おやすみ系 → 流れ星。「夜」単体は誤爆しやすい(今夜/夜中など)ので、就寝の挨拶に絞る。
+	{ kind: 'shootingStar', regex: /いい夜|良い夜|おやすみ|お休み|安らかな夜|流れ星|流星|sleep|oyasumi|good night|goodnight/i },
+	// 朝の挨拶・晴天系 → 日差し。
+	{ kind: 'sunny', regex: /おはよう|お早う|晴れ|晴天|快晴|日差し|陽射し|日射し|ピーカン|sunny|clear sky|good morning|ohayou/i },
 	{ kind: 'windy', regex: /強風|風が強い|風強い|暴風|突風|木枯らし|こがらし|windy|gale|gusty/i },
 ];
+
+// 挨拶(朝/就寝)由来かどうかの判定用パターン。
+// 挨拶で発動した演出は一過性が自然なので、長さ設定に関わらず短時間で消す。
+const GREETING_REGEX = /おはよう|お早う|good morning|ohayou|いい夜|良い夜|おやすみ|お休み|安らかな夜|oyasumi|good night|goodnight/i;
+
+/**
+ * テキストが朝/就寝の挨拶を含むか。
+ * (「晴れ」「雨」等の純粋な天気ワードだけの場合は false)
+ */
+export function isGreetingText(text: string | null | undefined): boolean {
+	if (text == null || text.length === 0) return false;
+	return GREETING_REGEX.test(text);
+}
 
 /**
  * テキストから天気種別を検出する。

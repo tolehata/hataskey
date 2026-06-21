@@ -114,7 +114,7 @@ import { scrollToVisibility } from '@/utility/scroll-to-visibility.js';
 import MkNoteMediaGrid from '@/components/MkNoteMediaGrid.vue';
 // 旗鯖fork: 天気エフェクト(weatherEffect)。DOMには触らず、検出した天気をマネージャに通知するのみ。
 import { getWeatherEffectManager } from '@/utility/weather-effect-manager.js';
-import { detectWeather, buildWeatherDetectText } from '@/utility/weather-effect-detector.js';
+import { detectWeather, buildWeatherDetectText, isGreetingText } from '@/utility/weather-effect-detector.js';
 import type { WeatherKind } from '@/utility/weather-effect-detector.js';
 import { haptic, hapticConfirm } from '@/utility/haptic.js';
 
@@ -334,33 +334,45 @@ if (props.src === 'antenna') {
 // 実際の描画は本家由来の body直下fixed canvas が行う(TLレイアウトに影響しない)。
 const weatherEffectEnabled = computed(() => prefer.r['weatherEffect.enabled']?.value ?? false);
 const weatherEffectScope = computed(() => prefer.r['weatherEffect.scope']?.value ?? 'note');
+const weatherEffectDuration = computed(() => prefer.r['weatherEffect.duration']?.value ?? 'long');
 
 // 読み込まれているノート群から現在の天気を集計する。
 // scope='global' は先頭30件、'note' は先頭8件(直近の話題)を見る。
-const currentWeather = computed<WeatherKind | null>(() => {
-	if (!weatherEffectEnabled.value) return null;
-	if (props.src === 'media') return null; // メディア一覧では出さない
+// 戻り値は { kind, ephemeral }。ephemeral=true なら短時間で自動的に消す。
+//  - 挨拶(おはよう/おやすみ等)由来は常に短命。
+//  - それ以外でも、演出の長さ設定が 'short' なら短命。
+const currentWeatherInfo = computed<{ kind: WeatherKind | null; ephemeral: boolean }>(() => {
+	if (!weatherEffectEnabled.value) return { kind: null, ephemeral: false };
+	if (props.src === 'media') return { kind: null, ephemeral: false }; // メディア一覧では出さない
 	const items = paginator.items.value;
-	if (items.length === 0) return null;
+	if (items.length === 0) return { kind: null, ephemeral: false };
 	const lookahead = weatherEffectScope.value === 'global' ? 30 : 8;
 	const slice = items.slice(0, lookahead);
 	for (const note of slice) {
-		const w = detectWeather(buildWeatherDetectText(note));
-		if (w != null) return w;
+		const text = buildWeatherDetectText(note);
+		const w = detectWeather(text);
+		if (w != null) {
+			// 挨拶由来 or 演出の長さ=short のとき短命にする
+			const ephemeral = isGreetingText(text) || weatherEffectDuration.value === 'short';
+			return { kind: w, ephemeral };
+		}
 	}
-	return null;
+	return { kind: null, ephemeral: false };
 });
+
+// 天気種別だけを取り出した computed(watchの比較を単純にするため)。
+const currentWeather = computed<WeatherKind | null>(() => currentWeatherInfo.value.kind);
 
 // enabledの変化をマネージャに反映
 watch(weatherEffectEnabled, (en) => {
 	getWeatherEffectManager().setEnabled(en);
 	// 有効化直後は現在の天気をすぐ反映
-	if (en) getWeatherEffectManager().setWeather(currentWeather.value);
+	if (en) getWeatherEffectManager().setWeather(currentWeatherInfo.value.kind, currentWeatherInfo.value.ephemeral);
 }, { immediate: true });
 
 // 天気の変化をマネージャに通知
 watch(currentWeather, (w) => {
-	getWeatherEffectManager().setWeather(w);
+	getWeatherEffectManager().setWeather(w, currentWeatherInfo.value.ephemeral);
 });
 
 // このTLが破棄される時はエフェクトも片付ける(別画面に持ち越さない)

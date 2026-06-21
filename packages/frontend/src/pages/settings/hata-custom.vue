@@ -284,13 +284,14 @@ SPDX-License-Identifier: AGPL-3.0-only
                 <template #caption>ノート本文に「雨」「雪」「晴れ」などの単語が含まれていると、タイムラインの背景に控えめな天気演出を表示します。光過敏症に配慮し、強い明滅や点滅は行いません。デフォルトはOFFです。</template>
             </MkSwitch>
             <div v-if="weatherEffectEnabled" class="_gaps_s" style="margin-top:10px;">
-                <div style="font-weight:bold;margin-bottom:8px;">表示範囲</div>
-                <MkRadios v-model="weatherEffectScope">
-                    <option value="note">控えめ（該当ノートが画面内にある間だけ）</option>
-                    <option value="global">しっかり（タイムライン全体）</option>
+                <div style="font-weight:bold;margin-bottom:8px;">演出の長さ</div>
+                <MkRadios v-model="weatherEffectDuration">
+                    <option value="long">長め（該当する単語のノートがある間ずっと表示）</option>
+                    <option value="short">短め（出てから約10秒で消える）</option>
                 </MkRadios>
                 <div style="font-size:.82em;color:var(--MI_THEME-warn);padding:8px 10px;border:1px solid var(--MI_THEME-divider);border-radius:8px;background:var(--MI_THEME-panel);">
                     ※ ノート本文の「雨」「雪」「晴れ」などの単語に応じて演出が変わります。<br>
+                    ※「おはよう」「おやすみ」などの挨拶で出る演出は、この設定に関わらず約10秒で消えます。<br>
                     ※ 演出は控えめに作っていますが、光や動きに少しでも違和感を覚えた場合は、すぐにこの設定をOFFにしてください。雷など強い閃光を伴う演出は安全のため実装していません。
                 </div>
             </div>
@@ -615,6 +616,7 @@ const classicNoteSpacing = prefer.model('simpleUi.classicNoteSpacing');
 // 旗鯖fork: 天気エフェクト(weatherEffect)
 const weatherEffectEnabled = prefer.model('weatherEffect.enabled');
 const weatherEffectScope = prefer.model('weatherEffect.scope');
+const weatherEffectDuration = prefer.model('weatherEffect.duration');
 
 // Misskey UIの吹き出しを無効化した場合、従来のMisskey風投稿間隔は使えなくなるため、
 // 一旦OFFに落としつつ、元の値を記憶。再度吹き出しを有効化したら元に戻す。

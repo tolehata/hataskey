@@ -23,6 +23,7 @@ import { WeatherEffect } from '@/utility/weather-effect.js';
 import { RainEffect } from '@/utility/weather-effect-rain.js';
 import { SunnyEffect } from '@/utility/weather-effect-sunny.js';
 import { WindyEffect } from '@/utility/weather-effect-windy.js';
+import { ShootingStarEffect } from '@/utility/weather-effect-shootingstar.js';
 import { prefer } from '@/preferences.js';
 import type { WeatherKind } from '@/utility/weather-effect-detector.js';
 
@@ -35,8 +36,12 @@ interface IWeatherEffect {
 	stop(): void;
 }
 
+// 短命演出(挨拶由来 or 演出の長さ=短い)が自動で消えるまでの時間。
+const EPHEMERAL_MS = 10000; // 約10秒
+
 class WeatherEffectManager {
 	private current: WeatherKind | null = null;
+	private ephemeralTimer = 0;
 	private effect: IWeatherEffect | null = null;
 	// フェードアウト中の古いインスタンス(破棄待ち)。多重発火時の取りこぼし防止。
 	private retiring: IWeatherEffect | null = null;
@@ -57,11 +62,17 @@ class WeatherEffectManager {
 	 * - 新しい天気 → 旧エフェクトをフェードアウトし、新エフェクトをフェードイン
 	 * - null → 現在のエフェクトをフェードアウトして破棄
 	 */
-	public setWeather(kind: WeatherKind | null) {
+	public setWeather(kind: WeatherKind | null, ephemeral = false) {
 		if (!this.enabled) return;
 		if (kind === this.current) return; // 変化なし
 
 		this.current = kind;
+
+		// 短命タイマーが残っていれば解除(天気が切り替わったので)
+		if (this.ephemeralTimer) {
+			window.clearTimeout(this.ephemeralTimer);
+			this.ephemeralTimer = 0;
+		}
 
 		// 既存エフェクトをフェードアウトして破棄
 		this.fadeOutCurrent();
@@ -80,6 +91,8 @@ class WeatherEffectManager {
 				effect = new SunnyEffect();     // 日差し(自前2D Canvas)
 			} else if (kind === 'windy') {
 				effect = new WindyEffect();     // 強風(葉っぱが右→左に流れる/自前2D Canvas)
+			} else if (kind === 'shootingStar') {
+				effect = new ShootingStarEffect(); // 流れ星(夜空+流れ星/自前2D Canvas)
 			} else {
 				return;
 			}
@@ -88,6 +101,18 @@ class WeatherEffectManager {
 			this.effect = effect;
 			// 初回のみチュートリアルを表示
 			this.maybeShowFirstTip(kind);
+
+			// 短命(挨拶由来 or 演出の長さ=短い)なら、約10秒後に自動でフェードアウトする。
+			if (ephemeral) {
+				this.ephemeralTimer = window.setTimeout(() => {
+					this.ephemeralTimer = 0;
+					// まだこの天気が表示中なら片付ける(別の天気に切り替わっていたら何もしない)
+					if (this.current === kind) {
+						this.current = null;
+						this.fadeOutCurrent();
+					}
+				}, EPHEMERAL_MS);
+			}
 		} catch (error) {
 			// WebGL/Canvas が使えない等で失敗しても、TLの動作には影響させない
 			// eslint-disable-next-line no-console
@@ -131,7 +156,9 @@ class WeatherEffectManager {
 					? 'おや、土砂降りになってきました。'
 					: kind === 'windy'
 						? 'おや、風が強くなってきました。'
-						: 'おや、雨が降ってきました。';
+						: kind === 'shootingStar'
+							? 'おや、流れ星が降り注いできました。'
+							: 'おや、雨が降ってきました。';
 
 		// os は Vue 外のこのモジュールからは動的importで読む(循環import回避)。
 		import('@/os.js').then(os => {
@@ -164,6 +191,10 @@ class WeatherEffectManager {
 	 */
 	private clear() {
 		this.current = null;
+		if (this.ephemeralTimer) {
+			window.clearTimeout(this.ephemeralTimer);
+			this.ephemeralTimer = 0;
+		}
 		if (this.effect) {
 			this.effect.stop();
 			this.effect = null;

@@ -1026,6 +1026,11 @@ export const PREF_DEF = definePreferences({
 	'weatherEffect.scope': {
 		default: 'note' as 'note' | 'global',
 	},
+	// 旗鯖fork: 演出の長さ。long=該当ノートがある限りずっと / short=出てから約10秒で消える。
+	// ※ 朝/就寝の挨拶(おはよう/おやすみ等)由来の演出は、この設定に関わらず常に短時間で消える。
+	'weatherEffect.duration': {
+		default: 'long' as 'long' | 'short',
+	},
 	// 粒子の強度(=量)。minimal=控えめ / moderate=標準 / lively=多め。
 	'weatherEffect.intensity': {
 		default: 'moderate' as 'minimal' | 'moderate' | 'lively',
@@ -1048,6 +1053,9 @@ export const PREF_DEF = definePreferences({
 		default: false,
 	},
 	'weatherEffect.firstTipShown.windy': {
+		default: false,
+	},
+	'weatherEffect.firstTipShown.shootingStar': {
 		default: false,
 	},
 	// ======== 天気エフェクトここまで ========
