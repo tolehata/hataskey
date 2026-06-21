@@ -30,8 +30,8 @@ export class ShootingStarEffect {
 	private static readonly STAR_COUNT = 70;           // 瞬く星の数
 	private static readonly STAR_ALPHA = 0.7;          // 星の最大不透明度
 	private static readonly VEIL_ALPHA = 0.18;         // 夜空ヴェールの濃さ(薄め)
-	private static readonly MAX_SHOOTING = 3;          // 同時に流れる流れ星の上限
-	private static readonly SHOOT_MIN_INTERVAL_MS = 1400; // 流れ星の最短間隔(頻発させない)
+	private static readonly MAX_SHOOTING = 7;          // 同時に流れる流れ星の上限
+	private static readonly SHOOT_MIN_INTERVAL_MS = 600; // 流れ星の最短間隔
 	// =========================================================
 
 	private canvas: HTMLCanvasElement;
@@ -128,8 +128,8 @@ export class ShootingStarEffect {
 	private maybeSpawnShooting(ts: number) {
 		if (this.shooting.length >= ShootingStarEffect.MAX_SHOOTING) return;
 		if (ts - this.lastShootTs < ShootingStarEffect.SHOOT_MIN_INTERVAL_MS) return;
-		// 低確率で流れ星を発生
-		if (Math.random() > 0.02) return;
+		// 確率を上げて流れ星を増やす(0.02→0.06)
+		if (Math.random() > 0.06) return;
 		this.lastShootTs = ts;
 		// 右上〜上から左下へ斜めに流れる
 		const startX = this.rand(this.widthCss * 0.3, this.widthCss * 1.05);
@@ -141,9 +141,9 @@ export class ShootingStarEffect {
 			y: startY,
 			vx: Math.cos(angle) * speed,
 			vy: Math.sin(angle) * speed,
-			len: this.rand(60, 120),
+			len: this.rand(100, 200),
 			life: 0,
-			maxLife: this.rand(40, 70),
+			maxLife: this.rand(55, 90),
 		});
 	}
 
@@ -220,15 +220,24 @@ export class ShootingStarEffect {
 			grad.addColorStop(0.4, `rgba(200,215,255,${0.4 * bright})`);
 			grad.addColorStop(1, 'rgba(200,215,255,0)');
 			ctx.strokeStyle = grad;
-			ctx.lineWidth = 2;
+			ctx.lineWidth = 3;
 			ctx.beginPath();
 			ctx.moveTo(sh.x, sh.y);
 			ctx.lineTo(tailX, tailY);
 			ctx.stroke();
-			// 先頭の輝き
-			ctx.fillStyle = `rgba(255,255,250,${0.9 * bright})`;
+			// 先頭の輝き(グロー付きで大きめに)
+			const headGrad = ctx.createRadialGradient(sh.x, sh.y, 0, sh.x, sh.y, 6);
+			headGrad.addColorStop(0, `rgba(255,255,250,${0.95 * bright})`);
+			headGrad.addColorStop(0.5, `rgba(220,230,255,${0.5 * bright})`);
+			headGrad.addColorStop(1, 'rgba(220,230,255,0)');
+			ctx.fillStyle = headGrad;
 			ctx.beginPath();
-			ctx.arc(sh.x, sh.y, 1.8, 0, Math.PI * 2);
+			ctx.arc(sh.x, sh.y, 6, 0, Math.PI * 2);
+			ctx.fill();
+			// 中心の白い芯
+			ctx.fillStyle = `rgba(255,255,250,${0.95 * bright})`;
+			ctx.beginPath();
+			ctx.arc(sh.x, sh.y, 2.4, 0, Math.PI * 2);
 			ctx.fill();
 		}
 	};
