@@ -16,7 +16,8 @@
                 </div>
             </button>
 
-            <button :class="$style.optionCard" @click="select('default')">
+            <button :class="[$style.optionCard, $style.optionCardDeprecated]" @click="select('default')">
+                <div :class="$style.deprecatedBadge">非推奨</div>
                 <div :class="$style.cardIcon"><i class="ti ti-layout-navbar"></i></div>
                 <div :class="$style.cardTitle">Misskey UI</div>
                 <div :class="$style.cardDesc">
@@ -134,6 +135,46 @@ const select = (type: 'simple' | 'default' | 'deck') => {
         background-color: rgba(255, 255, 255, 0.15) !important;
         transform: translateY(-2px);
     }
+}
+
+/* 旗鯖fork: 非推奨UI(Misskey UI)のカード。小さく・控えめに見せる。 */
+.optionCardDeprecated {
+    padding: 16px 14px 12px;
+    opacity: 0.7;
+    border-style: dashed !important;
+    border-color: rgba(255, 255, 255, 0.25) !important;
+    align-self: center;
+
+    .cardIcon {
+        font-size: 1.6em;
+        margin-bottom: 4px;
+    }
+    .cardTitle {
+        font-size: 0.95em;
+    }
+    .cardDesc {
+        font-size: 0.74em;
+        opacity: 0.85;
+    }
+
+    &:hover,
+    &:active {
+        opacity: 1;
+    }
+}
+
+/* 旗鯖fork: 「非推奨」バッジ。カード右上に小さく表示。 */
+.deprecatedBadge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    padding: 2px 8px;
+    font-size: 0.7em;
+    font-weight: bold;
+    color: #fff;
+    background-color: rgba(200, 90, 70, 0.9);
+    border-radius: 999px;
+    letter-spacing: 0.04em;
 }
 
 .cardIcon {
