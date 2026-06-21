@@ -70,7 +70,14 @@ export class WindyEffect {
 		alpha: number;
 		flip: number;           // 葉の見かけの厚み(横回転で平たく見える演出)
 		flipSpeed: number;
+		stuck: boolean;         // UI要素の縁に引っかかっているか
+		stuckTimer: number;     // 引っかかってからの経過(ms)。一定時間で解放
+		stuckMax: number;       // この葉が引っかかっていられる時間(ms)
 	}[] = [];
+
+	// 旗鯖fork: 葉が引っかかる対象UI要素の矩形(雨の水垂れと同じ要素)。
+	private targetRects: DOMRect[] = [];
+	private rectTimer = 0;
 
 	constructor() {
 		const canvas = window.document.createElement('canvas');
@@ -96,6 +103,10 @@ export class WindyEffect {
 		this.onWindowResize = () => this.resize();
 		window.addEventListener('resize', this.onWindowResize);
 
+		// 旗鯖fork: 葉が引っかかる対象(サイドメニュー/下部バー/投稿フォーム)の位置を定期取得。
+		this.updateTargetRects();
+		this.rectTimer = window.setInterval(() => this.updateTargetRects(), 500);
+
 		this.reducedMotionMql = window.matchMedia('(prefers-reduced-motion: reduce)');
 
 		this.resize();
@@ -115,6 +126,25 @@ export class WindyEffect {
 		this.canvas.width = Math.max(1, Math.round(vw * this.dpr));
 		this.canvas.height = Math.max(1, Math.round(vh * this.dpr));
 		this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+	}
+
+	// 旗鯖fork: 葉が引っかかる対象UI要素の矩形を取得(雨の水垂れと同じ要素)。
+	private updateTargetRects() {
+		const rects: DOMRect[] = [];
+		try {
+			const selectors = ['[data-cy-open-post-form]', '[data-htk-weather-footer]', '[data-htk-weather-postform]'];
+			for (const sel of selectors) {
+				const els = Array.from(window.document.querySelectorAll(sel));
+				for (const el of els) {
+					const r = el.getBoundingClientRect();
+					if (r.width < 1 || r.height < 1 || r.bottom < 0 || r.top > this.heightCss || r.right < 0 || r.left > this.widthCss) continue;
+					rects.push(r);
+				}
+			}
+		} catch {
+			// 取得失敗時は空のまま
+		}
+		this.targetRects = rects;
 	}
 
 	private rand(min: number, max: number) {
@@ -149,6 +179,9 @@ export class WindyEffect {
 			alpha: this.rand(0.5, 1),
 			flip: this.rand(0, Math.PI * 2),
 			flipSpeed: this.rand(0.04, 0.1),
+			stuck: false,
+			stuckTimer: 0,
+			stuckMax: this.rand(1500, 4000), // 1.5〜4秒引っかかってから解放
 		};
 	}
 
@@ -192,14 +225,49 @@ export class WindyEffect {
 		const ctx = this.ctx;
 		ctx.clearRect(0, 0, this.widthCss, this.heightCss);
 
+		const targets = this.targetRects;
 		for (const lf of this.leaves) {
+			lf.flip += lf.flipSpeed * k;
+
+			if (lf.stuck) {
+				// ---- 引っかかり中: その場でくるくる回りながら揺れる ----
+				lf.stuckTimer += dt;
+				lf.sway += lf.swaySpeed * 1.5 * k;          // 揺れは少し速く
+				lf.rot += (0.04 + lf.rotSpeed * 0.5) * k;   // くるくる回る
+				// その場で小さく揺れる(引っかかってプルプルする感じ)
+				lf.x += Math.sin(lf.sway * 1.3) * 0.4 * k;
+				lf.y += Math.sin(lf.sway) * 0.5 * k;
+
+				this.drawLeaf(ctx, lf);
+
+				// 一定時間経過、または対象が消えたら解放してまた流れ出す
+				const stillOnTarget = targets.some(r =>
+					lf.x >= r.left - 8 && lf.x <= r.right + 8 && lf.y >= r.top - 8 && lf.y <= r.bottom + 8);
+				if (lf.stuckTimer >= lf.stuckMax || !stillOnTarget) {
+					lf.stuck = false;
+					lf.speed = this.rand(3, 6); // 解放時は少し勢いをつけて飛ぶ
+				}
+				continue;
+			}
+
+			// ---- 通常: 右から左へ流れる ----
 			lf.sway += lf.swaySpeed * k;
 			lf.rot += lf.rotSpeed * this.gust * k;
-			lf.flip += lf.flipSpeed * k;
 
 			// 右から左へ流れる + 上下の揺れ
 			lf.x -= lf.speed * this.gust * k;
 			lf.y += Math.sin(lf.sway) * lf.swayAmp * k;
+
+			// 旗鯖fork: 対象UI要素の縁に当たったら引っかかる。
+			// 葉が要素の領域に入ったら、低確率で捕まる(全部は捕まらず、すり抜ける葉もある)。
+			for (const r of targets) {
+				const inside = lf.x >= r.left && lf.x <= r.right && lf.y >= r.top && lf.y <= r.bottom;
+				if (inside && Math.random() < 0.08) {
+					lf.stuck = true;
+					lf.stuckTimer = 0;
+					break;
+				}
+			}
 
 			this.drawLeaf(ctx, lf);
 
@@ -259,6 +327,7 @@ export class WindyEffect {
 		if (this.destroyed) return;
 		this.destroyed = true;
 		if (this.raf) window.cancelAnimationFrame(this.raf);
+		if (this.rectTimer) window.clearInterval(this.rectTimer);
 		window.removeEventListener('resize', this.onWindowResize);
 		this.canvas.remove();
 	}
