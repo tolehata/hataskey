@@ -23,11 +23,11 @@
 
 export class RainEffect {
 	// ===== 健康配慮のハードガード定数(安易に変更しないこと) =====
-	private static readonly MAX_DROPS = 320;        // 降る雨の粒の上限
+	private static readonly MAX_DROPS = 500;        // 降る雨の粒の上限(土砂降り対応で引き上げ)
 	private static readonly MAX_TRICKLES = 14;      // 窓の雫の同時上限
 	private static readonly MAX_SPLASHES = 40;      // 飛沫の同時上限
 	private static readonly FADE_MS = 2000;         // フェード時間(滑らかに)
-	private static readonly RAIN_ALPHA = 0.58;      // 降る雨の最大不透明度
+	private static readonly RAIN_ALPHA = 0.7;       // 降る雨の最大不透明度
 	private static readonly TRICKLE_ALPHA = 0.22;   // 窓の雫の最大不透明度
 	private static readonly SPLASH_ALPHA = 0.18;    // 飛沫の最大不透明度(最も控えめ)
 	// =========================================================
@@ -43,6 +43,18 @@ export class RainEffect {
 	private dpr = 1;
 
 	private onWindowResize: () => void;
+
+	// 旗鯖fork: マウスで雨を弾くための座標(未取得時は-1)。
+	private mouseX = -1;
+	private mouseY = -1;
+	private onMouseMove: (e: MouseEvent) => void;
+
+	// 旗鯖fork: 水が当たる/伝うUI要素の矩形(複数)。
+	// PCのノートボタン と モバイル下部メニューの両方を対象にする。
+	private targetRects: DOMRect[] = [];
+	private rectTimer = 0;
+	// ボタン上を伝う雫
+	private btnTrickles: { x: number; y: number; speed: number; r: number; alpha: number; wobble: number; bottomY: number }[] = [];
 	private reducedMotionMql: MediaQueryList;
 
 	// 降る雨
@@ -52,6 +64,7 @@ export class RainEffect {
 		swayPhase: number; // 揺らぎの位相
 		swaySpeed: number; // 揺らぎの速さ
 		swayAmp: number;   // 揺らぎの強さ(横方向の振れ幅)
+		width: number;     // 線の太さ(手前=太い/奥=細い。奥行き表現)
 	}[] = [];
 
 	// 地面/着地点の飛沫(短命)
@@ -65,7 +78,10 @@ export class RainEffect {
 		alpha: number; trail: number; // trail = 軌跡の濃さ
 	}[] = [];
 
-	constructor() {
+	private heavy: boolean;
+
+	constructor(options: { heavy?: boolean } = {}) {
+		this.heavy = options.heavy === true;
 		const canvas = window.document.createElement('canvas');
 		Object.assign(canvas.style, {
 			position: 'fixed',
@@ -89,6 +105,18 @@ export class RainEffect {
 		this.onWindowResize = () => this.resize();
 		window.addEventListener('resize', this.onWindowResize);
 
+		// 旗鯖fork: マウス座標を追跡(雨を弾くため)。
+		this.onMouseMove = (e: MouseEvent) => {
+			this.mouseX = e.clientX;
+			this.mouseY = e.clientY;
+		};
+		window.addEventListener('mousemove', this.onMouseMove, { passive: true });
+
+		// 旗鯖fork: ノートボタンの位置を定期取得(スクロール/レイアウト変化に追従)。
+		// 重い getBoundingClientRect を毎フレームやらず、500msごとに更新する。
+		this.updateNoteBtnRect();
+		this.rectTimer = window.setInterval(() => this.updateNoteBtnRect(), 500);
+
 		this.reducedMotionMql = window.matchMedia('(prefers-reduced-motion: reduce)');
 
 		this.resize();
@@ -110,31 +138,70 @@ export class RainEffect {
 		this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
 	}
 
+	// 旗鯖fork: 水が当たる対象UI要素の矩形を取得する(複数)。
+	//  - PCのノートボタン: [data-cy-open-post-form]
+	//  - モバイル下部メニュー: [data-htk-weather-footer]
+	// 画面に見えているものだけを対象にする。
+	private updateNoteBtnRect() {
+		const rects: DOMRect[] = [];
+		try {
+			const selectors = ['[data-cy-open-post-form]', '[data-htk-weather-footer]', '[data-htk-weather-postform]'];
+			for (const sel of selectors) {
+				// 同じUIに複数のノートボタンが存在しうる(サイド/上部/折りたたみ等)ので全部拾う。
+				const els = Array.from(window.document.querySelectorAll(sel));
+				for (const el of els) {
+					const r = el.getBoundingClientRect();
+					// 画面外・サイズ0は除外(=今表示されているものだけ対象)
+					if (r.width < 1 || r.height < 1 || r.bottom < 0 || r.top > this.heightCss || r.right < 0 || r.left > this.widthCss) continue;
+					rects.push(r);
+				}
+			}
+		} catch {
+			// 取得失敗時は空のまま
+		}
+		this.targetRects = rects;
+	}
+
 	private rand(min: number, max: number) {
 		return min + Math.random() * (max - min);
 	}
 
 	private initDrops() {
 		this.drops = [];
-		const n = Math.min(RainEffect.MAX_DROPS, Math.round(this.widthCss / 3));
+		// 土砂降りは密度を上げる。ただしスマホ(狭い画面)では多すぎるので控えめにする。
+		const isNarrow = this.widthCss < 700;
+		const divisor = this.heavy
+			? (isNarrow ? 3.0 : 1.8)  // 大雨: 広い画面は密、スマホは控えめ
+			: (isNarrow ? 4.0 : 3.0); // 通常雨もスマホは少し控えめ
+		const n = Math.min(RainEffect.MAX_DROPS, Math.round(this.widthCss / divisor));
 		for (let i = 0; i < n; i++) {
 			this.drops.push(this.spawnDrop(true));
 		}
 	}
 
 	private spawnDrop(initial: boolean) {
+		const h = this.heavy;
+		// 奥行き: 0=最奥(細く遅く薄い) 〜 1=最手前(太く速く濃い)。
+		// これにより雨に立体感(レイヤー感)が出て「雨らしく」なる。
+		const depth = Math.random();
+		const lenBase = h ? this.rand(22, 44) : this.rand(14, 30);
 		return {
 			x: this.rand(0, this.widthCss),
 			y: initial ? this.rand(0, this.heightCss) : this.rand(-this.heightCss * 0.3, 0),
-			len: this.rand(14, 30),
-			speed: this.rand(11, 18),
-			alpha: this.rand(0.4, 1),
-			// 横方向の基本速度。左右ランダムで、粒ごとに違う風向きを持たせる(-1.4〜+1.4)。
-			drift: this.rand(-1.4, 1.4),
-			// 落下中の揺らぎ(sinで微妙に左右にふらつく)。
+			// 手前ほど長い
+			len: lenBase * (0.6 + depth * 0.7),
+			// 手前ほど速い
+			speed: (h ? this.rand(18, 28) : this.rand(11, 18)) * (0.55 + depth * 0.6),
+			// 手前ほど濃い。奥もうっすら見える程度は確保。
+			alpha: (0.45 + depth * 0.55) * this.rand(0.8, 1),
+			// 横方向の基本速度。土砂降りは風が強く一方向に流れやすい(右下に強く傾く)。
+			drift: h ? this.rand(-2.6, -0.6) : this.rand(-1.4, 1.4),
+			// 落下中の揺らぎ(奥の粒ほどゆらゆらしやすい)
 			swayPhase: this.rand(0, Math.PI * 2),
 			swaySpeed: this.rand(0.04, 0.1),
-			swayAmp: this.rand(0.2, 0.8),
+			swayAmp: (h ? this.rand(0.1, 0.4) : this.rand(0.2, 0.8)) * (1.3 - depth * 0.6),
+			// 手前ほど太い。最小でも見える太さを確保(細すぎ防止)。
+			width: 1.3 + depth * (h ? 1.9 : 1.6),
 		};
 	}
 
@@ -152,6 +219,20 @@ export class RainEffect {
 				maxLife: this.rand(12, 22),
 			});
 		}
+	}
+
+	// 旗鯖fork: ノートボタンの上面に当たった雨を、ボタン上で伝う雫として生成。
+	private spawnBtnTrickle(x: number, btn: DOMRect) {
+		if (this.btnTrickles.length >= 24) return;
+		this.btnTrickles.push({
+			x,
+			y: btn.top,
+			speed: this.rand(0.2, 0.6),
+			r: this.rand(1.2, 2.6),
+			alpha: this.rand(0.5, 1),
+			wobble: this.rand(-0.2, 0.2),
+			bottomY: btn.bottom, // この雫が消える位置(対象要素の下端)
+		});
 	}
 
 	private maybeSpawnTrickle() {
@@ -198,25 +279,66 @@ export class RainEffect {
 
 		// ---- 降る雨 ----
 		ctx.lineCap = 'round';
-		ctx.lineWidth = 1.6;
+		const targets = this.targetRects;
 		for (const d of this.drops) {
 			// この粒の今フレームの横移動量 = 風向き(drift) + 揺らぎ(sin)
 			d.swayPhase += d.swaySpeed * k;
-			const horiz = (d.drift + Math.sin(d.swayPhase) * d.swayAmp) * k;
+			let horiz = (d.drift + Math.sin(d.swayPhase) * d.swayAmp) * k;
 
+			// 旗鯖fork: マウスで雨を弾く。ポインタ近くの粒を外向きに押しのける。
+			if (this.mouseX >= 0) {
+				const dx = d.x - this.mouseX;
+				const dy = d.y - this.mouseY;
+				const distSq = dx * dx + dy * dy;
+				const radius = 70;
+				if (distSq < radius * radius) {
+					const dlen = Math.sqrt(distSq) || 1;
+					const force = (1 - dlen / radius) * 6;
+					horiz += (dx / dlen) * force * k;
+					d.y += (dy / dlen) * force * k * 0.5;
+				}
+			}
+
+			// 線(奥行きに応じた太さ・濃さ)
+			ctx.lineWidth = d.width;
 			ctx.strokeStyle = `rgba(174,194,224,${RainEffect.RAIN_ALPHA * d.alpha})`;
 			ctx.beginPath();
 			ctx.moveTo(d.x, d.y);
-			// 線の向きを実際の進行方向(横移動 + 落下)に合わせて斜めに引く。
-			// 横の振れを少し強調(×3)して、斜めの傾きが見えるようにする。
 			ctx.lineTo(d.x - horiz * 3, d.y - d.len);
 			ctx.stroke();
 
+			// 旗鯖fork: 先端(下端)に水滴の丸みを足して「雨粒」感を出す。
+			// 手前の粒(太い)ほどはっきり、奥はほぼ見えない。
+			if (d.width > 1.5) {
+				ctx.fillStyle = `rgba(196,212,236,${RainEffect.RAIN_ALPHA * d.alpha * 0.9})`;
+				ctx.beginPath();
+				ctx.arc(d.x, d.y, d.width * 0.7, 0, Math.PI * 2);
+				ctx.fill();
+			}
+
+			const prevY = d.y;
 			d.y += d.speed * k;
 			d.x += horiz;
 			// 横に流れすぎたら反対側へ回り込ませる(画面外に溜まらないように)
 			if (d.x < -20) d.x = this.widthCss + 20;
 			if (d.x > this.widthCss + 20) d.x = -20;
+
+			// 旗鯖fork: 対象UI要素(ノートボタン/モバイルフッター)の上面に当たったら水を伝わせる。
+			// 高速で落下する雨粒が薄い帯をすり抜けないよう、「移動前→移動後でボタン上面(top)を
+			// またいだか」で判定する。横はボタンの幅内であればOK。
+			let landed = false;
+			for (const rect of targets) {
+				if (d.x >= rect.left && d.x <= rect.right &&
+					prevY <= rect.bottom && d.y >= rect.top && prevY < d.y) {
+					// ボタンの上面付近に水を落とす(実際の着地点はtop)
+					this.spawnBtnTrickle(d.x, rect);
+					Object.assign(d, this.spawnDrop(false));
+					landed = true;
+					break;
+				}
+			}
+			if (landed) continue;
+
 			if (d.y > this.heightCss) {
 				// 地面で跳ねる
 				this.spawnSplash(d.x);
@@ -269,6 +391,46 @@ export class RainEffect {
 				this.trickles.splice(i, 1);
 			}
 		}
+
+		// ---- 対象UI要素(ノートボタン/モバイルフッター)を伝う雫 ----
+		if (targets.length > 0) {
+			for (let i = this.btnTrickles.length - 1; i >= 0; i--) {
+				const bt = this.btnTrickles[i];
+				// 重力でゆっくり加速しながら上面〜下へ伝う
+				bt.speed += this.rand(0, 0.04) * k;
+				if (Math.random() < 0.02) bt.speed += this.rand(0.3, 0.8); // たまに滑り出す
+				bt.speed = Math.min(bt.speed, 3.5);
+				bt.y += bt.speed * k;
+				bt.x += bt.wobble * bt.speed * 0.2 * k;
+
+				// 軌跡(細い筋)。背景に埋もれないよう彩度を落とし濃いめに。
+				ctx.strokeStyle = `rgba(120,135,150,${Math.min(0.55, bt.alpha * 0.5)})`;
+				ctx.lineWidth = bt.r * 0.5;
+				ctx.beginPath();
+				ctx.moveTo(bt.x, bt.y);
+				ctx.lineTo(bt.x, bt.y - bt.speed * k - 2);
+				ctx.stroke();
+
+				// 雫本体。背景色に埋もれないよう彩度を落とし(グレー寄り)、濃いめに描く。
+				ctx.fillStyle = `rgba(110,125,140,${Math.min(0.7, bt.alpha * 0.7)})`;
+				ctx.beginPath();
+				ctx.ellipse(bt.x, bt.y, bt.r * 0.8, bt.r * 1.2, 0, 0, Math.PI * 2);
+				ctx.fill();
+				// 小さなハイライト(水滴の艶)。これで背景が明るくても暗くても水滴と分かる。
+				ctx.fillStyle = `rgba(245,248,252,${Math.min(0.6, bt.alpha * 0.6)})`;
+				ctx.beginPath();
+				ctx.arc(bt.x - bt.r * 0.3, bt.y - bt.r * 0.4, bt.r * 0.3, 0, Math.PI * 2);
+				ctx.fill();
+
+				// その雫の対象要素の下端を少し過ぎたら消す
+				if (bt.y > bt.bottomY + 8) {
+					this.btnTrickles.splice(i, 1);
+				}
+			}
+		} else {
+			// 対象が見つからない時は溜まった雫を破棄
+			if (this.btnTrickles.length > 0) this.btnTrickles.length = 0;
+		}
 	};
 
 	public fadeIn() {
@@ -289,7 +451,9 @@ export class RainEffect {
 		if (this.destroyed) return;
 		this.destroyed = true;
 		if (this.raf) window.cancelAnimationFrame(this.raf);
+		if (this.rectTimer) window.clearInterval(this.rectTimer);
 		window.removeEventListener('resize', this.onWindowResize);
+		window.removeEventListener('mousemove', this.onMouseMove);
 		this.canvas.remove();
 	}
 }
