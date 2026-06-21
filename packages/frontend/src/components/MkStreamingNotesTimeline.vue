@@ -112,6 +112,10 @@ import { deviceKind } from '@/utility/device-kind.js';
 import { isFriendly } from '@/utility/is-friendly.js';
 import { scrollToVisibility } from '@/utility/scroll-to-visibility.js';
 import MkNoteMediaGrid from '@/components/MkNoteMediaGrid.vue';
+// 旗鯖fork: 天気エフェクト(weatherEffect)。DOMには触らず、検出した天気をマネージャに通知するのみ。
+import { getWeatherEffectManager } from '@/utility/weather-effect-manager.js';
+import { detectWeather, buildWeatherDetectText } from '@/utility/weather-effect-detector.js';
+import type { WeatherKind } from '@/utility/weather-effect-detector.js';
 import { haptic, hapticConfirm } from '@/utility/haptic.js';
 
 const { showEl } = scrollToVisibility();
@@ -205,6 +209,7 @@ const bubbleEnabled = computed(() => {
 
 // 旗鯖独自: クラシック投稿間隔
 const classicSpacingEnabled = computed(() => prefer.r['simpleUi.classicNoteSpacing']?.value ?? false);
+
 
 // 旗鯖独自: アニメーション方向（リアクティブ — data-anim-dir属性で制御）
 const animDir = computed(() => prefer.r.timelineAnimationDirection?.value ?? 'left');
@@ -322,6 +327,46 @@ if (props.src === 'antenna') {
 } else {
 	throw new Error('Unrecognized timeline type: ' + props.src);
 }
+
+// ===== 旗鯖fork: 天気エフェクト(weatherEffect) =====
+// paginator 初期化後に定義する(currentWeather が paginator.items を参照するため)。
+// TLのDOMには一切触らず、検出した天気を WeatherEffectManager に通知するだけ。
+// 実際の描画は本家由来の body直下fixed canvas が行う(TLレイアウトに影響しない)。
+const weatherEffectEnabled = computed(() => prefer.r['weatherEffect.enabled']?.value ?? false);
+const weatherEffectScope = computed(() => prefer.r['weatherEffect.scope']?.value ?? 'note');
+
+// 読み込まれているノート群から現在の天気を集計する。
+// scope='global' は先頭30件、'note' は先頭8件(直近の話題)を見る。
+const currentWeather = computed<WeatherKind | null>(() => {
+	if (!weatherEffectEnabled.value) return null;
+	if (props.src === 'media') return null; // メディア一覧では出さない
+	const items = paginator.items.value;
+	if (items.length === 0) return null;
+	const lookahead = weatherEffectScope.value === 'global' ? 30 : 8;
+	const slice = items.slice(0, lookahead);
+	for (const note of slice) {
+		const w = detectWeather(buildWeatherDetectText(note));
+		if (w != null) return w;
+	}
+	return null;
+});
+
+// enabledの変化をマネージャに反映
+watch(weatherEffectEnabled, (en) => {
+	getWeatherEffectManager().setEnabled(en);
+	// 有効化直後は現在の天気をすぐ反映
+	if (en) getWeatherEffectManager().setWeather(currentWeather.value);
+}, { immediate: true });
+
+// 天気の変化をマネージャに通知
+watch(currentWeather, (w) => {
+	getWeatherEffectManager().setWeather(w);
+});
+
+// このTLが破棄される時はエフェクトも片付ける(別画面に持ち越さない)
+onUnmounted(() => {
+	getWeatherEffectManager().setWeather(null);
+});
 
 onMounted(() => {
 	paginator.init();
