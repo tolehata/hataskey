@@ -62,6 +62,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</ul>
 			</div>
 			<div :class="$style.layout">
+			<!-- 旗鯖fork: モバイルでは名前+削除カードを最上部(キャラ切替より上)に表示 -->
+			<div v-if="isMobileLayout && activeChar" :class="$style.card">
+				<div :class="$style.label">名前</div>
+				<input :class="$style.inp" :value="activeChar.name" maxlength="30" @input="onName($event)" placeholder="マスコットの名前" />
+				<button v-if="characters.length > 0" :class="$style.delBtn" @click="removeCharacter(activeCharIdx)"><i class="ti ti-trash"></i> このキャラを削除</button>
+			</div>
 			<!-- 旗鯖fork(タスク5): モバイル(縦1列)では最上部にキャラ切替カードを表示 -->
 			<div v-if="isMobileLayout" :class="$style.card">
 				<div :class="$style.cardHead">
@@ -254,13 +260,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<!-- 旗鯖fork(タスク5): キャラ切替カードは layout 直下(モバイル)または colSpecial(非モバイル)に移動 -->
 
 			<template v-if="activeChar">
-				<!-- 名前 -->
-				<div :class="$style.card">
-					<div :class="$style.label">名前</div>
-					<input :class="$style.inp" :value="activeChar.name" maxlength="30" @input="onName($event)" placeholder="マスコットの名前" />
-					<button v-if="characters.length > 0" :class="$style.delBtn" @click="removeCharacter(activeCharIdx)"><i class="ti ti-trash"></i> このキャラを削除</button>
-				</div>
-
 				<!-- 立ち絵 -->
 				<div :class="$style.card">
 					<div :class="$style.cardHead">
@@ -337,6 +336,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</div><!-- /colSettings(中央) -->
 
 				<div :class="$style.colSpecial">
+				<!-- 旗鯖fork: 非モバイルでは名前+削除カードを右列(colSpecial)の一番上に表示 -->
+				<div v-if="!isMobileLayout && activeChar" :class="$style.card">
+					<div :class="$style.label">名前</div>
+					<input :class="$style.inp" :value="activeChar.name" maxlength="30" @input="onName($event)" placeholder="マスコットの名前" />
+					<button v-if="characters.length > 0" :class="$style.delBtn" @click="removeCharacter(activeCharIdx)"><i class="ti ti-trash"></i> このキャラを削除</button>
+				</div>
 				<!-- 旗鯖fork(タスク5): 非モバイル(横並び)では最右列(colSpecial)の先頭にキャラ切替カードを表示 -->
 				<div v-if="!isMobileLayout" :class="$style.card">
 					<div :class="$style.cardHead">
