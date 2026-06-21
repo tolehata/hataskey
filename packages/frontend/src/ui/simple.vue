@@ -106,7 +106,7 @@ SPDX-License-Identifier: AGPL-3.0-only
     <div :class="[$style.mainColumn, { [$style.mainColumnShifted]: isDesktop && userPanelUserId }]">
         <div :class="$style.mainColumnInner">
         <!-- 旗鯖fork: 上部メニューモードのナビバー(横並びピル型/常時固定)。デッキ併用時はこの下にデッキツールバーが来る。 -->
-        <nav v-if="topNavActive" :class="[$style.topNav, { [$style.topNavSolid]: !glassEffect }]">
+        <nav v-if="topNavActive" data-htk-weather-footer :class="[$style.topNav, { [$style.topNavSolid]: !glassEffect }]">
             <button :class="$style.topNavLogo" @click="openInstanceMenuMobile" v-tooltip="instance.name ?? 'インスタンス'">
                 <img v-if="instance.iconUrl" :src="instance.iconUrl" :class="$style.topNavLogoImg"/>
                 <i v-else class="ti ti-server"></i>
