@@ -42,6 +42,9 @@ const EPHEMERAL_MS = 10000; // 約10秒
 class WeatherEffectManager {
 	private current: WeatherKind | null = null;
 	private ephemeralTimer = 0;
+	// TL再マウント(タブ切替)をまたいでエフェクトを継続するための遅延消去タイマー。
+	// onUnmounted で即破棄せず少し待ち、その間に同じ天気の要求が来たら破棄をキャンセルする。
+	private clearTimer = 0;
 	private effect: IWeatherEffect | null = null;
 	// フェードアウト中の古いインスタンス(破棄待ち)。多重発火時の取りこぼし防止。
 	private retiring: IWeatherEffect | null = null;
@@ -64,6 +67,15 @@ class WeatherEffectManager {
 	 */
 	public setWeather(kind: WeatherKind | null, ephemeral = false) {
 		if (!this.enabled) return;
+
+		// 遅延消去が予約されていればキャンセルする。
+		// (タブ切替で onUnmounted→requestClear された直後に、新しいTLが同じ天気を
+		//  要求してきた場合、ここで予約を取り消すことでエフェクトを途切れさせない)
+		if (this.clearTimer) {
+			window.clearTimeout(this.clearTimer);
+			this.clearTimer = 0;
+		}
+
 		if (kind === this.current) return; // 変化なし
 
 		this.current = kind;
@@ -189,11 +201,37 @@ class WeatherEffectManager {
 	/**
 	 * 即座に全て片付ける(フェードなし)。機能OFF時や画面破棄時に使う。
 	 */
+	/**
+	 * 遅延付きで現在のエフェクトを消す。TL の onUnmounted から呼ぶ。
+	 * すぐには消さず短い猶予を置き、その間に setWeather で同じ(または別の)天気が
+	 * 要求されれば消去はキャンセルされる。これによりタブ切替(TL再マウント)で
+	 * 同じ天気が続く場合にエフェクトが途切れない。
+	 * 猶予内に何も要求が来なければ(=本当にTLが無くなった)エフェクトを片付ける。
+	 */
+	public requestClear() {
+		if (!this.enabled) return;
+		if (this.current == null) return; // 既に何も出ていない
+		if (this.clearTimer) window.clearTimeout(this.clearTimer);
+		this.clearTimer = window.setTimeout(() => {
+			this.clearTimer = 0;
+			this.current = null;
+			this.fadeOutCurrent();
+			if (this.ephemeralTimer) {
+				window.clearTimeout(this.ephemeralTimer);
+				this.ephemeralTimer = 0;
+			}
+		}, 150); // 150ms: unmount→再mountの間隔より十分長く、体感では一瞬
+	}
+
 	private clear() {
 		this.current = null;
 		if (this.ephemeralTimer) {
 			window.clearTimeout(this.ephemeralTimer);
 			this.ephemeralTimer = 0;
+		}
+		if (this.clearTimer) {
+			window.clearTimeout(this.clearTimer);
+			this.clearTimer = 0;
 		}
 		if (this.effect) {
 			this.effect.stop();
