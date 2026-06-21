@@ -115,6 +115,7 @@ import MkNoteMediaGrid from '@/components/MkNoteMediaGrid.vue';
 // 旗鯖fork: 天気エフェクト(weatherEffect)。DOMには触らず、検出した天気をマネージャに通知するのみ。
 import { getWeatherEffectManager } from '@/utility/weather-effect-manager.js';
 import { detectWeather, buildWeatherDetectText, isGreetingText } from '@/utility/weather-effect-detector.js';
+import { hasSeenWeather, markSeenWeather } from '@/utility/weather-effect-seen.js';
 import type { WeatherKind } from '@/utility/weather-effect-detector.js';
 import { haptic, hapticConfirm } from '@/utility/haptic.js';
 
@@ -338,46 +339,62 @@ const weatherEffectDuration = computed(() => prefer.r['weatherEffect.duration']?
 
 // 読み込まれているノート群から現在の天気を集計する。
 // scope='global' は先頭30件、'note' は先頭8件(直近の話題)を見る。
-// 戻り値は { kind, ephemeral }。ephemeral=true なら短時間で自動的に消す。
+// 戻り値は { kind, ephemeral, noteId }。
 //  - 挨拶(おはよう/おやすみ等)由来は常に短命。
 //  - それ以外でも、演出の長さ設定が 'short' なら短命。
-const currentWeatherInfo = computed<{ kind: WeatherKind | null; ephemeral: boolean }>(() => {
-	if (!weatherEffectEnabled.value) return { kind: null, ephemeral: false };
-	if (props.src === 'media') return { kind: null, ephemeral: false }; // メディア一覧では出さない
+//  - 一度エフェクトを出したノート(発火済み)はスキップして次の天気ノートを探す。
+const currentWeatherInfo = computed<{ kind: WeatherKind | null; ephemeral: boolean; noteId: string | null }>(() => {
+	if (!weatherEffectEnabled.value) return { kind: null, ephemeral: false, noteId: null };
+	if (props.src === 'media') return { kind: null, ephemeral: false, noteId: null }; // メディア一覧では出さない
 	const items = paginator.items.value;
-	if (items.length === 0) return { kind: null, ephemeral: false };
+	if (items.length === 0) return { kind: null, ephemeral: false, noteId: null };
 	const lookahead = weatherEffectScope.value === 'global' ? 30 : 8;
 	const slice = items.slice(0, lookahead);
 	for (const note of slice) {
 		const text = buildWeatherDetectText(note);
 		const w = detectWeather(text);
 		if (w != null) {
+			// 既にこのノートでエフェクトを出していたらスキップ(リロードしても再発火しない)
+			if (hasSeenWeather(note.id)) continue;
 			// 挨拶由来 or 演出の長さ=short のとき短命にする
 			const ephemeral = isGreetingText(text) || weatherEffectDuration.value === 'short';
-			return { kind: w, ephemeral };
+			return { kind: w, ephemeral, noteId: note.id };
 		}
 	}
-	return { kind: null, ephemeral: false };
+	return { kind: null, ephemeral: false, noteId: null };
 });
 
 // 天気種別だけを取り出した computed(watchの比較を単純にするため)。
 const currentWeather = computed<WeatherKind | null>(() => currentWeatherInfo.value.kind);
 
+// マネージャに天気を反映する。実際にエフェクトを出すノートは発火済みとして記録し、
+// 同じノートでは二度と発火しない(リロードをまたいでも)ようにする。
+function applyWeather() {
+	const info = currentWeatherInfo.value;
+	getWeatherEffectManager().setWeather(info.kind, info.ephemeral);
+	if (info.kind != null && info.noteId != null) {
+		markSeenWeather(info.noteId);
+	}
+}
+
 // enabledの変化をマネージャに反映
 watch(weatherEffectEnabled, (en) => {
 	getWeatherEffectManager().setEnabled(en);
 	// 有効化直後は現在の天気をすぐ反映
-	if (en) getWeatherEffectManager().setWeather(currentWeatherInfo.value.kind, currentWeatherInfo.value.ephemeral);
+	if (en) applyWeather();
 }, { immediate: true });
 
 // 天気の変化をマネージャに通知
-watch(currentWeather, (w) => {
-	getWeatherEffectManager().setWeather(w, currentWeatherInfo.value.ephemeral);
+watch(currentWeather, () => {
+	applyWeather();
 });
 
-// このTLが破棄される時はエフェクトも片付ける(別画面に持ち越さない)
+// このTLが破棄される時はエフェクトを片付ける。ただし即座には消さず遅延させる。
+// タブ切替(TL再マウント)で同じ天気が続く場合、新しいTLが即座に同じ天気を要求して
+// 遅延消去がキャンセルされるため、エフェクトが途切れず継続する。
+// 本当にTLが無くなった場合(別画面へ遷移等)は猶予後に片付けられる。
 onUnmounted(() => {
-	getWeatherEffectManager().setWeather(null);
+	getWeatherEffectManager().requestClear();
 });
 
 onMounted(() => {
