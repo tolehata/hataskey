@@ -337,6 +337,11 @@ export const packedUserDetailedNotMeOnlySchema = {
 			type: 'number',
 			nullable: false, optional: false,
 		},
+		// 旗鯖fork: 宴成功回数(UtageSessionの集計値)
+		utageSuccessCount: {
+			type: 'number',
+			nullable: false, optional: false,
+		},
 		pinnedNoteIds: {
 			type: 'array',
 			nullable: false, optional: false,

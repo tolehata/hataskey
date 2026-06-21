@@ -39,6 +39,7 @@ import type {
 	UserProfilesRepository,
 	UserSecurityKeysRepository,
 	UsersRepository,
+	UtageSessionsRepository,
 } from '@/models/_.js';
 import { bindThis } from '@/decorators.js';
 import { RoleService } from '@/core/RoleService.js';
@@ -111,6 +112,10 @@ export class UserEntityService implements OnModuleInit {
 
 		@Inject(DI.usersRepository)
 		private usersRepository: UsersRepository,
+
+		// 旗鯖fork: 宴セッションを集計してプロフに成功回数を出すため注入
+		@Inject(DI.utageSessionsRepository)
+		private utageSessionsRepository: UtageSessionsRepository,
 
 		@Inject(DI.userSecurityKeysRepository)
 		private userSecurityKeysRepository: UserSecurityKeysRepository,
@@ -559,6 +564,12 @@ export class UserEntityService implements OnModuleInit {
 				followersCount: followersCount ?? 0,
 				followingCount: followingCount ?? 0,
 				notesCount: user.notesCount,
+				// 旗鯖fork: 宴の成功回数。UtageSessionをuserId+status='succeeded'で集計するだけ(マイグレ無し)。
+				// 取得失敗時は 0(=未参加扱い)にフォールバックして他のフィールドへの巻き込みを避ける。
+				utageSuccessCount: this.utageSessionsRepository.countBy({
+					userId: user.id,
+					status: 'succeeded',
+				}).catch(() => 0),
 				pinnedNoteIds: pins.map(pin => pin.noteId),
 				pinnedNotes: this.noteEntityService.packMany(pins.map(pin => pin.note!), me, {
 					detail: true,
