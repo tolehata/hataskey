@@ -113,18 +113,17 @@ export class UrlPreviewService {
 		}
 	}
 
+	// 旗鯖fork: 本家1eac4ccf(SSRF対策)を取り込み — agent を proxy 設定有無に関わらず常に適用。
+	//   HttpRequestService 側でプライベートIP遮断を行うため、agent を渡さないと素のNode HTTPに落ちてしまう。
 	private fetchSummary(url: string, meta: MiMeta, lang?: string): Promise<SummalyResult> {
-		const agent = this.config.proxy
-			? {
-				http: this.httpRequestService.httpAgent,
-				https: this.httpRequestService.httpsAgent,
-			}
-			: undefined;
-
 		return summaly(url, {
 			followRedirects: this.meta.urlPreviewAllowRedirect,
 			lang: lang ?? 'ja-JP',
-			agent: agent,
+			agent: {
+				http: this.httpRequestService.httpAgent,
+				https: this.httpRequestService.httpsAgent,
+			},
+			// 旗鯖fork: summalyDefaultUserAgent は後続コミット(c0a8c7f9 #17589)で追加予定。当面は undefined 維持。
 			userAgent: meta.urlPreviewUserAgent ?? undefined,
 			operationTimeout: meta.urlPreviewTimeout,
 			contentLengthLimit: meta.urlPreviewMaximumContentLength,
