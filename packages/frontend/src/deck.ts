@@ -39,6 +39,9 @@ export const columnTypes = [
 	'direct',
 	'roleTimeline',
 	'chat',
+	// 旗鯖fork
+	'earthquake',
+	'externalNotifications',
 ] as const;
 
 export type ColumnType = typeof columnTypes[number];
