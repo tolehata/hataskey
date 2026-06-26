@@ -57,19 +57,19 @@
 	</div>
 
 	<!-- row -->
-	<div v-if="layout === 'row'" :class="[$style.deck, $style.layoutRow]">
+	<div v-if="layout === 'row'" :class="[$style.deck, $style.layoutRow]" data-deck-row @wheel="onDeckRowWheel">
 		<div v-for="slot in slots" :key="slot.id" :class="[$style.slot, { [$style.slotDragging]: slotDragId === slot.id, [$style.slotDragOver]: slotDragOverId === slot.id }]" :style="slotStyle(slot)" :data-deck-slot="slot.id">
 			<div :class="$style.slotStack">
 				<template v-for="frame in slot.frames" :key="frame.id">
 					<div :class="['frameRoot', $style.frameRoot, { [$style.frameColored]: !!frame.borderColor, [$style.frameDragOver]: dragOverFrame === frame.id }]" :style="frameStyle(frame, slot)" :data-deck-frame="frame.id" :data-deck-frame-slot="slot.id">
 						<!-- タブバー(tabs複数 or 常時表示) -->
 						<div :class="$style.tabBar">
-							<div :class="$style.tabs" @wheel.prevent="onTabsWheel">
+							<div :class="$style.tabs" @wheel="onTabsWheel">
 								<button
 									v-for="tab in frame.tabs" :key="tab.id"
 									:class="[$style.tab, { [$style.tabActive]: activeTabOf(frame).id === tab.id, [$style.tabDragOver]: tabDragOverId === tab.id }]"
 									:style="tabStyle(tab, activeTabOf(frame).id === tab.id)"
-									@click="setActiveTab(slot.id, frame.id, tab.id)"
+									@click="onTabClick(slot, frame, tab)"
 									@dblclick="renameTab(slot.id, frame.id, tab.id)"
 									@contextmenu.prevent="openTabMenu(slot, frame, tab, $event)"
 									:data-deck-tab="tab.id" :data-deck-tab-frame="frame.id" :data-deck-tab-slot="slot.id"
@@ -85,9 +85,9 @@
 							<button class="_button" :class="$style.frameMenuBtn" @click.stop="openFrameMenu(slot, frame, $event)"><i class="ti ti-dots"></i></button>
 						</div>
 						<!-- 本体(アクティブタブ) -->
-						<div :class="['frameBody', $style.frameBody]">
+						<div :class="['frameBody', $style.frameBody]" @touchstart.passive="onFrameTouchStart(frame, $event)" @touchend="onFrameTouchEnd(slot, frame, $event)">
 							<template v-for="tab in frame.tabs" :key="tab.id">
-								<div v-show="activeTabOf(frame).id === tab.id" :class="[$style.tabPane, { [$style.tabPanePostForm]: tab.type === 'postForm', [$style.tabPaneExtNotif]: tab.type === 'externalNotifications', [$style.tabPaneWidgets]: tab.type === 'widgets' }]">
+								<div v-show="activeTabOf(frame).id === tab.id" :class="[$style.tabPane, { [$style.tabPanePostForm]: tab.type === 'postForm', [$style.tabPaneExtNotif]: tab.type === 'externalNotifications', [$style.tabPaneWidgets]: tab.type === 'widgets' }]" :ref="el => setPaneRef(tab.id, el)">
 									<component :is="resolveColumn(tab)" v-bind="columnProps(tab)" :ref="el => setColRef(tab.id, el)"/>
 								</div>
 							</template>
@@ -112,8 +112,8 @@
 				<template v-for="frame in slot.frames" :key="frame.id">
 					<div :class="['frameRoot', $style.frameRoot, { [$style.frameColored]: !!frame.borderColor, [$style.frameDragOver]: dragOverFrame === frame.id }]" :style="frameStyle(frame, slot)" :data-deck-frame="frame.id" :data-deck-frame-slot="slot.id">
 						<div :class="$style.tabBar">
-							<div :class="$style.tabs" @wheel.prevent="onTabsWheel">
-								<button v-for="tab in frame.tabs" :key="tab.id" :class="[$style.tab, { [$style.tabActive]: activeTabOf(frame).id === tab.id, [$style.tabDragOver]: tabDragOverId === tab.id }]" :style="tabStyle(tab, activeTabOf(frame).id === tab.id)" @click="setActiveTab(slot.id, frame.id, tab.id)" @dblclick="renameTab(slot.id, frame.id, tab.id)" @contextmenu.prevent="openTabMenu(slot, frame, tab, $event)" :data-deck-tab="tab.id" :data-deck-tab-frame="frame.id" :data-deck-tab-slot="slot.id">
+							<div :class="$style.tabs" @wheel="onTabsWheel">
+								<button v-for="tab in frame.tabs" :key="tab.id" :class="[$style.tab, { [$style.tabActive]: activeTabOf(frame).id === tab.id, [$style.tabDragOver]: tabDragOverId === tab.id }]" :style="tabStyle(tab, activeTabOf(frame).id === tab.id)" @click="onTabClick(slot, frame, tab)" @dblclick="renameTab(slot.id, frame.id, tab.id)" @contextmenu.prevent="openTabMenu(slot, frame, tab, $event)" :data-deck-tab="tab.id" :data-deck-tab-frame="frame.id" :data-deck-tab-slot="slot.id">
 									<span v-if="!locked" :class="$style.tabGrip" v-tooltip="'ドラッグでタブを移動'" @pointerdown="onTabPointerDown(slot.id, frame.id, tab.id, $event)" @click.stop><i class="ti ti-grip-vertical"></i></span><i :class="[tabIcon(tab), $style.tabIcon, { [$style.tabIconActiveColored]: tab.tabColor && activeTabOf(frame).id === tab.id }]"></i><span :class="$style.tabLabel">{{ tabTitle(tab) }}</span>
 								</button>
 							</div>
@@ -122,9 +122,9 @@
 							<button v-if="!locked" class="_button" :class="$style.slotHandle" v-tooltip="'ドラッグで列を移動 / クリックで列設定'" @pointerdown="onSlotPointerDown(slot.id, $event)" @click.stop="openSlotMenu(slot, $event)"><i class="ti ti-grip-vertical"></i></button>
 							<button class="_button" :class="$style.frameMenuBtn" @click.stop="openFrameMenu(slot, frame, $event)"><i class="ti ti-dots"></i></button>
 						</div>
-						<div :class="['frameBody', $style.frameBody]">
+						<div :class="['frameBody', $style.frameBody]" @touchstart.passive="onFrameTouchStart(frame, $event)" @touchend="onFrameTouchEnd(slot, frame, $event)">
 							<template v-for="tab in frame.tabs" :key="tab.id">
-								<div v-show="activeTabOf(frame).id === tab.id" :class="[$style.tabPane, { [$style.tabPanePostForm]: tab.type === 'postForm', [$style.tabPaneExtNotif]: tab.type === 'externalNotifications', [$style.tabPaneWidgets]: tab.type === 'widgets' }]"><component :is="resolveColumn(tab)" v-bind="columnProps(tab)" :ref="el => setColRef(tab.id, el)"/></div>
+								<div v-show="activeTabOf(frame).id === tab.id" :class="[$style.tabPane, { [$style.tabPanePostForm]: tab.type === 'postForm', [$style.tabPaneExtNotif]: tab.type === 'externalNotifications', [$style.tabPaneWidgets]: tab.type === 'widgets' }]" :ref="el => setPaneRef(tab.id, el)"><component :is="resolveColumn(tab)" v-bind="columnProps(tab)" :ref="el => setColRef(tab.id, el)"/></div>
 							</template>
 						</div>
 					</div>
@@ -142,8 +142,8 @@
 				<template v-for="frame in slot.frames" :key="frame.id">
 					<div :class="['frameRoot', $style.frameRoot, { [$style.frameColored]: !!frame.borderColor, [$style.frameDragOver]: dragOverFrame === frame.id }]" :style="frameStyle(frame, slot)" :data-deck-frame="frame.id" :data-deck-frame-slot="slot.id">
 						<div :class="$style.tabBar">
-							<div :class="$style.tabs" @wheel.prevent="onTabsWheel">
-								<button v-for="tab in frame.tabs" :key="tab.id" :class="[$style.tab, { [$style.tabActive]: activeTabOf(frame).id === tab.id, [$style.tabDragOver]: tabDragOverId === tab.id }]" :style="tabStyle(tab, activeTabOf(frame).id === tab.id)" @click="setActiveTab(slot.id, frame.id, tab.id)" @dblclick="renameTab(slot.id, frame.id, tab.id)" @contextmenu.prevent="openTabMenu(slot, frame, tab, $event)" :data-deck-tab="tab.id" :data-deck-tab-frame="frame.id" :data-deck-tab-slot="slot.id">
+							<div :class="$style.tabs" @wheel="onTabsWheel">
+								<button v-for="tab in frame.tabs" :key="tab.id" :class="[$style.tab, { [$style.tabActive]: activeTabOf(frame).id === tab.id, [$style.tabDragOver]: tabDragOverId === tab.id }]" :style="tabStyle(tab, activeTabOf(frame).id === tab.id)" @click="onTabClick(slot, frame, tab)" @dblclick="renameTab(slot.id, frame.id, tab.id)" @contextmenu.prevent="openTabMenu(slot, frame, tab, $event)" :data-deck-tab="tab.id" :data-deck-tab-frame="frame.id" :data-deck-tab-slot="slot.id">
 									<span v-if="!locked" :class="$style.tabGrip" v-tooltip="'ドラッグでタブを移動'" @pointerdown="onTabPointerDown(slot.id, frame.id, tab.id, $event)" @click.stop><i class="ti ti-grip-vertical"></i></span><i :class="[tabIcon(tab), $style.tabIcon, { [$style.tabIconActiveColored]: tab.tabColor && activeTabOf(frame).id === tab.id }]"></i><span :class="$style.tabLabel">{{ tabTitle(tab) }}</span>
 								</button>
 							</div>
@@ -152,9 +152,9 @@
 							<button v-if="!locked" class="_button" :class="$style.slotHandle" v-tooltip="'ドラッグで列を移動 / クリックで列設定'" @pointerdown="onSlotPointerDown(slot.id, $event)" @click.stop="openSlotMenu(slot, $event)"><i class="ti ti-grip-vertical"></i></button>
 							<button class="_button" :class="$style.frameMenuBtn" @click.stop="openFrameMenu(slot, frame, $event)"><i class="ti ti-dots"></i></button>
 						</div>
-						<div :class="['frameBody', $style.frameBody]">
+						<div :class="['frameBody', $style.frameBody]" @touchstart.passive="onFrameTouchStart(frame, $event)" @touchend="onFrameTouchEnd(slot, frame, $event)">
 							<template v-for="tab in frame.tabs" :key="tab.id">
-								<div v-show="activeTabOf(frame).id === tab.id" :class="[$style.tabPane, { [$style.tabPanePostForm]: tab.type === 'postForm', [$style.tabPaneExtNotif]: tab.type === 'externalNotifications', [$style.tabPaneWidgets]: tab.type === 'widgets' }]"><component :is="resolveColumn(tab)" v-bind="columnProps(tab)" :ref="el => setColRef(tab.id, el)"/></div>
+								<div v-show="activeTabOf(frame).id === tab.id" :class="[$style.tabPane, { [$style.tabPanePostForm]: tab.type === 'postForm', [$style.tabPaneExtNotif]: tab.type === 'externalNotifications', [$style.tabPaneWidgets]: tab.type === 'widgets' }]" :ref="el => setPaneRef(tab.id, el)"><component :is="resolveColumn(tab)" v-bind="columnProps(tab)" :ref="el => setColRef(tab.id, el)"/></div>
 							</template>
 						</div>
 					</div>
@@ -179,6 +179,7 @@ import { computed, ref, watch, onMounted, onUnmounted, defineAsyncComponent, typ
 import * as os from '@/os.js';
 import { mainRouter } from '@/router.js';
 import { misskeyApi, misskeyApiGet } from '@/utility/misskey-api.js';
+import { notificationTypes } from 'cherrypick-js';
 import { prefer } from '@/preferences.js';
 import { globalEvents } from '@/events.js';
 import MkStreamingNotesTimeline from '@/components/MkStreamingNotesTimeline.vue';
@@ -189,10 +190,11 @@ import MkPostForm from '@/components/MkPostForm.vue';
 
 const XWidgets = defineAsyncComponent(() => import('./widgets.vue'));
 const WidgetExternalNotifications = defineAsyncComponent(() => import('@/widgets/WidgetExternalNotifications.vue'));
+const MkEarthquakeColumn = defineAsyncComponent(() => import('@/components/MkEarthquakeColumn.vue'));
 
 // ===== 型 =====
 type DeckLayout = 'row' | 'grid2' | 'grid3' | 'stack';
-type ColumnType = 'home' | 'local' | 'social' | 'global' | 'trending' | 'ohtl' | 'oltl' | 'list' | 'antenna' | 'channel' | 'mentions' | 'directs' | 'notifications' | 'externalNotifications' | 'widgets' | 'postForm';
+type ColumnType = 'home' | 'local' | 'social' | 'global' | 'trending' | 'ohtl' | 'oltl' | 'list' | 'antenna' | 'channel' | 'mentions' | 'directs' | 'notifications' | 'externalNotifications' | 'widgets' | 'postForm' | 'earthquake';
 
 // tab = カラム本体(表示内容)
 type DeckTab = {
@@ -203,6 +205,7 @@ type DeckTab = {
 	withRenotes?: boolean;
 	tabName?: string;    // タブ表示名(ユーザー設定可。未設定なら種別名)
 	tabColor?: string | null; // タブ(クリックして切り替える部分)の色
+	excludeTypes?: typeof notificationTypes[number][]; // 通知カラムで除外する通知タイプ(通知フィルタ)
 };
 // frame = スロット内の箱。tabs 複数ならタブ表示
 type DeckFrame = {
@@ -587,6 +590,7 @@ const COLUMN_META: Record<ColumnType, { title: string; icon: string }> = {
 	externalNotifications: { title: '外部通知', icon: 'ti ti-bell-ringing' },
 	widgets: { title: 'ウィジェット', icon: 'ti ti-apps' },
 	postForm: { title: '投稿フォーム', icon: 'ti ti-pencil-plus' },
+	earthquake: { title: '地震・津波', icon: 'ti ti-activity' },
 };
 function tabTitle(tab: DeckTab): string {
 	if (tab.tabName && tab.tabName.trim() !== '') return tab.tabName;
@@ -609,6 +613,7 @@ function resolveColumn(tab: DeckTab): Component {
 	if (tab.type === 'notifications') return MkStreamingNotificationsTimeline;
 	if (tab.type === 'postForm') return MkPostForm;
 	if (tab.type === 'widgets') return XWidgets;
+	if (tab.type === 'earthquake') return MkEarthquakeColumn;
 	return ColumnError;
 }
 function columnProps(tab: DeckTab): Record<string, unknown> {
@@ -620,9 +625,10 @@ function columnProps(tab: DeckTab): Record<string, unknown> {
 	if ((tab.type === 'ohtl' || tab.type === 'oltl') && externalReady.value) return { src: tab.type, host: externalHost.value, token: externalToken.value, sound: false, simpleUi: true };
 	if (tab.type === 'externalNotifications' && externalReady.value) return { widget: { id: `deck-extnotif-${tab.id}`, name: 'externalNotifications', data: {} }, showHeader: false };
 	if (tab.type === 'trending') return {};
-	if (tab.type === 'notifications') return {};
+	if (tab.type === 'notifications') return { excludeTypes: tab.excludeTypes };
 	if (tab.type === 'postForm') return { fixed: true, autofocus: false };
 	if (tab.type === 'widgets') return {};
+	if (tab.type === 'earthquake') return {};
 	return { message: (tab.type === 'ohtl' || tab.type === 'oltl' || tab.type === 'externalNotifications') ? '外部アカウントが未連携です' : 'このカラムを表示できません' };
 }
 const ColumnError = defineAsyncComponent(() => Promise.resolve({
@@ -636,6 +642,48 @@ function supportsRenoteToggle(tab: DeckTab): boolean { return RENOTE_TOGGLE_TYPE
 // ===== カラム本体ref(外部通知の更新/既読・一括更新用) =====
 const colRefs = new Map<string, any>();
 function setColRef(id: string, el: any) { if (el) colRefs.set(id, el); else colRefs.delete(id); }
+
+// 旗鯖fork(#9): タブペイン(スクロール領域)の要素参照。タブクリックで最上部へ戻すのに使う。
+const paneRefs = new Map<string, HTMLElement>();
+function setPaneRef(id: string, el: any) { if (el) paneRefs.set(id, el as HTMLElement); else paneRefs.delete(id); }
+
+// 旗鯖fork(#9): スクロールして最上部へ戻せるタブ種別か(投稿フォーム・ウィジェットは対象外)。
+function isScrollableTab(tab: DeckTab): boolean {
+	return tab.type !== 'postForm' && tab.type !== 'widgets';
+}
+// 旗鯖fork(#9): タブクリック。既にアクティブかつタイムライン系なら、そのペインを最上部へスクロール。
+// 非アクティブなら通常どおりタブを切り替える。
+function onTabClick(slot: DeckSlot, frame: DeckFrame, tab: DeckTab) {
+	if (activeTabOf(frame).id === tab.id) {
+		if (isScrollableTab(tab)) paneRefs.get(tab.id)?.scrollTo({ top: 0, behavior: 'smooth' });
+		return;
+	}
+	setActiveTab(slot.id, frame.id, tab.id);
+}
+
+// 旗鯖fork(#9): カラム本体の左右スワイプでタブ切替。横方向が縦方向より十分大きいスワイプのみ反応する
+// (縦スクロールを妨げない)。端では切り替えない。
+let frameSwipe: { x: number; y: number; frameId: string } | null = null;
+function onFrameTouchStart(frame: DeckFrame, ev: TouchEvent) {
+	if (frame.tabs.length < 2 || ev.touches.length !== 1) { frameSwipe = null; return; }
+	const t = ev.touches[0];
+	frameSwipe = { x: t.clientX, y: t.clientY, frameId: frame.id };
+}
+function onFrameTouchEnd(slot: DeckSlot, frame: DeckFrame, ev: TouchEvent) {
+	const s = frameSwipe;
+	frameSwipe = null;
+	if (!s || s.frameId !== frame.id) return;
+	const t = ev.changedTouches[0];
+	const dx = t.clientX - s.x;
+	const dy = t.clientY - s.y;
+	if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return; // 横スワイプ判定
+	const tabs = frame.tabs;
+	const cur = tabs.findIndex(t2 => t2.id === activeTabOf(frame).id);
+	if (cur < 0) return;
+	const next = dx < 0 ? cur + 1 : cur - 1; // 左スワイプ→次のタブ / 右スワイプ→前のタブ
+	if (next < 0 || next >= tabs.length) return;
+	setActiveTab(slot.id, frame.id, tabs[next].id);
+}
 function reloadAll() {
 	globalEvents.emit('reloadTimeline');
 	globalEvents.emit('reloadNotification');
@@ -663,8 +711,12 @@ function findFrame(slotId: string, frameId: string): { s: number; f: number } | 
 // ===== レイアウト別サイズ =====
 function slotStyle(slot: DeckSlot): Record<string, string> {
 	const st: Record<string, string> = {};
-	if (layout.value === 'row') st.width = `${slot.width}px`;
-	else if (layout.value === 'stack') st.height = `${slot.height ?? 460}px`;
+	if (layout.value === 'row') {
+		st.width = `${slot.width}px`;
+		// 旗鯖fork(#10): px数値指定でCSSの min-width(280px) を下回る幅も指定どおりに反映できるよう、
+		// インラインで minWidth も合わせる。
+		st.minWidth = `${slot.width}px`;
+	} else if (layout.value === 'stack') st.height = `${slot.height ?? 460}px`;
 	return st;
 }
 function frameStyle(frame: DeckFrame, slot: DeckSlot): Record<string, string> {
@@ -932,9 +984,68 @@ function onPointerUp(ev: PointerEvent) {
 }
 
 // タブバーの横スクロール: 縦ホイールを横スクロールに変換し、隠れたタブを出せるように。
+// 旗鯖fork(#21): タブバー上のホイール。
+//   - タブが横スクロール可能で、その方向にまだ動かせる → タブを横スクロール。
+//   - タブが収まりきっている、またはタブを端までスクロールし切った → デッキ(ページ)全体を左右スクロール。
 function onTabsWheel(ev: WheelEvent) {
 	const el = ev.currentTarget as HTMLElement;
-	el.scrollLeft += (Math.abs(ev.deltaY) > Math.abs(ev.deltaX) ? ev.deltaY : ev.deltaX);
+	const delta = Math.abs(ev.deltaY) >= Math.abs(ev.deltaX) ? ev.deltaY : ev.deltaX;
+	if (delta === 0) return;
+
+	// まずタブ自身を横スクロールできるか試す。
+	const canScrollTabs = el.scrollWidth > el.clientWidth + 1;
+	if (canScrollTabs) {
+		const atStart = el.scrollLeft <= 0;
+		const atEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 1;
+		const overscroll = (delta < 0 && atStart) || (delta > 0 && atEnd);
+		if (!overscroll) {
+			ev.preventDefault();
+			ev.stopPropagation();
+			el.scrollLeft += delta;
+			return;
+		}
+		// 端まで来ている → 下のデッキ横スクロールへ委譲する(フォールスルー)。
+	}
+
+	// タブが収まりきっている or タブを端までスクロールし切った → デッキ全体を左右スクロール。
+	const row = el.closest('[data-deck-row]') as HTMLElement | null;
+	if (row && row.scrollWidth > row.clientWidth + 1) {
+		ev.preventDefault();
+		ev.stopPropagation();
+		row.scrollLeft += delta;
+	}
+}
+
+// 旗鯖fork(#3): 横並びデッキで、カラム本体(縦スクロール可能領域)の外=カラム間の余白や
+// チャンネル(タブバー等)上で縦ホイールしたとき、ページ全体が縦スクロールしてしまうのを防ぐ。
+// カラム内の縦スクロールは温存し、それ以外では縦ホイールをデッキの横スクロールに変換する。
+function onDeckRowWheel(ev: WheelEvent) {
+	if (ev.deltaY === 0) return;
+	const row = ev.currentTarget as HTMLElement;
+	// ホイール位置の直下から row までの間に縦スクロール可能な領域(=カラム本体)があるか調べる。
+	let el = ev.target as HTMLElement | null;
+	while (el && el !== row) {
+		const oy = window.getComputedStyle(el).overflowY;
+		// カラム本体(縦スクロールコンテナ)に入っているかを判定する。
+		// スクロールバーが出ていない(scrollHeight <= clientHeight)カラムでも、ここで止めないと
+		// 縦ホイールが横スクロール変換に落ちてページが横に動いてしまうため、スクロール可否に関わらず捕捉する。
+		if (oy === 'auto' || oy === 'scroll') {
+			if (el.scrollHeight > el.clientHeight) {
+				const atTop = el.scrollTop <= 0;
+				const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
+				// カラムがホイール方向へまだスクロールできる → ネイティブの縦スクロールに任せる。
+				if (!((ev.deltaY < 0 && atTop) || (ev.deltaY > 0 && atBottom))) return;
+			}
+			// スクロールできない or 端まで来ている → ページ(横含む)へ伝播させないようにだけ止める。
+			// 横スクロールには変換しない(カラム内の縦ホイールで横に動かさない)。
+			ev.preventDefault();
+			return;
+		}
+		el = el.parentElement;
+	}
+	// カラム外(カラム間の余白など)で縦ホイール → ページ伝播を止め、横スクロールに変換する。
+	ev.preventDefault();
+	if (row.scrollWidth > row.clientWidth) row.scrollLeft += ev.deltaY;
 }
 
 function reorderTab(slotId: string, frameId: string, srcTabId: string, targetTabId: string) {
@@ -1080,6 +1191,7 @@ function columnTypeMenu(anchor: HTMLElement, onPick: (partial: Partial<DeckTab> 
 		] : []),
 		{ type: 'divider' as const },
 		{ text: '通知', icon: 'ti ti-bell', action: () => onPick({ type: 'notifications' }) },
+		{ text: '地震・津波', icon: 'ti ti-activity', action: () => onPick({ type: 'earthquake' }) },
 		{ text: 'ウィジェット', icon: 'ti ti-apps', action: () => onPick({ type: 'widgets' }) },
 		{ text: '投稿フォーム', icon: 'ti ti-pencil-plus', action: () => onPick({ type: 'postForm' }) },
 	];
@@ -1107,6 +1219,7 @@ async function addColumn(ev: MouseEvent) {
 			{ value: 'externalNotifications', label: '外部通知' },
 		] : []),
 		{ value: 'notifications', label: '通知' },
+		{ value: 'earthquake', label: '地震・津波' },
 		{ value: 'widgets', label: 'ウィジェット' },
 		{ value: 'postForm', label: '投稿フォーム' },
 	];
@@ -1132,6 +1245,22 @@ async function setFrameBorderCustom(slotId: string, frameId: string) {
 	setFrameBorderColor(slotId, frameId, (result && result.trim() !== '') ? result.trim() : null);
 }
 
+// 旗鯖fork(#8): 通知カラムの通知フィルタ。通知ページと同じ MkNotificationSelectWindow で
+// タイプ別の表示/非表示(excludeTypes)を選び、そのタブに保存して即時反映する。
+async function openNotificationFilter(slotId: string, frameId: string, tab: DeckTab) {
+	const { dispose } = await os.popupAsyncWithDialog(import('@/components/MkNotificationSelectWindow.vue').then(x => x.default), {
+		excludeTypes: tab.excludeTypes,
+	}, {
+		done: (res: { excludeTypes: string[] }) => {
+			const next = res.excludeTypes as typeof notificationTypes[number][];
+			// excludeTypes を更新すると columnProps 経由でプロップが変わり、
+			// MkStreamingNotificationsTimeline 側の computedParams ウォッチャが自動で再読み込みする。
+			mapSlots(ss => ss.map(s => s.id !== slotId ? s : { ...s, frames: s.frames.map(f => f.id !== frameId ? f : { ...f, tabs: f.tabs.map(t => t.id !== tab.id ? t : { ...t, excludeTypes: next }) }) }));
+		},
+		closed: () => dispose(),
+	});
+}
+
 // ===== frame メニュー(箱単位の操作) =====
 function openFrameMenu(slot: DeckSlot, frame: DeckFrame, ev: MouseEvent) {
 	const anchor = (ev.currentTarget ?? ev.target) as HTMLElement;
@@ -1148,6 +1277,17 @@ function openFrameMenu(slot: DeckSlot, frame: DeckFrame, ev: MouseEvent) {
 			if (active.type === 'externalNotifications') { colRefs.get(active.id)?.fetchNotifications?.(); }
 			else { globalEvents.emit('reloadNotification'); }
 		} },
+		{ type: 'divider' as const },
+	] : [];
+	// 通知タブのときは、通知ページと同様の通知フィルタ(タイプ別の表示/非表示)を出す
+	const notifFilterItem = (active.type === 'notifications') ? [
+		{ text: '通知フィルタ', icon: 'ti ti-filter', action: () => openNotificationFilter(slot.id, frame.id, active) },
+		{ type: 'divider' as const },
+	] : [];
+	// 旗鯖fork(#34): 地震・津波カラムは「更新」「設定」をこのメニュー(タブ部)に統合する。
+	const earthquakeItem = (active.type === 'earthquake') ? [
+		{ text: '更新', icon: 'ti ti-refresh', action: () => { colRefs.get(active.id)?.reload?.(); } },
+		{ text: '地震ビューアの設定', icon: 'ti ti-settings', action: () => { colRefs.get(active.id)?.openSettings?.(); } },
 		{ type: 'divider' as const },
 	] : [];
 	const colorItem = {
@@ -1182,6 +1322,8 @@ function openFrameMenu(slot: DeckSlot, frame: DeckFrame, ev: MouseEvent) {
 	os.popupMenu([
 		{ type: 'label' as const, text: tabTitle(active) },
 		...reloadItem,
+		...earthquakeItem,
+		...notifFilterItem,
 		...renoteItem,
 		{ text: 'タブ名を変更', icon: 'ti ti-forms', action: () => renameTab(slot.id, frame.id, active.id) },
 		{ text: 'このカラムに別カラムをタブ追加', icon: 'ti ti-plus', action: () => os.popupMenu(columnTypeMenu(anchor, p => addTabToFrame(slot.id, frame.id, p)), anchor) },
@@ -1219,6 +1361,12 @@ function openSlotMenu(slot: DeckSlot, ev: MouseEvent) {
 		{ text: '幅: 狭い', icon: 'ti ti-arrows-diff', action: () => setSlotWidth(slot.id, 300) },
 		{ text: '幅: 標準', icon: 'ti ti-arrows-horizontal', action: () => setSlotWidth(slot.id, 380) },
 		{ text: '幅: 広い', icon: 'ti ti-arrows-maximize', action: () => setSlotWidth(slot.id, 460) },
+		// 旗鯖fork(#10): カラム幅(横幅)をpxで数値指定する。
+		{ text: `幅: 数値指定 (現在 ${slot.width}px)`, icon: 'ti ti-ruler-measure', action: async () => {
+			const { canceled, result } = await os.inputNumber({ title: 'カラム幅 (px)', text: '横幅をpxで指定します（200〜1200）', default: slot.width });
+			if (canceled || result == null) return;
+			setSlotWidth(slot.id, Math.round(Math.max(200, Math.min(1200, result))));
+		} },
 		{ type: 'divider' as const },
 	] : l === 'stack' ? [
 		{ text: '高さ: コンパクト', icon: 'ti ti-fold', action: () => setSlotHeight(slot.id, 340) },

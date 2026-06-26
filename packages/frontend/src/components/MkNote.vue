@@ -8,7 +8,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 	v-if="!hardMuted && muted === false"
 	ref="rootEl"
 	v-hotkey="keymap"
-	:class="[$style.root, { [$style.showActionsOnlyHover]: prefer.s.showNoteActionsOnlyHover, [$style.skipRender]: prefer.s.skipNoteRender }]"
+	:class="[$style.root, { [$style.showActionsOnlyHover]: prefer.s.showNoteActionsOnlyHover, [$style.skipRender]: prefer.s.skipNoteRender && utageState === 'none', [$style.utageActive]: utageState !== 'none' && utageOutsideFrame }]"
 	tabindex="0"
 >
 	<div v-if="pinned" :class="$style.tip"><i class="ti ti-pin"></i> {{ i18n.ts.pinnedNote }}</div>
@@ -63,12 +63,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<MkAvatar v-if="!prefer.s.hideAvatarsInNote" :class="$style.collapsedRenoteTargetAvatar" :user="appearNote.user" link preview/>
 		<Mfm :text="getNoteSummary(appearNote)" :plain="true" :nowrap="true" :author="appearNote.user" :nyaize="'respect'" :class="[$style.collapsedRenoteTargetText, { [$style.showReplyTargetNoteInSemiTransparent]: prefer.s.showReplyTargetNoteInSemiTransparent }]" @click="renoteCollapsed ? renoteCollapsed = false : replyCollapsed ? replyCollapsed = false : ''"/>
 	</div>
-	<article v-else :class="$style.article" :style="{ cursor: expandOnNoteClick ? 'pointer' : '', paddingTop: prefer.s.showSubNoteFooterButton && appearNote.reply && (!renoteCollapsed && !replyCollapsed && ((!notification && (forceShowReplyTargetNote || prefer.s.showReplyTargetNote)) || (notification && prefer.s.showReplyInNotification))) ? '14px' : '' }" @click.stop="noteClick" @dblclick.stop="noteDblClick" @contextmenu.stop="onContextmenu">
+	<article v-else :class="$style.article" :data-utage-square="(!utageOutsideFrame && utageState !== 'none') ? utageState : null" :style="{ cursor: expandOnNoteClick ? 'pointer' : '', paddingTop: prefer.s.showSubNoteFooterButton && appearNote.reply && (!renoteCollapsed && !replyCollapsed && ((!notification && (forceShowReplyTargetNote || prefer.s.showReplyTargetNote)) || (notification && prefer.s.showReplyInNotification))) ? '14px' : '' }" @click.stop="noteClick" @dblclick.stop="noteDblClick" @contextmenu.stop="onContextmenu">
 		<!-- 旗鯖fork: C7 宴チュートリアル (自分の宴ノート初回のみ) -->
 		<MkTip v-if="showUtageTip" k="note.utage" style="margin-bottom: 8px;">
 			「宴」「うたげ」「utage」を含むノートをローカルTLに投稿すると、15分間ノートが明滅します。誰にも反応されずに15分逃げ切れたら<b style="color: var(--MI_THEME-success);">緑色で「成功」</b>、途中でリアクションなどの反応が来たら<b style="color: var(--MI_THEME-error);">赤色で「失敗...」</b>になります。
 		</MkTip>
-		<div :class="[$style.bubbleBody, { [$style.utageFlashing]: utageState === 'flashing', [$style.utageFailed]: utageState === 'failed', [$style.utageSuccess]: utageState === 'success' }]">
+		<div :class="[$style.bubbleBody, { [$style.utageFlashing]: utageState === 'flashing' && utageOutsideFrame, [$style.utageFailed]: utageState === 'failed' && utageOutsideFrame, [$style.utageSuccess]: utageState === 'success' && utageOutsideFrame }]">
 		<!-- 旗鯖fork: C7 宴 結果バッジ (吹き出し右下隅) -->
 		<div v-if="utageState === 'failed'" :class="[$style.utageBadge, $style.utageBadgeFailed]">失敗...</div>
 		<div v-else-if="utageState === 'success'" :class="[$style.utageBadge, $style.utageBadgeSuccess]">成功</div>
@@ -501,6 +501,10 @@ const tl_withSensitive = inject<Ref<boolean>>('tl_withSensitive', ref(true));
 const inChannel = inject('inChannel', null);
 // 旗鯖fork: C7 宴明滅機能。LTL表示中かどうか(MkStreamingNotesTimelineからprovide)。
 const inLocalTimeline = inject<Ref<boolean> | null>('inLocalTimeline', null);
+// 旗鯖fork(#1): 吹き出し表示が有効か(MkStreamingNotesTimelineからprovide)。
+// 宴枠(outline)を吹き出しON時は外側に、OFF時は内側(inset)に描くため。未提供時(=吹き出し文脈外)は内側にする。
+const noteBubbleEnabled = inject<Ref<boolean> | null>('noteBubbleEnabled', null);
+const utageOutsideFrame = computed(() => noteBubbleEnabled?.value ?? false);
 const currentClip = inject<Ref<Misskey.entities.Clip> | null>('currentClip', null);
 
 let note = deepClone(props.note);
@@ -894,7 +898,8 @@ function quote(): void {
 		return;
 	}
 	if (appearNote.channel) {
-		if (appearNote.channel.allowRenoteToExternal) {
+		// 旗鯖fork: プライベートチャンネルのノートはチャンネル外へ引用させない
+		if (appearNote.channel.allowRenoteToExternal && !appearNote.channel.isPrivate) {
 			const { menu } = getQuoteMenu({ note: note, mock: props.mock });
 			os.popupMenu(menu, quoteButton.value);
 		} else {
@@ -1316,6 +1321,13 @@ function emitUpdReaction(emoji: string, delta: number) {
 	}
 }
 
+/* 旗鯖fork: C7 宴 明滅/結果枠(outline)は要素の境界ボックス外に描画されるため、
+   .root の overflow:clip(および skipRender の content-visibility)に下端などをクリップされてしまう。
+   宴状態のノートに限り overflow を可視にして枠全体が見えるようにする(宴ノートは少数のため影響軽微)。 */
+.utageActive {
+	overflow: visible;
+}
+
 .skipRender {
 	// TODO: これが有効だとTransitionGroupでnoteを追加するときに一瞬がくっとなってしまうのをどうにかしたい
 	// Transitionが完了するのを待ってからskipRenderを付与すれば解決しそうだけどパフォーマンス的な影響が不明
@@ -1447,6 +1459,8 @@ function emitUpdReaction(emoji: string, delta: number) {
    完全に透明にはせず薄く残すことで、チカチカせず「ふわっと脈打つ」目に優しい明滅にする。
    主役は枠線の色。背景はごく薄く添えるだけ。--MI_THEME-accentはライト/ダーク両モードで
    テーマの主色なので、不透明度の振り幅で両モードとも視認できる。 */
+/* 吹き出しON時の宴枠は .bubbleBody(=丸いカード)の外側(+2px)に丸い outline を描く。
+   吹き出しOFF(デッキ等の四角ノート)では代わりに .article[data-utage-square] で四角枠を描く。 */
 .utageFlashing {
 	border-radius: 16px;
 	outline: 2px solid transparent;
@@ -1487,6 +1501,42 @@ function emitUpdReaction(emoji: string, delta: number) {
 	outline: 2px solid color-mix(in srgb, var(--MI_THEME-success) 75%, transparent);
 	outline-offset: 2px;
 	background: color-mix(in srgb, var(--MI_THEME-success) 8%, transparent);
+}
+
+/* 旗鯖fork(#1): 吹き出しOFF(デッキUI等、四隅が四角のノート)用の宴枠。
+   .article(=ノート本体の四角い箱)に inset の box-shadow で枠を描く。
+   inset なので隣のノートや他要素にはみ出さず、四角い枠なので四角ノートと形が一致する。
+   背景の淡い着色も .article 側で行う(.bubbleBody の着色は吹き出しON時のみ)。 */
+.article[data-utage-square] {
+	position: relative;
+}
+.article[data-utage-square='failed'] {
+	box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--MI_THEME-error) 80%, transparent);
+	background: color-mix(in srgb, var(--MI_THEME-error) 9%, transparent) !important;
+}
+.article[data-utage-square='success'] {
+	box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--MI_THEME-success) 75%, transparent);
+	background: color-mix(in srgb, var(--MI_THEME-success) 8%, transparent) !important;
+}
+.article[data-utage-square='flashing'] {
+	animation: utageFlashInset 2.4s ease-in-out infinite;
+}
+@keyframes utageFlashInset {
+	0%, 100% {
+		box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--MI_THEME-accent) 18%, transparent);
+		background: color-mix(in srgb, var(--MI_THEME-accent) 2%, transparent);
+	}
+	50% {
+		box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--MI_THEME-accent) 92%, transparent);
+		background: color-mix(in srgb, var(--MI_THEME-accent) 9%, transparent);
+	}
+}
+@media (prefers-reduced-motion: reduce) {
+	.article[data-utage-square='flashing'] {
+		animation: none;
+		box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--MI_THEME-accent) 70%, transparent);
+		background: color-mix(in srgb, var(--MI_THEME-accent) 7%, transparent);
+	}
 }
 
 /* 結果バッジ (右下隅)。背景に関わらず読めるよう、太字+縁取り(text-shadow)で表現。 */

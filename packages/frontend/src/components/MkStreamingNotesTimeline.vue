@@ -14,6 +14,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 	</div>
 
 	<div v-else ref="rootEl">
+		<!-- 旗鯖fork(#7): HatasabaUIデッキUIでは、タイムライン最上部に「最新のノートです」を表示し、
+		     先頭ノートがタブバーに密着しないよう余白も兼ねる。 -->
+		<div v-if="isHatasabaDeck" :class="$style.deckTopMsg"><i class="ti ti-arrow-bar-to-up"></i> 最新のノートです</div>
 		<transition
 			:enterActiveClass="prefer.s.animation ? $style.transition_new_enterActive : ''"
 			:leaveActiveClass="prefer.s.animation ? $style.transition_new_leaveActive : ''"
@@ -43,6 +46,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			:is="prefer.s.animation ? TransitionGroup : 'div'"
 			:class="[$style.notes, { [$style.noGap]: noGap, '_gaps': !noGap }]"
 			:data-deck-ui="isDeckUi ? 'on' : undefined"
+			:data-hatasaba-spacer="isHatasabaDeck ? 'on' : undefined"
 			:data-bubble="bubbleEnabled ? 'on' : undefined"
 			:data-spacing="noteSpacingValue"
 			:data-classic-spacing="classicSpacingEnabled ? 'on' : undefined"
@@ -60,8 +64,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</div>
 			</template>
 			<template v-for="(note, i) in paginator.items.value" v-else :key="note.id">
-				<div v-if="i > 0 && isSeparatorNeeded(paginator.items.value[i -1].createdAt, note.createdAt)" :class="{ '_gaps': !noGap }" :data-scroll-anchor="note.id">
-					<div :class="[$style.date, { [$style.noGap]: noGap }]">
+				<div v-if="i > 0 && isSeparatorNeeded(paginator.items.value[i -1].createdAt, note.createdAt)" :class="[{ '_gaps': !noGap, [$style.sepWrapLeft]: dateOnLeft, [$style.sepWrapTight]: !dateHidden && !dateOnLeft }]" :data-scroll-anchor="note.id">
+					<div v-if="!dateHidden" :class="[$style.date, { [$style.noGap]: noGap, [$style.dateLeft]: dateOnLeft, [$style.dateMobile]: isMobile, [$style.dateDeck]: isHatasabaDeck }]">
+						<i v-if="dateOnLeft" :class="['ti ti-clock', $style.dateLeftIcon]"></i>
 						<span><i class="ti ti-chevron-up"></i> {{ getSeparatorInfo(paginator.items.value[i -1].createdAt, note.createdAt)?.prevText }}</span>
 						<span style="height: 1em; width: 1px; background: var(--MI_THEME-divider);"></span>
 						<span>{{ getSeparatorInfo(paginator.items.value[i -1].createdAt, note.createdAt)?.nextText }} <i class="ti ti-chevron-down"></i></span>
@@ -127,8 +132,12 @@ const MOBILE_THRESHOLD = 500;
 // デスクトップでウィンドウを狭くしたときモバイルUIが表示されて欲しいことはあるので deviceKind === 'desktop' の判定は行わない
 const isDesktop = ref(window.innerWidth >= DESKTOP_THRESHOLD);
 const isMobile = ref(['smartphone', 'tablet'].includes(String(deviceKind)) || window.innerWidth <= MOBILE_THRESHOLD);
+// 旗鯖fork(#15): 左マージン日付表示は十分な余白(タイムライン両脇)が必要なため、幅をリアクティブに追跡する。
+const windowWidth = ref(window.innerWidth);
+const LEFT_DATE_MIN_WIDTH = 1000;
 const handleResize = () => {
 	isMobile.value = deviceKind === 'smartphone' || window.innerWidth <= MOBILE_THRESHOLD;
+	windowWidth.value = window.innerWidth;
 };
 
 window.addEventListener('resize', handleResize);
@@ -190,26 +199,54 @@ provide('inLocalTimeline', computed(() => props.src === 'local'));
 
 // 旗鯖独自: ノート間隔（リアクティブ、デッキUIでは自動的にwideに）
 const noteSpacingValue = computed(() => {
-    if (miLocalStorage.getItem('ui') === 'deck') return 'wide';
-    return prefer.r['simpleUi.noteSpacing']?.value ?? 'moderate';
+    const ui = miLocalStorage.getItem('ui');
+    if (ui === 'deck') return 'wide';
+    const v = prefer.r['simpleUi.noteSpacing']?.value ?? 'moderate';
+    // 旗鯖fork(#15): HatasabaUI通常表示では「詰める(compact)」を廃止し moderate に丸める。
+    // (HatasabaUIデッキ表示=ui:simple かつ deckMode は情報密度のため compact のまま許可)
+    const deckMode = prefer.r['simpleUi.deckMode']?.value ?? false;
+    if (ui === 'simple' && !deckMode && v === 'compact') return 'moderate';
+    return v;
 });
 
 // 旗鯖独自: 吹き出し有効判定（デッキUIで無効化設定時はoff）
 const isDeckUi = miLocalStorage.getItem('ui') === 'deck';
 const isDefaultUi = miLocalStorage.getItem('ui') === 'default';
-// 旗鯖fork: HatasabaUI(simple) のデッキモード判定。
-const isHatasabaDeck = miLocalStorage.getItem('ui') === 'simple' && (prefer.r['simpleUi.deckMode']?.value ?? false);
+// 旗鯖fork(#4): HatasabaUI(simple) のデッキモード判定。
+// deckMode はランタイムで切り替わる(デッキ⇔通常)ため computed にしてリアクティブにする。
+// const で固定すると、デッキ表示中にマウントされた(v-showで隠れている)通常TLが
+// 通常表示へ戻った後もデッキ時の吹き出し/間隔のままになる(タブ切替/リロードまで直らない)バグになる。
+const isHatasabaDeck = computed(() => miLocalStorage.getItem('ui') === 'simple' && (prefer.r['simpleUi.deckMode']?.value ?? false));
 const bubbleEnabled = computed(() => {
     // チャンネルTLでは強制的に吹き出しON
     if (props.src === 'channel') return true;
     if (isDeckUi && prefer.r['simpleUi.disableBubbleInDeck']?.value) return false;
     if (isDefaultUi && prefer.r['simpleUi.disableBubbleInDefault']?.value) return false;
-    if (isHatasabaDeck && prefer.r['simpleUi.disableBubbleInHatasabaDeck']?.value) return false;
+    if (isHatasabaDeck.value && prefer.r['simpleUi.disableBubbleInHatasabaDeck']?.value) return false;
     return true;
 });
 
+// 旗鯖fork(#1): 宴枠(outline)の描き方を MkNote 側で吹き出し有無に合わせて切り替えるため、
+// 吹き出し有効状態を子(MkNote)へ伝える。吹き出しON=枠を外側に、OFF=枠を内側に描く。
+provide('noteBubbleEnabled', bubbleEnabled);
+
 // 旗鯖独自: クラシック投稿間隔
-const classicSpacingEnabled = computed(() => prefer.r['simpleUi.classicNoteSpacing']?.value ?? false);
+// 旗鯖fork(#7): HatasabaUI(通常表示・デッキ表示の両方=ui:simple)では、従来Misskey風の投稿間隔
+// (隙間0＋グレーのスペーサーで区切る)を強制ONにする。設定トグルでは変更不可(hata-custom側で無効化)。
+const isHatasaba = miLocalStorage.getItem('ui') === 'simple';
+const classicSpacingEnabled = computed(() => {
+    if (isHatasaba) return true;
+    return prefer.r['simpleUi.classicNoteSpacing']?.value ?? false;
+});
+
+// 旗鯖fork(#15): スマホ/狭幅でも日付をインライン表示するか(アクセシビリティ設定、既定OFF)。
+const showDateOnMobile = computed(() => prefer.r['simpleUi.showTimelineDateOnMobile']?.value ?? false);
+// 左マージン日付には両脇の余白が必要。スマホ or 幅が狭いときは「狭幅」とみなす。
+const isNarrowForDate = computed(() => isMobile.value || windowWidth.value < LEFT_DATE_MIN_WIDTH);
+// 旗鯖fork: 日付セパレータを左におしゃれに表示するか(デッキ/狭幅を除くデスクトップ通常表示)。
+const dateOnLeft = computed(() => !isDeckUi && !isHatasabaDeck.value && !isNarrowForDate.value);
+// 旗鯖fork(#15): 通常表示の狭幅/スマホで、トグルOFFのときは日付を非表示にする(従来の挙動)。
+const dateHidden = computed(() => !isDeckUi && !isHatasabaDeck.value && isNarrowForDate.value && !showDateOnMobile.value);
 
 
 // 旗鯖独自: アニメーション方向（リアクティブ — data-anim-dir属性で制御）
@@ -724,6 +761,24 @@ defineExpose({
 	opacity: 0;
 }
 
+/* 旗鯖fork(#7): デッキUIのタイムライン最上部メッセージ「最新のノートです」 */
+.deckTopMsg {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 5px;
+	padding: 4px 8px 3px;
+	font-size: 0.75em;
+	font-weight: 600;
+	color: var(--MI_THEME-fg);
+	opacity: 0.45;
+	user-select: none;
+
+	> i {
+		font-size: 1.05em;
+	}
+}
+
 .notes {
 	container-type: inline-size;
 
@@ -873,6 +928,82 @@ defineExpose({
 	&.noGap {
 		border-bottom: solid 0.5px var(--MI_THEME-divider);
 	}
+
+	/* 旗鯖fork(#15): HatasabaUIデッキ表示では日付セパレータの上下幅が空きすぎるため、
+	   「最新のノートです」程度の高さに詰める。 */
+	&.dateDeck {
+		padding: 2px 8px 3px;
+		font-size: 78%;
+		opacity: 0.6;
+	}
+
+	/* 旗鯖fork: スマホ表示では日付の帯がノート(カード)と色が違って浮くため、ノートと同じ背景色にする。
+	   旗鯖fork(#15): 上下幅が広すぎるため padding も詰める。 */
+	&.dateMobile {
+		background: var(--MI_THEME-panel);
+		padding: 2px 8px 3px;
+	}
+
+	/* 旗鯖fork: デスクトップの通常表示では、日付をノートの左マージン(余白)に
+	   絶対配置で上下2段(上=前の日付 / 下=次の日付)で表示する。
+	   絶対配置にすることで日付が行を取らず、ノートが途切れず連続して並ぶ。 */
+	&.dateLeft {
+		position: absolute;
+		/* 区切り線(prevとnextの境)が、ノートの境界(=ラッパー上端の灰色バー付近)に来るようにする。
+		   時計アイコンは絶対配置でフローから外しているため、ブロックの縦中央 ≒ 区切り線になる。 */
+		top: 1px;
+		left: 0;
+		transform: translateX(-100%) translateY(-50%);
+		flex-direction: column;
+		align-items: flex-end;
+		justify-content: flex-start;
+		gap: 2px;
+		width: max-content;
+		max-width: 104px;
+		padding: 0 12px 0 0;
+		margin: 0;
+		font-size: 88%;
+		font-weight: 700;
+		line-height: 1.25;
+		opacity: 0.85;
+		color: var(--MI_THEME-accent);
+		text-align: right;
+		white-space: nowrap;
+		background: transparent;
+		border-bottom: none !important;
+		pointer-events: none;
+
+		/* 中央の区切り(縦線)を、2段表示では水平の細線にする(インラインstyleを上書き) */
+		> span:nth-of-type(2) {
+			width: 28px !important;
+			height: 2px !important;
+			border-radius: 2px;
+			background: color-mix(in srgb, var(--MI_THEME-accent) 45%, transparent) !important;
+			margin: 1px 0;
+		}
+	}
+
+	/* 旗鯖fork: 左マージン日付表示に添える時計アイコン(おしゃれ用)。
+	   絶対配置でフローから外し、区切り線がブロック中央に来る(=境界に揃う)のを妨げないようにする。 */
+	.dateLeftIcon {
+		position: absolute;
+		bottom: calc(100% - 1px);
+		left: 50%;
+		transform: translateX(-50%);
+		font-size: 1.4em;
+		opacity: 0.9;
+	}
+}
+
+/* 旗鯖fork: 左マージン日付表示のための相対配置コンテナ(日付の絶対配置の基準)。 */
+.sepWrapLeft {
+	position: relative;
+}
+
+/* 旗鯖fork(#15): 日付をインライン表示(デッキ/スマホ)するとき、セパレータラッパー内の
+   日付↔ノート間の隙間(_gaps の gap=var(--MI-margin)≒14px)が広すぎるため詰める。 */
+.sepWrapTight {
+	gap: 3px !important;
 }
 
 .ad {
@@ -1049,18 +1180,32 @@ defineExpose({
 }
 
 /* ===== クラシック投稿間隔 ===== */
+/* 旗鯖fork(#7): 従来Misskey風の表示間隔。隙間0＋ノート間を細い区切り線で区切る。
+   - 浮いた隙間(flex gap / 吹き出しカードの下マージン)を消してノートを密着させる
+   - 各ノート(.notes直下のdiv)の下に細い区切り線を置く
+   旧実装は `> div > div`(=.root直下のdiv)を対象にしていたが通常ノートは .root 直下が
+   <article>(div でない)のため当たらなかった。各ノート(`> div`)を直接対象にする。
+   ※ デッキの「灰色バーのスペーサー」は別途 data-hatasaba-spacer で上書きする(デッキのみ)。 */
 [data-classic-spacing="on"] {
 	gap: 0 !important;
 }
-[data-classic-spacing="on"] > div {
+[data-classic-spacing="on"] article > div {
 	margin-bottom: 0 !important;
 }
-[data-classic-spacing="on"] > div > div {
+[data-classic-spacing="on"] > div {
+	margin-bottom: 0 !important;
 	border-bottom: 1px solid var(--MI_THEME-divider) !important;
-	padding-bottom: 8px !important;
-	margin-bottom: 8px !important;
 }
-[data-classic-spacing="on"] > div > div:last-child {
+[data-classic-spacing="on"] > div:last-child {
+	border-bottom: none !important;
+}
+
+/* ===== 旗鯖fork(#7): HatasabaUIデッキUIのみ、ノート間を灰色のスペーサー(バー)で区切る ===== */
+/* クラシック投稿間隔の細い区切り線(1px)を、デッキでは太い灰色バーに上書きする(後勝ち)。 */
+[data-hatasaba-spacer="on"] > div {
+	border-bottom: 5px solid var(--MI_THEME-bg) !important;
+}
+[data-hatasaba-spacer="on"] > div:last-child {
 	border-bottom: none !important;
 }
 

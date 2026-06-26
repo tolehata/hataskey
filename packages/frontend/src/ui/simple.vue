@@ -36,7 +36,7 @@ SPDX-License-Identifier: AGPL-3.0-only
             <div :class="$style.sbNav">
                 <template v-for="grp in sidebarGroups" :key="grp.key">
                     <div v-if="grp.label" :class="$style.sbGroupLabel">{{ grp.label }}</div>
-                    <button v-for="item in grp.items" :key="item.id" :class="[$style.sbItem, { [$style.sbActive]: sidebarItemActive(item.id) }]" @click="sidebarItemClick(item.id, $event)">
+                    <button v-for="item in grp.items" :key="item.id" :ref="el => { if (item.id === 'more') moreAnchorEl = (el as HTMLElement | null); }" v-tooltip.right="sidebarFolded ? item.label : null" :class="[$style.sbItem, { [$style.sbActive]: sidebarItemActive(item.id) }]" @click="sidebarItemClick(item.id, $event)">
                         <i :class="[item.icon, $style.sbIcon]"></i><span :class="$style.sbLabel">{{ item.label }}</span>
                         <template v-if="item.id==='notifications' && hasUnreadNotif">
                             <span v-if="showUnreadNotifCount && unreadNotifCount > 0" :class="$style.sbBadge">{{ unreadNotifCount > 99 ? '99+' : unreadNotifCount }}</span>
@@ -49,16 +49,20 @@ SPDX-License-Identifier: AGPL-3.0-only
                         <span v-if="item.id==='externalNotifications' && extNotifHasUnread" :class="$style.sbExtDot"></span>
                     </button>
                 </template>
+                <!-- 旗鯖fork: 「もっと」の下にページ全体のリロードボタン -->
+                <button :class="$style.sbItem" v-tooltip.right="sidebarFolded ? 'リロード' : null" @click="reloadPage">
+                    <i class="ti ti-refresh" :class="$style.sbIcon"></i><span :class="$style.sbLabel">リロード</span>
+                </button>
             </div>
 
             <div :class="$style.sbDivider"></div>
 
             <!-- 設定 & リアルタイムモード -->
             <div :class="$style.sbNav">
-                <button :class="$style.sbItem" @click="goToSettings">
+                <button :class="$style.sbItem" v-tooltip.right="sidebarFolded ? '設定' : null" @click="goToSettings">
                     <i class="ti ti-settings" :class="$style.sbIcon"></i><span :class="$style.sbLabel">設定</span>
                 </button>
-                <button :class="[$style.sbItem, { [$style.sbActive]: isRealtimeMode }]" @click="toggleRealtimeMode">
+                <button :class="[$style.sbItem, { [$style.sbActive]: isRealtimeMode }]" v-tooltip.right="sidebarFolded ? 'リアルタイム' : null" @click="toggleRealtimeMode">
                     <i :class="[isRealtimeMode ? 'ti ti-bolt' : 'ti ti-bolt-off', $style.sbIcon]"></i>
                     <span :class="$style.sbLabel">リアルタイム</span>
                     <span :class="[$style.sbOnOff, { [$style.sbOnOffOn]: isRealtimeMode }]">{{ isRealtimeMode ? 'ON' : 'OFF' }}</span>
@@ -69,7 +73,7 @@ SPDX-License-Identifier: AGPL-3.0-only
             <template v-if="$i && ($i.isAdmin || $i.isModerator)">
                 <div :class="$style.sbDivider"></div>
                 <div :class="$style.sbNav">
-                    <button :class="[$style.sbItem, { [$style.sbActive]: isAdminPage }]" @click="goToAdmin">
+                    <button :class="[$style.sbItem, { [$style.sbActive]: isAdminPage }]" v-tooltip.right="sidebarFolded ? 'コントロールパネル' : null" @click="goToAdmin">
                         <i class="ti ti-dashboard" :class="$style.sbIcon"></i><span :class="$style.sbLabel">コントロールパネル</span>
                     </button>
                 </div>
@@ -81,7 +85,11 @@ SPDX-License-Identifier: AGPL-3.0-only
 
             <!-- 下部: 投稿 + アカウント (固定) -->
             <div :class="$style.sbBottom">
-                <button :class="$style.sbPostBtn" data-cy-open-post-form @click="onPostClick">
+                <!-- 旗鯖fork: HatasabaUIデッキUI使用中は、ノートボタンの上にリロードボタンを固定表示 -->
+                <button v-if="deckActive" :class="$style.sbReloadBtn" v-tooltip.right="sidebarFolded ? 'リロード' : null" @click="reloadPage">
+                    <i class="ti ti-refresh"></i>
+                </button>
+                <button :class="$style.sbPostBtn" data-cy-open-post-form v-tooltip.right="sidebarFolded ? 'ノート' : null" @click="onPostClick">
                     <i class="ti ti-pencil"></i>
                 </button>
                 <!-- 旗鯖fork: デッキモード切替トグル (アカウント表示の上) -->
@@ -94,7 +102,7 @@ SPDX-License-Identifier: AGPL-3.0-only
                     </button>
                 </div>
                 <div :class="$style.sbBottomRow">
-                    <button :class="$style.sbAccount" @click="openAccountMenu">
+                    <button :class="$style.sbAccount" v-tooltip.right="sidebarFolded ? 'アカウント' : null" @click="openAccountMenu">
                         <img v-if="$i?.avatarUrl" :src="$i.avatarUrl" :class="$style.sbAvatarImg" />
                         <span :class="$style.sbUsername">@{{ $i?.username }}</span>
                     </button>
@@ -125,6 +133,8 @@ SPDX-License-Identifier: AGPL-3.0-only
                         <span v-if="item.id==='externalNotifications' && extNotifHasUnread" :class="$style.topNavDotBlue"></span>
                     </button>
                 </template>
+                <!-- 旗鯖fork: 「もっと」の右にページ全体のリロードボタン -->
+                <button :class="$style.topNavItem" v-tooltip="'リロード'" @click="reloadPage"><i class="ti ti-refresh"></i><span>リロード</span></button>
                 <button v-if="$i && ($i.isAdmin || $i.isModerator)" :class="[$style.topNavItem, { [$style.topNavItemActive]: isAdminPage }]" v-tooltip="'コントロールパネル'" @click="goToAdmin"><i class="ti ti-dashboard"></i><span>管理</span></button>
             </div>
             <div :class="$style.topNavDivider"></div>
@@ -163,7 +173,7 @@ SPDX-License-Identifier: AGPL-3.0-only
                     <i class="ti ti-device-tv"></i>
                     <span v-if="isChannelPage" :class="$style.topTabLabel">チャンネル</span>
                 </button>
-                <button :class="[$style.topTabBtn, { [$style.topTabActive]: isAntennaPage }]" @click="goToAntennas">
+                <button :class="[$style.topTabBtn, { [$style.topTabActive]: isAntennaPage }]" @click="openAntennaList">
                     <i class="ti ti-antenna"></i>
                     <span v-if="isAntennaPage" :class="$style.topTabLabel">アンテナ</span>
                 </button>
@@ -263,6 +273,13 @@ SPDX-License-Identifier: AGPL-3.0-only
         <div v-if="collapseAnnounceVisible && collapseAnnPos && !sidebarCollapsed && !deckActive" :class="$style.sbAnnounce" :style="{ top: collapseAnnPos.top + 'px', left: collapseAnnPos.left + 'px' }">
             <div :class="$style.sbAnnounceText">ここでメニューを縮小・拡大できます</div>
             <button :class="$style.sbAnnounceClose" @click="dismissCollapseAnnounce"><i class="ti ti-x"></i></button>
+            <div :class="$style.sbAnnounceArrow"></div>
+        </div>
+        <!-- 旗鯖fork: HataFeed/地震・津波情報の新機能案内(「もっと」内のメニューを案内・端末ごと1回)
+             法的安全性のためクリックでは遷移しないお知らせのみ(気象業務法上の独自警報化リスク回避) -->
+        <div v-if="moreAnnounceVisible && moreAnnPos" :class="$style.sbAnnounce" :style="{ top: moreAnnPos.top + 'px', left: moreAnnPos.left + 'px' }">
+            <div :class="$style.sbAnnounceText">「もっと！」から HataFeed（フィードバック）と気象庁発表の地震・津波情報が確認できるようになりました</div>
+            <button :class="$style.sbAnnounceClose" @click.stop="dismissMoreAnnounce"><i class="ti ti-x"></i></button>
             <div :class="$style.sbAnnounceArrow"></div>
         </div>
     </Teleport>
@@ -373,6 +390,8 @@ import { DI } from '@/di.js';
 import * as os from '@/os.js';
 import { useStream } from '@/stream.js';
 import { $i } from '@/i.js';
+import { antennasCache } from '@/cache.js';
+import { deckIgnoreWidth } from '@/utility/hatasaba-device-prefs.js';
 import { prefer } from '@/preferences.js';
 import { cleanupStaleUiElements } from '@/utility/ui-cleanup.js';
 import { getAccountMenu } from '@/accounts.js';
@@ -440,6 +459,8 @@ function setTopNavMode(v: boolean) {
 // 旗鯖fork: 左サイドメニューの手動縮小(折りたたみ)。
 // deckActive(デッキ時の自動折りたたみ)とは独立。どちらかが真なら畳む。
 const sidebarCollapsed = prefer.r['simpleUi.sidebarCollapsed'];
+// 旗鯖fork(#12): サイドメニューがアイコンのみ(折りたたみ/デッキ)のとき、ホバーでラベルチップを出すための判定。
+const sidebarFolded = computed(() => deckActive.value || sidebarCollapsed.value);
 function toggleSidebarCollapse() {
 	prefer.commit('simpleUi.sidebarCollapsed', !sidebarCollapsed.value);
 	dismissCollapseAnnounce();
@@ -517,9 +538,13 @@ function onContentWheel(ev: WheelEvent) {
 
 // ===== デスクトップ判定 =====
 const DESKTOP_THRESHOLD = 1100;
-const isDesktop = ref(window.innerWidth >= DESKTOP_THRESHOLD);
+const windowWidth = ref(window.innerWidth);
+// 旗鯖fork(#6): 「画面幅に関係なくデッキ表示」設定がON かつ デッキモードONのときは、
+// 狭幅でもデスクトップ相当のレイアウト(=デッキが使える)として扱う。
+// これは端末ローカル設定(hatasaba-device-prefs)なので、スマホ等にプロファイル共有されない。
+const isDesktop = computed(() => (deckIgnoreWidth.value && deckMode.value) ? true : windowWidth.value >= DESKTOP_THRESHOLD);
 function onResize() {
-    isDesktop.value = window.innerWidth >= DESKTOP_THRESHOLD;
+    windowWidth.value = window.innerWidth;
     nextTick(()=>{ updateSbFade(); updateAnnouncePositions(); });
 }
 window.addEventListener('resize', onResize);
@@ -593,6 +618,15 @@ const deckAnchorEl = ref<HTMLElement|null>(null);
 const collapseAnchorEl = ref<HTMLElement|null>(null);
 const deckAnnPos = ref<{ top: number; left: number } | null>(null);
 const collapseAnnPos = ref<{ top: number; left: number } | null>(null);
+// 旗鯖fork: HataFeed 新登場の案内(「もっと」にアンカー・端末ごと1回)。
+const moreAnchorEl = ref<HTMLElement|null>(null);
+const moreAnnounceVisible = ref(false);
+const moreAnnPos = ref<{ top: number; left: number } | null>(null);
+function dismissMoreAnnounce() {
+    moreAnnounceVisible.value = false;
+    miLocalStorage.setItem('hatafeedIntroShown', 'true');
+}
+// 旗鯖fork: 案内吹き出しはクリック非遷移に変更したため未使用(関数は念のため残す)
 function calcAnnPos(el: HTMLElement | null): { top: number; left: number } | null {
     if (!el) return null;
     const r = el.getBoundingClientRect();
@@ -602,6 +636,7 @@ function calcAnnPos(el: HTMLElement | null): { top: number; left: number } | nul
 function updateAnnouncePositions() {
     if (deckAnnounceVisible.value) deckAnnPos.value = calcAnnPos(deckAnchorEl.value);
     if (collapseAnnounceVisible.value) collapseAnnPos.value = calcAnnPos(collapseAnchorEl.value);
+    if (moreAnnounceVisible.value) moreAnnPos.value = calcAnnPos(moreAnchorEl.value);
 }
 
 // 旗鯖fork: サイドメニューのスクロールバーを隠し、続きがある時だけ上下にフェードを出す
@@ -759,6 +794,9 @@ const REQUIRED_SIDEBAR_IDS = ['timeline', 'notifications', 'announcements', 'fol
 // 既存ユーザーの simpleUi.sidebar 保存値に残っている場合、サイドメニュー/HatasabaUI上部ナビバー
 // の両方で描画されないよう除外する。将来別の項目が削除された場合はここに追記する。
 const DEAD_SIDEBAR_IDS = ['whatsNew'];
+// 旗鯖fork: 保存済み simpleUi.sidebar にアイコンが焼き込まれている項目について、
+// 最新のアイコンへ描画時に上書きする(既存ユーザーにも反映させるため)。
+const SIDEBAR_ICON_OVERRIDES: Record<string, string> = { portal: 'ti ti-icons' };
 const sidebarGroups = computed(() => {
     const order = ['basic', 'hata', 'discover', 'more'];
     const groups: { key: string; label: string; items: any[] }[] = [];
@@ -770,7 +808,7 @@ const sidebarGroups = computed(() => {
         const g = item.group ?? 'basic';
         let grp = groups.find(x => x.key === g);
         if (!grp) { grp = { key: g, label: sidebarGroupLabels[g] ?? '', items: [] }; groups.push(grp); }
-        grp.items.push(item);
+        grp.items.push(SIDEBAR_ICON_OVERRIDES[item.id] ? { ...item, icon: SIDEBAR_ICON_OVERRIDES[item.id] } : item);
     }
     // 旗鯖fork: メッセージ(チャット)を基本グループに動的注入する。
     // 既存ユーザーの保存済み simpleUi.sidebar には chat が含まれないため、
@@ -853,6 +891,27 @@ const goToNotifications = ()=>{ hasUnreadNotif.value=false; unreadNotifCount.val
 const goToLists = ()=>{ mainRouter.push('/my/lists'); };
 const goToChannels = ()=>{ mainRouter.push('/channels'); };
 const goToAntennas = ()=>{ mainRouter.push('/my/antennas'); };
+// 旗鯖fork(#5): アンテナ選択時は、管理ページではなくアンテナ一覧のポップアップを出し、
+// 選んだアンテナのタイムライン(/timeline/antenna/:id)へ遷移する。末尾に「アンテナの管理」も置く。
+async function openAntennaList(ev: MouseEvent) {
+    const anchor = (ev.currentTarget ?? ev.target) as HTMLElement;
+    const antennas = await antennasCache.fetch().catch(() => []);
+    const items: any[] = [];
+    if (antennas.length > 0) {
+        for (const a of antennas) {
+            items.push({
+                text: a.name,
+                icon: 'ti ti-antenna',
+                action: () => mainRouter.push(`/timeline/antenna/${a.id}`),
+            });
+        }
+    } else {
+        items.push({ type: 'label', text: 'アンテナがありません' });
+    }
+    items.push({ type: 'divider' });
+    items.push({ text: i18n.ts.manageAntennas, icon: 'ti ti-settings', action: () => goToAntennas() });
+    os.popupMenu(items, anchor);
+}
 const goToDrive = ()=>{ mainRouter.push('/my/drive'); };
 // 旗鯖fork: メッセージ (チャット) へ遷移
 const goToChat = ()=>{ mainRouter.push('/chat'); };
@@ -863,6 +922,8 @@ const openUiSetup = async ()=>{
 };
 const goToSettings = ()=>{ mainRouter.push('/settings'); };
 const goToAdmin = ()=>{ mainRouter.push('/admin'); };
+// 旗鯖fork: ページ全体をリロードする。
+const reloadPage = ()=>{ window.location.reload(); };
 
 // ===== サイドバー項目ヘルパー =====
 function sidebarItemClick(id: string, ev?: MouseEvent) {
@@ -877,12 +938,15 @@ function sidebarItemClick(id: string, ev?: MouseEvent) {
         timeline: goHome, notifications: ()=>goToNotifications(), search: ()=>openSearch(),
         chat: ()=>goToChat(),
         hatask: ()=>goToHatask(), lists: ()=>goToLists(), channels: ()=>goToChannels(),
-        antennas: ()=>goToAntennas(), drive: ()=>goToDrive(),
+        antennas: ()=>{ if (ev) openAntennaList(ev); else goToAntennas(); }, drive: ()=>goToDrive(),
         announcements: ()=>goToAnnouncements(), uiSetup: ()=>openUiSetup(),
         // 旗鯖fork: 新規追加項目
         favorites: ()=>mainRouter.push('/my/favorites'),
         explore: ()=>mainRouter.push('/explore'),
         followRequests: ()=>mainRouter.push('/my/follow-requests'),
+        // 旗鯖fork: HataFeed / 地震・津波情報
+        hatafeed: ()=>mainRouter.push('/hatafeed'),
+        earthquake: ()=>mainRouter.push('/earthquake'),
         // 旗鯖fork: 外部通知専用ページへ
         externalNotifications: ()=>mainRouter.push('/my/external-notifications'),
         more: () => { if (ev) openMore(ev); },
@@ -902,6 +966,8 @@ function sidebarItemActive(id: string): boolean {
         favorites: mainRouter.currentRoute.value.path.startsWith('/my/favorites'),
         explore: mainRouter.currentRoute.value.path.startsWith('/explore'),
         followRequests: mainRouter.currentRoute.value.path.startsWith('/my/follow-requests'),
+        hatafeed: mainRouter.currentRoute.value.path.startsWith('/hatafeed'),
+        earthquake: mainRouter.currentRoute.value.path.startsWith('/earthquake'),
         // 旗鯖fork: 外部通知ページのアクティブ判定
         externalNotifications: mainRouter.currentRoute.value.path.startsWith('/my/external-notifications'),
     } as Record<string, boolean>)[id] ?? false;
@@ -1137,6 +1203,11 @@ onMounted(()=>{
     // 旗鯖fork: デスクトップ通常表示(デッキでない)で未表示なら、縮小/拡大お知らせを出す
     if (isDesktop.value && !deckActive.value && !prefer.s['simpleUi.collapseAnnounceShown']) {
         collapseAnnounceVisible.value = true;
+    }
+    // 旗鯖fork: HataFeed を利用でき、端末で未表示なら「もっと」に新登場の案内を出す
+    if (isDesktop.value && !deckActive.value && !miLocalStorage.getItem('hatafeedIntroShown')
+        && ($i?.policies?.canAccessHataFeed === true || $i?.isModerator || $i?.isAdmin)) {
+        moreAnnounceVisible.value = true;
     }
     // 旗鯖fork: 復元したタブが現在の設定で表示可能か検証し、非表示なら先頭タブにフォールバック
     if (!tabOrder.value.includes(tab.value)) {
@@ -1518,6 +1589,23 @@ onUnmounted(()=>{
     &:hover { filter:brightness(1.1); transform:translateY(-1px); box-shadow:0 4px 16px rgba(0,0,0,.15); }
     &:active { transform:scale(.97); }
 }
+/* 旗鯖fork: デッキUI時のリロードボタン(ノートボタンの上に固定) */
+.sbReloadBtn {
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:9px 0;
+    margin-bottom:8px;
+    border:1px solid var(--MI_THEME-divider);
+    border-radius:999px;
+    background:var(--MI_THEME-panel);
+    color:var(--MI_THEME-fg);
+    font-size:1.05rem;
+    cursor:pointer;
+    transition:all .2s;
+    &:hover { background:var(--MI_THEME-buttonHoverBg); transform:translateY(-1px); }
+    &:active { transform:scale(.97); }
+}
 .sbBottomRow {
     display:flex;
     align-items:center;
@@ -1567,6 +1655,7 @@ onUnmounted(()=>{
     border-radius:999px;
     background:color-mix(in srgb, var(--MI_THEME-accent) 8%, transparent);
 }
+.sbAnnounceClickable { cursor: pointer; }
 .sbAnnounce {
     position:fixed;
     transform:translateY(-50%);
@@ -1770,7 +1859,7 @@ onUnmounted(()=>{
 }
 .topNavItemActive { opacity: 1; color: var(--MI_THEME-accent); background: color-mix(in srgb, var(--MI_THEME-accent) 14%, transparent); }
 .topNavLogo {
-    flex-shrink: 0; width: 40px; height: 40px; border-radius: 12px; border: none; cursor: pointer; overflow: hidden;
+    flex-shrink: 0; width: 40px; height: 40px; padding: 0; border-radius: 12px; border: none; cursor: pointer; overflow: hidden;
     display: flex; align-items: center; justify-content: center; background: color-mix(in srgb, var(--MI_THEME-accent) 10%, transparent);
     > i { font-size: 1.3em; color: var(--MI_THEME-accent); }
 }
