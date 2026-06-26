@@ -344,4 +344,6 @@ export type BroadcastEvents = {
 	emojiUpdated: (payload: EmojiUpdated) => void;
 	emojiDeleted: (payload: EmojiDeleted) => void;
 	announcementCreated: (payload: AnnouncementCreated) => void;
+	// 旗鯖fork: 地震・津波情報のリアルタイム配信。
+	earthquakeEvent: (payload: { code: number; item: Record<string, any> }) => void;
 };

@@ -48,6 +48,11 @@ export interface BroadcastTypes {
 	announcementCreated: {
 		announcement: Packed<'Announcement'>;
 	};
+	// 旗鯖fork: 地震・津波情報の新着(P2PQuake)を全クライアントへリアルタイム配信。
+	earthquakeEvent: {
+		code: number; // 551=地震情報 / 552=津波予報
+		item: Record<string, any>;
+	};
 }
 
 export interface MainEventTypes {
