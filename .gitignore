@@ -81,6 +81,12 @@ vite.config.local-dev.ts.timestamp-*
 # VSCode addon
 .favorites.json
 
+# Claude Code 関連ファイル (ローカル設定・指示・作業ディレクトリ。共有リポジトリにはコミットしない)
+.claude/
+CLAUDE.md
+CLAUDE.local.md
+claude.md
+
 # Serena
 .serena
 /tarball/
