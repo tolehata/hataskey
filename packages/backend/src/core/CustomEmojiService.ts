@@ -162,6 +162,59 @@ export class CustomEmojiService implements OnApplicationShutdown {
 		return emoji;
 	}
 
+	/**
+	 * 旗鯖fork: 再アップロードを行わず、渡された URL を直接参照してカスタム絵文字を登録する。
+	 * 通常は add() (システムユーザーへ再アップロード) を使うが、ローカル開発環境などで
+	 * バックエンドが自分のドライブURLを取得できず再アップロードに失敗する場合のフォールバック。
+	 * (既存のドライブファイルを直接参照するため、そのファイルが削除されると絵文字も壊れる点に注意)
+	 */
+	@bindThis
+	public async addDirect(data: {
+		originalUrl: string;
+		publicUrl: string;
+		fileType: string;
+		name: string;
+		category: string | null;
+		aliases: string[];
+		host: string | null;
+		license: string | null;
+		isSensitive: boolean;
+		localOnly: boolean;
+		roleIdsThatCanBeUsedThisEmojiAsReaction: MiRole['id'][];
+	}, moderator?: MiUser): Promise<MiEmoji> {
+		const emoji = await this.emojisRepository.insertOne({
+			id: this.idService.gen(),
+			updatedAt: new Date(),
+			name: data.name,
+			category: data.category,
+			host: data.host,
+			aliases: data.aliases,
+			originalUrl: data.originalUrl,
+			publicUrl: data.publicUrl,
+			type: data.fileType,
+			license: data.license,
+			isSensitive: data.isSensitive,
+			localOnly: data.localOnly,
+			roleIdsThatCanBeUsedThisEmojiAsReaction: data.roleIdsThatCanBeUsedThisEmojiAsReaction,
+		});
+
+		if (data.host == null) {
+			this.localEmojisCache.refresh();
+			this.emojisCache.set(`${data.name} ${data.host}`, emoji);
+			this.globalEventService.publishBroadcastStream('emojiAdded', {
+				emoji: await this.emojiEntityService.packDetailed(emoji.id),
+			});
+			if (moderator) {
+				this.moderationLogService.log(moderator, 'addCustomEmoji', {
+					emojiId: emoji.id,
+					emoji: emoji,
+				});
+			}
+		}
+
+		return emoji;
+	}
+
 	@bindThis
 	public async update(data: (
 		{ id: MiEmoji['id'], name?: string; } | { name: string; id?: MiEmoji['id'], }
