@@ -103,7 +103,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 							     Teleport で body 直下に出して真のビューポート基準にする。
 							     scoped CSS が効かないので、グローバルクラス(utageGlobalTip*)でスタイルを当てる。 -->
 							<Teleport to="body">
-								<div v-if="utageBadgeTipVisible && utageBadgeTipPos" :class="['utageGlobalTip', utageBadgeTipPos.mode === 'sheet' ? 'utageGlobalTipSheet' : (utageBadgeTipPos.placement === 'above' ? 'utageGlobalTipAbove' : 'utageGlobalTipBelow')]" :style="utageBadgeTipPos.mode === 'tooltip' ? { top: utageBadgeTipPos.top + 'px', left: utageBadgeTipPos.left + 'px' } : {}">
+								<div v-if="utageBadgeTipVisible && utageBadgeTipPos" :class="['utageGlobalTip', utageBadgeTipPos.mode === 'sheet' ? 'utageGlobalTipSheet' : utageBadgeTipPos.mode === 'windowSheet' ? 'utageGlobalTipWindowSheet' : (utageBadgeTipPos.placement === 'above' ? 'utageGlobalTipAbove' : 'utageGlobalTipBelow')]" :style="utageBadgeTipPos.mode === 'tooltip' ? { top: utageBadgeTipPos.top + 'px', left: utageBadgeTipPos.left + 'px' } : utageBadgeTipPos.mode === 'windowSheet' ? { left: utageBadgeTipPos.left + 'px', right: utageBadgeTipPos.right + 'px', bottom: utageBadgeTipPos.bottom + 'px' } : {}">
 									<div v-if="utageBadgeTipPos.mode === 'tooltip'" class="utageGlobalTipArrow" :style="{ left: utageBadgeTipPos.arrowLeft + 'px' }"></div>
 									<div class="utageGlobalTipBody">
 										<i class="ti ti-info-circle utageGlobalTipIcon"></i>
@@ -289,7 +289,7 @@ const utageBadgeTipVisible = ref(false);
 // プロフィールの祖先に overflow:clip が掛かっているため、absolute だと下部が切られる。
 // バッジ要素の getBoundingClientRect() からビューポート基準の座標を計算する。
 const utageBadgeRef = useTemplateRef('utageBadgeRef');
-const utageBadgeTipPos = ref<{ mode: 'tooltip' | 'sheet'; top: number; left: number; right?: number; placement: 'below' | 'above'; arrowLeft: number } | null>(null);
+const utageBadgeTipPos = ref<{ mode: 'tooltip' | 'sheet' | 'windowSheet'; top: number; left: number; right?: number; bottom?: number; placement: 'below' | 'above'; arrowLeft: number } | null>(null);
 function updateUtageBadgeTipPos() {
 	if (!utageBadgeRef.value) return;
 	// 旗鯖fork: スマホ(画面狭幅)はバッジ追従ではなく画面下部にシート表示する。
@@ -301,6 +301,23 @@ function updateUtageBadgeTipPos() {
 			mode: 'sheet',
 			top: 0, left: 0, // sheet モードでは未使用(CSSで bottom 固定)
 			placement: 'below', arrowLeft: 0, // sheet モードでは未使用(矢印非表示)
+		};
+		return;
+	}
+	// 旗鯖fork: ウィンドウ表示(MkWindow)内のときは、吹き出しが Teleport で body 直下(fixed=ビューポート基準)に
+	// 出る都合上、バッジ追従だとウィンドウ枠の外(背後ページ上)へはみ出してしまう。
+	// スマホ同様にシート化し、ウィンドウ枠の内側下部に固定して「そのウィンドウの説明」だと分かるようにする。
+	const winEl = (utageBadgeRef.value as HTMLElement).closest('[data-mk-window]') as HTMLElement | null;
+	if (winEl) {
+		const wr = winEl.getBoundingClientRect();
+		const m = 12;
+		utageBadgeTipPos.value = {
+			mode: 'windowSheet',
+			top: 0,
+			left: wr.left + m,
+			right: window.innerWidth - wr.right + m,
+			bottom: window.innerHeight - wr.bottom + m,
+			placement: 'below', arrowLeft: 0, // windowSheet では未使用(矢印非表示)
 		};
 		return;
 	}
@@ -546,12 +563,18 @@ onActivated(() => {
 });
 
 onUnmounted(disposeBannerParallaxResizeObserver);
-// 旗鯖fork: 宴バッジ吹き出しのscroll/resizeリスナーを解除
+// 旗鯖fork: 宴バッジ吹き出しのscroll/resizeリスナーを解除し、
+//   Teleport で body 直下に出している吹き出しが画面に残らないよう必ず隠す。
+//   (keep-alive で deactivate された場合や、ウィンドウ(MkWindow)を閉じた場合の残留対策)
 onUnmounted(() => {
 	window.removeEventListener('scroll', onUtageScrollOrResize, { capture: true } as any);
 	window.removeEventListener('resize', onUtageScrollOrResize);
+	utageBadgeTipVisible.value = false;
 });
-onDeactivated(disposeBannerParallaxResizeObserver);
+onDeactivated(() => {
+	disposeBannerParallaxResizeObserver();
+	utageBadgeTipVisible.value = false;
+});
 </script>
 
 <style lang="scss" scoped>
@@ -1089,6 +1112,18 @@ onDeactivated(disposeBannerParallaxResizeObserver);
 		left: 16px !important;
 		right: 16px;
 		bottom: 16px;
+		max-width: none;
+		min-width: 0;
+		padding: 14px 16px 12px;
+		border-radius: 14px;
+		box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.2);
+		animation: utageGlobalTipSheetSlideUp 0.3s ease-out;
+	}
+
+	/* 旗鯖fork: ウィンドウ表示内のシート。位置(left/right/bottom)は JS からインライン指定し、
+	   ウィンドウ枠の内側下部に固定する。!important で潰さないようここでは位置を指定しない。 */
+	&.utageGlobalTipWindowSheet {
+		top: auto;
 		max-width: none;
 		min-width: 0;
 		padding: 14px 16px 12px;

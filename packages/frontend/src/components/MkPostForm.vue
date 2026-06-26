@@ -7,6 +7,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 <div
 	data-htk-weather-postform
 	:class="[$style.root, { [$style.modal]: modal, _popup: modal && (!prefer.s.useBlurEffect || !prefer.s.useBlurEffectForModal || !prefer.s.removeModalBgColorForBlur), _popupAcrylic: modal && prefer.s.useBlurEffect && prefer.s.useBlurEffectForModal && prefer.s.removeModalBgColorForBlur }]"
+	:style="visibilityBorderStyle"
 	@dragover.stop="onDragover"
 	@dragenter="onDragenter"
 	@dragleave="onDragleave"
@@ -247,6 +248,20 @@ const cw = ref<string | null>(props.initialCw ?? null);
 const localOnly = ref(props.initialLocalOnly ?? (prefer.s.rememberNoteVisibility ? store.s.localOnly : prefer.s.defaultNoteLocalOnly));
 const visibility = ref(props.initialVisibility ?? (prefer.s.rememberNoteVisibility ? store.s.visibility : prefer.s.defaultNoteVisibility));
 const visibleUsers = ref<Misskey.entities.UserDetailed[]>([]);
+
+// 旗鯖fork: 投稿範囲に応じて投稿フォームの枠色を変える(アクセシビリティ)。レイアウトに影響しないよう inset box-shadow で枠を描く。
+const visibilityBorderStyle = computed(() => {
+	if (!prefer.s['postFormVisibilityBorder.enabled']) return undefined;
+	const w = prefer.s['postFormVisibilityBorder.width'];
+	let color: string;
+	switch (visibility.value) {
+		case 'home': color = prefer.s['postFormVisibilityBorder.color.home']; break;
+		case 'followers': color = prefer.s['postFormVisibilityBorder.color.followers']; break;
+		case 'specified': color = prefer.s['postFormVisibilityBorder.color.specified']; break;
+		default: color = prefer.s['postFormVisibilityBorder.color.public']; break;
+	}
+	return { boxShadow: `inset 0 0 0 ${w}px ${color}` };
+});
 if (props.initialVisibleUsers) {
 	props.initialVisibleUsers.forEach(u => pushVisibleUser(u));
 }

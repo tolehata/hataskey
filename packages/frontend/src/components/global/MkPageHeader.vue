@@ -18,7 +18,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		</div>
 
 		<template v-if="props.title || props.icon">
-			<div v-if="!hideTitle" :class="[$style.titleContainer, { [$style.titleContainer_canBack]: !canBack }]" @click="top">
+			<div v-if="!hideTitle" :class="[$style.titleContainer, { [$style.titleContainer_canBack]: !canBack, [$style.titleCentered]: shouldCenterTitle }]" @click="top">
 				<i v-if="props.icon" :class="[$style.titleIcon, props.icon]"></i>
 
 				<div :class="$style.title">
@@ -28,7 +28,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<XTabs v-if="(!narrow || hideTitle) && !isFriendly().value" :class="[$style.tabs, { [$style.tabs_canBack]: !canBack }]" :tab="tab" :tabs="tabs" :rootEl="el" @update:tab="key => emit('update:tab', key)" @tabClick="onTabClick"/>
 		</template>
 		<template v-else-if="pageMetadata">
-			<div v-if="!hideTitle" :class="[$style.titleContainer, { [$style.titleContainer_canBack]: !canBack }]" @click="(ev) => topWithMenu(ev)">
+			<div v-if="!hideTitle" :class="[$style.titleContainer, { [$style.titleContainer_canBack]: !canBack, [$style.titleCentered]: shouldCenterTitle }]" @click="(ev) => topWithMenu(ev)">
 				<div v-if="pageMetadata.avatar" :class="$style.titleAvatarContainer">
 					<MkAvatar :class="$style.titleAvatar" :user="pageMetadata.avatar" indicator/>
 				</div>
@@ -123,6 +123,11 @@ const thin_ = props.thin || inject('shouldHeaderThin', false);
 const el = useTemplateRef('el');
 const narrow = ref(false);
 const hasTabs = computed(() => props.tabs.length > 0);
+
+// 旗鯖fork: 戻るボタンがあり、かつ上段(.upper)にタブが無いときはタイトルを中央寄せにする(PC/モバイル問わず)。
+//   上段にタブがある場合は競合するため中央化しない(タブはモバイルでは下段に移るのでその場合は中央化される)。
+const tabsInUpper = computed(() => hasTabs.value && (!narrow.value || hideTitle.value) && !isFriendly().value);
+const shouldCenterTitle = computed(() => !canBack.value && !hideTitle.value && !tabsInUpper.value);
 const hasActions = computed(() => props.actions && props.actions.length > 0);
 const show = computed(() => {
 	return !hideTitle.value || hasTabs.value || hasActions.value;
@@ -203,7 +208,13 @@ function onTabClick(): void {
 function goBack() {
 	haptic();
 
-	window.history.back();
+	// 旗鯖fork: PWAを通知から起動した場合など、戻れる履歴が無いと history.back() が無反応になる。
+	//   その場合はホームへフォールバックして「◁が効かない」状態を防ぐ。
+	if (window.history.length > 1) {
+		window.history.back();
+	} else {
+		mainRouter.push('/');
+	}
 }
 
 let ro: ResizeObserver | null;
@@ -401,6 +412,16 @@ onUnmounted(() => {
 
 .titleContainer_canBack {
 	margin-left: -16px;
+}
+
+/* 旗鯖fork: 戻るボタンがあり上段にタブが無いとき、タイトルを中央寄せにする(PC/モバイル問わず)。
+   戻るボタンは左・アクションは右のまま、タイトルだけ中央へ寄せる(flexで伸ばして中央寄せ)。 */
+.titleCentered {
+	flex: 1;
+	justify-content: center;
+	text-align: center;
+	margin-left: 0;
+	max-width: none;
 }
 
 .titleAvatarContainer {

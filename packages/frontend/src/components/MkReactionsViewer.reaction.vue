@@ -33,6 +33,7 @@ import { misskeyApi, misskeyApiGet } from '@/utility/misskey-api.js';
 import { useTooltip } from '@/composables/use-tooltip.js';
 import { $i } from '@/i.js';
 import { isMutedUser } from '@/utility/muted-users.js';
+import { hideMutedReactionsLocal } from '@/utility/hatasaba-device-prefs.js';
 import { prefer } from '@/preferences.js';
 import MkReactionEffect from '@/components/MkReactionEffect.vue';
 import { i18n } from '@/i18n.js';
@@ -452,8 +453,8 @@ if (!mock) {
 		});
 
 		let users = reactions.map(x => x.user);
-		// ミュートユーザーを非表示（旗鯖独自機能）
-		if (prefer.s.hideMutedUserReactions) {
+		// ミュートユーザーを非表示（旗鯖独自機能・端末ローカル/ベータ）
+		if (hideMutedReactionsLocal.value) {
 			users = users.filter(u => u && !isMutedUser(u.id));
 		}
 

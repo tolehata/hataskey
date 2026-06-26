@@ -18,7 +18,7 @@
  *   - 予測可能でシンプル。ユーザーが文末に書いた現在の天気が反映されやすい。
  */
 
-export type WeatherKind = 'rain' | 'heavyRain' | 'snow' | 'sunny' | 'windy' | 'shootingStar';
+export type WeatherKind = 'rain' | 'heavyRain' | 'snow' | 'sunny' | 'windy' | 'shootingStar' | 'freshGreen' | 'summerLeaves';
 
 // 各天気種別の検出パターン。漢字+英語のみに絞り、ひらがな単独マッチは避ける。
 // 注意: heavyRain は rain より前に置き、「土砂降り」「豪雨」等を通常の雨より優先して判定する。
@@ -32,6 +32,10 @@ const WEATHER_PATTERNS: { kind: WeatherKind; regex: RegExp }[] = [
 	// 朝の挨拶・晴天系 → 日差し。
 	{ kind: 'sunny', regex: /おはよう|お早う|晴れ|晴天|快晴|日差し|陽射し|日射し|ピーカン|sunny|clear sky|good morning|ohayou/i },
 	{ kind: 'windy', regex: /強風|風が強い|風強い|暴風|突風|木枯らし|こがらし|windy|gale|gusty/i },
+	// 旗鯖fork: 新緑/若葉 → 明るい緑の葉が舞い落ちる。
+	{ kind: 'freshGreen', regex: /新緑|若葉|青葉若葉|新芽|芽吹き|木の芽|fresh green/i },
+	// 旗鯖fork: 夏/青葉 → 濃い緑の葉が舞い落ちる。
+	{ kind: 'summerLeaves', regex: /真夏|盛夏|夏|青葉|深緑|緑陰|青々|midsummer/i },
 ];
 
 // 挨拶(朝/就寝)由来かどうかの判定用パターン。

@@ -24,7 +24,8 @@ import { RainEffect } from '@/utility/weather-effect-rain.js';
 import { SunnyEffect } from '@/utility/weather-effect-sunny.js';
 import { WindyEffect } from '@/utility/weather-effect-windy.js';
 import { ShootingStarEffect } from '@/utility/weather-effect-shootingstar.js';
-import { prefer } from '@/preferences.js';
+import { LeafEffect } from '@/utility/weather-effect-leaves.js';
+import { hasShownWeatherTip, markWeatherTipShown } from '@/utility/weather-effect-tip-seen.js';
 import type { WeatherKind } from '@/utility/weather-effect-detector.js';
 
 // 雪(WeatherEffect)・雨(RainEffect)・日差し(SunnyEffect)を統一的に扱う共通インターフェース。
@@ -105,6 +106,10 @@ class WeatherEffectManager {
 				effect = new WindyEffect();     // 強風(葉っぱが右→左に流れる/自前2D Canvas)
 			} else if (kind === 'shootingStar') {
 				effect = new ShootingStarEffect(); // 流れ星(夜空+流れ星/自前2D Canvas)
+			} else if (kind === 'freshGreen') {
+				effect = new LeafEffect({ variant: 'fresh' });  // 新緑(明るい緑の葉が舞い落ちる/自前2D Canvas)
+			} else if (kind === 'summerLeaves') {
+				effect = new LeafEffect({ variant: 'summer' }); // 夏(濃い緑の葉が舞い落ちる/自前2D Canvas)
 			} else {
 				return;
 			}
@@ -146,19 +151,14 @@ class WeatherEffectManager {
 		// セッション内で既に出していたら何もしない(最優先のガード)
 		if (this.tipShownThisSession.has(kind)) return;
 
-		const flagKey = `weatherEffect.firstTipShown.${kind}` as const;
-		// 永続フラグで既に表示済みなら何もしない
-		if (prefer.r[flagKey]?.value) {
+		// 端末ローカルで既に表示済みなら何もしない(端末ごとに一度ずつ案内する)
+		if (hasShownWeatherTip(kind)) {
 			this.tipShownThisSession.add(kind); // 以後セッション内でも弾く
 			return;
 		}
 		// 先にフラグを立てる(多重表示防止)
 		this.tipShownThisSession.add(kind);
-		try {
-			prefer.commit(flagKey, true);
-		} catch {
-			// 万一キーが無い等でcommitに失敗しても、セッション内フラグで再表示は防げる
-		}
+		markWeatherTipShown(kind);
 
 		const phrase = kind === 'sunny'
 			? 'おや、日差しが輝いてきました。'
@@ -170,7 +170,11 @@ class WeatherEffectManager {
 						? 'おや、風が強くなってきました。'
 						: kind === 'shootingStar'
 							? 'おや、流れ星が降り注いできました。'
-							: 'おや、雨が降ってきました。';
+							: kind === 'freshGreen'
+								? 'おや、若葉が舞い落ちてきました。'
+								: kind === 'summerLeaves'
+									? 'おや、青葉が舞い落ちてきました。'
+									: 'おや、雨が降ってきました。';
 
 		// os は Vue 外のこのモジュールからは動的importで読む(循環import回避)。
 		import('@/os.js').then(os => {

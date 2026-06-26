@@ -39,6 +39,8 @@ import { $i } from '@/i.js';
 import { prefer } from '@/preferences.js';
 import { customEmojisMap } from '@/custom-emojis.js';
 import { checkMuted as isEmojiMuted } from '@/utility/emoji-mute.js';
+import { isMutedUser } from '@/utility/muted-users.js';
+import { hideMutedReactionsLocal } from '@/utility/hatasaba-device-prefs.js';
 import { DI } from '@/di.js';
 
 const props = withDefaults(defineProps<{
@@ -82,13 +84,27 @@ function canReact(reaction: string) {
 	return !reaction.match(/@\w/) && (customEmojisMap.has(reaction) || isSupportedEmoji(reaction));
 }
 
-watch([() => props.reactions, () => props.maxNumber], ([newSource, maxNumber]) => {
-	// ミュート絵文字を除外
+watch([() => props.reactions, () => props.maxNumber, hideMutedReactionsLocal], ([newSource, maxNumber]) => {
+	// 旗鯖fork(#31): ミュートしたユーザーのリアクション分を、直近の reaction-user ペアから差し引く(端末ローカル・ベータ)。
+	//   reactionAndUserPairCache は "userId/reaction" 形式。best-effort(キャッシュ範囲のみ)。
+	const mutedDelta: Record<string, number> = {};
+	if (hideMutedReactionsLocal.value && Array.isArray(props.note?.reactionAndUserPairCache)) {
+		for (const pair of props.note.reactionAndUserPairCache) {
+			const sep = pair.indexOf('/');
+			if (sep < 0) continue;
+			const userId = pair.slice(0, sep);
+			const reaction = pair.slice(sep + 1);
+			if (reaction === props.myReaction) continue; // 自分のリアクションは隠さない
+			if (isMutedUser(userId)) mutedDelta[reaction] = (mutedDelta[reaction] ?? 0) + 1;
+		}
+	}
+
+	// ミュート絵文字を除外 + ミュートユーザー分を差し引く(0以下になったチップは出さない)
 	const filteredSource: Record<string, number> = {};
 	for (const [reaction, count] of Object.entries(newSource)) {
-		if (!isEmojiMuted(reaction).value) {
-			filteredSource[reaction] = count;
-		}
+		if (isEmojiMuted(reaction).value) continue;
+		const adjusted = count - (mutedDelta[reaction] ?? 0);
+		if (adjusted > 0) filteredSource[reaction] = adjusted;
 	}
 
 	let newReactions: [string, number][] = [];
