@@ -2968,6 +2968,8 @@ _widgets:
   search: "検索"
   dice: "サイコロ"
   weather: "天気"
+  mascot: "マスコット"
+  earthquake: "地震・津波"
 
 _cw:
   hide: "隠す"
@@ -3232,6 +3234,7 @@ _notification:
     scheduleNote: "予約投稿に失敗"
     test: "通知のテスト"
     app: "連携アプリからの通知"
+    hataFeed: "HataFeed通知"
 
   _actions:
     followBack: "フォローバック"
@@ -3276,6 +3279,8 @@ _deck:
     direct: "指名"
     roleTimeline: "ロールタイムライン"
     chat: "ダイレクトメッセージ"
+    earthquake: "地震・津波"
+    externalNotifications: "外部通知"
 
 _dialog:
   charactersExceeded: "最大文字数を超えています！ 現在 {current} / 制限 {max}"

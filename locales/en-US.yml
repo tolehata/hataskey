@@ -2877,6 +2877,8 @@ _widgets:
   search: "Search"
   dice: "Dice"
   weather: "Weather"
+  mascot: "Mascot"
+  earthquake: "Earthquake & Tsunami"
 _cw:
   hide: "Hide"
   show: "Show content"
@@ -3118,6 +3120,7 @@ _notification:
     scheduleNote: "Scheduled note posting failed"
     test: "Notification test"
     app: "Notifications from linked apps"
+    hataFeed: "HataFeed notifications"
   _actions:
     followBack: "followed you back"
     reply: "Reply"
@@ -3159,6 +3162,8 @@ _deck:
     direct: "Direct notes"
     roleTimeline: "Role Timeline"
     chat: "Chat with user"
+    earthquake: "Earthquake & Tsunami"
+    externalNotifications: "External notifications"
 _dialog:
   charactersExceeded: "You've exceeded the maximum character limit! Currently at {current} of {max}."
   charactersBelow: "You're below the minimum character limit! Currently at {current} of {min}."
