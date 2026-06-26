@@ -841,7 +841,8 @@ export function getQuoteMenu(props: {
 	const menu: MenuItem[] = [];
 	const appearNote = getAppearNote(props.note);
 
-	if (appearNote && (!appearNote.channel || appearNote.channel.allowRenoteToExternal)) {
+	// 旗鯖fork: プライベートチャンネルのノートはチャンネル外へ引用させない
+	if (appearNote && (!appearNote.channel || (appearNote.channel.allowRenoteToExternal && !appearNote.channel.isPrivate))) {
 		menu.push({
 			text: i18n.ts.quote,
 			icon: 'ti ti-quote',
@@ -963,7 +964,8 @@ export async function getRenoteMenu(props: {
 		}
 	}
 
-	if (!appearNote.channel || appearNote.channel.allowRenoteToExternal) {
+	// 旗鯖fork: プライベートチャンネルのノートはチャンネル外へリノートさせない
+	if (!appearNote.channel || (appearNote.channel.allowRenoteToExternal && !appearNote.channel.isPrivate)) {
 		normalRenoteItems.push({
 			text: i18n.ts.renote,
 			icon: 'ti ti-repeat',
@@ -1174,7 +1176,8 @@ export async function getRenoteOnly(props: {
 		}
 	}
 
-	if (!appearNote.channel || appearNote.channel.allowRenoteToExternal) {
+	// 旗鯖fork: プライベートチャンネルのノートはチャンネル外へリノートさせない
+	if (!appearNote.channel || (appearNote.channel.allowRenoteToExternal && !appearNote.channel.isPrivate)) {
 		const el = props.renoteButton.value as HTMLElement | null | undefined;
 		if (el && prefer.s.animation) {
 			const rect = el.getBoundingClientRect();

@@ -24,7 +24,21 @@ SPDX-License-Identifier: AGPL-3.0-only  Created                             0.1s
 				</div>
 			</div>
 
-			<MkFoldableSection>
+			<!-- 旗鯖fork: プライベートチャンネル -->
+			<div v-if="channel.isPrivate" class="_panel" :class="$style.privatePanel">
+				<div :class="$style.privateHead"><i class="ti ti-lock"></i> プライベートチャンネル</div>
+				<div v-if="canViewContent" :class="$style.privateNote">許可されたメンバーだけが閲覧できます。あなたは閲覧できます。</div>
+				<template v-else>
+					<div :class="$style.privateNote">許可されたメンバーだけが閲覧できます。</div>
+					<div v-if="channel.hasPassword && $i" class="_buttonsCenter" :class="$style.joinBox">
+						<MkButton primary rounded :disabled="joining" @click="joinByPassword()"><i class="ti ti-door-enter"></i> 合言葉で入室</MkButton>
+					</div>
+					<div v-else-if="!$i" :class="$style.privateNote">入室するにはログインが必要です。</div>
+					<div v-else :class="$style.privateNote">管理者から招待される必要があります。</div>
+				</template>
+			</div>
+
+			<MkFoldableSection v-if="canViewContent">
 				<template #header><i class="ti ti-pin ti-fw" style="margin-right: 0.5em;"></i>{{ i18n.ts.pinnedNotes }}</template>
 				<div v-if="channel.pinnedNotes && channel.pinnedNotes.length > 0" class="_gaps">
 					<MkNote v-for="note in channel.pinnedNotes" :key="note.id" class="_panel" :note="note"/>
@@ -34,10 +48,17 @@ SPDX-License-Identifier: AGPL-3.0-only  Created                             0.1s
 		<div v-if="channel && tab === 'timeline'" class="_gaps">
 			<MkInfo v-if="channel.isArchived" warn>{{ i18n.ts.thisChannelArchived }}</MkInfo>
 
-			<!-- スマホ・タブレットの場合、キーボードが表示されると 投稿が見づらくなるので、デスクトップ場合のみ自動でフォーカスを当てる -->
-			<MkPostForm v-if="$i && prefer.r.showFixedPostFormInChannel.value" :channel="channel" class="post-form _panel" fixed :autofocus="deviceKind === 'desktop'"/>
+			<!-- 旗鯖fork: プライベートチャンネルの非メンバーには内容を出さず、入室導線を案内 -->
+			<div v-if="channel.isPrivate && !canViewContent" class="_panel" :class="$style.privatePanel">
+				<div :class="$style.privateHead"><i class="ti ti-lock"></i> プライベートチャンネル</div>
+				<div :class="$style.privateNote">許可されたメンバーだけが閲覧できます。{{ channel.hasPassword ? '「概要」タブからあいことばで入室できます。' : '管理者から招待される必要があります。' }}</div>
+			</div>
+			<template v-else>
+				<!-- スマホ・タブレットの場合、キーボードが表示されると 投稿が見づらくなるので、デスクトップ場合のみ自動でフォーカスを当てる -->
+				<MkPostForm v-if="$i && prefer.r.showFixedPostFormInChannel.value" :channel="channel" class="post-form _panel" fixed :autofocus="deviceKind === 'desktop'"/>
 
-			<MkStreamingNotesTimeline :key="channelId" src="channel" :channel="channelId"/>
+				<MkStreamingNotesTimeline :key="channelId" src="channel" :channel="channelId"/>
+			</template>
 		</div>
 		<div v-else-if="tab === 'featured'">
 			<MkNotesTimeline :paginator="featuredPaginator"/>
@@ -58,7 +79,7 @@ SPDX-License-Identifier: AGPL-3.0-only  Created                             0.1s
 		</div>
 	</div>
 	<template #footer>
-		<div :class="$style.footer">
+		<div v-if="canViewContent" :class="$style.footer">
 			<div class="_spacer" style="--MI_SPACER-w: 700px; --MI_SPACER-min: 16px; --MI_SPACER-max: 16px;">
 				<div class="_buttonsCenter">
 					<MkButton inline rounded primary gradate @click="openPostForm()"><i class="ti ti-pencil"></i> {{ i18n.ts.postToTheChannel }}</MkButton>
@@ -70,7 +91,7 @@ SPDX-License-Identifier: AGPL-3.0-only  Created                             0.1s
 </template>
 
 <script lang="ts" setup>
-import { computed, watch, ref, markRaw, shallowRef } from 'vue';
+import { computed, watch, ref, markRaw, shallowRef, defineAsyncComponent } from 'vue';
 import * as Misskey from 'cherrypick-js';
 import { url } from '@@/js/config.js';
 import { useInterval } from '@@/js/use-interval.js';
@@ -109,6 +130,14 @@ const tab = ref('overview');
 
 const channel = ref<Misskey.entities.Channel | null>(null);
 const favorited = ref(false);
+// 旗鯖fork: プライベートチャンネル
+const joining = ref(false);
+const canViewContent = computed(() => {
+	const c = channel.value;
+	if (c == null) return false;
+	if (!c.isPrivate) return true;
+	return (c.isMember ?? false) || (c.canManage ?? false);
+});
 const searchQuery = ref('');
 const searchPaginator = shallowRef();
 const searchKey = ref('');
@@ -159,6 +188,43 @@ function edit() {
 function openPostForm() {
 	os.post({
 		channel: channel.value,
+	});
+}
+
+// 旗鯖fork: 合言葉(キーフレーズ)で入室する
+async function joinByPassword() {
+	if (!channel.value) return;
+	const { canceled, result: password } = await os.inputText({
+		title: '合言葉で入室',
+		text: 'あいことば（キーフレーズ）を入力してください。',
+		placeholder: '例: どんぐり',
+		default: '',
+	});
+	if (canceled || password == null || password === '') return;
+
+	joining.value = true;
+	try {
+		const updated = await misskeyApi('channels/join', {
+			channelId: channel.value.id,
+			password,
+		});
+		channel.value = updated;
+		os.success();
+		tab.value = 'timeline';
+	} catch (err) {
+		os.alert({ type: 'error', text: 'あいことばが違います。' });
+	} finally {
+		joining.value = false;
+	}
+}
+
+// 旗鯖fork: メンバー管理ダイアログを開く
+function manageMembers() {
+	if (!channel.value) return;
+	const { dispose } = os.popup(defineAsyncComponent(() => import('@/components/MkPrivateChannelMembersDialog.vue')), {
+		channelId: channel.value.id,
+	}, {
+		closed: () => dispose(),
 	});
 }
 
@@ -242,11 +308,21 @@ const headerActions = computed(() => {
 			});
 		}
 
-		if (($i && $i.id === channel.value.userId) || iAmModerator) {
+		// 旗鯖fork: 作成者・副管理者(canManage)・モデレーターが編集できる
+		if (channel.value.canManage || ($i && $i.id === channel.value.userId) || iAmModerator) {
 			headerItems.push({
 				icon: 'ti ti-settings',
 				text: i18n.ts.edit,
 				handler: edit,
+			});
+		}
+
+		// 旗鯖fork: プライベートチャンネルのメンバー管理
+		if (channel.value.isPrivate && (channel.value.canManage || iAmModerator)) {
+			headerItems.push({
+				icon: 'ti ti-users',
+				text: 'メンバー管理',
+				handler: manageMembers,
 			});
 		}
 
@@ -275,12 +351,39 @@ const headerTabs = computed(() => [{
 }]);
 
 definePage(() => ({
-	title: channel.value ? channel.value.name : i18n.ts.channel,
-	icon: 'ti ti-device-tv',
+	// 旗鯖fork: プライベートチャンネルは名前の横に鍵マークを表示。
+	title: channel.value ? `${channel.value.isPrivate ? '🔒 ' : ''}${channel.value.name}` : i18n.ts.channel,
+	icon: channel.value?.isPrivate ? 'ti ti-lock' : 'ti ti-device-tv',
 }));
 </script>
 
 <style lang="scss" module>
+/* 旗鯖fork: プライベートチャンネル */
+.privatePanel {
+	padding: 16px;
+}
+
+.privateHead {
+	font-weight: 700;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+
+	> i {
+		color: var(--MI_THEME-accent);
+	}
+}
+
+.privateNote {
+	margin-top: 6px;
+	font-size: 0.9em;
+	opacity: 0.85;
+}
+
+.joinBox {
+	margin-top: 12px;
+}
+
 .footer {
 	-webkit-backdrop-filter: var(--MI-blur, blur(15px));
 	backdrop-filter: var(--MI-blur, blur(15px));

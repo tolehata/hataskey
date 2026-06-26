@@ -355,7 +355,8 @@ function quote(): void {
 		return;
 	}
 	if (props.note.channel) {
-		if (props.note.channel.allowRenoteToExternal) {
+		// 旗鯖fork: プライベートチャンネルのノートはチャンネル外へ引用させない
+		if (props.note.channel.allowRenoteToExternal && !props.note.channel.isPrivate) {
 			const { menu } = getQuoteMenu({ note: note, mock: props.mock });
 			os.popupMenu(menu, quoteButton.value);
 		} else {

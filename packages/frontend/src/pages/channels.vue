@@ -106,6 +106,8 @@ import { i18n } from '@/i18n.js';
 import { useRouter } from '@/router.js';
 import { Paginator } from '@/utility/paginator.js';
 import { $i } from '@/i.js';
+import * as os from '@/os.js';
+import { misskeyApi } from '@/utility/misskey-api.js';
 
 const router = useRouter();
 
@@ -115,7 +117,8 @@ const props = defineProps<{
 }>();
 
 const key = ref('');
-const tab = ref('featured');
+// 旗鯖fork(#5): ログイン時はフォロー中チャンネル一覧を既定タブにする(未ログイン時は following タブが無いので featured)。
+const tab = ref($i ? 'following' : 'featured');
 const searchQuery = ref('');
 const searchType = ref('nameAndDescription');
 const channelPaginator = shallowRef();
@@ -169,7 +172,30 @@ function create() {
 	router.push('/channels/new');
 }
 
+// 旗鯖fork: あいことば(キーフレーズ)だけでプライベートチャンネルに参加する
+async function joinByPassword() {
+	const { canceled, result: password } = await os.inputText({
+		title: 'あいことばで参加',
+		text: 'あいことば（キーフレーズ）を入力してください。',
+		placeholder: '例: どんぐり',
+		default: '',
+	});
+	if (canceled || password == null || password === '') return;
+
+	try {
+		const ch = await misskeyApi('channels/join', { password });
+		os.success();
+		router.push('/channels/:channelId', { params: { channelId: ch.id } });
+	} catch (err) {
+		os.alert({ type: 'error', text: 'あいことばが一致するチャンネルが見つかりませんでした。' });
+	}
+}
+
 const headerActions = computed(() => [{
+	icon: 'ti ti-door-enter',
+	text: 'あいことばで参加',
+	handler: joinByPassword,
+}, {
 	icon: 'ti ti-plus',
 	text: i18n.ts.create,
 	handler: create,
