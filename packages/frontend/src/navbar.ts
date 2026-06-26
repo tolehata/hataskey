@@ -58,7 +58,7 @@ export const navbarItemDef = reactive({
 	},
 	portal: {
 		title: '旗鯖ポータル',
-		icon: 'ti ti-world',
+		icon: 'ti ti-icons',
 		show: computed(() => true),
 		action: () => {
 			window.open('https://home.tolehata.net', '_blank');
@@ -75,6 +75,18 @@ export const navbarItemDef = reactive({
 		icon: 'ti ti-mood-smile',
 		show: computed(() => $i != null),
 		to: '/mascot',
+	},
+	hatafeed: {
+		title: 'HataFeed',
+		icon: 'ti ti-message-report',
+		// 旗鯖fork: ロールポリシー canAccessHataFeed 保持者、またはスタッフにのみ表示。
+		show: computed(() => $i != null && ($i.policies?.canAccessHataFeed === true || $i.isModerator || $i.isAdmin)),
+		to: '/hatafeed',
+	},
+	earthquake: {
+		title: '地震・津波情報',
+		icon: 'ti ti-activity',
+		to: '/earthquake',
 	},
 	explore: {
 		title: i18n.ts.explore,

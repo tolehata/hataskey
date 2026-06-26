@@ -789,6 +789,10 @@ export const PREF_DEF = definePreferences({
 	hideMutedUserReactions: {
 		default: false,
 	},
+	// 旗鯖fork(#31): ミュートリアクション非表示の「改善された」案内をユーザーごとに1回出したか。
+	'hata.mutedReactionsNoticeShown': {
+		default: false,
+	},
 	// 外部サーバー連携（旗鯖独自機能）
 	'external.enabled': {
 		default: false,
@@ -855,6 +859,8 @@ export const PREF_DEF = definePreferences({
 			{ id: 'favorites', icon: 'ti ti-star', label: 'お気に入り', group: 'basic' },
 			// グループ2: 旗鯖独自
 			{ id: 'hatask', icon: 'ti ti-eye', label: 'Hatask', group: 'hata' },
+			{ id: 'hatafeed', icon: 'ti ti-message-report', label: 'HataFeed', group: 'hata' },
+			{ id: 'earthquake', icon: 'ti ti-activity', label: '地震・津波情報', group: 'hata' },
 			{ id: 'portal', icon: 'ti ti-home-2', label: '旗鯖ポータル', group: 'hata', external: true, url: 'https://home.tolehata.net/' },
 			// グループ3: 発見・交流
 			{ id: 'uiSetup', icon: 'ti ti-wand', label: 'UI切り替え', group: 'discover' },
@@ -996,6 +1002,11 @@ export const PREF_DEF = definePreferences({
 	'simpleUi.noteSpacing': {
 		default: 'moderate' as 'compact' | 'moderate' | 'wide',
 	},
+	// 旗鯖fork(#15): スマホ/狭幅でHatasabaUIを使う際、日付セパレータを従来位置(中央インライン)で表示するか。
+	// 既定OFF(非表示)。ONにすると狭幅でも日付を表示する。
+	'simpleUi.showTimelineDateOnMobile': {
+		default: false,
+	},
 	'simpleUi.disableBubbleInDeck': {
 		default: true,
 	},
@@ -1019,7 +1030,8 @@ export const PREF_DEF = definePreferences({
 	// 機能全体のON/OFF。デフォルトON。初回エフェクト発火時にチュートリアルで無効化方法を案内する。
 	// 光や動きに敏感な人向けに、OSの prefers-reduced-motion: reduce 設定時は描画側で自動的に動きを止める。
 	'weatherEffect.enabled': {
-		default: true,
+		// 光過敏症への配慮を最優先し、デフォルトはOFF(以前は誤って true になっていた)。
+		default: false,
 	},
 	// 表示スコープ。'note' = 該当ノートが画面内にある間だけ控えめに表示、'global' = しっかり全体表示。
 	// ※ Step1では両モードとも「TL全体に1枚レイヤー」を敷き、強度・面積で差をつける実装。
@@ -1059,6 +1071,31 @@ export const PREF_DEF = definePreferences({
 		default: false,
 	},
 	// ======== 天気エフェクトここまで ========
+
+	// 旗鯖fork: HataFeed ホームの背景に若葉のアニメーションを舞わせるか(アクセシビリティ配慮でデフォルトOFF)。
+	'hatafeed.leaves': {
+		default: false,
+	},
+
+	// 旗鯖fork: 投稿フォームの枠色を「投稿範囲(公開/ホーム/フォロワー/ダイレクト)」に応じて変える(アクセシビリティ)。
+	'postFormVisibilityBorder.enabled': {
+		default: false,
+	},
+	'postFormVisibilityBorder.width': {
+		default: 3,
+	},
+	'postFormVisibilityBorder.color.public': {
+		default: '#3b9eff',
+	},
+	'postFormVisibilityBorder.color.home': {
+		default: '#41b883',
+	},
+	'postFormVisibilityBorder.color.followers': {
+		default: '#e6a23c',
+	},
+	'postFormVisibilityBorder.color.specified': {
+		default: '#f56c6c',
+	},
 
 	// ======== フォント設定 ========
 	'hataFont.id': {

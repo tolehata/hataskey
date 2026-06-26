@@ -192,6 +192,45 @@ SPDX-License-Identifier: AGPL-3.0-only
 						</MkSwitch>
 					</MkFolder>
 
+					<!-- 旗鯖fork: HataFeed(フィードバックセンター)の利用可否ポリシー -->
+					<MkFolder v-if="matchQuery(['HataFeedを利用できる', 'canAccessHataFeed'])">
+						<template #label>HataFeed（フィードバックセンター）を利用できる</template>
+						<template #suffix>{{ policies.canAccessHataFeed ? i18n.ts.yes : i18n.ts.no }}</template>
+						<MkSwitch v-model="policies.canAccessHataFeed">
+							<template #label>HataFeedの利用を許可</template>
+							<template #caption>オフのロールに属するユーザーはHataFeedを利用できません。デフォルトは不許可です（スタッフは常に利用可）。</template>
+						</MkSwitch>
+					</MkFolder>
+
+					<!-- 旗鯖fork: プライベートチャンネルの作成可否 -->
+					<MkFolder v-if="matchQuery(['プライベートチャンネルを作成できる', 'canMakePrivateChannel'])">
+						<template #label>プライベートチャンネルを作成できる</template>
+						<template #suffix>{{ policies.canMakePrivateChannel ? i18n.ts.yes : i18n.ts.no }}</template>
+						<MkSwitch v-model="policies.canMakePrivateChannel">
+							<template #label>メンバー限定のプライベートチャンネルの作成を許可</template>
+							<template #caption>オフのロールに属するユーザーはプライベートチャンネルを作成できません。デフォルトは不許可です。</template>
+						</MkSwitch>
+					</MkFolder>
+
+					<!-- 旗鯖fork: HataFeed リモート絵文字の申請可否 -->
+					<MkFolder v-if="matchQuery(['HataFeedでリモート絵文字を申請できる', 'canRequestRemoteEmoji'])">
+						<template #label>HataFeedでリモート絵文字を申請できる</template>
+						<template #suffix>{{ policies.canRequestRemoteEmoji ? i18n.ts.yes : i18n.ts.no }}</template>
+						<MkSwitch v-model="policies.canRequestRemoteEmoji">
+							<template #label>リモート絵文字の一覧検索からの申請を許可</template>
+							<template #caption>オフのロールに属するユーザーはリモート絵文字を申請できません。デフォルトは不許可です（スタッフは常に可）。</template>
+						</MkSwitch>
+					</MkFolder>
+
+					<!-- 旗鯖fork: HataFeed 絵文字申請の週あたり上限 -->
+					<MkFolder v-if="matchQuery(['絵文字申請の週あたり上限', 'emojiRequestLimit'])">
+						<template #label>絵文字申請の週あたり上限</template>
+						<template #suffix>{{ policies.emojiRequestLimit }}</template>
+						<MkInput v-model="policies.emojiRequestLimit" type="number">
+							<template #caption>過去7日間に申請できる絵文字数の上限（既定: 10）。</template>
+						</MkInput>
+					</MkFolder>
+
 					<!-- 旗鯖fork: マスコット機能の上限ポリシー -->
 					<MkFolder v-if="matchQuery(['マスコットの最大表情数', 'mascotMaxExpressions'])">
 						<template #label>マスコットの最大表情数</template>

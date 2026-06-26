@@ -32,7 +32,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<div :class="$style.consentIcon"><i class="ti ti-lock"></i></div>
 			<div :class="$style.consentTitle">マスコット機能はご利用いただけません</div>
 			<div :class="$style.consentBody">
-				<p>お使いアカウントではマスコット機能は現在お使いいただけません。</p>
+				<p>お使いのアカウントでは、マスコット機能を現在ご利用いただけません。</p>
 			</div>
 		</div>
 

@@ -76,6 +76,7 @@ import {
 	mascotVisible,
 	nextIdleDelayMs,
 	hatakMascotActive,
+	floatingMascotShown,
 } from '@/utility/mascot-store.js';
 
 const isDesktop = deviceKind === 'desktop';
@@ -197,6 +198,12 @@ const rootStyle = computed(() => ({
 
 // ===== 最小化 / 反転 / 透過度 / かんたん設定パネル =====
 const minimized = ref(false);          // セッション内のみ(リロードで復帰)
+
+// 旗鯖fork(#11): フローティングが吹き出しを出せる状態(表示中 かつ 最小化していない)をストアに共有する。
+// マスコットウィジェットはこれを見て特殊イベントの二重表示を抑制する。
+watch([visible, minimized], () => {
+	floatingMascotShown.value = visible.value && !minimized.value;
+}, { immediate: true });
 const quickPanelOpen = ref(false);
 const minimizeCorner = computed<'left' | 'right'>(() => (displaySettings.value.floatingMinimizeCorner === 'left' ? 'left' : 'right'));
 
@@ -285,11 +292,16 @@ onMounted(async () => {
 	pickRandomPhrase();
 	await applyPending();
 	initPosition();
-	mascotVisible.value = true;
+	// 旗鯖fork: マスコットが実際に表示されている時だけ mascotVisible を立てる。
+	//   従来は無条件で true にしていたため、フローティング無効(特にモバイル既定)でも
+	//   shouldSuppressStandardToast() が真になり、マスコットが出ていないのに
+	//   標準の通知トーストが抑制されて「通知が一切出ない」状態になっていた(hata-11.6 以来の不具合)。
+	mascotVisible.value = visible.value;
 	window.addEventListener('resize', onResize);
 	startRotation();
 });
 onBeforeUnmount(() => {
+	floatingMascotShown.value = false; // 旗鯖fork(#11): アンマウント時はフローティング非表示扱いに戻す
 	window.removeEventListener('resize', onResize);
 	window.removeEventListener('pointermove', onPointerMove);
 	window.removeEventListener('pointerup', onPointerUp);
@@ -298,6 +310,10 @@ onBeforeUnmount(() => {
 });
 
 watch(displaySettingsLoaded, (v) => { if (v) initPosition(); });
+
+// 旗鯖fork: 表示状態(デバイス別トグル / Hataskカード重複回避 / 読み込み完了)が変わったら
+//   mascotVisible を追従させる。これにより「マスコット非表示なのに標準トーストが抑制される」のを防ぐ。
+watch(visible, (v) => { mascotVisible.value = v; });
 </script>
 
 <style lang="scss" module>

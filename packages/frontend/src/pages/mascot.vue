@@ -14,7 +14,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<!-- 旗鯖fork: マスコット機能がロールで許可されていないユーザー向けの案内。操作系は一切出さない。 -->
 		<div v-else-if="!canUseMascot" :class="$style.empty">
 			<i class="ti ti-lock" :class="$style.emptyIcon"></i>
-			<div :class="$style.emptyText">お使いアカウントではマスコット機能は現在お使いいただけません。</div>
+			<div :class="$style.emptyText">お使いのアカウントでは、マスコット機能を現在ご利用いただけません。</div>
 		</div>
 
 		<div v-else-if="!hasMascot" :class="$style.empty">

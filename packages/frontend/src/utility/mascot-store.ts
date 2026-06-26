@@ -151,6 +151,11 @@ export const activeCharacter = computed<MascotCharacter | null>(() => {
 // 画面に2体並ばないようにする(連動非表示)。
 export const hatakMascotActive = ref(false);
 
+// 旗鯖fork(#11): フローティングマスコットが画面に吹き出しを表示できる状態(visible かつ 最小化していない)か。
+// マスコットウィジェットはこれが true の間、特殊イベント(通知/誕生日)の吹き出しを抑制し、
+// フローティングと二重に出さないようにする(同じアクティブキャラのため、ウィジェット側を抑制する)。
+export const floatingMascotShown = ref(false);
+
 // 現在の文言・表情(ランダム選択)
 export const currentPhrase = ref<MascotPhrase | null>(null);
 

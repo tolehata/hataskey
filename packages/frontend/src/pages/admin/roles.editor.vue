@@ -489,6 +489,89 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</div>
 			</MkFolder>
 
+			<!-- 旗鯖fork: HataFeed(フィードバックセンター)の利用可否ポリシー -->
+			<MkFolder v-if="role.policies.canAccessHataFeed && matchQuery(['HataFeedを利用できる', 'canAccessHataFeed'])">
+				<template #label>HataFeed（フィードバックセンター）を利用できる</template>
+				<template #suffix>
+					<span v-if="role.policies.canAccessHataFeed.useDefault" :class="$style.useDefaultLabel">{{ i18n.ts._role.useBaseValue }}</span>
+					<span v-else>{{ role.policies.canAccessHataFeed.value ? i18n.ts.yes : i18n.ts.no }}</span>
+					<span :class="$style.priorityIndicator"><i :class="getPriorityIcon(role.policies.canAccessHataFeed)"></i></span>
+				</template>
+				<div class="_gaps">
+					<MkSwitch v-model="role.policies.canAccessHataFeed.useDefault" :readonly="readonly">
+						<template #label>{{ i18n.ts._role.useBaseValue }}</template>
+					</MkSwitch>
+					<MkSwitch v-model="role.policies.canAccessHataFeed.value" :disabled="role.policies.canAccessHataFeed.useDefault" :readonly="readonly">
+						<template #label>HataFeedの利用を許可</template>
+					</MkSwitch>
+					<MkRange v-model="role.policies.canAccessHataFeed.priority" :min="0" :max="2" :step="1" easing :textConverter="(v) => v === 0 ? i18n.ts._role._priority.low : v === 1 ? i18n.ts._role._priority.middle : v === 2 ? i18n.ts._role._priority.high : ''">
+						<template #label>{{ i18n.ts._role.priority }}</template>
+					</MkRange>
+				</div>
+			</MkFolder>
+
+			<!-- 旗鯖fork: HataFeed リモート絵文字を申請できるか -->
+			<MkFolder v-if="role.policies.canMakePrivateChannel && matchQuery(['プライベートチャンネルを作成できる', 'canMakePrivateChannel'])">
+				<template #label>プライベートチャンネルを作成できる</template>
+				<template #suffix>
+					<span v-if="role.policies.canMakePrivateChannel.useDefault" :class="$style.useDefaultLabel">{{ i18n.ts._role.useBaseValue }}</span>
+					<span v-else>{{ role.policies.canMakePrivateChannel.value ? i18n.ts.yes : i18n.ts.no }}</span>
+					<span :class="$style.priorityIndicator"><i :class="getPriorityIcon(role.policies.canMakePrivateChannel)"></i></span>
+				</template>
+				<div class="_gaps">
+					<MkSwitch v-model="role.policies.canMakePrivateChannel.useDefault" :readonly="readonly">
+						<template #label>{{ i18n.ts._role.useBaseValue }}</template>
+					</MkSwitch>
+					<MkSwitch v-model="role.policies.canMakePrivateChannel.value" :disabled="role.policies.canMakePrivateChannel.useDefault" :readonly="readonly">
+						<template #label>メンバー限定のプライベートチャンネルの作成を許可</template>
+					</MkSwitch>
+					<MkRange v-model="role.policies.canMakePrivateChannel.priority" :min="0" :max="2" :step="1" easing :textConverter="(v) => v === 0 ? i18n.ts._role._priority.low : v === 1 ? i18n.ts._role._priority.middle : v === 2 ? i18n.ts._role._priority.high : ''">
+						<template #label>{{ i18n.ts._role.priority }}</template>
+					</MkRange>
+				</div>
+			</MkFolder>
+
+			<MkFolder v-if="role.policies.canRequestRemoteEmoji && matchQuery(['HataFeedでリモート絵文字を申請できる', 'canRequestRemoteEmoji'])">
+				<template #label>HataFeedでリモート絵文字を申請できる</template>
+				<template #suffix>
+					<span v-if="role.policies.canRequestRemoteEmoji.useDefault" :class="$style.useDefaultLabel">{{ i18n.ts._role.useBaseValue }}</span>
+					<span v-else>{{ role.policies.canRequestRemoteEmoji.value ? i18n.ts.yes : i18n.ts.no }}</span>
+					<span :class="$style.priorityIndicator"><i :class="getPriorityIcon(role.policies.canRequestRemoteEmoji)"></i></span>
+				</template>
+				<div class="_gaps">
+					<MkSwitch v-model="role.policies.canRequestRemoteEmoji.useDefault" :readonly="readonly">
+						<template #label>{{ i18n.ts._role.useBaseValue }}</template>
+					</MkSwitch>
+					<MkSwitch v-model="role.policies.canRequestRemoteEmoji.value" :disabled="role.policies.canRequestRemoteEmoji.useDefault" :readonly="readonly">
+						<template #label>リモート絵文字の一覧検索からの申請を許可</template>
+					</MkSwitch>
+					<MkRange v-model="role.policies.canRequestRemoteEmoji.priority" :min="0" :max="2" :step="1" easing :textConverter="(v) => v === 0 ? i18n.ts._role._priority.low : v === 1 ? i18n.ts._role._priority.middle : v === 2 ? i18n.ts._role._priority.high : ''">
+						<template #label>{{ i18n.ts._role.priority }}</template>
+					</MkRange>
+				</div>
+			</MkFolder>
+
+			<!-- 旗鯖fork: HataFeed 絵文字申請の週あたり上限 -->
+			<MkFolder v-if="role.policies.emojiRequestLimit && matchQuery(['絵文字申請の週あたり上限', 'emojiRequestLimit'])">
+				<template #label>絵文字申請の週あたり上限</template>
+				<template #suffix>
+					<span v-if="role.policies.emojiRequestLimit.useDefault" :class="$style.useDefaultLabel">{{ i18n.ts._role.useBaseValue }}</span>
+					<span v-else>{{ role.policies.emojiRequestLimit.value }}</span>
+					<span :class="$style.priorityIndicator"><i :class="getPriorityIcon(role.policies.emojiRequestLimit)"></i></span>
+				</template>
+				<div class="_gaps">
+					<MkSwitch v-model="role.policies.emojiRequestLimit.useDefault" :readonly="readonly">
+						<template #label>{{ i18n.ts._role.useBaseValue }}</template>
+					</MkSwitch>
+					<MkInput v-model="role.policies.emojiRequestLimit.value" :disabled="role.policies.emojiRequestLimit.useDefault" type="number" :readonly="readonly">
+						<template #caption>過去7日間に申請できる絵文字数の上限（既定: 10）。</template>
+					</MkInput>
+					<MkRange v-model="role.policies.emojiRequestLimit.priority" :min="0" :max="2" :step="1" easing :textConverter="(v) => v === 0 ? i18n.ts._role._priority.low : v === 1 ? i18n.ts._role._priority.middle : v === 2 ? i18n.ts._role._priority.high : ''">
+						<template #label>{{ i18n.ts._role.priority }}</template>
+					</MkRange>
+				</div>
+			</MkFolder>
+
 			<!-- 旗鯖fork: マスコット機能の上限ポリシー -->
 			<MkFolder v-if="matchQuery(['マスコットの最大表情数', 'mascotMaxExpressions'])">
 				<template #label>マスコットの最大表情数</template>
@@ -1047,6 +1130,24 @@ for (const ROLE_POLICY of Misskey.rolePolicies) {
 			useDefault: true,
 			priority: 0,
 			value: instance.policies[ROLE_POLICY],
+		};
+	}
+}
+
+// 旗鯖fork: SDK(cherrypick-js)の rolePolicies 一覧へ未反映でも、fork独自ポリシーを確実に補完する。
+//   (SDK未再ビルドでも設定項目が出るようにするための保険。value は instance.policies 優先・無ければ既定値)
+const HATA_FORK_POLICY_DEFAULTS: Record<string, boolean | number> = {
+	canAccessHataFeed: false,
+	canMakePrivateChannel: false,
+	canRequestRemoteEmoji: false,
+	emojiRequestLimit: 10,
+};
+for (const [key, def] of Object.entries(HATA_FORK_POLICY_DEFAULTS)) {
+	if ((role.value.policies as any)[key] == null) {
+		(role.value.policies as any)[key] = {
+			useDefault: true,
+			priority: 0,
+			value: (instance.policies as any)[key] ?? def,
 		};
 	}
 }

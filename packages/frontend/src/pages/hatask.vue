@@ -9,7 +9,7 @@
 
 <div class="htk-app" @touchstart.passive="htkTouchStart" @touchmove.passive="htkTouchMove" @touchend="htkTouchEnd">
 <!-- HEADER: search left, title center, settings right -->
-<header class="htk-lg htk-header htk-anim"><div class="htk-gc" style="display:flex;align-items:center;justify-content:space-between;padding:14px 22px"><button class="htk-btn htk-icon-sq" @click="showSearch=true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></button><h1 style="font-size:1.5rem;font-weight:400;letter-spacing:.5px;font-family:'Righteous',system-ui,sans-serif">Hatask</h1><button class="htk-btn htk-icon-sq" @click="showSettings=true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button></div></header>
+<header class="htk-lg htk-header htk-anim"><div class="htk-gc" style="display:flex;align-items:center;justify-content:space-between;padding:14px 22px"><button class="htk-btn htk-icon-sq" @click="showSearch=true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></button><h1 style="font-size:1.5rem;font-weight:400;letter-spacing:.5px;font-family:'Righteous',system-ui,sans-serif">Hatask</h1><button class="htk-btn htk-icon-sq" @click="openHataskSettings()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button></div></header>
 
 <!-- NAV (desktop: inline, mobile: teleported to body for proper fixed positioning) -->
 <nav class="htk-nav htk-nav-desktop htk-anim"><button v-for="tab in tabs" :key="tab.id" :class="['htk-nav-t',activeTab===tab.id&&'on']" @click="activeTab=tab.id"><span class="htk-ico"><i :class="tab.icon"></i></span>{{tab.label}}</button></nav>
@@ -89,6 +89,14 @@
           <div class="htk-app-icon-img" style="background:linear-gradient(135deg,#f59e0b,#d97706)"><i class="ti ti-mood-search" style="font-size:1.6rem;color:#fff"></i></div>
           <div class="htk-app-icon-name">HATAlyze</div>
         </button>
+        <button v-if="canAccessHataFeed" class="htk-app-icon" @click="openHataFeed">
+          <div class="htk-app-icon-img" style="background:linear-gradient(135deg,#34d399,#059669)"><i class="ti ti-message-report" style="font-size:1.6rem;color:#fff"></i></div>
+          <div class="htk-app-icon-name">HataFeed</div>
+        </button>
+        <button class="htk-app-icon" @click="openEarthquake">
+          <div class="htk-app-icon-img" style="background:linear-gradient(135deg,#f87171,#dc2626)"><i class="ti ti-activity" style="font-size:1.6rem;color:#fff"></i></div>
+          <div class="htk-app-icon-name">地震・津波情報</div>
+        </button>
       </div>
     </div></div>
     <div v-if="sec==='loginDays' && settings.showLoginDays!==false" class="htk-lg htk-anim"><div class="htk-gc htk-login-card"><div class="htk-login-top"><div class="htk-login-days-n">{{loginDays}}</div><div class="htk-login-days-l">日目</div></div><div v-if="loginRanking>0" class="htk-login-rank"><span>🏆</span> サーバー内 <strong>{{loginRanking}}位</strong><span v-if="loginTotal>0" class="htk-login-total"> / {{loginTotal}}人</span></div><div class="htk-login-msg">{{loginMessage}}</div><div class="htk-login-next"><span>🎯</span> 次の実績まで: <strong>{{loginNextReward}}</strong>日</div></div></div>
@@ -108,6 +116,36 @@
         <div style="margin-top:10px"><button class="htk-btn htk-sm" @click.stop="goToMascotSettings"><i class="ti ti-adjustments" style="margin-right:4px"></i>マスコットの設定</button></div>
       </template>
       <div v-else class="htk-empty"><div class="htk-empI">🖼️</div><div>マスコットの画像が存在しません</div></div>
+    </div></div>
+    <!-- 旗鯖fork(#36): HataFeed通知タイル -->
+    <div v-if="sec==='feedbackNotif' && settings.showFeedbackNotif!==false && canAccessHataFeed" class="htk-lg htk-anim"><div class="htk-gc">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <h3 class="htk-sec-title" style="flex:1;margin:0"><i class="ti ti-message-report" style="margin-right:5px"></i>HataFeed 通知<span v-if="hfUnread>0" class="htk-hf-bdg">{{hfUnread}}</span></h3>
+        <button class="htk-btn htk-xs" @click="openHataFeed" title="HataFeedを開く"><i class="ti ti-external-link"></i></button>
+      </div>
+      <div v-if="hfNotifs.length===0" class="htk-empty"><div class="htk-empI">📭</div><div>通知はありません</div></div>
+      <div v-else class="htk-hf-list">
+        <button v-for="n in hfNotifs" :key="n.id" class="htk-hf-row" :class="{'htk-hf-unread': !n.isRead}" @click="onHfNotifClick(n)">
+          <i :class="['ti', hfIcon(n.type), 'htk-hf-icn']"></i>
+          <div class="htk-hf-msg">
+            <div class="htk-hf-text">{{n.message}}</div>
+            <div v-if="n.actor" class="htk-hf-actor">{{n.actor.name || n.actor.username}}</div>
+          </div>
+        </button>
+      </div>
+    </div></div>
+    <!-- 旗鯖fork(#36): 地震・津波タイル -->
+    <!-- 旗鯖fork(法的観点): タイトル/説明は気象庁発表の情報を表示する旨を明示(独自警報化と誤認させない) -->
+    <div v-if="sec==='earthquake' && settings.showEarthquake!==false" class="htk-lg htk-anim"><div class="htk-gc">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+        <h3 class="htk-sec-title" style="flex:1;margin:0"><i class="ti ti-activity" style="margin-right:5px"></i>地震・津波情報</h3>
+        <span class="htk-eq-conn" :title="streamConnected?'リアルタイム接続中':'再接続中…'"><span :class="['htk-eq-dot', streamConnected?'on':'off']"></span>{{streamConnected?'接続中':'再接続中'}}</span>
+        <button class="htk-btn htk-xs" @click="openEarthquake" title="地震・津波情報ページを開く"><i class="ti ti-external-link"></i></button>
+      </div>
+      <div style="font-size:.72rem;opacity:.6;margin-bottom:8px">気象庁発表の情報を表示します</div>
+      <MkEarthquakeTicker v-if="rawQuakes.length" :quakes="rawQuakes" :tsunami="tsunami" mode="compact" :showEmpty="false" @click.stop="openEarthquake" style="cursor:pointer"/>
+      <div v-else class="htk-empty"><div class="htk-empI">🌍</div><div>最近の地震情報はありません</div></div>
+      <div v-if="eqLastReceived" class="htk-eq-meta">最終受信: {{eqLastReceived}}</div>
     </div></div>
     <div v-if="sec==='flower' && settings.showFlower!==false" class="htk-lg htk-anim" @click="activeTab='garden'" style="cursor:pointer"><div class="htk-gc" style="text-align:center"><h3 class="htk-sec-title">育てているお花</h3><div class="htk-fl-ring"><svg viewBox="0 0 140 140"><circle class="htk-fl-track" cx="70" cy="70" r="60"/><circle class="htk-fl-bar" cx="70" cy="70" r="60" :style="{strokeDashoffset:377-377*(flower.progress/100)}"/></svg><div class="htk-fl-emo">{{flower.emoji}}</div></div><div style="font-weight:600;font-size:.9rem">{{flower.name}}</div><div style="font-size:.73rem;color:var(--text-3);margin-top:3px">成長度: {{flower.progress}}%</div></div></div>
     <div v-if="sec==='events' && settings.showEvents!==false" class="htk-lg htk-anim"><div class="htk-gc"><h3 class="htk-sec-title">直近の予定</h3>
@@ -552,94 +590,7 @@
   <div style="text-align:center;margin-top:10px"><button class="htk-btn htk-primary" @click="dismissEyeDisclaimer">わかった</button></div>
 </div></div></div></Teleport>
 
-<!-- SETTINGS MODAL -->
-<Teleport to="body"><div v-if="showSettings" class="htk-modal-ov" @click.self="showSettings=false"><div class="htk-stg-wrap">
-  <div class="htk-stg-topbar"><button class="htk-btn htk-stg-close-top" @click="showSettings=false"><i class="ti ti-x" style="font-size:1.1rem"></i></button></div>
-  <h2 class="htk-stg-h">設定</h2>
-
-  <div class="htk-lg htk-stg-card"><div class="htk-gc htk-stg-gc">
-    <div class="htk-stg-label">背景テーマ</div>
-    <div class="htk-bg-picker"><div v-for="bg in bgThemes" :key="bg.id" style="text-align:center"><div :class="['htk-bg-opt','htk-bg-'+bg.id,settings.bgTheme===bg.id&&'on']" @click="setBg(bg.id)"></div></div></div>
-  </div></div>
-
-  <div class="htk-lg htk-stg-card"><div class="htk-gc htk-stg-gc">
-    <div class="htk-stg-label">外観（ライト / ダーク）</div>
-    <div class="htk-stg-row"><span>自動（端末の設定に従う）</span><button :class="['htk-tg-sw',settings.autoTheme&&'on']" @click="settings.autoTheme=!settings.autoTheme;saveSettings()"></button></div>
-    <div class="htk-stg-row" v-if="!settings.autoTheme"><span>ダークモード</span><button :class="['htk-tg-sw',settings.darkMode&&'on']" @click="settings.darkMode=!settings.darkMode;saveSettings()"></button></div>
-    <div class="htk-stg-desc" style="margin-top:6px">ライトは白基調＋黒文字、ダークは黒基調＋白文字になります。背景のアニメーションは共通です。</div>
-  </div></div>
-
-  <div class="htk-lg htk-stg-card"><div class="htk-gc htk-stg-gc">
-    <div class="htk-stg-label">カレンダー</div>
-    <div class="htk-stg-row"><span>週の始まり</span><select class="htk-stg-sel" v-model="settings.weekStart" @change="saveSettings()"><option value="mon">月曜</option><option value="sun">日曜</option></select></div>
-  </div></div>
-
-  <div class="htk-lg htk-stg-card"><div class="htk-gc htk-stg-gc">
-    <div class="htk-stg-label">ホーム画面 - 表示切替</div>
-    <div class="htk-stg-row"><span>日時表示</span><button :class="['htk-tg-sw',settings.showClock!==false&&'on']" @click="settings.showClock=!(settings.showClock!==false);saveSettings()"></button></div>
-    <div class="htk-stg-row"><span>Hatask Eye</span><button :class="['htk-tg-sw',settings.showEye!==false&&'on']" @click="settings.showEye=!(settings.showEye!==false);saveSettings()"></button></div>
-    <div class="htk-stg-row"><span>旗鯖独自アプリ</span><button :class="['htk-tg-sw',settings.showApps!==false&&'on']" @click="settings.showApps=!(settings.showApps!==false);saveSettings()"></button></div>
-    <div class="htk-stg-row"><span>ログイン日数</span><button :class="['htk-tg-sw',settings.showLoginDays!==false&&'on']" @click="settings.showLoginDays=!(settings.showLoginDays!==false);saveSettings()"></button></div>
-    <div class="htk-stg-row"><span>お花</span><button :class="['htk-tg-sw',settings.showFlower!==false&&'on']" @click="settings.showFlower=!(settings.showFlower!==false);saveSettings()"></button></div>
-    <div class="htk-stg-row"><span>直近の予定</span><button :class="['htk-tg-sw',settings.showEvents!==false&&'on']" @click="settings.showEvents=!(settings.showEvents!==false);saveSettings()"></button></div>
-    <div class="htk-stg-row"><span>みんなの予定</span><button :class="['htk-tg-sw',settings.showPublicEvents!==false&&'on']" @click="settings.showPublicEvents=!(settings.showPublicEvents!==false);saveSettings()"></button></div>
-    <div class="htk-stg-row"><span>きもちサマリー</span><button :class="['htk-tg-sw',settings.showMoodSummary!==false&&'on']" @click="settings.showMoodSummary=!(settings.showMoodSummary!==false);saveSettings()"></button></div>
-    <div class="htk-stg-row"><span>マスコット</span><button :class="['htk-tg-sw',settings.showMascot!==false&&'on']" @click="settings.showMascot=!(settings.showMascot!==false);saveSettings()"></button></div>
-  </div></div>
-
-  <div class="htk-lg htk-stg-card"><div class="htk-gc htk-stg-gc">
-    <div class="htk-stg-label">ホーム画面 - セクション表示と並び替え</div>
-    <div class="htk-stg-desc">トグルで表示/非表示、ドラッグ（☰）または上下ボタンで順番を変更できます</div>
-    <div class="htk-reorder-list">
-      <div v-for="(sec,idx) in sectionOrder" :key="sec"
-        :class="['htk-reorder-item',{'htk-reorder-dragover':dragOverIdx===idx&&dragSecIdx!==null,'htk-reorder-dragging':dragSecIdx===idx}]"
-        draggable="true"
-        @dragstart="onSecDragStart(idx)" @dragover.prevent="onSecDragOver(idx)" @drop.prevent="onSecDrop(idx)" @dragend="onSecDragEnd">
-        <span class="htk-reorder-handle" style="cursor:grab">☰</span>
-        <span class="htk-reorder-label">{{sectionLabels[sec]||sec}}</span>
-        <!-- 旗鯖fork: 表示ON/OFFトグルを統合 (項目5) -->
-        <button :class="['htk-tg-sw',isSectionVisible(sec)&&'on']" style="margin-right:8px" @click="toggleSectionVisible(sec)"></button>
-        <div class="htk-reorder-btns">
-          <button class="htk-reorder-btn" :disabled="idx===0" @click="moveSectionUp(idx)">▲</button>
-          <button class="htk-reorder-btn" :disabled="idx===sectionOrder.length-1" @click="moveSectionDown(idx)">▼</button>
-        </div>
-      </div>
-    </div>
-  </div></div>
-
-  <div class="htk-lg htk-stg-card"><div class="htk-gc htk-stg-gc">
-    <div class="htk-stg-label">データ同期</div>
-    <div class="htk-stg-desc">お使いの旗鯖アカウントに紐づけて同期します</div>
-    <div class="htk-stg-row"><span>予定</span><button class="htk-tg-sw on"></button></div>
-    <div class="htk-stg-row"><span>きもち</span><button class="htk-tg-sw on"></button></div>
-    <div class="htk-stg-row"><span>ToDo</span><button class="htk-tg-sw on"></button></div>
-    <div class="htk-stg-row"><span>ごはん</span><button class="htk-tg-sw on"></button></div>
-    <div class="htk-stg-row"><span>お花</span><button class="htk-tg-sw on"></button></div>
-  </div></div>
-
-  <div class="htk-lg htk-stg-card"><div class="htk-gc htk-stg-gc">
-    <div class="htk-stg-label">レートリミット</div>
-    <div class="htk-rl-box"><div class="htk-rl-t">API制限</div><table class="htk-rl-tbl"><thead><tr><th>操作</th><th>制限</th><th>期間</th></tr></thead><tbody><tr><td>予定作成</td><td>30回</td><td>1h</td></tr><tr><td>きもち</td><td>20回</td><td>1h</td></tr><tr><td>ToDo</td><td>60回</td><td>1h</td></tr><tr><td>検索</td><td>30回</td><td>1m</td></tr></tbody></table></div>
-  </div></div>
-
-  <div class="htk-lg htk-stg-card"><div class="htk-gc htk-stg-gc">
-    <div class="htk-stg-label">通知</div>
-    <div class="htk-stg-row"><span>テスト通知を送信</span><button class="htk-btn htk-sm" @click="sendTestNotification">テスト送信</button></div>
-    <div class="htk-stg-desc" style="margin-top:6px">設定→通知→プッシュ通知を有効化 でプッシュ通知を有効にしないと、旗鯖が開かれていない状態で通知を受け取ることができません</div>
-  </div></div>
-
-  <div class="htk-lg htk-stg-card"><div class="htk-gc htk-stg-gc">
-    <div class="htk-stg-label">起動時</div>
-    <div class="htk-stg-row"><span>アプリ起動時にHataskを表示</span><button :class="['htk-tg-sw',settings.openOnStart&&'on']" @click="settings.openOnStart=!settings.openOnStart;saveSettings()"></button></div>
-  </div></div>
-
-  <div class="htk-lg htk-stg-card"><div class="htk-gc htk-stg-gc">
-    <div class="htk-stg-label">ヘルプ</div>
-    <div class="htk-stg-row"><span>チュートリアルを再度表示</span><button class="htk-btn htk-sm" @click="reopenTutorial">表示する</button></div>
-  </div></div>
-
-  <div style="text-align:center;padding:10px 0 20px"><button class="htk-btn htk-primary htk-stg-close" @click="showSettings=false">閉じる</button></div>
-</div></div></Teleport>
+<!-- 旗鯖fork(#37): 設定モーダルは HataskSettings.vue に統合(openHataskSettings()でpopup) -->
 
 <!-- MOOD DISCLAIMER MODAL -->
 <Teleport to="body"><div v-if="showMoodDisclaimer" class="htk-modal-ov" @click.self="showMoodDisclaimer=false"><div class="htk-lg htk-modal-c"><div class="htk-gc" style="padding:28px"><div style="text-align:center;font-size:2rem;margin-bottom:8px;text-shadow:none">ⓘ</div><div style="text-align:center;font-size:.92rem;font-weight:700;margin-bottom:10px">きもち記録について</div><div class="htk-popup-b">この機能は日々の気分を振り返るためのセルフケアツールです。<br><br>医療目的で開発されたものではなく、<strong>疾病の診断・治療・治癒、または身体の機能改善を保証するものではありません。</strong><br><br>心身の不調が続く場合は医療機関への受診をおすすめします。</div><div style="text-align:center;margin-top:14px"><button class="htk-btn htk-primary" @click="showMoodDisclaimer=false">了承する</button></div></div></div></div></Teleport>
@@ -710,6 +661,8 @@ import { claimAchievement } from '@/utility/achievements.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { $i } from '@/i.js';
 import { useRouter } from '@/router.js';
+import { useStream } from '@/stream.js';
+import MkEarthquakeTicker from '@/components/MkEarthquakeTicker.vue';
 import { getPhrase } from '@/utility/hatask-phrases.js';
 import { floraData, pickRandomFlora, generateFlowerName } from '@/utility/hatask-flora.js';
 import { activeCharacter as mascotActiveCharacter, expressionDisplayUrl, loadMascot, hatakMascotActive, currentExpression as mascotCurrentExpression, currentPhrase as mascotCurrentPhrase, pickRandomPhrase as mascotPickRandomPhrase, displaySettings as mascotDisplaySettings, loadDisplaySettings as loadMascotDisplaySettings, nextIdleDelayMs as mascotNextIdleDelayMs, escapeText as mascotEscapeText } from '@/utility/mascot-store.js';
@@ -742,7 +695,7 @@ const loadedKeys = new Set<string>();
 async function registryGet<T>(key:string,fb:T):Promise<T>{try{const v=await misskeyApi('i/registry/get',{key,scope:SCOPE});loadedKeys.add(key);return(v!=null?v:fb)as T}catch{return fb}}
 async function registrySet(key:string,value:unknown):Promise<void>{if(!dataLoaded.value&&!loadedKeys.has(key))return;await misskeyApi('i/registry/set',{key,value,scope:SCOPE})}
 
-const activeTab=ref('home');const isSaving=ref(false);const showSettings=ref(false);const showSearch=ref(false);
+const activeTab=ref('home');const isSaving=ref(false);const showSearch=ref(false);
 // 旗鯖fork: Hatask Eye の注意事項モーダル表示状態
 const showEyeDisclaimer=ref(false);
 
@@ -857,7 +810,7 @@ function nextSpotlightStep(){if(tutStep.value<tutTotalSteps-1)goToStep(tutStep.v
 function prevSpotlightStep(){if(tutStep.value>1)goToStep(tutStep.value-1)}
 function skipTutorial(){showTutorial.value=false;settings.value.tutorialDone=true;saveSettings()}
 function finishTutorial(){showTutorial.value=false;settings.value.tutorialDone=true;saveSettings();activeTab.value='home';os.toast('Hataskへようこそ！')}
-function reopenTutorial(){showSettings.value=false;tutStep.value=0;showTutorial.value=true}
+function reopenTutorial(){tutStep.value=0;showTutorial.value=true}
 function openDrawingTool(){
   showMobileNav.value=false;
   os.popup(defineAsyncComponent(()=>import('@/components/MkDrawingTool.vue')),{},{closed:()=>{showMobileNav.value=true}},'closed');
@@ -897,6 +850,10 @@ function cleanupHataskState(){
   hatakMascotActive.value=false;
   // 旗鯖fork(タスク2): カードの文言ローテタイマーを停止(残留防止)
   stopMascotCardRotation();
+  // 旗鯖fork(#36): 通知・地震ポーリング/購読を停止
+  if(hfTimer){clearInterval(hfTimer);hfTimer=null}
+  if(eqPollTimer){clearInterval(eqPollTimer);eqPollTimer=null}
+  if(eqStream){try{eqStream.off('earthquakeEvent',onEqEvent);eqStream.off('_connected_',onEqStreamConn);eqStream.off('_disconnected_',onEqStreamDisc);}catch{}eqStream=null}
   showMobileNav.value=false;
   if(navProtectionObserver){navProtectionObserver.disconnect();navProtectionObserver=null}
   if(navVisibilityTimer){clearInterval(navVisibilityTimer);navVisibilityTimer=null}
@@ -906,6 +863,74 @@ function cleanupHataskState(){
 function openHataSettings(){cleanupHataskState();const router=useRouter();router.push('/settings/hata-custom')}
 function openHataDocs(){cleanupHataskState();const router=useRouter();router.push('/hata-docs')}
 function openHatalyze(){window.open('https://kanjo-bunseki.tolehata.net','_blank')}
+// 旗鯖fork: HataFeed / 地震・津波情報ビューアを旗鯖独自アプリから開く
+const canAccessHataFeed=computed(()=>$i?.policies?.canAccessHataFeed===true||$i?.isModerator===true||$i?.isAdmin===true);
+// 旗鯖fork(#37): 設定UIは HataskSettings.vue に一本化(旗鯖独自設定と同じpopup)
+//   reopenTutorial イベントを受けて Hatask本体側のチュートリアル再表示を実行する
+function openHataskSettings(){
+  os.popup(defineAsyncComponent(()=>import('@/pages/HataskSettings.vue')), {}, {
+    reopenTutorial: () => { setTimeout(reopenTutorial, 250); },
+  }, 'closed');
+}
+function openHataFeed(){cleanupHataskState();const router=useRouter();router.push('/hatafeed')}
+function openEarthquake(){cleanupHataskState();const router=useRouter();router.push('/earthquake')}
+
+// 旗鯖fork(#36): HataFeed通知タイル
+const hfNotifs=ref<any[]>([]);
+const hfUnread=ref(0);
+let hfTimer:ReturnType<typeof setInterval>|null=null;
+async function loadHfNotifs(){
+  if(!canAccessHataFeed.value)return;
+  try{
+    const res:any=await misskeyApi('hata/feedback/notifications',{limit:5});
+    hfNotifs.value=res.notifications||[];
+    hfUnread.value=res.unreadCount||0;
+  }catch{}
+}
+function hfIcon(type:string):string{
+  // hatafeedのnotifIcon相当の最低限版
+  if(type==='newIssue')return 'ti-pencil-plus';
+  if(type==='issueAgreed')return 'ti-thumb-up';
+  if(type==='issueStatusChanged')return 'ti-progress';
+  if(type==='issueResolved')return 'ti-check';
+  if(type==='issueClosed')return 'ti-lock';
+  if(type==='newComment'||type==='commentReaction'||type==='commentReply')return 'ti-message';
+  if(type==='emojiApproved')return 'ti-mood-smile';
+  if(type==='emojiRejected')return 'ti-mood-sad';
+  return 'ti-bell';
+}
+function onHfNotifClick(n:any){
+  cleanupHataskState();const router=useRouter();
+  if(n.feedbackId)router.push('/hatafeed/'+n.feedbackId);
+  else router.push('/hatafeed');
+}
+
+// 旗鯖fork(#36): 地震・津波タイル(WS購読＋ポーリング)
+const rawQuakes=ref<any[]>([]);
+const tsunami=ref<any[]>([]);
+const streamConnected=ref(false);
+const eqLastReceived=ref('');
+let eqStream:any=null;let eqPollTimer:ReturnType<typeof setInterval>|null=null;
+async function loadEq(){
+  try{
+    const [eq,ts]=await Promise.all([
+      misskeyApi('hata/earthquake/history',{limit:30}),
+      misskeyApi('hata/earthquake/tsunami',{limit:10}),
+    ]);
+    const {pruneOld}=await import('@/utility/earthquake.js');
+    rawQuakes.value=pruneOld((eq as any[])??[]);
+    tsunami.value=pruneOld((ts as any[])??[]);
+    eqLastReceived.value=new Date().toLocaleTimeString('ja-JP');
+  }catch{}
+}
+async function onEqEvent(ev:{code:number;item:any}){
+  const {pruneOld}=await import('@/utility/earthquake.js');
+  if(ev.code===551)rawQuakes.value=pruneOld([ev.item,...rawQuakes.value]).slice(0,60);
+  else if(ev.code===552)tsunami.value=pruneOld([ev.item,...tsunami.value]).slice(0,20);
+  eqLastReceived.value=new Date().toLocaleTimeString('ja-JP');
+}
+function onEqStreamConn(){streamConnected.value=true}
+function onEqStreamDisc(){streamConnected.value=false}
 function handleBack(){
 if(activeTab.value!=='home'){activeTab.value='home';return}
 goBackToTimeline();
@@ -922,9 +947,6 @@ const notifTimerIds:number[]=[];
 // 呼び出し側で別のパスに飛ばしたい場合のみ link を明示すればよい。
 async function sendNotification(header:string,body:string,icon?:string,link:string='/hatask'){
 try{await misskeyApi('notifications/create',{body,header:header||null,icon:icon||null,link:link||null});return true}catch(e){console.warn('Hatask notification error:',e);return false}
-}
-async function sendTestNotification(){
-try{await misskeyApi('notifications/test-notification',{});os.toast('テスト通知を送信しました')}catch(e){console.warn('Test notification error:',e);os.toast('通知の送信に失敗しました')}
 }
 
 function scheduleEventNotifications(){
@@ -966,9 +988,9 @@ notifTimerIds.push(tid)
 }})
 }
 const currentTime=ref('');const currentDate=ref('');const eyePhrase=ref('こんにちは！');const editingEvent=ref<any>(null);let eyeTimer:ReturnType<typeof setInterval>|null=null;
-const defaultSectionOrder=['clock','eye','apps','loginDays','flower','events','mood','meal','mascot'];
+const defaultSectionOrder=['clock','eye','apps','feedbackNotif','earthquake','loginDays','flower','events','mood','meal','mascot'];
 const sectionOrder=ref<string[]>([...defaultSectionOrder]);
-const sectionLabels:Record<string,string>={clock:'日時表示',eye:'Hatask Eye',apps:'旗鯖独自アプリ',loginDays:'ログイン日数',flower:'お花',events:'直近の予定',mood:'今週のきもち',meal:'ごはん記録',mascot:'マスコット'};
+const sectionLabels:Record<string,string>={clock:'日時表示',eye:'Hatask Eye',apps:'旗鯖独自アプリ',loginDays:'ログイン日数',flower:'お花',events:'直近の予定',mood:'今週のきもち',meal:'ごはん記録',mascot:'マスコット',feedbackNotif:'HataFeed 通知',earthquake:'地震・津波'};
 // 旗鯖fork(タスク8/タスク2): マスコットカード(ミニ版)。
 // 静止画ではなく現在の表情(currentExpression)に追従させ、設定文言をランダムローテで吹き出しに出す。
 // 吹き出し座標・motionはフローティング(MkMascotFloating)と同じロジック・同じグローバルmotionクラスを共有する。
@@ -1033,7 +1055,7 @@ const loginMilestones=[3,7,15,30,60,100,200,300,400,500,600,700,800,900,1000];
 const loginNextReward=computed(()=>{const d=loginDays.value;for(const m of loginMilestones){if(d<m)return m-d}return 0});
 const loginMessage=computed(()=>{const d=loginDays.value;if(d<=1)return'ようこそ！最初のログインです！';if(d<7)return'サーバーに慣れてきましたか？';if(d<30)return'もうすっかり常連ですね！';if(d<100)return'これからもよろしくお願いします！';if(d<365)return'すごい…！';return'伝説のユーザーです！'});
 async function fetchLoginRanking(){try{const res=await misskeyApi('hata/login-ranking',{});if(res&&typeof res.rank==='number'){loginRanking.value=res.rank;loginTotal.value=res.totalUsers??0}}catch(e){console.warn('Login ranking unavailable:',e)}}
-const settings=ref<any>({bgTheme:'ocean',darkMode:false,autoTheme:true,weekStart:'mon',showClock:true,showEvents:true,showFlower:true,showMoodSummary:true,moodRemind:false,moodRemindTimes:['昼 12:00','寝る前 23:00'],openOnStart:false});
+const settings=ref<any>({bgTheme:'ocean',darkMode:false,autoTheme:true,weekStart:'mon',showClock:true,showEvents:true,showFlower:true,showMoodSummary:true,showFeedbackNotif:true,showEarthquake:true,moodRemind:false,moodRemindTimes:['昼 12:00','寝る前 23:00'],openOnStart:false});
 const prefersDark=ref(window.matchMedia('(prefers-color-scheme:dark)').matches);
 let mediaQuery:MediaQueryList|null=null;
 function detectMisskeyTheme():'dark'|'light'{
@@ -1295,8 +1317,7 @@ try{await misskeyApi('hatask/events/close',{eventId,closed:true});await loadShar
 
 // CRUD
 // Section reorder functions
-function moveSectionUp(idx:number){if(idx<=0)return;const arr=[...sectionOrder.value];[arr[idx-1],arr[idx]]=[arr[idx],arr[idx-1]];sectionOrder.value=arr;settings.value.sectionOrder=arr;saveSettings()}
-function moveSectionDown(idx:number){if(idx>=sectionOrder.value.length-1)return;const arr=[...sectionOrder.value];[arr[idx],arr[idx+1]]=[arr[idx+1],arr[idx]];sectionOrder.value=arr;settings.value.sectionOrder=arr;saveSettings()}
+// 旗鯖fork(#37): moveSectionUp/Down は設定モーダル削除に伴い不要(HataskSettings.vueに移管)
 // 旗鯖fork: ドラッグ並び替え(ホーム・設定 共通)。from番目をto番目へ移動して保存。
 function moveSection(from:number,to:number){
   if(from===to||from<0||to<0||from>=sectionOrder.value.length||to>=sectionOrder.value.length)return;
@@ -1316,9 +1337,8 @@ function onSecDragOver(idx:number){dragOverIdx.value=idx}
 function onSecDrop(idx:number){if(dragSecIdx.value!==null)moveSection(dragSecIdx.value,idx);dragSecIdx.value=null;dragOverIdx.value=null}
 function onSecDragEnd(){dragSecIdx.value=null;dragOverIdx.value=null}
 // 旗鯖fork: セクションID → 表示設定キーのマッピング (項目5: 表示ON/OFF統合)
-const sectionVisibilityKey:Record<string,string>={clock:'showClock',eye:'showEye',apps:'showApps',loginDays:'showLoginDays',flower:'showFlower',events:'showEvents',mood:'showMoodSummary',meal:'showMealSection'};
-function isSectionVisible(sec:string):boolean{const k=sectionVisibilityKey[sec];if(!k)return true;return settings.value[k]!==false}
-function toggleSectionVisible(sec:string){const k=sectionVisibilityKey[sec];if(!k)return;settings.value[k]=settings.value[k]===false?true:false;saveSettings()}
+// 旗鯖fork(#37): sectionVisibilityKey/isSectionVisible/toggleSectionVisible は設定モーダル削除に伴い不要
+//   (HataskSettings.vueで管理。本体のセクション表示はv-ifでsettings.show*を直接参照)
 function dismissRsvpNotif(eventId:string){dismissedRsvpNotifs.value.push(eventId);closedRsvpNotifs.value=closedRsvpNotifs.value.filter(n=>n.eventId!==eventId)}
 function checkClosedRsvps(){
 const myId=$i?.id;if(!myId)return;
@@ -1372,6 +1392,9 @@ loadMascot();
 // 旗鯖fork(タスク2): カードの文言ローテに表示設定が要るためロードし、初期文言を選んでローテ開始(利用許可時のみ)
 if(canUseMascot.value){loadMascotDisplaySettings().then(()=>{mascotPickRandomPhrase();startMascotCardRotation();});}
 hatakMascotActive.value = true;
+// 旗鯖fork(#36): HataFeed通知タイル＋地震・津波タイルの起動
+if(canAccessHataFeed.value){loadHfNotifs();hfTimer=setInterval(loadHfNotifs,30000);}
+loadEq();eqStream=useStream();eqStream.on('earthquakeEvent',onEqEvent);eqStream.on('_connected_',onEqStreamConn);eqStream.on('_disconnected_',onEqStreamDisc);streamConnected.value=eqStream.state==='connected';eqPollTimer=setInterval(loadEq,60000);
 // 旗鯖fork: Hataskを開いたら実績「Hataskへようこそ」を解除(冪等。既に解除済みなら何もしない)
 claimAchievement('welcomeToHatask');
 window.localStorage.setItem('hatask_initialized', '1');
@@ -1485,7 +1508,7 @@ nextTick(() => {
 });
 const initFlower = pickRandomFlora();
 const defaultFlower = { emoji: initFlower.emoji, name: generateFlowerName(initFlower), progress: 0, startedAt: Date.now(), totalMinutes: 0 };
-const defaultSettings = { bgTheme: 'ocean', darkMode: false, autoTheme: true, weekStart: 'mon', showClock: true, showEvents: true, showFlower: true, showMoodSummary: true, showMealSection: true, moodRemind: false, moodRemindTimes: ['昼 12:00', '寝る前 23:00'], openOnStart: false, showMealSummary: true, mealDisclaimerShown: false, eyeDisclaimerShown: false };
+const defaultSettings = { bgTheme: 'ocean', darkMode: false, autoTheme: true, weekStart: 'mon', showClock: true, showEvents: true, showFlower: true, showMoodSummary: true, showMealSection: true, showFeedbackNotif: true, showEarthquake: true, moodRemind: false, moodRemindTimes: ['昼 12:00', '寝る前 23:00'], openOnStart: false, showMealSummary: true, mealDisclaimerShown: false, eyeDisclaimerShown: false };
 
 // 各データを個別に取得（1つの失敗が他に影響しないようにする）
 const loadResults = await Promise.allSettled([
@@ -1693,8 +1716,9 @@ notifTimerIds.forEach(id => clearTimeout(id));
 .htk-inp::placeholder{color:var(--text-3);text-shadow:none}
 textarea.htk-inp{min-height:76px;resize:vertical}
 select.htk-inp{appearance:none;cursor:pointer;padding-right:36px}
-.htk-dash{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:8px}
-.htk-dash .htk-lg{margin-bottom:0}
+.htk-dash{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));grid-auto-rows:1fr;gap:8px}
+.htk-dash .htk-lg{margin-bottom:0;height:100%}
+.htk-dash .htk-lg>.htk-gc{height:100%;box-sizing:border-box}
 .htk-panels{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 @media(max-width:900px){.htk-panels{grid-template-columns:1fr}}
 .htk-dt-time{font-size:3rem;font-weight:700;letter-spacing:-1px;line-height:1.1}
@@ -2126,6 +2150,22 @@ select.htk-inp{appearance:none;cursor:pointer;padding-right:36px}
 .htk-meal-en-reasons{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
 .htk-meal-en-reason{padding:2px 8px;border-radius:12px;font-size:.66rem;background:var(--btn-bg);border:1px solid var(--btn-border);opacity:.85}
 
+/* 旗鯖fork(#36): HataFeed通知タイル / 地震・津波タイル */
+.htk-hf-bdg{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:var(--MI_THEME-accent);color:#fff;font-size:.7rem;font-weight:700;margin-left:6px;vertical-align:middle}
+.htk-hf-list{display:flex;flex-direction:column;gap:4px}
+.htk-hf-row{display:flex;align-items:flex-start;gap:8px;padding:6px 8px;border-radius:8px;border:none;background:transparent;cursor:pointer;text-align:left;width:100%;color:inherit;font:inherit}
+.htk-hf-row:hover{background:var(--btn-bg)}
+.htk-hf-unread{background:color-mix(in srgb, var(--MI_THEME-accent) 9%, transparent)}
+.htk-hf-icn{flex-shrink:0;color:var(--MI_THEME-accent);font-size:.95rem;margin-top:2px}
+.htk-hf-msg{flex:1;min-width:0}
+.htk-hf-text{font-size:.82rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.htk-hf-actor{font-size:.72rem;opacity:.6}
+.htk-eq-conn{display:inline-flex;align-items:center;gap:4px;font-size:.7rem;opacity:.7}
+.htk-eq-dot{width:7px;height:7px;border-radius:50%}
+.htk-eq-dot.on{background:#22c55e;box-shadow:0 0 4px #22c55e;animation:htkPulse 2s ease-in-out infinite}
+.htk-eq-dot.off{background:#ef4444}
+@keyframes htkPulse{0%,100%{opacity:1}50%{opacity:.35}}
+.htk-eq-meta{font-size:.72rem;opacity:.55;margin-top:6px;text-align:right;font-variant-numeric:tabular-nums}
 </style>
 
 <!-- グローバルスタイル: Hatask起動時にMisskeyの標準ナビバーを非表示にする -->
@@ -2145,8 +2185,8 @@ select.htk-inp{appearance:none;cursor:pointer;padding-right:36px}
 }
 /* Mobile nav styles (global scope for Teleport to body) */
 @media(max-width:1024px){
-  .htk-nav-mobile{display:flex !important;position:fixed !important;bottom:calc(16px + env(safe-area-inset-bottom, 0px));left:50%;transform:translateX(-50%);width:calc(100vw - 32px);max-width:480px;z-index:3100000 !important;border-radius:24px;padding:4px;gap:2px;margin:0;background:rgba(255,255,255,.12);backdrop-filter:blur(24px) saturate(1.6);-webkit-backdrop-filter:blur(24px) saturate(1.6);box-shadow:0 4px 24px rgba(0,0,0,.12),0 0 0 1px rgba(255,255,255,.2) inset,0 1px 0 rgba(255,255,255,.3) inset;border:0.5px solid rgba(255,255,255,.18);pointer-events:auto !important;visibility:visible !important;opacity:1 !important}
-  .htk-nav-pad{display:block;position:fixed !important;bottom:0;left:0;right:0;width:100%;height:calc(16px + env(safe-area-inset-bottom, 0px));z-index:3099999;background:rgba(255,255,255,.12);backdrop-filter:blur(24px) saturate(1.6);-webkit-backdrop-filter:blur(24px) saturate(1.6);pointer-events:none}
+  .htk-nav-mobile{display:flex !important;position:fixed !important;bottom:calc(16px + env(safe-area-inset-bottom, 0px));left:50%;transform:translateX(-50%);width:calc(100vw - 32px);max-width:480px;z-index:3100000 !important;border-radius:24px;padding:4px;gap:2px;margin:0;background:#2b2e3b;box-shadow:0 4px 24px rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.12);pointer-events:auto !important;visibility:visible !important;opacity:1 !important}
+  .htk-nav-pad{display:block;position:fixed !important;bottom:0;left:0;right:0;width:100%;height:calc(16px + env(safe-area-inset-bottom, 0px));z-index:3099999;background:transparent;pointer-events:none}
   .htk-nav-mobile .htk-nav-t{padding:8px 2px;font-size:.66rem;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:rgba(255,255,255,.6);border:none;background:transparent;cursor:pointer;border-radius:20px;transition:all .3s;font-family:inherit;text-align:center;pointer-events:auto !important}
   .htk-nav-mobile .htk-nav-t.on{color:rgba(255,255,255,.95);font-weight:600;background:rgba(255,255,255,.2);box-shadow:0 1px 4px rgba(0,0,0,.1),0 0 0 0.5px rgba(255,255,255,.12) inset}
   .htk-nav-mobile .htk-ico{font-size:1.1rem;margin-bottom:1px}

@@ -39,10 +39,6 @@ SPDX-License-Identifier: AGPL-3.0-only
                 非表示リアクション管理
                 <template #suffix><span v-if="hiddenReactionCount > 0" :class="$style.countBadge">{{ hiddenReactionCount }}件</span></template>
             </FormLink>
-            <MkSwitch v-model="hideMutedUserReactions">
-                <template #label>ミュートしたユーザーのリアクションを非表示にする</template>
-                <template #caption>ミュートとブロック設定でミュートしたユーザーのリアクションが、自分や他の人のノートに表示されなくなります（リアルタイム受信分）。</template>
-            </MkSwitch>
         </FormSection>
         <FormSection>
             <template #label>タイムライン</template>
@@ -150,6 +146,13 @@ SPDX-License-Identifier: AGPL-3.0-only
             </MkSwitch>
         </FormSection>
         <FormSection>
+            <template #label>デッキ表示</template>
+            <MkSwitch v-model="deckIgnoreWidthModel">
+                <template #label>画面幅に関係なくデッキを表示する</template>
+                <template #caption>通常デッキ表示はデスクトップ幅（1100px以上）でのみ有効ですが、ONにすると画面幅に関係なくデッキモードを適用します。<b>この設定は端末ごとに保存され、他の端末（スマホ等）には同期されません。</b>新デッキUIはスマホ表示に未対応のため、狭い画面では表示が崩れる可能性があります（実験的）。</template>
+            </MkSwitch>
+        </FormSection>
+        <FormSection>
             <template #label>デッキUIのチュートリアル</template>
             <div style="font-size:.85em;opacity:.7;margin-bottom:10px;line-height:1.6;">HatasabaUIデッキモードの初期設定（メニューの位置・ツールバーの位置・レイアウト）を、ウィザード形式でもう一度設定し直せます。</div>
             <button class="_buttonPrimary" @click="replayDeckTutorial" style="padding:10px 20px;font-weight:bold;"><i class="ti ti-refresh"></i> チュートリアルをもう一度行う</button>
@@ -237,6 +240,21 @@ SPDX-License-Identifier: AGPL-3.0-only
             <button class="_buttonPrimary" @click="openMascotSettings" style="padding:10px 20px;font-weight:bold;"><i class="ti ti-mood-smile"></i> マスコットの設定を開く</button>
         </FormSection>
         </template>
+
+        <!-- ===== 地震ビューア ===== -->
+        <template v-if="activeCat === 'earthquake'">
+        <FormSection first>
+            <template #label>地震ビューアの設定</template>
+            <div style="font-size:.85em;opacity:.7;margin-bottom:12px;line-height:1.6;">地震・津波情報ビューアの設定です。お住いの都道府県（付近の地震表示用）と取得間隔を変更できます。<b>お住いの都道府県はこの端末にのみ保存され、サーバーには送信されません。</b></div>
+            <button class="_buttonPrimary" @click="openEarthquakeSettings" style="padding:10px 20px;font-weight:bold;"><i class="ti ti-settings"></i> 地震ビューアの設定を開く</button>
+        </FormSection>
+        <FormSection>
+            <template #label>地震ビューアを開く</template>
+            <div style="font-size:.85em;opacity:.7;margin-bottom:12px;">地震・津波情報の画面を開きます。</div>
+            <button class="_button" @click="goToEarthquake" style="padding:10px 20px;"><i class="ti ti-activity"></i> 地震・津波情報を開く</button>
+        </FormSection>
+        </template>
+
         <template v-if="activeCat === 'accessibility'">
         <FormSection first>
             <template #label>ノートの間隔</template>
@@ -255,9 +273,16 @@ SPDX-License-Identifier: AGPL-3.0-only
                     <div :class="$style.spacingLabel">{{ opt.label }}</div>
                 </button>
             </div>
-            <MkSwitch v-model="classicNoteSpacing" :disabled="disableBubbleInDefault">
+            <MkSwitch v-model="classicNoteSpacingDisplay" :disabled="disableBubbleInDefault || isHatasabaUi">
                 <template #label>従来のMisskey風の投稿間隔を使用する</template>
-                <template #caption>ONにするとタイムラインの投稿間隔が従来のMisskeyと同じ間隔になります。<br><span v-if="disableBubbleInDefault" style="color: var(--MI_THEME-warn);">※「Misskey UIで吹き出し表示を無効にする」がONの場合、この設定は使用できません。</span></template>
+                <template #caption>ONにするとタイムラインの投稿間隔が従来のMisskeyと同じ間隔になります。<br><span v-if="isHatasabaUi" style="color: var(--MI_THEME-warn);">※HatasabaUIでは常にON（従来Misskey風の投稿間隔：隙間0＋グレーのスペーサーで区切る表示）が適用されるため、変更できません。</span><br v-if="disableBubbleInDefault && !isHatasabaUi"><span v-if="disableBubbleInDefault && !isHatasabaUi" style="color: var(--MI_THEME-warn);">※「Misskey UIで吹き出し表示を無効にする」がONの場合、この設定は使用できません。</span></template>
+            </MkSwitch>
+        </FormSection>
+        <FormSection>
+            <template #label>日付の表示（スマホ・狭い画面）</template>
+            <MkSwitch v-model="showTimelineDateOnMobile">
+                <template #label>スマホ・狭い画面でも日付を表示する</template>
+                <template #caption>HatasabaUIをスマホサイズ（狭い画面）で使用しているとき、タイムラインの日付を従来どおりの位置（中央）に表示します。OFFのときは表示スペースの都合で日付を表示しません。広い画面では日付は左側におしゃれに表示されます。</template>
             </MkSwitch>
         </FormSection>
         <FormSection>
@@ -276,6 +301,31 @@ SPDX-License-Identifier: AGPL-3.0-only
                 <template #caption>ONにすると、ページ上部にHatasabaUI独自のシンプルなヘッダー（ページタイトル＋戻るボタン）が追加で表示されます。OFFにするとページ自身のヘッダー（MkPageHeader）のみになり、タイトルの二重表示が解消されます。</template>
             </MkSwitch>
         </FormSection>
+        <!-- 旗鯖fork: HataFeed の若葉アニメーション -->
+        <FormSection>
+            <template #label>HataFeed</template>
+            <MkSwitch v-model="hatafeedLeaves">
+                <template #label>ホーム背景で若葉を舞わせる</template>
+                <template #caption>HataFeed（フィードバックセンター）のホーム背景に若葉のアニメーションを表示します。光や動きに敏感な方に配慮し、デフォルトはOFFです。OSの「視差効果を減らす」設定時は自動的に止まります。</template>
+            </MkSwitch>
+        </FormSection>
+        <!-- 旗鯖fork: 投稿フォームの枠色(投稿範囲別) -->
+        <FormSection>
+            <template #label>投稿フォームの枠色（投稿範囲別）</template>
+            <MkSwitch v-model="pfvbEnabled">
+                <template #label>投稿範囲に応じて枠の色を変える</template>
+                <template #caption>公開・ホーム・フォロワー・ダイレクトの各範囲ごとに投稿フォームの枠色を変え、誤爆を防ぎやすくします。</template>
+            </MkSwitch>
+            <template v-if="pfvbEnabled">
+                <MkInput v-model="pfvbWidth" type="number" :min="1" :max="12" style="margin-top:10px;">
+                    <template #label>枠の太さ（px）</template>
+                </MkInput>
+                <MkColorInput v-model="pfvbPublic"><template #label>公開</template></MkColorInput>
+                <MkColorInput v-model="pfvbHome"><template #label>ホーム</template></MkColorInput>
+                <MkColorInput v-model="pfvbFollowers"><template #label>フォロワー</template></MkColorInput>
+                <MkColorInput v-model="pfvbSpecified"><template #label>ダイレクト</template></MkColorInput>
+            </template>
+        </FormSection>
         <!-- 旗鯖fork: 天気エフェクト(weatherEffect) -->
         <FormSection>
             <template #label>天気エフェクト</template>
@@ -290,7 +340,7 @@ SPDX-License-Identifier: AGPL-3.0-only
                     <option value="short">短め（出てから約10秒で消える）</option>
                 </MkRadios>
                 <div style="font-size:.82em;color:var(--MI_THEME-warn);padding:8px 10px;border:1px solid var(--MI_THEME-divider);border-radius:8px;background:var(--MI_THEME-panel);">
-                    ※ ノート本文の「雨」「雪」「晴れ」などの単語に応じて演出が変わります。<br>
+                    ※ ノート本文の「雨」「雪」「晴れ」「強風」「流れ星」「新緑／若葉」「夏／青葉」などの単語に応じて演出が変わります。<br>
                     ※「おはよう」「おやすみ」などの挨拶で出る演出は、この設定に関わらず約10秒で消えます。<br>
                     ※ 演出は控えめに作っていますが、光や動きに少しでも違和感を覚えた場合は、すぐにこの設定をOFFにしてください。雷など強い閃光を伴う演出は安全のため実装していません。
                 </div>
@@ -335,6 +385,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 import { computed, ref, watch } from 'vue';
 import MkSwitch from '@/components/MkSwitch.vue';
 import MkRadios from '@/components/MkRadios.vue';
+import MkInput from '@/components/MkInput.vue';
+import MkColorInput from '@/components/MkColorInput.vue';
 import FormSection from '@/components/form/section.vue';
 import FormLink from '@/components/form/link.vue';
 import MkFeatureBanner from '@/components/MkFeatureBanner.vue';
@@ -345,6 +397,7 @@ import { prefer } from '@/preferences.js';
 import { getInitialPrefValue } from '@/preferences/manager.js';
 import { definePage } from '@/page.js';
 import { getHiddenReactions, hiddenReactionsVersion } from '@/utility/hidden-reactions.js';
+import { deckIgnoreWidth, setDeckIgnoreWidth } from '@/utility/hatasaba-device-prefs.js';
 import { HATA_FONT_PRESETS, applyHataFont, type HataFontId } from '@/scripts/hata-font-manager.js';
 import { chooseDriveFile } from '@/utility/drive.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
@@ -355,6 +408,7 @@ const categories = [
     { id: 'simpleUi', icon: 'ti ti-device-mobile', label: 'Hatasaba UI' },
     { id: 'hatask', icon: 'ti ti-checklist', label: 'Hatask' },
     { id: 'mascot', icon: 'ti ti-mood-smile', label: 'マスコット' },
+    { id: 'earthquake', icon: 'ti ti-activity', label: '地震ビューア' },
     { id: 'accessibility', icon: 'ti ti-accessible', label: 'アクセシビリティ' },
 ];
 const activeCat = ref('general');
@@ -481,6 +535,13 @@ const openHataskSettings = async () => {
     os.popup(dac(() => import('@/pages/HataskSettings.vue')), {}, {}, 'closed');
 };
 const goToHatask = () => { mainRouter.push('/hatask'); };
+
+// 旗鯖fork(#34): 地震ビューア設定を共有ダイアログで開く
+const openEarthquakeSettings = async () => {
+    const { defineAsyncComponent: dac } = await import('vue');
+    const { dispose } = os.popup(dac(() => import('@/components/MkEarthquakeSettings.vue')), {}, { closed: () => dispose() });
+};
+const goToEarthquake = () => { mainRouter.push('/earthquake'); };
 // 旗鯖fork: マスコット設定を開く
 const openMascotSettings = async () => {
     const { defineAsyncComponent: dac } = await import('vue');
@@ -488,16 +549,6 @@ const openMascotSettings = async () => {
 };
 const isExternalLinked = computed(() => prefer.s['external.enabled'] && prefer.s['external.token'] != null);
 const hiddenReactionCount = computed(() => { hiddenReactionsVersion.value; return getHiddenReactions().length; });
-const hideMutedUserReactions = prefer.model('hideMutedUserReactions');
-// OFF→ON時にミュートリストを即座に取得（取りこぼし防止）
-watch(hideMutedUserReactions, async (newVal) => {
-    if (newVal) {
-        const { fetchMutedUsers, invalidateMutedUsers } = await import('@/utility/muted-users.js');
-        invalidateMutedUsers();
-        fetchMutedUsers();
-    }
-});
-
 // ===== シンプルUI（prefer同期） =====
 const topNavItems = ref([...prefer.s['simpleUi.topNav']]);
 function saveTopNav() { prefer.commit('simpleUi.topNav', [...topNavItems.value]); }
@@ -514,6 +565,12 @@ const showTrendingTab = computed({
 const topNavMode = computed({
     get: () => prefer.r['simpleUi.topNavMode'].value,
     set: (v: boolean) => prefer.commit('simpleUi.topNavMode', v),
+});
+
+// 旗鯖fork(#6): 画面幅に関係なくデッキ表示を強制する端末ローカル設定(プロファイル非同期)。
+const deckIgnoreWidthModel = computed({
+    get: () => deckIgnoreWidth.value,
+    set: (v: boolean) => setDeckIgnoreWidth(v),
 });
 
 const bottomNavItems = ref([...prefer.s['simpleUi.bottomNav']]);
@@ -607,6 +664,8 @@ const directProfile = prefer.model('simpleUi.directProfile');
 // 旗鯖fork: HatasabaUI 追加ページヘッダー表示
 const showPageHeader = prefer.model('simpleUi.showPageHeader');
 const noteSpacing = prefer.model('simpleUi.noteSpacing');
+// 旗鯖fork(#15): スマホ/狭幅で日付を従来位置(中央インライン)で表示するか。
+const showTimelineDateOnMobile = prefer.model('simpleUi.showTimelineDateOnMobile');
 const disableBubbleInDeck = prefer.model('simpleUi.disableBubbleInDeck');
 const disableBubbleInDefault = prefer.model('simpleUi.disableBubbleInDefault');
 // 旗鯖fork: HatasabaUIデッキ用の吹き出し無効化トグル
@@ -615,6 +674,14 @@ const classicNoteSpacing = prefer.model('simpleUi.classicNoteSpacing');
 
 // 旗鯖fork: 天気エフェクト(weatherEffect)
 const weatherEffectEnabled = prefer.model('weatherEffect.enabled');
+const hatafeedLeaves = prefer.model('hatafeed.leaves');
+// 旗鯖fork: 投稿範囲ごとの投稿フォーム枠色
+const pfvbEnabled = prefer.model('postFormVisibilityBorder.enabled');
+const pfvbWidth = prefer.model('postFormVisibilityBorder.width');
+const pfvbPublic = prefer.model('postFormVisibilityBorder.color.public');
+const pfvbHome = prefer.model('postFormVisibilityBorder.color.home');
+const pfvbFollowers = prefer.model('postFormVisibilityBorder.color.followers');
+const pfvbSpecified = prefer.model('postFormVisibilityBorder.color.specified');
 const weatherEffectScope = prefer.model('weatherEffect.scope');
 const weatherEffectDuration = prefer.model('weatherEffect.duration');
 
@@ -647,6 +714,15 @@ if (disableBubbleInDefault.value && classicNoteSpacing.value) {
 // - HatasabaUI デッキ (ui=simple かつ simpleUi.deckMode=ON) は deckMode の切替に追随する。
 const currentUi = miLocalStorage.getItem('ui');
 const isLegacyDeckUi = currentUi === 'deck';
+// 旗鯖fork(#7): HatasabaUI(ui:simple, 通常表示・デッキ表示の両方)では従来Misskey風の投稿間隔を強制するため、
+// 「従来のMisskey風の投稿間隔」トグルを操作不可にする。
+const isHatasabaUi = currentUi === 'simple';
+// 旗鯖fork(#7): HatasabaUI(通常表示・デッキ表示の両方)では従来Misskey風の投稿間隔を常に適用するため、
+// トグルは常にON表示＋操作不可にする(実際の適用状態と一致させる)。
+const classicNoteSpacingDisplay = computed<boolean>({
+    get: () => isHatasabaUi ? true : classicNoteSpacing.value,
+    set: (v: boolean) => { if (!isHatasabaUi) classicNoteSpacing.value = v; },
+});
 const hatasabaDeckMode = computed(() => prefer.r['simpleUi.deckMode']?.value ?? false);
 const isDeckLike = computed(() => isLegacyDeckUi || (currentUi === 'simple' && hatasabaDeckMode.value));
 // デッキ時に noteSpacing が変えられても 'compact' に戻す。元の値を保存し、解除時に復元。
@@ -669,8 +745,11 @@ function enforceDeckSpacing() {
 enforceDeckSpacing();
 watch(isDeckLike, () => { enforceDeckSpacing(); });
 
+// 旗鯖fork(#15): ノート間隔「詰める(compact)」は廃止。通常表示(非デッキ)で compact のユーザーは moderate へ移行する。
+if (!isDeckLike.value && noteSpacing.value === 'compact') noteSpacing.value = 'moderate';
+
+// 旗鯖fork(#15): 「詰める」は選択肢から除外(ほどよく / 広め の2択)。
 const spacingOptions = [
-    { value: 'compact', label: '詰める', previewMargin: '2px 0' },
     { value: 'moderate', label: 'ほどよく', previewMargin: '5px 0' },
     { value: 'wide', label: '広め', previewMargin: '10px 0' },
 ];

@@ -650,6 +650,7 @@ export const ROUTE_DEF = [{
 }, {
 	path: '/stacking-game/ai',
 	component: page(() => import('@/pages/stacking-game.ai.vue')),
+	query: { ai: 'ai' },
 	loginRequired: true,
 }, {
 	path: '/stacking-game/lobby',
@@ -658,6 +659,7 @@ export const ROUTE_DEF = [{
 }, {
 	path: '/stacking-game/battle',
 	component: page(() => import('@/pages/stacking-game.battle.vue')),
+	query: { roomId: 'roomId' },
 	loginRequired: true,
 }, {
 	path: '/whack-emoji',
@@ -666,6 +668,7 @@ export const ROUTE_DEF = [{
 }, {
 	path: '/whack-emoji/play',
 	component: page(() => import('@/pages/whack-emoji.game.vue')),
+	query: { difficulty: 'difficulty', ai: 'ai', endless: 'endless' },
 	loginRequired: true,
 }, {
 	path: '/whack-emoji/lobby',
@@ -674,6 +677,7 @@ export const ROUTE_DEF = [{
 }, {
 	path: '/whack-emoji/battle',
 	component: page(() => import('@/pages/whack-emoji.battle.vue')),
+	query: { roomId: 'roomId' },
 	loginRequired: true,
 }, {
 	path: '/emoji-shoot',
@@ -717,6 +721,30 @@ export const ROUTE_DEF = [{
 }, {
 	path: '/mascot',
 	component: page(() => import('@/pages/mascot.vue')),
+	loginRequired: true,
+}, {
+	path: '/hatafeed/beta',
+	component: page(() => import('@/pages/hatafeed-beta.vue')),
+	loginRequired: true,
+}, {
+	path: '/playground/cpp',
+	component: page(() => import('@/pages/cpp-playground.vue')),
+	loginRequired: true,
+}, {
+	path: '/earthquake',
+	component: page(() => import('@/pages/earthquake.vue')),
+	loginRequired: true,
+}, {
+	path: '/hatafeed/n/:number',
+	component: page(() => import('@/pages/hatafeed.vue')),
+	loginRequired: true,
+}, {
+	path: '/hatafeed/:issueId',
+	component: page(() => import('@/pages/hatafeed.vue')),
+	loginRequired: true,
+}, {
+	path: '/hatafeed',
+	component: page(() => import('@/pages/hatafeed.vue')),
 	loginRequired: true,
 }, {
 	path: '/hata-docs',

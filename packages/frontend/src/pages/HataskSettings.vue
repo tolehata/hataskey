@@ -87,10 +87,41 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<div :class="$style.row"><span>アプリ起動時にHataskを表示</span><button :class="[$style.sw, settings.openOnStart && $style.swOn]" @click="toggle('openOnStart')"></button></div>
 			</div>
 
-			<!-- Hatask本体を開く(チュートリアル等、本体に依存する操作はこちらから) -->
+			<!-- 通知 -->
+			<div :class="$style.card">
+				<div :class="$style.label">通知</div>
+				<div :class="$style.row"><span>テスト通知を送信</span><MkButton rounded small @click="sendTestNotification">テスト送信</MkButton></div>
+				<div :class="$style.desc">設定→通知→プッシュ通知を有効化 でプッシュ通知を有効にしないと、旗鯖が開かれていない状態で通知を受け取ることができません。</div>
+			</div>
+
+			<!-- レートリミット -->
+			<div :class="$style.card">
+				<div :class="$style.label">レートリミット</div>
+				<div :class="$style.rlBox">
+					<div :class="$style.rlTitle">API制限</div>
+					<table :class="$style.rlTbl">
+						<thead><tr><th>操作</th><th>制限</th><th>期間</th></tr></thead>
+						<tbody>
+							<tr><td>予定作成</td><td>30回</td><td>1h</td></tr>
+							<tr><td>きもち</td><td>20回</td><td>1h</td></tr>
+							<tr><td>ToDo</td><td>60回</td><td>1h</td></tr>
+							<tr><td>検索</td><td>30回</td><td>1m</td></tr>
+						</tbody>
+					</table>
+				</div>
+			</div>
+
+			<!-- ヘルプ -->
+			<div :class="$style.card">
+				<div :class="$style.label">ヘルプ</div>
+				<div :class="$style.row"><span>チュートリアルを再度表示</span><MkButton rounded small @click="reopenTutorial">表示する</MkButton></div>
+				<div :class="$style.desc">Hatask の主要機能をステップごとにハイライト表示しながら解説します。</div>
+			</div>
+
+			<!-- Hatask本体を開く -->
 			<div :class="$style.card">
 				<div :class="$style.label">Hatask を開く</div>
-				<div :class="$style.desc">チュートリアルの再表示やテスト通知など、一部の操作は Hatask の画面から行えます。</div>
+				<div :class="$style.desc">Hatask のホーム画面を開きます。</div>
 				<MkButton primary rounded @click="openHatask"><i class="ti ti-external-link"></i> Hatask を開く</MkButton>
 			</div>
 
@@ -106,8 +137,9 @@ import MkModalWindow from '@/components/MkModalWindow.vue';
 import MkButton from '@/components/MkButton.vue';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { mainRouter } from '@/router.js';
+import * as os from '@/os.js';
 
-const emit = defineEmits<{ (ev:'closed'):void }>();
+const emit = defineEmits<{ (ev:'closed'):void; (ev:'reopenTutorial'):void }>();
 const dialog = shallowRef<InstanceType<typeof MkModalWindow>>();
 
 // Hatask本体と同じ registry スコープ/キーを使うことでデータを共有・同期する
@@ -118,10 +150,11 @@ const bgThemes = [
 	{id:'forest',label:'フォレスト',gradient:'linear-gradient(145deg,#2d5a27,#6bbd67)'},
 	{id:'night',label:'ナイト',gradient:'linear-gradient(145deg,#0f0c29,#302b63)'},
 ];
-const defaultSectionOrder = ['clock','eye','apps','loginDays','flower','events','mood','meal','mascot'];
-const sectionLabels:Record<string,string> = {clock:'日時表示',eye:'Hatask Eye',apps:'旗鯖独自アプリ',loginDays:'ログイン日数',flower:'お花',events:'直近の予定',mood:'今週のきもち',meal:'ごはん記録',mascot:'マスコット'};
-const sectionVisibilityKey:Record<string,string> = {clock:'showClock',eye:'showEye',apps:'showApps',loginDays:'showLoginDays',flower:'showFlower',events:'showEvents',mood:'showMoodSummary',meal:'showMealSection',mascot:'showMascot'};
-const defaultSettings:any = { bgTheme:'ocean', darkMode:false, autoTheme:true, weekStart:'mon', showClock:true, showEvents:true, showFlower:true, showMoodSummary:true, showMealSection:true, showMascot:true, moodRemind:false, openOnStart:false };
+// 旗鯖fork(#36): hatask.vue と同じセクション定義を使う(registry経由で完全同期)。
+const defaultSectionOrder = ['clock','eye','apps','feedbackNotif','earthquake','loginDays','flower','events','mood','meal','mascot'];
+const sectionLabels:Record<string,string> = {clock:'日時表示',eye:'Hatask Eye',apps:'旗鯖独自アプリ',loginDays:'ログイン日数',flower:'お花',events:'直近の予定',mood:'今週のきもち',meal:'ごはん記録',mascot:'マスコット',feedbackNotif:'HataFeed 通知',earthquake:'地震・津波'};
+const sectionVisibilityKey:Record<string,string> = {clock:'showClock',eye:'showEye',apps:'showApps',loginDays:'showLoginDays',flower:'showFlower',events:'showEvents',mood:'showMoodSummary',meal:'showMealSection',mascot:'showMascot',feedbackNotif:'showFeedbackNotif',earthquake:'showEarthquake'};
+const defaultSettings:any = { bgTheme:'ocean', darkMode:false, autoTheme:true, weekStart:'mon', showClock:true, showEvents:true, showFlower:true, showMoodSummary:true, showMealSection:true, showMascot:true, showFeedbackNotif:true, showEarthquake:true, moodRemind:false, openOnStart:false };
 
 const loading = ref(true);
 const settings = ref<any>({ ...defaultSettings });
@@ -171,6 +204,24 @@ function onSecDrop(idx:number){ if(dragSecIdx.value!==null) moveSection(dragSecI
 function onSecDragEnd(){ dragSecIdx.value=null; dragOverIdx.value=null; }
 
 function openHatask() { dialog.value?.close(); mainRouter.push('/hatask'); }
+
+// 旗鯖fork(#37): チュートリアル再表示。
+//   Hatask本体内で開いた場合は親(hatask.vue)が emit を受けて reopenTutorial を実行する。
+//   旗鯖独自設定から開いた場合は Hatask へ遷移してから手動で再表示してもらう必要がある。
+function reopenTutorial() {
+	emit('reopenTutorial');
+	dialog.value?.close();
+	// Hatask以外のページから開いた場合は遷移する(イベントを誰も拾わない場合のフォールバック)
+	if (!mainRouter.currentRoute.value.path.startsWith('/hatask')) {
+		mainRouter.push('/hatask');
+	}
+}
+
+// 旗鯖fork(#37): Hatask本体から移植したテスト通知
+async function sendTestNotification() {
+	try { await misskeyApi('notifications/test-notification', {}); os.toast('テスト通知を送信しました'); }
+	catch { os.toast('通知の送信に失敗しました'); }
+}
 </script>
 
 <style lang="scss" module>
@@ -201,4 +252,11 @@ function openHatask() { dialog.value?.close(); mainRouter.push('/hatask'); }
 .reorderLabel { flex:1; }
 .reorderBtns { display:flex; gap:2px; }
 .reorderBtn { width:26px; height:24px; border:none; border-radius:6px; background: var(--MI_THEME-buttonBg); color: var(--MI_THEME-fg); cursor:pointer; &:hover{ background: var(--MI_THEME-buttonHoverBg); } &:disabled{ opacity:.3; cursor:not-allowed; } }
+/* 旗鯖fork(#37): レートリミット表 */
+.rlBox { background: var(--MI_THEME-bg); border:1px solid var(--MI_THEME-divider); border-radius:10px; padding:10px 14px; }
+.rlTitle { font-size:.82rem; font-weight:700; margin-bottom:6px; opacity:.8; }
+.rlTbl { width:100%; border-collapse:collapse; font-size:.82rem; }
+.rlTbl th, .rlTbl td { padding:4px 8px; text-align:left; border-bottom:1px solid var(--MI_THEME-divider); }
+.rlTbl thead th { opacity:.7; font-weight:600; }
+.rlTbl tbody tr:last-child td { border-bottom:none; }
 </style>
