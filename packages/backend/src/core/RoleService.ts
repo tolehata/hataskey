@@ -56,6 +56,12 @@ export type RolePolicies = {
 	mascotMaxCharacters: number;
 	// 旗鯖fork: マスコット機能そのものの利用可否(デフォルト不許可。許可ロールでのみ利用可)
 	canUseMascot: boolean;
+	// 旗鯖fork: HataFeed(フィードバックセンター)へのアクセス可否(デフォルト不許可。許可ロールでのみ利用可)
+	canAccessHataFeed: boolean;
+	// 旗鯖fork: プライベートチャンネルを作成できるか(デフォルト不許可。許可ロールでのみ作成可)
+	canMakePrivateChannel: boolean;
+	canRequestRemoteEmoji: boolean;
+	emojiRequestLimit: number;
 	driveCapacityMb: number;
 	maxFileSizeMb: number;
 	alwaysMarkNsfw: boolean;
@@ -105,6 +111,10 @@ export const DEFAULT_POLICIES: RolePolicies = {
 	mascotMaxPhrases: 10,
 	mascotMaxCharacters: 3,
 	canUseMascot: false,
+	canAccessHataFeed: false,
+	canMakePrivateChannel: false,
+	canRequestRemoteEmoji: false,
+	emojiRequestLimit: 10,
 	driveCapacityMb: 100,
 	maxFileSizeMb: 30,
 	alwaysMarkNsfw: false,
@@ -437,6 +447,10 @@ export class RoleService implements OnApplicationShutdown, OnModuleInit {
 			mascotMaxPhrases: calc('mascotMaxPhrases', vs => Math.max(...vs)),
 			mascotMaxCharacters: calc('mascotMaxCharacters', vs => Math.max(...vs)),
 			canUseMascot: calc('canUseMascot', vs => vs.some(v => v === true)),
+			canAccessHataFeed: calc('canAccessHataFeed', vs => vs.some(v => v === true)),
+			canMakePrivateChannel: calc('canMakePrivateChannel', vs => vs.some(v => v === true)),
+			canRequestRemoteEmoji: calc('canRequestRemoteEmoji', vs => vs.some(v => v === true)),
+			emojiRequestLimit: calc('emojiRequestLimit', vs => Math.max(...vs)),
 			driveCapacityMb: calc('driveCapacityMb', vs => Math.max(...vs)),
 			maxFileSizeMb: calc('maxFileSizeMb', vs => Math.max(...vs)),
 			alwaysMarkNsfw: calc('alwaysMarkNsfw', vs => vs.some(v => v === true)),

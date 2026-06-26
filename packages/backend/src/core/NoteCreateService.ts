@@ -17,7 +17,7 @@ import type { IMentionedRemoteUsers } from '@/models/Note.js';
 import { MiNote } from '@/models/Note.js';
 import { MiEvent } from '@/models/Event.js';
 import type { IEvent } from '@/models/Event.js';
-import type { BlockingsRepository, ChannelFollowingsRepository, ChannelsRepository, DriveFilesRepository, FollowingsRepository, InstancesRepository, MiFollowing, MiMeta, MutingsRepository, NotesRepository, NoteThreadMutingsRepository, UserListMembershipsRepository, UserProfilesRepository, UsersRepository } from '@/models/_.js';
+import type { BlockingsRepository, ChannelFollowingsRepository, ChannelMembersRepository, ChannelsRepository, DriveFilesRepository, FollowingsRepository, InstancesRepository, MiFollowing, MiMeta, MutingsRepository, NotesRepository, NoteThreadMutingsRepository, UserListMembershipsRepository, UserProfilesRepository, UsersRepository } from '@/models/_.js';
 import type { MiDriveFile } from '@/models/DriveFile.js';
 import type { MiApp } from '@/models/App.js';
 import { concat } from '@/misc/prelude/array.js';
@@ -232,6 +232,9 @@ export class NoteCreateService implements OnApplicationShutdown {
 		@Inject(DI.channelsRepository)
 		private channelsRepository: ChannelsRepository,
 
+		@Inject(DI.channelMembersRepository)
+		private channelMembersRepository: ChannelMembersRepository,
+
 		@Inject(DI.noteThreadMutingsRepository)
 		private noteThreadMutingsRepository: NoteThreadMutingsRepository,
 
@@ -370,6 +373,9 @@ export class NoteCreateService implements OnApplicationShutdown {
 				if (renoteChannel == null) {
 					// リノートしたいノートが書き込まれているチャンネルが無い
 					throw new IdentifiableError('b060f9a6-8909-4080-9e0b-94d9fa6f6a77', 'No such channel');
+				} else if (renoteChannel.isPrivate) {
+					// 旗鯖fork: プライベートチャンネルのノートは、チャンネル外へリノート/引用させない(内容流出防止)
+					throw new IdentifiableError('7e435f4a-780d-4cfc-a15a-42519bd6fb67', 'Channel does not allow renote to external');
 				} else if (!renoteChannel.allowRenoteToExternal) {
 					// リノート作成のリクエストだが、対象チャンネルがリノート禁止だった場合
 					throw new IdentifiableError('7e435f4a-780d-4cfc-a15a-42519bd6fb67', 'Channel does not allow renote to external');
@@ -430,6 +436,11 @@ export class NoteCreateService implements OnApplicationShutdown {
 			channel = await this.channelsRepository.findOneBy({ id: data.channelId, isArchived: false });
 
 			if (channel == null) {
+				throw new IdentifiableError('bfa3905b-25f5-4894-b430-da331a490e4b', 'No such channel');
+			}
+
+			// 旗鯖fork: プライベートチャンネルには、メンバー/作成者/副管理者/モデレーター以外は投稿できない。
+			if (channel.isPrivate && !await this.canPostToPrivateChannel(channel, user.id)) {
 				throw new IdentifiableError('bfa3905b-25f5-4894-b430-da331a490e4b', 'No such channel');
 			}
 		}
@@ -636,6 +647,15 @@ export class NoteCreateService implements OnApplicationShutdown {
 		);
 
 		return note;
+	}
+
+	// 旗鯖fork: プライベートチャンネルへ投稿可能か(作成者・副管理者・メンバー・モデレーター)。
+	@bindThis
+	private async canPostToPrivateChannel(channel: MiChannel, userId: MiUser['id']): Promise<boolean> {
+		if (channel.userId === userId) return true;
+		if (channel.moderatorUserIds.includes(userId)) return true;
+		if (await this.channelMembersRepository.exists({ where: { channelId: channel.id, userId } })) return true;
+		return this.roleService.isModerator({ id: userId });
 	}
 
 	@bindThis

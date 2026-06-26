@@ -7,6 +7,8 @@ import { Inject, Injectable } from '@nestjs/common';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import { NoteEntityService } from '@/core/entities/NoteEntityService.js';
 import { GetterService } from '@/server/api/GetterService.js';
+import { ChannelService } from '@/core/ChannelService.js';
+import type { ChannelsRepository } from '@/models/_.js';
 import { DI } from '@/di-symbols.js';
 import { MiMeta } from '@/models/Meta.js';
 import { ApiError } from '../../error.js';
@@ -57,14 +59,26 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		@Inject(DI.meta)
 		private serverSettings: MiMeta,
 
+		@Inject(DI.channelsRepository)
+		private channelsRepository: ChannelsRepository,
+
 		private noteEntityService: NoteEntityService,
 		private getterService: GetterService,
+		private channelService: ChannelService,
 	) {
 		super(meta, paramDef, async (ps, me) => {
 			const note = await this.getterService.getNoteWithRelations(ps.noteId).catch(err => {
 				if (err.id === '9725d0ce-ba28-4dde-95a7-2cbb2c15de24') throw new ApiError(meta.errors.noSuchNote);
 				throw err;
 			});
+
+			// 旗鯖fork: プライベートチャンネルのノートは、閲覧権限が無ければ存在ごと隠す(noSuchNote)。
+			if (note.channelId != null) {
+				const channel = note.channel ?? await this.channelsRepository.findOneBy({ id: note.channelId });
+				if (channel != null && channel.isPrivate && !await this.channelService.canView(channel, me?.id ?? null)) {
+					throw new ApiError(meta.errors.noSuchNote);
+				}
+			}
 
 			if (note.user!.requireSigninToViewContents && me == null) {
 				throw new ApiError(meta.errors.contentRestrictedByUser);

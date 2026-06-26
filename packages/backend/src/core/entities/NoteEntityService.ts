@@ -11,7 +11,7 @@ import type { Packed } from '@/misc/json-schema.js';
 import { awaitAll } from '@/misc/prelude/await-all.js';
 import type { MiUser } from '@/models/User.js';
 import type { MiNote } from '@/models/Note.js';
-import type { UsersRepository, NotesRepository, FollowingsRepository, PollsRepository, PollVotesRepository, NoteReactionsRepository, ChannelsRepository, InstancesRepository, MiMeta, EventsRepository, UtageSessionsRepository } from '@/models/_.js';
+import type { UsersRepository, NotesRepository, FollowingsRepository, PollsRepository, PollVotesRepository, NoteReactionsRepository, ChannelsRepository, ChannelMembersRepository, InstancesRepository, MiMeta, EventsRepository, UtageSessionsRepository } from '@/models/_.js';
 import { bindThis } from '@/decorators.js';
 import { DebounceLoader } from '@/misc/loader.js';
 import { IdService } from '@/core/IdService.js';
@@ -102,6 +102,9 @@ export class NoteEntityService implements OnModuleInit {
 		@Inject(DI.channelsRepository)
 		private channelsRepository: ChannelsRepository,
 
+		@Inject(DI.channelMembersRepository)
+		private channelMembersRepository: ChannelMembersRepository,
+
 		@Inject(DI.instancesRepository)
 		private instancesRepository: InstancesRepository,
 
@@ -170,6 +173,20 @@ export class NoteEntityService implements OnModuleInit {
 				)
 			) {
 				hide = true;
+			}
+		}
+
+		// 旗鯖fork: プライベートチャンネルのノートは、閲覧権限が無ければ内容を伏せる(「非公開」表示)。
+		//   プロフィール等の一覧に出ても、メンバー/作成者/副管理者/モデレーター以外には本文が見えない。
+		if (!hide && packedNote.channelId != null) {
+			const channel = await this.channelsRepository.findOneBy({ id: packedNote.channelId });
+			if (channel != null && channel.isPrivate) {
+				if (meId == null) {
+					hide = true;
+				} else if (channel.userId !== meId && !channel.moderatorUserIds.includes(meId)) {
+					const isMember = await this.channelMembersRepository.exists({ where: { channelId: channel.id, userId: meId } });
+					if (!isMember && !await this.roleService.isModerator({ id: meId })) hide = true;
+				}
 			}
 		}
 
@@ -334,6 +351,19 @@ export class NoteEntityService implements OnModuleInit {
 	@bindThis
 	public async isVisibleForMe(note: MiNote, meId: MiUser['id'] | null): Promise<boolean> {
 		// This code must always be synchronized with the checks in generateVisibilityQuery.
+
+		// 旗鯖fork: プライベートチャンネルのノートは、メンバー/作成者/副管理者/モデレーターのみ閲覧可。
+		if (note.channelId != null) {
+			const channel = note.channel ?? await this.channelsRepository.findOneBy({ id: note.channelId });
+			if (channel != null && channel.isPrivate) {
+				if (meId == null) return false;
+				if (channel.userId !== meId && !channel.moderatorUserIds.includes(meId)) {
+					const isMember = await this.channelMembersRepository.exists({ where: { channelId: channel.id, userId: meId } });
+					if (!isMember && !await this.roleService.isModerator({ id: meId })) return false;
+				}
+			}
+		}
+
 		// visibility が specified かつ自分が指定されていなかったら非表示
 		if (note.visibility === 'specified') {
 			if (meId == null) {
@@ -489,6 +519,8 @@ export class NoteEntityService implements OnModuleInit {
 				color: channel.color,
 				isSensitive: channel.isSensitive,
 				allowRenoteToExternal: channel.allowRenoteToExternal,
+				// 旗鯖fork: プライベートチャンネルはチャンネル外リノート不可。フロントでメニューを抑制するため公開。
+				isPrivate: channel.isPrivate,
 				userId: channel.userId,
 			} : undefined,
 			mentions: note.mentions.length > 0 ? note.mentions : undefined,

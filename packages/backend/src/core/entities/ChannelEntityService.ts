@@ -12,6 +12,7 @@ import type { MiUser } from '@/models/User.js';
 import type { MiChannel } from '@/models/Channel.js';
 import { bindThis } from '@/decorators.js';
 import { IdService } from '@/core/IdService.js';
+import { ChannelService } from '@/core/ChannelService.js';
 import { DriveFileEntityService } from './DriveFileEntityService.js';
 import { NoteEntityService } from './NoteEntityService.js';
 import { In } from 'typeorm';
@@ -37,6 +38,7 @@ export class ChannelEntityService {
 		private noteEntityService: NoteEntityService,
 		private driveFileEntityService: DriveFileEntityService,
 		private idService: IdService,
+		private channelService: ChannelService,
 	) {
 	}
 
@@ -65,6 +67,10 @@ export class ChannelEntityService {
 			},
 		}) : false;
 
+		// 旗鯖fork: プライベートチャンネルのメンバー判定・管理権限。
+		const isMember = (meId && channel.isPrivate) ? await this.channelService.isMember(channel.id, meId) : false;
+		const canManage = meId ? await this.channelService.canManage(channel, meId) : false;
+
 		const pinnedNotes = channel.pinnedNoteIds.length > 0 ? await this.notesRepository.find({
 			where: {
 				id: In(channel.pinnedNoteIds),
@@ -86,11 +92,17 @@ export class ChannelEntityService {
 			notesCount: channel.notesCount,
 			isSensitive: channel.isSensitive,
 			allowRenoteToExternal: channel.allowRenoteToExternal,
+			// 旗鯖fork: プライベートチャンネル情報
+			isPrivate: channel.isPrivate,
+			hasPassword: channel.password != null && channel.password.length > 0,
+			moderatorUserIds: channel.moderatorUserIds,
 
 			...(me ? {
 				isFollowing,
 				isFavorited,
 				hasUnreadNote: false, // 後方互換性のため
+				isMember,
+				canManage,
 			} : {}),
 
 			...(detailed ? {

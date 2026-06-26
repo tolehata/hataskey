@@ -7,6 +7,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import type { DriveFilesRepository, ChannelsRepository } from '@/models/_.js';
 import { ChannelEntityService } from '@/core/entities/ChannelEntityService.js';
+import { ChannelService } from '@/core/ChannelService.js';
 import { DI } from '@/di-symbols.js';
 import { RoleService } from '@/core/RoleService.js';
 import { ApiError } from '../../error.js';
@@ -42,6 +43,12 @@ export const meta = {
 			code: 'NO_SUCH_FILE',
 			id: 'e86c14a4-0da2-4032-8df3-e737a04c7f3b',
 		},
+		// 旗鯖fork: プライベートチャンネル化の権限がない
+		privateChannelNotAllowed: {
+			message: 'You are not allowed to make this channel private.',
+			code: 'PRIVATE_CHANNEL_NOT_ALLOWED',
+			id: '3e7c2a1b-4d5e-4f6a-9b8c-1d2e3f4a5b6c',
+		},
 	},
 } as const;
 
@@ -62,6 +69,10 @@ export const paramDef = {
 		color: { type: 'string', minLength: 1, maxLength: 16 },
 		isSensitive: { type: 'boolean', nullable: true },
 		allowRenoteToExternal: { type: 'boolean', nullable: true },
+		// 旗鯖fork: プライベートチャンネル
+		isPrivate: { type: 'boolean', nullable: true },
+		password: { type: 'string', nullable: true, maxLength: 128 },
+		moderatorUserIds: { type: 'array', items: { type: 'string', format: 'misskey:id' }, nullable: true },
 	},
 	required: ['channelId'],
 } as const;
@@ -78,6 +89,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		private channelEntityService: ChannelEntityService,
 
 		private roleService: RoleService,
+		private channelService: ChannelService,
 	) {
 		super(meta, paramDef, async (ps, me) => {
 			const channel = await this.channelsRepository.findOneBy({
@@ -88,9 +100,17 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				throw new ApiError(meta.errors.noSuchChannel);
 			}
 
-			const iAmModerator = await this.roleService.isModerator(me);
-			if (channel.userId !== me.id && !iAmModerator) {
+			// 旗鯖fork: 作成者・副管理者・インスタンスのモデレーターが編集できる。
+			if (!await this.channelService.canManage(channel, me.id)) {
 				throw new ApiError(meta.errors.accessDenied);
+			}
+
+			// 旗鯖fork: 非プライベート→プライベート化はロールポリシーが必要(既にプライベートなら不問)。
+			if (ps.isPrivate === true && !channel.isPrivate) {
+				const policies = await this.roleService.getUserPolicies(me.id);
+				if (!policies.canMakePrivateChannel) {
+					throw new ApiError(meta.errors.privateChannelNotAllowed);
+				}
 			}
 
 			// eslint:disable-next-line:no-unnecessary-initializer
@@ -108,6 +128,11 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				banner = null;
 			}
 
+			// 旗鯖fork: プライベートチャンネルは一度設定したら解除できない。
+			//   既にプライベート、または今回プライベート化する場合は常に private 扱い。
+			//   (ps.isPrivate=false が来ても、既存が private なら無視して private を維持する)
+			const effectiveIsPrivate = channel.isPrivate || ps.isPrivate === true;
+
 			await this.channelsRepository.update(channel.id, {
 				...(ps.name !== undefined ? { name: ps.name } : {}),
 				...(ps.description !== undefined ? { description: ps.description } : {}),
@@ -116,8 +141,20 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				...(typeof ps.isArchived === 'boolean' ? { isArchived: ps.isArchived } : {}),
 				...(banner ? { bannerId: banner.id } : {}),
 				...(typeof ps.isSensitive === 'boolean' ? { isSensitive: ps.isSensitive } : {}),
-				...(typeof ps.allowRenoteToExternal === 'boolean' ? { allowRenoteToExternal: ps.allowRenoteToExternal } : {}),
+				// 旗鯖fork: プライベートチャンネルはチャンネル外リノートを不可で固定。
+				...(effectiveIsPrivate ? { allowRenoteToExternal: false } : (typeof ps.allowRenoteToExternal === 'boolean' ? { allowRenoteToExternal: ps.allowRenoteToExternal } : {})),
+				// 旗鯖fork: プライベート化は許可するが、解除(true→false)は不可。常に effectiveIsPrivate を書く。
+				...(effectiveIsPrivate ? { isPrivate: true } : {}),
+				...(ps.password !== undefined ? { password: ps.password } : {}),
+				...(ps.moderatorUserIds !== undefined ? { moderatorUserIds: [...new Set(ps.moderatorUserIds)].filter(uid => uid !== channel.userId) } : {}),
 			});
+
+			// 旗鯖fork: 副管理者をメンバーにも登録(閲覧できるように)。
+			if (ps.moderatorUserIds !== undefined) {
+				for (const uid of [...new Set(ps.moderatorUserIds)]) {
+					await this.channelService.addMember(channel.id, uid);
+				}
+			}
 
 			return await this.channelEntityService.pack(channel.id, me);
 		});
