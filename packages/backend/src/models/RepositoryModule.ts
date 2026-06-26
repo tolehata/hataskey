@@ -22,6 +22,7 @@ import {
 	MiChannel,
 	MiChannelFavorite,
 	MiChannelFollowing,
+	MiChannelMember,
 	MiClip,
 	MiClipFavorite,
 	MiClipNote,
@@ -99,6 +100,15 @@ import { MiRegistrationApplication } from './RegistrationApplication.js';
 import { MiHataskEvent } from './HataskEvent.js';
 import { MiHataskRsvp } from './HataskRsvp.js';
 import { MiUtageSession } from './UtageSession.js';
+import { MiFeedbackIssue } from './FeedbackIssue.js';
+import { MiFeedbackAgree } from './FeedbackAgree.js';
+import { MiFeedbackComment } from './FeedbackComment.js';
+import { MiFeedbackCommentReaction } from './FeedbackCommentReaction.js';
+import { MiEarthquakeNotification } from './EarthquakeNotification.js';
+import { MiFeedbackIssueModerator } from './FeedbackIssueModerator.js';
+import { MiFeedbackEmojiRequest } from './FeedbackEmojiRequest.js';
+import { MiFeedbackNotification } from './FeedbackNotification.js';
+import { MiFeedbackProject } from './FeedbackProject.js';
 import type { Provider } from '@nestjs/common';
 import type { DataSource } from 'typeorm';
 
@@ -462,6 +472,12 @@ const $channelFollowingsRepository: Provider = {
 	inject: [DI.db],
 };
 
+const $channelMembersRepository: Provider = {
+	provide: DI.channelMembersRepository,
+	useFactory: (db: DataSource) => db.getRepository(MiChannelMember).extend(miRepository as MiRepository<MiChannelMember>),
+	inject: [DI.db],
+};
+
 const $channelFavoritesRepository: Provider = {
 	provide: DI.channelFavoritesRepository,
 	useFactory: (db: DataSource) => db.getRepository(MiChannelFavorite).extend(miRepository as MiRepository<MiChannelFavorite>),
@@ -619,6 +635,60 @@ const $utageSessionsRepository: Provider = {
 	inject: [DI.db],
 };
 
+const $feedbackIssuesRepository: Provider = {
+	provide: DI.feedbackIssuesRepository,
+	useFactory: (db: DataSource) => db.getRepository(MiFeedbackIssue).extend(miRepository as MiRepository<MiFeedbackIssue>),
+	inject: [DI.db],
+};
+
+const $feedbackAgreesRepository: Provider = {
+	provide: DI.feedbackAgreesRepository,
+	useFactory: (db: DataSource) => db.getRepository(MiFeedbackAgree).extend(miRepository as MiRepository<MiFeedbackAgree>),
+	inject: [DI.db],
+};
+
+const $earthquakeNotificationsRepository: Provider = {
+	provide: DI.earthquakeNotificationsRepository,
+	useFactory: (db: DataSource) => db.getRepository(MiEarthquakeNotification).extend(miRepository as MiRepository<MiEarthquakeNotification>),
+	inject: [DI.db],
+};
+
+const $feedbackCommentsRepository: Provider = {
+	provide: DI.feedbackCommentsRepository,
+	useFactory: (db: DataSource) => db.getRepository(MiFeedbackComment).extend(miRepository as MiRepository<MiFeedbackComment>),
+	inject: [DI.db],
+};
+
+const $feedbackCommentReactionsRepository: Provider = {
+	provide: DI.feedbackCommentReactionsRepository,
+	useFactory: (db: DataSource) => db.getRepository(MiFeedbackCommentReaction).extend(miRepository as MiRepository<MiFeedbackCommentReaction>),
+	inject: [DI.db],
+};
+
+const $feedbackIssueModeratorsRepository: Provider = {
+	provide: DI.feedbackIssueModeratorsRepository,
+	useFactory: (db: DataSource) => db.getRepository(MiFeedbackIssueModerator).extend(miRepository as MiRepository<MiFeedbackIssueModerator>),
+	inject: [DI.db],
+};
+
+const $feedbackEmojiRequestsRepository: Provider = {
+	provide: DI.feedbackEmojiRequestsRepository,
+	useFactory: (db: DataSource) => db.getRepository(MiFeedbackEmojiRequest).extend(miRepository as MiRepository<MiFeedbackEmojiRequest>),
+	inject: [DI.db],
+};
+
+const $feedbackNotificationsRepository: Provider = {
+	provide: DI.feedbackNotificationsRepository,
+	useFactory: (db: DataSource) => db.getRepository(MiFeedbackNotification).extend(miRepository as MiRepository<MiFeedbackNotification>),
+	inject: [DI.db],
+};
+
+const $feedbackProjectsRepository: Provider = {
+	provide: DI.feedbackProjectsRepository,
+	useFactory: (db: DataSource) => db.getRepository(MiFeedbackProject).extend(miRepository as MiRepository<MiFeedbackProject>),
+	inject: [DI.db],
+};
+
 @Module({
 	imports: [],
 	providers: [
@@ -682,6 +752,7 @@ const $utageSessionsRepository: Provider = {
 		$relaysRepository,
 		$channelsRepository,
 		$channelFollowingsRepository,
+		$channelMembersRepository,
 		$channelFavoritesRepository,
 		$registryItemsRepository,
 		$webhooksRepository,
@@ -712,6 +783,15 @@ const $utageSessionsRepository: Provider = {
 		$hataskEventsRepository,
 		$hataskRsvpsRepository,
 		$utageSessionsRepository,
+		$feedbackIssuesRepository,
+		$feedbackAgreesRepository,
+		$earthquakeNotificationsRepository,
+		$feedbackCommentsRepository,
+		$feedbackCommentReactionsRepository,
+		$feedbackIssueModeratorsRepository,
+		$feedbackEmojiRequestsRepository,
+		$feedbackNotificationsRepository,
+		$feedbackProjectsRepository,
 	],
 	exports: [
 		$usersRepository,
@@ -774,6 +854,7 @@ const $utageSessionsRepository: Provider = {
 		$relaysRepository,
 		$channelsRepository,
 		$channelFollowingsRepository,
+		$channelMembersRepository,
 		$channelFavoritesRepository,
 		$registryItemsRepository,
 		$webhooksRepository,
@@ -804,6 +885,15 @@ const $utageSessionsRepository: Provider = {
 		$hataskEventsRepository,
 		$hataskRsvpsRepository,
 		$utageSessionsRepository,
+		$feedbackIssuesRepository,
+		$feedbackAgreesRepository,
+		$earthquakeNotificationsRepository,
+		$feedbackCommentsRepository,
+		$feedbackCommentReactionsRepository,
+		$feedbackIssueModeratorsRepository,
+		$feedbackEmojiRequestsRepository,
+		$feedbackNotificationsRepository,
+		$feedbackProjectsRepository,
 	],
 })
 export class RepositoryModule {

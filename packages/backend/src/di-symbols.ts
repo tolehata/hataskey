@@ -76,6 +76,7 @@ export const DI = {
 	relaysRepository: Symbol('relaysRepository'),
 	channelsRepository: Symbol('channelsRepository'),
 	channelFollowingsRepository: Symbol('channelFollowingsRepository'),
+	channelMembersRepository: Symbol('channelMembersRepository'),
 	channelFavoritesRepository: Symbol('channelFavoritesRepository'),
 	registryItemsRepository: Symbol('registryItemsRepository'),
 	webhooksRepository: Symbol('webhooksRepository'),
@@ -107,5 +108,14 @@ export const DI = {
 	hataskEventsRepository: Symbol('hataskEventsRepository'),
 	hataskRsvpsRepository: Symbol('hataskRsvpsRepository'),
 	utageSessionsRepository: Symbol('utageSessionsRepository'),
+	feedbackIssuesRepository: Symbol('feedbackIssuesRepository'),
+	feedbackAgreesRepository: Symbol('feedbackAgreesRepository'),
+	feedbackCommentsRepository: Symbol('feedbackCommentsRepository'),
+	feedbackCommentReactionsRepository: Symbol('feedbackCommentReactionsRepository'),
+	feedbackIssueModeratorsRepository: Symbol('feedbackIssueModeratorsRepository'),
+	feedbackEmojiRequestsRepository: Symbol('feedbackEmojiRequestsRepository'),
+	feedbackNotificationsRepository: Symbol('feedbackNotificationsRepository'),
+	feedbackProjectsRepository: Symbol('feedbackProjectsRepository'),
+	earthquakeNotificationsRepository: Symbol('earthquakeNotificationsRepository'),
 	//#endregion
 };

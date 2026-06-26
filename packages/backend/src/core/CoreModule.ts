@@ -52,6 +52,9 @@ import { NoteDraftService } from './NoteDraftService.js';
 import { NotificationService } from './NotificationService.js';
 import { PollService } from './PollService.js';
 import { UtageService } from './UtageService.js';
+import { FeedbackService } from './FeedbackService.js';
+import { ChannelService } from './ChannelService.js';
+import { EarthquakeService } from './EarthquakeService.js';
 import { PushNotificationService } from './PushNotificationService.js';
 import { QueryService } from './QueryService.js';
 import { ReactionService } from './ReactionService.js';
@@ -114,6 +117,7 @@ import { BlockingEntityService } from './entities/BlockingEntityService.js';
 import { ChannelEntityService } from './entities/ChannelEntityService.js';
 import { ChatEntityService } from './entities/ChatEntityService.js';
 import { ClipEntityService } from './entities/ClipEntityService.js';
+import { FeedbackEntityService } from './entities/FeedbackEntityService.js';
 import { DriveFileEntityService } from './entities/DriveFileEntityService.js';
 import { DriveFolderEntityService } from './entities/DriveFolderEntityService.js';
 import { EmojiEntityService } from './entities/EmojiEntityService.js';
@@ -209,6 +213,9 @@ const $NoteDraftService: Provider = { provide: 'NoteDraftService', useExisting: 
 const $NotificationService: Provider = { provide: 'NotificationService', useExisting: NotificationService };
 const $PollService: Provider = { provide: 'PollService', useExisting: PollService };
 const $UtageService: Provider = { provide: 'UtageService', useExisting: UtageService };
+const $FeedbackService: Provider = { provide: 'FeedbackService', useExisting: FeedbackService };
+const $ChannelService: Provider = { provide: 'ChannelService', useExisting: ChannelService };
+const $EarthquakeService: Provider = { provide: 'EarthquakeService', useExisting: EarthquakeService };
 const $SystemAccountService: Provider = { provide: 'SystemAccountService', useExisting: SystemAccountService };
 const $PushNotificationService: Provider = { provide: 'PushNotificationService', useExisting: PushNotificationService };
 const $QueryService: Provider = { provide: 'QueryService', useExisting: QueryService };
@@ -278,6 +285,7 @@ const $BlockingEntityService: Provider = { provide: 'BlockingEntityService', use
 const $ChannelEntityService: Provider = { provide: 'ChannelEntityService', useExisting: ChannelEntityService };
 const $ChatEntityService: Provider = { provide: 'ChatEntityService', useExisting: ChatEntityService };
 const $ClipEntityService: Provider = { provide: 'ClipEntityService', useExisting: ClipEntityService };
+const $FeedbackEntityService: Provider = { provide: 'FeedbackEntityService', useExisting: FeedbackEntityService };
 const $DriveFileEntityService: Provider = { provide: 'DriveFileEntityService', useExisting: DriveFileEntityService };
 const $DriveFolderEntityService: Provider = { provide: 'DriveFolderEntityService', useExisting: DriveFolderEntityService };
 const $EmojiEntityService: Provider = { provide: 'EmojiEntityService', useExisting: EmojiEntityService };
@@ -374,6 +382,9 @@ const $ApEventService: Provider = { provide: 'ApEventService', useExisting: ApEv
 		NotificationService,
 		PollService,
 		UtageService,
+		FeedbackService,
+		ChannelService,
+		EarthquakeService,
 		SystemAccountService,
 		PushNotificationService,
 		QueryService,
@@ -443,6 +454,7 @@ const $ApEventService: Provider = { provide: 'ApEventService', useExisting: ApEv
 		ChannelEntityService,
 		ChatEntityService,
 		ClipEntityService,
+		FeedbackEntityService,
 		DriveFileEntityService,
 		DriveFolderEntityService,
 		EmojiEntityService,
@@ -535,6 +547,9 @@ const $ApEventService: Provider = { provide: 'ApEventService', useExisting: ApEv
 		$NotificationService,
 		$PollService,
 		$UtageService,
+		$FeedbackService,
+		$ChannelService,
+		$EarthquakeService,
 		$SystemAccountService,
 		$PushNotificationService,
 		$QueryService,
@@ -603,6 +618,7 @@ const $ApEventService: Provider = { provide: 'ApEventService', useExisting: ApEv
 		$ChannelEntityService,
 		$ChatEntityService,
 		$ClipEntityService,
+		$FeedbackEntityService,
 		$DriveFileEntityService,
 		$DriveFolderEntityService,
 		$EmojiEntityService,
@@ -696,6 +712,9 @@ const $ApEventService: Provider = { provide: 'ApEventService', useExisting: ApEv
 		NotificationService,
 		PollService,
 		UtageService,
+		FeedbackService,
+		ChannelService,
+		EarthquakeService,
 		SystemAccountService,
 		PushNotificationService,
 		QueryService,
@@ -764,6 +783,7 @@ const $ApEventService: Provider = { provide: 'ApEventService', useExisting: ApEv
 		ChannelEntityService,
 		ChatEntityService,
 		ClipEntityService,
+		FeedbackEntityService,
 		DriveFileEntityService,
 		DriveFolderEntityService,
 		EmojiEntityService,
@@ -856,6 +876,8 @@ const $ApEventService: Provider = { provide: 'ApEventService', useExisting: ApEv
 		$NotificationService,
 		$PollService,
 		$UtageService,
+		$FeedbackService,
+		$ChannelService,
 		$SystemAccountService,
 		$PushNotificationService,
 		$QueryService,
@@ -922,6 +944,7 @@ const $ApEventService: Provider = { provide: 'ApEventService', useExisting: ApEv
 		$ChannelEntityService,
 		$ChatEntityService,
 		$ClipEntityService,
+		$FeedbackEntityService,
 		$DriveFileEntityService,
 		$DriveFolderEntityService,
 		$EmojiEntityService,

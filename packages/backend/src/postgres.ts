@@ -25,6 +25,7 @@ import { MiAvatarDecoration } from '@/models/AvatarDecoration.js';
 import { MiAuthSession } from '@/models/AuthSession.js';
 import { MiBlocking } from '@/models/Blocking.js';
 import { MiChannelFollowing } from '@/models/ChannelFollowing.js';
+import { MiChannelMember } from '@/models/ChannelMember.js';
 import { MiChannelFavorite } from '@/models/ChannelFavorite.js';
 import { MiClip } from '@/models/Clip.js';
 import { MiClipNote } from '@/models/ClipNote.js';
@@ -78,6 +79,15 @@ import { MiRegistrationApplication } from '@/models/RegistrationApplication.js';
 import { MiHataskEvent } from '@/models/HataskEvent.js';
 import { MiHataskRsvp } from '@/models/HataskRsvp.js';
 import { MiUtageSession } from '@/models/UtageSession.js';
+import { MiFeedbackIssue } from '@/models/FeedbackIssue.js';
+import { MiFeedbackAgree } from '@/models/FeedbackAgree.js';
+import { MiFeedbackComment } from '@/models/FeedbackComment.js';
+import { MiFeedbackCommentReaction } from '@/models/FeedbackCommentReaction.js';
+import { MiFeedbackIssueModerator } from '@/models/FeedbackIssueModerator.js';
+import { MiFeedbackEmojiRequest } from '@/models/FeedbackEmojiRequest.js';
+import { MiFeedbackNotification } from '@/models/FeedbackNotification.js';
+import { MiFeedbackProject } from '@/models/FeedbackProject.js';
+import { MiEarthquakeNotification } from '@/models/EarthquakeNotification.js';
 import { MiUserSecurityKey } from '@/models/UserSecurityKey.js';
 import { MiWebhook } from '@/models/Webhook.js';
 import { MiSystemWebhook } from '@/models/SystemWebhook.js';
@@ -216,6 +226,15 @@ export const entities = [
 	MiHataskEvent,
 	MiHataskRsvp,
 	MiUtageSession,
+	MiFeedbackIssue,
+	MiFeedbackAgree,
+	MiFeedbackComment,
+	MiFeedbackCommentReaction,
+	MiFeedbackIssueModerator,
+	MiFeedbackEmojiRequest,
+	MiFeedbackNotification,
+	MiFeedbackProject,
+	MiEarthquakeNotification,
 	MiUserList,
 	MiUserListFavorite,
 	MiUserListMembership,
@@ -262,6 +281,7 @@ export const entities = [
 	MiRelay,
 	MiChannel,
 	MiChannelFollowing,
+	MiChannelMember,
 	MiChannelFavorite,
 	MiRegistryItem,
 	MiAd,

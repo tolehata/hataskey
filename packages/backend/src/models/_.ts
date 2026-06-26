@@ -33,6 +33,7 @@ import { MiBubbleGameRecord } from '@/models/BubbleGameRecord.js';
 import { MiChannel } from '@/models/Channel.js';
 import { MiChannelFavorite } from '@/models/ChannelFavorite.js';
 import { MiChannelFollowing } from '@/models/ChannelFollowing.js';
+import { MiChannelMember } from '@/models/ChannelMember.js';
 import { MiChatApproval } from '@/models/ChatApproval.js';
 import { MiChatMessage } from '@/models/ChatMessage.js';
 import { MiChatRoom } from '@/models/ChatRoom.js';
@@ -107,6 +108,15 @@ import { MiRegistrationApplication } from '@/models/RegistrationApplication.js';
 import { MiHataskEvent } from '@/models/HataskEvent.js';
 import { MiHataskRsvp } from '@/models/HataskRsvp.js';
 import { MiUtageSession } from '@/models/UtageSession.js';
+import { MiFeedbackIssue } from '@/models/FeedbackIssue.js';
+import { MiFeedbackAgree } from '@/models/FeedbackAgree.js';
+import { MiFeedbackComment } from '@/models/FeedbackComment.js';
+import { MiFeedbackCommentReaction } from '@/models/FeedbackCommentReaction.js';
+import { MiFeedbackIssueModerator } from '@/models/FeedbackIssueModerator.js';
+import { MiFeedbackEmojiRequest } from '@/models/FeedbackEmojiRequest.js';
+import { MiFeedbackNotification } from '@/models/FeedbackNotification.js';
+import { MiFeedbackProject } from '@/models/FeedbackProject.js';
+import { MiEarthquakeNotification } from '@/models/EarthquakeNotification.js';
 import type { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity.js';
 
 export interface MiRepository<T extends ObjectLiteral> {
@@ -187,6 +197,7 @@ export {
 	MiAuthSession,
 	MiBlocking,
 	MiChannelFollowing,
+	MiChannelMember,
 	MiChannelFavorite,
 	MiClip,
 	MiClipNote,
@@ -263,6 +274,15 @@ export {
 	MiHataskEvent,
 	MiHataskRsvp,
 	MiUtageSession,
+	MiFeedbackIssue,
+	MiFeedbackAgree,
+	MiFeedbackComment,
+	MiFeedbackCommentReaction,
+	MiFeedbackIssueModerator,
+	MiFeedbackEmojiRequest,
+	MiFeedbackNotification,
+	MiFeedbackProject,
+	MiEarthquakeNotification,
 };
 
 export type AbuseReportResolversRepository = Repository<MiAbuseReportResolver> & MiRepository<MiAbuseReportResolver>;
@@ -280,6 +300,7 @@ export type AvatarDecorationsRepository = Repository<MiAvatarDecoration> & MiRep
 export type AuthSessionsRepository = Repository<MiAuthSession> & MiRepository<MiAuthSession>;
 export type BlockingsRepository = Repository<MiBlocking> & MiRepository<MiBlocking>;
 export type ChannelFollowingsRepository = Repository<MiChannelFollowing> & MiRepository<MiChannelFollowing>;
+export type ChannelMembersRepository = Repository<MiChannelMember> & MiRepository<MiChannelMember>;
 export type ChannelFavoritesRepository = Repository<MiChannelFavorite> & MiRepository<MiChannelFavorite>;
 export type ClipsRepository = Repository<MiClip> & MiRepository<MiClip>;
 export type ClipNotesRepository = Repository<MiClipNote> & MiRepository<MiClipNote>;
@@ -357,4 +378,13 @@ export type RegistrationApplicationsRepository = Repository<MiRegistrationApplic
 export type HataskEventsRepository = Repository<MiHataskEvent> & MiRepository<MiHataskEvent>;
 export type HataskRsvpsRepository = Repository<MiHataskRsvp> & MiRepository<MiHataskRsvp>;
 export type UtageSessionsRepository = Repository<MiUtageSession> & MiRepository<MiUtageSession>;
+export type FeedbackIssuesRepository = Repository<MiFeedbackIssue> & MiRepository<MiFeedbackIssue>;
+export type FeedbackAgreesRepository = Repository<MiFeedbackAgree> & MiRepository<MiFeedbackAgree>;
+export type EarthquakeNotificationsRepository = Repository<MiEarthquakeNotification> & MiRepository<MiEarthquakeNotification>;
+export type FeedbackCommentsRepository = Repository<MiFeedbackComment> & MiRepository<MiFeedbackComment>;
+export type FeedbackCommentReactionsRepository = Repository<MiFeedbackCommentReaction> & MiRepository<MiFeedbackCommentReaction>;
+export type FeedbackIssueModeratorsRepository = Repository<MiFeedbackIssueModerator> & MiRepository<MiFeedbackIssueModerator>;
+export type FeedbackEmojiRequestsRepository = Repository<MiFeedbackEmojiRequest> & MiRepository<MiFeedbackEmojiRequest>;
+export type FeedbackNotificationsRepository = Repository<MiFeedbackNotification> & MiRepository<MiFeedbackNotification>;
+export type FeedbackProjectsRepository = Repository<MiFeedbackProject> & MiRepository<MiFeedbackProject>;
 
