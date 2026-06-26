@@ -154,6 +154,25 @@ export type MiNotification = {
 	 */
 	appAccessTokenId: MiAccessToken['id'] | null;
 } | {
+	// 旗鯖fork: HataFeed(フィードバックセンター)の通知。app通知と同形だが、通知フィルタで
+	//   個別にON/OFFできるよう専用タイプにしている。
+	type: 'hataFeed';
+	id: string;
+	createdAt: string;
+	customBody: string;
+	customHeader: string | null;
+	customIcon: string | null;
+	customLink: string | null;
+} | {
+	// 旗鯖fork: 地震・津波情報の通知。app通知と同形だが、通知フィルタで個別ON/OFFできるよう専用タイプ。
+	type: 'earthquake';
+	id: string;
+	createdAt: string;
+	customBody: string;
+	customHeader: string | null;
+	customIcon: string | null;
+	customLink: string | null;
+} | {
 	type: 'test';
 	id: string;
 	createdAt: string;

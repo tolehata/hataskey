@@ -47,6 +47,8 @@ export const notificationTypes = [
 	'login',
 	'createToken',
 	'app',
+	'hataFeed',
+	'earthquake',
 	'test',
 ] as const;
 

@@ -16,8 +16,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<div v-else-if="notification.type === 'note:grouped'" :class="[$style.icon, $style.icon_noteGroup]"><i class="ti ti-pencil" style="line-height: 1;"></i></div>
 		<MkAvatar v-else-if="'user' in notification" :class="$style.icon" :user="notification.user" link preview/>
 		<!-- 旗鯖fork: hatask 通知のアイコン (icon URL なしの app 通知を header で判別、文字を円形背景に表示) -->
-		<div v-else-if="notification.type === 'app' && !notification.icon && notification.header && /カレンダー|イベント|スケジュール|予定/.test(notification.header)" :class="[$style.icon, $style.icon_hataskCalendar]">📅</div>
-		<div v-else-if="notification.type === 'app' && !notification.icon && notification.header && /きもち|感情|気分|ムード|記録/.test(notification.header)" :class="[$style.icon, $style.icon_hataskHeart]">♡</div>
+		<div v-else-if="notification.type === 'app' && !notification.icon && notification.header && /カレンダー|イベント|スケジュール|予定/.test(notification.header)" :class="[$style.icon, $style.icon_hataskCalendar]"><i class="ti ti-calendar-event"></i></div>
+		<div v-else-if="notification.type === 'app' && !notification.icon && notification.header && /きもち|感情|気分|ムード|記録/.test(notification.header)" :class="[$style.icon, $style.icon_hataskHeart]"><i class="ti ti-mood-smile"></i></div>
+		<!-- 旗鯖fork: HataFeed 通知のアイコン (header='HataFeed' で判別) -->
+		<div v-else-if="notification.type === 'hataFeed' || (notification.type === 'app' && !notification.icon && notification.header === 'HataFeed')" :class="[$style.icon, $style.icon_hatafeed]"><i class="ti ti-message-report"></i></div>
+		<!-- 旗鯖fork: 地震・津波情報の通知アイコン -->
+		<div v-else-if="notification.type === 'earthquake'" :class="[$style.icon, $style.icon_earthquake]"><i class="ti ti-activity"></i></div>
 		<img v-else-if="'icon' in notification && notification.icon != null" :class="[$style.icon, $style.icon_app]" :src="notification.icon" alt=""/>
 		<div
 			:class="[$style.subIcon, {
@@ -92,7 +96,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<span v-if="notification.type === 'reaction:groupedByUser'" :class="$style.headerText">{{ i18n.tsx._notification.reactedToMultipleNotes({ n: notification.reactions.length }) }}</span>
 			<span v-else-if="notification.type === 'renote:grouped'" :class="$style.headerText">{{ i18n.tsx._notification.renotedBySomeUsers({ n: notification.users.length }) }}</span>
 			<span v-else-if="notification.type === 'note:grouped'" :class="$style.headerText">{{ i18n.tsx._notification.notedBySomeUsers({ n: notification.noteIds.length }) }}</span>
-			<span v-else-if="notification.type === 'app'" :class="$style.headerText">{{ notification.header }}</span>
+			<span v-else-if="notification.type === 'app' || notification.type === 'hataFeed' || notification.type === 'earthquake'" :class="$style.headerText">{{ notification.header }}</span>
 			<MkTime v-if="withTime" :time="notification.createdAt" :class="$style.headerTime" :mode="prefer.s.enableAbsoluteTime ? 'absolute' : 'relative'"/>
 		</header>
 		<div>
@@ -173,8 +177,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</div>
 			</template>
 			<span v-else-if="notification.type === 'test'" :class="$style.text">{{ i18n.ts._notification.notificationWillBeDisplayedLikeThis }}</span>
-			<span v-else-if="notification.type === 'app'" :class="$style.text">
-				<!-- 旗鯖fork: notification.link があればクリックで該当画面に遷移 (hatask 等の旗鯖独自機能向け) -->
+			<span v-else-if="notification.type === 'app' || notification.type === 'hataFeed' || notification.type === 'earthquake'" :class="$style.text">
+				<!-- 旗鯖fork: notification.link があればクリックで該当画面に遷移 (hatask/HataFeed 等の旗鯖独自機能向け) -->
 				<MkA v-if="notification.link" :to="notification.link" :class="$style.appLink">
 					<Mfm :text="notification.body" :nowrap="false"/>
 				</MkA>
@@ -337,7 +341,8 @@ const rejectGroupInvitation = () => {
 .icon_renoteGroup,
 .icon_noteGroup,
 .icon_hataskCalendar,
-.icon_hataskHeart {
+.icon_hataskHeart,
+.icon_hatafeed {
 	display: grid;
 	align-items: center;
 	justify-items: center;
@@ -371,7 +376,7 @@ const rejectGroupInvitation = () => {
 	background: var(--MI_THEME-accent);
 	width: 100%;
 	height: 100%;
-	font-size: 24px;
+	font-size: 22px;
 	line-height: 1;
 }
 
@@ -379,8 +384,30 @@ const rejectGroupInvitation = () => {
 	background: var(--eventReactionHeart);
 	width: 100%;
 	height: 100%;
-	font-size: 28px;
-	font-weight: 700;
+	font-size: 22px;
+	line-height: 1;
+}
+
+/* 旗鯖fork: HataFeed 通知の文字アイコン。 */
+.icon_hatafeed {
+	background: var(--MI_THEME-accent);
+	width: 100%;
+	height: 100%;
+	font-size: 22px;
+	line-height: 1;
+}
+
+/* 旗鯖fork: 地震・津波情報の通知アイコン。 */
+.icon_earthquake {
+	display: grid;
+	align-items: center;
+	justify-items: center;
+	border-radius: 100%;
+	color: #fff;
+	background: #c0392b;
+	width: 100%;
+	height: 100%;
+	font-size: 22px;
 	line-height: 1;
 }
 
