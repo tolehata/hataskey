@@ -61,11 +61,13 @@ SPDX-License-Identifier: AGPL-3.0-only
 import { ref, onMounted, onUnmounted, nextTick, computed } from 'vue';
 import * as Matter from 'matter-js';
 import MkButton from '@/components/MkButton.vue';
-import { mainRouter } from '@/router.js';
+import { useRouter } from '@/router.js';
 import { definePage } from '@/page.js';
 import { miLocalStorage } from '@/local-storage.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { $i } from '@/i.js';
+
+const router = useRouter();
 
 const GW = 400;
 const GH = 600;
@@ -289,7 +291,7 @@ function onTouchMove(e: TouchEvent) {
 }
 
 function restart() { initGame(); }
-function goBack() { mainRouter.push('/stacking-game'); }
+function goBack() { router.push('/stacking-game'); }
 
 onMounted(() => {
 	initGame();

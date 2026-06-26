@@ -91,11 +91,14 @@ SPDX-License-Identifier: AGPL-3.0-only
 import { ref, onMounted, onUnmounted, computed, nextTick } from 'vue';
 import * as Matter from 'matter-js';
 import MkButton from '@/components/MkButton.vue';
-import { mainRouter } from '@/router.js';
+import { useRouter } from '@/router.js';
 import { definePage } from '@/page.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { useStream } from '@/stream.js';
 import { $i } from '@/i.js';
+
+const router = useRouter();
+const props = defineProps<{ roomId?: string }>();
 
 const GW = 300;
 const GH = 450;
@@ -110,7 +113,7 @@ const UNICODE_EMOJIS = ['🍎','🍊','🍋','🍇','🍓','🍑','🍒','🥝',
 
 type EmojiItem = { url?: string; char?: string; name: string };
 
-const roomId = new URLSearchParams(window.location.search).get('roomId') || '';
+const roomId = props.roomId || '';
 const roomState = ref<'waiting'|'playing'|'ended'>('waiting');
 const score1 = ref(0);
 const score2 = ref(0);
@@ -345,7 +348,7 @@ function onTouchMove(e: TouchEvent) {
 	guideX.value = Math.max(0.05, Math.min(0.95, (e.touches[0].clientX - rect.left) / rect.width));
 }
 
-function goBack() { mainRouter.push('/stacking-game/lobby'); }
+function goBack() { router.push('/stacking-game/lobby'); }
 
 onMounted(async () => {
 	await fetchRoomAndInit();

@@ -99,11 +99,14 @@ SPDX-License-Identifier: AGPL-3.0-only
 <script lang="ts" setup>
 import { ref, reactive, onMounted, onUnmounted, computed } from 'vue';
 import MkButton from '@/components/MkButton.vue';
-import { mainRouter } from '@/router.js';
+import { useRouter } from '@/router.js';
 import { definePage } from '@/page.js';
 import { miLocalStorage } from '@/local-storage.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { $i } from '@/i.js';
+
+const router = useRouter();
+const props = defineProps<{ difficulty?: string; ai?: string; endless?: string }>();
 
 const BASE_DURATION = 30;
 const GRID_COLS = 3;
@@ -145,12 +148,13 @@ let nextMoleId = 0;
 function getDiffParams(diff: number) {
 	const t = (diff - 1) / 9;
 	return {
-		// 最低 500ms 確保 (高難易度でも視認可能な最小間隔)
-		spawnInterval: Math.max(500, Math.round(1200 - t * 700)),
-		// 最低 700ms 表示 (反応する余裕を残す)
-		visibleDuration: Math.max(700, Math.round(2000 - t * 1300)),
-		// 最大 3個まで (4個同時は視認・操作困難につき緩和)
-		maxVisible: Math.min(Math.floor(1 + t * 2), 3),
+		// 旗鯖fork(#17): 出現が遅すぎたためテンポを全体的に速くした。
+		//   旧: 1200→500ms / 新: 750→280ms (最低 280ms)
+		spawnInterval: Math.max(280, Math.round(750 - t * 470)),
+		// 表示時間も少し短くしてテンポUP (旧2000→700 / 新1500→600、最低 600ms)
+		visibleDuration: Math.max(600, Math.round(1500 - t * 900)),
+		// 同時表示数を早めに増やす (最大4個まで)
+		maxVisible: Math.min(Math.floor(1 + t * 3), 4),
 		scorePerHit: 10 + (diff - 1) * 5,
 		missPenalty: Math.round(5 + t * 10),
 	};
@@ -221,10 +225,10 @@ const gridStyle = computed(() => ({
 
 // ===== パラメータ取得 =====
 function getDifficulty(): number {
-	return Math.max(1, Math.min(10, parseInt(new URLSearchParams(window.location.search).get('difficulty') || '5', 10)));
+	return Math.max(1, Math.min(10, parseInt(props.difficulty || '5', 10)));
 }
-function getAiMode(): string { return new URLSearchParams(window.location.search).get('ai') || ''; }
-function getEndless(): boolean { return new URLSearchParams(window.location.search).get('endless') === '1'; }
+function getAiMode(): string { return props.ai || ''; }
+function getEndless(): boolean { return props.endless === '1'; }
 function getHighScoreKey(): string {
 	return isEndless.value ? 'whackEmojiHighScore_endless' : `whackEmojiHighScore_${difficulty.value}`;
 }
@@ -555,7 +559,7 @@ function initGame() {
 }
 
 function restart() { initGame(); }
-function goBack() { mainRouter.push('/whack-emoji'); }
+function goBack() { router.push('/whack-emoji'); }
 
 onMounted(() => { initGame(); });
 onUnmounted(() => {

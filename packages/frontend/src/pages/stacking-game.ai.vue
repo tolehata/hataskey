@@ -76,10 +76,13 @@ SPDX-License-Identifier: AGPL-3.0-only
 import { ref, onMounted, onUnmounted, nextTick, computed } from 'vue';
 import * as Matter from 'matter-js';
 import MkButton from '@/components/MkButton.vue';
-import { mainRouter } from '@/router.js';
+import { useRouter } from '@/router.js';
 import { definePage } from '@/page.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { $i } from '@/i.js';
+
+const router = useRouter();
+const props = defineProps<{ ai?: string }>();
 
 const GW = 300;
 const GH = 450;
@@ -427,8 +430,7 @@ async function initGame() {
 	if (autoDropTimer) { clearTimeout(autoDropTimer); autoDropTimer = null; }
 	pAnimTex.clear(); aAnimTex.clear();
 
-	const params = new URLSearchParams(window.location.search);
-	aiLevel.value = params.get('ai') || 'easy';
+	aiLevel.value = props.ai || 'easy';
 	const ap = getAiParams(aiLevel.value);
 	aiLabel.value = ap.label;
 
@@ -533,7 +535,7 @@ function onTouchMove(e: TouchEvent) {
 }
 
 function restart() { initGame(); }
-function goBack() { mainRouter.push('/stacking-game'); }
+function goBack() { router.push('/stacking-game'); }
 
 onMounted(() => { initGame(); });
 onUnmounted(() => {

@@ -105,6 +105,48 @@ export async function common(createVue: () => Promise<App<Element>>) {
 		miLocalStorage.setItem('hata_classic_spacing_migrated', '1');
 	}
 
+	// 旗鯖: 天気エフェクトを一度だけ強制OFF。以前デフォルトが誤ってONだったため、
+	// 光過敏症(光感受性てんかん)配慮を最優先して既存ユーザーも一度リセットする。
+	// 一度きり(フラグで保護)なので、その後ユーザーが設定で再度ONにすれば尊重される。
+	if (!miLocalStorage.getItem('hata_weather_default_off_migrated')) {
+		const { prefer: preferWeather } = await import('@/preferences.js');
+		if (preferWeather.s['weatherEffect.enabled']) {
+			preferWeather.commit('weatherEffect.enabled', false);
+		}
+		miLocalStorage.setItem('hata_weather_default_off_migrated', '1');
+	}
+
+	// 旗鯖(#31): 旧「ミュートユーザーのリアクション非表示」(prefer同期)を有効にしていた人は、
+	//   新しい端末ローカルのトグルを自動でONにし(端末ごと)、改善内容の案内をユーザーごとに1回だけ出す。
+	{
+		const { prefer: preferMr } = await import('@/preferences.js');
+		const hadEnabled = preferMr.s['hideMutedUserReactions'] === true;
+		// 端末ローカルのトグルを有効化(この端末で1回だけ)。
+		if (hadEnabled && !miLocalStorage.getItem('hata_muted_reactions_local_migrated')) {
+			const { setHideMutedReactionsLocal } = await import('@/utility/hatasaba-device-prefs.js');
+			setHideMutedReactionsLocal(true);
+		}
+		if (!miLocalStorage.getItem('hata_muted_reactions_local_migrated')) {
+			miLocalStorage.setItem('hata_muted_reactions_local_migrated', '1');
+		}
+		// 案内ウィンドウ(有効だった人のみ・端末ごとに1回)。
+		//   boot時はプロファイル同期前で prefer 値が default(false) に見えて毎回出てしまうため、
+		//   端末ローカルフラグを「先に」立ててから出す(リロード毎の再表示を防ぐ)。
+		if (hadEnabled && !miLocalStorage.getItem('hata_muted_reactions_notice_shown')) {
+			miLocalStorage.setItem('hata_muted_reactions_notice_shown', '1');
+			window.setTimeout(() => {
+				import('@/os.js').then(os => os.alert({
+					type: 'info',
+					title: '「ミュートユーザーのリアクション非表示」が新しくなりました',
+					text: 'これまでは「誰がリアクションしたか」の一覧から名前を隠すだけでしたが、今後は'
+						+ 'ミュートしたユーザーのリアクション自体（リアクションのチップ）がノートから隠れるようになりました。\n\n'
+						+ 'また、この設定は「端末ごと」の管理になり、HataFeed の「ベータ機能を試す」に移動しました。'
+						+ '以前から有効にしていたため、この端末では自動でONにしています。',
+				})).catch(() => { /* 表示失敗は致命的でない */ });
+			}, 2500);
+		}
+	}
+
 	// 旗鯖: サイドバーに「お知らせ」「UI切り替え」を自動追加（既存ユーザー向け）
 	if (!miLocalStorage.getItem('hata_sidebar_v2_migrated')) {
 		const { prefer: preferSidebar } = await import('@/preferences.js');
@@ -141,6 +183,51 @@ export async function common(createVue: () => Promise<App<Element>>) {
 		const newDefault = PREF_DEF['simpleUi.sidebar'].default;
 		preferSidebarV3.commit('simpleUi.sidebar', JSON.parse(JSON.stringify(newDefault)));
 		miLocalStorage.setItem('hata_sidebar_v3_migrated', '1');
+	}
+
+	// 旗鯖: HataFeed・地震/津波情報をサイドバーの「旗鯖独自」グループに自動追加（既存ユーザー向け・既定で表示）
+	if (!miLocalStorage.getItem('hata_sidebar_v4_migrated')) {
+		const { prefer: preferSb4 } = await import('@/preferences.js');
+		const current = [...(preferSb4.s['simpleUi.sidebar'] ?? [])];
+		const has = (id: string) => current.some(i => i && i.id === id);
+		let changed = false;
+		const insertAfter = (afterId: string, item: any) => {
+			if (has(item.id)) return;
+			let idx = current.findIndex(i => i && i.id === afterId);
+			if (idx < 0) {
+				// 基準が無ければ「もっと」の直前、それも無ければ末尾。
+				const m = current.findIndex(i => i && i.id === 'more');
+				idx = (m >= 0 ? m - 1 : current.length - 1);
+			}
+			current.splice(idx + 1, 0, item);
+			changed = true;
+		};
+		insertAfter('hatask', { id: 'hatafeed', icon: 'ti ti-message-report', label: 'HataFeed', group: 'hata' });
+		insertAfter('hatafeed', { id: 'earthquake', icon: 'ti ti-activity', label: '地震・津波情報', group: 'hata' });
+		if (changed) preferSb4.commit('simpleUi.sidebar', current);
+		miLocalStorage.setItem('hata_sidebar_v4_migrated', '1');
+	}
+
+	// 旗鯖fork(#36): Haskホームに「HataFeed通知」「地震・津波」タイルを強制追加(既存ユーザー向け)
+	//   registry の hatask scope を直接読み書きする。設定の sectionOrder に新セクションがなければ
+	//   末尾に追加して保存。トグル既定はON(showFeedbackNotif/showEarthquake未定義時は表示)。
+	if (!miLocalStorage.getItem('hata_hask_tiles_v1_migrated')) {
+		try {
+			const HATASK_SCOPE = ['client', 'hatask'];
+			const { misskeyApi: api } = await import('@/utility/misskey-api.js');
+			const cur: any = await api('i/registry/get', { key: 'settings', scope: HATASK_SCOPE }).catch(() => null);
+			if (cur) {
+				let changed = false;
+				if (Array.isArray(cur.sectionOrder)) {
+					if (!cur.sectionOrder.includes('feedbackNotif')) { cur.sectionOrder.push('feedbackNotif'); changed = true; }
+					if (!cur.sectionOrder.includes('earthquake')) { cur.sectionOrder.push('earthquake'); changed = true; }
+				}
+				if (cur.showFeedbackNotif === undefined) { cur.showFeedbackNotif = true; changed = true; }
+				if (cur.showEarthquake === undefined) { cur.showEarthquake = true; changed = true; }
+				if (changed) await api('i/registry/set', { key: 'settings', value: cur, scope: HATASK_SCOPE });
+			}
+		} catch { /* registry未初期化のユーザーは hatask 初回起動時に defaultSectionOrder で補完される */ }
+		miLocalStorage.setItem('hata_hask_tiles_v1_migrated', '1');
 	}
 
 	// 旗鯖: 「旗鯖機能解説 (hataDocs)」をユーザー設定から自動削除（既存ユーザー向け）

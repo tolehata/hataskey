@@ -61,11 +61,13 @@ SPDX-License-Identifier: AGPL-3.0-only
 <script lang="ts" setup>
 import { ref, onMounted } from 'vue';
 import MkButton from '@/components/MkButton.vue';
-import { mainRouter } from '@/router.js';
+import { useRouter } from '@/router.js';
 import { definePage } from '@/page.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import * as os from '@/os.js';
 import { $i } from '@/i.js';
+
+const router = useRouter();
 
 const rooms = ref<any[]>([]);
 const loading = ref(false);
@@ -88,7 +90,7 @@ async function createRoom() {
 	creating.value = true;
 	try {
 		const room = await misskeyApi('stacking-game/create-room', {}) as any;
-		mainRouter.push(`/stacking-game/battle?roomId=${room.id}`);
+		router.push(`/stacking-game/battle?roomId=${room.id}`);
 	} catch (e) {
 		os.alert({ type: 'error', text: 'ルーム作成に失敗しました' });
 	} finally { creating.value = false; }
@@ -97,7 +99,7 @@ async function createRoom() {
 async function joinRoom(roomId: string) {
 	try {
 		await misskeyApi('stacking-game/join-room', { roomId });
-		mainRouter.push(`/stacking-game/battle?roomId=${roomId}`);
+		router.push(`/stacking-game/battle?roomId=${roomId}`);
 	} catch (e: any) {
 		const code = e?.code || e?.info?.code || '';
 		if (code === 'CANNOT_JOIN_OWN_ROOM') {
@@ -113,7 +115,7 @@ async function joinRoom(roomId: string) {
 }
 
 function goToMyRoom(roomId: string) {
-	mainRouter.push(`/stacking-game/battle?roomId=${roomId}`);
+	router.push(`/stacking-game/battle?roomId=${roomId}`);
 }
 
 onMounted(() => { fetchRooms(); });

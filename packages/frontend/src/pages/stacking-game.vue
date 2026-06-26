@@ -135,9 +135,11 @@ SPDX-License-Identifier: AGPL-3.0-only
 <script lang="ts" setup>
 import { ref, onMounted, watch } from 'vue';
 import MkButton from '@/components/MkButton.vue';
-import { mainRouter } from '@/router.js';
+import { useRouter } from '@/router.js';
 import { definePage } from '@/page.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
+
+const router = useRouter();
 
 const aiLevel = ref('easy');
 
@@ -179,15 +181,15 @@ async function fetchMyScores() {
 }
 
 function startGame() {
-	mainRouter.push('/stacking-game/play');
+	router.push('/stacking-game/play');
 }
 
 function startAiGame() {
-	mainRouter.push(`/stacking-game/ai?ai=${aiLevel.value}`);
+	router.push(`/stacking-game/ai?ai=${aiLevel.value}`);
 }
 
 function goLobby() {
-	mainRouter.push('/stacking-game/lobby');
+	router.push('/stacking-game/lobby');
 }
 
 onMounted(() => {

@@ -97,11 +97,14 @@ SPDX-License-Identifier: AGPL-3.0-only
 <script lang="ts" setup>
 import { ref, reactive, onMounted, onUnmounted, computed } from 'vue';
 import MkButton from '@/components/MkButton.vue';
-import { mainRouter } from '@/router.js';
+import { useRouter } from '@/router.js';
 import { definePage } from '@/page.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { useStream } from '@/stream.js';
 import { $i } from '@/i.js';
+
+const router = useRouter();
+const props = defineProps<{ roomId?: string }>();
 
 const GAME_DURATION = 30;
 const CELL_COUNT = 9;
@@ -112,15 +115,16 @@ function makeCell(): Cell { return { visible: false, emoji: null, hitGlow: false
 function getDiffParams(diff: number) {
 	const t = (diff - 1) / 9;
 	return {
-		spawnInterval: Math.round(1200 - t * 900),
-		visibleDuration: Math.round(2000 - t * 1500),
+		// 旗鯖fork(#17): 出現が遅すぎたためソロ版と揃えてテンポを速くした。
+		spawnInterval: Math.max(280, Math.round(750 - t * 470)),
+		visibleDuration: Math.max(600, Math.round(1500 - t * 900)),
 		maxVisible: Math.min(Math.floor(1 + t * 3), 4),
 		scorePerHit: 10 + (diff - 1) * 5,
 		missPenalty: Math.round(5 + t * 10),
 	};
 }
 
-const roomId = new URLSearchParams(window.location.search).get('roomId') || '';
+const roomId = props.roomId || '';
 const roomState = ref<'waiting'|'playing'|'ended'>('waiting');
 const difficulty = ref(5);
 const score1 = ref(0);
@@ -299,7 +303,7 @@ async function fetchRoom() {
 	score2.value = room.score2;
 }
 
-function goBack() { mainRouter.push('/whack-emoji/lobby'); }
+function goBack() { router.push('/whack-emoji/lobby'); }
 
 onMounted(async () => {
 	buildPool();

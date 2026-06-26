@@ -160,9 +160,11 @@ SPDX-License-Identifier: AGPL-3.0-only
 <script lang="ts" setup>
 import { ref, onMounted } from 'vue';
 import MkButton from '@/components/MkButton.vue';
-import { mainRouter } from '@/router.js';
+import { useRouter } from '@/router.js';
 import { definePage } from '@/page.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
+
+const router = useRouter();
 
 const selectedDiff = ref(5);
 const rankDiff = ref(5);
@@ -208,11 +210,11 @@ function startGame() {
 	let url = `/whack-emoji/play?difficulty=${selectedDiff.value}`;
 	if (gameMode.value === 'endless') url += '&endless=1';
 	if (aiLevel.value) url += `&ai=${aiLevel.value}`;
-	mainRouter.push(url);
+	router.push(url);
 }
 
 function goLobby() {
-	mainRouter.push('/whack-emoji/lobby');
+	router.push('/whack-emoji/lobby');
 }
 
 onMounted(() => { fetchRanking(); fetchMyScores(); fetchEndlessRanking(); });
