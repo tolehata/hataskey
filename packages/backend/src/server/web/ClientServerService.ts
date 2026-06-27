@@ -4,8 +4,9 @@
  */
 
 import { randomUUID } from 'node:crypto';
-import { dirname } from 'node:path';
+import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { readdirSync } from 'node:fs';
 import { Inject, Injectable } from '@nestjs/common';
 import ms from 'ms';
 import sharp from 'sharp';
@@ -211,6 +212,19 @@ export class ClientServerService {
 
 	@bindThis
 	private async generateCommonPugData(meta: MiMeta) {
+		// 旗鯖fork: 本家 2026.6 系で base layout に var LANGS が必須化された(フロントの
+		// boot.js が LANGS をグローバル参照する)。旗鯖は pug 経路で SSR しているため、
+		// ここで locales/*.yml を読み取って langs 配列として供給する。
+		const repoRoot = resolve(_dirname, '../../../../..');
+		let langs: string[] = [];
+		try {
+			langs = readdirSync(resolve(repoRoot, 'locales'))
+				.filter((f) => f.endsWith('.yml'))
+				.map((f) => f.replace(/\.yml$/, ''));
+		} catch {
+			langs = [];
+		}
+
 		return {
 			instanceName: meta.name ?? 'CherryPick',
 			icon: meta.iconUrl,
@@ -225,6 +239,7 @@ export class ClientServerService {
 			now: Date.now(),
 			federationEnabled: this.meta.federation !== 'none',
 			customSplashText: meta.customSplashText[Math.floor(Math.random() * meta.customSplashText.length)],
+			langs,
 		};
 	}
 
