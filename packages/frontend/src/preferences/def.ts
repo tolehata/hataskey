@@ -772,14 +772,8 @@ export const PREF_DEF = definePreferences({
 	enableWidgetsArea: {
 		default: true,
 	},
-	friendlyUiEnableNotificationsArea: {
-		default: true,
-	},
 	enableLongPressOpenAccountMenu: {
 		default: true,
-	},
-	friendlyUiShowAvatarDecorationsInNavBtn: {
-		default: false,
 	},
 	// ログインボーナスポップアップ表示設定（旗鯖独自機能）
 	showLoginBonusPopup: {

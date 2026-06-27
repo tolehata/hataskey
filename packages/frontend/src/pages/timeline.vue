@@ -6,7 +6,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 
 <template>
-<PageWithHeader v-model:tab="src" :actions="headerActions" :tabs="$i ? headerTabs : headerTabsWhenNotLogin" :swipable="true" :displayMyAvatar="true" :canOmitTitle="!isFriendly().value">
+<PageWithHeader v-model:tab="src" :actions="headerActions" :tabs="$i ? headerTabs : headerTabsWhenNotLogin" :swipable="true" :displayMyAvatar="true" :canOmitTitle="true">
 	<div class="_spacer" style="--MI_SPACER-w: 800px;">
 		<MkTip v-if="isBasicTimeline(src)" :k="`tl.${src}`" style="margin-bottom: var(--MI-margin);">
 			{{ i18n.ts._timelineDescription[src] }}
@@ -91,7 +91,6 @@ import { availableBasicTimelines, hasWithReplies, isAvailableBasicTimeline, isBa
 import { prefer } from '@/preferences.js';
 import { globalEvents } from '@/events.js';
 import { suggestReload } from '@/utility/reload-suggest.js';
-import { isFriendly } from '@/utility/is-friendly.js';
 import MkInfo from '@/components/MkInfo.vue';
 
 // 外部サーバー連携設定
@@ -187,7 +186,6 @@ const withSensitive = computed<boolean>({
 const showFixedPostForm = prefer.model('showFixedPostForm');
 
 const enableWidgetsArea = ref(prefer.s.enableWidgetsArea);
-// 旗鯖fork: Friendly UI 廃止のため friendlyUiEnableNotificationsArea ref は削除
 
 const enableHomeTimeline = ref(prefer.s.enableHomeTimeline);
 const enableLocalTimeline = ref(prefer.s.enableLocalTimeline);
@@ -212,8 +210,6 @@ watch(enableWidgetsArea, (x) => {
 	prefer.commit('enableWidgetsArea', x);
 	suggestReload();
 });
-
-// 旗鯖fork: Friendly UI 廃止のため friendlyUiEnableNotificationsArea watch は削除
 
 watch(enableHomeTimeline, (x) => {
 	prefer.commit('enableHomeTimeline', x);

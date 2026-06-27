@@ -15,7 +15,6 @@ import type { TIPS } from '@/tips.js';
 import { miLocalStorage } from '@/local-storage.js';
 import { Pizzax } from '@/lib/pizzax.js';
 import { DEFAULT_DEVICE_KIND } from '@/utility/device-kind.js';
-import { isFriendly } from '@/utility/is-friendly.js';
 
 /**
  * 「状態」を管理するストア(not「設定」)
@@ -692,7 +691,7 @@ export const store = markRaw(new Pizzax('base', {
 	},
 	showMenuButtonInNavbar: {
 		where: 'device',
-		default: !isFriendly().value,
+		default: true,
 	},
 	showHomeButtonInNavbar: {
 		where: 'device',
@@ -700,7 +699,7 @@ export const store = markRaw(new Pizzax('base', {
 	},
 	showExploreButtonInNavbar: {
 		where: 'device',
-		default: isFriendly().value,
+		default: false,
 	},
 	showSearchButtonInNavbar: {
 		where: 'device',
@@ -712,7 +711,7 @@ export const store = markRaw(new Pizzax('base', {
 	},
 	showChatButtonInNavbar: {
 		where: 'device',
-		default: isFriendly().value,
+		default: false,
 	},
 	showWidgetButtonInNavbar: {
 		where: 'device',
@@ -720,7 +719,7 @@ export const store = markRaw(new Pizzax('base', {
 	},
 	showPostButtonInNavbar: {
 		where: 'device',
-		default: !isFriendly().value,
+		default: true,
 	},
 
 	// - Settings/Timeline
@@ -818,17 +817,9 @@ export const store = markRaw(new Pizzax('base', {
 		where: 'device',
 		default: true,
 	},
-	friendlyUiEnableNotificationsArea: {
-		where: 'device',
-		default: true,
-	},
 	enableLongPressOpenAccountMenu: {
 		where: 'device',
 		default: true,
-	},
-	friendlyUiShowAvatarDecorationsInNavBtn: {
-		where: 'device',
-		default: false,
 	},
 	// #endregion
 }));
