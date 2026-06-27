@@ -56,7 +56,7 @@ RUN git submodule update --init
 #      → 残骸が紛れ込む余地をなくす
 #
 # これにより本番リリース時のテンプレート反映の正確性を保証 (var LANGS 等の base.pug 更新も確実に伝播)。
-RUN find packages -type f \( -name "*.pug" -o -name "*.css" -o -name "*.html" -o -name "*.yml" -o -name "*.json" \) -not -path "*/node_modules/*" -not -path "*/built/*" -exec touch {} + 2>/dev/null || true
+RUN find packages -path "*/src/*" -type f \( -name "*.pug" -o -name "*.css" -o -name "*.html" \) -exec touch {} + 2>/dev/null || true
 RUN rm -rf built packages/*/built
 
 RUN pnpm build
