@@ -10,6 +10,10 @@ db/
 .devcontainer/compose.yml
 node_modules/
 packages/*/node_modules
+# 旗鯖fork: packages/*/built を除外しないとホスト側の古い built/ が
+# COPY . ./ で runner ステージにコピーされ、native-builder 製の新しい built/ を
+# 上書きしてしまう (例: base.pug の var LANGS が消える事象が発生)。
+packages/*/built
 redis/
 files/
 fluent-emojis/
