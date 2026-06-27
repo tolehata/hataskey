@@ -258,9 +258,9 @@ importers:
       meilisearch:
         specifier: 0.58.0
         version: 0.58.0
-      mfm-js:
-        specifier: 0.26.0
-        version: 0.26.0
+      mfc-js:
+        specifier: 0.1.0
+        version: 0.1.0
       mime-types:
         specifier: 3.0.2
         version: 3.0.2
@@ -569,9 +569,6 @@ importers:
 
   packages/cherrypick-js:
     dependencies:
-      '@simplewebauthn/types':
-        specifier: 12.0.0
-        version: 12.0.0
       eventemitter3:
         specifier: 5.0.1
         version: 5.0.1
@@ -2685,9 +2682,6 @@ packages:
   '@misskey-dev/emoji-assets@17.0.3':
     resolution: {integrity: sha512-Uiy+R4rghBML5k2nZFLr2w4RUwqDrDnTWZ6lXGYtnEr0DRcW41pQyS2RUUm/pFjYr/DjNntcoysdhqinpa9P/Q==}
 
-  '@misskey-dev/emoji-data@17.0.0':
-    resolution: {integrity: sha512-grMnsmTm7VSah5heS1fIfOfoQmIpzo6ZU5AV5yRxCy7ivtWhFU3fpMfXZyKsH9G9/HZiLRsClKtyjHKMlxjt7g==}
-
   '@misskey-dev/emoji-data@17.0.3':
     resolution: {integrity: sha512-RmW0C2A1Zxn7DTYVCOhMDyCyyXYJLBc5GIEuhcufaqF0Gxw9+gIwaitCI3OUWnR928XnDwvvaizhJSjvIEF+2Q==}
 
@@ -3711,10 +3705,6 @@ packages:
   '@simplewebauthn/server@13.3.0':
     resolution: {integrity: sha512-MLHYFrYG8/wK2i+86XMhiecK72nMaHKKt4bo+7Q1TbuG9iGjlSdfkPWKO5ZFE/BX+ygCJ7pr8H/AJeyAj1EaTQ==}
     engines: {node: '>=20.0.0'}
-
-  '@simplewebauthn/types@12.0.0':
-    resolution: {integrity: sha512-q6y8MkoV8V8jB4zzp18Uyj2I7oFp2/ONL8c3j8uT06AOWu3cIChc1au71QYHrP2b+xDapkGTiv+9lX7xkTlAsA==}
-    deprecated: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
 
   '@sinclair/typebox@0.27.8':
     resolution: {integrity: sha512-+Fj43pSMwJs4KRrH/938Uf+uAELIgVBmQzg/q1YG10djyfA3TnrU8N8XzqCh/okZdszqBQTZf96idMfE5lnwTA==}
@@ -7839,9 +7829,6 @@ packages:
 
   mfc-js@0.1.0:
     resolution: {integrity: sha512-ibcX5cJfObLB6fcKHQuX8fbBArZJCzMXTZN5NJ3dkf2UZSy1mEtosPRI61P+4KHEGISyqBQg4lsK1W7LeVRaNQ==}
-
-  mfm-js@0.26.0:
-    resolution: {integrity: sha512-JEbaa1GBJBcpsk9/6tGaOgo1WewUhL9cIFl3VhIZ2a/89X83hzwxwVZOEebFaWdOufwFxnti44QMR/TWcAxSzg==}
 
   micromark-core-commonmark@2.0.0:
     resolution: {integrity: sha512-jThOz/pVmAYUtkroV3D5c1osFXAMv9e0ypGDOIZuCeAe91/sD6BoE2Sjzt30yuXtwOYUmySOhMas/PVyh02itA==}
@@ -12338,8 +12325,6 @@ snapshots:
 
   '@misskey-dev/emoji-assets@17.0.3': {}
 
-  '@misskey-dev/emoji-data@17.0.0': {}
-
   '@misskey-dev/emoji-data@17.0.3': {}
 
   '@misskey-dev/eslint-plugin@2.1.0(@eslint/compat@1.1.1)(@stylistic/eslint-plugin@3.1.0(eslint@9.37.0)(typescript@5.9.3))(@typescript-eslint/eslint-plugin@8.46.1(@typescript-eslint/parser@8.46.1(eslint@9.37.0)(typescript@5.9.3))(eslint@9.37.0)(typescript@5.9.3))(@typescript-eslint/parser@8.46.1(eslint@9.37.0)(typescript@5.9.3))(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.46.1(eslint@9.37.0)(typescript@5.9.3))(eslint@9.37.0))(eslint@9.37.0)(globals@16.4.0)':
@@ -13372,8 +13357,6 @@ snapshots:
       '@peculiar/asn1-schema': 2.8.0
       '@peculiar/asn1-x509': 2.8.0
       '@peculiar/x509': 1.14.3
-
-  '@simplewebauthn/types@12.0.0': {}
 
   '@sinclair/typebox@0.27.8': {}
 
@@ -18429,10 +18412,6 @@ snapshots:
   mfc-js@0.1.0:
     dependencies:
       '@twemoji/parser': 17.0.0
-
-  mfm-js@0.26.0:
-    dependencies:
-      '@misskey-dev/emoji-data': 17.0.0
 
   micromark-core-commonmark@2.0.0:
     dependencies:

@@ -221,7 +221,7 @@ export class ChannelEntityService {
 			]);
 			followingSet = new Set(followings.map((f: MiChannelFollowing) => f.followeeId));
 			favoritedSet = new Set(favorites.map((f: MiChannelFavorite) => f.channelId));
-			memberSet = new Set(members.map((m: MiChannelMember) => m.channelId));
+			memberSet = new Set(members.map((m: { channelId: string }) => m.channelId));
 			iAmModerator = isMod;
 		}
 

@@ -15,6 +15,7 @@ export const meta = {
 	requireCredential: true,
 	requireModerator: true,
 	requireAdmin: true,
+	secure: true,
 	kind: 'read:admin:registration-applications',
 
 	res: {

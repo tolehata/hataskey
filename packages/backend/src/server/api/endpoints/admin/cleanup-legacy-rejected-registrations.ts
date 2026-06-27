@@ -22,6 +22,7 @@ export const meta = {
 	requireCredential: true,
 	requireModerator: true,
 	requireAdmin: true,
+	secure: true,
 	kind: 'write:admin:cleanup-rejected-registrations',
 
 	res: {
