@@ -1,6 +1,7 @@
 /*
  * 旗鯖fork: HataFeed の Issue 個別のモデレーター対処権限を付与する。管理者専用。
  */
+import ms from 'ms';
 import { Inject, Injectable } from '@nestjs/common';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import type { FeedbackIssuesRepository } from '@/models/_.js';
@@ -16,6 +17,8 @@ export const meta = {
 	errors: {
 		noSuchIssue: { message: 'No such issue.', code: 'NO_SUCH_ISSUE', id: 'a6b7c834-c2bb-4365-bf50-1425a647596a' },
 	},
+	// 旗鯖fork(セキュリティ): 管理操作だが連続実行の正当性もあるため、1分60回まで。
+	limit: { duration: ms('1min'), max: 60 },
 } as const;
 
 export const paramDef = {

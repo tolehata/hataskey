@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+import ms from 'ms';
 import { Inject, Injectable } from '@nestjs/common';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import { DI } from '@/di-symbols.js';
@@ -39,6 +40,8 @@ export const meta = {
 			canUseMascot: { type: 'boolean' },
 		},
 	},
+	// 旗鯖fork(セキュリティ): マスコットデータの読取。設定画面の都度取得を想定して 1分60回。
+	limit: { duration: ms('1min'), max: 60 },
 } as const;
 
 export const paramDef = {

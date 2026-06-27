@@ -1,6 +1,7 @@
 /*
  * 旗鯖fork: HataFeed の Issue 単体取得(詳細)。
  */
+import ms from 'ms';
 import { Inject, Injectable } from '@nestjs/common';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import type { FeedbackIssuesRepository, FeedbackProjectsRepository } from '@/models/_.js';
@@ -27,6 +28,8 @@ export const meta = {
 		accessDenied: { message: 'HataFeed is not available for your account.', code: 'HATAFEED_ACCESS_DENIED', id: '73849501-9f88-4032-8c2d-819203142537' },
 		noSuchIssue: { message: 'No such issue.', code: 'NO_SUCH_ISSUE', id: '8495a612-a099-4143-9d3e-92031425a648' },
 	},
+	// 旗鯖fork(セキュリティ): 詳細画面で頻繁に叩かれる読取のため、緩めの 1分120回。
+	limit: { duration: ms('1min'), max: 120 },
 } as const;
 
 export const paramDef = {

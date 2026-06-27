@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+import ms from 'ms';
 import { Inject, Injectable } from '@nestjs/common';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import { DI } from '@/di-symbols.js';
@@ -19,6 +20,8 @@ export const meta = {
 			totalUsers: { type: 'number' },
 		},
 	},
+	// 旗鯖fork(セキュリティ): 全プロファイルを集計する COUNT クエリ2発で重い。1分30回に抑制。
+	limit: { duration: ms('1min'), max: 30 },
 } as const;
 
 export const paramDef = {

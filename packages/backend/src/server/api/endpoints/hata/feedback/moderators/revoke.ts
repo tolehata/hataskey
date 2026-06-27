@@ -1,6 +1,7 @@
 /*
  * 旗鯖fork: HataFeed の Issue 個別のモデレーター対処権限を剥奪する。管理者専用。
  */
+import ms from 'ms';
 import { Inject, Injectable } from '@nestjs/common';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import type { FeedbackIssuesRepository } from '@/models/_.js';
@@ -16,6 +17,8 @@ export const meta = {
 	errors: {
 		noSuchIssue: { message: 'No such issue.', code: 'NO_SUCH_ISSUE', id: 'b7c8d945-d3cc-4476-c061-25a647596a7b' },
 	},
+	// 旗鯖fork(セキュリティ): grant と同等の制限を適用。
+	limit: { duration: ms('1min'), max: 60 },
 } as const;
 
 export const paramDef = {

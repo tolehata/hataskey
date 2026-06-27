@@ -1,3 +1,4 @@
+import ms from 'ms';
 import { Inject, Injectable } from '@nestjs/common';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import { DI } from '@/di-symbols.js';
@@ -20,6 +21,8 @@ export const meta = {
 			id: 'ha4d5e6f-7a8b-9c0d-1e2f-3a4b5c6d7e8f',
 		},
 	},
+	// 旗鯖fork(セキュリティ): イベント削除は CASCADE で関連 RSVP も消す破壊的操作。1時間30回。
+	limit: { duration: ms('1hour'), max: 30 },
 } as const;
 
 export const paramDef = {

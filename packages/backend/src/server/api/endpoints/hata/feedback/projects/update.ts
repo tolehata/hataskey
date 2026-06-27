@@ -1,6 +1,7 @@
 /*
  * 旗鯖fork: HataFeed のプロジェクトを更新する(スタッフのみ)。
  */
+import ms from 'ms';
 import { Inject, Injectable } from '@nestjs/common';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import type { FeedbackProjectsRepository } from '@/models/_.js';
@@ -20,6 +21,8 @@ export const meta = {
 		staffOnly: { message: 'Only staff can manage projects.', code: 'HATAFEED_PROJECT_STAFF_ONLY', id: 'fb1c2d89-170a-48ba-04a5-8d92031425a6' },
 		noSuchProject: { message: 'No such project.', code: 'HATAFEED_NO_SUCH_PROJECT', id: '0c2d3e9a-281b-49cb-15b6-9e031425a6b7' },
 	},
+	// 旗鯖fork(セキュリティ): スタッフ向け編集操作は連続編集を許容しつつスパム抑止。
+	limit: { duration: ms('1min'), max: 60 },
 } as const;
 
 export const paramDef = {

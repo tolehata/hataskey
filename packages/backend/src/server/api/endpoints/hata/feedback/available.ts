@@ -2,6 +2,7 @@
  * 旗鯖fork: HataFeed を利用できるか(ロールポリシー canAccessHataFeed / スタッフ)を返す。
  * フロントのロールゲート(使用できない場合「この機能は現在解放されていません」表示)に使う。
  */
+import ms from 'ms';
 import { Injectable } from '@nestjs/common';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import { FeedbackService } from '@/core/FeedbackService.js';
@@ -18,6 +19,8 @@ export const meta = {
 			isStaff: { type: 'boolean', optional: false, nullable: false },
 		},
 	},
+	// 旗鯖fork(セキュリティ): フロントでロールゲート判定に多用するため、やや緩めの 1分120回。
+	limit: { duration: ms('1min'), max: 120 },
 } as const;
 
 export const paramDef = {

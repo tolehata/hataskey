@@ -1,6 +1,7 @@
 /*
  * 旗鯖fork: HataFeed の絵文字申請フォーム用に、既存のローカルカスタム絵文字カテゴリ一覧を返す。
  */
+import ms from 'ms';
 import { Inject, Injectable } from '@nestjs/common';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import type { EmojisRepository } from '@/models/_.js';
@@ -20,6 +21,8 @@ export const meta = {
 	errors: {
 		accessDenied: { message: 'HataFeed is not available for your account.', code: 'HATAFEED_ACCESS_DENIED', id: '95a6b723-b1aa-4254-ae4f-031425a64759' },
 	},
+	// 旗鯖fork(セキュリティ): DISTINCT クエリでやや重いので、1分60回に制限。
+	limit: { duration: ms('1min'), max: 60 },
 } as const;
 
 export const paramDef = {

@@ -1,3 +1,4 @@
+import ms from 'ms';
 import { Inject, Injectable } from '@nestjs/common';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import { DI } from '@/di-symbols.js';
@@ -20,6 +21,8 @@ export const meta = {
 			id: 'hc6f7a8b-9c0d-1e2f-3a4b-5c6d7e8f9a0b',
 		},
 	},
+	// 旗鯖fork(セキュリティ): RSVP 締切のトグル書込。1分30回でスパムを抑止。
+	limit: { duration: ms('1min'), max: 30 },
 } as const;
 
 export const paramDef = {

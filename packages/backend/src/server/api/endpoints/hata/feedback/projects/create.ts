@@ -1,6 +1,7 @@
 /*
  * 旗鯖fork: HataFeed のプロジェクト(自分のソフトウェア等)を作成する。
  */
+import ms from 'ms';
 import { Injectable } from '@nestjs/common';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import { FeedbackEntityService } from '@/core/entities/FeedbackEntityService.js';
@@ -17,6 +18,8 @@ export const meta = {
 		accessDenied: { message: 'HataFeed is not available for your account.', code: 'HATAFEED_ACCESS_DENIED', id: 'c8d9ea56-e4dd-4587-d172-5a647596a7b8' },
 		staffOnly: { message: 'Only staff can manage projects.', code: 'HATAFEED_PROJECT_STAFF_ONLY', id: 'd9ea0b67-f5ee-4698-e283-6b7081920314' },
 	},
+	// 旗鯖fork(セキュリティ): スタッフ専用の重い書込のため、1時間あたり30回までに制限。
+	limit: { duration: ms('1hour'), max: 30 },
 } as const;
 
 export const paramDef = {
