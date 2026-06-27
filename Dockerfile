@@ -16,19 +16,19 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 
 WORKDIR /cherrypick
 
-COPY --link ["pnpm-lock.yaml", "pnpm-workspace.yaml", "package.json", "./"]
-COPY --link ["scripts", "./scripts"]
-COPY --link ["patches", "./patches"]
-COPY --link ["packages/backend/package.json", "./packages/backend/"]
-COPY --link ["packages/frontend-shared/package.json", "./packages/frontend-shared/"]
-COPY --link ["packages/frontend/package.json", "./packages/frontend/"]
-COPY --link ["packages/frontend-embed/package.json", "./packages/frontend-embed/"]
-COPY --link ["packages/frontend-builder/package.json", "./packages/frontend-builder/"]
-COPY --link ["packages/icons-subsetter/package.json", "./packages/icons-subsetter/"]
-COPY --link ["packages/sw/package.json", "./packages/sw/"]
-COPY --link ["packages/cherrypick-js/package.json", "./packages/cherrypick-js/"]
-COPY --link ["packages/misskey-reversi/package.json", "./packages/misskey-reversi/"]
-COPY --link ["packages/misskey-bubble-game/package.json", "./packages/misskey-bubble-game/"]
+COPY ["pnpm-lock.yaml", "pnpm-workspace.yaml", "package.json", "./"]
+COPY ["scripts", "./scripts"]
+COPY ["patches", "./patches"]
+COPY ["packages/backend/package.json", "./packages/backend/"]
+COPY ["packages/frontend-shared/package.json", "./packages/frontend-shared/"]
+COPY ["packages/frontend/package.json", "./packages/frontend/"]
+COPY ["packages/frontend-embed/package.json", "./packages/frontend-embed/"]
+COPY ["packages/frontend-builder/package.json", "./packages/frontend-builder/"]
+COPY ["packages/icons-subsetter/package.json", "./packages/icons-subsetter/"]
+COPY ["packages/sw/package.json", "./packages/sw/"]
+COPY ["packages/cherrypick-js/package.json", "./packages/cherrypick-js/"]
+COPY ["packages/misskey-reversi/package.json", "./packages/misskey-reversi/"]
+COPY ["packages/misskey-bubble-game/package.json", "./packages/misskey-bubble-game/"]
 
 ARG NODE_ENV=production
 
@@ -37,7 +37,7 @@ RUN node -e "console.log(JSON.parse(require('node:fs').readFileSync('./package.j
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store,sharing=locked \
 	pnpm i --frozen-lockfile --aggregate-output
 
-COPY --link . ./
+COPY . ./
 
 RUN git submodule update --init
 RUN pnpm build
@@ -53,13 +53,13 @@ RUN apt-get update \
 
 WORKDIR /cherrypick
 
-COPY --link ["pnpm-lock.yaml", "pnpm-workspace.yaml", "package.json", "./"]
-COPY --link ["scripts", "./scripts"]
-COPY --link ["patches", "./patches"]
-COPY --link ["packages/backend/package.json", "./packages/backend/"]
-COPY --link ["packages/cherrypick-js/package.json", "./packages/cherrypick-js/"]
-COPY --link ["packages/misskey-reversi/package.json", "./packages/misskey-reversi/"]
-COPY --link ["packages/misskey-bubble-game/package.json", "./packages/misskey-bubble-game/"]
+COPY ["pnpm-lock.yaml", "pnpm-workspace.yaml", "package.json", "./"]
+COPY ["scripts", "./scripts"]
+COPY ["patches", "./patches"]
+COPY ["packages/backend/package.json", "./packages/backend/"]
+COPY ["packages/cherrypick-js/package.json", "./packages/cherrypick-js/"]
+COPY ["packages/misskey-reversi/package.json", "./packages/misskey-reversi/"]
+COPY ["packages/misskey-bubble-game/package.json", "./packages/misskey-bubble-game/"]
 
 ARG NODE_ENV=production
 
