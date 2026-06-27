@@ -8,7 +8,6 @@ export const DI = {
 	db: Symbol('db'),
 	meta: Symbol('meta'),
 	meilisearch: Symbol('meilisearch'),
-	cloudLogging: Symbol('cloudLogging'),
 	redis: Symbol('redis'),
 	redisForPub: Symbol('redisForPub'),
 	redisForSub: Symbol('redisForSub'),

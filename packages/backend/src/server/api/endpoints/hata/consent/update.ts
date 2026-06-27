@@ -14,6 +14,10 @@ export const meta = {
 
 	requireCredential: true,
 
+	// 旗鯖fork: 法的同意フラグの改ざん防止のため secure: true を必須化
+	// (3rd party トークン経由での書き換えを拒否し、Web セッション本人のみ通過)
+	secure: true,
+
 	kind: 'write:account',
 
 	limit: {

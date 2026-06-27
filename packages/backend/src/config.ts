@@ -101,12 +101,6 @@ type Source = {
 	deliverJobMaxAttempts?: number;
 	inboxJobMaxAttempts?: number;
 
-	cloudLogging?: {
-		projectId: string;
-		saKeyPath: string;
-		logName?: string;
-	}
-
 	apFileBaseUrl?: string;
 
 	mediaProxy?: string;
@@ -178,11 +172,6 @@ export type Config = {
 	relationshipJobPerSec: number | undefined;
 	deliverJobMaxAttempts: number | undefined;
 	inboxJobMaxAttempts: number | undefined;
-	cloudLogging?: {
-		projectId: string;
-		saKeyPath: string;
-		logName?: string;
-	}
 	apFileBaseUrl: string | undefined;
 	logging?: {
 		sql?: {
