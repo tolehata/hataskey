@@ -21,6 +21,7 @@ import type { MiUser } from '@/models/User.js';
 import { IdService } from '@/core/IdService.js';
 import { QueueService } from '@/core/QueueService.js';
 import { GlobalEventService } from '@/core/GlobalEventService.js';
+import { MemoryKVCache } from '@/misc/cache.js';
 import { bindThis } from '@/decorators.js';
 
 // フロント(MkNote.vue)と同一の判定基準
@@ -29,6 +30,14 @@ const UTAGE_FLASH_MS = 15 * 60 * 1000; // 15分
 
 @Injectable()
 export class UtageService {
+	// 旗鯖fork: onReaction はリアクション/リプライ/リノートの超高頻度イベントから呼ばれる。
+	//   宴ワード正規表現で先に足切りしてはいるが、宴ワードが偶然マッチする「非セッションノート」への
+	//   反応も多く、毎回 DB を引いている。ここを noteId → セッション有無のキャッシュで吸収する。
+	//   - 値: true  → セッション存在(running か確定済かは DB を引いて再確認する)
+	//   - 値: false → セッション無し(短期キャッシュ。onNoteCreated で true に上書き)
+	//   TTL は宴セッションの典型継続時間より短め(5分)に設定し、見落とし時も次回再フェッチで回復可能。
+	private readonly sessionExistsCache = new MemoryKVCache<boolean>(1000 * 60 * 5);
+
 	constructor(
 		@Inject(DI.utageSessionsRepository)
 		private utageSessionsRepository: UtageSessionsRepository,
@@ -69,6 +78,8 @@ export class UtageService {
 				status: 'running',
 				resolvedAt: null,
 			});
+			// 旗鯖fork: 直後の onReaction でキャッシュ参照されるよう「存在」を即時記録。
+			this.sessionExistsCache.set(note.id, true);
 		} catch (err) {
 			// noteId は unique。二重作成(競合)は無視する。
 			// それ以外の例外(制約違反・型エラー等)は握り潰さずログに出す(原因特定のため)。
@@ -91,8 +102,19 @@ export class UtageService {
 		if (note.userHost != null) return; // ローカルノートのみが宴対象
 		if (!this.isUtageText(note)) return; // 宴ノートでなければ DB を引かない
 
+		// 旗鯖fork: 「セッションが存在しない」ノートIDをキャッシュしてリアクション流入を素早く弾く。
+		//   宴ワードが偶然マッチしただけの過去ノートが多数派なので、ここの効果が大きい。
+		if (this.sessionExistsCache.get(note.id) === false) return;
+
 		const session = await this.utageSessionsRepository.findOneBy({ noteId: note.id });
-		if (session == null) return;
+		if (session == null) {
+			// 次回以降のリアクションは DB を引かずに即 return できる。
+			this.sessionExistsCache.set(note.id, false);
+			return;
+		}
+		// 取得できたら true として残しておく(短 TTL なので running→失敗確定後も問題なし。
+		// 楽観ロック update が affected=0 となり副作用は出ない)。
+		this.sessionExistsCache.set(note.id, true);
 		if (session.status !== 'running') return; // 確定済みは不可逆
 		if (Date.now() >= session.expiresAt.getTime()) return; // 15分超の反応は成功を覆さない
 

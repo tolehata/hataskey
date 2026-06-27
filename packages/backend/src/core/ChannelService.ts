@@ -14,10 +14,17 @@ import type { MiChannel } from '@/models/Channel.js';
 import type { MiUser } from '@/models/User.js';
 import { IdService } from '@/core/IdService.js';
 import { RoleService } from '@/core/RoleService.js';
+import { MemoryKVCache } from '@/misc/cache.js';
 import { bindThis } from '@/decorators.js';
 
 @Injectable()
 export class ChannelService {
+	// 旗鯖fork: isMember は canView / addMember 冪等チェック / ChannelEntityService.pack 等から
+	//   高頻度に呼ばれるため、(channelId, userId) → boolean をメモリキャッシュする。
+	//   個別の exists クエリ自体は主キー検索で軽いが、ノートやページ表示で重複呼び出しが発生するため
+	//   それを削減する目的。TTL は短め(30秒)・addMember / removeMember では即時 invalidate する。
+	private readonly isMemberCache = new MemoryKVCache<boolean>(1000 * 30);
+
 	constructor(
 		@Inject(DI.channelsRepository)
 		private channelsRepository: ChannelsRepository,
@@ -29,10 +36,18 @@ export class ChannelService {
 	) {
 	}
 
+	// (channelId, userId) を一意なキーに正規化する。両IDとも英数字なので ':' 区切りで衝突しない。
+	private membershipKey(channelId: MiChannel['id'], userId: MiUser['id']): string {
+		return `${channelId}:${userId}`;
+	}
+
 	// この Issue のメンバーか。
 	@bindThis
 	public async isMember(channelId: MiChannel['id'], userId: MiUser['id']): Promise<boolean> {
-		return this.channelMembersRepository.exists({ where: { channelId, userId } });
+		return this.isMemberCache.fetch(
+			this.membershipKey(channelId, userId),
+			() => this.channelMembersRepository.exists({ where: { channelId, userId } }),
+		);
 	}
 
 	// チャンネルを閲覧できるか。公開なら常に可。
@@ -66,11 +81,15 @@ export class ChannelService {
 			channelId,
 			userId,
 		});
+		// 旗鯖fork: 追加直後の canView/joinByPassword フローで TRUE を即時反映する。
+		this.isMemberCache.set(this.membershipKey(channelId, userId), true);
 	}
 
 	@bindThis
 	public async removeMember(channelId: MiChannel['id'], userId: MiUser['id']): Promise<void> {
 		await this.channelMembersRepository.delete({ channelId, userId });
+		// 旗鯖fork: 退会後に古い TRUE キャッシュで権限が残らないよう即時 invalidate。
+		this.isMemberCache.set(this.membershipKey(channelId, userId), false);
 	}
 
 	// あいことば(キーフレーズ)だけで該当するプライベートチャンネルを探す。見つからなければ null。

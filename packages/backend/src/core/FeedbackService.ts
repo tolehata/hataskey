@@ -161,11 +161,13 @@ export class FeedbackService {
 	}
 
 	// スタッフ全員(actor を除く)へ共有通知する。重複ID(管理者かつモデレーター等)は排除する。
+	// 旗鯖fork: feedback_notifications への INSERT を bulk 化(notifyMany 経由)して 1クエリにまとめる。
+	//   ベル通知(Redis xadd / WS publish 等)は per-user 副作用が必要なため個別呼び出しを維持。
 	@bindThis
 	public async notifyStaff(actorId: MiUser['id'] | null, type: NotifyType, refs: { feedbackId?: string | null; emojiRequestId?: string | null; commentId?: string | null } = {}, message?: string): Promise<void> {
 		const staffIds = await this.roleService.getModeratorIds({ includeAdmins: true, includeRoot: true });
 		const targets = [...new Set(staffIds)].filter(id => id !== actorId);
-		await Promise.all(targets.map(id => this.notify(id, type, { ...refs, actorId }, message)));
+		await this.notifyMany(targets, type, { ...refs, actorId }, message);
 	}
 
 	// 表示名を取り出すヘルパー(通知文言用)。
@@ -173,6 +175,37 @@ export class FeedbackService {
 	private displayName(user: { name?: string | null; username: string } | null | undefined): string {
 		if (user == null) return '誰か';
 		return (user.name && user.name.length > 0) ? user.name : user.username;
+	}
+
+	// 旗鯖fork: 複数ユーザーへ同一文言の通知を bulk insert で配信する。
+	//   DB の INSERT は 1クエリにまとめ、ベル通知(Redis xadd / WS publish)は per-user に並列発火する。
+	//   呼び出し側で重複排除(actor 除外など)してから渡すこと。
+	@bindThis
+	private async notifyMany(userIds: MiUser['id'][], type: NotifyType, refs: { actorId?: MiUser['id'] | null; feedbackId?: string | null; emojiRequestId?: string | null; commentId?: string | null } = {}, message?: string): Promise<void> {
+		if (userIds.length === 0) return;
+		const body = message ?? NOTIFY_MESSAGE[type];
+		const now = new Date();
+		await this.feedbackNotificationsRepository.insert(userIds.map(uid => ({
+			id: this.idService.gen(),
+			createdAt: now,
+			userId: uid,
+			type,
+			message: body,
+			isRead: false,
+			actorId: refs.actorId ?? null,
+			feedbackId: refs.feedbackId ?? null,
+			emojiRequestId: refs.emojiRequestId ?? null,
+			commentId: refs.commentId ?? null,
+		})));
+		const linkRef = refs.feedbackId ? `/hatafeed/${refs.feedbackId}` : '/hatafeed';
+		for (const uid of userIds) {
+			this.notificationService.createNotification(uid, 'hataFeed', {
+				customBody: body,
+				customHeader: 'HataFeed',
+				customIcon: null,
+				customLink: linkRef,
+			});
+		}
 	}
 
 	@bindThis
@@ -320,9 +353,8 @@ export class FeedbackService {
 		if (status === 'resolved') {
 			const resolvedMsg = `「${issue.title}」のイシューが解決済みになりました。`;
 			const commenterIds = await this.getCommenterIds(issue.id);
-			await Promise.all(commenterIds
-				.filter(uid => uid !== actor.id && uid !== issue.createdById)
-				.map(uid => this.notify(uid, 'issueResolved', { actorId: actor.id, feedbackId: issue.id }, resolvedMsg)));
+			const targets = commenterIds.filter(uid => uid !== actor.id && uid !== issue.createdById);
+			await this.notifyMany(targets, 'issueResolved', { actorId: actor.id, feedbackId: issue.id }, resolvedMsg);
 		}
 	}
 
@@ -342,9 +374,8 @@ export class FeedbackService {
 		}
 		// 会話に参加した人にも受付終了を通知(操作者・起票者は除く)。
 		const commenterIds = await this.getCommenterIds(issue.id);
-		await Promise.all(commenterIds
-			.filter(uid => uid !== actor.id && uid !== issue.createdById)
-			.map(uid => this.notify(uid, 'issueClosed', { actorId: actor.id, feedbackId: issue.id }, msg)));
+		const commenterTargets = commenterIds.filter(uid => uid !== actor.id && uid !== issue.createdById);
+		await this.notifyMany(commenterTargets, 'issueClosed', { actorId: actor.id, feedbackId: issue.id }, msg);
 		await this.notifyStaff(actor.id, 'issueClosed', { feedbackId: issue.id }, msg);
 	}
 

@@ -195,6 +195,17 @@ export class EarthquakeService implements OnApplicationBootstrap, OnApplicationS
 	@bindThis
 	private onWsMessage(raw: string): void {
 		if (!raw) return;
+		// 旗鯖fork: P2PQuake は 551/552 以外(555: エリアピア / 556: EEW / 561: 緊急地震速報設定 等)も流す。
+		//   JSON.parse は割と重いので、生文字列で「"code":551」または「"code":552」(空白挿入版も含む)を
+		//   含むかを先に検査し、含まなければ即 return する。
+		//   - 誤検知方向の安全策: 文字列値中に "551"/"552" が偶然含まれても、後段の data?.code チェックで弾く。
+		//   - 取りこぼし方向の安全策: 空白あり版もカバー。P2PQuake が将来 pretty-print に変わったら本最適化は無効化する。
+		if (
+			raw.indexOf('"code":551') < 0 && raw.indexOf('"code": 551') < 0 &&
+			raw.indexOf('"code":552') < 0 && raw.indexOf('"code": 552') < 0
+		) {
+			return;
+		}
 		let data: any;
 		try { data = JSON.parse(raw); } catch { return; }
 		if (data?.code !== CODE_EARTHQUAKE && data?.code !== CODE_TSUNAMI) return;
