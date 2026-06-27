@@ -11,6 +11,7 @@ import type { Packed } from '@/misc/json-schema.js';
 import { awaitAll } from '@/misc/prelude/await-all.js';
 import type { MiUser } from '@/models/User.js';
 import type { MiNote } from '@/models/Note.js';
+import type { MiChannel } from '@/models/Channel.js';
 import type { UsersRepository, NotesRepository, FollowingsRepository, PollsRepository, PollVotesRepository, NoteReactionsRepository, ChannelsRepository, ChannelMembersRepository, InstancesRepository, MiMeta, EventsRepository, UtageSessionsRepository } from '@/models/_.js';
 import { bindThis } from '@/decorators.js';
 import { DebounceLoader } from '@/misc/loader.js';
@@ -148,7 +149,15 @@ export class NoteEntityService implements OnModuleInit {
 	}
 
 	@bindThis
-	private async hideNote(packedNote: Packed<'Note'>, meId: MiUser['id'] | null): Promise<void> {
+	private async hideNote(
+		packedNote: Packed<'Note'>,
+		meId: MiUser['id'] | null,
+		_hint_?: {
+			channelMap?: Map<MiChannel['id'], MiChannel>;
+			channelMembershipMap?: Map<MiChannel['id'], boolean>;
+			iAmModerator?: boolean;
+		},
+	): Promise<void> {
 		if (meId === packedNote.userId) return;
 
 		// 旗鯖fork: サーバー管理者はモデレーション上の理由で
@@ -179,13 +188,21 @@ export class NoteEntityService implements OnModuleInit {
 		// 旗鯖fork: プライベートチャンネルのノートは、閲覧権限が無ければ内容を伏せる(「非公開」表示)。
 		//   プロフィール等の一覧に出ても、メンバー/作成者/副管理者/モデレーター以外には本文が見えない。
 		if (!hide && packedNote.channelId != null) {
-			const channel = await this.channelsRepository.findOneBy({ id: packedNote.channelId });
+			// packMany 経由のときは hint から取り、未提供なら個別 SELECT。
+			const channel = _hint_?.channelMap?.get(packedNote.channelId)
+				?? await this.channelsRepository.findOneBy({ id: packedNote.channelId });
 			if (channel != null && channel.isPrivate) {
 				if (meId == null) {
 					hide = true;
 				} else if (channel.userId !== meId && !channel.moderatorUserIds.includes(meId)) {
-					const isMember = await this.channelMembersRepository.exists({ where: { channelId: channel.id, userId: meId } });
-					if (!isMember && !await this.roleService.isModerator({ id: meId })) hide = true;
+					// hint の membership map に該当エントリが入っているはずだが、保険で fallback。
+					const isMember = _hint_?.channelMembershipMap?.has(channel.id)
+						? _hint_.channelMembershipMap.get(channel.id)!
+						: await this.channelMembersRepository.exists({ where: { channelId: channel.id, userId: meId } });
+					const iAmMod = _hint_?.iAmModerator !== undefined
+						? _hint_.iAmModerator
+						: await this.roleService.isModerator({ id: meId });
+					if (!isMember && !iAmMod) hide = true;
 				}
 			}
 		}
@@ -297,11 +314,25 @@ export class NoteEntityService implements OnModuleInit {
 	// 旗鯖fork: 宴(うたげ)の判定状態を返す。宴ワードを含むローカルノートのみ DB を引く
 	// (全ノートで session を照会すると TL 表示が重くなるため、安価な正規表現で足切りする)。
 	private static readonly UTAGE_REGEX = /宴|うたげ|ぅたげ|utage/i;
-	@bindThis
-	private async populateUtageStatus(note: MiNote): Promise<'running' | 'succeeded' | 'failed' | undefined> {
-		if (note.userHost != null) return undefined; // ローカルノートのみ
+
+	// 旗鯖fork: 1ノートに対して宴の判定をすべきか? を判定する純粋関数(DBを引かない)。
+	private isUtageCandidate(note: MiNote): boolean {
+		if (note.userHost != null) return false; // ローカルノートのみ
 		const t = `${note.text ?? ''} ${note.cw ?? ''}`;
-		if (!NoteEntityService.UTAGE_REGEX.test(t)) return undefined;
+		return NoteEntityService.UTAGE_REGEX.test(t);
+	}
+
+	@bindThis
+	private async populateUtageStatus(
+		note: MiNote,
+		_hint_?: { utageSessionMap?: Map<MiNote['id'], 'running' | 'succeeded' | 'failed'> },
+	): Promise<'running' | 'succeeded' | 'failed' | undefined> {
+		if (!this.isUtageCandidate(note)) return undefined;
+		// 旗鯖fork: packMany 経由のときは Map が渡されるので DB を引かない。
+		// Map に該当エントリが無ければ「セッション未登録」を意味する(undefined を返す)。
+		if (_hint_?.utageSessionMap !== undefined) {
+			return _hint_.utageSessionMap.get(note.id);
+		}
 		const session = await this.utageSessionsRepository.findOneBy({ noteId: note.id });
 		if (session == null) return undefined;
 		return session.status as 'running' | 'succeeded' | 'failed';
@@ -442,7 +473,13 @@ export class NoteEntityService implements OnModuleInit {
 				bufferedReactions: Map<MiNote['id'], { deltas: Record<string, number>; pairs: ([MiUser['id'], string])[] }> | null;
 				myReactions: Map<MiNote['id'], string | null>;
 				packedFiles: Map<MiNote['fileIds'][number], Packed<'DriveFile'> | null>;
-				packedUsers: Map<MiUser['id'], Packed<'UserLite'>>
+				packedUsers: Map<MiUser['id'], Packed<'UserLite'>>;
+				// 旗鯖fork: packMany で集約した宴セッション状態。エントリが無ければセッション未登録。
+				utageSessionMap?: Map<MiNote['id'], 'running' | 'succeeded' | 'failed'>;
+				// 旗鯖fork: packMany で集約したチャンネル本体・閲覧時メンバーシップ・モデレーター判定。
+				channelMap?: Map<MiChannel['id'], MiChannel>;
+				channelMembershipMap?: Map<MiChannel['id'], boolean>;
+				iAmModerator?: boolean;
 			};
 		},
 	): Promise<Packed<'Note'>> {
@@ -455,7 +492,10 @@ export class NoteEntityService implements OnModuleInit {
 		const meId = me ? me.id : null;
 		const note = typeof src === 'object' ? src : await this.noteLoader.load(src);
 		const host = note.userHost;
-		const iAmModerator = me ? await this.roleService.isModerator(me as MiUser) : false;
+		// 旗鯖fork: packMany 経由のときは isModerator を 1 回だけ呼んで使い回す。
+		const iAmModerator = opts._hint_?.iAmModerator !== undefined
+			? opts._hint_.iAmModerator
+			: me ? await this.roleService.isModerator(me as MiUser) : false;
 
 		const bufferedReactions = opts._hint_?.bufferedReactions != null
 			? (opts._hint_.bufferedReactions.get(note.id) ?? { deltas: {}, pairs: [] })
@@ -472,10 +512,11 @@ export class NoteEntityService implements OnModuleInit {
 			text = `【${note.name}】\n${(note.text ?? '').trim()}\n\n${note.url ?? note.uri}`;
 		}
 
+		// 旗鯖fork: packMany 経由のときは channelMap で 1 回の SELECT に集約する。
 		const channel = note.channelId
 			? note.channel
 				? note.channel
-				: await this.channelsRepository.findOneBy({ id: note.channelId })
+				: opts._hint_?.channelMap?.get(note.channelId) ?? await this.channelsRepository.findOneBy({ id: note.channelId })
 			: null;
 
 		const reactionEmojiNames = Object.keys(reactions)
@@ -527,7 +568,7 @@ export class NoteEntityService implements OnModuleInit {
 			hasPoll: note.hasPoll || undefined,
 			// 旗鯖fork: 宴(うたげ)の判定状態。宴ノートでなければ undefined。
 			// 'running' | 'succeeded' | 'failed'。フロントはこれを初期状態として描画する。
-			utageStatus: await this.populateUtageStatus(note),
+			utageStatus: await this.populateUtageStatus(note, opts._hint_),
 			uri: note.uri ?? undefined,
 			url: note.url ?? undefined,
 			hasDeliveryTargets: note.deliveryTargets != null,
@@ -586,7 +627,7 @@ export class NoteEntityService implements OnModuleInit {
 		this.treatVisibility(packed, meIsAdmin);
 
 		if (!opts.skipHide) {
-			await this.hideNote(packed, meId);
+			await this.hideNote(packed, meId, opts._hint_);
 		}
 
 		return packed;
@@ -673,6 +714,77 @@ export class NoteEntityService implements OnModuleInit {
 		const packedUsers = await this.userEntityService.packMany(users, me)
 			.then(users => new Map(users.map(u => [u.id, u])));
 
+		// 旗鯖fork: 宴(うたげ)セッションを一括取得して N+1 を解消する。
+		//   - ローカル かつ 宴ワードを含むノートだけ DB を引く(個別 pack と同じ足切り)。
+		//   - 再帰 pack で参照される reply/renote も hint で吸収するため候補に含める。
+		const utageCandidateIds: MiNote['id'][] = [];
+		for (const n of notes) {
+			if (this.isUtageCandidate(n)) utageCandidateIds.push(n.id);
+			if (n.reply && this.isUtageCandidate(n.reply)) utageCandidateIds.push(n.reply.id);
+			if (n.renote && this.isUtageCandidate(n.renote)) utageCandidateIds.push(n.renote.id);
+		}
+		const utageSessionMap = new Map<MiNote['id'], 'running' | 'succeeded' | 'failed'>();
+		if (utageCandidateIds.length > 0) {
+			const sessions = await this.utageSessionsRepository.findBy({ noteId: In(utageCandidateIds) });
+			for (const s of sessions) {
+				utageSessionMap.set(s.noteId, s.status as 'running' | 'succeeded' | 'failed');
+			}
+		}
+
+		// 旗鯖fork: チャンネルノートのチャンネル本体を一括取得 + 自分のメンバーシップを一括判定。
+		//   - pack(`channel:{...}` ブロック)と hideNote(プライベート判定)の両方で使う。
+		//   - JOIN 済み(note.channel が non-null)のものは hint に含めるが SELECT は不要。
+		//   - 再帰 pack で参照される reply/renote の channelId も対象にする。
+		const channelMap = new Map<MiChannel['id'], MiChannel>();
+		const collectChannel = (n: MiNote) => {
+			if (n.channelId != null && n.channel != null) channelMap.set(n.channelId, n.channel);
+		};
+		const channelIdsNeeded = new Set<MiChannel['id']>();
+		const collectChannelId = (n: MiNote) => {
+			if (n.channelId != null && n.channel == null && !channelMap.has(n.channelId)) {
+				channelIdsNeeded.add(n.channelId);
+			}
+		};
+		for (const n of notes) {
+			collectChannel(n);
+			if (n.reply) collectChannel(n.reply);
+			if (n.renote) collectChannel(n.renote);
+		}
+		for (const n of notes) {
+			collectChannelId(n);
+			if (n.reply) collectChannelId(n.reply);
+			if (n.renote) collectChannelId(n.renote);
+		}
+		if (channelIdsNeeded.size > 0) {
+			const channels = await this.channelsRepository.findBy({ id: In([...channelIdsNeeded]) });
+			for (const c of channels) channelMap.set(c.id, c);
+		}
+
+		// プライベートチャンネルだけメンバーシップを引く。自分が作成者・副管理者なら exists 不要。
+		const channelMembershipMap = new Map<MiChannel['id'], boolean>();
+		if (meId != null) {
+			const privateChannelIdsForMembership: MiChannel['id'][] = [];
+			for (const [cid, c] of channelMap) {
+				if (!c.isPrivate) continue;
+				if (c.userId === meId) continue;
+				if (c.moderatorUserIds.includes(meId)) continue;
+				privateChannelIdsForMembership.push(cid);
+			}
+			if (privateChannelIdsForMembership.length > 0) {
+				const memberRows = await this.channelMembersRepository.findBy({
+					channelId: In(privateChannelIdsForMembership),
+					userId: meId,
+				});
+				const memberSet = new Set(memberRows.map(r => r.channelId));
+				for (const cid of privateChannelIdsForMembership) {
+					channelMembershipMap.set(cid, memberSet.has(cid));
+				}
+			}
+		}
+
+		// roleService.isModerator は packMany 全体で 1 回だけ呼ぶ。
+		const iAmModerator = me ? await this.roleService.isModerator(me as MiUser) : false;
+
 		return await Promise.all(notes.map(n => this.pack(n, me, {
 			...options,
 			_hint_: {
@@ -680,6 +792,10 @@ export class NoteEntityService implements OnModuleInit {
 				myReactions: myReactionsMap,
 				packedFiles,
 				packedUsers,
+				utageSessionMap,
+				channelMap,
+				channelMembershipMap,
+				iAmModerator,
 			},
 		})));
 	}

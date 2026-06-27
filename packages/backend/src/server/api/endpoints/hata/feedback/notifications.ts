@@ -61,7 +61,8 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 
 			return {
 				unreadCount,
-				notifications: await Promise.all(notifications.map(n => this.feedbackEntityService.packNotification(n))),
+				// 旗鯖fork: N+1 解消のため packNotifications でバッチ pack。
+				notifications: await this.feedbackEntityService.packNotifications(notifications),
 			};
 		});
 	}

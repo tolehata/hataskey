@@ -65,7 +65,8 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				.limit(ps.limit)
 				.getMany();
 
-			return await Promise.all(followings.map(x => this.channelEntityService.pack(x.followeeId, me)));
+			// 旗鯖fork: N+1 解消のため packMany でバッチ pack(followeeId のみ渡せば内部でまとめて SELECT)。
+			return await this.channelEntityService.packMany(followings.map(x => x.followeeId), me);
 		});
 	}
 }

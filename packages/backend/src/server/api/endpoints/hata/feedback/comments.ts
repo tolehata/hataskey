@@ -49,7 +49,8 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				.orderBy('comment.id', 'ASC');
 
 			const comments = await query.limit(ps.limit).getMany();
-			return await Promise.all(comments.map(c => this.feedbackEntityService.packComment(c, me)));
+			// 旗鯖fork: N+1 解消のため packComments でバッチ pack。
+			return await this.feedbackEntityService.packComments(comments, me);
 		});
 	}
 }

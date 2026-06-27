@@ -98,7 +98,8 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 			query.orderBy('issue.pinned', 'DESC').addOrderBy('issue.id', 'DESC');
 
 			const issues = await query.limit(ps.limit).getMany();
-			return await Promise.all(issues.map(issue => this.feedbackEntityService.packIssue(issue, me)));
+			// 旗鯖fork: N+1 解消のため packIssues でバッチ pack。
+			return await this.feedbackEntityService.packIssues(issues, me);
 		});
 	}
 }
