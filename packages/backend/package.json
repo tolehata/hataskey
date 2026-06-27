@@ -59,6 +59,7 @@
 		"@fastify/multipart": "10.0.0",
 		"@fastify/static": "9.1.3",
 		"@fastify/view": "12.0.0",
+		"@kitajs/html": "4.2.13",
 		"@misskey-dev/emoji-assets": "17.0.3",
 		"@misskey-dev/emoji-data": "17.0.3",
 		"@misskey-dev/sharp-read-bmp": "1.2.0",
@@ -159,6 +160,7 @@
 		"xev": "3.0.2"
 	},
 	"devDependencies": {
+		"@kitajs/ts-html-plugin": "4.1.4",
 		"@nestjs/platform-express": "11.1.21",
 		"@rollup/plugin-esm-shim": "0.1.8",
 		"@sentry/vue": "10.53.1",

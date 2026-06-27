@@ -26,6 +26,7 @@ import { StreamingApiServerService } from './api/StreamingApiServerService.js';
 import { OpenApiServerService } from './api/openapi/OpenApiServerService.js';
 import { ClientServerService } from './web/ClientServerService.js';
 import { FeedService } from './web/FeedService.js';
+import { HtmlTemplateService } from './web/HtmlTemplateService.js';
 import { UrlPreviewService } from './web/UrlPreviewService.js';
 import { ClientLoggerService } from './web/ClientLoggerService.js';
 import { OAuth2ProviderService } from './oauth/OAuth2ProviderService.js';
@@ -62,6 +63,7 @@ import { WhackEmojiRoomChannelService } from './api/stream/channels/whack-emoji-
 		ClientServerService,
 		ClientLoggerService,
 		FeedService,
+		HtmlTemplateService,
 		HealthServerService,
 		UrlPreviewService,
 		ActivityPubServerService,

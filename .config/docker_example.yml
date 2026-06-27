@@ -209,12 +209,6 @@ id: 'aidx'
 # IP address family used for outgoing request (ipv4, ipv6 or dual)
 #outgoingAddressFamily: ipv4
 
-# Cloud Logging
-#cloudLogging:
-#  projectId: example-project-id
-#  saKeyPath: /path/to/service-account-key.json
-#  logName: cherrypick
-
 # Override the file URL rendering in ActivityPub (Object Storage file only)
 #apFileBaseUrl: https://example.tld/
 

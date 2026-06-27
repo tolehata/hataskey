@@ -980,60 +980,6 @@ describe('Note', () => {
 		});
 	});
 
-	describe('notes/translate', () => {
-		describe('翻訳機能の利用が許可されていない場合', () => {
-			let cannotTranslateRole: misskey.entities.Role;
-
-			beforeAll(async () => {
-				cannotTranslateRole = await role(root, {}, { canUseTranslator: false });
-				await api('admin/roles/assign', { roleId: cannotTranslateRole.id, userId: alice.id }, root);
-			});
-
-			test('翻訳機能の利用が許可されていない場合翻訳できない', async () => {
-				const aliceNote = await post(alice, { text: 'Hello' });
-				const res = await api('notes/translate', {
-					noteId: aliceNote.id,
-					targetLang: 'ja',
-				}, alice);
-
-				assert.strictEqual(res.status, 400);
-				assert.strictEqual(castAsError(res.body).error.code, 'UNAVAILABLE');
-			});
-
-			afterAll(async () => {
-				await api('admin/roles/unassign', { roleId: cannotTranslateRole.id, userId: alice.id }, root);
-			});
-		});
-
-		test('存在しないノートは翻訳できない', async () => {
-			const res = await api('notes/translate', { noteId: 'foo', targetLang: 'ja' }, alice);
-
-			assert.strictEqual(res.status, 400);
-			assert.strictEqual(castAsError(res.body).error.code, 'NO_SUCH_NOTE');
-		});
-
-		test('不可視なノートは翻訳できない', async () => {
-			const aliceNote = await post(alice, { visibility: 'followers', text: 'Hello' });
-			const bobTranslateAttempt = await api('notes/translate', { noteId: aliceNote.id, targetLang: 'ja' }, bob);
-
-			assert.strictEqual(bobTranslateAttempt.status, 400);
-			assert.strictEqual(castAsError(bobTranslateAttempt.body).error.code, 'CANNOT_TRANSLATE_INVISIBLE_NOTE');
-		});
-
-		test('text: null なノートを翻訳すると空のレスポンスが返ってくる', async () => {
-			const aliceNote = await post(alice, { text: null, poll: { choices: ['kinoko', 'takenoko'] } });
-			const res = await api('notes/translate', { noteId: aliceNote.id, targetLang: 'ja' }, alice);
-
-			assert.strictEqual(res.status, 204);
-		});
-
-		test('サーバーに DeepL 認証キーが登録されていない場合翻訳できない', async () => {
-			const aliceNote = await post(alice, { text: 'Hello' });
-			const res = await api('notes/translate', { noteId: aliceNote.id, targetLang: 'ja' }, alice);
-
-			// NOTE: デフォルトでは登録されていないので落ちる
-			assert.strictEqual(res.status, 400);
-			assert.strictEqual(castAsError(res.body).error.code, 'NO_TRANSLATE_SERVICE');
-		});
-	});
+	// 旗鯖fork: 翻訳機能(外部API依存)は 11.7.6 で完全撤去したため、
+	// notes/translate の e2e テストブロックも削除済み。
 });
