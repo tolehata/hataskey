@@ -40,11 +40,31 @@ RUN --mount=type=cache,target=/root/.local/share/pnpm/store,sharing=locked \
 COPY . ./
 
 RUN git submodule update --init
-# 旗鯖fork: ホストから .dockerignore で除外しているはずだが、稀に古い built/ 残骸が
-# 紛れ込むケースがあるため、build 前に明示的にクリーン。これにより swc/pug の
-# テンプレートファイルが古い built/ にスキップされる事象 (var LANGS 反映漏れ等)を防止。
+
+# 旗鯖fork: ビルダーに src の変更を確実に認識させ、テンプレ/アセット古残骸を完全排除する根本対策。
+#
+# 過去事象:
+#   - .dockerignore で built/ を除外しているはずでも、稀に古い built/views/*.pug がコンテナに残る
+#   - swc の -D (--copy-files) は非コンパイル対象 (.pug 等) を出力先にコピーするが、
+#     既存ファイルの mtime 比較で skip するケースがあり、src の更新が built に反映されない
+#   - Docker BuildKit の COPY --link レイヤーキャッシュバグも併発しうる
+#
+# 対策:
+#   1. すべての .pug / .css / .html / .yml / json schema を強制 touch して mtime を build 時刻に更新
+#      → swc が「全部新しいファイル」とみなしてコピーする
+#   2. build 前に built/ packages/*/built を完全削除
+#      → 残骸が紛れ込む余地をなくす
+#
+# これにより本番リリース時のテンプレート反映の正確性を保証 (var LANGS 等の base.pug 更新も確実に伝播)。
+RUN find packages -type f \( -name "*.pug" -o -name "*.css" -o -name "*.html" -o -name "*.yml" -o -name "*.json" \) -not -path "*/node_modules/*" -not -path "*/built/*" -exec touch {} + 2>/dev/null || true
 RUN rm -rf built packages/*/built
+
 RUN pnpm build
+
+# build 結果の検証 (重要なテンプレートが正しく出力されたか確認、デバッグ時のフェイルセーフ)
+RUN ls -la packages/backend/built/server/web/views/base.pug \
+    && grep -c "var LANGS" packages/backend/built/server/web/views/base.pug
+
 RUN rm -rf .git/
 
 # build native dependencies for target platform
