@@ -304,11 +304,16 @@ export class CustomEmojiService implements OnApplicationShutdown {
 			id: In(ids),
 		});
 
-		for (const emoji of emojis) {
-			await this.emojisRepository.update(emoji.id, {
-				updatedAt: new Date(),
+		// 旗鯖fork(perf): 直列 await だと N 件で N 回 RTT を待つ。DB プール枯渇を避けるため
+		//   10 件ずつのチャンクで並列実行する(完全な Promise.all だと N=数百で接続が詰まる)。
+		const CHUNK = 10;
+		const now = new Date();
+		for (let i = 0; i < emojis.length; i += CHUNK) {
+			const chunk = emojis.slice(i, i + CHUNK);
+			await Promise.all(chunk.map(emoji => this.emojisRepository.update(emoji.id, {
+				updatedAt: now,
 				aliases: [...new Set(emoji.aliases.concat(aliases))],
-			});
+			})));
 		}
 
 		this.localEmojisCache.refresh();
@@ -340,11 +345,15 @@ export class CustomEmojiService implements OnApplicationShutdown {
 			id: In(ids),
 		});
 
-		for (const emoji of emojis) {
-			await this.emojisRepository.update(emoji.id, {
-				updatedAt: new Date(),
+		// 旗鯖fork(perf): addAliasesBulk と同じく 10 件ずつのチャンクで並列化。
+		const CHUNK = 10;
+		const now = new Date();
+		for (let i = 0; i < emojis.length; i += CHUNK) {
+			const chunk = emojis.slice(i, i + CHUNK);
+			await Promise.all(chunk.map(emoji => this.emojisRepository.update(emoji.id, {
+				updatedAt: now,
 				aliases: emoji.aliases.filter(x => !aliases.includes(x)),
-			});
+			})));
 		}
 
 		this.localEmojisCache.refresh();
