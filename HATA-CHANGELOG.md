@@ -3,6 +3,139 @@
 旗鯖独自フォーク (Hataskey-Hata) のチェンジログです。  
 ベースフォーク CherryPick のチェンジログは [CHANGELOG.md](./CHANGELOG.md) を参照してください。
 
+## hata-11.7.6
+
+復旧・整理リリース。11.7.5 時点で本家 Misskey 2026.6.0 取り込み途中に残った欠落ファイル・欠落依存・TypeORM v1 互換問題を完全解消し、`pnpm --filter backend build` から SDK 再生成までの一連の build パスを健全な状態に戻しました。あわせて、本家リファクタとの方向性違いから死コード化していた CherryPick 由来の Friendly UI を完全に削除し、外部API依存の翻訳機能 (DeepL/Google/CTAv3/LibreTranslate) を完全撤去しました。連合 (ActivityPub) への影響はすべての変更でゼロを事前検証済みです (旗鯖独自フィールド・通知・配信経路はいずれも変更なし)。本家 Misskey からの追加取り込みはありません。
+
+### 復旧 (backend が build → start できる状態へ)
+
+- **欠落ファイル補完**: 本家から取り込み損ねていた起動・テスト系ファイルを補完しました
+  - `packages/backend/scripts/compile_config.js` を no-op で新規作成 (旗鯖の `config.ts` は YAML を直接読むため compile-config 自体は不要ですが、`package.json` scripts の `pnpm compile-config &&` 接頭辞との互換維持のために配置)
+  - `packages/backend/vitest.config.{ts,unit.ts,e2e.ts,fed.ts}` 4 本を本家準拠で新規作成
+- **TypeORM v1 互換修正 (`models/_.ts`)**: TypeORM 1.0.0 で内部 deep path import の対象ファイルが削除/改名されていた問題を修正しました
+  - `PostgresConnectionOptions` → `PostgresDataSourceOptions` (v1 で改名)
+  - `RelationCountLoader` import を削除 (v1 で完全廃止、旗鯖は `@RelationCount` デコレータ未使用のため機能影響なし)
+  - `QueryDeepPartialEntity` を `typeorm` root から import (deep path 不要に)
+  - `RawSqlResultsToEntityTransformer` の ctor を 5→4 引数に縮小 (v1 の暗黙的破壊的変更に追従)
+- **欠落依存追加**: 本家コードで実際に import しているのに `package.json` から漏れていた依存を一括補完しました
+  - 認証: `argon2` (パスワードハッシュ、17 ファイル使用)
+  - HTML 解析: `jsdom` + `@types/jsdom` / `parse5` / `happy-dom`
+  - SSR/テンプレ: `pug` + `@types/pug` / `@fastify/view` / `htmlescape` + `@types/htmlescape`
+  - 監視/ログ: `cli-highlight` (postgres SQL 色付け) / `redis-info` (Queue Redis INFO パース)
+  - ロック: `redis-lock` (AppLockService の AP オブジェクトロック)
+  - ビルド: `@swc/cli` / `@swc/core` (backend ビルドコマンド)
+  - MFM: `mfc-js@0.1.0` (CherryPick 独自 MFM パーサ、backend で 11 ファイル import されていたが宣言漏れ)
+  - SDK: cherrypick-js に `@simplewebauthn/server@13.3.0` (`entities.ts` が型参照)
+
+### 機能修復
+
+- **新規 Passkey 登録の修復**: `WebAuthnService.ts` の `attestationType: 'indirect'` を `'none'` に修正しました。`SimpleWebAuthn` v13.0.0 で `'indirect'` は無効値となり、新規 Passkey 登録がランタイム拒否される可能性があった状態を解消しました。既存 Passkey の認証には影響しません
+- **Meilisearch 起動の修復**: `meilisearch` v0.58.0 で `MeiliSearch` → `Meilisearch` に改名されていたのに追従し、`GlobalModule.ts` / `SearchService.ts` / `HealthServerService.ts` の import・型・コンストラクタを更新しました
+- **Summaly URL プレビューの修復**: `@misskey-dev/summaly/built/summary.js` というサブパスが v5 で存在しなくなっていた問題を、root export からの取得に修正しました
+- **`@simplewebauthn/types` (deprecated) からの脱却**: v12.0.0 は npm 上で deprecated 表記。`@simplewebauthn/server` v13.3 に統合された再エクスポートに置換しました (backend 4 ファイル + cherrypick-js 1 ファイル + test 2 ファイル)
+
+### 翻訳機能 (外部 API 依存) を完全撤去
+
+旗鯖は外部翻訳サービス (DeepL/Google/CTAv3/LibreTranslate) を提供しない方針へ移行しました。撤去前から依存パッケージ (`@google-cloud/translate` / `@vitalets/google-translate-api`) が `package.json` から欠落しており実質動作していなかったため、関連コードを全件削除しました。連合への影響はゼロです (`packages/backend/src/core/activitypub/` 配下に translate 参照は存在せず、ローカル完結のフローでした)。
+
+- **Backend**: `endpoints/notes/translate.ts` / `notes/polls/translate.ts` / `users/translate.ts` を削除、`endpoint-list.ts` から 3 行除外。`Meta` テーブルの 10 カラム (`translatorType` / `deeplAuthKey` / `deeplIsPro` / `ctav3*` / `libreTranslate*`) を削除する DROP マイグレーション (`1784100000000-drop-translator-settings.js`) を追加。`RoleService` の `canUseTranslator` / `canUseAutoTranslate` policy と `MetaEntityService.translatorAvailable` を削除
+- **SDK (cherrypick-js)**: `consts.ts` から関連定数を削除し、`api.json` 再生成で `autogen/{types,endpoint,entities,apiClientJSDoc}.ts` から翻訳エンドポイント定義を自動消失させました
+- **Frontend**: `MkNote.vue` / `MkNoteDetailed.vue` / `MkSubNoteContent.vue` / `MkPoll.vue` の翻訳ボタン UI と `translate` 関数・各種 ref を撤去。`pages/admin/external-services.vue` から翻訳サービス設定 UI (provider/DeepL/CTAv3/LibreTranslate) 全体を削除。`pages/admin/roles{vue,editor.vue}` の policy UI、`pages/settings/preferences.vue` の翻訳設定、`pages/user/home.vue` のプロフィール翻訳ボタン、`utility/get-note-menu.ts` の translate メニュー (ブラウザ標準 Translator API ルートを含む) を削除。`preferences/def.ts` / `store.ts` / `pref-migrate.ts` から関連キーを削除
+- **i18n**: `ja-JP.yml` / `en-US.yml` から関連 10 キー (`translateNote` / `translate` / `translatedFrom` / `translateProfile` / `useAutoTranslate` / `useAutoTranslateDescription` / `showTranslateButtonInNote` / `canUseTranslator` / `canUseAutoTranslate` / `canUseAutoTranslateDescription`) を削除
+
+### Friendly UI (CherryPick 由来) を完全削除
+
+11.3 以降 `isFriendly()=ref(false)` のシムで機能無効化していた CherryPick 由来の Friendly UI を、死コードとして残置していたため完全に削除しました。連合・認証への影響ゼロを事前検証済みです (バックエンド・連合・OAuth・WebAuthn 配下で参照ゼロ確認)。1657 行を削除し、14 ファイルを変更しています。
+
+- **削除ファイル**: `ui/friendly.vue` / `ui/friendly/navbar.vue` / `ui/friendly/mobile-footer-menu-friendly.vue` / `utility/is-friendly.ts`
+- **分岐削除**: `MkPageHeader.vue` (11 箇所 + CSS `.lowerFriendly`) / `MkStickyContainer.vue` + CSS `.showElTl` / `MkStreamingNotesTimeline.vue` + CSS `.showElTab` / `CPPageHeader.vue` / `MkAvatar.vue` (`showDecorationWithFloatingBtn` 撤去) / `timeline.vue` / `chat/room.vue` + CSS `.isFriendly`
+- **設定削除**: `store.ts` / `preferences/def.ts` / `pref-migrate.ts` から `friendlyUiEnableNotificationsArea` / `friendlyUiShowAvatarDecorationsInNavBtn` を削除
+- **残置**: `boot/{common,main-boot}.ts` の旧 `ui='friendly'` クリーンアップは旧クライアント移行保険として残置 (3〜6 ヶ月後に Phase 4 で別 PR)
+
+### 死コード掃除
+
+- **GCP Logging 撤去**: `@google-cloud/logging` が既に `package.json` から消滅済みで起動失敗のはずだったため、`GlobalModule.ts` / `LoggerService.ts` / `logger.ts` / `di-symbols.ts` / `config.ts` 全箇所から `cloudLogging` 関連を完全削除しました。ログ出力は `console.log` → stdout で継続するため観測性は失われません
+- **Dead deps 5 本削除**: `@kitajs/html` / `@kitajs/ts-html-plugin` (本家 React 移行用、旗鯖は pug 維持) / `rolldown` (旗鯖は esbuild/swc 維持、vite が transitive で確保) / `simple-oauth2` + `@types/simple-oauth2` (コード参照ゼロ) を `package.json` から削除しました
+- **`backend/test/e2e/oauth.ts` 削除**: `simple-oauth2` 残骸 + `vitest.config.e2e.ts` 不在で既に動作不能だったため削除しました
+- **`mfm-js@0.26.0` 削除**: backend では 1 ファイルも import されていない dead dep だったため削除しました (実利用は `mfc-js` で、こちらは backend に正しく追加)
+
+### セキュリティ
+
+- **`hata/consent/update` に `secure: true` 追加**: 法的同意フラグ (`hataConsentExternalTl` / `hataConsentCustomFont` / `hataConsentMascot` および各々の日時) の改ざんを防ぐため、3rd party アプリトークン経由での書き換えを拒否するようにしました。これらの同意フラグはマスコット機能の二次創作・盗用責任の所在やカスタムフォントのライセンス責任の所在の証拠として機能するため、Web セッション (native token) からの操作のみを正規とする方針です
+- **admin/registration 系 4 エンドポイントに `secure: true` 追加**: `admin/approve-registration` / `admin/reject-registration` / `admin/registration-applications` / `admin/cleanup-legacy-rejected-registrations` の meta に `secure: true` を追加し、`IEndpointMeta` の判別共用体型の不適合を解消すると同時に 3rd party トークン経由での承認操作を不可としました
+
+### バグ修正
+
+- **`ChannelEntityService.ts:224` の型注釈**: `members.map` の `m` の型を `MiChannelMember` から `{ channelId: string }` に変更し、上流 `findBy` の戻り型との union 不一致を解消しました
+- **`SearchService.ts:100` の null チェック**: `meilisearchNoteIndex?.updateSettings(...)` のように optional chain を追加し、`Object is possibly 'null'` 型エラーを解消しました
+
+### 内部変更
+
+- **`basedMisskeyVersion` を 2026.6.0 に同期**: `package.json` (root) と `packages/cherrypick-js/package.json` の `basedMisskeyVersion` をそれぞれ `2026.5.4` → `2026.6.0`、`2025.10.2` (置き去り) → `2026.6.0` に更新しました。11.7.5 で Misskey 2026.6.0 のセキュリティ修正・OAuth2 リファクタを取り込み済みのため、表記としても正確になります
+- **新規マイグレーション**: `1784100000000-drop-translator-settings.js` (Meta テーブルから翻訳設定 10 カラムを DROP)。down マイグレーションも用意しています (ただし DROP COLUMN は本番では実質ロールバック不可なので、適用前に `pg_dump -t meta` でバックアップ推奨)
+- **`package.json` のバージョン表記を更新**: `2026.5.4-hata.11.7` → `2026.6.0-hata.11.7` に更新。`basedMisskeyVersion` (`2026.6.0`) と `codename` (`2026.10`) に変更しました
+
+### 連合への影響 (事前検証済み: ゼロ)
+
+11.7.6 で行ったすべての変更について、ActivityPub 連合先・他サーバーへの影響をゼロと事前検証しました。
+
+- **WebAuthn 関連**: 認証はすべてローカル機能で、`ApRendererService` / `ApDeliverManagerService` には触れていません。`attestationType` の変更は新規 Passkey 登録時のオプションで、既存登録キーの検証 (`verifyAuthenticationResponse`) は credentialID/publicKey/counter ベースのため影響なし
+- **翻訳機能撤去**: `packages/backend/src/core/activitypub/` 配下に translate 参照ゼロ。翻訳結果は旗鯖クライアントへの返却のみで、リモートユーザーのプロフィール翻訳結果を再連合する経路もありません
+- **Friendly UI 削除**: バックエンドおよび `test-federation` 配下で `friendly` 参照ゼロ。JSON-LD カスタムコンテキスト (`_misskey_friendly` 等) も存在しません
+- **Meilisearch リネーム**: 検索クライアント名の変更のみで、AP 受信 Note のインデックス I/O 形式は無変化
+- **Summaly パス修正**: ローカルでの URL プレビュー取得経路のみ
+- **旗鯖独自フィールド**: `utageStatus` / `utageSuccessCount` / `canAccessHataFeed` / `canMakePrivateChannel` などは引き続き AP renderer に含まれず、REST API/WS 限定のままです
+
+## hata-11.7.5
+
+本家 Misskey 2026.6.0 のセキュリティ修正・バグ修正・パフォーマンス改善を選別取り込みする追従リリースです。Critical 4 件 + High/Medium 多数の合計 22 件をバックポートし、あわせて旗鯖独自のレートリミット強化・N+1 解消・各種パフォーマンス改善を実施しました。TypeORM を v0.3 → v1.0.0 にアップグレードしています。
+
+### 本家 Misskey 2026.6.0 からの取り込み (セキュリティ)
+
+- **【Critical】TOTP 再利用防止 + 検証ウィンドウを window:1 に厳格化** (`759ccfe2ea`): 一度使った 6 桁の TOTP コードを Redis NX SET で再利用防止し、認証時の許容ウィンドウを ±1 に絞りました
+- **【Critical】UrlPreview の SSRF/Open Redirect 対策強化** (`26e2092b73`): `UrlPreviewService` で agent (http/https) を無条件設定するように修正し、`allowedPrivateNetworks` 設定を経由しない経路を解消しました
+- **【Critical】inbox activity の actor 不在で TypeError ではなく 400 を返す** (`4f1f64dc89`): `ActivityPubServerService` の inbox エンドポイントで、actor が無い activity に対して TypeError ではなく早期 400 応答を返すようにしました
+- **【Critical】esbuild 0.28.1 への更新** (`02b67fcf3a`): セキュリティ脆弱性修正のため `cherrypick-js` / `sw` の esbuild を 0.28.1 に更新しました
+
+### 本家 Misskey 2026.6.0 からの取り込み (OAuth2 リファクタ)
+
+- **oauth2orize を削除し OAuth2 実装を独自に書き直し** (`cd7a137456`, `1f40bedef1`, `7bdead988c`, #17415 + follow-up + Token Grant 修正): メンテナンス停止した oauth2orize 依存を排除し、Token Grant エンドポイントのバリデーションを修正しました
+
+### 本家 Misskey 2026.6.0 からの取り込み (バグ修正・改善)
+
+- パスキー登録完了時の認証ダイアログの入力値が使われていない問題を修正 (`eae405a951`)
+- サーバー全体のアップロードサイズ上限とロールポリシーのアップロードサイズ上限に関する修正 (`965c146161`)
+- CSS `light-dark()` が適用されない問題を修正 (`4b974dc8ac`)
+- consolidate index creation logic + RecoverNotePinFavoriteIndexes migration (`ee1691fbd4`, `d24d07d4c0`, `e7212087e1`)
+- コンパネからパスワードリセットした時のエラーをダイアログ表示に修正 (`7c576dd744`)
+- ActivityPub 画像添付に width/height メタデータを追加 (`bad4f35745`)
+- リモートのノートのメンション数制限を実際に解決できたユーザー数に修正 (`a0fc7c8b67`)
+- 自ホストでのユーザープロフィール URL ルックアップを修正 (`e6529252f1`)
+- MemoryKVCache のキャッシュ GC 処理を修正 (`33226c0dec`)
+- PerUserDriveChart.update で userId が null のシステム所有ファイルをスキップ (`496da0f5e6`)
+- 削除対象ノート検索処理の一部クエリを簡略化 (`59f3517ce1`)
+- fastify listen/ready/close エラーを logger 経由に (`ea2c19504d`)
+
+### 内部変更
+
+- **TypeORM v0.3 → v1.0.0 移行**: select/relations を配列形式からオブジェクト形式に書き換え (43 件)、ネスト relations をオブジェクト構造に変換 (4 件) するなど、TypeORM v1 の判別共用体型に追従しました。`postgres.ts` に `invalidWhereValuesBehavior: { null: 'ignore', undefined: 'ignore' }` を追加し、v0.3 系の null/undefined 挙動を維持しています
+- **基底 Misskey 取り込み済み**: `package.json` の取り込み済み PR は #17389/#17401/#17422/#17499/#17511/#17512/#17513/#17522/#17539/#17558/#17563/#17566/#17576/#17577/#17580/#17581/#17415
+
+### 旗鯖独自のパフォーマンス改善
+
+- **Note/Feedback/Channel の pack を packMany でバッチ化して N+1 解消** (`1a714699cc`): 大量ノート表示時の DB クエリを劇的に削減
+- **ChannelService/UtageService にキャッシュ追加 + FeedbackService bulk + Earthquake WS 早期 filter** (`8184ee37b6`)
+- **CustomEmoji の alias bulk 更新を 10 件チャンク並列に** (`027a6a1148`)
+- **RSS 並列 fetch / 正規表現キャッシュ / ObjectURL 解放 / WS ポーリング制御** (`9758fe03cb`, frontend 側のパフォーマンス改善)
+
+### セキュリティ修正
+
+- **【High】旗鯖独自エンドポイント 13 本にレートリミットを追加** (`3344657c9f`): 旗鯖独自エンドポイント (HataFeed/Earthquake/Hatask 系) にレートリミット (`limit`) を追加し、連打・スパム・DDoS 緩和を実施しました
+
+### その他
+
+- **`package.json` のバージョン表記を更新**: `2026.5.4-hata.11.7` を維持 (11.7 系のパッチリリースのため major.minor は据え置き)
+
 ## hata-11.7
 
 旗鯖独自フォークとしては過去最大級の大型リリースです。フィードバック基盤 **HataFeed**、**気象庁発表の地震・津波情報ビューア**、**プライベートチャンネル**、Hatask ホームの全面リニューアル、HatasabaUI デッキの本格実装、ベータ機能 (C/C++ プレイグラウンド) などを同時投入しています。地震・津波情報ビューアは気象庁発表の情報をそのまま表示・通知する設計です (出典: 気象庁 / P2P地震情報、**緊急地震速報 EEW は非対応**)。気象業務法第17条・第23条に配慮し、旗鯖が独自に予報・警報・速報を発する形式は採っていません。あわせて、HataFeed 系エンドポイントへのレートリミット追加、絵文字申請 URL の危険プロトコル弾き、HataFeed イシューのカテゴリ書き換え攻撃防止など、複数のセキュリティ修正を行いました。本家 Misskey からの追加取り込みはありません。
@@ -89,6 +222,7 @@
 ### その他
 
 - **`package.json` のバージョン表記を更新**: `2026.5.4-hata.11.6` → `2026.5.4-hata.11.7` に更新。`basedMisskeyVersion` (`2026.5.4`) と `codename` (`2026.7`) は変更なし
+
 
 ## hata-11.6
 
