@@ -40,6 +40,10 @@ RUN --mount=type=cache,target=/root/.local/share/pnpm/store,sharing=locked \
 COPY . ./
 
 RUN git submodule update --init
+# 旗鯖fork: ホストから .dockerignore で除外しているはずだが、稀に古い built/ 残骸が
+# 紛れ込むケースがあるため、build 前に明示的にクリーン。これにより swc/pug の
+# テンプレートファイルが古い built/ にスキップされる事象 (var LANGS 反映漏れ等)を防止。
+RUN rm -rf built packages/*/built
 RUN pnpm build
 RUN rm -rf .git/
 
