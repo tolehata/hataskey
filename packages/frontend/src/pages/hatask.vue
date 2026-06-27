@@ -929,8 +929,12 @@ async function onEqEvent(ev:{code:number;item:any}){
   else if(ev.code===552)tsunami.value=pruneOld([ev.item,...tsunami.value]).slice(0,20);
   eqLastReceived.value=new Date().toLocaleTimeString('ja-JP');
 }
-function onEqStreamConn(){streamConnected.value=true}
-function onEqStreamDisc(){streamConnected.value=false}
+// 旗鯖fork(perf): WS接続中はポーリングを止め、切断時のみフォールバックとして動かす。
+//   WSが活きていれば earthquakeEvent がリアルタイムで届くため、60秒ポーリングは重複。
+function startEqPoll(){if(!eqPollTimer)eqPollTimer=setInterval(loadEq,60000)}
+function stopEqPoll(){if(eqPollTimer){clearInterval(eqPollTimer);eqPollTimer=null}}
+function onEqStreamConn(){streamConnected.value=true;stopEqPoll()}
+function onEqStreamDisc(){streamConnected.value=false;startEqPoll()}
 function handleBack(){
 if(activeTab.value!=='home'){activeTab.value='home';return}
 goBackToTimeline();
@@ -1394,7 +1398,9 @@ if(canUseMascot.value){loadMascotDisplaySettings().then(()=>{mascotPickRandomPhr
 hatakMascotActive.value = true;
 // 旗鯖fork(#36): HataFeed通知タイル＋地震・津波タイルの起動
 if(canAccessHataFeed.value){loadHfNotifs();hfTimer=setInterval(loadHfNotifs,30000);}
-loadEq();eqStream=useStream();eqStream.on('earthquakeEvent',onEqEvent);eqStream.on('_connected_',onEqStreamConn);eqStream.on('_disconnected_',onEqStreamDisc);streamConnected.value=eqStream.state==='connected';eqPollTimer=setInterval(loadEq,60000);
+loadEq();eqStream=useStream();eqStream.on('earthquakeEvent',onEqEvent);eqStream.on('_connected_',onEqStreamConn);eqStream.on('_disconnected_',onEqStreamDisc);streamConnected.value=eqStream.state==='connected';
+// 旗鯖fork(perf): WS未接続のときだけ60sポーリング。接続成功で stopEqPoll、切断で startEqPoll が走る。
+if(!streamConnected.value)startEqPoll();
 // 旗鯖fork: Hataskを開いたら実績「Hataskへようこそ」を解除(冪等。既に解除済みなら何もしない)
 claimAchievement('welcomeToHatask');
 window.localStorage.setItem('hatask_initialized', '1');

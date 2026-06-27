@@ -23,19 +23,24 @@ export type WeatherKind = 'rain' | 'heavyRain' | 'snow' | 'sunny' | 'windy' | 's
 // 各天気種別の検出パターン。漢字+英語のみに絞り、ひらがな単独マッチは避ける。
 // 注意: heavyRain は rain より前に置き、「土砂降り」「豪雨」等を通常の雨より優先して判定する。
 //       (例: 「土砂降り」は rain の「雨」にもマッチするため、先に heavyRain を取る)
+//
+// 旗鯖fork(perf): モジュールスコープで /.../gi リテラルをそのまま使い回す。
+//   `g` フラグの RegExp は `lastIndex` 内部状態を持つので exec ループでは状態が残り
+//   バグの原因になる。後段で `matchAll` を使うことで毎回新規イテレータを得られるため、
+//   `lastIndex` を気にせず安全に共有できる。`new RegExp(source, ...)` の毎回コピーを廃止。
 const WEATHER_PATTERNS: { kind: WeatherKind; regex: RegExp }[] = [
-	{ kind: 'heavyRain', regex: /土砂降り|豪雨|大雨|暴風雨|ゲリラ豪雨|集中豪雨|どしゃ降り|heavy rain|downpour|torrential/i },
-	{ kind: 'rain', regex: /雨|霧雨|小雨|夕立|rain|rainy/i },
-	{ kind: 'snow', regex: /雪|吹雪|降雪|snow|snowy/i },
+	{ kind: 'heavyRain', regex: /土砂降り|豪雨|大雨|暴風雨|ゲリラ豪雨|集中豪雨|どしゃ降り|heavy rain|downpour|torrential/gi },
+	{ kind: 'rain', regex: /雨|霧雨|小雨|夕立|rain|rainy/gi },
+	{ kind: 'snow', regex: /雪|吹雪|降雪|snow|snowy/gi },
 	// 夜・おやすみ系 → 流れ星。「夜」単体は誤爆しやすい(今夜/夜中など)ので、就寝の挨拶に絞る。
-	{ kind: 'shootingStar', regex: /いい夜|良い夜|おやすみ|お休み|安らかな夜|流れ星|流星|sleep|oyasumi|good night|goodnight/i },
+	{ kind: 'shootingStar', regex: /いい夜|良い夜|おやすみ|お休み|安らかな夜|流れ星|流星|sleep|oyasumi|good night|goodnight/gi },
 	// 朝の挨拶・晴天系 → 日差し。
-	{ kind: 'sunny', regex: /おはよう|お早う|晴れ|晴天|快晴|日差し|陽射し|日射し|ピーカン|sunny|clear sky|good morning|ohayou/i },
-	{ kind: 'windy', regex: /強風|風が強い|風強い|暴風|突風|木枯らし|こがらし|windy|gale|gusty/i },
+	{ kind: 'sunny', regex: /おはよう|お早う|晴れ|晴天|快晴|日差し|陽射し|日射し|ピーカン|sunny|clear sky|good morning|ohayou/gi },
+	{ kind: 'windy', regex: /強風|風が強い|風強い|暴風|突風|木枯らし|こがらし|windy|gale|gusty/gi },
 	// 旗鯖fork: 新緑/若葉 → 明るい緑の葉が舞い落ちる。
-	{ kind: 'freshGreen', regex: /新緑|若葉|青葉若葉|新芽|芽吹き|木の芽|fresh green/i },
+	{ kind: 'freshGreen', regex: /新緑|若葉|青葉若葉|新芽|芽吹き|木の芽|fresh green/gi },
 	// 旗鯖fork: 夏/青葉 → 濃い緑の葉が舞い落ちる。
-	{ kind: 'summerLeaves', regex: /真夏|盛夏|夏|青葉|深緑|緑陰|青々|midsummer/i },
+	{ kind: 'summerLeaves', regex: /真夏|盛夏|夏|青葉|深緑|緑陰|青々|midsummer/gi },
 ];
 
 // 挨拶(朝/就寝)由来かどうかの判定用パターン。
@@ -62,15 +67,13 @@ export function detectWeather(text: string | null | undefined): WeatherKind | nu
 	if (text == null || text.length === 0) return null;
 
 	// 各天気種別ごとに「本文中で最後に出現した位置」を求める。
+	// 旗鯖fork(perf): matchAll は呼び出しごとに新しいイテレータを返すため、
+	//   モジュールスコープの /.../gi リテラルを共有しても lastIndex 汚染が起きない。
 	const lastIndexOf: Partial<Record<WeatherKind, number>> = {};
 	for (const { kind, regex } of WEATHER_PATTERNS) {
-		const g = new RegExp(regex.source, regex.flags.includes('g') ? regex.flags : regex.flags + 'g');
 		let lastIndex = -1;
-		let m: RegExpExecArray | null;
-		while ((m = g.exec(text)) !== null) {
-			lastIndex = m.index;
-			// ゼロ幅マッチ対策(理論上起きないが安全のため)
-			if (m.index === g.lastIndex) g.lastIndex++;
+		for (const m of text.matchAll(regex)) {
+			if (typeof m.index === 'number') lastIndex = m.index;
 		}
 		if (lastIndex >= 0) lastIndexOf[kind] = lastIndex;
 	}

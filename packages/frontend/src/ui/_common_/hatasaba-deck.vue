@@ -46,7 +46,8 @@
 			<div v-if="showRssTicker" ref="rssTickerEl" :class="$style.rssTicker">
 				<Transition :name="$style.rssFade">
 					<div :key="rssOffset" :class="$style.rssItems">
-						<a v-for="item in visibleRssItems" :key="item.link" :class="$style.rssItem" :style="item.color ? { '--rssColor': item.color } : {}" :href="item.link" rel="nofollow noopener" target="_blank" :title="(item.feedName ? '[' + item.feedName + '] ' : '') + item.title">
+						<!-- 旗鯖fork(セキュリティ): RSSフィードの link は外部由来。javascript:/data: 等の危険プロトコルを除外し http/https のみクリック可能とする。rel も noopener noreferrer に強化。 -->
+						<a v-for="item in visibleRssItems" :key="item.link" :class="$style.rssItem" :style="item.color ? { '--rssColor': item.color } : {}" :href="safeLink(item.link)" rel="nofollow noopener noreferrer" target="_blank" :title="(item.feedName ? '[' + item.feedName + '] ' : '') + item.title">
 							<span :class="$style.rssDot"></span><span :class="$style.rssItemText">{{ item.title }}</span>
 						</a>
 					</div>
@@ -326,6 +327,18 @@ const visibleRssItems = computed<RssItem[]>(() => {
 	return out;
 });
 
+// 旗鯖fork(セキュリティ修正): RSS フィードの item.link は外部のフィード提供者由来であり、
+//   悪意あるフィードが javascript:/data: 等の危険プロトコルを混ぜてくる可能性がある。
+//   http:/https: のみ通し、それ以外は undefined を返して :href 属性自体を出さない(クリック不能化)。
+//   HataFeedEmojiApprove.vue の safeOriginalUrl と同じパターン。
+function safeLink(url: string | undefined | null): string | undefined {
+	if (typeof url !== 'string' || !url) return undefined;
+	try {
+		const p = new URL(url);
+		return (p.protocol === 'http:' || p.protocol === 'https:') ? url : undefined;
+	} catch { return undefined; }
+}
+
 async function fetchOneFeed(feed: RssFeed): Promise<RssItem[]> {
 	try {
 		const ep = new URL('/api/fetch-rss', location.origin);
@@ -342,10 +355,13 @@ async function fetchAllRss() {
 	rssFetching.value = true;
 	try {
 		// フィードごとに取得し、優先順位順(配列順)にラウンドロビンで混ぜる
-		const perFeed: RssItem[][] = [];
-		for (const feed of rssFeeds.value.slice(0, RSS_MAX_FEEDS)) {
-			perFeed.push((await fetchOneFeed(feed)).slice(0, 10));
-		}
+		// 旗鯖fork: 各フィードは独立したRSSサーバ(自分で登録)なので並列fetchで問題なし。
+		//   直列だと10件で数秒待たされるため並列化する。順序は配列順に固定したいので
+		//   Promise.all で配列の位置を保ったまま結果を受け取る。
+		const feeds = rssFeeds.value.slice(0, RSS_MAX_FEEDS);
+		const perFeed: RssItem[][] = await Promise.all(
+			feeds.map(async feed => (await fetchOneFeed(feed)).slice(0, 10)),
+		);
 		const merged: RssItem[] = [];
 		const maxLen = Math.max(0, ...perFeed.map(a => a.length));
 		for (let i = 0; i < maxLen; i++) {

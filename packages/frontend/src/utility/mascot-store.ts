@@ -49,6 +49,18 @@ function imgCacheKey(e: MascotExpression): string {
 	return IMG_CACHE_PREFIX + (e.driveFileId ?? e.url);
 }
 
+// 旗鯖fork(perf): 既存の ObjectURL を新しい blob URL で上書きする前に古い方を revoke する。
+//   表示中の <img> 参照がまだ生きている瞬間に revoke すると画像が消えるリスクがあるため、
+//   次フレーム(マイクロタスク)で新しい URL を Vue が反映した後に revoke を遅延させる。
+function replaceObjectUrl(memoKey: string, next: string) {
+	const prev = imageObjectUrls.value[memoKey];
+	imageObjectUrls.value[memoKey] = next;
+	if (prev && prev !== next && prev.startsWith('blob:')) {
+		// 1フレーム後に解放: 表示している <img src> が next に切り替わってから revoke する。
+		queueMicrotask(() => { try { URL.revokeObjectURL(prev); } catch { /* noop */ } });
+	}
+}
+
 // 1枚の画像を取得(キャッシュ優先)。dataのupdatedAtが変わっていれば作り直す。
 async function resolveImage(e: MascotExpression, dataUpdatedAt: number): Promise<void> {
 	const key = imgCacheKey(e);
@@ -56,7 +68,7 @@ async function resolveImage(e: MascotExpression, dataUpdatedAt: number): Promise
 	try {
 		const cached = await idbGet(key) as { updatedAt: number; blob: Blob } | undefined;
 		if (cached && cached.updatedAt === dataUpdatedAt && cached.blob instanceof Blob) {
-			imageObjectUrls.value[memoKey] = URL.createObjectURL(cached.blob);
+			replaceObjectUrl(memoKey, URL.createObjectURL(cached.blob));
 			return;
 		}
 		// キャッシュ無し or 古い -> fetch して Blob を保存
@@ -64,10 +76,10 @@ async function resolveImage(e: MascotExpression, dataUpdatedAt: number): Promise
 		if (!res.ok) throw new Error('fetch failed');
 		const blob = await res.blob();
 		try { await idbSet(key, { updatedAt: dataUpdatedAt, blob }); } catch { /* localStorageフォールバック時はBlob保存不可。URL直表示にフォールバック */ }
-		imageObjectUrls.value[memoKey] = URL.createObjectURL(blob);
+		replaceObjectUrl(memoKey, URL.createObjectURL(blob));
 	} catch {
 		// 取得失敗時は元のURLを直接使う(最低限表示はできる)
-		imageObjectUrls.value[memoKey] = e.url;
+		replaceObjectUrl(memoKey, e.url);
 	}
 }
 
@@ -84,6 +96,18 @@ function revokeAll() {
 		if (u.startsWith('blob:')) URL.revokeObjectURL(u);
 	}
 	imageObjectUrls.value = {};
+}
+
+// 旗鯖fork(perf): タブを閉じる/リロード時に残った ObjectURL を解放してリークを防ぐ。
+//   ページ遷移(SPA内)では発火しないので、replaceObjectUrl 側で逐次回収するのと両輪。
+if (typeof window !== 'undefined') {
+	window.addEventListener('beforeunload', () => {
+		for (const u of Object.values(imageObjectUrls.value)) {
+			if (u.startsWith('blob:')) {
+				try { URL.revokeObjectURL(u); } catch { /* noop */ }
+			}
+		}
+	});
 }
 
 // データを読み込む。キャッシュを即時反映し、サーバーと updatedAt が違えば更新する。
