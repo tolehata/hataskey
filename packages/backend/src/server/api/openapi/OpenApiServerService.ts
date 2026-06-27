@@ -21,10 +21,10 @@ export class OpenApiServerService {
 
 	@bindThis
 	public createServer(fastify: FastifyInstance, _options: FastifyPluginOptions, done: (err?: Error) => void) {
-		fastify.get('/api-doc', async (_request, reply) => {
+		fastify.get('/api-doc', (_request, reply) => {
 			reply.header('Cache-Control', 'public, max-age=86400');
 			reply.type('text/html; charset=utf-8');
-			reply.send(await ApiDocPage());
+			reply.send(ApiDocPage());
 		});
 		fastify.get('/api.json', (_request, reply) => {
 			reply.header('Cache-Control', 'public, max-age=600');

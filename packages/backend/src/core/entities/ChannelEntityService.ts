@@ -5,11 +5,14 @@
 
 import { Inject, Injectable } from '@nestjs/common';
 import { DI } from '@/di-symbols.js';
-import type { ChannelFavoritesRepository, ChannelFollowingsRepository, ChannelsRepository, DriveFilesRepository, NotesRepository } from '@/models/_.js';
+import type { ChannelFavoritesRepository, ChannelFollowingsRepository, ChannelMembersRepository, ChannelsRepository, DriveFilesRepository, NotesRepository } from '@/models/_.js';
 import type { Packed } from '@/misc/json-schema.js';
 import type { } from '@/models/Blocking.js';
 import type { MiUser } from '@/models/User.js';
 import type { MiChannel } from '@/models/Channel.js';
+import type { MiChannelFollowing } from '@/models/ChannelFollowing.js';
+import type { MiChannelFavorite } from '@/models/ChannelFavorite.js';
+import type { MiChannelMember } from '@/models/ChannelMember.js';
 import { bindThis } from '@/decorators.js';
 import { IdService } from '@/core/IdService.js';
 import { ChannelService } from '@/core/ChannelService.js';
@@ -29,6 +32,10 @@ export class ChannelEntityService {
 
 		@Inject(DI.channelFavoritesRepository)
 		private channelFavoritesRepository: ChannelFavoritesRepository,
+
+		// 旗鯖fork: packMany でのプライベートチャンネルのメンバー判定バッチに使用。
+		@Inject(DI.channelMembersRepository)
+		private channelMembersRepository: ChannelMembersRepository,
 
 		@Inject(DI.notesRepository)
 		private notesRepository: NotesRepository,
@@ -212,9 +219,9 @@ export class ChannelEntityService {
 				// canManage 用の isModerator(1 回だけ呼ぶ)。
 				this.roleService.isModerator({ id: meId }),
 			]);
-			followingSet = new Set(followings.map(f => f.followeeId));
-			favoritedSet = new Set(favorites.map(f => f.channelId));
-			memberSet = new Set(members.map(m => m.channelId));
+			followingSet = new Set(followings.map((f: MiChannelFollowing) => f.followeeId));
+			favoritedSet = new Set(favorites.map((f: MiChannelFavorite) => f.channelId));
+			memberSet = new Set(members.map((m: MiChannelMember) => m.channelId));
 			iAmModerator = isMod;
 		}
 

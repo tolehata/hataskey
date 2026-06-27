@@ -129,7 +129,8 @@ export class ClientServerService {
 	 */
 	@bindThis
 	private generatePlainIconSvg(size: number): string {
-		const seed = this.meta.uri || this.config.host || 'hataskey';
+		// 旗鯖fork: MiMeta には uri プロパティがないため、本家慣例どおり Config.url を使う。
+		const seed = this.config.url || this.config.host || 'hataskey';
 		let hash = 0;
 		for (let i = 0; i < seed.length; i++) {
 			hash = ((hash << 5) - hash) + seed.charCodeAt(i);
@@ -644,7 +645,7 @@ export class ClientServerService {
 					id: request.params.note,
 					visibility: In(['public', 'home']),
 				},
-				relations: ['user', 'reply', 'renote'],
+				relations: { user: true, reply: true, renote: true },
 			});
 
 			if (
@@ -889,7 +890,7 @@ export class ClientServerService {
 				where: {
 					id: request.params.note,
 				},
-				relations: ['user', 'reply', 'renote'],
+				relations: { user: true, reply: true, renote: true },
 			});
 
 			if (note == null) return;

@@ -16,6 +16,8 @@ export const meta = {
 	tags: ['admin'],
 	requireCredential: true,
 	requireModerator: true,
+	requireAdmin: true,
+	kind: 'write:admin:approve-registration',
 
 	errors: {
 		noSuchApplication: {
@@ -27,6 +29,11 @@ export const meta = {
 			message: 'This application has already been processed.',
 			code: 'ALREADY_PROCESSED',
 			id: 'b0000001-0001-0001-0001-000000000002',
+		},
+		missingApplicantData: {
+			message: 'Applicant data (username or email) is missing on the application.',
+			code: 'MISSING_APPLICANT_DATA',
+			id: 'b0000001-0001-0001-0001-000000000003',
 		},
 	},
 } as const;
@@ -70,16 +77,25 @@ export default class extends Endpoint<typeof meta, typeof paramDef> {
 				throw new ApiError(meta.errors.alreadyProcessed);
 			}
 
+			// 旗鯖fork: reject 時に username/hashedPassword は null にされる仕様のため
+			// 承認時は型上 null になり得ない (status === 'pending' なら必ず値がある) が
+			// 型システムで保証できないので明示的に検証する。email も同様。
+			if (application.username == null || application.hashedPassword == null || application.email == null) {
+				throw new ApiError(meta.errors.missingApplicantData);
+			}
+			const username = application.username;
+			const email = application.email;
+
 			// SignupService.signup() に passwordHash を渡してユーザー作成
 			// （SignupService は既に passwordHash パラメータをサポート済み）
 			const { account } = await this.signupService.signup({
-				username: application.username,
+				username,
 				passwordHash: application.hashedPassword,
 			});
 
 			// メールアドレスをプロフィールに設定
 			await this.userProfilesRepository.update({ userId: account.id }, {
-				email: application.email,
+				email,
 				emailVerified: true,
 			});
 
@@ -95,13 +111,13 @@ export default class extends Endpoint<typeof meta, typeof paramDef> {
 			const serverUrl = this.config.url;
 
 			await this.emailService.sendEmail(
-				application.email,
+				email,
 				`【${serverName}】アカウント登録申請が承認されました`,
 				// HTML
 				[
 					`<h2>アカウント登録申請が承認されました</h2>`,
 					`<p><b>${serverName}</b> へのアカウント登録申請が承認されました。</p>`,
-					`<p><strong>ユーザーID:</strong> @${application.username}</p>`,
+					`<p><strong>ユーザーID:</strong> @${username}</p>`,
 					`<p>サーバーにログインしてご利用を開始してください。</p>`,
 					`<p><a href="${serverUrl}">${serverUrl}</a></p>`,
 					`<hr>`,
@@ -112,7 +128,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> {
 				// plaintext
 				[
 					`${serverName} へのアカウント登録申請が承認されました。`,
-					`ユーザーID: @${application.username}`,
+					`ユーザーID: @${username}`,
 					`ログインURL: ${serverUrl}`,
 					`※このメールアドレスは今後、セキュリティ通知の送信先として使用されます。`,
 				].join('\n'),

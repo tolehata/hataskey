@@ -56,6 +56,8 @@ export const QUEUE_TYPES = [
 	'objectStorage',
 	'userWebhookDeliver',
 	'systemWebhookDeliver',
+	// 旗鯖fork: 宴(utage)セッション解決ジョブ
+	'utageResolve',
 ] as const;
 
 const REPEATABLE_SYSTEM_JOB_DEF = [{

@@ -326,6 +326,11 @@ export function createPostgresDataSource(config: Config) {
 			statement_timeout: 1000 * 10,
 			...config.db.extra,
 		},
+		// 旗鯖fork: 本家43534d62(#17476) TypeORM v1 対応 — v0.3系の null/undefined を where 句で無視する旧挙動を温存
+		invalidWhereValuesBehavior: {
+			null: 'ignore',
+			undefined: 'ignore',
+		},
 		...(config.dbReplications ? {
 			replication: {
 				master: {

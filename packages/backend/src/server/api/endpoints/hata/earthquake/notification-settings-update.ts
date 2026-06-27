@@ -24,12 +24,15 @@ export const meta = {
 	limit: { duration: ms('1min'), max: 30 },
 } as const;
 
+// 旗鯖fork: 震度しきい値の許容値(10/20/30/40/45/50/55/60/70 はそれぞれ 1/2/3/4/5弱/5強/6弱/6強/7 に対応)。
+//   JSON Schema 型定義の enum は ReadonlyArray<string | null> しか受け付けないため、
+//   paramDef では型のみを宣言し、許容値チェックはサービス層(EarthquakeService.updateSettings)で行う。
 export const paramDef = {
 	type: 'object',
 	properties: {
 		enabled: { type: 'boolean' },
 		mode: { type: 'string', enum: ['intensity', 'pref'] },
-		threshold: { type: 'integer', enum: [10, 20, 30, 40, 45, 50, 55, 60, 70] },
+		threshold: { type: 'integer' },
 		pref: { type: 'string', nullable: true, maxLength: 32 },
 	},
 	required: [],

@@ -74,7 +74,7 @@ export class WhackEmojiRoomService {
 				state: 'waiting',
 				id: MoreThan(this.idService.gen(Date.now() - 1000 * 60 * 10)),
 			},
-			relations: ['host1'],
+			relations: { host1: true },
 			order: { createdAt: 'DESC' },
 			take: 20,
 		});
@@ -84,7 +84,7 @@ export class WhackEmojiRoomService {
 	public async getRoom(roomId: string): Promise<MiWhackEmojiRoom | null> {
 		return this.whackEmojiRoomsRepository.findOne({
 			where: { id: roomId },
-			relations: ['host1', 'host2'],
+			relations: { host1: true, host2: true },
 		});
 	}
 

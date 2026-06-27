@@ -474,6 +474,8 @@ export class WebhookTestService {
 			followersCount: user.followersCount,
 			followingCount: user.followingCount,
 			notesCount: user.notesCount,
+			// 旗鯖fork: 宴成功回数(ダミー値0でテストペイロードに必須プロパティを充足)
+			utageSuccessCount: 0,
 			pinnedNoteIds: [],
 			pinnedNotes: [],
 			pinnedPageId: null,

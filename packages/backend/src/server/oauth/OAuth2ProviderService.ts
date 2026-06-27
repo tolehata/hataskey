@@ -10,7 +10,7 @@ import httpLinkHeader from 'http-link-header';
 import ipaddr from 'ipaddr.js';
 import fastifyCors from '@fastify/cors';
 import { verifyChallenge } from 'pkce-challenge';
-import { permissions as kinds } from 'misskey-js';
+import { permissions as kinds } from 'cherrypick-js';
 import {
 	AccessDeniedError,
 	InvalidGrantError,

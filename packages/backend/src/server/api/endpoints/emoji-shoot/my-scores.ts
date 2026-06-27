@@ -3,7 +3,7 @@ import { Endpoint } from '@/server/api/endpoint-base.js';
 import type { EmojiShootRecordsRepository } from '@/models/_.js';
 import { DI } from '@/di-symbols.js';
 
-export const meta = { requireCredential: true } as const;
+export const meta = { requireCredential: true, kind: 'read:account' } as const;
 export const paramDef = { type: 'object', properties: { limit: { type: 'integer', minimum: 1, maximum: 30, default: 10 } }, required: [] } as const;
 
 @Injectable()

@@ -312,7 +312,7 @@ export class ChatEntityService {
 					where: {
 						id: In(rooms.filter((room): room is string => typeof room === 'string')),
 					},
-					relations: ['owner'],
+					relations: { owner: true },
 				}),
 			);
 		}

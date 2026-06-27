@@ -107,7 +107,7 @@ export class ReversiService implements OnApplicationShutdown, OnModuleInit {
 					{ id: MoreThan(this.idService.gen(Date.now() - 1000 * 60 * 3)), user1Id: me.id, user2Id: targetUser.id, isStarted: false },
 					{ id: MoreThan(this.idService.gen(Date.now() - 1000 * 60 * 3)), user1Id: targetUser.id, user2Id: me.id, isStarted: false },
 				],
-				relations: ['user1', 'user2'],
+				relations: { user1: true, user2: true },
 				order: { id: 'DESC' },
 			});
 			if (games.length > 0) {
@@ -154,7 +154,7 @@ export class ReversiService implements OnApplicationShutdown, OnModuleInit {
 					{ id: MoreThan(this.idService.gen(Date.now() - 1000 * 60 * 3)), user1Id: me.id, isStarted: false },
 					{ id: MoreThan(this.idService.gen(Date.now() - 1000 * 60 * 3)), user2Id: me.id, isStarted: false },
 				],
-				relations: ['user1', 'user2'],
+				relations: { user1: true, user2: true },
 				order: { id: 'DESC' },
 			});
 			if (games.length > 0) {
@@ -299,7 +299,7 @@ export class ReversiService implements OnApplicationShutdown, OnModuleInit {
 			bw: 'random',
 			isLlotheo: false,
 			noIrregularRules: options.noIrregularRules,
-		}, { relations: ['user1', 'user2'] });
+		}, { relations: { user1: true, user2: true } });
 		this.cacheGame(game);
 
 		const packed = await this.reversiGameEntityService.packDetail(game);
@@ -404,13 +404,13 @@ export class ReversiService implements OnApplicationShutdown, OnModuleInit {
 	}
 
 	@bindThis
-	public isValidReversiUpdateKey(key: unknown): key is typeof reversiUpdateKeys[number] {
+	public isValidReversiUpdateKey(key: unknown): key is typeof reversiUpdateKeys[number] & keyof MiReversiGame {
 		if (typeof key !== 'string') return false;
 		return (reversiUpdateKeys as string[]).includes(key);
 	}
 
 	@bindThis
-	public isValidReversiUpdateValue<K extends typeof reversiUpdateKeys[number]>(key: K, value: unknown): value is MiReversiGame[K] {
+	public isValidReversiUpdateValue<K extends typeof reversiUpdateKeys[number] & keyof MiReversiGame>(key: K, value: unknown): value is MiReversiGame[K] {
 		switch (key) {
 			case 'map':
 				return Array.isArray(value) && value.every(row => typeof row === 'string');
@@ -430,7 +430,7 @@ export class ReversiService implements OnApplicationShutdown, OnModuleInit {
 	}
 
 	@bindThis
-	public async updateSettings<K extends typeof reversiUpdateKeys[number]>(gameId: MiReversiGame['id'], user: MiUser, key: K, value: MiReversiGame[K]) {
+	public async updateSettings<K extends typeof reversiUpdateKeys[number] & keyof MiReversiGame>(gameId: MiReversiGame['id'], user: MiUser, key: K, value: MiReversiGame[K]) {
 		const game = await this.get(gameId);
 		if (game == null) throw new Error('game not found');
 		if (game.isStarted) return;
@@ -604,7 +604,7 @@ export class ReversiService implements OnApplicationShutdown, OnModuleInit {
 		} else {
 			const game = await this.reversiGamesRepository.findOne({
 				where: { id },
-				relations: ['user1', 'user2'],
+				relations: { user1: true, user2: true },
 			});
 			if (game == null) return null;
 

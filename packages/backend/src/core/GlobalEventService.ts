@@ -213,7 +213,9 @@ export interface ReversiGameEventTypes {
 		key: string;
 		value: any;
 	};
-	log: Reversi.Serializer.Log & { id: string | null };
+	// 旗鯖fork: built された misskey-reversi の .d.ts に Log 型 export が無いケースに備え、
+	// 関数戻り値から型を導出する(deserializeLogs の戻り値 Log[] の要素 = 元の Log 型と同じ)
+	log: ReturnType<typeof Reversi.Serializer.deserializeLogs>[number] & { id: string | null };
 	started: {
 		game: Packed<'ReversiGameDetailed'>;
 	};

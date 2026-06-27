@@ -22,6 +22,10 @@ const CODE_TSUNAMI = 552;    // 津波予報
 const CACHE_TTL_MS = 30 * 1000;
 const MAX_LIMIT = 50;
 const UA = 'Hataskey-earthquake/1.0 (+P2PQuake)';
+// 旗鯖fork: 通知しきい値の許容値(P2PQuake の scale 値) — 1/2/3/4/5弱/5強/6弱/6強/7。
+//   JSON Schema 型側で enum 制約を付けられないため、ここで検証する。
+const ALLOWED_THRESHOLDS = new Set<number>([10, 20, 30, 40, 45, 50, 55, 60, 70]);
+const DEFAULT_THRESHOLD = 40;
 
 interface CodeCache { at: number; limit: number; data: unknown[]; }
 
@@ -141,12 +145,16 @@ export class EarthquakeService implements OnApplicationBootstrap, OnApplicationS
 
 	@bindThis
 	public async updateSettings(userId: string, patch: { enabled?: boolean; mode?: string; threshold?: number; pref?: string | null }): Promise<void> {
+		// 旗鯖fork: paramDef 側で enum を付けられないため、ここで許容値外を弾く。
+		if (patch.threshold !== undefined && !ALLOWED_THRESHOLDS.has(patch.threshold)) {
+			throw new Error(`invalid threshold: ${patch.threshold}`);
+		}
 		const cur = await this.earthquakeNotificationsRepository.findOneBy({ userId });
 		const next = {
 			userId,
 			enabled: patch.enabled ?? cur?.enabled ?? false,
 			mode: patch.mode ?? cur?.mode ?? 'intensity',
-			threshold: patch.threshold ?? cur?.threshold ?? 40,
+			threshold: patch.threshold ?? cur?.threshold ?? DEFAULT_THRESHOLD,
 			// 都道府県は「通知が有効」かつ「居住地モード」のときだけ保存する(プライバシー)。
 			//   通知OFF・別モードに変えた場合は必ず null にしてサーバーから削除する。
 			pref: null as string | null,

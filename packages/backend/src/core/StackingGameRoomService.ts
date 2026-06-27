@@ -85,7 +85,7 @@ export class StackingGameRoomService {
 				state: 'waiting',
 				id: MoreThan(this.idService.gen(Date.now() - 1000 * 60 * 10)),
 			},
-			relations: ['host1'],
+			relations: { host1: true },
 			order: { createdAt: 'DESC' },
 			take: 20,
 		});
@@ -95,7 +95,7 @@ export class StackingGameRoomService {
 	public async getRoom(roomId: string): Promise<MiStackingGameRoom | null> {
 		return this.stackingGameRoomsRepository.findOne({
 			where: { id: roomId },
-			relations: ['host1', 'host2'],
+			relations: { host1: true, host2: true },
 		});
 	}
 

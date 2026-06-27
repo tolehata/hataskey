@@ -69,7 +69,7 @@ class ReversiGameChannel extends Channel {
 	}
 
 	@bindThis
-	private async updateSettings<K extends typeof reversiUpdateKeys[number]>(key: K, value: MiReversiGame[K]) {
+	private async updateSettings<K extends typeof reversiUpdateKeys[number] & keyof MiReversiGame>(key: K, value: MiReversiGame[K]) {
 		if (this.user == null) return;
 
 		this.reversiService.updateSettings(this.gameId!, this.user, key, value);

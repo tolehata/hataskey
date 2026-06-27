@@ -311,7 +311,8 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 						// 吹き出しサイズ(0.6〜1.6)としっぽの左右
 						bubbleScale: clampRange(e.bubbleScale, 0.6, 1.6, 1),
 						bubbleTail: (e.bubbleTail === 'right' ? 'right' : 'left'),
-						motion: (['bounce', 'shake', 'sway', 'spin'].includes(e.motion) ? e.motion : 'none'),
+						// 旗鯖fork: e.motion は string | null | undefined のため、includes に渡す前に '' へ寄せる。
+						motion: (['bounce', 'shake', 'sway', 'spin'].includes(e.motion ?? '') ? e.motion : 'none'),
 						motionIntensity: clampRange(e.motionIntensity, 0.3, 2, 1),
 						questionEnabled: e.questionEnabled === true,
 						qBubbleX: clamp01(e.qBubbleX, 0.7),
@@ -492,7 +493,10 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				updatedAt,
 			};
 
-			await this.userProfilesRepository.update(me.id, { hataMascotData: data });
+			// 旗鯖fork: TypeORM v1 で update() の引数型が _QueryDeepPartialEntity に厳格化された影響により、
+			//   data 内の motion などの string literal 型が string と一致せず TS2322 となる。
+			//   data は上で sanitize / clamp / 許可リスト検証済みのため、as any で TypeORM の型チェックを回避する。
+			await this.userProfilesRepository.update(me.id, { hataMascotData: data } as any);
 
 			return { ok: true, updatedAt };
 		});
