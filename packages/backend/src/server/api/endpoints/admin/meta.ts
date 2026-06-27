@@ -127,14 +127,6 @@ export const meta = {
 				type: 'boolean',
 				optional: false, nullable: false,
 			},
-			translatorAvailable: {
-				type: 'boolean',
-				optional: false, nullable: false,
-			},
-			translatorType: {
-				type: 'string',
-				optional: false, nullable: true,
-			},
 			silencedHosts: {
 				type: 'array',
 				optional: true,
@@ -467,42 +459,6 @@ export const meta = {
 				type: 'string',
 				optional: false, nullable: true,
 			},
-			deeplAuthKey: {
-				type: 'string',
-				optional: false, nullable: true,
-			},
-			deeplIsPro: {
-				type: 'boolean',
-				optional: false, nullable: false,
-			},
-			ctav3SaKey: {
-				type: 'string',
-				optional: false, nullable: true,
-			},
-			ctav3ProjectId: {
-				type: 'string',
-				optional: false, nullable: true,
-			},
-			ctav3Location: {
-				type: 'string',
-				optional: false, nullable: true,
-			},
-			ctav3Model: {
-				type: 'string',
-				optional: false, nullable: true,
-			},
-			ctav3Glossary: {
-				type: 'string',
-				optional: false, nullable: true,
-			},
-			libreTranslateEndPoint: {
-				type: 'string',
-				optional: false, nullable: true,
-			},
-			libreTranslateApiKey: {
-				type: 'string',
-				optional: false, nullable: true,
-			},
 			defaultDarkTheme: {
 				type: 'string',
 				optional: false, nullable: true,
@@ -815,9 +771,6 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				clientOptions: instance.clientOptions,
 				enableEmail: instance.enableEmail,
 				enableServiceWorker: instance.enableServiceWorker,
-				// translatorAvailable: instance.deeplAuthKey != null,
-				translatorAvailable: instance.translatorType != null,
-				translatorType: instance.translatorType,
 				// pinnedPages: instance.pinnedPages,
 				// pinnedClipId: instance.pinnedClipId,
 				cacheRemoteFiles: instance.cacheRemoteFiles,
@@ -873,15 +826,6 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				remoteObjectStorageUseProxy: instance.remoteObjectStorageUseProxy,
 				remoteObjectStorageSetPublicRead: instance.remoteObjectStorageSetPublicRead,
 				remoteObjectStorageS3ForcePathStyle: instance.remoteObjectStorageS3ForcePathStyle,
-				deeplAuthKey: instance.deeplAuthKey,
-				deeplIsPro: instance.deeplIsPro,
-				ctav3SaKey: instance.ctav3SaKey,
-				ctav3ProjectId: instance.ctav3ProjectId,
-				ctav3Location: instance.ctav3Location,
-				ctav3Model: instance.ctav3Model,
-				ctav3Glossary: instance.ctav3Glossary,
-				libreTranslateEndPoint: instance.libreTranslateEndPoint,
-				libreTranslateApiKey: instance.libreTranslateApiKey,
 				enableIpLogging: instance.enableIpLogging,
 				enableActiveEmailValidation: instance.enableActiveEmailValidation,
 				enableVerifymailApi: instance.enableVerifymailApi,

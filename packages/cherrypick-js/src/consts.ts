@@ -209,8 +209,6 @@ export const rolePolicies = [
 	'canManageAvatarDecorations',
 	'canSearchNotes',
 	'canSearchUsers',
-	'canUseTranslator',
-	'canUseAutoTranslate',
 	'canHideAds',
 	'mascotMaxExpressions',
 	'mascotMaxPhrases',

@@ -433,14 +433,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 									</MkPreferenceContainer>
 								</SearchMarker>
 
-								<SearchMarker :keywords="['note', 'action', 'translate', 'show']">
-									<MkPreferenceContainer k="showTranslateButtonInNote">
-										<MkSwitch v-model="showTranslateButtonInNote">
-											<template #label><SearchLabel>{{ i18n.ts.showTranslateButtonInNote }}</SearchLabel> <span class="_beta">CherryPick</span></template>
-										</MkSwitch>
-									</MkPreferenceContainer>
-								</SearchMarker>
-
 								<div class="_gaps_s" style="margin: 1em 0;">
 									<div style="font-weight: bold; margin: 0 0 8px 0;">{{ i18n.ts.noteFooterButton }} <span class="_beta" style="vertical-align: middle;">CherryPick</span></div>
 
@@ -1202,15 +1194,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 								</MkPreferenceContainer>
 							</SearchMarker>
 
-							<SearchMarker :keywords="['auto', 'translate']">
-								<MkPreferenceContainer k="useAutoTranslate">
-									<MkSwitch v-model="useAutoTranslate" @update:modelValue="learnMoreAutoTranslate">
-										<template #label><SearchLabel>{{ i18n.ts.useAutoTranslate }}</SearchLabel> <span class="_beta">CherryPick</span></template>
-										<template v-if="!$i.policies.canUseAutoTranslate" #caption>{{ i18n.ts.cannotBeUsedFunc }} <a class="_link" @click="learnMoreCantUseAutoTranslate">{{ i18n.ts.learnMore }}</a></template>
-									</MkSwitch>
-								</MkPreferenceContainer>
-							</SearchMarker>
-
 							<SearchMarker :keywords="['welcome', 'toast']">
 								<MkPreferenceContainer k="welcomeBackToast">
 									<MkSwitch v-model="welcomeBackToast">
@@ -1481,7 +1464,6 @@ const collapseDefault = prefer.model('collapseDefault');
 const allMediaNoteCollapse = prefer.model('allMediaNoteCollapse');
 const showSubNoteFooterButton = prefer.model('showSubNoteFooterButton');
 const infoButtonForNoteActionsEnabled = prefer.model('infoButtonForNoteActionsEnabled');
-const showTranslateButtonInNote = prefer.model('showTranslateButtonInNote');
 const showGapBodyOfTheNote = prefer.model('showGapBodyOfTheNote');
 const showReplyButtonInNoteFooter = prefer.model('showReplyButtonInNoteFooter');
 const showRenoteButtonInNoteFooter = prefer.model('showRenoteButtonInNoteFooter');
@@ -1498,7 +1480,6 @@ const showNoAltTextWarning = prefer.model('showNoAltTextWarning');
 const alwaysShowCw = prefer.model('alwaysShowCw');
 const autoLoadMoreReplies = prefer.model('autoLoadMoreReplies');
 const autoLoadMoreConversation = prefer.model('autoLoadMoreConversation');
-const useAutoTranslate = prefer.model('useAutoTranslate');
 const welcomeBackToast = prefer.model('welcomeBackToast');
 const disableNyaize = prefer.model('disableNyaize');
 const requireRefreshBehavior = prefer.model('requireRefreshBehavior');
@@ -1618,7 +1599,6 @@ watch([
 	showNoteActionsOnlyHover,
 	showClipButtonInNoteFooter,
 	showReplyInNotification,
-	showTranslateButtonInNote,
 	showGapBodyOfTheNote,
 	showSubNoteFooterButton,
 	infoButtonForNoteActionsEnabled,
@@ -1637,7 +1617,6 @@ watch([
 
 watch([
 	enableInfiniteScroll,
-	useAutoTranslate,
 	disableNyaize,
 	forceCollapseAllRenotes,
 	collapseRenotes,
@@ -1793,27 +1772,6 @@ function resetReaction() {
 function getHTMLElement(ev: MouseEvent): HTMLElement {
 	const target = ev.currentTarget ?? ev.target;
 	return target as HTMLElement; // イベント発生元の HTML 要素を取得
-}
-
-async function learnMoreAutoTranslate() {
-	if (!useAutoTranslate.value) return;
-
-	const confirm = await os.confirm({
-		type: 'warning',
-		title: i18n.ts.useAutoTranslate,
-		text: i18n.ts.useAutoTranslateDescription,
-	});
-
-	if (confirm.canceled) useAutoTranslate.value = false;
-}
-
-function learnMoreCantUseAutoTranslate() {
-	os.alert({
-		type: 'info',
-		title: i18n.ts.useAutoTranslate,
-		text: i18n.tsx.cantUseThisFunctionDescription({ name: i18n.ts.useAutoTranslate }),
-		caption: i18n.tsx.cantUseThisFunctionCaption({ name: i18n.ts.useAutoTranslate }),
-	});
 }
 
 function removeTrustedDomains() {

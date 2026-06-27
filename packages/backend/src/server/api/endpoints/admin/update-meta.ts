@@ -100,16 +100,6 @@ export const paramDef = {
 				type: 'string',
 			},
 		},
-		translatorType: { type: 'string', nullable: true },
-		deeplAuthKey: { type: 'string', nullable: true },
-		deeplIsPro: { type: 'boolean' },
-		ctav3SaKey: { type: 'string', nullable: true },
-		ctav3ProjectId: { type: 'string', nullable: true },
-		ctav3Location: { type: 'string', nullable: true },
-		ctav3Model: { type: 'string', nullable: true },
-		ctav3Glossary: { type: 'string', nullable: true },
-		libreTranslateEndPoint: { type: 'string', nullable: true },
-		libreTranslateApiKey: { type: 'string', nullable: true },
 		enableEmail: { type: 'boolean' },
 		email: { type: 'string', nullable: true },
 		smtpSecure: { type: 'boolean' },
@@ -649,54 +639,6 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 
 			if (ps.remoteObjectStorageS3ForcePathStyle !== undefined) {
 				set.remoteObjectStorageS3ForcePathStyle = ps.remoteObjectStorageS3ForcePathStyle;
-			}
-
-			if (ps.translatorType !== undefined) {
-				if (ps.translatorType === '') {
-					set.translatorType = null;
-				} else {
-					set.translatorType = ps.translatorType;
-				}
-			}
-
-			if (ps.deeplAuthKey !== undefined) {
-				if (ps.deeplAuthKey === '') {
-					set.deeplAuthKey = null;
-				} else {
-					set.deeplAuthKey = ps.deeplAuthKey;
-				}
-			}
-
-			if (ps.deeplIsPro !== undefined) {
-				set.deeplIsPro = ps.deeplIsPro;
-			}
-
-			if (ps.ctav3SaKey !== undefined) {
-				set.ctav3SaKey = ps.ctav3SaKey;
-			}
-
-			if (ps.ctav3ProjectId !== undefined) {
-				set.ctav3ProjectId = ps.ctav3ProjectId;
-			}
-
-			if (ps.ctav3Location !== undefined) {
-				set.ctav3Location = ps.ctav3Location;
-			}
-
-			if (ps.ctav3Model !== undefined) {
-				set.ctav3Model = ps.ctav3Model;
-			}
-
-			if (ps.ctav3Glossary !== undefined) {
-				set.ctav3Glossary = ps.ctav3Glossary;
-			}
-
-			if (ps.libreTranslateEndPoint !== undefined) {
-				set.libreTranslateEndPoint = ps.libreTranslateEndPoint;
-			}
-
-			if (ps.libreTranslateApiKey !== undefined) {
-				set.libreTranslateApiKey = ps.libreTranslateApiKey;
 			}
 
 			if (ps.enableIpLogging !== undefined) {

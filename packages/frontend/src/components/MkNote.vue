@@ -116,42 +116,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 								:enableEmojiMenuReaction="!!$i"
 								class="_selectable"
 							/>
-							<div v-if="prefer.s.showTranslateButtonInNote && $i && (!prefer.s.useAutoTranslate || (!$i.policies.canUseAutoTranslate || (prefer.s.useAutoTranslate && (isLong || appearNote.cw != null || !showContent)))) && instance.translatorAvailable && $i.policies.canUseTranslator && appearNote.text && isForeignLanguage" style="padding: 5px 0; color: var(--MI_THEME-accent);">
-								<button v-if="!(translating || translation)" ref="translateButton" class="_button" @click.stop="translate()">{{ i18n.ts.translateNote }}</button>
-								<button v-else class="_button" @click.stop="translation = null">{{ i18n.ts.close }}</button>
-							</div>
-							<div v-if="translating || translation" :class="$style.translation">
-								<MkLoading v-if="translating" mini/>
-								<div v-else-if="translation">
-									<b>{{ i18n.tsx.translatedFrom({ x: translation.sourceLang }) }}:</b><hr style="margin: 10px 0;">
-									<Mfm
-										:text="translation.text"
-										:author="appearNote.user"
-										:nyaize="prefer.s.disableNyaize || noNyaize ? false : 'respect'"
-										:emojiUrls="appearNote.emojis"
-										:enableEmojiMenu="!!$i"
-										:enableEmojiMenuReaction="!!$i"
-										class="_selectable"
-										@click.stop
-									/>
-									<MkPoll
-										v-if="appearNote.poll"
-										:noteId="appearNote.id"
-										:multiple="appearNote.poll.multiple"
-										:expiresAt="appearNote.poll.expiresAt"
-										:choices="$appearNote.pollChoices"
-										:author="appearNote.user"
-										:emojiUrls="appearNote.emojis"
-										:class="$style.poll"
-										isTranslation
-										@click.stop
-										/>
-									<div v-if="'translator' in translation && translation.translator === 'ctav3'" style="margin-top: 10px; padding: 0 0 15px;">
-										<img v-if="!store.s.darkMode" src="/client-assets/color-short.svg" alt="" style="float: right;">
-										<img v-else src="/client-assets/white-short.svg" alt="" style="float: right;"/>
-									</div>
-								</div>
-							</div>
 							<div v-if="viewTextSource">
 								<hr style="margin: 10px 0;">
 								<pre style="margin: initial; white-space: pre-wrap; word-wrap: break-word;"><small>{{ appearNote.text }}</small></pre>
@@ -228,42 +192,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 						:enableEmojiMenuReaction="!!$i"
 						class="_selectable"
 					/>
-					<div v-if="prefer.s.showTranslateButtonInNote && $i && (!prefer.s.useAutoTranslate || (!$i.policies.canUseAutoTranslate || (prefer.s.useAutoTranslate && (isLong || appearNote.cw != null || !showContent)))) && instance.translatorAvailable && $i.policies.canUseTranslator && appearNote.text && isForeignLanguage" style="padding: 5px 0; color: var(--MI_THEME-accent);">
-						<button v-if="!(translating || translation)" ref="translateButton" class="_button" @click.stop="translate()">{{ i18n.ts.translateNote }}</button>
-						<button v-else class="_button" @click.stop="translation = null">{{ i18n.ts.close }}</button>
-					</div>
-					<div v-if="translating || translation" :class="$style.translation">
-						<MkLoading v-if="translating" mini/>
-						<div v-else-if="translation">
-							<b>{{ i18n.tsx.translatedFrom({ x: translation.sourceLang }) }}:</b><hr style="margin: 10px 0;">
-							<Mfm
-								:text="translation.text"
-								:author="appearNote.user"
-								:nyaize="prefer.s.disableNyaize || noNyaize ? false : 'respect'"
-								:emojiUrls="appearNote.emojis"
-								:enableEmojiMenu="!!$i"
-								:enableEmojiMenuReaction="!!$i"
-								class="_selectable"
-								@click.stop
-							/>
-							<MkPoll
-								v-if="appearNote.poll"
-								:noteId="appearNote.id"
-								:multiple="appearNote.poll.multiple"
-								:expiresAt="appearNote.poll.expiresAt"
-								:choices="$appearNote.pollChoices"
-								:author="appearNote.user"
-								:emojiUrls="appearNote.emojis"
-								:class="$style.poll"
-								isTranslation
-								@click.stop
-							/>
-							<div v-if="'translator' in translation && translation.translator === 'ctav3'" style="margin-top: 10px; padding: 0 0 15px;">
-								<img v-if="!store.s.darkMode" src="/client-assets/color-short.svg" alt="" style="float: right;">
-								<img v-else src="/client-assets/white-short.svg" alt="" style="float: right;"/>
-							</div>
-						</div>
-					</div>
 					<div v-if="viewTextSource">
 						<hr style="margin: 10px 0;">
 						<pre style="margin: initial; white-space: pre-wrap; word-wrap: break-word;"><small>{{ appearNote.text }}</small></pre>
@@ -626,8 +554,6 @@ const collapsed = ref(appearNote.cw == null && ((isLong && prefer.s.collapseLong
 const muted = ref(checkMute(appearNote, $i?.mutedWords));
 const hardMuted = ref(props.withHardMute && checkMute(appearNote, $i?.hardMutedWords, true));
 const showSoftWordMutedWord = computed(() => prefer.s.showSoftWordMutedWord);
-const translation = ref<Misskey.entities.NotesTranslateResponse | null>(null);
-const translating = ref(false);
 const canRenote = computed(() => ['public', 'home'].includes(appearNote.visibility) || (appearNote.visibility === 'followers' && appearNote.userId === $i?.id));
 const renoteCollapsed = ref(
 	isRenote && (
@@ -1105,7 +1031,7 @@ function onContextmenu(ev: MouseEvent): void {
 		ev.preventDefault();
 		react();
 	} else {
-		const { menu, cleanup } = getNoteMenu({ note: note, collapsed, translation, translating, viewTextSource, noNyaize, currentClip: currentClip?.value });
+		const { menu, cleanup } = getNoteMenu({ note: note, collapsed, viewTextSource, noNyaize, currentClip: currentClip?.value });
 		os.contextMenu(menu, ev).then(focus).finally(cleanup);
 	}
 }
@@ -1117,7 +1043,7 @@ function showMenu(): void {
 
 	haptic();
 
-	const { menu, cleanup } = getNoteMenu({ note: note, collapsed, translation, translating, viewTextSource, noNyaize, currentClip: currentClip?.value });
+	const { menu, cleanup } = getNoteMenu({ note: note, collapsed, viewTextSource, noNyaize, currentClip: currentClip?.value });
 	os.popupMenu(menu, menuButton.value).then(focus).finally(cleanup);
 }
 
@@ -1129,37 +1055,6 @@ async function clip(): Promise<void> {
 	}
 
 	os.popupMenu(await getNoteClipMenu({ note: note, currentClip: currentClip?.value }), clipButton.value).then(focus);
-}
-
-const isForeignLanguage: boolean = appearNote.text != null && (() => {
-	const targetLang = (miLocalStorage.getItem('lang') ?? navigator.language).slice(0, 2);
-	const postLang = detectLanguage(appearNote.text);
-	const choicesLang = appearNote.poll?.choices.map((choice) => choice.text).join(' ') ?? '';
-	const pollLang = detectLanguage(choicesLang);
-	return postLang !== '' && (postLang !== targetLang || pollLang !== targetLang);
-})();
-
-if (prefer.s.useAutoTranslate && instance.translatorAvailable && $i && $i.policies.canUseTranslator && $i.policies.canUseAutoTranslate && !isLong && (appearNote.cw == null || showContent.value) && appearNote.text && isForeignLanguage) translate();
-
-async function translate(): Promise<void> {
-	if (translation.value != null) return;
-	collapsed.value = false;
-	translating.value = true;
-
-	haptic();
-
-	if (props.mock) {
-		return;
-	}
-
-	const res = await misskeyApi('notes/translate', {
-		noteId: appearNote.id,
-		targetLang: miLocalStorage.getItem('lang') ?? navigator.language,
-	});
-	translating.value = false;
-	translation.value = res;
-
-	hapticConfirm();
 }
 
 function showRenoteMenu(): void {

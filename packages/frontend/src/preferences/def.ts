@@ -557,9 +557,6 @@ export const PREF_DEF = definePreferences({
 	infoButtonForNoteActionsEnabled: {
 		default: true,
 	},
-	showTranslateButtonInNote: {
-		default: true,
-	},
 	showGapBodyOfTheNote: {
 		default: true,
 	},
@@ -658,9 +655,6 @@ export const PREF_DEF = definePreferences({
 		default: false,
 	},
 	autoLoadMoreConversation: {
-		default: false,
-	},
-	useAutoTranslate: {
 		default: false,
 	},
 	welcomeBackToast: {

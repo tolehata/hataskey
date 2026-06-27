@@ -35,6 +35,7 @@ import type {
 	AdminAnnouncementsListRequest,
 	AdminAnnouncementsListResponse,
 	AdminAnnouncementsUpdateRequest,
+	AdminApproveRegistrationRequest,
 	AdminAvatarDecorationsCopyRequest,
 	AdminAvatarDecorationsCopyResponse,
 	AdminAvatarDecorationsCreateRequest,
@@ -81,6 +82,7 @@ import type {
 	AdminGetTableStatsResponse,
 	AdminGetUserIpsRequest,
 	AdminGetUserIpsResponse,
+	AdminHataConsentListRequest,
 	AdminInviteCreateRequest,
 	AdminInviteCreateResponse,
 	AdminInviteListRequest,
@@ -103,6 +105,9 @@ import type {
 	AdminQueueShowJobLogsRequest,
 	AdminQueueShowJobLogsResponse,
 	AdminQueueStatsResponse,
+	AdminRegistrationApplicationsRequest,
+	AdminRegistrationApplicationsResponse,
+	AdminRejectRegistrationRequest,
 	AdminRelaysAddRequest,
 	AdminRelaysAddResponse,
 	AdminRelaysListResponse,
@@ -187,6 +192,7 @@ import type {
 	BubbleGameRankingRequest,
 	BubbleGameRankingResponse,
 	BubbleGameRegisterRequest,
+	ChannelsAddMemberRequest,
 	ChannelsCreateRequest,
 	ChannelsCreateResponse,
 	ChannelsFavoriteRequest,
@@ -194,9 +200,14 @@ import type {
 	ChannelsFollowRequest,
 	ChannelsFollowedRequest,
 	ChannelsFollowedResponse,
+	ChannelsJoinRequest,
+	ChannelsJoinResponse,
+	ChannelsMembersRequest,
+	ChannelsMembersResponse,
 	ChannelsMyFavoritesResponse,
 	ChannelsOwnedRequest,
 	ChannelsOwnedResponse,
+	ChannelsRemoveMemberRequest,
 	ChannelsSearchRequest,
 	ChannelsSearchResponse,
 	ChannelsShowRequest,
@@ -328,6 +339,9 @@ import type {
 	EmailAddressAvailableResponse,
 	EmojiRequest,
 	EmojiResponse,
+	EmojiShootMyScoresRequest,
+	EmojiShootRankingRequest,
+	EmojiShootRegisterRequest,
 	EmojisResponse,
 	EndpointRequest,
 	EndpointResponse,
@@ -411,6 +425,71 @@ import type {
 	HashtagsTrendResponse,
 	HashtagsUsersRequest,
 	HashtagsUsersResponse,
+	HataConsentUpdateRequest,
+	HataConsentUpdateResponse,
+	HataEarthquakeHistoryRequest,
+	HataEarthquakeHistoryResponse,
+	HataEarthquakeNotificationSettingsResponse,
+	HataEarthquakeNotificationSettingsUpdateRequest,
+	HataEarthquakeNotificationSettingsUpdateResponse,
+	HataEarthquakeTsunamiRequest,
+	HataEarthquakeTsunamiResponse,
+	HataFeedbackAgreeRequest,
+	HataFeedbackAgreeResponse,
+	HataFeedbackAvailableResponse,
+	HataFeedbackCommentsRequest,
+	HataFeedbackCommentsResponse,
+	HataFeedbackCommentsCreateRequest,
+	HataFeedbackCommentsCreateResponse,
+	HataFeedbackCommentsDeleteRequest,
+	HataFeedbackCommentsMarkRequest,
+	HataFeedbackCommentsMarkResponse,
+	HataFeedbackCommentsReactRequest,
+	HataFeedbackCommentsReactResponse,
+	HataFeedbackEmojiCategoriesResponse,
+	HataFeedbackEmojiQuotaResponse,
+	HataFeedbackEmojiRequestsRequest,
+	HataFeedbackEmojiRequestsResponse,
+	HataFeedbackEmojiRequestsApproveRequest,
+	HataFeedbackEmojiRequestsCreateRequest,
+	HataFeedbackEmojiRequestsCreateResponse,
+	HataFeedbackEmojiRequestsRejectRequest,
+	HataFeedbackIssuesRequest,
+	HataFeedbackIssuesResponse,
+	HataFeedbackIssuesCloseRequest,
+	HataFeedbackIssuesCreateRequest,
+	HataFeedbackIssuesCreateResponse,
+	HataFeedbackIssuesDeleteRequest,
+	HataFeedbackIssuesExportRequest,
+	HataFeedbackIssuesExportResponse,
+	HataFeedbackIssuesShowRequest,
+	HataFeedbackIssuesShowResponse,
+	HataFeedbackIssuesUpdateRequest,
+	HataFeedbackIssuesUpdateResponse,
+	HataFeedbackModeratorsGrantRequest,
+	HataFeedbackModeratorsRevokeRequest,
+	HataFeedbackNotificationsRequest,
+	HataFeedbackNotificationsResponse,
+	HataFeedbackProjectsRequest,
+	HataFeedbackProjectsResponse,
+	HataFeedbackProjectsCreateRequest,
+	HataFeedbackProjectsCreateResponse,
+	HataFeedbackProjectsDeleteRequest,
+	HataFeedbackProjectsUpdateRequest,
+	HataFeedbackProjectsUpdateResponse,
+	HataFeedbackRemoteEmojisRequest,
+	HataFeedbackRemoteEmojisResponse,
+	HataLoginRankingResponse,
+	HataMascotGetResponse,
+	HataMascotUpdateRequest,
+	HataMascotUpdateResponse,
+	HataskEventsCloseRequest,
+	HataskEventsCreateRequest,
+	HataskEventsCreateResponse,
+	HataskEventsDeleteRequest,
+	HataskEventsListRequest,
+	HataskEventsListResponse,
+	HataskEventsRsvpRequest,
 	IResponse,
 	I2faDoneRequest,
 	I2faDoneResponse,
@@ -547,8 +626,6 @@ import type {
 	NotesMentionsResponse,
 	NotesPollsRecommendationRequest,
 	NotesPollsRecommendationResponse,
-	NotesPollsTranslateRequest,
-	NotesPollsTranslateResponse,
 	NotesPollsVoteRequest,
 	NotesReactionsRequest,
 	NotesReactionsResponse,
@@ -572,8 +649,10 @@ import type {
 	NotesThreadMutingDeleteRequest,
 	NotesTimelineRequest,
 	NotesTimelineResponse,
-	NotesTranslateRequest,
-	NotesTranslateResponse,
+	NotesTrendingRequest,
+	NotesTrendingResponse,
+	NotesTrendingCheckNewRequest,
+	NotesTrendingCheckNewResponse,
 	NotesUnrenoteRequest,
 	NotesUpdateRequest,
 	NotesUserListTimelineRequest,
@@ -592,6 +671,8 @@ import type {
 	PingResponse,
 	PinnedUsersResponse,
 	PromoReadRequest,
+	RegistrationApplyRequest,
+	RegistrationApplyResponse,
 	RenoteMuteCreateRequest,
 	RenoteMuteDeleteRequest,
 	RenoteMuteListRequest,
@@ -618,6 +699,12 @@ import type {
 	RolesUsersRequest,
 	RolesUsersResponse,
 	ServerInfoResponse,
+	StackingGameJoinRoomRequest,
+	StackingGameMyScoresRequest,
+	StackingGameMyScoresResponse,
+	StackingGameRankingResponse,
+	StackingGameRegisterRequest,
+	StackingGameRoomsRequest,
 	StatsResponse,
 	SwRegisterRequest,
 	SwRegisterResponse,
@@ -701,12 +788,18 @@ import type {
 	UsersShowResponse,
 	UsersStatsRequest,
 	UsersStatsResponse,
-	UsersTranslateRequest,
-	UsersTranslateResponse,
 	UsersUpdateMemoRequest,
 	V2AdminEmojiListRequest,
 	V2AdminEmojiListResponse,
 	VerifyEmailRequest,
+	WhackEmojiCreateRoomRequest,
+	WhackEmojiJoinRoomRequest,
+	WhackEmojiMyScoresRequest,
+	WhackEmojiMyScoresResponse,
+	WhackEmojiRankingRequest,
+	WhackEmojiRankingResponse,
+	WhackEmojiRegisterRequest,
+	WhackEmojiRoomsRequest,
 } from './entities.js';
 
 export type Endpoints = {
@@ -731,6 +824,7 @@ export type Endpoints = {
 	'admin/announcements/delete': { req: AdminAnnouncementsDeleteRequest; res: EmptyResponse };
 	'admin/announcements/list': { req: AdminAnnouncementsListRequest; res: AdminAnnouncementsListResponse };
 	'admin/announcements/update': { req: AdminAnnouncementsUpdateRequest; res: EmptyResponse };
+	'admin/approve-registration': { req: AdminApproveRegistrationRequest; res: EmptyResponse };
 	'admin/avatar-decorations/copy': { req: AdminAvatarDecorationsCopyRequest; res: AdminAvatarDecorationsCopyResponse };
 	'admin/avatar-decorations/create': { req: AdminAvatarDecorationsCreateRequest; res: AdminAvatarDecorationsCreateResponse };
 	'admin/avatar-decorations/delete': { req: AdminAvatarDecorationsDeleteRequest; res: EmptyResponse };
@@ -767,6 +861,7 @@ export type Endpoints = {
 	'admin/get-index-stats': { req: EmptyRequest; res: AdminGetIndexStatsResponse };
 	'admin/get-table-stats': { req: EmptyRequest; res: AdminGetTableStatsResponse };
 	'admin/get-user-ips': { req: AdminGetUserIpsRequest; res: AdminGetUserIpsResponse };
+	'admin/hata/consent-list': { req: AdminHataConsentListRequest; res: EmptyResponse };
 	'admin/invite/create': { req: AdminInviteCreateRequest; res: AdminInviteCreateResponse };
 	'admin/invite/list': { req: AdminInviteListRequest; res: AdminInviteListResponse };
 	'admin/invite/revoke': { req: EmptyRequest; res: EmptyResponse };
@@ -784,6 +879,8 @@ export type Endpoints = {
 	'admin/queue/show-job': { req: AdminQueueShowJobRequest; res: AdminQueueShowJobResponse };
 	'admin/queue/show-job-logs': { req: AdminQueueShowJobLogsRequest; res: AdminQueueShowJobLogsResponse };
 	'admin/queue/stats': { req: EmptyRequest; res: AdminQueueStatsResponse };
+	'admin/registration-applications': { req: AdminRegistrationApplicationsRequest; res: AdminRegistrationApplicationsResponse };
+	'admin/reject-registration': { req: AdminRejectRegistrationRequest; res: EmptyResponse };
 	'admin/relays/add': { req: AdminRelaysAddRequest; res: AdminRelaysAddResponse };
 	'admin/relays/list': { req: EmptyRequest; res: AdminRelaysListResponse };
 	'admin/relays/remove': { req: AdminRelaysRemoveRequest; res: EmptyResponse };
@@ -838,13 +935,17 @@ export type Endpoints = {
 	'blocking/list': { req: BlockingListRequest; res: BlockingListResponse };
 	'bubble-game/ranking': { req: BubbleGameRankingRequest; res: BubbleGameRankingResponse };
 	'bubble-game/register': { req: BubbleGameRegisterRequest; res: EmptyResponse };
+	'channels/add-member': { req: ChannelsAddMemberRequest; res: EmptyResponse };
 	'channels/create': { req: ChannelsCreateRequest; res: ChannelsCreateResponse };
 	'channels/favorite': { req: ChannelsFavoriteRequest; res: EmptyResponse };
 	'channels/featured': { req: EmptyRequest; res: ChannelsFeaturedResponse };
 	'channels/follow': { req: ChannelsFollowRequest; res: EmptyResponse };
 	'channels/followed': { req: ChannelsFollowedRequest; res: ChannelsFollowedResponse };
+	'channels/join': { req: ChannelsJoinRequest; res: ChannelsJoinResponse };
+	'channels/members': { req: ChannelsMembersRequest; res: ChannelsMembersResponse };
 	'channels/my-favorites': { req: EmptyRequest; res: ChannelsMyFavoritesResponse };
 	'channels/owned': { req: ChannelsOwnedRequest; res: ChannelsOwnedResponse };
+	'channels/remove-member': { req: ChannelsRemoveMemberRequest; res: EmptyResponse };
 	'channels/search': { req: ChannelsSearchRequest; res: ChannelsSearchResponse };
 	'channels/show': { req: ChannelsShowRequest; res: ChannelsShowResponse };
 	'channels/timeline': { req: ChannelsTimelineRequest; res: ChannelsTimelineResponse };
@@ -923,6 +1024,9 @@ export type Endpoints = {
 	'drive/stream': { req: DriveStreamRequest; res: DriveStreamResponse };
 	'email-address/available': { req: EmailAddressAvailableRequest; res: EmailAddressAvailableResponse };
 	'emoji': { req: EmojiRequest; res: EmojiResponse };
+	'emoji-shoot/my-scores': { req: EmojiShootMyScoresRequest; res: EmptyResponse };
+	'emoji-shoot/ranking': { req: EmojiShootRankingRequest; res: EmptyResponse };
+	'emoji-shoot/register': { req: EmojiShootRegisterRequest; res: EmptyResponse };
 	'emojis': { req: EmptyRequest; res: EmojisResponse };
 	'endpoint': { req: EndpointRequest; res: EndpointResponse };
 	'endpoints': { req: EmptyRequest; res: EndpointsResponse };
@@ -974,6 +1078,48 @@ export type Endpoints = {
 	'hashtags/show': { req: HashtagsShowRequest; res: HashtagsShowResponse };
 	'hashtags/trend': { req: EmptyRequest; res: HashtagsTrendResponse };
 	'hashtags/users': { req: HashtagsUsersRequest; res: HashtagsUsersResponse };
+	'hata/consent/update': { req: HataConsentUpdateRequest; res: HataConsentUpdateResponse };
+	'hata/earthquake/history': { req: HataEarthquakeHistoryRequest; res: HataEarthquakeHistoryResponse };
+	'hata/earthquake/notification-settings': { req: EmptyRequest; res: HataEarthquakeNotificationSettingsResponse };
+	'hata/earthquake/notification-settings-update': { req: HataEarthquakeNotificationSettingsUpdateRequest; res: HataEarthquakeNotificationSettingsUpdateResponse };
+	'hata/earthquake/tsunami': { req: HataEarthquakeTsunamiRequest; res: HataEarthquakeTsunamiResponse };
+	'hata/feedback/agree': { req: HataFeedbackAgreeRequest; res: HataFeedbackAgreeResponse };
+	'hata/feedback/available': { req: EmptyRequest; res: HataFeedbackAvailableResponse };
+	'hata/feedback/comments': { req: HataFeedbackCommentsRequest; res: HataFeedbackCommentsResponse };
+	'hata/feedback/comments/create': { req: HataFeedbackCommentsCreateRequest; res: HataFeedbackCommentsCreateResponse };
+	'hata/feedback/comments/delete': { req: HataFeedbackCommentsDeleteRequest; res: EmptyResponse };
+	'hata/feedback/comments/mark': { req: HataFeedbackCommentsMarkRequest; res: HataFeedbackCommentsMarkResponse };
+	'hata/feedback/comments/react': { req: HataFeedbackCommentsReactRequest; res: HataFeedbackCommentsReactResponse };
+	'hata/feedback/emoji-categories': { req: EmptyRequest; res: HataFeedbackEmojiCategoriesResponse };
+	'hata/feedback/emoji-quota': { req: EmptyRequest; res: HataFeedbackEmojiQuotaResponse };
+	'hata/feedback/emoji-requests': { req: HataFeedbackEmojiRequestsRequest; res: HataFeedbackEmojiRequestsResponse };
+	'hata/feedback/emoji-requests/approve': { req: HataFeedbackEmojiRequestsApproveRequest; res: EmptyResponse };
+	'hata/feedback/emoji-requests/create': { req: HataFeedbackEmojiRequestsCreateRequest; res: HataFeedbackEmojiRequestsCreateResponse };
+	'hata/feedback/emoji-requests/reject': { req: HataFeedbackEmojiRequestsRejectRequest; res: EmptyResponse };
+	'hata/feedback/issues': { req: HataFeedbackIssuesRequest; res: HataFeedbackIssuesResponse };
+	'hata/feedback/issues/close': { req: HataFeedbackIssuesCloseRequest; res: EmptyResponse };
+	'hata/feedback/issues/create': { req: HataFeedbackIssuesCreateRequest; res: HataFeedbackIssuesCreateResponse };
+	'hata/feedback/issues/delete': { req: HataFeedbackIssuesDeleteRequest; res: EmptyResponse };
+	'hata/feedback/issues/export': { req: HataFeedbackIssuesExportRequest; res: HataFeedbackIssuesExportResponse };
+	'hata/feedback/issues/show': { req: HataFeedbackIssuesShowRequest; res: HataFeedbackIssuesShowResponse };
+	'hata/feedback/issues/update': { req: HataFeedbackIssuesUpdateRequest; res: HataFeedbackIssuesUpdateResponse };
+	'hata/feedback/moderators/grant': { req: HataFeedbackModeratorsGrantRequest; res: EmptyResponse };
+	'hata/feedback/moderators/revoke': { req: HataFeedbackModeratorsRevokeRequest; res: EmptyResponse };
+	'hata/feedback/notifications': { req: HataFeedbackNotificationsRequest; res: HataFeedbackNotificationsResponse };
+	'hata/feedback/notifications/read': { req: EmptyRequest; res: EmptyResponse };
+	'hata/feedback/projects': { req: HataFeedbackProjectsRequest; res: HataFeedbackProjectsResponse };
+	'hata/feedback/projects/create': { req: HataFeedbackProjectsCreateRequest; res: HataFeedbackProjectsCreateResponse };
+	'hata/feedback/projects/delete': { req: HataFeedbackProjectsDeleteRequest; res: EmptyResponse };
+	'hata/feedback/projects/update': { req: HataFeedbackProjectsUpdateRequest; res: HataFeedbackProjectsUpdateResponse };
+	'hata/feedback/remote-emojis': { req: HataFeedbackRemoteEmojisRequest; res: HataFeedbackRemoteEmojisResponse };
+	'hata/login-ranking': { req: EmptyRequest; res: HataLoginRankingResponse };
+	'hata/mascot/get': { req: EmptyRequest; res: HataMascotGetResponse };
+	'hata/mascot/update': { req: HataMascotUpdateRequest; res: HataMascotUpdateResponse };
+	'hatask/events/close': { req: HataskEventsCloseRequest; res: EmptyResponse };
+	'hatask/events/create': { req: HataskEventsCreateRequest; res: HataskEventsCreateResponse };
+	'hatask/events/delete': { req: HataskEventsDeleteRequest; res: EmptyResponse };
+	'hatask/events/list': { req: HataskEventsListRequest; res: HataskEventsListResponse };
+	'hatask/events/rsvp': { req: HataskEventsRsvpRequest; res: EmptyResponse };
 	'i': { req: EmptyRequest; res: IResponse };
 	'i/2fa/done': { req: I2faDoneRequest; res: I2faDoneResponse };
 	'i/2fa/key-done': { req: I2faKeyDoneRequest; res: I2faKeyDoneResponse };
@@ -1068,7 +1214,6 @@ export type Endpoints = {
 	'notes/local-timeline': { req: NotesLocalTimelineRequest; res: NotesLocalTimelineResponse };
 	'notes/mentions': { req: NotesMentionsRequest; res: NotesMentionsResponse };
 	'notes/polls/recommendation': { req: NotesPollsRecommendationRequest; res: NotesPollsRecommendationResponse };
-	'notes/polls/translate': { req: NotesPollsTranslateRequest; res: NotesPollsTranslateResponse };
 	'notes/polls/vote': { req: NotesPollsVoteRequest; res: EmptyResponse };
 	'notes/reactions': { req: NotesReactionsRequest; res: NotesReactionsResponse };
 	'notes/reactions/create': { req: NotesReactionsCreateRequest; res: EmptyResponse };
@@ -1083,7 +1228,8 @@ export type Endpoints = {
 	'notes/thread-muting/create': { req: NotesThreadMutingCreateRequest; res: EmptyResponse };
 	'notes/thread-muting/delete': { req: NotesThreadMutingDeleteRequest; res: EmptyResponse };
 	'notes/timeline': { req: NotesTimelineRequest; res: NotesTimelineResponse };
-	'notes/translate': { req: NotesTranslateRequest; res: NotesTranslateResponse };
+	'notes/trending': { req: NotesTrendingRequest; res: NotesTrendingResponse };
+	'notes/trending/check-new': { req: NotesTrendingCheckNewRequest; res: NotesTrendingCheckNewResponse };
 	'notes/unrenote': { req: NotesUnrenoteRequest; res: EmptyResponse };
 	'notes/update': { req: NotesUpdateRequest; res: EmptyResponse };
 	'notes/user-list-timeline': { req: NotesUserListTimelineRequest; res: NotesUserListTimelineResponse };
@@ -1102,6 +1248,7 @@ export type Endpoints = {
 	'ping': { req: EmptyRequest; res: PingResponse };
 	'pinned-users': { req: EmptyRequest; res: PinnedUsersResponse };
 	'promo/read': { req: PromoReadRequest; res: EmptyResponse };
+	'registration/apply': { req: RegistrationApplyRequest; res: RegistrationApplyResponse };
 	'renote-mute/create': { req: RenoteMuteCreateRequest; res: EmptyResponse };
 	'renote-mute/delete': { req: RenoteMuteDeleteRequest; res: EmptyResponse };
 	'renote-mute/list': { req: RenoteMuteListRequest; res: RenoteMuteListResponse };
@@ -1121,6 +1268,12 @@ export type Endpoints = {
 	'roles/show': { req: RolesShowRequest; res: RolesShowResponse };
 	'roles/users': { req: RolesUsersRequest; res: RolesUsersResponse };
 	'server-info': { req: EmptyRequest; res: ServerInfoResponse };
+	'stacking-game/create-room': { req: EmptyRequest; res: EmptyResponse };
+	'stacking-game/join-room': { req: StackingGameJoinRoomRequest; res: EmptyResponse };
+	'stacking-game/my-scores': { req: StackingGameMyScoresRequest; res: StackingGameMyScoresResponse };
+	'stacking-game/ranking': { req: EmptyRequest; res: StackingGameRankingResponse };
+	'stacking-game/register': { req: StackingGameRegisterRequest; res: EmptyResponse };
+	'stacking-game/rooms': { req: StackingGameRoomsRequest; res: EmptyResponse };
 	'stats': { req: EmptyRequest; res: StatsResponse };
 	'sw/register': { req: SwRegisterRequest; res: SwRegisterResponse };
 	'sw/show-registration': { req: SwShowRegistrationRequest; res: SwShowRegistrationResponse };
@@ -1171,10 +1324,16 @@ export type Endpoints = {
 	'users/search-by-username-and-host': { req: UsersSearchByUsernameAndHostRequest; res: UsersSearchByUsernameAndHostResponse };
 	'users/show': { req: UsersShowRequest; res: UsersShowResponse };
 	'users/stats': { req: UsersStatsRequest; res: UsersStatsResponse };
-	'users/translate': { req: UsersTranslateRequest; res: UsersTranslateResponse };
 	'users/update-memo': { req: UsersUpdateMemoRequest; res: EmptyResponse };
 	'v2/admin/emoji/list': { req: V2AdminEmojiListRequest; res: V2AdminEmojiListResponse };
 	'verify-email': { req: VerifyEmailRequest; res: EmptyResponse };
+	'whack-emoji/create-room': { req: WhackEmojiCreateRoomRequest; res: EmptyResponse };
+	'whack-emoji/endless-ranking': { req: EmptyRequest; res: EmptyResponse };
+	'whack-emoji/join-room': { req: WhackEmojiJoinRoomRequest; res: EmptyResponse };
+	'whack-emoji/my-scores': { req: WhackEmojiMyScoresRequest; res: WhackEmojiMyScoresResponse };
+	'whack-emoji/ranking': { req: WhackEmojiRankingRequest; res: WhackEmojiRankingResponse };
+	'whack-emoji/register': { req: WhackEmojiRegisterRequest; res: EmptyResponse };
+	'whack-emoji/rooms': { req: WhackEmojiRoomsRequest; res: EmptyResponse };
 };
 
 /**

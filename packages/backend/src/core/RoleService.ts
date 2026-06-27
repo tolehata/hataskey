@@ -48,8 +48,6 @@ export type RolePolicies = {
 	canManageAvatarDecorations: boolean;
 	canSearchNotes: boolean;
 	canSearchUsers: boolean;
-	canUseTranslator: boolean;
-	canUseAutoTranslate: boolean;
 	canHideAds: boolean;
 	// 旗鯖fork: マスコット機能の上限 (表情数/文言数/キャラクター数)
 	mascotMaxExpressions: number;
@@ -105,8 +103,6 @@ export const DEFAULT_POLICIES: RolePolicies = {
 	canManageAvatarDecorations: false,
 	canSearchNotes: false,
 	canSearchUsers: true,
-	canUseTranslator: true,
-	canUseAutoTranslate: false,
 	canHideAds: false,
 	mascotMaxExpressions: 5,
 	mascotMaxPhrases: 10,
@@ -446,8 +442,6 @@ export class RoleService implements OnApplicationShutdown, OnModuleInit {
 			canManageAvatarDecorations: calc('canManageAvatarDecorations', vs => vs.some(v => v === true)),
 			canSearchNotes: calc('canSearchNotes', vs => vs.some(v => v === true)),
 			canSearchUsers: calc('canSearchUsers', vs => vs.some(v => v === true)),
-			canUseTranslator: calc('canUseTranslator', vs => vs.some(v => v === true)),
-			canUseAutoTranslate: calc('canUseAutoTranslate', vs => vs.some(v => v === true)),
 			canHideAds: calc('canHideAds', vs => vs.some(v => v === true)),
 			mascotMaxExpressions: calc('mascotMaxExpressions', vs => Math.max(...vs)),
 			mascotMaxPhrases: calc('mascotMaxPhrases', vs => Math.max(...vs)),

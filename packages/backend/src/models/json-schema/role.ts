@@ -220,14 +220,6 @@ export const packedRolePoliciesSchema = {
 			type: 'boolean',
 			optional: false, nullable: false,
 		},
-		canUseTranslator: {
-			type: 'boolean',
-			optional: false, nullable: false,
-		},
-		canUseAutoTranslate: {
-			type: 'boolean',
-			optional: false, nullable: false,
-		},
 		canHideAds: {
 			type: 'boolean',
 			optional: false, nullable: false,

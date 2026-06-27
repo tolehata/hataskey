@@ -158,22 +158,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 						</MkSwitch>
 					</MkFolder>
 
-					<MkFolder v-if="matchQuery([i18n.ts._role._options.canUseTranslator, 'canUseTranslator'])">
-						<template #label>{{ i18n.ts._role._options.canUseTranslator }}</template>
-						<template #suffix>{{ policies.canUseTranslator ? i18n.ts.yes : i18n.ts.no }}</template>
-						<MkSwitch v-model="policies.canUseTranslator">
-							<template #label>{{ i18n.ts.enable }}</template>
-						</MkSwitch>
-					</MkFolder>
-
-					<MkFolder v-if="matchQuery([i18n.ts._role._options.canUseAutoTranslate, 'canUseAutoTranslate'])">
-						<template #label>{{ i18n.ts._role._options.canUseAutoTranslate }}</template>
-						<template #suffix>{{ policies.canUseAutoTranslate ? i18n.ts.yes : i18n.ts.no }}</template>
-						<MkSwitch v-model="policies.canUseAutoTranslate" :disabled="!policies.canUseTranslator" @update:modelValue="learnMoreAutoTranslate">
-							<template #label>{{ i18n.ts.enable }}</template>
-						</MkSwitch>
-					</MkFolder>
-
 					<MkFolder v-if="matchQuery([i18n.ts._role._options.driveCapacity, 'driveCapacityMb'])">
 						<template #label>{{ i18n.ts._role._options.driveCapacity }}</template>
 						<template #suffix>{{ policies.driveCapacityMb }}MB</template>
@@ -511,17 +495,6 @@ async function updateBaseRole() {
 
 function create() {
 	router.push('/admin/roles/new');
-}
-
-async function learnMoreAutoTranslate() {
-	if (!policies.canUseAutoTranslate) return;
-
-	const confirm = await os.confirm({
-		type: 'warning',
-		title: i18n.ts.useAutoTranslate,
-		text: i18n.ts._role._options.canUseAutoTranslateDescription,
-	});
-	if (confirm.canceled) policies.canUseAutoTranslate = false;
 }
 
 const headerActions = computed(() => [{

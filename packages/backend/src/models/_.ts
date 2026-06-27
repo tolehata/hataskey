@@ -11,8 +11,7 @@ import {
 	Repository,
 	SelectQueryBuilder,
 } from 'typeorm';
-import { PostgresConnectionOptions } from 'typeorm/driver/postgres/PostgresConnectionOptions.js';
-import { RelationCountLoader } from 'typeorm/query-builder/relation-count/RelationCountLoader.js';
+import type { PostgresDataSourceOptions } from 'typeorm/driver/postgres/PostgresDataSourceOptions.js';
 import { RelationIdLoader } from 'typeorm/query-builder/relation-id/RelationIdLoader.js';
 import {
 	RawSqlResultsToEntityTransformer,
@@ -117,7 +116,7 @@ import { MiFeedbackEmojiRequest } from '@/models/FeedbackEmojiRequest.js';
 import { MiFeedbackNotification } from '@/models/FeedbackNotification.js';
 import { MiFeedbackProject } from '@/models/FeedbackProject.js';
 import { MiEarthquakeNotification } from '@/models/EarthquakeNotification.js';
-import type { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity.js';
+import type { QueryDeepPartialEntity } from 'typeorm';
 
 export interface MiRepository<T extends ObjectLiteral> {
 	createTableColumnNames(this: Repository<T> & MiRepository<T>): string[];
@@ -134,7 +133,7 @@ export const miRepository = {
 		return this.metadata.columns.filter(column => column.isSelect && !column.isVirtual).map(column => column.databaseName);
 	},
 	async insertOne(entity, findOptions?) {
-		const opt = this.manager.connection.options as PostgresConnectionOptions;
+		const opt = this.manager.connection.options as PostgresDataSourceOptions;
 		if (opt.replication) {
 			const queryRunner = this.manager.connection.createQueryRunner('master');
 			try {
@@ -167,9 +166,11 @@ export const miRepository = {
 		}
 		const raw = await builder.execute();
 		mainAlias.name = name;
+		// 旗鯖fork: TypeORM v1 で RelationCountLoader/relationCountAttributes は削除済み。
+		// RawSqlResultsToEntityTransformer の ctor も 5→4 引数に縮小されたため、
+		// relationCount を扱わない簡素な呼び出しに変更。@RelationCount デコレータ未使用のため機能影響なし。
 		const relationId = await new RelationIdLoader(builder.connection, this.queryRunner, builder.expressionMap.relationIdAttributes).load(raw);
-		const relationCount = await new RelationCountLoader(builder.connection, this.queryRunner, builder.expressionMap.relationCountAttributes).load(raw);
-		const result = new RawSqlResultsToEntityTransformer(builder.expressionMap, builder.connection.driver, relationId, relationCount, this.queryRunner).transform(raw, mainAlias);
+		const result = new RawSqlResultsToEntityTransformer(builder.expressionMap, builder.connection.driver, relationId, this.queryRunner).transform(raw, mainAlias);
 		return result[0];
 	},
 	selectAliasColumnNames(queryBuilder, builder) {

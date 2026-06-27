@@ -30,11 +30,6 @@ import { globalEvents } from '@/events.js';
 import { addDividersBetweenMenuSections } from '@/utility/add-dividers-between-menu-sections.js';
 import { popup } from '@/os.js';
 
-const isInBrowserTranslationAvailable = (
-	'LanguageDetector' in window &&
-	'Translator' in window
-);
-
 export async function getNoteClipMenu(props: {
 	note: Misskey.entities.Note;
 	currentClip?: Misskey.entities.Clip;
@@ -186,8 +181,6 @@ function getNoteEmbedCodeMenu(note: Misskey.entities.Note, text: string): MenuIt
 export function getNoteMenu(props: {
 	note: Misskey.entities.Note;
 	collapsed?: Ref<boolean>;
-	translation: Ref<Misskey.entities.NotesTranslateResponse | null>;
-	translating: Ref<boolean>;
 	viewTextSource: Ref<boolean>;
 	noNyaize: Ref<boolean>;
 	currentClip?: Misskey.entities.Clip;
@@ -364,53 +357,6 @@ export function getNoteMenu(props: {
 		});
 	}
 
-	async function translate(): Promise<void> {
-		if (props.translation.value != null) return;
-		if (props.collapsed?.value != null) props.collapsed.value = false;
-		if (prefer.s['experimental.enableWebTranslatorApi'] && isInBrowserTranslationAvailable && appearNote.text != null) {
-			props.translating.value = true;
-			try {
-				// @ts-expect-error 実験的なAPIなので型定義がない
-				const detector = await LanguageDetector.create();
-				const langResult = await detector.detect(appearNote.text);
-				let localStorageLang = miLocalStorage.getItem('lang');
-				if (localStorageLang != null) {
-					localStorageLang = localStorageLang.split('-')[0];
-				}
-
-				// 翻訳元と翻訳先の言語が同じ場合はTranslatorがthrowするのでそのまま返す
-				if (langResult[0]?.detectedLanguage === localStorageLang || langResult[0]?.detectedLanguage === navigator.language) {
-					props.translation.value = {
-						sourceLang: langResult[0]?.detectedLanguage ?? 'unknown',
-						text: appearNote.text,
-					};
-					return;
-				}
-
-				// @ts-expect-error 実験的なAPIなので型定義がない
-				const translator = await Translator.create({
-					sourceLanguage: langResult[0]?.detectedLanguage,
-					targetLanguage: localStorageLang ?? navigator.language,
-				});
-				const translated = await translator.translate(appearNote.text);
-				props.translation.value = {
-					sourceLang: langResult[0]?.detectedLanguage ?? 'unknown',
-					text: translated,
-				};
-			} finally {
-				props.translating.value = false;
-			}
-		} else if ($i?.policies.canUseTranslator && instance.translatorAvailable) {
-			props.translating.value = true;
-			const res = await misskeyApi('notes/translate', {
-				noteId: appearNote.id,
-				targetLang: miLocalStorage.getItem('lang') ?? navigator.language,
-			});
-			props.translating.value = false;
-			props.translation.value = res;
-		}
-	}
-
 	function showViewTextSource(): void {
 		props.viewTextSource.value = true;
 	}
@@ -479,15 +425,6 @@ export function getNoteMenu(props: {
 			text: i18n.ts.openInNewTab,
 			action: openInNewTab,
 		});
-
-		const isLong = shouldCollapsed(appearNote, []);
-		if ((prefer.s['experimental.enableWebTranslatorApi'] && isInBrowserTranslationAvailable) || ($i.policies.canUseTranslator && instance.translatorAvailable && (!prefer.s.useAutoTranslate || (prefer.s.useAutoTranslate && !$i.policies.canUseAutoTranslate && (isLong || appearNote.cw != null))))) {
-			menuItems.push({
-				icon: 'ti ti-language-hiragana',
-				text: i18n.ts.translate,
-				action: translate,
-			});
-		}
 
 		menuItems.push({ type: 'divider' });
 

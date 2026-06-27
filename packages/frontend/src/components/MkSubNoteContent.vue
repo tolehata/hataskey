@@ -21,42 +21,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 			class="_selectable"
 		/>
 		<MkA v-if="note.renoteId" :class="$style.rp" :to="`/notes/${note.renoteId}`">RN: ...</MkA>
-		<div v-if="prefer.s.showTranslateButtonInNote && $i && (!prefer.s.useAutoTranslate || (!$i.policies.canUseAutoTranslate || (prefer.s.useAutoTranslate && (isLong || note.cw != null || !showContent)))) && instance.translatorAvailable && $i.policies.canUseTranslator && note.text && isForeignLanguage" style="padding: 5px 0; color: var(--MI_THEME-accent);">
-			<button v-if="!(translating || translation)" ref="translateButton" class="_button" @click.stop="translate()">{{ i18n.ts.translateNote }}</button>
-			<button v-else class="_button" @click.stop="translation = null">{{ i18n.ts.close }}</button>
-		</div>
-		<div v-if="translating || translation" :class="$style.translation">
-			<MkLoading v-if="translating" mini/>
-			<div v-else-if="translation">
-				<b>{{ i18n.tsx.translatedFrom({ x: translation.sourceLang }) }}:</b><hr style="margin: 10px 0;">
-				<Mfm
-					:text="translation.text"
-					:author="note.user"
-					:nyaize="prefer.s.disableNyaize || noNyaize ? false : 'respect'"
-					:emojiUrls="note.emojis"
-					:enableEmojiMenu="!!$i"
-					:enableEmojiMenuReaction="!!$i"
-					class="_selectable"
-					@click.stop
-				/>
-				<div v-if="note.poll">
-					<MkPoll
-						:noteId="note.id"
-						:multiple="note.poll.multiple"
-						:expiresAt="note.poll.expiresAt"
-						:choices="note.poll.choices"
-						:author="note.user"
-						:emojiUrls="note.emojis"
-						isTranslation
-						@click.stop
-					/>
-				</div>
-				<div v-if="'translator' in translation && translation.translator == 'ctav3'" style="margin-top: 10px; padding: 0 0 15px;">
-					<img v-if="!store.s.darkMode" src="/client-assets/color-short.svg" alt="" style="float: right;">
-					<img v-else src="/client-assets/white-short.svg" alt="" style="float: right;"/>
-				</div>
-			</div>
-		</div>
 		<div v-if="viewTextSource">
 			<hr style="margin: 10px 0;">
 			<pre style="margin: initial; white-space: pre-wrap; word-wrap: break-word;"><small>{{ note.text }}</small></pre>
@@ -232,8 +196,6 @@ const canRenote = computed(() => ['public', 'home'].includes(props.note.visibili
 const currentClip = inject<Ref<Misskey.entities.Clip> | null>('currentClip', null);
 
 const showContent = ref(true);
-const translation = ref<Misskey.entities.NotesTranslateResponse | null>(null);
-const translating = ref(false);
 
 const viewTextSource = ref(false);
 const noNyaize = ref(false);
@@ -553,7 +515,7 @@ function showMenu(): void {
 		return;
 	}
 
-	const { menu, cleanup } = getNoteMenu({ note: note, collapsed, translation, translating, viewTextSource, noNyaize, currentClip: currentClip?.value });
+	const { menu, cleanup } = getNoteMenu({ note: note, collapsed, viewTextSource, noNyaize, currentClip: currentClip?.value });
 	os.popupMenu(menu, menuButton.value).then(focus).finally(cleanup);
 }
 
@@ -567,36 +529,6 @@ async function clip(): Promise<void> {
 	os.popupMenu(await getNoteClipMenu({ note: note, currentClip: currentClip?.value }), clipButton.value).then(focus);
 }
 
-const isForeignLanguage: boolean = note.text != null && (() => {
-	const targetLang = (miLocalStorage.getItem('lang') ?? navigator.language).slice(0, 2);
-	const postLang = detectLanguage(note.text);
-	const choicesLang = note.poll?.choices.map((choice) => choice.text).join(' ') ?? '';
-	const pollLang = detectLanguage(choicesLang);
-	return postLang !== '' && (postLang !== targetLang || pollLang !== targetLang);
-})();
-
-if (prefer.s.useAutoTranslate && instance.translatorAvailable && $i && $i.policies.canUseTranslator && $i.policies.canUseAutoTranslate && !isLong && (note.cw == null || showContent.value) && note.text && isForeignLanguage) translate();
-
-async function translate(): Promise<void> {
-	if (translation.value != null) return;
-	collapsed.value = false;
-	translating.value = true;
-
-	haptic();
-
-	if (props.mock) {
-		return;
-	}
-
-	const res = await misskeyApi('notes/translate', {
-		noteId: props.note.id,
-		targetLang: miLocalStorage.getItem('lang') ?? navigator.language,
-	});
-	translating.value = false;
-	translation.value = res;
-
-	hapticConfirm();
-}
 
 function focus() {
 	rootEl.value?.focus();

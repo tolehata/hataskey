@@ -164,7 +164,6 @@ export function migrateOldSettings() {
 		prefer.commit('allMediaNoteCollapse', store.s.allMediaNoteCollapse);
 		prefer.commit('showSubNoteFooterButton', store.s.showSubNoteFooterButton);
 		prefer.commit('infoButtonForNoteActionsEnabled', store.s.infoButtonForNoteActionsEnabled);
-		prefer.commit('showTranslateButtonInNote', store.s.showTranslateButtonInNote);
 		prefer.commit('showGapBodyOfTheNote', store.s.showGapBodyOfTheNote);
 		prefer.commit('showReplyButtonInNoteFooter', store.s.showReplyButtonInNoteFooter);
 		prefer.commit('showRenoteButtonInNoteFooter', store.s.showRenoteButtonInNoteFooter);
@@ -204,7 +203,6 @@ export function migrateOldSettings() {
 		// - Settings/Other
 		prefer.commit('autoLoadMoreReplies', store.s.autoLoadMoreReplies);
 		prefer.commit('autoLoadMoreConversation', store.s.autoLoadMoreConversation);
-		prefer.commit('useAutoTranslate', store.s.useAutoTranslate);
 		prefer.commit('welcomeBackToast', store.s.welcomeBackToast);
 		prefer.commit('disableNyaize', store.s.disableNyaize);
 		prefer.commit('requireRefreshBehavior', store.s.requireRefreshBehavior);

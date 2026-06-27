@@ -231,10 +231,6 @@ export const packedMetaLiteSchema = {
 			type: 'boolean',
 			optional: false, nullable: false,
 		},
-		translatorAvailable: {
-			type: 'boolean',
-			optional: false, nullable: false,
-		},
 		sentryForFrontend: {
 			type: 'object',
 			optional: false, nullable: true,

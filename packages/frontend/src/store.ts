@@ -517,10 +517,6 @@ export const store = markRaw(new Pizzax('base', {
 		where: 'account',
 		default: true,
 	},
-	showTranslateButtonInNote: {
-		where: 'device',
-		default: true,
-	},
 	showGapBodyOfTheNote: {
 		where: 'device',
 		default: false,
@@ -648,10 +644,6 @@ export const store = markRaw(new Pizzax('base', {
 		default: false,
 	},
 	autoLoadMoreConversation: {
-		where: 'device',
-		default: false,
-	},
-	useAutoTranslate: {
 		where: 'device',
 		default: false,
 	},

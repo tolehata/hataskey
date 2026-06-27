@@ -10,7 +10,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<div :class="$style.bg" :style="{ 'width': `${showResult ? (choice.votes / total * 100) : 0}%` }"></div>
 			<span :class="$style.fg">
 				<template v-if="choice.isVoted"><i class="ti ti-check" style="margin-right: 4px; color: var(--MI_THEME-accent);"></i></template>
-				<Mfm :text="translation && Array.isArray(translation.text) ? (translation.text[i] ?? choice.text) : choice.text" :plain="true" :author="author" :emojiUrls="emojiUrls"/>
+				<Mfm :text="choice.text" :plain="true" :author="author" :emojiUrls="emojiUrls"/>
 				<span v-if="showResult" style="margin-left: 4px; opacity: 0.7;">({{ i18n.tsx._poll.votesCount({ n: choice.votes }) }})</span>
 			</span>
 		</li>
@@ -47,11 +47,7 @@ const props = defineProps<{
 	readOnly?: boolean;
 	emojiUrls?: Record<string, string>;
 	author?: Misskey.entities.UserLite;
-	isTranslation?: boolean;
 }>();
-
-const translation = ref<Misskey.entities.NotesPollsTranslateResponse | null>(null);
-const translating = ref(false);
 
 const now = useLowresTime();
 
@@ -110,21 +106,6 @@ const vote = async (id: number) => {
 	if (!showResult.value) showResult.value = !props.multiple;
 };
 
-async function translate(): Promise<void> {
-	if (translation.value != null) return;
-	translating.value = true;
-
-	const res = await misskeyApi('notes/polls/translate', {
-		noteId: props.noteId,
-		targetLang: miLocalStorage.getItem('lang') ?? navigator.language,
-	});
-	translating.value = false;
-	translation.value = res;
-}
-
-onMounted(() => {
-	if (props.isTranslation) translate();
-});
 </script>
 
 <style lang="scss" module>

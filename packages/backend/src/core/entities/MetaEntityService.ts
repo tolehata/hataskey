@@ -130,8 +130,6 @@ export class MetaEntityService {
 			enableServiceWorker: instance.enableServiceWorker,
 			customRobotsTxt: instance.customRobotsTxt,
 
-			translatorAvailable: instance.translatorType != null,
-
 			serverRules: instance.serverRules,
 
 			policies: { ...DEFAULT_POLICIES, ...instance.policies },

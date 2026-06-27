@@ -122,21 +122,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 							<MkOmit>
 								<Mfm v-if="user.description" :text="user.description" :isNote="false" :author="user" :enableEmojiMenu="!!$i" class="_selectable"/>
 								<p v-else class="empty">{{ i18n.ts.noAccountDescription }}</p>
-								<div v-if="user.description && isForeignLanguage">
-									<MkButton v-if="!(translating || translation)" class="translateButton" small @click="translate"><i class="ti ti-language-hiragana"></i> {{ i18n.ts.translateProfile }}</MkButton>
-									<MkButton v-else class="translateButton" small @click="translation = null"><i class="ti ti-x"></i> {{ i18n.ts.close }}</MkButton>
-								</div>
-								<div v-if="translating || translation" class="translation">
-									<MkLoading v-if="translating" mini/>
-									<div v-else-if="translation">
-										<b>{{ i18n.tsx.translatedFrom({ x: translation.sourceLang }) }}:</b><hr style="margin: 10px 0;">
-										<Mfm :text="translation.text" :isNote="false" :author="user" :nyaize="false" :enableEmojiMenu="!!$i" class="_selectable"/>
-										<div v-if="'translator' in translation && translation.translator == 'ctav3'" style="margin-top: 10px; padding: 0 0 15px;">
-											<img v-if="!store.s.darkMode" src="/client-assets/color-short.svg" alt="" style="float: right;">
-											<img v-else src="/client-assets/white-short.svg" alt="" style="float: right;"/>
-										</div>
-									</div>
-								</div>
 							</MkOmit>
 						</div>
 						<div class="fields system">
@@ -376,9 +361,6 @@ const isEditingMemo = ref(false);
 const moderationNote = ref(props.user.moderationNote ?? '');
 const editModerationNote = ref(false);
 
-const translation = ref<Misskey.entities.UsersTranslateResponse | null>(null);
-const translating = ref(false);
-
 watch(moderationNote, async () => {
 	await misskeyApi('admin/update-user-note', { userId: props.user.id, text: moderationNote.value });
 });
@@ -430,28 +412,6 @@ async function updateMemo() {
 	isEditingMemo.value = false;
 }
 
-const isForeignLanguage: boolean = props.user.description != null && (() => {
-	const targetLang = (miLocalStorage.getItem('lang') ?? navigator.language).slice(0, 2);
-	const postLang = detectLanguage(props.user.description);
-	return postLang !== '' && postLang !== targetLang;
-})();
-
-async function translate(): Promise<void> {
-	if (translation.value != null) return;
-	globalEvents.emit('showNoteContent', true);
-	translating.value = true;
-
-	haptic();
-
-	const res = await misskeyApi('users/translate', {
-		userId: props.user.id,
-		targetLang: miLocalStorage.getItem('lang') ?? navigator.language,
-	});
-	translating.value = false;
-	translation.value = res;
-
-	hapticConfirm();
-}
 
 function resetTimer() {
 	playAnimation.value = true;
