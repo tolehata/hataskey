@@ -1181,6 +1181,20 @@ function hasImage(x: { url?: string | null; driveFileId?: string | null } | null
 }
 const validationErrors = computed<string[]>(() => {
 	const errors: string[] = [];
+	// 旗鯖fork: 読み込み中は characters.value が空配列のため for ループが回らず errors=[] となり
+	// canSave=true で保存ボタンが押せてしまう (= 空データを backend に送って保存失敗 or 空保存) という
+	// race condition を防ぐ。読み込み完了するまで保存ボタンを無効化する。
+	if (loading.value) {
+		errors.push('読み込み中です。少々お待ちください。');
+		return errors;
+	}
+	// 旗鯖fork: キャラクターが 0 体だと立ち絵の検証ループが回らず canSave=true になり
+	// 「マスコット未設定で保存できる→フローティング ON だけが立って通知が消える」原因に。
+	// 最低 1 体のキャラクターを要求する。
+	if (characters.value.length === 0) {
+		errors.push('キャラクターを少なくとも 1 体追加してください。');
+		return errors;
+	}
 	for (const c of characters.value) {
 		const who = c.name && c.name !== '' ? `「${c.name}」` : '(無名のキャラ)';
 		// 表情が1つも無い

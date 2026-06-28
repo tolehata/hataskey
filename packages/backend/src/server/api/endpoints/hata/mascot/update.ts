@@ -100,6 +100,14 @@ export const meta = {
 			code: 'MASCOT_IMAGE_NOT_FOUND',
 			id: 'b1a2c3d4-0001-0001-0001-000000000008',
 		},
+		// 旗鯖fork: マスコットに最低 1 つの立ち絵 (expression) が必須。
+		// 立ち絵未設定だとフロント側で実体描画されず、フローティング ON だけが立つ状態となり
+		// 「マスコットは見えないのに通知トーストが抑制される」原因になっていた。
+		noExpressions: {
+			message: 'At least one expression (standing portrait) is required for the character.',
+			code: 'MASCOT_NO_EXPRESSIONS',
+			id: 'b1a2c3d4-0001-0001-0001-000000000009',
+		},
 	},
 
 	res: {
@@ -287,6 +295,12 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 			const characters = ps.characters.map((c) => {
 				const expressions = (c.expressions ?? []);
 				const phrases = (c.phrases ?? []);
+				// 旗鯖fork: 立ち絵 (expression) が 0 個ならマスコットとして機能しないので拒否。
+				// 未設定保存を許してしまうと、フロント側でフローティング ON だけ立って通知トーストが
+				// 完全に消える不具合 (#trial で報告) の温床になっていたため、保存段階で弾く。
+				if (expressions.length === 0) {
+					throw new ApiError(meta.errors.noExpressions);
+				}
 				if (expressions.length > policies.mascotMaxExpressions) {
 					throw new ApiError(meta.errors.tooManyExpressions);
 				}

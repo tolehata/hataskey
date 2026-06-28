@@ -86,6 +86,12 @@ const visible = computed(() => {
 	if (!mascotLoaded.value || !displaySettingsLoaded.value) return false;
 	// 旗鯖fork(タスク8): Hatask でマスコットカードを表示中は、フローティングを隠して2体並ぶのを防ぐ
 	if (hatakMascotActive.value) return false;
+	// 旗鯖fork: 立ち絵 (表情画像) の URL が解決できない場合は実体描画されないため visible=false にする。
+	// ユーザーがマスコット画像を未設定のまま「フローティング ON」だけ立てている時、従来は
+	// mascotVisible=true となり shouldSuppressStandardToast() が真 → 通知トーストが完全に消える
+	// (マスコットも実体は描画されないので通知が一切表示されない) という不具合があった。
+	const hasShownImage = expressionDisplayUrl(currentExpression.value) !== '';
+	if (!hasShownImage) return false;
 	return isDesktop ? displaySettings.value.floatingEnabledDesktop : displaySettings.value.floatingEnabledMobile;
 });
 

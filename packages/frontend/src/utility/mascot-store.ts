@@ -384,11 +384,16 @@ export function nextIdleDelayMs(): number {
 // 標準通知トーストを抑制すべきか(common.vue から参照)。
 // 「通知を伝える」かつ「標準トースト無効化」が両方ON、かつ実際にマスコットが表示されている時だけ抑制する。
 // (マスコットが表示されていない画面で抑制すると通知が完全に見えなくなるため)
+//
+// 旗鯖fork: mascotVisible に加えて立ち絵 URL が解決できることも条件に含める。MkMascotFloating の
+// visible 修正と二重ガード。これにより、マスコット画像未設定 + フローティング ON のユーザーで
+// 通知トーストが完全に消える不具合を確実に防ぐ。
 export const mascotVisible = ref(false);
 export function shouldSuppressStandardToast(): boolean {
 	return mascotVisible.value === true
 		&& displaySettings.value.tellNotifications === true
-		&& displaySettings.value.suppressStandardToast === true;
+		&& displaySettings.value.suppressStandardToast === true
+		&& expressionDisplayUrl(currentExpression.value) !== '';
 }
 
 // ===== announce(割り込みメッセージ) =====
