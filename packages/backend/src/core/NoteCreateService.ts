@@ -544,8 +544,13 @@ export class NoteCreateService implements OnApplicationShutdown {
 						throw new Error('Renote target is not public or home');
 					}
 
-					// Renote対象がfollowersならfollowersにする
-					data.visibility = 'followers';
+					// 旗鯖fork: 本家 2026.6.0 (f17c93e / PR#15961) を取り込み
+					//   followers noteを引用する際、引用元の visibility が public/home の場合のみ
+					//   followers に引き下げる。specified (指名/ダイレクト) で引用した場合は
+					//   ユーザーが意図したまま維持する (旧実装は無条件で followers に書き換えていた)
+					if (data.visibility === 'public' || data.visibility === 'home') {
+						data.visibility = 'followers';
+					}
 					break;
 				case 'specified':
 					// specified / direct noteはreject

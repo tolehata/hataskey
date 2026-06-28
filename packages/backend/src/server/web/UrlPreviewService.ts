@@ -19,6 +19,8 @@ import type { FastifyRequest, FastifyReply } from 'fastify';
 @Injectable()
 export class UrlPreviewService {
 	private logger: Logger;
+	// 旗鯖fork: 本家 2026.6.0 から取り込み: URLプレビューのデフォルトUAにサーバーURLを含める
+	private readonly summalyDefaultUserAgent: string;
 
 	constructor(
 		@Inject(DI.config)
@@ -31,6 +33,8 @@ export class UrlPreviewService {
 		private loggerService: LoggerService,
 	) {
 		this.logger = this.loggerService.getLogger('url-preview');
+		// 旗鯖fork: 本家 2026.6.0 から取り込み: URLプレビューのデフォルトUAにサーバーURLを含める
+		this.summalyDefaultUserAgent = `SummalyBot (${this.config.url}; +https://github.com/misskey-dev/summaly/blob/master/README.md)`;
 	}
 
 	@bindThis
@@ -122,8 +126,8 @@ export class UrlPreviewService {
 				http: this.httpRequestService.httpAgent,
 				https: this.httpRequestService.httpsAgent,
 			},
-			// 旗鯖fork: summalyDefaultUserAgent は後続コミット(c0a8c7f9 #17589)で追加予定。当面は undefined 維持。
-			userAgent: meta.urlPreviewUserAgent ?? undefined,
+			// 旗鯖fork: 本家 2026.6.0 から取り込み: URLプレビューのデフォルトUAにサーバーURLを含める
+			userAgent: meta.urlPreviewUserAgent ?? this.summalyDefaultUserAgent,
 			operationTimeout: meta.urlPreviewTimeout,
 			contentLengthLimit: meta.urlPreviewMaximumContentLength,
 			contentLengthRequired: meta.urlPreviewRequireContentLength,
@@ -136,7 +140,8 @@ export class UrlPreviewService {
 			url: url,
 			lang: lang ?? 'ja-JP',
 			followRedirects: this.meta.urlPreviewAllowRedirect,
-			userAgent: meta.urlPreviewUserAgent ?? undefined,
+			// 旗鯖fork: 本家 2026.6.0 から取り込み: URLプレビューのデフォルトUAにサーバーURLを含める
+			userAgent: meta.urlPreviewUserAgent ?? this.summalyDefaultUserAgent,
 			operationTimeout: meta.urlPreviewTimeout,
 			contentLengthLimit: meta.urlPreviewMaximumContentLength,
 			contentLengthRequired: meta.urlPreviewRequireContentLength,

@@ -76,6 +76,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				throw new ApiError(meta.errors.noSuchUser);
 			}
 
+			// 旗鯖fork: 本家 2026.6.0 から取り込み: コンパネからrootユーザーのパスワードをリセットしようとした際にエラーが通知されない問題を修正 (既存実装と同等)
 			if (this.serverSettings.rootUserId === user.id) {
 				throw new ApiError(meta.errors.cannotResetPasswordOfRootUser);
 			}

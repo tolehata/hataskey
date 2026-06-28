@@ -54,6 +54,8 @@ import { $i } from '@/i.js';
 import { prefer } from '@/preferences.js';
 import { DI } from '@/di.js';
 import { makeEmojiMuteKey, mute as muteEmoji, unmute as unmuteEmoji, checkMuted as checkEmojiMuted } from '@/utility/emoji-mute.js';
+// 旗鯖fork: 本家 2026.6.0 から取り込み: 絵文字メニューから直接パレット追加
+import { addToEmojiPalette } from '@/utility/emoji-palette.js';
 
 const props = defineProps<{
 	name: string;
@@ -183,6 +185,16 @@ function onClick(ev: MouseEvent) {
 				icon: 'ti ti-mood-off',
 				action: async () => {
 					await mute();
+				},
+			});
+		}
+
+		if (isLocal.value) {
+			menuItems.push({
+				text: i18n.ts.addToEmojiPalette,
+				icon: 'ti ti-palette',
+				action: () => {
+					addToEmojiPalette(`:${props.name}:`);
 				},
 			});
 		}

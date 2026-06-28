@@ -39,6 +39,9 @@ export const paramDef = {
 	type: 'object',
 	properties: {
 		query: { type: 'string' },
+		// 旗鯖fork: 本家 2026.6.0 から取り込み: ノート検索で投稿日時の期間を条件に加えられるように (#16035)
+		rangeStartAt: { type: 'integer', nullable: true },
+		rangeEndAt: { type: 'integer', nullable: true },
 		sinceId: { type: 'string', format: 'misskey:id' },
 		untilId: { type: 'string', format: 'misskey:id' },
 		sinceDate: { type: 'integer' },
@@ -78,6 +81,9 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				userId: ps.userId,
 				channelId: ps.channelId,
 				host: ps.host,
+				// 旗鯖fork: 本家 2026.6.0 から取り込み: ノート検索で投稿日時の期間を条件に加えられるように (#16035)
+				rangeStartAt: ps.rangeStartAt,
+				rangeEndAt: ps.rangeEndAt,
 			}, {
 				untilId: untilId,
 				sinceId: sinceId,

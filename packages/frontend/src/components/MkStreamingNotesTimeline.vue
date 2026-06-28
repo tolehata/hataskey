@@ -520,6 +520,13 @@ useGlobalEvent('noteDeleted', (noteId) => {
 	paginator.removeItem(noteId);
 });
 
+// 旗鯖fork: 本家 2026.6.0 から取り込み: アンテナのタイムラインから個別のノートを削除できるように
+useGlobalEvent('noteRemovedFromAntenna', (antennaId, noteId) => {
+	if (props.src === 'antenna' && props.antenna === antennaId) {
+		paginator.removeItem(noteId);
+	}
+});
+
 function releaseQueue() {
 	updateRandomDir(); // 旗鯖: ランダム方向更新
 	haptic();

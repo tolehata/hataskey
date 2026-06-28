@@ -671,12 +671,18 @@ export function useUploader(options: {
 		item.preprocessedFile = markRaw(preprocessedFile);
 	}
 
-	function dispose() {
+	// 旗鯖fork: 本家 2026.6.0 から取り込み: ノートの下書きをリセットする際、未アップロードのファイルが解除されない問題を修正
+	function reset() {
 		for (const item of items.value) {
 			if (item.thumbnail != null) URL.revokeObjectURL(item.thumbnail);
 		}
 
 		abortAll();
+		items.value = [];
+	}
+
+	function dispose() {
+		reset();
 	}
 
 	onUnmounted(() => {
@@ -688,6 +694,7 @@ export function useUploader(options: {
 		addFiles,
 		removeItem,
 		abortAll,
+		reset,
 		dispose,
 		upload,
 		getMenu,

@@ -70,6 +70,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					:key="f.id"
 					v-anim="i"
 					:class="$style.folder"
+					:data-scroll-anchor="f.id"
 					:folder="f"
 					:selectMode="select === 'folder'"
 					:isSelected="selectedFolders.some(x => x.id === f.id)"
@@ -102,6 +103,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<XFile
 						v-for="file in item.items" :key="file.id"
 						:class="$style.file"
+						:data-scroll-anchor="file.id"
 						:file="file"
 						:folder="folder"
 						:isSelected="selectedFiles.some(x => x.id === file.id)"

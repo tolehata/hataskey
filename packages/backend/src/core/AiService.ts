@@ -4,14 +4,14 @@
  */
 
 import * as fs from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import { dirname } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { dirname, resolve } from 'node:path';
 import { Injectable } from '@nestjs/common';
-import * as nsfw from 'nsfwjs';
-import si from 'systeminformation';
 import { Mutex } from 'async-mutex';
 import fetch from 'node-fetch';
 import { bindThis } from '@/decorators.js';
+// 旗鯖fork: 本家 2026.6.0 から取り込み: nsfwjs / systeminformation をトップレベル import から動的 import に変更し、オプショナル依存解決失敗で AiService 全体が壊れないようにする
+import type { NSFWJS, PredictionType } from 'nsfwjs/core';
 
 const _filename = fileURLToPath(import.meta.url);
 const _dirname = dirname(_filename);
@@ -21,15 +21,19 @@ let isSupportedCpu: undefined | boolean = undefined;
 
 @Injectable()
 export class AiService {
-	private model: nsfw.NSFWJS;
+	private readonly modelDir: string;
+	private model: NSFWJS;
 	private modelLoadMutex: Mutex = new Mutex();
 
 	constructor(
 	) {
+		// 旗鯖fork: 本家 2026.6.0 から取り込み: モデルディレクトリを pathToFileURL で URL 化し OS/パス差異を吸収
+		const md = resolve(_dirname, '../../nsfw-model');
+		this.modelDir = md.endsWith('/') ? md : md + '/';
 	}
 
 	@bindThis
-	public async detectSensitive(source: string | Buffer): Promise<nsfw.PredictionType[] | null> {
+	public async detectSensitive(source: string | Buffer): Promise<PredictionType[] | null> {
 		try {
 			if (isSupportedCpu === undefined) {
 				isSupportedCpu = await this.computeIsSupportedCpu();
@@ -44,9 +48,10 @@ export class AiService {
 			tf.env().global.fetch = fetch;
 
 			if (this.model == null) {
+				const nsfw = await import('nsfwjs/core');
 				await this.modelLoadMutex.runExclusive(async () => {
 					if (this.model == null) {
-						this.model = await nsfw.load(`file://${_dirname}/../../nsfw-model/`, { size: 299 });
+						this.model = await nsfw.load(pathToFileURL(this.modelDir).toString(), { size: 299 });
 					}
 				});
 			}
@@ -83,6 +88,7 @@ export class AiService {
 
 	@bindThis
 	private async getCpuFlags(): Promise<string[]> {
+		const si = await import('systeminformation');
 		const str = await si.cpuFlags();
 		return str.split(/\s+/);
 	}

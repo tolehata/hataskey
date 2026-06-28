@@ -10,15 +10,15 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<span>{{ title ?? 'YouTube' }}</span>
 	</template>
 
+	<!-- 旗鯖fork: 本家 2026.6.0 から取り込み: プレイヤー読み込み中の "Invalid URL" 表示を抑制 (#17481) -->
 	<div class="poamfof">
-		<Transition :name="prefer.s.animation ? 'fade' : ''" mode="out-in">
-			<div v-if="player.url && (player.url.startsWith('http://') || player.url.startsWith('https://'))" class="player">
-				<iframe v-if="!fetching" :src="transformPlayerUrl(player.url)" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
-			</div>
-			<span v-else>invalid url</span>
-		</Transition>
 		<MkLoading v-if="fetching"/>
-		<MkError v-else-if="!player.url" @retry="ytFetch()"/>
+		<Transition v-else :name="prefer.s.animation ? 'fade' : ''" mode="out-in">
+			<div v-if="player.url && (player.url.startsWith('http://') || player.url.startsWith('https://'))" class="player">
+				<iframe :src="transformPlayerUrl(player.url)" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+			</div>
+			<MkError v-else @retry="ytFetch()"/>
+		</Transition>
 	</div>
 </MkWindow>
 </template>

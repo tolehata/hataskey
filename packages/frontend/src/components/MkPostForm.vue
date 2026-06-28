@@ -841,6 +841,8 @@ function clear() {
 	externalReplyTarget.value = null;
 	externalRenoteTarget.value = null;
 	useExternalAccount.value = false;
+	// 旗鯖fork: 本家 2026.6.0 から取り込み: 下書きリセット時に未アップロードのファイルも解除されるように
+	uploader.reset();
 }
 
 function onKeydown(ev: KeyboardEvent) {

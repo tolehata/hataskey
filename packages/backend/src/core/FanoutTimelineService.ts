@@ -116,4 +116,10 @@ export class FanoutTimelineService {
 	public purge(name: FanoutTimelineName) {
 		return this.redisForTimelines.del('list:' + name);
 	}
+
+	// 旗鯖fork: 本家 2026.6.0 から取り込み: アンテナ TL からノート個別削除 (antennas/remove-note) で使用
+	@bindThis
+	public remove(name: FanoutTimelineName, id: string) {
+		return this.redisForTimelines.lrem('list:' + name, 1, id);
+	}
 }

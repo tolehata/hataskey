@@ -471,8 +471,21 @@ export async function mainBoot() {
 			if ($i == null) return;
 			post();
 		},
-		'd': () => {
-			store.set('darkMode', !store.s.darkMode);
+		// 旗鯖fork: 本家 2026.6.0 から取り込み: 「D」キーでダークモードを切り替える際に syncDeviceDarkMode のチェックがバイパスされる問題を修正
+		'd': async () => {
+			const value = !store.s.darkMode;
+			if (prefer.s.syncDeviceDarkMode) {
+				const { canceled } = await confirm({
+					type: 'question',
+					text: i18n.tsx.switchDarkModeManuallyWhenSyncEnabledConfirm({ x: i18n.ts.syncDeviceDarkMode }),
+				});
+				if (canceled) return;
+
+				prefer.commit('syncDeviceDarkMode', false);
+				store.set('darkMode', value);
+			} else {
+				store.set('darkMode', value);
+			}
 		},
 		's': () => {
 			mainRouter.push('/search');

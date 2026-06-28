@@ -903,6 +903,9 @@ optional: "任意"
 createNewClip: "新しいクリップを作成"
 unclip: "クリップ解除"
 confirmToUnclipAlreadyClippedNote: "このノートはすでにクリップ「{name}」に含まれています。ノートをこのクリップから除外しますか？"
+# 旗鯖fork: 本家 2026.6.0 から取り込み: アンテナのタイムラインから個別のノートを削除できるように
+removeFromAntenna: "このアンテナから削除"
+removeNoteFromAntennaConfirm: "「{name}」からこのノートを削除しますか？"
 public: "パブリック"
 private: "非公開"
 i18nInfo: "Hataskeyは有志によって様々な言語に翻訳されています。{link}で翻訳に協力できます。"
@@ -1651,6 +1654,16 @@ _chat:
   invitationCancelAreYouSure: "{x}さんに送信された招待をキャンセルしますか？"
   ignoreThisInvitation: "この招待を無視すると、グループの管理者が招待を取り消して再度招待したり、グループを削除して再作成した場合にのみ招待されることができます。"
   doYouIgnoreInvitation: "招待を無視しますか？"
+
+# 旗鯖fork: 本家 2026.6.0 から取り込み: アクセストークン発行ダイアログのタイトル修正 (#17495)
+accessToken: "アクセストークン"
+
+# 旗鯖fork: 本家 2026.6.0 から取り込み: 絵文字メニューから直接パレット追加
+chooseEmojiPalette: "絵文字パレットを選択"
+addToEmojiPalette: "絵文字パレットに追加"
+emojiPaletteAlreadyAddedConfirm: "この絵文字はすでにこの絵文字パレットに含まれています。追加しなおしますか？"
+append: "末尾に追加"
+prepend: "先頭に追加"
 
 _emojiPalette:
   palettes: "パレット"
@@ -3665,6 +3678,9 @@ _search:
   pleaseEnterServerHost: "サーバーのホストを入力してください"
   pleaseSelectUser: "ユーザーを選択してください"
   serverHostPlaceholder: "例: cherrypick.example.com"
+  # 旗鯖fork: 本家 2026.6.0 から取り込み: ノート検索で投稿日時の期間を条件に加えられるように (#16035)
+  postFrom: "投稿日時from"
+  postTo: "投稿日時to"
 
 _serverSetupWizard:
   installCompleted: "Hataskeyのインストールが完了しました！"

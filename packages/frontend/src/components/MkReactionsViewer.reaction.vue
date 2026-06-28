@@ -43,6 +43,8 @@ import { customEmojis, customEmojisMap } from '@/custom-emojis.js';
 import { DI } from '@/di.js';
 import { noteEvents } from '@/composables/use-note-capture.js';
 import { mute as muteEmoji, unmute as unmuteEmoji, checkMuted as isEmojiMuted } from '@/utility/emoji-mute.js';
+// 旗鯖fork: 本家 2026.6.0 から取り込み: 絵文字メニューから直接パレット追加
+import { addToEmojiPalette } from '@/utility/emoji-palette.js';
 import { haptic } from '@/utility/haptic.js';
 import { hideReaction, unhideReaction, isReactionHidden } from '@/utility/hidden-reactions.js';
 import { copyToClipboard } from '@/utility/copy-to-clipboard.js';
@@ -290,6 +292,16 @@ function stealReaction(ev: MouseEvent) {
 		});
 	}
 
+	if (canToggle.value) {
+		menuItems.push({
+			text: i18n.ts.addToEmojiPalette,
+			icon: 'ti ti-palette',
+			action: () => {
+				addToEmojiPalette(isLocalCustomEmoji ? `:${emojiName.value}:` : props.reaction);
+			},
+		});
+	}
+
 	os.popupMenu(menuItems, ev.currentTarget ?? ev.target);
 }
 
@@ -394,6 +406,16 @@ async function menu(ev) {
 					if (canceled) return;
 					muteEmoji(props.reaction);
 				});
+			},
+		});
+	}
+
+	if (canToggle.value) {
+		menuItems.push({
+			text: i18n.ts.addToEmojiPalette,
+			icon: 'ti ti-palette',
+			action: () => {
+				addToEmojiPalette(isLocalCustomEmoji ? `:${emojiName.value}:` : props.reaction);
 			},
 		});
 	}

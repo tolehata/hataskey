@@ -499,6 +499,8 @@ onBeforeUnmount(() => {
 	max-height: 28px;
 	margin: 0 8px 0 0;
 	border-radius: 100%;
+	/* 旗鯖fork: 本家 2026.6.0 から取り込み: メンションのサジェスト時のアイコンが画像サイズ次第で崩れる問題を修正 */
+	object-fit: cover;
 }
 
 .userName {

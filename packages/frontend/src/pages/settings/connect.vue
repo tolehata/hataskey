@@ -94,7 +94,8 @@ async function generateToken() {
 
 			os.alert({
 				type: 'success',
-				title: i18n.ts.token,
+				// 旗鯖fork: 本家 2026.6.0 から取り込み: アクセストークン発行ダイアログのタイトルを「確認コード」から正しく「アクセストークン」に修正 (#17495)
+				title: i18n.ts.accessToken,
 				text: token,
 			}).then(() => {
 				copyToClipboard(token);

@@ -169,13 +169,17 @@ export class StreamingApiServerService {
 		}, 1000 * 60);
 	}
 
+	// 旗鯖fork: 本家 2026.6.0 から取り込み: detach() を Promise 化して wss.close() の完了を待ち、リークした WS 接続による shutdown 警告(UnhandledPromiseRejectionWarning 経路) を抑止
 	@bindThis
-	public detach(): void {
+	public detach(): Promise<void> {
 		if (this.#cleanConnectionsIntervalId) {
 			clearInterval(this.#cleanConnectionsIntervalId);
 			this.#cleanConnectionsIntervalId = null;
 		}
-		this.#wss.close();
+		// 旗鯖独自: 既存 client を即時 terminate して wss.close() のハングを防ぐ
 		this.#wss.clients.forEach(client => client.terminate());
+		return new Promise((resolve) => {
+			this.#wss.close(() => resolve());
+		});
 	}
 }

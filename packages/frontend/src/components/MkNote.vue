@@ -434,6 +434,8 @@ const inLocalTimeline = inject<Ref<boolean> | null>('inLocalTimeline', null);
 const noteBubbleEnabled = inject<Ref<boolean> | null>('noteBubbleEnabled', null);
 const utageOutsideFrame = computed(() => noteBubbleEnabled?.value ?? false);
 const currentClip = inject<Ref<Misskey.entities.Clip> | null>('currentClip', null);
+// 旗鯖fork: 本家 2026.6.0 から取り込み: アンテナのタイムラインから個別のノートを削除できるように
+const currentAntenna = inject<Ref<Misskey.entities.Antenna | null> | null>('currentAntenna', null);
 
 let note = deepClone(props.note);
 
@@ -1031,7 +1033,7 @@ function onContextmenu(ev: MouseEvent): void {
 		ev.preventDefault();
 		react();
 	} else {
-		const { menu, cleanup } = getNoteMenu({ note: note, collapsed, viewTextSource, noNyaize, currentClip: currentClip?.value });
+		const { menu, cleanup } = getNoteMenu({ note: note, collapsed, viewTextSource, noNyaize, currentClip: currentClip?.value, currentAntenna: currentAntenna?.value ?? undefined });
 		os.contextMenu(menu, ev).then(focus).finally(cleanup);
 	}
 }
@@ -1043,7 +1045,7 @@ function showMenu(): void {
 
 	haptic();
 
-	const { menu, cleanup } = getNoteMenu({ note: note, collapsed, viewTextSource, noNyaize, currentClip: currentClip?.value });
+	const { menu, cleanup } = getNoteMenu({ note: note, collapsed, viewTextSource, noNyaize, currentClip: currentClip?.value, currentAntenna: currentAntenna?.value ?? undefined });
 	os.popupMenu(menu, menuButton.value).then(focus).finally(cleanup);
 }
 

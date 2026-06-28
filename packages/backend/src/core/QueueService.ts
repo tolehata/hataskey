@@ -814,6 +814,19 @@ export class QueueService implements OnModuleInit {
 		await queue.promoteJobs();
 	}
 
+	// 旗鯖fork: 本家 2026.6.0 から取り込み: キュー一時停止/再開
+	@bindThis
+	public async queuePause(queueType: typeof QUEUE_TYPES[number]) {
+		const queue = this.getQueue(queueType);
+		await queue.pause();
+	}
+
+	@bindThis
+	public async queueResume(queueType: typeof QUEUE_TYPES[number]) {
+		const queue = this.getQueue(queueType);
+		await queue.resume();
+	}
+
 	@bindThis
 	public async queueRetryJob(queueType: typeof QUEUE_TYPES[number], jobId: string) {
 		const queue = this.getQueue(queueType);

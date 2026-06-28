@@ -43,6 +43,7 @@ export class CleanRemoteNotesProcessorService {
 		return ((cursorTs - minTs) / (maxTs - minTs)) * 100;
 	}
 
+	// 旗鯖fork: 本家 2026.6.0 から取り込み: リモートノートクリーニング性能改善
 	@bindThis
 	public async process(job: Bull.Job<Record<string, unknown>>): Promise<{
 		deletedCount: number;
@@ -51,6 +52,17 @@ export class CleanRemoteNotesProcessorService {
 		skipped: boolean;
 		transientErrors: number;
 	}> {
+		const getConfig = () => {
+			return {
+				enabled: this.meta.enableRemoteNotesCleaning,
+				maxDuration: this.meta.remoteNotesCleaningMaxProcessingDurationInMinutes * 60 * 1000, // Convert minutes to milliseconds
+				// The date limit for the newest note to be considered for deletion.
+				// All notes newer than this limit will always be retained.
+				newestLimit: this.idService.gen(Date.now() - (1000 * 60 * 60 * 24 * this.meta.remoteNotesCleaningExpiryDaysForEachNotes)),
+			};
+		};
+
+		const initialConfig = getConfig();
 		if (!this.meta.enableRemoteNotesCleaning) {
 			this.logger.info('Remote notes cleaning is disabled, skipping...');
 			return {
@@ -64,13 +76,9 @@ export class CleanRemoteNotesProcessorService {
 
 		this.logger.info('cleaning remote notes...');
 
-		const maxDuration = this.meta.remoteNotesCleaningMaxProcessingDurationInMinutes * 60 * 1000; // Convert minutes to milliseconds
 		const startAt = Date.now();
 
 		//#region queries
-		// The date limit for the newest note to be considered for deletion.
-		// All notes newer than this limit will always be retained.
-		const newestLimit = this.idService.gen(Date.now() - (1000 * 60 * 60 * 24 * this.meta.remoteNotesCleaningExpiryDaysForEachNotes));
 
 		// The condition for removing the notes.
 		// The note must be:
@@ -92,7 +100,7 @@ export class CleanRemoteNotesProcessorService {
 		const minId = (await this.notesRepository.createQueryBuilder('note')
 			.select('MIN(note.id)', 'minId')
 			.where({
-				id: LessThan(newestLimit),
+				id: LessThan(initialConfig.newestLimit),
 				userHost: Not(IsNull()),
 				replyId: IsNull(),
 				renoteId: IsNull(),
@@ -155,12 +163,12 @@ export class CleanRemoteNotesProcessorService {
 		// | fff | fff    | TRUE        |
 		// | ggg | ggg    | FALSE       |
 		//
-		const candidateNotesQuery = this.db.createQueryBuilder()
+		const candidateNotesQuery = ({ limit }: { limit: number }) => this.db.createQueryBuilder()
 			.select(`"${candidateNotesCteName}"."id"`, 'id')
 			.addSelect('unremovable."id" IS NULL', 'isRemovable')
 			.addSelect(`BOOL_OR("${candidateNotesCteName}"."isBase")`, 'isBase')
 			.addCommonTableExpression(
-				`((SELECT "base".* FROM (${candidateNotesQueryBase.orderBy('note.id', 'ASC').limit(currentLimit).getQuery()}) AS "base") UNION ${candidateNotesQueryInductive.getQuery()})`,
+				`((SELECT "base".* FROM (${candidateNotesQueryBase.orderBy('note.id', 'ASC').limit(limit).getQuery()}) AS "base") UNION ${candidateNotesQueryInductive.getQuery()})`,
 				candidateNotesCteName,
 				{ recursive: true },
 			)
@@ -178,6 +186,11 @@ export class CleanRemoteNotesProcessorService {
 		let lowThroughputWarned = false;
 		let transientErrors = 0;
 		for (;;) {
+			const { enabled, maxDuration, newestLimit } = getConfig();
+			if (!enabled) {
+				this.logger.info('Remote notes cleaning is disabled, processing stopped...');
+				break;
+			}
 			//#region check time
 			const batchBeginAt = Date.now();
 
@@ -205,7 +218,7 @@ export class CleanRemoteNotesProcessorService {
 			let noteIds = null;
 
 			try {
-				noteIds = await candidateNotesQuery.setParameters(
+				noteIds = await candidateNotesQuery({ limit: currentLimit }).setParameters(
 					{ newestLimit, cursorLeft },
 				).getRawMany<{ id: MiNote['id'], isRemovable: boolean, isBase: boolean }>();
 			} catch (e) {

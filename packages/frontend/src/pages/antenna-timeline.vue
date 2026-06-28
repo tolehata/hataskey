@@ -19,7 +19,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { computed, watch, ref, useTemplateRef } from 'vue';
+import { computed, watch, ref, useTemplateRef, provide } from 'vue';
 import * as Misskey from 'cherrypick-js';
 import MkStreamingNotesTimeline from '@/components/MkStreamingNotesTimeline.vue';
 import * as os from '@/os.js';
@@ -36,6 +36,9 @@ const props = defineProps<{
 
 const antenna = ref<Misskey.entities.Antenna | null>(null);
 const tlEl = useTemplateRef('tlEl');
+
+// 旗鯖fork: 本家 2026.6.0 から取り込み: アンテナのタイムラインから個別のノートを削除できるように
+provide('currentAntenna', antenna);
 
 function settings() {
 	router.push('/my/antennas/:antennaId', {

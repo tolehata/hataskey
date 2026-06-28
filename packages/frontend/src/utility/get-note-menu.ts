@@ -184,6 +184,8 @@ export function getNoteMenu(props: {
 	viewTextSource: Ref<boolean>;
 	noNyaize: Ref<boolean>;
 	currentClip?: Misskey.entities.Clip;
+	// 旗鯖fork: 本家 2026.6.0 から取り込み: アンテナのタイムラインから個別のノートを削除できるように
+	currentAntenna?: Misskey.entities.Antenna;
 }) {
 	const appearNote = getAppearNote(props.note) ?? props.note;
 	const link = appearNote.url ?? appearNote.uri;
@@ -314,6 +316,20 @@ export function getNoteMenu(props: {
 	async function unclip(): Promise<void> {
 		if (!props.currentClip) return;
 		os.apiWithDialog('clips/remove-note', { clipId: props.currentClip.id, noteId: appearNote.id });
+	}
+
+	// 旗鯖fork: 本家 2026.6.0 から取り込み: アンテナのタイムラインから個別のノートを削除できるように
+	async function removeFromAntenna(): Promise<void> {
+		if (!props.currentAntenna) return;
+
+		const { canceled } = await os.confirm({
+			type: 'warning',
+			text: i18n.tsx.removeNoteFromAntennaConfirm({ name: props.currentAntenna.name }),
+		});
+		if (canceled) return;
+
+		await os.apiWithDialog('antennas/remove-note', { antennaId: props.currentAntenna.id, noteId: appearNote.id });
+		globalEvents.emit('noteRemovedFromAntenna', props.currentAntenna.id, appearNote.id);
 	}
 
 	async function promote(): Promise<void> {
@@ -628,11 +644,29 @@ export function getNoteMenu(props: {
 					action: delEdit,
 				});
 			}
+			// 旗鯖fork: 本家 2026.6.0 から取り込み: アンテナのタイムラインから個別のノートを削除できるように
+			if (props.currentAntenna != null) {
+				menuItems.push({
+					icon: 'ti ti-trash',
+					text: i18n.ts.removeFromAntenna,
+					danger: true,
+					action: removeFromAntenna,
+				});
+			}
 			menuItems.push({
 				icon: 'ti ti-trash',
 				text: i18n.ts.delete,
 				danger: true,
 				action: del,
+			});
+		} else if (props.currentAntenna != null) {
+			// 旗鯖fork: 本家 2026.6.0 から取り込み: アンテナのタイムラインから個別のノートを削除できるように
+			menuItems.push({ type: 'divider' });
+			menuItems.push({
+				icon: 'ti ti-trash',
+				text: i18n.ts.removeFromAntenna,
+				danger: true,
+				action: removeFromAntenna,
 			});
 		}
 	} else {
