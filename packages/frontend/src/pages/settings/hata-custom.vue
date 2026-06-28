@@ -198,28 +198,13 @@ SPDX-License-Identifier: AGPL-3.0-only
         </FormSection>
         <FormSection>
             <template #label>サイドメニューの並び替え</template>
-            <div :class="$style.reorderHead">
-                <div style="font-size:.85em;opacity:.7;flex:1;">PC/タブレットのサイドバーとモバイルのドロワーに反映されます。並び替えは各グループ内でのみ可能です。スイッチで非表示にできます (一部の項目は常に表示)。</div>
-                <button :class="$style.resetBtn" @click="resetSidebar">並び替えを初期化</button>
+            <div style="font-size:.85em;opacity:.7;margin-bottom:12px;line-height:1.55;">
+                PC/タブレットのサイドバーとモバイルのドロワーに反映されます。<br>
+                <b>編集モーダル</b>でドラッグによる並び替え (グループ越え可)・表示/非表示の切替ができ、明示的に保存することでサーバーに同期され、ログイン中のすべての端末に反映されます。
             </div>
-            <div :class="$style.reorderList">
-                <template v-for="(item, idx) in sidebarItems" :key="item.id">
-                    <!-- 旗鯖fork: グループの先頭にラベルを表示 -->
-                    <div v-if="isSidebarGroupHead(idx)" :class="$style.reorderGroupLabel">{{ sidebarGroupLabelOf(item) }}</div>
-                    <div :class="[$style.reorderItem, isSidebarItemVisible(item) ? '' : $style.reorderItemHidden]">
-                        <!-- 旗鯖fork: 必須項目以外は visible トグル付き、必須項目は空白でレイアウトを揃える -->
-                        <MkSwitch v-if="!isSidebarItemRequired(item.id)" :modelValue="isSidebarItemVisible(item)" style="margin:0;flex-shrink:0;transform:scale(.8);transform-origin:left center;" @update:modelValue="setSidebarItemVisible(idx, $event)" />
-                        <span v-else :class="$style.requiredLabel" v-tooltip="'この項目は常に表示されます'"><i class="ti ti-lock"></i></span>
-                        <!-- 旗鯖fork: アイコン override で保存値が古くても新アイコン表示 (utility/sidebar-icon-overrides.ts) -->
-                        <i :class="[applySidebarIconOverride(item), $style.reorderIcon]"></i>
-                        <span :class="$style.reorderLabel">{{ item.label }}</span>
-                        <div :class="$style.reorderBtns">
-                            <button :class="$style.reorderBtn" :disabled="!canMoveSidebar(idx,-1)" @click="moveSidebarItem(idx,-1)">▲</button>
-                            <button :class="$style.reorderBtn" :disabled="!canMoveSidebar(idx,1)" @click="moveSidebarItem(idx,1)">▼</button>
-                        </div>
-                    </div>
-                </template>
-            </div>
+            <button class="_buttonPrimary" @click="openSidebarEditDialog" style="padding:10px 20px;font-weight:bold;">
+                <i class="ti ti-edit"></i> サイドバーを編集する
+            </button>
         </FormSection>
         </template>
         <template v-if="activeCat === 'hatask'">
@@ -579,66 +564,26 @@ const bottomNavItems = ref([...prefer.s['simpleUi.bottomNav']]);
 function saveBottomNav() { prefer.commit('simpleUi.bottomNav', [...bottomNavItems.value]); }
 watch(bottomNavItems, saveBottomNav, { deep: true });
 
-const sidebarItems = ref([...prefer.s['simpleUi.sidebar']]);
-function saveSidebar() { prefer.commit('simpleUi.sidebar', [...sidebarItems.value]); }
-watch(sidebarItems, saveSidebar, { deep: true });
-
-// 旗鯖fork: サイドバーの並び替えはグループ内のみに制限する。
-// グループ枠 (basic/hata/discover/more) は固定とし、項目が別グループへ移動して
-// グループラベルの位置が崩れるのを防ぐ。
-const sidebarGroupLabels: Record<string, string> = {
-	basic: '基本機能',
-	hata: 'Hatask',
-	discover: '発見・交流',
-	more: '',
-};
-function sidebarGroupLabelOf(item: any): string {
-	return sidebarGroupLabels[item.group ?? 'basic'] ?? '';
-}
-// idx の項目がそのグループの先頭か (= 直前と異なるグループ、または先頭)
-function isSidebarGroupHead(idx: number): boolean {
-	const cur = sidebarItems.value[idx]?.group ?? 'basic';
-	if (idx === 0) return true;
-	const prev = sidebarItems.value[idx - 1]?.group ?? 'basic';
-	return cur !== prev;
-}
-// idx の項目を dir 方向に動かせるか (同一グループ内に隣接要素がある場合のみ)
-function canMoveSidebar(idx: number, dir: number): boolean {
-	const ni = idx + dir;
-	if (ni < 0 || ni >= sidebarItems.value.length) return false;
-	const cur = sidebarItems.value[idx]?.group ?? 'basic';
-	const next = sidebarItems.value[ni]?.group ?? 'basic';
-	return cur === next; // 隣が別グループなら境界なので動かせない
-}
-function moveSidebarItem(idx: number, dir: number) {
-	if (!canMoveSidebar(idx, dir)) return;
-	const ni = idx + dir;
-	const [moved] = sidebarItems.value.splice(idx, 1);
-	sidebarItems.value.splice(ni, 0, moved);
-	saveSidebar();
-}
-
-
-// 旗鯖fork: サイドバー項目の表示/非表示
-// 必須項目(タイムライン/通知/お知らせ/フォロー申請/もっと)は常に表示で、トグル不可。
-// 設定はそもそも sidebar 並び替え対象外なのでここでは扱わない。
-// chat (メッセージ) と reload (リロード) は v5 マイグレ (boot/common.ts) で sidebarItems に
-// 通常項目として組み込み済みのため、ユーザーが自由に非表示・並び替えできる。
-const REQUIRED_SIDEBAR_IDS = new Set(['timeline', 'notifications', 'announcements', 'followRequests', 'more']);
-function isSidebarItemRequired(id: string): boolean {
-	return REQUIRED_SIDEBAR_IDS.has(id);
-}
-// 既存ユーザー設定との互換: visible フィールドが無ければ true (表示) として扱う
-function isSidebarItemVisible(item: any): boolean {
-	if (isSidebarItemRequired(item.id)) return true;
-	return item.visible !== false;
-}
-function setSidebarItemVisible(idx: number, visible: boolean) {
-	const item = sidebarItems.value[idx];
-	if (!item) return;
-	if (isSidebarItemRequired(item.id)) return;
-	item.visible = visible;
-	saveSidebar();
+// 旗鯖fork: サイドバー編集は MkSidebarEditDialog に分離 (モーダル + ドラッグ並び替え +
+//   明示的な保存ボタン + 「保存しました」トースト + 初期値に戻す)。
+//   以前は watch による自動保存 + idx 経由の操作だったが、「保存されたか分からない」
+//   「サーバー間で同期されてるか不明」というユーザー声と、本番で発生していた設定リセット
+//   問題への対策として独立モーダル化した。sidebarItems の ref / saveSidebar / watch /
+//   resetSidebar / canMoveSidebar / moveSidebarItem / isSidebarGroupHead /
+//   isSidebarItemRequired / isSidebarItemVisible / setSidebarItemVisible /
+//   sidebarGroupLabels 等の helper はモーダル側に内包したためここからは削除。
+async function openSidebarEditDialog() {
+	const { dispose } = os.popup(
+		(await import('@/components/MkSidebarEditDialog.vue')).default,
+		{},
+		{
+			// done は MkSidebarEditDialog が save 完了時に emit する。
+			// 保存処理 (prefer.commit) と「保存しました」トーストはモーダル側で完結するので
+			// ここでは特に何もしない (prefer の reactive が UI 側に伝播する)。
+			done: (_v: { saved: boolean }) => { /* noop */ },
+			closed: () => dispose(),
+		},
+	);
 }
 
 // 旗鯖fork: 並び替え/表示状態を初期化するボタン用関数。
@@ -655,12 +600,7 @@ async function resetBottomNav() {
 	bottomNavItems.value = JSON.parse(JSON.stringify(getInitialPrefValue('simpleUi.bottomNav')));
 	saveBottomNav();
 }
-async function resetSidebar() {
-	const { canceled } = await os.confirm({ type: 'warning', text: 'サイドメニューの並び順と表示状態をリセットしますか？' });
-	if (canceled) return;
-	sidebarItems.value = JSON.parse(JSON.stringify(getInitialPrefValue('simpleUi.sidebar')));
-	saveSidebar();
-}
+// 旗鯖fork: 旧 resetSidebar はモーダル (MkSidebarEditDialog) の「初期値に戻す」ボタンに移行
 
 const widgetBorder = prefer.model('simpleUi.widgetBorder');
 const glassEffect = prefer.model('simpleUi.glassEffect');
