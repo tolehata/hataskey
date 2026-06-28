@@ -3,6 +3,85 @@
 旗鯖独自フォーク (Hataskey-Hata) のチェンジログです。  
 ベースフォーク CherryPick のチェンジログは [CHANGELOG.md](./CHANGELOG.md) を参照してください。
 
+## hata-11.7.7
+
+本家 Misskey 2026.6.0 のリリース全 29 項目 (General/Client/Server) を取り込みする追従リリースです。本家機能取り込み 21 件、既反映/非該当でスキップ 14 件、旗鯖独自実装統合 1 件、死コード掃除 3 件を行いました。あわせて、Dockerfile / .dockerignore に潜在していた本番ビルド時の `var LANGS` 反映漏れ問題 (BuildKit `COPY --link` キャッシュバグ起因) を恒久対策しました。連合 (ActivityPub) への影響はすべての変更でゼロを事前検証済みです (本家由来の連合修正は旗鯖独自実装と整合確認、旗鯖独自フィールド・通知・配信経路はいずれも変更なし)。
+
+### 本家 Misskey 2026.6.0 からの取り込み (Client Feat/Enhance)
+
+- **ドライブ/ユーザーページのスクロール位置記憶**: `composables/use-scroll-position-keeper.ts` を本家アルゴリズムに更新し、anchorContainerLocalY によるピクセル正確な復元・`savedScrollTop` フォールバック・`pointerdown` での同期キャプチャに対応しました。`pages/drive.vue` に `scrollContainer` ref + composable 呼び出しを追加、`MkDrive.vue` の `XFolder`/`XFile` に `:data-scroll-anchor` を付与。`pages/user/files.vue` は既存の汎用 keeper で composable 更新だけで本家同等の挙動になります
+- **絵文字メニューから直接パレットに追加**: `utility/emoji-palette.ts` を新規追加 (本家から無改変コピー)。`MkCustomEmoji.vue` (カスタム絵文字)・`MkEmoji.vue` (Unicode絵文字)・`MkReactionsViewer.reaction.vue` (リアクション) の絵文字メニューに「絵文字パレットに追加」項目を追加しました。旗鯖の `menu` (右クリック) と `stealReaction` (長押し) の 2 系統メニュー両方に対応し、`canToggle` ゲートで一貫した挙動。`MkCustomEmoji.vue` は本家にない `isLocal` ガードで旗鯖独自のリモート絵文字インポート機構との両立を確保
+- **ジョブキュー管理画面からキューの一時停止/再開**: `QueueService` に `queuePause` / `queueResume` を追加 (BullMQ `queue.pause()` / `queue.resume()`)。新規エンドポイント `admin/queue/pause` / `admin/queue/resume` を追加 (`requireModerator` + `write:admin:queue` スコープ)。`types.ts` の `moderationLogTypes` と `ModerationLogPayloads` に `pauseQueue` / `resumeQueue` を追記。`pages/admin/job-queue.vue` のコメントアウトされていた Pause/Resume ボタンを有効化。`QUEUE_TYPES` に旗鯖独自 `utageResolve` も含まれており、独自キューも一時停止/再開対象になります
+- **アンテナのタイムラインから個別ノート削除**: 新規エンドポイント `antennas/remove-note` を追加。フロントは `events.ts` / `MkStreamingNotesTimeline.vue` / `MkNote.vue` / `pages/antenna-timeline.vue` / `utility/get-note-menu.ts` に統合。`FanoutTimelineService.remove` メソッドを追加 (本家由来、Redis `LREM` で list から個別 noteId を削除)。旗鯖の `MkStreamingNotesTimeline` の `noteRemovedFromAntenna` ハンドラは `src === 'antenna'` ガード付きで HatasabaUI deck の他コンテキスト/utage への影響なし
+- **ノート検索の投稿日時範囲指定 (#16035)**: backend の `notes/search` paramDef と `SearchService` (searchByLike + searchByMeiliSearch) に `rangeStartAt` / `rangeEndAt` を追加。フロントは旗鯖独自カプセル型検索 UI (`pages/search.vue`、681 行) のノート検索オプションに `datetime-local` 入力 2 つ (postFrom / postTo) を統合し、executeSearch の `notePaginator` params で `rangeStartAt` / `rangeEndAt` を渡すよう拡張しました。本家由来の `search.note.vue` への適用はファイル自体が旗鯖独自実装で未使用化していたため、旗鯖独自検索ページに直接統合する形に変更
+
+### 本家 Misskey 2026.6.0 からの取り込み (Client Fix)
+
+- **URLプレビューの `Invalid URL` 表示**: `MkYouTubePlayer.vue` でプレイヤーが読み込まれるまでの間 `Invalid URL` と一瞬表示される問題を修正
+- **周年実績アイコンの表示** (#17482): `utility/achievements.ts` の `passedSinceAccountCreated1/2/3` の画像パスを `0031-20e3` / `0032-20e3` / `0033-20e3` → `31-20e3` / `32-20e3` / `33-20e3` に修正 (CDN/assets 側に該当画像が無く 1/2/3 周年実績が表示されない状態の解消)
+- **アクセストークン発行ダイアログのタイトル**: `pages/settings/connect.vue` のダイアログタイトルが「確認コード」になっていた問題を修正。新規 `accessToken` キーを `ja-JP.yml` / `en-US.yml` に追加し、旧 `token` キーは他箇所の利用懸念から温存
+- **「D」キーでダークモード切替時の `syncDeviceDarkMode` バイパス**: `boot/main-boot.ts` の `d` ショートカットハンドラを `syncDeviceDarkMode` 確認フローでラップしました
+- **メンションサジェストのアイコン崩れ**: `MkAutocomplete.vue` の `.avatar` ブロックに `object-fit: cover` を追加し、画像サイズによってアイコンが崩れる問題を修正
+- **ノート下書きリセット時の未アップロードファイル添付解除**: `composables/use-uploader.ts` に `reset()` を追加 (`revokeObjectURL` / `abortAll` / `items.value` クリア)。`MkPostForm.vue` の `clear()` 末尾で `uploader.reset()` を呼ぶよう変更
+
+### 本家 Misskey 2026.6.0 からの取り込み (Server Enhance/Fix)
+
+- **URLプレビューのデフォルト UA にサーバー URL を含める**: `UrlPreviewService.ts` で、`urlPreviewUserAgent` 管理画面設定が無い場合のデフォルト UA を `SummalyBot (<server-url>; ...)` 形式に変更し、外部サイトから旗鯖が発信元であることを判別できるようにしました
+- **リモートノートクリーニングジョブのパフォーマンス改善**: `CleanRemoteNotesProcessorService.ts` で `enabled` / `maxDuration` / `newestLimit` を `getConfig()` クロージャ化しループ毎に再評価できるよう変更。これによりジョブ実行中の管理画面 OFF が即時反映され、長時間ジョブ中の基準日も現在時刻に追随します。あわせて `candidateNotesQuery` をファクトリ関数化し、CTE 内 base 部分の LIMIT が各イテレーションの `currentLimit` を反映するよう修正 (以前は初回 `currentLimit=100` が固定バインドされ適応バッチサイズが実効化していなかった)
+- **センシティブメディア自動検出の依存解決失敗修正**: `AiService.ts` の `nsfwjs` / `systeminformation` のトップレベル import を動的 import に変更し、optionalDependencies 解決失敗時に AiService 全体が壊れない構造に。モデルパスも `pathToFileURL` で URL 化して OS 差異を吸収
+- **起動/停止失敗を misskey logger 経由で報告**: `StreamingApiServerService.ts` の `detach()` を Promise 化し `wss.close()` の完了を await できるよう変更。旗鯖独自の `clients.forEach(terminate)` (close ハング防止) は維持して本家 Promise 化と併用。EACCES/EADDRINUSE/`enableShutdownHooks` は既存実装で対応済み
+- **フォロワー限定ノートを `specified` (指名/ダイレクト) で引用した時の visibility 保護** (PR#15961): `NoteCreateService.ts` L544-553 で、旧 `data.visibility = 'followers'` (無条件書換) を `if (data.visibility === 'public' || data.visibility === 'home') data.visibility = 'followers'` に修正。`specified` で引用した場合はユーザー意図通り `specified` を維持するよう変更しました。旗鯖独自の utage / private channel / hata-secure 系 visibility は同 switch で触れていないため非影響
+- **`FanoutTimelineService.remove` メソッド追加**: アンテナ TL 個別削除エンドポイントが要求するメソッド。Redis `LREM` で list から個別 noteId を削除。本家由来の `@bindThis` 付き
+
+### 旗鯖独自実装 (本家機能の旗鯖 UI 統合)
+
+- **`search.vue` のノート検索オプションに期間指定 UI を統合**: 本家 PR#16035 は子コンポーネント方式の `search.note.vue` に期間指定を追加する形でしたが、旗鯖は `4ab4021f7c` (11.5 メジャー) で旗鯖独自カプセル型検索バー UI へ統合済み (`pages/search.vue`、681 行) のため、`search.note.vue` への取り込みは UI に反映されない死コード化していました。旗鯖独自検索ページ側に `rangeStartAt` / `rangeEndAt` の `ref` 宣言・`subOption` div + datetime-local 入力 2 つ・`executeSearch` の `notePaginator` params への引き渡しを追加し、旗鯖カプセル型検索バーから期間指定によるノート検索が機能するようにしました
+- **`canUseTranslator` ポリシー残骸の DB クリーンアップ** (`1784200000000-drop-translator-policy.js`): 11.7.6 の `DropTranslatorSettings1784100000000` は `meta` テーブルの 10 カラム削除のみで、`meta.policies` / `role.policies` JSON カラムに過去 version から保存された `canUseTranslator` / `canUseAutoTranslate` キーが残り続け `/api/meta` レスポンスに `policies.canUseTranslator: true` が返ってしまっていました。新規マイグレで JSON マイナス演算子 (`-`) を使い両テーブルから該当キーを除去。適用後は `MetaService` の in-memory キャッシュリフレッシュのため `docker compose restart web` が必要
+
+### スキップ (旗鯖が先取り取り込み済み・非該当)
+
+調査の結果、以下 14 項目は旗鯖の既取り込み実装と同等以上だったためスキップしました。
+
+- **AP image に width/height を含める**: 旗鯖の `ApRendererService.ts:184` `renderDocument()` で既に width/height/sensitive を出力済み
+- **Inbox actor 検証**: 旗鯖の `ActivityPubServerService.ts:186-194` で本家より厳格な検証 (`!activity.type` / `!signature.keyId` も検査) 実装済み
+- **リモートノートのメンション数制限** (#17576): 旗鯖の `ApNoteService.ts:184` (`apMentionRawCount`) + `NoteCreateService.ts:639` (`effectiveMentionCount`) で実装済み
+- **TOTP リプレイ防止**: 11.7.5 で取り込み済み (Redis NX SET + window=1)
+- **SSRF URL preview 硬化**: 11.7.5 で取り込み済み
+- **OAuth2 Token Grant 入力検証** (PR#17580): 旗鯖の `OAuth2ProviderService.ts:276` で `firstValue` 型ガード・L286 `parseUrlEncodedParameters`・L302 `toRequestParameters` の型サニタイズ完備済み
+- **`MemoryKVCache` GC 修正**: 旗鯖 `misc/cache.ts` は本家 2026.6.0 と完全一致
+- **`PerUserDriveChart` の userId null クラッシュ修正** (#17498): 旗鯖の `per-user-drive.ts` は既に `if (file.userId == null) return;` ガード実装済み
+- **`@tensorflow/tfjs-node` を bundle external 化**: 旗鯖は backend を swc トランスパイルのみで動かしており rolldown bundle 構成自体を持たないため非該当
+- **パスキー登録完了時のダイアログ入力値**: 旗鯖 master に `eae405a951` で取り込み済み (`2fa.vue` の `addSecurityKey` が `auth2.result.password/token` を使用)
+- **画像アップロード時のフレームキャプション付与**: 親機能 `ImageFrameRenderer` (PR#16725) が旗鯖未取り込みのため対象なし。フレーム機能取り込み時に同時適用
+- **CherryPick UI 色 (Cherry-picked from MisskeyIO#1243)**: `vite.config.ts` に lightningcss + `Features.LightDark` exclude + `build.target=chrome130/firefox132/safari18.2` が既に取り込み済み
+- **アンテナ管理画面の細部 UI 改善**: 旗鯖独自 HatasabaUI とのレイアウト衝突回避のためスキップ
+- **未実装の `canUseTranslator` 関連 UI 残置**: 11.7.6 で UI ごと削除済みのため非該当
+
+### Dockerfile / .dockerignore 恒久対策
+
+11.7.7 デプロイ前検証で、`base.pug` に追加した `var LANGS = !{JSON.stringify(langs)}` (本家 2026.6 系の frontend `boot.js` が要求するグローバル) がコンテナ内 `built/views/base.pug` に反映されない事象が発生しました。根本原因の特定と恒久対策を行っています。
+
+- **`.dockerignore` に `packages/*/built` を追加**: `built/` だけだと Docker context ルートの `./built/` しか除外されず、`packages/backend/built/` 等のサブパッケージ built は context に含まれていました。その結果 Dockerfile 末尾の `COPY . ./` でホスト側の古い `packages/backend/built/views/base.pug` がコンテナ内の native-builder 製の新しい base.pug を上書きしていました
+- **Dockerfile から `COPY --link` を全削除 (21 箇所)**: Docker BuildKit の `COPY --link` レイヤーキャッシュバグで src の変更が反映されないケースがあるため、本番リリースの正確性を優先して通常 `COPY` に変更しました。ビルド時間は約 +2 分増ですが、本番運用では問題ない範囲
+- **build 前 clean + 強制 touch + 検証ステップを Dockerfile に追加**: `find packages -path "*/src/*" -type f \( -name "*.pug" -o -name "*.css" -o -name "*.html" \) -exec touch {} +` でテンプレファイルの mtime を build 時刻に更新 (swc の `-D` フラグが mtime-based skip するケースの回避)。`rm -rf built packages/*/built` で残骸を完全削除。最後に `grep -c "var LANGS" packages/backend/built/server/web/views/base.pug` で反映確認 (反映漏れがあれば Docker build 自体が失敗する設計でフェイルセーフ)
+
+### 死コード掃除
+
+- **`search.note.vue` / `search.user.vue` / `search.event.vue` 削除 (合計 735 行)**: CherryPick の `search.vue` (85 行) は子コンポーネント方式で `XNote` / `XUser` / `XEvent` を import していましたが、旗鯖は `4ab4021f7c` (11.5) でカプセル型検索バー UI を独自実装し `search.vue` を 681 行の単独実装に統合。子コンポーネント方式を捨てたため、これら 3 ファイルは router からも他コンポーネントからも参照されない完全な死コードとして残っていました。CherryPick が将来 `search.note.vue` 等を更新した場合は削除済みのため `add/modify` 衝突として検知でき、旗鯖独自 `search.vue` への手動同期忘れを防げる利点もあります。`search.stories.impl.ts` は `search.vue` 用なので残します
+
+### バグ修正
+
+- **`FanoutTimelineService.remove` メソッド不在による typecheck エラー**: アンテナ TL 個別削除エンドポイント (`antennas/remove-note.ts`) が `FanoutTimelineService.remove` を呼んでいるが旗鯖既存実装にはメソッドが存在せず、`Property 'remove' does not exist on type 'FanoutTimelineService'` でビルド失敗していたため、本家 2026.6.0 の実装 (`@bindThis` + Redis `LREM`) を旗鯖に追加しました
+
+### 連合への影響 (事前検証済み: ゼロ)
+
+11.7.7 で行ったすべての変更について、ActivityPub 連合先・他サーバーへの影響をゼロと事前検証しました。
+
+- **本家 Server Enhance/Fix の取り込み**: AP width/height・Inbox actor 検証・メンション制限・TOTP・SSRF・OAuth2・MemoryKVCache・DriveChart・tfjs はいずれも旗鯖が既に取り込み済みで動作確認済み。今回新規取り込みの UrlPreview UA 変更は連合トラフィック非該当 (URL プレビュー外部 fetch 時のみ)、`AiService` 動的 import 化は内部実装の差し替えで AP 経路に影響なし、`StreamingApiServerService.detach()` Promise 化は WebSocket close 待機の改善で配送経路に影響なし
+- **`NoteCreateService` のフォロワー限定指名引用 visibility 保護** (PR#15961): visibility 計算ロジックの厳密化で、旗鯖の utage/private channel/hata-secure 系 visibility (異なる switch case で処理) には触れていません。本家と完全同等動作
+- **`FanoutTimelineService.remove`**: Redis `LREM` でローカルタイムライン list から個別 noteId を削除する操作のみ。AP 経路への送出はなし
+- **旗鯖独自フィールド**: `utageStatus` / `utageSuccessCount` / `canAccessHataFeed` / `canMakePrivateChannel` などは引き続き AP renderer に含まれず、REST API/WS 限定のまま
+
 ## hata-11.7.6
 
 復旧・整理リリース。11.7.5 時点で本家 Misskey 2026.6.0 取り込み途中に残った欠落ファイル・欠落依存・TypeORM v1 互換問題を完全解消し、`pnpm --filter backend build` から SDK 再生成までの一連の build パスを健全な状態に戻しました。あわせて、本家リファクタとの方向性違いから死コード化していた CherryPick 由来の Friendly UI を完全に削除し、外部API依存の翻訳機能 (DeepL/Google/CTAv3/LibreTranslate) を完全撤去しました。連合 (ActivityPub) への影響はすべての変更でゼロを事前検証済みです (旗鯖独自フィールド・通知・配信経路はいずれも変更なし)。本家 Misskey からの追加取り込みはありません。
