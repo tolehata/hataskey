@@ -13,6 +13,7 @@ import { ChannelEntityService } from '@/core/entities/ChannelEntityService.js';
 import { ChannelService } from '@/core/ChannelService.js';
 import { RoleService } from '@/core/RoleService.js';
 import { DI } from '@/di-symbols.js';
+import { secureRndstr } from '@/misc/secure-rndstr.js';
 import { ApiError } from '../../error.js';
 
 export const meta = {
@@ -61,7 +62,9 @@ export const paramDef = {
 		allowRenoteToExternal: { type: 'boolean', nullable: true },
 		// 旗鯖fork: プライベートチャンネル
 		isPrivate: { type: 'boolean', nullable: true },
-		password: { type: 'string', nullable: true, maxLength: 128 },
+		// 旗鯖fork: 合言葉(password) は backend で暗号学的乱数による自動生成に変更。
+		// ユーザー入力の弱い合言葉(例: '1234')でブルートフォース侵入される事故を防ぐため、
+		// API のパラメータからは削除。生成された合言葉は作成レスポンスの password フィールドで返る。
 		moderatorUserIds: { type: 'array', items: { type: 'string', format: 'misskey:id' }, nullable: true },
 	},
 	required: ['name'],
@@ -115,9 +118,10 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				...(ps.color !== undefined ? { color: ps.color } : {}),
 				// 旗鯖fork: プライベートチャンネルはチャンネル外リノート不可で固定
 				allowRenoteToExternal: (ps.isPrivate ?? false) ? false : (ps.allowRenoteToExternal ?? true),
-				// 旗鯖fork: プライベートチャンネル
+				// 旗鯖fork: プライベートチャンネル。合言葉はサーバー側で暗号学的乱数を自動生成する
+				// (32文字英数字、secureRndstr による CSPRNG)。プライベートでない場合は null。
 				isPrivate: ps.isPrivate ?? false,
-				password: ps.password ?? null,
+				password: (ps.isPrivate ?? false) ? secureRndstr(32) : null,
 				moderatorUserIds,
 			} as MiChannel);
 

@@ -10,6 +10,7 @@ import { ChannelEntityService } from '@/core/entities/ChannelEntityService.js';
 import { ChannelService } from '@/core/ChannelService.js';
 import { DI } from '@/di-symbols.js';
 import { RoleService } from '@/core/RoleService.js';
+import { secureRndstr } from '@/misc/secure-rndstr.js';
 import { ApiError } from '../../error.js';
 
 export const meta = {
@@ -71,7 +72,11 @@ export const paramDef = {
 		allowRenoteToExternal: { type: 'boolean', nullable: true },
 		// 旗鯖fork: プライベートチャンネル
 		isPrivate: { type: 'boolean', nullable: true },
-		password: { type: 'string', nullable: true, maxLength: 128 },
+		// 旗鯖fork: 合言葉(password) の直接編集は廃止。代わりに「再生成フラグ」で
+		// サーバー側で暗号学的乱数による新しい合言葉を生成する設計。
+		// 弱い合言葉(例: '1234')でブルートフォース侵入される事故と、UI 上で平文を
+		// 編集できることのフィッシング/ショルダーハック懸念を同時に解消する。
+		regeneratePassword: { type: 'boolean', nullable: true },
 		moderatorUserIds: { type: 'array', items: { type: 'string', format: 'misskey:id' }, nullable: true },
 	},
 	required: ['channelId'],
@@ -145,7 +150,9 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				...(effectiveIsPrivate ? { allowRenoteToExternal: false } : (typeof ps.allowRenoteToExternal === 'boolean' ? { allowRenoteToExternal: ps.allowRenoteToExternal } : {})),
 				// 旗鯖fork: プライベート化は許可するが、解除(true→false)は不可。常に effectiveIsPrivate を書く。
 				...(effectiveIsPrivate ? { isPrivate: true } : {}),
-				...(ps.password !== undefined ? { password: ps.password } : {}),
+				// 旗鯖fork: 合言葉は regeneratePassword フラグで再生成のみ可能。
+				// 任意文字列の直接書き換えは廃止 (弱い合言葉のブルートフォース対策)。
+				...(ps.regeneratePassword === true && effectiveIsPrivate ? { password: secureRndstr(32) } : {}),
 				...(ps.moderatorUserIds !== undefined ? { moderatorUserIds: [...new Set(ps.moderatorUserIds)].filter(uid => uid !== channel.userId) } : {}),
 			});
 

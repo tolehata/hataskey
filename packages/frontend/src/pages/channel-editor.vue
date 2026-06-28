@@ -44,13 +44,29 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</MkSwitch>
 
 			<template v-if="isPrivate">
-				<MkInput v-model="password">
-					<template #label>あいことば（任意）</template>
-					<template #caption>
-						このあいことばを知っているユーザーは入室（メンバー化）できます。空欄なら手動追加のみ。
-						<template v-if="channelId && hasPassword">／現在あいことば設定済み（変更する場合のみ入力。空欄なら現状維持）</template>
-					</template>
-				</MkInput>
+				<!-- 旗鯖fork: あいことばはサーバー側で暗号学的乱数による自動生成 (32文字英数字)。
+				     ユーザー入力の弱い合言葉 (例: '1234') をブルートフォースで突破される事故と、
+				     UI 上で平文編集できることのフィッシング/ショルダーハック懸念を同時に解消するため、
+				     表示・コピー・再生成のみ可能な UI に変更。 -->
+				<div :class="$style.passwordBox">
+					<div :class="$style.passwordLabel"><i class="ti ti-key"></i> あいことば（自動生成・32文字）</div>
+					<div :class="$style.passwordRow">
+						<code :class="$style.passwordValue">{{ channelId && hasPassword ? (passwordRevealed ? currentPassword : '••••••••••••••••••••••••••••••••') : '（チャンネル作成時に自動生成されます）' }}</code>
+						<button v-if="channelId && hasPassword" :class="$style.passwordBtn" v-tooltip="passwordRevealed ? '隠す' : '表示する'" @click="passwordRevealed = !passwordRevealed">
+							<i :class="passwordRevealed ? 'ti ti-eye-off' : 'ti ti-eye'"></i>
+						</button>
+						<button v-if="channelId && hasPassword" :class="$style.passwordBtn" v-tooltip="'コピー'" :disabled="!passwordRevealed" @click="copyPassword">
+							<i class="ti ti-copy"></i>
+						</button>
+						<button v-if="channelId && hasPassword" :class="[$style.passwordBtn, $style.passwordBtnWarn]" v-tooltip="'再生成 (旧あいことばは無効化されます)'" @click="confirmRegeneratePassword">
+							<i class="ti ti-refresh"></i>
+						</button>
+					</div>
+					<div :class="$style.passwordCaption">
+						このあいことばを知っているユーザーは入室（メンバー化）できます。<br>
+						<b>再生成すると旧あいことばは即座に無効化</b>され、入室を許可済みのユーザーには影響しませんが、まだ入室していない人には新しいあいことばを共有する必要があります。
+					</div>
+				</div>
 
 				<div>
 					<div :class="$style.subAdminsLabel">副管理者</div>
@@ -115,6 +131,7 @@ import { $i } from '@/i.js';
 import { selectFile } from '@/utility/drive.js';
 import * as os from '@/os.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
+import { copyToClipboard } from '@/utility/copy-to-clipboard.js';
 import { definePage } from '@/page.js';
 import { i18n } from '@/i18n.js';
 import MkFolder from '@/components/MkFolder.vue';
@@ -143,8 +160,10 @@ const pinnedNotes = ref<{ id: Misskey.entities.Note['id'] }[]>([]);
 const isPrivate = ref(false);
 // 読み込み時点で既にプライベートだったか(解除不可の判定用)。
 const wasPrivate = ref(false);
-const password = ref<string>('');
+// 旗鯖fork: あいことばはサーバー側自動生成。frontend は表示/コピー/再生成のみ。
+const currentPassword = ref<string>('');  // GET 経由で取得した平文 (showWithPassword で初回取得)
 const hasPassword = ref(false);
+const passwordRevealed = ref(false);
 const moderatorUsers = ref<Misskey.entities.UserDetailed[]>([]);
 // このユーザーがプライベートチャンネルを作成できるか(ロールポリシー)。権限が無くても項目は表示する(機能の周知のため)。
 const canMakePrivateChannel = computed(() => $i?.policies?.canMakePrivateChannel === true);
@@ -180,6 +199,15 @@ async function fetchChannel() {
 	isPrivate.value = result.isPrivate;
 	wasPrivate.value = result.isPrivate;
 	hasPassword.value = result.hasPassword;
+	// 旗鯖fork: あいことばの本体を取得 (チャンネル管理者のみ可)。表示・コピー・再生成 UI で使用。
+	if (result.isPrivate && result.hasPassword) {
+		try {
+			const r = await misskeyApi('channels/show-password' as any, { channelId: props.channelId });
+			currentPassword.value = (r as any).password ?? '';
+		} catch {
+			currentPassword.value = '';
+		}
+	}
 	if (result.moderatorUserIds && result.moderatorUserIds.length > 0) {
 		moderatorUsers.value = await misskeyApi('users/show', { userIds: result.moderatorUserIds });
 	}
@@ -188,6 +216,42 @@ async function fetchChannel() {
 }
 
 fetchChannel();
+
+// 旗鯖fork: あいことばをコピー (表示状態でのみ可能)。
+function copyPassword() {
+	if (!passwordRevealed.value || !currentPassword.value) return;
+	copyToClipboard(currentPassword.value);
+	os.success('あいことばをコピーしました');
+}
+
+// 旗鯖fork: あいことばを再生成する。実行前に confirm で「旧あいことばは無効化される」旨を周知。
+// 成功後は新しい合言葉を再フェッチして UI を更新する。
+async function confirmRegeneratePassword() {
+	if (props.channelId == null) return;
+	const c = await os.confirm({
+		type: 'warning',
+		title: 'あいことばを再生成しますか?',
+		text: '再生成すると旧あいことばは即座に無効化されます (既に入室済みのユーザーには影響しませんが、まだ入室していない人には新しいあいことばを共有し直す必要があります)。\n\nよろしいですか?',
+	});
+	if (c.canceled) return;
+	try {
+		await misskeyApi('channels/update' as any, {
+			channelId: props.channelId,
+			regeneratePassword: true,
+		});
+		// 新しい合言葉を再取得
+		const r = await misskeyApi('channels/show-password' as any, { channelId: props.channelId });
+		currentPassword.value = (r as any).password ?? '';
+		passwordRevealed.value = true;
+		os.success('あいことばを再生成しました');
+	} catch (err) {
+		os.alert({
+			type: 'error',
+			title: '再生成に失敗しました',
+			text: err instanceof Error ? err.message : '不明なエラー',
+		});
+	}
+}
 
 // 旗鯖fork: プライベート化の切替。ONにする時は「解除できない」旨の注意ウィンドウを出す。
 async function onTogglePrivate(v: boolean) {
@@ -244,10 +308,10 @@ function save() {
 		color: color.value,
 		isSensitive: isSensitive.value,
 		allowRenoteToExternal: allowRenoteToExternal.value,
-		// 旗鯖fork: プライベートチャンネル。passwordは入力された時だけ送る(空欄なら現状維持)。
+		// 旗鯖fork: プライベートチャンネル。あいことばはサーバー側で自動生成されるため、
+		// frontend からは送らない (再生成は別 API/別フラグで処理)。
 		isPrivate: isPrivate.value,
 		moderatorUserIds: moderatorUsers.value.map(u => u.id),
-		...(password.value !== '' ? { password: password.value } : {}),
 	} satisfies Misskey.entities.ChannelsCreateRequest;
 
 	if (props.channelId != null) {
@@ -380,5 +444,66 @@ definePage(() => ({
 .subAdminRemove {
 	color: #ff2a2a;
 	opacity: 0.8;
+}
+
+/* 旗鯖fork: あいことば表示・コピー・再生成 UI */
+.passwordBox {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	padding: 14px 16px;
+	border-radius: 12px;
+	background: var(--MI_THEME-panel);
+	border: 1px solid var(--MI_THEME-divider);
+}
+.passwordLabel {
+	font-size: .9em;
+	font-weight: 700;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	color: var(--MI_THEME-accent);
+}
+.passwordRow {
+	display: flex;
+	gap: 6px;
+	align-items: center;
+	flex-wrap: wrap;
+}
+.passwordValue {
+	flex: 1;
+	min-width: 0;
+	padding: 8px 12px;
+	border-radius: 8px;
+	background: var(--MI_THEME-bg);
+	border: 1px solid var(--MI_THEME-divider);
+	font-family: monospace;
+	font-size: .92em;
+	letter-spacing: .04em;
+	word-break: break-all;
+	overflow-wrap: anywhere;
+	color: var(--MI_THEME-fg);
+}
+.passwordBtn {
+	width: 36px;
+	height: 36px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 8px;
+	border: 1px solid var(--MI_THEME-divider);
+	background: var(--MI_THEME-bg);
+	color: var(--MI_THEME-fg);
+	cursor: pointer;
+	transition: border-color .12s, color .12s, background .12s;
+	flex-shrink: 0;
+}
+.passwordBtn:hover { border-color: var(--MI_THEME-accent); color: var(--MI_THEME-accent); }
+.passwordBtn:disabled { opacity: .4; cursor: not-allowed; }
+.passwordBtnWarn:hover { border-color: #ff9b3d; color: #ff9b3d; }
+.passwordCaption {
+	font-size: .8em;
+	opacity: .75;
+	line-height: 1.55;
 }
 </style>
