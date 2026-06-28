@@ -113,7 +113,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 							:class="[$style.reaction, c.myReaction === emoji && $style.reactionMine]"
 							@click="react(c, emoji)"
 						>
-							<MkEmoji :emoji="emoji"/> <span>{{ count }}</span>
+							<!-- 旗鯖fork: MkEmoji は Unicode 絵文字専用のため、:shortcode: のカスタム絵文字が
+							     来るとショートコード文字列+割れた画像で表示されてしまっていた問題を修正。
+							     MkReactionIcon は内部で :から始まれば MkCustomEmoji、それ以外は MkEmoji に分岐する。 -->
+							<MkReactionIcon :reaction="emoji"/> <span>{{ count }}</span>
 						</button>
 						<button :class="$style.reactionAdd" @click="openReactionPicker($event, c)"><i class="ti ti-mood-plus"></i></button>
 					</div>
@@ -152,6 +155,7 @@ import { ref, onMounted } from 'vue';
 import { url } from '@@/js/config.js';
 import MkButton from '@/components/MkButton.vue';
 import MkMediaList from '@/components/MkMediaList.vue';
+import MkReactionIcon from '@/components/MkReactionIcon.vue';
 import * as os from '@/os.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { chooseDriveFile } from '@/utility/drive.js';

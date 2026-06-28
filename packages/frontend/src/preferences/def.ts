@@ -841,6 +841,8 @@ export const PREF_DEF = definePreferences({
 			{ id: 'timeline', icon: 'ti ti-home', label: 'タイムライン', group: 'basic' },
 			{ id: 'search', icon: 'ti ti-search', label: '検索', group: 'basic' },
 			{ id: 'notifications', icon: 'ti ti-bell', label: '通知', group: 'basic' },
+			// 旗鯖fork: chat はかつて ui/simple.vue で動的注入していたが、ユーザーが非表示/並び替えできるよう
+			// 通常項目として扱う (v5 マイグレで既存ユーザーにも insertAfter で追加)
 			{ id: 'chat', icon: 'ti ti-messages', label: 'メッセージ', group: 'basic' },
 			{ id: 'announcements', icon: 'ti ti-speakerphone', label: 'お知らせ', group: 'basic' },
 			{ id: 'drive', icon: 'ti ti-cloud', label: 'ドライブ', group: 'basic' },
@@ -849,7 +851,7 @@ export const PREF_DEF = definePreferences({
 			{ id: 'hatask', icon: 'ti ti-eye', label: 'Hatask', group: 'hata' },
 			{ id: 'hatafeed', icon: 'ti ti-message-report', label: 'HataFeed', group: 'hata' },
 			{ id: 'earthquake', icon: 'ti ti-activity', label: '地震・津波情報', group: 'hata' },
-			{ id: 'portal', icon: 'ti ti-home-2', label: '旗鯖ポータル', group: 'hata', external: true, url: 'https://home.tolehata.net/' },
+			{ id: 'portal', icon: 'ti ti-icons', label: '旗鯖ポータル', group: 'hata', external: true, url: 'https://home.tolehata.net/' },
 			// グループ3: 発見・交流
 			{ id: 'uiSetup', icon: 'ti ti-wand', label: 'UI切り替え', group: 'discover' },
 			{ id: 'explore', icon: 'ti ti-hash', label: 'みつける', group: 'discover' },
@@ -857,6 +859,10 @@ export const PREF_DEF = definePreferences({
 			{ id: 'channels', icon: 'ti ti-device-tv', label: 'チャンネル', group: 'discover' },
 			// 末尾: もっと (ランチパッド)
 			{ id: 'more', icon: 'ti ti-dots', label: 'もっと', group: 'more' },
+			// 旗鯖fork: ページ全体リロード。かつて ui/simple.vue で「もっと」の下にハードコード表示
+			// していたが、ユーザーが非表示/並び替えできるよう通常項目として扱う
+			// (v5 マイグレで既存ユーザーにも insertAfter で追加)
+			{ id: 'reload', icon: 'ti ti-refresh', label: 'リロード', group: 'more' },
 		] as { id: string; icon: string; label: string; group?: string; external?: boolean; url?: string }[],
 	},
 	'simpleUi.widgetBorder': {
@@ -894,6 +900,11 @@ export const PREF_DEF = definePreferences({
 	// 旗鯖fork: ユーザーページの宴成功バッジ初回アナウンス吹き出しを表示済みか
 	// (preferを使うとマルチデバイス同期されるため、媒体問わず通算1回で恒久 dismiss)。
 	'simpleUi.utageBadgeTipShown': {
+		default: false,
+	},
+	// 旗鯖fork: 「もっと!から HataFeed と地震・津波情報が確認できるようになりました」
+	// 案内吹き出しを表示済みか (prefer 同期で別端末/シークレットでも通算1回で恒久 dismiss)。
+	'simpleUi.hatafeedIntroShown': {
 		default: false,
 	},
 	// 旗鯖fork: 上部メニューモード。ONでサイドバーの代わりに画面上部へ

@@ -49,10 +49,9 @@ SPDX-License-Identifier: AGPL-3.0-only
                         <span v-if="item.id==='externalNotifications' && extNotifHasUnread" :class="$style.sbExtDot"></span>
                     </button>
                 </template>
-                <!-- 旗鯖fork: 「もっと」の下にページ全体のリロードボタン -->
-                <button :class="$style.sbItem" v-tooltip.right="sidebarFolded ? 'リロード' : null" @click="reloadPage">
-                    <i class="ti ti-refresh" :class="$style.sbIcon"></i><span :class="$style.sbLabel">リロード</span>
-                </button>
+                <!-- 旗鯖fork: かつてここに「リロード」をハードコード表示していたが、
+                     ユーザーが設定UIから非表示・並び替えできるよう、通常の sidebar 項目として
+                     def.ts と sidebarItemClick map に統合した (v5 マイグレで既存ユーザーにも追加)。 -->
             </div>
 
             <div :class="$style.sbDivider"></div>
@@ -133,8 +132,8 @@ SPDX-License-Identifier: AGPL-3.0-only
                         <span v-if="item.id==='externalNotifications' && extNotifHasUnread" :class="$style.topNavDotBlue"></span>
                     </button>
                 </template>
-                <!-- 旗鯖fork: 「もっと」の右にページ全体のリロードボタン -->
-                <button :class="$style.topNavItem" v-tooltip="'リロード'" @click="reloadPage"><i class="ti ti-refresh"></i><span>リロード</span></button>
+                <!-- 旗鯖fork: かつて「もっと」の右にリロードボタンをハードコード表示していたが、
+                     sidebar 項目化したため上の v-for に統合済み(reload を非表示にしてれば出ない)。 -->
                 <button v-if="$i && ($i.isAdmin || $i.isModerator)" :class="[$style.topNavItem, { [$style.topNavItemActive]: isAdminPage }]" v-tooltip="'コントロールパネル'" @click="goToAdmin"><i class="ti ti-dashboard"></i><span>管理</span></button>
             </div>
             <div :class="$style.topNavDivider"></div>
@@ -380,6 +379,7 @@ import { instanceName } from '@@/js/config.js';
 import XCommon from './_common_/common.vue';
 import { globalEvents } from '@/events.js';
 import MkStreamingNotesTimeline from '@/components/MkStreamingNotesTimeline.vue';
+import { SIDEBAR_ICON_OVERRIDES } from '@/utility/sidebar-icon-overrides.js';
 import MkExternalTimeline from '@/components/MkExternalTimeline.vue';
 // 旗鯖fork: トレンドタイムライン (TTL)
 import MkTrendingTimeline from '@/components/MkTrendingTimeline.vue';
@@ -624,6 +624,9 @@ const moreAnnounceVisible = ref(false);
 const moreAnnPos = ref<{ top: number; left: number } | null>(null);
 function dismissMoreAnnounce() {
     moreAnnounceVisible.value = false;
+    // 旗鯖fork: prefer 経由(マルチデバイス同期)で dismiss を保存。
+    // 既存ユーザー(端末ローカル miLocalStorage に保存済み) との互換のため両方書く。
+    prefer.commit('simpleUi.hatafeedIntroShown', true);
     miLocalStorage.setItem('hatafeedIntroShown', 'true');
 }
 // 旗鯖fork: 案内吹き出しはクリック非遷移に変更したため未使用(関数は念のため残す)
@@ -794,9 +797,10 @@ const REQUIRED_SIDEBAR_IDS = ['timeline', 'notifications', 'announcements', 'fol
 // 既存ユーザーの simpleUi.sidebar 保存値に残っている場合、サイドメニュー/HatasabaUI上部ナビバー
 // の両方で描画されないよう除外する。将来別の項目が削除された場合はここに追記する。
 const DEAD_SIDEBAR_IDS = ['whatsNew'];
-// 旗鯖fork: 保存済み simpleUi.sidebar にアイコンが焼き込まれている項目について、
-// 最新のアイコンへ描画時に上書きする(既存ユーザーにも反映させるため)。
-const SIDEBAR_ICON_OVERRIDES: Record<string, string> = { portal: 'ti ti-icons' };
+// 旗鯖fork: アイコン override は utility/sidebar-icon-overrides.ts に集約。
+// サイドバー本体と設定UI(settings/hata-custom.vue)で同じマップを参照することで、
+// 「サイドバー側だけ新アイコン・設定UI側は旧アイコンのまま」という不整合を防ぐ。
+// SIDEBAR_ICON_OVERRIDES は ファイル上部の import で読み込み済み (utility/sidebar-icon-overrides.ts)。
 const sidebarGroups = computed(() => {
     const order = ['basic', 'hata', 'discover', 'more'];
     const groups: { key: string; label: string; items: any[] }[] = [];
@@ -810,21 +814,9 @@ const sidebarGroups = computed(() => {
         if (!grp) { grp = { key: g, label: sidebarGroupLabels[g] ?? '', items: [] }; groups.push(grp); }
         grp.items.push(SIDEBAR_ICON_OVERRIDES[item.id] ? { ...item, icon: SIDEBAR_ICON_OVERRIDES[item.id] } : item);
     }
-    // 旗鯖fork: メッセージ(チャット)を基本グループに動的注入する。
-    // 既存ユーザーの保存済み simpleUi.sidebar には chat が含まれないため、
-    // def.ts のデフォルト変更だけでは既存ユーザーに出ない。保存済み設定を壊さず
-    // 全ユーザーに表示するため、ここで注入する (トレンドタブと同じ手法)。
-    // sidebarOrder に chat があってかつ visible:false の場合は注入しない (ユーザー意思を尊重)。
-    const chatInOrder = sidebarOrder.value.find((x: any) => x.id === 'chat');
-    if (!chatInOrder) {
-        let basic = groups.find(x => x.key === 'basic');
-        if (!basic) { basic = { key: 'basic', label: sidebarGroupLabels['basic'] ?? '', items: [] }; groups.push(basic); }
-        // 通知の直後に置く (なければ基本グループ末尾)
-        const notifIdx = basic.items.findIndex((x: any) => x.id === 'notifications');
-        const chatItem = { id: 'chat', icon: 'ti ti-messages', label: 'メッセージ', group: 'basic' };
-        if (notifIdx >= 0) basic.items.splice(notifIdx + 1, 0, chatItem);
-        else basic.items.push(chatItem);
-    }
+    // 旗鯖fork: chat (メッセージ) は v5 マイグレ (boot/common.ts) で既存ユーザーの sidebar に
+    // insertAfter で追加するため、動的注入は不要 (撤去)。これによりユーザーが設定 UI から
+    // メッセージ項目の非表示・並び替えを通常の sidebar 項目として行えるようになる。
     // 旗鯖fork: 外部通知を連携ON時のみ動的注入する。通知の直後に配置。
     // 連携状態はリアクティブな isExternalLinked に依存するため、連携ON/OFFで即座に
     // 出現/消滅する (リロード不要)。必須項目扱いでトグル不可 (並び替え対象にも出すが外せない)。
@@ -950,6 +942,8 @@ function sidebarItemClick(id: string, ev?: MouseEvent) {
         // 旗鯖fork: 外部通知専用ページへ
         externalNotifications: ()=>mainRouter.push('/my/external-notifications'),
         more: () => { if (ev) openMore(ev); },
+        // 旗鯖fork: reload はクリックでページ全体をリロード (旧来は独立ボタンだったが sidebar 項目化)
+        reload: () => reloadPage(),
     };
     if (map[id]) map[id]();
 }
@@ -1204,8 +1198,13 @@ onMounted(()=>{
     if (isDesktop.value && !deckActive.value && !prefer.s['simpleUi.collapseAnnounceShown']) {
         collapseAnnounceVisible.value = true;
     }
-    // 旗鯖fork: HataFeed を利用でき、端末で未表示なら「もっと」に新登場の案内を出す
-    if (isDesktop.value && !deckActive.value && !miLocalStorage.getItem('hatafeedIntroShown')
+    // 旗鯖fork: HataFeed を利用でき、未表示なら「もっと」に新登場の案内を出す。
+    // prefer (マルチデバイス同期) と miLocalStorage (旧来の端末ローカル) のどちらかが立っていれば skip。
+    // 端末ローカルだけで判定すると別端末/シークレットで毎回再表示される本番不具合があったため
+    // prefer 経由を優先しつつ、既存ユーザー保護のため miLocalStorage も互換チェックする。
+    if (isDesktop.value && !deckActive.value
+        && !prefer.s['simpleUi.hatafeedIntroShown']
+        && !miLocalStorage.getItem('hatafeedIntroShown')
         && ($i?.policies?.canAccessHataFeed === true || $i?.isModerator || $i?.isAdmin)) {
         moreAnnounceVisible.value = true;
     }

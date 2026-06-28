@@ -3236,6 +3236,9 @@ _notification:
     test: "通知のテスト"
     app: "連携アプリからの通知"
     hataFeed: "HataFeed通知"
+    # 旗鯖fork: cherrypick-js notificationTypes に earthquake が含まれているが
+    # ラベル定義が無く設定UIで空白項目になっていた問題を修正
+    earthquake: "地震・津波情報"
 
   _actions:
     followBack: "フォローバック"

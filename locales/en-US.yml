@@ -3122,6 +3122,9 @@ _notification:
     test: "Notification test"
     app: "Notifications from linked apps"
     hataFeed: "HataFeed notifications"
+    # Hata fork: cherrypick-js notificationTypes includes 'earthquake' but the label was missing,
+    # causing the settings UI to show a blank entry.
+    earthquake: "Earthquake / Tsunami info"
   _actions:
     followBack: "followed you back"
     reply: "Reply"

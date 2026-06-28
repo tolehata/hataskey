@@ -210,7 +210,8 @@ SPDX-License-Identifier: AGPL-3.0-only
                         <!-- 旗鯖fork: 必須項目以外は visible トグル付き、必須項目は空白でレイアウトを揃える -->
                         <MkSwitch v-if="!isSidebarItemRequired(item.id)" :modelValue="isSidebarItemVisible(item)" style="margin:0;flex-shrink:0;transform:scale(.8);transform-origin:left center;" @update:modelValue="setSidebarItemVisible(idx, $event)" />
                         <span v-else :class="$style.requiredLabel" v-tooltip="'この項目は常に表示されます'"><i class="ti ti-lock"></i></span>
-                        <i :class="[item.icon, $style.reorderIcon]"></i>
+                        <!-- 旗鯖fork: アイコン override で保存値が古くても新アイコン表示 (utility/sidebar-icon-overrides.ts) -->
+                        <i :class="[applySidebarIconOverride(item), $style.reorderIcon]"></i>
                         <span :class="$style.reorderLabel">{{ item.label }}</span>
                         <div :class="$style.reorderBtns">
                             <button :class="$style.reorderBtn" :disabled="!canMoveSidebar(idx,-1)" @click="moveSidebarItem(idx,-1)">▲</button>
@@ -401,6 +402,7 @@ import { deckIgnoreWidth, setDeckIgnoreWidth } from '@/utility/hatasaba-device-p
 import { HATA_FONT_PRESETS, applyHataFont, type HataFontId } from '@/scripts/hata-font-manager.js';
 import { chooseDriveFile } from '@/utility/drive.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
+import { applySidebarIconOverride } from '@/utility/sidebar-icon-overrides.js';
 
 const categories = [
     { id: 'general', icon: 'ti ti-flag', label: '旗鯖全体' },
@@ -616,9 +618,12 @@ function moveSidebarItem(idx: number, dir: number) {
 	saveSidebar();
 }
 
+
 // 旗鯖fork: サイドバー項目の表示/非表示
 // 必須項目(タイムライン/通知/お知らせ/フォロー申請/もっと)は常に表示で、トグル不可。
 // 設定はそもそも sidebar 並び替え対象外なのでここでは扱わない。
+// chat (メッセージ) と reload (リロード) は v5 マイグレ (boot/common.ts) で sidebarItems に
+// 通常項目として組み込み済みのため、ユーザーが自由に非表示・並び替えできる。
 const REQUIRED_SIDEBAR_IDS = new Set(['timeline', 'notifications', 'announcements', 'followRequests', 'more']);
 function isSidebarItemRequired(id: string): boolean {
 	return REQUIRED_SIDEBAR_IDS.has(id);

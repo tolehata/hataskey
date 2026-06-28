@@ -176,12 +176,36 @@ export async function common(createVue: () => Promise<App<Element>>) {
 	// 旗鯖: サイドメニュー3グループ再編 (hata-11.x) — 既存ユーザーも新デフォルト構成へ強制移行
 	// 旧構成 (13項目フラット) から新構成 (基本機能/旗鯖独自/発見・交流の3グループ) に置き換える。
 	// chat/lists/antennas はサイドバーから外れ「もっと」(ランチパッド) からアクセス可能。
+	//
+	// 旗鯖fork: 旧実装は miLocalStorage フラグでマイグレ済み判定していたが、simpleUi.sidebar 自体は
+	// prefer (マルチデバイス同期) であるのに対し、miLocalStorage は端末ローカルのため、
+	// 別端末/別ブラウザ/シークレットウィンドウでアクセスするたびにマイグレが走り、
+	// ユーザーが ON/OFF した設定や並び順をデフォルト値で完全上書きしてしまう本番不具合があった。
+	// 「sidebar の中身が新形式(group プロパティを持つ) ならマイグレ済み」と判定するロジックに変更し、
+	// 端末を跨いでも prefer 経由で正しくスキップされるようにする (旧 miLocalStorage フラグは無害化のため
+	// 設定するが、もはや判定には使わない)。
+	//
+	// ★ 今後のサイドバーマイグレ方針 (設計指針):
+	//   - 「強制リセット (デフォルト値で完全上書き)」型のマイグレは新規追加しないこと
+	//     (この v3 のような形式は本番不具合の温床になる)。
+	//   - 新機能をサイドバーに追加する場合は v4 同様の insertAfter / push 方式を採用し、
+	//     既存にない id だけを追加する。ユーザーが過去に visible:false でOFFにした項目は
+	//     復活させないこと(意思を尊重)。
+	//   - 旧 id をリネームする等の構造変更は、置換ではなく旧id→新idの mapping で対応し、
+	//     表示/非表示や順序は保持すること。
+	//   - グループ構成の大きな変更が必要な場合のみ、ユーザー周知 + 同意ダイアログを挟むこと。
 	if (!miLocalStorage.getItem('hata_sidebar_v3_migrated')) {
 		const { prefer: preferSidebarV3 } = await import('@/preferences.js');
-		const { PREF_DEF } = await import('@/preferences/def.js');
-		// def.ts のデフォルト定義をそのまま採用 (二重管理を避ける)
-		const newDefault = PREF_DEF['simpleUi.sidebar'].default;
-		preferSidebarV3.commit('simpleUi.sidebar', JSON.parse(JSON.stringify(newDefault)));
+		const currentSidebar = preferSidebarV3.s['simpleUi.sidebar'] ?? [];
+		const isAlreadyNewFormat = Array.isArray(currentSidebar)
+			&& currentSidebar.length > 0
+			&& currentSidebar.some(i => i && typeof i.group === 'string');
+		if (!isAlreadyNewFormat) {
+			const { PREF_DEF } = await import('@/preferences/def.js');
+			// def.ts のデフォルト定義をそのまま採用 (二重管理を避ける)
+			const newDefault = PREF_DEF['simpleUi.sidebar'].default;
+			preferSidebarV3.commit('simpleUi.sidebar', JSON.parse(JSON.stringify(newDefault)));
+		}
 		miLocalStorage.setItem('hata_sidebar_v3_migrated', '1');
 	}
 
@@ -206,6 +230,34 @@ export async function common(createVue: () => Promise<App<Element>>) {
 		insertAfter('hatafeed', { id: 'earthquake', icon: 'ti ti-activity', label: '地震・津波情報', group: 'hata' });
 		if (changed) preferSb4.commit('simpleUi.sidebar', current);
 		miLocalStorage.setItem('hata_sidebar_v4_migrated', '1');
+	}
+
+	// 旗鯖fork: chat (メッセージ) と reload (リロード) をサイドバー項目化 (hata-11.7.x)
+	// かつて ui/simple.vue で chat は動的注入・reload はテンプレート内ハードコード表示していたが、
+	// 「設定 UI で項目が見えない・ON/OFF や並び替えができない」というユーザー要望に対応するため
+	// 通常の prefer 保存項目として扱う。設計指針通り insertAfter 方式 (既存にない id だけ追加) で
+	// ユーザーの ON/OFF / 並び替え状態を保持。
+	if (!miLocalStorage.getItem('hata_sidebar_v5_migrated')) {
+		const { prefer: preferSb5 } = await import('@/preferences.js');
+		const current = [...(preferSb5.s['simpleUi.sidebar'] ?? [])];
+		const has = (id: string) => current.some(i => i && i.id === id);
+		let changed = false;
+		// chat を notifications の直後 (なければ basic 末尾) に追加
+		if (!has('chat')) {
+			const notifIdx = current.findIndex(i => i && i.id === 'notifications');
+			const insertAt = notifIdx >= 0 ? notifIdx + 1 : current.length;
+			current.splice(insertAt, 0, { id: 'chat', icon: 'ti ti-messages', label: 'メッセージ', group: 'basic' });
+			changed = true;
+		}
+		// reload を more の直後 (なければ末尾) に追加
+		if (!has('reload')) {
+			const moreIdx = current.findIndex(i => i && i.id === 'more');
+			const insertAt = moreIdx >= 0 ? moreIdx + 1 : current.length;
+			current.splice(insertAt, 0, { id: 'reload', icon: 'ti ti-refresh', label: 'リロード', group: 'more' });
+			changed = true;
+		}
+		if (changed) preferSb5.commit('simpleUi.sidebar', current);
+		miLocalStorage.setItem('hata_sidebar_v5_migrated', '1');
 	}
 
 	// 旗鯖fork(#36): Haskホームに「HataFeed通知」「地震・津波」タイルを強制追加(既存ユーザー向け)

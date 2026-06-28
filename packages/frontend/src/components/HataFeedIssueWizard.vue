@@ -5,11 +5,15 @@ SPDX-License-Identifier: AGPL-3.0-only
   イシューの書き方がわからない利用者向けに、カテゴリ選択→内容入力→確認の3ステップで案内する。
 -->
 <template>
-<MkModalWindow
+<!-- 旗鯖fork: モーダル(旧 MkModalWindow)から非モーダルウィンドウ(MkWindow)に変更。
+     再現手順を確認するために裏のページを触りながらイシューを書きたい、
+     項目数が多く全て覚えるのが困難というユーザー要望(特にデッキUI使用者)に対応。
+     MkWindow は移動・リサイズ可能で裏のページがそのまま操作できる。 -->
+<MkWindow
 	ref="dialog"
-	:width="560"
-	:height="620"
-	@close="dialog?.close()"
+	:initialWidth="560"
+	:initialHeight="620"
+	:canResize="true"
 	@closed="emit('closed')"
 >
 	<template #header>イシューを立てる（{{ step }}/3）</template>
@@ -90,12 +94,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</div>
 		</div>
 	</div>
-</MkModalWindow>
+</MkWindow>
 </template>
 
 <script lang="ts" setup>
 import { computed, ref, useTemplateRef } from 'vue';
-import MkModalWindow from '@/components/MkModalWindow.vue';
+import MkWindow from '@/components/MkWindow.vue';
 import MkButton from '@/components/MkButton.vue';
 import MkInput from '@/components/MkInput.vue';
 import MkTextarea from '@/components/MkTextarea.vue';
