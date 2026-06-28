@@ -110,6 +110,16 @@ SPDX-License-Identifier: AGPL-3.0-only
 							</button>
 						</div>
 					</div>
+
+					<!-- 旗鯖fork: 本家 2026.6.0 から取り込み: ノート検索で投稿日時の期間を条件に加えられるように (#16035) -->
+					<div :class="$style.subOption">
+						<MkInput v-model="rangeStartAt" small style="margin-top: 10px;" type="datetime-local">
+							<template #label>{{ i18n.ts._search.postFrom }}</template>
+						</MkInput>
+						<MkInput v-model="rangeEndAt" small style="margin-top: 10px;" type="datetime-local">
+							<template #label>{{ i18n.ts._search.postTo }}</template>
+						</MkInput>
+					</div>
 				</template>
 
 				<!-- ユーザー検索オプション -->
@@ -289,6 +299,10 @@ const noteScopeDef = computed<MkSelectItem[]>(() => {
 const hostInput = ref(toRef(props, 'host').value ?? '');
 const user = shallowRef<Misskey.entities.UserDetailed | null>(null);
 
+// 旗鯖fork: 本家 2026.6.0 から取り込み: ノート検索で投稿日時の期間を条件に加えられるように (#16035)
+const rangeStartAt = ref<string | null>(null);
+const rangeEndAt = ref<string | null>(null);
+
 // プロフィール検索ボタン経由で username/userId が指定されたとき、初期化処理
 let fetchedUser: Misskey.entities.UserDetailed | null = null;
 if (props.userId) {
@@ -421,6 +435,9 @@ async function executeSearch() {
 		} else if (instance.federation === 'none' || noteScope.value === 'local') {
 			params.host = '.';
 		}
+		// 旗鯖fork: 本家 2026.6.0 から取り込み: ノート検索で投稿日時の期間を条件に加えられるように (#16035)
+		if (rangeStartAt.value) params.rangeStartAt = new Date(rangeStartAt.value).getTime();
+		if (rangeEndAt.value) params.rangeEndAt = new Date(rangeEndAt.value).getTime();
 		notePaginator.value = markRaw(new Paginator('notes/search', { limit: 10, params }));
 	} else if (target.value === 'user') {
 		userPaginator.value = markRaw(new Paginator('users/search', {
