@@ -72,6 +72,10 @@
 ### バグ修正
 
 - **`FanoutTimelineService.remove` メソッド不在による typecheck エラー**: アンテナ TL 個別削除エンドポイント (`antennas/remove-note.ts`) が `FanoutTimelineService.remove` を呼んでいるが旗鯖既存実装にはメソッドが存在せず、`Property 'remove' does not exist on type 'FanoutTimelineService'` でビルド失敗していたため、本家 2026.6.0 の実装 (`@bindThis` + Redis `LREM`) を旗鯖に追加しました
+- **ユーザーページの宴成功バッジの初回アナウンス吹き出しがリロード毎に再表示される問題**: `pages/user/home.vue` が参照していた `prefer.s['simpleUi.utageBadgeTipShown']` が `preferences/def.ts` に未定義だったため、常時 undefined となり表示判定 `!undefined === true` で毎回出てしまっていた問題を修正。`prefer.commit` も def 不在のため dismiss 状態が保存されない状態だった。`simpleUi.collapseAnnounceShown` と同形式 (`default: false`) で `simpleUi.utageBadgeTipShown` を `def.ts` に追加。これでマルチデバイス同期 prefer として通算 1 回 dismiss すれば恒久的に再表示されなくなります
+- **モバイル版 hatafeed のイシュー一覧が解決済みボタン押下後に横長レイアウト崩壊する問題**: container query の grid item に `min-width: 0` が無く子要素の自然サイズで grid が広がり、解決済みを含む結果セットで子要素自然サイズが container の inline-size を 850px 超に押し上げ `@container (max-width: 850px)` の 1 カラム化が外れて 2 カラム化されたまま戻らない問題を修正。`.colsCt` に `container-name: hatafeedCols` を明示し意図しない container マッチを防止、`.cols > *` と `.issueList` / `.issueCard` に `min-width: 0` / `max-width: 100%` を強制、`.issueTitle` に `overflow-wrap: anywhere` を追加して長文折返しを保証
+- **モバイル版 Hatask ホーム画面のカードが横に見切れる問題**: `htk-dash` の grid item が `min-width: auto` (デフォルト) で子要素の自然サイズで grid が広がり、画面幅を超えて全カードが横に見切れていた問題を修正。`htk-dash` の `min-width: 0`、`htk-dash > *` の `min-width: 0; max-width: 100%`、`.htk-dash .htk-lg` の `overflow: hidden`、内部 `htk-gc` の `overflow-wrap: anywhere; word-break: break-word` を追加。地震情報 / HataFeed カード単体は内部で overflow 制御済みでしたが、親 grid の崩壊で同様に見切れていたものも併せて解消
+- **モバイル/低スペック端末で Hatask ホーム下部スクロール時のチカチカ・ガタガタを抑制**: `background-size: 200% 200%` + `background-position` アニメ (`htkBgFlow` 25-30s、GPU 合成不可で毎フレーム CPU reflow) と 4 個の `htk-orbA/B/C/D` (500/420/300/250px、22-32s)、`htk-tut-particles` (12 個 + 6s 個別 animation) の同時稼働で、低スペック端末ではフレーム落ちによるチカチカが発生していました。`@media (prefers-reduced-motion: reduce)` でアクセシビリティ設定時に全アニメを停止、`@media (hover: none) and (pointer: coarse)` でタッチ端末 (モバイル / タブレット) では `htkBgFlow` と orb 4 個・particles を停止 (`background-size: 100% 100%` に固定、`will-change: auto`) して reflow 連鎖を抑制
 
 ### 連合への影響 (事前検証済み: ゼロ)
 

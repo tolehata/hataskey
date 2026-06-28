@@ -891,6 +891,11 @@ export const PREF_DEF = definePreferences({
 	'simpleUi.collapseAnnounceShown': {
 		default: false,
 	},
+	// 旗鯖fork: ユーザーページの宴成功バッジ初回アナウンス吹き出しを表示済みか
+	// (preferを使うとマルチデバイス同期されるため、媒体問わず通算1回で恒久 dismiss)。
+	'simpleUi.utageBadgeTipShown': {
+		default: false,
+	},
 	// 旗鯖fork: 上部メニューモード。ONでサイドバーの代わりに画面上部へ
 	// 横並びピル型のナビバー(HatasabaUIナビバー)を出す。デスクトップのみ。
 	'simpleUi.topNavMode': {

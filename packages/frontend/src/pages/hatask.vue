@@ -1722,9 +1722,13 @@ notifTimerIds.forEach(id => clearTimeout(id));
 .htk-inp::placeholder{color:var(--text-3);text-shadow:none}
 textarea.htk-inp{min-height:76px;resize:vertical}
 select.htk-inp{appearance:none;cursor:pointer;padding-right:36px}
-.htk-dash{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));grid-auto-rows:1fr;gap:8px}
-.htk-dash .htk-lg{margin-bottom:0;height:100%}
-.htk-dash .htk-lg>.htk-gc{height:100%;box-sizing:border-box}
+/* 旗鯖fork: grid item の min-width デフォルトが auto のため子要素の自然サイズで grid が広がり、
+   モバイルでカードが画面幅を超えて横に見切れる問題を修正。grid item と各カードに min-width: 0 を強制し、
+   カード内の overflow も明示的に hidden 化して横方向に膨らまないようにする。 */
+.htk-dash{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));grid-auto-rows:1fr;gap:8px;min-width:0}
+.htk-dash>*{min-width:0;max-width:100%}
+.htk-dash .htk-lg{margin-bottom:0;height:100%;min-width:0;max-width:100%;overflow:hidden}
+.htk-dash .htk-lg>.htk-gc{height:100%;box-sizing:border-box;min-width:0;max-width:100%;overflow-wrap:anywhere;word-break:break-word}
 .htk-panels{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 @media(max-width:900px){.htk-panels{grid-template-columns:1fr}}
 .htk-dt-time{font-size:3rem;font-weight:700;letter-spacing:-1px;line-height:1.1}
@@ -2203,5 +2207,24 @@ select.htk-inp{appearance:none;cursor:pointer;padding-right:36px}
   .htk-nav-mobile .htk-nav-t{padding:6px 1px !important;font-size:.6rem !important;border-radius:16px !important}
   .htk-nav-mobile .htk-ico{font-size:1rem !important}
   .htk-nav-pad{height:calc(10px + env(safe-area-inset-bottom, 0px)) !important}
+}
+
+/* 旗鯖fork: モバイル/タッチ端末 + reduced-motion で重い background animation を停止し、
+   ホーム下部スクロール時のチカチカ/ガタガタ(orb 4本 + background-position アニメ + particle 12本の
+   合成レイヤー溢れ)を抑制。background-size:200% 200% の background-position 移動は GPU 合成
+   できず CPU reflow を毎フレーム引き起こすため、特に低スペック端末で致命的。touch 判定で
+   静的化、reduced-motion 設定でも完全停止する。 */
+@media (prefers-reduced-motion: reduce){
+  .htk-root[data-bg="purple"],.htk-root[data-bg="ocean"],.htk-root[data-bg="forest"],.htk-root[data-bg="night"]{animation:none !important;background-size:100% 100% !important}
+  .htk-orbA,.htk-orbB,.htk-orbC,.htk-orbD{animation:none !important}
+  .htk-swp1,.htk-swp2,.htk-swp3{animation:none !important}
+  .htk-fl-emo{animation:none !important}
+  .htk-tut-particles{display:none !important}
+}
+/* タッチ端末(モバイル/タブレット)はホバー無し+coarse pointer。orb と background アニメを停止して reflow 抑制。 */
+@media (hover: none) and (pointer: coarse){
+  .htk-root[data-bg="purple"],.htk-root[data-bg="ocean"],.htk-root[data-bg="forest"],.htk-root[data-bg="night"]{animation:none !important;background-size:100% 100% !important}
+  .htk-orbA,.htk-orbB,.htk-orbC,.htk-orbD{animation:none !important;will-change:auto}
+  .htk-tut-particles{display:none !important}
 }
 </style>

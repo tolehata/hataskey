@@ -767,8 +767,13 @@ definePage(() => ({
 
 /* 2カラム */
 /* ウィンドウ表示など実際の幅で折り返すためコンテナクエリを使う */
-.colsCt { container-type: inline-size; }
-.cols { display: grid; grid-template-columns: 1.7fr 1fr; gap: 18px; align-items: stretch; }
+/* 旗鯖fork: container query の子要素 min-width: 0 漏れで、長いタイトル/メタを持つ
+   イシュー(特に解決済み issue を含めた時)が grid item を広げて container の inline-size を
+   850px 超に押し上げ、2カラム化されたまま戻らない問題(モバイルでレイアウト崩壊)を修正。
+   container-name を明示 + grid item に min-width: 0 を強制で、子要素サイズが起点にならない。 */
+.colsCt { container-type: inline-size; container-name: hatafeedCols; max-width: 100%; }
+.cols { display: grid; grid-template-columns: 1.7fr 1fr; gap: 18px; align-items: stretch; min-width: 0; }
+.cols > * { min-width: 0; }
 
 .searchBar { display: flex; align-items: center; gap: 8px; background: var(--MI_THEME-bg); border: 1px solid var(--MI_THEME-divider); border-radius: 999px; padding: 8px 14px; margin-bottom: 10px; }
 .searchIcon { opacity: .5; }
@@ -780,11 +785,11 @@ definePage(() => ({
 .toggle { display: inline-flex; align-items: center; gap: 5px; background: var(--MI_THEME-bg); border: 1px solid var(--MI_THEME-divider); border-radius: 999px; padding: 7px 14px; font-size: .82em; color: inherit; cursor: pointer; }
 .toggleOn { background: var(--MI_THEME-accent); color: #fff; border-color: var(--MI_THEME-accent); }
 
-.issueList { display: flex; flex-direction: column; gap: 10px; }
-.issueCard { text-align: left; background: var(--MI_THEME-bg); border: 1px solid var(--MI_THEME-divider); border-radius: 16px; padding: 14px 16px; cursor: pointer; color: inherit; transition: transform .12s, border-color .12s, box-shadow .12s; }
+.issueList { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.issueCard { text-align: left; background: var(--MI_THEME-bg); border: 1px solid var(--MI_THEME-divider); border-radius: 16px; padding: 14px 16px; cursor: pointer; color: inherit; transition: transform .12s, border-color .12s, box-shadow .12s; min-width: 0; max-width: 100%; }
 .issueCard:hover { border-color: var(--MI_THEME-accent); transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,.06); }
-.issueHead { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
-.issueTitle { font-weight: 700; margin: 8px 0; }
+.issueHead { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; min-width: 0; }
+.issueTitle { font-weight: 700; margin: 8px 0; overflow-wrap: anywhere; word-break: break-word; min-width: 0; }
 .issueNo { color: var(--MI_THEME-accent); font-weight: 700; margin-right: 2px; }
 .issueFoot { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; opacity: .8; font-size: .8em; }
 .metaChip { display: inline-flex; align-items: center; gap: 4px; }
