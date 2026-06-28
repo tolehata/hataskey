@@ -296,7 +296,12 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 
 				const expIds = new Set<string>();
 				const cleanExpressions = expressions.map((e) => {
-					if (!this.isAllowedImageUrl(e.url)) {
+					// 旗鯖fork: driveFileId がある場合は後段の DB 検証 (所有者/type/size、L470-486) で
+					// 安全性が担保されるため、URL ホストチェックは不要。本番運用で driveUrl/mediaProxy が
+					// instance URL と異なる独自ドメインに設定されていると、allowedOrigins に含まれず
+					// MASCOT_INVALID_IMAGE_URL で全保存が失敗していた問題を回避。
+					// driveFileId が無い (= 外部 URL 直接指定) ケースのみ自サーバードメインに限定。
+					if (!e.driveFileId && !this.isAllowedImageUrl(e.url)) {
 						throw new ApiError(meta.errors.invalidImageUrl);
 					}
 					expIds.add(e.id);
@@ -335,7 +340,8 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				let cleanNotify: Record<string, unknown> | null = null;
 				const nx = (c as Record<string, any>).notifyExpression;
 				if (nx && (nx.url || nx.driveFileId)) {
-					if (nx.url && !this.isAllowedImageUrl(nx.url)) {
+					// 旗鯖fork: driveFileId があれば後段の DB 検証で安全性担保。URL 直接指定のみホスト制限。
+					if (!nx.driveFileId && nx.url && !this.isAllowedImageUrl(nx.url)) {
 						throw new ApiError(meta.errors.invalidImageUrl);
 					}
 					cleanNotify = {
@@ -363,7 +369,8 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				let cleanNotify2: Record<string, unknown> | null = null;
 				const nx2 = (c as Record<string, any>).notifyExpression2;
 				if (nx2 && (nx2.url || nx2.driveFileId)) {
-					if (nx2.url && !this.isAllowedImageUrl(nx2.url)) {
+					// 旗鯖fork: driveFileId があれば後段の DB 検証で安全性担保。URL 直接指定のみホスト制限。
+					if (!nx2.driveFileId && nx2.url && !this.isAllowedImageUrl(nx2.url)) {
 						throw new ApiError(meta.errors.invalidImageUrl);
 					}
 					cleanNotify2 = {
@@ -391,7 +398,8 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				let cleanBirthday: Record<string, unknown> | null = null;
 				const bx = (c as Record<string, any>).birthdayExpression;
 				if (bx && (bx.url || bx.driveFileId)) {
-					if (bx.url && !this.isAllowedImageUrl(bx.url)) {
+					// 旗鯖fork: driveFileId があれば後段の DB 検証で安全性担保。URL 直接指定のみホスト制限。
+					if (!bx.driveFileId && bx.url && !this.isAllowedImageUrl(bx.url)) {
 						throw new ApiError(meta.errors.invalidImageUrl);
 					}
 					cleanBirthday = {
@@ -413,7 +421,8 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				let cleanCharBirthday: Record<string, unknown> | null = null;
 				const cbx = (c as Record<string, any>).charBirthdayExpression;
 				if (cbx && (cbx.url || cbx.driveFileId)) {
-					if (cbx.url && !this.isAllowedImageUrl(cbx.url)) {
+					// 旗鯖fork: driveFileId があれば後段の DB 検証で安全性担保。URL 直接指定のみホスト制限。
+					if (!cbx.driveFileId && cbx.url && !this.isAllowedImageUrl(cbx.url)) {
 						throw new ApiError(meta.errors.invalidImageUrl);
 					}
 					cleanCharBirthday = {
