@@ -25,6 +25,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</div>
 			<div :class="$style.titleRow">
 				<h2 :class="$style.title"><span :class="$style.issueNo">#{{ issue.number }}</span> {{ issue.title }}</h2>
+				<!-- 旗鯖fork: タイトルをクリップボードにコピー (報告共有・引用用途) -->
+				<button :class="$style.copyBtn" v-tooltip="'タイトルをコピー'" @click="copyText(issue.title, 'タイトル')"><i class="ti ti-copy"></i></button>
 				<!-- 旗鯖fork: 会話に参加中の人のアイコンをタイトル横に並べる -->
 				<div v-if="participants.length" :class="$style.participants" title="会話に参加中">
 					<MkAvatar v-for="p in participants" :key="p.id" :class="$style.partAvatar" :user="p"/>
@@ -45,13 +47,20 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</template>
 			</div>
 
-			<div v-if="issue.description" :class="$style.desc"><Mfm :text="linkifyRefs(issue.description)"/></div>
+			<!-- 旗鯖fork: 補足情報セクション。本文(Mfm レンダリング済み) + 末尾にコピーボタン -->
+			<div v-if="issue.description" :class="$style.descWrap">
+				<div :class="$style.desc"><Mfm :text="linkifyRefs(issue.description)"/></div>
+				<button :class="$style.descCopyBtn" v-tooltip="'補足情報をコピー'" @click="copyText(issue.description, '補足情報')"><i class="ti ti-copy"></i> コピー</button>
+			</div>
 
 			<MkMediaList v-if="issue.files && issue.files.length" :class="$style.media" :mediaList="issue.files"/>
 
-			<!-- 旗鯖fork: 提出されたコード -->
+			<!-- 旗鯖fork: 提出されたコード(コピーボタン付き) -->
 			<div v-if="issue.code" :class="$style.codeBlock">
-				<div :class="$style.codeHead"><i class="ti ti-code"></i> 提出されたコード</div>
+				<div :class="$style.codeHead">
+					<span><i class="ti ti-code"></i> 提出されたコード</span>
+					<button :class="$style.codeCopyBtn" v-tooltip="'コードをコピー'" @click="copyText(issue.code, 'コード')"><i class="ti ti-copy"></i> コピー</button>
+				</div>
 				<pre :class="$style.codePre"><code>{{ issue.code }}</code></pre>
 			</div>
 
@@ -162,6 +171,7 @@ import { chooseDriveFile } from '@/utility/drive.js';
 import { $i } from '@/i.js';
 import { reactionPicker } from '@/utility/reaction-picker.js';
 import { categoryLabel, statusLabel, statusKeys } from '@/utility/hatafeed.js';
+import { copyToClipboard } from '@/utility/copy-to-clipboard.js';
 
 const props = defineProps<{ issueId: string; isStaff: boolean }>();
 const emit = defineEmits<{ (ev: 'back'): void }>();
@@ -219,6 +229,17 @@ async function load() {
 	} finally {
 		loading.value = false;
 	}
+}
+
+// 旗鯖fork: タイトル / 補足情報 / 提出コードをクリップボードにコピーする。
+// 引用やバグ再現に再利用しやすくするユーザー要望に対応。空テキストは noop。
+function copyText(text: string | null | undefined, label: string) {
+	if (!text || text === '') {
+		os.alert({ type: 'warning', text: `${label}が空のためコピーできません。` });
+		return;
+	}
+	copyToClipboard(text);
+	os.success(`${label}をコピーしました`);
 }
 
 async function toggleAgree() {
@@ -392,7 +413,45 @@ onMounted(load);
 
 /* 旗鯖fork: 提出コード表示 */
 .codeBlock { margin-top: 14px; border: 1px solid var(--MI_THEME-divider); border-radius: 10px; overflow: hidden; }
-.codeHead { font-size: .8em; opacity: .8; padding: 6px 12px; background: var(--MI_THEME-bg); border-bottom: 1px solid var(--MI_THEME-divider); display: flex; align-items: center; gap: 6px; }
+.codeHead { font-size: .8em; opacity: .8; padding: 6px 12px; background: var(--MI_THEME-bg); border-bottom: 1px solid var(--MI_THEME-divider); display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+
+/* 旗鯖fork: コピーボタン(タイトル横の小型/補足情報・コード末尾のチップ型) */
+.copyBtn {
+	flex-shrink: 0;
+	width: 30px; height: 30px;
+	display: inline-flex; align-items: center; justify-content: center;
+	border: 1px solid var(--MI_THEME-divider);
+	border-radius: 8px;
+	background: var(--MI_THEME-bg);
+	color: var(--MI_THEME-fgTransparentWeak, var(--MI_THEME-fg));
+	cursor: pointer;
+	transition: border-color .12s, color .12s;
+}
+.copyBtn:hover { border-color: var(--MI_THEME-accent); color: var(--MI_THEME-accent); }
+
+.descWrap {
+	display: flex; flex-direction: column; gap: 6px;
+}
+.descCopyBtn, .codeCopyBtn {
+	align-self: flex-end;
+	display: inline-flex; align-items: center; gap: 5px;
+	padding: 4px 12px;
+	font-size: .76em;
+	border: 1px solid var(--MI_THEME-divider);
+	border-radius: 999px;
+	background: var(--MI_THEME-panel);
+	color: var(--MI_THEME-fgTransparentWeak, var(--MI_THEME-fg));
+	cursor: pointer;
+	transition: border-color .12s, color .12s, background .12s;
+}
+.descCopyBtn:hover, .codeCopyBtn:hover {
+	border-color: var(--MI_THEME-accent);
+	color: var(--MI_THEME-accent);
+}
+.codeCopyBtn {
+	align-self: auto; /* codeHead 内では space-between で右寄せされる */
+	margin: 0;
+}
 .codePre { margin: 0; padding: 12px; overflow-x: auto; font-family: Consolas, Menlo, monospace; font-size: .82em; line-height: 1.5; background: var(--MI_THEME-panel); white-space: pre; }
 .fileImg { max-width: 160px; max-height: 160px; border-radius: 10px; border: 1px solid var(--MI_THEME-divider); }
 .actions { margin-top: 18px; display: flex; align-items: center; gap: 10px; }

@@ -132,9 +132,10 @@ SPDX-License-Identifier: AGPL-3.0-only
                         <button v-if="prefer.s.showDrawingButtonInPostForm" v-tooltip="'お絵描き'" class="_button" :class="$style.footerButton" @click="openDrawingTool"><i class="ti ti-palette"></i></button>
 			<button v-if="showAddMfmFunction" v-tooltip="i18n.ts.addMfmFunction" class="_button" :class="$style.footerButton" @click="insertMfmFunction"><i class="ti ti-palette"></i></button>
 			<button v-if="postFormActions.length > 0" v-tooltip="i18n.ts.plugins" class="_button" :class="$style.footerButton" @click="showActions"><i class="ti ti-plug"></i></button>
-		</div>
-		<div :class="$style.footerRight">
-			<button v-tooltip="i18n.ts.emoji" :class="['_button', $style.footerButton]" @click="insertEmoji"><i class="ti ti-mood-happy"></i></button>
+			<!-- 旗鯖fork: 絵文字挿入ボタンを footerRight から footerLeft の末尾に移動。
+			     従来は他ボタンから離れた右端に表示されていたため、他の投稿フォームボタン群と
+			     並べて表示してほしいというユーザー要望に対応。 -->
+			<button v-tooltip="i18n.ts.emoji" class="_button" :class="$style.footerButton" @click="insertEmoji"><i class="ti ti-mood-happy"></i></button>
 		</div>
 	</footer>
 	<datalist id="hashtags">
