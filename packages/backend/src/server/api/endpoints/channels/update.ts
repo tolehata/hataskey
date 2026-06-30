@@ -10,6 +10,7 @@ import { ChannelEntityService } from '@/core/entities/ChannelEntityService.js';
 import { ChannelService } from '@/core/ChannelService.js';
 import { DI } from '@/di-symbols.js';
 import { RoleService } from '@/core/RoleService.js';
+import { NotificationService } from '@/core/NotificationService.js';
 import { secureRndstr } from '@/misc/secure-rndstr.js';
 import { ApiError } from '../../error.js';
 
@@ -95,6 +96,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 
 		private roleService: RoleService,
 		private channelService: ChannelService,
+		private notificationService: NotificationService,
 	) {
 		super(meta, paramDef, async (ps, me) => {
 			const channel = await this.channelsRepository.findOneBy({
@@ -156,10 +158,37 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				...(ps.moderatorUserIds !== undefined ? { moderatorUserIds: [...new Set(ps.moderatorUserIds)].filter(uid => uid !== channel.userId) } : {}),
 			});
 
-			// 旗鯖fork: 副管理者をメンバーにも登録(閲覧できるように)。
+			// 旗鯖fork: 副管理者をメンバーにも登録(閲覧できるように) + 差分通知。
 			if (ps.moderatorUserIds !== undefined) {
-				for (const uid of [...new Set(ps.moderatorUserIds)]) {
+				const newModerators = [...new Set(ps.moderatorUserIds)].filter(uid => uid !== channel.userId);
+				const oldModerators = channel.moderatorUserIds ?? [];
+				const added = newModerators.filter(uid => !oldModerators.includes(uid));
+				const removed = oldModerators.filter(uid => !newModerators.includes(uid));
+
+				for (const uid of newModerators) {
 					await this.channelService.addMember(channel.id, uid);
+				}
+
+				// プライベートチャンネル向けに、追加/除外された副管理者へ通知。
+				if (effectiveIsPrivate) {
+					for (const uid of added) {
+						if (uid === me.id) continue;
+						this.notificationService.createNotification(uid, 'addedToPrivateChannel', {
+							customBody: `プライベートチャンネル「${channel.name}」の副管理者に追加されました。タップしてチャンネルを開く。`,
+							customHeader: 'プライベートチャンネルへ追加',
+							customIcon: null,
+							customLink: `/channels/${channel.id}`,
+						}, me.id);
+					}
+					for (const uid of removed) {
+						if (uid === me.id) continue;
+						this.notificationService.createNotification(uid, 'removedFromPrivateChannel', {
+							customBody: `プライベートチャンネル「${channel.name}」の副管理者から外れました。`,
+							customHeader: 'プライベートチャンネルから除外',
+							customIcon: null,
+							customLink: null,
+						}, me.id);
+					}
 				}
 			}
 

@@ -3125,6 +3125,9 @@ _notification:
     # Hata fork: cherrypick-js notificationTypes includes 'earthquake' but the label was missing,
     # causing the settings UI to show a blank entry.
     earthquake: "Earthquake / Tsunami info"
+    # Hata fork: Private channel membership changes
+    addedToPrivateChannel: "Added to a private channel"
+    removedFromPrivateChannel: "Removed from a private channel"
   _actions:
     followBack: "followed you back"
     reply: "Reply"

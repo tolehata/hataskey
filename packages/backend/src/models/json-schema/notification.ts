@@ -470,6 +470,22 @@ export const packedNotificationSchema = {
 			},
 		},
 	}, {
+		// 旗鯖fork: プライベートチャンネルのメンバー構成変更通知 (追加 / 除外)
+		// app通知と同形だが、通知フィルタで個別ON/OFFできるよう専用タイプにしている。
+		type: 'object',
+		properties: {
+			...baseSchema.properties,
+			type: {
+				type: 'string',
+				optional: false, nullable: false,
+				enum: ['addedToPrivateChannel', 'removedFromPrivateChannel'],
+			},
+			body: { type: 'string', optional: false, nullable: false },
+			header: { type: 'string', optional: false, nullable: true },
+			icon: { type: 'string', optional: false, nullable: true },
+			link: { type: 'string', optional: false, nullable: true },
+		},
+	}, {
 		type: 'object',
 		properties: {
 			...baseSchema.properties,

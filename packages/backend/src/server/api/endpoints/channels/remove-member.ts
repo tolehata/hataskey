@@ -5,6 +5,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import type { ChannelsRepository } from '@/models/_.js';
 import { ChannelService } from '@/core/ChannelService.js';
+import { NotificationService } from '@/core/NotificationService.js';
 import { DI } from '@/di-symbols.js';
 import { ApiError } from '@/server/api/error.js';
 
@@ -35,6 +36,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		private channelsRepository: ChannelsRepository,
 
 		private channelService: ChannelService,
+		private notificationService: NotificationService,
 	) {
 		super(meta, paramDef, async (ps, me) => {
 			const channel = await this.channelsRepository.findOneBy({ id: ps.channelId });
@@ -43,6 +45,17 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 			if (ps.userId === channel.userId) throw new ApiError(meta.errors.cannotRemoveOwner);
 
 			await this.channelService.removeMember(channel.id, ps.userId);
+
+			// 旗鯖fork: 除外されたユーザーへ通知。何の説明もなく追加されたチャンネルから外されると
+			// 不審に思われるため、誰がいつ外したかを明示する。
+			if (channel.isPrivate && ps.userId !== me.id) {
+				this.notificationService.createNotification(ps.userId, 'removedFromPrivateChannel', {
+					customBody: `プライベートチャンネル「${channel.name}」のメンバーから外れました。`,
+					customHeader: 'プライベートチャンネルから除外',
+					customIcon: null,
+					customLink: null,
+				}, me.id);
+			}
 		});
 	}
 }

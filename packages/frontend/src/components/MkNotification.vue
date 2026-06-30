@@ -22,6 +22,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<div v-else-if="notification.type === 'hataFeed' || (notification.type === 'app' && !notification.icon && notification.header === 'HataFeed')" :class="[$style.icon, $style.icon_hatafeed]"><i class="ti ti-message-report"></i></div>
 		<!-- 旗鯖fork: 地震・津波情報の通知アイコン -->
 		<div v-else-if="notification.type === 'earthquake'" :class="[$style.icon, $style.icon_earthquake]"><i class="ti ti-activity"></i></div>
+		<!-- 旗鯖fork: プライベートチャンネル メンバー追加/除外の通知アイコン -->
+		<div v-else-if="notification.type === 'addedToPrivateChannel'" :class="[$style.icon, $style.icon_channelJoin]"><i class="ti ti-lock-square"></i></div>
+		<div v-else-if="notification.type === 'removedFromPrivateChannel'" :class="[$style.icon, $style.icon_channelLeave]"><i class="ti ti-door-exit"></i></div>
 		<img v-else-if="'icon' in notification && notification.icon != null" :class="[$style.icon, $style.icon_app]" :src="notification.icon" alt=""/>
 		<div
 			:class="[$style.subIcon, {
@@ -96,7 +99,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<span v-if="notification.type === 'reaction:groupedByUser'" :class="$style.headerText">{{ i18n.tsx._notification.reactedToMultipleNotes({ n: notification.reactions.length }) }}</span>
 			<span v-else-if="notification.type === 'renote:grouped'" :class="$style.headerText">{{ i18n.tsx._notification.renotedBySomeUsers({ n: notification.users.length }) }}</span>
 			<span v-else-if="notification.type === 'note:grouped'" :class="$style.headerText">{{ i18n.tsx._notification.notedBySomeUsers({ n: notification.noteIds.length }) }}</span>
-			<span v-else-if="notification.type === 'app' || notification.type === 'hataFeed' || notification.type === 'earthquake'" :class="$style.headerText">{{ notification.header }}</span>
+			<span v-else-if="notification.type === 'app' || notification.type === 'hataFeed' || notification.type === 'earthquake' || notification.type === 'addedToPrivateChannel' || notification.type === 'removedFromPrivateChannel'" :class="$style.headerText">{{ notification.header }}</span>
 			<MkTime v-if="withTime" :time="notification.createdAt" :class="$style.headerTime" :mode="prefer.s.enableAbsoluteTime ? 'absolute' : 'relative'"/>
 		</header>
 		<div>
@@ -177,7 +180,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</div>
 			</template>
 			<span v-else-if="notification.type === 'test'" :class="$style.text">{{ i18n.ts._notification.notificationWillBeDisplayedLikeThis }}</span>
-			<span v-else-if="notification.type === 'app' || notification.type === 'hataFeed' || notification.type === 'earthquake'" :class="$style.text">
+			<span v-else-if="notification.type === 'app' || notification.type === 'hataFeed' || notification.type === 'earthquake' || notification.type === 'addedToPrivateChannel' || notification.type === 'removedFromPrivateChannel'" :class="$style.text">
 				<!-- 旗鯖fork: notification.link があればクリックで該当画面に遷移 (hatask/HataFeed 等の旗鯖独自機能向け) -->
 				<MkA v-if="notification.link" :to="notification.link" :class="$style.appLink">
 					<Mfm :text="notification.body" :nowrap="false"/>
@@ -405,6 +408,34 @@ const rejectGroupInvitation = () => {
 	border-radius: 100%;
 	color: #fff;
 	background: #c0392b;
+	width: 100%;
+	height: 100%;
+	font-size: 22px;
+	line-height: 1;
+}
+
+/* 旗鯖fork: プライベートチャンネル メンバー追加 (加入) アイコン */
+.icon_channelJoin {
+	display: grid;
+	align-items: center;
+	justify-items: center;
+	border-radius: 100%;
+	color: #fff;
+	background: #5a2bc0;
+	width: 100%;
+	height: 100%;
+	font-size: 22px;
+	line-height: 1;
+}
+
+/* 旗鯖fork: プライベートチャンネル メンバー除外 (脱退) アイコン */
+.icon_channelLeave {
+	display: grid;
+	align-items: center;
+	justify-items: center;
+	border-radius: 100%;
+	color: #fff;
+	background: #7f8c8d;
 	width: 100%;
 	height: 100%;
 	font-size: 22px;

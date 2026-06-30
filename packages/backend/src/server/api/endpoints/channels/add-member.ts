@@ -5,6 +5,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import type { ChannelsRepository } from '@/models/_.js';
 import { ChannelService } from '@/core/ChannelService.js';
+import { NotificationService } from '@/core/NotificationService.js';
 import { DI } from '@/di-symbols.js';
 import { ApiError } from '@/server/api/error.js';
 
@@ -34,6 +35,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		private channelsRepository: ChannelsRepository,
 
 		private channelService: ChannelService,
+		private notificationService: NotificationService,
 	) {
 		super(meta, paramDef, async (ps, me) => {
 			const channel = await this.channelsRepository.findOneBy({ id: ps.channelId });
@@ -41,6 +43,17 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 			if (!await this.channelService.canManage(channel, me.id)) throw new ApiError(meta.errors.accessDenied);
 
 			await this.channelService.addMember(channel.id, ps.userId);
+
+			// 旗鯖fork: 追加されたユーザーへ通知。プライベートチャンネルは特に合言葉なしで
+			// 追加された場合に「追加された側にアクセス手段が無い」状態を解消する。
+			if (channel.isPrivate && ps.userId !== me.id) {
+				this.notificationService.createNotification(ps.userId, 'addedToPrivateChannel', {
+					customBody: `プライベートチャンネル「${channel.name}」のメンバーに追加されました。タップしてチャンネルを開く。`,
+					customHeader: 'プライベートチャンネルへ追加',
+					customIcon: null,
+					customLink: `/channels/${channel.id}`,
+				}, me.id);
+			}
 		});
 	}
 }

@@ -12,6 +12,7 @@ import { IdService } from '@/core/IdService.js';
 import { ChannelEntityService } from '@/core/entities/ChannelEntityService.js';
 import { ChannelService } from '@/core/ChannelService.js';
 import { RoleService } from '@/core/RoleService.js';
+import { NotificationService } from '@/core/NotificationService.js';
 import { DI } from '@/di-symbols.js';
 import { secureRndstr } from '@/misc/secure-rndstr.js';
 import { ApiError } from '../../error.js';
@@ -83,6 +84,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		private channelEntityService: ChannelEntityService,
 		private channelService: ChannelService,
 		private roleService: RoleService,
+		private notificationService: NotificationService,
 	) {
 		super(meta, paramDef, async (ps, me) => {
 			// 旗鯖fork: プライベートチャンネルの作成はロールポリシーで許可された場合のみ。
@@ -129,6 +131,18 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 			await this.channelService.addMember(channel.id, me.id);
 			for (const uid of moderatorUserIds) {
 				await this.channelService.addMember(channel.id, uid);
+			}
+
+			// 旗鯖fork: プライベートチャンネルで副管理者として追加されたユーザーへ通知。
+			if (channel.isPrivate) {
+				for (const uid of moderatorUserIds) {
+					this.notificationService.createNotification(uid, 'addedToPrivateChannel', {
+						customBody: `プライベートチャンネル「${channel.name}」の副管理者に追加されました。タップしてチャンネルを開く。`,
+						customHeader: 'プライベートチャンネルへ追加',
+						customIcon: null,
+						customLink: `/channels/${channel.id}`,
+					}, me.id);
+				}
 			}
 
 			return await this.channelEntityService.pack(channel, me);

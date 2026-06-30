@@ -34,6 +34,9 @@ export const notificationTypes = [
 	'app',
 	'hataFeed',
 	'earthquake',
+	// 旗鯖fork: プライベートチャンネルのメンバー構成変更通知 (追加/削除)
+	'addedToPrivateChannel',
+	'removedFromPrivateChannel',
 	'roleAssigned',
 	'chatRoomInvitationReceived',
 	'achievementEarned',

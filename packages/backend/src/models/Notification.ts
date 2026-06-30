@@ -173,6 +173,26 @@ export type MiNotification = {
 	customIcon: string | null;
 	customLink: string | null;
 } | {
+	// 旗鯖fork: プライベートチャンネルのメンバーに追加された通知 (app通知と同形)。
+	type: 'addedToPrivateChannel';
+	id: string;
+	createdAt: string;
+	notifierId: MiUser['id'] | null;
+	customBody: string;
+	customHeader: string | null;
+	customIcon: string | null;
+	customLink: string | null;
+} | {
+	// 旗鯖fork: プライベートチャンネルのメンバーから外された通知 (app通知と同形)。
+	type: 'removedFromPrivateChannel';
+	id: string;
+	createdAt: string;
+	notifierId: MiUser['id'] | null;
+	customBody: string;
+	customHeader: string | null;
+	customIcon: string | null;
+	customLink: string | null;
+} | {
 	type: 'test';
 	id: string;
 	createdAt: string;
