@@ -53,9 +53,21 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 	) {
 		super(meta, paramDef, async (ps, me) => {
 			const query = this.queryService.makePaginationQuery(this.channelsRepository.createQueryBuilder('channel'), ps.sinceId, ps.untilId, ps.sinceDate, ps.untilDate)
-				.andWhere('channel.isArchived = FALSE')
-				// 旗鯖fork: プライベートチャンネルは検索結果に出さない(存在を漏らさない)。
-				.andWhere('channel.isPrivate = FALSE');
+				.andWhere('channel.isArchived = FALSE');
+
+			// 旗鯖fork: プライベートチャンネルの表示制御。
+			//   - 非ログインユーザー / 非メンバー: 検索結果に出さない (存在を漏らさない)
+			//   - 自分が所属しているプライベートチャンネル: 検索結果に表示 (アクセス導線確保)
+			// 旧実装は無条件で除外していたため、招待されたメンバーが自分のチャンネルを検索で見つけられず
+			// 「合言葉なしで追加されたチャンネルにアクセスする手段がない」状態だった (通知のリンク以外なし)。
+			if (me) {
+				query.andWhere(new Brackets(qb => {
+					qb.where('channel.isPrivate = FALSE')
+						.orWhere('channel.id IN (SELECT "channelId" FROM channel_member WHERE "userId" = :hataMeId)', { hataMeId: me.id });
+				}));
+			} else {
+				query.andWhere('channel.isPrivate = FALSE');
+			}
 
 			if (ps.query !== '') {
 				if (ps.type === 'nameAndDescription') {
