@@ -5,12 +5,15 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <template>
 <img v-if="shouldMute" :class="$style.root" src="/client-assets/unknown.png" :alt="props.emoji" decoding="async" @pointerenter="computeTitle" @click.stop="onClick"/>
-<img v-else-if="!useOsNativeEmojis" :class="$style.root" :src="url" :alt="props.emoji" decoding="async" @pointerenter="computeTitle" @click.stop="onClick"/>
+<!-- 旗鯖fork: twemoji/fluent-emoji の SVG/PNG が同梱されていない絵文字 (例: 新しい Unicode の
+     1f985 / 1f359 / 1f979 等) は 404 し、壊れた画像アイコンが表示されてしまう。img の読み込み
+     失敗時 (@error) は native (システムフォント) 絵文字描画にフォールバックする。 -->
+<img v-else-if="!useOsNativeEmojis && !imgLoadError" :class="$style.root" :src="url" :alt="props.emoji" decoding="async" @error="imgLoadError = true" @pointerenter="computeTitle" @click.stop="onClick"/>
 <span v-else :alt="props.emoji" @pointerenter="computeTitle" @click.stop="onClick">{{ colorizedNativeEmoji }}</span>
 </template>
 
 <script lang="ts" setup>
-import { computed, inject } from 'vue';
+import { computed, inject, ref, watch } from 'vue';
 import { colorizeEmoji, getEmojiName } from '@@/js/emojilist.js';
 import { char2fluentEmojiFilePath, char2twemojiFilePath } from '@@/js/emoji-base.js';
 import type { MenuItem } from '@/types/menu.js';
@@ -36,6 +39,10 @@ const char2path = prefer.s.emojiStyle === 'twemoji' ? char2twemojiFilePath : cha
 
 const useOsNativeEmojis = computed(() => prefer.s.emojiStyle === 'native');
 const url = computed(() => char2path(props.emoji));
+// 旗鯖fork: 画像 (twemoji/fluent) の読み込みに失敗したら native 描画にフォールバックするためのフラグ。
+// props.emoji が変わったら再評価するためリセットする (リスト再利用時の取り違え防止)。
+const imgLoadError = ref(false);
+watch(() => props.emoji, () => { imgLoadError.value = false; });
 const colorizedNativeEmoji = computed(() => colorizeEmoji(props.emoji));
 const isMuted = checkMutedEmoji(props.emoji);
 const shouldMute = computed(() => isMuted.value && !props.ignoreMuted);
