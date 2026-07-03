@@ -8,6 +8,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 	<template #header>
 		<MkTab
 			v-model="tab"
+			pill
 			:tabs="[
 				{ key: 'notes', label: i18n.ts.notes },
 				{ key: 'all', label: i18n.ts.all },

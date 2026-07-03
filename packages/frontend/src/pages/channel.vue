@@ -4,7 +4,28 @@ SPDX-License-Identifier: AGPL-3.0-only  Created                             0.1s
 -->
 
 <template>
-<PageWithHeader v-model:tab="tab" :actions="headerActions" :tabs="headerTabs" :swipable="true">
+<PageWithHeader v-model:tab="tab" :actions="headerActions" :tabs="[]" :swipable="true">
+	<!-- 旗鯖fork: 画面中央上部のピル型タブ (Hatasaba UI 統一デザイン、channels.vue と同形)。
+	     ウィンドウモード等の狭幅でタブが収まらない時、マウスホイールの縦回転を横スクロールに
+	     変換 + タブバー上のドラッグでも横スクロールできるようにする (@wheel / pointer ドラッグ)。 -->
+	<div :class="$style.htkPillTabs">
+		<div
+			ref="pillTabsInnerEl"
+			:class="$style.htkPillTabsInner"
+			@wheel="onPillTabsWheel"
+			@pointerdown="onPillTabsPointerDown"
+		>
+			<button v-for="t in headerTabs" :key="t.key" :class="[$style.htkPillTab, { [$style.htkPillTabActive]: tab === t.key }]" @click="tab = t.key">
+				<i v-if="t.icon" :class="t.icon"></i>
+				<span>{{ t.title }}</span>
+			</button>
+		</div>
+	</div>
+	<!-- 旗鯖fork: ピル型タブ化で PageWithHeader に :tabs="[]" を渡したため標準の MkSwiper が
+	     無効化されていた。enableHorizontalSwipe が有効な時はコンテンツを自前で MkSwiper でラップ
+	     して左右スワイプによるタブ切替を復活させる (ウィンドウモード含む)。無効時は素の div。
+	     swiperBinds は MkSwiper の時だけ v-model:tab / tabs を渡し、div の時は空 (余分な属性を出さない)。 -->
+	<component :is="swiperEnabled ? MkSwiper : 'div'" v-bind="swiperBinds">
 	<div class="_spacer" style="--MI_SPACER-w: 700px;">
 		<div v-if="channel && tab === 'overview'" class="_gaps">
 			<div class="_panel" :class="$style.bannerContainer">
@@ -65,11 +86,35 @@ SPDX-License-Identifier: AGPL-3.0-only  Created                             0.1s
 		</div>
 		<div v-else-if="tab === 'search'">
 			<div v-if="notesSearchAvailable" class="_gaps">
-				<div>
-					<MkInput v-model="searchQuery" @enter="search()">
-						<template #prefix><i class="ti ti-search"></i></template>
-					</MkInput>
-					<MkButton primary rounded style="margin-top: 8px;" @click="search()">{{ i18n.ts.search }}</MkButton>
+				<!-- 旗鯖fork: HatasabaUI 検索ページと同様の一体型カプセル検索バー -->
+				<div :class="$style.htkCapsule">
+					<i :class="$style.htkCapsuleIcon" class="ti ti-search"/>
+					<input
+						ref="searchQueryEl"
+						v-model="searchQuery"
+						type="search"
+						:class="$style.htkCapsuleInput"
+						:placeholder="i18n.ts.search"
+						@keydown.enter.prevent="search"
+					/>
+					<button
+						v-if="searchQuery !== ''"
+						type="button"
+						:class="$style.htkCapsuleClear"
+						tabindex="-1"
+						aria-label="クリア"
+						@click="searchQuery = ''; searchQueryEl?.focus();"
+					>
+						<i class="ti ti-x"/>
+					</button>
+					<button
+						type="button"
+						:class="$style.htkCapsuleSearch"
+						:aria-label="i18n.ts.search"
+						@click="search"
+					>
+						<i class="ti ti-search"/>
+					</button>
 				</div>
 				<MkNotesTimeline v-if="searchPaginator" :key="searchKey" :paginator="searchPaginator"/>
 			</div>
@@ -78,6 +123,7 @@ SPDX-License-Identifier: AGPL-3.0-only  Created                             0.1s
 			</div>
 		</div>
 	</div>
+	</component>
 	<template #footer>
 		<div v-if="canViewContent" :class="$style.footer">
 			<div class="_spacer" style="--MI_SPACER-w: 700px; --MI_SPACER-min: 16px; --MI_SPACER-max: 16px;">
@@ -91,7 +137,7 @@ SPDX-License-Identifier: AGPL-3.0-only  Created                             0.1s
 </template>
 
 <script lang="ts" setup>
-import { computed, watch, ref, markRaw, shallowRef, defineAsyncComponent } from 'vue';
+import { computed, watch, ref, markRaw, shallowRef, defineAsyncComponent, useTemplateRef } from 'vue';
 import * as Misskey from 'cherrypick-js';
 import { url } from '@@/js/config.js';
 import { useInterval } from '@@/js/use-interval.js';
@@ -108,7 +154,7 @@ import { deviceKind } from '@/utility/device-kind.js';
 import MkNotesTimeline from '@/components/MkNotesTimeline.vue';
 import { favoritedChannelsCache } from '@/cache.js';
 import MkButton from '@/components/MkButton.vue';
-import MkInput from '@/components/MkInput.vue';
+import MkSwiper from '@/components/MkSwiper.vue';
 import { prefer } from '@/preferences.js';
 import MkNote from '@/components/MkNote.vue';
 import MkInfo from '@/components/MkInfo.vue';
@@ -139,6 +185,63 @@ const canViewContent = computed(() => {
 	return (c.isMember ?? false) || (c.canManage ?? false);
 });
 const searchQuery = ref('');
+const searchQueryEl = useTemplateRef('searchQueryEl');
+
+// 旗鯖fork: コンテンツを MkSwiper でラップしてタブ左右スワイプを有効化するか。
+// enableHorizontalSwipe が OFF の場合は素の div にフォールバック (スワイプなし)。
+const swiperEnabled = computed(() => prefer.s.enableHorizontalSwipe && headerTabs.value.length > 1);
+// component :is が MkSwiper の時だけ v-model:tab (= tab + onUpdate:tab) と tabs を渡す。
+// div の時は空オブジェクトにして [object Object] 等の余分な属性が付かないようにする。
+const swiperBinds = computed(() => swiperEnabled.value ? {
+	tab: tab.value,
+	'onUpdate:tab': (v: string) => { tab.value = v; },
+	tabs: headerTabs.value,
+} : {});
+
+// 旗鯖fork: ピルタブの横スクロール制御 (ウィンドウモード等の狭幅対応)。
+const pillTabsInnerEl = useTemplateRef('pillTabsInnerEl');
+// マウスホイールの縦回転をタブバーの横スクロールに変換する。
+function onPillTabsWheel(ev: WheelEvent) {
+	const el = pillTabsInnerEl.value;
+	if (!el) return;
+	// 横スクロールの必要がない(全タブが収まっている)なら通常の縦スクロールに任せる。
+	if (el.scrollWidth <= el.clientWidth) return;
+	const delta = Math.abs(ev.deltaY) >= Math.abs(ev.deltaX) ? ev.deltaY : ev.deltaX;
+	if (delta === 0) return;
+	const atStart = el.scrollLeft <= 0;
+	const atEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 1;
+	// 端に達していて更に外へスクロールしようとした時はページ側に委ねる (端で引っかからない)。
+	if ((delta < 0 && atStart) || (delta > 0 && atEnd)) return;
+	ev.preventDefault();
+	el.scrollLeft += delta;
+}
+// タブバー上のポインタドラッグで横スクロール (タッチのネイティブスクロールは overflow-x で対応済み、
+// これはマウス/トラックパッドのドラッグ操作を補完する)。
+let pillDragging = false;
+let pillDragStartX = 0;
+let pillDragStartScroll = 0;
+function onPillTabsPointerDown(ev: PointerEvent) {
+	// タッチはネイティブの慣性スクロールに任せる (ドラッグ横取りしない)。
+	if (ev.pointerType === 'touch') return;
+	const el = pillTabsInnerEl.value;
+	if (!el || el.scrollWidth <= el.clientWidth) return;
+	pillDragging = true;
+	pillDragStartX = ev.clientX;
+	pillDragStartScroll = el.scrollLeft;
+	window.addEventListener('pointermove', onPillTabsPointerMove);
+	window.addEventListener('pointerup', onPillTabsPointerUp);
+}
+function onPillTabsPointerMove(ev: PointerEvent) {
+	if (!pillDragging) return;
+	const el = pillTabsInnerEl.value;
+	if (!el) return;
+	el.scrollLeft = pillDragStartScroll - (ev.clientX - pillDragStartX);
+}
+function onPillTabsPointerUp() {
+	pillDragging = false;
+	window.removeEventListener('pointermove', onPillTabsPointerMove);
+	window.removeEventListener('pointerup', onPillTabsPointerUp);
+}
 const searchPaginator = shallowRef();
 const searchKey = ref('');
 const featuredPaginator = markRaw(new Paginator('notes/featured', {
@@ -358,6 +461,123 @@ definePage(() => ({
 </script>
 
 <style lang="scss" module>
+/* 旗鯖fork: HatasabaUI 統一ピル型タブ (channels.vue と同一デザイン) */
+.htkPillTabs {
+	position: sticky;
+	top: 0;
+	z-index: 50;
+	display: flex;
+	justify-content: center;
+	padding: 12px 16px;
+	background: color-mix(in srgb, var(--MI_THEME-bg) 80%, transparent);
+	backdrop-filter: blur(12px);
+	-webkit-backdrop-filter: blur(12px);
+	margin-bottom: 8px;
+}
+.htkPillTabsInner {
+	display: inline-flex;
+	gap: 4px;
+	padding: 4px;
+	background: var(--MI_THEME-panel);
+	border: 1px solid var(--MI_THEME-divider);
+	border-radius: 999px;
+	max-width: 100%;
+	overflow-x: auto;
+	-webkit-overflow-scrolling: touch;
+	scrollbar-width: none;
+
+	&::-webkit-scrollbar { display: none; }
+}
+.htkPillTab {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 6px 16px;
+	border: none;
+	background: transparent;
+	color: var(--MI_THEME-fg);
+	font-size: 0.9em;
+	font-weight: 500;
+	border-radius: 999px;
+	cursor: pointer;
+	white-space: nowrap;
+	transition: background 0.15s, color 0.15s;
+
+	&:hover { background: var(--MI_THEME-accentedBg); }
+	&.htkPillTabActive {
+		background: var(--MI_THEME-accent);
+		/* 旗鯖fork: #fff ハードコード。テーマで --MI_THEME-fgOnAccent が未定義の場合、
+		   色が親から継承されアクセント色と混ざり文字が潰れる問題を回避。 */
+		color: #fff;
+	}
+	i { font-size: 1em; line-height: 1; }
+}
+
+/* 旗鯖fork: HatasabaUI 検索ページと同様の一体型カプセル検索バー (channels.vue と同一) */
+.htkCapsule {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	padding: 6px 6px 6px 14px;
+	background: var(--MI_THEME-panel);
+	border: 1px solid var(--MI_THEME-divider);
+	border-radius: 999px;
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+	transition: border-color 0.15s, box-shadow 0.15s;
+}
+.htkCapsule:focus-within {
+	border-color: var(--MI_THEME-accent);
+	box-shadow: 0 0 0 3px color(from var(--MI_THEME-accent) srgb r g b / 0.15);
+}
+.htkCapsuleIcon { font-size: 1.1em; opacity: 0.6; flex-shrink: 0; }
+.htkCapsuleInput {
+	flex: 1;
+	min-width: 0;
+	padding: 8px 4px;
+	background: transparent;
+	border: none;
+	outline: none;
+	color: var(--MI_THEME-fg);
+	font-size: 15px;
+	font-family: inherit;
+
+	&::placeholder { color: color(from var(--MI_THEME-fg) srgb r g b / 0.5); }
+}
+.htkCapsuleClear {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	background: transparent;
+	border: none;
+	border-radius: 50%;
+	color: var(--MI_THEME-fg);
+	opacity: 0.55;
+	cursor: pointer;
+	flex-shrink: 0;
+	transition: opacity 0.1s, background 0.1s;
+
+	&:hover { opacity: 1; background: color(from var(--MI_THEME-fg) srgb r g b / 0.08); }
+}
+.htkCapsuleSearch {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 36px;
+	height: 36px;
+	background: var(--MI_THEME-accent);
+	border: none;
+	border-radius: 50%;
+	color: var(--MI_THEME-fgOnAccent, #fff);
+	cursor: pointer;
+	flex-shrink: 0;
+	transition: filter 0.1s, transform 0.05s;
+
+	&:hover { filter: brightness(1.08); }
+	&:active { transform: scale(0.96); }
+}
+
 /* 旗鯖fork: プライベートチャンネル */
 .privatePanel {
 	padding: 16px;

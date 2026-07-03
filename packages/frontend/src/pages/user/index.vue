@@ -256,7 +256,9 @@ definePage(() => ({
 
 	&.htkPillTabActive {
 		background: var(--MI_THEME-accent);
-		color: var(--MI_THEME-fgOnAccent);
+		/* 旗鯖fork: #fff ハードコード。テーマで --MI_THEME-fgOnAccent が未定義の場合、
+		   色が親から継承されアクセント色と混ざり文字が潰れる問題を回避。 */
+		color: #fff;
 	}
 
 	i {
