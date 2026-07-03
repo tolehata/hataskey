@@ -40,13 +40,6 @@
 			<span>左右反転</span>
 			<button :class="[$style.qpToggle, displaySettings.floatingFlip && $style.qpToggleOn]" @click="toggleFlip"></button>
 		</div>
-		<div :class="$style.qpRow">
-			<span>最小化の位置</span>
-			<span :class="$style.qpSeg">
-				<button :class="[$style.qpSegBtn, minimizeCorner === 'left' && $style.qpSegOn]" @click="setCorner('left')">左下</button>
-				<button :class="[$style.qpSegBtn, minimizeCorner === 'right' && $style.qpSegOn]" @click="setCorner('right')">右下</button>
-			</span>
-		</div>
 	</div>
 
 	<!-- ドラッグ&クリックの対象(立ち絵+吹き出し) -->
@@ -211,7 +204,10 @@ watch([visible, minimized], () => {
 	floatingMascotShown.value = visible.value && !minimized.value;
 }, { immediate: true });
 const quickPanelOpen = ref(false);
-const minimizeCorner = computed<'left' | 'right'>(() => (displaySettings.value.floatingMinimizeCorner === 'left' ? 'left' : 'right'));
+// 旗鯖fork: 最小化ボタンの位置は常に右下に固定する。
+//   左下は下部ナビバー等の他UIと重なって操作不能になるため、左下の選択肢(および位置設定UI)を廃止。
+//   既存で 'left' を保存済みのユーザーも右下へ矯正される。
+const minimizeCorner = computed<'left' | 'right'>(() => 'right');
 
 function clampOpacity(v: unknown): number {
 	const n = typeof v === 'number' ? v : 1;
@@ -226,9 +222,6 @@ function setOpacity(ev: Event) {
 }
 function toggleFlip() {
 	saveDisplaySettings({ ...displaySettings.value, floatingFlip: !displaySettings.value.floatingFlip });
-}
-function setCorner(corner: 'left' | 'right') {
-	saveDisplaySettings({ ...displaySettings.value, floatingMinimizeCorner: corner });
 }
 const flipStyle = computed(() => ({
 	transform: displaySettings.value.floatingFlip ? 'scaleX(-1)' : 'none',
