@@ -10,6 +10,12 @@ db/
 .devcontainer/compose.yml
 node_modules/
 packages/*/node_modules
+# 旗鯖fork: node_modules は全階層で除外する。packages/*/node_modules(1階層)だけだと
+# packages/cherrypick-js/generator/node_modules 等の深い node_modules が残り、その中の
+# 壊れた/無効なシンボリックリンク(@readme/openapi-parser 等)で
+# 「invalid file request」となりビルドコンテキスト転送が失敗する
+# (= ビルドが完了せず古いイメージが使われ続け、ソース変更が一切反映されない事象)。
+**/node_modules
 # 旗鯖fork: packages/*/built を除外しないとホスト側の古い built/ が
 # COPY . ./ で runner ステージにコピーされ、native-builder 製の新しい built/ を
 # 上書きしてしまう (例: base.pug の var LANGS が消える事象が発生)。
