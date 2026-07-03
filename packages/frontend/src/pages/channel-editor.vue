@@ -72,7 +72,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<div :class="$style.subAdminsLabel">副管理者</div>
 					<div :class="$style.subAdmins">
 						<span v-for="u in moderatorUsers" :key="u.id" :class="$style.subAdminChip">
-							<MkAvatar :class="$style.subAdminAvatar" :user="u"/>{{ u.name ?? u.username }}
+							<!-- 旗鯖fork: u.name を生テキスト出力するとユーザー名のカスタム絵文字が
+							     :shortcode: のまま表示されてしまうため、MFM レンダリングする MkUserName を使う。 -->
+							<MkAvatar :class="$style.subAdminAvatar" :user="u"/><MkUserName :user="u"/>
 							<button class="_button" :class="$style.subAdminRemove" @click="removeSubAdmin(u.id)"><i class="ti ti-x"></i></button>
 						</span>
 						<MkButton rounded @click="addSubAdmin"><i class="ti ti-plus"></i> 追加</MkButton>

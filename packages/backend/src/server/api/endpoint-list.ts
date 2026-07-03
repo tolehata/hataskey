@@ -22,6 +22,8 @@ export * as 'admin/abuse-report-resolver/delete' from '@/server/api/endpoints/ad
 export * as 'admin/abuse-report-resolver/list' from '@/server/api/endpoints/admin/abuse-report-resolver/list.js';
 export * as 'admin/abuse-report-resolver/update' from '@/server/api/endpoints/admin/abuse-report-resolver/update.js';
 export * as 'admin/abuse-user-reports' from './endpoints/admin/abuse-user-reports.js';
+// 旗鯖fork: 管理者向け全チャンネル一覧 (プライベート含む)
+export * as 'admin/channels/list' from './endpoints/admin/channels/list.js';
 export * as 'admin/accounts/create' from './endpoints/admin/accounts/create.js';
 export * as 'admin/accounts/delete' from './endpoints/admin/accounts/delete.js';
 export * as 'admin/accounts/find-by-email' from './endpoints/admin/accounts/find-by-email.js';

@@ -5,9 +5,16 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <template>
 <PageWithHeader v-model:tab="tab" :actions="$i ? headerActions : null" :tabs="[]" :swipable="true" displayMyAvatar>
-	<!-- 旗鯖fork: 画面中央上部のピル型タブ (Hatasaba UI 統一デザイン、ログイン状態で表示切替) -->
+	<!-- 旗鯖fork: 画面中央上部のピル型タブ (Hatasaba UI 統一デザイン、ログイン状態で表示切替)。
+	     ウィンドウモード (デッキUIのウィンドウ表示) 等の狭幅でタブが収まらない時、マウスホイールの
+	     縦回転を横スクロールに変換 + タブバー上のドラッグでも横スクロールできるようにする。 -->
 	<div :class="$style.htkPillTabs">
-		<div :class="$style.htkPillTabsInner">
+		<div
+			ref="pillTabsInnerEl"
+			:class="$style.htkPillTabsInner"
+			@wheel="onPillTabsWheel"
+			@pointerdown="onPillTabsPointerDown"
+		>
 			<button v-for="t in ($i ? headerTabs : headerTabsWhenNotLogin)" :key="t.key" :class="[$style.htkPillTab, { [$style.htkPillTabActive]: tab === t.key }]" @click="tab = t.key">
 				<i v-if="t.icon" :class="t.icon"></i>
 				<span>{{ t.title }}</span>
@@ -88,6 +95,22 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</div>
 			</MkPagination>
 		</div>
+		<!-- 旗鯖fork: 管理者専用「すべて」タブ。プライベート含む全チャンネルを横断閲覧 + フィルタ -->
+		<div v-else-if="tab === 'adminAll'">
+			<div :class="$style.adminFilterRow">
+				<MkRadios v-model="adminFilter" @update:modelValue="reloadAdminAll()">
+					<option value="all">すべて</option>
+					<option value="public">公開のみ</option>
+					<option value="private">プライベートのみ</option>
+					<option value="archived">アーカイブ済み</option>
+				</MkRadios>
+			</div>
+			<MkPagination v-slot="{items}" :key="adminAllKey" :paginator="adminAllPaginator">
+				<div :class="$style.root">
+					<MkChannelPreview v-for="channel in items" :key="channel.id" :channel="channel"/>
+				</div>
+			</MkPagination>
+		</div>
 	</div>
 </PageWithHeader>
 </template>
@@ -125,6 +148,45 @@ const channelPaginator = shallowRef();
 
 const searchQueryEl = useTemplateRef('searchQueryEl');
 
+// 旗鯖fork: ピルタブの横スクロール制御 (ウィンドウモード等の狭幅対応)。
+const pillTabsInnerEl = useTemplateRef('pillTabsInnerEl');
+function onPillTabsWheel(ev: WheelEvent) {
+	const el = pillTabsInnerEl.value;
+	if (!el) return;
+	if (el.scrollWidth <= el.clientWidth) return;
+	const delta = Math.abs(ev.deltaY) >= Math.abs(ev.deltaX) ? ev.deltaY : ev.deltaX;
+	if (delta === 0) return;
+	const atStart = el.scrollLeft <= 0;
+	const atEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 1;
+	if ((delta < 0 && atStart) || (delta > 0 && atEnd)) return;
+	ev.preventDefault();
+	el.scrollLeft += delta;
+}
+let pillDragging = false;
+let pillDragStartX = 0;
+let pillDragStartScroll = 0;
+function onPillTabsPointerDown(ev: PointerEvent) {
+	if (ev.pointerType === 'touch') return;
+	const el = pillTabsInnerEl.value;
+	if (!el || el.scrollWidth <= el.clientWidth) return;
+	pillDragging = true;
+	pillDragStartX = ev.clientX;
+	pillDragStartScroll = el.scrollLeft;
+	window.addEventListener('pointermove', onPillTabsPointerMove);
+	window.addEventListener('pointerup', onPillTabsPointerUp);
+}
+function onPillTabsPointerMove(ev: PointerEvent) {
+	if (!pillDragging) return;
+	const el = pillTabsInnerEl.value;
+	if (!el) return;
+	el.scrollLeft = pillDragStartScroll - (ev.clientX - pillDragStartX);
+}
+function onPillTabsPointerUp() {
+	pillDragging = false;
+	window.removeEventListener('pointermove', onPillTabsPointerMove);
+	window.removeEventListener('pointerup', onPillTabsPointerUp);
+}
+
 onMounted(() => {
 	searchQuery.value = props.query ?? '';
 	searchType.value = props.type ?? 'nameAndDescription';
@@ -144,6 +206,23 @@ const followingPaginator = markRaw(new Paginator('channels/followed', {
 const ownedPaginator = markRaw(new Paginator('channels/owned', {
 	limit: 10,
 }));
+
+// 旗鯖fork: 管理者専用「すべて」タブ。フィルタ変更時は paginator を作り直して再取得する。
+const adminFilter = ref<'all' | 'public' | 'private' | 'archived'>('all');
+const adminAllKey = ref(0);
+function buildAdminAllPaginator() {
+	// 旗鯖fork: admin/channels/list は新規エンドポイントで cherrypick-js SDK 型が未生成のため as any。
+	// SDK 再生成 (pnpm build-cherrypick-js-with-types) 後はリテラル型として解決される。
+	return markRaw(new Paginator('admin/channels/list' as any, {
+		limit: 30,
+		params: () => ({ filter: adminFilter.value }),
+	} as any));
+}
+const adminAllPaginator = shallowRef(buildAdminAllPaginator());
+function reloadAdminAll() {
+	adminAllPaginator.value = buildAdminAllPaginator();
+	adminAllKey.value++;
+}
 
 async function search() {
 	const query = searchQuery.value.toString().trim();
@@ -221,7 +300,13 @@ const headerTabs = computed(() => [{
 	key: 'owned',
 	title: i18n.ts._channel.owned,
 	icon: 'ti ti-edit',
-}]);
+},
+// 旗鯖fork: 管理者/モデレーターのみ「全チャンネル」タブを表示 (プライベート含む全件をモデレーション目的で閲覧)
+...(($i?.isAdmin || $i?.isModerator) ? [{
+	key: 'adminAll',
+	title: 'すべて',
+	icon: 'ti ti-shield-cog',
+}] : [])]);
 
 const headerTabsWhenNotLogin = computed(() => [{
 	key: 'search',
@@ -250,6 +335,11 @@ definePage(() => ({
 	display: grid;
 	grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
 	gap: var(--MI-margin);
+}
+
+/* 旗鯖fork: 管理者「すべて」タブのフィルタ行 */
+.adminFilterRow {
+	margin-bottom: 14px;
 }
 
 .deleteBtn {
@@ -317,7 +407,9 @@ definePage(() => ({
 
 	&.htkPillTabActive {
 		background: var(--MI_THEME-accent);
-		color: var(--MI_THEME-fgOnAccent);
+		/* 旗鯖fork: #fff ハードコード。テーマで --MI_THEME-fgOnAccent が未定義の場合、
+		   色が親から継承されアクセント色と混ざり文字が潰れる問題を回避。 */
+		color: #fff;
 	}
 
 	i {

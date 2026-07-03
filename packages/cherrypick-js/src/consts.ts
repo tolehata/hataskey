@@ -92,6 +92,8 @@ export const permissions = [
 	'read:flash-likes',
 	'write:flash-likes',
 	'read:admin:abuse-user-reports',
+	// 旗鯖fork: 管理者向け全チャンネル一覧 (admin/channels/list)
+	'read:admin:channels',
 	'write:admin:delete-account',
 	'write:admin:delete-all-files-of-a-user',
 	'read:admin:index-stats',
