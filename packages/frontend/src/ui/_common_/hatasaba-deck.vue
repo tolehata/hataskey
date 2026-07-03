@@ -80,7 +80,8 @@
 									<span :class="$style.tabLabel">{{ tabTitle(tab) }}</span>
 								</button>
 							</div>
-							<button v-if="activeTabOf(frame).type === 'channel' && activeTabOf(frame).sourceId" class="_button" :class="$style.frameHeadBtn" v-tooltip="'このチャンネルへ投稿'" @click.stop="postToChannel(activeTabOf(frame).sourceId!)"><i class="ti ti-pencil-plus"></i></button><button v-if="activeTabOf(frame).type === 'externalNotifications'" class="_button" :class="$style.frameHeadBtn" v-tooltip="'既読にする'" @click.stop="markExtRead(activeTabOf(frame).id)"><i class="ti ti-check"></i></button>
+							<!-- 旗鯖fork: チャンネル投稿ボタンは `simpleUi.showLegacyChannelPostButton` (default false) 時のみ表示。
+	既定ではノートリスト最上部の固定投稿ボタンを主導線とし、ここは非表示。 --><button v-if="showLegacyChannelPostButton && activeTabOf(frame).type === 'channel' && activeTabOf(frame).sourceId" class="_button" :class="$style.frameHeadBtn" v-tooltip="'このチャンネルへ投稿'" @click.stop="postToChannel(activeTabOf(frame).sourceId!)"><i class="ti ti-pencil-plus"></i></button><!-- 旗鯖fork: お気に入り/クリップにはリロードボタン。ストリーミングでないため手動更新が要る。 --><button v-if="activeTabOf(frame).type === 'clip' || activeTabOf(frame).type === 'favorites'" class="_button" :class="$style.frameHeadBtn" v-tooltip="'再読み込み'" @click.stop="reloadPaginated(activeTabOf(frame).id)"><i class="ti ti-refresh"></i></button><button v-if="activeTabOf(frame).type === 'externalNotifications'" class="_button" :class="$style.frameHeadBtn" v-tooltip="'既読にする'" @click.stop="markExtRead(activeTabOf(frame).id)"><i class="ti ti-check"></i></button>
 							<button v-if="frame.tabs.length > 1" class="_button" :class="$style.frameTabsBtn" v-tooltip="'タブの管理'" @click.stop="openTabManageMenu(slot, frame, $event)"><i class="ti ti-layout-navbar"></i></button>
 							<button v-if="!locked" class="_button" :class="$style.slotHandle" v-tooltip="'ドラッグで列を移動 / クリックで列設定'" @pointerdown="onSlotPointerDown(slot.id, $event)" @click.stop="openSlotMenu(slot, $event)"><i class="ti ti-grip-vertical"></i></button>
 							<button class="_button" :class="$style.frameMenuBtn" @click.stop="openFrameMenu(slot, frame, $event)"><i class="ti ti-dots"></i></button>
@@ -118,7 +119,8 @@
 									<span v-if="!locked" :class="$style.tabGrip" v-tooltip="'ドラッグでタブを移動'" @pointerdown="onTabPointerDown(slot.id, frame.id, tab.id, $event)" @click.stop><i class="ti ti-grip-vertical"></i></span><i :class="[tabIcon(tab), $style.tabIcon, { [$style.tabIconActiveColored]: tab.tabColor && activeTabOf(frame).id === tab.id }]"></i><span :class="$style.tabLabel">{{ tabTitle(tab) }}</span>
 								</button>
 							</div>
-							<button v-if="activeTabOf(frame).type === 'channel' && activeTabOf(frame).sourceId" class="_button" :class="$style.frameHeadBtn" v-tooltip="'このチャンネルへ投稿'" @click.stop="postToChannel(activeTabOf(frame).sourceId!)"><i class="ti ti-pencil-plus"></i></button><button v-if="activeTabOf(frame).type === 'externalNotifications'" class="_button" :class="$style.frameHeadBtn" v-tooltip="'既読にする'" @click.stop="markExtRead(activeTabOf(frame).id)"><i class="ti ti-check"></i></button>
+							<!-- 旗鯖fork: チャンネル投稿ボタンは `simpleUi.showLegacyChannelPostButton` (default false) 時のみ表示。
+	既定ではノートリスト最上部の固定投稿ボタンを主導線とし、ここは非表示。 --><button v-if="showLegacyChannelPostButton && activeTabOf(frame).type === 'channel' && activeTabOf(frame).sourceId" class="_button" :class="$style.frameHeadBtn" v-tooltip="'このチャンネルへ投稿'" @click.stop="postToChannel(activeTabOf(frame).sourceId!)"><i class="ti ti-pencil-plus"></i></button><!-- 旗鯖fork: お気に入り/クリップにはリロードボタン。ストリーミングでないため手動更新が要る。 --><button v-if="activeTabOf(frame).type === 'clip' || activeTabOf(frame).type === 'favorites'" class="_button" :class="$style.frameHeadBtn" v-tooltip="'再読み込み'" @click.stop="reloadPaginated(activeTabOf(frame).id)"><i class="ti ti-refresh"></i></button><button v-if="activeTabOf(frame).type === 'externalNotifications'" class="_button" :class="$style.frameHeadBtn" v-tooltip="'既読にする'" @click.stop="markExtRead(activeTabOf(frame).id)"><i class="ti ti-check"></i></button>
 							<button v-if="frame.tabs.length > 1" class="_button" :class="$style.frameTabsBtn" v-tooltip="'タブの管理'" @click.stop="openTabManageMenu(slot, frame, $event)"><i class="ti ti-layout-navbar"></i></button>
 							<button v-if="!locked" class="_button" :class="$style.slotHandle" v-tooltip="'ドラッグで列を移動 / クリックで列設定'" @pointerdown="onSlotPointerDown(slot.id, $event)" @click.stop="openSlotMenu(slot, $event)"><i class="ti ti-grip-vertical"></i></button>
 							<button class="_button" :class="$style.frameMenuBtn" @click.stop="openFrameMenu(slot, frame, $event)"><i class="ti ti-dots"></i></button>
@@ -148,7 +150,8 @@
 									<span v-if="!locked" :class="$style.tabGrip" v-tooltip="'ドラッグでタブを移動'" @pointerdown="onTabPointerDown(slot.id, frame.id, tab.id, $event)" @click.stop><i class="ti ti-grip-vertical"></i></span><i :class="[tabIcon(tab), $style.tabIcon, { [$style.tabIconActiveColored]: tab.tabColor && activeTabOf(frame).id === tab.id }]"></i><span :class="$style.tabLabel">{{ tabTitle(tab) }}</span>
 								</button>
 							</div>
-							<button v-if="activeTabOf(frame).type === 'channel' && activeTabOf(frame).sourceId" class="_button" :class="$style.frameHeadBtn" v-tooltip="'このチャンネルへ投稿'" @click.stop="postToChannel(activeTabOf(frame).sourceId!)"><i class="ti ti-pencil-plus"></i></button><button v-if="activeTabOf(frame).type === 'externalNotifications'" class="_button" :class="$style.frameHeadBtn" v-tooltip="'既読にする'" @click.stop="markExtRead(activeTabOf(frame).id)"><i class="ti ti-check"></i></button>
+							<!-- 旗鯖fork: チャンネル投稿ボタンは `simpleUi.showLegacyChannelPostButton` (default false) 時のみ表示。
+	既定ではノートリスト最上部の固定投稿ボタンを主導線とし、ここは非表示。 --><button v-if="showLegacyChannelPostButton && activeTabOf(frame).type === 'channel' && activeTabOf(frame).sourceId" class="_button" :class="$style.frameHeadBtn" v-tooltip="'このチャンネルへ投稿'" @click.stop="postToChannel(activeTabOf(frame).sourceId!)"><i class="ti ti-pencil-plus"></i></button><!-- 旗鯖fork: お気に入り/クリップにはリロードボタン。ストリーミングでないため手動更新が要る。 --><button v-if="activeTabOf(frame).type === 'clip' || activeTabOf(frame).type === 'favorites'" class="_button" :class="$style.frameHeadBtn" v-tooltip="'再読み込み'" @click.stop="reloadPaginated(activeTabOf(frame).id)"><i class="ti ti-refresh"></i></button><button v-if="activeTabOf(frame).type === 'externalNotifications'" class="_button" :class="$style.frameHeadBtn" v-tooltip="'既読にする'" @click.stop="markExtRead(activeTabOf(frame).id)"><i class="ti ti-check"></i></button>
 							<button v-if="frame.tabs.length > 1" class="_button" :class="$style.frameTabsBtn" v-tooltip="'タブの管理'" @click.stop="openTabManageMenu(slot, frame, $event)"><i class="ti ti-layout-navbar"></i></button>
 							<button v-if="!locked" class="_button" :class="$style.slotHandle" v-tooltip="'ドラッグで列を移動 / クリックで列設定'" @pointerdown="onSlotPointerDown(slot.id, $event)" @click.stop="openSlotMenu(slot, $event)"><i class="ti ti-grip-vertical"></i></button>
 							<button class="_button" :class="$style.frameMenuBtn" @click.stop="openFrameMenu(slot, frame, $event)"><i class="ti ti-dots"></i></button>
@@ -192,10 +195,13 @@ import MkPostForm from '@/components/MkPostForm.vue';
 const XWidgets = defineAsyncComponent(() => import('./widgets.vue'));
 const WidgetExternalNotifications = defineAsyncComponent(() => import('@/widgets/WidgetExternalNotifications.vue'));
 const MkEarthquakeColumn = defineAsyncComponent(() => import('@/components/MkEarthquakeColumn.vue'));
+// 旗鯖fork(新デッキ): クリップ/お気に入りタブ用の Paginator ラッパー。
+const MkDeckPaginatedNotes = defineAsyncComponent(() => import('@/components/MkDeckPaginatedNotes.vue'));
 
 // ===== 型 =====
 type DeckLayout = 'row' | 'grid2' | 'grid3' | 'stack';
-type ColumnType = 'home' | 'local' | 'social' | 'global' | 'trending' | 'ohtl' | 'oltl' | 'list' | 'antenna' | 'channel' | 'mentions' | 'directs' | 'notifications' | 'externalNotifications' | 'widgets' | 'postForm' | 'earthquake';
+// 旗鯖fork(新デッキ): 'clip' / 'favorites' を追加。clip は sourceId=clipId を要求、favorites は不要。
+type ColumnType = 'home' | 'local' | 'social' | 'global' | 'trending' | 'ohtl' | 'oltl' | 'list' | 'antenna' | 'channel' | 'mentions' | 'directs' | 'notifications' | 'externalNotifications' | 'widgets' | 'postForm' | 'earthquake' | 'clip' | 'favorites';
 
 // tab = カラム本体(表示内容)
 type DeckTab = {
@@ -607,10 +613,14 @@ const COLUMN_META: Record<ColumnType, { title: string; icon: string }> = {
 	widgets: { title: 'ウィジェット', icon: 'ti ti-apps' },
 	postForm: { title: '投稿フォーム', icon: 'ti ti-pencil-plus' },
 	earthquake: { title: '地震・津波', icon: 'ti ti-activity' },
+	// 旗鯖fork(新デッキ): クリップ/お気に入り
+	clip: { title: 'クリップ', icon: 'ti ti-paperclip' },
+	favorites: { title: 'お気に入り', icon: 'ti ti-star' },
 };
 function tabTitle(tab: DeckTab): string {
 	if (tab.tabName && tab.tabName.trim() !== '') return tab.tabName;
-	if ((tab.type === 'list' || tab.type === 'antenna' || tab.type === 'channel') && tab.name) return tab.name;
+	// 旗鯖fork(新デッキ): クリップも sourceId 経由で個別を指すので、name があればそれをタイトルに。
+	if ((tab.type === 'list' || tab.type === 'antenna' || tab.type === 'channel' || tab.type === 'clip') && tab.name) return tab.name;
 	return COLUMN_META[tab.type]?.title ?? tab.type;
 }
 function tabIcon(tab: DeckTab): string { return COLUMN_META[tab.type]?.icon ?? 'ti ti-square'; }
@@ -630,6 +640,9 @@ function resolveColumn(tab: DeckTab): Component {
 	if (tab.type === 'postForm') return MkPostForm;
 	if (tab.type === 'widgets') return XWidgets;
 	if (tab.type === 'earthquake') return MkEarthquakeColumn;
+	// 旗鯖fork(新デッキ): クリップ (sourceId=clipId 必須) / お気に入り
+	if (tab.type === 'clip' && tab.sourceId) return MkDeckPaginatedNotes;
+	if (tab.type === 'favorites') return MkDeckPaginatedNotes;
 	return ColumnError;
 }
 function columnProps(tab: DeckTab): Record<string, unknown> {
@@ -647,6 +660,10 @@ function columnProps(tab: DeckTab): Record<string, unknown> {
 	// ボタンを抑止する (編集導線は三点メニュー / タブ右クリックに集約)。
 	if (tab.type === 'widgets') return { deckEmbedded: true };
 	if (tab.type === 'earthquake') return {};
+	// 旗鯖fork(新デッキ): クリップ/お気に入り。favorites は endpoint のみで clipId 不要。
+	if (tab.type === 'clip' && tab.sourceId) return { endpoint: 'clips/notes', clipId: tab.sourceId };
+	if (tab.type === 'favorites') return { endpoint: 'i/favorites' };
+	if (tab.type === 'clip' && !tab.sourceId) return { message: 'クリップが未指定です' };
 	return { message: (tab.type === 'ohtl' || tab.type === 'oltl' || tab.type === 'externalNotifications') ? '外部アカウントが未連携です' : 'このカラムを表示できません' };
 }
 const ColumnError = defineAsyncComponent(() => Promise.resolve({
@@ -715,6 +732,13 @@ function reloadAll() {
 	}
 }
 function markExtRead(id: string) { colRefs.get(id)?.markAllAsRead?.(); }
+// 旗鯖fork(新デッキ): お気に入り/クリップカラム (MkDeckPaginatedNotes) のリロード。
+//   ストリーミングではない paginator ベースの表示なので、カラムヘッダの refresh ボタンと
+//   三点メニューの「再読み込み」から呼ぶ。
+function reloadPaginated(tabId: string) { colRefs.get(tabId)?.reload?.(); }
+// 旗鯖fork: 従来のチャンネル投稿ボタン (カラムヘッダ右のペン+ボタン / 三点メニュー内「このチャンネルへ投稿」) の表示可否。
+//   default false で、新設のノートリスト最上部固定ボタンに導線を統一する。
+const showLegacyChannelPostButton = computed(() => (prefer.r['simpleUi.showLegacyChannelPostButton']?.value as boolean | undefined) === true);
 
 // 旗鯖fork(新デッキ): チャンネルカラムから該当チャンネルへ投稿する。
 // os.post は channel オブジェクト全体を要求するため、channelId から channels/show で取得して渡す。
@@ -1205,6 +1229,15 @@ async function pickChannelId(anchor: HTMLElement, then: (id: string, name: strin
 	const picked = channels.find((c: any) => c.id === result);
 	then(result as string, picked?.name ?? 'チャンネル');
 }
+// 旗鯖fork(新デッキ): クリップ選択。自分のクリップ一覧 (clips/list) から選ばせる。
+async function pickClipId(anchor: HTMLElement, then: (id: string, name: string) => void) {
+	const clips = await misskeyApi('clips/list', {});
+	if (!Array.isArray(clips) || clips.length === 0) { os.alert({ type: 'info', text: 'クリップがありません' }); return; }
+	const { canceled, result } = await os.select({ title: 'クリップを選択', items: clips.map((c: any) => ({ value: c.id, label: c.name })) });
+	if (canceled || result == null) return;
+	const picked = clips.find((c: any) => c.id === result);
+	then(result as string, picked?.name ?? 'クリップ');
+}
 
 // 種別選択メニューを作る共通関数。onPick(partial) でカラムを確定。
 function columnTypeMenu(anchor: HTMLElement, onPick: (partial: Partial<DeckTab> & { type: ColumnType }) => void) {
@@ -1221,6 +1254,8 @@ function columnTypeMenu(anchor: HTMLElement, onPick: (partial: Partial<DeckTab> 
 		{ text: 'リスト', icon: 'ti ti-list', action: () => pickListId(anchor, (id, name) => onPick({ type: 'list', sourceId: id, name })) },
 		{ text: 'アンテナ', icon: 'ti ti-antenna', action: () => pickAntennaId(anchor, (id, name) => onPick({ type: 'antenna', sourceId: id, name })) },
 		{ text: 'チャンネル', icon: 'ti ti-device-tv', action: () => pickChannelId(anchor, (id, name) => onPick({ type: 'channel', sourceId: id, name })) },
+		{ text: 'クリップ', icon: 'ti ti-paperclip', action: () => pickClipId(anchor, (id, name) => onPick({ type: 'clip', sourceId: id, name })) },
+		{ text: 'お気に入り', icon: 'ti ti-star', action: () => onPick({ type: 'favorites' }) },
 		...(externalReady.value ? [
 			{ type: 'divider' as const },
 			{ text: '外部ホーム', icon: 'ti ti-home-link', action: () => onPick({ type: 'ohtl' as const }) },
@@ -1251,6 +1286,8 @@ async function addColumn(ev: MouseEvent) {
 		{ value: 'list', label: 'リスト' },
 		{ value: 'antenna', label: 'アンテナ' },
 		{ value: 'channel', label: 'チャンネル' },
+		{ value: 'clip', label: 'クリップ' },
+		{ value: 'favorites', label: 'お気に入り' },
 		...(ext ? [
 			{ value: 'ohtl', label: '外部ホーム' },
 			{ value: 'oltl', label: '外部ローカル' },
@@ -1268,6 +1305,8 @@ async function addColumn(ev: MouseEvent) {
 	if (type === 'list') { pickListId(anchor, (id, name) => addSlotWithTab({ type: 'list', sourceId: id, name })); return; }
 	if (type === 'antenna') { pickAntennaId(anchor, (id, name) => addSlotWithTab({ type: 'antenna', sourceId: id, name })); return; }
 	if (type === 'channel') { pickChannelId(anchor, (id, name) => addSlotWithTab({ type: 'channel', sourceId: id, name })); return; }
+	// 旗鯖fork(新デッキ): クリップは clip 選択が要る (二段)。お気に入りは一発追加。
+	if (type === 'clip') { pickClipId(anchor, (id, name) => addSlotWithTab({ type: 'clip', sourceId: id, name })); return; }
 	addSlotWithTab({ type });
 }
 
@@ -1332,9 +1371,16 @@ function openFrameMenu(slot: DeckSlot, frame: DeckFrame, ev: MouseEvent) {
 		},
 		{ type: 'divider' as const },
 	] : [];
-	// 旗鯖fork(新デッキ): チャンネルカラムには「このチャンネルへ投稿」導線が無かったため追加。
-	const channelPostItem = (active.type === 'channel' && active.sourceId) ? [
+	// 旗鯖fork(新デッキ): チャンネルカラムの「このチャンネルへ投稿」メニュー項目。
+	//   default では「新設のノートリスト最上部固定ボタン」に導線を統一するため非表示。
+	//   従来 UI を望むユーザーは hata-custom.vue → ビジュアル → 従来のチャンネル投稿ボタンを表示する ON で復活。
+	const channelPostItem = (showLegacyChannelPostButton.value && active.type === 'channel' && active.sourceId) ? [
 		{ text: 'このチャンネルへ投稿', icon: 'ti ti-pencil-plus', action: () => postToChannel(active.sourceId!) },
+		{ type: 'divider' as const },
+	] : [];
+	// 旗鯖fork(新デッキ): お気に入り/クリップカラムのリロードメニュー項目。
+	const paginatedReloadItem = (active.type === 'clip' || active.type === 'favorites') ? [
+		{ text: '再読み込み', icon: 'ti ti-refresh', action: () => reloadPaginated(active.id) },
 		{ type: 'divider' as const },
 	] : [];
 	// 旗鯖fork(#34): 地震・津波カラムは「更新」「設定」をこのメニュー(タブ部)に統合する。
@@ -1375,6 +1421,7 @@ function openFrameMenu(slot: DeckSlot, frame: DeckFrame, ev: MouseEvent) {
 	os.popupMenu([
 		{ type: 'label' as const, text: tabTitle(active) },
 		...channelPostItem,
+		...paginatedReloadItem,
 		...reloadItem,
 		...earthquakeItem,
 		...notifFilterItem,
