@@ -14,9 +14,26 @@ SPDX-License-Identifier: AGPL-3.0-only
 	</div>
 
 	<div v-else ref="rootEl">
-		<!-- 旗鯖fork(#7): HatasabaUIデッキUIでは、タイムライン最上部に「最新のノートです」を表示し、
-		     先頭ノートがタブバーに密着しないよう余白も兼ねる。 -->
-		<div v-if="isHatasabaDeck" :class="$style.deckTopMsg"><i class="ti ti-arrow-bar-to-up"></i> 最新のノートです</div>
+		<!-- 旗鯖fork(#7): HatasabaUIデッキUIでは、タイムライン最上部に「最新のノート」インジケータを表示し、
+		     先頭ノートがタブバーに密着しないよう余白も兼ねる。既定はテーマカラーの横線 (シンプル)、
+		     アクセシビリティ設定 `simpleUi.deckLatestNoteText` を ON にすると従来の
+		     「(↑) 最新のノートです」テキスト表示に戻せる (オプトイン)。 -->
+		<!-- 旗鯖fork: デッキ (旧/新) のチャンネルカラムに、ノートリスト最上部固定の投稿ボタン。
+		     チャンネルアイコン + ペンアイコン (文字なし)。三点メニュー / カラムヘッダの
+		     従来ボタンは default 非表示なので、こちらが主導線となる。
+		     位置はカラム最上部 (deckTopMsg/deckTopLine よりも上)、右寄せの sticky ピルボタン。 -->
+		<button
+			v-if="showChannelPostFixedButton"
+			:class="$style.channelPostFixedBtn"
+			type="button"
+			v-tooltip="'このチャンネルへ投稿'"
+			@click.stop="onChannelPostFixedClick"
+		>
+			<i class="ti ti-device-tv" :class="$style.channelPostFixedIcon1"></i>
+			<i class="ti ti-pencil-plus" :class="$style.channelPostFixedIcon2"></i>
+		</button>
+		<div v-if="isHatasabaDeck && deckLatestNoteText" :class="$style.deckTopMsg"><i class="ti ti-arrow-bar-to-up"></i> 最新のノートです</div>
+		<div v-else-if="isHatasabaDeck" :class="$style.deckTopLine" aria-hidden="true"></div>
 		<transition
 			:enterActiveClass="prefer.s.animation ? $style.transition_new_enterActive : ''"
 			:leaveActiveClass="prefer.s.animation ? $style.transition_new_leaveActive : ''"
@@ -47,6 +64,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			:class="[$style.notes, { [$style.noGap]: noGap, '_gaps': !noGap }]"
 			:data-deck-ui="isDeckUi ? 'on' : undefined"
 			:data-hatasaba-spacer="isHatasabaDeck ? 'on' : undefined"
+			:data-hatasaba-normal="isHatasabaNormal ? 'on' : undefined"
 			:data-bubble="bubbleEnabled ? 'on' : undefined"
 			:data-glass-bg="props.glassBg ? 'on' : undefined"
 			:data-spacing="noteSpacingValue"
@@ -107,6 +125,8 @@ import { $i } from '@/i.js';
 import { instance } from '@/instance.js';
 import { prefer } from '@/preferences.js';
 import { miLocalStorage } from '@/local-storage.js';
+import { misskeyApi } from '@/utility/misskey-api.js';
+import * as os from '@/os.js';
 import { store } from '@/store.js';
 import MkNote from '@/components/MkNote.vue';
 import MkButton from '@/components/MkButton.vue';
@@ -255,6 +275,37 @@ const classicSpacingEnabled = computed(() => {
 
 // 旗鯖fork(#15): スマホ/狭幅でも日付をインライン表示するか(アクセシビリティ設定、既定OFF)。
 const showDateOnMobile = computed(() => prefer.r['simpleUi.showTimelineDateOnMobile']?.value ?? false);
+// 旗鯖fork: デッキ最上部インジケータを従来のテキスト「最新のノートです」に戻すか(オプトイン、既定OFF)。
+const deckLatestNoteText = computed(() => prefer.r['simpleUi.deckLatestNoteText']?.value ?? false);
+
+// 旗鯖fork: デッキ (旧/新デッキ両方) のチャンネルカラムに、ノートリスト最上部固定の
+//   「このチャンネルへ投稿」ボタンを出す。従来の三点メニュー/ヘッダ右のペンボタンは
+//   `simpleUi.showLegacyChannelPostButton` (default false) が true のときのみ出るため、
+//   ここが default の主要導線となる。
+//   チャンネルページ本体には別途の投稿フォームがあるため、こちらのボタンはデッキ描画時のみ表示。
+const showChannelPostFixedButton = computed(() =>
+	props.src === 'channel'
+	&& !!props.channel
+	&& (isDeckUi || isHatasabaDeck.value)
+);
+async function onChannelPostFixedClick() {
+	if (!props.channel) return;
+	try {
+		const channel = await misskeyApi('channels/show', { channelId: props.channel });
+		os.post({
+			channel: {
+				id: channel.id,
+				name: channel.name,
+				color: channel.color,
+				isSensitive: channel.isSensitive,
+				allowRenoteToExternal: channel.allowRenoteToExternal,
+				userId: channel.userId,
+			},
+		});
+	} catch {
+		os.alert({ type: 'error', text: 'チャンネル情報の取得に失敗しました。' });
+	}
+}
 // 左マージン日付には両脇の余白が必要。スマホ or 幅が狭いときは「狭幅」とみなす。
 const isNarrowForDate = computed(() => isMobile.value || windowWidth.value < LEFT_DATE_MIN_WIDTH);
 // 旗鯖fork: 日付セパレータを左におしゃれに表示するか(デッキ/狭幅を除くデスクトップ通常表示)。
@@ -782,7 +833,8 @@ defineExpose({
 	opacity: 0;
 }
 
-/* 旗鯖fork(#7): デッキUIのタイムライン最上部メッセージ「最新のノートです」 */
+/* 旗鯖fork(#7): デッキUIのタイムライン最上部メッセージ「最新のノートです」
+   (`simpleUi.deckLatestNoteText` = true のときのみ描画) */
 .deckTopMsg {
 	display: flex;
 	align-items: center;
@@ -798,6 +850,53 @@ defineExpose({
 	> i {
 		font-size: 1.05em;
 	}
+}
+/* 旗鯖fork: デッキ (旧/新デッキ両方) のチャンネルカラムに、ノートリスト最上部に固定表示する
+   投稿ボタン。カラム最上部帯の「中央」に配置。sticky でスクロール中も常時アクセス可能。
+   丸型ピル、チャンネルアイコン+ペン、狭幅カラム対応。 */
+.channelPostFixedBtn {
+	position: sticky;
+	top: 0;
+	z-index: 10;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 4px;
+	/* 上下を対称に。button 単体だと下に密着していたので margin-bottom を 8px 加えて余白を作る。 */
+	margin: 8px auto;
+	padding: 7px 12px;
+	border-radius: 999px;
+	border: none;
+	background: var(--MI_THEME-accent);
+	color: var(--MI_THEME-fgOnAccent, #fff);
+	cursor: pointer;
+	box-shadow: 0 3px 12px color-mix(in srgb, var(--MI_THEME-accent) 30%, transparent);
+	transition: filter .12s, transform .06s;
+	width: fit-content;
+
+	&:hover { filter: brightness(1.08); }
+	&:active { transform: scale(0.95); }
+}
+.channelPostFixedIcon1,
+.channelPostFixedIcon2 {
+	font-size: 0.95em;
+	line-height: 1;
+	color: inherit;
+}
+
+/* 旗鯖fork: デッキUIのタイムライン最上部インジケータの既定表示。テキストに代えて
+   テーマカラーの横線をカラム幅いっぱいに敷き、「上に到達している」ことをシンプルに示す。
+   両端がフェードするグラデーションで、上下スペースを最小限に。 */
+.deckTopLine {
+	height: 2px;
+	width: 100%;
+	margin: 0;
+	background: linear-gradient(90deg,
+		color-mix(in srgb, var(--MI_THEME-accent) 0%, transparent),
+		color-mix(in srgb, var(--MI_THEME-accent) 55%, transparent) 20%,
+		color-mix(in srgb, var(--MI_THEME-accent) 55%, transparent) 80%,
+		color-mix(in srgb, var(--MI_THEME-accent) 0%, transparent));
+	pointer-events: none;
 }
 
 .notes {
@@ -1154,12 +1253,12 @@ html.hataGlassUi [data-bubble="on"] article {
 }
 /* カード面(bubbleBody) 半透明・backdrop無し(この1枚だけ色を持つ)。
    旗鯖fork(ベータ): テーマカラー(accent)のティントを乗せつつ透明感を保つ。
-   先に panel へ accent を混ぜて「色味付きの不透明パネル色」を作り、その後で 55% 透明化する。
-   こうすると全体の不透明度は元の 0.55 のまま(スモーク化しない)で、色味だけがテーマ色に寄る。
-   (accent を直接混ぜると accent が不透明なぶん全体の不透明度が上がりスモーク風になってしまう) */
+   先に panel へ accent を混ぜて「色味付きの不透明パネル色」を作り、その後で N% 透明化する。
+   透明度は CSS 変数 --htk-glass-card-opacity (boot 経由で simpleUi.glassUiCardOpacity から注入、
+   デフォルト 55%) で可変。0% = 完全透明, 100% = 完全不透明。 */
 [data-glass-bg="on"] article > div,
 html.hataGlassUi [data-bubble="on"] article > div {
-	background: color-mix(in srgb, color-mix(in srgb, var(--MI_THEME-accent) 18%, var(--MI_THEME-panel)) 55%, transparent) !important;
+	background: color-mix(in srgb, color-mix(in srgb, var(--MI_THEME-accent) 18%, var(--MI_THEME-panel)) var(--htk-glass-card-opacity, 55%), transparent) !important;
 	-webkit-backdrop-filter: none !important;
 	backdrop-filter: none !important;
 }
@@ -1167,7 +1266,7 @@ html.hataGlassUi [data-bubble="on"] article > div {
    ダーク(18%)より薄い accent 8% にする。詳細度をベース規則より高くして色だけ上書きする。 */
 html[data-color-scheme=light] [data-glass-bg="on"] article > div,
 html[data-color-scheme=light].hataGlassUi [data-bubble="on"] article > div {
-	background: color-mix(in srgb, color-mix(in srgb, var(--MI_THEME-accent) 8%, var(--MI_THEME-panel)) 55%, transparent) !important;
+	background: color-mix(in srgb, color-mix(in srgb, var(--MI_THEME-accent) 8%, var(--MI_THEME-panel)) var(--htk-glass-card-opacity, 55%), transparent) !important;
 }
 /* 旗鯖fork(ベータ): glass時、各ノートを囲む「細い長方形の枠線」を消す。
    ノートルート(.note=.root)やその上下ラッパーは、ノート間隔設定(noGap)や既定のカード枠により
@@ -1349,9 +1448,10 @@ html.hataGlassUiBubble.hataGlassUi [data-bubble="on"] [data-note-content]::befor
 }
 
 /* ===== 旗鯖fork(#7): HatasabaUIデッキUIのみ、ノート間を灰色のスペーサー(バー)で区切る ===== */
-/* クラシック投稿間隔の細い区切り線(1px)を、デッキでは太い灰色バーに上書きする(後勝ち)。 */
+/* クラシック投稿間隔の細い区切り線(1px)を、デッキでは太い灰色バーに上書きする(後勝ち)。
+   従来 5px でノート同士が密着して見えていたので、少し余裕をもたせて 12px に広げる。 */
 [data-hatasaba-spacer="on"] > div {
-	border-bottom: 5px solid var(--MI_THEME-bg) !important;
+	border-bottom: 12px solid var(--MI_THEME-bg) !important;
 }
 [data-hatasaba-spacer="on"] > div:last-child {
 	border-bottom: none !important;
@@ -1391,6 +1491,26 @@ html.hataGlassUiBubble.hataGlassUi [data-bubble="on"] [data-note-content]::befor
 		padding-top: 10px !important;
 		padding-bottom: 8px !important;
 	}
+}
+
+/* ===== 旗鯖fork: HatasabaUI 通常表示 (デッキ/HatasabaUI 2 以外) の一体化スタイル =====
+   従来はノートが各々 panel 色の角丸カードで、間の隙間から notes コンテナの bg 色が透け、
+   タイムラインが「青鼠色の背景に白い長方形が並ぶ」見た目になっていた。
+   HatasabaUI としては「連なるノート群が途切れない一本の太い帯」に見せたいので、
+   - notes コンテナ全体を panel 色で塗る (隙間から bg が透けない)
+   - 各ノート (.note) の border-radius を 0 に (四角形の枠が見えなくなる)
+   - classic spacing 由来のノート間 divider (1px) を透明化 (連続した panel 面を分断しない)
+   にする。glass (HatasabaUI 2) 表示中は上のガラスルールが上書きするので、
+   :not([data-glass-bg="on"]) で glass 側と競合しないようにする。 */
+[data-hatasaba-normal="on"]:not([data-glass-bg="on"]) {
+	background: var(--MI_THEME-panel) !important;
+}
+[data-hatasaba-normal="on"]:not([data-glass-bg="on"]) .note {
+	background: var(--MI_THEME-panel) !important;
+	border-radius: 0 !important;
+}
+[data-hatasaba-normal="on"]:not([data-glass-bg="on"]) > div {
+	border-bottom-color: transparent !important;
 }
 
 /* ===== 旗鯖fork(ベータ): HatasabaUI 2 で「ほどよく(moderate)」間隔のとき、ノート同士を少し詰める =====

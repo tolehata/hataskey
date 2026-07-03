@@ -35,7 +35,19 @@ function applyGlassUiClass(v: boolean): void {
 		document.documentElement.classList.toggle('hataGlassUi', v);
 	}
 }
-export const glassUiLocal = ref(miLocalStorage.getItem('hataGlassUi') === 'true');
+// 旗鯖fork(HatasabaUI 2 デフォルトON化): 新規ユーザー・未設定端末では自動的に ON にする。
+//   判定: getItem('hataGlassUi') が 'false' の時のみ OFF (=ユーザーが明示的に OFF にした)。
+//   'true' または null (未設定) は ON。
+//   既存で 'true' 保存済み → true 維持 (=これまで通り ON)。
+//   既存で 'false' 保存済み → false 維持 (=明示OFF のユーザーの意思を尊重)。
+//   未設定 (null) → true (自動ON)。同時に localStorage にも 'true' を書き込むことで、
+//   次回起動以降 (=もし将来この判定を変えたとしても) 動作が変わらない安定した状態にする。
+const _initialGlassUi = miLocalStorage.getItem('hataGlassUi') !== 'false';
+export const glassUiLocal = ref(_initialGlassUi);
+if (miLocalStorage.getItem('hataGlassUi') == null) {
+	// 未設定の端末なら自動的に 'true' を書き込んで状態を固定 (自動ON をアクティブ化)。
+	miLocalStorage.setItem('hataGlassUi', 'true');
+}
 export function setGlassUiLocal(v: boolean): void {
 	glassUiLocal.value = v;
 	miLocalStorage.setItem('hataGlassUi', v ? 'true' : 'false');

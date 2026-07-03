@@ -521,6 +521,33 @@ export async function common(createVue: () => Promise<App<Element>>) {
 		window.document.documentElement.classList.add('forceSelectableAll');
 	}
 
+	// 旗鯖fork(HatasabaUI 2): `simpleUi.profileNoBannerBg` を <html> のクラス
+	// (`hataProfileNoBannerBg`) にブリッジする。プロフィールページの CSS が
+	// `html.hataGlassUi.hataProfileNoBannerBg` セレクタで機能を切替する。
+	// preferences reactive を watch して即時反映 (別端末での変更もこの端末に伝播する)。
+	{
+		const applyProfileNoBannerBg = (v: boolean) => {
+			window.document.documentElement.classList.toggle('hataProfileNoBannerBg', v);
+		};
+		applyProfileNoBannerBg(prefer.r['simpleUi.profileNoBannerBg']?.value ?? false);
+		const { watch } = await import('vue');
+		watch(prefer.r['simpleUi.profileNoBannerBg'], v => applyProfileNoBannerBg(!!v), { immediate: false });
+	}
+
+	// 旗鯖fork(HatasabaUI 2): `simpleUi.glassUiCardOpacity` (0-100) を CSS 変数
+	// `--htk-glass-card-opacity` (パーセント値) として <html> に注入する。
+	// MkStreamingNotesTimeline のノートカード面が `color-mix` の中でこの変数を消費する。
+	{
+		const applyOpacity = (v: unknown) => {
+			const raw = typeof v === 'number' ? v : Number(v);
+			const clamped = Number.isFinite(raw) ? Math.max(0, Math.min(100, Math.round(raw))) : 55;
+			window.document.documentElement.style.setProperty('--htk-glass-card-opacity', clamped + '%');
+		};
+		applyOpacity(prefer.r['simpleUi.glassUiCardOpacity']?.value ?? 55);
+		const { watch } = await import('vue');
+		watch(prefer.r['simpleUi.glassUiCardOpacity'], v => applyOpacity(v), { immediate: false });
+	}
+
 	//#region Fetch user
 	if ($i && $i.token) {
 		if (_DEV_) {

@@ -918,9 +918,34 @@ export const PREF_DEF = definePreferences({
 		default: false,
 	},
 	// 旗鯖fork: HatasabaUI 通常表示(デッキUIではないタイムライン)の背景にヘッダー画像の
-	// ぼかしを使うか(アクセシビリティ)。deckNoBannerBg の通常モード版。
+	// ぼかしを使うか(HatasabaUI 2 有効時のみ効く)。deckNoBannerBg の通常モード版。
 	// default false = ぼかし背景を使う。true = 使わない(無地背景)。
 	'simpleUi.normalNoBannerBg': {
+		default: false,
+	},
+	// 旗鯖fork(HatasabaUI 2): プロフィールページのヘッダー画像のぼかしレイヤを使うか。
+	// HatasabaUI 2 有効時にのみ効く (通常時はぼかしレイヤ自体が無効)。
+	// default false = ぼかしを使う。true = 使わない (プロフィールカードを不透明パネルに)。
+	'simpleUi.profileNoBannerBg': {
+		default: false,
+	},
+	// 旗鯖fork: HatasabaUI デッキで、カラム最上部に到達したときの表示を「最新のノートです」
+	// テキストに戻すか。default false = テーマカラーの横線でシンプル表示 (新既定)。
+	// true = 従来通り「(↑) 最新のノートです」テキスト表示。
+	'simpleUi.deckLatestNoteText': {
+		default: false,
+	},
+	// 旗鯖fork(HatasabaUI 2): タイムラインノートカード面 (bubbleBody) の不透明度 (%)。
+	// 0-100 の整数。既定 55 (=これまで固定で使っていた panel 55%)。
+	// 小さいほど透け感が強く、大きいほど不透明パネルに近づく。
+	'simpleUi.glassUiCardOpacity': {
+		default: 55,
+	},
+	// 旗鯖fork: デッキUI/HatasabaUI で、チャンネルカラムの従来の投稿ボタン
+	// (カラムヘッダ右のペン+ボタン + 三点メニュー「このチャンネルへ投稿」項目) を表示するか。
+	// default false = 非表示 (=新設のノートリスト最上部固定ボタンを主とする)。
+	// true = 従来通り表示。
+	'simpleUi.showLegacyChannelPostButton': {
 		default: false,
 	},
 	// 旗鯖fork: デッキUIの初回チュートリアルを表示済みか(端末ローカル)

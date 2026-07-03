@@ -59,6 +59,31 @@ SPDX-License-Identifier: AGPL-3.0-only
             <template #label>ログイン日数</template>
             <MkSwitch v-model="showLoginBonusPopup"><template #label>ログイン日数のポップアップを表示</template></MkSwitch>
         </FormSection>
+        <!-- 旗鯖fork: 旧アクセシビリティタブから移動 -->
+        <FormSection>
+            <template #label>タイムライン操作</template>
+            <MkSwitch v-model="directProfile">
+                <template #label>アバタークリックで直接プロフィールへ</template>
+                <template #caption>ONにするとユーザーパネルを経由せず、直接プロフィールページに遷移します。Hatasaba UIでは上部の戻るボタンでタイムラインに戻れます。</template>
+            </MkSwitch>
+        </FormSection>
+        <!-- 旗鯖fork: 旧アクセシビリティタブから移動 -->
+        <FormSection>
+            <template #label>投稿フォームの枠色（投稿範囲別）</template>
+            <MkSwitch v-model="pfvbEnabled">
+                <template #label>投稿範囲に応じて枠の色を変える</template>
+                <template #caption>公開・ホーム・フォロワー・ダイレクトの各範囲ごとに投稿フォームの枠色を変え、誤爆を防ぎやすくします。</template>
+            </MkSwitch>
+            <template v-if="pfvbEnabled">
+                <MkInput v-model="pfvbWidth" type="number" :min="1" :max="12" style="margin-top:10px;">
+                    <template #label>枠の太さ（px）</template>
+                </MkInput>
+                <MkColorInput v-model="pfvbPublic"><template #label>公開</template></MkColorInput>
+                <MkColorInput v-model="pfvbHome"><template #label>ホーム</template></MkColorInput>
+                <MkColorInput v-model="pfvbFollowers"><template #label>フォロワー</template></MkColorInput>
+                <MkColorInput v-model="pfvbSpecified"><template #label>ダイレクト</template></MkColorInput>
+            </template>
+        </FormSection>
         </template>
 
         <!-- ===== フォント ===== -->
@@ -129,123 +154,76 @@ SPDX-License-Identifier: AGPL-3.0-only
         </template>
 
         <!-- ===== Hatasaba UI ===== -->
+        <!-- 旗鯖fork: HatasabaUI に関する設定はモーダル (MkHatasabaUiEditDialog) に集約した。
+             理由: 上部/下部ナビバーの並び替え・表示/非表示が、旧・タブ内インライン編集 (watch(deep) 自動保存)
+             では本番ユーザーで「リロードするとリセットされる」問題が発生していた。サイドバーと同じく
+             明示保存ボタン + 初期化ボタン付きモーダル化することで、保存の確実性と一貫性を担保する。
+             また下部ナビ設定は「下部ナビが表示される画面 (モバイル/狭幅) のみ操作可」でグレーアウトさせる。 -->
         <template v-if="activeCat === 'simpleUi'">
-        <!-- 旗鯖fork: トレンドタイムライン (TTL) タブの表示トグル -->
         <FormSection first>
-            <template #label>トレンドタイムライン</template>
-            <MkSwitch v-model="showTrendingTab">
-                <template #label>トレンドタブを表示する</template>
-                <template #caption>上部ナビバーの最右に「トレンド」タブを表示します。過去7日間でリアクションやリノートが多かった人気の投稿を、ランダムな順番で表示する発見系タイムラインです。</template>
-            </MkSwitch>
-        </FormSection>
-        <FormSection>
-            <template #label>メニューの表示位置</template>
-            <MkSwitch v-model="topNavMode">
-                <template #label>メニューを画面上部に表示する</template>
-                <template #caption>ONにすると、左側のサイドバーの代わりに、画面上部へ横並びのナビバー（アイコン＋ラベルのピル型メニュー）を表示します。デスクトップ表示でのみ有効です。デッキ表示と併用した場合は、ナビバーの下にデッキのツールバーが並びます。</template>
-            </MkSwitch>
-        </FormSection>
-        <FormSection>
-            <template #label>デッキ表示</template>
-            <MkSwitch v-model="deckIgnoreWidthModel">
-                <template #label>画面幅に関係なくデッキを表示する</template>
-                <template #caption>通常デッキ表示はデスクトップ幅（1100px以上）でのみ有効ですが、ONにすると画面幅に関係なくデッキモードを適用します。<b>この設定は端末ごとに保存され、他の端末（スマホ等）には同期されません。</b>新デッキUIはスマホ表示に未対応のため、狭い画面では表示が崩れる可能性があります（実験的）。</template>
-            </MkSwitch>
-        </FormSection>
-        <FormSection>
-            <template #label>デッキUIのチュートリアル</template>
-            <div style="font-size:.85em;opacity:.7;margin-bottom:10px;line-height:1.6;">HatasabaUIデッキモードの初期設定（メニューの位置・ツールバーの位置・レイアウト）を、ウィザード形式でもう一度設定し直せます。</div>
-            <button class="_buttonPrimary" @click="replayDeckTutorial" style="padding:10px 20px;font-weight:bold;"><i class="ti ti-refresh"></i> チュートリアルをもう一度行う</button>
-        </FormSection>
-        <FormSection>
-            <template #label>上部ナビバー（タイムラインタブ）</template>
-            <div :class="$style.reorderHead">
-                <div style="font-size:.85em;opacity:.7;flex:1;">表示するタブとその順番を設定します。</div>
-                <button :class="$style.resetBtn" @click="resetTopNav">並び替えを初期化</button>
+            <template #label>HatasabaUI の設定</template>
+            <div style="font-size:.85em;opacity:.7;margin-bottom:12px;line-height:1.6;">
+                HatasabaUI の見た目・ナビ・チュートリアル等を、専用モーダルからまとめて設定できます。<br>
+                ナビバーの並び替え・表示/非表示は編集後に<b>「保存」ボタン</b>でサーバーに反映され、ログイン中の全端末に同期されます。
             </div>
-            <div :class="$style.reorderList">
-                <div v-for="(item, idx) in topNavItems" :key="item.id" :class="$style.reorderItem">
-                    <MkSwitch v-model="item.visible" style="margin:0;flex-shrink:0;transform:scale(.8);transform-origin:left center;" @update:modelValue="saveTopNav" />
-                    <i :class="[item.icon, $style.reorderIcon]"></i>
-                    <span :class="$style.reorderLabel">{{ item.label }}</span>
-                    <div :class="$style.reorderBtns">
-                        <button :class="$style.reorderBtn" :disabled="idx===0" @click="moveArr(topNavItems,idx,-1);saveTopNav()">▲</button>
-                        <button :class="$style.reorderBtn" :disabled="idx===topNavItems.length-1" @click="moveArr(topNavItems,idx,1);saveTopNav()">▼</button>
-                    </div>
-                </div>
-            </div>
-        </FormSection>
-        <FormSection>
-            <template #label>下部ナビバー</template>
-            <div :class="$style.reorderHead">
-                <div style="font-size:.85em;opacity:.7;flex:1;">表示する項目（最大4つ）と順番を設定します。</div>
-                <button :class="$style.resetBtn" @click="resetBottomNav">並び替えを初期化</button>
-            </div>
-            <div :class="$style.reorderList">
-                <div v-for="(item, idx) in bottomNavItems" :key="item.id" :class="$style.reorderItem">
-                    <MkSwitch v-model="item.visible" style="margin:0;flex-shrink:0;transform:scale(.8);transform-origin:left center;" @update:modelValue="saveBottomNav" />
-                    <i :class="[item.icon, $style.reorderIcon]"></i>
-                    <span :class="$style.reorderLabel">{{ item.label }}</span>
-                    <div :class="$style.reorderBtns">
-                        <button :class="$style.reorderBtn" :disabled="idx===0" @click="moveArr(bottomNavItems,idx,-1);saveBottomNav()">▲</button>
-                        <button :class="$style.reorderBtn" :disabled="idx===bottomNavItems.length-1" @click="moveArr(bottomNavItems,idx,1);saveBottomNav()">▼</button>
-                    </div>
-                </div>
-            </div>
-            <div v-if="bottomNavItems.filter(i=>i.visible).length > 4" style="color:#e74040;font-size:.85em;margin-top:6px;">
-                <i class="ti ti-alert-triangle"></i> 最大4つまで表示できます。超過分は非表示になります。
-            </div>
-        </FormSection>
-        <FormSection>
-            <template #label>サイドメニューの並び替え</template>
-            <div style="font-size:.85em;opacity:.7;margin-bottom:12px;line-height:1.55;">
-                PC/タブレットのサイドバーとモバイルのドロワーに反映されます。<br>
-                <b>編集モーダル</b>でドラッグによる並び替え (グループ越え可)・表示/非表示の切替ができ、明示的に保存することでサーバーに同期され、ログイン中のすべての端末に反映されます。
-            </div>
-            <button class="_buttonPrimary" @click="openSidebarEditDialog" style="padding:10px 20px;font-weight:bold;">
-                <i class="ti ti-edit"></i> サイドバーを編集する
+            <button class="_buttonPrimary" @click="openHatasabaUiEditDialog" style="padding:10px 20px;font-weight:bold;">
+                <i class="ti ti-device-mobile"></i> HatasabaUI の設定を開く
             </button>
         </FormSection>
         </template>
-        <template v-if="activeCat === 'hatask'">
+
+        <!-- ===== HatasabaUI 2 (新設) ===== -->
+        <template v-if="activeCat === 'glassUi'">
         <FormSection first>
-            <template #label>Hatask の設定</template>
-            <div style="font-size:.85em;opacity:.7;margin-bottom:12px;line-height:1.6;">Hatask（ライフログ）の設定です。背景テーマ・外観（ライト/ダーク）・ホーム画面のセクション表示と並び替え・データ同期などをここから変更できます。設定内容は Hatask 本体と同期します。</div>
-            <button class="_buttonPrimary" @click="openHataskSettings" style="padding:10px 20px;font-weight:bold;"><i class="ti ti-settings"></i> Hatask の設定を開く</button>
+            <template #label>HatasabaUI 2</template>
+            <div style="font-size:.85em;opacity:.8;margin-bottom:12px;line-height:1.7;">
+                <b>HatasabaUI 2</b> は、HatasabaUI 全体のデザインの統一をしつつ、使いやすく目に優しい UI デザインを目指して実装されています。
+                <br>初回はデフォルトで有効です。既存の HatasabaUI に戻したい場合はここでオフにできます。<b>この端末にだけ</b>保存されます。
+            </div>
+            <MkSwitch v-model="glassUi">
+                <template #label>HatasabaUI 2 を有効にする</template>
+                <template #caption>ノート・プロフィール・リアクション・タブを、統一された半透明＋ぼかしのデザインで表示します。「ぼかし効果を減らす」設定を有効にしている場合は不透明な面にフォールバックします。切替後は表示が乱れる場合があるので、必要ならページを再読み込みしてください。</template>
+            </MkSwitch>
+            <MkSwitch v-if="glassUi" v-model="glassUiBubble" style="margin-top: 16px;">
+                <template #label>吹き出しデザインを表示する</template>
+                <template #caption>HatasabaUI 2 のノートを、吹き出し（本文の枠＋＜の口）付きの表示にします。既定ではオフ（吹き出しなし・外側の角丸カードだけのすっきりした表示）です。<b>この端末にだけ</b>保存されます。</template>
+            </MkSwitch>
         </FormSection>
         <FormSection>
-            <template #label>Hatask を開く</template>
-            <div style="font-size:.85em;opacity:.7;margin-bottom:12px;">Hatask の画面を開きます。</div>
-            <button class="_button" @click="goToHatask" style="padding:10px 20px;"><i class="ti ti-external-link"></i> Hatask を開く</button>
+            <template #label>背景ヘッダー画像のぼかし</template>
+            <div v-if="!glassUi" style="font-size:.82em;color:var(--MI_THEME-warn);margin-bottom:10px;padding:8px 10px;border:1px solid var(--MI_THEME-divider);border-radius:8px;background:var(--MI_THEME-panel);">
+                <i class="ti ti-info-circle" style="margin-right:4px;"></i>これらの設定は HatasabaUI 2 が有効なときのみ機能します。上のトグルを ON にしてください。
+            </div>
+            <MkSwitch v-model="normalNoBannerBg" :disabled="!glassUi">
+                <template #label>通常タイムラインの背景ヘッダー画像のぼかしを使用しない</template>
+                <template #caption>HatasabaUI 2 有効時、通常タイムライン背景にプロフィールのヘッダー画像のぼかしを敷きません。単色背景となり、描画負荷が軽減されます。</template>
+            </MkSwitch>
+            <MkSwitch v-model="profileNoBannerBg" :disabled="!glassUi">
+                <template #label>プロフィールページのヘッダー画像のぼかしを使用しない</template>
+                <template #caption>HatasabaUI 2 有効時、プロフィールカードの背後に敷かれるヘッダー画像のぼかしレイヤを描画しません。プロフィールカードは不透明パネルに戻り、視認性が上がります。</template>
+            </MkSwitch>
         </FormSection>
-        </template>
-        <template v-if="activeCat === 'mascot'">
-        <FormSection first>
-            <template #label>マスコット</template>
-            <div style="font-size:.85em;opacity:.7;margin-bottom:12px;line-height:1.6;">あなたが用意した画像をマスコットとして表示できる機能です。キャラクター・表情・文言（セリフ）を設定できます。画像はドライブから選択し、URLの参照のみを保存します。初回利用時に同意確認が表示されます。</div>
-            <button class="_buttonPrimary" @click="openMascotSettings" style="padding:10px 20px;font-weight:bold;"><i class="ti ti-mood-smile"></i> マスコットの設定を開く</button>
+        <FormSection>
+            <template #label>ノートカードの透過率</template>
+            <div v-if="!glassUi" style="font-size:.82em;color:var(--MI_THEME-warn);margin-bottom:10px;padding:8px 10px;border:1px solid var(--MI_THEME-divider);border-radius:8px;background:var(--MI_THEME-panel);">
+                <i class="ti ti-info-circle" style="margin-right:4px;"></i>HatasabaUI 2 が有効なときのみ機能します。
+            </div>
+            <div style="font-size:.85em;opacity:.75;margin-bottom:10px;line-height:1.55;">
+                HatasabaUI 2 表示中のタイムラインの<b>ノートカード面の不透明度</b>を調整します。数字が大きいほど不透明パネルに近づき、小さいほど透け感が強くなります。既定は 55。
+            </div>
+            <div :class="$style.opacityRow">
+                <input type="range" min="0" max="100" step="1" v-model.number="glassUiCardOpacity" :disabled="!glassUi" :class="$style.opacityRange" />
+                <div :class="$style.opacityValue">{{ glassUiCardOpacity }}%</div>
+                <button :class="$style.opacityResetBtn" :disabled="!glassUi || glassUiCardOpacity === 55" @click="glassUiCardOpacity = 55" v-tooltip="'既定値 (55%) に戻す'"><i class="ti ti-restore"></i></button>
+            </div>
         </FormSection>
         </template>
 
-        <!-- ===== 地震ビューア ===== -->
-        <template v-if="activeCat === 'earthquake'">
-        <FormSection first>
-            <template #label>地震ビューアの設定</template>
-            <div style="font-size:.85em;opacity:.7;margin-bottom:12px;line-height:1.6;">地震・津波情報ビューアの設定です。お住いの都道府県（付近の地震表示用）と取得間隔を変更できます。<b>お住いの都道府県はこの端末にのみ保存され、サーバーには送信されません。</b></div>
-            <button class="_buttonPrimary" @click="openEarthquakeSettings" style="padding:10px 20px;font-weight:bold;"><i class="ti ti-settings"></i> 地震ビューアの設定を開く</button>
-        </FormSection>
-        <FormSection>
-            <template #label>地震ビューアを開く</template>
-            <div style="font-size:.85em;opacity:.7;margin-bottom:12px;">地震・津波情報の画面を開きます。</div>
-            <button class="_button" @click="goToEarthquake" style="padding:10px 20px;"><i class="ti ti-activity"></i> 地震・津波情報を開く</button>
-        </FormSection>
-        </template>
-
-        <template v-if="activeCat === 'accessibility'">
+        <!-- ===== ビジュアル (新設) ===== -->
+        <template v-if="activeCat === 'visual'">
         <FormSection first>
             <template #label>ノートの間隔</template>
             <div style="font-size:.85em;opacity:.7;margin-bottom:12px;">タイムラインの投稿同士の間隔を調整します。即座に反映されます。</div>
-            <!-- 旗鯖fork: デッキ表示時(従来デッキUI / HatasabaUIデッキ)はノート間隔を「詰める」に強制し、UI操作不能化する -->
             <div v-if="isDeckLike" style="font-size:.82em;color:var(--MI_THEME-warn);margin-bottom:10px;padding:8px 10px;border:1px solid var(--MI_THEME-divider);border-radius:8px;background:var(--MI_THEME-panel);">
                 <i class="ti ti-info-circle" style="margin-right:4px;"></i>デッキ表示中は情報密度を保つため、ノートの間隔は「詰める」に固定されます。
             </div>
@@ -281,18 +259,22 @@ SPDX-License-Identifier: AGPL-3.0-only
                 <template #label>デッキUIの背景にヘッダー画像のぼかしを使用しない</template>
                 <template #caption>ONにすると、HatasabaUIのデッキ表示の背景にプロフィールのヘッダー画像のぼかしを使わず、単色背景になります。描画負荷が軽減され、視認性が上がります。</template>
             </MkSwitch>
-            <!-- 旗鯖fork: 通常表示(デッキUIではないタイムライン)用 -->
-            <MkSwitch v-model="normalNoBannerBg">
-                <template #label>通常表示の背景にヘッダー画像のぼかしを使用しない</template>
-                <template #caption>ONにすると、HatasabaUIの通常タイムライン表示（デッキUI以外）の背景にプロフィールのヘッダー画像のぼかしを使わず、単色背景になります。描画負荷が軽減され、視認性が上がります。</template>
-            </MkSwitch>
-            <!-- 旗鯖fork: HatasabaUIの追加ページヘッダー(タイトル+戻るボタン)。デフォルトOFFで二重表示を回避。 -->
             <MkSwitch v-model="showPageHeader">
                 <template #label>HatasabaUIの追加ページヘッダーを表示する</template>
                 <template #caption>ONにすると、ページ上部にHatasabaUI独自のシンプルなヘッダー（ページタイトル＋戻るボタン）が追加で表示されます。OFFにするとページ自身のヘッダー（MkPageHeader）のみになり、タイトルの二重表示が解消されます。</template>
             </MkSwitch>
         </FormSection>
-        <!-- 旗鯖fork: HataFeed の若葉アニメーション -->
+        <FormSection>
+            <template #label>デッキタイムライン</template>
+            <MkSwitch v-model="deckLatestNoteText">
+                <template #label>「最新のノートです」テキストを表示する</template>
+                <template #caption>OFF（既定）: デッキ最上部でタイムラインの先頭に到達したことを、テーマカラーの短い横線でシンプルに示します。<br>ON: 従来通り「（↑）最新のノートです」テキストを表示します。</template>
+            </MkSwitch>
+            <MkSwitch v-model="showLegacyChannelPostButton">
+                <template #label>従来のチャンネル投稿ボタンを表示する</template>
+                <template #caption>OFF（既定）: HatasabaUI デッキのチャンネルカラムでは、ノートリスト最上部に固定表示された投稿ボタン（チャンネル×ペンアイコン）から投稿します。<br>ON: 従来の場所（カラムヘッダ右のペン+ボタン、および三点メニュー「このチャンネルへ投稿」）を表示します。</template>
+            </MkSwitch>
+        </FormSection>
         <FormSection>
             <template #label>HataFeed</template>
             <MkSwitch v-model="hatafeedLeaves">
@@ -300,25 +282,75 @@ SPDX-License-Identifier: AGPL-3.0-only
                 <template #caption>HataFeed（フィードバックセンター）のホーム背景に若葉のアニメーションを表示します。光や動きに敏感な方に配慮し、デフォルトはOFFです。OSの「視差効果を減らす」設定時は自動的に止まります。</template>
             </MkSwitch>
         </FormSection>
-        <!-- 旗鯖fork: 投稿フォームの枠色(投稿範囲別) -->
         <FormSection>
-            <template #label>投稿フォームの枠色（投稿範囲別）</template>
-            <MkSwitch v-model="pfvbEnabled">
-                <template #label>投稿範囲に応じて枠の色を変える</template>
-                <template #caption>公開・ホーム・フォロワー・ダイレクトの各範囲ごとに投稿フォームの枠色を変え、誤爆を防ぎやすくします。</template>
+            <template #label>ウィジェット</template>
+            <MkSwitch v-model="widgetBorder">
+                <template #label>ウィジェットにテーマカラーの縁色を表示</template>
+                <template #caption>ウィジェットにアクセントカラーの縁を表示します（PC・モバイル両方）</template>
             </MkSwitch>
-            <template v-if="pfvbEnabled">
-                <MkInput v-model="pfvbWidth" type="number" :min="1" :max="12" style="margin-top:10px;">
-                    <template #label>枠の太さ（px）</template>
-                </MkInput>
-                <MkColorInput v-model="pfvbPublic"><template #label>公開</template></MkColorInput>
-                <MkColorInput v-model="pfvbHome"><template #label>ホーム</template></MkColorInput>
-                <MkColorInput v-model="pfvbFollowers"><template #label>フォロワー</template></MkColorInput>
-                <MkColorInput v-model="pfvbSpecified"><template #label>ダイレクト</template></MkColorInput>
-            </template>
         </FormSection>
-        <!-- 旗鯖fork: 天気エフェクト(weatherEffect) -->
         <FormSection>
+            <template #label>吹き出し表示</template>
+            <MkSwitch v-model="disableBubbleInDeck">
+                <template #label>デッキUIで吹き出し表示を無効にする</template>
+                <template #caption>ONにするとデッキUIではタイムラインの吹き出しデザインが適用されず、標準のカード表示になります。</template>
+            </MkSwitch>
+            <MkSwitch v-model="disableBubbleInDefault">
+                <template #label>Misskey UIで吹き出し表示を無効にする</template>
+                <template #caption>ONにするとMisskey UI（デフォルトUI）ではタイムラインの吹き出しデザインが適用されず、標準のカード表示になります。</template>
+            </MkSwitch>
+            <MkSwitch v-model="disableBubbleInHatasabaDeck">
+                <template #label>HatasabaUIデッキで吹き出し表示を無効にする</template>
+                <template #caption>ONにするとHatasabaUIのデッキ表示モードでも吹き出しデザインが適用されず、標準のカード表示になります。</template>
+            </MkSwitch>
+            <MkSwitch v-model="disableBubbleInHatasabaNormal">
+                <template #label>HatasabaUI（通常）で吹き出し表示を無効にする</template>
+                <template #caption>ONにするとHatasabaUIの通常表示（デッキ以外）でも吹き出しデザインが適用されず、標準のカード表示になります。</template>
+            </MkSwitch>
+        </FormSection>
+        </template>
+
+        <template v-if="activeCat === 'hatask'">
+        <FormSection first>
+            <template #label>Hatask の設定</template>
+            <div style="font-size:.85em;opacity:.7;margin-bottom:12px;line-height:1.6;">Hatask（ライフログ）の設定です。背景テーマ・外観（ライト/ダーク）・ホーム画面のセクション表示と並び替え・データ同期などをここから変更できます。設定内容は Hatask 本体と同期します。</div>
+            <button class="_buttonPrimary" @click="openHataskSettings" style="padding:10px 20px;font-weight:bold;"><i class="ti ti-settings"></i> Hatask の設定を開く</button>
+        </FormSection>
+        <FormSection>
+            <template #label>Hatask を開く</template>
+            <div style="font-size:.85em;opacity:.7;margin-bottom:12px;">Hatask の画面を開きます。</div>
+            <button class="_button" @click="goToHatask" style="padding:10px 20px;"><i class="ti ti-external-link"></i> Hatask を開く</button>
+        </FormSection>
+        </template>
+        <template v-if="activeCat === 'mascot'">
+        <FormSection first>
+            <template #label>マスコット</template>
+            <div style="font-size:.85em;opacity:.7;margin-bottom:12px;line-height:1.6;">あなたが用意した画像をマスコットとして表示できる機能です。キャラクター・表情・文言（セリフ）を設定できます。画像はドライブから選択し、URLの参照のみを保存します。初回利用時に同意確認が表示されます。</div>
+            <button class="_buttonPrimary" @click="openMascotSettings" style="padding:10px 20px;font-weight:bold;"><i class="ti ti-mood-smile"></i> マスコットの設定を開く</button>
+        </FormSection>
+        </template>
+
+        <!-- ===== 地震ビューア ===== -->
+        <template v-if="activeCat === 'earthquake'">
+        <FormSection first>
+            <template #label>地震ビューアの設定</template>
+            <div style="font-size:.85em;opacity:.7;margin-bottom:12px;line-height:1.6;">地震・津波情報ビューアの設定です。お住いの都道府県（付近の地震表示用）と取得間隔を変更できます。<b>お住いの都道府県はこの端末にのみ保存され、サーバーには送信されません。</b></div>
+            <button class="_buttonPrimary" @click="openEarthquakeSettings" style="padding:10px 20px;font-weight:bold;"><i class="ti ti-settings"></i> 地震ビューアの設定を開く</button>
+        </FormSection>
+        <FormSection>
+            <template #label>地震ビューアを開く</template>
+            <div style="font-size:.85em;opacity:.7;margin-bottom:12px;">地震・津波情報の画面を開きます。</div>
+            <button class="_button" @click="goToEarthquake" style="padding:10px 20px;"><i class="ti ti-activity"></i> 地震・津波情報を開く</button>
+        </FormSection>
+        </template>
+
+        <!-- ===== その他 (旧アクセシビリティ) ===== -->
+        <!-- 旗鯖fork: タブ再編で、旧アクセシビリティタブの項目はほぼ全て ビジュアル / HatasabaUI 2 /
+             旗鯖全体 タブに分散移動した。ここには「他タブに分類しづらい」ものだけを残す。
+             現状は天気エフェクトのみ。preferences のキー自体は変更していないので、
+             既存ユーザーの設定値は移動後もそのまま保持される (マイグレ不要)。 -->
+        <template v-if="activeCat === 'accessibility'">
+        <FormSection first>
             <template #label>天気エフェクト</template>
             <MkSwitch v-model="weatherEffectEnabled">
                 <template #label>天気エフェクトを有効にする</template>
@@ -336,41 +368,6 @@ SPDX-License-Identifier: AGPL-3.0-only
                     ※ 演出は控えめに作っていますが、光や動きに少しでも違和感を覚えた場合は、すぐにこの設定をOFFにしてください。雷など強い閃光を伴う演出は安全のため実装していません。
                 </div>
             </div>
-        </FormSection>
-        <FormSection>
-            <template #label>ウィジェット</template>
-            <MkSwitch v-model="widgetBorder">
-                <template #label>ウィジェットにテーマカラーの縁色を表示</template>
-                <template #caption>ウィジェットにアクセントカラーの縁を表示します（PC・モバイル両方）</template>
-            </MkSwitch>
-        </FormSection>
-        <FormSection>
-            <template #label>タイムライン操作</template>
-            <MkSwitch v-model="directProfile">
-                <template #label>アバタークリックで直接プロフィールへ</template>
-                <template #caption>ONにするとユーザーパネルを経由せず、直接プロフィールページに遷移します。Hatasaba UIでは上部の戻るボタンでタイムラインに戻れます。</template>
-            </MkSwitch>
-        </FormSection>
-        <FormSection>
-            <template #label>吹き出し表示</template>
-            <MkSwitch v-model="disableBubbleInDeck">
-                <template #label>デッキUIで吹き出し表示を無効にする</template>
-                <template #caption>ONにするとデッキUIではタイムラインの吹き出しデザインが適用されず、標準のカード表示になります。</template>
-            </MkSwitch>
-            <MkSwitch v-model="disableBubbleInDefault">
-                <template #label>Misskey UIで吹き出し表示を無効にする</template>
-                <template #caption>ONにするとMisskey UI（デフォルトUI）ではタイムラインの吹き出しデザインが適用されず、標準のカード表示になります。</template>
-            </MkSwitch>
-            <!-- 旗鯖fork: HatasabaUIデッキ用 -->
-            <MkSwitch v-model="disableBubbleInHatasabaDeck">
-                <template #label>HatasabaUIデッキで吹き出し表示を無効にする</template>
-                <template #caption>ONにするとHatasabaUIのデッキ表示モードでも吹き出しデザインが適用されず、標準のカード表示になります。</template>
-            </MkSwitch>
-            <!-- 旗鯖fork: HatasabaUI通常モード用 -->
-            <MkSwitch v-model="disableBubbleInHatasabaNormal">
-                <template #label>HatasabaUI（通常）で吹き出し表示を無効にする</template>
-                <template #caption>ONにするとHatasabaUIの通常表示（デッキ以外）でも吹き出しデザインが適用されず、標準のカード表示になります。</template>
-            </MkSwitch>
         </FormSection>
         </template>
     </div>
@@ -390,23 +387,34 @@ import * as os from '@/os.js';
 import { mainRouter } from '@/router.js';
 import { miLocalStorage } from '@/local-storage.js';
 import { prefer } from '@/preferences.js';
-import { getInitialPrefValue } from '@/preferences/manager.js';
+// 旗鯖fork: getInitialPrefValue は simpleUi タブのナビ初期化ロジックで使っていたが、
+//   モーダル (MkHatasabaUiEditDialog) に移設したためこのファイルからは不要になった。
 import { definePage } from '@/page.js';
 import { getHiddenReactions, hiddenReactionsVersion } from '@/utility/hidden-reactions.js';
-import { deckIgnoreWidth, setDeckIgnoreWidth } from '@/utility/hatasaba-device-prefs.js';
+// 旗鯖fork: deckIgnoreWidth / setDeckIgnoreWidth は HatasabaUI 設定モーダル側で消費するのみ。
+// 旗鯖fork(HatasabaUI 2): 端末ローカルの glassUi 系を hata-custom.vue から使うため import。
+import { glassUiLocal, setGlassUiLocal, glassUiBubbleLocal, setGlassUiBubbleLocal } from '@/utility/hatasaba-device-prefs.js';
 import { HATA_FONT_PRESETS, applyHataFont, type HataFontId } from '@/scripts/hata-font-manager.js';
 import { chooseDriveFile } from '@/utility/drive.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
-import { applySidebarIconOverride } from '@/utility/sidebar-icon-overrides.js';
+// 旗鯖fork: applySidebarIconOverride も同上 (サイドバー編集はモーダル側で完結)。
 
+// 旗鯖fork: タブ再編。
+//   - HatasabaUI 2 タブ新設 (グラス系設定を集約)
+//   - ビジュアルタブ新設 (見た目系を集約)
+//   - accessibility タブは「その他」にリネームし、天気エフェクトなど余ったものだけ残す
+//   - 見た目に関わらない設定 (directProfile / postFormVisibilityBorder 等) は general に移動
+// preferences のキー自体は変更しないため、既存ユーザーの設定は移動先タブでもそのまま保持される。
 const categories = [
     { id: 'general', icon: 'ti ti-flag', label: '旗鯖全体' },
     { id: 'font', icon: 'ti ti-typography', label: 'フォント' },
     { id: 'simpleUi', icon: 'ti ti-device-mobile', label: 'Hatasaba UI' },
+    { id: 'glassUi', icon: 'ti ti-sparkles', label: 'HatasabaUI 2' },
+    { id: 'visual', icon: 'ti ti-palette', label: 'ビジュアル' },
     { id: 'hatask', icon: 'ti ti-checklist', label: 'Hatask' },
     { id: 'mascot', icon: 'ti ti-mood-smile', label: 'マスコット' },
     { id: 'earthquake', icon: 'ti ti-activity', label: '地震ビューア' },
-    { id: 'accessibility', icon: 'ti ti-accessible', label: 'アクセシビリティ' },
+    { id: 'accessibility', icon: 'ti ti-dots', label: 'その他' },
 ];
 const activeCat = ref('general');
 
@@ -428,14 +436,6 @@ function useLSStr(key: string, def: string) {
     return v;
 }
 
-// 並び替えヘルパー
-function moveArr(arr: any[], idx: number, dir: number) {
-    const ni = idx + dir; if (ni < 0 || ni >= arr.length) return;
-    // 旗鯖fork: インデックス直接代入 (arr[idx]=...) は Vue のリアクティビティで
-    // 検知されず並び替えが画面に反映されないため、splice で入れ替える。
-    const [moved] = arr.splice(idx, 1);
-    arr.splice(ni, 0, moved);
-}
 
 // ===== フォント設定 =====
 const fontId = prefer.model('hataFont.id');
@@ -521,11 +521,6 @@ const openUiSetup = async () => {
     const { defineAsyncComponent: dac } = await import('vue');
     os.popup(dac(() => import('@/components/MkUISetup.vue')), {}, {}, 'closed');
 };
-// 旗鯖fork: デッキUIのチュートリアルをもう一度開く
-const replayDeckTutorial = async () => {
-    const { defineAsyncComponent: dac } = await import('vue');
-    os.popup(dac(() => import('@/ui/_common_/HatasabaDeckTutorial.vue')), {}, {}, 'closed');
-};
 // 旗鯖fork: Hataskの設定を共有コンポーネントで開く(本体とregistry同期)
 const openHataskSettings = async () => {
     const { defineAsyncComponent: dac } = await import('vue');
@@ -544,73 +539,23 @@ const openMascotSettings = async () => {
     const { defineAsyncComponent: dac } = await import('vue');
     os.popup(dac(() => import('@/pages/MkMascotSettings.vue')), {}, {}, 'closed');
 };
+// 旗鯖fork: HatasabaUI の設定モーダルを開く
+//   旧・simpleUi タブに散らばっていた 7 セクションをここに集約 (MkHatasabaUiEditDialog)。
+//   バッファ + 明示保存で「ナビ並び替えがリロードでリセットされる」問題を根絶する。
+const openHatasabaUiEditDialog = async () => {
+    const { defineAsyncComponent: dac } = await import('vue');
+    const { dispose } = os.popup(
+        dac(() => import('@/components/MkHatasabaUiEditDialog.vue')),
+        {},
+        { closed: () => dispose() },
+    );
+};
 const isExternalLinked = computed(() => prefer.s['external.enabled'] && prefer.s['external.token'] != null);
 const hiddenReactionCount = computed(() => { hiddenReactionsVersion.value; return getHiddenReactions().length; });
-// ===== シンプルUI（prefer同期） =====
-const topNavItems = ref([...prefer.s['simpleUi.topNav']]);
-function saveTopNav() { prefer.commit('simpleUi.topNav', [...topNavItems.value]); }
-watch(topNavItems, saveTopNav, { deep: true });
-
-// 旗鯖fork: トレンドタブ表示トグル
-// getter で prefer.s (非reactive) を使うと computed が依存追跡できず、
-// トグルしても画面が再描画されない(リロードで初めて反映)バグになる。
-// prefer.r[].value (reactive) を使って即時反映するようにする。
-const showTrendingTab = computed({
-    get: () => prefer.r['simpleUi.showTrendingTab'].value,
-    set: (v: boolean) => prefer.commit('simpleUi.showTrendingTab', v),
-});
-const topNavMode = computed({
-    get: () => prefer.r['simpleUi.topNavMode'].value,
-    set: (v: boolean) => prefer.commit('simpleUi.topNavMode', v),
-});
-
-// 旗鯖fork(#6): 画面幅に関係なくデッキ表示を強制する端末ローカル設定(プロファイル非同期)。
-const deckIgnoreWidthModel = computed({
-    get: () => deckIgnoreWidth.value,
-    set: (v: boolean) => setDeckIgnoreWidth(v),
-});
-
-const bottomNavItems = ref([...prefer.s['simpleUi.bottomNav']]);
-function saveBottomNav() { prefer.commit('simpleUi.bottomNav', [...bottomNavItems.value]); }
-watch(bottomNavItems, saveBottomNav, { deep: true });
-
-// 旗鯖fork: サイドバー編集は MkSidebarEditDialog に分離 (モーダル + ドラッグ並び替え +
-//   明示的な保存ボタン + 「保存しました」トースト + 初期値に戻す)。
-//   以前は watch による自動保存 + idx 経由の操作だったが、「保存されたか分からない」
-//   「サーバー間で同期されてるか不明」というユーザー声と、本番で発生していた設定リセット
-//   問題への対策として独立モーダル化した。sidebarItems の ref / saveSidebar / watch /
-//   resetSidebar / canMoveSidebar / moveSidebarItem / isSidebarGroupHead /
-//   isSidebarItemRequired / isSidebarItemVisible / setSidebarItemVisible /
-//   sidebarGroupLabels 等の helper はモーダル側に内包したためここからは削除。
-async function openSidebarEditDialog() {
-	const { dispose } = os.popup(
-		(await import('@/components/MkSidebarEditDialog.vue')).default,
-		{},
-		{
-			// done は MkSidebarEditDialog が save 完了時に emit する。
-			// 保存処理 (prefer.commit) と「保存しました」トーストはモーダル側で完結するので
-			// ここでは特に何もしない (prefer の reactive が UI 側に伝播する)。
-			done: (_v: { saved: boolean }) => { /* noop */ },
-			closed: () => dispose(),
-		},
-	);
-}
-
-// 旗鯖fork: 並び替え/表示状態を初期化するボタン用関数。
-// def.ts のデフォルトを採用する。
-async function resetTopNav() {
-	const { canceled } = await os.confirm({ type: 'warning', text: '上部ナビバーの並び順と表示状態をリセットしますか？' });
-	if (canceled) return;
-	topNavItems.value = JSON.parse(JSON.stringify(getInitialPrefValue('simpleUi.topNav')));
-	saveTopNav();
-}
-async function resetBottomNav() {
-	const { canceled } = await os.confirm({ type: 'warning', text: '下部ナビバーの並び順と表示状態をリセットしますか？' });
-	if (canceled) return;
-	bottomNavItems.value = JSON.parse(JSON.stringify(getInitialPrefValue('simpleUi.bottomNav')));
-	saveBottomNav();
-}
-// 旗鯖fork: 旧 resetSidebar はモーダル (MkSidebarEditDialog) の「初期値に戻す」ボタンに移行
+// 旗鯖fork: simpleUi タブに直接あった topNav/bottomNav の ref / saveTopNav / saveBottomNav /
+//   resetTopNav / resetBottomNav / showTrendingTab / topNavMode / deckIgnoreWidthModel /
+//   openSidebarEditDialog / replayDeckTutorial は、MkHatasabaUiEditDialog に完全移設した。
+//   モーダル側でバッファ + 明示保存 + 初期化ボタンで完結するため、このファイルからは削除済み。
 
 const widgetBorder = prefer.model('simpleUi.widgetBorder');
 const glassEffect = prefer.model('simpleUi.glassEffect');
@@ -630,6 +575,23 @@ const disableBubbleInHatasabaDeck = prefer.model('simpleUi.disableBubbleInHatasa
 // 旗鯖fork: HatasabaUI通常モード用の吹き出し無効化トグル
 const disableBubbleInHatasabaNormal = prefer.model('simpleUi.disableBubbleInHatasabaNormal');
 const classicNoteSpacing = prefer.model('simpleUi.classicNoteSpacing');
+// 旗鯖fork: デッキタイムライン最上部インジケータをテキストに戻すオプトイン
+const deckLatestNoteText = prefer.model('simpleUi.deckLatestNoteText');
+// 旗鯖fork(HatasabaUI 2): プロフィールぼかしOFF
+const profileNoBannerBg = prefer.model('simpleUi.profileNoBannerBg');
+// 旗鯖fork(HatasabaUI 2): ノートカード面の透過率 (0-100 %)
+const glassUiCardOpacity = prefer.model('simpleUi.glassUiCardOpacity');
+// 旗鯖fork: 従来のチャンネル投稿ボタン (カラムヘッダ右のペン+ボタン + 三点メニュー項目) を表示するか
+const showLegacyChannelPostButton = prefer.model('simpleUi.showLegacyChannelPostButton');
+// 旗鯖fork(HatasabaUI 2): 端末ローカルのグラス系設定 (ref + setter を computed 経由で v-model 化)
+const glassUi = computed({
+    get: () => glassUiLocal.value,
+    set: (v: boolean) => setGlassUiLocal(v),
+});
+const glassUiBubble = computed({
+    get: () => glassUiBubbleLocal.value,
+    set: (v: boolean) => setGlassUiBubbleLocal(v),
+});
 
 // 旗鯖fork: 天気エフェクト(weatherEffect)
 const weatherEffectEnabled = prefer.model('weatherEffect.enabled');
@@ -764,6 +726,28 @@ definePage({ title: '旗鯖独自機能', icon: 'ti ti-flag' });
     &:hover:not(:disabled) { background:var(--MI_THEME-accentedBg); }
     &:disabled { opacity:.2; cursor:default; }
 }
+/* 旗鯖fork(HatasabaUI 2): 透過率スライダー行 */
+.opacityRow {
+    display: flex; align-items: center; gap: 12px; padding: 4px 2px;
+}
+.opacityRange {
+    flex: 1; min-width: 0; accent-color: var(--MI_THEME-accent);
+    &:disabled { opacity: .4; cursor: not-allowed; }
+}
+.opacityValue {
+    min-width: 3.2em; text-align: right; font-variant-numeric: tabular-nums;
+    font-size: .95em; font-weight: 600; color: var(--MI_THEME-fg);
+}
+.opacityResetBtn {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; border-radius: 999px;
+    border: 1px solid var(--MI_THEME-divider); background: var(--MI_THEME-panel);
+    color: var(--MI_THEME-fg); cursor: pointer; flex-shrink: 0;
+    transition: background .15s, border-color .15s, opacity .15s;
+    &:hover:not(:disabled) { background: var(--MI_THEME-accentedBg); border-color: var(--MI_THEME-accent); }
+    &:disabled { opacity: .35; cursor: not-allowed; }
+}
+
 .spacingOptions { display:flex; gap:8px; flex-wrap:wrap; }
 .spacingCard {
     flex:1; min-width:80px; padding:12px 8px 10px; border-radius:12px; border:2px solid var(--MI_THEME-divider);

@@ -1201,6 +1201,19 @@ html.hataGlassUi .ftskorzw > .main > .profile > .main > .profileBgBlur {
 	transform: scale(1.2);
 	pointer-events: none;
 }
+/* 旗鯖fork(HatasabaUI 2): プロフィールぼかしOFF オプション。<html> に
+   'hataProfileNoBannerBg' クラスが付いている時 (simpleUi.profileNoBannerBg = true)、
+   HatasabaUI 2 有効中でもプロフィールカードのぼかしレイヤを非表示にする。
+   同時にプロフィールカード面 (.main の背景) を不透明パネルに戻すことで、背景が透けない
+   従来カードの見た目を維持する。 */
+html.hataGlassUi.hataProfileNoBannerBg .ftskorzw > .main > .profile > .main > .profileBgBlur {
+	display: none !important;
+}
+html.hataGlassUi.hataProfileNoBannerBg .ftskorzw > .main > .profile > .main {
+	background: var(--MI_THEME-panel) !important;
+	-webkit-backdrop-filter: none !important;
+	backdrop-filter: none !important;
+}
 /* 視認性ベール(ライト/ダーク両対応)。
    --MI_THEME-bg ベースなので、ライトは明るいベール(暗い文字が映える)、ダークは暗いベール
    (明るい文字が映える)と、テーマに応じてコントラストが取れる方向に自動で働く。

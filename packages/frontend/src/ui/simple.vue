@@ -162,7 +162,7 @@ SPDX-License-Identifier: AGPL-3.0-only
                     <span v-if="tab === 'oltl'" :class="$style.topTabLabel">外部ローカル</span>
                 </button>
                 <div :class="$style.topTabDivider"></div>
-                <button :class="[$style.topTabBtn, { [$style.topTabActive]: isListPage }]" @click="goToLists">
+                <button :class="[$style.topTabBtn, { [$style.topTabActive]: isListPage }]" @click="openListMenu">
                     <i class="ti ti-list"></i>
                     <span v-if="isListPage" :class="$style.topTabLabel">リスト</span>
                 </button>
@@ -202,7 +202,7 @@ SPDX-License-Identifier: AGPL-3.0-only
                         <MkExternalTimeline v-else-if="tab === 'ohtl' && externalHost && externalToken" src="ohtl" :host="externalHost" :token="externalToken" :sound="true" :simpleUi="true" key="ohtl" />
                         <MkExternalTimeline v-else-if="tab === 'oltl' && externalHost && externalToken" src="oltl" :host="externalHost" :token="externalToken" :sound="true" :simpleUi="true" key="oltl" />
                         <!-- 旗鯖fork: トレンドタイムライン (TTL) -->
-                        <MkTrendingTimeline v-else-if="tab === 'trending'" key="trending" />
+                        <MkTrendingTimeline v-else-if="tab === 'trending'" key="trending" :glassBg="timelineGlassBg" />
                     </KeepAlive>
                 </div>
             </Transition>
@@ -394,7 +394,7 @@ import { DI } from '@/di.js';
 import * as os from '@/os.js';
 import { useStream } from '@/stream.js';
 import { $i } from '@/i.js';
-import { antennasCache } from '@/cache.js';
+import { antennasCache, userListsCache } from '@/cache.js';
 import { deckIgnoreWidth, glassUiLocal } from '@/utility/hatasaba-device-prefs.js';
 import { prefer } from '@/preferences.js';
 import { cleanupStaleUiElements } from '@/utility/ui-cleanup.js';
@@ -453,9 +453,10 @@ const deckNoBannerBg = computed(() => prefer.r['simpleUi.deckNoBannerBg'].value)
 const normalNoBannerBg = computed(() => prefer.r['simpleUi.normalNoBannerBg'].value);
 // 旗鯖fork: .timelineBanner(背景ぼかし)が実際に表示されているかどうか。
 // 表示されている時だけノートカードを半透明化するため、同じ条件を MkStreamingNotesTimeline へ渡す。
-// HatasabaUI 2(glassUiLocal)が有効なら、すりガラス効果(glassEffect)の有無に関わらず背景ぼかしを適用する
-// (HatasabaUI 2 = 背景ぼかし + ノート透過 のセット機能)。
-const timelineGlassBg = computed(() => !isPageView.value && !deckActive.value && (glassUiLocal.value || glassEffect.value) && !normalNoBannerBg.value && !!$i?.bannerUrl);
+// 旗鯖fork(ベータ): 通常表示タイムラインの背景ぼかしは HatasabaUI 2(glassUiLocal)有効時のみ適用する。
+// HatasabaUI 2 は「背景ぼかし + ノート透過」のセット機能で、それ以外の状況(単なる glassEffect ON
+// 等)では通常表示のタイムライン背景にぼかしを敷かない = 従来のノート表示を維持する。
+const timelineGlassBg = computed(() => !isPageView.value && !deckActive.value && glassUiLocal.value && !normalNoBannerBg.value && !!$i?.bannerUrl);
 function setDeckMode(v: boolean) {
 	prefer.commit('simpleUi.deckMode', v);
 	dismissDeckAnnounce();
@@ -901,6 +902,28 @@ const goToNotifications = ()=>{ hasUnreadNotif.value=false; unreadNotifCount.val
 const goToLists = ()=>{ mainRouter.push('/my/lists'); };
 const goToChannels = ()=>{ mainRouter.push('/channels'); };
 const goToAntennas = ()=>{ mainRouter.push('/my/antennas'); };
+// 旗鯖fork: リストも同様に、上部ナビ (=このボタン) では管理ページに直行するのではなく
+// ポップアップでリストを選ばせて選択したリストのタイムライン (/timeline/list/:id) へ遷移する。
+// アンテナと同じ挙動に揃える (旧 goToLists は sidebar 等の直接遷移用に残す)。
+async function openListMenu(ev: MouseEvent) {
+    const anchor = (ev.currentTarget ?? ev.target) as HTMLElement;
+    const lists = await userListsCache.fetch().catch(() => []);
+    const items: any[] = [];
+    if (lists.length > 0) {
+        for (const l of lists) {
+            items.push({
+                text: l.name,
+                icon: 'ti ti-list',
+                action: () => mainRouter.push(`/timeline/list/${l.id}`),
+            });
+        }
+    } else {
+        items.push({ type: 'label', text: 'リストがありません' });
+    }
+    items.push({ type: 'divider' });
+    items.push({ text: 'リストの管理', icon: 'ti ti-settings', action: () => goToLists() });
+    os.popupMenu(items, anchor);
+}
 // 旗鯖fork(#5): アンテナ選択時は、管理ページではなくアンテナ一覧のポップアップを出し、
 // 選んだアンテナのタイムライン(/timeline/antenna/:id)へ遷移する。末尾に「アンテナの管理」も置く。
 async function openAntennaList(ev: MouseEvent) {
@@ -2126,19 +2149,15 @@ onUnmounted(()=>{
 .content { flex:1; overflow-y:auto; position:relative; min-height:0; }
 .timelineContainer {
     max-width:800px; margin:0 auto; min-height:100%;
-    border-left:1px solid var(--MI_THEME-divider); border-right:1px solid var(--MI_THEME-divider);
+    /* 旗鯖fork: 従来はタイムライン列の左右に divider の縦線を出していたが、
+       ノートを一体化した太い帯として見せる方針 (連なるノート群が途切れない見た目) と
+       ヘッダー画像ぼかし背景 (HatasabaUI 2) の上で縦線が浮く問題の両方に対処するため撤去。 */
     padding-top:calc(56px + env(safe-area-inset-top,0px));
     padding-bottom:calc(80px + env(safe-area-inset-bottom,0px));
     touch-action:pan-y;
 }
 .desktopLayout .timelineContainer {
     padding-top:calc(56px);
-}
-/* 旗鯖fork(ベータ): 背景ぼかし(HatasabaUI 2 等)を敷くとき、タイムライン列の左右区切り線
-   (両脇の縦線)がぼかし背景の上で浮いて見えるため消す。 */
-.timelineContainer[data-glass-bg="on"] {
-    border-left:none;
-    border-right:none;
 }
 /* 旗鯖fork: タイムライン上部固定投稿フォーム */
 .fixedPostForm {

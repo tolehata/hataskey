@@ -19,8 +19,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 	===== 設計 =====
 
-	- 既存の Paginator + MkNotesTimeline を流用 (explore.featured.vue と同じパターン)
-	- seed はクライアント側で生成・保持し、params で送信
+	- MkStreamingNotesTimeline と同じ data-* 属性 (bubble/glass-bg/hatasaba-normal/
+	  classic-spacing/spacing) をノートの「実際の flex 親コンテナ」に付与するため、
+	  MkNotesTimeline は使わず MkPagination + MkNote のループをインライン展開する。
+	  MkNotesTimeline 経由だとその内部の .root div に属性が届かず、
+	  `[data-classic-spacing="on"] > div` などの直下セレクタが機能せず、
+	  ノート間隔が広いまま + 通常表示の一体化スタイルが効かない。
 	- Streaming は使わない (TTL はスナップショット形式のため)
 -->
 
@@ -32,18 +36,74 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<span>{{ i18n.tsx._trending.newNotesAvailable({ n: newCount }) }}</span>
 	</div>
 
-	<MkNotesTimeline :paginator="paginator" :withControl="false" :onRefresh="reloadWithNewSeed"/>
+	<!-- 旗鯖fork: pagination をインライン展開。ノートリストの直接の flex 親 (.notes) に
+	     MkStreamingNotesTimeline と同じ data-* 属性を付けることで、グローバル CSS の
+	     直下セレクタ (`> div`) や `article > div` などが両方効くようにする。 -->
+	<MkPagination :paginator="paginator" :withControl="false" :onRefresh="reloadWithNewSeed">
+		<template #empty><MkResult type="empty" :text="i18n.ts.noNotes"/></template>
+		<template #default="{ items }">
+			<div
+				:class="[$style.notes, '_gaps']"
+				:data-bubble="bubbleEnabled ? 'on' : undefined"
+				:data-glass-bg="props.glassBg ? 'on' : undefined"
+				:data-hatasaba-normal="isHatasabaNormal ? 'on' : undefined"
+				:data-classic-spacing="classicSpacingEnabled ? 'on' : undefined"
+				:data-spacing="noteSpacingValue"
+			>
+				<MkNote v-for="note in items" :key="note.id" :note="note" :withHardMute="true"/>
+			</div>
+		</template>
+	</MkPagination>
 </div>
 </template>
 
 <script lang="ts" setup>
-import { markRaw, ref, onMounted, onUnmounted } from 'vue';
-import MkNotesTimeline from '@/components/MkNotesTimeline.vue';
+import { markRaw, ref, computed, onMounted, onUnmounted } from 'vue';
+import MkPagination from '@/components/MkPagination.vue';
+import MkNote from '@/components/MkNote.vue';
+// MkResult は components/global 配下で自動登録されているので import 不要 (favorites.vue と同様)。
 import { i18n } from '@/i18n.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { Paginator } from '@/utility/paginator.js';
+import { prefer } from '@/preferences.js';
+import { miLocalStorage } from '@/local-storage.js';
+
+const props = withDefaults(defineProps<{
+	// 旗鯖fork: 通常表示タイムラインの背景ぼかしが敷かれている時、simple.vue から true が渡る。
+	// MkStreamingNotesTimeline と同じ data-glass-bg を出してノートカード面を半透明化する。
+	glassBg?: boolean;
+}>(), {
+	glassBg: false,
+});
 
 const POLL_INTERVAL_MS = 30 * 1000; // 30 秒ごとに新規ランクインをチェック
+
+// 旗鯖fork: MkStreamingNotesTimeline と同じロジックで、HatasabaUI (ui='simple') / デッキ判定と
+// 派生 computed (bubbleEnabled / classicSpacingEnabled / noteSpacingValue / isHatasabaNormal) を出す。
+const currentUi = miLocalStorage.getItem('ui');
+const isDeckUi = currentUi === 'deck';
+const isDefaultUi = currentUi === 'default';
+const isHatasabaDeck = computed(() => currentUi === 'simple' && (prefer.r['simpleUi.deckMode']?.value ?? false));
+const isHatasabaNormal = computed(() => currentUi === 'simple' && !(prefer.r['simpleUi.deckMode']?.value ?? false));
+const bubbleEnabled = computed(() => {
+	if (isDeckUi && prefer.r['simpleUi.disableBubbleInDeck']?.value) return false;
+	if (isDefaultUi && prefer.r['simpleUi.disableBubbleInDefault']?.value) return false;
+	if (isHatasabaDeck.value && prefer.r['simpleUi.disableBubbleInHatasabaDeck']?.value) return false;
+	if (isHatasabaNormal.value && prefer.r['simpleUi.disableBubbleInHatasabaNormal']?.value) return false;
+	return true;
+});
+const isHatasaba = currentUi === 'simple';
+const classicSpacingEnabled = computed(() => {
+	if (isHatasaba) return true;
+	return prefer.r['simpleUi.classicNoteSpacing']?.value ?? false;
+});
+const noteSpacingValue = computed(() => {
+	if (isDeckUi) return 'wide';
+	const v = prefer.r['simpleUi.noteSpacing']?.value ?? 'moderate';
+	const deckMode = prefer.r['simpleUi.deckMode']?.value ?? false;
+	if (currentUi === 'simple' && !deckMode && v === 'compact') return 'moderate';
+	return v;
+});
 
 // seed はクライアント側で生成・保持 (同じ seed で同じシャッフル順を再現)
 function generateSeed(): number {
@@ -123,6 +183,13 @@ defineExpose({
 <style lang="scss" module>
 .root {
 	position: relative;
+}
+
+/* MkStreamingNotesTimeline の .notes と同じ役割: 実際の flex 親コンテナ。
+   ここに data-* 属性を付けることで、`[data-classic-spacing="on"] > div` などの
+   直下セレクタを含む一連のグローバル CSS が正しく発火する。 */
+.notes {
+	container-type: inline-size;
 }
 
 .newBanner {
