@@ -78,8 +78,6 @@ SPDX-License-Identifier: AGPL-3.0-only
                 </div>
             </template>
             </div>
-            <div :class="$style.sbFadeTopEl"></div>
-            <div :class="$style.sbFadeBottomEl"></div>
             </div>
 
             <!-- 下部: 投稿 + アカウント (固定) -->
@@ -185,16 +183,22 @@ SPDX-License-Identifier: AGPL-3.0-only
             <div style="width: 38px;"></div>
         </header>
 
+        <!-- 旗鯖fork: 通常表示(デッキUIではない)タイムラインの背景にヘッダー画像のぼかしを敷く(無効化可)。
+             .content(スクロール領域)の外、.mainColumnInner 直下に置くことで、タイムラインを
+             スクロールしても背景が流れず固定表示される(デッキ版の .deckBanner と同じ考え方)。 -->
+        <div v-if="timelineGlassBg" :class="$style.timelineBanner">
+            <img :src="$i.bannerUrl" :class="$style.timelineBannerImg" />
+        </div>
         <div :class="$style.content" ref="contentEl" @scroll="onContentScroll" @wheel="onContentWheel">
             <Transition :name="$style.tlFade" mode="out-in">
-                <div v-show="!isPageView && !deckActive" :class="$style.timelineContainer" @touchstart="onTouchStart" @touchend="onTouchEnd" :key="tab + String(withRenotes) + String(withSensitive) + String(onlyFiles)">
+                <div v-show="!isPageView && !deckActive" :class="$style.timelineContainer" :data-glass-bg="timelineGlassBg ? 'on' : undefined" @touchstart="onTouchStart" @touchend="onTouchEnd" :key="tab + String(withRenotes) + String(withSensitive) + String(onlyFiles)">
                     <!-- 旗鯖fork: 「タイムライン上部に投稿フォームを表示する」設定がONのとき、外部TL以外でMkPostFormを表示 -->
                     <MkPostForm v-if="showFixedPostForm && !isExternalTab" :class="$style.fixedPostForm" class="_panel" fixed />
                     <KeepAlive>
-                        <MkStreamingNotesTimeline v-if="tab === 'mixed'" src="global" key="mixed" :withRenotes="withRenotes" :withSensitive="withSensitive" :onlyFiles="onlyFiles" />
-                        <MkStreamingNotesTimeline v-else-if="tab === 'local'" src="local" key="local" :withRenotes="withRenotes" :withSensitive="withSensitive" :onlyFiles="onlyFiles" />
-                        <MkStreamingNotesTimeline v-else-if="tab === 'social'" src="social" key="social" :withRenotes="withRenotes" :withSensitive="withSensitive" :onlyFiles="onlyFiles" />
-                        <MkStreamingNotesTimeline v-else-if="tab === 'following'" src="home" key="following" :withRenotes="withRenotes" :withSensitive="withSensitive" :onlyFiles="onlyFiles" />
+                        <MkStreamingNotesTimeline v-if="tab === 'mixed'" src="global" key="mixed" :withRenotes="withRenotes" :withSensitive="withSensitive" :onlyFiles="onlyFiles" :glassBg="timelineGlassBg" />
+                        <MkStreamingNotesTimeline v-else-if="tab === 'local'" src="local" key="local" :withRenotes="withRenotes" :withSensitive="withSensitive" :onlyFiles="onlyFiles" :glassBg="timelineGlassBg" />
+                        <MkStreamingNotesTimeline v-else-if="tab === 'social'" src="social" key="social" :withRenotes="withRenotes" :withSensitive="withSensitive" :onlyFiles="onlyFiles" :glassBg="timelineGlassBg" />
+                        <MkStreamingNotesTimeline v-else-if="tab === 'following'" src="home" key="following" :withRenotes="withRenotes" :withSensitive="withSensitive" :onlyFiles="onlyFiles" :glassBg="timelineGlassBg" />
                         <MkExternalTimeline v-else-if="tab === 'ohtl' && externalHost && externalToken" src="ohtl" :host="externalHost" :token="externalToken" :sound="true" :simpleUi="true" key="ohtl" />
                         <MkExternalTimeline v-else-if="tab === 'oltl' && externalHost && externalToken" src="oltl" :host="externalHost" :token="externalToken" :sound="true" :simpleUi="true" key="oltl" />
                         <!-- 旗鯖fork: トレンドタイムライン (TTL) -->
@@ -213,7 +217,7 @@ SPDX-License-Identifier: AGPL-3.0-only
         </div>
 
         <!-- 通常TL: ナビバー（モバイルのみ） -->
-        <div data-htk-weather-footer :class="[$style.bottomBar, footerIsDark ? $style.bottomBarDark : $style.bottomBarLight, { [$style.bottomBarHidden]: !showBottomBar || widgetsShowing }]" v-show="!isDesktop && !isHataskPage && !isExternalTab && (!isPageView || bottomNavHasPage) && !userPanelUserId">
+        <div data-htk-weather-footer :class="[$style.bottomBar, footerIsDark ? $style.bottomBarDark : $style.bottomBarLight, { [$style.bottomBarHidden]: !showBottomBar || widgetsShowing }]" v-show="!isDesktop && !isHataskPage && !isExternalTab && !isChannelDetailPage && (!isPageView || bottomNavHasPage) && !userPanelUserId">
             <button v-if="!isDesktop" :class="$style.sideBtn" @click="simpleDrawerShowing = true"><i class="ti ti-menu-2"></i></button>
             <div :class="$style.navPill">
                 <template v-for="item in visibleBottomNav" :key="item.id">
@@ -391,7 +395,7 @@ import * as os from '@/os.js';
 import { useStream } from '@/stream.js';
 import { $i } from '@/i.js';
 import { antennasCache } from '@/cache.js';
-import { deckIgnoreWidth } from '@/utility/hatasaba-device-prefs.js';
+import { deckIgnoreWidth, glassUiLocal } from '@/utility/hatasaba-device-prefs.js';
 import { prefer } from '@/preferences.js';
 import { cleanupStaleUiElements } from '@/utility/ui-cleanup.js';
 import { getAccountMenu } from '@/accounts.js';
@@ -445,6 +449,13 @@ const topNavMode = prefer.r['simpleUi.topNavMode'];
 const topNavActive = computed(() => isDesktop.value && topNavMode.value && !isPageView.value);
 // 旗鯖fork: デッキ背景のヘッダー画像ぼかしを使わないオプション
 const deckNoBannerBg = computed(() => prefer.r['simpleUi.deckNoBannerBg'].value);
+// 旗鯖fork: 通常表示(デッキUIではない)タイムライン背景のヘッダー画像ぼかしを使わないオプション
+const normalNoBannerBg = computed(() => prefer.r['simpleUi.normalNoBannerBg'].value);
+// 旗鯖fork: .timelineBanner(背景ぼかし)が実際に表示されているかどうか。
+// 表示されている時だけノートカードを半透明化するため、同じ条件を MkStreamingNotesTimeline へ渡す。
+// HatasabaUI 2(glassUiLocal)が有効なら、すりガラス効果(glassEffect)の有無に関わらず背景ぼかしを適用する
+// (HatasabaUI 2 = 背景ぼかし + ノート透過 のセット機能)。
+const timelineGlassBg = computed(() => !isPageView.value && !deckActive.value && (glassUiLocal.value || glassEffect.value) && !normalNoBannerBg.value && !!$i?.bannerUrl);
 function setDeckMode(v: boolean) {
 	prefer.commit('simpleUi.deckMode', v);
 	dismissDeckAnnounce();
@@ -712,6 +723,13 @@ const isNotifPage = computed(()=>mainRouter.currentRoute.value.path==='/my/notif
 const isHataskPage = computed(()=>{ const p=mainRouter.currentRoute.value.path; return p==='/hatask'||p==='/hata-docs'; });
 const isListPage = computed(()=>mainRouter.currentRoute.value.path.startsWith('/my/lists'));
 const isChannelPage = computed(()=>mainRouter.currentRoute.value.path.startsWith('/channels'));
+// 旗鯖fork: チャンネル個別ページ (/channels/:id) の判定。一覧 (/channels) は除外。
+// 個別ページはページ下部に「チャンネルへ投稿」ボタンがあり、下部ナビバーが被さって
+// タップできなくなるため、個別ページでは下部ナビバーを隠す。
+const isChannelDetailPage = computed(()=>{
+    const p = mainRouter.currentRoute.value.path;
+    return /^\/channels\/[^/]+/.test(p);
+});
 const isAntennaPage = computed(()=>mainRouter.currentRoute.value.path.startsWith('/my/antennas'));
 const isExternalTab = computed(()=>tab.value==='ohtl'||tab.value==='oltl');
 const isHomeTL = computed(()=>!isPageView.value&&!isSearchPage.value&&!isNotifPage.value&&!isHataskPage.value);
@@ -1369,26 +1387,25 @@ onUnmounted(()=>{
     flex-direction:column;
 }
 .sbScroll::-webkit-scrollbar { width:0; height:0; display:none; }
-.sbFadeTopEl, .sbFadeBottomEl {
-    position:absolute;
-    left:0;
-    right:0;
-    height:28px;
-    pointer-events:none;
-    opacity:0;
-    transition:opacity .2s;
-    z-index:2;
+/* 旗鯖fork: 続きがある方向をフェードで示す。以前は navBg 色のグラデーションを重ねていたが、
+   サイドバーがすりガラス背景(バナーぼかし)の時に不透明な帯が浮いて目立っていた。
+   代わりに mask-image でスクロール内容そのものを端で徐々に透明にする。背景色に依存せず、
+   メニュー項目が端で自然に薄くなって「続きがある」と伝わる。 */
+.sbScroll {
+    transition: mask-image .2s, -webkit-mask-image .2s;
 }
-.sbFadeTopEl {
-    top:0;
-    background:linear-gradient(to bottom, var(--MI_THEME-navBg), color-mix(in srgb, var(--MI_THEME-navBg) 0%, transparent));
+.fadeTop .sbScroll {
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 24px);
+    mask-image: linear-gradient(to bottom, transparent 0, #000 24px);
 }
-.sbFadeBottomEl {
-    bottom:0;
-    background:linear-gradient(to top, var(--MI_THEME-navBg), color-mix(in srgb, var(--MI_THEME-navBg) 0%, transparent));
+.fadeBottom .sbScroll {
+    -webkit-mask-image: linear-gradient(to top, transparent 0, #000 24px);
+    mask-image: linear-gradient(to top, transparent 0, #000 24px);
 }
-.fadeTop .sbFadeTopEl { opacity:1; }
-.fadeBottom .sbFadeBottomEl { opacity:1; }
+.fadeTop.fadeBottom .sbScroll {
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 24px, #000 calc(100% - 24px), transparent 100%);
+    mask-image: linear-gradient(to bottom, transparent 0, #000 24px, #000 calc(100% - 24px), transparent 100%);
+}
 .sbLogoRow {
     position:relative;
     display:flex;
@@ -1713,6 +1730,30 @@ onUnmounted(()=>{
     }
 }
 .deckBannerImg {
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    filter:blur(20px) saturate(1.2);
+    transform:scale(1.1);
+}
+/* 旗鯖fork: 通常表示(デッキUIではない)タイムライン背景のヘッダー画像ぼかし。
+   .mainColumnInner 直下(.content の兄弟、position:relative; overflow:hidden)に配置し、
+   .content(スクロール領域)の外側で固定表示させる。z-index は auto(0相当)のままとし、
+   後続の DOM 順(.content)より奥、topBar/topNav/pageHeader(いずれも明示z-indexあり)より
+   手前に来ないよう揃える。 */
+.timelineBanner {
+    position:absolute;
+    inset:0;
+    z-index:0;
+    overflow:hidden;
+    &::after {
+        content:'';
+        position:absolute;
+        inset:0;
+        background:color-mix(in srgb, var(--MI_THEME-bg) 78%, transparent);
+    }
+}
+.timelineBannerImg {
     width:100%;
     height:100%;
     object-fit:cover;
@@ -2092,6 +2133,12 @@ onUnmounted(()=>{
 }
 .desktopLayout .timelineContainer {
     padding-top:calc(56px);
+}
+/* 旗鯖fork(ベータ): 背景ぼかし(HatasabaUI 2 等)を敷くとき、タイムライン列の左右区切り線
+   (両脇の縦線)がぼかし背景の上で浮いて見えるため消す。 */
+.timelineContainer[data-glass-bg="on"] {
+    border-left:none;
+    border-right:none;
 }
 /* 旗鯖fork: タイムライン上部固定投稿フォーム */
 .fixedPostForm {

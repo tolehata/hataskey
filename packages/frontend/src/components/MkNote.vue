@@ -8,7 +8,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 	v-if="!hardMuted && muted === false"
 	ref="rootEl"
 	v-hotkey="keymap"
-	:class="[$style.root, { [$style.showActionsOnlyHover]: prefer.s.showNoteActionsOnlyHover, [$style.skipRender]: prefer.s.skipNoteRender && utageState === 'none', [$style.utageActive]: utageState !== 'none' && utageOutsideFrame }]"
+	:class="[$style.root, { [$style.showActionsOnlyHover]: prefer.s.showNoteActionsOnlyHover, [$style.skipRender]: prefer.s.skipNoteRender && utageState === 'none' && !noteGlassActive, [$style.utageActive]: utageState !== 'none' && utageOutsideFrame }]"
 	tabindex="0"
 >
 	<div v-if="pinned" :class="$style.tip"><i class="ti ti-pin"></i> {{ i18n.ts.pinnedNote }}</div>
@@ -391,6 +391,7 @@ import { isEnabledUrlPreview } from '@/utility/url-preview.js';
 import { focusPrev, focusNext } from '@/utility/focus.js';
 import { getAppearNote } from '@/utility/get-appear-note.js';
 import { prefer } from '@/preferences.js';
+import { glassUiLocal } from '@/utility/hatasaba-device-prefs.js';
 import { filterHiddenReactions, hiddenReactionsVersion } from '@/utility/hidden-reactions.js';
 import { getPluginHandlers } from '@/plugin.js';
 import { DI } from '@/di.js';
@@ -433,6 +434,10 @@ const inLocalTimeline = inject<Ref<boolean> | null>('inLocalTimeline', null);
 // 宴枠(outline)を吹き出しON時は外側に、OFF時は内側(inset)に描くため。未提供時(=吹き出し文脈外)は内側にする。
 const noteBubbleEnabled = inject<Ref<boolean> | null>('noteBubbleEnabled', null);
 const utageOutsideFrame = computed(() => noteBubbleEnabled?.value ?? false);
+// 旗鯖fork: 背景ぼかし(glass)有効時は skipRender(content-visibility:auto)を付けない。
+// glass = 背景ぼかし(noteTimelineGlassBg) または グラスUIベータ(glassUiLocal)。
+const noteTimelineGlassBg = inject<Ref<boolean> | null>('noteTimelineGlassBg', null);
+const noteGlassActive = computed(() => (noteTimelineGlassBg?.value ?? false) || glassUiLocal.value);
 const currentClip = inject<Ref<Misskey.entities.Clip> | null>('currentClip', null);
 // 旗鯖fork: 本家 2026.6.0 から取り込み: アンテナのタイムラインから個別のノートを削除できるように
 const currentAntenna = inject<Ref<Misskey.entities.Antenna | null> | null>('currentAntenna', null);
@@ -1799,5 +1804,43 @@ function emitUpdReaction(emoji: string, delta: number) {
 	background-size: auto auto;
 	background-image: repeating-linear-gradient(135deg, transparent, transparent 10px, var(--color) 4px, var(--color) 14px);
 	border-radius: 8px;
+}
+
+/* =======================================================================
+   旗鯖fork(ベータ): グラスUI (html.hataGlassUi の時のみ)
+   ・四角ノート(デッキ等・非バブル)は .article をガラス面に。
+   ・バブル表示のガラス化は MkStreamingNotesTimeline 側 ([data-bubble] のグローバル)で行う。
+   ・ぼかしは --MI-blur (useBlurEffect=false で none にフォールバック)を尊重。
+   ======================================================================= */
+/* :global() はフラット形式(html.hataGlassUi のみグローバル、.article 等はスコープ維持)。 */
+:global(html.hataGlassUi) .article {
+	border-radius: 20px;
+	background: color-mix(in srgb, var(--MI_THEME-panel) 60%, transparent);
+	box-shadow:
+		0 2px 10px color-mix(in srgb, var(--MI_THEME-fg) 5%, transparent),
+		0 14px 36px color-mix(in srgb, var(--MI_THEME-fg) 8%, transparent);
+	-webkit-backdrop-filter: var(--MI-blur, blur(22px)) saturate(1.6);
+	backdrop-filter: var(--MI-blur, blur(22px)) saturate(1.6);
+}
+
+/* ラッパの _panel が二重背景にならないよう、ノートroot側の面を消す(グラスは .article が持つ) */
+:global(html.hataGlassUi) .root {
+	background: transparent;
+}
+
+/* アバターを円形に(旗鯖は円形が主流) */
+:global(html.hataGlassUi) .avatar {
+	border-radius: 50%;
+}
+
+/* フッター: ゴーストボタン(hoverでアクセント色+薄背景) */
+:global(html.hataGlassUi) .footerButton {
+	border-radius: 11px;
+	transition: color .15s, background .15s;
+
+	&:hover {
+		color: var(--MI_THEME-accent);
+		background: color-mix(in srgb, var(--MI_THEME-accent) 10%, transparent);
+	}
 }
 </style>

@@ -40,6 +40,16 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<template #label>ミュートしたユーザーのリアクションを隠す</template>
 						<template #caption>ミュートした人が付けたリアクションを、ノート上に表示しないようにします（最近付けられたリアクションが対象です）。この設定は<b>この端末にだけ</b>保存され、ほかの端末には引き継がれません。</template>
 					</MkSwitch>
+					<!-- 旗鯖fork(ベータ): HatasabaUI 2(グラスモーフィズム刷新) -->
+					<MkSwitch v-model="glassUi" style="margin-top: 16px;">
+						<template #label>HatasabaUI 2（新デザイン・実験的）</template>
+						<template #caption>ノート・プロフィール・リアクション・タブを、半透明＋ぼかしの先進的なデザインに刷新します（リアクションが主役の見た目）。有効にすると、HatasabaUI通常表示のタイムライン背景にプロフィールのヘッダー画像のぼかしが適用され、ノートが透けるようになります。<b>この端末にだけ</b>保存されます。機能・表示項目は変わりません。「ぼかし効果を減らす」設定を有効にしている場合は不透明な面にフォールバックします。切替後は表示が乱れる場合があるので、必要ならページを再読み込みしてください。</template>
+					</MkSwitch>
+					<!-- 旗鯖fork(ベータ): HatasabaUI 2 の吹き出しデザイン。HatasabaUI 2 有効時のみ表示。 -->
+					<MkSwitch v-if="glassUi" v-model="glassUiBubble" style="margin-top: 16px;">
+						<template #label>吹き出しデザインを表示する</template>
+						<template #caption>HatasabaUI 2 のノートを、吹き出し（本文の枠＋＜の口）付きの表示にします。既定ではオフ（吹き出しなし・外側の角丸カードだけのすっきりした表示）です。<b>この端末にだけ</b>保存されます。</template>
+					</MkSwitch>
 				</div>
 			</div>
 		</div>
@@ -54,9 +64,21 @@ import MkSwitch from '@/components/MkSwitch.vue';
 import { definePage } from '@/page.js';
 import { useRouter } from '@/router.js';
 import { hataBetaFeatures } from '@/utility/hatafeed.js';
-import { hideMutedReactionsLocal, setHideMutedReactionsLocal } from '@/utility/hatasaba-device-prefs.js';
+import { hideMutedReactionsLocal, setHideMutedReactionsLocal, glassUiLocal, setGlassUiLocal, glassUiBubbleLocal, setGlassUiBubbleLocal } from '@/utility/hatasaba-device-prefs.js';
 
 const router = useRouter();
+
+// 旗鯖fork(ベータ): HatasabaUI 2(端末ローカル)。
+const glassUi = computed({
+	get: () => glassUiLocal.value,
+	set: (v: boolean) => setGlassUiLocal(v),
+});
+
+// 旗鯖fork(ベータ): HatasabaUI 2 の吹き出しデザイン(端末ローカル)。
+const glassUiBubble = computed({
+	get: () => glassUiBubbleLocal.value,
+	set: (v: boolean) => setGlassUiBubbleLocal(v),
+});
 
 // 旗鯖fork(#31): ミュートユーザーのリアクション非表示（端末ローカル・ベータ）。
 const hideMutedReactions = computed({

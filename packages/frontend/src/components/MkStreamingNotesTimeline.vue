@@ -48,6 +48,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			:data-deck-ui="isDeckUi ? 'on' : undefined"
 			:data-hatasaba-spacer="isHatasabaDeck ? 'on' : undefined"
 			:data-bubble="bubbleEnabled ? 'on' : undefined"
+			:data-glass-bg="props.glassBg ? 'on' : undefined"
 			:data-spacing="noteSpacingValue"
 			:data-classic-spacing="classicSpacingEnabled ? 'on' : undefined"
 			:data-anim-dir="animDirValue"
@@ -180,6 +181,10 @@ const props = withDefaults(defineProps<{
 	withSensitive?: boolean;
 	onlyFiles?: boolean;
 	onlyCats?: boolean;
+	// 旗鯖fork: 通常表示(デッキUIではない)タイムラインの背景にヘッダー画像のぼかしを
+	// 敷いている時、呼び出し元(simple.vue)から true を渡す。ノートカードを半透明化して
+	// 背景のぼかしを透かし、グラス調に馴染ませる(付けないと不透明カードが「やぼったく」見える)。
+	glassBg?: boolean;
 }>(), {
 	withRenotes: true,
 	withReplies: false,
@@ -188,6 +193,7 @@ const props = withDefaults(defineProps<{
 	onlyCats: false,
 	sound: false,
 	customSound: null,
+	glassBg: false,
 });
 
 provide('inTimeline', true);
@@ -216,18 +222,27 @@ const isDefaultUi = miLocalStorage.getItem('ui') === 'default';
 // const で固定すると、デッキ表示中にマウントされた(v-showで隠れている)通常TLが
 // 通常表示へ戻った後もデッキ時の吹き出し/間隔のままになる(タブ切替/リロードまで直らない)バグになる。
 const isHatasabaDeck = computed(() => miLocalStorage.getItem('ui') === 'simple' && (prefer.r['simpleUi.deckMode']?.value ?? false));
+// 旗鯖fork: HatasabaUI 通常モード(ui=simple かつ deckMode=OFF)。
+const isHatasabaNormal = computed(() => miLocalStorage.getItem('ui') === 'simple' && !(prefer.r['simpleUi.deckMode']?.value ?? false));
 const bubbleEnabled = computed(() => {
     // チャンネルTLでは強制的に吹き出しON
     if (props.src === 'channel') return true;
     if (isDeckUi && prefer.r['simpleUi.disableBubbleInDeck']?.value) return false;
     if (isDefaultUi && prefer.r['simpleUi.disableBubbleInDefault']?.value) return false;
     if (isHatasabaDeck.value && prefer.r['simpleUi.disableBubbleInHatasabaDeck']?.value) return false;
+    // 旗鯖fork: HatasabaUI 通常モードの吹き出し無効化トグル。
+    if (isHatasabaNormal.value && prefer.r['simpleUi.disableBubbleInHatasabaNormal']?.value) return false;
     return true;
 });
 
 // 旗鯖fork(#1): 宴枠(outline)の描き方を MkNote 側で吹き出し有無に合わせて切り替えるため、
 // 吹き出し有効状態を子(MkNote)へ伝える。吹き出しON=枠を外側に、OFF=枠を内側に描く。
 provide('noteBubbleEnabled', bubbleEnabled);
+// 旗鯖fork: 背景ぼかし(glass)が有効な時、MkNote 側で skipRender(content-visibility:auto)を
+// 付けないようにするため、glass 状態を伝える。content-visibility は contain:paint を含み、
+// カードを透明にしても背景が透けない上、CSS の visible 上書きでは Firefox の再描画が追いつかず
+// 一部ノートが従来表示のまま残るため、そもそも付けないのが確実。
+provide('noteTimelineGlassBg', computed(() => props.glassBg));
 
 // 旗鯖独自: クラシック投稿間隔
 // 旗鯖fork(#7): HatasabaUI(通常表示・デッキ表示の両方=ui:simple)では、従来Misskey風の投稿間隔
@@ -1099,6 +1114,137 @@ defineExpose({
 	display: none !important;
 }
 
+/* =======================================================================
+   旗鯖fork: 通常表示(デッキUIではない)の背景ヘッダー画像ぼかし(.timelineBanner)が
+   敷かれている時、ノートカードを不透明パネルのままにすると背景と馴染まず
+   「やぼったく」見えるため、半透明+backdrop-filterのガラス調にする。
+   simple.vue から glassBg prop → :data-glass-bg="on" として伝播している。
+   ぼかしは既存の --MI-blur (useBlurEffect=false で none) を尊重。
+   ======================================================================= */
+/* --- 設計方針(何度も破綻したため最小構成に作り直し) ---
+   - backdrop-filter は一切使わない。カードは .content の子孫、背景ぼかし(.timelineBanner)は
+     .content の兄弟のため、カードの backdrop-filter は背景を捕捉できずページ白をぼかして
+     カードを白くしてしまう。背景は既にぼけているので不要。MkNote 側(glass UI ベータ)が
+     .article に付ける backdrop-filter もここで打ち消す。
+   - カード面(吹き出し=bubbleBody=article>div)1枚だけ半透明。内側(本文/flex/footer)と
+     article/notes は透明にして、重なった不透明面をなくす。
+   - content-visibility(skipRender)は MkNote 側の provide/inject で glass時に付けないことで対処。
+   - 口・枠線は元のまま(いじらない)。
+   glass UI ベータ(html.hataGlassUi)併用時も同じ挙動にするため html 付きで詳細度を上げて併記。 */
+/* 対象は「背景ぼかし(data-glass-bg)」または「グラスUIベータ(html.hataGlassUi)の吹き出しノート」。
+   後者は data-glass-bg の有無に関わらず全ノートを透過させる(グラスUIベータ ON なら、バナー未設定や
+   別タイムラインインスタンスのノートも含めて統一的にガラス化する = 「一部ノートが透けない」の解消)。 */
+/* notes コンテナ透明(背景ぼかしを透かす土台) */
+[data-glass-bg="on"],
+html.hataGlassUi [data-bubble="on"] {
+	background: transparent !important;
+}
+/* article は透明 + backdrop無効(MkNote の glass .article ルールが付ける backdrop-filter 打ち消し)。
+   さらに MkNote の glass .article が付ける box-shadow / 角丸 / 枠が、内側の bubbleBody カードの外側に
+   「細い長方形の輪郭」として見えてしまうため、親 article の影・枠・アウトラインも消す
+   (見えるカードは内側の article > div だけにする)。 */
+[data-glass-bg="on"] article,
+html.hataGlassUi [data-bubble="on"] article {
+	background: transparent !important;
+	-webkit-backdrop-filter: none !important;
+	backdrop-filter: none !important;
+	box-shadow: none !important;
+	border: none !important;
+	outline: none !important;
+}
+/* カード面(bubbleBody) 半透明・backdrop無し(この1枚だけ色を持つ)。
+   旗鯖fork(ベータ): テーマカラー(accent)のティントを乗せつつ透明感を保つ。
+   先に panel へ accent を混ぜて「色味付きの不透明パネル色」を作り、その後で 55% 透明化する。
+   こうすると全体の不透明度は元の 0.55 のまま(スモーク化しない)で、色味だけがテーマ色に寄る。
+   (accent を直接混ぜると accent が不透明なぶん全体の不透明度が上がりスモーク風になってしまう) */
+[data-glass-bg="on"] article > div,
+html.hataGlassUi [data-bubble="on"] article > div {
+	background: color-mix(in srgb, color-mix(in srgb, var(--MI_THEME-accent) 18%, var(--MI_THEME-panel)) 55%, transparent) !important;
+	-webkit-backdrop-filter: none !important;
+	backdrop-filter: none !important;
+}
+/* ライトモードでは panel が明るいぶん accent ティントが目立ちやすく、透け感が損なわれるため、
+   ダーク(18%)より薄い accent 8% にする。詳細度をベース規則より高くして色だけ上書きする。 */
+html[data-color-scheme=light] [data-glass-bg="on"] article > div,
+html[data-color-scheme=light].hataGlassUi [data-bubble="on"] article > div {
+	background: color-mix(in srgb, color-mix(in srgb, var(--MI_THEME-accent) 8%, var(--MI_THEME-panel)) 55%, transparent) !important;
+}
+/* 旗鯖fork(ベータ): glass時、各ノートを囲む「細い長方形の枠線」を消す。
+   ノートルート(.note=.root)やその上下ラッパーは、ノート間隔設定(noGap)や既定のカード枠により
+   border / border-bottom(0.5px divider) / border-radius によるパネル面の縁を持つ。透過背景の上では
+   これが各ノートを囲む細い枠、さらに縦に連なってタイムライン両脇の縦線として見えてしまうため、
+   notes直下(> div)と孫(> div > div)の枠・境界・影・背景を除去する。
+   見えるカードは内側の bubbleBody(article > div)だけに限定する。 */
+[data-glass-bg="on"] > div,
+[data-glass-bg="on"] > div > div,
+html.hataGlassUi [data-bubble="on"] > div,
+html.hataGlassUi [data-bubble="on"] > div > div {
+	border: none !important;
+	border-bottom: none !important;
+	outline: none !important;
+	box-shadow: none !important;
+	background: transparent !important;
+}
+/* 内側(本文/flex/footer)を透明にして、重なった不透明面をなくす */
+[data-glass-bg="on"] [data-note-content],
+[data-glass-bg="on"] article > div > div,
+[data-glass-bg="on"] [data-reactions-footer],
+[data-glass-bg="on"] [data-reactions-footer] > div,
+html.hataGlassUi [data-bubble="on"] [data-note-content],
+html.hataGlassUi [data-bubble="on"] article > div > div,
+html.hataGlassUi [data-bubble="on"] [data-reactions-footer],
+html.hataGlassUi [data-bubble="on"] [data-reactions-footer] > div {
+	background: transparent !important;
+}
+/* 日付区切りノートは notes > ラッパdiv > MkNote(.note) の構造で、MkNote root(.note)の
+   panel 背景が notes直下(> div)の透明化ルールから漏れて不透明のまま残る(=「日付区切り前後の
+   ノートだけ透けない」の原因)。孫レベル(> div > div = 日付区切りの .note / 通常ノートの article)も
+   透明化して確実に透かす。 */
+[data-glass-bg="on"] > div > div,
+html.hataGlassUi [data-bubble="on"] > div > div {
+	background: transparent !important;
+}
+/* 旗鯖fork(ベータ): HatasabaUI 2 の吹き出しデザイン。
+   既定では「吹き出し」= 本文エリア(data-note-content)の枠線 + 口(三角) を消し、
+   外側の角丸カード(article > div, radius 20px, ガラス面)だけのすっきり表示にする(角丸は維持)。
+   hatafeed ベータ設定の「吹き出しデザインを表示する」トグル(hataGlassUiBubble)が ON のときだけ、
+   本文エリアに枠と「＜」の口を復活させて吹き出し表示にする。 */
+/* --- 既定(トグルOFF): 吹き出し枠を消す(border-color を透明化。2px の余白は残してレイアウトを保つ) --- */
+html [data-glass-bg="on"] [data-note-content],
+html.hataGlassUi [data-bubble="on"] [data-note-content] {
+	border-color: transparent !important;
+}
+/* --- 既定(トグルOFF): 口(塗り三角 ::after / 輪郭 ::before)を両方消す --- */
+html [data-glass-bg="on"] [data-note-content]::after,
+html [data-glass-bg="on"] [data-note-content]::before,
+html.hataGlassUi [data-bubble="on"] [data-note-content]::after,
+html.hataGlassUi [data-bubble="on"] [data-note-content]::before {
+	display: none !important;
+}
+/* --- トグルON: 吹き出し枠を復活 --- */
+html.hataGlassUiBubble [data-glass-bg="on"] [data-note-content],
+html.hataGlassUiBubble.hataGlassUi [data-bubble="on"] [data-note-content] {
+	border-color: color-mix(in srgb, var(--MI_THEME-accent) 25%, transparent) !important;
+}
+/* --- トグルON: 「＜」の口(輪郭線だけ・塗りなし)を表示。内側は透明で線だけ。 --- */
+html.hataGlassUiBubble [data-glass-bg="on"] [data-note-content]::before,
+html.hataGlassUiBubble.hataGlassUi [data-bubble="on"] [data-note-content]::before {
+	display: block !important;
+	border: none !important;
+	/* 線の色は本文枠(data-note-content)の border と同じ accent 25% 半透明に揃える(濃い青の浮きを防ぐ) */
+	border-left: 2px solid color-mix(in srgb, var(--MI_THEME-accent) 25%, transparent) !important;
+	border-bottom: 2px solid color-mix(in srgb, var(--MI_THEME-accent) 25%, transparent) !important;
+	width: 8px !important;
+	height: 8px !important;
+	transform: rotate(45deg) !important;
+	/* カードの枠(data-note-content の border-left)に接続する位置。＜の色 = 枠の色(accent 25%)なので、
+	   接点で線が融合して吹き出しの口として自然に見える。 */
+	left: -7px !important;
+	top: 14px !important;
+	background: transparent !important;
+	border-radius: 0 0 0 1px !important;
+}
+
 /* flex container（アバター+main）を透明に */
 [data-bubble="on"] article > div > div {
 	background: transparent !important;
@@ -1247,6 +1393,16 @@ defineExpose({
 	}
 }
 
+/* ===== 旗鯖fork(ベータ): HatasabaUI 2 で「ほどよく(moderate)」間隔のとき、ノート同士を少し詰める =====
+   moderate は [data-spacing] の上書きがなく .article の既定 padding(10px 10px 6px)がそのまま効くため、
+   隣接カード間が広め(≒16px)になる。glass(HatasabaUI 2)時のみ上下 padding を圧縮して間隔を詰める
+   (compact ほど詰めず、ほどよい間隔を保つ)。左右 padding は据え置き。 */
+html.hataGlassUi [data-bubble="on"][data-spacing="moderate"] article,
+[data-glass-bg="on"][data-spacing="moderate"] article {
+	padding-top: 6px !important;
+	padding-bottom: 4px !important;
+}
+
 /* ===== デッキUI時の投稿間区切り線 ===== */
 [data-deck-ui="on"] > div {
 	border-bottom: 2px solid var(--MI_THEME-divider) !important;
@@ -1272,5 +1428,14 @@ defineExpose({
 .hata-tl-enterFrom {
 	opacity: 0;
 	transform: translateX(max(-64px, -100%));
+}
+
+/* 旗鯖fork(glass): 背景ぼかし透過中の hover ハイライトは、透けたカード上で .root::after の
+   panelHighlight 背景が目立ち、角丸差で三日月状にはみ出すため、背景での覆いをやめる
+   (影 box-shadow でのフィードバックは残る)。 */
+[data-glass-bg="on"] > div::after,
+html.hataGlassUi [data-bubble="on"] > div::after {
+	background: transparent !important;
+	opacity: 0 !important;
 }
 </style>

@@ -562,4 +562,30 @@ if (!mock) {
 	line-height: 32px;
 	margin: 0 0 0 5px;
 }
+
+/* 旗鯖fork(ベータ): グラスUI。html.hataGlassUi の時だけ、チップをガラスに溶かし
+   myReaction を「枠」でなく「アクセントのグロー」で示す(2a ソフト・グラス)。
+   :global() はフラット形式で書く(html.hataGlassUi のみグローバル、.root 等はスコープ維持)。 */
+:global(html.hataGlassUi) .root {
+	border-radius: 12px;
+	transition: background .15s, box-shadow .15s, transform .1s;
+
+	&.canToggle {
+		background: color-mix(in srgb, var(--MI_THEME-panel) 55%, transparent);
+		box-shadow: 0 1px 2px color-mix(in srgb, var(--MI_THEME-fg) 8%, transparent);
+
+		&:hover {
+			background: color-mix(in srgb, var(--MI_THEME-panel) 78%, transparent);
+		}
+	}
+
+	&.reacted, &.reacted:hover {
+		background: color-mix(in srgb, var(--MI_THEME-accent) 14%, transparent);
+		box-shadow: 0 0 0 3px color-mix(in srgb, var(--MI_THEME-accent) 12%, transparent);
+		color: var(--MI_THEME-accent);
+
+		> .count { color: var(--MI_THEME-accent); font-weight: 700; }
+		> .icon { filter: drop-shadow(0 0 2px color-mix(in srgb, var(--MI_THEME-accent) 40%, transparent)); }
+	}
+}
 </style>

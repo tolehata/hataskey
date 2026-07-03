@@ -40,6 +40,8 @@ export type Keys = (
 	'hatasabaUiLastTab' | // 旗鯖fork: HatasabaUI で最後に開いていたタブ (再読み込み時の復元用)
 	'hatasabaDeckIgnoreWidth' | // 旗鯖fork(#6): 画面幅に関係なくデッキ表示を強制する端末ローカル設定(プロファイル非同期)
 	'hataHideMutedReactions' | // 旗鯖fork(#31): ミュートユーザーのリアクションをチップから隠す端末ローカル設定
+	'hataGlassUi' | // 旗鯖fork(ベータ): HatasabaUI 2(グラスモーフィズム刷新)を有効化する端末ローカル設定
+	'hataGlassUiBubble' | // 旗鯖fork(ベータ): HatasabaUI 2 でノートの吹き出しデザイン(枠+＜口)を表示する端末ローカル設定
 	'hataEarthquakePref' | // 旗鯖fork(#34): 地震情報のお住いの都道府県(端末ローカルのみ・サーバー非送信)
 	'hataEarthquakePollSec' | // 旗鯖fork(#34): 地震情報の取得間隔(秒・端末ローカル)
 	'hata_muted_reactions_local_migrated' | // 旗鯖fork(#31): 旧設定→端末ローカルへの移行済みフラグ

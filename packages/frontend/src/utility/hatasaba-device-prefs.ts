@@ -26,6 +26,42 @@ export function setHideMutedReactionsLocal(v: boolean): void {
 	miLocalStorage.setItem('hataHideMutedReactions', v ? 'true' : 'false');
 }
 
+// 旗鯖fork(ベータ): グラスUI(グラスモーフィズム刷新)を有効化するか。端末ローカル(プロファイル非同期)。
+//   有効時は <html> に 'hataGlassUi' クラスを付与し、各コンポーネントの SCSS が
+//   :global(html.hataGlassUi) 配下でグラス面/ピルタブ/リアクショングロー等に差し替える。
+//   ぼかしは既存の --MI-blur (useBlurEffect=false で none) を尊重する。
+function applyGlassUiClass(v: boolean): void {
+	if (typeof document !== 'undefined') {
+		document.documentElement.classList.toggle('hataGlassUi', v);
+	}
+}
+export const glassUiLocal = ref(miLocalStorage.getItem('hataGlassUi') === 'true');
+export function setGlassUiLocal(v: boolean): void {
+	glassUiLocal.value = v;
+	miLocalStorage.setItem('hataGlassUi', v ? 'true' : 'false');
+	applyGlassUiClass(v);
+}
+// モジュール読み込み時(=アプリ起動時)に現在値をクラスへ反映。
+applyGlassUiClass(glassUiLocal.value);
+
+// 旗鯖fork(ベータ): HatasabaUI 2 でノートの吹き出しデザイン(本文枠 + ＜口)を表示するか。端末ローカル。
+//   既定は false(=吹き出しを非表示 = 外側の角丸カードだけのすっきり表示)。
+//   HatasabaUI 2(glassUiLocal) が有効なときのみ設定 UI に表示される。
+//   有効時は <html> に 'hataGlassUiBubble' クラスを付与し、タイムライン側 SCSS が
+//   glass 表示のノートに吹き出し枠(＜口付き)を描画する。
+function applyGlassUiBubbleClass(v: boolean): void {
+	if (typeof document !== 'undefined') {
+		document.documentElement.classList.toggle('hataGlassUiBubble', v);
+	}
+}
+export const glassUiBubbleLocal = ref(miLocalStorage.getItem('hataGlassUiBubble') === 'true');
+export function setGlassUiBubbleLocal(v: boolean): void {
+	glassUiBubbleLocal.value = v;
+	miLocalStorage.setItem('hataGlassUiBubble', v ? 'true' : 'false');
+	applyGlassUiBubbleClass(v);
+}
+applyGlassUiBubbleClass(glassUiBubbleLocal.value);
+
 // 旗鯖fork(#34): 地震・津波情報の「お住いの都道府県」。
 //   居住地はプライバシーに関わるため、サーバーには一切送らず、この端末にのみ保存する。
 //   未設定は空文字。

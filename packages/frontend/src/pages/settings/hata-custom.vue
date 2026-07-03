@@ -281,6 +281,11 @@ SPDX-License-Identifier: AGPL-3.0-only
                 <template #label>デッキUIの背景にヘッダー画像のぼかしを使用しない</template>
                 <template #caption>ONにすると、HatasabaUIのデッキ表示の背景にプロフィールのヘッダー画像のぼかしを使わず、単色背景になります。描画負荷が軽減され、視認性が上がります。</template>
             </MkSwitch>
+            <!-- 旗鯖fork: 通常表示(デッキUIではないタイムライン)用 -->
+            <MkSwitch v-model="normalNoBannerBg">
+                <template #label>通常表示の背景にヘッダー画像のぼかしを使用しない</template>
+                <template #caption>ONにすると、HatasabaUIの通常タイムライン表示（デッキUI以外）の背景にプロフィールのヘッダー画像のぼかしを使わず、単色背景になります。描画負荷が軽減され、視認性が上がります。</template>
+            </MkSwitch>
             <!-- 旗鯖fork: HatasabaUIの追加ページヘッダー(タイトル+戻るボタン)。デフォルトOFFで二重表示を回避。 -->
             <MkSwitch v-model="showPageHeader">
                 <template #label>HatasabaUIの追加ページヘッダーを表示する</template>
@@ -360,6 +365,11 @@ SPDX-License-Identifier: AGPL-3.0-only
             <MkSwitch v-model="disableBubbleInHatasabaDeck">
                 <template #label>HatasabaUIデッキで吹き出し表示を無効にする</template>
                 <template #caption>ONにするとHatasabaUIのデッキ表示モードでも吹き出しデザインが適用されず、標準のカード表示になります。</template>
+            </MkSwitch>
+            <!-- 旗鯖fork: HatasabaUI通常モード用 -->
+            <MkSwitch v-model="disableBubbleInHatasabaNormal">
+                <template #label>HatasabaUI（通常）で吹き出し表示を無効にする</template>
+                <template #caption>ONにするとHatasabaUIの通常表示（デッキ以外）でも吹き出しデザインが適用されず、標準のカード表示になります。</template>
             </MkSwitch>
         </FormSection>
         </template>
@@ -605,6 +615,8 @@ async function resetBottomNav() {
 const widgetBorder = prefer.model('simpleUi.widgetBorder');
 const glassEffect = prefer.model('simpleUi.glassEffect');
 const deckNoBannerBg = prefer.model('simpleUi.deckNoBannerBg');
+// 旗鯖fork: 通常表示(デッキUIではないタイムライン)用のヘッダー画像ぼかし無効化トグル
+const normalNoBannerBg = prefer.model('simpleUi.normalNoBannerBg');
 const directProfile = prefer.model('simpleUi.directProfile');
 // 旗鯖fork: HatasabaUI 追加ページヘッダー表示
 const showPageHeader = prefer.model('simpleUi.showPageHeader');
@@ -615,6 +627,8 @@ const disableBubbleInDeck = prefer.model('simpleUi.disableBubbleInDeck');
 const disableBubbleInDefault = prefer.model('simpleUi.disableBubbleInDefault');
 // 旗鯖fork: HatasabaUIデッキ用の吹き出し無効化トグル
 const disableBubbleInHatasabaDeck = prefer.model('simpleUi.disableBubbleInHatasabaDeck');
+// 旗鯖fork: HatasabaUI通常モード用の吹き出し無効化トグル
+const disableBubbleInHatasabaNormal = prefer.model('simpleUi.disableBubbleInHatasabaNormal');
 const classicNoteSpacing = prefer.model('simpleUi.classicNoteSpacing');
 
 // 旗鯖fork: 天気エフェクト(weatherEffect)

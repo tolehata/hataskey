@@ -917,6 +917,12 @@ export const PREF_DEF = definePreferences({
 	'simpleUi.deckNoBannerBg': {
 		default: false,
 	},
+	// 旗鯖fork: HatasabaUI 通常表示(デッキUIではないタイムライン)の背景にヘッダー画像の
+	// ぼかしを使うか(アクセシビリティ)。deckNoBannerBg の通常モード版。
+	// default false = ぼかし背景を使う。true = 使わない(無地背景)。
+	'simpleUi.normalNoBannerBg': {
+		default: false,
+	},
 	// 旗鯖fork: デッキUIの初回チュートリアルを表示済みか(端末ローカル)
 	'simpleUi.deckTutorialDone': {
 		default: false,
@@ -1021,6 +1027,12 @@ export const PREF_DEF = definePreferences({
 	// 従来 Misskey デッキ UI (ui=deck) とは別 UI のため、別キーで管理する。
 	'simpleUi.disableBubbleInHatasabaDeck': {
 		default: true,
+	},
+	// 旗鯖fork: HatasabaUI の通常モード (ui=simple かつ deckMode=OFF) 時の吹き出し無効化トグル。
+	// 従来は通常モードには無効化手段が無く常に吹き出しONだったが、標準カード表示を望む
+	// ユーザー向けにトグルを追加。デフォルトは吹き出しON(=false)で従来の見た目を維持。
+	'simpleUi.disableBubbleInHatasabaNormal': {
+		default: false,
 	},
 	'simpleUi.classicNoteSpacing': {
 		default: false,

@@ -18,6 +18,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<MkInfo v-if="user.host == null && user.username.includes('.')">{{ i18n.ts.isSystemAccount }}</MkInfo>
 
 					<div :key="user.id" class="main _panel">
+						<!-- 旗鯖fork(ベータ・グラスUI): バナー画像を大きくぼかしてカード背景に敷くヒーローレイヤ。
+						     通常モードでは CSS(display:none)で非表示、html.hataGlassUi の時だけ表示する。 -->
+						<div class="profileBgBlur" :style="style" aria-hidden="true"></div>
 						<div ref="bannerEl" class="banner-container">
 							<div class="banner" :style="style"></div>
 							<div class="fade"></div>
@@ -170,7 +173,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<div v-if="user.pinnedNotes.length > 0 && !user.isBlocked" class="_gaps">
 						<MkNote v-for="note in user.pinnedNotes" :key="note.id" class="note _panel" :note="note" :pinned="true"/>
 					</div>
-					<MkInfo v-else-if="$i && $i.id === user.id">{{ i18n.ts.userPagePinTip }}</MkInfo>
 					<template v-if="narrow && !user.isBlocked">
 						<MkLazy>
 							<XFiles :key="user.id" :user="user" @showMore="emit('showMoreFiles')"/>
@@ -1169,5 +1171,54 @@ onDeactivated(() => {
 @keyframes utageGlobalTipSheetSlideUp {
 	from { opacity: 0; transform: translateY(12px); }
 	to { opacity: 1; transform: translateY(0); }
+}
+
+/* =======================================================================
+   旗鯖fork(ベータ): グラスUI × プロフィール(3a グラス・ヒーロー)。
+   html.hataGlassUi の時、プロフィールカード(.profile > .main)をガラス面にする。
+   scoped ではプレフィックスの都合で :global を跨げないため、ページ固有ラッパ .ftskorzw
+   配下に限定した非scopedグローバルとして定義(他ページの .main/.profile に影響させない)。
+   ぼかしは --MI-blur (useBlurEffect=false で none) を尊重。
+   ======================================================================= */
+html.hataGlassUi .ftskorzw > .main > .profile > .main {
+	background: color-mix(in srgb, var(--MI_THEME-panel) 70%, transparent);
+	-webkit-backdrop-filter: var(--MI-blur, blur(20px)) saturate(1.5);
+	backdrop-filter: var(--MI-blur, blur(20px)) saturate(1.5);
+}
+/* ぼかしバナー背景ヒーローレイヤ(通常は非表示・グラス時のみ表示)。
+   カードの角丸内に収めるため親 .main の overflow:clip(既存)で切り取られる。 */
+.profileBgBlur {
+	display: none;
+}
+html.hataGlassUi .ftskorzw > .main > .profile > .main > .profileBgBlur {
+	display: block;
+	position: absolute;
+	inset: -60px;
+	z-index: 0;
+	background-size: cover;
+	background-position: center;
+	filter: blur(48px) saturate(1.3);
+	transform: scale(1.2);
+	pointer-events: none;
+}
+/* 視認性ベール(ライト/ダーク両対応)。
+   --MI_THEME-bg ベースなので、ライトは明るいベール(暗い文字が映える)、ダークは暗いベール
+   (明るい文字が映える)と、テーマに応じてコントラストが取れる方向に自動で働く。
+   ヘッダー画像の色がベールを突き抜けて文字と干渉しないよう、やや濃いめ(72%)にしている
+   (28% はぼかし画像が残るのでヒーロー感は保たれる)。 */
+html.hataGlassUi .ftskorzw > .main > .profile > .main > .profileBgBlur::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	background: color-mix(in srgb, var(--MI_THEME-bg) 72%, transparent);
+}
+/* 前面の実コンテンツはガラス面/ぼかし背景の上に来るよう z-index を持ち上げる */
+html.hataGlassUi .ftskorzw > .main > .profile > .main > .banner-container,
+html.hataGlassUi .ftskorzw > .main > .profile > .main > .roles,
+html.hataGlassUi .ftskorzw > .main > .profile > .main > .description,
+html.hataGlassUi .ftskorzw > .main > .profile > .main > .fields,
+html.hataGlassUi .ftskorzw > .main > .profile > .main > .status {
+	position: relative;
+	z-index: 1;
 }
 </style>
