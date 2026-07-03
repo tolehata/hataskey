@@ -80,7 +80,7 @@
 									<span :class="$style.tabLabel">{{ tabTitle(tab) }}</span>
 								</button>
 							</div>
-							<button v-if="activeTabOf(frame).type === 'externalNotifications'" class="_button" :class="$style.frameHeadBtn" v-tooltip="'既読にする'" @click.stop="markExtRead(activeTabOf(frame).id)"><i class="ti ti-check"></i></button>
+							<button v-if="activeTabOf(frame).type === 'channel' && activeTabOf(frame).sourceId" class="_button" :class="$style.frameHeadBtn" v-tooltip="'このチャンネルへ投稿'" @click.stop="postToChannel(activeTabOf(frame).sourceId!)"><i class="ti ti-pencil-plus"></i></button><button v-if="activeTabOf(frame).type === 'externalNotifications'" class="_button" :class="$style.frameHeadBtn" v-tooltip="'既読にする'" @click.stop="markExtRead(activeTabOf(frame).id)"><i class="ti ti-check"></i></button>
 							<button v-if="frame.tabs.length > 1" class="_button" :class="$style.frameTabsBtn" v-tooltip="'タブの管理'" @click.stop="openTabManageMenu(slot, frame, $event)"><i class="ti ti-layout-navbar"></i></button>
 							<button v-if="!locked" class="_button" :class="$style.slotHandle" v-tooltip="'ドラッグで列を移動 / クリックで列設定'" @pointerdown="onSlotPointerDown(slot.id, $event)" @click.stop="openSlotMenu(slot, $event)"><i class="ti ti-grip-vertical"></i></button>
 							<button class="_button" :class="$style.frameMenuBtn" @click.stop="openFrameMenu(slot, frame, $event)"><i class="ti ti-dots"></i></button>
@@ -118,7 +118,7 @@
 									<span v-if="!locked" :class="$style.tabGrip" v-tooltip="'ドラッグでタブを移動'" @pointerdown="onTabPointerDown(slot.id, frame.id, tab.id, $event)" @click.stop><i class="ti ti-grip-vertical"></i></span><i :class="[tabIcon(tab), $style.tabIcon, { [$style.tabIconActiveColored]: tab.tabColor && activeTabOf(frame).id === tab.id }]"></i><span :class="$style.tabLabel">{{ tabTitle(tab) }}</span>
 								</button>
 							</div>
-							<button v-if="activeTabOf(frame).type === 'externalNotifications'" class="_button" :class="$style.frameHeadBtn" v-tooltip="'既読にする'" @click.stop="markExtRead(activeTabOf(frame).id)"><i class="ti ti-check"></i></button>
+							<button v-if="activeTabOf(frame).type === 'channel' && activeTabOf(frame).sourceId" class="_button" :class="$style.frameHeadBtn" v-tooltip="'このチャンネルへ投稿'" @click.stop="postToChannel(activeTabOf(frame).sourceId!)"><i class="ti ti-pencil-plus"></i></button><button v-if="activeTabOf(frame).type === 'externalNotifications'" class="_button" :class="$style.frameHeadBtn" v-tooltip="'既読にする'" @click.stop="markExtRead(activeTabOf(frame).id)"><i class="ti ti-check"></i></button>
 							<button v-if="frame.tabs.length > 1" class="_button" :class="$style.frameTabsBtn" v-tooltip="'タブの管理'" @click.stop="openTabManageMenu(slot, frame, $event)"><i class="ti ti-layout-navbar"></i></button>
 							<button v-if="!locked" class="_button" :class="$style.slotHandle" v-tooltip="'ドラッグで列を移動 / クリックで列設定'" @pointerdown="onSlotPointerDown(slot.id, $event)" @click.stop="openSlotMenu(slot, $event)"><i class="ti ti-grip-vertical"></i></button>
 							<button class="_button" :class="$style.frameMenuBtn" @click.stop="openFrameMenu(slot, frame, $event)"><i class="ti ti-dots"></i></button>
@@ -148,7 +148,7 @@
 									<span v-if="!locked" :class="$style.tabGrip" v-tooltip="'ドラッグでタブを移動'" @pointerdown="onTabPointerDown(slot.id, frame.id, tab.id, $event)" @click.stop><i class="ti ti-grip-vertical"></i></span><i :class="[tabIcon(tab), $style.tabIcon, { [$style.tabIconActiveColored]: tab.tabColor && activeTabOf(frame).id === tab.id }]"></i><span :class="$style.tabLabel">{{ tabTitle(tab) }}</span>
 								</button>
 							</div>
-							<button v-if="activeTabOf(frame).type === 'externalNotifications'" class="_button" :class="$style.frameHeadBtn" v-tooltip="'既読にする'" @click.stop="markExtRead(activeTabOf(frame).id)"><i class="ti ti-check"></i></button>
+							<button v-if="activeTabOf(frame).type === 'channel' && activeTabOf(frame).sourceId" class="_button" :class="$style.frameHeadBtn" v-tooltip="'このチャンネルへ投稿'" @click.stop="postToChannel(activeTabOf(frame).sourceId!)"><i class="ti ti-pencil-plus"></i></button><button v-if="activeTabOf(frame).type === 'externalNotifications'" class="_button" :class="$style.frameHeadBtn" v-tooltip="'既読にする'" @click.stop="markExtRead(activeTabOf(frame).id)"><i class="ti ti-check"></i></button>
 							<button v-if="frame.tabs.length > 1" class="_button" :class="$style.frameTabsBtn" v-tooltip="'タブの管理'" @click.stop="openTabManageMenu(slot, frame, $event)"><i class="ti ti-layout-navbar"></i></button>
 							<button v-if="!locked" class="_button" :class="$style.slotHandle" v-tooltip="'ドラッグで列を移動 / クリックで列設定'" @pointerdown="onSlotPointerDown(slot.id, $event)" @click.stop="openSlotMenu(slot, $event)"><i class="ti ti-grip-vertical"></i></button>
 							<button class="_button" :class="$style.frameMenuBtn" @click.stop="openFrameMenu(slot, frame, $event)"><i class="ti ti-dots"></i></button>
@@ -643,7 +643,9 @@ function columnProps(tab: DeckTab): Record<string, unknown> {
 	if (tab.type === 'trending') return {};
 	if (tab.type === 'notifications') return { excludeTypes: tab.excludeTypes };
 	if (tab.type === 'postForm') return { fixed: true, autofocus: false };
-	if (tab.type === 'widgets') return {};
+	// 旗鯖fork(新デッキ): deckEmbedded を渡し、widgets.vue 内の常時表示「ウィジェットを編集」
+	// ボタンを抑止する (編集導線は三点メニュー / タブ右クリックに集約)。
+	if (tab.type === 'widgets') return { deckEmbedded: true };
 	if (tab.type === 'earthquake') return {};
 	return { message: (tab.type === 'ohtl' || tab.type === 'oltl' || tab.type === 'externalNotifications') ? '外部アカウントが未連携です' : 'このカラムを表示できません' };
 }
@@ -713,6 +715,26 @@ function reloadAll() {
 	}
 }
 function markExtRead(id: string) { colRefs.get(id)?.markAllAsRead?.(); }
+
+// 旗鯖fork(新デッキ): チャンネルカラムから該当チャンネルへ投稿する。
+// os.post は channel オブジェクト全体を要求するため、channelId から channels/show で取得して渡す。
+async function postToChannel(channelId: string) {
+	try {
+		const channel = await misskeyApi('channels/show', { channelId });
+		os.post({
+			channel: {
+				id: channel.id,
+				name: channel.name,
+				color: channel.color,
+				isSensitive: channel.isSensitive,
+				allowRenoteToExternal: channel.allowRenoteToExternal,
+				userId: channel.userId,
+			},
+		});
+	} catch (err) {
+		os.alert({ type: 'error', text: 'チャンネル情報の取得に失敗しました。' });
+	}
+}
 
 // ===== slot/frame/tab を辿るユーティリティ =====
 function mapSlots(mut: (slots: DeckSlot[]) => DeckSlot[]) { commitSlots(mut(slots.value.map(s => ({ ...s, frames: s.frames.map(f => ({ ...f, tabs: [...f.tabs] })) })))); }
@@ -1300,6 +1322,21 @@ function openFrameMenu(slot: DeckSlot, frame: DeckFrame, ev: MouseEvent) {
 		{ text: '通知フィルタ', icon: 'ti ti-filter', action: () => openNotificationFilter(slot.id, frame.id, active) },
 		{ type: 'divider' as const },
 	] : [];
+	// 旗鯖fork(新デッキ): ウィジェットタブのときは「ウィジェットを編集」をこのメニューに出す。
+	// 常時表示ボタンを廃止して表示領域を最大化した代わりの編集導線 (通知フィルタと同パターン)。
+	const widgetEditItem = (active.type === 'widgets') ? [
+		{
+			text: (colRefs.get(active.id)?.getWidgetEditMode?.() ? 'ウィジェットの編集を終了' : 'ウィジェットを編集'),
+			icon: (colRefs.get(active.id)?.getWidgetEditMode?.() ? 'ti ti-check' : 'ti ti-pencil'),
+			action: () => { colRefs.get(active.id)?.toggleWidgetEditMode?.(); },
+		},
+		{ type: 'divider' as const },
+	] : [];
+	// 旗鯖fork(新デッキ): チャンネルカラムには「このチャンネルへ投稿」導線が無かったため追加。
+	const channelPostItem = (active.type === 'channel' && active.sourceId) ? [
+		{ text: 'このチャンネルへ投稿', icon: 'ti ti-pencil-plus', action: () => postToChannel(active.sourceId!) },
+		{ type: 'divider' as const },
+	] : [];
 	// 旗鯖fork(#34): 地震・津波カラムは「更新」「設定」をこのメニュー(タブ部)に統合する。
 	const earthquakeItem = (active.type === 'earthquake') ? [
 		{ text: '更新', icon: 'ti ti-refresh', action: () => { colRefs.get(active.id)?.reload?.(); } },
@@ -1337,9 +1374,11 @@ function openFrameMenu(slot: DeckSlot, frame: DeckFrame, ev: MouseEvent) {
 	}] : [];
 	os.popupMenu([
 		{ type: 'label' as const, text: tabTitle(active) },
+		...channelPostItem,
 		...reloadItem,
 		...earthquakeItem,
 		...notifFilterItem,
+		...widgetEditItem,
 		...renoteItem,
 		{ text: 'タブ名を変更', icon: 'ti ti-forms', action: () => renameTab(slot.id, frame.id, active.id) },
 		{ text: 'このカラムに別カラムをタブ追加', icon: 'ti ti-plus', action: () => os.popupMenu(columnTypeMenu(anchor, p => addTabToFrame(slot.id, frame.id, p)), anchor) },
@@ -1354,7 +1393,17 @@ function openFrameMenu(slot: DeckSlot, frame: DeckFrame, ev: MouseEvent) {
 // タブ自体の右クリック/長押し相当(タブ単体メニュー)
 function openTabMenu(slot: DeckSlot, frame: DeckFrame, tab: DeckTab, ev: MouseEvent) {
 	const anchor = (ev.currentTarget ?? ev.target) as HTMLElement;
+	// 旗鯖fork(新デッキ): ウィジェットタブを右クリックした時は先頭に「ウィジェットを編集」を出す。
+	const widgetEditTabItem = (tab.type === 'widgets') ? [
+		{
+			text: (colRefs.get(tab.id)?.getWidgetEditMode?.() ? 'ウィジェットの編集を終了' : 'ウィジェットを編集'),
+			icon: (colRefs.get(tab.id)?.getWidgetEditMode?.() ? 'ti ti-check' : 'ti ti-pencil'),
+			action: () => { colRefs.get(tab.id)?.toggleWidgetEditMode?.(); },
+		},
+		{ type: 'divider' as const },
+	] : [];
 	os.popupMenu([
+		...widgetEditTabItem,
 		{ text: 'タブ名を変更', icon: 'ti ti-forms', action: () => renameTab(slot.id, frame.id, tab.id) },
 		...(frame.tabs.length === 1 ? [{
 			type: 'parent' as const, text: 'タブの色', icon: 'ti ti-palette',

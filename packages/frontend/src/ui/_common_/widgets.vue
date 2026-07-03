@@ -5,10 +5,21 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <template>
 <div :class="$style.widgetsRoot">
-	<!-- 旗鯖fork: 編集ボタンを上部に配置。下部だとウィジェットが多い時に
-	     スクロールしきらないと見えず見切れるため、先頭に出して常に見えるようにする。 -->
-	<button v-if="editMode" class="_textButton" :class="$style.edit" style="font-size: 0.9em;" @click="editMode = false"><i class="ti ti-check"></i> {{ i18n.ts.editWidgetsExit }}</button>
-	<button v-else class="_textButton" data-cy-widget-edit :class="$style.edit" style="font-size: 0.9em;" @click="editMode = true"><i class="ti ti-pencil"></i> {{ i18n.ts.editWidgets }}</button>
+	<!-- 旗鯖fork(新デッキ): 編集モード時だけ、編集中であることを示す細いバーを上部に出す。
+	     編集の開始/終了は カラム右上の三点メニュー or タブ右クリック から行うため、
+	     常時表示の「ウィジェットを編集」ボタンは廃止し表示領域を最大化する
+	     (旧デッキ UI のようにカラム上部メニューに編集導線を寄せる)。
+	     deckEmbedded=false (通常 UI のウィジェット領域等) では従来通りボタンを出す。 -->
+	<template v-if="deckEmbedded">
+		<div v-if="editMode" :class="$style.editingBar">
+			<span><i class="ti ti-pencil"></i> 編集モード</span>
+			<button class="_textButton" :class="$style.editingDone" @click="editMode = false"><i class="ti ti-check"></i> {{ i18n.ts.editWidgetsExit }}</button>
+		</div>
+	</template>
+	<template v-else>
+		<button v-if="editMode" class="_textButton" :class="$style.edit" style="font-size: 0.9em;" @click="editMode = false"><i class="ti ti-check"></i> {{ i18n.ts.editWidgetsExit }}</button>
+		<button v-else class="_textButton" data-cy-widget-edit :class="$style.edit" style="font-size: 0.9em;" @click="editMode = true"><i class="ti ti-pencil"></i> {{ i18n.ts.editWidgets }}</button>
+	</template>
 
 	<XWidgets :edit="editMode" :widgets="widgets" @addWidget="addWidget" @removeWidget="removeWidget" @updateWidget="updateWidget" @updateWidgets="updateWidgets" @exit="editMode = false"/>
 </div>
@@ -28,8 +39,20 @@ const props = withDefaults(defineProps<{
 	// left = place: leftだけを表示
 	// right = rightとnullを表示
 	place?: 'left' | null | 'right';
+	// 旗鯖fork(新デッキ): デッキカラムに埋め込まれているか。true の場合、編集導線は
+	// カラム右上の三点メニュー / タブ右クリックに集約し、常時表示ボタンを出さない。
+	deckEmbedded?: boolean;
 }>(), {
 	place: null,
+	deckEmbedded: false,
+});
+
+// 旗鯖fork(新デッキ): 親 (hatasaba-deck) の三点メニュー / タブ右クリックから編集モードを
+// 制御するため、editMode の参照とトグル関数を expose する。
+defineExpose({
+	getWidgetEditMode: () => editMode.value,
+	setWidgetEditMode: (v: boolean) => { editMode.value = v; },
+	toggleWidgetEditMode: () => { editMode.value = !editMode.value; },
 });
 
 const widgets = computed(() => {
@@ -80,6 +103,25 @@ function updateWidgets(thisWidgets) {
 .edit {
 	width: 100%;
 	margin-bottom: 12px;
+}
+
+/* 旗鯖fork(新デッキ): 編集モード中であることを示す細いバー */
+.editingBar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	padding: 6px 12px;
+	margin-bottom: 10px;
+	border-radius: 8px;
+	background: var(--MI_THEME-accentedBg);
+	color: var(--MI_THEME-accent);
+	font-size: 0.85em;
+	font-weight: 600;
+}
+.editingDone {
+	font-size: 0.95em;
+	white-space: nowrap;
 }
 
 /* 旗鯖fork: ウィジェット欄内の MkContainer ヘッダの sticky 追従を無効化。
