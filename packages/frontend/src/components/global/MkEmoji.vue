@@ -35,10 +35,16 @@ const props = defineProps<{
 
 const react = inject(DI.mfmEmojiReactCallback, null);
 
-const char2path = prefer.s.emojiStyle === 'twemoji' ? char2twemojiFilePath : char2fluentEmojiFilePath;
+// 旗鯖fork: char2path をリアクティブに (prefer.r.emojiStyle を購読する computed)。
+//   旧実装は `prefer.s.emojiStyle` を setup 時に一度だけ評価していたため、以下の症状が出ていた:
+//   - 起動時点の値 (2026.6.0 マージ以降は fluentEmoji が最初に入っている端末があった) で
+//     char2path が Fluent 用に固定されてしまい、
+//   - ユーザーが設定で Twemoji に切り替えても char2path は再評価されず Fluent URL のまま
+//   - 結果「設定は Twemoji なのに Fluent Emoji が表示される」不整合が発生していた。
+const char2path = computed(() => prefer.r.emojiStyle.value === 'twemoji' ? char2twemojiFilePath : char2fluentEmojiFilePath);
 
-const useOsNativeEmojis = computed(() => prefer.s.emojiStyle === 'native');
-const url = computed(() => char2path(props.emoji));
+const useOsNativeEmojis = computed(() => prefer.r.emojiStyle.value === 'native');
+const url = computed(() => char2path.value(props.emoji));
 // 旗鯖fork: 画像 (twemoji/fluent) の読み込みに失敗したら native 描画にフォールバックするためのフラグ。
 // props.emoji が変わったら再評価するためリセットする (リスト再利用時の取り違え防止)。
 const imgLoadError = ref(false);
