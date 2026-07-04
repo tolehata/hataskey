@@ -79,16 +79,16 @@ SPDX-License-Identifier: AGPL-3.0-only
 		>
 			<template v-if="props.src === 'media'">
 				<div :class="$style.mediaGrid">
-					<MkNoteMediaGrid v-for="note in paginator.items.value" :key="note.id" :note="note" square isTimeline/>
+					<MkNoteMediaGrid v-for="note in visibleItems" :key="note.id" :note="note" square isTimeline/>
 				</div>
 			</template>
-			<template v-for="(note, i) in paginator.items.value" v-else :key="note.id">
-				<div v-if="i > 0 && isSeparatorNeeded(paginator.items.value[i -1].createdAt, note.createdAt)" :class="[{ '_gaps': !noGap, [$style.sepWrapLeft]: dateOnLeft, [$style.sepWrapTight]: !dateHidden && !dateOnLeft }]" :data-scroll-anchor="note.id">
+			<template v-for="(note, i) in visibleItems" v-else :key="note.id">
+				<div v-if="i > 0 && isSeparatorNeeded(visibleItems[i -1].createdAt, note.createdAt)" :class="[{ '_gaps': !noGap, [$style.sepWrapLeft]: dateOnLeft, [$style.sepWrapTight]: !dateHidden && !dateOnLeft }]" :data-scroll-anchor="note.id">
 					<div v-if="!dateHidden" :class="[$style.date, { [$style.noGap]: noGap, [$style.dateLeft]: dateOnLeft, [$style.dateMobile]: isMobile, [$style.dateDeck]: isHatasabaDeck }]">
 						<i v-if="dateOnLeft" :class="['ti ti-clock', $style.dateLeftIcon]"></i>
-						<span><i class="ti ti-chevron-up"></i> {{ getSeparatorInfo(paginator.items.value[i -1].createdAt, note.createdAt)?.prevText }}</span>
+						<span><i class="ti ti-chevron-up"></i> {{ getSeparatorInfo(visibleItems[i -1].createdAt, note.createdAt)?.prevText }}</span>
 						<span style="height: 1em; width: 1px; background: var(--MI_THEME-divider);"></span>
-						<span>{{ getSeparatorInfo(paginator.items.value[i -1].createdAt, note.createdAt)?.nextText }} <i class="ti ti-chevron-down"></i></span>
+						<span>{{ getSeparatorInfo(visibleItems[i -1].createdAt, note.createdAt)?.nextText }} <i class="ti ti-chevron-down"></i></span>
 					</div>
 					<MkNote :class="$style.note" :note="note" :withHardMute="true"/>
 				</div>
@@ -143,6 +143,8 @@ import { detectWeather, buildWeatherDetectText, isGreetingText } from '@/utility
 import { hasSeenWeather, markSeenWeather } from '@/utility/weather-effect-seen.js';
 import type { WeatherKind } from '@/utility/weather-effect-detector.js';
 import { haptic, hapticConfirm } from '@/utility/haptic.js';
+// 旗鯖fork(HatasabaUI 2): bot 非表示のフィルタで appearNote を参照するため。
+import { getAppearNote } from '@/utility/get-appear-note.js';
 
 const { showEl } = scrollToVisibility();
 
@@ -436,6 +438,23 @@ if (props.src === 'antenna') {
 } else {
 	throw new Error('Unrecognized timeline type: ' + props.src);
 }
+
+// ===== 旗鯖fork(HatasabaUI 2): bot ノートを親側で事前除外 =====
+// MkNote 内部の v-if だけで bot を消すと、セパレータ/広告 wrapper や _gaps gap が残って
+// バラバラな空白として見えてしまう。v-for に渡す配列レベルで除外することで隙間なくつめる。
+// (MkNote 側の hideAsBot 判定は通知/引用/埋め込み等、この経路を通らない場所の防御として残す)
+const hideBotsInTimeline = computed<boolean>(() => prefer.r['simpleUi.hideBotsInTimeline']?.value ?? false);
+const botAllowlist = computed<string[]>(() => (prefer.r['simpleUi.botAllowlist']?.value as string[] | undefined) ?? []);
+function isHiddenBot(note: Misskey.entities.Note): boolean {
+	if (!hideBotsInTimeline.value) return false;
+	const target = (getAppearNote(note) ?? note) as Misskey.entities.Note;
+	if (!target.user?.isBot) return false;
+	if (botAllowlist.value.includes(target.user.id)) return false;
+	return true;
+}
+const visibleItems = computed<Misskey.entities.Note[]>(() =>
+	paginator.items.value.filter(n => !isHiddenBot(n)),
+);
 
 // ===== 旗鯖fork: 天気エフェクト(weatherEffect) =====
 // paginator 初期化後に定義する(currentWeather が paginator.items を参照するため)。
