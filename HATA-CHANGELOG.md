@@ -3,6 +3,63 @@
 旗鯖独自フォーク (Hataskey-Hata) のチェンジログです。  
 ベースフォーク CherryPick のチェンジログは [CHANGELOG.md](./CHANGELOG.md) を参照してください。
 
+## hata-11.8
+
+HatasabaUI のグラスモーフィズム基調刷新版「**HatasabaUI 2**」をベータ導入する UI 大型リリースです。ノート面のガラス調・カラム全体の透過統一・独立ウィンドウ化した設定パネル (ライブプレビュー付き) など、視覚と操作の両面を刷新しました。あわせて HatasabaUI デッキ (HatasabaUI 2 デッキ) にクリップ/お気に入りタブ・カラム個別リロード・チャンネル投稿ボタンを追加、チャンネル/プロフィール UI を HatasabaUI 統一のピル型に刷新、管理者向けの全チャンネル一覧タブ、Bot をタイムラインに表示しない設定 (許可アカウント指定可)、Twemoji アセット復活とマスコット最小化位置の恒久化などを行いました。連合 (ActivityPub) への影響はすべての変更でゼロを事前検証済みです (UI/クライアント側と 1 個の管理系エンドポイントのみ、AP 配送経路・ノート生成ロジック・federation queue には一切変更なし)。
+
+### 主要機能: HatasabaUI 2 (グラスモーフィズム刷新) ベータ
+
+HatasabaUI に「HatasabaUI 2」というグラスモーフィズム基調のバリアントを追加しました。ノートカードをテーマ accent 由来のガラス面 + `backdrop-filter` で描画し、上部/下部ナビバーも同じガラス面で統一します。旗鯖設定 → HatasabaUI 2 タブ内の「設定を開く」ボタンから **独立ウィンドウ** を開き、ON/OFF・透過率スライダー (0-100%)・吹き出しモード時の追加ガラス・プロフィールバナー無し時の背景などを個別調整できます。
+
+- **設定はドラッグ可能な `MkWindow`**: 従来のモーダル (裏を触れない) から `MkWindow` に変更し、設定変更中も裏のタイムラインをそのまま操作・視認できるようにしました。「保存」で永続化 + 自動リロード、「初期値に戻す」で全値をリセット。透過率スライダーは値変更中のみ CSS 変数 (`--htk-glass-card-opacity`) を書き換えるライブプレビュー方式で、Firefox の range 入力上のホイールでスクロールを奪われる/値がリセットされる問題も回避しています
+- **全ノート含有カラム/タブに透過率が反映**: HatasabaUI 2 有効時、ホーム/ローカル/グローバル/チャンネル/リスト/アンテナ/メンション/ダイレクト/外部 (OHTL/OLTL)/通知/クリップ/お気に入り/トレンドのすべてで、ノートカードが `--htk-glass-card-opacity` に連動して透過します。HatasabaUI 2 デッキ内の全カラムでも同じ挙動を保証
+- **`MkNote` の article ガラス CSS を非モジュール tag セレクタでグローバル化**: `:global(html.hataGlassUi) .article` (module) だと Vue SFC のクラスハッシュ + `:global()` の組み合わせで解決されず、`<style>` (非module) の `html.hataGlassUi article` タグセレクタに移動して確実に適用されるようにしました。あわせて `MkStreamingNotesTimeline` の `:not([data-bubble]) article { background: panel !important }` を `html:not(.hataGlassUi)` にスコープし、!important による勝敗で透過が効かなかった問題も解消
+- **色味/レイアウトはテーマ変数で追従**: `--MI_THEME-accent` / `--MI_THEME-panel` 経由なのでライト/ダーク切替やテーマ変更にそのまま追従します。透過率は `simpleUi.glassUiCardOpacity` (prefer 同期、default 55%) が boot 経由で `<html>` に注入されます。ON/OFF (`hataGlassUi` / `hataGlassUiBubble`) は端末ローカル (miLocalStorage) — モバイルで重い場合に PC でだけ有効化する運用を想定
+
+### HatasabaUI デッキ (HatasabaUI 2 デッキ)
+
+- **クリップ / お気に入りタブを追加**: これまでカラム未対応だったクリップと i/favorites (お気に入り) をカラムとして追加できるようにしました。`MkStreamingNotesTimeline` は WebSocket ストリーミング前提のため使えず、Paginator + `MkNote` で描画する専用の `MkDeckPaginatedNotes` を新規追加。favorites は要素が `{note}` でラップされているため unwrap 処理付き
+- **カラム個別リロード**: 各カラムの三点メニュー/ヘッダのリロードボタンから、そのカラムのタイムラインだけを再取得できます。Paginator を作り直す方式で、内部状態も含めて全リセット
+- **チャンネル投稿ボタン再設計**: HatasabaUI 2 デッキ限定のフローティング投稿ボタンを新設。従来デッキUIには表示しません (`showChannelPostFixedButton` を `isHatasabaDeck.value` に限定して二重表示を防止)
+- **ウィジェット編集導線の変更**: `hatasaba-deck.vue` / `widgets.vue` からウィジェット追加/編集ダイアログをよりアクセスしやすい位置に移動し、旗鯖 UI からダイレクトに開けるようにしました
+
+### Bot をタイムラインに表示しない設定 (許可アカウント指定可)
+
+旗鯖設定 → 旗鯖全体タブに **「Bot 投稿の非表示」** セクションを追加しました。ONにすると、`isBot: true` なユーザーの投稿がタイムラインから消えます。例外的に表示したい bot は「許可アカウント」から個別に追加できます (`os.selectUser` によるユーザー検索ダイアログから追加/削除)。
+
+- **親配列レベルで事前フィルタする実装**: `MkStreamingNotesTimeline` の v-for に渡す前に `visibleItems` computed で除外します。MkNote 内部の v-if で消すとセパレータ/広告 wrapper 等の親 div が残ってバラバラ高さの空白として見えてしまうため、配列レベルで詰めます。MkNote 側の `hideAsBot` 判定は通知/引用/埋め込み等この経路を通らない場所の防御として残しています
+- **appearNote 経由の判定**: renote/quote ケースも `getAppearNote(note)` を通してから `.user.isBot` を見るため、bot を renote した通常ユーザーの場合は表示、通常ユーザーが bot を renote した場合は非表示、bot 自身のオリジナル投稿は非表示、と MkNote の appearNote ロジックと一致します
+- **prefer 経由でマルチデバイス同期**: `simpleUi.hideBotsInTimeline` / `simpleUi.botAllowlist` は prefer 保存のため、1 端末で設定すれば他端末にも自動反映されます
+
+### チャンネル / プロフィール UI をピル型に統一
+
+- **チャンネル画面**: 検索/最新/ピン留め/カテゴリ 等のタブや、投稿一覧/ピン留めノート/フィード、ノート/リプライ/クリップ 等の切替を HatasabaUI 統一のピル型 (`MkTab` 拡張) に刷新しました。`MkTab.vue` にピル型バリアントを追加し、色/形/spacing を統一
+- **プロフィール画面**: `index.timeline.vue` / `index.vue` / `notes.vue` のタブもピル型に統一。既存の CherryPick 標準タブの選択肢は残しつつ、旗鯖の UI トーン (背景 `accentedBg` / 角丸大きめ) に沿ったピル型を優先
+
+### 管理者向け機能
+
+- **全チャンネル一覧タブ**: `admin/channels/list` エンドポイントを新規追加 (`requireModerator` + `read:admin:channels` スコープ)。`packages/cherrypick-js/src/consts.ts` にスコープを登録。フロントの `pages/channels.vue` に管理者/モデレーター専用の「すべてのチャンネル」タブを追加し、通常ユーザーには表示しません
+- **サブ管理者 UI の表示改善**: `channel-editor.vue` でサブ管理者一覧の表示を整理し、権限付与状態を分かりやすく表示
+
+### バグ修正
+
+- **Twemoji アセット欠落と `MkEmoji` のリアクティブ化**: `packages/backend/package.json` に `@discordapp/twemoji` 依存を明示的に追加 (transitive 依存喪失によるアセット欠落を根本修正)。`MkEmoji.vue` の絵文字画像パス生成を computed 化して、絵文字設定変更 (Twemoji↔ネイティブ切替等) がリアクティブに反映されるようにしました
+- **フローティングマスコットの最小化位置**: 「最小化位置を設定」機能で座標が破綻して画面外に飛ぶケースがあったため、最小化位置を右下固定に統一しました。設定 UI からも該当項目を削除
+- **HatasabaUI 2 の colorBar (チャンネル色縦バー) がリアクションを貫通する問題**: `mask-image: linear-gradient(to bottom, black 0%, black 55%, transparent 90%)` によるフェードアウトで修正 (DOM 構造は変えずに視覚的に消す)。あわせてアバターに重ならないよう HatasabaUI 2 モードでは `left: -10px` シフト + `border-radius: 20px` でノート外形と揃える
+- **従来デッキUIで新規チャンネル投稿ボタンが二重表示される問題**: `showChannelPostFixedButton` を HatasabaUI 2 デッキ限定に変更
+- **Bot 非表示時に空白が残る問題**: MkNote 内 v-if だけでは親 wrapper (セパレータ/広告) が残ってバラバラ高さの空白として見えるため、`MkStreamingNotesTimeline` の v-for に渡す前に `visibleItems` computed で除外する実装に変更
+- **HatasabaUI 2 の日付セパレータ前後で白背景が残る問題**: `data-hatasaba-spacer="on"` ラッパの `> div > div` に対して `background: transparent` を強制し、MkNote root panel bg 残渣を除去
+
+### 機能改善 / 要望対応
+
+- **`MkHatasabaUiEditDialog` / `MkSidebarEditDialog` を非モーダル化 (`MkModalWindow` → `MkWindow`)**: 「並び替え中に裏の実際のサイドバー/ナビを見比べたい」というユーザー要望に対応。`MkWindow` には footer slot が無いため footer 相当を body 末尾に統合
+- **旗鯖設定タブ再編**: HatasabaUI 2 タブは「設定を開く」ボタン 1 個に集約 (独立ウィンドウ経由でアクセス)。旗鯖全体タブに Bot 非表示設定を追加。並び替え設定の書き出しモーダルも `MkWindow` 化
+- **`.dockerignore` に `**/node_modules` (全階層) を追加**: サブパッケージの node_modules がホスト側からコンテナに紛れ込むケースを防止。11.7.7 の Dockerfile / .dockerignore 恒久対策の追加分
+
+### 連合への影響 (事前検証済み: ゼロ)
+
+11.8 のすべての変更は UI/フロントエンドと 1 個の管理系エンドポイント (`admin/channels/list` — 単純な `channels` テーブル SELECT) + Twemoji 依存追加のみで、ActivityPub 連合経路 (ノート生成/配送/受信、リアクション、フォロー、Undo、リノート、Announce 等) には一切触れていません。旗鯖独自の utage / private channel / hata-secure 系 visibility にも変更なし。
+
 ## hata-11.7.7
 
 本家 Misskey 2026.6.0 のリリース全 29 項目 (General/Client/Server) を取り込みする追従リリースです。本家機能取り込み 21 件、既反映/非該当でスキップ 14 件、旗鯖独自実装統合 1 件、死コード掃除 3 件を行いました。あわせて、Dockerfile / .dockerignore に潜在していた本番ビルド時の `var LANGS` 反映漏れ問題 (BuildKit `COPY --link` キャッシュバグ起因) を恒久対策しました。連合 (ActivityPub) への影響はすべての変更でゼロを事前検証済みです (本家由来の連合修正は旗鯖独自実装と整合確認、旗鯖独自フィールド・通知・配信経路はいずれも変更なし)。
