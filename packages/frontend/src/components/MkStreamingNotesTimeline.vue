@@ -245,8 +245,12 @@ const isHatasabaDeck = computed(() => miLocalStorage.getItem('ui') === 'simple' 
 // 旗鯖fork: HatasabaUI 通常モード(ui=simple かつ deckMode=OFF)。
 const isHatasabaNormal = computed(() => miLocalStorage.getItem('ui') === 'simple' && !(prefer.r['simpleUi.deckMode']?.value ?? false));
 const bubbleEnabled = computed(() => {
-    // チャンネルTLでは強制的に吹き出しON
-    if (props.src === 'channel') return true;
+    // 旗鯖fork: チャンネル TL の吹き出し強制ONは、デッキ (旧/新デッキ) 表示では抑止する。
+    //   従来「if (src === 'channel') return true」で無条件強制していたため、デッキUI で
+    //   チャンネルカラムだけが他カラム (home/local 等) と見た目が違って独立カード化していた。
+    //   デッキ表示では他カラムと同じ判定に委ね、非デッキ (チャンネルページ本体等) では従来通り
+    //   強制ONで UX を維持する。
+    if (props.src === 'channel' && !isDeckUi && !isHatasabaDeck.value) return true;
     if (isDeckUi && prefer.r['simpleUi.disableBubbleInDeck']?.value) return false;
     if (isDefaultUi && prefer.r['simpleUi.disableBubbleInDefault']?.value) return false;
     if (isHatasabaDeck.value && prefer.r['simpleUi.disableBubbleInHatasabaDeck']?.value) return false;
@@ -281,12 +285,14 @@ const deckLatestNoteText = computed(() => prefer.r['simpleUi.deckLatestNoteText'
 // 旗鯖fork: デッキ (旧/新デッキ両方) のチャンネルカラムに、ノートリスト最上部固定の
 //   「このチャンネルへ投稿」ボタンを出す。従来の三点メニュー/ヘッダ右のペンボタンは
 //   `simpleUi.showLegacyChannelPostButton` (default false) が true のときのみ出るため、
-//   ここが default の主要導線となる。
+//   ここが HatasabaUI デッキでの主要導線となる。
 //   チャンネルページ本体には別途の投稿フォームがあるため、こちらのボタンはデッキ描画時のみ表示。
+//   従来デッキUI (ui=deck) には元から独自のチャンネル投稿導線があり、二重表示になってしまうため
+//   HatasabaUI デッキ (ui=simple かつ deckMode=true) のみに限定する。
 const showChannelPostFixedButton = computed(() =>
 	props.src === 'channel'
 	&& !!props.channel
-	&& (isDeckUi || isHatasabaDeck.value)
+	&& isHatasabaDeck.value
 );
 async function onChannelPostFixedClick() {
 	if (!props.channel) return;
@@ -1421,8 +1427,13 @@ html.hataGlassUiBubble.hataGlassUi [data-bubble="on"] [data-note-content]::befor
 	}
 }
 
-/* ===== 吹き出し無効化時 ===== */
-:not([data-bubble="on"]) article {
+/* ===== 吹き出し無効化時 =====
+   旗鯖fork: HatasabaUI 2 (`html.hataGlassUi`) 時は透過ガラス面 (`html.hataGlassUi article` in
+   MkNote の非module <style>) を尊重するため、この !important パネル塗りを除外する。
+   これがないと `:not([data-bubble=on])` が `html.hataGlassUi article` (specificity 12) より
+   `!important` で勝ち、クリップ/お気に入り/トレンド等の非 bubble ノートが不透明パネルのまま
+   透過率スライダーが効かなくなる。 */
+html:not(.hataGlassUi) :not([data-bubble="on"]) article {
 	background: var(--MI_THEME-panel) !important;
 }
 
@@ -1455,6 +1466,43 @@ html.hataGlassUiBubble.hataGlassUi [data-bubble="on"] [data-note-content]::befor
 }
 [data-hatasaba-spacer="on"] > div:last-child {
 	border-bottom: none !important;
+}
+
+/* ===== 旗鯖fork(HatasabaUI 2): HatasabaUI デッキUIのノートに透過率を反映 =====
+   HatasabaUI デッキは default で bubble OFF (disableBubbleInHatasabaDeck=true) のため、
+   通常タイムラインの `html.hataGlassUi [data-bubble="on"] article > div` セレクタに
+   引っかからず glass 透明度が効かなかった。
+   MkNote 側の `.article` のグラス背景 (panel 60% ハードコード) を上書きして、
+   通常タイムラインの bubble 面と同じ計算式 (accent tint + panel を --htk-glass-card-opacity で
+   透明化) を適用する。ダーク/ライトで accent tint 濃度を出し分け。
+   backdrop-filter (blur+saturate) は残すとテーマや幅にヒットしない透明感が出ないので消す。 */
+html.hataGlassUi [data-hatasaba-spacer="on"] {
+	background: transparent !important;
+}
+/* 直下 (MkNote 直配置) と孫 (日付/広告 wrapper 内の MkNote root or .date 要素) の
+   両方を透明化。`.notes:not(.noGap) .note { background: panel }` の残留パネル塗りが
+   日付セパレータ前後・記事外周に「白い帯」として残るのを除去する。 */
+html.hataGlassUi [data-hatasaba-spacer="on"] > div,
+html.hataGlassUi [data-hatasaba-spacer="on"] > div > div {
+	background: transparent !important;
+}
+/* スペーサー(12px の縦間隔バー)の色を透明寄りに */
+html.hataGlassUi [data-hatasaba-spacer="on"] > div {
+	border-bottom-color: color-mix(in srgb, var(--MI_THEME-divider) 30%, transparent) !important;
+}
+html.hataGlassUi [data-hatasaba-spacer="on"] article {
+	background: color-mix(in srgb,
+		color-mix(in srgb, var(--MI_THEME-accent) 18%, var(--MI_THEME-panel))
+		var(--htk-glass-card-opacity, 55%),
+		transparent) !important;
+	-webkit-backdrop-filter: none !important;
+	backdrop-filter: none !important;
+}
+html[data-color-scheme=light].hataGlassUi [data-hatasaba-spacer="on"] article {
+	background: color-mix(in srgb,
+		color-mix(in srgb, var(--MI_THEME-accent) 8%, var(--MI_THEME-panel))
+		var(--htk-glass-card-opacity, 55%),
+		transparent) !important;
 }
 
 /* ===== ノート間隔: compact ===== */

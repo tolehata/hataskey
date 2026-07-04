@@ -2244,6 +2244,37 @@ onUnmounted(()=>{
 }
 .sideBtn:active { transform:scale(.9); }
 
+/* 旗鯖fork(HatasabaUI 2): 上部/下部ナビバーもノートと同じガラス面デザインで統一する。
+   透過率は `--htk-glass-card-opacity` (simpleUi.glassUiCardOpacity から boot 経由で注入、
+   default 55%) で連動。ダーク/ライトはテーマ変数 (--MI_THEME-panel/accent) 経由。
+   デザインの骨格 (ピル/ボタンの形状・レイアウト) は保持し、色/背景のみ差し替える。 */
+:global(html.hataGlassUi) .topNav {
+    background: color-mix(in srgb,
+        color-mix(in srgb, var(--MI_THEME-accent) 12%, var(--MI_THEME-panel))
+        var(--htk-glass-card-opacity, 55%),
+        transparent) !important;
+    backdrop-filter: blur(18px) saturate(1.5);
+    -webkit-backdrop-filter: blur(18px) saturate(1.5);
+    border-bottom-color: color-mix(in srgb, var(--MI_THEME-divider) 50%, transparent);
+}
+/* topNavSolid の背景単色化は glass モードでは無効化 (glass 有効時は常にガラス面) */
+:global(html.hataGlassUi) .topNavSolid { background: color-mix(in srgb,
+    color-mix(in srgb, var(--MI_THEME-accent) 12%, var(--MI_THEME-panel))
+    var(--htk-glass-card-opacity, 55%),
+    transparent) !important; backdrop-filter: blur(18px) saturate(1.5) !important; -webkit-backdrop-filter: blur(18px) saturate(1.5) !important; }
+
+:global(html.hataGlassUi) .bottomBarDark .navPill,
+:global(html.hataGlassUi) .bottomBarDark .sideBtn,
+:global(html.hataGlassUi) .bottomBarLight .navPill,
+:global(html.hataGlassUi) .bottomBarLight .sideBtn {
+    background: color-mix(in srgb,
+        color-mix(in srgb, var(--MI_THEME-accent) 12%, var(--MI_THEME-panel))
+        var(--htk-glass-card-opacity, 55%),
+        transparent) !important;
+    backdrop-filter: blur(22px) saturate(1.5) !important;
+    -webkit-backdrop-filter: blur(22px) saturate(1.5) !important;
+}
+
 .badge { position:absolute; top:8px; right:8px; width:8px; height:8px; background:var(--MI_THEME-indicator); border-radius:50%; }
 .badgeCount {
     position:absolute; top:2px; right:0; min-width:16px; height:16px; padding:0 4px; border-radius:8px;

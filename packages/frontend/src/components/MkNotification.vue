@@ -324,6 +324,24 @@ const rejectGroupInvitation = () => {
 	--eventOther: #88a6b7;
 }
 
+/* 旗鯖fork(HatasabaUI 2): 通知カラム内の XNotification (reply/quote/mention 以外) にも
+   --htk-glass-card-opacity を反映してカード面をガラス化。MkNote と同じ計算式。
+   ダーク/ライトで accent tint 濃度を出し分け。 */
+:global(html.hataGlassUi) .root {
+	background: color-mix(in srgb,
+		color-mix(in srgb, var(--MI_THEME-accent) 18%, var(--MI_THEME-panel))
+		var(--htk-glass-card-opacity, 55%),
+		transparent);
+	-webkit-backdrop-filter: var(--MI-blur, blur(22px)) saturate(1.6);
+	backdrop-filter: var(--MI-blur, blur(22px)) saturate(1.6);
+}
+:global(html[data-color-scheme=light].hataGlassUi) .root {
+	background: color-mix(in srgb,
+		color-mix(in srgb, var(--MI_THEME-accent) 8%, var(--MI_THEME-panel))
+		var(--htk-glass-card-opacity, 55%),
+		transparent);
+}
+
 .head {
 	position: sticky;
 	top: 0;

@@ -83,6 +83,11 @@ defineExpose({ reload });
 	background: var(--MI_THEME-bg);
 	min-height: 100%;
 }
+/* 旗鯖fork(HatasabaUI 2): グラス表示時はコンテナ塗りを透明化して、デッキ背景ぼかしを
+   透かす。ここで bg を付けたままだと MkNote の透過が意味を成さず不透明に見える。 */
+:global(html.hataGlassUi) .notes {
+	background: transparent;
+}
 .empty {
 	padding: 24px 12px;
 	text-align: center;

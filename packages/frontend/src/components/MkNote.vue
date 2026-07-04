@@ -5,7 +5,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <template>
 <div
-	v-if="!hardMuted && muted === false"
+	v-if="!hardMuted && muted === false && !hideAsBot"
 	ref="rootEl"
 	v-hotkey="keymap"
 	:class="[$style.root, { [$style.showActionsOnlyHover]: prefer.s.showNoteActionsOnlyHover, [$style.skipRender]: prefer.s.skipNoteRender && utageState === 'none' && !noteGlassActive, [$style.utageActive]: utageState !== 'none' && utageOutsideFrame }]"
@@ -72,7 +72,15 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<!-- 旗鯖fork: C7 宴 結果バッジ (吹き出し右下隅) -->
 		<div v-if="utageState === 'failed'" :class="[$style.utageBadge, $style.utageBadgeFailed]">失敗...</div>
 		<div v-else-if="utageState === 'success'" :class="[$style.utageBadge, $style.utageBadgeSuccess]">成功</div>
-		<div :style="prefer.s.showGapBodyOfTheNote ? null : 'padding-bottom: 10px;'" style="display: flex;">
+		<!-- 旗鯖fork: チャンネル投稿の colorBar (position:absolute; border-left:5px) がアバターの
+		     左辺と重なる問題への対処。channel が付いているときだけ flex コンテナに padding-left を
+		     足して、アバター開始位置を colorBar の帯 (5px) の外にずらす。
+		     colorBar の位置基準は bubbleBody (常に position: relative) なので、ここでは position は
+		     いじらず (以前 position:relative を付けたら、noteContent が短い時に colorBar が
+		     avatar+main のみに縮んで「アイコンに密着した小さなタブ」に見える副作用が出た)。
+		     HatasabaUI 2 のリアクション貫通問題は、colorBar 自体に mask-image (下部フェード) を
+		     かけて対応する (下の .colorBar CSS 参照)。 -->
+		<div :style="[prefer.s.showGapBodyOfTheNote ? {} : { paddingBottom: '10px' }, appearNote.channel ? { paddingLeft: '7px' } : {}]" style="display: flex;">
 			<div v-if="appearNote.channel" :class="$style.colorBar" :style="{ borderLeftColor: appearNote.channel.color }"></div>
 			<MkAvatar v-if="!prefer.s.hideAvatarsInNote" :class="[$style.avatar, prefer.s.useStickyIcons ? $style.useSticky : null, { [$style.avatarReplyTo]: appearNote.reply, [$style.showEl]: !appearNote.reply && (showEl && ['hideHeaderOnly', 'hideHeaderFloatBtn', 'hide'].includes(<string>prefer.s.displayHeaderNavBarWhenScroll)) && mainRouter.currentRoute.value.name === 'index', [$style.showElTab]: !appearNote.reply && (showEl && ['hideHeaderOnly', 'hideHeaderFloatBtn', 'hide'].includes(<string>prefer.s.displayHeaderNavBarWhenScroll)) && mainRouter.currentRoute.value.name !== 'index' }]" :user="appearNote.user" :link="false" :preview="!mock" noteClick @click="onAvatarClick"/>
 			<div :class="$style.main">
@@ -299,7 +307,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		</div>
 	</article>
 </div>
-<div v-else-if="!hardMuted" :class="$style.muted" @click="muted = false">
+<div v-else-if="!hardMuted && !hideAsBot" :class="$style.muted" @click="muted = false">
 	<I18n v-if="muted === 'sensitiveMute'" :src="i18n.ts.userSaysSomethingSensitive" tag="small">
 		<template #name>
 			<MkA v-user-preview="appearNote.userId" :to="userPage(appearNote.user)">
@@ -560,6 +568,19 @@ const isMFM = shouldMfmCollapsed(appearNote);
 const collapsed = ref(appearNote.cw == null && ((isLong && prefer.s.collapseLongNoteContent) || (isMFM && prefer.s.collapseDefault) || ((appearNote.files?.length ?? 0) > 0 && prefer.s.allMediaNoteCollapse)));
 const muted = ref(checkMute(appearNote, $i?.mutedWords));
 const hardMuted = ref(props.withHardMute && checkMute(appearNote, $i?.hardMutedWords, true));
+// 旗鯖fork: bot ユーザーの投稿をタイムラインから非表示 (許可リストで例外指定可能)。
+//   isBot=true かつ botAllowlist に userId が無い かつ hideBotsInTimeline=true → 非表示。
+//   通知/通知ページや個別ノート表示など、通知系のコンテキストでは非表示にしないよう
+//   props.notification を除外する (bot がリアクション/フォロー通知を送るケースがある)。
+const hideAsBot = computed<boolean>(() => {
+    if (props.notification) return false;
+    if (!prefer.r['simpleUi.hideBotsInTimeline']?.value) return false;
+    const user = appearNote.user;
+    if (!user?.isBot) return false;
+    const allowlist = (prefer.r['simpleUi.botAllowlist']?.value as string[] | undefined) ?? [];
+    if (allowlist.includes(user.id)) return false;
+    return true;
+});
 const showSoftWordMutedWord = computed(() => prefer.s.showSoftWordMutedWord);
 const canRenote = computed(() => ['public', 'home'].includes(appearNote.visibility) || (appearNote.visibility === 'followers' && appearNote.userId === $i?.id));
 const renoteCollapsed = ref(
@@ -1484,6 +1505,20 @@ function emitUpdReaction(emoji: string, delta: number) {
 	pointer-events: none;
 	box-sizing: border-box;
 }
+/* 旗鯖fork(HatasabaUI 2): article が半透明ガラス面のとき、colorBar は 2 点調整する:
+   ① 左オフセット (left: -10px): colorBar の containing block は bubbleBody (article の padding
+      10px 内側)。base の `left: 0` だとアバターの左辺と近すぎて重なって見える。article の外側
+      左端に揃えるため、article padding-left 相当 (10px) を負の左オフセットで打ち消す。
+   ② border-radius を 20px: article の HatasabaUI 2 モードの border-radius と揃え、
+      角の丸みが自然に見えるようにする。
+   ③ mask-image で下部フェード: リアクション/フッター領域を colorBar が貫通しないよう、
+      下部を自然にフェードアウト (DOM 変更なしで視覚的解決)。 */
+:global(html.hataGlassUi) .colorBar {
+	left: -10px;
+	border-radius: 20px;
+	-webkit-mask-image: linear-gradient(to bottom, black 0%, black 55%, transparent 90%);
+	mask-image: linear-gradient(to bottom, black 0%, black 55%, transparent 90%);
+}
 
 .avatar {
 	flex-shrink: 0;
@@ -1812,16 +1847,10 @@ function emitUpdReaction(emoji: string, delta: number) {
    ・バブル表示のガラス化は MkStreamingNotesTimeline 側 ([data-bubble] のグローバル)で行う。
    ・ぼかしは --MI-blur (useBlurEffect=false で none にフォールバック)を尊重。
    ======================================================================= */
-/* :global() はフラット形式(html.hataGlassUi のみグローバル、.article 等はスコープ維持)。 */
-:global(html.hataGlassUi) .article {
-	border-radius: 20px;
-	background: color-mix(in srgb, var(--MI_THEME-panel) 60%, transparent);
-	box-shadow:
-		0 2px 10px color-mix(in srgb, var(--MI_THEME-fg) 5%, transparent),
-		0 14px 36px color-mix(in srgb, var(--MI_THEME-fg) 8%, transparent);
-	-webkit-backdrop-filter: var(--MI-blur, blur(22px)) saturate(1.6);
-	backdrop-filter: var(--MI-blur, blur(22px)) saturate(1.6);
-}
+/* 旗鯖fork(HatasabaUI 2): 従来 `.article` は panel 60% ハードコードだった。
+   透過率 CSS 変数の適用先は module CSS の hashed class より、下部の非module `<style>` ブロックで
+   tag 要素 `article` を直接ターゲットする方が確実 (module CSS の :global() + module class の
+   組合せは Vue SFC の CSS 変換で意図せず動作しないケースがあるため)。詳細は下部 style を参照。 */
 
 /* ラッパの _panel が二重背景にならないよう、ノートroot側の面を消す(グラスは .article が持つ) */
 :global(html.hataGlassUi) .root {
@@ -1842,5 +1871,31 @@ function emitUpdReaction(emoji: string, delta: number) {
 		color: var(--MI_THEME-accent);
 		background: color-mix(in srgb, var(--MI_THEME-accent) 10%, transparent);
 	}
+}
+</style>
+
+<!-- 旗鯖fork(HatasabaUI 2): 透過率 CSS 変数の適用は非module のグローバル CSS で tag 要素
+     `article` を直接ターゲットする。これで MkNote / MkExternalNote / トレンド / クリップ /
+     お気に入り / 通知 (reply/quote/mention) など、あらゆる `<article>` 要素を含むノート表示に
+     一律で `--htk-glass-card-opacity` が反映される。
+     ダーク/ライトで accent tint 濃度を出し分け (18%/8%)。 -->
+<style lang="scss">
+html.hataGlassUi article {
+	border-radius: 20px;
+	background: color-mix(in srgb,
+		color-mix(in srgb, var(--MI_THEME-accent) 18%, var(--MI_THEME-panel))
+		var(--htk-glass-card-opacity, 55%),
+		transparent);
+	box-shadow:
+		0 2px 10px color-mix(in srgb, var(--MI_THEME-fg) 5%, transparent),
+		0 14px 36px color-mix(in srgb, var(--MI_THEME-fg) 8%, transparent);
+	-webkit-backdrop-filter: var(--MI-blur, blur(22px)) saturate(1.6);
+	backdrop-filter: var(--MI-blur, blur(22px)) saturate(1.6);
+}
+html[data-color-scheme=light].hataGlassUi article {
+	background: color-mix(in srgb,
+		color-mix(in srgb, var(--MI_THEME-accent) 8%, var(--MI_THEME-panel))
+		var(--htk-glass-card-opacity, 55%),
+		transparent);
 }
 </style>

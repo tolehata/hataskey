@@ -739,6 +739,25 @@ defineExpose({
 	gap: 0;
 }
 
+/* 旗鯖fork(HatasabaUI 2): 外部TL (ohtl/oltl) のノートにも --htk-glass-card-opacity を反映。
+   MkNote と同じ計算式 (accent tint + panel を変数で透明化) でカード面をガラス化する。
+   ダーク/ライトで accent tint 濃度を出し分け。 */
+:global(html.hataGlassUi) .root {
+	border-radius: 20px;
+	background: color-mix(in srgb,
+		color-mix(in srgb, var(--MI_THEME-accent) 18%, var(--MI_THEME-panel))
+		var(--htk-glass-card-opacity, 55%),
+		transparent);
+	-webkit-backdrop-filter: var(--MI-blur, blur(22px)) saturate(1.6);
+	backdrop-filter: var(--MI-blur, blur(22px)) saturate(1.6);
+}
+:global(html[data-color-scheme=light].hataGlassUi) .root {
+	background: color-mix(in srgb,
+		color-mix(in srgb, var(--MI_THEME-accent) 8%, var(--MI_THEME-panel))
+		var(--htk-glass-card-opacity, 55%),
+		transparent);
+}
+
 .avatar {
 	flex-shrink: 0;
 	margin-top: 2px;
