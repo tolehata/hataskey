@@ -511,8 +511,13 @@ function resetToDefault() {
 }
 
 // ===== 旗鯖全体 =====
-const showHashtagButtonInPostForm = useLSBool('showHashtagButtonInPostForm', true);
-const showDrawingButtonInPostForm = useLSBool('showDrawingButtonInPostForm', true);
+// 旗鯖fork: 投稿フォームのハッシュタグ/お絵かきボタン表示トグルは
+// preferences/def.ts 側で prefer キーとして定義されており、MkPostForm も
+// `prefer.s.showHashtagButtonInPostForm` / `prefer.s.showDrawingButtonInPostForm`
+// を読む。設定 UI 側だけ miLocalStorage (useLSBool) に書き込む実装になっており、
+// 書き先と読み先がズレていてトグルが機能していなかったので prefer.model に修正。
+const showHashtagButtonInPostForm = prefer.model('showHashtagButtonInPostForm');
+const showDrawingButtonInPostForm = prefer.model('showDrawingButtonInPostForm');
 const showLoginBonusPopup = useLSBool('showLoginBonusPopup', true);
 const timelineAnimationDirection = prefer.model('timelineAnimationDirection');
 const timelineAnimationOptions = [
