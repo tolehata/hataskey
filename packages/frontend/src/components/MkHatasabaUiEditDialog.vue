@@ -8,14 +8,17 @@ SPDX-License-Identifier: AGPL-3.0-only
 中途半端な配列で prefer.commit されていた等の候補)を根本的に断つ。
 -->
 <template>
-<MkModalWindow
+<!-- 旗鯖fork: MkModalWindow (背面遮断) → MkWindow (フローティング) 化。裏の HatasabaUI を
+     見ながらリアルタイムに並び替えを試せる。ドラッグ移動可・リサイズ可・複数同時表示可。 -->
+<MkWindow
 	ref="dialog"
-	:width="640"
-	:height="820"
-	@close="closeWithoutSave"
-	@closed="emit('closed')"
+	:initialWidth="640"
+	:initialHeight="820"
+	:canResize="true"
+	:closeButton="true"
+	@closed="onWindowClosed"
 >
-	<template #header>HatasabaUI の設定</template>
+	<template #header><i class="ti ti-device-mobile" style="margin-right:.5em;"></i>HatasabaUI の設定</template>
 
 	<div class="_spacer" style="--MI_SPACER-min: 16px; --MI_SPACER-max: 24px;">
 		<div :class="$style.hint">
@@ -127,24 +130,23 @@ SPDX-License-Identifier: AGPL-3.0-only
 		</FormSection>
 	</div>
 
-	<template #footer>
-		<div :class="$style.footer">
-			<div :class="$style.footerLeft">
-				<span v-if="hasNavChanges" :class="$style.unsavedTag"><i class="ti ti-alert-circle"></i> 未保存の変更あり</span>
-			</div>
-			<div :class="$style.footerRight">
-				<MkButton @click="closeWithoutSave">閉じる</MkButton>
-				<MkButton primary :disabled="!hasNavChanges" @click="saveNav"><i class="ti ti-device-floppy"></i> 保存</MkButton>
-			</div>
+	<!-- 旗鯖fork: MkWindow は #footer スロットを持たないため、body 末尾に footer を配置 -->
+	<div :class="$style.footer">
+		<div :class="$style.footerLeft">
+			<span v-if="hasNavChanges" :class="$style.unsavedTag"><i class="ti ti-alert-circle"></i> 未保存の変更あり</span>
 		</div>
-	</template>
-</MkModalWindow>
+		<div :class="$style.footerRight">
+			<MkButton @click="closeWithoutSave">閉じる</MkButton>
+			<MkButton primary :disabled="!hasNavChanges" @click="saveNav"><i class="ti ti-device-floppy"></i> 保存</MkButton>
+		</div>
+	</div>
+</MkWindow>
 </template>
 
 <script lang="ts" setup>
 import { ref, computed, onMounted, onBeforeUnmount, useTemplateRef } from 'vue';
 import draggable from 'vuedraggable';
-import MkModalWindow from '@/components/MkModalWindow.vue';
+import MkWindow from '@/components/MkWindow.vue';
 import MkButton from '@/components/MkButton.vue';
 import MkSwitch from '@/components/MkSwitch.vue';
 import FormSection from '@/components/form/section.vue';
@@ -236,6 +238,11 @@ async function closeWithoutSave() {
 	}
 	emit('done', { saved: false });
 	dialog.value?.close();
+}
+// 旗鯖fork: MkWindow の close ボタン (X) やエスケープキーで閉じられた時に呼ばれる。
+function onWindowClosed() {
+	emit('done', { saved: false });
+	emit('closed');
 }
 
 // ===== 下部ナビ現在表示中判定 (グレーアウト条件) =====

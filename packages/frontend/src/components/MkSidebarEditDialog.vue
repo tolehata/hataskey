@@ -6,14 +6,18 @@ SPDX-License-Identifier: AGPL-3.0-only
 対応し、明示的な保存ボタン + 「保存しました」トースト + ドラッグ並び替えに対応する。
 -->
 <template>
-<MkModalWindow
+<!-- 旗鯖fork: MkModalWindow (背面遮断・ページ遷移で閉じる) から MkWindow (フローティング・
+     背面操作可・ドラッグ移動可) に変更。ユーザーが後ろのタイムラインを見ながら
+     並び替えを試せるように。canResize=true でサイズ変更可、閉じるボタンあり。 -->
+<MkWindow
 	ref="dialog"
-	:width="560"
-	:height="720"
-	@close="closeWithoutSave"
-	@closed="emit('closed')"
+	:initialWidth="560"
+	:initialHeight="720"
+	:canResize="true"
+	:closeButton="true"
+	@closed="onWindowClosed"
 >
-	<template #header>サイドバーの編集</template>
+	<template #header><i class="ti ti-menu-2" style="margin-right:.5em;"></i>サイドバーの編集</template>
 
 	<div class="_spacer" style="--MI_SPACER-min: 16px; --MI_SPACER-max: 24px;">
 		<div :class="$style.hint">
@@ -55,22 +59,21 @@ SPDX-License-Identifier: AGPL-3.0-only
 		</draggable>
 	</div>
 
-	<template #footer>
-		<div :class="$style.footer">
-			<MkButton :class="$style.resetBtn" @click="resetToDefault"><i class="ti ti-restore"></i> 初期値に戻す</MkButton>
-			<div :class="$style.footerRight">
-				<MkButton @click="closeWithoutSave">キャンセル</MkButton>
-				<MkButton primary :disabled="!hasChanges" @click="save"><i class="ti ti-device-floppy"></i> 保存</MkButton>
-			</div>
+	<!-- 旗鯖fork: MkWindow は #footer スロットを持たないため、body 末尾に footer を配置 -->
+	<div :class="$style.footer">
+		<MkButton :class="$style.resetBtn" @click="resetToDefault"><i class="ti ti-restore"></i> 初期値に戻す</MkButton>
+		<div :class="$style.footerRight">
+			<MkButton @click="closeWithoutSave">キャンセル</MkButton>
+			<MkButton primary :disabled="!hasChanges" @click="save"><i class="ti ti-device-floppy"></i> 保存</MkButton>
 		</div>
-	</template>
-</MkModalWindow>
+	</div>
+</MkWindow>
 </template>
 
 <script lang="ts" setup>
 import { ref, computed, useTemplateRef } from 'vue';
 import draggable from 'vuedraggable';
-import MkModalWindow from '@/components/MkModalWindow.vue';
+import MkWindow from '@/components/MkWindow.vue';
 import MkButton from '@/components/MkButton.vue';
 import MkSwitch from '@/components/MkSwitch.vue';
 import { prefer } from '@/preferences.js';
@@ -196,6 +199,13 @@ async function closeWithoutSave() {
 	}
 	emit('done', { saved: false });
 	dialog.value?.close();
+}
+// 旗鯖fork: MkWindow の close ボタン (X) やエスケープキーで閉じられた時に呼ばれる。
+//   MkWindow は「開いたまま裏で作業できる」性質のため、閉じる際の未保存確認は行わない
+//   (ユーザーは意識的に閉じる)。done(saved: false) だけ emit する。
+function onWindowClosed() {
+	emit('done', { saved: false });
+	emit('closed');
 }
 </script>
 

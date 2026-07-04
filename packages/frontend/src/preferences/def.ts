@@ -948,6 +948,17 @@ export const PREF_DEF = definePreferences({
 	'simpleUi.showLegacyChannelPostButton': {
 		default: false,
 	},
+	// 旗鯖fork: タイムラインから bot ユーザーの投稿を非表示にするか。
+	// bot ノイズが多いユーザー向け。例外は botAllowlist で個別に許可する。
+	// default false = すべての bot ノートを表示 (従来通り)。
+	'simpleUi.hideBotsInTimeline': {
+		default: false,
+	},
+	// 旗鯖fork: hideBotsInTimeline が true のとき、それでも表示を許可する bot の userId 配列。
+	// 例外リスト。空配列は「すべての bot を非表示」を意味する。
+	'simpleUi.botAllowlist': {
+		default: [] as string[],
+	},
 	// 旗鯖fork: デッキUIの初回チュートリアルを表示済みか(端末ローカル)
 	'simpleUi.deckTutorialDone': {
 		default: false,

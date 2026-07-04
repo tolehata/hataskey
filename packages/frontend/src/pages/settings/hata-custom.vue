@@ -67,6 +67,39 @@ SPDX-License-Identifier: AGPL-3.0-only
                 <template #caption>ONにするとユーザーパネルを経由せず、直接プロフィールページに遷移します。Hatasaba UIでは上部の戻るボタンでタイムラインに戻れます。</template>
             </MkSwitch>
         </FormSection>
+        <!-- 旗鯖fork: bot ユーザーの投稿をタイムラインから非表示にする + 許可アカウント指定 -->
+        <FormSection>
+            <template #label>Bot 投稿の非表示</template>
+            <MkSwitch v-model="hideBotsInTimeline">
+                <template #label>bot ユーザーの投稿をタイムラインに表示しない</template>
+                <template #caption>ノイズの多い bot ユーザー (自動投稿アカウント) の投稿を、タイムライン上で非表示にします。通知ページや個別ノートページでは表示されます。<b>例外的に表示を許可したい bot</b> は下のリストで指定できます。</template>
+            </MkSwitch>
+            <template v-if="hideBotsInTimeline">
+                <div :class="$style.botAllowlistHead" style="margin-top:12px;">
+                    <div style="font-size:.85em;opacity:.7;flex:1;">
+                        例外で表示を許可する bot アカウント (<b>{{ botAllowlistUsers.length }}</b> 件)
+                    </div>
+                    <button class="_buttonPrimary" :class="$style.botAllowlistAdd" @click="addBotAllowlistUser">
+                        <i class="ti ti-plus"></i> 追加
+                    </button>
+                </div>
+                <div v-if="botAllowlistUsers.length === 0" :class="$style.botAllowlistEmpty">
+                    <i class="ti ti-user-off" style="margin-right:6px;"></i>許可されたアカウントはありません。すべての bot が非表示になります。
+                </div>
+                <div v-else :class="$style.botAllowlistList">
+                    <div v-for="user in botAllowlistUsers" :key="user.id" :class="$style.botAllowlistItem">
+                        <MkAvatar :class="$style.botAllowlistAvatar" :user="user" link preview />
+                        <div :class="$style.botAllowlistName">
+                            <MkUserName :user="user" />
+                            <div :class="$style.botAllowlistAcct">@{{ user.username }}<span v-if="user.host">@{{ user.host }}</span></div>
+                        </div>
+                        <button :class="$style.botAllowlistRemove" @click="removeBotAllowlistUser(user.id)" v-tooltip="'リストから削除'">
+                            <i class="ti ti-x"></i>
+                        </button>
+                    </div>
+                </div>
+            </template>
+        </FormSection>
         <!-- 旗鯖fork: 旧アクセシビリティタブから移動 -->
         <FormSection>
             <template #label>投稿フォームの枠色（投稿範囲別）</template>
@@ -172,50 +205,19 @@ SPDX-License-Identifier: AGPL-3.0-only
         </FormSection>
         </template>
 
-        <!-- ===== HatasabaUI 2 (新設) ===== -->
+        <!-- ===== HatasabaUI 2 =====
+             旗鯖fork: 全項目を MkHatasabaUi2EditWindow (フローティングウィンドウ) に集約。
+             設定を開きっぱなしで背面の UI を見ながらリアルタイムに調整、明示保存で永続化。 -->
         <template v-if="activeCat === 'glassUi'">
         <FormSection first>
-            <template #label>HatasabaUI 2</template>
-            <div style="font-size:.85em;opacity:.8;margin-bottom:12px;line-height:1.7;">
-                <b>HatasabaUI 2</b> は、HatasabaUI 全体のデザインの統一をしつつ、使いやすく目に優しい UI デザインを目指して実装されています。
-                <br>初回はデフォルトで有効です。既存の HatasabaUI に戻したい場合はここでオフにできます。<b>この端末にだけ</b>保存されます。
+            <template #label>HatasabaUI 2 の設定</template>
+            <div style="font-size:.85em;opacity:.7;margin-bottom:12px;line-height:1.6;">
+                HatasabaUI 2 の有効化・吹き出しデザイン・背景ヘッダー画像のぼかし・<b>ガラス面の透過率</b>をまとめて設定します。<br>
+                ウィンドウは<b>開いたまま裏の HatasabaUI をリアルタイムに確認</b>できます。編集は<b>「保存」ボタンを押すまで永続化されません</b>。
             </div>
-            <MkSwitch v-model="glassUi">
-                <template #label>HatasabaUI 2 を有効にする</template>
-                <template #caption>ノート・プロフィール・リアクション・タブを、統一された半透明＋ぼかしのデザインで表示します。「ぼかし効果を減らす」設定を有効にしている場合は不透明な面にフォールバックします。切替後は表示が乱れる場合があるので、必要ならページを再読み込みしてください。</template>
-            </MkSwitch>
-            <MkSwitch v-if="glassUi" v-model="glassUiBubble" style="margin-top: 16px;">
-                <template #label>吹き出しデザインを表示する</template>
-                <template #caption>HatasabaUI 2 のノートを、吹き出し（本文の枠＋＜の口）付きの表示にします。既定ではオフ（吹き出しなし・外側の角丸カードだけのすっきりした表示）です。<b>この端末にだけ</b>保存されます。</template>
-            </MkSwitch>
-        </FormSection>
-        <FormSection>
-            <template #label>背景ヘッダー画像のぼかし</template>
-            <div v-if="!glassUi" style="font-size:.82em;color:var(--MI_THEME-warn);margin-bottom:10px;padding:8px 10px;border:1px solid var(--MI_THEME-divider);border-radius:8px;background:var(--MI_THEME-panel);">
-                <i class="ti ti-info-circle" style="margin-right:4px;"></i>これらの設定は HatasabaUI 2 が有効なときのみ機能します。上のトグルを ON にしてください。
-            </div>
-            <MkSwitch v-model="normalNoBannerBg" :disabled="!glassUi">
-                <template #label>通常タイムラインの背景ヘッダー画像のぼかしを使用しない</template>
-                <template #caption>HatasabaUI 2 有効時、通常タイムライン背景にプロフィールのヘッダー画像のぼかしを敷きません。単色背景となり、描画負荷が軽減されます。</template>
-            </MkSwitch>
-            <MkSwitch v-model="profileNoBannerBg" :disabled="!glassUi">
-                <template #label>プロフィールページのヘッダー画像のぼかしを使用しない</template>
-                <template #caption>HatasabaUI 2 有効時、プロフィールカードの背後に敷かれるヘッダー画像のぼかしレイヤを描画しません。プロフィールカードは不透明パネルに戻り、視認性が上がります。</template>
-            </MkSwitch>
-        </FormSection>
-        <FormSection>
-            <template #label>ノートカードの透過率</template>
-            <div v-if="!glassUi" style="font-size:.82em;color:var(--MI_THEME-warn);margin-bottom:10px;padding:8px 10px;border:1px solid var(--MI_THEME-divider);border-radius:8px;background:var(--MI_THEME-panel);">
-                <i class="ti ti-info-circle" style="margin-right:4px;"></i>HatasabaUI 2 が有効なときのみ機能します。
-            </div>
-            <div style="font-size:.85em;opacity:.75;margin-bottom:10px;line-height:1.55;">
-                HatasabaUI 2 表示中のタイムラインの<b>ノートカード面の不透明度</b>を調整します。数字が大きいほど不透明パネルに近づき、小さいほど透け感が強くなります。既定は 55。
-            </div>
-            <div :class="$style.opacityRow">
-                <input type="range" min="0" max="100" step="1" v-model.number="glassUiCardOpacity" :disabled="!glassUi" :class="$style.opacityRange" />
-                <div :class="$style.opacityValue">{{ glassUiCardOpacity }}%</div>
-                <button :class="$style.opacityResetBtn" :disabled="!glassUi || glassUiCardOpacity === 55" @click="glassUiCardOpacity = 55" v-tooltip="'既定値 (55%) に戻す'"><i class="ti ti-restore"></i></button>
-            </div>
+            <button class="_buttonPrimary" @click="openHatasabaUi2EditWindow" style="padding:10px 20px;font-weight:bold;">
+                <i class="ti ti-sparkles"></i> HatasabaUI 2 の設定を開く
+            </button>
         </FormSection>
         </template>
 
@@ -550,6 +552,17 @@ const openHatasabaUiEditDialog = async () => {
         { closed: () => dispose() },
     );
 };
+// 旗鯖fork: HatasabaUI 2 の設定を独立ウィンドウ (MkHatasabaUi2EditWindow) で開く。
+//   有効化トグル・吹き出し・背景ぼかし・透過率スライダーを 1 ウィンドウに集約。
+//   MkWindow ベースなので開いたまま裏の HatasabaUI をリアルタイム確認可能。
+const openHatasabaUi2EditWindow = async () => {
+    const { defineAsyncComponent: dac } = await import('vue');
+    const { dispose } = os.popup(
+        dac(() => import('@/components/MkHatasabaUi2EditWindow.vue')),
+        {},
+        { closed: () => dispose() },
+    );
+};
 const isExternalLinked = computed(() => prefer.s['external.enabled'] && prefer.s['external.token'] != null);
 const hiddenReactionCount = computed(() => { hiddenReactionsVersion.value; return getHiddenReactions().length; });
 // 旗鯖fork: simpleUi タブに直接あった topNav/bottomNav の ref / saveTopNav / saveBottomNav /
@@ -563,6 +576,38 @@ const deckNoBannerBg = prefer.model('simpleUi.deckNoBannerBg');
 // 旗鯖fork: 通常表示(デッキUIではないタイムライン)用のヘッダー画像ぼかし無効化トグル
 const normalNoBannerBg = prefer.model('simpleUi.normalNoBannerBg');
 const directProfile = prefer.model('simpleUi.directProfile');
+// 旗鯖fork: bot ユーザーの投稿をタイムラインから非表示 + 許可アカウントリスト
+const hideBotsInTimeline = prefer.model('simpleUi.hideBotsInTimeline');
+const botAllowlist = prefer.model('simpleUi.botAllowlist');
+// 表示用: allowlist の userId に対応する user object を並べる (キャッシュを持つ)
+const botAllowlistUsers = ref<any[]>([]);
+async function refreshBotAllowlistUsers() {
+    const ids = (botAllowlist.value as string[]) ?? [];
+    if (ids.length === 0) { botAllowlistUsers.value = []; return; }
+    try {
+        const users = await misskeyApi('users/show', { userIds: ids });
+        botAllowlistUsers.value = users as any[];
+    } catch {
+        botAllowlistUsers.value = [];
+    }
+}
+watch(botAllowlist, refreshBotAllowlistUsers, { immediate: true });
+async function addBotAllowlistUser() {
+    // os.selectUser でユーザーを選ばせて、その id を allowlist に追加する
+    const { canceled, result } = await os.selectUser({});
+    if (canceled || !result) return;
+    const cur = ((botAllowlist.value as string[]) ?? []).slice();
+    if (cur.includes(result.id)) {
+        os.alert({ type: 'info', text: 'このアカウントは既に許可リストに登録されています。' });
+        return;
+    }
+    cur.push(result.id);
+    botAllowlist.value = cur;
+}
+function removeBotAllowlistUser(id: string) {
+    const cur = ((botAllowlist.value as string[]) ?? []).filter(x => x !== id);
+    botAllowlist.value = cur;
+}
 // 旗鯖fork: HatasabaUI 追加ページヘッダー表示
 const showPageHeader = prefer.model('simpleUi.showPageHeader');
 const noteSpacing = prefer.model('simpleUi.noteSpacing');
@@ -579,8 +624,30 @@ const classicNoteSpacing = prefer.model('simpleUi.classicNoteSpacing');
 const deckLatestNoteText = prefer.model('simpleUi.deckLatestNoteText');
 // 旗鯖fork(HatasabaUI 2): プロフィールぼかしOFF
 const profileNoBannerBg = prefer.model('simpleUi.profileNoBannerBg');
-// 旗鯖fork(HatasabaUI 2): ノートカード面の透過率 (0-100 %)
-const glassUiCardOpacity = prefer.model('simpleUi.glassUiCardOpacity');
+// 旗鯖fork(HatasabaUI 2): ノートカード/ナビの透過率 (0-100 %)。
+//   ローカル ref で v-model 表示、prefer.commit は `@change` (release) だけで発火させる。
+//   `@input` 経由や、mount 時の任意タイミングで setter が誤呼び出しされて既定値 55 へ
+//   リセットされる事象が発生していたため、コミット元を release 一箇所に絞る。
+//   prefer 側から値が変わった時 (別セッション同期・ロード直後 等) はローカル ref を追随させる。
+const glassUiCardOpacity = ref<number>((prefer.r['simpleUi.glassUiCardOpacity'].value as number) ?? 55);
+watch(() => prefer.r['simpleUi.glassUiCardOpacity'].value, v => {
+    if (typeof v === 'number' && Number.isFinite(v)) glassUiCardOpacity.value = v;
+});
+function commitOpacity(v: number) {
+    if (!Number.isFinite(v)) return; // 無効値 (NaN 等) は無視 (55 に戻す等の副作用を出さない)
+    const n = Math.max(0, Math.min(100, Math.round(v)));
+    if (prefer.r['simpleUi.glassUiCardOpacity'].value === n) return; // 変化なしなら skip
+    prefer.commit('simpleUi.glassUiCardOpacity', n);
+}
+// ドラッグ中も視覚フィードバックがほしいので、ローカル ref が変わったら即 CSS 変数を書き換える。
+// commit しないので永続化されないが、release 時に @change → commitOpacity → boot の watch で
+// 同じ値が改めて書き込まれるだけなので二重更新のコストは無視できる。
+watch(glassUiCardOpacity, v => {
+    if (typeof v === 'number' && Number.isFinite(v)) {
+        const n = Math.max(0, Math.min(100, Math.round(v)));
+        document.documentElement.style.setProperty('--htk-glass-card-opacity', n + '%');
+    }
+});
 // 旗鯖fork: 従来のチャンネル投稿ボタン (カラムヘッダ右のペン+ボタン + 三点メニュー項目) を表示するか
 const showLegacyChannelPostButton = prefer.model('simpleUi.showLegacyChannelPostButton');
 // 旗鯖fork(HatasabaUI 2): 端末ローカルのグラス系設定 (ref + setter を computed 経由で v-model 化)
@@ -680,6 +747,34 @@ definePage({ title: '旗鯖独自機能', icon: 'ti ti-flag' });
 
 <style lang="scss" module>
 .linkedBadge { color: var(--MI_THEME-success); font-size: 0.9em; }
+
+/* 旗鯖fork: bot 許可アカウントリスト */
+.botAllowlistHead {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
+}
+.botAllowlistAdd {
+    padding: 6px 14px; font-size: .85em; border-radius: 999px; white-space: nowrap;
+    > i { margin-right: 4px; }
+}
+.botAllowlistEmpty {
+    padding: 10px 12px; border: 1px dashed var(--MI_THEME-divider); border-radius: 10px;
+    font-size: .85em; opacity: .7; text-align: center;
+}
+.botAllowlistList { display: flex; flex-direction: column; gap: 6px; }
+.botAllowlistItem {
+    display: flex; align-items: center; gap: 10px; padding: 8px 10px;
+    border: 1px solid var(--MI_THEME-divider); border-radius: 10px; background: var(--MI_THEME-panel);
+}
+.botAllowlistAvatar { flex-shrink: 0; width: 32px; height: 32px; border-radius: 50%; }
+.botAllowlistName { flex: 1; min-width: 0; overflow: hidden; }
+.botAllowlistAcct { font-size: .8em; opacity: .6; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.botAllowlistRemove {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 28px; height: 28px; border: none; background: transparent; color: var(--MI_THEME-fg);
+    border-radius: 999px; cursor: pointer; flex-shrink: 0; opacity: .55;
+    transition: background .12s, opacity .12s;
+    &:hover { opacity: 1; background: var(--MI_THEME-accentedBg); }
+}
 .countBadge { opacity: 0.7; font-size: 0.9em; }
 .catTabs { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px; }
 .catTab {
