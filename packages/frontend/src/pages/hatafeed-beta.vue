@@ -5,7 +5,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 <template>
 <MkStickyContainer>
-	<template #header><MkPageHeader :actions="headerActions" :title="'ベータ機能を試す'" :icon="'ti ti-flask'"/></template>
+	<template #header><MkPageHeader :title="'ベータ機能を試す'" :icon="'ti ti-flask'"/></template>
 	<MkSpacer :contentMax="800">
 		<div :class="$style.root">
 			<div :class="$style.hero">
@@ -76,11 +76,8 @@ watch(hideMutedReactions, async (newVal) => {
 	}
 });
 
-const headerActions = computed(() => [{
-	icon: 'ti ti-arrow-left',
-	text: 'HataFeedへ',
-	handler: () => { router.push('/hatafeed'); },
-}]);
+// 旗鯖fork: 左上の戻るボタン(MkPageHeader 標準)があるので、右上に重複する
+// 戻る action は置かない(帯が下の UI に被って邪魔になるため廃止)。
 
 definePage(() => ({
 	title: 'ベータ機能を試す',
