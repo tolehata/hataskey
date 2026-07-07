@@ -87,6 +87,19 @@ export const statusLabel: Record<string, string> = {
 };
 export const statusKeys = ['open', 'planned', 'inProgress', 'resolved', 'wontfix', 'unknown', 'closed'];
 
+// 旗鯖fork(デザイン改修 §2.2): ステータスのアイコン(Tabler)。リスト行の先頭ドットアイコン・
+// 詳細ヘッダーの塗りピルで共用する。色は HfStatusPill 側で data-status ベースに当てる
+// (CSS Module は動的キーを解決できないため、意味色は現行コードの値を data 属性で踏襲)。
+export const statusIcon: Record<string, string> = {
+	open: 'ti-circle-dot',
+	planned: 'ti-calendar-time',
+	inProgress: 'ti-progress',
+	resolved: 'ti-circle-check',
+	wontfix: 'ti-circle-minus',
+	unknown: 'ti-help-circle',
+	closed: 'ti-lock',
+};
+
 export const priorityLabel: Record<string, string> = {
 	low: '低',
 	normal: '通常',
@@ -119,6 +132,25 @@ export const notifTypeLabel: Record<string, string> = {
 	emojiApproved: '絵文字承認',
 	emojiRejected: '絵文字却下',
 };
+
+// 旗鯖fork(デザイン改修 §2.4): アバターのフォールバック色。既存アバター画像が無いときだけ
+// 頭文字1字 + この淡色をユーザー毎に安定して割り当てる(HfAvatar で使用)。
+export const HF_AVATAR_COLORS = ['#a9c4e8', '#f2b3c6', '#a8d8b9', '#c9b8e8', '#f5d491'];
+
+// 旗鯖fork: seed 文字列(userId 等)から HF_AVATAR_COLORS のインデックスを安定的に導く。
+//   同じユーザーには常に同じ色が付くよう、単純な文字コード総和のハッシュを使う。
+export function hfAvatarColor(seed: string | null | undefined): string {
+	if (!seed) return HF_AVATAR_COLORS[0];
+	let h = 0;
+	for (let i = 0; i < seed.length; i++) h = (h + seed.charCodeAt(i)) % HF_AVATAR_COLORS.length;
+	return HF_AVATAR_COLORS[h];
+}
+
+// 旗鯖fork: 表示名/ユーザー名の先頭1字(頭文字アバター用)。無ければ「?」。
+export function hfInitial(user: { name?: string | null; username?: string | null } | null | undefined): string {
+	const s = (user?.name ?? user?.username ?? '').trim();
+	return s.length > 0 ? [...s][0] : '?';
+}
 
 // 通知タイプ → アイコン。
 export function notifIcon(type: string): string {
