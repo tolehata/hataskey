@@ -36,6 +36,8 @@ export const paramDef = {
 		projectId: { type: 'string', format: 'misskey:id', nullable: true },
 		category: { type: 'string', nullable: true },
 		status: { type: 'string', nullable: true },
+		// 旗鯖fork(2a): 作成者で絞り込む。
+		createdById: { type: 'string', format: 'misskey:id', nullable: true },
 		// 旗鯖fork: 検索。タイトル・説明・会話(コメント本文)を横断して絞り込む。
 		query: { type: 'string', nullable: true },
 		includeClosed: { type: 'boolean', default: false },
@@ -78,6 +80,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 			}
 			if (ps.category != null) query.andWhere('issue.category = :category', { category: ps.category });
 			if (ps.status != null) query.andWhere('issue.status = :status', { status: ps.status });
+			if (ps.createdById != null) query.andWhere('issue.createdById = :createdById', { createdById: ps.createdById });
 			if (!ps.includeClosed) query.andWhere('issue.closed = FALSE');
 
 			// 旗鯖fork: セキュリティ対応(security)のイシューはスタッフ(管理者/モデ)のみ閲覧可。

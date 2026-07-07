@@ -86,12 +86,25 @@ export class FeedbackEntityService {
 			for (const r of rows) agreedIds.add(r.feedbackId);
 		}
 
-		// 2. createdBy / closedBy のユーザーをまとめて pack。
+		// 2. 各 Issue の対処担当(委任モデレーター)を 1 クエリでまとめて取得し、issueId ごとに集約。
+		//    一覧のメタ行に「対処担当」を出すため(2a)。N+1 を避けるため In() で一括。
+		const modRows = await this.feedbackIssueModeratorsRepository.findBy({
+			feedbackId: In(issues.map(i => i.id)),
+		});
+		const assigneeIdsByIssue = new Map<string, MiUser['id'][]>();
+		for (const r of modRows) {
+			const arr = assigneeIdsByIssue.get(r.feedbackId) ?? [];
+			arr.push(r.userId);
+			assigneeIdsByIssue.set(r.feedbackId, arr);
+		}
+
+		// 3. createdBy / closedBy / 対処担当 のユーザーをまとめて pack。
 		const userIds = new Set<MiUser['id']>();
 		for (const i of issues) {
 			if (i.createdById) userIds.add(i.createdById);
 			if (i.closedById) userIds.add(i.closedById);
 		}
+		for (const ids of assigneeIdsByIssue.values()) for (const uid of ids) userIds.add(uid);
 		const packedUsersMap = new Map<MiUser['id'], Packed<'UserLite'>>();
 		if (userIds.size > 0) {
 			const packed = await this.userEntityService.packMany([...userIds]);
@@ -129,6 +142,10 @@ export class FeedbackEntityService {
 			code: issue.code ?? null,
 			isAgreed: agreedIds.has(issue.id),
 			createdBy: issue.createdById ? (packedUsersMap.get(issue.createdById) ?? null) : null,
+			// 旗鯖fork(2a): 対処担当(委任モデレーター)。一覧メタ行の「対処担当」表示に使う。
+			assignees: (assigneeIdsByIssue.get(issue.id) ?? [])
+				.map(uid => packedUsersMap.get(uid))
+				.filter((x): x is Packed<'UserLite'> => x != null),
 			files: issue.fileIds.length > 0
 				? issue.fileIds.map(fid => packedFilesMap.get(fid)).filter(x => x != null)
 				: [],
