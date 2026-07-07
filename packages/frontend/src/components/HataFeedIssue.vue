@@ -1,11 +1,22 @@
 <!--
 SPDX-FileCopyrightText: Tolehata and hatasaba-project
 SPDX-License-Identifier: AGPL-3.0-only
-旗鯖fork: HataFeed の Issue 詳細(会話・賛同・コメントリアクション・スタッフ操作)。
+旗鯖fork(HataFeed 2e): Issue 詳細。タイムライン(会話) + メタ情報サイドバー。
+  - パンくず / タイトル(+番号コピー) / 塗りステータスピル + メタ行。
+  - 本体 grid 1fr 280px。左=タイムライン(縦接続線・ロールバッジ・MFM・リアクション・引用返信・入力欄)、
+    右=メタサイドバー(ステータス/カテゴリ・優先度/対処担当/参加者/賛同/スタッフ操作)。
+  - 権限(canManage/isStaff/isAdmin)でメタ操作・スタッフ操作の可否を出し分け。
+  ※コメント著者の「スタッフ」判定は packed user に権限情報が無いため、この issue の
+    対処担当(moderators)を shield バッジで代替する(真のスタッフバッジは後日 backend 拡張)。
 -->
 <template>
 <div :class="$style.root">
-	<button :class="$style.back" @click="$emit('back')"><i class="ti ti-arrow-left"></i> 一覧へ</button>
+	<!-- パンくず -->
+	<div :class="$style.crumbs">
+		<button :class="$style.crumbLink" @click="$emit('back')">イシュー</button>
+		<span :class="$style.crumbSep">/</span>
+		<span :class="$style.crumbNo">#{{ issue?.number ?? '' }}</span>
+	</div>
 
 	<div v-if="loading" :class="$style.center">読み込み中…</div>
 	<div v-else-if="loadError" :class="$style.errorBox">
@@ -15,145 +26,181 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<MkButton rounded primary @click="$emit('back')"><i class="ti ti-arrow-left"></i> 一覧へ戻る</MkButton>
 	</div>
 	<template v-else-if="issue">
-		<!-- ヘッダ -->
-		<div :class="$style.head">
-			<div :class="$style.badges">
-				<span class="hfBadge" :data-cat="issue.category">{{ categoryLabel[issue.category] ?? issue.category }}</span>
-				<span class="hfBadge" :data-status="issue.status">{{ statusLabel[issue.status] ?? issue.status }}</span>
-				<span v-if="issue.pinned" :class="$style.pin"><i class="ti ti-pin"></i></span>
-				<span v-if="issue.closed" :class="$style.closedTag"><i class="ti ti-lock"></i> クローズ</span>
-			</div>
-			<div :class="$style.titleRow">
-				<h2 :class="$style.title"><span :class="$style.issueNo">#{{ issue.number }}</span> {{ issue.title }}</h2>
-				<!-- 旗鯖fork: タイトルをクリップボードにコピー (報告共有・引用用途) -->
-				<button :class="$style.copyBtn" v-tooltip="'タイトルをコピー'" @click="copyText(issue.title, 'タイトル')"><i class="ti ti-copy"></i></button>
-				<!-- 旗鯖fork: 会話に参加中の人のアイコンをタイトル横に並べる -->
-				<div v-if="participants.length" :class="$style.participants" title="会話に参加中">
-					<MkAvatar v-for="p in participants" :key="p.id" :class="$style.partAvatar" :user="p"/>
-				</div>
-			</div>
-			<div :class="$style.sub">
-				<MkAvatar v-if="issue.createdBy" :class="$style.avatarSm" :user="issue.createdBy"/>
-				<MkUserName v-if="issue.createdBy" :user="issue.createdBy"/>
-				<MkTime :time="issue.createdAt"/>
-				<!-- 旗鯖fork: この Issue の対処を委任されたユーザー(委任者) -->
-				<template v-if="moderators.length">
-					<span :class="$style.modSep">・</span>
-					<i class="ti ti-shield-check" :class="$style.modIcon"></i>
-					<span :class="$style.modLabel">対処担当:</span>
-					<span v-for="m in moderators" :key="m.id" :class="$style.modUser">
-						<MkAvatar :class="$style.avatarSm" :user="m"/><MkUserName :user="m"/>
-					</span>
-				</template>
-			</div>
-
-			<!-- 旗鯖fork: 補足情報セクション。本文(Mfm レンダリング済み) + 末尾にコピーボタン -->
-			<div v-if="issue.description" :class="$style.descWrap">
-				<div :class="$style.desc"><Mfm :text="linkifyRefs(issue.description)"/></div>
-				<button :class="$style.descCopyBtn" v-tooltip="'補足情報をコピー'" @click="copyText(issue.description, '補足情報')"><i class="ti ti-copy"></i> コピー</button>
-			</div>
-
-			<MkMediaList v-if="issue.files && issue.files.length" :class="$style.media" :mediaList="issue.files"/>
-
-			<!-- 旗鯖fork: 提出されたコード(コピーボタン付き) -->
-			<div v-if="issue.code" :class="$style.codeBlock">
-				<div :class="$style.codeHead">
-					<span><i class="ti ti-code"></i> 提出されたコード</span>
-					<button :class="$style.codeCopyBtn" v-tooltip="'コードをコピー'" @click="copyText(issue.code, 'コード')"><i class="ti ti-copy"></i> コピー</button>
-				</div>
-				<pre :class="$style.codePre"><code>{{ issue.code }}</code></pre>
-			</div>
-
-			<div :class="$style.actions">
-				<MkButton :class="$style.agreeBtn" rounded :primary="issue.isAgreed" @click="toggleAgree">
-					<i :class="issue.isAgreed ? 'ti ti-heart-filled' : 'ti ti-heart'"></i> {{ issue.agreementsCount }}
-				</MkButton>
-			</div>
+		<!-- タイトル + 番号コピー -->
+		<div :class="$style.titleRow">
+			<h1 :class="$style.title">{{ issue.title }} <span :class="$style.titleNo">#{{ issue.number }}</span></h1>
+			<button :class="$style.copyBtn" v-tooltip="'タイトルをコピー'" @click="copyText(issue.title, 'タイトル')"><i class="ti ti-copy"></i></button>
 		</div>
 
-		<!-- スタッフ操作 -->
-		<div v-if="canManage" :class="$style.staff">
-			<div :class="$style.staffHead"><i class="ti ti-shield"></i> スタッフ操作</div>
-			<div :class="$style.staffRow">
-				<select v-model="editStatus" :class="$style.select" @change="changeStatus">
-					<option v-for="s in statusKeys" :key="s" :value="s">{{ statusLabel[s] }}</option>
-				</select>
-				<select v-model="editPriority" :class="$style.select" @change="changePriority">
-					<option value="low">優先度: 低</option>
-					<option value="normal">優先度: 通常</option>
-					<option value="high">優先度: 高</option>
-				</select>
-				<MkButton rounded small @click="togglePin">{{ issue.pinned ? 'ピン解除' : 'ピン留め' }}</MkButton>
-				<MkButton rounded small :danger="!issue.closed" :primary="issue.closed" @click="toggleClose">
-					{{ issue.closed ? '再オープン' : 'クローズ' }}
-				</MkButton>
-				<MkButton v-if="isAdmin" rounded small @click="grantModerator"><i class="ti ti-user-plus"></i> 対処権限を付与</MkButton>
-				<MkButton v-if="isStaff" rounded small danger @click="removeIssue"><i class="ti ti-trash"></i> 削除</MkButton>
-			</div>
+		<!-- メタ行 -->
+		<div :class="$style.metaRow">
+			<HfStatusPill :status="issue.status" variant="filled"/>
+			<HfCategoryBadge :category="issue.category"/>
+			<span v-if="issue.pinned" :class="$style.metaPin"><i class="ti ti-pin"></i> ピン留め</span>
+			<span :class="$style.metaText">
+				<template v-if="issue.createdBy"><MkUserName :class="$style.metaAuthor" :user="issue.createdBy"/> が<MkTime :time="issue.createdAt" mode="relative"/>に作成</template>
+				・ コメント{{ issue.commentsCount ?? comments.length }}件 ・ 参加者{{ participants.length }}人
+			</span>
 		</div>
 
-		<!-- 会話 -->
-		<div :class="$style.convo">
-			<div :class="$style.convoHead"><i class="ti ti-messages"></i> 会話</div>
-			<div v-if="comments.length === 0" :class="$style.emptyMini">まだコメントはありません。</div>
-			<div v-for="c in comments" :key="c.id" :ref="el => setCommentRef(c.id, el)" :class="[$style.comment, c.mark === 'important' && $style.commentImportant, flashCommentId === c.id && $style.commentFlash]">
-				<MkAvatar :class="$style.avatar" :user="c.user"/>
-				<div :class="$style.cBody">
-					<div :class="$style.cHead">
-						<MkUserName :user="c.user"/>
-						<MkTime :class="$style.cTime" :time="c.createdAt"/>
-						<span v-if="c.mark === 'important'" :class="[$style.cMark, $style.cMarkImportant]"><i class="ti ti-alert-triangle-filled"></i> 重要</span>
-						<span v-if="c.mark === 'question'" :class="[$style.cMark, $style.cMarkQuestion]"><i class="ti ti-help-circle-filled"></i> ?</span>
-						<button :class="$style.cMenuBtn" @click="openCommentMenu(c, $event)"><i class="ti ti-dots"></i></button>
+		<!-- 本体グリッド -->
+		<div :class="$style.gridCt">
+		<div :class="$style.grid">
+			<!-- 左: タイムライン -->
+			<div :class="$style.timeline">
+				<div :class="$style.tlLine"></div>
+
+				<!-- 最初のカード = 原文(作成者の投稿) -->
+				<div :class="$style.tlRow">
+					<HfAvatar :user="issue.createdBy" :size="36" :class="$style.tlAvatar"/>
+					<div :class="$style.card">
+						<div :class="[$style.cardHead, $style.cardHeadAuthor]">
+							<MkUserName v-if="issue.createdBy" :class="$style.cardName" :user="issue.createdBy"/>
+							<MkTime :class="$style.cardTime" :time="issue.createdAt" mode="relative"/>
+							<span :class="[$style.roleBadge, $style.roleAuthor]">作成者</span>
+							<button :class="$style.copyMini" v-tooltip="'補足情報をコピー'" @click="copyText(issue.description, '補足情報')"><i class="ti ti-copy"></i></button>
+						</div>
+						<div v-if="issue.description" :class="$style.cardText"><Mfm :text="linkifyRefs(issue.description)"/></div>
+						<MkMediaList v-if="issue.files && issue.files.length" :class="$style.cardMedia" :mediaList="issue.files"/>
+						<div v-if="issue.code" :class="$style.codeBlock">
+							<div :class="$style.codeHead">
+								<span><i class="ti ti-code"></i> 提出されたコード</span>
+								<button :class="$style.codeCopyBtn" v-tooltip="'コードをコピー'" @click="copyText(issue.code, 'コード')"><i class="ti ti-copy"></i> コピー</button>
+							</div>
+							<pre :class="$style.codePre"><code>{{ issue.code }}</code></pre>
+						</div>
 					</div>
-					<!-- 旗鯖fork: 返信先の表示 -->
-					<button v-if="c.replyTo" :class="$style.replyRef" @click="scrollToComment(c.replyTo.id)">
-						<i class="ti ti-arrow-back-up"></i>
-						<MkUserName :class="$style.replyRefUser" :user="c.replyTo.user"/>
-						<span :class="$style.replyRefText">{{ c.replyTo.text }}</span>
-					</button>
-					<div :class="$style.cText"><Mfm :text="linkifyRefs(c.text)" :author="c.user"/></div>
-					<!-- 旗鯖fork: 会話メディアは小さくサムネイル表示(クリックでMisskeyのメディアプレビュー) -->
-					<MkMediaList v-if="c.files && c.files.length" :class="$style.cMedia" :mediaList="c.files"/>
-					<div :class="$style.reactions">
-						<button
-							v-for="(count, emoji) in c.reactions"
-							:key="emoji"
-							:class="[$style.reaction, c.myReaction === emoji && $style.reactionMine]"
-							@click="react(c, emoji)"
-						>
-							<!-- 旗鯖fork: MkEmoji は Unicode 絵文字専用のため、:shortcode: のカスタム絵文字が
-							     来るとショートコード文字列+割れた画像で表示されてしまっていた問題を修正。
-							     MkReactionIcon は内部で :から始まれば MkCustomEmoji、それ以外は MkEmoji に分岐する。 -->
-							<MkReactionIcon :reaction="emoji"/> <span>{{ count }}</span>
+				</div>
+
+				<!-- コメント -->
+				<div v-for="c in comments" :key="c.id" :ref="el => setCommentRef(c.id, el)" :class="$style.tlRow">
+					<HfAvatar :user="c.user" :size="36" :class="$style.tlAvatar"/>
+					<div :class="[$style.card, c.mark === 'important' && $style.cardImportant, flashCommentId === c.id && $style.cardFlash]">
+						<div :class="$style.cardHead">
+							<MkUserName :class="$style.cardName" :user="c.user"/>
+							<MkTime :class="$style.cardTime" :time="c.createdAt" mode="relative"/>
+							<span v-if="issue.createdBy && c.user?.id === issue.createdBy.id" :class="[$style.roleBadge, $style.roleAuthor]">作成者</span>
+							<span v-else-if="isModeratorUser(c.user?.id)" :class="[$style.roleBadge, $style.roleStaff]"><i class="ti ti-shield-check"></i> 対処担当</span>
+							<span v-if="c.mark === 'important'" :class="[$style.roleBadge, $style.roleImportant]"><i class="ti ti-alert-triangle-filled"></i> 重要</span>
+							<span v-if="c.mark === 'question'" :class="[$style.roleBadge, $style.roleQuestion]"><i class="ti ti-help-circle-filled"></i> ?</span>
+							<button :class="$style.cardMenu" @click="openCommentMenu(c, $event)"><i class="ti ti-dots"></i></button>
+						</div>
+						<button v-if="c.replyTo" :class="$style.replyRef" @click="scrollToComment(c.replyTo.id)">
+							<i class="ti ti-arrow-back-up"></i>
+							<MkUserName :class="$style.replyRefUser" :user="c.replyTo.user"/>
+							<span :class="$style.replyRefText">{{ c.replyTo.text }}</span>
 						</button>
-						<button :class="$style.reactionAdd" @click="openReactionPicker($event, c)"><i class="ti ti-mood-plus"></i></button>
+						<div :class="$style.cardText"><Mfm :text="linkifyRefs(c.text)" :author="c.user"/></div>
+						<MkMediaList v-if="c.files && c.files.length" :class="$style.cardMedia" :mediaList="c.files"/>
+						<div :class="$style.reactions">
+							<button
+								v-for="(count, emoji) in c.reactions"
+								:key="emoji"
+								:class="[$style.reaction, c.myReaction === emoji && $style.reactionMine]"
+								@click="react(c, emoji)"
+							>
+								<MkReactionIcon :reaction="emoji"/> <span>{{ count }}</span>
+							</button>
+							<button :class="$style.reactionAdd" @click="openReactionPicker($event, c)"><i class="ti ti-mood-plus"></i></button>
+						</div>
+					</div>
+				</div>
+
+				<!-- コメント投稿(タイムライン末尾) -->
+				<div v-if="issue.closed" :class="$style.closedNotice"><i class="ti ti-lock"></i> このイシューはクローズ（受付終了）されています。コメントはできません。</div>
+				<div v-else :class="$style.tlRow">
+					<HfAvatar :user="me" :size="36" :class="$style.tlAvatar"/>
+					<div :class="[$style.card, $style.composerCard]">
+						<div v-if="replyTarget" :class="$style.replyBar">
+							<i class="ti ti-arrow-back-up"></i>
+							<span>返信先:</span><MkUserName :user="replyTarget.user"/>
+							<span :class="$style.replyBarText">{{ (replyTarget.text ?? '').slice(0, 40) }}</span>
+							<button :class="$style.replyBarCancel" @click="replyTarget = null"><i class="ti ti-x"></i></button>
+						</div>
+						<div v-if="commentFiles.length" :class="$style.cFileGrid">
+							<div v-for="f in commentFiles" :key="f.id" :class="$style.cFileThumb">
+								<img :src="f.thumbnailUrl ?? f.url" :alt="f.name"/>
+								<button :class="$style.cFileDel" @click="commentFiles = commentFiles.filter(x => x.id !== f.id)"><i class="ti ti-x"></i></button>
+							</div>
+						</div>
+						<div :class="$style.composerRow">
+							<div :class="$style.inputPill">
+								<textarea ref="commentTextarea" v-model="newComment" :class="$style.pillInput" :placeholder="replyTarget ? '返信を書く… :emoji: も使えます' : 'コメントを書く… :emoji: も使えます'" rows="1" @keydown.enter.exact.prevent="sendComment"></textarea>
+								<button :class="$style.pillIcon" title="絵文字を挿入" @click="insertCommentEmoji"><i class="ti ti-mood-happy"></i></button>
+								<button :class="$style.pillIcon" title="画像を添付" @click="attachCommentFiles"><i class="ti ti-photo-plus"></i></button>
+							</div>
+							<MkButton :class="$style.sendBtn" rounded primary :disabled="!newComment.trim() || sending" @click="sendComment">送信</MkButton>
+						</div>
 					</div>
 				</div>
 			</div>
 
-			<!-- コメント投稿 -->
-			<div v-if="issue.closed" :class="$style.closedNotice"><i class="ti ti-lock"></i> このイシューはクローズ（受付終了）されています。コメントはできません。</div>
-			<div v-else>
-				<div v-if="commentFiles.length" :class="$style.cFileGrid">
-					<div v-for="f in commentFiles" :key="f.id" :class="$style.cFileThumb">
-						<img :src="f.thumbnailUrl ?? f.url" :alt="f.name"/>
-						<button :class="$style.cFileDel" @click="commentFiles = commentFiles.filter(x => x.id !== f.id)"><i class="ti ti-x"></i></button>
+			<!-- 右: メタサイドバー -->
+			<aside :class="$style.side">
+				<!-- ステータス -->
+				<div :class="$style.sideSec">
+					<div :class="$style.sideLabel">ステータス</div>
+					<button :class="[$style.statusSelect, !canManage && $style.statusStatic]" :disabled="!canManage" @click="openStatusSelect">
+						<HfStatusPill :status="issue.status" variant="text"/>
+						<i v-if="canManage" class="ti ti-selector" :class="$style.statusCaret"></i>
+					</button>
+				</div>
+
+				<!-- カテゴリ / 優先度 -->
+				<div :class="$style.sideSec">
+					<div :class="$style.sideLabel">カテゴリ / 優先度</div>
+					<div :class="$style.sideBadges">
+						<HfCategoryBadge :category="issue.category"/>
+						<button :class="$style.prioBadge" :data-prio="issue.priority ?? 'normal'" :disabled="!canManage" @click="openPrioritySelect">優先度: {{ priorityLabel[issue.priority ?? 'normal'] }}</button>
 					</div>
 				</div>
-				<!-- 旗鯖fork: 返信先バー -->
-				<div v-if="replyTarget" :class="$style.replyBar">
-					<i class="ti ti-arrow-back-up"></i>
-					<span>返信先:</span><MkUserName :user="replyTarget.user"/>
-					<span :class="$style.replyBarText">{{ (replyTarget.text ?? '').slice(0, 40) }}</span>
-					<button :class="$style.replyBarCancel" @click="replyTarget = null"><i class="ti ti-x"></i></button>
+
+				<!-- 対処担当 -->
+				<div :class="$style.sideSec">
+					<div :class="$style.sideLabelRow">
+						<span class="ti ti-shield-check" :class="$style.sideLabelIcon"></span>
+						<span :class="$style.sideLabel">対処担当</span>
+						<button v-if="isAdmin" :class="$style.sideGear" v-tooltip="'対処権限を付与'" @click="grantModerator"><i class="ti ti-settings"></i></button>
+					</div>
+					<div v-if="moderators.length === 0" :class="$style.sideMuted">未割り当て</div>
+					<div v-else :class="$style.modList">
+						<div v-for="m in moderators" :key="m.id" :class="$style.modItem">
+							<HfAvatar :user="m" :size="22"/><MkUserName :user="m"/><i class="ti ti-shield-check" :class="$style.modShield"></i>
+						</div>
+					</div>
 				</div>
-				<div :class="$style.composer">
-					<button :class="$style.attachBtn" title="画像を添付" @click="attachCommentFiles"><i class="ti ti-photo-plus"></i></button>
-					<textarea v-model="newComment" :class="$style.textarea" :placeholder="replyTarget ? '返信を書く…' : 'コメントを書く…（#番号 でイシューを参照できます）'" rows="2"></textarea>
-					<MkButton :class="$style.sendBtn" rounded primary :disabled="!newComment.trim() || sending" @click="sendComment"><i class="ti ti-send"></i></MkButton>
+
+				<!-- 参加者 -->
+				<div :class="$style.sideSec">
+					<div :class="$style.sideLabel">参加者 {{ participants.length }}人</div>
+					<div v-if="participants.length" :class="$style.partStack">
+						<HfAvatar v-for="p in participants" :key="p.id" :user="p" :size="26" stack/>
+					</div>
+					<div v-else :class="$style.sideMuted">まだいません</div>
 				</div>
-			</div>
+
+				<!-- 賛同 -->
+				<div :class="$style.sideSec">
+					<button :class="[$style.agreeBtn, issue.isAgreed && $style.agreeBtnOn]" @click="toggleAgree">
+						<i :class="issue.isAgreed ? 'ti ti-heart-filled' : 'ti ti-heart'"></i> 賛同する ・ {{ issue.agreementsCount }}
+					</button>
+				</div>
+
+				<!-- スタッフ操作 -->
+				<div v-if="canManage" :class="[$style.sideSec, $style.sideSecLast]">
+					<div :class="$style.sideLabelRow">
+						<span class="ti ti-shield" :class="$style.sideLabelIcon"></span>
+						<span :class="$style.sideLabel">スタッフ操作</span>
+					</div>
+					<div :class="$style.staffActions">
+						<button :class="$style.staffAction" @click="togglePin"><i class="ti ti-pin"></i> {{ issue.pinned ? 'ピン留めを解除' : 'ピン留め' }}</button>
+						<button v-if="isAdmin" :class="$style.staffAction" @click="grantModerator"><i class="ti ti-user-plus"></i> 対処権限を付与</button>
+						<button :class="$style.staffAction" @click="toggleClose"><i :class="issue.closed ? 'ti ti-lock-open' : 'ti ti-lock'"></i> {{ issue.closed ? '再オープン' : 'クローズ（受付終了）' }}</button>
+						<button v-if="isStaff" :class="[$style.staffAction, $style.staffDanger]" @click="removeIssue"><i class="ti ti-trash"></i> イシューを削除</button>
+					</div>
+				</div>
+			</aside>
+		</div>
 		</div>
 	</template>
 </div>
@@ -165,16 +212,22 @@ import { url } from '@@/js/config.js';
 import MkButton from '@/components/MkButton.vue';
 import MkMediaList from '@/components/MkMediaList.vue';
 import MkReactionIcon from '@/components/MkReactionIcon.vue';
+import HfStatusPill from '@/components/HfStatusPill.vue';
+import HfCategoryBadge from '@/components/HfCategoryBadge.vue';
+import HfAvatar from '@/components/HfAvatar.vue';
 import * as os from '@/os.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { chooseDriveFile } from '@/utility/drive.js';
 import { $i } from '@/i.js';
 import { reactionPicker } from '@/utility/reaction-picker.js';
-import { categoryLabel, statusLabel, statusKeys } from '@/utility/hatafeed.js';
+import { emojiPicker } from '@/utility/emoji-picker.js';
+import { statusLabel, statusKeys, priorityLabel } from '@/utility/hatafeed.js';
 import { copyToClipboard } from '@/utility/copy-to-clipboard.js';
 
 const props = defineProps<{ issueId: string; isStaff: boolean }>();
 const emit = defineEmits<{ (ev: 'back'): void }>();
+
+const me = $i;
 
 const loading = ref(true);
 const loadError = ref(false);
@@ -184,6 +237,22 @@ const moderators = ref<any[]>([]);
 const participants = ref<any[]>([]);
 const comments = ref<any[]>([]);
 const newComment = ref('');
+// 旗鯖fork(2e): コメント欄の絵文字挿入用(カーソル位置に :shortcode: / Unicode を差し込む)。
+const commentTextarea = ref<HTMLTextAreaElement | null>(null);
+function insertCommentEmoji(ev: MouseEvent) {
+	const target = (ev.currentTarget ?? ev.target) as HTMLElement | null;
+	if (!target) return;
+	let pos = commentTextarea.value?.selectionStart ?? newComment.value.length;
+	let posEnd = commentTextarea.value?.selectionEnd ?? newComment.value.length;
+	// emojiPicker は投稿フォームと同じ挙動。focus-trap 対策で直接テキストへ差し込む。
+	emojiPicker.show(target, (emoji: string) => {
+		const before = newComment.value.substring(0, pos);
+		const after = newComment.value.substring(posEnd);
+		newComment.value = before + emoji + after;
+		pos += emoji.length;
+		posEnd += emoji.length;
+	}, () => {});
+}
 const commentFiles = ref<any[]>([]);
 const sending = ref(false);
 // 旗鯖fork: 会話の返信先・スクロール用。
@@ -193,6 +262,12 @@ const commentRefs = new Map<string, HTMLElement>();
 function setCommentRef(id: string, el: any) { if (el) commentRefs.set(id, el as HTMLElement); else commentRefs.delete(id); }
 const editStatus = ref('open');
 const editPriority = ref('normal');
+
+// この issue の対処担当(moderators)か。コメントのロールバッジ判定に使う。
+function isModeratorUser(userId: string | undefined): boolean {
+	if (!userId) return false;
+	return moderators.value.some(m => m.id === userId);
+}
 
 // 「#番号」を該当イシューへのリンク(MFM)に変換してから Mfm で描画する(数字のみリンク化=安全)。
 // MFMは相対パスをリンク化しないため、フルURL(同一オリジン)にする→Misskeyが内部遷移で開く。
@@ -346,9 +421,29 @@ async function changeStatus() {
 	issue.value.status = editStatus.value;
 }
 
+// 2e サイドバー: ステータスをメニューで選ぶ(スタッフのみ)。
+function openStatusSelect(ev: MouseEvent) {
+	if (!canManage.value) return;
+	os.popupMenu(statusKeys.map(s => ({
+		text: statusLabel[s],
+		active: issue.value.status === s,
+		action: () => { editStatus.value = s; changeStatus(); },
+	})), (ev.currentTarget ?? ev.target) as HTMLElement);
+}
+
 async function changePriority() {
 	await misskeyApi('hata/feedback/issues/update', { issueId: props.issueId, priority: editPriority.value });
 	issue.value.priority = editPriority.value;
+}
+
+// 2e サイドバー: 優先度をメニューで選ぶ(スタッフのみ)。
+function openPrioritySelect(ev: MouseEvent) {
+	if (!canManage.value) return;
+	os.popupMenu((['low', 'normal', 'high'] as const).map(p => ({
+		text: '優先度: ' + priorityLabel[p],
+		active: (issue.value.priority ?? 'normal') === p,
+		action: () => { editPriority.value = p; changePriority(); },
+	})), (ev.currentTarget ?? ev.target) as HTMLElement);
 }
 
 async function togglePin() {
@@ -368,6 +463,8 @@ async function grantModerator() {
 	if (!user) return;
 	await misskeyApi('hata/feedback/moderators/grant', { issueId: props.issueId, userId: user.id });
 	os.success();
+	// 付与後、対処担当リストを最新化。
+	load();
 }
 
 async function removeIssue() {
@@ -382,162 +479,158 @@ onMounted(load);
 </script>
 
 <style lang="scss" module>
-.root { display: flex; flex-direction: column; gap: 16px; }
-.back { align-self: flex-start; display: inline-flex; align-items: center; gap: 4px; background: var(--MI_THEME-panel); border: 1px solid var(--MI_THEME-divider); border-radius: 999px; color: var(--MI_THEME-fg); cursor: pointer; font-size: .85em; padding: 5px 14px; transition: all .12s; }
-.back:hover { border-color: var(--MI_THEME-accent); color: var(--MI_THEME-accent); }
+.root { display: flex; flex-direction: column; gap: 4px; }
 .center { text-align: center; padding: 40px 0; opacity: .6; }
-.emptyMini { opacity: .55; font-size: .9em; padding: 12px 4px; }
 /* 旗鯖fork(#27): 閲覧不可/削除済みの案内 */
 .errorBox { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; padding: 48px 20px; background: var(--MI_THEME-panel); border: 1px solid var(--MI_THEME-divider); border-radius: 16px; }
 .errorIcon { font-size: 2.6rem; color: var(--MI_THEME-warn); opacity: .8; }
 .errorTitle { font-weight: 800; font-size: 1.1rem; }
 .errorSub { font-size: .85em; opacity: .7; margin-bottom: 6px; max-width: 360px; }
 
-.head { position: relative; background: var(--MI_THEME-panel); border: 1px solid var(--MI_THEME-divider); border-radius: 18px; padding: 20px 22px; box-shadow: 0 2px 16px rgba(0,0,0,.04); }
-.badges { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
-.titleRow { display: flex; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
-.title { margin: 12px 0 10px; font-size: 1.5rem; font-weight: 800; line-height: 1.35; letter-spacing: .01em; flex: 1; min-width: 0; word-break: break-word; }
-.issueNo { display: inline-block; background: var(--MI_THEME-accentedBg); color: var(--MI_THEME-accent); font-weight: 800; font-size: .72em; padding: 2px 9px; border-radius: 999px; margin-right: 8px; vertical-align: middle; }
-.participants { display: flex; align-items: center; }
-.partAvatar { width: 26px; height: 26px; margin-left: -7px; border: 2px solid var(--MI_THEME-panel); border-radius: 999px; }
-.partAvatar:first-child { margin-left: 0; }
-.modSep { opacity: .5; }
-.modIcon { color: var(--MI_THEME-accent); }
-.modLabel { opacity: .8; }
-.modUser { display: inline-flex; align-items: center; gap: 4px; }
-.sub { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; opacity: .75; font-size: .82em; }
-.avatarSm { width: 22px; height: 22px; border-radius: 999px; }
-.desc { margin-top: 16px; line-height: 1.75; padding: 14px 16px; background: var(--MI_THEME-bg); border-radius: 12px; word-break: break-word; }
-.files { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
-.media { margin-top: 12px; }
+/* パンくず */
+.crumbs { display: flex; align-items: center; gap: 6px; font-size: .82em; opacity: .7; margin-bottom: 10px; }
+.crumbLink { background: none; border: none; color: var(--MI_THEME-accent); cursor: pointer; padding: 0; font-size: 1em; }
+.crumbLink:hover { text-decoration: underline; }
+.crumbSep { opacity: .5; }
+.crumbNo { font-family: ui-monospace, Menlo, monospace; }
 
-/* 旗鯖fork: 提出コード表示 */
-.codeBlock { margin-top: 14px; border: 1px solid var(--MI_THEME-divider); border-radius: 10px; overflow: hidden; }
-.codeHead { font-size: .8em; opacity: .8; padding: 6px 12px; background: var(--MI_THEME-bg); border-bottom: 1px solid var(--MI_THEME-divider); display: flex; align-items: center; justify-content: space-between; gap: 6px; }
-
-/* 旗鯖fork: コピーボタン(タイトル横の小型/補足情報・コード末尾のチップ型) */
-.copyBtn {
-	flex-shrink: 0;
-	width: 30px; height: 30px;
-	display: inline-flex; align-items: center; justify-content: center;
-	border: 1px solid var(--MI_THEME-divider);
-	border-radius: 8px;
-	background: var(--MI_THEME-bg);
-	color: var(--MI_THEME-fgTransparentWeak, var(--MI_THEME-fg));
-	cursor: pointer;
-	transition: border-color .12s, color .12s;
-}
+/* タイトル */
+.titleRow { display: flex; align-items: flex-start; gap: 12px; }
+.title { margin: 0; font-size: 1.4rem; font-weight: 800; line-height: 1.4; color: var(--MI_THEME-fg); flex: 1; min-width: 0; word-break: break-word; }
+.titleNo { color: var(--MI_THEME-fgTransparentWeak, #95a7a8); font-weight: 400; font-family: ui-monospace, Menlo, monospace; font-size: .85em; }
+.copyBtn { flex-shrink: 0; width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--MI_THEME-divider); border-radius: 8px; background: var(--MI_THEME-panel); color: var(--MI_THEME-fgTransparentWeak, var(--MI_THEME-fg)); cursor: pointer; transition: border-color .12s, color .12s; }
 .copyBtn:hover { border-color: var(--MI_THEME-accent); color: var(--MI_THEME-accent); }
 
-.descWrap {
-	display: flex; flex-direction: column; gap: 6px;
-}
-.descCopyBtn, .codeCopyBtn {
-	align-self: flex-end;
-	display: inline-flex; align-items: center; gap: 5px;
-	padding: 4px 12px;
-	font-size: .76em;
-	border: 1px solid var(--MI_THEME-divider);
-	border-radius: 999px;
-	background: var(--MI_THEME-panel);
-	color: var(--MI_THEME-fgTransparentWeak, var(--MI_THEME-fg));
-	cursor: pointer;
-	transition: border-color .12s, color .12s, background .12s;
-}
-.descCopyBtn:hover, .codeCopyBtn:hover {
-	border-color: var(--MI_THEME-accent);
-	color: var(--MI_THEME-accent);
-}
-.codeCopyBtn {
-	align-self: auto; /* codeHead 内では space-between で右寄せされる */
-	margin: 0;
-}
-.codePre { margin: 0; padding: 12px; overflow-x: auto; font-family: Consolas, Menlo, monospace; font-size: .82em; line-height: 1.5; background: var(--MI_THEME-panel); white-space: pre; }
-.fileImg { max-width: 160px; max-height: 160px; border-radius: 10px; border: 1px solid var(--MI_THEME-divider); }
-.actions { margin-top: 18px; display: flex; align-items: center; gap: 10px; }
-.agreeBtn { min-width: 0; font-weight: 700; }
+/* メタ行 */
+.metaRow { display: flex; align-items: center; gap: 10px; margin: 10px 0 18px; flex-wrap: wrap; }
+.metaPin { display: inline-flex; align-items: center; gap: 4px; font-size: .78em; font-weight: 700; color: var(--MI_THEME-accent); }
+.metaText { font-size: .82em; opacity: .7; }
+.metaAuthor { font-weight: 700; }
 
-.staff { background: color-mix(in srgb, var(--MI_THEME-accent) 6%, var(--MI_THEME-panel)); border: 1px solid var(--MI_THEME-divider); border-radius: 14px; padding: 14px 18px; }
-.staffHead { font-weight: 700; margin-bottom: 10px; font-size: .9em; }
-.staffRow { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-.select { background: var(--MI_THEME-bg); border: 1px solid var(--MI_THEME-divider); border-radius: 8px; padding: 6px 10px; color: inherit; }
+/* 本体グリッド */
+.gridCt { container-type: inline-size; container-name: hfIssue; }
+.grid { display: grid; grid-template-columns: 1fr 280px; gap: 24px; align-items: start; min-width: 0; }
+.grid > * { min-width: 0; }
 
-.convo { background: var(--MI_THEME-panel); border: 1px solid var(--MI_THEME-divider); border-radius: 16px; padding: 18px 20px; }
-.convoHead { font-weight: 700; margin-bottom: 14px; }
-.comment { display: flex; gap: 10px; padding: 10px 0; border-top: 1px solid var(--MI_THEME-divider); border-radius: 8px; transition: background .4s; }
-.comment:first-of-type { border-top: none; }
-/* 旗鯖fork: 会話のマーク/返信/メニュー */
-.commentImportant { background: color-mix(in srgb, var(--MI_THEME-warn) 8%, transparent); }
-.commentFlash { background: color-mix(in srgb, var(--MI_THEME-accent) 16%, transparent); }
-.cMark { display: inline-flex; align-items: center; gap: 3px; font-size: .72em; font-weight: 700; padding: 1px 7px; border-radius: 999px; }
-.cMarkImportant { background: var(--MI_THEME-warn); color: #fff; }
-.cMarkQuestion { background: var(--MI_THEME-accentedBg); color: var(--MI_THEME-accent); }
-.cMenuBtn { margin-left: auto; background: none; border: none; color: inherit; opacity: .5; cursor: pointer; padding: 2px 6px; border-radius: 6px; }
-.cMenuBtn:hover { opacity: 1; background: var(--MI_THEME-buttonBg); }
-.replyRef { display: inline-flex; align-items: center; gap: 5px; max-width: 100%; margin-top: 4px; padding: 3px 10px; background: var(--MI_THEME-bg); border: 1px solid var(--MI_THEME-divider); border-radius: 8px; font-size: .8em; color: inherit; cursor: pointer; opacity: .85; }
+/* ===== タイムライン ===== */
+.timeline { position: relative; min-width: 0; }
+.tlLine { position: absolute; left: 17px; top: 24px; bottom: 84px; width: 2px; background: var(--MI_THEME-divider); }
+.tlRow { position: relative; display: flex; gap: 12px; margin-bottom: 16px; }
+.tlRow:last-child { margin-bottom: 0; }
+.tlAvatar { border: 2px solid var(--MI_THEME-bg); z-index: 1; }
+.card { flex: 1; min-width: 0; background: var(--MI_THEME-panel); border: 1px solid var(--MI_THEME-divider); border-radius: 10px; overflow: hidden; transition: background .4s; }
+.cardImportant { border-color: color-mix(in srgb, var(--MI_THEME-warn) 55%, var(--MI_THEME-divider)); }
+.cardFlash { background: color-mix(in srgb, var(--MI_THEME-accent) 14%, var(--MI_THEME-panel)); }
+.cardHead { display: flex; align-items: center; gap: 8px; padding: 8px 14px; border-bottom: 1px solid var(--MI_THEME-divider); font-size: .84em; }
+.cardHeadAuthor { background: color-mix(in srgb, var(--MI_THEME-accent) 7%, transparent); }
+.cardName { font-weight: 700; }
+.cardTime { opacity: .6; }
+.cardMenu { margin-left: auto; background: none; border: none; color: inherit; opacity: .5; cursor: pointer; padding: 2px 6px; border-radius: 6px; }
+.cardMenu:hover { opacity: 1; background: var(--MI_THEME-bg); }
+.copyMini { margin-left: auto; background: none; border: none; color: inherit; opacity: .5; cursor: pointer; padding: 2px 6px; border-radius: 6px; }
+.copyMini:hover { opacity: 1; background: var(--MI_THEME-bg); }
+
+/* ロールバッジ */
+.roleBadge { display: inline-flex; align-items: center; gap: 3px; font-size: .82em; font-weight: 700; padding: 1px 8px; border-radius: 999px; white-space: nowrap; }
+.roleAuthor { border: 1px solid var(--MI_THEME-divider); color: var(--MI_THEME-fgTransparentWeak, var(--MI_THEME-fg)); }
+.roleStaff { background: var(--MI_THEME-accent); color: #fff; }
+.roleImportant { background: #ecb637; color: #fff; }
+.roleQuestion { background: var(--MI_THEME-accentedBg); color: var(--MI_THEME-accent); }
+
+.cardText { padding: 12px 14px; line-height: 1.75; word-break: break-word; }
+.cardMedia { margin: 0 14px 12px; max-width: 300px; }
+
+/* 引用返信 */
+.replyRef { display: inline-flex; align-items: center; gap: 5px; max-width: calc(100% - 28px); margin: 10px 14px 0; padding: 3px 10px; background: var(--MI_THEME-bg); border: 1px solid var(--MI_THEME-divider); border-radius: 8px; font-size: .8em; color: inherit; cursor: pointer; opacity: .85; }
 .replyRef:hover { border-color: var(--MI_THEME-accent); }
 .replyRefUser { font-weight: 700; flex-shrink: 0; }
 .replyRefText { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: .7; }
-.replyBar { display: flex; align-items: center; gap: 6px; margin-top: 12px; padding: 6px 12px; background: var(--MI_THEME-bg); border: 1px solid var(--MI_THEME-divider); border-radius: 8px; font-size: .82em; }
-.replyBarText { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: .65; flex: 1; }
-.replyBarCancel { background: none; border: none; color: inherit; opacity: .6; cursor: pointer; }
-.avatar { width: 38px; height: 38px; flex-shrink: 0; }
-.cBody { min-width: 0; flex: 1; }
-.cHead { display: flex; align-items: center; gap: 8px; }
-.cTime { opacity: .55; font-size: .78em; }
-.cText { margin-top: 4px; line-height: 1.6; }
-/* 旗鯖fork: 会話メディアは小さめサムネイル(クリックでPhotoSwipeの全画面プレビュー)。
-   MkMediaListはアスペクト比で高さが決まるため、幅だけ抑えて小さくする(高さは追従)。 */
-.cMedia { margin-top: 8px; max-width: 240px; }
-.reactions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+
+/* リアクション */
+.reactions { display: flex; gap: 6px; flex-wrap: wrap; padding: 0 14px 12px; }
 .reaction { display: inline-flex; align-items: center; gap: 4px; background: var(--MI_THEME-bg); border: 1px solid var(--MI_THEME-divider); border-radius: 999px; padding: 2px 10px; cursor: pointer; font-size: .85em; color: inherit; }
 .reactionMine { background: color-mix(in srgb, var(--MI_THEME-accent) 18%, transparent); border-color: var(--MI_THEME-accent); }
 .reactionAdd { background: var(--MI_THEME-bg); border: 1px solid var(--MI_THEME-divider); border-radius: 999px; padding: 2px 10px; cursor: pointer; color: inherit; opacity: .7; }
 
-.composer { display: flex; gap: 8px; margin-top: 16px; align-items: flex-end; }
-.attachBtn { flex-shrink: 0; width: 38px; height: 38px; border-radius: 999px; border: 1px solid var(--MI_THEME-divider); background: var(--MI_THEME-bg); color: inherit; cursor: pointer; font-size: 1.1rem; }
-.attachBtn:hover { border-color: var(--MI_THEME-accent); color: var(--MI_THEME-accent); }
-.textarea { flex: 1; background: var(--MI_THEME-bg); border: 1px solid var(--MI_THEME-divider); border-radius: 12px; padding: 10px 12px; color: inherit; resize: vertical; font-family: inherit; }
-.sendBtn { min-width: 0; }
-.closedNotice { display: flex; align-items: center; gap: 6px; margin-top: 16px; padding: 12px 14px; border-radius: 12px; background: var(--MI_THEME-bg); opacity: .7; font-size: .88em; }
-.cFileGrid { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+/* コード */
+.codeBlock { margin: 0 14px 12px; border: 1px solid var(--MI_THEME-divider); border-radius: 10px; overflow: hidden; }
+.codeHead { font-size: .8em; opacity: .8; padding: 6px 12px; background: var(--MI_THEME-bg); border-bottom: 1px solid var(--MI_THEME-divider); display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.codeCopyBtn { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; font-size: .9em; border: 1px solid var(--MI_THEME-divider); border-radius: 999px; background: var(--MI_THEME-panel); color: inherit; cursor: pointer; }
+.codeCopyBtn:hover { border-color: var(--MI_THEME-accent); color: var(--MI_THEME-accent); }
+.codePre { margin: 0; padding: 12px; overflow-x: auto; font-family: Consolas, Menlo, monospace; font-size: .82em; line-height: 1.5; background: var(--MI_THEME-panel); white-space: pre; }
+
+/* コンポーザ(シンプルな1行ピル: 丸い入力欄に絵文字/画像アイコン内蔵 + 送信ボタン) */
+.composerCard { padding: 10px 12px; }
+.replyBar { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; padding: 6px 12px; background: var(--MI_THEME-bg); border: 1px solid var(--MI_THEME-divider); border-radius: 8px; font-size: .82em; }
+.replyBarText { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: .65; flex: 1; }
+.replyBarCancel { background: none; border: none; color: inherit; opacity: .6; cursor: pointer; }
+.composerRow { display: flex; align-items: flex-end; gap: 8px; }
+.inputPill { flex: 1; min-width: 0; display: flex; align-items: flex-end; gap: 2px; background: var(--MI_THEME-bg); border: 1px solid var(--MI_THEME-divider); border-radius: 20px; padding: 4px 6px 4px 14px; transition: border-color .12s; }
+.inputPill:focus-within { border-color: var(--MI_THEME-accent); }
+.pillInput { flex: 1; min-width: 0; background: none; border: none; outline: none; color: inherit; resize: none; font-family: inherit; font-size: .88em; line-height: 1.6; padding: 6px 0; max-height: 120px; overflow-y: auto; }
+.pillInput::placeholder { opacity: .5; }
+.pillIcon { flex-shrink: 0; width: 32px; height: 32px; border-radius: 999px; border: none; background: none; color: inherit; opacity: .6; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-size: 1.05rem; transition: all .12s; }
+.pillIcon:hover { opacity: 1; color: var(--MI_THEME-accent); background: var(--MI_THEME-panel); }
+.sendBtn { flex-shrink: 0; min-width: 0; }
+.cFileGrid { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
 .cFileThumb { position: relative; width: 64px; height: 64px; border-radius: 10px; overflow: hidden; border: 1px solid var(--MI_THEME-divider); }
 .cFileThumb img { width: 100%; height: 100%; object-fit: cover; }
 .cFileDel { position: absolute; top: 2px; right: 2px; background: rgba(0,0,0,.5); color: #fff; border: none; border-radius: 999px; width: 18px; height: 18px; cursor: pointer; }
 
-.pin { color: var(--MI_THEME-accent); }
-.closedTag { font-size: .72em; opacity: .6; }
+.closedNotice { display: flex; align-items: center; gap: 6px; margin-top: 4px; padding: 12px 14px; border-radius: 10px; background: var(--MI_THEME-panel); border: 1px solid var(--MI_THEME-divider); opacity: .75; font-size: .88em; }
 
-/* 旗鯖fork: モバイル最適化 */
-@media (max-width: 500px) {
-	.head { padding: 16px 16px; border-radius: 14px; }
-	.title { font-size: 1.25rem; margin: 10px 0 8px; }
-	.desc { padding: 12px 13px; }
-	.convo { padding: 14px 14px; border-radius: 14px; }
-	.staff { padding: 12px 14px; }
-	.staffRow { gap: 6px; }
-	.staffRow .select { flex: 1 1 calc(50% - 6px); min-width: 0; }
-	.composer { gap: 6px; }
-	.avatar { width: 34px; height: 34px; }
+/* ===== メタサイドバー ===== */
+.side { display: flex; flex-direction: column; }
+.sideSec { padding: 14px 0; border-bottom: 1px solid var(--MI_THEME-divider); }
+.sideSec:first-child { padding-top: 0; }
+.sideSecLast { border-bottom: none; }
+.sideLabel { font-size: .72em; font-weight: 800; color: var(--MI_THEME-fgTransparentWeak, #7e9192); letter-spacing: .04em; }
+.sideLabelRow { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+.sideLabelRow .sideLabel { margin: 0; }
+.sideLabelIcon { color: var(--MI_THEME-fgTransparentWeak, #7e9192); font-size: 1em; }
+.sideGear { margin-left: auto; background: none; border: none; color: var(--MI_THEME-fgTransparentWeak, var(--MI_THEME-fg)); opacity: .7; cursor: pointer; padding: 0; }
+.sideGear:hover { opacity: 1; color: var(--MI_THEME-accent); }
+.sideMuted { font-size: .84em; opacity: .5; margin-top: 8px; }
+
+.statusSelect { margin-top: 8px; width: 100%; box-sizing: border-box; display: flex; align-items: center; gap: 6px; background: var(--MI_THEME-panel); border: 1px solid var(--MI_THEME-divider); border-radius: 8px; padding: 7px 12px; color: inherit; cursor: pointer; }
+.statusSelect:not(:disabled):hover { border-color: var(--MI_THEME-accent); }
+.statusStatic { cursor: default; }
+.statusCaret { margin-left: auto; opacity: .5; }
+
+.sideBadges { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; align-items: center; }
+.prioBadge { font-size: .72em; font-weight: 700; padding: 3px 10px; border-radius: 999px; border: none; cursor: pointer; color: inherit; }
+.prioBadge:disabled { cursor: default; }
+
+.modList { display: flex; flex-direction: column; gap: 8px; }
+.modItem { display: flex; align-items: center; gap: 7px; font-size: .86em; }
+.modShield { color: var(--MI_THEME-accent); font-size: 1em; margin-left: auto; }
+
+.partStack { display: flex; margin-top: 8px; }
+
+.agreeBtn { width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 7px; background: var(--MI_THEME-panel); border: 1px solid var(--MI_THEME-divider); border-radius: 8px; padding: 9px 0; font-size: .9em; font-weight: 700; color: #dd2e44; cursor: pointer; transition: all .12s; }
+.agreeBtn:hover { border-color: #dd2e44; background: color-mix(in srgb, #dd2e44 6%, transparent); }
+.agreeBtnOn { background: color-mix(in srgb, #dd2e44 12%, transparent); border-color: #dd2e44; }
+
+/* 旗鯖fork(2e): スタッフ操作は田(2x2)グリッドでまとめて表示する(左詰めの縦積みは間延びして見えるため)。 */
+.staffActions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.staffAction { display: flex; align-items: center; gap: 7px; background: var(--MI_THEME-panel); border: 1px solid var(--MI_THEME-divider); color: var(--MI_THEME-fg); opacity: .9; cursor: pointer; text-align: left; padding: 8px 10px; border-radius: 8px; font-size: .82em; }
+.staffAction:hover { opacity: 1; border-color: var(--MI_THEME-accent); color: var(--MI_THEME-accent); }
+.staffAction i { font-size: 1.05em; }
+.staffDanger { color: #ec4137; }
+.staffDanger:hover { color: #ec4137; border-color: #ec4137; }
+
+/* ===== レスポンシブ: サイドバーを上に畳む ===== */
+@container hfIssue (max-width: 720px) {
+	.grid { grid-template-columns: 1fr; }
+	.side { order: -1; flex-direction: row; flex-wrap: wrap; gap: 8px 20px; padding: 12px 14px; background: var(--MI_THEME-panel); border: 1px solid var(--MI_THEME-divider); border-radius: 12px; margin-bottom: 4px; }
+	.sideSec { padding: 4px 0; border-bottom: none; flex: 1; min-width: 130px; }
+	.sideSecLast { flex-basis: 100%; }
 }
 </style>
 
 <style lang="scss" scoped>
-/* カテゴリ/ステータスの色は動的値のため data 属性で当てる(動的 $style[] はビルドで解決されないため)。 */
-.hfBadge { font-size: .72em; padding: 2px 9px; border-radius: 999px; font-weight: 600; background: var(--MI_THEME-buttonBg); }
-.hfBadge[data-cat="bug"] { background: #ffe1e1; color: #c0392b; }
-.hfBadge[data-cat="improvement"] { background: #e1fff0; color: #1f8a5b; }
-.hfBadge[data-cat="security"] { background: #ffe9d6; color: #c0612b; }
-.hfBadge[data-cat="featureRequest"] { background: #e1efff; color: #2b6fc0; }
-.hfBadge[data-cat="adoptionRequest"] { background: #e7e1ff; color: #5a2bc0; }
-.hfBadge[data-cat="betaFeature"] { background: #d9f3f0; color: #1f7a86; }
-.hfBadge[data-cat="unresolved"] { background: #f0f0f0; color: #666; }
-.hfBadge[data-cat="other"] { background: #f0f0f0; color: #666; }
-.hfBadge[data-status="open"] { background: #e1efff; color: #2b6fc0; }
-.hfBadge[data-status="planned"] { background: #fff6d6; color: #9a7b1f; }
-.hfBadge[data-status="inProgress"] { background: #fff0d6; color: #b6791f; }
-.hfBadge[data-status="resolved"] { background: #e1fff0; color: #1f8a5b; }
-.hfBadge[data-status="wontfix"] { background: #f0f0f0; color: #777; }
-.hfBadge[data-status="unknown"] { background: #f0f0f0; color: #999; }
-.hfBadge[data-status="closed"] { background: #e9e4ef; color: #6a5a86; }
+/* 動的な値(優先度)で色が変わる小要素は data 属性で当てる(module の動的キーはビルドで解決されないため)。 */
+.prioBadge[data-prio="low"] { background: #eef1f2; color: #6b7b7c; }
+.prioBadge[data-prio="normal"] { background: #e1efff; color: #2b6fc0; }
+.prioBadge[data-prio="high"] { background: #fff0d6; color: #b6791f; }
 </style>
