@@ -850,6 +850,8 @@ export const PREF_DEF = definePreferences({
 			// グループ2: 旗鯖独自
 			{ id: 'hatask', icon: 'ti ti-eye', label: 'Hatask', group: 'hata' },
 			{ id: 'hatafeed', icon: 'ti ti-message-report', label: 'HataFeed', group: 'hata' },
+			// 旗鯖fork(Hatady): 学習・読書記録ツール (v6 マイグレで既存ユーザーにも insertAfter で追加)
+			{ id: 'hatady', icon: 'ti ti-book-2', label: 'Hatady', group: 'hata' },
 			{ id: 'earthquake', icon: 'ti ti-activity', label: '地震・津波情報', group: 'hata' },
 			{ id: 'portal', icon: 'ti ti-icons', label: '旗鯖ポータル', group: 'hata', external: true, url: 'https://home.tolehata.net/' },
 			// グループ3: 発見・交流
@@ -1128,6 +1130,10 @@ export const PREF_DEF = definePreferences({
 	'hatafeed.leaves': {
 		default: false,
 	},
+
+	// 旗鯖fork(Hatady): テーマ・言語は端末ローカル(miLocalStorage)へ移行した。
+	//   prefer 同期経由だとクラウド/タブ間同期の巻き戻しで既定へ戻る事象があったため。
+	//   → @/utility/hatady-prefs.ts を参照。
 
 	// 旗鯖fork: 投稿フォームの枠色を「投稿範囲(公開/ホーム/フォロワー/ダイレクト)」に応じて変える(アクセシビリティ)。
 	'postFormVisibilityBorder.enabled': {

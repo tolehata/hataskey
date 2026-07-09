@@ -10,6 +10,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 	:initialHeight="500"
 	:canResize="true"
 	:closeButton="true"
+	:initialMaximized="fullscreen"
 	:buttonsLeft="buttonsLeft"
 	:buttonsRight="buttonsRight"
 	:contextmenu="contextmenu"
@@ -49,6 +50,7 @@ import * as os from '@/os.js';
 
 const props = defineProps<{
 	initialPath: string;
+	fullscreen?: boolean;
 }>();
 
 const emit = defineEmits<{

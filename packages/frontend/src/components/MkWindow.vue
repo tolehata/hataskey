@@ -93,6 +93,8 @@ const props = withDefaults(defineProps<{
 	closeButton?: boolean;
 	mini?: boolean;
 	front?: boolean;
+	initialMaximized?: boolean;
+	beforeClose?: (() => boolean | Promise<boolean>) | null;
 	contextmenu?: MenuItem[] | null;
 	buttonsLeft?: WindowButton[];
 	buttonsRight?: WindowButton[];
@@ -103,6 +105,8 @@ const props = withDefaults(defineProps<{
 	closeButton: true,
 	mini: false,
 	front: false,
+	initialMaximized: false,
+	beforeClose: null,
 	contextmenu: null,
 	buttonsLeft: () => [],
 	buttonsRight: () => [],
@@ -124,7 +128,12 @@ let unResizedLeft = '';
 let unResizedWidth = '';
 let unResizedHeight = '';
 
-function close() {
+async function close() {
+	// 旗鯖fork: beforeClose ガードが false を返したら閉じない(未保存確認など)。
+	if (props.beforeClose) {
+		const ok = await props.beforeClose();
+		if (!ok) return;
+	}
 	showing.value = false;
 }
 
@@ -465,6 +474,9 @@ onMounted(() => {
 
 	// 他のウィンドウ内のボタンなどを押してこのウィンドウが開かれた場合、親が最前面になろうとするのでそれに隠されないようにする
 	top();
+
+	// 旗鯖fork: 全画面で開くよう指定された場合は最大化状態で起動する(Hatady 等の全画面アプリ用)。
+	if (props.initialMaximized) maximize();
 
 	window.addEventListener('resize', onBrowserResize);
 });

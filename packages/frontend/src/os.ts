@@ -240,9 +240,10 @@ export async function popupAsyncWithDialog<T extends Component>(
 	};
 }
 
-export function pageWindow(path: string) {
+export function pageWindow(path: string, options?: { fullscreen?: boolean }) {
 	const { dispose } = popup(MkPageWindow, {
 		initialPath: path,
+		fullscreen: options?.fullscreen ?? false,
 	}, {
 		closed: () => dispose(),
 	});
