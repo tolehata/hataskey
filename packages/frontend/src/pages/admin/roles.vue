@@ -186,6 +186,34 @@ SPDX-License-Identifier: AGPL-3.0-only
 						</MkSwitch>
 					</MkFolder>
 
+					<!-- 旗鯖fork(Hatady): 端末間データ共有(同期)の可否。既定は有効。 -->
+					<MkFolder v-if="matchQuery(['Hatadyでデータ共有を有効にする', 'canUseHatadySync'])">
+						<template #label>Hatady でデータ共有（端末間同期）を有効にする</template>
+						<template #suffix>{{ policies.canUseHatadySync ? i18n.ts.yes : i18n.ts.no }}</template>
+						<MkSwitch v-model="policies.canUseHatadySync">
+							<template #label>Hatady の端末間データ共有を許可</template>
+							<template #caption>オフのロールに属するユーザーは、Hatady のデータをその端末にのみ保存します。デフォルトは有効です。</template>
+						</MkSwitch>
+					</MkFolder>
+
+					<!-- 旗鯖fork(Hatady): 追加できる本の最大数 -->
+					<MkFolder v-if="matchQuery(['Hatadyで追加できる本の最大数', 'hatadyBookLimit'])">
+						<template #label>Hatady で追加できる本の最大数</template>
+						<template #suffix>{{ policies.hatadyBookLimit }}</template>
+						<MkInput v-model="policies.hatadyBookLimit" type="number">
+							<template #caption>ユーザーが本棚に追加できる本の上限（デフォルト 100）。</template>
+						</MkInput>
+					</MkFolder>
+
+					<!-- 旗鯖fork(Hatady): 本1冊あたりのしおりの最大数 -->
+					<MkFolder v-if="matchQuery(['Hatadyの本1冊あたりのしおりの最大数', 'hatadyBookmarkLimit'])">
+						<template #label>Hatady の本1冊あたりのしおりの最大数</template>
+						<template #suffix>{{ policies.hatadyBookmarkLimit }}</template>
+						<MkInput v-model="policies.hatadyBookmarkLimit" type="number">
+							<template #caption>1冊の本に追加できるしおりの上限（デフォルト 20）。</template>
+						</MkInput>
+					</MkFolder>
+
 					<!-- 旗鯖fork: プライベートチャンネルの作成可否 -->
 					<MkFolder v-if="matchQuery(['プライベートチャンネルを作成できる', 'canMakePrivateChannel'])">
 						<template #label>プライベートチャンネルを作成できる</template>

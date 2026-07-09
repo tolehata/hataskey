@@ -57,6 +57,12 @@ export type RolePolicies = {
 	canUseMascot: boolean;
 	// 旗鯖fork: HataFeed(フィードバックセンター)へのアクセス可否(デフォルト不許可。許可ロールでのみ利用可)
 	canAccessHataFeed: boolean;
+	// 旗鯖fork(Hatady): 端末間同期の可否(デフォルト許可。特定ロールで無効化できる)。
+	//   無効の場合、Hatady の表示設定などは端末ローカル扱いになり、設定画面で「無効」と表示される。
+	canUseHatadySync: boolean;
+	// 旗鯖fork(Hatady): 追加できる本の最大数 / 1冊あたりのしおりの最大数(ロールで管理)。
+	hatadyBookLimit: number;
+	hatadyBookmarkLimit: number;
 	// 旗鯖fork: プライベートチャンネルを作成できるか(デフォルト不許可。許可ロールでのみ作成可)
 	canMakePrivateChannel: boolean;
 	canRequestRemoteEmoji: boolean;
@@ -109,6 +115,9 @@ export const DEFAULT_POLICIES: RolePolicies = {
 	mascotMaxCharacters: 3,
 	canUseMascot: false,
 	canAccessHataFeed: false,
+	canUseHatadySync: true,
+	hatadyBookLimit: 100,
+	hatadyBookmarkLimit: 20,
 	canMakePrivateChannel: false,
 	canRequestRemoteEmoji: false,
 	emojiRequestLimit: 10,
@@ -448,6 +457,10 @@ export class RoleService implements OnApplicationShutdown, OnModuleInit {
 			mascotMaxCharacters: calc('mascotMaxCharacters', vs => Math.max(...vs)),
 			canUseMascot: calc('canUseMascot', vs => vs.some(v => v === true)),
 			canAccessHataFeed: calc('canAccessHataFeed', vs => vs.some(v => v === true)),
+			// 既定 true。いずれかのロールで false にされたら無効(every)。
+			canUseHatadySync: calc('canUseHatadySync', vs => vs.every(v => v === true)),
+			hatadyBookLimit: calc('hatadyBookLimit', vs => Math.max(...vs)),
+			hatadyBookmarkLimit: calc('hatadyBookmarkLimit', vs => Math.max(...vs)),
 			canMakePrivateChannel: calc('canMakePrivateChannel', vs => vs.some(v => v === true)),
 			canRequestRemoteEmoji: calc('canRequestRemoteEmoji', vs => vs.some(v => v === true)),
 			emojiRequestLimit: calc('emojiRequestLimit', vs => Math.max(...vs)),

@@ -471,6 +471,66 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</div>
 			</MkFolder>
 
+			<!-- 旗鯖fork(Hatady): 端末間でのデータ共有(同期)を有効にできるか。既定は有効、無効化するとその端末のみ保存。 -->
+			<MkFolder v-if="role.policies.canUseHatadySync && matchQuery(['Hatadyでデータ共有を有効にする', 'canUseHatadySync'])">
+				<template #label>Hatady でデータ共有（端末間同期）を有効にする</template>
+				<template #suffix>
+					<span v-if="role.policies.canUseHatadySync.useDefault" :class="$style.useDefaultLabel">{{ i18n.ts._role.useBaseValue }}</span>
+					<span v-else>{{ role.policies.canUseHatadySync.value ? i18n.ts.yes : i18n.ts.no }}</span>
+					<span :class="$style.priorityIndicator"><i :class="getPriorityIcon(role.policies.canUseHatadySync)"></i></span>
+				</template>
+				<div class="_gaps">
+					<MkSwitch v-model="role.policies.canUseHatadySync.useDefault" :readonly="readonly">
+						<template #label>{{ i18n.ts._role.useBaseValue }}</template>
+					</MkSwitch>
+					<MkSwitch v-model="role.policies.canUseHatadySync.value" :disabled="role.policies.canUseHatadySync.useDefault" :readonly="readonly">
+						<template #label>Hatady の端末間データ共有を許可</template>
+						<template #caption>オフにすると、このロールのユーザーは Hatady のデータをその端末にのみ保存します（既定は有効）。</template>
+					</MkSwitch>
+					<MkRange v-model="role.policies.canUseHatadySync.priority" :min="0" :max="2" :step="1" easing :textConverter="(v) => v === 0 ? i18n.ts._role._priority.low : v === 1 ? i18n.ts._role._priority.middle : v === 2 ? i18n.ts._role._priority.high : ''">
+						<template #label>{{ i18n.ts._role.priority }}</template>
+					</MkRange>
+				</div>
+			</MkFolder>
+
+			<MkFolder v-if="role.policies.hatadyBookLimit && matchQuery(['Hatadyで追加できる本の最大数', 'hatadyBookLimit'])">
+				<template #label>Hatady で追加できる本の最大数</template>
+				<template #suffix>
+					<span v-if="role.policies.hatadyBookLimit.useDefault" :class="$style.useDefaultLabel">{{ i18n.ts._role.useBaseValue }}</span>
+					<span v-else>{{ role.policies.hatadyBookLimit.value }}</span>
+					<span :class="$style.priorityIndicator"><i :class="getPriorityIcon(role.policies.hatadyBookLimit)"></i></span>
+				</template>
+				<div class="_gaps">
+					<MkSwitch v-model="role.policies.hatadyBookLimit.useDefault" :readonly="readonly">
+						<template #label>{{ i18n.ts._role.useBaseValue }}</template>
+					</MkSwitch>
+					<MkInput v-model="role.policies.hatadyBookLimit.value" :disabled="role.policies.hatadyBookLimit.useDefault" type="number" :readonly="readonly">
+					</MkInput>
+					<MkRange v-model="role.policies.hatadyBookLimit.priority" :min="0" :max="2" :step="1" easing :textConverter="(v) => v === 0 ? i18n.ts._role._priority.low : v === 1 ? i18n.ts._role._priority.middle : v === 2 ? i18n.ts._role._priority.high : ''">
+						<template #label>{{ i18n.ts._role.priority }}</template>
+					</MkRange>
+				</div>
+			</MkFolder>
+
+			<MkFolder v-if="role.policies.hatadyBookmarkLimit && matchQuery(['Hatadyの本1冊あたりのしおりの最大数', 'hatadyBookmarkLimit'])">
+				<template #label>Hatady の本1冊あたりのしおりの最大数</template>
+				<template #suffix>
+					<span v-if="role.policies.hatadyBookmarkLimit.useDefault" :class="$style.useDefaultLabel">{{ i18n.ts._role.useBaseValue }}</span>
+					<span v-else>{{ role.policies.hatadyBookmarkLimit.value }}</span>
+					<span :class="$style.priorityIndicator"><i :class="getPriorityIcon(role.policies.hatadyBookmarkLimit)"></i></span>
+				</template>
+				<div class="_gaps">
+					<MkSwitch v-model="role.policies.hatadyBookmarkLimit.useDefault" :readonly="readonly">
+						<template #label>{{ i18n.ts._role.useBaseValue }}</template>
+					</MkSwitch>
+					<MkInput v-model="role.policies.hatadyBookmarkLimit.value" :disabled="role.policies.hatadyBookmarkLimit.useDefault" type="number" :readonly="readonly">
+					</MkInput>
+					<MkRange v-model="role.policies.hatadyBookmarkLimit.priority" :min="0" :max="2" :step="1" easing :textConverter="(v) => v === 0 ? i18n.ts._role._priority.low : v === 1 ? i18n.ts._role._priority.middle : v === 2 ? i18n.ts._role._priority.high : ''">
+						<template #label>{{ i18n.ts._role.priority }}</template>
+					</MkRange>
+				</div>
+			</MkFolder>
+
 			<!-- 旗鯖fork: HataFeed リモート絵文字を申請できるか -->
 			<MkFolder v-if="role.policies.canMakePrivateChannel && matchQuery(['プライベートチャンネルを作成できる', 'canMakePrivateChannel'])">
 				<template #label>プライベートチャンネルを作成できる</template>
