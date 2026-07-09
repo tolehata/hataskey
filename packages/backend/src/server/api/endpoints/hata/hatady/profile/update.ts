@@ -1,0 +1,33 @@
+/*
+ * 旗鯖fork(1c): Hatady プロフィールの個別設定(バナー色)を更新する(本人のみ)。
+ */
+import { Injectable } from '@nestjs/common';
+import { Endpoint } from '@/server/api/endpoint-base.js';
+import { HatadyService } from '@/core/HatadyService.js';
+
+export const meta = {
+	tags: ['hata'],
+	requireCredential: true,
+	kind: 'write:account',
+} as const;
+
+export const paramDef = {
+	type: 'object',
+	properties: {
+		// バナー色のプリセットキー(空文字/未指定で既定に戻す)。
+		bannerColor: { type: 'string', maxLength: 32, nullable: true },
+	},
+	required: [],
+} as const;
+
+@Injectable()
+export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-disable-line import/no-default-export
+	constructor(
+		private hatadyService: HatadyService,
+	) {
+		super(meta, paramDef, async (ps, me) => {
+			const color = ps.bannerColor && ps.bannerColor.length > 0 ? ps.bannerColor : null;
+			await this.hatadyService.setBannerColor(me, color);
+		});
+	}
+}

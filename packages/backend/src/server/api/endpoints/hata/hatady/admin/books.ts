@@ -1,0 +1,53 @@
+/*
+ * 旗鯖fork(Hatady): 全ユーザーの本を確認する(モデレーター/管理者のみ)。本棚の「すべての本」タブ用。
+ */
+import { Inject, Injectable } from '@nestjs/common';
+import { In } from 'typeorm';
+import { Endpoint } from '@/server/api/endpoint-base.js';
+import type { HatadyBooksRepository } from '@/models/_.js';
+import { HatadyEntityService } from '@/core/entities/HatadyEntityService.js';
+import { UserEntityService } from '@/core/entities/UserEntityService.js';
+import { DI } from '@/di-symbols.js';
+
+export const meta = {
+	tags: ['hata'],
+	requireCredential: true,
+	requireModerator: true,
+	kind: 'read:account',
+	res: { type: 'array', optional: false, nullable: false, items: { type: 'object', optional: false, nullable: false } },
+} as const;
+
+export const paramDef = {
+	type: 'object',
+	properties: {
+		limit: { type: 'integer', minimum: 1, maximum: 100, default: 50 },
+		untilId: { type: 'string', format: 'misskey:id' },
+	},
+	required: [],
+} as const;
+
+@Injectable()
+export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-disable-line import/no-default-export
+	constructor(
+		@Inject(DI.hatadyBooksRepository)
+		private hatadyBooksRepository: HatadyBooksRepository,
+
+		private hatadyEntityService: HatadyEntityService,
+		private userEntityService: UserEntityService,
+	) {
+		super(meta, paramDef, async (ps, me) => {
+			const q = this.hatadyBooksRepository.createQueryBuilder('b');
+			if (ps.untilId != null) q.where('b.id < :untilId', { untilId: ps.untilId });
+			const books = await q.orderBy('b.id', 'DESC').limit(ps.limit).getMany();
+			if (books.length === 0) return [];
+
+			// 所有者ユーザーを一括 pack。
+			const userIds = [...new Set(books.map(b => b.userId))];
+			const packedUsers = await this.userEntityService.packMany(userIds);
+			const usersMap = new Map(packedUsers.map(u => [u.id, u]));
+
+			const packed = await this.hatadyEntityService.packBooks(books);
+			return packed.map((pb, i) => ({ ...pb, user: usersMap.get(books[i].userId) ?? null }));
+		});
+	}
+}
