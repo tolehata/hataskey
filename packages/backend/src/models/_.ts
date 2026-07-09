@@ -116,6 +116,14 @@ import { MiFeedbackEmojiRequest } from '@/models/FeedbackEmojiRequest.js';
 import { MiFeedbackNotification } from '@/models/FeedbackNotification.js';
 import { MiFeedbackProject } from '@/models/FeedbackProject.js';
 import { MiEarthquakeNotification } from '@/models/EarthquakeNotification.js';
+import { MiHatadyBook } from '@/models/HatadyBook.js';
+import { MiHatadyLog } from '@/models/HatadyLog.js';
+import { MiHatadyComment } from '@/models/HatadyComment.js';
+import { MiHatadyReaction } from '@/models/HatadyReaction.js';
+import { MiHatadyNotification } from '@/models/HatadyNotification.js';
+import { MiHatadyFollowing } from '@/models/HatadyFollowing.js';
+import { MiHatadyUserProfile } from '@/models/HatadyUserProfile.js';
+import { MiHatadyBookmark } from '@/models/HatadyBookmark.js';
 import type { QueryDeepPartialEntity } from 'typeorm';
 
 export interface MiRepository<T extends ObjectLiteral> {
@@ -284,6 +292,14 @@ export {
 	MiFeedbackNotification,
 	MiFeedbackProject,
 	MiEarthquakeNotification,
+	MiHatadyBook,
+	MiHatadyLog,
+	MiHatadyComment,
+	MiHatadyReaction,
+	MiHatadyNotification,
+	MiHatadyFollowing,
+	MiHatadyUserProfile,
+	MiHatadyBookmark,
 };
 
 export type AbuseReportResolversRepository = Repository<MiAbuseReportResolver> & MiRepository<MiAbuseReportResolver>;
@@ -388,4 +404,12 @@ export type FeedbackIssueModeratorsRepository = Repository<MiFeedbackIssueModera
 export type FeedbackEmojiRequestsRepository = Repository<MiFeedbackEmojiRequest> & MiRepository<MiFeedbackEmojiRequest>;
 export type FeedbackNotificationsRepository = Repository<MiFeedbackNotification> & MiRepository<MiFeedbackNotification>;
 export type FeedbackProjectsRepository = Repository<MiFeedbackProject> & MiRepository<MiFeedbackProject>;
+export type HatadyBooksRepository = Repository<MiHatadyBook> & MiRepository<MiHatadyBook>;
+export type HatadyLogsRepository = Repository<MiHatadyLog> & MiRepository<MiHatadyLog>;
+export type HatadyCommentsRepository = Repository<MiHatadyComment> & MiRepository<MiHatadyComment>;
+export type HatadyReactionsRepository = Repository<MiHatadyReaction> & MiRepository<MiHatadyReaction>;
+export type HatadyNotificationsRepository = Repository<MiHatadyNotification> & MiRepository<MiHatadyNotification>;
+export type HatadyFollowingsRepository = Repository<MiHatadyFollowing> & MiRepository<MiHatadyFollowing>;
+export type HatadyUserProfilesRepository = Repository<MiHatadyUserProfile> & MiRepository<MiHatadyUserProfile>;
+export type HatadyBookmarksRepository = Repository<MiHatadyBookmark> & MiRepository<MiHatadyBookmark>;
 

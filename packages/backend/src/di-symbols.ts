@@ -116,5 +116,13 @@ export const DI = {
 	feedbackNotificationsRepository: Symbol('feedbackNotificationsRepository'),
 	feedbackProjectsRepository: Symbol('feedbackProjectsRepository'),
 	earthquakeNotificationsRepository: Symbol('earthquakeNotificationsRepository'),
+	hatadyBooksRepository: Symbol('hatadyBooksRepository'),
+	hatadyLogsRepository: Symbol('hatadyLogsRepository'),
+	hatadyCommentsRepository: Symbol('hatadyCommentsRepository'),
+	hatadyReactionsRepository: Symbol('hatadyReactionsRepository'),
+	hatadyNotificationsRepository: Symbol('hatadyNotificationsRepository'),
+	hatadyFollowingsRepository: Symbol('hatadyFollowingsRepository'),
+	hatadyUserProfilesRepository: Symbol('hatadyUserProfilesRepository'),
+	hatadyBookmarksRepository: Symbol('hatadyBookmarksRepository'),
 	//#endregion
 };

@@ -105,6 +105,14 @@ import { MiFeedbackAgree } from './FeedbackAgree.js';
 import { MiFeedbackComment } from './FeedbackComment.js';
 import { MiFeedbackCommentReaction } from './FeedbackCommentReaction.js';
 import { MiEarthquakeNotification } from './EarthquakeNotification.js';
+import { MiHatadyBook } from './HatadyBook.js';
+import { MiHatadyLog } from './HatadyLog.js';
+import { MiHatadyComment } from './HatadyComment.js';
+import { MiHatadyReaction } from './HatadyReaction.js';
+import { MiHatadyNotification } from './HatadyNotification.js';
+import { MiHatadyFollowing } from './HatadyFollowing.js';
+import { MiHatadyUserProfile } from './HatadyUserProfile.js';
+import { MiHatadyBookmark } from './HatadyBookmark.js';
 import { MiFeedbackIssueModerator } from './FeedbackIssueModerator.js';
 import { MiFeedbackEmojiRequest } from './FeedbackEmojiRequest.js';
 import { MiFeedbackNotification } from './FeedbackNotification.js';
@@ -653,6 +661,54 @@ const $earthquakeNotificationsRepository: Provider = {
 	inject: [DI.db],
 };
 
+const $hatadyBooksRepository: Provider = {
+	provide: DI.hatadyBooksRepository,
+	useFactory: (db: DataSource) => db.getRepository(MiHatadyBook).extend(miRepository as MiRepository<MiHatadyBook>),
+	inject: [DI.db],
+};
+
+const $hatadyLogsRepository: Provider = {
+	provide: DI.hatadyLogsRepository,
+	useFactory: (db: DataSource) => db.getRepository(MiHatadyLog).extend(miRepository as MiRepository<MiHatadyLog>),
+	inject: [DI.db],
+};
+
+const $hatadyCommentsRepository: Provider = {
+	provide: DI.hatadyCommentsRepository,
+	useFactory: (db: DataSource) => db.getRepository(MiHatadyComment).extend(miRepository as MiRepository<MiHatadyComment>),
+	inject: [DI.db],
+};
+
+const $hatadyReactionsRepository: Provider = {
+	provide: DI.hatadyReactionsRepository,
+	useFactory: (db: DataSource) => db.getRepository(MiHatadyReaction).extend(miRepository as MiRepository<MiHatadyReaction>),
+	inject: [DI.db],
+};
+
+const $hatadyNotificationsRepository: Provider = {
+	provide: DI.hatadyNotificationsRepository,
+	useFactory: (db: DataSource) => db.getRepository(MiHatadyNotification).extend(miRepository as MiRepository<MiHatadyNotification>),
+	inject: [DI.db],
+};
+
+const $hatadyFollowingsRepository: Provider = {
+	provide: DI.hatadyFollowingsRepository,
+	useFactory: (db: DataSource) => db.getRepository(MiHatadyFollowing).extend(miRepository as MiRepository<MiHatadyFollowing>),
+	inject: [DI.db],
+};
+
+const $hatadyUserProfilesRepository: Provider = {
+	provide: DI.hatadyUserProfilesRepository,
+	useFactory: (db: DataSource) => db.getRepository(MiHatadyUserProfile).extend(miRepository as MiRepository<MiHatadyUserProfile>),
+	inject: [DI.db],
+};
+
+const $hatadyBookmarksRepository: Provider = {
+	provide: DI.hatadyBookmarksRepository,
+	useFactory: (db: DataSource) => db.getRepository(MiHatadyBookmark).extend(miRepository as MiRepository<MiHatadyBookmark>),
+	inject: [DI.db],
+};
+
 const $feedbackCommentsRepository: Provider = {
 	provide: DI.feedbackCommentsRepository,
 	useFactory: (db: DataSource) => db.getRepository(MiFeedbackComment).extend(miRepository as MiRepository<MiFeedbackComment>),
@@ -786,6 +842,14 @@ const $feedbackProjectsRepository: Provider = {
 		$feedbackIssuesRepository,
 		$feedbackAgreesRepository,
 		$earthquakeNotificationsRepository,
+		$hatadyBooksRepository,
+		$hatadyLogsRepository,
+		$hatadyCommentsRepository,
+		$hatadyReactionsRepository,
+		$hatadyNotificationsRepository,
+		$hatadyFollowingsRepository,
+		$hatadyUserProfilesRepository,
+		$hatadyBookmarksRepository,
 		$feedbackCommentsRepository,
 		$feedbackCommentReactionsRepository,
 		$feedbackIssueModeratorsRepository,
@@ -888,6 +952,14 @@ const $feedbackProjectsRepository: Provider = {
 		$feedbackIssuesRepository,
 		$feedbackAgreesRepository,
 		$earthquakeNotificationsRepository,
+		$hatadyBooksRepository,
+		$hatadyLogsRepository,
+		$hatadyCommentsRepository,
+		$hatadyReactionsRepository,
+		$hatadyNotificationsRepository,
+		$hatadyFollowingsRepository,
+		$hatadyUserProfilesRepository,
+		$hatadyBookmarksRepository,
 		$feedbackCommentsRepository,
 		$feedbackCommentReactionsRepository,
 		$feedbackIssueModeratorsRepository,

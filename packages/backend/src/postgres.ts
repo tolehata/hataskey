@@ -88,6 +88,14 @@ import { MiFeedbackEmojiRequest } from '@/models/FeedbackEmojiRequest.js';
 import { MiFeedbackNotification } from '@/models/FeedbackNotification.js';
 import { MiFeedbackProject } from '@/models/FeedbackProject.js';
 import { MiEarthquakeNotification } from '@/models/EarthquakeNotification.js';
+import { MiHatadyBook } from '@/models/HatadyBook.js';
+import { MiHatadyLog } from '@/models/HatadyLog.js';
+import { MiHatadyComment } from '@/models/HatadyComment.js';
+import { MiHatadyReaction } from '@/models/HatadyReaction.js';
+import { MiHatadyNotification } from '@/models/HatadyNotification.js';
+import { MiHatadyFollowing } from '@/models/HatadyFollowing.js';
+import { MiHatadyUserProfile } from '@/models/HatadyUserProfile.js';
+import { MiHatadyBookmark } from '@/models/HatadyBookmark.js';
 import { MiUserSecurityKey } from '@/models/UserSecurityKey.js';
 import { MiWebhook } from '@/models/Webhook.js';
 import { MiSystemWebhook } from '@/models/SystemWebhook.js';
@@ -235,6 +243,14 @@ export const entities = [
 	MiFeedbackNotification,
 	MiFeedbackProject,
 	MiEarthquakeNotification,
+	MiHatadyBook,
+	MiHatadyLog,
+	MiHatadyComment,
+	MiHatadyReaction,
+	MiHatadyNotification,
+	MiHatadyFollowing,
+	MiHatadyUserProfile,
+	MiHatadyBookmark,
 	MiUserList,
 	MiUserListFavorite,
 	MiUserListMembership,
