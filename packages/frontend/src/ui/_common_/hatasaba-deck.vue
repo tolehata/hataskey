@@ -287,6 +287,11 @@ let prevNavHook: typeof mainRouter.navHook = null;
 onMounted(() => {
 	prevNavHook = mainRouter.navHook;
 	mainRouter.navHook = (path, flag): boolean => {
+		// 旗鯖fork(Hatady): デッキ表示中でも常に全画面で開く。
+		if (path === '/hatady' || path.startsWith('/hatady/')) {
+			os.pageWindow(path, { fullscreen: true });
+			return true;
+		}
 		if (flag === 'forcePage') return false;
 		os.pageWindow(path);
 		return true;

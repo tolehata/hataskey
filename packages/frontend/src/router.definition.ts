@@ -747,6 +747,11 @@ export const ROUTE_DEF = [{
 	component: page(() => import('@/pages/hatafeed.vue')),
 	loginRequired: true,
 }, {
+	// 旗鯖fork: Hatady(学習・読書記録ツール)。
+	path: '/hatady',
+	component: page(() => import('@/pages/hatady.vue')),
+	loginRequired: true,
+}, {
 	path: '/hata-docs',
 	component: page(() => import('@/pages/hata-docs.vue')),
 	loginRequired: false,

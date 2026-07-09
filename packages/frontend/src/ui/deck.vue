@@ -135,6 +135,11 @@ const columnComponents = {
 };
 
 mainRouter.navHook = (path, flag): boolean => {
+	// 旗鯖fork(Hatady): デッキUIでも常に全画面で開く(ウィンドウ表示にせず最大化ウィンドウ)。
+	if (path === '/hatady' || path.startsWith('/hatady/')) {
+		os.pageWindow(path, { fullscreen: true });
+		return true;
+	}
 	if (flag === 'forcePage') return false;
 	const noMainColumn = !columns.value.some(x => x.type === 'main');
 	if (prefer.s['deck.navWindow'] || noMainColumn) {

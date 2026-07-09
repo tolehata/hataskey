@@ -89,6 +89,7 @@ export const ACHIEVEMENT_TYPES = [
 	'bubbleGameDoubleExplodingHead',
 	'hatasabaDeckTutorial',
 	'welcomeToHatask',
+	'welcomeToHatady',
 ] as const;
 
 export const ACHIEVEMENT_BADGES = {
@@ -503,6 +504,12 @@ export const ACHIEVEMENT_BADGES = {
 	'welcomeToHatask': {
 		img: '/fluent-emoji/1f44b.png',
 		bg: 'linear-gradient(0deg, rgb(59 187 116), rgb(0 212 255))',
+		frame: 'bronze',
+	},
+	// 旗鯖fork: Hatady(学習・読書記録)を初めて開いた
+	'welcomeToHatady': {
+		img: '/fluent-emoji/1f4d6.png',
+		bg: 'linear-gradient(0deg, rgb(217 130 74), rgb(240 169 78))',
 		frame: 'bronze',
 	},
 /* @see <https://github.com/misskey-dev/misskey/pull/10365#discussion_r1155511107>

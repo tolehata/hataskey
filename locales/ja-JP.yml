@@ -2315,6 +2315,9 @@ _achievements:
     _welcomeToHatask:
       title: "Hataskへようこそ"
       description: "Welcome to Hatask"
+    _welcomeToHatady:
+      title: "Hatadyへようこそ"
+      description: "Welcome to Hatady"
 
 _role:
   new: "ロールの作成"

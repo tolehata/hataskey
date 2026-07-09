@@ -83,6 +83,13 @@ export const navbarItemDef = reactive({
 		show: computed(() => $i != null && ($i.policies?.canAccessHataFeed === true || $i.isModerator || $i.isAdmin)),
 		to: '/hatafeed',
 	},
+	hatady: {
+		// 旗鯖fork: Hatady(学習・読書記録ツール)。ログインユーザー全員に表示。
+		title: 'Hatady',
+		icon: 'ti ti-book-2',
+		show: computed(() => $i != null),
+		to: '/hatady',
+	},
 	earthquake: {
 		title: '地震・津波情報',
 		icon: 'ti ti-activity',

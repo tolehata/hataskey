@@ -260,6 +260,20 @@ export async function common(createVue: () => Promise<App<Element>>) {
 		miLocalStorage.setItem('hata_sidebar_v5_migrated', '1');
 	}
 
+	// 旗鯖fork(v6): Hatady(学習・読書記録)を hatafeed の直後 (なければ hata グループ末尾/全体末尾) に追加。
+	//   設計指針通り insertAfter 方式 (既存にない id だけ追加)。ユーザーが非表示にしていれば復活させない。
+	if (!miLocalStorage.getItem('hata_sidebar_v6_migrated')) {
+		const { prefer: preferSb6 } = await import('@/preferences.js');
+		const current = [...(preferSb6.s['simpleUi.sidebar'] ?? [])];
+		if (!current.some(i => i && i.id === 'hatady')) {
+			const afterIdx = current.findIndex(i => i && i.id === 'hatafeed');
+			const insertAt = afterIdx >= 0 ? afterIdx + 1 : current.length;
+			current.splice(insertAt, 0, { id: 'hatady', icon: 'ti ti-book-2', label: 'Hatady', group: 'hata' });
+			preferSb6.commit('simpleUi.sidebar', current);
+		}
+		miLocalStorage.setItem('hata_sidebar_v6_migrated', '1');
+	}
+
 	// 旗鯖fork(#36): Haskホームに「HataFeed通知」「地震・津波」タイルを強制追加(既存ユーザー向け)
 	//   registry の hatask scope を直接読み書きする。設定の sectionOrder に新セクションがなければ
 	//   末尾に追加して保存。トグル既定はON(showFeedbackNotif/showEarthquake未定義時は表示)。

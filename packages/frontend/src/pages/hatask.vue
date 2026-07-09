@@ -93,6 +93,10 @@
           <div class="htk-app-icon-img" style="background:linear-gradient(135deg,#34d399,#059669)"><i class="ti ti-message-report" style="font-size:1.6rem;color:#fff"></i></div>
           <div class="htk-app-icon-name">HataFeed</div>
         </button>
+        <button class="htk-app-icon" @click="openHatady">
+          <div class="htk-app-icon-img" style="background:linear-gradient(135deg,#e79b5e,#d9824a)"><i class="ti ti-book-2" style="font-size:1.6rem;color:#fff"></i></div>
+          <div class="htk-app-icon-name">Hatady</div>
+        </button>
         <button class="htk-app-icon" @click="openEarthquake">
           <div class="htk-app-icon-img" style="background:linear-gradient(135deg,#f87171,#dc2626)"><i class="ti ti-activity" style="font-size:1.6rem;color:#fff"></i></div>
           <div class="htk-app-icon-name">地震・津波情報</div>
@@ -873,6 +877,8 @@ function openHataskSettings(){
   }, 'closed');
 }
 function openHataFeed(){cleanupHataskState();const router=useRouter();router.push('/hatafeed')}
+// 旗鯖fork: Hatady(学習・読書記録)を旗鯖独自アプリから開く
+function openHatady(){cleanupHataskState();const router=useRouter();router.push('/hatady')}
 function openEarthquake(){cleanupHataskState();const router=useRouter();router.push('/earthquake')}
 
 // 旗鯖fork(#36): HataFeed通知タイル

@@ -977,8 +977,9 @@ function sidebarItemClick(id: string, ev?: MouseEvent) {
         favorites: ()=>mainRouter.push('/my/favorites'),
         explore: ()=>mainRouter.push('/explore'),
         followRequests: ()=>mainRouter.push('/my/follow-requests'),
-        // 旗鯖fork: HataFeed / 地震・津波情報
+        // 旗鯖fork: HataFeed / Hatady / 地震・津波情報
         hatafeed: ()=>mainRouter.push('/hatafeed'),
+        hatady: ()=>mainRouter.push('/hatady'),
         earthquake: ()=>mainRouter.push('/earthquake'),
         // 旗鯖fork: 外部通知専用ページへ
         externalNotifications: ()=>mainRouter.push('/my/external-notifications'),
@@ -1002,6 +1003,7 @@ function sidebarItemActive(id: string): boolean {
         explore: mainRouter.currentRoute.value.path.startsWith('/explore'),
         followRequests: mainRouter.currentRoute.value.path.startsWith('/my/follow-requests'),
         hatafeed: mainRouter.currentRoute.value.path.startsWith('/hatafeed'),
+        hatady: mainRouter.currentRoute.value.path.startsWith('/hatady'),
         earthquake: mainRouter.currentRoute.value.path.startsWith('/earthquake'),
         // 旗鯖fork: 外部通知ページのアクティブ判定
         externalNotifications: mainRouter.currentRoute.value.path.startsWith('/my/external-notifications'),

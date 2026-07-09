@@ -443,4 +443,5 @@ export const ACHIEVEMENT_TYPES = [
 	'bubbleGameDoubleExplodingHead',
 	'hatasabaDeckTutorial',
 	'welcomeToHatask',
+	'welcomeToHatady',
 ] as const;
