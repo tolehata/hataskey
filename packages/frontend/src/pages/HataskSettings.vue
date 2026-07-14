@@ -20,23 +20,64 @@ SPDX-License-Identifier: AGPL-3.0-only
 	<div :class="$style.root">
 		<div v-if="loading" :class="$style.loading">読み込み中…</div>
 		<template v-else>
-			<!-- 背景テーマ -->
-			<div :class="$style.card">
-				<div :class="$style.label">背景テーマ</div>
-				<div :class="$style.bgPicker">
-					<div v-for="bg in bgThemes" :key="bg.id" style="text-align:center">
-						<div :class="[$style.bgOpt, settings.bgTheme===bg.id && $style.bgOptOn]" :style="{ background: bg.gradient }" @click="setBg(bg.id)"></div>
-						<div :class="$style.bgLabel">{{ bg.label }}</div>
+			<!-- v2: デザインテーマ選択パネル(「テーマ」カラムからボタン遷移) -->
+			<div v-if="view==='theme'" :class="$style.themePanel">
+				<div :class="$style.themeHead">
+					<button :class="$style.backBtn" @click="view='main'"><i class="ti ti-arrow-left"></i> 設定に戻る</button>
+				</div>
+				<div :class="$style.label" style="font-size:1.05rem">デザインテーマ</div>
+				<div :class="$style.desc" style="margin-bottom:12px">Hatask 全体の配色・書体・カードの意匠を切り替えます。あとから設定でいつでも変更できます。</div>
+				<!-- v2: 左右スライドで選択(選択中=中央 / 前後=フェードで両脇) -->
+				<div :class="$style.themeCarousel">
+					<button type="button" :class="$style.carArrow" :disabled="themeIndex<=0" @click="slideTheme(-1)" aria-label="前のテーマ"><i class="ti ti-chevron-left"></i></button>
+					<div :class="$style.carViewport" @touchstart.passive="onThemeTouchStart" @touchend.passive="onThemeTouchEnd">
+						<button v-for="(t,i) in v2Themes" :key="t.id" type="button" :class="[$style.themeCard, settings.theme===t.id && $style.themeCardOn]" :style="themeCardStyle(i)" @click="setV2Theme(t.id)">
+							<div :class="$style.themePrev" :style="{ background:t.bg }" aria-hidden="true">
+								<div :class="$style.themePrevLogo" :style="{ color:t.accent, fontFamily:t.head }">Hatask</div>
+								<div :class="$style.themePrevCard" :style="{ background:t.card, border:t.border, borderRadius:t.radius, boxShadow:t.shadow, color:t.fg }">
+									<span :style="{ color:t.accent, fontFamily:t.head, fontWeight:800, fontSize:'1.05rem' }">21:47</span>
+								</div>
+								<div :class="$style.themePrevCard" :style="{ background:t.card, border:t.border, borderRadius:t.radius, boxShadow:t.shadow, color:t.fg }">
+									<span :style="{ fontFamily:t.head, fontWeight:700, fontSize:'.72rem' }">きょうの予定</span>
+								</div>
+							</div>
+							<div :class="$style.themeName" :style="{ fontFamily:t.head }">{{ t.name }}</div>
+							<div :class="$style.themeJp">{{ t.jp }}</div>
+							<div :class="[$style.themeCheck, settings.theme===t.id && $style.themeCheckOn]"><i :class="settings.theme===t.id ? 'ti ti-check' : 'ti ti-circle'"></i> {{ settings.theme===t.id ? '選択中' : '選択' }}</div>
+						</button>
 					</div>
+					<button type="button" :class="$style.carArrow" :disabled="themeIndex>=v2Themes.length-1" @click="slideTheme(1)" aria-label="次のテーマ"><i class="ti ti-chevron-right"></i></button>
+				</div>
+				<div :class="$style.carDots">
+					<button v-for="(t,i) in v2Themes" :key="t.id" type="button" :class="[$style.carDot, settings.theme===t.id && $style.carDotOn]" @click="setV2Theme(t.id)" :aria-label="t.name"></button>
+				</div>
+				<!-- 外観(ライト/ダーク) -->
+				<div :class="$style.card">
+					<div :class="$style.label">外観（ライト / ダーク）</div>
+					<div :class="$style.row"><span>自動（端末の設定に従う）</span><button :class="[$style.sw, settings.autoTheme && $style.swOn]" @click="toggle('autoTheme')"></button></div>
+					<div :class="$style.row" v-if="!settings.autoTheme"><span>ダークモード</span><button :class="[$style.sw, settings.darkMode && $style.swOn]" @click="toggle('darkMode')"></button></div>
+				</div>
+				<!-- アニメーション -->
+				<div :class="$style.card">
+					<div :class="$style.label">アニメーション</div>
+					<div :class="$style.row"><span>起動・切替・敷き詰めの動き</span><button :class="[$style.sw, settings.animations!==false && $style.swOn]" @click="toggle('animations')"></button></div>
+					<div :class="$style.desc">オフにすると動きを止めます。端末の「視差効果を減らす」設定も自動で尊重します。</div>
 				</div>
 			</div>
 
-			<!-- 外観 -->
+			<!-- 通常設定リスト -->
+			<template v-else>
+			<!-- テーマ(デザインテーマへの遷移 + レガシー背景) -->
 			<div :class="$style.card">
-				<div :class="$style.label">外観（ライト / ダーク）</div>
-				<div :class="$style.row"><span>自動（端末の設定に従う）</span><button :class="[$style.sw, settings.autoTheme && $style.swOn]" @click="toggle('autoTheme')"></button></div>
-				<div :class="$style.row" v-if="!settings.autoTheme"><span>ダークモード</span><button :class="[$style.sw, settings.darkMode && $style.swOn]" @click="toggle('darkMode')"></button></div>
-				<div :class="$style.desc">ライトは白基調＋黒文字、ダークは黒基調＋白文字になります。背景のアニメーションは共通です。</div>
+				<div :class="$style.label">テーマ</div>
+				<div :class="$style.desc" style="margin-bottom:10px">Hatask 全体の配色・書体・カードの意匠（季 / 花信 / 刷）とライト / ダーク、アニメーションを設定します。</div>
+				<div :class="$style.themeEntry">
+					<div style="min-width:0">
+						<div :class="$style.themeEntryLabel">デザインテーマ</div>
+						<div :class="$style.themeEntryVal">{{ currentThemeLabel() }}</div>
+					</div>
+					<button :class="$style.themeEntryBtn" @click="view='theme'">テーマ設定へ <i class="ti ti-arrow-right"></i></button>
+				</div>
 			</div>
 
 			<!-- カレンダー -->
@@ -126,39 +167,63 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</div>
 
 			<div :class="$style.note">変更は保存され、次に Hatask を開いたときに反映されます。</div>
+			</template>
 		</template>
 	</div>
 </MkModalWindow>
 </template>
 
 <script lang="ts" setup>
-import { ref, shallowRef, onMounted } from 'vue';
+import { ref, shallowRef, computed, onMounted } from 'vue';
 import MkModalWindow from '@/components/MkModalWindow.vue';
 import MkButton from '@/components/MkButton.vue';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { mainRouter } from '@/router.js';
 import * as os from '@/os.js';
 
-const emit = defineEmits<{ (ev:'closed'):void; (ev:'reopenTutorial'):void }>();
+const emit = defineEmits<{ (ev:'closed'):void; (ev:'reopenTutorial'):void; (ev:'changed', settings:any):void }>();
 const dialog = shallowRef<InstanceType<typeof MkModalWindow>>();
 
 // Hatask本体と同じ registry スコープ/キーを使うことでデータを共有・同期する
 const SCOPE = ['client', 'hatask'];
-const bgThemes = [
-	{id:'purple',label:'パープル',gradient:'linear-gradient(145deg,#3a3744,#534e60)'},
-	{id:'ocean',label:'オーシャン',gradient:'linear-gradient(145deg,#2d6a8f,#5bc0be)'},
-	{id:'forest',label:'フォレスト',gradient:'linear-gradient(145deg,#2d5a27,#6bbd67)'},
-	{id:'night',label:'ナイト',gradient:'linear-gradient(145deg,#0f0c29,#302b63)'},
-];
 // 旗鯖fork(#36): hatask.vue と同じセクション定義を使う(registry経由で完全同期)。
 const defaultSectionOrder = ['clock','eye','apps','feedbackNotif','earthquake','loginDays','flower','events','mood','meal','mascot'];
 const sectionLabels:Record<string,string> = {clock:'日時表示',eye:'Hatask Eye',apps:'旗鯖独自アプリ',loginDays:'ログイン日数',flower:'お花',events:'直近の予定',mood:'今週のきもち',meal:'ごはん記録',mascot:'マスコット',feedbackNotif:'HataFeed 通知',earthquake:'地震・津波'};
 const sectionVisibilityKey:Record<string,string> = {clock:'showClock',eye:'showEye',apps:'showApps',loginDays:'showLoginDays',flower:'showFlower',events:'showEvents',mood:'showMoodSummary',meal:'showMealSection',mascot:'showMascot',feedbackNotif:'showFeedbackNotif',earthquake:'showEarthquake'};
-const defaultSettings:any = { bgTheme:'ocean', darkMode:false, autoTheme:true, weekStart:'mon', showClock:true, showEvents:true, showFlower:true, showMoodSummary:true, showMealSection:true, showMascot:true, showFeedbackNotif:true, showEarthquake:true, moodRemind:false, openOnStart:false };
+const defaultSettings:any = { darkMode:false, autoTheme:true, weekStart:'mon', showClock:true, showEvents:true, showFlower:true, showMoodSummary:true, showMealSection:true, showMascot:true, showFeedbackNotif:true, showEarthquake:true, moodRemind:false, openOnStart:false, theme:'kisetsu', animations:true };
+
+// 旗鯖fork(v2): デザインテーマ(季/花信/刷)。プレビュー用にライト配色・見出しフォントを持つ。
+const v2Themes = [
+	{ id:'kisetsu', name:'季', jp:'エディトリアル明朝', bg:'#f4f1ea', fg:'#211d18', accent:'#a8552f', card:'#ffffff', border:'1px solid #ddd7cb', radius:'5px', shadow:'none', head:"'Shippori Mincho B1','Zen Kaku Gothic New',serif" },
+	{ id:'kashin', name:'花信', jp:'ポップ・ベントー', bg:'#fff5e6', fg:'#25201c', accent:'#ff6b4a', card:'#ffffff', border:'2.5px solid #25201c', radius:'14px', shadow:'3px 3px 0 rgba(37,32,28,.15)', head:"'Zen Maru Gothic',sans-serif" },
+	{ id:'suri', name:'刷', jp:'リソグラフ2色', bg:'#efe7d4', fg:'#1a1a2e', accent:'#2a52c0', card:'#ffffff', border:'2.5px solid #1a1a2e', radius:'0', shadow:'3px 3px 0 #ff4f9a', head:"'Zen Kaku Gothic Antique',sans-serif" },
+];
 
 const loading = ref(true);
 const settings = ref<any>({ ...defaultSettings });
 const sectionOrder = ref<string[]>([...defaultSectionOrder]);
+// 旗鯖fork(v2): 設定モーダル内のビュー('main'=通常設定 / 'theme'=デザインテーマ選択)。
+const view = ref<'main'|'theme'>('main');
+function setV2Theme(id:string) { settings.value.theme = id; saveSettings(); }
+function currentThemeLabel():string { const t = v2Themes.find(x => x.id === (settings.value.theme || 'kisetsu')); return t ? `${t.name}（${t.jp}）` : '季'; }
+
+// 旗鯖fork(v2): テーマ選択カルーセル(左右スライド)。選択中を中央・前後をフェードで両脇に。
+const themeIndex = computed(() => { const i = v2Themes.findIndex(t => t.id === (settings.value.theme || 'kisetsu')); return i < 0 ? 0 : i; });
+function themeCardStyle(i:number) {
+	const off = i - themeIndex.value;
+	const abs = Math.abs(off);
+	return {
+		transform: `translateX(calc(-50% + ${off * 76}%)) scale(${off === 0 ? 1 : 0.8})`,
+		opacity: abs > 1 ? 0 : (off === 0 ? 1 : 0.4),
+		zIndex: String(off === 0 ? 3 : 2 - abs),
+		pointerEvents: (abs > 1 ? 'none' : 'auto') as any,
+		filter: off === 0 ? 'none' : 'saturate(.7)',
+	};
+}
+function slideTheme(dir:number) { const n = themeIndex.value + dir; if (n >= 0 && n < v2Themes.length) setV2Theme(v2Themes[n].id); }
+let _themeTouchX = 0;
+function onThemeTouchStart(e:TouchEvent) { _themeTouchX = e.changedTouches[0].clientX; }
+function onThemeTouchEnd(e:TouchEvent) { const dx = e.changedTouches[0].clientX - _themeTouchX; if (Math.abs(dx) > 40) slideTheme(dx < 0 ? 1 : -1); }
 
 async function registryGet<T>(key:string, fb:T):Promise<T> {
 	try { const v = await misskeyApi('i/registry/get', { key, scope: SCOPE }); return (v != null ? v : fb) as T; } catch { return fb; }
@@ -182,11 +247,14 @@ onMounted(async () => {
 	loading.value = false;
 });
 
-async function saveSettings() { await registrySet('settings', settings.value); }
+async function saveSettings() {
+	// 旗鯖fork(v2): 変更を親(hatask.vue)へ即時通知して裏の画面にライブ反映させる。
+	emit('changed', { ...settings.value });
+	await registrySet('settings', settings.value);
+}
 
 function toggle(key:string) { settings.value[key] = !settings.value[key]; saveSettings(); }
 function onWeekStart(ev:Event) { settings.value.weekStart = (ev.target as HTMLSelectElement).value; saveSettings(); }
-function setBg(id:string) { settings.value.bgTheme = id; saveSettings(); }
 
 function isSectionVisible(sec:string):boolean { const k = sectionVisibilityKey[sec]; if (!k) return true; return settings.value[k] !== false; }
 function toggleSectionVisible(sec:string) { const k = sectionVisibilityKey[sec]; if (!k) return; settings.value[k] = settings.value[k] === false ? true : false; saveSettings(); }
@@ -259,4 +327,40 @@ async function sendTestNotification() {
 .rlTbl th, .rlTbl td { padding:4px 8px; text-align:left; border-bottom:1px solid var(--MI_THEME-divider); }
 .rlTbl thead th { opacity:.7; font-weight:600; }
 .rlTbl tbody tr:last-child td { border-bottom:none; }
+
+/* 旗鯖fork(v2): デザインテーマへの遷移エントリ(テーマカード内) */
+.subLabel { font-size:.78rem; font-weight:700; opacity:.6; margin:14px 0 8px; }
+.themeEntry { display:flex; align-items:center; justify-content:space-between; gap:12px; background: var(--MI_THEME-bg); border:1px solid var(--MI_THEME-divider); border-radius:10px; padding:12px 14px; }
+.themeEntryLabel { font-size:.9rem; font-weight:700; }
+.themeEntryVal { font-size:.8rem; opacity:.7; margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.themeEntryBtn { flex-shrink:0; display:inline-flex; align-items:center; gap:5px; background: var(--MI_THEME-accent); color:#fff; border:none; border-radius:999px; padding:9px 16px; font-size:.85rem; font-weight:700; cursor:pointer; font-family:inherit; min-height:40px; transition:filter .15s; > i { font-size:1em; } &:hover { filter:brightness(1.06); } }
+
+/* 旗鯖fork(v2): デザインテーマ選択パネル */
+.themePanel { display:flex; flex-direction:column; gap:14px; }
+.themeHead { display:flex; align-items:center; }
+.backBtn { display:inline-flex; align-items:center; gap:6px; background: var(--MI_THEME-buttonBg); color: var(--MI_THEME-fg); border:1px solid var(--MI_THEME-divider); border-radius:999px; padding:8px 15px; font-size:.85rem; font-weight:700; cursor:pointer; font-family:inherit; min-height:40px; &:hover { background: var(--MI_THEME-buttonHoverBg); } > i { font-size:1.05em; } }
+/* v2: テーマ選択カルーセル(左右スライド) */
+.themeCarousel { display:flex; align-items:center; gap:6px; margin:2px 0; }
+.carViewport { position:relative; flex:1; min-width:0; height:238px; overflow:hidden; touch-action:pan-y; }
+.carArrow { flex:0 0 auto; width:38px; height:38px; border-radius:999px; border:1px solid var(--MI_THEME-divider); background: var(--MI_THEME-buttonBg); color: var(--MI_THEME-fg); cursor:pointer; display:inline-flex; align-items:center; justify-content:center; font-size:1.25rem; transition:all .15s; &:hover:not(:disabled){ background: var(--MI_THEME-buttonHoverBg); border-color: var(--MI_THEME-accent); } &:disabled{ opacity:.32; cursor:not-allowed; } }
+.themeCard { position:absolute; left:50%; top:4px; width:min(180px,74%); margin:0; display:flex; flex-direction:column; align-items:stretch; gap:6px; padding:10px 10px 12px; background: var(--MI_THEME-panel); border:2px solid var(--MI_THEME-divider); border-radius:14px; cursor:pointer; font-family:inherit; text-align:center; transition:transform .38s cubic-bezier(.4,0,.2,1), opacity .38s, filter .38s, border-color .2s; will-change:transform,opacity; }
+.themeCardOn { border-color: var(--MI_THEME-accent); box-shadow:0 0 0 3px color-mix(in srgb, var(--MI_THEME-accent) 22%, transparent); }
+.carDots { display:flex; justify-content:center; gap:7px; margin-top:6px; }
+.carDot { width:8px; height:8px; border-radius:999px; border:none; background: var(--MI_THEME-divider); cursor:pointer; padding:0; transition:all .25s; }
+.carDotOn { background: var(--MI_THEME-accent); width:22px; }
+.themePrev { border-radius:9px; padding:10px 9px; display:flex; flex-direction:column; gap:6px; overflow:hidden; box-shadow:inset 0 0 0 1px rgba(0,0,0,.06); }
+.themePrevLogo { font-size:1.15rem; line-height:1; text-align:left; }
+.themePrevCard { padding:6px 8px; text-align:left; line-height:1; }
+.themeName { font-size:1.15rem; font-weight:800; margin-top:2px; }
+.themeJp { font-size:.72rem; opacity:.65; }
+.themeCheck { display:inline-flex; align-items:center; justify-content:center; gap:4px; font-size:.76rem; font-weight:700; opacity:.6; margin-top:2px; > i { font-size:1em; } }
+.themeCheckOn { opacity:1; color: var(--MI_THEME-accent); }
+
+@media (max-width:520px) {
+	.carViewport { height:224px; }
+	.themeCard { width:min(168px,72%); }
+	.carArrow { width:34px; height:34px; }
+	.themeEntry { flex-wrap:wrap; }
+	.themeEntryBtn { width:100%; justify-content:center; }
+}
 </style>

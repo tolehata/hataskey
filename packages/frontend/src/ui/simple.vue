@@ -403,7 +403,7 @@ import { instance } from '@/instance.js';
 import { store } from '@/store.js';
 import { deepMerge } from '@/utility/merge.js';
 import { i18n } from '@/i18n.js';
-import { openInstanceMenu } from '@/ui/_common_/common.js';
+import { openInstanceMenu, showLoginBonusIfNeeded } from '@/ui/_common_/common.js';
 import { miLocalStorage } from '@/local-storage.js';
 
 const XWidgets = defineAsyncComponent(() => import('./_common_/widgets.vue'));
@@ -644,9 +644,23 @@ function dismissMoreAnnounce() {
 // 旗鯖fork: 案内吹き出しはクリック非遷移に変更したため未使用(関数は念のため残す)
 function calcAnnPos(el: HTMLElement | null): { top: number; left: number } | null {
     if (!el) return null;
+    // 旗鯖fork: アンカー(例:「もっと」メニュー)が非表示・折りたたみだと座標が壊れて吹き出しが
+    //   画面端に飛ぶため、そうした場合は null を返して吹き出し自体を出さない。
+    //   display:none 等は offsetParent が null になる(position:fixed のときのみ例外的に null になり得る)。
+    if (el.offsetParent === null && getComputedStyle(el).position !== 'fixed') return null;
     const r = el.getBoundingClientRect();
-    // 要素の右側・縦中央に出す(しっぽは吹き出し左辺=「く」の口)
-    return { top: r.top + r.height / 2, left: r.right + 12 };
+    if (r.width === 0 || r.height === 0) return null;
+    // アンカーが完全にビューポート外(サイドバーのスクロールで隠れている等)なら出さない。
+    if (r.bottom <= 0 || r.top >= window.innerHeight || r.right <= 0 || r.left >= window.innerWidth) return null;
+    const center = r.top + r.height / 2;
+    // 旗鯖fork: 「もっと」はサイドバー最下部で中心が画面下端より下(=ほぼ画面外)に来ることがあり、
+    //   その位置に吹き出しを出すと崩壊するため出さない。デッキ切替トグルのように画面内に収まる
+    //   下寄りアンカー(中心が画面内)は従来どおり表示する。
+    if (center >= window.innerHeight) return null;
+    // 要素の右側・縦中央に出す(しっぽは吹き出し左辺=「く」の口)。
+    //   下寄りのアンカーでも吹き出しが画面下にはみ出さないよう軽くクランプする。
+    const top = Math.min(center, window.innerHeight - 48);
+    return { top, left: r.right + 12 };
 }
 function updateAnnouncePositions() {
     if (deckAnnounceVisible.value) deckAnnPos.value = calcAnnPos(deckAnchorEl.value);
@@ -666,7 +680,7 @@ function updateSbFade() {
     sbFadeTop.value = top > 1;
     sbFadeBottom.value = top < max - 1;
 }
-function onSbScroll() { updateSbFade(); }
+function onSbScroll() { updateSbFade(); updateAnnouncePositions(); }
 const showBottomBar = ref(true);
 const showTopBar = ref(true);
 let lastScrollY = 0;
@@ -1226,13 +1240,16 @@ function onSimpleUserPanel(ev: Event) {
 watch(deckActive, (v) => { if (v) maybeShowDeckTutorial(); }, { immediate: true });
 
 // 旗鯖fork: お知らせ吹き出しの表示時に、アンカー座標を計算して fixed 配置する
-watch([deckAnnounceVisible, collapseAnnounceVisible], () => {
+watch([deckAnnounceVisible, collapseAnnounceVisible, moreAnnounceVisible], () => {
     nextTick(() => { updateAnnouncePositions(); });
 });
 
 onMounted(()=>{
     cleanupStaleUiElements();
     checkIsPageView();
+    // 旗鯖fork: ログインボーナス(ログイン日数)ポップアップは universal.vue でしか呼ばれておらず、
+    //   HatasabaUI(simple)では表示されなかった(他UIに切替えると出る)。ここでも呼んで設定を尊重する。
+    showLoginBonusIfNeeded();
     // 旗鯖fork(タスク3): デスクトップで未表示なら、デッキ表示追加のお知らせ吹き出しを出す
     if (isDesktop.value && !prefer.s['simpleUi.deckAnnounceShown']) {
         deckAnnounceVisible.value = true;
