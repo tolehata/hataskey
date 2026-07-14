@@ -80,7 +80,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<div :class="$style.composerRow">
 				<MkAvatar v-if="$i" :class="$style.composerAvatar" :user="$i"/>
 				<input v-model="draft" :class="$style.composerInput" :placeholder="t('placeholder')" @keydown.enter="send">
-				<button :class="$style.sendBtn" :disabled="sending || !draft.trim()" @click="send"><i class="ti ti-send"></i> {{ t('send') }}</button>
+				<button :class="$style.sendBtn" :disabled="sending || !draft.trim()" :aria-label="t('send')" :title="t('send')" @click="send"><i class="ti ti-send"></i><span :class="$style.sendLabel">{{ t('send') }}</span></button>
 			</div>
 		</div>
 	</div>
@@ -247,6 +247,16 @@ onMounted(reload);
 	background: linear-gradient(90deg, #e0955a, #d9824a); color: #fff; border: none; border-radius: 999px;
 	padding: 9px 18px; font-size: 13px; font-weight: 700; font-family: var(--hy-heading); cursor: pointer;
 	box-shadow: 0 3px 9px rgba(217,130,74,.4);
+	flex-shrink: 0;
 }
 .sendBtn:disabled { opacity: .45; cursor: not-allowed; }
+.sendLabel { white-space: nowrap; }
+
+/* 旗鯖fork: モバイル(狭幅)では送信ボタンを丸いアイコンのみにして、
+   「送信」テキストが縦に折れて崩れるのを防ぐ。 */
+@media (max-width: 500px) {
+	.sendBtn { gap: 0; width: 42px; height: 42px; padding: 0; justify-content: center; }
+	.sendBtn > i { font-size: 17px; }
+	.sendLabel { display: none; }
+}
 </style>

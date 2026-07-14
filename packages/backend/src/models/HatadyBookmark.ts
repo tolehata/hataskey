@@ -58,4 +58,12 @@ export class MiHatadyBookmark {
 		comment: 'Bookmark color preset key.',
 	})
 	public color: string | null;
+
+	// 旗鯖fork: しおりごとの長文メモ(name は短い見出し、こちらは自由記述の追記)。
+	@Column('varchar', {
+		length: 2048,
+		nullable: true,
+		comment: 'Per-bookmark free-text memo.',
+	})
+	public memo: string | null;
 }

@@ -550,7 +550,11 @@ export * as 'hata/hatady/books/show' from './endpoints/hata/hatady/books/show.js
 export * as 'hata/hatady/books/update' from './endpoints/hata/hatady/books/update.js';
 export * as 'hata/hatady/books/delete' from './endpoints/hata/hatady/books/delete.js';
 export * as 'hata/hatady/bookmarks/create' from './endpoints/hata/hatady/bookmarks/create.js';
+export * as 'hata/hatady/bookmarks/update' from './endpoints/hata/hatady/bookmarks/update.js';
 export * as 'hata/hatady/bookmarks/delete' from './endpoints/hata/hatady/bookmarks/delete.js';
+export * as 'hata/hatady/memos/create' from './endpoints/hata/hatady/memos/create.js';
+export * as 'hata/hatady/memos/update' from './endpoints/hata/hatady/memos/update.js';
+export * as 'hata/hatady/memos/delete' from './endpoints/hata/hatady/memos/delete.js';
 export * as 'hata/hatady/admin/books' from './endpoints/hata/hatady/admin/books.js';
 export * as 'hata/hatady/admin/delete-book' from './endpoints/hata/hatady/admin/delete-book.js';
 export * as 'hata/hatady/stats' from './endpoints/hata/hatady/stats.js';
@@ -571,6 +575,9 @@ export * as 'hata/hatady/followers/remove' from './endpoints/hata/hatady/followe
 export * as 'hata/hatady/profile/update' from './endpoints/hata/hatady/profile/update.js';
 export * as 'hata/hatady/logs/update' from './endpoints/hata/hatady/logs/update.js';
 export * as 'hata/hatady/logs/delete' from './endpoints/hata/hatady/logs/delete.js';
+export * as 'hata/hatady/subjects' from './endpoints/hata/hatady/subjects.js';
+export * as 'hata/hatady/subjects/save' from './endpoints/hata/hatady/subjects/save.js';
+export * as 'hata/hatady/subjects/delete' from './endpoints/hata/hatady/subjects/delete.js';
 export * as 'admin/hata/consent-list' from './endpoints/admin/hata/consent-list.js';
 
 export * as 'registration/apply' from './endpoints/registration/apply.js';

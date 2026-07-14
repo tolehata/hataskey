@@ -7,13 +7,14 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { MoreThan } from 'typeorm';
 import { DI } from '@/di-symbols.js';
-import type { HatadyBooksRepository, HatadyLogsRepository, HatadyCommentsRepository, HatadyReactionsRepository, HatadyNotificationsRepository, HatadyFollowingsRepository, HatadyUserProfilesRepository, HatadyBookmarksRepository } from '@/models/_.js';
+import type { HatadyBooksRepository, HatadyLogsRepository, HatadyCommentsRepository, HatadyReactionsRepository, HatadyNotificationsRepository, HatadyFollowingsRepository, HatadyUserProfilesRepository, HatadyBookmarksRepository, HatadyBookMemosRepository, HatadySubjectsRepository } from '@/models/_.js';
 import type { MiUser } from '@/models/User.js';
 import type { MiHatadyBook } from '@/models/HatadyBook.js';
 import type { MiHatadyLog } from '@/models/HatadyLog.js';
 import type { MiHatadyComment } from '@/models/HatadyComment.js';
 import type { MiHatadyNotification } from '@/models/HatadyNotification.js';
 import type { MiHatadyBookmark } from '@/models/HatadyBookmark.js';
+import type { MiHatadyBookMemo } from '@/models/HatadyBookMemo.js';
 import { IdService } from '@/core/IdService.js';
 import { RoleService } from '@/core/RoleService.js';
 import { bindThis } from '@/decorators.js';
@@ -37,6 +38,10 @@ export class HatadyService {
 		private hatadyUserProfilesRepository: HatadyUserProfilesRepository,
 		@Inject(DI.hatadyBookmarksRepository)
 		private hatadyBookmarksRepository: HatadyBookmarksRepository,
+		@Inject(DI.hatadyBookMemosRepository)
+		private hatadyBookMemosRepository: HatadyBookMemosRepository,
+		@Inject(DI.hatadySubjectsRepository)
+		private hatadySubjectsRepository: HatadySubjectsRepository,
 
 		private idService: IdService,
 		private roleService: RoleService,
@@ -46,11 +51,87 @@ export class HatadyService {
 	// ロール上限超過を表すエラーコード(エンドポイントで拾って ApiError に変換)。
 	public static readonly ERR_BOOK_LIMIT = 'HATADY_BOOK_LIMIT';
 	public static readonly ERR_BOOKMARK_LIMIT = 'HATADY_BOOKMARK_LIMIT';
+	public static readonly ERR_MEMO_LIMIT = 'HATADY_MEMO_LIMIT';
+	// 内容メモは本1冊あたりの上限(ロールポリシー化はせず一律の安全上限)。
+	public static readonly MEMO_LIMIT_PER_BOOK = 500;
+
+	// ===== 分野(subject)レジストリ(本人のみ。色は本人クライアント内でのみ反映) =====
+
+	// 本人の分野一覧。学習ログの distinct subject(件数付き)とレジストリ(色/明示登録)をマージ。
+	public async getSubjects(userId: MiUser['id']): Promise<{ name: string; color: string | null; logCount: number }[]> {
+		const rows = await this.hatadyLogsRepository.createQueryBuilder('log')
+			.select('log.subject', 'name')
+			.addSelect('COUNT(*)', 'cnt')
+			.where('log.userId = :userId', { userId })
+			.groupBy('log.subject')
+			.getRawMany() as { name: string | null; cnt: string }[];
+		const counts = new Map<string, number>();
+		for (const r of rows) {
+			if (r.name != null && r.name !== '') counts.set(r.name, Number(r.cnt) || 0);
+		}
+		const regs = await this.hatadySubjectsRepository.findBy({ userId });
+		const colors = new Map<string, string | null>();
+		for (const s of regs) colors.set(s.name, s.color ?? null);
+		const names = new Set<string>([...counts.keys(), ...colors.keys()]);
+		const result = [...names].map(name => ({
+			name,
+			color: colors.get(name) ?? null,
+			logCount: counts.get(name) ?? 0,
+		}));
+		// 件数降順 → 名前昇順
+		result.sort((a, b) => (b.logCount - a.logCount) || a.name.localeCompare(b.name));
+		return result;
+	}
+
+	// 分野の色を設定/明示登録(upsert)。color=null で自動割当に戻す(行は残す)。
+	public async saveSubject(userId: MiUser['id'], name: string, color: string | null): Promise<{ name: string; color: string | null }> {
+		const trimmed = name.trim();
+		if (trimmed.length === 0) throw new Error('empty subject name');
+		const normColor = this.normalizeSubjectColor(color);
+		const now = new Date();
+		const existing = await this.hatadySubjectsRepository.findOneBy({ userId, name: trimmed });
+		if (existing) {
+			await this.hatadySubjectsRepository.update({ id: existing.id }, { color: normColor, updatedAt: now });
+		} else {
+			await this.hatadySubjectsRepository.insertOne({
+				id: this.idService.gen(now.getTime()),
+				userId,
+				name: trimmed,
+				color: normColor,
+				createdAt: now,
+				updatedAt: now,
+			});
+		}
+		return { name: trimmed, color: normColor };
+	}
+
+	// 分野を削除。reassignTo 指定時はその分野が付いた本人のログを付け替える(ログ自体は非破壊)。
+	//   レジストリ行は削除する。
+	public async deleteSubject(userId: MiUser['id'], name: string, reassignTo: string | null): Promise<{ reassigned: number }> {
+		const from = name.trim();
+		if (from.length === 0) throw new Error('empty subject name');
+		let reassigned = 0;
+		const to = (reassignTo ?? '').trim();
+		if (to.length > 0 && to !== from) {
+			const res = await this.hatadyLogsRepository.update({ userId, subject: from }, { subject: to });
+			reassigned = res.affected ?? 0;
+		}
+		await this.hatadySubjectsRepository.delete({ userId, name: from });
+		return { reassigned };
+	}
+
+	// 色の正規化: #rgb / #rrggbb のみ許可。それ以外・空は null(=自動割当)。
+	private normalizeSubjectColor(color: string | null | undefined): string | null {
+		if (color == null) return null;
+		const c = color.trim().toLowerCase();
+		if (/^#([0-9a-f]{3}|[0-9a-f]{6})$/.test(c)) return c;
+		return null;
+	}
 
 	// ===== しおり(本の所有者のみ) =====
 
 	@bindThis
-	public async createBookmark(user: MiUser, params: { bookId: string; page: number; name?: string | null; color?: string | null }): Promise<MiHatadyBookmark> {
+	public async createBookmark(user: MiUser, params: { bookId: string; page: number; name?: string | null; color?: string | null; memo?: string | null }): Promise<MiHatadyBookmark> {
 		const book = await this.hatadyBooksRepository.findOneBy({ id: params.bookId, userId: user.id });
 		if (book == null) throw new Error('no such book or access denied');
 		// ロールポリシー: 本1冊あたりのしおりの最大数。
@@ -66,7 +147,22 @@ export class HatadyService {
 			page: Math.max(0, params.page ?? 0),
 			name: params.name ?? null,
 			color: params.color ?? null,
+			memo: params.memo ?? null,
 		});
+	}
+
+	// しおりの編集(名前・ページ・色・メモ)。所有者のみ。渡されたキーだけ更新する。
+	@bindThis
+	public async updateBookmark(user: MiUser, params: { bookmarkId: string; page?: number; name?: string | null; color?: string | null; memo?: string | null }): Promise<MiHatadyBookmark> {
+		const bm = await this.hatadyBookmarksRepository.findOneBy({ id: params.bookmarkId, userId: user.id });
+		if (bm == null) throw new Error('no such bookmark or access denied');
+		const patch: Partial<MiHatadyBookmark> = {};
+		if (params.page !== undefined) patch.page = Math.max(0, params.page);
+		if (params.name !== undefined) patch.name = params.name;
+		if (params.color !== undefined) patch.color = params.color;
+		if (params.memo !== undefined) patch.memo = params.memo;
+		if (Object.keys(patch).length > 0) await this.hatadyBookmarksRepository.update(bm.id, patch);
+		return await this.hatadyBookmarksRepository.findOneByOrFail({ id: bm.id });
 	}
 
 	@bindThis
@@ -74,6 +170,54 @@ export class HatadyService {
 		const bm = await this.hatadyBookmarksRepository.findOneBy({ id: bookmarkId, userId: user.id });
 		if (bm == null) return;
 		await this.hatadyBookmarksRepository.delete(bm.id);
+	}
+
+	// ===== 内容メモ(本の所有者のみ) =====
+
+	@bindThis
+	public async createMemo(user: MiUser, params: { bookId: string; text: string; page?: number | null }): Promise<MiHatadyBookMemo> {
+		const book = await this.hatadyBooksRepository.findOneBy({ id: params.bookId, userId: user.id });
+		if (book == null) throw new Error('no such book or access denied');
+		const count = await this.hatadyBookMemosRepository.countBy({ bookId: book.id });
+		if (count >= HatadyService.MEMO_LIMIT_PER_BOOK) throw new Error(HatadyService.ERR_MEMO_LIMIT);
+		const now = new Date();
+		return this.hatadyBookMemosRepository.insertOne({
+			id: this.idService.gen(now.getTime()),
+			createdAt: now,
+			updatedAt: now,
+			bookId: book.id,
+			userId: user.id,
+			text: params.text,
+			page: params.page ?? null,
+		});
+	}
+
+	// 内容メモの編集(本文・ページ)。所有者のみ。
+	@bindThis
+	public async updateMemo(user: MiUser, params: { memoId: string; text?: string; page?: number | null }): Promise<MiHatadyBookMemo> {
+		const memo = await this.hatadyBookMemosRepository.findOneBy({ id: params.memoId, userId: user.id });
+		if (memo == null) throw new Error('no such memo or access denied');
+		const patch: Partial<MiHatadyBookMemo> = { updatedAt: new Date() };
+		if (params.text !== undefined) patch.text = params.text;
+		if (params.page !== undefined) patch.page = params.page;
+		await this.hatadyBookMemosRepository.update(memo.id, patch);
+		return await this.hatadyBookMemosRepository.findOneByOrFail({ id: memo.id });
+	}
+
+	@bindThis
+	public async deleteMemo(user: MiUser, memoId: string): Promise<void> {
+		const memo = await this.hatadyBookMemosRepository.findOneBy({ id: memoId, userId: user.id });
+		if (memo == null) return;
+		await this.hatadyBookMemosRepository.delete(memo.id);
+	}
+
+	// 本の内容メモ一覧(作成日時の昇順。並び替えはフロントで行う)。
+	@bindThis
+	public async getMemos(bookId: string): Promise<MiHatadyBookMemo[]> {
+		return this.hatadyBookMemosRepository.createQueryBuilder('memo')
+			.where('memo.bookId = :bookId', { bookId })
+			.orderBy('memo.createdAt', 'ASC').addOrderBy('memo.id', 'ASC')
+			.limit(HatadyService.MEMO_LIMIT_PER_BOOK).getMany();
 	}
 
 	@bindThis

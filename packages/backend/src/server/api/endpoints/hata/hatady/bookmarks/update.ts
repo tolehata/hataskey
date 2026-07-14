@@ -1,5 +1,5 @@
 /*
- * 旗鯖fork(Hatady): 本にしおりを追加する(本の所有者のみ)。
+ * 旗鯖fork(Hatady): しおりを編集する(本人のみ)。名前・ページ・色・メモを更新できる。
  */
 import { Injectable } from '@nestjs/common';
 import { Endpoint } from '@/server/api/endpoint-base.js';
@@ -13,15 +13,10 @@ export const meta = {
 	kind: 'write:account',
 	res: { type: 'object', optional: false, nullable: false },
 	errors: {
-		noSuchBook: {
-			message: 'No such book or access denied.',
-			code: 'NO_SUCH_BOOK',
-			id: 'f6a7b8c9-d0e1-4f2a-8b3c-4d5e6f7a8b9c',
-		},
-		bookmarkLimitExceeded: {
-			message: 'You have reached the maximum number of bookmarks for this book allowed by your role.',
-			code: 'HATADY_BOOKMARK_LIMIT_EXCEEDED',
-			id: 'b9c0d1e2-f3a4-4b5c-8d6e-7f8a9b0c1d2e',
+		noSuchBookmark: {
+			message: 'No such bookmark or access denied.',
+			code: 'NO_SUCH_BOOKMARK',
+			id: 'd4e5f6a7-b8c9-4d0e-1f2a-3b4c5d6e7f8a',
 		},
 	},
 } as const;
@@ -29,13 +24,13 @@ export const meta = {
 export const paramDef = {
 	type: 'object',
 	properties: {
-		bookId: { type: 'string', format: 'misskey:id' },
-		page: { type: 'integer', minimum: 0, maximum: 100000, default: 0 },
+		bookmarkId: { type: 'string', format: 'misskey:id' },
+		page: { type: 'integer', minimum: 0, maximum: 100000 },
 		name: { type: 'string', maxLength: 128, nullable: true },
 		color: { type: 'string', maxLength: 16, nullable: true },
 		memo: { type: 'string', maxLength: 2048, nullable: true },
 	},
-	required: ['bookId'],
+	required: ['bookmarkId'],
 } as const;
 
 @Injectable()
@@ -46,17 +41,16 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 	) {
 		super(meta, paramDef, async (ps, me) => {
 			try {
-				const bm = await this.hatadyService.createBookmark(me, {
-					bookId: ps.bookId,
-					page: ps.page,
-					name: ps.name ?? null,
-					color: ps.color ?? null,
-					memo: ps.memo ?? null,
+				const bm = await this.hatadyService.updateBookmark(me, {
+					bookmarkId: ps.bookmarkId,
+					...(Object.prototype.hasOwnProperty.call(ps, 'page') ? { page: ps.page } : {}),
+					...(Object.prototype.hasOwnProperty.call(ps, 'name') ? { name: ps.name ?? null } : {}),
+					...(Object.prototype.hasOwnProperty.call(ps, 'color') ? { color: ps.color ?? null } : {}),
+					...(Object.prototype.hasOwnProperty.call(ps, 'memo') ? { memo: ps.memo ?? null } : {}),
 				});
 				return this.hatadyEntityService.packBookmark(bm);
 			} catch (e) {
-				if (e instanceof Error && e.message === HatadyService.ERR_BOOKMARK_LIMIT) throw new ApiError(meta.errors.bookmarkLimitExceeded);
-				throw new ApiError(meta.errors.noSuchBook);
+				throw new ApiError(meta.errors.noSuchBookmark);
 			}
 		});
 	}

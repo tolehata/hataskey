@@ -29,6 +29,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<div :class="$style.chipRow">
 				<button v-for="s in subjectChoices" :key="s" :class="[$style.subjectChip, subject === s && $style.subjectChipOn]" :style="subject === s ? { background: pal(s).bg, color: pal(s).fg, borderColor: pal(s).accent } : undefined" @click="subject = s">{{ s }}</button>
 				<button :class="[$style.subjectChip, $style.subjectAdd]" @click="addSubject"><i class="ti ti-plus"></i> {{ t('add') }}</button>
+				<button :class="[$style.subjectChip, $style.subjectManage]" @click="openSubjectManager"><i class="ti ti-settings"></i> {{ t('manage') }}</button>
 			</div>
 		</div>
 
@@ -84,12 +85,13 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { ref, useTemplateRef, onMounted } from 'vue';
+import { ref, computed, useTemplateRef, onMounted } from 'vue';
 import MkWindow from '@/components/MkWindow.vue';
 import HyBookCover from '@/components/HyBookCover.vue';
 import * as os from '@/os.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { hySubjectPalette, HY_TAGS } from '@/utility/hatady.js';
+import { hySubjects, loadHySubjects, saveHySubject } from '@/utility/hatady-subjects.js';
 import { hatadyTheme, hatadyLang } from '@/utility/hatady-prefs.js';
 
 const props = defineProps<{ editLog?: any }>();
@@ -103,7 +105,17 @@ const editLog = props.editLog;
 
 const title = ref(editLog?.title ?? '');
 const subject = ref(editLog?.subject ?? '');
-const subjectChoices = ref<string[]>(['プログラミング', '数学', '英語', '読書', '歴史']);
+// 分野候補: レジストリ/ログ由来の分野(頻度順) ∪ 既定分野 ∪ 編集中の分野。
+const DEFAULT_SUBJECTS = ['プログラミング', '数学', '英語', '読書', '歴史'];
+const subjectChoices = computed<string[]>(() => {
+	const names: string[] = [];
+	const seen = new Set<string>();
+	const cur = subject.value?.trim();
+	if (cur) { seen.add(cur); names.push(cur); }
+	for (const s of hySubjects.value) { if (!seen.has(s.name)) { seen.add(s.name); names.push(s.name); } }
+	for (const d of DEFAULT_SUBJECTS) { if (!seen.has(d)) { seen.add(d); names.push(d); } }
+	return names;
+});
 const selectedBook = ref<any>(editLog?.book ?? null);
 const pageFrom = ref<number | null>(editLog?.pageFrom ?? null);
 const pageTo = ref<number | null>(editLog?.pageTo ?? null);
@@ -133,7 +145,6 @@ function toLocal(iso: string): string {
 	return d.toISOString().slice(0, 16);
 }
 const studiedAtLocal = ref(editLog?.studiedAt ? toLocal(editLog.studiedAt) : nowLocal());
-if (editLog?.subject && !subjectChoices.value.includes(editLog.subject)) subjectChoices.value.unshift(editLog.subject);
 
 const DICT: Record<string, { ja: string; en: string }> = {
 	record: { ja: '学習を記録', en: 'Record study' },
@@ -141,6 +152,7 @@ const DICT: Record<string, { ja: string; en: string }> = {
 	whatPh: { ja: '例: 「命名」と「関数の分割」を読み進めた', en: 'e.g. Read through "Naming" and "Functions"' },
 	subjectLabel: { ja: '分野', en: 'Subject' },
 	add: { ja: '追加', en: 'Add' },
+	manage: { ja: '管理', en: 'Manage' },
 	bookLabel: { ja: '本', en: 'Book' },
 	optional: { ja: '任意', en: 'optional' },
 	bookPick: { ja: '本を選ぶ / 追加', en: 'Pick or add a book' },
@@ -164,14 +176,25 @@ function pal(s: string) { return hySubjectPalette(s); }
 
 onMounted(async () => {
 	myBooks.value = await misskeyApi('hata/hatady/books', { limit: 50 }).catch(() => []);
+	// 分野候補(レジストリ/ログ由来)と色設定を読み込む。
+	loadHySubjects().catch(() => {});
 });
 
 async function addSubject() {
 	const { canceled, result } = await os.inputText({ title: t('subjectLabel'), placeholder: '例: 統計' });
 	if (canceled || !result?.trim()) return;
 	const s = result.trim();
-	if (!subjectChoices.value.includes(s)) subjectChoices.value.push(s);
 	subject.value = s;
+	// レジストリに登録して次回以降も候補・管理対象にする(色は自動)。
+	saveHySubject(s, null).catch(() => {});
+}
+
+// 分野の管理(色指定・削除・付け替え)モーダルを開く。
+async function openSubjectManager() {
+	const { dispose } = os.popup((await import('@/components/HatadySubjectManager.vue')).default, {}, {
+		changed: () => { loadHySubjects().catch(() => {}); },
+		closed: () => dispose(),
+	});
 }
 
 // まず「本を選ぶ / 本を追加」を選択させ、それぞれのフローへ分岐する(メニューはボタンにアンカー)。
@@ -289,6 +312,8 @@ async function submit() {
 .subjectChip { font-size: 12px; font-weight: 700; padding: 5px 13px; border-radius: 999px; background: var(--hy-chip-bg); color: var(--hy-muted); border: 1.5px solid transparent; cursor: pointer; }
 .subjectChipOn { }
 .subjectAdd { border-style: dashed; border-color: var(--hy-border); color: var(--hy-muted); }
+.subjectManage { border-style: dashed; border-color: var(--hy-border); color: var(--hy-muted); }
+.subjectManage:hover { border-color: var(--hy-accent); color: var(--hy-accent); }
 
 .bookChip { display: flex; align-items: center; gap: 11px; background: var(--hy-chip-bg); border: 1px solid var(--hy-border); border-radius: 10px; padding: 10px 12px; }
 .bookInfo { flex: 1; min-width: 0; }
@@ -319,4 +344,18 @@ async function submit() {
 .btnGhost:not(:disabled):hover { filter: brightness(0.96); }
 .btnPrimary { background: linear-gradient(90deg, #e0955a, #d9824a); color: #fff; box-shadow: 0 2px 8px rgba(217,130,74,.35); }
 .btnPrimary:not(:disabled):hover { filter: brightness(1.05); }
+
+/* 旗鯖fork: モバイル(狭幅)対応。「学習時間 / 開始時刻」の2カラムや本チップが
+   はみ出さないよう縦積み・折り返しにし、datetime-local 等の最小幅による横溢れを防ぐ。 */
+@media (max-width: 560px) {
+	.body { padding: 16px; gap: 14px; }
+	/* 2カラム(学習時間/開始時刻)を縦積みに */
+	.row { flex-direction: column; gap: 14px; }
+	/* 入力は親幅に収める(datetime-local の内在幅で溢れないように) */
+	.input, .textarea { width: 100%; min-width: 0; box-sizing: border-box; }
+	.field { min-width: 0; }
+	/* 本チップは折り返し可に。ページ入力ボックスは次行へ回す */
+	.bookChip { flex-wrap: wrap; }
+	.pageBox { order: 3; margin-left: 44px; }
+}
 </style>

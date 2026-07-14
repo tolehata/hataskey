@@ -7,7 +7,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 <template>
 <Teleport to="body">
-	<div :class="[$style.overlay, 'hatady-scope']" :data-hatady-theme="theme" @click.self="skip">
+	<div v-if="visible" :class="[$style.overlay, 'hatady-scope']" :data-hatady-theme="theme" @click.self="skip">
 		<div :class="$style.card">
 			<div :class="$style.hero" :style="{ background: page.bg }">
 				<i v-if="page.icon" :class="['ti', page.icon, $style.heroIcon]"></i>
@@ -35,6 +35,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <script lang="ts" setup>
 import { ref, computed } from 'vue';
+import * as os from '@/os.js';
 import { hatadyTheme, hatadyLang } from '@/utility/hatady-prefs.js';
 
 const emit = defineEmits<{ (ev: 'done'): void; (ev: 'closed'): void }>();
@@ -44,6 +45,8 @@ const en = computed(() => lang.value === 'en');
 
 const DICT: Record<string, { ja: string; en: string }> = {
 	skip: { ja: 'スキップ', en: 'Skip' },
+	skippedTitle: { ja: 'チュートリアルをスキップしました', en: 'Tutorial skipped' },
+	skippedText: { ja: 'あとから Hatady の設定（表示設定 → チュートリアルを再度実行）から、いつでもチュートリアルを実行できます。', en: 'You can replay the tutorial anytime from Hatady settings (Display settings → Replay tutorial).' },
 	start: { ja: 'はじめる', en: 'Start' },
 	nextBtn: { ja: '次へ', en: 'Next' },
 	begin: { ja: 'Hatady を始める', en: 'Start Hatady' },
@@ -88,11 +91,18 @@ const pages = computed(() => [
 ]);
 
 const index = ref(0);
+const visible = ref(true);
 const page = computed(() => pages.value[index.value]);
 const isLast = computed(() => index.value === pages.value.length - 1);
 
 function next() { if (index.value < pages.value.length - 1) index.value += 1; }
-function skip() { emit('done'); }
+// スキップ時は「あとから設定で再実行できる」ことを案内してから閉じる。
+//   オーバーレイ(z-index が高い)を先に隠さないと案内ダイアログが背面に出て操作できないため、先に非表示にする。
+async function skip() {
+	visible.value = false;
+	await os.alert({ type: 'info', title: t('skippedTitle'), text: t('skippedText') });
+	emit('done');
+}
 function finish() { emit('done'); }
 </script>
 

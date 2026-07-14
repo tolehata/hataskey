@@ -84,12 +84,14 @@ SPDX-License-Identifier: AGPL-3.0-only
 							<div v-for="(col, ci) in heatColumns" :key="ci" :class="$style.heatCol">
 								<span
 									v-for="(cell, ri) in col" :key="ri"
-									:class="$style.heatCell"
+									:class="[$style.heatCell, $style.heatCellClickable]"
 									:style="{ background: heatColor(cell.minutes) }"
+									:title="t('jumpTo')"
 									@mouseenter="showHeatPop(cell, $event)"
 									@mouseleave="hideHeatPop"
 									@touchstart.passive="showHeatPop(cell, $event)"
 									@touchend.passive="hideHeatPop"
+									@click="jumpToHeatCell(cell.date)"
 								></span>
 							</div>
 						</div>
@@ -112,16 +114,59 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<!-- grid: タイムライン + サイドバー -->
 				<div :class="$style.grid">
 					<!-- 左: タイムライン -->
-					<div :class="$style.timelineCol">
-						<h2 :class="$style.tlTitle">{{ t('timeline') }}</h2>
+					<div ref="timelineColRef" :class="$style.timelineCol">
+						<div :class="$style.tlHeadRow">
+							<h2 :class="$style.tlTitle">{{ t('timeline') }}</h2>
+							<button :class="[$style.periodToggle, (periodOpen || filterActive) && $style.periodToggleOn]" @click="periodOpen = !periodOpen">
+								<i class="ti ti-calendar-search"></i> {{ t('period') }}
+								<span v-if="filterActive" :class="$style.periodDot"></span>
+							</button>
+						</div>
+						<!-- 期間フィルタ / 日付ジャンプ (旗鯖fork: 2ブロックに整理して洗練) -->
+						<div v-if="periodOpen || filterActive" :class="$style.periodPanel">
+							<!-- 期間で絞り込む -->
+							<div :class="$style.periodGroup">
+								<div :class="$style.periodGroupLabel"><i class="ti ti-arrows-horizontal"></i> {{ t('periodRange') }}</div>
+								<div :class="$style.periodRangeField">
+									<input v-model="sinceInput" type="date" :class="$style.periodDate" :aria-label="t('periodRange')">
+									<span :class="$style.periodTilde">〜</span>
+									<input v-model="untilInput" type="date" :class="$style.periodDate" :aria-label="t('periodRange')">
+									<button :class="$style.periodApply" @click="applyPeriod">{{ t('apply') }}</button>
+								</div>
+								<div :class="$style.periodPresets">
+									<button :class="$style.periodChip" @click="presetThisMonth">{{ t('thisMonth') }}</button>
+									<button :class="$style.periodChip" @click="presetLastMonth">{{ t('lastMonth') }}</button>
+									<button :class="$style.periodChip" @click="presetLast30">{{ t('last30') }}</button>
+									<button v-if="filterActive" :class="[$style.periodChip, $style.periodClear]" @click="clearPeriod"><i class="ti ti-x"></i> {{ t('clearPeriod') }}</button>
+								</div>
+							</div>
+							<div :class="$style.periodDivider"></div>
+							<!-- 日付へジャンプ -->
+							<div :class="$style.periodGroup">
+								<div :class="$style.periodGroupLabel"><i class="ti ti-calendar-event"></i> {{ t('jumpTo') }}</div>
+								<div :class="$style.periodJumpField">
+									<input v-model="jumpInput" type="date" :class="$style.periodDate" :aria-label="t('jumpTo')">
+									<button :class="$style.periodApply" :disabled="!jumpInput" @click="jumpToDate">{{ t('jump') }}</button>
+								</div>
+							</div>
+						</div>
+						<div v-if="filterActive && !logsLoading" :class="$style.filterNotice">
+							<i class="ti ti-filter"></i> {{ t('filteredNotice').replace('{n}', String(logGroups.length)) }}
+							<button :class="$style.filterNoticeClear" @click="clearPeriod">{{ t('showAll') }}</button>
+						</div>
 						<div v-if="logsLoading" :class="$style.loading">{{ t('loading') }}</div>
+						<div v-else-if="logGroups.length === 0 && filterActive" :class="$style.emptyTl">
+							<i class="ti ti-calendar-off" :class="$style.emptyIcon"></i>
+							<div>{{ t('emptyFiltered') }}</div>
+							<button :class="$style.emptyCta" @click="clearPeriod"><i class="ti ti-x"></i> {{ t('showAll') }}</button>
+						</div>
 						<div v-else-if="logGroups.length === 0" :class="$style.emptyTl">
 							<i class="ti ti-notebook" :class="$style.emptyIcon"></i>
 							<div>{{ t('emptyLog') }}</div>
 							<button :class="$style.emptyCta" @click="openComposer"><i class="ti ti-pencil-plus"></i> {{ t('record') }}</button>
 						</div>
 						<template v-else>
-							<div v-for="g in logGroups" :key="g.key" :class="$style.dateGroup">
+							<div v-for="g in logGroups" :key="g.key" :data-date-key="g.key" :class="$style.dateGroup">
 								<div :class="$style.dateHead">
 									<span :class="$style.datePill"><i class="ti ti-calendar-event"></i> {{ g.label }}</span>
 									<span :class="$style.dateSub">{{ g.sub }}</span>
@@ -310,7 +355,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
 import { $i } from '@/i.js';
 import { mainRouter } from '@/router.js';
 import { definePage } from '@/page.js';
@@ -320,6 +365,7 @@ import HySubjectBadge from '@/components/HySubjectBadge.vue';
 import HyBookCover from '@/components/HyBookCover.vue';
 import HatadyReactions from '@/components/HatadyReactions.vue';
 import { hySubjectPalette, hyTag, hyBookmarkColor } from '@/utility/hatady.js';
+import { loadHySubjects } from '@/utility/hatady-subjects.js';
 import { hatadyTheme, hatadyLang, loadHatadyDisplay, loadTutorialDone, setTutorialDone } from '@/utility/hatady-prefs.js';
 import { claimAchievement } from '@/utility/achievements.js';
 
@@ -350,6 +396,18 @@ const DICT: Record<string, Record<Lang, string>> = {
 	timeline: { ja: '学習タイムライン', en: 'Study timeline' },
 	loading: { ja: '読み込み中…', en: 'Loading…' },
 	emptyLog: { ja: 'まだ記録がありません。最初の学習を記録しましょう。', en: 'No logs yet. Record your first study session.' },
+	emptyFiltered: { ja: 'この期間の記録はありません。', en: 'No logs in this period.' },
+	period: { ja: '期間・ジャンプ', en: 'Period / Jump' },
+	periodRange: { ja: '期間で絞り込む', en: 'Filter by period' },
+	apply: { ja: '適用', en: 'Apply' },
+	thisMonth: { ja: '今月', en: 'This month' },
+	lastMonth: { ja: '先月', en: 'Last month' },
+	last30: { ja: '過去30日', en: 'Last 30 days' },
+	clearPeriod: { ja: '解除', en: 'Clear' },
+	showAll: { ja: 'すべて表示', en: 'Show all' },
+	jumpTo: { ja: '日付へジャンプ', en: 'Jump to date' },
+	jump: { ja: 'ジャンプ', en: 'Jump' },
+	filteredNotice: { ja: '期間で絞り込み中（{n}日分）', en: 'Filtered by period ({n} days)' },
 	daysStreak: { ja: '日連続', en: 'day streak' },
 	keepGoing: { ja: '学習を記録中！', en: 'Keep it going!' },
 	viewMilestones: { ja: 'マイルストーンを見る', en: 'View milestones' },
@@ -443,10 +501,19 @@ const stats = ref<any>(null);
 const books = ref<any[]>([]);
 const logsLoading = ref(true);
 
+// 旗鯖fork: マイログの期間指定ジャンプ。studiedAt の範囲(エポックms)で絞り込む。
+//   filterSince/filterUntil が両方 null なら通常の直近表示。期間指定時は多めに読み込む。
+const filterSince = ref<number | null>(null);
+const filterUntil = ref<number | null>(null);
+const filterActive = computed(() => filterSince.value != null || filterUntil.value != null);
+
 async function loadLogs() {
 	logsLoading.value = true;
 	try {
-		logs.value = await misskeyApi('hata/hatady/logs', { limit: 50 }).catch(() => []);
+		const params: Record<string, unknown> = { limit: filterActive.value ? 100 : 50 };
+		if (filterSince.value != null) params.sinceDate = filterSince.value;
+		if (filterUntil.value != null) params.untilDate = filterUntil.value;
+		logs.value = await misskeyApi('hata/hatady/logs', params).catch(() => []);
 	} finally {
 		logsLoading.value = false;
 	}
@@ -455,6 +522,70 @@ async function loadStats() { stats.value = await misskeyApi('hata/hatady/stats',
 async function loadBooks() { books.value = await misskeyApi('hata/hatady/books', { limit: 20 }).catch(() => []); }
 
 function reloadMylog() { loadLogs(); loadStats(); loadBooks(); }
+
+// ===== 期間フィルタ / 日付ジャンプ (旗鯖fork) =====
+const timelineColRef = ref<HTMLElement | null>(null);
+const periodOpen = ref(false);
+const sinceInput = ref('');  // <input type="date"> の値 (YYYY-MM-DD)
+const untilInput = ref('');
+const jumpInput = ref('');
+
+// YYYY-MM-DD → その日の 00:00:00 / 23:59:59.999 のエポックms。
+function dayStartMs(v: string): number | null { if (!v) return null; const [y, m, d] = v.split('-').map(Number); if (!y || !m || !d) return null; return new Date(y, m - 1, d, 0, 0, 0, 0).getTime(); }
+function dayEndMs(v: string): number | null { if (!v) return null; const [y, m, d] = v.split('-').map(Number); if (!y || !m || !d) return null; return new Date(y, m - 1, d, 23, 59, 59, 999).getTime(); }
+// logGroups のキー形式(非ゼロ埋め)に合わせる。
+function groupKeyFromDate(dt: Date): string { return `${dt.getFullYear()}-${dt.getMonth() + 1}-${dt.getDate()}`; }
+function groupKeyFromInput(v: string): string | null { if (!v) return null; const [y, m, d] = v.split('-').map(Number); if (!y || !m || !d) return null; return `${y}-${m}-${d}`; }
+
+async function scrollToGroup(key: string): Promise<boolean> {
+	await nextTick();
+	const el = timelineColRef.value?.querySelector(`[data-date-key="${key}"]`) as HTMLElement | null;
+	if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); return true; }
+	return false;
+}
+
+// 期間を適用(開始・終了の日付から)。
+async function applyPeriod() {
+	filterSince.value = dayStartMs(sinceInput.value);
+	filterUntil.value = dayEndMs(untilInput.value);
+	if (filterSince.value == null && filterUntil.value == null) return;
+	await loadLogs();
+	await nextTick();
+	timelineColRef.value?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+function clearPeriod() {
+	filterSince.value = null; filterUntil.value = null;
+	sinceInput.value = ''; untilInput.value = '';
+	loadLogs();
+}
+// プリセット: 今月 / 先月 / 過去30日。
+function pad(n: number): string { return n.toString().padStart(2, '0'); }
+function toInput(dt: Date): string { return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`; }
+function presetThisMonth() { const now = new Date(); sinceInput.value = toInput(new Date(now.getFullYear(), now.getMonth(), 1)); untilInput.value = toInput(new Date(now.getFullYear(), now.getMonth() + 1, 0)); applyPeriod(); }
+function presetLastMonth() { const now = new Date(); sinceInput.value = toInput(new Date(now.getFullYear(), now.getMonth() - 1, 1)); untilInput.value = toInput(new Date(now.getFullYear(), now.getMonth(), 0)); applyPeriod(); }
+function presetLast30() { const now = new Date(); const s = new Date(now); s.setDate(s.getDate() - 29); sinceInput.value = toInput(s); untilInput.value = toInput(now); applyPeriod(); }
+
+// 単一日ジャンプ: まず読み込み済みなら該当日へスクロール。無ければその日以前を読み直して先頭へ。
+async function jumpToDate() {
+	const key = groupKeyFromInput(jumpInput.value);
+	if (!key) return;
+	if (!filterActive.value && await scrollToGroup(key)) return;
+	// 読み込み済みに無い(=より古い)ので、その日を最新にして読み直す。
+	filterSince.value = null;
+	filterUntil.value = dayEndMs(jumpInput.value);
+	untilInput.value = jumpInput.value; sinceInput.value = '';
+	await loadLogs();
+	if (!await scrollToGroup(key)) {
+		await nextTick();
+		timelineColRef.value?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+	}
+}
+
+// ヒートマップのセル(YYYY-MM-DD ゼロ埋め)クリックで、その日付へジャンプ。
+async function jumpToHeatCell(dateKey: string) {
+	jumpInput.value = dateKey;
+	await jumpToDate();
+}
 
 // 日付区切りのタイムライン: studiedAt のローカル日付でグループ化(新しい日付順)。
 const logGroups = computed(() => {
@@ -686,6 +817,7 @@ function onFocus() { loadUnread(); }
 onMounted(() => {
 	try { infoBannerDismissed.value = localStorage.getItem('hatadyInfoBannerDismissed') ?? ''; } catch { /* noop */ }
 	loadHatadyDisplay();
+	loadHySubjects().catch(() => {}); // 分野の色指定を読み込み、各所の pal() に反映
 	reloadMylog();
 	loadUnread();
 	unreadTimer = setInterval(loadUnread, 30000);
@@ -984,10 +1116,22 @@ definePage(() => ({
 .bannerDone { background: color-mix(in srgb, #5a9a5a 10%, var(--hy-surface)); border-color: color-mix(in srgb, #5a9a5a 35%, transparent); }
 .bannerDone .bannerIcon { color: #5a9a5a; }
 
-/* hero: 統計 + ヒートマップ */
+/* 旗鯖fork: モバイル(狭幅)ではバナーが1行に詰まってタイトルが文字単位で折り返し崩れるため、
+   「アイコン＋本文＋×」を1行目、「記録ボタン」を2行目(全幅)へ折り返す。 */
+@media (max-width: 560px) {
+	.todayBanner { flex-wrap: wrap; align-items: center; gap: 10px 11px; padding: 13px 14px; }
+	.bannerText { flex: 1 1 0; }
+	.bannerClose { order: 2; }
+	.bannerCta { order: 3; flex: 1 1 100%; justify-content: center; padding: 11px 18px; }
+}
+
+/* hero: 統計 + ヒートマップ。
+   旗鯖fork: 4つの統計は常に 2×2(田) グリッド。狭幅では「統計(上) → ヒートマップ(下)」の縦積み、
+   PC等の広い幅(コンテンツ幅が足りるとき)では flex-wrap で「ヒートマップ(左) + 統計2×2(右)」に並べ、
+   ヒートマップ右側の余白を統計が埋めてスッキリさせる。 */
 .hero { display: flex; flex-direction: column; gap: 16px; }
-.heroStats { display: flex; gap: 12px; flex-wrap: wrap; }
-.heroStat { flex: 1; min-width: 90px; background: var(--hy-surface); border: 1px solid var(--hy-border); border-radius: 12px; padding: 12px 16px; text-align: center; box-shadow: 0 1px 3px rgba(96,70,35,.06); }
+.heroStats { display: grid; grid-template-columns: repeat(2, 1fr); grid-auto-rows: 1fr; gap: 12px; }
+.heroStat { min-width: 0; display: flex; flex-direction: column; justify-content: center; background: var(--hy-surface); border: 1px solid var(--hy-border); border-radius: 12px; padding: 12px 16px; text-align: center; box-shadow: 0 1px 3px rgba(96,70,35,.06); }
 .heroStatBtn { cursor: pointer; font: inherit; transition: border-color .12s; }
 .heroStatBtn:hover { border-color: var(--hy-accent); }
 .heroNum { font-family: var(--hy-heading); font-weight: 900; font-size: 20px; color: var(--hy-ink); }
@@ -999,6 +1143,17 @@ definePage(() => ({
 .heatCol { display: flex; flex-direction: column; gap: 4px; }
 .heatCell { width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0; cursor: pointer; transition: outline .1s; }
 .heatCell:hover { outline: 2px solid var(--hy-accent); outline-offset: 1px; }
+
+/* 旗鯖fork: 広い幅では「ヒートマップ左 + 統計2×2右」の田レイアウト。
+   コンテンツ幅が足りない場合は flex-wrap で自動的に縦積み(ヒートマップ上→統計下)へ退避する。 */
+@media (min-width: 850px) {
+	.hero { flex-flow: row wrap; align-items: stretch; }
+	.heatmap { order: -1; flex: 1 1 360px; min-width: 0; }
+	.heroStats { flex: 1 1 236px; max-width: 320px; }
+	/* 右カラムは幅が限られるため、統計セルを詰めて数値(例:1時間30分)を1行に収める。 */
+	.heroStat { padding: 12px 10px; }
+	.heroNum { font-size: 18px; white-space: nowrap; }
+}
 
 /* 日別ポップアップ(position:fixed で画面基準に浮かせる) */
 .heatPop {
@@ -1021,8 +1176,38 @@ definePage(() => ({
 .grid > * { min-width: 0; }
 
 /* タイムライン */
-.timelineCol { min-width: 0; }
-.tlTitle { margin: 0 0 16px; font-family: var(--hy-heading); font-weight: 900; font-size: 18px; color: var(--hy-ink); }
+.timelineCol { min-width: 0; scroll-margin-top: 12px; }
+.tlHeadRow { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+.tlTitle { margin: 0; font-family: var(--hy-heading); font-weight: 900; font-size: 18px; color: var(--hy-ink); }
+.periodToggle { position: relative; display: inline-flex; align-items: center; gap: 5px; background: var(--hy-surface); border: 1px solid var(--hy-border); border-radius: 999px; padding: 6px 14px; font-size: 12px; font-weight: 700; color: var(--hy-body); cursor: pointer; font-family: var(--hy-heading); }
+.periodToggle:hover { border-color: var(--hy-accent); }
+.periodToggleOn { border-color: var(--hy-accent); color: var(--hy-accent-ink); }
+.periodDot { position: absolute; top: 4px; right: 6px; width: 7px; height: 7px; border-radius: 999px; background: var(--hy-accent); }
+.periodPanel { display: flex; flex-direction: column; gap: 14px; background: var(--hy-surface); border: 1px solid var(--hy-border); border-radius: 14px; padding: 15px 16px; margin-bottom: 14px; }
+/* 旗鯖fork: 「期間で絞り込む」「日付へジャンプ」を独立ブロックに整理。 */
+.periodGroup { display: flex; flex-direction: column; gap: 10px; }
+.periodGroupLabel { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; letter-spacing: .03em; color: var(--hy-body); font-family: var(--hy-heading); }
+.periodGroupLabel i { color: var(--hy-accent); font-size: 14px; }
+.periodDivider { height: 1px; background: var(--hy-border); }
+/* 期間レンジ: 2つの日付+〜を1つのまとまりに見せ、適用ボタンを添える */
+.periodRangeField { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.periodJumpField { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.periodDate { flex: 1 1 130px; min-width: 116px; background: var(--hy-bg); border: 1px solid var(--hy-border); border-radius: 9px; padding: 8px 11px; color: var(--hy-ink); font-size: 13px; outline: none; font-family: inherit; transition: border-color .12s; }
+.periodDate:hover { border-color: color-mix(in srgb, var(--hy-accent) 45%, var(--hy-border)); }
+.periodDate:focus { border-color: var(--hy-accent); }
+.periodTilde { flex: 0 0 auto; color: var(--hy-muted); font-weight: 700; }
+.periodApply { flex: 0 0 auto; background: var(--hy-accent); color: #fff; border: none; border-radius: 999px; padding: 8px 18px; font-size: 12.5px; font-weight: 700; cursor: pointer; font-family: var(--hy-heading); transition: filter .12s; }
+.periodApply:not(:disabled):hover { filter: brightness(1.05); }
+.periodApply:disabled { opacity: .5; cursor: not-allowed; }
+.periodPresets { display: flex; flex-wrap: wrap; gap: 6px; }
+.periodChip { display: inline-flex; align-items: center; gap: 4px; background: var(--hy-bg); border: 1px solid var(--hy-border); border-radius: 999px; padding: 5px 12px; font-size: 11.5px; font-weight: 700; color: var(--hy-body); cursor: pointer; font-family: var(--hy-heading); }
+.periodChip:hover { border-color: var(--hy-accent); }
+.periodClear { color: #c0563a; }
+.periodClear:hover { border-color: #c0563a; }
+.filterNotice { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--hy-accent-ink); background: rgba(217,130,74,.1); border: 1px solid var(--hy-border); border-radius: 10px; padding: 8px 12px; margin-bottom: 14px; }
+.filterNotice > i { color: var(--hy-accent); }
+.filterNoticeClear { margin-left: auto; background: none; border: none; color: var(--hy-accent-ink); font-weight: 700; cursor: pointer; text-decoration: underline; font-size: 12px; }
+.heatCellClickable { cursor: pointer; }
 .loading { opacity: .6; padding: 30px 0; text-align: center; }
 .emptyTl { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 48px 20px; text-align: center; background: var(--hy-surface); border: 1px solid var(--hy-border); border-radius: 14px; }
 .emptyIcon { font-size: 2.4rem; color: var(--hy-accent); opacity: .6; }

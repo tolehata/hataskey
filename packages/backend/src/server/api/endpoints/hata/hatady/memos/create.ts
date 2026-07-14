@@ -1,5 +1,5 @@
 /*
- * 旗鯖fork(Hatady): 本にしおりを追加する(本の所有者のみ)。
+ * 旗鯖fork(Hatady): 本に内容メモを追加する(本の所有者のみ)。
  */
 import { Injectable } from '@nestjs/common';
 import { Endpoint } from '@/server/api/endpoint-base.js';
@@ -16,12 +16,12 @@ export const meta = {
 		noSuchBook: {
 			message: 'No such book or access denied.',
 			code: 'NO_SUCH_BOOK',
-			id: 'f6a7b8c9-d0e1-4f2a-8b3c-4d5e6f7a8b9c',
+			id: 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d',
 		},
-		bookmarkLimitExceeded: {
-			message: 'You have reached the maximum number of bookmarks for this book allowed by your role.',
-			code: 'HATADY_BOOKMARK_LIMIT_EXCEEDED',
-			id: 'b9c0d1e2-f3a4-4b5c-8d6e-7f8a9b0c1d2e',
+		memoLimitExceeded: {
+			message: 'You have reached the maximum number of memos for this book.',
+			code: 'HATADY_MEMO_LIMIT_EXCEEDED',
+			id: 'b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e',
 		},
 	},
 } as const;
@@ -30,12 +30,10 @@ export const paramDef = {
 	type: 'object',
 	properties: {
 		bookId: { type: 'string', format: 'misskey:id' },
-		page: { type: 'integer', minimum: 0, maximum: 100000, default: 0 },
-		name: { type: 'string', maxLength: 128, nullable: true },
-		color: { type: 'string', maxLength: 16, nullable: true },
-		memo: { type: 'string', maxLength: 2048, nullable: true },
+		text: { type: 'string', minLength: 1, maxLength: 4096 },
+		page: { type: 'integer', minimum: 0, maximum: 100000, nullable: true },
 	},
-	required: ['bookId'],
+	required: ['bookId', 'text'],
 } as const;
 
 @Injectable()
@@ -46,16 +44,14 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 	) {
 		super(meta, paramDef, async (ps, me) => {
 			try {
-				const bm = await this.hatadyService.createBookmark(me, {
+				const memo = await this.hatadyService.createMemo(me, {
 					bookId: ps.bookId,
-					page: ps.page,
-					name: ps.name ?? null,
-					color: ps.color ?? null,
-					memo: ps.memo ?? null,
+					text: ps.text,
+					page: ps.page ?? null,
 				});
-				return this.hatadyEntityService.packBookmark(bm);
+				return this.hatadyEntityService.packMemo(memo);
 			} catch (e) {
-				if (e instanceof Error && e.message === HatadyService.ERR_BOOKMARK_LIMIT) throw new ApiError(meta.errors.bookmarkLimitExceeded);
+				if (e instanceof Error && e.message === HatadyService.ERR_MEMO_LIMIT) throw new ApiError(meta.errors.memoLimitExceeded);
 				throw new ApiError(meta.errors.noSuchBook);
 			}
 		});

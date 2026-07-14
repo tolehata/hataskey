@@ -38,15 +38,17 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		super(meta, paramDef, async (ps, me) => {
 			const book = await this.hatadyService.getBook(ps.bookId);
 			if (book == null) throw new ApiError(meta.errors.noSuchBook);
-			const [logs, bookmarks] = await Promise.all([
+			const [logs, bookmarks, memos] = await Promise.all([
 				this.hatadyService.getBookLogs(book.id, me.id, book.userId, 50),
 				this.hatadyService.getBookmarks(book.id),
+				this.hatadyService.getMemos(book.id),
 			]);
 			return {
 				book: this.hatadyEntityService.packBook(book),
 				isMine: book.userId === me.id,
 				logs: await this.hatadyEntityService.packLogs(logs, me),
 				bookmarks: bookmarks.map(bm => this.hatadyEntityService.packBookmark(bm)),
+				memos: memos.map(m => this.hatadyEntityService.packMemo(m)),
 			};
 		});
 	}

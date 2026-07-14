@@ -20,6 +20,9 @@ export const paramDef = {
 		subject: { type: 'string', nullable: true },
 		limit: { type: 'integer', minimum: 1, maximum: 100, default: 30 },
 		untilId: { type: 'string', format: 'misskey:id' },
+		// 旗鯖fork: マイログの期間指定ジャンプ用。studiedAt(学習日時)の範囲(エポックms)で絞り込む。
+		sinceDate: { type: 'integer', nullable: true },
+		untilDate: { type: 'integer', nullable: true },
 	},
 	required: [],
 } as const;
@@ -37,6 +40,9 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				.where('log.userId = :meId', { meId: me.id });
 			if (ps.subject != null) query.andWhere('log.subject = :subject', { subject: ps.subject });
 			if (ps.untilId != null) query.andWhere('log.id < :untilId', { untilId: ps.untilId });
+			// 旗鯖fork: 期間指定(studiedAt 範囲)。untilDate はその日の終わりまで含めるためフロント側で調整して渡す。
+			if (ps.sinceDate != null) query.andWhere('log.studiedAt >= :sinceDate', { sinceDate: new Date(ps.sinceDate) });
+			if (ps.untilDate != null) query.andWhere('log.studiedAt <= :untilDate', { untilDate: new Date(ps.untilDate) });
 			// タイムラインは学習した時刻(studiedAt)の新しい順。同時刻は id で安定化。
 			query.orderBy('log.studiedAt', 'DESC').addOrderBy('log.id', 'DESC');
 			const logs = await query.limit(ps.limit).getMany();

@@ -14,6 +14,7 @@ import type { MiHatadyLog } from '@/models/HatadyLog.js';
 import type { MiHatadyComment } from '@/models/HatadyComment.js';
 import type { MiHatadyNotification } from '@/models/HatadyNotification.js';
 import type { MiHatadyBookmark } from '@/models/HatadyBookmark.js';
+import type { MiHatadyBookMemo } from '@/models/HatadyBookMemo.js';
 import { UserEntityService } from '@/core/entities/UserEntityService.js';
 import { bindThis } from '@/decorators.js';
 
@@ -45,7 +46,20 @@ export class HatadyEntityService {
 			page: bm.page,
 			name: bm.name,
 			color: bm.color,
+			memo: bm.memo,
 			createdAt: bm.createdAt.toISOString(),
+		};
+	}
+
+	@bindThis
+	public packMemo(memo: MiHatadyBookMemo): Record<string, unknown> {
+		return {
+			id: memo.id,
+			bookId: memo.bookId,
+			text: memo.text,
+			page: memo.page,
+			createdAt: memo.createdAt.toISOString(),
+			updatedAt: memo.updatedAt.toISOString(),
 		};
 	}
 

@@ -96,6 +96,8 @@ import { MiHatadyNotification } from '@/models/HatadyNotification.js';
 import { MiHatadyFollowing } from '@/models/HatadyFollowing.js';
 import { MiHatadyUserProfile } from '@/models/HatadyUserProfile.js';
 import { MiHatadyBookmark } from '@/models/HatadyBookmark.js';
+import { MiHatadyBookMemo } from '@/models/HatadyBookMemo.js';
+import { MiHatadySubject } from '@/models/HatadySubject.js';
 import { MiUserSecurityKey } from '@/models/UserSecurityKey.js';
 import { MiWebhook } from '@/models/Webhook.js';
 import { MiSystemWebhook } from '@/models/SystemWebhook.js';
@@ -251,6 +253,8 @@ export const entities = [
 	MiHatadyFollowing,
 	MiHatadyUserProfile,
 	MiHatadyBookmark,
+	MiHatadyBookMemo,
+	MiHatadySubject,
 	MiUserList,
 	MiUserListFavorite,
 	MiUserListMembership,

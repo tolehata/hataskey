@@ -8,11 +8,30 @@
  *   - デザイン言語は hataskey 本体と独立(暖色クラフト紙)。色は Hatady 内で完結する。
  */
 
+import { ref } from 'vue';
+
 // 分野の配色。accent=左ボーダー/ドット, bg=淡色チップ背景, fg=チップ文字, strongBg=タグ濃色。
 export interface HyPalette {
 	accent: string;
 	bg: string;
 	fg: string;
+}
+
+// 旗鯖fork: 本人が指定した分野色の上書きマップ(分野名 → HEX)。
+//   本人のクライアント内でのみ反映(他ユーザーの表示には影響しない)。
+//   hatady 表示時に hata/hatady/subjects から読み込んでセットする(loadHySubjects)。
+//   ref にすることで、色変更が pal() を使う各テンプレートへリアクティブに伝播する。
+export const hySubjectColorOverrides = ref<Record<string, string>>({});
+export function setHySubjectColorOverrides(map: Record<string, string>): void {
+	hySubjectColorOverrides.value = map;
+}
+// 任意の HEX からチップ配色(accent/bg/fg)を導出。既存の淡色チップの見た目に合わせる。
+export function deriveHySubjectPalette(hex: string): HyPalette {
+	return {
+		accent: hex,
+		bg: `color-mix(in srgb, ${hex} 18%, #ffffff)`,
+		fg: hex,
+	};
 }
 export const HY_SUBJECT_PALETTES: HyPalette[] = [
 	{ accent: '#517f4f', bg: '#e2ece0', fg: '#4e7d4a' }, // green
@@ -50,6 +69,9 @@ function hashString(s: string): number {
 export function hySubjectPalette(subject: string | null | undefined): HyPalette {
 	const key = (subject ?? '').trim();
 	if (key.length === 0) return HY_SUBJECT_PALETTES[0];
+	// 旗鯖fork: 本人が指定した色があれば最優先(自動割当より優先)。
+	const override = hySubjectColorOverrides.value[key];
+	if (override) return deriveHySubjectPalette(override);
 	if (key in KNOWN_SUBJECTS) return HY_SUBJECT_PALETTES[KNOWN_SUBJECTS[key]];
 	return HY_SUBJECT_PALETTES[hashString(key) % HY_SUBJECT_PALETTES.length];
 }

@@ -76,6 +76,11 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</div>
 		</div>
 
+		<!-- 分野の管理(色指定・削除・付け替え) -->
+		<div :class="$style.tutorialSection">
+			<button :class="$style.tutorialBtn" @click="openSubjectManager"><i class="ti ti-palette"></i> {{ t('manageSubjects') }}</button>
+		</div>
+
 		<!-- チュートリアル再表示 -->
 		<div :class="$style.tutorialSection">
 			<button :class="$style.tutorialBtn" @click="rerunTutorial"><i class="ti ti-player-play"></i> {{ t('rerunTutorial') }}</button>
@@ -109,6 +114,14 @@ async function confirmClose(): Promise<boolean> {
 		text: t('unsavedText'),
 	});
 	return !canceled; // OK=閉じる(変更破棄) / キャンセル=閉じない
+}
+
+// 分野の管理(色指定・削除・付け替え)モーダルを開く。
+async function openSubjectManager() {
+	const { dispose } = os.popup((await import('@/components/HatadySubjectManager.vue')).default, {}, {
+		changed: () => { /* 反映は各画面のリロードで行う */ },
+		closed: () => dispose(),
+	});
 }
 
 // チュートリアルを再度実行する(初回フラグに関係なく表示・実績は付与しない)。
@@ -162,6 +175,7 @@ const DICT: Record<string, { ja: string; en: string }> = {
 	cancel: { ja: 'キャンセル', en: 'Cancel' },
 	save: { ja: '保存', en: 'Save' },
 	rerunTutorial: { ja: 'チュートリアルを再度実行', en: 'Replay tutorial' },
+	manageSubjects: { ja: '分野を管理', en: 'Manage subjects' },
 	unsavedTitle: { ja: '未保存の変更があります', en: 'Unsaved changes' },
 	unsavedText: { ja: '変更を保存するには、ページ下部の「保存」ボタンを押してください。保存せずに閉じますか？', en: 'To keep your changes, press the Save button at the bottom. Close without saving?' },
 };

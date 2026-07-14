@@ -14,7 +14,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 >
 	<template #header><i class="ti ti-book"></i> {{ t('title') }}</template>
 
-	<div class="hatady-scope" :data-hatady-theme="theme" :class="$style.body">
+	<div ref="scopeEl" class="hatady-scope" :data-hatady-theme="theme" :class="$style.body">
 		<div v-if="loading" :class="$style.loading">{{ t('loading') }}</div>
 		<template v-else-if="book">
 			<!-- ヘッダー: 表紙 + 書誌 -->
@@ -57,12 +57,23 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<div :class="$style.bmHead"><i class="ti ti-bookmark"></i> {{ t('bookmarks') }} <span v-if="bookmarks.length">{{ bookmarks.length }}</span></div>
 				<div v-if="bookmarks.length" :class="$style.bmList">
 					<div v-for="bm in bookmarks" :key="bm.id" :class="$style.bmItem" :style="{ borderLeftColor: bmColor(bm.color) }">
-						<span :class="$style.bmTag" :style="{ background: bmColor(bm.color) }"><i class="ti ti-bookmark-filled"></i></span>
-						<div :class="$style.bmInfo">
-							<div :class="$style.bmName">{{ bm.name || t('noName') }}</div>
-							<div :class="$style.bmPage">p.{{ bm.page }}</div>
+						<div :class="$style.bmMain">
+							<span :class="$style.bmTag" :style="{ background: bmColor(bm.color) }"><i class="ti ti-bookmark-filled"></i></span>
+							<div :class="$style.bmInfo">
+								<div :class="$style.bmName">{{ bm.name || t('noName') }}</div>
+								<div :class="$style.bmPage">p.{{ bm.page }}</div>
+								<div v-if="bm.memo && editingBmMemoId !== bm.id" :class="$style.bmMemoText">{{ bm.memo }}</div>
+							</div>
+							<button v-if="isMine" :class="[$style.bmIconBtn, bm.memo && $style.bmIconBtnOn]" :title="t('bmMemo')" @click="startEditBmMemo(bm)"><i class="ti ti-note"></i></button>
+							<button v-if="isMine" :class="$style.bmDel" @click="deleteBookmark(bm)"><i class="ti ti-x"></i></button>
 						</div>
-						<button v-if="isMine" :class="$style.bmDel" @click="deleteBookmark(bm)"><i class="ti ti-x"></i></button>
+						<div v-if="isMine && editingBmMemoId === bm.id" :class="$style.bmMemoEdit">
+							<textarea v-model="bmMemoDraft" :placeholder="t('bmMemoPh')" :class="$style.bmMemoArea" rows="3"></textarea>
+							<div :class="$style.bmMemoActions">
+								<button :class="$style.memoTextBtn" @click="cancelBmMemo">{{ t('cancel') }}</button>
+								<button :class="$style.memoSaveBtn" :disabled="saving" @click="saveBmMemo(bm)">{{ t('save') }}</button>
+							</div>
+						</div>
 					</div>
 				</div>
 				<div v-else-if="!isMine" :class="$style.bmEmpty">{{ t('noBookmarks') }}</div>
@@ -74,6 +85,49 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<button v-for="c in HY_BOOKMARK_COLORS" :key="c.key" :class="[$style.bmColor, newBmColor === c.key && $style.bmColorOn]" :style="{ background: c.color }" @click="newBmColor = c.key"></button>
 					</div>
 					<button :class="$style.bmAddBtn" :disabled="saving" @click="addBookmark"><i class="ti ti-plus"></i></button>
+				</div>
+			</div>
+
+			<!-- 内容メモ -->
+			<div :class="$style.memoSection">
+				<div :class="$style.memoHead">
+					<span :class="$style.memoHeadLabel"><i class="ti ti-notes"></i> {{ t('memos') }} <span v-if="memos.length">{{ memos.length }}</span></span>
+					<button v-if="memos.length > 1" :class="$style.memoSortBtn" @click="memoSortDesc = !memoSortDesc">
+						<i :class="memoSortDesc ? 'ti ti-sort-descending' : 'ti ti-sort-ascending'"></i> {{ memoSortDesc ? t('sortNewest') : t('sortOldest') }}
+					</button>
+				</div>
+				<div v-if="sortedMemos.length" :class="$style.memoList">
+					<div v-for="m in sortedMemos" :key="m.id" :class="$style.memoItem">
+						<template v-if="editingMemoId === m.id">
+							<textarea v-model="editMemoText" :class="$style.memoArea" rows="3"></textarea>
+							<div :class="$style.memoEditRow">
+								<input v-model.number="editMemoPage" type="number" min="0" :placeholder="t('pageOpt')" :class="$style.memoPageInput">
+								<span :class="$style.memoSpacer"></span>
+								<button :class="$style.memoTextBtn" @click="cancelEditMemo">{{ t('cancel') }}</button>
+								<button :class="$style.memoSaveBtn" :disabled="saving || !editMemoText.trim()" @click="saveMemo(m)">{{ t('save') }}</button>
+							</div>
+						</template>
+						<template v-else>
+							<div :class="$style.memoText">{{ m.text }}</div>
+							<div :class="$style.memoMeta">
+								<span v-if="m.page != null" :class="$style.memoPageTag">p.{{ m.page }}</span>
+								<span :class="$style.memoDate">{{ fmtWhen(m.createdAt) }}<template v-if="m.updatedAt !== m.createdAt"> · {{ t('edited') }}</template></span>
+								<span :class="$style.memoSpacer"></span>
+								<button v-if="isMine" :class="$style.memoIconBtn" :title="t('edit')" @click="startEditMemo(m)"><i class="ti ti-pencil"></i></button>
+								<button v-if="isMine" :class="[$style.memoIconBtn, $style.memoDanger]" :title="t('delete')" @click="removeMemo(m)"><i class="ti ti-trash"></i></button>
+							</div>
+						</template>
+					</div>
+				</div>
+				<div v-else-if="!isMine" :class="$style.memoEmpty">{{ t('noMemos') }}</div>
+				<!-- 追加フォーム(本人のみ) -->
+				<div v-if="isMine" :class="$style.memoAdd">
+					<textarea v-model="newMemoText" :placeholder="t('memoPh')" :class="$style.memoArea" rows="3"></textarea>
+					<div :class="$style.memoAddRow">
+						<input v-model.number="newMemoPage" type="number" min="0" :max="book.totalPages ?? undefined" :placeholder="t('pageOpt')" :class="$style.memoPageInput">
+						<span :class="$style.memoSpacer"></span>
+						<button :class="$style.memoAddBtn" :disabled="saving || !newMemoText.trim()" @click="addMemo"><i class="ti ti-plus"></i> {{ t('addMemo') }}</button>
+					</div>
 				</div>
 			</div>
 
@@ -104,12 +158,17 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</div>
 		</template>
 		<div v-else :class="$style.loading">{{ t('notFound') }}</div>
+
+		<!-- 旗鯖fork: 下にさらに内容(しおり・内容メモ・操作メニュー等)があることを示すボトムフェード。
+		     HatasabaUI のサイドメニューと同じ発想で、最下部までスクロールすると消える。
+		     モバイルで「下にメニューがある」と気付きにくい問題への対処。 -->
+		<div :class="[$style.scrollFade, { [$style.scrollFadeHidden]: fadeHidden }]" aria-hidden="true"></div>
 	</div>
 </MkWindow>
 </template>
 
 <script lang="ts" setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue';
 import MkWindow from '@/components/MkWindow.vue';
 import HyBookCover from '@/components/HyBookCover.vue';
 import HySubjectBadge from '@/components/HySubjectBadge.vue';
@@ -125,9 +184,11 @@ const dialog = ref<any>(null);
 const theme = hatadyTheme;
 const lang = hatadyLang;
 
+const scopeEl = ref<HTMLElement | null>(null);
 const book = ref<any>(null);
 const logs = ref<any[]>([]);
 const bookmarks = ref<any[]>([]);
+const memos = ref<any[]>([]);
 const isMine = ref(false);
 const isModerator = computed(() => !!(($i as any)?.isModerator || ($i as any)?.isAdmin));
 const loading = ref(true);
@@ -138,6 +199,80 @@ const newBmPage = ref<number | null>(null);
 const newBmName = ref('');
 const newBmColor = ref('orange');
 function bmColor(key: string | null): string { return hyBookmarkColor(key); }
+// しおりメモ編集(1つずつ展開)
+const editingBmMemoId = ref<string | null>(null);
+const bmMemoDraft = ref('');
+function startEditBmMemo(bm: any) { editingBmMemoId.value = bm.id; bmMemoDraft.value = bm.memo ?? ''; }
+function cancelBmMemo() { editingBmMemoId.value = null; bmMemoDraft.value = ''; }
+async function saveBmMemo(bm: any) {
+	saving.value = true;
+	try {
+		const memo = bmMemoDraft.value.trim();
+		const updated = await misskeyApi('hata/hatady/bookmarks/update', { bookmarkId: bm.id, memo: memo || null });
+		bookmarks.value = bookmarks.value.map(x => x.id === bm.id ? updated : x);
+		editingBmMemoId.value = null;
+		bmMemoDraft.value = '';
+		emit('changed');
+	} finally {
+		saving.value = false;
+	}
+}
+
+// ===== 内容メモ =====
+const memoSortDesc = ref(true); // 既定は新しい順。
+const sortedMemos = computed(() => {
+	const arr = [...memos.value];
+	arr.sort((a, b) => {
+		const c = String(a.createdAt).localeCompare(String(b.createdAt));
+		return memoSortDesc.value ? -c : c;
+	});
+	return arr;
+});
+// 追加フォーム
+const newMemoText = ref('');
+const newMemoPage = ref<number | null>(null);
+// 編集(1件ずつ)
+const editingMemoId = ref<string | null>(null);
+const editMemoText = ref('');
+const editMemoPage = ref<number | null>(null);
+
+async function addMemo() {
+	if (!book.value || !newMemoText.value.trim()) return;
+	saving.value = true;
+	try {
+		const payload: Record<string, unknown> = { bookId: book.value.id, text: newMemoText.value.trim() };
+		if (newMemoPage.value != null && Number.isFinite(Number(newMemoPage.value))) payload.page = Number(newMemoPage.value);
+		const m = await misskeyApi('hata/hatady/memos/create', payload);
+		memos.value = [...memos.value, m];
+		newMemoText.value = '';
+		newMemoPage.value = null;
+		emit('changed');
+	} finally {
+		saving.value = false;
+	}
+}
+function startEditMemo(m: any) { editingMemoId.value = m.id; editMemoText.value = m.text; editMemoPage.value = m.page ?? null; }
+function cancelEditMemo() { editingMemoId.value = null; editMemoText.value = ''; editMemoPage.value = null; }
+async function saveMemo(m: any) {
+	if (!editMemoText.value.trim()) return;
+	saving.value = true;
+	try {
+		const page = (editMemoPage.value != null && Number.isFinite(Number(editMemoPage.value))) ? Number(editMemoPage.value) : null;
+		const updated = await misskeyApi('hata/hatady/memos/update', { memoId: m.id, text: editMemoText.value.trim(), page });
+		memos.value = memos.value.map(x => x.id === m.id ? updated : x);
+		cancelEditMemo();
+		emit('changed');
+	} finally {
+		saving.value = false;
+	}
+}
+async function removeMemo(m: any) {
+	const { canceled } = await os.confirm({ type: 'warning', text: t('memoDeleteConfirm') });
+	if (canceled) return;
+	await misskeyApi('hata/hatady/memos/delete', { memoId: m.id }).catch(() => {});
+	memos.value = memos.value.filter(x => x.id !== m.id);
+	emit('changed');
+}
 const statuses = ['reading', 'finished', 'want'] as const;
 const pagePct = computed(() => {
 	const total = book.value?.totalPages;
@@ -169,6 +304,17 @@ const DICT: Record<string, { ja: string; en: string }> = {
 	noName: { ja: '(無名のしおり)', en: '(untitled)' },
 	page: { ja: 'ページ', en: 'Page' },
 	bmNamePh: { ja: 'しおりの名前(任意)', en: 'Bookmark name (optional)' },
+	bmMemo: { ja: 'メモ', en: 'Memo' },
+	bmMemoPh: { ja: 'このしおりのメモ(任意)', en: 'Memo for this bookmark (optional)' },
+	memos: { ja: '内容メモ', en: 'Notes' },
+	noMemos: { ja: '内容メモはまだありません。', en: 'No notes yet.' },
+	memoPh: { ja: '内容メモ(要点・引用・感想など)', en: 'Note (key points, quotes, thoughts…)' },
+	pageOpt: { ja: 'ページ(任意)', en: 'Page (optional)' },
+	addMemo: { ja: 'メモを追加', en: 'Add note' },
+	sortNewest: { ja: '新しい順', en: 'Newest' },
+	sortOldest: { ja: '古い順', en: 'Oldest' },
+	edited: { ja: '編集済み', en: 'edited' },
+	memoDeleteConfirm: { ja: 'この内容メモを削除しますか？', en: 'Delete this note?' },
 	edit: { ja: '編集', en: 'Edit' },
 	delete: { ja: '削除', en: 'Delete' },
 	deleteConfirm: { ja: 'この本を本棚から削除しますか？(紐づく学習記録は残ります)', en: 'Remove this book? (Linked logs are kept)' },
@@ -202,6 +348,7 @@ async function reload() {
 			book.value = res.book;
 			logs.value = res.logs ?? [];
 			bookmarks.value = res.bookmarks ?? [];
+			memos.value = res.memos ?? [];
 			isMine.value = res.isMine;
 			pageInput.value = res.book.currentPage ?? 0;
 		}
@@ -301,7 +448,42 @@ async function modDeleteBook() {
 	dialog.value?.close();
 }
 
-onMounted(reload);
+// ===== ボトムフェード(スクロール可視インジケータ) =====
+// MkWindow のスクロール要素は本コンポーネント root(.body)の親 .content(overflow:auto)。
+// そこにスクロール/リサイズを監視し、下端に達している or 溢れが無いときはフェードを隠す。
+const fadeHidden = ref(true);
+let scroller: HTMLElement | null = null;
+let ro: ResizeObserver | null = null;
+function updateFade() {
+	const el = scroller;
+	if (!el) { fadeHidden.value = true; return; }
+	const overflow = el.scrollHeight - el.clientHeight;
+	const hasOverflow = overflow > 6;
+	const atBottom = el.scrollTop >= overflow - 6;
+	fadeHidden.value = !hasOverflow || atBottom;
+}
+function setupFade() {
+	scroller = scopeEl.value?.parentElement ?? null; // MkWindow の .content
+	if (!scroller) return;
+	scroller.addEventListener('scroll', updateFade, { passive: true });
+	// 内容の高さ変化(データ読込・メモ編集の展開など)でも再計算する。
+	if (scopeEl.value && 'ResizeObserver' in window) {
+		ro = new ResizeObserver(() => updateFade());
+		ro.observe(scopeEl.value);
+	}
+	updateFade();
+}
+
+onMounted(async () => {
+	await reload();
+	await nextTick();
+	setupFade();
+});
+
+onBeforeUnmount(() => {
+	if (scroller) scroller.removeEventListener('scroll', updateFade);
+	if (ro) { ro.disconnect(); ro = null; }
+});
 </script>
 
 <style lang="scss" module>
@@ -358,7 +540,8 @@ onMounted(reload);
 .bmHead { font-family: var(--hy-heading); font-weight: 700; font-size: 13px; color: var(--hy-ink); margin-bottom: 11px; }
 .bmHead i { color: var(--hy-accent); }
 .bmList { display: flex; flex-direction: column; gap: 7px; margin-bottom: 11px; }
-.bmItem { display: flex; align-items: center; gap: 10px; background: var(--hy-bg); border: 1px solid var(--hy-border); border-left: 4px solid; border-radius: 8px; padding: 7px 10px; }
+.bmItem { display: flex; flex-direction: column; gap: 8px; background: var(--hy-bg); border: 1px solid var(--hy-border); border-left: 4px solid; border-radius: 8px; padding: 7px 10px; }
+.bmMain { display: flex; align-items: center; gap: 10px; }
 .bmTag { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 6px; color: #fff; font-size: 12px; flex-shrink: 0; }
 .bmInfo { flex: 1; min-width: 0; }
 .bmName { font-size: 12.5px; font-weight: 700; color: var(--hy-ink); }
@@ -375,6 +558,44 @@ onMounted(reload);
 .bmColorOn { box-shadow: 0 0 0 2px var(--hy-ink); }
 .bmAddBtn { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 999px; background: var(--hy-accent); color: #fff; border: none; cursor: pointer; font-size: 16px; }
 .bmAddBtn:disabled { opacity: .5; }
+.bmIconBtn { flex-shrink: 0; background: none; border: none; color: var(--hy-muted); cursor: pointer; font-size: 15px; padding: 2px; }
+.bmIconBtn:hover { color: var(--hy-accent); }
+.bmIconBtnOn { color: var(--hy-accent); }
+.bmMemoText { font-size: 12px; color: var(--hy-body); margin-top: 4px; white-space: pre-wrap; word-break: break-word; line-height: 1.5; }
+.bmMemoEdit { display: flex; flex-direction: column; gap: 7px; }
+.bmMemoArea { width: 100%; box-sizing: border-box; resize: vertical; background: var(--hy-bg); border: 1px solid var(--hy-border); border-radius: 8px; padding: 7px 10px; color: var(--hy-ink); font-size: 13px; outline: none; font-family: inherit; line-height: 1.5; }
+.bmMemoArea:focus { border-color: var(--hy-accent); }
+.bmMemoActions { display: flex; justify-content: flex-end; gap: 7px; }
+
+/* 内容メモ */
+.memoSection { background: var(--hy-surface); border: 1px solid var(--hy-border); border-radius: 12px; padding: 14px 16px; margin-bottom: 14px; }
+.memoHead { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 11px; flex-wrap: wrap; }
+.memoHeadLabel { font-family: var(--hy-heading); font-weight: 700; font-size: 13px; color: var(--hy-ink); }
+.memoHeadLabel i { color: var(--hy-accent); }
+.memoSortBtn { display: inline-flex; align-items: center; gap: 4px; background: var(--hy-bg); border: 1px solid var(--hy-border); border-radius: 999px; padding: 5px 12px; font-size: 11.5px; font-weight: 700; color: var(--hy-body); cursor: pointer; font-family: var(--hy-heading); }
+.memoSortBtn:hover { border-color: var(--hy-accent); }
+.memoList { display: flex; flex-direction: column; gap: 8px; margin-bottom: 11px; }
+.memoItem { background: var(--hy-bg); border: 1px solid var(--hy-border); border-radius: 8px; padding: 9px 11px; }
+.memoText { font-size: 13px; color: var(--hy-ink); white-space: pre-wrap; word-break: break-word; line-height: 1.6; }
+.memoMeta { display: flex; align-items: center; gap: 8px; margin-top: 7px; }
+.memoPageTag { font-size: 11px; font-weight: 700; color: var(--hy-accent-ink); background: rgba(217,130,74,.14); padding: 1px 8px; border-radius: 999px; }
+.memoDate { font-size: 11px; color: var(--hy-muted); }
+.memoSpacer { flex: 1; }
+.memoIconBtn { background: none; border: none; color: var(--hy-muted); cursor: pointer; font-size: 14px; padding: 2px; }
+.memoIconBtn:hover { color: var(--hy-accent); }
+.memoDanger:hover { color: #c0563a; }
+.memoEmpty { font-size: 12.5px; color: var(--hy-muted); }
+.memoAdd { display: flex; flex-direction: column; gap: 8px; }
+.memoArea { width: 100%; box-sizing: border-box; resize: vertical; background: var(--hy-bg); border: 1px solid var(--hy-border); border-radius: 8px; padding: 8px 11px; color: var(--hy-ink); font-size: 13px; outline: none; font-family: inherit; line-height: 1.55; }
+.memoArea:focus { border-color: var(--hy-accent); }
+.memoAddRow, .memoEditRow { display: flex; align-items: center; gap: 8px; }
+.memoPageInput { width: 110px; background: var(--hy-bg); border: 1px solid var(--hy-border); border-radius: 8px; padding: 7px 10px; color: var(--hy-ink); font-size: 13px; outline: none; }
+.memoPageInput:focus { border-color: var(--hy-accent); }
+.memoAddBtn { display: inline-flex; align-items: center; gap: 5px; background: var(--hy-accent); color: #fff; border: none; border-radius: 999px; padding: 8px 16px; font-size: 12.5px; font-weight: 700; cursor: pointer; font-family: var(--hy-heading); }
+.memoAddBtn:disabled { opacity: .5; cursor: not-allowed; }
+.memoTextBtn { background: var(--hy-bg); border: 1px solid var(--hy-border); border-radius: 999px; padding: 6px 14px; font-size: 12px; font-weight: 700; color: var(--hy-body); cursor: pointer; font-family: var(--hy-heading); }
+.memoSaveBtn { background: var(--hy-accent); color: #fff; border: none; border-radius: 999px; padding: 6px 16px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: var(--hy-heading); }
+.memoSaveBtn:disabled { opacity: .5; cursor: not-allowed; }
 
 .actions { display: flex; gap: 10px; margin-bottom: 18px; flex-wrap: wrap; }
 .actionBtn { display: inline-flex; align-items: center; gap: 6px; background: var(--hy-surface); border: 1px solid var(--hy-border); border-radius: 10px; padding: 9px 16px; font-size: 13px; font-weight: 700; color: var(--hy-ink); cursor: pointer; font-family: var(--hy-heading); }
@@ -398,4 +619,21 @@ onMounted(reload);
 .logTop { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
 .logTime { margin-left: auto; font-size: 11px; color: var(--hy-muted); }
 .logTitle { font-size: 13.5px; font-weight: 700; color: var(--hy-ink); line-height: 1.4; }
+
+/* 旗鯖fork: 下にさらに内容があることを示すボトムフェード。
+   .body の最下部に sticky で貼り付き、負マージンでレイアウト高さを増やさずに
+   直前の内容へ重ねる。最下部到達/溢れ無しのときは JS で opacity 0 にして隠す。 */
+.scrollFade {
+	position: sticky;
+	bottom: 0;
+	left: 0;
+	height: 52px;
+	margin: -52px -22px 0;
+	pointer-events: none;
+	background: linear-gradient(to top, var(--hy-bg) 22%, color-mix(in srgb, var(--hy-bg) 40%, transparent) 60%, transparent);
+	opacity: 1;
+	transition: opacity .2s ease;
+	z-index: 3;
+}
+.scrollFadeHidden { opacity: 0; }
 </style>
