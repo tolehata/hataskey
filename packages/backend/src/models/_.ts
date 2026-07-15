@@ -126,6 +126,7 @@ import { MiHatadyUserProfile } from '@/models/HatadyUserProfile.js';
 import { MiHatadyBookmark } from '@/models/HatadyBookmark.js';
 import { MiHatadyBookMemo } from '@/models/HatadyBookMemo.js';
 import { MiHatadySubject } from '@/models/HatadySubject.js';
+import { MiHatadyGoal } from '@/models/HatadyGoal.js';
 import type { QueryDeepPartialEntity } from 'typeorm';
 
 export interface MiRepository<T extends ObjectLiteral> {
@@ -304,6 +305,7 @@ export {
 	MiHatadyBookmark,
 	MiHatadyBookMemo,
 	MiHatadySubject,
+	MiHatadyGoal,
 };
 
 export type AbuseReportResolversRepository = Repository<MiAbuseReportResolver> & MiRepository<MiAbuseReportResolver>;
@@ -418,4 +420,5 @@ export type HatadyUserProfilesRepository = Repository<MiHatadyUserProfile> & MiR
 export type HatadyBookmarksRepository = Repository<MiHatadyBookmark> & MiRepository<MiHatadyBookmark>;
 export type HatadyBookMemosRepository = Repository<MiHatadyBookMemo> & MiRepository<MiHatadyBookMemo>;
 export type HatadySubjectsRepository = Repository<MiHatadySubject> & MiRepository<MiHatadySubject>;
+export type HatadyGoalsRepository = Repository<MiHatadyGoal> & MiRepository<MiHatadyGoal>;
 

@@ -42,6 +42,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<span v-if="!n.isRead" :class="$style.dot"></span>
 						<!-- アイコン -->
 						<span v-if="n.type === 'milestone'" :class="$style.milestoneIcon"><i class="ti ti-flame-filled"></i></span>
+						<span v-else-if="n.type === 'goalDone'" :class="$style.goalIcon"><i class="ti ti-target-arrow"></i></span>
 						<span v-else :class="$style.avatarWrap">
 							<MkAvatar :class="$style.avatar" :user="n.user"/>
 							<span v-if="n.type === 'reaction'" :class="$style.badgeReaction"><MkReactionIcon :reaction="String(n.reaction || '👍')"/></span>
@@ -52,6 +53,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<div :class="$style.content">
 							<div :class="$style.text">
 								<template v-if="n.type === 'milestone'"><b :class="$style.streakVal">{{ n.value }}{{ t('daysStreak') }}</b> {{ t('milestoneText') }}</template>
+								<template v-else-if="n.type === 'goalDone'"><b :class="$style.who">{{ t('goalDoneTitle') }}</b> {{ t('goalDoneText') }}</template>
 								<template v-else>
 									<b :class="$style.who"><MkUserName :user="n.user"/></b> {{ verb(n) }}
 									<MkReactionIcon v-if="n.type === 'reaction'" :class="$style.inlineReaction" :reaction="String(n.reaction || '👍')"/>
@@ -120,6 +122,8 @@ const DICT: Record<string, { ja: string; en: string }> = {
 	followConfirm: { ja: '{name} さんをフォローしますか？', en: 'Follow {name}?' },
 	unfollowConfirm: { ja: '{name} さんのフォローを解除しますか？', en: 'Unfollow {name}?' },
 	milestoneText: { ja: 'で学習を記録しました！この調子🔥', en: 'streak of study logs! Keep going 🔥' },
+	goalDoneTitle: { ja: '目標達成！', en: 'Goal achieved!' },
+	goalDoneText: { ja: '設定した学習目標を達成しました🎯', en: 'You reached your study goal 🎯' },
 	daysStreak: { ja: '日連続', en: '-day' },
 	today: { ja: '今日', en: 'Today' },
 	yesterday: { ja: '昨日', en: 'Yesterday' },
@@ -279,6 +283,11 @@ onMounted(reload);
 .milestoneIcon {
 	flex-shrink: 0; width: 36px; height: 36px; border-radius: 999px;
 	background: linear-gradient(135deg, #e79b5e, #d9824a); color: #fff;
+	display: inline-flex; align-items: center; justify-content: center; font-size: 19px;
+}
+.goalIcon {
+	flex-shrink: 0; width: 36px; height: 36px; border-radius: 999px;
+	background: linear-gradient(135deg, #8a7ab3, #6b5a94); color: #fff;
 	display: inline-flex; align-items: center; justify-content: center; font-size: 19px;
 }
 

@@ -42,6 +42,28 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</div>
 		</div>
 
+		<!-- 旗鯖fork: 管理(分野の管理・チュートリアル再実行・記録の書き出し)。端末間同期セクションの上に配置。 -->
+		<div :class="$style.section">
+			<div :class="$style.label"><i class="ti ti-adjustments"></i> {{ t('manage') }}</div>
+			<div :class="$style.manageList">
+				<button :class="$style.manageBtn" @click="openSubjectManager">
+					<i class="ti ti-palette" :class="$style.manageIcon"></i>
+					<span :class="$style.manageName">{{ t('manageSubjects') }}</span>
+					<i class="ti ti-chevron-right" :class="$style.manageArrow"></i>
+				</button>
+				<button :class="$style.manageBtn" @click="rerunTutorial">
+					<i class="ti ti-player-play" :class="$style.manageIcon"></i>
+					<span :class="$style.manageName">{{ t('rerunTutorial') }}</span>
+					<i class="ti ti-chevron-right" :class="$style.manageArrow"></i>
+				</button>
+				<button :class="$style.manageBtn" @click="doExportAll">
+					<i class="ti ti-file-download" :class="$style.manageIcon"></i>
+					<span :class="$style.manageName">{{ t('exportAll') }}</span>
+					<i class="ti ti-chevron-right" :class="$style.manageArrow"></i>
+				</button>
+			</div>
+		</div>
+
 		<!-- 端末間の同期(1k・ロールポリシーで可否) -->
 		<div :class="$style.section">
 			<div :class="$style.label">
@@ -74,16 +96,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<div :class="$style.syncBlockedSub">{{ t('syncBlockedSub') }}</div>
 				</div>
 			</div>
-		</div>
-
-		<!-- 分野の管理(色指定・削除・付け替え) -->
-		<div :class="$style.tutorialSection">
-			<button :class="$style.tutorialBtn" @click="openSubjectManager"><i class="ti ti-palette"></i> {{ t('manageSubjects') }}</button>
-		</div>
-
-		<!-- チュートリアル再表示 -->
-		<div :class="$style.tutorialSection">
-			<button :class="$style.tutorialBtn" @click="rerunTutorial"><i class="ti ti-player-play"></i> {{ t('rerunTutorial') }}</button>
 		</div>
 
 		<!-- フッター(保存/キャンセル)。MkWindow には footer slot が無いため body 末尾に置く。 -->
@@ -125,9 +137,24 @@ async function openSubjectManager() {
 }
 
 // チュートリアルを再度実行する(初回フラグに関係なく表示・実績は付与しない)。
+//   旗鯖fork: 起動アニメ →(はじめる)→ チュートリアル の順で、初回と同じ紹介を再生する。
+//   (テーマ選択はこの表示設定ウィンドウ内で変更できるため、再生フローには挟まない)
 async function rerunTutorial() {
+	const { dispose } = os.popup((await import('@/components/HatadyStartupAnime.vue')).default, {}, {
+		start: () => { dispose(); rerunTutorialOnly(); },
+		closed: () => dispose(),
+	});
+}
+async function rerunTutorialOnly() {
 	const { dispose } = os.popup((await import('@/components/HatadyTutorial.vue')).default, {}, {
 		done: () => dispose(),
+		closed: () => dispose(),
+	});
+}
+
+// 旗鯖fork: 学習記録の書き出し。期間(すべて/今月/先月/過去30日/指定)はダイアログで選ぶ。
+async function doExportAll() {
+	const { dispose } = os.popup((await import('@/components/HatadyExportDialog.vue')).default, {}, {
 		closed: () => dispose(),
 	});
 }
@@ -153,7 +180,7 @@ const effectiveLang = computed<'ja' | 'en'>(() => {
 	return editLang.value as 'ja' | 'en';
 });
 const DICT: Record<string, { ja: string; en: string }> = {
-	title: { ja: '表示設定', en: 'Display' },
+	title: { ja: 'Hatady設定', en: 'Hatady settings' },
 	theme: { ja: 'テーマ', en: 'Theme' },
 	language: { ja: '言語', en: 'Language' },
 	independentHint: { ja: 'テーマと言語はそれぞれ独立して選べます。保存で全端末に同期します。', en: 'Theme and language are chosen independently. Saving syncs to all devices.' },
@@ -176,6 +203,8 @@ const DICT: Record<string, { ja: string; en: string }> = {
 	save: { ja: '保存', en: 'Save' },
 	rerunTutorial: { ja: 'チュートリアルを再度実行', en: 'Replay tutorial' },
 	manageSubjects: { ja: '分野を管理', en: 'Manage subjects' },
+	manage: { ja: '管理', en: 'Management' },
+	exportAll: { ja: '今までの記録を書きだす', en: 'Export all records' },
 	unsavedTitle: { ja: '未保存の変更があります', en: 'Unsaved changes' },
 	unsavedText: { ja: '変更を保存するには、ページ下部の「保存」ボタンを押してください。保存せずに閉じますか？', en: 'To keep your changes, press the Save button at the bottom. Close without saving?' },
 };
@@ -263,11 +292,19 @@ async function save() {
 .syncBlocked b { font-size: 12.5px; line-height: 1.6; color: #8a6a2e; }
 .syncBlockedSub { font-size: 11.5px; color: var(--hy-muted); margin-top: 3px; }
 
+/* 管理 */
+.manageList { display: flex; flex-direction: column; background: var(--hy-surface); border: 1px solid var(--hy-border); border-radius: 11px; overflow: hidden; }
+.manageBtn { display: flex; align-items: center; gap: 11px; background: transparent; border: none; border-bottom: 1px solid var(--hy-border); padding: 12px 15px; font-size: 13px; font-weight: 700; color: var(--hy-ink); cursor: pointer; font-family: var(--hy-heading); text-align: left; }
+.manageBtn:last-child { border-bottom: none; }
+.manageBtn:hover { background: rgba(217,130,74,.07); }
+.manageBtn:disabled { opacity: .55; cursor: progress; }
+.manageIcon { font-size: 17px; color: var(--hy-accent); flex-shrink: 0; }
+.manageName { flex: 1; }
+.manageArrow { font-size: 15px; color: var(--hy-muted); }
+.spin { animation: hy-ds-spin .8s linear infinite; }
+@keyframes hy-ds-spin { to { transform: rotate(360deg); } }
+
 /* フッター */
-.tutorialSection { padding-top: 4px; }
-.tutorialBtn { display: inline-flex; align-items: center; gap: 7px; background: var(--hy-surface); border: 1px solid var(--hy-border); border-radius: 10px; padding: 9px 15px; font-size: 13px; font-weight: 700; color: var(--hy-ink); cursor: pointer; font-family: var(--hy-heading); }
-.tutorialBtn:hover { border-color: var(--hy-accent); color: var(--hy-accent); }
-.tutorialBtn i { color: var(--hy-accent); }
 .footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: auto; padding-top: 6px; }
 .btn {
 	display: inline-flex; align-items: center; gap: 6px;

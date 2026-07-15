@@ -27,7 +27,7 @@ export const paramDef = {
 		title: { type: 'string', minLength: 1, maxLength: 512 },
 		author: { type: 'string', maxLength: 256, nullable: true },
 		totalPages: { type: 'integer', minimum: 1, maximum: 100000, nullable: true },
-		status: { type: 'string', enum: ['reading', 'finished', 'want'], default: 'reading' },
+		status: { type: 'string', enum: ['reading', 'finished', 'want', 'tsundoku'], default: 'reading' },
 		coverColorIndex: { type: 'integer', minimum: 0, maximum: 20, nullable: true },
 	},
 	required: ['title'],

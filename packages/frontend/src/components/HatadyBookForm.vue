@@ -56,6 +56,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 							<select v-model="status" :class="$style.select">
 								<option value="reading">{{ t('status_reading') }}</option>
 								<option value="finished">{{ t('status_finished') }}</option>
+								<option value="tsundoku">{{ t('status_tsundoku') }}</option>
 								<option value="want">{{ t('status_want') }}</option>
 							</select>
 							<i class="ti ti-chevron-down" :class="$style.selectIcon"></i>
@@ -95,7 +96,7 @@ const eb = props.editBook;
 const title = ref(eb?.title ?? '');
 const author = ref(eb?.author ?? '');
 const totalPages = ref<number | null>(eb?.totalPages ?? null);
-const status = ref<'reading' | 'finished' | 'want'>(eb?.status ?? 'reading');
+const status = ref<'reading' | 'finished' | 'want' | 'tsundoku'>(eb?.status ?? 'reading');
 const colorIndex = ref<number | null>(eb?.coverColorIndex ?? null);
 const saving = ref(false);
 
@@ -117,7 +118,8 @@ const DICT: Record<string, { ja: string; en: string }> = {
 	statusLabel: { ja: '状態', en: 'Status' },
 	status_reading: { ja: '読書中', en: 'Reading' },
 	status_finished: { ja: '読了', en: 'Finished' },
-	status_want: { ja: '積読', en: 'To read' },
+	status_tsundoku: { ja: '積読', en: 'Backlog' },
+	status_want: { ja: '読みたい', en: 'Want to read' },
 	genHint: { ja: '表紙はタイトルから自動生成されます', en: 'The cover is generated from the title.' },
 	cancel: { ja: 'キャンセル', en: 'Cancel' },
 	submit: { ja: '本棚に追加', en: 'Add to shelf' },

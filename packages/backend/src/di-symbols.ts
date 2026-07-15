@@ -126,5 +126,6 @@ export const DI = {
 	hatadyBookmarksRepository: Symbol('hatadyBookmarksRepository'),
 	hatadyBookMemosRepository: Symbol('hatadyBookMemosRepository'),
 	hatadySubjectsRepository: Symbol('hatadySubjectsRepository'),
+	hatadyGoalsRepository: Symbol('hatadyGoalsRepository'),
 	//#endregion
 };

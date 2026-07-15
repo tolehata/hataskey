@@ -9,7 +9,7 @@
  *   共有 reactive ref としてエクスポートし、ページ(hatady.vue)と表示設定ウィンドウが同じ状態を参照する。
  */
 
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { miLocalStorage } from '@/local-storage.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 
@@ -34,6 +34,23 @@ function readLangCache(): HatadyLang {
 // 初期値は端末ローカルキャッシュから(初回描画のちらつき防止)。サーバー値が来たら上書きする。
 export const hatadyTheme = ref<HatadyTheme>(readThemeCache());
 export const hatadyLang = ref<HatadyLang>(readLangCache());
+
+// 旗鯖fork: 統計系エンドポイントへ渡すタイムゾーンオフセット(分)。
+//   サーバーは UTC で動くため、これを渡さないと集計がユーザーの体感日付とズレる
+//   (JST なら記録が前日のヒートマップに乗る/時間帯が9時間ズレる)。
+//   Date#getTimezoneOffset と同符号(JST は -540)。
+export function hatadyTzOffset(): number {
+	return new Date().getTimezoneOffset();
+}
+
+// 'auto' を実効言語(ja/en)へ解決した共有 computed。各コンポーネントで再実装しないための共通参照。
+export const hatadyEffectiveLang = computed<'ja' | 'en'>(() => {
+	if (hatadyLang.value === 'auto') {
+		const loc = (typeof navigator !== 'undefined' ? navigator.language : 'ja') ?? 'ja';
+		return loc.toLowerCase().startsWith('ja') ? 'ja' : 'en';
+	}
+	return hatadyLang.value === 'en' ? 'en' : 'ja';
+});
 
 function writeCache(): void {
 	miLocalStorage.setItem('hatadyTheme', hatadyTheme.value);

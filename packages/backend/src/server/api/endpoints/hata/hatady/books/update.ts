@@ -29,7 +29,7 @@ export const paramDef = {
 		author: { type: 'string', maxLength: 256, nullable: true },
 		totalPages: { type: 'integer', minimum: 1, maximum: 100000, nullable: true },
 		currentPage: { type: 'integer', minimum: 0, maximum: 100000 },
-		status: { type: 'string', enum: ['reading', 'finished', 'want'] },
+		status: { type: 'string', enum: ['reading', 'finished', 'want', 'tsundoku'] },
 		coverColorIndex: { type: 'integer', minimum: 0, maximum: 20, nullable: true },
 		isFavorite: { type: 'boolean' },
 		isRecommended: { type: 'boolean' },

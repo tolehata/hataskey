@@ -27,11 +27,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<button :class="[$style.tab, activeTab === 'shelf' && $style.tabOn]" @click="setTab('shelf')">{{ t('shelf') }}</button>
 			</nav>
 			<div :class="$style.headRight">
-				<div :class="$style.search">
-					<i class="ti ti-search"></i>
-					<input v-model="searchQuery" :class="$style.searchInput" :placeholder="t('searchPlaceholder')">
-					<button v-if="searchQuery" :class="$style.searchClear" @click="searchQuery = ''"><i class="ti ti-x"></i></button>
-				</div>
+				<button :class="$style.iconBtn" :title="t('searchAll')" @click="openFullSearch('')"><i class="ti ti-search"></i></button>
 				<button :class="$style.iconBtn" :title="t('settings')" @click="openSettings"><i class="ti ti-settings"></i></button>
 				<button :class="$style.recordBtn" @click="openComposer"><i class="ti ti-pencil-plus"></i> <span :class="$style.recordText">{{ t('record') }}</span></button>
 				<button :class="$style.iconBtn" :title="t('notifications')" @click="openNotifications">
@@ -45,13 +41,14 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<!-- 本体(タブ別) -->
 		<div :class="$style.body">
 			<!-- ===== マイログ(1a + t2 ヒートマップ) ===== -->
-			<div v-if="activeTab === 'mylog'" :class="$style.mylog">
+			<div v-if="activeTab === 'mylog'" :class="$style.mylog" :data-anim="prefer.s.animation ? '1' : '0'">
 				<!-- 今日の記録状況バナー(未記録 / 連続途切れ / 記録済み) -->
 				<div v-if="todayState === 'broken' && showInfoBanner" :class="[$style.todayBanner, $style.bannerBroken]">
 					<span :class="$style.bannerIcon"><i class="ti ti-flame-off"></i></span>
 					<div :class="$style.bannerText">
 						<b>{{ t('streakBrokenTitle') }}</b>
-						<div>{{ t('streakBrokenSub') }}</div>
+						<!-- 旗鯖fork: モバイルでは「。」の後で改行して2行に収める -->
+						<div><template v-for="(part, i) in streakBrokenSubParts" :key="i">{{ part }}<br v-if="i < streakBrokenSubParts.length - 1" :class="$style.subBrMobile"></template></div>
 					</div>
 					<button :class="$style.bannerCta" @click="openComposer"><i class="ti ti-pencil-plus"></i> {{ t('record') }}</button>
 					<button :class="$style.bannerClose" :title="t('dismiss')" @click="dismissInfoBanner"><i class="ti ti-x"></i></button>
@@ -73,10 +70,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<!-- hero: 統計 + 学習ヒートマップ -->
 				<section :class="$style.hero">
 					<div :class="$style.heroStats">
-						<button :class="[$style.heroStat, $style.heroStatBtn]" :title="t('viewMilestones')" @click="openMilestones"><div :class="[$style.heroNum, $style.heroFlame]">🔥 {{ stats?.streakDays ?? 0 }}</div><div :class="$style.heroLbl">{{ t('streak') }}</div></button>
+						<button :class="[$style.heroStat, $style.heroStatBtn]" :title="t('viewStreak')" @click="openStreaks"><div :class="[$style.heroNum, $style.heroFlame]">🔥 {{ stats?.streakDays ?? 0 }}</div><div :class="$style.heroLbl">{{ t('streak') }}</div></button>
 						<div :class="$style.heroStat"><div :class="$style.heroNum">{{ fmtDuration(stats?.weeklyMinutes ?? 0) }}</div><div :class="$style.heroLbl">{{ t('thisWeek') }}</div></div>
 						<div :class="$style.heroStat"><div :class="$style.heroNum">{{ stats?.totalLogs ?? 0 }}</div><div :class="$style.heroLbl">{{ t('logs') }}</div></div>
-						<div :class="$style.heroStat"><div :class="$style.heroNum">{{ stats?.totalBooks ?? 0 }}</div><div :class="$style.heroLbl">{{ t('books') }}</div></div>
+						<button :class="[$style.heroStat, $style.heroStatBtn]" :title="t('viewShelf')" @click="setTab('shelf')"><div :class="$style.heroNum">{{ stats?.totalBooks ?? 0 }}</div><div :class="$style.heroLbl">{{ t('books') }}</div></button>
 					</div>
 					<div :class="$style.heatmap">
 						<div :class="$style.heatHead">{{ t('heatTitle') }}</div>
@@ -85,7 +82,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 								<span
 									v-for="(cell, ri) in col" :key="ri"
 									:class="[$style.heatCell, $style.heatCellClickable]"
-									:style="{ background: heatColor(cell.minutes) }"
+									:style="{ background: heatColor(cell.minutes), animationDelay: heatDelay(ci, ri) }"
 									:title="t('jumpTo')"
 									@mouseenter="showHeatPop(cell, $event)"
 									@mouseleave="hideHeatPop"
@@ -95,8 +92,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 								></span>
 							</div>
 						</div>
-						<!-- 日別の学習状況ポップアップ(ホバー/長押し) -->
-						<div v-if="heatPop" :class="$style.heatPop" :style="{ left: heatPop.left + 'px', top: heatPop.top + 'px' }">
+						<!-- 日別の学習状況ポップアップ(ホバー/長押し)。
+						     position:fixed だが、祖先に transform/animation があるとそこが含みブロックになり
+						     ビューポート基準の座標がズレるため、body へ Teleport して確実に画面基準で置く。
+						     body 直下ではテーマ変数が効かないので hatady-scope を自前で付ける。 -->
+						<Teleport to="body">
+							<div v-if="heatPop" :class="[$style.heatPop, 'hatady-scope']" :data-hatady-theme="theme" :style="{ left: heatPop.left + 'px', top: heatPop.top + 'px' }">
 							<div :class="$style.heatPopDate">{{ heatPop.dateLabel }}</div>
 							<div v-if="heatPop.minutes > 0" :class="$style.heatPopStat"><i class="ti ti-hourglass"></i> {{ fmtDuration(heatPop.minutes) }} · {{ heatPop.count }}{{ effectiveLang === 'en' ? ' sessions' : 'セッション' }}</div>
 							<div v-else :class="$style.heatPopEmpty">{{ effectiveLang === 'en' ? 'No study' : '記録なし' }}</div>
@@ -106,8 +107,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 									{{ s.subject }} <span :class="$style.heatPopMin">{{ fmtDuration(s.minutes) }}</span>
 								</span>
 							</div>
-							<div v-else-if="heatPop.minutes > 0" :class="$style.heatPopHint">{{ effectiveLang === 'en' ? 'Details in timeline' : '詳細はタイムライン' }}</div>
-						</div>
+								<div v-else-if="heatPop.minutes > 0" :class="$style.heatPopHint">{{ effectiveLang === 'en' ? 'Details in timeline' : '詳細はタイムライン' }}</div>
+							</div>
+						</Teleport>
 					</div>
 				</section>
 
@@ -218,11 +220,22 @@ SPDX-License-Identifier: AGPL-3.0-only
 								<MkAvatar v-if="$i" :class="$style.profileAvatar" :user="$i"/>
 								<div><MkUserName v-if="$i" :class="$style.profileName" :user="$i"/><div :class="$style.profileAcct">@{{ $i?.username }}</div></div>
 							</button>
-							<button :class="$style.streakBox" :title="t('viewMilestones')" @click="openMilestones">
+							<button :class="$style.streakBox" :title="t('viewStreak')" @click="openStreaks">
 								<i class="ti ti-flame-filled" :class="$style.streakIcon"></i>
 								<div><div :class="$style.streakNum">{{ stats?.streakDays ?? 0 }}<span :class="$style.streakUnit"> {{ t('daysStreak') }}</span></div><div :class="$style.streakSub">{{ t('keepGoing') }}</div></div>
 								<i class="ti ti-chevron-right" :class="$style.streakArrow"></i>
 							</button>
+						</div>
+
+						<!-- 旗鯖fork: 学習ツール導線(目標/統計/連続履歴/検索) -->
+						<div :class="$style.sideCard">
+							<div :class="$style.sideTitle"><i class="ti ti-tools"></i> {{ t('toolsTitle') }}</div>
+							<div :class="$style.toolGrid">
+								<button :class="$style.toolBtn" @click="openGoals"><i class="ti ti-target"></i> {{ t('toolGoals') }}</button>
+								<button :class="$style.toolBtn" @click="openStatsDetail"><i class="ti ti-chart-histogram"></i> {{ t('toolStats') }}</button>
+								<button :class="$style.toolBtn" @click="openStreaks"><i class="ti ti-flame"></i> {{ t('toolStreaks') }}</button>
+								<button :class="$style.toolBtn" @click="openFullSearch('')"><i class="ti ti-zoom-scan"></i> {{ t('toolSearch') }}</button>
+							</div>
 						</div>
 
 						<div v-if="stats?.focusBySubject?.length" :class="$style.sideCard">
@@ -236,13 +249,13 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<div :class="$style.sideCard">
 							<div :class="$style.sideTitle"><i class="ti ti-books"></i> {{ t('reading') }}</div>
 							<div v-if="readingBooks.length === 0" :class="$style.sideEmpty">{{ t('noBooks') }}</div>
-							<div v-for="b in readingBooks" :key="b.id" :class="$style.readingRow">
+							<button v-for="b in readingBooks" :key="b.id" :class="$style.readingRow" :title="b.title" @click="openBookDetail(b.id)">
 								<HyBookCover :title="b.title" :author="b.author" :width="30"/>
 								<div :class="$style.readingInfo">
 									<div :class="$style.readingTitle">{{ b.title }}</div>
 									<span :class="$style.progressBar"><span :class="$style.progressFill" :style="{ width: (b.progress ?? 0) + '%' }"></span></span>
 								</div>
-							</div>
+							</button>
 						</div>
 					</aside>
 				</div>
@@ -314,20 +327,23 @@ SPDX-License-Identifier: AGPL-3.0-only
 					</div>
 					<button :class="$style.shelfAddBtn" @click="addBookFromShelf"><i class="ti ti-plus"></i> {{ t('addBook') }}</button>
 				</div>
-				<div v-if="booksLoading" :class="$style.loading">{{ t('loading') }}</div>
+				<!-- 旗鯖fork: 読み込み表示は初回(まだ1冊も無い)だけ。しおり追加などの再取得で
+				     ここに切り替わると本棚が丸ごと再マウントされ、全部の本が再アニメしてしまうため。
+				     再取得中は既存の棚を出したままにして、増えたしおりだけが自然にアニメする。 -->
+				<div v-if="booksLoading && shelfBooks.length === 0" :class="$style.loading">{{ t('loading') }}</div>
 				<div v-else-if="shelfBooks.length === 0" :class="$style.emptyTl">
 					<i class="ti ti-books" :class="$style.emptyIcon"></i>
 					<div>{{ t('emptyShelf') }}</div>
 					<button :class="$style.emptyCta" @click="addBookFromShelf"><i class="ti ti-plus"></i> {{ t('addBook') }}</button>
 				</div>
-				<div v-else :class="$style.shelfGrid">
-					<button v-for="b in shelfBooks" :key="b.id" :class="$style.shelfItem" @click="openBookDetail(b.id)">
+				<div v-else :class="$style.shelfGrid" :data-anim="prefer.s.animation ? '1' : '0'">
+					<button v-for="(b, bi) in shelfBooks" :key="b.id" :class="$style.shelfItem" :style="{ animationDelay: shelfDelay(bi) }" @click="openBookDetail(b.id)">
 						<div :class="$style.shelfCoverWrap">
 							<!-- しおり演出: しおりの数だけ本の上端から帯が飛び出す -->
 							<span
 								v-for="(bm, i) in (b.bookmarks || []).slice(0, 6)" :key="bm.id"
 								:class="$style.ribbon"
-								:style="{ background: bmColor(bm.color), left: (16 + i * 15) + 'px' }"
+								:style="{ background: bmColor(bm.color), left: (16 + i * 15) + 'px', animationDelay: ribbonDelay(bi, i) }"
 								:title="(bm.name || '') + ' p.' + bm.page"
 							></span>
 							<HyBookCover :title="b.title" :author="b.author" :colorIndex="b.coverColorIndex" :width="118" showTitle/>
@@ -361,12 +377,13 @@ import { mainRouter } from '@/router.js';
 import { definePage } from '@/page.js';
 import * as os from '@/os.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
+import { prefer } from '@/preferences.js';
 import HySubjectBadge from '@/components/HySubjectBadge.vue';
 import HyBookCover from '@/components/HyBookCover.vue';
 import HatadyReactions from '@/components/HatadyReactions.vue';
 import { hySubjectPalette, hyTag, hyBookmarkColor } from '@/utility/hatady.js';
 import { loadHySubjects } from '@/utility/hatady-subjects.js';
-import { hatadyTheme, hatadyLang, loadHatadyDisplay, loadTutorialDone, setTutorialDone } from '@/utility/hatady-prefs.js';
+import { hatadyTheme, hatadyLang, hatadyTzOffset, loadHatadyDisplay, loadTutorialDone, setTutorialDone } from '@/utility/hatady-prefs.js';
 import { claimAchievement } from '@/utility/achievements.js';
 
 // 旗鯖fork(Hatady i18n 土台): 言語(ja/en)は表示設定で独立に切替。まずはシェル分の最小辞書。
@@ -410,7 +427,14 @@ const DICT: Record<string, Record<Lang, string>> = {
 	filteredNotice: { ja: '期間で絞り込み中（{n}日分）', en: 'Filtered by period ({n} days)' },
 	daysStreak: { ja: '日連続', en: 'day streak' },
 	keepGoing: { ja: '学習を記録中！', en: 'Keep it going!' },
-	viewMilestones: { ja: 'マイルストーンを見る', en: 'View milestones' },
+	viewStreak: { ja: '連続記録を見る', en: 'View streak' },
+	viewShelf: { ja: '本棚を見る', en: 'View shelf' },
+	searchAll: { ja: '横断検索（ログ・本・メモ）', en: 'Search all (logs, books, memos)' },
+	toolsTitle: { ja: '学習ツール', en: 'Study tools' },
+	toolGoals: { ja: '目標', en: 'Goals' },
+	toolStats: { ja: '統計', en: 'Stats' },
+	toolStreaks: { ja: '連続履歴', en: 'Streaks' },
+	toolSearch: { ja: '検索', en: 'Search' },
 	notYetTitle: { ja: 'まだ今日の記録がされていません', en: 'You haven\'t recorded today yet' },
 	notYetSub: { ja: '記録してみませんか？', en: 'Want to record something?' },
 	notYetKeepStreak: { ja: '記録してみませんか？ 連続記録（{n}日）を守りましょう！', en: 'Record now to keep your {n}-day streak!' },
@@ -445,7 +469,8 @@ const DICT: Record<string, Record<Lang, string>> = {
 	sortDir: { ja: '昇順/降順', en: 'Ascending/Descending' },
 	status_reading: { ja: '読書中', en: 'Reading' },
 	status_finished: { ja: '読了', en: 'Finished' },
-	status_want: { ja: '積読', en: 'To read' },
+	status_tsundoku: { ja: '積読', en: 'Backlog' },
+	status_want: { ja: '読みたい', en: 'Want to read' },
 };
 
 // 旗鯖fork: テーマ・言語は端末ローカル(miLocalStorage)で保持。prefer 同期経由だと
@@ -465,7 +490,26 @@ function t(key: string): string {
 	return DICT[key]?.[effectiveLang.value] ?? key;
 }
 
-const activeTab = ref<'mylog' | 'discover' | 'shelf'>('mylog');
+// 旗鯖fork: 連続途切れバナーの補足文を「。」で分割(モバイルで途中改行するため)。
+//   最初の「。」の後ろで区切り、句点は前パートに残す。日本語以外(。なし)は1要素。
+const streakBrokenSubParts = computed<string[]>(() => {
+	const s = t('streakBrokenSub');
+	const idx = s.indexOf('。');
+	if (idx < 0 || idx === s.length - 1) return [s];
+	return [s.slice(0, idx + 1), s.slice(idx + 1)];
+});
+
+// 旗鯖fork: 開いていたタブはリロードしても維持する(端末ローカル)。
+type HatadyTab = 'mylog' | 'discover' | 'shelf';
+const TAB_KEY = 'hatadyActiveTab';
+function readSavedTab(): HatadyTab {
+	try {
+		const v = localStorage.getItem(TAB_KEY);
+		if (v === 'mylog' || v === 'discover' || v === 'shelf') return v;
+	} catch { /* noop */ }
+	return 'mylog';
+}
+const activeTab = ref<HatadyTab>(readSavedTab());
 
 // ヘッダー検索: 表示中タブの一覧をキーワードで絞り込む(タイトル/分野/本/メモ/著者)。
 //   NFKC 正規化 + 小文字化で、大文字小文字・全角半角(Ａ↔A / ａ↔a / ０↔0)を区別せず一致させる。
@@ -490,8 +534,9 @@ async function loadUnread() {
 }
 
 // タブ切替時に、そのタブのデータを(未取得なら)遅延ロードする。
-function setTab(tab: 'mylog' | 'discover' | 'shelf') {
+function setTab(tab: HatadyTab) {
 	activeTab.value = tab;
+	try { localStorage.setItem(TAB_KEY, tab); } catch { /* noop */ }
 	if (tab === 'discover' && discover.value.length === 0) loadDiscover();
 }
 
@@ -518,7 +563,7 @@ async function loadLogs() {
 		logsLoading.value = false;
 	}
 }
-async function loadStats() { stats.value = await misskeyApi('hata/hatady/stats', {}).catch(() => null); }
+async function loadStats() { stats.value = await misskeyApi('hata/hatady/stats', { tzOffset: hatadyTzOffset() }).catch(() => null); }
 async function loadBooks() { books.value = await misskeyApi('hata/hatady/books', { limit: 20 }).catch(() => []); }
 
 function reloadMylog() { loadLogs(); loadStats(); loadBooks(); }
@@ -652,11 +697,12 @@ function setDiscoverType(type: 'recent' | 'popular' | 'following') {
 
 // ===== 本棚 =====
 const booksLoading = computed(() => logsLoading.value); // 本は reloadMylog で同時ロードされる。
-const shelfFilter = ref<'all' | 'reading' | 'finished' | 'want'>('all');
+const shelfFilter = ref<'all' | 'reading' | 'finished' | 'tsundoku' | 'want'>('all');
 const shelfFilters = [
 	{ key: 'all' as const, label: 'filterAll' },
 	{ key: 'reading' as const, label: 'status_reading' },
 	{ key: 'finished' as const, label: 'status_finished' },
+	{ key: 'tsundoku' as const, label: 'status_tsundoku' },
 	{ key: 'want' as const, label: 'status_want' },
 ];
 // 管理者/モデレーター: 全ユーザーの本を確認できる「すべての本」表示。
@@ -701,10 +747,30 @@ const shelfBooks = computed(() => {
 	return [...base].sort(cmp);
 });
 
+// 旗鯖fork: 本棚の入場アニメ(起動アニメと同じ「本が1冊ずつ立ち上がる」演出)の stagger 遅延。
+//   冊数が多いと最後まで待たされるため上限を設けて頭打ちにする。
+function shelfDelaySec(i: number): number {
+	return Math.min(i, 12) * 0.045;
+}
+function shelfDelay(i: number): string {
+	return shelfDelaySec(i).toFixed(3) + 's';
+}
+// しおりは本が立ち上がった後に垂れてくる(起動アニメの hyRibbon と同じ)。同じ本の複数しおりは順に。
+function ribbonDelay(bookIdx: number, ribbonIdx: number): string {
+	return (shelfDelaySec(bookIdx) + 0.24 + ribbonIdx * 0.06).toFixed(3) + 's';
+}
+
+// 旗鯖fork: ヒートマップの波状点灯(起動アニメと同じ演出)。左上から右下へ対角線状に広がる。
+//   列+行 が同じセルは同時に点く。全体が長引かないよう上限で頭打ちにする。
+function heatDelay(col: number, row: number): string {
+	return (0.12 + Math.min(col + row, 26) * 0.022).toFixed(3) + 's';
+}
+
 // 本のステータス色(CSS Modules の動的クラスは解決されないためインラインで付与)。
 const STATUS_COLORS: Record<string, { background: string; color: string }> = {
 	reading: { background: 'rgba(217,130,74,.16)', color: '#b45f27' },
 	finished: { background: 'rgba(107,142,90,.18)', color: '#4d6b3c' },
+	tsundoku: { background: 'rgba(150,110,180,.18)', color: '#7a5a9a' },
 	want: { background: 'rgba(120,120,120,.16)', color: '#6b6b6b' },
 };
 function statusStyle(status: string) { return STATUS_COLORS[status] ?? STATUS_COLORS.reading; }
@@ -819,6 +885,8 @@ onMounted(() => {
 	loadHatadyDisplay();
 	loadHySubjects().catch(() => {}); // 分野の色指定を読み込み、各所の pal() に反映
 	reloadMylog();
+	// 復元したタブが「みんなの学習」なら、その分のデータも読み込む(通常は setTab で遅延ロード)。
+	if (activeTab.value === 'discover') loadDiscover();
 	loadUnread();
 	unreadTimer = setInterval(loadUnread, 30000);
 	window.addEventListener('focus', onFocus);
@@ -826,11 +894,26 @@ onMounted(() => {
 	maybeShowTutorial();
 });
 
-// 初回のみチュートリアル(1j)を表示。完了/スキップで完了フラグを保存し実績を解除する。
+// 初回のみ、起動アニメ → テーマ選択 → チュートリアル の順で案内する。
+//   完了で tutorialDone を保存し、実績を解除する。二度目以降は何も出さない。
 async function maybeShowTutorial() {
 	const done = await loadTutorialDone();
 	if (done) return;
-	openTutorial(true);
+	openStartupAnime();
+}
+// ① 起動紹介アニメ(スキップ無し)。「はじめる」で ② テーマ選択へ。
+async function openStartupAnime() {
+	const { dispose } = os.popup((await import('@/components/HatadyStartupAnime.vue')).default, {}, {
+		start: () => { dispose(); openFirstRunTheme(); },
+		closed: () => dispose(),
+	});
+}
+// ② 初回テーマ＋言語選択。確定で ③ チュートリアルへ。
+async function openFirstRunTheme() {
+	const { dispose } = os.popup((await import('@/components/HatadyThemeSelect.vue')).default, {}, {
+		done: () => { dispose(); openTutorial(true); },
+		closed: () => dispose(),
+	});
 }
 async function openTutorial(firstTime = false) {
 	const { dispose } = os.popup((await import('@/components/HatadyTutorial.vue')).default, {}, {
@@ -913,11 +996,38 @@ function goBack() {
 	else mainRouter.push('/');
 }
 
-// マイルストーン画面(連続記録の進捗)をモーダルで開く。
-async function openMilestones() {
-	const { dispose } = os.popup((await import('@/components/HatadyMilestones.vue')).default, {
-		streak: stats.value?.streakDays ?? 0,
-	}, {
+// 旗鯖fork: 連続記録(現在/自己ベスト・マイルストーン進捗・過去の連続期間)をモーダルで開く。
+//   以前は「マイルストーン」と「連続学習の履歴」で別モーダルだったが1つに統合した。
+async function openStreaks() {
+	const { dispose } = os.popup((await import('@/components/HatadyStreaks.vue')).default, {}, {
+		closed: () => dispose(),
+	});
+}
+
+// 旗鯖fork(P4): 横断検索。ログ結果タップでその日のマイログへジャンプ。
+async function openFullSearch(initialQuery = '') {
+	const { dispose } = os.popup((await import('@/components/HatadySearch.vue')).default, { initialQuery }, {
+		jumpLog: (studiedAt: string) => {
+			const d = new Date(studiedAt);
+			setTab('mylog');
+			clearPeriod();
+			nextTick(() => scrollToGroup(groupKeyFromDate(d)));
+		},
+		closed: () => dispose(),
+	});
+}
+
+// 旗鯖fork(P6): 統計の深掘り。
+async function openStatsDetail() {
+	const { dispose } = os.popup((await import('@/components/HatadyStatsDetail.vue')).default, {}, {
+		closed: () => dispose(),
+	});
+}
+
+// 旗鯖fork(P7): 学習目標(短期/長期)。変更で統計を再取得。
+async function openGoals() {
+	const { dispose } = os.popup((await import('@/components/HatadyGoals.vue')).default, {}, {
+		changed: () => loadStats(),
 		closed: () => dispose(),
 	});
 }
@@ -1042,20 +1152,6 @@ definePage(() => ({
 .tab:hover { color: var(--hy-ink); }
 .tabOn { color: var(--hy-ink); font-weight: 700; border-bottom-color: var(--hy-accent); }
 .headRight { margin-left: auto; display: flex; align-items: center; gap: 12px; }
-.search {
-	display: flex; align-items: center; gap: 7px;
-	background: var(--hy-chip-bg); border: 1px solid var(--hy-border);
-	border-radius: 999px; padding: 6px 14px; color: var(--hy-muted); font-size: 12.5px;
-	max-width: 220px;
-}
-.search:focus-within { border-color: var(--hy-accent); }
-.searchInput {
-	flex: 1; min-width: 0; background: none; border: none; outline: none;
-	color: var(--hy-ink); font-size: 12.5px; font-family: inherit;
-}
-.searchInput::placeholder { color: var(--hy-muted); }
-.searchClear { background: none; border: none; color: var(--hy-muted); cursor: pointer; padding: 0; display: inline-flex; }
-.searchClear:hover { color: var(--hy-accent); }
 .iconBtn {
 	position: relative;
 	display: inline-flex; align-items: center; justify-content: center;
@@ -1105,6 +1201,8 @@ definePage(() => ({
 .bannerIcon { font-size: 26px; flex-shrink: 0; display: inline-flex; }
 .bannerText { flex: 1; min-width: 0; font-size: 12.5px; line-height: 1.5; color: var(--hy-body); }
 .bannerText b { font-family: var(--hy-heading); font-size: 14px; color: var(--hy-ink); }
+/* 旗鯖fork: 補足文の途中改行はモバイルのみ表示(PCでは1行のまま) */
+.subBrMobile { display: none; }
 .bannerCta { flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px; background: linear-gradient(90deg,#e0955a,#d9824a); color: #fff; border: none; border-radius: 999px; padding: 9px 18px; font-weight: 700; font-family: var(--hy-heading); font-size: 13px; cursor: pointer; box-shadow: 0 2px 8px rgba(217,130,74,.3); }
 .bannerCta:hover { filter: brightness(1.05); }
 .bannerClose { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 999px; background: none; border: none; color: var(--hy-muted); cursor: pointer; font-size: 16px; }
@@ -1121,6 +1219,7 @@ definePage(() => ({
 @media (max-width: 560px) {
 	.todayBanner { flex-wrap: wrap; align-items: center; gap: 10px 11px; padding: 13px 14px; }
 	.bannerText { flex: 1 1 0; }
+	.subBrMobile { display: inline; }
 	.bannerClose { order: 2; }
 	.bannerCta { order: 3; flex: 1 1 100%; justify-content: center; padding: 11px 18px; }
 }
@@ -1141,18 +1240,46 @@ definePage(() => ({
 .heatHead { font-size: 12.5px; font-weight: 700; color: var(--hy-ink); margin-bottom: 12px; }
 .heatGrid { display: flex; gap: 4px; overflow-x: auto; }
 .heatCol { display: flex; flex-direction: column; gap: 4px; }
-.heatCell { width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0; cursor: pointer; transition: outline .1s; }
+.heatCell { width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0; cursor: pointer; transition: outline .1s; animation: hyHeatIn .42s cubic-bezier(.34, 1.56, .64, 1) both; }
+
+/* 旗鯖fork: マイログの入場演出。要素が左上→右下へ順に現れ、ヒートマップは対角線状に点灯する
+   (起動アニメの hyCell / hyFadeUp と同じ質感)。遅延はセルのみ :style で個別に付与。 */
+@keyframes hyHeatIn {
+	from { opacity: 0; transform: scale(.3); }
+	to { opacity: 1; transform: none; }
+}
+@keyframes hyBlockIn {
+	from { opacity: 0; transform: translateY(14px); }
+	to { opacity: 1; transform: none; }
+}
+.heroStat { animation: hyBlockIn .45s cubic-bezier(.22, .9, .3, 1) both; }
+.heroStats > *:nth-child(1) { animation-delay: 0s; }
+.heroStats > *:nth-child(2) { animation-delay: .05s; }
+.heroStats > *:nth-child(3) { animation-delay: .1s; }
+.heroStats > *:nth-child(4) { animation-delay: .15s; }
+.heatmap { animation: hyBlockIn .5s cubic-bezier(.22, .9, .3, 1) .05s both; }
+.timelineCol { animation: hyBlockIn .5s cubic-bezier(.22, .9, .3, 1) .18s both; }
+.side { animation: hyBlockIn .5s cubic-bezier(.22, .9, .3, 1) .26s both; }
+/* 動きに敏感な人向け / アプリのアニメOFF設定: 最終状態で静止させる。 */
+.mylog[data-anim="0"] .heatCell,
+.mylog[data-anim="0"] .heroStat,
+.mylog[data-anim="0"] .heatmap,
+.mylog[data-anim="0"] .timelineCol,
+.mylog[data-anim="0"] .side { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+	.heatCell, .heroStat, .heatmap, .timelineCol, .side { animation: none; }
+}
 .heatCell:hover { outline: 2px solid var(--hy-accent); outline-offset: 1px; }
 
 /* 旗鯖fork: 広い幅では「ヒートマップ左 + 統計2×2右」の田レイアウト。
+   ヒートマップは格子が固定幅のため伸ばすとカード内に大きな余白ができる。中身の幅に留め、
+   空いた右側を統計タイルが埋めるようにして無駄な空白を無くす。
    コンテンツ幅が足りない場合は flex-wrap で自動的に縦積み(ヒートマップ上→統計下)へ退避する。 */
 @media (min-width: 850px) {
 	.hero { flex-flow: row wrap; align-items: stretch; }
-	.heatmap { order: -1; flex: 1 1 360px; min-width: 0; }
-	.heroStats { flex: 1 1 236px; max-width: 320px; }
-	/* 右カラムは幅が限られるため、統計セルを詰めて数値(例:1時間30分)を1行に収める。 */
-	.heroStat { padding: 12px 10px; }
-	.heroNum { font-size: 18px; white-space: nowrap; }
+	.heatmap { order: -1; flex: 0 1 auto; min-width: 0; }
+	.heroStats { flex: 1 1 236px; max-width: none; }
+	.heroNum { white-space: nowrap; }
 }
 
 /* 日別ポップアップ(position:fixed で画面基準に浮かせる) */
@@ -1177,9 +1304,9 @@ definePage(() => ({
 
 /* タイムライン */
 .timelineCol { min-width: 0; scroll-margin-top: 12px; }
-.tlHeadRow { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
-.tlTitle { margin: 0; font-family: var(--hy-heading); font-weight: 900; font-size: 18px; color: var(--hy-ink); }
-.periodToggle { position: relative; display: inline-flex; align-items: center; gap: 5px; background: var(--hy-surface); border: 1px solid var(--hy-border); border-radius: 999px; padding: 6px 14px; font-size: 12px; font-weight: 700; color: var(--hy-body); cursor: pointer; font-family: var(--hy-heading); }
+.tlHeadRow { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; min-height: 34px; }
+.tlTitle { margin: 0; font-family: var(--hy-heading); font-weight: 900; font-size: 18px; line-height: 1; color: var(--hy-ink); display: inline-flex; align-items: center; }
+.periodToggle { position: relative; display: inline-flex; align-items: center; gap: 5px; background: var(--hy-surface); border: 1px solid var(--hy-border); border-radius: 999px; padding: 6px 14px; font-size: 12px; line-height: 1; font-weight: 700; color: var(--hy-body); cursor: pointer; font-family: var(--hy-heading); }
 .periodToggle:hover { border-color: var(--hy-accent); }
 .periodToggleOn { border-color: var(--hy-accent); color: var(--hy-accent-ink); }
 .periodDot { position: absolute; top: 4px; right: 6px; width: 7px; height: 7px; border-radius: 999px; background: var(--hy-accent); }
@@ -1263,12 +1390,18 @@ definePage(() => ({
 .streakSub { font-size: 11px; color: var(--hy-muted); }
 .sideTitle { font-family: var(--hy-heading); font-weight: 700; font-size: 13px; color: var(--hy-ink); margin-bottom: 12px; }
 .sideTitle i { color: var(--hy-accent); margin-right: 4px; }
+.toolGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.toolBtn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; background: var(--hy-bg); border: 1px solid var(--hy-border); border-radius: 11px; padding: 12px 6px; font-size: 11.5px; font-weight: 700; color: var(--hy-body); cursor: pointer; font-family: var(--hy-heading); }
+.toolBtn:hover { border-color: var(--hy-accent); color: var(--hy-accent-ink); }
+.toolBtn i { font-size: 19px; color: var(--hy-accent); }
 .focusRow { margin-bottom: 9px; }
 .focusHead { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--hy-body); margin-bottom: 3px; }
 .focusMin { color: var(--hy-muted); }
 .focusBar { display: block; height: 6px; border-radius: 999px; background: var(--hy-border); overflow: hidden; }
 .focusFill { display: block; height: 100%; border-radius: 999px; }
-.readingRow { display: flex; gap: 10px; margin-bottom: 12px; }
+/* 本の詳細へ飛ぶボタン。ボタン既定の見た目は消して、行としての体裁を保つ。 */
+.readingRow { display: flex; gap: 10px; margin-bottom: 12px; width: 100%; background: none; border: none; padding: 4px; margin-left: -4px; margin-right: -4px; border-radius: 8px; text-align: left; font: inherit; color: inherit; cursor: pointer; transition: background .12s; }
+.readingRow:hover { background: var(--hy-chip-bg); }
 .readingRow:last-child { margin-bottom: 0; }
 .readingInfo { flex: 1; min-width: 0; }
 .readingTitle { font-family: var(--hy-serif); font-weight: 600; font-size: 12px; color: var(--hy-ink); line-height: 1.35; margin-bottom: 6px; }
@@ -1306,14 +1439,32 @@ definePage(() => ({
 .shelfCoverWrap { position: relative; align-self: center; }
 .favStar { position: absolute; top: -6px; right: -6px; z-index: 3; width: 24px; height: 24px; border-radius: 999px; background: #f6c453; color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 13px; box-shadow: 0 2px 6px rgba(0,0,0,.25); }
 /* しおり: 本の上端から飛び出す帯(下端がしおりの尾のように尖る) */
-.ribbon { position: absolute; top: -9px; width: 9px; height: 28px; z-index: 2; border-radius: 2px 2px 0 0; box-shadow: 0 1px 2px rgba(0,0,0,.25); clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 80%, 0 100%); }
+.ribbon { position: absolute; top: -9px; width: 9px; height: 28px; z-index: 2; border-radius: 2px 2px 0 0; box-shadow: 0 1px 2px rgba(0,0,0,.25); clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 80%, 0 100%); animation: hyRibbonDrop .6s cubic-bezier(.34, 1.5, .6, 1) both; }
+/* 起動アニメの hyRibbon と同じ「しおりが上から垂れる」入場。遅延は :style で本ごと/しおりごとにずらす。 */
+@keyframes hyRibbonDrop {
+	0% { opacity: 0; transform: translateY(-32px); }
+	55% { opacity: 1; transform: translateY(3px); }
+	100% { opacity: 1; transform: none; }
+}
 .shelfAddBtn { display: inline-flex; align-items: center; gap: 6px; background: linear-gradient(90deg,#e0955a,#d9824a); color: #fff; border: none; border-radius: 999px; padding: 8px 16px; font-weight: 700; font-family: var(--hy-heading); font-size: 13px; cursor: pointer; box-shadow: 0 2px 8px rgba(217,130,74,.3); }
 .shelfAddBtn:hover { filter: brightness(1.05); }
 .shelfFilter { border: 1.5px solid var(--hy-border); background: var(--hy-surface); color: var(--hy-body); border-radius: 999px; padding: 6px 15px; font-size: 12.5px; font-weight: 700; cursor: pointer; transition: all .15s; }
 .shelfFilter:hover { border-color: var(--hy-accent); }
 .shelfFilterOn { background: var(--hy-ink); color: var(--hy-bg); border-color: var(--hy-ink); }
 .shelfGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: 20px; }
-.shelfItem { display: flex; flex-direction: column; gap: 10px; background: none; border: none; padding: 6px; margin: -6px; border-radius: 10px; cursor: pointer; text-align: left; transition: background .12s; font: inherit; }
+.shelfItem { display: flex; flex-direction: column; gap: 10px; background: none; border: none; padding: 6px; margin: -6px; border-radius: 10px; cursor: pointer; text-align: left; transition: background .12s; font: inherit; transform-origin: bottom center; animation: hyShelfIn .5s cubic-bezier(.34, 1.5, .6, 1) both; }
+/* 起動アニメの hyBook と同じ「本が立ち上がる」入場。遅延は :style で 1冊ずつずらす。 */
+@keyframes hyShelfIn {
+	0% { opacity: 0; transform: translateY(24px) rotate(-16deg); }
+	60% { opacity: 1; }
+	100% { opacity: 1; transform: none; }
+}
+/* 動きに敏感な人向け / アプリのアニメOFF設定: アニメを止めて最終状態で表示する。 */
+.shelfGrid[data-anim="0"] .shelfItem,
+.shelfGrid[data-anim="0"] .ribbon { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+	.shelfItem, .ribbon { animation: none; }
+}
 .shelfItem:hover { background: var(--hy-chip-bg); }
 .shelfItem > :first-child { align-self: center; box-shadow: 0 3px 12px rgba(96,70,35,.18); border-radius: 4px; }
 .shelfMeta { min-width: 0; }
@@ -1327,15 +1478,20 @@ definePage(() => ({
 
 @media (max-width: 920px) {
 	.grid { grid-template-columns: 1fr; }
-	.side { flex-direction: row; flex-wrap: wrap; }
+	/* 旗鯖fork: 縦積み時はサイドバー(ツール・連続記録など)を先頭、学習タイムラインを最下部に。
+	   長いタイムラインの下までスクロールしなくてもツールへ届くように。 */
+	.side { order: 1; flex-direction: row; flex-wrap: wrap; }
+	.timelineCol { order: 2; }
 	.sideCard { flex: 1; min-width: 220px; }
+	/* 縦積み時は サイドバーが上・タイムラインが下。入場順も見た目の上→下に合わせる。 */
+	.side { animation-delay: .18s; }
+	.timelineCol { animation-delay: .26s; }
 }
 
 /* モバイル */
 @media (max-width: 600px) {
 	.header { padding: 10px 14px; gap: 10px; }
 	.backBtn { display: inline-flex; }
-	.search { display: none; }
 	.logo { display: none; }
 	.headDivider { display: none; }
 	.recordText { display: none; }

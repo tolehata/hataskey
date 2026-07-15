@@ -1,5 +1,5 @@
 /*
- * 旗鯖fork: Hatady マイログのヘッダ統計 + 学習ヒートマップ + 分野別フォーカスを取得する。
+ * 旗鯖fork(Hatady): 本人の学習データを横断検索する(ログ/本/内容メモ/しおりメモ)。
  */
 import { Injectable } from '@nestjs/common';
 import { Endpoint } from '@/server/api/endpoint-base.js';
@@ -15,11 +15,11 @@ export const meta = {
 export const paramDef = {
 	type: 'object',
 	properties: {
-		// 旗鯖fork: 集計をユーザーのローカル日付で行うためのタイムゾーンオフセット(分)。
-		//   Date#getTimezoneOffset と同符号(JST は -540)。省略時は UTC 基準。
-		tzOffset: { type: 'integer', minimum: -840, maximum: 840, default: 0 },
+		query: { type: 'string', minLength: 2, maxLength: 128 },
+		types: { type: 'array', items: { type: 'string', enum: ['logs', 'books', 'bookMemos', 'bookmarks'] }, nullable: true },
+		limit: { type: 'integer', minimum: 1, maximum: 30, default: 15 },
 	},
-	required: [],
+	required: ['query'],
 } as const;
 
 @Injectable()
@@ -28,7 +28,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		private hatadyService: HatadyService,
 	) {
 		super(meta, paramDef, async (ps, me) => {
-			return await this.hatadyService.getStats(me.id, ps.tzOffset);
+			return this.hatadyService.search(me.id, ps.query, ps.types ?? null, ps.limit);
 		});
 	}
 }

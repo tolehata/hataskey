@@ -115,6 +115,7 @@ import { MiHatadyUserProfile } from './HatadyUserProfile.js';
 import { MiHatadyBookmark } from './HatadyBookmark.js';
 import { MiHatadyBookMemo } from './HatadyBookMemo.js';
 import { MiHatadySubject } from './HatadySubject.js';
+import { MiHatadyGoal } from './HatadyGoal.js';
 import { MiFeedbackIssueModerator } from './FeedbackIssueModerator.js';
 import { MiFeedbackEmojiRequest } from './FeedbackEmojiRequest.js';
 import { MiFeedbackNotification } from './FeedbackNotification.js';
@@ -723,6 +724,12 @@ const $hatadySubjectsRepository: Provider = {
 	inject: [DI.db],
 };
 
+const $hatadyGoalsRepository: Provider = {
+	provide: DI.hatadyGoalsRepository,
+	useFactory: (db: DataSource) => db.getRepository(MiHatadyGoal).extend(miRepository as MiRepository<MiHatadyGoal>),
+	inject: [DI.db],
+};
+
 const $feedbackCommentsRepository: Provider = {
 	provide: DI.feedbackCommentsRepository,
 	useFactory: (db: DataSource) => db.getRepository(MiFeedbackComment).extend(miRepository as MiRepository<MiFeedbackComment>),
@@ -866,6 +873,7 @@ const $feedbackProjectsRepository: Provider = {
 		$hatadyBookmarksRepository,
 		$hatadyBookMemosRepository,
 		$hatadySubjectsRepository,
+		$hatadyGoalsRepository,
 		$feedbackCommentsRepository,
 		$feedbackCommentReactionsRepository,
 		$feedbackIssueModeratorsRepository,
@@ -978,6 +986,7 @@ const $feedbackProjectsRepository: Provider = {
 		$hatadyBookmarksRepository,
 		$hatadyBookMemosRepository,
 		$hatadySubjectsRepository,
+		$hatadyGoalsRepository,
 		$feedbackCommentsRepository,
 		$feedbackCommentReactionsRepository,
 		$feedbackIssueModeratorsRepository,

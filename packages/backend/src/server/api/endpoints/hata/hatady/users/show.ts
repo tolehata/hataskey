@@ -30,6 +30,8 @@ export const paramDef = {
 	type: 'object',
 	properties: {
 		userId: { type: 'string', format: 'misskey:id', nullable: true },
+		// 旗鯖fork: 連続日数をユーザーのローカル日付で数えるためのオフセット(分。JST は -540)。
+		tzOffset: { type: 'integer', minimum: -840, maximum: 840, default: 0 },
 	},
 	required: [],
 } as const;
@@ -51,7 +53,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 
 			const [packedUser, aggregates, books, logs] = await Promise.all([
 				this.userEntityService.pack(user, me, { schema: 'UserDetailed' }),
-				this.hatadyService.getProfileAggregates(targetId, me.id),
+				this.hatadyService.getProfileAggregates(targetId, me.id, ps.tzOffset),
 				this.hatadyService.getUserBooks(targetId, 60),
 				this.hatadyService.getUserLogs(targetId, me.id, 30),
 			]);

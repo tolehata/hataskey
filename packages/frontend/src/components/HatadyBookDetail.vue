@@ -273,7 +273,7 @@ async function removeMemo(m: any) {
 	memos.value = memos.value.filter(x => x.id !== m.id);
 	emit('changed');
 }
-const statuses = ['reading', 'finished', 'want'] as const;
+const statuses = ['reading', 'finished', 'tsundoku', 'want'] as const;
 const pagePct = computed(() => {
 	const total = book.value?.totalPages;
 	if (!total) return 0;
@@ -283,6 +283,7 @@ const pagePct = computed(() => {
 const STATUS_COLORS: Record<string, { background: string; color: string }> = {
 	reading: { background: 'rgba(217,130,74,.16)', color: '#b45f27' },
 	finished: { background: 'rgba(107,142,90,.18)', color: '#4d6b3c' },
+	tsundoku: { background: 'rgba(150,110,180,.18)', color: '#7a5a9a' },
 	want: { background: 'rgba(120,120,120,.16)', color: '#6b6b6b' },
 };
 function statusStyle(s: string) { return STATUS_COLORS[s] ?? STATUS_COLORS.reading; }
@@ -293,7 +294,8 @@ const DICT: Record<string, { ja: string; en: string }> = {
 	notFound: { ja: '本が見つかりません。', en: 'Book not found.' },
 	status_reading: { ja: '読書中', en: 'Reading' },
 	status_finished: { ja: '読了', en: 'Finished' },
-	status_want: { ja: '積読', en: 'To read' },
+	status_tsundoku: { ja: '積読', en: 'Backlog' },
+	status_want: { ja: '読みたい', en: 'Want to read' },
 	readingRecord: { ja: '読書の記録', en: 'Reading record' },
 	currentPage: { ja: '今のページ', en: 'Current page' },
 	save: { ja: '保存', en: 'Save' },

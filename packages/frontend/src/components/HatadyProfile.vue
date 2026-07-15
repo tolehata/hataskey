@@ -99,6 +99,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<div :class="$style.coverWrap">
 							<HyBookCover :title="b.title" :author="b.author" :colorIndex="b.coverColorIndex" :width="106" showTitle/>
 							<span v-if="b.status === 'finished'" :class="[$style.coverBadge, $style.badgeDone]"><i class="ti ti-check"></i></span>
+							<span v-else-if="b.status === 'tsundoku'" :class="[$style.coverBadge, $style.badgeTsundoku]">{{ t('status_tsundoku') }}</span>
 							<span v-else-if="b.status === 'want'" :class="[$style.coverBadge, $style.badgeWant]">{{ t('status_want') }}</span>
 							<span v-else-if="b.progress != null" :class="$style.coverBadge">{{ b.progress }}%</span>
 						</div>
@@ -143,7 +144,7 @@ import HySubjectBadge from '@/components/HySubjectBadge.vue';
 import * as os from '@/os.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { hySubjectPalette, hyBannerGradient, HY_BANNER_PRESETS } from '@/utility/hatady.js';
-import { hatadyTheme, hatadyLang } from '@/utility/hatady-prefs.js';
+import { hatadyTheme, hatadyLang, hatadyTzOffset } from '@/utility/hatady-prefs.js';
 
 const props = defineProps<{ userId?: string | null }>();
 const emit = defineEmits<{ (ev: 'changed'): void; (ev: 'openLog', logId: string): void; (ev: 'openProfile', userId: string): void; (ev: 'openBook', bookId: string): void; (ev: 'closed'): void }>();
@@ -157,12 +158,13 @@ const following = ref(false);
 const followBusy = ref(false);
 const bannerColor = ref<string | null>(null);
 const colorPickerOpen = ref(false);
-const shelfFilter = ref<'all' | 'reading' | 'finished' | 'want'>('all');
+const shelfFilter = ref<'all' | 'reading' | 'finished' | 'tsundoku' | 'want'>('all');
 
 const shelfFilters = [
 	{ key: 'all' as const, label: 'filterAll' },
 	{ key: 'reading' as const, label: 'status_reading' },
 	{ key: 'finished' as const, label: 'status_finished' },
+	{ key: 'tsundoku' as const, label: 'status_tsundoku' },
 	{ key: 'want' as const, label: 'status_want' },
 ];
 
@@ -193,7 +195,8 @@ const DICT: Record<string, { ja: string; en: string }> = {
 	filterAll: { ja: 'すべて', en: 'All' },
 	status_reading: { ja: '読書中', en: 'Reading' },
 	status_finished: { ja: '読了', en: 'Finished' },
-	status_want: { ja: '積読', en: 'To read' },
+	status_tsundoku: { ja: '積読', en: 'Backlog' },
+	status_want: { ja: '読みたい', en: 'Want to read' },
 	noBooks: { ja: 'まだ本がありません。', en: 'No books yet.' },
 	myPosts: { ja: '記録した学び', en: 'My study logs' },
 	publicPosts: { ja: '公開した学び', en: 'Public study logs' },
@@ -238,7 +241,7 @@ const recommendedBooks = computed(() => (profile.value?.books ?? []).filter((b: 
 async function reload() {
 	loading.value = true;
 	try {
-		const payload: Record<string, unknown> = {};
+		const payload: Record<string, unknown> = { tzOffset: hatadyTzOffset() };
 		if (props.userId) payload.userId = props.userId;
 		profile.value = await misskeyApi('hata/hatady/users/show', payload).catch(() => null);
 		following.value = profile.value?.isFollowing ?? false;
@@ -379,6 +382,7 @@ onMounted(reload);
 }
 .badgeDone { background: rgba(78,125,74,.92); }
 .badgeWant { color: #7a5326; background: #f4ddb8; }
+.badgeTsundoku { color: #7a5a9a; background: #e6dcf0; }
 .bookTitle { font-family: var(--hy-serif); font-weight: 600; font-size: 11.5px; color: var(--hy-ink); margin-top: 7px; line-height: 1.35; }
 .bookStatus { font-size: 10px; color: var(--hy-muted); margin-top: 1px; }
 

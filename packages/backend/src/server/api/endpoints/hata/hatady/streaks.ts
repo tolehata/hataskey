@@ -1,5 +1,5 @@
 /*
- * 旗鯖fork: Hatady マイログのヘッダ統計 + 学習ヒートマップ + 分野別フォーカスを取得する。
+ * 旗鯖fork(Hatady): 連続学習の詳細履歴(現在・最長・過去の連続期間)を返す。
  */
 import { Injectable } from '@nestjs/common';
 import { Endpoint } from '@/server/api/endpoint-base.js';
@@ -15,8 +15,7 @@ export const meta = {
 export const paramDef = {
 	type: 'object',
 	properties: {
-		// 旗鯖fork: 集計をユーザーのローカル日付で行うためのタイムゾーンオフセット(分)。
-		//   Date#getTimezoneOffset と同符号(JST は -540)。省略時は UTC 基準。
+		// 旗鯖fork: 連続日数をユーザーのローカル日付で判定するためのオフセット(分。JST は -540)。
 		tzOffset: { type: 'integer', minimum: -840, maximum: 840, default: 0 },
 	},
 	required: [],
@@ -28,7 +27,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		private hatadyService: HatadyService,
 	) {
 		super(meta, paramDef, async (ps, me) => {
-			return await this.hatadyService.getStats(me.id, ps.tzOffset);
+			return this.hatadyService.getStreaks(me.id, ps.tzOffset);
 		});
 	}
 }

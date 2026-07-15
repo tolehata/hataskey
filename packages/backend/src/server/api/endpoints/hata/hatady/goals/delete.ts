@@ -1,25 +1,26 @@
 /*
- * 旗鯖fork: Hatady マイログのヘッダ統計 + 学習ヒートマップ + 分野別フォーカスを取得する。
+ * 旗鯖fork(Hatady): 学習目標を削除する(本人のみ)。
  */
 import { Injectable } from '@nestjs/common';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import { HatadyService } from '@/core/HatadyService.js';
+import { ApiError } from '@/server/api/error.js';
 
 export const meta = {
 	tags: ['hata'],
 	requireCredential: true,
-	kind: 'read:account',
-	res: { type: 'object', optional: false, nullable: false },
+	kind: 'write:account',
+	errors: {
+		noSuchGoal: { message: 'No such goal.', code: 'NO_SUCH_GOAL', id: 'b7c1e2a9-3d54-4f6b-8a20-1e9c0d7f4b62' },
+	},
 } as const;
 
 export const paramDef = {
 	type: 'object',
 	properties: {
-		// 旗鯖fork: 集計をユーザーのローカル日付で行うためのタイムゾーンオフセット(分)。
-		//   Date#getTimezoneOffset と同符号(JST は -540)。省略時は UTC 基準。
-		tzOffset: { type: 'integer', minimum: -840, maximum: 840, default: 0 },
+		goalId: { type: 'string', format: 'misskey:id' },
 	},
-	required: [],
+	required: ['goalId'],
 } as const;
 
 @Injectable()
@@ -28,7 +29,8 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		private hatadyService: HatadyService,
 	) {
 		super(meta, paramDef, async (ps, me) => {
-			return await this.hatadyService.getStats(me.id, ps.tzOffset);
+			const ok = await this.hatadyService.deleteGoal(me.id, ps.goalId);
+			if (!ok) throw new ApiError(meta.errors.noSuchGoal);
 		});
 	}
 }

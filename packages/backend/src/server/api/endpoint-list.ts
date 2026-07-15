@@ -578,6 +578,13 @@ export * as 'hata/hatady/logs/delete' from './endpoints/hata/hatady/logs/delete.
 export * as 'hata/hatady/subjects' from './endpoints/hata/hatady/subjects.js';
 export * as 'hata/hatady/subjects/save' from './endpoints/hata/hatady/subjects/save.js';
 export * as 'hata/hatady/subjects/delete' from './endpoints/hata/hatady/subjects/delete.js';
+export * as 'hata/hatady/streaks' from './endpoints/hata/hatady/streaks.js';
+export * as 'hata/hatady/search' from './endpoints/hata/hatady/search.js';
+export * as 'hata/hatady/stats-detail' from './endpoints/hata/hatady/stats-detail.js';
+export * as 'hata/hatady/goals' from './endpoints/hata/hatady/goals.js';
+export * as 'hata/hatady/goals/create' from './endpoints/hata/hatady/goals/create.js';
+export * as 'hata/hatady/goals/update' from './endpoints/hata/hatady/goals/update.js';
+export * as 'hata/hatady/goals/delete' from './endpoints/hata/hatady/goals/delete.js';
 export * as 'admin/hata/consent-list' from './endpoints/admin/hata/consent-list.js';
 
 export * as 'registration/apply' from './endpoints/registration/apply.js';

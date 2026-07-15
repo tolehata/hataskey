@@ -7,7 +7,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { MoreThan } from 'typeorm';
 import { DI } from '@/di-symbols.js';
-import type { HatadyBooksRepository, HatadyLogsRepository, HatadyCommentsRepository, HatadyReactionsRepository, HatadyNotificationsRepository, HatadyFollowingsRepository, HatadyUserProfilesRepository, HatadyBookmarksRepository, HatadyBookMemosRepository, HatadySubjectsRepository } from '@/models/_.js';
+import type { HatadyBooksRepository, HatadyLogsRepository, HatadyCommentsRepository, HatadyReactionsRepository, HatadyNotificationsRepository, HatadyFollowingsRepository, HatadyUserProfilesRepository, HatadyBookmarksRepository, HatadyBookMemosRepository, HatadySubjectsRepository, HatadyGoalsRepository } from '@/models/_.js';
 import type { MiUser } from '@/models/User.js';
 import type { MiHatadyBook } from '@/models/HatadyBook.js';
 import type { MiHatadyLog } from '@/models/HatadyLog.js';
@@ -15,8 +15,10 @@ import type { MiHatadyComment } from '@/models/HatadyComment.js';
 import type { MiHatadyNotification } from '@/models/HatadyNotification.js';
 import type { MiHatadyBookmark } from '@/models/HatadyBookmark.js';
 import type { MiHatadyBookMemo } from '@/models/HatadyBookMemo.js';
+import type { MiHatadyGoal } from '@/models/HatadyGoal.js';
 import { IdService } from '@/core/IdService.js';
 import { RoleService } from '@/core/RoleService.js';
+import { sqlLikeEscape } from '@/misc/sql-like-escape.js';
 import { bindThis } from '@/decorators.js';
 
 @Injectable()
@@ -42,6 +44,8 @@ export class HatadyService {
 		private hatadyBookMemosRepository: HatadyBookMemosRepository,
 		@Inject(DI.hatadySubjectsRepository)
 		private hatadySubjectsRepository: HatadySubjectsRepository,
+		@Inject(DI.hatadyGoalsRepository)
+		private hatadyGoalsRepository: HatadyGoalsRepository,
 
 		private idService: IdService,
 		private roleService: RoleService,
@@ -302,7 +306,7 @@ export class HatadyService {
 
 	// プロフィール用の集計(統計 + 分野タグ)。自分以外は公開ログのみ対象。
 	@bindThis
-	public async getProfileAggregates(targetUserId: MiUser['id'], viewerId: MiUser['id']): Promise<{
+	public async getProfileAggregates(targetUserId: MiUser['id'], viewerId: MiUser['id'], tz = 0): Promise<{
 		totalMinutes: number;
 		streakDays: number;
 		bookCount: number;
@@ -323,13 +327,13 @@ export class HatadyService {
 		const totalMinutes = logs.reduce((a, l) => a + (l.durationMinutes || 0), 0);
 		const bookCount = await this.hatadyBooksRepository.countBy({ userId: targetUserId });
 
-		// 連続日数(記録がある日を遡って数える)。
-		const dayKey = (d: Date) => `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getDate().toString().padStart(2, '0')}`;
+		// 連続日数(記録がある日を遡って数える)。日付はユーザーのローカル基準(マイログの表示と一致させる)。
+		const dayKey = (d: Date) => this.dayKeyTz(d, tz);
 		const daySet = new Set(logs.map(l => dayKey(new Date(l.studiedAt))));
 		let streakDays = 0;
-		const cursor = new Date(); cursor.setHours(0, 0, 0, 0);
-		if (!daySet.has(dayKey(cursor))) cursor.setDate(cursor.getDate() - 1);
-		while (daySet.has(dayKey(cursor))) { streakDays += 1; cursor.setDate(cursor.getDate() - 1); }
+		let cursorMs = this.localMidnightMs(new Date(), tz);
+		if (!daySet.has(dayKey(new Date(cursorMs)))) cursorMs -= 86400000;
+		while (daySet.has(dayKey(new Date(cursorMs)))) { streakDays += 1; cursorMs -= 86400000; }
 
 		// 分野タグ(得意/苦手/興味)を tag ごとに集計し、頻度順に distinct subject を返す。
 		const buckets: Record<'strength' | 'weak' | 'interest', Map<string, number>> = {
@@ -412,7 +416,7 @@ export class HatadyService {
 		if (patch.author !== undefined) set.author = patch.author;
 		if (patch.totalPages !== undefined) set.totalPages = patch.totalPages;
 		if (patch.currentPage != null) set.currentPage = Math.max(0, patch.currentPage);
-		if (patch.status === 'reading' || patch.status === 'finished' || patch.status === 'want') {
+		if (patch.status === 'reading' || patch.status === 'finished' || patch.status === 'want' || patch.status === 'tsundoku') {
 			set.status = patch.status;
 			// 読了日: finished になったら記録(未設定時)、finished から外れたらクリア。
 			if (patch.status === 'finished') { if (book.finishedAt == null) set.finishedAt = now; } else set.finishedAt = null;
@@ -696,7 +700,7 @@ export class HatadyService {
 	// 旗鯖fork: マイログのヘッダ統計 + ヒートマップ + 分野別フォーカスを集計する。
 	//   直近140日(20週)分のログを1回取得し、JS 側で集計する(件数が限られるため十分)。
 	@bindThis
-	public async getStats(userId: MiUser['id']): Promise<{
+	public async getStats(userId: MiUser['id'], tz = 0): Promise<{
 		streakDays: number;
 		recordedToday: boolean;
 		weeklyMinutes: number;
@@ -707,9 +711,10 @@ export class HatadyService {
 		focusBySubject: { subject: string; minutes: number }[];
 	}> {
 		const DAYS = 140;
-		const since = new Date();
-		since.setHours(0, 0, 0, 0);
-		since.setDate(since.getDate() - (DAYS - 1));
+		// 起点はユーザーのローカル「今日 0:00」。そこから DAYS-1 日さかのぼる。
+		const todayMs = this.localMidnightMs(new Date(), tz);
+		const sinceMs = todayMs - (DAYS - 1) * 86400000;
+		const since = new Date(sinceMs);
 
 		const logs = await this.hatadyLogsRepository.findBy({
 			userId,
@@ -719,13 +724,8 @@ export class HatadyService {
 		const totalLogs = await this.hatadyLogsRepository.countBy({ userId });
 		const totalBooks = await this.hatadyBooksRepository.countBy({ userId });
 
-		// 日付キー(ローカル日付) → { minutes, count }
-		const dayKey = (d: Date) => {
-			const y = d.getFullYear();
-			const m = (d.getMonth() + 1).toString().padStart(2, '0');
-			const day = d.getDate().toString().padStart(2, '0');
-			return `${y}-${m}-${day}`;
-		};
+		// 日付キー(ユーザーのローカル日付) → { minutes, count }
+		const dayKey = (d: Date) => this.dayKeyTz(d, tz);
 		const byDay = new Map<string, { minutes: number; count: number }>();
 		for (const log of logs) {
 			const k = dayKey(new Date(log.studiedAt));
@@ -735,39 +735,33 @@ export class HatadyService {
 			byDay.set(k, cur);
 		}
 
-		// ヒートマップ(140日分、古い順)。
+		// ヒートマップ(140日分、古い順)。ユーザーのローカル日で1日ずつ進める。
 		const heatmap: { date: string; minutes: number; count: number }[] = [];
 		for (let i = 0; i < DAYS; i++) {
-			const d = new Date(since);
-			d.setDate(since.getDate() + i);
-			const k = dayKey(d);
+			const k = dayKey(new Date(sinceMs + i * 86400000));
 			const v = byDay.get(k) ?? { minutes: 0, count: 0 };
 			heatmap.push({ date: k, minutes: v.minutes, count: v.count });
 		}
 
 		// 連続日数(今日または昨日から遡って連続で記録がある日数)。
 		let streakDays = 0;
-		const today = new Date();
-		today.setHours(0, 0, 0, 0);
-		const recordedToday = byDay.has(dayKey(today));
+		const recordedToday = byDay.has(dayKey(new Date(todayMs)));
 		// 今日に記録が無ければ昨日から数える(その日の途中でも途切れ扱いにしない)。
-		let cursor = new Date(today);
-		if (!byDay.has(dayKey(cursor))) cursor.setDate(cursor.getDate() - 1);
-		while (byDay.has(dayKey(cursor))) {
+		let cursorMs = todayMs;
+		if (!byDay.has(dayKey(new Date(cursorMs)))) cursorMs -= 86400000;
+		while (byDay.has(dayKey(new Date(cursorMs)))) {
 			streakDays += 1;
-			cursor.setDate(cursor.getDate() - 1);
+			cursorMs -= 86400000;
 		}
 
 		// 今週(過去7日)の時間・セッション・分野別フォーカス。
-		const weekAgo = new Date(today);
-		weekAgo.setDate(today.getDate() - 6);
+		const weekAgoMs = todayMs - 6 * 86400000;
 		let weeklyMinutes = 0;
 		let weeklySessions = 0;
 		const subjectMinutes = new Map<string, number>();
 		for (const log of logs) {
-			const d = new Date(log.studiedAt);
-			d.setHours(0, 0, 0, 0);
-			if (d >= weekAgo) {
+			// その記録がユーザーのローカルで何日にあたるかで週内判定する。
+			if (this.localMidnightMs(new Date(log.studiedAt), tz) >= weekAgoMs) {
 				weeklyMinutes += log.durationMinutes;
 				weeklySessions += 1;
 				subjectMinutes.set(log.subject, (subjectMinutes.get(log.subject) ?? 0) + log.durationMinutes);
@@ -912,5 +906,348 @@ export class HatadyService {
 			const count = await this.hatadyReactionsRepository.countBy({ logId: target.logId });
 			await this.hatadyLogsRepository.update(target.logId, { reactionsCount: count });
 		}
+	}
+
+	// ===================================================================
+	// 旗鯖fork(Hatady次期): 連続履歴 / 横断検索 / 統計深掘り / 目標
+	// ===================================================================
+
+	// ローカル日付キー(既存の getStats/computeStreak と同一規約)。
+	@bindThis
+	private dayKeyOf(d: Date): string {
+		return `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getDate().toString().padStart(2, '0')}`;
+	}
+
+	// ===== タイムゾーン(ユーザーのローカル日付)ヘルパー =====
+	//   サーバーは UTC で動くため、サーバーのローカル日付で集計するとユーザーの体感日付とズレる
+	//   (例: 7/16 08:00 JST の記録が UTC では 7/15 23:00 → ヒートマップが前日に付く)。
+	//   そこでクライアントの tzOffset(分。Date#getTimezoneOffset と同符号。JST は -540)を受け取り、
+	//   instant を tz 分ずらした Date の UTC フィールドを読むことで「ユーザーの壁時計」を得る。
+	//   固定オフセットのため DST 切替の境界は厳密ではないが、日付ズレの解消には十分。
+
+	// instant → ユーザーの壁時計を UTC フィールドに載せた Date。
+	private shiftToLocal(d: Date, tz: number): Date {
+		return new Date(d.getTime() - tz * 60000);
+	}
+	// ユーザーのローカル日付キー(YYYY-MM-DD)。
+	private dayKeyTz(d: Date, tz: number): string {
+		const s = this.shiftToLocal(d, tz);
+		return `${s.getUTCFullYear()}-${(s.getUTCMonth() + 1).toString().padStart(2, '0')}-${s.getUTCDate().toString().padStart(2, '0')}`;
+	}
+	// ユーザーのローカル月キー(YYYY-MM)。
+	private monthKeyTz(d: Date, tz: number): string {
+		const s = this.shiftToLocal(d, tz);
+		return `${s.getUTCFullYear()}-${(s.getUTCMonth() + 1).toString().padStart(2, '0')}`;
+	}
+	// その instant が属する「ユーザーのローカル 0:00」の absolute instant(ms)。
+	private localMidnightMs(d: Date, tz: number): number {
+		const s = this.shiftToLocal(d, tz);
+		return Date.UTC(s.getUTCFullYear(), s.getUTCMonth(), s.getUTCDate()) + tz * 60000;
+	}
+
+	// 旗鯖fork(P3): 連続学習の詳細履歴。現在・最長・過去の連続期間(降順)を返す。
+	@bindThis
+	public async getStreaks(userId: MiUser['id'], tz = 0): Promise<{
+		current: number;
+		best: number;
+		periods: { start: string; end: string; days: number }[];
+	}> {
+		// 過去2年分の記録日を取得(件数は限られるため十分)。起点はユーザーのローカル「今日 0:00」。
+		const todayMs = this.localMidnightMs(new Date(), tz);
+		const since = new Date(todayMs - 730 * 86400000);
+		const rows = await this.hatadyLogsRepository.createQueryBuilder('log')
+			.select('log.studiedAt', 'studiedAt')
+			.where('log.userId = :uid', { uid: userId })
+			.andWhere('log.studiedAt > :since', { since })
+			.getRawMany();
+
+		// 記録がある日を昇順のユニーク配列に(ユーザーのローカル日付で判定)。
+		const daySet = new Set<string>(rows.map(r => this.dayKeyTz(new Date(r.studiedAt), tz)));
+		const days = [...daySet].sort();
+		if (days.length === 0) return { current: 0, best: 0, periods: [] };
+
+		// 連続する日をまとめて期間化する。
+		const periods: { start: string; end: string; days: number }[] = [];
+		const parse = (k: string) => { const [y, m, d] = k.split('-').map(Number); return new Date(y, m - 1, d); };
+		let runStart = days[0];
+		let prev = days[0];
+		for (let i = 1; i < days.length; i++) {
+			const cur = days[i];
+			const expected = new Date(parse(prev)); expected.setDate(expected.getDate() + 1);
+			if (this.dayKeyOf(expected) === cur) {
+				prev = cur;
+			} else {
+				const len = Math.round((parse(prev).getTime() - parse(runStart).getTime()) / 86400000) + 1;
+				periods.push({ start: runStart, end: prev, days: len });
+				runStart = cur; prev = cur;
+			}
+		}
+		const lastLen = Math.round((parse(prev).getTime() - parse(runStart).getTime()) / 86400000) + 1;
+		periods.push({ start: runStart, end: prev, days: lastLen });
+
+		// 現在の連続(今日/昨日から遡って途切れていないか)。判定はユーザーのローカル日付で行う。
+		const todayKey = this.dayKeyTz(new Date(todayMs), tz);
+		const yesterdayKey = this.dayKeyTz(new Date(todayMs - 86400000), tz);
+		const last = periods[periods.length - 1];
+		const current = (last.end === todayKey || last.end === yesterdayKey) ? last.days : 0;
+		const best = periods.reduce((mx, p) => Math.max(mx, p.days), 0);
+
+		// 新しい期間が上に来るよう降順にし、上限100。
+		periods.reverse();
+		return { current, best, periods: periods.slice(0, 100) };
+	}
+
+	// 旗鯖fork(P4): 自分の学習データを横断検索する(ログ/本/内容メモ/しおりメモ)。
+	//   query は2文字以上想定。ILIKE の特殊文字は sqlLikeEscape で無害化する。
+	@bindThis
+	public async search(userId: MiUser['id'], query: string, types: string[] | null, limit: number): Promise<{
+		logs: MiHatadyLog[];
+		books: MiHatadyBook[];
+		bookMemos: MiHatadyBookMemo[];
+		bookmarks: MiHatadyBookmark[];
+	}> {
+		const q = `%${sqlLikeEscape(query.trim())}%`;
+		const want = (t: string) => types == null || types.length === 0 || types.includes(t);
+		const cap = Math.min(Math.max(limit, 1), 30);
+
+		const logs = want('logs') ? await this.hatadyLogsRepository.createQueryBuilder('log')
+			.where('log.userId = :uid', { uid: userId })
+			.andWhere('(log.title ILIKE :q OR log.body ILIKE :q OR log.subject ILIKE :q)', { q })
+			.orderBy('log.studiedAt', 'DESC')
+			.limit(cap).getMany() : [];
+
+		const books = want('books') ? await this.hatadyBooksRepository.createQueryBuilder('book')
+			.where('book.userId = :uid', { uid: userId })
+			.andWhere('(book.title ILIKE :q OR book.author ILIKE :q)', { q })
+			.orderBy('book.updatedAt', 'DESC')
+			.limit(cap).getMany() : [];
+
+		// メモ・しおりは所属する本(タイトル/著者)も一緒に返す(検索結果で「◯◯のメモ」と出せるように)。
+		const bookMemos = want('bookMemos') ? await this.hatadyBookMemosRepository.createQueryBuilder('memo')
+			.leftJoinAndSelect('memo.book', 'book')
+			.where('memo.userId = :uid', { uid: userId })
+			.andWhere('memo.text ILIKE :q', { q })
+			.orderBy('memo.updatedAt', 'DESC')
+			.limit(cap).getMany() : [];
+
+		const bookmarks = want('bookmarks') ? await this.hatadyBookmarksRepository.createQueryBuilder('bm')
+			.leftJoinAndSelect('bm.book', 'book')
+			.where('bm.userId = :uid', { uid: userId })
+			.andWhere('(bm.memo ILIKE :q OR bm.name ILIKE :q)', { q })
+			.orderBy('bm.createdAt', 'DESC')
+			.limit(cap).getMany() : [];
+
+		return { logs, books, bookMemos, bookmarks };
+	}
+
+	// 旗鯖fork(P6): 統計深掘り(月別/曜日/時間帯/分野推移/自己ベスト/月別読了)。
+	//   直近 months ヶ月分のログを1回取得して JS 集計する。
+	@bindThis
+	public async getStatsDetail(userId: MiUser['id'], months: number, tz = 0): Promise<{
+		monthlyTotals: { month: string; minutes: number; count: number }[];
+		weekdayMinutes: number[];
+		hourlyMinutes: number[];
+		subjectTrend: { subject: string; monthly: { month: string; minutes: number }[] }[];
+		bests: { longestSession: number; maxDayMinutes: number; longestStreak: number };
+		monthlyFinished: { month: string; books: number; pages: number }[];
+	}> {
+		const m = Math.min(Math.max(months, 1), 24);
+		// 起点はユーザーのローカルで (m-1) ヶ月前の1日 0:00。
+		const nowLocal = this.shiftToLocal(new Date(), tz);
+		const startIdx = nowLocal.getUTCFullYear() * 12 + nowLocal.getUTCMonth() - (m - 1);
+		const sinceMs = Date.UTC(Math.floor(startIdx / 12), startIdx % 12, 1) + tz * 60000;
+		const since = new Date(sinceMs);
+
+		const logs = await this.hatadyLogsRepository.findBy({ userId, studiedAt: MoreThan(since) });
+		const monthKey = (d: Date) => this.monthKeyTz(d, tz);
+
+		// 月の並び(古い順)。ユーザーのローカル月で列挙する。
+		const monthList: string[] = [];
+		{
+			const endIdx = nowLocal.getUTCFullYear() * 12 + nowLocal.getUTCMonth();
+			for (let idx = startIdx; idx <= endIdx; idx++) {
+				monthList.push(`${Math.floor(idx / 12)}-${(idx % 12 + 1).toString().padStart(2, '0')}`);
+			}
+		}
+
+		const monthMap = new Map<string, { minutes: number; count: number }>();
+		const weekdayMinutes = new Array(7).fill(0) as number[];
+		const hourlyMinutes = new Array(24).fill(0) as number[];
+		const dayMinutes = new Map<string, number>();
+		const subjMonth = new Map<string, Map<string, number>>();
+		let longestSession = 0;
+
+		for (const log of logs) {
+			const d = new Date(log.studiedAt);
+			// 曜日・時間帯・日付はユーザーの壁時計で数える(UTC のままだと時間帯が9時間ズレる)。
+			const w = this.shiftToLocal(d, tz);
+			const mk = monthKey(d);
+			const cur = monthMap.get(mk) ?? { minutes: 0, count: 0 };
+			cur.minutes += log.durationMinutes; cur.count += 1; monthMap.set(mk, cur);
+			weekdayMinutes[w.getUTCDay()] += log.durationMinutes;
+			hourlyMinutes[w.getUTCHours()] += log.durationMinutes;
+			const dk = this.dayKeyTz(d, tz);
+			dayMinutes.set(dk, (dayMinutes.get(dk) ?? 0) + log.durationMinutes);
+			if (log.durationMinutes > longestSession) longestSession = log.durationMinutes;
+			if (!subjMonth.has(log.subject)) subjMonth.set(log.subject, new Map());
+			const sm = subjMonth.get(log.subject)!;
+			sm.set(mk, (sm.get(mk) ?? 0) + log.durationMinutes);
+		}
+
+		const monthlyTotals = monthList.map(mk => ({ month: mk, ...(monthMap.get(mk) ?? { minutes: 0, count: 0 }) }));
+		const maxDayMinutes = [...dayMinutes.values()].reduce((mx, v) => Math.max(mx, v), 0);
+
+		// 上位分野(合計時間)を最大5、各月推移。
+		const subjTotals = [...subjMonth.entries()]
+			.map(([subject, mm]) => ({ subject, total: [...mm.values()].reduce((a, b) => a + b, 0), mm }))
+			.sort((a, b) => b.total - a.total).slice(0, 5);
+		const subjectTrend = subjTotals.map(({ subject, mm }) => ({
+			subject,
+			monthly: monthList.map(mk => ({ month: mk, minutes: mm.get(mk) ?? 0 })),
+		}));
+
+		// 月別読了冊数 + 読了ページ数(pageFrom/To 差分の合計。読了本に限らずログのページ実績を月別集計)。
+		const finishedBooks = await this.hatadyBooksRepository.createQueryBuilder('book')
+			.select(['book.finishedAt AS "finishedAt"'])
+			.where('book.userId = :uid', { uid: userId })
+			.andWhere('book.status = :st', { st: 'finished' })
+			.andWhere('book.finishedAt IS NOT NULL')
+			.andWhere('book.finishedAt > :since', { since })
+			.getRawMany();
+		const finishedByMonth = new Map<string, number>();
+		for (const r of finishedBooks) finishedByMonth.set(monthKey(new Date(r.finishedAt)), (finishedByMonth.get(monthKey(new Date(r.finishedAt))) ?? 0) + 1);
+		const pagesByMonth = new Map<string, number>();
+		for (const log of logs) {
+			if (log.pageFrom != null && log.pageTo != null && log.pageTo > log.pageFrom) {
+				const mk = monthKey(new Date(log.studiedAt));
+				pagesByMonth.set(mk, (pagesByMonth.get(mk) ?? 0) + (log.pageTo - log.pageFrom));
+			}
+		}
+		const monthlyFinished = monthList.map(mk => ({ month: mk, books: finishedByMonth.get(mk) ?? 0, pages: pagesByMonth.get(mk) ?? 0 }));
+
+		const streaks = await this.getStreaks(userId, tz);
+
+		return { monthlyTotals, weekdayMinutes, hourlyMinutes, subjectTrend, bests: { longestSession, maxDayMinutes, longestStreak: streaks.best }, monthlyFinished };
+	}
+
+	// ===== 目標(goal。本人のみ) =====
+
+	// 旗鯖fork(P7): 目標の進捗を計算する。metricType が null なら手動(done)で判定。
+	//   集計期間は createdAt 〜 (targetDate があればそれ、なければ現在)。
+	@bindThis
+	public async getGoalProgress(goal: MiHatadyGoal): Promise<{ current: number; target: number | null; percent: number | null }> {
+		if (goal.metricType == null || goal.metricTarget == null) {
+			return { current: goal.done ? 1 : 0, target: null, percent: goal.done ? 100 : null };
+		}
+		const from = goal.createdAt;
+		const to = goal.targetDate ?? new Date();
+		let current = 0;
+		if (goal.metricType === 'minutes') {
+			const raw = await this.hatadyLogsRepository.createQueryBuilder('log')
+				.select('COALESCE(SUM(log.durationMinutes), 0)', 'sum')
+				.where('log.userId = :uid', { uid: goal.userId })
+				.andWhere('log.studiedAt >= :from', { from })
+				.andWhere('log.studiedAt <= :to', { to })
+				.getRawOne();
+			current = Number(raw?.sum ?? 0);
+		} else if (goal.metricType === 'logs') {
+			current = await this.hatadyLogsRepository.createQueryBuilder('log')
+				.where('log.userId = :uid', { uid: goal.userId })
+				.andWhere('log.studiedAt >= :from', { from })
+				.andWhere('log.studiedAt <= :to', { to })
+				.getCount();
+		} else if (goal.metricType === 'books') {
+			current = await this.hatadyBooksRepository.createQueryBuilder('book')
+				.where('book.userId = :uid', { uid: goal.userId })
+				.andWhere('book.status = :st', { st: 'finished' })
+				.andWhere('book.finishedAt IS NOT NULL')
+				.andWhere('book.finishedAt >= :from', { from })
+				.andWhere('book.finishedAt <= :to', { to })
+				.getCount();
+		}
+		const percent = goal.metricTarget > 0 ? Math.min(100, Math.round((current / goal.metricTarget) * 100)) : null;
+		return { current, target: goal.metricTarget, percent };
+	}
+
+	// 目標一覧(進捗込み)。短期→長期、期限昇順(なしは後ろ)、作成新しい順。
+	@bindThis
+	public async listGoals(userId: MiUser['id']): Promise<any[]> {
+		const goals = await this.hatadyGoalsRepository.findBy({ userId });
+		goals.sort((a, b) => {
+			if (a.termType !== b.termType) return a.termType === 'short' ? -1 : 1;
+			const at = a.targetDate ? a.targetDate.getTime() : Infinity;
+			const bt = b.targetDate ? b.targetDate.getTime() : Infinity;
+			if (at !== bt) return at - bt;
+			return b.createdAt.getTime() - a.createdAt.getTime();
+		});
+		const out: any[] = [];
+		for (const g of goals) {
+			const progress = await this.getGoalProgress(g);
+			// metric 目標が達成条件を満たしたら done を自動更新(冪等)。
+			if (!g.done && g.metricType != null && progress.percent != null && progress.percent >= 100) {
+				g.done = true; g.doneAt = new Date();
+				await this.hatadyGoalsRepository.update(g.id, { done: true, doneAt: g.doneAt, updatedAt: new Date() });
+				await this.notify({ notifieeId: userId, notifierId: null, type: 'goalDone', value: null }).catch(() => {});
+			}
+			out.push({
+				id: g.id, title: g.title, description: g.description, termType: g.termType,
+				targetDate: g.targetDate ? g.targetDate.toISOString() : null,
+				metricType: g.metricType, metricTarget: g.metricTarget,
+				done: g.done, doneAt: g.doneAt ? g.doneAt.toISOString() : null,
+				createdAt: g.createdAt.toISOString(),
+				progress,
+			});
+		}
+		return out;
+	}
+
+	@bindThis
+	public async createGoal(userId: MiUser['id'], data: {
+		title: string; description?: string | null; termType: string;
+		targetDate?: number | null; metricType?: string | null; metricTarget?: number | null;
+	}): Promise<MiHatadyGoal> {
+		const now = new Date();
+		const goal = await this.hatadyGoalsRepository.insertOne({
+			id: this.idService.gen(now.getTime()),
+			userId,
+			title: data.title.trim().slice(0, 256),
+			description: data.description?.slice(0, 2048) ?? null,
+			termType: data.termType === 'long' ? 'long' : 'short',
+			targetDate: data.targetDate != null ? new Date(data.targetDate) : null,
+			metricType: (data.metricType === 'minutes' || data.metricType === 'logs' || data.metricType === 'books') ? data.metricType : null,
+			metricTarget: data.metricTarget != null ? Math.max(0, Math.floor(data.metricTarget)) : null,
+			done: false,
+			doneAt: null,
+			createdAt: now,
+			updatedAt: now,
+		});
+		return goal;
+	}
+
+	@bindThis
+	public async updateGoal(userId: MiUser['id'], goalId: string, data: {
+		title?: string; description?: string | null; termType?: string;
+		targetDate?: number | null; metricType?: string | null; metricTarget?: number | null; done?: boolean;
+	}): Promise<boolean> {
+		const goal = await this.hatadyGoalsRepository.findOneBy({ id: goalId, userId });
+		if (goal == null) return false;
+		const patch: Partial<MiHatadyGoal> = { updatedAt: new Date() };
+		if (data.title != null) patch.title = data.title.trim().slice(0, 256);
+		if (data.description !== undefined) patch.description = data.description?.slice(0, 2048) ?? null;
+		if (data.termType != null) patch.termType = data.termType === 'long' ? 'long' : 'short';
+		if (data.targetDate !== undefined) patch.targetDate = data.targetDate != null ? new Date(data.targetDate) : null;
+		if (data.metricType !== undefined) patch.metricType = (data.metricType === 'minutes' || data.metricType === 'logs' || data.metricType === 'books') ? data.metricType : null;
+		if (data.metricTarget !== undefined) patch.metricTarget = data.metricTarget != null ? Math.max(0, Math.floor(data.metricTarget)) : null;
+		if (data.done !== undefined) { patch.done = data.done; patch.doneAt = data.done ? new Date() : null; }
+		await this.hatadyGoalsRepository.update(goal.id, patch);
+		return true;
+	}
+
+	@bindThis
+	public async deleteGoal(userId: MiUser['id'], goalId: string): Promise<boolean> {
+		const goal = await this.hatadyGoalsRepository.findOneBy({ id: goalId, userId });
+		if (goal == null) return false;
+		await this.hatadyGoalsRepository.delete(goal.id);
+		return true;
 	}
 }
