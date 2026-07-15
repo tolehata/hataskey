@@ -34,25 +34,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<button :class="$style.primaryBtn" @click="showCredits = false">閉じる</button>
 			</div>
 		</div>
-		<!-- 変形ダイアログ -->
-		<div v-if="transformMode" :class="$style.overlay" @click.stop>
-			<div :class="$style.modalBox">
-				<div :class="$style.modalHeader"><i class="ti ti-transform"></i><h2>画像配置</h2></div>
-				<div :class="$style.transformBody">
-					<div :class="$style.transformPreview"><canvas ref="transformCanvas" width="240" height="180"></canvas></div>
-					<div :class="$style.transformSliders">
-						<label><span>拡大率</span><input type="range" v-model.number="transform.scale" min="10" max="200" @input="drawTransformPreview"><em>{{ transform.scale }}%</em></label>
-						<label><span>回転</span><input type="range" v-model.number="transform.rotation" min="-180" max="180" @input="drawTransformPreview"><em>{{ transform.rotation }}°</em></label>
-						<label><span>X位置</span><input type="range" v-model.number="transform.x" min="-500" max="500" @input="drawTransformPreview"><em>{{ transform.x }}</em></label>
-						<label><span>Y位置</span><input type="range" v-model.number="transform.y" min="-500" max="500" @input="drawTransformPreview"><em>{{ transform.y }}</em></label>
-					</div>
-				</div>
-				<div :class="$style.modalActions">
-					<button @click="cancelTransform">キャンセル</button>
-					<button :class="$style.primaryBtn" @click="applyTransform">配置</button>
-				</div>
-			</div>
-		</div>
 		<!-- 閉じる確認 -->
 		<div v-if="showCloseConfirm" :class="$style.overlay" @click.stop>
 			<div :class="$style.modalBox">
@@ -156,6 +137,29 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<div v-if="lasso" :class="$style.lassoBox" :style="{ left: lasso.x * zoom + 'px', top: lasso.y * zoom + 'px', width: lasso.w * zoom + 'px', height: lasso.h * zoom + 'px', transform: `scale(${lasso.scale / 100}) rotate(${lasso.rotation}deg)` }" @pointerdown.stop="startLassoDrag">
 							<canvas ref="lassoCanvas" :width="lasso.w" :height="lasso.h" :style="{ width: '100%', height: '100%' }"></canvas>
 						</div>
+						<!-- 読み込んだ画像をキャンバス上に実寸で重ね、その場でドラッグ配置する。
+						     ここでの見た目と applyTransform の描画は同じ座標系なので、見たまま配置される。 -->
+						<div
+							v-if="transformMode && transform.img"
+							:class="$style.placeBox"
+							:style="{ left: transform.x * zoom + 'px', top: transform.y * zoom + 'px', width: transform.w * zoom + 'px', height: transform.h * zoom + 'px', transform: `rotate(${transform.rotation}deg)` }"
+							@pointerdown.stop="beginPlace('move', $event)"
+						>
+							<img :src="transform.img.src" :class="$style.placeImg" draggable="false">
+							<span :class="[$style.placeHandle, $style.phNw]" @pointerdown.stop="beginPlace('nw', $event)"></span>
+							<span :class="[$style.placeHandle, $style.phNe]" @pointerdown.stop="beginPlace('ne', $event)"></span>
+							<span :class="[$style.placeHandle, $style.phSw]" @pointerdown.stop="beginPlace('sw', $event)"></span>
+							<span :class="[$style.placeHandle, $style.phSe]" @pointerdown.stop="beginPlace('se', $event)"></span>
+							<span :class="$style.placeRotate" @pointerdown.stop="beginPlace('rot', $event)"><i class="ti ti-rotate"></i></span>
+						</div>
+					</div>
+					<!-- 画像配置の操作バー(キャンバス表示領域に浮かせる)。
+					     操作方法はハンドルを見れば分かるので、数値と操作だけの最小構成にする。 -->
+					<div v-if="transformMode" :class="$style.placeBar">
+						<span :class="$style.placeInfo">{{ Math.round(transform.w) }} × {{ Math.round(transform.h) }} · {{ transform.rotation }}°</span>
+						<button :class="$style.placeBtn" title="初期サイズ・中央に戻す" @click="resetPlace"><i class="ti ti-refresh"></i></button>
+						<button :class="$style.placeBtn" @click="cancelTransform">キャンセル</button>
+						<button :class="[$style.placeBtn, $style.placeApply]" @click="applyTransform"><i class="ti ti-check"></i>配置</button>
 					</div>
 				</div>
 				<div v-if="showMinimap && !isMobile" :class="$style.minimap" @pointerdown.stop="onMiniDown" @pointermove.stop="onMiniMove" @pointerup.stop="onMiniUp" @pointerleave.stop="onMiniUp">
@@ -235,7 +239,6 @@ const canvas = ref<HTMLCanvasElement>();
 const previewCanvas = ref<HTMLCanvasElement>();
 const miniCanvas = ref<HTMLCanvasElement>();
 const lassoCanvas = ref<HTMLCanvasElement>();
-const transformCanvas = ref<HTMLCanvasElement>();
 const hueRing = ref<HTMLElement>();
 const svBox = ref<HTMLElement>();
 const scroller = ref<HTMLElement>();
@@ -272,7 +275,9 @@ const panStart = reactive({ x: 0, y: 0, panX: 0, panY: 0 });
 const panX = ref(0);
 const panY = ref(0);
 const touch = reactive({ count: 0, pinching: false, panning: false, dist: 0, cx: 0, cy: 0, panX: 0, panY: 0 });
-const transform = reactive({ img: null as HTMLImageElement | null, scale: 100, rotation: 0, x: 0, y: 0 });
+// 画像配置: キャンバス座標系でそのまま持つ(x,y=左上 / w,h=配置サイズ / rotation=中心まわりの角度)。
+//   オーバーレイの見た目と applyTransform の描画が同じ式になるので「見たまま」配置できる。
+const transform = reactive({ img: null as HTMLImageElement | null, x: 0, y: 0, w: 0, h: 0, rotation: 0 });
 
 const tools = [
 	{ id: 'pen', name: 'ペン', icon: 'ti ti-pencil' },
@@ -530,6 +535,8 @@ function getPos(e: PointerEvent) {
 }
 
 function onPtrDown(e: PointerEvent) {
+	// 画像配置中はキャンバスへの描画を止める(配置オーバーレイの操作を優先)。
+	if (transformMode.value) return;
 	// PC版: ハンドツールモードの場合
 	if (panMode.value && e.pointerType === 'mouse') {
 		panning.value = true;
@@ -767,28 +774,94 @@ async function importImage() {
 		const url = getProxiedImageUrl(files[0].url, undefined, true);
 		const img = new Image(); img.crossOrigin = 'anonymous';
 		await new Promise<void>((res, rej) => { img.onload = () => res(); img.onerror = () => rej(new Error('load failed')); img.src = url; });
-		transform.img = img; transform.scale = 100; transform.rotation = 0; transform.x = 0; transform.y = 0;
+		transform.img = img;
+		resetPlace();
 		transformMode.value = true;
-		nextTick(() => drawTransformPreview());
 	} catch (e) { console.error(e); os.alert({ type: 'error', text: '画像の読み込みに失敗しました' }); }
 }
 
-function drawTransformPreview() {
-	if (!transformCanvas.value || !transform.img) return;
-	const x = transformCanvas.value.getContext('2d')!;
-	x.clearRect(0, 0, 240, 180); x.fillStyle = '#ddd'; x.fillRect(0, 0, 240, 180);
-	x.save(); x.translate(120 + transform.x * 0.15, 90 + transform.y * 0.15);
-	x.rotate(transform.rotation * Math.PI / 180); x.scale(transform.scale / 100, transform.scale / 100);
-	const w = transform.img.width, h = transform.img.height, sc = Math.min(200 / w, 140 / h);
-	x.drawImage(transform.img, -w * sc / 2, -h * sc / 2, w * sc, h * sc); x.restore();
+// キャンバスに収まる初期サイズ(最大80%)で中央に置く。
+function resetPlace() {
+	const img = transform.img; if (!img) return;
+	const fit = Math.min(1, (canvasWidth.value * 0.8) / img.width, (canvasHeight.value * 0.8) / img.height);
+	transform.w = img.width * fit;
+	transform.h = img.height * fit;
+	transform.x = (canvasWidth.value - transform.w) / 2;
+	transform.y = (canvasHeight.value - transform.h) / 2;
+	transform.rotation = 0;
+}
+
+// ドラッグ操作(移動/角リサイズ/回転)。開始時の状態を控えて差分で更新する。
+type PlaceMode = 'move' | 'nw' | 'ne' | 'sw' | 'se' | 'rot';
+let placeDrag: null | {
+	mode: PlaceMode; sx: number; sy: number;
+	ox: number; oy: number; ow: number; oh: number; orot: number;
+	ccx: number; ccy: number; startAngle: number;
+} = null;
+
+function beginPlace(mode: PlaceMode, e: PointerEvent) {
+	if (!transform.img || !canvas.value) return;
+	// 回転の基準にするため、ボックス中心のクライアント座標を控える。
+	const r = canvas.value.getBoundingClientRect();
+	const ccx = r.left + (transform.x + transform.w / 2) * zoom.value;
+	const ccy = r.top + (transform.y + transform.h / 2) * zoom.value;
+	placeDrag = {
+		mode, sx: e.clientX, sy: e.clientY,
+		ox: transform.x, oy: transform.y, ow: transform.w, oh: transform.h, orot: transform.rotation,
+		ccx, ccy, startAngle: Math.atan2(e.clientY - ccy, e.clientX - ccx) * 180 / Math.PI,
+	};
+	document.addEventListener('pointermove', onPlaceMove);
+	document.addEventListener('pointerup', endPlace);
+}
+
+function onPlaceMove(e: PointerEvent) {
+	const d = placeDrag; if (!d || !transform.img) return;
+	const dx = (e.clientX - d.sx) / zoom.value; // キャンバス座標系での移動量
+	const dy = (e.clientY - d.sy) / zoom.value;
+
+	if (d.mode === 'move') {
+		transform.x = d.ox + dx; transform.y = d.oy + dy;
+		return;
+	}
+	if (d.mode === 'rot') {
+		const a = Math.atan2(e.clientY - d.ccy, e.clientX - d.ccx) * 180 / Math.PI;
+		let r = d.orot + (a - d.startAngle);
+		if (e.shiftKey) r = Math.round(r / 15) * 15; // Shiftで15°スナップ
+		transform.rotation = Math.round(((r % 360) + 540) % 360 - 180);
+		return;
+	}
+	// 角ハンドル: 回転していても直感的に動くよう、移動量をボックスのローカル軸へ射影し、
+	//   中心を固定したまま縦横比を保ってリサイズする。
+	const rad = d.orot * Math.PI / 180;
+	const lx = dx * Math.cos(rad) + dy * Math.sin(rad);
+	const ly = -dx * Math.sin(rad) + dy * Math.cos(rad);
+	const sgnX = (d.mode === 'nw' || d.mode === 'sw') ? -1 : 1;
+	const sgnY = (d.mode === 'nw' || d.mode === 'ne') ? -1 : 1;
+	let nw = d.ow + sgnX * lx * 2; // 中心固定なので両側に伸びる
+	let nh = d.oh + sgnY * ly * 2;
+	const ratio = d.oh / d.ow;
+	if (Math.abs(nw - d.ow) >= Math.abs(nh - d.oh)) nh = nw * ratio; else nw = nh / ratio;
+	nw = Math.max(16, nw); nh = Math.max(16, nh);
+	transform.w = nw; transform.h = nh;
+	transform.x = d.ox + d.ow / 2 - nw / 2;
+	transform.y = d.oy + d.oh / 2 - nh / 2;
+}
+
+function endPlace() {
+	placeDrag = null;
+	document.removeEventListener('pointermove', onPlaceMove);
+	document.removeEventListener('pointerup', endPlace);
 }
 
 function applyTransform() {
 	if (!transform.img) return;
 	const ly = getLayer(); if (!ly) return;
-	ly.ctx.save(); ly.ctx.translate(canvasWidth.value / 2 + transform.x, canvasHeight.value / 2 + transform.y);
-	ly.ctx.rotate(transform.rotation * Math.PI / 180); ly.ctx.scale(transform.scale / 100, transform.scale / 100);
-	ly.ctx.drawImage(transform.img, -transform.img.width / 2, -transform.img.height / 2); ly.ctx.restore();
+	// オーバーレイと同じ式(中心まわりに回転 → 指定サイズで描画)。
+	ly.ctx.save();
+	ly.ctx.translate(transform.x + transform.w / 2, transform.y + transform.h / 2);
+	ly.ctx.rotate(transform.rotation * Math.PI / 180);
+	ly.ctx.drawImage(transform.img, -transform.w / 2, -transform.h / 2, transform.w, transform.h);
+	ly.ctx.restore();
 	composite(); saveHistory(); transformMode.value = false; transform.img = null;
 }
 
@@ -837,9 +910,47 @@ function forceClose() { showCloseConfirm.value = false; modal.value?.close(); }
 .creditsBody { margin: 20px 0; }
 .creditItem { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--MI_THEME-divider); span { opacity: 0.6; } strong { color: var(--MI_THEME-accent); } }
 .version { margin-top: 16px; opacity: 0.5; font-size: 12px; }
-.transformBody { display: flex; flex-direction: column; gap: 16px; }
-.transformPreview { display: flex; justify-content: center; canvas { border-radius: 12px; border: 1px solid var(--MI_THEME-divider); } }
-.transformSliders { label { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 13px; span { width: 80px; } input { flex: 1; } em { width: 50px; text-align: right; font-style: normal; opacity: 0.6; } } }
+/* 画像配置: キャンバス上のオーバーレイ + 下部の操作バー */
+.placeBox { position: absolute; z-index: 5; border: 2px solid var(--MI_THEME-accent); cursor: move; transform-origin: center; touch-action: none; }
+.placeImg { width: 100%; height: 100%; display: block; pointer-events: none; user-select: none; }
+.placeHandle {
+	position: absolute; width: 14px; height: 14px; border-radius: 50%;
+	background: var(--MI_THEME-panel); border: 2px solid var(--MI_THEME-accent);
+	touch-action: none;
+}
+.phNw { left: -7px; top: -7px; cursor: nwse-resize; }
+.phNe { right: -7px; top: -7px; cursor: nesw-resize; }
+.phSw { left: -7px; bottom: -7px; cursor: nesw-resize; }
+.phSe { right: -7px; bottom: -7px; cursor: nwse-resize; }
+.placeRotate {
+	position: absolute; left: 50%; top: -34px; transform: translateX(-50%);
+	width: 24px; height: 24px; border-radius: 50%; cursor: grab; touch-action: none;
+	background: var(--MI_THEME-accent); color: var(--MI_THEME-fgOnAccent, #fff);
+	display: flex; align-items: center; justify-content: center; font-size: 14px;
+	box-shadow: 0 2px 6px rgba(0, 0, 0, .3);
+}
+/* 回転ハンドルとボックスを結ぶ線 */
+.placeRotate::before { content: ''; position: absolute; top: 24px; left: 50%; width: 2px; height: 10px; background: var(--MI_THEME-accent); }
+.placeBar {
+	position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 20;
+	display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; white-space: nowrap;
+	background: var(--MI_THEME-panel); border: 1px solid var(--MI_THEME-divider); border-radius: 999px;
+	padding: 6px 6px 6px 14px; box-shadow: 0 6px 20px rgba(0, 0, 0, .28); max-width: calc(100% - 24px);
+}
+.placeInfo { font-size: 12px; font-weight: 700; opacity: .8; font-variant-numeric: tabular-nums; margin-right: 2px; }
+/* モーダル用の全幅ボタン(.primaryBtn 等)を流用すると幅・余白が過大になるため、バー専用の小型ピルにする。 */
+.placeBtn {
+	flex: 0 0 auto; width: auto; margin: 0;
+	border: none; border-radius: 999px; padding: 6px 12px;
+	background: var(--MI_THEME-buttonBg, rgba(0, 0, 0, .06)); color: inherit;
+	font-size: 12.5px; font-weight: 700; line-height: 1; cursor: pointer;
+	display: inline-flex; align-items: center; gap: 4px;
+	&:hover { background: var(--MI_THEME-buttonHoverBg, rgba(0, 0, 0, .12)); }
+}
+.placeApply {
+	background: var(--MI_THEME-accent); color: var(--MI_THEME-fgOnAccent, #fff);
+	&:hover { background: var(--MI_THEME-accent); filter: brightness(1.08); }
+}
 .modalActions { display: flex; gap: 12px; margin-top: 20px; button { flex: 1; padding: 12px; border: none; border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: 500; &:first-child { background: var(--MI_THEME-buttonBg); color: var(--MI_THEME-fg); } } }
 .confirmText { margin: 20px 0; opacity: 0.8; line-height: 1.6; strong { color: #e74c3c; } }
 .confirmBtns { display: flex; flex-direction: column; gap: 10px; button { padding: 14px; border: none; border-radius: 12px; cursor: pointer; font-size: 14px; font-weight: 500; &:first-child { background: var(--MI_THEME-buttonBg); color: var(--MI_THEME-fg); } } }
