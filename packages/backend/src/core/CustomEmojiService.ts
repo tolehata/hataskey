@@ -15,7 +15,8 @@ import { bindThis } from '@/decorators.js';
 import { DI } from '@/di-symbols.js';
 import { MemoryKVCache, RedisSingleCache } from '@/misc/cache.js';
 import { sqlLikeEscape } from '@/misc/sql-like-escape.js';
-import type { DriveFilesRepository, EmojisRepository, MiMeta, MiRole, MiUser } from '@/models/_.js';
+import type { DriveFilesRepository, EmojisRepository, MiMeta, MiRole, MiUser, NotesRepository, UsersRepository } from '@/models/_.js';
+import type { MiDriveFile } from '@/models/DriveFile.js';
 import type { MiEmoji } from '@/models/Emoji.js';
 import type { Serialized } from '@/types.js';
 import { DriveService } from '@/core/DriveService.js';
@@ -78,6 +79,13 @@ export class CustomEmojiService implements OnApplicationShutdown {
 
 		@Inject(DI.driveFilesRepository)
 		private driveFilesRepository: DriveFilesRepository,
+
+		// 旗鯖fork: 絵文字登録時の原本ドライブファイル自動削除(reuploadFileAndCleanup)が、
+		// ノート添付・アバター・バナーとして使われているかを見ずに削除してしまう問題への対策で追加。
+		@Inject(DI.notesRepository)
+		private notesRepository: NotesRepository,
+		@Inject(DI.usersRepository)
+		private usersRepository: UsersRepository,
 
 		private utilityService: UtilityService,
 		private idService: IdService,
@@ -702,6 +710,28 @@ export class CustomEmojiService implements OnApplicationShutdown {
 		this.dispose();
 	}
 
+	/**
+	 * 旗鯖fork: ドライブファイルがノート添付・アバター・バナーとして使われているかを判定する。
+	 * reuploadFileAndCleanup が原本ファイルを自動削除する前の安全確認に使う
+	 * (絵文字申請ウィザードは既存のドライブファイルを選べるため、ノート添付中やアバター使用中の
+	 * 画像を絵文字申請に使われた場合に誤って削除してしまうのを防ぐ)。
+	 */
+	@bindThis
+	private async isDriveFileInUse(fileId: MiDriveFile['id']): Promise<boolean> {
+		const usedInNote = await this.notesRepository.createQueryBuilder('note')
+			.select('note.id')
+			.andWhere(':file <@ note.fileIds', { file: [fileId] })
+			.getExists();
+		if (usedInNote) return true;
+
+		return await this.usersRepository.exists({
+			where: [
+				{ avatarId: fileId },
+				{ bannerId: fileId },
+			],
+		});
+	}
+
 	@bindThis
 	private async reuploadFileAndCleanup(data: {
 		originalUrl: string;
@@ -754,14 +784,17 @@ export class CustomEmojiService implements OnApplicationShutdown {
 					const referenceCount = await this.driveFilesRepository.count({
 						where: { url: originalSourceUrl, id: Not(originalDriveFile.id) },
 					});
-					if (referenceCount === 0) {
+					// 旗鯖fork: 他のドライブファイル行から参照されていなくても、ノート添付・アバター・バナーとして
+					// 使われている場合は削除しない(絵文字申請ウィザードは既存ファイルの選択を許容しているため)。
+					const inUse = referenceCount === 0 ? await this.isDriveFileInUse(originalDriveFile.id) : false;
+					if (referenceCount === 0 && !inUse) {
 						await this.driveService.deleteFile(originalDriveFile);
 						this.logger.info('Deleted original emoji file as it\'s no longer referenced', {
 							fileId: originalDriveFile.id,
 							url: originalSourceUrl,
 						});
 					} else {
-						this.logger.info(`Skipped deleting original emoji file as it has ${referenceCount} references`, {
+						this.logger.info(`Skipped deleting original emoji file (references: ${referenceCount}, inUse: ${inUse})`, {
 							fileId: originalDriveFile.id,
 							url: originalSourceUrl,
 						});

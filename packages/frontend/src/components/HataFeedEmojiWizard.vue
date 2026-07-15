@@ -116,6 +116,13 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<MkSwitch v-model="localOnly">このサーバーのみで使用（連合しない）</MkSwitch>
 				<MkSwitch v-model="isSensitive">センシティブな絵文字</MkSwitch>
 
+				<!-- 旗鯖fork: 自分の画像から申請した場合、承認されるとドライブの原本は削除される
+				     (絵文字はサーバー側に複製されるため表示自体には影響しない)。事前に周知するための注意書き。 -->
+				<div v-if="sourceType === 'image'" :class="$style.driveNotice">
+					<i class="ti ti-info-circle"></i>
+					<span>申請が承認されると、アップロードした画像はあなたのドライブから削除されます（絵文字自体はサーバー側に複製されるため表示には影響しません）。ノートやアイコン・バナーで使用中の画像は削除されません。</span>
+				</div>
+
 				<div :class="$style.navRow">
 					<MkButton rounded @click="backToStep1"><i class="ti ti-arrow-left"></i> {{ sourceType === 'remote' ? '検索に戻る' : '戻る' }}</MkButton>
 					<MkButton rounded primary gradate :disabled="!name.trim() || submitting" @click="submit"><i class="ti ti-send"></i> 申請する</MkButton>
@@ -357,6 +364,10 @@ async function submit() {
 .licenseField { border-radius: 10px; }
 .licenseWarn { outline: 1px solid color-mix(in srgb, #ecb637 60%, transparent); outline-offset: 4px; border-radius: 8px; }
 .warnText { color: #b6791f; }
+
+/* 旗鯖fork: 承認後にドライブ原本が削除される旨の注意書き */
+.driveNotice { display: flex; align-items: flex-start; gap: 7px; background: var(--MI_THEME-infoBg, var(--MI_THEME-panel)); border: 1px solid var(--MI_THEME-divider); border-radius: 10px; padding: 10px 12px; font-size: .78em; line-height: 1.6; opacity: .85; }
+.driveNotice i { flex-shrink: 0; margin-top: .15em; color: var(--MI_THEME-accent); }
 
 /* 右ペイン(ライブプレビュー) */
 .preview { background: var(--MI_THEME-bg); border: 1px solid var(--MI_THEME-divider); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 12px; position: sticky; top: 0; }
