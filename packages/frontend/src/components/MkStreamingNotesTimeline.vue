@@ -253,11 +253,13 @@ const bubbleEnabled = computed(() => {
     //   デッキ表示では他カラムと同じ判定に委ね、非デッキ (チャンネルページ本体等) では従来通り
     //   強制ONで UX を維持する。
     if (props.src === 'channel' && !isDeckUi && !isHatasabaDeck.value) return true;
-    if (isDeckUi && prefer.r['simpleUi.disableBubbleInDeck']?.value) return false;
-    if (isDefaultUi && prefer.r['simpleUi.disableBubbleInDefault']?.value) return false;
+    // 旗鯖fork: 従来デッキUI / Misskey(デフォルト)UI は常にクラシック表示(吹き出しなし)に固定。
+    //   旧トグル(disableBubbleInDeck / disableBubbleInDefault)は廃止し、挙動をコード側で確定させた。
+    if (isDeckUi) return false;
+    if (isDefaultUi) return false;
+    // HatasabaUI デッキの「ノートの簡易表示を無効にする」(ON=吹き出しOFF=標準カード)。キー・挙動は従来どおり。
     if (isHatasabaDeck.value && prefer.r['simpleUi.disableBubbleInHatasabaDeck']?.value) return false;
-    // 旗鯖fork: HatasabaUI 通常モードの吹き出し無効化トグル。
-    if (isHatasabaNormal.value && prefer.r['simpleUi.disableBubbleInHatasabaNormal']?.value) return false;
+    // HatasabaUI 通常モードは常に吹き出し表示(旧「通常で無効にする」トグルは廃止)。
     return true;
 });
 
@@ -275,7 +277,8 @@ provide('noteTimelineGlassBg', computed(() => props.glassBg));
 // (隙間0＋グレーのスペーサーで区切る)を強制ONにする。設定トグルでは変更不可(hata-custom側で無効化)。
 const isHatasaba = miLocalStorage.getItem('ui') === 'simple';
 const classicSpacingEnabled = computed(() => {
-    if (isHatasaba) return true;
+    // 旗鯖fork: HatasabaUI と Misskey(デフォルト)UI では従来Misskey風の投稿間隔を強制ON。
+    if (isHatasaba || isDefaultUi) return true;
     return prefer.r['simpleUi.classicNoteSpacing']?.value ?? false;
 });
 

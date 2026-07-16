@@ -42,16 +42,18 @@ function applyGlassUiClass(v: boolean): void {
 //   既存で 'false' 保存済み → false 維持 (=明示OFF のユーザーの意思を尊重)。
 //   未設定 (null) → true (自動ON)。同時に localStorage にも 'true' を書き込むことで、
 //   次回起動以降 (=もし将来この判定を変えたとしても) 動作が変わらない安定した状態にする。
-const _initialGlassUi = miLocalStorage.getItem('hataGlassUi') !== 'false';
+// 旗鯖fork: HatasabaUI 2 は強制ON(有効化トグルは廃止)。過去に明示OFF('false')にした端末も含め、
+//   常に ON に固定する。localStorage も 'true' に揃えて状態を安定させる。
+const _initialGlassUi = true;
 export const glassUiLocal = ref(_initialGlassUi);
-if (miLocalStorage.getItem('hataGlassUi') == null) {
-	// 未設定の端末なら自動的に 'true' を書き込んで状態を固定 (自動ON をアクティブ化)。
+if (miLocalStorage.getItem('hataGlassUi') !== 'true') {
 	miLocalStorage.setItem('hataGlassUi', 'true');
 }
 export function setGlassUiLocal(v: boolean): void {
-	glassUiLocal.value = v;
-	miLocalStorage.setItem('hataGlassUi', v ? 'true' : 'false');
-	applyGlassUiClass(v);
+	// 強制ONのため OFF 指定は無視して常に ON にする。
+	glassUiLocal.value = true;
+	miLocalStorage.setItem('hataGlassUi', 'true');
+	applyGlassUiClass(true);
 }
 // モジュール読み込み時(=アプリ起動時)に現在値をクラスへ反映。
 applyGlassUiClass(glassUiLocal.value);

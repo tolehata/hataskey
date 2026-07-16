@@ -105,6 +105,16 @@ export async function common(createVue: () => Promise<App<Element>>) {
 		miLocalStorage.setItem('hata_classic_spacing_migrated', '1');
 	}
 
+	// 旗鯖fork: Misskey(デフォルト)UI では ノートの間隔の既定を「広め」にする。
+	//   旧既定(moderate)のままのユーザーを一度だけ wide に引き上げる(一度きり・以後の変更は尊重)。
+	if (!miLocalStorage.getItem('hata_misskeyui_wide_spacing_migrated')) {
+		const { prefer } = await import('@/preferences.js');
+		if (miLocalStorage.getItem('ui') === 'default' && prefer.s['simpleUi.noteSpacing'] === 'moderate') {
+			prefer.commit('simpleUi.noteSpacing', 'wide');
+		}
+		miLocalStorage.setItem('hata_misskeyui_wide_spacing_migrated', '1');
+	}
+
 	// 旗鯖: 天気エフェクトを一度だけ強制OFF。以前デフォルトが誤ってONだったため、
 	// 光過敏症(光感受性てんかん)配慮を最優先して既存ユーザーも一度リセットする。
 	// 一度きり(フラグで保護)なので、その後ユーザーが設定で再度ONにすれば尊重される。

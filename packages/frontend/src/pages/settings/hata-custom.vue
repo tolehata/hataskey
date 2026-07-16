@@ -187,23 +187,9 @@ SPDX-License-Identifier: AGPL-3.0-only
         </template>
 
         <!-- ===== Hatasaba UI ===== -->
-        <!-- 旗鯖fork: HatasabaUI に関する設定はモーダル (MkHatasabaUiEditDialog) に集約した。
-             理由: 上部/下部ナビバーの並び替え・表示/非表示が、旧・タブ内インライン編集 (watch(deep) 自動保存)
-             では本番ユーザーで「リロードするとリセットされる」問題が発生していた。サイドバーと同じく
-             明示保存ボタン + 初期化ボタン付きモーダル化することで、保存の確実性と一貫性を担保する。
-             また下部ナビ設定は「下部ナビが表示される画面 (モバイル/狭幅) のみ操作可」でグレーアウトさせる。 -->
-        <template v-if="activeCat === 'simpleUi'">
-        <FormSection first>
-            <template #label>HatasabaUI の設定</template>
-            <div style="font-size:.85em;opacity:.7;margin-bottom:12px;line-height:1.6;">
-                HatasabaUI の見た目・ナビ・チュートリアル等を、専用モーダルからまとめて設定できます。<br>
-                ナビバーの並び替え・表示/非表示は編集後に<b>「保存」ボタン</b>でサーバーに反映され、ログイン中の全端末に同期されます。
-            </div>
-            <button class="_buttonPrimary" @click="openHatasabaUiEditDialog" style="padding:10px 20px;font-weight:bold;">
-                <i class="ti ti-device-mobile"></i> HatasabaUI の設定を開く
-            </button>
-        </FormSection>
-        </template>
+        <!-- 旗鯖fork: 旧「Hatasaba UI」タブの全設定 (基本/上部・下部ナビバー/サイドメニュー/デッキチュートリアル)
+             は HatasabaUI 2 の設定モーダル (MkHatasabaUi2EditWindow) へ統合した。タブ自体を廃止し、
+             設定入口は HatasabaUI 2 タブに一本化する。preferences のキーは変更していないため既存設定は保持される。 -->
 
         <!-- ===== HatasabaUI 2 =====
              旗鯖fork: 全項目を MkHatasabaUi2EditWindow (フローティングウィンドウ) に集約。
@@ -212,7 +198,7 @@ SPDX-License-Identifier: AGPL-3.0-only
         <FormSection first>
             <template #label>HatasabaUI 2 の設定</template>
             <div style="font-size:.85em;opacity:.7;margin-bottom:12px;line-height:1.6;">
-                HatasabaUI 2 の有効化・吹き出しデザイン・背景ヘッダー画像のぼかし・<b>ガラス面の透過率</b>をまとめて設定します。<br>
+                HatasabaUI 2（常に有効）の吹き出しデザイン・背景ヘッダー画像のぼかし・<b>ガラス面の透過率</b>、およびデッキのノート表示をまとめて設定します。<br>
                 ウィンドウは<b>開いたまま裏の HatasabaUI をリアルタイムに確認</b>できます。編集は<b>「保存」ボタンを押すまで永続化されません</b>。
             </div>
             <button class="_buttonPrimary" @click="openHatasabaUi2EditWindow" style="padding:10px 20px;font-weight:bold;">
@@ -239,9 +225,9 @@ SPDX-License-Identifier: AGPL-3.0-only
                     <div :class="$style.spacingLabel">{{ opt.label }}</div>
                 </button>
             </div>
-            <MkSwitch v-model="classicNoteSpacingDisplay" :disabled="disableBubbleInDefault || isHatasabaUi">
+            <MkSwitch v-model="classicNoteSpacingDisplay" :disabled="isHatasabaUi || isMisskeyDefaultUi">
                 <template #label>従来のMisskey風の投稿間隔を使用する</template>
-                <template #caption>ONにするとタイムラインの投稿間隔が従来のMisskeyと同じ間隔になります。<br><span v-if="isHatasabaUi" style="color: var(--MI_THEME-warn);">※HatasabaUIでは常にON（従来Misskey風の投稿間隔：隙間0＋グレーのスペーサーで区切る表示）が適用されるため、変更できません。</span><br v-if="disableBubbleInDefault && !isHatasabaUi"><span v-if="disableBubbleInDefault && !isHatasabaUi" style="color: var(--MI_THEME-warn);">※「Misskey UIで吹き出し表示を無効にする」がONの場合、この設定は使用できません。</span></template>
+                <template #caption>ONにするとタイムラインの投稿間隔が従来のMisskeyと同じ間隔になります。<br><span v-if="isHatasabaUi" style="color: var(--MI_THEME-warn);">※HatasabaUIでは常にON（従来Misskey風の投稿間隔：隙間0＋グレーのスペーサーで区切る表示）が適用されるため、変更できません。</span><span v-else-if="isMisskeyDefaultUi" style="color: var(--MI_THEME-warn);">※Misskey（デフォルト）UIでは常にON（従来Misskey風の表示）が適用されるため、変更できません。</span></template>
             </MkSwitch>
         </FormSection>
         <FormSection>
@@ -291,25 +277,6 @@ SPDX-License-Identifier: AGPL-3.0-only
                 <template #caption>ウィジェットにアクセントカラーの縁を表示します（PC・モバイル両方）</template>
             </MkSwitch>
         </FormSection>
-        <FormSection>
-            <template #label>吹き出し表示</template>
-            <MkSwitch v-model="disableBubbleInDeck">
-                <template #label>デッキUIで吹き出し表示を無効にする</template>
-                <template #caption>ONにするとデッキUIではタイムラインの吹き出しデザインが適用されず、標準のカード表示になります。</template>
-            </MkSwitch>
-            <MkSwitch v-model="disableBubbleInDefault">
-                <template #label>Misskey UIで吹き出し表示を無効にする</template>
-                <template #caption>ONにするとMisskey UI（デフォルトUI）ではタイムラインの吹き出しデザインが適用されず、標準のカード表示になります。</template>
-            </MkSwitch>
-            <MkSwitch v-model="disableBubbleInHatasabaDeck">
-                <template #label>HatasabaUIデッキで吹き出し表示を無効にする</template>
-                <template #caption>ONにするとHatasabaUIのデッキ表示モードでも吹き出しデザインが適用されず、標準のカード表示になります。</template>
-            </MkSwitch>
-            <MkSwitch v-model="disableBubbleInHatasabaNormal">
-                <template #label>HatasabaUI（通常）で吹き出し表示を無効にする</template>
-                <template #caption>ONにするとHatasabaUIの通常表示（デッキ以外）でも吹き出しデザインが適用されず、標準のカード表示になります。</template>
-            </MkSwitch>
-        </FormSection>
         </template>
 
         <template v-if="activeCat === 'hatask'">
@@ -322,6 +289,19 @@ SPDX-License-Identifier: AGPL-3.0-only
             <template #label>Hatask を開く</template>
             <div style="font-size:.85em;opacity:.7;margin-bottom:12px;">Hatask の画面を開きます。</div>
             <button class="_button" @click="goToHatask" style="padding:10px 20px;"><i class="ti ti-external-link"></i> Hatask を開く</button>
+        </FormSection>
+        </template>
+        <!-- ===== Hatady ===== -->
+        <template v-if="activeCat === 'hatady'">
+        <FormSection first>
+            <template #label>Hatady の設定</template>
+            <div style="font-size:.85em;opacity:.7;margin-bottom:12px;line-height:1.6;">Hatady（学習・読書記録）の表示設定です。テーマ（紙 / エスプレッソ / hataskey準拠）・言語・端末間同期・チュートリアルの再実行をここから変更できます。テーマと言語は独立して選べ、設定はアカウントに同期されます。</div>
+            <button class="_buttonPrimary" @click="openHatadySettings" style="padding:10px 20px;font-weight:bold;"><i class="ti ti-palette"></i> Hatady の表示設定を開く</button>
+        </FormSection>
+        <FormSection>
+            <template #label>Hatady を開く</template>
+            <div style="font-size:.85em;opacity:.7;margin-bottom:12px;">Hatady の画面を開きます。</div>
+            <button class="_button" @click="goToHatady" style="padding:10px 20px;"><i class="ti ti-external-link"></i> Hatady を開く</button>
         </FormSection>
         </template>
         <template v-if="activeCat === 'mascot'">
@@ -390,7 +370,7 @@ import { mainRouter } from '@/router.js';
 import { miLocalStorage } from '@/local-storage.js';
 import { prefer } from '@/preferences.js';
 // 旗鯖fork: getInitialPrefValue は simpleUi タブのナビ初期化ロジックで使っていたが、
-//   モーダル (MkHatasabaUiEditDialog) に移設したためこのファイルからは不要になった。
+//   HatasabaUI 2 設定モーダル (MkHatasabaUi2EditWindow) に移設したためこのファイルからは不要になった。
 import { definePage } from '@/page.js';
 import { getHiddenReactions, hiddenReactionsVersion } from '@/utility/hidden-reactions.js';
 // 旗鯖fork: deckIgnoreWidth / setDeckIgnoreWidth は HatasabaUI 設定モーダル側で消費するのみ。
@@ -410,10 +390,10 @@ import { misskeyApi } from '@/utility/misskey-api.js';
 const categories = [
     { id: 'general', icon: 'ti ti-flag', label: '旗鯖全体' },
     { id: 'font', icon: 'ti ti-typography', label: 'フォント' },
-    { id: 'simpleUi', icon: 'ti ti-device-mobile', label: 'Hatasaba UI' },
     { id: 'glassUi', icon: 'ti ti-sparkles', label: 'HatasabaUI 2' },
     { id: 'visual', icon: 'ti ti-palette', label: 'ビジュアル' },
     { id: 'hatask', icon: 'ti ti-checklist', label: 'Hatask' },
+    { id: 'hatady', icon: 'ti ti-book-2', label: 'Hatady' },
     { id: 'mascot', icon: 'ti ti-mood-smile', label: 'マスコット' },
     { id: 'earthquake', icon: 'ti ti-activity', label: '地震ビューア' },
     { id: 'accessibility', icon: 'ti ti-dots', label: 'その他' },
@@ -535,6 +515,13 @@ const openHataskSettings = async () => {
 };
 const goToHatask = () => { mainRouter.push('/hatask'); };
 
+// 旗鯖fork(Hatady): 表示設定(テーマ・言語・同期・チュートリアル再実行)を共有ダイアログで開く。
+const openHatadySettings = async () => {
+    const { defineAsyncComponent: dac } = await import('vue');
+    const { dispose } = os.popup(dac(() => import('@/components/HatadyDisplaySettings.vue')), {}, { closed: () => dispose() });
+};
+const goToHatady = () => { mainRouter.push('/hatady'); };
+
 // 旗鯖fork(#34): 地震ビューア設定を共有ダイアログで開く
 const openEarthquakeSettings = async () => {
     const { defineAsyncComponent: dac } = await import('vue');
@@ -545,17 +532,6 @@ const goToEarthquake = () => { mainRouter.push('/earthquake'); };
 const openMascotSettings = async () => {
     const { defineAsyncComponent: dac } = await import('vue');
     os.popup(dac(() => import('@/pages/MkMascotSettings.vue')), {}, {}, 'closed');
-};
-// 旗鯖fork: HatasabaUI の設定モーダルを開く
-//   旧・simpleUi タブに散らばっていた 7 セクションをここに集約 (MkHatasabaUiEditDialog)。
-//   バッファ + 明示保存で「ナビ並び替えがリロードでリセットされる」問題を根絶する。
-const openHatasabaUiEditDialog = async () => {
-    const { defineAsyncComponent: dac } = await import('vue');
-    const { dispose } = os.popup(
-        dac(() => import('@/components/MkHatasabaUiEditDialog.vue')),
-        {},
-        { closed: () => dispose() },
-    );
 };
 // 旗鯖fork: HatasabaUI 2 の設定を独立ウィンドウ (MkHatasabaUi2EditWindow) で開く。
 //   有効化トグル・吹き出し・背景ぼかし・透過率スライダーを 1 ウィンドウに集約。
@@ -572,8 +548,9 @@ const isExternalLinked = computed(() => prefer.s['external.enabled'] && prefer.s
 const hiddenReactionCount = computed(() => { hiddenReactionsVersion.value; return getHiddenReactions().length; });
 // 旗鯖fork: simpleUi タブに直接あった topNav/bottomNav の ref / saveTopNav / saveBottomNav /
 //   resetTopNav / resetBottomNav / showTrendingTab / topNavMode / deckIgnoreWidthModel /
-//   openSidebarEditDialog / replayDeckTutorial は、MkHatasabaUiEditDialog に完全移設した。
-//   モーダル側でバッファ + 明示保存 + 初期化ボタンで完結するため、このファイルからは削除済み。
+//   openSidebarEditDialog / replayDeckTutorial は、HatasabaUI 2 設定モーダル
+//   (MkHatasabaUi2EditWindow) に完全移設した。モーダル側でバッファ + 明示保存 + 初期化ボタンで
+//   完結するため、このファイルからは削除済み。
 
 const widgetBorder = prefer.model('simpleUi.widgetBorder');
 const glassEffect = prefer.model('simpleUi.glassEffect');
@@ -618,12 +595,8 @@ const showPageHeader = prefer.model('simpleUi.showPageHeader');
 const noteSpacing = prefer.model('simpleUi.noteSpacing');
 // 旗鯖fork(#15): スマホ/狭幅で日付を従来位置(中央インライン)で表示するか。
 const showTimelineDateOnMobile = prefer.model('simpleUi.showTimelineDateOnMobile');
-const disableBubbleInDeck = prefer.model('simpleUi.disableBubbleInDeck');
-const disableBubbleInDefault = prefer.model('simpleUi.disableBubbleInDefault');
-// 旗鯖fork: HatasabaUIデッキ用の吹き出し無効化トグル
-const disableBubbleInHatasabaDeck = prefer.model('simpleUi.disableBubbleInHatasabaDeck');
-// 旗鯖fork: HatasabaUI通常モード用の吹き出し無効化トグル
-const disableBubbleInHatasabaNormal = prefer.model('simpleUi.disableBubbleInHatasabaNormal');
+// 旗鯖fork: 旧 disableBubbleInDeck / disableBubbleInDefault / disableBubbleInHatasabaNormal トグルは廃止。
+//   HatasabaUIデッキの「ノートの簡易表示を無効にする」は HatasabaUI2 の設定モーダルへ移動。
 const classicNoteSpacing = prefer.model('simpleUi.classicNoteSpacing');
 // 旗鯖fork: デッキタイムライン最上部インジケータをテキストに戻すオプトイン
 const deckLatestNoteText = prefer.model('simpleUi.deckLatestNoteText');
@@ -678,29 +651,10 @@ const pfvbSpecified = prefer.model('postFormVisibilityBorder.color.specified');
 const weatherEffectScope = prefer.model('weatherEffect.scope');
 const weatherEffectDuration = prefer.model('weatherEffect.duration');
 
-// Misskey UIの吹き出しを無効化した場合、従来のMisskey風投稿間隔は使えなくなるため、
-// 一旦OFFに落としつつ、元の値を記憶。再度吹き出しを有効化したら元に戻す。
-const savedClassicNoteSpacing = ref<boolean | null>(null);
-watch(disableBubbleInDefault, (isDisabled, wasDisabled) => {
-    if (isDisabled && !wasDisabled) {
-        // 吹き出しを無効化 → 現在の値を保存して強制OFF
-        savedClassicNoteSpacing.value = classicNoteSpacing.value;
-        if (classicNoteSpacing.value) {
-            classicNoteSpacing.value = false;
-        }
-    } else if (!isDisabled && wasDisabled) {
-        // 吹き出しを再度有効化 → 保存した値に復元
-        if (savedClassicNoteSpacing.value !== null) {
-            classicNoteSpacing.value = savedClassicNoteSpacing.value;
-            savedClassicNoteSpacing.value = null;
-        }
-    }
-});
-// 起動時に既に disableBubbleInDefault が true の場合は、classicNoteSpacing を強制 OFF にする
-if (disableBubbleInDefault.value && classicNoteSpacing.value) {
-    savedClassicNoteSpacing.value = classicNoteSpacing.value;
-    classicNoteSpacing.value = false;
-}
+// 旗鯖fork: 旧「Misskey UIで吹き出し表示を無効にする」トグルは廃止。
+//   Misskey(デフォルト)UI は常にクラシック表示(吹き出しなし＋従来の投稿間隔)に固定したため、
+//   disableBubbleInDefault と classicNoteSpacing を結合していた旧ロジックは不要。
+//   classicNoteSpacing の保存値はそのまま(他モードのため)残し、強制は computed/描画側で行う。
 
 // 旗鯖fork: デッキ表示時はノート間隔を 'compact' に強制ON+UI操作不能化する。
 // - 従来デッキ UI (ui=deck) は localStorage で判定、ページ表示中の切替は無いためページマウント時に固定。
@@ -710,11 +664,13 @@ const isLegacyDeckUi = currentUi === 'deck';
 // 旗鯖fork(#7): HatasabaUI(ui:simple, 通常表示・デッキ表示の両方)では従来Misskey風の投稿間隔を強制するため、
 // 「従来のMisskey風の投稿間隔」トグルを操作不可にする。
 const isHatasabaUi = currentUi === 'simple';
-// 旗鯖fork(#7): HatasabaUI(通常表示・デッキ表示の両方)では従来Misskey風の投稿間隔を常に適用するため、
-// トグルは常にON表示＋操作不可にする(実際の適用状態と一致させる)。
+// 旗鯖fork: Misskey(デフォルト・従来のデッキUIではない)UI。ここでも従来Misskey風の投稿間隔を強制ONにする。
+const isMisskeyDefaultUi = currentUi === 'default';
+// 旗鯖fork(#7): HatasabaUI(通常表示・デッキ表示の両方) と Misskey(デフォルト)UI では従来Misskey風の
+// 投稿間隔を常に適用するため、トグルは常にON表示＋操作不可にする(実際の適用状態と一致させる)。
 const classicNoteSpacingDisplay = computed<boolean>({
-    get: () => isHatasabaUi ? true : classicNoteSpacing.value,
-    set: (v: boolean) => { if (!isHatasabaUi) classicNoteSpacing.value = v; },
+    get: () => (isHatasabaUi || isMisskeyDefaultUi) ? true : classicNoteSpacing.value,
+    set: (v: boolean) => { if (!isHatasabaUi && !isMisskeyDefaultUi) classicNoteSpacing.value = v; },
 });
 const hatasabaDeckMode = computed(() => prefer.r['simpleUi.deckMode']?.value ?? false);
 const isDeckLike = computed(() => isLegacyDeckUi || (currentUi === 'simple' && hatasabaDeckMode.value));

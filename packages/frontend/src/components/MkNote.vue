@@ -1588,6 +1588,11 @@ function emitUpdReaction(emoji: string, delta: number) {
 	min-height: 4.5em;
 	max-height: 9em;
 	overflow: clip;
+	/* 旗鯖fork: 不透明パネル帯のオーバーレイをやめ、コンテンツ末尾を mask で透過。
+	   ノート面が透明/ガラスでも背景に溶けてフェード帯が崩れない。ラベル(.collapsed の
+	   上端に来る)は下端36pxのフェード域より上なので鮮明に残る。 */
+	-webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 calc(100% - 36px), transparent 100%);
+	mask-image: linear-gradient(to bottom, #000 0%, #000 calc(100% - 36px), transparent 100%);
 }
 
 .collapsed {
@@ -1598,7 +1603,6 @@ function emitUpdReaction(emoji: string, delta: number) {
 	z-index: 2;
 	width: 100%;
 	height: 64px;
-	background: linear-gradient(0deg, var(--MI_THEME-panel), color(from var(--MI_THEME-panel) srgb r g b / 0));
 
 	&:hover > .collapsedLabel {
 		background: var(--MI_THEME-panelHighlight);
@@ -1880,7 +1884,11 @@ function emitUpdReaction(emoji: string, delta: number) {
      一律で `--htk-glass-card-opacity` が反映される。
      ダーク/ライトで accent tint 濃度を出し分け (18%/8%)。 -->
 <style lang="scss">
-html.hataGlassUi article {
+/* 旗鯖fork: Hatady(.hatady-scope 配下)は独自の暖色クラフト紙テーマを持ち、フィードカードや
+   会話ルートを <article> で描画する。このグローバルなガラス規則が効くとクリーム面が暗いガラスに
+   化けて色合いが崩れるため、:not(:where(.hatady-scope *)) で Hatady 内の <article> を除外する
+   (:where で詳細度は据え置き、既存の非 Hatady ノートのカスケードには影響しない)。 */
+html.hataGlassUi article:not(:where(.hatady-scope *)) {
 	border-radius: 20px;
 	background: color-mix(in srgb,
 		color-mix(in srgb, var(--MI_THEME-accent) 18%, var(--MI_THEME-panel))
@@ -1892,7 +1900,7 @@ html.hataGlassUi article {
 	-webkit-backdrop-filter: var(--MI-blur, blur(22px)) saturate(1.6);
 	backdrop-filter: var(--MI-blur, blur(22px)) saturate(1.6);
 }
-html[data-color-scheme=light].hataGlassUi article {
+html[data-color-scheme=light].hataGlassUi article:not(:where(.hatady-scope *)) {
 	background: color-mix(in srgb,
 		color-mix(in srgb, var(--MI_THEME-accent) 8%, var(--MI_THEME-panel))
 		var(--htk-glass-card-opacity, 55%),

@@ -86,15 +86,17 @@ const isDefaultUi = currentUi === 'default';
 const isHatasabaDeck = computed(() => currentUi === 'simple' && (prefer.r['simpleUi.deckMode']?.value ?? false));
 const isHatasabaNormal = computed(() => currentUi === 'simple' && !(prefer.r['simpleUi.deckMode']?.value ?? false));
 const bubbleEnabled = computed(() => {
-	if (isDeckUi && prefer.r['simpleUi.disableBubbleInDeck']?.value) return false;
-	if (isDefaultUi && prefer.r['simpleUi.disableBubbleInDefault']?.value) return false;
+	// 旗鯖fork: 従来デッキUI / Misskey(デフォルト)UI は常にクラシック表示(吹き出しなし)に固定。
+	if (isDeckUi) return false;
+	if (isDefaultUi) return false;
+	// HatasabaUI デッキの「ノートの簡易表示を無効にする」(ON=吹き出しOFF)。キー・挙動は従来どおり。
 	if (isHatasabaDeck.value && prefer.r['simpleUi.disableBubbleInHatasabaDeck']?.value) return false;
-	if (isHatasabaNormal.value && prefer.r['simpleUi.disableBubbleInHatasabaNormal']?.value) return false;
+	// HatasabaUI 通常モードは常に吹き出し表示。
 	return true;
 });
 const isHatasaba = currentUi === 'simple';
 const classicSpacingEnabled = computed(() => {
-	if (isHatasaba) return true;
+	if (isHatasaba || isDefaultUi) return true;
 	return prefer.r['simpleUi.classicNoteSpacing']?.value ?? false;
 });
 const noteSpacingValue = computed(() => {
