@@ -93,5 +93,6 @@ claude.md
 /compose.yml
 *.save
 
-# Zone.Identifier
+# Zone.Identifier (Windows mark-of-the-web ADS。WSL/Windows でコロンが別文字に化けるため両方無視)
 *:Zone.Identifier
+*Zone.Identifier
