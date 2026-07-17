@@ -86,7 +86,7 @@ async function confirm() {
 
 const DICT: Record<string, { ja: string; en: string }> = {
 	subMain: { ja: 'まずは見た目と言語を選びましょう', en: 'First, choose your look and language' },
-	subNote: { ja: 'あとで「表示設定」からいつでも変更できます', en: 'You can change these anytime in Display settings' },
+	subNote: { ja: 'あとで「Hatady設定」からいつでも変更できます', en: 'You can change these anytime in Hatady settings' },
 	language: { ja: '言語', en: 'Language' },
 	theme: { ja: 'テーマ', en: 'Theme' },
 	paper: { ja: 'やわらかい紙', en: 'Soft paper' },

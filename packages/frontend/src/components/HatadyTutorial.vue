@@ -65,8 +65,8 @@ const pages = computed(() => [
 		kicker: '',
 		title: en.value ? 'Revisit anytime' : 'いつでも見返せます',
 		desc: en.value
-			? 'This tutorial and the intro can be replayed anytime from <b>Display settings → Management → Replay tutorial</b>. No need to memorize everything now.'
-			: 'このチュートリアルと簡単な紹介は、<b>表示設定 → 管理 → チュートリアルを再度実行</b>からいつでも見返せます。<br>今すべて覚えなくても大丈夫です',
+			? 'This tutorial and the intro can be replayed anytime from <b>Hatady settings → Management → Replay tutorial</b>. No need to memorize everything now.'
+			: 'このチュートリアルと簡単な紹介は、<b>Hatady設定 → 管理 → チュートリアルを再度実行</b>からいつでも見返せます。<br>今すべて覚えなくても大丈夫です',
 		info: '',
 	},
 ]);

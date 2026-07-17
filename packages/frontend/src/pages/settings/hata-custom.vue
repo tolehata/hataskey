@@ -295,8 +295,8 @@ SPDX-License-Identifier: AGPL-3.0-only
         <template v-if="activeCat === 'hatady'">
         <FormSection first>
             <template #label>Hatady の設定</template>
-            <div style="font-size:.85em;opacity:.7;margin-bottom:12px;line-height:1.6;">Hatady（学習・読書記録）の表示設定です。テーマ（紙 / エスプレッソ / hataskey準拠）・言語・端末間同期・チュートリアルの再実行をここから変更できます。テーマと言語は独立して選べ、設定はアカウントに同期されます。</div>
-            <button class="_buttonPrimary" @click="openHatadySettings" style="padding:10px 20px;font-weight:bold;"><i class="ti ti-palette"></i> Hatady の表示設定を開く</button>
+            <div style="font-size:.85em;opacity:.7;margin-bottom:12px;line-height:1.6;">Hatady（学習・読書記録）の設定です。テーマ（紙 / エスプレッソ / hataskey準拠）・言語・端末間同期・チュートリアルの再実行・記録の書き出しをここから変更できます。テーマと言語は独立して選べ、設定はアカウントに同期されます。</div>
+            <button class="_buttonPrimary" @click="openHatadySettings" style="padding:10px 20px;font-weight:bold;"><i class="ti ti-palette"></i> Hatady設定を開く</button>
         </FormSection>
         <FormSection>
             <template #label>Hatady を開く</template>
