@@ -152,6 +152,117 @@ export function hfInitial(user: { name?: string | null; username?: string | null
 	return s.length > 0 ? [...s][0] : '?';
 }
 
+// 旗鯖fork(通知グルーピング): HataFeed 通知1件の最小形。バックエンド packNotifications の返却に対応。
+export interface HataFeedNotifActor {
+	id: string;
+	name?: string | null;
+	username?: string | null;
+	avatarUrl?: string | null;
+	[k: string]: unknown;
+}
+export interface HataFeedNotif {
+	id: string;
+	createdAt: string;
+	type: string;
+	message: string;
+	isRead: boolean;
+	actor: HataFeedNotifActor | null;
+	feedbackId: string | null;
+	emojiRequestId: string | null;
+	commentId?: string | null;
+	[k: string]: unknown;
+}
+
+// 旗鯖fork(通知グルーピング): まとめ後の1行分。
+//   count===1 のグループは実質「単一通知」で、items[0] をそのまま表示する。
+export interface HataFeedNotifGroup {
+	key: string;
+	type: string;
+	items: HataFeedNotif[];           // 新しい順(APIの id DESC を踏襲)
+	count: number;                    // items.length
+	actors: HataFeedNotifActor[];     // 重複除去した actor(新しい順)
+	isRead: boolean;                  // 全件既読なら true
+	createdAt: string;                // 代表(最新)の createdAt
+	feedbackId: string | null;
+	emojiRequestId: string | null;
+}
+
+// 旗鯖fork(通知グルーピング): 本体 Misskey の reaction:grouped(同一ノートへの複数リアクション)の流儀に倣い、
+//   「同一の対象(イシュー)への同種イベント」を1行にまとめる型。代表例は複数人が同じイシューに付けたコメント。
+//   クリック先(feedbackId)が一意に定まるので、まとめても遷移が曖昧にならない。
+const TARGET_GROUPED_TYPES = new Set(['newComment', 'issueStatusChanged', 'issueClosed', 'issueReopened', 'issueResolved']);
+// 旗鯖fork(通知グルーピング): 対象はばらけるが「種類」でまとめた方が見やすい型(主にスタッフ視点の受信)。
+//   例: 複数の新規イシュー/絵文字申請を「新規イシュー N件」に集約する。個別遷移は展開して行う。
+const TYPE_GROUPED_TYPES = new Set(['newIssue', 'newEmojiRequest']);
+
+// 旗鯖fork(通知グルーピング): 取得済みの通知配列(新しい順)をグループ配列に変換する。
+//   パネルが取得した1ページ分に閉じたクライアント側処理で、バックエンド・本体通知には一切触れない。
+export function groupHataFeedNotifications(notifications: HataFeedNotif[]): HataFeedNotifGroup[] {
+	const groups: HataFeedNotifGroup[] = [];
+	const byKey = new Map<string, HataFeedNotifGroup>();
+
+	for (const n of notifications) {
+		let key: string;
+		if (TARGET_GROUPED_TYPES.has(n.type) && n.feedbackId) key = `t:${n.type}:${n.feedbackId}`;
+		else if (TYPE_GROUPED_TYPES.has(n.type)) key = `y:${n.type}`;
+		else key = `s:${n.id}`;
+
+		let g = byKey.get(key);
+		if (!g) {
+			g = {
+				key,
+				type: n.type,
+				items: [],
+				count: 0,
+				actors: [],
+				isRead: true,
+				createdAt: n.createdAt,
+				feedbackId: n.feedbackId ?? null,
+				emojiRequestId: n.emojiRequestId ?? null,
+			};
+			byKey.set(key, g);
+			groups.push(g);
+		}
+		g.items.push(n);
+	}
+
+	for (const g of groups) {
+		g.count = g.items.length;
+		// items は新しい順なので先頭が代表。
+		g.createdAt = g.items[0].createdAt;
+		g.feedbackId = g.items[0].feedbackId ?? null;
+		g.emojiRequestId = g.items[0].emojiRequestId ?? null;
+		g.isRead = g.items.every(i => i.isRead);
+		// actor を重複除去して新しい順に収集(まとめ行のアバター重ね表示用)。
+		const seen = new Set<string>();
+		for (const i of g.items) {
+			const a = i.actor;
+			if (a && a.id && !seen.has(a.id)) { seen.add(a.id); g.actors.push(a); }
+		}
+	}
+
+	return groups;
+}
+
+// 旗鯖fork(通知グルーピング): まとめ行の見出し文。単一件は元メッセージをそのまま返す。
+//   複数件は本体の「〇〇他N人が〜」/「〜 N件」に倣った短い集約表現にする。
+export function groupSummary(g: HataFeedNotifGroup): string {
+	if (g.count === 1) return g.items[0].message;
+	const label = notifTypeLabel[g.type] ?? g.type;
+	const first = g.actors[0];
+	const firstName = first ? (first.name ?? first.username ?? '') : '';
+
+	// 同一対象へ複数アクター(コメント等) → 「〇〇 他N人が{ラベル}」。
+	if (TARGET_GROUPED_TYPES.has(g.type)) {
+		if (g.actors.length >= 2) return `${firstName} 他${g.actors.length - 1}人が${label}`;
+		if (firstName) return `${firstName}が${label}（${g.count}件）`;
+		return `${label} ${g.count}件`;
+	}
+
+	// 種類まとめ(新規イシュー/絵文字申請など) → 「{ラベル} N件」。
+	return `${label} ${g.count}件`;
+}
+
 // 通知タイプ → アイコン。
 export function notifIcon(type: string): string {
 	switch (type) {

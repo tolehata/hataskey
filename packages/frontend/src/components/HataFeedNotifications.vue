@@ -40,22 +40,51 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<div>{{ filter ? 'この種類の通知はありません。' : '通知はありません。' }}</div>
 		</div>
 		<div v-else :class="$style.list">
-			<button
-				v-for="n in items"
-				:key="n.id"
-				:class="[$style.row, !n.isRead && $style.rowUnread]"
-				@click="onClick(n)"
-			>
-				<i :class="['ti', notifIcon(n.type), $style.rowIcon]"></i>
-				<div :class="$style.rowBody">
-					<div :class="$style.rowMsg">{{ n.message }}</div>
-					<div :class="$style.rowMeta">
-						<HfAvatar v-if="n.actor" :user="n.actor" :size="16"/>
-						<span v-if="n.actor" :class="$style.rowActor">{{ n.actor.name ?? n.actor.username }}</span>
-						<MkTime :class="$style.rowTime" :time="n.createdAt" mode="relative"/>
+			<!-- 旗鯖fork(通知グルーピング): 本体 reaction:grouped の流儀で、同種・同一対象の通知を1行にまとめる。
+			     count===1 は従来どおりの単一行。count>1 はまとめ行で、クリックで下に個別行を展開する。 -->
+			<template v-for="g in groups" :key="g.key">
+				<button
+					:class="[$style.row, !g.isRead && $style.rowUnread, g.count > 1 && $style.groupRow]"
+					@click="g.count > 1 ? toggle(g.key) : onClick(g.items[0])"
+				>
+					<i :class="['ti', notifIcon(g.type), $style.rowIcon]"></i>
+					<div :class="$style.rowBody">
+						<div :class="$style.rowMsg">{{ g.count > 1 ? groupSummary(g) : g.items[0].message }}</div>
+						<div :class="$style.rowMeta">
+							<template v-if="g.count > 1">
+								<span :class="$style.avatars">
+									<HfAvatar v-for="a in g.actors.slice(0, 3)" :key="a.id" :user="a" :size="16" :stack="true"/>
+								</span>
+								<span :class="$style.rowActor">{{ g.count }}件</span>
+							</template>
+							<template v-else>
+								<HfAvatar v-if="g.items[0].actor" :user="g.items[0].actor" :size="16"/>
+								<span v-if="g.items[0].actor" :class="$style.rowActor">{{ g.items[0].actor.name ?? g.items[0].actor.username }}</span>
+							</template>
+							<MkTime :class="$style.rowTime" :time="g.createdAt" mode="relative"/>
+							<i v-if="g.count > 1" class="ti" :class="[expanded.has(g.key) ? 'ti-chevron-up' : 'ti-chevron-down', $style.expandCaret]"></i>
+						</div>
 					</div>
+				</button>
+				<div v-if="g.count > 1 && expanded.has(g.key)" :class="$style.children">
+					<button
+						v-for="n in g.items"
+						:key="n.id"
+						:class="[$style.row, $style.childRow, !n.isRead && $style.rowUnread]"
+						@click="onClick(n)"
+					>
+						<i :class="['ti', notifIcon(n.type), $style.rowIcon]"></i>
+						<div :class="$style.rowBody">
+							<div :class="$style.rowMsg">{{ n.message }}</div>
+							<div :class="$style.rowMeta">
+								<HfAvatar v-if="n.actor" :user="n.actor" :size="16"/>
+								<span v-if="n.actor" :class="$style.rowActor">{{ n.actor.name ?? n.actor.username }}</span>
+								<MkTime :class="$style.rowTime" :time="n.createdAt" mode="relative"/>
+							</div>
+						</div>
+					</button>
 				</div>
-			</button>
+			</template>
 		</div>
 
 		<div v-if="page > 0 || hasNext" :class="$style.pager">
@@ -68,13 +97,14 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { ref, useTemplateRef, onMounted } from 'vue';
+import { ref, computed, useTemplateRef, onMounted } from 'vue';
 import MkModal from '@/components/MkModal.vue';
 import HfAvatar from '@/components/HfAvatar.vue';
 import * as os from '@/os.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { useRouter } from '@/router.js';
-import { notifIcon, notifTypeLabel } from '@/utility/hatafeed.js';
+import { notifIcon, notifTypeLabel, groupHataFeedNotifications, groupSummary } from '@/utility/hatafeed.js';
+import type { HataFeedNotif } from '@/utility/hatafeed.js';
 
 const props = defineProps<{ anchorElement?: HTMLElement | null }>();
 const emit = defineEmits<{ (ev: 'closed'): void; (ev: 'read'): void }>();
@@ -90,6 +120,17 @@ const page = ref(0);
 const cursors = ref<(string | undefined)[]>([undefined]); // cursors[i] = page i を取得する untilId
 const hasNext = ref(false);
 
+// 旗鯖fork(通知グルーピング): 取得済みの通知を同種・同一対象でまとめた表示単位。
+const groups = computed(() => groupHataFeedNotifications(items.value as HataFeedNotif[]));
+// 旗鯖fork(通知グルーピング): 展開中のグループ key 集合(Set は再代入して反応させる)。
+const expanded = ref<Set<string>>(new Set());
+function toggle(key: string) {
+	const next = new Set(expanded.value);
+	if (next.has(key)) next.delete(key);
+	else next.add(key);
+	expanded.value = next;
+}
+
 // 旗鯖fork: 指定カーソルから1ページ分取得。通知APIに type 絞りが無いため、フィルタ時は
 //   多めに取得してクライアント側で type 一致を抽出する簡易実装。
 async function fetchPage(untilId: string | undefined) {
@@ -102,6 +143,7 @@ async function fetchPage(untilId: string | undefined) {
 		if (filter.value) list = list.filter(n => n.type === filter.value);
 		hasNext.value = list.length > PAGE_SIZE;
 		items.value = list.slice(0, PAGE_SIZE);
+		expanded.value = new Set(); // 旗鯖fork: ページ切替時は展開状態をリセット(key が別ページと混ざらないように)。
 	} finally {
 		loading.value = false;
 	}
@@ -236,6 +278,19 @@ onMounted(reload);
 .rowMeta { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
 .rowActor { font-size: .74em; opacity: .7; }
 .rowTime { font-size: .72em; opacity: .5; margin-left: auto; }
+
+/* 旗鯖fork(通知グルーピング): まとめ行。重ねアバター + 「N件」 + 展開キャレット。 */
+.groupRow .rowMsg { font-weight: 700; }
+.avatars { display: inline-flex; align-items: center; }
+.expandCaret { font-size: .8em; opacity: .5; margin-left: 4px; }
+/* 展開された個別行のコンテナ。左に軽いインデントと縦線で親子関係を示す。 */
+.children {
+	display: flex; flex-direction: column; gap: 4px;
+	margin: 2px 0 4px 14px; padding-left: 8px;
+	border-left: 2px solid var(--MI_THEME-divider);
+}
+.childRow { padding: 8px 10px; }
+.childRow .rowMsg { font-size: .82em; opacity: .92; }
 
 .pager { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 8px 0 12px; }
 .pagerBtn {
