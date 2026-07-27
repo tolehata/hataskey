@@ -1225,9 +1225,20 @@ html.hataGlassUi .ftskorzw > .main > .profile > .main > .profileBgBlur::after {
 	inset: 0;
 	background: color-mix(in srgb, var(--MI_THEME-bg) 72%, transparent);
 }
-/* 前面の実コンテンツはガラス面/ぼかし背景の上に来るよう z-index を持ち上げる */
+/* 前面の実コンテンツはガラス面/ぼかし背景の上に来るよう z-index を持ち上げる。
+   ⚠️ここに漏れた直下の子は、静的配置のため .profileBgBlur(position:absolute; z-index:0)
+   より先に描画され、ぼかしバナー層の下に隠れる。
+   実際に .title(アバター下の名前・表示名) が漏れており、
+   「グラスUI × 狭い幅(コンテナ500px以下)」でプロフィールの名前が消えていた
+   (広い幅ではバナー上の .banner-container > .title が使われるため再現しない＝"場合がある"の正体)。
+   ⚠️.profile > .main の直下に子を足したら、必ずこのリストにも足すこと。 */
 html.hataGlassUi .ftskorzw > .main > .profile > .main > .banner-container,
+html.hataGlassUi .ftskorzw > .main > .profile > .main > .title,
+html.hataGlassUi .ftskorzw > .main > .profile > .main > .followedMessage,
 html.hataGlassUi .ftskorzw > .main > .profile > .main > .roles,
+html.hataGlassUi .ftskorzw > .main > .profile > .main > .moderationNote,
+html.hataGlassUi .ftskorzw > .main > .profile > .main > .memo,
+html.hataGlassUi .ftskorzw > .main > .profile > .main > .utageSuccessWrapper,
 html.hataGlassUi .ftskorzw > .main > .profile > .main > .description,
 html.hataGlassUi .ftskorzw > .main > .profile > .main > .fields,
 html.hataGlassUi .ftskorzw > .main > .profile > .main > .status {
