@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@500;600;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Bebas+Neue&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.7.0/dist/tabler-icons.min.css">
+<style>
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:#1a1712;font-family:'Zen Kaku Gothic New',sans-serif;-webkit-font-smoothing:antialiased}
+  .mincho{font-family:'Shippori Mincho B1',serif}
+  .num{font-family:'Bebas Neue',sans-serif;font-feature-settings:"tnum";letter-spacing:.02em}
+  a{color:#c9a04e;text-decoration:none}a:hover{color:#d8b878}
+  .scr::-webkit-scrollbar{width:8px}.scr::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px}
+  @keyframes hana-unroll-evt{0%{transform:scaleY(0);opacity:.6}70%{transform:scaleY(1.03)}100%{transform:scaleY(1);opacity:1}}
+  @keyframes hana-slidein{0%{transform:translateX(26px);opacity:0}100%{transform:translateX(0);opacity:1}}
+  @keyframes hana-enter{0%{transform:translateY(12px) scale(.98);opacity:0}100%{transform:translateY(0) scale(1);opacity:1}}
+  @keyframes hana-breath{0%,100%{transform:scaleY(1)}50%{transform:scaleY(1.012)}}
+  @keyframes hana-speak{0%{transform:translateY(0)}45%{transform:translateY(-6px)}100%{transform:translateY(0)}}
+  @keyframes hana-fadein{0%{opacity:0;transform:translateY(8px)}100%{opacity:1;transform:translateY(0)}}
+  @keyframes hana-ripple{0%{transform:scale(0);opacity:.55}100%{transform:scale(1);opacity:0}}
+  @keyframes hana-lantern{0%,100%{opacity:.6}50%{opacity:.9}}
+  @keyframes hana-drift{0%{transform:translate(0,-16px) rotate(-6deg);opacity:0}14%{opacity:.7}100%{transform:translate(var(--dx,20px),120px) rotate(var(--dr,40deg));opacity:0}}
+  @keyframes hana-petal-drift{0%{transform:translateY(-14px) rotate(0);opacity:0}15%{opacity:.7}100%{transform:translateY(110px) rotate(180deg);opacity:0}}
+</style>
+</helmet>
+<div class="stage" ref="{{ stageRef }}" style="min-height:100vh;background:#1a1712;padding:18px;display:flex;flex-direction:column;align-items:center;gap:16px;--bg:#2b2620;--panel:#3a332b;--ink:#f4efe3;--sub:#b0a692;--line:#4a4238;--cell:#211d18;--paper:#332c24;--accent:#c9a04e;--shu:#c4383d;--ai:#2d4a73;--moss:#5a7a52;--evt:#8e7cb0;--fw:940px;--dur:.32s">
+
+  <div style="width:100%;max-width:1000px;background:#211d18;border:1px solid #4a4238;border-radius:12px;padding:14px 16px;color:#f4efe3;font-size:12.5px">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+      <span class="mincho" style="font-size:15px;color:#c9a04e;letter-spacing:.06em">花常 — イベント様式</span>
+      <span style="color:#8a8172;font-size:11.5px">④ イベント画面</span>
+      <span style="flex:1"></span>
+      <span style="display:flex;gap:8px;font-size:11px;align-items:center">
+        <a href="01-core.dc.html">① コア</a><span style="color:#4a4238">/</span>
+        <a href="02-meta.dc.html">② メタ</a><span style="color:#4a4238">/</span>
+        <a href="03-motion.dc.html">③ 仕様書</a><span style="color:#4a4238">/</span>
+        <span style="color:#c9a04e;border-bottom:1px solid #c9a04e;padding-bottom:1px">④ イベント</span>
+      </span>
+    </div>
+    <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:center">
+      <div style="display:flex;gap:6px">
+        <button class="seg" onClick="{{ d_pc }}" style="{{ b_base }}">PC 940<sc-if value="{{ isPc }}" hint-placeholder-val="{{ true }}"><span style="{{ barS }}"></span></sc-if></button>
+        <button class="seg" onClick="{{ d_mb }}" style="{{ b_base }}">モバイル 390<sc-if value="{{ isMb }}" hint-placeholder-val="{{ false }}"><span style="{{ barS }}"></span></sc-if></button>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button class="seg" onClick="{{ t_lt }}" style="{{ b_base }}">ライト<sc-if value="{{ isLight }}" hint-placeholder-val="{{ true }}"><span style="{{ barS }}"></span></sc-if></button>
+        <button class="seg" onClick="{{ t_dk }}" style="{{ b_base }}">ダーク<sc-if value="{{ isDark }}" hint-placeholder-val="{{ false }}"><span style="{{ barS }}"></span></sc-if></button>
+      </div>
+      <button class="seg" onClick="{{ toggleMotion }}" style="{{ motionBtn }}"><i class="ti ti-player-pause"></i> 動きOFF<sc-if value="{{ motionOff }}" hint-placeholder-val="{{ false }}"><span style="{{ barS }}"></span></sc-if></button>
+    </div>
+    <div style="height:1px;background:#3a342c;margin:12px 0"></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+      <span style="color:#6f675a;font-size:10.5px;width:52px">催し</span>
+      <sc-for list="{{ evtThemes }}" as="e" hint-placeholder-count="2">
+        <button class="seg" onClick="{{ e.go }}" style="{{ e.style }}">{{ e.label }}</button>
+      </sc-for>
+      <span style="width:14px"></span>
+      <button class="seg" onClick="{{ toggleGuide }}" style="{{ guideBtn }}"><i class="ti ti-crop"></i> 背景ガイド</button>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px">
+      <span style="color:#6f675a;font-size:10.5px;width:52px">画面</span>
+      <sc-for list="{{ scenes }}" as="s" hint-placeholder-count="7">
+        <button class="seg" onClick="{{ s.go }}" style="{{ s.style }}">{{ s.label }}</button>
+      </sc-for>
+    </div>
+    <div style="color:#6f675a;font-size:10.5px;margin-top:8px">※「催し」を切替えると<span style="color:#8e7cb0">差し色・モチーフ・ポイント意匠・ロゴ</span>の4点だけが差し替わります（構造は共通）。</div>
+  </div>
+
+  <div class="frame" style="width:var(--fw);max-width:100%;transition:width .3s ease">
+    {{ view }}
+  </div>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1000,&quot;height&quot;:900}}">
+const h = React.createElement;
+
+// ===== イベント様式：差し替わるのはこの4点だけ =====
+//  1. evt（差し色1色） 2. motif（上部の装飾） 3. point（ポイント意匠SVG） 4. logo（題字・副題・印章）
+const THEMES = {
+  magochan: {
+    label:'孫の居ぬ間（第1回）',
+    name:'孫の居ぬ間になんとやら', subtitle:'探しものは、みつからないほうがいい',
+    evt:'#8e7cb0', season:'初夏の昼', motif:'paper', point:'memo',
+    pointName:'町の憶え書き', pointDesc:'交換所で品と替えられます',
+    charName:'きよ', charLine:'今日はいい天気で。探し物日和ですよ',
+    links:[['花仕事','町をまわる','ti-shoe'],['交換所','憶え書きを品に替える','ti-basket'],['この日の話','昼下がりの物語','ti-book']],
+    logo:{ lines:[{t:'孫の居ぬ間に'},{t:'なんとやら',indent:true}], seal:'kikyo' },
+    archiveWhen:'初夏',
+  },
+  yoichi: {
+    label:'夜市（様式の対比）',
+    name:'入舟夜市', subtitle:'八月、通りに灯りが並ぶ',
+    evt:'#d97742', season:'夏の夜', motif:'lantern', point:'goldfish',
+    pointName:'金魚すくいの札', pointDesc:'交換所で品と替えられます',
+    charName:'澪', charLine:'夜のうちに、店の軒先も灯しておきました。',
+    links:[['花仕事','夜市のステージへ','ti-flower'],['交換所','札を品に替える','ti-basket'],['この月の話','夜市の物語','ti-book']],
+    logo:{ lines:[{t:'入舟夜市'}], seal:'himawari' },
+    archiveWhen:'盛夏',
+  },
+};
+
+class Component extends DCLogic {
+  stageRef = React.createRef();
+  state = { device:'pc', theme:'dark', motion:true, scene:'eventhome', ready:false, confirm:null, archiveEmpty:false, pts:24, evtKey:'magochan', guide:false };
+
+  async componentDidMount(){ const m=await import('./flowers.js'); this.FL=m.FLOWERS; this.TSUBAKI=m.TSUBAKI; this.TSUBAKI_PETAL=m.TSUBAKI_PETAL; this.setState({ready:true}); this.applyVars(); }
+  componentDidUpdate(){ this.applyVars(); }
+  T(){ return THEMES[this.state.evtKey]; }
+  applyVars(){ const el=this.stageRef.current; if(!el)return; const d=this.state;
+    const t=d.theme==='dark'?{bg:'#2b2620',panel:'#3a332b',ink:'#f4efe3',sub:'#b0a692',line:'#4a4238',cell:'#211d18',paper:'#332c24'}:{bg:'#f4efe3',panel:'#eee6d4',ink:'#2b2620',sub:'#776d5c',line:'#dccfb5',cell:'#e7dcc6',paper:'#f0e7d5'};
+    for(const k in t) el.style.setProperty('--'+k,t[k]);
+    el.style.setProperty('--evt', this.T().evt);
+    el.style.setProperty('--fw',(d.device==='pc'?940:390)+'px'); el.style.setProperty('--dur',d.motion?'.32s':'0s'); }
+  mob(){ return this.state.device==='mobile'; }
+  anim(name){ return this.state.motion?name:'none'; }
+  go(scene){ this.setState({scene, confirm:null}); }
+
+  // ---- 差し替え：ポイント意匠 ----
+  pointSVG(kind){ kind=kind||this.T().point;
+    if(kind==='goldfish') return '<svg viewBox="0 0 64 64" width="100%" height="100%"><rect x="12" y="8" width="40" height="48" rx="3" fill="#f4efe3" stroke="#2b2620" stroke-width="2"/><rect x="12" y="8" width="40" height="9" fill="#d97742"/><path d="M30 40 c-7 0 -12 -4 -12 -9 c0 -5 5 -9 12 -9 c4 0 7 1 9 3 l6 -5 v22 l-6 -5 c-2 2 -5 3 -9 3 Z" fill="#c4383d" stroke="#2b2620" stroke-width="2" stroke-linejoin="round"/><circle cx="26" cy="30" r="2" fill="#2b2620"/></svg>';
+    // memo：町の憶え書き（折れた角＋罫。文字は書かない）
+    return '<svg viewBox="0 0 64 64" width="100%" height="100%"><path d="M14 8 h28 l8 8 v40 h-36 Z" fill="#f4efe3" stroke="#2b2620" stroke-width="2" stroke-linejoin="round"/><path d="M42 8 v8 h8 Z" fill="#e7dcc6" stroke="#2b2620" stroke-width="2" stroke-linejoin="round"/><rect x="14" y="8" width="28" height="6" fill="'+this.T().evt+'"/><line x1="20" y1="30" x2="44" y2="30" stroke="#2b2620" stroke-width="2" opacity="0.5"/><line x1="20" y1="38" x2="44" y2="38" stroke="#2b2620" stroke-width="2" opacity="0.5"/><line x1="20" y1="46" x2="36" y2="46" stroke="#2b2620" stroke-width="2" opacity="0.5"/></svg>'; }
+  // ---- 差し替え：装飾モチーフ（motif）----
+  paperSlipSVG(){ return '<svg viewBox="0 0 40 30" width="100%" height="100%"><rect x="2" y="2" width="36" height="26" rx="2" fill="#f4efe3" stroke="#2b2620" stroke-width="2"/><line x1="8" y1="12" x2="32" y2="12" stroke="#2b2620" stroke-width="1.5" opacity="0.4"/><line x1="8" y1="19" x2="26" y2="19" stroke="#2b2620" stroke-width="1.5" opacity="0.4"/></svg>'; }
+  lanternSVG(){ return '<svg viewBox="0 0 40 60" width="100%" height="100%"><line x1="20" y1="0" x2="20" y2="6" stroke="var(--line)" stroke-width="2"/><rect x="6" y="6" width="28" height="6" rx="2" fill="#2b2620"/><ellipse cx="20" cy="32" rx="15" ry="20" fill="var(--evt)" stroke="#2b2620" stroke-width="2"/><rect x="6" y="50" width="28" height="6" rx="2" fill="#2b2620"/><line x1="12" y1="14" x2="12" y2="50" stroke="rgba(43,38,32,.35)" stroke-width="1.5"/><line x1="28" y1="14" x2="28" y2="50" stroke="rgba(43,38,32,.35)" stroke-width="1.5"/></svg>'; }
+  // ---- 差し替え：印章の花（桔梗＝藤色の5弁星形） ----
+  kikyoSVG(color){ color=color||this.T().evt; const pts=[]; const cx=32,cy=32;
+    for(let i=0;i<5;i++){ const ao=(i*72-90)*Math.PI/180; const ai=((i*72+36)-90)*Math.PI/180;
+      pts.push([cx+Math.cos(ao)*27, cy+Math.sin(ao)*27]); pts.push([cx+Math.cos(ai)*11, cy+Math.sin(ai)*11]); }
+    const d='M'+pts.map(p=>p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' L')+' Z';
+    let stam=''; for(let i=0;i<5;i++){ const a=(i*72-90)*Math.PI/180; stam+='<line x1="32" y1="32" x2="'+(32+Math.cos(a)*9).toFixed(1)+'" y2="'+(32+Math.sin(a)*9).toFixed(1)+'" stroke="#f4efe3" stroke-width="1.6"/>'; }
+    return '<svg viewBox="0 0 64 64" width="100%" height="100%"><path d="'+d+'" fill="'+color+'" stroke="#2b2620" stroke-width="2" stroke-linejoin="round"/>'+stam+'<circle cx="32" cy="32" r="3" fill="#f4efe3" stroke="#2b2620" stroke-width="1.4"/></svg>'; }
+  sealSVG(kind){ if(kind==='kikyo') return this.kikyoSVG(); if(kind==='himawari') return (this.FL&&this.FL.himawari)?this.FL.himawari.svg:''; return (this.FL&&this.FL.sakura)?this.FL.sakura.svg:''; }
+
+  frameShell(children,opts){ const mob=this.mob(); opts=opts||{};
+    return h('div',{style:{background: opts.paper?'var(--paper)':'var(--panel)',borderRadius:16,border:'1px solid var(--line)',color:'var(--ink)',position:'relative',boxShadow:'0 18px 50px rgba(0,0,0,.35)',overflow:'hidden',minHeight: mob?680:600}}, children); }
+  head(title,sub,back){ const mob=this.mob(); return h('div',{style:{padding:mob?'16px 18px 12px':'22px 28px 14px',borderBottom:'1px solid var(--line)',display:'flex',alignItems:'center',gap:12}},[
+    back&&h('button',{key:'b',onClick:()=>this.go('eventhome'),style:{background:'none',border:'none',color:'var(--sub)',cursor:'pointer',padding:0,display:'flex',alignItems:'center'}},h('i',{className:'ti ti-arrow-left',style:{fontSize:20}})),
+    h('div',{key:'t',style:{flex:1}},[h('div',{key:'a',className:'mincho',style:{fontSize:mob?19:23,color:'var(--ink)'}},title),sub&&h('div',{key:'s',style:{fontSize:12,color:'var(--sub)',marginTop:3}},sub)])
+  ]); }
+  card(children,onClick,extra){ return h('div',{onClick,style:{background:'var(--cell)',border:'1px solid var(--line)',borderRadius:12,padding:16,cursor:onClick?'pointer':'default',transition:'transform .12s,box-shadow .2s',...(extra||{})},className:onClick?'mcard':''}, children); }
+  btn(label,primary,onClick,key,extra){ return h('button',{key,onClick,style:{padding:'12px 20px',borderRadius:10,border:primary?'none':'1px solid var(--line)',background:primary?'var(--shu)':'transparent',color:primary?'#f4efe3':'var(--ink)',fontSize:14,cursor:'pointer',fontFamily:"'Zen Kaku Gothic New',sans-serif",fontWeight:primary?700:500,minHeight:46,...(extra||{})}}, label); }
+
+  tachie(w,hgt,label){ return h('div',{style:{width:w,height:hgt,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'flex-end',pointerEvents:'none',animation:this.anim('hana-enter .32s cubic-bezier(.34,1.56,.64,1) both')}},
+      h('div',{style:{width:'100%',height:'100%',transformOrigin:'center bottom',animation:this.anim('hana-breath 4s ease-in-out infinite')}},
+        h('div',{style:{width:'100%',height:'100%',background:'var(--cell)',border:'2px dashed var(--line)',borderRadius:'46% 46% 12px 12px',position:'relative',opacity:.95}},[
+          h('div',{key:'hd',style:{position:'absolute',top:'7%',left:'50%',transform:'translateX(-50%)',width:'44%',aspectRatio:'1',borderRadius:'50%',background:'var(--panel)',border:'1px solid var(--line)'}}),
+          h('div',{key:'lb',className:'num',style:{position:'absolute',bottom:10,left:0,right:0,textAlign:'center',fontFamily:'monospace',fontSize:10,color:'var(--sub)',letterSpacing:'.04em',lineHeight:1.5}},label)
+        ])));
+  }
+
+  // ---- 装飾モチーフ層 ----
+  motifLayer(mob){ const T=this.T(); const motion=this.state.motion;
+    if(T.motif==='lantern'){ return h('div',{key:'lant',style:{position:'absolute',top:-6,left:0,right:0,height:70,display:'flex',justifyContent:'space-around',alignItems:'flex-start',padding:'0 24px',opacity:.9,pointerEvents:'none'}},
+      Array.from({length: mob?5:9},(_,i)=>h('div',{key:i,style:{width:mob?22:26,height:mob?34:40,animation:this.anim(`hana-lantern ${3+i%3}s ease-in-out ${i*.2}s infinite`)},dangerouslySetInnerHTML:{__html:this.lanternSVG()}}))); }
+    // paper：紙片が同時5枚までゆっくり流れる
+    const seed=[[8,18,26],[30,-14,-30],[54,22,50],[72,-10,-46],[90,16,34]];
+    return h('div',{key:'paper',style:{position:'absolute',top:0,left:0,right:0,height:mob?150:180,overflow:'hidden',pointerEvents:'none'}},
+      seed.map((s,i)=>h('div',{key:i,style:{position:'absolute',left:s[0]+'%',top:0,width:mob?26:32,height:mob?20:24,['--dx']:s[1]+'px',['--dr']:s[2]+'deg',opacity: motion?0:.6,animation:this.anim(`hana-drift ${6+i}s linear ${i*1.1}s infinite`)},dangerouslySetInnerHTML:{__html:this.paperSlipSVG()}})));
+  }
+
+  // ---- 背景セーフゾーン・ガイド（開発用・製品には出ない） ----
+  guideLayer(mob){ const dash='1px dashed var(--evt)'; const note=(txt,st)=>h('div',{style:{position:'absolute',fontFamily:'monospace',fontSize:9.5,color:'var(--evt)',letterSpacing:'.02em',...(st||{})}},txt);
+    const tw=mob?120:170, th=mob?300:400;
+    return h('div',{key:'guide',style:{position:'absolute',inset:0,pointerEvents:'none',zIndex:3}},[
+      // 上部30%：主題を置く
+      h('div',{key:'top',style:{position:'absolute',left:0,right:0,top:0,height:'30%',borderBottom:dash,background:'rgba(142,124,176,.05)'}}),
+      note('▲ 上部30%：ここに主題を置く',{top:6,left:10}),
+      // 中央上：ロゴが乗る
+      h('div',{key:'logo',style:{position:'absolute',left:'50%',top:'8%',transform:'translateX(-50%)',width:mob?200:260,height:mob?84:104,border:dash,borderRadius:10}}),
+      note('ロゴ枠',{top:'8%',left:'50%',transform:'translate(6px,4px)'}),
+      // 中央下40%：情報帯／主題を置かない
+      h('div',{key:'info',style:{position:'absolute',left:0,right:0,bottom:0,height:'40%',borderTop:dash,background:'rgba(142,124,176,.08)'}}),
+      note('▼ 中央下40%：情報が乗る／主題を置かない',{bottom:6,left:10}),
+      // 左右下端：立ち絵
+      h('div',{key:'tl',style:{position:'absolute',left:mob?8:20,bottom:0,width:tw,height:th,border:dash,borderBottom:'none',borderRadius:'40% 40% 0 0',background:'rgba(142,124,176,.05)'}}),
+      h('div',{key:'tr',style:{position:'absolute',right:mob?8:20,bottom:0,width:tw,height:th,border:dash,borderBottom:'none',borderRadius:'40% 40% 0 0',background:'rgba(142,124,176,.05)'}}),
+      note('立ち絵 '+tw+'×'+th,{left:mob?10:22,bottom:'42%'}),
+      note('注：開発用の目安表示。製品画面には出ません',{bottom:'41%',left:'50%',transform:'translateX(-50%)',color:'var(--sub)'})
+    ]);
+  }
+
+  // ---------- ① イベントホーム ----------
+  eventhome(){ const mob=this.mob(); const T=this.T();
+    const linkCard=(title,desc,icon,accent,onClick)=>this.card(h('div',{style:{display:'flex',alignItems:'center',gap:14}},[
+      h('div',{key:'i',style:{width:44,height:44,borderRadius:10,background:'var(--panel)',border:'1px solid '+(accent?'var(--evt)':'var(--line)'),display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}, h('i',{className:'ti '+icon,style:{fontSize:21,color: accent?'var(--evt)':'var(--accent)'}})),
+      h('div',{key:'t',style:{flex:1,minWidth:0}},[h('div',{key:'a',className:'mincho',style:{fontSize:16,color:'var(--ink)'}},title),h('div',{key:'b',style:{fontSize:11.5,color:'var(--sub)',marginTop:2}},desc)]),
+      h('i',{key:'c',className:'ti ti-chevron-right',style:{color:'var(--sub)',fontSize:18}})
+    ]),onClick);
+    const evtRGB = T.evt==='#8e7cb0'?'142,124,176':'217,119,66';
+    const bg=h('div',{key:'bg',style:{position:'absolute',inset:0,overflow:'hidden'}},[
+      h('div',{key:'grad',style:{position:'absolute',inset:0,background:`linear-gradient(180deg, rgba(${evtRGB},.16), transparent 42%), var(--paper)`}}),
+      h('div',{key:'ph',style:{position:'absolute',inset:0,opacity:.5,background:`repeating-linear-gradient(135deg, transparent 0 22px, rgba(${evtRGB},.05) 22px 44px)`}}),
+      this.state.guide ? this.guideLayer(mob) : this.motifLayer(mob),
+      h('div',{key:'lbl',className:'num',style:{position:'absolute',bottom:8,right:12,fontFamily:'monospace',fontSize:10,color:'var(--sub)',opacity:.6}}, this.state.guide?'SAFE-ZONE GUIDE':'EVENT BG ART（'+T.season+'）')
+    ]);
+    const content=h('div',{style:{position:'relative',zIndex:2,padding:mob?'56px 22px 24px':'70px 40px 32px'}},[
+      h('div',{key:'top',style:{textAlign:'center',marginBottom:mob?22:28}},[
+        h('div',{key:'logo',style:{minHeight:mob?84:104,display:'flex',alignItems:'center',justifyContent:'center'}}, this.logoBlock('h',true)),
+        h('div',{key:'rem',style:{fontSize:12.5,color:'var(--sub)',marginTop:14}},[h('span',{key:1},'開催時間 のこり '),h('span',{key:2,className:'num',style:{fontSize:17,color:'var(--sub)'}},'6'),h('span',{key:3},'日')])
+      ]),
+      h('div',{key:'mid',style:{display:'flex',gap:mob?14:24,alignItems:'flex-end',marginBottom:mob?18:22}},[
+        h('div',{key:'ta',style:{flexShrink:0}}, this.tachie(mob?120:170, mob?300:400, 'EVENT CHAR\n'+T.charName)),
+        h('div',{key:'rt',style:{flex:1,display:'flex',flexDirection:'column',gap:12,paddingBottom:mob?6:14}},[
+          h('div',{key:'sp',style:{display:'flex',alignItems:'center',gap:10,padding:mob?'10px 12px':'12px 16px',background:'var(--cell)',border:'1px solid var(--line)',borderRadius:10,animation:this.anim('hana-speak .26s cubic-bezier(.34,1.56,.64,1) both')}},
+            h('div',{style:{fontSize:mob?12.5:14,color:'var(--ink)',lineHeight:1.6}},[h('span',{key:'n',className:'mincho',style:{color:'var(--evt)',marginRight:8,fontSize:13}},T.charName),'「'+T.charLine+'」'])),
+          h('div',{key:'pt',style:{display:'flex',alignItems:'center',gap:12,padding:mob?'10px 12px':'12px 16px',background:'var(--cell)',border:'1px solid var(--line)',borderRadius:10}},[
+            h('div',{key:'i',style:{width:36,height:36,flexShrink:0},dangerouslySetInnerHTML:{__html:this.pointSVG()}}),
+            h('div',{key:'t',style:{flex:1}},[h('div',{key:'a',className:'mincho',style:{fontSize:13.5,color:'var(--ink)'}},T.pointName),h('div',{key:'b',style:{fontSize:10.5,color:'var(--sub)'}},T.pointDesc)]),
+            h('div',{key:'v',className:'num',style:{fontSize:mob?24:28,color:'var(--accent)'}},'×24')
+          ])
+        ])
+      ]),
+      h('div',{key:'links',style:{display:'flex',flexDirection:'column',gap:12}},[
+        linkCard(T.links[0][0],T.links[0][1],T.links[0][2],true,()=>this.go('stages')),
+        h('div',{key:'row',style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}},[
+          linkCard(T.links[1][0],T.links[1][1],T.links[1][2],false,()=>this.go('exchange')),
+          linkCard(T.links[2][0],T.links[2][1],T.links[2][2],false,()=>{})
+        ])
+      ]),
+      h('div',{key:'home',style:{textAlign:'center',marginTop:18}}, h('button',{onClick:()=>{window.location.href='02-meta.dc.html';},style:{background:'none',border:'none',color:'var(--sub)',fontSize:12.5,cursor:'pointer',display:'inline-flex',alignItems:'center',gap:6,fontFamily:'inherit'}},[h('i',{key:'i',className:'ti ti-home',style:{fontSize:15}}),'いつもの店へ戻る']))
+    ]);
+    return this.frameShell([bg,content],{paper:true});
+  }
+
+  // ---- ロゴ組み（何文字でも破綻しない：1行 / 2行割り） ----
+  logoBlock(orientation,onHome){ const mob=this.mob(); const T=this.T(); const lines=T.logo.lines;
+    const twoLine=lines.length>1;
+    const size = twoLine ? (mob?30:40) : (mob?36:46);
+    const seal=h('div',{key:'seal',style:{width:mob?26:32,height:mob?26:32,borderRadius:'50%',border:'2px solid var(--evt)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}, h('div',{style:{width:'58%',height:'58%'},dangerouslySetInnerHTML:{__html:this.sealSVG(T.logo.seal)}}));
+    const titleLines=h('div',{key:'tl',style:{display:'flex',flexDirection:'column',alignItems:'flex-start',gap:twoLine?(mob?2:4):0}},
+      lines.map((ln,i)=>h('div',{key:i,className:'mincho',style:{fontSize:size,color:'var(--ink)',letterSpacing:'.14em',lineHeight:1.05,marginRight:'-.14em',paddingLeft: ln.indent?(mob?24:40):0}},ln.t)));
+    return h('div',{style:{display:'inline-flex',flexDirection:'column',alignItems:'center',gap:mob?8:10}},[
+      h('div',{key:'row',style:{display:'flex',alignItems: twoLine?'flex-start':'center',gap:mob?12:16}},[seal,titleLines]),
+      h('div',{key:'rule',style:{width:mob?180:230,height:2,background:'var(--evt)',borderRadius:2}}),
+      h('div',{key:'sub',style:{fontSize:mob?12:13,color:'var(--sub)',letterSpacing:'.06em'}},T.subtitle)
+    ]);
+  }
+
+  // ---------- ② ステージ一覧 ----------
+  stages(){ const mob=this.mob(); const T=this.T();
+    const list=[
+      {n:'聞き込み',g:'松を 20',pt:6,cleared:true},
+      {n:'商店街',g:'梅を 24',pt:8,cleared:true},
+      {n:'喫茶くろまつ',g:'菊を 26',pt:8,current:true},
+      {n:'坂の上まで',g:'紫陽花を 28',pt:10},
+      {n:'公園',g:'桜を 30',pt:10,locked:true},
+      {n:'夕方の通り',g:'向日葵を 32',pt:12,locked:true},
+    ];
+    const row=(s,i)=>{ const locked=s.locked;
+      return h('div',{key:i,style:{opacity: locked?0.5:1}}, this.card(h('div',{style:{display:'flex',alignItems:'center',gap:14}},[
+        h('div',{key:'no',className:'num',style:{width:34,fontSize:26,color: s.current?'var(--evt)':'var(--sub)',textAlign:'center',flexShrink:0}}, locked?'—':String(i+1)),
+        h('div',{key:'t',style:{flex:1,minWidth:0}},[
+          h('div',{key:'a',style:{display:'flex',alignItems:'center',gap:8}},[
+            h('span',{key:'n',className:'mincho',style:{fontSize:mob?15:16,color:'var(--ink)'}}, locked?'？？？':s.n),
+            s.cleared&&h('span',{key:'r',style:{fontSize:10.5,color:'var(--sub)',border:'1px solid var(--line)',borderRadius:5,padding:'1px 6px'}},'何度でも'),
+            s.current&&h('span',{key:'c',style:{fontSize:10.5,color:'var(--evt)'}},'ここから')
+          ]),
+          h('div',{key:'b',style:{fontSize:11.5,color:'var(--sub)',marginTop:3}}, locked?'（まだ辿り着いていません）':'目標：'+s.g)
+        ]),
+        !locked&&h('div',{key:'pt',style:{display:'flex',alignItems:'center',gap:5,flexShrink:0}},[
+          h('div',{key:'i',style:{width:20,height:20},dangerouslySetInnerHTML:{__html:this.pointSVG()}}),
+          h('span',{key:'v',className:'num',style:{fontSize:19,color:'var(--accent)'}},'×'+s.pt)
+        ]),
+        h('div',{key:'st',style:{flexShrink:0,width:70,display:'flex',justifyContent:'flex-end'}}, locked? h('i',{className:'ti ti-lock',style:{color:'var(--sub)',fontSize:18}}) :
+          h('div',{style:{display:'flex',gap:2}}, [0,1,2].map(k=>h('i',{key:k,className: (s.cleared&&k<3)?'ti ti-flower-filled':'ti ti-flower',style:{fontSize:15,color: (s.cleared&&k<3)?'var(--accent)':'var(--line)'}}))))
+      ]), locked?undefined:()=>{window.location.href='01-core.dc.html';}));
+    };
+    return this.frameShell([
+      this.head('町をまわる',T.name+' — '+T.season+'。',true),
+      h('div',{key:'b',style:{padding:mob?'16px':'22px 30px',display:'flex',flexDirection:'column',gap:12}}, list.map(row))
+    ]);
+  }
+
+  // ---------- ③ 交換所 ----------
+  exchange(){ const mob=this.mob(); const pts=this.state.pts;
+    const items=[
+      {n:'鋏',c:10,icon:'ti-scissors',left:3,kind:'tool'},
+      {n:'手直し',c:10,icon:'ti-needle-thread',left:2,kind:'tool'},
+      {n:'打ち水',c:10,icon:'ti-droplet',left:3,kind:'tool'},
+      {n:'桔梗の栞',c:8,icon:'ti-bookmark',left:1,kind:'decor'},
+      {n:'丸眼鏡の根付',c:12,icon:'ti-eyeglass-2',left:1,kind:'decor'},
+      {n:'藤色の帳面カバー',c:15,icon:'ti-notebook',left:1,kind:'decor'},
+      {n:'町の地図（写し）',c:18,icon:'ti-map-2',left:1,kind:'decor'},
+      {n:'きよばあの湯呑',c:20,icon:'ti-cup',left:0,kind:'decor'},
+      {n:'憶え書きの束',c:25,icon:'ti-files',left:1,kind:'decor'},
+    ];
+    const cardEl=(it,i)=>{ const soldOut=it.left===0; const poor=pts<it.c && !soldOut; const dim=soldOut; const tool=it.kind==='tool';
+      return h('div',{key:i,style:{background:'var(--cell)',border:'1px solid var(--line)',borderRadius:12,padding:mob?12:14,opacity: dim?0.42:1,cursor:(soldOut||poor)?'default':'pointer',transition:'transform .12s,box-shadow .2s',display:'flex',flexDirection:'column',gap:8,position:'relative'},
+        className:(soldOut||poor)?'':'mcard', onClick:(soldOut||poor)?undefined:()=>this.setState({confirm:it})},[
+        h('div',{key:'kd',style:{position:'absolute',top:mob?10:12,left:mob?10:12,fontSize:9.5,padding:'1px 6px',borderRadius:5,zIndex:2,background: tool?'var(--evt)':'transparent',color: tool?'#fff':'var(--sub)',border: tool?'none':'1px solid var(--line)'}}, tool?'道具':'飾り'),
+        h('div',{key:'ic',style:{aspectRatio:'1.4',borderRadius:8,background:'var(--panel)',border:'1px solid '+(tool?'var(--evt)':'var(--line)'),display:'flex',alignItems:'center',justifyContent:'center'}}, h('i',{className:'ti '+it.icon,style:{fontSize:28,color: dim?'var(--sub)':(tool?'var(--evt)':'var(--accent)')}})),
+        h('div',{key:'nm',className:'mincho',style:{fontSize:14,color:'var(--ink)'}},it.n),
+        h('div',{key:'ft',style:{display:'flex',alignItems:'center',justifyContent:'space-between'}},[
+          h('div',{key:'c',style:{display:'flex',alignItems:'center',gap:4}},[h('div',{key:'i',style:{width:18,height:18,opacity: poor?.5:1},dangerouslySetInnerHTML:{__html:this.pointSVG()}}),h('span',{key:'v',className:'num',style:{fontSize:19,color: poor?'var(--sub)':'var(--ink)'}},it.c)]),
+          soldOut? h('span',{key:'s',style:{fontSize:11,color:'var(--sub)'}},'交換済') : h('span',{key:'s',style:{fontSize:11,color:'var(--sub)'}},'あと'+it.left+'回')
+        ])
+      ]);
+    };
+    return this.frameShell([
+      this.head('交換所','憶え書きを、町の品と替えます。',true),
+      h('div',{key:'own',style:{padding:mob?'14px 18px':'16px 30px',display:'flex',alignItems:'center',gap:12,borderBottom:'1px solid var(--line)'}},[
+        h('div',{key:'i',style:{width:mob?36:42,height:mob?36:42},dangerouslySetInnerHTML:{__html:this.pointSVG()}}),
+        h('div',{key:'t',style:{flex:1}},[h('div',{key:'a',style:{fontSize:11.5,color:'var(--sub)'}},this.T().pointName),h('div',{key:'b',className:'mincho',style:{fontSize:13,color:'var(--ink)'}},'手持ち')]),
+        h('div',{key:'v',className:'num',style:{fontSize:mob?38:46,color:'var(--accent)',lineHeight:1}},pts)
+      ]),
+      h('div',{key:'g',className:'scr',style:{padding:mob?'16px':'22px 30px',display:'grid',gridTemplateColumns: mob?'1fr 1fr':'repeat(3,1fr)',gap:mob?12:14}}, items.map(cardEl)),
+      this.state.confirm && this.confirmModal()
+    ]);
+  }
+  confirmModal(){ const it=this.state.confirm;
+    return h('div',{key:'cm',style:{position:'absolute',inset:0,background:'rgba(20,17,12,.66)',display:'flex',alignItems:'center',justifyContent:'center',padding:16,zIndex:30}},
+      h('div',{style:{width:340,maxWidth:'100%',background:'var(--panel)',border:'1px solid var(--line)',borderRadius:16,padding:24,boxShadow:'0 20px 60px rgba(0,0,0,.5)',animation:this.anim('hana-enter .3s cubic-bezier(.34,1.56,.64,1) both')}},[
+        h('div',{key:'i',style:{width:60,height:44,margin:'0 auto 14px',borderRadius:8,background:'var(--cell)',border:'1px solid var(--line)',display:'flex',alignItems:'center',justifyContent:'center'}}, h('i',{className:'ti '+it.icon,style:{fontSize:26,color:'var(--accent)'}})),
+        h('div',{key:'n',className:'mincho',style:{textAlign:'center',fontSize:18,color:'var(--ink)'}},it.n),
+        h('div',{key:'c',style:{textAlign:'center',margin:'12px 0 20px',display:'flex',alignItems:'center',justifyContent:'center',gap:6}},[
+          h('span',{key:'l',style:{fontSize:12,color:'var(--sub)'}},'消費する憶え書き'),
+          h('div',{key:'i',style:{width:20,height:20},dangerouslySetInnerHTML:{__html:this.pointSVG()}}),
+          h('span',{key:'v',className:'num',style:{fontSize:24,color:'var(--ink)'}},it.c)
+        ]),
+        h('div',{key:'b',style:{display:'flex',gap:10}},[
+          this.btn('やめる',false,()=>this.setState({confirm:null}),'no',{flex:1}),
+          this.btn('交換する',true,()=>this.setState(s=>({confirm:null,pts:Math.max(0,s.pts-it.c)})),'ok',{flex:1})
+        ])
+      ])
+    );
+  }
+
+  // ---------- ④ 周回向けリザルト ----------
+  result(){ const mob=this.mob();
+    return this.frameShell(h('div',{style:{minHeight: mob?680:600,display:'flex',alignItems:'center',justifyContent:'center',padding:20,position:'relative',overflow:'hidden'}},[
+      ...(this.state.motion?Array.from({length:6},(_,i)=>h('div',{key:'p'+i,style:{position:'absolute',left:(15+i*14)+'%',top:-16,width:20,height:20,animation:`hana-petal-drift ${2.6+i*.3}s linear ${i*.4}s infinite`,pointerEvents:'none'},dangerouslySetInnerHTML:{__html:(this.FL&&this.FL.kiku)?this.FL.kiku.petal:''}})):[]),
+      h('div',{style:{width:380,maxWidth:'100%',background:'var(--panel)',border:'1px solid var(--line)',borderRadius:16,padding:26,boxShadow:'0 20px 60px rgba(0,0,0,.4)',position:'relative',zIndex:2}},[
+        h('div',{key:'t',className:'mincho',style:{textAlign:'center',fontSize:22,color:'var(--ink)'}},'喫茶くろまつ、了'),
+        h('div',{key:'st',style:{display:'flex',gap:8,justifyContent:'center',margin:'14px 0'}}, [0,1,2].map(i=>h('i',{key:i,className:'ti ti-flower-filled',style:{fontSize:34,color:'var(--accent)'}}))),
+        h('div',{key:'pt',style:{display:'flex',alignItems:'center',justifyContent:'center',gap:10,padding:'14px',margin:'6px 0 18px',background:'var(--cell)',border:'1px solid var(--evt)',borderRadius:12}},[
+          h('div',{key:'i',style:{width:34,height:34},dangerouslySetInnerHTML:{__html:this.pointSVG()}}),
+          h('div',{key:'t'},[h('div',{key:'l',style:{fontSize:11,color:'var(--sub)'}},'受け取った'+this.T().pointName),h('div',{key:'v'},[h('span',{className:'num',style:{fontSize:34,color:'var(--accent)',lineHeight:1}},'＋8')])])
+        ]),
+        h('div',{key:'b',style:{display:'flex',flexDirection:'column',gap:10}},[
+          this.btn([h('i',{key:'i',className:'ti ti-refresh',style:{marginRight:8}}),'もう一度'],true,()=>{window.location.href='01-core.dc.html';},'r',{fontSize:15}),
+          h('div',{key:'sub',style:{display:'flex',gap:10}},[
+            this.btn('交換所へ',false,()=>this.go('exchange'),'e',{flex:1}),
+            this.btn('やめる',false,()=>this.go('eventhome'),'q',{flex:1})
+          ])
+        ])
+      ])
+    ]));
+  }
+
+  // ---------- ⑤ アーカイブ ----------
+  archive(){ const mob=this.mob(); const empty=this.state.archiveEmpty;
+    const past=[
+      {n:'孫の居ぬ間になんとやら',when:'初夏',accent:'#8e7cb0'},
+      {n:'花信の便り',when:'昨年 三月',accent:'#c4383d'},
+      {n:'梅雨の絵日記',when:'昨年 六月',accent:'#2d4a73'},
+      {n:'月見の宴',when:'昨年 九月',accent:'#c9a04e'},
+    ];
+    const spine=(p,i)=>this.card(h('div',{style:{display:'flex',alignItems:'center',gap:14}},[
+      h('div',{key:'lg',style:{width:52,height:52,borderRadius:8,background:'var(--panel)',border:'1px solid var(--line)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,position:'relative'}},[
+        h('div',{key:'d',style:{width:8,height:8,borderRadius:'50%',background:p.accent,position:'absolute',top:8,left:8}}),
+        h('i',{key:'i',className:'ti ti-book-2',style:{fontSize:22,color:'var(--sub)'}})
+      ]),
+      h('div',{key:'t',style:{flex:1,minWidth:0}},[h('div',{key:'a',className:'mincho',style:{fontSize:16,color:'var(--ink)'}},p.n),h('div',{key:'b',style:{fontSize:11.5,color:'var(--sub)',marginTop:2}},p.when)]),
+      h('div',{key:'r',style:{display:'flex',alignItems:'center',gap:5,color:'var(--accent)',fontSize:13}},['読む',h('i',{key:'i',className:'ti ti-chevron-right',style:{fontSize:16}})])
+    ]),()=>{});
+    const body = empty ? h('div',{key:'e',style:{padding:mob?'60px 30px':'90px 40px',textAlign:'center'}},[
+      h('div',{key:'i',style:{width:56,height:56,margin:'0 auto 20px',opacity:.7},dangerouslySetInnerHTML:{__html:(this.FL&&this.FL.ume)?this.FL.ume.svg:''}}),
+      h('div',{key:'t',className:'mincho',style:{fontSize:mob?18:20,color:'var(--ink)',lineHeight:1.7}},'まだ、これからです'),
+      h('div',{key:'s',style:{fontSize:12.5,color:'var(--sub)',marginTop:10,lineHeight:1.8}},'季節がめぐるたび、\nここに一冊ずつ増えていきます。')
+    ]) : h('div',{key:'l',style:{padding:mob?'16px':'22px 30px',display:'flex',flexDirection:'column',gap:12}}, past.map(spine));
+    return this.frameShell([
+      this.head('過ぎた催し','読み返すための、書架です。',true),
+      h('div',{key:'tog',style:{position:'absolute',top:mob?16:22,right:mob?12:24}}, h('button',{onClick:()=>this.setState(s=>({archiveEmpty:!s.archiveEmpty})),style:{fontSize:10.5,color:'var(--sub)',background:'var(--cell)',border:'1px solid var(--line)',borderRadius:6,padding:'4px 8px',cursor:'pointer',fontFamily:'inherit'}}, empty?'解禁後を見る':'未解禁を見る')),
+      body
+    ]);
+  }
+
+  // ---------- ⑥ ローディング ----------
+  loading(){ const mob=this.mob(); const motion=this.state.motion;
+    return this.frameShell(h('div',{style:{minHeight: mob?680:600,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:26,padding:40}},[
+      h('div',{key:'demo',style:{position:'relative',width:80,height:80,display:'flex',alignItems:'center',justifyContent:'center'}},[
+        ...(motion?[0,1,2].map(i=>h('div',{key:'r'+i,style:{position:'absolute',inset:0,borderRadius:'50%',border:'1.5px solid var(--accent)',animation:`hana-ripple 1.5s ease-out ${i*.5}s infinite`}})):
+          [h('div',{key:'s',style:{position:'absolute',inset:14,borderRadius:'50%',border:'1.5px solid var(--accent)',opacity:.5}}),h('div',{key:'s2',style:{position:'absolute',inset:26,borderRadius:'50%',border:'1.5px solid var(--accent)',opacity:.3}})]),
+        h('div',{key:'c',style:{width:14,height:14,borderRadius:'50%',background:'var(--accent)'}})
+      ]),
+      h('div',{key:'t',className:'mincho',style:{fontSize:14,color:'var(--sub)',letterSpacing:'.2em'}},'しばし'),
+      h('div',{key:'note',style:{fontSize:11,color:'var(--sub)',opacity:.7,textAlign:'center',lineHeight:1.7,maxWidth:280,marginTop:8}}, motion?'水面に落ちた雫の輪。1.5秒でループ、画面は覆わない。':'（動きOFF：静止版。輪は二重で止まる）')
+    ]));
+  }
+
+  // ---------- ⑦ ロゴ・様式 ----------
+  gameLogoMark(size){ return h('div',{style:{width:size,height:size,borderRadius:'50%',border:(size/22)+'px solid var(--shu)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}, h('div',{style:{width:size*0.52,height:size*0.52},dangerouslySetInnerHTML:{__html:(this.FL&&this.FL.sakura)?this.FL.sakura.svg:''}})); }
+  logos(){ const mob=this.mob(); const T=this.T();
+    const panel=(title,children,extra)=>h('div',{style:{background:'var(--cell)',border:'1px solid var(--line)',borderRadius:14,padding:mob?'24px 18px':'30px 28px',...(extra||{})}},[
+      h('div',{key:'l',className:'num',style:{fontFamily:'monospace',fontSize:10.5,color:'var(--sub)',letterSpacing:'.1em',marginBottom:18}},title),
+      children
+    ]);
+    const gameA_h = h('div',{style:{display:'flex',alignItems:'center',gap:mob?16:22,justifyContent:'center'}},[
+      this.gameLogoMark(mob?56:66),
+      h('div',{key:'tx',style:{display:'flex',flexDirection:'column',alignItems:'flex-start'}},[
+        h('div',{key:'k',className:'mincho',style:{fontSize:mob?60:78,color:'var(--ink)',letterSpacing:'.22em',lineHeight:1,fontWeight:600,marginRight:'-.22em'}},'花常'),
+        h('div',{key:'r',className:'mincho',style:{fontSize:mob?13:15,color:'var(--sub)',letterSpacing:'.4em',marginTop:mob?8:12,marginRight:'-.4em'}},'はなつね')
+      ])
+    ]);
+    // 差し替え早見（対比）
+    const swatch=(key)=>{ const t=THEMES[key]; return h('div',{style:{flex:1,display:'flex',flexDirection:'column',gap:10,padding:14,borderRadius:10,border:'1px solid var(--line)',background:'var(--panel)'}},[
+      h('div',{key:'h',style:{display:'flex',alignItems:'center',gap:8}},[h('div',{key:'c',style:{width:16,height:16,borderRadius:'50%',background:t.evt,border:'1px solid var(--line)'}}),h('span',{key:'n',className:'mincho',style:{fontSize:13,color:'var(--ink)'}},t.name)]),
+      h('div',{key:'r',style:{display:'flex',gap:14,alignItems:'center'}},[
+        h('div',{key:'a',style:{textAlign:'center'}},[h('div',{key:'i',style:{width:34,height:34,margin:'0 auto'},dangerouslySetInnerHTML:{__html:this.pointSVG(t.point)}}),h('div',{key:'l',style:{fontSize:9.5,color:'var(--sub)',marginTop:3}},'ポイント')]),
+        h('div',{key:'b',style:{textAlign:'center'}},[h('div',{key:'i',style:{width:t.motif==='lantern'?24:34,height:34,margin:'0 auto',display:'flex',alignItems:'center'},dangerouslySetInnerHTML:{__html:t.motif==='lantern'?this.lanternSVG():this.paperSlipSVG()}}),h('div',{key:'l',style:{fontSize:9.5,color:'var(--sub)',marginTop:3}},'モチーフ')]),
+        h('div',{key:'d',style:{textAlign:'center'}},[h('div',{key:'i',style:{width:34,height:34,margin:'0 auto'},dangerouslySetInnerHTML:{__html:this.sealSVG(t.logo.seal)}}),h('div',{key:'l',style:{fontSize:9.5,color:'var(--sub)',marginTop:3}},'印章')])
+      ])
+    ]); };
+    const memo=h('div',{style:{fontSize:11.5,color:'var(--sub)',lineHeight:1.85,marginTop:14,padding:'12px 14px',border:'1px solid var(--line)',borderRadius:10,background:'var(--panel)'}},[
+      h('div',{key:'h',className:'mincho',style:{fontSize:13,color:'var(--ink)',marginBottom:6}},'題字の組み方（何文字でも破綻しない指針）'),
+      h('div',{key:'1'},'・〜6文字：印章＋1行横組み（級数大）。'),
+      h('div',{key:'2'},'・7文字〜：自然な切れ目で2行に割り、2行目を字下げして軽妙に。級数は一段落とす。'),
+      h('div',{key:'3'},'・それでも入らない長題：級数のみ更に一段落とす（折り返しは避ける）。'),
+      h('div',{key:'4'},'・印章は左・固定寸。罫は --evt。副題は常に1行ゴシック。')
+    ]);
+    return this.frameShell([
+      this.head('ロゴ・様式','テーマ切替に追従（SVG / CSS 組み）。',true),
+      h('div',{key:'body',className:'scr',style:{padding:mob?'18px':'26px 30px',display:'flex',flexDirection:'column',gap:18,maxHeight:mob?560:520,overflowY:'auto'}},[
+        panel('A — ゲーム本体ロゴ「花常」', gameA_h),
+        panel('B — イベントロゴの型（現在の催し：'+T.name+'）', h('div',{style:{display:'flex',justifyContent:'center',padding:'6px 0'}}, this.logoBlock('h'))),
+        panel('差し替え早見 — 4点だけで別の催しになる', h('div',null,[
+          h('div',{key:'sw',style:{display:'flex',gap:12,flexDirection:mob?'column':'row'}},[swatch('magochan'),swatch('yoichi')]),
+          memo
+        ]))
+      ])
+    ]);
+  }
+
+  view(){ if(!this.state.ready) return h('div',{style:{padding:60,textAlign:'center',color:'#8a8172'}},'…');
+    const map={eventhome:this.eventhome(),stages:this.stages(),exchange:this.exchange(),result:this.result(),archive:this.archive(),loading:this.loading(),logos:this.logos()};
+    return map[this.state.scene]; }
+
+  renderVals(){ const d=this.state;
+    const seg=(a)=>({padding:'7px 12px',borderRadius:8,border:'1px solid '+(a?'#c9a04e':'#4a4238'),background:a?'rgba(201,160,78,.16)':'#2b2620',color:a?'#f4efe3':'#b0a692',fontSize:12,cursor:'pointer',position:'relative',fontFamily:"'Zen Kaku Gothic New',sans-serif"});
+    const defs=[['eventhome','イベントホーム'],['stages','ステージ一覧'],['exchange','交換所'],['result','周回リザルト'],['archive','アーカイブ'],['loading','ローディング'],['logos','ロゴ・様式']];
+    const evtDefs=Object.keys(THEMES).map(k=>[k,THEMES[k].label]);
+    return { stageRef:this.stageRef, view:this.view(),
+      b_base:'padding:7px 12px;border-radius:8px;border:1px solid #4a4238;background:#2b2620;color:#cfc6b4;font-size:12px;cursor:pointer;position:relative;font-family:inherit',
+      barS:'position:absolute;left:8px;right:8px;bottom:3px;height:2px;background:#c9a04e;border-radius:2px',
+      motionBtn:(d.motion?'padding:7px 12px;border-radius:8px;border:1px solid #4a4238;background:#2b2620;color:#cfc6b4;':'padding:7px 12px;border-radius:8px;border:1px solid #c9a04e;background:rgba(201,160,78,.16);color:#f4efe3;')+'font-size:12px;cursor:pointer;position:relative;font-family:inherit',
+      guideBtn:(d.guide?'padding:7px 12px;border-radius:8px;border:1px solid #8e7cb0;background:rgba(142,124,176,.18);color:#f4efe3;':'padding:7px 12px;border-radius:8px;border:1px solid #4a4238;background:#2b2620;color:#cfc6b4;')+'font-size:12px;cursor:pointer;font-family:inherit',
+      isPc:d.device==='pc',isMb:d.device==='mobile',isLight:d.theme==='light',isDark:d.theme==='dark',motionOff:!d.motion,
+      d_pc:()=>this.setState({device:'pc'}),d_mb:()=>this.setState({device:'mobile'}),
+      t_lt:()=>this.setState({theme:'light'}),t_dk:()=>this.setState({theme:'dark'}),
+      toggleMotion:()=>this.setState(s=>({motion:!s.motion})),
+      toggleGuide:()=>this.setState(s=>({guide:!s.guide, scene:'eventhome'})),
+      evtThemes:evtDefs.map(([k,l])=>({label:l,style:seg(d.evtKey===k),go:()=>this.setState({evtKey:k})})),
+      scenes:defs.map(([k,l])=>({label:l,style:seg(d.scene===k),go:()=>this.go(k)})),
+    };
+  }
+}
+
+</script>
+</body>
+</html>

@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@500;600;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Bebas+Neue&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.7.0/dist/tabler-icons.min.css">
+<style>
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:#1a1712;font-family:'Zen Kaku Gothic New',sans-serif;-webkit-font-smoothing:antialiased}
+  .mincho{font-family:'Shippori Mincho B1',serif}
+  .num{font-family:'Bebas Neue',sans-serif;font-feature-settings:"tnum";letter-spacing:.02em}
+  a{color:#c9a04e;text-decoration:none}a:hover{color:#d8b878}
+  .scr::-webkit-scrollbar{width:8px}.scr::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px}
+  @keyframes hana-unroll{0%{transform:scaleY(0)}100%{transform:scaleY(1)}}
+  @keyframes hana-fadein{0%{opacity:0;transform:translateY(8px)}100%{opacity:1;transform:translateY(0)}}
+  @keyframes hana-sway2{0%,100%{transform:rotate(-2deg)}50%{transform:rotate(2deg)}}
+  @keyframes hana-rain2{0%{transform:translateY(-30px);opacity:0}12%{opacity:.55}100%{transform:translateY(360px);opacity:0}}
+  @keyframes hana-pulse{0%,100%{opacity:.4}50%{opacity:.9}}
+</style>
+</helmet>
+<div class="stage" ref="{{ stageRef }}" style="min-height:100vh;background:#1a1712;padding:18px;display:flex;flex-direction:column;align-items:center;gap:16px;--bg:#2b2620;--panel:#3a332b;--ink:#f4efe3;--sub:#b0a692;--line:#4a4238;--cell:#221e19;--accent:#c9a04e;--shu:#c4383d;--ai:#2d4a73;--moss:#5a7a52;--fw:940px;--dur:.4s">
+
+  <div style="width:100%;max-width:1000px;background:#211d18;border:1px solid #4a4238;border-radius:12px;padding:14px 16px;color:#f4efe3;font-size:12.5px">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+      <span class="mincho" style="font-size:15px;color:#c9a04e;letter-spacing:.06em">花常</span>
+      <span style="color:#8a8172;font-size:11.5px">② メタ画面</span>
+      <span style="flex:1"></span>
+      <span style="display:flex;gap:8px;font-size:11px;align-items:center">
+        <a href="01-core.dc.html">① コア</a><span style="color:#4a4238">/</span>
+        <span style="color:#c9a04e;border-bottom:1px solid #c9a04e;padding-bottom:1px">② メタ</span><span style="color:#4a4238">/</span>
+        <a href="03-motion.dc.html">③ 仕様書</a><span style="color:#4a4238">/</span>
+        <a href="04-event.dc.html">④ イベント</a>
+      </span>
+    </div>
+    <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:center">
+      <div style="display:flex;gap:6px">
+        <button class="seg" onClick="{{ d_pc }}" style="{{ b_base }}">PC 940<sc-if value="{{ isPc }}" hint-placeholder-val="{{ true }}"><span style="{{ barS }}"></span></sc-if></button>
+        <button class="seg" onClick="{{ d_mb }}" style="{{ b_base }}">モバイル 390<sc-if value="{{ isMb }}" hint-placeholder-val="{{ false }}"><span style="{{ barS }}"></span></sc-if></button>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button class="seg" onClick="{{ t_lt }}" style="{{ b_base }}">ライト<sc-if value="{{ isLight }}" hint-placeholder-val="{{ true }}"><span style="{{ barS }}"></span></sc-if></button>
+        <button class="seg" onClick="{{ t_dk }}" style="{{ b_base }}">ダーク<sc-if value="{{ isDark }}" hint-placeholder-val="{{ false }}"><span style="{{ barS }}"></span></sc-if></button>
+      </div>
+      <button class="seg" onClick="{{ toggleMotion }}" style="{{ motionBtn }}"><i class="ti ti-player-pause"></i> 動きOFF<sc-if value="{{ motionOff }}" hint-placeholder-val="{{ false }}"><span style="{{ barS }}"></span></sc-if></button>
+    </div>
+    <div style="height:1px;background:#3a342c;margin:12px 0"></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+      <span style="color:#6f675a;font-size:10.5px;width:52px">画面</span>
+      <sc-for list="{{ scenes }}" as="s" hint-placeholder-count="9">
+        <button class="seg" onClick="{{ s.go }}" style="{{ s.style }}">{{ s.label }}</button>
+      </sc-for>
+    </div>
+    <div style="color:#6f675a;font-size:10.5px;margin-top:8px">※「マップ」画面で現在地（三月）の札を選ぶと、絵巻物をめくる遷移が再生されます。</div>
+  </div>
+
+  <div class="frame" style="width:var(--fw);max-width:100%;transition:width .3s ease">
+    {{ view }}
+  </div>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1000,&quot;height&quot;:900}}">
+const h = React.createElement;
+const MONTHS = [
+  ['一月','睦月','matsu','松',3],
+  ['二月','如月','ume','梅',2],
+  ['三月','弥生','sakura','桜',-1],
+  ['四月','卯月','ajisai','藤',0],
+  ['五月','皐月','ajisai','菖蒲',0],
+  ['六月','水無月','ajisai','紫陽花',0],
+  ['七月','文月','himawari','向日葵',0],
+  ['八月','葉月','kiku','芒',0],
+  ['九月','長月','kiku','菊',0],
+  ['十月','神無月','kiku','紅葉',0],
+  ['十一月','霜月','tsubaki','山茶花',0],
+  ['十二月','師走','tsubaki','椿',0],
+];
+const SAWARI = {'三月':'春荒','六月':'五月雨','九月':'野分','十二月':'大霜'};
+
+class Component extends DCLogic {
+  stageRef = React.createRef();
+  state = { device:'pc', theme:'light', motion:true, scene:'home', ready:false, unroll:0, storyMode:'diary', settTheme:'light', settAnim:'normal', sound:true, resetStep:0 };
+
+  async componentDidMount(){ const m=await import('./flowers.js'); this.FL=m.FLOWERS; this.SP=m.SPECIALS; this.TSUBAKI=m.TSUBAKI; this.TSUBAKI_PETAL=m.TSUBAKI_PETAL; this.setState({ready:true}); this.applyVars(); }
+  componentDidUpdate(){ this.applyVars(); }
+  applyVars(){ const el=this.stageRef.current; if(!el)return; const d=this.state;
+    const t=d.theme==='dark'?{bg:'#2b2620',panel:'#3a332b',ink:'#f4efe3',sub:'#b0a692',line:'#4a4238',cell:'#211d18',paper:'#332c24'}:{bg:'#f4efe3',panel:'#eee6d4',ink:'#2b2620',sub:'#776d5c',line:'#dccfb5',cell:'#e7dcc6',paper:'#f0e7d5'};
+    for(const k in t) el.style.setProperty('--'+k,t[k]);
+    el.style.setProperty('--fw',(d.device==='pc'?940:390)+'px'); el.style.setProperty('--dur',d.motion?'.4s':'0s'); }
+  mob(){ return this.state.device==='mobile'; }
+  icon(key,size){ const s=(this.FL&&this.FL[key])?this.FL[key].svg:(key==='tsubaki'?this.TSUBAKI:''); return h('div',{style:{width:size,height:size,flexShrink:0},dangerouslySetInnerHTML:{__html:s||''}}); }
+  go(scene){ this.setState({scene, unroll:0, resetStep:0}); }
+
+  frameShell(children,opts){ const mob=this.mob(); opts=opts||{};
+    return h('div',{style:{background: opts.paper?'var(--paper)':'var(--panel)',borderRadius:16,border:'1px solid var(--line)',color:'var(--ink)',position:'relative',boxShadow:'0 18px 50px rgba(0,0,0,.35)',overflow:'hidden',minHeight: mob?680:600}}, children); }
+  head(title,sub){ const mob=this.mob(); return h('div',{style:{padding:mob?'18px 18px 12px':'24px 28px 14px',borderBottom:'1px solid var(--line)'}},[
+    h('div',{key:'t',className:'mincho',style:{fontSize:mob?20:24,color:'var(--ink)'}},title),
+    sub&&h('div',{key:'s',style:{fontSize:12,color:'var(--sub)',marginTop:3}},sub)
+  ]); }
+  card(children,onClick,extra){ return h('div',{onClick,style:{background:'var(--cell)',border:'1px solid var(--line)',borderRadius:12,padding:16,cursor:onClick?'pointer':'default',transition:'transform .12s,box-shadow .2s',...(extra||{})},className:onClick?'mcard':''}, children); }
+  btn(label,primary,onClick,key,extra){ return h('button',{key,onClick,style:{padding:'12px 20px',borderRadius:10,border:primary?'none':'1px solid var(--line)',background:primary?'var(--shu)':'transparent',color:primary?'#f4efe3':'var(--ink)',fontSize:14,cursor:'pointer',fontFamily:"'Zen Kaku Gothic New',sans-serif",fontWeight:primary?700:500,minHeight:46,...(extra||{})}}, label); }
+
+  // 1. ホーム
+  home(){ const mob=this.mob();
+    const menuCard=(title,desc,icon,onClick,big)=>this.card([
+      h('div',{key:'r',style:{display:'flex',alignItems:'center',gap:14}},[
+        h('div',{key:'i',style:{width:big?54:42,height:big?54:42,borderRadius:10,background:'var(--panel)',border:'1px solid var(--line)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}, typeof icon==='string'?h('i',{className:'ti '+icon,style:{fontSize:big?26:20,color:'var(--accent)'}}):icon),
+        h('div',{key:'t',style:{flex:1,minWidth:0}},[
+          h('div',{key:'a',className:'mincho',style:{fontSize:big?21:16,color:'var(--ink)'}},title),
+          desc&&h('div',{key:'b',style:{fontSize:11.5,color:'var(--sub)',marginTop:2}},desc)
+        ]),
+        h('i',{key:'c',className:'ti ti-chevron-right',style:{color:'var(--sub)',fontSize:18}})
+      ])
+    ],onClick, big?{padding:20,borderColor:'var(--accent)',background:'linear-gradient(135deg, rgba(201,160,78,.10), var(--cell))'}:{});
+    return this.frameShell(h('div',{style:{padding:mob?'34px 22px 26px':'46px 40px 34px'}},[
+      h('div',{key:'logo',style:{textAlign:'center',marginBottom:mob?30:40}},[
+        h('div',{key:'seal',style:{width:44,height:44,margin:'0 auto 14px',borderRadius:'50%',border:'2px solid var(--shu)',display:'flex',alignItems:'center',justifyContent:'center'}}, h('div',{style:{width:22,height:22},dangerouslySetInnerHTML:{__html:(this.FL&&this.FL.sakura)?this.FL.sakura.svg:''}})),
+        h('div',{key:'ttl',className:'mincho',style:{fontSize:mob?46:60,color:'var(--ink)',letterSpacing:'.14em',fontWeight:600,lineHeight:1}},'花常'),
+      ]),
+      h('div',{key:'menu',style:{display:'flex',flexDirection:'column',gap:12,maxWidth:520,margin:'0 auto'}},[
+        menuCard('続きから','三月 弥生 — 花仕事のつづき',this.icon('sakura',34),()=>this.linkCore(),true),
+        h('div',{key:'row1',style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}},[
+          menuCard('花仕事','季節を進める',' ti-flower',()=>this.linkCore()),
+          menuCard('帳面','物語だけを読む','ti-book',()=>this.go('story')),
+        ]),
+        menuCard('今日の盤面','一日一度、みなで同じ札を','ti-calendar',()=>this.go('daily')),
+        h('div',{key:'row2',style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}},[
+          menuCard('花手帖','これまでの花',' ti-notebook',()=>this.go('dex')),
+          menuCard('頼まれごと帖','商店街の小さな依頼','ti-mail',()=>this.go('quests')),
+        ]),
+        h('div',{key:'sett',style:{textAlign:'center',marginTop:8}}, h('button',{onClick:()=>this.go('settings'),style:{background:'none',border:'none',color:'var(--sub)',fontSize:13,cursor:'pointer',display:'inline-flex',alignItems:'center',gap:6,fontFamily:'inherit'}},[h('i',{key:'i',className:'ti ti-settings',style:{fontSize:16}}),'設定']))
+      ])
+    ]),{paper:false}); }
+  linkCore(){ window.location.href='01-core.dc.html'; }
+
+  // 2. 月選択マップ
+  map(){ const mob=this.mob();
+    const rows=MONTHS.map((m,i)=>{
+      const [k,yomi,fl,flName,stars]=m; const current=stars===-1; const locked=stars===0&&!current;
+      const sawari=SAWARI[k];
+      const node=h('div',{key:'nd',style:{position:'relative',zIndex:2,width:mob?52:60,height:mob?52:60,borderRadius:'50%',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center',background: current?'var(--panel)':'var(--cell)',border:'2px solid '+(current?'var(--accent)':'var(--line)'),boxShadow: current?'0 0 0 4px rgba(201,160,78,.18)':'none',opacity: locked?0.55:1}},
+        locked? h('i',{className:'ti ti-lock',style:{fontSize:20,color:'var(--sub)'}}) : h('div',{style:{width:mob?32:38,height:mob?32:38,filter: locked?'grayscale(1)':'none'},dangerouslySetInnerHTML:{__html:(this.FL&&this.FL[fl])?this.FL[fl].svg:(fl==='tsubaki'?this.TSUBAKI:'')}}));
+      const starRow= current? h('span',{style:{fontSize:11,color:'var(--accent)'}},'現在地') : locked? h('span',{style:{fontSize:11,color:'var(--sub)'}},'未到達') :
+        h('div',{style:{display:'flex',gap:3}}, [0,1,2].map(s=>h('i',{key:s,className:s<stars?'ti ti-flower-filled':'ti ti-flower',style:{fontSize:14,color:s<stars?'var(--accent)':'var(--line)'}})));
+      return h('div',{key:i,style:{display:'flex',alignItems:'center',gap:16,padding:'2px 0',cursor: current?'pointer':'default'},onClick: current?()=>this.setState({unroll:1}):undefined},[
+        node,
+        h('div',{key:'info',style:{flex:1,opacity: locked?0.6:1}},[
+          h('div',{key:'a',style:{display:'flex',alignItems:'baseline',gap:8}},[
+            h('span',{key:'m',className:'mincho',style:{fontSize:mob?18:20,color:'var(--ink)'}},k),
+            h('span',{key:'y',style:{fontSize:12,color:'var(--sub)'}},yomi),
+            !locked&&!current&&h('span',{key:'f',style:{fontSize:11,color:'var(--sub)',marginLeft:'auto'}},flName)
+          ]),
+          h('div',{key:'b',style:{marginTop:4}}, starRow),
+          sawari&&h('div',{key:'s',style:{marginTop:6,display:'inline-flex',alignItems:'center',gap:6,padding:'3px 9px',borderRadius:6,background:'rgba(45,74,115,.14)',border:'1px solid var(--ai)'}},[
+            h('span',{key:'w',style:{color:'var(--ai)',fontSize:13,transform:'rotate(45deg)',display:'inline-block'}},'◆'),
+            h('span',{key:'t',className:'mincho',style:{fontSize:12,color: this.state.theme==='dark'?'#8fa8c8':'var(--ai)'}},'季節の障り・'+sawari)
+          ])
+        ])
+      ]);
+    });
+    return this.frameShell([
+      this.head('月選択','一年の絵巻。上から順に、季節を進めます。'),
+      h('div',{key:'scroll',className:'scr',style:{position:'relative',maxHeight: mob?560:480,overflowY:'auto',padding:mob?'18px 20px 40px':'22px 34px 40px'}},[
+        h('div',{key:'line',style:{position:'absolute',left: (mob?20+26:34+30)-1,top:0,bottom:0,width:2,background:'var(--line)'}}),
+        h('div',{key:'rows',style:{display:'flex',flexDirection:'column',gap:mob?18:22,position:'relative'}}, rows)
+      ]),
+      this.state.unroll>0 && this.unrollOverlay()
+    ]); }
+  unrollOverlay(){ const mob=this.mob();
+    return h('div',{key:'ur',style:{position:'absolute',inset:0,background:'rgba(20,17,12,.5)',display:'flex',alignItems:'flex-start',justifyContent:'center',padding:mob?'20px':'34px',zIndex:30}},
+      h('div',{style:{width:'100%',maxWidth:460,transformOrigin:'top center',animation: this.state.motion?'hana-unroll .5s cubic-bezier(.34,1.4,.64,1) both':'none',background:'var(--panel)',border:'1px solid var(--line)',borderRadius:14,boxShadow:'0 24px 60px rgba(0,0,0,.5)',overflow:'hidden'}},[
+        h('div',{key:'bar',style:{height:8,background:'linear-gradient(90deg,#6b4a2e,#8a6a44,#6b4a2e)'}}),
+        h('div',{key:'body',style:{padding:mob?'20px':'26px',textAlign:'center'}},[
+          h('div',{key:'m',className:'mincho',style:{fontSize:26,color:'var(--ink)'}},'三月 弥生'),
+          h('div',{key:'s',style:{fontSize:12,color:'var(--sub)',marginTop:2,marginBottom:16}},'水草生月'),
+          h('div',{key:'prev',style:{width:mob?200:220,height:mob?200:220,margin:'0 auto',borderRadius:8,background:'var(--cell)',border:'1px solid var(--line)',display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:6,padding:12,boxShadow:'inset 0 2px 10px rgba(0,0,0,.3)'}},
+            ['sakura','ume','matsu','kiku','himawari','sakura','ajisai','matsu','ume','sakura','kiku','himawari','matsu','ajisai','sakura','ume'].map((f,i)=>h('div',{key:i,style:{width:'100%'},dangerouslySetInnerHTML:{__html:(this.FL&&this.FL[f])?this.FL[f].svg:''}}))),
+          h('div',{key:'note',style:{fontSize:11.5,color:'var(--sub)',margin:'14px 0 18px'}},'（絵巻物をめくる遷移の実演。仕様書③・画面遷移を参照）'),
+          h('div',{key:'btns',style:{display:'flex',gap:10,justifyContent:'center'}},[
+            this.btn('この盤面へ',true,()=>this.linkCore(),'g'),
+            this.btn('戻る',false,()=>this.setState({unroll:0}),'b')
+          ])
+        ])
+      ])
+    ); }
+
+  // 3. 今日の盤面
+  daily(){ const mob=this.mob();
+    const stat=(label,val,unit,icon)=>this.card([
+      h('div',{key:'l',style:{fontSize:11.5,color:'var(--sub)',display:'flex',alignItems:'center',gap:5}},[icon&&h('i',{key:'i',className:'ti '+icon,style:{fontSize:14,color:'var(--accent)'}}),label]),
+      h('div',{key:'v',style:{marginTop:6,display:'flex',alignItems:'baseline',gap:4}},[h('span',{key:'a',className:'num',style:{fontSize:mob?30:36,color:'var(--ink)',lineHeight:1}},val),unit&&h('span',{key:'b',style:{fontSize:12,color:'var(--sub)'}},unit)])
+    ]);
+    return this.frameShell([
+      this.head('今日の盤面','一日に一度。今日はみな、同じ札で。'),
+      h('div',{key:'body',style:{padding:mob?'20px':'30px 34px'}},[
+        h('div',{key:'date',style:{textAlign:'center',marginBottom:24}},[
+          h('div',{key:'d',className:'mincho',style:{fontSize:mob?26:32,color:'var(--ink)'}},'七月 十九日'),
+          h('div',{key:'n',style:{fontSize:12,color:'var(--sub)',marginTop:4}},[h('span',{key:1},'盤面 '),h('span',{className:'num',style:{fontSize:16,color:'var(--accent)'}},'No.204')])
+        ]),
+        h('div',{key:'grid',style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:16}},[
+          stat('昨日のスコア','8,240',null,'ti-history'),
+          stat('連続記録','12','日','ti-flame'),
+        ]),
+        h('div',{key:'tuyu',style:{marginBottom:22}}, this.card(h('div',{style:{display:'flex',alignItems:'center',gap:12}},[
+          h('div',{key:'i',style:{width:38,height:38},dangerouslySetInnerHTML:{__html:this.dewSVG()}}),
+          h('div',{key:'t',style:{flex:1}},[h('div',{key:'a',className:'mincho',style:{fontSize:15,color:'var(--ink)'}},'花の露'),h('div',{key:'b',style:{fontSize:11,color:'var(--sub)'}},'休んだ日を、そっと補います')]),
+          h('div',{key:'c',className:'num',style:{fontSize:26,color:'var(--accent)'}},'×3')
+        ]))),
+        h('div',{key:'go'}, this.btn('挑戦する',true,()=>this.linkCore(),'g',{width:'100%'}))
+      ])
+    ]); }
+  dewSVG(){ return '<svg viewBox="0 0 64 64" width="100%" height="100%"><path d="M32 8 C20 30 16 40 16 46 a16 16 0 0 0 32 0 c0-6-4-16-16-38 Z" fill="#7b86c8" stroke="#2b2620" stroke-width="2"/><ellipse cx="26" cy="42" rx="4" ry="6" fill="#f4efe3" opacity="0.7"/></svg>'; }
+
+  // 4. 花手帖（図鑑）
+  dex(){ const mob=this.mob();
+    const collected={matsu:true,ume:true,sakura:true,ajisai:false,himawari:false,kiku:false,tsubaki:false};
+    const grid=MONTHS.map((m,i)=>{ const [k,yomi,fl,flName]=m; const has= i<3; // 一〜三月獲得
+      return h('div',{key:i,style:{textAlign:'center'}},[
+        h('div',{key:'c',style:{aspectRatio:'1',borderRadius:12,background:'var(--cell)',border:'1px solid var(--line)',display:'flex',alignItems:'center',justifyContent:'center',padding:'18%'}},
+          h('div',{style:{width:'100%',height:'100%',filter: has?'none':'brightness(0) opacity(0.30)'},dangerouslySetInnerHTML:{__html:(this.FL&&this.FL[fl])?this.FL[fl].svg:(fl==='tsubaki'?this.TSUBAKI:'')}})),
+        h('div',{key:'l',className:'mincho',style:{fontSize:12,color: has?'var(--ink)':'var(--sub)',marginTop:6}}, has?flName:'まだ'),
+        h('div',{key:'m',style:{fontSize:10,color:'var(--sub)'}},k)
+      ]);
+    });
+    return this.frameShell([
+      this.head('花手帖','咲かせた花が、ここに残ります。'),
+      h('div',{key:'body',style:{padding:mob?'20px':'26px 30px'}},[
+        h('div',{key:'g',style:{display:'grid',gridTemplateColumns: mob?'repeat(3,1fr)':'repeat(4,1fr)',gap:mob?12:16,marginBottom:22}}, grid),
+        h('div',{key:'read'}, this.card(h('div',{style:{display:'flex',alignItems:'center',gap:12}},[
+          h('i',{key:'i',className:'ti ti-book-2',style:{fontSize:22,color:'var(--accent)'}}),
+          h('div',{key:'t',style:{flex:1}},[h('div',{key:'a',className:'mincho',style:{fontSize:15}},'通し読み'),h('div',{key:'b',style:{fontSize:11,color:'var(--sub)'}},'これまでの物語を、はじめから')]),
+          h('i',{key:'c',className:'ti ti-chevron-right',style:{color:'var(--sub)'}})
+        ]),()=>this.go('story')))
+      ])
+    ]); }
+
+  // 5. 頼まれごと帖
+  quests(){ const mob=this.mob();
+    const list=[
+      {t:'留守の水やり',who:'魚屋・徳次郎さん',st:'done'},
+      {t:'開店祝いの一鉢',who:'喫茶・宮田さん',st:'progress',p:'桜を 12/20'},
+      {t:'手向けの白い花',who:'寺の若さま',st:'open'},
+      {t:'？？？',who:'——',st:'locked'},
+      {t:'？？？',who:'——',st:'locked'},
+    ];
+    const row=(q,i)=>{ const locked=q.st==='locked';
+      const badge = q.st==='done'? h('span',{style:{fontSize:11,color:'var(--moss)',display:'inline-flex',alignItems:'center',gap:4}},[h('i',{key:'i',className:'ti ti-check'}),'済']) :
+        q.st==='progress'? h('span',{style:{fontSize:11,color:'var(--accent)'}},q.p) :
+        q.st==='open'? h('span',{style:{fontSize:11,color:'var(--sub)'}},'未着手') : h('i',{className:'ti ti-lock',style:{color:'var(--sub)'}});
+      return this.card(h('div',{style:{display:'flex',alignItems:'center',gap:14,opacity: locked?0.5:1}},[
+        h('div',{key:'i',style:{width:40,height:40,borderRadius:9,background:'var(--panel)',border:'1px solid var(--line)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}, h('i',{className: locked?'ti ti-help-hexagon':'ti ti-leaf',style:{fontSize:19,color: q.st==='done'?'var(--moss)':'var(--accent)'}})),
+        h('div',{key:'t',style:{flex:1,minWidth:0}},[
+          h('div',{key:'a',className:'mincho',style:{fontSize:15,color:'var(--ink)'}},q.t),
+          h('div',{key:'b',style:{fontSize:11.5,color:'var(--sub)',marginTop:2}}, locked?'（まだ開かれていない依頼）':'依頼主：'+q.who)
+        ]),
+        h('div',{key:'s',style:{flexShrink:0}},badge)
+      ]),locked?undefined:()=>{});
+    };
+    return this.frameShell([
+      this.head('頼まれごと帖','商店街の、ちいさな頼みごと。'),
+      h('div',{key:'body',style:{padding:mob?'18px':'24px 30px',display:'flex',flexDirection:'column',gap:12}}, list.map(row))
+    ]); }
+
+  // 6. 設定
+  settings(){ const mob=this.mob(); const d=this.state;
+    const rowWrap=(label,desc,control)=>h('div',{style:{display:'flex',alignItems:'center',gap:12,padding:'16px 4px',borderBottom:'1px solid var(--line)'}},[
+      h('div',{key:'t',style:{flex:1}},[h('div',{key:'a',style:{fontSize:14,color:'var(--ink)'}},label),desc&&h('div',{key:'b',style:{fontSize:11,color:'var(--sub)',marginTop:2}},desc)]),
+      h('div',{key:'c',style:{flexShrink:0}},control)
+    ]);
+    const toggle=(on,onClick)=>h('button',{onClick,style:{width:52,height:28,borderRadius:14,border:'none',cursor:'pointer',background:on?'var(--moss)':'var(--line)',position:'relative',transition:'background .2s'}}, h('span',{style:{position:'absolute',top:3,left:on?27:3,width:22,height:22,borderRadius:'50%',background:'#f4efe3',transition:'left .2s'}}));
+    const radio=(opts,val,set)=>h('div',{style:{display:'flex',gap:6}}, opts.map(([v,l])=>h('button',{key:v,onClick:()=>set(v),style:{padding:'7px 12px',borderRadius:8,border:'1px solid '+(val===v?'var(--accent)':'var(--line)'),background:val===v?'rgba(201,160,78,.16)':'transparent',color: val===v?'var(--ink)':'var(--sub)',fontSize:12,cursor:'pointer',fontFamily:'inherit'}},l)));
+    return this.frameShell([
+      this.head('設定'),
+      h('div',{key:'body',style:{padding:mob?'6px 20px 24px':'8px 34px 30px'}},[
+        rowWrap('効果音',null,toggle(d.sound,()=>this.setState(s=>({sound:!s.sound})))),
+        rowWrap('アニメーション',null,radio([['normal','通常'],['calm','控えめ']],d.settAnim,v=>this.setState({settAnim:v}))),
+        rowWrap('テーマ',null,radio([['light','ライト'],['dark','ダーク'],['auto','端末に合わせる']],d.settTheme,v=>this.setState({settTheme:v, theme: v==='auto'?this.state.theme:v}))),
+        rowWrap('最初のヒントを再表示',null,this.btn('再表示',false,()=>{},'r',{padding:'8px 14px',fontSize:13,minHeight:0})),
+        rowWrap('クレジット','フォント等の権利表記',h('i',{className:'ti ti-chevron-right',style:{color:'var(--sub)'}})),
+        h('div',{key:'reset',style:{marginTop:24,padding:16,borderRadius:12,border:'1px solid '+(d.resetStep>0?'var(--shu)':'var(--line)'),background: d.resetStep>0?'rgba(196,56,61,.08)':'transparent'}},[
+          h('div',{key:'a',style:{fontSize:14,color:'var(--shu)',fontWeight:700}},'進行のリセット'),
+          h('div',{key:'b',style:{fontSize:11.5,color:'var(--sub)',margin:'4px 0 12px'}}, d.resetStep===0?'すべての記録が消えます。戻せません。': d.resetStep===1?'本当によろしいですか？ もう一度押すと消去します。':'消去しました。'),
+          d.resetStep<2 && this.btn(d.resetStep===0?'リセットする':'本当に消去する',false,()=>this.setState(s=>({resetStep:s.resetStep+1})),'x',{color:'var(--shu)',borderColor:'var(--shu)',fontSize:13})
+        ])
+      ])
+    ]); }
+
+  // 7 & 会話. 物語ビネット
+  story(){ const mob=this.mob(); const diary=this.state.storyMode==='diary';
+    const toggleBar=h('div',{style:{position:'absolute',top:14,left:'50%',transform:'translateX(-50%)',zIndex:5,display:'flex',gap:6,background:'rgba(0,0,0,.25)',padding:4,borderRadius:10}},
+      [['diary','日記'],['talk','会話']].map(([v,l])=>h('button',{key:v,onClick:()=>this.setState({storyMode:v}),style:{padding:'6px 14px',borderRadius:7,border:'none',background: this.state.storyMode===v?'var(--accent)':'transparent',color: this.state.storyMode===v?'#2b2620':'#f4efe3',fontSize:12,cursor:'pointer',fontFamily:'inherit'}},l)));
+    const bg={position:'absolute',inset:0,background:'linear-gradient(180deg, var(--paper), var(--cell))'};
+    const tegata=h('div',{key:'wood',style:{position:'absolute',left:0,right:0,bottom:0,height:'22%',background:'linear-gradient(180deg, rgba(107,74,46,.0), rgba(107,74,46,.22))'}});
+    const tachie=(label,side,wolf)=>h('div',{style:{position:'absolute',bottom:0,[side]:mob?-6:20,width:mob?120:170,height:mob?300:400,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'flex-end',pointerEvents:'none'}},[
+      h('div',{key:'sil',style:{width:'86%',height:'92%',background:'var(--panel)',border:'2px dashed var(--line)',borderRadius:'50% 50% 12px 12px',position:'relative',opacity:.9}},[
+        h('div',{key:'head',style:{position:'absolute',top:'8%',left:'50%',transform:'translateX(-50%)',width:'46%',aspectRatio:'1',borderRadius: wolf?'50% 50% 46% 46%':'50%',background:'var(--cell)',border:'1px solid var(--line)'}}, wolf?h('div',{style:{position:'absolute',top:-6,left:'14%',right:'14%',display:'flex',justifyContent:'space-between'}},[h('div',{key:1,style:{width:0,height:0,borderLeft:'8px solid transparent',borderRight:'8px solid transparent',borderBottom:'14px solid var(--cell)'}}),h('div',{key:2,style:{width:0,height:0,borderLeft:'8px solid transparent',borderRight:'8px solid transparent',borderBottom:'14px solid var(--cell)'}})]):null),
+        h('div',{key:'lbl',className:'num',style:{position:'absolute',bottom:8,left:0,right:0,textAlign:'center',fontFamily:'monospace',fontSize:10,color:'var(--sub)',letterSpacing:'.05em'}},label)
+      ])
+    ]);
+    let content;
+    if(diary){
+      content=[ tachie('立ち絵：若菜','left',false),
+        h('div',{key:'diary',style:{position:'absolute',top:mob?70:80,right:mob?24:70,bottom:mob?40:60,width:mob?210:300,display:'flex',justifyContent:'flex-end'}},
+          h('div',{style:{writingMode:'vertical-rl',textOrientation:'upright',fontFamily:"'Shippori Mincho B1',serif",fontSize:mob?17:19,lineHeight:2.1,letterSpacing:'.12em',color:'var(--ink)',height:'100%',padding:'8px 4px',animation:this.state.motion?'hana-fadein .6s ease both':'none'}},
+            '一月六日。雪、のち晴れ。積雪三センチ。初売り。開店一時間前に店に着いた。準備は昨日のうちに終わっていた。終わっていたのに着いてしまったのだから、仕方がない。一年目の初売り。数字は、夜に書く。')),
+        h('div',{key:'nav',style:{position:'absolute',bottom:mob?14:20,right:mob?18:26,display:'flex',gap:10,zIndex:5}},[
+          h('button',{key:'s',onClick:()=>{},style:{background:'none',border:'none',color:'var(--sub)',fontSize:12,cursor:'pointer',fontFamily:'inherit'}},'スキップ »'),
+          this.btn('次へ',true,()=>{},'n',{padding:'10px 22px'})
+        ])
+      ];
+    } else {
+      content=[ tachie('立ち絵：若菜','left',false), tachie('立ち絵：レン','right',true),
+        h('div',{key:'box',style:{position:'absolute',left:mob?14:30,right:mob?14:30,bottom:mob?14:22,zIndex:5}},
+          h('div',{style:{background:'var(--panel)',border:'1px solid var(--line)',borderRadius:12,padding:mob?'16px 18px':'20px 26px',boxShadow:'0 10px 30px rgba(0,0,0,.3)'}},[
+            h('div',{key:'n',className:'mincho',style:{fontSize:14,color:'var(--accent)',marginBottom:6}},'若菜'),
+            h('div',{key:'l',className:'mincho',style:{fontSize:mob?15:17,color:'var(--ink)',lineHeight:1.7}},'いらっしゃいませ。今年から、また開けています。'),
+            h('div',{key:'nav',style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:14}},[
+              h('button',{key:'s',style:{background:'none',border:'none',color:'var(--sub)',fontSize:12,cursor:'pointer',fontFamily:'inherit'}},'スキップ »'),
+              h('div',{key:'d',style:{display:'flex',gap:8}}, this.btn('次へ',true,()=>{},'n',{padding:'8px 20px',minHeight:0}))
+            ])
+          ]))
+      ];
+    }
+    return this.frameShell([ h('div',{key:'bg',style:bg}), tegata, toggleBar, ...content ],{paper:true}); }
+
+  // 8. 選択肢
+  choice(){ const mob=this.mob();
+    const opt=(label)=>h('button',{onClick:()=>{},style:{width:'100%',padding:mob?'18px 20px':'22px 26px',borderRadius:12,border:'1px solid var(--line)',background:'var(--cell)',color:'var(--ink)',fontSize:mob?15:17,cursor:'pointer',fontFamily:"'Shippori Mincho B1',serif",textAlign:'center',transition:'border-color .2s,transform .1s'},className:'choicebtn'}, label);
+    return this.frameShell(h('div',{style:{minHeight: mob?680:600,display:'flex',flexDirection:'column',justifyContent:'center',padding:mob?'30px 24px':'40px',background:'linear-gradient(180deg, var(--paper), var(--cell))'}},[
+      h('div',{key:'sit',className:'mincho',style:{textAlign:'center',fontSize:mob?18:22,color:'var(--ink)',lineHeight:1.8,marginBottom:mob?36:48,maxWidth:440,marginLeft:'auto',marginRight:'auto'}},'勘定台の奥に、祖母の帳面がある。'),
+      h('div',{key:'opts',style:{display:'flex',flexDirection:'column',gap:16,maxWidth:420,margin:'0 auto',width:'100%'}},[
+        opt('少しだけ、読んでみる'),
+        opt('閉じたままにしておく')
+      ])
+    ]),{paper:true}); }
+
+  // 9. 月替わりの間
+  interlude(){ const mob=this.mob();
+    return this.frameShell(h('div',{style:{minHeight: mob?680:600,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:40,position:'relative',background:'radial-gradient(circle at 50% 34%, var(--paper), var(--cell))',overflow:'hidden'}},[
+      ...(this.state.motion?Array.from({length:12},(_,i)=>h('div',{key:'p'+i,style:{position:'absolute',left:(Math.random()*100)+'%',top:-20,width:22,height:22,opacity:.5,animation:`hana-rain2 ${3+Math.random()*2}s linear ${Math.random()*2500}ms infinite`,pointerEvents:'none'},dangerouslySetInnerHTML:{__html:(this.FL&&this.FL.sakura)?this.FL.sakura.petal:''}})):[]),
+      h('div',{key:'seal',style:{width:70,height:70,marginBottom:26,zIndex:2},dangerouslySetInnerHTML:{__html:(this.FL&&this.FL.sakura)?this.FL.sakura.svg:''}}),
+      h('div',{key:'m',className:'mincho',style:{fontSize:mob?46:64,color:'var(--ink)',letterSpacing:'.14em',lineHeight:1,zIndex:2}},'三月'),
+      h('div',{key:'y',className:'mincho',style:{fontSize:mob?18:22,color:'var(--accent)',marginTop:12,letterSpacing:'.3em',zIndex:2}},'弥生'),
+      h('div',{key:'w',className:'mincho',style:{fontSize:mob?14:16,color:'var(--sub)',marginTop:28,textAlign:'center',lineHeight:2,zIndex:2}},'日ざしが、やわらかくなりました。'),
+      h('div',{key:'line',style:{marginTop:26,padding:'12px 20px',borderRadius:10,background:'rgba(0,0,0,.06)',zIndex:2,maxWidth:360,textAlign:'center'}},[
+        h('span',{key:'n',className:'mincho',style:{color:'var(--accent)',fontSize:13,marginRight:8}},'若菜'),
+        h('span',{key:'t',style:{fontSize:13.5,color:'var(--ink)'}},'そろそろ、桜の支度をしましょうか。')
+      ])
+    ])); }
+
+  view(){ if(!this.state.ready) return h('div',{style:{padding:60,textAlign:'center',color:'#8a8172'}},'…');
+    const s=this.state.scene;
+    return ({home:this.home(),map:this.map(),daily:this.daily(),dex:this.dex(),quests:this.quests(),settings:this.settings(),story:this.story(),choice:this.choice(),interlude:this.interlude()})[s]; }
+
+  renderVals(){ const d=this.state;
+    const seg=(a)=>({padding:'7px 12px',borderRadius:8,border:'1px solid '+(a?'#c9a04e':'#4a4238'),background:a?'rgba(201,160,78,.16)':'#2b2620',color:a?'#f4efe3':'#b0a692',fontSize:12,cursor:'pointer',position:'relative',fontFamily:"'Zen Kaku Gothic New',sans-serif"});
+    const defs=[['home','ホーム'],['map','マップ'],['daily','今日の盤面'],['dex','花手帖'],['quests','頼まれごと帖'],['settings','設定'],['story','物語'],['choice','選択肢'],['interlude','月替わり']];
+    return { stageRef:this.stageRef, view:this.view(),
+      b_base:'padding:7px 12px;border-radius:8px;border:1px solid #4a4238;background:#2b2620;color:#cfc6b4;font-size:12px;cursor:pointer;position:relative;font-family:inherit',
+      barS:'position:absolute;left:8px;right:8px;bottom:3px;height:2px;background:#c9a04e;border-radius:2px',
+      motionBtn:(d.motion?'padding:7px 12px;border-radius:8px;border:1px solid #4a4238;background:#2b2620;color:#cfc6b4;':'padding:7px 12px;border-radius:8px;border:1px solid #c9a04e;background:rgba(201,160,78,.16);color:#f4efe3;')+'font-size:12px;cursor:pointer;position:relative;font-family:inherit',
+      isPc:d.device==='pc',isMb:d.device==='mobile',isLight:d.theme==='light',isDark:d.theme==='dark',motionOff:!d.motion,
+      d_pc:()=>this.setState({device:'pc'}),d_mb:()=>this.setState({device:'mobile'}),
+      t_lt:()=>this.setState({theme:'light'}),t_dk:()=>this.setState({theme:'dark'}),
+      toggleMotion:()=>this.setState(s=>({motion:!s.motion})),
+      scenes:defs.map(([k,l])=>({label:l,style:seg(d.scene===k),go:()=>this.go(k)})),
+    };
+  }
+}
+
+</script>
+</body>
+</html>
