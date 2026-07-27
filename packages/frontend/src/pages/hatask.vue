@@ -1448,6 +1448,15 @@ async function harvestFlower(){const autoName=generateFlowerName({emoji:flower.v
 async function renameFlower(fl:any){const{canceled,result}=await os.inputText({title:'お花の名前を変更',text:'新しい名前:',default:fl.name});if(!canceled&&result){fl.name=result;await registrySet('gallery',gallery.value)}}
 
 let growthInterval:ReturnType<typeof setInterval>|null=null;
+// 旗鯖fork: お花の成長は「setIntervalの発火回数」ではなく「実経過時間」で数える。
+// setInterval は非アクティブタブ・省電力・モバイルで大きく間引かれるため、
+// 発火回数ベースだと「開いているのに育たない」環境依存バグが起きる(修正済み)。
+let growthLastTickAt=Date.now();  // 最後に経過を計上した時刻
+let growthCarryMs=0;              // まだ分に満たない繰り越しミリ秒
+// タブが可視に戻った瞬間に経過起点をリセットする。
+// これがないと、非表示中(setInterval が間引かれて発火しない時間)を
+// 復帰時に一気に計上してしまい「開いていない時間」まで育ってしまう。
+function onGrowthVisibility(){ if(!document.hidden){ growthLastTickAt=Date.now(); growthCarryMs=0; } }
 let navProtectionObserver:MutationObserver|null=null;
 let navVisibilityTimer:ReturnType<typeof setInterval>|null=null;
 onMounted(async () => {
@@ -1634,25 +1643,37 @@ updateEyePhrase();
 eyeTimer = setInterval(updateEyePhrase, 10000);
 growthInterval = setInterval(async () => {
   if (flower.value.progress >= 100) return;
+  const now = Date.now();
+  // タブが非表示(バックグラウンド)の間は「開いている時間」に数えない。
+  // 経過起点だけ進めて、次にアクティブへ戻ったとき裏の時間を計上しない。
+  if (document.hidden) { growthLastTickAt = now; return; }
+  // 実経過(ミリ秒)を積み、分に達したぶんだけ加算する。
+  // これで setInterval が間引かれて発火が遅れても、正しい経過時間が計上される。
+  growthCarryMs += Math.max(0, now - growthLastTickAt);
+  growthLastTickAt = now;
+  const addMinutes = Math.floor(growthCarryMs / 60000);
+  if (addMinutes <= 0) return;
+  growthCarryMs -= addMinutes * 60000;
   // 旗鯖fork: 複数端末で「開いている時間」を合算して同期する。
   // 各端末が独立に += して上書きすると最後の端末の値で上書きされてしまうため、
-  // 必ず registry から最新値を読み直し、それに この端末ぶんの +1 を足して保存する。
+  // 必ず registry から最新値を読み直し、それに この端末ぶんの経過を足して保存する。
   // これで他端末が育てたぶんも取り込まれ、累積が合算される。
   try {
     const latest = await registryGet<any>('flower', flower.value);
     // 別の花に切り替わっている(収穫された)場合は、現在開いている花を優先して競合を避ける
     if (latest && latest.startedAt === flower.value.startedAt && latest.emoji === flower.value.emoji) {
       const base = typeof latest.totalMinutes === 'number' ? latest.totalMinutes : flower.value.totalMinutes;
-      flower.value.totalMinutes = base + 1;
+      flower.value.totalMinutes = base + addMinutes;
     } else {
-      flower.value.totalMinutes += 1;
+      flower.value.totalMinutes += addMinutes;
     }
   } catch {
-    flower.value.totalMinutes += 1;
+    flower.value.totalMinutes += addMinutes;
   }
   flower.value.progress = Math.min(100, Math.floor((flower.value.totalMinutes / 1200) * 100));
   await registrySet('flower', flower.value);
 }, 60000);
+document.addEventListener('visibilitychange', onGrowthVisibility);
 });
 
 // KeepAlive対応: ページ離脱時にナビバーを非表示にする
@@ -1713,6 +1734,7 @@ if (bootTimer) { clearTimeout(bootTimer); bootTimer=null; }
 if (clockInterval) clearInterval(clockInterval);
 if (eyeTimer) clearInterval(eyeTimer);
 if (growthInterval) clearInterval(growthInterval);
+document.removeEventListener('visibilitychange', onGrowthVisibility);
 if (mediaQuery) mediaQuery.removeEventListener('change', onMediaChange);
 stopHtkThemeWatch();
 notifTimerIds.forEach(id => clearTimeout(id));
