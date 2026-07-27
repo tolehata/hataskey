@@ -40,6 +40,15 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</MkA>
 			</div>
 			<div class="_panel" :class="$style.link">
+				<MkA to="/hanaawase" :class="$style.stackingLink">
+					<div :class="[$style.stackingCard, $style.hanaawaseCard]">
+						<div :class="$style.hanaawaseSeal">花</div>
+						<div :class="$style.stackingTitle">花常</div>
+						<div :class="$style.stackingSub">季節の花を合わせて、一年をめぐる。</div>
+					</div>
+				</MkA>
+			</div>
+			<div class="_panel" :class="$style.link">
 				<MkA to="/reversi">
 					<img src="/client-assets/reversi/logo.png" style="display: block; max-width: 100%; max-height: 200px; margin: auto;"/>
 				</MkA>
@@ -69,4 +78,6 @@ definePage(() => ({
 .stackingEmoji { font-size: 3rem; margin-bottom: 8px; }
 .stackingTitle { font-size: 1.3rem; font-weight: 900; }
 .stackingSub { font-size: .85rem; opacity: .7; margin-top: 4px; }
+.hanaawaseCard { color: #f4efe3; background: linear-gradient(135deg, #2b2620, #3a332b 58%, #4a4238); }
+.hanaawaseSeal { display: grid; width: 54px; height: 54px; place-items: center; margin: 0 auto 10px; border: 1px solid #c9a04e; border-radius: 50%; color: #c9a04e; font-family: serif; font-size: 1.45rem; font-weight: 700; }
 </style>
