@@ -10,29 +10,47 @@ packages:
   - packages/cherrypick-js/generator
   - packages/misskey-reversi
   - packages/misskey-bubble-game
-onlyBuiltDependencies:
-  - '@biomejs/biome'
-  - '@nestjs/core'
-  - '@parcel/watcher'
-  - '@sentry/profiling-node'
-  - '@swc/core'
-  - '@tensorflow/tfjs-node'
-  - argon2
-  - bufferutil
-  - canvas
-  - core-js
-  - cypress
-  - esbuild
-  - msgpackr-extract
-  - msw
-  - nice-napi
-  - protobufjs
-  - re2
-  - sharp
-  - utf-8-validate
-  - v-code-diff
-  - vue-demi
+# 旗鯖fork: pnpm 11 では onlyBuiltDependencies(配列)は廃止され、
+# allowBuilds(パッケージ名 -> true/false のマップ)に統一された。
+# 旧 onlyBuiltDependencies に列挙していたものは true として引き継ぎ、
+# upstream 2026.7.0 の allowBuilds を突き合わせて exifreader/protobufjs の
+# 明示的 false、および @sentry/node-cpu-profiler(profiling-node 更新に伴う
+# ビルド依存の新名称)の true を追加した。
+allowBuilds:
+  '@biomejs/biome': true
+  '@nestjs/core': true
+  '@parcel/watcher': true
+  '@sentry/profiling-node': true
+  '@sentry/node-cpu-profiler': true
+  '@swc/core': true
+  '@tensorflow/tfjs-node': true
+  argon2: true
+  bufferutil: true
+  canvas: true
+  core-js: true
+  cypress: true
+  esbuild: true
+  msgpackr-extract: true
+  msw: true
+  nice-napi: true
+  re2: true
+  sharp: true
+  utf-8-validate: true
+  v-code-diff: true
+  vue-demi: true
+  exifreader: false
+  protobufjs: false
 ignorePatchFailures: false
 minimumReleaseAge: 10080 # delay 7days to mitigate supply-chain attack
 minimumReleaseAgeExclude:
   - happy-dom # セキュリティ修正のため一時的に。そのうち消すこと
+overrides:
+  '@aiscript-dev/aiscript-languageserver': '-'
+ignoredBuiltDependencies:
+  - '@sentry-internal/node-cpu-profiler'
+# 旗鯖fork: pnpm 11 のデフォルト(true)だと aiscript-vscode(github:)配下の
+# exotic subdep である @aiscript-dev/aiscript-languageserver の解決時点で
+# ERR_PNPM_EXOTIC_SUBDEP になり override(-)が効く前に installが落ちる。
+# 当該依存は override で除去する対象であり、トップレベルでも github: 依存を
+# 既に許容している方針と矛盾しないため無効化した。G3申し送り事項。
+blockExoticSubdeps: false

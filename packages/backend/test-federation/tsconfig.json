@@ -1,5 +1,7 @@
 {
 	"compilerOptions": {
+		// 旗鯖fork: TS6.0 baseUrl非推奨(TS5101)対応。G3申し送り参照。
+		"ignoreDeprecations": "6.0",
 		/* Visit https://aka.ms/tsconfig to read more about this file */
 
 		/* Projects */
