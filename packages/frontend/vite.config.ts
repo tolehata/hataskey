@@ -217,16 +217,13 @@ export function getConfig(): UserConfig {
 				output: {
 					/*
 					旗鯖fork(G9): vite 8(rolldown) で manualChunks が廃止され codeSplitting.groups へ。
-					⚠️上流 2026.7.0 の形を base に、フォークが使う photoswipe（CherryPick 旧ビューワー）の
-					グループだけ足した中和。⚠️photoswipe の要否は G10（画像ビューワー刷新）で確定する。
+					⚠️G10でMkLightbox系(新ビューワー)へ移行しphotoswipeへの参照がsrc配下から0件になったため、
+					photoswipe専用グループは削除して上流2026.7.0の形へ揃えた。
 					*/
 					codeSplitting: {
 						groups: [{
 							name: 'vue',
 							test: /node_modules[\\/]vue/,
-						}, {
-							name: 'photoswipe',
-							test: /node_modules[\\/]photoswipe/,
 						}, {
 							// split i18n related module to distinct module
 							name: 'i18n',

@@ -6,7 +6,6 @@
 import { createApp, defineAsyncComponent, markRaw } from 'vue';
 import { ui } from '@@/js/config.js';
 import * as Misskey from 'cherrypick-js';
-import { compareVersions } from 'compare-versions';
 import { common } from './common.js';
 import type { Component } from 'vue';
 import type { Keymap } from '@/utility/hotkey.js';
@@ -27,7 +26,6 @@ import { makeHotkey } from '@/utility/hotkey.js';
 import { addCustomEmoji, removeCustomEmojis, updateCustomEmojis } from '@/custom-emojis.js';
 import { prefer } from '@/preferences.js';
 import { updateCurrentAccountPartial } from '@/accounts.js';
-import { migrateOldSettings } from '@/pref-migrate.js';
 import { unisonReload } from '@/utility/unison-reload.js';
 import { userName } from '@/filters/user.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
@@ -70,7 +68,7 @@ export async function mainBoot() {
 		fetchMutedUsers();
 	}
 
-	const { isClientUpdated, isClientMigrated, lastVersion } = await common(async () => {
+	const { isClientUpdated, isClientMigrated } = await common(async () => {
 		let uiStyle = ui;
 		const searchParams = new URLSearchParams(window.location.search);
 
@@ -116,24 +114,6 @@ export async function mainBoot() {
 		const { dispose } = popup(defineAsyncComponent(() => import('@/components/MkUpdated.vue')), {}, {
 			closed: () => dispose(),
 		});
-
-		// prefereces migration
-		// TODO: そのうち消す
-		if (lastVersion) {
-			let shouldMigrate = false;
-			try {
-				shouldMigrate = compareVersions('4.16.0-alpha.0', lastVersion) === 1;
-			} catch {
-				// lastVersion が semver として不正な場合(misskey-hata 等の別系統フォークからの移行)は
-				// 旧バージョンとみなして設定移行を実行する
-				shouldMigrate = true;
-			}
-			if (shouldMigrate) {
-				console.log('Preferences migration');
-
-				migrateOldSettings();
-			}
-		}
 	}
 
 	if (isClientMigrated && $i) {

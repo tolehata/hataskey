@@ -17,6 +17,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<MkAvatar v-if="!prefer.s.hideAvatarsInNote" :class="$style.renoteAvatar" :user="note.user" link preview/>
 		<i :class="isRenote ? 'ti ti-repeat' : appearNote.reply ? 'ti ti-arrow-back-up' : ''" style="margin-right: 4px;"></i>
 		<I18n :src="isRenote ? i18n.ts.renotedBy : appearNote.reply ? i18n.ts.repliedBy : ''" tag="span" :class="$style.renoteText">
+			<!-- @vue-expect-error 旗鯖fork(G9): I18nはgeneric SFCのためGlobalComponents経由/相互参照時にslot名の型推論が効かない(実行時は問題なし) -->
 			<template v-if="'user' in note && note.user" #user>
 				<MkA v-user-preview="note.userId" :class="$style.renoteUserName" :to="userPage(note.user)">
 					<MkUserName :user="note.user"/>

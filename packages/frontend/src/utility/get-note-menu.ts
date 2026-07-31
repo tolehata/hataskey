@@ -1033,7 +1033,7 @@ export async function getRenoteMenu(props: {
 
 		// Add visibility section
 		if (prefer.s.renoteVisibilitySelection && !['followers', 'specified'].includes(appearNote.visibility)) {
-			const localOnly = store.s.rememberNoteVisibility ? (store.s.localOnly ?? false) : store.s.defaultNoteLocalOnly;
+			const localOnly = prefer.s.rememberNoteVisibility ? (store.s.localOnly ?? false) : prefer.s.defaultNoteLocalOnly;
 
 			// renote to public
 			if (appearNote.visibility === 'public') {
@@ -1159,8 +1159,8 @@ export async function getRenoteOnly(props: {
 			});
 		}
 
-		const configuredVisibility = store.s.rememberNoteVisibility ? store.s.visibility : store.s.defaultNoteVisibility;
-		const localOnly = store.s.rememberNoteVisibility ? (store.s.localOnly ?? false) : store.s.defaultNoteLocalOnly;
+		const configuredVisibility = prefer.s.rememberNoteVisibility ? store.s.visibility : prefer.s.defaultNoteVisibility;
+		const localOnly = prefer.s.rememberNoteVisibility ? (store.s.localOnly ?? false) : prefer.s.defaultNoteLocalOnly;
 
 		let visibility = appearNote.visibility;
 		visibility = smallerVisibility(visibility, configuredVisibility);

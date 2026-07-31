@@ -170,7 +170,7 @@ const showFollowingMessageInsteadOfButtonEnabled = prefer.model('showFollowingMe
 const mobileHeaderChange = prefer.model('mobileHeaderChange');
 const renameTheButtonInPostFormToNya = prefer.model('renameTheButtonInPostFormToNya');
 // 旗鯖fork: UI セクション(enableWidgetsArea) および Friendly UI 関連は UI から完全廃止
-// (preferences/def.ts 側のキー定義は他コード(pref-migrate等)との整合のため残してある)
+// (preferences/def.ts 側のキー定義は既存ユーザーの保存済み設定値との整合のため残してある)
 
 watch([
 	renameTheButtonInPostFormToNya,

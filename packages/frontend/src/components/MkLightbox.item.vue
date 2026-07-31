@@ -18,7 +18,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		@touchstart.passive="onTouchstart"
 		@touchmove="onTouchmove"
 		@touchcancel.passive="cancelPointerGesture"
-		@contextmenu="cancelPointerGesture"
+		@contextmenu="onContextmenu"
 		@wheel="onWheel"
 		@click="onClick"
 	>
@@ -148,6 +148,8 @@ export type Content = {
 	filename?: string | null;
 	file?: Misskey.entities.DriveFile;
 	sourceElement?: HTMLElement | null;
+	/** 旗鯖fork: ノート投稿者が右クリックでの保存等を抑止する設定 */
+	disableRightClick?: boolean;
 };
 
 export function calculateSourceTransform({
@@ -706,6 +708,14 @@ const doubleTapDetector = makeDoubleTapDetector((ev) => {
 		zoomInTo(ev.touches[0].clientX, ev.touches[0].clientY, 2, true);
 	}
 });
+
+// 旗鯖fork: ノート投稿者がdisableRightClickを設定している場合、フルスクリーン表示中もネイティブの右クリックメニュー(画像を保存等)を抑止する
+function onContextmenu(ev: MouseEvent) {
+	if (props.content.disableRightClick) {
+		ev.preventDefault();
+	}
+	cancelPointerGesture();
+}
 
 // これがないと例えばiOSで画像長押しでのコンテキストメニューを表示させた後にそれを閉じるとタッチ判定が残ったままになり不具合の原因になる
 function cancelPointerGesture() {

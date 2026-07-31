@@ -164,10 +164,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<hr>
 		</template>
 
-		<FormSlot>
-			<MkButton danger @click="migrate"><i class="ti ti-refresh"></i> {{ i18n.ts.migrateOldSettings }}</MkButton>
-			<template #caption>{{ i18n.ts.migrateOldSettings_description }}</template>
-		</FormSlot>
 	</div>
 </SearchMarker>
 </template>
@@ -181,7 +177,6 @@ import MkFolder from '@/components/MkFolder.vue';
 import FormInfo from '@/components/MkInfo.vue';
 import MkKeyValue from '@/components/MkKeyValue.vue';
 import MkButton from '@/components/MkButton.vue';
-import FormSlot from '@/components/form/slot.vue';
 import FormSection from '@/components/form/section.vue';
 import * as os from '@/os.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
@@ -191,7 +186,6 @@ import { definePage } from '@/page.js';
 import { prefer } from '@/preferences.js';
 import MkRolePreview from '@/components/MkRolePreview.vue';
 import { signout } from '@/signout.js';
-import { migrateOldSettings } from '@/pref-migrate.js';
 import { hideAllTips as _hideAllTips, resetAllTips as _resetAllTips } from '@/tips.js';
 import { suggestReload } from '@/utility/reload-suggest.js';
 import { cloudBackup } from '@/preferences/utility.js';
@@ -233,10 +227,6 @@ async function deleteAccount() {
 	});
 
 	await signout();
-}
-
-function migrate() {
-	migrateOldSettings();
 }
 
 function resetAllTips() {
