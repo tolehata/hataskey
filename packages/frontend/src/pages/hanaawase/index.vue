@@ -3,8 +3,14 @@ SPDX-FileCopyrightText: Tolehata and hatasaba-project
 SPDX-License-Identifier: AGPL-3.0-only
 -->
 <template>
-<PageWithHeader>
-	<!-- ⚠️data-scene は「物語の場面だけ器を広げる」ための目印。盤面・ホーム・街の様子の寸法には触らない -->
+<!--
+旗鯖fork: ⚠️`:popup="true"` は「窓で開いた」という意味ではなく、**本体の上部タイトルバーを出さない**ための指定。
+⚠️利用者の指示で標準ヘッダを消している。⚠️外すとヘッダが戻る。
+⚠️本体側（`PageWithHeader.vue`）は書き換えていない（パージ容易性：本体への追記は router と games.vue だけ）。
+⚠️ヘッダを消すと本体側の戻る導線も消えるので、**各場面の中に戻るボタンがあること**を前提にしている。
+-->
+<PageWithHeader :popup="true">
+	<!-- ⚠️data-scene は、物語と広いホームだけを限定的に広げる目印。盤面・マップ・手帖は560pxのまま。 -->
 	<main class="hanaawase-scope" :data-motion="motionOn ? 'on' : 'off'" :data-scene="scene">
 		<section v-if="scene === 'disclaimer'" class="disclaimer-shell" aria-labelledby="hanaawase-title">
 			<h1 id="hanaawase-title">この作品について</h1>
@@ -24,58 +30,90 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<section v-else-if="scene === 'home'" class="map-shell sheet home-shell" aria-labelledby="hanaawase-title">
 			<img v-if="homeBg" class="home-bg" :src="homeBg" alt="" aria-hidden="true" @error="onBackdropError">
 			<span v-if="homeBg" class="home-scrim" aria-hidden="true"></span>
-			<header class="home-heading">
-				<span class="home-seal" v-html="FLOWER_SVGS.sakura.svg"></span>
-				<h1 id="hanaawase-title">花常</h1>
-				<p>季節の花を合わせて、一年をめぐる。</p>
-			</header>
-			<button
-				v-if="menuLine && (bustupOk || gameSettings.barks)"
-				class="home-cast"
-				type="button"
-				:data-motion="motionOn ? 'on' : 'off'"
-				:aria-label="`${menuLine.name}のひとこと。押すと次のひとこと。`"
-				@click="refreshMenuLine"
-			>
-				<img v-if="bustupOk" class="cast-bustup" :src="bustupPath(menuLine.char, menuLine.line.face)" alt="" @error="onBustupError">
-				<span v-if="gameSettings.barks" :key="menuLine.line.t" class="cast-bubble"><b>{{ menuLine.name }}</b><span>{{ menuLine.line.t }}</span></span>
-			</button>
-			<div v-if="!saveLoaded" class="loading-note">記録を読んでいます。</div>
-			<nav v-else class="home-menu" aria-label="花常の目次">
-				<button class="menu-card menu-lead" type="button" @click="startStage(continueStage)">
-					<span class="menu-mark" aria-hidden="true" v-html="FLOWER_SVGS[continueStage.flower].svg"></span>
-					<span class="menu-copy"><b>続きから</b><small>{{ KANJI_MONTH[continueStage.month] }} {{ continueStage.monthName }} — 花仕事のつづき</small></span>
-					<span class="menu-chev" aria-hidden="true" v-html="ICONS.kaeshi()"></span>
+			<div class="home-scroll">
+				<header class="home-heading">
+					<span class="home-seal" v-html="FLOWER_SVGS.sakura.svg"></span>
+					<h1 id="hanaawase-title">花常</h1>
+					<p>季節の花を合わせて、一年をめぐる。</p>
+				</header>
+				<button
+					v-if="menuLine && (bustupOk || gameSettings.barks)"
+					class="home-cast"
+					type="button"
+					:data-motion="motionOn ? 'on' : 'off'"
+					:aria-label="`${menuLine.name}のひとこと。押すと次のひとこと。`"
+					@click="refreshMenuLine"
+				>
+					<img v-if="bustupOk" class="cast-bustup" :src="bustupPath(menuLine.char, menuLine.line.face)" alt="" @error="onBustupError">
+					<span v-if="gameSettings.barks" :key="menuLine.line.t" class="cast-bubble"><b>{{ menuLine.name }}</b><span>{{ menuLine.line.t }}</span></span>
 				</button>
-				<div class="menu-row">
-					<button class="menu-card" type="button" @click="scene = 'map'">
-						<span class="menu-mark" aria-hidden="true" v-html="ICONS.chizu()"></span>
-						<span class="menu-copy"><b>花仕事</b><small>季節を進める</small></span>
+				<div v-if="!saveLoaded" class="loading-note">記録を読んでいます。</div>
+				<nav v-else class="home-menu" aria-label="花常の目次">
+					<button class="menu-card menu-lead" type="button" @click="startStage(continueStage)">
+						<span class="menu-mark" aria-hidden="true" v-html="FLOWER_SVGS[continueStage.flower].svg"></span>
+						<span class="menu-copy"><b>続きから</b><small>{{ KANJI_MONTH[continueStage.month] }} {{ continueStage.monthName }} — 花仕事のつづき</small></span>
+						<span class="menu-chev" aria-hidden="true" v-html="ICONS.kaeshi()"></span>
 					</button>
-					<button class="menu-card" type="button" @click="scene = 'dex'">
+					<div class="menu-row">
+						<button class="menu-card" type="button" @click="scene = 'map'">
+							<span class="menu-mark" aria-hidden="true" v-html="ICONS.chizu()"></span>
+							<span class="menu-copy"><b>花仕事</b><small>季節を進める</small></span>
+						</button>
+						<button class="menu-card" type="button" @click="scene = 'dex'">
+							<span class="menu-mark" aria-hidden="true" v-html="ICONS.choumen()"></span>
+							<span class="menu-copy"><b>花手帖</b><small>これまでの花</small></span>
+						</button>
+					</div>
+					<button class="menu-card" type="button" @click="startDaily">
+						<span class="menu-mark" aria-hidden="true" v-html="ICONS.himekuri()"></span>
+						<span class="menu-copy"><b>今日の盤面</b><small>一日に一度、みなで同じ札を</small></span>
+						<span class="menu-chev" aria-hidden="true" v-html="ICONS.kaeshi()"></span>
+					</button>
+					<button v-if="eventDoor" class="menu-card event-door" type="button" @click="openEvent(eventDoor)">
+						<span class="menu-mark" aria-hidden="true" v-html="ICONS.sakura()"></span>
+						<span class="menu-copy"><b>{{ eventDoor.title }}</b><small>{{ eventDoorStatus }}</small></span>
+						<span class="menu-chev" aria-hidden="true" v-html="ICONS.kaeshi()"></span>
+					</button>
+					<!-- ⚠️通し読み。到達済みの場面だけが並ぶ（未読は題も出さない） -->
+					<button class="menu-card" type="button" @click="scene = 'read'">
 						<span class="menu-mark" aria-hidden="true" v-html="ICONS.choumen()"></span>
-						<span class="menu-copy"><b>花手帖</b><small>これまでの花</small></span>
+						<span class="menu-copy"><b>物語</b><small>読んだ場面を、もう一度</small></span>
+						<span class="menu-chev" aria-hidden="true" v-html="ICONS.kaeshi()"></span>
 					</button>
-				</div>
-				<button class="menu-card" type="button" @click="startDaily">
-					<span class="menu-mark" aria-hidden="true" v-html="ICONS.himekuri()"></span>
-					<span class="menu-copy"><b>今日の盤面</b><small>一日に一度、みなで同じ札を</small></span>
-					<span class="menu-chev" aria-hidden="true" v-html="ICONS.kaeshi()"></span>
-				</button>
-				<button class="menu-card" type="button" @click="scene = 'gallery'">
-					<span class="menu-mark" aria-hidden="true" v-html="ICONS.yunomi()"></span>
-					<span class="menu-copy"><b>花の名鑑</b><small>出会った人</small></span>
-					<span class="menu-chev" aria-hidden="true" v-html="ICONS.kaeshi()"></span>
-				</button>
-				<div class="menu-foot"><button class="text-button" type="button" @click="scene = 'settings'">設定</button></div>
-			</nav>
-			<dl v-if="saveLoaded" class="daily-stats" aria-label="今日の盤面の記録">
-				<div><dt>連続</dt><dd>{{ daily.streak }}</dd></div>
-				<div><dt>最長</dt><dd>{{ daily.longest }}</dd></div>
-				<div><dt>自己ベスト</dt><dd>{{ daily.best }}</dd></div>
-				<div class="stat-dew"><dt><span class="dew-mark" aria-hidden="true" v-html="ICONS.tsuyu()"></span>花の露</dt><dd>{{ daily.freezes }}</dd></div>
-			</dl>
-			<p v-if="syncWarning" class="save-warning">記録を保存できていません。通信を確認してください。</p>
+					<button class="menu-card" type="button" @click="scene = 'gallery'">
+						<span class="menu-mark" aria-hidden="true" v-html="ICONS.yunomi()"></span>
+						<span class="menu-copy"><b>花の名鑑</b><small>出会った人</small></span>
+						<span class="menu-chev" aria-hidden="true" v-html="ICONS.kaeshi()"></span>
+					</button>
+					<button class="menu-card menu-settings" type="button" @click="scene = 'settings'">
+						<span class="menu-mark" aria-hidden="true" v-html="ICONS.chousei()"></span>
+						<span class="menu-copy"><b>設定</b><small>音・動き・クレジット</small></span>
+						<span class="menu-chev" aria-hidden="true" v-html="ICONS.kaeshi()"></span>
+					</button>
+				</nav>
+				<dl v-if="saveLoaded" class="daily-stats" aria-label="今日の盤面の記録">
+					<div><dt>連続</dt><dd>{{ daily.streak }}</dd></div>
+					<div><dt>最長</dt><dd>{{ daily.longest }}</dd></div>
+					<div><dt>自己ベスト</dt><dd>{{ daily.best }}</dd></div>
+					<div class="stat-dew"><dt><span class="dew-mark" aria-hidden="true" v-html="ICONS.tsuyu()"></span>花の露</dt><dd>{{ daily.freezes }}</dd></div>
+				</dl>
+				<p v-if="syncWarning" class="save-warning">記録を保存できていません。通信を確認してください。</p>
+			</div>
+		</section>
+
+		<section v-else-if="scene === 'event' && loadedEvent" class="event-shell" aria-label="花常 イベント">
+			<EventHome
+				:event="loadedEvent"
+				:progress="currentEventProgress"
+				:tools="progress.tools"
+				:now="eventNow"
+				:lineIndex="eventLineIndex"
+				:reducedMotion="gameSettings.motion === 'reduced'"
+				@close="goHome"
+				@start="startEventStage"
+				@exchange="exchangeEventItem"
+				@replay="replayEventStory"
+			/>
 		</section>
 
 		<!--
@@ -162,12 +200,20 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<span class="special-copy"><b>{{ SPECIAL_SVGS[item.key].name }}</b><small>{{ item.text }}</small></span>
 				</li>
 			</ul>
-			<!--
-			旗鯖fork: 通し読み（SPEC §9.75-3。章をまたぐ読み返しは花手帖が担う）。
-			⚠️並ぶのは到達済みの場面だけ（seenVignettes）。未読の題もあらすじも出ないのでネタバレしない。
-			⚠️ここに「最初から読む」は置かない（§9.75-3: 読み返しと機能を重複させない）。
-			-->
-			<h2 class="dex-heading">通し読み</h2>
+		</section>
+
+		<!--
+		旗鯖fork: 通し読み。⚠️利用者の指示で**花手帖の中から出して、ホームから開く独立した場面**にした。
+		⚠️並ぶのは到達済みの場面だけ（`seenVignettes`）。⚠️**未読の題もあらすじも出さない**（ネタバレ防止）。
+		⚠️ここに「最初から読む」は置かない（SPEC §9.75-3: 読み返しと機能を重複させない）。
+		-->
+		<section v-else-if="scene === 'read'" class="map-shell sheet dex-shell" aria-labelledby="hanaawase-title">
+			<header class="sheet-head">
+				<button class="icon-button sheet-back" type="button" aria-label="ホームへ戻る" @click="leaveReadback"><span v-html="ICONS.modoru()"></span></button>
+				<p class="eyebrow">物語</p>
+				<h1 id="hanaawase-title">通し読み</h1>
+				<p class="sheet-sub">読んだ場面を、もう一度。</p>
+			</header>
 			<p v-if="readableVignettes.length === 0" class="map-intro dex-empty">まだ、読んだ場面はありません。</p>
 			<ol v-else class="story-list" aria-label="読んだ場面">
 				<li v-for="entry in readableVignettes" :key="entry.id">
@@ -192,10 +238,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<button class="icon-button sheet-back" type="button" aria-label="ホームへ戻る" @click="goHome"><span v-html="ICONS.modoru()"></span></button>
 				<p class="eyebrow">帳面</p>
 				<h1 id="hanaawase-title">設定</h1>
-				<p class="sheet-sub">音と動きの加減を、ここで整えます。</p>
+				<p class="sheet-sub">音と動きの加減や、作品の情報を確かめられます。</p>
 			</header>
 			<div class="settings-list">
-				<label class="set-row"><span class="set-copy"><b>効果音</b><small>環境音も合わせて止めます。</small></span><span class="set-switch"><input type="checkbox" :checked="gameSettings.se" @change="setSound($event)"><span class="switch-track"><span class="switch-knob"></span></span></span></label>
+				<label class="set-row"><span class="set-copy"><b>効果音</b><small>札の音です。環境音も合わせて止めます。</small></span><span class="set-switch"><input type="checkbox" :checked="gameSettings.se" @change="setSound($event)"><span class="switch-track"><span class="switch-knob"></span></span></span></label>
+				<!-- ⚠️環境音は既定で切。「ずっと響いていて不快」という報告を受けて、効果音とは別の栓にした。 -->
+				<label class="set-row"><span class="set-copy"><b>環境音</b><small>店・雨・風の音を流し続けます。既定は切です。</small></span><span class="set-switch"><input type="checkbox" :checked="gameSettings.amb" :disabled="!gameSettings.se" @change="setAmbience($event)"><span class="switch-track"><span class="switch-knob"></span></span></span></label>
 				<fieldset class="set-row set-choice">
 					<legend>アニメーション</legend>
 					<span class="set-options">
@@ -206,6 +254,22 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<label class="set-row"><span class="set-copy"><b>ひとことを表示</b><small>待機中の案内表示です。</small></span><span class="set-switch"><input type="checkbox" :checked="gameSettings.barks" @change="setBarks($event)"><span class="switch-track"><span class="switch-knob"></span></span></span></label>
 				<label class="set-row"><span class="set-copy"><b>最初のヒントを再表示</b><small>初回の操作案内だけを、もう一度表示します。</small></span><button class="set-button" type="button" @click="resetHints">再表示</button></label>
 				<label class="set-row"><span class="set-copy"><b>この作品について</b><small>生成AIの利用と、遊んだ記録の扱いについての開示です。</small></span><button class="set-button" type="button" @click="scene = 'disclaimer'">読む</button></label>
+				<details class="sound-credits">
+					<summary>
+						<span class="set-copy"><b>音源クレジット</b><small>効果音と環境音の作り手・ライセンス</small></span>
+						<span class="credit-open" aria-hidden="true">詳細</span>
+					</summary>
+					<div class="credit-body">
+						<p class="credit-se"><b>効果音</b><span>Web Audioで生成する独自音です。外部の音声素材は使用していません。</span></p>
+						<p class="credit-note">環境音はすべてCC0です。表示義務のないライセンスですが、素材の由来を明記しています。</p>
+						<ul class="credit-list">
+							<li><span><b>店内</b><small>「The Shop」／LEGIT Audio</small></span><a href="https://opengameart.org/content/the-shop" target="_blank" rel="noopener noreferrer">出典</a></li>
+							<li><span><b>雨</b><small>「Rain (loopable)」／Ylmir</small></span><a href="https://opengameart.org/content/rain-loopable" target="_blank" rel="noopener noreferrer">出典</a></li>
+							<li><span><b>風</b><small>「Icy Heights」／Écrivain</small></span><a href="https://opengameart.org/content/icy-heights" target="_blank" rel="noopener noreferrer">出典</a></li>
+						</ul>
+						<p class="credit-silent">12月ボス「大霜」では、環境音を再生しません。</p>
+					</div>
+				</details>
 				<p v-if="recoveryAvailable" class="save-warning">以前の記録を復旧用に退避しています。リセット前に保管してください。</p>
 				<div class="reset-box" :data-armed="resetStep > 0 ? 'on' : null"><b>進行のリセット</b><p>{{ resetStep === 0 ? 'すべての記録が消えます。戻せません。' : resetStep === 1 ? '本当によろしいですか。もう一度押すと消去します。' : '消去しました。' }}</p><button v-if="resetStep < 2" type="button" @click="confirmReset">{{ resetStep === 0 ? 'リセットする' : '本当に消去する' }}</button></div>
 			</div>
@@ -218,35 +282,56 @@ SPDX-License-Identifier: AGPL-3.0-only
 		⚠️描くのはキューの先頭1つだけ。`:key` で場面ごとに作り直し、前の場面の途中状態を持ち越さない。
 		-->
 		<section v-else-if="scene === 'story'" class="story-shell sheet" aria-label="花常 物語">
-			<div v-if="storyInterlude" class="story-interlude" role="status">
-				<p>ここで、いちどしおりを挟みます。</p>
-				<div>
-					<button type="button" @click="continueStory">次の場面を読む</button>
-					<button type="button" @click="onStoryDefer">今回は読まない</button>
-				</div>
-			</div>
 			<Vignette
-				v-else-if="storyCurrent"
+				v-if="storyCurrent"
 				:key="storyCurrent.id"
 				:vignette="storyCurrent"
 				:choices="progress.choices"
 				:motion="storyMotion"
+				:eventAssets="storyEventAssets"
 				@choose="onStoryChoose"
 				@finish="onStoryFinish"
 				@defer="onStoryDefer"
 			/>
 		</section>
 
-		<section v-else ref="gameShell" class="game-shell" aria-labelledby="hanaawase-title">
+		<section v-else ref="gameShell" class="game-shell" :data-story="boardBackdrop ? 'on' : null" aria-labelledby="hanaawase-title">
+			<!--
+			旗鯖fork: ⚠️**物語に関わる面だけ、盤面の奥に季節の絵を敷く**（利用者の指示）。
+			⚠️札の視認性が最優先なので、絵は薄く敷いて上から帳を掛ける。⚠️`filter` は使わない（重い）。
+			⚠️読み込みに失敗したら黙って消える（`@error`）。絵が無い環境でも盤面は必ず遊べる。
+			-->
+			<img v-if="boardBackdrop && !boardBackdropFailed" class="board-bg" :src="boardBackdrop" alt="" aria-hidden="true" @error="boardBackdropFailed = true">
+			<div v-if="boardBackdrop && !boardBackdropFailed" class="board-bg-scrim" aria-hidden="true"></div>
 			<header class="game-heading">
 				<div>
-					<p class="eyebrow">{{ isDaily ? '今日の盤面' : stage.monthName + '・' + (stage.boss ? '季節の障り' : '花仕事') }}</p>
+					<p class="eyebrow">{{ isDaily ? '今日の盤面' : isEventStage ? eventStageTitle : stage.monthName + '・' + (stage.boss ? '季節の障り' : '花仕事') }}</p>
 					<h1 id="hanaawase-title">花常</h1>
 				</div>
-				<button class="icon-button" type="button" aria-label="月の一覧へ戻る" @click="returnToMap">
-					<span v-html="ICONS.modoru()"></span>
+				<button class="icon-button" type="button" aria-label="局のメニューを開く" @click="openBoardMenu">
+					<span v-html="ICONS.haguruma()"></span>
 				</button>
 			</header>
+
+			<div
+				v-if="goalPreviewVisible"
+				class="goal-preview"
+				role="dialog"
+				aria-modal="true"
+				aria-labelledby="goal-preview-title"
+				aria-describedby="goal-preview-detail"
+				@keydown.esc.prevent.stop="closeGoalPreview"
+			>
+				<div class="goal-preview-card">
+					<span class="goal-preview-flower" v-html="FLOWER_SVGS[stage.flower].svg"></span>
+					<p class="goal-preview-kicker">{{ goalPreviewKicker }}</p>
+					<small>この局の目標</small>
+					<h2 id="goal-preview-title">{{ goalPreviewTitle }}</h2>
+					<p id="goal-preview-detail">{{ goalPreviewDetail }}</p>
+					<div class="goal-preview-progress" aria-hidden="true"><i></i></div>
+					<button ref="goalStartButton" type="button" @click="closeGoalPreview">始める</button>
+				</div>
+			</div>
 
 			<div class="hud" aria-label="ステージの状況">
 				<div class="hud-block">
@@ -277,7 +362,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<span v-for="star in 3" :key="star" :class="{ reached: starReached(star) }" v-html="starReached(star) ? ICONS.sakura() : ICONS.sakuraOutline()"></span>
 			</div>
 
-			<p class="instruction">{{ isDaily ? '今日だけの同じ盤面で、点を伸ばします。' : bossState ? '予告された天候に備えながら、季節ゲージを下げます。' : '隣り合う花を入れ替え、今月の花を集めます。' }}</p>
+			<p class="instruction">{{ isDaily ? '今日だけの同じ盤面で、点を伸ばします。' : isEventStage ? '隣り合う花を入れ替え、町の手がかりを集めます。' : bossState ? '予告された天候に備えながら、季節ゲージを下げます。' : '隣り合う花を入れ替え、今月の花を集めます。' }}</p>
 			<!--
 			旗鯖fork: 季節の障りの天候レイヤ。⚠️盤面(.board)・HUDより「奥」に置くため z-index は 0 のまま、
 			他の要素側に z-index:1 を与えて手前に出している。視認性を損なわないための不変条件。
@@ -342,11 +427,32 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<div v-if="outcome !== 'playing' && !resultVeiled" class="result" role="dialog" aria-modal="true" aria-labelledby="result-title">
 				<div class="result-card">
 					<span class="result-flower" v-html="FLOWER_SVGS[stage.flower].svg"></span>
-					<h2 id="result-title">{{ isDaily ? '今日の盤面を、書き終えました。' : outcome === 'clear' ? '今月の花を、整えました。' : 'また、整えましょう。' }}</h2>
+					<h2 id="result-title">{{ isDaily ? '今日の盤面を、書き終えました。' : isEventStage ? outcome === 'clear' ? '手がかりを、書き留めました。' : 'もう一度、手を動かしましょう。' : outcome === 'clear' ? '今月の花を、整えました。' : 'また、整えましょう。' }}</h2>
 					<p v-if="bossState">{{ outcome === 'clear' ? '季節の障りが、静かに去りました。' : `季節ゲージは ${bossState.hp} 残っています。` }}</p>
 					<p v-else-if="isDaily">スコア {{ score }}、最大{{ maxChain }}連鎖でした。</p>
+					<p v-else-if="isEventStage">{{ outcome === 'clear' ? `${eventStagePoints}枚の${loadedEvent?.definition.points.name ?? '憶え書き'}を得ました。` : `${goalName}は ${goalHave} / ${goalNeed} でした。` }}</p>
 					<p v-else>{{ outcome === 'clear' ? `${score}点で${goalName}を集めました。` : `${goalName}は ${goalHave} / ${goalNeed} でした。` }}</p>
-					<div class="result-actions"><button v-if="isDaily" class="restart-button" type="button" @click="shareDailyResult">結果を書き記す</button><button class="restart-button" type="button" @click="restart">もう一度</button><button class="secondary-button" type="button" @click="returnToMap">一覧へ戻る</button></div>
+					<template v-if="autoStoryPending">
+						<p class="result-next" role="status" aria-live="polite">まもなく物語へ移ります</p>
+						<div class="result-progress" aria-hidden="true"><i></i></div>
+					</template>
+					<div v-else class="result-actions"><button v-if="isDaily" class="restart-button" type="button" @click="shareDailyResult">結果を書き記す</button><button class="restart-button" type="button" @click="restart">もう一度</button><button class="secondary-button" type="button" @click="returnToMap">{{ resultExitLabel }}</button></div>
+				</div>
+			</div>
+
+			<!--
+			旗鯖fork: ⚠️盤面を離れる前の確認。⚠️本体のダイアログを使わずゲーム内で完結させる（パージ容易性）。
+			⚠️「最初からやり直す」はパズルの局だけ。物語には出さない。
+			-->
+			<div v-if="leaveAsk" class="leave-ask" role="dialog" aria-modal="true" aria-labelledby="leave-ask-title">
+				<div class="leave-card">
+					<h2 id="leave-ask-title">この局をどうしますか</h2>
+					<p>いま離れると、この局の進みは失われます。</p>
+					<div class="leave-actions">
+						<button class="restart-button" type="button" @click="leaveAskContinue">続ける</button>
+						<button class="secondary-button" type="button" @click="leaveAskRestart">最初からやり直す</button>
+						<button class="secondary-button" type="button" @click="leaveAskQuit">{{ leaveQuitLabel }}</button>
+					</div>
 				</div>
 			</div>
 		</section>
@@ -367,19 +473,26 @@ SPDX-License-Identifier: AGPL-3.0-only
 			:reducedMotion="gameSettings.motion === 'reduced'"
 			@go="onTanomigotoGo"
 		/>
+		<!--
+		旗鯖fork: 場面が替わるたびの暗転。⚠️黒を1枚かぶせて**明ける側だけ**を見せる（切替は既に終わっている）。
+		⚠️`:key` の付け替えで再生し、`forwards` で透明に着地するので後始末のタイマーが要らない。
+		⚠️「動き控えめ」と `prefers-reduced-motion` では出さない（motionOn が偽になる）。
+		-->
+		<div v-if="motionOn && sceneVeilKey > 0" :key="sceneVeilKey" class="scene-veil" aria-hidden="true"></div>
 	</main>
 </PageWithHeader>
 </template>
 
 <script lang="ts" setup>
-import { computed, nextTick, onActivated, onDeactivated, onMounted, onUnmounted, ref, shallowRef } from "vue";
+import { computed, nextTick, onActivated, onDeactivated, onMounted, onUnmounted, ref, shallowRef, watch } from "vue";
 import { definePage } from "@/page.js";
 import * as os from "@/os.js";
+import EventHome from "./EventHome.vue";
 import Gallery from "./Gallery.vue";
 import MachiFeed from "./MachiFeed.vue";
 import Vignette from "./Vignette.vue";
 // ⚠️この import が唯一の到達経路。ここを消すと物語がビルドから丸ごと落ちる。
-import { pendingVignettes, seenVignettes, withSeen } from "./story/index.js";
+import { VIGNETTES, pendingVignettes, seenVignettes, withSeen } from "./story/index.js";
 import type { ChoiceKey, Vignette as VignetteData } from "./story/index.js";
 import type { Tanomigoto } from "./machi-lines.js";
 import {
@@ -419,7 +532,7 @@ import {
 } from "./bosses.js";
 import type { BossAction, BossState } from "./bosses.js";
 import { HanaawaseStorage, emptySaveMap } from "./storage.js";
-import type { Daily, GameSettings, Progress } from "./storage.js";
+import type { Daily, EventProgress, EventSave, GameSettings, Progress } from "./storage.js";
 import {
 	createDailyStage,
 	dailyDateFrom,
@@ -430,12 +543,25 @@ import type { DailyStage } from "./daily.js";
 import { bustupPath, pickMenuLine } from "./menu-dialogue.js";
 import type { PickedLine } from "./menu-dialogue.js";
 import type { MenuProg } from "./menu-lines.js";
-import { bgPath, pickBackdrop } from "./backdrop.js";
+import { bgPath, pickBackdrop, seasonOf } from "./backdrop.js";
+import {
+	HanaawaseEventLoader,
+	currentRun,
+	emptyEventProgress,
+	eventArchived,
+	eventBalance,
+	eventRunFullTime,
+	eventState,
+	revealedEventStages,
+} from "./events.js";
+import type { EventExchangeItem, EventIndex, EventIndexEntry, EventStage, LoadedEvent } from "./events.js";
 import { prefer } from "@/preferences.js";
 // ⚠️本体への追記はゼロ。既にある本体APIを「使うだけ」なのでパージ容易性は損なわない。
 import { useRouter } from "@/router.js";
 
 const router = useRouter();
+/** このページへ戻すためのパス。ブラウザ戻る／小窓の戻るを一度受け止めるときに使う。 */
+const hanaawaseRoutePath = router.getCurrentFullPath();
 
 /**
  * 注意書きの版。⚠️開示の内容を書き足したら必ず1つ上げる（既読の人にも読み直してもらうため）。
@@ -443,11 +569,22 @@ const router = useRouter();
  */
 const DISCLAIMER_REV = 1;
 
-const scene = ref<"disclaimer" | "home" | "map" | "dex" | "gallery" | "settings" | "board" | "story">("home");
-const stage = ref<StageDefinition | DailyStage>(LEVELS[0]!);
+// ⚠️"read"＝通し読み（旧・花手帖の中）。利用者の指示でホームから開く独立した場面にした。
+type EventBoardStage = EventStage & Readonly<{
+	month: number;
+	monthName: string;
+	boardPreset?: undefined;
+	boss?: undefined;
+}>;
+type PlayableStage = StageDefinition | DailyStage | EventBoardStage;
+
+const scene = ref<"disclaimer" | "home" | "event" | "map" | "dex" | "read" | "gallery" | "settings" | "board" | "story">("home");
+const stage = ref<PlayableStage>(LEVELS[0]!);
 const storage = new HanaawaseStorage();
+const eventLoader = new HanaawaseEventLoader();
 const saveLoaded = ref(false);
 const progress = ref<Progress>(emptySaveMap().progress);
+const eventSave = ref<EventSave>(emptySaveMap().events);
 /** 注意書きを読んでもらう必要があるか。未読の人と、古い版しか読んでいない人の両方が対象。 */
 const disclaimerPending = computed(() =>
 	!progress.value.disclaimerSeen || progress.value.disclaimerRev < DISCLAIMER_REV);
@@ -468,11 +605,25 @@ const activeTanomigoto = ref<{ qi: number; quest: Tanomigoto }>();
 const pageActive = ref(true);
 let removeOnlineRetry: (() => void) | undefined;
 const isDaily = computed(() => stage.value.id === "daily");
+const isEventStage = computed(() => "points" in stage.value);
 const currentDailyDate = computed(() => dailyDateFrom());
 const activeDailyDate = ref(currentDailyDate.value);
-const stageSeed = () => isDaily.value ? 0 : 20260720 + stage.value.month * 10 + Number(stage.value.id.slice(-1));
+const stringSeed = (source: string) => {
+	let hash = 2166136261;
+	for (let index = 0; index < source.length; index++) {
+		hash ^= source.charCodeAt(index);
+		hash = Math.imul(hash, 16777619);
+	}
+	return hash >>> 0;
+};
+const stageSeed = () => isDaily.value ? 0
+	: isEventStage.value ? stringSeed(stage.value.id)
+		: 20260720 + stage.value.month * 10 + Number(stage.value.id.slice(-1));
 const goalNeed = computed(() => stage.value.goalNeed ?? 0);
 const goalName = computed(() => FLOWER_SVGS[stage.value.flower].name);
+const eventStageTitle = computed(() => isEventStage.value ? (stage.value as EventBoardStage).title : "");
+const eventStagePoints = computed(() => isEventStage.value ? (stage.value as EventBoardStage).points : 0);
+const resultExitLabel = computed(() => isEventStage.value ? "イベントへ戻る" : "ホームへ戻る");
 const bossName = (entry: StageDefinition) =>
 	entry.boss ? BOSSES[entry.boss].name : "";
 const stageNumber = (entry: StageDefinition) => entry.id.slice(-1);
@@ -490,13 +641,27 @@ const stageLabel = (entry: StageDefinition) => `第${["", "一", "二", "三"][N
  * 月ごとに束ねた絵巻の行。⚠️並びも中身も LEVELS が正本で、ここは表示の入れ物にすぎない。
  * ⚠️解放条件は増やしていない（従来どおりどの局からでも startStage できる）。
  */
+/*
+旗鯖fork: ⚠️**いま進めている面より先を、月選びに出さない**（利用者の指示）。
+⚠️理由は2つ：先の月の花名が**ネタバレ**になること、⚠️**残りの分量を推測されること**。
+⚠️だから「灰色で見せる」ではなく**行ごと出さない**。総数も出さない。
+⚠️`LEVELS` の並び順が進行順であることに依存している。並びを変えるならここも見直すこと。
+*/
+const reachedIndex = computed(() => {
+	const index = LEVELS.findIndex((entry) => entry.id === continueStage.value.id);
+	return index < 0 ? LEVELS.length - 1 : index;
+});
 const monthGroups = computed(() =>
-	monthEntries.value.map((head) => ({
-		month: head.month,
-		monthName: head.monthName,
-		flower: head.flower,
-		stages: LEVELS.filter((entry) => entry.month === head.month),
-	})));
+	monthEntries.value
+		.filter((head) => head.month <= continueStage.value.month)
+		.map((head) => ({
+			month: head.month,
+			monthName: head.monthName,
+			flower: head.flower,
+			// ⚠️同じ月の中でも、まだ辿り着いていない面は出さない。
+			stages: LEVELS.filter((entry, index) => entry.month === head.month && index <= reachedIndex.value),
+		}))
+		.filter((group) => group.stages.length > 0));
 
 /**
  * 花手帖の覚え書き。⚠️本体の locale を使わずここに閉じる（パージ容易性）。
@@ -551,10 +716,27 @@ const hintSpotStyle = computed(() => hintTarget.value ? {
 
 let random = mulberry32(stageSeed());
 let releaseTimer: number | undefined;
-const initialBoard = (): Board =>
-	stage.value.boardPreset
-		? stage.value.boardPreset.map((row) => row.map((flower) => createPiece(flower)))
-		: createBoard(8, 8, stage.value.colors, random);
+/*
+⚠️`boardPreset` は**2種類の形が来る**。取り違えると盤面に入った瞬間に画面が空白になる（実際に起きた）。
+  ・月の面（`levels.ts` の `BoardPreset`）… **花のid**の二次元配列（`Flower[][]`）
+  ・今日の盤面（`daily.ts` の `Board`）……… **札そのもの**の二次元配列（`Piece[][]`。`outOfSeason` 付き）
+⚠️以前は前者だと決め打ちして `createPiece(flower)` に通していたため、今日の盤面では
+  **Pieceをもう一度 createPiece で包み**、`piece.flower` がオブジェクトになっていた。
+  その結果 `FLOWER_SVGS[オブジェクト]` が undefined になり、名札を作る `cellLabel` の `.name` で
+  **TypeError → コンポーネントごと落ちて空白のページ**になっていた。
+⚠️どちらが来ても通るよう、ここで**中身の形を見て**分岐する。
+*/
+const initialBoard = (): Board => {
+	const preset = stage.value.boardPreset as
+		| readonly (readonly (Flower | Piece | null)[])[]
+		| undefined;
+	if (!preset) return createBoard(8, 8, stage.value.colors, random);
+	return preset.map((row) => row.map((cell) => {
+		if (cell === null) return null;
+		// 文字列＝花のid（月の面）。オブジェクト＝札そのもの（今日の盤面）。
+		return typeof cell === "string" ? createPiece(cell) : { ...cell };
+	}));
+};
 const board = ref<Board>(initialBoard());
 const selected = ref<Coord>();
 const cursor = ref<Coord>({ row: 0, col: 0 });
@@ -576,6 +758,8 @@ const suppressClick = ref(false);
 const gameShell = ref<HTMLElement>();
 const boardElement = ref<HTMLElement>();
 const effects = ref<HTMLElement>();
+const goalPreviewVisible = ref(false);
+const goalStartButton = ref<HTMLButtonElement>();
 let queuedMove: Readonly<{ from: Coord; to: Coord }> | undefined;
 let effectTimers = new Set<number>();
 // 旗鯖fork: 連鎖カスケードの再生。世代カウンタで「途中でやめた再生」の残タイマーを無効化する。
@@ -588,6 +772,8 @@ let weatherToken = 0;
 let decorRandom = mulberry32((stageSeed() ^ 0x5f3a7c1d) >>> 0);
 /** 撃破シーケンスの「溜め」の間だけ結果カードを伏せる。保存自体は finishStage で即座に走る。 */
 const resultVeiled = ref(false);
+/** 物語へ自動遷移する結果カードだけ、操作ボタンの代わりにカウントバーを出す。 */
+const autoStoryPending = ref(false);
 const weatherState = ref<"idle" | "surge" | "flinch" | "drain" | "release">("idle");
 const CHAIN_KANJI = ["", "一", "二", "三", "四", "五", "六", "七", "八", "九", "十"] as const;
 
@@ -614,12 +800,70 @@ const motionEnabled = () =>
 
 const motionOn = computed(() => motionEnabled());
 
+/**
+ * 場面が替わるたびに増える。⚠️これを `:key` に渡して暗転の一枚を貼り直す。
+ * ⚠️0 のあいだは出さない（初回表示でいきなり暗転しないため）。
+ */
+const sceneVeilKey = ref(0);
+watch(scene, () => { sceneVeilKey.value += 1; });
+
+/**
+ * クリアしてから物語へ送るまでの間。⚠️結果カードを読み終える前に画面を奪わないための尺。
+ * ⚠️短くしすぎると「勝手に飛んだ」と感じる。⚠️長くしすぎると待たされる。
+ * ⚠️CSS の `.result-progress > i` のアニメーション尺と必ず揃える。
+ */
+const AUTO_STORY_MS = 2200;
+/** ボス撃破時に結果カードを伏せる時間。自動遷移バーはこのあとから全尺を見せる。 */
+const BOSS_RESULT_VEIL_MS = 980;
+/** 盤面へ入った直後に、局の目的を読めるようにする時間。押せば待たずに始められる。 */
+const GOAL_PREVIEW_MS = 2400;
+
+const goalPreviewKicker = computed(() => {
+	if (isDaily.value) return "今日の盤面";
+	if (isEventStage.value) return eventStageTitle.value;
+	return `${stage.value.monthName}・${stageLabel(stage.value as StageDefinition)}`;
+});
+const goalPreviewTitle = computed(() => {
+	if (isDaily.value) return "できるだけ高い点を";
+	if (bossState.value) return "季節ゲージを零に";
+	return `${goalName.value}を${goalNeed.value}枚`;
+});
+const goalPreviewDetail = computed(() => {
+	if (isDaily.value) return `${stage.value.moves}手で、今日の記録を伸ばしましょう。`;
+	if (bossState.value) return `${stage.value.moves}手以内に、${BOSSES[bossState.value.id].name}を退けましょう。`;
+	return `${stage.value.moves}手以内に集めましょう。`;
+});
+let goalPreviewGeneration = 0;
+
 function after(delay: number, callback: () => void) {
 	const timer = window.setTimeout(() => {
 		effectTimers.delete(timer);
 		callback();
 	}, delay);
 	effectTimers.add(timer);
+}
+
+async function hideGoalPreview(focusBoard: boolean) {
+	if (!goalPreviewVisible.value) return;
+	goalPreviewGeneration += 1;
+	goalPreviewVisible.value = false;
+	if (!focusBoard) return;
+	await nextTick();
+	boardElement.value?.focus();
+}
+
+async function closeGoalPreview() {
+	await hideGoalPreview(true);
+}
+
+async function showGoalPreview() {
+	const generation = ++goalPreviewGeneration;
+	goalPreviewVisible.value = true;
+	await nextTick();
+	goalStartButton.value?.focus();
+	after(GOAL_PREVIEW_MS, () => {
+		if (generation === goalPreviewGeneration) void closeGoalPreview();
+	});
 }
 
 // 旗鯖fork: このSFCは scoped なので、CSSセレクタは data-v-* 付きへ書き換えられる。
@@ -706,6 +950,134 @@ function onBackdropError() {
 	homeBg.value = undefined;
 }
 
+// --- 静的イベント -----------------------------------------------------------
+const eventIndex = shallowRef<EventIndex>();
+const loadedEvent = shallowRef<LoadedEvent>();
+const eventNow = ref(Date.now());
+const eventLineIndex = ref(0);
+
+const eventDoor = computed<EventIndexEntry | undefined>(() => {
+	const entries = eventIndex.value?.events ?? [];
+	const active = entries.find((entry) => eventState(entry, eventNow.value) === "active");
+	if (active) return active;
+	const upcoming = entries
+		.filter((entry) => eventState(entry, eventNow.value) === "upcoming")
+		.sort((a, b) => Date.parse(currentRun(a, eventNow.value)?.start ?? "")
+			- Date.parse(currentRun(b, eventNow.value)?.start ?? ""))[0];
+	if (upcoming) return upcoming;
+	return entries.find((entry) =>
+		eventArchived(entry, eventNow.value) && eventSave.value.byEvent[entry.id]?.completedAt !== undefined);
+});
+
+const eventDoorStatus = computed(() => {
+	const entry = eventDoor.value;
+	if (!entry) return "";
+	const state = eventState(entry, eventNow.value);
+	if (state === "ended") return "これまでの物語";
+	const run = currentRun(entry, eventNow.value)
+		?? [...entry.runs].sort((a, b) => Date.parse(b.end) - Date.parse(a.end))[0];
+	if (!run) return "開催時間 終了しました";
+	return eventRunFullTime(run);
+});
+
+const currentEventProgress = computed<EventProgress>(() => {
+	const id = loadedEvent.value?.index.id;
+	return id ? eventSave.value.byEvent[id] ?? emptyEventProgress() : emptyEventProgress();
+});
+
+async function refreshEventIndex(force = false) {
+	// ⚠️開催時間が変わっても、遊んでいる1局は最後まで続ける。
+	if (scene.value === "board" && isEventStage.value && outcome.value === "playing") return;
+	eventNow.value = Date.now();
+	const next = await eventLoader.loadIndex(force);
+	eventIndex.value = next;
+	if (!next && scene.value === "event") goHome();
+}
+
+async function openEvent(entry: EventIndexEntry) {
+	eventNow.value = Date.now();
+	const fresh = await eventLoader.loadIndex(true);
+	eventIndex.value = fresh;
+	const current = fresh?.events.find((candidate) => candidate.id === entry.id);
+	if (!current) return;
+	const state = eventState(current, eventNow.value);
+	const canArchive = eventArchived(current, eventNow.value)
+		&& eventSave.value.byEvent[current.id]?.completedAt !== undefined;
+	if (state === "ended" && !canArchive) return;
+	const loaded = await eventLoader.loadEvent(current);
+	if (!loaded) return;
+	loadedEvent.value = loaded;
+	eventLineIndex.value++;
+	scene.value = "event";
+}
+
+async function updateEvents(next: EventSave) {
+	eventSave.value = next;
+	await storage.save("events", next);
+	syncWarning.value = storage.shouldShowWarning();
+}
+
+async function exchangeEventItem(item: EventExchangeItem) {
+	const event = loadedEvent.value;
+	if (!event || eventState(event.index, Date.now()) !== "active") return;
+	const known = event.definition.exchange.find((entry) => entry.itemId === item.itemId);
+	if (!known || known.cost !== item.cost || known.limit !== item.limit) return;
+	const record = currentEventProgress.value;
+	const count = record.exchanged[item.itemId] ?? 0;
+	if (count >= item.limit || eventBalance(event.definition, record) < item.cost) return;
+	const isTool = item.itemId === "hasami" || item.itemId === "tenaoshi" || item.itemId === "uchimizu";
+	if (isTool && progress.value.tools[item.itemId] >= 5) return;
+
+	const nextRecord: EventProgress = {
+		...record,
+		exchanged: { ...record.exchanged, [item.itemId]: count + 1 },
+	};
+	const isKazari = item.itemId.startsWith("kazari-");
+	const nextEvents: EventSave = {
+		...eventSave.value,
+		byEvent: { ...eventSave.value.byEvent, [event.index.id]: nextRecord },
+		kazari: isKazari && !eventSave.value.kazari.includes(item.itemId)
+			? [...eventSave.value.kazari, item.itemId]
+			: eventSave.value.kazari,
+	};
+	const nextProgress = isTool
+		? {
+			...progress.value,
+			tools: { ...progress.value.tools, [item.itemId]: Math.min(5, progress.value.tools[item.itemId] + 1) },
+		}
+		: progress.value;
+	// 2キーとも端末キャッシュをAPIより先に書く。通信断でも片方だけ消えないよう同じ境界で開始する。
+	await Promise.all([
+		isTool ? updateProgress(nextProgress) : Promise.resolve(),
+		updateEvents(nextEvents),
+	]);
+}
+
+function startEventStage(next: EventStage) {
+	const event = loadedEvent.value;
+	eventNow.value = Date.now();
+	if (!event || eventState(event.index, eventNow.value) !== "active") return;
+	// UI以外から呼ばれても、未開放の局や改変済みの局設定は開始させない。
+	const permitted = revealedEventStages(event.definition.stages, currentEventProgress.value.stagesCleared)
+		.find((stage) => stage.id === next.id);
+	if (!permitted) return;
+	const run = currentRun(event.index, eventNow.value);
+	const month = Number(run?.start.slice(5, 7)) || 1;
+	stage.value = { ...permitted, month, monthName: event.definition.title };
+	restart();
+	scene.value = "board";
+}
+
+function replayEventStory(entry: VignetteData) {
+	const event = loadedEvent.value;
+	if (!event || !currentEventProgress.value.storySeen.includes(entry.id)) return;
+	storyEventId.value = event.index.id;
+	storyThenStage = undefined;
+	storyQueue.value = [entry];
+	storyReturn.value = "event";
+	scene.value = "story";
+}
+
 // --- 物語（ビネット）の配線 -------------------------------------------------
 //
 // 発火の考え方（story/index.ts の設計に合わせる）:
@@ -721,18 +1093,52 @@ function onBackdropError() {
 // 結果カードのあと、という順序が構造的に保証される。
 
 /** 物語のあと、どこへ戻るか。"board" は boss-before のあと盤面へ入る場合。 */
-type StoryReturn = "home" | "map" | "dex" | "board";
+type StoryReturn = "home" | "map" | "dex" | "read" | "event" | "board";
 // ⚠️shallowRef。ref だと約9万字の本文まで再帰的にリアクティブ化されて重くなるうえ、
 //   本文は読み取り専用データなので深い監視に意味がない。
 const storyQueue = shallowRef<readonly VignetteData[]>([]);
 const storyCurrent = computed<VignetteData | undefined>(() => storyQueue.value[0]);
 const storyReturn = ref<StoryReturn>("home");
-/** 同一セッションで「今回は読まない」を選んだ場面。保存しないので次回は未読として再提示できる。 */
-const deferredVignetteIds = new Set<string>();
-/** 連続する場面の間に置く、月替わりのひと呼吸。 */
-const storyInterlude = ref(false);
+/*
+「今回は読まない」を選んだ場面。⚠️**進行には保存しない**（次のセッションでは未読として出す）。
+⚠️ただし**メモリだけだと、花常を離れて入り直した瞬間に消えて物語が再生される**（利用者の報告）。
+  画面を出入りするたびに component が作り直されるため。
+⚠️そこで **sessionStorage** に置く。タブを閉じるまでは残り、閉じれば消える＝「今回は」の意味に一致する。
+⚠️`miLocalStorage` の typed union は**触らない**（パージ容易性。生の sessionStorage を直接使う）。
+*/
+const DEFERRED_KEY = "hanaawase:deferredVignettes";
+function loadDeferredIds(): Set<string> {
+	try {
+		const raw = window.sessionStorage.getItem(DEFERRED_KEY);
+		const parsed: unknown = raw ? JSON.parse(raw) : [];
+		return new Set(Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === "string") : []);
+	} catch {
+		// ⚠️壊れていたら黙って空から始める（ここで例外を投げるとゲームごと開けなくなる）
+		return new Set();
+	}
+}
+const deferredVignetteIds = loadDeferredIds();
+function rememberDeferredIds() {
+	try {
+		window.sessionStorage.setItem(DEFERRED_KEY, JSON.stringify([...deferredVignetteIds]));
+	} catch {
+		// ⚠️容量超過や無効化時は保存を諦める。⚠️その場合は従来どおり「入り直すと再生される」に戻るだけ。
+	}
+}
 /** boss-before のあとに入る盤面。⚠️リアクティブにしない（描画に関係しない一時値）。 */
 let storyThenStage: StageDefinition | undefined;
+/** 指定中だけ、Vignette がイベント限定の立ち絵と背景を読む。 */
+const storyEventId = ref<string>();
+const storyEventAssets = computed(() => {
+	const event = loadedEvent.value;
+	if (!event || storyEventId.value !== event.index.id) return undefined;
+	return {
+		id: event.index.id,
+		rev: event.index.rev,
+		faces: event.definition.chara.faces,
+		backgrounds: event.definition.backgrounds,
+	};
+});
 /** 演出の強さ。ゲーム設定と本体設定の両方を尊重する（prefers-reduced-motion は Vignette 側が見る）。 */
 const storyMotion = computed<"normal" | "reduced">(() =>
 	gameSettings.value.motion === "reduced" || !prefer.s.animation ? "reduced" : "normal");
@@ -745,25 +1151,45 @@ const bossBeforeFor = (stageId: string) => pendingVignettes(progress.value)
 		&& !deferredVignetteIds.has(entry.id));
 
 /**
- * いま出せる物語をまとめて再生する。出すものが無ければ false（画面は動かさない）。
+ * いま出せる物語を1場面だけ再生する。出すものが無ければ false（画面は動かさない）。
  * ⚠️boss-before はここでは出さない（盤面に入る直前まで取っておく）。
  * ⚠️注意書きが未読のうちは何も出さない（開示より先に本編を見せない）。
+ * ⚠️未読を全部キューへ積むと、パズルを挟まず物語だけを連続再生できる。
+ *   残りは未読のまま保持し、次の局を終えたあとに1場面ずつ拾う。
  */
 function playPendingStory(returnTo: StoryReturn): boolean {
 	if (!saveLoaded.value || disclaimerPending.value) return false;
-	const queue = pendingVignettes(progress.value)
-		.filter((entry) => entry.trigger.at !== "boss-before" && !deferredVignetteIds.has(entry.id));
-	if (queue.length === 0) return false;
+	const next = pendingVignettes(progress.value)
+		.find((entry) => entry.trigger.at !== "boss-before" && !deferredVignetteIds.has(entry.id));
+	if (!next) return false;
+	storyEventId.value = undefined;
 	storyThenStage = undefined;
-	storyQueue.value = queue;
+	storyQueue.value = [next];
 	storyReturn.value = returnTo;
-	storyInterlude.value = false;
 	scene.value = "story";
 	return true;
 }
 
 /** 既読に加える。⚠️スキップした場面も「到達した」として加える（通し読みから読み返せる）。 */
 function markVignetteSeen(id: string) {
+	const event = loadedEvent.value;
+	if (storyEventId.value && event?.index.id === storyEventId.value) {
+		const record = currentEventProgress.value;
+		if (record.storySeen.includes(id)) return;
+		const storySeen = [...record.storySeen, id];
+		const allStages = event.definition.stages.every((entry) => record.stagesCleared.includes(entry.id));
+		const allStories = event.stories.every((entry) => storySeen.includes(entry.id));
+		const nextRecord: EventProgress = {
+			...record,
+			storySeen,
+			...(allStages && allStories ? { completedAt: record.completedAt ?? Date.now() } : {}),
+		};
+		void updateEvents({
+			...eventSave.value,
+			byEvent: { ...eventSave.value.byEvent, [event.index.id]: nextRecord },
+		});
+		return;
+	}
 	if (progress.value.vignettesSeen.includes(id)) return;
 	// updateProgress は progress.value を同期で差し替えるので、直後の pendingVignettes に即反映される。
 	void updateProgress({ ...progress.value, vignettesSeen: withSeen(progress.value.vignettesSeen, id) });
@@ -781,53 +1207,90 @@ function returnFromStory() {
 	const target = storyReturn.value;
 	const nextStage = storyThenStage;
 	storyThenStage = undefined;
-	storyInterlude.value = false;
 	if (target === "board" && nextStage) { enterBoard(nextStage); return; }
 	if (target === "map") { scene.value = "map"; return; }
 	if (target === "dex") { scene.value = "dex"; return; }
-	goHome();
+	if (target === "read") { scene.value = "read"; return; }
+	if (target === "event" && loadedEvent.value) {
+		scene.value = "event";
+		void refreshEventIndex(true);
+		return;
+	}
+	// 通常の物語を読み終えたら、一度ホームを実際に見せる。
+	// ここで次の未読場面を即起動すると、局の境界が再び曖昧になる。
+	goHomeAfterStage();
 }
 
 function onStoryFinish(id: string) {
 	markVignetteSeen(id);
-	const rest = storyQueue.value.slice(1);
-	storyQueue.value = rest;
-	if (rest.length > 0) {
-		// 月替わりや起動直後の複数場面を一息で流さない。既読にした現在の場面だけは戻らない。
-		storyInterlude.value = true;
-		return;
-	}
+	storyQueue.value = [];
+	// 1局＝盤面から、その局に続く物語の終わりまで。
+	// 次局はホームの「花仕事」から利用者が明示的に始める。
 	returnFromStory();
 }
 
 /** 未読のまま今回だけ保留する。保存しないので次セッションでは自然に再提示される。 */
 function onStoryDefer() {
 	for (const entry of storyQueue.value) deferredVignetteIds.add(entry.id);
+	// ⚠️ここで書き出さないと、画面を離れて戻った瞬間に忘れて物語が再生される。
+	rememberDeferredIds();
 	storyQueue.value = [];
 	returnFromStory();
 }
 
-function continueStory() {
-	storyInterlude.value = false;
-}
-
 /** 通し読みから1場面だけ読み返す。⚠️既読なので既読管理も進行も動かない。 */
 function replayVignette(entry: VignetteData) {
+	storyEventId.value = undefined;
 	storyThenStage = undefined;
 	storyQueue.value = [entry];
-	storyReturn.value = "dex";
-	storyInterlude.value = false;
+	storyReturn.value = "read";
 	scene.value = "story";
 }
 
-/** ホームへ戻る。戻るたびにその時刻・季節の演出を選び直す。 */
-function goHome() {
+/** イベント面の初回クリア後だけ、その面に結びついた未読場面を開く。 */
+function playEventStoryAfterStage(stageId: string): boolean {
+	const event = loadedEvent.value;
+	if (!event) return false;
+	const next = event.stories.find((entry) =>
+		entry.trigger.at === "stage-clear" && entry.trigger.stageId === stageId
+		&& !currentEventProgress.value.storySeen.includes(entry.id)
+		&& !deferredVignetteIds.has(entry.id));
+	if (!next) return false;
+	storyEventId.value = event.index.id;
+	storyThenStage = undefined;
+	storyQueue.value = [next];
+	storyReturn.value = "event";
+	scene.value = "story";
+	return true;
+}
+
+/** ホームへ戻る共通処理。戻るたびにその時刻・季節の演出を選び直す。 */
+function showHome(offerPendingStory: boolean) {
 	stopAmbience();
 	scene.value = "home";
 	refreshMenuLine();
 	refreshBackdrop();
 	// ⚠️取りこぼしの受け皿。どの経路でホームに戻っても、溜まっている物語がここで必ず出る。
-	playPendingStory("home");
+	// 局や物語の終了直後だけは false を渡し、ホームを飛び越して次の内容を始めない。
+	if (offerPendingStory) playPendingStory("home");
+}
+
+/** 通常のホーム導線。取りこぼしていた未読場面があれば提示する。 */
+function goHome() {
+	showHome(true);
+}
+
+/**
+ * 通し読み一覧からはホームだけへ戻る。
+ * ⚠️通常の goHome() は取りこぼした未読場面を提示するため、読み返しの「戻る」には使わない。
+ */
+function leaveReadback() {
+	showHome(false);
+}
+
+/** 1局の終了導線。次の内容を自動起動せず、ホームを必ず一度表示する。 */
+function goHomeAfterStage() {
+	showHome(false);
 }
 
 function replayClass(element: HTMLElement | undefined, name: string, duration: number) {
@@ -1168,7 +1631,7 @@ function playBossDefeat() {
 		shakeShell(3);
 		releaseDefeatLight();
 	});
-	after(980, () => {
+	after(BOSS_RESULT_VEIL_MS, () => {
 		resultVeiled.value = false;
 	});
 }
@@ -1202,6 +1665,26 @@ function releaseDefeatLight() {
 async function saveBoundary(cleared: boolean) {
 	if (isDaily.value) {
 		if (cleared) await saveDailyResult();
+		return;
+	}
+	if (isEventStage.value) {
+		if (!cleared || !loadedEvent.value) return;
+		const event = loadedEvent.value;
+		const currentStage = stage.value as EventBoardStage;
+		const record = currentEventProgress.value;
+		const total = event.definition.exchange.reduce((sum, item) => sum + item.cost * item.limit, 0);
+		const nextRecord: EventProgress = {
+			...record,
+			// 交換所をすべて受け取れる累積量で頭打ち。それ以上、使い道のない札を増やさない。
+			points: Math.min(total, record.points + currentStage.points),
+			stagesCleared: record.stagesCleared.includes(currentStage.id)
+				? record.stagesCleared
+				: [...record.stagesCleared, currentStage.id],
+		};
+		await updateEvents({
+			...eventSave.value,
+			byEvent: { ...eventSave.value.byEvent, [event.index.id]: nextRecord },
+		});
 		return;
 	}
 	const currentStage = stage.value as StageDefinition;
@@ -1269,12 +1752,65 @@ function finishStage(next: "clear" | "failed") {
 	}
 	// saveは端末キャッシュを先に更新し、通信失敗時も内部キューで再送する。
 	void saveBoundary(next === "clear");
+	/*
+	旗鯖fork: ⚠️**物語に続く面は、クリアしたら自分で物語へ送る**（利用者の指示）。
+	⚠️「クリアしたことは見せてから」なので、結果カードを読める間だけ待ってから離れる。
+	⚠️暗転は場面替わりの `.scene-veil` が担当するので、ここでは何も描かない。
+	⚠️物語が待っていない面では**従来どおり**（自動では戻さない）。勝手に画面を奪わないため。
+	⚠️`after()` を使うのは、片付け用のタイマー集合に載せてアンマウント時に確実に止めるため。
+	*/
+	const waitsForStory = next === "clear" && storyWaitsAfterBoard();
+	const animateStoryTransition = waitsForStory && motionEnabled();
+	autoStoryPending.value = animateStoryTransition;
+	if (waitsForStory) {
+		// 動きを控える設定は、たのみごとの移動と同じく待ち時間を作らない。
+		// ボス戦は撃破演出で結果カードを伏せるため、その時間を足してからバーの全尺を見せる。
+		const delay = animateStoryTransition
+			? AUTO_STORY_MS + (bossState.value ? BOSS_RESULT_VEIL_MS : 0)
+			: 0;
+		after(delay, () => {
+			// ⚠️待っている間に利用者が自分で離れていたら何もしない（二重遷移を避ける）。
+			if (scene.value === "board" && outcome.value === "clear") leaveBoard();
+		});
+	}
+}
+
+/*
+旗鯖fork: ⚠️**物語に関わる面の背景**。
+⚠️「関わる」の判定は `VIGNETTES` の trigger がこの面のidを指しているかどうか。
+  ⚠️既読・未読では判定しない（未読だと絵が出ず、読み返すと出る、という不安定な見え方になる）。
+⚠️今日の盤面（daily）は物語に関わらないので出さない。
+⚠️絵は季節から選ぶ（`backdrop.ts` の `seasonOf`）。⚠️新しい絵の登録表を増やさない。
+*/
+const storyStageIds = new Set(
+	VIGNETTES.map((entry) => (entry.trigger as { stageId?: string }).stageId)
+		.filter((id): id is string => typeof id === "string"));
+const boardBackdropFailed = ref(false);
+const boardBackdrop = computed(() => {
+	if (isDaily.value) return "";
+	if (!storyStageIds.has(stage.value.id)) return "";
+	return bgPath(`front_${seasonOf(stage.value.month)}`);
+});
+watch(boardBackdrop, () => { boardBackdropFailed.value = false; });
+
+/** クリア後に流れる物語があるか。⚠️`boss-before` は「入る前」なのでここでは数えない。 */
+function storyWaitsAfterBoard() {
+	if (!saveLoaded.value || disclaimerPending.value) return false;
+	if (isEventStage.value && loadedEvent.value) {
+		return loadedEvent.value.stories.some((entry) =>
+			entry.trigger.at === "stage-clear" && entry.trigger.stageId === stage.value.id
+			&& !currentEventProgress.value.storySeen.includes(entry.id)
+			&& !deferredVignetteIds.has(entry.id));
+	}
+	return pendingVignettes(progress.value)
+		.some((entry) => entry.trigger.at !== "boss-before" && !deferredVignetteIds.has(entry.id));
 }
 
 async function updateSettings(next: GameSettings) {
 	gameSettings.value = next;
 	setHanaawaseSoundEnabled(next.se);
-	setHanaawaseAmbienceEnabled(next.se);
+	// ⚠️環境音は効果音の子。効果音を切ったら環境音も止まる。⚠️既定は切（storage.ts の amb を参照）。
+	setHanaawaseAmbienceEnabled(next.se && next.amb);
 	await storage.save("settings", next);
 	// 1回のqueuedでは警告しない。storage側の「3回連続で失敗」判定に一本化する。
 	syncWarning.value = storage.shouldShowWarning();
@@ -1283,6 +1819,11 @@ async function updateSettings(next: GameSettings) {
 function setSound(event: Event) {
 	const enabled = (event.target as HTMLInputElement).checked;
 	void updateSettings({ ...gameSettings.value, se: enabled });
+}
+
+function setAmbience(event: Event) {
+	const amb = (event.target as HTMLInputElement).checked;
+	void updateSettings({ ...gameSettings.value, amb });
 }
 
 function setMotion(motion: GameSettings["motion"]) {
@@ -1306,8 +1847,9 @@ async function confirmReset() {
 		progress.value = emptySaveMap().progress;
 		daily.value = emptySaveMap().daily;
 		gameSettings.value = emptySaveMap().settings;
+		eventSave.value = emptySaveMap().events;
 		setHanaawaseSoundEnabled(true);
-		setHanaawaseAmbienceEnabled(true);
+		setHanaawaseAmbienceEnabled(false);
 		resetStep.value = 2;
 		syncWarning.value = false;
 	} else syncWarning.value = true;
@@ -1315,11 +1857,13 @@ async function confirmReset() {
 
 function restart() {
 	if (releaseTimer !== undefined) window.clearTimeout(releaseTimer);
+	void hideGoalPreview(false);
 	// ⚠️盤面を作り直す前に再生を止めないと、古い段の board.value が後から降ってくる。
 	stopReplay();
 	random = mulberry32(stageSeed());
 	decorRandom = mulberry32((stageSeed() ^ 0x5f3a7c1d) >>> 0);
 	resultVeiled.value = false;
+	autoStoryPending.value = false;
 	board.value = initialBoard();
 	selected.value = undefined;
 	cursor.value = { row: 0, col: 0 };
@@ -1339,6 +1883,7 @@ function restart() {
 		: isDaily.value
 			? "二十手で、今日の点を書き留めます。"
 			: `${goalName.value}を${goalNeed.value}枚集めましょう。`);
+	void showGoalPreview();
 	showInitialHint();
 }
 
@@ -1356,12 +1901,12 @@ function enterBoard(next: StageDefinition) {
  *   読み返しは花手帖の通し読みから）。
  */
 function startStage(next: StageDefinition) {
+	storyEventId.value = undefined;
 	const intro = bossBeforeFor(next.id);
 	if (intro.length > 0) {
 		storyQueue.value = intro;
 		storyReturn.value = "board";
 		storyThenStage = next;
-		storyInterlude.value = false;
 		scene.value = "story";
 		return;
 	}
@@ -1369,6 +1914,7 @@ function startStage(next: StageDefinition) {
 }
 
 function startDaily() {
+	storyEventId.value = undefined;
 	activeDailyDate.value = currentDailyDate.value;
 	stage.value = createDailyStage(activeDailyDate.value);
 	restart();
@@ -1385,37 +1931,119 @@ function onTanomigotoGo(payload: { qi: number; quest: Tanomigoto }) {
 function leaveBoard() {
 	stopAmbience();
 	stopReplay();
+	void hideGoalPreview(false);
 	// 旗鯖fork: たのみごとの盤面を途中でやめたら、その依頼は引受中のまま「保留」に戻す。
 	// ⚠️ここで解除しないと、次に別の局をクリアしたとき古い依頼が達成として報告される。
 	activeTanomigoto.value = undefined;
-	if (isDaily.value) {
-		goHome();
+	if (isEventStage.value) {
+		const stageId = stage.value.id;
+		if (outcome.value === "clear" && playEventStoryAfterStage(stageId)) return;
+		if (loadedEvent.value) {
+			scene.value = "event";
+			void refreshEventIndex(true);
+		} else goHome();
 		return;
 	}
-	scene.value = "map";
-	// ⚠️boss-after・stage-clear・month-close はここで出る＝撃破演出(resultVeiled)と結果カードのあと。
-	playPendingStory("map");
+	if (isDaily.value) {
+		goHomeAfterStage();
+		return;
+	}
+	// ⚠️boss-after・stage-clear・month-close は結果カードのあと、この局の締めとして1場面だけ出す。
+	// 待っている物語が無ければ、そのままホームへ戻る。月一覧や次局へは自動で進めない。
+	if (outcome.value === "clear" && playPendingStory("home")) return;
+	goHomeAfterStage();
 }
 
-async function confirmLeaveBoard() {
-	const { canceled } = await os.confirm({
-		type: "question",
-		title: "この局をやめますか",
-		text: "進行中のこの局は失われます。",
-		okText: "やめる",
-		cancelText: "続ける",
-	});
-	if (canceled) return;
+/*
+旗鯖fork: ⚠️**盤面を離れる前に必ず訊く**（利用者の指示）。
+⚠️以前は `movesMade > 0` のときだけ本体の `os.confirm` を出していたので、
+  1手も動かしていない局では**黙って前の画面に戻って**いた（＝「確認が出ない」の報告）。
+⚠️確認はゲーム内で完結させる（本体のダイアログを使うとパージが難しくなる）。
+⚠️選択肢は3つ：続ける／最初からやり直す／やめる。
+  ⚠️「最初からやり直す」は**パズルの局だけ**の話。物語には出さない（物語には「今回は読まない」がある）。
+*/
+const leaveAsk = ref(false);
+/** 画面外への遷移を確認中なら、その行き先。画面内の歯車／結果から開いた場合は空のまま。 */
+const pendingLeavePath = ref<string>();
+const leaveQuitLabel = computed(() => pendingLeavePath.value !== undefined
+	? "移動する"
+	: isEventStage.value ? "イベントへ戻る" : "ホームへ戻る");
+let routeGuardBypass = false;
+let previousNavHook: typeof router.navHook = null;
+
+function askLeaveBoard(path?: string) {
+	pendingLeavePath.value = path;
+	leaveAsk.value = true;
+}
+
+function leaveAskContinue() {
+	leaveAsk.value = false;
+	pendingLeavePath.value = undefined;
+}
+
+function leaveAskRestart() {
+	leaveAsk.value = false;
+	pendingLeavePath.value = undefined;
+	restart();
+}
+
+function leaveAskQuit() {
+	const path = pendingLeavePath.value;
+	leaveAsk.value = false;
+	pendingLeavePath.value = undefined;
+	if (path !== undefined) {
+		// 外へ出る場合も、盤面用の一時状態と音を先に片づける。
+		stopAmbience();
+		stopReplay();
+		activeTanomigoto.value = undefined;
+		// navHook にもう一度捕まらないよう、盤面の場面から外してから遷移する。
+		scene.value = "map";
+		routeGuardBypass = true;
+		router.pushByPath(path);
+		routeGuardBypass = false;
+		return;
+	}
 	leaveBoard();
 }
 
 function returnToMap() {
-	// 旗鯖fork: 進行中に限って確認を挟む（結果表示後の「一覧へ戻る」は素通り）。
-	if (!boardInProgress()) {
+	// ⚠️結果が出たあとの「ホームへ戻る」は素通り（もう失うものが無い）。
+	if (outcome.value !== "playing") {
 		leaveBoard();
 		return;
 	}
-	void confirmLeaveBoard();
+	askLeaveBoard();
+}
+
+/** 盤面右上の歯車。既存の安全な3択メニューを開き、誤操作で局を失わない。 */
+function openBoardMenu() {
+	if (outcome.value !== "playing") return;
+	askLeaveBoard();
+}
+
+/**
+ * 通常のリンク遷移と、小窓内での push を盤面の確認へつなぐ。
+ * 既存の navHook（デッキUIの「窓で開く」等）は、盤面外では必ずそのまま呼ぶ。
+ */
+const hanaawaseNavHook: NonNullable<typeof router.navHook> = (fullPath, flag) => {
+	if (!routeGuardBypass && boardInProgress() && fullPath !== hanaawaseRoutePath) {
+		askLeaveBoard(fullPath);
+		return true;
+	}
+	return previousNavHook?.(fullPath, flag) ?? false;
+};
+
+/**
+ * Nirax の replace は navHook を通らない。
+ * ブラウザの戻ると MkPageWindow の戻るはいずれも replaceByPath を使うため、
+ * 遷移直後に花常へ戻してから、同じゲーム内確認を出す。
+ */
+function onRouterReplace({ fullPath }: { fullPath: string }) {
+	if (routeGuardBypass || !boardInProgress() || fullPath === hanaawaseRoutePath) return;
+	routeGuardBypass = true;
+	router.replaceByPath(hanaawaseRoutePath);
+	routeGuardBypass = false;
+	askLeaveBoard(fullPath);
 }
 
 function shareDailyResult() {
@@ -1651,13 +2279,21 @@ function onKeydown(event: KeyboardEvent) {
 	};
 }
 
+const onEventVisibility = () => {
+	if (window.document.visibilityState === "visible") void refreshEventIndex(true);
+};
+
 onMounted(async () => {
+	previousNavHook = router.navHook;
+	router.navHook = hanaawaseNavHook;
+	router.addListener("replace", onRouterReplace);
 	const loaded = await storage.load();
 	progress.value = loaded.data.progress;
 	daily.value = loaded.data.daily;
 	gameSettings.value = loaded.data.settings;
+	eventSave.value = loaded.data.events;
 	setHanaawaseSoundEnabled(gameSettings.value.se);
-	setHanaawaseAmbienceEnabled(gameSettings.value.se);
+	setHanaawaseAmbienceEnabled(gameSettings.value.se && gameSettings.value.amb);
 	recoveryAvailable.value = loaded.recoveryAvailable;
 	removeOnlineRetry = storage.retryWhenOnline();
 	saveLoaded.value = true;
@@ -1665,6 +2301,8 @@ onMounted(async () => {
 	// 進行が読めてから演出を選ぶ（月・進行段階がセリフの文脈になる）。
 	refreshMenuLine();
 	refreshBackdrop();
+	window.document.addEventListener("visibilitychange", onEventVisibility);
+	void refreshEventIndex();
 	// ⚠️初回起動はここで序章が始まる。注意書きが未読なら playPendingStory 側が黙って見送る。
 	playPendingStory("home");
 });
@@ -1683,6 +2321,7 @@ onActivated(() => {
 	// 途中の行・選んだ枝・スキップ状態はそのまま残っている。ここで goHome すると読みかけが消える。
 	if (scene.value === "story" && storyQueue.value.length > 0) return;
 	goHome();
+	void refreshEventIndex();
 });
 
 onDeactivated(() => {
@@ -1694,6 +2333,10 @@ onUnmounted(() => {
 	for (const timer of effectTimers) window.clearTimeout(timer);
 	removeOnlineRetry?.();
 	stopAmbience();
+	window.document.removeEventListener("visibilitychange", onEventVisibility);
+	router.removeListener("replace", onRouterReplace);
+	// 後から別の画面が差し替えた hook を巻き戻さない。
+	if (router.navHook === hanaawaseNavHook) router.navHook = previousNavHook;
 });
 
 definePage(() => ({ title: "花常" }));
@@ -1716,12 +2359,54 @@ definePage(() => ({ title: "花常" }));
 	--jiku: linear-gradient(90deg, #6b4a2e, #8a6a44 50%, #6b4a2e);
 	--mincho: "Shippori Mincho B1", "Hiragino Mincho ProN", "Yu Mincho", YuMincho, "Noto Serif JP", serif;
 
+	position: relative; /* ⚠️暗転の一枚（.scene-veil）の基準。外すと画面外まで黒が広がる */
 	max-width: 560px;
 	margin: 0 auto;
 	padding: 20px 12px 34px;
 	color: var(--ink);
 	color-scheme: dark;
 }
+/*
+旗鯖fork: 場面替わりの暗転。⚠️`opacity` だけで描く（`filter` も `backdrop-filter` も使わない＝重い）。
+⚠️`pointer-events: none` を外さないこと。押せない時間ができる。
+*/
+.scene-veil { position: absolute; z-index: 40; inset: 0; background: #000; pointer-events: none; animation: hana-veil 300ms ease-out both; }
+/*
+旗鯖fork: 局の開始時だけ目標を前面へ出す。fixed/vhを使わず、盤面の器の内側だけを覆う。
+操作を急ぐ人は「始める」で閉じられ、何もしなくてもGOAL_PREVIEW_MS後に閉じる。
+*/
+.goal-preview { position: absolute; z-index: 20; display: grid; inset: 0; place-items: center; padding: 16px; background: rgb(16 13 10 / 76%); }
+.goal-preview-card { box-sizing: border-box; width: min(320px, 100%); padding: 22px 20px; border: 1px solid var(--accent); border-radius: 16px; background: var(--panel); text-align: center; box-shadow: 0 18px 44px -14px rgb(0 0 0 / 72%); }
+.goal-preview-flower { display: block; width: 62px; height: 62px; margin: 0 auto 8px; }
+.goal-preview-card > p { margin: 5px 0; color: var(--sub); font-size: 12px; line-height: 1.7; }
+.goal-preview-card > .goal-preview-kicker { color: var(--ink); font-family: var(--mincho); font-size: 14px; }
+.goal-preview-card > small { display: block; margin-top: 10px; color: var(--sub); font-size: 10px; letter-spacing: .14em; }
+.goal-preview-card > h2 { margin: 4px 0; color: var(--ink); font-family: var(--mincho); font-size: 22px; letter-spacing: .06em; }
+.goal-preview-card > button { min-width: 120px; margin-top: 16px; padding: 9px 18px; border: 0; border-radius: 999px; color: var(--bg); background: var(--accent); font-weight: 700; cursor: pointer; }
+.goal-preview-progress { overflow: hidden; height: 4px; margin-top: 15px; border-radius: 2px; background: rgb(201 160 78 / 20%); }
+.goal-preview-progress > i { display: block; height: 100%; border-radius: inherit; background: var(--accent); transform: scaleX(0); transform-origin: left center; animation: hana-goal-preview-fill 2400ms linear forwards; }
+/*
+旗鯖fork: 盤面を離れる前の確認。⚠️`position: absolute` は `.game-shell` の中に収める意図。
+⚠️`fixed` にするとウィンドウモードで窓の外まで覆う。⚠️`vh` も使わない。
+*/
+.leave-ask { position: absolute; z-index: 30; display: grid; inset: 0; place-items: center; padding: 16px; background: rgb(16 13 10 / 72%); }
+.leave-card { width: min(360px, 100%); padding: 20px 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); text-align: center; }
+.leave-card h2 { margin: 0 0 8px; color: var(--ink); font-family: var(--mincho); font-size: 16px; letter-spacing: .06em; }
+.leave-card p { margin: 0 0 16px; color: var(--sub); font-size: 13px; line-height: 1.7; }
+.leave-actions { display: grid; gap: 8px; }
+/*
+旗鯖fork: 物語に関わる面だけ盤面の奥に敷く季節の絵。
+⚠️札より手前に出さない（`z-index` を上げない）。⚠️`opacity` は上げない——**札の視認性が最優先**。
+⚠️`.game-shell` の通常内容は既定で重なり順を上げる。
+ただし `.goal-preview`・`.result`・`.leave-ask` は絶対配置モーダルなので対象外にする。
+ここまで `position: relative` にすると、盤面の下に通常要素として落ちる。
+*/
+.board-bg { position: absolute; z-index: 0; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .16; pointer-events: none; user-select: none; }
+.board-bg-scrim { position: absolute; z-index: 0; inset: 0; background: linear-gradient(180deg, rgb(24 20 16 / 62%), rgb(24 20 16 / 46%) 45%, rgb(24 20 16 / 72%)); pointer-events: none; }
+.game-shell[data-story="on"] > :not(.board-bg, .board-bg-scrim, .goal-preview, .result, .leave-ask) { position: relative; z-index: 1; }
+@keyframes hana-veil { from { opacity: 1; } to { opacity: 0; } }
+@keyframes hana-result-fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes hana-goal-preview-fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 /*
 旗鯖fork: 帳面の枠（design の frameShell）。⚠️天の8pxは絵巻の軸。
 これがあるかないかで「ただのカード」と「帳面」の差が出る。
@@ -1773,17 +2458,37 @@ definePage(() => ({ title: "花常" }));
 .instruction, .status, .pause-note { margin: 10px 0; text-align: center; color: var(--sub); font-size: 13px; }.pause-note { color: var(--accent); }
 .board { position: relative; display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 3px; padding: 4px; border: 1px solid var(--line); border-radius: 12px; background: #171410; touch-action: manipulation; outline: none; }.board:focus-visible { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 65%, transparent); }
 .cell { position: relative; display: grid; aspect-ratio: 1; min-width: 0; padding: 3px; border: 1px solid #383027; border-radius: 8px; background: var(--cell); cursor: pointer; transition: transform .16s ease, box-shadow .16s ease; }.cell:hover { transform: translateY(-1px); }.cell.selected { box-shadow: inset 0 0 0 2px var(--accent), 0 0 0 1px #f2d98c; }.cell.cursor { outline: 2px solid #f4efe3; outline-offset: -3px; }.cell.telegraph::before { position: absolute; inset: 2px; border: 2px dashed #7b86c8; border-radius: 7px; content: ""; pointer-events: none; animation: hana-telegraph 1.1s ease-in-out infinite; }.cell.puddle::after { position: absolute; inset: 17%; border: 1px solid #7b86c8; border-radius: 50%; background: rgb(45 74 115 / 30%); content: ""; pointer-events: none; }.cell.frozen::after { position: absolute; inset: 3px; border: 1px solid #dfe8ef; border-radius: 6px; background: rgb(244 239 227 / 20%); content: ""; pointer-events: none; }.cell.tanzaku-row .piece { transform: rotate(90deg); }.piece { width: 100%; height: 100%; transition: transform .16s ease; pointer-events: none; }.busy .cell { opacity: .96; }.paused .cell { cursor: default; }
-.result { position: absolute; inset: 0; z-index: 5; display: grid; place-items: center; padding: 20px; background: rgb(22 18 14 / 78%); }.result-card { max-width: 290px; padding: 24px; border: 1px solid var(--accent); border-radius: 16px; text-align: center; background: var(--panel); }.result-card h2 { margin: 10px 0; font-family: var(--mincho); font-size: 21px; }.result-card p { color: var(--sub); font-size: 14px; }.result-flower { display: block; width: 68px; height: 68px; margin: 0 auto; }.restart-button { padding: 10px 20px; border: 0; border-radius: 8px; color: var(--bg); background: var(--accent); font-weight: 700; cursor: pointer; }
+.result { position: absolute; inset: 0; z-index: 5; display: grid; place-items: center; padding: 20px; background: rgb(22 18 14 / 78%); }.result-card { box-sizing: border-box; width: min(290px, 100%); padding: 24px; border: 1px solid var(--accent); border-radius: 16px; text-align: center; background: var(--panel); box-shadow: 0 18px 44px -14px rgb(0 0 0 / 70%); }.result-card h2 { margin: 10px 0; font-family: var(--mincho); font-size: 21px; }.result-card p { color: var(--sub); font-size: 14px; }.result-flower { display: block; width: 68px; height: 68px; margin: 0 auto; }.restart-button { padding: 10px 20px; border: 0; border-radius: 8px; color: var(--bg); background: var(--accent); font-weight: 700; cursor: pointer; }
+.result-card .result-next { margin: 14px 0 0; color: var(--ink); font-family: var(--mincho); font-size: 13px; letter-spacing: .04em; }
+.result-progress { overflow: hidden; height: 4px; margin-top: 15px; border-radius: 2px; background: rgb(201 160 78 / 20%); }
+.result-progress > i { display: block; height: 100%; border-radius: inherit; background: var(--accent); transform: scaleX(0); transform-origin: left center; animation: hana-result-fill 2200ms linear forwards; }
 .map-actions { display: flex; justify-content: center; gap: 18px; margin: 16px 0 0; }.map-actions button, .text-button { border: 0; color: var(--sub); background: transparent; font: inherit; font-size: 12px; letter-spacing: .06em; cursor: pointer; }.map-actions button:hover, .text-button:hover, .map-actions button:focus-visible, .text-button:focus-visible { color: var(--ink); }
-.home-shell { position: relative; overflow: hidden; display: grid; min-height: 520px; align-content: center; padding-top: 30px; }
+.home-shell { position: relative; overflow: hidden; display: grid; min-height: 520px; padding-top: 30px; }
 .home-shell > :not(.home-bg, .home-scrim) { position: relative; z-index: 1; }
-.home-bg { position: absolute; inset: 0; z-index: 0; width: 100%; height: 100%; object-fit: cover; opacity: .26; pointer-events: none; user-select: none; }
+.home-scroll { display: grid; min-height: 100%; align-content: center; }
+/*
+旗鯖fork: ⚠️背景を下端でそのまま断ち切ると、器の境目に継ぎ目の線が出る。
+⚠️マスクで下へ溶かして地の色へ返す（塗りではなく mask なので、下に敷いた帳の階調を殺さない）。
+⚠️`-webkit-` 付きも併記する（Safari は接頭辞つきしか見ない）。
+*/
+.home-bg {
+	position: absolute; inset: 0; z-index: 0; width: 100%; height: 100%; object-fit: cover;
+	opacity: .26; pointer-events: none; user-select: none;
+	-webkit-mask-image: linear-gradient(180deg, #000 0%, #000 58%, rgb(0 0 0 / 45%) 82%, transparent 100%);
+	mask-image: linear-gradient(180deg, #000 0%, #000 58%, rgb(0 0 0 / 45%) 82%, transparent 100%);
+}
 /*
 旗鯖fork: 背景の上に置く帳（とばり）。⚠️背景画像の明暗に関わらず文字が読めるようにするための不変条件。
 上下を濃く、中ほどを薄くして、題と目次の下だけを確実に沈める。⚠️filter は使わない（塗りだけ）。
 */
-.home-scrim { position: absolute; inset: 0; z-index: 0; background: linear-gradient(180deg, rgb(24 20 16 / 72%), rgb(24 20 16 / 46%) 42%, rgb(24 20 16 / 78%)); pointer-events: none; }
-.home-cast { display: flex; width: 100%; max-width: 380px; align-items: center; gap: 12px; margin: -8px auto 22px; padding: 0; border: 0; color: inherit; background: transparent; font: inherit; text-align: left; cursor: pointer; }
+/* ⚠️下端は帳のほうを地の色まで詰める。⚠️絵のマスクと合わせて「絵→地」の継ぎ目を消すのが目的。 */
+.home-scrim { position: absolute; inset: 0; z-index: 0; background: linear-gradient(180deg, rgb(24 20 16 / 72%), rgb(24 20 16 / 46%) 42%, rgb(24 20 16 / 78%) 88%, var(--bg) 100%); pointer-events: none; }
+/*
+旗鯖fork: ⚠️一言は1行のときと3行のときで背が変わる。器の背を先に確保しておかないと、
+⚠️セリフが替わるたびに下の目次ごと上下に飛ぶ（利用者の報告）。
+⚠️3行ぶん（名前11px＋余白＋14px×1.75×3＋上下padding）を最初から取り、吹き出しは中で天地中央に置く。
+*/
+.home-cast { display: flex; width: 100%; max-width: 380px; min-height: 118px; align-items: center; gap: 12px; margin: -8px auto 22px; padding: 0; border: 0; color: inherit; background: transparent; font: inherit; text-align: left; cursor: pointer; }
 .cast-bustup { width: 78px; height: 78px; flex: none; border: 1px solid var(--line); border-radius: 50%; background: rgb(23 20 16 / 62%); object-fit: cover; }
 /* 吹き出し。⚠️羽根（尖り）を立ち絵側へ向ける。羽根は border だけで描き、画像を足さない。 */
 .cast-bubble { position: relative; display: grid; min-width: 0; flex: 1; gap: 4px; padding: 11px 14px; border: 1px solid var(--line); border-radius: 12px; background: rgb(23 20 16 / 82%); font-size: 13px; line-height: 1.6; }
@@ -1807,6 +2512,9 @@ definePage(() => ({ title: "花常" }));
 .menu-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .menu-card { display: flex; align-items: center; gap: 13px; min-height: 62px; padding: 13px 14px; border: 1px solid var(--line); border-radius: 12px; color: var(--ink); background: var(--cell); font: inherit; text-align: left; cursor: pointer; transition: transform .12s ease, border-color .2s ease, background-color .2s ease; }
 .menu-card:hover, .menu-card:focus-visible { border-color: var(--accent); background: rgb(201 160 78 / 10%); transform: translateY(-1px); }
+.menu-card.event-door { border-color: rgb(142 124 176 / 72%); background: linear-gradient(105deg, rgb(142 124 176 / 16%), var(--cell)); }
+.menu-card.event-door:hover, .menu-card.event-door:focus-visible { border-color: #a895c8; background: rgb(142 124 176 / 20%); }
+.menu-card.event-door .menu-copy small { white-space: pre-line; }
 .menu-mark { display: grid; width: 42px; height: 42px; flex: none; place-items: center; padding: 7px; border: 1px solid var(--line); border-radius: 10px; color: var(--accent); background: var(--panel); }
 .menu-mark :deep(svg) { display: block; width: 100%; height: 100%; }
 .menu-copy { display: grid; gap: 3px; min-width: 0; flex: 1; }
@@ -1818,7 +2526,7 @@ definePage(() => ({ title: "花常" }));
 .menu-lead { min-height: 76px; padding: 18px 16px; border-color: var(--accent); background: linear-gradient(135deg, rgb(201 160 78 / 12%), var(--cell) 62%); }
 .menu-lead .menu-mark { width: 54px; height: 54px; padding: 6px; border-color: rgb(201 160 78 / 45%); }
 .menu-lead .menu-copy b { font-size: 21px; }
-.menu-foot { margin-top: 2px; text-align: center; }
+.menu-settings { margin-top: 2px; }
 /* 今日の盤面の控え。⚠️数字は等幅で揃え、桁が変わっても行が踊らないようにする。 */
 .daily-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; max-width: 380px; margin: 20px auto 0; }
 .daily-stats div { padding: 9px 4px; border: 1px solid var(--line); border-radius: 9px; text-align: center; background: rgb(23 20 16 / 52%); }
@@ -1847,7 +2555,12 @@ definePage(() => ({ title: "花常" }));
 .dex-cell { display: grid; gap: 6px; padding: 10px 6px 9px; border: 1px solid var(--line); border-radius: 12px; color: var(--sub); background: var(--cell); font: inherit; text-align: center; cursor: pointer; transition: border-color .2s ease, transform .12s ease; }
 .dex-cell:hover, .dex-cell:focus-visible { border-color: var(--accent); transform: translateY(-1px); }
 .dex-cell[aria-pressed="true"] { border-color: var(--accent); background: rgb(201 160 78 / 12%); }
-.dex-art { display: block; width: 100%; margin: 0 auto; padding: 14%; aspect-ratio: 1; filter: brightness(0) opacity(.3); }
+/*
+⚠️`box-sizing: border-box` を外さないこと。
+⚠️既定の `content-box` だと `padding: 14%` が幅の**外側**に足され、
+  セル幅87pxに対して絵が**実寸119px**になってセルから右へはみ出す（＝「花が右に寄る」の正体。実測で確認）。
+*/
+.dex-art { display: block; box-sizing: border-box; width: 100%; margin: 0 auto; padding: 14%; aspect-ratio: 1; filter: brightness(0) opacity(.3); }
 .dex-cell[data-open="on"] { color: var(--ink); }
 .dex-cell[data-open="on"] .dex-art { filter: none; }
 .dex-cell b { font-family: var(--mincho); font-size: 13px; letter-spacing: .04em; }
@@ -1899,6 +2612,25 @@ definePage(() => ({ title: "花常" }));
 .set-switch input:focus-visible + .switch-track { outline: 2px solid var(--accent); outline-offset: 2px; }
 .set-button { flex: none; padding: 8px 15px; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); background: transparent; font: inherit; font-size: 13px; cursor: pointer; }
 .set-button:hover, .set-button:focus-visible { border-color: var(--accent); background: rgb(201 160 78 / 12%); }
+/* 音源の由来は設定内で読めるようにし、初期表示は設定項目を圧迫しない折りたたみにする。 */
+.sound-credits { margin-top: 16px; border: 1px solid var(--line); border-radius: 12px; background: rgb(23 20 16 / 38%); }
+.sound-credits summary { display: flex; min-height: 58px; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 14px; cursor: pointer; list-style: none; }
+.sound-credits summary::-webkit-details-marker { display: none; }
+.sound-credits summary:hover, .sound-credits summary:focus-visible { background: rgb(201 160 78 / 10%); }
+.credit-open { display: grid; min-width: 48px; min-height: 34px; place-items: center; border: 1px solid var(--line); border-radius: 8px; color: var(--sub); font-size: 12px; }
+.sound-credits[open] .credit-open { border-color: var(--accent); color: var(--ink); }
+.credit-body { display: grid; gap: 13px; padding: 15px 14px 16px; border-top: 1px solid var(--line); }
+.credit-body p { margin: 0; }
+.credit-se { display: grid; gap: 4px; }
+.credit-se b { color: var(--ink); font-size: 13px; }
+.credit-se span, .credit-note, .credit-silent { color: var(--sub); font-size: 11.5px; line-height: 1.7; word-break: keep-all; overflow-wrap: anywhere; }
+.credit-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.credit-list li { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 11px; border: 1px solid var(--line); border-radius: 9px; background: var(--cell); }
+.credit-list li > span { display: grid; min-width: 0; gap: 2px; }
+.credit-list b { font-size: 12.5px; font-weight: 600; }
+.credit-list small { color: var(--sub); font-size: 11px; line-height: 1.5; overflow-wrap: anywhere; }
+.credit-list a { flex: none; padding: 7px 11px; border: 1px solid var(--line); border-radius: 8px; color: var(--accent); font-size: 12px; text-decoration: none; }
+.credit-list a:hover, .credit-list a:focus-visible { border-color: var(--accent); background: rgb(201 160 78 / 12%); }
 /* 取り消せない操作。⚠️一段構えのうちは静かに、構えたら朱で示す（design の resetStep）。 */
 .reset-box { margin-top: 26px; padding: 16px; border: 1px solid var(--line); border-radius: 12px; text-align: center; transition: border-color .2s ease, background-color .2s ease; }
 .reset-box[data-armed="on"] { border-color: var(--shu); background: rgb(196 56 61 / 10%); }
@@ -1986,7 +2718,7 @@ definePage(() => ({ title: "花常" }));
 @keyframes hana-release { 0% { opacity: 0; transform: scale(.45); } 26% { opacity: .45; } 100% { opacity: 0; transform: scale(1.5); } } @keyframes hana-defeat-petal { 0% { opacity: 0; transform: translate3d(0, 0, 0) rotate(0deg); } 12% { opacity: 1; } 82% { opacity: 1; } 100% { opacity: 0; transform: translate3d(var(--sway, 0px), 620px, 0) rotate(var(--spin, 180deg)); } }
 @keyframes hana-hint-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgb(201 160 78 / 45%); } 50% { box-shadow: 0 0 0 9px rgb(201 160 78 / 0%); } } @keyframes hana-cast-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 /* ⚠️.weather-over も含めて、控えめ設定では天候の粒を一切出さない。 */
-@media (prefers-reduced-motion: reduce) { .effects, .weather, .weather-over, .defeat-petals, .defeat-veil { display: none; }.cell[data-drop] { transform: none; transition: none; }.cell[data-land] .piece, .game-shell[data-shake] { animation: none; }.game-shell.hit-stop .board { transform: none; }.cell.telegraph::before { animation: none; opacity: .6; }.home-cast .cast-bubble { animation: none; }
+@media (prefers-reduced-motion: reduce) { .effects, .weather, .weather-over, .defeat-petals, .defeat-veil { display: none; }.cell[data-drop] { transform: none; transition: none; }.cell[data-land] .piece, .game-shell[data-shake] { animation: none; }.game-shell.hit-stop .board { transform: none; }.cell.telegraph::before { animation: none; opacity: .6; }.home-cast .cast-bubble { animation: none; }.goal-preview-progress > i { animation: none; transform: scaleX(1); }
 	/* ⚠️帳面の所作と札の浮きも止める。 */
 	.sheet { animation: none; }.menu-card, .dex-cell, .switch-knob, .switch-track { transition: none; }.menu-card:hover, .dex-cell:hover { transform: none; } }
 /*
@@ -1997,20 +2729,84 @@ definePage(() => ({ title: "花常" }));
 /* ⚠️container-type: inline-size は Vignette.vue の @container が拠り所にしている。外さないこと。
    ⚠️画面幅ではなく「この器の幅」で場面の縦横比が決まる＝ウィンドウモードの小窓でも正しく縮む。 */
 .story-shell { position: relative; container-type: inline-size; margin: 0 auto; overflow: hidden; border: 1px solid var(--line); background: var(--bg); text-align: center; word-break: keep-all; overflow-wrap: anywhere; }
-/* 連続した未読場面の間に置く、操作を止めない短いしおり。幅基準は親の container に任せる。 */
-.story-interlude { display: grid; min-height: max(280px, 58cqw); place-content: center; gap: 18px; padding: 24px; color: var(--ink); background: linear-gradient(145deg, var(--bg), var(--panel)); font-family: var(--mincho); }
-.story-interlude p { margin: 0; letter-spacing: .1em; }
-.story-interlude div { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
-.story-interlude button { border: 1px solid var(--line); border-radius: 999px; padding: 9px 15px; color: var(--ink); background: var(--panel); font: inherit; cursor: pointer; }
-.story-interlude button:hover, .story-interlude button:focus-visible { border-color: var(--accent); background: rgb(201 160 78 / 13%); }
 /*
-旗鯖fork: ⚠️物語の場面だけ器を広げる。560px の細帯だと広い画面で余白しか見えず、会話劇の没入感が消えるため。
-⚠️他の場面（盤面・ホーム・月選び・花手帖・街の様子）の 560px は動かさない。
-  あれは盤面のマス寸法と MachiFeed の高さ設計の前提になっているので、広げると巻き添えになる。
+旗鯖fork: ⚠️物語とホームだけ data-scene で器を広げる。
+⚠️盤面・月選び・花手帖の 560px は動かさない。盤面のマス寸法へ波及させないため。
 ⚠️vw は使わない（ウィンドウモードで窓幅ではなく画面幅を見てしまうため）。
   max-width は「上限」なので、狭い窓では素直に窓幅いっぱいに収まる。
 */
 .hanaawase-scope[data-scene="story"] { max-width: 1100px; }
+/*
+旗鯖fork: ホームだけ、親の実幅が十分あるときに2ペインへできる器を用意する。
+⚠️子は狭い間は560pxを保つ。画面幅ではなくこのcontainerの幅で切り替える。
+*/
+.hanaawase-scope[data-scene="home"] {
+	container-type: inline-size;
+	display: grid;
+	max-width: 1120px;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	column-gap: 20px;
+}
+.hanaawase-scope[data-scene="home"] > .home-shell,
+.hanaawase-scope[data-scene="home"] > .machi-lead,
+.hanaawase-scope[data-scene="home"] > .home-machi {
+	width: 100%;
+	max-width: 560px;
+	grid-column: 1 / -1;
+	justify-self: center;
+}
+/*
+⚠️**コンテナクエリは詳細度を上げない。**
+⚠️ここを素の `.home-shell {}` で書くと、上の `…[data-scene="home"] > .home-shell` の
+  `grid-column: 1 / -1` に負けて**列の指定だけが無視され、`grid-row: 1` だけが効く**。
+  結果、帳面と街の様子が**同じ1行・全幅に重なって描かれる**（実際に起きた）。
+⚠️必ず**上と同じ形（同じ詳細度）で書くこと**。
+*/
+@container (min-width: 920px) {
+	/*
+	⚠️左右の高さが同じ指定でも、左だけ padding と border が外へ足される
+	content-box のままだと外寸が揃わない。両方を border-box に統一する。
+	左の内容は中央寄せにすると、器より高いとき上端・下端が同時に切れるため、
+	上から配置してペイン内だけをスクロールさせる。
+	*/
+	.hanaawase-scope[data-scene="home"] > .home-shell {
+		box-sizing: border-box;
+		height: clamp(720px, 74cqw, 840px);
+		min-height: 0;
+		grid-column: 1;
+		grid-row: 1;
+		justify-self: end;
+	}
+	.hanaawase-scope[data-scene="home"] > .home-shell > .home-scroll {
+		height: 100%;
+		min-height: 0;
+		overflow-x: hidden;
+		overflow-y: auto;
+		align-content: start;
+		overscroll-behavior: contain;
+	}
+	.hanaawase-scope[data-scene="home"] > .machi-lead { display: none; }
+	.hanaawase-scope[data-scene="home"] > .home-machi {
+		--m-height: clamp(720px, 74cqw, 840px);
+		box-sizing: border-box;
+		grid-column: 2;
+		grid-row: 1;
+		justify-self: start;
+	}
+}
+/* ⚠️小窓側も画面幅ではなく、実際に与えられた器の幅で決める。vh は使わない。 */
+@container (max-width: 640px) {
+	.home-shell { min-height: auto; }
+	.home-scroll { align-content: start; }
+	.hanaawase-scope[data-scene="home"] > .home-machi {
+		--m-height: clamp(560px, 136cqw, 780px);
+		width: calc(100% + 24px);
+		max-width: none;
+		margin-inline: -12px;
+		border-inline: 0;
+		border-radius: 0;
+	}
+}
 .dex-heading { position: relative; margin: 26px 0 12px; color: var(--ink); font-family: var(--mincho); font-size: 15px; letter-spacing: .16em; text-align: center; }
 /* 見出しの両脇に罫を引く。⚠️装飾は罫だけ。文字を小さくしない。 */
 .dex-heading::before, .dex-heading::after { position: absolute; top: 50%; width: 22%; height: 1px; background: var(--line); content: ""; }
@@ -2024,6 +2820,7 @@ definePage(() => ({ title: "花常" }));
 .story-list b { font-family: var(--mincho); font-size: 14px; }
 .story-list small { color: var(--sub); font-size: 11px; }
 .home-machi { margin-top: 0; }
+.event-shell { width: 100%; max-width: 620px; margin: 0 auto; }
 /*
 旗鯖fork: 帳面が開く所作（design/03-motion の hana-enter）。⚠️transform と opacity のみ・320ms。
 ⚠️fill-mode を付けない。付けると終了後も transform が残り、子孫の position: fixed の基準を壊す（SPEC §0.4-4）。
@@ -2033,11 +2830,13 @@ definePage(() => ({ title: "花常" }));
 .hanaawase-scope[data-motion="off"] .sheet { animation: none; }
 .hanaawase-scope[data-motion="off"] .menu-card, .hanaawase-scope[data-motion="off"] .dex-cell { transition: none; }
 .hanaawase-scope[data-motion="off"] .menu-card:hover, .hanaawase-scope[data-motion="off"] .dex-cell:hover { transform: none; }
-/* 旗鯖fork: 携帯では「街の様子」を画面の主役にする。ホームの縦センタリングを解いて上詰めにする。 */
-@media (max-width: 640px) { .home-shell { min-height: auto; align-content: start; } }
-/* ⚠️狭い画面では2列をやめる。keep-all の説き文が1列だと必ず折れて読みにくくなるため。 */
-@media (max-width: 430px) {
+.hanaawase-scope[data-motion="off"] .goal-preview-progress > i { animation: none; transform: scaleX(1); }
+/* ⚠️ホームの目次も画面幅ではなく器の幅で1列へ戻す。 */
+@container (max-width: 430px) {
 	.menu-row { grid-template-columns: 1fr; }
+}
+/* 盤面・マップ・手帖の既存モバイル調整。ホームのレイアウト判定には使わない。 */
+@media (max-width: 430px) {
 	.dex-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 	.map-node { width: 52px; height: 52px; }
 	.map-flower { width: 32px; height: 32px; }

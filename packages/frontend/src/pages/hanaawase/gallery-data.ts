@@ -24,6 +24,8 @@ export interface GalleryStill {
 	/** 拡張子なしのファイル名。⚠️ファイルが無くても壊れない（読み込み失敗は静かに隠す）。 */
 	readonly file: string;
 	readonly title: string;
+	/** この月の最初の面をクリアしたら解放。1〜12。 */
+	readonly since: number;
 }
 export interface GalleryUnlock {
 	/** このステージ（またはそれ以降）をクリアで解放。null は最初から解放。 */
@@ -97,6 +99,16 @@ export const isUnlocked = (entry: GalleryChar, progress: GalleryProgress): boole
 	return need >= 0 && clearedOrder(progress) >= need;
 };
 
+/** ひとこまの解放判定。保存キーは増やさず、既存の星だけを読む。 */
+export const isStillUnlocked = (still: GalleryStill, progress: GalleryProgress): boolean => {
+	if (!Number.isInteger(still.since) || still.since < 1 || still.since > 12) return false;
+	return clearedOrder(progress) >= stageOrder(`m${still.since}-1`);
+};
+
+/** 読み込み成否とは切り離した、進行だけによる解放済み一覧。 */
+export const unlockedStills = (entry: GalleryChar, progress: GalleryProgress): readonly GalleryStill[] =>
+	entry.stills.filter((still) => isStillUnlocked(still, progress));
+
 // --- 名鑑本体 ---------------------------------------------------------------------
 // ⚠️unlock は BIBLE §10（各月構成表）の初登場場面に合わせる。前倒ししない。
 
@@ -119,23 +131,40 @@ export const GALLERY_CHARS: readonly GalleryChar[] = [
 			{ n: 4, label: "きりっと" },
 			{ n: 5, label: "しょんぼり" },
 			{ n: 6, label: "きらきら" },
+			{ n: 7, label: "案じ顔" },
+			{ n: 8, label: "小さな驚き" },
+			{ n: 9, label: "ほっとする" },
+			{ n: 10, label: "ためらい" },
+			{ n: 11, label: "照れ" },
+			{ n: 12, label: "くやしい" },
+			{ n: 13, label: "考え中" },
+			{ n: 14, label: "眠たげ" },
+			{ n: 15, label: "笑いこらえ" },
+			{ n: 16, label: "言い切る" },
+			{ n: 17, label: "伏し目" },
+			{ n: 18, label: "覚悟" },
+			{ n: 19, label: "戸惑い" },
+			{ n: 20, label: "やりきった顔" },
+			{ n: 21, label: "やわらかな笑み" },
 		],
-		bustupCount: 6,
+		bustupCount: 21,
 		hasPose: true,
 		stills: [
-			{ file: "water_morning", title: "朝の水替え" },
-			{ file: "cut_morning", title: "朝の下ごしらえ" },
-			{ file: "cut_day", title: "昼の水切り" },
-			{ file: "arrange_day", title: "昼の店づくり" },
-			{ file: "carry_day", title: "荷を運ぶ" },
-			{ file: "handover_day", title: "昼の受け渡し" },
-			{ file: "smile_close", title: "笑うところ" },
-			{ file: "water_evening", title: "夕の水替え" },
-			{ file: "cut_evening", title: "夕の水切り" },
-			{ file: "handover_evening", title: "夕の受け渡し" },
-			{ file: "arrange_night", title: "夜の手入れ" },
-			{ file: "ledger_night", title: "夜の帳面" },
-			{ file: "tired_night", title: "遅い夜" },
+			// 本文の初出に沿う。1月=開店仕事と帳面、3月=卒業束と春の嵐、
+			// 4月以降=配達・夕仕事、8月=夜仕事、12月=繁忙の遅い夜。
+			{ file: "water_morning", title: "朝の水替え", since: 1 },
+			{ file: "cut_morning", title: "朝の下ごしらえ", since: 1 },
+			{ file: "ledger_night", title: "夜の帳面", since: 1 },
+			{ file: "cut_day", title: "昼の水切り", since: 2 },
+			{ file: "arrange_day", title: "昼の店づくり", since: 3 },
+			{ file: "carry_day", title: "荷を運ぶ", since: 3 },
+			{ file: "handover_day", title: "昼の受け渡し", since: 3 },
+			{ file: "smile_close", title: "笑うところ", since: 3 },
+			{ file: "water_evening", title: "夕の水替え", since: 4 },
+			{ file: "cut_evening", title: "夕の水切り", since: 5 },
+			{ file: "handover_evening", title: "夕の受け渡し", since: 6 },
+			{ file: "arrange_night", title: "夜の手入れ", since: 8 },
+			{ file: "tired_night", title: "遅い夜", since: 12 },
 		],
 		unlock: { stage: null },
 		accent: "#c9a04e",
@@ -149,7 +178,8 @@ export const GALLERY_CHARS: readonly GalleryChar[] = [
 		facts: [
 			{ label: "素性", value: "情報工学科二回生。サーバー同好会に所属" },
 			{ label: "身なり", value: "黒のジャケットに、首は黒と青のヘッドホン" },
-			{ label: "声", value: "「〜っす」。技術の話になると早口" },
+			// ⚠️2026-07-27 語尾「〜っす」は全廃した。⚠️ここは名鑑に出る文なので戻さないこと（BIBLE §5 が正本）。
+			{ label: "声", value: "砕けた敬語で陽気。技術の話になると早口" },
 		],
 		faces: [
 			{ n: 1, label: "通常" },
@@ -158,17 +188,33 @@ export const GALLERY_CHARS: readonly GalleryChar[] = [
 			{ n: 4, label: "びっくり" },
 			{ n: 5, label: "真顔" },
 			{ n: 6, label: "困り笑い" },
+			{ n: 7, label: "嫉妬" },
+			{ n: 8, label: "焦燥" },
+			{ n: 9, label: "泣く" },
+			{ n: 10, label: "落ち込む" },
+			{ n: 11, label: "絶望" },
+			{ n: 12, label: "警戒" },
+			{ n: 13, label: "安堵" },
+			{ n: 14, label: "案じる" },
+			{ n: 15, label: "照れ隠し" },
+			{ n: 16, label: "決意" },
+			{ n: 17, label: "疲れ" },
+			{ n: 18, label: "はにかみ" },
+			{ n: 19, label: "困惑" },
+			{ n: 20, label: "聞き入る" },
+			{ n: 21, label: "守る目" },
 		],
-		bustupCount: 6,
+		bustupCount: 21,
 		hasPose: true,
 		stills: [
-			{ file: "delivery_day", title: "昼の配達" },
-			{ file: "carry_box", title: "荷箱を運ぶ" },
-			{ file: "help_water", title: "水替えを手伝う" },
-			{ file: "handover", title: "受け渡し" },
-			{ file: "laugh", title: "笑うところ" },
-			{ file: "delivery_evening", title: "夕の配達" },
-			{ file: "serious_night", title: "夜の真顔" },
+			// レンの手伝いが本文で見える順。夜の真顔は種明かし前の11月まで伏せる。
+			{ file: "delivery_day", title: "昼の配達", since: 1 },
+			{ file: "carry_box", title: "荷箱を運ぶ", since: 2 },
+			{ file: "help_water", title: "水替えを手伝う", since: 2 },
+			{ file: "handover", title: "受け渡し", since: 3 },
+			{ file: "laugh", title: "笑うところ", since: 3 },
+			{ file: "delivery_evening", title: "夕の配達", since: 4 },
+			{ file: "serious_night", title: "夜の真顔", since: 11 },
 		],
 		unlock: { stage: "m1-2" },
 		accent: "#7b86c8",

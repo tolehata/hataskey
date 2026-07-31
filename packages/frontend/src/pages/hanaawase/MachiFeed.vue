@@ -10,7 +10,16 @@ SPDX-License-Identifier: AGPL-3.0-only
 ⚠️Math.random は使わない。乱数は seed 付き rng。
 -->
 <template>
-<div class="machi" :data-reduced="reduced ? 'on' : null" :data-idle="idle ? 'on' : null">
+<div
+	class="machi"
+	:data-reduced="reduced ? 'on' : null"
+	:data-idle="idle ? 'on' : null"
+	:style="{
+		'--m-note-bg': MACHI_NOTE_COLORS.background,
+		'--m-note-ink': MACHI_NOTE_COLORS.ink,
+		'--m-note-sub': MACHI_NOTE_COLORS.supporting,
+	}"
+>
 	<!--
 	時刻でTLの背景が変わる。⚠️切替はフェード（2枚重ねて data-on を入れ替えるだけ）。
 	⚠️どちらも「地の色に薄くのせる層」なので、すれ違う途中でも地の色まで抜けない
@@ -253,6 +262,7 @@ import type { MachiPersonaId, Tanomigoto } from './machi-lines.js';
 import {
 	FEED_LIMIT,
 	ICON_FLIP_MS,
+	MACHI_NOTE_COLORS,
 	MACHI_SEASON,
 	MACHI_SKY,
 	MAX_WIP,
@@ -787,24 +797,13 @@ watch(() => props.active, (value) => {
 	position: relative;
 	display: flex;
 	overflow: hidden;
-	height: 560px;
+	height: var(--m-height, 560px);
 	flex-direction: column;
 	border: 1px solid var(--m-line);
 	border-radius: 14px;
 	background: var(--m-bg);
 	color: var(--m-ink);
 	isolation: isolate;
-}
-
-/* ⚠️モバイルでは街の様子が画面の主役。左右を裁ち落として背を高くする */
-@media (max-width: 640px) {
-	.machi {
-		width: calc(100% + 24px);
-		height: min(76dvh, 780px);
-		margin-inline: -12px;
-		border-inline: 0;
-		border-radius: 0;
-	}
 }
 
 /* --- 時刻で変わる空（TLの背景） ---
@@ -912,7 +911,8 @@ watch(() => props.active, (value) => {
 
 .m-note {
 	position: relative; display: flex; gap: 11px; padding: 12px 15px;
-	border-bottom: 1px solid var(--m-line-2); animation: m-slidein .5s cubic-bezier(.22, 1, .36, 1);
+	border-bottom: 1px solid var(--m-line-2); background: var(--m-note-bg); color: var(--m-note-ink);
+	animation: m-slidein .5s cubic-bezier(.22, 1, .36, 1);
 }
 /* ⚠️会話の途中に境界線を引かない。まとまりの最後にだけ1本引く */
 .m-note[data-parent], .m-note[data-reply][data-cont] { padding-bottom: 6px; border-bottom: 0; }
@@ -952,8 +952,8 @@ watch(() => props.active, (value) => {
 .m-body { min-width: 0; flex: 1; }
 .m-nline { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
 .m-name { font-size: 13.5px; font-weight: 700; }
-.m-handle { color: var(--m-sub); font-size: 12px; }
-.m-time { margin-left: auto; color: var(--m-sub); font-size: 11.5px; }
+.m-handle { color: var(--m-note-sub); font-size: 12px; }
+.m-time { margin-left: auto; color: var(--m-note-sub); font-size: 11.5px; }
 .m-text { margin: 3px 0 0; font-size: 14px; line-height: 1.62; word-break: break-word; }
 
 .m-reacts { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
@@ -965,9 +965,9 @@ watch(() => props.active, (value) => {
 .m-chip[data-mine] { border-color: var(--m-seal); background: color-mix(in srgb, var(--m-seal) 16%, transparent); }
 .m-chip[data-mine] .m-n { color: var(--m-seal); }
 .m-chip[data-pop] { animation: m-pop .34s ease; }
-.m-n { color: var(--m-sub); font-size: 13px; letter-spacing: .02em; }
+.m-n { color: var(--m-note-sub); font-size: 13px; letter-spacing: .02em; }
 
-.m-acts { display: flex; gap: 20px; margin-top: 9px; color: var(--m-sub); }
+.m-acts { display: flex; gap: 20px; margin-top: 9px; color: var(--m-note-sub); }
 .m-act, .m-heart { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; }
 .m-act svg, .m-heart svg { width: 14px; height: 14px; }
 .m-heart { position: relative; padding: 2px; border: 0; border-radius: 50%; background: transparent; color: inherit; cursor: pointer; transition: color .18s; }

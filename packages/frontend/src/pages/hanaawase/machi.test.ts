@@ -11,6 +11,7 @@ import {
 	ICON_CHANGE_LINES,
 	MACHI_FACE_COUNT,
 	MACHI_FACE_IDS,
+	MACHI_NOTE_COLORS,
 	MACHI_SEASON,
 	MACHI_SKY,
 	MAX_REACTION_KINDS,
@@ -462,6 +463,34 @@ describe('たのみごとの台帳', () => {
 });
 
 describe('季節と空（表題の花びら／TLの背景）', () => {
+	type Rgb = readonly [number, number, number];
+	type Rgba = readonly [number, number, number, number];
+
+	const cssColor = (value: string): Rgba => {
+		const hex = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(value);
+		if (hex) return [Number.parseInt(hex[1] ?? '', 16), Number.parseInt(hex[2] ?? '', 16), Number.parseInt(hex[3] ?? '', 16), 1];
+		const rgb = /^rgb\(\s*(\d+)\s+(\d+)\s+(\d+)\s*\/\s*(\d+(?:\.\d+)?)%\s*\)$/.exec(value);
+		if (!rgb) throw new Error(`CSS色を解析できません: ${value}`);
+		return [Number(rgb[1]), Number(rgb[2]), Number(rgb[3]), Number(rgb[4]) / 100];
+	};
+	const composite = (bottom: Rgb, top: Rgba): Rgb => [
+		top[0] * top[3] + bottom[0] * (1 - top[3]),
+		top[1] * top[3] + bottom[1] * (1 - top[3]),
+		top[2] * top[3] + bottom[2] * (1 - top[3]),
+	];
+	const luminance = (color: Rgb): number => {
+		const linear = color.map((channel) => {
+			const value = channel / 255;
+			return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+		});
+		return 0.2126 * (linear[0] ?? 0) + 0.7152 * (linear[1] ?? 0) + 0.0722 * (linear[2] ?? 0);
+	};
+	const contrast = (foreground: Rgb, background: Rgb): number => {
+		const a = luminance(foreground);
+		const b = luminance(background);
+		return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+	};
+
 	/** JSTの時刻ちょうどを指す Date（⚠️端末のタイムゾーンに依存しないよう UTC で組む）。 */
 	const atJst = (hour: number) => new Date(Date.UTC(2026, 6, 25, (hour + 15) % 24, 0));
 
@@ -503,6 +532,39 @@ describe('季節と空（表題の花びら／TLの背景）', () => {
 		for (const a of alphas) expect(a).toBeLessThanOrEqual(30);
 	});
 
+	it('⚠️6段階の空×4季で、本文・名前・handle・時刻・返信行がすべて4.5:1以上', () => {
+		const base: Rgb = [43, 38, 32];
+		const noteBackground = cssColor(MACHI_NOTE_COLORS.background);
+		const roles = {
+			body: cssColor(MACHI_NOTE_COLORS.ink),
+			name: cssColor(MACHI_NOTE_COLORS.ink),
+			handle: cssColor(MACHI_NOTE_COLORS.supporting),
+			time: cssColor(MACHI_NOTE_COLORS.supporting),
+			actions: cssColor(MACHI_NOTE_COLORS.supporting),
+		};
+		const measurements: { label: string; ratio: number }[] = [];
+
+		for (const [skyId, skySpec] of Object.entries(MACHI_SKY)) {
+			for (const [seasonId, seasonSpec] of Object.entries(MACHI_SEASON)) {
+				// top/bottomの両端を測る。glowは最大濃度を同時に重ねるため、実表示より厳しい側の測定。
+				const surfaces = [skySpec.top, skySpec.bottom].map((edge) => {
+					let surface = composite(base, cssColor(seasonSpec.tint));
+					surface = composite(surface, cssColor(edge));
+					surface = composite(surface, cssColor(skySpec.glow));
+					return composite(surface, noteBackground);
+				});
+				for (const [role, color] of Object.entries(roles)) {
+					const foreground: Rgb = [color[0], color[1], color[2]];
+					const ratio = Math.min(...surfaces.map((surface) => contrast(foreground, surface)));
+					measurements.push({ label: `${skyId}/${seasonId}/${role}`, ratio });
+				}
+			}
+		}
+
+		expect(measurements).toHaveLength(6 * 4 * 5);
+		for (const result of measurements) expect(result.ratio, result.label).toBeGreaterThanOrEqual(4.5);
+	});
+
 	it('⚠️表題の花びらの濃さは0.5以下（表題が読めなくなるのを防ぐ）', () => {
 		for (const spec of Object.values(MACHI_SEASON)) {
 			expect(spec.colors.length).toBeGreaterThanOrEqual(3);
@@ -533,7 +595,7 @@ describe('季節と空（表題の花びら／TLの背景）', () => {
 
 describe('住民のアイコンが変わる', () => {
 	// ⚠️実ファイル準拠。assets/hanaawase/chara/<id>/face_N.webp の実枚数と一致していること。
-	const REAL_COUNTS: Record<string, number> = { wakana: 6, ren: 6, yae: 4, inukai: 4, naito: 3, tatsumi: 3, gen: 3 };
+	const REAL_COUNTS: Record<string, number> = { wakana: 21, ren: 21, yae: 4, inukai: 4, naito: 3, tatsumi: 3, gen: 3 };
 
 	// ⚠️これは「表」と「テスト内の写し」の突き合わせであって、ディスクは見ていない。
 	//   実ファイルとの一致は下の「⚠️アイコンの表とディスクの一致」が担当する。
@@ -548,8 +610,8 @@ describe('住民のアイコンが変わる', () => {
 
 	it('⚠️範囲外・未登録は null を返す（404になるパスを組み立てない）', () => {
 		expect(facePathOf('wakana', 1)).toBe('/client-assets/hanaawase/chara/wakana/face_1.webp');
-		expect(facePathOf('wakana', 6)).toBe('/client-assets/hanaawase/chara/wakana/face_6.webp');
-		expect(facePathOf('wakana', 7)).toBeNull();
+		expect(facePathOf('wakana', 21)).toBe('/client-assets/hanaawase/chara/wakana/face_21.webp');
+		expect(facePathOf('wakana', 22)).toBeNull();
 		expect(facePathOf('naito', 4)).toBeNull(); // naito は3枚
 		expect(facePathOf('gen', 3)).toBe('/client-assets/hanaawase/chara/gen/face_3.webp');
 		expect(facePathOf('gen', 0)).toBeNull();

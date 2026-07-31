@@ -37,6 +37,7 @@ export const ICONS = {
 	kaeshi: () => stroke(path('M24 18 L40 32 L24 46')),
 	modoru: () => stroke(path('M45 32 H20 M28 20 L16 32 L28 44')),
 	modori: () => stroke(path('M45 19 C33 18 20 23 20 35 V42 M20 42 L12 34 M20 42 L28 34')),
+	haguruma: () => stroke('<circle cx="32" cy="32" r="17"/><circle cx="32" cy="32" r="7"/><path d="M32 8 V15 M32 49 V56 M8 32 H15 M49 32 H56 M15 15 L20 20 M44 44 L49 49 M49 15 L44 20 M20 44 L15 49"/>'),
 	noki: () => stroke(`${path('M9 30 L32 13 L55 30 M15 30 V48 H49 V30 M24 30 V42 M32 30 V42 M40 30 V42')}`),
 	soroban: () => stroke(`${path('M10 32 H54')}<circle cx="20" cy="25" r="6"/><circle cx="33" cy="39" r="6"/><circle cx="46" cy="25" r="6"/>`),
 	tomoe: () => stroke(`${path('M33 11 C51 12 57 33 45 45 C35 55 18 49 17 35 C16 25 25 20 31 24 C37 28 34 37 28 37')} ${path('M31 53 C13 52 7 31 19 19 C29 9 46 15 47 29 C48 39 39 44 33 40 C27 36 30 27 36 27')}`),
@@ -55,6 +56,7 @@ export const ICONS = {
 	tsuyu: () => filled('<path d="M32 10 C25 21 18 29 18 39 A14 14 0 0 0 46 39 C46 29 39 21 32 10 Z" fill="#7b86c8"/><path d="M23 39 C23 33 27 28 32 22" fill="none" stroke="#f4efe3" stroke-width="2"/>', '<path d="M32 10 C25 21 18 29 18 39 A14 14 0 0 0 46 39 C46 29 39 21 32 10 Z" fill="#4d579a"/>'),
 
 	// メタ画面
+	chousei: () => stroke(`${path('M12 18 H26 M38 18 H52 M12 32 H39 M51 32 H52 M12 46 H18 M30 46 H52')}<circle cx="32" cy="18" r="6"/><circle cx="45" cy="32" r="6"/><circle cx="24" cy="46" r="6"/>`),
 	choumen: () => stroke(`${path('M17 12 H45 V52 H17 Z M23 16 V48 M27 19 H39 M27 28 H39 M27 37 H39')}<circle cx="22" cy="21" r="1"/><circle cx="22" cy="29" r="1"/><circle cx="22" cy="37" r="1"/><circle cx="22" cy="45" r="1"/>`),
 	himekuri: () => stroke(`${path('M14 16 H50 V51 H14 Z M14 27 H50 M23 11 V21 M41 11 V21 M23 37 L30 44 L42 32')}`),
 	fumi: () => stroke(`${path('M13 29 H51 L42 45 H22 Z M19 25 L29 17 L45 27 M28 17 L35 25')}`),

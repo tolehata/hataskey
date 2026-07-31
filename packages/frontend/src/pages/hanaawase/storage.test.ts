@@ -107,6 +107,61 @@ describe("花常の進行保存", () => {
 		expect(cache.values.get("miux:hanaawase:recovery:settings")).toBe("not-json");
 	});
 
+	test("イベント記録は累積値を減らさず、交換数と既読を和集合でマージする", async () => {
+		const remote = apiWith({ events: {
+			v: 1,
+			updatedAt: 200,
+			byEvent: {
+				"ev-a": {
+					points: 18,
+					exchanged: { hasami: 1 },
+					stagesCleared: ["s1"],
+					storySeen: ["p1"],
+					rallyContrib: 2,
+				},
+			},
+			kazari: ["kazari-a"],
+		} });
+		const storage = new HanaawaseStorage(remote.api, memoryCache(), () => 300);
+		await storage.load();
+		remote.records.events = {
+			v: 1,
+			updatedAt: 250,
+			byEvent: {
+				"ev-a": {
+					points: 20,
+					exchanged: { hasami: 1 },
+					stagesCleared: ["s1"],
+					storySeen: ["p1"],
+					rallyContrib: 2,
+				},
+			},
+			kazari: ["kazari-a"],
+		};
+		const local = {
+			...storage.snapshot().events,
+			byEvent: {
+				"ev-a": {
+					points: 18,
+					exchanged: { hasami: 2, tenaoshi: 1 },
+					stagesCleared: ["s1", "s2"],
+					storySeen: ["p1", "p2"],
+					rallyContrib: 3,
+					completedAt: 280,
+				},
+			},
+			kazari: ["kazari-b"],
+		};
+		await storage.save("events", local);
+		const saved = remote.records.events as ReturnType<HanaawaseStorage["snapshot"]>["events"];
+		expect(saved.byEvent["ev-a"]?.points).toBe(20);
+		expect(saved.byEvent["ev-a"]?.exchanged).toEqual({ hasami: 2, tenaoshi: 1 });
+		expect(saved.byEvent["ev-a"]?.stagesCleared).toEqual(["s1", "s2"]);
+		expect(saved.byEvent["ev-a"]?.storySeen).toEqual(["p1", "p2"]);
+		expect(saved.byEvent["ev-a"]?.completedAt).toBe(280);
+		expect(saved.kazari).toEqual(["kazari-a", "kazari-b"]);
+	});
+
 	test("リセットはレジストリと端末キャッシュを同時に消す", async () => {
 		const remote = apiWith({ progress: emptySaveMap().progress });
 		const cache = memoryCache();
@@ -114,6 +169,6 @@ describe("花常の進行保存", () => {
 		await storage.save("progress", { ...emptySaveMap().progress, stars: { "m1-1": 3 } });
 		expect(await storage.reset()).toBe("saved");
 		expect(cache.values.has("miux:hanaawase:progress")).toBe(false);
-		expect(remote.calls.filter((call) => call.endpoint === "i/registry/remove")).toHaveLength(3);
+		expect(remote.calls.filter((call) => call.endpoint === "i/registry/remove")).toHaveLength(4);
 	});
 });

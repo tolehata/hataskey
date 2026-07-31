@@ -6,7 +6,12 @@
 import { timeOfDay } from './daytime';
 import type { TimeOfDay } from './daytime';
 import { MENU_LINES, MENU_CHARS } from './menu-lines';
+import { MENU_LINES_2 } from './menu-lines-2';
+import { MENU_LINES_3 } from './menu-lines-3';
 import type { MenuLine, MenuCharId, MenuProg } from './menu-lines';
+
+/** 全セリフ。⚠️追加分は menu-lines-N.ts に足し、ここで1行だけ結合する（既存ファイルは書き換えない）。 */
+export const ALL_MENU_LINES: MenuLine[] = [...MENU_LINES, ...MENU_LINES_2, ...MENU_LINES_3];
 
 export interface MenuContext {
 	/** 判定基準時刻（時間帯の算出に使う）。 */
@@ -45,7 +50,7 @@ const PROG_RANK: Record<MenuProg, number> = { early: 0, mid: 1, late: 2 };
 /** あるキャラの、文脈に合うセリフだけを返す。 */
 export function eligibleLines(char: MenuCharId, ctx: MenuContext): MenuLine[] {
 	const t = timeOfDay(ctx.now);
-	return MENU_LINES.filter((l) => {
+	return ALL_MENU_LINES.filter((l) => {
 		if (l.char !== char) return false;
 		if (l.time !== 'any' && l.time !== t) return false;
 		if (l.month !== 'any' && !l.month.includes(ctx.month)) return false;

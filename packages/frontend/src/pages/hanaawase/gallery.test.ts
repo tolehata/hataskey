@@ -10,12 +10,15 @@ import {
 	facePath,
 	galleryCharById,
 	isUnlocked,
+	isStillUnlocked,
 	posePath,
 	stageOrder,
 	stillPath,
 	unlockedCount,
+	unlockedStills,
 } from "./gallery-data.js";
 import type { GalleryChar, GalleryProgress } from "./gallery-data.js";
+import gallerySource from "./Gallery.vue?raw";
 import { MENU_LINES } from "./menu-lines.js";
 
 const progressOf = (stars: Record<string, 0 | 1 | 2 | 3>, vignettesSeen: string[] = []): GalleryProgress =>
@@ -23,7 +26,7 @@ const progressOf = (stars: Record<string, 0 | 1 | 2 | 3>, vignettesSeen: string[
 
 // ⚠️実アセットの枚数。キャラごとに表情の数が違うので、存在しない番号を参照しないための固定表。
 const FACE_COUNT: Record<string, number> = {
-	wakana: 6, ren: 6, yae: 4, inukai: 4, gen: 3,
+	wakana: 21, ren: 21, yae: 4, inukai: 4, gen: 3,
 	tatsumi: 3, naito: 3, haruno: 3, amamiya: 3, tsune: 0,
 };
 
@@ -51,7 +54,7 @@ describe("花常の名鑑データ", () => {
 
 	test("バストアップが生成済みなのは若菜とレンだけで、表情の枚数を超えない", () => {
 		for (const entry of GALLERY_CHARS) {
-			if (entry.id === "wakana" || entry.id === "ren") expect(entry.bustupCount).toBe(6);
+		if (entry.id === "wakana" || entry.id === "ren") expect(entry.bustupCount).toBe(21);
 			else expect(entry.bustupCount).toBe(0);
 			expect(entry.bustupCount).toBeLessThanOrEqual(entry.faces.length);
 		}
@@ -63,6 +66,11 @@ describe("花常の名鑑データ", () => {
 			else expect(entry.stills).toEqual([]);
 			const files = entry.stills.map((still) => still.file);
 			expect(new Set(files).size).toBe(files.length);
+			for (const still of entry.stills) {
+				expect(Number.isInteger(still.since)).toBe(true);
+				expect(still.since).toBeGreaterThanOrEqual(1);
+				expect(still.since).toBeLessThanOrEqual(12);
+			}
 		}
 	});
 
@@ -135,6 +143,21 @@ describe("花常の名鑑の解放判定", () => {
 		expect(isUnlocked(entry, progressOf({}))).toBe(false);
 		expect(isUnlocked(entry, progressOf({}, ["v-test"]))).toBe(true);
 	});
+
+	test("ひとこまは進行ゼロでは0枚で、対応する月への到達後に増える", () => {
+		const wakana = galleryCharById("wakana") as GalleryChar;
+		expect(unlockedStills(wakana, progressOf({}))).toHaveLength(0);
+		expect(unlockedStills(wakana, progressOf({ "m1-1": 1 }))).toHaveLength(3);
+		expect(unlockedStills(wakana, progressOf({ "m3-1": 1 }))).toHaveLength(8);
+		expect(unlockedStills(wakana, progressOf({ "m12-1": 1 }))).toHaveLength(wakana.stills.length);
+	});
+
+	test("ひとこまの不正な月は解放しない", () => {
+		const full = progressOf({ "m12-3": 3 });
+		expect(isStillUnlocked({ file: "x", title: "x", since: 0 }, full)).toBe(false);
+		expect(isStillUnlocked({ file: "x", title: "x", since: 13 }, full)).toBe(false);
+		expect(isStillUnlocked({ file: "x", title: "x", since: 1.5 }, full)).toBe(false);
+	});
 });
 
 describe("花常の名鑑のひとこと", () => {
@@ -159,5 +182,16 @@ describe("花常の名鑑のひとこと", () => {
 			const lines = barksFor(entry.id);
 			expect(new Set(lines).size).toBe(lines.length);
 		}
+	});
+});
+
+describe("花常の名鑑レイアウト", () => {
+	test("一覧と詳細の100%幅カードをborder-boxへ収め、小窓幅をcontainerで判定する", () => {
+		expect(gallerySource).toContain(".gallery-scope *::after { box-sizing: border-box; }");
+		expect(gallerySource).toContain(".gallery-grid > li, .still-grid > li { min-width: 0; }");
+		expect(gallerySource).toContain("grid-template-columns: repeat(3, minmax(0, 1fr))");
+		expect(gallerySource).toContain("grid-template-columns: repeat(2, minmax(0, 1fr))");
+		expect(gallerySource).toContain("@container (max-width: 420px)");
+		expect(gallerySource).not.toContain("@media (max-width: 420px)");
 	});
 });

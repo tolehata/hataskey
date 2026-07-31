@@ -73,12 +73,12 @@ describe("花常 物語の収録", () => {
 		}
 	});
 
-	test("表情は1〜6、立ち絵のある話者にだけ付く", () => {
+	test("表情は1〜21、立ち絵のある話者にだけ付く", () => {
 		for (const vignette of VIGNETTES) for (const line of vignette.lines) {
 			if (line.kind !== "say") continue;
 			if (line.emo !== undefined) {
 				expect(line.emo).toBeGreaterThanOrEqual(1);
-				expect(line.emo).toBeLessThanOrEqual(6);
+				expect(line.emo).toBeLessThanOrEqual(21);
 				expect(["wakana", "ren"]).toContain(line.speaker);
 			}
 			// サブキャストは立ち絵なし＝名前が要る

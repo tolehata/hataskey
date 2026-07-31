@@ -379,6 +379,16 @@ export const MACHI_SEASON: Readonly<Record<MachiSeason, MachiSeasonSpec>> = {
 	winter: { colors: ['#e8eef5', '#cfdbe8', '#dce6f0'], shape: 'snow', peak: 0.5, tint: 'rgb(207 219 232 / 6%)' },
 };
 
+/**
+ * 投稿面と、その上の文字色。空と季節色を残したまま小さい文字も4.5:1以上にする。
+ * ⚠️MachiFeed.vue はこの値をCSS変数へ渡す。検証と表示の色を別々に手書きしない。
+ */
+export const MACHI_NOTE_COLORS = {
+	background: 'rgb(43 38 32 / 88%)',
+	ink: '#f4efe3',
+	supporting: '#d1c8b7',
+} as const;
+
 /** 表題まわりを舞う花びら1枚。⚠️軌道と絵の二層で描く（たのみごとの花吹雪と同じ作法）。 */
 export interface MachiHeadPetal {
 	/** ヘッダ内の水平位置 %。 */
@@ -463,8 +473,8 @@ export const QUEST_BLOOM_MS = 3400;
 //    実ファイル準拠（2026-07 時点の assets/hanaawase/chara/ の中身）。
 
 export const MACHI_FACE_COUNT: Readonly<Partial<Record<MachiPersonaId, number>>> = {
-	wakana: 6,
-	ren: 6,
+	wakana: 21,
+	ren: 21,
 	yae: 4,
 	inukai: 4,
 	naito: 3,

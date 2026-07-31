@@ -106,14 +106,18 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<button v-if="barks.length > 1" class="text-button" type="button" @click="nextBark">もうひとこと</button>
 		</section>
 
-		<section v-if="visibleStills.length > 0" class="detail-stills" aria-label="ひとこま">
+		<section v-if="stillCards.length > 0" class="detail-stills" aria-label="ひとこま">
 			<h3>ひとこま</h3>
 			<ul class="still-grid">
-				<li v-for="still in visibleStills" :key="still.file">
-					<button class="still-tile" type="button" @click="openStill(still)">
-						<img :src="stillSrc(still)" :alt="still.title" loading="lazy" decoding="async" @error="markFailed(stillSrc(still))">
-						<span>{{ still.title }}</span>
+				<li v-for="card in stillCards" :key="card.still.file">
+					<button v-if="card.unlocked" class="still-tile" type="button" @click="openStill(card.still)">
+						<img :src="stillSrc(card.still)" :alt="card.still.title" loading="lazy" decoding="async" @error="markFailed(stillSrc(card.still))">
+						<span>{{ card.still.title }}</span>
 					</button>
+					<div v-else class="still-tile locked" role="img" aria-label="まだ見ていないひとこま">
+						<span class="still-lock-mark" aria-hidden="true">?</span>
+						<b aria-hidden="true">まだ見ていない</b>
+					</div>
 				</li>
 			</ul>
 		</section>
@@ -140,6 +144,7 @@ import {
 	bustupPath,
 	facePath,
 	isUnlocked,
+	isStillUnlocked,
 	posePath,
 	stillPath,
 	unlockedCount,
@@ -209,10 +214,17 @@ const barkText = computed(() => (barks.value.length === 0 ? "" : barks.value[bar
 const nextBark = () => { barkIndex.value = (barkIndex.value + 1) % Math.max(1, barks.value.length); };
 
 const stillSrc = (still: GalleryStill) => (detail.value ? stillPath(detail.value.id, still.file) : "");
-const visibleStills = computed(() => {
+/**
+ * ひとこまは gallery-data.ts の月対応表で解放する。
+ * ⚠️未解放も「まだ見ていない」と分かる札で残すが、題と画像は出さない。
+ * ⚠️画像の読み込み失敗は、解放判定とは別に従来どおり静かに隠す。
+ */
+const stillCards = computed(() => {
 	const entry = detail.value;
 	if (!entry) return [];
-	return entry.stills.filter((still) => shown(stillPath(entry.id, still.file)));
+	return entry.stills
+		.map((still) => ({ still, unlocked: isStillUnlocked(still, props.progress) }))
+		.filter((card) => !card.unlocked || shown(stillPath(entry.id, card.still.file)));
 });
 
 function open(entry: GalleryChar) {
@@ -269,9 +281,25 @@ onUnmounted(() => { window.removeEventListener("keydown", onKeydown); });
 	--g-line: var(--line, var(--fb-line));
 	--g-accent: var(--accent, var(--fb-accent));
 	--chara-accent: var(--g-accent);
+	/*
+	旗鯖fork: ⚠️キャラの差し色を**文字色にそのまま使わない**。暗い面に載せると最悪 1.89:1（茶系 #6d5a45）で読めない。
+	⚠️地の文字色と半々に混ぜた `--chara-ink` を文字専用に用意する（実測: 10色すべてで最悪 5.14:1）。
+	⚠️罫・印の輪郭は装飾なので `--chara-accent` のままでよい（文字だけを差し替える）。
+	*/
+	--chara-ink: color-mix(in srgb, var(--chara-accent) 50%, var(--g-ink));
 
+	container-type: inline-size;
 	color: var(--g-ink);
 }
+
+/*
+⚠️一覧の `.card` と詳細の `.still-tile` は `width: 100%` にpaddingとborderを持つ。
+content-boxのままだと列幅の外へ14〜18pxはみ出し、隣の項目へ重なるため、名鑑内はborder-boxで統一する。
+*/
+.gallery-scope,
+.gallery-scope *,
+.gallery-scope *::before,
+.gallery-scope *::after { box-sizing: border-box; }
 
 @media (prefers-color-scheme: light) {
 	.gallery-scope {
@@ -294,7 +322,8 @@ onUnmounted(() => { window.removeEventListener("keydown", onKeydown); });
 .gallery-count { margin: 0 0 14px; color: var(--g-sub); font-size: 12px; }
 .gallery-count b { color: var(--g-accent); font-size: 15px; }
 
-.gallery-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 0; padding: 0; list-style: none; }
+.gallery-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 0; padding: 0; list-style: none; }
+.gallery-grid > li, .still-grid > li { min-width: 0; }
 .card {
 	display: grid;
 	width: 100%;
@@ -319,7 +348,7 @@ button.card:focus-visible { outline: 2px solid var(--chara-accent); outline-offs
 
 .card-art { position: relative; display: grid; overflow: hidden; width: 100%; aspect-ratio: 1; place-items: center; border-radius: 10px; background: rgb(0 0 0 / 14%); }
 .card-art img { width: 100%; height: 100%; object-fit: contain; }
-.card-seal { display: grid; width: 62%; aspect-ratio: 1; place-items: center; border: 1px solid var(--chara-accent); border-radius: 50%; color: var(--chara-accent); font-family: serif; font-size: 20px; }
+.card-seal { display: grid; width: 62%; aspect-ratio: 1; place-items: center; border: 1px solid var(--chara-accent); border-radius: 50%; color: var(--chara-ink); font-family: serif; font-size: 20px; }
 
 .card.locked { color: var(--g-sub); }
 .card.locked .card-art img { filter: brightness(0) opacity(.34); }
@@ -327,13 +356,13 @@ button.card:focus-visible { outline: 2px solid var(--chara-accent); outline-offs
 
 /* --- 詳細 --- */
 .detail-reading { margin: 0; color: var(--g-sub); font-size: 12px; letter-spacing: .08em; }
-.detail-role { margin: 2px 0 14px; color: var(--chara-accent); font-family: serif; font-size: 14px; }
+.detail-role { margin: 2px 0 14px; color: var(--chara-ink); font-family: serif; font-size: 14px; }
 
 .detail-art { position: relative; display: flex; align-items: flex-end; gap: 12px; padding: 12px; border: 1px solid var(--g-line); border-radius: 16px; background: linear-gradient(180deg, rgb(0 0 0 / 10%), transparent 46%), var(--g-panel); }
 .pose { flex: 1 1 58%; margin: 0; }
 .pose img { display: block; width: 100%; max-height: 320px; object-fit: contain; }
 .pose-empty { display: grid; min-height: 190px; place-items: center; }
-.pose-seal { display: grid; width: 96px; aspect-ratio: 1; place-items: center; border: 1px solid var(--chara-accent); border-radius: 50%; color: var(--chara-accent); font-family: serif; font-size: 34px; }
+.pose-seal { display: grid; width: 96px; aspect-ratio: 1; place-items: center; border: 1px solid var(--chara-accent); border-radius: 50%; color: var(--chara-ink); font-family: serif; font-size: 34px; }
 .medallion { flex: 0 0 38%; margin: 0 0 6px; text-align: center; }
 .medallion img { display: block; width: 100%; aspect-ratio: 1; border: 1px solid var(--chara-accent); border-radius: 50%; object-fit: cover; background: rgb(0 0 0 / 16%); animation: hana-gallery-face 220ms ease-out; }
 .medallion figcaption { margin-top: 6px; color: var(--g-sub); font-size: 11px; }
@@ -358,11 +387,15 @@ button.card:focus-visible { outline: 2px solid var(--chara-accent); outline-offs
 .text-button { border: 0; color: var(--g-sub); background: transparent; font: inherit; font-size: 12px; cursor: pointer; }
 .text-button:hover, .text-button:focus-visible { color: var(--g-ink); }
 
-.still-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin: 0; padding: 0; list-style: none; }
+.still-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 0; padding: 0; list-style: none; }
 .still-tile { display: grid; width: 100%; gap: 5px; padding: 6px; border: 1px solid var(--g-line); border-radius: 12px; color: var(--g-sub); background: var(--g-panel); font: inherit; cursor: pointer; transition: transform .16s ease; }
 .still-tile:hover { transform: translateY(-2px); }
 .still-tile img { display: block; width: 100%; aspect-ratio: 16 / 10; border-radius: 8px; object-fit: cover; }
 .still-tile span { font-size: 11px; }
+.still-tile.locked { min-height: 116px; place-content: center; justify-items: center; color: var(--g-sub); background: linear-gradient(145deg, rgb(255 255 255 / 4%), rgb(0 0 0 / 11%)), var(--g-panel); cursor: default; }
+.still-tile.locked:hover { transform: none; }
+.still-tile.locked .still-lock-mark { display: grid; width: 34px; height: 34px; place-items: center; border: 1px solid var(--g-line); border-radius: 50%; color: var(--g-ink); font-family: serif; font-size: 18px; }
+.still-tile.locked b { font-size: 11px; font-weight: 400; letter-spacing: .08em; }
 
 .still-viewer { position: fixed; inset: 0; z-index: 40; display: grid; padding: 20px; place-items: center; background: rgb(18 15 12 / 82%); }
 .still-viewer figure { max-width: min(880px, 92vw); margin: 0; text-align: center; }
@@ -391,8 +424,9 @@ button.card:focus-visible { outline: 2px solid var(--chara-accent); outline-offs
 	button.card:hover, .face-chip:hover, .still-tile:hover { transform: none; }
 }
 
-@media (max-width: 420px) {
-	.gallery-grid { grid-template-columns: repeat(2, 1fr); }
+/* ⚠️画面幅ではなく、Misskeyの小窓内で名鑑に実際に与えられた幅を見る。 */
+@container (max-width: 420px) {
+	.gallery-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 	.detail-art { flex-direction: column; align-items: center; }
 	.pose, .medallion { flex: none; width: 100%; }
 	.medallion { max-width: 190px; }

@@ -6,7 +6,7 @@
 import { defineAsyncComponent } from 'vue';
 import type { AsyncComponentLoader } from 'vue';
 import type { RouteDef } from '@/lib/nirax.js';
-import { $i, iAmModerator } from '@/i.js';
+import { $i, iAmAdmin, iAmModerator } from '@/i.js';
 import MkLoading from '@/pages/_loading_.vue';
 import MkError from '@/pages/_error_.vue';
 import PageTimeline from '@/pages/timeline.vue';
@@ -419,6 +419,10 @@ export const ROUTE_DEF = [{
 		path: '/overview',
 		name: 'overview',
 		component: page(() => import('@/pages/admin/overview.vue')),
+	}, {
+		path: '/games',
+		name: 'games',
+		component: iAmAdmin ? page(() => import('@/pages/admin/games.vue')) : page(() => import('@/pages/not-found.vue')),
 	}, {
 		path: '/users',
 		name: 'users',

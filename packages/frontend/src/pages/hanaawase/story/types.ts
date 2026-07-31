@@ -15,11 +15,20 @@
  *   `【A】/【B】/【合流】` `{B-01=A: …}` → Line.when
  */
 
-/** 表情差分の番号。若菜: ①澄まし ②にこにこ ③むむっ ④びっくり ⑤しょんぼり ⑥きらきら */
-export type Emotion = 1 | 2 | 3 | 4 | 5 | 6;
+/**
+ * 表情差分の番号。主役二人は21枚まで持てる。
+ * サブキャストは素材枚数が少ないため、表示側で各キャラの上限へ丸める。
+ */
+export type Emotion =
+	| 1 | 2 | 3 | 4 | 5 | 6 | 7
+	| 8 | 9 | 10 | 11 | 12 | 13 | 14
+	| 15 | 16 | 17 | 18 | 19 | 20 | 21;
 
-/** 話者。sub = サブキャスト（立ち絵なし・名前表示のみ。SPEC §9.7.6-6） */
-export type Speaker = "wakana" | "ren" | "sub" | "narration";
+/**
+ * 話者。sub = 本編サブキャスト、evt = 表情を持つイベント限定キャスト。
+ * ⚠️evt はイベントJSONの中だけで使い、本編キャストへ混ぜない。
+ */
+export type Speaker = "wakana" | "ren" | "sub" | "evt" | "narration";
 
 /** 選択肢の枝。 */
 export type ChoiceKey = "A" | "B";

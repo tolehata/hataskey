@@ -15,7 +15,20 @@ import { HEART_REPLIES_B7, MACHI_POSTS_BATCH07, MACHI_THREADS_B7 } from './machi
 import { HEART_REPLIES_B8, MACHI_POSTS_BATCH08, MACHI_THREADS_B8 } from './machi-lines-batch08.js';
 import { HEART_REPLIES_B9, MACHI_POSTS_BATCH09, MACHI_THREADS_B9 } from './machi-lines-batch09.js';
 import { HEART_REPLIES_B10, MACHI_POSTS_BATCH10, MACHI_THREADS_B10 } from './machi-lines-batch10.js';
+import { HEART_REPLIES_B11, MACHI_POSTS_BATCH11, MACHI_THREADS_B11 } from './machi-lines-batch11.js';
+// ⚠️バッチ12〜14は住民を12/12/11人に分けて並行執筆したもの。
+//    各担当は互いの文面を見ていないため、結合前にバッチ相互の10文字一致を検査済み（4件を書き直して0件）。
+import { HEART_REPLIES_B12, MACHI_POSTS_BATCH12, MACHI_THREADS_B12 } from './machi-lines-batch12.js';
+import { HEART_REPLIES_B13, MACHI_POSTS_BATCH13, MACHI_THREADS_B13 } from './machi-lines-batch13.js';
+import { HEART_REPLIES_B14, MACHI_POSTS_BATCH14, MACHI_THREADS_B14 } from './machi-lines-batch14.js';
+import { HEART_REPLIES_B15, MACHI_POSTS_BATCH15, MACHI_THREADS_B15 } from './machi-lines-batch15.js';
+import { HEART_REPLIES_B16, MACHI_POSTS_BATCH16, MACHI_THREADS_B16 } from './machi-lines-batch16.js';
+import { HEART_REPLIES_B17, MACHI_POSTS_BATCH17, MACHI_THREADS_B17 } from './machi-lines-batch17.js';
+import { HEART_REPLIES_B18, MACHI_POSTS_BATCH18, MACHI_THREADS_B18 } from './machi-lines-batch18.js';
+import { HEART_REPLIES_B19, MACHI_POSTS_BATCH19, MACHI_THREADS_B19 } from './machi-lines-batch19.js';
+import { HEART_REPLIES_B20, MACHI_POSTS_BATCH20, MACHI_THREADS_B20 } from './machi-lines-batch20.js';
 import { TANOMIGOTO_2 } from './machi-lines-tanomigoto-2.js';
+import { TANOMIGOTO_3 } from './machi-lines-tanomigoto-3.js';
 
 // --- 住民 ---------------------------------------------------------------
 
@@ -123,11 +136,11 @@ const MACHI_POSTS_BASE: readonly MachiPost[] = [
 	{ p: 'wakana', t: '店先で猫が寝てる。今日の看板娘。', e: ['🐈'] },
 	{ p: 'wakana', t: '紫陽花は水が下がりやすい。切り口に明礬。地味だけど効く。', e: ['💧'] },
 	{ p: 'wakana', t: '今日の分だけ、静かに店じまい。おやすみ入舟町。', e: ['🌙', '😴'] },
-	{ p: 'ren', t: '配達完了っす。坂の上まで軽トラで往復、いい運動になる。', e: ['🚚'] },
+	{ p: 'ren', t: '配達完了! 坂の上まで軽トラで往復、これがいい運動になるんだよな。', e: ['🚚'] },
 	{ p: 'ren', t: '深夜のログ調査より花の水替えのほうが性に合うかもしれん。', e: ['💻', '🌸'] },
-	{ p: 'ren', t: '花常さんの結んだ花束、なぜかほどけない。結び、どうなってんすか。', e: ['🎀'] },
+	{ p: 'ren', t: '花常さんの結んだ花束、なぜかほどけない。あの結び目、どういう仕組みなんだ。', e: ['🎀'] },
 	{ p: 'ren', t: 'レポートの締切、花の締切より甘く見てた。詰んだ。', e: ['😇'] },
-	{ p: 'ren', t: '犬飼さんに『犬と一緒にすんな』って言われた。いや狼っすけど。', e: ['🐺', '😂'] },
+	{ p: 'ren', t: '犬飼さんに、犬と一緒にするなと怒られた。いや、俺は狼なんだけどな。', e: ['🐺', '😂'] },
 	{ p: 'ren', t: '坂の上から見ると、町で花常の灯りだけ一番あったかい。', e: ['🏮', '🥹'] },
 	{ p: 'yae', t: '若菜ちゃん、また朝ごはん抜いてる。うちのバナナ置いといたからね。', e: ['🍌', '😤'] },
 	{ p: 'yae', t: '常ちゃんの孫があんなに立派に店をやって。感慨深いわ。', e: ['🥲'] },
@@ -176,6 +189,16 @@ export const MACHI_POSTS: readonly MachiPost[] = [
 	...MACHI_POSTS_BATCH08,
 	...MACHI_POSTS_BATCH09,
 	...MACHI_POSTS_BATCH10,
+	...MACHI_POSTS_BATCH11,
+	...MACHI_POSTS_BATCH12,
+	...MACHI_POSTS_BATCH13,
+	...MACHI_POSTS_BATCH14,
+	...MACHI_POSTS_BATCH15,
+	...MACHI_POSTS_BATCH16,
+	...MACHI_POSTS_BATCH17,
+	...MACHI_POSTS_BATCH18,
+	...MACHI_POSTS_BATCH19,
+	...MACHI_POSTS_BATCH20,
 ];
 
 // --- 会話（返信を線でつないで見せるまとまり） -----------------------------
@@ -187,7 +210,7 @@ export interface MachiThread {
 
 const MACHI_THREADS_BASE: readonly MachiThread[] = [
 	{
-		root: { p: 'ren', t: '花常さんの花束、まじでほどけない。企業秘密すか。', e: ['🎀'] },
+		root: { p: 'ren', t: '花常さんの花束、どうやってもほどけません。企業秘密ですか。', e: ['🎀'] },
 		replies: [
 			{ p: 'wakana', t: '秘密。……というほどでもないけど。', e: ['😌'] },
 		],
@@ -210,6 +233,16 @@ export const MACHI_THREADS: readonly MachiThread[] = [
 	...MACHI_THREADS_B8,
 	...MACHI_THREADS_B9,
 	...MACHI_THREADS_B10,
+	...MACHI_THREADS_B11,
+	...MACHI_THREADS_B12,
+	...MACHI_THREADS_B13,
+	...MACHI_THREADS_B14,
+	...MACHI_THREADS_B15,
+	...MACHI_THREADS_B16,
+	...MACHI_THREADS_B17,
+	...MACHI_THREADS_B18,
+	...MACHI_THREADS_B19,
+	...MACHI_THREADS_B20,
 ];
 
 // --- ♡を押したときの反応（空リプ） ---------------------------------------
@@ -248,6 +281,16 @@ export const HEART_REPLIES: readonly string[] = [
 	...HEART_REPLIES_B8,
 	...HEART_REPLIES_B9,
 	...HEART_REPLIES_B10,
+	...HEART_REPLIES_B11,
+	...HEART_REPLIES_B12,
+	...HEART_REPLIES_B13,
+	...HEART_REPLIES_B14,
+	...HEART_REPLIES_B15,
+	...HEART_REPLIES_B16,
+	...HEART_REPLIES_B17,
+	...HEART_REPLIES_B18,
+	...HEART_REPLIES_B19,
+	...HEART_REPLIES_B20,
 ];
 
 /** 町の人が押していく絵文字。投稿ごとの e が尽きたらここから選ぶ。 */
@@ -343,7 +386,7 @@ const TANOMIGOTO_BASE: readonly Tanomigoto[] = [
 	},
 	{
 		id: 'q09', title: '喫茶の卓に一輪', by: 'kanako', goal: '1局を最後までクリア', petal: '#efe7d6',
-		ask: 'くろまつのマスターに、カウンターに置く一輪を贈りたくて。無口な人だから。',
+		ask: 'くろまつの店主へ、カウンターに置く一輪を贈りたくて。無口な人だから。',
 		wip: '花常さんが選んでくれるそう。マスター、気づくかしら。',
 		done: '翌日、卓にちゃんと飾ってあった。……豆、って言われた。照れ隠しね。',
 		fail: '渡しそびれてしまった。また折を見て。',
@@ -379,7 +422,7 @@ const TANOMIGOTO_BASE: readonly Tanomigoto[] = [
 	{
 		id: 'q14', title: '越してきた店先の緑', by: 'maki', goal: '1局を最後までクリア', petal: '#5a7a52',
 		ask: '先月越してきました。店先に置く育てやすい緑を相談したいです。',
-		wip: '花屋さんが水やりの少ないのを選んでくれるって。心強い。',
+		wip: '花屋さんが水やりの手のかからない鉢を見立ててくれるらしい。心強い。',
 		done: '店先が一気に馴染みました。この町、好きになれそう。',
 		fail: '引っ越しの片付けに追われて、緑はもう少し先に。',
 	},
@@ -414,7 +457,7 @@ const TANOMIGOTO_BASE: readonly Tanomigoto[] = [
 	{
 		id: 'q19', title: '新入生を迎える花', by: 'daiki', goal: '桜色の花を10そろえる', petal: '#f2a7b8',
 		ask: '新歓の受付に飾る花、明るいのが欲しいっす。相談いいすか。',
-		wip: '花常さんが春らしいのを選んでくれるって。新入生に映える。',
+		wip: '花常さんが春らしい色で見立ててくれるという。新入生に映える。',
 		done: '受付が華やいで、新入生の食いつきもよかったっす。',
 		fail: '予算会議が長引いて、花は据え置きになったっす。',
 	},
@@ -466,6 +509,7 @@ const TANOMIGOTO_BASE: readonly Tanomigoto[] = [
 export const TANOMIGOTO: readonly Tanomigoto[] = [
 	...TANOMIGOTO_BASE,
 	...TANOMIGOTO_2,
+	...TANOMIGOTO_3,
 ];
 
 /** ⓘ に出すフィクション注記。⚠️中央揃え・語尾が孤立しない短文で書く。 */

@@ -23,6 +23,14 @@
 // ⚠️感嘆符は快活な人物のみ（BIBLE §1）。若菜・玄・内藤は使わない。八重は通りの向こうからの呼び声だけ。
 // ⚠️12月の種明かしに触れない（rare / prog 付きでも同じ）。
 // ⚠️方言を混ぜない。
+//
+// ⚠️レン(ren)の声（2026-07-27改訂。⚠️**「〜っす」は全廃した**。過去稿を真似ると戻るので注意）:
+//   一人称は「俺」。男子大学生の陽気なノリ——テンポがよく、軽口を挟み、自分から話題を振る。
+//   若菜・年上には砕けた敬語（「〜ですよ」「〜ますって」「〜でしょ」「〜なんですよね」）、
+//   同年代（犬飼・同好会）にはため口、独り言は素の口語。性格は変えない（人懐こい・素直・面倒見がいい・
+//   技術の話になると早口）。真顔 face5 のときだけ文を短くする。
+//   ⚠️禁止: 「〜っす／っすよ／っすか／っすね」「〜んすよ／んすけど」「〜いすか」、
+//   流行語・若者言葉（「マジ」「ヤバい」「めっちゃ」「〜的な」）。⚠️声の正本は HANATSUNE-BIBLE.md §5。
 
 import type { MenuLine } from "./menu-lines.js";
 
@@ -60,36 +68,36 @@ export const MENU_LINES_2: MenuLine[] = [
 
 	// ================================ レン 30本 ================================
 	// 身体（耳・尻尾）／大学／機械／他キャラとの関係。⚠️face5(真顔)は必ず短文（BIBLE §5）。
-	{ char:"ren", t:"堂本さんから電話っす。サーバー落ちたって。……たぶん俺のせいじゃないっす。", time:"any", month:"any", face:6 },
-	{ char:"ren", t:"同好会の部室、窓がないんすよ。花置いても育たないっす。", time:"any", month:"any", face:6 },
-	{ char:"ren", t:"レジの中、埃がすごかったんすよ。掃除しといたっす。", time:"any", month:"any", face:2 },
-	{ char:"ren", t:"注文フォーム、また直したっす。今度は電話番号も拾えるっす。", time:"any", month:"any", face:4 },
-	{ char:"ren", t:"尻尾、狭い店だとぶつけるんすよね。すいません。", time:"any", month:"any", face:6 },
-	{ char:"ren", t:"耳、風の向きで勝手に動くんすよ。止められないんで。", time:"any", month:"any", face:3 },
-	{ char:"ren", t:"犬飼さん、階段だけは勝てないって言ってたっす。本人には内緒っす。", time:"any", month:"any", face:2 },
-	{ char:"ren", t:"八重さんに野菜もらったっす。俺、また断れなくて。", time:"any", month:"any", face:6 },
-	{ char:"ren", t:"麦茶の瓶、洗って取っといたっす。花瓶がわりにいいって聞いたんで。", time:"any", month:"any", face:1 },
-	{ char:"ren", t:"水切りって水の中で切るんすよね。最初、意味わかんなかったっす。", time:"any", month:"any", face:3 },
-	{ char:"ren", t:"包み紙の角を合わせるとこだけ、十回やり直したっす。", time:"any", month:"any", face:6 },
-	{ char:"ren", t:"この店の配線、ちょっと古いんすよ。今度見ときます。", time:"any", month:"any", face:4 },
-	{ char:"ren", t:"花の名前、母親に聞かれて全部答えられたっす。自分でびっくりしたっす。", time:"any", month:"any", face:4, rare:true },
-	{ char:"ren", t:"辰巳さんの声、市場の端まで届くんすよ。物理的におかしいっす。", time:"morning", month:"any", face:4 },
-	{ char:"ren", t:"朝の市場、氷の匂いがするんすよ。花より先にそれっす。", time:"morning", month:"any", face:1 },
-	{ char:"ren", t:"始発、寝てる人しかいないっす。俺も寝てるっすけど。", time:"morning", month:"any", face:6 },
-	{ char:"ren", t:"坂、自転車で下るとブレーキが焼けるんすよ。歩いたほうが安全っす。", time:"day", month:"any", face:6 },
-	{ char:"ren", t:"講義、後ろの席だと耳が余計なもんまで拾うんすよね。", time:"day", month:"any", face:6 },
-	{ char:"ren", t:"くろまつの珈琲、苦いのに後から甘いんすよね。あれ何なんすかね。", time:"evening", month:"any", face:3 },
-	{ char:"ren", t:"配達、終わったっす。判子、全部もらってきたっす。", time:"evening", month:"any", face:2 },
-	{ char:"ren", t:"店の灯り、消すのいつも若菜さんっすよね。俺がやりましょうか。", time:"night", month:"any", face:1 },
-	{ char:"ren", t:"課題、あと一個っす。……三個っす。", time:"night", month:"any", face:6 },
-	{ char:"ren", t:"正月、帰らなかったっす。松の配達があったんで。", time:"any", month:[1], face:1 },
-	{ char:"ren", t:"節分の豆、部室で撒いたら片付けが地獄だったっす。", time:"any", month:[2], face:6 },
-	{ char:"ren", t:"新歓の花、去年は誰も買わなかったんすよ。今年は買うっす。", time:"any", month:[4], face:2 },
-	{ char:"ren", t:"母の日の配達、坂を三往復したっす。足が笑ってるっす。", time:"any", month:[5], face:6 },
-	{ char:"ren", t:"雨の日、耳が濡れると重いんすよ。地味に効くんす。", time:"any", month:[6], face:6 },
-	{ char:"ren", t:"笹、担いで運ぶと完全に不審者っす。職質されかけたっす。", time:"any", month:[7], face:6 },
-	{ char:"ren", t:"仏花の新聞、斜めに巻くやつ、やっとできたっす。", time:"any", month:[8], face:2, prog:"late" },
-	{ char:"ren", t:"野分が来るらしいっすね。……店、見に来ます。", time:"any", month:[9], face:5, prog:"mid" },
+	{ char:"ren", t:"堂本さんから電話が来ました。サーバーが落ちたとかで。……俺のせいじゃない、はずです。", time:"any", month:"any", face:6 },
+	{ char:"ren", t:"同好会の部室、窓がないんですよ。花を置いても育たないんで諦めました。", time:"any", month:"any", face:6 },
+	{ char:"ren", t:"レジの中、埃がひどかったんで。掃除しておきましたよ!", time:"any", month:"any", face:2 },
+	{ char:"ren", t:"注文フォーム、また手を入れました。今度は電話番号も拾えますよ。", time:"any", month:"any", face:4 },
+	{ char:"ren", t:"尻尾、店が狭いとどうしてもぶつけるんですよ。すみません。", time:"any", month:"any", face:6 },
+	{ char:"ren", t:"耳、風の向きで勝手に動くんですよね。自分では止められないんです。", time:"any", month:"any", face:3 },
+	{ char:"ren", t:"犬飼さん、階段だけは敵わないって言ってました。本人には内緒でお願いします。", time:"any", month:"any", face:2 },
+	{ char:"ren", t:"八重さんにまた野菜をもらいました。俺、どうにも断れなくて。", time:"any", month:"any", face:6 },
+	{ char:"ren", t:"麦茶の瓶、洗って残してあります。花を挿すのにちょうどいいと聞いたんで。", time:"any", month:"any", face:1 },
+	{ char:"ren", t:"水切りって、水の中で切るんですね。最初はまるで飲み込めませんでした。", time:"any", month:"any", face:3 },
+	{ char:"ren", t:"包み紙の角を合わせるところだけで、十回はやり直しました。", time:"any", month:"any", face:6 },
+	{ char:"ren", t:"この店の配線、そこそこ古いですね。今度まとめて見ておきます。", time:"any", month:"any", face:4 },
+	{ char:"ren", t:"母に花の名前を聞かれて、全部答えられました。自分でも驚きましたよ!", time:"any", month:"any", face:4, rare:true },
+	{ char:"ren", t:"辰巳さんの声、市場の端まで届くんですよ。あれは物理的におかしい!", time:"morning", month:"any", face:4 },
+	{ char:"ren", t:"朝の市場、まず氷の匂いがするんですよ。花より先にそっちが来ます。", time:"morning", month:"any", face:1 },
+	{ char:"ren", t:"始発、乗ってる人がみんな寝てます。まあ、俺も寝てますけど。", time:"morning", month:"any", face:6 },
+	{ char:"ren", t:"あの坂、自転車で下るとブレーキが焼けるんですよ。歩いたほうが早いくらいで。", time:"day", month:"any", face:6 },
+	{ char:"ren", t:"講義は前の席に座るようにしてます。後ろだと耳が余計なものまで拾うんで。", time:"day", month:"any", face:6 },
+	{ char:"ren", t:"くろまつの珈琲、苦いのに後から甘いんですよね。あれ、どうなってるんだろう。", time:"evening", month:"any", face:3 },
+	{ char:"ren", t:"配達、全部終わりました。判子もきっちりもらってきましたよ。", time:"evening", month:"any", face:2 },
+	{ char:"ren", t:"店の灯りを落とすの、いつも若菜さんですよね。俺がやりましょうか。", time:"night", month:"any", face:1 },
+	{ char:"ren", t:"課題、あと一つです。……いや、三つでした。", time:"night", month:"any", face:6 },
+	{ char:"ren", t:"正月は実家に帰りませんでした。松の配達が立て込んでたんで。", time:"any", month:[1], face:1 },
+	{ char:"ren", t:"節分の豆を部室で撒いたら、片付けで半日つぶれました。", time:"any", month:[2], face:6 },
+	{ char:"ren", t:"新歓の花、去年は誰も買わなかったんですよ。今年は俺が買います。", time:"any", month:[4], face:2 },
+	{ char:"ren", t:"母の日の配達、坂を三往復しました。足がもう笑ってます。", time:"any", month:[5], face:6 },
+	{ char:"ren", t:"雨の日、耳が濡れると重たいんですよ。じわじわ効いてきます。", time:"any", month:[6], face:6 },
+	{ char:"ren", t:"笹を担いで歩くと、完全に不審者ですよ。危うく声をかけられるところでした。", time:"any", month:[7], face:6 },
+	{ char:"ren", t:"仏花の新聞、斜めに巻くやつ、やっと手が覚えました!", time:"any", month:[8], face:2, prog:"late" },
+	{ char:"ren", t:"野分が来るらしいですね。……店、見に寄ります。", time:"any", month:[9], face:5, prog:"mid" },
 
 	// ================================ 八重 34本 ================================
 	// ⚠️出演は morning/day/evening のみ（night は書かない）。感嘆符は呼び声1本だけ。

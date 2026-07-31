@@ -21,10 +21,11 @@
 	:aria-label="`物語 ${vignette.title}`"
 	tabindex="0"
 	@keydown="onKeydown"
+	@click="onScreenTap"
 >
 	<!-- ⚠️背景と立ち絵は兄弟。親子にすると Ken Burns の transform が子の基準を壊す（SPEC §9.7.6-3） -->
 	<div class="backdrop" :data-css="backdropIsCss ? 'on' : 'off'" :data-bg="backdropId ?? 'none'" aria-hidden="true">
-		<img v-if="!backdropIsCss && backdropId" :src="backdropSrc" alt="" @error="backdropFailed = true">
+		<img v-if="!backdropIsCss && backdropId" :src="backdropSrc" alt="" @error="onBackdropError">
 	</div>
 
 	<header class="bar">
@@ -50,14 +51,24 @@
 	</div>
 
 	<!-- 場面: 会話枠 -->
-	<div v-else class="box" role="article" aria-live="polite" @click="advance">
+	<!--
+	⚠️ここに `@click="advance"` を戻さないこと。
+	⚠️器（`.hana-vignette`）側で受けているので、両方に付けると**1回のタップで2行進む**。
+	-->
+	<div v-else class="box" role="article" aria-live="polite">
 		<p v-if="currentName" class="name" :data-speaker="currentSpeaker">{{ currentName }}</p>
 		<p :key="cursor" class="text" :data-kind="currentLine?.kind ?? 'narration'">{{ currentText }}</p>
 	</div>
 
 	<div class="foot">
+		<!--
+		⚠️「どこでもタップで進む」を入れたあとも、送るボタンは残す。
+		⚠️消すと「押す場所が無い」画面になり、初見の人が進め方を掴めない。
+		-->
 		<button v-if="!choice && !ended" class="next" type="button" @click="advance">送る</button>
 		<button v-else-if="ended" class="next" type="button" @click="finish">とじる</button>
+		<!-- ⚠️案内。⚠️一度タップしたら出さない（毎回出ると読書の邪魔になる） -->
+		<p v-if="showTapHint && !choice && !ended" class="tap-hint">画面のどこをタップしても進みます</p>
 	</div>
 
 	<!-- 選択肢。⚠️スキップしてもここは飛ばさない -->
@@ -89,12 +100,20 @@ import { backdropAt, resolveStep, skipTo, speakerName } from "./story/index.js";
 import type { Choice, ChoiceKey, ChoiceRecord, Line, Vignette } from "./story/index.js";
 import { bustupPath } from "./menu-dialogue.js";
 import { bgPath } from "./backdrop.js";
+import { eventAssetPath } from "./events.js";
 
 const props = withDefaults(defineProps<{
 	vignette: Vignette;
 	choices: ChoiceRecord;
 	/** ゲーム設定の動き。"reduced" で演出を止める。 */
 	motion?: "normal" | "reduced";
+	/** イベント本文のときだけ渡す限定キャラ・背景の所在。 */
+	eventAssets?: Readonly<{
+		id: string;
+		rev: number;
+		faces: string;
+		backgrounds: Readonly<Record<string, Readonly<{ file: string; fallback: string }>>>;
+	}>;
 }>(), { motion: "normal" });
 
 const emit = defineEmits<{
@@ -125,8 +144,8 @@ const BACKDROP_VARIANTS: Readonly<Record<string, readonly string[]>> = {
 
 /** face の実ファイル数。範囲外パスを組み立てない（404防止）。 */
 const FACE_COUNT = {
-	wakana: 6,
-	ren: 6,
+	wakana: 21,
+	ren: 21,
 	yae: 4,
 	inukai: 4,
 	naito: 3,
@@ -136,6 +155,7 @@ const FACE_COUNT = {
 	haruno: 3,
 } as const;
 type PortraitChar = keyof typeof FACE_COUNT;
+type ShownPortraitChar = PortraitChar | "evt";
 
 /** 本文の表示名を、素材を持つサブキャストだけへ対応付ける。通行人や声だけの人物は出さない。 */
 const SUB_PORTRAITS: readonly { readonly id: Exclude<PortraitChar, "wakana" | "ren">; readonly names: readonly string[] }[] = [
@@ -170,7 +190,8 @@ const confirming = ref(false);
 const skipping = ref(false);
 const beat = ref(0);
 const shown = ref<{ index: number; line: Line }[]>([]);
-const backdropFailed = ref(false);
+const eventBackdropFailed = ref(false);
+const regularBackdropFailed = ref(false);
 const portraitFailedSrc = ref("");
 const chomenBody = ref<HTMLElement>();
 const systemReduced = ref(false);
@@ -183,37 +204,59 @@ const currentText = computed(() => currentLine.value?.text ?? "");
 const currentSpeaker = computed(() => (currentLine.value?.kind === "say" ? currentLine.value.speaker : "narration"));
 const currentName = computed(() => (currentLine.value ? speakerName(currentLine.value) : undefined));
 
-const portraitChar = computed<PortraitChar | undefined>(() => {
+const portraitChar = computed<ShownPortraitChar | undefined>(() => {
 	const line = currentLine.value;
 	if (line?.kind !== "say") return undefined;
 	if (line.speaker === "wakana" || line.speaker === "ren") return line.speaker;
+	if (line.speaker === "evt") return "evt";
 	return subPortraitOf(line.name);
 });
 const portraitEmo = computed(() => {
 	const raw = currentLine.value?.kind === "say" ? currentLine.value.emo ?? 1 : 1;
-	const count = portraitChar.value ? FACE_COUNT[portraitChar.value] : 1;
+	const count = portraitChar.value === "evt" ? 6 : portraitChar.value ? FACE_COUNT[portraitChar.value] : 1;
 	return Math.min(count, Math.max(1, Math.round(raw)));
 });
 const portraitSrc = computed(() => {
 	const char = portraitChar.value;
 	if (!char) return "";
+	if (char === "evt") {
+		const assets = props.eventAssets;
+		if (!assets) return "";
+		return eventAssetPath(assets.id, assets.faces.replace("{n}", String(portraitEmo.value)), assets.rev);
+	}
 	if (char === "wakana" || char === "ren") return bustupPath(char, portraitEmo.value);
 	return `/client-assets/hanaawase/chara/${char}/face_${portraitEmo.value}.webp`;
 });
 const portraitFailed = computed(() => portraitSrc.value !== "" && portraitFailedSrc.value === portraitSrc.value);
 /** 読み込みに失敗したときの簡易シルエット（通常は範囲検査により発生しない）。 */
-const portraitMissing = computed(() => portraitFailed.value && portraitChar.value !== undefined);
+const portraitMissing = computed(() =>
+	portraitChar.value !== undefined && (portraitFailed.value || (portraitChar.value === "evt" && portraitSrc.value === "")));
 
 const backdropId = computed(() => backdropAt(props.vignette, shown.value[shown.value.length - 1]?.index ?? 0));
+const eventBackdrop = computed(() => {
+	const raw = backdropId.value;
+	if (!raw?.startsWith("evt:")) return undefined;
+	return props.eventAssets?.backgrounds[raw.slice(4)];
+});
+const regularBackdropBase = computed(() => eventBackdrop.value?.fallback
+	?? (backdropId.value?.startsWith("evt:") ? undefined : backdropId.value));
 const selectedBackdropId = computed(() => {
-	const base = backdropId.value;
+	const base = regularBackdropBase.value;
 	if (!base) return undefined;
 	const variants = BACKDROP_VARIANTS[base];
 	if (!variants || variants.length === 0) return base;
 	return variants[stableIndex(`${props.vignette.id}:${base}`, variants.length)]!;
 });
-const backdropIsCss = computed(() => backdropFailed.value || selectedBackdropId.value === undefined);
-const backdropSrc = computed(() => (selectedBackdropId.value ? bgPath(selectedBackdropId.value) : ""));
+const useEventBackdrop = computed(() => eventBackdrop.value !== undefined
+	&& props.eventAssets !== undefined && !eventBackdropFailed.value);
+const backdropIsCss = computed(() => !useEventBackdrop.value
+	&& (regularBackdropFailed.value || selectedBackdropId.value === undefined));
+const backdropSrc = computed(() => {
+	const assets = props.eventAssets;
+	const event = eventBackdrop.value;
+	if (useEventBackdrop.value && assets && event) return eventAssetPath(assets.id, event.file, assets.rev);
+	return selectedBackdropId.value ? bgPath(selectedBackdropId.value) : "";
+});
 
 function apply(step: ReturnType<typeof resolveStep>) {
 	if (step.kind === "end") {
@@ -235,6 +278,29 @@ function apply(step: ReturnType<typeof resolveStep>) {
 	beat.value = beat.value === 0 ? 1 : 0;
 }
 
+/*
+旗鯖fork: ⚠️**画面のどこをタップしても進む**（利用者の指示）。
+⚠️器（`.hana-vignette`）でまとめて受ける。⚠️会話枠にも `@click` を付けると**1回で2行進む**ので付けない。
+⚠️ボタン・リンク・入力の上は素通しする。ここを抜くと「今回は読まない」や選択肢が
+  押した瞬間に本文も1行進んでしまう（＝押し間違いに見える）。
+⚠️`advance()` 側が選択肢・確認シート・終端を見ているので、判定はそちらに任せる。
+*/
+const TAP_HINT_KEY = "hanaawase:tapHintSeen";
+const showTapHint = ref(window.sessionStorage.getItem(TAP_HINT_KEY) !== "1");
+
+function onScreenTap(ev: MouseEvent) {
+	const target = ev.target as HTMLElement | null;
+	// ⚠️操作要素の上は素通し（そこ自身の @click に任せる）
+	if (target?.closest('button, a, input, textarea, select, [role="button"]')) return;
+	// ⚠️文章を選択しようとしただけのときは進めない（読み返しの邪魔になる）
+	if (window.getSelection()?.toString()) return;
+	if (showTapHint.value) {
+		showTapHint.value = false;
+		window.sessionStorage.setItem(TAP_HINT_KEY, "1");
+	}
+	advance();
+}
+
 function advance() {
 	if (choice.value || confirming.value) return;
 	if (ended.value) { finish(); return; }
@@ -242,7 +308,7 @@ function advance() {
 		revealDiary(cursor.value + (shown.value.length === 0 ? 0 : 1));
 		return;
 	}
-	if (skipping.value) { apply(skipTo(props.vignette, localChoices.value, cursor.value)); return; }
+	if (skipping.value) { applySkip(cursor.value); return; }
 	apply(resolveStep(props.vignette, localChoices.value, cursor.value + (shown.value.length === 0 ? 0 : 1)));
 }
 
@@ -275,7 +341,14 @@ function askSkip() {
 function doSkip() {
 	confirming.value = false;
 	skipping.value = true;
-	apply(skipTo(props.vignette, localChoices.value, cursor.value + (shown.value.length === 0 ? 0 : 1)));
+	applySkip(cursor.value + (shown.value.length === 0 ? 0 : 1));
+}
+
+/** スキップだけは末尾へ着いた時点で完了する。選択肢なら apply が従来どおりそこで止める。 */
+function applySkip(from: number) {
+	const step = skipTo(props.vignette, localChoices.value, from);
+	apply(step);
+	if (step.kind === "end") finish();
 }
 
 function defer() {
@@ -296,9 +369,8 @@ function pick(key: ChoiceKey) {
 		revealDiary(from);
 		return;
 	}
-	apply(skipping.value
-		? skipTo(props.vignette, localChoices.value, from)
-		: resolveStep(props.vignette, localChoices.value, from));
+	if (skipping.value) applySkip(from);
+	else apply(resolveStep(props.vignette, localChoices.value, from));
 }
 
 function finish() {
@@ -324,7 +396,8 @@ function start() {
 	skipping.value = false;
 	confirming.value = false;
 	shown.value = [];
-	backdropFailed.value = false;
+	eventBackdropFailed.value = false;
+	regularBackdropFailed.value = false;
 	portraitFailedSrc.value = "";
 	if (props.vignette.kind === "chomen") {
 		revealDiary(0);
@@ -335,7 +408,10 @@ function start() {
 
 watch(() => props.vignette.id, start);
 watch(() => props.choices, (next) => { localChoices.value = { ...next, ...localChoices.value }; });
-watch(backdropSrc, () => { backdropFailed.value = false; });
+watch(backdropId, () => {
+	eventBackdropFailed.value = false;
+	regularBackdropFailed.value = false;
+});
 watch(shown, async () => {
 	if (props.vignette.kind !== "chomen") return;
 	await nextTick();
@@ -345,6 +421,11 @@ watch(shown, async () => {
 
 function onPortraitError() {
 	portraitFailedSrc.value = portraitSrc.value;
+}
+
+function onBackdropError() {
+	if (useEventBackdrop.value) eventBackdropFailed.value = true;
+	else regularBackdropFailed.value = true;
 }
 
 onMounted(() => {
@@ -391,17 +472,28 @@ onUnmounted(() => mediaQuery?.removeEventListener("change", onMediaChange));
 	display: grid;
 	/* 1:見出し 2:立ち絵(余白を吸う) 3:枠 4:足もと */
 	grid-template-columns: minmax(0, 1fr);
-	grid-template-rows: auto 1fr auto auto;
+	/*
+	⚠️2行目は `1fr` ではなく `minmax(0, 1fr)`。
+	`1fr` の自動最小寸法に立ち絵の高さが採用されると、固定高の器よりgrid全体が高くなり、
+	会話枠と足もとが下端の外へ押し出される。0まで縮められる余白として定義する。
+	*/
+	grid-template-rows: auto minmax(0, 1fr) auto auto;
 	/*
 	⚠️高さは「中身」ではなく「この器の幅」から決める。
 	  立ち絵の有無で背が伸び縮みしていた（立ち絵がその aspect-ratio で高さを作り、無い場面は
 	  min-height まで縮んでいた）ため、場面が変わるたびに器が跳ねていた。
 	⚠️vh は使わない（画面の高さ基準なので小窓ではみ出す）。比率は @container で器の幅から切り替える。
-	⚠️aspect-ratio ではなく min-height で持つ。aspect-ratio だと高さが確定してしまい、
-	  台詞が長い場面で overflow:hidden に切られる。下限なら「中身が多いときだけ伸びる」。
+	⚠️**下限（min-height）ではなく固定（height）で持つ。**
+	  min-height だと台詞の長い場面だけ器が伸びて、⚠️**行ごとに背が変わりページのスクロールが要る**
+	  （利用者の報告）。長い台詞は器を伸ばさず、**会話枠の中だけをスクロール**させる（下の .box を参照）。
 	  cqw ＝ 器の幅の1%（index.vue の .story-shell の container-type が拠り所）。
 	*/
-	min-height: max(360px, 125cqw);
+	/*
+	⚠️狭幅ではカード幅の175%を基準にして、スマホの縦方向を会話と操作へ使う。
+	下限520pxは極端に細い器でも会話枠を残すため、上限780pxはタブレット直前で
+	カードが際限なく縦長になるのを防ぐため。どちらも画面高ではなく器の幅だけで決まる。
+	*/
+	height: clamp(520px, 175cqw, 780px);
 	overflow: hidden;
 	color: var(--v-ink);
 	background: var(--v-bg);
@@ -451,6 +543,8 @@ onUnmounted(() => mediaQuery?.removeEventListener("change", onMediaChange));
 	  高さを先に決めれば、この行(1fr)の余りに収まるだけになり、器の高さに影響しない。
 	*/
 	height: min(100%, 420px);
+	min-height: 0;
+	max-height: 100%;
 	width: auto;
 	aspect-ratio: 1 / 1;
 	margin: 0 4% calc(var(--v-dip) * -1) 0;
@@ -518,7 +612,17 @@ onUnmounted(() => mediaQuery?.removeEventListener("change", onMediaChange));
 	background: var(--v-panel);
 	box-shadow: 0 6px 20px rgb(0 0 0 / 32%);
 	cursor: pointer;
+	/*
+	⚠️器の高さを固定したので、長い台詞は**この枠の中だけ**を送る。
+	⚠️`min-height` で最低の背を確保しつつ、`overflow-y: auto` で溢れ分を枠内に閉じ込める。
+	⚠️これを外すと、台詞の長さで器が伸びてページ全体のスクロールが復活する。
+	⚠️`min-height: 6.5em`（下限）と `max-height: 100%`（上限）を**両方**持たせること。
+	  片方だけにすると、短い台詞で枠が痩せるか、長い台詞で器からはみ出すかのどちらかになる。
+	*/
 	min-height: 6.5em;
+	max-height: 100%;
+	overflow-y: auto;
+	overscroll-behavior: contain;
 }
 .name { margin: 0 0 6px; font-size: 13px; letter-spacing: .08em; font-family: var(--v-mincho); color: var(--v-accent); }
 .name[data-speaker="ren"] { color: var(--v-ai-ink); }
@@ -568,8 +672,25 @@ onUnmounted(() => mediaQuery?.removeEventListener("change", onMediaChange));
 	grid-row: 4;
 	grid-column: 1;
 	display: flex;
+	align-items: center;
 	justify-content: flex-end;
+	gap: 10px;
 	padding: 10px 12px;
+}
+/*
+旗鯖fork: 「どこでもタップで進む」の案内。⚠️**一度タップしたら出さない**（読書の邪魔になるため）。
+⚠️送るボタンより先に置いて、視線の流れ（案内→ボタン）を保つ。
+⚠️`order: -1` ではなく DOM 順で並べたいので、foot 内の並びは template 側の順に従う。
+*/
+.tap-hint {
+	order: -1;
+	margin: 0;
+	margin-right: auto;
+	color: var(--v-sub);
+	font-size: 12px;
+	line-height: 1.5;
+	/* ⚠️案内自体がタップの的にならないよう素通しさせる（押しても本文が進む） */
+	pointer-events: none;
 }
 
 /*
@@ -671,9 +792,10 @@ onUnmounted(() => mediaQuery?.removeEventListener("change", onMediaChange));
 場面の縦横比。⚠️@media ではなく @container を使う（拠り所は index.vue の .story-shell の container-type）。
 ⚠️@media は「画面の幅」で切り替わるので、広い画面に開いた小さな窓の中で横長のまま潰れる。
   @container なら「この器の幅」で切り替わるので、窓の中でも正しく縦長のままになる。
-狭いとき 125cqw（≒4:5。携帯で潰れない）／広いとき 77cqw（≒13:10。1100px 幅なら約847px＝PCで下が余らない）。
+狭いとき clamp(520px, 175cqw, 780px)（スマホの縦方向を使い切る）／
+広いとき 77cqw（≒13:10。1100px 幅なら約847px＝PCで下が余らない）。
 */
 @container (min-width: 720px) {
-	.hana-vignette { min-height: max(360px, 77cqw); }
+	.hana-vignette { height: max(360px, 77cqw); }
 }
 </style>

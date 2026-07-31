@@ -156,7 +156,7 @@ export const backdropAt = (vignette: Vignette, index: number): string | undefine
 
 /** 立ち絵を出す話者（サブキャストは立ち絵なし。SPEC §9.7.6-6）。 */
 export const hasPortrait = (line: Line) =>
-	line.kind === "say" && (line.speaker === "wakana" || line.speaker === "ren");
+	line.kind === "say" && (line.speaker === "wakana" || line.speaker === "ren" || line.speaker === "evt");
 
 /** 名前表示。⚠️若菜・レン以外は本文の名前をそのまま出す。 */
 export const speakerName = (line: Line): string | undefined => {

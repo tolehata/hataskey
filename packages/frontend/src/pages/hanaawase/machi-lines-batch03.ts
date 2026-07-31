@@ -23,7 +23,7 @@ export const MACHI_THREADS_B3: readonly MachiThread[] = [
 	{
 		root: { p: 'inukai', t: 'レン、荷台の縄がゆるい! 走らせたら花が踊るぞ。', e: ['🚚'] },
 		replies: [
-			{ p: 'ren', t: '走らせなきゃいい話じゃないっすか。' },
+			{ p: 'ren', t: '走らせなきゃいい話じゃないですか。' },
 			{ p: 'inukai', t: '屁理屈は結び直してから言え。', e: ['😆'] },
 		],
 	},
@@ -51,7 +51,7 @@ export const MACHI_THREADS_B3: readonly MachiThread[] = [
 	{
 		root: { p: 'daiki', t: '先輩、昨日の講義のノート貸してくださいっす……じゃなくて、ください。', e: ['📓'] },
 		replies: [
-			{ p: 'ren', t: '語尾は移すもんじゃないっすよ。' },
+			{ p: 'ren', t: '語尾は真似するもんじゃないぞ。' },
 			{ p: 'daiki', t: '移りました。', e: ['😅'] },
 		],
 	},
@@ -73,7 +73,7 @@ export const MACHI_THREADS_B3: readonly MachiThread[] = [
 	{
 		root: { p: 'naito', t: '夜の畑に電気を入れた。菊が起きとる。', e: ['💡'] },
 		replies: [
-			{ p: 'ren', t: '畑が光ってるの、坂の上から見えるっすよ。' },
+			{ p: 'ren', t: '畑が光ってるの、坂の上からちゃんと見えますよ。' },
 			{ p: 'naito', t: '見えるか。……そうか。' },
 		],
 	},
@@ -113,10 +113,10 @@ export const MACHI_THREADS_B3: readonly MachiThread[] = [
 		],
 	},
 	{
-		root: { p: 'ren', t: '配達先の犬に吠えられたんすけど、俺、同族に近いのでは。', e: ['🐺'] },
+		root: { p: 'ren', t: '配達先の犬に吠えられた。俺、けっこう同族に近いはずなんだが。', e: ['🐺'] },
 		replies: [
 			{ p: 'wakana', t: '近くないから吠えられたのでは。' },
-			{ p: 'ren', t: '取り付く島がないっす。', e: ['😇'] },
+			{ p: 'ren', t: '取り付く島がないですね。', e: ['😇'] },
 		],
 	},
 	{
@@ -237,7 +237,7 @@ export const MACHI_THREADS_B3: readonly MachiThread[] = [
 		replies: [
 			{ p: 'ren', t: '作る前に測れ。' },
 			{ p: 'daiki', t: '作ってから測るのが工科大なんす。' },
-			{ p: 'ren', t: 'それ、大学の名前に泥を塗ってるっす。' },
+			{ p: 'ren', t: 'それ、大学の名前に泥を塗ってるからな。' },
 		],
 	},
 	{
@@ -271,7 +271,7 @@ export const MACHI_THREADS_B3: readonly MachiThread[] = [
 	{
 		root: { p: 'inukai', t: '狼だ狼だと言うが、お前は市場でいちばんよく荷を落とす。', e: ['📦'] },
 		replies: [
-			{ p: 'ren', t: '落としてるんじゃなくて、置いてるんすよ。' },
+			{ p: 'ren', t: '落としてるんじゃなくて、置いてるんですよ。' },
 			{ p: 'inukai', t: '音が違う!' },
 		],
 	},
@@ -306,7 +306,7 @@ export const MACHI_THREADS_B3: readonly MachiThread[] = [
 	{
 		root: { p: 'koharu', t: '三時に起きると、町の音がひとつも鳴っていません。', e: ['🌙'] },
 		replies: [
-			{ p: 'ren', t: 'その時間、俺はだいたい起きてるっす。ログ見てるんで。' },
+			{ p: 'ren', t: 'その時間、俺はだいたい起きてますよ。ログを見てるんで。' },
 			{ p: 'koharu', t: '起きてる理由が違いすぎる。' },
 		],
 	},
@@ -334,7 +334,7 @@ export const MACHI_THREADS_B3: readonly MachiThread[] = [
 	{
 		root: { p: 'wakana', t: '軽トラの荷台に花びらが一枚残っていた。誰の落とし物か。', e: ['🌼'] },
 		replies: [
-			{ p: 'ren', t: 'たぶん俺っす。すいません。' },
+			{ p: 'ren', t: 'たぶん俺です。すいません。' },
 			{ p: 'wakana', t: '叱ってない。' },
 		],
 	},
@@ -392,14 +392,14 @@ export const MACHI_THREADS_B3: readonly MachiThread[] = [
 	{
 		root: { p: 'hiro', t: '見積書の桁をひとつ間違えて、上司の顔が花より赤くなりました。', e: ['😱'] },
 		replies: [
-			{ p: 'ren', t: 'その言い回し、花屋に染まってきてるっす。' },
+			{ p: 'ren', t: 'その言い回し、花屋に染まってきてますよ。' },
 			{ p: 'hiro', t: '通っているうちに移りました。' },
 		],
 	},
 	{
 		root: { p: 'inukai', t: 'うちの店の犬が、レンを見ると尻尾を振る。裏切り者め!', e: ['🐕'] },
 		replies: [
-			{ p: 'ren', t: '犬に好かれるのは才能っすよ。' },
+			{ p: 'ren', t: '犬に好かれるのは才能ですって。' },
 			{ p: 'inukai', t: '才能で飯は食えん!' },
 		],
 	},
@@ -456,7 +456,7 @@ export const MACHI_THREADS_B3: readonly MachiThread[] = [
 		root: { p: 'ren', t: '単位をふたつ落とした。笑うなよ。', e: ['😇'] },
 		replies: [
 			{ p: 'daiki', t: '笑ってないっす。震えてるだけす。' },
-			{ p: 'ren', t: 'それ笑われるより悪いっす。' },
+			{ p: 'ren', t: 'それ、笑われるより悪いって。' },
 		],
 	},
 	{
@@ -547,7 +547,7 @@ export const MACHI_THREADS_B3: readonly MachiThread[] = [
 		],
 	},
 	{
-		root: { p: 'ren', t: '研究室の空調が壊れて、サーバーより人間が先に落ちたっす。', e: ['🥵'] },
+		root: { p: 'ren', t: '研究室の空調が壊れて、サーバーより人間が先に落ちた。', e: ['🥵'] },
 		replies: [
 			{ p: 'daiki', t: '先輩、水飲んでくださいっす。' },
 			{ p: 'ren', t: '飲んだ。冷たいのがないだけで人は弱る。' },
@@ -572,7 +572,7 @@ export const MACHI_THREADS_B3: readonly MachiThread[] = [
 	{
 		root: { p: 'naito', t: '鉢を運ぶときは抱えるな。腰から離すと落とす。', e: ['🪴'] },
 		replies: [
-			{ p: 'ren', t: '言われた通りにしたら楽でした。腕がもげずに済んだっす。' },
+			{ p: 'ren', t: '言われた通りにしたら楽でした。腕がもげずに済みましたよ。' },
 			{ p: 'naito', t: '体は正直だ。' },
 		],
 	},
@@ -581,7 +581,7 @@ export const MACHI_THREADS_B3: readonly MachiThread[] = [
 		replies: [
 			{ p: 'koharu', t: '明日の仕込みが終わりました。おやすみなさい。' },
 			{ p: 'wakana', t: '戸締まりまで済ませた。おやすみ。' },
-			{ p: 'ren', t: 'まだ起きてるやつがここに一人いるっす。' },
+			{ p: 'ren', t: 'まだ起きてるやつがここに一人いますよ。' },
 		],
 	},
 	{
@@ -601,9 +601,9 @@ export const MACHI_THREADS_B3: readonly MachiThread[] = [
 	{
 		root: { p: 'daiki', t: 'うちの学科、花の名前を知ってるやつが誰もいないんす。', e: ['🌸'] },
 		replies: [
-			{ p: 'ren', t: '俺も去年までそっち側だったっす。' },
+			{ p: 'ren', t: '俺も去年まではそっち側だった。' },
 			{ p: 'daiki', t: '先輩、変わりましたね。' },
-			{ p: 'ren', t: '変わってない。荷物運んでるだけっす。' },
+			{ p: 'ren', t: '変わってない。荷物を運んでるだけだって。' },
 		],
 	},
 	{
@@ -651,7 +651,7 @@ export const MACHI_THREADS_B3: readonly MachiThread[] = [
 	{
 		root: { p: 'takumi', t: '雨の坂道は結局歩くことになるす。あれが一番つらい。', e: ['☔'] },
 		replies: [
-			{ p: 'ren', t: '軽トラで拾ってやりたいけど、荷台は花で満杯っす。' },
+			{ p: 'ren', t: '軽トラで拾ってやりたいけど、荷台は花で満杯なんだ。' },
 			{ p: 'takumi', t: '花に負けました。' },
 		],
 	},
@@ -674,7 +674,7 @@ export const MACHI_THREADS_B3: readonly MachiThread[] = [
 		replies: [
 			{ p: 'ren', t: '滑ってから聞きました。' },
 			{ p: 'tatsumi', t: '遅い! 尻は無事か!' },
-			{ p: 'ren', t: '尻より箱が無事でよかったっす。' },
+			{ p: 'ren', t: '尻より箱が無事でよかったですよ。' },
 		],
 	},
 	{
@@ -687,7 +687,7 @@ export const MACHI_THREADS_B3: readonly MachiThread[] = [
 	{
 		root: { p: 'wakana', t: '棚の位置をひとつ変えただけで、動線がずいぶん楽になった。', e: ['✨'] },
 		replies: [
-			{ p: 'ren', t: '配達の箱も置きやすくなったっす。' },
+			{ p: 'ren', t: '配達の箱も置きやすくなりましたね。' },
 			{ p: 'wakana', t: '気づくのに半年かかった。' },
 		],
 	},
@@ -722,7 +722,7 @@ export const MACHI_THREADS_B3: readonly MachiThread[] = [
 	{
 		root: { p: 'hiro', t: '出張先で花屋の前を通ると、つい店構えを比べてしまう。', e: ['🏪'] },
 		replies: [
-			{ p: 'ren', t: 'それ、もう半分こっち側っすよ。' },
+			{ p: 'ren', t: 'それ、もう半分こっち側ですよ。' },
 			{ p: 'hiro', t: '営業先で言われるより効きました。' },
 		],
 	},
@@ -763,10 +763,10 @@ export const MACHI_THREADS_B3: readonly MachiThread[] = [
 		],
 	},
 	{
-		root: { p: 'ren', t: '花常さんの店番を一時間だけ任された。客が来ないことを祈ってたっす。', e: ['😅'] },
+		root: { p: 'ren', t: '花常さんの店番を一時間だけ任された。客が来ないことを本気で祈ってた。', e: ['😅'] },
 		replies: [
 			{ p: 'wakana', t: '三人来ていた。売上を見ればわかる。' },
-			{ p: 'ren', t: '祈りは通じなかったっす。' },
+			{ p: 'ren', t: '祈りは通じなかったみたいです。' },
 		],
 	},
 	{

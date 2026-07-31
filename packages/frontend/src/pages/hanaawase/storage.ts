@@ -34,12 +34,36 @@ export type Daily = Readonly<{
 export type GameSettings = Readonly<{
 	v: typeof SAVE_VERSION;
 	se: boolean;
+	/**
+	 * 環境音（店・雨・風のループ）。⚠️**既定は切**。
+	 * ⚠️利用者から「ずっと響いていて不快」と報告があったため、効果音とは別の栓にして既定を切にした。
+	 * ⚠️`se` を切ると環境音も止まる（親子関係。UIの文言もそう書いてある）。
+	 */
+	amb: boolean;
 	motion: "normal" | "reduced";
 	barks: boolean;
 	updatedAt: number;
 }>;
-export type SaveKey = "progress" | "daily" | "settings";
-export type SaveMap = Readonly<{ progress: Progress; daily: Daily; settings: GameSettings }>;
+export type EventProgress = Readonly<{
+	/**
+	 * マージで減らさないための累積獲得数。画面の残高は交換済みの必要数を差し引いて求める。
+	 * ⚠️有償取得・譲渡は存在しない。
+	 */
+	points: number;
+	exchanged: Readonly<Record<string, number>>;
+	stagesCleared: readonly string[];
+	storySeen: readonly string[];
+	rallyContrib: number;
+	completedAt?: number;
+}>;
+export type EventSave = Readonly<{
+	v: typeof SAVE_VERSION;
+	updatedAt: number;
+	byEvent: Readonly<Record<string, EventProgress>>;
+	kazari: readonly string[];
+}>;
+export type SaveKey = "progress" | "daily" | "settings" | "events";
+export type SaveMap = Readonly<{ progress: Progress; daily: Daily; settings: GameSettings; events: EventSave }>;
 export type SaveStatus = "saved" | "queued" | "readonly";
 export type RegistryApi = (endpoint: "i/registry/get" | "i/registry/set" | "i/registry/remove", data: {
 	scope: readonly string[];
@@ -57,7 +81,7 @@ export type LoadResult = Readonly<{
 	recoveryAvailable: boolean;
 }>;
 
-const keys: readonly SaveKey[] = ["progress", "daily", "settings"];
+const keys: readonly SaveKey[] = ["progress", "daily", "settings", "events"];
 const cacheKey = (key: SaveKey): `miux:${string}` => `${CACHE_PREFIX}${key}`;
 const recoveryKey = (key: SaveKey): `miux:${string}` => `${CACHE_PREFIX}recovery:${key}`;
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -77,10 +101,13 @@ const emptyDaily = (): Daily => ({
 	plays: 0, longest: 0, updatedAt: 0,
 });
 const emptySettings = (): GameSettings => ({
-	v: SAVE_VERSION, se: true, motion: "normal", barks: true, updatedAt: 0,
+	v: SAVE_VERSION, se: true, amb: false, motion: "normal", barks: true, updatedAt: 0,
+});
+const emptyEvents = (): EventSave => ({
+	v: SAVE_VERSION, updatedAt: 0, byEvent: {}, kazari: [],
 });
 export const emptySaveMap = (): SaveMap => ({
-	progress: emptyProgress(), daily: emptyDaily(), settings: emptySettings(),
+	progress: emptyProgress(), daily: emptyDaily(), settings: emptySettings(), events: emptyEvents(),
 });
 
 type Decoded<T> = Readonly<{ value: T; future: boolean }>;
@@ -120,14 +147,44 @@ const decodeSettings = (input: unknown): Decoded<GameSettings> | undefined => {
 	if (!isRecord(input)) return undefined;
 	if (versionIsFuture(input)) return { value: emptySettings(), future: true };
 	return { value: {
-		v: SAVE_VERSION, se: input.se !== false, motion: input.motion === "reduced" ? "reduced" : "normal",
+		v: SAVE_VERSION, se: input.se !== false,
+		// ⚠️既定は切。古い保存には amb が無いので、明示的に true のときだけ入れる。
+		amb: input.amb === true, motion: input.motion === "reduced" ? "reduced" : "normal",
 		barks: input.barks !== false, updatedAt: numberAtLeast(input.updatedAt),
+	}, future: false };
+};
+const decodeEvents = (input: unknown): Decoded<EventSave> | undefined => {
+	if (!isRecord(input)) return undefined;
+	if (versionIsFuture(input)) return { value: emptyEvents(), future: true };
+	const byEvent: Record<string, EventProgress> = {};
+	if (isRecord(input.byEvent)) for (const [eventId, raw] of Object.entries(input.byEvent)) {
+		if (!isRecord(raw)) continue;
+		const exchanged: Record<string, number> = {};
+		if (isRecord(raw.exchanged)) for (const [itemId, count] of Object.entries(raw.exchanged)) {
+			exchanged[itemId] = numberAtLeast(count);
+		}
+		const completedAt = numberAtLeast(raw.completedAt);
+		byEvent[eventId] = {
+			points: numberAtLeast(raw.points),
+			exchanged,
+			stagesCleared: uniqueStrings(raw.stagesCleared),
+			storySeen: uniqueStrings(raw.storySeen),
+			rallyContrib: numberAtLeast(raw.rallyContrib),
+			...(completedAt > 0 ? { completedAt } : {}),
+		};
+	}
+	return { value: {
+		v: SAVE_VERSION,
+		updatedAt: numberAtLeast(input.updatedAt),
+		byEvent,
+		kazari: uniqueStrings(input.kazari),
 	}, future: false };
 };
 const decode = <K extends SaveKey>(key: K, value: unknown): Decoded<SaveMap[K]> | undefined => {
 	if (key === "progress") return decodeProgress(value) as Decoded<SaveMap[K]> | undefined;
 	if (key === "daily") return decodeDaily(value) as Decoded<SaveMap[K]> | undefined;
-	return decodeSettings(value) as Decoded<SaveMap[K]> | undefined;
+	if (key === "settings") return decodeSettings(value) as Decoded<SaveMap[K]> | undefined;
+	return decodeEvents(value) as Decoded<SaveMap[K]> | undefined;
 };
 
 const mergeProgress = (server: Progress, local: Progress): Progress => {
@@ -154,10 +211,41 @@ const mergeDaily = (server: Daily, local: Daily): Daily => ({
 	plays: Math.max(server.plays, local.plays), longest: Math.max(server.longest, local.longest),
 	updatedAt: Math.max(server.updatedAt, local.updatedAt),
 });
+const mergeEvents = (server: EventSave, local: EventSave): EventSave => {
+	const byEvent: Record<string, EventProgress> = {};
+	for (const eventId of new Set([...Object.keys(server.byEvent), ...Object.keys(local.byEvent)])) {
+		const a = server.byEvent[eventId];
+		const b = local.byEvent[eventId];
+		if (!a) { if (b) byEvent[eventId] = b; continue; }
+		if (!b) { byEvent[eventId] = a; continue; }
+		const exchanged: Record<string, number> = { ...a.exchanged };
+		for (const [itemId, count] of Object.entries(b.exchanged)) {
+			exchanged[itemId] = Math.max(exchanged[itemId] ?? 0, count);
+		}
+		const completedAt = Math.max(a.completedAt ?? 0, b.completedAt ?? 0);
+		byEvent[eventId] = {
+			points: Math.max(a.points, b.points),
+			exchanged,
+			stagesCleared: uniqueStrings([...a.stagesCleared, ...b.stagesCleared]),
+			storySeen: uniqueStrings([...a.storySeen, ...b.storySeen]),
+			rallyContrib: Math.max(a.rallyContrib, b.rallyContrib),
+			...(completedAt > 0 ? { completedAt } : {}),
+		};
+	}
+	return {
+		v: SAVE_VERSION,
+		updatedAt: Math.max(server.updatedAt, local.updatedAt),
+		byEvent,
+		kazari: uniqueStrings([...server.kazari, ...local.kazari]),
+	};
+};
 const merge = <K extends SaveKey>(key: K, server: SaveMap[K], local: SaveMap[K]): SaveMap[K] => {
 	if (key === "progress") return mergeProgress(server as Progress, local as Progress) as SaveMap[K];
 	if (key === "daily") return mergeDaily(server as Daily, local as Daily) as SaveMap[K];
-	return { ...(local as GameSettings), updatedAt: Math.max(updatedAtOf(server), updatedAtOf(local)) } as SaveMap[K];
+	if (key === "settings") {
+		return { ...(local as GameSettings), updatedAt: Math.max(updatedAtOf(server), updatedAtOf(local)) } as SaveMap[K];
+	}
+	return mergeEvents(server as EventSave, local as EventSave) as SaveMap[K];
 };
 
 const defaultCache: Cache = miLocalStorage;

@@ -233,7 +233,37 @@
 | `src/router.definition.ts` | ⚠️**1ブロックのみ**。ルートは1本に絞り、画面遷移は内部ステートで切り替える(stacking-gameは5ルートに割って追記が5ブロックになっている) |
 | `src/pages/games.vue` | カード1枚(約10行)。可能なら**データ駆動化**(`const GAMES=[{to,emoji,title,sub}]` + `v-for`)して、追加削除を配列1要素の増減で済むようにする |
 | その他の本体ファイル | ⚠️**追記ゼロ**。locale・PREF_DEF・local-storage・achievements・navbar・vite.config はすべて触らない |
-| backend | ⚠️**変更ゼロ** |
+| backend | ⚠️**2026-07-30 に方針変更。下の §5-1-b を参照**（旧: 変更ゼロ） |
+
+### 5-1-b. ⚠️backend の扱い（2026-07-30 利用者裁定で方針を変更）
+
+⚠️**旧方針は「backend変更ゼロ」でした。** イベントの開催期間を**管理画面から安全に変更できるようにする**ため、
+⚠️**利用者の明示的な判断で、backend への追加を正式に認めました。**
+⚠️**これは「なし崩しで増やしてよい」という意味ではありません。** 下の一覧が**上限であり、増やすときは再度の裁定が要ります**。
+
+⚠️**現時点でのパージ対象（実測。ここが全部です）**
+
+| 場所 | 中身 |
+|---|---|
+| `packages/backend/src/misc/hanaawase-event-index.ts` | 新規。型・JSONスキーマ・検証 |
+| `packages/backend/src/models/Meta.ts` | ⚠️`hanaawaseEventIndex` jsonb 列を1つ追加（import 1件 + 列定義1件） |
+| `packages/backend/migration/1787700000000-add-hanaawase-event-index.js` | ⚠️**マイグレーション1本**（`meta` に列追加。`down()` あり） |
+| `packages/backend/src/server/api/endpoints/games/hanaawase/event-index.ts` | 公開API（`requireCredential: false`） |
+| `packages/backend/src/server/api/endpoints/admin/games/hanaawase/event-index.ts` | 管理API（取得） |
+| `packages/backend/src/server/api/endpoints/admin/games/hanaawase/update-event-index.ts` | 管理API（更新。⚠️`requireAdmin` ＋ `write:admin:meta` ＋ モデレーションログ） |
+| `packages/backend/src/server/api/endpoints/admin/games/hanaawase/stats.ts` | 管理API（プレイ状況。⚠️**集計のみ**・`read:admin:meta`） |
+| `packages/backend/src/server/api/endpoint-list.ts` | ⚠️**4行追記** |
+| `packages/backend/test/unit/misc/hanaawase-event-index.test.ts` | 新規テスト |
+| `packages/frontend/src/router.definition.ts` | ⚠️**2ブロック目**（`/games` 管理画面。⚠️旧上限の「1ブロック」を超えている） |
+| `packages/frontend/src/pages/admin/index.vue` | 管理メニューへの導線 |
+| `packages/frontend/src/pages/admin/games.vue` | 新規（管理画面） |
+| `packages/frontend/src/pages/admin/hanaawase-event-index.{ts,test.ts}` | 新規 |
+
+⚠️**まだ触っていないもの（引き続き禁止）**: `locales/*.yml` ／ `preferences/def.ts` ／ `local-storage.ts` の typed union ／
+`achievements.ts` ／ `vite.config.ts` ／ ⚠️**SDK（`cherrypick-js`）の再生成を要する API 形状の変更**。
+
+⚠️**新しい backend 追加を提案するときは、必ず「静的ファイルで代替できないか」を先に検討し、
+できない理由を書いたうえで利用者の裁定を仰ぐこと。**
 
 ### 5-2. ゲーム側の構成
 ```
@@ -285,8 +315,24 @@ packages/frontend/assets/hanaawase/        ← アセット(vite.config.ts:163 �
 DELETE FROM registry_item WHERE scope = '{client,hanaawase}';
 ```
 
-- ⚠️backend・locale・PREF_DEF・local-storage・achievements には**そもそも何も足していない**ので、
+- ⚠️locale・PREF_DEF・local-storage・achievements には**そもそも何も足していない**ので、
   パージでこれらを触る作業は**発生しないはず**。⚠️発生するなら §5-1 の上限が破られている
+- ⚠️**backend は §5-1-b の一覧を消す作業が発生します**（2026-07-30 の方針変更）。手順：
+
+```sql
+-- ⚠️①先にマイグレーションを戻す（列を落とす）。⚠️これを飛ばして
+--    ファイルだけ消すと、エンティティに無い列がDBに残る
+```
+```bash
+pnpm revert   # AddHanaawaseEventIndex1787700000000 の down() が走る
+```
+- ⚠️②`Meta.ts` の import 1件と列定義1件を削除
+- ⚠️③`endpoint-list.ts` の**4行**を削除
+- ⚠️④`src/misc/hanaawase-event-index.ts` ／ `endpoints/games/hanaawase/` ／ `endpoints/admin/games/hanaawase/` ／
+  `test/unit/misc/hanaawase-event-index.test.ts` を削除
+- ⚠️⑤フロント側の `router.definition.ts` の**2ブロック**、`pages/admin/index.vue` の導線、
+  `pages/admin/games.vue`、`pages/admin/hanaawase-event-index.{ts,test.ts}` を削除
+- ⚠️⑥`pnpm build` を通し、`endpoint-list` の欠落や型エラーが無いことを確認する
 - ⚠️`registry_item` の削除は**利用者の記録を消す操作**。事前に周知するかを運営者が判断する
 
 ---

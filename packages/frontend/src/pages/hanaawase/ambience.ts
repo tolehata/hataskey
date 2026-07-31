@@ -10,7 +10,12 @@ const sources: Readonly<Record<Exclude<AmbienceKind, "silent">, string>> = {
 };
 const fadeDuration = 1200;
 let active: { kind: Exclude<AmbienceKind, "silent">; audio: HTMLAudioElement } | undefined;
-let hanaawaseSoundEnabled = true;
+/**
+ * ⚠️**既定は false**。設定を読み込む前に環境音が鳴り出さないようにするため。
+ * ⚠️`true` に戻さないこと（利用者から「ずっと響いていて不快」と報告があり、既定を切にした）。
+ * ⚠️入り切りは `index.vue` の `updateSettings` が `se && amb` で渡す。
+ */
+let hanaawaseSoundEnabled = false;
 const fadeFrames = new WeakMap<HTMLAudioElement, number>();
 
 const masterVolume = () => prefer.s["sound.masterVolume"];
@@ -56,7 +61,8 @@ export function startAmbience(kind: AmbienceKind = "shop") {
 	active = { kind, audio };
 	void audio.play().then(() => {
 		if (active?.audio !== audio) return;
-		fade(audio, 0, 0.055 * masterVolume());
+		// ⚠️音量は控えめに。0.055 は「ずっと響いていて不快」と言われた値なので上げないこと。
+		fade(audio, 0, 0.03 * masterVolume());
 		if (previous) {
 			const previousVolume = previous.audio.volume;
 			window.setTimeout(() => {
