@@ -59,6 +59,13 @@ RUN git submodule update --init
 RUN find packages -path "*/src/*" -type f \( -name "*.pug" -o -name "*.css" -o -name "*.html" \) -exec touch {} + 2>/dev/null || true
 RUN rm -rf built packages/*/built
 
+# 旗鯖fork: ⚠️vite build が V8 のヒープ上限で落ちる (Reached heap limit -> vite build が SIGABRT)。
+# ⚠️原因は RAM 不足ではない。.wslconfig が意図的に memory=6GB / swap=16GB にしてあり
+#   (「フロントのビルドは OOM するので swap へ逃がす」と明記)、⚠️V8 の既定の上限が
+#   使用可能メモリから小さく決まってしまうのが原因。⚠️ここで明示的に上限を渡して swap へ逃がす。
+# ⚠️同じ理由で vue-tsc も --max-old-space-size が要る (CLAUDE.md に記載)。
+# ⚠️このENVは native-builder 段だけに効く (runner 段の NODE_ENV とは別)。
+ENV NODE_OPTIONS=--max-old-space-size=8192
 RUN pnpm build
 
 # build 結果の検証 (重要なテンプレートが正しく出力されたか確認、デバッグ時のフェイルセーフ)
