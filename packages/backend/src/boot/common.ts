@@ -13,6 +13,7 @@ import { QueueStatsService } from '@/daemons/QueueStatsService.js';
 import { ServerStatsService } from '@/daemons/ServerStatsService.js';
 import { ServerService } from '@/server/ServerService.js';
 import { MainModule } from '@/MainModule.js';
+import { envOption } from '@/env.js';
 import type { Config } from '@/config.js';
 
 let slaccInitialized = false;
@@ -36,7 +37,7 @@ export async function server() {
 	const serverService = app.get(ServerService);
 	await serverService.launch();
 
-	if (process.env.NODE_ENV !== 'test') {
+	if (process.env.NODE_ENV !== 'test' && !envOption.noDaemons) {
 		app.get(ChartManagementService).start();
 		app.get(QueueStatsService).start();
 		app.get(ServerStatsService).start();
@@ -52,7 +53,9 @@ export async function jobQueue() {
 	jobQueue.enableShutdownHooks();
 
 	jobQueue.get(QueueProcessorService).start();
-	jobQueue.get(ChartManagementService).start();
+	if (!envOption.noDaemons) {
+		jobQueue.get(ChartManagementService).start();
+	}
 
 	return jobQueue;
 }

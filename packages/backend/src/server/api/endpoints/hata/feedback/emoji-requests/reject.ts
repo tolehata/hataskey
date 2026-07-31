@@ -13,6 +13,9 @@ export const meta = {
 	tags: ['hata'],
 	requireCredential: true,
 	requireModerator: true,
+	// 旗鯖fork: kind が permissions enum の要素ではないため、IEndpointMeta の union を
+	// secure(サードパーティアプリからの呼び出し不可)側で満たす。挙動は変えない(元々スタッフ専用)。
+	secure: true,
 	kind: 'write:admin',
 	errors: {
 		noSuchRequest: { message: 'No such emoji request.', code: 'NO_SUCH_EMOJI_REQUEST', id: '51728394-7d66-4e10-7a0c-697081920314' },

@@ -960,7 +960,10 @@ export class QueueService implements OnModuleInit {
 			},
 			db: {
 				version: db.redis_version,
-				mode: db.redis_mode,
+				// 旗鯖fork: redis-info の型宣言(src/@types/redis-info.d.ts)は INFO の生テキストを
+				// Record<string, string> として返す網羅的でない宣言のため、レスポンススキーマの
+				// enum(cluster/standalone/sentinel)に絞る。redis_mode は元々この3値のいずれか。
+				mode: db.redis_mode as 'cluster' | 'standalone' | 'sentinel',
 				runId: db.run_id,
 				processId: db.process_id,
 				port: parseInt(db.tcp_port),

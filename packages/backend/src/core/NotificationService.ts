@@ -96,8 +96,14 @@ export class NotificationService implements OnApplicationShutdown {
 		const profile = await this.cacheService.userProfileCache.fetch(notifieeId);
 
 		// 古いMisskeyバージョンのキャッシュが残っている可能性がある
+		// 旗鯖fork: notificationRecieveConfig のキー集合(types.ts の notificationTypes)は
+		// addedToPrivateChannel/removedFromPrivateChannel を含まない(受信設定の対象外のため)。
+		// MiNotification['type'] 全体を汎用 T として受け取るここでは静的にキーの網羅性を
+		// 保証できない(が値側の discriminated union はそのまま維持する)ので、
+		// キーだけ string に広げて読む(挙動は変えない)。
+		type RecieveConfigValue = NonNullable<(typeof profile.notificationRecieveConfig)[keyof typeof profile.notificationRecieveConfig]>;
 		// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-		const recieveConfig = (profile.notificationRecieveConfig ?? {})[type];
+		const recieveConfig = (profile.notificationRecieveConfig as Partial<Record<string, RecieveConfigValue>> ?? {})[type];
 		if (recieveConfig?.type === 'never') {
 			return null;
 		}

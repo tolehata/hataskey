@@ -88,7 +88,10 @@ export class NotificationEntityService implements OnModuleInit {
 
 		if (options.checkValidNotifier !== false && !(await this.#isValidNotifier(notification, meId))) return null;
 
-		const needsNote = NOTE_REQUIRED_NOTIFICATION_TYPES.has(notification.type) && 'noteId' in notification;
+		// 旗鯖fork: NOTE_REQUIRED_NOTIFICATION_TYPES は addedToPrivateChannel 等を含まない
+		// (MiNotification['type'] 全体より狭い)。その場合 has() は元々 false を返すだけなので、
+		// 型だけ広げて渡す(挙動は変えない)。
+		const needsNote = NOTE_REQUIRED_NOTIFICATION_TYPES.has(notification.type as typeof groupedNotificationTypes[number]) && 'noteId' in notification;
 		const noteIfNeed = needsNote ? (
 			hint?.packedNotes != null
 				? hint.packedNotes.get(notification.noteId)
@@ -100,10 +103,13 @@ export class NotificationEntityService implements OnModuleInit {
 		if (needsNote && !noteIfNeed) return null;
 
 		const needsUser = 'notifierId' in notification;
+		// 旗鯖fork: addedToPrivateChannel/removedFromPrivateChannel は notifierId が
+		// null になり得る型だが、既存の呼び出し(get/pack)はそのまま渡しても
+		// 従来どおり「見つからない」扱いになるだけなので挙動は変えず、型だけ通す。
 		const userIfNeed = needsUser ? (
 			hint?.packedUsers != null
-				? hint.packedUsers.get(notification.notifierId)
-				: this.userEntityService.pack(notification.notifierId, { id: meId })
+				? hint.packedUsers.get(notification.notifierId as MiUser['id'])
+				: this.userEntityService.pack(notification.notifierId as MiUser['id'], { id: meId })
 		) : undefined;
 		// if the user has been deleted, don't show this notification
 		if (needsUser && !userIfNeed) return null;
@@ -369,9 +375,14 @@ export class NotificationEntityService implements OnModuleInit {
 		notifiers: MiUser[],
 	): boolean {
 		if (!('notifierId' in notification)) return true;
-		if (userIdsWhoMeMuting.has(notification.notifierId)) return false;
+		// 旗鯖fork: addedToPrivateChannel/removedFromPrivateChannel は notifierId が
+		// null になり得る(MiNotification側の型)。null はそのまま渡しても
+		// Set.has/Array.find は安全に false/undefined を返す(挙動は変えない)ので、
+		// 型だけ MiUser['id'] とみなす。
+		const notifierId = notification.notifierId as MiUser['id'];
+		if (userIdsWhoMeMuting.has(notifierId)) return false;
 
-		const notifier = notifiers.find(x => x.id === notification.notifierId) ?? null;
+		const notifier = notifiers.find(x => x.id === notifierId) ?? null;
 
 		if (notifier == null) return false;
 		if (notifier.host && userMutedInstances.has(notifier.host)) return false;

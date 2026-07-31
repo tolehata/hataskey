@@ -5,7 +5,7 @@
  */
 
 import { Inject, Injectable } from '@nestjs/common';
-import { MoreThan } from 'typeorm';
+import { IsNull, MoreThan } from 'typeorm';
 import { DI } from '@/di-symbols.js';
 import type { HatadyBooksRepository, HatadyLogsRepository, HatadyCommentsRepository, HatadyReactionsRepository, HatadyNotificationsRepository, HatadyFollowingsRepository, HatadyUserProfilesRepository, HatadyBookmarksRepository, HatadyBookMemosRepository, HatadySubjectsRepository, HatadyGoalsRepository } from '@/models/_.js';
 import type { MiUser } from '@/models/User.js';
@@ -853,9 +853,11 @@ export class HatadyService {
 		const reactionStr = reaction.trim().slice(0, 260);
 		if (reactionStr.length === 0) throw new Error('empty reaction');
 
+		// 旗鯖fork: typeorm 1.1 の FindOptionsWhere 型厳格化に伴い、logId が null の場合は
+		// IsNull() を使う(挙動は変えない。null をそのまま渡すのは新しい型定義で不可になったため)。
 		const where = target.commentId
 			? { userId: user.id, commentId: target.commentId }
-			: { userId: user.id, logId: target.logId };
+			: { userId: user.id, logId: target.logId === null ? IsNull() : target.logId };
 
 		const existing = await this.hatadyReactionsRepository.findOneBy(where);
 		if (existing) {
@@ -889,7 +891,7 @@ export class HatadyService {
 	public async unreact(user: MiUser, target: { logId?: string | null; commentId?: string | null }): Promise<void> {
 		const where = target.commentId
 			? { userId: user.id, commentId: target.commentId }
-			: { userId: user.id, logId: target.logId };
+			: { userId: user.id, logId: target.logId === null ? IsNull() : target.logId };
 		const existing = await this.hatadyReactionsRepository.findOneBy(where);
 		if (existing == null) return;
 		await this.hatadyReactionsRepository.delete(existing.id);

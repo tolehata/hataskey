@@ -51,7 +51,7 @@ import { AnnouncementEntityService } from '@/core/entities/AnnouncementEntitySer
 import { FeedService } from './FeedService.js';
 import { UrlPreviewService } from './UrlPreviewService.js';
 import { ClientLoggerService } from './ClientLoggerService.js';
-import type { FastifyInstance, FastifyPluginOptions, FastifyReply } from 'fastify';
+import type { FastifyError, FastifyInstance, FastifyPluginOptions, FastifyReply } from 'fastify';
 
 const _filename = fileURLToPath(import.meta.url);
 const _dirname = dirname(_filename);
@@ -1017,7 +1017,9 @@ export class ClientServerService {
 			return await renderBase(reply);
 		});
 
-		fastify.setErrorHandler(async (error, request, reply) => {
+		// 旗鯖fork: fastify 5.x で setErrorHandler の error 引数が既定 unknown になったため、
+		// 元々の Error 相当の扱い(.message/.name/.stack/.code)を保つよう明示的に型付けする。
+		fastify.setErrorHandler(async (error: FastifyError, request, reply) => {
 			const errId = randomUUID();
 			this.clientLoggerService.logger.error(`Internal error occurred in ${request.routeOptions.url}: ${error.message}`, {
 				path: request.routeOptions.url,

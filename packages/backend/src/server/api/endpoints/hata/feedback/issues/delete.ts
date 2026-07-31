@@ -13,6 +13,9 @@ export const meta = {
 	tags: ['hata'],
 	requireCredential: true,
 	requireModerator: true,
+	// 旗鯖fork: kind が permissions enum の要素ではないため、IEndpointMeta の union を
+	// secure(サードパーティアプリからの呼び出し不可)側で満たす。挙動は変えない(元々スタッフ専用)。
+	secure: true,
 	kind: 'write:admin',
 	errors: {
 		noSuchIssue: { message: 'No such issue.', code: 'NO_SUCH_ISSUE', id: 'd9e80a1b-1700-4476-f2b4-81920314a3b5' },
