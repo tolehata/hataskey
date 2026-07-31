@@ -10,14 +10,16 @@ import * as os from 'node:os';
 import cluster from 'node:cluster';
 import chalk from 'chalk';
 import chalkTemplate from 'chalk-template';
-import * as Sentry from '@sentry/node';
-import { nodeProfilingIntegration } from '@sentry/profiling-node';
 import Logger from '@/logger.js';
 import { loadConfig } from '@/config.js';
 import type { Config } from '@/config.js';
+import { configureLogging, shutdownLogging } from '@/logging/logging-runtime.js';
+import { initTelemetry, shutdownTelemetry } from '@/core/telemetry/telemetry-registry.js';
 import { showMachineInfo } from '@/misc/show-machine-info.js';
 import { envOption } from '@/env.js';
 import { initExtraThreadPool, jobQueue, server } from './common.js';
+import { installShutdownSignalHandlers } from './shutdown-handler.js';
+import type { INestApplicationContext } from '@nestjs/common';
 
 const _filename = fileURLToPath(import.meta.url);
 const _dirname = dirname(_filename);
@@ -78,27 +80,21 @@ export async function masterMain() {
 
 	initExtraThreadPool(config);
 
-	if (config.sentryForBackend) {
-		Sentry.init({
-			integrations: [
-				...(config.sentryForBackend.enableNodeProfiling ? [nodeProfilingIntegration()] : []),
-			],
-
-			// Performance Monitoring
-			tracesSampleRate: 1.0, //  Capture 100% of the transactions
-
-			// Set sampling rate for profiling - this is relative to tracesSampleRate
-			profilesSampleRate: 1.0,
-
-			maxBreadcrumbs: 0,
-
-			...config.sentryForBackend.options,
-		});
+	try {
+		await initTelemetry(config);
+	} catch (e) {
+		bootLogger.error(e instanceof Error ? e : new Error(String(e)), null, true);
+		process.exit(1);
 	}
 
 	bootLogger.info(
 		`mode: [disableClustering: ${envOption.disableClustering}, onlyServer: ${envOption.onlyServer}, onlyQueue: ${envOption.onlyQueue}]`,
 	);
+
+	// server()/jobQueue()で作られたNestアプリケーションコンテキストを保持し、
+	// シャットダウン時に明示的にclose()してOnApplicationShutdown(DB/Redis切断・queue drain)を発火させる。
+	let serverApp: INestApplicationContext | undefined;
+	let queueApp: INestApplicationContext | undefined;
 
 	if (!envOption.disableClustering) {
 		// clusterモジュール有効時
@@ -109,9 +105,9 @@ export async function masterMain() {
 			// そのため、メインプロセスでも直接listenするとポートの競合が発生して起動に失敗してしまう。
 			// see: https://nodejs.org/api/cluster.html#cluster
 		} else if (envOption.onlyQueue) {
-			await jobQueue();
+			queueApp = await jobQueue();
 		} else {
-			await server();
+			serverApp = await server();
 		}
 
 		await spawnWorkers(config.clusterLimit);
@@ -119,20 +115,43 @@ export async function masterMain() {
 		// clusterモジュール無効時
 
 		if (envOption.onlyServer) {
-			await server();
+			serverApp = await server();
 		} else if (envOption.onlyQueue) {
-			await jobQueue();
+			queueApp = await jobQueue();
 		} else {
-			await server();
-			await jobQueue();
+			serverApp = await server();
+			queueApp = await jobQueue();
 		}
 	}
+
+	installShutdownSignalHandlers({
+		shutdownTasks: [
+			terminateWorkers,
+			async () => { if (serverApp) await serverApp.close(); },
+			async () => { if (queueApp) await queueApp.close(); },
+			shutdownTelemetry,
+			shutdownLogging,
+		],
+		onRegistered: message => bootLogger.info(message),
+	});
 
 	if (envOption.onlyQueue) {
 		bootLogger.succ('Queue started', null, true);
 	} else {
 		bootLogger.succ(config.socket ? `Now listening on socket ${config.socket} on ${config.url}` : `Now listening on port ${config.port} on ${config.url}`, null, true);
 	}
+}
+
+/**
+ * マスターがSIGTERM/SIGINTを受けた際、子workerへも転送してそれぞれの
+ * installShutdownSignalHandlers(worker.ts側)によるgraceful shutdownを開始させる。
+ * OSがSIGTERMを送るのは通常マスターのPIDのみで、子プロセスへは自動転送されないため必要。
+ */
+function terminateWorkers(): Promise<void> {
+	for (const id in cluster.workers) {
+		cluster.workers[id]?.process.kill('SIGTERM');
+	}
+	return Promise.resolve();
 }
 
 function showEnvironment(): void {
@@ -158,6 +177,7 @@ function loadConfigBoot(): Config {
 
 	try {
 		config = loadConfig();
+		configureLogging(config.logging);
 	} catch (exception) {
 		if (typeof exception === 'string') {
 			configLogger.error(exception);

@@ -15,6 +15,8 @@ import chalk from 'chalk';
 import Xev from 'xev';
 import Logger from '@/logger.js';
 import { envOption } from '../env.js';
+import { installProcessErrorHandlers } from './process-error-handler.js';
+import { isShutdownInProgress } from './shutdown-handler.js';
 import { masterMain } from './master.js';
 import { workerMain } from './worker.js';
 import { readyRef } from './ready.js';
@@ -32,7 +34,10 @@ const ev = new Xev();
 
 //#region Events
 
-let isShuttingDown = false;
+// SIGINT/SIGTERM受信とグレースフルシャットダウンはboot/master.ts・boot/worker.tsの
+// installShutdownSignalHandlers(shutdown-handler.ts)に一本化した。ここでは登録しない
+// (二重登録によるレースを避けるため)。isShutdownInProgress()でその進行状況だけ参照する。
+installProcessErrorHandlers({ logger, quiet: envOption.quiet });
 
 if (cluster.isPrimary && !envOption.disableClustering) {
 	// Listen new workers
@@ -47,47 +52,22 @@ if (cluster.isPrimary && !envOption.disableClustering) {
 
 	// Listen for dying workers
 	cluster.on('exit', (worker, code, signal) => {
+		if (isShutdownInProgress()) {
+			clusterLogger.info(chalk.yellow(`Worker respawn disabled because of shutdown: [${worker.id}]`));
+			return;
+		}
+
 		// Replace the dead worker,
 		// we're not sentimental
 		clusterLogger.error(chalk.red(`[${worker.id}] died (${signal || code})`));
-		if (!isShuttingDown) cluster.fork();
-		else clusterLogger.info(chalk.yellow('Worker respawn disabled because of shutdown'));
-	});
-
-	process.on('SIGINT', () => {
-		logger.warn(chalk.yellow('Process received SIGINT'));
-		isShuttingDown = true;
-	});
-
-	process.on('SIGTERM', () => {
-		logger.warn(chalk.yellow('Process received SIGTERM'));
-		isShuttingDown = true;
+		cluster.fork();
 	});
 }
-
-// Display detail of unhandled promise rejection
-if (!envOption.quiet) {
-	process.on('unhandledRejection', console.dir);
-}
-
-// Display detail of uncaught exception
-process.on('uncaughtException', err => {
-	try {
-		logger.error(err);
-		console.trace(err);
-	} catch { }
-});
 
 // Dying away...
 process.on('exit', code => {
+	if (isShutdownInProgress()) return;
 	logger.warn(chalk.yellow(`The process is going to exit with code ${code}`));
-});
-
-process.on('warning', warning => {
-	if ((warning as never)['code'] !== 'CHERRYPICK_SHUTDOWN') return;
-	logger.warn(chalk.yellow(`${warning.message}: ${(warning as never)['detail']}`));
-	for (const id in cluster.workers) cluster.workers[id]?.process.kill('SIGTERM');
-	process.exit();
 });
 
 //#endregion

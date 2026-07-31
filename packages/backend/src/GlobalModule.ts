@@ -3,7 +3,6 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import process from 'node:process';
 import { Global, Inject, Module } from '@nestjs/common';
 import * as Redis from 'ioredis';
 import { DataSource } from 'typeorm';
@@ -200,10 +199,10 @@ export class GlobalModule implements OnApplicationShutdown {
 	}
 
 	async onApplicationShutdown(signal: string): Promise<void> {
+		// 旧: ここでprocess.emitWarning('CHERRYPICK_SHUTDOWN')を発行し、boot/entry.tsの
+		// process.on('warning', ...)がそれを合図にclusterワーカーを強制終了してexitしていた。
+		// シャットダウン経路をboot/{master,worker}.tsのinstallShutdownSignalHandlers(shutdown-handler.ts)に
+		// 一本化したため、この通知は不要(合図を待つリスナーはもう存在しない)。
 		await this.dispose();
-		process.emitWarning('CherryPick is shutting down', {
-			code: 'CHERRYPICK_SHUTDOWN',
-			detail: `Application received ${signal} signal`,
-		});
 	}
 }

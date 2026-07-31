@@ -8,7 +8,6 @@ import * as fs from 'node:fs';
 import * as stream from 'node:stream/promises';
 import * as dns from 'node:dns';
 import { Inject, Injectable } from '@nestjs/common';
-import * as Sentry from '@sentry/node';
 import { DI } from '@/di-symbols.js';
 import { getIpHash } from '@/misc/get-ip-hash.js';
 import type { MiLocalUser, MiUser } from '@/models/User.js';
@@ -113,35 +112,32 @@ export class ApiCallService implements OnApplicationShutdown {
 			throw err;
 		} else {
 			const errId = randomUUID();
-			this.logger.error(`Internal error occurred in ${ep.name}: ${err.message}`, {
-				ep: ep.name,
-				ps: data,
-				e: {
-					message: err.message,
-					code: err.name,
-					stack: err.stack,
-					id: errId,
+			this.logger.write({
+				level: 'error',
+				eventName: 'api.endpoint.failed',
+				message: `Internal error occurred in ${ep.name}: ${err.message}`,
+				attributes: {
+					'api.endpoint': ep.name,
+					'error.id': errId,
+					'api.params': data,
 				},
+				error: err,
 			});
 
-			if (this.config.sentryForBackend) {
-				Sentry.captureMessage(`Internal error occurred in ${ep.name}: ${err.message}`, {
-					level: 'error',
-					user: {
-						id: userId,
+			this.telemetryService.captureMessage(`Internal error occurred in ${ep.name}: ${err.message}`, {
+				level: 'error',
+				userId,
+				extra: {
+					ep: ep.name,
+					ps: data,
+					e: {
+						message: err.message,
+						code: err.name,
+						stack: err.stack,
+						id: errId,
 					},
-					extra: {
-						ep: ep.name,
-						ps: data,
-						e: {
-							message: err.message,
-							code: err.name,
-							stack: err.stack,
-							id: errId,
-						},
-					},
-				});
-			}
+				},
+			});
 
 			throw new ApiError(null, {
 				e: {
@@ -460,15 +456,8 @@ export class ApiCallService implements OnApplicationShutdown {
 		}
 
 		// API invoking
-		if (this.config.sentryForBackend) {
-			return await Sentry.startSpan({
-				name: 'API: ' + ep.name,
-			}, () => ep.exec(data, user, token, flashToken, file, request.ip, request.headers)
-				.catch((err: Error) => this.#onExecError(ep, data, err, user?.id)));
-		} else {
-			return await ep.exec(data, user, token, flashToken, file, request.ip, request.headers)
-				.catch((err: Error) => this.#onExecError(ep, data, err, user?.id));
-		}
+		return await this.telemetryService.startSpan('API: ' + ep.name, () => ep.exec(data, user, token, flashToken, file, request.ip, request.headers)
+			.catch((err: Error) => this.#onExecError(ep, data, err, user?.id)));
 	}
 
 	@bindThis

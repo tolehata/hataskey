@@ -32,7 +32,8 @@ export async function server() {
 	const app = await NestFactory.createApplicationContext(MainModule, {
 		logger: new NestLogger(),
 	});
-	app.enableShutdownHooks();
+	// enableShutdownHooks()は使わず、boot/master.ts・boot/worker.tsのinstallShutdownSignalHandlers経由で
+	// app.close()を明示的に呼び出すことでOnApplicationShutdownを発火させる(シャットダウン経路の一本化)。
 
 	const serverService = app.get(ServerService);
 	await serverService.launch();
@@ -50,7 +51,8 @@ export async function jobQueue() {
 	const jobQueue = await NestFactory.createApplicationContext(QueueProcessorModule, {
 		logger: new NestLogger(),
 	});
-	jobQueue.enableShutdownHooks();
+	// enableShutdownHooks()は使わず、boot/master.ts・boot/worker.tsのinstallShutdownSignalHandlers経由で
+	// jobQueue.close()を明示的に呼び出すことでOnApplicationShutdownを発火させる(シャットダウン経路の一本化)。
 
 	jobQueue.get(QueueProcessorService).start();
 	if (!envOption.noDaemons) {
