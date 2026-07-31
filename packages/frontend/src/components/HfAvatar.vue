@@ -11,16 +11,19 @@ SPDX-License-Identifier: AGPL-3.0-only
 	:style="{ width: px, height: px }"
 	:title="user ? (user.name ?? user.username) : undefined"
 >
-	<MkAvatar v-if="user && user.avatarUrl" :class="$style.img" :user="user" :link="link" :preview="preview"/>
+	<MkAvatar v-if="user && user.avatarUrl" :class="$style.img" :user="(user as Misskey.entities.User)" :link="link" :preview="preview"/>
 	<span v-else :class="$style.initial" :style="{ background: color, fontSize: initialSize }">{{ initial }}</span>
 </span>
 </template>
 
 <script lang="ts" setup>
 import { computed } from 'vue';
+import type * as Misskey from 'cherrypick-js';
 import { hfAvatarColor, hfInitial } from '@/utility/hatafeed.js';
 // MkAvatar / MkUserName 等は components/global/ のグローバル登録コンポーネントのため import 不要
 // (現行 hatafeed.vue と同じ流儀)。
+// 旗鯖fork(G9): components/index.ts の GlobalComponents 拡張修正でMkAvatarのuser propが
+//   厳密チェックされるようになったため、この partial user 形状をキャストで橋渡し(挙動は変えない)。
 
 const props = withDefaults(defineProps<{
 	user?: { id?: string; name?: string | null; username?: string | null; avatarUrl?: string | null } | null;

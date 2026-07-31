@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+import { createVisibilityAwareInterval } from '@@/js/interval.js';
 import type { StorageProvider } from '@/preferences/manager.js';
 import { cloudBackup } from '@/preferences/utility.js';
 import { miLocalStorage } from '@/local-storage.js';
@@ -207,10 +208,10 @@ window.document.addEventListener('visibilitychange', () => {
 
 let latestBackupAt = 0;
 
-window.setInterval(() => {
+// documentが非表示の間は実行されない (同期されていない古い値がバックアップされるのを防ぐ意味もある)
+createVisibilityAwareInterval(() => {
 	if ($i == null) return;
 	if (!store.s.enablePreferencesAutoCloudBackup) return;
-	if (window.document.visibilityState !== 'visible') return; // 同期されていない古い値がバックアップされるのを防ぐ
 	if (prefer.profile.modifiedAt <= latestBackupAt) return;
 
 	cloudBackup().then(() => {

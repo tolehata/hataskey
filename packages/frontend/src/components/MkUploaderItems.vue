@@ -55,6 +55,8 @@ import type { UploaderItem } from '@/composables/use-uploader.js';
 import { i18n } from '@/i18n.js';
 import MkButton from '@/components/MkButton.vue';
 import bytes from '@/filters/bytes.js';
+import * as os from '@/os.js';
+import type { Content } from '@/components/MkLightbox.item.vue';
 
 const props = defineProps<{
 	items: UploaderItem[];
@@ -72,8 +74,25 @@ function onContextmenu(item: UploaderItem, ev: MouseEvent) {
 	emit('showMenuViaContextmenu', item, ev);
 }
 
-function onThumbnailClick(item: UploaderItem, ev: MouseEvent) {
-	// TODO: preview when item is image
+async function onThumbnailClick(item: UploaderItem, ev: MouseEvent) {
+	if (item.file.type.startsWith('image') || item.file.type.startsWith('video')) {
+		const contents = props.items
+			.filter(item => item.file.type.startsWith('image') || item.file.type.startsWith('video'))
+			.map<Content>(item => ({
+				id: item.id,
+				type: (item.file.type.startsWith('video') ? 'video' : 'image'),
+				url: item.objectUrl,
+				thumbnailUrl: item.thumbnail,
+				filename: getUploadName(item),
+			}));
+
+		const { dispose } = await os.popupAsyncWithDialog(import('@/components/MkLightbox.vue').then(x => x.default), {
+			defaultIndex: contents.findIndex(content => content.id === item.id),
+			contents: contents,
+		}, {
+			closed: () => dispose(),
+		});
+	}
 }
 </script>
 

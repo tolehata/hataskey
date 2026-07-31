@@ -126,7 +126,6 @@ async function renderChart() {
 				borderWidth: 0,
 				borderRadius: 3,
 				backgroundColor(c) {
-					// @ts-expect-error TS(2339)
 					const value = c.dataset.data[c.dataIndex].v as number;
 					let a = (value - min) / max;
 					if (value !== 0) { // 0でない限りは完全に不可視にはしない
@@ -213,8 +212,7 @@ async function renderChart() {
 						label(context) {
 							const v = context.dataset.data[context.dataIndex];
 
-							// @ts-expect-error TS(2339)
-							return [v.v];
+							return [String(v.v)];
 						},
 					},
 					//mode: 'index',

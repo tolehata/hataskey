@@ -50,6 +50,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <script lang="ts" setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
+import type * as Misskey from 'cherrypick-js';
 import { prefer } from '@/preferences.js';
 import { mainRouter } from '@/router.js';
 import { callExternalApi } from '@/utility/external-api.js';
@@ -172,9 +173,11 @@ function emojiUrlsOf(n: any): Record<string, string> {
 // emojiUrls を参照せず自インスタンス扱いになり、外部サーバー発の絵文字が
 // ショートコードのまま残る。標準の MkUserName と同様に author(host付き)を
 // 渡すことで emojiUrls 経由の url 解決を走らせ、絵文字を正しく描画する。
-function authorOf(n: any): { host: string | null; emojis?: any } {
+function authorOf(n: any): Misskey.entities.UserLite {
 	const host = n?.user?.host ?? prefer.s['external.host'] ?? null;
-	return { host, emojis: n?.user?.emojis };
+	// 旗鯖fork(G9): Mfmのauthor propはUserLite全体を要求するが、ここではemojiUrl解決に
+	//   使うhost/emojisしか要らない(挙動は既存のまま、型だけ橋渡し)。
+	return { host, emojis: n?.user?.emojis } as Misskey.entities.UserLite;
 }
 
 // 旗鯖fork: リアクション文字列の正規化 (両端コロン等の処理は MkReactionIcon に任せる)

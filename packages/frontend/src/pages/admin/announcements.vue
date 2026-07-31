@@ -63,9 +63,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 							</MkSwitch>
 							<div v-if="announcement.progressSteps" :class="$style.progressSteps">
 								<div v-for="(label, idx) in announcement.progressSteps" :key="idx" :class="$style.progressStepRow">
-									<span :class="$style.progressStepNum">{{ idx + 1 }}</span>
-									<MkInput v-model="announcement.progressSteps[idx]" :placeholder="`段階${idx + 1}のラベル`" style="flex:1;"/>
-									<MkSwitch :modelValue="(announcement.progressCompleted ?? [false,false,false,false])[idx]" @update:modelValue="setProgressCompleted(announcement, idx, $event)">
+									<span :class="$style.progressStepNum">{{ (idx as number) + 1 }}</span>
+									<MkInput v-model="announcement.progressSteps[(idx as number)]" :placeholder="`段階${(idx as number) + 1}のラベル`" style="flex:1;"/>
+									<MkSwitch :modelValue="(announcement.progressCompleted ?? [false,false,false,false])[(idx as number)]" @update:modelValue="setProgressCompleted(announcement, (idx as number), $event)">
 										完了
 									</MkSwitch>
 								</div>

@@ -25,12 +25,43 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<div class="_gaps_m">
 							<div><SearchText>{{ i18n.ts._sensitiveMediaDetection.description }}</SearchText></div>
 
+							<MkInfo warn><SearchText>{{ i18n.ts._sensitiveMediaDetection.externalServiceInfo }}</SearchText></MkInfo>
+
 							<MkRadios v-model="sensitiveMediaDetectionForm.state.sensitiveMediaDetection">
 								<option value="none">{{ i18n.ts.none }}</option>
 								<option value="all">{{ i18n.ts.all }}</option>
 								<option value="local">{{ i18n.ts.localOnly }}</option>
 								<option value="remote">{{ i18n.ts.remoteOnly }}</option>
 							</MkRadios>
+
+							<SearchMarker :keywords="['api', 'url', 'endpoint', 'sensitive']">
+								<MkInput v-model="sensitiveMediaDetectionForm.state.sensitiveMediaDetectionApiUrl" type="url">
+									<template #label><SearchLabel>{{ i18n.ts._sensitiveMediaDetection.apiUrl }}</SearchLabel></template>
+									<template #caption><SearchText>{{ i18n.ts._sensitiveMediaDetection.apiUrlDescription }}</SearchText></template>
+								</MkInput>
+							</SearchMarker>
+
+							<SearchMarker :keywords="['api', 'key', 'token', 'sensitive']">
+								<MkInput v-model="sensitiveMediaDetectionForm.state.sensitiveMediaDetectionApiKey" type="password" autocomplete="new-password">
+									<template #prefix><i class="ti ti-key"></i></template>
+									<template #label><SearchLabel>{{ i18n.ts._sensitiveMediaDetection.apiKey }}</SearchLabel></template>
+									<template #caption><SearchText>{{ i18n.ts._sensitiveMediaDetection.apiKeyDescription }}</SearchText></template>
+								</MkInput>
+							</SearchMarker>
+
+							<SearchMarker :keywords="['timeout', 'sensitive']">
+								<MkInput v-model="sensitiveMediaDetectionForm.state.sensitiveMediaDetectionTimeout" type="number" :min="1">
+									<template #label><SearchLabel>{{ i18n.ts._sensitiveMediaDetection.timeout }}</SearchLabel></template>
+									<template #caption><SearchText>{{ i18n.ts._sensitiveMediaDetection.timeoutDescription }}</SearchText></template>
+								</MkInput>
+							</SearchMarker>
+
+							<SearchMarker :keywords="['max', 'images', 'chunk', 'sensitive']">
+								<MkInput v-model="sensitiveMediaDetectionForm.state.sensitiveMediaDetectionMaxImagesPerRequest" type="number" :min="1">
+									<template #label><SearchLabel>{{ i18n.ts._sensitiveMediaDetection.maxImagesPerRequest }}</SearchLabel></template>
+									<template #caption><SearchText>{{ i18n.ts._sensitiveMediaDetection.maxImagesPerRequestDescription }}</SearchText></template>
+								</MkInput>
+							</SearchMarker>
 
 							<SearchMarker :keywords="['sensitivity']">
 								<MkRange v-model="sensitiveMediaDetectionForm.state.sensitiveMediaDetectionSensitivity" :min="0" :max="4" :step="1" :textConverter="(v) => `${v + 1}`">
@@ -166,6 +197,7 @@ import MkSwitch from '@/components/MkSwitch.vue';
 import MkRange from '@/components/MkRange.vue';
 import MkInput from '@/components/MkInput.vue';
 import MkTextarea from '@/components/MkTextarea.vue';
+import MkInfo from '@/components/MkInfo.vue';
 import * as os from '@/os.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { fetchInstance } from '@/instance.js';

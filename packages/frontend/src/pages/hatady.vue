@@ -343,7 +343,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 							<span
 								v-for="(bm, i) in (b.bookmarks || []).slice(0, 6)" :key="bm.id"
 								:class="$style.ribbon"
-								:style="{ background: bmColor(bm.color), left: (16 + i * 15) + 'px', animationDelay: ribbonDelay(bi, i) }"
+								:style="{ background: bmColor(bm.color), left: (16 + (i as number) * 15) + 'px', animationDelay: ribbonDelay(bi, (i as number)) }"
 								:title="(bm.name || '') + ' p.' + bm.page"
 							></span>
 							<HyBookCover :title="b.title" :author="b.author" :colorIndex="b.coverColorIndex" :width="118" showTitle/>

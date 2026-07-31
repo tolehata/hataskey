@@ -59,7 +59,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { onMounted, computed, useTemplateRef } from 'vue';
+import { onMounted, onUnmounted, computed, useTemplateRef } from 'vue';
 import { Chart } from 'chart.js';
 import type { MkSelectItem, ItemOption } from '@/components/MkSelect.vue';
 import type { ChartSrc } from '@/components/MkChart.vue';
@@ -170,6 +170,9 @@ const subDoughnutEl = useTemplateRef('subDoughnutEl');
 const pubDoughnutEl = useTemplateRef('pubDoughnutEl');
 const softwareDoughnutEl = useTemplateRef('softwareDoughnutEl');
 
+let subDoughnutChartInstance: Chart | null = null;
+let pubDoughnutChartInstance: Chart | null = null;
+
 const { handler: externalTooltipHandler1 } = useChartTooltip({
 	position: 'middle',
 });
@@ -253,7 +256,9 @@ onMounted(() => {
 			value: fedStats.otherFollowersCount,
 		});
 
-		createDoughnut(subDoughnutEl.value, externalTooltipHandler1, subs);
+		if (subDoughnutEl.value != null) {
+			subDoughnutChartInstance = createDoughnut(subDoughnutEl.value, externalTooltipHandler1, subs);
+		}
 
 		const pubs: ChartData = fedStats.topPubInstances.map(x => ({
 			name: x.host,
@@ -270,7 +275,9 @@ onMounted(() => {
 			value: fedStats.otherFollowingCount,
 		});
 
-		createDoughnut(pubDoughnutEl.value, externalTooltipHandler2, pubs);
+		if (pubDoughnutEl.value != null) {
+			pubDoughnutChartInstance = createDoughnut(pubDoughnutEl.value, externalTooltipHandler2, pubs);
+		}
 	});
 
 	misskeyApiGet('federation/remote-software', {}).then(fedStats => {
@@ -292,6 +299,11 @@ onMounted(() => {
 
 		createDoughnut(softwareDoughnutEl.value, externalTooltipHandler3, sortedSoftwareData);
 	});
+});
+
+onUnmounted(() => {
+	subDoughnutChartInstance?.destroy();
+	pubDoughnutChartInstance?.destroy();
 });
 </script>
 

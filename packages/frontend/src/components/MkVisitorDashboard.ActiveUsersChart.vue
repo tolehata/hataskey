@@ -13,7 +13,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { onMounted, useTemplateRef, ref, nextTick } from 'vue';
+import { onMounted, onUnmounted, useTemplateRef, ref, nextTick } from 'vue';
 import { Chart } from 'chart.js';
 import gradient from 'chartjs-plugin-gradient';
 import tinycolor from 'tinycolor2';
@@ -153,8 +153,12 @@ async function renderChart() {
 	});
 }
 
-onMounted(async () => {
+onMounted(() => {
 	renderChart();
+});
+
+onUnmounted(() => {
+	chartInstance?.destroy();
 });
 </script>
 

@@ -32,7 +32,7 @@ import { popup } from '@/os.js';
 
 export async function getNoteClipMenu(props: {
 	note: Misskey.entities.Note;
-	currentClip?: Misskey.entities.Clip;
+	currentClip?: Misskey.entities.Clip | null;
 }) {
 	function getClipName(clip: Misskey.entities.Clip) {
 		if ($i && clip.userId === $i.id && clip.notesCount != null) {
@@ -183,9 +183,9 @@ export function getNoteMenu(props: {
 	collapsed?: Ref<boolean>;
 	viewTextSource: Ref<boolean>;
 	noNyaize: Ref<boolean>;
-	currentClip?: Misskey.entities.Clip;
+	currentClip?: Misskey.entities.Clip | null;
 	// 旗鯖fork: 本家 2026.6.0 から取り込み: アンテナのタイムラインから個別のノートを削除できるように
-	currentAntenna?: Misskey.entities.Antenna;
+	currentAntenna?: Misskey.entities.Antenna | null;
 }) {
 	const appearNote = getAppearNote(props.note) ?? props.note;
 	const link = appearNote.url ?? appearNote.uri;

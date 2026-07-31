@@ -11,7 +11,8 @@ export async function generateSubsettedFont(ttfPath: string, unicodeRangeValues:
 
 	const {
 		instance: { exports: harfbuzzWasm },
-	}: any = await WebAssembly.instantiate(await fsp.readFile('./node_modules/harfbuzzjs/hb-subset.wasm'));
+	// 旗鯖fork(G9): harfbuzzjs 1.x で wasm が dist/ 配下へ移動・改名（上流 2026.7.0 と同じパス）
+	}: any = await WebAssembly.instantiate(await fsp.readFile('./node_modules/harfbuzzjs/dist/harfbuzz-subset.wasm'));
 
 	const heapu8 = new Uint8Array(harfbuzzWasm.memory.buffer);
 

@@ -37,7 +37,7 @@ const observer = new ResizeObserver((entries) => {
 </script>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { ref, watch, onBeforeUnmount } from 'vue';
 
 const props = withDefaults(defineProps<Props>(), {
 	minScale: 0,
@@ -45,21 +45,33 @@ const props = withDefaults(defineProps<Props>(), {
 
 const content = ref<HTMLSpanElement>();
 
+function unobserve(el: HTMLSpanElement | null | undefined) {
+	if (el) {
+		delete el[contentSymbol];
+		observer.unobserve(el);
+		if (el.parentElement) {
+			observer.unobserve(el.parentElement);
+		}
+	}
+}
+
+function observe(el: HTMLSpanElement | null | undefined) {
+	if (el) {
+		el[contentSymbol] = props;
+		observer.observe(el);
+		if (el.parentElement) {
+			observer.observe(el.parentElement);
+		}
+	}
+}
+
 watch(content, (value, oldValue) => {
-	if (oldValue) {
-		delete oldValue[contentSymbol];
-		observer.unobserve(oldValue);
-		if (oldValue.parentElement) {
-			observer.unobserve(oldValue.parentElement);
-		}
-	}
-	if (value) {
-		value[contentSymbol] = props;
-		observer.observe(value);
-		if (value.parentElement) {
-			observer.observe(value.parentElement);
-		}
-	}
+	unobserve(oldValue);
+	observe(value);
+});
+
+onBeforeUnmount(() => {
+	unobserve(content.value);
 });
 </script>
 

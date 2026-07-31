@@ -62,6 +62,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <script lang="ts" setup>
 import { ref, onMounted, onUnmounted } from 'vue';
+import type * as Misskey from 'cherrypick-js';
 import { useWidgetPropsManager } from './widget.js';
 import type { WidgetComponentEmits, WidgetComponentExpose, WidgetComponentProps } from './widget.js';
 import type { FormWithDefault, GetFormResultType } from '@/utility/form.js';
@@ -187,9 +188,11 @@ function emojiUrlsOf(n: any): Record<string, string> {
 
 // 旗鯖fork: <Mfm> に渡す author。host が null だと MkMfm が emojiUrls を
 // 参照せず外部サーバーの絵文字を解決できないため、host(外部サーバー)を補う。
-function authorOf(n: any): { host: string | null; emojis?: any } {
+function authorOf(n: any): Misskey.entities.UserLite {
 	const host = n?.user?.host ?? prefer.s['external.host'] ?? null;
-	return { host, emojis: n?.user?.emojis };
+	// 旗鯖fork(G9): Mfmのauthor propはUserLite全体を要求するが、ここではemojiUrl解決に
+	//   使うhost/emojisしか要らない(挙動は既存のまま、型だけ橋渡し)。
+	return { host, emojis: n?.user?.emojis } as Misskey.entities.UserLite;
 }
 
 function normalizeReaction(reaction: string): string {

@@ -215,11 +215,24 @@ export function getConfig(): UserConfig {
 				external: externalPackages.map(p => p.match),
 				preserveEntrySignatures: 'allow-extension',
 				output: {
-					manualChunks: {
-						vue: ['vue'],
-						photoswipe: ['photoswipe', 'photoswipe/lightbox', 'photoswipe/style.css'],
-						// dependencies of i18n.ts
-						'config': ['@@/js/config.js'],
+					/*
+					旗鯖fork(G9): vite 8(rolldown) で manualChunks が廃止され codeSplitting.groups へ。
+					⚠️上流 2026.7.0 の形を base に、フォークが使う photoswipe（CherryPick 旧ビューワー）の
+					グループだけ足した中和。⚠️photoswipe の要否は G10（画像ビューワー刷新）で確定する。
+					*/
+					codeSplitting: {
+						groups: [{
+							name: 'vue',
+							test: /node_modules[\\/]vue/,
+						}, {
+							name: 'photoswipe',
+							test: /node_modules[\\/]photoswipe/,
+						}, {
+							// split i18n related module to distinct module
+							name: 'i18n',
+							includeDependenciesRecursively: false,
+							test: /i18n\.ts|locale\.ts/,
+						}],
 					},
 					entryFileNames: `scripts/${localesHash}-[hash:8].js`,
 					chunkFileNames: `scripts/${localesHash}-[hash:8].js`,
@@ -265,6 +278,9 @@ export function getConfig(): UserConfig {
 				},
 			},
 			includeSource: ['src/**/*.ts'],
+			// 旗鯖fork: test/e2e/*.spec.ts は Playwright 専用(`@playwright/test`前提)。
+			// vitestのデフォルトincludeは*.spec.tsも拾ってしまうため明示的に除外する。
+			exclude: ['**/node_modules/**', '**/dist/**', 'test/e2e/**'],
 		},
 	};
 }

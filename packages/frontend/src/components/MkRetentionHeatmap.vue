@@ -180,7 +180,7 @@ async function renderChart() {
 					callbacks: {
 						title(context) {
 							const v = context[0].dataset.data[context[0].dataIndex];
-							return getYYYYMMDD(new Date(new Date(v.y).getTime() + (v.x * 86400000)));
+							return getYYYYMMDD(new Date(new Date(v.y).getTime() + ((v.x as number) * 86400000)));
 						},
 						label(context) {
 							const v = context.dataset.data[context.dataIndex] as unknown as typeof data[0];

@@ -10,6 +10,7 @@
 		"outDir": "./built/",
 		"rootDir": "./src",
 		"removeComments": true,
+		"skipLibCheck": true,
 		"strict": true,
 		"strictFunctionTypes": true,
 		"strictNullChecks": true,

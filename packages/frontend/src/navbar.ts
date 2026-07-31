@@ -80,7 +80,9 @@ export const navbarItemDef = reactive({
 		title: 'HataFeed',
 		icon: 'ti ti-message-report',
 		// 旗鯖fork: ロールポリシー canAccessHataFeed 保持者、またはスタッフにのみ表示。
-		show: computed(() => $i != null && ($i.policies?.canAccessHataFeed === true || $i.isModerator || $i.isAdmin)),
+		// 旗鯖fork(G9): canAccessHataFeedはcherrypick-jsのRolePolicies型に未反映のフォーク独自ポリシーのため
+		//   as で橋渡し(実行時の値・挙動は変えない)。
+		show: computed(() => $i != null && ((($i.policies as Record<string, unknown> | undefined)?.canAccessHataFeed) === true || $i.isModerator || $i.isAdmin)),
 		to: '/hatafeed',
 	},
 	hatady: {
@@ -198,7 +200,7 @@ export const navbarItemDef = reactive({
                 action: async (ev: MouseEvent) => {
                     const { defineAsyncComponent } = await import('vue');
                     // 即座に MkUISetup.vue を開く
-                    os.popup(defineAsyncComponent(() => import('@/components/MkUISetup.vue')), {}, {}, 'closed');
+                    os.popup(defineAsyncComponent(() => import('@/components/MkUISetup.vue')), {}, {});
                 },
          },	
          help: {

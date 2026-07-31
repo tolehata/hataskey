@@ -28,6 +28,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <script lang="ts" setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
+import type * as Misskey from 'cherrypick-js';
 import { mainRouter } from '@/router.js';
 import { prefer } from '@/preferences.js';
 import { getExternalEmojiUrlMapForHost } from '@/utility/external-api.js';
@@ -102,7 +103,9 @@ const emojiUrls = computed(() => {
 const author = computed(() => {
 	const n = props.notification;
 	const host = n?.user?.host ?? prefer.s['external.host'] ?? null;
-	return { host, emojis: n?.user?.emojis };
+	// 旗鯖fork(G9): Mfmのauthor propはUserLite全体を要求するが、ここではemojiUrl解決に
+	//   使うhost/emojisしか要らない(挙動は既存のまま、型だけ橋渡し)。
+	return { host, emojis: n?.user?.emojis } as Misskey.entities.UserLite;
 });
 
 // 旗鯖fork: リアクション絵文字URL (カスタム絵文字の場合)

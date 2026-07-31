@@ -16,6 +16,7 @@ export const TIPS = [
 	'tl.social',
 	'tl.global',
 	'tl.bubble',
+	'tl.media',
 	'tl.trending',
 	'tl.external',
 	'note.utage',

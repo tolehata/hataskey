@@ -147,6 +147,7 @@ function showFileMenu(file: Misskey.entities.DriveFile, ev: MouseEvent | Keyboar
 	if (menuShowing) return;
 
 	const isImage = file.type.startsWith('image/');
+	const isVideo = file.type.startsWith('video/');
 
 	const menuItems: MenuItem[] = [];
 
@@ -164,13 +165,25 @@ function showFileMenu(file: Misskey.entities.DriveFile, ev: MouseEvent | Keyboar
 		action: () => { describe(file); },
 	});
 
-	if (isImage) {
+	if (isImage || isVideo) {
 		menuItems.push({
 			text: i18n.ts.preview,
 			icon: 'ti ti-photo-search',
 			action: async () => {
-				const { dispose } = await os.popupAsyncWithDialog(import('@/components/MkImgPreviewDialog.vue').then(x => x.default), {
-					file: file,
+				const constents = props.modelValue.filter(item => item.type.startsWith('image') || item.type.startsWith('video')).map(item => ({
+					id: item.id,
+					type: item.type.startsWith('video') ? 'video' as const : 'image' as const,
+					url: item.url,
+					thumbnailUrl: item.thumbnailUrl,
+					width: item.properties.width,
+					height: item.properties.height,
+					filename: item.name,
+					file: item,
+					//sourceElement: TODO
+				}));
+				const { dispose } = await os.popupAsyncWithDialog(import('@/components/MkLightbox.vue').then(x => x.default), {
+					defaultIndex: constents.findIndex(content => content.id === file.id),
+					contents: constents,
 				}, {
 					closed: () => dispose(),
 				});

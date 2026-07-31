@@ -22,6 +22,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<i class="ti ti-repeat" style="margin-right: 4px;"></i>
 		<span :class="$style.renoteText">
 			<I18n :src="i18n.ts.renotedBy" tag="span">
+				<!-- @vue-expect-error 旗鯖fork(G9): I18nはgeneric SFCのためGlobalComponents経由/相互参照時にslot名の型推論が効かない(実行時は問題なし) -->
 				<template #user>
 					<MkUserName :class="$style.renoteName" :user="note.user"/>
 				</template>
@@ -118,6 +119,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<div :class="$style.noteContent">
 			<MkInfo v-if="appearNote.deleteAt != null" warn :class="$style.deleteAt">
 				<I18n :src="i18n.ts.scheduledToDeleteOnX" tag="span">
+					<!-- @vue-expect-error 旗鯖fork(G9): I18nはgeneric SFCのためGlobalComponents経由/相互参照時にslot名の型推論が効かない(実行時は問題なし) -->
 					<template #x>
 						<MkTime :time="appearNote.deleteAt" :mode="'detail'" style="font-weight: bold;"/>
 					</template>
@@ -304,13 +306,13 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<MkNoteHistory
 				v-for="(history, index) in histories"
 				:key="history.id"
-				:oldNote="histories[index+1] ? histories[index+1] : null"
+				:oldNote="histories[(index as number)+1] ? histories[(index as number)+1] : null"
 				:newNote="history"
 				:originalNote="appearNote"
 				:class="$style.reply"
 				:detail="true"
 				:raw="history_raw"
-				:index="index"
+				:index="(index as number)"
 			/>
 			<div v-if="historiesLoaded && !history_list_end" style="padding: 16px">
 				<MkButton style="margin: 0 auto;" primary rounded @click="loadHistories">{{ i18n.ts.loadMore }}</MkButton>
@@ -320,6 +322,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 </div>
 <div v-else-if="muted" class="_panel" :class="$style.muted" @click="muted = false">
 	<I18n :src="i18n.ts.userSaysSomething" tag="small">
+		<!-- @vue-expect-error 旗鯖fork(G9): I18nはgeneric SFCのためGlobalComponents経由/相互参照時にslot名の型推論が効かない(実行時は問題なし) -->
 		<template #name>
 			<MkA v-user-preview="appearNote.userId" :to="userPage(appearNote.user)">
 				<MkUserName :user="appearNote.user"/>
@@ -338,6 +341,7 @@ import { host } from '@@/js/config.js';
 import type { OpenOnRemoteOptions } from '@/utility/please-login.js';
 import type { Keymap } from '@/utility/hotkey.js';
 import { parseMfmCached } from '@/utility/mfm-cache.js';
+import I18n from '@/components/global/I18n.vue';
 import MkNoteSub from '@/components/MkNoteSub.vue';
 import MkNoteSimple from '@/components/MkNoteSimple.vue';
 import MkReactionsViewer from '@/components/MkReactionsViewer.vue';
