@@ -57,6 +57,12 @@ const props = defineProps<{
 	count: number;
 	isInitial: boolean;
 	note: Misskey.entities.Note;
+	/**
+	 * 旗鯖fork(#31): 詳細画面の ⓘ で「ミュートしたぶんも出す」に切り替えているか。
+	 * ⚠️true のときは名前の一覧からもミュートを除外しない（除外したままだと、
+	 *   チップだけ戻って「誰が押したか」は結局分からず、ⓘ を押した意味が無くなる）。
+	 */
+	revealMuted?: boolean;
 }>();
 
 const mock = inject(DI.mock, false);
@@ -476,7 +482,8 @@ if (!mock) {
 
 		let users = reactions.map(x => x.user);
 		// ミュートユーザーを非表示（旗鯖独自機能・端末ローカル/ベータ）
-		if (hideMutedReactionsLocal.value) {
+		// ⚠️詳細画面で ⓘ を押して開いている間だけは除外しない（そこで初めて中身を見せる）。
+		if (hideMutedReactionsLocal.value && !props.revealMuted) {
 			users = users.filter(u => u && !isMutedUser(u.id));
 		}
 

@@ -202,6 +202,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				:noteId="appearNote.id"
 				:note="appearNote"
 				:maxNumber="16"
+				:detailed="true"
 				@mockUpdateMyReaction="emitUpdReaction"
 			/>
 			<template v-if="prefer.s.showReplyButtonInNoteFooter">

@@ -975,6 +975,22 @@ onDeactivated(() => {
 					}
 				}
 
+				/*
+				旗鯖fork: ⚠️宴の成功回数バッジを狭い版で中央へ戻す。
+				⚠️広い版の `margin-left: 154px` は「左に寄せたアバターを避ける」ための下げ幅だが、
+				  狭い版はアバターが**上に中央で**乗るので、この下げ幅がそのまま「ずれ」になる。
+				⚠️実測: 幅375pxのとき、兄弟(title/moderationNote/description)の中心が188pxなのに対し
+				  バッジだけ中心221px＝**右へ33pxずれていた**。
+				⚠️ラッパーは `display: inline-block` かつ吹き出しの位置基準（`position: relative`）なので、
+				  親に `text-align: center` を掛ける形にはしない（他の要素の行揃えまで動く）。
+				  ⚠️**自分を block にして左右 margin を auto** で中央へ置く。幅は中身なりに保つ。
+				*/
+				> .utageSuccessWrapper {
+					display: block;
+					width: fit-content;
+					margin: 16px auto 0;
+				}
+
 				> .memo {
 					margin: 16px 16px 0 16px;
 				}
