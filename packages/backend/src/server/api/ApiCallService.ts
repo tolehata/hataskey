@@ -124,12 +124,14 @@ export class ApiCallService implements OnApplicationShutdown {
 				error: err,
 			});
 
+			// extraにps(生のAPIパラメータ)を含めない。logger.write()側はLogNormalizerのredactorで
+			// 秘匿化されるが、telemetryService経由(Sentry等)はredactorを経由しないため、
+			// 未加工の認証情報が外部送信されてしまう(上流2026.7.0で無くなった要素)。
 			this.telemetryService.captureMessage(`Internal error occurred in ${ep.name}: ${err.message}`, {
 				level: 'error',
 				userId,
 				extra: {
 					ep: ep.name,
-					ps: data,
 					e: {
 						message: err.message,
 						code: err.name,
@@ -154,7 +156,7 @@ export class ApiCallService implements OnApplicationShutdown {
 		endpoint: IEndpoint & { exec: any },
 		request: FastifyRequest<{ Body: Record<string, unknown> | undefined, Querystring: Record<string, unknown> }>,
 		reply: FastifyReply,
-	): void {
+	): Promise<void> {
 		const body = request.method === 'GET'
 			? request.query
 			: request.body;
@@ -165,10 +167,15 @@ export class ApiCallService implements OnApplicationShutdown {
 			: body?.['i'];
 		if (token != null && typeof token !== 'string') {
 			reply.code(400);
-			return;
+			return Promise.resolve();
 		}
-		this.authenticateService.authenticate(token).then(([user, app, flashToken]) => {
-			this.call(endpoint, user, app, flashToken, body, null, request).then((res) => {
+
+		// spanをhandleRequest側で開始し、認証・レート制限・パラメータ検証・#onExecErrorの構造化ログまでを
+		// カバーする(上流2026.7.0の変更)。また内側のPromiseチェーンを`return call;`で必ず外側へつなぎ、
+		// handleRequestの戻り値を待てば#onExecErrorのlogger.write()まで完了していることを保証する
+		// (以前はcall().then().catch()の結果を捨てており、呼び出し側からは完了を待てなかった)。
+		return this.telemetryService.startSpan('API: ' + endpoint.name, () => this.authenticateService.authenticate(token).then(([user, app, flashToken]) => {
+			const call = this.call(endpoint, user, app, flashToken, body, null, request).then((res) => {
 				if (request.method === 'GET' && endpoint.meta.cacheSec && !token && !user) {
 					reply.header('Cache-Control', `public, max-age=${endpoint.meta.cacheSec}`);
 				}
@@ -180,9 +187,11 @@ export class ApiCallService implements OnApplicationShutdown {
 			if (user) {
 				this.logIp(request, user);
 			}
+
+			return call;
 		}).catch(err => {
 			this.#sendAuthenticationError(reply, err);
-		});
+		}));
 	}
 
 	@bindThis
@@ -226,8 +235,12 @@ export class ApiCallService implements OnApplicationShutdown {
 				return;
 			}
 
-			await this.authenticateService.authenticate(token).then(([user, app, flashToken]) => {
-				this.call(endpoint, user, app, flashToken, fields, {
+			// handleRequestと同じ理由で、spanをここで開始しつつ内側のPromiseチェーンを`return call;`で
+			// 外側へつなぐ。特にこのメソッドはfinallyでcleanup()し一時ファイルを削除するため、
+			// call()の完了を待たずにawaitが解決してしまうと、ep.exec()がまだファイルを読んでいる最中に
+			// 削除してしまう事故につながる(修正前の潜在バグ)。
+			await this.telemetryService.startSpan('API: ' + endpoint.name, () => this.authenticateService.authenticate(token).then(([user, app, flashToken]) => {
+				const call = this.call(endpoint, user, app, flashToken, fields, {
 					name: multipartData.filename,
 					path: path,
 				}, request).then((res) => {
@@ -239,9 +252,11 @@ export class ApiCallService implements OnApplicationShutdown {
 				if (user) {
 					this.logIp(request, user);
 				}
+
+				return call;
 			}).catch(err => {
 				this.#sendAuthenticationError(reply, err);
-			});
+			}));
 		} finally {
 			cleanup();
 		}
@@ -455,9 +470,9 @@ export class ApiCallService implements OnApplicationShutdown {
 			}
 		}
 
-		// API invoking
-		return await this.telemetryService.startSpan('API: ' + ep.name, () => ep.exec(data, user, token, flashToken, file, request.ip, request.headers)
-			.catch((err: Error) => this.#onExecError(ep, data, err, user?.id)));
+		// API span はhandleRequest/handleMultipartRequestで開始するため、認証・レート制限・パラメータ検証もカバーする。
+		return await ep.exec(data, user, token, flashToken, file, request.ip, request.headers)
+			.catch((err: Error) => this.#onExecError(ep, data, err, user?.id));
 	}
 
 	@bindThis
