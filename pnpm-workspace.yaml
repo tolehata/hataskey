@@ -23,7 +23,6 @@ allowBuilds:
   '@sentry/profiling-node': true
   '@sentry/node-cpu-profiler': true
   '@swc/core': true
-  '@tensorflow/tfjs-node': true
   argon2: true
   bufferutil: true
   canvas: true
