@@ -48,6 +48,8 @@ import type {
 	AdminAvatarDecorationsUpdateRequest,
 	AdminCaptchaCurrentResponse,
 	AdminCaptchaSaveRequest,
+	AdminChannelsListRequest,
+	AdminChannelsListResponse,
 	AdminDeleteAccountRequest,
 	AdminDeleteAllFilesOfAUserRequest,
 	AdminDriveFilesRequest,
@@ -78,6 +80,10 @@ import type {
 	AdminFederationRemoveAllFollowingRequest,
 	AdminFederationUpdateInstanceRequest,
 	AdminForwardAbuseUserReportRequest,
+	AdminGamesHanaawaseEventIndexResponse,
+	AdminGamesHanaawaseStatsResponse,
+	AdminGamesHanaawaseUpdateEventIndexRequest,
+	AdminGamesHanaawaseUpdateEventIndexResponse,
 	AdminGetIndexStatsResponse,
 	AdminGetTableStatsResponse,
 	AdminGetUserIpsRequest,
@@ -94,11 +100,13 @@ import type {
 	AdminQueueInboxDelayedResponse,
 	AdminQueueJobsRequest,
 	AdminQueueJobsResponse,
+	AdminQueuePauseRequest,
 	AdminQueuePromoteJobsRequest,
 	AdminQueueQueueStatsRequest,
 	AdminQueueQueueStatsResponse,
 	AdminQueueQueuesResponse,
 	AdminQueueRemoveJobRequest,
+	AdminQueueResumeRequest,
 	AdminQueueRetryJobRequest,
 	AdminQueueShowJobRequest,
 	AdminQueueShowJobResponse,
@@ -146,6 +154,7 @@ import type {
 	AdminSystemWebhookTestRequest,
 	AdminSystemWebhookUpdateRequest,
 	AdminSystemWebhookUpdateResponse,
+	AdminUnsetMfaRequest,
 	AdminUnsetUserAvatarRequest,
 	AdminUnsetUserBannerRequest,
 	AdminUnsuspendUserRequest,
@@ -164,6 +173,7 @@ import type {
 	AntennasListResponse,
 	AntennasNotesRequest,
 	AntennasNotesResponse,
+	AntennasRemoveNoteRequest,
 	AntennasShowRequest,
 	AntennasShowResponse,
 	AntennasUpdateRequest,
@@ -212,6 +222,8 @@ import type {
 	ChannelsSearchResponse,
 	ChannelsShowRequest,
 	ChannelsShowResponse,
+	ChannelsShowPasswordRequest,
+	ChannelsShowPasswordResponse,
 	ChannelsTimelineRequest,
 	ChannelsTimelineResponse,
 	ChannelsUnfavoriteRequest,
@@ -414,6 +426,7 @@ import type {
 	GalleryPostsUnlikeRequest,
 	GalleryPostsUpdateRequest,
 	GalleryPostsUpdateResponse,
+	GamesHanaawaseEventIndexResponse,
 	GetAvatarDecorationsResponse,
 	GetOnlineUsersCountResponse,
 	HashtagsListRequest,
@@ -479,6 +492,74 @@ import type {
 	HataFeedbackProjectsUpdateResponse,
 	HataFeedbackRemoteEmojisRequest,
 	HataFeedbackRemoteEmojisResponse,
+	HataHatadyAdminBooksRequest,
+	HataHatadyAdminBooksResponse,
+	HataHatadyAdminDeleteBookRequest,
+	HataHatadyBookmarksCreateRequest,
+	HataHatadyBookmarksCreateResponse,
+	HataHatadyBookmarksDeleteRequest,
+	HataHatadyBookmarksUpdateRequest,
+	HataHatadyBookmarksUpdateResponse,
+	HataHatadyBooksRequest,
+	HataHatadyBooksResponse,
+	HataHatadyBooksCreateRequest,
+	HataHatadyBooksCreateResponse,
+	HataHatadyBooksDeleteRequest,
+	HataHatadyBooksShowRequest,
+	HataHatadyBooksShowResponse,
+	HataHatadyBooksUpdateRequest,
+	HataHatadyBooksUpdateResponse,
+	HataHatadyCommentsRequest,
+	HataHatadyCommentsResponse,
+	HataHatadyCommentsCreateRequest,
+	HataHatadyCommentsCreateResponse,
+	HataHatadyFollowersRemoveRequest,
+	HataHatadyFollowingCreateRequest,
+	HataHatadyFollowingDeleteRequest,
+	HataHatadyFollowingListRequest,
+	HataHatadyFollowingListResponse,
+	HataHatadyGoalsResponse,
+	HataHatadyGoalsCreateRequest,
+	HataHatadyGoalsCreateResponse,
+	HataHatadyGoalsDeleteRequest,
+	HataHatadyGoalsUpdateRequest,
+	HataHatadyLogsRequest,
+	HataHatadyLogsResponse,
+	HataHatadyLogsCreateRequest,
+	HataHatadyLogsCreateResponse,
+	HataHatadyLogsDeleteRequest,
+	HataHatadyLogsShowRequest,
+	HataHatadyLogsShowResponse,
+	HataHatadyLogsUpdateRequest,
+	HataHatadyLogsUpdateResponse,
+	HataHatadyMemosCreateRequest,
+	HataHatadyMemosCreateResponse,
+	HataHatadyMemosDeleteRequest,
+	HataHatadyMemosUpdateRequest,
+	HataHatadyMemosUpdateResponse,
+	HataHatadyNotificationsRequest,
+	HataHatadyNotificationsResponse,
+	HataHatadyNotificationsUnreadCountResponse,
+	HataHatadyProfileUpdateRequest,
+	HataHatadyReactionsCreateRequest,
+	HataHatadyReactionsDeleteRequest,
+	HataHatadySearchRequest,
+	HataHatadySearchResponse,
+	HataHatadyStatsRequest,
+	HataHatadyStatsResponse,
+	HataHatadyStatsDetailRequest,
+	HataHatadyStatsDetailResponse,
+	HataHatadyStreaksRequest,
+	HataHatadyStreaksResponse,
+	HataHatadySubjectsResponse,
+	HataHatadySubjectsDeleteRequest,
+	HataHatadySubjectsDeleteResponse,
+	HataHatadySubjectsSaveRequest,
+	HataHatadySubjectsSaveResponse,
+	HataHatadyTimelineRequest,
+	HataHatadyTimelineResponse,
+	HataHatadyUsersShowRequest,
+	HataHatadyUsersShowResponse,
 	HataLoginRankingResponse,
 	HataMascotGetResponse,
 	HataMascotUpdateRequest,
@@ -833,6 +914,7 @@ export type Endpoints = {
 	'admin/avatar-decorations/update': { req: AdminAvatarDecorationsUpdateRequest; res: EmptyResponse };
 	'admin/captcha/current': { req: EmptyRequest; res: AdminCaptchaCurrentResponse };
 	'admin/captcha/save': { req: AdminCaptchaSaveRequest; res: EmptyResponse };
+	'admin/channels/list': { req: AdminChannelsListRequest; res: AdminChannelsListResponse };
 	'admin/delete-account': { req: AdminDeleteAccountRequest; res: EmptyResponse };
 	'admin/delete-all-files-of-a-user': { req: AdminDeleteAllFilesOfAUserRequest; res: EmptyResponse };
 	'admin/drive/clean-remote-files': { req: EmptyRequest; res: EmptyResponse };
@@ -858,6 +940,9 @@ export type Endpoints = {
 	'admin/federation/remove-all-following': { req: AdminFederationRemoveAllFollowingRequest; res: EmptyResponse };
 	'admin/federation/update-instance': { req: AdminFederationUpdateInstanceRequest; res: EmptyResponse };
 	'admin/forward-abuse-user-report': { req: AdminForwardAbuseUserReportRequest; res: EmptyResponse };
+	'admin/games/hanaawase/event-index': { req: EmptyRequest; res: AdminGamesHanaawaseEventIndexResponse };
+	'admin/games/hanaawase/stats': { req: EmptyRequest; res: AdminGamesHanaawaseStatsResponse };
+	'admin/games/hanaawase/update-event-index': { req: AdminGamesHanaawaseUpdateEventIndexRequest; res: AdminGamesHanaawaseUpdateEventIndexResponse };
 	'admin/get-index-stats': { req: EmptyRequest; res: AdminGetIndexStatsResponse };
 	'admin/get-table-stats': { req: EmptyRequest; res: AdminGetTableStatsResponse };
 	'admin/get-user-ips': { req: AdminGetUserIpsRequest; res: AdminGetUserIpsResponse };
@@ -871,10 +956,12 @@ export type Endpoints = {
 	'admin/queue/deliver-delayed': { req: EmptyRequest; res: AdminQueueDeliverDelayedResponse };
 	'admin/queue/inbox-delayed': { req: EmptyRequest; res: AdminQueueInboxDelayedResponse };
 	'admin/queue/jobs': { req: AdminQueueJobsRequest; res: AdminQueueJobsResponse };
+	'admin/queue/pause': { req: AdminQueuePauseRequest; res: EmptyResponse };
 	'admin/queue/promote-jobs': { req: AdminQueuePromoteJobsRequest; res: EmptyResponse };
 	'admin/queue/queue-stats': { req: AdminQueueQueueStatsRequest; res: AdminQueueQueueStatsResponse };
 	'admin/queue/queues': { req: EmptyRequest; res: AdminQueueQueuesResponse };
 	'admin/queue/remove-job': { req: AdminQueueRemoveJobRequest; res: EmptyResponse };
+	'admin/queue/resume': { req: AdminQueueResumeRequest; res: EmptyResponse };
 	'admin/queue/retry-job': { req: AdminQueueRetryJobRequest; res: EmptyResponse };
 	'admin/queue/show-job': { req: AdminQueueShowJobRequest; res: AdminQueueShowJobResponse };
 	'admin/queue/show-job-logs': { req: AdminQueueShowJobLogsRequest; res: AdminQueueShowJobLogsResponse };
@@ -907,6 +994,7 @@ export type Endpoints = {
 	'admin/system-webhook/show': { req: AdminSystemWebhookShowRequest; res: AdminSystemWebhookShowResponse };
 	'admin/system-webhook/test': { req: AdminSystemWebhookTestRequest; res: EmptyResponse };
 	'admin/system-webhook/update': { req: AdminSystemWebhookUpdateRequest; res: AdminSystemWebhookUpdateResponse };
+	'admin/unset-mfa': { req: AdminUnsetMfaRequest; res: EmptyResponse };
 	'admin/unset-user-avatar': { req: AdminUnsetUserAvatarRequest; res: EmptyResponse };
 	'admin/unset-user-banner': { req: AdminUnsetUserBannerRequest; res: EmptyResponse };
 	'admin/unsuspend-user': { req: AdminUnsuspendUserRequest; res: EmptyResponse };
@@ -920,6 +1008,7 @@ export type Endpoints = {
 	'antennas/delete': { req: AntennasDeleteRequest; res: EmptyResponse };
 	'antennas/list': { req: EmptyRequest; res: AntennasListResponse };
 	'antennas/notes': { req: AntennasNotesRequest; res: AntennasNotesResponse };
+	'antennas/remove-note': { req: AntennasRemoveNoteRequest; res: EmptyResponse };
 	'antennas/show': { req: AntennasShowRequest; res: AntennasShowResponse };
 	'antennas/update': { req: AntennasUpdateRequest; res: AntennasUpdateResponse };
 	'ap/get': { req: ApGetRequest; res: ApGetResponse };
@@ -948,6 +1037,7 @@ export type Endpoints = {
 	'channels/remove-member': { req: ChannelsRemoveMemberRequest; res: EmptyResponse };
 	'channels/search': { req: ChannelsSearchRequest; res: ChannelsSearchResponse };
 	'channels/show': { req: ChannelsShowRequest; res: ChannelsShowResponse };
+	'channels/show-password': { req: ChannelsShowPasswordRequest; res: ChannelsShowPasswordResponse };
 	'channels/timeline': { req: ChannelsTimelineRequest; res: ChannelsTimelineResponse };
 	'channels/unfavorite': { req: ChannelsUnfavoriteRequest; res: EmptyResponse };
 	'channels/unfollow': { req: ChannelsUnfollowRequest; res: EmptyResponse };
@@ -1071,6 +1161,7 @@ export type Endpoints = {
 	'gallery/posts/show': { req: GalleryPostsShowRequest; res: GalleryPostsShowResponse };
 	'gallery/posts/unlike': { req: GalleryPostsUnlikeRequest; res: EmptyResponse };
 	'gallery/posts/update': { req: GalleryPostsUpdateRequest; res: GalleryPostsUpdateResponse };
+	'games/hanaawase/event-index': { req: EmptyRequest; res: GamesHanaawaseEventIndexResponse };
 	'get-avatar-decorations': { req: EmptyRequest; res: GetAvatarDecorationsResponse };
 	'get-online-users-count': { req: EmptyRequest; res: GetOnlineUsersCountResponse };
 	'hashtags/list': { req: HashtagsListRequest; res: HashtagsListResponse };
@@ -1112,6 +1203,49 @@ export type Endpoints = {
 	'hata/feedback/projects/delete': { req: HataFeedbackProjectsDeleteRequest; res: EmptyResponse };
 	'hata/feedback/projects/update': { req: HataFeedbackProjectsUpdateRequest; res: HataFeedbackProjectsUpdateResponse };
 	'hata/feedback/remote-emojis': { req: HataFeedbackRemoteEmojisRequest; res: HataFeedbackRemoteEmojisResponse };
+	'hata/hatady/admin/books': { req: HataHatadyAdminBooksRequest; res: HataHatadyAdminBooksResponse };
+	'hata/hatady/admin/delete-book': { req: HataHatadyAdminDeleteBookRequest; res: EmptyResponse };
+	'hata/hatady/bookmarks/create': { req: HataHatadyBookmarksCreateRequest; res: HataHatadyBookmarksCreateResponse };
+	'hata/hatady/bookmarks/delete': { req: HataHatadyBookmarksDeleteRequest; res: EmptyResponse };
+	'hata/hatady/bookmarks/update': { req: HataHatadyBookmarksUpdateRequest; res: HataHatadyBookmarksUpdateResponse };
+	'hata/hatady/books': { req: HataHatadyBooksRequest; res: HataHatadyBooksResponse };
+	'hata/hatady/books/create': { req: HataHatadyBooksCreateRequest; res: HataHatadyBooksCreateResponse };
+	'hata/hatady/books/delete': { req: HataHatadyBooksDeleteRequest; res: EmptyResponse };
+	'hata/hatady/books/show': { req: HataHatadyBooksShowRequest; res: HataHatadyBooksShowResponse };
+	'hata/hatady/books/update': { req: HataHatadyBooksUpdateRequest; res: HataHatadyBooksUpdateResponse };
+	'hata/hatady/comments': { req: HataHatadyCommentsRequest; res: HataHatadyCommentsResponse };
+	'hata/hatady/comments/create': { req: HataHatadyCommentsCreateRequest; res: HataHatadyCommentsCreateResponse };
+	'hata/hatady/followers/remove': { req: HataHatadyFollowersRemoveRequest; res: EmptyResponse };
+	'hata/hatady/following/create': { req: HataHatadyFollowingCreateRequest; res: EmptyResponse };
+	'hata/hatady/following/delete': { req: HataHatadyFollowingDeleteRequest; res: EmptyResponse };
+	'hata/hatady/following/list': { req: HataHatadyFollowingListRequest; res: HataHatadyFollowingListResponse };
+	'hata/hatady/goals': { req: EmptyRequest; res: HataHatadyGoalsResponse };
+	'hata/hatady/goals/create': { req: HataHatadyGoalsCreateRequest; res: HataHatadyGoalsCreateResponse };
+	'hata/hatady/goals/delete': { req: HataHatadyGoalsDeleteRequest; res: EmptyResponse };
+	'hata/hatady/goals/update': { req: HataHatadyGoalsUpdateRequest; res: EmptyResponse };
+	'hata/hatady/logs': { req: HataHatadyLogsRequest; res: HataHatadyLogsResponse };
+	'hata/hatady/logs/create': { req: HataHatadyLogsCreateRequest; res: HataHatadyLogsCreateResponse };
+	'hata/hatady/logs/delete': { req: HataHatadyLogsDeleteRequest; res: EmptyResponse };
+	'hata/hatady/logs/show': { req: HataHatadyLogsShowRequest; res: HataHatadyLogsShowResponse };
+	'hata/hatady/logs/update': { req: HataHatadyLogsUpdateRequest; res: HataHatadyLogsUpdateResponse };
+	'hata/hatady/memos/create': { req: HataHatadyMemosCreateRequest; res: HataHatadyMemosCreateResponse };
+	'hata/hatady/memos/delete': { req: HataHatadyMemosDeleteRequest; res: EmptyResponse };
+	'hata/hatady/memos/update': { req: HataHatadyMemosUpdateRequest; res: HataHatadyMemosUpdateResponse };
+	'hata/hatady/notifications': { req: HataHatadyNotificationsRequest; res: HataHatadyNotificationsResponse };
+	'hata/hatady/notifications/mark-all-read': { req: EmptyRequest; res: EmptyResponse };
+	'hata/hatady/notifications/unread-count': { req: EmptyRequest; res: HataHatadyNotificationsUnreadCountResponse };
+	'hata/hatady/profile/update': { req: HataHatadyProfileUpdateRequest; res: EmptyResponse };
+	'hata/hatady/reactions/create': { req: HataHatadyReactionsCreateRequest; res: EmptyResponse };
+	'hata/hatady/reactions/delete': { req: HataHatadyReactionsDeleteRequest; res: EmptyResponse };
+	'hata/hatady/search': { req: HataHatadySearchRequest; res: HataHatadySearchResponse };
+	'hata/hatady/stats': { req: HataHatadyStatsRequest; res: HataHatadyStatsResponse };
+	'hata/hatady/stats-detail': { req: HataHatadyStatsDetailRequest; res: HataHatadyStatsDetailResponse };
+	'hata/hatady/streaks': { req: HataHatadyStreaksRequest; res: HataHatadyStreaksResponse };
+	'hata/hatady/subjects': { req: EmptyRequest; res: HataHatadySubjectsResponse };
+	'hata/hatady/subjects/delete': { req: HataHatadySubjectsDeleteRequest; res: HataHatadySubjectsDeleteResponse };
+	'hata/hatady/subjects/save': { req: HataHatadySubjectsSaveRequest; res: HataHatadySubjectsSaveResponse };
+	'hata/hatady/timeline': { req: HataHatadyTimelineRequest; res: HataHatadyTimelineResponse };
+	'hata/hatady/users/show': { req: HataHatadyUsersShowRequest; res: HataHatadyUsersShowResponse };
 	'hata/login-ranking': { req: EmptyRequest; res: HataLoginRankingResponse };
 	'hata/mascot/get': { req: EmptyRequest; res: HataMascotGetResponse };
 	'hata/mascot/update': { req: HataMascotUpdateRequest; res: HataMascotUpdateResponse };

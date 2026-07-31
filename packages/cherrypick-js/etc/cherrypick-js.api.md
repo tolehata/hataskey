@@ -183,6 +183,12 @@ type AdminCaptchaCurrentResponse = operations['admin___captcha___current']['resp
 type AdminCaptchaSaveRequest = operations['admin___captcha___save']['requestBody']['content']['application/json'];
 
 // @public (undocumented)
+type AdminChannelsListRequest = operations['admin___channels___list']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type AdminChannelsListResponse = operations['admin___channels___list']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
 type AdminDeleteAccountRequest = operations['admin___delete-account']['requestBody']['content']['application/json'];
 
 // @public (undocumented)
@@ -273,6 +279,18 @@ type AdminFederationUpdateInstanceRequest = operations['admin___federation___upd
 type AdminForwardAbuseUserReportRequest = operations['admin___forward-abuse-user-report']['requestBody']['content']['application/json'];
 
 // @public (undocumented)
+type AdminGamesHanaawaseEventIndexResponse = operations['admin___games___hanaawase___event-index']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type AdminGamesHanaawaseStatsResponse = operations['admin___games___hanaawase___stats']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type AdminGamesHanaawaseUpdateEventIndexRequest = operations['admin___games___hanaawase___update-event-index']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type AdminGamesHanaawaseUpdateEventIndexResponse = operations['admin___games___hanaawase___update-event-index']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
 type AdminGetIndexStatsResponse = operations['admin___get-index-stats']['responses']['200']['content']['application/json'];
 
 // @public (undocumented)
@@ -321,6 +339,9 @@ type AdminQueueJobsRequest = operations['admin___queue___jobs']['requestBody']['
 type AdminQueueJobsResponse = operations['admin___queue___jobs']['responses']['200']['content']['application/json'];
 
 // @public (undocumented)
+type AdminQueuePauseRequest = operations['admin___queue___pause']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
 type AdminQueuePromoteJobsRequest = operations['admin___queue___promote-jobs']['requestBody']['content']['application/json'];
 
 // @public (undocumented)
@@ -334,6 +355,9 @@ type AdminQueueQueueStatsResponse = operations['admin___queue___queue-stats']['r
 
 // @public (undocumented)
 type AdminQueueRemoveJobRequest = operations['admin___queue___remove-job']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type AdminQueueResumeRequest = operations['admin___queue___resume']['requestBody']['content']['application/json'];
 
 // @public (undocumented)
 type AdminQueueRetryJobRequest = operations['admin___queue___retry-job']['requestBody']['content']['application/json'];
@@ -477,6 +501,9 @@ type AdminSystemWebhookUpdateRequest = operations['admin___system-webhook___upda
 type AdminSystemWebhookUpdateResponse = operations['admin___system-webhook___update']['responses']['200']['content']['application/json'];
 
 // @public (undocumented)
+type AdminUnsetMfaRequest = operations['admin___unset-mfa']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
 type AdminUnsetUserAvatarRequest = operations['admin___unset-user-avatar']['requestBody']['content']['application/json'];
 
 // @public (undocumented)
@@ -540,6 +567,9 @@ type AntennasNotesRequest = operations['antennas___notes']['requestBody']['conte
 
 // @public (undocumented)
 type AntennasNotesResponse = operations['antennas___notes']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type AntennasRemoveNoteRequest = operations['antennas___remove-note']['requestBody']['content']['application/json'];
 
 // @public (undocumented)
 type AntennasShowRequest = operations['antennas___show']['requestBody']['content']['application/json'];
@@ -1042,6 +1072,12 @@ type ChannelsSearchRequest = operations['channels___search']['requestBody']['con
 
 // @public (undocumented)
 type ChannelsSearchResponse = operations['channels___search']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type ChannelsShowPasswordRequest = operations['channels___show-password']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type ChannelsShowPasswordResponse = operations['channels___show-password']['responses']['200']['content']['application/json'];
 
 // @public (undocumented)
 type ChannelsShowRequest = operations['channels___show']['requestBody']['content']['application/json'];
@@ -1649,6 +1685,8 @@ declare namespace entities {
         AdminAvatarDecorationsUpdateRequest,
         AdminCaptchaCurrentResponse,
         AdminCaptchaSaveRequest,
+        AdminChannelsListRequest,
+        AdminChannelsListResponse,
         AdminDeleteAccountRequest,
         AdminDeleteAllFilesOfAUserRequest,
         AdminDriveFilesRequest,
@@ -1679,6 +1717,10 @@ declare namespace entities {
         AdminFederationRemoveAllFollowingRequest,
         AdminFederationUpdateInstanceRequest,
         AdminForwardAbuseUserReportRequest,
+        AdminGamesHanaawaseEventIndexResponse,
+        AdminGamesHanaawaseStatsResponse,
+        AdminGamesHanaawaseUpdateEventIndexRequest,
+        AdminGamesHanaawaseUpdateEventIndexResponse,
         AdminGetIndexStatsResponse,
         AdminGetTableStatsResponse,
         AdminGetUserIpsRequest,
@@ -1695,11 +1737,13 @@ declare namespace entities {
         AdminQueueInboxDelayedResponse,
         AdminQueueJobsRequest,
         AdminQueueJobsResponse,
+        AdminQueuePauseRequest,
         AdminQueuePromoteJobsRequest,
         AdminQueueQueueStatsRequest,
         AdminQueueQueueStatsResponse,
         AdminQueueQueuesResponse,
         AdminQueueRemoveJobRequest,
+        AdminQueueResumeRequest,
         AdminQueueRetryJobRequest,
         AdminQueueShowJobRequest,
         AdminQueueShowJobResponse,
@@ -1747,6 +1791,7 @@ declare namespace entities {
         AdminSystemWebhookTestRequest,
         AdminSystemWebhookUpdateRequest,
         AdminSystemWebhookUpdateResponse,
+        AdminUnsetMfaRequest,
         AdminUnsetUserAvatarRequest,
         AdminUnsetUserBannerRequest,
         AdminUnsuspendUserRequest,
@@ -1765,6 +1810,7 @@ declare namespace entities {
         AntennasListResponse,
         AntennasNotesRequest,
         AntennasNotesResponse,
+        AntennasRemoveNoteRequest,
         AntennasShowRequest,
         AntennasShowResponse,
         AntennasUpdateRequest,
@@ -1813,6 +1859,8 @@ declare namespace entities {
         ChannelsSearchResponse,
         ChannelsShowRequest,
         ChannelsShowResponse,
+        ChannelsShowPasswordRequest,
+        ChannelsShowPasswordResponse,
         ChannelsTimelineRequest,
         ChannelsTimelineResponse,
         ChannelsUnfavoriteRequest,
@@ -2015,6 +2063,7 @@ declare namespace entities {
         GalleryPostsUnlikeRequest,
         GalleryPostsUpdateRequest,
         GalleryPostsUpdateResponse,
+        GamesHanaawaseEventIndexResponse,
         GetAvatarDecorationsResponse,
         GetOnlineUsersCountResponse,
         HashtagsListRequest,
@@ -2080,6 +2129,74 @@ declare namespace entities {
         HataFeedbackProjectsUpdateResponse,
         HataFeedbackRemoteEmojisRequest,
         HataFeedbackRemoteEmojisResponse,
+        HataHatadyAdminBooksRequest,
+        HataHatadyAdminBooksResponse,
+        HataHatadyAdminDeleteBookRequest,
+        HataHatadyBookmarksCreateRequest,
+        HataHatadyBookmarksCreateResponse,
+        HataHatadyBookmarksDeleteRequest,
+        HataHatadyBookmarksUpdateRequest,
+        HataHatadyBookmarksUpdateResponse,
+        HataHatadyBooksRequest,
+        HataHatadyBooksResponse,
+        HataHatadyBooksCreateRequest,
+        HataHatadyBooksCreateResponse,
+        HataHatadyBooksDeleteRequest,
+        HataHatadyBooksShowRequest,
+        HataHatadyBooksShowResponse,
+        HataHatadyBooksUpdateRequest,
+        HataHatadyBooksUpdateResponse,
+        HataHatadyCommentsRequest,
+        HataHatadyCommentsResponse,
+        HataHatadyCommentsCreateRequest,
+        HataHatadyCommentsCreateResponse,
+        HataHatadyFollowersRemoveRequest,
+        HataHatadyFollowingCreateRequest,
+        HataHatadyFollowingDeleteRequest,
+        HataHatadyFollowingListRequest,
+        HataHatadyFollowingListResponse,
+        HataHatadyGoalsResponse,
+        HataHatadyGoalsCreateRequest,
+        HataHatadyGoalsCreateResponse,
+        HataHatadyGoalsDeleteRequest,
+        HataHatadyGoalsUpdateRequest,
+        HataHatadyLogsRequest,
+        HataHatadyLogsResponse,
+        HataHatadyLogsCreateRequest,
+        HataHatadyLogsCreateResponse,
+        HataHatadyLogsDeleteRequest,
+        HataHatadyLogsShowRequest,
+        HataHatadyLogsShowResponse,
+        HataHatadyLogsUpdateRequest,
+        HataHatadyLogsUpdateResponse,
+        HataHatadyMemosCreateRequest,
+        HataHatadyMemosCreateResponse,
+        HataHatadyMemosDeleteRequest,
+        HataHatadyMemosUpdateRequest,
+        HataHatadyMemosUpdateResponse,
+        HataHatadyNotificationsRequest,
+        HataHatadyNotificationsResponse,
+        HataHatadyNotificationsUnreadCountResponse,
+        HataHatadyProfileUpdateRequest,
+        HataHatadyReactionsCreateRequest,
+        HataHatadyReactionsDeleteRequest,
+        HataHatadySearchRequest,
+        HataHatadySearchResponse,
+        HataHatadyStatsRequest,
+        HataHatadyStatsResponse,
+        HataHatadyStatsDetailRequest,
+        HataHatadyStatsDetailResponse,
+        HataHatadyStreaksRequest,
+        HataHatadyStreaksResponse,
+        HataHatadySubjectsResponse,
+        HataHatadySubjectsDeleteRequest,
+        HataHatadySubjectsDeleteResponse,
+        HataHatadySubjectsSaveRequest,
+        HataHatadySubjectsSaveResponse,
+        HataHatadyTimelineRequest,
+        HataHatadyTimelineResponse,
+        HataHatadyUsersShowRequest,
+        HataHatadyUsersShowResponse,
         HataLoginRankingResponse,
         HataMascotGetResponse,
         HataMascotUpdateRequest,
@@ -2716,6 +2833,9 @@ type GalleryPostsUpdateRequest = operations['gallery___posts___update']['request
 type GalleryPostsUpdateResponse = operations['gallery___posts___update']['responses']['200']['content']['application/json'];
 
 // @public (undocumented)
+type GamesHanaawaseEventIndexResponse = operations['games___hanaawase___event-index']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
 type GetAvatarDecorationsResponse = operations['get-avatar-decorations']['responses']['200']['content']['application/json'];
 
 // @public (undocumented)
@@ -2912,6 +3032,210 @@ type HataFeedbackRemoteEmojisRequest = operations['hata___feedback___remote-emoj
 
 // @public (undocumented)
 type HataFeedbackRemoteEmojisResponse = operations['hata___feedback___remote-emojis']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyAdminBooksRequest = operations['hata___hatady___admin___books']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyAdminBooksResponse = operations['hata___hatady___admin___books']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyAdminDeleteBookRequest = operations['hata___hatady___admin___delete-book']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyBookmarksCreateRequest = operations['hata___hatady___bookmarks___create']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyBookmarksCreateResponse = operations['hata___hatady___bookmarks___create']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyBookmarksDeleteRequest = operations['hata___hatady___bookmarks___delete']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyBookmarksUpdateRequest = operations['hata___hatady___bookmarks___update']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyBookmarksUpdateResponse = operations['hata___hatady___bookmarks___update']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyBooksCreateRequest = operations['hata___hatady___books___create']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyBooksCreateResponse = operations['hata___hatady___books___create']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyBooksDeleteRequest = operations['hata___hatady___books___delete']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyBooksRequest = operations['hata___hatady___books']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyBooksResponse = operations['hata___hatady___books']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyBooksShowRequest = operations['hata___hatady___books___show']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyBooksShowResponse = operations['hata___hatady___books___show']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyBooksUpdateRequest = operations['hata___hatady___books___update']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyBooksUpdateResponse = operations['hata___hatady___books___update']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyCommentsCreateRequest = operations['hata___hatady___comments___create']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyCommentsCreateResponse = operations['hata___hatady___comments___create']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyCommentsRequest = operations['hata___hatady___comments']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyCommentsResponse = operations['hata___hatady___comments']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyFollowersRemoveRequest = operations['hata___hatady___followers___remove']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyFollowingCreateRequest = operations['hata___hatady___following___create']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyFollowingDeleteRequest = operations['hata___hatady___following___delete']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyFollowingListRequest = operations['hata___hatady___following___list']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyFollowingListResponse = operations['hata___hatady___following___list']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyGoalsCreateRequest = operations['hata___hatady___goals___create']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyGoalsCreateResponse = operations['hata___hatady___goals___create']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyGoalsDeleteRequest = operations['hata___hatady___goals___delete']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyGoalsResponse = operations['hata___hatady___goals']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyGoalsUpdateRequest = operations['hata___hatady___goals___update']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyLogsCreateRequest = operations['hata___hatady___logs___create']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyLogsCreateResponse = operations['hata___hatady___logs___create']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyLogsDeleteRequest = operations['hata___hatady___logs___delete']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyLogsRequest = operations['hata___hatady___logs']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyLogsResponse = operations['hata___hatady___logs']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyLogsShowRequest = operations['hata___hatady___logs___show']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyLogsShowResponse = operations['hata___hatady___logs___show']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyLogsUpdateRequest = operations['hata___hatady___logs___update']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyLogsUpdateResponse = operations['hata___hatady___logs___update']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyMemosCreateRequest = operations['hata___hatady___memos___create']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyMemosCreateResponse = operations['hata___hatady___memos___create']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyMemosDeleteRequest = operations['hata___hatady___memos___delete']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyMemosUpdateRequest = operations['hata___hatady___memos___update']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyMemosUpdateResponse = operations['hata___hatady___memos___update']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyNotificationsRequest = operations['hata___hatady___notifications']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyNotificationsResponse = operations['hata___hatady___notifications']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyNotificationsUnreadCountResponse = operations['hata___hatady___notifications___unread-count']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyProfileUpdateRequest = operations['hata___hatady___profile___update']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyReactionsCreateRequest = operations['hata___hatady___reactions___create']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyReactionsDeleteRequest = operations['hata___hatady___reactions___delete']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadySearchRequest = operations['hata___hatady___search']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadySearchResponse = operations['hata___hatady___search']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyStatsDetailRequest = operations['hata___hatady___stats-detail']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyStatsDetailResponse = operations['hata___hatady___stats-detail']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyStatsRequest = operations['hata___hatady___stats']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyStatsResponse = operations['hata___hatady___stats']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyStreaksRequest = operations['hata___hatady___streaks']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyStreaksResponse = operations['hata___hatady___streaks']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadySubjectsDeleteRequest = operations['hata___hatady___subjects___delete']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadySubjectsDeleteResponse = operations['hata___hatady___subjects___delete']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadySubjectsResponse = operations['hata___hatady___subjects']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadySubjectsSaveRequest = operations['hata___hatady___subjects___save']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadySubjectsSaveResponse = operations['hata___hatady___subjects___save']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyTimelineRequest = operations['hata___hatady___timeline']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyTimelineResponse = operations['hata___hatady___timeline']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyUsersShowRequest = operations['hata___hatady___users___show']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyUsersShowResponse = operations['hata___hatady___users___show']['responses']['200']['content']['application/json'];
 
 // @public (undocumented)
 type HataLoginRankingResponse = operations['hata___login-ranking']['responses']['200']['content']['application/json'];
@@ -3419,6 +3743,9 @@ type ModerationLog = {
     type: 'updateAbuseReportNote';
     info: ModerationLogPayloads['updateAbuseReportNote'];
 } | {
+    type: 'unsetMfa';
+    info: ModerationLogPayloads['unsetMfa'];
+} | {
     type: 'unsetUserAvatar';
     info: ModerationLogPayloads['unsetUserAvatar'];
 } | {
@@ -3463,7 +3790,7 @@ type ModerationLog = {
 });
 
 // @public (undocumented)
-export const moderationLogTypes: readonly ["updateServerSettings", "suspend", "unsuspend", "updateUserNote", "addCustomEmoji", "updateCustomEmoji", "deleteCustomEmoji", "assignRole", "unassignRole", "createRole", "updateRole", "deleteRole", "clearQueue", "promoteQueue", "deleteDriveFile", "deleteNote", "createGlobalAnnouncement", "createUserAnnouncement", "updateGlobalAnnouncement", "updateUserAnnouncement", "deleteGlobalAnnouncement", "deleteUserAnnouncement", "resetPassword", "suspendRemoteInstance", "unsuspendRemoteInstance", "updateRemoteInstanceNote", "markSensitiveDriveFile", "unmarkSensitiveDriveFile", "resolveAbuseReport", "forwardAbuseReport", "updateAbuseReportNote", "createInvitation", "createAd", "updateAd", "deleteAd", "createAvatarDecoration", "updateAvatarDecoration", "deleteAvatarDecoration", "unsetUserAvatar", "unsetUserBanner", "createSystemWebhook", "updateSystemWebhook", "deleteSystemWebhook", "createAbuseReportNotificationRecipient", "updateAbuseReportNotificationRecipient", "deleteAbuseReportNotificationRecipient", "deleteAccount", "deletePage", "deleteFlash", "deleteGalleryPost", "deleteChatRoom", "updateProxyAccountDescription"];
+export const moderationLogTypes: readonly ["updateServerSettings", "suspend", "unsuspend", "updateUserNote", "addCustomEmoji", "updateCustomEmoji", "deleteCustomEmoji", "assignRole", "unassignRole", "createRole", "updateRole", "deleteRole", "clearQueue", "promoteQueue", "deleteDriveFile", "deleteNote", "createGlobalAnnouncement", "createUserAnnouncement", "updateGlobalAnnouncement", "updateUserAnnouncement", "deleteGlobalAnnouncement", "deleteUserAnnouncement", "resetPassword", "suspendRemoteInstance", "unsuspendRemoteInstance", "updateRemoteInstanceNote", "markSensitiveDriveFile", "unmarkSensitiveDriveFile", "resolveAbuseReport", "forwardAbuseReport", "updateAbuseReportNote", "createInvitation", "createAd", "updateAd", "deleteAd", "createAvatarDecoration", "updateAvatarDecoration", "deleteAvatarDecoration", "unsetMfa", "unsetUserAvatar", "unsetUserBanner", "createSystemWebhook", "updateSystemWebhook", "deleteSystemWebhook", "createAbuseReportNotificationRecipient", "updateAbuseReportNotificationRecipient", "deleteAbuseReportNotificationRecipient", "deleteAccount", "deletePage", "deleteFlash", "deleteGalleryPost", "deleteChatRoom", "updateProxyAccountDescription"];
 
 // @public (undocumented)
 type MuteCreateRequest = operations['mute___create']['requestBody']['content']['application/json'];
@@ -3734,7 +4061,7 @@ type Notification_2 = components['schemas']['Notification'];
 type NotificationsCreateRequest = operations['notifications___create']['requestBody']['content']['application/json'];
 
 // @public (undocumented)
-export const notificationTypes: readonly ["note", "follow", "mention", "reply", "renote", "quote", "reaction", "pollEnded", "scheduledNotePosted", "scheduledNotePostFailed", "receiveFollowRequest", "followRequestAccepted", "groupInvited", "app", "hataFeed", "earthquake", "roleAssigned", "chatRoomInvitationReceived", "achievementEarned", "exportCompleted", "test", "login", "createToken"];
+export const notificationTypes: readonly ["note", "follow", "mention", "reply", "renote", "quote", "reaction", "pollEnded", "scheduledNotePosted", "scheduledNotePostFailed", "receiveFollowRequest", "followRequestAccepted", "groupInvited", "app", "hataFeed", "earthquake", "addedToPrivateChannel", "removedFromPrivateChannel", "roleAssigned", "chatRoomInvitationReceived", "achievementEarned", "exportCompleted", "test", "login", "createToken"];
 
 // @public (undocumented)
 export function nyaize(text: string): string;
@@ -3797,7 +4124,7 @@ type PartialRolePolicyOverride = Partial<{
 }>;
 
 // @public (undocumented)
-export const permissions: readonly ["read:account", "write:account", "read:blocks", "write:blocks", "read:drive", "write:drive", "read:favorites", "write:favorites", "read:following", "write:following", "read:messaging", "write:messaging", "read:mutes", "write:mutes", "write:notes", "read:notifications", "write:notifications", "read:reactions", "write:reactions", "write:votes", "read:pages", "write:pages", "write:page-likes", "read:page-likes", "read:user-groups", "write:user-groups", "read:channels", "write:channels", "read:gallery", "write:gallery", "read:gallery-likes", "write:gallery-likes", "read:flash", "write:flash", "read:flash-likes", "write:flash-likes", "read:admin:abuse-user-reports", "write:admin:delete-account", "write:admin:delete-all-files-of-a-user", "read:admin:index-stats", "read:admin:table-stats", "read:admin:user-ips", "read:admin:meta", "write:admin:reset-password", "write:admin:resolve-abuse-user-report", "write:admin:send-email", "read:admin:server-info", "read:admin:show-moderation-log", "read:admin:show-user", "write:admin:suspend-user", "write:admin:unset-user-avatar", "write:admin:unset-user-banner", "write:admin:unsuspend-user", "write:admin:meta", "write:admin:user-note", "write:admin:roles", "read:admin:roles", "write:admin:relays", "read:admin:relays", "write:admin:invite-codes", "read:admin:invite-codes", "write:admin:announcements", "read:admin:announcements", "write:admin:avatar-decorations", "read:admin:avatar-decorations", "write:admin:federation", "write:admin:account", "read:admin:account", "write:admin:emoji", "read:admin:emoji", "write:admin:queue", "read:admin:queue", "write:admin:promo", "write:admin:drive", "read:admin:drive", "write:admin:ad", "read:admin:ad", "write:invite-codes", "read:invite-codes", "write:clip-favorite", "read:clip-favorite", "read:federation", "write:report-abuse", "write:chat", "read:chat"];
+export const permissions: readonly ["read:account", "write:account", "read:blocks", "write:blocks", "read:drive", "write:drive", "read:favorites", "write:favorites", "read:following", "write:following", "read:messaging", "write:messaging", "read:mutes", "write:mutes", "write:notes", "read:notifications", "write:notifications", "read:reactions", "write:reactions", "write:votes", "read:pages", "write:pages", "write:page-likes", "read:page-likes", "read:user-groups", "write:user-groups", "read:channels", "write:channels", "read:gallery", "write:gallery", "read:gallery-likes", "write:gallery-likes", "read:flash", "write:flash", "read:flash-likes", "write:flash-likes", "read:admin:abuse-user-reports", "read:admin:channels", "write:admin:delete-account", "write:admin:delete-all-files-of-a-user", "read:admin:index-stats", "read:admin:table-stats", "read:admin:user-ips", "read:admin:meta", "write:admin:reset-password", "write:admin:resolve-abuse-user-report", "write:admin:send-email", "read:admin:server-info", "read:admin:show-moderation-log", "read:admin:show-user", "write:admin:suspend-user", "write:admin:unset-mfa", "write:admin:unset-user-avatar", "write:admin:unset-user-banner", "write:admin:unsuspend-user", "write:admin:meta", "write:admin:user-note", "write:admin:roles", "read:admin:roles", "write:admin:relays", "read:admin:relays", "write:admin:invite-codes", "read:admin:invite-codes", "write:admin:announcements", "read:admin:announcements", "write:admin:avatar-decorations", "read:admin:avatar-decorations", "write:admin:federation", "write:admin:account", "read:admin:account", "write:admin:emoji", "read:admin:emoji", "write:admin:queue", "read:admin:queue", "write:admin:promo", "write:admin:drive", "read:admin:drive", "write:admin:ad", "read:admin:ad", "write:invite-codes", "read:invite-codes", "write:clip-favorite", "read:clip-favorite", "read:federation", "write:report-abuse", "write:chat", "read:chat"];
 
 // @public (undocumented)
 type PingResponse = operations['ping']['responses']['200']['content']['application/json'];
@@ -3955,7 +4282,7 @@ type RoleLite = components['schemas']['RoleLite'];
 type RolePolicies = components['schemas']['RolePolicies'];
 
 // @public (undocumented)
-export const rolePolicies: readonly ["gtlAvailable", "ltlAvailable", "btlAvailable", "canPublicNote", "canEditNote", "mentionLimit", "canInvite", "inviteLimit", "inviteLimitCycle", "inviteExpirationTime", "canManageCustomEmojis", "canManageAvatarDecorations", "canSearchNotes", "canSearchUsers", "canHideAds", "mascotMaxExpressions", "mascotMaxPhrases", "mascotMaxCharacters", "canAccessHataFeed", "canMakePrivateChannel", "canRequestRemoteEmoji", "emojiRequestLimit", "driveCapacityMb", "maxFileSizeMb", "alwaysMarkNsfw", "canUpdateBioMedia", "pinLimit", "antennaLimit", "wordMuteLimit", "webhookLimit", "clipLimit", "noteEachClipsLimit", "userListLimit", "userEachUserListsLimit", "rateLimitFactor", "avatarDecorationLimit", "canImportAntennas", "canImportBlocking", "canImportFollowing", "canImportMuting", "canImportUserLists", "chatAvailability", "uploadableFileTypes", "noteDraftLimit", "scheduledNoteLimit", "watermarkAvailable", "canSetFederationAvatarShape"];
+export const rolePolicies: readonly ["gtlAvailable", "ltlAvailable", "btlAvailable", "canPublicNote", "canEditNote", "mentionLimit", "canInvite", "inviteLimit", "inviteLimitCycle", "inviteExpirationTime", "canManageCustomEmojis", "canManageAvatarDecorations", "canSearchNotes", "canSearchUsers", "canHideAds", "mascotMaxExpressions", "mascotMaxPhrases", "mascotMaxCharacters", "canAccessHataFeed", "canUseHatadySync", "hatadyBookLimit", "hatadyBookmarkLimit", "canMakePrivateChannel", "canRequestRemoteEmoji", "emojiRequestLimit", "driveCapacityMb", "maxFileSizeMb", "alwaysMarkNsfw", "canUpdateBioMedia", "pinLimit", "antennaLimit", "wordMuteLimit", "webhookLimit", "clipLimit", "noteEachClipsLimit", "userListLimit", "userEachUserListsLimit", "rateLimitFactor", "avatarDecorationLimit", "canImportAntennas", "canImportBlocking", "canImportFollowing", "canImportMuting", "canImportUserLists", "chatAvailability", "uploadableFileTypes", "noteDraftLimit", "scheduledNoteLimit", "watermarkAvailable", "canSetFederationAvatarShape"];
 
 // @public (undocumented)
 type RolesListResponse = operations['roles___list']['responses']['200']['content']['application/json'];
