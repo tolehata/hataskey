@@ -109,7 +109,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				:now="eventNow"
 				:lineIndex="eventLineIndex"
 				:reducedMotion="gameSettings.motion === 'reduced'"
-				@close="goHome"
+				@close="goHomeFromSheet"
 				@start="startEventStage"
 				@exchange="exchangeEventItem"
 				@replay="replayEventStory"
@@ -123,7 +123,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		-->
 		<section v-else-if="scene === 'map'" class="map-shell sheet" aria-labelledby="hanaawase-title">
 			<header class="sheet-head">
-				<button class="icon-button sheet-back" type="button" aria-label="ホームへ戻る" @click="goHome"><span v-html="ICONS.modoru()"></span></button>
+				<button class="icon-button sheet-back" type="button" aria-label="ホームへ戻る" @click="goHomeFromSheet"><span v-html="ICONS.modoru()"></span></button>
 				<p class="eyebrow">花仕事</p>
 				<h1 id="hanaawase-title">月選び</h1>
 				<p class="sheet-sub">一年の絵巻。上から順に、季節を進めます。</p>
@@ -156,11 +156,26 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</ol>
 			<div class="map-actions"><button type="button" @click="scene = 'dex'">花手帖</button><button type="button" @click="scene = 'settings'">設定</button></div>
 			<p v-if="syncWarning" class="save-warning">記録を保存できていません。通信を確認してください。</p>
+			<!--
+			旗鯖fork: 物語を読み終えたクリア済みの局は、パズルと読み返しを選べる（利用者の指示）。
+			⚠️盤面前の確認（leave-ask）と同じゲーム内様式。本体のダイアログは使わない（パージ容易性）。
+			-->
+			<div v-if="stageAsk" class="leave-ask" role="dialog" aria-modal="true" aria-labelledby="stage-ask-title">
+				<div class="leave-card">
+					<h2 id="stage-ask-title">{{ stageAskTitle }}</h2>
+					<p>この局の物語は、もう読んであります。</p>
+					<div class="leave-actions">
+						<button class="restart-button" type="button" @click="stageAskPuzzle">パズルであそぶ</button>
+						<button class="secondary-button" type="button" @click="stageAskStory">物語を読み返す</button>
+						<button class="secondary-button" type="button" @click="stageAskCancel">やめておく</button>
+					</div>
+				</div>
+			</div>
 		</section>
 
 		<section v-else-if="scene === 'dex'" class="map-shell sheet dex-shell" aria-labelledby="hanaawase-title">
 			<header class="sheet-head">
-				<button class="icon-button sheet-back" type="button" aria-label="ホームへ戻る" @click="goHome"><span v-html="ICONS.modoru()"></span></button>
+				<button class="icon-button sheet-back" type="button" aria-label="ホームへ戻る" @click="goHomeFromSheet"><span v-html="ICONS.modoru()"></span></button>
 				<p class="eyebrow">帳面</p>
 				<h1 id="hanaawase-title">花手帖</h1>
 				<p class="sheet-sub">咲かせた花が、ここに残ります。</p>
@@ -225,7 +240,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		</section>
 
 		<section v-else-if="scene === 'gallery'" class="map-shell">
-			<Gallery :progress="progress" :reducedMotion="gameSettings.motion === 'reduced'" @close="goHome" />
+			<Gallery :progress="progress" :reducedMotion="gameSettings.motion === 'reduced'" @close="goHomeFromSheet" />
 		</section>
 
 		<!--
@@ -235,7 +250,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		-->
 		<section v-else-if="scene === 'settings'" class="map-shell sheet settings-shell" aria-labelledby="hanaawase-title">
 			<header class="sheet-head">
-				<button class="icon-button sheet-back" type="button" aria-label="ホームへ戻る" @click="goHome"><span v-html="ICONS.modoru()"></span></button>
+				<button class="icon-button sheet-back" type="button" aria-label="ホームへ戻る" @click="goHomeFromSheet"><span v-html="ICONS.modoru()"></span></button>
 				<p class="eyebrow">帳面</p>
 				<h1 id="hanaawase-title">設定</h1>
 				<p class="sheet-sub">音と動きの加減や、作品の情報を確かめられます。</p>
@@ -1073,6 +1088,7 @@ function replayEventStory(entry: VignetteData) {
 	if (!event || !currentEventProgress.value.storySeen.includes(entry.id)) return;
 	storyEventId.value = event.index.id;
 	storyThenStage = undefined;
+	storyReplaying = false;
 	storyQueue.value = [entry];
 	storyReturn.value = "event";
 	scene.value = "story";
@@ -1164,6 +1180,7 @@ function playPendingStory(returnTo: StoryReturn): boolean {
 	if (!next) return false;
 	storyEventId.value = undefined;
 	storyThenStage = undefined;
+	storyReplaying = false;
 	storyQueue.value = [next];
 	storyReturn.value = returnTo;
 	scene.value = "story";
@@ -1221,8 +1238,20 @@ function returnFromStory() {
 	goHomeAfterStage();
 }
 
+/**
+ * 既読の局の読み返し中か。⚠️リアクティブにしない（描画に関係しない一時値）。
+ * 読み返しだけは、その局に結びつく場面をキュー順に続けて出す（新規の再生は従来どおり1場面ずつ）。
+ */
+let storyReplaying = false;
+
 function onStoryFinish(id: string) {
 	markVignetteSeen(id);
+	if (storyReplaying && storyQueue.value.length > 1) {
+		// 旗鯖fork: 読み返しは同じ局の続きの場面へ。Vignette は :key で場面ごとに作り直される。
+		storyQueue.value = storyQueue.value.slice(1);
+		return;
+	}
+	storyReplaying = false;
 	storyQueue.value = [];
 	// 1局＝盤面から、その局に続く物語の終わりまで。
 	// 次局はホームの「花仕事」から利用者が明示的に始める。
@@ -1231,9 +1260,13 @@ function onStoryFinish(id: string) {
 
 /** 未読のまま今回だけ保留する。保存しないので次セッションでは自然に再提示される。 */
 function onStoryDefer() {
-	for (const entry of storyQueue.value) deferredVignetteIds.add(entry.id);
-	// ⚠️ここで書き出さないと、画面を離れて戻った瞬間に忘れて物語が再生される。
-	rememberDeferredIds();
+	// ⚠️読み返し中の「今回は読まない」は、既読なので保留簿に載せる意味が無い。そのまま戻るだけ。
+	if (!storyReplaying) {
+		for (const entry of storyQueue.value) deferredVignetteIds.add(entry.id);
+		// ⚠️ここで書き出さないと、画面を離れて戻った瞬間に忘れて物語が再生される。
+		rememberDeferredIds();
+	}
+	storyReplaying = false;
 	storyQueue.value = [];
 	returnFromStory();
 }
@@ -1242,6 +1275,7 @@ function onStoryDefer() {
 function replayVignette(entry: VignetteData) {
 	storyEventId.value = undefined;
 	storyThenStage = undefined;
+	storyReplaying = false;
 	storyQueue.value = [entry];
 	storyReturn.value = "read";
 	scene.value = "story";
@@ -1258,6 +1292,7 @@ function playEventStoryAfterStage(stageId: string): boolean {
 	if (!next) return false;
 	storyEventId.value = event.index.id;
 	storyThenStage = undefined;
+	storyReplaying = false;
 	storyQueue.value = [next];
 	storyReturn.value = "event";
 	scene.value = "story";
@@ -1278,6 +1313,15 @@ function showHome(offerPendingStory: boolean) {
 /** 通常のホーム導線。取りこぼしていた未読場面があれば提示する。 */
 function goHome() {
 	showHome(true);
+}
+
+/**
+ * 帳面類（月選び・花手帖・設定・名鑑）の「戻る」。
+ * ⚠️戻る操作で物語を始めない（「戻るを押したらストーリーが始まった」の報告）。
+ * 未読の提示は、入場時（onMounted / onActivated）と局の終わりに任せる。
+ */
+function goHomeFromSheet() {
+	showHome(false);
 }
 
 /**
@@ -1904,13 +1948,58 @@ function startStage(next: StageDefinition) {
 	storyEventId.value = undefined;
 	const intro = bossBeforeFor(next.id);
 	if (intro.length > 0) {
+		storyReplaying = false;
 		storyQueue.value = intro;
 		storyReturn.value = "board";
 		storyThenStage = next;
 		scene.value = "story";
 		return;
 	}
+	// 旗鯖fork: 物語を読み終えたクリア済みの局は、パズルと読み返しを選べる（利用者の指示）。
+	// ⚠️月選びから押したときだけ。たのみごと経由（街の様子）は依頼の盤面へ直行する。
+	if (scene.value === "map" && !activeTanomigoto.value && stageStars(next) > 0) {
+		const stories = seenStageStories(next.id);
+		if (stories.length > 0) {
+			stageAsk.value = { stage: next, stories };
+			return;
+		}
+	}
 	enterBoard(next);
+}
+
+/** その局に結びつく既読の場面（前ふり・局後・障り後）。通し読みと同じ正典順。 */
+function seenStageStories(stageId: string): VignetteData[] {
+	return seenVignettes(progress.value).filter((entry) => "stageId" in entry.trigger && entry.trigger.stageId === stageId);
+}
+
+/** 既読の局を押したときの選択。⚠️ゲーム内で完結させる（本体ダイアログは使わない）。 */
+const stageAsk = ref<{ stage: StageDefinition; stories: VignetteData[] }>();
+const stageAskTitle = computed(() => {
+	const entry = stageAsk.value?.stage;
+	if (!entry) return "";
+	return entry.boss ? `障・${bossName(entry)}` : stageLabel(entry);
+});
+
+function stageAskPuzzle() {
+	const ask = stageAsk.value;
+	stageAsk.value = undefined;
+	if (ask) enterBoard(ask.stage);
+}
+
+function stageAskStory() {
+	const ask = stageAsk.value;
+	stageAsk.value = undefined;
+	if (!ask || ask.stories.length === 0) return;
+	storyEventId.value = undefined;
+	storyThenStage = undefined;
+	storyReplaying = true;
+	storyQueue.value = ask.stories;
+	storyReturn.value = "map";
+	scene.value = "story";
+}
+
+function stageAskCancel() {
+	stageAsk.value = undefined;
 }
 
 function startDaily() {
