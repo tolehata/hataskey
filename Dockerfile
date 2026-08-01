@@ -104,6 +104,9 @@ FROM --platform=$TARGETPLATFORM node:${NODE_VERSION}-slim AS runner
 ARG UID="991"
 ARG GID="991"
 
+# pnpm 11 は run 実行前に依存検査を行い自動 pnpm install を試みる（本番イメージでは必ず失敗する）ため上流同様に無効化
+ENV PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN=false
+
 RUN apt-get update \
 	&& apt-get install -y --no-install-recommends \
 	ffmpeg tini curl libjemalloc-dev libjemalloc2 \
