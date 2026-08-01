@@ -23,7 +23,11 @@ html(class='embed')
 		if !config.frontendEmbedManifestExists
 				script(type="module" src="/embed_vite/@vite/client")
 
-		if Array.isArray(entry.css)
+		//- 旗鯖fork(G13): base.pug と同じ理由で manifest 全体から収集した css を出す
+		if Array.isArray(config.frontendEmbedViteCss) && config.frontendEmbedViteCss.length > 0
+			each href in config.frontendEmbedViteCss
+				link(rel='stylesheet' href=`/embed_vite/${href}`)
+		else if Array.isArray(entry.css)
 			each href in entry.css
 				link(rel='stylesheet' href=`/embed_vite/${href}`)
 

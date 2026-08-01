@@ -212,6 +212,9 @@ export type Config = {
 	frontendManifestExists: boolean;
 	frontendEmbedEntry: { file: string | null };
 	frontendEmbedManifestExists: boolean;
+	// 旗鯖fork(G13): vite 8 で CSS が分割チャンク側へ散るため、entry の静的 import 連鎖から収集した css 一覧
+	frontendViteCss: string[];
+	frontendEmbedViteCss: string[];
 	mediaProxy: string;
 	externalMediaProxyEnabled: boolean;
 	videoThumbnailGenerator: string | null;
@@ -344,12 +347,37 @@ export function loadConfig(): Config {
 		frontendManifestExists: frontendManifestExists,
 		frontendEmbedEntry: frontendEmbedManifest['src/boot.ts'],
 		frontendEmbedManifestExists: frontendEmbedManifestExists,
+		frontendViteCss: collectViteCss(frontendManifest, 'src/_boot_.ts'),
+		frontendEmbedViteCss: collectViteCss(frontendEmbedManifest, 'src/boot.ts'),
 		perChannelMaxNoteCacheCount: config.perChannelMaxNoteCacheCount ?? 1000,
 		perUserNotificationsMaxCount: config.perUserNotificationsMaxCount ?? 500,
 		deactivateAntennaThreshold: config.deactivateAntennaThreshold ?? (1000 * 60 * 60 * 24 * 7),
 		pidFile: config.pidFile,
 		logging: config.logging,
 	};
+}
+
+// 旗鯖fork(G13): entry の静的 import 連鎖を辿って各チャンクの css を集める。
+// vite 8 (rolldown) では MkAvatar 等のグローバルコンポーネントの CSS が entry.css に載らず
+// 分割チャンク側に付くため、entry.css だけを <link> すると素の見た目に退行する。
+function collectViteCss(manifest: Record<string, { file?: string | null; css?: string[]; imports?: string[] }>, entryKey: string): string[] {
+	const entry = manifest[entryKey];
+	if (entry == null || entry.file == null) return [];
+	const seen = new Set<string>();
+	const css = new Set<string>(entry.css ?? []);
+	const walk = (imports?: string[]) => {
+		if (!Array.isArray(imports)) return;
+		for (const id of imports) {
+			if (seen.has(id)) continue;
+			seen.add(id);
+			const chunk = manifest[id];
+			if (chunk == null) continue;
+			for (const c of chunk.css ?? []) css.add(c);
+			walk(chunk.imports);
+		}
+	};
+	walk(entry.imports);
+	return Array.from(css);
 }
 
 function tryCreateUrl(url: string) {

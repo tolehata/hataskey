@@ -43,7 +43,13 @@ html
 		if !config.frontendManifestExists
 				script(type="module" src="/vite/@vite/client")
 
-		if Array.isArray(entry.css)
+		//- 旗鯖fork(G13): vite 8 で CSS が分割チャンク側へ散るため、manifest 全体から収集した css を出す
+		//- (entry.css だけだと静的 import 連鎖のチャンク CSS が <link> されず素の見た目になる)。
+		//- ⚠️modulepreload は scripts/ 素体を指す (実行時はロケール別ディレクトリを読む) ため出さない
+		if Array.isArray(config.frontendViteCss) && config.frontendViteCss.length > 0
+			each href in config.frontendViteCss
+				link(rel='stylesheet' href=`/vite/${href}`)
+		else if Array.isArray(entry.css)
 			each href in entry.css
 				link(rel='stylesheet' href=`/vite/${href}`)
 
