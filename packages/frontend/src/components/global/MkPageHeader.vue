@@ -95,13 +95,30 @@ import * as os from '@/os.js';
 import { mainRouter } from '@/router.js';
 import { i18n } from '@/i18n.js';
 import { prefer } from '@/preferences.js';
+import { miLocalStorage } from '@/local-storage.js';
 import { scrollToVisibility } from '@/utility/scroll-to-visibility.js';
 import MkFollowButton from '@/components/MkFollowButton.vue';
 import { haptic } from '@/utility/haptic.js';
 
 const { showEl } = scrollToVisibility();
 
-const canBack = ref(['index', 'explore', 'my-notifications', 'chat'].includes(<string>mainRouter.currentRoute.value.name));
+/*
+旗鯖fork: canBack は名前に反して「根の画面なので戻るボタンを出さない」の意（true で非表示）。
+⚠️HatasabaUI の下部ナビには 探索 と チャット が無いため、本家の一覧をそのまま使うと
+  「みつける」へ入った先で戻る導線が消えて前の画面に帰れなくなる（利用者報告）。
+⚠️そこで simple UI のときは、実際に下部ナビへ出ている項目だけを根として扱う。
+  ⚠️simpleUi.bottomNav に無い画面は必ず戻るボタンを出す（出しすぎても実害は無いが、
+  出ないと詰む）。他UI（default / deck）は下部フッターに探索・チャットがあるため従来どおり。
+*/
+const rootPageNames = (() => {
+	if (miLocalStorage.getItem('ui') !== 'simple') return ['index', 'explore', 'my-notifications', 'chat'];
+	const bottomNav = prefer.s['simpleUi.bottomNav'] as { id: string; visible: boolean }[] | undefined;
+	const visibleIds = new Set((bottomNav ?? []).filter((t) => t.visible).slice(0, 4).map((t) => t.id));
+	const names = ['index'];
+	if (visibleIds.has('notifications')) names.push('my-notifications');
+	return names;
+})();
+const canBack = ref(rootPageNames.includes(<string>mainRouter.currentRoute.value.name));
 
 const props = withDefaults(defineProps<PageHeaderProps>(), {
 	tabs: () => ([] as Tab[]),

@@ -33,6 +33,8 @@ import * as os from '@/os.js';
 import { cleanupStaleUiElements } from '@/utility/ui-cleanup.js';
 import { initHataFontWatcher } from '@/scripts/hata-font-manager.js';
 import { fetchMutedUsers } from '@/utility/muted-users.js';
+import { enqueueHataDialog } from '@/utility/hata-dialog-queue.js';
+import { HATA_WHATS_NEW } from '@/utility/hata-whats-new.js';
 
 export async function mainBoot() {
 	cleanupStaleUiElements();
@@ -110,18 +112,42 @@ export async function mainBoot() {
 	reactionPicker.init();
 	emojiPicker.init();
 
+	/*
+	旗鯖fork: 起動直後の案内は**待ち行列で1つずつ**出す。
+	⚠️同時に開くと重なるうえ、MkUpdated を閉じると clearCache() がページを再読み込みするため、
+	  後続のダイアログが道連れで消えていた（利用者報告）。
+	⚠️「表示済み」の記録は閉じられたときだけ付ける。途中で再読み込みが挟まっても次回起動で出る。
+	*/
 	if ((isClientUpdated || isClientMigrated) && $i) {
-		const { dispose } = popup(defineAsyncComponent(() => import('@/components/MkUpdated.vue')), {}, {
-			closed: () => dispose(),
-		});
+		enqueueHataDialog(() => new Promise<void>(resolve => {
+			const { dispose } = popup(defineAsyncComponent(() => import('@/components/MkUpdated.vue')), {}, {
+				closed: () => { dispose(); resolve(); },
+			});
+		}));
 	}
 
 	if (isClientMigrated && $i) {
 		miLocalStorage.removeItem('neverShowDonationInfo');
 		miLocalStorage.removeItem('latestDonationInfoShownAt');
-		const { dispose } = popup(defineAsyncComponent(() => import('@/components/MkMigrated.vue')), {}, {
-			closed: () => dispose(),
-		});
+		enqueueHataDialog(() => new Promise<void>(resolve => {
+			const { dispose } = popup(defineAsyncComponent(() => import('@/components/MkMigrated.vue')), {}, {
+				closed: () => { dispose(); resolve(); },
+			});
+		}));
+	}
+
+	// 旗鯖fork: 「今回の更新内容」。⚠️版が変わったときだけ・端末ごとに1回。
+	if ($i && miLocalStorage.getItem('hataWhatsNewShownVersion') !== HATA_WHATS_NEW.version) {
+		enqueueHataDialog(() => new Promise<void>(resolve => {
+			const { dispose } = popup(defineAsyncComponent(() => import('@/components/MkHataWhatsNew.vue')), {}, {
+				closed: () => {
+					// ⚠️閉じられて初めて記録する（先に書くと、再読み込みで消えたとき二度と出ない）。
+					miLocalStorage.setItem('hataWhatsNewShownVersion', HATA_WHATS_NEW.version);
+					dispose();
+					resolve();
+				},
+			});
+		}));
 	}
 
 	try {

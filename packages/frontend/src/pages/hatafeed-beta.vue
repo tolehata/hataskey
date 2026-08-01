@@ -32,17 +32,20 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<i class="ti ti-chevron-right" :class="$style.featureArrow"></i>
 			</button>
 
-			<!-- 旗鯖fork(#31): トグル式のベータ設定（この端末のみ） -->
+			<!-- 旗鯖fork(#31): ミュートユーザーのリアクション非表示は正式機能へ昇格し、
+			     旗鯖独自設定 → 旗鯖全体 → リアクション に移動した。
+			     ⚠️ここに案内を残す（前の場所を覚えている人が迷子になるため）。
+			     HatasabaUI 2 と吹き出しデザインのトグルも同様に HatasabaUI 2 タブへ移動済み。 -->
 			<div :class="$style.toggleSection">
-				<div :class="$style.toggleHead"><i class="ti ti-settings"></i> ベータ設定（この端末のみ）</div>
-				<div :class="$style.toggleCard">
-					<MkSwitch v-model="hideMutedReactions">
-						<template #label>ミュートしたユーザーのリアクションを隠す</template>
-						<template #caption>ミュートした人が付けたリアクションを、ノート上に表示しないようにします（最近付けられたリアクションが対象です）。この設定は<b>この端末にだけ</b>保存され、ほかの端末には引き継がれません。</template>
-					</MkSwitch>
-					<!-- 旗鯖fork: HatasabaUI 2 と吹き出しデザイントグルは
-					     旗鯖独自設定 → HatasabaUI 2 タブに正式移動した (旧: ベータ機能)。 -->
-				</div>
+				<div :class="$style.toggleHead"><i class="ti ti-arrow-right-circle"></i> 正式機能になりました</div>
+				<button :class="$style.featureCard" @click="router.push('/settings/hata-custom')">
+					<i class="ti ti-mood-off" :class="$style.featureIcon"></i>
+					<div :class="$style.featureBody">
+						<div :class="$style.featureTitle">ミュートしたユーザーのリアクションを隠す</div>
+						<div :class="$style.featureDesc">ベータを卒業しました。設定は「旗鯖独自設定 → 旗鯖全体 → リアクション」にあります。</div>
+					</div>
+					<i class="ti ti-chevron-right" :class="$style.featureArrow"></i>
+				</button>
 			</div>
 		</div>
 	</MkSpacer>
@@ -50,31 +53,15 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { computed, watch } from 'vue';
 import MkInfo from '@/components/MkInfo.vue';
-import MkSwitch from '@/components/MkSwitch.vue';
 import { definePage } from '@/page.js';
 import { useRouter } from '@/router.js';
 import { hataBetaFeatures } from '@/utility/hatafeed.js';
-import { hideMutedReactionsLocal, setHideMutedReactionsLocal } from '@/utility/hatasaba-device-prefs.js';
 
 const router = useRouter();
 
-// 旗鯖fork: HatasabaUI 2 / 吹き出し は旗鯖独自設定 → HatasabaUI 2 タブに移動したためここでの bind 削除。
-
-// 旗鯖fork(#31): ミュートユーザーのリアクション非表示（端末ローカル・ベータ）。
-const hideMutedReactions = computed({
-	get: () => hideMutedReactionsLocal.value,
-	set: (v: boolean) => setHideMutedReactionsLocal(v),
-});
-// OFF→ON時にミュートリストを即座に取得（取りこぼし防止）。
-watch(hideMutedReactions, async (newVal) => {
-	if (newVal) {
-		const { fetchMutedUsers, invalidateMutedUsers } = await import('@/utility/muted-users.js');
-		invalidateMutedUsers();
-		fetchMutedUsers();
-	}
-});
+// 旗鯖fork: HatasabaUI 2 / 吹き出し / ミュートリアクション非表示 はいずれも正式機能へ昇格し、
+// 旗鯖独自設定へ移動した。ここには移動先への案内だけを残している。
 
 // 旗鯖fork: 左上の戻るボタン(MkPageHeader 標準)があるので、右上に重複する
 // 戻る action は置かない(帯が下の UI に被って邪魔になるため廃止)。

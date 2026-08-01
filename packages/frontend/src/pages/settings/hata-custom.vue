@@ -39,6 +39,11 @@ SPDX-License-Identifier: AGPL-3.0-only
                 非表示リアクション管理
                 <template #suffix><span v-if="hiddenReactionCount > 0" :class="$style.countBadge">{{ hiddenReactionCount }}件</span></template>
             </FormLink>
+            <!-- 旗鯖fork(#31): ベータ機能から正式機能へ移動。⚠️端末ローカル設定なので同期されない旨を明記する。 -->
+            <MkSwitch v-model="hideMutedReactions" style="margin-top:12px;">
+                <template #label>ミュートしたユーザーのリアクションを隠す</template>
+                <template #caption>ミュートした人が付けたリアクションを、ノート上に表示しないようにします。他のユーザーの投稿に付いたものも対象です。隠したリアクションがある場合、ノートの詳細画面に <i class="ti ti-info-circle"></i> が出ます。<b>管理者からのリアクションは隠せません。</b>この設定は<b>この端末にだけ</b>保存され、ほかの端末には引き継がれません。</template>
+            </MkSwitch>
         </FormSection>
         <FormSection>
             <template #label>タイムライン</template>
@@ -375,7 +380,7 @@ import { definePage } from '@/page.js';
 import { getHiddenReactions, hiddenReactionsVersion } from '@/utility/hidden-reactions.js';
 // 旗鯖fork: deckIgnoreWidth / setDeckIgnoreWidth は HatasabaUI 設定モーダル側で消費するのみ。
 // 旗鯖fork(HatasabaUI 2): 端末ローカルの glassUi 系を hata-custom.vue から使うため import。
-import { glassUiLocal, setGlassUiLocal, glassUiBubbleLocal, setGlassUiBubbleLocal } from '@/utility/hatasaba-device-prefs.js';
+import { glassUiLocal, setGlassUiLocal, glassUiBubbleLocal, setGlassUiBubbleLocal, hideMutedReactionsLocal, setHideMutedReactionsLocal } from '@/utility/hatasaba-device-prefs.js';
 import { HATA_FONT_PRESETS, applyHataFont, type HataFontId } from '@/scripts/hata-font-manager.js';
 import { chooseDriveFile } from '@/utility/drive.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
@@ -499,6 +504,18 @@ function resetToDefault() {
 const showHashtagButtonInPostForm = prefer.model('showHashtagButtonInPostForm');
 const showDrawingButtonInPostForm = prefer.model('showDrawingButtonInPostForm');
 const showLoginBonusPopup = useLSBool('showLoginBonusPopup', true);
+// 旗鯖fork(#31): ミュートユーザーのリアクション非表示（端末ローカル）。ベータ機能から正式機能へ移動。
+const hideMutedReactions = computed({
+    get: () => hideMutedReactionsLocal.value,
+    set: (v: boolean) => setHideMutedReactionsLocal(v),
+});
+// ⚠️OFF→ON の瞬間にミュートリストを取り直す（取りこぼすと「効かない」と見える）。
+watch(hideMutedReactions, async (newVal) => {
+    if (!newVal) return;
+    const { fetchMutedUsers, invalidateMutedUsers } = await import('@/utility/muted-users.js');
+    invalidateMutedUsers();
+    fetchMutedUsers();
+});
 const timelineAnimationDirection = prefer.model('timelineAnimationDirection');
 const timelineAnimationOptions = [
     { value: 'top', label: '上からスライド' }, { value: 'left', label: '左からスライド' },

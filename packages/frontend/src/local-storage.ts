@@ -48,6 +48,7 @@ export type Keys = (
 	'hataEarthquakePollSec' | // 旗鯖fork(#34): 地震情報の取得間隔(秒・端末ローカル)
 	'hata_muted_reactions_local_migrated' | // 旗鯖fork(#31): 旧設定→端末ローカルへの移行済みフラグ
 	'hata_muted_reactions_notice_shown' | // 旗鯖fork(#31): 改善案内ダイアログを表示済みか(端末ごと1回)
+	'hataWhatsNewShownVersion' | // 旗鯖fork: 「今回の更新内容」を出した旗鯖の版(端末ごと。版が上がると再表示)
 	'hata_hask_tiles_v1_migrated' | // 旗鯖fork(#36): Haskホームの新タイル(feedbackNotif/earthquake)を既存ユーザーに追加済みか
 	`miux:${string}` |
 	`ui:folder:${string}` |

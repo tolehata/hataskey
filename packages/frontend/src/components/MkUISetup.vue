@@ -216,6 +216,12 @@ const selectDeprecated = async (type: 'default' | 'deck') => {
 	box-sizing: border-box;
 	padding: 34px 34px 26px;
 	border-radius: 28px;
+	/* 旗鯖fork: 中身が画面より高いと下端(非推奨UIの折りたたみ)が見切れて選べなくなる。
+	   ⚠️`dvh` を使う（`vh` だとモバイルのアドレスバー分だけ足りず、同じ見切れが残る）。
+	   ⚠️`overscroll-behavior: contain` が無いと、末尾で背後のタイムラインが動く。 */
+	max-height: calc(100dvh - 32px);
+	overflow-y: auto;
+	overscroll-behavior: contain;
 	color: #fff;
 	background: rgba(12, 14, 18, 0.62);
 	backdrop-filter: blur(26px);
@@ -675,7 +681,12 @@ const selectDeprecated = async (type: 'default' | 'deck') => {
 
 /* ===== レスポンシブ ===== */
 @media (max-width: 600px) {
-	.root { padding: 22px 16px 18px; border-radius: 22px; }
+	/* 旗鯖fork: モバイルは余白が効くので更に詰め、下端は安全領域の分だけ足す。 */
+	.root {
+		padding: 22px 16px calc(18px + env(safe-area-inset-bottom, 0px));
+		border-radius: 22px;
+		max-height: calc(100dvh - 16px);
+	}
 	.headerTitle { font-size: 21px; }
 	.hero { padding: 20px 16px; }
 
