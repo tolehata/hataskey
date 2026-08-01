@@ -18,6 +18,8 @@ export const meta = {
 	},
 	errors: {
 		accessDenied: { message: 'HataFeed is not available for your account.', code: 'HATAFEED_ACCESS_DENIED', id: 'c8d7f819-e477-4587-e1a3-708192031425' },
+		// 旗鯖fork(セキュリティ): 閲覧できないイシューのコメントは存在ごと隠す(未存在と同じ応答)。
+		noSuchComment: { message: 'No such comment.', code: 'NO_SUCH_COMMENT', id: 'd9e8a920-f588-4698-f2b4-819203142536' },
 	},
 	limit: { duration: ms('1min'), max: 60 },
 } as const;
@@ -38,6 +40,9 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 	) {
 		super(meta, paramDef, async (ps, me) => {
 			if (!await this.feedbackService.canAccess(me.id)) throw new ApiError(meta.errors.accessDenied);
+			// 旗鯖fork(セキュリティ): commentId 直指定のため、そのコメントが属するイシューの
+			//   可視性を確認する(security / サスペンド中プロジェクト)。
+			if (!await this.feedbackService.canViewComment(me.id, ps.commentId)) throw new ApiError(meta.errors.noSuchComment);
 			const reacted = await this.feedbackService.toggleCommentReaction(me, ps.commentId, ps.reaction);
 			return { reacted };
 		});

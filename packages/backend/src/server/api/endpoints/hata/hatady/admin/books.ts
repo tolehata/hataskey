@@ -46,7 +46,8 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 			const packedUsers = await this.userEntityService.packMany(userIds);
 			const usersMap = new Map(packedUsers.map(u => [u.id, u]));
 
-			const packed = await this.hatadyEntityService.packBooks(books);
+			// requireModerator のスタッフ専用画面。しおり演出のため絞り込まない(従来どおり)。
+			const packed = await this.hatadyEntityService.packBooks(books, null);
 			return packed.map((pb, i) => ({ ...pb, user: usersMap.get(books[i].userId) ?? null }));
 		});
 	}

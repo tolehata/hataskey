@@ -129,6 +129,36 @@ export class FeedbackService {
 		return grant != null;
 	}
 
+	// 旗鯖fork(セキュリティ): その Issue を閲覧してよいか。
+	//   issues/show.ts が持っていた判定をそのまま切り出したもの(挙動は不変)。
+	//   - セキュリティ対応(security)のイシューはスタッフ(管理者/モデ)のみ。存在ごと隠す。
+	//   - サスペンド中プロジェクトのイシューは、作成者(owner)・鯖缶以外には存在ごと隠す。
+	//   コメント一覧 / コメント投稿 / 賛同 / コメントリアクションからも呼ぶこと。
+	//   ※ canAccess(HataFeed 自体を使えるか)とは別の判定。両方を通す必要がある。
+	@bindThis
+	public async canViewIssue(userId: MiUser['id'] | null, issue: MiFeedbackIssue): Promise<boolean> {
+		if (issue.category === 'security' && !await this.isStaff(userId)) return false;
+
+		if (issue.projectId != null) {
+			const project = await this.feedbackProjectsRepository.findOneBy({ id: issue.projectId });
+			if (project != null && !await this.canViewProject(userId, project)) return false;
+		}
+
+		return true;
+	}
+
+	// 旗鯖fork(セキュリティ): コメントIDしか持たない操作(リアクション等)向け。
+	//   そのコメントが属する Issue を閲覧してよいかを判定する。
+	//   コメントまたは Issue が存在しない場合も false(呼び出し側で存在ごと隠すこと)。
+	@bindThis
+	public async canViewComment(userId: MiUser['id'] | null, commentId: string): Promise<boolean> {
+		const comment = await this.feedbackCommentsRepository.findOneBy({ id: commentId });
+		if (comment == null) return false;
+		const issue = await this.feedbackIssuesRepository.findOneBy({ id: comment.feedbackId });
+		if (issue == null) return false;
+		return this.canViewIssue(userId, issue);
+	}
+
 	//#endregion
 
 	//#region 通知

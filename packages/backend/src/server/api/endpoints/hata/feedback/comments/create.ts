@@ -52,6 +52,9 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 
 			const issue = await this.feedbackIssuesRepository.findOneBy({ id: ps.issueId });
 			if (issue == null) throw new ApiError(meta.errors.noSuchIssue);
+			// 旗鯖fork(セキュリティ): 閲覧できないイシュー(security / サスペンド中プロジェクト)には
+			//   コメントも投稿できない。存在ごと隠すため noSuchIssue を返す。
+			if (!await this.feedbackService.canViewIssue(me.id, issue)) throw new ApiError(meta.errors.noSuchIssue);
 			// クローズ済みのイシューには書き込めない。
 			if (issue.closed) throw new ApiError(meta.errors.issueClosed);
 

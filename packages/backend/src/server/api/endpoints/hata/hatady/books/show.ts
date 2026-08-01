@@ -38,14 +38,19 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		super(meta, paramDef, async (ps, me) => {
 			const book = await this.hatadyService.getBook(ps.bookId);
 			if (book == null) throw new ApiError(meta.errors.noSuchBook);
+			// 旗鯖fork(セキュリティ): しおり(自由記述メモ付き)と内容メモは本の所有者だけのもの。
+			//   HatadyService の書き込み側(createMemo / createBookmark 等)は所有者チェック済みだが、
+			//   読み出しは bookId だけで引いていたため他人の本の私的メモが見えていた。
+			//   所有者以外へは空配列を返す(フロントは既に「しおりはありません」表示に対応済み)。
+			const isMine = book.userId === me.id;
 			const [logs, bookmarks, memos] = await Promise.all([
 				this.hatadyService.getBookLogs(book.id, me.id, book.userId, 50),
-				this.hatadyService.getBookmarks(book.id),
-				this.hatadyService.getMemos(book.id),
+				isMine ? this.hatadyService.getBookmarks(book.id) : Promise.resolve([]),
+				isMine ? this.hatadyService.getMemos(book.id) : Promise.resolve([]),
 			]);
 			return {
 				book: this.hatadyEntityService.packBook(book),
-				isMine: book.userId === me.id,
+				isMine,
 				logs: await this.hatadyEntityService.packLogs(logs, me),
 				bookmarks: bookmarks.map(bm => this.hatadyEntityService.packBookmark(bm)),
 				memos: memos.map(m => this.hatadyEntityService.packMemo(m)),

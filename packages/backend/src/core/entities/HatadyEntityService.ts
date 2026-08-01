@@ -112,18 +112,24 @@ export class HatadyEntityService {
 		};
 	}
 
+	// 旗鯖fork(セキュリティ): しおりは自由記述メモ(bm.memo)を含む私的データのため、
+	//   閲覧者が所有する本にだけ付ける。viewerId は必須引数にして、呼び出し側に必ず判断させる。
+	//   viewerId に null を渡すと絞り込まない(モデレーター専用エンドポイント用の明示的なオプトアウト)。
 	@bindThis
-	public async packBooks(books: MiHatadyBook[]): Promise<Record<string, unknown>[]> {
+	public async packBooks(books: MiHatadyBook[], viewerId: MiUser['id'] | null): Promise<Record<string, unknown>[]> {
 		if (books.length === 0) return [];
 		// しおりを一括取得して本ごとに付与(本棚の「しおりが挟まっている」演出用)。
-		const bmRows = await this.hatadyBookmarksRepository.createQueryBuilder('bm')
-			.where('bm.bookId IN (:...ids)', { ids: books.map(b => b.id) })
-			.orderBy('bm.page', 'ASC').getMany();
+		const visibleBooks = viewerId == null ? books : books.filter(b => b.userId === viewerId);
 		const bmMap = new Map<string, MiHatadyBookmark[]>();
-		for (const bm of bmRows) {
-			const arr = bmMap.get(bm.bookId) ?? [];
-			arr.push(bm);
-			bmMap.set(bm.bookId, arr);
+		if (visibleBooks.length > 0) {
+			const bmRows = await this.hatadyBookmarksRepository.createQueryBuilder('bm')
+				.where('bm.bookId IN (:...ids)', { ids: visibleBooks.map(b => b.id) })
+				.orderBy('bm.page', 'ASC').getMany();
+			for (const bm of bmRows) {
+				const arr = bmMap.get(bm.bookId) ?? [];
+				arr.push(bm);
+				bmMap.set(bm.bookId, arr);
+			}
 		}
 		return books.map(b => ({
 			...this.packBook(b),

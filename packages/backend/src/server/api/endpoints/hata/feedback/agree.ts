@@ -56,6 +56,9 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 
 			const issue = await this.feedbackIssuesRepository.findOneBy({ id: ps.issueId });
 			if (issue == null) throw new ApiError(meta.errors.noSuchIssue);
+			// 旗鯖fork(セキュリティ): 閲覧できないイシュー(security / サスペンド中プロジェクト)には
+			//   賛同できない。存在ごと隠すため noSuchIssue を返す。
+			if (!await this.feedbackService.canViewIssue(me.id, issue)) throw new ApiError(meta.errors.noSuchIssue);
 
 			const isAgreed = await this.feedbackService.toggleAgree(me, issue);
 			return { isAgreed };

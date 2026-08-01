@@ -39,7 +39,8 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 			if (ps.untilId != null) query.andWhere('book.id < :untilId', { untilId: ps.untilId });
 			query.orderBy('book.id', 'DESC');
 			const books = await query.limit(ps.limit).getMany();
-			return await this.hatadyEntityService.packBooks(books);
+			// 自分の本棚なので全冊にしおりが付く(挙動は従来どおり)。
+			return await this.hatadyEntityService.packBooks(books, me.id);
 		});
 	}
 }

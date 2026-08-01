@@ -4,7 +4,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import { QueryService } from '@/core/QueryService.js';
-import type { FeedbackCommentsRepository } from '@/models/_.js';
+import type { FeedbackCommentsRepository, FeedbackIssuesRepository } from '@/models/_.js';
 import { FeedbackEntityService } from '@/core/entities/FeedbackEntityService.js';
 import { FeedbackService } from '@/core/FeedbackService.js';
 import { DI } from '@/di-symbols.js';
@@ -36,6 +36,8 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 	constructor(
 		@Inject(DI.feedbackCommentsRepository)
 		private feedbackCommentsRepository: FeedbackCommentsRepository,
+		@Inject(DI.feedbackIssuesRepository)
+		private feedbackIssuesRepository: FeedbackIssuesRepository,
 
 		private queryService: QueryService,
 		private feedbackEntityService: FeedbackEntityService,
@@ -43,6 +45,14 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 	) {
 		super(meta, paramDef, async (ps, me) => {
 			if (!await this.feedbackService.canAccess(me.id)) throw new ApiError(meta.errors.accessDenied);
+
+			// 旗鯖fork(セキュリティ): そのイシューを閲覧してよいかを確認する。
+			//   canAccess は「HataFeed を使えるか」しか見ないため、これが無いと
+			//   security イシューやサスペンド中プロジェクトの会話が issueId 直指定で読めてしまう。
+			//   issues.ts の作法に倣い、見えないイシューは空配列を返して存在ごと隠す。
+			const issue = await this.feedbackIssuesRepository.findOneBy({ id: ps.issueId });
+			if (issue == null) return [];
+			if (!await this.feedbackService.canViewIssue(me.id, issue)) return [];
 
 			const query = this.queryService.makePaginationQuery(this.feedbackCommentsRepository.createQueryBuilder('comment'), ps.sinceId, ps.untilId)
 				.andWhere('comment.feedbackId = :issueId', { issueId: ps.issueId })

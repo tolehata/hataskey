@@ -4,7 +4,7 @@
 import ms from 'ms';
 import { Inject, Injectable } from '@nestjs/common';
 import { Endpoint } from '@/server/api/endpoint-base.js';
-import type { FeedbackIssuesRepository, FeedbackProjectsRepository } from '@/models/_.js';
+import type { FeedbackIssuesRepository } from '@/models/_.js';
 import { FeedbackEntityService } from '@/core/entities/FeedbackEntityService.js';
 import { FeedbackService } from '@/core/FeedbackService.js';
 import { DI } from '@/di-symbols.js';
@@ -50,8 +50,6 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 	constructor(
 		@Inject(DI.feedbackIssuesRepository)
 		private feedbackIssuesRepository: FeedbackIssuesRepository,
-		@Inject(DI.feedbackProjectsRepository)
-		private feedbackProjectsRepository: FeedbackProjectsRepository,
 
 		private feedbackEntityService: FeedbackEntityService,
 		private feedbackService: FeedbackService,
@@ -66,17 +64,10 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 					: null;
 			if (issue == null) throw new ApiError(meta.errors.noSuchIssue);
 
-			// 旗鯖fork: セキュリティ対応(security)のイシューはスタッフ(管理者/モデ)のみ閲覧可。存在ごと隠す。
-			if (issue.category === 'security' && !await this.feedbackService.isStaff(me.id)) {
+			// 旗鯖fork: 可視性判定(security イシュー / サスペンド中プロジェクト)は
+			//   FeedbackService.canViewIssue に集約。存在ごと隠す。
+			if (!await this.feedbackService.canViewIssue(me.id, issue)) {
 				throw new ApiError(meta.errors.noSuchIssue);
-			}
-
-			// 旗鯖fork: サスペンド中プロジェクトのイシューは、作成者・鯖缶以外には存在ごと隠す。
-			if (issue.projectId != null) {
-				const project = await this.feedbackProjectsRepository.findOneBy({ id: issue.projectId });
-				if (project != null && !await this.feedbackService.canViewProject(me.id, project)) {
-					throw new ApiError(meta.errors.noSuchIssue);
-				}
 			}
 
 			return {

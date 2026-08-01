@@ -61,7 +61,9 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 			return {
 				user: packedUser,
 				...aggregates,
-				books: await this.hatadyEntityService.packBooks(books),
+				// 旗鯖fork(セキュリティ): しおりの自由記述メモが他人のプロフィールから漏れないよう、
+				//   自分が所有する本にだけしおりを付ける(自分のプロフィールでは従来どおり全冊に付く)。
+				books: await this.hatadyEntityService.packBooks(books, me.id),
 				logs: await this.hatadyEntityService.packLogs(logs, me),
 			};
 		});
