@@ -27,6 +27,7 @@ import { HEART_REPLIES_B17, MACHI_POSTS_BATCH17, MACHI_THREADS_B17 } from './mac
 import { HEART_REPLIES_B18, MACHI_POSTS_BATCH18, MACHI_THREADS_B18 } from './machi-lines-batch18.js';
 import { HEART_REPLIES_B19, MACHI_POSTS_BATCH19, MACHI_THREADS_B19 } from './machi-lines-batch19.js';
 import { HEART_REPLIES_B20, MACHI_POSTS_BATCH20, MACHI_THREADS_B20 } from './machi-lines-batch20.js';
+import { HEART_REPLIES_B21, MACHI_POSTS_BATCH21, MACHI_THREADS_B21 } from './machi-lines-batch21.js';
 import { TANOMIGOTO_2 } from './machi-lines-tanomigoto-2.js';
 import { TANOMIGOTO_3 } from './machi-lines-tanomigoto-3.js';
 
@@ -199,6 +200,7 @@ export const MACHI_POSTS: readonly MachiPost[] = [
 	...MACHI_POSTS_BATCH18,
 	...MACHI_POSTS_BATCH19,
 	...MACHI_POSTS_BATCH20,
+	...MACHI_POSTS_BATCH21,
 ];
 
 // --- 会話（返信を線でつないで見せるまとまり） -----------------------------
@@ -243,6 +245,7 @@ export const MACHI_THREADS: readonly MachiThread[] = [
 	...MACHI_THREADS_B18,
 	...MACHI_THREADS_B19,
 	...MACHI_THREADS_B20,
+	...MACHI_THREADS_B21,
 ];
 
 // --- ♡を押したときの反応（空リプ） ---------------------------------------
@@ -291,6 +294,7 @@ export const HEART_REPLIES: readonly string[] = [
 	...HEART_REPLIES_B18,
 	...HEART_REPLIES_B19,
 	...HEART_REPLIES_B20,
+	...HEART_REPLIES_B21,
 ];
 
 /** 町の人が押していく絵文字。投稿ごとの e が尽きたらここから選ぶ。 */
