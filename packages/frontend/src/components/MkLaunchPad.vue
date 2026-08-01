@@ -32,6 +32,7 @@ import MkModal from '@/components/MkModal.vue';
 import { navbarItemDef } from '@/navbar.js';
 import { deviceKind } from '@/utility/device-kind.js';
 import { prefer } from '@/preferences.js';
+import { miLocalStorage } from '@/local-storage.js';
 
 const props = withDefaults(defineProps<{
 	anchorElement?: HTMLElement | null;
@@ -53,7 +54,26 @@ const modal = useTemplateRef('modal');
 
 const menu = prefer.s.menu;
 
-const items = Object.keys(navbarItemDef).filter(k => !menu.includes(k)).map(k => navbarItemDef[k]).filter(def => def.show == null ? true : def.show).map(def => ({
+/*
+旗鯖fork: 「もっと」からは、サイドバーに出ている項目を省く（同じものを二度出さないため）。
+⚠️本家は `prefer.s.menu`（＝本家UIのサイドバー）だけで判断するが、HatasabaUI が読むのは
+  `simpleUi.sidebar` の方で、`menu` は画面のどこにも描かれない。
+  そのため `menu` にだけ入っている項目（実測でマスコットの1件）は、
+  **サイドバーにも「もっと」にも出ない＝UIから辿れない**状態になっていた（利用者報告）。
+⚠️HatasabaUI のときは「両方に入っているもの」だけを省く。こうすると:
+  - マスコットは「もっと」に出る（今回の修正点）
+  - 両方にある項目（通知・チャット等）は従来どおり省かれる
+  - HatasabaUI 側にしか無い項目（ドライブ・Hatady 等）も従来どおり「もっと」に残る
+⚠️サイドバーで非表示にした項目（visible === false）は「辿れない」ので省かない。
+*/
+const hiddenFromLaunchPad = (() => {
+	if (miLocalStorage.getItem('ui') !== 'simple') return menu;
+	const sidebar = prefer.s['simpleUi.sidebar'] as { id: string; visible?: boolean }[] | undefined;
+	const shownInSidebar = new Set((sidebar ?? []).filter(t => t.visible !== false).map(t => t.id));
+	return menu.filter(k => shownInSidebar.has(k));
+})();
+
+const items = Object.keys(navbarItemDef).filter(k => !hiddenFromLaunchPad.includes(k)).map(k => navbarItemDef[k]).filter(def => def.show == null ? true : def.show).map(def => ({
 	type: def.to ? 'link' : 'button',
 	text: def.title,
 	icon: def.icon,
