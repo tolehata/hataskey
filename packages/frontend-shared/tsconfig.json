@@ -10,6 +10,7 @@
 		"declarationMap": true,
 		"sourceMap": false,
 		"outDir": "./js-built/",
+		"rootDir": "./js",
 		"removeComments": true,
 		"skipLibCheck": true,
 		"resolveJsonModule": true,
