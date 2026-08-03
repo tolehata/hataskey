@@ -36,6 +36,14 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</div>
 		</div>
 
+		<!-- ⚠️ここに載るのは主な変更だけなので、全部を見たい人の行き先を必ず示す -->
+		<p :class="$style.footer">
+			{{ whatsNew.footer.text }}
+			<button v-if="whatsNew.footer.linkUrl" class="_button" :class="$style.footerLink" @click="openReleaseNotes">
+				{{ whatsNew.footer.linkLabel }} <i class="ti ti-external-link"></i>
+			</button>
+		</p>
+
 		<MkButton primary rounded full :class="$style.gotIt" @click="modal?.close()">わかった</MkButton>
 	</div>
 </MkModal>
@@ -60,6 +68,12 @@ function go(to: HataWhatsNewItem['to']) {
 	// ⚠️先に閉じる。開いたまま遷移すると、行き先の上に幕が残る。
 	modal.value?.close();
 	mainRouter.push(to);
+}
+
+// ⚠️外部リンクは別タブへ。閉じない（読み終えて戻ってきたときに案内が残っている方がよい）。
+function openReleaseNotes() {
+	if (whatsNew.footer.linkUrl == null) return;
+	window.open(whatsNew.footer.linkUrl, '_blank', 'noopener,noreferrer');
 }
 </script>
 
@@ -138,5 +152,25 @@ function go(to: HataWhatsNewItem['to']) {
 	color: var(--MI_THEME-accent);
 }
 
-.gotIt { margin-top: 18px; }
+.footer {
+	margin: 16px 0 0;
+	padding-top: 14px;
+	border-top: 1px solid var(--MI_THEME-divider);
+	font-size: 0.83em;
+	line-height: 1.7;
+	opacity: 0.75;
+}
+
+.footerLink {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	margin-left: 4px;
+	padding: 0;
+	font-size: 1em;
+	font-weight: 700;
+	color: var(--MI_THEME-accent);
+}
+
+.gotIt { margin-top: 14px; }
 </style>

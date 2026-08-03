@@ -33,6 +33,15 @@ export type HataWhatsNew = {
 	version: string;
 	headline: string;
 	items: HataWhatsNewItem[];
+	/**
+	 * 末尾の案内文。⚠️ここに載せたのは主なものだけなので、全部を見たい人の行き先を必ず示す。
+	 * `linkLabel` / `linkUrl` を省くと文だけ出る。
+	 */
+	footer: {
+		text: string;
+		linkLabel?: string;
+		linkUrl?: string;
+	};
 };
 
 export const HATA_WHATS_NEW: HataWhatsNew = {
@@ -104,4 +113,9 @@ export const HATA_WHATS_NEW: HataWhatsNew = {
 				+ '投稿画像の自動センシティブ判定も、外部サービス方式への変更にともない停止しています。',
 		},
 	],
+	footer: {
+		text: 'ここに載せたのは主な変更だけです。細かな修正を含むすべての変更点は、リリースノートをご確認ください。',
+		linkLabel: 'リリースノートを見る',
+		linkUrl: 'https://github.com/tolehata/hataskey/blob/master/HATA-CHANGELOG.md',
+	},
 };
