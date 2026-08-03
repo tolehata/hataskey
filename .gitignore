@@ -88,9 +88,12 @@ CLAUDE.local.md
 claude.md
 
 # Codex 等のエージェント向け指示ファイル (上と同じ扱い。追跡したい場合はこの行を外す)
+# ⚠️.codex/ にはファイルを置かないこと。中身を入れると Codex が設定ルートと誤認し、
+#   config.toml が無いと言って起動不能になる (2026-08-03 に実際に発生)。スキルは codex-skills/ へ。
 AGENTS.md
 HATA-PITFALLS.md
 .codex/
+codex-skills/
 
 # Serena
 .serena
