@@ -87,8 +87,9 @@ CLAUDE.md
 CLAUDE.local.md
 claude.md
 
-# Codex 等のエージェント向け指示ファイル (上と同じ扱い。追跡したい場合はこの2行を外す)
+# Codex 等のエージェント向け指示ファイル (上と同じ扱い。追跡したい場合はこの行を外す)
 AGENTS.md
+HATA-PITFALLS.md
 .codex/
 
 # Serena
