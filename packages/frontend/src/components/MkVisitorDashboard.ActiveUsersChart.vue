@@ -31,6 +31,10 @@ let chartInstance: Chart | null = null;
 const chartLimit = 30;
 const fetching = ref(true);
 
+const emit = defineEmits<{
+	(ev: 'unavailable'): void;
+}>();
+
 const { handler: externalTooltipHandler } = useChartTooltip();
 
 async function renderChart() {
@@ -154,7 +158,10 @@ async function renderChart() {
 }
 
 onMounted(() => {
-	renderChart();
+	renderChart().catch(() => {
+		fetching.value = false;
+		emit('unavailable');
+	});
 });
 
 onUnmounted(() => {

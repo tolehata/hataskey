@@ -44,11 +44,11 @@ SPDX-License-Identifier: AGPL-3.0-only
 	<div v-if="instance.policies.ltlAvailable && instance.clientOptions.showTimelineForVisitor !== false" :class="[$style.tl, $style.panel]">
 		<div :class="$style.tlHeader">{{ i18n.ts.letsLookAtTimeline }}</div>
 		<div :class="$style.tlBody">
-			<MkStreamingNotesTimeline src="local"/>
+			<MkStreamingNotesTimeline src="local" visitorMode/>
 		</div>
 	</div>
-	<div v-if="instance.clientOptions.showActivitiesForVisitor !== false" :class="$style.panel">
-		<XActiveUsersChart/>
+	<div v-if="instance.clientOptions.showActivitiesForVisitor !== false && activeUsersChartAvailable" :class="$style.panel">
+		<XActiveUsersChart @unavailable="activeUsersChartAvailable = false"/>
 	</div>
 </div>
 </template>
@@ -72,10 +72,14 @@ import XActiveUsersChart from '@/components/MkVisitorDashboard.ActiveUsersChart.
 import { openInstanceMenu } from '@/ui/_common_/common.js';
 
 const stats = ref<Misskey.entities.StatsResponse | null>(null);
+const activeUsersChartAvailable = ref(true);
 
 if (instance.clientOptions.showActivitiesForVisitor !== false) {
 	misskeyApi('stats', {}).then((res) => {
 		stats.value = res;
+	}).catch(() => {
+		// 統計はゲストページの補助情報。コールドスタート中に取れなくても本体をエラーにしない。
+		stats.value = null;
 	});
 }
 

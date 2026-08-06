@@ -7,7 +7,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 <component :is="prefer.s.enablePullToRefresh ? MkPullToRefresh : 'div'" :refresher="reloadTimeline">
 	<MkLoading v-if="paginator.fetching.value"/>
 
-	<MkError v-else-if="paginator.error.value" @retry="paginator.init()"/>
+	<MkError v-else-if="paginator.error.value && !props.visitorMode" @retry="paginator.init()"/>
 
 	<div v-else-if="paginator.items.value.length === 0" key="_empty_">
 		<slot name="empty"><MkResult type="empty" :text="i18n.ts.noNotes"/></slot>
@@ -24,9 +24,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 		     位置はカラム最上部 (deckTopMsg/deckTopLine よりも上)、右寄せの sticky ピルボタン。 -->
 		<button
 			v-if="showChannelPostFixedButton"
+			v-tooltip="'このチャンネルへ投稿'"
 			:class="$style.channelPostFixedBtn"
 			type="button"
-			v-tooltip="'このチャンネルへ投稿'"
 			@click.stop="onChannelPostFixedClick"
 		>
 			<i class="ti ti-device-tv" :class="$style.channelPostFixedIcon1"></i>
@@ -207,6 +207,8 @@ const props = withDefaults(defineProps<{
 	// 敷いている時、呼び出し元(simple.vue)から true を渡す。ノートカードを半透明化して
 	// 背景のぼかしを透かし、グラス調に馴染ませる(付けないと不透明カードが「やぼったく」見える)。
 	glassBg?: boolean;
+	/** 未認証トップのプレビュー用。初回の一過性エラーは自動再試行し、ページ全体をエラー表示にしない。 */
+	visitorMode?: boolean;
 }>(), {
 	withRenotes: true,
 	withReplies: false,
@@ -216,6 +218,7 @@ const props = withDefaults(defineProps<{
 	sound: false,
 	customSound: null,
 	glassBg: false,
+	visitorMode: false,
 });
 
 provide('inTimeline', true);
@@ -299,6 +302,7 @@ const showChannelPostFixedButton = computed(() =>
 	&& !!props.channel
 	&& isHatasabaDeck.value
 );
+
 async function onChannelPostFixedClick() {
 	if (!props.channel) return;
 	try {
@@ -317,24 +321,27 @@ async function onChannelPostFixedClick() {
 		os.alert({ type: 'error', text: 'チャンネル情報の取得に失敗しました。' });
 	}
 }
+
 // 左マージン日付には両脇の余白が必要。スマホ or 幅が狭いときは「狭幅」とみなす。
 const isNarrowForDate = computed(() => isMobile.value || windowWidth.value < LEFT_DATE_MIN_WIDTH);
+
 // 旗鯖fork: 日付セパレータを左におしゃれに表示するか(デッキ/狭幅を除くデスクトップ通常表示)。
 const dateOnLeft = computed(() => !isDeckUi && !isHatasabaDeck.value && !isNarrowForDate.value);
+
 // 旗鯖fork(#15): 通常表示の狭幅/スマホで、トグルOFFのときは日付を非表示にする(従来の挙動)。
 const dateHidden = computed(() => !isDeckUi && !isHatasabaDeck.value && isNarrowForDate.value && !showDateOnMobile.value);
 
-
 // 旗鯖独自: アニメーション方向（リアクティブ — data-anim-dir属性で制御）
 const animDir = computed(() => prefer.r.timelineAnimationDirection?.value ?? 'left');
-const randomDirRef = ref<'top'|'left'|'right'>('left');
+const randomDirRef = ref<'top' | 'left' | 'right'>('left');
 const animDirValue = computed(() => {
-    if (animDir.value === 'random') return randomDirRef.value;
-    return animDir.value;
+	if (animDir.value === 'random') return randomDirRef.value;
+	return animDir.value;
 });
+
 function updateRandomDir() {
-    const dirs: ('top'|'left'|'right')[] = ['top', 'left', 'right'];
-    randomDirRef.value = dirs[Math.floor(Math.random() * 3)];
+	const dirs: ('top' | 'left' | 'right')[] = ['top', 'left', 'right'];
+	randomDirRef.value = dirs[Math.floor(Math.random() * 3)];
 }
 
 let paginator: IPaginator<Misskey.entities.Note>;
@@ -442,12 +449,26 @@ if (props.src === 'antenna') {
 	throw new Error('Unrecognized timeline type: ' + props.src);
 }
 
+let visitorRetryTimer: number | null = null;
+let visitorRetried = false;
+if (props.visitorMode) {
+	watch(paginator.error, (error) => {
+		if (!error || visitorRetried) return;
+		visitorRetried = true;
+		visitorRetryTimer = window.setTimeout(() => {
+			visitorRetryTimer = null;
+			paginator.init();
+		}, 1000);
+	});
+}
+
 // ===== 旗鯖fork(HatasabaUI 2): bot ノートを親側で事前除外 =====
 // MkNote 内部の v-if だけで bot を消すと、セパレータ/広告 wrapper や _gaps gap が残って
 // バラバラな空白として見えてしまう。v-for に渡す配列レベルで除外することで隙間なくつめる。
 // (MkNote 側の hideAsBot 判定は通知/引用/埋め込み等、この経路を通らない場所の防御として残す)
 const hideBotsInTimeline = computed<boolean>(() => prefer.r['simpleUi.hideBotsInTimeline']?.value ?? false);
 const botAllowlist = computed<string[]>(() => (prefer.r['simpleUi.botAllowlist']?.value as string[] | undefined) ?? []);
+
 function isHiddenBot(note: Misskey.entities.Note): boolean {
 	if (!hideBotsInTimeline.value) return false;
 	const target = (getAppearNote(note) ?? note) as Misskey.entities.Note;
@@ -455,6 +476,7 @@ function isHiddenBot(note: Misskey.entities.Note): boolean {
 	if (botAllowlist.value.includes(target.user.id)) return false;
 	return true;
 }
+
 const visibleItems = computed<Misskey.entities.Note[]>(() =>
 	paginator.items.value.filter(n => !isHiddenBot(n)),
 );
@@ -524,6 +546,7 @@ watch(currentWeather, () => {
 // 遅延消去がキャンセルされるため、エフェクトが途切れず継続する。
 // 本当にTLが無くなった場合(別画面へ遷移等)は猶予後に片付けられる。
 onUnmounted(() => {
+	if (visitorRetryTimer != null) window.clearTimeout(visitorRetryTimer);
 	getWeatherEffectManager().requestClear();
 });
 

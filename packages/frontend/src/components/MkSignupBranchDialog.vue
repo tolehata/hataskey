@@ -77,7 +77,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { useTemplateRef, ref } from 'vue';
+import { onMounted, onUnmounted, useTemplateRef, ref } from 'vue';
 import * as Misskey from 'cherrypick-js';
 import XSignup from '@/components/MkSignupDialog.form.vue';
 import XServerRules from '@/components/MkSignupDialog.rules.vue';
@@ -101,6 +101,14 @@ const emit = defineEmits<{
 const dialog = useTemplateRef('dialog');
 const step = ref<'branch' | 'invite' | 'application' | 'applicationComplete'>('branch');
 const isAcceptedServerRule = ref(false);
+
+onMounted(() => {
+	window.document.documentElement.setAttribute('data-hata-signup-modal-open', 'true');
+});
+
+onUnmounted(() => {
+	window.document.documentElement.removeAttribute('data-hata-signup-modal-open');
+});
 
 function goInviteCode() {
 	step.value = 'invite';

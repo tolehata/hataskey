@@ -19,12 +19,21 @@ import XSetup from './welcome.setup.vue';
 import XEntranceClassic from './welcome.entrance.classic.vue';
 import XEntranceSimple from './welcome.entrance.simple.vue';
 import { definePage } from '@/page.js';
-import { fetchInstance } from '@/instance.js';
+import { fetchInstance, instance as cachedInstance } from '@/instance.js';
 
-const instance = ref<Misskey.entities.MetaDetailed | null>(null);
+// HTML に埋め込まれた meta が使えるなら初画面から表示し、
+// ネットワークからの更新は後から反映する。
+const instance = ref<Misskey.entities.MetaDetailed | null>(
+	cachedInstance.clientOptions != null && cachedInstance.policies != null ? cachedInstance : null,
+);
 
 fetchInstance(true).then((res) => {
 	instance.value = res;
+	// 初回アクセスで meta がまだ応答できない場合も、
+	// 未処理の Promise 拒否をページ全体のエラーにしない。
+}).catch(() => {
+	// 埋め込み済みの meta があればそれを使い続ける。
+	instance.value = cachedInstance.clientOptions != null && cachedInstance.policies != null ? cachedInstance : null;
 });
 
 const headerActions = computed(() => []);

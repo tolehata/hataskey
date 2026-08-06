@@ -81,8 +81,10 @@ import { instance as meta } from '@/instance.js';
 	line-height: 1;
 	letter-spacing: 0.02em;
 	color: var(--MI_THEME-accent);
-	/* テキストに微妙なシャドウで背景画像上での視認性確保 */
-	text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+	-webkit-text-stroke: 2px var(--MI_THEME-bg);
+	text-stroke: 2px var(--MI_THEME-bg);
+	paint-order: stroke fill;
+	text-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
 
 	@media (max-width: 450px) {
 		font-size: 36px;
@@ -123,5 +125,11 @@ import { instance as meta } from '@/instance.js';
 	width: min(430px, calc(100% - 32px));
 	margin: auto;
 	padding: 100px 0 100px 0;
+}
+
+:global(html[data-hata-signup-modal-open='true']) .brandSub {
+	-webkit-backdrop-filter: none;
+	backdrop-filter: none;
+	background: var(--MI_THEME-panel);
 }
 </style>

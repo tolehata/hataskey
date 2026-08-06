@@ -62,6 +62,9 @@ misskeyApiGet('federation/instances', {
 	blocked: false,
 }).then(_instances => {
 	instances.value = _instances;
+	// 連合先一覧は装飾。初回起動時に取得できなくても登録・ログイン部分は残す。
+}).catch(() => {
+	instances.value = [];
 });
 </script>
 
@@ -157,11 +160,11 @@ misskeyApiGet('federation/instances', {
 	letter-spacing: 0.02em;
 	color: var(--MI_THEME-accent);
 	/* 旗鯖fork: 背景シェイプ上での視認性確保
-	   - text-stroke で背景色 1px の縁取り(文字輪郭をはっきりさせる)
+	   - text-stroke で背景色 2px の縁取り(細い文字の潰れを防ぐ)
 	   - paint-order で stroke を fill の後ろに描画(文字本体が前面に)
 	   - ソフトな text-shadow で立体感を加える */
-	-webkit-text-stroke: 1px var(--MI_THEME-bg);
-	text-stroke: 1px var(--MI_THEME-bg);
+	-webkit-text-stroke: 2px var(--MI_THEME-bg);
+	text-stroke: 2px var(--MI_THEME-bg);
 	paint-order: stroke fill;
 	text-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
 
@@ -245,5 +248,21 @@ misskeyApiGet('federation/instances', {
 	height: 20px;
 	margin-right: 5px;
 	border-radius: 999px;
+}
+
+/* Chrome で backdrop-filter と常時アニメーションが同時に再合成されると、
+ * 初回の登録モーダル背景が点滅する。モーダル中だけ背景の動く層を止め、
+ * モーダル自体のぼかしは保つ。 */
+:global(html[data-hata-signup-modal-open='true']) {
+	.tl,
+	.federation {
+		visibility: hidden;
+	}
+
+	.brandSub {
+		-webkit-backdrop-filter: none;
+		backdrop-filter: none;
+		background: var(--MI_THEME-panel);
+	}
 }
 </style>
