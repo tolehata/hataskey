@@ -3,6 +3,7 @@
  */
 import { Injectable } from '@nestjs/common';
 import { Endpoint } from '@/server/api/endpoint-base.js';
+import { HATADY_RATE_LIMITS } from '@/misc/hatady-rate-limit.js';
 import { HatadyService } from '@/core/HatadyService.js';
 import { ApiError } from '@/server/api/error.js';
 
@@ -10,6 +11,7 @@ export const meta = {
 	tags: ['hata'],
 	requireCredential: true,
 	kind: 'write:account',
+	limit: HATADY_RATE_LIMITS.write,
 	errors: {
 		noSuchGoal: { message: 'No such goal.', code: 'NO_SUCH_GOAL', id: '2a3f1d4e-8b6c-4a1e-9f22-0c9a7b5e1d30' },
 	},

@@ -3,6 +3,7 @@
  */
 import { Injectable } from '@nestjs/common';
 import { Endpoint } from '@/server/api/endpoint-base.js';
+import { HATADY_RATE_LIMITS } from '@/misc/hatady-rate-limit.js';
 import { ApiError } from '@/server/api/error.js';
 import { HatadyService } from '@/core/HatadyService.js';
 
@@ -10,6 +11,7 @@ export const meta = {
 	tags: ['hata'],
 	requireCredential: true,
 	kind: 'write:account',
+	limit: HATADY_RATE_LIMITS.write,
 	errors: {
 		invalidTarget: {
 			message: 'Specify exactly one of logId or commentId.',

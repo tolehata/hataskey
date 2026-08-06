@@ -3,6 +3,7 @@
  */
 import { Inject, Injectable } from '@nestjs/common';
 import { Endpoint } from '@/server/api/endpoint-base.js';
+import { HATADY_RATE_LIMITS } from '@/misc/hatady-rate-limit.js';
 import type { HatadyBooksRepository } from '@/models/_.js';
 import { HatadyEntityService } from '@/core/entities/HatadyEntityService.js';
 import { DI } from '@/di-symbols.js';
@@ -11,6 +12,7 @@ export const meta = {
 	tags: ['hata'],
 	requireCredential: true,
 	kind: 'read:account',
+	limit: HATADY_RATE_LIMITS.read,
 	res: { type: 'array', optional: false, nullable: false, items: { type: 'object', optional: false, nullable: false } },
 } as const;
 
