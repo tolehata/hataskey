@@ -224,6 +224,11 @@ export const ROUTE_DEF = [{
 		component: page(() => import('@/pages/_empty_.vue')),
 	}],
 }, {
+	path: '/hata-side-studio',
+	name: 'hata-side-studio',
+	component: page(() => import('@/pages/hata-side-studio.vue')),
+	loginRequired: true,
+}, {
 	path: '/reset-password/:token?',
 	component: page(() => import('@/pages/reset-password.vue')),
 }, {
@@ -722,10 +727,13 @@ export const ROUTE_DEF = [{
 	path: '/redirect-test',
 	redirect: $i ? `@${$i.username}` : '/',
 	loginRequired: true,
-}, {
-	path: '/hatask',
-	component: page(() => import('@/pages/hatask.vue')),
-	loginRequired: true,
+	}, {
+		path: '/hatask',
+		query: {
+			tab: 'tab',
+		},
+		component: page(() => import('@/pages/hatask.vue')),
+		loginRequired: true,
 }, {
 	path: '/mascot',
 	component: page(() => import('@/pages/mascot.vue')),

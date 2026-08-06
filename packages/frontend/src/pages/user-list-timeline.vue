@@ -4,7 +4,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 
 <template>
-<PageWithHeader :actions="headerActions" :tabs="headerTabs">
+<PageWithHeader :actions="headerActions" :tabs="headerTabs" :popup="isHatasabaUi">
 	<div class="_spacer" style="--MI_SPACER-w: 800px;">
 		<div :class="$style.tl">
 			<MkStreamingNotesTimeline
@@ -26,8 +26,10 @@ import { misskeyApi } from '@/utility/misskey-api.js';
 import { definePage } from '@/page.js';
 import { i18n } from '@/i18n.js';
 import { useRouter } from '@/router.js';
+import { miLocalStorage } from '@/local-storage.js';
 
 const router = useRouter();
+const isHatasabaUi = miLocalStorage.getItem('ui') === 'simple';
 
 const props = defineProps<{
 	listId: string;

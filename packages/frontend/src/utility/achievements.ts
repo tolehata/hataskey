@@ -90,6 +90,7 @@ export const ACHIEVEMENT_TYPES = [
 	'hatasabaDeckTutorial',
 	'welcomeToHatask',
 	'welcomeToHatady',
+	'hataSideStudioPioneer',
 ] as const;
 
 export const ACHIEVEMENT_BADGES = {
@@ -511,6 +512,12 @@ export const ACHIEVEMENT_BADGES = {
 		img: '/fluent-emoji/1f4d6.png',
 		bg: 'linear-gradient(0deg, rgb(217 130 74), rgb(240 169 78))',
 		frame: 'bronze',
+	},
+	// 旗鯖fork: HataSideStudioのチュートリアルを完了またはスキップした
+	'hataSideStudioPioneer': {
+		img: '/fluent-emoji/1f6e0.png',
+		bg: 'linear-gradient(0deg, rgb(118 110 255), rgb(92 180 147))',
+		frame: 'silver',
 	},
 /* @see <https://github.com/misskey-dev/misskey/pull/10365#discussion_r1155511107>
 } as const satisfies Record<typeof ACHIEVEMENT_TYPES[number], {

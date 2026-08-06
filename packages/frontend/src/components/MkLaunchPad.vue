@@ -27,12 +27,13 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { useTemplateRef } from 'vue';
+import { computed, useTemplateRef } from 'vue';
 import MkModal from '@/components/MkModal.vue';
 import { navbarItemDef } from '@/navbar.js';
 import { deviceKind } from '@/utility/device-kind.js';
 import { prefer } from '@/preferences.js';
 import { miLocalStorage } from '@/local-storage.js';
+import { getActiveHataSideStudioMenuIds, hataSideStudioStore, normalizeHataSideStudioMenuId } from '@/utility/hata-side-studio.js';
 
 const props = withDefaults(defineProps<{
 	anchorElement?: HTMLElement | null;
@@ -65,15 +66,30 @@ const menu = prefer.s.menu;
   - 両方にある項目（通知・チャット等）は従来どおり省かれる
   - HatasabaUI 側にしか無い項目（ドライブ・Hatady 等）も従来どおり「もっと」に残る
 ⚠️サイドバーで非表示にした項目（visible === false）は「辿れない」ので省かない。
+
+HataSideStudio導入後は、Studioから追加できるnavbarItemDef項目に限ってactive profileを正本にする。
+旧simpleUi.sidebarに残っていてもStudioから外した項目は「もっと！」へ戻し、Studioへ追加した項目は
+拡大/縮小のどちら側に置かれていても重複表示しない。Studio対象外の項目は上記の従来判定を維持する。
 */
-const hiddenFromLaunchPad = (() => {
+const hiddenFromLaunchPad = computed(() => {
 	if (miLocalStorage.getItem('ui') !== 'simple') return menu;
 	const sidebar = prefer.s['simpleUi.sidebar'] as { id: string; visible?: boolean }[] | undefined;
 	const shownInSidebar = new Set((sidebar ?? []).filter(t => t.visible !== false).map(t => t.id));
-	return menu.filter(k => shownInSidebar.has(k));
-})();
+	const legacyHidden = menu.filter(k => shownInSidebar.has(k));
 
-const items = Object.keys(navbarItemDef).filter(k => !hiddenFromLaunchPad.includes(k)).map(k => navbarItemDef[k]).filter(def => def.show == null ? true : def.show).map(def => ({
+	// HataSideStudioで追加できる「もっと！」由来項目は、旧simpleUi.sidebarではなく
+	// active profileへの所属だけを表示元の正本にする。これによりStudioへ追加した瞬間に
+	// 「もっと！」から消え、Studioから外した瞬間に同じモーダル内へ戻る。
+	const studioCatalogIds = new Set(Object.keys(navbarItemDef).filter(id => id !== 'more' && id !== 'whatsNew'));
+	const shownInStudio = getActiveHataSideStudioMenuIds(hataSideStudioStore.value);
+
+	return [
+		...legacyHidden.filter(id => !studioCatalogIds.has(id)),
+		...Object.keys(navbarItemDef).filter(id => shownInStudio.has(normalizeHataSideStudioMenuId(id))),
+	];
+});
+
+const items = computed(() => Object.keys(navbarItemDef).filter(k => !hiddenFromLaunchPad.value.includes(k)).map(k => navbarItemDef[k]).filter(def => def.show ?? true).map(def => ({
 	type: def.to ? 'link' : 'button',
 	text: def.title,
 	icon: def.icon,
@@ -81,7 +97,7 @@ const items = Object.keys(navbarItemDef).filter(k => !hiddenFromLaunchPad.includ
 	action: def.action,
 	indicate: def.indicated,
 	indicateValue: def.indicateValue,
-}));
+})));
 
 function close() {
 	modal.value?.close();

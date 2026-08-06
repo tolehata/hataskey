@@ -1,0 +1,1517 @@
+<!--
+SPDX-FileCopyrightText: Tolehata and hatasaba-project
+SPDX-License-Identifier: AGPL-3.0-only
+-->
+<template>
+<div :class="$style.root" :data-deck-ui="isHatasabaDeckUi ? 'on' : undefined">
+	<header :class="[$style.header, tutorialStep?.target === 'save' && $style.tutorialFocus]">
+		<div :class="$style.brand">
+			<button v-if="!isHatasabaDeckUi" type="button" class="_button" :class="$style.backButton" aria-label="戻る" @click.stop="closeStudio"><i class="ti ti-chevron-left"></i></button>
+			<strong :class="$style.logo">HataSideStudio</strong>
+		</div>
+		<div :class="$style.profileBar" aria-label="保存プロファイル">
+			<button v-for="profile in draft.profiles" :key="profile.id" type="button" class="_button" :class="$style.profileTab" :aria-pressed="profile.id === draft.activeProfileId" @click.stop="activateProfile(profile.id)">{{ profile.name }}</button>
+			<button type="button" class="_button" :class="$style.profileRename" aria-label="アクティブなプロファイル名を変更" @click.stop="renameProfile"><i class="ti ti-pencil"></i></button>
+			<button type="button" class="_button" :class="$style.profileRename" :disabled="draft.profiles.length <= 1" aria-label="アクティブなプロファイルを削除" @click.stop="removeProfile"><i class="ti ti-trash"></i></button>
+			<button type="button" class="_button" :class="$style.profileAdd" :disabled="draft.profiles.length >= profileLimit" :aria-label="`プロファイルを追加（上限${profileLimit}件）`" @click.stop="addProfile"><i class="ti ti-plus"></i></button>
+			<span :class="$style.profileLimit">{{ draft.profiles.length }} / {{ profileLimit }}</span>
+		</div>
+		<div :class="$style.headerActions">
+			<span v-if="hasChanges" :class="$style.dirty"><i class="ti ti-device-floppy"></i>未保存</span>
+			<div :class="$style.historyActions">
+				<div :class="$style.resetWrap">
+					<button class="_button" :class="$style.historyButton" aria-label="デフォルトに戻す" @click="resetConfirmOpen = !resetConfirmOpen"><i class="ti ti-restore"></i></button>
+					<div v-if="resetConfirmOpen" :class="$style.resetConfirm"><b>このプロファイルを初期化しますか？</b><span>保存するまでは確定しません。</span><div><button class="_button" @click="resetConfirmOpen = false">やめる</button><button class="_buttonPrimary" @click="resetProfile">初期化</button></div></div>
+				</div>
+				<button class="_button" :class="$style.historyButton" :disabled="historyIndex <= 0" aria-label="ひとつ前へ" @click="undo"><i class="ti ti-arrow-back-up"></i></button>
+				<button class="_button" :class="$style.historyButton" :disabled="historyIndex >= history.length - 1" aria-label="ひとつ後へ" @click="redo"><i class="ti ti-arrow-forward-up"></i></button>
+			</div>
+			<button type="button" class="_button" :class="$style.actionButton" @click.stop="save"><i class="ti ti-device-floppy"></i>{{ hasChanges ? '保存' : '保存済み' }}</button>
+			<button type="button" class="_button" :class="$style.actionButton" aria-label="チュートリアルを表示" @click.stop="startTutorial"><i class="ti ti-help"></i>使い方</button>
+		</div>
+	</header>
+
+	<main :class="$style.main">
+		<section :class="$style.pane" aria-label="サイドメニュープレビュー">
+			<div :class="$style.paneHead">
+				<div><h2>プレビュー</h2><span>{{ previewCount }}</span></div>
+				<div :class="$style.previewHeadActions">
+					<div :class="$style.copyWrap">
+						<button class="_button" :class="$style.copyButton" :aria-expanded="copyMenuOpen" @click="copyMenuOpen = !copyMenuOpen"><i class="ti ti-copy"></i>並びをコピー<i class="ti ti-chevron-down"></i></button>
+						<div v-if="copyMenuOpen" :class="$style.copyMenu">
+							<button class="_button" @click="copyLayout('expandedToCollapsed')"><i class="ti ti-layout-sidebar-left-collapse"></i><span><b>拡大 → 縮小</b><small>ボタンだけを縦一列へコピー</small></span></button>
+							<button class="_button" @click="copyLayout('collapsedToExpanded')"><i class="ti ti-layout-sidebar-left-expand"></i><span><b>縮小 → 拡大</b><small>縮小側の順を拡大側へコピー</small></span></button>
+							<button class="_button" @click="importCurrentSidebar"><i class="ti ti-list-check"></i><span><b>現在の並びを読み込む</b><small>既存のサイドメニュー設定を反映</small></span></button>
+						</div>
+					</div>
+					<div :class="$style.modeTabs"><button class="_button" :aria-pressed="editMode === 'expanded'" @click="setEditMode('expanded')">拡大</button><button class="_button" :aria-pressed="editMode === 'collapsed'" @click="setEditMode('collapsed')">縮小</button></div>
+				</div>
+			</div>
+			<div ref="stageEl" :class="$style.stage">
+				<div :class="[$style.sideTools, tutorialStep?.target === 'create' && $style.tutorialFocus]" data-side="left" aria-label="追加メニュー">
+					<button class="_button" :class="$style.addAction" :disabled="editMode === 'collapsed'" @click="openWidgetPicker"><i class="ti ti-app-window"></i><span>ウィジェットを作成</span></button>
+					<button class="_button" :class="$style.addAction" :disabled="editMode === 'collapsed'" @click="addGroup"><i class="ti ti-category-plus"></i><span>グループを作成</span></button>
+					<button class="_button" :class="$style.addAction" @click="openButtonPicker"><i class="ti ti-square-rounded-plus"></i><span>ボタンを作成</span></button>
+				</div>
+				<div :class="$style.sideTools" data-side="right">
+					<button class="_button" :class="[$style.bulkAction, deleteDropArmed && $style.deleteDropArmed]" :aria-pressed="deleteMode" data-delete-drop @pointerenter="armDeleteDrop" @pointerleave="disarmDeleteDrop" @dragover.prevent="armDeleteDrop" @click="deleteMode = !deleteMode"><i :class="deleteMode ? 'ti ti-check' : 'ti ti-trash-x'"></i><span>{{ dragHintVisible ? 'ここへ移動して削除' : deleteMode ? '編集完了' : '削除' }}</span></button>
+					<button class="_button" :class="$style.reorderAction" :aria-pressed="reorderOpen" @click="toggleReorder"><i class="ti ti-arrows-sort"></i><span>高度な並び替え</span></button>
+				</div>
+
+				<Teleport to="body">
+				<div :class="$style.teleportTheme">
+				<div v-if="buttonPickerOpen" :class="$style.creationPicker">
+					<div :class="$style.pickerHead"><strong>ボタンを作成</strong><button class="_button" @click="buttonPickerOpen = false"><i class="ti ti-x"></i></button></div>
+					<label>機能<select v-model="newButtonMenuId" :class="$style.select"><option v-for="item in availableMenuItems" :key="item.id" :value="item.id">{{ item.label }}</option></select></label>
+					<span>ボタンの形</span><div :class="$style.shapePicker"><button v-for="shape in buttonShapes" :key="shape.value" class="_button" :aria-pressed="newButtonShape === shape.value" @click="newButtonShape = shape.value"><span :data-shape="shape.value"></span><small>{{ shape.label }}</small></button></div>
+					<div :class="$style.pickerActions"><button class="_button" @click="buttonPickerOpen = false">キャンセル</button><button class="_buttonPrimary" :disabled="!newButtonMenuId" @click="confirmAddButton">追加</button></div>
+				</div>
+				<div v-if="widgetPickerOpen" :class="$style.creationPicker">
+					<div :class="$style.pickerHead"><strong>ウィジェットを作成</strong><button class="_button" @click="widgetPickerOpen = false"><i class="ti ti-x"></i></button></div>
+					<label>種類<select v-model="newWidgetKind" :class="$style.select"><option v-for="widget in availableWidgetChoices" :key="widget.kind" :value="widget.kind">{{ widget.label }}</option></select></label>
+					<div :class="$style.pickerActions"><button class="_button" @click="widgetPickerOpen = false">キャンセル</button><button class="_buttonPrimary" @click="confirmAddWidget">追加</button></div>
+				</div>
+				<div v-if="reorderOpen" :class="$style.reorderWindow">
+					<div :class="$style.pickerHead"><div><strong>高度な並び替え</strong><small>矢印で1段ずつ移動</small></div><button class="_button" aria-label="閉じる" @click="reorderOpen = false"><i class="ti ti-x"></i></button></div>
+					<section v-for="section in reorderSections" :key="section.id" :class="$style.reorderSection" :data-container="section.id">
+						<b>{{ section.label }}</b>
+						<div v-for="(item, index) in section.items" :key="item.id" :class="$style.reorderRow">
+							<i :class="item.icon"></i><span>{{ item.label }}</span>
+							<button class="_button" :disabled="index === 0" :aria-label="`${item.label}を上へ`" @click="moveReorderItem(section.id, index, -1)"><i class="ti ti-arrow-up"></i></button>
+							<button class="_button" :disabled="index === section.items.length - 1" :aria-label="`${item.label}を下へ`" @click="moveReorderItem(section.id, index, 1)"><i class="ti ti-arrow-down"></i></button>
+						</div>
+					</section>
+				</div>
+				<div v-if="quickEditorOpen && selected != null" :class="$style.quickEditor">
+					<div :class="$style.pickerHead"><div><strong>{{ selected.type === 'group' ? 'グループをその場で調整' : 'その場で調整' }}</strong><small>{{ selectedDisplayName }}</small></div><button class="_button" aria-label="閉じる" @click="quickEditorOpen = false"><i class="ti ti-x"></i></button></div>
+					<template v-if="selected.type === 'group'">
+						<label :class="$style.quickField"><span>グループ名</span><input v-model="selected.name" :class="$style.input" maxlength="80"></label>
+						<label :class="$style.check"><input v-model="selected.showName" type="checkbox">グループ名を表示</label>
+						<div :class="$style.quickSection"><b>レイアウト</b><div :class="$style.layoutPicker"><button class="_button" :aria-pressed="selected.columns === 1 && !selected.masonry" @click="setGroupLayout(selected, 1, false)"><i class="ti ti-layout-list"></i><span>縦1列</span></button><button class="_button" :disabled="!canSetGroupColumns(selected, 2)" :aria-pressed="selected.columns === 2 && !selected.masonry" @click="setGroupLayout(selected, 2, false)"><i class="ti ti-layout-grid"></i><span>田の字</span></button><button class="_button" :disabled="!canSetGroupColumns(selected, 3)" :aria-pressed="selected.columns === 3 && !selected.masonry" @click="setGroupLayout(selected, 3, false)"><i class="ti ti-layout-grid-add"></i><span>3列</span></button><button class="_button" :disabled="!canSetGroupColumns(selected, Math.max(2, selected.columns) as 2 | 3)" :aria-pressed="selected.masonry" @click="setGroupLayout(selected, Math.max(2, selected.columns) as 2 | 3, true)"><i class="ti ti-layout-board-split"></i><span>メイソンリー</span></button></div><small v-if="groupHasLargeItems(selected)">「大」の項目がある間は複数列にできません。</small></div>
+						<div :class="$style.quickColors"><label>背景<input type="color" :value="cssColor(selected.background)" @input="selected.background = ($event.target as HTMLInputElement).value"></label><label>枠<input type="color" :value="cssColor(selected.border)" @input="selected.border = ($event.target as HTMLInputElement).value"></label></div>
+					</template>
+					<template v-else>
+						<div :class="$style.quickSection"><b>形</b><div :class="$style.shapePicker"><button v-for="shape in buttonShapes" :key="shape.value" class="_button" :aria-pressed="selected.shape === shape.value" @click="selected.shape = shape.value"><span :data-shape="shape.value"></span><small>{{ shape.label }}</small></button></div></div>
+						<div v-if="editMode === 'expanded'" :class="$style.quickSection"><b>大きさ</b><div :class="$style.choiceRow"><button v-for="size in sizes" :key="size.value" class="_button" :disabled="!canSetNodeSize(selected, size.value)" :data-active="selected.size === size.value" @click="setNodeSize(selected, size.value)">{{ size.label }}</button></div><small v-if="selectedParentColumns > 1">複数列では「大」を選べません。</small></div>
+						<label v-if="selected.type === 'button' && editMode === 'expanded'" :class="$style.check"><input v-model="selected.showLabel" type="checkbox">ラベルを表示</label>
+						<label v-if="selected.type === 'button' && editMode === 'expanded'" :class="$style.field"><span>回転</span><input v-model.number="selected.rotation" type="range" min="-12" max="12" step="1"><output>{{ selected.rotation }}°</output></label>
+						<div :class="$style.quickColors"><label>背景<input type="color" :value="cssColor(selected.background)" @input="selected.background = ($event.target as HTMLInputElement).value"></label><label>枠<input type="color" :value="cssColor(selected.border)" @input="selected.border = ($event.target as HTMLInputElement).value"></label><label>文字<input type="color" :value="cssColor(selected.foreground)" @input="selected.foreground = ($event.target as HTMLInputElement).value"></label></div>
+					</template>
+					<label :class="$style.field"><span>枠線</span><input v-model.number="selected.borderWidth" type="range" min="0" max="5"><output>{{ selected.borderWidth }}px</output></label>
+					<label :class="$style.quickField"><span>枠線の種類</span><select v-model="selected.borderStyle" :class="$style.select"><option value="solid">実線</option><option value="dashed">破線</option><option value="double">二重線</option></select></label>
+					<label :class="$style.check"><input v-model="selected.gradientEnabled" type="checkbox">2色グラデーション</label>
+					<div v-if="selected.gradientEnabled" :class="$style.gradientControls">
+						<div :class="$style.quickGradientPreview" :style="{ background: gradientCss(selected) }"></div>
+						<label :class="$style.quickField"><span>2色目</span><input type="color" :value="cssColor(selected.gradientTo)" @input="selected.gradientTo = ($event.target as HTMLInputElement).value"></label>
+						<label :class="$style.field"><span>方向</span><input v-model.number="selected.gradientAngle" type="range" min="0" max="360"><output>{{ selected.gradientAngle }}°</output></label>
+						<label :class="$style.quickField"><span>色の移り方</span><select v-model="selected.gradientEasing" :class="$style.select"><option value="linear">均等</option><option value="ease-in">ゆっくり始まる</option><option value="ease-out">ゆっくり終わる</option><option value="ease-in-out">両端をなめらかに</option></select></label>
+					</div>
+					<div :class="$style.pickerActions"><button class="_button" @click="quickEditorOpen = false">閉じる</button><button class="_buttonPrimary" @click="openSelectedInspector"><i class="ti ti-adjustments-horizontal"></i>詳細設定</button></div>
+				</div>
+				<div v-if="dragHintVisible" :class="$style.dragHint" :style="dragHintStyle"><i class="ti ti-hand-move"></i><span>プレビュー横の簡易タイムラインで、項目同士の隙間へ重ねて移動できます。</span></div>
+				<aside v-if="dragHintVisible" :class="$style.dragTimeline" :style="dragTimelineStyle" aria-label="ドラッグ中の簡易タイムライン" @pointerleave="timelineDropTarget = null">
+					<div :class="$style.dragTimelineHead"><i class="ti ti-timeline"></i><span><b>並び順</b><small>入れたい位置へ重ねる</small></span></div>
+					<button class="_button" :class="[$style.dragTimelineDelete, deleteDropArmed && $style.deleteDropArmed]" data-delete-drop @pointerenter="armDeleteDrop" @pointerleave="disarmDeleteDrop" @dragover.prevent="armDeleteDrop"><i class="ti ti-trash-x"></i><span><b>削除</b><small>ここへ重ねる</small></span></button>
+					<section v-for="section in dragTimelineSections" :key="section.id" :class="$style.dragTimelineSection" :data-container="section.id">
+						<strong @pointerenter="timelineDropTarget = null">{{ section.label }}</strong>
+						<button class="_button" :class="$style.dragTimelineGap" :disabled="!canUseTimelineContainer(section.id)" :data-active="timelineDropTarget?.containerId === section.id && timelineDropTarget?.index === 0" @pointerenter="armTimelineDrop(section.id, 0)" @dragover.prevent="armTimelineDrop(section.id, 0)"><i class="ti ti-plus"></i><span>先頭へ挿入</span></button>
+						<template v-for="(entry, index) in section.items" :key="entry.id">
+							<div :class="$style.dragTimelineItem" @pointerenter="timelineDropTarget = null"><i :class="entry.icon"></i><span>{{ entry.label }}</span></div>
+							<button class="_button" :class="$style.dragTimelineGap" :disabled="!canUseTimelineContainer(section.id)" :data-active="timelineDropTarget?.containerId === section.id && timelineDropTarget?.index === index + 1" @pointerenter="armTimelineDrop(section.id, index + 1)" @dragover.prevent="armTimelineDrop(section.id, index + 1)"><i class="ti ti-plus"></i><span>{{ index === section.items.length - 1 ? '末尾へ挿入' : 'この隙間へ挿入' }}</span></button>
+						</template>
+					</section>
+				</aside>
+				</div>
+				</Teleport>
+
+				<div ref="sidebarPreviewEl" :class="[$style.sidebarPreview, editMode === 'expanded' && activeProfile.expanded.width === 'wide' && $style.sidebarPreviewWide, editMode === 'collapsed' && $style.sidebarPreviewCollapsed, tutorialStep?.target === 'arrange' && $style.tutorialFocus]">
+					<div :class="$style.serverRow">
+						<button class="_button" :class="$style.serverIcon" aria-label="サーバーメニュー"><img v-if="instance.iconUrl" :src="instance.iconUrl"><i v-else class="ti ti-server"></i></button>
+						<div v-if="editMode === 'expanded'" :class="$style.serverName"><small>ここは</small><b>{{ instance.name ?? 'Hataskey' }}</b></div>
+						<button v-if="editMode === 'expanded'" class="_button" :class="$style.serverAction" aria-label="タイムライン設定"><i class="ti ti-adjustments"></i></button>
+						<button class="_button" :class="$style.serverAction" :aria-label="editMode === 'expanded' ? 'メニューを縮小' : 'メニューを広げる'" @click="togglePreviewWidth"><i :class="editMode === 'expanded' ? 'ti ti-chevron-left' : 'ti ti-chevron-right'"></i></button>
+					</div>
+					<div :class="$style.customArea" :data-parallax="activeProfile.expanded.parallax ? 'on' : 'off'">
+						<draggable v-if="editMode === 'expanded'" v-model="activeProfile.expanded.nodes" itemKey="id" :group="expandedDragGroup" handle=".hssDrag" :move="allowExpandedMove" :animation="180" :fallbackOnBody="true" :forceFallback="isTouch" :delay="isTouch ? 140 : 0" :delayOnTouchOnly="true" :class="$style.expandedNodes" :style="{ '--hss-normal-columns': String(activeProfile.expanded.columns) }" @start="onDragStart" @end="onDragEnd">
+							<template #item="{ element: node }">
+								<div :class="[$style.previewNode, node.type === 'group' && $style.previewGroup, node.type === 'widget' && $style.previewWidget]" :style="nodeStyle(node)" :data-node-id="node.id" :data-group-id="node.type === 'group' ? node.id : undefined" :data-shape="node.type !== 'group' ? node.shape : undefined" :data-size="node.type !== 'group' ? node.size : undefined" :data-selected="selectedId === node.id" :data-masonry="node.type === 'group' && node.masonry ? 'on' : undefined" @click.stop="selectNode(node.id)">
+									<div v-if="node.type === 'group'" :class="$style.groupHead">
+										<span v-if="node.showName">{{ node.name }}</span>
+										<div>
+											<button v-if="groupContrastWarnings.get(node.id)?.low" class="_button" :class="$style.contrastWarning" :aria-expanded="contrastPopoverGroupId === node.id" aria-label="文字の読みやすさを調整" @click.stop="toggleContrastPopover(node.id)"><i class="ti ti-contrast"></i></button>
+											<button class="_button" aria-label="グループを編集" @click.stop="openQuickEditor(node.id)"><i class="ti ti-settings"></i></button>
+											<button class="_button hssDrag" :class="$style.dragHandle" aria-label="グループを移動"><i class="ti ti-grip-vertical"></i></button>
+										</div>
+									</div>
+									<div v-if="contrastPopoverGroupId === node.id && groupContrastWarnings.get(node.id)?.low" :class="$style.contrastPopover" @click.stop>
+										<header><i class="ti ti-eye-check"></i><b>文字が読みづらい配色です</b><button class="_button" aria-label="閉じる" @click="contrastPopoverGroupId = null"><i class="ti ti-x"></i></button></header>
+										<p>背景との比率は最小 {{ groupContrastWarnings.get(node.id)?.minimumRatio.toFixed(1) }}:1。グループ内の文字色をまとめて変更できます。</p>
+										<div><button class="_buttonPrimary" @click="applyGroupTextColor(node, groupContrastWarnings.get(node.id)?.recommended ?? '#111111')"><i class="ti ti-wand"></i>推奨色へ一括変更</button><label>任意色<input type="color" :value="cssColor(node.foreground)" @input="applyGroupTextColor(node, ($event.target as HTMLInputElement).value)"></label></div>
+									</div>
+									<draggable v-if="node.type === 'group'" v-model="node.children" itemKey="id" :group="groupChildDragGroup" handle=".hssDrag" :move="allowGroupChildMove" :animation="180" :fallbackOnBody="true" :forceFallback="isTouch" :delay="isTouch ? 180 : 0" :delayOnTouchOnly="true" :class="$style.groupGrid" :data-empty="node.children.length === 0 ? 'true' : undefined" :style="{ '--hss-columns': String(node.columns) }" @start="onDragStart" @end="onDragEnd">
+										<template #item="{ element: child }">
+											<div :class="child.type === 'button' ? $style.previewButton : $style.previewWidget" :data-node-id="child.id" :data-shape="child.shape" :data-size="child.size" :data-selected="selectedId === child.id" :style="nodeStyle(child)" @click.stop="selectNode(child.id)">
+												<ButtonPreview v-if="child.type === 'button'" :button="child" @search="runPreviewSearch"/>
+												<WidgetPreview v-else :widget="child"/>
+												<button class="_button hssDrag" :class="$style.dragHandle" aria-label="項目を移動"><i class="ti ti-grip-vertical"></i></button>
+												<button v-if="!deleteMode" class="_button" :class="$style.quickTrigger" aria-label="その場で編集" @click.stop="openQuickEditor(child.id)"><i class="ti ti-pencil"></i></button>
+												<button v-if="deleteMode" class="_button" :class="$style.deleteItem" aria-label="削除" @click.stop="requestRemoveNode(child.id)"><i class="ti ti-x"></i></button>
+											</div>
+										</template>
+									</draggable>
+									<div v-else-if="node.type === 'button'" :class="$style.previewButton" :data-shape="node.shape" :data-size="node.size"><ButtonPreview :button="node" @search="runPreviewSearch"/></div>
+									<div v-else><WidgetPreview :widget="node"/></div>
+									<button v-if="node.type !== 'group'" class="_button hssDrag" :class="$style.dragHandle" :aria-label="node.type === 'button' ? '項目を移動' : 'ウィジェットを移動'"><i class="ti ti-grip-vertical"></i></button>
+									<button v-if="node.type !== 'group' && !deleteMode" class="_button" :class="$style.quickTrigger" aria-label="その場で編集" @click.stop="openQuickEditor(node.id)"><i class="ti ti-pencil"></i></button>
+									<button v-if="deleteMode" class="_button" :class="$style.deleteItem" aria-label="削除" @click.stop="requestRemoveNode(node.id)"><i class="ti ti-x"></i></button>
+								</div>
+							</template>
+						</draggable>
+						<draggable v-else v-model="activeProfile.collapsed.buttons" itemKey="id" handle=".hssDrag" :animation="180" :fallbackOnBody="true" :forceFallback="isTouch" :delay="isTouch ? 180 : 0" :delayOnTouchOnly="true" :class="$style.collapsedButtons" @start="onDragStart" @end="onDragEnd">
+							<template #item="{ element: button }"><div class="_button hssDrag" :class="$style.collapsedButton" :data-node-id="button.id" :data-shape="button.shape" :data-selected="selectedId === button.id" :style="nodeStyle(button)" role="button" tabindex="0" :aria-label="button.label" @click.stop="selectNode(button.id)" @keydown.enter.stop="selectNode(button.id)"><i :class="button.icon"></i><button v-if="!deleteMode" class="_button" :class="$style.quickTrigger" aria-label="その場で編集" @click.stop="openQuickEditor(button.id)"><i class="ti ti-pencil"></i></button><button v-if="deleteMode" class="_button" :class="$style.deleteItem" aria-label="削除" @click.stop="requestRemoveNode(button.id)"><i class="ti ti-x"></i></button></div></template>
+						</draggable>
+					</div>
+					<div :class="$style.fixedArea"><button class="_button"><i class="ti ti-dots"></i><span v-if="editMode === 'expanded'">もっと</span></button><button class="_button"><i class="ti ti-settings"></i><span v-if="editMode === 'expanded'">設定</span></button><button class="_button"><i class="ti ti-bolt"></i><span v-if="editMode === 'expanded'">リアルタイム</span></button><button v-if="$i?.isAdmin || $i?.isModerator" class="_button"><i class="ti ti-dashboard"></i><span v-if="editMode === 'expanded'">コントロールパネル</span></button></div>
+					<div :class="$style.bottomArea">
+						<button class="_button" :class="$style.postButton"><i class="ti ti-pencil"></i><span v-if="editMode === 'expanded'">ノート</span></button>
+						<div :class="$style.modeToggle" aria-label="表示モード"><button class="_button" :aria-pressed="editMode === 'expanded'" aria-label="通常表示" @click="setEditMode('expanded')"><i class="ti ti-device-mobile"></i></button><button class="_button" :aria-pressed="editMode === 'collapsed'" aria-label="デッキ表示" @click="setEditMode('collapsed')"><i class="ti ti-layout-columns"></i></button></div>
+						<button class="_button" :class="$style.accountButton"><img v-if="$i?.avatarUrl" :src="$i.avatarUrl"><i v-else class="ti ti-user-circle"></i><span v-if="editMode === 'expanded'"><b>{{ $i?.name || $i?.username || 'アカウント' }}</b><small>@{{ $i?.username }}</small></span></button>
+					</div>
+				</div>
+				<p v-if="editMode === 'collapsed'" :class="$style.collapsedNotice"><i class="ti ti-info-circle"></i>縮小メニューはボタン専用です。グループとウィジェットを持ち込まず、実表示幅の中に縦一列で収めます。</p>
+			</div>
+		</section>
+
+		<section ref="inspectorPaneEl" :class="[$style.pane, inspectorAttention && $style.inspectorAttention, tutorialStep?.target === 'customize' && $style.tutorialFocus]" aria-label="HataSideStudio設定" tabindex="-1">
+			<div :class="$style.paneHead"><div><h2>スタジオ設定</h2><span>{{ selected?.type === 'button' ? 'ボタン' : selected?.type === 'widget' ? 'ウィジェット' : selected?.type === 'group' ? 'グループ' : '全体' }}</span></div></div>
+			<div :class="$style.inspector">
+				<div :class="$style.selectedSummary"><i :class="selected?.type === 'button' ? selected.icon : selected?.type === 'group' ? 'ti ti-category' : selected?.type === 'widget' ? 'ti ti-app-window' : 'ti ti-layout-sidebar-left'"></i><div><b>{{ selectedDisplayName }}</b><small>プレビュー内の項目を選ぶと、ここで細かく調整できます。</small></div></div>
+				<nav :class="$style.inspectorTabs"><button class="_button" :aria-pressed="inspectorTab === 'layout'" @click="inspectorTab = 'layout'">配置</button><button class="_button" :disabled="selected?.type !== 'button'" :aria-pressed="inspectorTab === 'button'" @click="inspectorTab = 'button'">ボタン</button><button class="_button" :disabled="selected?.type !== 'widget'" :aria-pressed="inspectorTab === 'widget'" @click="inspectorTab = 'widget'">ウィジェット</button><button class="_button" :disabled="selected?.type !== 'group'" :aria-pressed="inspectorTab === 'group'" @click="inspectorTab = 'group'">グループ</button><button class="_button" :aria-pressed="inspectorTab === 'role'" @click="inspectorTab = 'role'">上限</button></nav>
+
+				<div v-if="inspectorTab === 'layout'" :class="$style.bento">
+					<InspectorCard title="編集するメニュー"><div :class="$style.choiceRow"><button class="_button" :data-active="editMode === 'expanded'" @click="setEditMode('expanded')">拡大</button><button class="_button" :data-active="editMode === 'collapsed'" @click="setEditMode('collapsed')">縮小</button></div></InspectorCard>
+					<InspectorCard title="通常メニューの列数"><div :class="$style.choiceRow"><button v-for="columns in [1, 2, 3]" :key="columns" class="_button" :disabled="!canSetRootColumns(columns as 1 | 2 | 3)" :data-active="activeProfile.expanded.columns === columns" @click="setRootColumns(columns as 1 | 2 | 3)">{{ columns }}列</button></div><small v-if="rootHasLargeItems">「大」の項目がある間は複数列にできません。</small></InspectorCard>
+					<InspectorCard title="サイドメニューの幅"><div :class="$style.choiceRow"><button class="_button" :data-active="activeProfile.expanded.width === 'normal'" @click="activeProfile.expanded.width = 'normal'">今のサイズ</button><button class="_button" :data-active="activeProfile.expanded.width === 'wide'" @click="activeProfile.expanded.width = 'wide'">ワイド</button></div><small>プレビューと実際のPCサイドメニューへ反映します。</small></InspectorCard>
+					<InspectorCard title="既存設定"><button class="_button" :class="$style.currentSettingsButton" @click="importCurrentSidebar"><i class="ti ti-list-check"></i>現在の並びを読み込む</button><small>設定済みの表示・非表示・並び順を、このプロファイルへ反映します。</small></InspectorCard>
+					<InspectorCard title="動き"><label :class="$style.check"><input v-model="activeProfile.expanded.parallax" type="checkbox">パララックススクロール（ベータ）</label><small>動きを減らす設定では停止します。</small></InspectorCard>
+					<InspectorCard title="縮小メニューの規則"><p>ボタンのみ・縦一列・アイコン表示に固定します。色、グラデーション、形、順番は縮小側で個別に編集できます。</p></InspectorCard>
+				</div>
+				<template v-else-if="inspectorTab === 'button' && selected?.type === 'button'">
+					<InspectorTitle icon="ti ti-square-rounded" :title="selected.label" subtitle="ボタン"/>
+					<div :class="$style.bento">
+						<InspectorCard v-if="editMode === 'expanded'" title="置き場所"><select :value="selectedParentGroupId" :class="$style.select" @change="moveSelectedTo(($event.target as HTMLSelectElement).value)"><option value="">通常メニュー</option><option v-for="group in availableGroups" :key="group.id" :value="group.id">{{ group.name }}</option></select></InspectorCard>
+						<InspectorCard title="形"><div :class="$style.choiceRow"><button v-for="shape in buttonShapes" :key="shape.value" class="_button" :data-active="selected.shape === shape.value" @click="selected.shape = shape.value"><span :class="$style.shapeSample" :data-shape="shape.value"></span><small>{{ shape.label }}</small></button></div></InspectorCard>
+						<InspectorCard title="大きさ"><div :class="$style.choiceRow"><button v-for="size in sizes" :key="size.value" class="_button" :disabled="!canSetNodeSize(selected, size.value)" :data-active="selected.size === size.value" @click="setNodeSize(selected, size.value)">{{ size.label }}</button></div><small v-if="selectedParentColumns > 1">複数列では「大」を選べません。</small></InspectorCard>
+						<InspectorCard v-if="editMode === 'expanded'" title="表示"><label :class="$style.check"><input v-model="selected.showLabel" type="checkbox">アイコン下の文字を表示</label><label :class="$style.field">回転 <input v-model.number="selected.rotation" type="range" min="-12" max="12" step="1"><output>{{ selected.rotation }}°</output></label></InspectorCard>
+						<AppearanceEditor v-model="selected"/>
+						<InspectorCard v-if="selected.menuId === 'lists' || selected.menuId === 'antennas'" title="直接開く項目"><button class="_buttonPrimary" @click="chooseDirectTarget(selected)"><i class="ti ti-list-search"></i>{{ selected.targetId ? '選び直す' : '選択する' }}</button><small>{{ selected.targetId ? '指定した項目を直接開きます。' : '未指定の場合は前回開いた項目を表示します。' }}</small></InspectorCard>
+					</div>
+				</template>
+				<template v-else-if="inspectorTab === 'widget' && selected?.type === 'widget'">
+					<InspectorTitle icon="ti ti-app-window" :title="selected.label" subtitle="ウィジェット"/>
+					<div :class="$style.bento">
+						<InspectorCard title="置き場所"><select :value="selectedParentGroupId" :class="$style.select" @change="moveSelectedTo(($event.target as HTMLSelectElement).value)"><option value="">グループ外</option><option v-for="group in availableGroups" :key="group.id" :value="group.id">{{ group.name }}</option></select></InspectorCard>
+						<InspectorCard title="種類"><select :value="selected.kind" :class="$style.select" @change="changeWidgetKind(selected, ($event.target as HTMLSelectElement).value as HataSideWidgetKind)"><option v-for="widget in availableWidgetChoices" :key="widget.kind" :value="widget.kind">{{ widget.label }}</option></select></InspectorCard>
+						<InspectorCard title="現在の大きさ"><div :class="$style.choiceRow"><button v-for="size in sizes" :key="size.value" class="_button" :disabled="!canSetNodeSize(selected, size.value)" :data-active="selected.size === size.value" @click="setNodeSize(selected, size.value)">{{ size.label }}</button></div><small>{{ selectedParentColumns > 1 ? '複数列では「大」を選べません。' : 'プレビューと実サイドメニューの表示が同時に切り替わります。' }}</small></InspectorCard>
+						<InspectorCard v-if="widgetBaseSettingEntries(selected).length > 0" title="ウィジェットの内容">
+							<template v-for="entry in widgetBaseSettingEntries(selected)" :key="entry.key">
+								<label v-if="entry.type === 'boolean'" :class="$style.check"><input type="checkbox" :checked="entry.value === true" @change="setWidgetBaseSetting(selected, entry.key, ($event.target as HTMLInputElement).checked)">{{ entry.label }}</label>
+								<label v-else-if="entry.type === 'multiline'" :class="$style.quickField"><span>{{ entry.label }}</span><textarea :class="$style.textarea" :value="String(entry.value ?? '')" rows="5" @input="setWidgetBaseSetting(selected, entry.key, ($event.target as HTMLTextAreaElement).value)"></textarea></label>
+								<label v-else :class="$style.quickField"><span>{{ entry.label }}</span><input :class="$style.input" :value="String(entry.value ?? '')" @input="setWidgetBaseSetting(selected, entry.key, ($event.target as HTMLInputElement).value)"></label>
+							</template>
+						</InspectorCard>
+						<InspectorCard v-for="size in sizes" :key="size.value" :title="`${size.label}サイズの専用設定`">
+							<label :class="$style.field"><span>最低の高さ</span><input v-model.number="selected.sizeSettings[size.value].minHeight" type="range" min="48" max="520" step="4"><output>{{ selected.sizeSettings[size.value].minHeight }}px</output></label>
+							<small>内容は途中で切らず、必要なときだけこの値より縦に伸びます。</small>
+							<template v-for="entry in widgetSizeSettingEntries(selected, size.value)" :key="entry.key">
+									<label v-if="entry.type === 'boolean'" :class="$style.check"><input type="checkbox" :checked="entry.value === true" @change="setWidgetSizeSetting(selected, size.value, entry.key, ($event.target as HTMLInputElement).checked)">{{ entry.label }}</label>
+								<label v-else-if="entry.type === 'number'" :class="$style.field"><span>{{ entry.label }}</span><input type="number" :value="entry.value" @input="setWidgetSizeSetting(selected, size.value, entry.key, Number(($event.target as HTMLInputElement).value))"></label>
+								<label v-else :class="$style.quickField"><span>{{ entry.label }}</span><input :class="$style.input" :value="entry.value" @input="setWidgetSizeSetting(selected, size.value, entry.key, ($event.target as HTMLInputElement).value)"></label>
+							</template>
+							<small v-if="widgetSizeSettingEntries(selected, size.value).length === 0">この大きさでは、ウィジェット本来の表示を崩さず最低高だけ調整できます。</small>
+						</InspectorCard>
+						<AppearanceEditor v-model="selected"/>
+					</div>
+				</template>
+				<template v-else-if="inspectorTab === 'group' && selected?.type === 'group'">
+					<InspectorTitle icon="ti ti-category" :title="selected.name" subtitle="グループ"/>
+					<div :class="$style.bento"><InspectorCard title="名前"><input v-model="selected.name" :class="$style.input" maxlength="80"><label :class="$style.check"><input v-model="selected.showName" type="checkbox">左上にグループ名を表示</label></InspectorCard><InspectorCard title="レイアウト"><div :class="$style.layoutPicker"><button class="_button" :aria-pressed="selected.columns === 1 && !selected.masonry" @click="setGroupLayout(selected, 1, false)"><i class="ti ti-layout-list"></i><span>縦1列</span></button><button class="_button" :disabled="!canSetGroupColumns(selected, 2)" :aria-pressed="selected.columns === 2 && !selected.masonry" @click="setGroupLayout(selected, 2, false)"><i class="ti ti-layout-grid"></i><span>田の字</span></button><button class="_button" :disabled="!canSetGroupColumns(selected, 3)" :aria-pressed="selected.columns === 3 && !selected.masonry" @click="setGroupLayout(selected, 3, false)"><i class="ti ti-layout-grid-add"></i><span>3列</span></button><button class="_button" :disabled="!canSetGroupColumns(selected, Math.max(2, selected.columns) as 2 | 3)" :aria-pressed="selected.masonry" @click="setGroupLayout(selected, Math.max(2, selected.columns) as 2 | 3, true)"><i class="ti ti-layout-board-split"></i><span>メイソンリー</span></button></div><small v-if="groupHasLargeItems(selected)">「大」の項目がある間は複数列にできません。</small></InspectorCard><GroupAppearanceEditor v-model="selected"/><InspectorCard title="グループ内の要素"><button v-for="child in selected.children" :key="child.id" class="_button" :class="$style.memberButton" @click="selectNode(child.id)"><i :class="child.type === 'button' ? child.icon : 'ti ti-app-window'"></i><span>{{ child.label }}</span><i class="ti ti-chevron-right"></i></button><small v-if="selected.children.length === 0">まだ要素がありません。プレビュー上でボタンかウィジェットをこの囲いへドラッグできます。</small></InspectorCard><InspectorCard v-if="mergeTargets.length > 0" title="別のグループへ統合"><select v-model="mergeTargetId" :class="$style.select"><option value="">統合先を選択</option><option v-for="group in mergeTargets" :key="group.id" :value="group.id">{{ group.name }}</option></select><button class="_button" :disabled="!mergeTargetId" @click="mergeSelectedGroup"><i class="ti ti-arrows-join"></i>統合する</button></InspectorCard></div>
+				</template>
+				<div v-else-if="inspectorTab === 'role'" :class="$style.bento">
+					<InspectorCard title="このアカウントの保存上限"><strong :class="$style.limitValue">{{ profileLimit }}件</strong><small>端末ごとに保存できるレイアウトプロファイル数です。</small></InspectorCard>
+					<InspectorCard title="保存先"><p>レイアウト本体はこの端末だけに保存します。サーバーと連合へは送信しません。</p><button class="_button" :class="$style.currentSettingsButton" @click="openSettingsTransfer"><i class="ti ti-arrows-exchange"></i>設定を書き出す・読み込む</button></InspectorCard>
+					<InspectorCard v-if="$i?.isAdmin || $i?.isModerator" title="ロール設定"><button class="_button" :class="$style.currentSettingsButton" @click="openRoleSettings"><i class="ti ti-users-group"></i>コントロールパネルで設定</button><small>ベースロールと個別ロールの両方から上限を設定できます。</small></InspectorCard>
+				</div>
+				<div v-else :class="$style.emptyInspector"><i class="ti ti-pointer"></i><b>プレビューから編集する項目を選んでください</b><span>ボタン・ウィジェット・グループを選ぶと、対応する設定タブが開きます。</span></div>
+			</div>
+		</section>
+	</main>
+
+	<Teleport to="body">
+	<div :class="$style.teleportTheme">
+	<div v-if="studioDialog" :class="$style.studioDialogWindow" role="dialog" aria-modal="false" :aria-label="studioDialog.title">
+		<header><span><i :class="studioDialog.icon"></i><b>{{ studioDialog.title }}</b></span><button class="_button" aria-label="閉じる" @click="resolveStudioDialog(false)"><i class="ti ti-x"></i></button></header>
+		<p>{{ studioDialog.text }}</p>
+		<input v-if="studioDialog.kind === 'prompt'" ref="studioDialogControl" v-model="studioDialog.value" :class="$style.input" maxlength="80" @keydown.enter="resolveStudioDialog(true)">
+		<select v-if="studioDialog.kind === 'select'" ref="studioDialogControl" v-model="studioDialog.value" :class="$style.select"><option v-for="option in studioDialog.options" :key="option.value" :value="option.value">{{ option.label }}</option></select>
+		<div><button v-if="studioDialog.cancelLabel" class="_button" @click="resolveStudioDialog(false)">{{ studioDialog.cancelLabel }}</button><button class="_buttonPrimary" @click="resolveStudioDialog(true)">{{ studioDialog.confirmLabel }}</button></div>
+	</div>
+	<div v-if="leaveConfirmOpen" :class="$style.windowLayer"><div :class="$style.leaveDialog"><i class="ti ti-device-floppy"></i><h2>変更を保存しますか？</h2><p>保存していない変更があります。</p><div><button class="_button" @click="confirmLeave(false)">破棄して移動</button><button class="_buttonPrimary" @click="saveAndLeave">保存して移動</button><button class="_button" @click="cancelLeave">戻る</button></div></div></div>
+	<aside v-if="tutorialOpen && tutorialStep" :class="$style.tutorialWindow" role="dialog" aria-modal="false" aria-label="HataSideStudio チュートリアル">
+		<header><span>STEP {{ tutorialIndex + 1 }} / {{ tutorialSteps.length }}</span><button class="_button" aria-label="チュートリアルを閉じる" @click="finishTutorial(true)"><i class="ti ti-x"></i></button></header>
+		<div :class="$style.tutorialProgress"><span v-for="(_, index) in tutorialSteps" :key="index" :data-active="index <= tutorialIndex"></span></div>
+		<i :class="tutorialStep.icon"></i><h2>{{ tutorialStep.title }}</h2><p>{{ tutorialStep.body }}</p>
+		<div :class="$style.tutorialActions"><button class="_button" @click="finishTutorial(true)">スキップ</button><button class="_button" :disabled="tutorialIndex === 0" @click="tutorialIndex--"><i class="ti ti-chevron-left"></i>戻る</button><button class="_buttonPrimary" @click="advanceTutorial">{{ tutorialIndex === tutorialSteps.length - 1 ? 'はじめる' : '次へ' }}<i class="ti ti-chevron-right"></i></button></div>
+	</aside>
+	</div>
+	</Teleport>
+</div>
+</template>
+
+<script lang="ts" setup>
+import { computed, defineAsyncComponent, defineComponent, h, nextTick, onBeforeUnmount, onMounted, ref, resolveDynamicComponent, useCssModule, watch } from 'vue';
+import draggable from 'vuedraggable';
+import type { HataSideButton, HataSideButtonShape, HataSideButtonSize, HataSideGroup, HataSideNode, HataSideStudioStore, HataSideWidget, HataSideWidgetKind } from '@/utility/hata-side-studio.js';
+import { $i } from '@/i.js';
+import { instance } from '@/instance.js';
+import { mainRouter } from '@/router.js';
+import { definePage } from '@/page.js';
+import { navbarItemDef } from '@/navbar.js';
+import { prefer } from '@/preferences.js';
+import { miLocalStorage } from '@/local-storage.js';
+import { claimAchievement } from '@/utility/achievements.js';
+import { inspectHataSideContrast, parseHataSideRgb } from '@/utility/hata-side-studio-contrast.js';
+import { HATA_SIDE_WIDGET_REGISTRY } from '@/utility/hata-side-studio-widgets.js';
+import { antennasCache, userListsCache } from '@/cache.js';
+import * as os from '@/os.js';
+import {
+	HATA_SIDE_STUDIO_DEFAULT_PROFILE_LIMIT, applyHataSideStudioStore, cloneHataSideStudioStore,
+	copyCollapsedToExpanded, copyExpandedToCollapsed, createButton, createDefaultProfile, createGroup, createHataSideStudioSourceCatalog, createWidget,
+	ensureHataSideStudioInitialized, getActiveHataSideProfile, gradientCss, hataSideStudioStore, mergeHataSideGroups,
+} from '@/utility/hata-side-studio.js';
+import { SIDEBAR_ICON_OVERRIDES } from '@/utility/sidebar-icon-overrides.js';
+import HataSideStudioEarthquake from '@/components/HataSideStudioEarthquake.vue';
+import HataSideStudioFlowers from '@/components/HataSideStudioFlowers.vue';
+
+const $style = useCssModule();
+const isHatasabaDeckUi = computed(() => miLocalStorage.getItem('ui') === 'simple' && prefer.r['simpleUi.deckMode'].value === true);
+const studioDialogControl = ref<HTMLInputElement | HTMLSelectElement | null>(null);
+
+const InspectorTitle = defineComponent({ props: { icon: String, title: String, subtitle: String }, setup: props => () => h('div', { class: $style.inspectorTitle }, [h('i', { class: props.icon }), h('div', [h('small', props.subtitle), h('h2', props.title)])]) });
+const InspectorCard = defineComponent({ props: { title: String }, setup: (props, { slots }) => () => h('section', { class: $style.inspectorCard }, [h('h3', props.title), slots.default?.()]) });
+const AppearanceEditor = defineComponent({ props: { modelValue: { type: Object, required: true } }, setup: props => () => h(InspectorCard, { title: '色とグラデーション' }, { default: () => [
+	h('div', { class: $style.colorGrid }, [['background', '背景'], ['border', '枠'], ['foreground', '文字']].map(([key, label]) => h('label', { class: $style.colorField }, [h('span', label), h('input', { type: 'color', value: cssColor((props.modelValue as any)[key]), onInput: (e: Event) => (props.modelValue as any)[key] = (e.target as HTMLInputElement).value })]))),
+	h('label', { class: $style.field }, [h('span', '枠線の太さ'), h('input', { type: 'range', min: 0, max: 5, value: (props.modelValue as any).borderWidth ?? 1, onInput: (e: Event) => (props.modelValue as any).borderWidth = Number((e.target as HTMLInputElement).value) }), h('output', `${(props.modelValue as any).borderWidth ?? 1}px`)]),
+	h('label', { class: $style.field }, [h('span', '枠線の種類'), h('select', { class: $style.select, value: (props.modelValue as any).borderStyle ?? 'solid', onChange: (e: Event) => (props.modelValue as any).borderStyle = (e.target as HTMLSelectElement).value }, [h('option', { value: 'solid' }, '実線'), h('option', { value: 'dashed' }, '破線'), h('option', { value: 'double' }, '二重線')])]),
+	h('label', { class: $style.check }, [h('input', { type: 'checkbox', checked: (props.modelValue as any).gradientEnabled, onChange: (e: Event) => (props.modelValue as any).gradientEnabled = (e.target as HTMLInputElement).checked }), 'グラデーションを使う']),
+	(props.modelValue as any).gradientEnabled ? h('div', { class: $style.fieldStack }, [h('label', { class: $style.colorField }, [h('span', '終点'), h('input', { type: 'color', value: cssColor((props.modelValue as any).gradientTo), onInput: (e: Event) => (props.modelValue as any).gradientTo = (e.target as HTMLInputElement).value })]), h('label', { class: $style.field }, [h('span', '方向'), h('input', { type: 'range', min: 0, max: 360, value: (props.modelValue as any).gradientAngle, onInput: (e: Event) => (props.modelValue as any).gradientAngle = Number((e.target as HTMLInputElement).value) }), h('output', `${(props.modelValue as any).gradientAngle}°`)]), h('select', { class: $style.select, value: (props.modelValue as any).gradientEasing, onChange: (e: Event) => (props.modelValue as any).gradientEasing = (e.target as HTMLSelectElement).value }, [h('option', { value: 'linear' }, '均等'), h('option', { value: 'ease-in' }, 'ゆっくり始まる'), h('option', { value: 'ease-out' }, 'ゆっくり終わる'), h('option', { value: 'ease-in-out' }, '両端をなめらかに')])]) : null,
+] }) });
+const GroupAppearanceEditor = defineComponent({ props: { modelValue: { type: Object, required: true } }, setup: props => () => h(InspectorCard, { title: 'グループの面' }, { default: () => [
+	h('div', { class: $style.colorGrid }, [['background', '背景'], ['border', '枠']].map(([key, label]) => h('label', { class: $style.colorField }, [h('span', label), h('input', { type: 'color', value: cssColor((props.modelValue as any)[key]), onInput: (e: Event) => (props.modelValue as any)[key] = (e.target as HTMLInputElement).value })]))),
+	h('label', { class: $style.field }, [h('span', '枠線の太さ'), h('input', { type: 'range', min: 0, max: 5, value: (props.modelValue as any).borderWidth ?? 1, onInput: (e: Event) => (props.modelValue as any).borderWidth = Number((e.target as HTMLInputElement).value) }), h('output', `${(props.modelValue as any).borderWidth ?? 1}px`)]),
+	h('label', { class: $style.field }, [h('span', '枠線の種類'), h('select', { class: $style.select, value: (props.modelValue as any).borderStyle ?? 'solid', onChange: (e: Event) => (props.modelValue as any).borderStyle = (e.target as HTMLSelectElement).value }, [h('option', { value: 'solid' }, '実線'), h('option', { value: 'dashed' }, '破線'), h('option', { value: 'double' }, '二重線')])]),
+	h('label', { class: $style.check }, [h('input', { type: 'checkbox', checked: (props.modelValue as any).gradientEnabled, onChange: (e: Event) => (props.modelValue as any).gradientEnabled = (e.target as HTMLInputElement).checked }), 'グラデーションを使う']),
+	(props.modelValue as any).gradientEnabled ? h('div', { class: $style.fieldStack }, [h('label', { class: $style.colorField }, [h('span', '終点'), h('input', { type: 'color', value: cssColor((props.modelValue as any).gradientTo), onInput: (e: Event) => (props.modelValue as any).gradientTo = (e.target as HTMLInputElement).value })]), h('label', { class: $style.field }, [h('span', '方向'), h('input', { type: 'range', min: 0, max: 360, value: (props.modelValue as any).gradientAngle, onInput: (e: Event) => (props.modelValue as any).gradientAngle = Number((e.target as HTMLInputElement).value) }), h('output', `${(props.modelValue as any).gradientAngle}°`)]), h('select', { class: $style.select, value: (props.modelValue as any).gradientEasing, onChange: (e: Event) => (props.modelValue as any).gradientEasing = (e.target as HTMLSelectElement).value }, [h('option', { value: 'linear' }, '均等'), h('option', { value: 'ease-in' }, 'ゆっくり始まる'), h('option', { value: 'ease-out' }, 'ゆっくり終わる'), h('option', { value: 'ease-in-out' }, '両端をなめらかに')])]) : null,
+] }) });
+const ButtonPreview = defineComponent({
+	props: { button: { type: Object, required: true } },
+	emits: ['search'],
+	setup(props, { emit }) {
+		const query = ref('');
+		return () => {
+			const button = props.button as HataSideButton;
+			if (button.menuId === 'search' && button.size === 'large' && button.shape !== 'circle') {
+				return h('form', { class: $style.searchButtonPreview, onSubmit: (event: Event) => { event.preventDefault(); emit('search', query.value); } }, [
+					h('i', { class: button.icon }),
+					h('input', { value: query.value, type: 'search', placeholder: 'ノートやユーザーを検索', 'aria-label': '検索語', onInput: (event: Event) => { query.value = (event.target as HTMLInputElement).value; }, onClick: (event: Event) => event.stopPropagation() }),
+					h('button', { class: '_button', type: 'submit', 'aria-label': '検索する', onClick: (event: Event) => event.stopPropagation() }, [h('i', { class: 'ti ti-arrow-right' })]),
+				]);
+			}
+			const large = button.size === 'large' && button.shape !== 'circle';
+			const unreadCount = button.menuId === 'notifications' ? Number($i?.unreadNotificationsCount ?? 0) : 0;
+			return h('div', { class: large ? $style.largeButtonPreview : $style.buttonPreviewBody }, [
+				h('i', { class: button.icon }),
+				button.showLabel || large ? h('span', [h('b', button.label), large ? h('small', buttonDetail(button.menuId)) : null]) : null,
+				large && ['hatask', 'hatady', 'hatafeed'].includes(button.menuId) ? h('em', button.menuId === 'hatask' ? '予定・ToDo' : button.menuId === 'hatady' ? '今日の学習' : '申請状況') : null,
+				unreadCount > 0 ? h('span', { class: $style.previewBadge, 'aria-label': `未読${unreadCount}件` }, unreadCount > 99 ? '99+' : String(unreadCount)) : null,
+			]);
+		};
+	},
+});
+const WidgetPreview = defineComponent({
+	props: { widget: { type: Object, required: true } },
+	setup: props => () => {
+		const widget = props.widget as HataSideWidget;
+		const definition = HATA_SIDE_WIDGET_REGISTRY[widget.kind];
+		const nativeKind = widget.kind === 'flowers' ? 'hataskFlowers' : widget.kind === 'announcements' ? null : widget.kind;
+		const sizeSetting = widget.sizeSettings[widget.size];
+		const registryMinHeight = definition.sizes[widget.size].minHeight;
+		const effectiveMinHeight = widget.kind === 'aichan' ? Math.max(sizeSetting.minHeight, registryMinHeight) : sizeSetting.minHeight;
+		const nativeData = { ...(widget.data ?? {}), ...(sizeSetting.data ?? {}) };
+		if (widget.kind === 'serverMetric' && widget.size === 'small') nativeData.view = 3;
+		const widgetStyle = {
+			'--hss-widget-height': `${effectiveMinHeight}px`,
+			...(widget.kind === 'aichan' ? { '--hss-aichan-scale': String(Math.min(1, effectiveMinHeight / 350)) } : {}),
+		};
+		if (widget.kind === 'hataskFlowers' || widget.kind === 'flowers') {
+			return h('div', { class: $style.nativeWidgetPreview, 'data-hss-kind': 'hataskFlowers', 'data-hss-size': widget.size, style: widgetStyle }, [h(HataSideStudioFlowers, { size: widget.size })]);
+		}
+		if (widget.kind === 'earthquake') {
+			return h('div', { class: $style.nativeWidgetPreview, 'data-hss-kind': 'earthquake', 'data-hss-size': widget.size, style: widgetStyle }, [h(HataSideStudioEarthquake, { size: widget.size })]);
+		}
+		if (nativeKind != null) {
+			return h('div', {
+				class: $style.nativeWidgetPreview,
+				'data-hss-kind': widget.kind,
+				'data-hss-size': widget.size,
+				style: widgetStyle,
+			}, [h('div', { class: $style.nativeWidgetFrame, onWheel: widget.kind === 'postForm' ? onPreviewPostFormWheel : undefined }, [
+				h(resolveDynamicComponent(`widget-${nativeKind}`) as any, {
+					key: `${widget.id}:${widget.size}:${JSON.stringify(nativeData)}`,
+					widget: { id: widget.id, name: nativeKind, data: nativeData },
+					onUpdateProps: (data: Record<string, unknown>) => { widget.data = { ...(widget.data ?? {}), ...data }; },
+				}),
+			])]);
+		}
+		return h('div', { class: $style.widgetBody }, [h('i', { class: definition.icon }), h('div', [h('b', widget.label), h('span', '直近のお知らせを表示'), h('small', '専用ウィジェットが追加されるまで要約表示を使います')])]);
+	},
+});
+
+function onPreviewPostFormWheel(event: WheelEvent) {
+	const frame = event.currentTarget as HTMLElement | null;
+	const footer = (event.target as HTMLElement | null)?.closest?.('.mkw-post-form footer') as HTMLElement | null;
+	const target = footer && footer.scrollWidth > footer.clientWidth + 1 ? footer : frame;
+	if (!target || target.scrollWidth <= target.clientWidth + 1) return;
+	const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
+	if (delta === 0) return;
+	const before = target.scrollLeft;
+	target.scrollLeft += delta;
+	if (target.scrollLeft !== before) event.preventDefault();
+}
+
+const editMode = ref<'expanded' | 'collapsed'>('expanded');
+const inspectorTab = ref<'layout' | 'button' | 'widget' | 'group' | 'role'>('layout');
+const deleteMode = ref(false);
+const resetConfirmOpen = ref(false);
+const copyMenuOpen = ref(false);
+const buttonPickerOpen = ref(false);
+const widgetPickerOpen = ref(false);
+const quickEditorOpen = ref(false);
+const reorderOpen = ref(false);
+const inspectorPaneEl = ref<HTMLElement | null>(null);
+const stageEl = ref<HTMLElement | null>(null);
+const sidebarPreviewEl = ref<HTMLElement | null>(null);
+const inspectorAttention = ref(false);
+const dragHintVisible = ref(false);
+const dragPointer = ref({ x: 24, y: 24 });
+const dragTimelinePosition = ref({ left: 12, top: 12, maxHeight: 360 });
+const draggingNodeId = ref<string | null>(null);
+const deleteDropArmed = ref(false);
+const timelineDropTarget = ref<{ containerId: string; index: number } | null>(null);
+const newButtonMenuId = ref('');
+const newButtonShape = ref<HataSideButtonShape>('rounded');
+const newWidgetKind = ref<HataSideWidgetKind>('clock');
+const selectedId = ref<string | null>(null);
+const mergeTargetId = ref('');
+const contrastPopoverGroupId = ref<string | null>(null);
+type StudioDialogState = {
+	kind: 'confirm' | 'prompt' | 'select';
+	title: string;
+	text: string;
+	icon: string;
+	confirmLabel: string;
+	cancelLabel: string;
+	value: string;
+	options: Array<{ value: string; label: string }>;
+	resolve: (result: { confirmed: boolean; value: string }) => void;
+};
+const studioDialog = ref<StudioDialogState | null>(null);
+const tutorialSteps = [
+	{ target: 'welcome', icon: 'ti ti-sparkles', title: 'HataSideStudioへようこそ', body: '実際のサイドメニューを見ながら、この端末だけの並び・形・色・ウィジェットを作れます。' },
+	{ target: 'create', icon: 'ti ti-square-rounded-plus', title: '要素を作る', body: '左のボタンから、通常ボタン・グループ・登録済みの全ウィジェットを追加できます。' },
+	{ target: 'arrange', icon: 'ti ti-hand-move', title: 'つまんで並べる', body: '各項目のグリップをつまみます。ドラッグ中に出る簡易タイムラインへ重ねると、長いメニューでも狙った位置へ移動できます。' },
+	{ target: 'customize', icon: 'ti ti-adjustments-horizontal', title: '細部を仕上げる', body: '項目を選ぶと右の設定へ内容が出ます。形・大きさ・配色・グループ配置・ウィジェット固有設定を調整できます。' },
+	{ target: 'save', icon: 'ti ti-device-floppy', title: '端末へ保存する', body: '最後に保存を押すと、同じ端末のサイドメニューへすぐ反映されます。サーバーや連合へ設定は送信されません。' },
+] as const;
+const tutorialOpen = ref(false);
+const tutorialIndex = ref(0);
+const tutorialStep = computed(() => tutorialOpen.value ? tutorialSteps[tutorialIndex.value] : null);
+const isTouch = typeof window !== 'undefined' && matchMedia('(pointer: coarse)').matches;
+const profileLimit = computed(() => Math.max(1, Number(($i?.policies as Record<string, unknown> | undefined)?.hataSideStudioProfileLimit ?? HATA_SIDE_STUDIO_DEFAULT_PROFILE_LIMIT)));
+// UIの親レイアウトがStudioより先に初期化されない直接アクセスでも、
+// 従来のサイドメニュ順を最初のプロファイルに取り込んでからdraftを作る。
+ensureHataSideStudioInitialized(prefer.r['simpleUi.sidebar'].value as any[]);
+const original = ref(cloneHataSideStudioStore(hataSideStudioStore.value));
+const draft = ref(cloneHataSideStudioStore(original.value));
+const history = ref<HataSideStudioStore[]>([cloneHataSideStudioStore(draft.value)]);
+const historyIndex = ref(0);
+let historyTimer: number | null = null;
+let historyLocked = false;
+const hasChanges = computed(() => JSON.stringify(draft.value) !== JSON.stringify(original.value));
+const activeProfile = computed(() => getActiveHataSideProfile(draft.value));
+const selected = computed<HataSideNode | null>(() => findNode(selectedId.value));
+const selectedDisplayName = computed(() => selected.value == null ? '全体レイアウト' : selected.value.type === 'group' ? selected.value.name : selected.value.label);
+const mergeTargets = computed(() => activeProfile.value.expanded.nodes.filter((node): node is HataSideGroup => node.type === 'group' && node.id !== selectedId.value));
+const availableGroups = computed(() => activeProfile.value.expanded.nodes.filter((node): node is HataSideGroup => node.type === 'group'));
+const availableWidgetChoices = computed(() => Object.entries(HATA_SIDE_WIDGET_REGISTRY)
+	.filter(([kind, definition]) => kind !== 'flowers' && (!definition.availability.requiresFederation || instance.federation !== 'none') && (!definition.availability.adminOnly || $i?.isAdmin || $i?.isModerator))
+	.map(([kind, definition]) => ({ kind: kind as HataSideWidgetKind, label: definition.label, icon: definition.icon })));
+const buttonShapes: { value: HataSideButtonShape; label: string }[] = [{ value: 'rounded', label: '角丸' }, { value: 'circle', label: '丸' }, { value: 'pill', label: '錠剤型' }];
+const sizes: { value: HataSideButtonSize; label: string }[] = [{ value: 'small', label: '小' }, { value: 'normal', label: '標準' }, { value: 'large', label: '大' }];
+const expandedDragGroup = { name: 'hata-side-items', pull: true, put: true };
+const groupChildDragGroup = { name: 'hata-side-items', pull: true, put: true };
+
+const menuCatalog = computed(() => {
+	const source = prefer.r['simpleUi.sidebar'].value as any[];
+	const launchPadItems = Object.entries(navbarItemDef)
+		.filter(([id, definition]) => !['more', 'whatsNew'].includes(id) && ((definition as any).show == null || (definition as any).show === true))
+		.map(([id, definition]) => ({ id, icon: (definition as any).icon ?? 'ti ti-point', label: String((definition as any).title ?? id), group: 'more' }));
+	return createHataSideStudioSourceCatalog(source, launchPadItems).all.map(item => ({ ...item, icon: SIDEBAR_ICON_OVERRIDES[item.id] ?? item.icon }));
+});
+const usedMenuIds = computed(() => new Set(editMode.value === 'collapsed'
+	? activeProfile.value.collapsed.buttons.map(button => button.menuId)
+	: activeProfile.value.expanded.nodes.flatMap(node => node.type === 'button' ? [node.menuId] : node.type === 'group' ? node.children.filter((child): child is HataSideButton => child.type === 'button').map(child => child.menuId) : [])));
+const availableMenuItems = computed(() => menuCatalog.value.filter(item => !usedMenuIds.value.has(item.id)));
+const previewCount = computed(() => {
+	const nodes = activeProfile.value.expanded.nodes;
+	const buttons = nodes.reduce((count, node) => count + (node.type === 'button' ? 1 : node.type === 'group' ? node.children.filter(child => child.type === 'button').length : 0), 0);
+	const widgets = nodes.reduce((count, node) => count + (node.type === 'widget' ? 1 : node.type === 'group' ? node.children.filter(child => child.type === 'widget').length : 0), 0);
+	const groups = nodes.filter(node => node.type === 'group').length;
+	return editMode.value === 'collapsed' ? `${activeProfile.value.collapsed.buttons.length}ボタン・縦1列` : `${buttons}ボタン・${groups}グループ・${widgets}ウィジェット`;
+});
+const selectedParentGroupId = computed(() => {
+	if (!selectedId.value) return '';
+	return availableGroups.value.find(group => group.children.some(child => child.id === selectedId.value))?.id ?? '';
+});
+const selectedParentColumns = computed(() => {
+	if (editMode.value === 'collapsed' || selected.value?.type === 'group') return 1;
+	const parent = availableGroups.value.find(group => group.children.some(child => child.id === selectedId.value));
+	return parent?.columns ?? activeProfile.value.expanded.columns;
+});
+const rootHasLargeItems = computed(() => activeProfile.value.expanded.nodes.some(node => node.type !== 'group' && node.size === 'large'));
+const dragHintStyle = computed(() => ({
+	left: `${Math.max(8, Math.min(window.innerWidth - 260, dragPointer.value.x + 8))}px`,
+	top: `${Math.max(8, Math.min(window.innerHeight - 82, dragPointer.value.y + 8))}px`,
+}));
+const dragTimelineStyle = computed(() => ({
+	left: `${dragTimelinePosition.value.left}px`,
+	top: `${dragTimelinePosition.value.top}px`,
+	maxHeight: `${dragTimelinePosition.value.maxHeight}px`,
+}));
+const reorderSections = computed(() => {
+	const summarize = (items: HataSideNode[]) => items.map(item => ({ id: item.id, label: item.type === 'group' ? `グループ：${item.name}` : item.label, icon: item.type === 'group' ? 'ti ti-category' : item.type === 'widget' ? 'ti ti-app-window' : item.icon }));
+	if (editMode.value === 'collapsed') return [{ id: 'collapsed', label: '縮小メニュー', items: summarize(activeProfile.value.collapsed.buttons) }];
+	return [
+		{ id: 'root', label: 'グループ外・グループの順番', items: summarize(activeProfile.value.expanded.nodes) },
+		...availableGroups.value.map(group => ({ id: group.id, label: `${group.name} の中`, items: summarize(group.children) })),
+	];
+});
+const dragTimelineSections = computed(() => {
+	const draggingId = draggingNodeId.value;
+	const summarize = (items: HataSideNode[]) => items
+		.filter(item => item.id !== draggingId)
+		.map(item => ({
+			id: item.id,
+			label: item.type === 'group' ? `グループ：${item.name}` : item.label,
+			icon: item.type === 'group' ? 'ti ti-category' : item.type === 'widget' ? 'ti ti-app-window' : item.icon,
+		}));
+	if (editMode.value === 'collapsed') return [{ id: 'collapsed', label: '縮小メニュー', items: summarize(activeProfile.value.collapsed.buttons) }];
+	const dragging = draggingNodeId.value ? findNode(draggingNodeId.value) : null;
+	return [
+		{ id: 'root', label: 'メニュー全体', items: summarize(activeProfile.value.expanded.nodes) },
+		...availableGroups.value.filter(() => dragging?.type !== 'group').map(group => ({ id: group.id, label: group.name, items: summarize(group.children) })),
+	];
+});
+const groupContrastWarnings = computed(() => new Map(availableGroups.value.map(group => [group.id, inspectGroupContrast(group)])));
+
+watch(draft, () => {
+	if (historyLocked) return;
+	if (historyTimer) window.clearTimeout(historyTimer);
+	historyTimer = window.setTimeout(() => {
+		const next = cloneHataSideStudioStore(draft.value);
+		if (JSON.stringify(next) === JSON.stringify(history.value[historyIndex.value])) return;
+		history.value = [...history.value.slice(0, historyIndex.value + 1), next].slice(-50);
+		historyIndex.value = history.value.length - 1;
+	}, 180);
+}, { deep: true });
+
+function cssColor(value: unknown): string { return typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value) ? value : '#6c63ff'; }
+
+function resolveCssRgb(value: string, fallback = 'var(--MI_THEME-navBg)') {
+	if (typeof window === 'undefined') return null;
+	const probe = window.document.createElement('span');
+	probe.style.position = 'fixed';
+	probe.style.pointerEvents = 'none';
+	probe.style.opacity = '0';
+	probe.style.color = value === 'transparent' ? fallback : value;
+	window.document.body.appendChild(probe);
+	const resolved = parseHataSideRgb(window.getComputedStyle(probe).color);
+	probe.remove();
+	return resolved;
+}
+
+function inspectGroupContrast(group: HataSideGroup) {
+	const backgrounds = [group.background, ...(group.gradientEnabled ? [group.gradientTo] : [])]
+		.map(value => resolveCssRgb(value))
+		.filter((value): value is NonNullable<typeof value> => value != null);
+	const foregroundValues = [group.foreground, ...group.children.filter(child => child.background === 'transparent').map(child => child.foreground)];
+	const foregrounds = foregroundValues
+		.map(value => resolveCssRgb(value, 'var(--MI_THEME-fg)'))
+		.filter((value): value is NonNullable<typeof value> => value != null);
+	if (backgrounds.length === 0 || foregrounds.length === 0) return { low: false, minimumRatio: Number.POSITIVE_INFINITY, recommended: '#111111' as const, recommendedRatio: Number.POSITIVE_INFINITY };
+	return inspectHataSideContrast(foregrounds, backgrounds);
+}
+
+function toggleContrastPopover(groupId: string) {
+	contrastPopoverGroupId.value = contrastPopoverGroupId.value === groupId ? null : groupId;
+}
+
+function applyGroupTextColor(group: HataSideGroup, color: string) {
+	group.foreground = color;
+	for (const child of group.children) child.foreground = color;
+	contrastPopoverGroupId.value = null;
+	os.toast('グループ内の文字色を一括変更しました', 'ti ti-contrast');
+}
+
+function openStudioDialog(config: Omit<StudioDialogState, 'resolve'>): Promise<{ confirmed: boolean; value: string }> {
+	if (studioDialog.value) studioDialog.value.resolve({ confirmed: false, value: studioDialog.value.value });
+	return new Promise(resolve => {
+		studioDialog.value = { ...config, resolve };
+		void nextTick(() => studioDialogControl.value?.focus({ preventScroll: true }));
+	});
+}
+
+function resolveStudioDialog(confirmed: boolean) {
+	const current = studioDialog.value;
+	if (!current) return;
+	studioDialog.value = null;
+	current.resolve({ confirmed, value: current.value });
+}
+
+async function askStudioConfirm(title: string, text: string, confirmLabel = '続ける', icon = 'ti ti-alert-circle'): Promise<boolean> {
+	return (await openStudioDialog({ kind: 'confirm', title, text, icon, confirmLabel, cancelLabel: 'やめる', value: '', options: [] })).confirmed;
+}
+
+async function askStudioPrompt(title: string, text: string, initialValue = ''): Promise<string | null> {
+	const result = await openStudioDialog({ kind: 'prompt', title, text, icon: 'ti ti-pencil', confirmLabel: '変更する', cancelLabel: 'やめる', value: initialValue, options: [] });
+	return result.confirmed ? result.value.trim() : null;
+}
+
+async function askStudioSelect(title: string, text: string, options: Array<{ value: string; label: string }>): Promise<string | null> {
+	const result = await openStudioDialog({ kind: 'select', title, text, icon: 'ti ti-list-search', confirmLabel: '選ぶ', cancelLabel: 'やめる', value: options[0]?.value ?? '', options });
+	return result.confirmed ? result.value : null;
+}
+
+function findNode(id: string | null): HataSideNode | null { if (!id) return null; for (const node of activeProfile.value.expanded.nodes) { if (node.id === id) return node; if (node.type === 'group') { const child = node.children.find(item => item.id === id); if (child) return child; } } return activeProfile.value.collapsed.buttons.find(button => button.id === id) ?? null; }
+
+function selectNode(id: string) {
+	selectedId.value = id;
+	mergeTargetId.value = '';
+	const node = findNode(id);
+	if (node?.type === 'button') inspectorTab.value = 'button';
+	else if (node?.type === 'widget') inspectorTab.value = 'widget';
+	else if (node?.type === 'group') inspectorTab.value = 'group';
+}
+
+function selectAfterDrag() { if (selectedId.value && !findNode(selectedId.value)) selectedId.value = null; }
+
+function updateDragPointer(event: PointerEvent | DragEvent | TouchEvent) {
+	const touch = 'touches' in event ? event.touches[0] : null;
+	dragPointer.value = { x: touch?.clientX ?? ('clientX' in event ? event.clientX : dragPointer.value.x), y: touch?.clientY ?? ('clientY' in event ? event.clientY : dragPointer.value.y) };
+}
+
+function updateDragTimelinePosition() {
+	if (typeof window === 'undefined') return;
+	const previewRect = sidebarPreviewEl.value?.getBoundingClientRect() ?? stageEl.value?.getBoundingClientRect();
+	if (!previewRect) return;
+	const width = Math.min(224, window.innerWidth - 24);
+	const gap = 12;
+	let left = previewRect.right + gap;
+	if (left + width > window.innerWidth - 12) left = previewRect.left - width - gap;
+	if (left < 12) left = Math.max(12, Math.min(window.innerWidth - width - 12, previewRect.left + 12));
+	const top = Math.max(12, Math.min(window.innerHeight - 220, previewRect.top));
+	dragTimelinePosition.value = { left, top, maxHeight: Math.max(200, window.innerHeight - top - 12) };
+}
+
+function onDragStart(event: any) {
+	dragHintVisible.value = true;
+	draggingNodeId.value = event?.item?.dataset?.nodeId ?? event?.item?.closest?.('[data-node-id]')?.dataset?.nodeId ?? null;
+	deleteDropArmed.value = false;
+	timelineDropTarget.value = null;
+	window.addEventListener('pointermove', updateDragPointer);
+	window.document.addEventListener('dragover', updateDragPointer);
+	window.addEventListener('touchmove', updateDragPointer, { passive: true });
+	window.addEventListener('resize', updateDragTimelinePosition);
+	void nextTick(updateDragTimelinePosition);
+}
+
+async function onDragEnd() {
+	window.removeEventListener('pointermove', updateDragPointer);
+	window.document.removeEventListener('dragover', updateDragPointer);
+	window.removeEventListener('touchmove', updateDragPointer);
+	window.removeEventListener('resize', updateDragTimelinePosition);
+	const sourceId = draggingNodeId.value;
+	const shouldDelete = deleteDropArmed.value;
+	const timelineTarget = timelineDropTarget.value == null ? null : { ...timelineDropTarget.value };
+	const pointedGroupId = window.document.elementFromPoint(dragPointer.value.x, dragPointer.value.y)?.closest<HTMLElement>('[data-group-id]')?.dataset.groupId;
+	dragHintVisible.value = false;
+	deleteDropArmed.value = false;
+	timelineDropTarget.value = null;
+	draggingNodeId.value = null;
+	if (sourceId && shouldDelete) {
+		await requestRemoveNode(sourceId);
+		selectAfterDrag();
+		return;
+	}
+	if (sourceId && timelineTarget) {
+		moveNodeToTimeline(sourceId, timelineTarget.containerId, timelineTarget.index);
+		selectAfterDrag();
+		return;
+	}
+	const source = sourceId ? activeProfile.value.expanded.nodes.find(node => node.id === sourceId) : null;
+	if (sourceId && source?.type === 'group') {
+		const targetId = pointedGroupId;
+		if (targetId && targetId !== sourceId) {
+				const confirmed = await askStudioConfirm('グループを統合', `「${source.name}」を統合先へまとめ、元の空の囲いを削除します。`, '統合する', 'ti ti-arrows-join');
+				if (confirmed) {
+					const merged = mergeHataSideGroups(activeProfile.value, sourceId, targetId);
+					replaceActiveProfile(merged);
+					selectedId.value = targetId;
+					os.toast('グループを統合しました', 'ti ti-arrows-join');
+				}
+		}
+	}
+	selectAfterDrag();
+}
+
+function armDeleteDrop() { if (dragHintVisible.value) { deleteDropArmed.value = true; timelineDropTarget.value = null; } }
+
+function disarmDeleteDrop() { if (dragHintVisible.value) deleteDropArmed.value = false; }
+
+function containerColumns(containerId: string): 1 | 2 | 3 {
+	if (containerId === 'root') return activeProfile.value.expanded.columns;
+	return availableGroups.value.find(group => group.id === containerId)?.columns ?? 1;
+}
+
+function canPlaceNodeInContainer(node: HataSideNode | null, containerId: string): boolean {
+	if (!node) return false;
+	if (containerId === 'collapsed') return node.type === 'button';
+	if (node.type === 'group') return containerId === 'root';
+	return node.size !== 'large' || containerColumns(containerId) === 1;
+}
+
+function canUseTimelineContainer(containerId: string): boolean {
+	return canPlaceNodeInContainer(findNode(draggingNodeId.value), containerId);
+}
+
+function armTimelineDrop(containerId: string, index: number) {
+	if (!dragHintVisible.value || !canUseTimelineContainer(containerId)) return;
+	timelineDropTarget.value = { containerId, index };
+	deleteDropArmed.value = false;
+}
+
+function detachNode(id: string): HataSideNode | null {
+	if (editMode.value === 'collapsed') {
+		const index = activeProfile.value.collapsed.buttons.findIndex(button => button.id === id);
+		if (index < 0) return null;
+		return activeProfile.value.collapsed.buttons.splice(index, 1)[0];
+	}
+	const rootIndex = activeProfile.value.expanded.nodes.findIndex(node => node.id === id);
+	if (rootIndex >= 0) return activeProfile.value.expanded.nodes.splice(rootIndex, 1)[0];
+	for (const group of availableGroups.value) {
+		const childIndex = group.children.findIndex(child => child.id === id);
+		if (childIndex >= 0) return group.children.splice(childIndex, 1)[0];
+	}
+	return null;
+}
+
+function moveNodeToTimeline(id: string, containerId: string, requestedIndex: number) {
+	if (!canPlaceNodeInContainer(findNode(id), containerId)) {
+		os.toast('複数列には「大」の項目を移動できません', 'ti ti-layout-grid');
+		return;
+	}
+	const moving = detachNode(id);
+	if (!moving) return;
+	if (containerId === 'collapsed' && moving.type === 'button') {
+		activeProfile.value.collapsed.buttons.splice(Math.min(requestedIndex, activeProfile.value.collapsed.buttons.length), 0, moving);
+		return;
+	}
+	if (containerId === 'root') {
+		activeProfile.value.expanded.nodes.splice(Math.min(requestedIndex, activeProfile.value.expanded.nodes.length), 0, moving);
+		return;
+	}
+	const group = availableGroups.value.find(item => item.id === containerId);
+	if (group && moving.type !== 'group') group.children.splice(Math.min(requestedIndex, group.children.length), 0, moving);
+	else activeProfile.value.expanded.nodes.push(moving);
+}
+
+function allowNodeMove(evt: any, fallbackContainerId: string): boolean {
+	const moving = evt?.draggedContext?.element as HataSideNode | undefined;
+	const targetGroupId = evt?.to?.closest?.('[data-group-id]')?.dataset?.groupId as string | undefined;
+	return canPlaceNodeInContainer(moving ?? null, targetGroupId ?? fallbackContainerId);
+}
+
+function allowExpandedMove(evt: any) { return allowNodeMove(evt, 'root'); }
+
+function allowGroupChildMove(evt: any) { return allowNodeMove(evt, 'root') && evt?.draggedContext?.element?.type !== 'group'; }
+
+function nodeStyle(node: HataSideNode) {
+	const rotation = node.type === 'button' ? Number(node.rotation ?? 0) : 0;
+	const radians = Math.abs(rotation) * Math.PI / 180;
+	const visualWidth = node.type === 'button' && node.shape === 'circle' ? (node.size === 'large' ? 54 : node.size === 'small' ? 36 : 44) : 260;
+	const visualHeight = node.type === 'button' && node.size === 'large' ? 66 : 38;
+	// 回転後の外接矩形ぶんだけ上下を広げる。通常時の間隔は従来どおり増やさない。
+	const rotationSpace = rotation === 0 ? 0 : Math.ceil(Math.max(0, ((visualWidth * Math.sin(radians)) + (visualHeight * Math.cos(radians)) - visualHeight) / 2) + 3);
+	return {
+		'--hss-bg': gradientCss(node),
+		'--hss-border': node.border,
+		'--hss-border-width': `${node.borderWidth ?? 1}px`,
+		'--hss-border-style': node.borderStyle ?? 'solid',
+		'--hss-fg': node.foreground,
+		'--hss-rotation': `${rotation}deg`,
+		'--hss-rotation-space': `${rotationSpace}px`,
+	};
+}
+
+function activeProfileIndex() { return draft.value.profiles.findIndex(profile => profile.id === draft.value.activeProfileId); }
+
+function replaceActiveProfile(profile: ReturnType<typeof getActiveHataSideProfile>) { const index = activeProfileIndex(); if (index >= 0) draft.value.profiles[index] = profile; }
+
+function removeNode(id: string) { if (editMode.value === 'collapsed') activeProfile.value.collapsed.buttons = activeProfile.value.collapsed.buttons.filter(button => button.id !== id); else { activeProfile.value.expanded.nodes = activeProfile.value.expanded.nodes.filter(node => node.id !== id).map(node => node.type === 'group' ? { ...node, children: node.children.filter(child => child.id !== id) } : node); } if (selectedId.value === id) selectedId.value = null; }
+
+async function requestRemoveNode(id: string) {
+	const node = findNode(id);
+	if (!node) return;
+	const label = node.type === 'group' ? `グループ「${node.name}」` : `「${node.label}」`;
+	const detail = node.type === 'group' && node.children.length > 0 ? `中の${node.children.length}項目も一緒に削除されます。` : '保存するまでは確定しません。';
+	if (await askStudioConfirm(`${label}を削除`, detail, '削除する', 'ti ti-trash')) removeNode(id);
+}
+
+function activateProfile(id: string) { draft.value.activeProfileId = id; selectedId.value = null; inspectorTab.value = 'layout'; closeFloatingMenus(); }
+
+function setEditMode(mode: 'expanded' | 'collapsed') { editMode.value = mode; selectedId.value = null; inspectorTab.value = 'layout'; closeFloatingMenus(); }
+
+function togglePreviewWidth() { setEditMode(editMode.value === 'expanded' ? 'collapsed' : 'expanded'); }
+
+function closeFloatingMenus() { copyMenuOpen.value = false; buttonPickerOpen.value = false; widgetPickerOpen.value = false; quickEditorOpen.value = false; reorderOpen.value = false; }
+
+function openQuickEditor(id: string) { selectNode(id); quickEditorOpen.value = true; buttonPickerOpen.value = false; widgetPickerOpen.value = false; reorderOpen.value = false; }
+
+async function openSelectedInspector() {
+	const type = selected.value?.type;
+	if (type === 'button' || type === 'widget' || type === 'group') inspectorTab.value = type;
+	quickEditorOpen.value = false;
+	inspectorAttention.value = true;
+	await nextTick();
+	inspectorPaneEl.value?.focus({ preventScroll: true });
+	inspectorPaneEl.value?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+	window.setTimeout(() => { inspectorAttention.value = false; }, 800);
+}
+
+function groupHasLargeItems(group: HataSideGroup): boolean {
+	return group.children.some(child => child.size === 'large');
+}
+
+function canSetRootColumns(columns: 1 | 2 | 3): boolean {
+	return columns === 1 || !rootHasLargeItems.value;
+}
+
+function setRootColumns(columns: 1 | 2 | 3) {
+	if (!canSetRootColumns(columns)) return;
+	activeProfile.value.expanded.columns = columns;
+}
+
+function canSetGroupColumns(group: HataSideGroup, columns: 1 | 2 | 3): boolean {
+	return columns === 1 || !groupHasLargeItems(group);
+}
+
+function canSetNodeSize(node: HataSideButton | HataSideWidget, size: HataSideButtonSize): boolean {
+	if (editMode.value === 'collapsed') return size === 'small';
+	if (size !== 'large') return true;
+	const parent = availableGroups.value.find(group => group.children.some(child => child.id === node.id));
+	return (parent?.columns ?? activeProfile.value.expanded.columns) === 1;
+}
+
+function setNodeSize(node: HataSideButton | HataSideWidget, size: HataSideButtonSize) {
+	if (!canSetNodeSize(node, size)) return;
+	node.size = size;
+}
+
+function setGroupLayout(group: HataSideGroup, columns: 1 | 2 | 3, masonry: boolean) {
+	if (!canSetGroupColumns(group, columns)) return;
+	group.columns = columns;
+	group.masonry = masonry;
+}
+
+function toggleReorder() {
+	reorderOpen.value = !reorderOpen.value;
+	buttonPickerOpen.value = false;
+	widgetPickerOpen.value = false;
+	quickEditorOpen.value = false;
+}
+
+function moveReorderItem(sectionId: string, index: number, direction: -1 | 1) {
+	function moveWithin<T>(items: T[]) {
+		const targetIndex = index + direction;
+		if (index < 0 || targetIndex < 0 || targetIndex >= items.length) return;
+		const [moving] = items.splice(index, 1);
+		items.splice(targetIndex, 0, moving);
+	}
+
+	if (sectionId === 'collapsed') moveWithin(activeProfile.value.collapsed.buttons);
+	else if (sectionId === 'root') moveWithin(activeProfile.value.expanded.nodes);
+	else {
+		const group = availableGroups.value.find(item => item.id === sectionId);
+		if (group) moveWithin(group.children);
+	}
+}
+
+function openButtonPicker() {
+	widgetPickerOpen.value = false;
+	buttonPickerOpen.value = true;
+	newButtonMenuId.value = availableMenuItems.value[0]?.id ?? '';
+	newButtonShape.value = editMode.value === 'collapsed' ? 'circle' : 'rounded';
+}
+
+function confirmAddButton() {
+	const source = menuCatalog.value.find(item => item.id === newButtonMenuId.value);
+	if (!source) return;
+	const button = createButton(source, editMode.value === 'collapsed' ? { shape: newButtonShape.value, size: 'small', showLabel: false } : { shape: newButtonShape.value });
+	if (editMode.value === 'collapsed') activeProfile.value.collapsed.buttons.push(button);
+	else activeProfile.value.expanded.nodes.push(button);
+	buttonPickerOpen.value = false;
+	selectNode(button.id);
+}
+
+function openWidgetPicker() {
+	if (editMode.value === 'collapsed') return;
+	buttonPickerOpen.value = false;
+	widgetPickerOpen.value = true;
+}
+
+function confirmAddWidget() {
+	const widget = createWidget(newWidgetKind.value);
+	activeProfile.value.expanded.nodes.push(widget);
+	widgetPickerOpen.value = false;
+	selectNode(widget.id);
+}
+
+const widgetSettingLabels: Record<string, string> = {
+	label: '表示ラベル',
+	colored: '強調色を使う',
+	script: '実行するAiScript',
+	showHeader: '見出しを表示',
+	height: '内容の高さ',
+	maxEntries: '表示件数',
+	size: '文字盤サイズ',
+	fontSize: '文字の大きさ',
+	showMs: 'ミリ秒を表示',
+	showLabel: '補助ラベルを表示',
+	maxItems: '表示する花の数',
+};
+
+function widgetBaseSettingEntries(widget: HataSideWidget) {
+	return Object.entries(widget.data ?? {}).map(([key, value]) => ({
+		key,
+		label: widget.kind === 'button' && key === 'label' ? 'ボタンに表示する文字' : widgetSettingLabels[key] ?? key,
+		value,
+		type: key === 'script' ? 'multiline' : typeof value === 'boolean' ? 'boolean' : typeof value === 'number' ? 'number' : 'text',
+	}));
+}
+
+function setWidgetBaseSetting(widget: HataSideWidget, key: string, value: unknown) {
+	widget.data = { ...(widget.data ?? {}), [key]: value };
+}
+
+function widgetSizeSettingEntries(widget: HataSideWidget, size: HataSideButtonSize) {
+	const values = widget.sizeSettings[size].data ?? {};
+	return Object.entries(values).map(([key, value]) => ({
+		key,
+		label: widgetSettingLabels[key] ?? key,
+		value,
+		type: typeof value === 'boolean' ? 'boolean' : typeof value === 'number' ? 'number' : 'text',
+	}));
+}
+
+function setWidgetSizeSetting(widget: HataSideWidget, size: HataSideButtonSize, key: string, value: unknown) {
+	widget.sizeSettings[size].data = { ...(widget.sizeSettings[size].data ?? {}), [key]: value };
+}
+
+function changeWidgetKind(widget: HataSideWidget, kind: HataSideWidgetKind) {
+	const replacement = createWidget(kind);
+	widget.kind = replacement.kind;
+	widget.label = replacement.label;
+	widget.data = replacement.data;
+	widget.sizeSettings = replacement.sizeSettings;
+	widget.content = replacement.content;
+}
+
+function addGroup() { if (editMode.value === 'collapsed') return; const group = createGroup(); activeProfile.value.expanded.nodes.push(group); openQuickEditor(group.id); }
+
+async function copyLayout(direction: 'expandedToCollapsed' | 'collapsedToExpanded') {
+	const target = direction === 'expandedToCollapsed' ? '縮小メニュー' : '拡大メニュー';
+	if (!await askStudioConfirm(`${target}へコピー`, `${target}の現在の並びを置き換えます。`, 'コピーする', 'ti ti-copy')) return;
+	replaceActiveProfile(direction === 'expandedToCollapsed' ? copyExpandedToCollapsed(activeProfile.value) : copyCollapsedToExpanded(activeProfile.value));
+	setEditMode(direction === 'expandedToCollapsed' ? 'collapsed' : 'expanded');
+}
+
+async function importCurrentSidebar() {
+	copyMenuOpen.value = false;
+	if (!await askStudioConfirm('現在の並びを読み込む', 'このプロファイルの拡大・縮小メニューを、現在のサイドメニュー設定から作り直します。', '読み込む', 'ti ti-list-check')) return;
+	const profile = createDefaultProfile(prefer.r['simpleUi.sidebar'].value as any[], activeProfile.value.name);
+	profile.id = activeProfile.value.id;
+	replaceActiveProfile(profile);
+	setEditMode('expanded');
+}
+
+function openSettingsTransfer() {
+	const { dispose } = os.popup(defineAsyncComponent(() => import('@/components/MkHataSettingsTransfer.vue')), {}, { closed: () => dispose() });
+}
+
+function moveSelectedTo(groupId: string) {
+	if (!selected.value || selected.value.type === 'group' || editMode.value === 'collapsed') return;
+	const moving = selected.value;
+	const containerId = groupId || 'root';
+	if (!canPlaceNodeInContainer(moving, containerId)) {
+		os.toast('複数列には「大」の項目を移動できません', 'ti ti-layout-grid');
+		return;
+	}
+	activeProfile.value.expanded.nodes = activeProfile.value.expanded.nodes
+		.filter(node => node.id !== moving.id)
+		.map(node => node.type === 'group' ? { ...node, children: node.children.filter(child => child.id !== moving.id) } : node);
+	if (groupId) {
+		const target = activeProfile.value.expanded.nodes.find((node): node is HataSideGroup => node.type === 'group' && node.id === groupId);
+		target?.children.push(moving);
+	} else {
+		activeProfile.value.expanded.nodes.push(moving);
+	}
+}
+
+async function mergeSelectedGroup() { if (!selectedId.value || !mergeTargetId.value) return; if (!await askStudioConfirm('グループを統合', '選択中のグループを統合先へまとめます。元の囲いは削除されます。', '統合する', 'ti ti-arrows-join')) return; const sourceId = selectedId.value; const targetId = mergeTargetId.value; const merged = mergeHataSideGroups(activeProfile.value, sourceId, targetId); merged.expanded.nodes = merged.expanded.nodes.filter(node => node.id !== sourceId); replaceActiveProfile(merged); selectedId.value = targetId; mergeTargetId.value = ''; }
+
+async function chooseDirectTarget(button: HataSideButton) { const collection = button.menuId === 'lists' ? await userListsCache.fetch().catch(() => []) : await antennasCache.fetch().catch(() => []); if (collection.length === 0) { await openStudioDialog({ kind: 'confirm', title: '選べる項目がありません', text: button.menuId === 'lists' ? 'リストがありません。先にリストを作成してください。' : 'アンテナがありません。先にアンテナを作成してください。', icon: 'ti ti-info-circle', confirmLabel: '閉じる', cancelLabel: '', value: '', options: [] }); return; } const result = await askStudioSelect(button.menuId === 'lists' ? '直接開くリスト' : '直接開くアンテナ', 'このボタンから直接開く項目を選びます。', collection.map((item: any) => ({ value: item.id, label: item.name }))); if (result) button.targetId = result; }
+
+async function renameProfile() { const result = await askStudioPrompt('プロファイル名', '端末内で区別しやすい名前を付けます。', activeProfile.value.name); if (result) activeProfile.value.name = result.slice(0, 80); }
+
+async function addProfile() { if (draft.value.profiles.length >= profileLimit.value) { await openStudioDialog({ kind: 'confirm', title: 'プロファイル上限', text: `このロールでは最大${profileLimit.value}件まで保存できます。`, icon: 'ti ti-alert-circle', confirmLabel: '閉じる', cancelLabel: '', value: '', options: [] }); return; } const profile = createDefaultProfile(prefer.r['simpleUi.sidebar'].value as any[], `プロファイル ${draft.value.profiles.length + 1}`); draft.value.profiles.push(profile); draft.value.activeProfileId = profile.id; selectedId.value = null; }
+
+async function removeProfile() { if (draft.value.profiles.length <= 1) return; if (!await askStudioConfirm('プロファイルを削除', `「${activeProfile.value.name}」を削除します。保存するまでは確定しません。`, '削除する', 'ti ti-trash')) return; const index = activeProfileIndex(); draft.value.profiles.splice(index, 1); draft.value.activeProfileId = draft.value.profiles[Math.max(0, index - 1)].id; selectedId.value = null; }
+
+function resetProfile() { const profile = createDefaultProfile(prefer.r['simpleUi.sidebar'].value as any[], activeProfile.value.name); profile.id = activeProfile.value.id; replaceActiveProfile(profile); resetConfirmOpen.value = false; selectedId.value = null; }
+
+function restoreHistory(index: number) { if (index < 0 || index >= history.value.length) return; historyLocked = true; historyIndex.value = index; draft.value = cloneHataSideStudioStore(history.value[index]); selectedId.value = null; queueMicrotask(() => { historyLocked = false; }); }
+
+function undo() { restoreHistory(historyIndex.value - 1); }
+
+function redo() { restoreHistory(historyIndex.value + 1); }
+
+function save() {
+	if (draft.value.profiles.length > profileLimit.value) {
+		void openStudioDialog({ kind: 'confirm', title: '保存できません', text: `このロールでは最大${profileLimit.value}件までです。`, icon: 'ti ti-alert-circle', confirmLabel: '閉じる', cancelLabel: '', value: '', options: [] });
+		return false;
+	}
+	for (const profile of draft.value.profiles) profile.updatedAt = new Date().toISOString();
+	applyHataSideStudioStore(draft.value);
+	// 保存時の安全補正後に実際に使われる値を編集画面へ戻し、見た目と保存結果の
+	// 食い違い・保存ボタンの再点灯を防ぐ。
+	historyLocked = true;
+	const saved = cloneHataSideStudioStore(hataSideStudioStore.value);
+	draft.value = saved;
+	original.value = cloneHataSideStudioStore(saved);
+	history.value = [cloneHataSideStudioStore(saved)];
+	historyIndex.value = 0;
+	queueMicrotask(() => { historyLocked = false; });
+	os.toast('HataSideStudio の設定をこの端末に保存しました', 'ti ti-device-floppy');
+	return true;
+}
+
+function buttonDetail(menuId: string): string {
+	if (menuId === 'hatafeed') return ($i?.isAdmin || $i?.isModerator) ? '絵文字審査・イシュー状況' : '申請・イシュー状況';
+	if (menuId === 'hatask') return '予定・ToDo・ごはん・きもち';
+	if (menuId === 'hatady') return '学習状況・読書・本日の記録';
+	if (menuId === 'notifications') return Number($i?.unreadNotificationsCount ?? 0) > 0 ? `直近の通知・未読${$i?.unreadNotificationsCount}件` : '新しい通知はありません';
+	if (menuId === 'announcements') return '最新のお知らせとメンテナンス情報';
+	if (menuId === 'search') return '検索ボックス';
+	if (menuId === 'chat') return '最後に開いた会話へすぐ移動';
+	if (menuId === 'channels') return 'フォロー中チャンネルの新着';
+	return '開く';
+}
+
+function runPreviewSearch(query: string) {
+	const normalized = query.trim();
+	mainRouter.pushByPath(normalized ? `/search?q=${encodeURIComponent(normalized)}` : '/search');
+}
+
+function startTutorial() {
+	closeFloatingMenus();
+	tutorialIndex.value = 0;
+	tutorialOpen.value = true;
+}
+
+function advanceTutorial() {
+	if (tutorialIndex.value < tutorialSteps.length - 1) {
+		tutorialIndex.value++;
+		return;
+	}
+	finishTutorial(false);
+}
+
+function finishTutorial(skipped: boolean) {
+	tutorialOpen.value = false;
+	miLocalStorage.setItem('hataSideStudioTutorialDone', '1');
+	claimAchievement('hataSideStudioPioneer');
+	os.toast(skipped ? 'チュートリアルをスキップしました' : 'HataSideStudioの準備ができました', skipped ? 'ti ti-player-skip-forward' : 'ti ti-confetti');
+}
+
+const leaveConfirmOpen = ref(false);
+const pendingPath = ref<string | null>(null);
+const pendingNavigationMode = ref<'push' | 'replace'>('push');
+const previousNavHook = mainRouter.navHook;
+mainRouter.navHook = (fullPath, flag) => { if (previousNavHook?.(fullPath, flag)) return true; if (!hasChanges.value) return false; pendingPath.value = fullPath; pendingNavigationMode.value = 'push'; leaveConfirmOpen.value = true; return true; };
+
+function onBeforeUnload(event: BeforeUnloadEvent) { if (!hasChanges.value) return; event.preventDefault(); event.returnValue = ''; }
+
+window.addEventListener('beforeunload', onBeforeUnload);
+onMounted(() => {
+	if (miLocalStorage.getItem('hataSideStudioTutorialDone') !== '1') startTutorial();
+});
+onBeforeUnmount(() => { if (historyTimer) window.clearTimeout(historyTimer); if (mainRouter.navHook === studioNavHook) mainRouter.navHook = previousNavHook; window.removeEventListener('beforeunload', onBeforeUnload); window.removeEventListener('pointermove', updateDragPointer); window.document.removeEventListener('dragover', updateDragPointer); window.removeEventListener('touchmove', updateDragPointer); window.removeEventListener('resize', updateDragTimelinePosition); });
+const studioNavHook = mainRouter.navHook;
+
+function navigatePending() { const path = pendingPath.value ?? '/settings/hata-custom'; const mode = pendingNavigationMode.value; pendingPath.value = null; pendingNavigationMode.value = 'push'; leaveConfirmOpen.value = false; mainRouter.navHook = previousNavHook; if (mode === 'replace' && path === '/settings/hata-custom') mainRouter.replace('/settings/hata-custom'); else mainRouter.pushByPath(path); }
+
+function confirmLeave(saveFirst: boolean) { if (saveFirst && !save()) return; navigatePending(); }
+
+function saveAndLeave() { confirmLeave(true); }
+
+function cancelLeave() { pendingPath.value = null; pendingNavigationMode.value = 'push'; leaveConfirmOpen.value = false; }
+
+function closeStudio() { if (hasChanges.value) { pendingPath.value = '/settings/hata-custom'; pendingNavigationMode.value = 'replace'; leaveConfirmOpen.value = true; } else mainRouter.replace('/settings/hata-custom'); }
+
+function openRoleSettings() { mainRouter.push('/admin/roles'); }
+
+definePage(() => ({
+	title: 'HataSideStudio',
+	icon: 'ti ti-layout-sidebar-left-expand',
+}));
+</script>
+
+<style lang="scss" module>
+@font-face {
+	font-family:'Righteous';
+	font-style:normal;
+	font-weight:400;
+	font-display:swap;
+	src:url('/client-assets/Righteous-Regular.woff2') format('woff2');
+}
+
+/* HataSideStudio本番画面。合意済みモックと実サイドバーの構造を同じ順に組む。 */
+.root {
+	--studioControlSize:34px;
+	--studioRailWidth:76px;
+	--studioRailHeight:64px;
+	--studioBg: light-dark(#f5f1eb, #15171c);
+	--studioSurface: light-dark(#fffdf9, #21242b);
+	--studioRaised: light-dark(#fff, #292d35);
+	--studioMuted: light-dark(#6c655c, #c0b8ad);
+	--studioLine: light-dark(#ddd4c8, #40454f);
+	--studioAccent: light-dark(#7156c5, #ac98f2);
+	--studioAccentFg: light-dark(#fff, #181320);
+	--studioAccentSoft: light-dark(#eee8ff, #39314f);
+	--studioDanger: light-dark(#b54751, #f0929a);
+	--studioDangerSoft: light-dark(#fff0f1, #4b292e);
+	--studioSuccess: light-dark(#337b64, #79c5ad);
+	min-height:100%;
+	padding:0;
+	color:var(--MI_THEME-fg);
+	background:var(--studioBg);
+	container-type:inline-size;
+}
+.teleportTheme {
+	/* HatasabaUIデッキやHataskの全画面層より上、通知トーストより下。
+	   全Teleportをビューポート基準にし、デッキ内のoverflowとスタッキングから切り離す。 */
+	position:fixed;
+	z-index:3500000;
+	inset:0;
+	pointer-events:none;
+	--studioBg: light-dark(#f5f1eb, #15171c);
+	--studioSurface: light-dark(#fffdf9, #21242b);
+	--studioRaised: light-dark(#fff, #292d35);
+	--studioMuted: light-dark(#6c655c, #c0b8ad);
+	--studioLine: light-dark(#ddd4c8, #40454f);
+	--studioAccent: light-dark(#7156c5, #ac98f2);
+	--studioAccentFg: light-dark(#fff, #181320);
+	--studioAccentSoft: light-dark(#eee8ff, #39314f);
+	--studioDanger: light-dark(#b54751, #f0929a);
+	color:var(--MI_THEME-fg);
+}
+.creationPicker,.quickEditor,.reorderWindow,.dragTimeline,.studioDialogWindow,.windowLayer,.tutorialWindow { pointer-events:auto; }
+.header {
+	display:grid;
+	grid-template-columns:minmax(250px,auto) minmax(260px,1fr) auto;
+	align-items:center;
+	gap:14px;
+	max-width:none;
+	margin:0;
+	padding:14px 18px;
+	border:0;
+	border-bottom:1px solid var(--studioLine);
+	border-radius:0;
+	background:var(--studioRaised);
+	box-shadow:none;
+}
+.brand { display:flex;align-items:center;gap:10px;min-width:0; }
+.backButton,.profileRename,.profileAdd,.historyButton { display:grid;place-items:center;flex:0 0 auto;width:34px;height:34px;padding:0;border:1px solid var(--studioLine);border-radius:10px;background:var(--studioSurface); }
+.logo { font-family:'Righteous',system-ui,sans-serif;font-size:1.28rem;font-weight:400;letter-spacing:.02em;white-space:nowrap; }
+.profileBar { display:flex;align-items:center;justify-content:center;gap:6px;min-width:0;flex-wrap:wrap; }
+.profileTab,.profileAdd { min-height:34px;padding:6px 11px;color:var(--studioMuted);border:1px solid var(--studioLine);border-radius:999px;background:var(--studioSurface); }
+.profileTab[aria-pressed="true"] { color:var(--studioAccentFg);border-color:var(--studioAccent);background:var(--studioAccent); }
+.profileRename,.profileAdd { width:var(--studioControlSize);height:var(--studioControlSize);min-height:var(--studioControlSize);padding:0;border-radius:999px;color:var(--studioAccent); }
+.profileAdd { border-color:var(--studioAccent); }
+.profileLimit { color:var(--studioMuted);font-size:.78rem;white-space:nowrap; }
+.headerActions { display:flex;align-items:center;justify-content:flex-end;gap:8px;min-width:0;flex-wrap:wrap; }
+.dirty { display:inline-flex;align-items:center;gap:5px;color:var(--studioDanger);font-size:.78rem; }
+.historyActions { display:flex;align-items:center;gap:3px;padding:3px;border:1px solid var(--studioLine);border-radius:12px;background:var(--studioBg); }
+.historyButton { border:0;background:transparent;color:var(--studioMuted); }
+.historyButton:hover:not(:disabled) { color:var(--MI_THEME-fg);background:var(--studioSurface); }
+.historyButton:disabled { opacity:.35; }
+.actionButton { display:flex;align-items:center;gap:6px;min-height:38px;padding:8px 12px;border:1px solid var(--studioLine);border-radius:11px; }
+.resetWrap { position:relative; }
+.resetConfirm { position:absolute;z-index:80;top:43px;right:0;width:270px;padding:14px;border:1px solid var(--studioLine);border-radius:14px;background:var(--studioRaised);box-shadow:0 16px 44px #0005;display:grid;gap:8px; }
+.resetConfirm span { color:var(--studioMuted);font-size:.78rem; }
+.resetConfirm > div { display:flex;justify-content:flex-end;gap:8px; }
+.main { display:grid;grid-template-columns:minmax(390px,1fr) minmax(430px,1fr);gap:1px;background:var(--studioLine); }
+.pane { min-width:0;padding:18px;background:var(--studioSurface); }
+.paneHead { display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px; }
+.paneHead > div:first-child { display:flex;align-items:baseline;gap:10px; }
+.paneHead h2 { margin:0;font-size:1.05rem;font-weight:600; }
+.paneHead span { color:var(--studioMuted);font-size:.76rem; }
+.previewHeadActions { display:flex;align-items:center;gap:8px; }
+.copyWrap { position:relative; }
+.copyButton { display:flex;align-items:center;gap:6px;min-height:36px;padding:7px 10px;border:1px solid var(--studioLine);border-radius:10px;background:var(--studioRaised); }
+.copyMenu { position:absolute;z-index:70;top:42px;right:0;width:300px;padding:6px;border:1px solid var(--studioLine);border-radius:14px;background:var(--studioRaised);box-shadow:0 16px 46px #0005;display:grid;gap:3px; }
+.copyMenu button { display:grid;grid-template-columns:28px 1fr;align-items:center;gap:8px;width:100%;padding:9px;text-align:left;border-radius:9px; }
+.copyMenu button:hover { background:var(--studioAccentSoft); }
+.copyMenu button > i { font-size:20px;color:var(--studioAccent); }
+.copyMenu button span { display:grid;color:var(--MI_THEME-fg); }
+.copyMenu small { color:var(--studioMuted);font-size:.7rem; }
+.modeTabs { display:flex;align-items:center;gap:3px;padding:3px;border:1px solid var(--studioLine);border-radius:11px;background:var(--studioBg); }
+.modeTabs button { min-height:30px;padding:5px 9px;border-radius:8px;font-size:.76rem; }
+.modeTabs button[aria-pressed="true"] { color:var(--studioAccentFg);background:var(--studioAccent); }
+.stage { position:relative;display:grid;place-items:start center;min-height:900px;padding:20px 74px 20px 104px;border-radius:20px;background:radial-gradient(circle at 18% 14%,color-mix(in srgb,var(--studioAccent) 18%,transparent),transparent 31%),radial-gradient(circle at 84% 78%,color-mix(in srgb,var(--studioSuccess) 16%,transparent),transparent 34%),var(--studioBg); }
+.sideTools { position:absolute;top:50%;z-index:25;display:grid;gap:8px;transform:translateY(-50%); }
+.sideTools[data-side="left"] { left:10px; }
+.sideTools[data-side="right"] { right:10px; }
+.addAction { display:grid;place-items:center;gap:4px;width:var(--studioRailWidth);height:var(--studioRailHeight);min-height:var(--studioRailHeight);padding:7px;color:var(--studioAccent);border:1px solid color-mix(in srgb,var(--studioAccent) 48%,var(--studioLine));border-radius:12px;background:var(--studioAccentSoft); }
+.addAction i { font-size:1.25rem; }
+.addAction span,.bulkAction span,.reorderAction span { font-size:.7rem;line-height:1.25;text-align:center;overflow-wrap:anywhere; }
+.addAction:disabled { opacity:.42;cursor:not-allowed; }
+.bulkAction { display:grid;place-items:center;gap:3px;width:var(--studioRailWidth);height:var(--studioRailHeight);min-height:var(--studioRailHeight);padding:6px;color:var(--studioDanger);border:1px solid color-mix(in srgb,var(--studioDanger) 45%,var(--studioLine));border-radius:13px;background:var(--studioDangerSoft);transition:transform .16s ease,box-shadow .16s ease; }
+.bulkAction[aria-pressed="true"] { color:#fff;border-color:var(--studioDanger);background:var(--studioDanger); }
+.deleteDropArmed { transform:scale(1.07);box-shadow:0 0 0 4px color-mix(in srgb,var(--studioDanger) 28%,transparent),0 12px 30px #0004; }
+.reorderAction { display:grid;place-items:center;gap:3px;width:var(--studioRailWidth);height:var(--studioRailHeight);min-height:var(--studioRailHeight);padding:6px;color:var(--studioAccent);border:1px solid color-mix(in srgb,var(--studioAccent) 45%,var(--studioLine));border-radius:13px;background:var(--studioAccentSoft); }
+.reorderAction[aria-pressed="true"] { color:var(--studioAccentFg);border-color:var(--studioAccent);background:var(--studioAccent); }
+.creationPicker { position:fixed;z-index:10030;top:50%;left:50%;width:min(340px,calc(100% - 24px));max-height:calc(100dvh - 24px);padding:14px;box-sizing:border-box;border:1px solid var(--studioLine);border-radius:15px;background:var(--studioRaised);box-shadow:0 18px 52px #0005;display:grid;gap:11px;overflow:auto;transform:translate(-50%,-50%); }
+.quickEditor { position:fixed;z-index:10030;top:50%;left:50%;width:min(430px,calc(100% - 24px));max-height:calc(100dvh - 24px);padding:14px;box-sizing:border-box;border:1px solid var(--studioLine);border-radius:15px;background:var(--studioRaised);box-shadow:0 18px 52px #0005;display:grid;gap:11px;overflow:auto;transform:translate(-50%,-50%); }
+.quickSection { display:grid;gap:7px; }
+.quickSection > b,.quickField > span { color:var(--studioMuted);font-size:.72rem;font-weight:600; }
+.quickField { display:grid;gap:5px; }
+.quickColors { display:grid;grid-template-columns:repeat(3,1fr);gap:8px; }
+.quickColors label { display:grid;gap:4px;color:var(--studioMuted);font-size:.7rem; }
+.quickColors input { width:100%;height:34px;padding:0;border:0;background:none; }
+.gradientControls { display:grid;gap:8px;padding:10px;border:1px solid var(--studioLine);border-radius:12px;background:var(--studioSurface); }
+.quickGradientPreview { height:42px;border:1px solid var(--studioLine);border-radius:10px; }
+.layoutPicker { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px; }
+.layoutPicker button { display:flex;align-items:center;justify-content:center;gap:6px;min-height:42px;padding:7px;border:1px solid var(--studioLine);border-radius:10px; }
+.layoutPicker button[aria-pressed="true"] { color:var(--studioAccentFg);border-color:var(--studioAccent);background:var(--studioAccent); }
+.layoutPicker button:disabled,.choiceRow button:disabled { opacity:.34;cursor:not-allowed; }
+.reorderWindow { position:fixed;z-index:10030;top:50%;left:50%;width:min(410px,calc(100% - 24px));max-height:calc(100dvh - 24px);padding:14px;box-sizing:border-box;border:1px solid var(--studioLine);border-radius:15px;background:var(--studioRaised);box-shadow:0 18px 52px #0005;display:grid;gap:12px;overflow:auto;transform:translate(-50%,-50%); }
+.pickerHead > div { display:grid;gap:2px; }.pickerHead small { color:var(--studioMuted);font-size:.68rem; }
+.reorderSection { display:grid;gap:6px;padding:10px;border:1px solid var(--studioLine);border-radius:12px;background:color-mix(in srgb,var(--studioSurface) 76%,transparent); }
+.reorderSection:not([data-container="root"]):not([data-container="collapsed"]) { border-color:color-mix(in srgb,var(--studioAccent) 60%,var(--studioLine));background:color-mix(in srgb,var(--studioAccentSoft) 50%,var(--studioSurface));box-shadow:inset 3px 0 0 color-mix(in srgb,var(--studioAccent) 74%,transparent); }
+.reorderSection > b { display:flex;align-items:center;min-height:24px;padding:0 3px 5px;color:var(--studioMuted);border-bottom:1px solid color-mix(in srgb,var(--studioLine) 72%,transparent);font-size:.72rem; }
+.reorderRow { display:grid;grid-template-columns:22px minmax(0,1fr) 30px 30px;align-items:center;gap:6px;padding:6px;border-radius:9px;background:var(--studioSurface); }
+.reorderRow span { min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.76rem; }
+.reorderRow button { display:grid;place-items:center;width:30px;height:30px;border:1px solid var(--studioLine);border-radius:8px; }
+.reorderRow button:disabled { opacity:.3; }
+.dragHint { position:fixed;z-index:10040;display:flex;align-items:center;gap:7px;width:min(240px,calc(100% - 16px));padding:8px 10px;border:1px solid var(--studioAccent);border-radius:12px;color:var(--studioAccentFg);background:var(--studioAccent);box-shadow:0 10px 28px #0005;font-size:.68rem;line-height:1.35;pointer-events:none; }
+.dragTimeline { position:fixed;z-index:10035;right:auto;bottom:auto;display:grid;gap:9px;width:min(224px,calc(100% - 24px));padding:10px;box-sizing:border-box;border:1px solid color-mix(in srgb,var(--studioAccent) 65%,var(--studioLine));border-radius:15px;background:color-mix(in srgb,var(--studioRaised) 94%,transparent);box-shadow:0 18px 52px #0005;overflow:auto;backdrop-filter:blur(14px); }
+.dragTimelineHead { display:flex;align-items:center;gap:8px;padding:2px 3px 7px;border-bottom:1px solid var(--studioLine); }
+.dragTimelineHead > i { color:var(--studioAccent);font-size:20px; }.dragTimelineHead > span { display:grid; }.dragTimelineHead small { color:var(--studioMuted);font-size:.62rem; }
+.dragTimelineDelete { position:sticky;z-index:2;top:0;display:grid;grid-template-columns:24px minmax(0,1fr);align-items:center;gap:7px;min-height:46px;padding:7px 9px;color:var(--studioDanger);border:1px solid color-mix(in srgb,var(--studioDanger) 55%,var(--studioLine));border-radius:10px;background:var(--studioDangerSoft);text-align:left; }
+.dragTimelineDelete > i { font-size:20px; }.dragTimelineDelete > span { display:grid; }.dragTimelineDelete small { color:inherit;font-size:.62rem;opacity:.72; }
+.dragTimelineSection { display:grid;gap:3px;padding:7px;border:1px solid var(--studioLine);border-radius:11px;background:color-mix(in srgb,var(--studioSurface) 78%,transparent); }
+.dragTimelineSection:not([data-container="root"]):not([data-container="collapsed"]) { border-color:color-mix(in srgb,var(--studioAccent) 62%,var(--studioLine));background:color-mix(in srgb,var(--studioAccentSoft) 54%,var(--studioSurface));box-shadow:inset 3px 0 0 color-mix(in srgb,var(--studioAccent) 72%,transparent); }
+.dragTimelineSection > strong { margin-bottom:2px;padding-inline:2px;color:var(--studioMuted);font-size:.65rem; }
+.dragTimelineItem { display:grid;grid-template-columns:18px minmax(0,1fr);align-items:center;gap:6px;min-height:29px;padding:4px 7px;color:var(--MI_THEME-fg);border:1px solid var(--studioLine);border-radius:8px;background:var(--studioSurface);font-size:.67rem; }
+.dragTimelineItem span { overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+.dragTimelineGap { display:grid;grid-template-columns:16px minmax(0,1fr);align-items:center;gap:4px;min-height:22px;margin:0 7px;padding:2px 6px;color:var(--studioMuted);border:1px dashed color-mix(in srgb,var(--studioAccent) 38%,var(--studioLine));border-radius:7px;background:color-mix(in srgb,var(--studioAccentSoft) 55%,transparent);text-align:left;font-size:.59rem;transition:min-height .12s ease,margin .12s ease,background .12s ease; }
+.dragTimelineGap span { overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }.dragTimelineGap[data-active="true"] { min-height:32px;margin-block:2px;color:var(--studioAccentFg);border-style:solid;border-color:var(--studioAccent);background:var(--studioAccent); }
+.dragTimelineGap:disabled { opacity:.3;cursor:not-allowed; }
+.creationPicker label { display:grid;gap:5px;font-size:.78rem;color:var(--studioMuted); }
+.pickerHead,.pickerActions { display:flex;align-items:center;justify-content:space-between;gap:8px; }
+.pickerHead button { width:30px;height:30px;border-radius:9px; }
+.pickerActions { justify-content:flex-end; }
+.pickerActions button { min-height:34px;padding:7px 11px;border-radius:9px; }
+.select,.input,.textarea { width:100%;min-width:0;box-sizing:border-box;padding:9px 11px;border:1px solid var(--studioLine);border-radius:10px;color:var(--MI_THEME-fg);background:var(--studioSurface); }
+.textarea { resize:vertical;font:inherit;line-height:1.45; }
+.shapePicker { display:grid;grid-template-columns:repeat(3,1fr);gap:7px; }
+.shapePicker button { display:grid;place-items:center;gap:4px;min-height:64px;padding:7px;border:1px solid var(--studioLine);border-radius:11px; }
+.shapePicker button[aria-pressed="true"] { border-color:var(--studioAccent);background:var(--studioAccentSoft); }
+.shapePicker button > span,.shapeSample { display:block;width:30px;height:24px;border:2px solid currentColor;border-radius:7px; }
+.shapePicker [data-shape="circle"],.shapeSample[data-shape="circle"] { width:25px;border-radius:50%;aspect-ratio:1; }
+.shapePicker [data-shape="pill"],.shapeSample[data-shape="pill"] { width:38px;border-radius:999px; }
+.shapePicker small { font-size:.68rem; }
+.sidebarPreview { width:min(100%,300px);height:780px;margin:0 auto;padding:11px;box-sizing:border-box;display:flex;flex-direction:column;border:1px solid var(--studioLine);border-radius:20px;background:color-mix(in srgb,var(--MI_THEME-navBg) 94%,var(--studioAccent));box-shadow:0 12px 34px #0003;overflow:hidden;transition:width .2s ease,padding .2s ease; }
+.sidebarPreviewWide { width:min(100%,380px); }
+.sidebarPreviewCollapsed { width:64px;padding-inline:8px; }
+.serverRow { display:grid;grid-template-columns:40px minmax(0,1fr) 34px 34px;align-items:center;gap:4px;margin-bottom:10px; }
+.serverIcon { display:grid;place-items:center;width:40px;height:40px;padding:0;overflow:hidden;border:0;border-radius:12px;background:var(--studioAccent);color:#fff; }
+.serverIcon img { width:100%;height:100%;object-fit:cover; }
+.serverName { display:grid;gap:1px;min-width:0;padding-inline:7px;text-align:left;line-height:1.08; }
+.serverName small { font-size:.6rem;opacity:.58; }
+.serverName b { overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.8rem; }
+.serverAction { display:grid;place-items:center;width:34px;height:34px;padding:0;border-radius:9px; }
+.sidebarPreviewCollapsed .serverRow { display:flex;flex-direction:column;gap:6px; }
+.sidebarPreviewCollapsed .serverAction { flex:0 0 34px; }
+.customArea { flex:1;min-height:0;padding:3px 5px 10px;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin; }
+.customArea[data-parallax="on"] .expandedNodes { transform:translateY(var(--hss-parallax,0)); }
+.expandedNodes { display:grid;grid-template-columns:repeat(var(--hss-normal-columns,1),minmax(0,1fr));align-items:start;gap:4px;min-width:0;padding:10px;box-sizing:border-box;overflow:visible; }
+.previewNode { position:relative;min-width:0;box-sizing:border-box;overflow:visible; }
+.previewNode[data-selected="true"],.previewButton[data-selected="true"],.previewWidget[data-selected="true"],.collapsedButton[data-selected="true"] { outline:2px solid var(--studioAccent);outline-offset:2px;box-shadow:0 0 0 1px color-mix(in srgb,var(--studioAccent) 42%,transparent); }
+.previewGroup { grid-column:1/-1;padding:9px;color:var(--hss-fg);border:var(--hss-border-width,1px) var(--hss-border-style,solid) var(--hss-border);border-radius:15px;background:var(--hss-bg);background-clip:padding-box;overflow:visible; }
+.groupHead { display:flex;align-items:center;justify-content:space-between;gap:6px;min-height:26px;margin-bottom:6px;font-size:.72rem;font-weight:600; }
+.groupHead > div { display:flex;align-items:center;gap:4px; }
+.groupHead button { display:grid;place-items:center;width:30px;height:30px;padding:0;border:1px solid var(--studioLine);border-radius:8px;background:var(--studioSurface); }
+.groupHead .hssDrag { cursor:grab;touch-action:none; }
+.contrastWarning { color:#684300!important;border-color:#e0a92f!important;background:#fff0ba!important;animation:contrastPulse 2.4s ease-in-out infinite; }
+@keyframes contrastPulse { 0%,100% { box-shadow:0 0 0 0 #e0a92f00; } 45% { box-shadow:0 0 0 4px #e0a92f35; } }
+.contrastPopover { position:absolute;z-index:45;top:44px;left:8px;right:8px;display:grid;gap:9px;padding:12px;color:var(--MI_THEME-fg);border:1px solid #e0a92f;border-radius:13px;background:var(--studioRaised);box-shadow:0 16px 42px #0005; }
+.contrastPopover header { display:grid;grid-template-columns:22px minmax(0,1fr) 28px;align-items:center;gap:7px;color:#a26b00; }
+.contrastPopover header button { width:28px;height:28px;border-radius:8px; }.contrastPopover p { margin:0;color:var(--studioMuted);font-size:.7rem;line-height:1.45; }
+.contrastPopover > div { display:flex;align-items:center;gap:8px;flex-wrap:wrap; }.contrastPopover > div > button { min-height:34px;padding:7px 10px;border-radius:9px; }.contrastPopover label { display:flex;align-items:center;gap:6px;color:var(--studioMuted);font-size:.68rem; }.contrastPopover input { width:38px;height:30px;padding:0;border:0;background:none; }
+.groupGrid { position:relative;display:grid;grid-template-columns:repeat(var(--hss-columns,1),minmax(0,1fr));align-items:start;gap:4px;min-width:0;min-height:46px;padding:4px;box-sizing:border-box;border-radius:10px; }
+.groupGrid[data-empty="true"]::before { content:'ここへボタン・ウィジェットをドラッグ';position:absolute;inset:0;display:grid;place-items:center;padding:8px;border:1px dashed var(--studioLine);border-radius:10px;color:var(--studioMuted);font-size:.62rem;text-align:center;pointer-events:none; }
+.previewGroup[data-masonry="on"] .groupGrid { display:block;columns:var(--hss-columns,1);column-gap:7px; }
+.previewGroup[data-masonry="on"] .previewButton,.previewGroup[data-masonry="on"] .previewWidget { width:100%;margin:0 0 7px;break-inside:avoid; }
+.previewGroup[data-masonry="on"] .previewWidget { column-span:all; }
+.previewButton { position:relative;display:flex;align-items:center;gap:7px;width:100%;min-width:0;min-height:38px;margin-block:var(--hss-rotation-space,0);padding:6px 8px;box-sizing:border-box;color:var(--hss-fg);border:var(--hss-border-width,1px) var(--hss-border-style,solid) var(--hss-border);border-radius:11px;background:var(--hss-bg);background-clip:padding-box;transform:rotate(var(--hss-rotation));transform-origin:center;overflow:visible; }
+.buttonPreviewBody { display:flex;align-items:center;gap:7px;min-width:0;width:100%; }
+.buttonPreviewBody > i,.largeButtonPreview > i { flex:0 0 auto;font-size:18px; }
+.buttonPreviewBody > span,.largeButtonPreview > span { display:grid;min-width:0; }
+.buttonPreviewBody b,.buttonPreviewBody small,.largeButtonPreview b { overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+.buttonPreviewBody b { font-size:.82rem;font-weight:550; }.buttonPreviewBody small,.largeButtonPreview small { font-size:.68rem;opacity:.7; }
+.largeButtonPreview small { overflow:visible;white-space:normal;line-height:1.35;writing-mode:horizontal-tb;word-break:normal;overflow-wrap:break-word; }
+.largeButtonPreview { display:grid;grid-template-columns:minmax(0,1fr);align-items:start;justify-items:start;gap:4px;min-width:0;width:100%;text-align:left; }
+.largeButtonPreview > i { width:auto;font-size:20px; }.largeButtonPreview > span { width:100%; }.largeButtonPreview b { font-size:.88rem;white-space:normal;overflow-wrap:anywhere; }
+.largeButtonPreview em { justify-self:start;padding:3px 7px;border-radius:999px;background:color-mix(in srgb,var(--hss-fg) 10%,transparent);font-size:.61rem;font-style:normal;white-space:nowrap; }
+.previewBadge { position:absolute;z-index:9;top:-4px;right:-4px;display:grid;place-items:center;min-width:18px;height:18px;padding:0 4px;box-sizing:border-box;color:#fff;border:2px solid var(--studioRaised);border-radius:999px;background:var(--studioDanger);font-size:.55rem;font-weight:700;line-height:1; }
+.searchButtonPreview { display:grid;grid-template-columns:22px minmax(0,1fr) 27px;align-items:center;gap:6px;width:100%;min-width:0; }
+.searchButtonPreview input { width:100%;min-width:0;padding:7px 8px;color:var(--hss-fg);border:1px solid color-mix(in srgb,var(--hss-fg) 24%,transparent);border-radius:9px;background:color-mix(in srgb,var(--studioSurface) 92%,transparent);font-size:.68rem; }
+.searchButtonPreview button { display:grid;place-items:center;width:27px;height:27px;border-radius:8px;background:color-mix(in srgb,var(--hss-fg) 12%,transparent); }
+.previewButton[data-shape="circle"] { width:44px;min-width:44px;height:44px;min-height:44px;margin-inline:auto;border-radius:50%;aspect-ratio:auto;justify-content:center;padding:7px;overflow:visible; }
+.previewButton[data-shape="circle"][data-size="small"] { width:36px;min-width:36px;height:36px;min-height:36px; }
+.previewButton[data-shape="circle"][data-size="large"] { display:flex;width:54px;min-width:54px;height:54px;min-height:54px; }
+.previewButton[data-shape="circle"] .buttonPreviewBody > span,.previewButton[data-shape="circle"] .largeButtonPreview > span,.previewButton[data-shape="circle"] .largeButtonPreview > em { display:none; }
+.previewButton[data-shape="pill"] { width:calc(100% - 8px);margin-inline:4px;border-radius:999px; }
+.previewButton[data-size="small"] { min-height:34px;padding:6px;font-size:.8em; }
+.previewButton[data-size="large"] { grid-column:1/-1;display:grid;grid-template-columns:minmax(0,1fr);grid-auto-rows:auto;min-height:86px;align-items:start;padding:10px 11px; }
+.previewButton[data-shape="circle"][data-size="large"] { display:flex;grid-column:auto;grid-template-columns:none;grid-template-rows:none;min-height:54px;padding:7px; }
+.previewWidget { position:relative;grid-column:1/-1;width:100%;min-width:0;box-sizing:border-box;padding:9px 10px;color:var(--hss-fg);border:var(--hss-border-width,1px) var(--hss-border-style,solid) var(--hss-border);border-radius:13px;background:var(--hss-bg);overflow:visible; }
+.previewWidget[data-shape="circle"] { width:58px;min-width:58px;height:58px;min-height:58px;margin-inline:auto;border-radius:50%; }
+.previewWidget[data-shape="circle"] .widgetBody > div { display:none; }
+.previewWidget[data-shape="pill"] { width:calc(100% - 8px);margin-inline:4px;border-radius:999px;overflow:visible; }
+.previewWidget[data-shape="pill"] > :not(button),.previewWidget[data-shape="circle"] > :not(button) { border-radius:inherit;overflow:hidden; }
+.widgetBody { display:flex;align-items:center;gap:9px;min-width:0; }
+.widgetBody > i { flex:0 0 auto;font-size:22px; }
+.widgetBody > div { display:grid;min-width:0; }
+.widgetBody span,.widgetBody small { overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.66rem;opacity:.65; }
+.nativeWidgetPreview { width:100%;height:auto;min-width:0;min-height:var(--hss-widget-height,160px);box-sizing:border-box;border-radius:10px;overflow:visible;overscroll-behavior:auto; }
+.nativeWidgetPreview > * { width:100%;min-width:0;box-sizing:border-box; }
+.nativeWidgetFrame { width:100%;height:auto;min-width:0;min-height:var(--hss-widget-height,160px);box-sizing:border-box;overflow:visible;overscroll-behavior:auto;touch-action:auto; }
+.nativeWidgetFrame > * { width:100%;min-width:0;box-sizing:border-box; }
+.nativeWidgetPreview[data-hss-kind="announcements"] { display:grid;place-items:center;text-align:center; }
+.nativeWidgetPreview[data-hss-kind="postForm"] .nativeWidgetFrame { overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;touch-action:pan-x;scroll-behavior:smooth;scrollbar-width:thin; }
+.nativeWidgetPreview[data-hss-kind="postForm"] :global(.mkw-post-form) { width:max(100%,260px)!important;min-width:260px!important; }
+.nativeWidgetPreview[data-hss-kind="postForm"] :global(.mkw-post-form footer) { display:block!important;width:100%!important;max-width:none!important;overflow-x:auto!important;overflow-y:hidden!important;overscroll-behavior-x:contain;touch-action:pan-x;padding-inline:8px!important;box-sizing:border-box;scrollbar-width:thin; }
+.nativeWidgetPreview[data-hss-kind="postForm"] :global(.mkw-post-form footer > div) { display:flex!important;flex-wrap:nowrap!important;width:max-content!important;min-width:100%!important;max-width:none!important;overflow:visible!important; }
+.nativeWidgetPreview[data-hss-kind="postForm"] :global(.mkw-post-form footer > div > button) { flex:0 0 38px!important;width:38px!important;min-width:38px!important;height:40px!important; }
+.nativeWidgetPreview[data-hss-kind="digitalClock"] .nativeWidgetFrame,
+.nativeWidgetPreview[data-hss-kind="clock"] .nativeWidgetFrame,
+.nativeWidgetPreview[data-hss-kind="rssTicker"] .nativeWidgetFrame,
+.nativeWidgetPreview[data-hss-kind="onlineUsers"] .nativeWidgetFrame { display:grid;place-items:center;overflow:clip; }
+.nativeWidgetPreview[data-hss-kind="digitalClock"] :global([data-testid="mkw-digitalClock"]),
+.nativeWidgetPreview[data-hss-kind="clock"] :global([data-testid="mkw-clock"]),
+.nativeWidgetPreview[data-hss-kind="onlineUsers"] :global([data-testid="mkw-onlineUsers"]) { display:grid!important;place-items:center!important;width:100%!important;height:100%!important;min-height:0!important;padding-block:0!important;box-sizing:border-box; }
+.nativeWidgetPreview[data-hss-kind="digitalClock"] :global([data-testid="mkw-digitalClock"]) { padding-block:0!important; }
+.nativeWidgetPreview[data-hss-kind="rssTicker"] :global(.mkw-rss-ticker) { width:100%!important;min-height:0!important; }
+.nativeWidgetPreview[data-hss-kind="notifications"] :global(.mkw-notifications),
+.nativeWidgetPreview[data-hss-kind="externalNotifications"] :global(.mkw-externalNotifications),
+.nativeWidgetPreview[data-hss-kind="timeline"] :global(.mkw-timeline) { width:100%!important;height:auto!important;min-height:var(--hss-widget-height,112px)!important;box-sizing:border-box;overflow:clip!important; }
+.nativeWidgetPreview[data-hss-kind="notifications"] :global(.mkw-notifications > div:last-child),
+.nativeWidgetPreview[data-hss-kind="externalNotifications"] :global(.mkw-externalNotifications > div:last-child),
+.nativeWidgetPreview[data-hss-kind="timeline"] :global(.mkw-timeline > div:last-child) { overflow:visible!important; }
+.nativeWidgetPreview[data-hss-kind="notifications"] :global(.mkw-notifications > div:last-child > div > div > div > button),
+.nativeWidgetPreview[data-hss-kind="timeline"] :global(.mkw-timeline > div:last-child > div > div > div > button) { display:none!important; }
+.nativeWidgetPreview[data-hss-kind="notifications"][data-hss-size="small"] :global([data-scroll-anchor]:nth-child(n+2)),
+.nativeWidgetPreview[data-hss-kind="timeline"][data-hss-size="small"] :global([data-scroll-anchor]:nth-child(n+2)),
+.nativeWidgetPreview[data-hss-kind="notifications"][data-hss-size="normal"] :global([data-scroll-anchor]:nth-child(n+3)),
+.nativeWidgetPreview[data-hss-kind="timeline"][data-hss-size="normal"] :global([data-scroll-anchor]:nth-child(n+3)),
+.nativeWidgetPreview[data-hss-kind="notifications"][data-hss-size="large"] :global([data-scroll-anchor]:nth-child(n+4)),
+.nativeWidgetPreview[data-hss-kind="timeline"][data-hss-size="large"] :global([data-scroll-anchor]:nth-child(n+4)) { display:none!important; }
+.nativeWidgetPreview[data-hss-kind="externalNotifications"][data-hss-size="small"] :global(.mkw-externalNotifications > div:last-child > div > div > div:nth-child(n+2)),
+.nativeWidgetPreview[data-hss-kind="externalNotifications"][data-hss-size="normal"] :global(.mkw-externalNotifications > div:last-child > div > div > div:nth-child(n+3)),
+.nativeWidgetPreview[data-hss-kind="externalNotifications"][data-hss-size="large"] :global(.mkw-externalNotifications > div:last-child > div > div > div:nth-child(n+4)) { display:none!important; }
+.nativeWidgetPreview[data-hss-kind="externalNotifications"] :global(.mkw-externalNotifications) div:has(> .ti-plug-connected-x) { display:flex!important;flex-direction:column;align-items:center;justify-content:center;min-height:var(--hss-widget-height,88px)!important;padding:4px 8px!important;box-sizing:border-box;overflow:clip!important;text-align:center; }
+.nativeWidgetPreview[data-hss-kind="trends"] :global(.wbrkwala),
+.nativeWidgetPreview[data-hss-kind="federation"] :global(.wbrkwalb) { height:auto!important;max-height:none!important;overflow:visible!important; }
+.nativeWidgetPreview[data-hss-kind="rss"] :global(.mkw-rss a) { padding:5px 9px!important;font-size:.8rem; }
+.nativeWidgetPreview[data-hss-kind="trends"] :global(.tags > div) { min-height:0!important;padding:7px 9px!important; }
+.nativeWidgetPreview[data-hss-kind="federation"] :global(.instances > .instance) { min-height:0!important;padding:7px 9px!important; }
+.nativeWidgetPreview[data-hss-kind="trends"][data-hss-size="small"] :global(.tags > div:nth-child(n+2)),
+.nativeWidgetPreview[data-hss-kind="federation"][data-hss-size="small"] :global(.instances > .instance:nth-child(n+2)),
+.nativeWidgetPreview[data-hss-kind="trends"][data-hss-size="normal"] :global(.tags > div:nth-child(n+3)),
+.nativeWidgetPreview[data-hss-kind="federation"][data-hss-size="normal"] :global(.instances > .instance:nth-child(n+3)),
+.nativeWidgetPreview[data-hss-kind="trends"][data-hss-size="large"] :global(.tags > div:nth-child(n+4)),
+.nativeWidgetPreview[data-hss-kind="federation"][data-hss-size="large"] :global(.instances > .instance:nth-child(n+4)) { display:none!important; }
+.nativeWidgetPreview[data-hss-kind="photos"][data-hss-size="small"] :global(.mkw-photos [style*="background-image"]:nth-child(n+4)),
+.nativeWidgetPreview[data-hss-kind="photos"][data-hss-size="normal"] :global(.mkw-photos [style*="background-image"]:nth-child(n+7)) { display:none!important; }
+.nativeWidgetPreview[data-hss-kind="userList"][data-hss-size="small"] :global(.mkw-userList .users > .user:nth-child(n+5)),
+.nativeWidgetPreview[data-hss-kind="userList"][data-hss-size="normal"] :global(.mkw-userList .users > .user:nth-child(n+9)),
+.nativeWidgetPreview[data-hss-kind="userList"][data-hss-size="large"] :global(.mkw-userList .users > .user:nth-child(n+13)) { display:none!important; }
+.nativeWidgetPreview[data-hss-kind="chat"][data-hss-size="small"] :global(.mkw-chat ._gaps_s > a:nth-child(n+2)),
+.nativeWidgetPreview[data-hss-kind="chat"][data-hss-size="normal"] :global(.mkw-chat ._gaps_s > a:nth-child(n+3)),
+.nativeWidgetPreview[data-hss-kind="chat"][data-hss-size="large"] :global(.mkw-chat ._gaps_s > a:nth-child(n+4)) { display:none!important; }
+.nativeWidgetPreview[data-hss-kind="birthdayFollowings"][data-hss-size="small"] :global(.mkw-bdayfollowings a:nth-child(n+7)),
+.nativeWidgetPreview[data-hss-kind="birthdayFollowings"][data-hss-size="normal"] :global(.mkw-bdayfollowings a:nth-child(n+13)) { display:none!important; }
+.nativeWidgetPreview[data-hss-kind="instanceCloud"] :global(.mkw-instance-cloud canvas) { width:100%!important;height:var(--hss-widget-height,128px)!important;max-height:var(--hss-widget-height,128px)!important; }
+.nativeWidgetPreview[data-hss-kind="profile"] .nativeWidgetFrame,
+.nativeWidgetPreview[data-hss-kind="profile"] .nativeWidgetFrame > *,
+.nativeWidgetPreview[data-hss-kind="profile"] .nativeWidgetFrame > * > * { width:100%!important;max-width:none!important;box-sizing:border-box; }
+.nativeWidgetPreview[data-hss-kind="serverMetric"] :global([data-testid="mkw-serverMetric"]),
+.nativeWidgetPreview[data-hss-kind="serverMetric"] :global([data-testid="mkw-serverMetric"]) * { min-width:0!important;max-width:100%;box-sizing:border-box;font-variant-numeric:tabular-nums; }
+.nativeWidgetPreview[data-hss-kind="serverMetric"] :global([data-testid="mkw-serverMetric"] > div) { width:100%!important;overflow:hidden; }
+.nativeWidgetPreview[data-hss-kind="serverMetric"] :global([data-testid="mkw-serverMetric"] svg) { max-width:100%!important;height:auto!important; }
+.nativeWidgetPreview[data-hss-kind="aichan"] .nativeWidgetFrame { position:relative;height:var(--hss-widget-height,168px);min-height:var(--hss-widget-height,168px);overflow:hidden; }
+.nativeWidgetPreview[data-hss-kind="aichan"] .nativeWidgetFrame > * { position:relative;height:var(--hss-widget-height,168px)!important;overflow:hidden!important; }
+.nativeWidgetPreview[data-hss-kind="aichan"] .nativeWidgetFrame iframe { position:absolute;top:0;left:50%;width:300px!important;height:350px!important;max-width:none!important;transform:translateX(-50%) scale(var(--hss-aichan-scale,1));transform-origin:top center; }
+.nativeWidgetPreview[data-hss-kind="mascot"][data-hss-size="small"] .nativeWidgetFrame > *,
+.nativeWidgetPreview[data-hss-kind="dice"][data-hss-size="small"] .nativeWidgetFrame > * { width:125%!important;transform:scale(.8);transform-origin:top left; }
+.nativeWidgetPreview[data-hss-kind="mascot"][data-hss-size="normal"] .nativeWidgetFrame > *,
+.nativeWidgetPreview[data-hss-kind="dice"][data-hss-size="normal"] .nativeWidgetFrame > * { width:111.12%!important;transform:scale(.9);transform-origin:top left; }
+.dragHandle { position:absolute;z-index:10;top:-9px;left:-9px!important;display:grid!important;place-items:center;width:26px!important;height:26px!important;min-height:26px!important;padding:0!important;border:1px solid var(--studioLine);border-radius:50%!important;color:var(--studioMuted);background:var(--studioRaised);box-shadow:0 2px 7px #0003;cursor:grab;touch-action:none;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .12s ease,transform .12s ease,visibility .12s;transform:scale(.88); }
+.dragHandle:active { cursor:grabbing; }
+.deleteItem { position:absolute;z-index:12;top:2px;right:2px;display:grid;place-items:center;width:26px;height:26px;padding:0;border-radius:50%;color:#fff;background:var(--studioDanger);box-shadow:0 2px 8px #0004; }
+.quickTrigger { position:absolute;z-index:11;top:-9px;right:-9px;display:grid;place-items:center;width:26px;height:26px;padding:0;border:1px solid var(--studioLine);border-radius:50%;color:var(--studioAccent);background:var(--studioRaised);box-shadow:0 2px 7px #0003;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .12s ease,transform .12s ease,visibility .12s;transform:scale(.88); }
+[data-node-id]:hover > .dragHandle,[data-node-id]:focus-within > .dragHandle,[data-node-id][data-selected="true"] > .dragHandle,
+[data-node-id]:hover > .quickTrigger,[data-node-id]:focus-within > .quickTrigger,[data-node-id][data-selected="true"] > .quickTrigger,
+.previewGroup:hover > .groupHead .dragHandle,.previewGroup:focus-within > .groupHead .dragHandle,.previewGroup[data-selected="true"] > .groupHead .dragHandle,
+.sortable-chosen > .dragHandle,.sortable-ghost > .dragHandle { opacity:1;visibility:visible;pointer-events:auto;transform:scale(1); }
+.collapsedButtons { display:flex;flex-direction:column;align-items:center;gap:4px;width:100%;min-width:0;padding:4px 1px;box-sizing:border-box;overflow:visible; }
+.collapsedButton { position:relative;display:grid!important;place-items:center;flex:0 0 44px;width:calc(100% - 2px);max-width:44px;height:44px;min-width:0;min-height:44px;margin:0 1px;padding:0!important;box-sizing:border-box;color:var(--hss-fg);border:var(--hss-border-width,1px) var(--hss-border-style,solid) var(--hss-border);border-radius:11px;background:var(--hss-bg);background-clip:padding-box;overflow:visible; }
+.collapsedButton[data-shape="circle"] { border-radius:50%; }
+.collapsedButton[data-shape="pill"] { height:38px;min-height:38px;flex-basis:38px;border-radius:999px; }
+.collapsedButton .deleteItem { top:1px;right:1px;width:18px;height:18px;font-size:.7rem; }
+.collapsedButton .quickTrigger { top:1px;right:1px;width:18px;height:18px;font-size:.66rem; }
+.fixedArea { display:flex;flex-direction:column;gap:2px;padding-top:6px;border-top:1px solid var(--studioLine); }
+.fixedArea button { display:flex;align-items:center;gap:9px;min-height:32px;padding:5px 8px;border-radius:9px;font-size:.74rem; }
+.sidebarPreviewCollapsed .fixedArea button { justify-content:center;width:46px;padding:5px; }
+.bottomArea { display:flex;flex-direction:column;align-items:stretch;gap:7px;padding-top:8px;border-top:1px solid var(--studioLine); }
+.postButton { display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:42px;border-radius:13px;color:#fff;background:var(--MI_THEME-accent); }
+.modeToggle { display:grid;grid-template-columns:1fr 1fr;gap:3px;padding:3px;box-sizing:border-box;border:1px solid var(--studioLine);border-radius:10px;background:color-mix(in srgb,var(--MI_THEME-panel) 85%,transparent); }
+.modeToggle button { display:grid;place-items:center;width:100%;min-width:0;min-height:29px;margin:0;padding:0;border-radius:7px; }
+.modeToggle button[aria-pressed="true"] { color:var(--MI_THEME-accent);background:var(--MI_THEME-accentedBg);box-shadow:0 1px 4px #0002; }
+.accountButton { display:flex;align-items:center;gap:8px;width:100%;min-width:0;padding:5px;border-radius:10px;text-align:left; }
+.accountButton img,.accountButton > i { display:grid;place-items:center;flex:0 0 auto;width:30px;height:30px;border-radius:50%;object-fit:cover;background:var(--studioAccentSoft); }
+.accountButton span { display:grid;min-width:0;line-height:1.1; }
+.accountButton b,.accountButton small { overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+.accountButton b { font-size:.72rem; }.accountButton small { font-size:.58rem;opacity:.58; }
+.sidebarPreviewCollapsed .postButton { width:46px;height:46px;min-height:46px;border-radius:13px; }
+.sidebarPreviewCollapsed .modeToggle { width:44px;margin-inline:auto;grid-template-columns:1fr;padding:3px;justify-self:center; }
+.sidebarPreviewCollapsed .accountButton { justify-content:center;width:46px;padding:5px; }
+.collapsedNotice { display:flex;gap:8px;max-width:420px;margin:12px auto 0;padding:10px 12px;border-radius:12px;font-size:.76rem;background:var(--studioAccentSoft); }
+.inspector { display:grid;gap:12px; }
+.inspectorAttention { animation:inspectorAttention .75s ease;scroll-margin-top:12px;outline:none; }
+@keyframes inspectorAttention { 0%,100% { box-shadow:inset 0 0 0 0 transparent; } 35% { box-shadow:inset 0 0 0 3px var(--studioAccent); } }
+.selectedSummary { display:flex;align-items:center;gap:10px;padding:12px;border:1px solid var(--studioLine);border-radius:14px;background:var(--studioRaised); }
+.selectedSummary > i { display:grid;place-items:center;width:38px;height:38px;border-radius:11px;color:var(--studioAccent);background:var(--studioAccentSoft);font-size:21px; }
+.selectedSummary > div { display:grid;min-width:0; }
+.selectedSummary small { color:var(--studioMuted);font-size:.72rem; }
+.inspectorTabs { display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:5px;padding:5px;border:1px solid var(--studioLine);border-radius:13px;background:var(--studioBg); }
+.inspectorTabs button { min-height:34px;border-radius:9px; }
+.inspectorTabs button[aria-pressed="true"] { color:var(--studioAccentFg);background:var(--studioAccent); }
+.inspectorTabs button:disabled { opacity:.35; }
+.inspectorTitle { display:flex;align-items:center;gap:10px;padding:2px 2px 0; }
+.inspectorTitle > i { font-size:26px;color:var(--studioAccent); }
+.inspectorTitle small { color:var(--studioMuted);font-size:.68rem; }.inspectorTitle h2 { margin:0;font-size:1.05rem; }
+.bento { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px; }
+.inspectorCard { min-width:0;padding:14px;border:1px solid var(--studioLine);border-radius:15px;background:color-mix(in srgb,var(--studioRaised) 92%,var(--studioAccentSoft)); }
+.inspectorCard > button,.inspectorCard > ._button,.inspectorCard > ._buttonPrimary { display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:38px;margin-top:4px;padding:8px 12px;border:1px solid var(--studioLine);border-radius:10px;background:var(--studioSurface);box-shadow:0 2px 7px #0001; }
+.inspectorCard > ._buttonPrimary { color:var(--studioAccentFg);border-color:var(--studioAccent);background:var(--studioAccent); }
+.currentSettingsButton { display:inline-flex!important;align-items:center;justify-content:center;gap:7px;min-height:38px;padding:8px 12px!important;color:var(--MI_THEME-fg)!important;border:1px solid var(--studioLine)!important;border-radius:10px!important;background:var(--studioSurface)!important;box-shadow:0 2px 7px #0001;opacity:1!important; }
+.currentSettingsButton:hover,.currentSettingsButton:focus-visible { color:var(--studioAccentFg)!important;border-color:var(--studioAccent)!important;background:var(--studioAccent)!important; }
+.inspectorCard h3 { margin:0 0 11px;font-size:.8rem;color:var(--studioMuted); }
+.inspectorCard p { margin:0;font-size:.78rem;line-height:1.55; }
+.inspectorCard small { display:block;margin-top:8px;color:var(--studioMuted);font-size:.7rem;line-height:1.45; }
+.choiceRow { display:flex;align-items:center;gap:7px;flex-wrap:wrap; }
+.choiceRow button { display:grid;place-items:center;gap:3px;min-height:36px;padding:7px 10px;border:1px solid var(--studioLine);border-radius:10px; }
+.choiceRow button[data-active="true"] { color:var(--studioAccentFg);border-color:var(--studioAccent);background:var(--studioAccent); }
+.choiceRow button small { margin:0;color:inherit;font-size:.64rem; }
+.check,.field,.colorField { display:flex;align-items:center;gap:8px;margin-top:9px;font-size:.78rem; }
+.field { justify-content:space-between; }.field input[type="range"] { flex:1;min-width:60px; }
+.fieldStack { display:grid;gap:5px; }
+.colorGrid { display:grid;grid-template-columns:repeat(3,1fr);gap:8px; }
+.colorField { flex-direction:column;align-items:stretch;margin:0; }
+.colorField input { width:100%;height:36px;padding:0;border:0;background:none; }
+.memberButton { display:grid;grid-template-columns:24px 1fr auto;align-items:center;gap:7px;width:100%;padding:8px;border-radius:9px;text-align:left; }
+.memberButton:hover { background:var(--studioAccentSoft); }
+.limitValue { display:block;color:var(--studioAccent);font-family:'Righteous',system-ui,sans-serif;font-size:2rem;font-weight:400; }
+.emptyInspector { min-height:360px;display:grid;place-content:center;justify-items:center;gap:8px;text-align:center; }
+.emptyInspector > i { font-size:40px;color:var(--studioAccent); }.emptyInspector span { max-width:360px;color:var(--studioMuted);font-size:.78rem; }
+.studioDialogWindow { position:fixed;z-index:3200100;top:50%;left:50%;display:grid;gap:12px;width:min(390px,calc(100% - 24px));max-height:calc(100dvh - 24px);padding:14px;box-sizing:border-box;color:var(--MI_THEME-fg);border:1px solid var(--studioLine);border-radius:16px;background:var(--studioRaised);box-shadow:0 24px 70px #0007;overflow:auto;transform:translate(-50%,-50%); }
+.studioDialogWindow > header { display:flex;align-items:center;justify-content:space-between;gap:8px;padding-bottom:9px;border-bottom:1px solid var(--studioLine); }.studioDialogWindow > header > span { display:flex;align-items:center;gap:8px; }.studioDialogWindow > header > span > i { color:var(--studioAccent);font-size:21px; }.studioDialogWindow > header button { width:30px;height:30px;border-radius:9px; }
+.studioDialogWindow > p { margin:0;color:var(--studioMuted);font-size:.8rem;line-height:1.55; }.studioDialogWindow > div { display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap; }.studioDialogWindow > div button { min-height:36px;padding:7px 12px;border:1px solid var(--studioLine);border-radius:10px; }
+.windowLayer { position:fixed;z-index:3200080;inset:0;display:grid;place-items:center;padding:14px;pointer-events:none; }
+.leaveDialog { width:min(420px,100%);padding:24px;border:1px solid var(--studioLine);border-radius:20px;background:var(--studioRaised);box-shadow:0 24px 80px #0007;text-align:center;pointer-events:auto; }
+.leaveDialog > i { font-size:40px;color:var(--studioAccent); }.leaveDialog h2 { margin:10px 0 4px; }.leaveDialog p { color:var(--studioMuted); }.leaveDialog > div { display:flex;justify-content:center;gap:8px;flex-wrap:wrap; }.leaveDialog button { padding:9px 13px;border-radius:10px; }
+.tutorialWindow { position:fixed;z-index:3200090;top:50%;left:50%;display:grid;grid-template-rows:auto auto auto auto minmax(76px,1fr) auto;gap:9px;width:min(390px,calc(100% - 24px));min-height:min(350px,calc(100dvh - 24px));max-height:calc(100dvh - 24px);padding:16px;box-sizing:border-box;color:var(--MI_THEME-fg);border:1px solid var(--studioAccent);border-radius:18px;background:var(--studioRaised);box-shadow:0 24px 72px #0007;overflow:auto;transform:translate(-50%,-50%); }
+.tutorialWindow > header { display:flex;align-items:center;justify-content:space-between;color:var(--studioAccent);font-size:.68rem;font-weight:700;letter-spacing:.06em; }.tutorialWindow > header button { width:30px;height:30px;border-radius:9px; }.tutorialWindow > i { color:var(--studioAccent);font-size:30px; }.tutorialWindow h2 { margin:0;font-size:1.08rem; }.tutorialWindow p { margin:0;color:var(--studioMuted);font-size:.78rem;line-height:1.55; }
+.tutorialProgress { display:grid;grid-template-columns:repeat(5,1fr);gap:4px; }.tutorialProgress span { height:4px;border-radius:999px;background:var(--studioLine); }.tutorialProgress span[data-active="true"] { background:var(--studioAccent); }
+.tutorialActions { display:flex;justify-content:flex-end;gap:7px;flex-wrap:wrap;margin-top:4px; }.tutorialActions button { display:flex;align-items:center;gap:5px;min-height:36px;padding:7px 11px;border:1px solid var(--studioLine);border-radius:10px; }.tutorialActions ._buttonPrimary { border-color:var(--studioAccent); }
+.tutorialFocus { z-index:8;outline:3px solid color-mix(in srgb,var(--studioAccent) 82%,#fff);outline-offset:3px;box-shadow:0 0 0 7px color-mix(in srgb,var(--studioAccent) 18%,transparent); }
+.header.tutorialFocus,.sidebarPreview.tutorialFocus { position:relative; }
+@container (max-width:1120px) {
+	.header { grid-template-columns:minmax(0,1fr) auto; }
+	.profileBar { grid-column:1/-1;grid-row:2;justify-content:flex-start; }
+	.main { grid-template-columns:1fr; }
+	.stage { min-height:850px; }
+}
+@container (max-width:720px) {
+	.header { grid-template-columns:1fr;align-items:flex-start; }
+	.headerActions,.profileBar { justify-content:flex-start; }
+	.pane { padding:12px; }
+	.paneHead { align-items:flex-start;flex-direction:column; }
+	.previewHeadActions { width:100%;justify-content:space-between; }
+	.stage { padding:168px 8px 20px; }
+	.sideTools { top:10px;transform:none; }
+	.sideTools[data-side="left"] { left:8px;display:flex;flex-wrap:wrap;max-width:calc(100% - 16px); }
+	.sideTools[data-side="right"] { top:91px;right:8px;display:flex; }
+	.addAction { width:76px;min-height:62px; }
+	.bulkAction,.reorderAction { width:76px;min-height:62px; }
+	.creationPicker { top:166px;left:50%;width:calc(100% - 24px);transform:translateX(-50%); }
+	.quickEditor,.reorderWindow { position:fixed;top:50%;left:50%;right:auto;width:min(430px,calc(100% - 24px));max-height:calc(100dvh - 24px);transform:translate(-50%,-50%); }
+	.dragTimeline { width:min(224px,calc(100% - 24px)); }
+	.studioDialogWindow,.tutorialWindow { top:50%;right:auto;bottom:auto;left:50%;max-height:calc(100dvh - 24px);transform:translate(-50%,-50%); }
+	.bento { grid-template-columns:1fr; }
+	.resetConfirm { position:fixed;top:50%;left:50%;right:auto;transform:translate(-50%,-50%); }
+}
+@container (max-width:480px) {
+	.logo { font-size:1.1rem; }
+	.actionButton { padding:8px; }.actionButton:not(:last-child) { font-size:0; }.actionButton i { font-size:1rem; }
+	.previewHeadActions { align-items:stretch;flex-direction:column; }
+	.copyButton,.modeTabs { width:100%;justify-content:center; }
+	.copyMenu { position:fixed;top:50%;left:50%;right:auto;width:min(330px,calc(100% - 24px));transform:translate(-50%,-50%); }
+	.stage { padding-inline:8px; }
+	.inspectorTabs { grid-template-columns:repeat(2,1fr); }
+}
+</style>
