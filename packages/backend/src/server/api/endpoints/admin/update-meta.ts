@@ -16,6 +16,7 @@ export const meta = {
 
 	requireCredential: true,
 	requireAdmin: true,
+	secure: true,
 	kind: 'write:admin:meta',
 } as const;
 

@@ -32,6 +32,7 @@ export const meta = {
 
 	requireCredential: true,
 	requireAdmin: true,
+	secure: true,
 	// ⚠️`read:admin:show-users` は**存在しない**種別だった（実在一覧に無い）。
 	// ⚠️新しい種別を足すと SDK 再生成が要る＝CONSTRAINTS で禁止。⚠️既存の種別から選ぶこと。
 	// ⚠️イベント索引の管理APIが `write:admin:meta` なので、読み取り側はこれに揃える。
