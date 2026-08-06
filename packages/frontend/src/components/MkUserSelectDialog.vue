@@ -82,9 +82,11 @@ const emit = defineEmits<{
 const props = withDefaults(defineProps<{
 	includeSelf?: boolean;
 	localOnly?: boolean;
+	botOnly?: boolean;
 }>(), {
 	includeSelf: false,
 	localOnly: false,
+	botOnly: false,
 });
 
 const computedLocalOnly = computed(() => props.localOnly || instance.federation === 'none');
@@ -108,6 +110,7 @@ function search() {
 		detail: false,
 	}).then(_users => {
 		users.value = _users.filter((u) => {
+			if (props.botOnly && !u.isBot) return false;
 			if (props.includeSelf) {
 				return true;
 			} else {
@@ -123,6 +126,11 @@ async function ok() {
 	const user = await misskeyApi('users/show', {
 		userId: selected.value.id,
 	});
+	// 検索後にアカウント種別が変わった場合も、BOT限定の呼び出し元へ通常アカウントを返さない。
+	if (props.botOnly && !user.isBot) {
+		selected.value = null;
+		return;
+	}
 	emit('ok', user);
 
 	dialogEl.value?.close();
@@ -152,6 +160,7 @@ onMounted(() => {
 			}
 		});
 		_users = _users.filter((u) => {
+			if (props.botOnly && !u.isBot) return false;
 			if (props.includeSelf) {
 				return true;
 			} else {
