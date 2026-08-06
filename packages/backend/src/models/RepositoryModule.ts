@@ -23,6 +23,7 @@ import {
 	MiChannelFavorite,
 	MiChannelFollowing,
 	MiChannelMember,
+	MiChannelInvitation,
 	MiClip,
 	MiClipFavorite,
 	MiClipNote,
@@ -489,6 +490,12 @@ const $channelMembersRepository: Provider = {
 	inject: [DI.db],
 };
 
+const $channelInvitationsRepository: Provider = {
+	provide: DI.channelInvitationsRepository,
+	useFactory: (db: DataSource) => db.getRepository(MiChannelInvitation).extend(miRepository as MiRepository<MiChannelInvitation>),
+	inject: [DI.db],
+};
+
 const $channelFavoritesRepository: Provider = {
 	provide: DI.channelFavoritesRepository,
 	useFactory: (db: DataSource) => db.getRepository(MiChannelFavorite).extend(miRepository as MiRepository<MiChannelFavorite>),
@@ -830,6 +837,7 @@ const $feedbackProjectsRepository: Provider = {
 		$channelsRepository,
 		$channelFollowingsRepository,
 		$channelMembersRepository,
+		$channelInvitationsRepository,
 		$channelFavoritesRepository,
 		$registryItemsRepository,
 		$webhooksRepository,
@@ -943,6 +951,7 @@ const $feedbackProjectsRepository: Provider = {
 		$channelsRepository,
 		$channelFollowingsRepository,
 		$channelMembersRepository,
+		$channelInvitationsRepository,
 		$channelFavoritesRepository,
 		$registryItemsRepository,
 		$webhooksRepository,

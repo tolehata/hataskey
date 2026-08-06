@@ -9,8 +9,9 @@
 
 import { Inject, Injectable } from '@nestjs/common';
 import { DI } from '@/di-symbols.js';
-import type { ChannelsRepository, ChannelMembersRepository } from '@/models/_.js';
+import type { ChannelsRepository, ChannelInvitationsRepository, ChannelMembersRepository } from '@/models/_.js';
 import type { MiChannel } from '@/models/Channel.js';
+import type { MiChannelInvitation } from '@/models/ChannelInvitation.js';
 import type { MiUser } from '@/models/User.js';
 import { IdService } from '@/core/IdService.js';
 import { RoleService } from '@/core/RoleService.js';
@@ -30,6 +31,8 @@ export class ChannelService {
 		private channelsRepository: ChannelsRepository,
 		@Inject(DI.channelMembersRepository)
 		private channelMembersRepository: ChannelMembersRepository,
+		@Inject(DI.channelInvitationsRepository)
+		private channelInvitationsRepository: ChannelInvitationsRepository,
 
 		private idService: IdService,
 		private roleService: RoleService,
@@ -90,6 +93,52 @@ export class ChannelService {
 		await this.channelMembersRepository.delete({ channelId, userId });
 		// 旗鯖fork: 退会後に古い TRUE キャッシュで権限が残らないよう即時 invalidate。
 		this.isMemberCache.set(this.membershipKey(channelId, userId), false);
+	}
+
+	// 管理者による追加は即時参加ではなく招待として保存する。
+	// 却下済みの相手を再び招待した場合は、新しい招待として作り直す。
+	@bindThis
+	public async inviteMember(channelId: MiChannel['id'], userId: MiUser['id'], invitedById: MiUser['id']): Promise<{ invitation: MiChannelInvitation; shouldNotify: boolean }> {
+		const existing = await this.channelInvitationsRepository.findOneBy({ channelId, userId });
+		if (existing != null) {
+			if (existing.status === 'pending') return { invitation: existing, shouldNotify: false };
+			// 古い却下通知が再び有効にならないよう、再招待では新しいIDを発行する。
+			await this.channelInvitationsRepository.delete(existing.id);
+		}
+
+		const invitation = await this.channelInvitationsRepository.insertOne({
+			id: this.idService.gen(),
+			createdAt: new Date(),
+			respondedAt: null,
+			channelId,
+			userId,
+			invitedById,
+			status: 'pending',
+		});
+		return { invitation, shouldNotify: true };
+	}
+
+	// 招待された本人だけが承認できる。承認時に初めて channel_member へ登録する。
+	@bindThis
+	public async acceptInvitation(invitationId: MiChannelInvitation['id'], userId: MiUser['id']): Promise<MiChannelInvitation | null> {
+		const invitation = await this.channelInvitationsRepository.findOneBy({ id: invitationId, userId, status: 'pending' });
+		if (invitation == null) return null;
+		// 同じ招待の承認が同時に届いても、pending の招待を削除できた1要求だけが
+		// メンバー追加へ進む。userId も条件に含め、他人の招待は獲得できない。
+		const claimed = await this.channelInvitationsRepository.delete({ id: invitationId, userId, status: 'pending' });
+		if (claimed.affected !== 1) return null;
+		await this.addMember(invitation.channelId, userId);
+		return invitation;
+	}
+
+	// 却下は履歴として残し、管理画面から「招待拒否」を確認できるようにする。
+	@bindThis
+	public async rejectInvitation(invitationId: MiChannelInvitation['id'], userId: MiUser['id']): Promise<MiChannelInvitation | null> {
+		const invitation = await this.channelInvitationsRepository.findOneBy({ id: invitationId, userId, status: 'pending' });
+		if (invitation == null) return null;
+		const respondedAt = new Date();
+		await this.channelInvitationsRepository.update(invitation.id, { status: 'rejected', respondedAt });
+		return { ...invitation, status: 'rejected', respondedAt };
 	}
 
 	// あいことば(キーフレーズ)だけで該当するプライベートチャンネルを探す。見つからなければ null。

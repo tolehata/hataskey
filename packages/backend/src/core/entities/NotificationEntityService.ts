@@ -7,7 +7,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
 import { In } from 'typeorm';
 import { DI } from '@/di-symbols.js';
-import type { FollowRequestsRepository, NotesRepository, MiUser, UsersRepository, UserGroupInvitationsRepository } from '@/models/_.js';
+import type { ChannelInvitationsRepository, FollowRequestsRepository, NotesRepository, MiUser, UsersRepository, UserGroupInvitationsRepository } from '@/models/_.js';
 import { awaitAll } from '@/misc/prelude/await-all.js';
 import type { MiGroupedNotification, MiNotification } from '@/models/Notification.js';
 import type { MiNote } from '@/models/Note.js';
@@ -58,6 +58,9 @@ export class NotificationEntityService implements OnModuleInit {
 		@Inject(DI.userGroupInvitationsRepository)
 		private userGroupInvitationsRepository: UserGroupInvitationsRepository,
 
+		@Inject(DI.channelInvitationsRepository)
+		private channelInvitationsRepository: ChannelInvitationsRepository,
+
 		private cacheService: CacheService,
 	) {
 	}
@@ -78,6 +81,7 @@ export class NotificationEntityService implements OnModuleInit {
 		meId: MiUser['id'],
 		options: {
 			checkValidNotifier?: boolean;
+			checkValidChannelInvitation?: boolean;
 		},
 		hint?: {
 			packedNotes: Map<MiNote['id'], Packed<'Note'>>;
@@ -87,6 +91,10 @@ export class NotificationEntityService implements OnModuleInit {
 		const notification = src;
 
 		if (options.checkValidNotifier !== false && !(await this.#isValidNotifier(notification, meId))) return null;
+		if (options.checkValidChannelInvitation !== false
+			&& notification.type === 'addedToPrivateChannel'
+			&& notification.channelInvitationId != null
+			&& !await this.channelInvitationsRepository.exists({ where: { id: notification.channelInvitationId, userId: meId, status: 'pending' } })) return null;
 
 		// 旗鯖fork: NOTE_REQUIRED_NOTIFICATION_TYPES は addedToPrivateChannel 等を含まない
 		// (MiNotification['type'] 全体より狭い)。その場合 has() は元々 false を返すだけなので、
@@ -264,6 +272,7 @@ export class NotificationEntityService implements OnModuleInit {
 				icon: notification.customIcon,
 				// 旗鯖fork: クリック時の遷移先 (相対パス)
 				link: notification.customLink,
+				...(notification.type === 'addedToPrivateChannel' && notification.channelInvitationId != null ? { invitationId: notification.channelInvitationId } : {}),
 			} : {}),
 		});
 	}
@@ -321,11 +330,25 @@ export class NotificationEntityService implements OnModuleInit {
 			validNotifications = validNotifications.filter(x => (x.type !== 'receiveFollowRequest') || reqs.some(r => r.followerId === x.notifierId));
 		}
 
+		// 承認・拒否済みのプライベートチャンネル招待通知を除外する。
+		const channelInvitationIds = validNotifications.flatMap(notification => notification.type === 'addedToPrivateChannel' && notification.channelInvitationId != null
+			? [notification.channelInvitationId]
+			: []);
+		if (channelInvitationIds.length > 0) {
+			const pendingInvitations = await this.channelInvitationsRepository.find({
+				where: { id: In(channelInvitationIds), userId: meId, status: 'pending' },
+			});
+			const pendingIds = new Set(pendingInvitations.map(invitation => invitation.id));
+			validNotifications = validNotifications.filter(notification => notification.type !== 'addedToPrivateChannel'
+				|| notification.channelInvitationId == null
+				|| pendingIds.has(notification.channelInvitationId));
+		}
+
 		const packPromises = validNotifications.map(x => {
 			return this.pack(
 				x,
 				meId,
-				{ checkValidNotifier: false },
+				{ checkValidNotifier: false, checkValidChannelInvitation: false },
 				{ packedNotes, packedUsers },
 			);
 		});
@@ -340,6 +363,7 @@ export class NotificationEntityService implements OnModuleInit {
 
 		options: {
 			checkValidNotifier?: boolean;
+			checkValidChannelInvitation?: boolean;
 		},
 		hint?: {
 			packedNotes: Map<MiNote['id'], Packed<'Note'>>;

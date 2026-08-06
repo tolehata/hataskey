@@ -484,6 +484,7 @@ export const packedNotificationSchema = {
 			header: { type: 'string', optional: false, nullable: true },
 			icon: { type: 'string', optional: false, nullable: true },
 			link: { type: 'string', optional: false, nullable: true },
+			invitationId: { type: 'string', format: 'misskey:id', optional: true, nullable: false },
 		},
 	}, {
 		type: 'object',

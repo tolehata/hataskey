@@ -179,6 +179,18 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<MkButton :class="$style.followRequestCommandButton" rounded danger @click="rejectGroupInvitation()"><i class="ti ti-x"/> {{ i18n.ts.reject }}</MkButton>
 				</div>
 			</template>
+			<template v-else-if="notification.type === 'addedToPrivateChannel' && notification.invitationId">
+				<Mfm :text="notification.body" :nowrap="false"/>
+				<div v-if="full && privateChannelInviteResult == null" :class="$style.followRequestCommands">
+					<MkButton :class="$style.followRequestCommandButton" rounded primary @click="acceptPrivateChannelInvitation(notification.invitationId)"><i class="ti ti-check"/> 参加する</MkButton>
+					<MkButton :class="$style.followRequestCommandButton" rounded danger @click="rejectPrivateChannelInvitation(notification.invitationId)"><i class="ti ti-x"/> 参加しない</MkButton>
+				</div>
+				<div v-else-if="privateChannelInviteResult === 'accepted'" :class="$style.invitationResult">
+					<i class="ti ti-circle-check"></i> 参加しました
+					<MkA v-if="acceptedPrivateChannelId" :to="`/channels/${acceptedPrivateChannelId}`">チャンネルを開く</MkA>
+				</div>
+				<div v-else-if="privateChannelInviteResult === 'rejected'" :class="$style.invitationResult"><i class="ti ti-circle-x"></i> 招待を辞退しました</div>
+			</template>
 			<span v-else-if="notification.type === 'test'" :class="$style.text">{{ i18n.ts._notification.notificationWillBeDisplayedLikeThis }}</span>
 			<span v-else-if="notification.type === 'app' || notification.type === 'hataFeed' || notification.type === 'earthquake' || notification.type === 'addedToPrivateChannel' || notification.type === 'removedFromPrivateChannel'" :class="$style.text">
 				<!-- 旗鯖fork: notification.link があればクリックで該当画面に遷移 (hatask/HataFeed 等の旗鯖独自機能向け) -->
@@ -273,6 +285,8 @@ const exportEntityName = {
 
 const followRequestDone = ref(false);
 const groupInviteDone = ref(false);
+const privateChannelInviteResult = ref<'accepted' | 'rejected' | null>(null);
+const acceptedPrivateChannelId = ref<string | null>(null);
 
 const acceptFollowRequest = () => {
 	if (!('user' in props.notification)) return;
@@ -300,6 +314,17 @@ const rejectGroupInvitation = () => {
 	groupInviteDone.value = true;
 	misskeyApi('users/groups/invitations/reject', { invitationId: props.notification.invitation.id });
 };
+
+async function acceptPrivateChannelInvitation(invitationId: string) {
+	const result = await misskeyApi('channels/invitations/accept', { invitationId });
+	acceptedPrivateChannelId.value = result.channelId;
+	privateChannelInviteResult.value = 'accepted';
+}
+
+async function rejectPrivateChannelInvitation(invitationId: string) {
+	await misskeyApi('channels/invitations/reject', { invitationId });
+	privateChannelInviteResult.value = 'rejected';
+}
 </script>
 
 <style lang="scss" module>
@@ -508,6 +533,16 @@ const rejectGroupInvitation = () => {
 .t_follow, .t_followRequestAccepted, .t_receiveFollowRequest, .t_groupInvited {
 	background: var(--eventFollow);
 	pointer-events: none;
+}
+
+.invitationResult {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin-top: 8px;
+	font-weight: 700;
+	color: var(--MI_THEME-accent);
 }
 
 .t_renote {

@@ -11,6 +11,7 @@ import { MiAccessToken } from './AccessToken.js';
 import { MiRole } from './Role.js';
 import { MiDriveFile } from './DriveFile.js';
 import { MiNoteDraft } from './NoteDraft.js';
+import { MiChannelInvitation } from './ChannelInvitation.js';
 
 // cherrypick-js の notificationTypes と同期すべし
 export type MiNotification = {
@@ -182,6 +183,8 @@ export type MiNotification = {
 	customHeader: string | null;
 	customIcon: string | null;
 	customLink: string | null;
+	/** 通常メンバーへの参加招待だけに付く。副管理者への即時追加通知では未指定。 */
+	channelInvitationId?: MiChannelInvitation['id'];
 } | {
 	// 旗鯖fork: プライベートチャンネルのメンバーから外された通知 (app通知と同形)。
 	type: 'removedFromPrivateChannel';

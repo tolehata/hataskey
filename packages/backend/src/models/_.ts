@@ -33,6 +33,7 @@ import { MiChannel } from '@/models/Channel.js';
 import { MiChannelFavorite } from '@/models/ChannelFavorite.js';
 import { MiChannelFollowing } from '@/models/ChannelFollowing.js';
 import { MiChannelMember } from '@/models/ChannelMember.js';
+import { MiChannelInvitation } from '@/models/ChannelInvitation.js';
 import { MiChatApproval } from '@/models/ChatApproval.js';
 import { MiChatMessage } from '@/models/ChatMessage.js';
 import { MiChatRoom } from '@/models/ChatRoom.js';
@@ -210,6 +211,7 @@ export {
 	MiBlocking,
 	MiChannelFollowing,
 	MiChannelMember,
+	MiChannelInvitation,
 	MiChannelFavorite,
 	MiClip,
 	MiClipNote,
@@ -324,6 +326,7 @@ export type AuthSessionsRepository = Repository<MiAuthSession> & MiRepository<Mi
 export type BlockingsRepository = Repository<MiBlocking> & MiRepository<MiBlocking>;
 export type ChannelFollowingsRepository = Repository<MiChannelFollowing> & MiRepository<MiChannelFollowing>;
 export type ChannelMembersRepository = Repository<MiChannelMember> & MiRepository<MiChannelMember>;
+export type ChannelInvitationsRepository = Repository<MiChannelInvitation> & MiRepository<MiChannelInvitation>;
 export type ChannelFavoritesRepository = Repository<MiChannelFavorite> & MiRepository<MiChannelFavorite>;
 export type ClipsRepository = Repository<MiClip> & MiRepository<MiClip>;
 export type ClipNotesRepository = Repository<MiClipNote> & MiRepository<MiClipNote>;
@@ -421,4 +424,3 @@ export type HatadyBookmarksRepository = Repository<MiHatadyBookmark> & MiReposit
 export type HatadyBookMemosRepository = Repository<MiHatadyBookMemo> & MiRepository<MiHatadyBookMemo>;
 export type HatadySubjectsRepository = Repository<MiHatadySubject> & MiRepository<MiHatadySubject>;
 export type HatadyGoalsRepository = Repository<MiHatadyGoal> & MiRepository<MiHatadyGoal>;
-
