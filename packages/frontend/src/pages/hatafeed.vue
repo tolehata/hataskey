@@ -35,7 +35,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<HataFeedLeaves v-if="leavesEnabled"/>
 			<div :class="$style.repoInner">
 
-				<!-- ツールバー: サーバー(プロジェクト)切替 + 検索 + 新規 -->
+				<!-- ツールバー: サーバー(プロジェクト)切替 + 検索 + 補助操作 -->
 				<div :class="$style.toolbar">
 					<div :class="$style.brand">
 						<span :class="$style.logo">HataFeed</span>
@@ -52,13 +52,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<button v-if="searchQuery" :class="$style.searchClear" @click="searchQuery = ''; reloadIssues()"><i class="ti ti-x"></i></button>
 					</div>
 					<button v-if="activeTab === 'roadmap' && isStaff" :class="[$style.newBtn]" @click="addRoadmap"><i class="ti ti-route"></i><span>予定を追加</span></button>
-					<button v-else :class="[$style.newBtn]" @click="createIssue"><i class="ti ti-pencil-plus"></i><span>新規イシュー</span></button>
 					<button ref="bellEl" :class="$style.iconBtn" title="通知" @click="openNotifications">
 						<i class="ti ti-bell"></i>
 						<span v-if="unreadCount > 0" :class="$style.bellBadge">{{ unreadCount > 99 ? '99+' : unreadCount }}</span>
 					</button>
 					<button :class="$style.iconBtn" title="更新" @click="refreshAll"><i class="ti ti-refresh"></i></button>
-					<button v-if="canExportCurrent" :class="[$style.iconBtn, $style.iconBtnHideMobile]" title="エクスポート" @click="exportIssues"><i class="ti ti-file-export"></i></button>
+					<button v-if="canExportCurrent" :class="[$style.iconBtn, $style.iconBtnHideMobile]" title="エクスポート" @click="openExportWindow"><i class="ti ti-file-export"></i></button>
 					<button v-if="isStaff && currentProjectId != null" :class="[$style.iconBtn, $style.iconBtnHideMobile]" title="プロジェクト管理" @click="manageCurrentProject"><i class="ti ti-settings"></i></button>
 				</div>
 
@@ -66,15 +65,32 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<nav :class="$style.tabs">
 					<button :class="[$style.tab, activeTab === 'issues' && $style.tabOn]" @click="goIssuesTab"><i class="ti ti-clipboard-list"></i> イシュー</button>
 					<button :class="[$style.tab, activeTab === 'roadmap' && $style.tabOn]" @click="goRoadmapTab"><i class="ti ti-route"></i> ロードマップ</button>
-					<button v-if="isStaff" :class="[$style.tab, activeTab === 'emoji' && $style.tabOn]" @click="goEmojiAdminTab"><i class="ti ti-mood-cog"></i> 絵文字申請管理<span v-if="emojiRequests.length" :class="$style.tabCount">{{ emojiRequests.length }}</span></button>
-					<button v-else :class="$style.tab" @click="requestEmoji"><i class="ti ti-mood-smile"></i> 絵文字申請<span v-if="emojiRequests.length" :class="$style.tabCount">{{ emojiRequests.length }}</span></button>
+					<button v-if="isStaff" :class="[$style.tab, activeTab === 'emoji' && $style.tabOn]" @click="goEmojiAdminTab"><i class="ti ti-mood-cog"></i> 申請管理<span v-if="emojiRequests.length" :class="$style.tabCount">{{ emojiRequests.length }}</span></button>
 					<button :class="$style.tab" @click="openBeta"><i class="ti ti-flask"></i> ベータ<span v-if="hataBetaTotal" :class="$style.tabCount">{{ hataBetaTotal }}</span></button>
 				</nav>
 
+				<!-- 旗鯖fork: 利用者の主要操作を本文上部へ固定。左が絵文字申請、右が新規イシュー。 -->
+				<div v-if="activeTab === 'issues'" :class="$style.topActions">
+					<button type="button" :class="[$style.topAction, $style.topActionEmoji]" @click="requestEmoji">
+						<i class="ti ti-mood-plus"></i>
+						<span>絵文字申請</span>
+					</button>
+					<button type="button" :class="[$style.topAction, $style.topActionEmoji]" @click="createIssue">
+						<i class="ti ti-pencil-plus"></i>
+						<span>新規イシュー</span>
+					</button>
+				</div>
+
 				<!-- 絵文字申請管理(スタッフのみ・2g相当): 申請一覧を状態別に絞り、各行の「確認」から承認/リジェクト -->
 				<div v-if="activeTab === 'emoji' && isStaff" :class="$style.emojiAdmin">
-					<div :class="$style.eaFilters">
-						<button v-for="f in emojiAdminFilters" :key="String(f.value)" :class="[$style.eaFilter, emojiAdminStatus === f.value && $style.eaFilterOn]" @click="setEmojiAdminStatus(f.value)">{{ f.label }}</button>
+					<div :class="$style.eaTop">
+						<div :class="$style.eaFilters">
+							<button v-for="f in emojiAdminFilters" :key="String(f.value)" :class="[$style.eaFilter, emojiAdminStatus === f.value && $style.eaFilterOn]" @click="setEmojiAdminStatus(f.value)">{{ f.label }}</button>
+						</div>
+						<div :class="$style.eaTopActions">
+							<button type="button" :class="$style.eaRequestOwn" @click="requestEmoji"><i class="ti ti-mood-plus"></i> 自分で絵文字を申請</button>
+							<button v-if="emojiAdminStatus === 'pending' && emojiAdminList.length" type="button" :class="$style.eaBatch" @click="openReviewQueue"><i class="ti ti-player-track-next"></i> 未処理を連続確認</button>
+						</div>
 					</div>
 					<div v-if="emojiAdminList.length === 0" :class="$style.emptyBlock">
 						<i class="ti ti-mood-empty" :class="$style.emptyBlockIcon"></i>
@@ -116,8 +132,29 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<button :class="$style.statChip" @click="applyStatus('open')"><div :class="[$style.statNum, $style.statOpen]">{{ counts.open }}</div><div :class="$style.statLabel">受付中</div></button>
 						<button :class="$style.statChip" @click="applyStatus('inProgress')"><div :class="[$style.statNum, $style.statDoing]">{{ counts.inProgress }}</div><div :class="$style.statLabel">対応中</div></button>
 						<button :class="$style.statChip" @click="applyStatus('resolved')"><div :class="[$style.statNum, $style.statResolved]">{{ counts.resolved }}</div><div :class="$style.statLabel">解決済み</div></button>
-						<button :class="$style.statChip" @click="requestEmoji"><div :class="[$style.statNum, $style.statEmoji]">{{ emojiRequests.length }}</div><div :class="$style.statLabel">絵文字申請</div></button>
+						<button :class="$style.statChip" @click="isStaff ? goEmojiAdminTab() : requestEmoji()"><div :class="[$style.statNum, $style.statEmoji]">{{ emojiRequests.length }}</div><div :class="$style.statLabel">{{ isStaff ? '申請を確認' : '絵文字を申請' }}</div></button>
 					</div>
+					<!-- 旗鯖fork: スマホでは右サイドバーを畳むため、絵文字申請カラムだけ本文側へ再配置する。 -->
+					<section :class="$style.mobileEmojiCard">
+						<div :class="$style.mobileEmojiHead">
+							<div>
+								<div :class="$style.mobileEmojiTitle"><i class="ti ti-mood-smile"></i> 絵文字申請 <span v-if="emojiRequests.length">{{ emojiRequests.length }}</span></div>
+								<div :class="$style.mobileEmojiLead">{{ isStaff ? '未処理の申請を順番に確認できます。' : '使いたい絵文字を画像またはリモート絵文字から申請できます。' }}</div>
+							</div>
+							<button type="button" :class="$style.mobileEmojiPrimary" @click="isStaff ? openReviewQueue() : requestEmoji()">
+								<i :class="isStaff ? 'ti ti-player-track-next' : 'ti ti-plus'"></i> {{ isStaff ? 'まとめて確認' : '申請する' }}
+							</button>
+						</div>
+						<div v-if="emojiRequests.length === 0" :class="$style.emptyMini">{{ isStaff ? '未処理の申請はありません。' : 'まだ申請はありません。' }}</div>
+						<div v-else :class="$style.mobileEmojiList">
+							<button v-for="r in emojiRequests.slice(0, 5)" :key="r.id" type="button" :class="$style.mobileEmojiRow" @click="isStaff && r.status === 'pending' ? openApprove(r) : null">
+								<span :class="$style.emojiTile"><img v-if="r.imageUrl" :src="r.imageUrl" :class="$style.emojiImg" :alt="r.name"></span>
+								<span :class="$style.emojiCode">:{{ r.name }}:</span>
+								<i :class="['ti', emojiStatusIcon[r.status] ?? 'ti-clock-hour-4', 'hfEstIcon']" :data-est="r.status" :title="emojiStatusLabel[r.status]"></i>
+							</button>
+						</div>
+						<div v-if="emojiQuota && !isStaff" :class="$style.quotaWrap"><HfQuotaMeter :remaining="emojiQuota.remaining" :limit="emojiQuota.limit"/></div>
+					</section>
 					<div v-if="roadmap.length" :class="$style.roadScroll">
 						<div :class="$style.roadScrollHead"><i class="ti ti-route"></i> 近々の修正・改善予定</div>
 						<div :class="$style.roadScrollList">
@@ -222,7 +259,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<section :class="$style.sideCard">
 							<div :class="$style.sideHead">
 								<span :class="$style.sideTitle"><i class="ti ti-mood-smile"></i> 絵文字申請<span v-if="emojiRequests.length" :class="$style.sideCount">{{ emojiRequests.length }}</span></span>
-								<button :class="$style.sideAddText" @click="requestEmoji"><i class="ti ti-plus"></i> {{ isStaff ? '追加' : '申請' }}</button>
+								<div :class="$style.sideHeadActions">
+									<button v-if="isStaff && emojiRequests.length > 1" type="button" :class="$style.sideReviewQueue" title="未処理の絵文字申請をまとめて確認" @click="openReviewQueue"><i class="ti ti-player-track-next"></i> まとめて確認</button>
+									<button type="button" :class="$style.sideAddText" @click="requestEmoji"><i class="ti ti-plus"></i> {{ isStaff ? '自分で申請' : '申請する' }}</button>
+								</div>
 							</div>
 							<div v-if="emojiRequests.length === 0" :class="$style.emptyMini">{{ isStaff ? '未処理の申請はありません。' : 'まだ申請はありません。' }}</div>
 							<div v-else :class="$style.emojiList">
@@ -260,9 +300,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</div>
 				</div>
 
-				<!-- モバイル: 新規イシューFAB -->
-				<button :class="$style.fab" @click="activeTab === 'roadmap' && isStaff ? addRoadmap() : createIssue()">
-					<i :class="activeTab === 'roadmap' && isStaff ? 'ti ti-route' : 'ti ti-pencil-plus'"></i>
+				<!-- モバイル: ロードマップ管理だけは本文の主導線と用途が異なるためFABを残す。 -->
+				<button v-if="activeTab === 'roadmap' && isStaff" :class="$style.fab" @click="addRoadmap">
+					<i class="ti ti-route"></i>
 				</button>
 			</div>
 		</div>
@@ -272,6 +312,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <script lang="ts" setup>
 import { computed, onMounted, ref, watch } from 'vue';
+import type { HataFeedEmojiRequest } from '@/utility/hatafeed.js';
 import { deviceKind } from '@/utility/device-kind.js';
 import HataFeedIssue from '@/components/HataFeedIssue.vue';
 import HataFeedLeaves from '@/components/HataFeedLeaves.vue';
@@ -299,7 +340,7 @@ const router = useRouter();
 async function resolveNumber() {
 	try {
 		const res = await misskeyApi('hata/feedback/issues/show', { number: parseInt(props.number as string, 10) });
-		router.replace('/hatafeed/' + res.issue.id);
+		router.replace('/hatafeed/:issueId', { params: { issueId: res.issue.id } });
 	} catch {
 		router.replace('/hatafeed');
 	}
@@ -332,9 +373,10 @@ const filterStatus = ref<string | null>(null);
 const authorFilter = ref<any>(null);
 const includeClosed = ref(false);
 const searchQuery = ref('');
+const exportWindowOpen = ref(false);
 
 const unreadCount = ref(0);
-const emojiRequests = ref<any[]>([]);
+const emojiRequests = ref<HataFeedEmojiRequest[]>([]);
 const emojiQuota = ref<{ limit: number; remaining: number } | null>(null);
 
 const issueId = computed(() => props.issueId ?? null);
@@ -364,22 +406,24 @@ const canExportCurrent = computed(() => {
 	return p != null && p.ownerId === $i?.id;
 });
 
-// 旗鯖fork: イシュー一覧(タイトル・会話・ステータス等)をAI可読JSONでダウンロード。
-async function exportIssues() {
-	const data = await os.apiWithDialog('hata/feedback/issues/export', {
-		projectId: currentProjectId.value,
-		includeClosed: true,
-	});
-	const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-	const url = URL.createObjectURL(blob);
-	const a = window.document.createElement('a');
-	a.href = url;
-	a.download = `hatafeed-issues-${currentProjectId.value ?? 'official'}.json`;
-	window.document.body.appendChild(a);
-	a.click();
-	a.remove();
-	URL.revokeObjectURL(url);
+// 旗鯖fork: 全件一括ダウンロードではなく、範囲・内容を選ぶ非モーダル画面を開く。
+async function openExportWindow() {
+	if (exportWindowOpen.value) return;
+	exportWindowOpen.value = true;
+	try {
+		const { dispose } = os.popup((await import('@/components/HataFeedExportWindow.vue')).default, {
+			projectId: currentProjectId.value,
+			projectName: currentProject.value?.name ?? 'Hataskey',
+		}, {
+			closed: () => { exportWindowOpen.value = false; dispose(); },
+		});
+	} catch (error) {
+		exportWindowOpen.value = false;
+		console.error(error);
+		os.alert({ type: 'error', title: 'エクスポート画面を開けませんでした', text: '再読み込みして、もう一度お試しください。' });
+	}
 }
+
 // 旗鯖fork: 若葉アニメの表示可否(アクセシビリティ設定・既定OFF)。
 const leavesEnabled = computed(() => prefer.r['hatafeed.leaves'].value);
 
@@ -516,6 +560,7 @@ async function openAuthorMenu(ev: MouseEvent) {
 		pickAuthor();
 	}
 }
+
 async function pickAuthor() {
 	const user = await os.selectUser({});
 	if (!user) return;
@@ -541,11 +586,13 @@ function goIssuesTab() {
 	activeTab.value = 'issues';
 	if (filterCategory.value === 'improvement') { filterCategory.value = null; reloadIssues(); }
 }
+
 // タブ: ロードマップ(= improvement カテゴリの一覧を本体に出す)。
 function goRoadmapTab() {
 	activeTab.value = 'roadmap';
 	if (filterCategory.value !== 'improvement') { filterCategory.value = 'improvement'; reloadIssues(); }
 }
+
 // タブ: 絵文字申請管理(スタッフ専用・2g)。本体を申請一覧の管理ビューに差し替える。
 function goEmojiAdminTab() {
 	activeTab.value = 'emoji';
@@ -554,12 +601,12 @@ function goEmojiAdminTab() {
 
 // ===== 旗鯖fork(2g): 絵文字申請管理 =====
 const EMOJI_ADMIN_PAGE_SIZE = 15;
-const emojiAdminList = ref<any[]>([]);
-const emojiAdminStatus = ref<string | null>('pending'); // 既定は「未処理」から確認できるように。
+const emojiAdminList = ref<HataFeedEmojiRequest[]>([]);
+const emojiAdminStatus = ref<HataFeedEmojiRequest['status'] | null>('pending'); // 既定は「未処理」から確認できるように。
 const emojiAdminPage = ref(0);
 const emojiAdminCursors = ref<(string | undefined)[]>([undefined]);
 const emojiAdminHasNext = ref(false);
-const emojiAdminFilters: { value: string | null; label: string }[] = [
+const emojiAdminFilters: { value: HataFeedEmojiRequest['status'] | null; label: string }[] = [
 	{ value: 'pending', label: '未処理' },
 	{ value: 'approved', label: '承認済み' },
 	{ value: 'rejected', label: 'リジェクト' },
@@ -571,7 +618,7 @@ async function fetchEmojiAdminPage(untilId: string | undefined) {
 		status: emojiAdminStatus.value ?? undefined,
 		limit: EMOJI_ADMIN_PAGE_SIZE + 1,
 		untilId,
-	});
+	}) as unknown as HataFeedEmojiRequest[];
 	emojiAdminHasNext.value = res.length > EMOJI_ADMIN_PAGE_SIZE;
 	emojiAdminList.value = res.slice(0, EMOJI_ADMIN_PAGE_SIZE);
 }
@@ -582,7 +629,7 @@ async function reloadEmojiAdmin() {
 	await fetchEmojiAdminPage(undefined);
 }
 
-function setEmojiAdminStatus(s: string | null) {
+function setEmojiAdminStatus(s: HataFeedEmojiRequest['status'] | null) {
 	if (emojiAdminStatus.value === s) return;
 	emojiAdminStatus.value = s;
 	reloadEmojiAdmin();
@@ -622,7 +669,7 @@ async function openNotifications() {
 }
 
 async function loadEmojiRequests() {
-	emojiRequests.value = await misskeyApi('hata/feedback/emoji-requests', isStaff.value ? { status: 'pending', limit: 20 } : { mine: true, limit: 20 });
+	emojiRequests.value = await misskeyApi('hata/feedback/emoji-requests', isStaff.value ? { status: 'pending', limit: 20 } : { mine: true, limit: 20 }) as unknown as HataFeedEmojiRequest[];
 	emojiQuota.value = await misskeyApi('hata/feedback/emoji-quota', {}).catch(() => null);
 }
 
@@ -632,11 +679,13 @@ function selectProject(id: string | null) {
 }
 
 function openIssue(id: string) {
-	router.push(`/hatafeed/${id}`);
+	router.push('/hatafeed/:issueId', { params: { issueId: id } });
 }
+
 function openBeta() {
 	router.push('/hatafeed/beta');
 }
+
 function goList() {
 	router.push('/hatafeed');
 }
@@ -662,6 +711,22 @@ async function openApprove(r: any) {
 	const { dispose } = os.popup((await import('@/components/HataFeedEmojiApprove.vue')).default, { req: r }, {
 		done: () => { loadEmojiRequests(); if (activeTab.value === 'emoji') reloadEmojiAdmin(); },
 		closed: () => dispose(),
+	});
+}
+
+// 旗鯖fork: 未処理申請を最大100件まで取得し、1件ずつ内容を確認しながら連続処理する。
+// 一括承認は行わず、各操作は既存のスタッフ専用 approve/reject API を順番に呼ぶ。
+async function openReviewQueue() {
+	const pending = await misskeyApi('hata/feedback/emoji-requests', { status: 'pending', limit: 100 }) as unknown as HataFeedEmojiRequest[];
+	if (pending.length === 0) {
+		os.toast('未処理の絵文字申請はありません。');
+		await loadEmojiRequests();
+		if (activeTab.value === 'emoji') await reloadEmojiAdmin();
+		return;
+	}
+	const { dispose } = os.popup((await import('@/components/HataFeedEmojiApprove.vue')).default, { requests: pending }, {
+		done: () => { loadEmojiRequests(); if (activeTab.value === 'emoji') reloadEmojiAdmin(); },
+		closed: () => { loadEmojiRequests(); if (activeTab.value === 'emoji') reloadEmojiAdmin(); dispose(); },
 	});
 }
 
@@ -872,6 +937,16 @@ definePage(() => ({
 .iconBtn:hover { border-color: var(--MI_THEME-accent); color: var(--MI_THEME-accent); }
 .bellBadge { position: absolute; top: -5px; right: -5px; background: var(--MI_THEME-accent); color: #fff; border-radius: 999px; font-size: .62em; font-weight: 800; line-height: 1.3; padding: 1px 5px; }
 
+/* ===== トップの主要操作 ===== */
+.topActions { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; margin: -2px 0 18px; }
+.topAction {
+	display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+	min-height: 46px; padding: 9px 16px; border-radius: 12px;
+	font-size: .92em; font-weight: 800; cursor: pointer;
+	transition: border-color .12s, background-color .12s, opacity .12s;
+}
+.topActionEmoji { border: 2px solid var(--MI_THEME-accent); background: var(--MI_THEME-panel); color: var(--MI_THEME-accent); }
+.topActionEmoji:hover { background: var(--MI_THEME-accentedBg); }
 /* ===== タブバー ===== */
 .tabs {
 	display: flex; align-items: center; gap: 2px;
@@ -973,6 +1048,7 @@ definePage(() => ({
 .sideCol { display: flex; flex-direction: column; gap: 16px; }
 .sideCard { background: var(--MI_THEME-panel); border: 1px solid var(--MI_THEME-divider); border-radius: 10px; padding: 14px 16px; }
 .sideHead { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.sideHeadActions { display: inline-flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 6px; }
 .sideTitle { display: inline-flex; align-items: center; gap: 6px; font-size: .88em; font-weight: 800; color: var(--MI_THEME-fg); }
 .sideTitle i { color: var(--MI_THEME-accent); }
 .sideCount { background: var(--MI_THEME-buttonBg, rgba(0,0,0,.07)); border-radius: 999px; padding: 0 7px; font-size: .82em; }
@@ -980,6 +1056,8 @@ definePage(() => ({
 .sideAdd:hover { border-color: var(--MI_THEME-accent); color: var(--MI_THEME-accent); }
 .sideAddText { display: inline-flex; align-items: center; gap: 4px; background: none; border: 1px solid var(--MI_THEME-divider); border-radius: 6px; color: inherit; font-size: .78em; font-weight: 700; padding: 3px 9px; cursor: pointer; }
 .sideAddText:hover { border-color: var(--MI_THEME-accent); color: var(--MI_THEME-accent); }
+.sideReviewQueue { display: inline-flex; align-items: center; gap: 4px; border: 1px solid color-mix(in srgb, var(--MI_THEME-accent) 45%, var(--MI_THEME-divider)); border-radius: 999px; background: color-mix(in srgb, var(--MI_THEME-accent) 10%, transparent); color: var(--MI_THEME-accent); font-size: .76em; font-weight: 800; padding: 4px 9px; cursor: pointer; }
+.sideReviewQueue:hover { background: color-mix(in srgb, var(--MI_THEME-accent) 18%, transparent); }
 
 /* 予定リスト */
 .roadList { display: flex; flex-direction: column; gap: 9px; }
@@ -997,7 +1075,9 @@ definePage(() => ({
 
 /* ===== 絵文字申請管理(2g) ===== */
 .emojiAdmin { min-width: 0; }
-.eaFilters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+.eaTop { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.eaFilters { display: flex; gap: 8px; flex-wrap: wrap; }
+.eaTopActions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .eaFilter {
 	background: var(--MI_THEME-panel); border: 1px solid var(--MI_THEME-divider); color: inherit;
 	border-radius: 999px; padding: 6px 15px; font-size: .84em; font-weight: 700; cursor: pointer;
@@ -1005,6 +1085,11 @@ definePage(() => ({
 }
 .eaFilter:hover { border-color: var(--MI_THEME-accent); }
 .eaFilterOn { background: var(--MI_THEME-accent); color: #fff; border-color: var(--MI_THEME-accent); }
+.eaRequestOwn, .eaBatch { display: inline-flex; align-items: center; gap: 6px; border-radius: 8px; padding: 7px 12px; font-size: .82em; font-weight: 800; cursor: pointer; }
+.eaRequestOwn { background: var(--MI_THEME-panel); border: 1px solid var(--MI_THEME-divider); color: inherit; }
+.eaRequestOwn:hover { border-color: var(--MI_THEME-accent); color: var(--MI_THEME-accent); }
+.eaBatch { background: var(--MI_THEME-accent); border: 1px solid var(--MI_THEME-accent); color: #fff; }
+.eaBatch:hover { opacity: .9; }
 .eaList { display: flex; flex-direction: column; gap: 8px; }
 .eaRow {
 	display: flex; align-items: center; gap: 12px;
@@ -1055,6 +1140,15 @@ definePage(() => ({
 .statDoing { color: #b6791f; }
 .statResolved { color: #1f8a5b; }
 .statEmoji { color: #c9971f; }
+.mobileEmojiCard { margin-bottom: 12px; padding: 14px; border: 1px solid var(--MI_THEME-divider); border-radius: 12px; background: var(--MI_THEME-panel); }
+.mobileEmojiHead { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.mobileEmojiTitle { display: flex; align-items: center; gap: 6px; font-size: .9em; font-weight: 800; }
+.mobileEmojiTitle i { color: var(--MI_THEME-accent); }
+.mobileEmojiTitle span { padding: 1px 7px; border-radius: 999px; background: var(--MI_THEME-buttonBg, rgba(0,0,0,.07)); font-size: .8em; }
+.mobileEmojiLead { margin-top: 3px; font-size: .72em; line-height: 1.5; opacity: .62; }
+.mobileEmojiPrimary { flex-shrink: 0; display: inline-flex; align-items: center; gap: 5px; border: none; border-radius: 8px; padding: 7px 11px; background: var(--MI_THEME-accent); color: #fff; font-size: .76em; font-weight: 800; cursor: pointer; }
+.mobileEmojiList { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--MI_THEME-divider); }
+.mobileEmojiRow { display: flex; align-items: center; gap: 9px; width: 100%; padding: 0; border: none; background: none; color: inherit; text-align: left; cursor: pointer; }
 .roadScroll { margin-bottom: 12px; }
 .roadScrollHead { display: flex; align-items: center; gap: 5px; font-size: .74em; font-weight: 800; opacity: .6; margin-bottom: 7px; }
 .roadScrollHead i { color: var(--MI_THEME-accent); }
@@ -1075,22 +1169,21 @@ definePage(() => ({
 	.sideCard { flex: 1; min-width: 220px; }
 }
 /* 600px 未満(3a レイアウト): 幅ベースの折り返し。ツールバーは検索を独立行に落とし、
-   集計チップ等のモバイルパーツを出す。ただし作成ボタンの形態(FAB/上部ボタン)は
-   幅ではなくデバイス種別で分岐する(下の data-smartphone 参照)ため、ここでは触らない。 */
+	 集計チップ等のモバイルパーツを出す。主要な作成操作は本文上部の2ボタンを維持する。 */
 @container hatafeed (max-width: 599px) {
 	.toolDivider { display: none; }
 	.iconBtnHideMobile { display: none; }
 	.serverName { max-width: 100px; }
 	.search { order: 10; flex-basis: 100%; max-width: none; margin-left: 0; }
+	.topActions { gap: 8px; }
+	.topAction { min-height: 44px; padding: 8px 10px; font-size: .84em; }
 	.mobileExtras { display: block; }
 	.sideCol { display: none; }
 	.listCard { margin-bottom: 8px; }
 }
 
-/* 旗鯖fork(2a/3a): 作成ボタンの形態はデバイス種別で切替える。
-   - スマホ実機          → 右下 FAB(ツールバーの作成ボタンは隠す)
-   - それ以外(狭い窓含む) → ツールバー右上の作成ボタン(FAB は出さない)
-   狭いデスクトップウィンドウで FAB がイシュー情報に被る問題への対応。 */
+/* 旗鯖fork(2a/3a): ロードマップ管理の追加操作だけ、スマホでは右下FABへ移す。
+	 イシュー作成はトップ本文のボタンへ一本化し、右上・FABには重複させない。 */
 .repo[data-smartphone="on"] .newBtn { display: none; }
 .repo[data-smartphone="on"] .fab { display: inline-flex; align-items: center; justify-content: center; }
 </style>
