@@ -102,5 +102,5 @@ HATA-PITFALLS.md
 *:Zone.Identifier
 *Zone.Identifier
 
-# 花常の画像生成用リファレンス（実行時アセットではないため配布しない）
-/packages/frontend/hanaawase/ref/
+# 花常の開発書類・作業進捗・画像生成用リファレンス（実行時アセットではないため配布しない）
+/packages/frontend/hanaawase/
