@@ -135,6 +135,41 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<template #label><SearchLabel>{{ i18n.ts.advancedSettings }}</SearchLabel></template>
 
 				<div class="_gaps_m">
+					<MkInfo>{{ i18n.ts.profileBadgeVisibilityDescription }}</MkInfo>
+
+					<SearchMarker :keywords="['badge', 'utage', 'success']">
+						<MkSwitch
+							:modelValue="profileBadgeVisibility.showUtageSuccessCount"
+							:disabled="profileBadgeVisibilitySaving"
+							@update:modelValue="value => updateProfileBadgeVisibility('showUtageSuccessCount', value)"
+						>
+							<template #label><SearchLabel>{{ i18n.ts.showUtageSuccessCount }}</SearchLabel></template>
+							<template #caption>{{ i18n.ts.showUtageSuccessCountDescription }}</template>
+						</MkSwitch>
+					</SearchMarker>
+
+					<SearchMarker :keywords="['badge', 'utage', 'interruption']">
+						<MkSwitch
+							:modelValue="profileBadgeVisibility.showUtageInterruptionCount"
+							:disabled="profileBadgeVisibilitySaving"
+							@update:modelValue="value => updateProfileBadgeVisibility('showUtageInterruptionCount', value)"
+						>
+							<template #label><SearchLabel>{{ i18n.ts.showUtageInterruptionCount }}</SearchLabel></template>
+							<template #caption>{{ i18n.ts.showUtageInterruptionCountDescription }}</template>
+						</MkSwitch>
+					</SearchMarker>
+
+					<SearchMarker :keywords="['badge', 'hatask', 'flower']">
+						<MkSwitch
+							:modelValue="profileBadgeVisibility.showHataskFlowerCount"
+							:disabled="profileBadgeVisibilitySaving"
+							@update:modelValue="value => updateProfileBadgeVisibility('showHataskFlowerCount', value)"
+						>
+							<template #label><SearchLabel>{{ i18n.ts.showHataskFlowerCount }}</SearchLabel></template>
+							<template #caption>{{ i18n.ts.showHataskFlowerCountDescription }}</template>
+						</MkSwitch>
+					</SearchMarker>
+
 					<SearchMarker :keywords="['cat']">
 						<MkSwitch v-model="profile.isCat">
 							<template #label><SearchLabel>{{ i18n.ts.flagAsCat }}</SearchLabel></template>
@@ -208,6 +243,35 @@ const profile = reactive({
 	isBot: $i.isBot ?? false,
 	isCat: $i.isCat ?? false,
 });
+
+type ProfileBadgeVisibilityKey = 'showUtageSuccessCount' | 'showUtageInterruptionCount' | 'showHataskFlowerCount';
+const profileBadgeVisibility = reactive({
+	showUtageSuccessCount: $i.showUtageSuccessCount ?? true,
+	showUtageInterruptionCount: $i.showUtageInterruptionCount ?? true,
+	showHataskFlowerCount: $i.showHataskFlowerCount ?? true,
+});
+const profileBadgeVisibilitySaving = ref(false);
+
+async function updateProfileBadgeVisibility(key: ProfileBadgeVisibilityKey, value: boolean) {
+	if (profileBadgeVisibilitySaving.value) return;
+	const previous = profileBadgeVisibility[key];
+	profileBadgeVisibility[key] = value;
+	profileBadgeVisibilitySaving.value = true;
+	try {
+		const updated = key === 'showUtageSuccessCount'
+			? await os.apiWithDialog('i/update', { showUtageSuccessCount: value })
+			: key === 'showUtageInterruptionCount'
+				? await os.apiWithDialog('i/update', { showUtageInterruptionCount: value })
+				: await os.apiWithDialog('i/update', { showHataskFlowerCount: value });
+		$i.showUtageSuccessCount = updated.showUtageSuccessCount;
+		$i.showUtageInterruptionCount = updated.showUtageInterruptionCount;
+		$i.showHataskFlowerCount = updated.showHataskFlowerCount;
+	} catch {
+		profileBadgeVisibility[key] = previous;
+	} finally {
+		profileBadgeVisibilitySaving.value = false;
+	}
+}
 
 watch(() => profile, () => {
 	save();

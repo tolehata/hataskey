@@ -337,10 +337,19 @@ export const packedUserDetailedNotMeOnlySchema = {
 			type: 'number',
 			nullable: false, optional: false,
 		},
-		// 旗鯖fork: 宴成功回数(UtageSessionの集計値)
+		// 旗鯖fork: 自鯖利用者だけに返すプロフィール実績。
+		// 本人には非表示中も同期用に返し、他人には表示設定が有効な値だけを返す。
 		utageSuccessCount: {
 			type: 'number',
-			nullable: false, optional: false,
+			nullable: false, optional: true,
+		},
+		utageInterruptionCount: {
+			type: 'number',
+			nullable: false, optional: true,
+		},
+		hataskFlowerCount: {
+			type: 'number',
+			nullable: false, optional: true,
 		},
 		pinnedNoteIds: {
 			type: 'array',
@@ -487,6 +496,18 @@ export const packedMeDetailedOnlySchema = {
 		followedMessage: {
 			type: 'string',
 			nullable: true, optional: false,
+		},
+		showUtageSuccessCount: {
+			type: 'boolean',
+			nullable: false, optional: false,
+		},
+		showUtageInterruptionCount: {
+			type: 'boolean',
+			nullable: false, optional: false,
+		},
+		showHataskFlowerCount: {
+			type: 'boolean',
+			nullable: false, optional: false,
 		},
 		isModerator: {
 			type: 'boolean',

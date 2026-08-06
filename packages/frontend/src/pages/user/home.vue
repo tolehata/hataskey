@@ -92,15 +92,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 								@input="adjustMemoTextarea"
 							/>
 						</div>
-						<!-- 旗鯖fork: 宴の成功回数バッジ。0回でも常時表示する(統計情報として固定枠を提供)。
-						     description の直上に配置(目立つ位置)。 -->
-						<div class="utageSuccessWrapper">
-							<div ref="utageBadgeRef" class="utageSuccessBadge">
-								<i class="ti ti-confetti utageSuccessIcon"></i>
-								<span class="utageSuccessLabel">宴の成功</span>
-								<span class="utageSuccessCount">{{ user.utageSuccessCount ?? 0 }}</span>
-								<span class="utageSuccessUnit">回</span>
-							</div>
+						<!-- 旗鯖fork: 自鯖限定の実績バッジ。表示中の項目全体を中央揃えにする。 -->
+						<div v-if="hataProfileBadges.length > 0" ref="utageBadgeRef" class="utageSuccessWrapper">
+							<MkHataProfileBadges :user="user"/>
 							<!-- 旗鯖fork: 初回アナウンス吹き出し。
 							     祖先の transform/will-change により position:fixed の基準がズレるため、
 							     Teleport で body 直下に出して真のビューポート基準にする。
@@ -111,8 +105,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 									<div class="utageGlobalTipBody">
 										<i class="ti ti-info-circle utageGlobalTipIcon"></i>
 										<div class="utageGlobalTipText">
-											<b>宴の成功回数を表示しています</b><br>
-											ローカルTLに「宴」「うたげ」「utage」を含むノートを投稿し、15分間誰にも反応されずに逃げ切れた回数です。プロフィールの統計として誰でも見られます。
+											<b>旗鯖での実績を表示しています</b><br>
+											宴の成功・阻止回数と、Hataskで育てたお花の数です。表示する項目はプロフィールの高度な設定で選べます。
 										</div>
 									</div>
 									<div class="utageGlobalTipFooter">
@@ -211,6 +205,7 @@ import MkTextarea from '@/components/MkTextarea.vue';
 import MkOmit from '@/components/MkOmit.vue';
 import MkInfo from '@/components/MkInfo.vue';
 import MkButton from '@/components/MkButton.vue';
+import MkHataProfileBadges from '@/components/MkHataProfileBadges.vue';
 import { getUserMenu } from '@/utility/get-user-menu.js';
 import number from '@/filters/number.js';
 import { userPage } from '@/filters/user.js';
@@ -233,6 +228,7 @@ import detectLanguage from '@/utility/detect-language.js';
 import { globalEvents } from '@/events.js';
 import { notesSearchAvailable, canSearchNonLocalNotes } from '@/utility/check-permissions.js';
 import { store } from '@/store.js';
+import { getHataProfileBadges } from '@/utility/hata-profile-badges.js';
 
 function calcAge(birthdate: string): number {
 	const date = new Date(birthdate);
@@ -269,6 +265,7 @@ const router = useRouter();
 
 const user = ref(props.user);
 const narrow = ref<null | boolean>(null);
+const hataProfileBadges = computed(() => getHataProfileBadges(user.value, $i?.id ?? null));
 
 // 旗鯖fork: 宴成功バッジの初回アナウンス吹き出しの表示状態
 const utageBadgeTipVisible = ref(false);
@@ -277,6 +274,7 @@ const utageBadgeTipVisible = ref(false);
 // バッジ要素の getBoundingClientRect() からビューポート基準の座標を計算する。
 const utageBadgeRef = useTemplateRef('utageBadgeRef');
 const utageBadgeTipPos = ref<{ mode: 'tooltip' | 'sheet' | 'windowSheet'; top: number; left: number; right?: number; bottom?: number; placement: 'below' | 'above'; arrowLeft: number } | null>(null);
+
 function updateUtageBadgeTipPos() {
 	if (!utageBadgeRef.value) return;
 	// 旗鯖fork: スマホ(画面狭幅)はバッジ追従ではなく画面下部にシート表示する。
@@ -343,6 +341,7 @@ function updateUtageBadgeTipPos() {
 	arrowLeft = Math.max(arrowMin, Math.min(arrowMax, arrowLeft));
 	utageBadgeTipPos.value = { mode: 'tooltip', top, left, placement, arrowLeft };
 }
+
 function dismissUtageBadgeTip() {
 	utageBadgeTipVisible.value = false;
 	// 二度と出さないため preference に記録(preferはマルチデバイス同期されるため媒体問わず通算1回)
@@ -350,11 +349,13 @@ function dismissUtageBadgeTip() {
 		prefer.commit('simpleUi.utageBadgeTipShown', true);
 	}
 }
+
 // スクロール時は座標再計算(または閉じる)。リサイズも同様。
 function onUtageScrollOrResize() {
 	if (!utageBadgeTipVisible.value) return;
 	updateUtageBadgeTipPos();
 }
+
 const rootEl = useTemplateRef('rootEl');
 const bannerEl = useTemplateRef('bannerEl');
 const memoTextareaEl = useTemplateRef('memoTextareaEl');
@@ -413,7 +414,6 @@ async function updateMemo() {
 	});
 	isEditingMemo.value = false;
 }
-
 
 function resetTimer() {
 	playAnimation.value = true;
@@ -754,44 +754,12 @@ onDeactivated(() => {
 					}
 				}
 
-				/* 旗鯖fork: 宴の成功回数バッジ用ラッパー(吹き出しの位置基準) */
+				/* 旗鯖fork: 自鯖実績バッジ用ラッパー(吹き出しの位置基準) */
 				> .utageSuccessWrapper {
 					position: relative;
-					margin: 16px 24px 0 154px;
-					display: inline-block;
-
-					/* 宴の成功回数バッジ(目立つグラデーション枠) - もう一段小さめに */
-					> .utageSuccessBadge {
-						padding: 5px 10px;
-						display: inline-flex;
-						align-items: center;
-						gap: 5px;
-						font-size: 0.78em;
-						font-weight: 600;
-						color: var(--MI_THEME-fg);
-						background: linear-gradient(135deg, color-mix(in srgb, var(--MI_THEME-accent) 18%, transparent), color-mix(in srgb, var(--MI_THEME-accent) 8%, transparent));
-						border: 1.5px solid color-mix(in srgb, var(--MI_THEME-accent) 45%, transparent);
-						border-radius: 999px;
-						box-shadow: 0 2px 8px color-mix(in srgb, var(--MI_THEME-accent) 12%, transparent);
-
-						> .utageSuccessIcon {
-							font-size: 1em;
-							color: var(--MI_THEME-accent);
-						}
-						> .utageSuccessLabel {
-							opacity: 0.85;
-						}
-						> .utageSuccessCount {
-							font-size: 1em;
-							font-weight: 800;
-							color: var(--MI_THEME-accent);
-							font-variant-numeric: tabular-nums;
-						}
-						> .utageSuccessUnit {
-							opacity: 0.7;
-							font-size: 0.85em;
-						}
-					}
+					margin: 16px 24px 0;
+					display: flex;
+					justify-content: center;
 
 					/* 旗鯖fork: 吹き出し本体(.utageGlobalTip*) は Teleport で body 直下に出るため、
 					   scoped CSS では効かない。<style>(scopedなし)ブロックでグローバル定義している。 */
@@ -975,20 +943,9 @@ onDeactivated(() => {
 					}
 				}
 
-				/*
-				旗鯖fork: ⚠️宴の成功回数バッジを狭い版で中央へ戻す。
-				⚠️広い版の `margin-left: 154px` は「左に寄せたアバターを避ける」ための下げ幅だが、
-				  狭い版はアバターが**上に中央で**乗るので、この下げ幅がそのまま「ずれ」になる。
-				⚠️実測: 幅375pxのとき、兄弟(title/moderationNote/description)の中心が188pxなのに対し
-				  バッジだけ中心221px＝**右へ33pxずれていた**。
-				⚠️ラッパーは `display: inline-block` かつ吹き出しの位置基準（`position: relative`）なので、
-				  親に `text-align: center` を掛ける形にはしない（他の要素の行揃えまで動く）。
-				  ⚠️**自分を block にして左右 margin を auto** で中央へ置く。幅は中身なりに保つ。
-				*/
+				/* 狭い表示でもバッジ群をカード全体の中央に保つ。 */
 				> .utageSuccessWrapper {
-					display: block;
-					width: fit-content;
-					margin: 16px auto 0;
+					margin: 16px 16px 0;
 				}
 
 				> .memo {

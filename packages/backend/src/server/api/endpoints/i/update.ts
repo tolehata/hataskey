@@ -34,6 +34,7 @@ import type { Config } from '@/config.js';
 import { safeForSql } from '@/misc/safe-for-sql.js';
 import { AvatarDecorationService } from '@/core/AvatarDecorationService.js';
 import { notificationRecieveConfig } from '@/models/json-schema/user.js';
+import { isLocalProfileBadgeOnlyUpdate } from '@/misc/local-profile-badge.js';
 import { ApiLoggerService } from '../../ApiLoggerService.js';
 import { ApiError } from '../../error.js';
 
@@ -177,6 +178,10 @@ export const paramDef = {
 		isExplorable: { type: 'boolean' },
 		hideOnlineStatus: { type: 'boolean' },
 		publicReactions: { type: 'boolean' },
+		showUtageSuccessCount: { type: 'boolean' },
+		showUtageInterruptionCount: { type: 'boolean' },
+		showHataskFlowerCount: { type: 'boolean' },
+		hataskFlowerCount: { type: 'integer', minimum: 0, maximum: 1000000 },
 		carefulBot: { type: 'boolean' },
 		autoAcceptFollowed: { type: 'boolean' },
 		noCrawle: { type: 'boolean' },
@@ -342,6 +347,10 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 			if (typeof ps.isExplorable === 'boolean') updates.isExplorable = ps.isExplorable;
 			if (typeof ps.hideOnlineStatus === 'boolean') updates.hideOnlineStatus = ps.hideOnlineStatus;
 			if (typeof ps.publicReactions === 'boolean') profileUpdates.publicReactions = ps.publicReactions;
+			if (typeof ps.showUtageSuccessCount === 'boolean') profileUpdates.showUtageSuccessCount = ps.showUtageSuccessCount;
+			if (typeof ps.showUtageInterruptionCount === 'boolean') profileUpdates.showUtageInterruptionCount = ps.showUtageInterruptionCount;
+			if (typeof ps.showHataskFlowerCount === 'boolean') profileUpdates.showHataskFlowerCount = ps.showHataskFlowerCount;
+			if (typeof ps.hataskFlowerCount === 'number') profileUpdates.hataskFlowerCount = ps.hataskFlowerCount;
 			if (typeof ps.isBot === 'boolean') updates.isBot = ps.isBot;
 			if (typeof ps.carefulBot === 'boolean') profileUpdates.carefulBot = ps.carefulBot;
 			if (typeof ps.autoAcceptFollowed === 'boolean') profileUpdates.autoAcceptFollowed = ps.autoAcceptFollowed;
@@ -549,8 +558,11 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				this.userFollowingService.acceptAllFollowRequests(user);
 			}
 
-			// フォロワーにUpdateを配信
-			this.accountUpdateService.publishToFollowers(user.id);
+			// フォロワーにUpdateを配信。旗鯖ローカルの実績バッジだけを
+			// 更新した場合は、ActivityPub Person に変化が無いので連合通信自体を行わない。
+			if (!isLocalProfileBadgeOnlyUpdate(Object.keys(ps))) {
+				this.accountUpdateService.publishToFollowers(user.id);
+			}
 
 			const urls = updatedProfile.fields.filter(x => x.value.startsWith('https://'));
 			for (const url of urls) {

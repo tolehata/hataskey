@@ -13,6 +13,8 @@ import type { Config } from '@/config.js';
 import type { Packed } from '@/misc/json-schema.js';
 import type { Promiseable } from '@/misc/prelude/await-all.js';
 import { awaitAll } from '@/misc/prelude/await-all.js';
+import { toArray } from '@/misc/prelude/array.js';
+import { canExposeLocalProfileBadge } from '@/misc/local-profile-badge.js';
 import { USER_ACTIVE_THRESHOLD, USER_ONLINE_THRESHOLD } from '@/const.js';
 import type { MiLocalUser, MiPartialLocalUser, MiPartialRemoteUser, MiRemoteUser, MiUser } from '@/models/User.js';
 import {
@@ -53,7 +55,6 @@ import { ChatService } from '@/core/ChatService.js';
 import type { OnModuleInit } from '@nestjs/common';
 import type { NoteEntityService } from './NoteEntityService.js';
 import type { PageEntityService } from './PageEntityService.js';
-import { toArray } from '@/misc/prelude/array.js';
 
 const Ajv = _Ajv.default;
 const ajv = new Ajv();
@@ -564,12 +565,24 @@ export class UserEntityService implements OnModuleInit {
 				followersCount: followersCount ?? 0,
 				followingCount: followingCount ?? 0,
 				notesCount: user.notesCount,
-				// 旗鯖fork: 宴の成功回数。UtageSessionをuserId+status='succeeded'で集計するだけ(マイグレ無し)。
-				// 取得失敗時は 0(=未参加扱い)にフォールバックして他のフィールドへの巻き込みを避ける。
-				utageSuccessCount: this.utageSessionsRepository.countBy({
-					userId: user.id,
-					status: 'succeeded',
-				}).catch(() => 0),
+				// 旗鯖fork: 実績バッジは自鯖ユーザーにだけ返す。
+				// 本人は設定・Hatask同期に必要なため非表示中も値を受け取るが、
+				// 他人には各表示トグルが有効な値だけを返す。ActivityPub renderer はこれらを参照しない。
+				...(canExposeLocalProfileBadge(user.host, isMe, profile!.showUtageSuccessCount) ? {
+					utageSuccessCount: this.utageSessionsRepository.countBy({
+						userId: user.id,
+						status: 'succeeded',
+					}).catch(() => 0),
+				} : {}),
+				...(canExposeLocalProfileBadge(user.host, isMe, profile!.showUtageInterruptionCount) ? {
+					utageInterruptionCount: this.utageSessionsRepository.countBy({
+						interruptedByUserId: user.id,
+						status: 'failed',
+					}).catch(() => 0),
+				} : {}),
+				...(canExposeLocalProfileBadge(user.host, isMe, profile!.showHataskFlowerCount) ? {
+					hataskFlowerCount: profile!.hataskFlowerCount,
+				} : {}),
 				pinnedNoteIds: pins.map(pin => pin.noteId),
 				pinnedNotes: this.noteEntityService.packMany(pins.map(pin => pin.note!), me, {
 					detail: true,
@@ -607,6 +620,9 @@ export class UserEntityService implements OnModuleInit {
 				avatarId: user.avatarId,
 				bannerId: user.bannerId,
 				followedMessage: profile!.followedMessage,
+				showUtageSuccessCount: profile!.showUtageSuccessCount,
+				showUtageInterruptionCount: profile!.showUtageInterruptionCount,
+				showHataskFlowerCount: profile!.showHataskFlowerCount,
 				isModerator: isModerator,
 				isAdmin: isAdmin,
 				injectFeaturedNote: profile!.injectFeaturedNote,

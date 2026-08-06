@@ -13,6 +13,7 @@ SPDX-License-Identifier: AGPL-3.0-only
         <div :class="$style.banner">
             <img v-if="user.bannerUrl" :src="user.bannerUrl" :class="$style.bannerImg" />
             <div :class="$style.bannerOverlay"></div>
+            <div :class="$style.bannerFade" aria-hidden="true"></div>
             <div :class="$style.headerBar">
                 <button :class="$style.closeBtn" @click="emit('close')"><i class="ti ti-x"></i></button>
                 <button :class="$style.profileBtn" @click="goToProfile"><i class="ti ti-external-link"></i> 詳細プロフィールへ</button>
@@ -41,6 +42,9 @@ SPDX-License-Identifier: AGPL-3.0-only
             <div v-if="user.createdAt" :class="$style.field"><i class="ti ti-calendar"></i> {{ formatDate(user.createdAt) }} 登録</div>
             <div v-if="user.uri || user.url" :class="$style.field"><i class="ti ti-link"></i> <a :href="user.uri || user.url" target="_blank" rel="noopener" :class="$style.fieldLink">{{ (user.uri || user.url || '').replace(/^https?:\/\//, '') }}</a></div>
         </div>
+
+        <!-- 旗鯖fork: オリジナルユーザーパネルにも自鯖限定の実績を表示。 -->
+        <MkHataProfileBadges :user="user" compact :class="$style.hataBadges"/>
 
         <!-- 統計 -->
         <div :class="$style.stats">
@@ -93,6 +97,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 <script lang="ts" setup>
 import { ref, computed, watch, onMounted, reactive } from 'vue';
 import * as Misskey from 'cherrypick-js';
+import MkHataProfileBadges from '@/components/MkHataProfileBadges.vue';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import * as os from '@/os.js';
 import { i18n } from '@/i18n.js';
@@ -247,7 +252,28 @@ onMounted(() => { loadUser(); loadNotes(); });
 .banner { position:relative; height:100px; background:var(--MI_THEME-accentedBg); overflow:hidden; border-radius:16px 16px 0 0; flex-shrink:0; }
 .root:not(.isPopup) .banner { border-radius:0; }
 .bannerImg { width:100%; height:100%; object-fit:cover; }
-.bannerOverlay { position:absolute; inset:0; background:linear-gradient(transparent 40%, rgba(0,0,0,.4)); }
+.bannerOverlay {
+	position:absolute;
+	inset:0;
+	background:linear-gradient(to bottom, rgba(0,0,0,.22) 0%, rgba(0,0,0,.08) 46%, transparent 78%);
+	pointer-events:none;
+}
+.bannerFade {
+	position:absolute;
+	left:0;
+	right:0;
+	bottom:-1px;
+	height:48px;
+	background:linear-gradient(
+		to bottom,
+		transparent 0%,
+		color-mix(in srgb, var(--MI_THEME-panel) 8%, transparent) 24%,
+		color-mix(in srgb, var(--MI_THEME-panel) 30%, transparent) 52%,
+		color-mix(in srgb, var(--MI_THEME-panel) 70%, transparent) 78%,
+		var(--MI_THEME-panel) 100%
+	);
+	pointer-events:none;
+}
 .headerBar { position:absolute; top:8px; left:8px; right:8px; display:flex; justify-content:space-between; align-items:center; z-index:1; }
 .closeBtn { width:32px; height:32px; border-radius:50%; border:none; background:rgba(0,0,0,.4); color:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:1rem; backdrop-filter:blur(8px); transition:all .2s; &:hover { background:rgba(0,0,0,.6); } }
 .profileBtn { padding:5px 12px; border-radius:8px; border:none; background:rgba(0,0,0,.4); color:#fff; font-family:inherit; font-size:.78rem; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:4px; backdrop-filter:blur(8px); transition:all .2s; &:hover { background:rgba(0,0,0,.6); } }
@@ -272,6 +298,8 @@ onMounted(() => { loadUser(); loadNotes(); });
 .fields { padding:6px 16px; display:flex; flex-wrap:wrap; gap:4px 12px; }
 .field { font-size:.75rem; opacity:.6; display:flex; align-items:center; gap:3px; }
 .fieldLink { color:var(--MI_THEME-accent); text-decoration:none; &:hover { text-decoration:underline; } }
+
+.hataBadges { padding:8px 16px 2px; box-sizing:border-box; }
 
 // 統計
 .stats { display:flex; gap:4px; padding:10px 16px 6px; }

@@ -98,7 +98,7 @@ export class UtageService {
 	// 反応(リアクション/リプライ/リノート)着弾時。expiresAt 前 かつ running なら failed に確定。
 	// 高頻度イベントから呼ばれるため、まず宴ワードの有無で安価に足切りしてから DB を引く。
 	@bindThis
-	public async onReaction(note: { id: MiNote['id']; text?: string | null; cw?: string | null; userId: MiNote['userId']; userHost: MiUser['host'] }): Promise<void> {
+	public async onReaction(note: { id: MiNote['id']; text?: string | null; cw?: string | null; userId: MiNote['userId']; userHost: MiUser['host'] }, interruptedByUserId: MiUser['id']): Promise<void> {
 		if (note.userHost != null) return; // ローカルノートのみが宴対象
 		if (!this.isUtageText(note)) return; // 宴ノートでなければ DB を引かない
 
@@ -120,7 +120,7 @@ export class UtageService {
 
 		const result = await this.utageSessionsRepository.update(
 			{ noteId: note.id, status: 'running' }, // 楽観ロック: running の時だけ更新
-			{ status: 'failed', resolvedAt: new Date() },
+			{ status: 'failed', resolvedAt: new Date(), interruptedByUserId },
 		);
 		if (result.affected && result.affected > 0) {
 			this.publishStatus(session.noteId, session.userId, 'failed');

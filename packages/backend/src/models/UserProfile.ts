@@ -101,6 +101,28 @@ export class MiUserProfile {
 	})
 	public publicReactions: boolean;
 
+	// 旗鯖fork: ローカル限定のプロフィール実績バッジ。
+	// ActivityPub には載せず、UserEntityService が自鯖ユーザーにだけ返す。
+	@Column('boolean', {
+		default: true,
+	})
+	public showUtageSuccessCount: boolean;
+
+	@Column('boolean', {
+		default: true,
+	})
+	public showUtageInterruptionCount: boolean;
+
+	@Column('boolean', {
+		default: true,
+	})
+	public showHataskFlowerCount: boolean;
+
+	@Column('integer', {
+		default: 0,
+	})
+	public hataskFlowerCount: number;
+
 	@Column('enum', {
 		enum: followingVisibilities,
 		default: 'public',
@@ -444,4 +466,5 @@ export const ACHIEVEMENT_TYPES = [
 	'hatasabaDeckTutorial',
 	'welcomeToHatask',
 	'welcomeToHatady',
+	'hataSideStudioPioneer',
 ] as const;

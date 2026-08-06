@@ -67,4 +67,18 @@ export class MiUtageSession {
 		comment: 'When the status was finalized (succeeded/failed).',
 	})
 	public resolvedAt: Date | null;
+
+	@Index()
+	@Column({
+		...id(),
+		nullable: true,
+		comment: 'The user who interrupted the Utage. Local profile badge data only.',
+	})
+	public interruptedByUserId: MiUser['id'] | null;
+
+	@ManyToOne(type => MiUser, {
+		onDelete: 'SET NULL',
+	})
+	@JoinColumn()
+	public interruptedByUser: MiUser | null;
 }
