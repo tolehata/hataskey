@@ -45,6 +45,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<template #label>画面幅に関係なくデッキを表示する</template>
 				<template #caption>通常デッキはデスクトップ幅 (1100px 以上) でのみ有効ですが、ON で画面幅に関係なくデッキモードを適用します。<b>この設定は端末ごとに保存され、他の端末には同期されません。</b></template>
 			</MkSwitch>
+			<MkSwitch v-model="editedTabSwipeEnabled">
+				<template #label>左右スワイプでタブを切り替える</template>
+				<template #caption>OFF にすると、タッチ操作やトラックパッドの左右スワイプでタイムライン・デッキのタブが勝手に移動しなくなります。既定は ON です。<b>この端末にだけ</b>保存されます。</template>
+			</MkSwitch>
 			<div :class="$style.subActions">
 				<button class="_button" :class="$style.subBtn" :disabled="!isHatasabaDeckActive" @click="onReplayDeckTutorial"><i class="ti ti-refresh"></i> デッキUIチュートリアルをもう一度</button>
 			</div>
@@ -143,7 +147,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</div>
 			<fieldset :class="[$style.bottomNavFieldset, !isBottomNavVisible ? $style.bottomNavFieldsetDisabled : '']" :disabled="!isBottomNavVisible">
 				<div :class="$style.reorderHead">
-					<div :class="$style.reorderHint">表示する項目 (最大 4 つ) と順番を設定します。編集後、下の「保存」ボタンで確定します。</div>
+					<div :class="$style.reorderHint">表示する項目 (最大 {{ HATASABA_BOTTOM_NAV_MAX }} つ) と順番を設定します。編集後、下の「保存」ボタンで確定します。</div>
 					<button :class="$style.navResetBtn" :disabled="!isBottomNavVisible" @click="resetBottomNav"><i class="ti ti-restore"></i> 並び順を初期化</button>
 				</div>
 				<draggable v-model="editedBottomNav" :class="$style.reorderList" itemKey="id" handle=".htkNavDragHandle" ghostClass="htkNavDragGhost" :animation="150" :disabled="!isBottomNavVisible">
@@ -156,8 +160,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 						</div>
 					</template>
 				</draggable>
-				<div v-if="editedBottomNav.filter(i => i.visible !== false).length > 4" :class="$style.warning">
-					<i class="ti ti-alert-triangle"></i> 最大 4 つまで表示できます。超過分は非表示になります。
+				<div v-if="editedBottomNav.filter(i => i.visible !== false).length > HATASABA_BOTTOM_NAV_MAX" :class="$style.warning">
+					<i class="ti ti-alert-triangle"></i> 最大 {{ HATASABA_BOTTOM_NAV_MAX }} つまで表示できます。超過分は非表示になります。
 				</div>
 			</fieldset>
 		</FormSection>
@@ -165,8 +169,11 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<!-- ===== サイドメニュー ===== -->
 		<FormSection>
 			<template #label>サイドメニュー (サイドバー / ドロワー)</template>
-			<div :class="$style.reorderHint" style="margin-bottom:10px;">並び替え・表示/非表示は<b>専用モーダル</b>で行います。ドラッグでグループ越え可・明示保存でサーバー同期。</div>
-			<button class="_buttonPrimary" :class="$style.openSidebarBtn" @click="openSidebarEditDialog"><i class="ti ti-edit"></i> サイドバーを編集する</button>
+			<div :class="$style.reorderHint" style="margin-bottom:10px;"><b>HataSideStudio</b> では、拡大時と縮小時を別々に並び替え、ボタンの形・色・グラデーション、グループ、ウィジェットまで端末ごとに調整できます。</div>
+			<div :class="$style.subActions">
+				<button class="_buttonPrimary" :class="$style.openSidebarBtn" @click="openHataSideStudio"><i class="ti ti-layout-dashboard"></i> HataSideStudio を開く</button>
+				<button class="_button" :class="$style.openSidebarBtn" @click="openSidebarEditDialog"><i class="ti ti-list"></i> 従来の並び替えを開く</button>
+			</div>
 		</FormSection>
 	</div>
 
@@ -196,9 +203,12 @@ import {
 	glassUiLocal, setGlassUiLocal,
 	glassUiBubbleLocal, setGlassUiBubbleLocal,
 	deckIgnoreWidth, setDeckIgnoreWidth,
+	tabSwipeEnabled, setTabSwipeEnabled,
 } from '@/utility/hatasaba-device-prefs.js';
 import { miLocalStorage } from '@/local-storage.js';
+import { HATASABA_BOTTOM_NAV_MAX, mergeMissingNavItems } from '@/utility/hatasaba-navigation.js';
 import * as os from '@/os.js';
+import { mainRouter } from '@/router.js';
 
 const emit = defineEmits<{
 	(ev: 'closed'): void;
@@ -206,6 +216,11 @@ const emit = defineEmits<{
 }>();
 
 const dialog = useTemplateRef('dialog');
+
+function openHataSideStudio() {
+	dialog.value?.close();
+	mainRouter.push('/hata-side-studio');
+}
 
 // ===== 現在値スナップショット (初期値・比較用) =====
 const snapshot = {
@@ -220,6 +235,7 @@ const snapshot = {
 	showTrendingTab: prefer.r['simpleUi.showTrendingTab'].value,
 	topNavMode: prefer.r['simpleUi.topNavMode'].value,
 	deckIgnoreWidth: deckIgnoreWidth.value,
+	tabSwipeEnabled: tabSwipeEnabled.value,
 };
 
 // ===== 編集バッファ =====
@@ -232,6 +248,7 @@ const editedDisableBubbleInHatasabaDeck = ref(snapshot.disableBubbleInHatasabaDe
 const editedShowTrendingTab = ref(snapshot.showTrendingTab);
 const editedTopNavMode = ref(snapshot.topNavMode);
 const editedDeckIgnoreWidth = ref(snapshot.deckIgnoreWidth);
+const editedTabSwipeEnabled = ref(snapshot.tabSwipeEnabled);
 
 const hasChanges = computed(() =>
 	editedGlassUi.value !== snapshot.glassUi
@@ -243,6 +260,7 @@ const hasChanges = computed(() =>
 	|| editedShowTrendingTab.value !== snapshot.showTrendingTab
 	|| editedTopNavMode.value !== snapshot.topNavMode
 	|| editedDeckIgnoreWidth.value !== snapshot.deckIgnoreWidth
+	|| editedTabSwipeEnabled.value !== snapshot.tabSwipeEnabled
 	|| hasNavChanges.value,
 );
 
@@ -298,6 +316,7 @@ async function resetToDefault() {
 	editedShowTrendingTab.value = (PREF_DEF['simpleUi.showTrendingTab'].default as boolean);
 	editedTopNavMode.value = (PREF_DEF['simpleUi.topNavMode'].default as boolean);
 	editedDeckIgnoreWidth.value = false;
+	editedTabSwipeEnabled.value = true;
 }
 
 // 旗鯖fork: デッキUIチュートリアルを「今すぐ」再表示する。
@@ -308,13 +327,20 @@ async function resetToDefault() {
 //   (永続フラグ simpleUi.deckTutorialDone は「初回自動表示」用途なので、再表示ではあえて触らない)
 function onReplayDeckTutorial() {
 	if (!isHatasabaDeckActive.value) return;
-	os.popup(defineAsyncComponent(() => import('@/ui/_common_/HatasabaDeckTutorial.vue')), {}, {}, 'closed');
+	const { dispose } = os.popup(
+		defineAsyncComponent(() => import('@/ui/_common_/HatasabaDeckTutorial.vue')),
+		{},
+		{ closed: () => dispose() },
+	);
 }
 
 // ===== ナビ (旧 HatasabaUI 設定から移設・バッファ保存) =====
 //   現在値を deep clone してバッファに置き、明示保存(下部の「保存」ボタン)まで prefer.commit しない。
 const editedTopNav = ref<any[]>(JSON.parse(JSON.stringify(prefer.s['simpleUi.topNav'] ?? [])));
-const editedBottomNav = ref<any[]>(JSON.parse(JSON.stringify(prefer.s['simpleUi.bottomNav'] ?? [])));
+const editedBottomNav = ref<any[]>(mergeMissingNavItems(
+	JSON.parse(JSON.stringify(prefer.s['simpleUi.bottomNav'] ?? [])),
+	JSON.parse(JSON.stringify(getInitialPrefValue('simpleUi.bottomNav'))),
+));
 const initialTopNavSnapshot = JSON.stringify(editedTopNav.value);
 const initialBottomNavSnapshot = JSON.stringify(editedBottomNav.value);
 const hasNavChanges = computed(() =>
@@ -383,12 +409,13 @@ function save() {
 		if (editedShowTrendingTab.value !== snapshot.showTrendingTab) prefer.commit('simpleUi.showTrendingTab', editedShowTrendingTab.value);
 		if (editedTopNavMode.value !== snapshot.topNavMode) prefer.commit('simpleUi.topNavMode', editedTopNavMode.value);
 		if (editedDeckIgnoreWidth.value !== snapshot.deckIgnoreWidth) setDeckIgnoreWidth(editedDeckIgnoreWidth.value);
+		if (editedTabSwipeEnabled.value !== snapshot.tabSwipeEnabled) setTabSwipeEnabled(editedTabSwipeEnabled.value);
 		// ナビバー(上部/下部)は変更があればまとめて commit。
 		if (hasNavChanges.value) {
 			prefer.commit('simpleUi.topNav', JSON.parse(JSON.stringify(editedTopNav.value)));
 			prefer.commit('simpleUi.bottomNav', JSON.parse(JSON.stringify(editedBottomNav.value)));
 		}
-		os.success('HatasabaUI 2 の設定を保存しました。ページを再読み込みします...');
+		os.toast('HatasabaUI 2 の設定を保存しました。ページを再読み込みします...');
 		emit('done', { saved: true });
 		// 旗鯖fork: 保存後に即座にリロード。ライブプレビューで裏で書き換えた <html> クラス・
 		// CSS 変数と、実際の prefer 値との間の齟齬を確実に解消 (フルリロードで全描画を刷新)。

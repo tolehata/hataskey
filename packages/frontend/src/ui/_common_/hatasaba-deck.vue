@@ -191,6 +191,7 @@ import MkExternalTimeline from '@/components/MkExternalTimeline.vue';
 import MkStreamingNotificationsTimeline from '@/components/MkStreamingNotificationsTimeline.vue';
 import MkTrendingTimeline from '@/components/MkTrendingTimeline.vue';
 import MkPostForm from '@/components/MkPostForm.vue';
+import { tabSwipeEnabled } from '@/utility/hatasaba-device-prefs.js';
 
 const XWidgets = defineAsyncComponent(() => import('./widgets.vue'));
 const WidgetExternalNotifications = defineAsyncComponent(() => import('@/widgets/WidgetExternalNotifications.vue'));
@@ -705,11 +706,13 @@ function onTabClick(slot: DeckSlot, frame: DeckFrame, tab: DeckTab) {
 // (縦スクロールを妨げない)。端では切り替えない。
 let frameSwipe: { x: number; y: number; frameId: string } | null = null;
 function onFrameTouchStart(frame: DeckFrame, ev: TouchEvent) {
+	if (!tabSwipeEnabled.value) { frameSwipe = null; return; }
 	if (frame.tabs.length < 2 || ev.touches.length !== 1) { frameSwipe = null; return; }
 	const t = ev.touches[0];
 	frameSwipe = { x: t.clientX, y: t.clientY, frameId: frame.id };
 }
 function onFrameTouchEnd(slot: DeckSlot, frame: DeckFrame, ev: TouchEvent) {
+	if (!tabSwipeEnabled.value) { frameSwipe = null; return; }
 	const s = frameSwipe;
 	frameSwipe = null;
 	if (!s || s.frameId !== frame.id) return;

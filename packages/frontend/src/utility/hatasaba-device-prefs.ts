@@ -18,6 +18,15 @@ export function setDeckIgnoreWidth(v: boolean): void {
 	miLocalStorage.setItem('hatasabaDeckIgnoreWidth', v ? 'true' : 'false');
 }
 
+// HatasabaUI のタイムライン・デッキで、左右スワイプをタブ移動に使うか。
+// タッチやトラックパッドの操作感は端末ごとに異なるため、プロファイル同期しない。
+// 未設定は true。従来どおりスワイプで移動できる。
+export const tabSwipeEnabled = ref(miLocalStorage.getItem('hatasabaTabSwipeEnabled') !== 'false');
+export function setTabSwipeEnabled(v: boolean): void {
+	tabSwipeEnabled.value = v;
+	miLocalStorage.setItem('hatasabaTabSwipeEnabled', v ? 'true' : 'false');
+}
+
 // 旗鯖fork(#31・ベータ): ミュートしたユーザーのリアクションを、ノートのリアクションチップ自体から隠す。
 //   端末ごと(プロファイル非同期)に管理する。直近のリアクション(reactionAndUserPairCache)を使う best-effort。
 export const hideMutedReactionsLocal = ref(miLocalStorage.getItem('hataHideMutedReactions') === 'true');

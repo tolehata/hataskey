@@ -831,6 +831,8 @@ export const PREF_DEF = definePreferences({
 			{ id: 'home', icon: 'ti ti-home', label: 'ホーム', visible: true },
 			{ id: 'notifications', icon: 'ti ti-bell', label: '通知', visible: true },
 			{ id: 'hatask', icon: 'ti ti-eye', label: '独自機能', visible: true },
+			{ id: 'hatady', icon: 'ti ti-book-2', label: 'Hatady', visible: false },
+			{ id: 'hatafeed', icon: 'ti ti-message-report', label: 'HataFeed', visible: false },
 			{ id: 'widgets', icon: 'ti ti-apps', label: 'ウィジェット', visible: false },
 		] as { id: string; icon: string; label: string; visible: boolean }[],
 	},
@@ -865,6 +867,7 @@ export const PREF_DEF = definePreferences({
 			// していたが、ユーザーが非表示/並び替えできるよう通常項目として扱う
 			// (v5 マイグレで既存ユーザーにも insertAfter で追加)
 			{ id: 'reload', icon: 'ti ti-refresh', label: 'リロード', group: 'more' },
+			{ id: 'cacheClear', icon: 'ti ti-trash', label: 'キャッシュをクリア', group: 'more' },
 		] as { id: string; icon: string; label: string; group?: string; external?: boolean; url?: string }[],
 	},
 	'simpleUi.widgetBorder': {
