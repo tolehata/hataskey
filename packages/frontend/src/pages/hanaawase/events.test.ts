@@ -293,6 +293,41 @@ describe("花常イベントとPCホームの表示", () => {
 		expect(hanaawasePageSource).toContain("overflow-y: auto");
 	});
 
+	test("ホーム左上からページ全体を再読込せずゲーム一覧へ戻れる", () => {
+		expect(hanaawasePageSource).toContain('class="home-exit"');
+		expect(hanaawasePageSource).toContain('aria-label="花常を終了してゲーム一覧へ戻る"');
+		expect(hanaawasePageSource).toContain('@click="leaveGame"');
+		expect(hanaawasePageSource).toMatch(/function leaveGame\(\) \{\s*closeStoryForNavigation\(\);\s*showHome\(\);\s*router\.replaceByPath\("\/games"\);\s*\}/);
+		expect(hanaawasePageSource).not.toContain('router.push("/games")');
+		expect(hanaawasePageSource).toMatch(/\.home-shell > \.home-exit \{[^}]*z-index: 3;/);
+		expect(hanaawasePageSource).not.toContain('window.location.assign("/games")');
+	});
+
+	test("入場・復帰・画面外への戻る操作で物語を自動開始しない", () => {
+		const mounted = hanaawasePageSource.slice(
+			hanaawasePageSource.indexOf("onMounted(async () => {"),
+			hanaawasePageSource.indexOf("// 旗鯖fork: StackingRouterView"),
+		);
+		const activated = hanaawasePageSource.slice(
+			hanaawasePageSource.indexOf("onActivated(() => {"),
+			hanaawasePageSource.indexOf("onDeactivated(() => {"),
+		);
+		const deactivated = hanaawasePageSource.slice(
+			hanaawasePageSource.indexOf("onDeactivated(() => {"),
+			hanaawasePageSource.indexOf("onUnmounted(() => {"),
+		);
+
+		expect(mounted).not.toContain('playPendingStory("home")');
+		expect(mounted).toContain("showHome()");
+		expect(activated).not.toContain("playPendingStory");
+		expect(activated).toContain("goHome()");
+		expect(deactivated).toContain("closeStoryForNavigation()");
+		expect(hanaawasePageSource).toContain('v-if="hasPendingHomeStory"');
+		expect(hanaawasePageSource).toContain('@click="openPendingStory"');
+		expect(hanaawasePageSource).toContain("新しい物語を読む");
+		expect(hanaawasePageSource).toMatch(/function goHome\(\) \{\s*showHome\(\);\s*\}/);
+	});
+
 	test("局の開始時に目標を示し、歯車メニューとホーム帰還で局の境界を明確にする", () => {
 		expect(hanaawasePageSource).toContain('class="goal-preview"');
 		expect(hanaawasePageSource).toContain('aria-labelledby="goal-preview-title"');
@@ -317,6 +352,6 @@ describe("花常イベントとPCホームの表示", () => {
 	test("通し読み一覧の戻る操作は未読物語を開始せずホームだけを表示する", () => {
 		expect(hanaawasePageSource).toContain('scene === \'read\'');
 		expect(hanaawasePageSource).toContain('aria-label="ホームへ戻る" @click="leaveReadback"');
-		expect(hanaawasePageSource).toMatch(/function leaveReadback\(\) \{\s*showHome\(false\);\s*\}/);
+		expect(hanaawasePageSource).toMatch(/function leaveReadback\(\) \{\s*showHome\(\);\s*\}/);
 	});
 });

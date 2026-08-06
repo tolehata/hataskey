@@ -77,6 +77,8 @@ export type PageHeaderProps = {
 	displayMyAvatar?: boolean;
 	disableFollowButton?: boolean;
 	notification?: boolean;
+	/** 履歴ではなく、ページ固有の戻り先へ移動するときに指定する。 */
+	backPath?: string;
 	title?: string;
 	icon?: string;
 };
@@ -99,6 +101,7 @@ import { miLocalStorage } from '@/local-storage.js';
 import { scrollToVisibility } from '@/utility/scroll-to-visibility.js';
 import MkFollowButton from '@/components/MkFollowButton.vue';
 import { haptic } from '@/utility/haptic.js';
+import { getVisibleBottomNav } from '@/utility/hatasaba-navigation.js';
 
 const { showEl } = scrollToVisibility();
 
@@ -113,7 +116,7 @@ const { showEl } = scrollToVisibility();
 const rootPageNames = (() => {
 	if (miLocalStorage.getItem('ui') !== 'simple') return ['index', 'explore', 'my-notifications', 'chat'];
 	const bottomNav = prefer.s['simpleUi.bottomNav'] as { id: string; visible: boolean }[] | undefined;
-	const visibleIds = new Set((bottomNav ?? []).filter((t) => t.visible).slice(0, 4).map((t) => t.id));
+	const visibleIds = new Set(getVisibleBottomNav(bottomNav ?? []).map((t) => t.id));
 	const names = ['index'];
 	if (visibleIds.has('notifications')) names.push('my-notifications');
 	return names;
@@ -210,6 +213,10 @@ function onTabClick(): void {
 
 function goBack() {
 	haptic();
+	if (props.backPath) {
+		mainRouter.pushByPath(props.backPath);
+		return;
+	}
 
 	// 旗鯖fork: PWAを通知から起動した場合など、戻れる履歴が無いと history.back() が無反応になる。
 	//   その場合はホームへフォールバックして「◁が効かない」状態を防ぐ。

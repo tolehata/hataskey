@@ -83,6 +83,8 @@ export type PageHeaderProps = {
 	hideTitle?: boolean;
 	displayMyAvatar?: boolean;
 	disableFollowButton?: boolean;
+	/** 履歴ではなく、ページ固有の戻り先へ移動するときに指定する。 */
+	backPath?: string;
 };
 </script>
 
@@ -194,6 +196,10 @@ function onTabClick(tab: Tab, ev: MouseEvent): void {
 
 function goBack() {
 	haptic();
+	if (props.backPath) {
+		mainRouter.pushByPath(props.backPath);
+		return;
+	}
 
 	window.history.back();
 }

@@ -30,6 +30,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<section v-else-if="scene === 'home'" class="map-shell sheet home-shell" aria-labelledby="hanaawase-title">
 			<img v-if="homeBg" class="home-bg" :src="homeBg" alt="" aria-hidden="true" @error="onBackdropError">
 			<span v-if="homeBg" class="home-scrim" aria-hidden="true"></span>
+			<button class="home-exit" type="button" aria-label="花常を終了してゲーム一覧へ戻る" @click="leaveGame">
+				<span aria-hidden="true" v-html="ICONS.modoru()"></span><span>花常を終了</span>
+			</button>
 			<div class="home-scroll">
 				<header class="home-heading">
 					<span class="home-seal" v-html="FLOWER_SVGS.sakura.svg"></span>
@@ -49,6 +52,11 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</button>
 				<div v-if="!saveLoaded" class="loading-note">記録を読んでいます。</div>
 				<nav v-else class="home-menu" aria-label="花常の目次">
+					<button v-if="hasPendingHomeStory" class="menu-card menu-story" type="button" @click="openPendingStory">
+						<span class="menu-mark" aria-hidden="true" v-html="ICONS.choumen()"></span>
+						<span class="menu-copy"><b>新しい物語を読む</b><small>読む準備ができた場面があります</small></span>
+						<span class="menu-chev" aria-hidden="true" v-html="ICONS.kaeshi()"></span>
+					</button>
 					<button class="menu-card menu-lead" type="button" @click="startStage(continueStage)">
 						<span class="menu-mark" aria-hidden="true" v-html="FLOWER_SVGS[continueStage.flower].svg"></span>
 						<span class="menu-copy"><b>続きから</b><small>{{ KANJI_MONTH[continueStage.month] }} {{ continueStage.monthName }} — 花仕事のつづき</small></span>
@@ -1101,7 +1109,7 @@ function replayEventStory(entry: VignetteData) {
 //   途中で離脱しても取りこぼさず、どの合図で拾い直しても同じ結果になる。
 //   ⚠️ここでは「いつ画面に出すか」だけを決める。解放条件そのものは story/ 側にある。
 //
-//   month-open / stage-clear / boss-after / month-close … 盤面を離れた直後・ホーム到着時にまとめて出す
+//   month-open / stage-clear / boss-after / month-close … 局クリア後、またはホームの未読札から出す
 //   boss-before                                          … その盤面へ入る直前だけ（下記 startStage）
 //
 // ⚠️`finishStage()` は触っていない（保存・たのみごと報告の順序は不変）。
@@ -1117,7 +1125,7 @@ const storyCurrent = computed<VignetteData | undefined>(() => storyQueue.value[0
 const storyReturn = ref<StoryReturn>("home");
 /*
 「今回は読まない」を選んだ場面。⚠️**進行には保存しない**（次のセッションでは未読として出す）。
-⚠️ただし**メモリだけだと、花常を離れて入り直した瞬間に消えて物語が再生される**（利用者の報告）。
+⚠️ただし**メモリだけだと、花常を離れて入り直した瞬間に消えて未読札の対象へ戻る**。
   画面を出入りするたびに component が作り直されるため。
 ⚠️そこで **sessionStorage** に置く。タブを閉じるまでは残り、閉じれば消える＝「今回は」の意味に一致する。
 ⚠️`miLocalStorage` の typed union は**触らない**（パージ容易性。生の sessionStorage を直接使う）。
@@ -1160,6 +1168,10 @@ const storyMotion = computed<"normal" | "reduced">(() =>
 	gameSettings.value.motion === "reduced" || !prefer.s.animation ? "reduced" : "normal");
 /** 通し読みに並べるもの。⚠️到達済みだけ＝未読はネタバレしない。 */
 const readableVignettes = computed(() => seenVignettes(progress.value));
+/** ホームで利用者が明示的に開ける未読場面。題名は札を押すまで見せない。 */
+const hasPendingHomeStory = computed(() => saveLoaded.value && !disclaimerPending.value
+	&& pendingVignettes(progress.value)
+		.some((entry) => entry.trigger.at !== "boss-before" && !deferredVignetteIds.has(entry.id)));
 
 /** その盤面に入る直前に出すもの（＝まだ見ていない boss-before）。 */
 const bossBeforeFor = (stageId: string) => pendingVignettes(progress.value)
@@ -1185,6 +1197,11 @@ function playPendingStory(returnTo: StoryReturn): boolean {
 	storyReturn.value = returnTo;
 	scene.value = "story";
 	return true;
+}
+
+/** ホームの札を押したときだけ、溜まっている未読を1場面開く。 */
+function openPendingStory() {
+	playPendingStory("home");
 }
 
 /** 既読に加える。⚠️スキップした場面も「到達した」として加える（通し読みから読み返せる）。 */
@@ -1263,7 +1280,7 @@ function onStoryDefer() {
 	// ⚠️読み返し中の「今回は読まない」は、既読なので保留簿に載せる意味が無い。そのまま戻るだけ。
 	if (!storyReplaying) {
 		for (const entry of storyQueue.value) deferredVignetteIds.add(entry.id);
-		// ⚠️ここで書き出さないと、画面を離れて戻った瞬間に忘れて物語が再生される。
+		// ⚠️ここで書き出さないと、画面を離れて戻った瞬間に忘れて未読札へ戻る。
 		rememberDeferredIds();
 	}
 	storyReplaying = false;
@@ -1299,29 +1316,26 @@ function playEventStoryAfterStage(stageId: string): boolean {
 	return true;
 }
 
-/** ホームへ戻る共通処理。戻るたびにその時刻・季節の演出を選び直す。 */
-function showHome(offerPendingStory: boolean) {
+/** ホームへ戻る共通処理。未読物語は自動で開かず、ホームの札から選んで読む。 */
+function showHome() {
 	stopAmbience();
 	scene.value = "home";
 	refreshMenuLine();
 	refreshBackdrop();
-	// ⚠️取りこぼしの受け皿。どの経路でホームに戻っても、溜まっている物語がここで必ず出る。
-	// 局や物語の終了直後だけは false を渡し、ホームを飛び越して次の内容を始めない。
-	if (offerPendingStory) playPendingStory("home");
 }
 
-/** 通常のホーム導線。取りこぼしていた未読場面があれば提示する。 */
+/** 通常のホーム導線。戻る操作だけでは物語を始めない。 */
 function goHome() {
-	showHome(true);
+	showHome();
 }
 
 /**
  * 帳面類（月選び・花手帖・設定・名鑑）の「戻る」。
  * ⚠️戻る操作で物語を始めない（「戻るを押したらストーリーが始まった」の報告）。
- * 未読の提示は、入場時（onMounted / onActivated）と局の終わりに任せる。
+ * 未読の提示は、ホームの未読札と局の終わりに任せる。
  */
 function goHomeFromSheet() {
-	showHome(false);
+	showHome();
 }
 
 /**
@@ -1329,12 +1343,22 @@ function goHomeFromSheet() {
  * ⚠️通常の goHome() は取りこぼした未読場面を提示するため、読み返しの「戻る」には使わない。
  */
 function leaveReadback() {
-	showHome(false);
+	showHome();
 }
 
 /** 1局の終了導線。次の内容を自動起動せず、ホームを必ず一度表示する。 */
 function goHomeAfterStage() {
-	showHome(false);
+	showHome();
+}
+
+/** 画面外へ離れるとき、読みかけを未読のまま閉じる。戻っても物語から再開しない。 */
+function closeStoryForNavigation() {
+	if (scene.value !== "story") return;
+	storyReplaying = false;
+	storyQueue.value = [];
+	storyThenStage = undefined;
+	storyEventId.value = undefined;
+	scene.value = "home";
 }
 
 function replayClass(element: HTMLElement | undefined, name: string, duration: number) {
@@ -1782,9 +1806,13 @@ async function acceptDisclaimer() {
 ⚠️window.location.assign はアプリ全体を再読み込みする。
   ウィンドウモード（MkPageWindow）で開いていると、開いている他の窓ごと吹き飛ぶ。
   useRouter() は窓の中では「その窓のルーター」を返すので、窓の中だけで遷移が閉じる。
+⚠️push でゲーム一覧を積むと `/games → /hanaawase → /games` になり、一覧の戻るボタンが花常へ戻る。
+  終了は現在の花常履歴をゲーム一覧へ置き換える。
 */
 function leaveGame() {
-	router.push("/games");
+	closeStoryForNavigation();
+	showHome();
+	router.replaceByPath("/games");
 }
 
 function finishStage(next: "clear" | "failed") {
@@ -2392,8 +2420,8 @@ onMounted(async () => {
 	refreshBackdrop();
 	window.document.addEventListener("visibilitychange", onEventVisibility);
 	void refreshEventIndex();
-	// ⚠️初回起動はここで序章が始まる。注意書きが未読なら playPendingStory 側が黙って見送る。
-	playPendingStory("home");
+	// ⚠️初回起動では必ずホームを見せる。未読物語はホームの札を押してから開く。
+	if (!disclaimerPending.value) showHome();
 });
 
 // 旗鯖fork: StackingRouterView / keep-alive で scene が残り、復帰するとサブメニューが直接開いていた。
@@ -2406,15 +2434,14 @@ onActivated(() => {
 		return;
 	}
 	if (scene.value === "board" && boardInProgress()) return;
-	// ⚠️読みかけの物語は畳まない。keep-alive では Vignette がアンマウントされないので、
-	// 途中の行・選んだ枝・スキップ状態はそのまま残っている。ここで goHome すると読みかけが消える。
-	if (scene.value === "story" && storyQueue.value.length > 0) return;
 	goHome();
 	void refreshEventIndex();
 });
 
 onDeactivated(() => {
 	pageActive.value = false; // 裏に回っている間は街の様子を止める
+	// 終了ボタン・ブラウザの戻る・小窓の戻る、どの離脱でも物語を開いたまま残さない。
+	closeStoryForNavigation();
 });
 
 onUnmounted(() => {
@@ -2554,6 +2581,10 @@ definePage(() => ({ title: "花常" }));
 .map-actions { display: flex; justify-content: center; gap: 18px; margin: 16px 0 0; }.map-actions button, .text-button { border: 0; color: var(--sub); background: transparent; font: inherit; font-size: 12px; letter-spacing: .06em; cursor: pointer; }.map-actions button:hover, .text-button:hover, .map-actions button:focus-visible, .text-button:focus-visible { color: var(--ink); }
 .home-shell { position: relative; overflow: hidden; display: grid; min-height: 520px; padding-top: 30px; }
 .home-shell > :not(.home-bg, .home-scrim) { position: relative; z-index: 1; }
+.home-shell > .home-exit { position: absolute; z-index: 3; top: max(12px, env(safe-area-inset-top, 0px)); left: max(12px, env(safe-area-inset-left, 0px)); display: inline-flex; align-items: center; gap: 7px; min-height: 42px; padding: 7px 11px; border: 1px solid var(--line); border-radius: 999px; color: var(--ink); background: rgb(23 20 16 / 82%); font: inherit; font-family: var(--mincho); font-size: 12px; letter-spacing: .04em; cursor: pointer; backdrop-filter: blur(6px); }
+.home-exit > span:first-child { display: grid; width: 18px; height: 18px; place-items: center; color: var(--accent); }
+.home-exit > span:first-child :deep(svg) { display: block; width: 100%; height: 100%; }
+.home-exit:hover, .home-exit:focus-visible { border-color: var(--accent); background: rgb(23 20 16 / 94%); }
 .home-scroll { display: grid; min-height: 100%; align-content: center; }
 /*
 旗鯖fork: ⚠️背景を下端でそのまま断ち切ると、器の境目に継ぎ目の線が出る。
