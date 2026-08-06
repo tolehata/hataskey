@@ -95,26 +95,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<div :class="$style.desc">記録がない日に、設定した時間帯にリマインド通知を送ります。時間帯の指定は Hatask の「きもち記録」設定から行えます。</div>
 			</div>
 
-			<!-- ホーム画面: セクション表示と並び替え(統合) -->
-			<div :class="$style.card">
-				<div :class="$style.label">ホーム画面 - セクション表示と並び替え</div>
-				<div :class="$style.desc">トグルで表示/非表示、ドラッグ（☰）または上下ボタンで順番を変更できます。</div>
-				<div :class="$style.reorderList">
-					<div v-for="(sec,idx) in sectionOrder" :key="sec"
-						:class="[$style.reorderItem, { [$style.dragover]: dragOverIdx===idx && dragSecIdx!==null, [$style.dragging]: dragSecIdx===idx }]"
-						draggable="true"
-						@dragstart="onSecDragStart(idx)" @dragover="onSecDragOver(idx,$event)" @drop="onSecDrop(idx)" @dragend="onSecDragEnd">
-						<span :class="$style.handle">☰</span>
-						<span :class="$style.reorderLabel">{{ sectionLabels[sec] || sec }}</span>
-						<button :class="[$style.sw, isSectionVisible(sec) && $style.swOn]" style="margin-right:8px" @click="toggleSectionVisible(sec)"></button>
-						<div :class="$style.reorderBtns">
-							<button :class="$style.reorderBtn" :disabled="idx===0" @click="moveSectionUp(idx)">▲</button>
-							<button :class="$style.reorderBtn" :disabled="idx===sectionOrder.length-1" @click="moveSectionDown(idx)">▼</button>
-						</div>
-					</div>
-				</div>
-			</div>
-
 			<!-- データ同期 -->
 			<div :class="$style.card">
 				<div :class="$style.label">データ同期</div>
@@ -186,11 +166,15 @@ const dialog = shallowRef<InstanceType<typeof MkModalWindow>>();
 
 // Hatask本体と同じ registry スコープ/キーを使うことでデータを共有・同期する
 const SCOPE = ['client', 'hatask'];
-// 旗鯖fork(#36): hatask.vue と同じセクション定義を使う(registry経由で完全同期)。
-const defaultSectionOrder = ['clock','eye','apps','feedbackNotif','earthquake','loginDays','flower','events','mood','meal','mascot'];
-const sectionLabels:Record<string,string> = {clock:'日時表示',eye:'Hatask Eye',apps:'旗鯖独自アプリ',loginDays:'ログイン日数',flower:'お花',events:'直近の予定',mood:'今週のきもち',meal:'ごはん記録',mascot:'マスコット',feedbackNotif:'HataFeed 通知',earthquake:'地震・津波'};
-const sectionVisibilityKey:Record<string,string> = {clock:'showClock',eye:'showEye',apps:'showApps',loginDays:'showLoginDays',flower:'showFlower',events:'showEvents',mood:'showMoodSummary',meal:'showMealSection',mascot:'showMascot',feedbackNotif:'showFeedbackNotif',earthquake:'showEarthquake'};
-const defaultSettings:any = { darkMode:false, autoTheme:true, weekStart:'mon', showClock:true, showEvents:true, showFlower:true, showMoodSummary:true, showMealSection:true, showMascot:true, showFeedbackNotif:true, showEarthquake:true, moodRemind:false, openOnStart:false, theme:'kisetsu', animations:true };
+const defaultSettings: any = {
+	darkMode: false,
+	autoTheme: true,
+	weekStart: 'mon',
+	moodRemind: false,
+	openOnStart: false,
+	theme: 'kisetsu',
+	animations: true,
+};
 
 // 旗鯖fork(v2): デザインテーマ(季/花信/刷)。プレビュー用にライト配色・見出しフォントを持つ。
 const v2Themes = [
@@ -201,7 +185,6 @@ const v2Themes = [
 
 const loading = ref(true);
 const settings = ref<any>({ ...defaultSettings });
-const sectionOrder = ref<string[]>([...defaultSectionOrder]);
 // 旗鯖fork(v2): 設定モーダル内のビュー('main'=通常設定 / 'theme'=デザインテーマ選択)。
 const view = ref<'main'|'theme'>('main');
 function setV2Theme(id:string) { settings.value.theme = id; saveSettings(); }
@@ -235,15 +218,6 @@ async function registrySet(key:string, value:unknown):Promise<void> {
 onMounted(async () => {
 	const s = await registryGet<any>('settings', { ...defaultSettings });
 	settings.value = { ...defaultSettings, ...s };
-	// sectionOrder は settings 内に保存されている。妥当性を担保しつつ復元。
-	const saved = Array.isArray(settings.value.sectionOrder) ? settings.value.sectionOrder : null;
-	if (saved) {
-		const valid = saved.filter((x:string) => defaultSectionOrder.includes(x));
-		const missing = defaultSectionOrder.filter(x => !valid.includes(x));
-		sectionOrder.value = [...valid, ...missing];
-	} else {
-		sectionOrder.value = [...defaultSectionOrder];
-	}
 	loading.value = false;
 });
 
@@ -255,21 +229,6 @@ async function saveSettings() {
 
 function toggle(key:string) { settings.value[key] = !settings.value[key]; saveSettings(); }
 function onWeekStart(ev:Event) { settings.value.weekStart = (ev.target as HTMLSelectElement).value; saveSettings(); }
-
-function isSectionVisible(sec:string):boolean { const k = sectionVisibilityKey[sec]; if (!k) return true; return settings.value[k] !== false; }
-function toggleSectionVisible(sec:string) { const k = sectionVisibilityKey[sec]; if (!k) return; settings.value[k] = settings.value[k] === false ? true : false; saveSettings(); }
-
-function persistOrder() { settings.value.sectionOrder = [...sectionOrder.value]; saveSettings(); }
-function moveSectionUp(idx:number) { if (idx<=0) return; const a=[...sectionOrder.value]; [a[idx-1],a[idx]]=[a[idx],a[idx-1]]; sectionOrder.value=a; persistOrder(); }
-function moveSectionDown(idx:number) { if (idx>=sectionOrder.value.length-1) return; const a=[...sectionOrder.value]; [a[idx],a[idx+1]]=[a[idx+1],a[idx]]; sectionOrder.value=a; persistOrder(); }
-function moveSection(from:number,to:number) { if (from===to||from<0||to<0||from>=sectionOrder.value.length||to>=sectionOrder.value.length) return; const a=[...sectionOrder.value]; const [m]=a.splice(from,1); a.splice(to,0,m); sectionOrder.value=a; persistOrder(); }
-
-const dragSecIdx = ref<number|null>(null);
-const dragOverIdx = ref<number|null>(null);
-function onSecDragStart(idx:number){ dragSecIdx.value=idx; }
-function onSecDragOver(idx:number,ev:DragEvent){ ev.preventDefault(); dragOverIdx.value=idx; }
-function onSecDrop(idx:number){ if(dragSecIdx.value!==null) moveSection(dragSecIdx.value, idx); dragSecIdx.value=null; dragOverIdx.value=null; }
-function onSecDragEnd(){ dragSecIdx.value=null; dragOverIdx.value=null; }
 
 function openHatask() { dialog.value?.close(); mainRouter.push('/hatask'); }
 
@@ -311,15 +270,6 @@ async function sendTestNotification() {
 .sw::after { content:''; position:absolute; width:18px; height:18px; background:#fff; border-radius:50%; top:2px; left:2px; transition:left .25s cubic-bezier(0.34,1.56,0.64,1); box-shadow:0 1px 3px rgba(0,0,0,.2); }
 .swOn { background: var(--MI_THEME-accent); border-color: var(--MI_THEME-accent); }
 .swOn::after { left:22px; }
-/* 並び替えリスト */
-.reorderList { display:flex; flex-direction:column; gap:5px; margin-top:8px; }
-.reorderItem { display:flex; align-items:center; gap:8px; padding:8px 10px; background: var(--MI_THEME-bg); border:1px solid var(--MI_THEME-divider); border-radius:10px; font-size:.85rem; }
-.dragging { opacity:.45; }
-.dragover { outline:2px solid var(--MI_THEME-accent); outline-offset:1px; }
-.handle { opacity:.5; cursor:grab; }
-.reorderLabel { flex:1; }
-.reorderBtns { display:flex; gap:2px; }
-.reorderBtn { width:26px; height:24px; border:none; border-radius:6px; background: var(--MI_THEME-buttonBg); color: var(--MI_THEME-fg); cursor:pointer; &:hover{ background: var(--MI_THEME-buttonHoverBg); } &:disabled{ opacity:.3; cursor:not-allowed; } }
 /* 旗鯖fork(#37): レートリミット表 */
 .rlBox { background: var(--MI_THEME-bg); border:1px solid var(--MI_THEME-divider); border-radius:10px; padding:10px 14px; }
 .rlTitle { font-size:.82rem; font-weight:700; margin-bottom:6px; opacity:.8; }

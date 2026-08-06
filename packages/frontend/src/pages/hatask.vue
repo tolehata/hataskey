@@ -83,7 +83,7 @@
       <div v-if="pendingRsvps.length" class="su-rsvp">
         <div class="head">RSVP<b>参加確認</b><i></i></div>
         <div v-for="r in pendingRsvps" :key="r.eventId" class="su-rsvprow"><span class="sqd"></span><b>{{r.title}}</b><span style="margin-left:auto;font-size:.72rem;font-weight:700;color:#2a52c0">{{r.dateLabel}}</span></div>
-        <div class="su-rsvpbtns"><button :class="[r.myStatus==='going'&&'on']" @click="setRsvp(pendingRsvps[0].eventId,'going')">行く</button><button :class="[r.myStatus==='maybe'&&'on']" @click="setRsvp(pendingRsvps[0].eventId,'maybe')">検討</button><button :class="[r.myStatus==='declined'&&'on']" @click="setRsvp(pendingRsvps[0].eventId,'declined')">辞退</button></div>
+	        <div class="su-rsvpbtns"><button :class="[pendingRsvps[0].myStatus==='going'&&'on']" @click="setRsvp(pendingRsvps[0].eventId,'going')">行く</button><button :class="[pendingRsvps[0].myStatus==='maybe'&&'on']" @click="setRsvp(pendingRsvps[0].eventId,'maybe')">検討</button><button :class="[pendingRsvps[0].myStatus==='declined'&&'on']" @click="setRsvp(pendingRsvps[0].eventId,'declined')">辞退</button></div>
       </div>
       <div class="clock"><div class="ctime">{{currentTime}}</div><div class="cdate">{{clockDot}}<br>{{clockEn}}</div></div>
       <div class="head">CONTINUITY<b>連続</b><i></i></div>
@@ -679,7 +679,28 @@ const loadedKeys = new Set<string>();
 async function registryGet<T>(key:string,fb:T):Promise<T>{try{const v=await misskeyApi('i/registry/get',{key,scope:SCOPE});loadedKeys.add(key);return(v!=null?v:fb)as T}catch{return fb}}
 async function registrySet(key:string,value:unknown):Promise<void>{if(!dataLoaded.value&&!loadedKeys.has(key))return;await misskeyApi('i/registry/set',{key,value,scope:SCOPE})}
 
+// 旗鯖fork: プロフィールに出すのは花の内容ではなく件数だけ。
+// レジストリの実数と異なるときだけ更新し、i/update のレート制限を消費しない。
+async function syncHataskFlowerCount(): Promise<void> {
+	if (!$i || $i.host != null) return;
+	const count = Math.min(1000000, gallery.value.filter(item => item != null && typeof item === 'object').length);
+	if ($i.hataskFlowerCount === count) return;
+	try {
+		const updated = await misskeyApi('i/update', { hataskFlowerCount: count });
+		$i.hataskFlowerCount = updated.hataskFlowerCount;
+	} catch (err) {
+		console.warn('Failed to sync Hatask flower count:', err);
+	}
+}
+
 const activeTab=ref('home');const isSaving=ref(false);const showSearch=ref(false);
+// 旗鯖fork: HataSideStudio の大ボタンから、予定・ToDo・ごはん・きもちへ
+// 直接移動できるようにする。許可したタブ名以外はホームへ戻し、同じHatask画面内で
+// queryだけが変わった場合も追従する。
+const routeRouter = useRouter();
+watch(() => routeRouter.currentRef.value.props.get('tab'), (requestedTab) => {
+	activeTab.value = typeof requestedTab === 'string' && tabs.some(tab => tab.id === requestedTab) ? requestedTab : 'home';
+}, { immediate: true });
 // 旗鯖fork(v2 §16②): タブ切替方向を判定(activeTab宣言後に登録してTDZを回避)。
 watch(activeTab, (nv, ov) => {
   const oi=tabs.findIndex(t=>t.id===ov); const ni=tabs.findIndex(t=>t.id===nv);
@@ -849,7 +870,7 @@ function startTutFromTheme(){
 function skipTutTheme(){showTutTheme.value=false;settings.value.v2Onboarded=true;settings.value.tutorialDone=true;tutThemeStandalone.value=false;saveSettings()}
 function openDrawingTool(){
   showMobileNav.value=false;
-  os.popup(defineAsyncComponent(()=>import('@/components/MkDrawingTool.vue')),{},{closed:()=>{showMobileNav.value=true}},'closed');
+	  os.popup(defineAsyncComponent(()=>import('@/components/MkDrawingTool.vue')),{},{closed:()=>{showMobileNav.value=true}});
 }
 function openHataCard(){window.open('https://hatacardcreate.tolehata.net/','_blank')}
 // ===== Hatask page swipe navigation =====
@@ -898,14 +919,20 @@ function cleanupHataskState(){
 }
 function openHataSettings(){cleanupHataskState();const router=useRouter();router.push('/settings/hata-custom')}
 function openHataDocs(){cleanupHataskState();const router=useRouter();router.push('/hata-docs')}
+function openHataSideStudio(){cleanupHataskState();const router=useRouter();router.push('/hata-side-studio')}
+function openHataWhatsNew(){
+  const {dispose}=os.popup(defineAsyncComponent(()=>import('@/components/MkHataWhatsNew.vue')),{}, {closed:()=>dispose()});
+}
 function openHatalyze(){window.open('https://kanjo-bunseki.tolehata.net','_blank')}
 // 旗鯖fork: HataFeed / 地震・津波情報ビューアを旗鯖独自アプリから開く
-const canAccessHataFeed=computed(()=>$i?.policies?.canAccessHataFeed===true||$i?.isModerator===true||$i?.isAdmin===true);
+	const canAccessHataFeed=computed(()=>($i?.policies as Record<string, unknown> | undefined)?.canAccessHataFeed===true||$i?.isModerator===true||$i?.isAdmin===true);
 // 旗鯖fork(v2): ホームのアプリ一覧(3テーマ共通データ)。short=短縮ラベル。color=季/花信のアイコン地色。
 const homeApps=computed(()=>{
   const a=[
     {label:'お絵かき',short:'お絵かき',icon:'ti ti-brush',color:'#7eb5b2',fn:openDrawingTool},
     {label:'HATA CARD',short:'CARD',icon:'ti ti-cards',color:'#e8a87c',fn:openHataCard},
+	{label:'HataSideStudio',short:'SideStudio',icon:'ti ti-layout-sidebar-left-expand',color:'#8b7cf6',fn:openHataSideStudio},
+	{label:'今回の更新内容',short:'更新内容',icon:'ti ti-news',color:'#5b8fd6',fn:openHataWhatsNew},
     {label:'旗鯖ポータル',short:'ポータル',icon:'ti ti-door-enter',color:'#a78bfa',fn:openPortal},
     {label:'旗鯖設定',short:'旗鯖設定',icon:'ti ti-flag',color:'#f472b6',fn:openHataSettings},
     {label:'機能解説',short:'解説',icon:'ti ti-book',color:'#60a5fa',fn:openHataDocs},
@@ -927,7 +954,7 @@ function openHataskSettings(){
     reopenTutorial: () => { setTimeout(reopenTutorial, 250); },
     // 旗鯖fork(v2): 設定変更を即時反映(theme/darkMode/animations 等 → data-theme/data-anim/themeMode が反応)。
     changed: (s:any) => { if (s && typeof s === 'object') { settings.value = { ...settings.value, ...s }; } },
-  }, 'closed');
+	  });
 }
 function openHataFeed(){cleanupHataskState();const router=useRouter();router.push('/hatafeed')}
 // 旗鯖fork: Hatady(学習・読書記録)を旗鯖独自アプリから開く
@@ -960,7 +987,7 @@ function hfIcon(type:string):string{
 }
 function onHfNotifClick(n:any){
   cleanupHataskState();const router=useRouter();
-  if(n.feedbackId)router.push('/hatafeed/'+n.feedbackId);
+	  if(n.feedbackId)router.pushByPath('/hatafeed/'+n.feedbackId);
   else router.push('/hatafeed');
 }
 
@@ -1053,16 +1080,13 @@ notifTimerIds.push(tid)
 const currentTime=ref('');const currentDate=ref('');const eyePhrase=ref('こんにちは！');const editingEvent=ref<any>(null);let eyeTimer:ReturnType<typeof setInterval>|null=null;
 // 旗鯖fork(v2): テーマ別の時計まわり日付パーツ(季=1月9日/金曜日, 刷=2026.01.09/FRIDAY)。
 const clockMD=ref('');const clockDow=ref('');const clockDot=ref('');const clockEn=ref('');
-const defaultSectionOrder=['clock','eye','apps','feedbackNotif','earthquake','loginDays','flower','events','mood','meal','mascot'];
-const sectionOrder=ref<string[]>([...defaultSectionOrder]);
-const sectionLabels:Record<string,string>={clock:'日時表示',eye:'Hatask Eye',apps:'旗鯖独自アプリ',loginDays:'ログイン日数',flower:'お花',events:'直近の予定',mood:'今週のきもち',meal:'ごはん記録',mascot:'マスコット',feedbackNotif:'HataFeed 通知',earthquake:'地震・津波'};
 // 旗鯖fork(タスク8/タスク2): マスコットカード(ミニ版)。
 // 静止画ではなく現在の表情(currentExpression)に追従させ、設定文言をランダムローテで吹き出しに出す。
 // 吹き出し座標・motionはフローティング(MkMascotFloating)と同じロジック・同じグローバルmotionクラスを共有する。
 // announce(通知/誕生日/未読)はカードでは出さず、設定文言のみをローテする(論点①: 通知/誕生日除外)。
 const mascotCardName=computed(()=>mascotActiveCharacter.value?.name ?? '');
 // 旗鯖fork: マスコット機能の利用可否(ロールポリシー)。未許可ならホームのマスコットカードを出さない。
-const canUseMascot=computed(()=>$i?.policies?.canUseMascot===true);
+	const canUseMascot=computed(() => ($i?.policies as Record<string, unknown> | undefined)?.canUseMascot === true);
 const mascotCardUrl=computed(()=>{const c=mascotActiveCharacter.value;if(!c||c.expressions.length===0)return '';return expressionDisplayUrl(mascotCurrentExpression.value ?? c.expressions[0]);});
 // 表示する文言(設定文言のローテのみ。announceは無視)。tellRandomPhrasesがOFFなら出さない。
 const mascotCardPhrase=computed(()=>{
@@ -1090,7 +1114,7 @@ const mascotCardMotionClass=computed(()=>{
 function onMascotCardClick(){mascotPickRandomPhrase();}
 // マスコット専用設定(論点③)。/mascot は表示ページなので、設定は hata-custom と同じく
 // MkMascotSettings をポップアップで開く(Haskを離れないのでcleanup不要)。
-function goToMascotSettings(){os.popup(defineAsyncComponent(()=>import('@/pages/MkMascotSettings.vue')),{},{},'closed');}
+	function goToMascotSettings(){os.popup(defineAsyncComponent(()=>import('@/pages/MkMascotSettings.vue')),{},{});}
 // カードの文言ローテ(論点①)。フローティングが非表示の間はフローティング側のローテが回らないため、カードが自前で回す。
 let mascotCardRotateTimer:ReturnType<typeof setTimeout>|null=null;
 function startMascotCardRotation(){
@@ -1099,7 +1123,6 @@ function startMascotCardRotation(){
   mascotCardRotateTimer=setTimeout(()=>{mascotPickRandomPhrase();startMascotCardRotation();},delay);
 }
 function stopMascotCardRotation(){if(mascotCardRotateTimer){clearTimeout(mascotCardRotateTimer);mascotCardRotateTimer=null;}}
-const draggingSectionIdx=ref<number|null>(null);
 const closedRsvpNotifs=ref<{eventId:string,emoji:string,title:string,goCount:number}[]>([]);
 const dismissedRsvpNotifs=ref<string[]>([]);
 const sharedEvents=ref<any[]>([]);
@@ -1372,7 +1395,7 @@ const myResp=e.rsvpResponses?.find((r:any)=>r.userId===myId);
 return{eventId:e.id,emoji:e.emoji||'📅',title:e.title,dateLabel:`${e.date} ${e.timeStart||''}`.trim(),myStatus:myResp?.status||null,creatorUsername:e.username};
 });
 });
-async function setRsvp(eventId:string,status:string){
+async function setRsvp(eventId:string,status:'going'|'maybe'|'declined'){
 try{await misskeyApi('hatask/events/rsvp',{eventId,status});await loadSharedEvents();os.toast(status==='going'?'参加します！':status==='maybe'?'検討中にしました':'辞退しました')}catch(e){console.error('RSVP failed:',e);os.toast('回答の送信に失敗しました')}
 }
 async function closeRsvp(eventId:string){
@@ -1380,29 +1403,6 @@ try{await misskeyApi('hatask/events/close',{eventId,closed:true});await loadShar
 }
 
 // CRUD
-// Section reorder functions
-// 旗鯖fork(#37): moveSectionUp/Down は設定モーダル削除に伴い不要(HataskSettings.vueに移管)
-// 旗鯖fork: ドラッグ並び替え(ホーム・設定 共通)。from番目をto番目へ移動して保存。
-function moveSection(from:number,to:number){
-  if(from===to||from<0||to<0||from>=sectionOrder.value.length||to>=sectionOrder.value.length)return;
-  const arr=[...sectionOrder.value];
-  const [moved]=arr.splice(from,1);
-  arr.splice(to,0,moved);
-  sectionOrder.value=arr;settings.value.sectionOrder=arr;saveSettings();
-}
-// ホーム画面の並び替えモード(ボタンでON/OFF。ON中は各セクションをドラッグできる)
-const reorderMode=ref(false);
-function toggleReorderMode(){reorderMode.value=!reorderMode.value}
-// ドラッグ中のインデックス(ホーム・設定 共通)
-const dragSecIdx=ref<number|null>(null);
-const dragOverIdx=ref<number|null>(null);
-function onSecDragStart(idx:number){dragSecIdx.value=idx}
-function onSecDragOver(idx:number){dragOverIdx.value=idx}
-function onSecDrop(idx:number){if(dragSecIdx.value!==null)moveSection(dragSecIdx.value,idx);dragSecIdx.value=null;dragOverIdx.value=null}
-function onSecDragEnd(){dragSecIdx.value=null;dragOverIdx.value=null}
-// 旗鯖fork: セクションID → 表示設定キーのマッピング (項目5: 表示ON/OFF統合)
-// 旗鯖fork(#37): sectionVisibilityKey/isSectionVisible/toggleSectionVisible は設定モーダル削除に伴い不要
-//   (HataskSettings.vueで管理。本体のセクション表示はv-ifでsettings.show*を直接参照)
 function dismissRsvpNotif(eventId:string){dismissedRsvpNotifs.value.push(eventId);closedRsvpNotifs.value=closedRsvpNotifs.value.filter(n=>n.eventId!==eventId)}
 function checkClosedRsvps(){
 const myId=$i?.id;if(!myId)return;
@@ -1421,7 +1421,7 @@ async function addFolder(){if(!newFolderName.value.trim())return;folders.value.p
 async function deleteFolder(i:number){const{canceled}=await os.confirm({type:'warning',text:`フォルダ「${folders.value[i].name}」を削除しますか？`});if(canceled)return;const fid=folders.value[i].id;todos.value.forEach(t=>{if(t.folder===fid)t.folder=''});if(activeFolder.value===fid)activeFolder.value='all';folders.value.splice(i,1);await registrySet('folders',folders.value);await registrySet('todos',todos.value)}
 async function renameFolder(i:number){const{canceled,result}=await os.inputText({title:'フォルダ名変更',text:'新しい名前:',default:folders.value[i].name});if(!canceled&&result){folders.value[i].name=result;await registrySet('folders',folders.value)}}
 async function moveFolder(i:number,d:number){const ni=i+d;if(ni<0||ni>=folders.value.length)return;[folders.value[i],folders.value[ni]]=[folders.value[ni],folders.value[i]];await registrySet('folders',folders.value)}
-async function changeFolderColor(i:number){const colors=folderColors.map(c=>({text:c.label,action:async()=>{folders.value[i].color=c.value;await registrySet('folders',folders.value)}}));colors.push({text:'なし',action:async()=>{folders.value[i].color='';await registrySet('folders',folders.value)}});os.actions({title:'フォルダの色',actions:colors})}
+async function changeFolderColor(i:number){const {canceled,result}=await os.actions({type:'question',title:'フォルダの色',actions:[...folderColors.map(c=>({value:c.value,text:c.label})),{value:'',text:'なし'}]});if(canceled)return;folders.value[i].color=result;await registrySet('folders',folders.value)}
 async function saveMood(){isSaving.value=true;try{if(editingMood.value){const idx=moods.value.findIndex(m=>m.id===editingMood.value.id);if(idx>=0){moods.value[idx]={...moods.value[idx],level:selectedMoodLevel.value,note:moodNote.value.trim()||'（ひとことなし）',emoji:moodSelectedEmoji.value}}editingMood.value=null;moodNote.value='';moodSelectedEmoji.value='';await registrySet('moods',moods.value);os.toast('きもちを更新しました')}else{const now=new Date();moods.value.unshift({id:generateId(),level:selectedMoodLevel.value,note:moodNote.value.trim()||'（ひとことなし）',emoji:moodSelectedEmoji.value,date:now.toISOString().slice(0,10),time:`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`});moodNote.value='';moodSelectedEmoji.value='';await registrySet('moods',moods.value);os.toast('きもちを保存しました')}}finally{isSaving.value=false}}
 function startEditMood(m:any){editingMood.value=m;selectedMoodLevel.value=m.level;moodNote.value=m.note==='（ひとことなし）'?'':m.note;moodSelectedEmoji.value=m.emoji||'';showMoodNote.value=true;window.scrollTo({top:0,behavior:'smooth'})}
 function cancelEditMood(){editingMood.value=null;selectedMoodLevel.value=4;moodNote.value='';moodSelectedEmoji.value=''}
@@ -1444,7 +1444,7 @@ function mealLevelInfo(id:string){return mealLevels.find(l=>l.id===id)||{emoji:'
 // 免責ダイアログ: 初回必ず表示、以降は!マークから手動表示
 async function showMealDisclaimerDialog(){showMealDisclaimer.value=true}
 async function ackMealDisclaimer(){showMealDisclaimer.value=false;if(!settings.value.mealDisclaimerShown){settings.value.mealDisclaimerShown=true;await registrySet('settings',settings.value)}}
-async function harvestFlower(){const autoName=generateFlowerName({emoji:flower.value.emoji,name:flower.value.name});const{canceled,result}=await os.inputText({title:'お花が咲きました！',text:'お花に名前をつけてあげましょう（自動生成名が入っています）:',default:autoName});if(canceled||!result)return;const flora=floraData.find(f=>f.emoji===flower.value.emoji);gallery.value.unshift({id:generateId(),emoji:flower.value.emoji,name:result,hanakotoba:flora?.hanakotoba||'',date:new Date().toLocaleDateString('ja-JP')});const nf=pickRandomFlora();flower.value={emoji:nf.emoji,name:generateFlowerName(nf),progress:0,startedAt:Date.now(),totalMinutes:0};await registrySet('gallery',gallery.value);await registrySet('flower',flower.value);os.toast('お花を収穫しました！')}
+async function harvestFlower(){const autoName=generateFlowerName({emoji:flower.value.emoji,name:flower.value.name});const{canceled,result}=await os.inputText({title:'お花が咲きました！',text:'お花に名前をつけてあげましょう（自動生成名が入っています）:',default:autoName});if(canceled||!result)return;const flora=floraData.find(f=>f.emoji===flower.value.emoji);gallery.value.unshift({id:generateId(),emoji:flower.value.emoji,name:result,hanakotoba:flora?.hanakotoba||'',date:new Date().toLocaleDateString('ja-JP')});const nf=pickRandomFlora();flower.value={emoji:nf.emoji,name:generateFlowerName(nf),progress:0,startedAt:Date.now(),totalMinutes:0};await registrySet('gallery',gallery.value);await registrySet('flower',flower.value);await syncHataskFlowerCount();os.toast('お花を収穫しました！')}
 async function renameFlower(fl:any){const{canceled,result}=await os.inputText({title:'お花の名前を変更',text:'新しい名前:',default:fl.name});if(!canceled&&result){fl.name=result;await registrySet('gallery',gallery.value)}}
 
 let growthInterval:ReturnType<typeof setInterval>|null=null;
@@ -1611,19 +1611,10 @@ if (loadResults[5].status === 'fulfilled' && loadedKeys.has('settings')) setting
 if (loadResults[6].status === 'fulfilled' && loadedKeys.has('events')) events.value = loadResults[6].value as any;
 if (loadResults[7].status === 'fulfilled' && loadedKeys.has('meals')) meals.value = loadResults[7].value as any;
 dataLoaded.value = true;
+await syncHataskFlowerCount();
 // 旗鯖fork(v2): 未設定キーを既定で補完(後方互換)。theme/animations 未設定の既存ユーザーには
 //   既定テーマ(季 kisetsu)・アニメON を割り当てる。保存済みの値は保持される。
 settings.value = { ...defaultSettings, ...settings.value };
-// Restore section order
-if (settings.value.sectionOrder && Array.isArray(settings.value.sectionOrder)) {
-  const saved = settings.value.sectionOrder;
-  const all = [...defaultSectionOrder];
-  const valid = saved.filter((s:string) => all.includes(s));
-  const missing = all.filter(s => !valid.includes(s));
-  sectionOrder.value = [...valid, ...missing];
-} else {
-  sectionOrder.value = [...defaultSectionOrder];
-}
 // Check for closed RSVP notifications
 await loadSharedEvents();
 checkClosedRsvps();
@@ -2235,28 +2226,7 @@ select.htk-inp{appearance:none;cursor:pointer;padding-right:36px}
 .htk-rsvp-closed-row{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:.78rem;padding:8px 0;color:var(--text-2)}
 .htk-rsvp-dismiss{background:none;border:none;color:var(--text-3);cursor:pointer;font-size:.8rem;padding:4px;opacity:.5}
 .htk-rsvp-dismiss:hover{opacity:1}
-.htk-reorder-list{display:flex;flex-direction:column;gap:4px;margin-top:6px}
-.htk-home-toolbar{display:flex;justify-content:flex-end;margin-bottom:12px}
-/* 旗鯖fork: 並び替えボタンの文字が背景と同系色でも読めるよう縁取り(明暗両対応) */
-.htk-home-toolbar .htk-btn{text-shadow:none;font-weight:700;}
-/* 旗鯖fork: ライトテーマ時は文字を白にして濃い縁取りで読ませる(黒地黒文字対策) */
-.htk-root:not([data-mode="dark"]) .htk-home-toolbar .htk-btn{color:var(--fg);text-shadow:none;}
-.htk-dash-reorder .htk-sec-wrap{outline:2px dashed var(--btn-border);outline-offset:2px;border-radius:var(--radius-lg)}
 .htk-sec-wrap{position:relative;border-radius:var(--radius-lg)}
-.htk-sec-draggable{cursor:grab}
-.htk-sec-draggable:active{cursor:grabbing}
-.htk-sec-draghandle{display:flex;align-items:center;gap:6px;font-size:.78rem;font-weight:700;color:var(--text-2);padding:6px 10px;margin-bottom:6px;background:var(--btn-bg);border:1px solid var(--btn-border);border-radius:10px;text-shadow:none}
-/* 旗鯖fork: ライトテーマ時は見出しも白文字+濃い縁取り */
-.htk-root:not([data-mode="dark"]) .htk-sec-draghandle{color:var(--fg);text-shadow:none}
-.htk-reorder-dragging{opacity:.45}
-.htk-reorder-dragover{outline:2px solid var(--primary) !important;outline-offset:2px}
-.htk-reorder-item{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--fill);border-radius:8px;font-size:.8rem;color:var(--fg-2)}
-.htk-reorder-handle{opacity:.3;font-size:.9rem;cursor:default}
-.htk-reorder-label{flex:1;font-weight:500}
-.htk-reorder-btns{display:flex;gap:2px}
-.htk-reorder-btn{background:var(--fill-2);border:1px solid var(--hair);color:var(--fg-2);border-radius:6px;width:28px;height:28px;font-size:.6rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;font-family:inherit}
-.htk-reorder-btn:hover:not(:disabled){background:var(--fill-3)}
-.htk-reorder-btn:disabled{opacity:.2;cursor:default}
 .htk-rsvp-sum-empty{font-size:.72rem;opacity:.4;padding:8px 0;text-align:center}
 /* (rsvp badges moved to dashboard) */
 .htk-fl-ring{position:relative;width:120px;height:120px;margin:0 auto 8px}
