@@ -17,7 +17,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 	<div :class="$style.root" role="dialog" aria-modal="true" aria-labelledby="mkuisetup-title">
 		<!-- ===== ヘッダー ===== -->
 		<header :class="$style.header">
-			<div :class="$style.headerChip" aria-hidden="true"><i class="ti ti-sparkles"></i></div>
 			<div :class="$style.headerText">
 				<div :class="$style.headerEyebrow">ここは {{ instanceName }}</div>
 				<h1 id="mkuisetup-title" :class="$style.headerTitle">どのUIを使用しますか？</h1>
@@ -188,7 +187,7 @@ const close = () => {
 const select = (type: 'simple' | 'default' | 'deck') => {
 	miLocalStorage.setItem('ui', type);
 	miLocalStorage.setItem('ui_setup_completed', 'true');
-	location.reload();
+	window.location.reload();
 };
 
 // 旗鯖fork: 非推奨UIは誤タップ防止と方針周知のため、確認を挟んでから選択する。
@@ -213,6 +212,7 @@ const selectDeprecated = async (type: 'default' | 'deck') => {
 	position: relative;
 	width: 100%;
 	max-width: 720px;
+	margin-inline: auto;
 	box-sizing: border-box;
 	padding: 34px 34px 26px;
 	border-radius: 28px;
@@ -234,22 +234,7 @@ const selectDeprecated = async (type: 'default' | 'deck') => {
 .header {
 	display: flex;
 	align-items: center;
-	gap: 12px;
 	margin-bottom: 22px;
-}
-.headerChip {
-	flex: none;
-	width: 46px;
-	height: 46px;
-	border-radius: 14px;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	background: var(--MI_THEME-accent);
-	background: linear-gradient(150deg, var(--htkAccent), color-mix(in srgb, var(--htkAccent) 62%, #000));
-	box-shadow: 0 6px 20px color-mix(in srgb, var(--htkAccent) 45%, transparent);
-
-	> i { font-size: 24px; color: #fff; }
 }
 .headerText { flex: 1; min-width: 0; }
 .headerEyebrow {

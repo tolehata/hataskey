@@ -208,6 +208,14 @@ export const navbarItemDef = reactive({
 		icon: 'ti ti-help-circle',
 		action: (ev) => {
 			os.popupMenu([{
+				text: '直近の更新内容',
+				icon: 'ti ti-sparkles',
+				action: () => {
+					const { dispose } = os.popup(defineAsyncComponent(() => import('@/components/MkHataWhatsNew.vue')), {}, {
+						closed: () => dispose(),
+					});
+				},
+			}, {
 				type: 'a',
 				text: i18n.ts.document,
 				icon: 'ti ti-bulb',
