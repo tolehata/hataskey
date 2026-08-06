@@ -2,7 +2,7 @@
 SPDX-FileCopyrightText: Tolehata and hatasaba-project
 SPDX-License-Identifier: AGPL-3.0-only
 旗鯖fork(Hatady): 初回起動 紹介アニメーション(4シーン)。
-  デザイン handoff「Hatady 起動アニメ / モーション仕様書」を Vue3 へ忠実移植。
+  初回起動用に定義されたモーション仕様を Vue3 へ忠実移植。
   transform / opacity のみ・外部ライブラリ不使用。
   ① ロゴ＋キャッチ → ② コンセプト(紙めくり) → ③ 機能紹介3枚 → ④ CTA、④→①ループ。
   ◀▶・ドットでジャンプ、下部の ▷/II で一時停止/再開。「はじめる」で次(テーマ選択)へ。

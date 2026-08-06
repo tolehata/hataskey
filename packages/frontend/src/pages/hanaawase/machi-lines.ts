@@ -80,7 +80,7 @@ export const MACHI_PERSONAS: readonly MachiPersona[] = [
 	{ id: 'hiro', name: '弘之', handle: 'hiro_eigyou', bio: '営業まわりの会社員。花は不慣れ。', tachie: false, color: '#6b6f7a' },
 
 	// --- バッチ01（暮らしと商店街）で加わった住民 ---
-	// ⚠️玄は BIBLE/WORKLOG の Tier1 サブキャスト。立ち絵も本文もあるのに MACHI_PERSONAS だけ抜けていた。
+	// ⚠️玄は立ち絵と本文のあるサブキャスト。MACHI_PERSONAS から外さない。
 	//    3バッチが各々定義していたので、正式な1件はここに置く（重複定義はバッチ側から削除済み）。
 	{ id: 'gen', name: '玄', handle: 'kuromatsu_gen', bio: '喫茶くろまつ。豆を挽いている。', tachie: true, color: '#5a4632' },
 	{ id: 'igarashi', name: '五十嵐', handle: 'igarashi_kome', bio: '五十嵐米穀店。配達承ります。', tachie: false, color: '#a89b74' },

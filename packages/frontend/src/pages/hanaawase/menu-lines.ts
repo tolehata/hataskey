@@ -123,7 +123,7 @@ export const MENU_LINES: MenuLine[] = [
 	{ char:"naito", t:"今年の菊は、よう締まった。", time:"any", month:[9], face:2 },
 
 	// --- 若菜 追加20本（2026-07-25）: 月の穴(4/5/8/10/11/12月)・prog:mid・rare を埋める ---
-	// ⚠️face は生成済み bustup の実体に合わせる（④=きりっと集中）。SPEC §12.7 の「④びっくり」とは齟齬あり（WORKLOG申し送り済み）
+	// ⚠️face は生成済み bustup の実体に合わせる（④=きりっと集中）。既存素材との対応を変えない。
 	{ char:"wakana", t:"散り際まで含めて、花。……そう言われても、掃くのは私だ。", time:"any", month:[4], face:3 },
 	{ char:"wakana", t:"桜の始末は、閉めてから。昼にやると、また散る。", time:"evening", month:[4], face:4 },
 	{ char:"wakana", t:"蕾の蜜を拭くのは、水やりじゃなくて点呼。", time:"morning", month:[5], face:4 },
