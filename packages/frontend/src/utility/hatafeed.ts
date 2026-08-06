@@ -4,6 +4,27 @@
  * 旗鯖fork: HataFeed 共通のラベル定義とヘルパー(カテゴリ/ステータス/通知アイコン)。
  */
 
+import type * as Misskey from 'cherrypick-js';
+
+// 旗鯖fork: 絵文字申請一覧・単件確認・連続確認で共有する表示用の形。
+// SDKの独自エンドポイント応答型が空オブジェクト扱いでも、画面内ではこの形を一貫して使う。
+export interface HataFeedEmojiRequest {
+	id: string;
+	createdAt: string;
+	requestedBy: Misskey.entities.UserLite | null;
+	name: string;
+	category: string | null;
+	aliases: string[];
+	license: string | null;
+	localOnly: boolean;
+	isSensitive: boolean;
+	sourceType: string;
+	originalUrl: string | null;
+	remoteHost: string | null;
+	imageUrl: string | null;
+	status: 'pending' | 'approved' | 'rejected';
+}
+
 // 旗鯖fork: 現在試せるベータ機能の一覧。ベータページのカードと、ベータボタンのバッジ数の両方で使う。
 //   ここに追加するだけで「ベータ機能を試す」ボタンのバッジ数とページ内容が同期する。
 export interface HataBetaFeature {
@@ -26,7 +47,7 @@ export const hataBetaFeatures: HataBetaFeature[] = [
 // 旗鯖fork: トグル式(ページではなくスイッチで切り替える)のベータ機能。
 //   ベータページのスイッチと、ベータボタンのバッジ数の両方で数える。
 export const hataBetaToggleFeatures = [
-	{ id: 'mute-reactions', title: 'ミュートユーザーのリアクション非表示' },
+	{ id: 'post-send-delay', title: '投稿前カウントダウン' },
 ];
 
 // 旗鯖fork: 現在試せるベータ機能の総数(カード＋トグル)。ベータボタンのバッジに使う。
@@ -178,11 +199,11 @@ export interface HataFeedNotif {
 export interface HataFeedNotifGroup {
 	key: string;
 	type: string;
-	items: HataFeedNotif[];           // 新しい順(APIの id DESC を踏襲)
-	count: number;                    // items.length
-	actors: HataFeedNotifActor[];     // 重複除去した actor(新しい順)
-	isRead: boolean;                  // 全件既読なら true
-	createdAt: string;                // 代表(最新)の createdAt
+	items: HataFeedNotif[]; // 新しい順(APIの id DESC を踏襲)
+	count: number; // items.length
+	actors: HataFeedNotifActor[]; // 重複除去した actor(新しい順)
+	isRead: boolean; // 全件既読なら true
+	createdAt: string; // 代表(最新)の createdAt
 	feedbackId: string | null;
 	emojiRequestId: string | null;
 }

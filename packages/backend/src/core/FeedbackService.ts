@@ -29,6 +29,7 @@ import { RoleService } from '@/core/RoleService.js';
 import { CustomEmojiService } from '@/core/CustomEmojiService.js';
 import { NotificationService } from '@/core/NotificationService.js';
 import { bindThis } from '@/decorators.js';
+import { mergeHataFeedRecipients } from '@/misc/hatafeed-notification.js';
 
 // 通知の簡潔メッセージ。
 const NOTIFY_MESSAGE = {
@@ -163,40 +164,36 @@ export class FeedbackService {
 
 	//#region 通知
 
+	// 旗鯖fork(セキュリティ): Issue にひも付く通知は、本文と同じ可視性判定を通す。
+	// 公開 Issue が後から security へ変更された場合などに、過去の参加者へ
+	// タイトルや状態だけが通知経由で漏れることを防ぐ。
+	@bindThis
+	private async filterVisibleIssueNotificationRecipients(userIds: MiUser['id'][], feedbackId?: string | null): Promise<MiUser['id'][]> {
+		const uniqueUserIds = [...new Set(userIds)];
+		if (feedbackId == null || uniqueUserIds.length === 0) return uniqueUserIds;
+
+		const issue = await this.feedbackIssuesRepository.findOneBy({ id: feedbackId });
+		if (issue == null) return [];
+
+		const visibleUserIds = await Promise.all(uniqueUserIds.map(async userId =>
+			await this.canViewIssue(userId, issue) ? userId : null,
+		));
+		return visibleUserIds.filter((userId): userId is MiUser['id'] => userId != null);
+	}
+
 	// 単一ユーザーへ通知を作成する。message を渡すと固定文言の代わりにその文言を使う(イシュー名入り等)。
 	@bindThis
 	public async notify(userId: MiUser['id'], type: NotifyType, refs: { actorId?: MiUser['id'] | null; feedbackId?: string | null; emojiRequestId?: string | null; commentId?: string | null } = {}, message?: string): Promise<void> {
-		const body = message ?? NOTIFY_MESSAGE[type];
-		await this.feedbackNotificationsRepository.insert({
-			id: this.idService.gen(),
-			createdAt: new Date(),
-			userId,
-			type,
-			message: body,
-			isRead: false,
-			actorId: refs.actorId ?? null,
-			feedbackId: refs.feedbackId ?? null,
-			emojiRequestId: refs.emojiRequestId ?? null,
-			commentId: refs.commentId ?? null,
-		});
-
-		// 旗鯖fork: Misskey標準の通知ベルにも出す(HataFeed専用タイプ。通知フィルタで個別ON/OFF可)。
-		// createNotification は内部で fire-and-forget 管理されるため await/catch 不要。
-		this.notificationService.createNotification(userId, 'hataFeed', {
-			customBody: body,
-			customHeader: 'HataFeed',
-			customIcon: null,
-			customLink: refs.feedbackId ? `/hatafeed/${refs.feedbackId}` : '/hatafeed',
-		});
+		await this.notifyMany([userId], type, refs, message);
 	}
 
 	// スタッフ全員(actor を除く)へ共有通知する。重複ID(管理者かつモデレーター等)は排除する。
 	// 旗鯖fork: feedback_notifications への INSERT を bulk 化(notifyMany 経由)して 1クエリにまとめる。
 	//   ベル通知(Redis xadd / WS publish 等)は per-user 副作用が必要なため個別呼び出しを維持。
 	@bindThis
-	public async notifyStaff(actorId: MiUser['id'] | null, type: NotifyType, refs: { feedbackId?: string | null; emojiRequestId?: string | null; commentId?: string | null } = {}, message?: string): Promise<void> {
+	public async notifyStaff(actorId: MiUser['id'] | null, type: NotifyType, refs: { feedbackId?: string | null; emojiRequestId?: string | null; commentId?: string | null } = {}, message?: string, excludedRecipientIds: MiUser['id'][] = []): Promise<void> {
 		const staffIds = await this.roleService.getModeratorIds({ includeAdmins: true, includeRoot: true });
-		const targets = [...new Set(staffIds)].filter(id => id !== actorId);
+		const targets = mergeHataFeedRecipients(actorId == null ? excludedRecipientIds : [actorId, ...excludedRecipientIds], staffIds);
 		await this.notifyMany(targets, type, { ...refs, actorId }, message);
 	}
 
@@ -209,13 +206,14 @@ export class FeedbackService {
 
 	// 旗鯖fork: 複数ユーザーへ同一文言の通知を bulk insert で配信する。
 	//   DB の INSERT は 1クエリにまとめ、ベル通知(Redis xadd / WS publish)は per-user に並列発火する。
-	//   呼び出し側で重複排除(actor 除外など)してから渡すこと。
+	//   念のためこの層でも重複を排除し、呼び出し側の役割重複を未読件数へ波及させない。
 	@bindThis
 	private async notifyMany(userIds: MiUser['id'][], type: NotifyType, refs: { actorId?: MiUser['id'] | null; feedbackId?: string | null; emojiRequestId?: string | null; commentId?: string | null } = {}, message?: string): Promise<void> {
-		if (userIds.length === 0) return;
+		const uniqueUserIds = await this.filterVisibleIssueNotificationRecipients(userIds, refs.feedbackId);
+		if (uniqueUserIds.length === 0) return;
 		const body = message ?? NOTIFY_MESSAGE[type];
 		const now = new Date();
-		await this.feedbackNotificationsRepository.insert(userIds.map(uid => ({
+		await this.feedbackNotificationsRepository.insert(uniqueUserIds.map(uid => ({
 			id: this.idService.gen(),
 			createdAt: now,
 			userId: uid,
@@ -228,7 +226,7 @@ export class FeedbackService {
 			commentId: refs.commentId ?? null,
 		})));
 		const linkRef = refs.feedbackId ? `/hatafeed/${refs.feedbackId}` : '/hatafeed';
-		for (const uid of userIds) {
+		for (const uid of uniqueUserIds) {
 			this.notificationService.createNotification(uid, 'hataFeed', {
 				customBody: body,
 				customHeader: 'HataFeed',
@@ -374,16 +372,20 @@ export class FeedbackService {
 		});
 		// 起票者へ通知 + スタッフへ共有通知。状態名を明記する。
 		const statusMsg = `イシュー「${issue.title}」の状態が「${STATUS_LABEL_JP[status] ?? status}」に変更されました。`;
-		if (issue.createdById != null && issue.createdById !== actor.id) {
-			await this.notify(issue.createdById, 'issueStatusChanged', { actorId: actor.id, feedbackId: issue.id }, statusMsg);
-		}
-		await this.notifyStaff(actor.id, 'issueStatusChanged', { feedbackId: issue.id }, statusMsg);
+		const staffIds = await this.roleService.getModeratorIds({ includeAdmins: true, includeRoot: true });
+		const statusTargets = mergeHataFeedRecipients(
+			[actor.id],
+			issue.createdById == null ? [] : [issue.createdById],
+			staffIds,
+		);
+		await this.notifyMany(statusTargets, 'issueStatusChanged', { actorId: actor.id, feedbackId: issue.id }, statusMsg);
 
 		// 解決済みになった場合は、会話に参加したユーザーへ解決通知(起票者・操作者は除く)。
 		if (status === 'resolved') {
 			const resolvedMsg = `「${issue.title}」のイシューが解決済みになりました。`;
 			const commenterIds = await this.getCommenterIds(issue.id);
-			const targets = commenterIds.filter(uid => uid !== actor.id && uid !== issue.createdById);
+			// 状態変更通知を受け取った人へ、同じ操作の「解決」通知を重ねて送らない。
+			const targets = mergeHataFeedRecipients([actor.id, ...statusTargets], commenterIds);
 			await this.notifyMany(targets, 'issueResolved', { actorId: actor.id, feedbackId: issue.id }, resolvedMsg);
 		}
 	}
@@ -399,14 +401,16 @@ export class FeedbackService {
 			updatedAt: new Date(),
 		});
 		const msg = `イシュー「${issue.title}」がクローズされました（受付終了）。`;
-		if (issue.createdById != null && issue.createdById !== actor.id) {
-			await this.notify(issue.createdById, 'issueClosed', { actorId: actor.id, feedbackId: issue.id }, msg);
-		}
-		// 会話に参加した人にも受付終了を通知(操作者・起票者は除く)。
+		// 起票者・会話参加者・スタッフを先に一意化し、役割を兼ねる利用者へ重複送信しない。
 		const commenterIds = await this.getCommenterIds(issue.id);
-		const commenterTargets = commenterIds.filter(uid => uid !== actor.id && uid !== issue.createdById);
-		await this.notifyMany(commenterTargets, 'issueClosed', { actorId: actor.id, feedbackId: issue.id }, msg);
-		await this.notifyStaff(actor.id, 'issueClosed', { feedbackId: issue.id }, msg);
+		const staffIds = await this.roleService.getModeratorIds({ includeAdmins: true, includeRoot: true });
+		const targets = mergeHataFeedRecipients(
+			[actor.id],
+			issue.createdById == null ? [] : [issue.createdById],
+			commenterIds,
+			staffIds,
+		);
+		await this.notifyMany(targets, 'issueClosed', { actorId: actor.id, feedbackId: issue.id }, msg);
 	}
 
 	@bindThis
@@ -738,7 +742,7 @@ export class FeedbackService {
 		});
 		// 申請者へ承認通知(絵文字名入り) + 他スタッフへ共有通知。
 		await this.notify(req.requestedById, 'emojiApproved', { actorId: actor.id, emojiRequestId: req.id }, `絵文字「:${finalName}:」の申請が承認されました。`);
-		await this.notifyStaff(actor.id, 'emojiApproved', { emojiRequestId: req.id }, `${this.displayName(actor)}が絵文字「:${finalName}:」の申請を承認しました。`);
+		await this.notifyStaff(actor.id, 'emojiApproved', { emojiRequestId: req.id }, `${this.displayName(actor)}が絵文字「:${finalName}:」の申請を承認しました。`, [req.requestedById]);
 	}
 
 	@bindThis
@@ -756,7 +760,7 @@ export class FeedbackService {
 			? `絵文字「:${req.name}:」の申請がリジェクトされました。（理由: ${comment}）`
 			: `絵文字「:${req.name}:」の申請がリジェクトされました。`;
 		await this.notify(req.requestedById, 'emojiRejected', { actorId: actor.id, emojiRequestId: req.id }, rejectedMsg);
-		await this.notifyStaff(actor.id, 'emojiRejected', { emojiRequestId: req.id }, `${this.displayName(actor)}が絵文字「:${req.name}:」の申請をリジェクトしました。`);
+		await this.notifyStaff(actor.id, 'emojiRejected', { emojiRequestId: req.id }, `${this.displayName(actor)}が絵文字「:${req.name}:」の申請をリジェクトしました。`, [req.requestedById]);
 	}
 
 	//#endregion

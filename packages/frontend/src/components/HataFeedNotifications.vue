@@ -7,6 +7,7 @@ SPDX-License-Identifier: AGPL-3.0-only
     - PC / タブレット → ベルにアンカーした吹き出し(popup、右上に出る)
     - スマホ        → 画面下からのドロワー(drawer、全画面寄り)
   anchorElement(ベル)を渡すのが肝。渡すことで touch スマホ以外は popup になる。
+  popup は transparentBg で背後をぼかさず、HataFeedの内容を見比べられるようにする。
 -->
 <template>
 <MkModal
@@ -15,6 +16,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 	:zPriority="'middle'"
 	:anchorElement="anchorElement"
 	:anchor="{ x: 'right', y: 'bottom' }"
+	:transparentBg="true"
+	:disableBgBlur="true"
 	@click="modal?.close()"
 	@esc="modal?.close()"
 	@closed="emit('closed')"
@@ -98,13 +101,13 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <script lang="ts" setup>
 import { ref, computed, useTemplateRef, onMounted } from 'vue';
+import type { HataFeedEmojiRequest, HataFeedNotif } from '@/utility/hatafeed.js';
 import MkModal from '@/components/MkModal.vue';
 import HfAvatar from '@/components/HfAvatar.vue';
 import * as os from '@/os.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { useRouter } from '@/router.js';
 import { notifIcon, notifTypeLabel, groupHataFeedNotifications, groupSummary } from '@/utility/hatafeed.js';
-import type { HataFeedNotif } from '@/utility/hatafeed.js';
 
 const props = defineProps<{ anchorElement?: HTMLElement | null }>();
 const emit = defineEmits<{ (ev: 'closed'): void; (ev: 'read'): void }>();
@@ -112,7 +115,7 @@ const modal = useTemplateRef('modal');
 const router = useRouter();
 
 const PAGE_SIZE = 8;
-const items = ref<any[]>([]);
+const items = ref<HataFeedNotif[]>([]);
 const unreadCount = ref(0);
 const loading = ref(true);
 const filter = ref<string | null>(null);
@@ -121,9 +124,10 @@ const cursors = ref<(string | undefined)[]>([undefined]); // cursors[i] = page i
 const hasNext = ref(false);
 
 // 旗鯖fork(通知グルーピング): 取得済みの通知を同種・同一対象でまとめた表示単位。
-const groups = computed(() => groupHataFeedNotifications(items.value as HataFeedNotif[]));
+const groups = computed(() => groupHataFeedNotifications(items.value));
 // 旗鯖fork(通知グルーピング): 展開中のグループ key 集合(Set は再代入して反応させる)。
 const expanded = ref<Set<string>>(new Set());
+
 function toggle(key: string) {
 	const next = new Set(expanded.value);
 	if (next.has(key)) next.delete(key);
@@ -139,7 +143,7 @@ async function fetchPage(untilId: string | undefined) {
 		const limit = (filter.value ? PAGE_SIZE * 4 : PAGE_SIZE) + 1;
 		const res = await misskeyApi('hata/feedback/notifications', { limit, untilId });
 		unreadCount.value = res.unreadCount;
-		let list = res.notifications as any[];
+		let list = res.notifications as unknown as HataFeedNotif[];
 		if (filter.value) list = list.filter(n => n.type === filter.value);
 		hasNext.value = list.length > PAGE_SIZE;
 		items.value = list.slice(0, PAGE_SIZE);
@@ -191,7 +195,7 @@ async function markAllRead() {
 // 旗鯖fork(#38): 絵文字申請通知は処理状況を確認してから開く。
 async function handleEmojiRequestNotif(requestId: string) {
 	try {
-		const list: any[] = await misskeyApi('hata/feedback/emoji-requests', { id: requestId, limit: 1 });
+		const list = await misskeyApi('hata/feedback/emoji-requests', { id: requestId, limit: 1 }) as unknown as HataFeedEmojiRequest[];
 		const r = list[0];
 		if (!r) { os.alert({ type: 'info', title: '申請が見つかりません', text: 'この申請は削除された可能性があります。' }); return; }
 		if (r.status === 'pending') {
@@ -204,9 +208,10 @@ async function handleEmojiRequestNotif(requestId: string) {
 	}
 }
 
-function onClick(n: any) {
-	if (n.feedbackId) {
-		router.push(`/hatafeed/${n.feedbackId}`);
+function onClick(n: HataFeedNotif) {
+	const feedbackId = n.feedbackId;
+	if (typeof feedbackId === 'string') {
+		router.push('/hatafeed/:issueId', { params: { issueId: feedbackId } });
 		modal.value?.close();
 	} else if (n.emojiRequestId) {
 		handleEmojiRequestNotif(n.emojiRequestId);

@@ -39,6 +39,8 @@ function makeService(opts: {
 	projects?: Record<string, MiFeedbackProject | null>;
 	comments?: Record<string, { feedbackId: string } | null>;
 	issues?: Record<string, MiFeedbackIssue | null>;
+	persistedNotificationUserIds?: string[];
+	bellNotificationUserIds?: string[];
 }): FeedbackService {
 	const staff = new Set(opts.staffIds ?? []);
 	const projects = opts.projects ?? {};
@@ -54,8 +56,21 @@ function makeService(opts: {
 	const feedbackCommentsRepository: Stub = {
 		findOneBy: async ({ id }: { id: string }) => comments[id] ?? null,
 	};
+	const feedbackNotificationsRepository: Stub = {
+		insert: async (rows: Array<{ userId: string }>) => {
+			for (const row of rows) opts.persistedNotificationUserIds?.push(row.userId);
+		},
+	};
 	const roleService: Stub = {
 		isModerator: async ({ id }: { id: string }) => staff.has(id),
+	};
+	const idService: Stub = {
+		gen: () => 'notification1',
+	};
+	const notificationService: Stub = {
+		createNotification: (userId: string) => {
+			opts.bellNotificationUserIds?.push(userId);
+		},
 	};
 
 	// 使わない依存は null で埋める(判定系メソッドからは触られない)。
@@ -67,12 +82,12 @@ function makeService(opts: {
 		null as never, // feedbackCommentReactionsRepository
 		null as never, // feedbackIssueModeratorsRepository
 		null as never, // feedbackEmojiRequestsRepository
-		null as never, // feedbackNotificationsRepository
+		feedbackNotificationsRepository as never,
 		null as never, // driveFilesRepository
-		null as never, // idService
+		idService as never,
 		roleService as never,
 		null as never, // customEmojiService
-		null as never, // notificationService
+		notificationService as never,
 	);
 }
 
@@ -163,5 +178,27 @@ describe('FeedbackService.canViewComment', () => {
 			issues: {},
 		});
 		expect(await svc.canViewComment('someone', 'c1')).toBe(false);
+	});
+});
+
+describe('FeedbackService Issue 通知の可視性', () => {
+	test('security 化後は過去の一般参加者へタイトル付き通知を送らない', async () => {
+		const persistedNotificationUserIds: string[] = [];
+		const bellNotificationUserIds: string[] = [];
+		const issue = makeIssue({ category: 'security' });
+		const svc = makeService({
+			staffIds: ['mod'],
+			issues: { issue1: issue },
+			persistedNotificationUserIds,
+			bellNotificationUserIds,
+		});
+
+		await svc.notify('formerParticipant', 'issueStatusChanged', { feedbackId: issue.id }, '非公開の題名');
+		expect(persistedNotificationUserIds).toEqual([]);
+		expect(bellNotificationUserIds).toEqual([]);
+
+		await svc.notify('mod', 'issueStatusChanged', { feedbackId: issue.id }, '非公開の題名');
+		expect(persistedNotificationUserIds).toEqual(['mod']);
+		expect(bellNotificationUserIds).toEqual(['mod']);
 	});
 });

@@ -90,7 +90,8 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 			const notifications = await this.notificationService.getNotifications(me.id, {
 				sinceId: sinceId,
 				untilId: untilId,
-				limit: ps.limit,
+				// グルーピングで件数が減っても、指定件数ぶんの表示候補を確保する。
+				limit: ps.limit + EXTRA_LIMIT,
 				includeTypes,
 				excludeTypes,
 			});
