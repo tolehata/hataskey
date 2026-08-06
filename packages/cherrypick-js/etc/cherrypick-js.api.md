@@ -1044,6 +1044,21 @@ type ChannelsFollowedResponse = operations['channels___followed']['responses']['
 type ChannelsFollowRequest = operations['channels___follow']['requestBody']['content']['application/json'];
 
 // @public (undocumented)
+type ChannelsInvitationsAcceptRequest = operations['channels___invitations___accept']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type ChannelsInvitationsAcceptResponse = operations['channels___invitations___accept']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type ChannelsInvitationsRejectRequest = operations['channels___invitations___reject']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type ChannelsInvitationsRequest = operations['channels___invitations']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type ChannelsInvitationsResponse = operations['channels___invitations']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
 type ChannelsJoinRequest = operations['channels___join']['requestBody']['content']['application/json'];
 
 // @public (undocumented)
@@ -1847,6 +1862,11 @@ declare namespace entities {
         ChannelsFollowRequest,
         ChannelsFollowedRequest,
         ChannelsFollowedResponse,
+        ChannelsInvitationsRequest,
+        ChannelsInvitationsResponse,
+        ChannelsInvitationsAcceptRequest,
+        ChannelsInvitationsAcceptResponse,
+        ChannelsInvitationsRejectRequest,
         ChannelsJoinRequest,
         ChannelsJoinResponse,
         ChannelsMembersRequest,
@@ -4282,7 +4302,7 @@ type RoleLite = components['schemas']['RoleLite'];
 type RolePolicies = components['schemas']['RolePolicies'];
 
 // @public (undocumented)
-export const rolePolicies: readonly ["gtlAvailable", "ltlAvailable", "btlAvailable", "canPublicNote", "canEditNote", "mentionLimit", "canInvite", "inviteLimit", "inviteLimitCycle", "inviteExpirationTime", "canManageCustomEmojis", "canManageAvatarDecorations", "canSearchNotes", "canSearchUsers", "canHideAds", "mascotMaxExpressions", "mascotMaxPhrases", "mascotMaxCharacters", "canAccessHataFeed", "canUseHatadySync", "hatadyBookLimit", "hatadyBookmarkLimit", "canMakePrivateChannel", "canRequestRemoteEmoji", "emojiRequestLimit", "driveCapacityMb", "maxFileSizeMb", "alwaysMarkNsfw", "canUpdateBioMedia", "pinLimit", "antennaLimit", "wordMuteLimit", "webhookLimit", "clipLimit", "noteEachClipsLimit", "userListLimit", "userEachUserListsLimit", "rateLimitFactor", "avatarDecorationLimit", "canImportAntennas", "canImportBlocking", "canImportFollowing", "canImportMuting", "canImportUserLists", "chatAvailability", "uploadableFileTypes", "noteDraftLimit", "scheduledNoteLimit", "watermarkAvailable", "canSetFederationAvatarShape"];
+export const rolePolicies: readonly ["gtlAvailable", "ltlAvailable", "btlAvailable", "canPublicNote", "canEditNote", "mentionLimit", "canInvite", "inviteLimit", "inviteLimitCycle", "inviteExpirationTime", "canManageCustomEmojis", "canManageAvatarDecorations", "canSearchNotes", "canSearchUsers", "canHideAds", "mascotMaxExpressions", "mascotMaxPhrases", "mascotMaxCharacters", "hataSideStudioProfileLimit", "canAccessHataFeed", "canUseHatadySync", "hatadyBookLimit", "hatadyBookmarkLimit", "canMakePrivateChannel", "canRequestRemoteEmoji", "emojiRequestLimit", "driveCapacityMb", "maxFileSizeMb", "alwaysMarkNsfw", "canUpdateBioMedia", "pinLimit", "antennaLimit", "wordMuteLimit", "webhookLimit", "clipLimit", "noteEachClipsLimit", "userListLimit", "userEachUserListsLimit", "rateLimitFactor", "avatarDecorationLimit", "canImportAntennas", "canImportBlocking", "canImportFollowing", "canImportMuting", "canImportUserLists", "chatAvailability", "uploadableFileTypes", "noteDraftLimit", "scheduledNoteLimit", "watermarkAvailable", "canSetFederationAvatarShape"];
 
 // @public (undocumented)
 type RolesListResponse = operations['roles___list']['responses']['200']['content']['application/json'];

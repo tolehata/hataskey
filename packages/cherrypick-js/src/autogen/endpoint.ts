@@ -210,6 +210,11 @@ import type {
 	ChannelsFollowRequest,
 	ChannelsFollowedRequest,
 	ChannelsFollowedResponse,
+	ChannelsInvitationsRequest,
+	ChannelsInvitationsResponse,
+	ChannelsInvitationsAcceptRequest,
+	ChannelsInvitationsAcceptResponse,
+	ChannelsInvitationsRejectRequest,
 	ChannelsJoinRequest,
 	ChannelsJoinResponse,
 	ChannelsMembersRequest,
@@ -1030,6 +1035,9 @@ export type Endpoints = {
 	'channels/featured': { req: EmptyRequest; res: ChannelsFeaturedResponse };
 	'channels/follow': { req: ChannelsFollowRequest; res: EmptyResponse };
 	'channels/followed': { req: ChannelsFollowedRequest; res: ChannelsFollowedResponse };
+	'channels/invitations': { req: ChannelsInvitationsRequest; res: ChannelsInvitationsResponse };
+	'channels/invitations/accept': { req: ChannelsInvitationsAcceptRequest; res: ChannelsInvitationsAcceptResponse };
+	'channels/invitations/reject': { req: ChannelsInvitationsRejectRequest; res: EmptyResponse };
 	'channels/join': { req: ChannelsJoinRequest; res: ChannelsJoinResponse };
 	'channels/members': { req: ChannelsMembersRequest; res: ChannelsMembersResponse };
 	'channels/my-favorites': { req: EmptyRequest; res: ChannelsMyFavoritesResponse };
