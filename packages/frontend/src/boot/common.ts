@@ -307,6 +307,21 @@ export async function common(createVue: () => Promise<App<Element>>) {
 		miLocalStorage.setItem('hata_hask_tiles_v1_migrated', '1');
 	}
 
+	// 旗鯖fork(v7): 「キャッシュをクリア」を reload の直後へ追加。
+	// 既存の並び順・表示状態を維持し、まだ存在しない場合だけ追加する。
+	if (!miLocalStorage.getItem('hata_sidebar_v7_migrated')) {
+		const { prefer: preferSb7 } = await import('@/preferences.js');
+		const current = [...(preferSb7.s['simpleUi.sidebar'] ?? [])];
+		if (!current.some(i => i && i.id === 'cacheClear')) {
+			const reloadIdx = current.findIndex(i => i && i.id === 'reload');
+			const moreIdx = current.findIndex(i => i && i.id === 'more');
+			const insertAt = reloadIdx >= 0 ? reloadIdx + 1 : moreIdx >= 0 ? moreIdx + 1 : current.length;
+			current.splice(insertAt, 0, { id: 'cacheClear', icon: 'ti ti-trash', label: 'キャッシュをクリア', group: 'more' });
+			preferSb7.commit('simpleUi.sidebar', current);
+		}
+		miLocalStorage.setItem('hata_sidebar_v7_migrated', '1');
+	}
+
 	// 旗鯖: 「旗鯖機能解説 (hataDocs)」をユーザー設定から自動削除（既存ユーザー向け）
 	// hataDocs は navbar 定義から削除済みだが、過去にサイドバーや「もっと!」候補に
 	// 残っているケースがあるため、保存済みのユーザー設定からも除去する
