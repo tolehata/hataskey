@@ -19,6 +19,13 @@ SPDX-License-Identifier: AGPL-3.0-only
         <!-- ===== 旗鯖全体 ===== -->
         <template v-if="activeCat === 'general'">
         <FormSection first>
+            <template #label>旗鯖独自設定の一括入出力</template>
+            <div style="font-size:.85em;opacity:.72;margin-bottom:10px;line-height:1.6;">この端末の設定を優先し、旗鯖独自ツールごとに選んでJSONファイルへ保存・復元できます。</div>
+            <button class="_buttonPrimary" @click="openSettingsTransfer" style="width:100%;padding:12px;font-weight:bold;">
+                <i class="ti ti-arrows-exchange"></i> 設定を書き出す・読み込む
+            </button>
+        </FormSection>
+        <FormSection>
             <template #label>外部アカウント連携</template>
             <FormLink to="/settings/external-account">
                 <template #icon><i class="ti ti-link"></i></template>
@@ -77,7 +84,7 @@ SPDX-License-Identifier: AGPL-3.0-only
             <template #label>Bot 投稿の非表示</template>
             <MkSwitch v-model="hideBotsInTimeline">
                 <template #label>bot ユーザーの投稿をタイムラインに表示しない</template>
-                <template #caption>ノイズの多い bot ユーザー (自動投稿アカウント) の投稿を、タイムライン上で非表示にします。通知ページや個別ノートページでは表示されます。<b>例外的に表示を許可したい bot</b> は下のリストで指定できます。</template>
+                <template #caption>ノイズの多い bot ユーザー (自動投稿アカウント) の投稿を、タイムライン上で非表示にします。通知ページや個別ノートページでは表示されます。<b>例外的に表示を許可したい bot</b> は下のリストで指定できます。通常アカウントは例外に追加できません。</template>
             </MkSwitch>
             <template v-if="hideBotsInTimeline">
                 <div :class="$style.botAllowlistHead" style="margin-top:12px;">
@@ -287,7 +294,7 @@ SPDX-License-Identifier: AGPL-3.0-only
         <template v-if="activeCat === 'hatask'">
         <FormSection first>
             <template #label>Hatask の設定</template>
-            <div style="font-size:.85em;opacity:.7;margin-bottom:12px;line-height:1.6;">Hatask（ライフログ）の設定です。背景テーマ・外観（ライト/ダーク）・ホーム画面のセクション表示と並び替え・データ同期などをここから変更できます。設定内容は Hatask 本体と同期します。</div>
+            <div style="font-size:.85em;opacity:.7;margin-bottom:12px;line-height:1.6;">Hatask（ライフログ）の設定です。デザインテーマ・外観（ライト/ダーク）・カレンダー・通知・データ同期などをここから変更できます。設定内容は Hatask 本体と同期します。</div>
             <button class="_buttonPrimary" @click="openHataskSettings" style="padding:10px 20px;font-weight:bold;"><i class="ti ti-settings"></i> Hatask の設定を開く</button>
         </FormSection>
         <FormSection>
@@ -410,20 +417,6 @@ watch(activeCat, (v) => {
     if (v === 'font') preloadAllFonts();
 });
 
-// LS helpers (旗鯖全体設定用 — これらは元々LocalStorage)
-function useLSBool(key: string, def: boolean) {
-    const s = miLocalStorage.getItem(key);
-    const v = ref(s !== null ? s === 'true' : def);
-    watch(v, n => miLocalStorage.setItem(key, String(n)));
-    return v;
-}
-function useLSStr(key: string, def: string) {
-    const v = ref(miLocalStorage.getItem(key) || def);
-    watch(v, n => miLocalStorage.setItem(key, n));
-    return v;
-}
-
-
 // ===== フォント設定 =====
 const fontId = prefer.model('hataFont.id');
 const customFontUrl = prefer.model('hataFont.customUrl');
@@ -503,7 +496,7 @@ function resetToDefault() {
 // 書き先と読み先がズレていてトグルが機能していなかったので prefer.model に修正。
 const showHashtagButtonInPostForm = prefer.model('showHashtagButtonInPostForm');
 const showDrawingButtonInPostForm = prefer.model('showDrawingButtonInPostForm');
-const showLoginBonusPopup = useLSBool('showLoginBonusPopup', true);
+const showLoginBonusPopup = prefer.model('showLoginBonusPopup');
 // 旗鯖fork(#31): ミュートユーザーのリアクション非表示（端末ローカル）。ベータ機能から正式機能へ移動。
 const hideMutedReactions = computed({
     get: () => hideMutedReactionsLocal.value,
@@ -523,12 +516,16 @@ const timelineAnimationOptions = [
 ];
 const openUiSetup = async () => {
     const { defineAsyncComponent: dac } = await import('vue');
-    os.popup(dac(() => import('@/components/MkUISetup.vue')), {}, {}, 'closed');
+    const { dispose } = os.popup(dac(() => import('@/components/MkUISetup.vue')), {}, { closed: () => dispose() });
+};
+const openSettingsTransfer = async () => {
+    const { defineAsyncComponent: dac } = await import('vue');
+    const { dispose } = os.popup(dac(() => import('@/components/MkHataSettingsTransfer.vue')), {}, { closed: () => dispose() });
 };
 // 旗鯖fork: Hataskの設定を共有コンポーネントで開く(本体とregistry同期)
 const openHataskSettings = async () => {
     const { defineAsyncComponent: dac } = await import('vue');
-    os.popup(dac(() => import('@/pages/HataskSettings.vue')), {}, {}, 'closed');
+    const { dispose } = os.popup(dac(() => import('@/pages/HataskSettings.vue')), {}, { closed: () => dispose() });
 };
 const goToHatask = () => { mainRouter.push('/hatask'); };
 
@@ -548,7 +545,7 @@ const goToEarthquake = () => { mainRouter.push('/earthquake'); };
 // 旗鯖fork: マスコット設定を開く
 const openMascotSettings = async () => {
     const { defineAsyncComponent: dac } = await import('vue');
-    os.popup(dac(() => import('@/pages/MkMascotSettings.vue')), {}, {}, 'closed');
+    const { dispose } = os.popup(dac(() => import('@/pages/MkMascotSettings.vue')), {}, { closed: () => dispose() });
 };
 // 旗鯖fork: HatasabaUI 2 の設定を独立ウィンドウ (MkHatasabaUi2EditWindow) で開く。
 //   有効化トグル・吹き出し・背景ぼかし・透過率スライダーを 1 ウィンドウに集約。
@@ -585,16 +582,23 @@ async function refreshBotAllowlistUsers() {
     if (ids.length === 0) { botAllowlistUsers.value = []; return; }
     try {
         const users = await misskeyApi('users/show', { userIds: ids });
-        botAllowlistUsers.value = users as any[];
+		const botUsersById = new Map(users.filter(user => user.isBot).map(user => [user.id, user]));
+		const validBotIds = ids.filter(id => botUsersById.has(id));
+		botAllowlistUsers.value = validBotIds.map(id => botUsersById.get(id)!);
+		// 旧保存値に通常アカウントや削除済みアカウントがあれば、表示だけでなく保存値からも除く。
+		if (validBotIds.length !== ids.length) botAllowlist.value = validBotIds;
     } catch {
         botAllowlistUsers.value = [];
     }
 }
 watch(botAllowlist, refreshBotAllowlistUsers, { immediate: true });
 async function addBotAllowlistUser() {
-    // os.selectUser でユーザーを選ばせて、その id を allowlist に追加する
-    const { canceled, result } = await os.selectUser({});
-    if (canceled || !result) return;
+	// 選択画面と保存直前の両方で、BOTアカウントだけに限定する。
+	const result = await os.selectUser({ botOnly: true });
+	if (!result?.isBot) {
+		os.alert({ type: 'warning', text: 'Botアカウントだけを例外に追加できます。' });
+		return;
+	}
     const cur = ((botAllowlist.value as string[]) ?? []).slice();
     if (cur.includes(result.id)) {
         os.alert({ type: 'info', text: 'このアカウントは既に許可リストに登録されています。' });

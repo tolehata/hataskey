@@ -5,7 +5,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <template>
 <MkModal ref="modal" v-slot="{ type }" :preferType="deviceKind === 'smartphone' ? 'drawer' : 'dialog'" @click="onBgClick" @closed="emit('closed')" @esc="emit('esc')">
-	<div ref="rootEl" :class="[$style.root, type === 'drawer' ? $style.asDrawer : null]" :style="{ width: type === 'drawer' ? '' : `${width}px`, height: type === 'drawer' ? '' : `min(${height}px, 100%)` }">
+	<div ref="rootEl" :class="[$style.root, panelClass, type === 'drawer' ? $style.asDrawer : null]" :style="{ width: type === 'drawer' ? '' : `${width}px`, height: type === 'drawer' ? '' : `min(${height}px, 100%)` }">
 		<div :class="$style.header">
 			<button v-if="withCloseButton" :class="$style.headerButton" class="_button" data-testid="modal-window-close" @click="emit('close')"><i class="ti ti-x"></i></button>
 			<span :class="$style.title">
@@ -36,12 +36,14 @@ const props = withDefaults(defineProps<{
 	withOkButton?: boolean;
 	withCloseButton?: boolean;
 	okButtonDisabled?: boolean;
+	panelClass?: string;
 	width?: number;
 	height?: number;
 }>(), {
 	withOkButton: false,
 	withCloseButton: true,
 	okButtonDisabled: false,
+	panelClass: '',
 	width: 400,
 	height: 500,
 });
@@ -71,6 +73,8 @@ defineExpose({
 
 <style lang="scss" module>
 .root {
+	box-sizing: border-box;
+	min-height: 0;
 	margin: auto;
 	overflow: hidden;
 	display: flex;
@@ -141,6 +145,7 @@ defineExpose({
 
 .body {
 	flex: 1;
+	min-height: 0;
 	overflow: auto;
 	background: var(--MI_THEME-bg);
 	container-type: size;
