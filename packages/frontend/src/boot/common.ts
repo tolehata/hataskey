@@ -382,6 +382,13 @@ export async function common(createVue: () => Promise<App<Element>>) {
 	}
 	//#endregion
 
+	// 旗鯖fork(hata-12.0): 外部アカウント連携から撤去した旗池3丁目・シュリンピアについて、
+	// 設定同期の読込後にログイン情報と端末内キャッシュを削除する。
+	// 廃止ホストは external-api 側でも拒否するため、移行途中に通信が再開することはない。
+	await import('@/utility/external-account-migration.js')
+		.then(({ migrateRetiredExternalAccount }) => migrateRetiredExternalAccount())
+		.catch(err => console.error('[external-account-migration] Failed to purge retired host data:', err));
+
 	//#region Detect language & fetch translations
 	storeBootloaderErrors({ ...i18n.ts._bootErrors, reload: i18n.ts.reload });
 

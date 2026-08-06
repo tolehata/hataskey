@@ -4,7 +4,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 
 <template>
-<SearchMarker path="/settings/external-account" label="外部アカウント連携" :keywords="['external', 'shrimpia', 'ohtl', 'oltl', 'timeline', '外部']" icon="ti ti-link">
+<SearchMarker path="/settings/external-account" label="外部アカウント連携" :keywords="['external', 'ohtl', 'oltl', 'timeline', '外部']" icon="ti ti-link">
 	<div class="_gaps_m">
 		<FormSection first>
 			<template #label><i class="ti ti-link"></i> 外部アカウント連携</template>
@@ -175,7 +175,7 @@ import { misskeyApi } from '@/utility/misskey-api.js';
 import * as os from '@/os.js';
 import { genId } from '@/utility/id.js';
 import { hostname } from '@@/js/config.js';
-import { getExternalFavoriteEmojis, setExternalFavoriteEmojis, removeExternalFavoriteEmoji, getExternalCustomEmojis, clearExternalEmojiCache } from '@/utility/external-api.js';
+import { getExternalFavoriteEmojis, setExternalFavoriteEmojis, removeExternalFavoriteEmoji, getExternalCustomEmojis, clearExternalEmojiCache, isAllowedExternalHost } from '@/utility/external-api.js';
 import type { ExternalCustomEmoji } from '@/utility/external-api.js';
 
 const MkExternalReactionPicker = defineAsyncComponent(() => import('@/components/MkExternalReactionPicker.vue'));
@@ -205,14 +205,9 @@ const isLinked = computed(() => {
 
 // ===== 接続先候補 =====
 // 現在のインスタンスに応じて、接続先候補を動的に生成
-const HATACHI_3 = 'o.hata.blog';
 const HATACHI_2 = 'misskey.hatachanoima.net';
-const SHRIMPIA = 'mk.shrimpia.network';
 // 旗鯖fork: 外部サーバー(旗鯖以外。接続先の規約が適用される)
 const LES_REQUIN = 'mi.les-requin.net';
-
-const isHatachi3 = computed(() => hostname === HATACHI_3);
-const isHatachi2 = computed(() => hostname === HATACHI_2);
 
 const hostOptions = computed(() => {
 	const options: { value: string; label: string }[] = [];
@@ -223,19 +218,9 @@ const hostOptions = computed(() => {
 		options.push({ value: HATACHI_2, label: `旗池2丁目 (${HATACHI_2})` });
 	}
 
-	// 旗池3丁目（自分自身でなければ追加）
-	if (currentHost !== HATACHI_3) {
-		options.push({ value: HATACHI_3, label: `旗池3丁目 (${HATACHI_3})` });
-	}
-
-	// シュリンピアは常に選択肢に含める（自分自身でなければ）
-	if (currentHost !== SHRIMPIA) {
-		options.push({ value: SHRIMPIA, label: `シュリンピア (${SHRIMPIA})` });
-	}
-
-	// 旗鯖fork: les-requin(外部サーバー。接続先の規約が適用される)
+	// 旗鯖fork: さめすきーとチョリソリング(外部サーバー。接続先の規約が適用される)
 	if (currentHost !== LES_REQUIN) {
-		options.push({ value: LES_REQUIN, label: `les-requin (${LES_REQUIN})` });
+		options.push({ value: LES_REQUIN, label: `さめすきーとチョリソリング (${LES_REQUIN})` });
 	}
 
 	return options;
@@ -245,7 +230,7 @@ const selectedHost = ref(hostOptions.value.length > 0 ? hostOptions.value[0].val
 
 // 選択中のホストが旗鯖かどうか
 function isHataSaba(host: string): boolean {
-	return host === HATACHI_2 || host === HATACHI_3;
+	return host === HATACHI_2;
 }
 
 // ===== 有効化トグル =====
@@ -260,7 +245,7 @@ async function onToggleEnabled(newValue: boolean) {
 // ===== MiAuth =====
 async function startMiAuth() {
 	const host = selectedHost.value;
-	if (!host) return;
+	if (!host || !isAllowedExternalHost(host)) return;
 
 	// 接続先に応じた免責事項ポップアップを表示
 	if (isHataSaba(host)) {
@@ -276,7 +261,7 @@ async function startMiAuth() {
 		});
 		if (canceled || result === 'cancel') return;
 	} else {
-		// シュリンピア等の外部サーバーの場合
+		// 旗鯖以外の外部サーバーの場合
 		const { canceled, result } = await os.actions({
 			type: 'warning',
 			title: '外部サーバー連携の免責事項',
@@ -402,8 +387,10 @@ async function handleMiAuthCallback() {
 	const savedSession = localStorage.getItem('miauth_session');
 	const savedHost = localStorage.getItem('miauth_host');
 
-	if (!savedSession || !savedHost || sessionParam !== savedSession) {
+	if (!savedSession || !savedHost || sessionParam !== savedSession || !isAllowedExternalHost(savedHost)) {
 		console.error('Invalid MiAuth session');
+		localStorage.removeItem('miauth_session');
+		localStorage.removeItem('miauth_host');
 		return;
 	}
 

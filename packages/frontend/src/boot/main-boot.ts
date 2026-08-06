@@ -56,11 +56,6 @@ export async function mainBoot() {
 		prefer.commit('showLikeButtonInNoteFooter', false);
 	}
 
-	// 旗鯖fork: 外部通知ストリームを起動 (外部アカウント連携中ならWS接続して通知をリアルタイム受信)
-	// visibilityState 'hidden' で切断、'visible' で再接続するアイドル管理付き
-	const { startExternalNotificationStream } = await import('@/utility/external-notification-stream.js');
-	startExternalNotificationStream();
-
 	// 旗鯖独自: ミュートユーザーリスト先読み（hideMutedUserReactions が有効な場合のみ）
 	// ノートが流れる前にリスト取得を完了させることで、リアルタイムフィルタの取りこぼしを防ぐ
 	if (prefer.s.hideMutedUserReactions) {
@@ -108,6 +103,10 @@ export async function mainBoot() {
 
 		return createApp(rootComponent);
 	});
+
+	// 廃止した接続先の認証情報を common() 内で消してから、許可された外部通知ストリームだけを起動する。
+	const { startExternalNotificationStream } = await import('@/utility/external-notification-stream.js');
+	startExternalNotificationStream();
 
 	reactionPicker.init();
 	emojiPicker.init();

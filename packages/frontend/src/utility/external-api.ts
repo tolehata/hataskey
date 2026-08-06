@@ -4,6 +4,7 @@
  */
 
 import { prefer } from '@/preferences.js';
+import { isRetiredExternalHost } from '@/utility/external-account-policy.js';
 
 export interface ExternalAccount {
 	host: string;
@@ -84,6 +85,11 @@ export function isValidExternalHost(host: unknown): host is string {
 	return true;
 }
 
+/** 形式が正しく、かつ現在も外部アカウント連携で利用できるホスト。 */
+export function isAllowedExternalHost(host: unknown): host is string {
+	return isValidExternalHost(host) && !isRetiredExternalHost(host);
+}
+
 /**
  * 外部 API エンドポイントパスを検証
  * 許可: notes/create, i/notifications, notifications/mark-all-as-read 等
@@ -125,7 +131,7 @@ export function getExternalAccount(): ExternalAccount | null {
 
 	if (!host || !token || !userId || !username) return null;
 	// host が不正なら連携情報を返さない (誤って攻撃者サーバーへトークン送信する事故を防ぐ)
-	if (!isValidExternalHost(host)) {
+	if (!isAllowedExternalHost(host)) {
 		console.warn('[external-api] external.host has an invalid format, refusing to use it:', host);
 		return null;
 	}
@@ -157,7 +163,7 @@ export async function callExternalApi<T = any>(
 		throw new Error('Invalid external endpoint');
 	}
 	// account が呼び出し側から渡された場合も host を検証
-	if (!isValidExternalHost(acc.host)) {
+	if (!isAllowedExternalHost(acc.host)) {
 		throw new Error('Invalid external host');
 	}
 
@@ -198,7 +204,7 @@ export async function callExternalApiGet<T = any>(
 	if (!isValidExternalEndpoint(endpoint)) {
 		throw new Error('Invalid external endpoint');
 	}
-	if (!isValidExternalHost(h)) {
+	if (!isAllowedExternalHost(h)) {
 		throw new Error('Invalid external host');
 	}
 
@@ -232,7 +238,7 @@ function restoreEmojiCacheFromStorage(): void {
 		const stored = localStorage.getItem(EMOJI_STORAGE_KEY);
 		if (stored) {
 			const parsed = JSON.parse(stored);
-			if (parsed && isValidExternalHost(parsed.host) && Array.isArray(parsed.emojis) && typeof parsed.fetchedAt === 'number') {
+			if (parsed && isAllowedExternalHost(parsed.host) && Array.isArray(parsed.emojis) && typeof parsed.fetchedAt === 'number') {
 				emojiCache = parsed;
 			} else {
 				// 破損または不正なホスト → 破棄
@@ -242,7 +248,7 @@ function restoreEmojiCacheFromStorage(): void {
 		const storedMap = localStorage.getItem(EMOJI_URL_MAP_STORAGE_KEY);
 		if (storedMap) {
 			const parsed = JSON.parse(storedMap);
-			if (parsed && isValidExternalHost(parsed.host) && typeof parsed.map === 'object' && parsed.map !== null) {
+			if (parsed && isAllowedExternalHost(parsed.host) && typeof parsed.map === 'object' && parsed.map !== null) {
 				emojiUrlMapCache = parsed;
 			} else {
 				localStorage.removeItem(EMOJI_URL_MAP_STORAGE_KEY);
@@ -288,7 +294,7 @@ export async function getExternalCustomEmojis(forceRefresh = false): Promise<Ext
 	}
 
 	try {
-		if (!isValidExternalHost(acc.host)) {
+		if (!isAllowedExternalHost(acc.host)) {
 			throw new Error('Invalid external host');
 		}
 		const res = await fetch(`https://${acc.host}/api/emojis`, {
@@ -415,9 +421,13 @@ export async function preloadExternalEmojiMap(): Promise<void> {
 /**
  * カスタム絵文字キャッシュをクリア
  */
-export function clearExternalEmojiCache(): void {
+export function clearExternalEmojiMemoryCache(): void {
 	emojiCache = null;
 	emojiUrlMapCache = null;
+}
+
+export function clearExternalEmojiCache(): void {
+	clearExternalEmojiMemoryCache();
 	try {
 		localStorage.removeItem(EMOJI_STORAGE_KEY);
 		localStorage.removeItem(EMOJI_URL_MAP_STORAGE_KEY);
@@ -444,7 +454,7 @@ export async function uploadFileToExternal(
 	if (!acc) {
 		throw new Error('External account not linked');
 	}
-	if (!isValidExternalHost(acc.host)) {
+	if (!isAllowedExternalHost(acc.host)) {
 		throw new Error('Invalid external host');
 	}
 
@@ -854,5 +864,3 @@ export function lookupExternalEmojiUrl(host: string | null, name: string): strin
 	if (!map) return null;
 	return map[name] ?? null;
 }
-
-

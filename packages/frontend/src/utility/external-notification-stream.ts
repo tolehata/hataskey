@@ -19,6 +19,7 @@
  */
 
 import { prefer } from '@/preferences.js';
+import { isAllowedExternalHost } from '@/utility/external-api.js';
 
 let connection: WebSocket | null = null;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
@@ -33,7 +34,7 @@ function isExternalConnected(): boolean {
 	// 旗鯖fork: トースト通知無効化トグルがONならWS接続を行わない
 	// (トーストもバッジ更新も全部止まる、ユーザー意思の尊重)
 	if (prefer.s['external.disableNotificationToast'] === true) return false;
-	return token != null && host !== '' && host != null;
+	return token != null && isAllowedExternalHost(host);
 }
 
 function recordSeen(id: string) {
