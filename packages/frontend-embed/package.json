@@ -26,7 +26,7 @@
 		"json5": "2.2.3",
 		"mfc-js": "0.1.0",
 		"punycode.js": "2.3.1",
-		"rollup": "4.52.4",
+		"rollup": "4.62.2",
 		"sass": "1.93.2",
 		"shiki": "4.3.1",
 		"temml": "0.11.11",
@@ -40,7 +40,7 @@
 	},
 	"devDependencies": {
 		"@biomejs/biome": "2.3.1",
-		"@misskey-dev/summaly": "5.2.4",
+		"@misskey-dev/summaly": "5.5.1",
 		"@rollup/plugin-json": "6.1.0",
 		"@rollup/pluginutils": "5.3.0",
 		"@tabler/icons-webfont": "3.35.0",
