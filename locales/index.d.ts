@@ -1300,6 +1300,34 @@ export interface Locale extends ILocale {
      */
     "flagAsBotDescription": string;
     /**
+     * 旗鯖のユーザーパネルとプロフィールに表示する実績を選べます。他サーバーへは送信されません。
+     */
+    "profileBadgeVisibilityDescription": string;
+    /**
+     * 宴の成功回数を表示
+     */
+    "showUtageSuccessCount": string;
+    /**
+     * 15分間逃げ切って宴に成功した回数を表示します。
+     */
+    "showUtageSuccessCountDescription": string;
+    /**
+     * 宴の阻止回数を表示
+     */
+    "showUtageInterruptionCount": string;
+    /**
+     * ほかの人の宴へ反応し、阻止した回数を表示します。
+     */
+    "showUtageInterruptionCountDescription": string;
+    /**
+     * 育てたお花の数を表示
+     */
+    "showHataskFlowerCount": string;
+    /**
+     * Hataskのお庭で咲かせたお花の数を表示します。
+     */
+    "showHataskFlowerCountDescription": string;
+    /**
      * にゃああああああああああああああ！！！！！！！！！！！！
      */
     "flagAsCat": string;
@@ -8932,6 +8960,20 @@ export interface Locale extends ILocale {
                  */
                 "description": string;
             };
+            "_hataSideStudioPioneer": {
+                /**
+                 * サイドメニューの開拓者
+                 */
+                "title": string;
+                /**
+                 * チュートリアルを完了またはスキップした
+                 */
+                "description": string;
+                /**
+                 * そのハタキスト、メニューを作る
+                 */
+                "flavor": string;
+            };
         };
     };
     "_role": {
@@ -11369,6 +11411,10 @@ export interface Locale extends ILocale {
          * 地震・津波
          */
         "earthquake": string;
+        /**
+         * Hataskのお花
+         */
+        "hataskFlowers": string;
     };
     "_cw": {
         /**

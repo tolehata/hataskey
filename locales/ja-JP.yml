@@ -318,6 +318,13 @@ cacheRemoteSensitiveFiles: "リモートのセンシティブなファイルを�
 cacheRemoteSensitiveFilesDescription: "この設定を無効にすると、リモートのセンシティブなファイルはキャッシュせず直リンクするようになります。"
 flagAsBot: "Botとして設定"
 flagAsBotDescription: "このアカウントがプログラムによって運用される場合は、このフラグをオンにします。オンにすると、反応の連鎖を防ぐためのフラグとして他の開発者に役立ったり、Hataskeyのシステム上での扱いがBotに合ったものになります。"
+profileBadgeVisibilityDescription: "旗鯖のユーザーパネルとプロフィールに表示する実績を選べます。他サーバーへは送信されません。"
+showUtageSuccessCount: "宴の成功回数を表示"
+showUtageSuccessCountDescription: "15分間逃げ切って宴に成功した回数を表示します。"
+showUtageInterruptionCount: "宴の阻止回数を表示"
+showUtageInterruptionCountDescription: "ほかの人の宴へ反応し、阻止した回数を表示します。"
+showHataskFlowerCount: "育てたお花の数を表示"
+showHataskFlowerCountDescription: "Hataskのお庭で咲かせたお花の数を表示します。"
 flagAsCat: "にゃああああああああああああああ！！！！！！！！！！！！"
 flagAsCatDescription: "にゃにゃにゃ？？"
 flagShowTimelineReplies: "タイムラインにノートへの返信を表示する"
@@ -2322,6 +2329,10 @@ _achievements:
     _welcomeToHatady:
       title: "Hatadyへようこそ"
       description: "Welcome to Hatady"
+    _hataSideStudioPioneer:
+      title: "サイドメニューの開拓者"
+      description: "チュートリアルを完了またはスキップした"
+      flavor: "そのハタキスト、メニューを作る"
 
 _role:
   new: "ロールの作成"
@@ -2988,6 +2999,7 @@ _widgets:
   weather: "天気"
   mascot: "マスコット"
   earthquake: "地震・津波"
+  hataskFlowers: "Hataskのお花"
 
 _cw:
   hide: "隠す"
