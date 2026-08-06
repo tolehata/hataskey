@@ -294,11 +294,27 @@ async function composeNotification(data: PushNotificationDataMap[keyof PushNotif
 					}];
 
 				case 'app':
-					return [data.body.header ?? data.body.body, {
-						body: data.body.header ? data.body.body : '',
+				case 'hataFeed':
+				case 'earthquake':
+				case 'addedToPrivateChannel':
+				case 'removedFromPrivateChannel': {
+					// 旗鯖fork: 独自通知はすべて app 通知と同じ header/body/icon/link 形状。
+					// 専用 type を追加した際にここへ結線し忘れると composeNotification が null となり、
+					// OSには「Hataskey v...」だけの空通知が出るため、同じ分岐でまとめて扱う。
+					const body = data.body.body?.trim() ?? '';
+					const header = data.body.header?.trim() ?? '';
+					const title = header || body || '新しいお知らせ';
+					// 旗鯖fork: HataFeed は同じ案件の OS 通知を1つにまとめる。
+					// link が無い通知も HataFeed 全体でまとめ、他の独自通知には影響させない。
+					const tag = data.body.type === 'hataFeed' ? `hatafeed:${data.body.link ?? 'general'}` : undefined;
+					return [title, {
+						body: header ? body : '',
 						icon: data.body.icon ?? undefined,
+						badge: iconUrl('bell'),
+						...(tag ? { tag, renotify: true } : {}),
 						data,
 					}];
+				}
 
 				case 'test':
 					return [i18n.ts._notification.testNotification, {

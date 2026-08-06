@@ -171,6 +171,14 @@ globalThis.addEventListener('notificationclick', (ev: ServiceWorkerGlobalScopeEv
 							case 'chatRoomInvitationReceived':
 								client = await swos.openClient('push', '/chat', loginId);
 								break;
+							case 'app':
+							case 'hataFeed':
+							case 'earthquake':
+							case 'addedToPrivateChannel':
+							case 'removedFromPrivateChannel':
+								// customLink は backend で「/」始まりの相対パスだけに検証済み。
+								if (data.body.link) client = await swos.openClient('push', data.body.link, loginId);
+								break;
 							default:
 								if ('note' in data.body) {
 									client = await swos.openNote(data.body.note.id, loginId);

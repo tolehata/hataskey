@@ -279,7 +279,16 @@ export class EarthquakeService implements OnApplicationBootstrap, OnApplicationS
 
 	@bindThis
 	private async dispatchTsunami(t: any): Promise<void> {
-		if (t.cancelled === true) return;
+		if (t.cancelled === true) {
+			const key = 'ts-cancel:' + (t.id ?? t.time ?? 'unknown');
+			if (!this.markNotified(key)) return;
+			const settings = await this.earthquakeNotificationsRepository.findBy({ enabled: true });
+			for (const s of settings) {
+				// 警報等の発表だけでなく、気象庁が解除した事実も同じ経路で伝える。
+				this.notify(s.userId, '気象庁から津波警報・注意報の解除が発表されました。');
+			}
+			return;
+		}
 		if (!Array.isArray(t.areas) || t.areas.length === 0) return;
 		const key = 'ts:' + (t.id ?? t.time ?? '');
 		if (!this.markNotified(key)) return;
@@ -305,8 +314,10 @@ export class EarthquakeService implements OnApplicationBootstrap, OnApplicationS
 	@bindThis
 	private notify(userId: string, body: string): void {
 		this.notificationService.createNotification(userId, 'earthquake', {
-			customBody: body,
-			customHeader: '地震・津波情報',
+			// OS通知だけを見ても「旗鯖独自の予測」ではなく、気象庁発表済み情報の
+			// 伝達だと分かるよう出典を明示する（P2P地震情報 API 経由）。
+			customBody: `${body}\n出典: 気象庁 / P2P地震情報`,
+			customHeader: '地震・津波情報（気象庁発表）',
 			customIcon: null,
 			customLink: '/earthquake',
 		});
