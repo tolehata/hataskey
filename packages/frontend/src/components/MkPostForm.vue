@@ -6,13 +6,19 @@ SPDX-License-Identifier: AGPL-3.0-only
 <template>
 <div
 	data-htk-weather-postform
-	:class="[$style.root, { [$style.modal]: modal, _popup: modal && (!prefer.s.useBlurEffect || !prefer.s.useBlurEffectForModal || !prefer.s.removeModalBgColorForBlur), _popupAcrylic: modal && prefer.s.useBlurEffect && prefer.s.useBlurEffectForModal && prefer.s.removeModalBgColorForBlur }]"
+	:class="[$style.root, { [$style.modal]: modal, [$style.postDelayActive]: postDelay.active.value, _popup: modal && (!prefer.s.useBlurEffect || !prefer.s.useBlurEffectForModal || !prefer.s.removeModalBgColorForBlur), _popupAcrylic: modal && prefer.s.useBlurEffect && prefer.s.useBlurEffectForModal && prefer.s.removeModalBgColorForBlur }]"
 	:style="visibilityBorderStyle"
 	@dragover.stop="onDragover"
 	@dragenter="onDragenter"
 	@dragleave="onDragleave"
 	@drop.stop="onDrop"
 >
+	<div v-if="postDelay.active.value" :class="$style.postDelayFrame" :style="postDelay.frameStyle.value" aria-hidden="true"></div>
+	<div v-if="postDelay.active.value" :class="$style.postDelayStatus" role="status" aria-live="polite">
+		<strong>{{ postDelay.remainingSeconds.value }}秒後に投稿</strong>
+		<button class="_button" :class="$style.postDelayAction" @click="postDelay.cancel()">取り消す</button>
+		<button class="_button" :class="$style.postDelayActionPrimary" @click="postDelay.sendNow()">今すぐ投稿</button>
+	</div>
 	<header :class="$style.header">
 		<div :class="$style.headerLeft">
 			<button v-if="!fixed" :class="$style.cancel" class="_button" @click="cancel"><i class="ti ti-x"></i></button>
@@ -198,6 +204,7 @@ import { useUploader } from '@/composables/use-uploader.js';
 import { haptic } from '@/utility/haptic.js';
 import * as sound from '@/utility/sound.js';
 import MkDeliveryTargetEditor from '@/components/MkDeliveryTargetEditor.vue';
+import { createPostSendDelayController, postSendDelayEnabled, postSendDelaySeconds } from '@/utility/post-send-delay.js';
 
 const $i = ensureSignin();
 
@@ -234,6 +241,7 @@ const otherSettingsButton = useTemplateRef('otherSettingsButton');
 
 const posting = ref(false);
 const posted = ref(false);
+const postDelay = createPostSendDelayController();
 const text = ref(props.initialText ?? '');
 const files = shallowRef(props.initialFiles ?? ([] as Misskey.entities.DriveFile[]));
 const poll = ref<PollEditorModelValue | null>(null);
@@ -252,6 +260,8 @@ const visibleUsers = ref<Misskey.entities.UserDetailed[]>([]);
 
 // 旗鯖fork: 投稿範囲に応じて投稿フォームの枠色を変える(アクセシビリティ)。レイアウトに影響しないよう inset box-shadow で枠を描く。
 const visibilityBorderStyle = computed(() => {
+	// カウント中は同じ位置を進捗枠へ譲り、公開範囲色との二重枠を防ぐ。終了後は元の色へ戻る。
+	if (postDelay.active.value) return undefined;
 	if (!prefer.s['postFormVisibilityBorder.enabled']) return undefined;
 	const w = prefer.s['postFormVisibilityBorder.width'];
 	let color: string;
@@ -298,6 +308,7 @@ const uploader = useUploader({
 });
 
 onUnmounted(() => {
+	postDelay.dispose();
 	uploader.dispose();
 });
 
@@ -378,7 +389,7 @@ const cwTextLength = computed((): number => {
 const maxCwTextLength = 100;
 
 const canPost = computed((): boolean => {
-	return !props.mock && !posting.value && !posted.value && !uploader.uploading.value && (uploader.items.value.length === 0 || uploader.readyForUpload.value) &&
+	return !props.mock && !posting.value && !posted.value && !postDelay.active.value && !uploader.uploading.value && (uploader.items.value.length === 0 || uploader.readyForUpload.value) &&
 		(
 			1 <= textLength.value ||
 			1 <= files.value.length ||
@@ -1250,6 +1261,13 @@ async function post(ev?: MouseEvent) {
 		}
 	}
 
+	// 旗鯖fork(ベータ): 警告・添付アップロード・プラグイン処理を終えた後、notes/create の直前でだけ待つ。
+	// 編集・予約・下書き・外部アカウント投稿は対象外。待機中はサーバーや連合へ予約状態を送らない。
+	if (postSendDelayEnabled.value && !props.updateMode && !useExternalAccount.value) {
+		const shouldSend = await postDelay.begin(postSendDelaySeconds.value);
+		if (!shouldSend) return;
+	}
+
 	posting.value = true;
 
 	// 外部アカウントでの投稿
@@ -1872,6 +1890,59 @@ defineExpose({
 		overflow-x: clip;
 		overflow-y: auto;
 	}
+}
+
+.postDelayActive > :not(.postDelayFrame):not(.postDelayStatus) {
+	pointer-events: none;
+}
+
+.postDelayFrame {
+	position: absolute;
+	inset: 0;
+	z-index: 1090;
+	padding: 3px;
+	border-radius: 12px;
+	background: conic-gradient(from -90deg, var(--MI_THEME-accent) 0deg var(--hata-post-delay-progress), color-mix(in srgb, var(--MI_THEME-accent) 18%, transparent) 0deg 360deg);
+	pointer-events: none;
+	-webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+	-webkit-mask-composite: xor;
+	mask-composite: exclude;
+}
+
+.postDelayStatus {
+	position: absolute;
+	left: 50%;
+	bottom: 10px;
+	z-index: 1100;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	max-width: calc(100% - 20px);
+	padding: 7px 8px 7px 12px;
+	border: 1px solid color-mix(in srgb, var(--MI_THEME-accent) 45%, var(--MI_THEME-divider));
+	border-radius: 999px;
+	background: color-mix(in srgb, var(--MI_THEME-panel) 94%, transparent);
+	box-shadow: 0 6px 24px color-mix(in srgb, var(--MI_THEME-shadow) 32%, transparent);
+	white-space: nowrap;
+	transform: translateX(-50%);
+	backdrop-filter: blur(10px);
+}
+
+.postDelayAction,
+.postDelayActionPrimary {
+	padding: 5px 9px;
+	border-radius: 999px;
+	font-weight: 700;
+}
+
+.postDelayAction {
+	color: var(--MI_THEME-fg);
+	background: color-mix(in srgb, var(--MI_THEME-fg) 8%, transparent);
+}
+
+.postDelayActionPrimary {
+	color: var(--MI_THEME-fgOnAccent);
+	background: var(--MI_THEME-accent);
 }
 
 //#region header

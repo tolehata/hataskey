@@ -32,6 +32,23 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<i class="ti ti-chevron-right" :class="$style.featureArrow"></i>
 			</button>
 
+			<div :class="$style.toggleSection">
+				<div :class="$style.toggleHead"><i class="ti ti-clock-play"></i> 投稿</div>
+				<div :class="$style.toggleCard">
+					<MkSwitch v-model="postDelayEnabledModel">
+						<template #label>投稿前にカウントダウンする</template>
+						<template #caption>投稿ボタンを押してから送信まで猶予を作ります。待機中は投稿フォームの枠が残り時間を示し、「取り消す」「今すぐ投稿」を選べます。この端末だけに保存されます。</template>
+					</MkSwitch>
+					<div v-if="postDelayEnabledModel" :class="$style.delayOptions">
+						<div :class="$style.delayLabel">待機する時間</div>
+						<div :class="$style.presets" aria-label="待機時間の早選び">
+							<button v-for="seconds in POST_SEND_DELAY_PRESETS" :key="seconds" class="_button" :class="[$style.preset, postDelaySecondsModel === seconds && $style.presetActive]" @click="postDelaySecondsModel = seconds">{{ seconds }}秒</button>
+						</div>
+					</div>
+					<div :class="$style.localNote"><i class="ti ti-device-mobile"></i> 通常投稿・返信・引用が対象です。編集、予約投稿、下書き、外部アカウント投稿には適用しません。</div>
+				</div>
+			</div>
+
 			<!-- 旗鯖fork(#31): ミュートユーザーのリアクション非表示は正式機能へ昇格し、
 			     旗鯖独自設定 → 旗鯖全体 → リアクション に移動した。
 			     ⚠️ここに案内を残す（前の場所を覚えている人が迷子になるため）。
@@ -53,12 +70,30 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
+import { computed } from 'vue';
 import MkInfo from '@/components/MkInfo.vue';
+import MkSwitch from '@/components/MkSwitch.vue';
 import { definePage } from '@/page.js';
 import { useRouter } from '@/router.js';
 import { hataBetaFeatures } from '@/utility/hatafeed.js';
+import {
+	POST_SEND_DELAY_PRESETS,
+	postSendDelayEnabled,
+	postSendDelaySeconds,
+	setPostSendDelayEnabled,
+	setPostSendDelaySeconds,
+} from '@/utility/post-send-delay.js';
 
 const router = useRouter();
+
+const postDelayEnabledModel = computed({
+	get: () => postSendDelayEnabled.value,
+	set: setPostSendDelayEnabled,
+});
+const postDelaySecondsModel = computed({
+	get: () => postSendDelaySeconds.value,
+	set: setPostSendDelaySeconds,
+});
 
 // 旗鯖fork: HatasabaUI 2 / 吹き出し / ミュートリアクション非表示 はいずれも正式機能へ昇格し、
 // 旗鯖独自設定へ移動した。ここには移動先への案内だけを残している。
@@ -98,4 +133,11 @@ definePage(() => ({
 .toggleSection { margin-top: 6px; }
 .toggleHead { font-weight: 700; font-size: .9em; opacity: .8; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
 .toggleCard { background: var(--MI_THEME-panel); border: 1px solid var(--MI_THEME-divider); border-radius: 14px; padding: 16px 18px; }
+.delayOptions { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; }
+.delayLabel { font-size: .84em; font-weight: 700; opacity: .78; }
+.presets { display: flex; flex-wrap: wrap; gap: 7px; }
+.preset { min-width: 54px; padding: 7px 11px; border: 1px solid var(--MI_THEME-divider); border-radius: 999px; background: var(--MI_THEME-bg); font-weight: 700; }
+.presetActive { color: var(--MI_THEME-fgOnAccent); border-color: var(--MI_THEME-accent); background: var(--MI_THEME-accent); }
+.localNote { margin-top: 14px; font-size: .82em; line-height: 1.6; opacity: .72; }
+
 </style>

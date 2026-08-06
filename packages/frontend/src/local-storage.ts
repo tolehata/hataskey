@@ -38,7 +38,10 @@ export type Keys = (
 	'hidePreferencesRestoreSuggestion' |
 	'isSafeMode' |
 	'hatasabaUiLastTab' | // 旗鯖fork: HatasabaUI で最後に開いていたタブ (再読み込み時の復元用)
+	'hatasabaLastListId' | // 旗鯖fork: HatasabaUIで最後に開いたリスト(端末ごと)
+	'hatasabaLastAntennaId' | // 旗鯖fork: HatasabaUIで最後に開いたアンテナ(端末ごと)
 	'hatasabaDeckIgnoreWidth' | // 旗鯖fork(#6): 画面幅に関係なくデッキ表示を強制する端末ローカル設定(プロファイル非同期)
+	'hatasabaTabSwipeEnabled' | // 旗鯖fork: HatasabaUIの左右スワイプによるタブ移動(端末ローカル・既定ON)
 	'hataHideMutedReactions' | // 旗鯖fork(#31): ミュートユーザーのリアクションをチップから隠す端末ローカル設定
 	'hataGlassUi' | // 旗鯖fork(ベータ): HatasabaUI 2(グラスモーフィズム刷新)を有効化する端末ローカル設定
 	'hataGlassUiBubble' | // 旗鯖fork(ベータ): HatasabaUI 2 でノートの吹き出しデザイン(枠+＜口)を表示する端末ローカル設定
@@ -50,6 +53,11 @@ export type Keys = (
 	'hata_muted_reactions_notice_shown' | // 旗鯖fork(#31): 改善案内ダイアログを表示済みか(端末ごと1回)
 	'hataWhatsNewShownVersion' | // 旗鯖fork: 「今回の更新内容」を出した旗鯖の版(端末ごと。版が上がると再表示)
 	'hata_hask_tiles_v1_migrated' | // 旗鯖fork(#36): Haskホームの新タイル(feedbackNotif/earthquake)を既存ユーザーに追加済みか
+	'hata_sidebar_v7_migrated' | // 旗鯖fork: サイドバーへ「キャッシュをクリア」を追加済みか
+	'hataPostDelayEnabled' | // 旗鯖fork(ベータ): 投稿前カウントダウンを使うか(端末ローカル)
+	'hataPostDelaySeconds' | // 旗鯖fork(ベータ): 投稿前カウントダウンの秒数(3・5・10秒)
+	'hataSideStudio' | // 旗鯖fork: HataSideStudio の端末ローカルなプロファイルと拡大/縮小レイアウト
+	'hataSideStudioTutorialDone' | // 旗鯖fork: HataSideStudio の初回チュートリアルを完了またはスキップ済みか(端末ローカル)
 	`miux:${string}` |
 	`ui:folder:${string}` |
 	`themes:${string}` | // DEPRECATED
