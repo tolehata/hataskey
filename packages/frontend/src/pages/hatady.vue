@@ -12,10 +12,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 <template>
 <MkStickyContainer>
-	<div :class="[$style.root, 'hatady-scope']" :data-hatady-theme="theme" :data-hatady-lang="effectiveLang">
+	<div :class="[$style.root, 'hatady-scope']" :data-hatady-theme="theme" :data-hatady-lang="effectiveLang" :data-deck-ui="isHatasabaDeckUi ? 'on' : undefined">
 		<!-- Hatady 独自ヘッダー -->
 		<header :class="$style.header">
-			<button :class="$style.backBtn" :title="t('back')" @click="goBack"><i class="ti ti-arrow-left"></i></button>
+			<button v-if="!isHatasabaDeckUi" type="button" :class="$style.backBtn" :title="t('back')" :aria-label="t('back')" @click="goBack"><i class="ti ti-chevron-left"></i></button>
 			<button :class="$style.brand" :title="t('mylog')" @click="setTab('mylog')">
 				<span :class="$style.logoMark"><i class="ti ti-book-2"></i></span>
 				<span :class="$style.logo">Hatady</span>
@@ -200,7 +200,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 											</div>
 											<div v-if="log.body" :class="$style.cardBody">{{ log.body }}</div>
 											<div :class="$style.cardFoot">
-												<span v-if="hyTag(log.tag)" :class="$style.tagChip" :style="{ background: hyTag(log.tag).bg, color: hyTag(log.tag).fg }"><i :class="['ti', hyTag(log.tag).icon]"></i> {{ lang === 'en' ? hyTag(log.tag).en : hyTag(log.tag).ja }}</span>
+												<span v-if="hyTag(log.tag)" :class="$style.tagChip" :style="{ background: hyTag(log.tag)?.bg, color: hyTag(log.tag)?.fg }"><i :class="['ti', hyTag(log.tag)?.icon]"></i> {{ lang === 'en' ? hyTag(log.tag)?.en : hyTag(log.tag)?.ja }}</span>
 												<span :class="$style.footRight">
 													<HatadyReactions :target="{ logId: log.id }" :reactions="log.reactions ?? {}" :myReaction="log.myReaction ?? null"/>
 													<button :class="$style.commentBtn" @click="openConversation(log)"><i class="ti ti-message-circle-2"></i> {{ log.commentsCount }}</button>
@@ -289,7 +289,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 						</div>
 						<div :class="$style.feedTopics">
 							<HySubjectBadge :subject="log.subject"/>
-							<span v-if="hyTag(log.tag)" :class="$style.tagChip" :style="{ background: hyTag(log.tag).bg, color: hyTag(log.tag).fg }"><i :class="['ti', hyTag(log.tag).icon]"></i> {{ effectiveLang === 'en' ? hyTag(log.tag).en : hyTag(log.tag).ja }}</span>
+								<span v-if="hyTag(log.tag)" :class="$style.tagChip" :style="{ background: hyTag(log.tag)?.bg, color: hyTag(log.tag)?.fg }"><i :class="['ti', hyTag(log.tag)?.icon]"></i> {{ effectiveLang === 'en' ? hyTag(log.tag)?.en : hyTag(log.tag)?.ja }}</span>
 							<span :class="$style.feedDuration"><i class="ti ti-hourglass"></i> {{ fmtDuration(log.durationMinutes) }}</span>
 						</div>
 						<div :class="$style.feedTitle">{{ log.title }}</div>
@@ -385,6 +385,9 @@ import { hySubjectPalette, hyTag, hyBookmarkColor } from '@/utility/hatady.js';
 import { loadHySubjects } from '@/utility/hatady-subjects.js';
 import { hatadyTheme, hatadyLang, hatadyTzOffset, loadHatadyDisplay, loadTutorialDone, setTutorialDone } from '@/utility/hatady-prefs.js';
 import { claimAchievement } from '@/utility/achievements.js';
+import { miLocalStorage } from '@/local-storage.js';
+
+const isHatasabaDeckUi = computed(() => miLocalStorage.getItem('ui') === 'simple' && prefer.r['simpleUi.deckMode'].value === true);
 
 // 旗鯖fork(Hatady i18n 土台): 言語(ja/en)は表示設定で独立に切替。まずはシェル分の最小辞書。
 //   後続フェーズで各画面の文言を足していく。テーマ(paper/espresso)も表示設定で独立に切替。
@@ -1126,7 +1129,7 @@ definePage(() => ({
 	flex-wrap: wrap;
 }
 .backBtn {
-	display: none; align-items: center; justify-content: center;
+	display: inline-flex; align-items: center; justify-content: center;
 	width: 34px; height: 34px; border-radius: 999px; flex-shrink: 0;
 	background: var(--hy-chip-bg); border: 1px solid var(--hy-border); color: var(--hy-body);
 	cursor: pointer; font-size: 18px;
@@ -1194,7 +1197,7 @@ definePage(() => ({
 .phText { font-size: 13px; color: var(--hy-muted); }
 
 /* ===== マイログ ===== */
-.mylog { max-width: 1180px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+.mylog { max-width: 1180px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; container-type: inline-size; }
 
 /* 今日の記録状況バナー */
 .todayBanner { display: flex; align-items: center; gap: 13px; border-radius: 14px; padding: 14px 18px; margin-bottom: 18px; border: 1px solid var(--hy-border); }
@@ -1280,6 +1283,27 @@ definePage(() => ({
 	.heatmap { order: -1; flex: 0 1 auto; min-width: 0; }
 	.heroStats { flex: 1 1 236px; max-width: none; }
 	.heroNum { white-space: nowrap; }
+}
+
+/* 旗鯖fork: スマホではカードを本文幅の内側に保ったまま、
+   20週分の列をカードの利用可能な横幅いっぱいへ均等配置する。 */
+@container (max-width: 556px) {
+	.heatGrid {
+		display: grid;
+		grid-template-columns: repeat(20, minmax(0, 14px));
+		justify-content: space-between;
+		gap: 0;
+		width: 100%;
+		min-width: 0;
+		box-sizing: border-box;
+		overflow-x: hidden;
+	}
+	.heatCol { min-width: 0; }
+	.heatCell {
+		width: 100%;
+		height: auto;
+		aspect-ratio: 1;
+	}
 }
 
 /* 日別ポップアップ(position:fixed で画面基準に浮かせる) */
@@ -1491,7 +1515,6 @@ definePage(() => ({
 /* モバイル */
 @media (max-width: 600px) {
 	.header { padding: 10px 14px; gap: 10px; }
-	.backBtn { display: inline-flex; }
 	.logo { display: none; }
 	.headDivider { display: none; }
 	.recordText { display: none; }
