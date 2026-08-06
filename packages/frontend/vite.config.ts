@@ -264,6 +264,9 @@ export function getConfig(): UserConfig {
 
 		test: {
 			environment: 'happy-dom',
+			// 旗鯖fork: Node 22+ の実験的 webstorage getter が happy-dom の localStorage を
+			// 覆い隠して読込時エラーになるのを防ぐ(詳細は test/vitest-setup.ts)。
+			setupFiles: ['./test/vitest-setup.ts'],
 			deps: {
 				optimizer: {
 					web: {
