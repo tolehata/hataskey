@@ -53,6 +53,8 @@ export type RolePolicies = {
 	mascotMaxExpressions: number;
 	mascotMaxPhrases: number;
 	mascotMaxCharacters: number;
+	// 旗鯖fork: HataSideStudio に端末ローカル保存できるレイアウトプロファイル数。
+	hataSideStudioProfileLimit: number;
 	// 旗鯖fork: マスコット機能そのものの利用可否(デフォルト不許可。許可ロールでのみ利用可)
 	canUseMascot: boolean;
 	// 旗鯖fork: HataFeed(フィードバックセンター)へのアクセス可否(デフォルト不許可。許可ロールでのみ利用可)
@@ -113,6 +115,7 @@ export const DEFAULT_POLICIES: RolePolicies = {
 	mascotMaxExpressions: 5,
 	mascotMaxPhrases: 10,
 	mascotMaxCharacters: 3,
+	hataSideStudioProfileLimit: 3,
 	canUseMascot: false,
 	canAccessHataFeed: false,
 	canUseHatadySync: true,
@@ -455,6 +458,7 @@ export class RoleService implements OnApplicationShutdown, OnModuleInit {
 			mascotMaxExpressions: calc('mascotMaxExpressions', vs => Math.max(...vs)),
 			mascotMaxPhrases: calc('mascotMaxPhrases', vs => Math.max(...vs)),
 			mascotMaxCharacters: calc('mascotMaxCharacters', vs => Math.max(...vs)),
+			hataSideStudioProfileLimit: calc('hataSideStudioProfileLimit', vs => Math.max(...vs)),
 			canUseMascot: calc('canUseMascot', vs => vs.some(v => v === true)),
 			canAccessHataFeed: calc('canAccessHataFeed', vs => vs.some(v => v === true)),
 			// 既定 true。いずれかのロールで false にされたら無効(every)。

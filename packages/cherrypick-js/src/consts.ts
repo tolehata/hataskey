@@ -220,6 +220,7 @@ export const rolePolicies = [
 	'mascotMaxExpressions',
 	'mascotMaxPhrases',
 	'mascotMaxCharacters',
+	'hataSideStudioProfileLimit',
 	'canAccessHataFeed',
 	'canUseHatadySync',
 	'hatadyBookLimit',

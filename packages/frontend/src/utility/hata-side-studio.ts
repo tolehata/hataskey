@@ -1,0 +1,725 @@
+/*
+ * SPDX-FileCopyrightText: Tolehata and hatasaba-project
+ * SPDX-License-Identifier: AGPL-3.0-only
+ *
+ * HataSideStudio の端末ローカル設定。
+ * サイドメニューは端末の幅・入力方法に強く依存するため prefer へは保存せず、
+ * miLocalStorage の1キーだけで完結させる。サーバー・連合へは送信しない。
+ */
+
+import { ref } from 'vue';
+import { miLocalStorage } from '@/local-storage.js';
+import {
+	HATA_SIDE_WIDGET_REGISTRY,
+	HATA_SIDE_WIDGET_SIZES,
+	normalizeHataSideWidgetKind,
+} from '@/utility/hata-side-studio-widgets.js';
+import type {
+	HataSideWidgetContent,
+	HataSideWidgetData,
+	HataSideWidgetKind,
+	HataSideWidgetSize,
+	HataSideWidgetSizeSetting,
+} from '@/utility/hata-side-studio-widgets.js';
+
+export type {
+	HataSideNativeWidgetKind,
+	HataSideWidgetContent,
+	HataSideWidgetData,
+	HataSideWidgetDefinition,
+	HataSideWidgetKind,
+	HataSideWidgetSizeSetting,
+} from '@/utility/hata-side-studio-widgets.js';
+
+export const HATA_SIDE_STUDIO_FORMAT_VERSION = 6;
+export const HATA_SIDE_STUDIO_DEFAULT_PROFILE_LIMIT = 3;
+export const HATA_SIDE_STUDIO_STORAGE_KEY = 'hataSideStudio';
+export const HATA_SIDE_STUDIO_CHANGE_EVENT = 'hata-side-studio:change';
+export const HATA_SIDE_STUDIO_BROADCAST_CHANNEL = 'hata-side-studio';
+
+export const HATA_SIDE_STUDIO_FIXED_IDS = new Set(['more', 'settings', 'realtime', 'admin']);
+export const HATA_SIDE_STUDIO_DEAD_IDS = new Set(['whatsNew']);
+export const HATA_SIDE_STUDIO_MENU_ID_ALIASES: Readonly<Record<string, string>> = {
+	// 「もっと！」では ui、従来のHatasabaUIサイドバーでは uiSetup という
+	// 異なるIDだが、どちらも同じUI切り替えを開く。別ボタンとして重複させない。
+	ui: 'uiSetup',
+};
+
+export function normalizeHataSideStudioMenuId(menuId: string): string {
+	return HATA_SIDE_STUDIO_MENU_ID_ALIASES[menuId] ?? menuId;
+}
+
+export type HataSideButtonShape = 'rounded' | 'circle' | 'pill';
+export type HataSideButtonSize = HataSideWidgetSize;
+export type HataSideExpandedWidth = 'normal' | 'wide';
+export type HataSideGradientEasing = 'linear' | 'ease-in' | 'ease-out' | 'ease-in-out';
+export type HataSideBorderStyle = 'solid' | 'dashed' | 'double';
+
+export type HataSideAppearance = {
+	shape: HataSideButtonShape;
+	size: HataSideButtonSize;
+	background: string;
+	border: string;
+	foreground: string;
+	borderWidth: number;
+	borderStyle: HataSideBorderStyle;
+	gradientEnabled: boolean;
+	gradientTo: string;
+	gradientAngle: number;
+	gradientEasing: HataSideGradientEasing;
+	rotation: number;
+	showLabel: boolean;
+};
+
+export type HataSideButton = HataSideAppearance & {
+	type: 'button';
+	id: string;
+	menuId: string;
+	icon: string;
+	label: string;
+	targetId?: string;
+};
+
+export type HataSideWidget = Omit<HataSideAppearance, 'showLabel' | 'rotation'> & {
+	type: 'widget';
+	id: string;
+	kind: HataSideWidgetKind;
+	label: string;
+	/** Native widget の `widget.data` と同じ形。 */
+	data: HataSideWidgetData;
+	/** 表示サイズごとの native data 上書きとレイアウト最適化。 */
+	sizeSettings: Record<HataSideButtonSize, HataSideWidgetSizeSetting>;
+	/** @deprecated v2 UIとの互換投影。sizeSettings[*].content が正本。 */
+	content: Record<HataSideButtonSize, HataSideWidgetContent>;
+};
+
+export type HataSideGroup = {
+	type: 'group';
+	id: string;
+	name: string;
+	showName: boolean;
+	columns: 1 | 2 | 3;
+	masonry: boolean;
+	background: string;
+	border: string;
+	foreground: string;
+	borderWidth: number;
+	borderStyle: HataSideBorderStyle;
+	gradientEnabled: boolean;
+	gradientTo: string;
+	gradientAngle: number;
+	gradientEasing: HataSideGradientEasing;
+	children: Array<HataSideButton | HataSideWidget>;
+};
+
+export type HataSideNode = HataSideButton | HataSideWidget | HataSideGroup;
+
+export type HataSideStudioProfile = {
+	id: string;
+	name: string;
+	expanded: {
+		nodes: HataSideNode[];
+		columns: 1 | 2 | 3;
+		width: HataSideExpandedWidth;
+		parallax: boolean;
+	};
+	collapsed: {
+		buttons: HataSideButton[];
+	};
+	updatedAt: string;
+};
+
+export type HataSideStudioStore = {
+	version: typeof HATA_SIDE_STUDIO_FORMAT_VERSION;
+	activeProfileId: string;
+	profiles: HataSideStudioProfile[];
+};
+
+export type SidebarSourceItem = {
+	id: string;
+	icon: string;
+	label: string;
+	group?: string;
+	visible?: boolean;
+	external?: boolean;
+	url?: string;
+};
+
+export type HataSideStudioSourceCatalog = {
+	sidebar: SidebarSourceItem[];
+	more: SidebarSourceItem[];
+	all: SidebarSourceItem[];
+};
+
+const fallbackSidebar: SidebarSourceItem[] = [
+	{ id: 'timeline', icon: 'ti ti-home', label: 'タイムライン', group: 'basic' },
+	{ id: 'search', icon: 'ti ti-search', label: '検索', group: 'basic' },
+	{ id: 'notifications', icon: 'ti ti-bell', label: '通知', group: 'basic' },
+	{ id: 'chat', icon: 'ti ti-messages', label: 'メッセージ', group: 'basic' },
+	{ id: 'announcements', icon: 'ti ti-speakerphone', label: 'お知らせ', group: 'basic' },
+	{ id: 'drive', icon: 'ti ti-cloud', label: 'ドライブ', group: 'basic' },
+	{ id: 'favorites', icon: 'ti ti-star', label: 'お気に入り', group: 'basic' },
+	{ id: 'hatask', icon: 'ti ti-eye', label: 'Hatask', group: 'hata' },
+	{ id: 'hatafeed', icon: 'ti ti-message-report', label: 'HataFeed', group: 'hata' },
+	{ id: 'hatady', icon: 'ti ti-book-2', label: 'Hatady', group: 'hata' },
+	{ id: 'earthquake', icon: 'ti ti-activity', label: '地震・津波情報', group: 'hata' },
+	{ id: 'uiSetup', icon: 'ti ti-wand', label: 'UI切り替え', group: 'discover' },
+	{ id: 'explore', icon: 'ti ti-hash', label: 'みつける', group: 'discover' },
+	{ id: 'followRequests', icon: 'ti ti-user-plus', label: 'フォロー申請', group: 'discover' },
+	{ id: 'channels', icon: 'ti ti-device-tv', label: 'チャンネル', group: 'discover' },
+	{ id: 'reload', icon: 'ti ti-refresh', label: 'リロード', group: 'more' },
+	{ id: 'cacheClear', icon: 'ti ti-trash', label: 'キャッシュをクリア', group: 'more' },
+];
+
+const groupNames: Record<string, string> = {
+	basic: '基本機能',
+	hata: '旗鯖独自',
+	discover: '発見・交流',
+	more: 'その他',
+};
+
+function uid(prefix: string): string {
+	return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function clamp(value: number, min: number, max: number): number {
+	return Math.min(max, Math.max(min, Number.isFinite(value) ? value : min));
+}
+
+function isColor(value: unknown): value is string {
+	return typeof value === 'string' && (/^#[0-9a-f]{3,8}$/i.test(value) || /^var\(--[a-z0-9-_]+(?:,\s*[^)]+)?\)$/i.test(value) || value === 'transparent');
+}
+
+export function createDefaultAppearance(): HataSideAppearance {
+	return {
+		shape: 'rounded',
+		size: 'normal',
+		background: 'transparent',
+		border: 'transparent',
+		borderWidth: 1,
+		borderStyle: 'solid',
+		foreground: 'var(--MI_THEME-fg)',
+		gradientEnabled: false,
+		gradientTo: '#7c5cff',
+		gradientAngle: 135,
+		gradientEasing: 'linear',
+		rotation: 0,
+		showLabel: true,
+	};
+}
+
+export function createButton(source: SidebarSourceItem, appearance?: Partial<HataSideAppearance>): HataSideButton {
+	return {
+		type: 'button',
+		id: uid('button'),
+		menuId: source.id,
+		icon: source.icon,
+		label: source.label,
+		...createDefaultAppearance(),
+		...appearance,
+	};
+}
+
+function cloneWidgetSizeSettings(kind: HataSideWidgetKind): Record<HataSideButtonSize, HataSideWidgetSizeSetting> {
+	const definition = HATA_SIDE_WIDGET_REGISTRY[kind];
+	return {
+		small: { ...definition.sizes.small, data: { ...definition.sizes.small.data } },
+		normal: { ...definition.sizes.normal, data: { ...definition.sizes.normal.data } },
+		large: { ...definition.sizes.large, data: { ...definition.sizes.large.data } },
+	};
+}
+
+export function createWidget(kind: HataSideWidgetKind = 'clock'): HataSideWidget {
+	const base = createDefaultAppearance();
+	const normalizedKind = normalizeHataSideWidgetKind(kind);
+	const definition = HATA_SIDE_WIDGET_REGISTRY[normalizedKind];
+	const sizeSettings = cloneWidgetSizeSettings(normalizedKind);
+	return {
+		type: 'widget',
+		id: uid('widget'),
+		kind: normalizedKind,
+		label: definition.label,
+		shape: 'rounded',
+		size: 'normal',
+		background: 'var(--MI_THEME-panel)',
+		border: 'var(--MI_THEME-divider)',
+		borderWidth: 1,
+		borderStyle: 'solid',
+		foreground: base.foreground,
+		gradientEnabled: false,
+		gradientTo: '#7c5cff',
+		gradientAngle: 135,
+		gradientEasing: 'linear',
+		data: { ...definition.defaultData },
+		sizeSettings,
+		content: {
+			small: sizeSettings.small.content,
+			normal: sizeSettings.normal.content,
+			large: sizeSettings.large.content,
+		},
+	};
+}
+
+export function createGroup(name = '新しいグループ'): HataSideGroup {
+	return {
+		type: 'group',
+		id: uid('group'),
+		name,
+		showName: true,
+		columns: 1,
+		masonry: false,
+		background: 'transparent',
+		border: 'var(--MI_THEME-divider)',
+		foreground: 'var(--MI_THEME-fg)',
+		borderWidth: 1,
+		borderStyle: 'solid',
+		gradientEnabled: false,
+		gradientTo: '#7c5cff',
+		gradientAngle: 135,
+		gradientEasing: 'linear',
+		children: [],
+	};
+}
+
+function sanitizeSourceItem(value: unknown, forcedGroup?: string): SidebarSourceItem | null {
+	if (!isRecord(value) || typeof value.id !== 'string' || !/^[a-z0-9:_-]{1,80}$/i.test(value.id)) return null;
+	const id = normalizeHataSideStudioMenuId(value.id);
+	if (HATA_SIDE_STUDIO_DEAD_IDS.has(id) || HATA_SIDE_STUDIO_FIXED_IDS.has(id)) return null;
+	const group = forcedGroup ?? (typeof value.group === 'string' && /^[a-z0-9:_-]{1,40}$/i.test(value.group) ? value.group : undefined);
+	const url = typeof value.url === 'string' && /^https?:\/\//i.test(value.url) ? value.url.slice(0, 2048) : undefined;
+	return {
+		id,
+		icon: typeof value.icon === 'string' ? value.icon.slice(0, 120) : 'ti ti-point',
+		label: typeof value.label === 'string' && value.label.length > 0 ? value.label.slice(0, 80) : value.id,
+		...(group ? { group } : {}),
+		...(typeof value.visible === 'boolean' ? { visible: value.visible } : {}),
+		...(value.external === true && url ? { external: true, url } : {}),
+	};
+}
+
+function sanitizeSourceList(source: readonly unknown[], forcedGroup?: string): SidebarSourceItem[] {
+	const result: SidebarSourceItem[] = [];
+	const seen = new Set<string>();
+	for (const raw of source) {
+		const item = sanitizeSourceItem(raw, forcedGroup);
+		if (!item || seen.has(item.id)) continue;
+		seen.add(item.id);
+		result.push(item);
+	}
+	return result;
+}
+
+export function createHataSideStudioSourceCatalog(
+	sidebarSource: readonly unknown[],
+	moreSource: readonly unknown[] = [],
+): HataSideStudioSourceCatalog {
+	const sidebar = sanitizeSourceList(sidebarSource);
+	const more = sanitizeSourceList(moreSource, 'more');
+	const all = [...sidebar];
+	const seen = new Set(sidebar.map(item => item.id));
+	for (const item of more) {
+		if (seen.has(item.id)) continue;
+		seen.add(item.id);
+		all.push(item);
+	}
+	return { sidebar, more, all };
+}
+
+function visibleSource(source: readonly SidebarSourceItem[]): SidebarSourceItem[] {
+	return sanitizeSourceList(source).filter(item => item.visible !== false);
+}
+
+export function createDefaultProfile(source: readonly SidebarSourceItem[] = fallbackSidebar, name = 'デフォルト'): HataSideStudioProfile {
+	const visible = visibleSource(source);
+	// 同じgroupが途中で再登場しても先頭のgroupへ吸い上げない。設定画面に並んでいる
+	// 順序を連続したまとまりとして写し取り、「現在の並び」を完全に保持する。
+	const groups: HataSideGroup[] = [];
+	let currentGroupKey: string | null = null;
+	let currentGroup: HataSideGroup | null = null;
+	for (const item of visible) {
+		const key = item.group ?? 'basic';
+		if (currentGroup == null || currentGroupKey !== key) {
+			currentGroup = createGroup(groupNames[key] ?? key);
+			groups.push(currentGroup);
+			currentGroupKey = key;
+		}
+		currentGroup.children.push(createButton(item));
+	}
+	return {
+		id: uid('profile'),
+		name,
+		expanded: { nodes: groups.filter(group => group.children.length > 0), columns: 1, width: 'normal', parallax: false },
+		collapsed: { buttons: visible.map(item => createButton(item, { shape: 'circle', showLabel: false, size: 'small', border: 'var(--MI_THEME-divider)' })) },
+		updatedAt: new Date().toISOString(),
+	};
+}
+
+export function createDefaultStore(source: readonly SidebarSourceItem[] = fallbackSidebar): HataSideStudioStore {
+	const profile = createDefaultProfile(source);
+	return { version: HATA_SIDE_STUDIO_FORMAT_VERSION, activeProfileId: profile.id, profiles: [profile] };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return value != null && typeof value === 'object' && !Array.isArray(value);
+}
+
+const UNSAFE_DATA_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+
+function sanitizeJsonValue(value: unknown, depth = 0): unknown {
+	if (value == null || typeof value === 'boolean' || typeof value === 'string') return value;
+	if (typeof value === 'number') return Number.isFinite(value) ? value : undefined;
+	if (depth >= 20) return undefined;
+	if (Array.isArray(value)) {
+		return value.slice(0, 1000).map(item => sanitizeJsonValue(item, depth + 1)).filter(item => item !== undefined);
+	}
+	if (!isRecord(value)) return undefined;
+	const result: Record<string, unknown> = {};
+	for (const [key, item] of Object.entries(value).slice(0, 1000)) {
+		if (UNSAFE_DATA_KEYS.has(key)) continue;
+		const sanitized = sanitizeJsonValue(item, depth + 1);
+		if (sanitized !== undefined) result[key] = sanitized;
+	}
+	return result;
+}
+
+function sanitizeWidgetData(value: unknown): HataSideWidgetData {
+	const sanitized = sanitizeJsonValue(value);
+	return isRecord(sanitized) ? sanitized : {};
+}
+
+function isWidgetContent(value: unknown): value is HataSideWidgetContent {
+	return value === 'compact' || value === 'normal' || value === 'detail';
+}
+
+function sanitizeWidgetSizeSetting(
+	value: unknown,
+	fallback: HataSideWidgetSizeSetting,
+	legacyContent: unknown,
+): HataSideWidgetSizeSetting {
+	const raw = isRecord(value) ? value : {};
+	return {
+		content: isWidgetContent(raw.content) ? raw.content : isWidgetContent(legacyContent) ? legacyContent : fallback.content,
+		minHeight: raw.minHeight == null ? fallback.minHeight : clamp(Number(raw.minHeight), 40, 1600),
+		data: { ...sanitizeWidgetData(fallback.data), ...sanitizeWidgetData(raw.data) },
+	};
+}
+
+function sanitizeAppearance(value: Record<string, unknown>, collapsed = false): HataSideAppearance {
+	const base = createDefaultAppearance();
+	return {
+		shape: value.shape === 'circle' || value.shape === 'pill' || value.shape === 'rounded' ? value.shape : base.shape,
+		size: value.size === 'small' || value.size === 'large' || value.size === 'normal' ? value.size : base.size,
+		background: isColor(value.background) ? value.background : base.background,
+		border: isColor(value.border) ? value.border : base.border,
+		borderWidth: value.borderWidth == null ? base.borderWidth : clamp(Number(value.borderWidth), 0, 5),
+		borderStyle: value.borderStyle === 'dashed' || value.borderStyle === 'double' ? value.borderStyle : 'solid',
+		foreground: isColor(value.foreground) ? value.foreground : base.foreground,
+		gradientEnabled: value.gradientEnabled === true,
+		gradientTo: isColor(value.gradientTo) ? value.gradientTo : base.gradientTo,
+		gradientAngle: clamp(Number(value.gradientAngle), 0, 360),
+		gradientEasing: value.gradientEasing === 'ease-in' || value.gradientEasing === 'ease-out' || value.gradientEasing === 'ease-in-out' ? value.gradientEasing : 'linear',
+		rotation: collapsed ? 0 : clamp(Number(value.rotation), -12, 12),
+		showLabel: collapsed ? false : value.showLabel !== false,
+	};
+}
+
+function sanitizeButton(value: unknown, collapsed = false): HataSideButton | null {
+	if (!isRecord(value) || value.type !== 'button' || typeof value.menuId !== 'string') return null;
+	const menuId = normalizeHataSideStudioMenuId(value.menuId);
+	if (HATA_SIDE_STUDIO_DEAD_IDS.has(menuId) || HATA_SIDE_STUDIO_FIXED_IDS.has(menuId)) return null;
+	return {
+		type: 'button',
+		id: typeof value.id === 'string' ? value.id : uid('button'),
+		menuId,
+		icon: typeof value.icon === 'string' ? value.icon : 'ti ti-point',
+		label: typeof value.label === 'string' ? value.label.slice(0, 80) : value.menuId,
+		...(typeof value.targetId === 'string' && /^[a-z0-9]+$/i.test(value.targetId) ? { targetId: value.targetId } : {}),
+		...sanitizeAppearance(value, collapsed),
+	};
+}
+
+function sanitizeWidget(value: unknown, refreshLayoutDefaults = false): HataSideWidget | null {
+	if (!isRecord(value) || value.type !== 'widget') return null;
+	const kind = normalizeHataSideWidgetKind(value.kind);
+	const definition = HATA_SIDE_WIDGET_REGISTRY[kind];
+	const appearance = sanitizeAppearance(value);
+	const legacyContent = isRecord(value.content) ? value.content : {};
+	// v4 以前は一部ウィジェットの既定高が過大で、保存済み値がCSS修正後も
+	// レイアウトを押し広げていた。v5移行時だけ高さとnative propsの既定を
+	// レジストリから再取得し、利用者が選んだ表示内容・色・形・基礎dataは保つ。
+	const rawSizeSettings = !refreshLayoutDefaults && isRecord(value.sizeSettings) ? value.sizeSettings : {};
+	const sizeSettings = Object.fromEntries(HATA_SIDE_WIDGET_SIZES.map(size => [
+		size,
+		sanitizeWidgetSizeSetting(rawSizeSettings[size], definition.sizes[size], legacyContent[size]),
+	])) as Record<HataSideButtonSize, HataSideWidgetSizeSetting>;
+	return {
+		type: 'widget', id: typeof value.id === 'string' ? value.id : uid('widget'), kind,
+		label: typeof value.label === 'string' ? value.label.slice(0, 80) : definition.label,
+		shape: appearance.shape, size: appearance.size, background: appearance.background, border: appearance.border,
+		borderWidth: appearance.borderWidth, borderStyle: appearance.borderStyle,
+		foreground: appearance.foreground, gradientEnabled: appearance.gradientEnabled, gradientTo: appearance.gradientTo,
+		gradientAngle: appearance.gradientAngle, gradientEasing: appearance.gradientEasing,
+		data: { ...sanitizeWidgetData(definition.defaultData), ...sanitizeWidgetData(value.data) },
+		sizeSettings,
+		content: {
+			small: sizeSettings.small.content,
+			normal: sizeSettings.normal.content,
+			large: sizeSettings.large.content,
+		},
+	};
+}
+
+function sanitizeGroup(value: unknown, refreshLayoutDefaults = false): HataSideGroup | null {
+	if (!isRecord(value) || value.type !== 'group') return null;
+	const children = Array.isArray(value.children) ? value.children.map(child => isRecord(child) && child.type === 'widget' ? sanitizeWidget(child, refreshLayoutDefaults) : sanitizeButton(child)).filter((child): child is HataSideButton | HataSideWidget => child != null) : [];
+	const columns = value.columns === 2 || value.columns === 3 ? value.columns : 1;
+	const safeChildren = columns === 1 ? children : children.map(child => child.size === 'large' ? { ...child, size: 'normal' as const } : child);
+	return {
+		type: 'group', id: typeof value.id === 'string' ? value.id : uid('group'),
+		name: typeof value.name === 'string' ? value.name.slice(0, 80) : 'グループ', showName: value.showName !== false,
+		columns, masonry: value.masonry === true,
+		background: isColor(value.background) ? value.background : 'transparent', border: isColor(value.border) ? value.border : 'var(--MI_THEME-divider)',
+		foreground: isColor(value.foreground) ? value.foreground : 'var(--MI_THEME-fg)',
+		borderWidth: value.borderWidth == null ? 1 : clamp(Number(value.borderWidth), 0, 5), borderStyle: value.borderStyle === 'dashed' || value.borderStyle === 'double' ? value.borderStyle : 'solid',
+		gradientEnabled: value.gradientEnabled === true, gradientTo: isColor(value.gradientTo) ? value.gradientTo : '#7c5cff',
+		gradientAngle: clamp(Number(value.gradientAngle), 0, 360),
+		gradientEasing: value.gradientEasing === 'ease-in' || value.gradientEasing === 'ease-out' || value.gradientEasing === 'ease-in-out' ? value.gradientEasing : 'linear',
+		children: safeChildren,
+	};
+}
+
+export function sanitizeHataSideStudioStore(value: unknown, source: readonly SidebarSourceItem[] = fallbackSidebar): HataSideStudioStore {
+	if (!isRecord(value) || !Array.isArray(value.profiles)) return createDefaultStore(source);
+	const storedVersion = Number(value.version);
+	// ウィジェット高の再取得はv5移行だけに限定する。今後formatを上げても、
+	// 利用者がサイズ別に調整した高さを毎回既定値へ戻さない。
+	const refreshLayoutDefaults = !Number.isFinite(storedVersion) || storedVersion < 5;
+	const repairCollapsedBorders = !Number.isFinite(storedVersion) || storedVersion < 6;
+	const profiles: HataSideStudioProfile[] = [];
+	for (const raw of value.profiles.slice(0, 50)) {
+		if (!isRecord(raw)) continue;
+		const expandedRaw = isRecord(raw.expanded) ? raw.expanded : {};
+		const collapsedRaw = isRecord(raw.collapsed) ? raw.collapsed : {};
+		const columns = expandedRaw.columns === 2 || expandedRaw.columns === 3 ? expandedRaw.columns : 1;
+		const nodes = (Array.isArray(expandedRaw.nodes) ? expandedRaw.nodes.map(node => isRecord(node) && node.type === 'group' ? sanitizeGroup(node, refreshLayoutDefaults) : isRecord(node) && node.type === 'widget' ? sanitizeWidget(node, refreshLayoutDefaults) : sanitizeButton(node)).filter((node): node is HataSideNode => node != null) : [])
+			.map(node => columns > 1 && node.type !== 'group' && node.size === 'large' ? { ...node, size: 'normal' as const } : node);
+		const buttons = Array.isArray(collapsedRaw.buttons) ? collapsedRaw.buttons
+			.map(button => sanitizeButton(button, true))
+			.filter((button): button is HataSideButton => button != null)
+			.map(button => repairCollapsedBorders && button.border === 'transparent' ? { ...button, border: 'var(--MI_THEME-divider)' } : button) : [];
+		profiles.push({
+			id: typeof raw.id === 'string' ? raw.id : uid('profile'), name: typeof raw.name === 'string' ? raw.name.slice(0, 80) : 'プロファイル',
+			expanded: {
+				nodes,
+				columns,
+				width: expandedRaw.width === 'wide' ? 'wide' : 'normal',
+				parallax: expandedRaw.parallax === true,
+			},
+			collapsed: { buttons }, updatedAt: typeof raw.updatedAt === 'string' ? raw.updatedAt : new Date().toISOString(),
+		});
+	}
+	if (profiles.length === 0) profiles.push(createDefaultProfile(source));
+	const requestedActive = typeof value.activeProfileId === 'string' ? value.activeProfileId : '';
+	return { version: HATA_SIDE_STUDIO_FORMAT_VERSION, activeProfileId: profiles.some(profile => profile.id === requestedActive) ? requestedActive : profiles[0].id, profiles };
+}
+
+function readStore(): HataSideStudioStore {
+	const raw = miLocalStorage.getItem(HATA_SIDE_STUDIO_STORAGE_KEY);
+	if (raw == null) return createDefaultStore();
+	try {
+		return sanitizeHataSideStudioStore(JSON.parse(raw));
+	} catch {
+		return createDefaultStore();
+	}
+}
+
+export const hataSideStudioStore = ref<HataSideStudioStore>(readStore());
+
+type HataSideStudioSyncDetail = {
+	sourceId: string;
+	serialized: string;
+};
+
+const syncSourceId = uid('sync');
+let syncStarted = false;
+let syncChannel: BroadcastChannel | null = null;
+
+function isSyncDetail(value: unknown): value is HataSideStudioSyncDetail {
+	return isRecord(value) && typeof value.sourceId === 'string' && typeof value.serialized === 'string';
+}
+
+function applySerializedHataSideStudioStore(serialized: string, sourceId = ''): void {
+	if (sourceId === syncSourceId || !isHataSideStudioStorageString(serialized)) return;
+	try {
+		const next = sanitizeHataSideStudioStore(JSON.parse(serialized));
+		if (JSON.stringify(hataSideStudioStore.value) !== JSON.stringify(next)) hataSideStudioStore.value = next;
+	} catch {
+		// 他ウィンドウから壊れた値が来ても、現在表示中の正常な設定は維持する。
+	}
+}
+
+function onHataSideStudioCustomEvent(event: Event): void {
+	const detail = (event as CustomEvent<unknown>).detail;
+	if (isSyncDetail(detail)) applySerializedHataSideStudioStore(detail.serialized, detail.sourceId);
+}
+
+function onHataSideStudioStorage(event: StorageEvent): void {
+	if (event.key === HATA_SIDE_STUDIO_STORAGE_KEY && event.newValue != null) applySerializedHataSideStudioStore(event.newValue);
+}
+
+function onHataSideStudioBroadcast(event: MessageEvent<unknown>): void {
+	if (isSyncDetail(event.data)) applySerializedHataSideStudioStore(event.data.serialized, event.data.sourceId);
+}
+
+export function startHataSideStudioSync(): void {
+	if (syncStarted || typeof window === 'undefined') return;
+	syncStarted = true;
+	window.addEventListener(HATA_SIDE_STUDIO_CHANGE_EVENT, onHataSideStudioCustomEvent);
+	window.addEventListener('storage', onHataSideStudioStorage);
+	try {
+		if (typeof window.BroadcastChannel === 'function') {
+			syncChannel = new window.BroadcastChannel(HATA_SIDE_STUDIO_BROADCAST_CHANNEL);
+			syncChannel.addEventListener('message', onHataSideStudioBroadcast);
+			(syncChannel as BroadcastChannel & { unref?: () => void }).unref?.();
+		}
+	} catch {
+		syncChannel = null;
+	}
+}
+
+export function stopHataSideStudioSync(): void {
+	if (!syncStarted || typeof window === 'undefined') return;
+	syncStarted = false;
+	window.removeEventListener(HATA_SIDE_STUDIO_CHANGE_EVENT, onHataSideStudioCustomEvent);
+	window.removeEventListener('storage', onHataSideStudioStorage);
+	if (syncChannel) {
+		syncChannel.removeEventListener('message', onHataSideStudioBroadcast);
+		syncChannel.close();
+		syncChannel = null;
+	}
+}
+
+function notifyHataSideStudioChange(serialized: string): void {
+	if (typeof window === 'undefined') return;
+	const detail: HataSideStudioSyncDetail = { sourceId: syncSourceId, serialized };
+	try {
+		window.dispatchEvent(new CustomEvent<HataSideStudioSyncDetail>(HATA_SIDE_STUDIO_CHANGE_EVENT, { detail }));
+		syncChannel?.postMessage(detail);
+	} catch {
+		// 保存自体は成功しているため、通知機構が使えない環境でも状態を巻き戻さない。
+	}
+}
+
+export function ensureHataSideStudioInitialized(source: readonly SidebarSourceItem[]): void {
+	const raw = miLocalStorage.getItem(HATA_SIDE_STUDIO_STORAGE_KEY);
+	if (raw == null) {
+		applyHataSideStudioStore(createDefaultStore(source));
+		return;
+	}
+	try {
+		const migrated = sanitizeHataSideStudioStore(JSON.parse(raw), source);
+		const serialized = JSON.stringify(migrated);
+		hataSideStudioStore.value = migrated;
+		if (serialized !== raw) {
+			miLocalStorage.setItem(HATA_SIDE_STUDIO_STORAGE_KEY, serialized);
+			notifyHataSideStudioChange(serialized);
+		}
+		return;
+	} catch {
+		// JSONとして壊れている場合だけ、現在のサイドメニューから作り直す。
+	}
+	applyHataSideStudioStore(createDefaultStore(source));
+}
+
+export function applyHataSideStudioStore(value: HataSideStudioStore): void {
+	const next = sanitizeHataSideStudioStore(value);
+	const serialized = JSON.stringify(next);
+	hataSideStudioStore.value = next;
+	miLocalStorage.setItem(HATA_SIDE_STUDIO_STORAGE_KEY, serialized);
+	notifyHataSideStudioChange(serialized);
+}
+
+startHataSideStudioSync();
+
+export function getActiveHataSideProfile(store = hataSideStudioStore.value): HataSideStudioProfile {
+	return store.profiles.find(profile => profile.id === store.activeProfileId) ?? store.profiles[0];
+}
+
+export function getHataSideStudioMenuIds(profile: HataSideStudioProfile): Set<string> {
+	const ids = new Set<string>();
+	for (const node of profile.expanded.nodes) {
+		if (node.type === 'button') ids.add(node.menuId);
+		else if (node.type === 'group') {
+			for (const child of node.children) if (child.type === 'button') ids.add(child.menuId);
+		}
+	}
+	for (const button of profile.collapsed.buttons) ids.add(button.menuId);
+	return ids;
+}
+
+export function getActiveHataSideStudioMenuIds(store = hataSideStudioStore.value): Set<string> {
+	return getHataSideStudioMenuIds(getActiveHataSideProfile(store));
+}
+
+export function getAvailableHataSideStudioMoreItems(
+	catalog: HataSideStudioSourceCatalog,
+	store = hataSideStudioStore.value,
+): SidebarSourceItem[] {
+	const usedIds = getActiveHataSideStudioMenuIds(store);
+	return catalog.more.filter(item => !usedIds.has(item.id));
+}
+
+export function copyExpandedToCollapsed(profile: HataSideStudioProfile): HataSideStudioProfile {
+	const buttons: HataSideButton[] = [];
+	for (const node of profile.expanded.nodes) {
+		if (node.type === 'button') buttons.push(node);
+		if (node.type === 'group') buttons.push(...node.children.filter((child): child is HataSideButton => child.type === 'button'));
+	}
+	return {
+		...profile,
+		collapsed: { buttons: buttons.map(button => ({ ...button, id: uid('button'), shape: button.shape === 'pill' ? 'rounded' : button.shape, size: 'small', rotation: 0, showLabel: false })) },
+		updatedAt: new Date().toISOString(),
+	};
+}
+
+export function copyCollapsedToExpanded(profile: HataSideStudioProfile): HataSideStudioProfile {
+	const widgets = profile.expanded.nodes.filter((node): node is HataSideWidget => node.type === 'widget');
+	const copied = profile.collapsed.buttons.map(button => ({ ...button, id: uid('button'), size: 'normal' as const, showLabel: true }));
+	const group = createGroup('縮小メニューからコピー');
+	group.children = copied;
+	return { ...profile, expanded: { ...profile.expanded, nodes: [group, ...widgets] }, updatedAt: new Date().toISOString() };
+}
+
+export function mergeHataSideGroups(profile: HataSideStudioProfile, sourceId: string, targetId: string): HataSideStudioProfile {
+	if (sourceId === targetId) return profile;
+	const source = profile.expanded.nodes.find((node): node is HataSideGroup => node.type === 'group' && node.id === sourceId);
+	const target = profile.expanded.nodes.find((node): node is HataSideGroup => node.type === 'group' && node.id === targetId);
+	if (!source || !target) return profile;
+	const nodes = profile.expanded.nodes.filter(node => node.id !== sourceId).map(node => node.id === targetId ? { ...target, children: [...target.children, ...source.children] } : node);
+	return { ...profile, expanded: { ...profile.expanded, nodes }, updatedAt: new Date().toISOString() };
+}
+
+export function gradientCss(item: Pick<HataSideAppearance, 'background' | 'gradientEnabled' | 'gradientTo' | 'gradientAngle' | 'gradientEasing'>): string {
+	if (!item.gradientEnabled) return item.background;
+	const stops: Record<HataSideGradientEasing, string> = {
+		linear: `${item.background} 0%, ${item.gradientTo} 100%`,
+		'ease-in': `${item.background} 0%, ${item.background} 28%, ${item.gradientTo} 100%`,
+		'ease-out': `${item.background} 0%, ${item.gradientTo} 72%, ${item.gradientTo} 100%`,
+		'ease-in-out': `${item.background} 0%, color-mix(in srgb, ${item.background} 75%, ${item.gradientTo}) 28%, color-mix(in srgb, ${item.background} 25%, ${item.gradientTo}) 72%, ${item.gradientTo} 100%`,
+	};
+	return `linear-gradient(${clamp(item.gradientAngle, 0, 360)}deg, ${stops[item.gradientEasing]})`;
+}
+
+export function isHataSideStudioStorageString(value: unknown): boolean {
+	if (typeof value !== 'string' || value.length > 512 * 1024) return false;
+	try {
+		const parsed = JSON.parse(value);
+		return isRecord(parsed) && Array.isArray(parsed.profiles);
+	} catch {
+		return false;
+	}
+}
+
+export function cloneHataSideStudioStore(store: HataSideStudioStore): HataSideStudioStore {
+	return JSON.parse(JSON.stringify(store)) as HataSideStudioStore;
+}

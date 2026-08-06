@@ -651,6 +651,20 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</div>
 			</MkFolder>
 
+			<MkFolder v-if="matchQuery(['HataSideStudioのプロファイル上限', 'hataSideStudioProfileLimit'])">
+				<template #label>HataSideStudioのプロファイル上限</template>
+				<template #suffix>
+					<span v-if="role.policies.hataSideStudioProfileLimit.useDefault" :class="$style.useDefaultLabel">{{ i18n.ts._role.useBaseValue }}</span>
+					<span v-else>{{ role.policies.hataSideStudioProfileLimit.value }}</span>
+					<span :class="$style.priorityIndicator"><i :class="getPriorityIcon(role.policies.hataSideStudioProfileLimit)"></i></span>
+				</template>
+				<div class="_gaps">
+					<MkSwitch v-model="role.policies.hataSideStudioProfileLimit.useDefault" :readonly="readonly"><template #label>{{ i18n.ts._role.useBaseValue }}</template></MkSwitch>
+					<MkInput v-model="role.policies.hataSideStudioProfileLimit.value" :disabled="role.policies.hataSideStudioProfileLimit.useDefault" type="number" :min="1" :max="20" :readonly="readonly"><template #caption>端末ごとに保存できるHataSideStudioのレイアウト数です。</template></MkInput>
+					<MkRange v-model="role.policies.hataSideStudioProfileLimit.priority" :min="0" :max="2" :step="1" easing :textConverter="(v) => v === 0 ? i18n.ts._role._priority.low : v === 1 ? i18n.ts._role._priority.middle : v === 2 ? i18n.ts._role._priority.high : ''"><template #label>{{ i18n.ts._role.priority }}</template></MkRange>
+				</div>
+			</MkFolder>
+
 			<MkFolder v-if="matchQuery([i18n.ts._role._options.maxFileSize, 'maxFileSizeMb'])">
 				<template #label>{{ i18n.ts._role._options.maxFileSize }}</template>
 				<template #suffix>
@@ -1162,6 +1176,7 @@ const HATA_FORK_POLICY_DEFAULTS: Record<string, boolean | number> = {
 	canMakePrivateChannel: false,
 	canRequestRemoteEmoji: false,
 	emojiRequestLimit: 10,
+	hataSideStudioProfileLimit: 3,
 };
 for (const [key, def] of Object.entries(HATA_FORK_POLICY_DEFAULTS)) {
 	if ((role.value.policies as any)[key] == null) {

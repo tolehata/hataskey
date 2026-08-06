@@ -268,6 +268,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 						</MkInput>
 					</MkFolder>
 
+					<MkFolder v-if="matchQuery(['HataSideStudioのプロファイル上限', 'hataSideStudioProfileLimit'])">
+						<template #label>HataSideStudioのプロファイル上限</template>
+						<template #suffix>{{ policies.hataSideStudioProfileLimit }}</template>
+						<MkInput v-model="policies.hataSideStudioProfileLimit" type="number" :min="1" :max="20"><template #caption>端末ごとに保存できるレイアウトプロファイル数（既定: 3）。</template></MkInput>
+					</MkFolder>
+
 					<MkFolder v-if="matchQuery([i18n.ts._role._options.maxFileSize, 'maxFileSizeMb'])">
 						<template #label>{{ i18n.ts._role._options.maxFileSize }}</template>
 						<template #suffix>{{ policies.maxFileSizeMb }}MB</template>
