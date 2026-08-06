@@ -118,17 +118,21 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<button @click="importImage" title="画像読込"><i class="ti ti-photo-plus"></i></button>
 						<button @click="clearLayer" :class="$style.danger" title="クリア"><i class="ti ti-trash"></i></button>
 					</div>
-					<div v-if="!isMobile" :class="$style.tbGroup">
-						<button :class="{ [$style.active]: panMode }" @click="panMode = !panMode" title="ハンドツール（キャンバス移動）"><i class="ti ti-hand-finger"></i></button>
-						<button :class="{ [$style.active]: showMinimap }" @click="showMinimap = !showMinimap" title="ミニマップ表示/非表示"><i class="ti ti-map"></i></button>
+					<div :class="$style.tbGroup">
+						<button v-if="!isMobile" :data-active="panMode" title="ハンドツール（キャンバス移動）" @click="panMode = !panMode"><i class="ti ti-hand-finger"></i></button>
+						<button :data-active="showMinimap" title="プレビュー表示/非表示" @click="showMinimap = !showMinimap"><i class="ti ti-map"></i></button>
 					</div>
 				</div>
 				<div v-if="lasso" :class="$style.lassoBar">
-					<span>選択範囲を編集中</span>
-					<label>拡大: <input type="range" v-model.number="lasso.scale" min="10" max="300">{{ lasso.scale }}%</label>
-					<label>回転: <input type="range" v-model.number="lasso.rotation" min="-180" max="180">{{ lasso.rotation }}°</label>
-					<button @click="applyLasso">確定</button>
-					<button @click="cancelLasso">キャンセル</button>
+					<span :class="$style.lassoStatus"><i class="ti ti-lasso"></i>選択範囲を編集中</span>
+					<div :class="$style.lassoControls">
+						<label>拡大 <input type="range" v-model.number="lasso.scale" min="10" max="300"><strong>{{ lasso.scale }}%</strong></label>
+						<label>回転 <input type="range" v-model.number="lasso.rotation" min="-180" max="180"><strong>{{ lasso.rotation }}°</strong></label>
+					</div>
+					<div :class="$style.lassoActions">
+						<button :class="$style.lassoCancel" @click="cancelLasso">キャンセル</button>
+						<button :class="$style.lassoApply" @click="applyLasso"><i class="ti ti-check"></i>確定</button>
+					</div>
 				</div>
 				<div ref="scroller" :class="$style.scroller" @wheel.prevent="onWheel" @touchstart="onTouchStart" @touchmove="onTouchMove" @touchend="onTouchEnd">
 					<div :class="$style.canvasWrap" :style="{ width: canvasWidth * zoom + 'px', height: canvasHeight * zoom + 'px', transform: `translate(${panX}px, ${panY}px)` }">
@@ -161,10 +165,11 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<button :class="$style.placeBtn" @click="cancelTransform">キャンセル</button>
 						<button :class="[$style.placeBtn, $style.placeApply]" @click="applyTransform"><i class="ti ti-check"></i>配置</button>
 					</div>
-				</div>
-				<div v-if="showMinimap && !isMobile" :class="$style.minimap" @pointerdown.stop="onMiniDown" @pointermove.stop="onMiniMove" @pointerup.stop="onMiniUp" @pointerleave.stop="onMiniUp">
-					<canvas ref="miniCanvas" width="160" height="100"></canvas>
-					<div :class="$style.miniRect" :style="miniRect"></div>
+					<!-- プレビューは scroller 内に置き、上段の投げ縄操作バーを覆わない。 -->
+					<div v-if="showMinimap" :class="$style.minimap" @pointerdown.stop="onMiniDown" @pointermove.stop="onMiniMove" @pointerup.stop="onMiniUp" @pointerleave.stop="onMiniUp">
+						<canvas ref="miniCanvas" width="160" height="100"></canvas>
+						<div :class="$style.miniRect" :style="miniRect"></div>
+					</div>
 				</div>
 			</div>
 			<!-- 右パネル -->
@@ -226,13 +231,14 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { ref, reactive, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
+import { ref, reactive, computed, watch, onMounted, onUnmounted, nextTick, useCssModule } from 'vue';
 import MkModal from '@/components/MkModal.vue';
 import * as os from '@/os.js';
 import { uploadFile, chooseDriveFile } from '@/utility/drive.js';
 import { getProxiedImageUrl } from '@/utility/media-proxy.js';
 
 const emit = defineEmits<{ (ev: 'closed'): void }>();
+const style = useCssModule();
 
 const modal = ref<InstanceType<typeof MkModal>>();
 const canvas = ref<HTMLCanvasElement>();
@@ -386,7 +392,7 @@ function updateMinimap() {
 
 function updateThumb(el: HTMLCanvasElement | null, ly: Layer) { if (el) { const dpr = window.devicePixelRatio || 1; const w = 60, h = 40; if (el.width !== w * dpr || el.height !== h * dpr) { el.width = w * dpr; el.height = h * dpr; } const x = el.getContext('2d')!; x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high'; x.clearRect(0, 0, el.width, el.height); x.drawImage(ly.canvas, 0, 0, el.width, el.height); } }
 
-watch([curLayer, layers], () => { nextTick(() => { layers.value.forEach((ly, i) => { const el = document.querySelectorAll('.' + $style.layerThumb)[i] as HTMLCanvasElement; updateThumb(el, ly); }); }); }, { deep: true });
+watch([curLayer, layers], () => { nextTick(() => { layers.value.forEach((ly, i) => { const el = document.querySelectorAll('.' + style.layerThumb)[i] as HTMLCanvasElement; updateThumb(el, ly); }); }); }, { deep: true });
 
 function saveHistory() {
 	const data = layers.value.map(ly => ly.ctx.getImageData(0, 0, canvasWidth.value, canvasHeight.value));
@@ -898,7 +904,7 @@ function forceClose() { showCloseConfirm.value = false; modal.value?.close(); }
 </script>
 
 <style lang="scss" module>
-.root { display: flex; flex-direction: column; width: 98vw; max-width: 1800px; height: 94vh; background: var(--MI_THEME-panel); border-radius: 20px; overflow: hidden; &.dark { background: #1a1a1a; color: #f0f0f0; .leftPanel, .rightPanel, .header, .footer, .toolbar, .card { background: #222; border-color: #333; } } }
+.root { display: flex; flex-direction: column; width: 98vw; max-width: 1800px; height: 94vh; background: var(--MI_THEME-panel); border-radius: 20px; overflow: hidden; &.dark { background: #1a1a1a; color: #f0f0f0; .leftPanel, .rightPanel, .header, .footer, .toolbar, .card, .lassoBar { background: #222; border-color: #333; } .lassoStatus { color: #f0f0f0; } .lassoControls label { color: #c2c8d0; } .lassoCancel { background: #333; color: #f0f0f0; border-color: #4b4b4b !important; } } }
 .overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 100; backdrop-filter: blur(4px); }
 .modalBox { background: var(--MI_THEME-panel); color: var(--MI_THEME-fg); border-radius: 20px; padding: 28px; text-align: center; max-width: 90vw; max-width: 480px; box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
 .modalHeader { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 20px; i { font-size: 28px; color: var(--MI_THEME-accent); } h2 { margin: 0; font-size: 20px; } }
@@ -1027,16 +1033,91 @@ input[type="range"] { width: 100%; height: 6px; -webkit-appearance: none; backgr
 .colorSwatch { width: 36px; height: 36px; border-radius: 10px; border: 2px solid var(--MI_THEME-divider); }
 .colorDisplay input { flex: 1; padding: 10px; border: 1px solid var(--MI_THEME-divider); border-radius: 8px; background: var(--MI_THEME-bg); color: var(--MI_THEME-fg); font-family: monospace; font-size: 13px; }
 .palette { display: flex; flex-wrap: wrap; gap: 6px; button { width: 24px; height: 24px; border: 2px solid transparent; border-radius: 6px; cursor: pointer; &:hover { transform: scale(1.15); border-color: var(--MI_THEME-fg); } } }
-.canvasArea { flex: 1; flex-direction: column; display: flex; overflow: hidden; background: #4a4a4a; position: relative; }
+.canvasArea { flex: 1; flex-direction: column; display: flex; overflow: hidden; background: #4a4a4a; position: relative; container-type: inline-size; }
 .toolbar { display: flex; gap: 8px; padding: 10px; background: var(--MI_THEME-panel); border-bottom: 1px solid var(--MI_THEME-divider); flex-wrap: wrap; }
-.tbGroup { display: flex; gap: 2px; background: var(--MI_THEME-bg); padding: 4px; border-radius: 10px; button { padding: 8px 10px; border: none; border-radius: 8px; background: transparent; color: var(--MI_THEME-fg); cursor: pointer; &:hover { background: var(--MI_THEME-buttonHoverBg); } &:disabled { opacity: 0.3; cursor: not-allowed; } &.danger:hover { background: #e74c3c; color: #fff; } &.active { background: var(--MI_THEME-accent); color: #fff; } i { font-size: 16px; } } }
-.lassoBar { display: flex; align-items: center; gap: 16px; padding: 10px 16px; background: #fff8e1; border-bottom: 1px solid #ffca28; font-size: 12px; label { display: flex; align-items: center; gap: 8px; input { width: 100px; } } button { padding: 8px 16px; border: none; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 500; } }
+.tbGroup { display: flex; gap: 2px; background: var(--MI_THEME-bg); padding: 4px; border-radius: 10px; button { padding: 8px 10px; border: none; border-radius: 8px; background: transparent; color: var(--MI_THEME-fg); cursor: pointer; &:hover { background: var(--MI_THEME-buttonHoverBg); } &:disabled { opacity: 0.3; cursor: not-allowed; } &.danger:hover { background: #e74c3c; color: #fff; } &[data-active="true"] { background: var(--MI_THEME-accent); color: #fff; } i { font-size: 16px; } } }
+.lassoBar {
+	display: flex;
+	align-items: center;
+	gap: 10px 16px;
+	flex-wrap: wrap;
+	padding: 10px 12px;
+	background: var(--MI_THEME-panel);
+	color: var(--MI_THEME-fg);
+	border-bottom: 1px solid var(--MI_THEME-divider);
+	font-size: 12px;
+}
+.lassoStatus {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	flex: 0 0 auto;
+	font-weight: 750;
+	color: var(--MI_THEME-fg);
+	i { color: var(--MI_THEME-accent); font-size: 16px; }
+}
+.lassoControls {
+	display: flex;
+	align-items: center;
+	gap: 8px 14px;
+	flex: 1 1 310px;
+	min-width: 0;
+	label {
+		display: flex;
+		align-items: center;
+		gap: 7px;
+		min-width: 0;
+		color: color-mix(in srgb, var(--MI_THEME-fg) 72%, transparent);
+		white-space: nowrap;
+		input { width: clamp(72px, 12cqw, 112px); min-width: 64px; }
+		strong { min-width: 38px; color: var(--MI_THEME-accent); font-variant-numeric: tabular-nums; }
+	}
+}
+.lassoActions {
+	display: flex;
+	align-items: center;
+	gap: 7px;
+	flex: 0 0 auto;
+	margin-left: auto;
+	button {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		gap: 4px;
+		min-height: 34px;
+		padding: 8px 14px;
+		border: 1px solid transparent;
+		border-radius: 9px;
+		cursor: pointer;
+		font-size: 12px;
+		font-weight: 700;
+	}
+}
+.lassoCancel {
+	background: var(--MI_THEME-bg);
+	color: var(--MI_THEME-fg);
+	border-color: var(--MI_THEME-divider) !important;
+	&:hover { background: var(--MI_THEME-buttonHoverBg); }
+}
+.lassoApply {
+	background: var(--MI_THEME-accent);
+	color: var(--MI_THEME-fgOnAccent, #fff);
+	&:hover { filter: brightness(1.08); }
+}
+@container (max-width: 620px) {
+	.lassoControls { order: 3; flex-basis: 100%; }
+}
+@container (max-width: 390px) {
+	.lassoControls { align-items: stretch; flex-direction: column; }
+	.lassoControls label { display: grid; grid-template-columns: 34px minmax(64px, 1fr) 42px; }
+	.lassoControls label input { width: 100%; }
+}
 .scroller { flex: 1; overflow: hidden; position: relative; display: flex; align-items: center; justify-content: center; }
 .canvasWrap { position: relative; flex-shrink: 0; }
 .canvas { display: block; background: #fff; box-shadow: 0 4px 24px rgba(0,0,0,0.3); touch-action: none; }
 .preview { position: absolute; top: 0; left: 0; pointer-events: none; }
 .lassoBox { position: absolute; border: 2px dashed #0af; cursor: move; transform-origin: center; canvas { display: block; } }
-.minimap { position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.8); border-radius: 10px; padding: 6px; cursor: pointer; touch-action: none; canvas { display: block; border-radius: 6px; } }
+.minimap { position: absolute; top: 10px; right: 10px; z-index: 30; background: rgba(0,0,0,0.8); border-radius: 10px; padding: 6px; cursor: pointer; touch-action: none; canvas { display: block; border-radius: 6px; } }
 .miniRect { position: absolute; border: 2px solid #ff6b6b; background: rgba(255,107,107,0.15); border-radius: 2px; pointer-events: none; }
 .layers { display: flex; flex-direction: column; gap: 8px; max-height: 350px; overflow-y: auto; }
 .layerHint { font-size: 10px; opacity: 0.5; margin-bottom: 8px; text-align: center; }
