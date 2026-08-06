@@ -101,3 +101,6 @@ HATA-PITFALLS.md
 # Zone.Identifier (Windows mark-of-the-web ADS。WSL/Windows でコロンが別文字に化けるため両方無視)
 *:Zone.Identifier
 *Zone.Identifier
+
+# 花常の画像生成用リファレンス（実行時アセットではないため配布しない）
+/packages/frontend/hanaawase/ref/
