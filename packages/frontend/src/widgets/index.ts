@@ -44,6 +44,8 @@ export default function(app: App) {
 	app.component('WidgetMascot', defineAsyncComponent(() => import('./WidgetMascot.vue')));
 	// 旗鯖fork(#34): 地震・津波ウィジェット
 	app.component('WidgetEarthquake', defineAsyncComponent(() => import('./WidgetEarthquake.vue')));
+	// 旗鯖fork: Hataskのお花育成・一覧ウィジェット
+	app.component('WidgetHataskFlowers', defineAsyncComponent(() => import('./WidgetHataskFlowers.vue')));
 }
 
 // 連合関連のウィジェット（連合無効時に隠す）
@@ -86,6 +88,7 @@ export const widgets = [
 	'weather',
 	'mascot', // 旗鯖fork(#11): マスコットウィジェット
 	'earthquake', // 旗鯖fork(#34): 地震・津波ウィジェット
+	'hataskFlowers', // 旗鯖fork: Hataskお花ウィジェット
 
 	...federationWidgets,
 ];

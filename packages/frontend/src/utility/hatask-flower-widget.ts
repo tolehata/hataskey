@@ -1,0 +1,63 @@
+/*
+ * SPDX-FileCopyrightText: Tolehata and hatasaba-project
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+
+export type HataskFlower = {
+	id: string;
+	emoji: string;
+	name: string;
+	progress: number;
+	totalMinutes: number;
+	date?: string;
+};
+
+const FALLBACK_FLOWER: HataskFlower = {
+	id: 'growing',
+	emoji: '🌱',
+	name: 'わかば',
+	progress: 0,
+	totalMinutes: 0,
+};
+
+function safeText(value: unknown, fallback: string): string {
+	return typeof value === 'string' && value.trim() ? value.trim().slice(0, 80) : fallback;
+}
+
+function safeNumber(value: unknown): number {
+	return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+}
+
+export function normalizeGrowingFlower(value: unknown): HataskFlower {
+	if (value == null || typeof value !== 'object') return { ...FALLBACK_FLOWER };
+	const flower = value as Record<string, unknown>;
+	return {
+		id: 'growing',
+		emoji: safeText(flower.emoji, FALLBACK_FLOWER.emoji),
+		name: safeText(flower.name, FALLBACK_FLOWER.name),
+		progress: Math.max(0, Math.min(100, Math.round(safeNumber(flower.progress)))),
+		totalMinutes: Math.max(0, Math.round(safeNumber(flower.totalMinutes))),
+	};
+}
+
+export function normalizeFlowerGallery(value: unknown, limit: number): HataskFlower[] {
+	if (!Array.isArray(value)) return [];
+	const requestedLimit = Number.isFinite(limit) ? Math.round(limit) : 5;
+	const safeLimit = Math.max(1, Math.min(12, requestedLimit));
+	return value
+		.filter((item): item is Record<string, unknown> => item != null && typeof item === 'object')
+		.slice(0, safeLimit)
+		.map((item, index) => ({
+			id: safeText(item.id, `flower-${index}`),
+			emoji: safeText(item.emoji, '🌼'),
+			name: safeText(item.name, '名前のない花'),
+			progress: 100,
+			totalMinutes: 0,
+			date: typeof item.date === 'string' ? item.date.slice(0, 40) : undefined,
+		}));
+}
+
+export function countFlowerGallery(value: unknown): number {
+	if (!Array.isArray(value)) return 0;
+	return value.filter(item => item != null && typeof item === 'object').length;
+}
