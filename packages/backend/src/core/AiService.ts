@@ -114,9 +114,18 @@ export class AiService {
 		const base = baseUrl.endsWith('/') ? baseUrl : baseUrl + '/';
 		let url: string;
 		try {
-			url = new URL(DETECT_IMAGES_PATH, base).href;
+			const parsedBase = new URL(base);
+			if (
+				(parsedBase.protocol !== 'http:' && parsedBase.protocol !== 'https:') ||
+				parsedBase.username !== '' ||
+				parsedBase.password !== ''
+			) {
+				throw new TypeError('Unsupported sensitive detection URL');
+			}
+			url = new URL(DETECT_IMAGES_PATH, parsedBase).href;
 		} catch {
-			this.logger.warn(`invalid sensitiveMediaDetectionApiUrl: ${baseUrl}`);
+			// URL自体には認証情報などが含まれる可能性があるため、ログへ値を残さない。
+			this.logger.warn('invalid sensitiveMediaDetectionApiUrl');
 			return sources.map(() => null);
 		}
 
@@ -160,7 +169,9 @@ export class AiService {
 
 			const body = await res.json();
 			if (!isDetectImagesResponse(body)) {
-				this.logger.warn(`sensitive detection responded with unexpected shape: ${JSON.stringify(body)}`);
+				// 外部サービスの応答本文はログへ残さない。予期しない応答に機密や巨大文字列が
+				// 含まれても、サーバーログへ持ち込ませないため。
+				this.logger.warn('sensitive detection responded with unexpected shape');
 				return chunk.map(() => null);
 			}
 			if (!body.success) {

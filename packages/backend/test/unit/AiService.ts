@@ -117,6 +117,16 @@ describe('AiService', () => {
 		expect(sendMock).not.toHaveBeenCalled();
 	});
 
+	test.each([
+		'file:///tmp/detector',
+		'https://user:password@detector.example.com',
+	])('危険な接続先 %s は HTTP を叩かず拒否する', async (url) => {
+		const svc = makeService({ sensitiveMediaDetectionApiUrl: url });
+		const res = await svc.detectSensitiveMany([buf('a')]);
+		expect(res).toEqual([null]);
+		expect(sendMock).not.toHaveBeenCalled();
+	});
+
 	test('チャンク分割: maxImagesPerRequest ごとに順次送信する', async () => {
 		sendMock.mockResolvedValue(okResponse([
 			{ success: true, predictions: neutral() },
