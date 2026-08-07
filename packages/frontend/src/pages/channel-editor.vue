@@ -36,12 +36,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<span v-if="wasPrivate" :class="$style.lockedBadge"><i class="ti ti-lock"></i> 解除不可</span>
 				</template>
 				<template #caption>
-					許可したメンバー（とあなた・副管理者・モデレーター）だけが閲覧できます。検索・注目には表示されません。
+					許可したメンバー（とあなた・管理者・モデレーター）だけが閲覧できます。検索・注目には表示されません。
 					<br>※ 一度プライベートにすると、後から公開チャンネルに戻すことはできません。
-					<template v-if="!canMakePrivateChannel && !wasPrivate"><br>※ この機能を使うには、プライベートチャンネル作成が許可されたロールが必要です。</template>
 					<template v-if="wasPrivate"><br>※ このチャンネルは既にプライベートのため、解除できません。</template>
 				</template>
 			</MkSwitch>
+			<div v-if="!canMakePrivateChannel && !wasPrivate" :class="$style.privateChannelRestriction"><i class="ti ti-lock"></i><span>この機能はサーバー管理者によって制限されています。<br>作成には管理者の許可が必要です。</span></div>
 
 			<template v-if="isPrivate">
 				<!-- 旗鯖fork: あいことばはサーバー側で暗号学的乱数による自動生成 (32文字英数字)。
@@ -69,7 +69,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</div>
 
 				<div>
-					<div :class="$style.subAdminsLabel">副管理者</div>
+					<div :class="$style.subAdminsLabel">管理者</div>
 					<div :class="$style.subAdmins">
 						<span v-for="u in moderatorUsers" :key="u.id" :class="$style.subAdminChip">
 							<!-- 旗鯖fork: u.name を生テキスト出力するとユーザー名のカスタム絵文字が
@@ -412,6 +412,25 @@ definePage(() => ({
 	background: var(--MI_THEME-buttonBg);
 	opacity: 0.85;
 	vertical-align: middle;
+}
+
+.privateChannelRestriction {
+	display: flex;
+	align-items: flex-start;
+	gap: 8px;
+	margin-top: -8px;
+	padding: 10px 12px;
+	border: 1px solid color-mix(in srgb, var(--MI_THEME-warn) 42%, var(--MI_THEME-divider));
+	border-radius: 10px;
+	color: color-mix(in srgb, var(--MI_THEME-warn) 72%, var(--MI_THEME-fg));
+	background: color-mix(in srgb, var(--MI_THEME-warn) 9%, var(--MI_THEME-panel));
+	font-size: 0.86em;
+	line-height: 1.55;
+}
+
+.privateChannelRestriction > i {
+	margin-top: 2px;
+	font-size: 1.1em;
 }
 
 /* 旗鯖fork: プライベートチャンネルの副管理者 */

@@ -15,7 +15,7 @@ describe('Hata update presentation', () => {
 		expect(whatsNewSource).not.toContain('$style.previewChrome');
 		const previewMarkup = whatsNewSource.slice(whatsNewSource.indexOf(':class="$style.preview"'), whatsNewSource.indexOf(':class="$style.itemBody"'));
 		expect(previewMarkup).not.toContain('<button');
-		for (const actualScreenCopy of ['学習の記録', 'GARDEN', 'スタジオ設定', '季節の花を合わせて、一年をめぐる。', '絵文字申請', '宴の成功', '二要素認証']) {
+		for (const actualScreenCopy of ['学習の記録', 'GARDEN', 'スタジオ設定', '季節の花を合わせて、一年をめぐる。', '絵文字申請', 'ベータ機能を試す', 'プライベートチャンネル', '招待拒否', '宴の成功', '二要素認証']) {
 			expect(whatsNewSource).toContain(actualScreenCopy);
 		}
 		expect(whatsNewSource).not.toContain('ti ti-sparkles"></i></div>');
@@ -48,5 +48,11 @@ describe('Hata update presentation', () => {
 	test('PC幅ではUI設定と更新内容のモーダルを中央に置く', () => {
 		expect(uiSetupSource).toContain('max-width: 720px;\n\tmargin-inline: auto;');
 		expect(whatsNewSource).toContain('max-width: 1180px;\n\tmargin-inline: auto;');
+	});
+
+	test('わかったを押すと更新内容の窓だけを下へ滑らかに退場させる', () => {
+		expect(whatsNewSource).toContain('@click="dismiss"');
+		expect(whatsNewSource).toContain('animation: hata-whats-new-slide-down .26s');
+		expect(whatsNewSource).toContain('transform: translateY(56px)');
 	});
 });

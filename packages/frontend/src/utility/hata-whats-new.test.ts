@@ -8,7 +8,7 @@ import { HATA_WHATS_NEW } from './hata-whats-new.js';
 
 describe('HATA_WHATS_NEW', () => {
 	test('更新見出しは指定された利用者向け表記になっている', () => {
-		expect(HATA_WHATS_NEW.headline).toBe('大きな新機能を4つ追加、ベースをMisskey2026.7.0へ更新しました');
+		expect(HATA_WHATS_NEW.headline).toBe('大きな新機能を5つ、ゲームを1つ追加、ベースをMisskey2026.7.0へ更新しました');
 	});
 
 	test('新機能カードはそれぞれ正しい画面へ誘導する', () => {
@@ -33,6 +33,33 @@ describe('HATA_WHATS_NEW', () => {
 	test('HataFeedの全面リデザインはHataskの直後に案内する', () => {
 		const hataskIndex = HATA_WHATS_NEW.items.findIndex(item => item.title.startsWith('Hatask'));
 		expect(HATA_WHATS_NEW.items[hataskIndex + 1]?.title).toBe('HataFeedを全面リデザイン');
+	});
+
+	test('ベータ機能は試せる内容と専用画面への導線を案内する', () => {
+		const beta = HATA_WHATS_NEW.items.find(item => item.preview === 'beta');
+		expect(beta).toMatchObject({
+			to: '/hatafeed/beta',
+			linkLabel: 'ベータ機能を見る',
+		});
+		expect(`${beta?.title}\n${beta?.text}`).toContain('C/C++');
+		expect(`${beta?.title}\n${beta?.text}`).toContain('投稿前');
+	});
+
+	test('プライベートチャンネルの作成と招待承認制を案内する', () => {
+		const privateChannel = HATA_WHATS_NEW.items.find(item => item.preview === 'privateChannel');
+		expect(privateChannel).toMatchObject({
+			to: '/channels/new',
+			linkLabel: 'チャンネルを作る',
+		});
+		const copy = `${privateChannel?.title}\n${privateChannel?.text}`;
+		expect(copy).toContain('管理者から許可');
+		expect(copy).toContain('承認して初めて参加');
+		expect(copy).toContain('招待拒否');
+	});
+
+	test('プライベートチャンネルは花常の直前に案内する', () => {
+		const hanaawaseIndex = HATA_WHATS_NEW.items.findIndex(item => item.title.startsWith('花常'));
+		expect(HATA_WHATS_NEW.items[hanaawaseIndex - 1]?.preview).toBe('privateChannel');
 	});
 
 	test('前回分・廃止分と不要な花常説明を再掲しない', () => {
@@ -66,7 +93,7 @@ describe('HATA_WHATS_NEW', () => {
 	});
 
 	test('すべての更新項目に内容別の実画面風プレビューを割り当てる', () => {
-		expect(HATA_WHATS_NEW.items).toHaveLength(11);
-		expect(new Set(HATA_WHATS_NEW.items.map(item => item.preview)).size).toBe(11);
+		expect(HATA_WHATS_NEW.items).toHaveLength(13);
+		expect(new Set(HATA_WHATS_NEW.items.map(item => item.preview)).size).toBe(13);
 	});
 });

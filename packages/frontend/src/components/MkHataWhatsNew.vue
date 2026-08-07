@@ -12,7 +12,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 <template>
 <MkModal ref="modal" :preferType="'dialog'" :zPriority="'middle'" @click="modal?.close()" @closed="emit('closed')">
-	<div :class="$style.root" role="dialog" aria-modal="true" aria-labelledby="hata-whats-new-title">
+	<div :class="[$style.root, { [$style.closing]: closing }]" role="dialog" aria-modal="true" aria-labelledby="hata-whats-new-title">
 		<header :class="$style.header">
 			<div :class="$style.releaseIdentity">
 				<span :class="$style.releaseDot" aria-hidden="true"></span>
@@ -63,6 +63,16 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<div :class="$style.feedTabs"><b>イシュー</b><span>ロードマップ</span><span>申請管理</span></div>
 						<div :class="$style.feedActions"><span><i class="ti ti-mood-plus"></i>絵文字申請</span><span><i class="ti ti-pencil-plus"></i>新規イシュー</span></div>
 						<div v-for="(title, n) in ['スマホ表示を改善', '絵文字を追加', '通知を見やすく']" :key="title" :class="$style.issueRow"><span :data-state="n + 1"></span><div><b>#{{ n + 24 }} {{ title }}</b><em>受付中 · 2件の会話</em></div><i class="ti ti-chevron-right"></i></div>
+					</div>
+
+					<div v-else-if="item.preview === 'beta'" :class="$style.betaMock">
+						<div :class="$style.betaTop"><i class="ti ti-flask-2"></i><b>ベータ機能を試す</b><span>BETA</span></div>
+						<div :class="$style.betaCards"><div><i class="ti ti-code"></i><span><b>C/C++ プレイグラウンド</b><small>ブラウザ内で実行</small></span><i class="ti ti-chevron-right"></i></div><div><i class="ti ti-clock-play"></i><span><b>投稿前カウントダウン</b><small>3 · 5 · 10 秒</small></span><em>ON</em></div></div>
+					</div>
+
+					<div v-else-if="item.preview === 'privateChannel'" :class="$style.privateChannelMock">
+						<div :class="$style.privateChannelTop"><i class="ti ti-lock"></i><b>プライベートチャンネル</b><span>新規作成</span></div>
+						<div :class="$style.privateChannelBody"><b>読書会の部屋</b><small>許可されたメンバーだけが閲覧できます</small><div><span><i class="ti ti-clock"></i> 招待中　2人</span><span><i class="ti ti-user-check"></i> 参加中　5人</span><span><i class="ti ti-circle-x"></i> 招待拒否　1人</span></div></div>
 					</div>
 
 					<div v-else-if="item.preview === 'sideStudio'" :class="$style.sideStudioMock">
@@ -129,7 +139,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					{{ whatsNew.footer.linkLabel }} <i class="ti ti-external-link"></i>
 				</button>
 			</p>
-			<MkButton primary rounded :class="$style.gotIt" @click="modal?.close()">わかった</MkButton>
+			<MkButton primary rounded :class="$style.gotIt" :disabled="closing" @click="dismiss">わかった</MkButton>
 		</footer>
 	</div>
 </MkModal>
@@ -146,6 +156,7 @@ import { mainRouter } from '@/router.js';
 const modal = useTemplateRef('modal');
 const itemsViewport = useTemplateRef('itemsViewport');
 const carouselIndex = ref(0);
+const closing = ref(false);
 
 const emit = defineEmits<{
 	(ev: 'closed'): void;
@@ -156,6 +167,12 @@ function go(to: HataWhatsNewItem['to']) {
 	// ⚠️先に閉じる。開いたまま遷移すると、行き先の上に幕が残る。
 	modal.value?.close();
 	mainRouter.push(to);
+}
+
+function dismiss() {
+	if (closing.value) return;
+	closing.value = true;
+	window.setTimeout(() => modal.value?.close(), 260);
 }
 
 function showCarouselItem(index: number) {
@@ -284,6 +301,10 @@ function openReleaseNotes() {
 
 .feedMock { height: 100%; padding: 7px 9px; box-sizing: border-box; color: var(--MI_THEME-fg); background: var(--MI_THEME-bg); }.feedToolbar { display: flex; align-items: center; gap: 7px; height: 23px; }.feedToolbar > b { font-family: 'Righteous', system-ui, sans-serif; font-size: 11px; }.feedToolbar > span { display: flex; flex: 1; align-items: center; gap: 4px; padding: 4px 6px; border: 1px solid var(--MI_THEME-divider); border-radius: 6px; opacity: .65; font-size: 5px; }.feedToolbar > i { color: var(--MI_THEME-accent); }.feedTabs { display: flex; gap: 13px; padding: 5px 2px; border-bottom: 1px solid var(--MI_THEME-divider); font-size: 6px; }.feedTabs b { color: var(--MI_THEME-accent); }.feedActions { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin: 5px 0; }.feedActions > span { padding: 4px; border: 1px solid var(--MI_THEME-accent); border-radius: 5px; color: var(--MI_THEME-accent); background: var(--MI_THEME-panel); font-size: 5px; text-align: center; }.issueRow { display: flex; align-items: center; gap: 6px; padding: 4px 2px; border-top: 1px solid var(--MI_THEME-divider); }.issueRow > span { width: 6px; height: 6px; border-radius: 50%; background: #2b6fc0; }.issueRow > span[data-state="2"] { background: #b6791f; }.issueRow > span[data-state="3"] { background: #1f8a5b; }.issueRow div { flex: 1; }.issueRow b, .issueRow em { display: block; font-size: 5px; font-style: normal; }.issueRow em { margin-top: 1px; opacity: .55; }.issueRow > i { font-size: 7px; opacity: .4; }
 
+.betaMock { height:100%;padding:10px 12px;box-sizing:border-box;color:#e9ecf4;background:linear-gradient(145deg,#171b2c,#20213c); }.betaTop { display:flex;align-items:center;gap:7px;padding-bottom:8px;border-bottom:1px solid rgba(222,230,255,.18);font-size:8px; }.betaTop > i { color:#8ed3ff;font-size:14px; }.betaTop > b { font-size:10px; }.betaTop > span { margin-left:auto;padding:3px 6px;border:1px solid rgba(142,211,255,.48);border-radius:999px;color:#8ed3ff;background:rgba(92,168,236,.15);font:700 5px/1 ui-monospace,monospace;letter-spacing:.12em; }.betaCards { display:grid;gap:6px;margin-top:8px; }.betaCards > div { display:flex;align-items:center;gap:7px;padding:8px;border:1px solid rgba(222,230,255,.18);border-radius:7px;background:rgba(255,255,255,.07); }.betaCards > div > i:first-child { display:grid;width:20px;height:20px;place-items:center;border-radius:6px;color:#0e1930;background:#8ed3ff;font-size:10px; }.betaCards span { display:grid;gap:1px;flex:1;min-width:0; }.betaCards b { overflow:hidden;font-size:6px;text-overflow:ellipsis;white-space:nowrap; }.betaCards small { color:#c0c7da;font-size:5px; }.betaCards > div > i:last-child { font-size:8px;opacity:.55; }.betaCards em { padding:3px 5px;border-radius:999px;color:#123525;background:#80dfae;font:700 5px/1 ui-monospace,monospace;font-style:normal; }
+
+.privateChannelMock { height:100%;padding:10px 12px;box-sizing:border-box;color:var(--MI_THEME-fg);background:linear-gradient(145deg,color-mix(in srgb,var(--MI_THEME-accent) 10%,var(--MI_THEME-bg)),var(--MI_THEME-bg)); }.privateChannelTop { display:flex;align-items:center;gap:7px;padding-bottom:8px;border-bottom:1px solid var(--MI_THEME-divider);font-size:8px; }.privateChannelTop > i { display:grid;width:20px;height:20px;place-items:center;border-radius:6px;color:#fff;background:var(--MI_THEME-accent);font-size:10px; }.privateChannelTop > b { font-size:10px; }.privateChannelTop > span { margin-left:auto;padding:3px 6px;border:1px solid var(--MI_THEME-divider);border-radius:999px;font-size:5px;opacity:.72; }.privateChannelBody { display:grid;gap:3px;margin-top:8px;padding:8px;border:1px solid var(--MI_THEME-divider);border-radius:8px;background:var(--MI_THEME-panel); }.privateChannelBody > b { font-size:8px; }.privateChannelBody > small { font-size:5px;opacity:.62; }.privateChannelBody > div { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;margin-top:4px; }.privateChannelBody > div > span { display:grid;gap:2px;padding:5px 4px;border-radius:5px;background:var(--MI_THEME-bg);font-size:5px;text-align:center; }.privateChannelBody > div > span > i { color:var(--MI_THEME-accent);font-size:8px; }.privateChannelBody > div > span:last-child > i { color:var(--MI_THEME-warn); }
+
 .sideStudioMock { height:100%;color:#e9e8f4;background:#12121a;font-family:system-ui,sans-serif; }
 .sideStudioBar { display:grid;grid-template-columns:18px auto 1fr 20px;align-items:center;gap:5px;height:28px;padding:0 8px;border-bottom:1px solid #343343;background:#1a1924;font-size:6px; }.sideStudioBar > b { color:#a99cff;font-family:'HataWhatsNewRighteous',system-ui,sans-serif;font-size:11px;font-weight:400; }.sideStudioBar > span { justify-self:end;padding:3px 6px;border:1px solid #45435a;border-radius:999px;background:#222130; }
 .sideStudioBody { display:grid;grid-template-columns:minmax(0,1.1fr) minmax(72px,.9fr);gap:6px;height:calc(100% - 28px);padding:6px;box-sizing:border-box; }.sideStudioPreview,.sideStudioInspector { min-width:0;border:1px solid #363548;border-radius:7px;background:#1c1b27;overflow:hidden; }.sideStudioPreview { padding:5px; }.sideStudioServer { display:grid;grid-template-columns:18px 1fr 15px;align-items:center;gap:4px;padding:3px;border-bottom:1px solid #363548;font-size:6px; }.sideStudioServer > i:first-child { display:grid;width:17px;height:17px;place-items:center;border-radius:5px;color:#fff;background:#7668dc; }.sideStudioGroup { display:grid;grid-template-columns:1fr 1fr;gap:3px;margin-top:5px;padding:4px;border:1px solid #4d496b;border-radius:6px;background:linear-gradient(145deg,#28263a,#201f2d); }.sideStudioGroup > small { grid-column:1/-1;color:#aaa7bf;font-size:5px; }.sideStudioGroup > span { display:flex;align-items:center;gap:3px;padding:4px;border-radius:4px;background:#302e43;font-size:5px; }.sideStudioGroup > em { grid-column:1/-1;display:grid;grid-template-columns:18px 1fr;align-items:center;padding:5px;border-radius:5px;background:linear-gradient(135deg,#6c5bd3,#3d68b2);font-size:5px;font-style:normal; }.sideStudioGroup > em > i { grid-row:1/3;font-size:10px; }.sideStudioGroup > em small { font-size:4px;opacity:.76; }
@@ -331,6 +352,11 @@ function openReleaseNotes() {
 }
 
 .gotIt { flex: none; min-width: 120px; }
+.closing { pointer-events: none; animation: hata-whats-new-slide-down .26s cubic-bezier(.22,.8,.24,1) forwards; }
+
+@keyframes hata-whats-new-slide-down {
+	to { opacity: 0; transform: translateY(56px); }
+}
 
 @container (min-width: 620px) {
 	.items { grid-template-columns: repeat(2, minmax(0, 1fr)); }

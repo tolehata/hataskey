@@ -19,7 +19,7 @@ export type HataWhatsNewItem = {
 	/** Tabler のアイコン名（`ti ti-` 込み） */
 	icon: string;
 	/** 更新案内に表示する、実画面を抽象化した小型プレビュー。 */
-	preview: 'hatady' | 'hatask' | 'sideStudio' | 'hanaawase' | 'ui' | 'hatafeed' | 'profile' | 'viewer' | 'mute' | 'external' | 'security';
+	preview: 'hatady' | 'hatask' | 'sideStudio' | 'hanaawase' | 'ui' | 'hatafeed' | 'beta' | 'privateChannel' | 'profile' | 'viewer' | 'mute' | 'external' | 'security';
 	title: string;
 	text: string;
 	/**
@@ -27,7 +27,7 @@ export type HataWhatsNewItem = {
 	 * ⚠️`mainRouter.push()` は登録済みパスのリテラル型しか受けないため、
 	 *   ここも文字列ではなくリテラル型のままにしておく（`string` にすると型検査で落ちる）。
 	 */
-	to?: '/settings/hata-custom' | '/settings/external-account' | '/games' | '/hanaawase' | '/hatady' | '/hatask' | '/hata-side-studio';
+	to?: '/settings/hata-custom' | '/settings/external-account' | '/games' | '/hanaawase' | '/hatady' | '/hatask' | '/hata-side-studio' | '/hatafeed/beta' | '/channels/new';
 	/** 誘導ボタンの文言。遷移先が違うのに一律「設定を開く」と表示しない。 */
 	linkLabel?: string;
 };
@@ -50,7 +50,7 @@ export type HataWhatsNew = {
 
 export const HATA_WHATS_NEW: HataWhatsNew = {
 	version: '2026.7.0-hata.12.0',
-	headline: '大きな新機能を4つ追加、ベースをMisskey2026.7.0へ更新しました',
+	headline: '大きな新機能を5つ、ゲームを1つ追加、ベースをMisskey2026.7.0へ更新しました',
 	items: [
 		{
 			icon: 'ti ti-book-2',
@@ -93,6 +93,15 @@ export const HATA_WHATS_NEW: HataWhatsNew = {
 			linkLabel: 'HataSideStudioへ',
 		},
 		{
+			icon: 'ti ti-lock',
+			preview: 'privateChannel',
+			title: 'プライベートチャンネルを作れます',
+			text: '管理者から許可された利用者は、メンバーだけが閲覧できるチャンネルを作れます。'
+				+ '招待した相手は通知から参加するかを選び、承認して初めて参加します。管理画面では招待中・参加中・招待拒否を確認できます。',
+			to: '/channels/new',
+			linkLabel: 'チャンネルを作る',
+		},
+		{
 			icon: 'ti ti-flower',
 			preview: 'hanaawase',
 			title: '花常（はなつね）— 新作ゲーム',
@@ -110,6 +119,15 @@ export const HATA_WHATS_NEW: HataWhatsNew = {
 				+ 'タブを左右スワイプで切り替えない設定と、Bot投稿を隠す設定にも対応しました。',
 			to: '/settings/hata-custom',
 			linkLabel: '設定を開く',
+		},
+		{
+			icon: 'ti ti-flask-2',
+			preview: 'beta',
+			title: 'ベータ機能を試せます',
+			text: 'ブラウザ内だけでC/C++を書いて実行できるプレイグラウンドと、投稿前に3・5・10秒の猶予を作れるカウントダウンを用意しました。'
+				+ 'どちらも端末内で動き、投稿前カウントダウンは取り消しや今すぐ投稿も選べます。',
+			to: '/hatafeed/beta',
+			linkLabel: 'ベータ機能を見る',
 		},
 		{
 			icon: 'ti ti-award',
