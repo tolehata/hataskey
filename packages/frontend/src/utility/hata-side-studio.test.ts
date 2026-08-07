@@ -61,6 +61,7 @@ describe('HataSideStudio', () => {
 		expect(profile.collapsed.buttons.map(button => button.menuId)).toEqual(['timeline', 'notifications', 'hatask']);
 		expect(profile.collapsed.buttons.every(button => button.showLabel === false && button.rotation === 0)).toBe(true);
 		expect(profile.collapsed.buttons.every(button => button.border === 'var(--MI_THEME-divider)')).toBe(true);
+		expect(profile.collapsed.buttons.every(button => button.borderVisible === false)).toBe(true);
 		expect(profile.collapsed.buttons.some(button => button.menuId === 'more')).toBe(false);
 	});
 
@@ -100,6 +101,7 @@ describe('HataSideStudio', () => {
 		const copied = copyExpandedToCollapsed(profile);
 		expect(copied.collapsed.buttons.map(button => button.menuId)).toEqual(['timeline', 'notifications', 'hatask']);
 		expect(copied.collapsed.buttons.every(button => button.type === 'button')).toBe(true);
+		expect(copied.collapsed.buttons.every(button => button.borderVisible === false)).toBe(true);
 	});
 
 	test('縮小から拡大へコピーするとボタンをグループへまとめ、既存の全幅ウィジェットを保持する', () => {
@@ -109,6 +111,8 @@ describe('HataSideStudio', () => {
 		const copied = copyCollapsedToExpanded(profile);
 		expect(copied.expanded.nodes[0].type).toBe('group');
 		expect(copied.expanded.nodes.some(node => node.id === widget.id)).toBe(true);
+		const copiedGroup = copied.expanded.nodes[0];
+		expect(copiedGroup.type === 'group' && copiedGroup.children.every(child => child.type !== 'button' || child.borderVisible === true)).toBe(true);
 	});
 
 	test('グループを重ねた場合は子要素を統合して元グループを消す', () => {
@@ -158,15 +162,16 @@ describe('HataSideStudio', () => {
 		expect(migratedWidget.data).toMatchObject({ label: '自分のボタン', colored: false, script: 'Mk:dialog("test")' });
 	});
 
-	test('v6移行は縮小ボタンの欠けていた既定枠線だけを補い、v5のウィジェット高を保持する', () => {
+	test('v7移行は縮小ボタンの枠線を既定で隠し、選んだ枠色とv5のウィジェット高を保持する', () => {
 		const profile = createDefaultProfile(source);
-		profile.collapsed.buttons[0].border = 'transparent';
+		profile.collapsed.buttons[0].border = '#123456';
+		delete (profile.collapsed.buttons[0] as Partial<typeof profile.collapsed.buttons[0]>).borderVisible;
 		const widget = createWidget('clock');
 		widget.sizeSettings.small.minHeight = 321;
 		profile.expanded.nodes = [widget];
 
-		const migrated = sanitizeHataSideStudioStore({ version: 5, activeProfileId: profile.id, profiles: [profile] }, source);
-		expect(migrated.profiles[0].collapsed.buttons[0].border).toBe('var(--MI_THEME-divider)');
+		const migrated = sanitizeHataSideStudioStore({ version: 6, activeProfileId: profile.id, profiles: [profile] }, source);
+		expect(migrated.profiles[0].collapsed.buttons[0]).toMatchObject({ border: '#123456', borderVisible: false });
 		const migratedWidget = migrated.profiles[0].expanded.nodes[0];
 		expect(migratedWidget.type).toBe('widget');
 		if (migratedWidget.type !== 'widget') throw new Error('widget fixture missing');

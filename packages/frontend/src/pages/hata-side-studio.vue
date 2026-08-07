@@ -95,17 +95,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<div v-if="editMode === 'expanded'" :class="$style.quickSection"><b>大きさ</b><div :class="$style.choiceRow"><button v-for="size in sizes" :key="size.value" class="_button" :disabled="!canSetNodeSize(selected, size.value)" :data-active="selected.size === size.value" @click="setNodeSize(selected, size.value)">{{ size.label }}</button></div><small v-if="selectedParentColumns > 1">複数列では「大」を選べません。</small></div>
 						<label v-if="selected.type === 'button' && editMode === 'expanded'" :class="$style.check"><input v-model="selected.showLabel" type="checkbox">ラベルを表示</label>
 						<label v-if="selected.type === 'button' && editMode === 'expanded'" :class="$style.field"><span>回転</span><input v-model.number="selected.rotation" type="range" min="-12" max="12" step="1"><output>{{ selected.rotation }}°</output></label>
-						<div :class="$style.quickColors"><label>背景<input type="color" :value="cssColor(selected.background)" @input="selected.background = ($event.target as HTMLInputElement).value"></label><label>枠<input type="color" :value="cssColor(selected.border)" @input="selected.border = ($event.target as HTMLInputElement).value"></label><label>文字<input type="color" :value="cssColor(selected.foreground)" @input="selected.foreground = ($event.target as HTMLInputElement).value"></label></div>
+						<label v-if="selected.type === 'button' && editMode === 'collapsed'" :class="$style.check"><input v-model="selected.borderVisible" type="checkbox">枠線を表示</label>
+						<div :class="$style.quickColors"><label>背景<input type="color" :value="cssColor(selected.background)" @input="selected.background = ($event.target as HTMLInputElement).value"></label><label>枠<input type="color" :value="cssColor(selected.border)" @pointerdown="promptCollapsedBorderVisibility(selected, $event)" @keydown.enter.prevent="promptCollapsedBorderVisibility(selected, $event)" @input="selected.border = ($event.target as HTMLInputElement).value"></label><label>文字<input type="color" :value="cssColor(selected.foreground)" @input="selected.foreground = ($event.target as HTMLInputElement).value"></label></div>
 					</template>
 					<label :class="$style.field"><span>枠線</span><input v-model.number="selected.borderWidth" type="range" min="0" max="5"><output>{{ selected.borderWidth }}px</output></label>
 					<label :class="$style.quickField"><span>枠線の種類</span><select v-model="selected.borderStyle" :class="$style.select"><option value="solid">実線</option><option value="dashed">破線</option><option value="double">二重線</option></select></label>
-					<label :class="$style.check"><input v-model="selected.gradientEnabled" type="checkbox">2色グラデーション</label>
-					<div v-if="selected.gradientEnabled" :class="$style.gradientControls">
-						<div :class="$style.quickGradientPreview" :style="{ background: gradientCss(selected) }"></div>
-						<label :class="$style.quickField"><span>2色目</span><input type="color" :value="cssColor(selected.gradientTo)" @input="selected.gradientTo = ($event.target as HTMLInputElement).value"></label>
-						<label :class="$style.field"><span>方向</span><input v-model.number="selected.gradientAngle" type="range" min="0" max="360"><output>{{ selected.gradientAngle }}°</output></label>
-						<label :class="$style.quickField"><span>色の移り方</span><select v-model="selected.gradientEasing" :class="$style.select"><option value="linear">均等</option><option value="ease-in">ゆっくり始まる</option><option value="ease-out">ゆっくり終わる</option><option value="ease-in-out">両端をなめらかに</option></select></label>
-					</div>
+					<GradientEditor :model-value="selected"/>
 					<div :class="$style.pickerActions"><button class="_button" @click="quickEditorOpen = false">閉じる</button><button class="_buttonPrimary" @click="openSelectedInspector"><i class="ti ti-adjustments-horizontal"></i>詳細設定</button></div>
 				</div>
 				<div v-if="dragHintVisible" :class="$style.dragHint" :style="dragHintStyle"><i class="ti ti-hand-move"></i><span>プレビュー横の簡易タイムラインで、項目同士の隙間へ重ねて移動できます。</span></div>
@@ -203,7 +198,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<InspectorCard title="形"><div :class="$style.choiceRow"><button v-for="shape in buttonShapes" :key="shape.value" class="_button" :data-active="selected.shape === shape.value" @click="selected.shape = shape.value"><span :class="$style.shapeSample" :data-shape="shape.value"></span><small>{{ shape.label }}</small></button></div></InspectorCard>
 						<InspectorCard title="大きさ"><div :class="$style.choiceRow"><button v-for="size in sizes" :key="size.value" class="_button" :disabled="!canSetNodeSize(selected, size.value)" :data-active="selected.size === size.value" @click="setNodeSize(selected, size.value)">{{ size.label }}</button></div><small v-if="selectedParentColumns > 1">複数列では「大」を選べません。</small></InspectorCard>
 						<InspectorCard v-if="editMode === 'expanded'" title="表示"><label :class="$style.check"><input v-model="selected.showLabel" type="checkbox">アイコン下の文字を表示</label><label :class="$style.field">回転 <input v-model.number="selected.rotation" type="range" min="-12" max="12" step="1"><output>{{ selected.rotation }}°</output></label></InspectorCard>
-						<AppearanceEditor v-model="selected"/>
+						<AppearanceEditor v-model="selected" :collapsed-button="editMode === 'collapsed'"/>
 						<InspectorCard v-if="selected.menuId === 'lists' || selected.menuId === 'antennas'" title="直接開く項目"><button class="_buttonPrimary" @click="chooseDirectTarget(selected)"><i class="ti ti-list-search"></i>{{ selected.targetId ? '選び直す' : '選択する' }}</button><small>{{ selected.targetId ? '指定した項目を直接開きます。' : '未指定の場合は前回開いた項目を表示します。' }}</small></InspectorCard>
 					</div>
 				</template>
@@ -299,19 +294,30 @@ const studioDialogControl = ref<HTMLInputElement | HTMLSelectElement | null>(nul
 
 const InspectorTitle = defineComponent({ props: { icon: String, title: String, subtitle: String }, setup: props => () => h('div', { class: $style.inspectorTitle }, [h('i', { class: props.icon }), h('div', [h('small', props.subtitle), h('h2', props.title)])]) });
 const InspectorCard = defineComponent({ props: { title: String }, setup: (props, { slots }) => () => h('section', { class: $style.inspectorCard }, [h('h3', props.title), slots.default?.()]) });
-const AppearanceEditor = defineComponent({ props: { modelValue: { type: Object, required: true } }, setup: props => () => h(InspectorCard, { title: '色とグラデーション' }, { default: () => [
-	h('div', { class: $style.colorGrid }, [['background', '背景'], ['border', '枠'], ['foreground', '文字']].map(([key, label]) => h('label', { class: $style.colorField }, [h('span', label), h('input', { type: 'color', value: cssColor((props.modelValue as any)[key]), onInput: (e: Event) => (props.modelValue as any)[key] = (e.target as HTMLInputElement).value })]))),
+const GradientEditor = defineComponent({ props: { modelValue: { type: Object, required: true } }, setup: props => () => {
+	const value = props.modelValue as any;
+	return [
+		h('label', { class: $style.check }, [h('input', { type: 'checkbox', checked: value.gradientEnabled, onChange: (event: Event) => value.gradientEnabled = (event.target as HTMLInputElement).checked }), '2色グラデーション']),
+		value.gradientEnabled ? h('div', { class: $style.gradientControls }, [
+			h('div', { class: $style.quickGradientPreview, style: { background: gradientCss(value) } }),
+			h('label', { class: $style.quickField }, [h('span', '2色目'), h('input', { type: 'color', value: cssColor(value.gradientTo), onInput: (event: Event) => value.gradientTo = (event.target as HTMLInputElement).value })]),
+			h('label', { class: $style.field }, [h('span', '方向'), h('input', { type: 'range', min: 0, max: 360, value: value.gradientAngle, onInput: (event: Event) => value.gradientAngle = Number((event.target as HTMLInputElement).value) }), h('output', `${value.gradientAngle}°`)]),
+			h('label', { class: $style.quickField }, [h('span', '色の移り方'), h('select', { class: $style.select, value: value.gradientEasing, onChange: (event: Event) => value.gradientEasing = (event.target as HTMLSelectElement).value }, [h('option', { value: 'linear' }, '均等'), h('option', { value: 'ease-in' }, 'ゆっくり始まる'), h('option', { value: 'ease-out' }, 'ゆっくり終わる'), h('option', { value: 'ease-in-out' }, '両端をなめらかに')])]),
+		]) : null,
+	];
+} });
+const AppearanceEditor = defineComponent({ props: { modelValue: { type: Object, required: true }, collapsedButton: Boolean }, setup: props => () => h(InspectorCard, { title: '色とグラデーション' }, { default: () => [
+	props.collapsedButton ? h('label', { class: $style.check }, [h('input', { type: 'checkbox', checked: (props.modelValue as HataSideButton).borderVisible, onChange: (event: Event) => (props.modelValue as HataSideButton).borderVisible = (event.target as HTMLInputElement).checked }), '枠線を表示']) : null,
+	h('div', { class: $style.colorGrid }, [['background', '背景'], ['border', '枠'], ['foreground', '文字']].map(([key, label]) => h('label', { class: $style.colorField }, [h('span', label), h('input', { type: 'color', value: cssColor((props.modelValue as any)[key]), onPointerdown: key === 'border' ? (event: PointerEvent) => promptCollapsedBorderVisibility(props.modelValue as HataSideNode, event) : undefined, onKeydown: key === 'border' ? (event: KeyboardEvent) => { if (event.key === 'Enter') { event.preventDefault(); void promptCollapsedBorderVisibility(props.modelValue as HataSideNode, event); } } : undefined, onInput: (e: Event) => (props.modelValue as any)[key] = (e.target as HTMLInputElement).value })]))),
 	h('label', { class: $style.field }, [h('span', '枠線の太さ'), h('input', { type: 'range', min: 0, max: 5, value: (props.modelValue as any).borderWidth ?? 1, onInput: (e: Event) => (props.modelValue as any).borderWidth = Number((e.target as HTMLInputElement).value) }), h('output', `${(props.modelValue as any).borderWidth ?? 1}px`)]),
 	h('label', { class: $style.field }, [h('span', '枠線の種類'), h('select', { class: $style.select, value: (props.modelValue as any).borderStyle ?? 'solid', onChange: (e: Event) => (props.modelValue as any).borderStyle = (e.target as HTMLSelectElement).value }, [h('option', { value: 'solid' }, '実線'), h('option', { value: 'dashed' }, '破線'), h('option', { value: 'double' }, '二重線')])]),
-	h('label', { class: $style.check }, [h('input', { type: 'checkbox', checked: (props.modelValue as any).gradientEnabled, onChange: (e: Event) => (props.modelValue as any).gradientEnabled = (e.target as HTMLInputElement).checked }), 'グラデーションを使う']),
-	(props.modelValue as any).gradientEnabled ? h('div', { class: $style.fieldStack }, [h('label', { class: $style.colorField }, [h('span', '終点'), h('input', { type: 'color', value: cssColor((props.modelValue as any).gradientTo), onInput: (e: Event) => (props.modelValue as any).gradientTo = (e.target as HTMLInputElement).value })]), h('label', { class: $style.field }, [h('span', '方向'), h('input', { type: 'range', min: 0, max: 360, value: (props.modelValue as any).gradientAngle, onInput: (e: Event) => (props.modelValue as any).gradientAngle = Number((e.target as HTMLInputElement).value) }), h('output', `${(props.modelValue as any).gradientAngle}°`)]), h('select', { class: $style.select, value: (props.modelValue as any).gradientEasing, onChange: (e: Event) => (props.modelValue as any).gradientEasing = (e.target as HTMLSelectElement).value }, [h('option', { value: 'linear' }, '均等'), h('option', { value: 'ease-in' }, 'ゆっくり始まる'), h('option', { value: 'ease-out' }, 'ゆっくり終わる'), h('option', { value: 'ease-in-out' }, '両端をなめらかに')])]) : null,
+	h(GradientEditor, { modelValue: props.modelValue }),
 ] }) });
 const GroupAppearanceEditor = defineComponent({ props: { modelValue: { type: Object, required: true } }, setup: props => () => h(InspectorCard, { title: 'グループの面' }, { default: () => [
 	h('div', { class: $style.colorGrid }, [['background', '背景'], ['border', '枠']].map(([key, label]) => h('label', { class: $style.colorField }, [h('span', label), h('input', { type: 'color', value: cssColor((props.modelValue as any)[key]), onInput: (e: Event) => (props.modelValue as any)[key] = (e.target as HTMLInputElement).value })]))),
 	h('label', { class: $style.field }, [h('span', '枠線の太さ'), h('input', { type: 'range', min: 0, max: 5, value: (props.modelValue as any).borderWidth ?? 1, onInput: (e: Event) => (props.modelValue as any).borderWidth = Number((e.target as HTMLInputElement).value) }), h('output', `${(props.modelValue as any).borderWidth ?? 1}px`)]),
 	h('label', { class: $style.field }, [h('span', '枠線の種類'), h('select', { class: $style.select, value: (props.modelValue as any).borderStyle ?? 'solid', onChange: (e: Event) => (props.modelValue as any).borderStyle = (e.target as HTMLSelectElement).value }, [h('option', { value: 'solid' }, '実線'), h('option', { value: 'dashed' }, '破線'), h('option', { value: 'double' }, '二重線')])]),
-	h('label', { class: $style.check }, [h('input', { type: 'checkbox', checked: (props.modelValue as any).gradientEnabled, onChange: (e: Event) => (props.modelValue as any).gradientEnabled = (e.target as HTMLInputElement).checked }), 'グラデーションを使う']),
-	(props.modelValue as any).gradientEnabled ? h('div', { class: $style.fieldStack }, [h('label', { class: $style.colorField }, [h('span', '終点'), h('input', { type: 'color', value: cssColor((props.modelValue as any).gradientTo), onInput: (e: Event) => (props.modelValue as any).gradientTo = (e.target as HTMLInputElement).value })]), h('label', { class: $style.field }, [h('span', '方向'), h('input', { type: 'range', min: 0, max: 360, value: (props.modelValue as any).gradientAngle, onInput: (e: Event) => (props.modelValue as any).gradientAngle = Number((e.target as HTMLInputElement).value) }), h('output', `${(props.modelValue as any).gradientAngle}°`)]), h('select', { class: $style.select, value: (props.modelValue as any).gradientEasing, onChange: (e: Event) => (props.modelValue as any).gradientEasing = (e.target as HTMLSelectElement).value }, [h('option', { value: 'linear' }, '均等'), h('option', { value: 'ease-in' }, 'ゆっくり始まる'), h('option', { value: 'ease-out' }, 'ゆっくり終わる'), h('option', { value: 'ease-in-out' }, '両端をなめらかに')])]) : null,
+	h(GradientEditor, { modelValue: props.modelValue }),
 ] }) });
 const ButtonPreview = defineComponent({
 	props: { button: { type: Object, required: true } },
@@ -592,6 +598,18 @@ async function askStudioConfirm(title: string, text: string, confirmLabel = '続
 	return (await openStudioDialog({ kind: 'confirm', title, text, icon, confirmLabel, cancelLabel: 'やめる', value: '', options: [] })).confirmed;
 }
 
+async function promptCollapsedBorderVisibility(node: HataSideNode, event?: Event) {
+	if (node.type !== 'button' || editMode.value !== 'collapsed' || node.borderVisible) return;
+	event?.preventDefault();
+	const confirmed = await askStudioConfirm(
+		'先に枠線を表示しますか？',
+		'縮小メニューの枠線は初期状態で非表示です。「枠線を表示」にチェックすると、ここで選んだ色を実際のボタンに表示できます。',
+		'枠線を表示する',
+		'ti ti-border-corner-i',
+	);
+	if (confirmed) node.borderVisible = true;
+}
+
 async function askStudioPrompt(title: string, text: string, initialValue = ''): Promise<string | null> {
 	const result = await openStudioDialog({ kind: 'prompt', title, text, icon: 'ti ti-pencil', confirmLabel: '変更する', cancelLabel: 'やめる', value: initialValue, options: [] });
 	return result.confirmed ? result.value.trim() : null;
@@ -757,6 +775,7 @@ function allowGroupChildMove(evt: any) { return allowNodeMove(evt, 'root') && ev
 
 function nodeStyle(node: HataSideNode) {
 	const rotation = node.type === 'button' ? Number(node.rotation ?? 0) : 0;
+	const borderVisible = node.type !== 'button' || node.borderVisible !== false;
 	const radians = Math.abs(rotation) * Math.PI / 180;
 	const visualWidth = node.type === 'button' && node.shape === 'circle' ? (node.size === 'large' ? 54 : node.size === 'small' ? 36 : 44) : 260;
 	const visualHeight = node.type === 'button' && node.size === 'large' ? 66 : 38;
@@ -765,7 +784,7 @@ function nodeStyle(node: HataSideNode) {
 	return {
 		'--hss-bg': gradientCss(node),
 		'--hss-border': node.border,
-		'--hss-border-width': `${node.borderWidth ?? 1}px`,
+		'--hss-border-width': `${borderVisible ? (node.borderWidth ?? 1) : 0}px`,
 		'--hss-border-style': node.borderStyle ?? 'solid',
 		'--hss-fg': node.foreground,
 		'--hss-rotation': `${rotation}deg`,
@@ -876,7 +895,7 @@ function openButtonPicker() {
 function confirmAddButton() {
 	const source = menuCatalog.value.find(item => item.id === newButtonMenuId.value);
 	if (!source) return;
-	const button = createButton(source, editMode.value === 'collapsed' ? { shape: newButtonShape.value, size: 'small', showLabel: false } : { shape: newButtonShape.value });
+	const button = createButton(source, editMode.value === 'collapsed' ? { shape: newButtonShape.value, size: 'small', showLabel: false, borderVisible: false } : { shape: newButtonShape.value });
 	if (editMode.value === 'collapsed') activeProfile.value.collapsed.buttons.push(button);
 	else activeProfile.value.expanded.nodes.push(button);
 	buttonPickerOpen.value = false;
@@ -1408,7 +1427,7 @@ definePage(() => ({
 .previewGroup:hover > .groupHead .dragHandle,.previewGroup:focus-within > .groupHead .dragHandle,.previewGroup[data-selected="true"] > .groupHead .dragHandle,
 .sortable-chosen > .dragHandle,.sortable-ghost > .dragHandle { opacity:1;visibility:visible;pointer-events:auto;transform:scale(1); }
 .collapsedButtons { display:flex;flex-direction:column;align-items:center;gap:4px;width:100%;min-width:0;padding:4px 1px;box-sizing:border-box;overflow:visible; }
-.collapsedButton { position:relative;display:grid!important;place-items:center;flex:0 0 44px;width:calc(100% - 2px);max-width:44px;height:44px;min-width:0;min-height:44px;margin:0 1px;padding:0!important;box-sizing:border-box;color:var(--hss-fg);border:var(--hss-border-width,1px) var(--hss-border-style,solid) var(--hss-border);border-radius:11px;background:var(--hss-bg);background-clip:padding-box;overflow:visible; }
+.collapsedButton { position:relative;display:grid!important;place-items:center;align-self:center;flex:0 0 44px!important;width:44px!important;min-width:44px!important;max-width:44px!important;height:44px;min-height:44px;margin:0;padding:0!important;box-sizing:border-box;color:var(--hss-fg);border:var(--hss-border-width,1px) var(--hss-border-style,solid) var(--hss-border);border-radius:11px;background:var(--hss-bg);background-clip:padding-box;overflow:visible; }
 .collapsedButton[data-shape="circle"] { border-radius:50%; }
 .collapsedButton[data-shape="pill"] { height:38px;min-height:38px;flex-basis:38px;border-radius:999px; }
 .collapsedButton .deleteItem { top:1px;right:1px;width:18px;height:18px;font-size:.7rem; }

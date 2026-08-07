@@ -1020,6 +1020,7 @@ function studioMenuItemAvailable(menuId: string): boolean {
 
 function studioItemStyle(item: HataSideButton | HataSideWidget) {
 	const rotation = 'rotation' in item ? item.rotation : 0;
+	const borderVisible = item.type !== 'button' || item.borderVisible !== false;
 	const savedWidgetMinHeight = item.type === 'widget' ? item.sizeSettings[item.size].minHeight : 0;
 	const registryWidgetMinHeight = item.type === 'widget' ? HATA_SIDE_WIDGET_REGISTRY[item.kind].sizes[item.size].minHeight : 0;
 	const widgetMinHeight = item.type === 'widget' && item.kind === 'aichan'
@@ -1028,7 +1029,7 @@ function studioItemStyle(item: HataSideButton | HataSideWidget) {
 	return {
 		'--hss-bg': gradientCss(item),
 		'--hss-border': item.border,
-		'--hss-border-width': `${item.borderWidth ?? 1}px`,
+		'--hss-border-width': `${borderVisible ? (item.borderWidth ?? 1) : 0}px`,
 		'--hss-border-style': item.borderStyle ?? 'solid',
 		'--hss-fg': item.foreground,
 		'--hss-rotation': `${rotation}deg`,

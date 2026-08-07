@@ -31,7 +31,7 @@ export type {
 	HataSideWidgetSizeSetting,
 } from '@/utility/hata-side-studio-widgets.js';
 
-export const HATA_SIDE_STUDIO_FORMAT_VERSION = 6;
+export const HATA_SIDE_STUDIO_FORMAT_VERSION = 7;
 export const HATA_SIDE_STUDIO_DEFAULT_PROFILE_LIMIT = 3;
 export const HATA_SIDE_STUDIO_STORAGE_KEY = 'hataSideStudio';
 export const HATA_SIDE_STUDIO_CHANGE_EVENT = 'hata-side-studio:change';
@@ -78,6 +78,8 @@ export type HataSideButton = HataSideAppearance & {
 	icon: string;
 	label: string;
 	targetId?: string;
+	/** 縮小メニューでは既定で非表示。色・太さの設定は保持して再表示できる。 */
+	borderVisible: boolean;
 };
 
 export type HataSideWidget = Omit<HataSideAppearance, 'showLabel' | 'rotation'> & {
@@ -208,7 +210,7 @@ export function createDefaultAppearance(): HataSideAppearance {
 	};
 }
 
-export function createButton(source: SidebarSourceItem, appearance?: Partial<HataSideAppearance>): HataSideButton {
+export function createButton(source: SidebarSourceItem, appearance?: Partial<HataSideAppearance & Pick<HataSideButton, 'borderVisible'>>): HataSideButton {
 	return {
 		type: 'button',
 		id: uid('button'),
@@ -216,6 +218,7 @@ export function createButton(source: SidebarSourceItem, appearance?: Partial<Hat
 		icon: source.icon,
 		label: source.label,
 		...createDefaultAppearance(),
+		borderVisible: true,
 		...appearance,
 	};
 }
@@ -349,7 +352,7 @@ export function createDefaultProfile(source: readonly SidebarSourceItem[] = fall
 		id: uid('profile'),
 		name,
 		expanded: { nodes: groups.filter(group => group.children.length > 0), columns: 1, width: 'normal', parallax: false },
-		collapsed: { buttons: visible.map(item => createButton(item, { shape: 'circle', showLabel: false, size: 'small', border: 'var(--MI_THEME-divider)' })) },
+		collapsed: { buttons: visible.map(item => createButton(item, { shape: 'circle', showLabel: false, size: 'small', border: 'var(--MI_THEME-divider)', borderVisible: false })) },
 		updatedAt: new Date().toISOString(),
 	};
 }
@@ -435,6 +438,9 @@ function sanitizeButton(value: unknown, collapsed = false): HataSideButton | nul
 		label: typeof value.label === 'string' ? value.label.slice(0, 80) : value.menuId,
 		...(typeof value.targetId === 'string' && /^[a-z0-9]+$/i.test(value.targetId) ? { targetId: value.targetId } : {}),
 		...sanitizeAppearance(value, collapsed),
+		// v7以前にはこの値がない。縮小メニューの枠線は新しい既定どおり隠すが、
+		// 利用者が選んだ色・太さはそのまま残して、後から表示を戻せるようにする。
+		borderVisible: collapsed ? value.borderVisible === true : value.borderVisible !== false,
 	};
 }
 
@@ -494,7 +500,6 @@ export function sanitizeHataSideStudioStore(value: unknown, source: readonly Sid
 	// ウィジェット高の再取得はv5移行だけに限定する。今後formatを上げても、
 	// 利用者がサイズ別に調整した高さを毎回既定値へ戻さない。
 	const refreshLayoutDefaults = !Number.isFinite(storedVersion) || storedVersion < 5;
-	const repairCollapsedBorders = !Number.isFinite(storedVersion) || storedVersion < 6;
 	const profiles: HataSideStudioProfile[] = [];
 	for (const raw of value.profiles.slice(0, 50)) {
 		if (!isRecord(raw)) continue;
@@ -505,8 +510,7 @@ export function sanitizeHataSideStudioStore(value: unknown, source: readonly Sid
 			.map(node => columns > 1 && node.type !== 'group' && node.size === 'large' ? { ...node, size: 'normal' as const } : node);
 		const buttons = Array.isArray(collapsedRaw.buttons) ? collapsedRaw.buttons
 			.map(button => sanitizeButton(button, true))
-			.filter((button): button is HataSideButton => button != null)
-			.map(button => repairCollapsedBorders && button.border === 'transparent' ? { ...button, border: 'var(--MI_THEME-divider)' } : button) : [];
+			.filter((button): button is HataSideButton => button != null) : [];
 		profiles.push({
 			id: typeof raw.id === 'string' ? raw.id : uid('profile'), name: typeof raw.name === 'string' ? raw.name.slice(0, 80) : 'プロファイル',
 			expanded: {
@@ -677,14 +681,14 @@ export function copyExpandedToCollapsed(profile: HataSideStudioProfile): HataSid
 	}
 	return {
 		...profile,
-		collapsed: { buttons: buttons.map(button => ({ ...button, id: uid('button'), shape: button.shape === 'pill' ? 'rounded' : button.shape, size: 'small', rotation: 0, showLabel: false })) },
+		collapsed: { buttons: buttons.map(button => ({ ...button, id: uid('button'), shape: button.shape === 'pill' ? 'rounded' : button.shape, size: 'small', rotation: 0, showLabel: false, borderVisible: false })) },
 		updatedAt: new Date().toISOString(),
 	};
 }
 
 export function copyCollapsedToExpanded(profile: HataSideStudioProfile): HataSideStudioProfile {
 	const widgets = profile.expanded.nodes.filter((node): node is HataSideWidget => node.type === 'widget');
-	const copied = profile.collapsed.buttons.map(button => ({ ...button, id: uid('button'), size: 'normal' as const, showLabel: true }));
+	const copied = profile.collapsed.buttons.map(button => ({ ...button, id: uid('button'), size: 'normal' as const, showLabel: true, borderVisible: true }));
 	const group = createGroup('縮小メニューからコピー');
 	group.children = copied;
 	return { ...profile, expanded: { ...profile.expanded, nodes: [group, ...widgets] }, updatedAt: new Date().toISOString() };

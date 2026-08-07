@@ -11,12 +11,17 @@ const read = (path: string) => readFileSync(`${process.cwd()}/src/${path}`, 'utf
 describe('HataSideStudio UI integration', () => {
 	test('縮小サイドバーは専用ボタン配列だけを描画し、縦一列を固定する', () => {
 		const simple = read('ui/simple.vue');
+		const studio = read('pages/hata-side-studio.vue');
 		expect(simple).toContain('v-for="item in studioCollapsedButtons"');
 		expect(simple).toContain('内幅48pxへ左右2pxずつ余白を残し');
 		expect(simple).toContain('flex-direction:column');
 		expect(simple).toContain('width:calc(100% - 4px)');
 		expect(simple).toContain('max-width:44px');
 		expect(simple).not.toMatch(/v-for="item in studioCollapsedButtons"[\s\S]{0,300}type === 'widget'/);
+		expect(simple).toContain("item.type !== 'button' || item.borderVisible !== false");
+		expect(studio).toContain("node.type !== 'button' || node.borderVisible !== false");
+		expect(studio).toContain('枠線を表示');
+		expect(studio).toContain('縮小メニューの枠線は初期状態で非表示です');
 	});
 
 	test('編集画面は拡大と縮小の相互コピー、PC二ペイン、削除モードを備える', () => {
@@ -37,8 +42,12 @@ describe('HataSideStudio UI integration', () => {
 
 	test('その場で調整はグラデーション、詳細設定、グループ編集を実際の操作へ接続する', () => {
 		const studio = read('pages/hata-side-studio.vue');
-		expect(studio).toContain('v-if="selected.gradientEnabled"');
-		expect(studio).toContain(':style="{ background: gradientCss(selected) }"');
+		expect(studio).toContain('<GradientEditor :model-value="selected"/>');
+		expect(studio).toContain('const GradientEditor = defineComponent');
+		expect(studio).toContain("h(GradientEditor, { modelValue: props.modelValue })");
+		expect(studio).toContain("h('span', '2色目')");
+		expect(studio).toContain("h('span', '色の移り方')");
+		expect(studio).toContain('style: { background: gradientCss(value) }');
 		expect(studio).toContain('openSelectedInspector');
 		expect(studio).toContain('inspectorPaneEl.value?.scrollIntoView');
 		expect(studio).toContain('@click.stop="openQuickEditor(node.id)"');
@@ -65,6 +74,7 @@ describe('HataSideStudio UI integration', () => {
 		const simple = read('ui/simple.vue');
 		expect(studio).toContain('.previewButton[data-shape="circle"] { width:44px');
 		expect(studio).toContain('.previewButton[data-shape="pill"] { width:calc(100% - 8px);margin-inline:4px');
+		expect(studio).toContain('.collapsedButton { position:relative;display:grid!important;place-items:center;align-self:center;flex:0 0 44px!important;width:44px!important;min-width:44px!important;max-width:44px!important;');
 		expect(simple).toContain('.hssButton[data-hss-shape="circle"]');
 		expect(simple).toContain('width:calc(100% - 4px);margin-inline:2px;border-radius:999px');
 		expect(studio).toContain('{ value: \'pill\', label: \'錠剤型\' }');
