@@ -15,6 +15,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<div v-else-if="notification.type === 'renote:grouped'" :class="[$style.icon, $style.icon_renoteGroup]"><i class="ti ti-repeat" style="line-height: 1;"></i></div>
 		<div v-else-if="notification.type === 'note:grouped'" :class="[$style.icon, $style.icon_noteGroup]"><i class="ti ti-pencil" style="line-height: 1;"></i></div>
 		<MkAvatar v-else-if="'user' in notification" :class="$style.icon" :user="notification.user" link preview/>
+		<div v-else-if="notification.type === 'app' && notification.header === '通知フィルタの挙動が変わりました'" :class="[$style.icon, $style.icon_filterPolicy]"><i class="ti ti-filter-cog"></i></div>
 		<!-- 旗鯖fork: hatask 通知のアイコン (icon URL なしの app 通知を header で判別、文字を円形背景に表示) -->
 		<div v-else-if="notification.type === 'app' && !notification.icon && notification.header && /カレンダー|イベント|スケジュール|予定/.test(notification.header)" :class="[$style.icon, $style.icon_hataskCalendar]"><i class="ti ti-calendar-event"></i></div>
 		<div v-else-if="notification.type === 'app' && !notification.icon && notification.header && /きもち|感情|気分|ムード|記録/.test(notification.header)" :class="[$style.icon, $style.icon_hataskHeart]"><i class="ti ti-mood-smile"></i></div>
@@ -306,11 +307,13 @@ function getActualReactedUsersCount(notification: Misskey.entities.Notification)
 }
 
 const acceptGroupInvitation = () => {
+	if (props.notification.type !== 'groupInvited') return;
 	groupInviteDone.value = true;
 	misskeyApi('users/groups/invitations/accept', { invitationId: props.notification.invitation.id });
 };
 
 const rejectGroupInvitation = () => {
+	if (props.notification.type !== 'groupInvited') return;
 	groupInviteDone.value = true;
 	misskeyApi('users/groups/invitations/reject', { invitationId: props.notification.invitation.id });
 };
@@ -397,6 +400,18 @@ async function rejectPrivateChannelInvitation(invitationId: string) {
 	font-size: 15px;
 	border-radius: 100%;
 	color: #fff;
+}
+
+.icon_filterPolicy {
+	display: grid;
+	align-items: center;
+	justify-items: center;
+	width: 100%;
+	height: 100%;
+	border-radius: 100%;
+	background: var(--MI_THEME-accent);
+	color: var(--MI_THEME-fgOnAccent);
+	font-size: 20px;
 }
 
 .icon_reactionGroup {

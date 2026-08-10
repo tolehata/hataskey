@@ -9,7 +9,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 	<MkError v-else-if="paginator.error.value" @retry="paginator.init()"/>
 
-	<div v-else-if="paginator.items.value.length === 0" key="_empty_">
+	<div v-else-if="displayNotifications.length === 0" key="_empty_">
 		<slot name="empty"><MkResult type="empty" :text="i18n.ts.noNotifications"/></slot>
 	</div>
 
@@ -43,7 +43,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { onUnmounted, onMounted, computed, useTemplateRef, TransitionGroup, markRaw, watch } from 'vue';
+import { onUnmounted, onMounted, computed, ref, useTemplateRef, TransitionGroup, markRaw, watch } from 'vue';
 import * as Misskey from 'cherrypick-js';
 import { notificationTypes } from 'cherrypick-js';
 import { useInterval } from '@@/js/use-interval.js';
@@ -61,10 +61,14 @@ import { isSeparatorNeeded, getSeparatorInfo } from '@/utility/timeline-date-sep
 import { Paginator } from '@/utility/paginator.js';
 import { globalEvents } from '@/events.js';
 import { groupHataFeedBellNotifications } from '@/utility/hatafeed-bell-group.js';
+import { $i } from '@/i.js';
+import { miLocalStorage } from '@/local-storage.js';
+import { NOTIFICATION_FILTER_POLICY_NOTICE } from '@/utility/notification-filter.js';
 
 const props = defineProps<{
 	excludeTypes?: typeof notificationTypes[number][] | null;
 	notUseGrouped?: boolean;
+	showFilterPolicyNotice?: boolean;
 }>();
 
 const rootEl = useTemplateRef('rootEl');
@@ -82,9 +86,13 @@ const paginator = shouldGroupHataFeed.value ? markRaw(new Paginator('i/notificat
 	})),
 }));
 
-const displayNotifications = computed(() => shouldGroupHataFeed.value
-	? groupHataFeedBellNotifications(paginator.items.value as Misskey.entities.Notification[])
-	: paginator.items.value as Misskey.entities.Notification[]);
+const filterPolicyNotice = ref<Misskey.entities.Notification | null>(null);
+const displayNotifications = computed(() => {
+	const notifications = shouldGroupHataFeed.value
+		? groupHataFeedBellNotifications(paginator.items.value as Misskey.entities.Notification[])
+		: paginator.items.value as Misskey.entities.Notification[];
+	return filterPolicyNotice.value == null ? notifications : [filterPolicyNotice.value, ...notifications];
+});
 
 const MIN_POLLING_INTERVAL = 1000 * 10;
 const POLLING_INTERVAL =
@@ -171,6 +179,22 @@ function reload() {
 let connection: Misskey.IChannelConnection<Misskey.Channels['main']> | null = null;
 
 onMounted(() => {
+	if (props.showFilterPolicyNotice && $i != null) {
+		const noticeKey = `hataNotificationFilterPolicyNoticeShown:${$i.id}` as const;
+		if (miLocalStorage.getItem(noticeKey) == null) {
+			filterPolicyNotice.value = {
+				id: NOTIFICATION_FILTER_POLICY_NOTICE.id,
+				createdAt: new Date().toISOString(),
+				type: 'app',
+				header: NOTIFICATION_FILTER_POLICY_NOTICE.header,
+				body: NOTIFICATION_FILTER_POLICY_NOTICE.body,
+				icon: null,
+				link: null,
+			} as Misskey.entities.Notification;
+			miLocalStorage.setItem(noticeKey, '1');
+		}
+	}
+
 	paginator.init();
 
 	if (paginator.computedParams) {

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { notificationTypes, userExportableEntities } from '@/types.js';
+import { groupedNotificationTypes, userExportableEntities } from '@/types.js';
 
 const baseSchema = {
 	type: 'object',
@@ -21,7 +21,7 @@ const baseSchema = {
 		type: {
 			type: 'string',
 			optional: false, nullable: false,
-			enum: [...notificationTypes, 'reaction:grouped', 'renote:grouped'],
+			enum: groupedNotificationTypes,
 		},
 	},
 } as const;
@@ -578,6 +578,34 @@ export const packedNotificationSchema = {
 				type: 'object',
 				ref: 'Note',
 				optional: false, nullable: false,
+			},
+			users: {
+				type: 'array',
+				optional: false, nullable: false,
+				items: {
+					type: 'object',
+					ref: 'UserLite',
+					optional: false, nullable: false,
+				},
+			},
+		},
+	}, {
+		type: 'object',
+		properties: {
+			...baseSchema.properties,
+			type: {
+				type: 'string',
+				optional: false, nullable: false,
+				enum: ['note:grouped'],
+			},
+			noteIds: {
+				type: 'array',
+				optional: false, nullable: false,
+				items: {
+					type: 'string',
+					format: 'id',
+					optional: false, nullable: false,
+				},
 			},
 			users: {
 				type: 'array',

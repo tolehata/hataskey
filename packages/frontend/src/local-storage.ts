@@ -25,6 +25,7 @@ export type Keys = (
 	'useBoldFont' |
 	'ui' |
 	'ui_temp' |
+	'ui_setup_completed' |
 	'bootloaderLocales' |
 	'theme' |
 	'themeId' |
@@ -37,6 +38,23 @@ export type Keys = (
 	'latestPreferencesUpdate' |
 	'hidePreferencesRestoreSuggestion' |
 	'isSafeMode' |
+	'hata_ui_migrated' |
+	'hata_gap_body_migrated' |
+	'hata_classic_spacing_migrated' |
+	'hata_misskeyui_wide_spacing_migrated' |
+	'hata_weather_default_off_migrated' |
+	'hata_sidebar_v2_migrated' |
+	'hata_sidebar_v3_migrated' |
+	'hata_sidebar_v4_migrated' |
+	'hata_sidebar_v5_migrated' |
+	'hata_sidebar_v6_migrated' |
+	'hata_docs_cleanup_migrated' |
+	'hata_support_cleanup_migrated' |
+	'loginBonusLastShown' |
+	'emojiShootHighScore' |
+	'emojiShootHighScore_debuff' |
+	'stackingGameHighScore' |
+	`whackEmojiHighScore_${string}` |
 	'hatasabaUiLastTab' | // 旗鯖fork: HatasabaUI で最後に開いていたタブ (再読み込み時の復元用)
 	'hatasabaLastListId' | // 旗鯖fork: HatasabaUIで最後に開いたリスト(端末ごと)
 	'hatasabaLastAntennaId' | // 旗鯖fork: HatasabaUIで最後に開いたアンテナ(端末ごと)
@@ -58,6 +76,9 @@ export type Keys = (
 	'hataPostDelaySeconds' | // 旗鯖fork(ベータ): 投稿前カウントダウンの秒数(3・5・10秒)
 	'hataSideStudio' | // 旗鯖fork: HataSideStudio の端末ローカルなプロファイルと拡大/縮小レイアウト
 	'hataSideStudioTutorialDone' | // 旗鯖fork: HataSideStudio の初回チュートリアルを完了またはスキップ済みか(端末ローカル)
+	`hatacordingUi:${string}` | // 旗鯖fork: HataSNSCordUI の有効化・メニュー・サブペイン設定(端末・アカウントごと)
+	`hatacordingActivityCache:${string}` | // 旗鯖fork: HataSNSCordUI の通知・地震津波履歴キャッシュ(端末・アカウントごと、期限・件数制限あり)
+	`hataNotificationFilterPolicyNoticeShown:${string}` | // 旗鯖fork: 通知フィルタ方針変更の案内を表示済みか(端末・アカウントごと)
 	`miux:${string}` |
 	`ui:folder:${string}` |
 	`themes:${string}` | // DEPRECATED

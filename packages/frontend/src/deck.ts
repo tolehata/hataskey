@@ -3,7 +3,6 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { notificationTypes } from 'cherrypick-js';
 import { ref } from 'vue';
 import { i18n } from './i18n.js';
 import type { BasicTimelineType } from '@/timelines.js';
@@ -58,8 +57,9 @@ export type Column = {
 	listId?: string;
 	channelId?: string;
 	roleId?: string;
-	excludeTypes?: typeof notificationTypes[number][];
-	tl?: BasicTimelineType | 'ohtl' | 'oltl';
+	excludeTypes?: string[];
+	notificationFilterKnownTypes?: string[];
+	tl?: BasicTimelineType | 'ohtl' | 'oltl' | 'trending';
 	withRenotes?: boolean;
 	withReplies?: boolean;
 	withSensitive?: boolean;

@@ -11,7 +11,7 @@ import {
 	obsoleteNotificationTypes,
 	groupedNotificationTypes,
 	FilterUnionByProperty,
-	notificationTypes,
+	notificationFilterTypes,
 } from '@/types.js';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import { NotificationEntityService } from '@/core/entities/NotificationEntityService.js';
@@ -54,10 +54,10 @@ export const paramDef = {
 		markAsRead: { type: 'boolean', default: true },
 		// 後方互換のため、廃止された通知タイプも受け付ける
 		includeTypes: { type: 'array', items: {
-			type: 'string', enum: [...notificationTypes, ...obsoleteNotificationTypes],
+			type: 'string', enum: [...notificationFilterTypes, ...obsoleteNotificationTypes],
 		} },
 		excludeTypes: { type: 'array', items: {
-			type: 'string', enum: [...notificationTypes, ...obsoleteNotificationTypes],
+			type: 'string', enum: [...notificationFilterTypes, ...obsoleteNotificationTypes],
 		} },
 	},
 	required: [],
@@ -80,7 +80,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				return [];
 			}
 			// excludeTypes に全指定されている場合はクエリしない
-			if (notificationTypes.every(type => ps.excludeTypes?.includes(type))) {
+			if (notificationFilterTypes.every(type => ps.excludeTypes?.includes(type))) {
 				return [];
 			}
 

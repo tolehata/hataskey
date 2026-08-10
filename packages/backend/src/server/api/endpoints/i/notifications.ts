@@ -7,7 +7,7 @@ import { In } from 'typeorm';
 import * as Redis from 'ioredis';
 import { Inject, Injectable } from '@nestjs/common';
 import type { NotesRepository } from '@/models/_.js';
-import { FilterUnionByProperty, notificationTypes, obsoleteNotificationTypes } from '@/types.js';
+import { FilterUnionByProperty, notificationFilterTypes, obsoleteNotificationTypes } from '@/types.js';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import { NotificationEntityService } from '@/core/entities/NotificationEntityService.js';
 import { NotificationService } from '@/core/NotificationService.js';
@@ -49,10 +49,10 @@ export const paramDef = {
 		markAsRead: { type: 'boolean', default: true },
 		// 後方互換のため、廃止された通知タイプも受け付ける
 		includeTypes: { type: 'array', items: {
-			type: 'string', enum: [...notificationTypes, ...obsoleteNotificationTypes],
+			type: 'string', enum: [...notificationFilterTypes, ...obsoleteNotificationTypes],
 		} },
 		excludeTypes: { type: 'array', items: {
-			type: 'string', enum: [...notificationTypes, ...obsoleteNotificationTypes],
+			type: 'string', enum: [...notificationFilterTypes, ...obsoleteNotificationTypes],
 		} },
 	},
 	required: [],
@@ -74,12 +74,12 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				return [];
 			}
 			// excludeTypes に全指定されている場合はクエリしない
-			if (notificationTypes.every(type => ps.excludeTypes?.includes(type))) {
+			if (notificationFilterTypes.every(type => ps.excludeTypes?.includes(type))) {
 				return [];
 			}
 
-			const includeTypes = ps.includeTypes && ps.includeTypes.filter(type => !(obsoleteNotificationTypes).includes(type as any)) as typeof notificationTypes[number][];
-			const excludeTypes = ps.excludeTypes && ps.excludeTypes.filter(type => !(obsoleteNotificationTypes).includes(type as any)) as typeof notificationTypes[number][];
+			const includeTypes = ps.includeTypes && ps.includeTypes.filter(type => !(obsoleteNotificationTypes).includes(type as any)) as typeof notificationFilterTypes[number][];
+			const excludeTypes = ps.excludeTypes && ps.excludeTypes.filter(type => !(obsoleteNotificationTypes).includes(type as any)) as typeof notificationFilterTypes[number][];
 
 			const notifications = await this.notificationService.getNotifications(me.id, {
 				sinceId: sinceId,

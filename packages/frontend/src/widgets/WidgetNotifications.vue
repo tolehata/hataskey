@@ -13,21 +13,21 @@ SPDX-License-Identifier: AGPL-3.0-only
 	</template>
 
 	<div>
-		<MkStreamingNotificationsTimeline :excludeTypes="widgetProps.excludeTypes"/>
+		<MkStreamingNotificationsTimeline :excludeTypes="resolvedExcludeTypes" :showFilterPolicyNotice="hasConfiguredFilter"/>
 	</div>
 </MkContainer>
 </template>
 
 <script lang="ts" setup>
-import { defineAsyncComponent } from 'vue';
+import { computed, onMounted } from 'vue';
 import { useWidgetPropsManager } from './widget.js';
-import type { notificationTypes as notificationTypes_typeReferenceOnly } from 'cherrypick-js';
 import type { WidgetComponentEmits, WidgetComponentExpose, WidgetComponentProps } from './widget.js';
 import type { FormWithDefault, GetFormResultType } from '@/utility/form.js';
 import MkContainer from '@/components/MkContainer.vue';
 import MkStreamingNotificationsTimeline from '@/components/MkStreamingNotificationsTimeline.vue';
 import * as os from '@/os.js';
 import { i18n } from '@/i18n.js';
+import { hasConfiguredNotificationFilter, migrateNotificationFilterSnapshot, resolveNotificationFilter } from '@/utility/notification-filter.js';
 
 const name = 'notifications';
 
@@ -43,7 +43,12 @@ const widgetPropsDef = {
 	excludeTypes: {
 		type: 'array',
 		hidden: true,
-		default: [] as (typeof notificationTypes_typeReferenceOnly[number])[],
+		default: [] as string[],
+	},
+	notificationFilterKnownTypes: {
+		type: 'array',
+		hidden: true,
+		default: [] as string[],
 	},
 } satisfies FormWithDefault;
 
@@ -58,13 +63,31 @@ const { widgetProps, configure, save } = useWidgetPropsManager(name,
 	emit,
 );
 
+const resolvedExcludeTypes = computed(() => resolveNotificationFilter(
+	widgetProps.excludeTypes,
+	widgetProps.notificationFilterKnownTypes,
+).excludeTypes);
+const hasConfiguredFilter = computed(() => hasConfiguredNotificationFilter(
+	widgetProps.excludeTypes,
+	widgetProps.notificationFilterKnownTypes,
+));
+
+onMounted(() => {
+	const migrated = migrateNotificationFilterSnapshot(widgetProps.excludeTypes, widgetProps.notificationFilterKnownTypes);
+	if (migrated == null) return;
+	widgetProps.notificationFilterKnownTypes = migrated.knownTypes;
+	save();
+});
+
 const configureNotification = async () => {
 	const { dispose } = await os.popupAsyncWithDialog(import('@/components/MkNotificationSelectWindow.vue').then(x => x.default), {
 		excludeTypes: widgetProps.excludeTypes,
+		knownTypes: widgetProps.notificationFilterKnownTypes,
 	}, {
 		done: async (res) => {
-			const { excludeTypes } = res;
+			const { excludeTypes, knownTypes } = res;
 			widgetProps.excludeTypes = excludeTypes;
+			widgetProps.notificationFilterKnownTypes = knownTypes;
 			save();
 		},
 		closed: () => dispose(),
