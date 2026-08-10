@@ -5,7 +5,7 @@
 
 import { describe, test, assert, afterEach } from 'vitest';
 import { render, cleanup, type RenderResult } from '@testing-library/vue';
-import { preferState } from './init.js';
+import { preferReactive, preferState } from './init.js';
 import { getEmojiName } from '@@/js/emojilist.js';
 import { components } from '@/components/index.js';
 import { directives } from '@/directives/index.js';
@@ -22,11 +22,13 @@ describe('Emoji', () => {
 	afterEach(() => {
 		cleanup();
 		preferState.emojiStyle = '';
+		preferReactive.emojiStyle.value = '';
 	});
 
 	describe('MkEmoji', () => {
 		test('Should render selector-less heart with color in native mode', async () => {
 			preferState.emojiStyle = 'native';
+			preferReactive.emojiStyle.value = 'native';
 			const mkEmoji = await renderEmoji('\u2764'); // monochrome heart
 			assert.ok(mkEmoji.queryByText('\u2764\uFE0F')); // colored heart
 			assert.ok(!mkEmoji.queryByText('\u2764'));

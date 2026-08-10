@@ -9,7 +9,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 <span
 	:class="[$style.root, { [$style.stack]: stack }]"
 	:style="{ width: px, height: px }"
-	:title="user ? (user.name ?? user.username) : undefined"
+	:title="user ? (user.name ?? user.username ?? undefined) : undefined"
 >
 	<MkAvatar v-if="user && user.avatarUrl" :class="$style.img" :user="(user as Misskey.entities.User)" :link="link" :preview="preview"/>
 	<span v-else :class="$style.initial" :style="{ background: color, fontSize: initialSize }">{{ initial }}</span>

@@ -2276,6 +2276,9 @@ _achievements:
       title: "Side Menu Pioneer"
       description: "Complete or skip the HataSideStudio tutorial"
       flavor: "This Hataskist builds menus."
+    _hatacordingUiTutorial:
+      title: "HataSNSCordUI is quite a mouthful"
+      description: "A UI for experienced users"
 _role:
   new: "New role"
   edit: "Edit role"

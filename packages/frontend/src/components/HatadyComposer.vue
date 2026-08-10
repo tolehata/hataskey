@@ -91,6 +91,7 @@ import HyBookCover from '@/components/HyBookCover.vue';
 import * as os from '@/os.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { hySubjectPalette, HY_TAGS } from '@/utility/hatady.js';
+import type { HyTag } from '@/utility/hatady.js';
 import { hySubjects, loadHySubjects, saveHySubject } from '@/utility/hatady-subjects.js';
 import { hatadyTheme, hatadyLang } from '@/utility/hatady-prefs.js';
 
@@ -121,7 +122,7 @@ const pageFrom = ref<number | null>(editLog?.pageFrom ?? null);
 const pageTo = ref<number | null>(editLog?.pageTo ?? null);
 const durationMinutes = ref<number>(editLog?.durationMinutes ?? 30);
 const body = ref(editLog?.body ?? '');
-const tag = ref<string | null>(editLog?.tag ?? null);
+const tag = ref<HyTag | null>(editLog?.tag ?? null);
 // 公開範囲: public=全体 / followers=フォロワー限定 / private=自分のみ。
 type Vis = 'public' | 'followers' | 'private';
 const VIS_ORDER: Vis[] = ['public', 'followers', 'private'];
@@ -238,7 +239,7 @@ async function submit() {
 	try {
 		if (isEdit) {
 			// 編集: 対応フィールド(タイトル/分野/タグ/メモ/時間/公開範囲)を更新する。
-			const payload: Record<string, unknown> = {
+			const payload = {
 				logId: editLog.id,
 				title: title.value.trim(),
 				subject: subject.value.trim(),
@@ -255,17 +256,18 @@ async function submit() {
 		}
 		// バックエンドの ajv は nullable を解さず null を弾くため、任意項目は null を送らず「省略」する。
 		//   数値入力は v-model.number が空時に "" を返すので Number 化して不正値を防ぐ。
-		const payload: Record<string, unknown> = {
+		const payload = {
 			title: title.value.trim(),
 			subject: subject.value.trim(),
 			durationMinutes: Number(durationMinutes.value) || 0,
 			visibility: visibility.value,
+			tag: tag.value ?? undefined,
+			body: body.value.trim() || undefined,
+			bookId: selectedBook.value?.id ?? undefined,
+			pageFrom: pageFrom.value != null && (pageFrom.value as unknown) !== '' ? Number(pageFrom.value) : undefined,
+			pageTo: pageTo.value != null && (pageTo.value as unknown) !== '' ? Number(pageTo.value) : undefined,
+			studiedAt: undefined as string | undefined,
 		};
-		if (tag.value) payload.tag = tag.value;
-		if (body.value.trim()) payload.body = body.value.trim();
-		if (selectedBook.value?.id) payload.bookId = selectedBook.value.id;
-		if (pageFrom.value != null && (pageFrom.value as unknown) !== '') payload.pageFrom = Number(pageFrom.value);
-		if (pageTo.value != null && (pageTo.value as unknown) !== '') payload.pageTo = Number(pageTo.value);
 		if (studiedAtLocal.value) {
 			const d = new Date(studiedAtLocal.value);
 			if (!isNaN(d.getTime())) payload.studiedAt = d.toISOString();

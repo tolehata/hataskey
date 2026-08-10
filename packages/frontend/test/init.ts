@@ -30,6 +30,7 @@ export const preferState: Record<string, unknown> = {
 	},
 
 	mutingEmojis: [],
+	emojiStyle: '',
 };
 
 export let preferReactive: Record<string, Ref<unknown>> = {};

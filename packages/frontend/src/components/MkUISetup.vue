@@ -117,6 +117,42 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</button>
 		</div>
 
+		<!-- ===== 通常候補: HataSNSCordUI（HatasabaUIの次に常時表示） ===== -->
+		<section :class="$style.cordChoice" aria-labelledby="hata-sns-cord-ui-title">
+			<div :class="$style.cordChoiceInner">
+					<div :class="$style.cordChoiceIntro">
+						<div>
+							<div id="hata-sns-cord-ui-title" :class="$style.cordChoiceWordmark">HataSNSCordUI</div>
+							<p>会話のように流れるタイムライン、機能を開けるサブペイン、コンパクトな投稿欄を一つの画面にまとめます。</p>
+						</div>
+					</div>
+
+					<div :class="$style.cordMock" aria-hidden="true">
+						<div :class="$style.cordMockLeft">
+							<div :class="$style.cordMockServer"><span :class="$style.cordMockServerIcon"></span><b>Hataskey</b><SlidersHorizontal :size="8"/></div>
+							<div :class="$style.cordMockNav"><span :class="$style.cordMockNavActive"><Home :size="9"/>ホーム</span><span><Globe2 :size="9"/>ローカル</span><span><Search :size="9"/>検索</span><span><Bell :size="9"/>通知</span></div>
+							<div :class="$style.cordMockCollections"><span><List :size="8"/>リスト</span><span><Radio :size="8"/>アンテナ</span></div>
+							<div :class="$style.cordMockAccount"><UserRound :size="9"/><span>アザラシ</span></div>
+						</div>
+						<div :class="$style.cordMockCenter">
+							<div :class="$style.cordMockTitle"><span><Home :size="8"/>ホーム</span><span :class="$style.cordMockStatus">● 42人</span></div>
+							<div :class="$style.cordMockFeed">
+								<div :class="$style.cordMockOther"><span :class="$style.cordMockAvatar"></span><div><b>花屋さん</b><i></i><i></i><small>↩︎ · ↻ · ♡ · •••</small></div></div>
+								<div :class="$style.cordMockOwn"><div><b>アザラシ</b><i></i><small>↩︎ · ↻ · ♡ · •••</small></div></div>
+								<div :class="$style.cordMockOther"><span :class="[$style.cordMockAvatar, $style.cordMockAvatarAlt]"></span><div><b>配達員</b><i></i><i></i><small>↩︎ · ↻ · ♡ · •••</small></div></div>
+							</div>
+							<div :class="$style.cordMockComposer"><Star :size="8"/><CloudUpload :size="8"/><span>いまどうしてる？</span><ArrowUp :size="9"/></div>
+						</div>
+						<div :class="$style.cordMockRight">
+							<div :class="$style.cordMockTabs"><span>投稿詳細</span><span>通知</span><Plus :size="8"/></div>
+							<div :class="$style.cordMockDetail"><span :class="$style.cordMockProfile"></span><b>投稿の情報</b><i></i><i></i><div><Bell :size="10"/><small>通知や検索もここで表示</small></div></div>
+						</div>
+					</div>
+
+					<button :class="$style.cordChoiceCta" @click="selectHatacording"><MessageSquareText :size="17"/><span>HataSNSCordUIを使用する</span><ChevronRight :size="17"/></button>
+			</div>
+		</section>
+
 		<!-- ===== 折りたたみ: その他のUI (非推奨) ===== -->
 		<div :class="$style.disc">
 			<button :class="$style.discToggle" :aria-expanded="showOthers" @click="showOthers = !showOthers">
@@ -163,9 +199,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <script lang="ts" setup>
 import { ref } from 'vue';
-import MkModal from '@/components/MkModal.vue';
+import { ArrowUp, Bell, ChevronRight, CloudUpload, Globe2, Home, List, MessageSquareText, Plus, Radio, Search, SlidersHorizontal, Star, UserRound } from '@lucide/vue';
 import { instanceName } from '@@/js/config.js';
+import MkModal from '@/components/MkModal.vue';
 import { miLocalStorage } from '@/local-storage.js';
+import { ensureSignin } from '@/i.js';
+import { setHatacordingUiEnabled } from '@/utility/hatacording-ui.js';
 import * as os from '@/os.js';
 
 const emit = defineEmits<{
@@ -173,6 +212,7 @@ const emit = defineEmits<{
 }>();
 
 const modal = ref<InstanceType<typeof MkModal>>();
+const $i = ensureSignin();
 
 // 旗鯖fork: 非推奨UI (Misskey UI / 従来デッキ) の折りたたみ開閉状態。
 const showOthers = ref(false);
@@ -200,6 +240,17 @@ const selectDeprecated = async (type: 'default' | 'deck') => {
 	});
 	if (canceled) return;
 	select(type);
+};
+
+const selectHatacording = async () => {
+	if (!$i.policies.canUseHatacordingUi) {
+		await os.alert({ type: 'warning', text: 'このUIは現在未開放です。' });
+		return;
+	}
+	setHatacordingUiEnabled($i.id, true);
+	miLocalStorage.setItem('ui', 'hatacording');
+	miLocalStorage.setItem('ui_setup_completed', 'true');
+	window.location.assign('/');
 };
 </script>
 
@@ -650,6 +701,360 @@ const selectDeprecated = async (type: 'default' | 'deck') => {
 	> i { font-size: 12px; }
 }
 
+/* ===== HataSNSCordUI: faithful three-pane mock ===== */
+.cordChoice {
+	margin-top: 14px;
+	padding: 14px;
+	border: 1px solid color-mix(in srgb, var(--htkAccent) 34%, rgba(255, 255, 255, .12));
+	border-radius: 18px;
+	background: color-mix(in srgb, var(--htkAccent) 7%, rgba(255, 255, 255, .025));
+}
+
+.cordChoiceInner {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.cordChoiceIntro {
+	display: flex;
+	align-items: flex-start;
+	gap: 12px;
+	padding-inline: 2px;
+}
+
+.cordChoiceIntro > div {
+	min-width: 0;
+	flex: 1;
+}
+
+.cordChoiceIntro p {
+	margin: 4px 0 0;
+	color: rgba(255, 255, 255, .58);
+	font-size: 11px;
+	line-height: 1.55;
+}
+
+.cordChoiceWordmark {
+	color: #fff;
+	font-family: 'Righteous', system-ui, sans-serif;
+	font-size: 21px;
+	line-height: 1.1;
+	letter-spacing: .01em;
+}
+
+.cordMock {
+	display: grid;
+	grid-template-columns: 24% minmax(0, 1fr) 27%;
+	height: 196px;
+	overflow: hidden;
+	border: 1px solid color-mix(in srgb, var(--htkAccent) 30%, rgba(255, 255, 255, .14));
+	border-radius: 15px;
+	background: #10141d;
+	box-shadow: 0 12px 30px rgba(0, 0, 0, .28);
+	color: #e9edf5;
+	font-family: system-ui, sans-serif;
+	font-size: 6px;
+}
+
+.cordMock svg {
+	stroke-width: 1.8;
+}
+
+.cordMockLeft,
+.cordMockRight {
+	display: flex;
+	min-width: 0;
+	flex-direction: column;
+	background: #181d27;
+}
+
+.cordMockLeft {
+	border-right: 1px solid #303746;
+}
+
+.cordMockRight {
+	border-left: 1px solid #303746;
+}
+
+.cordMockServer {
+	display: flex;
+	height: 27px;
+	align-items: center;
+	gap: 4px;
+	padding: 0 6px;
+	border-bottom: 1px solid #303746;
+}
+
+.cordMockServer b {
+	min-width: 0;
+	flex: 1;
+	overflow: hidden;
+	font-family: 'Righteous', system-ui, sans-serif;
+	font-size: 8px;
+	font-weight: 400;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.cordMockServerIcon {
+	width: 13px;
+	height: 13px;
+	flex: 0 0 13px;
+	border-radius: 4px;
+	background: linear-gradient(145deg, var(--htkAccentLt), var(--htkAccent));
+}
+
+.cordMockNav,
+.cordMockCollections {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	padding: 6px 5px 0;
+}
+
+.cordMockNav span,
+.cordMockCollections span {
+	display: flex;
+	height: 15px;
+	align-items: center;
+	gap: 4px;
+	padding: 0 5px;
+	border-radius: 5px;
+	color: #aeb7c7;
+}
+
+.cordMockNavActive {
+	background: color-mix(in srgb, var(--htkAccent) 20%, transparent);
+	color: var(--htkAccentLt) !important;
+}
+
+.cordMockCollections {
+	margin-top: 3px;
+	padding-top: 5px;
+	border-top: 1px solid #2b3240;
+}
+
+.cordMockAccount {
+	display: flex;
+	height: 25px;
+	align-items: center;
+	gap: 4px;
+	margin-top: auto;
+	padding: 0 7px;
+	border-top: 1px solid #303746;
+	color: #d7ddea;
+}
+
+.cordMockCenter {
+	display: flex;
+	min-width: 0;
+	flex-direction: column;
+	background: #111620;
+}
+
+.cordMockTitle {
+	display: flex;
+	height: 27px;
+	align-items: center;
+	justify-content: space-between;
+	padding: 0 7px;
+	border-bottom: 1px solid #303746;
+	background: #171c26;
+}
+
+.cordMockTitle span {
+	display: flex;
+	align-items: center;
+	gap: 3px;
+}
+
+.cordMockStatus {
+	color: #6ed2a5;
+	font-size: 5px;
+}
+
+.cordMockFeed {
+	display: flex;
+	min-height: 0;
+	flex: 1;
+	flex-direction: column;
+	gap: 6px;
+	padding: 8px;
+}
+
+.cordMockOther,
+.cordMockOwn {
+	display: flex;
+	width: 82%;
+	align-items: flex-start;
+	gap: 4px;
+}
+
+.cordMockOther > div,
+.cordMockOwn > div {
+	display: flex;
+	min-width: 0;
+	flex: 1;
+	flex-direction: column;
+	gap: 3px;
+	padding: 5px 6px;
+	border: 1px solid #353d4d;
+	border-radius: 7px 7px 7px 2px;
+	background: #1d2330;
+}
+
+.cordMockOwn {
+	align-self: flex-end;
+}
+
+.cordMockOwn > div {
+	border-color: color-mix(in srgb, var(--htkAccent) 52%, #353d4d);
+	border-radius: 7px 7px 2px;
+	background: color-mix(in srgb, var(--htkAccent) 22%, #1d2330);
+}
+
+.cordMockOther b,
+.cordMockOwn b {
+	font-size: 5.5px;
+}
+
+.cordMockOther i,
+.cordMockOwn i,
+.cordMockDetail i {
+	display: block;
+	height: 2px;
+	border-radius: 999px;
+	background: rgba(255, 255, 255, .38);
+}
+
+.cordMockOther i:nth-of-type(2) {
+	width: 66%;
+}
+
+.cordMockOther small,
+.cordMockOwn small {
+	color: #9ca6b8;
+	font-size: 5px;
+	letter-spacing: .1em;
+}
+
+.cordMockAvatar {
+	width: 12px;
+	height: 12px;
+	flex: 0 0 12px;
+	border-radius: 50%;
+	background: linear-gradient(145deg, #ef9da9, #8b6ad7);
+}
+
+.cordMockAvatarAlt {
+	background: linear-gradient(145deg, #69b9dc, #4f7ccf);
+}
+
+.cordMockComposer {
+	display: flex;
+	height: 22px;
+	align-items: center;
+	gap: 4px;
+	margin: 0 7px 6px;
+	padding: 0 6px;
+	border: 1px solid #3a4354;
+	border-radius: 999px;
+	background: #202632;
+}
+
+.cordMockComposer span {
+	min-width: 0;
+	flex: 1;
+	color: #8f99aa;
+}
+
+.cordMockTabs {
+	display: flex;
+	height: 27px;
+	align-items: center;
+	gap: 5px;
+	padding: 0 5px;
+	border-bottom: 1px solid #303746;
+}
+
+.cordMockTabs span:first-child {
+	padding-block: 8px 6px;
+	border-bottom: 1px solid var(--htkAccentLt);
+	color: var(--htkAccentLt);
+}
+
+.cordMockTabs svg {
+	margin-left: auto;
+}
+
+.cordMockDetail {
+	display: flex;
+	align-items: center;
+	flex-direction: column;
+	gap: 6px;
+	padding: 18px 8px;
+	text-align: center;
+}
+
+.cordMockProfile {
+	width: 22px;
+	height: 22px;
+	border-radius: 50%;
+	background: linear-gradient(145deg, var(--htkAccentLt), var(--htkAccent));
+}
+
+.cordMockDetail i {
+	width: 86%;
+}
+
+.cordMockDetail i:nth-of-type(2) {
+	width: 58%;
+}
+
+.cordMockDetail div {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	margin-top: 8px;
+	padding: 5px;
+	border-radius: 6px;
+	background: #202632;
+	color: #adb6c5;
+}
+
+.cordChoiceCta {
+	display: grid;
+	width: 100%;
+	align-items: center;
+	grid-template-columns: 20px minmax(0, 1fr) 20px;
+	gap: 7px;
+	padding: 11px 14px;
+	border: 1px solid color-mix(in srgb, var(--htkAccent) 55%, transparent);
+	border-radius: 12px;
+	background: color-mix(in srgb, var(--htkAccent) 17%, rgba(255, 255, 255, .03));
+	color: #fff;
+	font: inherit;
+	font-size: 12px;
+	font-weight: 700;
+	cursor: pointer;
+	transition: background-color .18s ease, transform .18s ease;
+}
+
+.cordChoiceCta span {
+	min-width: 0;
+	text-align: center;
+}
+
+.cordChoiceCta:hover {
+	background: color-mix(in srgb, var(--htkAccent) 27%, rgba(255, 255, 255, .04));
+	transform: translateY(-1px);
+}
+
+.cordChoiceCta svg {
+	justify-self: center;
+}
+
 /* ===== キャンセル ===== */
 .cancelArea { margin-top: 14px; text-align: center; }
 .cancelButton {
@@ -712,6 +1117,10 @@ const selectDeprecated = async (type: 'default' | 'deck') => {
 
 	.depCard { gap: 10px; padding: 11px 12px; }
 	.depSelect { display: none; }
+	.cordChoice { padding: 12px; }
+	.cordChoiceIntro { flex-direction: column; gap: 7px; }
+	.cordMock { grid-template-columns: 25% minmax(0, 1fr); height: 182px; }
+	.cordMockRight { display: none; }
 }
 </style>
 

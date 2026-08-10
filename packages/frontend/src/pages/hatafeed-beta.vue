@@ -5,11 +5,11 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 <template>
 <MkStickyContainer>
-	<template #header><MkPageHeader :title="'ベータ機能を試す'" :icon="'ti ti-flask'"/></template>
+	<template #header><MkPageHeader :title="'ベータ機能を試す'" /></template>
 	<MkSpacer :contentMax="800">
 		<div :class="$style.root">
 			<div :class="$style.hero">
-				<i class="ti ti-flask-2" :class="$style.heroIcon"></i>
+				<FlaskConical :size="32" :class="$style.heroIcon" />
 				<div :class="$style.heroTitle">ベータ機能</div>
 			</div>
 
@@ -19,21 +19,21 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 			<!-- 旗鯖fork: ベータ機能一覧(hataBetaFeatures と同期) -->
 			<div v-if="hataBetaFeatures.length === 0" :class="$style.empty">
-				<i class="ti ti-sparkles" :class="$style.emptyIcon"></i>
+				<Sparkles :size="48" :class="$style.emptyIcon" />
 				<div>現在、試せるベータ機能はありません。</div>
 				<div :class="$style.emptySub">新しい機能が用意され次第、ここに表示されます。</div>
 			</div>
-			<button v-for="f in hataBetaFeatures" :key="f.id" :class="$style.featureCard" @click="router.push(f.route)">
-				<i :class="[f.icon, $style.featureIcon]"></i>
+			<button v-for="f in hataBetaFeatures" :key="f.id" type="button" :class="$style.featureCard" @click="openFeature(f.route)">
+				<component :is="getLucideComponent(f.icon)" :size="28" :class="$style.featureIcon" />
 				<div :class="$style.featureBody">
 					<div :class="$style.featureTitle">{{ f.title }}</div>
 					<div :class="$style.featureDesc">{{ f.desc }}</div>
 				</div>
-				<i class="ti ti-chevron-right" :class="$style.featureArrow"></i>
+				<ChevronRight :size="24" :class="$style.featureArrow" />
 			</button>
 
 			<div :class="$style.toggleSection">
-				<div :class="$style.toggleHead"><i class="ti ti-clock-play"></i> 投稿</div>
+				<div :class="$style.toggleHead"><Clock :size="18" /> 投稿</div>
 				<div :class="$style.toggleCard">
 					<MkSwitch v-model="postDelayEnabledModel">
 						<template #label>投稿前にカウントダウンする</template>
@@ -45,7 +45,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 							<button v-for="seconds in POST_SEND_DELAY_PRESETS" :key="seconds" class="_button" :class="[$style.preset, postDelaySecondsModel === seconds && $style.presetActive]" @click="postDelaySecondsModel = seconds">{{ seconds }}秒</button>
 						</div>
 					</div>
-					<div :class="$style.localNote"><i class="ti ti-device-mobile"></i> 通常投稿・返信・引用が対象です。編集、予約投稿、下書き、外部アカウント投稿には適用しません。</div>
+					<div :class="$style.localNote"><Smartphone :size="16" /> 通常投稿・返信・引用が対象です。編集、予約投稿、下書き、外部アカウント投稿には適用しません。</div>
 				</div>
 			</div>
 
@@ -54,14 +54,14 @@ SPDX-License-Identifier: AGPL-3.0-only
 			     ⚠️ここに案内を残す（前の場所を覚えている人が迷子になるため）。
 			     HatasabaUI 2 と吹き出しデザインのトグルも同様に HatasabaUI 2 タブへ移動済み。 -->
 			<div :class="$style.toggleSection">
-				<div :class="$style.toggleHead"><i class="ti ti-arrow-right-circle"></i> 正式機能になりました</div>
+				<div :class="$style.toggleHead"><ArrowRightCircle :size="18" /> 正式機能になりました</div>
 				<button :class="$style.featureCard" @click="router.push('/settings/hata-custom')">
-					<i class="ti ti-mood-off" :class="$style.featureIcon"></i>
+					<Frown :size="28" :class="$style.featureIcon" />
 					<div :class="$style.featureBody">
 						<div :class="$style.featureTitle">ミュートしたユーザーのリアクションを隠す</div>
 						<div :class="$style.featureDesc">ベータを卒業しました。設定は「旗鯖独自設定 → 旗鯖全体 → リアクション」にあります。</div>
 					</div>
-					<i class="ti ti-chevron-right" :class="$style.featureArrow"></i>
+					<ChevronRight :size="24" :class="$style.featureArrow" />
 				</button>
 			</div>
 		</div>
@@ -71,6 +71,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <script lang="ts" setup>
 import { computed } from 'vue';
+import { FlaskConical, Sparkles, ChevronRight, Clock, Smartphone, ArrowRightCircle, Frown, Code } from '@lucide/vue';
 import MkInfo from '@/components/MkInfo.vue';
 import MkSwitch from '@/components/MkSwitch.vue';
 import { definePage } from '@/page.js';
@@ -101,9 +102,17 @@ const postDelaySecondsModel = computed({
 // 旗鯖fork: 左上の戻るボタン(MkPageHeader 標準)があるので、右上に重複する
 // 戻る action は置かない(帯が下の UI に被って邪魔になるため廃止)。
 
+function getLucideComponent(name: string) {
+	if (name === 'Code') return Code;
+	return FlaskConical;
+}
+
+function openFeature(route: string) {
+	router.push(route as never);
+}
+
 definePage(() => ({
 	title: 'ベータ機能を試す',
-	icon: 'ti ti-flask',
 }));
 </script>
 
@@ -123,7 +132,7 @@ definePage(() => ({
 	padding: 16px 18px; cursor: pointer; transition: all .15s;
 }
 .featureCard:hover { border-color: var(--MI_THEME-accent); transform: translateY(-1px); }
-.featureIcon { font-size: 1.8rem; color: var(--MI_THEME-accent); flex-shrink: 0; }
+.featureIcon { color: var(--MI_THEME-accent); flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
 .featureBody { flex: 1; min-width: 0; }
 .featureTitle { font-weight: 700; }
 .featureDesc { font-size: .85em; opacity: .7; margin-top: 2px; }
@@ -139,5 +148,4 @@ definePage(() => ({
 .preset { min-width: 54px; padding: 7px 11px; border: 1px solid var(--MI_THEME-divider); border-radius: 999px; background: var(--MI_THEME-bg); font-weight: 700; }
 .presetActive { color: var(--MI_THEME-fgOnAccent); border-color: var(--MI_THEME-accent); background: var(--MI_THEME-accent); }
 .localNote { margin-top: 14px; font-size: .82em; line-height: 1.6; opacity: .72; }
-
 </style>

@@ -31,6 +31,9 @@ type Events = {
 	hasRequireRefresh: (value: boolean) => void;
 	reloadTimeline: () => void;
 	reloadNotification: () => void;
+	// HataSNSCordUI: API 成功後の利用者操作を、通常のトーストではなく
+	// タイムライン内のアクティビティとして表示するための端末内イベント。
+	hatacordingApiAction: (endpoint: string) => void;
 	// 旗鯖fork: 上部ナビバーの「デッキ設定」ボタンからデッキツールバーを開閉する
 	toggleDeckToolbar: () => void;
 };

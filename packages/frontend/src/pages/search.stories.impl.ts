@@ -32,9 +32,7 @@ export const Default = {
 			template: '<search_ v-bind="props" />',
 		};
 	},
-	args: {
-		ignoreNotesSearchAvailable: true,
-	},
+	args: {},
 	parameters: {
 		layout: 'fullscreen',
 		msw: {

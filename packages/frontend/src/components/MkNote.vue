@@ -39,7 +39,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<span v-if="note.localOnly" style="margin-right: 0.5em;"><i v-tooltip="i18n.ts._visibility['disableFederation']" class="ti ti-rocket-off"></i></span>
 			<span
 				v-if="note.deliveryTargets"
-				v-tooltip="`${i18n.ts._deliveryTargetControl[note.deliveryTargets.mode === 'include' ? 'deliveryTargetsInclude' : 'deliveryTargetsExclude'] + ':' + (note.deliveryTargets.hosts?.length ? '\n' + note.deliveryTargets.hosts.map((h, i) => note.deliveryTargets.names?.[i] ? `${note.deliveryTargets.names[i]} (${h})` : h).join('\n') : '\n' + i18n.ts.none)}`"
+				v-tooltip="deliveryTargetsTooltip(note.deliveryTargets)"
 				style="margin-right: 0.5em;"
 			>
 				<i :class="note.deliveryTargets.mode === 'include' ? 'ti ti-truck' : 'ti ti-truck-filled'"></i>
@@ -415,6 +415,16 @@ import detectLanguage from '@/utility/detect-language.js';
 import MkInfo from '@/components/MkInfo.vue';
 
 const { showEl } = scrollToVisibility();
+
+function deliveryTargetsTooltip(targets: Misskey.entities.Note['deliveryTargets']): string {
+	if (!targets) return '';
+	const title = i18n.ts._deliveryTargetControl[targets.mode === 'include' ? 'deliveryTargetsInclude' : 'deliveryTargetsExclude'];
+	const hosts = targets.hosts ?? [];
+	const details = hosts.length > 0
+		? hosts.map((hostName, index) => targets.names?.[index] ? `${targets.names[index]} (${hostName})` : hostName).join('\n')
+		: i18n.ts.none;
+	return `${title}:\n${details}`;
+}
 
 const props = withDefaults(defineProps<{
 	note: Misskey.entities.Note;
@@ -793,7 +803,7 @@ function openUserPanel(userId: string) {
 	// レイアウトと相性が悪いため、directProfile 設定に関わらず直接プロフィールを開く
 	const isDeckUi = prefer.s['simpleUi.deckMode'] === true;
 	if (isDeckUi || prefer.s['simpleUi.directProfile']) {
-		mainRouter.push(userPage(appearNote.user));
+		router.pushByPath(userPage(appearNote.user));
 		return;
 	}
 	const ev = new CustomEvent('simple-user-panel', { detail: { userId }, cancelable: true });

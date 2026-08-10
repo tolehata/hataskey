@@ -40,8 +40,10 @@ import { misskeyApi } from '@/utility/misskey-api.js';
 import { definePage } from '@/page.js';
 import { postMessageToParentWindow } from '@/utility/post-message.js';
 import { i18n } from '@/i18n.js';
+import { mainRouter, useRouter } from '@/router.js';
 
 const urlParams = new URLSearchParams(window.location.search);
+const router = useRouter();
 const localOnlyQuery = urlParams.get('localOnly');
 const visibilityQuery = urlParams.get('visibility') as typeof Misskey.noteVisibilities[number];
 
@@ -112,8 +114,7 @@ async function init() {
 				...(visibleUserIds ? visibleUserIds.split(',').map(userId => ({ userId })) : []),
 				...(visibleAccts ? visibleAccts.split(',').map(Misskey.acct.parse) : []),
 			]
-			// @ts-expect-error payloadの引数側の型が正常に解決されない
-				.map(q => misskeyApi('users/show', q)
+					.map(q => misskeyApi('users/show', q)
 					.then(user => {
 						visibleUsers.value.push(user);
 					}, () => {
@@ -187,6 +188,10 @@ async function init() {
 init();
 
 function close(): void {
+	if (router !== mainRouter) {
+		router.push('/');
+		return;
+	}
 	window.close();
 
 	// 閉じなければ100ms後タイムラインに
@@ -196,7 +201,8 @@ function close(): void {
 }
 
 function goToMisskey(): void {
-	window.location.href = '/';
+	if (router !== mainRouter) router.push('/');
+	else window.location.href = '/';
 }
 
 function onPosted(): void {

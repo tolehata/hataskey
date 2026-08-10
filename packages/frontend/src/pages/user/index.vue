@@ -44,11 +44,12 @@ import { definePage } from '@/page.js';
 import { i18n } from '@/i18n.js';
 import { $i } from '@/i.js';
 import { getUserMenu } from '@/utility/get-user-menu.js';
-import { mainRouter } from '@/router.js';
+import { useRouter } from '@/router.js';
 import { deviceKind } from '@/utility/device-kind.js';
 import { serverContext, assertServerContext } from '@/server-context.js';
 
 const MOBILE_THRESHOLD = 500;
+const router = useRouter();
 
 const isMobile = ref(deviceKind === 'smartphone' || window.innerWidth <= MOBILE_THRESHOLD);
 const handleResize = () => {
@@ -173,7 +174,7 @@ const headerTabs = computed(() => user.value ? [{
 
 function menu(ev) {
 	if (!user.value) return;
-	const { menu, cleanup } = getUserMenu(user.value, mainRouter);
+	const { menu, cleanup } = getUserMenu(user.value, router);
 	os.popupMenu(menu, ev.currentTarget ?? ev.target).finally(cleanup);
 }
 

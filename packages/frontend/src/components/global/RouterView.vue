@@ -46,7 +46,7 @@ provide(DI.routerCurrentDepth, currentDepth + 1);
 
 const rootEl = useTemplateRef('rootEl');
 onMounted(() => {
-	if (prefer.s.animation && prefer.s.smoothTransitionAnimations) {
+	if (rootEl.value && prefer.s.animation && prefer.s.smoothTransitionAnimations) {
 		rootEl.value.style.viewTransitionName = viewId; // view-transition-nameにcss varが使えないっぽいため直接代入
 	}
 });
@@ -86,9 +86,10 @@ const key = ref(router.getCurrentFullPath());
 router.useListener('change', ({ resolved }) => {
 	if (resolved == null || 'redirect' in resolved.route) return;
 	if (resolved.route.path === currentRoutePath && deepEqual(resolved.props, currentPageProps.value)) return;
+	const component = resolved.route.component;
 
 	function _() {
-		currentPageComponent.value = resolved.route.component;
+		currentPageComponent.value = component;
 		currentPageProps.value = resolved.props;
 		key.value = router.getCurrentFullPath();
 		currentRoutePath = resolved.route.path;
@@ -96,7 +97,7 @@ router.useListener('change', ({ resolved }) => {
 
 	// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
 	if (prefer.s.animation && prefer.s.smoothTransitionAnimations && window.document.startViewTransition) {
-		window.document.startViewTransition(() => new Promise((res) => {
+		window.document.startViewTransition(() => new Promise<void>((res) => {
 			_();
 			nextTick(() => {
 				res();

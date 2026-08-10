@@ -25,7 +25,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<div>
 				<div v-if="newNote.cw != null" :class="$style.cw">
 					<Mfm v-if="newNote.cw != ''" :text="newNote.cw" :author="originalNote.user" :nyaize="'respect'" :emojiUrls="newNote.emojis"/>
-					<MkCwButton v-model="showContent" :text="newNote.text" :files="newNote.files" :poll="newNote.poll"/>
+						<MkCwButton v-model="showContent" :text="newNote.text" :files="newNote.files" :poll="cwPoll"/>
 				</div>
 				<div v-show="newNote.cw == null || showContent">
 					<div v-if="newNote.text">
@@ -58,7 +58,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 						/>
 					</div>
 					<div v-if="newNote.event" style="margin-top: 8px;">
-						<MkEvent :note="{ ...originalNote, event: newNote.event }"/>
+						<MkEvent :note="eventNote"/>
 					</div>
 				</div>
 			</div>
@@ -68,7 +68,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import * as Misskey from 'cherrypick-js';
 import { CodeDiff } from 'v-code-diff';
 import { userPage } from '@/filters/user.js';
@@ -88,6 +88,17 @@ const props = defineProps<{
 	// 현재 표시하는 노트의 인덱스
 	index: number;
 }>();
+
+const cwPoll = computed(() => props.newNote.poll ? {
+	choices: props.newNote.poll.choices.map(text => ({ text, votes: 0, isVoted: false })),
+	multiple: props.newNote.poll.multiple,
+	expiresAt: props.newNote.poll.expiresAt,
+} : null);
+
+const eventNote = computed<Misskey.entities.Note | null>(() => props.newNote.event ? {
+	...props.originalNote,
+	event: props.newNote.event,
+} : null);
 
 const showContent = ref(false);
 </script>

@@ -198,7 +198,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<img v-if="$i?.avatarUrl" :src="$i.avatarUrl" :class="$style.avatarImg"/>
 					<i v-else class="ti ti-user"></i>
 				</button>
-				<div :class="$style.topNavStack">
+				<div ref="topNavStackEl" :class="$style.topNavStack">
 					<div :class="$style.topPill">
 						<template v-for="item in visibleTopTabs" :key="item.id">
 							<button :class="[$style.topTabBtn, { [$style.topTabActive]: !isCollectionTimelinePage && tab === item.id }]" @click="switchTab(item.id as TabType)">
@@ -413,6 +413,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 						</div>
 						<div :class="$style.sbDivider"></div>
 						<div :class="$style.sbNav">
+							<button data-hatasaba-mobile-more type="button" :class="$style.sbItem" @click="openMore($event, true)">
+								<i class="ti ti-dots" :class="$style.sbIcon"></i><span :class="$style.sbLabel">もっと</span>
+							</button>
 							<button :class="$style.sbItem" @click="goToSettings(); simpleDrawerShowing = false">
 								<i class="ti ti-settings" :class="$style.sbIcon"></i><span :class="$style.sbLabel">設定</span>
 							</button>
@@ -497,7 +500,7 @@ import { deepMerge } from '@/utility/merge.js';
 import { i18n } from '@/i18n.js';
 import { openInstanceMenu, showLoginBonusIfNeeded } from '@/ui/_common_/common.js';
 import { miLocalStorage } from '@/local-storage.js';
-import { getPreferredTimelinePath, getTimelineCollectionId, getVisibleBottomNav, isAntennaTimelinePath, isListTimelinePath } from '@/utility/hatasaba-navigation.js';
+import { getPreferredTimelinePath, getVisibleBottomNav, isAntennaTimelinePath, isListTimelinePath } from '@/utility/hatasaba-navigation.js';
 import {
 	applyHataSideStudioStore, cloneHataSideStudioStore, ensureHataSideStudioInitialized,
 	getActiveHataSideProfile, gradientCss, hataSideStudioStore,
@@ -878,8 +881,19 @@ const isChannelDetailPage = computed(() => {
 const isAntennaTimelinePage = computed(() => isAntennaTimelinePath(mainRouter.currentRoute.value.path));
 const isAntennaPage = computed(() => mainRouter.currentRoute.value.path.startsWith('/my/antennas') || isAntennaTimelinePage.value);
 const isCollectionTimelinePage = computed(() => isListTimelinePage.value || isAntennaTimelinePage.value);
-const activeListId = computed(() => getTimelineCollectionId(mainRouter.currentRoute.value.path, 'list'));
-const activeAntennaId = computed(() => getTimelineCollectionId(mainRouter.currentRoute.value.path, 'antenna'));
+// currentRoute.path は実URLではなく `/timeline/list/:listId` のようなルート定義。
+// ここからIDを切り出すと文字列 `:listId` を管理画面へ渡してしまうため、
+// 解決済みルートの props から実際のIDを読む。
+const activeListId = computed(() => {
+	if (!isListTimelinePage.value) return null;
+	const id = mainRouter.currentRef.value.props.get('listId');
+	return typeof id === 'string' && id.length > 0 ? id : null;
+});
+const activeAntennaId = computed(() => {
+	if (!isAntennaTimelinePage.value) return null;
+	const id = mainRouter.currentRef.value.props.get('antennaId');
+	return typeof id === 'string' && id.length > 0 ? id : null;
+});
 const timelinePickerKind = ref<TimelineCollectionKind | null>(null);
 const activeCollectionId = computed(() => timelinePickerKind.value === 'list' ? activeListId.value : activeAntennaId.value);
 const activeListName = computed(() => userListsCache.value.value?.find(item => item.id === activeListId.value)?.name ?? String(pageMetadata.value?.title ?? ''));
@@ -1537,8 +1551,8 @@ const goToChannels = () => { mainRouter.push('/channels'); };
 const goToAntennas = () => { mainRouter.push('/my/antennas'); };
 
 function rememberCurrentCollection() {
-	const listId = getTimelineCollectionId(mainRouter.currentRoute.value.path, 'list');
-	const antennaId = getTimelineCollectionId(mainRouter.currentRoute.value.path, 'antenna');
+	const listId = activeListId.value;
+	const antennaId = activeAntennaId.value;
 	if (listId) miLocalStorage.setItem('hatasabaLastListId', listId);
 	if (antennaId) miLocalStorage.setItem('hatasabaLastAntennaId', antennaId);
 }
@@ -1582,7 +1596,21 @@ function openEmptyCollectionOptions() {
 function openActiveCollectionSettings(kind: TimelineCollectionKind) {
 	const id = kind === 'list' ? activeListId.value : activeAntennaId.value;
 	if (!id) return;
-	mainRouter.pushByPath(kind === 'list' ? `/my/lists/${id}` : `/my/antennas/${id}`);
+	timelinePickerKind.value = null;
+	if (kind === 'list') {
+		mainRouter.push('/my/lists/:listId', { params: { listId: id } });
+	} else {
+		mainRouter.push('/my/antennas/:antennaId', { params: { antennaId: id } });
+	}
+}
+
+const topNavStackEl = ref<HTMLElement | null>(null);
+
+function closeTimelinePickerOnOutsidePointer(ev: PointerEvent) {
+	if (timelinePickerKind.value == null) return;
+	const target = ev.target;
+	if (target instanceof Node && topNavStackEl.value?.contains(target)) return;
+	timelinePickerKind.value = null;
 }
 
 function openAntennaList(ev?: MouseEvent) {
@@ -1605,6 +1633,12 @@ const reloadPage = () => { window.location.reload(); };
 
 // ===== サイドバー項目ヘルパー =====
 function sidebarItemClick(id: string, ev?: MouseEvent) {
+	// モバイルドロワーのボタンを先に消すと、遅延読込中にLaunchPadのアンカーを失う。
+	// LaunchPadが閉じるまでドロワーを残し、狭幅PCのpopup配置も壊さない。
+	if (id === 'more' && ev && simpleDrawerShowing.value) {
+		void openMore(ev, true);
+		return;
+	}
 	simpleDrawerShowing.value = false;
 	// 旗鯖fork: 外部リンク項目 (旗鯖ポータル等) は新しいタブで開く
 	const item = sidebarOrder.value.find((x: any) => x.id === id);
@@ -1690,13 +1724,18 @@ const isChatPage = computed(() => mainRouter.currentRoute.value.path.startsWith(
 const isAdminPage = computed(() => mainRouter.currentRoute.value.path.startsWith('/admin'));
 
 // ===== もっとメニュー（ランチパッド） =====
-async function openMore(ev: MouseEvent | PointerEvent) {
+async function openMore(ev: MouseEvent | PointerEvent, closeMobileDrawerAfter = false) {
 	const target = (ev.currentTarget ?? ev.target) as HTMLElement;
 	if (!target) return;
 	const { dispose } = await os.popupAsyncWithDialog(
 		import('@/components/MkLaunchPad.vue').then(component => component.default),
 		{ anchorElement: target },
-		{ closed: () => dispose() },
+		{
+			closed: () => {
+				if (closeMobileDrawerAfter) simpleDrawerShowing.value = false;
+				dispose();
+			},
+		},
 	);
 }
 
@@ -1947,6 +1986,7 @@ onMounted(() => {
 	nextTick(() => { updateSbFade(); });
 	window.addEventListener('ext-tl-notif-count', onExtNotifCount);
 	window.addEventListener('external-notification', onExtNotifRealtime);
+	window.document.addEventListener('pointerdown', closeTimelinePickerOnOutsidePointer, true);
 	// 旗鯖fork: 起動時に1回だけ外部通知の未読有無を初期化 (WS受信前の既存未読を反映)
 	// 外部通知ページ閲覧中は除外。localStorage の lastReadAt 基準で未読判定。
 	if (isExternalLinked.value && !mainRouter.currentRoute.value.path.startsWith('/my/external-notifications')) {
@@ -1972,6 +2012,7 @@ onUnmounted(() => {
 	if (scrollTimer) window.clearTimeout(scrollTimer);
 	window.removeEventListener('ext-tl-notif-count', onExtNotifCount);
 	window.removeEventListener('external-notification', onExtNotifRealtime);
+	window.document.removeEventListener('pointerdown', closeTimelinePickerOnOutsidePointer, true);
 	window.removeEventListener('resize', onResize);
 	window.removeEventListener('simple-user-panel', onSimpleUserPanel);
 });
@@ -3117,6 +3158,7 @@ onUnmounted(() => {
     position:fixed; top:0; left:0; right:0; z-index:200;
     display:flex; justify-content:center; align-items:flex-start; gap:6px;
     padding:calc(10px + env(safe-area-inset-top,0px)) 16px 8px;
+	box-sizing:border-box; min-width:0;
     pointer-events:none;
     transition: transform .35s cubic-bezier(.22,1,.36,1), opacity .3s ease;
     transform: translateY(0); opacity: 1;
@@ -3132,12 +3174,14 @@ onUnmounted(() => {
 }
 .topNavStack {
     position:relative; display:flex; flex-direction:column; align-items:center; gap:7px;
-    min-width:0; max-width:calc(100% - 48px); pointer-events:none;
+	width:max-content; min-width:0; max-width:min(680px,calc(100% - 42px)); flex:0 1 auto; pointer-events:none;
 }
+.desktopLayout .topNavStack { max-width:min(680px,100%); }
 // アカウントアイコン（タブピル左隣）
 .avatarBtn {
     width:36px; height:36px; border-radius:9999px; border:none; cursor:pointer;
     display:flex; align-items:center; justify-content:center;
+    position:relative; z-index:1; margin-top:6px;
     pointer-events:auto; overflow:hidden; flex-shrink:0; padding:0;
     transition:all .25s cubic-bezier(.34,1.56,.64,1);
 }
@@ -3154,13 +3198,14 @@ onUnmounted(() => {
 
 .topPill {
     display:flex; align-items:center; gap:2px; padding:4px 6px; border-radius:9999px;
+	width:max-content; max-width:100%; min-width:0; box-sizing:border-box;
     pointer-events:auto; transition:background .3s,box-shadow .3s;
     overflow-x:auto; scrollbar-width:none; -ms-overflow-style:none;
     &::-webkit-scrollbar { display:none; }
 }
 .timelinePicker {
-    position:absolute; top:calc(100% + 7px); left:50%; transform:translateX(-50%);
-    display:flex; align-items:center; gap:7px; max-width:min(680px,calc(100vw - 32px));
+    position:absolute; top:calc(100% + 7px); left:0; z-index:2;
+    display:flex; align-items:center; gap:7px; width:100%; max-width:100%; box-sizing:border-box;
     padding:6px; overflow-x:auto; scrollbar-width:none; pointer-events:auto;
     border-radius:9999px; animation:timelinePickerIn .18s ease-out;
     background:color-mix(in srgb,var(--MI_THEME-panel) 88%,transparent);
@@ -3184,7 +3229,7 @@ onUnmounted(() => {
     &:hover { filter:brightness(1.05); }
     &:focus-visible { outline:2px solid var(--MI_THEME-accent); outline-offset:1px; }
 }
-@keyframes timelinePickerIn { from { opacity:0; transform:translate(-50%,-5px) scale(.98); } to { opacity:1; transform:translateX(-50%); } }
+@keyframes timelinePickerIn { from { opacity:0; transform:translateY(-5px) scale(.98); } to { opacity:1; transform:none; } }
 .topBarDark .topPill {
     background:rgba(30,30,30,.78); backdrop-filter:blur(24px) saturate(1.4); -webkit-backdrop-filter:blur(24px) saturate(1.4);
     box-shadow:0 4px 24px rgba(0,0,0,.15),0 0 0 .5px rgba(255,255,255,.08) inset;

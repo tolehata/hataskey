@@ -39,7 +39,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<span :class="$style.dur"><i class="ti ti-clock"></i> {{ fmtDuration(log.durationMinutes) }}</span>
 				</div>
 				<div :class="$style.foot">
-					<span v-if="hyTag(log.tag)" :class="$style.tagChip" :style="{ background: hyTag(log.tag).bg, color: hyTag(log.tag).fg }"><i :class="['ti', hyTag(log.tag).icon]"></i> {{ lang === 'en' ? hyTag(log.tag).en : hyTag(log.tag).ja }}</span>
+					<span v-if="currentTag" :class="$style.tagChip" :style="{ background: currentTag.bg, color: currentTag.fg }"><i :class="['ti', currentTag.icon]"></i> {{ lang === 'en' ? currentTag.en : currentTag.ja }}</span>
 					<HatadyReactions :class="$style.reactions" :target="{ logId: log.id }" :reactions="log.reactions ?? {}" :myReaction="log.myReaction ?? null"/>
 				</div>
 			</article>
@@ -79,7 +79,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</div>
 			<div :class="$style.composerRow">
 				<MkAvatar v-if="$i" :class="$style.composerAvatar" :user="$i"/>
-				<input v-model="draft" :class="$style.composerInput" :placeholder="t('placeholder')" @keydown.enter="send">
+				<input v-model="draft" :class="$style.composerInput" :placeholder="t('placeholder')" @keydown.enter="onComposerKeydown">
 				<button :class="$style.sendBtn" :disabled="sending || !draft.trim()" :aria-label="t('send')" :title="t('send')" @click="send"><i class="ti ti-send"></i><span :class="$style.sendLabel">{{ t('send') }}</span></button>
 			</div>
 		</div>
@@ -88,7 +88,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { ref, useTemplateRef, onMounted } from 'vue';
+import { computed, ref, useTemplateRef, onMounted } from 'vue';
 import MkWindow from '@/components/MkWindow.vue';
 import HySubjectBadge from '@/components/HySubjectBadge.vue';
 import HyBookCover from '@/components/HyBookCover.vue';
@@ -110,6 +110,7 @@ const loading = ref(true);
 const draft = ref('');
 const sending = ref(false);
 const replyTo = ref<any>(null);
+const currentTag = computed(() => log.value ? hyTag(log.value.tag) : null);
 
 const DICT: Record<string, { ja: string; en: string }> = {
 	title: { ja: '学びの投稿', en: 'Study post' },
@@ -159,13 +160,20 @@ async function reload() {
 
 function setReplyTo(c: any) { replyTo.value = c; }
 
-async function send(ev?: KeyboardEvent) {
-	if (ev && ev.isComposing) return; // IME変換確定のEnterは無視
+function onComposerKeydown(ev: KeyboardEvent) {
+	if (ev.isComposing) return;
+	void send();
+}
+
+async function send() {
 	if (!draft.value.trim() || sending.value) return;
 	sending.value = true;
 	try {
-		const payload: Record<string, unknown> = { logId: props.logId, text: draft.value.trim() };
-		if (replyTo.value?.id) payload.replyId = replyTo.value.id;
+		const payload = {
+			logId: props.logId,
+			text: draft.value.trim(),
+			replyId: replyTo.value?.id ?? undefined,
+		};
 		const c = await misskeyApi('hata/hatady/comments/create', payload);
 		comments.value.push(c);
 		if (log.value) log.value.commentsCount = (log.value.commentsCount ?? 0) + 1;

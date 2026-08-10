@@ -17,7 +17,7 @@ describe('Hataskey Games の戻る導線', () => {
 		expect(gamesSource).toContain('<PageWithHeader backPath="/">');
 		for (const source of [desktopHeaderSource, mobileHeaderSource]) {
 			expect(source).toContain('backPath?: string;');
-			expect(source).toMatch(/if \(props\.backPath\) \{\s*mainRouter\.pushByPath\(props\.backPath\);\s*return;\s*\}/);
+			expect(source).toMatch(/if \(props\.backPath\) \{\s*router\.pushByPath\(props\.backPath\);\s*return;\s*\}/);
 		}
 	});
 

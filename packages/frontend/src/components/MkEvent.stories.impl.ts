@@ -41,6 +41,10 @@ export const Default = {
 			renoteCount: 0,
 			repliesCount: 0,
 			reactionCount: 0,
+			reactionAcceptance: null,
+			reactionEmojis: {},
+			reactions: {},
+			hasDeliveryTargets: false,
 			event: {
 				title: 'Come on a Tea Party!' as any,
 				start: new Date('2017-10-25T15:00:00+0900').getTime() as any,

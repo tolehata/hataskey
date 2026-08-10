@@ -23,6 +23,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 	@closed="emit('closed')"
 >
 	<div
+		data-hatacording-hatafeed-notifications
 		class="_popup _shadow"
 		:class="[$style.panel, { [$style.drawer]: type === 'drawer' }]"
 		:style="{ maxHeight: maxHeight ? maxHeight + 'px' : undefined, width: type === 'drawer' ? undefined : '360px' }"

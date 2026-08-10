@@ -39,7 +39,7 @@ export const hataBetaFeatures: HataBetaFeature[] = [
 		id: 'cpp-playground',
 		title: 'C/C++ プレイグラウンド',
 		desc: 'ブラウザ内だけで C/C++ を書いて実行できる遊び場（サーバーに送られません）。',
-		icon: 'ti ti-code',
+		icon: 'Code',
 		route: '/playground/cpp',
 	},
 ];
@@ -64,15 +64,16 @@ export const categoryLabel: Record<string, string> = {
 	betaFeature: 'ベータ機能',
 	other: 'その他',
 };
-export const categoryKeys = ['bug', 'improvement', 'unresolved', 'featureRequest', 'adoptionRequest', 'security', 'betaFeature', 'other'];
+export const categoryKeys = ['bug', 'improvement', 'unresolved', 'featureRequest', 'adoptionRequest', 'security', 'betaFeature', 'other'] as const;
+export type HataFeedCategory = typeof categoryKeys[number];
 
 // ユーザーがイシュー作成時に選べるカテゴリ。
 // 「改善予定(improvement)」は管理者が掲示するロードマップ専用なので、作成ウィザードからは除外する。
-export const creatableCategoryKeys = ['bug', 'unresolved', 'featureRequest', 'adoptionRequest', 'security', 'betaFeature', 'other'];
+export const creatableCategoryKeys = ['bug', 'unresolved', 'featureRequest', 'adoptionRequest', 'security', 'betaFeature', 'other'] as const satisfies readonly HataFeedCategory[];
 
 // 旗鯖fork: スタッフ(管理者/モデ)専用カテゴリ。一般ユーザーには作成ウィザード・絞り込みから隠す。
 // security はセキュリティ対応の内部限定扱い(閲覧・作成ともスタッフのみ)。
-export const staffOnlyCategoryKeys = ['security'];
+export const staffOnlyCategoryKeys = ['security'] as const satisfies readonly HataFeedCategory[];
 
 // カテゴリの説明(ウィザードで選びやすくするため)。
 export const categoryDesc: Record<string, string> = {
@@ -106,7 +107,10 @@ export const statusLabel: Record<string, string> = {
 	unknown: '用途不明',
 	closed: '受付終了',
 };
-export const statusKeys = ['open', 'planned', 'inProgress', 'resolved', 'wontfix', 'unknown', 'closed'];
+export const editableStatusKeys = ['open', 'planned', 'inProgress', 'resolved', 'wontfix', 'unknown'] as const;
+export type HataFeedEditableStatus = typeof editableStatusKeys[number];
+export const statusKeys = [...editableStatusKeys, 'closed'] as const;
+export type HataFeedStatus = typeof statusKeys[number];
 
 // 旗鯖fork(デザイン改修 §2.2): ステータスのアイコン(Tabler)。リスト行の先頭ドットアイコン・
 // 詳細ヘッダーの塗りピルで共用する。色は HfStatusPill 側で data-status ベースに当てる
@@ -121,11 +125,12 @@ export const statusIcon: Record<string, string> = {
 	closed: 'ti-lock',
 };
 
-export const priorityLabel: Record<string, string> = {
+export const priorityLabel = {
 	low: '低',
 	normal: '通常',
 	high: '高',
-};
+} as const;
+export type HataFeedPriority = keyof typeof priorityLabel;
 
 export const emojiStatusLabel: Record<string, string> = {
 	pending: '未処理',

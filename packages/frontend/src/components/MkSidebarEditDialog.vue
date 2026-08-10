@@ -176,7 +176,7 @@ async function save() {
 	}
 	try {
 		prefer.commit('simpleUi.sidebar', JSON.parse(JSON.stringify(editedItems.value)));
-		os.success('サイドバーの設定をサーバーに保存しました。ログイン中の全端末で反映されます。');
+		os.toast('サイドバーの設定をサーバーに保存しました。ログイン中の全端末で反映されます。');
 		emit('done', { saved: true });
 		dialog.value?.close();
 	} catch (err) {

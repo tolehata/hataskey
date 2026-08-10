@@ -47,6 +47,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<div :class="$style.hataskTabs"><i class="ti ti-home"></i><i class="ti ti-calendar"></i><i class="ti ti-checkbox"></i><i class="ti ti-flower"></i></div>
 					</div>
 
+					<div v-else-if="item.preview === 'hatacording'" :class="$style.cordUiMock">
+						<aside><div><i class="ti ti-flag"></i><b>Hataskey</b></div><span data-active="true"><i class="ti ti-home"></i>ホーム</span><span><i class="ti ti-world"></i>ローカル</span><span><i class="ti ti-rocket"></i>ソーシャル</span><em></em><span><i class="ti ti-search"></i>検索</span><span><i class="ti ti-bell"></i>通知</span></aside>
+						<main><header><b>ホーム</b><small>128人がオンライン</small><i></i></header><div data-side="left"><i></i><span><b>今日はよく晴れましたね</b><small>🙂 3 / 🌸 2</small></span></div><div data-side="right"><span><b>散歩日和でした</b><small>⭐ 1</small></span><i></i></div><footer><i class="ti ti-star"></i><span>いまどうしてる？</span><b>↑</b></footer></main>
+						<section><header><b>投稿詳細</b><i class="ti ti-plus"></i></header><div><i></i><b>投稿の情報</b><span></span><span></span><small>通知・検索・ウィジェットも表示</small></div></section>
+					</div>
+
 					<div v-else-if="item.preview === 'hanaawase'" :class="$style.hanaawaseMock">
 						<div :class="$style.hanaHeading"><span>✿</span><b>花常</b><small>季節の花を合わせて、一年をめぐる。</small></div>
 						<div :class="$style.hanaMenu"><span><i>❀</i><b>続きから</b><small>八月・向日葵</small></span><span><i>帳</i><b>花仕事</b></span><span><i>花</i><b>花手帖</b></span></div>
@@ -72,7 +78,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 					<div v-else-if="item.preview === 'privateChannel'" :class="$style.privateChannelMock">
 						<div :class="$style.privateChannelTop"><i class="ti ti-lock"></i><b>プライベートチャンネル</b><span>新規作成</span></div>
-						<div :class="$style.privateChannelBody"><b>読書会の部屋</b><small>許可されたメンバーだけが閲覧できます</small><div><span><i class="ti ti-clock"></i> 招待中　2人</span><span><i class="ti ti-user-check"></i> 参加中　5人</span><span><i class="ti ti-circle-x"></i> 招待拒否　1人</span></div></div>
+						<div :class="$style.privateChannelBody"><b>読書会の部屋</b><small>許可されたメンバーだけが閲覧できます</small><div><span><i class="ti ti-clock"></i> 招待中 2人</span><span><i class="ti ti-user-check"></i> 参加中 5人</span><span><i class="ti ti-circle-x"></i> 招待拒否 1人</span></div></div>
 					</div>
 
 					<div v-else-if="item.preview === 'sideStudio'" :class="$style.sideStudioMock">
@@ -117,7 +123,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<div :class="$style.itemBody">
 					<div :class="$style.itemTitle"><i :class="item.icon" aria-hidden="true"></i>{{ item.title }}</div>
 					<div :class="$style.itemText">{{ item.text }}</div>
-					<button v-if="item.to" class="_button" :class="$style.itemLink" @click="go(item.to)">
+					<button v-if="item.to || item.activateUi" class="_button" :class="$style.itemLink" @click="go(item)">
 						{{ item.linkLabel ?? '開く' }} <i class="ti ti-chevron-right"></i>
 					</button>
 				</div>
@@ -152,21 +158,38 @@ import MkModal from '@/components/MkModal.vue';
 import MkButton from '@/components/MkButton.vue';
 import { HATA_WHATS_NEW as whatsNew } from '@/utility/hata-whats-new.js';
 import { mainRouter } from '@/router.js';
+import { ensureSignin } from '@/i.js';
+import { miLocalStorage } from '@/local-storage.js';
+import { setHatacordingUiEnabled } from '@/utility/hatacording-ui.js';
+import * as os from '@/os.js';
 
 const modal = useTemplateRef('modal');
 const itemsViewport = useTemplateRef('itemsViewport');
 const carouselIndex = ref(0);
 const closing = ref(false);
+const $i = ensureSignin();
 
 const emit = defineEmits<{
 	(ev: 'closed'): void;
 }>();
 
-function go(to: HataWhatsNewItem['to']) {
-	if (to == null) return;
+async function go(item: HataWhatsNewItem) {
+	if (item.activateUi === 'hatacording') {
+		if (!$i.policies.canUseHatacordingUi) {
+			await os.alert({ type: 'warning', text: 'このUIは現在未開放です。' });
+			return;
+		}
+		setHatacordingUiEnabled($i.id, true);
+		miLocalStorage.setItem('ui', 'hatacording');
+		miLocalStorage.setItem('ui_setup_completed', 'true');
+		modal.value?.close();
+		window.location.assign('/');
+		return;
+	}
+	if (item.to == null) return;
 	// ⚠️先に閉じる。開いたまま遷移すると、行き先の上に幕が残る。
 	modal.value?.close();
-	mainRouter.push(to);
+	mainRouter.push(item.to);
 }
 
 function dismiss() {
@@ -294,6 +317,12 @@ function openReleaseNotes() {
 .studyContent { position: relative; margin: 0 9px; padding: 6px 8px; border: 1px solid rgba(96,70,35,.13); border-radius: 8px; background: #fffdf8; font-size: 6px; }.studyContent > strong { font-size: 8px; }.studyTimeline { display: flex; align-items: center; gap: 5px; margin-top: 5px; }.studyTimeline > i { width: 6px; height: 6px; border-radius: 50%; background: #d9824a; }.studyTimeline small { display: block; color: #a2937c; }.studyHeat { position: absolute; right: 7px; top: 7px; display: grid; grid-template: repeat(4, 5px) / repeat(7, 5px); gap: 2px; }.studyHeat span { border-radius: 1px; background: #eadfcb; }.studyHeat span[data-level="1"], .studyHeat span[data-level="2"] { background: #efc39e; }.studyHeat span[data-level="3"], .studyHeat span[data-level="4"] { background: #d9824a; }
 
 .hataskMock { height: 100%; color: #453f34; background: #f3eee4; font-family: 'Zen Maru Gothic', system-ui, sans-serif; }.hataskHeader { display: grid; grid-template-columns: 24px minmax(0, 1fr) 24px; height: 32px; place-items: center; border-bottom: 1px solid #ded7c4; background: #fbf8f1; }.hataskHeader b { font-family: 'HataWhatsNewRighteous', system-ui, sans-serif; font-size: 14px; font-weight: 400; letter-spacing: .02em; }.hataskBody { display: grid; min-width: 0; grid-template-columns: minmax(0, 1.35fr) minmax(52px, .8fr); gap: 7px; padding: 7px 9px 4px; }.hataskCalendar { display: grid; min-width: 0; overflow: hidden; box-sizing: border-box; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; padding: 6px; border: 1px solid #ded7c4; border-radius: 6px; background: #fffdf8; }.hataskCalendar strong { grid-column: 1 / -1; min-width: 0; overflow: hidden; font-size: 6px; letter-spacing: .14em; }.hataskCalendar span { display: grid; min-width: 0; width: 100%; height: 10px; overflow: hidden; place-items: center; border-radius: 3px; font-size: 5px; font-variant-numeric: tabular-nums; line-height: 1; }.hataskCalendar span[data-marked="true"] { color: #fff; background: #a8552f; }.flowerProgress { display: flex; min-width: 0; flex-direction: column; align-items: center; gap: 2px; padding: 5px; border: 1px solid #ded7c4; border-radius: 6px; background: #fffdf8; }.flowerProgress > span { font-size: 6px; letter-spacing: .12em; }.flowerProgress > div { display: grid; width: 35px; height: 35px; place-items: center; border: 4px solid #e0dccf; border-top-color: #a8552f; border-right-color: #a8552f; border-radius: 50%; }.flowerProgress > div b { font-size: 16px; }.flowerProgress small { max-width: 100%; overflow: hidden; font-size: 5px; text-overflow: ellipsis; white-space: nowrap; }.hataskTabs { display: flex; justify-content: space-around; margin: 0 9px; padding: 4px; border-radius: 7px; color: #8f806c; background: #fffdf8; font-size: 8px; }.hataskTabs i:last-child { color: #a8552f; }
+
+.cordUiMock { display:grid;height:100%;grid-template-columns:64px minmax(0,1fr) 79px;color:#e9edf5;background:#11151d;font-family:'Noto Sans JP',system-ui,sans-serif; }.cordUiMock > aside { display:flex;min-width:0;flex-direction:column;gap:2px;padding:5px;border-right:1px solid #2b3240;background:#171c26; }.cordUiMock > aside > div { display:flex;align-items:center;gap:3px;height:20px;overflow:hidden;font-size:5px;white-space:nowrap; }.cordUiMock > aside > div i { display:grid;width:15px;height:15px;flex:0 0 15px;place-items:center;border-radius:4px;color:#fff;background:#6c78e6;font-size:7px; }.cordUiMock > aside span { display:flex;align-items:center;gap:4px;padding:4px;border-radius:4px;font-size:5px;white-space:nowrap; }.cordUiMock > aside span.active { color:#bfc6ff;background:#272e43; }.cordUiMock > aside em { height:1px;margin:2px;background:#303746; }.cordUiMock > main { display:flex;min-width:0;flex-direction:column;padding-bottom:5px;background:linear-gradient(155deg,#121720,#171b25); }.cordUiMock > main > header { display:grid;height:25px;grid-template-columns:1fr auto;align-content:center;padding:0 7px;border-bottom:1px solid #2b3240;font-size:6px; }.cordUiMock > main > header small { color:#7fd6a9;font-size:4px; }.cordUiMock > main > header i { grid-column:1/-1;width:45%;height:2px;margin-top:2px;border-radius:2px;background:#343c4c; }.cordUiMock > main > div { display:flex;max-width:78%;align-items:flex-end;gap:3px;margin:5px 6px 0; }.cordUiMock > main > div.right { align-self:flex-end; }.cordUiMock > main > div > i { width:10px;height:10px;flex:0 0 10px;border-radius:50%;background:#8790a6; }.cordUiMock > main > div.right > i { background:#6c78e6; }.cordUiMock > main > div > span { display:grid;gap:3px;padding:5px 6px;border-radius:7px 7px 7px 2px;background:#252c39; }.cordUiMock > main > div.right > span { border-radius:7px 7px 2px;background:#333b50; }.cordUiMock > main > div b { font-size:5px;font-weight:500; }.cordUiMock > main > div small { color:#aeb5c5;font-size:4px; }.cordUiMock > main > footer { display:grid;height:21px;margin:auto 6px 0;grid-template-columns:15px 1fr 15px;align-items:center;padding:0 4px;border:1px solid #394257;border-radius:999px;background:#202633;font-size:5px; }.cordUiMock > main > footer i { color:#b4bbcb;font-size:7px; }.cordUiMock > main > footer span { opacity:.6; }.cordUiMock > main > footer b { display:grid;width:13px;height:13px;place-items:center;border-radius:50%;color:#fff;background:#6c78e6;font-size:8px; }.cordUiMock > section { min-width:0;border-left:1px solid #2b3240;background:#171c26; }.cordUiMock > section > header { display:flex;height:24px;align-items:center;gap:3px;padding:0 5px;border-bottom:1px solid #2b3240;font-size:5px; }.cordUiMock > section > header b { flex:1; }.cordUiMock > section > div { display:grid;gap:4px;margin:6px;padding:6px;border:1px solid #303849;border-radius:6px;background:#202632; }.cordUiMock > section > div i { width:18px;height:18px;border-radius:50%;background:#6c78e6; }.cordUiMock > section > div b { font-size:6px; }.cordUiMock > section > div span { height:3px;border-radius:2px;background:#3d4658; }.cordUiMock > section > div span:nth-of-type(2) { width:65%; }.cordUiMock > section > div small { margin-top:3px;color:#aeb5c5;font-size:4px;line-height:1.4; }
+.cordUiMock > aside span[data-active='true'] { color:#bfc6ff;background:#272e43; }
+.cordUiMock > main > div[data-side='right'] { align-self:flex-end; }
+.cordUiMock > main > div[data-side='right'] > i { background:#6c78e6; }
+.cordUiMock > main > div[data-side='right'] > span { border-radius:7px 7px 2px;background:#333b50; }
 
 .hanaawaseMock { position: relative; display: grid; grid-template-columns: .75fr 1.25fr; grid-template-rows: 1fr 31px; height: 100%; padding: 9px; box-sizing: border-box; color: #f4efe3; background: #171410; font-family: 'Noto Serif JP', serif; }.hanaawaseMock::before { position: absolute; inset: 0; background: radial-gradient(circle at 17% 24%, rgba(201,160,78,.16), transparent 34%); content: ''; }.hanaHeading { z-index: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }.hanaHeading > span { color: #c9a04e; font-size: 18px; }.hanaHeading > b { font-size: 17px; letter-spacing: .12em; }.hanaHeading > small { margin-top: 4px; color: #b8ad99; font-size: 5px; }.hanaMenu { z-index: 1; display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px; align-content: center; }.hanaMenu > span { display: grid; grid-template-columns: 22px 1fr; align-items: center; padding: 5px; border: 1px solid rgba(201,160,78,.28); border-radius: 6px; background: rgba(23,20,16,.72); }.hanaMenu > span:first-child { grid-column: 1 / -1; border-color: #c9a04e; }.hanaMenu i { grid-row: 1 / 3; color: #c9a04e; font-style: normal; text-align: center; }.hanaMenu b { font-size: 7px; }.hanaMenu small { color: #b8ad99; font-size: 5px; }.hanaTown { z-index: 1; grid-column: 1 / -1; display: flex; align-items: center; gap: 5px; padding: 6px 8px; border-top: 1px solid rgba(201,160,78,.22); color: #b8ad99; font-size: 6px; }.hanaTown i { width: 17px; height: 17px; border-radius: 50%; background: #625849; }.hanaTown i:first-of-type { margin-left: auto; }
 

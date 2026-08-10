@@ -4,7 +4,7 @@
  */
 
 import { afterEach, assert, beforeEach, describe, test, vi } from 'vitest';
-import type { Theme } from '@@/js/theme.js';
+import type { Theme } from '@/theme.js';
 import lightTheme from '@@/themes/_light.json5';
 import darkTheme from '@@/themes/_dark.json5';
 
@@ -100,88 +100,54 @@ describe('ThemeManager', () => {
 		window.localStorage.clear();
 	});
 
-	test('通常テーマ適用後のプレビューは現在テーマのみを切り替え、キャッシュは保持する', async () => {
-		const { themeManager, isPreviewMode } = await loadThemeModule();
+	test('通常テーマをDOMと端末キャッシュへ適用する', async () => {
+		const { applyTheme, compile } = await loadThemeModule();
+		const compiled = compile(primaryTheme);
 
-		themeManager.updateTheme(primaryTheme);
+		applyTheme(primaryTheme);
+
+		assert.strictEqual(document.documentElement.dataset.colorScheme, 'light');
+		assert.strictEqual(document.documentElement.style.getPropertyValue('--MI_THEME-accent'), compiled.accent);
+		assert.strictEqual(document.head.querySelector('meta[name="theme-color"]')?.getAttribute('content'), compiled.htmlThemeColor);
+		assert.strictEqual(window.localStorage.getItem('themeId'), primaryTheme.id);
+		assert.strictEqual(window.localStorage.getItem('colorScheme'), 'light');
+	});
+
+	test('非永続適用はDOMだけを切り替え、現在のキャッシュを保持する', async () => {
+		const { applyTheme, compile } = await loadThemeModule();
+
+		applyTheme(primaryTheme);
 		const cachedTheme = window.localStorage.getItem('theme');
 		const cachedThemeId = window.localStorage.getItem('themeId');
 
-		themeManager.previewTheme(previewTheme);
+		applyTheme(previewTheme, false);
 
-		assert.strictEqual(themeManager.theme?.id, primaryTheme.id);
-		assert.strictEqual(themeManager.currentTheme?.id, previewTheme.id);
-		assert.strictEqual(themeManager.currentThemeId, previewTheme.id);
-		assert.strictEqual(themeManager.isPreviewMode, true);
-		assert.strictEqual(isPreviewMode.value, true);
 		assert.strictEqual(document.documentElement.dataset.colorScheme, 'dark');
-		assert.strictEqual(document.documentElement.style.getPropertyValue('--MI_THEME-accent'), themeManager.currentCompiledTheme?.accent);
+		assert.strictEqual(document.documentElement.style.getPropertyValue('--MI_THEME-accent'), compile(previewTheme).accent);
 		assert.strictEqual(window.localStorage.getItem('theme'), cachedTheme);
 		assert.strictEqual(window.localStorage.getItem('themeId'), cachedThemeId);
 	});
 
-	test('プレビュー解除で元のテーマと DOM 状態が復元される', async () => {
-		const { themeManager, isPreviewMode } = await loadThemeModule();
+	test('別の通常テーマを適用するとDOMとキャッシュを更新する', async () => {
+		const { applyTheme, compile } = await loadThemeModule();
 
-		themeManager.updateTheme(primaryTheme);
-		const originalCompiledThemeColor = themeManager.currentCompiledTheme?.htmlThemeColor;
+		applyTheme(primaryTheme);
+		applyTheme(replacementTheme);
 
-		themeManager.previewTheme(previewTheme);
-		const previewCompiledThemeColor = themeManager.currentCompiledTheme?.htmlThemeColor;
-		assert.strictEqual(themeManager.currentTheme?.id, previewTheme.id);
-		assert.notStrictEqual(previewCompiledThemeColor, originalCompiledThemeColor);
-
-		themeManager.clearPreview();
-
-		assert.strictEqual(themeManager.theme?.id, primaryTheme.id);
-		assert.strictEqual(themeManager.currentTheme?.id, primaryTheme.id);
-		assert.strictEqual(themeManager.currentCompiledTheme?.htmlThemeColor, originalCompiledThemeColor);
-		assert.strictEqual(themeManager.isPreviewMode, false);
-		assert.strictEqual(isPreviewMode.value, false);
-		assert.strictEqual(document.documentElement.dataset.colorScheme, 'light');
-		assert.strictEqual(document.documentElement.style.getPropertyValue('--MI_THEME-accent'), themeManager.currentCompiledTheme?.accent);
-		assert.strictEqual(document.head.querySelector('meta[name="theme-color"]')?.getAttribute('content'), originalCompiledThemeColor);
-		assert.strictEqual(window.localStorage.getItem('themeId'), primaryTheme.id);
-	});
-
-	test('プレビュー中に通常テーマを更新するとプレビューを抜けて新しい通常テーマが適用される', async () => {
-		const { themeManager, isPreviewMode } = await loadThemeModule();
-
-		themeManager.updateTheme(primaryTheme);
-		themeManager.previewTheme(previewTheme);
-		themeManager.updateTheme(replacementTheme);
-
-		assert.strictEqual(themeManager.theme?.id, replacementTheme.id);
-		assert.strictEqual(themeManager.currentTheme?.id, replacementTheme.id);
-		assert.strictEqual(themeManager.isPreviewMode, false);
-		assert.strictEqual(isPreviewMode.value, false);
 		assert.strictEqual(document.documentElement.dataset.colorScheme, 'dark');
-		assert.strictEqual(document.documentElement.style.getPropertyValue('--MI_THEME-accent'), themeManager.currentCompiledTheme?.accent);
+		assert.strictEqual(document.documentElement.style.getPropertyValue('--MI_THEME-accent'), compile(replacementTheme).accent);
 		assert.strictEqual(window.localStorage.getItem('themeId'), replacementTheme.id);
 	});
 
-	test('themeChanging と themeChanged はプレビュー適用と復帰のたびに発火する', async () => {
-		const { themeManager } = await loadThemeModule();
-		const events: string[] = [];
+	test('適用済みテーマのキャッシュだけを消去する', async () => {
+		const { applyTheme, clearAppliedThemeCache } = await loadThemeModule();
 
-		themeManager.on('themeChanging', () => {
-			events.push('themeChanging');
-		});
-		themeManager.on('themeChanged', () => {
-			events.push('themeChanged');
-		});
+		applyTheme(primaryTheme);
+		clearAppliedThemeCache();
 
-		themeManager.updateTheme(primaryTheme);
-		themeManager.previewTheme(previewTheme);
-		themeManager.clearPreview();
-
-		assert.deepStrictEqual(events, [
-			'themeChanging',
-			'themeChanged',
-			'themeChanging',
-			'themeChanged',
-			'themeChanging',
-			'themeChanged',
-		]);
+		assert.strictEqual(window.localStorage.getItem('theme'), null);
+		assert.strictEqual(window.localStorage.getItem('themeId'), null);
+		assert.strictEqual(window.localStorage.getItem('themeCachedVersion'), null);
+		assert.strictEqual(window.localStorage.getItem('colorScheme'), 'light');
 	});
 });

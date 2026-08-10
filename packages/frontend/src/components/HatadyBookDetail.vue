@@ -240,8 +240,11 @@ async function addMemo() {
 	if (!book.value || !newMemoText.value.trim()) return;
 	saving.value = true;
 	try {
-		const payload: Record<string, unknown> = { bookId: book.value.id, text: newMemoText.value.trim() };
-		if (newMemoPage.value != null && Number.isFinite(Number(newMemoPage.value))) payload.page = Number(newMemoPage.value);
+		const payload = {
+			bookId: book.value.id,
+			text: newMemoText.value.trim(),
+			page: newMemoPage.value != null && Number.isFinite(Number(newMemoPage.value)) ? Number(newMemoPage.value) : undefined,
+		};
 		const m = await misskeyApi('hata/hatady/memos/create', payload);
 		memos.value = [...memos.value, m];
 		newMemoText.value = '';
@@ -375,8 +378,12 @@ async function addBookmark() {
 	if (!book.value) return;
 	saving.value = true;
 	try {
-		const payload: Record<string, unknown> = { bookId: book.value.id, page: Number(newBmPage.value) || 0, color: newBmColor.value };
-		if (newBmName.value.trim()) payload.name = newBmName.value.trim();
+		const payload = {
+			bookId: book.value.id,
+			page: Number(newBmPage.value) || 0,
+			color: newBmColor.value,
+			name: newBmName.value.trim() || undefined,
+		};
 		const bm = await misskeyApi('hata/hatady/bookmarks/create', payload);
 		// ページ順に挿入。
 		bookmarks.value = [...bookmarks.value, bm].sort((a, b) => a.page - b.page);
@@ -406,7 +413,7 @@ async function toggleFlag(key: 'isFavorite' | 'isRecommended') {
 	}
 }
 
-async function setStatus(s: string) {
+async function setStatus(s: typeof statuses[number]) {
 	if (!book.value) return;
 	saving.value = true;
 	try {

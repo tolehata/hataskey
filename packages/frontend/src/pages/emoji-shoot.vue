@@ -75,7 +75,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 <script lang="ts" setup>
 import { ref, onMounted } from 'vue';
 import MkButton from '@/components/MkButton.vue';
-import { mainRouter } from '@/router.js';
+import { useRouter } from '@/router.js';
 import { definePage } from '@/page.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 
@@ -98,7 +98,9 @@ async function fetchDebuffRanking() {
 	finally { debuffRankingLoading.value = false; }
 }
 
-function startGame(mode: string) { mainRouter.push(`/emoji-shoot/play?mode=${mode}`); }
+const router = useRouter();
+
+function startGame(mode: string) { router.pushByPath(`/emoji-shoot/play?mode=${mode}`); }
 
 onMounted(() => { fetchRanking(); fetchDebuffRanking(); });
 definePage(() => ({ title: 'カスタムエモジシュート', icon: 'ti ti-rocket' }));

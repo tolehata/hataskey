@@ -63,9 +63,9 @@ const widgetPropsDef = {
 	},
 	maxItems: {
 		type: 'enum',
-		default: 5,
+		default: '5',
 		label: '表示件数',
-		enum: [{ label: '3件', value: 3 }, { label: '5件', value: 5 }, { label: '10件', value: 10 }],
+		enum: [{ label: '3件', value: '3' }, { label: '5件', value: '5' }, { label: '10件', value: '10' }],
 	},
 } satisfies FormWithDefault;
 
@@ -88,7 +88,7 @@ const quakes = computed(() => dedupeQuakes(rawQuakes.value));
 const shownQuakes = computed(() => {
 	const pref = widgetProps.filterPref;
 	const list = pref ? quakes.value.filter(q => quakeAffectsPref(q, pref)) : quakes.value;
-	return list.slice(0, widgetProps.maxItems);
+	return list.slice(0, Number(widgetProps.maxItems));
 });
 function badgeScale(q: any): number {
 	return widgetProps.filterPref ? maxScaleInPref(q, widgetProps.filterPref) : (q.earthquake?.maxScale ?? -1);

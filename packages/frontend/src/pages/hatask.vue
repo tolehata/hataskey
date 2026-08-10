@@ -917,9 +917,9 @@ function cleanupHataskState(){
   try{delete document.body.dataset.hataskActive;document.querySelectorAll<HTMLElement>('[data-htask-hidden]').forEach(el=>{el.style.removeProperty('display');delete el.dataset.htaskHidden})}catch{}
   nextTick(()=>{document.querySelectorAll('.htk-nav-mobile').forEach(el=>el.remove());document.querySelectorAll('.htk-nav-pad').forEach(el=>el.remove())});
 }
-function openHataSettings(){cleanupHataskState();const router=useRouter();router.push('/settings/hata-custom')}
-function openHataDocs(){cleanupHataskState();const router=useRouter();router.push('/hata-docs')}
-function openHataSideStudio(){cleanupHataskState();const router=useRouter();router.push('/hata-side-studio')}
+function openHataSettings(){cleanupHataskState();routeRouter.push('/settings/hata-custom')}
+function openHataDocs(){cleanupHataskState();routeRouter.push('/hata-docs')}
+function openHataSideStudio(){cleanupHataskState();routeRouter.push('/hata-side-studio')}
 function openHataWhatsNew(){
   const {dispose}=os.popup(defineAsyncComponent(()=>import('@/components/MkHataWhatsNew.vue')),{}, {closed:()=>dispose()});
 }
@@ -956,10 +956,10 @@ function openHataskSettings(){
     changed: (s:any) => { if (s && typeof s === 'object') { settings.value = { ...settings.value, ...s }; } },
 	  });
 }
-function openHataFeed(){cleanupHataskState();const router=useRouter();router.push('/hatafeed')}
+function openHataFeed(){cleanupHataskState();routeRouter.push('/hatafeed')}
 // 旗鯖fork: Hatady(学習・読書記録)を旗鯖独自アプリから開く
-function openHatady(){cleanupHataskState();const router=useRouter();router.push('/hatady')}
-function openEarthquake(){cleanupHataskState();const router=useRouter();router.push('/earthquake')}
+function openHatady(){cleanupHataskState();routeRouter.push('/hatady')}
+function openEarthquake(){cleanupHataskState();routeRouter.push('/earthquake')}
 
 // 旗鯖fork(#36): HataFeed通知タイル
 const hfNotifs=ref<any[]>([]);
@@ -986,9 +986,9 @@ function hfIcon(type:string):string{
   return 'ti-bell';
 }
 function onHfNotifClick(n:any){
-  cleanupHataskState();const router=useRouter();
-	  if(n.feedbackId)router.pushByPath('/hatafeed/'+n.feedbackId);
-  else router.push('/hatafeed');
+  cleanupHataskState();
+	  if(n.feedbackId)routeRouter.pushByPath('/hatafeed/'+n.feedbackId);
+  else routeRouter.push('/hatafeed');
 }
 
 // 旗鯖fork(#36): 地震・津波タイル(WS購読＋ポーリング)
@@ -1027,8 +1027,7 @@ goBackToTimeline();
 }
 function goBackToTimeline(){
 cleanupHataskState();
-const router=useRouter();
-router.push('/');
+routeRouter.push('/');
 }
 
 // ========== NOTIFICATION SYSTEM (Misskey API) ==========

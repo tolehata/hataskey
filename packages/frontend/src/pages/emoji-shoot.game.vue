@@ -59,7 +59,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 <script lang="ts" setup>
 import { ref, reactive, onMounted, onUnmounted } from 'vue';
 import MkButton from '@/components/MkButton.vue';
-import { mainRouter } from '@/router.js';
+import { useRouter } from '@/router.js';
 import { definePage } from '@/page.js';
 import { miLocalStorage } from '@/local-storage.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
@@ -483,7 +483,9 @@ function initGame() {
 }
 
 function restart() { initGame(); }
-function goBack() { mainRouter.push('/emoji-shoot'); }
+const router = useRouter();
+
+function goBack() { router.push('/emoji-shoot'); }
 
 onMounted(() => { initGame(); });
 onUnmounted(() => {

@@ -185,7 +185,7 @@ function startGame() {
 }
 
 function startAiGame() {
-	router.push(`/stacking-game/ai?ai=${aiLevel.value}`);
+	router.pushByPath(`/stacking-game/ai?ai=${aiLevel.value}`);
 }
 
 function goLobby() {

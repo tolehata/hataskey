@@ -4,7 +4,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 
 <template>
-<div class="omfetrab" :class="['s' + size, 'w' + width, 'h' + height, { asDrawer, asWindow }]" :style="{ maxHeight: maxHeight ? maxHeight + 'px' : undefined }">
+<div data-hatacording-emoji-picker class="omfetrab" :class="['s' + size, 'w' + width, 'h' + height, { asDrawer, asWindow }]" :style="{ maxHeight: maxHeight ? maxHeight + 'px' : undefined }">
 	<input
 		ref="searchEl"
 		:value="q"
@@ -69,7 +69,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</section>
 
 			<section>
-				<header class="_acrylic"><i class="ti ti-clock ti-fw"></i> {{ i18n.ts.recentUsed }}</header>
+				<header data-hatacording-emoji-heading class="_acrylic"><i class="ti ti-clock ti-fw"></i> {{ i18n.ts.recentUsed }}</header>
 				<div class="body">
 					<button
 						v-for="emoji in recentlyUsedEmojisDef"
@@ -87,7 +87,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</section>
 		</div>
 		<div v-once class="group">
-			<header class="_acrylic">{{ i18n.ts.customEmojis }}</header>
+			<header data-hatacording-emoji-heading class="_acrylic">{{ i18n.ts.customEmojis }}</header>
 			<XSection
 				v-for="child in customEmojiFolderRoot.children"
 				:key="`custom:${child.value}`"
@@ -102,7 +102,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</XSection>
 		</div>
 		<div v-once class="group">
-			<header class="_acrylic">{{ i18n.ts.emoji }}</header>
+			<header data-hatacording-emoji-heading class="_acrylic">{{ i18n.ts.emoji }}</header>
 			<XSection v-for="category in categories" :key="category" :emojis="emojiCharByCategory.get(category) ?? []" :hasChildSection="false" @chosen="chosen">{{ category }}</XSection>
 		</div>
 	</div>

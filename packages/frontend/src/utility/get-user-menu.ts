@@ -25,6 +25,7 @@ import { popup } from '@/os.js';
 
 export function getUserMenu(user: Misskey.entities.UserDetailed, router: Router = mainRouter) {
 	const meId = $i ? $i.id : null;
+	const userIsAdmin = 'isAdmin' in user ? user.isAdmin : user.roles.some(role => role.isAdministrator);
 
 	const cleanups = [] as (() => void)[];
 
@@ -131,7 +132,7 @@ export function getUserMenu(user: Misskey.entities.UserDetailed, router: Router 
 			});
 		} else {
 			// 旗鯖fork: サーバー管理者へのミュートはモデレーション上の理由で禁止
-			if (user.isAdmin) {
+			if (userIsAdmin) {
 				os.alert({ type: 'error', text: i18n.ts.cannotBlockOrMuteAdministrator });
 				return;
 			}
@@ -177,7 +178,7 @@ export function getUserMenu(user: Misskey.entities.UserDetailed, router: Router 
 
 	async function toggleRenoteMute() {
 		// 旗鯖fork: サーバー管理者へのリノートミュートはモデレーション上の理由で禁止
-		if (!user.isRenoteMuted && user.isAdmin) {
+		if (!user.isRenoteMuted && userIsAdmin) {
 			os.alert({ type: 'error', text: i18n.ts.cannotBlockOrMuteAdministrator });
 			return;
 		}
@@ -196,7 +197,7 @@ export function getUserMenu(user: Misskey.entities.UserDetailed, router: Router 
 
 	async function toggleBlock() {
 		// 旗鯖fork: サーバー管理者へのブロックはモデレーション上の理由で禁止
-		if (!user.isBlocking && user.isAdmin) {
+		if (!user.isBlocking && userIsAdmin) {
 			os.alert({ type: 'error', text: i18n.ts.cannotBlockOrMuteAdministrator });
 			return;
 		}

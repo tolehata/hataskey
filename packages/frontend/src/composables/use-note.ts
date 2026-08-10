@@ -105,6 +105,8 @@ export function useNote(
 	const inChannel = options.inChannel ?? null;
 	const currentClip = options.currentClip ?? null;
 	const currentAntenna = options.currentAntenna ?? null;
+	const viewTextSource = ref(false);
+	const noNyaize = ref(false);
 
 	// プラグインの割り込み処理
 	let rawNote = deepClone(props.note);
@@ -141,8 +143,6 @@ export function useNote(
 	// 各種フラグ状態
 	const showContent = ref(false);
 	const isDeleted = ref(false);
-	const translating = ref(false);
-	const translation = ref<Misskey.entities.NotesTranslateResponse | null>(null);
 
 	// ミュート判定
 	const muted = ref($i ? calculateMuteStatus(appearNote, $i, $i.mutedWords, inTimeline && !tl_withSensitive.value) : false);
@@ -216,11 +216,10 @@ export function useNote(
 	// 共通アクション関数群
 	async function renote() {
 		if (props.mock) return;
-		const isLoggedIn = await pleaseLogin({ openOnRemote: pleaseLoginContext.value });
-		if (!isLoggedIn) return;
+		await pleaseLogin({ openOnRemote: pleaseLoginContext.value });
 		showMovedDialog();
 		if (els.renoteButton == null) return;
-		const { menu } = getRenoteMenu({
+		const { menu } = await getRenoteMenu({
 			note: rawNote,
 			renoteButton: els.renoteButton,
 			mock: props.mock,
@@ -231,8 +230,7 @@ export function useNote(
 
 	async function reply() {
 		if (props.mock) return;
-		const isLoggedIn = await pleaseLogin({ openOnRemote: pleaseLoginContext.value });
-		if (!isLoggedIn) return;
+		await pleaseLogin({ openOnRemote: pleaseLoginContext.value });
 		os.post({
 			reply: appearNote,
 			channel: appearNote.channel,
@@ -242,8 +240,7 @@ export function useNote(
 	}
 
 	async function react(customCallback?: (reaction: string) => void) {
-		const isLoggedIn = await pleaseLogin({ openOnRemote: pleaseLoginContext.value });
-		if (!isLoggedIn) return;
+		await pleaseLogin({ openOnRemote: pleaseLoginContext.value });
 		showMovedDialog();
 
 		if (appearNote.reactionAcceptance === 'likeOnly') {
@@ -294,8 +291,7 @@ export function useNote(
 
 	async function reactViaMfmEmoji(reaction: string) {
 		if (props.mock) return;
-		const isLoggedIn = await pleaseLogin({ openOnRemote: pleaseLoginContext.value });
-		if (!isLoggedIn) return;
+		await pleaseLogin({ openOnRemote: pleaseLoginContext.value });
 		showMovedDialog();
 		sound.playMisskeySfx('reaction');
 		misskeyApi('notes/reactions/create', {
@@ -341,8 +337,8 @@ export function useNote(
 		} else {
 			const { menu, cleanup } = getNoteMenu({
 				note: rawNote,
-				translating,
-				translation,
+				viewTextSource,
+				noNyaize,
 				currentClip: currentClip?.value,
 				currentAntenna: currentAntenna?.value ?? undefined,
 			});
@@ -354,8 +350,8 @@ export function useNote(
 		if (props.mock || els.menuButton == null) return;
 		const { menu, cleanup } = getNoteMenu({
 			note: rawNote,
-			translating,
-			translation,
+			viewTextSource,
+			noNyaize,
 			currentClip: currentClip?.value,
 			currentAntenna: currentAntenna?.value ?? undefined,
 		});
@@ -372,8 +368,7 @@ export function useNote(
 
 	async function showRenoteMenu() {
 		if (props.mock) return;
-		const isLoggedIn = await pleaseLogin({ openOnRemote: pleaseLoginContext.value });
-		if (!isLoggedIn) return;
+		await pleaseLogin({ openOnRemote: pleaseLoginContext.value });
 
 		const getUnrenote = () => ({
 			text: i18n.ts.unrenote,
@@ -386,7 +381,7 @@ export function useNote(
 
 		const menuItems: MenuItem[] = [{
 			type: 'link',
-			text: i18n.ts.renoteDetails,
+			text: String(i18n.ts.renoteDetails),
 			icon: 'ti ti-info-circle',
 			to: notePage(rawNote),
 		}];
@@ -394,7 +389,7 @@ export function useNote(
 		if (props.note.channelId != null && (inChannel == null || props.note.channelId !== inChannel.value)) {
 			menuItems.push({
 				type: 'link',
-				text: i18n.ts.viewRenotedChannel,
+				text: String(i18n.ts.viewRenotedChannel),
 				icon: 'ti ti-device-tv',
 				to: `/channels/${props.note.channelId}`,
 			});
@@ -429,9 +424,9 @@ export function useNote(
 		hideByPlugin,
 		isRenote,
 		showContent,
+		viewTextSource,
+		noNyaize,
 		isDeleted,
-		translating,
-		translation,
 		muted,
 		hardMuted,
 		collapsed,

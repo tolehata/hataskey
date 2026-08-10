@@ -73,7 +73,7 @@ const props = withDefaults(defineProps<{
 	type?: 'success' | 'error' | 'warning' | 'info' | 'question' | 'waiting';
 	title?: string;
 	text?: string;
-	caption?: string;
+	caption?: string | null;
 	input?: Input;
 	select?: Select;
 	icon?: string;

@@ -20,7 +20,7 @@ export const basicTimelineTypes = [
 
 export type BasicTimelineType = typeof basicTimelineTypes[number];
 
-export function isBasicTimeline(timeline: string): timeline is BasicTimelineType {
+export function isBasicTimeline(timeline: string | null | undefined): timeline is BasicTimelineType {
 	return basicTimelineTypes.includes(timeline as BasicTimelineType);
 }
 

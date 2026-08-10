@@ -333,7 +333,7 @@ import { iAmModerator, $i } from '@/i.js';
 const props = defineProps<{ issueId?: string; number?: string }>();
 
 // 旗鯖fork: スタッフ専用カテゴリ(security等)は一般ユーザーの絞り込みから隠す。
-const filterCategoryKeys = computed(() => categoryKeys.filter(c => iAmModerator || !staffOnlyCategoryKeys.includes(c)));
+const filterCategoryKeys = computed(() => categoryKeys.filter(c => iAmModerator || !staffOnlyCategoryKeys.some(staffOnly => staffOnly === c)));
 const router = useRouter();
 
 // 旗鯖fork: 「#番号」リンク(/hatafeed/n/:number)から来た場合、番号→idを解決して該当イシューへ。

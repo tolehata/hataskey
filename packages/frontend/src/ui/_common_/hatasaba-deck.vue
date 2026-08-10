@@ -179,11 +179,10 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, ref, watch, onMounted, onUnmounted, defineAsyncComponent, type Component } from 'vue';
+import { computed, ref, watch, onMounted, onUnmounted, nextTick, defineAsyncComponent, type Component } from 'vue';
 import * as os from '@/os.js';
 import { mainRouter } from '@/router.js';
 import { misskeyApi, misskeyApiGet } from '@/utility/misskey-api.js';
-import { notificationTypes } from 'cherrypick-js';
 import { prefer } from '@/preferences.js';
 import { globalEvents } from '@/events.js';
 import MkStreamingNotesTimeline from '@/components/MkStreamingNotesTimeline.vue';
@@ -192,6 +191,7 @@ import MkStreamingNotificationsTimeline from '@/components/MkStreamingNotificati
 import MkTrendingTimeline from '@/components/MkTrendingTimeline.vue';
 import MkPostForm from '@/components/MkPostForm.vue';
 import { tabSwipeEnabled } from '@/utility/hatasaba-device-prefs.js';
+import { hasConfiguredNotificationFilter, migrateNotificationFilterSnapshot, resolveNotificationFilter } from '@/utility/notification-filter.js';
 
 const XWidgets = defineAsyncComponent(() => import('./widgets.vue'));
 const WidgetExternalNotifications = defineAsyncComponent(() => import('@/widgets/WidgetExternalNotifications.vue'));
@@ -213,7 +213,8 @@ type DeckTab = {
 	withRenotes?: boolean;
 	tabName?: string;    // タブ表示名(ユーザー設定可。未設定なら種別名)
 	tabColor?: string | null; // タブ(クリックして切り替える部分)の色
-	excludeTypes?: typeof notificationTypes[number][]; // 通知カラムで除外する通知タイプ(通知フィルタ)
+	excludeTypes?: string[]; // 通知カラムで除外する通知タイプ(通知フィルタ)
+	notificationFilterKnownTypes?: string[]; // 保存時点で存在した通知タイプ。新種別を勝手にONにしないためのスナップショット
 };
 // frame = スロット内の箱。tabs 複数ならタブ表示
 type DeckFrame = {
@@ -565,7 +566,36 @@ function migrateV2IfNeeded() {
 	}
 }
 
-onMounted(() => { migrateV2IfNeeded(); });
+function migrateNotificationFilterSnapshots() {
+	const currentProfiles = prefer.r['simpleUi.deckProfilesV2'].value as DeckProfile[] | null | undefined;
+	if (currentProfiles == null || currentProfiles.length === 0) return;
+	const hasLegacyFilter = currentProfiles.some(profile => profile.slots.some(slot => slot.frames.some(frame => frame.tabs.some(tab => (
+		tab.type === 'notifications' && migrateNotificationFilterSnapshot(tab.excludeTypes, tab.notificationFilterKnownTypes) != null
+	)))));
+	if (!hasLegacyFilter) return;
+	const migratedProfiles = currentProfiles.map(profile => ({
+		...profile,
+		slots: profile.slots.map(slot => ({
+			...slot,
+			frames: slot.frames.map(frame => ({
+				...frame,
+				tabs: frame.tabs.map(tab => {
+					if (tab.type !== 'notifications') return tab;
+					const migrated = migrateNotificationFilterSnapshot(tab.excludeTypes, tab.notificationFilterKnownTypes);
+					if (migrated == null) return tab;
+					return { ...tab, notificationFilterKnownTypes: migrated.knownTypes };
+				}),
+			})),
+		})),
+	}));
+	commitProfiles(migratedProfiles);
+}
+
+onMounted(async () => {
+	migrateV2IfNeeded();
+	await nextTick();
+	migrateNotificationFilterSnapshots();
+});
 
 // ===== プロファイル/slots アクセサ(副作用なし・読むだけ) =====
 const FALLBACK_PROFILE: DeckProfile = { id: 'default', name: 'デフォルト', layout: 'row', slots: [] };
@@ -660,7 +690,10 @@ function columnProps(tab: DeckTab): Record<string, unknown> {
 	if ((tab.type === 'ohtl' || tab.type === 'oltl') && externalReady.value) return { src: tab.type, host: externalHost.value, token: externalToken.value, sound: false, simpleUi: true };
 	if (tab.type === 'externalNotifications' && externalReady.value) return { widget: { id: `deck-extnotif-${tab.id}`, name: 'externalNotifications', data: {} }, showHeader: false };
 	if (tab.type === 'trending') return {};
-	if (tab.type === 'notifications') return { excludeTypes: tab.excludeTypes };
+	if (tab.type === 'notifications') return {
+		excludeTypes: resolveNotificationFilter(tab.excludeTypes, tab.notificationFilterKnownTypes).excludeTypes,
+		showFilterPolicyNotice: hasConfiguredNotificationFilter(tab.excludeTypes, tab.notificationFilterKnownTypes),
+	};
 	if (tab.type === 'postForm') return { fixed: true, autofocus: false };
 	// 旗鯖fork(新デッキ): deckEmbedded を渡し、widgets.vue 内の常時表示「ウィジェットを編集」
 	// ボタンを抑止する (編集導線は三点メニュー / タブ右クリックに集約)。
@@ -986,29 +1019,30 @@ function onSlotPointerDown(slotId: string, ev: PointerEvent) {
 
 function onPointerMove(ev: PointerEvent) {
 	if (!pds) return;
-	const dx = ev.clientX - pds.startX, dy = ev.clientY - pds.startY;
-	if (!pds.started) {
+	const dragState = pds;
+	const dx = ev.clientX - dragState.startX, dy = ev.clientY - dragState.startY;
+	if (!dragState.started) {
 		if (Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
-		pds.started = true;
+		dragState.started = true;
 		// ドラッグ開始
-		if (pds.kind === 'tab' && pds.src) {
-			dragSrc.value = pds.src;
-			const loc = findFrame(pds.src.slotId, pds.src.frameId);
-			const tab = loc ? slots.value[loc.s].frames[loc.f].tabs.find(t => t.id === pds.src!.tabId) : null;
+		if (dragState.kind === 'tab' && dragState.src) {
+			dragSrc.value = dragState.src;
+			const loc = findFrame(dragState.src.slotId, dragState.src.frameId);
+			const tab = loc ? slots.value[loc.s].frames[loc.f].tabs.find(t => t.id === dragState.src!.tabId) : null;
 			if (tab) ghost.value = { x: ev.clientX, y: ev.clientY, label: tabTitle(tab), icon: tabIcon(tab), color: tab.tabColor };
-		} else if (pds.kind === 'slot' && pds.slotId) {
-			slotDragId.value = pds.slotId;
+		} else if (dragState.kind === 'slot' && dragState.slotId) {
+			slotDragId.value = dragState.slotId;
 			ghost.value = { x: ev.clientX, y: ev.clientY, label: '列を移動', icon: 'ti ti-grip-vertical' };
 		}
 	}
 	if (ghost.value) { ghost.value.x = ev.clientX; ghost.value.y = ev.clientY; }
 	const hit = deckDataAt(ev.clientX, ev.clientY);
-	if (pds.kind === 'tab') {
+	if (dragState.kind === 'tab') {
 		tabDragOverId.value = hit.tabId ?? null;
 		dragOverFrame.value = (hit.frameId && !hit.tabId) ? hit.frameId : null;
 		dragOverSlotStack.value = hit.stackSlotId ?? null;
 	} else {
-		slotDragOverId.value = (hit.slotId && hit.slotId !== pds.slotId) ? hit.slotId : null;
+		slotDragOverId.value = (hit.slotId && hit.slotId !== dragState.slotId) ? hit.slotId : null;
 	}
 }
 
@@ -1335,12 +1369,12 @@ async function setFrameBorderCustom(slotId: string, frameId: string) {
 async function openNotificationFilter(slotId: string, frameId: string, tab: DeckTab) {
 	const { dispose } = await os.popupAsyncWithDialog(import('@/components/MkNotificationSelectWindow.vue').then(x => x.default), {
 		excludeTypes: tab.excludeTypes,
+		knownTypes: tab.notificationFilterKnownTypes,
 	}, {
-		done: (res: { excludeTypes: string[] }) => {
-			const next = res.excludeTypes as typeof notificationTypes[number][];
+		done: (res: { excludeTypes: string[]; knownTypes: string[] }) => {
 			// excludeTypes を更新すると columnProps 経由でプロップが変わり、
 			// MkStreamingNotificationsTimeline 側の computedParams ウォッチャが自動で再読み込みする。
-			mapSlots(ss => ss.map(s => s.id !== slotId ? s : { ...s, frames: s.frames.map(f => f.id !== frameId ? f : { ...f, tabs: f.tabs.map(t => t.id !== tab.id ? t : { ...t, excludeTypes: next }) }) }));
+			mapSlots(ss => ss.map(s => s.id !== slotId ? s : { ...s, frames: s.frames.map(f => f.id !== frameId ? f : { ...f, tabs: f.tabs.map(t => t.id !== tab.id ? t : { ...t, excludeTypes: res.excludeTypes, notificationFilterKnownTypes: res.knownTypes }) }) }));
 		},
 		closed: () => dispose(),
 	});

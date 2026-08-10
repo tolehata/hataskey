@@ -43,8 +43,8 @@ export async function getTheme(mode: 'light' | 'dark', getName = false): Promise
 		}
 		_res.type = mode;
 
-		if (getName) {
-			return _res.name;
+			if (getName) {
+				return _res.name ?? theme.id;
 		}
 		return _res;
 	}

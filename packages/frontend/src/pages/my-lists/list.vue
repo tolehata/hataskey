@@ -67,11 +67,12 @@ import MkInput from '@/components/MkInput.vue';
 import { userListsCache } from '@/cache.js';
 import { ensureSignin } from '@/i.js';
 import MkPagination from '@/components/MkPagination.vue';
-import { mainRouter } from '@/router.js';
+import { useRouter } from '@/router.js';
 import { prefer } from '@/preferences.js';
 import { Paginator } from '@/utility/paginator.js';
 
 const $i = ensureSignin();
+const router = useRouter();
 
 const props = defineProps<{
 	listId: string;
@@ -162,7 +163,7 @@ async function deleteList() {
 		listId: list.value.id,
 	});
 	userListsCache.delete();
-	mainRouter.push('/my/lists');
+	router.push('/my/lists');
 }
 
 async function updateSettings() {

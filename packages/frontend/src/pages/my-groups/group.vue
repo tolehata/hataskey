@@ -38,7 +38,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 import { computed, ref, useTemplateRef, watch } from 'vue';
 import * as os from '@/os.js';
 import { $i } from '@/i.js';
-import { mainRouter } from '@/router.js';
+import { useRouter } from '@/router.js';
 import { definePage } from '@/page.js';
 import { i18n } from '@/i18n.js';
 import { prefer } from '@/preferences.js';
@@ -48,6 +48,7 @@ import { misskeyApi } from '@/utility/misskey-api.js';
 const props = defineProps<{
 	groupId: string;
 }>();
+const router = useRouter();
 
 const group = ref();
 const users = ref();
@@ -123,7 +124,7 @@ async function deleteGroup() {
 	await os.apiWithDialog('users/groups/delete', {
 		groupId: group.value.id,
 	});
-	mainRouter.push('/my/groups');
+	router.push('/my/groups');
 }
 
 watch(() => props.groupId, fetchGroup, { immediate: true });

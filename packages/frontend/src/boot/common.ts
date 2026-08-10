@@ -82,7 +82,7 @@ export async function common(createVue: () => Promise<App<Element>>) {
 	// 旗鯖: デッキUI以外のユーザーをSimple UIに一度だけ強制移行
 	if (!miLocalStorage.getItem('hata_ui_migrated')) {
 		const currentUi = miLocalStorage.getItem('ui');
-		if (currentUi !== 'deck' && currentUi !== 'simple') {
+		if (currentUi !== 'deck' && currentUi !== 'simple' && currentUi !== 'hatacording') {
 			miLocalStorage.setItem('ui', 'simple');
 		}
 		miLocalStorage.setItem('hata_ui_migrated', '1');

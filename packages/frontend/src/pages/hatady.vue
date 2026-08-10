@@ -373,7 +373,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 <script lang="ts" setup>
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
 import { $i } from '@/i.js';
-import { mainRouter } from '@/router.js';
+import { mainRouter, useRouter } from '@/router.js';
 import { definePage } from '@/page.js';
 import * as os from '@/os.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
@@ -388,6 +388,7 @@ import { claimAchievement } from '@/utility/achievements.js';
 import { miLocalStorage } from '@/local-storage.js';
 
 const isHatasabaDeckUi = computed(() => miLocalStorage.getItem('ui') === 'simple' && prefer.r['simpleUi.deckMode'].value === true);
+const router = useRouter();
 
 // 旗鯖fork(Hatady i18n 土台): 言語(ja/en)は表示設定で独立に切替。まずはシェル分の最小辞書。
 //   後続フェーズで各画面の文言を足していく。テーマ(paper/espresso)も表示設定で独立に切替。
@@ -995,8 +996,12 @@ async function openConversation(logOrId: any) {
 
 // Hatady を離れて元の画面へ戻る(主にモバイルの全画面表示用)。
 function goBack() {
+	if (router !== mainRouter) {
+		router.push('/');
+		return;
+	}
 	if (window.history.length > 1) window.history.back();
-	else mainRouter.push('/');
+	else router.push('/');
 }
 
 // 旗鯖fork: 連続記録(現在/自己ベスト・マイルストーン進捗・過去の連続期間)をモーダルで開く。

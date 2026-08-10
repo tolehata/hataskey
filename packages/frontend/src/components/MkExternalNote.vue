@@ -106,21 +106,21 @@ SPDX-License-Identifier: AGPL-3.0-only
 		</Teleport>
 
 		<div :class="$style.footer">
-			<button :class="$style.footerButton" @click="reply" :title="i18n.ts.reply">
+			<button :class="$style.footerButton" :title="i18n.ts.reply" @click="reply">
 				<i class="ti ti-arrow-back-up"></i>
 				<span v-if="note.repliesCount > 0" :class="$style.footerCount">{{ note.repliesCount }}</span>
 			</button>
-			<button :class="$style.footerButton" @click="showRenoteMenu" :title="i18n.ts.renote">
+			<button :class="$style.footerButton" :title="i18n.ts.renote" @click="showRenoteMenu">
 				<i class="ti ti-repeat"></i>
 				<span v-if="note.renoteCount > 0" :class="$style.footerCount">{{ note.renoteCount }}</span>
 			</button>
-			<button ref="reactionBtnEl" :class="[$style.footerButton, { [$style.reacted]: myReaction }]" @click="openReactionPicker" :title="i18n.ts.reaction">
+			<button ref="reactionBtnEl" :class="[$style.footerButton, { [$style.reacted]: myReaction }]" :title="i18n.ts.reaction" @click="openReactionPicker">
 				<i class="ti ti-mood-plus"></i>
 				<span v-if="totalReactionCount > 0" :class="$style.footerCount">
 					{{ totalReactionCount }}
 				</span>
 			</button>
-			<button :class="$style.footerButton" @click="showNoteMenu" :title="'メニュー'">
+			<button :class="$style.footerButton" :title="'メニュー'" @click="showNoteMenu">
 				<i class="ti ti-dots"></i>
 			</button>
 		</div>
@@ -130,7 +130,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { ref, computed, defineAsyncComponent, reactive, onMounted, useTemplateRef } from 'vue';
+import { ref, computed, defineAsyncComponent, reactive, onMounted, useTemplateRef, watch } from 'vue';
 import MkReactionIcon from '@/components/MkReactionIcon.vue';
 import MkMediaList from '@/components/MkMediaList.vue';
 import * as os from '@/os.js';
@@ -187,6 +187,14 @@ const isMine = computed(() => {
 const reactions = reactive<Record<string, number>>(
 	{ ...(props.note.reactions || {}) },
 );
+
+// 親タイムラインが外部サーバーの noteUpdated を受け取った場合も、
+// コンポーネント内の操作用状態へ同期する。既存の外部TLとHataSNSCordUIで共用する。
+watch(() => props.note.reactions, (next) => {
+	for (const key of Object.keys(reactions)) delete reactions[key];
+	Object.assign(reactions, next ?? {});
+}, { deep: true });
+watch(() => props.note.myReaction, (next) => { myReaction.value = next ?? null; });
 
 // ===== 外部サーバーの絵文字URLマップ（非同期で取得） =====
 const externalEmojiUrlMap = ref<Record<string, string>>({});
@@ -336,7 +344,7 @@ const normalizedFiles = computed(() => {
 
 // ===== 外部API呼び出し =====
 async function callExternalApi(endpoint: string, params: Record<string, any> = {}) {
-	const res = await fetch(`https://${props.host}/api/${endpoint}`, {
+	const res = await window.fetch(`https://${props.host}/api/${endpoint}`, {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
 		body: JSON.stringify({ i: props.token, ...params }),
@@ -435,6 +443,7 @@ function openReactionPicker(ev?: MouseEvent) {
  * リアクションを適用（既存リアクションがあれば先に削除）
  */
 let reactionProcessing = false;
+
 async function applyReaction(reaction: string) {
 	if (reactionProcessing) return;
 	reactionProcessing = true;
@@ -522,7 +531,7 @@ async function toggleReaction(reaction: string) {
 }
 
 // ===== リアクションしたユーザーのツールチップ表示 (独自実装) =====
-let reactionTooltipTimer: ReturnType<typeof setTimeout> | null = null;
+let reactionTooltipTimer: number | null = null;
 const reactionTipVisible = ref(false);
 const reactionTipStyle = ref<Record<string, string>>({});
 const reactionTipReaction = ref('');
@@ -530,19 +539,19 @@ const reactionTipEmojiUrl = ref<string | undefined>(undefined);
 const reactionTipUsers = ref<any[]>([]);
 const reactionTipCount = ref(0);
 const reactionTipShortcode = ref('');
-let reactionTipHideTimer: ReturnType<typeof setTimeout> | null = null;
+let reactionTipHideTimer: number | null = null;
 
 function onReactionMouseEnter(ev: MouseEvent, reaction: string, count: number) {
-	if (reactionTooltipTimer) clearTimeout(reactionTooltipTimer);
+	if (reactionTooltipTimer) window.clearTimeout(reactionTooltipTimer);
 	const el = ev.currentTarget as HTMLElement;
-	reactionTooltipTimer = setTimeout(() => {
+	reactionTooltipTimer = window.setTimeout(() => {
 		showReactionUsers(el, reaction, count);
 	}, 300);
 }
 
 function onReactionMouseLeave() {
 	if (reactionTooltipTimer) {
-		clearTimeout(reactionTooltipTimer);
+		window.clearTimeout(reactionTooltipTimer);
 		reactionTooltipTimer = null;
 	}
 	// 旗鯖fork: 旧実装ではタッチ操作の3秒残留タイマー(reactionTipHideTimer)を考慮した
@@ -551,16 +560,16 @@ function onReactionMouseLeave() {
 }
 
 function onReactionTouchStart(ev: TouchEvent, reaction: string, count: number) {
-	if (reactionTooltipTimer) clearTimeout(reactionTooltipTimer);
+	if (reactionTooltipTimer) window.clearTimeout(reactionTooltipTimer);
 	const el = ev.currentTarget as HTMLElement;
-	reactionTooltipTimer = setTimeout(() => {
+	reactionTooltipTimer = window.setTimeout(() => {
 		showReactionUsers(el, reaction, count);
 	}, 400);
 }
 
 function onReactionTouchEnd() {
 	if (reactionTooltipTimer) {
-		clearTimeout(reactionTooltipTimer);
+		window.clearTimeout(reactionTooltipTimer);
 		reactionTooltipTimer = null;
 	}
 	// 旗鯖fork: 指を離したらツールチップを即座に消す
@@ -575,7 +584,7 @@ function hideReactionTip() {
 	reactionTipVisible.value = false;
 	reactionTipUsers.value = [];
 	reactionTipShortcode.value = '';
-	if (reactionTipHideTimer) { clearTimeout(reactionTipHideTimer); reactionTipHideTimer = null; }
+	if (reactionTipHideTimer) { window.clearTimeout(reactionTipHideTimer); reactionTipHideTimer = null; }
 }
 
 async function showReactionUsers(anchorEl: HTMLElement, reaction: string, count: number) {

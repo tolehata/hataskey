@@ -56,6 +56,7 @@ import MkButton from '@/components/MkButton.vue';
 import * as os from '@/os.js';
 import { $i } from '@/i.js';
 import { definePage } from '@/page.js';
+import { isBirthday } from '@/utility/is-birthday.js';
 import {
 	mascotData, mascotLoaded, loadMascot,
 	activeCharacter, currentPhrase, currentExpression,
@@ -147,14 +148,7 @@ function next() { clearAnnounce(); pickRandomPhrase(); startTimer(); }
 
 // 今日が自分の誕生日か($i.birthday は 'YYYY-MM-DD')
 const isBirthdayToday = computed(() => {
-	const b = $i?.birthday;
-	if (!b) return false;
-	const parts = b.split('-');
-	if (parts.length < 3) return false;
-	const bm = parseInt(parts[1], 10);
-	const bd = parseInt(parts[2], 10);
-	const now = new Date();
-	return (now.getMonth() + 1) === bm && now.getDate() === bd;
+	return $i ? isBirthday($i) : false;
 });
 function celebrateBirthday() { announceBirthday(); }
 
@@ -162,7 +156,9 @@ function openSettings() {
 	// 旗鯖fork: 未許可ユーザーは設定ダイアログを開けない(UI非表示に加えた二重防御)
 	if (!canUseMascot.value) return;
 	import('@/pages/MkMascotSettings.vue').then(x => {
-		os.popup(x.default, {}, {}, 'closed');
+		const { dispose } = os.popup(x.default, {}, {
+			closed: () => dispose(),
+		});
 	});
 }
 

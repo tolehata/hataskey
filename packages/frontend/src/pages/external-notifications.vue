@@ -52,7 +52,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import type * as Misskey from 'cherrypick-js';
 import { prefer } from '@/preferences.js';
-import { mainRouter } from '@/router.js';
+import { useRouter } from '@/router.js';
 import { callExternalApi } from '@/utility/external-api.js';
 import { getExternalEmojiUrlMap } from '@/utility/external-api.js';
 import { i18n } from '@/i18n.js';
@@ -62,6 +62,7 @@ import MkReactionIcon from '@/components/MkReactionIcon.vue';
 
 const notifications = ref<any[]>([]);
 const loading = ref(true);
+const router = useRouter();
 // 旗鯖fork: 外部サーバーのカスタム絵文字URLマップ (reactionEmojis に無い絵文字の解決用)
 const externalEmojiUrlMap = ref<Record<string, string>>({});
 
@@ -256,7 +257,7 @@ function onItemClick(n: any) {
 onMounted(async () => {
 	// 未連携ならリダイレクト
 	if (!checkConnected()) {
-		mainRouter.replace('/settings/external-account');
+		router.replace('/settings/external-account');
 		return;
 	}
 	// 旗鯖fork: 訪問時に既読化。fetch の完了/失敗を待たず、ページを開いた時点で

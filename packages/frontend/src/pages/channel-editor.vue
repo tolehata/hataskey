@@ -223,7 +223,7 @@ fetchChannel();
 function copyPassword() {
 	if (!passwordRevealed.value || !currentPassword.value) return;
 	copyToClipboard(currentPassword.value);
-	os.success('あいことばをコピーしました');
+	os.toast('あいことばをコピーしました');
 }
 
 // 旗鯖fork: あいことばを再生成する。実行前に confirm で「旧あいことばは無効化される」旨を周知。
@@ -245,7 +245,7 @@ async function confirmRegeneratePassword() {
 		const r = await misskeyApi('channels/show-password' as any, { channelId: props.channelId });
 		currentPassword.value = (r as any).password ?? '';
 		passwordRevealed.value = true;
-		os.success('あいことばを再生成しました');
+		os.toast('あいことばを再生成しました');
 	} catch (err) {
 		os.alert({
 			type: 'error',

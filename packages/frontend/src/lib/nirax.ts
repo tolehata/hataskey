@@ -369,6 +369,7 @@ export class Nirax<DEF extends RouteDef[]> extends EventEmitter<RouterEvents> {
 		const res = this.resolve(this.currentFullPath);
 
 		if (res == null) {
+			this.currentFullPath = beforeFullPath;
 			throw new Error('no route found for: ' + fullPath);
 		}
 
@@ -384,7 +385,13 @@ export class Nirax<DEF extends RouteDef[]> extends EventEmitter<RouterEvents> {
 				if (_redirected && this.redirectCount++ > 10) {
 					throw new Error('redirect loop detected');
 				}
-				return this.navigate(redirectPath, emitChange, true);
+				try {
+					return this.navigate(redirectPath, emitChange, true);
+				} catch (error) {
+					this.currentFullPath = beforeFullPath;
+					this.redirectCount = 0;
+					throw error;
+				}
 			}
 		}
 
@@ -393,8 +400,13 @@ export class Nirax<DEF extends RouteDef[]> extends EventEmitter<RouterEvents> {
 			res.props.set('showLoginPopup', true);
 		}
 
-		this.current = res;
-		this.currentRef.value = res;
+		const resolved = {
+			...res,
+			redirected: _redirected,
+		};
+
+		this.current = resolved;
+		this.currentRef.value = resolved;
 		this.currentRoute.value = res.route;
 
 		if (emitChange && res.route.path !== '/:(*)') {
@@ -406,10 +418,7 @@ export class Nirax<DEF extends RouteDef[]> extends EventEmitter<RouterEvents> {
 		}
 
 		this.redirectCount = 0;
-		return {
-			...res,
-			redirected: _redirected,
-		};
+		return resolved;
 	}
 
 	public getCurrentFullPath() {

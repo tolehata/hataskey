@@ -92,7 +92,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					</div>
 					<MkNote :class="$style.note" :note="note" :withHardMute="true"/>
 				</div>
-				<div v-else-if="note._shouldInsertAd_" :class="{ '_gaps': !noGap }" :data-scroll-anchor="note.id">
+				<div v-else-if="shouldInsertAd(note)" :class="{ '_gaps': !noGap }" :data-scroll-anchor="note.id">
 					<MkNote :class="$style.note" :note="note" :withHardMute="true"/>
 					<div :class="[$style.ad, { [$style.noGap]: noGap }]">
 						<MkAd :preferForms="['horizontal', 'horizontal-big']"/>
@@ -480,6 +480,10 @@ function isHiddenBot(note: Misskey.entities.Note): boolean {
 const visibleItems = computed<Misskey.entities.Note[]>(() =>
 	paginator.items.value.filter(n => !isHiddenBot(n)),
 );
+
+function shouldInsertAd(note: Misskey.entities.Note): boolean {
+	return '_shouldInsertAd_' in note && note._shouldInsertAd_ === true;
+}
 
 // ===== 旗鯖fork: 天気エフェクト(weatherEffect) =====
 // paginator 初期化後に定義する(currentWeather が paginator.items を参照するため)。

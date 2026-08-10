@@ -24,10 +24,11 @@ import * as os from '@/os.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { i18n } from '@/i18n.js';
 import { definePage } from '@/page.js';
-import { mainRouter } from '@/router.js';
+import { mainRouter, useRouter } from '@/router.js';
 import MkButton from '@/components/MkButton.vue';
 
 const state = ref<'fetching' | 'done'>('fetching');
+const router = useRouter();
 
 function _fetch_() {
 	const params = new URL(window.location.href).searchParams;
@@ -46,13 +47,13 @@ function _fetch_() {
 			uri,
 		}).then(res => {
 			if (res.type === 'User') {
-				mainRouter.replace('/@:acct/:page?', {
+				router.replace('/@:acct/:page?', {
 					params: {
 						acct: res.object.host != null ? `${res.object.username}@${res.object.host}` : res.object.username,
 					},
 				});
 			} else if (res.type === 'Note') {
-				mainRouter.replace('/notes/:noteId/:initialTab?', {
+				router.replace('/notes/:noteId/:initialTab?', {
 					params: {
 						noteId: res.object.id,
 					},
@@ -69,7 +70,7 @@ function _fetch_() {
 			uri = uri.slice(5);
 		}
 		promise = misskeyApi('users/show', Misskey.acct.parse(uri)).then(user => {
-			mainRouter.replace('/@:acct/:page?', {
+			router.replace('/@:acct/:page?', {
 				params: {
 					acct: user.host != null ? `${user.username}@${user.host}` : user.username,
 				},
@@ -81,6 +82,10 @@ function _fetch_() {
 }
 
 function close(): void {
+	if (router !== mainRouter) {
+		router.push('/');
+		return;
+	}
 	window.close();
 
 	// 閉じなければ100ms後タイムラインに
@@ -90,7 +95,8 @@ function close(): void {
 }
 
 function goToMisskey(): void {
-	window.location.href = '/';
+	if (router !== mainRouter) router.push('/');
+	else window.location.href = '/';
 }
 
 _fetch_();

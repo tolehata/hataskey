@@ -186,6 +186,32 @@ SPDX-License-Identifier: AGPL-3.0-only
 						</MkSwitch>
 					</MkFolder>
 
+					<!-- 旗鯖fork: HataSNSCordUIの利用可否とサブペイン上限 -->
+					<MkFolder v-if="matchQuery(['HataSNSCordUIを利用できる', 'canUseHatacordingUi'])">
+						<template #label>HataSNSCordUIを利用できる</template>
+						<template #suffix>{{ policies.canUseHatacordingUi ? i18n.ts.yes : i18n.ts.no }}</template>
+						<MkSwitch v-model="policies.canUseHatacordingUi">
+							<template #label>HataSNSCordUIの利用を許可</template>
+							<template #caption>UI切り替え画面から利用できます。既定ではすべてのユーザーに許可されます。</template>
+						</MkSwitch>
+					</MkFolder>
+
+					<MkFolder v-if="matchQuery(['HataSNSCordUIのサブペイン最大タブ数', 'hatacordingUiSubpaneMaxTabs'])">
+						<template #label>HataSNSCordUIのサブペイン最大タブ数</template>
+						<template #suffix>{{ policies.hatacordingUiSubpaneMaxTabs }}</template>
+						<MkInput v-model="policies.hatacordingUiSubpaneMaxTabs" type="number" :min="1" :max="5">
+							<template #caption>右側に作成できるタブ数です。1〜5の範囲で指定します（既定: 3）。</template>
+						</MkInput>
+					</MkFolder>
+
+					<MkFolder v-if="matchQuery(['HataSNSCordUI専用レートリミット', 'hatacordingUiRateLimit'])">
+						<template #label>HataSNSCordUI専用レートリミット</template>
+						<template #suffix>{{ policies.hatacordingUiRateLimit }}</template>
+						<MkInput v-model="policies.hatacordingUiRateLimit" type="number" :min="1" :max="1000">
+							<template #caption>このUIから行う全API操作の1時間あたりの上限です。1〜1000の範囲で指定します（既定: 500）。通常UIや連合処理には適用されません。</template>
+						</MkInput>
+					</MkFolder>
+
 					<!-- 旗鯖fork(Hatady): 端末間データ共有(同期)の可否。既定は有効。 -->
 					<MkFolder v-if="matchQuery(['Hatadyでデータ共有を有効にする', 'canUseHatadySync'])">
 						<template #label>Hatady でデータ共有（端末間同期）を有効にする</template>
@@ -520,6 +546,8 @@ function matchQuery(keywords: string[]): boolean {
 }
 
 async function updateBaseRole() {
+	policies.hatacordingUiSubpaneMaxTabs = Math.max(1, Math.min(5, Number(policies.hatacordingUiSubpaneMaxTabs) || 3));
+	policies.hatacordingUiRateLimit = Math.max(1, Math.min(1000, Math.floor(Number(policies.hatacordingUiRateLimit) || 500)));
 	await os.apiWithDialog('admin/roles/update-default-policies', {
 		//@ts-expect-error cherrypick-js側の型定義が不十分
 		policies,

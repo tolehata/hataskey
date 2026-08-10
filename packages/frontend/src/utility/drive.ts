@@ -17,6 +17,7 @@ import { instance } from '@/instance.js';
 import { globalEvents } from '@/events.js';
 import { getProxiedImageUrl } from '@/utility/media-proxy.js';
 import { genId } from '@/utility/id.js';
+import { HATACORDING_RATE_LIMIT_REQUEST_HEADER, isHatacordingRateLimitTrackingActive, updateHatacordingRateLimit } from '@/utility/hatacording-rate-limit.js';
 
 type UploadReturnType = {
 	filePromise: Promise<Misskey.entities.DriveFile>;
@@ -74,7 +75,10 @@ export function uploadFile(file: File | Blob, options: {
 		}, { once: true });
 
 		xhr.open('POST', apiUrl + '/drive/files/create', true);
+		const trackHatacordingRateLimit = isHatacordingRateLimitTrackingActive();
+		if (trackHatacordingRateLimit) xhr.setRequestHeader(HATACORDING_RATE_LIMIT_REQUEST_HEADER, '1');
 		xhr.onload = ((ev: ProgressEvent<XMLHttpRequest>) => {
+			if (trackHatacordingRateLimit) updateHatacordingRateLimit({ get: (name: string) => xhr.getResponseHeader(name) });
 			if (xhr.status !== 200 || ev.target == null || ev.target.response == null) {
 				if (xhr.status === 413) {
 					os.alert({

@@ -24,8 +24,22 @@ describe('HatasabaUIのリスト・アンテナ選択UI', () => {
 		expect(ui).toContain('toggleTimelinePicker(\'antenna\')');
 		expect(ui).toContain('openActiveCollectionSettings(\'list\')');
 		expect(ui).toContain('openActiveCollectionSettings(\'antenna\')');
+		expect(ui).toContain('mainRouter.push(\'/my/lists/:listId\', { params: { listId: id } });');
+		expect(ui).toContain('mainRouter.push(\'/my/antennas/:antennaId\', { params: { antennaId: id } });');
+		expect(ui).toContain('mainRouter.currentRef.value.props.get(\'listId\')');
+		expect(ui).toContain('mainRouter.currentRef.value.props.get(\'antennaId\')');
+		expect(ui).not.toContain('getTimelineCollectionId(mainRouter.currentRoute.value.path, \'list\')');
+		expect(ui).not.toContain('getTimelineCollectionId(mainRouter.currentRoute.value.path, \'antenna\')');
 		expect(ui).not.toContain('リストを追加・管理');
 		expect(ui).not.toContain('アンテナの管理');
+	});
+
+	test('選択ピルは外側を押すと閉じ、コンポーネント破棄時に監視を解除する', () => {
+		const ui = source('src/ui/simple.vue');
+		expect(ui).toContain('ref="topNavStackEl"');
+		expect(ui).toContain('window.document.addEventListener(\'pointerdown\', closeTimelinePickerOnOutsidePointer, true);');
+		expect(ui).toContain('window.document.removeEventListener(\'pointerdown\', closeTimelinePickerOnOutsidePointer, true);');
+		expect(ui).toContain('topNavStackEl.value?.contains(target)');
 	});
 
 	test('項目が無いときは管理画面へ直行せず、空表示とオプションを出す', () => {
@@ -37,10 +51,14 @@ describe('HatasabaUIのリスト・アンテナ選択UI', () => {
 		expect(ui).toContain('<span>オプション</span>');
 	});
 
-	test('選択ピルはアカウントアイコンを押し下げず、投稿上端に固定バーの余白を確保する', () => {
+	test('モバイル上部ナビはアカウントアイコンを中央に揃え、選択ピルを残り幅へ収める', () => {
 		const ui = source('src/ui/simple.vue');
 		expect(ui).toContain('align-items:flex-start');
-		expect(ui).toContain('position:absolute; top:calc(100% + 7px)');
+		expect(ui).toContain('position:relative; z-index:1; margin-top:6px');
+		expect(ui).toContain('width:max-content; min-width:0; max-width:min(680px,calc(100% - 42px)); flex:0 1 auto');
+		expect(ui).toContain('width:max-content; max-width:100%; min-width:0; box-sizing:border-box');
+		expect(ui).toContain('position:absolute; top:calc(100% + 7px); left:0; z-index:2');
+		expect(ui).toContain('width:100%; max-width:100%; box-sizing:border-box');
 		expect(ui).toContain('[$style.collectionPageContainer]: isCollectionTimelinePage');
 		expect(ui).toContain('padding-top:calc(68px + env(safe-area-inset-top,0px))');
 	});

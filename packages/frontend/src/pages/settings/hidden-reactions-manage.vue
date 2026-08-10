@@ -101,7 +101,7 @@ const totalCount = computed(() => {
 });
 
 function goToNote(noteId: string) {
-	router.push(`/notes/${noteId}`);
+	router.pushByPath(`/notes/${noteId}`);
 }
 
 function restoreOne(noteId: string, reaction: string) {

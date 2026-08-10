@@ -83,7 +83,7 @@ const run = async () => {
 			switch (type) {
 				case 'end': logs.value.push({
 					id: genId(),
-					text: utils.valToString(params.val, true),
+					text: params.val == null ? '' : utils.valToString('isMutable' in params.val ? params.val.value : params.val, true),
 					print: false,
 				}); break;
 				default: break;

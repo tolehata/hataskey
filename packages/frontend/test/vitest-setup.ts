@@ -26,3 +26,11 @@ for (const name of ['localStorage', 'sessionStorage'] as const) {
 		});
 	}
 }
+
+// happy-dom advertises OffscreenCanvas, but its 2D context is not implemented.
+// Treat it as unavailable so canvas-confetti takes its SSR-safe path.
+Object.defineProperty(globalThis, 'OffscreenCanvas', {
+	value: undefined,
+	configurable: true,
+	writable: true,
+});

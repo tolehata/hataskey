@@ -5,7 +5,6 @@
 
 import { computed, ref, shallowRef, watch, defineAsyncComponent } from 'vue';
 import * as os from '@/os.js';
-import { store } from '@/store.js';
 import { i18n } from '@/i18n.js';
 
 export const storagePersisted = ref(await navigator.storage.persisted());
@@ -27,8 +26,4 @@ export async function enableStoragePersistence() {
 			text: i18n.ts.somethingHappened,
 		});
 	}
-}
-
-export function skipStoragePersistence() {
-	store.set('showStoragePersistenceSuggestion', false);
 }

@@ -40,7 +40,7 @@ SPDX-License-Identifier: AGPL-3.0-only
             <div v-if="user.location" :class="$style.field"><i class="ti ti-map-pin"></i> {{ user.location }}</div>
             <div v-if="user.birthday" :class="$style.field"><i class="ti ti-cake"></i> {{ formatBirthday(user.birthday) }}</div>
             <div v-if="user.createdAt" :class="$style.field"><i class="ti ti-calendar"></i> {{ formatDate(user.createdAt) }} 登録</div>
-            <div v-if="user.uri || user.url" :class="$style.field"><i class="ti ti-link"></i> <a :href="user.uri || user.url" target="_blank" rel="noopener" :class="$style.fieldLink">{{ (user.uri || user.url || '').replace(/^https?:\/\//, '') }}</a></div>
+			<div v-if="user.uri || user.url" :class="$style.field"><i class="ti ti-link"></i> <a :href="user.uri ?? user.url ?? undefined" target="_blank" rel="noopener" :class="$style.fieldLink">{{ (user.uri || user.url || '').replace(/^https?:\/\//, '') }}</a></div>
         </div>
 
         <!-- 旗鯖fork: オリジナルユーザーパネルにも自鯖限定の実績を表示。 -->
@@ -85,7 +85,7 @@ SPDX-License-Identifier: AGPL-3.0-only
                         </div>
                         <div :class="$style.noteMeta"><MkTime :time="note.createdAt" /></div>
                     </div>
-                    <img v-if="noteThumbnail(note)" :src="noteThumbnail(note)" :class="$style.noteThumb" />
+					<img v-if="noteThumbnail(note)" :src="noteThumbnail(note) ?? undefined" :class="$style.noteThumb" />
                 </div>
             </div>
         </div>
@@ -120,6 +120,10 @@ const blockLoading = ref(false);
 
 const isSelf = computed(() => $i && user.value && $i.id === user.value.id);
 const hasFields = computed(() => user.value && (user.value.location || user.value.birthday || user.value.createdAt || user.value.uri || user.value.url));
+const userIsAdmin = computed(() => {
+	if (!user.value) return false;
+	return 'isAdmin' in user.value ? user.value.isAdmin : user.value.roles.some(role => role.isAdministrator);
+});
 
 // ドラッグ移動（ポップアップ時のみ）
 const dragPos = reactive({ x: 0, y: 0 });
@@ -191,7 +195,7 @@ async function toggleMute() {
         if (isMuted.value) { await misskeyApi('mute/delete', { userId: user.value.id }); isMuted.value = false; }
         else {
             // 旗鯖fork: サーバー管理者へのミュートはモデレーション上の理由で禁止
-            if (user.value.isAdmin) {
+            if (userIsAdmin.value) {
                 os.alert({ type: 'error', text: i18n.ts.cannotBlockOrMuteAdministrator });
                 muteLoading.value = false; return;
             }
@@ -209,7 +213,7 @@ async function toggleBlock() {
         if (isBlocked.value) { await misskeyApi('blocking/delete', { userId: user.value.id }); isBlocked.value = false; }
         else {
             // 旗鯖fork: サーバー管理者へのブロックはモデレーション上の理由で禁止
-            if (user.value.isAdmin) {
+            if (userIsAdmin.value) {
                 os.alert({ type: 'error', text: i18n.ts.cannotBlockOrMuteAdministrator });
                 blockLoading.value = false; return;
             }
@@ -223,9 +227,9 @@ async function toggleBlock() {
 function goToProfile() {
     if (!user.value) return;
     emit('close');
-    mainRouter.push(user.value.host ? `/@${user.value.username}@${user.value.host}` : `/@${user.value.username}`);
+	mainRouter.pushByPath(user.value.host ? `/@${user.value.username}@${user.value.host}` : `/@${user.value.username}`);
 }
-function goToNote(noteId: string) { emit('close'); mainRouter.push(`/notes/${noteId}`); }
+function goToNote(noteId: string) { emit('close'); mainRouter.pushByPath(`/notes/${noteId}`); }
 
 watch(() => props.userId, () => { loadUser(); loadNotes(); });
 onMounted(() => { loadUser(); loadNotes(); });

@@ -9,7 +9,7 @@ const local = new Map<string, string>();
 const commits: [string, unknown][] = [];
 const api = vi.fn();
 
-vi.mock('@@/js/config.js', () => ({ version: '2026.7.0-hata.12.0' }));
+vi.mock('@@/js/config.js', () => ({ version: '2026.7.0-hata.12.1' }));
 vi.mock('@/local-storage.js', () => ({
 	miLocalStorage: {
 		getItem: (key: string) => local.get(key) ?? null,
@@ -28,6 +28,7 @@ vi.mock('@/preferences/manager.js', () => ({
 }));
 vi.mock('@/utility/misskey-api.js', () => ({ misskeyApi: (...args: unknown[]) => api(...args) }));
 vi.mock('@/i.js', () => ({ $i: {
+	id: 'user-a',
 	showUtageSuccessCount: true,
 	showUtageInterruptionCount: false,
 	showHataskFlowerCount: true,
@@ -38,6 +39,7 @@ import {
 	createHataSettingsTransfer,
 	getVersionMismatchMessage,
 	HATA_SETTINGS_TRANSFER_FORMAT,
+	HATA_SETTINGS_TRANSFER_VERSION,
 	parseHataSettingsTransfer,
 } from './hata-settings-transfer.js';
 
@@ -74,6 +76,49 @@ describe('旗鯖独自設定の入出力', () => {
 		expect(text).not.toContain('external.token');
 		expect(text).not.toContain('SECRET');
 		expect(text).not.toContain('account');
+	});
+
+	test('HataSNSCordUIの現行v7設定を書き出して同じアカウントへ読み戻す', async () => {
+		const settings = JSON.stringify({
+			version: 7,
+			enabled: true,
+			colorMode: 'dark',
+			uiScale: 'small',
+			timelineRealtime: false,
+			showRateLimitNumber: false,
+			showCharacterCounter: true,
+			tutorialCompleted: true,
+			composerShortcuts: ['poll', 'emoji'],
+			menu: { 'timeline:home': { pinned: true, hidden: false, order: 0 } },
+			subpaneTabs: [{ id: 'widgets', title: 'ウィジェット', kind: 'widgets', widgets: [] }],
+		});
+		local.set('hatacordingUi:user-a', settings);
+
+		const file = await createHataSettingsTransfer(['hatacordingUi']);
+		expect(file.categories.hatacordingUi?.device?.hatacordingUi).toBe(settings);
+		expect(JSON.stringify(file)).not.toContain('hatacordingUi:user-a');
+
+		local.delete('hatacordingUi:user-a');
+		const result = await applyHataSettingsTransfer(file, ['hatacordingUi']);
+		expect(local.get('hatacordingUi:user-a')).toBe(settings);
+		expect(result.applied).toBe(1);
+	});
+
+	test('HataSNSCordUIの未知の将来形式は安全にスキップする', async () => {
+		const future = JSON.stringify({ version: 8, enabled: true, menu: {}, subpaneTabs: [] });
+		const file = parseHataSettingsTransfer(JSON.stringify({
+			format: HATA_SETTINGS_TRANSFER_FORMAT,
+			formatVersion: HATA_SETTINGS_TRANSFER_VERSION,
+			serverVersion: '2026.7.0-hata.99.0',
+			exportedAt: '2026-08-09T00:00:00.000Z',
+			categories: { hatacordingUi: { device: { hatacordingUi: future } } },
+		})).file;
+
+		const result = await applyHataSettingsTransfer(file, ['hatacordingUi']);
+		expect(result.applied).toBe(0);
+		expect(result.skipped).toEqual(expect.arrayContaining([
+			expect.objectContaining({ category: 'hatacordingUi', reason: '値の形式が合いません' }),
+		]));
 	});
 
 	test('端末設定を先に適用し、型の合わない項目だけをスキップする', async () => {
@@ -141,7 +186,7 @@ describe('旗鯖独自設定の入出力', () => {
 								frames: [{
 									id: 'frame-1', activeTab: 'tab-ok', height: 420,
 									tabs: [
-										{ id: 'tab-ok', type: 'local', tabColor: '#336699', excludeTypes: ['reaction'] },
+										{ id: 'tab-ok', type: 'local', tabColor: '#336699', excludeTypes: ['reaction'], notificationFilterKnownTypes: ['mention', 'reaction'] },
 										{ id: 'tab-broken', type: 42 },
 									],
 								}],
@@ -156,7 +201,7 @@ describe('旗鯖独自設定の入出力', () => {
 		expect(imported).toHaveLength(1);
 		expect(imported[0]).not.toHaveProperty('futureProfileField');
 		expect((((imported[0].slots as Array<Record<string, unknown>>)[0].frames as Array<Record<string, unknown>>)[0].tabs as unknown[])).toEqual([
-			{ id: 'tab-ok', type: 'local', tabColor: '#336699', excludeTypes: ['reaction'] },
+			{ id: 'tab-ok', type: 'local', tabColor: '#336699', excludeTypes: ['reaction'], notificationFilterKnownTypes: ['mention', 'reaction'] },
 		]);
 		expect(result.applied).toBe(1);
 		expect(result.skipped).toEqual(expect.arrayContaining([

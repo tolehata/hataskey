@@ -12,6 +12,7 @@ import { instance } from '@/instance.js';
 import { i18n } from '@/i18n.js';
 import { $i } from '@/i.js';
 import { prefer } from '@/preferences.js';
+import { store } from '@/store.js';
 import { enqueueHataDialog } from '@/utility/hata-dialog-queue.js';
 
 function toolsMenuItems(): MenuItem[] {
@@ -56,8 +57,10 @@ function toolsMenuItems(): MenuItem[] {
 			text: i18n.ts.replayUserSetupDialog,
 			icon: 'ti ti-list-numbers',
 			action: () => {
-				prefer.commit('accountSetupWizard', 0);
-				os.popup(defineAsyncComponent(() => import('@/components/MkUserSetupDialog.vue')), {}, {}, 'closed');
+				store.set('accountSetupWizard', 0);
+				const { dispose } = os.popup(defineAsyncComponent(() => import('@/components/MkUserSetupDialog.vue')), {}, {
+					closed: () => dispose(),
+				});
 			},
 		});
 	}
@@ -65,7 +68,34 @@ function toolsMenuItems(): MenuItem[] {
 	return items;
 }
 
-export function openInstanceMenu(ev: MouseEvent) {
+function keepMenuNavigationInside(items: MenuItem[], navigate: (path: string) => void): MenuItem[] {
+	return items.map(item => {
+		if (item instanceof Promise) return item.then(resolved => keepMenuNavigationInside([resolved], navigate)[0]) as MenuItem;
+		if (item.type === 'link') {
+			return {
+				type: 'button',
+				text: item.text,
+				caption: item.caption,
+				icon: item.icon,
+				indicate: item.indicate,
+				avatar: item.avatar,
+				action: () => navigate(item.to),
+			};
+		}
+		if (item.type === 'parent') {
+			const children = item.children;
+			return {
+				...item,
+				children: Array.isArray(children)
+					? keepMenuNavigationInside(children, navigate)
+					: async () => keepMenuNavigationInside(await children(), navigate),
+			};
+		}
+		return item;
+	});
+}
+
+export function openInstanceMenu(ev: MouseEvent, navigate?: (path: string) => void) {
 	const menuItems: MenuItem[] = [];
 
 	menuItems.push({
@@ -206,7 +236,7 @@ export function openInstanceMenu(ev: MouseEvent) {
 		to: '/about-misskey',
 	});
 
-	os.popupMenu(menuItems, ev.currentTarget ?? ev.target, {
+	os.popupMenu(navigate ? keepMenuNavigationInside(menuItems, navigate) : menuItems, ev.currentTarget ?? ev.target, {
 		align: 'left',
 	});
 }

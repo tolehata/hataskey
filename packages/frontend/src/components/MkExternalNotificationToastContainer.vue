@@ -13,28 +13,34 @@ window の 'external-notification' イベントを listen して、右下にト�
 -->
 
 <template>
-<Teleport to="body">
-	<div :class="$style.root">
-		<MkExternalNotificationToast
-			v-for="t in toasts"
-			:key="t.id"
-			:notification="t.notification"
-			@close="removeToast(t.id)"
-		/>
-	</div>
-</Teleport>
+	<Teleport to="body">
+		<div v-if="!notificationToastsSuppressed" :class="$style.root">
+			<MkExternalNotificationToast
+				v-for="t in toasts"
+				:key="t.id"
+				:notification="t.notification"
+				@close="removeToast(t.id)"
+			/>
+		</div>
+	</Teleport>
 </template>
 
 <script lang="ts" setup>
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted, watch } from 'vue';
 import MkExternalNotificationToast from '@/components/MkExternalNotificationToast.vue';
+import { notificationToastsSuppressed, shouldSuppressNotificationToasts } from '@/utility/notification-toast-suppression.js';
 
 interface ToastItem { id: string; notification: any; }
 const toasts = ref<ToastItem[]>([]);
 const MAX_TOASTS = 3;
 let nextId = 0;
 
+watch(notificationToastsSuppressed, (suppressed) => {
+	if (suppressed) toasts.value = [];
+});
+
 function onExternalNotification(ev: Event) {
+	if (shouldSuppressNotificationToasts()) return;
 	const notification = (ev as CustomEvent).detail;
 	if (!notification) return;
 	const id = `ext-toast-${++nextId}`;

@@ -210,6 +210,10 @@ const meta = await misskeyApi('admin/meta');
 
 const sensitiveMediaDetectionForm = useForm({
 	sensitiveMediaDetection: meta.sensitiveMediaDetection,
+	sensitiveMediaDetectionApiUrl: meta.sensitiveMediaDetectionApiUrl,
+	sensitiveMediaDetectionApiKey: meta.sensitiveMediaDetectionApiKey,
+	sensitiveMediaDetectionTimeout: meta.sensitiveMediaDetectionTimeout,
+	sensitiveMediaDetectionMaxImagesPerRequest: meta.sensitiveMediaDetectionMaxImagesPerRequest,
 	sensitiveMediaDetectionSensitivity: meta.sensitiveMediaDetectionSensitivity === 'veryLow' ? 0 :
 	meta.sensitiveMediaDetectionSensitivity === 'low' ? 1 :
 	meta.sensitiveMediaDetectionSensitivity === 'medium' ? 2 :
@@ -220,6 +224,10 @@ const sensitiveMediaDetectionForm = useForm({
 }, async (state) => {
 	await os.apiWithDialog('admin/update-meta', {
 		sensitiveMediaDetection: state.sensitiveMediaDetection,
+		sensitiveMediaDetectionApiUrl: state.sensitiveMediaDetectionApiUrl,
+		sensitiveMediaDetectionApiKey: state.sensitiveMediaDetectionApiKey,
+		sensitiveMediaDetectionTimeout: state.sensitiveMediaDetectionTimeout,
+		sensitiveMediaDetectionMaxImagesPerRequest: state.sensitiveMediaDetectionMaxImagesPerRequest,
 		sensitiveMediaDetectionSensitivity:
 			state.sensitiveMediaDetectionSensitivity === 0 ? 'veryLow' :
 			state.sensitiveMediaDetectionSensitivity === 1 ? 'low' :

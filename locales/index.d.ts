@@ -8974,6 +8974,16 @@ export interface Locale extends ILocale {
                  */
                 "flavor": string;
             };
+            "_hatacordingUiTutorial": {
+                /**
+                 * HataSNSCordUI、名前長いね
+                 */
+                "title": string;
+                /**
+                 * 玄人仕様のUIです
+                 */
+                "description": string;
+            };
         };
     };
     "_role": {

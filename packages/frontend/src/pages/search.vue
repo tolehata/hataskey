@@ -362,7 +362,7 @@ const eventSortDef = computed<MkSelectItem[]>(() => [
 	{ label: i18n.ts._event.startDate, value: 'startDate' },
 	{ label: i18n.ts.reverseChronological, value: 'createdAt' },
 ]);
-const eventSort = ref<string>('startDate');
+const eventSort = ref<'startDate' | 'createdAt'>('startDate');
 const eventStartDate = ref<string | null>(null);
 const eventEndDate = ref<string | null>(null);
 

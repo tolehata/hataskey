@@ -130,14 +130,23 @@ export function createAiScriptEnv(opts: { storageKey: string, token?: string }) 
 		}),
 		'Mk:requestToken': values.FN_NATIVE(async ([value]) => {
 			utils.assertArray(value);
-			const permissions = (utils.valToJs(value) as unknown[]).map(val => {
+			const permissions: (typeof MkPermissions)[number][] = [];
+			for (const val of utils.valToJs(value) as unknown[]) {
 				if (typeof val !== 'string') {
 					throw new Error(`Invalid type. expected string but got ${typeof val}`);
 				}
-				return val;
-			}).filter(val => MkPermissions.includes(val));
-			return await new Promise(async (resolve: any) => {
-				await os.popup(defineAsyncComponent(() => import('@/components/MkFlashRequestTokenDialog.vue')), {
+				if (MkPermissions.includes(val as (typeof MkPermissions)[number])) {
+					permissions.push(val as (typeof MkPermissions)[number]);
+				}
+			}
+			return new Promise<typeof values.TRUE | typeof values.FALSE>((resolve) => {
+				let settled = false;
+				const finish = (result: typeof values.TRUE | typeof values.FALSE) => {
+					if (settled) return;
+					settled = true;
+					resolve(result);
+				};
+				const { dispose } = os.popup(defineAsyncComponent(() => import('@/components/MkFlashRequestTokenDialog.vue')), {
 					permissions,
 				}, {
 					accept: () => {
@@ -145,14 +154,15 @@ export function createAiScriptEnv(opts: { storageKey: string, token?: string }) 
 							permissions,
 						}).then(res => {
 							miLocalStorage.setItem(`aiscriptSecure:${opts.storageKey}:${randomString}:accessToken`, res!.token);
-							resolve(values.TRUE);
+							finish(values.TRUE);
 						});
 					},
-					cancel: () => resolve(values.FALSE),
+					cancel: () => finish(values.FALSE),
 					closed: () => {
-						resolve(values.FALSE);
+						dispose();
+						finish(values.FALSE);
 					},
-				}, 'closed');
+				});
 			});
 		}),
 		'Mk:nyaize': values.FN_NATIVE(([text]) => {

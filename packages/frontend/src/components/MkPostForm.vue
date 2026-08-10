@@ -293,6 +293,14 @@ const replyTargetNote: ShallowRef<PostFormProps['reply'] | null> = shallowRef(pr
 const targetChannel = shallowRef(props.channel);
 const deliveryTargets = ref<DeliveryTargetEditorModelValue | null>(null);
 
+function normalizeDeliveryTargets(targets: Misskey.entities.Note['deliveryTargets']): DeliveryTargetEditorModelValue | null {
+	if (!targets) return null;
+	return {
+		mode: targets.mode,
+		hosts: targets.hosts ?? [],
+	};
+}
+
 const serverDraftId = ref<string | null>(null);
 const postFormActions = getPluginHandlers('post_form_action');
 
@@ -618,11 +626,13 @@ function chooseFileFromDrive(ev: MouseEvent) {
 }
 
 function openDrawingTool() {
-	os.popup(MkDrawingTool, {}, {
+	const { dispose } = os.popup(MkDrawingTool, {}, {
 		done: async (file: File) => {
-			const uploaded = await uploader.upload(file, file.name);
+			uploader.addFiles([file]);
+			await uploader.upload();
 		},
-	}, 'closed');
+		closed: () => dispose(),
+	});
 }
 
 function detachFile(id) {
@@ -1341,14 +1351,23 @@ async function post(ev?: MouseEvent) {
 		return;
 	}
 
-	misskeyApi(props.updateMode ? 'notes/update' : 'notes/create', postData, token).then((res) => {
+	if (props.updateMode && postData.noteId == null) {
+		posting.value = false;
+		throw new Error('Cannot update a note without a note ID');
+	}
+	const request: Promise<Misskey.entities.Note | null> = props.updateMode
+		? misskeyApi('notes/update', { ...postData, noteId: postData.noteId!, text: postData.text ?? '' }, token).then(() => null)
+		: misskeyApi('notes/create', postData, token).then(res => res.createdNote);
+	request.then((createdNote) => {
 		if (props.freezeAfterPosted) {
 			posted.value = true;
 		} else {
 			clear();
 		}
 
-		globalEvents.emit('notePosted', res.createdNote);
+		if (createdNote) {
+			globalEvents.emit('notePosted', createdNote);
+		}
 
 		nextTick(() => {
 			deleteDraft();
@@ -1618,7 +1637,7 @@ async function openAccountMenu(ev: MouseEvent) {
 				replyTargetNote.value = draft.reply;
 				reactionAcceptance.value = draft.reactionAcceptance;
 				scheduledAt.value = draft.scheduledAt ?? null;
-				deliveryTargets.value = draft.deliveryTargets ?? null;
+				deliveryTargets.value = normalizeDeliveryTargets(draft.deliveryTargets);
 				if (draft.channel) targetChannel.value = draft.channel as unknown as Misskey.entities.Channel;
 
 				visibleUsers.value = [];
@@ -1800,7 +1819,7 @@ onMounted(() => {
 				reactionAcceptance.value = draft.data.reactionAcceptance;
 				scheduledAt.value = draft.data.scheduledAt ?? null;
 				scheduledNoteDelete.value = draft.data.scheduledNoteDelete ?? null;
-				deliveryTargets.value = draft.data.deliveryTargets ?? null;
+				deliveryTargets.value = normalizeDeliveryTargets(draft.data.deliveryTargets);
 			}
 		}
 
@@ -1850,7 +1869,7 @@ onMounted(() => {
 					deleteAfter: null,
 				};
 			}
-			deliveryTargets.value = init.deliveryTargets ?? null;
+			deliveryTargets.value = normalizeDeliveryTargets(init.deliveryTargets);
 		}
 
 		nextTick(() => watchForDraft());

@@ -2333,6 +2333,9 @@ _achievements:
       title: "サイドメニューの開拓者"
       description: "チュートリアルを完了またはスキップした"
       flavor: "そのハタキスト、メニューを作る"
+    _hatacordingUiTutorial:
+      title: "HataSNSCordUI、名前長いね"
+      description: "玄人仕様のUIです"
 
 _role:
   new: "ロールの作成"

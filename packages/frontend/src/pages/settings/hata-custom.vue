@@ -203,9 +203,8 @@ SPDX-License-Identifier: AGPL-3.0-only
              は HatasabaUI 2 の設定モーダル (MkHatasabaUi2EditWindow) へ統合した。タブ自体を廃止し、
              設定入口は HatasabaUI 2 タブに一本化する。preferences のキーは変更していないため既存設定は保持される。 -->
 
-        <!-- ===== HatasabaUI 2 =====
-             旗鯖fork: 全項目を MkHatasabaUi2EditWindow (フローティングウィンドウ) に集約。
-             設定を開きっぱなしで背面の UI を見ながらリアルタイムに調整、明示保存で永続化。 -->
+        <!-- ===== UI =====
+             旗鯖fork: HatasabaUI 2 と HataSNSCordUI の端末設定を一つのタブに集約。 -->
         <template v-if="activeCat === 'glassUi'">
         <FormSection first>
             <template #label>HatasabaUI 2 の設定</template>
@@ -216,6 +215,13 @@ SPDX-License-Identifier: AGPL-3.0-only
             <button class="_buttonPrimary" @click="openHatasabaUi2EditWindow" style="padding:10px 20px;font-weight:bold;">
                 <i class="ti ti-sparkles"></i> HatasabaUI 2 の設定を開く
             </button>
+        </FormSection>
+        <FormSection>
+            <template #label>HataSNSCordUI の設定</template>
+            <div style="font-size:.85em;opacity:.7;margin-bottom:14px;line-height:1.6;">
+                UIカラー、表示密度、リアルタイム更新などを設定します。ここでの変更は端末内に保存され、<b>HataSNSCordUI左上の調整メニューと常に同期</b>します。
+            </div>
+            <HatacordingUiSettings :accountId="$i.id"/>
         </FormSection>
         </template>
 
@@ -377,8 +383,10 @@ import MkColorInput from '@/components/MkColorInput.vue';
 import FormSection from '@/components/form/section.vue';
 import FormLink from '@/components/form/link.vue';
 import MkFeatureBanner from '@/components/MkFeatureBanner.vue';
+import HatacordingUiSettings from '@/components/HatacordingUiSettings.vue';
 import * as os from '@/os.js';
-import { mainRouter } from '@/router.js';
+import { ensureSignin } from '@/i.js';
+import { useRouter } from '@/router.js';
 import { miLocalStorage } from '@/local-storage.js';
 import { prefer } from '@/preferences.js';
 // 旗鯖fork: getInitialPrefValue は simpleUi タブのナビ初期化ロジックで使っていたが、
@@ -392,6 +400,8 @@ import { HATA_FONT_PRESETS, applyHataFont, type HataFontId } from '@/scripts/hat
 import { chooseDriveFile } from '@/utility/drive.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 // 旗鯖fork: applySidebarIconOverride も同上 (サイドバー編集はモーダル側で完結)。
+const router = useRouter();
+const $i = ensureSignin();
 
 // 旗鯖fork: タブ再編。
 //   - HatasabaUI 2 タブ新設 (グラス系設定を集約)
@@ -402,7 +412,7 @@ import { misskeyApi } from '@/utility/misskey-api.js';
 const categories = [
     { id: 'general', icon: 'ti ti-flag', label: '旗鯖全体' },
     { id: 'font', icon: 'ti ti-typography', label: 'フォント' },
-    { id: 'glassUi', icon: 'ti ti-sparkles', label: 'HatasabaUI 2' },
+    { id: 'glassUi', icon: 'ti ti-layout-dashboard', label: 'UI' },
     { id: 'visual', icon: 'ti ti-palette', label: 'ビジュアル' },
     { id: 'hatask', icon: 'ti ti-checklist', label: 'Hatask' },
     { id: 'hatady', icon: 'ti ti-book-2', label: 'Hatady' },
@@ -527,21 +537,21 @@ const openHataskSettings = async () => {
     const { defineAsyncComponent: dac } = await import('vue');
     const { dispose } = os.popup(dac(() => import('@/pages/HataskSettings.vue')), {}, { closed: () => dispose() });
 };
-const goToHatask = () => { mainRouter.push('/hatask'); };
+const goToHatask = () => { router.push('/hatask'); };
 
 // 旗鯖fork(Hatady): 表示設定(テーマ・言語・同期・チュートリアル再実行)を共有ダイアログで開く。
 const openHatadySettings = async () => {
     const { defineAsyncComponent: dac } = await import('vue');
     const { dispose } = os.popup(dac(() => import('@/components/HatadyDisplaySettings.vue')), {}, { closed: () => dispose() });
 };
-const goToHatady = () => { mainRouter.push('/hatady'); };
+const goToHatady = () => { router.push('/hatady'); };
 
 // 旗鯖fork(#34): 地震ビューア設定を共有ダイアログで開く
 const openEarthquakeSettings = async () => {
     const { defineAsyncComponent: dac } = await import('vue');
     const { dispose } = os.popup(dac(() => import('@/components/MkEarthquakeSettings.vue')), {}, { closed: () => dispose() });
 };
-const goToEarthquake = () => { mainRouter.push('/earthquake'); };
+const goToEarthquake = () => { router.push('/earthquake'); };
 // 旗鯖fork: マスコット設定を開く
 const openMascotSettings = async () => {
     const { defineAsyncComponent: dac } = await import('vue');
@@ -722,7 +732,7 @@ if (!isDeckLike.value && noteSpacing.value === 'compact') noteSpacing.value = 'm
 const spacingOptions = [
     { value: 'moderate', label: 'ほどよく', previewMargin: '5px 0' },
     { value: 'wide', label: '広め', previewMargin: '10px 0' },
-];
+] as const;
 
 definePage({ title: '旗鯖独自機能', icon: 'ti ti-flag' });
 </script>

@@ -9,6 +9,14 @@ import { describe, expect, test } from 'vitest';
 const read = (path: string) => readFileSync(`${process.cwd()}/src/${path}`, 'utf8');
 
 describe('HataSideStudio UI integration', () => {
+	test('モバイルのHatasabaUIドロワーにも固定のもっとメニューを表示する', () => {
+		const simple = read('ui/simple.vue');
+		expect(simple).toContain('data-hatasaba-mobile-more');
+		expect(simple).toContain('@click="openMore($event, true)"');
+		expect(simple).toContain("if (id === 'more' && ev && simpleDrawerShowing.value)");
+		expect(simple).toContain('if (closeMobileDrawerAfter) simpleDrawerShowing.value = false;');
+	});
+
 	test('縮小サイドバーは専用ボタン配列だけを描画し、縦一列を固定する', () => {
 		const simple = read('ui/simple.vue');
 		const studio = read('pages/hata-side-studio.vue');
@@ -42,7 +50,7 @@ describe('HataSideStudio UI integration', () => {
 
 	test('その場で調整はグラデーション、詳細設定、グループ編集を実際の操作へ接続する', () => {
 		const studio = read('pages/hata-side-studio.vue');
-		expect(studio).toContain('<GradientEditor :model-value="selected"/>');
+		expect(studio).toContain('<GradientEditor :modelValue="selected"/>');
 		expect(studio).toContain('const GradientEditor = defineComponent');
 		expect(studio).toContain("h(GradientEditor, { modelValue: props.modelValue })");
 		expect(studio).toContain("h('span', '2色目')");
@@ -67,6 +75,20 @@ describe('HataSideStudio UI integration', () => {
 		expect(studio).toContain(':data-container="section.id"');
 		expect(studio).toContain('.reorderSection:not([data-container="root"])');
 		expect(studio).toContain('.dragTimelineSection:not([data-container="root"])');
+	});
+
+	test('モバイルのドラッグは座標から簡易タイムラインを判定し、上部操作を機能ごと整列する', () => {
+		const studio = read('pages/hata-side-studio.vue');
+		expect(studio).toContain('data-timeline-drop');
+		expect(studio).toContain('window.document.elementsFromPoint(dragPointer.value.x, dragPointer.value.y)');
+		expect(studio).toContain('updateDragDropTargetFromPoint();');
+		expect(studio).toContain("const target = pointTarget('[data-timeline-drop]');");
+		expect(studio).not.toContain('pointTarget<never>');
+		expect(studio).toContain('const width = Math.min(compact ? 300 : 224, window.innerWidth - 24);');
+		expect(studio).toContain('.profileBar { width:100%;padding:4px;box-sizing:border-box;justify-content:flex-start;flex-wrap:nowrap;overflow-x:auto;');
+		expect(studio).toContain('.headerControlGroup { margin-left:auto;flex:0 0 auto; }');
+		expect(studio).toContain('.sideTools[data-side="right"] { top:91px;right:auto;left:8px;display:flex;justify-content:flex-start; }');
+		expect(studio).toContain('.dragTimelineGap { min-height:38px;');
 	});
 
 	test('丸型を固定寸法へ収め、錠剤型を左右対称にする', () => {
@@ -196,7 +218,7 @@ describe('HataSideStudio UI integration', () => {
 		expect(simple).toContain('submitStudioMobileSearch');
 		expect(simple).toContain('HataSideStudioを起動');
 		expect(hatask).toContain("label:'HataSideStudio'");
-		expect(hatask).toContain("router.push('/hata-side-studio')");
+		expect(hatask).toContain("routeRouter.push('/hata-side-studio')");
 		expect(hatask).toContain("label:'今回の更新内容'");
 		expect(hatask).toContain("import('@/components/MkHataWhatsNew.vue')");
 		expect(studio).not.toContain('端末内で編集');

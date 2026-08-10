@@ -36,7 +36,8 @@ const props = defineProps<{
 	clipId?: string;
 }>();
 
-const paginator = shallowRef<Paginator | null>(null);
+type DeckPaginator = Paginator<'clips/notes'> | Paginator<'i/favorites'>;
+const paginator = shallowRef<DeckPaginator | null>(null);
 const paginatorKey = shallowRef(0);
 
 function build() {

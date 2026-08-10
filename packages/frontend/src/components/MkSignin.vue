@@ -113,16 +113,28 @@ const credentialRequest = shallowRef<CredentialRequestOptions | null>(null);
 const passkeyContext = ref('');
 const doingPasskeyFromInputPage = ref(false);
 
+type BrowserCredentialRequest = Parameters<typeof parseRequestOptionsFromJSON>[0];
+
+function parsePasskeyRequest(option: Misskey.entities.SigninWithPasskeyInitResponse['option']): CredentialRequestOptions {
+	return parseRequestOptionsFromJSON({
+		publicKey: option as unknown as BrowserCredentialRequest['publicKey'],
+	});
+}
+
+function serializePasskeyCredential(credential: AuthenticationPublicKeyCredential): NonNullable<Misskey.entities.SigninFlowRequest['credential']> {
+	// サーバー側とブラウザー側で WebAuthn JSON の型パッケージが異なるが、転送するJSON形状は同じ。
+	return credential.toJSON() as unknown as NonNullable<Misskey.entities.SigninFlowRequest['credential']>;
+}
+
 function onPasskeyLogin(): void {
 	if (webAuthnSupported()) {
 		doingPasskeyFromInputPage.value = true;
 		waiting.value = true;
 		misskeyApi('signin-with-passkey', {})
-			.then((res) => {
+			.then((response) => {
+				const res = response as Misskey.entities.SigninWithPasskeyInitResponse;
 				passkeyContext.value = res.context ?? '';
-				credentialRequest.value = parseRequestOptionsFromJSON({
-					publicKey: res.option,
-				});
+				credentialRequest.value = parsePasskeyRequest(res.option);
 
 				page.value = 'passkey';
 				waiting.value = false;
@@ -136,9 +148,10 @@ function onPasskeyDone(credential: AuthenticationPublicKeyCredential): void {
 
 	if (doingPasskeyFromInputPage.value) {
 		misskeyApi('signin-with-passkey', {
-			credential: credential.toJSON(),
+			credential: serializePasskeyCredential(credential),
 			context: passkeyContext.value,
-		}).then((res) => {
+		}).then((response) => {
+			const res = response as Misskey.entities.SigninWithPasskeyResponse;
 			if (res.signinResponse == null) {
 				onSigninApiError();
 				return;
@@ -150,7 +163,7 @@ function onPasskeyDone(credential: AuthenticationPublicKeyCredential): void {
 		tryLogin({
 			username: userInfo.value.username,
 			password: password.value,
-			credential: credential.toJSON(),
+			credential: serializePasskeyCredential(credential),
 		});
 	}
 }
@@ -253,9 +266,7 @@ async function tryLogin(req: Partial<Misskey.entities.SigninFlowRequest>): Promi
 				}
 				case 'passkey': {
 					if (webAuthnSupported()) {
-						credentialRequest.value = parseRequestOptionsFromJSON({
-							publicKey: res.authRequest,
-						});
+						credentialRequest.value = parsePasskeyRequest(res.authRequest);
 						page.value = 'passkey';
 					} else {
 						page.value = 'totp';

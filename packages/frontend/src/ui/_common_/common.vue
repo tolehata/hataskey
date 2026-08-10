@@ -66,8 +66,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 	v-on="popup.events"
 />
 
-<component
-	:is="prefer.s.animation ? TransitionGroup : 'div'"
+	<component
+		:is="prefer.s.animation ? TransitionGroup : 'div'"
+		v-if="!notificationToastsSuppressed"
 	tag="div"
 	:class="[$style.notifications, {
 		[$style.notificationsPosition_leftTop]: prefer.s.notificationPosition === 'leftTop',
@@ -113,7 +114,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { defineAsyncComponent, ref, TransitionGroup } from 'vue';
+import { defineAsyncComponent, ref, TransitionGroup, watch } from 'vue';
 import * as Misskey from 'cherrypick-js';
 import { isSafeMode } from '@@/js/config.js';
 import { swInject } from './sw-inject.js';
@@ -132,6 +133,7 @@ import { store } from '@/store.js';
 import XNavbar from '@/ui/_common_/navbar.vue';
 import { haptic } from '@/utility/haptic.js';
 import { announceNotification, shouldSuppressStandardToast, loadMascot, loadDisplaySettings } from '@/utility/mascot-store.js';
+import { notificationToastsSuppressed, shouldSuppressNotificationToasts } from '@/utility/notification-toast-suppression.js';
 
 const XStreamIndicator = defineAsyncComponent(() => import('./stream-indicator.vue'));
 const XWidgets = defineAsyncComponent(() => import('./widgets.vue'));
@@ -146,6 +148,12 @@ const dev = _DEV_;
 
 const notifications = ref<Misskey.entities.Notification[]>([]);
 
+// HataSNSCordUIへ切り替えた時点で既に出ている通知も残さない。
+// 解除後は新しく届いた通知だけが従来どおり表示される。
+watch(notificationToastsSuppressed, (suppressed) => {
+	if (suppressed) notifications.value = [];
+});
+
 function onNotification(notification: Misskey.entities.Notification, isClient = false) {
 	// 旗鯖fork: マスコットに通知を伝える(設定ON時)
 	announceNotification(notification);
@@ -159,7 +167,7 @@ function onNotification(notification: Misskey.entities.Notification, isClient = 
 		}
 
 		// 旗鯖fork: マスコットが通知を伝える設定のときは標準トーストを出さない
-		if (!shouldSuppressStandardToast()) {
+		if (!shouldSuppressStandardToast() && !shouldSuppressNotificationToasts()) {
 			notifications.value.unshift(notification);
 			window.setTimeout(() => {
 				if (notifications.value.length > 3) notifications.value.pop();

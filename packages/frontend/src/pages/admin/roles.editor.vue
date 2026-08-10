@@ -408,7 +408,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</div>
 			</MkFolder>
 
-
 			<MkFolder v-if="matchQuery([i18n.ts._role._options.driveCapacity, 'driveCapacityMb'])">
 				<template #label>{{ i18n.ts._role._options.driveCapacity }}</template>
 				<template #suffix>
@@ -466,6 +465,69 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<template #label>HataFeedの利用を許可</template>
 					</MkSwitch>
 					<MkRange v-model="role.policies.canAccessHataFeed.priority" :min="0" :max="2" :step="1" easing :textConverter="(v) => v === 0 ? i18n.ts._role._priority.low : v === 1 ? i18n.ts._role._priority.middle : v === 2 ? i18n.ts._role._priority.high : ''">
+						<template #label>{{ i18n.ts._role.priority }}</template>
+					</MkRange>
+				</div>
+			</MkFolder>
+
+			<!-- 旗鯖fork: HataSNSCordUIの利用可否ポリシー -->
+			<MkFolder v-if="role.policies.canUseHatacordingUi && matchQuery(['HataSNSCordUIを利用できる', 'canUseHatacordingUi'])">
+				<template #label>HataSNSCordUIを利用できる</template>
+				<template #suffix>
+					<span v-if="role.policies.canUseHatacordingUi.useDefault" :class="$style.useDefaultLabel">{{ i18n.ts._role.useBaseValue }}</span>
+					<span v-else>{{ role.policies.canUseHatacordingUi.value ? i18n.ts.yes : i18n.ts.no }}</span>
+					<span :class="$style.priorityIndicator"><i :class="getPriorityIcon(role.policies.canUseHatacordingUi)"></i></span>
+				</template>
+				<div class="_gaps">
+					<MkSwitch v-model="role.policies.canUseHatacordingUi.useDefault" :readonly="readonly">
+						<template #label>{{ i18n.ts._role.useBaseValue }}</template>
+					</MkSwitch>
+					<MkSwitch v-model="role.policies.canUseHatacordingUi.value" :disabled="role.policies.canUseHatacordingUi.useDefault" :readonly="readonly">
+						<template #label>HataSNSCordUIの利用を許可</template>
+					</MkSwitch>
+					<MkRange v-model="role.policies.canUseHatacordingUi.priority" :min="0" :max="2" :step="1" easing :textConverter="(v) => v === 0 ? i18n.ts._role._priority.low : v === 1 ? i18n.ts._role._priority.middle : v === 2 ? i18n.ts._role._priority.high : ''">
+						<template #label>{{ i18n.ts._role.priority }}</template>
+					</MkRange>
+				</div>
+			</MkFolder>
+
+			<!-- 旗鯖fork: HataSNSCordUI サブペイン最大タブ数ポリシー -->
+			<MkFolder v-if="role.policies.hatacordingUiSubpaneMaxTabs && matchQuery(['HataSNSCordUIのサブペイン最大タブ数', 'hatacordingUiSubpaneMaxTabs'])">
+				<template #label>HataSNSCordUIのサブペイン最大タブ数</template>
+				<template #suffix>
+					<span v-if="role.policies.hatacordingUiSubpaneMaxTabs.useDefault" :class="$style.useDefaultLabel">{{ i18n.ts._role.useBaseValue }}</span>
+					<span v-else>{{ role.policies.hatacordingUiSubpaneMaxTabs.value }}</span>
+					<span :class="$style.priorityIndicator"><i :class="getPriorityIcon(role.policies.hatacordingUiSubpaneMaxTabs)"></i></span>
+				</template>
+				<div class="_gaps">
+					<MkSwitch v-model="role.policies.hatacordingUiSubpaneMaxTabs.useDefault" :readonly="readonly">
+						<template #label>{{ i18n.ts._role.useBaseValue }}</template>
+					</MkSwitch>
+					<MkInput :modelValue="role.policies.hatacordingUiSubpaneMaxTabs.value" type="number" :min="1" :max="5" :disabled="role.policies.hatacordingUiSubpaneMaxTabs.useDefault" :readonly="readonly" @update:modelValue="updateHatacordingUiSubpaneMaxTabs">
+						<template #label>最大タブ数</template>
+					</MkInput>
+					<MkRange v-model="role.policies.hatacordingUiSubpaneMaxTabs.priority" :min="0" :max="2" :step="1" easing :textConverter="(v) => v === 0 ? i18n.ts._role._priority.low : v === 1 ? i18n.ts._role._priority.middle : v === 2 ? i18n.ts._role._priority.high : ''">
+						<template #label>{{ i18n.ts._role.priority }}</template>
+					</MkRange>
+				</div>
+			</MkFolder>
+
+			<MkFolder v-if="role.policies.hatacordingUiRateLimit && matchQuery(['HataSNSCordUI専用レートリミット', 'hatacordingUiRateLimit'])">
+				<template #label>HataSNSCordUI専用レートリミット</template>
+				<template #suffix>
+					<span v-if="role.policies.hatacordingUiRateLimit.useDefault" :class="$style.useDefaultLabel">{{ i18n.ts._role.useBaseValue }}</span>
+					<span v-else>{{ role.policies.hatacordingUiRateLimit.value }}</span>
+					<span :class="$style.priorityIndicator"><i :class="getPriorityIcon(role.policies.hatacordingUiRateLimit)"></i></span>
+				</template>
+				<div class="_gaps">
+					<MkSwitch v-model="role.policies.hatacordingUiRateLimit.useDefault" :readonly="readonly">
+						<template #label>{{ i18n.ts._role.useBaseValue }}</template>
+					</MkSwitch>
+					<MkInput :modelValue="role.policies.hatacordingUiRateLimit.value" type="number" :min="1" :max="1000" :disabled="role.policies.hatacordingUiRateLimit.useDefault" :readonly="readonly" @update:modelValue="updateHatacordingUiRateLimit">
+						<template #label>1時間あたりの操作上限</template>
+						<template #caption>HataSNSCordUIから行う全API操作だけに適用されます（1〜1000、既定: 500）。</template>
+					</MkInput>
+					<MkRange v-model="role.policies.hatacordingUiRateLimit.priority" :min="0" :max="2" :step="1" easing :textConverter="(v) => v === 0 ? i18n.ts._role._priority.low : v === 1 ? i18n.ts._role._priority.middle : v === 2 ? i18n.ts._role._priority.high : ''">
 						<template #label>{{ i18n.ts._role.priority }}</template>
 					</MkRange>
 				</div>
@@ -1173,6 +1235,9 @@ for (const ROLE_POLICY of Misskey.rolePolicies) {
 //   (SDK未再ビルドでも設定項目が出るようにするための保険。value は instance.policies 優先・無ければ既定値)
 const HATA_FORK_POLICY_DEFAULTS: Record<string, boolean | number> = {
 	canAccessHataFeed: false,
+	canUseHatacordingUi: true,
+	hatacordingUiSubpaneMaxTabs: 3,
+	hatacordingUiRateLimit: 500,
 	canMakePrivateChannel: false,
 	canRequestRemoteEmoji: false,
 	emojiRequestLimit: 10,
@@ -1192,6 +1257,14 @@ function updateAvatarDecorationLimit(value: string | number) {
 	const numValue = Number(value);
 	const limited = Math.min(16, Math.max(0, numValue));
 	role.value.policies.avatarDecorationLimit.value = limited;
+}
+
+function updateHatacordingUiSubpaneMaxTabs(value: string | number) {
+	role.value.policies.hatacordingUiSubpaneMaxTabs.value = Math.max(1, Math.min(5, Number(value) || 3));
+}
+
+function updateHatacordingUiRateLimit(value: string | number) {
+	role.value.policies.hatacordingUiRateLimit.value = Math.max(1, Math.min(1000, Math.floor(Number(value) || 500)));
 }
 
 const rolePermissionDef = [

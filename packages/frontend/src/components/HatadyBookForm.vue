@@ -134,7 +134,7 @@ async function submit() {
 	try {
 		if (isEdit) {
 			// 編集: 未指定でも null を明示送信して消せるように(update は nullable を扱う)。
-			const payload: Record<string, unknown> = {
+			const payload = {
 				bookId: eb.id,
 				title: title.value.trim(),
 				status: status.value,
@@ -149,10 +149,13 @@ async function submit() {
 			return;
 		}
 		// 任意項目は null を送らず省略(バックエンドの ajv が null を弾くため)。
-		const payload: Record<string, unknown> = { title: title.value.trim(), status: status.value };
-		if (author.value.trim()) payload.author = author.value.trim();
-		if (totalPages.value != null && (totalPages.value as unknown) !== '') payload.totalPages = Number(totalPages.value);
-		if (colorIndex.value != null) payload.coverColorIndex = colorIndex.value;
+		const payload = {
+			title: title.value.trim(),
+			status: status.value,
+			author: author.value.trim() || undefined,
+			totalPages: totalPages.value != null && (totalPages.value as unknown) !== '' ? Number(totalPages.value) : undefined,
+			coverColorIndex: colorIndex.value ?? undefined,
+		};
 		const book = await misskeyApi('hata/hatady/books/create', payload);
 		os.success();
 		emit('done', book);

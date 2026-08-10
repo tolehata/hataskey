@@ -91,6 +91,7 @@ export const ACHIEVEMENT_TYPES = [
 	'welcomeToHatask',
 	'welcomeToHatady',
 	'hataSideStudioPioneer',
+	'hatacordingUiTutorial',
 ] as const;
 
 export const ACHIEVEMENT_BADGES = {
@@ -517,6 +518,12 @@ export const ACHIEVEMENT_BADGES = {
 	'hataSideStudioPioneer': {
 		img: '/fluent-emoji/1f6e0.png',
 		bg: 'linear-gradient(0deg, rgb(118 110 255), rgb(92 180 147))',
+		frame: 'silver',
+	},
+	// 旗鯖fork: HataSNSCordUIの初回チュートリアルを最後まで完了した
+	'hatacordingUiTutorial': {
+		img: '/fluent-emoji/1f4bb.png',
+		bg: 'linear-gradient(0deg, rgb(72 103 191), rgb(111 198 179))',
 		frame: 'silver',
 	},
 /* @see <https://github.com/misskey-dev/misskey/pull/10365#discussion_r1155511107>

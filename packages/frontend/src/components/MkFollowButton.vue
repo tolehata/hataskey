@@ -5,7 +5,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <template>
 <button
-	v-if="(!disableIfFollowing || !isFollowing) && ($i != null && $i.id != user.id) && (!user.isBlocked && !user.isBlocking)"
+	v-if="(!disableIfFollowing || !isFollowing) && ($i != null && $i.id != user.id) && (!userIsBlocked && !userIsBlocking)"
 	class="_button"
 	:class="[$style.root, { [$style.wait]: wait, [$style.active]: isFollowing || hasPendingFollowRequestFromYou, [$style.full]: full, [$style.large]: large }]"
 	:disabled="wait"
@@ -63,7 +63,7 @@ import { useRouter } from '@/router.js';
 const router = useRouter();
 
 const props = withDefaults(defineProps<{
-	user: Misskey.entities.UserDetailed,
+	user: Misskey.entities.User,
 	full?: boolean,
 	large?: boolean,
 
@@ -78,15 +78,17 @@ const props = withDefaults(defineProps<{
 });
 
 const emit = defineEmits<{
-	(_: 'update:user', value: Misskey.entities.UserDetailed): void
+	(_: 'update:user', value: Misskey.entities.User): void
 }>();
 
-const isFollowing = ref(props.user.isFollowing);
-const hasPendingFollowRequestFromYou = ref(props.user.hasPendingFollowRequestFromYou);
+const userIsBlocked = 'isBlocked' in props.user ? props.user.isBlocked : false;
+const userIsBlocking = 'isBlocking' in props.user ? props.user.isBlocking : false;
+const isFollowing = ref('isFollowing' in props.user ? props.user.isFollowing : undefined);
+const hasPendingFollowRequestFromYou = ref('hasPendingFollowRequestFromYou' in props.user ? props.user.hasPendingFollowRequestFromYou : undefined);
 const wait = ref(false);
 const connection = useStream().useChannel('main');
 
-if (props.user.isFollowing == null && $i) {
+if (isFollowing.value == null && $i) {
 	misskeyApi('users/show', {
 		userId: props.user.id,
 	})

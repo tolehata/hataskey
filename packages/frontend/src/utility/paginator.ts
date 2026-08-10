@@ -206,7 +206,7 @@ export class Paginator<
 			} : {}),
 		};
 
-		const apiRes = (await misskeyApi(this.endpoint, data).catch(err => {
+		const apiRes = (await misskeyApi<E['res'], Endpoint, E['req']>(this.endpoint, data).catch(err => {
 			this.error.value = true;
 			this.fetching.value = false;
 			return null;
@@ -266,7 +266,7 @@ export class Paginator<
 			}),
 		};
 
-		const apiRes = (await misskeyApi<T[]>(this.endpoint, data).catch(err => {
+		const apiRes = (await misskeyApi<E['res'], Endpoint, E['req']>(this.endpoint, data).catch(err => {
 			return null;
 		})) as T[] | null;
 
@@ -319,7 +319,7 @@ export class Paginator<
 			}),
 		};
 
-		const apiRes = (await misskeyApi<T[]>(this.endpoint, data).catch(err => {
+		const apiRes = (await misskeyApi(this.endpoint, data).catch(err => {
 			return null;
 		})) as T[] | null;
 

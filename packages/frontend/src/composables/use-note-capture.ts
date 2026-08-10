@@ -3,11 +3,12 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { onUnmounted, reactive } from 'vue';
+import { inject, onUnmounted, reactive, unref } from 'vue';
 import * as Misskey from 'cherrypick-js';
 import { EventEmitter } from 'eventemitter3';
 import { createVisibilityAwareInterval } from '@@/js/interval.js';
 import type { Reactive } from 'vue';
+import type { MaybeRef } from 'vue';
 import { useStream } from '@/stream.js';
 import { $i } from '@/i.js';
 import { store } from '@/store.js';
@@ -220,6 +221,10 @@ export function useNoteCapture(props: {
 		subscribe: () => void;
 	} {
 	const { note, parentNote, mock } = props;
+	// HataSNSCordUI は画面内のリアルタイム切替を独立して持つため、
+	// 本体UIの realtimeMode がオフでも表示中ノートの標準更新経路を利用する。
+	// 既存UIでは未提供のまま false となり、従来挙動を変えない。
+	const forceRealtimeCapture = inject<MaybeRef<boolean>>('forceNoteRealtimeCapture', false);
 
 	// ミュートユーザーリストの初期化（旗鯖独自機能）
 	if (prefer.s.hideMutedUserReactions) fetchMutedUsers();
@@ -323,7 +328,7 @@ export function useNoteCapture(props: {
 			return;
 		}
 
-		if ($i && store.s.realtimeMode) {
+		if ($i && (store.s.realtimeMode || unref(forceRealtimeCapture))) {
 			realtimeSubscribe({
 				note,
 			});
@@ -345,7 +350,7 @@ export function useNoteCapture(props: {
 	// 投稿からある程度経過している(=タイムラインを遡って表示した)ノートは、イベントが発生する可能性が低いためそもそも購読しない
 	// ただし「リノートされたばかりの過去のノート」(= parentNoteが存在し、かつparentNoteの投稿日時が最近)はイベント発生が考えられるため購読する
 	// TODO: デバイスとサーバーの時計がズレていると不具合の元になるため、ズレを検知して警告を表示するなどのケアが必要かもしれない
-	if (parentNote == null) {
+	if (!unref(forceRealtimeCapture) && parentNote == null) {
 		if ((Date.now() - new Date(note.createdAt).getTime()) > 1000 * 60 * 5) { // 5min
 			// リノートで表示されているノートでもないし、投稿からある程度経過しているので自動で購読しない
 			return {
@@ -355,7 +360,7 @@ export function useNoteCapture(props: {
 				},
 			};
 		}
-	} else {
+	} else if (!unref(forceRealtimeCapture) && parentNote != null) {
 		if ((Date.now() - new Date(parentNote.createdAt).getTime()) > 1000 * 60 * 5) { // 5min
 			// リノートで表示されているノートだが、リノートされてからある程度経過しているので自動で購読しない
 			return {

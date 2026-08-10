@@ -32,6 +32,7 @@ describe('旗鯖独自設定の入出力UI', () => {
 
 	test('HatadyとHataFeedの利用データは設定ファイルへ混ぜず専用画面から書き出す', () => {
 		const modal = source('src/components/MkHataSettingsTransfer.vue');
+		const hatadyExport = source('src/components/HatadyExportDialog.vue');
 		expect(modal).toContain('利用データを個別に書き出す');
 		expect(modal).toContain("import('@/components/HatadyExportDialog.vue')");
 		expect(modal).toContain("import('@/components/HataFeedExportWindow.vue')");
@@ -39,17 +40,27 @@ describe('旗鯖独自設定の入出力UI', () => {
 		expect(modal).toContain('mine: !availability.isStaff');
 		expect(modal).toContain("const projectId = selection.result === '__official__' ? null : (project?.id ?? null)");
 		expect(modal).toContain('Hatadyの学習記録とHataFeedのイシューは、下の専用ボタンから個別に保存できます');
+		expect(hatadyExport).toContain('.body[data-hatady-theme="paper"]');
+		expect(hatadyExport).toContain('.body[data-hatady-theme="espresso"]');
+		expect(hatadyExport).toContain('.body[data-hatady-theme="hataskey"]');
+		expect(hatadyExport).toContain('background: var(--hy-bg, var(--MI_THEME-bg))');
 	});
 
-	test('操作後もモーダルの上下枠が消えない専用パネルを使う', () => {
+	test('操作後も上下を維持するリサイズ可能な専用ウィンドウを使う', () => {
 		const modal = source('src/components/MkHataSettingsTransfer.vue');
-		const modalWindow = source('src/components/MkModalWindow.vue');
-		expect(modal).toContain(':panelClass="$style.modalPanel"');
-		expect(modal).toContain('.modalPanel { min-height:0; border:1px solid');
-		expect(modal).toContain('background-clip:padding-box');
-		expect(modal).not.toContain('container-type:inline-size');
-		expect(modalWindow).toContain('panelClass?: string;');
-		expect(modalWindow).toContain('[$style.root, panelClass,');
-		expect(modalWindow).toContain('min-height: 0;');
+		expect(modal).toContain('<MkWindow');
+		expect(modal).toContain('ref="transferWindow"');
+		expect(modal).toContain(':canResize="true"');
+		expect(modal).toContain(':closeButton="true"');
+		expect(modal).not.toContain('<MkModal');
+		expect(modal).toContain('data-hata-settings-transfer-window');
+		expect(modal).toContain('grid-template-rows: minmax(0, 1fr) auto;');
+		expect(modal).toContain('.scrollArea {');
+		expect(modal).toMatch(/\.scrollArea\s*\{[^}]*min-height:\s*0;[^}]*overflow:\s*auto;/s);
+		expect(modal).not.toMatch(/\.window\s*\{[^}]*contain:/s);
+		expect(modal).not.toContain('.window::after {');
+		expect(modal).toContain('<template #header>');
+		expect(modal).toContain('<footer :class="$style.actionBar">');
+		expect(modal).not.toContain('@media');
 	});
 });

@@ -94,7 +94,7 @@ async function createRoom() {
 	creating.value = true;
 	try {
 		const room = await misskeyApi('whack-emoji/create-room', { difficulty: diff.value }) as any;
-		router.push(`/whack-emoji/battle?roomId=${room.id}`);
+		router.pushByPath(`/whack-emoji/battle?roomId=${room.id}`);
 	} catch { os.alert({ type: 'error', text: 'ルーム作成に失敗しました' }); }
 	finally { creating.value = false; }
 }
@@ -102,7 +102,7 @@ async function createRoom() {
 async function joinRoom(roomId: string) {
 	try {
 		await misskeyApi('whack-emoji/join-room', { roomId });
-		router.push(`/whack-emoji/battle?roomId=${roomId}`);
+		router.pushByPath(`/whack-emoji/battle?roomId=${roomId}`);
 	} catch (e: any) {
 		const code = e?.code || e?.info?.code || '';
 		if (code === 'CANNOT_JOIN_OWN_ROOM') {
@@ -118,7 +118,7 @@ async function joinRoom(roomId: string) {
 }
 
 function goToMyRoom(roomId: string) {
-	router.push(`/whack-emoji/battle?roomId=${roomId}`);
+	router.pushByPath(`/whack-emoji/battle?roomId=${roomId}`);
 }
 
 onMounted(() => { fetchRooms(); });

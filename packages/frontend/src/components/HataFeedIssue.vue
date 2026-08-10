@@ -96,10 +96,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 							<button
 								v-for="(count, emoji) in c.reactions"
 								:key="emoji"
-								:class="[$style.reaction, c.myReaction === emoji && $style.reactionMine]"
-								@click="react(c, emoji)"
+								:class="[$style.reaction, c.myReaction === String(emoji) && $style.reactionMine]"
+								@click="react(c, String(emoji))"
 							>
-								<MkReactionIcon :reaction="emoji"/> <span>{{ count }}</span>
+								<MkReactionIcon :reaction="String(emoji)"/> <span>{{ count }}</span>
 							</button>
 							<button :class="$style.reactionAdd" @click="openReactionPicker($event, c)"><i class="ti ti-mood-plus"></i></button>
 						</div>
@@ -221,7 +221,8 @@ import { chooseDriveFile } from '@/utility/drive.js';
 import { $i } from '@/i.js';
 import { reactionPicker } from '@/utility/reaction-picker.js';
 import { emojiPicker } from '@/utility/emoji-picker.js';
-import { statusLabel, statusKeys, priorityLabel } from '@/utility/hatafeed.js';
+import { statusLabel, editableStatusKeys, priorityLabel } from '@/utility/hatafeed.js';
+import type { HataFeedEditableStatus, HataFeedPriority } from '@/utility/hatafeed.js';
 import { copyToClipboard } from '@/utility/copy-to-clipboard.js';
 
 const props = defineProps<{ issueId: string; isStaff: boolean }>();
@@ -260,8 +261,8 @@ const replyTarget = ref<any>(null);
 const flashCommentId = ref<string | null>(null);
 const commentRefs = new Map<string, HTMLElement>();
 function setCommentRef(id: string, el: any) { if (el) commentRefs.set(id, el as HTMLElement); else commentRefs.delete(id); }
-const editStatus = ref('open');
-const editPriority = ref('normal');
+const editStatus = ref<HataFeedEditableStatus>('open');
+const editPriority = ref<HataFeedPriority>('normal');
 
 // この issue の対処担当(moderators)か。コメントのロールバッジ判定に使う。
 function isModeratorUser(userId: string | undefined): boolean {
@@ -314,7 +315,7 @@ function copyText(text: string | null | undefined, label: string) {
 		return;
 	}
 	copyToClipboard(text);
-	os.success(`${label}をコピーしました`);
+	os.toast(`${label}をコピーしました`, 'ti ti-copy-check');
 }
 
 async function toggleAgree() {
@@ -333,7 +334,8 @@ async function sendComment() {
 		commentFiles.value = [];
 		replyTarget.value = null;
 		// 自分を会話参加者として即時反映。
-		if ($i && !participants.value.some(p => p.id === $i.id)) participants.value.push($i);
+		const me = $i;
+		if (me && !participants.value.some(p => p.id === me.id)) participants.value.push(me);
 	} finally {
 		sending.value = false;
 	}
@@ -424,7 +426,7 @@ async function changeStatus() {
 // 2e サイドバー: ステータスをメニューで選ぶ(スタッフのみ)。
 function openStatusSelect(ev: MouseEvent) {
 	if (!canManage.value) return;
-	os.popupMenu(statusKeys.map(s => ({
+	os.popupMenu(editableStatusKeys.map(s => ({
 		text: statusLabel[s],
 		active: issue.value.status === s,
 		action: () => { editStatus.value = s; changeStatus(); },

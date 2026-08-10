@@ -22,15 +22,16 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { onMounted, onUnmounted, provide, inject, ref, watch, useTemplateRef } from 'vue';
+import { computed, onMounted, onUnmounted, provide, inject, ref, watch, useTemplateRef } from 'vue';
 import { DI } from '@/di.js';
 import { deviceKind } from '@/utility/device-kind.js';
-import { mainRouter } from '@/router.js';
+import { useRouter } from '@/router.js';
 import { prefer } from '@/preferences.js';
 import { detectScrolling } from '@/utility/detect-scrolling.js';
 import { scrollToVisibility } from '@/utility/scroll-to-visibility.js';
 
-const isAllowHideHeader = ref(['index', 'explore', 'my-notifications', 'my-favorites'].includes(<string>mainRouter.currentRoute.value.name));
+const router = useRouter();
+const isAllowHideHeader = computed(() => ['index', 'explore', 'my-notifications', 'my-favorites'].includes(<string>router.currentRoute.value.name));
 const MOBILE_THRESHOLD = 500;
 
 const isMobile = ref(['smartphone', 'tablet'].includes(String(deviceKind)) || window.innerWidth <= MOBILE_THRESHOLD);

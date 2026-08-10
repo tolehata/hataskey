@@ -158,11 +158,12 @@ import { ref, shallowRef, computed, onMounted } from 'vue';
 import MkModalWindow from '@/components/MkModalWindow.vue';
 import MkButton from '@/components/MkButton.vue';
 import { misskeyApi } from '@/utility/misskey-api.js';
-import { mainRouter } from '@/router.js';
+import { useRouter } from '@/router.js';
 import * as os from '@/os.js';
 
 const emit = defineEmits<{ (ev:'closed'):void; (ev:'reopenTutorial'):void; (ev:'changed', settings:any):void }>();
 const dialog = shallowRef<InstanceType<typeof MkModalWindow>>();
+const router = useRouter();
 
 // Hatask本体と同じ registry スコープ/キーを使うことでデータを共有・同期する
 const SCOPE = ['client', 'hatask'];
@@ -230,7 +231,7 @@ async function saveSettings() {
 function toggle(key:string) { settings.value[key] = !settings.value[key]; saveSettings(); }
 function onWeekStart(ev:Event) { settings.value.weekStart = (ev.target as HTMLSelectElement).value; saveSettings(); }
 
-function openHatask() { dialog.value?.close(); mainRouter.push('/hatask'); }
+function openHatask() { dialog.value?.close(); router.push('/hatask'); }
 
 // 旗鯖fork(#37): チュートリアル再表示。
 //   Hatask本体内で開いた場合は親(hatask.vue)が emit を受けて reopenTutorial を実行する。
@@ -239,8 +240,8 @@ function reopenTutorial() {
 	emit('reopenTutorial');
 	dialog.value?.close();
 	// Hatask以外のページから開いた場合は遷移する(イベントを誰も拾わない場合のフォールバック)
-	if (!mainRouter.currentRoute.value.path.startsWith('/hatask')) {
-		mainRouter.push('/hatask');
+	if (!router.currentRoute.value.path.startsWith('/hatask')) {
+		router.push('/hatask');
 	}
 }
 

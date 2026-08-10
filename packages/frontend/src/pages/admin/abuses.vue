@@ -133,13 +133,14 @@ const searchHost = ref('');
 
 const tab = ref('list');
 const editableResolver = ref<null | string>(null);
+type ResolverExpiry = '1hour' | '12hours' | '1day' | '1week' | '1month' | '3months' | '6months' | '1year' | 'indefinitely';
 const defaultResolver = {
 	name: '',
 	targetUserPattern: '',
 	reporterPattern: '',
 	reportContentPattern: '',
 	expirationDate: '',
-	expiresAt: 'indefinitely',
+	expiresAt: 'indefinitely' as ResolverExpiry,
 	forward: false,
 };
 
@@ -149,7 +150,7 @@ const newResolver = ref<{
 	reporterPattern: string;
 	reportContentPattern: string;
 	expirationDate: string;
-	expiresAt: string;
+	expiresAt: ResolverExpiry;
 	forward: boolean;
 }>(defaultResolver);
 
@@ -158,7 +159,7 @@ const editingResolver = ref<{
 	targetUserPattern: string;
 	reporterPattern: string;
 	reportContentPattern: string;
-	expiresAt: string;
+	expiresAt: ResolverExpiry;
 	expirationDate: string;
 	forward: boolean;
 	previousExpiresAt?: string;
@@ -191,6 +192,7 @@ function edit(id: string) {
 }
 
 function save(): void {
+	if (editableResolver.value == null) return;
 	os.apiWithDialog('admin/abuse-report-resolver/update', {
 		resolverId: editableResolver.value,
 		name: editingResolver.value.name,

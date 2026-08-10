@@ -72,6 +72,7 @@ import MkTextarea from '@/components/MkTextarea.vue';
 import * as os from '@/os.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { chooseDriveFile } from '@/utility/drive.js';
+import type { HataFeedEditableStatus } from '@/utility/hatafeed.js';
 
 const emit = defineEmits<{ (ev: 'done', v: any): void; (ev: 'closed'): void }>();
 
@@ -79,7 +80,7 @@ const dialog = useTemplateRef('dialog');
 
 const title = ref('');
 const description = ref('');
-const status = ref('planned');
+const status = ref<Extract<HataFeedEditableStatus, 'planned' | 'inProgress'>>('planned');
 const files = ref<any[]>([]);
 const submitting = ref(false);
 
@@ -87,7 +88,7 @@ const submitting = ref(false);
 const statusOptions = [
 	{ value: 'planned', label: '対応予定', icon: 'ti-calendar-time' },
 	{ value: 'inProgress', label: '対応中', icon: 'ti-progress' },
-];
+] as const;
 
 async function addFiles() {
 	const chosen = await chooseDriveFile({ multiple: true }).catch(() => []);

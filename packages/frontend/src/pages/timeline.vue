@@ -37,7 +37,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			:sound="true"
 		/>
 		<!-- 通常のタイムライン -->
-		<div v-else-if="!isAvailableBasicTimeline(src) && !src.startsWith('list:') && src !== 'ohtl' && src !== 'oltl' && src !== 'trending'" :class="[$style.disabled, $style.tl]">
+		<div v-else-if="isBasicTimeline(src) && !isAvailableBasicTimeline(src)" :class="[$style.disabled, $style.tl]">
 			<p :class="$style.disabledTitle">
 				<i class="ti ti-circle-minus"></i>
 				{{ i18n.ts._disabledTimeline.title }}
@@ -46,11 +46,11 @@ SPDX-License-Identifier: AGPL-3.0-only
 		</div>
 		<MkTrendingTimeline
 			v-else-if="src === 'trending'"
-			ref="tlComponent"
+			ref="trendingTlComponent"
 			:class="$style.tl"
 		/>
 		<MkStreamingNotesTimeline
-			v-else-if="src !== 'ohtl' && src !== 'oltl' && src !== 'trending'"
+			v-else-if="src !== 'ohtl' && src !== 'oltl'"
 			ref="tlComponent"
 			:key="src + withRenotes + withReplies + onlyFiles + onlyCats + withSensitive"
 			:class="$style.tl"
@@ -119,6 +119,7 @@ window.addEventListener('resize', handleResize);
 const schedulePostList = $i ? (await misskeyApi('notes/drafts/list', { scheduled: true })).length : 0;
 
 const tlComponent = useTemplateRef('tlComponent');
+const trendingTlComponent = useTemplateRef('trendingTlComponent');
 
 type TimelinePageSrc = BasicTimelineType | `list:${string}` | 'ohtl' | 'oltl' | 'trending';
 
@@ -368,8 +369,8 @@ async function chooseChannel(ev: MouseEvent): Promise<void> {
 function saveSrc(newSrc: TimelinePageSrc): void {
 	const out = deepMerge({ src: newSrc }, store.s.tl);
 
-	if (prefer.s.enableListTimeline && newSrc.startsWith('userList:')) {
-		const id = newSrc.substring('userList:'.length);
+	if (prefer.s.enableListTimeline && newSrc.startsWith('list:')) {
+		const id = newSrc.substring('list:'.length);
 		out.userList = prefer.r.pinnedUserLists.value.find(l => l.id === id) ?? null;
 	}
 
@@ -586,7 +587,8 @@ const headerActions = computed(() => {
 			icon: 'ti ti-refresh',
 			text: i18n.ts.reload,
 			handler: (ev: Event) => {
-				tlComponent.value?.reloadTimeline();
+				if (src.value === 'trending') trendingTlComponent.value?.reload();
+				else tlComponent.value?.reloadTimeline();
 			},
 		});
 	}

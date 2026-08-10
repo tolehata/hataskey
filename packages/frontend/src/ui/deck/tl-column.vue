@@ -17,7 +17,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		v-if="isExternalTimeline && isExternalEnabled"
 		ref="externalTimeline"
 		:key="column.tl"
-		:src="column.tl"
+		:src="column.tl as 'ohtl' | 'oltl'"
 		:host="externalHost"
 		:token="externalToken"
 		:sound="true"
@@ -37,7 +37,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		:key="'trending'"
 	/>
 	<!-- 通常タイムライン無効時 -->
-	<div v-else-if="!isAvailableBasicTimeline(column.tl)" :class="$style.disabled">
+	<div v-else-if="isBasicTimeline(column.tl) && !isAvailableBasicTimeline(column.tl)" :class="$style.disabled">
 		<p :class="$style.disabledTitle">
 			<i class="ti ti-circle-minus"></i>
 			{{ i18n.ts._disabledTimeline.title }}
@@ -46,7 +46,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 	</div>
 	<!-- 通常タイムライン -->
 	<MkStreamingNotesTimeline
-		v-else-if="column.tl"
+		v-else-if="isBasicTimeline(column.tl)"
 		ref="timeline"
 		:key="column.tl + withRenotes + withReplies + onlyFiles + onlyCats"
 		:src="column.tl"
@@ -74,7 +74,7 @@ import MkExternalTimeline from '@/components/MkExternalTimeline.vue';
 import MkTrendingTimeline from '@/components/MkTrendingTimeline.vue';
 import * as os from '@/os.js';
 import { i18n } from '@/i18n.js';
-import { hasWithReplies, isAvailableBasicTimeline, basicTimelineIconClass } from '@/timelines.js';
+import { hasWithReplies, isAvailableBasicTimeline, basicTimelineIconClass, isBasicTimeline } from '@/timelines.js';
 import { soundSettingsButton } from '@/ui/deck/tl-note-notification.js';
 import { prefer } from '@/preferences.js';
 
@@ -85,6 +85,7 @@ const props = defineProps<{
 
 const timeline = useTemplateRef('timeline');
 const externalTimeline = useTemplateRef('externalTimeline');
+const trendingTimeline = useTemplateRef('trendingTimeline');
 
 // 外部サーバー連携設定
 const isExternalEnabled = computed(() => {
@@ -106,7 +107,7 @@ const timelineIcon = computed(() => {
 	if (props.column.tl === 'oltl') return 'ti ti-planet';
 	// 旗鯖fork: トレンドタイムラインアイコン
 	if (props.column.tl === 'trending') return 'ti ti-flame';
-	return basicTimelineIconClass(props.column.tl);
+	return props.column.tl && isBasicTimeline(props.column.tl) ? basicTimelineIconClass(props.column.tl) : '';
 });
 
 // タイムライン名
@@ -115,12 +116,16 @@ const timelineName = computed(() => {
 	if (props.column.tl === 'oltl') return 'OLTL';
 	// 旗鯖fork: トレンドタイムライン名
 	if (props.column.tl === 'trending') return i18n.ts._timelines.trending;
-	return props.column.tl ? i18n.ts._timelines[props.column.tl] : null;
+	return props.column.tl && isBasicTimeline(props.column.tl) ? i18n.ts._timelines[props.column.tl] : null;
 });
 
 async function reloadTimeline() {
 	if (isExternalTimeline.value) {
 		await externalTimeline.value?.reloadTimeline();
+		return;
+	}
+	if (props.column.tl === 'trending') {
+		await trendingTimeline.value?.reload();
 		return;
 	}
 	await timeline.value?.reloadTimeline();
@@ -175,7 +180,7 @@ onMounted(() => {
 
 async function setType() {
 	// 基本タイムラインの選択肢
-	const items: { value: string; label: string }[] = [{
+	const items: { value: NonNullable<Column['tl']>; label: string }[] = [{
 		value: 'home', label: i18n.ts._timelines.home,
 	}, {
 		value: 'local', label: i18n.ts._timelines.local,
@@ -218,12 +223,13 @@ async function setType() {
 	}
 	if (src == null) return;
 	updateColumn(props.column.id, {
-		tl: src ?? undefined,
+		tl: src,
 	});
 }
 
 const menu = computed<MenuItem[]>(() => {
 	const menuItems: MenuItem[] = [];
+	const basicTimeline = isBasicTimeline(props.column.tl) ? props.column.tl : null;
 
 	menuItems.push({
 		icon: 'ti ti-pencil',
@@ -252,7 +258,7 @@ const menu = computed<MenuItem[]>(() => {
 		ref: withRenotes,
 	});
 
-	if (hasWithReplies(props.column.tl)) {
+	if (hasWithReplies(basicTimeline)) {
 		menuItems.push({
 			type: 'switch',
 			text: i18n.ts.showRepliesToOthersInTimeline,
@@ -265,7 +271,7 @@ const menu = computed<MenuItem[]>(() => {
 		type: 'switch',
 		text: i18n.ts.fileAttachedOnly,
 		ref: onlyFiles,
-		disabled: hasWithReplies(props.column.tl) ? withReplies : false,
+		disabled: hasWithReplies(basicTimeline) ? withReplies : false,
 	}, {
 		type: 'switch',
 		text: i18n.ts.withSensitive,

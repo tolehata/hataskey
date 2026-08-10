@@ -73,15 +73,16 @@ import { selectFile } from '@/utility/drive.js';
 import { i18n } from '@/i18n.js';
 import { definePage } from '@/page.js';
 import { $i } from '@/i.js';
-import { mainRouter } from '@/router.js';
+import { useRouter } from '@/router.js';
 import { useMkSelect } from '@/composables/use-mkselect.js';
-import { getPageBlockList } from '@/pages/page-editor/common.js';
+import { createPageBlock, getPageBlockList } from '@/pages/page-editor/common.js';
 
 const props = defineProps<{
 	initPageId?: string;
 	initPageName?: string;
 	initUser?: string;
 }>();
+const router = useRouter();
 
 const tab = ref('settings');
 const author = ref<Misskey.entities.User | null>($i);
@@ -101,7 +102,7 @@ const {
 	items: [
 		{ label: i18n.ts._pages.fontSansSerif, value: 'sans-serif' },
 		{ label: i18n.ts._pages.fontSerif, value: 'serif' },
-	],
+	] as const,
 	initialValue: 'sans-serif',
 });
 const content = ref<Misskey.entities.Page['content']>([]);
@@ -162,7 +163,7 @@ async function save() {
 
 		pageId.value = created.id;
 		currentName.value = name.value.trim();
-		mainRouter.replace('/pages/edit/:initPageId', {
+		router.replace('/pages/edit/:initPageId', {
 			params: {
 				initPageId: pageId.value,
 			},
@@ -184,7 +185,7 @@ async function del() {
 		pageId: pageId.value,
 	});
 
-	mainRouter.replace('/pages');
+	router.replace('/pages');
 }
 
 async function duplicate() {
@@ -201,7 +202,7 @@ async function duplicate() {
 	pageId.value = created.id;
 	currentName.value = name.value.trim();
 
-	mainRouter.push('/pages/edit/:initPageId', {
+	router.push('/pages/edit/:initPageId', {
 		params: {
 			initPageId: pageId.value,
 		},
@@ -216,7 +217,7 @@ async function add() {
 	if (canceled || type == null) return;
 
 	const id = genId();
-	content.value.push({ id, type });
+	content.value.push(createPageBlock(type, id));
 }
 
 function setEyeCatchingImage(img: Event) {
@@ -252,7 +253,7 @@ async function init() {
 		name.value = page.value.name;
 		currentName.value = page.value.name;
 		summary.value = page.value.summary;
-		font.value = page.value.font;
+		font.value = page.value.font === 'serif' ? 'serif' : 'sans-serif';
 		hideTitleWhenPinned.value = page.value.hideTitleWhenPinned;
 		alignCenter.value = page.value.alignCenter;
 		content.value = page.value.content;

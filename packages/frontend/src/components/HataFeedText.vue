@@ -42,7 +42,7 @@ const segments = computed<Seg[]>(() => {
 async function openIssue(number: number) {
 	try {
 		const res = await misskeyApi('hata/feedback/issues/show', { number });
-		router.push('/hatafeed/' + res.issue.id);
+		router.pushByPath('/hatafeed/' + res.issue.id);
 	} catch {
 		os.alert({ type: 'warning', text: `イシュー #${number} は見つかりませんでした。` });
 	}

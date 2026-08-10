@@ -18,7 +18,7 @@ describe('post send delay UI wiring', () => {
 			expect(vue).toContain(':class="$style.postDelayFrame"');
 			expect(vue).toContain('取り消す');
 			expect(vue).toContain('今すぐ投稿');
-			expect(vue.indexOf('await postDelay.begin(postSendDelaySeconds.value)')).toBeLessThan(vue.lastIndexOf('misskeyApi(props.updateMode ? \'notes/update\' : \'notes/create\''));
+			expect(vue.indexOf('await postDelay.begin(postSendDelaySeconds.value)')).toBeLessThan(vue.indexOf('const request: Promise<Misskey.entities.Note | null>'));
 		});
 	}
 

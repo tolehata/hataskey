@@ -90,7 +90,7 @@ async function createRoom() {
 	creating.value = true;
 	try {
 		const room = await misskeyApi('stacking-game/create-room', {}) as any;
-		router.push(`/stacking-game/battle?roomId=${room.id}`);
+		router.pushByPath(`/stacking-game/battle?roomId=${room.id}`);
 	} catch (e) {
 		os.alert({ type: 'error', text: 'ルーム作成に失敗しました' });
 	} finally { creating.value = false; }
@@ -99,7 +99,7 @@ async function createRoom() {
 async function joinRoom(roomId: string) {
 	try {
 		await misskeyApi('stacking-game/join-room', { roomId });
-		router.push(`/stacking-game/battle?roomId=${roomId}`);
+		router.pushByPath(`/stacking-game/battle?roomId=${roomId}`);
 	} catch (e: any) {
 		const code = e?.code || e?.info?.code || '';
 		if (code === 'CANNOT_JOIN_OWN_ROOM') {
@@ -115,7 +115,7 @@ async function joinRoom(roomId: string) {
 }
 
 function goToMyRoom(roomId: string) {
-	router.push(`/stacking-game/battle?roomId=${roomId}`);
+	router.pushByPath(`/stacking-game/battle?roomId=${roomId}`);
 }
 
 onMounted(() => { fetchRooms(); });

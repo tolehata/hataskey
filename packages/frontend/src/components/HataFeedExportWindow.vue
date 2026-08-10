@@ -125,8 +125,8 @@ const emit = defineEmits<{ (ev: 'closed'): void }>();
 
 type ExportStatus = 'open' | 'planned' | 'inProgress' | 'resolved' | 'wontfix' | 'unknown' | 'closed';
 type ExportCategory = 'bug' | 'improvement' | 'unresolved' | 'featureRequest' | 'adoptionRequest' | 'security' | 'betaFeature' | 'other';
-const exportStatusKeys = statusKeys as ExportStatus[];
-const exportCategoryKeys = categoryKeys as ExportCategory[];
+const exportStatusKeys: readonly ExportStatus[] = statusKeys;
+const exportCategoryKeys: readonly ExportCategory[] = categoryKeys;
 
 const dialog = useTemplateRef('dialog');
 const exporting = ref(false);

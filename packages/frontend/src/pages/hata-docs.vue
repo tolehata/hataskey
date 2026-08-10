@@ -46,13 +46,14 @@
 <script lang="ts" setup>
 import { ref, computed } from 'vue';
 import { definePage } from '@/page.js';
-import { mainRouter } from '@/router.js';
+import { useRouter } from '@/router.js';
 
 definePage({ title: '旗鯖機能解説' });
 
 const searchQuery = ref('');
 const activeCat = ref('');
 const openDoc = ref('');
+const router = useRouter();
 
 function toggleDoc(title: string) { openDoc.value = openDoc.value === title ? '' : title; }
 
@@ -60,7 +61,7 @@ function navigateLink(link: string) {
 	if (link.startsWith('http')) {
 		window.open(link, '_blank');
 	} else {
-		mainRouter.push(link as Parameters<typeof mainRouter.push>[0]);
+		router.push(link as Parameters<typeof router.push>[0]);
 	}
 }
 

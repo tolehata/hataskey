@@ -11,7 +11,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<MkButton small>{{ i18n.ts.doNothing }}</MkButton>
 	</div>
 </div>
-<div v-if="hasDisconnected && prefer.s.serverDisconnectedBehavior === 'quiet'" :class="$style.root" class="_panel _shadow" @click="resetDisconnected">
+<div v-if="!serverDisconnectUiSuppressed && hasDisconnected && prefer.s.serverDisconnectedBehavior === 'quiet'" :class="$style.root" class="_panel _shadow" @click="resetDisconnected">
 	<div><i class="ti ti-alert-triangle"></i> {{ i18n.ts.disconnectedFromServer }}</div>
 	<div :class="$style.command" class="_buttons">
 		<MkButton small primary @click="reload">{{ i18n.ts.reload }}</MkButton>
@@ -21,7 +21,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { onMounted, onUnmounted, ref } from 'vue';
+import { onMounted, onUnmounted, ref, watch } from 'vue';
 import { useStream } from '@/stream.js';
 import { i18n } from '@/i18n.js';
 import MkButton from '@/components/MkButton.vue';
@@ -29,6 +29,7 @@ import * as os from '@/os.js';
 import { prefer } from '@/preferences.js';
 import { store } from '@/store.js';
 import { globalEvents } from '@/events.js';
+import { serverDisconnectUiSuppressed, shouldSuppressServerDisconnectUi } from '@/utility/server-disconnect-ui-suppression.js';
 
 const zIndex = os.claimZIndex('high');
 
@@ -37,11 +38,16 @@ const hasDisconnected = ref(false);
 const timeoutId = ref<number>();
 
 function onDisconnected() {
+	if (shouldSuppressServerDisconnectUi()) return;
 	window.clearTimeout(timeoutId.value);
 	timeoutId.value = window.setTimeout(() => {
 		hasDisconnected.value = true;
 	}, 1000 * 10);
 }
+
+watch(serverDisconnectUiSuppressed, (suppressed) => {
+	if (suppressed) resetDisconnected();
+}, { immediate: true });
 
 function resetDisconnected() {
 	window.clearTimeout(timeoutId.value);

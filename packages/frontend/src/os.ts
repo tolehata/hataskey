@@ -36,9 +36,12 @@ import { focusParent } from '@/utility/focus.js';
 export const openingWindowsCount = ref(0);
 
 export type ApiWithDialogCustomErrors = Record<string, { title?: string; text: string; }>;
-export const apiWithDialog = (<E extends keyof Misskey.Endpoints>(
+export const apiWithDialog = (<
+	E extends keyof Misskey.Endpoints,
+	P extends Misskey.Endpoints[E]['req'] = Misskey.Endpoints[E]['req'],
+>(
 	endpoint: E,
-	data: Misskey.Endpoints[E]['req'],
+	data: P,
 	token?: string | null | undefined,
 	customErrors?: ApiWithDialogCustomErrors,
 ) => {
@@ -717,7 +720,35 @@ export function contextMenu(items: MenuItem[], ev: MouseEvent): Promise<void> {
 	}));
 }
 
+export type PostFormInterceptor = (props: PostFormProps) => boolean;
+
+const postFormInterceptors: PostFormInterceptor[] = [];
+
+/**
+ * 独立UIが標準投稿フォームへの要求を自前の投稿欄へ受け渡すための境界。
+ * 登録が無い通常UIでは従来の post() と完全に同じ経路を通る。
+ */
+export function registerPostFormInterceptor(interceptor: PostFormInterceptor): () => void {
+	postFormInterceptors.push(interceptor);
+	return () => {
+		const index = postFormInterceptors.lastIndexOf(interceptor);
+		if (index >= 0) postFormInterceptors.splice(index, 1);
+	};
+}
+
 export function post(props: PostFormProps = {}): Promise<void> {
+	for (let index = postFormInterceptors.length - 1; index >= 0; index--) {
+		try {
+			if (postFormInterceptors[index](props)) return Promise.resolve();
+		} catch (error) {
+			console.error('Post form interceptor failed', error);
+		}
+	}
+	return postDirect(props);
+}
+
+/** インターセプターを経由せず、標準投稿フォームを明示的に開く。 */
+export function postDirect(props: PostFormProps = {}): Promise<void> {
 	pleaseLogin({
 		openOnRemote: (props.initialText || props.initialNote ? {
 			type: 'share',

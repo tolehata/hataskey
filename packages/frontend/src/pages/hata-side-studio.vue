@@ -18,16 +18,18 @@ SPDX-License-Identifier: AGPL-3.0-only
 		</div>
 		<div :class="$style.headerActions">
 			<span v-if="hasChanges" :class="$style.dirty"><i class="ti ti-device-floppy"></i>未保存</span>
-			<div :class="$style.historyActions">
-				<div :class="$style.resetWrap">
-					<button class="_button" :class="$style.historyButton" aria-label="デフォルトに戻す" @click="resetConfirmOpen = !resetConfirmOpen"><i class="ti ti-restore"></i></button>
-					<div v-if="resetConfirmOpen" :class="$style.resetConfirm"><b>このプロファイルを初期化しますか？</b><span>保存するまでは確定しません。</span><div><button class="_button" @click="resetConfirmOpen = false">やめる</button><button class="_buttonPrimary" @click="resetProfile">初期化</button></div></div>
+			<div :class="$style.headerControlGroup">
+				<div :class="$style.historyActions">
+					<div :class="$style.resetWrap">
+						<button class="_button" :class="$style.historyButton" aria-label="デフォルトに戻す" @click="resetConfirmOpen = !resetConfirmOpen"><i class="ti ti-restore"></i></button>
+						<div v-if="resetConfirmOpen" :class="$style.resetConfirm"><b>このプロファイルを初期化しますか？</b><span>保存するまでは確定しません。</span><div><button class="_button" @click="resetConfirmOpen = false">やめる</button><button class="_buttonPrimary" @click="resetProfile">初期化</button></div></div>
+					</div>
+					<button class="_button" :class="$style.historyButton" :disabled="historyIndex <= 0" aria-label="ひとつ前へ" @click="undo"><i class="ti ti-arrow-back-up"></i></button>
+					<button class="_button" :class="$style.historyButton" :disabled="historyIndex >= history.length - 1" aria-label="ひとつ後へ" @click="redo"><i class="ti ti-arrow-forward-up"></i></button>
 				</div>
-				<button class="_button" :class="$style.historyButton" :disabled="historyIndex <= 0" aria-label="ひとつ前へ" @click="undo"><i class="ti ti-arrow-back-up"></i></button>
-				<button class="_button" :class="$style.historyButton" :disabled="historyIndex >= history.length - 1" aria-label="ひとつ後へ" @click="redo"><i class="ti ti-arrow-forward-up"></i></button>
+				<button type="button" class="_button" :class="$style.actionButton" :aria-label="hasChanges ? '変更を保存' : '保存済み'" @click.stop="save"><i class="ti ti-device-floppy"></i><span>{{ hasChanges ? '保存' : '保存済み' }}</span></button>
+				<button type="button" class="_button" :class="$style.actionButton" aria-label="チュートリアルを表示" @click.stop="startTutorial"><i class="ti ti-help"></i><span>使い方</span></button>
 			</div>
-			<button type="button" class="_button" :class="$style.actionButton" @click.stop="save"><i class="ti ti-device-floppy"></i>{{ hasChanges ? '保存' : '保存済み' }}</button>
-			<button type="button" class="_button" :class="$style.actionButton" aria-label="チュートリアルを表示" @click.stop="startTutorial"><i class="ti ti-help"></i>使い方</button>
 		</div>
 	</header>
 
@@ -100,7 +102,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					</template>
 					<label :class="$style.field"><span>枠線</span><input v-model.number="selected.borderWidth" type="range" min="0" max="5"><output>{{ selected.borderWidth }}px</output></label>
 					<label :class="$style.quickField"><span>枠線の種類</span><select v-model="selected.borderStyle" :class="$style.select"><option value="solid">実線</option><option value="dashed">破線</option><option value="double">二重線</option></select></label>
-					<GradientEditor :model-value="selected"/>
+					<GradientEditor :modelValue="selected"/>
 					<div :class="$style.pickerActions"><button class="_button" @click="quickEditorOpen = false">閉じる</button><button class="_buttonPrimary" @click="openSelectedInspector"><i class="ti ti-adjustments-horizontal"></i>詳細設定</button></div>
 				</div>
 				<div v-if="dragHintVisible" :class="$style.dragHint" :style="dragHintStyle"><i class="ti ti-hand-move"></i><span>プレビュー横の簡易タイムラインで、項目同士の隙間へ重ねて移動できます。</span></div>
@@ -109,10 +111,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<button class="_button" :class="[$style.dragTimelineDelete, deleteDropArmed && $style.deleteDropArmed]" data-delete-drop @pointerenter="armDeleteDrop" @pointerleave="disarmDeleteDrop" @dragover.prevent="armDeleteDrop"><i class="ti ti-trash-x"></i><span><b>削除</b><small>ここへ重ねる</small></span></button>
 					<section v-for="section in dragTimelineSections" :key="section.id" :class="$style.dragTimelineSection" :data-container="section.id">
 						<strong @pointerenter="timelineDropTarget = null">{{ section.label }}</strong>
-						<button class="_button" :class="$style.dragTimelineGap" :disabled="!canUseTimelineContainer(section.id)" :data-active="timelineDropTarget?.containerId === section.id && timelineDropTarget?.index === 0" @pointerenter="armTimelineDrop(section.id, 0)" @dragover.prevent="armTimelineDrop(section.id, 0)"><i class="ti ti-plus"></i><span>先頭へ挿入</span></button>
+						<button class="_button" :class="$style.dragTimelineGap" :disabled="!canUseTimelineContainer(section.id)" data-timeline-drop :data-container-id="section.id" :data-index="0" :data-active="timelineDropTarget?.containerId === section.id && timelineDropTarget?.index === 0" @pointerenter="armTimelineDrop(section.id, 0)" @dragover.prevent="armTimelineDrop(section.id, 0)"><i class="ti ti-plus"></i><span>先頭へ挿入</span></button>
 						<template v-for="(entry, index) in section.items" :key="entry.id">
 							<div :class="$style.dragTimelineItem" @pointerenter="timelineDropTarget = null"><i :class="entry.icon"></i><span>{{ entry.label }}</span></div>
-							<button class="_button" :class="$style.dragTimelineGap" :disabled="!canUseTimelineContainer(section.id)" :data-active="timelineDropTarget?.containerId === section.id && timelineDropTarget?.index === index + 1" @pointerenter="armTimelineDrop(section.id, index + 1)" @dragover.prevent="armTimelineDrop(section.id, index + 1)"><i class="ti ti-plus"></i><span>{{ index === section.items.length - 1 ? '末尾へ挿入' : 'この隙間へ挿入' }}</span></button>
+							<button class="_button" :class="$style.dragTimelineGap" :disabled="!canUseTimelineContainer(section.id)" data-timeline-drop :data-container-id="section.id" :data-index="index + 1" :data-active="timelineDropTarget?.containerId === section.id && timelineDropTarget?.index === index + 1" @pointerenter="armTimelineDrop(section.id, index + 1)" @dragover.prevent="armTimelineDrop(section.id, index + 1)"><i class="ti ti-plus"></i><span>{{ index === section.items.length - 1 ? '末尾へ挿入' : 'この隙間へ挿入' }}</span></button>
 						</template>
 					</section>
 				</aside>
@@ -198,7 +200,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<InspectorCard title="形"><div :class="$style.choiceRow"><button v-for="shape in buttonShapes" :key="shape.value" class="_button" :data-active="selected.shape === shape.value" @click="selected.shape = shape.value"><span :class="$style.shapeSample" :data-shape="shape.value"></span><small>{{ shape.label }}</small></button></div></InspectorCard>
 						<InspectorCard title="大きさ"><div :class="$style.choiceRow"><button v-for="size in sizes" :key="size.value" class="_button" :disabled="!canSetNodeSize(selected, size.value)" :data-active="selected.size === size.value" @click="setNodeSize(selected, size.value)">{{ size.label }}</button></div><small v-if="selectedParentColumns > 1">複数列では「大」を選べません。</small></InspectorCard>
 						<InspectorCard v-if="editMode === 'expanded'" title="表示"><label :class="$style.check"><input v-model="selected.showLabel" type="checkbox">アイコン下の文字を表示</label><label :class="$style.field">回転 <input v-model.number="selected.rotation" type="range" min="-12" max="12" step="1"><output>{{ selected.rotation }}°</output></label></InspectorCard>
-						<AppearanceEditor v-model="selected" :collapsed-button="editMode === 'collapsed'"/>
+						<AppearanceEditor v-model="selected" :collapsedButton="editMode === 'collapsed'"/>
 						<InspectorCard v-if="selected.menuId === 'lists' || selected.menuId === 'antennas'" title="直接開く項目"><button class="_buttonPrimary" @click="chooseDirectTarget(selected)"><i class="ti ti-list-search"></i>{{ selected.targetId ? '選び直す' : '選択する' }}</button><small>{{ selected.targetId ? '指定した項目を直接開きます。' : '未指定の場合は前回開いた項目を表示します。' }}</small></InspectorCard>
 					</div>
 				</template>
@@ -636,13 +638,40 @@ function selectAfterDrag() { if (selectedId.value && !findNode(selectedId.value)
 function updateDragPointer(event: PointerEvent | DragEvent | TouchEvent) {
 	const touch = 'touches' in event ? event.touches[0] : null;
 	dragPointer.value = { x: touch?.clientX ?? ('clientX' in event ? event.clientX : dragPointer.value.x), y: touch?.clientY ?? ('clientY' in event ? event.clientY : dragPointer.value.y) };
+	updateDragDropTargetFromPoint();
+}
+
+function pointTarget(selector: string): HTMLElement | null {
+	for (const element of window.document.elementsFromPoint(dragPointer.value.x, dragPointer.value.y)) {
+		const target = element.closest<HTMLElement>(selector);
+		if (target) return target;
+	}
+	return null;
+}
+
+function updateDragDropTargetFromPoint() {
+	if (!dragHintVisible.value) return;
+	if (pointTarget('[data-delete-drop]')) {
+		armDeleteDrop();
+		return;
+	}
+	const target = pointTarget('[data-timeline-drop]');
+	const containerId = target?.dataset.containerId;
+	const index = Number(target?.dataset.index);
+	if (target && containerId && Number.isInteger(index) && canUseTimelineContainer(containerId)) {
+		armTimelineDrop(containerId, index);
+		return;
+	}
+	deleteDropArmed.value = false;
+	timelineDropTarget.value = null;
 }
 
 function updateDragTimelinePosition() {
 	if (typeof window === 'undefined') return;
 	const previewRect = sidebarPreviewEl.value?.getBoundingClientRect() ?? stageEl.value?.getBoundingClientRect();
 	if (!previewRect) return;
-	const width = Math.min(224, window.innerWidth - 24);
+	const compact = (stageEl.value?.clientWidth ?? window.innerWidth) <= 720;
+	const width = Math.min(compact ? 300 : 224, window.innerWidth - 24);
 	const gap = 12;
 	let left = previewRect.right + gap;
 	if (left + width > window.innerWidth - 12) left = previewRect.left - width - gap;
@@ -668,6 +697,9 @@ async function onDragEnd() {
 	window.document.removeEventListener('dragover', updateDragPointer);
 	window.removeEventListener('touchmove', updateDragPointer);
 	window.removeEventListener('resize', updateDragTimelinePosition);
+	// touch dragでは pointerenter / dragover が発火しないため、指を離した
+	// 最終座標でもう一度簡易タイムラインの対象を確定する。
+	updateDragDropTargetFromPoint();
 	const sourceId = draggingNodeId.value;
 	const shouldDelete = deleteDropArmed.value;
 	const timelineTarget = timelineDropTarget.value == null ? null : { ...timelineDropTarget.value };
@@ -1189,6 +1221,7 @@ definePage(() => ({
 .profileAdd { border-color:var(--studioAccent); }
 .profileLimit { color:var(--studioMuted);font-size:.78rem;white-space:nowrap; }
 .headerActions { display:flex;align-items:center;justify-content:flex-end;gap:8px;min-width:0;flex-wrap:wrap; }
+.headerControlGroup { display:flex;align-items:center;justify-content:flex-end;gap:8px;min-width:0; }
 .dirty { display:inline-flex;align-items:center;gap:5px;color:var(--studioDanger);font-size:.78rem; }
 .historyActions { display:flex;align-items:center;gap:3px;padding:3px;border:1px solid var(--studioLine);border-radius:12px;background:var(--studioBg); }
 .historyButton { border:0;background:transparent;color:var(--studioMuted); }
@@ -1506,27 +1539,33 @@ definePage(() => ({
 	.stage { min-height:850px; }
 }
 @container (max-width:720px) {
-	.header { grid-template-columns:1fr;align-items:flex-start; }
-	.headerActions,.profileBar { justify-content:flex-start; }
+	.header { grid-template-columns:1fr;align-items:stretch;gap:8px;padding:10px 12px; }
+	.brand { min-height:36px; }
+	.profileBar { width:100%;padding:4px;box-sizing:border-box;justify-content:flex-start;flex-wrap:nowrap;overflow-x:auto;overscroll-behavior-x:contain;border:1px solid var(--studioLine);border-radius:13px;background:var(--studioBg);scrollbar-width:thin; }
+	.profileBar > * { flex:0 0 auto; }
+	.headerActions { width:100%;justify-content:space-between;flex-wrap:nowrap;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none; }
+	.headerActions::-webkit-scrollbar { display:none; }
+	.headerControlGroup { margin-left:auto;flex:0 0 auto; }
 	.pane { padding:12px; }
 	.paneHead { align-items:flex-start;flex-direction:column; }
 	.previewHeadActions { width:100%;justify-content:space-between; }
 	.stage { padding:168px 8px 20px; }
 	.sideTools { top:10px;transform:none; }
 	.sideTools[data-side="left"] { left:8px;display:flex;flex-wrap:wrap;max-width:calc(100% - 16px); }
-	.sideTools[data-side="right"] { top:91px;right:8px;display:flex; }
+	.sideTools[data-side="right"] { top:91px;right:auto;left:8px;display:flex;justify-content:flex-start; }
 	.addAction { width:76px;min-height:62px; }
 	.bulkAction,.reorderAction { width:76px;min-height:62px; }
 	.creationPicker { top:166px;left:50%;width:calc(100% - 24px);transform:translateX(-50%); }
 	.quickEditor,.reorderWindow { position:fixed;top:50%;left:50%;right:auto;width:min(430px,calc(100% - 24px));max-height:calc(100dvh - 24px);transform:translate(-50%,-50%); }
-	.dragTimeline { width:min(224px,calc(100% - 24px)); }
+	.dragTimeline { width:min(300px,calc(100% - 24px)); }
+	.dragTimelineGap { min-height:38px;margin:2px 4px;padding:6px 8px;font-size:.67rem;touch-action:none; }
 	.studioDialogWindow,.tutorialWindow { top:50%;right:auto;bottom:auto;left:50%;max-height:calc(100dvh - 24px);transform:translate(-50%,-50%); }
 	.bento { grid-template-columns:1fr; }
 	.resetConfirm { position:fixed;top:50%;left:50%;right:auto;transform:translate(-50%,-50%); }
 }
 @container (max-width:480px) {
 	.logo { font-size:1.1rem; }
-	.actionButton { padding:8px; }.actionButton:not(:last-child) { font-size:0; }.actionButton i { font-size:1rem; }
+	.actionButton { display:grid;place-items:center;width:36px;height:36px;min-height:36px;padding:0; }.actionButton > span { display:none; }.actionButton i { font-size:1rem; }
 	.previewHeadActions { align-items:stretch;flex-direction:column; }
 	.copyButton,.modeTabs { width:100%;justify-content:center; }
 	.copyMenu { position:fixed;top:50%;left:50%;right:auto;width:min(330px,calc(100% - 24px));transform:translate(-50%,-50%); }

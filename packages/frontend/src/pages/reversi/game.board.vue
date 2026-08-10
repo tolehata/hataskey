@@ -502,7 +502,7 @@ function resetTimer() {
 	playAnimationTimer = window.setTimeout(() => playAnimation.value = false, 5000);
 }
 
-const _reactionEmojis = ref(store.r.reactions);
+const _reactionEmojis = ref([...store.s.recentlyUsedEmojis]);
 const reactionEmojis = computed(() => _reactionEmojis.value.slice(0, 10));
 
 const blackUserEl = ref<HTMLElement | null>(null);

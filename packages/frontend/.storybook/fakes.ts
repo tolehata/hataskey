@@ -32,6 +32,7 @@ export function channel(id = 'somechannelid', name = 'Some Channel', bannerUrl: 
 		name,
 		description: null,
 		userId: null,
+		bannerId: null,
 		bannerUrl,
 		pinnedNoteIds: [],
 		color: '#000',
@@ -40,6 +41,9 @@ export function channel(id = 'somechannelid', name = 'Some Channel', bannerUrl: 
 		notesCount: 1,
 		isSensitive: false,
 		allowRenoteToExternal: false,
+		isPrivate: false,
+		hasPassword: false,
+		moderatorUserIds: [],
 	};
 }
 

@@ -44,7 +44,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<span v-if="note.localOnly" style="margin-right: 0.5em;"><i v-tooltip="i18n.ts._visibility['disableFederation']" class="ti ti-rocket-off"></i></span>
 			<span
 				v-if="note.deliveryTargets && (note.deliveryTargets.mode === 'include' || note.deliveryTargets.hosts?.length)"
-				v-tooltip="`${i18n.ts._deliveryTargetControl[note.deliveryTargets.mode === 'include' ? 'deliveryTargetsInclude' : 'deliveryTargetsExclude'] + ':' + (note.deliveryTargets.hosts?.length ? '\n' + note.deliveryTargets.hosts.map((h, i) => note.deliveryTargets.names?.[i] ? `${note.deliveryTargets.names[i]} (${h})` : h).join('\n') : '\n' + i18n.ts.none)}`"
+				v-tooltip="deliveryTargetsTooltip(note.deliveryTargets)"
 				style="margin-right: 0.5em;"
 			>
 				<i :class="note.deliveryTargets.mode === 'include' ? 'ti ti-truck' : 'ti ti-truck-filled'"></i>
@@ -88,6 +88,16 @@ const mock = inject(DI.mock, false);
 
 const showTicker = (prefer.s.instanceTicker === 'always') || (prefer.s.instanceTicker === 'remote' && props.note.user.instance);
 const router = useRouter();
+
+function deliveryTargetsTooltip(targets: Misskey.entities.Note['deliveryTargets']): string {
+	if (!targets) return '';
+	const title = i18n.ts._deliveryTargetControl[targets.mode === 'include' ? 'deliveryTargetsInclude' : 'deliveryTargetsExclude'];
+	const hosts = targets.hosts ?? [];
+	const details = hosts.length > 0
+		? hosts.map((hostName, index) => targets.names?.[index] ? `${targets.names[index]} (${hostName})` : hostName).join('\n')
+		: i18n.ts.none;
+	return `${title}:\n${details}`;
+}
 
 function showOnRemote() {
 	if (props.note.user.instance === undefined) router.pushByPath(notePage(props.note));

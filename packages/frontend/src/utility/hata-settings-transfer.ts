@@ -15,11 +15,12 @@ import { misskeyApi } from '@/utility/misskey-api.js';
 import { $i } from '@/i.js';
 
 export const HATA_SETTINGS_TRANSFER_FORMAT = 'hataskey-custom-settings';
-export const HATA_SETTINGS_TRANSFER_VERSION = 2;
+export const HATA_SETTINGS_TRANSFER_VERSION = 3;
 export const HATA_SETTINGS_TRANSFER_MAX_BYTES = 1024 * 1024;
+const HATACORDING_UI_TRANSFER_KEY = 'hatacordingUi';
 
 type PreferenceKey = keyof typeof PREF_DEF;
-export type HataSettingsCategoryId = 'general' | 'hatasabaUi' | 'hataSideStudio' | 'hatask' | 'hatady' | 'hatafeed' | 'hanaawase' | 'mascot' | 'earthquake';
+export type HataSettingsCategoryId = 'general' | 'hatasabaUi' | 'hataSideStudio' | 'hatacordingUi' | 'hatask' | 'hatady' | 'hatafeed' | 'hanaawase' | 'mascot' | 'earthquake';
 
 type RegistryTarget = {
 	id: string;
@@ -38,6 +39,7 @@ type CategoryDefinition = {
 	registry?: readonly RegistryTarget[];
 	profileBadges?: boolean;
 	earthquakeNotifications?: boolean;
+	hatacordingUi?: boolean;
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> => value != null && typeof value === 'object' && !Array.isArray(value);
@@ -55,6 +57,22 @@ const isHataSideStudioStorageString = (value: unknown) => {
 	try {
 		const parsed: unknown = JSON.parse(value);
 		return isRecord(parsed) && Array.isArray(parsed.profiles);
+	} catch {
+		return false;
+	}
+};
+const isHatacordingUiStorageString = (value: unknown) => {
+	if (typeof value !== 'string' || value.length > 256 * 1024) return false;
+	try {
+		const parsed: unknown = JSON.parse(value);
+		return isRecord(parsed)
+			&& typeof parsed.version === 'number'
+			&& Number.isInteger(parsed.version)
+			&& parsed.version >= 1
+			&& parsed.version <= 7
+			&& (parsed.enabled == null || typeof parsed.enabled === 'boolean')
+			&& isRecord(parsed.menu)
+			&& Array.isArray(parsed.subpaneTabs);
 	} catch {
 		return false;
 	}
@@ -111,6 +129,10 @@ export const HATA_SETTINGS_CATEGORIES: readonly CategoryDefinition[] = [
 	{
 		id: 'hataSideStudio', label: 'HataSideStudio', description: 'プロファイル、拡大・縮小の配置、色、グループとウィジェット設定',
 		localKeys: ['hataSideStudio'],
+	},
+	{
+		id: 'hatacordingUi', label: 'HataSNSCordUI', description: 'メニュー、右ペイン、ウィジェットと端末ごとの表示設定',
+		hatacordingUi: true,
 	},
 	{
 		id: 'hatask', label: 'Hatask', description: 'テーマやホーム表示などの設定（ToDo・記録は含みません）',
@@ -244,6 +266,8 @@ const deckColumnSchema: NestedSchema = {
 		borderColor: optional(nullableStringSchema),
 		fullWidth: optional({ type: 'boolean' }),
 		fullHeight: optional({ type: 'boolean' }),
+		excludeTypes: optional({ type: 'array', item: stringSchema(128, 1), maxItems: 100 }),
+		notificationFilterKnownTypes: optional({ type: 'array', item: stringSchema(128, 1), maxItems: 100 }),
 	},
 };
 
@@ -258,6 +282,7 @@ const deckTabSchema: NestedSchema = {
 		tabName: optional(stringSchema(512)),
 		tabColor: optional(nullableStringSchema),
 		excludeTypes: optional({ type: 'array', item: stringSchema(128, 1), maxItems: 100 }),
+		notificationFilterKnownTypes: optional({ type: 'array', item: stringSchema(128, 1), maxItems: 100 }),
 	},
 };
 
@@ -456,6 +481,11 @@ export async function createHataSettingsTransfer(selected: readonly HataSettings
 			const value = miLocalStorage.getItem(key);
 			if (value != null) (payload.device ??= {})[key] = value;
 		}
+		if (definition.hatacordingUi && $i) {
+			const key = `hatacordingUi:${$i.id}` as const;
+			const value = miLocalStorage.getItem(key);
+			if (value != null) (payload.device ??= {})[HATACORDING_UI_TRANSFER_KEY] = value;
+		}
 		for (const key of definition.preferenceKeys ?? []) {
 			(payload.preferences ??= {})[key] = cloneJson(preferAny.s[key]);
 		}
@@ -494,6 +524,10 @@ export async function applyHataSettingsTransfer(file: HataSettingsTransferFile, 
 		if (!isRecord(payload)) { result.skipped.push({ category: definition.id, key: '*', reason: 'このカテゴリのデータがありません' }); continue; }
 		if (isRecord(payload.device)) {
 			const known = new Set<string>(definition.localKeys ?? []);
+			if (definition.hatacordingUi && $i) {
+				known.add(HATACORDING_UI_TRANSFER_KEY);
+				known.add(`hatacordingUi:${$i.id}`);
+			}
 			for (const key of Object.keys(payload.device)) if (!known.has(key)) result.skipped.push({ category: definition.id, key, reason: 'この版では扱わない端末設定です' });
 		}
 		if (isRecord(payload.preferences)) {
@@ -519,6 +553,15 @@ export async function applyHataSettingsTransfer(file: HataSettingsTransferFile, 
 				applyHataSideStudioStore(sanitizeHataSideStudioStore(JSON.parse(value as string)));
 			}
 			result.applied++;
+		}
+		if (definition.hatacordingUi && $i && isRecord(payload.device)) {
+			const key = `hatacordingUi:${$i.id}` as const;
+			const sourceKey = Object.hasOwn(payload.device, HATACORDING_UI_TRANSFER_KEY) ? HATACORDING_UI_TRANSFER_KEY : key;
+			if (Object.hasOwn(payload.device, sourceKey)) {
+				const value = payload.device[sourceKey];
+				if (!isHatacordingUiStorageString(value)) result.skipped.push({ category: definition.id, key, reason: '値の形式が合いません' });
+				else { miLocalStorage.setItem(key, value as string); result.applied++; }
+			}
 		}
 
 		for (const key of definition.preferenceKeys ?? []) {

@@ -759,10 +759,9 @@ export const PREF_DEF = definePreferences({
         useSimpleTL: {
         default: false,
 	},
-        simpleTLLastListId: {
-        default: null as string | null,
-        hidden: true, // 設定画面には出さない
-        },
+	        simpleTLLastListId: {
+	        default: null as string | null,
+	        },
 	enableWidgetsArea: {
 		default: true,
 	},

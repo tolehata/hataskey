@@ -136,7 +136,7 @@ const statusItems = [
 	{ value: 'pending', label: '承認待ち' },
 	{ value: 'approved', label: '承認済み' },
 	{ value: 'rejected', label: '却下済み' },
-] as const;
+];
 
 const status = ref<'pending' | 'approved' | 'rejected'>('pending');
 const items = ref<any[]>([]);

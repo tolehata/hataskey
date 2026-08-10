@@ -229,7 +229,7 @@ function getDifficulty(): number {
 }
 function getAiMode(): string { return props.ai || ''; }
 function getEndless(): boolean { return props.endless === '1'; }
-function getHighScoreKey(): string {
+function getHighScoreKey(): `whackEmojiHighScore_${string}` {
 	return isEndless.value ? 'whackEmojiHighScore_endless' : `whackEmojiHighScore_${difficulty.value}`;
 }
 

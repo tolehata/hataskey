@@ -743,6 +743,10 @@ export const ROUTE_DEF = [{
 	component: page(() => import('@/pages/hatafeed-beta.vue')),
 	loginRequired: true,
 }, {
+	path: '/hatafeed/hatacording-ui',
+	component: page(() => import('@/pages/hatacording-ui.vue')),
+	loginRequired: true,
+}, {
 	path: '/playground/cpp',
 	component: page(() => import('@/pages/cpp-playground.vue')),
 	loginRequired: true,

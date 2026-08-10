@@ -320,7 +320,7 @@ async function loadCitiesFor(q: any) {
 	const currentKey = props.zoomQuake?._key ?? props.defaultQuake?._key ?? null;
 	if (currentKey !== myKey) return;
 
-	const out: { key: string; d: string; scale: number }[] = [];
+	const out: { key: string; d: string; scale: number; cx: number; cy: number }[] = [];
 	for (const g of geos) {
 		if (!g) continue;
 		for (const f of g.features) {

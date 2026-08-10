@@ -14,10 +14,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 	<div v-else-if="!thin_ && canBack" :class="$style.buttonsLeft">
 		<div v-if="narrow && !hideTitle" :class="$style.button"/>
 		<div v-else-if="actions && actions.length > 0" :class="$style.button"/>
-		<div v-if="actions && actions.length > 1 && ['index', 'my-notifications', 'chat'].includes(<string>mainRouter.currentRoute.value.name)" :class="$style.button"/>
+		<div v-if="actions && actions.length > 1 && ['index', 'my-notifications', 'chat'].includes(<string>router.currentRoute.value.name)" :class="$style.button"/>
 		<div v-if="actions && actions.length > 2" :class="$style.button"/>
 	</div>
-	<div v-if="pageMetadata && pageMetadata.avatar && !thin_ && mainRouter.currentRoute.value.name === 'user' && ($i != null && $i.id != pageMetadata.avatar.id)">
+	<div v-if="pageMetadata && pageMetadata.avatar && !thin_ && router.currentRoute.value.name === 'user' && ($i != null && $i.id != pageMetadata.avatar.id)">
 		<div :class="$style.button"/>
 	</div>
 
@@ -48,7 +48,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<div ref="tabHighlightEl" :class="$style.tabHighlight"></div>
 		</div>
 	</template>
-	<div v-if="!thin_ && !narrow && (actions && actions.length > 0) && hideTitle && ['index'].includes(<string>mainRouter.currentRoute.value.name)" :class="$style.buttonsRight"/>
+	<div v-if="!thin_ && !narrow && (actions && actions.length > 0) && hideTitle && ['index'].includes(<string>router.currentRoute.value.name)" :class="$style.buttonsRight"/>
 	<div v-if="(!thin_ && narrow && !hideTitle) || (actions && actions.length > 0)" :class="$style.buttonsRight">
 		<template v-for="action in actions">
 			<button v-tooltip.noDelay="action.text" class="_button" :class="[$style.button, { [$style.highlighted]: action.highlighted }]" @click.stop="action.handler" @touchstart="preventDrag"><i :class="action.icon"></i></button>
@@ -56,7 +56,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 	</div>
 	<div v-else-if="!thin_ && !canBack && !(actions && actions.length > 0)" :class="$style.buttonsRight"/>
 	<div v-if="pageMetadata && pageMetadata.avatar && ($i && $i.id !== pageMetadata.userName?.id) && !disableFollowButton" :class="$style.followButton">
-		<MkFollowButton v-if="mainRouter.currentRoute.value.name === 'user'" :user="pageMetadata.avatar" :transparent="false" :full="!narrow"/>
+		<MkFollowButton v-if="router.currentRoute.value.name === 'user'" :user="pageMetadata.avatar" :transparent="false" :full="!narrow"/>
 	</div>
 </div>
 </template>
@@ -96,7 +96,7 @@ import { getAccountMenu } from '@/accounts.js';
 import { $i } from '@/i.js';
 import { DI } from '@/di.js';
 import * as os from '@/os.js';
-import { mainRouter } from '@/router.js';
+import { mainRouter, useRouter } from '@/router.js';
 import { i18n } from '@/i18n.js';
 import { prefer } from '@/preferences.js';
 import { scrollToVisibility } from '@/utility/scroll-to-visibility.js';
@@ -104,7 +104,8 @@ import MkFollowButton from '@/components/MkFollowButton.vue';
 import { haptic } from '@/utility/haptic.js';
 
 const { showEl } = scrollToVisibility();
-const canBack = ref(['index', 'explore', 'my-notifications', 'chat'].includes(<string>mainRouter.currentRoute.value.name));
+const router = useRouter();
+const canBack = computed(() => ['index', 'explore', 'my-notifications', 'chat'].includes(<string>router.currentRoute.value.name));
 
 const props = withDefaults(defineProps<PageHeaderProps>(), {
 	tabs: () => ([] as Tab[]),
@@ -118,7 +119,9 @@ const emit = defineEmits<{
 const injectedPageMetadata = inject(DI.pageMetadata, ref(null));
 const pageMetadata = computed(() => props.overridePageMetadata ?? injectedPageMetadata.value);
 
-const hideTitle = computed(() => false);
+// HataSNSCordUIの中央・サブペインでは外側のペインがタイトルを持つ。
+// タイトルだけを省略し、ページ固有のタブと操作ボタンはそのまま温存する。
+const hideTitle = computed(() => inject('shouldOmitHeaderTitle', false) || props.hideTitle);
 const thin_ = props.thin || inject('shouldHeaderThin', false);
 
 const el = useTemplateRef('el');
@@ -197,7 +200,11 @@ function onTabClick(tab: Tab, ev: MouseEvent): void {
 function goBack() {
 	haptic();
 	if (props.backPath) {
-		mainRouter.pushByPath(props.backPath);
+		router.pushByPath(props.backPath);
+		return;
+	}
+	if (router !== mainRouter) {
+		router.push('/');
 		return;
 	}
 

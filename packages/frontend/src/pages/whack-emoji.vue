@@ -210,7 +210,7 @@ function startGame() {
 	let url = `/whack-emoji/play?difficulty=${selectedDiff.value}`;
 	if (gameMode.value === 'endless') url += '&endless=1';
 	if (aiLevel.value) url += `&ai=${aiLevel.value}`;
-	router.push(url);
+	router.pushByPath(url);
 }
 
 function goLobby() {

@@ -110,6 +110,7 @@ import { misskeyApi } from '@/utility/misskey-api.js';
 import { chooseDriveFile } from '@/utility/drive.js';
 import { iAmModerator } from '@/i.js';
 import { categoryLabel, creatableCategoryKeys, staffOnlyCategoryKeys, categoryDesc, categoryIcon } from '@/utility/hatafeed.js';
+import type { HataFeedCategory, HataFeedPriority } from '@/utility/hatafeed.js';
 
 const props = defineProps<{ projectId: string | null; projects: any[] }>();
 const emit = defineEmits<{ (ev: 'done', v: any): void; (ev: 'closed'): void }>();
@@ -117,10 +118,10 @@ const emit = defineEmits<{ (ev: 'done', v: any): void; (ev: 'closed'): void }>()
 const dialog = useTemplateRef('dialog');
 
 const step = ref(1);
-const category = ref('bug');
+const category = ref<HataFeedCategory>('bug');
 const title = ref('');
 const description = ref('');
-const priority = ref('normal');
+const priority = ref<HataFeedPriority>('normal');
 const priorityItems = [
 	{ value: 'low', label: '低' },
 	{ value: 'normal', label: '通常' },
@@ -133,7 +134,7 @@ const codeEnabled = ref(false);
 const code = ref('');
 
 // 旗鯖fork: スタッフ専用カテゴリ(security等)は一般ユーザーに見せない。
-const availableCategoryKeys = computed(() => creatableCategoryKeys.filter(c => iAmModerator || !staffOnlyCategoryKeys.includes(c)));
+const availableCategoryKeys = computed(() => creatableCategoryKeys.filter(c => iAmModerator || !staffOnlyCategoryKeys.includes(c as 'security')));
 
 const projectName = computed(() => props.projects.find(p => p.id === props.projectId)?.name ?? null);
 

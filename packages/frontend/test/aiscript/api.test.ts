@@ -75,6 +75,10 @@ vi.mock('@/utility/misskey-api.js', () => {
 });
 
 describe('AiScript common API', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
 	afterAll(() => {
 		vi.unstubAllGlobals();
 	});

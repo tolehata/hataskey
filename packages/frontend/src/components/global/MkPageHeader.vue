@@ -44,14 +44,14 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</div>
 			<XTabs v-if="(!narrow || hideTitle)" :class="[$style.tabs, { [$style.tabs_canBack]: !canBack }]" :tab="tab" :tabs="tabs" :rootEl="el" @update:tab="key => emit('update:tab', key)" @tabClick="onTabClick"/>
 		</template>
-		<div v-if="!thin_ && !narrow && (actions && actions.length > 0) && hideTitle && ['index'].includes(<string>mainRouter.currentRoute.value.name)" :class="$style.buttonsRight"/>
+		<div v-if="!thin_ && !narrow && (actions && actions.length > 0) && hideTitle && ['index'].includes(<string>router.currentRoute.value.name)" :class="$style.buttonsRight"/>
 		<div v-if="(!thin_ && narrow && !hideTitle) || (actions && actions.length > 0)" :class="$style.buttonsRight">
 			<template v-for="action in actions">
 				<button v-tooltip.noDelay="action.text" class="_button" :class="[$style.button, { [$style.highlighted]: action.highlighted }]" @click.stop="action.handler" @touchstart="preventDrag"><i :class="action.icon"></i></button>
 			</template>
 		</div>
 		<div v-else-if="!thin_ && !canBack && !(actions && actions.length > 0)" :class="$style.buttonsRight"/>
-		<div v-if="pageMetadata && pageMetadata.avatar && ($i && $i.id !== pageMetadata.userName?.id) && mainRouter.currentRoute.value.name === 'user' && !disableFollowButton && !notification" :class="$style.followButton">
+		<div v-if="pageMetadata && pageMetadata.avatar && ($i && $i.id !== pageMetadata.userName?.id) && router.currentRoute.value.name === 'user' && !disableFollowButton && !notification" :class="$style.followButton">
 			<MkFollowButton :user="pageMetadata.avatar" :transparent="false" :full="!narrow"/>
 		</div>
 	</div>
@@ -94,7 +94,7 @@ import { getAccountMenu } from '@/accounts.js';
 import { $i } from '@/i.js';
 import { DI } from '@/di.js';
 import * as os from '@/os.js';
-import { mainRouter } from '@/router.js';
+import { mainRouter, useRouter } from '@/router.js';
 import { i18n } from '@/i18n.js';
 import { prefer } from '@/preferences.js';
 import { miLocalStorage } from '@/local-storage.js';
@@ -104,6 +104,7 @@ import { haptic } from '@/utility/haptic.js';
 import { getVisibleBottomNav } from '@/utility/hatasaba-navigation.js';
 
 const { showEl } = scrollToVisibility();
+const router = useRouter();
 
 /*
 旗鯖fork: canBack は名前に反して「根の画面なので戻るボタンを出さない」の意（true で非表示）。
@@ -121,7 +122,7 @@ const rootPageNames = (() => {
 	if (visibleIds.has('notifications')) names.push('my-notifications');
 	return names;
 })();
-const canBack = ref(rootPageNames.includes(<string>mainRouter.currentRoute.value.name));
+const canBack = computed(() => rootPageNames.includes(<string>router.currentRoute.value.name));
 
 const props = withDefaults(defineProps<PageHeaderProps>(), {
 	tabs: () => ([] as Tab[]),
@@ -157,15 +158,15 @@ const leftSpacing = computed(() => {
 	const actions = props.actions;
 	const actionsLength = actions?.length ?? 0;
 
-	if (!narrow.value && actionsLength > 1 && mainRouter.currentRoute.value.name === 'index') {
+	if (!narrow.value && actionsLength > 1 && router.currentRoute.value.name === 'index') {
 		return { class: true, style: 'margin-right: auto;', children: ['width: 84px;'] };
 	}
 
-	if (narrow.value && actionsLength > 1 && mainRouter.currentRoute.value.name !== 'index') {
+	if (narrow.value && actionsLength > 1 && router.currentRoute.value.name !== 'index') {
 		return { class: false, style: '', children: ['width: 34px;'] };
 	}
 
-	if (pageMetadata.value?.avatar && mainRouter.currentRoute.value.name === 'user' && $i?.id !== pageMetadata.value.avatar.id) {
+	if (pageMetadata.value?.avatar && router.currentRoute.value.name === 'user' && $i?.id !== pageMetadata.value.avatar.id) {
 		return { class: false, style: '', children: ['width: 50px;'] };
 	}
 
@@ -214,7 +215,11 @@ function onTabClick(): void {
 function goBack() {
 	haptic();
 	if (props.backPath) {
-		mainRouter.pushByPath(props.backPath);
+		router.pushByPath(props.backPath);
+		return;
+	}
+	if (router !== mainRouter) {
+		router.push('/');
 		return;
 	}
 
@@ -223,7 +228,7 @@ function goBack() {
 	if (window.history.length > 1) {
 		window.history.back();
 	} else {
-		mainRouter.push('/');
+		router.push('/');
 	}
 }
 
