@@ -11,7 +11,7 @@
  * ⚠️版を上げたら `version` を package.json の値に合わせ、`items` を書き直すこと。
  *   合っていないと「更新したのに前回の内容が出る」ことになる。
  *
- * ⚠️今回（hata-12.0）は**本番の 11.7 から一気に上がる**ため、
+ * ⚠️今回（hata-12.1）は**本番の 11.7 から一気に上がる**ため、
  *   11.7.5 / 11.7.6 / 11.7.7 / 11.8 とその後の追加を**まとめて**案内する。
  */
 
@@ -19,7 +19,7 @@ export type HataWhatsNewItem = {
 	/** Tabler のアイコン名（`ti ti-` 込み） */
 	icon: string;
 	/** 更新案内に表示する、実画面を抽象化した小型プレビュー。 */
-	preview: 'hatady' | 'hatask' | 'sideStudio' | 'hanaawase' | 'ui' | 'hatafeed' | 'beta' | 'privateChannel' | 'profile' | 'viewer' | 'mute' | 'external' | 'security';
+	preview: 'hatady' | 'hatask' | 'hatacording' | 'sideStudio' | 'hanaawase' | 'ui' | 'hatafeed' | 'beta' | 'privateChannel' | 'profile' | 'viewer' | 'mute' | 'external' | 'security';
 	title: string;
 	text: string;
 	/**
@@ -27,7 +27,9 @@ export type HataWhatsNewItem = {
 	 * ⚠️`mainRouter.push()` は登録済みパスのリテラル型しか受けないため、
 	 *   ここも文字列ではなくリテラル型のままにしておく（`string` にすると型検査で落ちる）。
 	 */
-	to?: '/settings/hata-custom' | '/settings/external-account' | '/games' | '/hanaawase' | '/hatady' | '/hatask' | '/hata-side-studio' | '/hatafeed/beta' | '/channels/new';
+	to?: '/settings/hata-custom' | '/settings/external-account' | '/games' | '/hanaawase' | '/hatady' | '/hatask' | '/hata-side-studio' | '/hatafeed/hatacording-ui' | '/hatafeed/beta' | '/channels/new';
+	/** URL遷移ではなく、選択中のUIそのものを切り替える誘導。 */
+	activateUi?: 'hatacording';
 	/** 誘導ボタンの文言。遷移先が違うのに一律「設定を開く」と表示しない。 */
 	linkLabel?: string;
 };
@@ -49,7 +51,7 @@ export type HataWhatsNew = {
 };
 
 export const HATA_WHATS_NEW: HataWhatsNew = {
-	version: '2026.7.0-hata.12.0',
+	version: '2026.7.0-hata.12.1',
 	headline: '大きな新機能を5つ、ゲームを1つ追加、ベースをMisskey2026.7.0へ更新しました',
 	items: [
 		{
@@ -73,6 +75,17 @@ export const HATA_WHATS_NEW: HataWhatsNew = {
 			linkLabel: 'Hataskへ',
 		},
 		{
+			icon: 'ti ti-message-circle-code',
+			preview: 'hatacording',
+			title: 'HataSNSCordUI — 会話型の高機能UI',
+			text: 'タイムラインを会話のように読みながら、左ペインで表示先を選び、右ペインで投稿詳細・検索・通知・ウィジェットを同時に扱える新しいUIです。'
+				+ '設定や旗鯖ツールを開いても左右のペインを保ち、このUIの中で操作を続けられます。'
+				+ 'リアクションやノートの変更もその場で反映され、スマートフォンでは左右の端から各ペインを呼び出せます。'
+				+ '初回チュートリアル、端末ごとの並び替え、UI専用レートリミット表示にも対応しています。',
+			activateUi: 'hatacording',
+			linkLabel: 'HataSNSCordUIへ',
+		},
+		{
 			icon: 'ti ti-bell',
 			preview: 'hatafeed',
 			title: 'HataFeedを全面リデザイン',
@@ -80,7 +93,8 @@ export const HATA_WHATS_NEW: HataWhatsNew = {
 				+ 'トップから絵文字を申請でき、スタッフは複数の申請を1件ずつ続けて確認できます。'
 				+ 'イシューは範囲と含める内容を選んで書き出せます。'
 				+ '同じHataFeedの通知をまとめ、複数のHataFeedから届いた場合もひとまとまりで確認できるようになりました。'
-				+ 'Hatask、HataFeed、地震・津波、プライベートチャンネルのOS通知にも、内容と移動先を表示します。',
+				+ 'Hatask、HataFeed、地震・津波、プライベートチャンネルのOS通知にも、内容と移動先を表示します。'
+				+ '通知ウィジェットのフィルタを安定化し、今後追加される通知種別は設定中のフィルタへ自動で加えず、必要なものを選んで有効にできるようにしました。',
 		},
 		{
 			icon: 'ti ti-layout-sidebar-left-expand',
@@ -88,6 +102,7 @@ export const HATA_WHATS_NEW: HataWhatsNew = {
 			title: 'HataSideStudio — サイドメニューを自分の形に',
 			text: '実際のサイドメニューを見ながら、ボタン・グループ・ウィジェットの並び、形、色、表示内容を端末ごとに編集できる新しいツールです。'
 				+ '拡大時と縮小時を分けて作れ、複数のプロファイル、ドラッグ操作、元に戻す・やり直し、設定の書き出しと読み込みにも対応しています。'
+				+ 'スマートフォンでも簡易タイムラインへ指で移動でき、上部の各操作を省略せず使えます。'
 				+ '設定は端末内で処理され、サーバーや連合へ送信されません。',
 			to: '/hata-side-studio',
 			linkLabel: 'HataSideStudioへ',

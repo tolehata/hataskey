@@ -30,9 +30,14 @@ describe('HATA_WHATS_NEW', () => {
 		});
 	});
 
-	test('HataFeedの全面リデザインはHataskの直後に案内する', () => {
+	test('HataSNSCordUIをHataskの直後かつHataFeedの直前に案内する', () => {
 		const hataskIndex = HATA_WHATS_NEW.items.findIndex(item => item.title.startsWith('Hatask'));
-		expect(HATA_WHATS_NEW.items[hataskIndex + 1]?.title).toBe('HataFeedを全面リデザイン');
+		expect(HATA_WHATS_NEW.items[hataskIndex + 1]).toMatchObject({
+			preview: 'hatacording',
+			activateUi: 'hatacording',
+			linkLabel: 'HataSNSCordUIへ',
+		});
+		expect(HATA_WHATS_NEW.items[hataskIndex + 2]?.title).toBe('HataFeedを全面リデザイン');
 	});
 
 	test('ベータ機能は試せる内容と専用画面への導線を案内する', () => {
@@ -93,7 +98,7 @@ describe('HATA_WHATS_NEW', () => {
 	});
 
 	test('すべての更新項目に内容別の実画面風プレビューを割り当てる', () => {
-		expect(HATA_WHATS_NEW.items).toHaveLength(13);
-		expect(new Set(HATA_WHATS_NEW.items.map(item => item.preview)).size).toBe(13);
+		expect(HATA_WHATS_NEW.items).toHaveLength(14);
+		expect(new Set(HATA_WHATS_NEW.items.map(item => item.preview)).size).toBe(14);
 	});
 });
