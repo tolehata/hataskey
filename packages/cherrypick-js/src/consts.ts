@@ -221,7 +221,11 @@ export const rolePolicies = [
 	'mascotMaxPhrases',
 	'mascotMaxCharacters',
 	'hataSideStudioProfileLimit',
+	'canUseMascot',
 	'canAccessHataFeed',
+	'canUseHatacordingUi',
+	'hatacordingUiSubpaneMaxTabs',
+	'hatacordingUiRateLimit',
 	'canUseHatadySync',
 	'hatadyBookLimit',
 	'hatadyBookmarkLimit',
@@ -266,6 +270,7 @@ export const queueTypes = [
 	'objectStorage',
 	'userWebhookDeliver',
 	'systemWebhookDeliver',
+	'utageResolve',
 ] as const;
 
 // See: packages/backend/src/core/ReversiService.ts@L410

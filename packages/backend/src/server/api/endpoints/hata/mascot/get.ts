@@ -26,6 +26,7 @@ export const meta = {
 			data: {
 				type: 'object',
 				nullable: false, optional: false,
+				additionalProperties: true,
 			},
 			limits: {
 				type: 'object',

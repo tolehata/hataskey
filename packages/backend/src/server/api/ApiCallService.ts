@@ -34,6 +34,19 @@ const accessDenied = {
 	id: '56f35758-7dd5-468b-8439-5d6fb8ec9b8e',
 };
 
+export const HATACORDING_UI_RATE_LIMIT = {
+	duration: 60 * 60_000,
+	max: 500,
+	key: 'hatacording-ui:all-actions',
+} as const;
+
+export const HATACORDING_UI_RATE_LIMIT_HEADERS = {
+	request: 'x-hatacording-ui',
+	limit: 'X-Hatacording-RateLimit-Limit',
+	remaining: 'X-Hatacording-RateLimit-Remaining',
+	reset: 'X-Hatacording-RateLimit-Reset',
+} as const;
+
 @Injectable()
 export class ApiCallService implements OnApplicationShutdown {
 	private logger: Logger;
@@ -175,7 +188,7 @@ export class ApiCallService implements OnApplicationShutdown {
 		// handleRequestの戻り値を待てば#onExecErrorのlogger.write()まで完了していることを保証する
 		// (以前はcall().then().catch()の結果を捨てており、呼び出し側からは完了を待てなかった)。
 		return this.telemetryService.startSpan('API: ' + endpoint.name, () => this.authenticateService.authenticate(token).then(([user, app, flashToken]) => {
-			const call = this.call(endpoint, user, app, flashToken, body, null, request).then((res) => {
+			const call = this.call(endpoint, user, app, flashToken, body, null, request, reply).then((res) => {
 				if (request.method === 'GET' && endpoint.meta.cacheSec && !token && !user) {
 					reply.header('Cache-Control', `public, max-age=${endpoint.meta.cacheSec}`);
 				}
@@ -243,7 +256,7 @@ export class ApiCallService implements OnApplicationShutdown {
 				const call = this.call(endpoint, user, app, flashToken, fields, {
 					name: multipartData.filename,
 					path: path,
-				}, request).then((res) => {
+				}, request, reply).then((res) => {
 					this.send(reply, res);
 				}).catch((err: ApiError) => {
 					this.#sendApiError(reply, err);
@@ -330,11 +343,36 @@ export class ApiCallService implements OnApplicationShutdown {
 			path: string;
 		} | null,
 		request: FastifyRequest<{ Body: Record<string, unknown> | undefined, Querystring: Record<string, unknown> }>,
+		reply: FastifyReply,
 	) {
 		const isSecure = user != null && token == null && flashToken == null;
 
 		if (ep.meta.secure && !isSecure) {
 			throw new ApiError(accessDenied);
+		}
+
+		// HataSNSCordUIからのネイティブ認証リクエストだけを、UI専用の共通枠で数える。
+		// 通常UI・外部アプリ・ActivityPub/連合処理にはこのヘッダーが無いため波及しない。
+		if (isSecure && request.headers[HATACORDING_UI_RATE_LIMIT_HEADERS.request] === '1') {
+			const policies = await this.roleService.getUserPolicies(user.id);
+			const roleLimit = Math.max(1, Math.min(1000, Math.floor(Number(policies.hatacordingUiRateLimit) || HATACORDING_UI_RATE_LIMIT.max)));
+			const consumption = await this.rateLimiterService.consume({
+				...HATACORDING_UI_RATE_LIMIT,
+				max: roleLimit,
+			}, user.id);
+			if (consumption != null) {
+				reply.header(HATACORDING_UI_RATE_LIMIT_HEADERS.limit, String(consumption.info.total));
+				reply.header(HATACORDING_UI_RATE_LIMIT_HEADERS.remaining, String(consumption.info.remaining));
+				reply.header(HATACORDING_UI_RATE_LIMIT_HEADERS.reset, String(consumption.info.resetMs));
+				if (consumption.exceeded) {
+					throw new ApiError({
+						message: 'Rate limit exceeded. Please try again later.',
+						code: 'RATE_LIMIT_EXCEEDED',
+						id: '6f0e1e73-a2cc-4ac8-a35f-c3ce65f25edf',
+						httpStatusCode: 429,
+					}, consumption.info);
+				}
+			}
 		}
 
 		if (ep.meta.limit) {

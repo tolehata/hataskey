@@ -123,6 +123,7 @@ export class ChannelEntityService {
 			name: channel.name,
 			description: channel.description,
 			userId: channel.userId,
+			bannerId: channel.bannerId,
 			bannerUrl: bannerUrl,
 			pinnedNoteIds: channel.pinnedNoteIds,
 			color: channel.color,
@@ -234,4 +235,3 @@ export class ChannelEntityService {
 		})));
 	}
 }
-

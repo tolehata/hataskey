@@ -14,8 +14,41 @@ export const meta = {
 
 	requireCredential: true,
 	requireModerator: true,
+	secure: true,
 
 	kind: 'read:admin:show-user',
+
+	res: {
+		type: 'object',
+		properties: {
+			users: {
+				type: 'array',
+				items: {
+					type: 'object',
+					properties: {
+						id: { type: 'string', format: 'misskey:id' },
+						username: { type: 'string' },
+						name: { type: 'string', nullable: true },
+						avatarUrl: { type: 'string', nullable: true },
+						hataConsentExternalTl: { type: 'boolean' },
+						hataConsentExternalTlDate: { type: 'string', format: 'date-time', nullable: true },
+						hataConsentCustomFont: { type: 'boolean' },
+						hataConsentCustomFontDate: { type: 'string', format: 'date-time', nullable: true },
+						hataConsentMascot: { type: 'boolean' },
+						hataConsentMascotDate: { type: 'string', format: 'date-time', nullable: true },
+					},
+					required: [
+						'id', 'username', 'name', 'avatarUrl',
+						'hataConsentExternalTl', 'hataConsentExternalTlDate',
+						'hataConsentCustomFont', 'hataConsentCustomFontDate',
+						'hataConsentMascot', 'hataConsentMascotDate',
+					],
+				},
+			},
+			total: { type: 'integer' },
+		},
+		required: ['users', 'total'],
+	},
 } as const;
 
 export const paramDef = {

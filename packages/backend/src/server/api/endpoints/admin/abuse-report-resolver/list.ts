@@ -21,6 +21,12 @@ export const meta = {
 		items: {
 			type: 'object',
 			properties: {
+				id: {
+					type: 'string', format: 'misskey:id', nullable: false, optional: false,
+				},
+				createdAt: {
+					type: 'string', format: 'date-time', nullable: false, optional: false,
+				},
 				name: {
 					type: 'string',
 					nullable: false, optional: false,
@@ -39,7 +45,11 @@ export const meta = {
 				},
 				expiresAt: {
 					type: 'string',
+					enum: ['1hour', '12hours', '1day', '1week', '1month', '3months', '6months', '1year', 'indefinitely'],
 					nullable: false, optional: false,
+				},
+				expirationDate: {
+					type: 'string', format: 'date-time', nullable: true, optional: false,
 				},
 				forward: {
 					type: 'boolean',
@@ -76,8 +86,18 @@ export default class extends Endpoint<typeof meta, typeof paramDef> {
 				}))
 				.take(ps.limit);
 
-			return await query.getMany();
+			const resolvers = await query.getMany();
+			return resolvers.map(resolver => ({
+				id: resolver.id,
+				createdAt: resolver.updatedAt.toISOString(),
+				name: resolver.name,
+				targetUserPattern: resolver.targetUserPattern,
+				reporterPattern: resolver.reporterPattern,
+				reportContentPattern: resolver.reportContentPattern,
+				expiresAt: resolver.expiresAt as '1hour' | '12hours' | '1day' | '1week' | '1month' | '3months' | '6months' | '1year' | 'indefinitely',
+				expirationDate: resolver.expirationDate?.toISOString() ?? null,
+				forward: resolver.forward,
+			}));
 		});
 	}
 }
-

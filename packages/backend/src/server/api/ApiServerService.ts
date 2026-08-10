@@ -47,6 +47,11 @@ export class ApiServerService {
 	public createServer(fastify: FastifyInstance, options: FastifyPluginOptions, done: (err?: Error) => void) {
 		fastify.register(cors, {
 			origin: '*',
+			exposedHeaders: [
+				'X-Hatacording-RateLimit-Limit',
+				'X-Hatacording-RateLimit-Remaining',
+				'X-Hatacording-RateLimit-Reset',
+			],
 		});
 
 		fastify.register(multipart, {

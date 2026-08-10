@@ -182,6 +182,12 @@ export const packedNoteSchema = {
 		event: {
 			type: 'object',
 			optional: true, nullable: true,
+			properties: {
+				title: { type: 'string' },
+				start: { type: 'string', format: 'date-time' },
+				end: { type: 'string', format: 'date-time', nullable: true },
+				metadata: { type: 'object', additionalProperties: true },
+			},
 		},
 		channelId: {
 			type: 'string',
@@ -317,6 +323,14 @@ export const packedNoteSchema = {
 					items: {
 						type: 'string',
 						optional: false, nullable: false,
+					},
+				},
+				names: {
+					type: 'array',
+					optional: true, nullable: true,
+					items: {
+						type: 'string',
+						optional: false, nullable: true,
 					},
 				},
 			},

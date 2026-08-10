@@ -467,4 +467,5 @@ export const ACHIEVEMENT_TYPES = [
 	'welcomeToHatask',
 	'welcomeToHatady',
 	'hataSideStudioPioneer',
+	'hatacordingUiTutorial',
 ] as const;

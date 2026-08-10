@@ -92,6 +92,7 @@ export type AdminGetTableStatsResponse = operations['admin___get-table-stats']['
 export type AdminGetUserIpsRequest = operations['admin___get-user-ips']['requestBody']['content']['application/json'];
 export type AdminGetUserIpsResponse = operations['admin___get-user-ips']['responses']['200']['content']['application/json'];
 export type AdminHataConsentListRequest = operations['admin___hata___consent-list']['requestBody']['content']['application/json'];
+export type AdminHataConsentListResponse = operations['admin___hata___consent-list']['responses']['200']['content']['application/json'];
 export type AdminInviteCreateRequest = operations['admin___invite___create']['requestBody']['content']['application/json'];
 export type AdminInviteCreateResponse = operations['admin___invite___create']['responses']['200']['content']['application/json'];
 export type AdminInviteListRequest = operations['admin___invite___list']['requestBody']['content']['application/json'];

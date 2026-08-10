@@ -256,6 +256,35 @@ export type Channels = {
 			reaction: string;
 		}
 	};
+	stackingGameRoom: {
+		params: { roomId: string };
+		events: {
+			started: (payload: { roomId: string; host2Id: User['id'] }) => void;
+			drop: (payload: { userId: User['id']; dropX: number; emojiName: string; emojiUrl?: string; emojiChar?: string }) => void;
+			scoreUpdate: (payload: { userId: User['id']; score: number; blocks: number }) => void;
+			ended: (payload: { winner: number; loserId: User['id']; reason?: 'disconnect' }) => void;
+			canceled: (payload: { userId: User['id'] }) => void;
+		};
+		receives: {
+			drop: { dropX: number; emojiName: string; emojiUrl?: string; emojiChar?: string };
+			scoreUpdate: { score: number; blocks: number };
+			dead: Record<string, never>;
+		};
+	};
+	whackEmojiRoom: {
+		params: { roomId: string };
+		events: {
+			started: (payload: { roomId: string; host2Id: User['id'] }) => void;
+			whack: (payload: { userId: User['id']; cellIndex: number; isHit: boolean }) => void;
+			scoreUpdate: (payload: { userId: User['id']; score: number; hits: number }) => void;
+			ended: (payload: { winner: number; score1: number; score2: number; reason?: 'disconnect' }) => void;
+		};
+		receives: {
+			scoreUpdate: { score: number; hits: number };
+			whack: { cellIndex: number; isHit: boolean };
+			timeUp: Record<string, never>;
+		};
+	};
 	chatUser: {
 		params: {
 			otherId: string;

@@ -89,6 +89,7 @@ import type {
 	AdminGetUserIpsRequest,
 	AdminGetUserIpsResponse,
 	AdminHataConsentListRequest,
+	AdminHataConsentListResponse,
 	AdminInviteCreateRequest,
 	AdminInviteCreateResponse,
 	AdminInviteListRequest,
@@ -951,7 +952,7 @@ export type Endpoints = {
 	'admin/get-index-stats': { req: EmptyRequest; res: AdminGetIndexStatsResponse };
 	'admin/get-table-stats': { req: EmptyRequest; res: AdminGetTableStatsResponse };
 	'admin/get-user-ips': { req: AdminGetUserIpsRequest; res: AdminGetUserIpsResponse };
-	'admin/hata/consent-list': { req: AdminHataConsentListRequest; res: EmptyResponse };
+	'admin/hata/consent-list': { req: AdminHataConsentListRequest; res: AdminHataConsentListResponse };
 	'admin/invite/create': { req: AdminInviteCreateRequest; res: AdminInviteCreateResponse };
 	'admin/invite/list': { req: AdminInviteListRequest; res: AdminInviteListResponse };
 	'admin/invite/revoke': { req: EmptyRequest; res: EmptyResponse };
