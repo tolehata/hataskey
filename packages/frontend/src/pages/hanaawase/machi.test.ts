@@ -1,4 +1,4 @@
-import { existsSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, it, expect } from 'vitest';
 import { mulberry32 } from './rng.js';
@@ -22,8 +22,10 @@ import {
 	acceptQuest,
 	badgeCount,
 	buildOrder,
+	buildRepostOrder,
 	canGrowReaction,
 	createMachiRng,
+	estimateMachiAutoplayLoad,
 	facePathOf,
 	filterTab,
 	growReaction,
@@ -38,12 +40,14 @@ import {
 	makeNote,
 	makePetals,
 	makeQuestEntry,
+	makeRepostSequence,
 	markMissed,
 	newEmojiChance,
 	nextIconChangeDelay,
 	nextPostDelay,
 	nextQuestDelay,
 	nextReactionDelay,
+	nextRepostDelay,
 	pickEmoji,
 	pickHeartReply,
 	pickIconChange,
@@ -57,6 +61,7 @@ import {
 	tabCount,
 	tabForEntry,
 	toggleHeart,
+	withdrawNote,
 	wipCount,
 } from './machi.js';
 import type { MachiNote, QuestEntry } from './machi.js';
@@ -66,6 +71,7 @@ import {
 	HEART_REPLIES,
 	MACHI_PERSONAS,
 	MACHI_POSTS,
+	MACHI_REPOST_SCENARIOS,
 	MACHI_THREADS,
 	MACHI_INFO_NOTE,
 	TANOMIGOTO,
@@ -85,6 +91,41 @@ describe('machi-lines のデータ健全性', () => {
 			for (const reply of thread.replies) expect(ids.has(reply.p)).toBe(true);
 		}
 		for (const quest of TANOMIGOTO) expect(ids.has(quest.by)).toBe(true);
+	});
+
+	it('投稿取消→投稿しなおし→別NPC反応は250組を明示し、全住民が登場する', () => {
+		expect(MACHI_REPOST_SCENARIOS).toHaveLength(250);
+		const ids = new Set(MACHI_PERSONAS.map((persona) => persona.id));
+		const authors = new Map<MachiPersonaId, number>();
+		const lines: string[] = [];
+		for (const scene of MACHI_REPOST_SCENARIOS) {
+			expect(ids.has(scene.p)).toBe(true);
+			expect(ids.has(scene.by)).toBe(true);
+			expect(scene.by).not.toBe(scene.p);
+			expect(scene.before.trim().length).toBeGreaterThan(0);
+			expect(scene.after.trim().length).toBeGreaterThan(0);
+			expect(scene.reply.trim().length).toBeGreaterThan(0);
+			authors.set(scene.p, (authors.get(scene.p) ?? 0) + 1);
+			lines.push(scene.before, scene.after, scene.reply);
+		}
+		expect(authors.size).toBe(MACHI_PERSONAS.length);
+		for (const count of authors.values()) {
+			expect(count).toBeGreaterThanOrEqual(7);
+			expect(count).toBeLessThanOrEqual(8);
+		}
+		expect(lines).toHaveLength(750);
+		expect(new Set(lines).size).toBe(lines.length);
+	});
+
+	it('追加文は話者の禁則と12月の種明かしを破らない', () => {
+		const exclamationAllowed = new Set<MachiPersonaId>(['ren', 'yae', 'inukai', 'tatsumi', 'yuta', 'goro']);
+		for (const scene of MACHI_REPOST_SCENARIOS) {
+			for (const [speaker, line] of [[scene.p, scene.before], [scene.p, scene.after], [scene.by, scene.reply]] as const) {
+				if (!exclamationAllowed.has(speaker)) expect(line).not.toContain('!');
+				if (speaker === 'ren') expect(line).not.toContain('っす');
+				for (const spoiler of ['常の常連', '古い鋏の持ち主', '帳面に漣']) expect(line).not.toContain(spoiler);
+			}
+		}
 	});
 
 	// ⚠️本数は追加で増える。固定しないが、⚠️idの一意と全フィールドの充足は崩さない。
@@ -123,6 +164,7 @@ describe('machi-lines のデータ健全性', () => {
 			...MACHI_POSTS.map((p) => p.t),
 			...MACHI_THREADS.flatMap((t) => [t.root.t, ...t.replies.map((r) => r.t)]),
 			...HEART_REPLIES,
+			...MACHI_REPOST_SCENARIOS.flatMap((scene) => [scene.before, scene.after, scene.reply]),
 		];
 		for (const line of lines) expect(line).not.toMatch(/[가-힣Ѐ-ӿA-Za-z]/);
 	});
@@ -349,6 +391,84 @@ describe('会話（返信）の組み立て', () => {
 		expect(a.length).toBe(MACHI_POSTS.length + MACHI_THREADS.length);
 		expect(a.filter((s) => s.kind === 'thread').length).toBe(MACHI_THREADS.length);
 		expect(buildOrder(rngOf(43))).not.toEqual(a);
+	});
+
+	it('取消シーンは取消前1本と、本人の投稿しなおし＋別NPC反応に組み立てる', () => {
+		let id = 100;
+		const scene = MACHI_REPOST_SCENARIOS[0]!;
+		const sequence = makeRepostSequence(0, 1000, () => id++);
+		expect(sequence.original.kind).toBe('notes');
+		expect(sequence.followup.kind).toBe('notes');
+		const original = sequence.original.kind === 'notes' ? sequence.original.notes[0]! : undefined;
+		const followup = sequence.followup.kind === 'notes' ? sequence.followup.notes : [];
+		expect(original?.personaId).toBe(scene.p);
+		expect(original?.text).toBe(scene.before);
+		expect(original?.withdrawn).toBe(false);
+		expect(followup[0]?.personaId).toBe(scene.p);
+		expect(followup[0]?.text).toBe(scene.after);
+		expect(followup[0]?.reposted).toBe(true);
+		expect(followup[0]?.hasReplies).toBe(true);
+		expect(followup[1]?.personaId).toBe(scene.by);
+		expect(followup[1]?.text).toBe(scene.reply);
+		expect(followup[1]?.reply).toBe(true);
+	});
+
+	it('取消済み投稿はリアクションを畳み、それ以上育たない', () => {
+		const note = makeNote(9, 'wakana', '取消前', 0);
+		note.reactions.push({ emoji: '🌼', count: 3, mine: false });
+		toggleHeart(note);
+		withdrawNote(note);
+		expect(note.withdrawn).toBe(true);
+		expect(note.hearted).toBe(false);
+		expect(note.reactions).toEqual([]);
+		expect(canGrowReaction(note, 20000)).toBe(false);
+		expect(toggleHeart(note)).toBe(false);
+	});
+
+	it('取消パターンはseed固定の一巡順で250組すべてに到達する', () => {
+		const a = buildRepostOrder(rngOf(77));
+		const b = buildRepostOrder(rngOf(77));
+		expect(a).toEqual(b);
+		expect(a).toHaveLength(250);
+		expect(new Set(a).size).toBe(250);
+		expect(Math.min(...a)).toBe(0);
+		expect(Math.max(...a)).toBe(249);
+		expect(buildRepostOrder(rngOf(78))).not.toEqual(a);
+	});
+});
+
+describe('自動再生の負荷契約', () => {
+	it('通信API検出器の陽性対照が発火し、自動再生ソースには通信・永続化呼び出しが無い', () => {
+		const detector = /(?:\bfetch\s*\(|\bmisskeyApi\s*\(|\bos\.api\s*\(|\bi\/registry\b|\blocalStorage\b|\bmiLocalStorage\b)/;
+		// ⚠️陽性対照。これが落ちるなら「0件」の検査自体が壊れている。
+		expect(detector.test("misskeyApi('i/registry/set')")).toBe(true);
+		const root = join(process.cwd(), 'src/pages/hanaawase');
+		const source = [
+			readFileSync(join(root, 'MachiFeed.vue'), 'utf8'),
+			readFileSync(join(root, 'machi.ts'), 'utf8'),
+		].join('\n');
+		expect(detector.test(source)).toBe(false);
+	});
+
+	it('平均負荷はサーバー要求・永続書込0、ブラウザ内タイマー活発時約88.1回/分', () => {
+		const load = estimateMachiAutoplayLoad();
+		expect(load.serverRequestsPerMinute).toBe(0);
+		expect(load.persistentWritesPerMinute).toBe(0);
+		expect(load.postInsertionsPerMinute).toBeCloseTo(10.571, 3);
+		expect(load.activeReactionChecksPerMinute).toBeCloseTo(35.294, 3);
+		expect(load.reactionPopCleanupWakeupsPerMinute).toBeCloseTo(35.294, 3);
+		expect(load.idleReactionChecksPerMinute).toBe(10);
+		expect(load.repostSequenceWakeupsPerMinute).toBeCloseTo(2.25, 3);
+		expect(load.totalActiveTimerWakeupsPerMinute).toBeCloseTo(88.098, 3);
+		expect(load.totalIdleTimerWakeupsPerMinute).toBeCloseTo(27.51, 3);
+	});
+
+	it('取消シーンの開始間隔は55〜105秒の範囲に収まる', () => {
+		for (let seed = 1; seed <= 100; seed++) {
+			const delay = nextRepostDelay(rngOf(seed));
+			expect(delay).toBeGreaterThanOrEqual(55000);
+			expect(delay).toBeLessThan(105000);
+		}
 	});
 });
 

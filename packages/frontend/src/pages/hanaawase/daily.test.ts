@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, test } from "vitest";
 import { findMatches, hasPossibleMove } from "./engine.js";
 import {
@@ -21,6 +23,17 @@ const emptyDaily = (): Daily => ({
 });
 
 describe("花常デイリー", () => {
+	test("今日の盤面は未読物語へ誤遷移せず、個人の今日の記録を結果画面に出す", () => {
+		const page = readFileSync(resolve(process.cwd(), "src/pages/hanaawase/index.vue"), "utf8");
+		expect(page).toMatch(/function storyWaitsAfterBoard\(\)\s*\{[\s\S]*?if \(isDaily\.value\) return false;/);
+		expect(page).toContain('aria-label="今日の記録"');
+		expect(page).toContain('class="daily-result-score"');
+		expect(page).toContain('自己ベスト');
+		expect(page).toContain('連続日数');
+		expect(page).toContain('プレイ日数');
+		expect(page).not.toContain('デイリーランキング');
+	});
+
 	test("日付はJST固定でYYYYMMDDシード用表現を作る", () => {
 		expect(dailyDateFrom(new Date("2026-07-22T14:59:59.000Z")).key).toBe("2026-07-22");
 		const next = dailyDateFrom(new Date("2026-07-22T15:00:00.000Z"));

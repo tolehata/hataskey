@@ -30,6 +30,8 @@ import { HEART_REPLIES_B20, MACHI_POSTS_BATCH20, MACHI_THREADS_B20 } from './mac
 import { HEART_REPLIES_B21, MACHI_POSTS_BATCH21, MACHI_THREADS_B21 } from './machi-lines-batch21.js';
 import { HEART_REPLIES_B22, MACHI_POSTS_BATCH22, MACHI_THREADS_B22 } from './machi-lines-batch22.js';
 import { HEART_REPLIES_B23, MACHI_POSTS_BATCH23, MACHI_THREADS_B23 } from './machi-lines-batch23.js';
+export { MACHI_REPOST_SCENARIOS } from './machi-lines-reposts.js';
+export type { MachiRepostScenario } from './machi-lines-reposts.js';
 import { TANOMIGOTO_2 } from './machi-lines-tanomigoto-2.js';
 import { TANOMIGOTO_3 } from './machi-lines-tanomigoto-3.js';
 

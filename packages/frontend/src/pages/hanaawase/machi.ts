@@ -10,6 +10,7 @@ import {
 	HEART_EMOJI,
 	HEART_REPLIES,
 	MACHI_POSTS,
+	MACHI_REPOST_SCENARIOS,
 	MACHI_THREADS,
 	TANOMIGOTO,
 } from './machi-lines.js';
@@ -51,6 +52,10 @@ export interface MachiNote {
 	 * ⚠️あくまで空リプ（宛先を書かない独立した投稿）のまま。表示側が一度だけ淡く光らせるだけに使う。
 	 */
 	warm: boolean;
+	/** NPCが取り消した投稿。本文・操作・リアクションは表示しない。 */
+	withdrawn: boolean;
+	/** 直前の投稿を本人が書きなおしたもの。 */
+	reposted: boolean;
 }
 
 export interface MachiPetal {
@@ -111,6 +116,16 @@ export function nextQuestDelay(rng: Rng): number {
 	return 45000 + rng() * 45000;
 }
 
+/** 投稿取消のお遊びが始まるまでの待ち時間 ms（55〜105秒＝低頻度）。 */
+export function nextRepostDelay(rng: Rng): number {
+	return 55000 + rng() * 50000;
+}
+
+/** 取消前の投稿を読める時間。 */
+export const REPOST_VISIBLE_MS = 3200;
+/** 取消表示から、書きなおしが流れるまでの間。 */
+export const REPOST_PAUSE_MS = 1200;
+
 /** ♡を押してから投稿者が空リプを流すまでの待ち時間 ms（2.2〜7.4秒）。 */
 export function heartReplyDelay(rng: Rng): number {
 	return 2200 + rng() * 5200;
@@ -167,6 +182,7 @@ export function reactionTotal(note: MachiNote): number {
  * ⚠️表示側はこれで先に絞ってから DOM を測ること（放置中の強制レイアウトを避けるため）。
  */
 export function canGrowReaction(note: MachiNote, now: number): boolean {
+	if (note.withdrawn) return false;
 	if (reactionWeight(now - note.bornAt) <= 0) return false;
 	return reactionTotal(note) < note.cap;
 }
@@ -242,6 +258,7 @@ export function growReaction(targets: readonly ReactionTarget[], now: number, rn
 
 /** 自分で♡を押す／取り消す。押した後の状態を返す。 */
 export function toggleHeart(note: MachiNote): boolean {
+	if (note.withdrawn) return false;
 	const index = note.reactions.findIndex((r) => r.emoji === HEART_EMOJI);
 	if (note.hearted) {
 		note.hearted = false;
@@ -276,6 +293,8 @@ export interface NoteOptions {
 	hasReplies?: boolean;
 	emojiHints?: readonly string[];
 	warm?: boolean;
+	withdrawn?: boolean;
+	reposted?: boolean;
 }
 
 /** ⚠️新着は必ずリアクション0から始める（データ側の e は「付きやすさ」であって初期値ではない）。 */
@@ -293,7 +312,55 @@ export function makeNote(id: number, personaId: MachiPersonaId, text: string, no
 		hasReplies: options.hasReplies === true,
 		emojiHints: [...(options.emojiHints ?? [])],
 		warm: options.warm === true,
+		withdrawn: options.withdrawn === true,
+		reposted: options.reposted === true,
 	};
+}
+
+export interface MachiRepostSequence {
+	/** まず流れる、後から取り消される投稿。 */
+	original: MachiItem;
+	/** 同じ人物の書きなおしと、別人物の反応を束ねた会話。 */
+	followup: MachiItem;
+	/** 表示側が取り消し状態へ切り替える対象。 */
+	originalNoteId: number;
+}
+
+/** 250パターンのどれかを、取消前1本＋投稿しなおしと反応の会話へ組み立てる。 */
+export function makeRepostSequence(index: number, now: number, nextId: () => number): MachiRepostSequence {
+	const scene = MACHI_REPOST_SCENARIOS[index % MACHI_REPOST_SCENARIOS.length]!;
+	const originalNote = makeNote(nextId(), scene.p, scene.before, now, { emojiHints: scene.e });
+	const repost = makeNote(nextId(), scene.p, scene.after, now + REPOST_VISIBLE_MS + REPOST_PAUSE_MS, {
+		hasReplies: true,
+		emojiHints: scene.e,
+		reposted: true,
+	});
+	const reaction = makeNote(nextId(), scene.by, scene.reply, repost.bornAt, {
+		reply: true,
+		emojiHints: ['💬'],
+	});
+	return {
+		original: { kind: 'notes', id: originalNote.id, notes: [originalNote] },
+		followup: { kind: 'notes', id: repost.id, notes: [repost, reaction] },
+		originalNoteId: originalNote.id,
+	};
+}
+
+/** 250パターンをseed付きで一巡させる順番。重複抽選で一部が永久に出ない状態を避ける。 */
+export function buildRepostOrder(rng: Rng): number[] {
+	const order = MACHI_REPOST_SCENARIOS.map((_, index) => index);
+	for (let i = order.length - 1; i > 0; i--) {
+		const j = Math.floor(rng() * (i + 1));
+		[order[i], order[j]] = [order[j]!, order[i]!];
+	}
+	return order;
+}
+
+/** NPC投稿を取消済みにする。リアクションと自分の♡も同時に畳む。 */
+export function withdrawNote(note: MachiNote): void {
+	note.withdrawn = true;
+	note.hearted = false;
+	note.reactions.splice(0, note.reactions.length);
 }
 
 /** 投稿1本 or 会話ひとまとまりを組み立てる。 */
@@ -535,6 +602,58 @@ export interface IconChange {
 /** 誰かがアイコンを変えるまでの待ち時間 ms（90〜210秒＝ときどき）。 */
 export function nextIconChangeDelay(rng: Rng): number {
 	return 90000 + rng() * 120000;
+}
+
+export interface MachiAutoplayLoadEstimate {
+	/** 自動再生そのものが発生させるサーバー要求。初期ページ・画像取得は含まない。 */
+	serverRequestsPerMinute: number;
+	/** 自動再生そのものが発生させるDB・registry等への永続書き込み。 */
+	persistentWritesPerMinute: number;
+	/** 新しい投稿を差し込む平均回数。 */
+	postInsertionsPerMinute: number;
+	/** リアクションが育っている時間帯の判定回数。 */
+	activeReactionChecksPerMinute: number;
+	/** 育ったリアクションの弾み表示を消す、一過性タイマーの平均回数。 */
+	reactionPopCleanupWakeupsPerMinute: number;
+	/** 育つ投稿が無い時間帯の判定回数。 */
+	idleReactionChecksPerMinute: number;
+	/** 取消開始・取消表示・投稿しなおしの3段階を合わせた平均タイマー発火回数。 */
+	repostSequenceWakeupsPerMinute: number;
+	/** 時刻・依頼・アイコン・投稿取消を含む、活発時の平均タイマー発火回数。 */
+	totalActiveTimerWakeupsPerMinute: number;
+	/** リアクションが育たない時間帯の平均タイマー発火回数。 */
+	totalIdleTimerWakeupsPerMinute: number;
+}
+
+/**
+ * 自動再生の理論平均。各待ち時間が一様分布である既存実装から算出する。
+ * ⚠️通信0の根拠はテストで MachiFeed.vue / machi.ts の通信API不在を陽性対照つきで固定する。
+ */
+export function estimateMachiAutoplayLoad(): MachiAutoplayLoadEstimate {
+	const meanPostDelay = BURST_CHANCE * ((800 + 1900) / 2) + (1 - BURST_CHANCE) * ((3000 + 10000) / 2);
+	const postInsertions = 60000 / meanPostDelay;
+	const activeReactionChecks = 60000 / ((500 + 2900) / 2);
+	const idleReactionChecks = 60000 / 6000;
+	const questWakeups = 60000 / ((45000 + 90000) / 2);
+	const iconWakeups = 60000 / ((90000 + 210000) / 2);
+	const clockWakeups = 60000 / 20000;
+	const repostSequences = 60000 / ((55000 + 105000) / 2);
+	const repostSequenceWakeups = repostSequences * 3;
+	// リアクションが1つ育つたび、弾み表示を360ms後に消す一過性タイマーが1回だけ動く。
+	const reactionPopCleanupWakeups = activeReactionChecks;
+	// アイコン変更には、光の印をICON_FLIP_MS後に消す一過性タイマーが1回だけ伴う。
+	const iconWakeupsWithCleanup = iconWakeups * 2;
+	return {
+		serverRequestsPerMinute: 0,
+		persistentWritesPerMinute: 0,
+		postInsertionsPerMinute: postInsertions,
+		activeReactionChecksPerMinute: activeReactionChecks,
+		reactionPopCleanupWakeupsPerMinute: reactionPopCleanupWakeups,
+		idleReactionChecksPerMinute: idleReactionChecks,
+		repostSequenceWakeupsPerMinute: repostSequenceWakeups,
+		totalActiveTimerWakeupsPerMinute: postInsertions + activeReactionChecks + reactionPopCleanupWakeups + questWakeups + iconWakeupsWithCleanup + clockWakeups + repostSequenceWakeups,
+		totalIdleTimerWakeupsPerMinute: postInsertions + idleReactionChecks + questWakeups + iconWakeupsWithCleanup + clockWakeups + repostSequenceWakeups,
+	};
 }
 
 /**

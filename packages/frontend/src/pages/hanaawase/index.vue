@@ -448,11 +448,21 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<p v-if="paused" class="pause-note">一時停止中です。Escキーで戻ります。</p>
 
 			<div v-if="outcome !== 'playing' && !resultVeiled" class="result" role="dialog" aria-modal="true" aria-labelledby="result-title">
-				<div class="result-card">
+				<div class="result-card" :class="{ 'daily-result-card': isDaily }">
 					<span class="result-flower" v-html="FLOWER_SVGS[stage.flower].svg"></span>
 					<h2 id="result-title">{{ isDaily ? '今日の盤面を、書き終えました。' : isEventStage ? outcome === 'clear' ? '手がかりを、書き留めました。' : 'もう一度、手を動かしましょう。' : outcome === 'clear' ? '今月の花を、整えました。' : 'また、整えましょう。' }}</h2>
 					<p v-if="bossState">{{ outcome === 'clear' ? '季節の障りが、静かに去りました。' : `季節ゲージは ${bossState.hp} 残っています。` }}</p>
-					<p v-else-if="isDaily">スコア {{ score }}、最大{{ maxChain }}連鎖でした。</p>
+					<template v-else-if="isDaily">
+						<p>今日の同じ盤面に残した、あなた自身の記録です。</p>
+						<dl class="daily-result-board" aria-label="今日の記録">
+							<div class="daily-result-score"><dt>今回</dt><dd>{{ score }}</dd></div>
+							<div><dt>最大連鎖</dt><dd>{{ maxChain }}</dd></div>
+							<div><dt>自己ベスト</dt><dd>{{ Math.max(daily.best, score) }}</dd></div>
+							<div><dt>連続日数</dt><dd>{{ daily.streak }}日</dd></div>
+							<div><dt>プレイ日数</dt><dd>{{ daily.plays }}日</dd></div>
+						</dl>
+						<p class="daily-result-note">結果を書き記せば、今日の一手をノートに残せます。</p>
+					</template>
 					<p v-else-if="isEventStage">{{ outcome === 'clear' ? `${eventStagePoints}枚の${loadedEvent?.definition.points.name ?? '憶え書き'}を得ました。` : `${goalName}は ${goalHave} / ${goalNeed} でした。` }}</p>
 					<p v-else>{{ outcome === 'clear' ? `${score}点で${goalName}を集めました。` : `${goalName}は ${goalHave} / ${goalNeed} でした。` }}</p>
 					<template v-if="autoStoryPending">
@@ -1131,6 +1141,7 @@ const storyReturn = ref<StoryReturn>("home");
 ⚠️`miLocalStorage` の typed union は**触らない**（パージ容易性。生の sessionStorage を直接使う）。
 */
 const DEFERRED_KEY = "hanaawase:deferredVignettes";
+
 function loadDeferredIds(): Set<string> {
 	try {
 		const raw = window.sessionStorage.getItem(DEFERRED_KEY);
@@ -1141,7 +1152,9 @@ function loadDeferredIds(): Set<string> {
 		return new Set();
 	}
 }
+
 const deferredVignetteIds = loadDeferredIds();
+
 function rememberDeferredIds() {
 	try {
 		window.sessionStorage.setItem(DEFERRED_KEY, JSON.stringify([...deferredVignetteIds]));
@@ -1149,6 +1162,7 @@ function rememberDeferredIds() {
 		// ⚠️容量超過や無効化時は保存を諦める。⚠️その場合は従来どおり「入り直すと再生される」に戻るだけ。
 	}
 }
+
 /** boss-before のあとに入る盤面。⚠️リアクティブにしない（描画に関係しない一時値）。 */
 let storyThenStage: StageDefinition | undefined;
 /** 指定中だけ、Vignette がイベント限定の立ち絵と背景を読む。 */
@@ -1867,6 +1881,9 @@ watch(boardBackdrop, () => { boardBackdropFailed.value = false; });
 
 /** クリア後に流れる物語があるか。⚠️`boss-before` は「入る前」なのでここでは数えない。 */
 function storyWaitsAfterBoard() {
+	// 今日の盤面は物語の局ではない。未読本編が別に残っていても、結果画面で
+	// 「物語へ移る」と予告せず、この場で今日の記録を確認してからホームへ戻す。
+	if (isDaily.value) return false;
 	if (!saveLoaded.value || disclaimerPending.value) return false;
 	if (isEventStage.value && loadedEvent.value) {
 		return loadedEvent.value.stories.some((entry) =>
@@ -2576,6 +2593,14 @@ definePage(() => ({ title: "花常" }));
 .cell { position: relative; display: grid; aspect-ratio: 1; min-width: 0; padding: 3px; border: 1px solid #383027; border-radius: 8px; background: var(--cell); cursor: pointer; transition: transform .16s ease, box-shadow .16s ease; }.cell:hover { transform: translateY(-1px); }.cell.selected { box-shadow: inset 0 0 0 2px var(--accent), 0 0 0 1px #f2d98c; }.cell.cursor { outline: 2px solid #f4efe3; outline-offset: -3px; }.cell.telegraph::before { position: absolute; inset: 2px; border: 2px dashed #7b86c8; border-radius: 7px; content: ""; pointer-events: none; animation: hana-telegraph 1.1s ease-in-out infinite; }.cell.puddle::after { position: absolute; inset: 17%; border: 1px solid #7b86c8; border-radius: 50%; background: rgb(45 74 115 / 30%); content: ""; pointer-events: none; }.cell.frozen::after { position: absolute; inset: 3px; border: 1px solid #dfe8ef; border-radius: 6px; background: rgb(244 239 227 / 20%); content: ""; pointer-events: none; }.cell.tanzaku-row .piece { transform: rotate(90deg); }.piece { width: 100%; height: 100%; transition: transform .16s ease; pointer-events: none; }.busy .cell { opacity: .96; }.paused .cell { cursor: default; }
 .result { position: absolute; inset: 0; z-index: 5; display: grid; place-items: center; padding: 20px; background: rgb(22 18 14 / 78%); }.result-card { box-sizing: border-box; width: min(290px, 100%); padding: 24px; border: 1px solid var(--accent); border-radius: 16px; text-align: center; background: var(--panel); box-shadow: 0 18px 44px -14px rgb(0 0 0 / 70%); }.result-card h2 { margin: 10px 0; font-family: var(--mincho); font-size: 21px; }.result-card p { color: var(--sub); font-size: 14px; }.result-flower { display: block; width: 68px; height: 68px; margin: 0 auto; }.restart-button { padding: 10px 20px; border: 0; border-radius: 8px; color: var(--bg); background: var(--accent); font-weight: 700; cursor: pointer; }
 .result-card .result-next { margin: 14px 0 0; color: var(--ink); font-family: var(--mincho); font-size: 13px; letter-spacing: .04em; }
+.daily-result-card { width: min(390px, 100%); }
+.daily-result-board { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 14px 0 0; }
+.daily-result-board > div { min-width: 0; padding: 10px 8px; border: 1px solid var(--line); border-radius: 10px; background: rgb(23 20 16 / 48%); }
+.daily-result-board .daily-result-score { grid-column: 1 / -1; padding-block: 12px; border-color: rgb(201 160 78 / 48%); background: rgb(201 160 78 / 10%); }
+.daily-result-board dt { margin: 0 0 3px; color: var(--sub); font-size: 10px; letter-spacing: .08em; }
+.daily-result-board dd { margin: 0; overflow-wrap: anywhere; color: var(--ink); font-family: var(--mincho); font-size: 17px; font-weight: 700; }
+.daily-result-board .daily-result-score dd { color: var(--accent); font-size: 25px; }
+.daily-result-note { margin: 12px 0 0 !important; font-size: 12px !important; line-height: 1.65; }
 .result-progress { overflow: hidden; height: 4px; margin-top: 15px; border-radius: 2px; background: rgb(201 160 78 / 20%); }
 .result-progress > i { display: block; height: 100%; border-radius: inherit; background: var(--accent); transform: scaleX(0); transform-origin: left center; animation: hana-result-fill 2200ms linear forwards; }
 .map-actions { display: flex; justify-content: center; gap: 18px; margin: 16px 0 0; }.map-actions button, .text-button { border: 0; color: var(--sub); background: transparent; font: inherit; font-size: 12px; letter-spacing: .06em; cursor: pointer; }.map-actions button:hover, .text-button:hover, .map-actions button:focus-visible, .text-button:focus-visible { color: var(--ink); }

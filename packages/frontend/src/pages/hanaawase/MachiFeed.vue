@@ -84,6 +84,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 					:data-cont="note.cont ? 'on' : null"
 					:data-parent="note.hasReplies ? 'on' : null"
 					:data-warm="note.warm ? 'on' : null"
+					:data-withdrawn="note.withdrawn ? 'on' : null"
+					:data-reposted="note.reposted ? 'on' : null"
 				>
 					<!--
 					アイコンは立ち絵の表情差分。⚠️枚数の範囲外は machi.ts が null を返すので組み立てられない。
@@ -111,11 +113,13 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<div class="m-nline">
 							<span class="m-name">{{ personaOf(note.personaId).name }}</span>
 							<span class="m-handle">@{{ personaOf(note.personaId).handle }}</span>
+							<span v-if="note.reposted" class="m-repostmark">投稿しなおし</span>
 							<time class="m-time">{{ relativeTime(clock - note.bornAt) }}</time>
 						</div>
 						<!-- ⚠️投稿本文は中央揃えにしない（人間味を残す側） -->
-						<p class="m-text">{{ note.text }}</p>
-						<div v-if="note.reactions.length > 0" class="m-reacts">
+						<p v-if="note.withdrawn" class="m-withdrawn"><span aria-hidden="true">×</span>この投稿は取り消されました</p>
+						<p v-else class="m-text">{{ note.text }}</p>
+						<div v-if="!note.withdrawn && note.reactions.length > 0" class="m-reacts">
 							<span
 								v-for="r in note.reactions"
 								:key="r.emoji"
@@ -124,7 +128,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 								:data-pop="popKey === `${note.id}|${r.emoji}` ? 'on' : null"
 							>{{ r.emoji }} <span class="m-n">{{ r.count }}</span></span>
 						</div>
-						<div v-if="!note.reply" class="m-acts">
+						<div v-if="!note.withdrawn && !note.reply" class="m-acts">
 							<span class="m-act"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M21 12a8 8 0 0 1-8 8H3l2.5-2.5A8 8 0 1 1 21 12Z" /></svg>返信</span>
 							<span class="m-act"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M17 2l4 4-4 4M3 12V9a3 3 0 0 1 3-3h15" /></svg></span>
 							<button
@@ -267,9 +271,12 @@ import {
 	MACHI_SKY,
 	MAX_WIP,
 	QUEST_STATE_LABEL,
+	REPOST_PAUSE_MS,
+	REPOST_VISIBLE_MS,
 	acceptQuest,
 	badgeCount,
 	buildOrder,
+	buildRepostOrder,
 	canGrowReaction,
 	createMachiRng,
 	facePathOf,
@@ -284,11 +291,13 @@ import {
 	makeItem,
 	makeNote,
 	makeQuestEntry,
+	makeRepostSequence,
 	markMissed,
 	nextIconChangeDelay,
 	nextPostDelay,
 	nextQuestDelay,
 	nextReactionDelay,
+	nextRepostDelay,
 	pickHeartReply,
 	pickIconChange,
 	relativeTime,
@@ -297,6 +306,7 @@ import {
 	tabCount,
 	tabForEntry,
 	toggleHeart,
+	withdrawNote,
 	wipCount,
 } from './machi.js';
 import type {
@@ -332,6 +342,7 @@ const emit = defineEmits<{
 
 const rng = createMachiRng(props.seed);
 const order: FeedSource[] = buildOrder(createMachiRng((props.seed ?? Date.now()) + 1));
+const repostOrder = buildRepostOrder(createMachiRng((props.seed ?? Date.now()) + 3));
 
 const items = ref<MachiItem[]>([]);
 const pending = ref<MachiItem[]>([]);
@@ -485,6 +496,7 @@ let nextIdValue = 1;
 const nextId = () => nextIdValue++;
 let orderIndex = 0;
 let questIndex = 0;
+let repostIndex = 0;
 
 const atTop = () => (feedEl.value?.scrollTop ?? 0) < 40;
 
@@ -523,6 +535,23 @@ function nextPost() {
 	const source = order[orderIndex % order.length]!;
 	orderIndex++;
 	emitItem(makeItem(source, Date.now(), nextId));
+}
+
+/** items / pending のどちらにいても、取消対象をreactiveな実体として探す。 */
+function findNote(noteId: number): MachiNote | undefined {
+	for (const collection of [items.value, pending.value]) {
+		for (const item of collection) {
+			if (item.kind !== 'notes') continue;
+			const note = item.notes.find((candidate) => candidate.id === noteId);
+			if (note) return note;
+		}
+	}
+	return undefined;
+}
+
+function removeFeedItem(itemId: number) {
+	items.value = items.value.filter((item) => item.id !== itemId);
+	pending.value = pending.value.filter((item) => item.id !== itemId);
 }
 
 function emitLine(personaId: MachiNote['personaId'], text: string, options: NoteOptions = {}) {
@@ -680,12 +709,15 @@ defineExpose({ reportResult, openQuests: () => openModal('active') });
 let postTimer = 0;
 let reactTimer = 0;
 let questTimer = 0;
+let repostTimer = 0;
+let repostStepTimer = 0;
 let clockTimer = 0;
 /** アイコン変更。⚠️90〜210秒に1回・DOMを測らない・投稿1本だけ（放置しても負荷は増えない）。 */
 let iconTimer = 0;
 /** 変わったアイコンを光らせる後始末。⚠️一過性。stop/unmount で必ず落とす。 */
 let flipTimer = 0;
 let running = false;
+let activeRepost: { itemId: number; noteId: number } | undefined;
 
 function schedulePost() {
 	postTimer = window.setTimeout(() => { nextPost(); schedulePost(); }, nextPostDelay(rng));
@@ -706,6 +738,47 @@ function scheduleQuest() {
 	questTimer = window.setTimeout(() => { spawnQuest(); scheduleQuest(); }, nextQuestDelay(rng));
 }
 
+/**
+ * 取消前の投稿を流す → 取消表示へ切り替える → 同じ人物の書きなおしと別NPCの反応を流す。
+ * ⚠️サーバー通信・保存は行わず、既存フィードへローカルな MachiItem を差し込むだけ。
+ */
+function beginRepost() {
+	if (!running) return;
+	const sceneIndex = repostOrder[repostIndex % repostOrder.length]!;
+	repostIndex++;
+	const sequence = makeRepostSequence(sceneIndex, Date.now(), nextId);
+	emitItem(sequence.original);
+	activeRepost = { itemId: sequence.original.id, noteId: sequence.originalNoteId };
+	repostStepTimer = window.setTimeout(() => {
+		if (!running) return;
+		const original = findNote(sequence.originalNoteId);
+		if (!original) {
+			activeRepost = undefined;
+			scheduleRepost();
+			return;
+		}
+		withdrawNote(original);
+		repostStepTimer = window.setTimeout(() => {
+			if (!running) return;
+			emitItem(sequence.followup);
+			activeRepost = undefined;
+			scheduleRepost();
+		}, REPOST_PAUSE_MS);
+	}, REPOST_VISIBLE_MS);
+}
+
+function scheduleRepost() {
+	if (!running) return;
+	repostTimer = window.setTimeout(beginRepost, nextRepostDelay(rng));
+}
+
+/** 非表示になった途中の取消劇は取り除き、再開後に中途半端な状態を残さない。 */
+function cancelActiveRepost() {
+	window.clearTimeout(repostStepTimer);
+	if (activeRepost) removeFeedItem(activeRepost.itemId);
+	activeRepost = undefined;
+}
+
 function scheduleIcon() {
 	iconTimer = window.setTimeout(() => { changeIcon(); scheduleIcon(); }, nextIconChangeDelay(rng));
 }
@@ -719,6 +792,7 @@ function start() {
 	schedulePost();
 	scheduleReaction();
 	scheduleQuest();
+	scheduleRepost();
 	scheduleIcon();
 	clockTimer = window.setInterval(() => { clock.value = Date.now(); }, 20000);
 }
@@ -730,9 +804,11 @@ function stop() {
 	window.clearTimeout(postTimer);
 	window.clearTimeout(reactTimer);
 	window.clearTimeout(questTimer);
+	window.clearTimeout(repostTimer);
 	window.clearTimeout(iconTimer);
 	window.clearTimeout(flipTimer);
 	window.clearInterval(clockTimer);
+	cancelActiveRepost();
 	// ⚠️印を残したままだと、あとから流れてきた同じ住民の投稿で光り直してしまう
 	flipId.value = '';
 	// ⚠️移動のカウントも畳む。残すと、裏に回っている間に飛ばされる
@@ -740,7 +816,7 @@ function stop() {
 }
 
 function onVisibility() {
-	if (document.hidden) stop();
+	if (window.document.hidden) stop();
 	else if (props.active) start();
 }
 
@@ -757,8 +833,8 @@ onMounted(() => {
 		items.value.unshift(makeItem(source, now - (7 - i) * 9000, nextId));
 	}
 	spawnQuest();
-	document.addEventListener('click', onDocumentClick);
-	document.addEventListener('visibilitychange', onVisibility);
+	window.document.addEventListener('click', onDocumentClick);
+	window.document.addEventListener('visibilitychange', onVisibility);
 	if (props.active) start();
 });
 
@@ -767,12 +843,12 @@ onUnmounted(() => {
 	for (const timer of heartTimers) window.clearTimeout(timer);
 	heartTimers.clear();
 	window.clearTimeout(toastTimer);
-	document.removeEventListener('click', onDocumentClick);
-	document.removeEventListener('visibilitychange', onVisibility);
+	window.document.removeEventListener('click', onDocumentClick);
+	window.document.removeEventListener('visibilitychange', onVisibility);
 });
 
 watch(() => props.active, (value) => {
-	if (value && !document.hidden) start();
+	if (value && !window.document.hidden) start();
 	else stop();
 });
 </script>
@@ -933,6 +1009,9 @@ watch(() => props.active, (value) => {
 	position: absolute; top: 21px; bottom: 0; left: 35px; width: 2px; border-radius: 2px;
 	background: var(--m-line); content: "";
 }
+.m-note[data-withdrawn] { background: color-mix(in srgb, var(--m-note-bg) 90%, var(--m-panel)); }
+.m-note[data-withdrawn] .m-av { filter: grayscale(.55); opacity: .72; }
+.m-note[data-withdrawn] .m-name, .m-note[data-withdrawn] .m-handle, .m-note[data-withdrawn] .m-time { opacity: .72; }
 
 .m-av {
 	position: relative; display: grid; width: 42px; height: 42px; flex: none; place-items: center;
@@ -954,7 +1033,22 @@ watch(() => props.active, (value) => {
 .m-name { font-size: 13.5px; font-weight: 700; }
 .m-handle { color: var(--m-note-sub); font-size: 12px; }
 .m-time { margin-left: auto; color: var(--m-note-sub); font-size: 11.5px; }
+.m-repostmark {
+	display: inline-flex; align-items: center; min-height: 18px; padding: 0 7px;
+	border: 1px solid color-mix(in srgb, var(--m-accent) 44%, transparent); border-radius: 999px;
+	background: color-mix(in srgb, var(--m-accent) 12%, transparent); color: var(--m-note-sub);
+	font-size: 10.5px; line-height: 1;
+}
 .m-text { margin: 3px 0 0; font-size: 14px; line-height: 1.62; word-break: break-word; }
+.m-withdrawn {
+	display: flex; align-items: center; gap: 7px; margin: 5px 0 0; color: var(--m-note-sub);
+	font-size: 13px; font-style: italic; line-height: 1.55;
+}
+.m-withdrawn span {
+	display: inline-grid; width: 17px; height: 17px; flex: none; place-items: center;
+	border: 1px solid color-mix(in srgb, var(--m-note-sub) 48%, transparent); border-radius: 50%;
+	font-size: 12px; font-style: normal; line-height: 1;
+}
 
 .m-reacts { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
 .m-chip {
