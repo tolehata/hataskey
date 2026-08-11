@@ -16608,19 +16608,19 @@ export interface Locale extends ILocale {
                  */
                 "drawingToolTip1": string;
                 /**
-                 * HATA CARD MAKER（会員証）
+                 * 旗鯖カードメーカー
                  */
                 "hataCardMakerTitle": string;
                 /**
-                 * 旗池2丁目の会員証風画像を作れる外部ツールです。旗鯖のアカウントで許可すると、利用者名や登録日をもとにカードを作ります。
+                 * ログイン中の旗鯖プロフィールから、デジタル通行証カードを作るHatask内蔵ツールです。外部サービスへのログインやサーバー選択は必要ありません。
                  */
                 "hataCardMakerBody": string;
                 /**
-                 * 会員証を作る
+                 * カードメーカーを開く
                  */
                 "hataCardMakerLink": string;
                 /**
-                 * 完成した画像は保存できます
+                 * 通常・ゴールドのデザインを選び、完成したPNG画像を端末へ保存できます
                  */
                 "hataCardMakerTip1": string;
                 /**
@@ -21220,6 +21220,112 @@ export interface Locale extends ILocale {
                  */
                 "themeSuriDescription": string;
             };
+            "_cardMaker": {
+                /**
+                 * 旗鯖カードメーカー
+                 */
+                "title": string;
+                /**
+                 * あなたの旗鯖プロフィールをデジタル通行証カードに
+                 */
+                "subtitle": string;
+                /**
+                 * Hatask ツール
+                 */
+                "hataskTool": string;
+                /**
+                 * ログイン中のプロフィール情報をHataskey内で直接読み込んでいます。追加のログインやサーバー選択は必要ありません。
+                 */
+                "localProfileNotice": string;
+                /**
+                 * カードの外観設定
+                 */
+                "appearanceSettings": string;
+                /**
+                 * 通常デザイン
+                 */
+                "standardDesign": string;
+                /**
+                 * ゴールドデザイン
+                 */
+                "goldDesign": string;
+                /**
+                 * アクセント
+                 */
+                "accentColor": string;
+                /**
+                 * 透明度
+                 */
+                "glassOpacity": string;
+                /**
+                 * 色 {color} を選択
+                 */
+                "selectColor": ParameterizedString<"color">;
+                /**
+                 * ゴールドデザインは利用開始から1年で解放されます
+                 */
+                "goldUnlockHint": string;
+                /**
+                 * カードのプレビュー
+                 */
+                "cardPreview": string;
+                /**
+                 * 旗鯖 通行証
+                 */
+                "passLabel": string;
+                /**
+                 * プロフィールの二次元コード
+                 */
+                "profileQrCode": string;
+                /**
+                 * {server} Member
+                 */
+                "memberLabel": ParameterizedString<"server">;
+                /**
+                 * {date} 登録
+                 */
+                "registeredOn": ParameterizedString<"date">;
+                /**
+                 * カードをドラッグ、またはスワイプで傾けられます
+                 */
+                "tiltHint": string;
+                /**
+                 * 画像を保存
+                 */
+                "saveImage": string;
+                /**
+                 * 保存中…
+                 */
+                "saving": string;
+                /**
+                 * カード画像を保存しました
+                 */
+                "saved": string;
+                /**
+                 * プロフィール情報はこの画面だけで処理します
+                 */
+                "privacyTitle": string;
+                /**
+                 * カード生成のための追加データをサーバーへ保存せず、画像はお使いの端末内で生成します。
+                 */
+                "privacyDescription": string;
+                /**
+                 * 二次元コードを作成できませんでした
+                 */
+                "qrFailedTitle": string;
+                /**
+                 * ページを再読み込みして、もう一度お試しください。
+                 */
+                "qrFailed": string;
+                /**
+                 * カードを保存できませんでした
+                 */
+                "saveFailedTitle": string;
+                /**
+                 * 画像の取得またはPNGの生成に失敗しました。しばらくしてからもう一度お試しください。
+                 */
+                "saveFailed": string;
+            };
             "_main": {
                 /**
                  * 戻る
@@ -22194,7 +22300,7 @@ export interface Locale extends ILocale {
                  */
                 "flowerInfoGrowth": string;
                 /**
-                 * サーバーを開いている時間に応じて少しずつ成長します（約8-32時間）。
+                 * 画面を閉じたりバックグラウンドにしている間も、経過時間に応じて少しずつ成長します（約8〜32時間）。
                  */
                 "flowerInfoTime": string;
                 /**
@@ -22469,6 +22575,14 @@ export interface Locale extends ILocale {
                  * お絵かき
                  */
                 "appDrawingShort": string;
+                /**
+                 * 旗鯖カードメーカー
+                 */
+                "appCardMaker": string;
+                /**
+                 * カード
+                 */
+                "appCardMakerShort": string;
                 /**
                  * 今回の更新内容
                  */
@@ -26235,7 +26349,7 @@ export interface Locale extends ILocale {
                  */
                 "hataskTitle": string;
                 /**
-                 * ホーム画面を「季」「花信」「刷」の3つのテーマから選べるようになりました。表示切替、HataFeed の通知タイル、地震・津波情報タイルにも対応しています。育てている花の進み具合と、咲いた花の一覧を確認できるウィジェットも追加しました。
+                 * ホーム画面を「季」「花信」「刷」の3つのテーマから選べるようになりました。表示切替、HataFeed の通知タイル、地震・津波情報タイルにも対応しています。育てている花は画面を閉じている間やバックグラウンドでも経過時間に応じて育ち、進み具合と咲いた花をウィジェットで確認できます。ログイン中のプロフィールからデジタル通行証を作るカードメーカーもHatask内に追加しました。
                  */
                 "hataskText": string;
                 /**
@@ -26247,7 +26361,7 @@ export interface Locale extends ILocale {
                  */
                 "hatacordingTitle": string;
                 /**
-                 * タイムラインを会話のように読みながら、左ペインで表示先を選び、右ペインで投稿詳細・検索・通知・ウィジェットを同時に扱える新しいUIです。設定や旗鯖ツールを開いても左右のペインを保ち、このUIの中で操作を続けられます。リアクションやノートの変更もその場で反映され、スマートフォンでは左右の端から各ペインを呼び出せます。初回チュートリアル、端末ごとの並び替え、UI専用レートリミット表示にも対応しています。
+                 * タイムラインを会話のように読みながら、左ペインで表示先を選び、右ペインで投稿詳細・検索・通知・ウィジェットを同時に扱える新しいUIです。設定や旗鯖ツールを開いても左右のペインを保ち、このUIの中で操作を続けられます。リアクションやノートの変更もその場で反映され、スマートフォンでは左右の端から各ペインを呼び出せます。初回チュートリアル、端末ごとの並び替え、UI専用レートリミット表示にも対応しています。返信先のアバター表示、ダークテーマのサイズ選択、ポップアップ表示も安定化しました。
                  */
                 "hatacordingText": string;
                 /**
@@ -26267,7 +26381,7 @@ export interface Locale extends ILocale {
                  */
                 "sideStudioTitle": string;
                 /**
-                 * 実際のサイドメニューを見ながら、ボタン・グループ・ウィジェットの並び、形、色、表示内容を端末ごとに編集できる新しいツールです。拡大時と縮小時を分けて作れ、複数のプロファイル、ドラッグ操作、元に戻す・やり直し、設定の書き出しと読み込みにも対応しています。スマートフォンでも簡易タイムラインへ指で移動でき、上部の各操作を省略せず使えます。設定は端末内で処理され、サーバーや連合へ送信されません。
+                 * 実際のサイドメニューを見ながら、ボタン・グループ・ウィジェットの並び、形、色、表示内容を端末ごとに編集できる新しいツールです。拡大時と縮小時を分けて作れ、複数のプロファイル、ドラッグ操作、元に戻す・やり直し、設定の書き出しと読み込みにも対応しています。ノートボタンも鉛筆・猫の肉球アイコン、色、グラデーションから設定できます。スマートフォンでも簡易タイムラインへ指で移動でき、上部の各操作を省略せず使えます。設定は端末内で処理され、サーバーや連合へ送信されません。
                  */
                 "sideStudioText": string;
                 /**
@@ -26279,7 +26393,7 @@ export interface Locale extends ILocale {
                  */
                 "languageTitle": string;
                 /**
-                 * 旗鯖独自機能を、日本語・英語・中国語（簡体字）で利用できるようになりました。Hatadyを含む対応機能はHataskey本体の言語設定に従い、自分で入力した投稿・記録・名前は変わりません。花常と地震・津波情報は引き続き日本語のみです。
+                 * 旗鯖独自機能を、日本語・英語・中国語（簡体字）で利用できるようになりました。Hatadyを含む対応機能と「Hataskeyについて」・サーバー情報ページはHataskey本体の言語設定に従い、自分で入力した投稿・記録・名前は変わりません。花常と地震・津波情報は引き続き日本語のみです。
                  */
                 "languageText": string;
                 /**
@@ -26303,7 +26417,7 @@ export interface Locale extends ILocale {
                  */
                 "hatasabaUiTitle": string;
                 /**
-                 * ノートやカラムをすりガラス調にする新しい見た目を選べるようになりました。透過の強さはその場で確かめながら調整できます。デッキにはクリップ・お気に入りのカラム、カラムごとの再読み込みが増えています。タブを左右スワイプで切り替えない設定と、Bot投稿を隠す設定にも対応しました。
+                 * ノートやカラムをすりガラス調にする新しい見た目を選べるようになりました。透過の強さはその場で確かめながら調整できます。デッキにはクリップ・お気に入りのカラム、カラムごとの再読み込みが増えています。時計の秒表示で通知などのカラムが点滅しないよう更新処理も安定化しました。タブを左右スワイプで切り替えない設定と、Bot投稿を隠す設定にも対応しました。
                  */
                 "hatasabaUiText": string;
                 /**
@@ -26598,6 +26712,22 @@ export interface Locale extends ILocale {
         };
         "_aboutHataskey": {
             /**
+             * Hataskeyについて
+             */
+            "title": string;
+            /**
+             * Hataskeyは、MisskeyとCherryPickをベースに2025年から開発している、カスタマイズされたオープンソースソフトウェアです。
+             */
+            "about": string;
+            /**
+             * Misskeyをベースにしています
+             */
+            "basedOnMisskey": string;
+            /**
+             * スペシャルサンクス（Misskey）
+             */
+            "specialThanksMisskey": string;
+            /**
              * Hataskeyプロジェクトメンバー
              */
             "hataskeyMembers": string;
@@ -26605,6 +26735,40 @@ export interface Locale extends ILocale {
              * CherryPickプロジェクトメンバー
              */
             "cherryPickMembers": string;
+        };
+        "_serverInfo": {
+            /**
+             * 標準公開リソース
+             */
+            "wellKnownResources": string;
+            /**
+             * メタデータを更新
+             */
+            "refreshMetadata": string;
+            /**
+             * メタデータの更新をリクエストしました。
+             */
+            "refreshRequested": string;
+            /**
+             * フォロー（公開）
+             */
+            "followingPublished": string;
+            /**
+             * フォロワー（購読）
+             */
+            "followersSubscribed": string;
+            /**
+             * 最終投稿: {date}
+             */
+            "lastPosted": ParameterizedString<"date">;
+            /**
+             * 生データ
+             */
+            "rawData": string;
+            /**
+             * 状態: {status}
+             */
+            "status": ParameterizedString<"status">;
         };
         "_utage": {
             /**
@@ -30231,6 +30395,18 @@ export interface Locale extends ILocale {
                  */
                 "note": string;
                 /**
+                 * ノートボタン
+                 */
+                "noteButtonCustomization": string;
+                /**
+                 * サイドメニュー下部のノートボタンへ、アイコン・色・グラデーションを設定します。
+                 */
+                "noteButtonCustomizationDescription": string;
+                /**
+                 * ノートボタンのアイコン
+                 */
+                "noteButtonIcon": string;
+                /**
                  * 1列
                  */
                 "oneColumn": string;
@@ -30274,6 +30450,14 @@ export interface Locale extends ILocale {
                  * パララックススクロール（ベータ）
                  */
                 "parallaxBeta": string;
+                /**
+                 * 猫の肉球
+                 */
+                "pawIcon": string;
+                /**
+                 * 鉛筆
+                 */
+                "pencilIcon": string;
                 /**
                  * 配置
                  */

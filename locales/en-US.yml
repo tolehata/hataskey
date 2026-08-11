@@ -599,7 +599,7 @@ exploreFediverse: "Explore the Fediverse"
 popularTags: "Popular tags"
 userList: "Lists"
 about: "About"
-aboutMisskey: "About CherryPick"
+aboutMisskey: "About Hataskey"
 administrator: "Administrator"
 token: "Token"
 2fa: "Two-factor authentication"
@@ -4307,10 +4307,10 @@ _hata:
       drawingToolTitle: "Drawing tool"
       drawingToolBody: "Draw inside Hataskey. Change line width, color, and opacity, work on multiple layers, and undo the previous action. Touch controls on smartphones are supported."
       drawingToolTip1: "Open it from the drawing button in the post form to attach the finished drawing directly"
-      hataCardMakerTitle: "HATA CARD MAKER (membership card)"
-      hataCardMakerBody: "This external tool creates a membership-card-style image for Hataike 2-chome. After you authorize it with your Hataskey account, it creates a card using your user name and registration date."
-      hataCardMakerLink: "Create a membership card"
-      hataCardMakerTip1: "The finished image can be saved"
+      hataCardMakerTitle: "Hata server card maker"
+      hataCardMakerBody: "This built-in Hatask tool creates a digital pass from your signed-in Hata server profile. No external sign-in or server selection is needed."
+      hataCardMakerLink: "Open the card maker"
+      hataCardMakerTip1: "Choose the standard or gold design and save the finished card as a PNG"
       hatalyzeTitle: "HATAlyze"
       hatalyzeBody: "This external tool reviews your public notes to show frequently used words, posting times, text length, mood patterns, and more. Enjoy the results as entertainment; they must not be used for medical decisions."
       hatalyzeLink: "Open HATAlyze"
@@ -5478,6 +5478,33 @@ _hata:
       themeKashinDescription: "Pop bento"
       themeSuri: "Suri"
       themeSuriDescription: "Two-color risograph"
+    _cardMaker:
+      title: "Hata server card maker"
+      subtitle: "Turn your Hata server profile into a digital pass"
+      hataskTool: "Hatask tool"
+      localProfileNotice: "Your signed-in profile is loaded directly inside Hataskey. No additional sign-in or server selection is needed."
+      appearanceSettings: "Card appearance"
+      standardDesign: "Standard"
+      goldDesign: "Gold"
+      accentColor: "Accent"
+      glassOpacity: "Opacity"
+      selectColor: "Select color {color}"
+      goldUnlockHint: "The gold design unlocks one year after you joined"
+      cardPreview: "Card preview"
+      passLabel: "Hata server pass"
+      profileQrCode: "Profile QR code"
+      memberLabel: "{server} Member"
+      registeredOn: "Joined {date}"
+      tiltHint: "Drag or swipe the card to tilt it"
+      saveImage: "Save image"
+      saving: "Saving…"
+      saved: "Card image saved"
+      privacyTitle: "Your profile is processed only on this screen"
+      privacyDescription: "No extra card data is stored on the server. The image is generated locally on your device."
+      qrFailedTitle: "Could not create the QR code"
+      qrFailed: "Reload the page and try again."
+      saveFailedTitle: "Could not save the card"
+      saveFailed: "An image could not be loaded or the PNG could not be generated. Please try again later."
     _main:
       back: "Back"
       search: "Search"
@@ -5722,7 +5749,7 @@ _hata:
       accept: "Acknowledge"
       howToGrowFlowers: "How to grow flowers"
       flowerInfoGrowth: "Your flower grows as you use this server."
-      flowerInfoTime: "It grows gradually while you have the server open (about 8-32 hours)."
+      flowerInfoTime: "It continues to grow with elapsed time even while the app is in the background or closed (about 8–32 hours)."
       flowerInfoNaming: "When growth is complete, you can name it. You can rename harvested flowers from the gallery at any time."
       flowerInfoVariety: "There are more than 125 kinds of flowers and curious items, including rare ones!"
       chooseAppearance: "Choose an appearance first"
@@ -5791,6 +5818,8 @@ _hata:
       tutorialCompleteWish: "May Hatask make your everyday life a little more enjoyable"
       appDrawing: "Drawing"
       appDrawingShort: "Draw"
+      appCardMaker: "Hata card maker"
+      appCardMakerShort: "Card"
       appWhatsNew: "What's new"
       appWhatsNewShort: "Updates"
       appPortal: "Hata server portal"
@@ -6745,24 +6774,24 @@ _hata:
       hatadyText: "Hatady is a new tool for recording books and study sessions, then looking back on streaks and everything you have built up. It supports per-book bookmarks and notes, goals, streaks, cross-record search, and text export. You choose who can see each record, and in the standard layout the button at the upper left returns to the previous screen."
       hatadyLink: "Go to Hatady"
       hataskTitle: "Hatask, completely redesigned"
-      hataskText: "The Home screen now offers three themes: Seasonal, Floral Signal, and Print. It also supports display switching, a HataFeed notification tile, and an earthquake and tsunami information tile. A new widget shows the progress of your current flower and the flowers that have bloomed."
+      hataskText: "The Home screen now offers three themes: Seasonal, Floral Signal, and Print. It also supports display switching, a HataFeed notification tile, and an earthquake and tsunami information tile. Flowers now grow from elapsed time while the screen is closed or the app is in the background, and a widget shows their progress and bloom history. Hatask also includes a card maker that creates a digital pass from your signed-in profile."
       hataskLink: "Go to Hatask"
       hatacordingTitle: "HataSNSCordUI — A powerful conversation-style interface"
-      hatacordingText: "This new interface lets you read the timeline like a conversation, choose destinations in the left pane, and use note details, search, notifications, and widgets together in the right pane. The two side panes remain available when you open settings or Hataskey tools, so you can keep working inside this interface. Reactions and note changes update in place, while on smartphones you can open each pane from the corresponding edge. It also includes a first-run tutorial, per-device ordering, and a dedicated rate-limit display."
+      hatacordingText: "This new interface lets you read the timeline like a conversation, choose destinations in the left pane, and use note details, search, notifications, and widgets together in the right pane. The two side panes remain available when you open settings or Hataskey tools, so you can keep working inside this interface. Reactions and note changes update in place, while on smartphones you can open each pane from the corresponding edge. It also includes a first-run tutorial, per-device ordering, and a dedicated rate-limit display. Reply-target avatars, dark-theme size controls, and popup rendering are now more stable."
       hatacordingLink: "Use HataSNSCordUI"
       hatafeedTitle: "HataFeed, completely redesigned"
       hatafeedText: "HataFeed now brings issue search and filtering, the roadmap, and notifications together on one clear screen. Emoji requests are available from the top page, and staff can review multiple requests one after another. Issue exports can be limited by range and included content. Notifications from the same HataFeed are grouped, and notifications from multiple HataFeeds can also be reviewed together. OS notifications for Hatask, HataFeed, earthquakes and tsunamis, and private channels now show both their content and destination. Notification-widget filters are more stable, and future notification types are no longer enabled automatically when a filter is already configured; you can enable only the types you need. Notifications from bots can be hidden in the standard notification view, widgets, HatasabaUI Deck, and HataSNSCordUI, where they are grouped separately from human notifications."
       sideStudioTitle: "HataSideStudio — Shape your own side menu"
-      sideStudioText: "HataSideStudio is a new tool for editing button, group, and widget order, shape, color, and content per device while previewing the real side menu. Expanded and collapsed layouts can be designed separately, with multiple profiles, drag controls, undo and redo, and settings export and import. On smartphones, items can be moved into the compact timeline by touch without losing the controls at the top. All settings are processed on the device and are not sent to the server or federation."
+      sideStudioText: "HataSideStudio is a new tool for editing button, group, and widget order, shape, color, and content per device while previewing the real side menu. Expanded and collapsed layouts can be designed separately, with multiple profiles, drag controls, undo and redo, and settings export and import. The Note button can also use a pencil or cat-paw icon with custom colors and a gradient. On smartphones, items can be moved into the compact timeline by touch without losing the controls at the top. All settings are processed on the device and are not sent to the server or federation."
       sideStudioLink: "Go to HataSideStudio"
       languageTitle: "Hataskey features now support three languages"
-      languageText: "Hataskey-specific features can now be used in Japanese, English, and Simplified Chinese. Supported features, including Hatady, follow Hataskey's main language setting, while your own notes, records, and names remain unchanged. Hanatsune and earthquake or tsunami information remain Japanese-only."
+      languageText: "Hataskey-specific features can now be used in Japanese, English, and Simplified Chinese. Supported features, including Hatady, as well as the About Hataskey and server information pages, follow Hataskey's main language setting. Your own notes, records, and names remain unchanged. Hanatsune and earthquake or tsunami information remain Japanese-only."
       languageLink: "Open language settings"
       privateChannelTitle: "Create private channels"
       privateChannelText: "Users authorized by an administrator can create channels visible only to their members. Invitees choose whether to join from a notification and become members only after accepting. The management screen shows invitations, participants, and declined invitations."
       privateChannelLink: "Create a channel"
       hatasabaUiTitle: "HatasabaUI 2 with a frosted-glass look"
-      hatasabaUiText: "You can now give notes and columns a new frosted-glass appearance and adjust the transparency while previewing it. The deck adds Clip and Favorites columns plus per-column reload. You can also disable swipe-based tab changes and hide bot posts."
+      hatasabaUiText: "You can now give notes and columns a new frosted-glass appearance and adjust the transparency while previewing it. The deck adds Clip and Favorites columns plus per-column reload. Clock updates are isolated so the seconds display no longer makes notification and other columns flicker. You can also disable swipe-based tab changes and hide bot posts."
       settingsLink: "Open settings"
       betaTitle: "Try beta features"
       betaText: "A C/C++ playground runs entirely in the browser, while the pre-post countdown gives you 3, 5, or 10 seconds before a note is sent. Both run on your device, and the countdown can be canceled or sent immediately."
@@ -6837,8 +6866,21 @@ _hata:
     discardTitle: "Discard changes?"
     discardText: "You have unsaved changes. Closing this window will discard them."
   _aboutHataskey:
+    title: "About Hataskey"
+    about: "Hataskey is customized open-source software based on Misskey and CherryPick, under development since 2025."
+    basedOnMisskey: "Based on Misskey"
+    specialThanksMisskey: "Special thanks (Misskey)"
     hataskeyMembers: "Hataskey project members"
     cherryPickMembers: "CherryPick project members"
+  _serverInfo:
+    wellKnownResources: "Well-known resources"
+    refreshMetadata: "Refresh metadata"
+    refreshRequested: "Metadata refresh requested."
+    followingPublished: "Following (published)"
+    followersSubscribed: "Followers (subscribed)"
+    lastPosted: "Last posted: {date}"
+    rawData: "Raw data"
+    status: "Status: {status}"
   _utage:
     tipBefore: "When you post a note containing the Utage keyword to the local timeline, the note flashes for 15 minutes. If nobody reacts during those 15 minutes, it ends in "
     tipSuccess: "green Success"
@@ -7755,6 +7797,9 @@ _hata:
       numberedProfile: 'Profile {number}'
       notFinalUntilSaved: 'This will not take effect until you save.'
       note: 'Note'
+      noteButtonCustomization: 'Note button'
+      noteButtonCustomizationDescription: 'Customize the icon, colors, and gradient of the note button at the bottom of the side menu.'
+      noteButtonIcon: 'Note button icon'
       oneColumn: '1 column'
       onlyMinimumHeightAdjustable: 'Only the minimum height can be adjusted for this size.'
       open: 'Open'
@@ -7766,6 +7811,8 @@ _hata:
       overall: 'Overall'
       overallLayout: 'Overall layout'
       parallaxBeta: 'Parallax scrolling (beta)'
+      pawIcon: 'Cat paw'
+      pencilIcon: 'Pencil'
       placement: 'Placement'
       preview: 'Preview'
       previewAndSidebarChangeTogether: 'The preview and actual sidebar switch sizes together.'

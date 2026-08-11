@@ -4443,10 +4443,10 @@ _hata:
       drawingToolTitle: "お絵かきツール"
       drawingToolBody: "旗鯖の画面内で絵を描けます。線の太さ・色・透明さを変え、複数の層に分けて描いたり、直前の操作を取り消したりできます。スマートフォンの指操作にも対応しています。"
       drawingToolTip1: "投稿フォームのお絵かきボタンから開くと、描いた絵をそのまま添付できます"
-      hataCardMakerTitle: "HATA CARD MAKER（会員証）"
-      hataCardMakerBody: "旗池2丁目の会員証風画像を作れる外部ツールです。旗鯖のアカウントで許可すると、利用者名や登録日をもとにカードを作ります。"
-      hataCardMakerLink: "会員証を作る"
-      hataCardMakerTip1: "完成した画像は保存できます"
+      hataCardMakerTitle: "旗鯖カードメーカー"
+      hataCardMakerBody: "ログイン中の旗鯖プロフィールから、デジタル通行証カードを作るHatask内蔵ツールです。外部サービスへのログインやサーバー選択は必要ありません。"
+      hataCardMakerLink: "カードメーカーを開く"
+      hataCardMakerTip1: "通常・ゴールドのデザインを選び、完成したPNG画像を端末へ保存できます"
       hatalyzeTitle: "HATAlyze（ハタライズ）"
       hatalyzeBody: "自分の公開投稿から、よく使う言葉、投稿する時間帯、文章の長さ、気分の傾向などを振り返る外部ツールです。結果は娯楽としてお楽しみください。医療的な判断には使えません。"
       hatalyzeLink: "HATAlyzeを開く"
@@ -5614,6 +5614,33 @@ _hata:
       themeKashinDescription: "ポップ・ベントー"
       themeSuri: "刷"
       themeSuriDescription: "リソグラフ2色"
+    _cardMaker:
+      title: "旗鯖カードメーカー"
+      subtitle: "あなたの旗鯖プロフィールをデジタル通行証カードに"
+      hataskTool: "Hatask ツール"
+      localProfileNotice: "ログイン中のプロフィール情報をHataskey内で直接読み込んでいます。追加のログインやサーバー選択は必要ありません。"
+      appearanceSettings: "カードの外観設定"
+      standardDesign: "通常デザイン"
+      goldDesign: "ゴールドデザイン"
+      accentColor: "アクセント"
+      glassOpacity: "透明度"
+      selectColor: "色 {color} を選択"
+      goldUnlockHint: "ゴールドデザインは利用開始から1年で解放されます"
+      cardPreview: "カードのプレビュー"
+      passLabel: "旗鯖 通行証"
+      profileQrCode: "プロフィールの二次元コード"
+      memberLabel: "{server} Member"
+      registeredOn: "{date} 登録"
+      tiltHint: "カードをドラッグ、またはスワイプで傾けられます"
+      saveImage: "画像を保存"
+      saving: "保存中…"
+      saved: "カード画像を保存しました"
+      privacyTitle: "プロフィール情報はこの画面だけで処理します"
+      privacyDescription: "カード生成のための追加データをサーバーへ保存せず、画像はお使いの端末内で生成します。"
+      qrFailedTitle: "二次元コードを作成できませんでした"
+      qrFailed: "ページを再読み込みして、もう一度お試しください。"
+      saveFailedTitle: "カードを保存できませんでした"
+      saveFailed: "画像の取得またはPNGの生成に失敗しました。しばらくしてからもう一度お試しください。"
     _main:
       back: "戻る"
       search: "検索"
@@ -5858,7 +5885,7 @@ _hata:
       accept: "了承する"
       howToGrowFlowers: "お花の育て方"
       flowerInfoGrowth: "このサーバーを使用していくにつれて、お花が成長していきます。"
-      flowerInfoTime: "サーバーを開いている時間に応じて少しずつ成長します（約8-32時間）。"
+      flowerInfoTime: "画面を閉じたりバックグラウンドにしている間も、経過時間に応じて少しずつ成長します（約8〜32時間）。"
       flowerInfoNaming: "成長が完了すると名前を付けられます。育て終わった花の名前はいつでもギャラリーから変更できます。"
       flowerInfoVariety: "全125種類以上のお花や奇妙なアイテムが用意されています。レアアイテムも！"
       chooseAppearance: "まずは見た目を選びましょう"
@@ -5927,6 +5954,8 @@ _hata:
       tutorialCompleteWish: "Hataskがあなたの毎日をちょっと楽しくできますように"
       appDrawing: "お絵かき"
       appDrawingShort: "お絵かき"
+      appCardMaker: "旗鯖カードメーカー"
+      appCardMakerShort: "カード"
       appWhatsNew: "今回の更新内容"
       appWhatsNewShort: "更新内容"
       appPortal: "旗鯖ポータル"
@@ -6881,24 +6910,24 @@ _hata:
       hatadyText: "読んだ本や勉強したことを記録して、続けた日数や積み上げを振り返れる新しいツールです。本ごとのしおりと内容メモ、目標の設定、連続記録、横断検索、テキストでの書き出しに対応しています。記録の公開範囲は自分で選べ、通常表示では左上のボタンから前の画面へ戻れます。"
       hatadyLink: "Hatadyへ"
       hataskTitle: "Hatask を全面リデザイン"
-      hataskText: "ホーム画面を「季」「花信」「刷」の3つのテーマから選べるようになりました。表示切替、HataFeed の通知タイル、地震・津波情報タイルにも対応しています。育てている花の進み具合と、咲いた花の一覧を確認できるウィジェットも追加しました。"
+      hataskText: "ホーム画面を「季」「花信」「刷」の3つのテーマから選べるようになりました。表示切替、HataFeed の通知タイル、地震・津波情報タイルにも対応しています。育てている花は画面を閉じている間やバックグラウンドでも経過時間に応じて育ち、進み具合と咲いた花をウィジェットで確認できます。ログイン中のプロフィールからデジタル通行証を作るカードメーカーもHatask内に追加しました。"
       hataskLink: "Hataskへ"
       hatacordingTitle: "HataSNSCordUI — 会話型の高機能UI"
-      hatacordingText: "タイムラインを会話のように読みながら、左ペインで表示先を選び、右ペインで投稿詳細・検索・通知・ウィジェットを同時に扱える新しいUIです。設定や旗鯖ツールを開いても左右のペインを保ち、このUIの中で操作を続けられます。リアクションやノートの変更もその場で反映され、スマートフォンでは左右の端から各ペインを呼び出せます。初回チュートリアル、端末ごとの並び替え、UI専用レートリミット表示にも対応しています。"
+      hatacordingText: "タイムラインを会話のように読みながら、左ペインで表示先を選び、右ペインで投稿詳細・検索・通知・ウィジェットを同時に扱える新しいUIです。設定や旗鯖ツールを開いても左右のペインを保ち、このUIの中で操作を続けられます。リアクションやノートの変更もその場で反映され、スマートフォンでは左右の端から各ペインを呼び出せます。初回チュートリアル、端末ごとの並び替え、UI専用レートリミット表示にも対応しています。返信先のアバター表示、ダークテーマのサイズ選択、ポップアップ表示も安定化しました。"
       hatacordingLink: "HataSNSCordUIへ"
       hatafeedTitle: "HataFeedを全面リデザイン"
       hatafeedText: "HataFeedを、イシューの検索・絞り込み・ロードマップ・通知をひと目で確認できる画面へ刷新しました。トップから絵文字を申請でき、スタッフは複数の申請を1件ずつ続けて確認できます。イシューは範囲と含める内容を選んで書き出せます。同じHataFeedの通知をまとめ、複数のHataFeedから届いた場合もひとまとまりで確認できるようになりました。Hatask、HataFeed、地震・津波、プライベートチャンネルのOS通知にも、内容と移動先を表示します。通知ウィジェットのフィルタを安定化し、今後追加される通知種別は設定中のフィルタへ自動で加えず、必要なものを選んで有効にできるようにしました。Botからの通知は通常の通知画面・ウィジェット・HatasabaUIデッキ・HataSNSCordUIで非表示にでき、HataSNSCordUIでは人間からの通知と分けてまとめます。"
       sideStudioTitle: "HataSideStudio — サイドメニューを自分の形に"
-      sideStudioText: "実際のサイドメニューを見ながら、ボタン・グループ・ウィジェットの並び、形、色、表示内容を端末ごとに編集できる新しいツールです。拡大時と縮小時を分けて作れ、複数のプロファイル、ドラッグ操作、元に戻す・やり直し、設定の書き出しと読み込みにも対応しています。スマートフォンでも簡易タイムラインへ指で移動でき、上部の各操作を省略せず使えます。設定は端末内で処理され、サーバーや連合へ送信されません。"
+      sideStudioText: "実際のサイドメニューを見ながら、ボタン・グループ・ウィジェットの並び、形、色、表示内容を端末ごとに編集できる新しいツールです。拡大時と縮小時を分けて作れ、複数のプロファイル、ドラッグ操作、元に戻す・やり直し、設定の書き出しと読み込みにも対応しています。ノートボタンも鉛筆・猫の肉球アイコン、色、グラデーションから設定できます。スマートフォンでも簡易タイムラインへ指で移動でき、上部の各操作を省略せず使えます。設定は端末内で処理され、サーバーや連合へ送信されません。"
       sideStudioLink: "HataSideStudioへ"
       languageTitle: "旗鯖独自機能が3言語に対応"
-      languageText: "旗鯖独自機能を、日本語・英語・中国語（簡体字）で利用できるようになりました。Hatadyを含む対応機能はHataskey本体の言語設定に従い、自分で入力した投稿・記録・名前は変わりません。花常と地震・津波情報は引き続き日本語のみです。"
+      languageText: "旗鯖独自機能を、日本語・英語・中国語（簡体字）で利用できるようになりました。Hatadyを含む対応機能と「Hataskeyについて」・サーバー情報ページはHataskey本体の言語設定に従い、自分で入力した投稿・記録・名前は変わりません。花常と地震・津波情報は引き続き日本語のみです。"
       languageLink: "言語設定を開く"
       privateChannelTitle: "プライベートチャンネルを作れます"
       privateChannelText: "管理者から許可された利用者は、メンバーだけが閲覧できるチャンネルを作れます。招待した相手は通知から参加するかを選び、承認して初めて参加します。管理画面では招待中・参加中・招待拒否を確認できます。"
       privateChannelLink: "チャンネルを作る"
       hatasabaUiTitle: "HatasabaUI 2（すりガラス調）"
-      hatasabaUiText: "ノートやカラムをすりガラス調にする新しい見た目を選べるようになりました。透過の強さはその場で確かめながら調整できます。デッキにはクリップ・お気に入りのカラム、カラムごとの再読み込みが増えています。タブを左右スワイプで切り替えない設定と、Bot投稿を隠す設定にも対応しました。"
+      hatasabaUiText: "ノートやカラムをすりガラス調にする新しい見た目を選べるようになりました。透過の強さはその場で確かめながら調整できます。デッキにはクリップ・お気に入りのカラム、カラムごとの再読み込みが増えています。時計の秒表示で通知などのカラムが点滅しないよう更新処理も安定化しました。タブを左右スワイプで切り替えない設定と、Bot投稿を隠す設定にも対応しました。"
       settingsLink: "設定を開く"
       betaTitle: "ベータ機能を試せます"
       betaText: "ブラウザ内だけでC/C++を書いて実行できるプレイグラウンドと、投稿前に3・5・10秒の猶予を作れるカウントダウンを用意しました。どちらも端末内で動き、投稿前カウントダウンは取り消しや今すぐ投稿も選べます。"
@@ -6973,8 +7002,21 @@ _hata:
     discardTitle: "変更を破棄しますか？"
     discardText: "保存していない変更があります。閉じると変更は失われます。"
   _aboutHataskey:
+    title: "Hataskeyについて"
+    about: "Hataskeyは、MisskeyとCherryPickをベースに2025年から開発している、カスタマイズされたオープンソースソフトウェアです。"
+    basedOnMisskey: "Misskeyをベースにしています"
+    specialThanksMisskey: "スペシャルサンクス（Misskey）"
     hataskeyMembers: "Hataskeyプロジェクトメンバー"
     cherryPickMembers: "CherryPickプロジェクトメンバー"
+  _serverInfo:
+    wellKnownResources: "標準公開リソース"
+    refreshMetadata: "メタデータを更新"
+    refreshRequested: "メタデータの更新をリクエストしました。"
+    followingPublished: "フォロー（公開）"
+    followersSubscribed: "フォロワー（購読）"
+    lastPosted: "最終投稿: {date}"
+    rawData: "生データ"
+    status: "状態: {status}"
   _utage:
     tipBefore: "「宴」「うたげ」「utage」を含むノートをローカルタイムラインに投稿すると、15分間ノートが明滅します。誰にも反応されずに15分逃げ切れたら"
     tipSuccess: "緑色で「成功」"
@@ -7891,6 +7933,9 @@ _hata:
       numberedProfile: 'プロファイル {number}'
       notFinalUntilSaved: '保存するまでは確定しません。'
       note: 'ノート'
+      noteButtonCustomization: 'ノートボタン'
+      noteButtonCustomizationDescription: 'サイドメニュー下部のノートボタンへ、アイコン・色・グラデーションを設定します。'
+      noteButtonIcon: 'ノートボタンのアイコン'
       oneColumn: '1列'
       onlyMinimumHeightAdjustable: 'このサイズでは最低高だけを調整できます。'
       open: '開く'
@@ -7902,6 +7947,8 @@ _hata:
       overall: '全体'
       overallLayout: '全体レイアウト'
       parallaxBeta: 'パララックススクロール（ベータ）'
+      pawIcon: '猫の肉球'
+      pencilIcon: '鉛筆'
       placement: '配置'
       preview: 'プレビュー'
       previewAndSidebarChangeTogether: 'プレビューと実際のサイドメニューが同時に切り替わります。'

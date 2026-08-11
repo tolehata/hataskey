@@ -13,7 +13,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</div>
 			<div style="display: flex; flex-direction: column; gap: 1em;">
 				<MkKeyValue :copy="host" oneline>
-					<template #key>Host</template>
+					<template #key>{{ i18n.ts.host }}</template>
 					<template #value><span class="_monospace"><MkLink :url="`https://${host}`">{{ host }}</MkLink></span></template>
 				</MkKeyValue>
 				<MkKeyValue oneline>
@@ -31,7 +31,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</MkKeyValue>
 
 			<FormSection v-if="iAmModerator">
-				<template #label>Moderation</template>
+				<template #label>{{ i18n.ts.moderation }}</template>
 				<div class="_gaps_s">
 					<MkKeyValue>
 						<template #key>
@@ -46,7 +46,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<MkSwitch v-model="isBlocked" :disabled="!meta || !instance" @update:modelValue="toggleBlock">{{ i18n.ts.blockThisInstance }}</MkSwitch>
 					<MkSwitch v-model="isSilenced" :disabled="!meta || !instance" @update:modelValue="toggleSilenced">{{ i18n.ts.silenceThisInstance }}</MkSwitch>
 					<MkSwitch v-model="isMediaSilenced" :disabled="!meta || !instance" @update:modelValue="toggleMediaSilenced">{{ i18n.ts.mediaSilenceThisInstance }}</MkSwitch>
-					<MkButton @click="refreshMetadata"><i class="ti ti-refresh"></i> Refresh metadata</MkButton>
+					<MkButton @click="refreshMetadata"><i class="ti ti-refresh"></i> {{ serverInfoCopy.refreshMetadata }}</MkButton>
 					<MkTextarea v-model="moderationNote" manualSave>
 						<template #label>{{ i18n.ts.moderationNote }}</template>
 						<template #caption>{{ i18n.ts.moderationNoteDescription }}</template>
@@ -71,17 +71,17 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 			<FormSection>
 				<MkKeyValue oneline style="margin: 1em 0;">
-					<template #key>Following (Pub)</template>
+					<template #key>{{ serverInfoCopy.followingPublished }}</template>
 					<template #value>{{ number(instance.followingCount) }}</template>
 				</MkKeyValue>
 				<MkKeyValue oneline style="margin: 1em 0;">
-					<template #key>Followers (Sub)</template>
+					<template #key>{{ serverInfoCopy.followersSubscribed }}</template>
 					<template #value>{{ number(instance.followersCount) }}</template>
 				</MkKeyValue>
 			</FormSection>
 
 			<FormSection>
-				<template #label>Well-known resources</template>
+				<template #label>{{ serverInfoCopy.wellKnownResources }}</template>
 				<FormLink :to="`https://${host}/.well-known/host-meta`" external style="margin-bottom: 8px;">host-meta</FormLink>
 				<FormLink :to="`https://${host}/.well-known/host-meta.json`" external style="margin-bottom: 8px;">host-meta.json</FormLink>
 				<FormLink :to="`https://${host}/.well-known/nodeinfo`" external style="margin-bottom: 8px;">nodeinfo</FormLink>
@@ -105,7 +105,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<div v-else-if="tab === 'users'" class="_gaps_m">
 			<MkPagination v-slot="{ items }" :paginator="usersPaginator">
 				<div :class="$style.users">
-					<MkA v-for="user in items" :key="user.id" v-tooltip.mfm="`Last posted: ${user.updatedAt ? dateString(user.updatedAt) : 'unknown'}`" :to="`/admin/user/${user.id}`">
+					<MkA v-for="user in items" :key="user.id" v-tooltip.mfm="i18n.tsx._hata._serverInfo.lastPosted({ date: user.updatedAt ? dateString(user.updatedAt) : i18n.ts.unknown })" :to="`/admin/user/${user.id}`">
 						<MkUserCardMini :user="user"/>
 					</MkA>
 				</div>
@@ -179,6 +179,7 @@ const isSilenced = ref(false);
 const isMediaSilenced = ref(false);
 const faviconUrl = ref<string | null>(null);
 const moderationNote = ref('');
+const serverInfoCopy = i18n.ts._hata._serverInfo;
 
 const usersPaginator = iAmModerator ? markRaw(new Paginator('admin/show-users', {
 	limit: 10,
@@ -279,7 +280,7 @@ function refreshMetadata(): void {
 		host: instance.value.host,
 	});
 	os.alert({
-		text: 'Refresh requested',
+		text: serverInfoCopy.refreshRequested,
 	});
 }
 
@@ -307,7 +308,7 @@ const headerTabs = computed(() => [{
 	icon: 'ti ti-users',
 }] : []), {
 	key: 'raw',
-	title: 'Raw',
+	title: serverInfoCopy.rawData,
 	icon: 'ti ti-code',
 }]);
 

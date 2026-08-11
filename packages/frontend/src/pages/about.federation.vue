@@ -23,7 +23,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 	<MkPagination v-slot="{items}" ref="instances" :key="host + state" :paginator="paginator">
 		<div :class="$style.items">
-			<MkA v-for="instance in items" :key="instance.id" v-tooltip.mfm="`Status: ${getStatus(instance)}`" :class="$style.item" :to="`/instance-info/${instance.host}`">
+			<MkA v-for="instance in items" :key="instance.id" v-tooltip.mfm="i18n.tsx._hata._serverInfo.status({ status: getStatus(instance) })" :class="$style.item" :to="`/instance-info/${instance.host}`">
 				<MkInstanceCardMini :instance="instance"/>
 			</MkA>
 		</div>
@@ -100,11 +100,11 @@ const paginator = markRaw(new Paginator('federation/instances', {
 const hostEl = useTemplateRef('hostEl');
 
 function getStatus(instance) {
-	if (instance.isSuspended) return 'Suspended';
-	if (instance.isBlocked) return 'Blocked';
-	if (instance.isSilenced) return 'Silenced';
-	if (instance.isNotResponding) return 'Error';
-	return 'Alive';
+	if (instance.isSuspended) return i18n.ts.suspended;
+	if (instance.isBlocked) return i18n.ts.blocked;
+	if (instance.isSilenced) return i18n.ts.silence;
+	if (instance.isNotResponding) return i18n.ts.notResponding;
+	return i18n.ts.normal;
 }
 </script>
 

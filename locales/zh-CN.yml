@@ -460,7 +460,7 @@ exploreFediverse: "探索联邦宇宙"
 popularTags: "热门标签"
 userList: "列表"
 about: "关于"
-aboutMisskey: "关于 CherryPick"
+aboutMisskey: "关于 Hataskey"
 administrator: "管理员"
 token: "Token (令牌)"
 2fa: "双因素认证"
@@ -3885,10 +3885,10 @@ _hata:
       drawingToolTitle: "绘图工具"
       drawingToolBody: "可在 Hataskey 画面内绘图。能够调整线条粗细、颜色和透明度，分多个图层绘制，并撤销上一步操作。也支持智能手机触控操作。"
       drawingToolTip1: "从发布表单的绘图按钮打开时，可直接附加完成的图画"
-      hataCardMakerTitle: "HATA CARD MAKER（会员证）"
-      hataCardMakerBody: "这是制作 Hataike 2-chome 会员证风格图片的外部工具。使用 Hataskey 账户授权后，会根据用户名和注册日期生成卡片。"
-      hataCardMakerLink: "制作会员证"
-      hataCardMakerTip1: "完成的图片可以保存"
+      hataCardMakerTitle: "旗服卡片制作器"
+      hataCardMakerBody: "这是Hatask内置工具，可使用当前登录的旗服个人资料制作数字通行证，无需登录外部服务或选择服务器。"
+      hataCardMakerLink: "打开卡片制作器"
+      hataCardMakerTip1: "可以选择普通或金色设计，并将完成的卡片保存为PNG图片"
       hatalyzeTitle: "HATAlyze"
       hatalyzeBody: "这是一个从自己的公开帖子中回顾常用词语、发布时间段、文章长度和心情趋势等内容的外部工具。结果仅供娱乐，不可用于医疗判断。"
       hatalyzeLink: "打开 HATAlyze"
@@ -5056,6 +5056,33 @@ _hata:
       themeKashinDescription: "流行便当风"
       themeSuri: "印"
       themeSuriDescription: "双色孔版印刷"
+    _cardMaker:
+      title: "旗服卡片制作器"
+      subtitle: "将你的旗服个人资料制作成数字通行证"
+      hataskTool: "Hatask 工具"
+      localProfileNotice: "直接在Hataskey内读取当前登录的个人资料，无需再次登录或选择服务器。"
+      appearanceSettings: "卡片外观设置"
+      standardDesign: "普通设计"
+      goldDesign: "金色设计"
+      accentColor: "强调色"
+      glassOpacity: "透明度"
+      selectColor: "选择颜色 {color}"
+      goldUnlockHint: "使用满一年后即可解锁金色设计"
+      cardPreview: "卡片预览"
+      passLabel: "旗服 通行证"
+      profileQrCode: "个人资料二维码"
+      memberLabel: "{server} Member"
+      registeredOn: "{date} 注册"
+      tiltHint: "拖动或滑动卡片即可使其倾斜"
+      saveImage: "保存图片"
+      saving: "正在保存…"
+      saved: "卡片图片已保存"
+      privacyTitle: "个人资料仅在此页面中处理"
+      privacyDescription: "不会在服务器上保存额外的卡片数据，图片会在你的设备上生成。"
+      qrFailedTitle: "无法生成二维码"
+      qrFailed: "请刷新页面后重试。"
+      saveFailedTitle: "无法保存卡片"
+      saveFailed: "图片加载或PNG生成失败，请稍后重试。"
     _main:
       back: "返回"
       search: "搜索"
@@ -5300,7 +5327,7 @@ _hata:
       accept: "确认"
       howToGrowFlowers: "花朵培育方法"
       flowerInfoGrowth: "随着你使用此服务器，花朵会逐渐成长。"
-      flowerInfoTime: "花朵会根据服务器保持打开的时间逐渐成长（约8-32小时）。"
+      flowerInfoTime: "即使应用在后台或已关闭，也会按经过的时间继续成长（约8～32小时）。"
       flowerInfoNaming: "成长完成后可以命名。已培育花朵的名称随时可以在画廊中更改。"
       flowerInfoVariety: "准备了125种以上的花和奇妙物品，也有稀有物品！"
       chooseAppearance: "先选择喜欢的外观吧"
@@ -5369,6 +5396,8 @@ _hata:
       tutorialCompleteWish: "愿 Hatask 让你的每一天更有乐趣"
       appDrawing: "绘图"
       appDrawingShort: "绘图"
+      appCardMaker: "旗服卡片制作器"
+      appCardMakerShort: "卡片"
       appWhatsNew: "本次更新内容"
       appWhatsNewShort: "更新内容"
       appPortal: "旗服门户"
@@ -6323,24 +6352,24 @@ _hata:
       hatadyText: "Hatady是一款用于记录读过的书和学习内容，并回顾连续天数及积累成果的新工具。支持每本书的书签和内容笔记、目标设置、连续记录、跨记录搜索以及文本导出。记录的公开范围可自行选择，普通显示模式下可通过左上角按钮返回上一页面。"
       hatadyLink: "前往Hatady"
       hataskTitle: "Hatask 全面重新设计"
-      hataskText: "主页现在可从“季节”“花信”“印刷”三种主题中选择，并支持显示切换、HataFeed通知卡片以及地震和海啸信息卡片。还新增了可查看正在培育花朵的进度和已开花列表的小组件。"
+      hataskText: "主页现在可从“季节”“花信”“印刷”三种主题中选择，并支持显示切换、HataFeed通知卡片以及地震和海啸信息卡片。花朵在关闭画面或应用处于后台时也会按经过时间成长，并可通过小组件查看进度和开花记录。Hatask中还新增了可用当前登录资料制作数字通行证的卡片制作工具。"
       hataskLink: "前往Hatask"
       hatacordingTitle: "HataSNSCordUI — 对话式高功能界面"
-      hatacordingText: "这是一个可像阅读对话一样浏览时间线的新界面。你可以在左侧面板选择显示内容，并在右侧面板同时使用帖子详情、搜索、通知和小组件。打开设置或Hataskey工具时也会保留左右面板，可继续在此界面中操作。回应和帖子更改会原地更新，手机上则可从左右边缘呼出对应面板。还支持首次使用教程、每台设备独立排序和界面专用速率限制显示。"
+      hatacordingText: "这是一个可像阅读对话一样浏览时间线的新界面。你可以在左侧面板选择显示内容，并在右侧面板同时使用帖子详情、搜索、通知和小组件。打开设置或Hataskey工具时也会保留左右面板，可继续在此界面中操作。回应和帖子更改会原地更新，手机上则可从左右边缘呼出对应面板。还支持首次使用教程、每台设备独立排序和界面专用速率限制显示，并改善了回复对象头像、深色主题尺寸选项和弹窗显示的稳定性。"
       hatacordingLink: "使用HataSNSCordUI"
       hatafeedTitle: "HataFeed 全面重新设计"
       hatafeedText: "HataFeed现已将问题搜索和筛选、路线图与通知整合到一个清晰页面中。可从首页申请表情符号，工作人员也能连续逐项审核多份申请。导出问题时可选择范围及包含内容。同一HataFeed的通知会自动合并，来自多个HataFeed的通知也可集中查看。Hatask、HataFeed、地震和海啸、私密频道的系统通知现在会同时显示内容和目标位置。通知小组件的筛选更加稳定；已有筛选设置时，今后新增的通知类型不会自动启用，可按需手动开启。现在还可在普通通知页面、小组件、HatasabaUI Deck和HataSNSCordUI中隐藏机器人通知；HataSNSCordUI会将其与真人通知分开汇总。"
       sideStudioTitle: "HataSideStudio — 打造自己的侧边菜单"
-      sideStudioText: "这是一款可在查看实际侧边菜单的同时，按设备编辑按钮、分组和小组件的顺序、形状、颜色及显示内容的新工具。展开和收起状态可分别设计，并支持多个配置、拖动、撤销与重做，以及设置导入和导出。手机上也可用手指将项目移入简易时间线，同时保留顶部的各项操作。设置只在设备内处理，不会发送到服务器或联邦网络。"
+      sideStudioText: "这是一款可在查看实际侧边菜单的同时，按设备编辑按钮、分组和小组件的顺序、形状、颜色及显示内容的新工具。展开和收起状态可分别设计，并支持多个配置、拖动、撤销与重做，以及设置导入和导出。发帖按钮还可选择铅笔或猫爪图标，并设置颜色和渐变。手机上也可用手指将项目移入简易时间线，同时保留顶部的各项操作。设置只在设备内处理，不会发送到服务器或联邦网络。"
       sideStudioLink: "前往HataSideStudio"
       languageTitle: "Hataskey特色功能现已支持三种语言"
-      languageText: "Hataskey特色功能现可使用日语、英语和简体中文。包括Hatady在内的对应功能会跟随Hataskey主界面的语言设置，你自己输入的帖子、记录和名称不会改变。花常以及地震和海啸信息仍仅提供日语。"
+      languageText: "Hataskey特色功能现可使用日语、英语和简体中文。包括Hatady在内的对应功能，以及“关于Hataskey”和服务器信息页面，会跟随Hataskey主界面的语言设置。你自己输入的帖子、记录和名称不会改变。花常以及地震和海啸信息仍仅提供日语。"
       languageLink: "打开语言设置"
       privateChannelTitle: "可以创建私密频道"
       privateChannelText: "经管理员授权的用户可创建仅成员可见的频道。受邀者可从通知中选择是否参加，接受后才会成为成员。管理页面可查看邀请中、已参加和拒绝邀请的状态。"
       privateChannelLink: "创建频道"
       hatasabaUiTitle: "HatasabaUI 2（磨砂玻璃风格）"
-      hatasabaUiText: "现在可为帖子和栏目选择新的磨砂玻璃外观，并可边预览边调整透明度。牌组新增剪辑和收藏栏目，也可逐栏重新加载。还支持关闭左右滑动切换标签，以及隐藏机器人帖子。"
+      hatasabaUiText: "现在可为帖子和栏目选择新的磨砂玻璃外观，并可边预览边调整透明度。牌组新增剪辑和收藏栏目，也可逐栏重新加载。时钟更新已被隔离，秒数变化不会再让通知等栏目闪烁。还支持关闭左右滑动切换标签，以及隐藏机器人帖子。"
       settingsLink: "打开设置"
       betaTitle: "试用测试功能"
       betaText: "C/C++运行场完全在浏览器内运行，发布前倒计时则可在发送帖子前保留3、5或10秒。两项功能都只在设备内运行，倒计时期间可取消或立即发送。"
@@ -6415,8 +6444,21 @@ _hata:
     discardTitle: "放弃更改？"
     discardText: "你有尚未保存的更改。关闭窗口后这些更改将丢失。"
   _aboutHataskey:
+    title: "关于 Hataskey"
+    about: "Hataskey 是基于 Misskey 与 CherryPick、自2025年起持续开发的定制开源软件。"
+    basedOnMisskey: "基于 Misskey"
+    specialThanksMisskey: "特别鸣谢（Misskey）"
     hataskeyMembers: "Hataskey 项目成员"
     cherryPickMembers: "CherryPick 项目成员"
+  _serverInfo:
+    wellKnownResources: "标准公开资源"
+    refreshMetadata: "刷新元数据"
+    refreshRequested: "已请求刷新元数据。"
+    followingPublished: "关注（发布）"
+    followersSubscribed: "关注者（订阅）"
+    lastPosted: "最后发帖：{date}"
+    rawData: "原始数据"
+    status: "状态：{status}"
   _utage:
     tipBefore: "在本地时间线发布含有宴会关键词的帖子后，该帖子会闪烁15分钟。若15分钟内无人互动，则以"
     tipSuccess: "绿色的“成功”"
@@ -7333,6 +7375,9 @@ _hata:
       numberedProfile: '配置 {number}'
       notFinalUntilSaved: '在保存之前不会生效。'
       note: '帖子'
+      noteButtonCustomization: '发帖按钮'
+      noteButtonCustomizationDescription: '设置侧边菜单底部发帖按钮的图标、颜色和渐变。'
+      noteButtonIcon: '发帖按钮图标'
       oneColumn: '1 列'
       onlyMinimumHeightAdjustable: '此大小下仅可调整最小高度。'
       open: '打开'
@@ -7344,6 +7389,8 @@ _hata:
       overall: '整体'
       overallLayout: '整体布局'
       parallaxBeta: '视差滚动（测试版）'
+      pawIcon: '猫爪'
+      pencilIcon: '铅笔'
       placement: '布置'
       preview: '预览'
       previewAndSidebarChangeTogether: '预览和实际侧边栏会同时切换大小。'

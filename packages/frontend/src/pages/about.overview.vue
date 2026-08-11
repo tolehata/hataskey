@@ -121,7 +121,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 	</MkSuspense>
 
 	<FormSection>
-		<template #label>Well-known resources</template>
+		<template #label>{{ serverInfoCopy.wellKnownResources }}</template>
 		<div class="_gaps_s">
 			<FormLink to="/.well-known/host-meta" external>host-meta</FormLink>
 			<FormLink to="/.well-known/host-meta.json" external>host-meta.json</FormLink>
@@ -149,6 +149,7 @@ import MkInfo from '@/components/MkInfo.vue';
 import { donateCherryPick } from '@/utility/donate-cherrypick.js';
 
 const initStats = () => misskeyApi('stats', {});
+const serverInfoCopy = i18n.ts._hata._serverInfo;
 </script>
 
 <style lang="scss" module>
