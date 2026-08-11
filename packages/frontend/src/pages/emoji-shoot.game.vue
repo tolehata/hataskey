@@ -9,25 +9,25 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<div :class="$style.root">
 			<div :class="$style.header">
 				<div :class="$style.scoreBox">
-					<div :class="$style.scoreLabel">SCORE</div>
+					<div :class="$style.scoreLabel">{{ common.scoreUpper }}</div>
 					<div :class="$style.scoreValue">{{ score }}</div>
 				</div>
 				<div :class="$style.scoreBox">
-					<div :class="$style.scoreLabel">WAVE</div>
+					<div :class="$style.scoreLabel">{{ copy.waveUpper }}</div>
 					<div :class="$style.scoreValue">{{ wave }}</div>
 				</div>
 				<div :class="$style.scoreBox">
-					<div :class="$style.scoreLabel">LIFE</div>
+					<div :class="$style.scoreLabel">{{ common.lifeUpper }}</div>
 					<div :class="$style.scoreValue">{{ '❤️'.repeat(lives) }}{{ '🖤'.repeat(MAX_LIVES - lives) }}</div>
 				</div>
 				<div v-if="isDebuffMode" :class="[$style.scoreBox, $style.debuffBadge]">
-					<div :class="$style.scoreLabel">MODE</div>
-					<div :class="$style.scoreValue" style="font-size:.8rem;color:#e74040;">DEBUFF</div>
+					<div :class="$style.scoreLabel">{{ copy.modeUpper }}</div>
+					<div :class="$style.scoreValue" style="font-size:.8rem;color:#e74040;">{{ copy.debuffUpper }}</div>
 				</div>
 			</div>
 
 			<div v-if="activeEffects.length > 0" :class="$style.powerBar">
-				<span v-for="(p, i) in activeEffects" :key="i" :class="[$style.powerBadge, p.isDebuff && $style.debuffPowerBadge]">{{ p.icon }} {{ p.remaining }}s</span>
+				<span v-for="(p, i) in activeEffects" :key="i" :class="[$style.powerBadge, p.isDebuff && $style.debuffPowerBadge]">{{ p.icon }} {{ copyx.secondsRemaining({ seconds: String(p.remaining) }) }}</span>
 			</div>
 
 			<div ref="canvasWrapEl" :class="$style.canvasWrap"
@@ -40,13 +40,13 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<Transition name="fade">
 				<div v-if="gameOver" :class="$style.overlay">
 					<div :class="$style.overCard">
-						<div :class="$style.overTitle">GAME OVER</div>
-						<div :class="$style.overScore">スコア: {{ score }}</div>
-						<div :class="$style.overStats">Wave {{ wave }} / {{ kills }} kills</div>
-						<div v-if="isNewRecord" :class="$style.newRecord">🎉 NEW RECORD!</div>
+						<div :class="$style.overTitle">{{ common.gameOverUpper }}</div>
+						<div :class="$style.overScore">{{ commonx.scoreWithValue({ score: String(score) }) }}</div>
+						<div :class="$style.overStats">{{ copyx.waveKills({ wave: String(wave), kills: String(kills) }) }}</div>
+						<div v-if="isNewRecord" :class="$style.newRecord">🎉 {{ common.newRecordUpper }}</div>
 						<div :class="$style.overBtns">
-							<MkButton primary gradate rounded @click="restart"><i class="ti ti-refresh"></i> もう一度</MkButton>
-							<MkButton rounded @click="goBack"><i class="ti ti-arrow-left"></i> 戻る</MkButton>
+							<MkButton primary gradate rounded @click="restart"><i class="ti ti-refresh"></i> {{ common.retry }}</MkButton>
+							<MkButton rounded @click="goBack"><i class="ti ti-arrow-left"></i> {{ common.back }}</MkButton>
 						</div>
 					</div>
 				</div>
@@ -64,6 +64,12 @@ import { definePage } from '@/page.js';
 import { miLocalStorage } from '@/local-storage.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { $i } from '@/i.js';
+import { i18n } from '@/i18n.js';
+
+const common = i18n.ts._hata._games._common;
+const commonx = i18n.tsx._hata._games._common;
+const copy = i18n.ts._hata._games._shoot._game;
+const copyx = i18n.tsx._hata._games._shoot._game;
 
 const CW = 400;
 const CH = 600;
@@ -80,15 +86,15 @@ type EffectType = 'rapid' | 'spread' | 'shield' | 'magnet' | 'piercing' | 'slow'
 
 const EFFECT_DEFS: Record<EffectType, { icon: string; duration: number; color: string; desc: string; isDebuff: boolean }> = {
 	// バフ（通常モード）
-	rapid:    { icon: '⚡', duration: 8,  color: '#ffd700', desc: '連射速度UP', isDebuff: false },
-	spread:   { icon: '🔱', duration: 10, color: '#00bfff', desc: '3方向発射', isDebuff: false },
-	shield:   { icon: '🛡️', duration: 6,  color: '#7cfc00', desc: 'ダメージ無効', isDebuff: false },
-	magnet:   { icon: '🧲', duration: 8,  color: '#ff69b4', desc: 'アイテム吸引', isDebuff: false },
-	piercing: { icon: '💎', duration: 7,  color: '#e0aaff', desc: '弾が貫通', isDebuff: false },
+	rapid:    { icon: '⚡', duration: 8,  color: '#ffd700', desc: copy._effects.rapid, isDebuff: false },
+	spread:   { icon: '🔱', duration: 10, color: '#00bfff', desc: copy._effects.spread, isDebuff: false },
+	shield:   { icon: '🛡️', duration: 6,  color: '#7cfc00', desc: copy._effects.shield, isDebuff: false },
+	magnet:   { icon: '🧲', duration: 8,  color: '#ff69b4', desc: copy._effects.magnet, isDebuff: false },
+	piercing: { icon: '💎', duration: 7,  color: '#e0aaff', desc: copy._effects.piercing, isDebuff: false },
 	// デバフ（デバフモードではこれらが降ってくる）
-	slow:     { icon: '🐌', duration: 6,  color: '#ff6347', desc: '移動速度低下', isDebuff: true },
-	giant:    { icon: '🎈', duration: 7,  color: '#ff4500', desc: '自機が巨大化', isDebuff: true },
-	mirror:   { icon: '🪞', duration: 5,  color: '#9370db', desc: '左右反転', isDebuff: true },
+	slow:     { icon: '🐌', duration: 6,  color: '#ff6347', desc: copy._effects.slow, isDebuff: true },
+	giant:    { icon: '🎈', duration: 7,  color: '#ff4500', desc: copy._effects.giant, isDebuff: true },
+	mirror:   { icon: '🪞', duration: 5,  color: '#9370db', desc: copy._effects.mirror, isDebuff: true },
 };
 
 const BUFF_TYPES: EffectType[] = ['rapid', 'spread', 'shield', 'magnet', 'piercing'];
@@ -493,7 +499,7 @@ onUnmounted(() => {
 	removeGlobalHandlers();
 	for (const p of activeEffects) clearInterval(p.timerId);
 });
-definePage(() => ({ title: 'カスタムエモジシュート', icon: 'ti ti-rocket' }));
+definePage(() => ({ title: copy.pageTitle, icon: 'ti ti-rocket' }));
 </script>
 
 <style lang="scss" module>

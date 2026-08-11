@@ -17,20 +17,20 @@ SPDX-License-Identifier: AGPL-3.0-only
 	@close="cancel"
 	@closed="emit('closed')"
 >
-	<template #header>マスコットの読み込み</template>
+	<template #header>{{ copy.header }}</template>
 
 	<div :class="$style.root">
 		<div :class="$style.notice">
 			<i class="ti ti-alert-triangle"></i>
 			<div>
-				現在の設定可能数では、読み込もうとしているマスコットの設定を完璧には維持できません。<br>
-				残したい項目を選んでください（選ばなかった項目は破棄されます）。
+				{{ copy.limitNotice }}<br>
+				{{ copy.chooseItems }}
 			</div>
 		</div>
 
 		<div v-if="expressions.length > 0" :class="$style.section">
 			<div :class="$style.secHead">
-				<span :class="$style.secTitle">立ち絵（表情）</span>
+				<span :class="$style.secTitle">{{ copy.expressions }}</span>
 				<span :class="[$style.secCount, exprOver && $style.secCountOver]">{{ selectedExpr.length }} / {{ maxExpressions }}</span>
 			</div>
 			<div :class="$style.list">
@@ -43,14 +43,14 @@ SPDX-License-Identifier: AGPL-3.0-only
 					/>
 					<img v-if="e.url" :src="e.url" :class="$style.thumb" />
 					<i v-else class="ti ti-photo" :class="$style.thumbIcon"></i>
-					<span :class="$style.itemLabel">{{ e.label || '(無題の立ち絵)' }}</span>
+					<span :class="$style.itemLabel">{{ e.label || copy.untitledExpression }}</span>
 				</label>
 			</div>
 		</div>
 
 		<div v-if="phrases.length > 0" :class="$style.section">
 			<div :class="$style.secHead">
-				<span :class="$style.secTitle">文言</span>
+				<span :class="$style.secTitle">{{ copy.phrases }}</span>
 				<span :class="[$style.secCount, phraseOver && $style.secCountOver]">{{ selectedPhrase.length }} / {{ maxPhrases }}</span>
 			</div>
 			<div :class="$style.list">
@@ -61,14 +61,14 @@ SPDX-License-Identifier: AGPL-3.0-only
 						:disabled="!isPhraseChecked(p.key) && selectedPhrase.length >= maxPhrases"
 						@change="togglePhrase(p.key)"
 					/>
-					<span :class="$style.itemLabel">{{ p.text || '(空の文言)' }}</span>
+					<span :class="$style.itemLabel">{{ p.text || copy.emptyPhrase }}</span>
 				</label>
 			</div>
 		</div>
 
 		<div :class="$style.actions">
-			<MkButton rounded @click="cancel">キャンセル</MkButton>
-			<MkButton primary rounded @click="ok">この内容で読み込む</MkButton>
+			<MkButton rounded @click="cancel">{{ copy.cancel }}</MkButton>
+			<MkButton primary rounded @click="ok">{{ copy.import }}</MkButton>
 		</div>
 	</div>
 </MkModalWindow>
@@ -78,6 +78,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 import { ref, computed, shallowRef } from 'vue';
 import MkModalWindow from '@/components/MkModalWindow.vue';
 import MkButton from '@/components/MkButton.vue';
+import { i18n } from '@/i18n.js';
+
+const copy = i18n.ts._hata._mascotImport;
 
 // key は呼び出し側で割り振る一意な識別子(配列index等)。中身の表示用に label/text/url も受け取る。
 const props = defineProps<{

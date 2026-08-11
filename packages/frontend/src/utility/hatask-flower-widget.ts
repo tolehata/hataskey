@@ -40,17 +40,18 @@ export function normalizeGrowingFlower(value: unknown): HataskFlower {
 	};
 }
 
-export function normalizeFlowerGallery(value: unknown, limit: number): HataskFlower[] {
+export function normalizeFlowerGallery(value: unknown, limit: number, unnamedFlowerName = '名前のない花'): HataskFlower[] {
 	if (!Array.isArray(value)) return [];
 	const requestedLimit = Number.isFinite(limit) ? Math.round(limit) : 5;
 	const safeLimit = Math.max(1, Math.min(12, requestedLimit));
+	const safeUnnamedFlowerName = safeText(unnamedFlowerName, '名前のない花');
 	return value
 		.filter((item): item is Record<string, unknown> => item != null && typeof item === 'object')
 		.slice(0, safeLimit)
 		.map((item, index) => ({
 			id: safeText(item.id, `flower-${index}`),
 			emoji: safeText(item.emoji, '🌼'),
-			name: safeText(item.name, '名前のない花'),
+			name: safeText(item.name, safeUnnamedFlowerName),
 			progress: 100,
 			totalMinutes: 0,
 			date: typeof item.date === 'string' ? item.date.slice(0, 40) : undefined,

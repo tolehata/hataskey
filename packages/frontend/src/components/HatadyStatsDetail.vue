@@ -14,7 +14,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 	:canResize="true"
 	@closed="emit('closed')"
 >
-	<template #header><i class="ti ti-chart-histogram"></i> {{ t('title') }}</template>
+	<template #header><i class="ti ti-chart-histogram"></i> {{ copy.title }}</template>
 
 	<div class="hatady-scope" :data-hatady-theme="theme" :class="$style.body">
 		<!-- 期間セレクタ -->
@@ -23,22 +23,22 @@ SPDX-License-Identifier: AGPL-3.0-only
 				v-for="m in RANGES" :key="m"
 				:class="[$style.rangeChip, months === m && $style.rangeChipOn]"
 				@click="setMonths(m)"
-			>{{ m }}{{ t('mo') }}</button>
+			>{{ i18n.tsx._hata._hatady._statsDetail.rangeMonths({ months: m.toString() }) }}</button>
 		</div>
 
-		<div v-if="loading" :class="$style.loading">{{ t('loading') }}</div>
+		<div v-if="loading" :class="$style.loading">{{ copy.loading }}</div>
 		<template v-else-if="data">
 			<!-- 自己ベスト -->
 			<div :class="$style.bests">
-				<div :class="$style.bestCard"><div :class="$style.bestNum">{{ fmtDur(data.bests.longestSession) }}</div><div :class="$style.bestLbl"><i class="ti ti-clock-play"></i> {{ t('longestSession') }}</div></div>
-				<div :class="$style.bestCard"><div :class="$style.bestNum">{{ fmtDur(data.bests.maxDayMinutes) }}</div><div :class="$style.bestLbl"><i class="ti ti-calendar-star"></i> {{ t('maxDay') }}</div></div>
-				<div :class="$style.bestCard"><div :class="$style.bestNum">{{ data.bests.longestStreak }}<span :class="$style.bestUnit">{{ t('d') }}</span></div><div :class="$style.bestLbl"><i class="ti ti-flame"></i> {{ t('longestStreak') }}</div></div>
+				<div :class="$style.bestCard"><div :class="$style.bestNum">{{ fmtDur(data.bests.longestSession) }}</div><div :class="$style.bestLbl"><i class="ti ti-clock-play"></i> {{ copy.longestSession }}</div></div>
+				<div :class="$style.bestCard"><div :class="$style.bestNum">{{ fmtDur(data.bests.maxDayMinutes) }}</div><div :class="$style.bestLbl"><i class="ti ti-calendar-star"></i> {{ copy.maxDay }}</div></div>
+				<div :class="$style.bestCard"><div :class="$style.bestNum">{{ data.bests.longestStreak }}<span :class="$style.bestUnit">{{ copy.dayUnit }}</span></div><div :class="$style.bestLbl"><i class="ti ti-flame"></i> {{ copy.longestStreak }}</div></div>
 			</div>
 
 			<!-- 月別学習時間 -->
 			<section :class="$style.section">
-				<div :class="$style.secHead"><i class="ti ti-chart-bar"></i> {{ t('monthly') }}</div>
-				<div v-if="monthlyMax === 0" :class="$style.noData">{{ t('noData') }}</div>
+				<div :class="$style.secHead"><i class="ti ti-chart-bar"></i> {{ copy.monthly }}</div>
+				<div v-if="monthlyMax === 0" :class="$style.noData">{{ copy.noData }}</div>
 				<div v-else :class="$style.barChart">
 					<div v-for="mo in data.monthlyTotals" :key="mo.month" :class="$style.barCol">
 						<span :class="$style.barVal">{{ mo.minutes > 0 ? fmtDurShort(mo.minutes) : '' }}</span>
@@ -52,18 +52,18 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 			<!-- 曜日別 -->
 			<section :class="$style.section">
-				<div :class="$style.secHead"><i class="ti ti-calendar-week"></i> {{ t('weekday') }}</div>
+				<div :class="$style.secHead"><i class="ti ti-calendar-week"></i> {{ copy.weekday }}</div>
 				<div :class="$style.wdRow">
 					<div v-for="(min, i) in data.weekdayMinutes" :key="i" :class="$style.wdCol">
 						<span :class="$style.wdTrack"><span :class="$style.wdFill" :style="{ height: pct(min, weekdayMax) + '%', background: i === 0 || i === 6 ? '#d98a5a' : 'var(--hy-accent)' }"></span></span>
-						<span :class="$style.wdLbl">{{ WD[lang][i] }}</span>
+						<span :class="$style.wdLbl">{{ weekdayLabels[i] }}</span>
 					</div>
 				</div>
 			</section>
 
 			<!-- 時間帯別 -->
 			<section :class="$style.section">
-				<div :class="$style.secHead"><i class="ti ti-clock-hour-4"></i> {{ t('hourly') }}</div>
+				<div :class="$style.secHead"><i class="ti ti-clock-hour-4"></i> {{ copy.hourly }}</div>
 				<div :class="$style.hourRow">
 					<span
 						v-for="(min, h) in data.hourlyMinutes" :key="h"
@@ -77,7 +77,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 			<!-- 分野推移 -->
 			<section v-if="data.subjectTrend.length" :class="$style.section">
-				<div :class="$style.secHead"><i class="ti ti-chart-dots"></i> {{ t('subjectTrend') }}</div>
+				<div :class="$style.secHead"><i class="ti ti-chart-dots"></i> {{ copy.subjectTrend }}</div>
 				<div v-for="(s, si) in data.subjectTrend" :key="s.subject" :class="$style.trendRow">
 					<div :class="$style.trendHead">
 						<span :class="$style.trendDot" :style="{ background: subjColor(si) }"></span>
@@ -97,8 +97,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 			<!-- 月別読了 -->
 			<section :class="$style.section">
-				<div :class="$style.secHead"><i class="ti ti-book-upload"></i> {{ t('finished') }}</div>
-				<div v-if="finishedMax === 0 && pagesMax === 0" :class="$style.noData">{{ t('noData') }}</div>
+				<div :class="$style.secHead"><i class="ti ti-book-upload"></i> {{ copy.finished }}</div>
+				<div v-if="finishedMax === 0 && pagesMax === 0" :class="$style.noData">{{ copy.noData }}</div>
 				<div v-else :class="$style.finRow">
 					<div v-for="mo in data.monthlyFinished" :key="mo.month" :class="$style.finCol">
 						<span :class="$style.finBooks">{{ mo.books > 0 ? mo.books : '' }}</span>
@@ -106,10 +106,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<span :class="$style.finLbl">{{ moLabel(mo.month) }}</span>
 					</div>
 				</div>
-				<div v-if="pagesMax > 0" :class="$style.pagesNote"><i class="ti ti-file-text"></i> {{ t('totalPages') }}: {{ totalPages.toLocaleString() }}{{ t('pagesUnit') }}</div>
+				<div v-if="pagesMax > 0" :class="$style.pagesNote"><i class="ti ti-file-text"></i> {{ i18n.tsx._hata._hatady._statsDetail.totalPagesValue({ label: copy.totalPages, count: numberFormatter.format(totalPages) }) }}</div>
 			</section>
 		</template>
-		<div v-else :class="$style.loading">{{ t('noData') }}</div>
+		<div v-else :class="$style.loading">{{ copy.noData }}</div>
 	</div>
 </MkWindow>
 </template>
@@ -117,13 +117,19 @@ SPDX-License-Identifier: AGPL-3.0-only
 <script lang="ts" setup>
 import { ref, computed, onMounted } from 'vue';
 import MkWindow from '@/components/MkWindow.vue';
-import { hatadyTheme, hatadyEffectiveLang, hatadyTzOffset } from '@/utility/hatady-prefs.js';
+import { i18n } from '@/i18n.js';
+import { hatadyTheme, hatadyTzOffset } from '@/utility/hatady-prefs.js';
+import { versatileLang } from '@/utility/intl-const.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 
 const emit = defineEmits<{ (ev: 'closed'): void }>();
 const dialog = ref<any>(null);
 const theme = hatadyTheme;
-const lang = hatadyEffectiveLang;
+const copy = i18n.ts._hata._hatady._statsDetail;
+const monthFormatter = new Intl.DateTimeFormat(versatileLang, { month: 'short' });
+const weekdayFormatter = new Intl.DateTimeFormat(versatileLang, { weekday: 'narrow' });
+const numberFormatter = new Intl.NumberFormat(versatileLang);
+const weekdayLabels = Array.from({ length: 7 }, (_, i) => weekdayFormatter.format(new Date(2024, 0, 7 + i)));
 
 type Data = {
 	monthlyTotals: { month: string; minutes: number; count: number }[];
@@ -172,41 +178,21 @@ function heatColor(v: number, max: number): string {
 	return `rgba(217,130,74,${a.toFixed(2)})`;
 }
 function moLabel(mk: string): string {
-	const [, m] = mk.split('-');
-	return lang.value === 'en' ? ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][Number(m)] : `${Number(m)}月`;
+	const [y, m] = mk.split('-').map(Number);
+	return monthFormatter.format(new Date(y, m - 1, 1));
 }
 function fmtDur(min: number): string {
-	if (min <= 0) return lang.value === 'en' ? '0m' : '0分';
+	if (min <= 0) return i18n.tsx._hata._hatady._statsDetail.durationMinutes({ minutes: '0' });
 	const h = Math.floor(min / 60); const m = min % 60;
-	if (lang.value === 'en') return h > 0 ? (m > 0 ? `${h}h${m}m` : `${h}h`) : `${m}m`;
-	return h > 0 ? (m > 0 ? `${h}時間${m}分` : `${h}時間`) : `${m}分`;
+	if (h > 0 && m > 0) return i18n.tsx._hata._hatady._statsDetail.durationHoursMinutes({ hours: h.toString(), minutes: m.toString() });
+	if (h > 0) return i18n.tsx._hata._hatady._statsDetail.durationHours({ hours: h.toString() });
+	return i18n.tsx._hata._hatady._statsDetail.durationMinutes({ minutes: m.toString() });
 }
 function fmtDurShort(min: number): string {
 	const h = Math.floor(min / 60);
-	if (h >= 1) return lang.value === 'en' ? `${h}h` : `${h}h`;
-	return `${min}m`;
+	if (h >= 1) return i18n.tsx._hata._hatady._statsDetail.durationHoursShort({ hours: h.toString() });
+	return i18n.tsx._hata._hatady._statsDetail.durationMinutesShort({ minutes: min.toString() });
 }
-
-const WD = { ja: ['日', '月', '火', '水', '木', '金', '土'], en: ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'] } as const;
-
-const DICT: Record<string, { ja: string; en: string }> = {
-	title: { ja: '統計の深掘り', en: 'Stats deep dive' },
-	loading: { ja: '読み込み中…', en: 'Loading…' },
-	mo: { ja: 'ヶ月', en: 'mo' },
-	d: { ja: '日', en: 'd' },
-	noData: { ja: 'この期間のデータがありません。', en: 'No data for this range.' },
-	longestSession: { ja: '最長セッション', en: 'Longest session' },
-	maxDay: { ja: '1日の最大', en: 'Best day' },
-	longestStreak: { ja: '最長連続', en: 'Longest streak' },
-	monthly: { ja: '月別の学習時間', en: 'Monthly study time' },
-	weekday: { ja: '曜日別の傾向', en: 'By weekday' },
-	hourly: { ja: '時間帯の傾向', en: 'By hour of day' },
-	subjectTrend: { ja: '分野別の推移', en: 'Subject trends' },
-	finished: { ja: '月別の読了', en: 'Books finished' },
-	totalPages: { ja: '読んだページ数', en: 'Pages read' },
-	pagesUnit: { ja: 'ページ', en: ' pages' },
-};
-function t(key: string): string { return DICT[key]?.[lang.value] ?? key; }
 </script>
 
 <style lang="scss" module>

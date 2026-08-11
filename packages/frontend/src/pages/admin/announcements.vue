@@ -58,15 +58,15 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<!-- 旗鯖fork: メンテナンス進捗バー(4段階) -->
 						<div v-if="announcement.icon === 'maintenance'" :class="$style.progressBlock">
 							<MkSwitch :modelValue="!!announcement.progressSteps" @update:modelValue="toggleProgress(announcement, $event)">
-								進捗バーを表示する
-								<template #caption>4段階のラベルと進捗を利用者に表示します。各段階の文言は自由に設定できます。</template>
+								{{ i18n.ts._hata._announcementCustom.showProgress }}
+								<template #caption>{{ i18n.ts._hata._announcementCustom.progressCaption }}</template>
 							</MkSwitch>
 							<div v-if="announcement.progressSteps" :class="$style.progressSteps">
 								<div v-for="(label, idx) in announcement.progressSteps" :key="idx" :class="$style.progressStepRow">
 									<span :class="$style.progressStepNum">{{ (idx as number) + 1 }}</span>
-									<MkInput v-model="announcement.progressSteps[(idx as number)]" :placeholder="`段階${(idx as number) + 1}のラベル`" style="flex:1;"/>
+									<MkInput v-model="announcement.progressSteps[(idx as number)]" :placeholder="i18n.tsx._hata._announcementCustom.stepLabel({ number: (idx as number) + 1 })" style="flex:1;"/>
 									<MkSwitch :modelValue="(announcement.progressCompleted ?? [false,false,false,false])[(idx as number)]" @update:modelValue="setProgressCompleted(announcement, (idx as number), $event)">
-										完了
+										{{ i18n.ts._hata._announcementCustom.completed }}
 									</MkSwitch>
 								</div>
 							</div>

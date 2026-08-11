@@ -26,9 +26,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 	<div v-else-if="isExternalTimeline && !isExternalEnabled" :class="$style.disabled">
 		<p :class="$style.disabledTitle">
 			<i class="ti ti-link-off"></i>
-			外部サーバー未連携
+			{{ timelineCopy.externalNotConnected }}
 		</p>
-		<p :class="$style.disabledDescription">設定から外部サーバーと連携してください</p>
+		<p :class="$style.disabledDescription">{{ timelineCopy.connectExternalInSettings }}</p>
 	</div>
 	<!-- 旗鯖fork: トレンドタイムライン (TTL) -->
 	<MkTrendingTimeline
@@ -77,6 +77,8 @@ import { i18n } from '@/i18n.js';
 import { hasWithReplies, isAvailableBasicTimeline, basicTimelineIconClass, isBasicTimeline } from '@/timelines.js';
 import { soundSettingsButton } from '@/ui/deck/tl-note-notification.js';
 import { prefer } from '@/preferences.js';
+
+const timelineCopy = i18n.ts._hata._timelineCustom;
 
 const props = defineProps<{
 	column: Column;
@@ -201,12 +203,12 @@ async function setType() {
 	if (isExternalEnabled.value) {
 		if (enableOHTL.value) {
 			items.push({
-				value: 'ohtl', label: 'OHTL (外部ホーム)',
+				value: 'ohtl', label: timelineCopy.ohtlLabel,
 			});
 		}
 		if (enableOLTL.value) {
 			items.push({
-				value: 'oltl', label: 'OLTL (外部ローカル)',
+				value: 'oltl', label: timelineCopy.oltlLabel,
 			});
 		}
 	}

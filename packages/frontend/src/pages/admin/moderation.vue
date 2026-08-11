@@ -12,7 +12,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<MkSwitch :modelValue="enableRegistration" :disabled="true" @update:modelValue="onChange_enableRegistration">
 						<template #label><SearchLabel>{{ i18n.ts._serverSettings.openRegistration }}</SearchLabel></template>
 						<template #caption>
-							<div style="color: var(--MI_THEME-warn);"><i class="ti ti-flag"></i> <b>このフォークでは独自の登録システムを用意しているため、この設定は無効化されています。</b>このトグルを有効にすると思わぬ誤作動を引き起こす可能性があります。</div>
+							<div style="color: var(--MI_THEME-warn);"><i class="ti ti-flag"></i> <b>{{ i18n.ts._hata._adminCommon.openRegistrationDisabled }}</b>{{ i18n.ts._hata._adminCommon.openRegistrationRisk }}</div>
 							<div><SearchText>{{ i18n.ts._serverSettings.thisSettingWillAutomaticallyOffWhenModeratorsInactive }}</SearchText></div>
 							<div><i class="ti ti-alert-triangle" style="color: var(--MI_THEME-warn);"></i> <SearchText>{{ i18n.ts._serverSettings.openRegistrationWarning }}</SearchText></div>
 							<div v-if="(enableRegistration && disableRegistrationWhenInactive) || disableRegistrationWhenInactive" style="margin-top: 8px;">{{ i18n.ts._serverSettings.thisSettingWillAutomaticallyOffWhenModeratorsInactive }}</div>

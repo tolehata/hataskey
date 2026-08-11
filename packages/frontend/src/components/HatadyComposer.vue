@@ -27,7 +27,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<div :class="$style.field">
 			<label :class="$style.label">{{ t('subjectLabel') }} <span :class="$style.req">*</span></label>
 			<div :class="$style.chipRow">
-				<button v-for="s in subjectChoices" :key="s" :class="[$style.subjectChip, subject === s && $style.subjectChipOn]" :style="subject === s ? { background: pal(s).bg, color: pal(s).fg, borderColor: pal(s).accent } : undefined" @click="subject = s">{{ s }}</button>
+				<button v-for="s in subjectChoices" :key="s" :class="[$style.subjectChip, subject === s && $style.subjectChipOn]" :style="subject === s ? { background: pal(s).bg, color: pal(s).fg, borderColor: pal(s).accent } : undefined" @click="subject = s">{{ subjectDisplayName(s) }}</button>
 				<button :class="[$style.subjectChip, $style.subjectAdd]" @click="addSubject"><i class="ti ti-plus"></i> {{ t('add') }}</button>
 				<button :class="[$style.subjectChip, $style.subjectManage]" @click="openSubjectManager"><i class="ti ti-settings"></i> {{ t('manage') }}</button>
 			</div>
@@ -67,7 +67,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<div :class="$style.tagRow">
 			<span :class="$style.tagLead">{{ t('tagLead') }}</span>
 			<button v-for="tg in HY_TAGS" :key="tg.key" :class="[$style.tagChip, tag === tg.key && $style.tagChipOn]" :style="tag === tg.key ? { background: tg.bg, color: tg.fg, borderColor: tg.fg } : undefined" @click="tag = tag === tg.key ? null : tg.key">
-				<i :class="['ti', tg.icon]"></i> {{ lang === 'en' ? tg.en : tg.ja }}
+				<i :class="['ti', tg.icon]"></i> {{ hyTagLabel(tg.key) }}
 			</button>
 			<button :class="[$style.visChip, visibility !== 'private' && $style.visChipOn]" :title="t('visHint')" @click="cycleVis">
 				<i :class="visibility === 'public' ? 'ti ti-world' : (visibility === 'followers' ? 'ti ti-users' : 'ti ti-lock')"></i>
@@ -89,17 +89,18 @@ import { ref, computed, useTemplateRef, onMounted } from 'vue';
 import MkWindow from '@/components/MkWindow.vue';
 import HyBookCover from '@/components/HyBookCover.vue';
 import * as os from '@/os.js';
+import { i18n } from '@/i18n.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
-import { hySubjectPalette, HY_TAGS } from '@/utility/hatady.js';
+import { hySubjectPalette, HY_TAGS, hyTagLabel } from '@/utility/hatady.js';
 import type { HyTag } from '@/utility/hatady.js';
 import { hySubjects, loadHySubjects, saveHySubject } from '@/utility/hatady-subjects.js';
-import { hatadyTheme, hatadyLang } from '@/utility/hatady-prefs.js';
+import { hatadyTheme } from '@/utility/hatady-prefs.js';
 
 const props = defineProps<{ editLog?: any }>();
 const emit = defineEmits<{ (ev: 'done', v: any): void; (ev: 'closed'): void }>();
 const dialog = useTemplateRef('dialog');
 const theme = hatadyTheme;
-const lang = hatadyLang;
+const copy = i18n.ts._hata._hatady._composer;
 
 const isEdit = props.editLog != null;
 const editLog = props.editLog;
@@ -108,6 +109,17 @@ const title = ref(editLog?.title ?? '');
 const subject = ref(editLog?.subject ?? '');
 // 分野候補: レジストリ/ログ由来の分野(頻度順) ∪ 既定分野 ∪ 編集中の分野。
 const DEFAULT_SUBJECTS = ['プログラミング', '数学', '英語', '読書', '歴史'];
+const DEFAULT_SUBJECT_LABELS: Record<string, () => string> = {
+	プログラミング: () => copy.defaultSubjectProgramming,
+	数学: () => copy.defaultSubjectMathematics,
+	英語: () => copy.defaultSubjectEnglish,
+	読書: () => copy.defaultSubjectReading,
+	歴史: () => copy.defaultSubjectHistory,
+};
+
+function subjectDisplayName(name: string): string {
+	return DEFAULT_SUBJECT_LABELS[name]?.() ?? name;
+}
 const subjectChoices = computed<string[]>(() => {
 	const names: string[] = [];
 	const seen = new Set<string>();
@@ -147,32 +159,7 @@ function toLocal(iso: string): string {
 }
 const studiedAtLocal = ref(editLog?.studiedAt ? toLocal(editLog.studiedAt) : nowLocal());
 
-const DICT: Record<string, { ja: string; en: string }> = {
-	record: { ja: '学習を記録', en: 'Record study' },
-	whatLabel: { ja: '何を学んだ？', en: 'What did you study?' },
-	whatPh: { ja: '例: 「命名」と「関数の分割」を読み進めた', en: 'e.g. Read through "Naming" and "Functions"' },
-	subjectLabel: { ja: '分野', en: 'Subject' },
-	add: { ja: '追加', en: 'Add' },
-	manage: { ja: '管理', en: 'Manage' },
-	bookLabel: { ja: '本', en: 'Book' },
-	optional: { ja: '任意', en: 'optional' },
-	bookPick: { ja: '本を選ぶ / 追加', en: 'Pick or add a book' },
-	durationLabel: { ja: '学習時間', en: 'Duration' },
-	min: { ja: '分', en: 'min' },
-	startLabel: { ja: '開始時刻', en: 'Started at' },
-	memoLabel: { ja: 'メモ・気づき', en: 'Notes' },
-	memoPh: { ja: '気づいたこと・次にやることなど', en: 'What you noticed, next steps, etc.' },
-	tagLead: { ja: 'この分野は', en: 'This subject is' },
-	public: { ja: 'サーバー全体に公開', en: 'Public' },
-	followersOnly: { ja: 'フォロワーのみ', en: 'Followers only' },
-	private: { ja: '自分のみ', en: 'Private' },
-	visHint: { ja: 'クリックで公開範囲を切替(全体→フォロワー→自分のみ)', en: 'Click to change visibility' },
-	cancel: { ja: 'キャンセル', en: 'Cancel' },
-	submit: { ja: '記録する', en: 'Record' },
-	editTitle: { ja: '学習を編集', en: 'Edit study' },
-	updateBtn: { ja: '更新する', en: 'Update' },
-};
-function t(key: string): string { return DICT[key]?.[lang.value === 'en' ? 'en' : 'ja'] ?? key; }
+function t(key: string): string { return (copy as unknown as Record<string, string>)[key] ?? key; }
 function pal(s: string) { return hySubjectPalette(s); }
 
 onMounted(async () => {
@@ -182,7 +169,7 @@ onMounted(async () => {
 });
 
 async function addSubject() {
-	const { canceled, result } = await os.inputText({ title: t('subjectLabel'), placeholder: '例: 統計' });
+	const { canceled, result } = await os.inputText({ title: t('subjectLabel'), placeholder: t('subjectExample') });
 	if (canceled || !result?.trim()) return;
 	const s = result.trim();
 	subject.value = s;
@@ -201,12 +188,11 @@ async function openSubjectManager() {
 // まず「本を選ぶ / 本を追加」を選択させ、それぞれのフローへ分岐する(メニューはボタンにアンカー)。
 function chooseBookAction(ev: MouseEvent) {
 	const anchor = (ev.currentTarget ?? ev.target) as HTMLElement;
-	const en = lang.value === 'en';
 	const items: any[] = [];
 	if (myBooks.value.length > 0) {
-		items.push({ text: en ? 'Pick a book' : '本を選ぶ', icon: 'ti ti-books', action: () => pickExistingBook(anchor) });
+		items.push({ text: copy.pickBook, icon: 'ti ti-books', action: () => pickExistingBook(anchor) });
 	}
-	items.push({ text: en ? 'Add a book' : '本を追加', icon: 'ti ti-plus', action: () => addBook() });
+	items.push({ text: copy.addBook, icon: 'ti ti-plus', action: () => addBook() });
 	os.popupMenu(items, anchor);
 }
 

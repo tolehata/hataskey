@@ -6,16 +6,16 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 <template>
 <MkStickyContainer>
-	<template #header><MkPageHeader :actions="headerActions" :title="'C/C++ プレイグラウンド'" :icon="'ti ti-code'"/></template>
+	<template #header><MkPageHeader :actions="headerActions" :title="copy.title" :icon="'ti ti-code'"/></template>
 	<MkSpacer :contentMax="900">
 		<div :class="$style.root">
 			<MkInfo>
-				ブラウザ内だけで C/C++ を実行する遊び場です（サーバーには送られません）。実行エンジンは <b>JSCPP</b>（MIT）で、C/C++ の<b>サブセット</b>に対応します。STL・テンプレート・モダンC++の一部は動作しないことがあります。
+				{{ copy.introductionBefore }} <b>JSCPP</b> (MIT) {{ copy.introductionAfter }}
 			</MkInfo>
 
 			<!-- サンプル -->
 			<div :class="$style.samples">
-				<span :class="$style.samplesLabel">サンプル:</span>
+				<span :class="$style.samplesLabel">{{ copy.samples }}</span>
 				<button v-for="s in SAMPLES" :key="s.label" :class="$style.sampleBtn" @click="code = s.code">{{ s.label }}</button>
 			</div>
 
@@ -24,27 +24,27 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 			<!-- 標準入力 -->
 			<MkFolder :defaultOpen="false">
-				<template #label>標準入力（stdin）</template>
+				<template #label>{{ copy.stdin }}</template>
 				<MkTextarea v-model="stdin" :class="$style.stdin">
-					<template #caption>cin / scanf で読み取る入力をここに（1行ずつ）。</template>
+					<template #caption>{{ copy.stdinCaption }}</template>
 				</MkTextarea>
 			</MkFolder>
 
 			<!-- 実行ボタン -->
 			<div :class="$style.runRow">
-				<MkButton primary gradate rounded :disabled="running" @click="run"><i class="ti ti-player-play"></i> {{ running ? '実行中…' : '実行' }}</MkButton>
-				<MkButton v-if="running" rounded danger @click="stop"><i class="ti ti-player-stop"></i> 停止</MkButton>
-				<MkButton rounded @click="output = ''"><i class="ti ti-eraser"></i> 出力クリア</MkButton>
+				<MkButton primary gradate rounded :disabled="running" @click="run"><i class="ti ti-player-play"></i> {{ running ? copy.running : copy.run }}</MkButton>
+				<MkButton v-if="running" rounded danger @click="stop"><i class="ti ti-player-stop"></i> {{ copy.stop }}</MkButton>
+				<MkButton rounded @click="output = ''"><i class="ti ti-eraser"></i> {{ copy.clearOutput }}</MkButton>
 			</div>
 
 			<!-- 出力 -->
 			<div :class="$style.outputBox">
-				<div :class="$style.outputHead"><i class="ti ti-terminal-2"></i> 出力</div>
-				<pre :class="$style.outputPre"><code>{{ output || '（ここに実行結果が表示されます）' }}</code></pre>
+				<div :class="$style.outputHead"><i class="ti ti-terminal-2"></i> {{ copy.output }}</div>
+				<pre :class="$style.outputPre"><code>{{ output || copy.outputPlaceholder }}</code></pre>
 			</div>
 
 			<MkInfo warn>
-				ベータ機能です。うまく動かない場合は HataFeed からイシューを立ててください。
+				{{ copy.betaNotice }}
 			</MkInfo>
 		</div>
 	</MkSpacer>
@@ -61,8 +61,10 @@ import MkFolder from '@/components/MkFolder.vue';
 import CppRunner from '@/workers/cpp-runner?worker';
 import { definePage } from '@/page.js';
 import { useRouter } from '@/router.js';
+import { i18n } from '@/i18n.js';
 
 const router = useRouter();
+const copy = i18n.ts._hata._cppPlayground;
 
 const HELLO = `#include <iostream>
 using namespace std;
@@ -80,7 +82,7 @@ int main() {
 const SAMPLES = [
 	{ label: 'Hello World', code: HELLO },
 	{
-		label: '入力を足す',
+		label: copy.addInputSample,
 		code: `#include <iostream>
 using namespace std;
 int main() {
@@ -131,7 +133,7 @@ function run() {
 	// 無限ループ等の最後の砦: 7秒で強制停止。
 	timeoutTimer = window.setTimeout(() => {
 		cleanupWorker();
-		output.value += (output.value ? '\n' : '') + '[実行が時間内に終わりませんでした（無限ループ等の可能性）。中断しました]';
+		output.value += (output.value ? '\n' : '') + copy.timeout;
 		running.value = false;
 	}, 7000);
 
@@ -139,15 +141,15 @@ function run() {
 		const d = ev.data as { ok: boolean; output?: string; error?: string; exitCode?: number };
 		output.value = d.output ?? '';
 		if (!d.ok) {
-			output.value += (output.value ? '\n' : '') + `[エラー] ${d.error ?? '不明なエラー'}`;
+			output.value += (output.value ? '\n' : '') + copy.error.replace('{error}', d.error ?? copy.unknownError);
 		} else if (d.exitCode != null && d.exitCode !== 0) {
-			output.value += (output.value ? '\n' : '') + `[終了コード ${d.exitCode}]`;
+			output.value += (output.value ? '\n' : '') + copy.exitCode.replace('{code}', d.exitCode.toString());
 		}
 		running.value = false;
 		cleanupWorker();
 	};
 	worker.onerror = (e) => {
-		output.value += (output.value ? '\n' : '') + `[実行エンジンエラー] ${e.message}`;
+		output.value += (output.value ? '\n' : '') + copy.engineError.replace('{error}', e.message);
 		running.value = false;
 		cleanupWorker();
 	};
@@ -157,7 +159,7 @@ function run() {
 
 function stop() {
 	cleanupWorker();
-	output.value += (output.value ? '\n' : '') + '[停止しました]';
+	output.value += (output.value ? '\n' : '') + copy.stopped;
 	running.value = false;
 }
 
@@ -165,12 +167,12 @@ onUnmounted(cleanupWorker);
 
 const headerActions = computed(() => [{
 	icon: 'ti ti-arrow-left',
-	text: 'ベータ機能へ',
+	text: copy.backToBeta,
 	handler: () => { router.push('/hatafeed/beta'); },
 }]);
 
 definePage(() => ({
-	title: 'C/C++ プレイグラウンド',
+	title: copy.title,
 	icon: 'ti ti-code',
 }));
 </script>

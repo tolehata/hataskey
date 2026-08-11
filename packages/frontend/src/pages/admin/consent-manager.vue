@@ -10,14 +10,14 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 			<!-- 検索フィルタ -->
 			<div :class="$style.filterBar">
-				<MkInput v-model="searchQuery" :class="$style.searchInput" placeholder="ユーザー名で検索" @update:modelValue="onSearchChange">
+				<MkInput v-model="searchQuery" :class="$style.searchInput" :placeholder="copy.searchPlaceholder" @update:modelValue="onSearchChange">
 					<template #prefix><i class="ti ti-search"></i></template>
 				</MkInput>
 				<div :class="$style.filterBtns">
-					<button :class="[$style.filterBtn, filterMode === 'all' && $style.filterBtnOn]" @click="setFilter('all')">すべて</button>
-					<button :class="[$style.filterBtn, filterMode === 'externalTl' && $style.filterBtnOn]" @click="setFilter('externalTl')">外部TL同意済み</button>
-					<button :class="[$style.filterBtn, filterMode === 'customFont' && $style.filterBtnOn]" @click="setFilter('customFont')">フォント免責同意済み</button>
-					<button :class="[$style.filterBtn, filterMode === 'mascot' && $style.filterBtnOn]" @click="setFilter('mascot')">マスコット同意済み</button>
+					<button :class="[$style.filterBtn, filterMode === 'all' && $style.filterBtnOn]" @click="setFilter('all')">{{ copy.all }}</button>
+					<button :class="[$style.filterBtn, filterMode === 'externalTl' && $style.filterBtnOn]" @click="setFilter('externalTl')">{{ copy.externalTlConsented }}</button>
+					<button :class="[$style.filterBtn, filterMode === 'customFont' && $style.filterBtnOn]" @click="setFilter('customFont')">{{ copy.customFontConsented }}</button>
+					<button :class="[$style.filterBtn, filterMode === 'mascot' && $style.filterBtnOn]" @click="setFilter('mascot')">{{ copy.mascotConsented }}</button>
 				</div>
 			</div>
 
@@ -25,7 +25,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<div :class="$style.statsRow">
 				<div :class="$style.statCard">
 					<div :class="$style.statNum">{{ totalCount }}</div>
-					<div :class="$style.statLabel">該当ユーザー数</div>
+					<div :class="$style.statLabel">{{ copy.matchingUsers }}</div>
 				</div>
 			</div>
 
@@ -33,7 +33,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<MkLoading v-if="loading" />
 			<div v-else-if="users.length === 0" :class="$style.emptyMsg">
 				<i class="ti ti-mood-empty"></i>
-				<span>該当するユーザーがいません</span>
+				<span>{{ copy.noUsers }}</span>
 			</div>
 			<div v-else :class="$style.userList">
 				<div v-for="u in users" :key="u.id" :class="$style.userRow">
@@ -46,25 +46,25 @@ SPDX-License-Identifier: AGPL-3.0-only
 						</div>
 						<div :class="$style.consentBadges">
 							<span v-if="u.hataConsentExternalTl" :class="[$style.badge, $style.badgeGreen]">
-								<i class="ti ti-link"></i> 外部TL同意済み
+								<i class="ti ti-link"></i> {{ copy.externalTlConsented }}
 								<span v-if="u.hataConsentExternalTlDate" :class="$style.badgeDate">{{ formatDate(u.hataConsentExternalTlDate) }}</span>
 							</span>
 							<span v-else :class="[$style.badge, $style.badgeGray]">
-								<i class="ti ti-link-off"></i> 外部TL未同意
+								<i class="ti ti-link-off"></i> {{ copy.externalTlNotConsented }}
 							</span>
 							<span v-if="u.hataConsentCustomFont" :class="[$style.badge, $style.badgeBlue]">
-								<i class="ti ti-typography"></i> フォント免責同意済み
+								<i class="ti ti-typography"></i> {{ copy.customFontConsented }}
 								<span v-if="u.hataConsentCustomFontDate" :class="$style.badgeDate">{{ formatDate(u.hataConsentCustomFontDate) }}</span>
 							</span>
 							<span v-else :class="[$style.badge, $style.badgeGray]">
-								<i class="ti ti-typography-off"></i> フォント免責未同意
+								<i class="ti ti-typography-off"></i> {{ copy.customFontNotConsented }}
 							</span>
 							<span v-if="u.hataConsentMascot" :class="[$style.badge, $style.badgePurple]">
-								<i class="ti ti-mood-smile-beam"></i> マスコット同意済み
+								<i class="ti ti-mood-smile-beam"></i> {{ copy.mascotConsented }}
 								<span v-if="u.hataConsentMascotDate" :class="$style.badgeDate">{{ formatDate(u.hataConsentMascotDate) }}</span>
 							</span>
 							<span v-else :class="[$style.badge, $style.badgeGray]">
-								<i class="ti ti-mood-off"></i> マスコット未同意
+								<i class="ti ti-mood-off"></i> {{ copy.mascotNotConsented }}
 							</span>
 						</div>
 					</div>
@@ -72,7 +72,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</div>
 
 			<div v-if="!loading && hasMore" :class="$style.loadMoreWrap">
-				<button class="_buttonPrimary" @click="loadMore" style="padding: 8px 24px;">もっと読み込む</button>
+				<button class="_buttonPrimary" @click="loadMore" style="padding: 8px 24px;">{{ copy.loadMore }}</button>
 			</div>
 		</div>
 	</div>
@@ -84,6 +84,10 @@ import { ref, computed, onMounted } from 'vue';
 import MkInput from '@/components/MkInput.vue';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { definePage } from '@/page.js';
+import { i18n } from '@/i18n.js';
+import { versatileLang } from '@/utility/intl-const.js';
+
+const copy = i18n.ts._hata._consentManager;
 
 const PAGE_SIZE = 50;
 
@@ -112,8 +116,7 @@ let searchTimer: ReturnType<typeof setTimeout> | null = null;
 
 function formatDate(iso: string | null): string {
 	if (!iso) return '';
-	const d = new Date(iso);
-	return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`;
+	return new Intl.DateTimeFormat(versatileLang, { dateStyle: 'medium' }).format(new Date(iso));
 }
 
 async function fetchUsers(reset = true) {
@@ -159,14 +162,14 @@ onMounted(() => {
 
 const headerActions = computed(() => [{
 	icon: 'ti ti-refresh',
-	text: '更新',
+	text: copy.refresh,
 	handler: () => fetchUsers(true),
 }]);
 
 const headerTabs = computed(() => []);
 
 definePage({
-	title: '同意管理',
+	title: copy.title,
 	icon: 'ti ti-shield-check',
 });
 </script>

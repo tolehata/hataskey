@@ -7,7 +7,7 @@
  * ⚠️ここは**利用者から見て何が変わったか**だけを書く。
  *   ⚠️開発中に出て開発中に直した不具合は書かない（本番には一度も出ていないため）。
  *   ⚠️内部のリファクタ・依存更新・型修正も書かない（`HATA-CHANGELOG.md` の役目）。
- * ⚠️本体の locales/*.yml は使わない（28ファイルに分散するため。既存の旗鯖独自ページと同じ作法）。
+ * 表示文言は本体の共通 locale `_hata._whatsNew` を使う。
  * ⚠️版を上げたら `version` を package.json の値に合わせ、`items` を書き直すこと。
  *   合っていないと「更新したのに前回の内容が出る」ことになる。
  *
@@ -15,11 +15,15 @@
  *   11.7.5 / 11.7.6 / 11.7.7 / 11.8 とその後の追加を**まとめて**案内する。
  */
 
+import { i18n } from '@/i18n.js';
+
+const copy = i18n.ts._hata._whatsNew._content;
+
 export type HataWhatsNewItem = {
 	/** Tabler のアイコン名（`ti ti-` 込み） */
 	icon: string;
 	/** 更新案内に表示する、実画面を抽象化した小型プレビュー。 */
-	preview: 'hatady' | 'hatask' | 'hatacording' | 'sideStudio' | 'hanaawase' | 'ui' | 'hatafeed' | 'beta' | 'privateChannel' | 'profile' | 'viewer' | 'mute' | 'external' | 'security';
+	preview: 'hatady' | 'hatask' | 'hatacording' | 'sideStudio' | 'language' | 'hanaawase' | 'ui' | 'hatafeed' | 'beta' | 'privateChannel' | 'profile' | 'viewer' | 'mute' | 'external' | 'security';
 	title: string;
 	text: string;
 	/**
@@ -27,7 +31,7 @@ export type HataWhatsNewItem = {
 	 * ⚠️`mainRouter.push()` は登録済みパスのリテラル型しか受けないため、
 	 *   ここも文字列ではなくリテラル型のままにしておく（`string` にすると型検査で落ちる）。
 	 */
-	to?: '/settings/hata-custom' | '/settings/external-account' | '/games' | '/hanaawase' | '/hatady' | '/hatask' | '/hata-side-studio' | '/hatafeed/hatacording-ui' | '/hatafeed/beta' | '/channels/new';
+	to?: '/settings/hata-custom' | '/settings/preferences' | '/settings/external-account' | '/games' | '/hanaawase' | '/hatady' | '/hatask' | '/hata-side-studio' | '/hatafeed/hatacording-ui' | '/hatafeed/beta' | '/channels/new';
 	/** URL遷移ではなく、選択中のUIそのものを切り替える誘導。 */
 	activateUi?: 'hatacording';
 	/** 誘導ボタンの文言。遷移先が違うのに一律「設定を開く」と表示しない。 */
@@ -50,71 +54,72 @@ export type HataWhatsNew = {
 	};
 };
 
+/**
+ * 保存済み判定には package.json と同じ完全な版を使いつつ、
+ * 利用者には旗鯖のリリース名だけを簡潔に見せる。
+ */
+export function getHataWhatsNewDisplayVersion(version: string): string {
+	const match = version.match(/-hata\.(\d+\.\d+)$/);
+	return match == null ? version : `hata-${match[1]}`;
+}
+
 export const HATA_WHATS_NEW: HataWhatsNew = {
 	version: '2026.7.0-hata.12.1',
-	headline: '大きな新機能を5つ、ゲームを1つ追加、ベースをMisskey2026.7.0へ更新しました',
+	headline: copy.headline,
 	items: [
 		{
 			icon: 'ti ti-book-2',
 			preview: 'hatady',
-			title: 'Hatady（ハタディ）— 学習と読書の記録',
-			text: '読んだ本や勉強したことを記録して、続けた日数や積み上げを振り返れる新しいツールです。'
-				+ '本ごとのしおりと内容メモ、目標の設定、連続記録、横断検索、テキストでの書き出しに対応しています。'
-				+ '記録の公開範囲は自分で選べ、通常表示では左上のボタンから前の画面へ戻れます。',
+			title: copy.hatadyTitle,
+			text: copy.hatadyText,
 			to: '/hatady',
-			linkLabel: 'Hatadyへ',
+			linkLabel: copy.hatadyLink,
 		},
 		{
 			icon: 'ti ti-eye',
 			preview: 'hatask',
-			title: 'Hatask を全面リデザイン',
-			text: 'ホーム画面を「季」「花信」「刷」の3つのテーマから選べるようになりました。'
-				+ '表示切替、HataFeed の通知タイル、地震・津波情報タイルにも対応しています。'
-				+ '育てている花の進み具合と、咲いた花の一覧を確認できるウィジェットも追加しました。',
+			title: copy.hataskTitle,
+			text: copy.hataskText,
 			to: '/hatask',
-			linkLabel: 'Hataskへ',
+			linkLabel: copy.hataskLink,
 		},
 		{
 			icon: 'ti ti-message-circle-code',
 			preview: 'hatacording',
-			title: 'HataSNSCordUI — 会話型の高機能UI',
-			text: 'タイムラインを会話のように読みながら、左ペインで表示先を選び、右ペインで投稿詳細・検索・通知・ウィジェットを同時に扱える新しいUIです。'
-				+ '設定や旗鯖ツールを開いても左右のペインを保ち、このUIの中で操作を続けられます。'
-				+ 'リアクションやノートの変更もその場で反映され、スマートフォンでは左右の端から各ペインを呼び出せます。'
-				+ '初回チュートリアル、端末ごとの並び替え、UI専用レートリミット表示にも対応しています。',
+			title: copy.hatacordingTitle,
+			text: copy.hatacordingText,
 			activateUi: 'hatacording',
-			linkLabel: 'HataSNSCordUIへ',
+			linkLabel: copy.hatacordingLink,
 		},
 		{
 			icon: 'ti ti-bell',
 			preview: 'hatafeed',
-			title: 'HataFeedを全面リデザイン',
-			text: 'HataFeedを、イシューの検索・絞り込み・ロードマップ・通知をひと目で確認できる画面へ刷新しました。'
-				+ 'トップから絵文字を申請でき、スタッフは複数の申請を1件ずつ続けて確認できます。'
-				+ 'イシューは範囲と含める内容を選んで書き出せます。'
-				+ '同じHataFeedの通知をまとめ、複数のHataFeedから届いた場合もひとまとまりで確認できるようになりました。'
-				+ 'Hatask、HataFeed、地震・津波、プライベートチャンネルのOS通知にも、内容と移動先を表示します。'
-				+ '通知ウィジェットのフィルタを安定化し、今後追加される通知種別は設定中のフィルタへ自動で加えず、必要なものを選んで有効にできるようにしました。',
+			title: copy.hatafeedTitle,
+			text: copy.hatafeedText,
 		},
 		{
 			icon: 'ti ti-layout-sidebar-left-expand',
 			preview: 'sideStudio',
-			title: 'HataSideStudio — サイドメニューを自分の形に',
-			text: '実際のサイドメニューを見ながら、ボタン・グループ・ウィジェットの並び、形、色、表示内容を端末ごとに編集できる新しいツールです。'
-				+ '拡大時と縮小時を分けて作れ、複数のプロファイル、ドラッグ操作、元に戻す・やり直し、設定の書き出しと読み込みにも対応しています。'
-				+ 'スマートフォンでも簡易タイムラインへ指で移動でき、上部の各操作を省略せず使えます。'
-				+ '設定は端末内で処理され、サーバーや連合へ送信されません。',
+			title: copy.sideStudioTitle,
+			text: copy.sideStudioText,
 			to: '/hata-side-studio',
-			linkLabel: 'HataSideStudioへ',
+			linkLabel: copy.sideStudioLink,
+		},
+		{
+			icon: 'ti ti-language',
+			preview: 'language',
+			title: copy.languageTitle,
+			text: copy.languageText,
+			to: '/settings/preferences',
+			linkLabel: copy.languageLink,
 		},
 		{
 			icon: 'ti ti-lock',
 			preview: 'privateChannel',
-			title: 'プライベートチャンネルを作れます',
-			text: '管理者から許可された利用者は、メンバーだけが閲覧できるチャンネルを作れます。'
-				+ '招待した相手は通知から参加するかを選び、承認して初めて参加します。管理画面では招待中・参加中・招待拒否を確認できます。',
+			title: copy.privateChannelTitle,
+			text: copy.privateChannelText,
 			to: '/channels/new',
-			linkLabel: 'チャンネルを作る',
+			linkLabel: copy.privateChannelLink,
 		},
 		{
 			icon: 'ti ti-flower',
@@ -127,68 +132,57 @@ export const HATA_WHATS_NEW: HataWhatsNew = {
 		{
 			icon: 'ti ti-sparkles',
 			preview: 'ui',
-			title: 'HatasabaUI 2（すりガラス調）',
-			text: 'ノートやカラムをすりガラス調にする新しい見た目を選べるようになりました。'
-				+ '透過の強さはその場で確かめながら調整できます。'
-				+ 'デッキにはクリップ・お気に入りのカラム、カラムごとの再読み込みが増えています。'
-				+ 'タブを左右スワイプで切り替えない設定と、Bot投稿を隠す設定にも対応しました。',
+			title: copy.hatasabaUiTitle,
+			text: copy.hatasabaUiText,
 			to: '/settings/hata-custom',
-			linkLabel: '設定を開く',
+			linkLabel: copy.settingsLink,
 		},
 		{
 			icon: 'ti ti-flask-2',
 			preview: 'beta',
-			title: 'ベータ機能を試せます',
-			text: 'ブラウザ内だけでC/C++を書いて実行できるプレイグラウンドと、投稿前に3・5・10秒の猶予を作れるカウントダウンを用意しました。'
-				+ 'どちらも端末内で動き、投稿前カウントダウンは取り消しや今すぐ投稿も選べます。',
+			title: copy.betaTitle,
+			text: copy.betaText,
 			to: '/hatafeed/beta',
-			linkLabel: 'ベータ機能を見る',
+			linkLabel: copy.betaLink,
 		},
 		{
 			icon: 'ti ti-award',
 			preview: 'profile',
-			title: 'プロフィールに旗鯖の記録を表示',
-			text: '自サーバーのプロフィールに、宴の成功回数・宴の阻止回数・育てた花の数を表示できるようになりました。'
-				+ '自分のプロフィール設定から、項目ごとに表示を切り替えられます。',
+			title: copy.profileTitle,
+			text: copy.profileText,
 		},
 		{
 			icon: 'ti ti-photo',
 			preview: 'viewer',
-			title: '画像ビューワーを刷新（Misskey本家由来）',
-			text: 'Misskey本家の更新を取り込み、ホイールでの拡大縮小、動画をそのまま開いての再生、投稿する前のプレビューに対応しました。',
+			title: copy.viewerTitle,
+			text: copy.viewerText,
 		},
 		{
 			icon: 'ti ti-mood-off',
 			preview: 'mute',
-			title: 'ミュートしたユーザーのリアクションを隠せます',
-			text: 'ミュートした人が付けたリアクションを、ノートから隠せるようになりました。'
-				+ '他のユーザーの投稿に付いたものも対象です。隠したものがあるノートは、詳細画面に ⓘ が出ます。'
-				+ '（管理者からのリアクションは隠せません。設定はこの端末にだけ保存されます）',
+			title: copy.muteTitle,
+			text: copy.muteText,
 			to: '/settings/hata-custom',
-			linkLabel: '設定を開く',
+			linkLabel: copy.settingsLink,
 		},
 		{
 			icon: 'ti ti-unlink',
 			preview: 'external',
-			title: '外部アカウント連携の接続先を整理',
-			text: '旗池3丁目とシュリンピアへの連携を終了しました。以前この2サーバーを利用していた場合は、更新時にログイン情報と絵文字キャッシュを削除します。'
-				+ '対象サーバーの投稿は、更新後はこのサーバーから閲覧できません。'
-				+ '「les-requin」の表示名は「さめすきーとチョリソリング」に変更しました。',
+			title: copy.externalTitle,
+			text: copy.externalText,
 			to: '/settings/external-account',
-			linkLabel: '外部アカウント連携を確認',
+			linkLabel: copy.externalLink,
 		},
 		{
 			icon: 'ti ti-shield-check',
 			preview: 'security',
-			title: '安全性と土台の更新',
-			text: '土台を Misskey 2026.7.0 相当へ上げ、二要素認証・URLプレビュー・OAuth まわりの修正を取り込みました。'
-				+ '旗鯖独自の機能についても点検し、他の人の記録が見えてしまう不具合などを修正しています。'
-				+ 'また、見られなくなったHataFeedの内容が通知へ残らないようにしました。',
+			title: copy.securityTitle,
+			text: copy.securityText,
 		},
 	],
 	footer: {
-		text: 'ここに載せたのは主な変更だけです。細かな修正を含むすべての変更点は、リリースノートをご確認ください。',
-		linkLabel: 'リリースノートを見る',
+		text: copy.footerText,
+		linkLabel: copy.footerLink,
 		linkUrl: 'https://github.com/tolehata/hataskey/blob/master/HATA-CHANGELOG.md',
 	},
 };

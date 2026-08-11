@@ -67,12 +67,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 	<article v-else :class="$style.article" :data-utage-square="(!utageOutsideFrame && utageState !== 'none') ? utageState : null" :style="{ cursor: expandOnNoteClick ? 'pointer' : '', paddingTop: prefer.s.showSubNoteFooterButton && appearNote.reply && (!renoteCollapsed && !replyCollapsed && ((!notification && (forceShowReplyTargetNote || prefer.s.showReplyTargetNote)) || (notification && prefer.s.showReplyInNotification))) ? '14px' : '' }" @click.stop="noteClick" @dblclick.stop="noteDblClick" @contextmenu.stop="onContextmenu">
 		<!-- 旗鯖fork: C7 宴チュートリアル (自分の宴ノート初回のみ) -->
 		<MkTip v-if="showUtageTip" k="note.utage" style="margin-bottom: 8px;">
-			「宴」「うたげ」「utage」を含むノートをローカルTLに投稿すると、15分間ノートが明滅します。誰にも反応されずに15分逃げ切れたら<b style="color: var(--MI_THEME-success);">緑色で「成功」</b>、途中でリアクションなどの反応が来たら<b style="color: var(--MI_THEME-error);">赤色で「失敗...」</b>になります。
+			{{ utageCopy.tipBefore }}<b style="color: var(--MI_THEME-success);">{{ utageCopy.tipSuccess }}</b>{{ utageCopy.tipMiddle }}<b style="color: var(--MI_THEME-error);">{{ utageCopy.tipFailure }}</b>{{ utageCopy.tipAfter }}
 		</MkTip>
 		<div :class="[$style.bubbleBody, { [$style.utageFlashing]: utageState === 'flashing' && utageOutsideFrame, [$style.utageFailed]: utageState === 'failed' && utageOutsideFrame, [$style.utageSuccess]: utageState === 'success' && utageOutsideFrame }]">
 		<!-- 旗鯖fork: C7 宴 結果バッジ (吹き出し右下隅) -->
-		<div v-if="utageState === 'failed'" :class="[$style.utageBadge, $style.utageBadgeFailed]">失敗...</div>
-		<div v-else-if="utageState === 'success'" :class="[$style.utageBadge, $style.utageBadgeSuccess]">成功</div>
+		<div v-if="utageState === 'failed'" :class="[$style.utageBadge, $style.utageBadgeFailed]">{{ utageCopy.failed }}</div>
+		<div v-else-if="utageState === 'success'" :class="[$style.utageBadge, $style.utageBadgeSuccess]">{{ utageCopy.success }}</div>
 		<!-- 旗鯖fork: チャンネル投稿の colorBar (position:absolute; border-left:5px) がアバターの
 		     左辺と重なる問題への対処。channel が付いているときだけ flex コンテナに padding-left を
 		     足して、アバター開始位置を colorBar の帯 (5px) の外にずらす。
@@ -414,6 +414,7 @@ import { scrollToVisibility } from '@/utility/scroll-to-visibility.js';
 import detectLanguage from '@/utility/detect-language.js';
 import MkInfo from '@/components/MkInfo.vue';
 
+const utageCopy = i18n.ts._hata._utage;
 const { showEl } = scrollToVisibility();
 
 function deliveryTargetsTooltip(targets: Misskey.entities.Note['deliveryTargets']): string {

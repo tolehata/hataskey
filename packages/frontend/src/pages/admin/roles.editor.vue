@@ -429,8 +429,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</MkFolder>
 
 			<!-- 旗鯖fork: マスコット機能の利用可否(デフォルト不許可) -->
-			<MkFolder v-if="matchQuery(['マスコット機能を利用できる', 'canUseMascot'])">
-				<template #label>マスコット機能を利用できる</template>
+			<MkFolder v-if="matchQuery([roleCopy.mascotAccessName, 'canUseMascot'])">
+				<template #label>{{ roleCopy.mascotAccessName }}</template>
 				<template #suffix>
 					<span v-if="role.policies.canUseMascot.useDefault" :class="$style.useDefaultLabel">{{ i18n.ts._role.useBaseValue }}</span>
 					<span v-else>{{ role.policies.canUseMascot.value ? i18n.ts.yes : i18n.ts.no }}</span>
@@ -441,7 +441,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<template #label>{{ i18n.ts._role.useBaseValue }}</template>
 					</MkSwitch>
 					<MkSwitch v-model="role.policies.canUseMascot.value" :disabled="role.policies.canUseMascot.useDefault" :readonly="readonly">
-						<template #label>マスコット機能の利用を許可</template>
+						<template #label>{{ roleCopy.mascotAccessToggle }}</template>
 					</MkSwitch>
 					<MkRange v-model="role.policies.canUseMascot.priority" :min="0" :max="2" :step="1" easing :textConverter="(v) => v === 0 ? i18n.ts._role._priority.low : v === 1 ? i18n.ts._role._priority.middle : v === 2 ? i18n.ts._role._priority.high : ''">
 						<template #label>{{ i18n.ts._role.priority }}</template>
@@ -450,8 +450,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</MkFolder>
 
 			<!-- 旗鯖fork: HataFeed(フィードバックセンター)の利用可否ポリシー -->
-			<MkFolder v-if="role.policies.canAccessHataFeed && matchQuery(['HataFeedを利用できる', 'canAccessHataFeed'])">
-				<template #label>HataFeed（フィードバックセンター）を利用できる</template>
+			<MkFolder v-if="role.policies.canAccessHataFeed && matchQuery([roleCopy.hatafeedAccessName, 'canAccessHataFeed'])">
+				<template #label>{{ roleCopy.hatafeedAccessName }}</template>
 				<template #suffix>
 					<span v-if="role.policies.canAccessHataFeed.useDefault" :class="$style.useDefaultLabel">{{ i18n.ts._role.useBaseValue }}</span>
 					<span v-else>{{ role.policies.canAccessHataFeed.value ? i18n.ts.yes : i18n.ts.no }}</span>
@@ -462,7 +462,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<template #label>{{ i18n.ts._role.useBaseValue }}</template>
 					</MkSwitch>
 					<MkSwitch v-model="role.policies.canAccessHataFeed.value" :disabled="role.policies.canAccessHataFeed.useDefault" :readonly="readonly">
-						<template #label>HataFeedの利用を許可</template>
+						<template #label>{{ roleCopy.hatafeedAccessToggle }}</template>
 					</MkSwitch>
 					<MkRange v-model="role.policies.canAccessHataFeed.priority" :min="0" :max="2" :step="1" easing :textConverter="(v) => v === 0 ? i18n.ts._role._priority.low : v === 1 ? i18n.ts._role._priority.middle : v === 2 ? i18n.ts._role._priority.high : ''">
 						<template #label>{{ i18n.ts._role.priority }}</template>
@@ -471,8 +471,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</MkFolder>
 
 			<!-- 旗鯖fork: HataSNSCordUIの利用可否ポリシー -->
-			<MkFolder v-if="role.policies.canUseHatacordingUi && matchQuery(['HataSNSCordUIを利用できる', 'canUseHatacordingUi'])">
-				<template #label>HataSNSCordUIを利用できる</template>
+			<MkFolder v-if="role.policies.canUseHatacordingUi && matchQuery([roleCopy.hatacordingAccessName, 'canUseHatacordingUi'])">
+				<template #label>{{ roleCopy.hatacordingAccessName }}</template>
 				<template #suffix>
 					<span v-if="role.policies.canUseHatacordingUi.useDefault" :class="$style.useDefaultLabel">{{ i18n.ts._role.useBaseValue }}</span>
 					<span v-else>{{ role.policies.canUseHatacordingUi.value ? i18n.ts.yes : i18n.ts.no }}</span>
@@ -483,7 +483,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<template #label>{{ i18n.ts._role.useBaseValue }}</template>
 					</MkSwitch>
 					<MkSwitch v-model="role.policies.canUseHatacordingUi.value" :disabled="role.policies.canUseHatacordingUi.useDefault" :readonly="readonly">
-						<template #label>HataSNSCordUIの利用を許可</template>
+						<template #label>{{ roleCopy.hatacordingAccessToggle }}</template>
 					</MkSwitch>
 					<MkRange v-model="role.policies.canUseHatacordingUi.priority" :min="0" :max="2" :step="1" easing :textConverter="(v) => v === 0 ? i18n.ts._role._priority.low : v === 1 ? i18n.ts._role._priority.middle : v === 2 ? i18n.ts._role._priority.high : ''">
 						<template #label>{{ i18n.ts._role.priority }}</template>
@@ -492,8 +492,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</MkFolder>
 
 			<!-- 旗鯖fork: HataSNSCordUI サブペイン最大タブ数ポリシー -->
-			<MkFolder v-if="role.policies.hatacordingUiSubpaneMaxTabs && matchQuery(['HataSNSCordUIのサブペイン最大タブ数', 'hatacordingUiSubpaneMaxTabs'])">
-				<template #label>HataSNSCordUIのサブペイン最大タブ数</template>
+			<MkFolder v-if="role.policies.hatacordingUiSubpaneMaxTabs && matchQuery([roleCopy.hatacordingTabsName, 'hatacordingUiSubpaneMaxTabs'])">
+				<template #label>{{ roleCopy.hatacordingTabsName }}</template>
 				<template #suffix>
 					<span v-if="role.policies.hatacordingUiSubpaneMaxTabs.useDefault" :class="$style.useDefaultLabel">{{ i18n.ts._role.useBaseValue }}</span>
 					<span v-else>{{ role.policies.hatacordingUiSubpaneMaxTabs.value }}</span>
@@ -504,7 +504,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<template #label>{{ i18n.ts._role.useBaseValue }}</template>
 					</MkSwitch>
 					<MkInput :modelValue="role.policies.hatacordingUiSubpaneMaxTabs.value" type="number" :min="1" :max="5" :disabled="role.policies.hatacordingUiSubpaneMaxTabs.useDefault" :readonly="readonly" @update:modelValue="updateHatacordingUiSubpaneMaxTabs">
-						<template #label>最大タブ数</template>
+						<template #label>{{ roleCopy.hatacordingTabsInputLabel }}</template>
 					</MkInput>
 					<MkRange v-model="role.policies.hatacordingUiSubpaneMaxTabs.priority" :min="0" :max="2" :step="1" easing :textConverter="(v) => v === 0 ? i18n.ts._role._priority.low : v === 1 ? i18n.ts._role._priority.middle : v === 2 ? i18n.ts._role._priority.high : ''">
 						<template #label>{{ i18n.ts._role.priority }}</template>
@@ -512,8 +512,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</div>
 			</MkFolder>
 
-			<MkFolder v-if="role.policies.hatacordingUiRateLimit && matchQuery(['HataSNSCordUI専用レートリミット', 'hatacordingUiRateLimit'])">
-				<template #label>HataSNSCordUI専用レートリミット</template>
+			<MkFolder v-if="role.policies.hatacordingUiRateLimit && matchQuery([roleCopy.hatacordingRateLimitName, 'hatacordingUiRateLimit'])">
+				<template #label>{{ roleCopy.hatacordingRateLimitName }}</template>
 				<template #suffix>
 					<span v-if="role.policies.hatacordingUiRateLimit.useDefault" :class="$style.useDefaultLabel">{{ i18n.ts._role.useBaseValue }}</span>
 					<span v-else>{{ role.policies.hatacordingUiRateLimit.value }}</span>
@@ -524,8 +524,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<template #label>{{ i18n.ts._role.useBaseValue }}</template>
 					</MkSwitch>
 					<MkInput :modelValue="role.policies.hatacordingUiRateLimit.value" type="number" :min="1" :max="1000" :disabled="role.policies.hatacordingUiRateLimit.useDefault" :readonly="readonly" @update:modelValue="updateHatacordingUiRateLimit">
-						<template #label>1時間あたりの操作上限</template>
-						<template #caption>HataSNSCordUIから行う全API操作だけに適用されます（1〜1000、既定: 500）。</template>
+						<template #label>{{ roleCopy.hatacordingRateLimitInputLabel }}</template>
+						<template #caption>{{ roleCopy.hatacordingRateLimitEditorCaption }}</template>
 					</MkInput>
 					<MkRange v-model="role.policies.hatacordingUiRateLimit.priority" :min="0" :max="2" :step="1" easing :textConverter="(v) => v === 0 ? i18n.ts._role._priority.low : v === 1 ? i18n.ts._role._priority.middle : v === 2 ? i18n.ts._role._priority.high : ''">
 						<template #label>{{ i18n.ts._role.priority }}</template>
@@ -534,8 +534,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</MkFolder>
 
 			<!-- 旗鯖fork(Hatady): 端末間でのデータ共有(同期)を有効にできるか。既定は有効、無効化するとその端末のみ保存。 -->
-			<MkFolder v-if="role.policies.canUseHatadySync && matchQuery(['Hatadyでデータ共有を有効にする', 'canUseHatadySync'])">
-				<template #label>Hatady でデータ共有（端末間同期）を有効にする</template>
+			<MkFolder v-if="role.policies.canUseHatadySync && matchQuery([roleCopy.hatadySyncName, 'canUseHatadySync'])">
+				<template #label>{{ roleCopy.hatadySyncName }}</template>
 				<template #suffix>
 					<span v-if="role.policies.canUseHatadySync.useDefault" :class="$style.useDefaultLabel">{{ i18n.ts._role.useBaseValue }}</span>
 					<span v-else>{{ role.policies.canUseHatadySync.value ? i18n.ts.yes : i18n.ts.no }}</span>
@@ -546,8 +546,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<template #label>{{ i18n.ts._role.useBaseValue }}</template>
 					</MkSwitch>
 					<MkSwitch v-model="role.policies.canUseHatadySync.value" :disabled="role.policies.canUseHatadySync.useDefault" :readonly="readonly">
-						<template #label>Hatady の端末間データ共有を許可</template>
-						<template #caption>オフにすると、このロールのユーザーは Hatady のデータをその端末にのみ保存します（既定は有効）。</template>
+						<template #label>{{ roleCopy.hatadySyncToggle }}</template>
+						<template #caption>{{ roleCopy.hatadySyncEditorCaption }}</template>
 					</MkSwitch>
 					<MkRange v-model="role.policies.canUseHatadySync.priority" :min="0" :max="2" :step="1" easing :textConverter="(v) => v === 0 ? i18n.ts._role._priority.low : v === 1 ? i18n.ts._role._priority.middle : v === 2 ? i18n.ts._role._priority.high : ''">
 						<template #label>{{ i18n.ts._role.priority }}</template>
@@ -555,8 +555,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</div>
 			</MkFolder>
 
-			<MkFolder v-if="role.policies.hatadyBookLimit && matchQuery(['Hatadyで追加できる本の最大数', 'hatadyBookLimit'])">
-				<template #label>Hatady で追加できる本の最大数</template>
+			<MkFolder v-if="role.policies.hatadyBookLimit && matchQuery([roleCopy.hatadyBookLimitName, 'hatadyBookLimit'])">
+				<template #label>{{ roleCopy.hatadyBookLimitName }}</template>
 				<template #suffix>
 					<span v-if="role.policies.hatadyBookLimit.useDefault" :class="$style.useDefaultLabel">{{ i18n.ts._role.useBaseValue }}</span>
 					<span v-else>{{ role.policies.hatadyBookLimit.value }}</span>
@@ -574,8 +574,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</div>
 			</MkFolder>
 
-			<MkFolder v-if="role.policies.hatadyBookmarkLimit && matchQuery(['Hatadyの本1冊あたりのしおりの最大数', 'hatadyBookmarkLimit'])">
-				<template #label>Hatady の本1冊あたりのしおりの最大数</template>
+			<MkFolder v-if="role.policies.hatadyBookmarkLimit && matchQuery([roleCopy.hatadyBookmarkLimitName, 'hatadyBookmarkLimit'])">
+				<template #label>{{ roleCopy.hatadyBookmarkLimitName }}</template>
 				<template #suffix>
 					<span v-if="role.policies.hatadyBookmarkLimit.useDefault" :class="$style.useDefaultLabel">{{ i18n.ts._role.useBaseValue }}</span>
 					<span v-else>{{ role.policies.hatadyBookmarkLimit.value }}</span>
@@ -594,8 +594,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</MkFolder>
 
 			<!-- 旗鯖fork: HataFeed リモート絵文字を申請できるか -->
-			<MkFolder v-if="role.policies.canMakePrivateChannel && matchQuery(['プライベートチャンネルを作成できる', 'canMakePrivateChannel'])">
-				<template #label>プライベートチャンネルを作成できる</template>
+			<MkFolder v-if="role.policies.canMakePrivateChannel && matchQuery([roleCopy.privateChannelAccessName, 'canMakePrivateChannel'])">
+				<template #label>{{ roleCopy.privateChannelAccessName }}</template>
 				<template #suffix>
 					<span v-if="role.policies.canMakePrivateChannel.useDefault" :class="$style.useDefaultLabel">{{ i18n.ts._role.useBaseValue }}</span>
 					<span v-else>{{ role.policies.canMakePrivateChannel.value ? i18n.ts.yes : i18n.ts.no }}</span>
@@ -606,7 +606,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<template #label>{{ i18n.ts._role.useBaseValue }}</template>
 					</MkSwitch>
 					<MkSwitch v-model="role.policies.canMakePrivateChannel.value" :disabled="role.policies.canMakePrivateChannel.useDefault" :readonly="readonly">
-						<template #label>メンバー限定のプライベートチャンネルの作成を許可</template>
+						<template #label>{{ roleCopy.privateChannelAccessToggle }}</template>
 					</MkSwitch>
 					<MkRange v-model="role.policies.canMakePrivateChannel.priority" :min="0" :max="2" :step="1" easing :textConverter="(v) => v === 0 ? i18n.ts._role._priority.low : v === 1 ? i18n.ts._role._priority.middle : v === 2 ? i18n.ts._role._priority.high : ''">
 						<template #label>{{ i18n.ts._role.priority }}</template>
@@ -614,8 +614,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</div>
 			</MkFolder>
 
-			<MkFolder v-if="role.policies.canRequestRemoteEmoji && matchQuery(['HataFeedでリモート絵文字を申請できる', 'canRequestRemoteEmoji'])">
-				<template #label>HataFeedでリモート絵文字を申請できる</template>
+			<MkFolder v-if="role.policies.canRequestRemoteEmoji && matchQuery([roleCopy.remoteEmojiAccessName, 'canRequestRemoteEmoji'])">
+				<template #label>{{ roleCopy.remoteEmojiAccessName }}</template>
 				<template #suffix>
 					<span v-if="role.policies.canRequestRemoteEmoji.useDefault" :class="$style.useDefaultLabel">{{ i18n.ts._role.useBaseValue }}</span>
 					<span v-else>{{ role.policies.canRequestRemoteEmoji.value ? i18n.ts.yes : i18n.ts.no }}</span>
@@ -626,7 +626,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<template #label>{{ i18n.ts._role.useBaseValue }}</template>
 					</MkSwitch>
 					<MkSwitch v-model="role.policies.canRequestRemoteEmoji.value" :disabled="role.policies.canRequestRemoteEmoji.useDefault" :readonly="readonly">
-						<template #label>リモート絵文字の一覧検索からの申請を許可</template>
+						<template #label>{{ roleCopy.remoteEmojiAccessToggle }}</template>
 					</MkSwitch>
 					<MkRange v-model="role.policies.canRequestRemoteEmoji.priority" :min="0" :max="2" :step="1" easing :textConverter="(v) => v === 0 ? i18n.ts._role._priority.low : v === 1 ? i18n.ts._role._priority.middle : v === 2 ? i18n.ts._role._priority.high : ''">
 						<template #label>{{ i18n.ts._role.priority }}</template>
@@ -635,8 +635,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</MkFolder>
 
 			<!-- 旗鯖fork: HataFeed 絵文字申請の週あたり上限 -->
-			<MkFolder v-if="role.policies.emojiRequestLimit && matchQuery(['絵文字申請の週あたり上限', 'emojiRequestLimit'])">
-				<template #label>絵文字申請の週あたり上限</template>
+			<MkFolder v-if="role.policies.emojiRequestLimit && matchQuery([roleCopy.emojiRequestLimitName, 'emojiRequestLimit'])">
+				<template #label>{{ roleCopy.emojiRequestLimitName }}</template>
 				<template #suffix>
 					<span v-if="role.policies.emojiRequestLimit.useDefault" :class="$style.useDefaultLabel">{{ i18n.ts._role.useBaseValue }}</span>
 					<span v-else>{{ role.policies.emojiRequestLimit.value }}</span>
@@ -647,7 +647,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<template #label>{{ i18n.ts._role.useBaseValue }}</template>
 					</MkSwitch>
 					<MkInput v-model="role.policies.emojiRequestLimit.value" :disabled="role.policies.emojiRequestLimit.useDefault" type="number" :readonly="readonly">
-						<template #caption>過去7日間に申請できる絵文字数の上限（既定: 10）。</template>
+						<template #caption>{{ roleCopy.emojiRequestLimitCaption }}</template>
 					</MkInput>
 					<MkRange v-model="role.policies.emojiRequestLimit.priority" :min="0" :max="2" :step="1" easing :textConverter="(v) => v === 0 ? i18n.ts._role._priority.low : v === 1 ? i18n.ts._role._priority.middle : v === 2 ? i18n.ts._role._priority.high : ''">
 						<template #label>{{ i18n.ts._role.priority }}</template>
@@ -656,8 +656,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</MkFolder>
 
 			<!-- 旗鯖fork: マスコット機能の上限ポリシー -->
-			<MkFolder v-if="matchQuery(['マスコットの最大表情数', 'mascotMaxExpressions'])">
-				<template #label>マスコットの最大表情数</template>
+			<MkFolder v-if="matchQuery([roleCopy.mascotExpressionsLimitName, 'mascotMaxExpressions'])">
+				<template #label>{{ roleCopy.mascotExpressionsLimitName }}</template>
 				<template #suffix>
 					<span v-if="role.policies.mascotMaxExpressions.useDefault" :class="$style.useDefaultLabel">{{ i18n.ts._role.useBaseValue }}</span>
 					<span v-else>{{ role.policies.mascotMaxExpressions.value }}</span>
@@ -675,8 +675,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</div>
 			</MkFolder>
 
-			<MkFolder v-if="matchQuery(['マスコットの最大文言数', 'mascotMaxPhrases'])">
-				<template #label>マスコットの最大文言数</template>
+			<MkFolder v-if="matchQuery([roleCopy.mascotPhrasesLimitName, 'mascotMaxPhrases'])">
+				<template #label>{{ roleCopy.mascotPhrasesLimitName }}</template>
 				<template #suffix>
 					<span v-if="role.policies.mascotMaxPhrases.useDefault" :class="$style.useDefaultLabel">{{ i18n.ts._role.useBaseValue }}</span>
 					<span v-else>{{ role.policies.mascotMaxPhrases.value }}</span>
@@ -694,8 +694,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</div>
 			</MkFolder>
 
-			<MkFolder v-if="matchQuery(['マスコットの最大キャラクター数', 'mascotMaxCharacters'])">
-				<template #label>マスコットの最大キャラクター数</template>
+			<MkFolder v-if="matchQuery([roleCopy.mascotCharactersLimitName, 'mascotMaxCharacters'])">
+				<template #label>{{ roleCopy.mascotCharactersLimitName }}</template>
 				<template #suffix>
 					<span v-if="role.policies.mascotMaxCharacters.useDefault" :class="$style.useDefaultLabel">{{ i18n.ts._role.useBaseValue }}</span>
 					<span v-else>{{ role.policies.mascotMaxCharacters.value }}</span>
@@ -713,8 +713,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</div>
 			</MkFolder>
 
-			<MkFolder v-if="matchQuery(['HataSideStudioのプロファイル上限', 'hataSideStudioProfileLimit'])">
-				<template #label>HataSideStudioのプロファイル上限</template>
+			<MkFolder v-if="matchQuery([roleCopy.sideStudioProfileLimitName, 'hataSideStudioProfileLimit'])">
+				<template #label>{{ roleCopy.sideStudioProfileLimitName }}</template>
 				<template #suffix>
 					<span v-if="role.policies.hataSideStudioProfileLimit.useDefault" :class="$style.useDefaultLabel">{{ i18n.ts._role.useBaseValue }}</span>
 					<span v-else>{{ role.policies.hataSideStudioProfileLimit.value }}</span>
@@ -722,7 +722,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</template>
 				<div class="_gaps">
 					<MkSwitch v-model="role.policies.hataSideStudioProfileLimit.useDefault" :readonly="readonly"><template #label>{{ i18n.ts._role.useBaseValue }}</template></MkSwitch>
-					<MkInput v-model="role.policies.hataSideStudioProfileLimit.value" :disabled="role.policies.hataSideStudioProfileLimit.useDefault" type="number" :min="1" :max="20" :readonly="readonly"><template #caption>端末ごとに保存できるHataSideStudioのレイアウト数です。</template></MkInput>
+					<MkInput v-model="role.policies.hataSideStudioProfileLimit.value" :disabled="role.policies.hataSideStudioProfileLimit.useDefault" type="number" :min="1" :max="20" :readonly="readonly"><template #caption>{{ roleCopy.sideStudioProfileLimitEditorCaption }}</template></MkInput>
 					<MkRange v-model="role.policies.hataSideStudioProfileLimit.priority" :min="0" :max="2" :step="1" easing :textConverter="(v) => v === 0 ? i18n.ts._role._priority.low : v === 1 ? i18n.ts._role._priority.middle : v === 2 ? i18n.ts._role._priority.high : ''"><template #label>{{ i18n.ts._role.priority }}</template></MkRange>
 				</div>
 			</MkFolder>
@@ -1207,6 +1207,7 @@ import { instance } from '@/instance.js';
 import { deepClone } from '@/utility/clone.js';
 import * as os from '@/os.js';
 
+const roleCopy = i18n.ts._hata._adminRoles;
 const emit = defineEmits<{
 	(ev: 'update:modelValue', v: any): void;
 }>();

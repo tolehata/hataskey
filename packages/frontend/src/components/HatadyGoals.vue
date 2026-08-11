@@ -13,31 +13,31 @@ SPDX-License-Identifier: AGPL-3.0-only
 	:canResize="true"
 	@closed="emit('closed')"
 >
-	<template #header><i class="ti ti-target"></i> {{ t('title') }}</template>
+	<template #header><i class="ti ti-target"></i> {{ copy.title }}</template>
 
 	<div class="hatady-scope" :data-hatady-theme="theme" :class="$style.body">
 		<!-- ===== 一覧モード ===== -->
 		<template v-if="mode === 'list'">
-			<button :class="$style.addBtn" @click="openCreate"><i class="ti ti-plus"></i> {{ t('add') }}</button>
+			<button :class="$style.addBtn" @click="openCreate"><i class="ti ti-plus"></i> {{ copy.add }}</button>
 
-			<div v-if="loading" :class="$style.loading">{{ t('loading') }}</div>
+			<div v-if="loading" :class="$style.loading">{{ copy.loading }}</div>
 			<div v-else-if="goals.length === 0" :class="$style.empty">
 				<i class="ti ti-target-arrow" :class="$style.emptyIcon"></i>
-				<div>{{ t('emptyTitle') }}</div>
-				<div :class="$style.emptySub">{{ t('emptySub') }}</div>
+				<div>{{ copy.emptyTitle }}</div>
+				<div :class="$style.emptySub">{{ copy.emptyDescription }}</div>
 			</div>
 			<template v-else>
 				<div v-for="term in (['short', 'long'] as const)" :key="term">
 					<template v-if="goalsByTerm(term).length">
 						<div :class="$style.termHead">
-							<i :class="['ti', term === 'short' ? 'ti-bolt' : 'ti-mountain']"></i> {{ t(term) }}
+							<i :class="['ti', term === 'short' ? 'ti-bolt' : 'ti-mountain']"></i> {{ termLabel(term) }}
 						</div>
 						<div
 							v-for="g in goalsByTerm(term)" :key="g.id"
 							:class="[$style.goalCard, g.done && $style.goalDone]"
 						>
 							<div :class="$style.goalTop">
-								<button :class="[$style.checkBtn, g.done && $style.checkOn]" :title="t('toggleDone')" @click="toggleDone(g)">
+								<button :class="[$style.checkBtn, g.done && $style.checkOn]" :title="copy.toggleDone" @click="toggleDone(g)">
 									<i :class="['ti', g.done ? 'ti-circle-check-filled' : 'ti-circle']"></i>
 								</button>
 								<div :class="$style.goalTitleWrap">
@@ -62,8 +62,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 									<i class="ti ti-calendar"></i> {{ fmtDate(g.targetDate) }}
 									<template v-if="!g.done"> · {{ dueLabel(g) }}</template>
 								</span>
-								<span v-else :class="$style.due"><i class="ti ti-infinity"></i> {{ t('noDeadline') }}</span>
-								<span v-if="g.done" :class="$style.doneTag"><i class="ti ti-check"></i> {{ t('achieved') }}</span>
+								<span v-else :class="$style.due"><i class="ti ti-infinity"></i> {{ copy.noDeadline }}</span>
+								<span v-if="g.done" :class="$style.doneTag"><i class="ti ti-check"></i> {{ copy.achieved }}</span>
 							</div>
 						</div>
 					</template>
@@ -75,53 +75,53 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<template v-else>
 			<div :class="$style.formHead">
 				<button :class="$style.backBtn" @click="mode = 'list'"><i class="ti ti-arrow-left"></i></button>
-				<span>{{ editing ? t('editGoal') : t('newGoal') }}</span>
+				<span>{{ editing ? copy.editGoal : copy.newGoal }}</span>
 			</div>
 
 			<label :class="$style.field">
-				<span :class="$style.label">{{ t('goalTitle') }} <b :class="$style.req">*</b></span>
-				<input v-model="form.title" :class="$style.input" :maxlength="256" :placeholder="t('titlePh')">
+				<span :class="$style.label">{{ copy.goalTitle }} <b :class="$style.req">*</b></span>
+				<input v-model="form.title" :class="$style.input" :maxlength="256" :placeholder="copy.titlePlaceholder">
 			</label>
 
 			<label :class="$style.field">
-				<span :class="$style.label">{{ t('goalDesc') }}</span>
-				<textarea v-model="form.description" :class="$style.textarea" :maxlength="2048" rows="2" :placeholder="t('descPh')"></textarea>
+				<span :class="$style.label">{{ copy.goalDescription }}</span>
+				<textarea v-model="form.description" :class="$style.textarea" :maxlength="2048" rows="2" :placeholder="copy.descriptionPlaceholder"></textarea>
 			</label>
 
 			<div :class="$style.field">
-				<span :class="$style.label">{{ t('term') }}</span>
+				<span :class="$style.label">{{ copy.term }}</span>
 				<div :class="$style.segRow">
-					<button :class="[$style.seg, form.termType === 'short' && $style.segOn]" @click="form.termType = 'short'"><i class="ti ti-bolt"></i> {{ t('short') }}</button>
-					<button :class="[$style.seg, form.termType === 'long' && $style.segOn]" @click="form.termType = 'long'"><i class="ti ti-mountain"></i> {{ t('long') }}</button>
+					<button :class="[$style.seg, form.termType === 'short' && $style.segOn]" @click="form.termType = 'short'"><i class="ti ti-bolt"></i> {{ copy.shortTerm }}</button>
+					<button :class="[$style.seg, form.termType === 'long' && $style.segOn]" @click="form.termType = 'long'"><i class="ti ti-mountain"></i> {{ copy.longTerm }}</button>
 				</div>
 			</div>
 
 			<label :class="$style.field">
-				<span :class="$style.label">{{ t('deadline') }}</span>
+				<span :class="$style.label">{{ copy.deadline }}</span>
 				<input v-model="form.targetDate" type="date" :class="$style.input">
 			</label>
 
 			<div :class="$style.field">
-				<span :class="$style.label">{{ t('metric') }}</span>
+				<span :class="$style.label">{{ copy.metric }}</span>
 				<div :class="$style.segRow">
-					<button :class="[$style.seg, form.metricType === '' && $style.segOn]" @click="form.metricType = ''">{{ t('metricNone') }}</button>
-					<button :class="[$style.seg, form.metricType === 'minutes' && $style.segOn]" @click="form.metricType = 'minutes'">{{ t('mMinutes') }}</button>
-					<button :class="[$style.seg, form.metricType === 'logs' && $style.segOn]" @click="form.metricType = 'logs'">{{ t('mLogs') }}</button>
-					<button :class="[$style.seg, form.metricType === 'books' && $style.segOn]" @click="form.metricType = 'books'">{{ t('mBooks') }}</button>
+					<button :class="[$style.seg, form.metricType === '' && $style.segOn]" @click="form.metricType = ''">{{ copy.metricManual }}</button>
+					<button :class="[$style.seg, form.metricType === 'minutes' && $style.segOn]" @click="form.metricType = 'minutes'">{{ copy.metricStudyTime }}</button>
+					<button :class="[$style.seg, form.metricType === 'logs' && $style.segOn]" @click="form.metricType = 'logs'">{{ copy.metricLogs }}</button>
+					<button :class="[$style.seg, form.metricType === 'books' && $style.segOn]" @click="form.metricType = 'books'">{{ copy.metricBooks }}</button>
 				</div>
 			</div>
 
 			<label v-if="form.metricType" :class="$style.field">
-				<span :class="$style.label">{{ t('target') }}（{{ metricUnit(form.metricType) }}）</span>
-				<input v-model.number="form.metricTarget" type="number" min="1" :class="$style.input" :placeholder="t('targetPh')">
+				<span :class="$style.label">{{ i18n.tsx._hata._hatady._goals.targetWithUnit({ target: copy.target, unit: metricUnit(form.metricType) }) }}</span>
+				<input v-model.number="form.metricTarget" type="number" min="1" :class="$style.input" :placeholder="copy.targetPlaceholder">
 			</label>
-			<div v-if="form.metricType" :class="$style.metricHint"><i class="ti ti-bulb"></i> {{ t('metricHint') }}</div>
+			<div v-if="form.metricType" :class="$style.metricHint"><i class="ti ti-bulb"></i> {{ copy.metricHint }}</div>
 
 			<div :class="$style.formActions">
-				<button :class="$style.cancelBtn" @click="mode = 'list'">{{ t('cancel') }}</button>
+				<button :class="$style.cancelBtn" @click="mode = 'list'">{{ copy.cancel }}</button>
 				<button :class="$style.saveBtn" :disabled="!form.title.trim() || saving" @click="save">
 					<i v-if="saving" class="ti ti-loader-2" :class="$style.spin"></i>
-					{{ editing ? t('save') : t('create') }}
+					{{ editing ? copy.save : copy.create }}
 				</button>
 			</div>
 		</template>
@@ -132,14 +132,17 @@ SPDX-License-Identifier: AGPL-3.0-only
 <script lang="ts" setup>
 import { ref, reactive } from 'vue';
 import MkWindow from '@/components/MkWindow.vue';
-import { hatadyTheme, hatadyEffectiveLang } from '@/utility/hatady-prefs.js';
+import { i18n } from '@/i18n.js';
+import { hatadyTheme } from '@/utility/hatady-prefs.js';
+import { versatileLang } from '@/utility/intl-const.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import * as os from '@/os.js';
 
 const emit = defineEmits<{ (ev: 'closed'): void; (ev: 'changed'): void }>();
 const dialog = ref<any>(null);
 const theme = hatadyTheme;
-const lang = hatadyEffectiveLang;
+const copy = i18n.ts._hata._hatady._goals;
+const dateFormatter = new Intl.DateTimeFormat(versatileLang, { year: 'numeric', month: 'short', day: 'numeric' });
 
 type Goal = {
 	id: string; title: string; description: string | null; termType: 'short' | 'long';
@@ -166,6 +169,8 @@ load();
 
 function goalsByTerm(term: 'short' | 'long'): Goal[] { return goals.value.filter(g => g.termType === term); }
 
+function termLabel(term: 'short' | 'long'): string { return term === 'short' ? copy.shortTerm : copy.longTerm; }
+
 function openCreate() {
 	editing.value = null;
 	form.title = ''; form.description = ''; form.termType = 'short'; form.targetDate = ''; form.metricType = ''; form.metricTarget = null;
@@ -184,8 +189,8 @@ function openEdit(g: Goal) {
 
 function openMenu(g: Goal, ev: MouseEvent) {
 	os.popupMenu([
-		{ text: t('edit'), icon: 'ti ti-pencil', action: () => openEdit(g) },
-		{ text: t('delete'), icon: 'ti ti-trash', danger: true, action: () => remove(g) },
+		{ text: copy.edit, icon: 'ti ti-pencil', action: () => openEdit(g) },
+		{ text: copy.delete, icon: 'ti ti-trash', danger: true, action: () => remove(g) },
 	], (ev.currentTarget ?? ev.target) as HTMLElement);
 }
 
@@ -222,7 +227,7 @@ async function save() {
 		await load();
 		emit('changed');
 	} catch {
-		os.alert({ type: 'error', text: t('saveFailed') });
+		os.alert({ type: 'error', text: copy.saveFailed });
 	} finally {
 		saving.value = false;
 	}
@@ -234,24 +239,21 @@ async function toggleDone(g: Goal) {
 		await misskeyApi('hata/hatady/goals/update', { goalId: g.id, done: !g.done });
 		await load();
 		emit('changed');
-	} catch { os.alert({ type: 'error', text: t('saveFailed') }); }
+	} catch { os.alert({ type: 'error', text: copy.saveFailed }); }
 }
 
 async function remove(g: Goal) {
-	const { canceled } = await os.confirm({ type: 'warning', text: t('confirmDelete').replace('{t}', g.title) });
+	const { canceled } = await os.confirm({ type: 'warning', text: i18n.tsx._hata._hatady._goals.confirmDelete({ title: g.title }) });
 	if (canceled) return;
 	try {
 		await misskeyApi('hata/hatady/goals/delete', { goalId: g.id });
 		await load();
 		emit('changed');
-	} catch { os.alert({ type: 'error', text: t('saveFailed') }); }
+	} catch { os.alert({ type: 'error', text: copy.saveFailed }); }
 }
 
 function fmtDate(iso: string): string {
-	const d = new Date(iso);
-	return lang.value === 'en'
-		? d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
-		: `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`;
+	return dateFormatter.format(new Date(iso));
 }
 function daysLeft(iso: string): number {
 	const target = new Date(iso); target.setHours(23, 59, 59, 999);
@@ -268,58 +270,24 @@ function dueClass(g: Goal): string {
 function dueLabel(g: Goal): string {
 	if (!g.targetDate) return '';
 	const dl = daysLeft(g.targetDate);
-	if (dl < 0) return lang.value === 'en' ? `${-dl}d overdue` : `${-dl}日超過`;
-	if (dl === 0) return lang.value === 'en' ? 'due today' : '本日期限';
-	return lang.value === 'en' ? `${dl}d left` : `あと${dl}日`;
+	if (dl < 0) return i18n.tsx._hata._hatady._goals.overdue({ days: (-dl).toString() });
+	if (dl === 0) return copy.dueToday;
+	return i18n.tsx._hata._hatady._goals.daysLeft({ days: dl.toString() });
 }
 function metricUnit(m: string): string {
-	return { minutes: lang.value === 'en' ? 'min' : '分', logs: lang.value === 'en' ? 'logs' : '記録', books: lang.value === 'en' ? 'books' : '冊' }[m] ?? '';
+	return { minutes: copy.minutesUnit, logs: copy.logsUnit, books: copy.booksUnit }[m] ?? '';
 }
 function fmtMetric(m: string | null, v: number): string {
 	if (m === 'minutes') {
 		const h = Math.floor(v / 60); const mm = v % 60;
-		if (lang.value === 'en') return h > 0 ? (mm > 0 ? `${h}h${mm}m` : `${h}h`) : `${mm}m`;
-		return h > 0 ? (mm > 0 ? `${h}時間${mm}分` : `${h}時間`) : `${mm}分`;
+		if (h > 0 && mm > 0) return i18n.tsx._hata._hatady._goals.durationHoursMinutes({ hours: h.toString(), minutes: mm.toString() });
+		if (h > 0) return i18n.tsx._hata._hatady._goals.durationHours({ hours: h.toString() });
+		return i18n.tsx._hata._hatady._goals.durationMinutes({ minutes: mm.toString() });
 	}
-	return `${v}${metricUnit(m ?? '')}`;
+	if (m === 'logs') return i18n.tsx._hata._hatady._goals.logCount({ count: v.toString() });
+	if (m === 'books') return i18n.tsx._hata._hatady._goals.bookCount({ count: v.toString() });
+	return v.toString();
 }
-
-const DICT: Record<string, { ja: string; en: string }> = {
-	title: { ja: '学習目標', en: 'Goals' },
-	loading: { ja: '読み込み中…', en: 'Loading…' },
-	add: { ja: '目標を追加', en: 'Add goal' },
-	emptyTitle: { ja: 'まだ目標がありません', en: 'No goals yet' },
-	emptySub: { ja: '短期・長期の目標を立てて、達成を追いかけましょう。', en: 'Set short- and long-term goals and track them.' },
-	short: { ja: '短期目標', en: 'Short-term' },
-	long: { ja: '長期目標', en: 'Long-term' },
-	toggleDone: { ja: '達成/未達成を切替', en: 'Toggle done' },
-	achieved: { ja: '達成', en: 'Done' },
-	noDeadline: { ja: '期限なし', en: 'No deadline' },
-	newGoal: { ja: '新しい目標', en: 'New goal' },
-	editGoal: { ja: '目標を編集', en: 'Edit goal' },
-	goalTitle: { ja: 'タイトル', en: 'Title' },
-	titlePh: { ja: '例: 数学を毎日30分', en: 'e.g. 30 min of math daily' },
-	goalDesc: { ja: 'メモ（任意）', en: 'Note (optional)' },
-	descPh: { ja: '達成条件や動機など', en: 'Details or motivation' },
-	term: { ja: '種別', en: 'Term' },
-	deadline: { ja: '期限（任意）', en: 'Deadline (optional)' },
-	metric: { ja: '達成指標（任意・自動集計）', en: 'Metric (optional, auto-tracked)' },
-	metricNone: { ja: '手動', en: 'Manual' },
-	mMinutes: { ja: '学習時間', en: 'Study time' },
-	mLogs: { ja: '記録数', en: 'Logs' },
-	mBooks: { ja: '読了数', en: 'Books' },
-	target: { ja: '目標値', en: 'Target' },
-	targetPh: { ja: '例: 600', en: 'e.g. 600' },
-	metricHint: { ja: '指標を設定すると、作成日〜期限の記録から進捗を自動計算します。', en: 'Progress is auto-calculated from records between creation and deadline.' },
-	cancel: { ja: 'キャンセル', en: 'Cancel' },
-	create: { ja: '作成', en: 'Create' },
-	save: { ja: '保存', en: 'Save' },
-	edit: { ja: '編集', en: 'Edit' },
-	delete: { ja: '削除', en: 'Delete' },
-	confirmDelete: { ja: '「{t}」を削除しますか？', en: 'Delete "{t}"?' },
-	saveFailed: { ja: '保存に失敗しました。', en: 'Failed to save.' },
-};
-function t(key: string): string { return DICT[key]?.[lang.value] ?? key; }
 </script>
 
 <style lang="scss" module>

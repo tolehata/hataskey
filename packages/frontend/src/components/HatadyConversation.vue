@@ -13,10 +13,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 	:canResize="true"
 	@closed="emit('closed')"
 >
-	<template #header><i class="ti ti-messages"></i> {{ t('title') }}</template>
+	<template #header><i class="ti ti-messages"></i> {{ copy.title }}</template>
 
 	<div class="hatady-scope" :data-hatady-theme="theme" :class="$style.body">
-		<div v-if="loading" :class="$style.loading">{{ t('loading') }}</div>
+		<div v-if="loading" :class="$style.loading">{{ copy.loading }}</div>
 		<template v-else-if="log">
 			<!-- ルート投稿 -->
 			<article :class="$style.root" :style="{ borderLeftColor: pal(log.subject).accent }">
@@ -39,20 +39,20 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<span :class="$style.dur"><i class="ti ti-clock"></i> {{ fmtDuration(log.durationMinutes) }}</span>
 				</div>
 				<div :class="$style.foot">
-					<span v-if="currentTag" :class="$style.tagChip" :style="{ background: currentTag.bg, color: currentTag.fg }"><i :class="['ti', currentTag.icon]"></i> {{ lang === 'en' ? currentTag.en : currentTag.ja }}</span>
+					<span v-if="currentTag" :class="$style.tagChip" :style="{ background: currentTag.bg, color: currentTag.fg }"><i :class="['ti', currentTag.icon]"></i> {{ currentTagLabel }}</span>
 					<HatadyReactions :class="$style.reactions" :target="{ logId: log.id }" :reactions="log.reactions ?? {}" :myReaction="log.myReaction ?? null"/>
 				</div>
 			</article>
 
 			<!-- 返信ヘッダー -->
 			<div :class="$style.repliesHead">
-				<span :class="$style.repliesTitle"><i class="ti ti-messages"></i> {{ t('replies') }} {{ comments.length }}{{ lang === 'en' ? '' : '件' }}</span>
+				<span :class="$style.repliesTitle"><i class="ti ti-messages"></i> {{ copyx.repliesCount({ count: comments.length.toString() }) }}</span>
 				<span :class="$style.repliesLine"></span>
 			</div>
 
 			<!-- 返信リスト -->
 			<div :class="$style.replies">
-				<div v-if="comments.length === 0" :class="$style.noReplies">{{ t('noReplies') }}</div>
+				<div v-if="comments.length === 0" :class="$style.noReplies">{{ copy.noReplies }}</div>
 				<div v-for="c in comments" :key="c.id" :class="[$style.reply, c.replyId && $style.replyNested]">
 					<MkAvatar :class="$style.replyAvatar" :user="c.user" link/>
 					<div :class="$style.bubble">
@@ -63,24 +63,24 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<div :class="$style.replyText">{{ c.text }}</div>
 						<div :class="$style.replyFoot">
 							<HatadyReactions :target="{ commentId: c.id }" :reactions="c.reactions ?? {}" :myReaction="c.myReaction ?? null"/>
-							<button :class="$style.replyBtn" @click="setReplyTo(c)"><i class="ti ti-arrow-back-up"></i> {{ t('reply') }}</button>
+							<button :class="$style.replyBtn" @click="setReplyTo(c)"><i class="ti ti-arrow-back-up"></i> {{ copy.reply }}</button>
 						</div>
 					</div>
 				</div>
 			</div>
 		</template>
-		<div v-else :class="$style.loading">{{ t('notFound') }}</div>
+		<div v-else :class="$style.loading">{{ copy.notFound }}</div>
 
 		<!-- 返信コンポーザー -->
 		<div v-if="log" :class="$style.composer">
 			<div v-if="replyTo" :class="$style.replyingTo">
-				<i class="ti ti-arrow-back-up"></i> <MkUserName :user="replyTo.user"/> {{ t('replyingTo') }}
+				<i class="ti ti-arrow-back-up"></i> <MkUserName :user="replyTo.user"/> {{ copy.replyingTo }}
 				<button :class="$style.cancelReply" @click="replyTo = null"><i class="ti ti-x"></i></button>
 			</div>
 			<div :class="$style.composerRow">
 				<MkAvatar v-if="$i" :class="$style.composerAvatar" :user="$i"/>
-				<input v-model="draft" :class="$style.composerInput" :placeholder="t('placeholder')" @keydown.enter="onComposerKeydown">
-				<button :class="$style.sendBtn" :disabled="sending || !draft.trim()" :aria-label="t('send')" :title="t('send')" @click="send"><i class="ti ti-send"></i><span :class="$style.sendLabel">{{ t('send') }}</span></button>
+				<input v-model="draft" :class="$style.composerInput" :placeholder="copy.placeholder" @keydown.enter="onComposerKeydown">
+				<button :class="$style.sendBtn" :disabled="sending || !draft.trim()" :aria-label="copy.send" :title="copy.send" @click="send"><i class="ti ti-send"></i><span :class="$style.sendLabel">{{ copy.send }}</span></button>
 			</div>
 		</div>
 	</div>
@@ -93,16 +93,20 @@ import MkWindow from '@/components/MkWindow.vue';
 import HySubjectBadge from '@/components/HySubjectBadge.vue';
 import HyBookCover from '@/components/HyBookCover.vue';
 import HatadyReactions from '@/components/HatadyReactions.vue';
+import { versatileLang } from '@@/js/intl-const.js';
 import { $i } from '@/i.js';
+import { i18n } from '@/i18n.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
-import { hySubjectPalette, hyTag } from '@/utility/hatady.js';
-import { hatadyTheme, hatadyLang } from '@/utility/hatady-prefs.js';
+import { hySubjectPalette, hyTag, hyTagLabel } from '@/utility/hatady.js';
+import { hatadyTheme } from '@/utility/hatady-prefs.js';
 
 const props = defineProps<{ logId: string; initialLog?: any }>();
 const emit = defineEmits<{ (ev: 'changed'): void; (ev: 'closed'): void }>();
 const dialog = useTemplateRef('dialog');
 const theme = hatadyTheme;
-const lang = hatadyLang;
+const copy = i18n.ts._hata._hatady._conversation;
+const copyx = i18n.tsx._hata._hatady._conversation;
+const shortDateFormatter = new Intl.DateTimeFormat(versatileLang, { month: 'short', day: 'numeric' });
 
 const log = ref<any>(props.initialLog ?? null);
 const comments = ref<any[]>([]);
@@ -111,37 +115,24 @@ const draft = ref('');
 const sending = ref(false);
 const replyTo = ref<any>(null);
 const currentTag = computed(() => log.value ? hyTag(log.value.tag) : null);
-
-const DICT: Record<string, { ja: string; en: string }> = {
-	title: { ja: '学びの投稿', en: 'Study post' },
-	loading: { ja: '読み込み中…', en: 'Loading…' },
-	notFound: { ja: '投稿が見つかりません。', en: 'Post not found.' },
-	replies: { ja: '返信', en: 'Replies' },
-	noReplies: { ja: 'まだ返信がありません。最初の返信を書きましょう。', en: 'No replies yet. Be the first to reply.' },
-	reply: { ja: '返信', en: 'Reply' },
-	replyingTo: { ja: 'に返信', en: '' },
-	placeholder: { ja: '返信を書く…', en: 'Write a reply…' },
-	send: { ja: '送信', en: 'Send' },
-};
-function t(key: string): string { return DICT[key]?.[lang.value === 'en' ? 'en' : 'ja'] ?? key; }
+const currentTagLabel = computed(() => hyTagLabel(log.value?.tag));
 function pal(s: string) { return hySubjectPalette(s); }
 
 function fmtDuration(min: number): string {
-	if (min < 60) return lang.value === 'en' ? `${min}m` : `${min}分`;
+	if (min < 60) return copyx.durationMinutes({ minutes: min.toString() });
 	const h = Math.floor(min / 60); const m = min % 60;
-	return lang.value === 'en' ? `${h}h ${m}m` : `${h}時間${m}分`;
+	return copyx.durationHoursMinutes({ hours: h.toString(), minutes: m.toString() });
 }
 function fmtWhen(iso: string): string {
 	const d = new Date(iso);
 	const diffMin = Math.round((Date.now() - d.getTime()) / 60000);
-	const en = lang.value === 'en';
-	if (diffMin < 1) return en ? 'now' : 'たった今';
-	if (diffMin < 60) return en ? `${diffMin}m ago` : `${diffMin}分前`;
+	if (diffMin < 1) return copy.now;
+	if (diffMin < 60) return copyx.minutesAgo({ count: diffMin.toString() });
 	const diffH = Math.floor(diffMin / 60);
-	if (diffH < 24) return en ? `${diffH}h ago` : `${diffH}時間前`;
+	if (diffH < 24) return copyx.hoursAgo({ count: diffH.toString() });
 	const diffD = Math.floor(diffH / 24);
-	if (diffD < 7) return en ? `${diffD}d ago` : `${diffD}日前`;
-	return en ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : `${d.getMonth() + 1}月${d.getDate()}日`;
+	if (diffD < 7) return copyx.daysAgo({ count: diffD.toString() });
+	return shortDateFormatter.format(d);
 }
 
 async function reload() {

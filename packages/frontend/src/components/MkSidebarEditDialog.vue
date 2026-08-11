@@ -17,14 +17,14 @@ SPDX-License-Identifier: AGPL-3.0-only
 	:closeButton="true"
 	@closed="onWindowClosed"
 >
-	<template #header><i class="ti ti-menu-2" style="margin-right:.5em;"></i>サイドバーの編集</template>
+	<template #header><i class="ti ti-menu-2" style="margin-right:.5em;"></i>{{ copy.title }}</template>
 
 	<div class="_spacer" style="--MI_SPACER-min: 16px; --MI_SPACER-max: 24px;">
 		<div :class="$style.hint">
 			<i class="ti ti-info-circle"></i>
 			<div>
-				ドラッグで並び替え、トグルで表示/非表示を切り替えできます。<br>
-				<b>「保存」ボタンを押すと、変更がサーバーに同期され、ログインしているすべての端末に反映されます。</b>
+				{{ copy.hint }}<br>
+				<b>{{ copy.syncHint }}</b>
 			</div>
 		</div>
 
@@ -39,7 +39,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		>
 			<template #item="{element: item, index}">
 				<div :class="[$style.row, isVisible(item) ? '' : $style.rowHidden]">
-					<button :class="['sidebarDragHandle', $style.handle]" v-tooltip="'ドラッグで並び替え'" tabindex="-1">
+					<button :class="['sidebarDragHandle', $style.handle]" v-tooltip="copy.dragToReorder" tabindex="-1">
 						<i class="ti ti-grip-vertical"></i>
 					</button>
 					<div :class="$style.groupBadge" :data-group="groupOf(item)">{{ groupLabel(item) }}</div>
@@ -49,11 +49,11 @@ SPDX-License-Identifier: AGPL-3.0-only
 						:class="$style.toggle"
 						@update:modelValue="setVisible(index, $event)"
 					/>
-					<span v-else :class="$style.requiredLock" v-tooltip="'この項目は常に表示されます'">
+					<span v-else :class="$style.requiredLock" v-tooltip="copy.alwaysVisible">
 						<i class="ti ti-lock"></i>
 					</span>
 					<i :class="[applyIconOverride(item), $style.icon]"></i>
-					<span :class="$style.label">{{ item.label }}</span>
+					<span :class="$style.label">{{ itemDisplayLabel(item) }}</span>
 				</div>
 			</template>
 		</draggable>
@@ -61,10 +61,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 	<!-- 旗鯖fork: MkWindow は #footer スロットを持たないため、body 末尾に footer を配置 -->
 	<div :class="$style.footer">
-		<MkButton :class="$style.resetBtn" @click="resetToDefault"><i class="ti ti-restore"></i> 初期値に戻す</MkButton>
+		<MkButton :class="$style.resetBtn" @click="resetToDefault"><i class="ti ti-restore"></i> {{ copy.resetDefaults }}</MkButton>
 		<div :class="$style.footerRight">
-			<MkButton @click="closeWithoutSave">キャンセル</MkButton>
-			<MkButton primary :disabled="!hasChanges" @click="save"><i class="ti ti-device-floppy"></i> 保存</MkButton>
+			<MkButton @click="closeWithoutSave">{{ copy.cancel }}</MkButton>
+			<MkButton primary :disabled="!hasChanges" @click="save"><i class="ti ti-device-floppy"></i> {{ copy.save }}</MkButton>
 		</div>
 	</div>
 </MkWindow>
@@ -82,15 +82,39 @@ import { applySidebarIconOverride as applyIconOverride } from '@/utility/sidebar
 import * as os from '@/os.js';
 import { i18n } from '@/i18n.js';
 
+const copy = i18n.ts._hata._sidebarEditor;
+
 // 旗鯖fork: 常時表示 (ON/OFF 不可) な項目。並び替えは可能。
 const REQUIRED_IDS = new Set(['timeline', 'notifications', 'announcements', 'followRequests', 'more']);
 
 // 旗鯖fork: グループラベル (バッジ表示用)。group 越えドラッグで自動更新するため、idx に依らず item.group ベースで参照。
 const GROUP_LABELS: Record<string, string> = {
-	basic: '基本',
-	hata: '独自',
-	discover: '発見',
-	more: 'その他',
+	basic: copy.groupBasic,
+	hata: copy.groupCustom,
+	discover: copy.groupDiscover,
+	more: copy.groupOther,
+};
+
+// 保存済みの label は互換性のため変更せず、既定項目だけ表示時に翻訳する。
+const ITEM_LABELS: Record<string, string> = {
+	timeline: copy.itemTimeline,
+	search: copy.itemSearch,
+	notifications: copy.itemNotifications,
+	chat: copy.itemMessages,
+	announcements: copy.itemAnnouncements,
+	drive: copy.itemDrive,
+	favorites: copy.itemFavorites,
+	hatask: copy.itemHatask,
+	hatafeed: copy.itemHataFeed,
+	hatady: copy.itemHatady,
+	portal: copy.itemPortal,
+	uiSetup: copy.itemUiSetup,
+	explore: copy.itemExplore,
+	followRequests: copy.itemFollowRequests,
+	channels: copy.itemChannels,
+	more: copy.itemMore,
+	reload: copy.itemReload,
+	cacheClear: copy.itemClearCache,
 };
 
 const emit = defineEmits<{
@@ -111,6 +135,10 @@ function groupOf(item: any): string {
 }
 function groupLabel(item: any): string {
 	return GROUP_LABELS[groupOf(item)] ?? groupOf(item);
+}
+
+function itemDisplayLabel(item: any): string {
+	return ITEM_LABELS[item?.id] ?? item?.label ?? item?.id ?? '';
 }
 function isRequired(id: string): boolean {
 	return REQUIRED_IDS.has(id);
@@ -161,8 +189,8 @@ function onDragChange(_evt: any) {
 async function resetToDefault() {
 	const c = await os.confirm({
 		type: 'warning',
-		title: '初期値に戻す',
-		text: 'サイドバーの並び順と表示/非表示をすべて初期値に戻します。よろしいですか?',
+		title: copy.resetDefaults,
+		text: copy.resetConfirm,
 	});
 	if (c.canceled) return;
 	const def = PREF_DEF['simpleUi.sidebar'].default as any[];
@@ -176,14 +204,14 @@ async function save() {
 	}
 	try {
 		prefer.commit('simpleUi.sidebar', JSON.parse(JSON.stringify(editedItems.value)));
-		os.toast('サイドバーの設定をサーバーに保存しました。ログイン中の全端末で反映されます。');
+		os.toast(copy.saved);
 		emit('done', { saved: true });
 		dialog.value?.close();
 	} catch (err) {
 		os.alert({
 			type: 'error',
-			title: '保存に失敗しました',
-			text: 'もう一度お試しいただくか、しばらくしてからもう一度お試しください。' + (err instanceof Error ? `\n\n詳細: ${err.message}` : ''),
+			title: copy.saveFailed,
+			text: copy.tryAgain + (err instanceof Error ? `\n\n${copy.details}: ${err.message}` : ''),
 		});
 	}
 }
@@ -192,8 +220,8 @@ async function closeWithoutSave() {
 	if (hasChanges.value) {
 		const c = await os.confirm({
 			type: 'warning',
-			title: '変更を破棄しますか?',
-			text: '保存していない変更があります。閉じると変更は失われます。',
+			title: copy.discardTitle,
+			text: copy.discardText,
 		});
 		if (c.canceled) return;
 	}

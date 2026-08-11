@@ -14,12 +14,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 <MkStickyContainer>
 	<template #header><MkPageHeader :title="'HataFeed'" :icon="'ti ti-message-report'"/></template>
 	<MkSpacer :contentMax="1120">
-		<div v-if="loading" :class="$style.center">読み込み中…</div>
+		<div v-if="loading" :class="$style.center">{{ copy.loading }}</div>
 
 		<!-- ロール未許可 -->
 		<div v-else-if="!canAccess" :class="$style.empty">
 			<i class="ti ti-lock" :class="$style.emptyIcon"></i>
-			<div :class="$style.emptyText">この機能は現在解放されていません。</div>
+			<div :class="$style.emptyText">{{ copy.unavailable }}</div>
 		</div>
 
 		<!-- 詳細ビュー -->
@@ -48,36 +48,36 @@ SPDX-License-Identifier: AGPL-3.0-only
 					</button>
 					<div :class="$style.search">
 						<i class="ti ti-search" :class="$style.searchIcon"></i>
-						<input v-model="searchQuery" :class="$style.searchInput" type="search" placeholder="イシュー・会話を検索" @keydown.enter="reloadIssues" @search="reloadIssues">
+						<input v-model="searchQuery" :class="$style.searchInput" type="search" :placeholder="copy.searchPlaceholder" @keydown.enter="reloadIssues" @search="reloadIssues">
 						<button v-if="searchQuery" :class="$style.searchClear" @click="searchQuery = ''; reloadIssues()"><i class="ti ti-x"></i></button>
 					</div>
-					<button v-if="activeTab === 'roadmap' && isStaff" :class="[$style.newBtn]" @click="addRoadmap"><i class="ti ti-route"></i><span>予定を追加</span></button>
-					<button ref="bellEl" :class="$style.iconBtn" title="通知" @click="openNotifications">
+					<button v-if="activeTab === 'roadmap' && isStaff" :class="[$style.newBtn]" @click="addRoadmap"><i class="ti ti-route"></i><span>{{ copy.addPlan }}</span></button>
+					<button ref="bellEl" :class="$style.iconBtn" :title="copy.notifications" @click="openNotifications">
 						<i class="ti ti-bell"></i>
 						<span v-if="unreadCount > 0" :class="$style.bellBadge">{{ unreadCount > 99 ? '99+' : unreadCount }}</span>
 					</button>
-					<button :class="$style.iconBtn" title="更新" @click="refreshAll"><i class="ti ti-refresh"></i></button>
-					<button v-if="canExportCurrent" :class="[$style.iconBtn, $style.iconBtnHideMobile]" title="エクスポート" @click="openExportWindow"><i class="ti ti-file-export"></i></button>
-					<button v-if="isStaff && currentProjectId != null" :class="[$style.iconBtn, $style.iconBtnHideMobile]" title="プロジェクト管理" @click="manageCurrentProject"><i class="ti ti-settings"></i></button>
+					<button :class="$style.iconBtn" :title="copy.refresh" @click="refreshAll"><i class="ti ti-refresh"></i></button>
+					<button v-if="canExportCurrent" :class="[$style.iconBtn, $style.iconBtnHideMobile]" :title="copy.export" @click="openExportWindow"><i class="ti ti-file-export"></i></button>
+					<button v-if="isStaff && currentProjectId != null" :class="[$style.iconBtn, $style.iconBtnHideMobile]" :title="copy.manageProject" @click="manageCurrentProject"><i class="ti ti-settings"></i></button>
 				</div>
 
 				<!-- タブバー(下線式) -->
 				<nav :class="$style.tabs">
-					<button :class="[$style.tab, activeTab === 'issues' && $style.tabOn]" @click="goIssuesTab"><i class="ti ti-clipboard-list"></i> イシュー</button>
-					<button :class="[$style.tab, activeTab === 'roadmap' && $style.tabOn]" @click="goRoadmapTab"><i class="ti ti-route"></i> ロードマップ</button>
-					<button v-if="isStaff" :class="[$style.tab, activeTab === 'emoji' && $style.tabOn]" @click="goEmojiAdminTab"><i class="ti ti-mood-cog"></i> 申請管理<span v-if="emojiRequests.length" :class="$style.tabCount">{{ emojiRequests.length }}</span></button>
-					<button :class="$style.tab" @click="openBeta"><i class="ti ti-flask"></i> ベータ<span v-if="hataBetaTotal" :class="$style.tabCount">{{ hataBetaTotal }}</span></button>
+					<button :class="[$style.tab, activeTab === 'issues' && $style.tabOn]" @click="goIssuesTab"><i class="ti ti-clipboard-list"></i> {{ copy.issues }}</button>
+					<button :class="[$style.tab, activeTab === 'roadmap' && $style.tabOn]" @click="goRoadmapTab"><i class="ti ti-route"></i> {{ copy.roadmap }}</button>
+					<button v-if="isStaff" :class="[$style.tab, activeTab === 'emoji' && $style.tabOn]" @click="goEmojiAdminTab"><i class="ti ti-mood-cog"></i> {{ copy.requestManagement }}<span v-if="emojiRequests.length" :class="$style.tabCount">{{ emojiRequests.length }}</span></button>
+					<button :class="$style.tab" @click="openBeta"><i class="ti ti-flask"></i> {{ copy.beta }}<span v-if="hataBetaTotal" :class="$style.tabCount">{{ hataBetaTotal }}</span></button>
 				</nav>
 
 				<!-- 旗鯖fork: 利用者の主要操作を本文上部へ固定。左が絵文字申請、右が新規イシュー。 -->
 				<div v-if="activeTab === 'issues'" :class="$style.topActions">
 					<button type="button" :class="[$style.topAction, $style.topActionEmoji]" @click="requestEmoji">
 						<i class="ti ti-mood-plus"></i>
-						<span>絵文字申請</span>
+						<span>{{ copy.emojiRequest }}</span>
 					</button>
 					<button type="button" :class="[$style.topAction, $style.topActionEmoji]" @click="createIssue">
 						<i class="ti ti-pencil-plus"></i>
-						<span>新規イシュー</span>
+						<span>{{ copy.newIssue }}</span>
 					</button>
 				</div>
 
@@ -88,13 +88,13 @@ SPDX-License-Identifier: AGPL-3.0-only
 							<button v-for="f in emojiAdminFilters" :key="String(f.value)" :class="[$style.eaFilter, emojiAdminStatus === f.value && $style.eaFilterOn]" @click="setEmojiAdminStatus(f.value)">{{ f.label }}</button>
 						</div>
 						<div :class="$style.eaTopActions">
-							<button type="button" :class="$style.eaRequestOwn" @click="requestEmoji"><i class="ti ti-mood-plus"></i> 自分で絵文字を申請</button>
-							<button v-if="emojiAdminStatus === 'pending' && emojiAdminList.length" type="button" :class="$style.eaBatch" @click="openReviewQueue"><i class="ti ti-player-track-next"></i> 未処理を連続確認</button>
+							<button type="button" :class="$style.eaRequestOwn" @click="requestEmoji"><i class="ti ti-mood-plus"></i> {{ copy.requestEmojiForSelf }}</button>
+							<button v-if="emojiAdminStatus === 'pending' && emojiAdminList.length" type="button" :class="$style.eaBatch" @click="openReviewQueue"><i class="ti ti-player-track-next"></i> {{ copy.reviewPendingSequentially }}</button>
 						</div>
 					</div>
 					<div v-if="emojiAdminList.length === 0" :class="$style.emptyBlock">
 						<i class="ti ti-mood-empty" :class="$style.emptyBlockIcon"></i>
-						<div>{{ emojiAdminStatus === 'pending' ? '未処理の申請はありません。' : '該当する申請はありません。' }}</div>
+						<div>{{ emojiAdminStatus === 'pending' ? copy.noPendingRequests : copy.noMatchingRequests }}</div>
 					</div>
 					<div v-else :class="$style.eaList">
 						<div v-for="r in emojiAdminList" :key="r.id" :class="$style.eaRow">
@@ -105,19 +105,19 @@ SPDX-License-Identifier: AGPL-3.0-only
 									<HfAvatar v-if="r.requestedBy" :user="r.requestedBy" :size="16"/>
 									<span>{{ r.requestedBy?.name ?? r.requestedBy?.username }}</span>
 									・ <MkTime :time="r.createdAt" mode="relative"/>
-									・ {{ r.sourceType === 'remote' ? (r.remoteHost ? `リモート(${r.remoteHost})` : 'リモート') : '自前' }}
+									・ {{ r.sourceType === 'remote' ? (r.remoteHost ? copyx.remoteSource({ host: r.remoteHost }) : copy.remote) : copy.ownSource }}
 								</div>
 							</div>
 							<div :class="$style.eaAction">
-								<button v-if="r.status === 'pending'" :class="$style.eaReview" @click="openApprove(r)"><i class="ti ti-eye"></i> 確認</button>
+								<button v-if="r.status === 'pending'" :class="$style.eaReview" @click="openApprove(r)"><i class="ti ti-eye"></i> {{ copy.review }}</button>
 								<span v-else :class="['ti', emojiStatusIcon[r.status] ?? '', 'hfEstIcon']" :data-est="r.status" :title="emojiStatusLabel[r.status]"></span>
 							</div>
 						</div>
 					</div>
 					<div v-if="emojiAdminPage > 0 || emojiAdminHasNext" :class="$style.pager">
-						<button :class="$style.pagerArrow" :disabled="emojiAdminPage === 0" @click="prevEmojiAdminPage"><i class="ti ti-chevron-left"></i> 前へ</button>
+						<button :class="$style.pagerArrow" :disabled="emojiAdminPage === 0" @click="prevEmojiAdminPage"><i class="ti ti-chevron-left"></i> {{ copy.previous }}</button>
 						<span :class="$style.pagerPage">{{ emojiAdminPage + 1 }}</span>
-						<button :class="$style.pagerArrow" :disabled="!emojiAdminHasNext" @click="nextEmojiAdminPage">次へ <i class="ti ti-chevron-right"></i></button>
+						<button :class="$style.pagerArrow" :disabled="!emojiAdminHasNext" @click="nextEmojiAdminPage">{{ copy.next }} <i class="ti ti-chevron-right"></i></button>
 					</div>
 				</div>
 
@@ -125,27 +125,27 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<div v-if="activeTab !== 'emoji'" :class="$style.mobileExtras">
 					<div v-if="activity.length" :class="$style.ticker">
 						<span :class="$style.tickerDot"></span>
-						<span :class="$style.tickerText"><b>{{ activity[0].user ? (activity[0].user.name ?? activity[0].user.username) : '誰か' }}</b>{{ activity[0].verb }}「{{ activity[0].label }}」</span>
+						<span :class="$style.tickerText"><b>{{ activity[0].user ? (activity[0].user.name ?? activity[0].user.username) : copy.someone }}</b>{{ activity[0].verb }}{{ copyx.activityObject({ label: activity[0].label }) }}</span>
 						<MkTime :class="$style.tickerTime" :time="activity[0].time" mode="relative"/>
 					</div>
 					<div :class="$style.statChips">
-						<button :class="$style.statChip" @click="applyStatus('open')"><div :class="[$style.statNum, $style.statOpen]">{{ counts.open }}</div><div :class="$style.statLabel">受付中</div></button>
-						<button :class="$style.statChip" @click="applyStatus('inProgress')"><div :class="[$style.statNum, $style.statDoing]">{{ counts.inProgress }}</div><div :class="$style.statLabel">対応中</div></button>
-						<button :class="$style.statChip" @click="applyStatus('resolved')"><div :class="[$style.statNum, $style.statResolved]">{{ counts.resolved }}</div><div :class="$style.statLabel">解決済み</div></button>
-						<button :class="$style.statChip" @click="isStaff ? goEmojiAdminTab() : requestEmoji()"><div :class="[$style.statNum, $style.statEmoji]">{{ emojiRequests.length }}</div><div :class="$style.statLabel">{{ isStaff ? '申請を確認' : '絵文字を申請' }}</div></button>
+						<button :class="$style.statChip" @click="applyStatus('open')"><div :class="[$style.statNum, $style.statOpen]">{{ counts.open }}</div><div :class="$style.statLabel">{{ statusLabel.open }}</div></button>
+						<button :class="$style.statChip" @click="applyStatus('inProgress')"><div :class="[$style.statNum, $style.statDoing]">{{ counts.inProgress }}</div><div :class="$style.statLabel">{{ statusLabel.inProgress }}</div></button>
+						<button :class="$style.statChip" @click="applyStatus('resolved')"><div :class="[$style.statNum, $style.statResolved]">{{ counts.resolved }}</div><div :class="$style.statLabel">{{ statusLabel.resolved }}</div></button>
+						<button :class="$style.statChip" @click="isStaff ? goEmojiAdminTab() : requestEmoji()"><div :class="[$style.statNum, $style.statEmoji]">{{ emojiRequests.length }}</div><div :class="$style.statLabel">{{ isStaff ? copy.reviewRequests : copy.requestEmoji }}</div></button>
 					</div>
 					<!-- 旗鯖fork: スマホでは右サイドバーを畳むため、絵文字申請カラムだけ本文側へ再配置する。 -->
 					<section :class="$style.mobileEmojiCard">
 						<div :class="$style.mobileEmojiHead">
 							<div>
-								<div :class="$style.mobileEmojiTitle"><i class="ti ti-mood-smile"></i> 絵文字申請 <span v-if="emojiRequests.length">{{ emojiRequests.length }}</span></div>
-								<div :class="$style.mobileEmojiLead">{{ isStaff ? '未処理の申請を順番に確認できます。' : '使いたい絵文字を画像またはリモート絵文字から申請できます。' }}</div>
+								<div :class="$style.mobileEmojiTitle"><i class="ti ti-mood-smile"></i> {{ copy.emojiRequest }} <span v-if="emojiRequests.length">{{ emojiRequests.length }}</span></div>
+								<div :class="$style.mobileEmojiLead">{{ isStaff ? copy.pendingReviewLead : copy.requestLead }}</div>
 							</div>
 							<button type="button" :class="$style.mobileEmojiPrimary" @click="isStaff ? openReviewQueue() : requestEmoji()">
-								<i :class="isStaff ? 'ti ti-player-track-next' : 'ti ti-plus'"></i> {{ isStaff ? 'まとめて確認' : '申請する' }}
+								<i :class="isStaff ? 'ti ti-player-track-next' : 'ti ti-plus'"></i> {{ isStaff ? copy.reviewTogether : copy.submitRequest }}
 							</button>
 						</div>
-						<div v-if="emojiRequests.length === 0" :class="$style.emptyMini">{{ isStaff ? '未処理の申請はありません。' : 'まだ申請はありません。' }}</div>
+						<div v-if="emojiRequests.length === 0" :class="$style.emptyMini">{{ isStaff ? copy.noPendingRequests : copy.noRequestsYet }}</div>
 						<div v-else :class="$style.mobileEmojiList">
 							<button v-for="r in emojiRequests.slice(0, 5)" :key="r.id" type="button" :class="$style.mobileEmojiRow" @click="isStaff && r.status === 'pending' ? openApprove(r) : null">
 								<span :class="$style.emojiTile"><img v-if="r.imageUrl" :src="r.imageUrl" :class="$style.emojiImg" :alt="r.name"></span>
@@ -156,7 +156,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<div v-if="emojiQuota && !isStaff" :class="$style.quotaWrap"><HfQuotaMeter :remaining="emojiQuota.remaining" :limit="emojiQuota.limit"/></div>
 					</section>
 					<div v-if="roadmap.length" :class="$style.roadScroll">
-						<div :class="$style.roadScrollHead"><i class="ti ti-route"></i> 近々の修正・改善予定</div>
+						<div :class="$style.roadScrollHead"><i class="ti ti-route"></i> {{ copy.upcomingPlans }}</div>
 						<div :class="$style.roadScrollList">
 							<button v-for="r in roadmap.slice(0, 6)" :key="r.id" :class="$style.roadScrollCard" @click="openIssue(r.id)">
 								<div :class="$style.roadScrollTitle">{{ r.title }}</div>
@@ -172,25 +172,25 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<!-- 左: フィルタ + イシューリスト -->
 					<section :class="$style.listCol">
 						<div :class="$style.filterRow">
-							<button :class="[$style.filterToggle, !includeClosed && $style.filterToggleOn]" @click="setClosed(false)"><i class="ti ti-circle-dot"></i> 受付中</button>
-							<button :class="[$style.filterToggle, includeClosed && $style.filterToggleOn]" @click="setClosed(true)"><i class="ti ti-circle-check"></i> 解決済み</button>
+							<button :class="[$style.filterToggle, !includeClosed && $style.filterToggleOn]" @click="setClosed(false)"><i class="ti ti-circle-dot"></i> {{ statusLabel.open }}</button>
+							<button :class="[$style.filterToggle, includeClosed && $style.filterToggleOn]" @click="setClosed(true)"><i class="ti ti-circle-check"></i> {{ statusLabel.resolved }}</button>
 							<div :class="$style.filterDropdowns">
-								<button :class="[$style.dropBtn, filterCategory && $style.dropBtnOn]" @click="openCategoryMenu">{{ filterCategory ? categoryLabel[filterCategory] : 'カテゴリ' }} <i class="ti ti-chevron-down"></i></button>
-								<button :class="[$style.dropBtn, filterStatus && $style.dropBtnOn]" @click="openStatusMenu">{{ filterStatus ? statusLabel[filterStatus] : 'ステータス' }} <i class="ti ti-chevron-down"></i></button>
-								<button :class="[$style.dropBtn, authorFilter && $style.dropBtnOn]" @click="openAuthorMenu">{{ authorFilter ? (authorFilter.name ?? authorFilter.username) : '作成者' }} <i class="ti ti-chevron-down"></i></button>
+								<button :class="[$style.dropBtn, filterCategory && $style.dropBtnOn]" @click="openCategoryMenu">{{ filterCategory ? categoryLabel[filterCategory] : copy.category }} <i class="ti ti-chevron-down"></i></button>
+								<button :class="[$style.dropBtn, filterStatus && $style.dropBtnOn]" @click="openStatusMenu">{{ filterStatus ? statusLabel[filterStatus] : copy.status }} <i class="ti ti-chevron-down"></i></button>
+								<button :class="[$style.dropBtn, authorFilter && $style.dropBtnOn]" @click="openAuthorMenu">{{ authorFilter ? (authorFilter.name ?? authorFilter.username) : copy.author }} <i class="ti ti-chevron-down"></i></button>
 							</div>
 						</div>
 
 						<div v-if="visibleIssues.length === 0" :class="$style.emptyBlock">
 							<template v-if="activeTab === 'roadmap'">
 								<i class="ti ti-route" :class="$style.emptyBlockIcon"></i>
-								<div>ロードマップを報告するには、このタブを使用します。<br>近々の修正・改善予定を掲示できます。</div>
-								<button v-if="isStaff" :class="$style.emptyCta" @click="addRoadmap"><i class="ti ti-route"></i> ロードマップを計画する</button>
+								<div>{{ copy.roadmapEmptyLine1 }}<br>{{ copy.roadmapEmptyLine2 }}</div>
+								<button v-if="isStaff" :class="$style.emptyCta" @click="addRoadmap"><i class="ti ti-route"></i> {{ copy.planRoadmap }}</button>
 							</template>
 							<template v-else>
 								<i class="ti ti-mail-opened" :class="$style.emptyBlockIcon"></i>
-								<div>該当するイシューはありません。<br>お気づきの点があればご報告ください。</div>
-								<button :class="$style.emptyCta" @click="createIssue"><i class="ti ti-pencil-plus"></i> イシューを作成する</button>
+								<div>{{ copy.issueEmptyLine1 }}<br>{{ copy.issueEmptyLine2 }}</div>
+								<button :class="$style.emptyCta" @click="createIssue"><i class="ti ti-pencil-plus"></i> {{ copy.createIssue }}</button>
 							</template>
 						</div>
 						<div v-else ref="issueListEl" :class="$style.listCard">
@@ -209,9 +209,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 									</div>
 									<div :class="$style.rowMeta">
 										<span :class="$style.rowNo">#{{ issue.number }}</span>
-										<template v-if="issue.createdBy">・ <MkUserName :class="$style.rowAuthor" :user="issue.createdBy"/> が<MkTime :time="issue.createdAt" mode="relative"/>に作成</template>
+										<template v-if="issue.createdBy">・ <MkUserName :class="$style.rowAuthor" :user="issue.createdBy"/>{{ copy.createdAtBefore }}<MkTime :time="issue.createdAt" mode="relative"/>{{ copy.createdAtAfter }}</template>
 										・ <HfStatusPill :status="issue.status" variant="text" :showIcon="false" :class="$style.rowStatusText"/>
-										<template v-if="issue.assignees && issue.assignees.length"> ・ <i class="ti ti-shield-check" :class="$style.rowAssigneeIcon"></i> <MkUserName :class="$style.rowAuthor" :user="issue.assignees[0]"/> が対処担当</template>
+										<template v-if="issue.assignees && issue.assignees.length"> ・ <i class="ti ti-shield-check" :class="$style.rowAssigneeIcon"></i> <MkUserName :class="$style.rowAuthor" :user="issue.assignees[0]"/>{{ copy.assigneeSuffix }}</template>
 									</div>
 								</div>
 								<div :class="$style.rowSide">
@@ -224,14 +224,14 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 						<!-- ページ式ナビ -->
 						<div v-if="visibleIssues.length > 0 || issuePage > 0" :class="$style.pager">
-							<button :class="$style.pagerArrow" :disabled="issuePage === 0" @click="prevIssuePage"><i class="ti ti-chevron-left"></i> 前へ</button>
+							<button :class="$style.pagerArrow" :disabled="issuePage === 0" @click="prevIssuePage"><i class="ti ti-chevron-left"></i> {{ copy.previous }}</button>
 							<span :class="$style.pagerPage">{{ issuePage + 1 }}</span>
-							<button :class="$style.pagerArrow" :disabled="!issuesHasNext" @click="nextIssuePage">次へ <i class="ti ti-chevron-right"></i></button>
+							<button :class="$style.pagerArrow" :disabled="!issuesHasNext" @click="nextIssuePage">{{ copy.next }} <i class="ti ti-chevron-right"></i></button>
 							<label :class="$style.pagerSize">
 								<select v-model.number="issuePageSize" :class="$style.pagerSelect" @change="reloadIssues">
-									<option :value="10">10件</option>
-									<option :value="50">50件</option>
-									<option :value="100">100件</option>
+									<option :value="10">{{ copyx.itemCount({ count: '10' }) }}</option>
+									<option :value="50">{{ copyx.itemCount({ count: '50' }) }}</option>
+									<option :value="100">{{ copyx.itemCount({ count: '100' }) }}</option>
 								</select>
 							</label>
 						</div>
@@ -242,10 +242,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<!-- ①近々の修正・改善予定 -->
 						<section v-if="roadmap.length || isStaff" :class="$style.sideCard">
 							<div :class="$style.sideHead">
-								<span :class="$style.sideTitle"><i class="ti ti-route"></i> 近々の修正・改善予定</span>
+								<span :class="$style.sideTitle"><i class="ti ti-route"></i> {{ copy.upcomingPlans }}</span>
 								<button v-if="isStaff" :class="$style.sideAdd" @click="addRoadmap"><i class="ti ti-plus"></i></button>
 							</div>
-							<div v-if="roadmap.length === 0" :class="$style.emptyMini">掲示中の予定はありません。</div>
+							<div v-if="roadmap.length === 0" :class="$style.emptyMini">{{ copy.noPublishedPlans }}</div>
 							<div v-else :class="$style.roadList">
 								<button v-for="r in roadmap.slice(0, 5)" :key="r.id" :class="$style.roadItem" @click="openIssue(r.id)">
 									<span :class="$style.roadDot" :data-status="r.status"></span>
@@ -258,13 +258,13 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<!-- ②絵文字申請 -->
 						<section :class="$style.sideCard">
 							<div :class="$style.sideHead">
-								<span :class="$style.sideTitle"><i class="ti ti-mood-smile"></i> 絵文字申請<span v-if="emojiRequests.length" :class="$style.sideCount">{{ emojiRequests.length }}</span></span>
+								<span :class="$style.sideTitle"><i class="ti ti-mood-smile"></i> {{ copy.emojiRequest }}<span v-if="emojiRequests.length" :class="$style.sideCount">{{ emojiRequests.length }}</span></span>
 								<div :class="$style.sideHeadActions">
-									<button v-if="isStaff && emojiRequests.length > 1" type="button" :class="$style.sideReviewQueue" title="未処理の絵文字申請をまとめて確認" @click="openReviewQueue"><i class="ti ti-player-track-next"></i> まとめて確認</button>
-									<button type="button" :class="$style.sideAddText" @click="requestEmoji"><i class="ti ti-plus"></i> {{ isStaff ? '自分で申請' : '申請する' }}</button>
+									<button v-if="isStaff && emojiRequests.length > 1" type="button" :class="$style.sideReviewQueue" :title="copy.reviewPendingTogetherTitle" @click="openReviewQueue"><i class="ti ti-player-track-next"></i> {{ copy.reviewTogether }}</button>
+									<button type="button" :class="$style.sideAddText" @click="requestEmoji"><i class="ti ti-plus"></i> {{ isStaff ? copy.submitForSelf : copy.submitRequest }}</button>
 								</div>
 							</div>
-							<div v-if="emojiRequests.length === 0" :class="$style.emptyMini">{{ isStaff ? '未処理の申請はありません。' : 'まだ申請はありません。' }}</div>
+							<div v-if="emojiRequests.length === 0" :class="$style.emptyMini">{{ isStaff ? copy.noPendingRequests : copy.noRequestsYet }}</div>
 							<div v-else :class="$style.emojiList">
 								<button v-for="r in emojiRequests" :key="r.id" :class="$style.emojiRow" @click="isStaff && r.status === 'pending' ? openApprove(r) : null">
 									<span :class="$style.emojiTile"><img v-if="r.imageUrl" :src="r.imageUrl" :class="$style.emojiImg" :alt="r.name"/></span>
@@ -280,15 +280,15 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<!-- ③みんなの動き -->
 						<section :class="$style.sideCard">
 							<div :class="$style.sideHead">
-								<span :class="$style.sideTitle"><span :class="$style.liveDot"></span> みんなの動き</span>
+								<span :class="$style.sideTitle"><span :class="$style.liveDot"></span> {{ copy.communityActivity }}</span>
 							</div>
-							<div v-if="activity.length === 0" :class="$style.emptyMini">まだ動きはありません。</div>
+							<div v-if="activity.length === 0" :class="$style.emptyMini">{{ copy.noActivityYet }}</div>
 							<TransitionGroup v-else tag="div" :class="$style.actList" name="hfAct">
 								<div v-for="a in activity.slice(0, 3)" :key="a.key" :class="$style.actRow">
 									<HfAvatar v-if="a.user" :user="a.user" :size="20"/>
 									<span v-else :class="[$style.actAvatarLock]"><i :class="a.type === 'issueClosed' ? 'ti ti-lock' : 'ti ti-help'"></i></span>
 									<div :class="$style.actBody">
-										<MkUserName v-if="a.user" :class="$style.actName" :user="a.user"/><span v-else :class="$style.actName">誰か</span>
+										<MkUserName v-if="a.user" :class="$style.actName" :user="a.user"/><span v-else :class="$style.actName">{{ copy.someone }}</span>
 										<span :class="$style.actVerb">{{ a.verb }}</span>
 										<span :class="$style.actObj">{{ a.label }}</span>
 									</div>
@@ -329,8 +329,11 @@ import {
 	categoryLabel, categoryKeys, staffOnlyCategoryKeys, statusLabel, statusKeys, emojiStatusLabel, emojiStatusIcon, hataBetaTotal,
 } from '@/utility/hatafeed.js';
 import { iAmModerator, $i } from '@/i.js';
+import { i18n } from '@/i18n.js';
 
 const props = defineProps<{ issueId?: string; number?: string }>();
+const copy = i18n.ts._hata._hatafeed._home;
+const copyx = i18n.tsx._hata._hatafeed._home;
 
 // 旗鯖fork: スタッフ専用カテゴリ(security等)は一般ユーザーの絞り込みから隠す。
 const filterCategoryKeys = computed(() => categoryKeys.filter(c => iAmModerator || !staffOnlyCategoryKeys.some(staffOnly => staffOnly === c)));
@@ -420,7 +423,7 @@ async function openExportWindow() {
 	} catch (error) {
 		exportWindowOpen.value = false;
 		console.error(error);
-		os.alert({ type: 'error', title: 'エクスポート画面を開けませんでした', text: '再読み込みして、もう一度お試しください。' });
+		os.alert({ type: 'error', title: copy.exportOpenFailedTitle, text: copy.exportOpenFailedText });
 	}
 }
 
@@ -438,15 +441,15 @@ const activity = computed(() => {
 	for (const i of issues.value) {
 		if (!i.closed) {
 			if (!i.createdBy) continue;
-			items.push({ key: 'i' + i.id, type: 'issue', user: i.createdBy, time: i.createdAt, verb: 'がイシューを立てました', label: i.title });
+			items.push({ key: 'i' + i.id, type: 'issue', user: i.createdBy, time: i.createdAt, verb: copy.activityCreatedIssue, label: i.title });
 		} else {
 			// クローズ済みは「立てました」ではなく「クローズしました」として、どのイシューが閉じたかを明記する。
-			items.push({ key: 'c' + i.id, type: 'issueClosed', user: i.closedBy ?? null, time: i.closedAt ?? i.createdAt, verb: 'がイシューをクローズしました', label: i.title });
+			items.push({ key: 'c' + i.id, type: 'issueClosed', user: i.closedBy ?? null, time: i.closedAt ?? i.createdAt, verb: copy.activityClosedIssue, label: i.title });
 		}
 	}
 	for (const r of emojiRequests.value) {
 		if (!r.requestedBy) continue;
-		items.push({ key: 'e' + r.id, type: 'emoji', user: r.requestedBy, time: r.createdAt, verb: 'が絵文字を申請しました', label: ':' + r.name + ':', image: r.imageUrl });
+		items.push({ key: 'e' + r.id, type: 'emoji', user: r.requestedBy, time: r.createdAt, verb: copy.activityRequestedEmoji, label: ':' + r.name + ':', image: r.imageUrl });
 	}
 	return items.sort((a, b) => (a.time < b.time ? 1 : -1)).slice(0, 10);
 });
@@ -521,27 +524,27 @@ function openProjectSwitch(ev: MouseEvent) {
 	const items: any[] = [
 		{ text: 'Hataskey', icon: 'ti ti-flag-2', active: currentProjectId.value == null, action: () => selectProject(null) },
 		...ownProjects.value.map(p => ({
-			text: p.name + (p.suspended ? '（停止中）' : ''),
+			text: p.name + (p.suspended ? copy.suspendedSuffix : ''),
 			icon: p.suspended ? 'ti ti-player-pause' : 'ti ti-cube',
 			active: currentProjectId.value === p.id,
 			action: () => selectProject(p.id),
 		})),
 	];
-	if (currentProject.value) items.push(null, { text: '概要', icon: 'ti ti-info-circle', action: () => showProjectOverview(currentProject.value) });
-	if (isStaff.value) items.push({ text: 'プロジェクトを追加', icon: 'ti ti-plus', action: createProject });
+	if (currentProject.value) items.push(null, { text: copy.overview, icon: 'ti ti-info-circle', action: () => showProjectOverview(currentProject.value) });
+	if (isStaff.value) items.push({ text: copy.addProject, icon: 'ti ti-plus', action: createProject });
 	os.popupMenu(items, (ev.currentTarget ?? ev.target) as HTMLElement);
 }
 
 function openCategoryMenu(ev: MouseEvent) {
 	os.popupMenu([
-		{ text: 'すべてのカテゴリ', active: filterCategory.value == null, action: () => { filterCategory.value = null; reloadIssues(); } },
+		{ text: copy.allCategories, active: filterCategory.value == null, action: () => { filterCategory.value = null; reloadIssues(); } },
 		...filterCategoryKeys.value.map(c => ({ text: categoryLabel[c], active: filterCategory.value === c, action: () => { filterCategory.value = c; reloadIssues(); } })),
 	], (ev.currentTarget ?? ev.target) as HTMLElement);
 }
 
 function openStatusMenu(ev: MouseEvent) {
 	os.popupMenu([
-		{ text: 'すべてのステータス', active: filterStatus.value == null, action: () => { filterStatus.value = null; reloadIssues(); } },
+		{ text: copy.allStatuses, active: filterStatus.value == null, action: () => { filterStatus.value = null; reloadIssues(); } },
 		...statusKeys.map(s => ({ text: statusLabel[s], active: filterStatus.value === s, action: () => { filterStatus.value = s; reloadIssues(); } })),
 	], (ev.currentTarget ?? ev.target) as HTMLElement);
 }
@@ -551,10 +554,10 @@ async function openAuthorMenu(ev: MouseEvent) {
 	const anchor = (ev.currentTarget ?? ev.target) as HTMLElement;
 	if (authorFilter.value) {
 		os.popupMenu([
-			{ text: `${authorFilter.value.name ?? authorFilter.value.username} で絞り込み中`, icon: 'ti ti-user', action: () => {} },
+			{ text: copyx.filteringByAuthor({ name: authorFilter.value.name ?? authorFilter.value.username }), icon: 'ti ti-user', action: () => {} },
 			{ type: 'divider' },
-			{ text: '作成者フィルタを解除', icon: 'ti ti-x', action: () => { authorFilter.value = null; reloadIssues(); } },
-			{ text: '別の作成者を選ぶ', icon: 'ti ti-user-search', action: () => pickAuthor() },
+			{ text: copy.clearAuthorFilter, icon: 'ti ti-x', action: () => { authorFilter.value = null; reloadIssues(); } },
+			{ text: copy.chooseDifferentAuthor, icon: 'ti ti-user-search', action: () => pickAuthor() },
 		], anchor);
 	} else {
 		pickAuthor();
@@ -607,10 +610,10 @@ const emojiAdminPage = ref(0);
 const emojiAdminCursors = ref<(string | undefined)[]>([undefined]);
 const emojiAdminHasNext = ref(false);
 const emojiAdminFilters: { value: HataFeedEmojiRequest['status'] | null; label: string }[] = [
-	{ value: 'pending', label: '未処理' },
-	{ value: 'approved', label: '承認済み' },
-	{ value: 'rejected', label: 'リジェクト' },
-	{ value: null, label: 'すべて' },
+	{ value: 'pending', label: emojiStatusLabel.pending },
+	{ value: 'approved', label: emojiStatusLabel.approved },
+	{ value: 'rejected', label: emojiStatusLabel.rejected },
+	{ value: null, label: copy.all },
 ];
 
 async function fetchEmojiAdminPage(untilId: string | undefined) {
@@ -719,7 +722,7 @@ async function openApprove(r: any) {
 async function openReviewQueue() {
 	const pending = await misskeyApi('hata/feedback/emoji-requests', { status: 'pending', limit: 100 }) as unknown as HataFeedEmojiRequest[];
 	if (pending.length === 0) {
-		os.toast('未処理の絵文字申請はありません。');
+		os.toast(copy.noPendingRequests);
 		await loadEmojiRequests();
 		if (activeTab.value === 'emoji') await reloadEmojiAdmin();
 		return;
@@ -732,23 +735,23 @@ async function openReviewQueue() {
 
 // 旗鯖fork: プロジェクトのテーマカラー候補。
 const PROJECT_COLOR_OPTIONS = [
-	{ value: '', label: 'デフォルト' },
-	{ value: '#3b9eff', label: '青' },
-	{ value: '#41b883', label: '緑' },
-	{ value: '#e6a23c', label: '橙' },
-	{ value: '#f56c6c', label: '赤' },
-	{ value: '#9b6cf5', label: '紫' },
-	{ value: '#ff8fc3', label: 'ピンク' },
-	{ value: '#36c5d1', label: 'シアン' },
+	{ value: '', label: copy.colorDefault },
+	{ value: '#3b9eff', label: copy.colorBlue },
+	{ value: '#41b883', label: copy.colorGreen },
+	{ value: '#e6a23c', label: copy.colorOrange },
+	{ value: '#f56c6c', label: copy.colorRed },
+	{ value: '#9b6cf5', label: copy.colorPurple },
+	{ value: '#ff8fc3', label: copy.colorPink },
+	{ value: '#36c5d1', label: copy.colorCyan },
 ];
 
 async function createProject() {
-	const { canceled, result } = await os.form('プロジェクトを追加', {
-		name: { type: 'string', label: '名前', required: true },
-		genre: { type: 'string', label: 'ジャンル（例: SNSクライアント / ゲーム / ツール）' },
-		description: { type: 'string', label: '説明', multiline: true },
-		url: { type: 'string', label: 'リポジトリURL' },
-		color: { type: 'enum', label: 'テーマカラー', enum: PROJECT_COLOR_OPTIONS, default: '' },
+	const { canceled, result } = await os.form(copy.addProject, {
+		name: { type: 'string', label: copy.name, required: true },
+		genre: { type: 'string', label: copy.genreExample },
+		description: { type: 'string', label: copy.description, multiline: true },
+		url: { type: 'string', label: copy.repositoryUrl },
+		color: { type: 'enum', label: copy.themeColor, enum: PROJECT_COLOR_OPTIONS, default: '' },
 	});
 	if (canceled) return;
 	await misskeyApi('hata/feedback/projects/create', {
@@ -763,12 +766,12 @@ async function createProject() {
 
 // 旗鯖fork: プロジェクトの編集(スタッフのみ)。
 async function editProject(project: any) {
-	const { canceled, result } = await os.form('プロジェクトを編集', {
-		name: { type: 'string', label: '名前', required: true, default: project.name },
-		genre: { type: 'string', label: 'ジャンル（例: SNSクライアント / ゲーム / ツール）', default: project.genre ?? '' },
-		description: { type: 'string', label: '説明', multiline: true, default: project.description ?? '' },
-		url: { type: 'string', label: 'リポジトリURL', default: project.url ?? '' },
-		color: { type: 'enum', label: 'テーマカラー', enum: PROJECT_COLOR_OPTIONS, default: project.color ?? '' },
+	const { canceled, result } = await os.form(copy.editProject, {
+		name: { type: 'string', label: copy.name, required: true, default: project.name },
+		genre: { type: 'string', label: copy.genreExample, default: project.genre ?? '' },
+		description: { type: 'string', label: copy.description, multiline: true, default: project.description ?? '' },
+		url: { type: 'string', label: copy.repositoryUrl, default: project.url ?? '' },
+		color: { type: 'enum', label: copy.themeColor, enum: PROJECT_COLOR_OPTIONS, default: project.color ?? '' },
 	});
 	if (canceled) return;
 	await os.apiWithDialog('hata/feedback/projects/update', {
@@ -785,10 +788,10 @@ async function editProject(project: any) {
 // 旗鯖fork: プロジェクトの概要(タイトル/ジャンル/説明/リポジトリURL)を表示する。
 function showProjectOverview(project: any) {
 	const lines: string[] = [];
-	if (project.genre) lines.push(`ジャンル: ${project.genre}`);
+	if (project.genre) lines.push(copyx.genreValue({ genre: project.genre }));
 	if (project.description) lines.push(project.description);
-	if (project.url) lines.push(`リポジトリ: ${project.url}`);
-	if (lines.length === 0) lines.push('（このプロジェクトの説明はまだありません）');
+	if (project.url) lines.push(copyx.repositoryValue({ url: project.url }));
+	if (lines.length === 0) lines.push(copy.noProjectDescription);
 	os.alert({
 		type: 'info',
 		title: project.name,
@@ -800,8 +803,8 @@ function showProjectOverview(project: any) {
 async function removeProject(project: any) {
 	const { canceled } = await os.confirm({
 		type: 'warning',
-		title: 'プロジェクトを削除',
-		text: `「${project.name}」を削除しますか？\nこのプロジェクトに紐づくイシュー・会話もすべて削除されます。この操作は取り消せません。`,
+		title: copy.deleteProjectTitle,
+		text: copyx.deleteProjectText({ name: project.name }),
 	});
 	if (canceled) return;
 	await os.apiWithDialog('hata/feedback/projects/delete', { projectId: project.id });
@@ -815,8 +818,8 @@ async function toggleSuspendProject(project: any) {
 	if (toSuspend) {
 		const { canceled } = await os.confirm({
 			type: 'warning',
-			title: 'プロジェクトをサスペンド',
-			text: `「${project.name}」を一時停止しますか？\n再びオンにするまで、作成者と鯖缶以外には表示されなくなります。`,
+			title: copy.suspendProjectTitle,
+			text: copyx.suspendProjectText({ name: project.name }),
 		});
 		if (canceled) return;
 	}
@@ -829,13 +832,13 @@ function manageCurrentProject(ev: MouseEvent) {
 	const project = ownProjects.value.find(p => p.id === currentProjectId.value);
 	if (project == null) return;
 	os.popupMenu([
-		{ text: '編集', icon: 'ti ti-pencil', action: () => editProject(project) },
+		{ text: copy.edit, icon: 'ti ti-pencil', action: () => editProject(project) },
 		{
-			text: project.suspended ? 'サスペンド解除' : 'サスペンド（一時停止）',
+			text: project.suspended ? copy.resumeProject : copy.suspendProject,
 			icon: project.suspended ? 'ti ti-player-play' : 'ti ti-player-pause',
 			action: () => toggleSuspendProject(project),
 		},
-		{ text: '削除', icon: 'ti ti-trash', danger: true, action: () => removeProject(project) },
+		{ text: copy.delete, icon: 'ti ti-trash', danger: true, action: () => removeProject(project) },
 	], (ev.currentTarget ?? ev.target) as HTMLElement);
 }
 

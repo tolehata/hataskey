@@ -203,7 +203,7 @@ function stealReaction(ev: MouseEvent) {
 	{
 		const hidden = isReactionHidden(props.noteId, props.reaction);
 		menuItems.push({
-			text: hidden ? 'このリアクションを表示' : 'このリアクションを非表示',
+			text: hidden ? i18n.ts._hata._reactionVisibility.showReaction : i18n.ts._hata._reactionVisibility.hideReaction,
 			icon: hidden ? 'ti ti-eye' : 'ti ti-eye-off',
 			action: () => {
 				if (hidden) {
@@ -322,7 +322,7 @@ async function menu(ev) {
 	// リアクション非表示/表示
 	const hidden = isReactionHidden(props.noteId, props.reaction);
 	menuItems.push({
-		text: hidden ? 'このリアクションを表示' : 'このリアクションを非表示',
+		text: hidden ? i18n.ts._hata._reactionVisibility.showReaction : i18n.ts._hata._reactionVisibility.hideReaction,
 		icon: hidden ? 'ti ti-eye' : 'ti ti-eye-off',
 		action: () => {
 			if (hidden) {

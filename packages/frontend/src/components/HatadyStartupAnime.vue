@@ -16,41 +16,41 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<!-- 罫線の地 -->
 			<div :class="$style.ruled"></div>
 			<!-- ページ送り矢印 -->
-			<button :class="[$style.arrow, $style.arrowL]" :title="t('prev')" @click="prev"><i class="ti ti-chevron-left"></i></button>
-			<button :class="[$style.arrow, $style.arrowR]" :title="t('next')" @click="next"><i class="ti ti-chevron-right"></i></button>
+			<button :class="[$style.arrow, $style.arrowL]" :title="copy.previous" @click="prev"><i class="ti ti-chevron-left"></i></button>
+			<button :class="[$style.arrow, $style.arrowR]" :title="copy.next" @click="next"><i class="ti ti-chevron-right"></i></button>
 
 			<!-- ===== Scene 1: ロゴ＋キャッチ ===== -->
 			<div v-if="scene === 1" :key="'s1-' + runKey" :class="$style.scene" style="align-items:center;justify-content:center;text-align:center;padding:30px 26px 108px;gap:14px;">
 				<div :class="$style.logoMark" style="animation:hyMark .75s cubic-bezier(.34,1.56,.64,1) both;"><i class="ti ti-book-2"></i></div>
 				<div :class="$style.wordmark" style="animation:hyFadeUp .6s cubic-bezier(.22,.9,.3,1) .34s both;">Hatady</div>
-				<div :class="$style.tagline" style="animation:hyFade .6s ease .6s both;">hata ＋ study</div>
-				<div :class="$style.catch" style="animation:hyFadeUp .7s cubic-bezier(.22,.9,.3,1) .86s both;">学びを、一冊のノートに。</div>
+				<div :class="$style.tagline" style="animation:hyFade .6s ease .6s both;">{{ copy.tagline }}</div>
+				<div :class="$style.catch" style="animation:hyFadeUp .7s cubic-bezier(.22,.9,.3,1) .86s both;">{{ copy.catch }}</div>
 			</div>
 
 			<!-- ===== Scene 2: コンセプト一文(紙めくり) ===== -->
 			<div v-else-if="scene === 2" :key="'s2-' + runKey" :class="$style.scene" style="padding:0;overflow:hidden;">
 				<div v-if="!reduced" :class="$style.flipPaper" style="animation:hyFlip .82s cubic-bezier(.62,.02,.34,1) both;"></div>
 				<div :class="$style.sceneInner" style="align-items:center;justify-content:center;text-align:center;padding:34px 30px 104px;gap:16px;">
-					<div :class="$style.kicker" style="animation:hyFadeUp .5s ease .55s both;">— CONCEPT —</div>
-					<div :class="$style.conceptBody" style="animation:hyFadeUp .8s cubic-bezier(.22,.9,.3,1) .68s both;">読んでいる本や学んだことを、<br>本のページをめくるように<br><b>やわらかく記録</b>して振り返る。</div>
+					<div :class="$style.kicker" style="animation:hyFadeUp .5s ease .55s both;">{{ copy.conceptKicker }}</div>
+					<div :class="$style.conceptBody" style="animation:hyFadeUp .8s cubic-bezier(.22,.9,.3,1) .68s both;">{{ copy.conceptLine1 }}<br>{{ copy.conceptLine2 }}<br><b>{{ copy.conceptEmphasis }}</b>{{ copy.conceptLine3 }}</div>
 				</div>
 			</div>
 
 			<!-- ===== Scene 3: 機能紹介3枚 ===== -->
 			<div v-else-if="scene === 3" :key="'s3-' + runKey" :class="[$style.scene, $style.sceneFeatures]">
 				<div style="text-align:center;animation:hyFadeUp .5s ease 0s both;">
-					<div :class="$style.featKicker">FEATURES</div>
-					<div :class="$style.featTitle">Hatady でできること</div>
+					<div :class="$style.featKicker">{{ copy.featuresKicker }}</div>
+					<div :class="$style.featTitle">{{ copy.featuresTitle }}</div>
 				</div>
 				<div :class="$style.cardsWrap">
 					<!-- マイログ -->
 					<div :class="$style.fcard" style="animation:hyCardIn .55s cubic-bezier(.22,.9,.3,1) 0s both;">
 						<div :class="$style.fcardHead">
 							<span :class="$style.fcardIcon"><i class="ti ti-pencil"></i></span>
-							<span :class="$style.fcardName">マイログ</span>
-							<span :class="$style.fcardFlame">🔥 24</span>
+							<span :class="$style.fcardName">{{ copy.myLog }}</span>
+							<span :class="$style.fcardFlame">{{ copy.demoStreak }}</span>
 						</div>
-						<div :class="$style.fcardDesc">学びを時系列で記録。ヒートマップで継続を可視化。</div>
+						<div :class="$style.fcardDesc">{{ copy.myLogDescription }}</div>
 						<div style="display:flex;justify-content:center;gap:3px;margin-top:2px;max-width:100%;">
 							<div v-for="(col, ci) in heatColumns" :key="ci" style="display:flex;flex-direction:column;gap:3px;">
 								<span v-for="(cell, ri) in col" :key="ri" :style="cell"></span>
@@ -61,9 +61,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<div :class="$style.fcard" style="animation:hyCardIn .55s cubic-bezier(.22,.9,.3,1) .16s both;">
 						<div :class="$style.fcardHead">
 							<span :class="$style.fcardIcon"><i class="ti ti-books"></i></span>
-							<span :class="$style.fcardName">本棚</span>
+							<span :class="$style.fcardName">{{ copy.bookshelf }}</span>
 						</div>
-						<div :class="$style.fcardDesc">自動生成カバーの本。しおりで栞のページを記録。</div>
+						<div :class="$style.fcardDesc">{{ copy.bookshelfDescription }}</div>
 						<div style="position:relative;display:flex;align-items:flex-end;justify-content:center;gap:6px;padding:8px 2px 12px;max-width:100%;">
 							<div v-for="(bk, bi) in books" :key="bi" style="position:relative;">
 								<span v-if="bk.hasRibbon" :style="bk.ribbonStyle"></span>
@@ -76,9 +76,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<div :class="$style.fcard" style="animation:hyCardIn .55s cubic-bezier(.22,.9,.3,1) .32s both;">
 						<div :class="$style.fcardHead">
 							<span :class="$style.fcardIcon"><i class="ti ti-compass"></i></span>
-							<span :class="$style.fcardName">見つける</span>
+							<span :class="$style.fcardName">{{ copy.discover }}</span>
 						</div>
-						<div :class="$style.fcardDesc">みんなの学習を覗いて、刺激をもらう。</div>
+						<div :class="$style.fcardDesc">{{ copy.discoverDescription }}</div>
 						<div style="display:flex;flex-direction:column;gap:7px;">
 							<div v-for="(f, fi) in feedRows" :key="fi" :style="f.rowStyle">
 								<span :style="f.avatarStyle"></span>
@@ -99,8 +99,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<div v-else :key="'s4-' + runKey" :class="$style.scene" style="align-items:center;justify-content:center;text-align:center;padding:30px 28px 108px;gap:14px;">
 				<div :class="$style.ink" :style="reduced ? { opacity: .4 } : { animation: 'hyInk 1.1s cubic-bezier(.3,.7,.3,1) .1s both' }"></div>
 				<div :class="$style.ctaMark" :style="anim('hyPop .6s cubic-bezier(.34,1.56,.64,1) .15s both')"><i class="ti ti-book-2"></i></div>
-				<div :class="$style.ctaHead" :style="anim('hyFadeUp .6s cubic-bezier(.22,.9,.3,1) .4s both')">さあ、最初のページを<br>開こう。</div>
-				<div :class="$style.ctaSub" :style="anim('hyFadeUp .6s ease .58s both')">あなたの学びを、今日からここに記録していきます。</div>
+				<div :class="$style.ctaHead" :style="anim('hyFadeUp .6s cubic-bezier(.22,.9,.3,1) .4s both')">{{ copy.ctaLine1 }}<br>{{ copy.ctaLine2 }}</div>
+				<div :class="$style.ctaSub" :style="anim('hyFadeUp .6s ease .58s both')">{{ copy.ctaDescription }}</div>
 			</div>
 
 			<!-- ===== フッター: ドット / 一時停止 / はじめる ===== -->
@@ -109,8 +109,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<span v-for="n in 4" :key="n" :class="[$style.dot, scene === n && $style.dotOn]" @click="goTo(n)"></span>
 				</div>
 				<div style="display:flex;gap:10px;align-items:center;">
-					<button v-if="!reduced" :class="$style.pauseBtn" :title="paused ? t('resume') : t('pause')" @click="togglePause"><i :class="['ti', paused ? 'ti-player-play-filled' : 'ti-player-pause-filled']"></i></button>
-					<button :class="$style.startBtn" @click="start">{{ t('start') }} <i class="ti ti-arrow-right"></i></button>
+					<button v-if="!reduced" :class="$style.pauseBtn" :title="paused ? copy.resume : copy.pause" @click="togglePause"><i :class="['ti', paused ? 'ti-player-play-filled' : 'ti-player-pause-filled']"></i></button>
+					<button :class="$style.startBtn" @click="start">{{ copy.start }} <i class="ti ti-arrow-right"></i></button>
 				</div>
 			</div>
 		</div>
@@ -120,12 +120,13 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <script lang="ts" setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { hatadyTheme, hatadyEffectiveLang } from '@/utility/hatady-prefs.js';
+import { i18n } from '@/i18n.js';
+import { hatadyTheme } from '@/utility/hatady-prefs.js';
 import { prefer } from '@/preferences.js';
 
 const emit = defineEmits<{ (ev: 'start'): void; (ev: 'closed'): void }>();
 const theme = hatadyTheme;
-const lang = hatadyEffectiveLang;
+const copy = i18n.ts._hata._hatady._startup;
 
 // アニメOFF: アプリ設定(アニメ無効) or OS の prefers-reduced-motion。
 let osReduce = false;
@@ -204,10 +205,10 @@ const heatColumns = computed(() => {
 
 // ===== 本(1冊ずつ立ち上がる)＋しおり =====
 const COVERS = [['#5a8a6a', '#3f6e4f'], ['#b57f4a', '#8a5a2e'], ['#45688f', '#2f4a6b'], ['#8a5a91', '#5f3a66'], ['#c07a4a', '#9a5730']];
-const BT = ['夜と霧', '思考の整理学', '数学ガール', '独学の技法', 'Grammar in Use'];
+const bookTitles = computed(() => [copy.demoBook1, copy.demoBook2, copy.demoBook3, copy.demoBook4, copy.demoBook5]);
 const books = computed(() => {
 	const bw = pc.value ? 32 : 30, bh = Math.round(bw * 1.36);
-	return BT.map((title, i) => {
+	return bookTitles.value.map((title, i) => {
 		const d = (0.85 + i * 0.13).toFixed(2);
 		const g = COVERS[i % COVERS.length];
 		return {
@@ -220,26 +221,18 @@ const books = computed(() => {
 });
 
 // ===== みんなの学習フィード =====
-const SUB = [{ s: '読書', c: '#8a5a91', bg: '#ece0ec' }, { s: '数学', c: '#45688f', bg: '#e3ebf3' }];
-const FN = ['@mika', '@ren'], AV = ['#c07a4a', '#5a8a6a'], FB = ['『夜と霧』3章。極限での意味づけに触れた。', '線形代数、固有値の直感がやっと掴めた回。'];
+const FN = ['@mika', '@ren'], AV = ['#c07a4a', '#5a8a6a'];
 const feedRows = computed(() => [0, 1].map(i => {
 	const d = (1.0 + i * 0.16).toFixed(2);
+	const subjects = [{ s: copy.demoSubjectReading, c: '#8a5a91', bg: '#ece0ec' }, { s: copy.demoSubjectMath, c: '#45688f', bg: '#e3ebf3' }];
+	const bodies = [copy.demoFeedReading, copy.demoFeedMath];
 	return {
-		name: FN[i], subject: SUB[i].s, body: FB[i],
-		rowStyle: { display: 'flex', gap: '8px', alignItems: 'flex-start', padding: pc.value ? '8px 9px' : '7px 8px', background: 'var(--hy-surface-2)', borderRadius: '9px', borderLeft: `3px solid ${SUB[i].c}`, animation: `hyFeed .5s cubic-bezier(.22,.9,.3,1) ${d}s both` },
+		name: FN[i], subject: subjects[i].s, body: bodies[i],
+		rowStyle: { display: 'flex', gap: '8px', alignItems: 'flex-start', padding: pc.value ? '8px 9px' : '7px 8px', background: 'var(--hy-surface-2)', borderRadius: '9px', borderLeft: `3px solid ${subjects[i].c}`, animation: `hyFeed .5s cubic-bezier(.22,.9,.3,1) ${d}s both` },
 		avatarStyle: { width: pc.value ? '22px' : '18px', height: pc.value ? '22px' : '18px', borderRadius: '999px', background: AV[i], flexShrink: '0' },
-		badgeStyle: { display: 'inline-flex', alignItems: 'center', fontSize: pc.value ? '9px' : '8px', fontWeight: '700', padding: '1px 7px', borderRadius: '999px', background: SUB[i].bg, color: SUB[i].c },
+		badgeStyle: { display: 'inline-flex', alignItems: 'center', fontSize: pc.value ? '9px' : '8px', fontWeight: '700', padding: '1px 7px', borderRadius: '999px', background: subjects[i].bg, color: subjects[i].c },
 	};
 }));
-
-const DICT: Record<string, { ja: string; en: string }> = {
-	start: { ja: 'はじめる', en: 'Start' },
-	prev: { ja: '前のページ', en: 'Previous' },
-	next: { ja: '次のページ', en: 'Next' },
-	pause: { ja: '一時停止', en: 'Pause' },
-	resume: { ja: '再開', en: 'Resume' },
-};
-function t(key: string): string { return DICT[key]?.[lang.value] ?? key; }
 </script>
 
 <style lang="scss" module>

@@ -16,8 +16,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<MkA to="/stacking-game" :class="$style.stackingLink">
 					<div :class="$style.stackingCard">
 						<div :class="$style.stackingEmoji">🏗️</div>
-						<div :class="$style.stackingTitle">つみつみタワー</div>
-						<div :class="$style.stackingSub">絵文字を積み上げてハイスコアを目指そう！</div>
+						<div :class="$style.stackingTitle">{{ copy._index.stackingTitle }}</div>
+						<div :class="$style.stackingSub">{{ copy._index.stackingDescription }}</div>
 					</div>
 				</MkA>
 			</div>
@@ -25,8 +25,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<MkA to="/whack-emoji" :class="$style.stackingLink">
 					<div :class="$style.stackingCard" style="background: linear-gradient(135deg, #a29bfe22, #6c5ce722, #fd79a822);">
 						<div :class="$style.stackingEmoji">🔨</div>
-						<div :class="$style.stackingTitle">絵文字叩きゲーム</div>
-						<div :class="$style.stackingSub">出てくる絵文字を素早くたたこう！</div>
+						<div :class="$style.stackingTitle">{{ copy._index.whackTitle }}</div>
+						<div :class="$style.stackingSub">{{ copy._index.whackDescription }}</div>
 					</div>
 				</MkA>
 			</div>
@@ -34,8 +34,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<MkA to="/emoji-shoot" :class="$style.stackingLink">
 					<div :class="$style.stackingCard" style="background: linear-gradient(135deg, #ff6b6b22, #ffa50222, #ee5a2422);">
 						<div :class="$style.stackingEmoji">🔫</div>
-						<div :class="$style.stackingTitle">カスタムエモジシュート</div>
-						<div :class="$style.stackingSub">絵文字の弾幕を撃ちまくれ！</div>
+						<div :class="$style.stackingTitle">{{ copy._index.shootTitle }}</div>
+						<div :class="$style.stackingSub">{{ copy._index.shootDescription }}</div>
 					</div>
 				</MkA>
 			</div>
@@ -62,8 +62,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 import { i18n } from '@/i18n.js';
 import { definePage } from '@/page.js';
 
+const copy = i18n.ts._hata._games;
+
 definePage(() => ({
-	title: 'Hataskey Games',
+	title: copy._index.pageTitle,
 	icon: 'ti ti-device-gamepad',
 }));
 </script>

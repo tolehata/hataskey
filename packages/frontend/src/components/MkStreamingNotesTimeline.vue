@@ -24,7 +24,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		     位置はカラム最上部 (deckTopMsg/deckTopLine よりも上)、右寄せの sticky ピルボタン。 -->
 		<button
 			v-if="showChannelPostFixedButton"
-			v-tooltip="'このチャンネルへ投稿'"
+			v-tooltip="timelineCopy.postToChannel"
 			:class="$style.channelPostFixedBtn"
 			type="button"
 			@click.stop="onChannelPostFixedClick"
@@ -32,7 +32,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<i class="ti ti-device-tv" :class="$style.channelPostFixedIcon1"></i>
 			<i class="ti ti-pencil-plus" :class="$style.channelPostFixedIcon2"></i>
 		</button>
-		<div v-if="isHatasabaDeck && deckLatestNoteText" :class="$style.deckTopMsg"><i class="ti ti-arrow-bar-to-up"></i> 最新のノートです</div>
+		<div v-if="isHatasabaDeck && deckLatestNoteText" :class="$style.deckTopMsg"><i class="ti ti-arrow-bar-to-up"></i> {{ timelineCopy.latestNote }}</div>
 		<div v-else-if="isHatasabaDeck" :class="$style.deckTopLine" aria-hidden="true"></div>
 		<transition
 			:enterActiveClass="prefer.s.animation ? $style.transition_new_enterActive : ''"
@@ -145,6 +145,8 @@ import type { WeatherKind } from '@/utility/weather-effect-detector.js';
 import { haptic, hapticConfirm } from '@/utility/haptic.js';
 // 旗鯖fork(HatasabaUI 2): bot 非表示のフィルタで appearNote を参照するため。
 import { getAppearNote } from '@/utility/get-appear-note.js';
+
+const timelineCopy = i18n.ts._hata._timelineCustom;
 
 const { showEl } = scrollToVisibility();
 
@@ -318,7 +320,7 @@ async function onChannelPostFixedClick() {
 			},
 		});
 	} catch {
-		os.alert({ type: 'error', text: 'チャンネル情報の取得に失敗しました。' });
+		os.alert({ type: 'error', text: timelineCopy.channelFetchFailed });
 	}
 }
 

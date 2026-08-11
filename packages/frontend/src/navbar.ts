@@ -34,7 +34,7 @@ export const navbarItemDef = reactive({
 	},
 	// 旗鯖fork: 外部通知。外部アカウント連携時のみ表示 (通知の直後に配置)。
 	externalNotifications: {
-		title: '外部通知',
+		title: i18n.ts._hata._common.externalNotifications,
 		icon: 'ti ti-bell',
 		show: computed(() => {
 			const token = prefer.r['external.token']?.value;
@@ -57,7 +57,7 @@ export const navbarItemDef = reactive({
 		to: '/my/follow-requests',
 	},
 	portal: {
-		title: '旗鯖ポータル',
+		title: i18n.ts._hata._common.portal,
 		icon: 'ti ti-icons',
 		show: computed(() => true),
 		action: () => {
@@ -71,7 +71,7 @@ export const navbarItemDef = reactive({
 		to: '/hatask',
 	},
 	mascot: {
-		title: 'マスコット',
+		title: i18n.ts._hata._common.mascot,
 		icon: 'ti ti-mood-smile',
 		show: computed(() => $i != null),
 		to: '/mascot',
@@ -208,7 +208,7 @@ export const navbarItemDef = reactive({
 		icon: 'ti ti-help-circle',
 		action: (ev) => {
 			os.popupMenu([{
-				text: '直近の更新内容',
+				text: i18n.ts._hata._common.latestUpdates,
 				icon: 'ti ti-sparkles',
 				action: () => {
 					const { dispose } = os.popup(defineAsyncComponent(() => import('@/components/MkHataWhatsNew.vue')), {}, {
@@ -223,7 +223,7 @@ export const navbarItemDef = reactive({
 				target: '_blank',
 			}, {
 				type: 'link',
-				text: '旗鯖機能解説',
+				text: i18n.ts._hata._common.featureGuide,
 				icon: 'ti ti-book',
 				to: '/hata-docs',
 			}, {

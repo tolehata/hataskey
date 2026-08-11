@@ -8,18 +8,18 @@ SPDX-License-Identifier: AGPL-3.0-only
     <div :class="$style.root" @click.stop>
         <div :class="$style.header">
             <i class="ti ti-gift"></i>
-            <h2>ログイン日数</h2>
+            <h2>{{ copy.title }}</h2>
         </div>
 
         <div :class="$style.body">
             <div :class="$style.streak">
                 <div :class="$style.days">{{ loginDays }}</div>
-                <div :class="$style.label">日目</div>
+                <div :class="$style.label">{{ copy.dayUnit }}</div>
             </div>
 
             <div v-if="ranking > 0" :class="$style.ranking">
                 <i class="ti ti-crown"></i>
-                <span>サーバー内 <strong>{{ ranking }}位</strong></span>
+                <span>{{ copy.serverRankPrefix }} <strong>{{ i18n.tsx._hata._loginBonus.rank({ rank: ranking }) }}</strong></span>
             </div>
 
             <p :class="$style.message">
@@ -28,12 +28,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 
             <div v-if="newAchievement" :class="$style.achievement">
                 <i class="ti ti-trophy"></i>
-                <span>実績「{{ newAchievement }}」を獲得！</span>
+                <span>{{ i18n.tsx._hata._loginBonus.achievementEarned({ name: newAchievement }) }}</span>
             </div>
 
             <div :class="$style.nextReward">
                 <i class="ti ti-target"></i>
-                <span>次の実績まで: <strong>{{ nextRewardDays }}</strong>日</span>
+                <span>{{ copy.untilNextAchievement }} <strong>{{ i18n.tsx._hata._loginBonus.days({ days: nextRewardDays }) }}</strong></span>
             </div>
         </div>
 
@@ -46,7 +46,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 import { ref, computed, onMounted } from 'vue';
 import MkModal from '@/components/MkModal.vue';
 import { $i } from '@/i.js';
+import { i18n } from '@/i18n.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
+
+const copy = i18n.ts._hata._loginBonus;
 
 const emit = defineEmits<{
     (ev: 'closed'): void;
@@ -63,24 +66,7 @@ const milestones = [3, 7, 15, 30, 60, 100, 200, 300, 400, 500, 600, 700, 800, 90
 
 const newAchievement = computed(() => {
     const days = loginDays.value;
-    const achievementNames: Record<number, string> = {
-        3: 'ログイン3日',
-        7: 'ログイン7日',
-        15: 'ログイン15日',
-        30: 'ログイン30日',
-        60: 'ログイン60日',
-        100: 'ログイン100日',
-        200: 'ログイン200日',
-        300: 'ログイン300日',
-        400: 'ログイン400日',
-        500: 'ログイン500日',
-        600: 'ログイン600日',
-        700: 'ログイン700日',
-        800: 'ログイン800日',
-        900: 'ログイン900日',
-        1000: 'ログイン1000日',
-    };
-    return achievementNames[days] || null;
+    return milestones.includes(days) ? i18n.tsx._hata._loginBonus.loginAchievement({ days }) : null;
 });
 
 const nextRewardDays = computed(() => {
@@ -96,12 +82,12 @@ const nextRewardDays = computed(() => {
 
 function getMessage() {
     const days = loginDays.value;
-    if (days === 1) return 'ようこそ！最初のログインです！';
-    if (days < 7) return 'こんにちは！サーバーに慣れてきましたか？';
-    if (days < 30) return 'もうすっかり常連ですね！';
-    if (days < 100) return 'これからもよろしくお願いします！';
-    if (days < 365) return 'すごい...！';
-    return '伝説のユーザーです！';
+    if (days === 1) return copy.messageFirst;
+    if (days < 7) return copy.messageGettingStarted;
+    if (days < 30) return copy.messageRegular;
+    if (days < 100) return copy.messageThanks;
+    if (days < 365) return copy.messageAmazing;
+    return copy.messageLegend;
 }
 
 function close() {

@@ -9,8 +9,8 @@ HataSideStudio のサイドメニュー専用。元の Hatask お花ウィジェ
 		<span>{{ flower.emoji }}</span>
 	</span>
 	<span :class="$style.copy">
-		<small>育成中</small>
-		<strong>{{ flower.name }}</strong>
+		<small>{{ copy.growing }}</small>
+		<strong>{{ growingFlowerName }}</strong>
 		<span :class="$style.progress">{{ flower.progress }}%</span>
 		<span :class="$style.remaining">{{ remainingText }}</span>
 	</span>
@@ -21,19 +21,23 @@ HataSideStudio のサイドメニュー専用。元の Hatask お花ウィジェ
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import type { HataskFlower } from '@/utility/hatask-flower-widget.js';
 import { normalizeGrowingFlower } from '@/utility/hatask-flower-widget.js';
+import { localizeFloraName } from '@/utility/hatask-flora.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { useRouter } from '@/router.js';
+import { i18n } from '@/i18n.js';
 
 const props = defineProps<{ size: 'small' | 'normal' | 'large' }>();
 const router = useRouter();
+const copy = i18n.ts._hata._hataSideStudio._flowers;
 const flower = ref<HataskFlower>(normalizeGrowingFlower(null));
+const growingFlowerName = computed(() => localizeFloraName(flower.value.name));
 let refreshTimer: number | null = null;
 
 const remainingText = computed(() => {
-	if (flower.value.progress >= 100) return 'お花が咲きました';
+	if (flower.value.progress >= 100) return copy.bloomed;
 	const minutes = Math.max(0, 1200 - flower.value.totalMinutes);
-	if (minutes < 60) return 'まもなく咲きます';
-	return `あと約${Math.ceil(minutes / 60)}時間`;
+	if (minutes < 60) return copy.soon;
+	return copy.hoursRemaining.replace('{hours}', Math.ceil(minutes / 60).toString());
 });
 
 async function loadFlower() {

@@ -17,23 +17,23 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<!-- ヘッダー -->
 			<div :class="$style.header">
 				<div :class="$style.scoreBox">
-					<div :class="$style.scoreLabel">SCORE</div>
+					<div :class="$style.scoreLabel">{{ common.scoreUpper }}</div>
 					<div :class="$style.scoreValue">{{ score }}</div>
 				</div>
 				<div v-if="isEndless" :class="$style.scoreBox">
-					<div :class="$style.scoreLabel">LIFE</div>
+					<div :class="$style.scoreLabel">{{ common.lifeUpper }}</div>
 					<div :class="$style.scoreValue">{{ '❤️'.repeat(lives) }}{{ '🖤'.repeat(MAX_LIVES - lives) }}</div>
 				</div>
 				<div v-else :class="$style.scoreBox">
-					<div :class="$style.scoreLabel">TIME</div>
+					<div :class="$style.scoreLabel">{{ common.timeUpper }}</div>
 					<div :class="[$style.scoreValue, timeLeft <= 5 && $style.timeDanger]">{{ timeLeft }}</div>
 				</div>
 				<div :class="$style.scoreBox">
-					<div :class="$style.scoreLabel">Lv</div>
+					<div :class="$style.scoreLabel">{{ common.levelShortLabel }}</div>
 					<div :class="$style.scoreValue">{{ currentLevel }}</div>
 				</div>
 				<div v-if="aiMode" :class="$style.scoreBox">
-					<div :class="$style.scoreLabel">AI</div>
+					<div :class="$style.scoreLabel">{{ common.aiUpper }}</div>
 					<div :class="[$style.scoreValue, $style.aiScore]">{{ aiScore }}</div>
 				</div>
 			</div>
@@ -41,7 +41,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<!-- ゲームグリッド（AI対戦時はデュアル） -->
 			<div :class="aiMode ? $style.dual : undefined">
 				<div :class="aiMode ? $style.side : undefined">
-					<div v-if="aiMode" :class="$style.sideLabel">あなた ({{ score }})</div>
+					<div v-if="aiMode" :class="$style.sideLabel">{{ commonx.playerWithScore({ score: String(score) }) }}</div>
 					<div :class="$style.grid" :style="gridStyle">
 						<div v-for="(slot, i) in slots" :key="i"
 							:class="[$style.hole, slot.hitGlow && $style.hitGlow, slot.missGlow && $style.missGlow]"
@@ -55,7 +55,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					</div>
 				</div>
 				<div v-if="aiMode" :class="$style.side">
-					<div :class="[$style.sideLabel, $style.aiSideLabel]">AI ({{ aiScore }})</div>
+					<div :class="[$style.sideLabel, $style.aiSideLabel]">{{ common.aiUpper }} ({{ aiScore }})</div>
 					<div :class="$style.grid" :style="gridStyle">
 						<div v-for="(slot, i) in aiSlots" :key="'ai-'+i"
 							:class="[$style.hole, slot.hitGlow && $style.hitGlow, slot.missGlow && $style.missGlow]">
@@ -73,20 +73,20 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<Transition name="fade">
 				<div v-if="gameOver" :class="$style.overlay">
 					<div :class="$style.overCard">
-						<div :class="$style.overTitle">{{ isEndless ? 'GAME OVER' : 'TIME UP!' }}</div>
-						<div :class="$style.overScore">スコア: {{ score }}</div>
-						<div :class="$style.overStats">{{ hits }} hit / {{ misses }} miss</div>
-						<div v-if="isEndless" :class="$style.overStats">到達レベル: {{ currentLevel }}</div>
+						<div :class="$style.overTitle">{{ isEndless ? common.gameOverUpper : common.timeUpUpper }}</div>
+						<div :class="$style.overScore">{{ commonx.scoreWithValue({ score: String(score) }) }}</div>
+						<div :class="$style.overStats">{{ copyx.hitMiss({ hits: String(hits), misses: String(misses) }) }}</div>
+						<div v-if="isEndless" :class="$style.overStats">{{ copyx.reachedLevel({ level: String(currentLevel) }) }}</div>
 						<div v-if="aiMode" :class="$style.aiResult">
-							<span v-if="score > aiScore">🎉 あなたの勝ち！</span>
-							<span v-else-if="score < aiScore">😢 AIの勝ち...</span>
-							<span v-else>🤝 引き分け！</span>
-							<div :class="$style.aiResultScore">AI: {{ aiScore }}</div>
+							<span v-if="score > aiScore">{{ common.playerWin }}</span>
+							<span v-else-if="score < aiScore">{{ common.aiWin }}</span>
+							<span v-else>{{ common.draw }}</span>
+							<div :class="$style.aiResultScore">{{ common.aiUpper }}: {{ aiScore }}</div>
 						</div>
-						<div v-if="isNewRecord" :class="$style.newRecord">🎉 NEW RECORD!</div>
+						<div v-if="isNewRecord" :class="$style.newRecord">🎉 {{ common.newRecordUpper }}</div>
 						<div :class="$style.overBtns">
-							<MkButton primary gradate rounded @click="restart"><i class="ti ti-refresh"></i> もう一度</MkButton>
-							<MkButton rounded @click="goBack"><i class="ti ti-arrow-left"></i> 戻る</MkButton>
+							<MkButton primary gradate rounded @click="restart"><i class="ti ti-refresh"></i> {{ common.retry }}</MkButton>
+							<MkButton rounded @click="goBack"><i class="ti ti-arrow-left"></i> {{ common.back }}</MkButton>
 						</div>
 					</div>
 				</div>
@@ -104,9 +104,14 @@ import { definePage } from '@/page.js';
 import { miLocalStorage } from '@/local-storage.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { $i } from '@/i.js';
+import { i18n } from '@/i18n.js';
 
 const router = useRouter();
 const props = defineProps<{ difficulty?: string; ai?: string; endless?: string }>();
+const common = i18n.ts._hata._games._common;
+const commonx = i18n.tsx._hata._games._common;
+const copy = i18n.ts._hata._games._whack._game;
+const copyx = i18n.tsx._hata._games._whack._game;
 
 const BASE_DURATION = 30;
 const GRID_COLS = 3;
@@ -162,11 +167,11 @@ function getDiffParams(diff: number) {
 
 function getAiParams(level: string) {
 	switch (level) {
-		case 'easy': return { hitRate: 0.3, reactionMs: 1200, label: 'よわい' };
-		case 'hard': return { hitRate: 0.6, reactionMs: 600, label: 'むずかしい' };
-		case 'extreme': return { hitRate: 0.85, reactionMs: 300, label: 'つよすぎる' };
-		case 'insane': return { hitRate: 0.95, reactionMs: 150, label: 'エグい' };
-		default: return { hitRate: 0.5, reactionMs: 800, label: 'ふつう' };
+		case 'easy': return { hitRate: 0.3, reactionMs: 1200, label: common._difficulty.easy };
+		case 'hard': return { hitRate: 0.6, reactionMs: 600, label: common._difficulty.hard };
+		case 'extreme': return { hitRate: 0.85, reactionMs: 300, label: common._difficulty.extreme };
+		case 'insane': return { hitRate: 0.95, reactionMs: 150, label: common._difficulty.insane };
+		default: return { hitRate: 0.5, reactionMs: 800, label: common._difficulty.normal };
 	}
 }
 
@@ -571,7 +576,7 @@ onUnmounted(() => {
 	for (const slot of aiSlots) resetSlot(slot);
 });
 
-definePage(() => ({ title: '絵文字叩きゲーム', icon: 'ti ti-hammer' }));
+definePage(() => ({ title: copy.pageTitle, icon: 'ti ti-hammer' }));
 </script>
 
 <style lang="scss" module>

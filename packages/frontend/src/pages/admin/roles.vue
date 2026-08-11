@@ -167,137 +167,137 @@ SPDX-License-Identifier: AGPL-3.0-only
 					</MkFolder>
 
 					<!-- 旗鯖fork: マスコット機能の利用可否(デフォルト不許可) -->
-					<MkFolder v-if="matchQuery(['マスコット機能を利用できる', 'canUseMascot'])">
-						<template #label>マスコット機能を利用できる</template>
+					<MkFolder v-if="matchQuery([roleCopy.mascotAccessName, 'canUseMascot'])">
+						<template #label>{{ roleCopy.mascotAccessName }}</template>
 						<template #suffix>{{ policies.canUseMascot ? i18n.ts.yes : i18n.ts.no }}</template>
 						<MkSwitch v-model="policies.canUseMascot">
-							<template #label>マスコット機能の利用を許可</template>
-							<template #caption>オフのロールに属するユーザーはマスコット機能を利用できません。デフォルトは不許可です。</template>
+							<template #label>{{ roleCopy.mascotAccessToggle }}</template>
+							<template #caption>{{ roleCopy.mascotAccessBaseCaption }}</template>
 						</MkSwitch>
 					</MkFolder>
 
 					<!-- 旗鯖fork: HataFeed(フィードバックセンター)の利用可否ポリシー -->
-					<MkFolder v-if="matchQuery(['HataFeedを利用できる', 'canAccessHataFeed'])">
-						<template #label>HataFeed（フィードバックセンター）を利用できる</template>
+					<MkFolder v-if="matchQuery([roleCopy.hatafeedAccessName, 'canAccessHataFeed'])">
+						<template #label>{{ roleCopy.hatafeedAccessName }}</template>
 						<template #suffix>{{ policies.canAccessHataFeed ? i18n.ts.yes : i18n.ts.no }}</template>
 						<MkSwitch v-model="policies.canAccessHataFeed">
-							<template #label>HataFeedの利用を許可</template>
-							<template #caption>オフのロールに属するユーザーはHataFeedを利用できません。デフォルトは不許可です（スタッフは常に利用可）。</template>
+							<template #label>{{ roleCopy.hatafeedAccessToggle }}</template>
+							<template #caption>{{ roleCopy.hatafeedAccessBaseCaption }}</template>
 						</MkSwitch>
 					</MkFolder>
 
 					<!-- 旗鯖fork: HataSNSCordUIの利用可否とサブペイン上限 -->
-					<MkFolder v-if="matchQuery(['HataSNSCordUIを利用できる', 'canUseHatacordingUi'])">
-						<template #label>HataSNSCordUIを利用できる</template>
+					<MkFolder v-if="matchQuery([roleCopy.hatacordingAccessName, 'canUseHatacordingUi'])">
+						<template #label>{{ roleCopy.hatacordingAccessName }}</template>
 						<template #suffix>{{ policies.canUseHatacordingUi ? i18n.ts.yes : i18n.ts.no }}</template>
 						<MkSwitch v-model="policies.canUseHatacordingUi">
-							<template #label>HataSNSCordUIの利用を許可</template>
-							<template #caption>UI切り替え画面から利用できます。既定ではすべてのユーザーに許可されます。</template>
+							<template #label>{{ roleCopy.hatacordingAccessToggle }}</template>
+							<template #caption>{{ roleCopy.hatacordingAccessBaseCaption }}</template>
 						</MkSwitch>
 					</MkFolder>
 
-					<MkFolder v-if="matchQuery(['HataSNSCordUIのサブペイン最大タブ数', 'hatacordingUiSubpaneMaxTabs'])">
-						<template #label>HataSNSCordUIのサブペイン最大タブ数</template>
+					<MkFolder v-if="matchQuery([roleCopy.hatacordingTabsName, 'hatacordingUiSubpaneMaxTabs'])">
+						<template #label>{{ roleCopy.hatacordingTabsName }}</template>
 						<template #suffix>{{ policies.hatacordingUiSubpaneMaxTabs }}</template>
 						<MkInput v-model="policies.hatacordingUiSubpaneMaxTabs" type="number" :min="1" :max="5">
-							<template #caption>右側に作成できるタブ数です。1〜5の範囲で指定します（既定: 3）。</template>
+							<template #caption>{{ roleCopy.hatacordingTabsBaseCaption }}</template>
 						</MkInput>
 					</MkFolder>
 
-					<MkFolder v-if="matchQuery(['HataSNSCordUI専用レートリミット', 'hatacordingUiRateLimit'])">
-						<template #label>HataSNSCordUI専用レートリミット</template>
+					<MkFolder v-if="matchQuery([roleCopy.hatacordingRateLimitName, 'hatacordingUiRateLimit'])">
+						<template #label>{{ roleCopy.hatacordingRateLimitName }}</template>
 						<template #suffix>{{ policies.hatacordingUiRateLimit }}</template>
 						<MkInput v-model="policies.hatacordingUiRateLimit" type="number" :min="1" :max="1000">
-							<template #caption>このUIから行う全API操作の1時間あたりの上限です。1〜1000の範囲で指定します（既定: 500）。通常UIや連合処理には適用されません。</template>
+							<template #caption>{{ roleCopy.hatacordingRateLimitBaseCaption }}</template>
 						</MkInput>
 					</MkFolder>
 
 					<!-- 旗鯖fork(Hatady): 端末間データ共有(同期)の可否。既定は有効。 -->
-					<MkFolder v-if="matchQuery(['Hatadyでデータ共有を有効にする', 'canUseHatadySync'])">
-						<template #label>Hatady でデータ共有（端末間同期）を有効にする</template>
+					<MkFolder v-if="matchQuery([roleCopy.hatadySyncName, 'canUseHatadySync'])">
+						<template #label>{{ roleCopy.hatadySyncName }}</template>
 						<template #suffix>{{ policies.canUseHatadySync ? i18n.ts.yes : i18n.ts.no }}</template>
 						<MkSwitch v-model="policies.canUseHatadySync">
-							<template #label>Hatady の端末間データ共有を許可</template>
-							<template #caption>オフのロールに属するユーザーは、Hatady のデータをその端末にのみ保存します。デフォルトは有効です。</template>
+							<template #label>{{ roleCopy.hatadySyncToggle }}</template>
+							<template #caption>{{ roleCopy.hatadySyncBaseCaption }}</template>
 						</MkSwitch>
 					</MkFolder>
 
 					<!-- 旗鯖fork(Hatady): 追加できる本の最大数 -->
-					<MkFolder v-if="matchQuery(['Hatadyで追加できる本の最大数', 'hatadyBookLimit'])">
-						<template #label>Hatady で追加できる本の最大数</template>
+					<MkFolder v-if="matchQuery([roleCopy.hatadyBookLimitName, 'hatadyBookLimit'])">
+						<template #label>{{ roleCopy.hatadyBookLimitName }}</template>
 						<template #suffix>{{ policies.hatadyBookLimit }}</template>
 						<MkInput v-model="policies.hatadyBookLimit" type="number">
-							<template #caption>ユーザーが本棚に追加できる本の上限（デフォルト 100）。</template>
+							<template #caption>{{ roleCopy.hatadyBookLimitBaseCaption }}</template>
 						</MkInput>
 					</MkFolder>
 
 					<!-- 旗鯖fork(Hatady): 本1冊あたりのしおりの最大数 -->
-					<MkFolder v-if="matchQuery(['Hatadyの本1冊あたりのしおりの最大数', 'hatadyBookmarkLimit'])">
-						<template #label>Hatady の本1冊あたりのしおりの最大数</template>
+					<MkFolder v-if="matchQuery([roleCopy.hatadyBookmarkLimitName, 'hatadyBookmarkLimit'])">
+						<template #label>{{ roleCopy.hatadyBookmarkLimitName }}</template>
 						<template #suffix>{{ policies.hatadyBookmarkLimit }}</template>
 						<MkInput v-model="policies.hatadyBookmarkLimit" type="number">
-							<template #caption>1冊の本に追加できるしおりの上限（デフォルト 20）。</template>
+							<template #caption>{{ roleCopy.hatadyBookmarkLimitBaseCaption }}</template>
 						</MkInput>
 					</MkFolder>
 
 					<!-- 旗鯖fork: プライベートチャンネルの作成可否 -->
-					<MkFolder v-if="matchQuery(['プライベートチャンネルを作成できる', 'canMakePrivateChannel'])">
-						<template #label>プライベートチャンネルを作成できる</template>
+					<MkFolder v-if="matchQuery([roleCopy.privateChannelAccessName, 'canMakePrivateChannel'])">
+						<template #label>{{ roleCopy.privateChannelAccessName }}</template>
 						<template #suffix>{{ policies.canMakePrivateChannel ? i18n.ts.yes : i18n.ts.no }}</template>
 						<MkSwitch v-model="policies.canMakePrivateChannel">
-							<template #label>メンバー限定のプライベートチャンネルの作成を許可</template>
-							<template #caption>オフのロールに属するユーザーはプライベートチャンネルを作成できません。デフォルトは不許可です。</template>
+							<template #label>{{ roleCopy.privateChannelAccessToggle }}</template>
+							<template #caption>{{ roleCopy.privateChannelAccessBaseCaption }}</template>
 						</MkSwitch>
 					</MkFolder>
 
 					<!-- 旗鯖fork: HataFeed リモート絵文字の申請可否 -->
-					<MkFolder v-if="matchQuery(['HataFeedでリモート絵文字を申請できる', 'canRequestRemoteEmoji'])">
-						<template #label>HataFeedでリモート絵文字を申請できる</template>
+					<MkFolder v-if="matchQuery([roleCopy.remoteEmojiAccessName, 'canRequestRemoteEmoji'])">
+						<template #label>{{ roleCopy.remoteEmojiAccessName }}</template>
 						<template #suffix>{{ policies.canRequestRemoteEmoji ? i18n.ts.yes : i18n.ts.no }}</template>
 						<MkSwitch v-model="policies.canRequestRemoteEmoji">
-							<template #label>リモート絵文字の一覧検索からの申請を許可</template>
-							<template #caption>オフのロールに属するユーザーはリモート絵文字を申請できません。デフォルトは不許可です（スタッフは常に可）。</template>
+							<template #label>{{ roleCopy.remoteEmojiAccessToggle }}</template>
+							<template #caption>{{ roleCopy.remoteEmojiAccessBaseCaption }}</template>
 						</MkSwitch>
 					</MkFolder>
 
 					<!-- 旗鯖fork: HataFeed 絵文字申請の週あたり上限 -->
-					<MkFolder v-if="matchQuery(['絵文字申請の週あたり上限', 'emojiRequestLimit'])">
-						<template #label>絵文字申請の週あたり上限</template>
+					<MkFolder v-if="matchQuery([roleCopy.emojiRequestLimitName, 'emojiRequestLimit'])">
+						<template #label>{{ roleCopy.emojiRequestLimitName }}</template>
 						<template #suffix>{{ policies.emojiRequestLimit }}</template>
 						<MkInput v-model="policies.emojiRequestLimit" type="number">
-							<template #caption>過去7日間に申請できる絵文字数の上限（既定: 10）。</template>
+							<template #caption>{{ roleCopy.emojiRequestLimitCaption }}</template>
 						</MkInput>
 					</MkFolder>
 
 					<!-- 旗鯖fork: マスコット機能の上限ポリシー -->
-					<MkFolder v-if="matchQuery(['マスコットの最大表情数', 'mascotMaxExpressions'])">
-						<template #label>マスコットの最大表情数</template>
+					<MkFolder v-if="matchQuery([roleCopy.mascotExpressionsLimitName, 'mascotMaxExpressions'])">
+						<template #label>{{ roleCopy.mascotExpressionsLimitName }}</template>
 						<template #suffix>{{ policies.mascotMaxExpressions }}</template>
 						<MkInput v-model="policies.mascotMaxExpressions" type="number">
-							<template #caption>マスコット1キャラクターあたりに設定できる表情の最大数 (上限の目安: 8)</template>
+							<template #caption>{{ roleCopy.mascotExpressionsLimitBaseCaption }}</template>
 						</MkInput>
 					</MkFolder>
 
-					<MkFolder v-if="matchQuery(['マスコットの最大文言数', 'mascotMaxPhrases'])">
-						<template #label>マスコットの最大文言数</template>
+					<MkFolder v-if="matchQuery([roleCopy.mascotPhrasesLimitName, 'mascotMaxPhrases'])">
+						<template #label>{{ roleCopy.mascotPhrasesLimitName }}</template>
 						<template #suffix>{{ policies.mascotMaxPhrases }}</template>
 						<MkInput v-model="policies.mascotMaxPhrases" type="number">
-							<template #caption>マスコットに設定できる文言の最大数 (上限の目安: 30)</template>
+							<template #caption>{{ roleCopy.mascotPhrasesLimitBaseCaption }}</template>
 						</MkInput>
 					</MkFolder>
 
-					<MkFolder v-if="matchQuery(['マスコットの最大キャラクター数', 'mascotMaxCharacters'])">
-						<template #label>マスコットの最大キャラクター数</template>
+					<MkFolder v-if="matchQuery([roleCopy.mascotCharactersLimitName, 'mascotMaxCharacters'])">
+						<template #label>{{ roleCopy.mascotCharactersLimitName }}</template>
 						<template #suffix>{{ policies.mascotMaxCharacters }}</template>
 						<MkInput v-model="policies.mascotMaxCharacters" type="number">
-							<template #caption>登録・切替できるマスコットキャラクターの最大数</template>
+							<template #caption>{{ roleCopy.mascotCharactersLimitBaseCaption }}</template>
 						</MkInput>
 					</MkFolder>
 
-					<MkFolder v-if="matchQuery(['HataSideStudioのプロファイル上限', 'hataSideStudioProfileLimit'])">
-						<template #label>HataSideStudioのプロファイル上限</template>
+					<MkFolder v-if="matchQuery([roleCopy.sideStudioProfileLimitName, 'hataSideStudioProfileLimit'])">
+						<template #label>{{ roleCopy.sideStudioProfileLimitName }}</template>
 						<template #suffix>{{ policies.hataSideStudioProfileLimit }}</template>
-						<MkInput v-model="policies.hataSideStudioProfileLimit" type="number" :min="1" :max="20"><template #caption>端末ごとに保存できるレイアウトプロファイル数（既定: 3）。</template></MkInput>
+						<MkInput v-model="policies.hataSideStudioProfileLimit" type="number" :min="1" :max="20"><template #caption>{{ roleCopy.sideStudioProfileLimitBaseCaption }}</template></MkInput>
 					</MkFolder>
 
 					<MkFolder v-if="matchQuery([i18n.ts._role._options.maxFileSize, 'maxFileSizeMb'])">
@@ -521,6 +521,7 @@ import { useRouter } from '@/router.js';
 import { deepClone } from '@/utility/clone.js';
 import MkTextarea from '@/components/MkTextarea.vue';
 
+const roleCopy = i18n.ts._hata._adminRoles;
 const router = useRouter();
 const baseRoleQ = ref('');
 const baseRoleQEl = useTemplateRef('baseRoleQEl');

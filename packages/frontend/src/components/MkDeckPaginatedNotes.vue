@@ -10,7 +10,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 	<div :class="[$style.notes, '_gaps']" :data-deck-ui="'on'">
 		<MkPagination v-if="paginator" :key="paginatorKey" :paginator="paginator">
 			<template #empty>
-				<div :class="$style.empty"><i class="ti ti-note-off"></i> ノートがありません</div>
+				<div :class="$style.empty"><i class="ti ti-note-off"></i> {{ i18n.ts.noNotes }}</div>
 			</template>
 			<template #default="{ items }">
 				<MkNote
@@ -30,6 +30,7 @@ import { computed, markRaw, shallowRef, watch } from 'vue';
 import MkPagination from '@/components/MkPagination.vue';
 import MkNote from '@/components/MkNote.vue';
 import { Paginator } from '@/utility/paginator.js';
+import { i18n } from '@/i18n.js';
 
 const props = defineProps<{
 	endpoint: 'clips/notes' | 'i/favorites';

@@ -25,23 +25,23 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 			<MkSwitch v-model="allowRenoteToExternal" :disabled="isPrivate">
 				<template #label>{{ i18n.ts._channel.allowRenoteToExternal }}</template>
-				<template v-if="isPrivate" #caption>※ プライベートチャンネルでは、内容流出防止のためチャンネル外へのリノート・引用リノートは常に禁止です（変更できません）。</template>
+				<template v-if="isPrivate" #caption>{{ copy.externalRenoteDisabled }}</template>
 			</MkSwitch>
 
 			<!-- 旗鯖fork: プライベートチャンネル。権限が無くても項目は残し、機能を周知する。一度設定すると解除不可。 -->
 			<MkSwitch :modelValue="isPrivate" :disabled="!canMakePrivateChannel || wasPrivate" @update:modelValue="onTogglePrivate">
 				<template #label>
-					プライベートチャンネル
-					<span v-if="!canMakePrivateChannel && !wasPrivate" :class="$style.lockedBadge"><i class="ti ti-lock"></i> 権限が必要</span>
-					<span v-if="wasPrivate" :class="$style.lockedBadge"><i class="ti ti-lock"></i> 解除不可</span>
+					{{ copy.privateChannel }}
+					<span v-if="!canMakePrivateChannel && !wasPrivate" :class="$style.lockedBadge"><i class="ti ti-lock"></i> {{ copy.permissionRequired }}</span>
+					<span v-if="wasPrivate" :class="$style.lockedBadge"><i class="ti ti-lock"></i> {{ copy.cannotDisable }}</span>
 				</template>
 				<template #caption>
-					許可したメンバー（とあなた・管理者・モデレーター）だけが閲覧できます。検索・注目には表示されません。
-					<br>※ 一度プライベートにすると、後から公開チャンネルに戻すことはできません。
-					<template v-if="wasPrivate"><br>※ このチャンネルは既にプライベートのため、解除できません。</template>
+					{{ copy.privateDescription }}
+					<br>{{ copy.privateIrreversible }}
+					<template v-if="wasPrivate"><br>{{ copy.alreadyPrivate }}</template>
 				</template>
 			</MkSwitch>
-			<div v-if="!canMakePrivateChannel && !wasPrivate" :class="$style.privateChannelRestriction"><i class="ti ti-lock"></i><span>この機能はサーバー管理者によって制限されています。<br>作成には管理者の許可が必要です。</span></div>
+			<div v-if="!canMakePrivateChannel && !wasPrivate" :class="$style.privateChannelRestriction"><i class="ti ti-lock"></i><span>{{ copy.restrictedByAdmin }}<br>{{ copy.adminPermissionRequired }}</span></div>
 
 			<template v-if="isPrivate">
 				<!-- 旗鯖fork: あいことばはサーバー側で暗号学的乱数による自動生成 (32文字英数字)。
@@ -49,27 +49,27 @@ SPDX-License-Identifier: AGPL-3.0-only
 				     UI 上で平文編集できることのフィッシング/ショルダーハック懸念を同時に解消するため、
 				     表示・コピー・再生成のみ可能な UI に変更。 -->
 				<div :class="$style.passwordBox">
-					<div :class="$style.passwordLabel"><i class="ti ti-key"></i> あいことば（自動生成・32文字）</div>
+					<div :class="$style.passwordLabel"><i class="ti ti-key"></i> {{ copy.generatedPassphrase }}</div>
 					<div :class="$style.passwordRow">
-						<code :class="$style.passwordValue">{{ channelId && hasPassword ? (passwordRevealed ? currentPassword : '••••••••••••••••••••••••••••••••') : '（チャンネル作成時に自動生成されます）' }}</code>
-						<button v-if="channelId && hasPassword" :class="$style.passwordBtn" v-tooltip="passwordRevealed ? '隠す' : '表示する'" @click="passwordRevealed = !passwordRevealed">
+						<code :class="$style.passwordValue">{{ channelId && hasPassword ? (passwordRevealed ? currentPassword : '••••••••••••••••••••••••••••••••') : copy.generatedOnCreation }}</code>
+						<button v-if="channelId && hasPassword" :class="$style.passwordBtn" v-tooltip="passwordRevealed ? i18n.ts.hide : i18n.ts.show" @click="passwordRevealed = !passwordRevealed">
 							<i :class="passwordRevealed ? 'ti ti-eye-off' : 'ti ti-eye'"></i>
 						</button>
-						<button v-if="channelId && hasPassword" :class="$style.passwordBtn" v-tooltip="'コピー'" :disabled="!passwordRevealed" @click="copyPassword">
+						<button v-if="channelId && hasPassword" :class="$style.passwordBtn" v-tooltip="i18n.ts.copy" :disabled="!passwordRevealed" @click="copyPassword">
 							<i class="ti ti-copy"></i>
 						</button>
-						<button v-if="channelId && hasPassword" :class="[$style.passwordBtn, $style.passwordBtnWarn]" v-tooltip="'再生成 (旧あいことばは無効化されます)'" @click="confirmRegeneratePassword">
+						<button v-if="channelId && hasPassword" :class="[$style.passwordBtn, $style.passwordBtnWarn]" v-tooltip="copy.regeneratePassphraseTooltip" @click="confirmRegeneratePassword">
 							<i class="ti ti-refresh"></i>
 						</button>
 					</div>
 					<div :class="$style.passwordCaption">
-						このあいことばを知っているユーザーは入室（メンバー化）できます。<br>
-						<b>再生成すると旧あいことばは即座に無効化</b>され、入室を許可済みのユーザーには影響しませんが、まだ入室していない人には新しいあいことばを共有する必要があります。
+						{{ copy.passphraseAccess }}<br>
+						<b>{{ copy.regenerateInvalidates }}</b>{{ copy.regenerateExplanation }}
 					</div>
 				</div>
 
 				<div>
-					<div :class="$style.subAdminsLabel">管理者</div>
+					<div :class="$style.subAdminsLabel">{{ copy.managers }}</div>
 					<div :class="$style.subAdmins">
 						<span v-for="u in moderatorUsers" :key="u.id" :class="$style.subAdminChip">
 							<!-- 旗鯖fork: u.name を生テキスト出力するとユーザー名のカスタム絵文字が
@@ -77,7 +77,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 							<MkAvatar :class="$style.subAdminAvatar" :user="u"/><MkUserName :user="u"/>
 							<button class="_button" :class="$style.subAdminRemove" @click="removeSubAdmin(u.id)"><i class="ti ti-x"></i></button>
 						</span>
-						<MkButton rounded @click="addSubAdmin"><i class="ti ti-plus"></i> 追加</MkButton>
+						<MkButton rounded @click="addSubAdmin"><i class="ti ti-plus"></i> {{ i18n.ts.add }}</MkButton>
 					</div>
 				</div>
 			</template>
@@ -144,6 +144,7 @@ import { useRouter } from '@/router.js';
 const Sortable = defineAsyncComponent(() => import('vuedraggable').then(x => x.default));
 
 const router = useRouter();
+const copy = i18n.ts._hata._privateChannels;
 
 const props = defineProps<{
 	channelId?: string;
@@ -223,7 +224,7 @@ fetchChannel();
 function copyPassword() {
 	if (!passwordRevealed.value || !currentPassword.value) return;
 	copyToClipboard(currentPassword.value);
-	os.toast('あいことばをコピーしました');
+	os.toast(copy.passphraseCopied);
 }
 
 // 旗鯖fork: あいことばを再生成する。実行前に confirm で「旧あいことばは無効化される」旨を周知。
@@ -232,8 +233,8 @@ async function confirmRegeneratePassword() {
 	if (props.channelId == null) return;
 	const c = await os.confirm({
 		type: 'warning',
-		title: 'あいことばを再生成しますか?',
-		text: '再生成すると旧あいことばは即座に無効化されます (既に入室済みのユーザーには影響しませんが、まだ入室していない人には新しいあいことばを共有し直す必要があります)。\n\nよろしいですか?',
+		title: copy.regenerateConfirmTitle,
+		text: copy.regenerateConfirmText,
 	});
 	if (c.canceled) return;
 	try {
@@ -245,12 +246,12 @@ async function confirmRegeneratePassword() {
 		const r = await misskeyApi('channels/show-password' as any, { channelId: props.channelId });
 		currentPassword.value = (r as any).password ?? '';
 		passwordRevealed.value = true;
-		os.toast('あいことばを再生成しました');
+		os.toast(copy.passphraseRegenerated);
 	} catch (err) {
 		os.alert({
 			type: 'error',
-			title: '再生成に失敗しました',
-			text: err instanceof Error ? err.message : '不明なエラー',
+			title: copy.regenerateFailed,
+			text: err instanceof Error ? err.message : copy.unknownError,
 		});
 	}
 }
@@ -260,8 +261,8 @@ async function onTogglePrivate(v: boolean) {
 	if (v) {
 		const { canceled } = await os.confirm({
 			type: 'warning',
-			title: 'プライベートチャンネルにしますか？',
-			text: '一度プライベートにすると、後から公開チャンネルに戻すことはできません。\nまた、チャンネル外へのリノート・引用リノートは常に禁止になります。\nこの設定でよろしいですか？',
+			title: copy.makePrivateConfirmTitle,
+			text: copy.makePrivateConfirmText,
 		});
 		if (canceled) return; // OFFのまま
 		isPrivate.value = true;

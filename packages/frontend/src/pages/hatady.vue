@@ -5,14 +5,14 @@ SPDX-License-Identifier: AGPL-3.0-only
   hataskey 内蔵だが独立したデザイン言語(暖色クラフト紙 / Zen Maru Gothic 見出し)。
   読んでいる本・学んだトピック・得意/苦手/興味を時系列で記録し、マイログの縦タイムラインで
   振り返り、サーバー全体に公開してみんなの学習を覗ける多機能ツール。
-  - テーマ(紙ライト/エスプレッソダーク)と言語(日本語/英語)は独立して選べる(表示設定)。
+  - テーマ(紙ライト/エスプレッソダーク)は独立して選べ、言語は Hataskey 本体の設定に従う。
   - フォロー関係は hataskey 本体と非連動、Hatady 内で完結。
   - リアクション/絵文字/アイコンデコは hataskey 共通基盤を利用。
   本ファイルは Phase1(基盤): ページシェル(ヘッダ+タブ+テーマ+i18n土台)。各タブ本体は順次実装。
 -->
 <template>
 <MkStickyContainer>
-	<div :class="[$style.root, 'hatady-scope']" :data-hatady-theme="theme" :data-hatady-lang="effectiveLang" :data-deck-ui="isHatasabaDeckUi ? 'on' : undefined">
+	<div :class="[$style.root, 'hatady-scope']" :data-hatady-theme="theme" :data-hatady-lang="versatileLang" :data-deck-ui="isHatasabaDeckUi ? 'on' : undefined">
 		<!-- Hatady 独自ヘッダー -->
 		<header :class="$style.header">
 			<button v-if="!isHatasabaDeckUi" type="button" :class="$style.backBtn" :title="t('back')" :aria-label="t('back')" @click="goBack"><i class="ti ti-chevron-left"></i></button>
@@ -57,7 +57,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<span :class="$style.bannerIcon"><i class="ti ti-calendar-exclamation"></i></span>
 					<div :class="$style.bannerText">
 						<b>{{ t('notYetTitle') }}</b>
-						<div>{{ (stats?.streakDays ?? 0) > 0 ? t('notYetKeepStreak').replace('{n}', String(stats?.streakDays ?? 0)) : t('notYetSub') }}</div>
+						<div>{{ (stats?.streakDays ?? 0) > 0 ? notYetKeepStreakLabel(stats?.streakDays ?? 0) : t('notYetSub') }}</div>
 					</div>
 					<button :class="$style.bannerCta" @click="openComposer"><i class="ti ti-pencil-plus"></i> {{ t('record') }}</button>
 				</div>
@@ -99,15 +99,15 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<Teleport to="body">
 							<div v-if="heatPop" :class="[$style.heatPop, 'hatady-scope']" :data-hatady-theme="theme" :style="{ left: heatPop.left + 'px', top: heatPop.top + 'px' }">
 							<div :class="$style.heatPopDate">{{ heatPop.dateLabel }}</div>
-							<div v-if="heatPop.minutes > 0" :class="$style.heatPopStat"><i class="ti ti-hourglass"></i> {{ fmtDuration(heatPop.minutes) }} · {{ heatPop.count }}{{ effectiveLang === 'en' ? ' sessions' : 'セッション' }}</div>
-							<div v-else :class="$style.heatPopEmpty">{{ effectiveLang === 'en' ? 'No study' : '記録なし' }}</div>
+							<div v-if="heatPop.minutes > 0" :class="$style.heatPopStat"><i class="ti ti-hourglass"></i> {{ heatPopupSummary(heatPop.minutes, heatPop.count) }}</div>
+							<div v-else :class="$style.heatPopEmpty">{{ t('noStudy') }}</div>
 							<div v-if="heatPop.subjects.length" :class="$style.heatPopSubjects">
 								<span v-for="s in heatPop.subjects" :key="s.subject" :class="$style.heatPopSubject">
 									<span :class="$style.heatPopDot" :style="{ background: pal(s.subject).accent }"></span>
 									{{ s.subject }} <span :class="$style.heatPopMin">{{ fmtDuration(s.minutes) }}</span>
 								</span>
 							</div>
-								<div v-else-if="heatPop.minutes > 0" :class="$style.heatPopHint">{{ effectiveLang === 'en' ? 'Details in timeline' : '詳細はタイムライン' }}</div>
+								<div v-else-if="heatPop.minutes > 0" :class="$style.heatPopHint">{{ t('detailsInTimeline') }}</div>
 							</div>
 						</Teleport>
 					</div>
@@ -153,7 +153,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 							</div>
 						</div>
 						<div v-if="filterActive && !logsLoading" :class="$style.filterNotice">
-							<i class="ti ti-filter"></i> {{ t('filteredNotice').replace('{n}', String(logGroups.length)) }}
+							<i class="ti ti-filter"></i> {{ filteredNoticeLabel(logGroups.length) }}
 							<button :class="$style.filterNoticeClear" @click="clearPeriod">{{ t('showAll') }}</button>
 						</div>
 						<div v-if="logsLoading" :class="$style.loading">{{ t('loading') }}</div>
@@ -200,7 +200,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 											</div>
 											<div v-if="log.body" :class="$style.cardBody">{{ log.body }}</div>
 											<div :class="$style.cardFoot">
-												<span v-if="hyTag(log.tag)" :class="$style.tagChip" :style="{ background: hyTag(log.tag)?.bg, color: hyTag(log.tag)?.fg }"><i :class="['ti', hyTag(log.tag)?.icon]"></i> {{ lang === 'en' ? hyTag(log.tag)?.en : hyTag(log.tag)?.ja }}</span>
+												<span v-if="hyTag(log.tag)" :class="$style.tagChip" :style="{ background: hyTag(log.tag)?.bg, color: hyTag(log.tag)?.fg }"><i :class="['ti', hyTag(log.tag)?.icon]"></i> {{ hyTagLabel(log.tag) }}</span>
 												<span :class="$style.footRight">
 													<HatadyReactions :target="{ logId: log.id }" :reactions="log.reactions ?? {}" :myReaction="log.myReaction ?? null"/>
 													<button :class="$style.commentBtn" @click="openConversation(log)"><i class="ti ti-message-circle-2"></i> {{ log.commentsCount }}</button>
@@ -289,7 +289,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 						</div>
 						<div :class="$style.feedTopics">
 							<HySubjectBadge :subject="log.subject"/>
-								<span v-if="hyTag(log.tag)" :class="$style.tagChip" :style="{ background: hyTag(log.tag)?.bg, color: hyTag(log.tag)?.fg }"><i :class="['ti', hyTag(log.tag)?.icon]"></i> {{ effectiveLang === 'en' ? hyTag(log.tag)?.en : hyTag(log.tag)?.ja }}</span>
+								<span v-if="hyTag(log.tag)" :class="$style.tagChip" :style="{ background: hyTag(log.tag)?.bg, color: hyTag(log.tag)?.fg }"><i :class="['ti', hyTag(log.tag)?.icon]"></i> {{ hyTagLabel(log.tag) }}</span>
 							<span :class="$style.feedDuration"><i class="ti ti-hourglass"></i> {{ fmtDuration(log.durationMinutes) }}</span>
 						</div>
 						<div :class="$style.feedTitle">{{ log.title }}</div>
@@ -376,133 +376,48 @@ import { $i } from '@/i.js';
 import { mainRouter, useRouter } from '@/router.js';
 import { definePage } from '@/page.js';
 import * as os from '@/os.js';
+import { i18n } from '@/i18n.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
+import { versatileLang } from '@/utility/intl-const.js';
 import { prefer } from '@/preferences.js';
 import HySubjectBadge from '@/components/HySubjectBadge.vue';
 import HyBookCover from '@/components/HyBookCover.vue';
 import HatadyReactions from '@/components/HatadyReactions.vue';
-import { hySubjectPalette, hyTag, hyBookmarkColor } from '@/utility/hatady.js';
+import { hySubjectPalette, hyTag, hyTagLabel, hyBookmarkColor } from '@/utility/hatady.js';
 import { loadHySubjects } from '@/utility/hatady-subjects.js';
-import { hatadyTheme, hatadyLang, hatadyTzOffset, loadHatadyDisplay, loadTutorialDone, setTutorialDone } from '@/utility/hatady-prefs.js';
+import { hatadyTheme, hatadyTzOffset, loadHatadyDisplay, loadTutorialDone, setTutorialDone } from '@/utility/hatady-prefs.js';
 import { claimAchievement } from '@/utility/achievements.js';
 import { miLocalStorage } from '@/local-storage.js';
 
 const isHatasabaDeckUi = computed(() => miLocalStorage.getItem('ui') === 'simple' && prefer.r['simpleUi.deckMode'].value === true);
 const router = useRouter();
 
-// 旗鯖fork(Hatady i18n 土台): 言語(ja/en)は表示設定で独立に切替。まずはシェル分の最小辞書。
-//   後続フェーズで各画面の文言を足していく。テーマ(paper/espresso)も表示設定で独立に切替。
-type Lang = 'ja' | 'en';
-
-const DICT: Record<string, Record<Lang, string>> = {
-	mylog: { ja: 'マイログ', en: 'My Log' },
-	discover: { ja: 'みんなの学習', en: 'Discover' },
-	shelf: { ja: '本棚', en: 'Shelf' },
-	searchPlaceholder: { ja: '本・分野を検索', en: 'Search books & topics' },
-	settings: { ja: '設定', en: 'Settings' },
-	notifications: { ja: '通知', en: 'Notifications' },
-	back: { ja: '戻る', en: 'Back' },
-	edit: { ja: '編集', en: 'Edit' },
-	delete: { ja: '削除', en: 'Delete' },
-	report: { ja: '通報', en: 'Report' },
-	deleteConfirm: { ja: 'この学習記録を削除しますか？', en: 'Delete this study log?' },
-	record: { ja: '学習を記録', en: 'Record' },
-	comingSoon: { ja: 'この画面はこれから実装します。', en: 'Coming soon.' },
-	composerSoon: { ja: '学習を記録するコンポーザーは次のフェーズで実装します。', en: 'The composer is coming in the next phase.' },
-	streak: { ja: '連続', en: 'streak' },
-	thisWeek: { ja: '今週', en: 'this week' },
-	logs: { ja: 'ログ', en: 'logs' },
-	books: { ja: '本', en: 'books' },
-	heatTitle: { ja: '学習の記録 · 過去20週', en: 'Study activity · last 20 weeks' },
-	timeline: { ja: '学習タイムライン', en: 'Study timeline' },
-	loading: { ja: '読み込み中…', en: 'Loading…' },
-	emptyLog: { ja: 'まだ記録がありません。最初の学習を記録しましょう。', en: 'No logs yet. Record your first study session.' },
-	emptyFiltered: { ja: 'この期間の記録はありません。', en: 'No logs in this period.' },
-	period: { ja: '期間・ジャンプ', en: 'Period / Jump' },
-	periodRange: { ja: '期間で絞り込む', en: 'Filter by period' },
-	apply: { ja: '適用', en: 'Apply' },
-	thisMonth: { ja: '今月', en: 'This month' },
-	lastMonth: { ja: '先月', en: 'Last month' },
-	last30: { ja: '過去30日', en: 'Last 30 days' },
-	clearPeriod: { ja: '解除', en: 'Clear' },
-	showAll: { ja: 'すべて表示', en: 'Show all' },
-	jumpTo: { ja: '日付へジャンプ', en: 'Jump to date' },
-	jump: { ja: 'ジャンプ', en: 'Jump' },
-	filteredNotice: { ja: '期間で絞り込み中（{n}日分）', en: 'Filtered by period ({n} days)' },
-	daysStreak: { ja: '日連続', en: 'day streak' },
-	keepGoing: { ja: '学習を記録中！', en: 'Keep it going!' },
-	viewStreak: { ja: '連続記録を見る', en: 'View streak' },
-	viewShelf: { ja: '本棚を見る', en: 'View shelf' },
-	searchAll: { ja: '横断検索（ログ・本・メモ）', en: 'Search all (logs, books, memos)' },
-	toolsTitle: { ja: '学習ツール', en: 'Study tools' },
-	toolGoals: { ja: '目標', en: 'Goals' },
-	toolStats: { ja: '統計', en: 'Stats' },
-	toolStreaks: { ja: '連続履歴', en: 'Streaks' },
-	toolSearch: { ja: '検索', en: 'Search' },
-	notYetTitle: { ja: 'まだ今日の記録がされていません', en: 'You haven\'t recorded today yet' },
-	notYetSub: { ja: '記録してみませんか？', en: 'Want to record something?' },
-	notYetKeepStreak: { ja: '記録してみませんか？ 連続記録（{n}日）を守りましょう！', en: 'Record now to keep your {n}-day streak!' },
-	streakBrokenTitle: { ja: '連続記録が途切れてしまいました', en: 'Your streak has ended' },
-	streakBrokenSub: { ja: '今日からまた積み重ねていきましょう。記録してみませんか？', en: 'Start a new streak today — want to record something?' },
-	doneTitle: { ja: '今日も学習を記録しました！この調子で続けましょう', en: 'You\'ve recorded today! Keep it going' },
-	dismiss: { ja: '今日は閉じる', en: 'Dismiss for today' },
-	focusTitle: { ja: '今週の分野', en: 'Focus by subject' },
-	reading: { ja: '今読んでいる本', en: 'Reading now' },
-	noBooks: { ja: 'まだ本がありません。', en: 'No books yet.' },
-	theme: { ja: 'テーマ', en: 'Theme' },
-	themePaper: { ja: '紙（ライト）', en: 'Paper (light)' },
-	themeEspresso: { ja: 'エスプレッソ（ダーク）', en: 'Espresso (dark)' },
-	language: { ja: '言語', en: 'Language' },
-	// みんなの学習(公開フィード)
-	discoverTitle: { ja: 'みんなの学習', en: "Everyone's study" },
-	emptyDiscover: { ja: 'まだ公開された学習がありません。', en: 'No public study logs yet.' },
-	emptyFollowing: { ja: 'フォロー中の人の学習がまだありません。気になる人をフォローしましょう。', en: 'No logs from people you follow yet.' },
-	noResults: { ja: '検索に一致する学習が見つかりません。', en: 'No results match your search.' },
-	tabRecent: { ja: '新着', en: 'Recent' },
-	tabPopular: { ja: '人気', en: 'Popular' },
-	tabFollowing: { ja: 'フォロー中', en: 'Following' },
-	// 本棚
-	shelfTitle: { ja: '本棚', en: 'Bookshelf' },
-	addBook: { ja: '本を追加', en: 'Add book' },
-	emptyShelf: { ja: 'まだ本がありません。本を追加しましょう。', en: 'No books yet. Add your first book.' },
-	filterAll: { ja: 'すべて', en: 'All' },
-	allBooks: { ja: 'すべての本', en: 'All books' },
-	sortAdded: { ja: '追加順', en: 'Added' },
-	sortName: { ja: '名前', en: 'Name' },
-	sortFinished: { ja: '読了日', en: 'Finished date' },
-	sortDir: { ja: '昇順/降順', en: 'Ascending/Descending' },
-	status_reading: { ja: '読書中', en: 'Reading' },
-	status_finished: { ja: '読了', en: 'Finished' },
-	status_tsundoku: { ja: '積読', en: 'Backlog' },
-	status_want: { ja: '読みたい', en: 'Want to read' },
-};
-
-// 旗鯖fork: テーマ・言語は端末ローカル(miLocalStorage)で保持。prefer 同期経由だと
-//   クラウド/タブ間同期の巻き戻しで数秒後に既定へ戻る事象があったため端末ローカルにした。
-//   共有 reactive ref なので、表示設定モーダルでの変更が即このページにも反映される。
-const lang = hatadyLang;
+// 旗鯖fork: Hatady の表示言語は Hataskey 本体の共通 locale に統一する。
+// テーマだけは従来どおり端末ローカルに保持し、表示設定から即時反映する。
+const copy = i18n.ts._hata._hatady._home;
+const copyx = i18n.tsx._hata._hatady._home;
 const theme = hatadyTheme;
-// 言語 'auto' は端末(Misskey/ブラウザ)ロケールに追従。Hatady は ja/en のみ対応。
-const effectiveLang = computed<Lang>(() => {
-	if (lang.value === 'auto') {
-		const loc = navigator.language ?? 'ja';
-		return loc.toLowerCase().startsWith('ja') ? 'ja' : 'en';
-	}
-	return lang.value as Lang;
-});
+const shortDateFormat = new Intl.DateTimeFormat(versatileLang, { month: 'short', day: 'numeric' });
+const heatDateFormat = new Intl.DateTimeFormat(versatileLang, { month: 'short', day: 'numeric', weekday: 'short' });
+const bookTitleCollator = new Intl.Collator(versatileLang, { usage: 'sort', sensitivity: 'base' });
 function t(key: string): string {
-	return DICT[key]?.[effectiveLang.value] ?? key;
+	return (copy as unknown as Record<string, string>)[key] ?? key;
 }
 
-// 旗鯖fork: 連続途切れバナーの補足文を「。」で分割(モバイルで途中改行するため)。
-//   最初の「。」の後ろで区切り、句点は前パートに残す。日本語以外(。なし)は1要素。
-const streakBrokenSubParts = computed<string[]>(() => {
-	const s = t('streakBrokenSub');
-	const idx = s.indexOf('。');
-	if (idx < 0 || idx === s.length - 1) return [s];
-	return [s.slice(0, idx + 1), s.slice(idx + 1)];
-});
+// 言語ごとの文を2キーに分け、句読点を解析せず同じ2行構造を保つ。
+const streakBrokenSubParts = computed<string[]>(() => [copy.streakBrokenSubLine1, copy.streakBrokenSubLine2].filter(Boolean));
 
+function notYetKeepStreakLabel(streakDays: number): string {
+	return copyx.notYetKeepStreak({ streakDays: streakDays.toString() });
+}
+
+function filteredNoticeLabel(days: number): string {
+	return copyx.filteredNotice({ days: days.toString() });
+}
+
+function heatPopupSummary(minutes: number, sessions: number): string {
+	return copyx.heatPopupSummary({ duration: fmtDuration(minutes), sessions: sessions.toString() });
+}
 // 旗鯖fork: 開いていたタブはリロードしても維持する(端末ローカル)。
 type HatadyTab = 'mylog' | 'discover' | 'shelf';
 const TAB_KEY = 'hatadyActiveTab';
@@ -649,9 +564,7 @@ const logGroups = computed(() => {
 	// 各グループのサブ(セッション数・合計時間)。
 	for (const g of map.values()) {
 		const total = g.logs.reduce((a, l) => a + (l.durationMinutes || 0), 0);
-		g.sub = lang.value === 'en'
-			? `${g.logs.length} sessions · ${fmtDuration(total)}`
-			: `${g.logs.length}セッション · ${fmtDuration(total)}`;
+		g.sub = copyx.sessionSummary({ sessions: g.logs.length.toString(), duration: fmtDuration(total) });
 	}
 	return [...map.values()];
 });
@@ -736,7 +649,7 @@ const shelfBooks = computed(() => {
 	const cmp = (a: any, b: any): number => {
 		// お気に入り優先(方向に関係なく上位)。
 		if (!!a.isFavorite !== !!b.isFavorite) return a.isFavorite ? -1 : 1;
-		if (key === 'name') return dir * String(a.title ?? '').localeCompare(String(b.title ?? ''), 'ja');
+		if (key === 'name') return dir * bookTitleCollator.compare(String(a.title ?? ''), String(b.title ?? ''));
 		if (key === 'finished') {
 			const av = a.finishedAt ? Date.parse(a.finishedAt) : -Infinity;
 			const bv = b.finishedAt ? Date.parse(b.finishedAt) : -Infinity;
@@ -791,33 +704,27 @@ async function addBookFromShelf() {
 function fmtWhen(iso: string): string {
 	const d = new Date(iso);
 	const diffMin = Math.round((Date.now() - d.getTime()) / 60000);
-	const en = effectiveLang.value === 'en';
-	if (diffMin < 1) return en ? 'now' : 'たった今';
-	if (diffMin < 60) return en ? `${diffMin}m ago` : `${diffMin}分前`;
+	if (diffMin < 1) return copy.now;
+	if (diffMin < 60) return copyx.minutesAgo({ count: diffMin.toString() });
 	const diffH = Math.floor(diffMin / 60);
-	if (diffH < 24) return en ? `${diffH}h ago` : `${diffH}時間前`;
+	if (diffH < 24) return copyx.hoursAgo({ count: diffH.toString() });
 	const diffD = Math.floor(diffH / 24);
-	if (diffD < 7) return en ? `${diffD}d ago` : `${diffD}日前`;
-	return en ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : `${d.getMonth() + 1}月${d.getDate()}日`;
+	if (diffD < 7) return copyx.daysAgo({ count: diffD.toString() });
+	return shortDateFormat.format(d);
 }
 
 function formatDay(d: Date): string {
 	const today = new Date(); today.setHours(0, 0, 0, 0);
 	const dd = new Date(d); dd.setHours(0, 0, 0, 0);
 	const diff = Math.round((today.getTime() - dd.getTime()) / 86400000);
-	if (lang.value === 'en') {
-		if (diff === 0) return 'Today';
-		if (diff === 1) return 'Yesterday';
-		return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-	}
-	if (diff === 0) return '今日';
-	if (diff === 1) return '昨日';
-	return `${d.getMonth() + 1}月${d.getDate()}日`;
+	if (diff === 0) return copy.today;
+	if (diff === 1) return copy.yesterday;
+	return shortDateFormat.format(d);
 }
 function fmtDuration(min: number): string {
-	if (min < 60) return lang.value === 'en' ? `${min}m` : `${min}分`;
+	if (min < 60) return copyx.durationMinutes({ minutes: min.toString() });
 	const h = Math.floor(min / 60); const m = min % 60;
-	return lang.value === 'en' ? `${h}h ${m}m` : `${h}時間${m}分`;
+	return copyx.durationHoursMinutes({ hours: h.toString(), minutes: m.toString() });
 }
 function fmtTime(iso: string): string {
 	const d = new Date(iso);
@@ -861,9 +768,7 @@ const heatPop = ref<{ dateLabel: string; minutes: number; count: number; subject
 function heatDateLabel(dateKey: string): string {
 	const [y, m, d] = dateKey.split('-').map(Number);
 	const dt = new Date(y, m - 1, d);
-	const en = effectiveLang.value === 'en';
-	const wd = dt.toLocaleDateString(en ? 'en-US' : 'ja-JP', { weekday: 'short' });
-	return en ? `${dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} (${wd})` : `${m}月${d}日 (${wd})`;
+	return heatDateFormat.format(dt);
 }
 function showHeatPop(cell: HeatCell, ev: MouseEvent | TouchEvent) {
 	const el = ev.currentTarget as HTMLElement;
@@ -879,7 +784,7 @@ function showHeatPop(cell: HeatCell, ev: MouseEvent | TouchEvent) {
 }
 function hideHeatPop() { heatPop.value = null; }
 
-// 旗鯖fork: 表示テーマ・言語をサーバー(アカウントレジストリ)から取得して端末間同期を反映。
+// 旗鯖fork: Hatady 固有の表示テーマを取得して反映する（言語は Hataskey 本体の共通 locale）。
 // 未読通知の近リアルタイム更新: 30秒ごとにポーリング + タブ復帰/フォーカス時に即更新。
 //   (完全なリアルタイムは Misskey ストリーミングへの Hatady チャンネル追加が必要なため別途)
 let unreadTimer: ReturnType<typeof setInterval> | null = null;

@@ -39,7 +39,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<div v-if="note.cw != null" :class="$style.cw">
 			<span>{{ note.cw }}</span>
 			<button :class="$style.cwButton" @click="showContent = !showContent">
-				{{ showContent ? '隠す' : '続きを見る' }}
+				{{ showContent ? copy.hideContent : copy.showContent }}
 			</button>
 		</div>
 
@@ -59,7 +59,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 			<div v-if="note.renote" :class="$style.renote">
 				<div :class="$style.renoteHeader">
-					<i class="ti ti-repeat"></i> リノート
+					<i class="ti ti-repeat"></i> {{ copy.renote }}
 				</div>
 				<MkExternalNote :note="note.renote" :host="host" :token="token" :class="$style.renoteNote"/>
 			</div>
@@ -80,7 +80,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				@contextmenu.prevent
 			>
 				<MkReactionIcon :reaction="reaction" :emojiUrl="getEmojiUrl(reaction)" style="pointer-events: none;"/>
-				<span :class="$style.reactionCount">{{ count }}</span>
+				<span :class="$style.reactionCount">{{ formatCount(count) }}</span>
 			</button>
 			<button ref="reactionAddBtnEl" :class="$style.reactionAdd" @click="openReactionPicker">
 				<i class="ti ti-plus"></i>
@@ -95,12 +95,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<div v-if="reactionTipShortcode" class="ext-reaction-tip-shortcode">{{ reactionTipShortcode }}</div>
 				</div>
 				<div class="ext-reaction-tip-users">
-					<div v-if="reactionTipUsers.length === 0" class="ext-reaction-tip-loading">読み込み中...</div>
+					<div v-if="reactionTipUsers.length === 0" class="ext-reaction-tip-loading">{{ copy.loading }}</div>
 					<div v-for="u in reactionTipUsers" :key="u.id" class="ext-reaction-tip-user">
 						<img :src="u.avatarUrl" class="ext-reaction-tip-avatar"/>
 						<span class="ext-reaction-tip-name">{{ u.name || u.username }}</span>
 					</div>
-					<div v-if="reactionTipCount > 10" class="ext-reaction-tip-more">+{{ reactionTipCount - 10 }}</div>
+					<div v-if="reactionTipCount > 10" class="ext-reaction-tip-more">+{{ formatCount(reactionTipCount - 10) }}</div>
 				</div>
 			</div>
 		</Teleport>
@@ -108,19 +108,19 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<div :class="$style.footer">
 			<button :class="$style.footerButton" :title="i18n.ts.reply" @click="reply">
 				<i class="ti ti-arrow-back-up"></i>
-				<span v-if="note.repliesCount > 0" :class="$style.footerCount">{{ note.repliesCount }}</span>
+				<span v-if="note.repliesCount > 0" :class="$style.footerCount">{{ formatCount(note.repliesCount) }}</span>
 			</button>
 			<button :class="$style.footerButton" :title="i18n.ts.renote" @click="showRenoteMenu">
 				<i class="ti ti-repeat"></i>
-				<span v-if="note.renoteCount > 0" :class="$style.footerCount">{{ note.renoteCount }}</span>
+				<span v-if="note.renoteCount > 0" :class="$style.footerCount">{{ formatCount(note.renoteCount) }}</span>
 			</button>
 			<button ref="reactionBtnEl" :class="[$style.footerButton, { [$style.reacted]: myReaction }]" :title="i18n.ts.reaction" @click="openReactionPicker">
 				<i class="ti ti-mood-plus"></i>
 				<span v-if="totalReactionCount > 0" :class="$style.footerCount">
-					{{ totalReactionCount }}
+					{{ formatCount(totalReactionCount) }}
 				</span>
 			</button>
-			<button :class="$style.footerButton" :title="'メニュー'" @click="showNoteMenu">
+			<button :class="$style.footerButton" :title="copy.menu" @click="showNoteMenu">
 				<i class="ti ti-dots"></i>
 			</button>
 		</div>
@@ -135,6 +135,7 @@ import MkReactionIcon from '@/components/MkReactionIcon.vue';
 import MkMediaList from '@/components/MkMediaList.vue';
 import * as os from '@/os.js';
 import { i18n } from '@/i18n.js';
+import { versatileLang } from '@/utility/intl-const.js';
 import { getExternalEmojiUrlMap, getExternalAccount, addExternalRecentReaction, lookupExternalEmojiUrl } from '@/utility/external-api.js';
 
 const MkExternalReactionPicker = defineAsyncComponent(() => import('@/components/MkExternalReactionPicker.vue'));
@@ -152,6 +153,10 @@ const emit = defineEmits<{
 }>();
 
 const showContent = ref(false);
+const copy = i18n.ts._hata._externalTimeline._note;
+const copyx = i18n.tsx._hata._externalTimeline._note;
+const numberFormatter = new Intl.NumberFormat(versatileLang);
+const formatCount = (value: number): string => numberFormatter.format(value);
 const myReaction = ref<string | null>(props.note.myReaction || null);
 const reactionBtnEl = useTemplateRef('reactionBtnEl');
 const reactionAddBtnEl = useTemplateRef('reactionAddBtnEl');
@@ -220,15 +225,15 @@ const visibilityInfo = computed(() => {
 	const v = props.note.visibility;
 	if (!v || v === 'public') return null; // public は表示不要
 	const map: Record<string, { icon: string; label: string }> = {
-		home: { icon: 'ti ti-home', label: 'ホーム' },
-		followers: { icon: 'ti ti-lock', label: 'フォロワー' },
-		specified: { icon: 'ti ti-mail', label: 'ダイレクト' },
+		home: { icon: 'ti ti-home', label: copy.visibilityHome },
+		followers: { icon: 'ti ti-lock', label: copy.visibilityFollowers },
+		specified: { icon: 'ti ti-mail', label: copy.visibilitySpecified },
 	};
 	const info = map[v];
 	if (!info) return null;
 	// localOnly の場合はアイコンを追加表示
 	if (props.note.localOnly) {
-		return { icon: info.icon, label: info.label + ' (連合なし)' };
+		return { icon: info.icon, label: copyx.visibilityLocalOnly({ visibility: info.label }) };
 	}
 	return info;
 });
@@ -236,7 +241,7 @@ const visibilityInfo = computed(() => {
 // localOnly のみ（public + localOnly）の場合も表示
 const localOnlyBadge = computed(() => {
 	if (props.note.localOnly && (!props.note.visibility || props.note.visibility === 'public')) {
-		return { icon: 'ti ti-rocket-off', label: '連合なし' };
+		return { icon: 'ti ti-rocket-off', label: copy.localOnly };
 	}
 	return null;
 });
@@ -378,7 +383,7 @@ async function reply() {
 async function renote() {
 	const { canceled } = await os.confirm({
 		type: 'question',
-		text: '外部サーバーでリノートしますか？',
+		text: copy.confirmRenote,
 	});
 	if (canceled) return;
 
@@ -387,7 +392,7 @@ async function renote() {
 		os.success();
 	} catch (err) {
 		console.error('Renote error:', err);
-		os.alert({ type: 'error', text: 'リノートに失敗しました' });
+		os.alert({ type: 'error', text: copy.renoteFailed });
 	}
 }
 
@@ -412,8 +417,8 @@ async function quote() {
 
 function showRenoteMenu(ev: MouseEvent) {
 	os.popupMenu([
-		{ text: 'リノート', icon: 'ti ti-repeat', action: renote },
-		{ text: '引用', icon: 'ti ti-quote', action: quote },
+		{ text: copy.renote, icon: 'ti ti-repeat', action: renote },
+		{ text: copy.quote, icon: 'ti ti-quote', action: quote },
 	], ev.currentTarget ?? ev.target);
 }
 
@@ -489,7 +494,7 @@ async function applyReaction(reaction: string) {
 		}
 	} catch (err) {
 		console.error('Reaction error:', err);
-		os.alert({ type: 'error', text: 'リアクションに失敗しました' });
+		os.alert({ type: 'error', text: copy.reactionFailed });
 	} finally {
 		reactionProcessing = false;
 	}
@@ -504,7 +509,7 @@ async function toggleReaction(reaction: string) {
 		// 自分のリアクションを取り消し（確認ダイアログ）
 		const { canceled } = await os.confirm({
 			type: 'warning',
-			text: 'リアクションを取り消しますか？',
+			text: copy.confirmRemoveReaction,
 		});
 		if (canceled) return;
 		reactionProcessing = true;
@@ -696,7 +701,7 @@ function openUserPopup() {
 async function deleteNote() {
 	const { canceled } = await os.confirm({
 		type: 'warning',
-		text: 'このノートを削除しますか？この操作は取り消せません。',
+		text: copy.confirmDelete,
 	});
 	if (canceled) return;
 
@@ -706,7 +711,7 @@ async function deleteNote() {
 		emit('noteDeleted', props.note.id);
 	} catch (err) {
 		console.error('[MkExternalNote] Delete error:', err);
-		os.alert({ type: 'error', text: 'ノートの削除に失敗しました' });
+		os.alert({ type: 'error', text: copy.deleteFailed });
 	}
 }
 
@@ -716,7 +721,7 @@ function showNoteMenu(ev: MouseEvent) {
 
 	if (isMine.value) {
 		items.push({
-			text: '削除',
+			text: copy.delete,
 			icon: 'ti ti-trash',
 			danger: true,
 			action: deleteNote,
@@ -725,7 +730,7 @@ function showNoteMenu(ev: MouseEvent) {
 	}
 
 	items.push({
-		text: '外部サイトで開く',
+		text: copy.openOnExternalSite,
 		icon: 'ti ti-external-link',
 		action: openInExternal,
 	});

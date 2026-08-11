@@ -36,21 +36,21 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<div v-if="user.description" :class="$style.description">
 				<Mfm :text="user.description" :author="mfmAuthor" :nyaize="false" :emojiUrls="emojiUrls"/>
 			</div>
-			<div v-else :class="$style.noDescription">自己紹介はありません</div>
+			<div v-else :class="$style.noDescription">{{ copy.noDescription }}</div>
 
 			<!-- ステータス -->
 			<div :class="$style.stats">
 				<div :class="$style.statItem">
 					<div :class="$style.statValue">{{ formatNumber(user.notesCount) }}</div>
-					<div :class="$style.statLabel">ノート</div>
+					<div :class="$style.statLabel">{{ copy.notes }}</div>
 				</div>
 				<div :class="$style.statItem">
 					<div :class="$style.statValue">{{ formatNumber(user.followingCount) }}</div>
-					<div :class="$style.statLabel">フォロー</div>
+					<div :class="$style.statLabel">{{ copy.following }}</div>
 				</div>
 				<div :class="$style.statItem">
 					<div :class="$style.statValue">{{ formatNumber(user.followersCount) }}</div>
-					<div :class="$style.statLabel">フォロワー</div>
+					<div :class="$style.statLabel">{{ copy.followers }}</div>
 				</div>
 			</div>
 
@@ -58,7 +58,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<div :class="$style.actions">
 				<button class="_button" :class="$style.actionBtn" @click="openExternal()">
 					<i class="ti ti-external-link"></i>
-					<span>外部ページで詳細を確認</span>
+					<span>{{ copy.openExternalProfile }}</span>
 				</button>
 			</div>
 		</div>
@@ -70,6 +70,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 import { ref, computed, onMounted, useTemplateRef } from 'vue';
 import MkModal from '@/components/MkModal.vue';
 import { getExternalEmojiUrlMap } from '@/utility/external-api.js';
+import { i18n } from '@/i18n.js';
+import { versatileLang } from '@/utility/intl-const.js';
 
 const props = defineProps<{
 	userId: string;
@@ -84,6 +86,8 @@ const emit = defineEmits<{
 }>();
 
 const modal = useTemplateRef('modal');
+const copy = i18n.ts._hata._externalTimeline._userPopup;
+const numberFormatter = new Intl.NumberFormat(versatileLang, { notation: 'compact', maximumFractionDigits: 1 });
 const user = ref<any>(null);
 const loading = ref(true);
 const errorMsg = ref<string | null>(null);
@@ -141,10 +145,7 @@ const emojiUrls = computed(() => {
 });
 
 function formatNumber(n: number | undefined | null): string {
-	if (n == null) return '0';
-	if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M';
-	if (n >= 1_000) return (n / 1_000).toFixed(1) + 'K';
-	return n.toString();
+	return numberFormatter.format(n ?? 0);
 }
 
 function close() {
@@ -183,7 +184,7 @@ onMounted(async () => {
 		user.value = await res.json();
 	} catch (err) {
 		console.error('[MkExternalUserPopup] Failed to fetch user:', err);
-		errorMsg.value = 'ユーザー情報の取得に失敗しました';
+		errorMsg.value = copy.loadFailed;
 	} finally {
 		loading.value = false;
 	}

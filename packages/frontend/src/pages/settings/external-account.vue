@@ -4,42 +4,42 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 
 <template>
-<SearchMarker path="/settings/external-account" label="外部アカウント連携" :keywords="['external', 'ohtl', 'oltl', 'timeline', '外部']" icon="ti ti-link">
+<SearchMarker path="/settings/external-account" :label="accountCopy.title" :keywords="externalAccountKeywords" icon="ti ti-link">
 	<div class="_gaps_m">
 		<FormSection first>
-			<template #label><i class="ti ti-link"></i> 外部アカウント連携</template>
+			<template #label><i class="ti ti-link"></i> {{ accountCopy.title }}</template>
 
 			<div class="_gaps_s">
 				<MkInfo>
-					外部サーバーと連携すると、外部サーバーのタイムラインを表示したり、ノートの作成・リアクション・リプライ・リノートができます。
+					{{ accountCopy.introduction }}
 				</MkInfo>
 
 				<MkSwitch :modelValue="externalEnabled" @update:modelValue="onToggleEnabled">
-					<template #label>外部アカウント連携を有効にする</template>
+					<template #label>{{ accountCopy.enable }}</template>
 				</MkSwitch>
 			</div>
 		</FormSection>
 
 		<FormSection v-if="externalEnabled">
-			<template #label>アカウント連携</template>
+			<template #label>{{ accountCopy.linkSection }}</template>
 
 			<div v-if="!isLinked" class="_gaps_s">
 				<!-- 接続先選択 -->
 				<div style="font-size: 0.9em; opacity: 0.8; margin-bottom: 4px;">
-					接続先サーバーを選択してください。
+					{{ accountCopy.chooseServer }}
 				</div>
 				<MkSelect v-model="selectedHost" :items="hostOptions">
-					<template #label>接続先</template>
+					<template #label>{{ accountCopy.destination }}</template>
 				</MkSelect>
 
 				<MkButton :disabled="linking || !selectedHost" primary @click="startMiAuth">
-					<i class="ti ti-link"></i> {{ linking ? '連携中...' : '外部アカウントと連携' }}
+					<i class="ti ti-link"></i> {{ linking ? accountCopy.linking : accountCopy.linkAction }}
 				</MkButton>
 			</div>
 
 			<div v-else class="_gaps_s">
 				<MkInfo>
-					<i class="ti ti-check"></i> 連携済み
+					<i class="ti ti-check"></i> {{ accountCopy.linked }}
 				</MkInfo>
 
 				<div :class="$style.linkedAccount">
@@ -52,41 +52,41 @@ SPDX-License-Identifier: AGPL-3.0-only
 						</div>
 					</div>
 					<MkButton danger @click="unlinkAccount">
-						<i class="ti ti-unlink"></i> 連携解除
+						<i class="ti ti-unlink"></i> {{ accountCopy.unlink }}
 					</MkButton>
 				</div>
 			</div>
 		</FormSection>
 
 		<FormSection v-if="externalEnabled && isLinked">
-			<template #label>外部タイムライン設定</template>
+			<template #label>{{ accountCopy.timelineSettings }}</template>
 
 			<div class="_gaps_s">
 				<MkSwitch v-model="enableOHTL">
-					<template #label><i class="ti ti-home"></i> 外部ホームタイムライン (OHTL) を表示</template>
-					<template #caption>連携先でフォローしているユーザーのノートを表示</template>
+					<template #label><i class="ti ti-home"></i> {{ accountCopy.showOhtl }}</template>
+					<template #caption>{{ accountCopy.ohtlDescription }}</template>
 				</MkSwitch>
 
 				<MkSwitch v-model="enableOLTL">
-					<template #label><i class="ti ti-planet"></i> 外部ローカルタイムライン (OLTL) を表示</template>
-					<template #caption>連携先のローカルタイムラインを表示</template>
+					<template #label><i class="ti ti-planet"></i> {{ accountCopy.showOltl }}</template>
+					<template #caption>{{ accountCopy.oltlDescription }}</template>
 				</MkSwitch>
 
 				<!-- 旗鯖fork: 外部通知のトースト無効化トグル
 				     ONの時、WebSocket接続も行わない(リソース節約、通知バッジ更新も止まる) -->
 				<MkSwitch v-model="disableNotificationToast" @update:modelValue="onDisableNotifToastChange">
-					<template #label><i class="ti ti-bell-off"></i> 外部通知のポップアップを無効化</template>
-					<template #caption>ONの場合、外部アカウントからの通知ポップアップ(トースト)を表示しません。リアルタイム接続も停止するためリソースを節約できます。</template>
+					<template #label><i class="ti ti-bell-off"></i> {{ accountCopy.disableNotificationPopup }}</template>
+					<template #caption>{{ accountCopy.disableNotificationPopupDescription }}</template>
 				</MkSwitch>
 			</div>
 		</FormSection>
 
 		<FormSection v-if="externalEnabled && isLinked">
-			<template #label><i class="ti ti-star"></i> 外部TLリアクション お気に入り絵文字</template>
+			<template #label><i class="ti ti-star"></i> {{ accountCopy.favoriteEmojiSection }}</template>
 			<div class="_gaps_s">
 				<div style="font-size: 0.9em; opacity: 0.8; margin-bottom: 8px;">
-					外部TLのリアクションピッカーで表示されるお気に入り絵文字を管理します。<br/>
-					リアクションピッカーでは絵文字を右クリック/長押しでもお気に入りに追加・削除できます。
+					{{ accountCopy.favoriteEmojiDescription }}<br/>
+					{{ accountCopy.favoriteEmojiInteraction }}
 				</div>
 
 				<div v-if="extFavEmojis.length > 0" :class="$style.emojiGrid">
@@ -103,15 +103,15 @@ SPDX-License-Identifier: AGPL-3.0-only
 					</div>
 				</div>
 				<div v-else style="opacity: 0.5; font-size: 0.9em; padding: 8px 0;">
-					お気に入り絵文字はまだありません
+					{{ accountCopy.noFavoriteEmoji }}
 				</div>
 
 				<div style="display: flex; gap: 8px; flex-wrap: wrap;">
 					<MkButton @click="addExtFavEmojiFromPicker">
-						<i class="ti ti-plus"></i> 絵文字を追加
+						<i class="ti ti-plus"></i> {{ accountCopy.addEmoji }}
 					</MkButton>
 					<MkButton v-if="extFavEmojis.length > 0" danger @click="clearExtFavEmojis">
-						<i class="ti ti-trash"></i> 全て削除
+						<i class="ti ti-trash"></i> {{ accountCopy.deleteAll }}
 					</MkButton>
 				</div>
 			</div>
@@ -119,41 +119,41 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 		<!-- 旗鯖fork: 外部TL絵文字キャッシュの管理 -->
 		<FormSection v-if="externalEnabled">
-			<template #label><i class="ti ti-photo"></i> 外部TL絵文字キャッシュ</template>
+			<template #label><i class="ti ti-photo"></i> {{ accountCopy.emojiCacheSection }}</template>
 			<div class="_gaps_s">
 				<MkInfo>
-					外部TLでリアクションするときに表示される絵文字の画像URLを、お使いの端末に一時的に保存しておく仕組みです。<br/>
-					同じ外部サーバーに何度もアクセスする際、相手サーバーへの問い合わせを最小限に抑えるために使われます。
+					{{ accountCopy.emojiCacheIntroduction }}<br/>
+					{{ accountCopy.emojiCachePurpose }}
 				</MkInfo>
 
 				<div style="font-size: 0.9em; line-height: 1.6;">
-					<b style="display: block; margin-bottom: 4px;">📦 キャッシュされるもの</b>
+					<b style="display: block; margin-bottom: 4px;">📦 {{ accountCopy.cacheStoredTitle }}</b>
 					<ul style="margin: 0 0 8px 1.2em; padding: 0; opacity: 0.85;">
-						<li>外部サーバーから取得した絵文字の <b>画像URL一覧</b>(画像本体は保存しません)</li>
-						<li>最大 <b>10サーバー分</b>まで保持(超えた場合は古いものから自動削除)</li>
-						<li>取得から <b>24時間</b>経過すると自動的に再取得</li>
+						<li>{{ accountCopy.cacheUrlListBefore }} <b>{{ accountCopy.cacheUrlListName }}</b>{{ accountCopy.cacheUrlListAfter }}</li>
+						<li>{{ accountCopy.cacheServerLimitBefore }} <b>{{ accountCopy.cacheServerLimitValue }}</b>{{ accountCopy.cacheServerLimitAfter }}</li>
+						<li>{{ accountCopy.cacheDurationBefore }} <b>{{ accountCopy.cacheDurationValue }}</b>{{ accountCopy.cacheDurationAfter }}</li>
 					</ul>
-					<b style="display: block; margin-bottom: 4px;">🗑️ クリアボタンを押すと</b>
+					<b style="display: block; margin-bottom: 4px;">🗑️ {{ accountCopy.cacheClearTitle }}</b>
 					<ul style="margin: 0 0 8px 1.2em; padding: 0; opacity: 0.85;">
-						<li>上記キャッシュをすべて削除します</li>
-						<li>次回ピッカーを開いた時、外部サーバーから絵文字一覧を再取得します</li>
+						<li>{{ accountCopy.cacheClearAll }}</li>
+						<li>{{ accountCopy.cacheReloadNext }}</li>
 					</ul>
-					<b style="display: block; margin-bottom: 4px;">💡 こんな時に使ってください</b>
+					<b style="display: block; margin-bottom: 4px;">💡 {{ accountCopy.cacheUseTitle }}</b>
 					<ul style="margin: 0 0 8px 1.2em; padding: 0; opacity: 0.85;">
-						<li>絵文字が古い・新しく追加された絵文字が表示されない</li>
-						<li>削除された絵文字が表示され続けている</li>
-						<li>プライバシー上、保存されている情報を即座に消したい</li>
+						<li>{{ accountCopy.cacheUseStale }}</li>
+						<li>{{ accountCopy.cacheUseDeleted }}</li>
+						<li>{{ accountCopy.cacheUsePrivacy }}</li>
 					</ul>
 					<div style="opacity: 0.7; margin-top: 8px;">
 						<i class="ti ti-info-circle"></i>
-						<b>「最近使った」「お気に入り」の履歴は削除されません。</b>
-						あなたが実際に使用した絵文字の記録なので、別途管理されています。
+						<b>{{ accountCopy.historyKeptTitle }}</b>
+						{{ accountCopy.historyKeptDescription }}
 					</div>
 				</div>
 
 				<div>
 					<MkButton danger @click="clearEmojiCache">
-						<i class="ti ti-trash"></i> 絵文字キャッシュをクリア
+						<i class="ti ti-trash"></i> {{ accountCopy.clearCache }}
 					</MkButton>
 				</div>
 			</div>
@@ -177,8 +177,12 @@ import { genId } from '@/utility/id.js';
 import { hostname } from '@@/js/config.js';
 import { getExternalFavoriteEmojis, setExternalFavoriteEmojis, removeExternalFavoriteEmoji, getExternalCustomEmojis, clearExternalEmojiCache, isAllowedExternalHost } from '@/utility/external-api.js';
 import type { ExternalCustomEmoji } from '@/utility/external-api.js';
+import { i18n } from '@/i18n.js';
 
 const MkExternalReactionPicker = defineAsyncComponent(() => import('@/components/MkExternalReactionPicker.vue'));
+const accountCopy = i18n.ts._hata._externalAccount;
+const accountCopyx = i18n.tsx._hata._externalAccount;
+const externalAccountKeywords = ['external', 'ohtl', 'oltl', 'timeline', accountCopy.searchKeyword];
 
 const externalEnabled = prefer.model('external.enabled');
 const externalHost = prefer.model('external.host');
@@ -252,11 +256,11 @@ async function startMiAuth() {
 		// 旗鯖同士の場合
 		const { canceled, result } = await os.actions({
 			type: 'info',
-			title: '旗鯖間アカウント連携',
-			text: 'お使いの別の旗鯖アカウントへ接続します。\n\n旗鯖同士のご利用の場合は利用規約とプライバシーポリシーは旗鯖と同様の規約が適用されます。',
+			title: accountCopy.hataLinkTitle,
+			text: accountCopy.hataLinkDescription,
 			actions: [
-				{ value: 'ok', text: '連携を開始する', primary: true },
-				{ value: 'cancel', text: 'キャンセル' },
+				{ value: 'ok', text: accountCopy.startLink, primary: true },
+				{ value: 'cancel', text: accountCopy.cancel },
 			],
 		});
 		if (canceled || result === 'cancel') return;
@@ -264,11 +268,11 @@ async function startMiAuth() {
 		// 旗鯖以外の外部サーバーの場合
 		const { canceled, result } = await os.actions({
 			type: 'warning',
-			title: '外部サーバー連携の免責事項',
-			text: `この機能を有効にして ${host} にアクセスし、いかなる損害を被ったとしても旗鯖は責任を負いません。\n\nまた、外部アカウントを使用し、外部サーバーに対して行った行為は外部サーバーの各種規約が適用され、旗鯖の利用規約・プライバシーポリシーの適用外となります。\n\n連携前に、接続先の各種利用規約をご確認ください。`,
+			title: accountCopy.externalDisclaimerTitle,
+			text: accountCopyx.externalDisclaimer({ host }),
 			actions: [
-				{ value: 'ok', text: 'わかりました（連携を開始する）', primary: true },
-				{ value: 'cancel', text: '今はやめておく' },
+				{ value: 'ok', text: accountCopy.understoodStart, primary: true },
+				{ value: 'cancel', text: accountCopy.notNow },
 			],
 		});
 		if (canceled || result === 'cancel') return;
@@ -281,7 +285,7 @@ async function startMiAuth() {
 		const callbackUrl = `${window.location.origin}/settings/external-account?miauth=${sessionId}`;
 		const permissions = ['read:account', 'read:following', 'write:notes', 'write:reactions', 'read:notifications'].join(',');
 
-		const miAuthUrl = `https://${host}/miauth/${sessionId}?name=${encodeURIComponent('旗鯖連携')}&callback=${encodeURIComponent(callbackUrl)}&permission=${permissions}`;
+		const miAuthUrl = `https://${host}/miauth/${sessionId}?name=${encodeURIComponent(accountCopy.miAuthApplicationName)}&callback=${encodeURIComponent(callbackUrl)}&permission=${permissions}`;
 
 		localStorage.setItem('miauth_session', sessionId);
 		localStorage.setItem('miauth_host', host);
@@ -290,7 +294,7 @@ async function startMiAuth() {
 		window.location.href = miAuthUrl;
 	} catch (err) {
 		console.error('MiAuth error:', err);
-		os.alert({ type: 'error', text: '連携の開始に失敗しました' });
+		os.alert({ type: 'error', text: accountCopy.startFailed });
 		linking.value = false;
 	}
 }
@@ -298,7 +302,7 @@ async function startMiAuth() {
 async function unlinkAccount() {
 	const { canceled } = await os.confirm({
 		type: 'warning',
-		text: '外部アカウントとの連携を解除しますか？',
+		text: accountCopy.unlinkConfirm,
 	});
 
 	if (canceled) return;
@@ -340,11 +344,8 @@ function clearExtFavEmojis() {
 async function clearEmojiCache() {
 	const { canceled } = await os.confirm({
 		type: 'warning',
-		title: '外部TL絵文字キャッシュをクリアしますか?',
-		text: '保存されている外部サーバーの絵文字URL一覧をすべて削除します。\n\n' +
-			'次回ピッカーを開いた時に外部サーバーから絵文字一覧を再取得します。\n' +
-			'(相手サーバーへのリクエストが1回発生します)\n\n' +
-			'「最近使った」「お気に入り」の履歴は保持されます。',
+		title: accountCopy.clearCacheConfirmTitle,
+		text: accountCopy.clearCacheConfirmText,
 	});
 	if (canceled) return;
 	clearExternalEmojiCache();
@@ -429,7 +430,7 @@ async function handleMiAuthCallback() {
 		os.success();
 	} catch (err) {
 		console.error('MiAuth callback error:', err);
-		os.alert({ type: 'error', text: '連携の完了に失敗しました' });
+		os.alert({ type: 'error', text: accountCopy.completeFailed });
 	}
 }
 
@@ -452,7 +453,7 @@ onMounted(async () => {
 });
 
 definePage({
-	title: '外部アカウント連携',
+	title: accountCopy.title,
 	icon: 'ti ti-link',
 });
 </script>

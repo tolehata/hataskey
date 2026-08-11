@@ -4,10 +4,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 
 <template>
-<SearchMarker path="/settings/hata-custom" label="旗鯖独自機能" :keywords="['hata', 'custom', 'simple', 'widget', 'timeline', 'font']" icon="ti ti-flag">
+<SearchMarker path="/settings/hata-custom" :label="copy.title" :keywords="['hata', 'custom', 'simple', 'widget', 'timeline', 'font']" icon="ti ti-flag">
     <div class="_gaps_m">
         <MkFeatureBanner icon="/client-assets/package_3d.png" color="#e74040">
-            旗鯖独自の機能設定です。カテゴリごとに設定を管理できます。
+            {{ copy.banner }}
         </MkFeatureBanner>
 
         <div :class="$style.catTabs">
@@ -19,84 +19,84 @@ SPDX-License-Identifier: AGPL-3.0-only
         <!-- ===== 旗鯖全体 ===== -->
         <template v-if="activeCat === 'general'">
         <FormSection first>
-            <template #label>旗鯖独自設定の一括入出力</template>
-            <div style="font-size:.85em;opacity:.72;margin-bottom:10px;line-height:1.6;">この端末の設定を優先し、旗鯖独自ツールごとに選んでJSONファイルへ保存・復元できます。</div>
+            <template #label>{{ generalCopy.transferTitle }}</template>
+            <div style="font-size:.85em;opacity:.72;margin-bottom:10px;line-height:1.6;">{{ generalCopy.transferDescription }}</div>
             <button class="_buttonPrimary" @click="openSettingsTransfer" style="width:100%;padding:12px;font-weight:bold;">
-                <i class="ti ti-arrows-exchange"></i> 設定を書き出す・読み込む
+                <i class="ti ti-arrows-exchange"></i> {{ generalCopy.openTransfer }}
             </button>
         </FormSection>
         <FormSection>
-            <template #label>外部アカウント連携</template>
+            <template #label>{{ generalCopy.externalAccount }}</template>
             <FormLink to="/settings/external-account">
                 <template #icon><i class="ti ti-link"></i></template>
-                外部アカウント連携設定
-                <template #suffix><span v-if="isExternalLinked" :class="$style.linkedBadge"><i class="ti ti-check"></i> 連携済み</span></template>
+                {{ generalCopy.externalAccountSettings }}
+                <template #suffix><span v-if="isExternalLinked" :class="$style.linkedBadge"><i class="ti ti-check"></i> {{ generalCopy.linked }}</span></template>
             </FormLink>
         </FormSection>
         <FormSection>
-            <template #label>UI変更</template>
+            <template #label>{{ generalCopy.uiChange }}</template>
             <button class="_buttonPrimary" @click="openUiSetup" style="width:100%;padding:12px;font-weight:bold;">
-                <i class="ti ti-wand"></i> UI選択画面を開く
+                <i class="ti ti-wand"></i> {{ generalCopy.openUiSetup }}
             </button>
         </FormSection>
         <FormSection>
-            <template #label>リアクション</template>
+            <template #label>{{ generalCopy.reactions }}</template>
             <FormLink to="/settings/hidden-reactions">
                 <template #icon><i class="ti ti-eye-off"></i></template>
-                非表示リアクション管理
-                <template #suffix><span v-if="hiddenReactionCount > 0" :class="$style.countBadge">{{ hiddenReactionCount }}件</span></template>
+                {{ generalCopy.hiddenReactionManagement }}
+                <template #suffix><span v-if="hiddenReactionCount > 0" :class="$style.countBadge">{{ copyx.hiddenReactionCount({ count: hiddenReactionCount.toString() }) }}</span></template>
             </FormLink>
             <!-- 旗鯖fork(#31): ベータ機能から正式機能へ移動。⚠️端末ローカル設定なので同期されない旨を明記する。 -->
             <MkSwitch v-model="hideMutedReactions" style="margin-top:12px;">
-                <template #label>ミュートしたユーザーのリアクションを隠す</template>
-                <template #caption>ミュートした人が付けたリアクションを、ノート上に表示しないようにします。他のユーザーの投稿に付いたものも対象です。隠したリアクションがある場合、ノートの詳細画面に <i class="ti ti-info-circle"></i> が出ます。<b>管理者からのリアクションは隠せません。</b>この設定は<b>この端末にだけ</b>保存され、ほかの端末には引き継がれません。</template>
+                <template #label>{{ generalCopy.hideMutedReactions }}</template>
+                <template #caption>{{ generalCopy.hideMutedReactionsCaptionBeforeIcon }} <i class="ti ti-info-circle"></i> {{ generalCopy.hideMutedReactionsCaptionAfterIcon }}<b>{{ generalCopy.adminReactionsVisible }}</b>{{ generalCopy.deviceOnlyPrefix }}<b>{{ generalCopy.thisDeviceOnly }}</b>{{ generalCopy.deviceOnlySuffix }}</template>
             </MkSwitch>
         </FormSection>
         <FormSection>
-            <template #label>タイムライン</template>
-            <div style="font-weight:bold;margin-bottom:8px;">新規ノートのアニメーション方向</div>
+            <template #label>{{ generalCopy.timeline }}</template>
+            <div style="font-weight:bold;margin-bottom:8px;">{{ generalCopy.animationDirection }}</div>
             <MkRadios v-model="timelineAnimationDirection">
-                <option value="top">上からスライド</option>
-                <option value="left">左からスライド</option>
-                <option value="right">右からスライド</option>
-                <option value="random">ランダム</option>
+                <option value="top">{{ generalCopy.slideFromTop }}</option>
+                <option value="left">{{ generalCopy.slideFromLeft }}</option>
+                <option value="right">{{ generalCopy.slideFromRight }}</option>
+                <option value="random">{{ generalCopy.random }}</option>
             </MkRadios>
         </FormSection>
         <FormSection>
-            <template #label>投稿フォーム</template>
-            <MkSwitch v-model="showHashtagButtonInPostForm"><template #label>ハッシュタグボタンを表示</template></MkSwitch>
-            <MkSwitch v-model="showDrawingButtonInPostForm"><template #label>お絵かきボタンを表示</template></MkSwitch>
+            <template #label>{{ generalCopy.postForm }}</template>
+            <MkSwitch v-model="showHashtagButtonInPostForm"><template #label>{{ generalCopy.showHashtagButton }}</template></MkSwitch>
+            <MkSwitch v-model="showDrawingButtonInPostForm"><template #label>{{ generalCopy.showDrawingButton }}</template></MkSwitch>
         </FormSection>
         <FormSection>
-            <template #label>ログイン日数</template>
-            <MkSwitch v-model="showLoginBonusPopup"><template #label>ログイン日数のポップアップを表示</template></MkSwitch>
+            <template #label>{{ generalCopy.loginDays }}</template>
+            <MkSwitch v-model="showLoginBonusPopup"><template #label>{{ generalCopy.showLoginDaysPopup }}</template></MkSwitch>
         </FormSection>
         <!-- 旗鯖fork: 旧アクセシビリティタブから移動 -->
         <FormSection>
-            <template #label>タイムライン操作</template>
+            <template #label>{{ generalCopy.timelineActions }}</template>
             <MkSwitch v-model="directProfile">
-                <template #label>アバタークリックで直接プロフィールへ</template>
-                <template #caption>ONにするとユーザーパネルを経由せず、直接プロフィールページに遷移します。Hatasaba UIでは上部の戻るボタンでタイムラインに戻れます。</template>
+                <template #label>{{ generalCopy.directProfile }}</template>
+                <template #caption>{{ generalCopy.directProfileCaption }}</template>
             </MkSwitch>
         </FormSection>
         <!-- 旗鯖fork: bot ユーザーの投稿をタイムラインから非表示にする + 許可アカウント指定 -->
         <FormSection>
-            <template #label>Bot 投稿の非表示</template>
+            <template #label>{{ generalCopy.hideBotPosts }}</template>
             <MkSwitch v-model="hideBotsInTimeline">
-                <template #label>bot ユーザーの投稿をタイムラインに表示しない</template>
-                <template #caption>ノイズの多い bot ユーザー (自動投稿アカウント) の投稿を、タイムライン上で非表示にします。通知ページや個別ノートページでは表示されます。<b>例外的に表示を許可したい bot</b> は下のリストで指定できます。通常アカウントは例外に追加できません。</template>
+                <template #label>{{ generalCopy.hideBotPostsLabel }}</template>
+                <template #caption>{{ generalCopy.hideBotPostsCaptionPrefix }}<b>{{ generalCopy.allowedBotException }}</b>{{ generalCopy.hideBotPostsCaptionSuffix }}</template>
             </MkSwitch>
             <template v-if="hideBotsInTimeline">
                 <div :class="$style.botAllowlistHead" style="margin-top:12px;">
                     <div style="font-size:.85em;opacity:.7;flex:1;">
-                        例外で表示を許可する bot アカウント (<b>{{ botAllowlistUsers.length }}</b> 件)
+                        {{ generalCopy.allowedBotAccountsPrefix }} (<b>{{ botAllowlistUsers.length }}</b> {{ generalCopy.itemUnit }})
                     </div>
                     <button class="_buttonPrimary" :class="$style.botAllowlistAdd" @click="addBotAllowlistUser">
-                        <i class="ti ti-plus"></i> 追加
+                        <i class="ti ti-plus"></i> {{ generalCopy.add }}
                     </button>
                 </div>
                 <div v-if="botAllowlistUsers.length === 0" :class="$style.botAllowlistEmpty">
-                    <i class="ti ti-user-off" style="margin-right:6px;"></i>許可されたアカウントはありません。すべての bot が非表示になります。
+                    <i class="ti ti-user-off" style="margin-right:6px;"></i>{{ generalCopy.noAllowedBots }}
                 </div>
                 <div v-else :class="$style.botAllowlistList">
                     <div v-for="user in botAllowlistUsers" :key="user.id" :class="$style.botAllowlistItem">
@@ -105,7 +105,7 @@ SPDX-License-Identifier: AGPL-3.0-only
                             <MkUserName :user="user" />
                             <div :class="$style.botAllowlistAcct">@{{ user.username }}<span v-if="user.host">@{{ user.host }}</span></div>
                         </div>
-                        <button :class="$style.botAllowlistRemove" @click="removeBotAllowlistUser(user.id)" v-tooltip="'リストから削除'">
+                        <button :class="$style.botAllowlistRemove" @click="removeBotAllowlistUser(user.id)" v-tooltip="generalCopy.removeFromList">
                             <i class="ti ti-x"></i>
                         </button>
                     </div>
@@ -114,19 +114,19 @@ SPDX-License-Identifier: AGPL-3.0-only
         </FormSection>
         <!-- 旗鯖fork: 旧アクセシビリティタブから移動 -->
         <FormSection>
-            <template #label>投稿フォームの枠色（投稿範囲別）</template>
+            <template #label>{{ generalCopy.postFormBorder }}</template>
             <MkSwitch v-model="pfvbEnabled">
-                <template #label>投稿範囲に応じて枠の色を変える</template>
-                <template #caption>公開・ホーム・フォロワー・ダイレクトの各範囲ごとに投稿フォームの枠色を変え、誤爆を防ぎやすくします。</template>
+                <template #label>{{ generalCopy.colorByVisibility }}</template>
+                <template #caption>{{ generalCopy.colorByVisibilityCaption }}</template>
             </MkSwitch>
             <template v-if="pfvbEnabled">
                 <MkInput v-model="pfvbWidth" type="number" :min="1" :max="12" style="margin-top:10px;">
-                    <template #label>枠の太さ（px）</template>
+                    <template #label>{{ generalCopy.borderWidth }}</template>
                 </MkInput>
-                <MkColorInput v-model="pfvbPublic"><template #label>公開</template></MkColorInput>
-                <MkColorInput v-model="pfvbHome"><template #label>ホーム</template></MkColorInput>
-                <MkColorInput v-model="pfvbFollowers"><template #label>フォロワー</template></MkColorInput>
-                <MkColorInput v-model="pfvbSpecified"><template #label>ダイレクト</template></MkColorInput>
+                <MkColorInput v-model="pfvbPublic"><template #label>{{ generalCopy.public }}</template></MkColorInput>
+                <MkColorInput v-model="pfvbHome"><template #label>{{ generalCopy.home }}</template></MkColorInput>
+                <MkColorInput v-model="pfvbFollowers"><template #label>{{ generalCopy.followers }}</template></MkColorInput>
+                <MkColorInput v-model="pfvbSpecified"><template #label>{{ generalCopy.direct }}</template></MkColorInput>
             </template>
         </FormSection>
         </template>
@@ -134,10 +134,10 @@ SPDX-License-Identifier: AGPL-3.0-only
         <!-- ===== フォント ===== -->
         <template v-if="activeCat === 'font'">
         <FormSection first>
-            <template #label>UIフォント選択</template>
+            <template #label>{{ fontCopy.uiFontSelection }}</template>
             <div style="font-size:.85em;opacity:.7;margin-bottom:12px;">
-                UI全体のフォントを変更できます。すべてのプリセットフォントは SIL Open Font License 1.1 で提供されており、
-                Google Fonts CDN から直接読み込まれます。サーバーにフォントデータは保存されません。
+                {{ fontCopy.presetDescriptionLine1 }}
+                {{ fontCopy.presetDescriptionLine2 }}
             </div>
             <div :class="$style.fontGrid">
                 <button
@@ -147,12 +147,12 @@ SPDX-License-Identifier: AGPL-3.0-only
                     @click="onFontChange(preset.id)"
                 >
                     <div :class="$style.fontSample" :style="{ fontFamily: preset.family + ', sans-serif' }">
-                        旗鯖へようこそ！ The quick brown fox
+                        {{ fontCopy.samplePrimary }}
                     </div>
                     <div :class="$style.fontSampleSub" :style="{ fontFamily: preset.family + ', sans-serif' }">
-                        あいうえお かきくけこ ABCDEFG 0123456789
+                        {{ fontCopy.sampleSecondary }}
                     </div>
-                    <div :class="$style.fontName">{{ preset.label }}</div>
+					<div :class="$style.fontName">{{ fontPresetLabel(preset) }}</div>
                     <div :class="$style.fontMeta">
                         <span :class="$style.fontLicense"><i class="ti ti-license"></i> {{ preset.license }}</span>
                         <span :class="$style.fontAuthor">{{ preset.author }}</span>
@@ -164,36 +164,36 @@ SPDX-License-Identifier: AGPL-3.0-only
                     :class="[$style.fontCard, fontId === 'system' && $style.fontCardOn]"
                     @click="onFontChange('system')"
                 >
-                    <div :class="$style.fontSample">旗鯖へようこそ！ The quick brown fox</div>
-                    <div :class="$style.fontSampleSub">あいうえお かきくけこ ABCDEFG 0123456789</div>
-                    <div :class="$style.fontName">システムフォント</div>
+                    <div :class="$style.fontSample">{{ fontCopy.samplePrimary }}</div>
+                    <div :class="$style.fontSampleSub">{{ fontCopy.sampleSecondary }}</div>
+                    <div :class="$style.fontName">{{ fontCopy.systemFont }}</div>
                     <div :class="$style.fontMeta">
-                        <span :class="$style.fontLicense">OS標準フォントを使用</span>
+                        <span :class="$style.fontLicense">{{ fontCopy.useOsFont }}</span>
                     </div>
                 </button>
             </div>
         </FormSection>
 
         <FormSection>
-            <template #label>カスタムフォント（ドライブから）</template>
+            <template #label>{{ fontCopy.customFont }}</template>
             <div style="font-size:.85em;opacity:.7;margin-bottom:12px;">
-                ドライブにアップロードしたフォントファイル（.ttf, .otf, .woff2）を使用できます。<br>
-                使用には免責事項への同意が必要です。
+                {{ fontCopy.customFontDescription }}<br>
+                {{ fontCopy.consentRequired }}
             </div>
             <div v-if="fontId === 'custom' && customFontName" :class="$style.customFontStatus">
                 <i class="ti ti-typography"></i>
-                現在のカスタムフォント: <strong>{{ customFontName }}</strong>
+                {{ fontCopy.currentCustomFont }} <strong>{{ customFontName }}</strong>
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
                 <button class="_buttonPrimary" @click="openDrivePicker" style="padding:10px 20px;font-weight:bold;">
-                    <i class="ti ti-upload"></i> ドライブからフォントを選択
+                    <i class="ti ti-upload"></i> {{ fontCopy.selectFromDrive }}
                 </button>
                 <button class="_buttonGradate" @click="resetToDefault" style="padding:10px 20px;">
-                    <i class="ti ti-arrow-back"></i> 既定に戻す
+                    <i class="ti ti-arrow-back"></i> {{ fontCopy.resetDefault }}
                 </button>
             </div>
             <div v-if="customFontConsent" :class="$style.consentNote">
-                <i class="ti ti-check"></i> フォント免責事項に同意済み
+                <i class="ti ti-check"></i> {{ fontCopy.consentAccepted }}
             </div>
         </FormSection>
         </template>
@@ -207,19 +207,19 @@ SPDX-License-Identifier: AGPL-3.0-only
              旗鯖fork: HatasabaUI 2 と HataSNSCordUI の端末設定を一つのタブに集約。 -->
         <template v-if="activeCat === 'glassUi'">
         <FormSection first>
-            <template #label>HatasabaUI 2 の設定</template>
+            <template #label>{{ uiCopy.hatasabaUi2Settings }}</template>
             <div style="font-size:.85em;opacity:.7;margin-bottom:12px;line-height:1.6;">
-                HatasabaUI 2（常に有効）の吹き出しデザイン・背景ヘッダー画像のぼかし・<b>ガラス面の透過率</b>、およびデッキのノート表示をまとめて設定します。<br>
-                ウィンドウは<b>開いたまま裏の HatasabaUI をリアルタイムに確認</b>できます。編集は<b>「保存」ボタンを押すまで永続化されません</b>。
+                {{ uiCopy.hatasabaUi2DescriptionPrefix }}<b>{{ uiCopy.glassOpacity }}</b>{{ uiCopy.hatasabaUi2DescriptionSuffix }}<br>
+                {{ uiCopy.windowPrefix }}<b>{{ uiCopy.livePreview }}</b>{{ uiCopy.windowMiddle }}<b>{{ uiCopy.notSavedUntilSave }}</b>{{ uiCopy.windowSuffix }}
             </div>
             <button class="_buttonPrimary" @click="openHatasabaUi2EditWindow" style="padding:10px 20px;font-weight:bold;">
-                <i class="ti ti-sparkles"></i> HatasabaUI 2 の設定を開く
+                <i class="ti ti-sparkles"></i> {{ uiCopy.openHatasabaUi2Settings }}
             </button>
         </FormSection>
         <FormSection>
-            <template #label>HataSNSCordUI の設定</template>
+            <template #label>{{ uiCopy.hataSnsCordUiSettings }}</template>
             <div style="font-size:.85em;opacity:.7;margin-bottom:14px;line-height:1.6;">
-                UIカラー、表示密度、リアルタイム更新などを設定します。ここでの変更は端末内に保存され、<b>HataSNSCordUI左上の調整メニューと常に同期</b>します。
+                {{ uiCopy.hataSnsCordUiDescriptionPrefix }}<b>{{ uiCopy.hataSnsCordUiSync }}</b>{{ uiCopy.hataSnsCordUiDescriptionSuffix }}
             </div>
             <HatacordingUiSettings :accountId="$i.id"/>
         </FormSection>
@@ -228,10 +228,10 @@ SPDX-License-Identifier: AGPL-3.0-only
         <!-- ===== ビジュアル (新設) ===== -->
         <template v-if="activeCat === 'visual'">
         <FormSection first>
-            <template #label>ノートの間隔</template>
-            <div style="font-size:.85em;opacity:.7;margin-bottom:12px;">タイムラインの投稿同士の間隔を調整します。即座に反映されます。</div>
+            <template #label>{{ visualCopy.noteSpacing }}</template>
+            <div style="font-size:.85em;opacity:.7;margin-bottom:12px;">{{ visualCopy.noteSpacingDescription }}</div>
             <div v-if="isDeckLike" style="font-size:.82em;color:var(--MI_THEME-warn);margin-bottom:10px;padding:8px 10px;border:1px solid var(--MI_THEME-divider);border-radius:8px;background:var(--MI_THEME-panel);">
-                <i class="ti ti-info-circle" style="margin-right:4px;"></i>デッキ表示中は情報密度を保つため、ノートの間隔は「詰める」に固定されます。
+                <i class="ti ti-info-circle" style="margin-right:4px;"></i>{{ visualCopy.deckSpacingFixed }}
             </div>
             <div :class="$style.spacingOptions">
                 <button v-for="opt in spacingOptions" :key="opt.value" :class="[$style.spacingCard, noteSpacing === opt.value && $style.spacingCardOn, isDeckLike && $style.spacingCardDisabled]" :disabled="isDeckLike" @click="!isDeckLike && (noteSpacing = opt.value)">
@@ -244,89 +244,89 @@ SPDX-License-Identifier: AGPL-3.0-only
                 </button>
             </div>
             <MkSwitch v-model="classicNoteSpacingDisplay" :disabled="isHatasabaUi || isMisskeyDefaultUi">
-                <template #label>従来のMisskey風の投稿間隔を使用する</template>
-                <template #caption>ONにするとタイムラインの投稿間隔が従来のMisskeyと同じ間隔になります。<br><span v-if="isHatasabaUi" style="color: var(--MI_THEME-warn);">※HatasabaUIでは常にON（従来Misskey風の投稿間隔：隙間0＋グレーのスペーサーで区切る表示）が適用されるため、変更できません。</span><span v-else-if="isMisskeyDefaultUi" style="color: var(--MI_THEME-warn);">※Misskey（デフォルト）UIでは常にON（従来Misskey風の表示）が適用されるため、変更できません。</span></template>
+                <template #label>{{ visualCopy.useClassicSpacing }}</template>
+                <template #caption>{{ visualCopy.useClassicSpacingCaption }}<br><span v-if="isHatasabaUi" style="color: var(--MI_THEME-warn);">{{ visualCopy.hatasabaSpacingLocked }}</span><span v-else-if="isMisskeyDefaultUi" style="color: var(--MI_THEME-warn);">{{ visualCopy.misskeySpacingLocked }}</span></template>
             </MkSwitch>
         </FormSection>
         <FormSection>
-            <template #label>日付の表示（スマホ・狭い画面）</template>
+            <template #label>{{ visualCopy.mobileDate }}</template>
             <MkSwitch v-model="showTimelineDateOnMobile">
-                <template #label>スマホ・狭い画面でも日付を表示する</template>
-                <template #caption>HatasabaUIをスマホサイズ（狭い画面）で使用しているとき、タイムラインの日付を従来どおりの位置（中央）に表示します。OFFのときは表示スペースの都合で日付を表示しません。広い画面では日付は左側におしゃれに表示されます。</template>
+                <template #label>{{ visualCopy.showMobileDate }}</template>
+                <template #caption>{{ visualCopy.showMobileDateCaption }}</template>
             </MkSwitch>
         </FormSection>
         <FormSection>
-            <template #label>表示効果</template>
+            <template #label>{{ visualCopy.displayEffects }}</template>
             <MkSwitch v-model="glassEffect">
-                <template #label>すりガラス効果を有効にする</template>
-                <template #caption>サイドメニューとウィジェットの背景にバナー画像のすりガラス表示を適用します。OFFにすると単色背景になり、描画負荷が軽減されます。</template>
+                <template #label>{{ visualCopy.enableGlassEffect }}</template>
+                <template #caption>{{ visualCopy.enableGlassEffectCaption }}</template>
             </MkSwitch>
             <MkSwitch v-model="deckNoBannerBg">
-                <template #label>デッキUIの背景にヘッダー画像のぼかしを使用しない</template>
-                <template #caption>ONにすると、HatasabaUIのデッキ表示の背景にプロフィールのヘッダー画像のぼかしを使わず、単色背景になります。描画負荷が軽減され、視認性が上がります。</template>
+                <template #label>{{ visualCopy.disableDeckBannerBlur }}</template>
+                <template #caption>{{ visualCopy.disableDeckBannerBlurCaption }}</template>
             </MkSwitch>
             <MkSwitch v-model="showPageHeader">
-                <template #label>HatasabaUIの追加ページヘッダーを表示する</template>
-                <template #caption>ONにすると、ページ上部にHatasabaUI独自のシンプルなヘッダー（ページタイトル＋戻るボタン）が追加で表示されます。OFFにするとページ自身のヘッダー（MkPageHeader）のみになり、タイトルの二重表示が解消されます。</template>
+                <template #label>{{ visualCopy.showExtraPageHeader }}</template>
+                <template #caption>{{ visualCopy.showExtraPageHeaderCaption }}</template>
             </MkSwitch>
         </FormSection>
         <FormSection>
-            <template #label>デッキタイムライン</template>
+            <template #label>{{ visualCopy.deckTimeline }}</template>
             <MkSwitch v-model="deckLatestNoteText">
-                <template #label>「最新のノートです」テキストを表示する</template>
-                <template #caption>OFF（既定）: デッキ最上部でタイムラインの先頭に到達したことを、テーマカラーの短い横線でシンプルに示します。<br>ON: 従来通り「（↑）最新のノートです」テキストを表示します。</template>
+                <template #label>{{ visualCopy.showLatestNoteText }}</template>
+                <template #caption>{{ visualCopy.showLatestNoteTextOff }}<br>{{ visualCopy.showLatestNoteTextOn }}</template>
             </MkSwitch>
             <MkSwitch v-model="showLegacyChannelPostButton">
-                <template #label>従来のチャンネル投稿ボタンを表示する</template>
-                <template #caption>OFF（既定）: HatasabaUI デッキのチャンネルカラムでは、ノートリスト最上部に固定表示された投稿ボタン（チャンネル×ペンアイコン）から投稿します。<br>ON: 従来の場所（カラムヘッダ右のペン+ボタン、および三点メニュー「このチャンネルへ投稿」）を表示します。</template>
+                <template #label>{{ visualCopy.showLegacyChannelPostButton }}</template>
+                <template #caption>{{ visualCopy.legacyChannelPostOff }}<br>{{ visualCopy.legacyChannelPostOn }}</template>
             </MkSwitch>
         </FormSection>
         <FormSection>
             <template #label>HataFeed</template>
             <MkSwitch v-model="hatafeedLeaves">
-                <template #label>ホーム背景で若葉を舞わせる</template>
-                <template #caption>HataFeed（フィードバックセンター）のホーム背景に若葉のアニメーションを表示します。光や動きに敏感な方に配慮し、デフォルトはOFFです。OSの「視差効果を減らす」設定時は自動的に止まります。</template>
+                <template #label>{{ visualCopy.hatafeedLeaves }}</template>
+                <template #caption>{{ visualCopy.hatafeedLeavesCaption }}</template>
             </MkSwitch>
         </FormSection>
         <FormSection>
-            <template #label>ウィジェット</template>
+            <template #label>{{ visualCopy.widgets }}</template>
             <MkSwitch v-model="widgetBorder">
-                <template #label>ウィジェットにテーマカラーの縁色を表示</template>
-                <template #caption>ウィジェットにアクセントカラーの縁を表示します（PC・モバイル両方）</template>
+                <template #label>{{ visualCopy.widgetBorder }}</template>
+                <template #caption>{{ visualCopy.widgetBorderCaption }}</template>
             </MkSwitch>
         </FormSection>
         </template>
 
         <template v-if="activeCat === 'hatask'">
         <FormSection first>
-            <template #label>Hatask の設定</template>
-            <div style="font-size:.85em;opacity:.7;margin-bottom:12px;line-height:1.6;">Hatask（ライフログ）の設定です。デザインテーマ・外観（ライト/ダーク）・カレンダー・通知・データ同期などをここから変更できます。設定内容は Hatask 本体と同期します。</div>
-            <button class="_buttonPrimary" @click="openHataskSettings" style="padding:10px 20px;font-weight:bold;"><i class="ti ti-settings"></i> Hatask の設定を開く</button>
+            <template #label>{{ hataskCopy.settings }}</template>
+            <div style="font-size:.85em;opacity:.7;margin-bottom:12px;line-height:1.6;">{{ hataskCopy.settingsDescription }}</div>
+            <button class="_buttonPrimary" @click="openHataskSettings" style="padding:10px 20px;font-weight:bold;"><i class="ti ti-settings"></i> {{ hataskCopy.openSettings }}</button>
         </FormSection>
         <FormSection>
-            <template #label>Hatask を開く</template>
-            <div style="font-size:.85em;opacity:.7;margin-bottom:12px;">Hatask の画面を開きます。</div>
-            <button class="_button" @click="goToHatask" style="padding:10px 20px;"><i class="ti ti-external-link"></i> Hatask を開く</button>
+            <template #label>{{ hataskCopy.open }}</template>
+            <div style="font-size:.85em;opacity:.7;margin-bottom:12px;">{{ hataskCopy.openDescription }}</div>
+            <button class="_button" @click="goToHatask" style="padding:10px 20px;"><i class="ti ti-external-link"></i> {{ hataskCopy.open }}</button>
         </FormSection>
         </template>
         <!-- ===== Hatady ===== -->
         <template v-if="activeCat === 'hatady'">
         <FormSection first>
-            <template #label>Hatady の設定</template>
-            <div style="font-size:.85em;opacity:.7;margin-bottom:12px;line-height:1.6;">Hatady（学習・読書記録）の設定です。テーマ（紙 / エスプレッソ / hataskey準拠）・言語・端末間同期・チュートリアルの再実行・記録の書き出しをここから変更できます。テーマと言語は独立して選べ、設定はアカウントに同期されます。</div>
-            <button class="_buttonPrimary" @click="openHatadySettings" style="padding:10px 20px;font-weight:bold;"><i class="ti ti-palette"></i> Hatady設定を開く</button>
+            <template #label>{{ hatadyCopy.settings }}</template>
+            <div style="font-size:.85em;opacity:.7;margin-bottom:12px;line-height:1.6;">{{ hatadyCopy.settingsDescription }}</div>
+            <button class="_buttonPrimary" @click="openHatadySettings" style="padding:10px 20px;font-weight:bold;"><i class="ti ti-palette"></i> {{ hatadyCopy.openSettings }}</button>
         </FormSection>
         <FormSection>
-            <template #label>Hatady を開く</template>
-            <div style="font-size:.85em;opacity:.7;margin-bottom:12px;">Hatady の画面を開きます。</div>
-            <button class="_button" @click="goToHatady" style="padding:10px 20px;"><i class="ti ti-external-link"></i> Hatady を開く</button>
+            <template #label>{{ hatadyCopy.open }}</template>
+            <div style="font-size:.85em;opacity:.7;margin-bottom:12px;">{{ hatadyCopy.openDescription }}</div>
+            <button class="_button" @click="goToHatady" style="padding:10px 20px;"><i class="ti ti-external-link"></i> {{ hatadyCopy.open }}</button>
         </FormSection>
         </template>
         <template v-if="activeCat === 'mascot'">
         <FormSection first>
-            <template #label>マスコット</template>
-            <div style="font-size:.85em;opacity:.7;margin-bottom:12px;line-height:1.6;">あなたが用意した画像をマスコットとして表示できる機能です。キャラクター・表情・文言（セリフ）を設定できます。画像はドライブから選択し、URLの参照のみを保存します。初回利用時に同意確認が表示されます。</div>
-            <button class="_buttonPrimary" @click="openMascotSettings" style="padding:10px 20px;font-weight:bold;"><i class="ti ti-mood-smile"></i> マスコットの設定を開く</button>
+            <template #label>{{ mascotCopy.title }}</template>
+            <div style="font-size:.85em;opacity:.7;margin-bottom:12px;line-height:1.6;">{{ mascotCopy.description }}</div>
+            <button class="_buttonPrimary" @click="openMascotSettings" style="padding:10px 20px;font-weight:bold;"><i class="ti ti-mood-smile"></i> {{ mascotCopy.openSettings }}</button>
         </FormSection>
         </template>
 
@@ -351,21 +351,21 @@ SPDX-License-Identifier: AGPL-3.0-only
              既存ユーザーの設定値は移動後もそのまま保持される (マイグレ不要)。 -->
         <template v-if="activeCat === 'accessibility'">
         <FormSection first>
-            <template #label>天気エフェクト</template>
+            <template #label>{{ otherCopy.weatherEffects }}</template>
             <MkSwitch v-model="weatherEffectEnabled">
-                <template #label>天気エフェクトを有効にする</template>
-                <template #caption>ノート本文に「雨」「雪」「晴れ」などの単語が含まれていると、タイムラインの背景に控えめな天気演出を表示します。光過敏症に配慮し、強い明滅や点滅は行いません。デフォルトはOFFです。</template>
+                <template #label>{{ otherCopy.enableWeatherEffects }}</template>
+                <template #caption>{{ otherCopy.weatherEffectsCaption }}</template>
             </MkSwitch>
             <div v-if="weatherEffectEnabled" class="_gaps_s" style="margin-top:10px;">
-                <div style="font-weight:bold;margin-bottom:8px;">演出の長さ</div>
+                <div style="font-weight:bold;margin-bottom:8px;">{{ otherCopy.effectDuration }}</div>
                 <MkRadios v-model="weatherEffectDuration">
-                    <option value="long">長め（該当する単語のノートがある間ずっと表示）</option>
-                    <option value="short">短め（出てから約10秒で消える）</option>
+                    <option value="long">{{ otherCopy.durationLong }}</option>
+                    <option value="short">{{ otherCopy.durationShort }}</option>
                 </MkRadios>
                 <div style="font-size:.82em;color:var(--MI_THEME-warn);padding:8px 10px;border:1px solid var(--MI_THEME-divider);border-radius:8px;background:var(--MI_THEME-panel);">
-                    ※ ノート本文の「雨」「雪」「晴れ」「強風」「流れ星」「新緑／若葉」「夏／青葉」などの単語に応じて演出が変わります。<br>
-                    ※「おはよう」「おやすみ」などの挨拶で出る演出は、この設定に関わらず約10秒で消えます。<br>
-                    ※ 演出は控えめに作っていますが、光や動きに少しでも違和感を覚えた場合は、すぐにこの設定をOFFにしてください。雷など強い閃光を伴う演出は安全のため実装していません。
+                    {{ otherCopy.weatherWordNote }}<br>
+                    {{ otherCopy.greetingNote }}<br>
+                    {{ otherCopy.safetyNote }}
                 </div>
             </div>
         </FormSection>
@@ -384,6 +384,7 @@ import FormSection from '@/components/form/section.vue';
 import FormLink from '@/components/form/link.vue';
 import MkFeatureBanner from '@/components/MkFeatureBanner.vue';
 import HatacordingUiSettings from '@/components/HatacordingUiSettings.vue';
+import { i18n } from '@/i18n.js';
 import * as os from '@/os.js';
 import { ensureSignin } from '@/i.js';
 import { useRouter } from '@/router.js';
@@ -402,6 +403,16 @@ import { misskeyApi } from '@/utility/misskey-api.js';
 // 旗鯖fork: applySidebarIconOverride も同上 (サイドバー編集はモーダル側で完結)。
 const router = useRouter();
 const $i = ensureSignin();
+const copy = i18n.ts._hata._customSettings;
+const copyx = i18n.tsx._hata._customSettings;
+const generalCopy = copy._general;
+const fontCopy = copy._font;
+const uiCopy = copy._ui;
+const visualCopy = copy._visual;
+const hataskCopy = copy._hatask;
+const hatadyCopy = copy._hatady;
+const mascotCopy = copy._mascot;
+const otherCopy = copy._other;
 
 // 旗鯖fork: タブ再編。
 //   - HatasabaUI 2 タブ新設 (グラス系設定を集約)
@@ -410,15 +421,15 @@ const $i = ensureSignin();
 //   - 見た目に関わらない設定 (directProfile / postFormVisibilityBorder 等) は general に移動
 // preferences のキー自体は変更しないため、既存ユーザーの設定は移動先タブでもそのまま保持される。
 const categories = [
-    { id: 'general', icon: 'ti ti-flag', label: '旗鯖全体' },
-    { id: 'font', icon: 'ti ti-typography', label: 'フォント' },
+    { id: 'general', icon: 'ti ti-flag', label: copy.categoryGeneral },
+    { id: 'font', icon: 'ti ti-typography', label: copy.categoryFont },
     { id: 'glassUi', icon: 'ti ti-layout-dashboard', label: 'UI' },
-    { id: 'visual', icon: 'ti ti-palette', label: 'ビジュアル' },
+    { id: 'visual', icon: 'ti ti-palette', label: copy.categoryVisual },
     { id: 'hatask', icon: 'ti ti-checklist', label: 'Hatask' },
     { id: 'hatady', icon: 'ti ti-book-2', label: 'Hatady' },
-    { id: 'mascot', icon: 'ti ti-mood-smile', label: 'マスコット' },
+    { id: 'mascot', icon: 'ti ti-mood-smile', label: copy.categoryMascot },
     { id: 'earthquake', icon: 'ti ti-activity', label: '地震ビューア' },
-    { id: 'accessibility', icon: 'ti ti-dots', label: 'その他' },
+    { id: 'accessibility', icon: 'ti ti-dots', label: copy.categoryOther },
 ];
 const activeCat = ref('general');
 
@@ -435,6 +446,18 @@ const customFontConsent = prefer.model('hataFont.customFontConsent');
 
 const fontPresets = HATA_FONT_PRESETS;
 const fontsPreloaded = ref(false);
+
+// プリセットの保存ID・既存labelは互換性のため維持し、表示だけ共通localeで解決する。
+function fontPresetLabel(preset: (typeof HATA_FONT_PRESETS)[number]): string {
+	const labels: Partial<Record<HataFontId, string>> = {
+		'zen-kaku': fontCopy.presetZenKaku,
+		'm-plus-1p': fontCopy.presetMPlus,
+		'dotgothic16': fontCopy.presetDotGothic,
+		'train-one': fontCopy.presetTrainOne,
+		'ibm-plex-sans-jp': fontCopy.presetIbmPlex,
+	};
+	return labels[preset.id] ?? preset.label;
+}
 
 // フォントタブを開いた時にすべてのプリセットフォントをプリロード
 function preloadAllFonts() {
@@ -461,15 +484,15 @@ async function openDrivePicker() {
     if (!customFontConsent.value) {
         const { canceled } = await os.confirm({
             type: 'warning',
-            title: 'フォント使用に関する免責事項',
+            title: fontCopy.disclaimerTitle,
             text: [
-                '自前のフォントを使用する場合、以下の事項に同意する必要があります。',
+                fontCopy.disclaimerIntro,
                 '',
-                '・使用しようとしているフォントのライセンスを確認し、使用条件に違反していないことを確認してください。',
-                '・ライセンスに違反したフォントを使用し、何らかの不利益を被ったとしても、サーバー管理者は一切の責任を負いません。',
-                '・フォントの表示品質や互換性についてもサーバー管理者は保証しません。',
+                fontCopy.disclaimerLicense,
+                fontCopy.disclaimerLiability,
+                fontCopy.disclaimerQuality,
                 '',
-                '同意しますか？',
+                fontCopy.disclaimerConfirm,
             ].join('\n'),
         });
         if (canceled) return;
@@ -521,8 +544,8 @@ watch(hideMutedReactions, async (newVal) => {
 });
 const timelineAnimationDirection = prefer.model('timelineAnimationDirection');
 const timelineAnimationOptions = [
-    { value: 'top', label: '上からスライド' }, { value: 'left', label: '左からスライド' },
-    { value: 'right', label: '右からスライド' }, { value: 'random', label: 'ランダム' },
+    { value: 'top', label: generalCopy.slideFromTop }, { value: 'left', label: generalCopy.slideFromLeft },
+    { value: 'right', label: generalCopy.slideFromRight }, { value: 'random', label: generalCopy.random },
 ];
 const openUiSetup = async () => {
     const { defineAsyncComponent: dac } = await import('vue');
@@ -606,12 +629,12 @@ async function addBotAllowlistUser() {
 	// 選択画面と保存直前の両方で、BOTアカウントだけに限定する。
 	const result = await os.selectUser({ botOnly: true });
 	if (!result?.isBot) {
-		os.alert({ type: 'warning', text: 'Botアカウントだけを例外に追加できます。' });
+		os.alert({ type: 'warning', text: generalCopy.botOnlyWarning });
 		return;
 	}
     const cur = ((botAllowlist.value as string[]) ?? []).slice();
     if (cur.includes(result.id)) {
-        os.alert({ type: 'info', text: 'このアカウントは既に許可リストに登録されています。' });
+        os.alert({ type: 'info', text: generalCopy.alreadyAllowed });
         return;
     }
     cur.push(result.id);
@@ -730,11 +753,11 @@ if (!isDeckLike.value && noteSpacing.value === 'compact') noteSpacing.value = 'm
 
 // 旗鯖fork(#15): 「詰める」は選択肢から除外(ほどよく / 広め の2択)。
 const spacingOptions = [
-    { value: 'moderate', label: 'ほどよく', previewMargin: '5px 0' },
-    { value: 'wide', label: '広め', previewMargin: '10px 0' },
+    { value: 'moderate', label: visualCopy.spacingModerate, previewMargin: '5px 0' },
+    { value: 'wide', label: visualCopy.spacingWide, previewMargin: '10px 0' },
 ] as const;
 
-definePage({ title: '旗鯖独自機能', icon: 'ti ti-flag' });
+definePage({ title: copy.title, icon: 'ti ti-flag' });
 </script>
 
 <style lang="scss" module>

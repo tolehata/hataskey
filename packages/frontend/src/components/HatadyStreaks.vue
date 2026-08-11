@@ -14,40 +14,40 @@ SPDX-License-Identifier: AGPL-3.0-only
 	:canResize="true"
 	@closed="emit('closed')"
 >
-	<template #header><i class="ti ti-flame"></i> {{ t('title') }}</template>
+	<template #header><i class="ti ti-flame"></i> {{ copy.title }}</template>
 
 	<div class="hatady-scope" :data-hatady-theme="theme" :class="$style.body">
-		<div v-if="loading" :class="$style.loading">{{ t('loading') }}</div>
+		<div v-if="loading" :class="$style.loading">{{ copy.loading }}</div>
 		<template v-else>
 			<!-- 現在 / 自己ベスト -->
 			<div :class="$style.summary">
 				<div :class="[$style.sumCard, $style.sumCurrent]">
 					<i class="ti ti-flame-filled" :class="$style.sumIcon"></i>
-					<div :class="$style.sumNum">{{ data.current }}<span :class="$style.sumUnit">{{ t('days') }}</span></div>
-					<div :class="$style.sumLbl">{{ t('current') }}</div>
+					<div :class="$style.sumNum">{{ data.current }}<span :class="$style.sumUnit">{{ copy.dayUnit }}</span></div>
+					<div :class="$style.sumLbl">{{ copy.current }}</div>
 				</div>
 				<div :class="$style.sumCard">
 					<i class="ti ti-trophy" :class="$style.sumIcon"></i>
-					<div :class="$style.sumNum">{{ data.best }}<span :class="$style.sumUnit">{{ t('days') }}</span></div>
-					<div :class="$style.sumLbl">{{ t('best') }}</div>
+					<div :class="$style.sumNum">{{ data.best }}<span :class="$style.sumUnit">{{ copy.dayUnit }}</span></div>
+					<div :class="$style.sumLbl">{{ copy.best }}</div>
 				</div>
 			</div>
 
 			<!-- 次の節目への進捗 -->
 			<div v-if="next" :class="$style.nextBox">
 				<div :class="$style.nextLabel">
-					<span><i class="ti ti-target"></i> {{ t('nextGoal') }}: <b>{{ next }}{{ t('days') }}</b></span>
-					<span :class="$style.remain">{{ t('remain').replace('{n}', String(next - data.current)) }}</span>
+					<span><i class="ti ti-target"></i> {{ copy.nextGoal }}: <b>{{ next }}{{ copy.dayUnit }}</b></span>
+					<span :class="$style.remain">{{ i18n.tsx._hata._hatady._streaks.remainingDays({ days: (next - data.current).toString() }) }}</span>
 				</div>
 				<div :class="$style.progressTrack">
 					<div :class="$style.progressFill" :style="{ width: nextProgress + '%' }"></div>
 				</div>
-				<div :class="$style.progressEnds"><span>{{ prev }}{{ t('days') }}</span><span>{{ next }}{{ t('days') }}</span></div>
+				<div :class="$style.progressEnds"><span>{{ prev }}{{ copy.dayUnit }}</span><span>{{ next }}{{ copy.dayUnit }}</span></div>
 			</div>
-			<div v-else :class="$style.allDone"><i class="ti ti-trophy"></i> {{ t('allDone') }}</div>
+			<div v-else :class="$style.allDone"><i class="ti ti-trophy"></i> {{ copy.allDone }}</div>
 
 			<!-- マイルストーン一覧 -->
-			<div :class="$style.listHead"><i class="ti ti-flag"></i> {{ t('milestones') }}</div>
+			<div :class="$style.listHead"><i class="ti ti-flag"></i> {{ copy.milestones }}</div>
 			<div :class="$style.list">
 				<div v-for="m in MILESTONES" :key="m" :class="[$style.item, data.current >= m && $style.itemDone, m === next && $style.itemNext]">
 					<span :class="$style.itemIcon">
@@ -56,8 +56,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<i v-else class="ti ti-lock"></i>
 					</span>
 					<div :class="$style.itemInfo">
-						<div :class="$style.itemDays">{{ m }}{{ t('daysStreak') }}</div>
-						<div :class="$style.itemState">{{ data.current >= m ? t('achieved') : (m === next ? t('inProgress') : t('locked')) }}</div>
+						<div :class="$style.itemDays">{{ m }}{{ copy.streakSuffix }}</div>
+						<div :class="$style.itemState">{{ data.current >= m ? copy.achieved : (m === next ? copy.inProgress : copy.locked) }}</div>
 					</div>
 					<div v-if="m === next" :class="$style.miniTrack"><div :class="$style.miniFill" :style="{ width: nextProgress + '%' }"></div></div>
 					<span v-else-if="data.current >= m" :class="$style.itemPct">100%</span>
@@ -65,10 +65,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</div>
 
 			<!-- 過去の連続期間 -->
-			<div :class="$style.listHead"><i class="ti ti-history"></i> {{ t('history') }}</div>
+			<div :class="$style.listHead"><i class="ti ti-history"></i> {{ copy.history }}</div>
 			<div v-if="data.periods.length === 0" :class="$style.empty">
 				<i class="ti ti-flame-off" :class="$style.emptyIcon"></i>
-				<div>{{ t('noData') }}</div>
+				<div>{{ copy.noData }}</div>
 			</div>
 			<div v-else :class="$style.list">
 				<div
@@ -79,9 +79,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<div :class="$style.itemInfo">
 						<div :class="$style.itemRange">{{ fmtRange(p.start, p.end) }}</div>
 						<div :class="$style.itemMeta">
-							<span>{{ p.days }}{{ t('daysStreak') }}</span>
-							<span v-if="isCurrentPeriod(p)" :class="$style.nowTag"><i class="ti ti-player-play"></i> {{ t('ongoing') }}</span>
-							<span v-else-if="p.days === data.best" :class="$style.bestTag"><i class="ti ti-trophy"></i> {{ t('bestTag') }}</span>
+							<span>{{ p.days }}{{ copy.streakSuffix }}</span>
+							<span v-if="isCurrentPeriod(p)" :class="$style.nowTag"><i class="ti ti-player-play"></i> {{ copy.ongoing }}</span>
+							<span v-else-if="p.days === data.best" :class="$style.bestTag"><i class="ti ti-trophy"></i> {{ copy.bestTag }}</span>
 						</div>
 					</div>
 					<span :class="$style.itemBar"><span :class="$style.itemFill" :style="{ width: barPct(p.days) + '%', background: barColor(p.days) }"></span></span>
@@ -95,13 +95,16 @@ SPDX-License-Identifier: AGPL-3.0-only
 <script lang="ts" setup>
 import { ref, computed, onMounted } from 'vue';
 import MkWindow from '@/components/MkWindow.vue';
-import { hatadyTheme, hatadyEffectiveLang, hatadyTzOffset } from '@/utility/hatady-prefs.js';
+import { i18n } from '@/i18n.js';
+import { hatadyTheme, hatadyTzOffset } from '@/utility/hatady-prefs.js';
+import { versatileLang } from '@/utility/intl-const.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 
 const emit = defineEmits<{ (ev: 'closed'): void }>();
 const dialog = ref<any>(null);
 const theme = hatadyTheme;
-const lang = hatadyEffectiveLang;
+const copy = i18n.ts._hata._hatady._streaks;
+const dateFormatter = new Intl.DateTimeFormat(versatileLang, { year: 'numeric', month: 'short', day: 'numeric' });
 
 type Period = { start: string; end: string; days: number };
 const loading = ref(true);
@@ -140,12 +143,9 @@ function parse(k: string): Date { const [y, m, d] = k.split('-').map(Number); re
 function fmtRange(start: string, end: string): string {
 	const s = parse(start); const e = parse(end);
 	const same = start === end;
-	if (lang.value === 'en') {
-		const f = (d: Date) => d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-		return same ? f(s) : `${f(s)} – ${f(e)}`;
-	}
-	const f = (d: Date) => `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`;
-	return same ? f(s) : `${f(s)} 〜 ${f(e)}`;
+	const startLabel = dateFormatter.format(s);
+	if (same) return startLabel;
+	return i18n.tsx._hata._hatady._streaks.dateRange({ start: startLabel, end: dateFormatter.format(e) });
 }
 function barPct(days: number): number {
 	const max = Math.max(1, data.value.best);
@@ -159,26 +159,6 @@ function barColor(days: number): string {
 	return '#a7a29a';
 }
 
-const DICT: Record<string, { ja: string; en: string }> = {
-	title: { ja: '連続記録', en: 'Study streak' },
-	loading: { ja: '読み込み中…', en: 'Loading…' },
-	days: { ja: '日', en: 'd' },
-	current: { ja: '現在の連続', en: 'Current streak' },
-	best: { ja: '自己ベスト', en: 'Personal best' },
-	nextGoal: { ja: '次の目標', en: 'Next goal' },
-	remain: { ja: 'あと{n}日', en: '{n} days to go' },
-	allDone: { ja: 'すべての節目を達成しました！素晴らしい継続です🔥', en: 'All milestones achieved! Amazing streak 🔥' },
-	milestones: { ja: 'マイルストーン', en: 'Milestones' },
-	achieved: { ja: '達成済み', en: 'Achieved' },
-	inProgress: { ja: '挑戦中', en: 'In progress' },
-	locked: { ja: '未達成', en: 'Locked' },
-	history: { ja: '過去の連続記録', en: 'Past streaks' },
-	daysStreak: { ja: '日連続', en: '-day streak' },
-	ongoing: { ja: '継続中', en: 'Ongoing' },
-	bestTag: { ja: '自己ベスト', en: 'Best' },
-	noData: { ja: 'まだ連続記録がありません。今日から始めましょう！', en: 'No streaks yet. Start today!' },
-};
-function t(key: string): string { return DICT[key]?.[lang.value] ?? key; }
 </script>
 
 <style lang="scss" module>

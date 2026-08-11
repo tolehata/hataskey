@@ -3,14 +3,14 @@
 <div class="htk-docs-root" :data-mode="themeMode" ref="rootEl">
 	<div class="htk-docs-bg"><div class="htk-docs-orb a"></div><div class="htk-docs-orb b"></div></div>
 	<div class="htk-docs-content">
-		<h1 class="htk-docs-title"><i class="ti ti-book"></i> 旗池2丁目 機能解説</h1>
+		<h1 class="htk-docs-title"><i class="ti ti-book"></i> {{ copy.pageHeading }}</h1>
 
 		<div class="htk-docs-search">
-			<input class="htk-docs-inp" v-model="searchQuery" placeholder="機能を検索...">
+			<input class="htk-docs-inp" v-model="searchQuery" :placeholder="copy.searchPlaceholder">
 		</div>
 
 		<div class="htk-docs-cats">
-			<button :class="['htk-docs-cat',!activeCat&&'on']" @click="activeCat=''">すべて</button>
+			<button :class="['htk-docs-cat',!activeCat&&'on']" @click="activeCat=''">{{ copy.all }}</button>
 			<button v-for="c in categories" :key="c.id" :class="['htk-docs-cat',activeCat===c.id&&'on']" @click="activeCat=activeCat===c.id?'':c.id">
 				<i :class="c.iconClass"></i> {{c.label}}
 			</button>
@@ -27,16 +27,16 @@
 				<div v-if="openDoc===doc.title" class="htk-docs-card-body" @click.stop>
 					<div v-html="doc.body"></div>
 					<div v-if="doc.tips&&doc.tips.length" class="htk-docs-tips">
-						<div class="htk-docs-tips-h"><i class="ti ti-bulb"></i> ヒント</div>
+						<div class="htk-docs-tips-h"><i class="ti ti-bulb"></i> {{ copy.tips }}</div>
 						<ul><li v-for="(t,i) in doc.tips" :key="i">{{t}}</li></ul>
 					</div>
-					<a v-if="doc.link" :href="doc.link.startsWith('http')?doc.link:undefined" @click.prevent="navigateLink(doc.link)" class="htk-docs-link">{{doc.linkLabel||'設定を開く'}} →</a>
+					<a v-if="doc.link" :href="doc.link.startsWith('http')?doc.link:undefined" @click.prevent="navigateLink(doc.link)" class="htk-docs-link">{{doc.linkLabel || copy.openSettings}} →</a>
 				</div>
 			</div>
 		</div>
 
 		<div class="htk-docs-footer">
-			※ここでは旗池2丁目独自の機能のみを記載しています。CherryPick / Misskey 本体の機能については公式ドキュメントをご参照ください。
+			{{ copy.footer }}
 		</div>
 	</div>
 </div>
@@ -47,8 +47,12 @@
 import { ref, computed } from 'vue';
 import { definePage } from '@/page.js';
 import { useRouter } from '@/router.js';
+import { i18n } from '@/i18n.js';
 
-definePage({ title: '旗鯖機能解説' });
+const copy = i18n.ts._hata._docs;
+const entries = copy._entries;
+
+definePage({ title: copy.pageTitle });
 
 const searchQuery = ref('');
 const activeCat = ref('');
@@ -76,104 +80,105 @@ const themeMode = computed(() => {
 
 const categories = [
 	{
-		id: 'hatask', iconClass: 'ti ti-layout-dashboard', label: 'Hatask',
+		id: 'hatask', iconClass: 'ti ti-layout-dashboard', label: copy.categoryHatask,
 		docs: [
-			{ iconClass: 'ti ti-layout-dashboard', title: 'Hataskとは', body: '予定、やること、気分、食事、お花など、毎日の記録を一か所にまとめられるツールです。<br><br>画面上部の項目を選ぶか左右に動かして、使いたい機能へ切り替えられます。', tips: ['見た目や暗い配色への切り替えは設定から変更できます'], link: '/hatask', linkLabel: 'Hataskを開く' },
-			{ iconClass: 'ti ti-calendar', title: 'カレンダー・出欠確認', body: '月ごとの予定を見たり、新しい予定を登録したりできます。一覧表示へ切り替え、日・週・月ごとに確認することもできます。<br><br>予定を公開して参加確認を有効にすると、ほかの利用者が「行く・検討中・辞退」で回答できます。主催者は回答状況と締め切りを確認できます。', tips: ['複数日にまたがる予定も作れます', '予定のお知らせ時刻を選べます'], link: '/hatask', linkLabel: 'カレンダーを開く' },
-			{ iconClass: 'ti ti-checkbox', title: 'やることリスト', body: 'やることの追加・完了・編集・削除ができます。期限やフォルダーを設定し、作成日や期限順で並べて確認できます。', tips: ['期限を過ぎた項目は赤く表示されます', '項目が増えるとページを分けて表示します'], link: '/hatask', linkLabel: 'やることリストを開く' },
-			{ iconClass: 'ti ti-mood-smile', title: 'きもち記録', body: 'その日の気分を5段階で記録し、最近の傾向を振り返れます。過去7日間の平均や、記録した時間帯ごとの傾向も確認できます。', tips: ['過去の記録はあとから編集・削除できます', '記録を促すお知らせも設定できます'], link: '/hatask', linkLabel: 'きもち記録を開く' },
-			{ iconClass: 'ti ti-bowl', title: 'ごはん記録', body: '朝・昼・夜・間食について「食べられた・少しだけ・食べられなかった」から選び、必要なら理由や短いメモを残せます。<br><br>量やカロリーを計算したり、結果に点数を付けたりはしません。どの状態も責めず、穏やかに振り返るための機能です。', tips: ['体調の不安が続くときは医療機関へご相談ください', '右上の「!」から説明を読み返せます'], link: '/hatask', linkLabel: 'ごはん記録を開く' },
-			{ iconClass: 'ti ti-plant', title: 'お庭（お花育成）', body: '旗鯖を使っている時間に応じて、お花が少しずつ育ちます。咲いた花には名前を付けられ、これまでのお花の一覧に加わります。<br><br>ホームのウィジェットでも、育成中の花の進み具合と咲いた花をコンパクトに確認できます。', tips: ['育て終えた花の名前はあとから変更できます', '珍しい花や少し変わった品も登場します'], link: '/hatask', linkLabel: 'お庭を開く' },
-			{ iconClass: 'ti ti-eye', title: 'Hatask Eye', body: '旗鯖の利用状況をもとに、ひとことメッセージを表示します。Hataskのホームにも置け、選ぶと詳しい画面へ移動します。', link: '/hatask', linkLabel: 'Hatask Eyeを開く' },
-			{ iconClass: 'ti ti-palette', title: 'Hataskの見た目', body: '落ち着いた「季」、明るいカード調の「花信」、紙もの風の「刷」から見た目を選べます。見た目を変えても、予定や記録はそのまま残ります。', tips: ['初回の案内または旗鯖独自設定から変更できます'], link: '/settings/hata-custom', linkLabel: 'Hataskの設定を開く' },
+			{ iconClass: 'ti ti-layout-dashboard', title: entries.hataskOverviewTitle, body: entries.hataskOverviewBody, tips: [entries.hataskOverviewTip1], link: '/hatask', linkLabel: entries.hataskOverviewLink },
+			{ iconClass: 'ti ti-calendar', title: entries.calendarAttendanceTitle, body: entries.calendarAttendanceBody, tips: [entries.calendarAttendanceTip1, entries.calendarAttendanceTip2], link: '/hatask', linkLabel: entries.calendarAttendanceLink },
+			{ iconClass: 'ti ti-checkbox', title: entries.todoListTitle, body: entries.todoListBody, tips: [entries.todoListTip1, entries.todoListTip2], link: '/hatask', linkLabel: entries.todoListLink },
+			{ iconClass: 'ti ti-mood-smile', title: entries.moodLogTitle, body: entries.moodLogBody, tips: [entries.moodLogTip1, entries.moodLogTip2], link: '/hatask', linkLabel: entries.moodLogLink },
+			{ iconClass: 'ti ti-bowl', title: entries.mealLogTitle, body: entries.mealLogBody, tips: [entries.mealLogTip1, entries.mealLogTip2], link: '/hatask', linkLabel: entries.mealLogLink },
+			{ iconClass: 'ti ti-plant', title: entries.gardenTitle, body: entries.gardenBody, tips: [entries.gardenTip1, entries.gardenTip2], link: '/hatask', linkLabel: entries.gardenLink },
+			{ iconClass: 'ti ti-eye', title: entries.hataskEyeTitle, body: entries.hataskEyeBody, link: '/hatask', linkLabel: entries.hataskEyeLink },
+			{ iconClass: 'ti ti-palette', title: entries.hataskAppearanceTitle, body: entries.hataskAppearanceBody, tips: [entries.hataskAppearanceTip1], link: '/settings/hata-custom', linkLabel: entries.hataskAppearanceLink },
 		],
 	},
 	{
-		id: 'hatady', iconClass: 'ti ti-book-2', label: 'Hatady（学習・読書記録）',
+		id: 'hatady', iconClass: 'ti ti-book-2', label: copy.categoryHatady,
 		docs: [
-			{ iconClass: 'ti ti-book-2', title: 'Hatadyとは', body: '勉強や読書を自分のペースで記録する場所です。「マイログ」「みんなの学習」「本棚」から、記録を残したり公開された学びを読んだり、本を整理したりできます。', tips: ['記録ごとに公開する相手を選べます', '自分だけの記録としても使えます'], link: '/hatady', linkLabel: 'Hatadyを開く' },
-			{ iconClass: 'ti ti-notebook', title: '学習記録と本棚', body: '題材、科目、かかった時間、短いメモを残せます。読書ではページ数や進み具合も記録できます。<br><br>本棚は「読書中・読み終えた・積読・読みたい」に分け、追加日や名前などで並べられます。', tips: ['記録はあとから編集できます'] },
-			{ iconClass: 'ti ti-bookmark', title: 'しおり・メモ・学習題材', body: '本の気になったページにしおりとメモを残せます。学習題材を登録すると、同じ題材の記録をあとから探しやすくなります。' },
-			{ iconClass: 'ti ti-chart-line', title: '目標と振り返り', body: '学習時間、記録数、読んだ本の数、続けた日数をまとめて確認できます。日ごとの活動や科目ごとの時間も見られるため、無理のない目標づくりに使えます。', tips: ['続けた日数は競争ではなく振り返りの目安です'] },
-			{ iconClass: 'ti ti-users', title: 'みんなの学習', body: '公開された学習記録を、新しい順・注目順・フォロー中に分けて読めます。気になる記録にはリアクションやコメントを送れます。', tips: ['非公開の記録はほかの人に表示されません'] },
-			{ iconClass: 'ti ti-settings', title: '見た目・言語・書き出し', body: '3種類の見た目と、日本語・英語・自動の表示言語を選べます。これまでの記録は文章ファイルとして手元に保存できます。', link: '/settings/hata-custom', linkLabel: 'Hatadyの設定を開く' },
+			{ iconClass: 'ti ti-book-2', title: entries.hatadyOverviewTitle, body: entries.hatadyOverviewBody, tips: [entries.hatadyOverviewTip1, entries.hatadyOverviewTip2], link: '/hatady', linkLabel: entries.hatadyOverviewLink },
+			{ iconClass: 'ti ti-notebook', title: entries.studyAndBookshelfTitle, body: entries.studyAndBookshelfBody, tips: [entries.studyAndBookshelfTip1] },
+			{ iconClass: 'ti ti-bookmark', title: entries.bookmarksNotesMaterialsTitle, body: entries.bookmarksNotesMaterialsBody },
+			{ iconClass: 'ti ti-chart-line', title: entries.goalsReviewTitle, body: entries.goalsReviewBody, tips: [entries.goalsReviewTip1] },
+			{ iconClass: 'ti ti-users', title: entries.publicStudyTitle, body: entries.publicStudyBody, tips: [entries.publicStudyTip1] },
+			{ iconClass: 'ti ti-settings', title: entries.hatadySettingsTitle, body: entries.hatadySettingsBody, link: '/settings/hata-custom', linkLabel: entries.hatadySettingsLink },
 		],
 	},
 	{
-		id: 'external', iconClass: 'ti ti-link', label: '外部アカウント連携',
+		id: 'external', iconClass: 'ti ti-link', label: copy.categoryExternal,
 		docs: [
-			{ iconClass: 'ti ti-link', title: '外部アカウント連携とは', body: '別の旗鯖アカウントや「さめすきーとチョリソリング」のアカウントを今見ている旗鯖へつなぎ、接続先の投稿を読んだり、投稿・返信・リアクション・リノートをしたりできます。<br><br>連携時は接続先の確認画面で許可する内容を確かめます。接続先の利用規約も事前にご確認ください。', tips: ['旗池3丁目とシュリンピアへの連携は終了しました', '以前この2サーバーを利用していた場合、更新時にログイン情報と絵文字の一時保存データを削除します'], link: '/settings/external-account', linkLabel: '連携設定を開く' },
-			{ iconClass: 'ti ti-device-tv', title: '外部の投稿を見る', body: '連携先でフォローしている人の投稿と、連携先全体の公開投稿を別々に表示できます。HatasabaUIでは「＋H」「＋L」から切り替えられます。', tips: ['表示する項目は連携設定で個別に切り替えられます'], link: '/settings/external-account', linkLabel: '連携設定を開く' },
-			{ iconClass: 'ti ti-star', title: 'お気に入りのリアクション絵文字', body: '外部の投稿でよく使う絵文字をお気に入りへ入れると、絵文字を選ぶ画面の先頭からすぐ使えます。', link: '/settings/external-account', linkLabel: 'お気に入り絵文字を管理' },
-			{ iconClass: 'ti ti-bell-ringing', title: '外部アカウントの通知', body: '連携先で届いた通知を旗鯖でも受け取れます。新しい通知は画面の端に表示され、専用ページでまとめて確認できます。', link: '/my/external-notifications', linkLabel: '外部通知を開く' },
+			{ iconClass: 'ti ti-link', title: entries.externalOverviewTitle, body: entries.externalOverviewBody, tips: [entries.externalOverviewTip1, entries.externalOverviewTip2], link: '/settings/external-account', linkLabel: entries.externalOverviewLink },
+			{ iconClass: 'ti ti-device-tv', title: entries.externalPostsTitle, body: entries.externalPostsBody, tips: [entries.externalPostsTip1], link: '/settings/external-account', linkLabel: entries.externalPostsLink },
+			{ iconClass: 'ti ti-star', title: entries.favoriteReactionEmojiTitle, body: entries.favoriteReactionEmojiBody, link: '/settings/external-account', linkLabel: entries.favoriteReactionEmojiLink },
+			{ iconClass: 'ti ti-bell-ringing', title: entries.externalNotificationsTitle, body: entries.externalNotificationsBody, link: '/my/external-notifications', linkLabel: entries.externalNotificationsLink },
 		],
 	},
 	{
-		id: 'ui', iconClass: 'ti ti-palette', label: '画面・見た目',
+		id: 'ui', iconClass: 'ti ti-palette', label: copy.categoryUi,
 		docs: [
-			{ iconClass: 'ti ti-device-mobile', title: '画面の種類を選ぶ', body: '標準の画面、旗鯖独自のHatasabaUI、複数の列を並べるデッキ画面から選べます。HatasabaUIはスマートフォンでも操作しやすい構成です。', link: '/settings/hata-custom', linkLabel: '画面の設定を開く' },
-			{ iconClass: 'ti ti-layout-list', title: 'HatasabaUI', body: '投稿を見ることを中心にした旗鯖独自の画面です。上部の項目や左右スワイプで、ホーム・ローカル・グローバルなどを切り替えられます。スワイプで切り替えたくない場合は設定で止められます。<br><br>HatasabaUI 2の見た目もこの画面に統合されており、カードをすりガラス風にするか、透け具合をどの程度にするかを選べます。通常表示とデッキ表示の両方に反映されます。', tips: ['パソコンでは上部メニューと左メニューを選べます', '設定用の小窓を開いたまま見た目を確かめられます'], link: '/settings/hata-custom', linkLabel: 'HatasabaUIの設定を開く' },
-			{ iconClass: 'ti ti-columns', title: 'HatasabaUIのデッキ表示', body: 'パソコンでは、ホーム、ローカル、通知、リスト、チャンネル、クリップ、お気に入りなどを複数の列に並べられます。列ごとに内容を更新でき、チャンネルの列からそのチャンネルへ直接投稿できます。', tips: ['投稿一覧が広がりすぎないよう、列の中だけで表示します'] },
-			{ iconClass: 'ti ti-movie', title: '新しい投稿が現れる動き', body: '新しい投稿が表示される方向を、上・左・右・毎回ランダムから選べます。動きが気になる場合は、端末の「視差効果を減らす」設定も利用できます。', link: '/settings/hata-custom', linkLabel: '動きの設定を開く' },
-			{ iconClass: 'ti ti-eye-off', title: 'リアクション絵文字の非表示', body: '見たくないリアクション絵文字を個別に隠せます。パソコンでは絵文字を右クリック、スマートフォンでは投稿の「…」メニューから設定できます。ミュートした人が付けたリアクションをまとめて隠すこともできます。', link: '/settings/hata-custom', linkLabel: '表示を管理する' },
-			{ iconClass: 'ti ti-robot', title: 'Bot投稿の非表示', body: '自動投稿を行うBotアカウントの投稿を、タイムラインから隠せます。表示を許可する例外も選べますが、候補にはBotアカウントだけが表示され、通常アカウントは追加できません。<br><br>通常の人がBotの投稿をリノートした場合も隠し、Botが通常の人の投稿をリノートした場合は元の投稿を表示します。', tips: ['通知画面や投稿単体の画面では隠しません'], link: '/settings/hata-custom', linkLabel: 'Bot表示を設定する' },
-			{ iconClass: 'ti ti-cloud-rain', title: '天気の背景演出', body: '投稿に雨・雪・晴れ・風・夜のあいさつなどの言葉があると、背景に控えめな演出を表示できます。雨粒、日差し、葉、流れ星などが画面に現れます。<br><br>強い点滅や雷のような演出は使いません。初期状態では無効で、動きが苦手な場合はいつでも止められます。', tips: ['演出を表示する長さも選べます', '体調に違和感があればすぐに無効にしてください'], link: '/settings/hata-custom', linkLabel: '背景演出を設定する' },
+			{ iconClass: 'ti ti-language', title: entries.languageSupportTitle, body: entries.languageSupportBody, tips: [entries.languageSupportTip1, entries.languageSupportTip2], link: '/settings/preferences', linkLabel: entries.languageSupportLink },
+			{ iconClass: 'ti ti-device-mobile', title: entries.chooseUiTitle, body: entries.chooseUiBody, link: '/settings/hata-custom', linkLabel: entries.chooseUiLink },
+			{ iconClass: 'ti ti-layout-list', title: entries.hatasabaUiTitle, body: entries.hatasabaUiBody, tips: [entries.hatasabaUiTip1, entries.hatasabaUiTip2], link: '/settings/hata-custom', linkLabel: entries.hatasabaUiLink },
+			{ iconClass: 'ti ti-columns', title: entries.deckTitle, body: entries.deckBody, tips: [entries.deckTip1] },
+			{ iconClass: 'ti ti-movie', title: entries.noteAnimationTitle, body: entries.noteAnimationBody, link: '/settings/hata-custom', linkLabel: entries.noteAnimationLink },
+			{ iconClass: 'ti ti-eye-off', title: entries.hideReactionEmojiTitle, body: entries.hideReactionEmojiBody, link: '/settings/hata-custom', linkLabel: entries.hideReactionEmojiLink },
+			{ iconClass: 'ti ti-robot', title: entries.hideBotPostsTitle, body: entries.hideBotPostsBody, tips: [entries.hideBotPostsTip1], link: '/settings/hata-custom', linkLabel: entries.hideBotPostsLink },
+			{ iconClass: 'ti ti-cloud-rain', title: entries.weatherBackgroundTitle, body: entries.weatherBackgroundBody, tips: [entries.weatherBackgroundTip1, entries.weatherBackgroundTip2], link: '/settings/hata-custom', linkLabel: entries.weatherBackgroundLink },
 		],
 	},
 	{
-		id: 'tools', iconClass: 'ti ti-tool', label: '便利なツール',
+		id: 'tools', iconClass: 'ti ti-tool', label: copy.categoryTools,
 		docs: [
-			{ iconClass: 'ti ti-brush', title: 'お絵かきツール', body: '旗鯖の画面内で絵を描けます。線の太さ・色・透明さを変え、複数の層に分けて描いたり、直前の操作を取り消したりできます。スマートフォンの指操作にも対応しています。', tips: ['投稿フォームのお絵かきボタンから開くと、描いた絵をそのまま添付できます'] },
-			{ iconClass: 'ti ti-id', title: 'HATA CARD MAKER（会員証）', body: '旗池2丁目の会員証風画像を作れる外部ツールです。旗鯖のアカウントで許可すると、利用者名や登録日をもとにカードを作ります。', tips: ['完成した画像は保存できます'], link: 'https://hatacardcreate.tolehata.net/', linkLabel: '会員証を作る' },
-			{ iconClass: 'ti ti-mood-search', title: 'HATAlyze（ハタライズ）', body: '自分の公開投稿から、よく使う言葉、投稿する時間帯、文章の長さ、気分の傾向などを振り返る外部ツールです。結果は娯楽としてお楽しみください。医療的な判断には使えません。', tips: ['結果は共有用の画像として保存できます', '取得した投稿を分析結果以外の目的で保存しません'], link: 'https://kanjo-bunseki.tolehata.net/', linkLabel: 'HATAlyzeを開く' },
-			{ iconClass: 'ti ti-door', title: '旗鯖ポータル', body: '旗鯖の各種ツール、絵文字申請、ガイドラインなどへの入口をまとめたページです。' },
+			{ iconClass: 'ti ti-brush', title: entries.drawingToolTitle, body: entries.drawingToolBody, tips: [entries.drawingToolTip1] },
+			{ iconClass: 'ti ti-id', title: entries.hataCardMakerTitle, body: entries.hataCardMakerBody, tips: [entries.hataCardMakerTip1], link: 'https://hatacardcreate.tolehata.net/', linkLabel: entries.hataCardMakerLink },
+			{ iconClass: 'ti ti-mood-search', title: entries.hatalyzeTitle, body: entries.hatalyzeBody, tips: [entries.hatalyzeTip1, entries.hatalyzeTip2], link: 'https://kanjo-bunseki.tolehata.net/', linkLabel: entries.hatalyzeLink },
+			{ iconClass: 'ti ti-door', title: entries.portalTitle, body: entries.portalBody },
 		],
 	},
 	{
-		id: 'posting', iconClass: 'ti ti-pencil', label: '投稿・チャンネル',
+		id: 'posting', iconClass: 'ti ti-pencil', label: copy.categoryPosting,
 		docs: [
-			{ iconClass: 'ti ti-brush', title: '投稿フォームのお絵かきボタン', body: '投稿を書く画面からお絵かきツールを開き、描いた絵をそのまま添付できます。ボタンが不要な場合は旗鯖独自設定で隠せます。', link: '/settings/hata-custom', linkLabel: '表示を設定する' },
-			{ iconClass: 'ti ti-palette', title: '投稿範囲ごとの枠色', body: '公開、ホーム、フォロワー、ダイレクトのどこへ投稿するかに応じて、投稿フォームの枠色を変えられます。投稿先の選び間違いに気づきやすくするための機能で、色は自分で選べます。', link: '/settings/hata-custom', linkLabel: '枠色を設定する' },
-			{ iconClass: 'ti ti-lock', title: 'プライベートチャンネル', body: '招待されたメンバーだけが内容を見られるチャンネルです。作成者と副管理者はメンバーを追加・除外でき、追加や除外は本人へ通知されます。あいことばを使って参加する方法もあります。<br><br>内容が外へ出ないよう、チャンネル外へのリノートや引用はできません。一度プライベートにしたチャンネルは公開へ戻せません。', tips: ['作成には管理者から付与された権限が必要です', '参加していない人には投稿内容を表示しません'], link: '/channels', linkLabel: 'チャンネルを開く' },
-			{ iconClass: 'ti ti-confetti', title: '宴（うたげ）チャレンジ', body: '「宴」「うたげ」「utage」を含む投稿をローカルへ出すと、15分間のチャレンジが始まります。誰からも反応されずに逃げ切ると成功、途中でリアクション・返信・リノートを受けると失敗です。', tips: ['初回に遊び方を表示します', '成功回数はプロフィールで確認できます'] },
+			{ iconClass: 'ti ti-brush', title: entries.drawingButtonTitle, body: entries.drawingButtonBody, link: '/settings/hata-custom', linkLabel: entries.drawingButtonLink },
+			{ iconClass: 'ti ti-palette', title: entries.visibilityBorderTitle, body: entries.visibilityBorderBody, link: '/settings/hata-custom', linkLabel: entries.visibilityBorderLink },
+			{ iconClass: 'ti ti-lock', title: entries.privateChannelTitle, body: entries.privateChannelBody, tips: [entries.privateChannelTip1, entries.privateChannelTip2], link: '/channels', linkLabel: entries.privateChannelLink },
+			{ iconClass: 'ti ti-confetti', title: entries.feastChallengeTitle, body: entries.feastChallengeBody, tips: [entries.feastChallengeTip1, entries.feastChallengeTip2] },
 		],
 	},
 	{
-		id: 'games', iconClass: 'ti ti-device-gamepad-2', label: 'ゲーム',
+		id: 'games', iconClass: 'ti ti-device-gamepad-2', label: copy.categoryGames,
 		docs: [
-			{ iconClass: 'ti ti-device-gamepad-2', title: 'Hataskey Gamesとは', body: '旗鯖のゲームをまとめたページです。各ゲームへの入口があり、対応するゲームでは記録をほかの利用者と比べられます。', link: '/games', linkLabel: 'ゲーム一覧を開く' },
+			{ iconClass: 'ti ti-device-gamepad-2', title: entries.gamesOverviewTitle, body: entries.gamesOverviewBody, link: '/games', linkLabel: entries.gamesOverviewLink },
 			{ iconClass: 'ti ti-flower', title: '花常（はなつね）', body: '花を並べて消すパズルと、花屋を舞台にした物語を楽しむゲームです。12か月の物語、町の人の投稿、たのみごと、花手帖、期間限定イベントがあります。', tips: ['音量や環境音はゲーム内で調整できます', '使用素材のクレジットもゲーム内で確認できます'], link: '/hanaawase', linkLabel: '花常へ' },
-			{ iconClass: 'ti ti-building', title: 'つみつみタワー', body: '絵文字を積み上げて高さを競うゲームです。一人で遊ぶほか、強さを選んでコンピューターとも対戦できます。', link: '/stacking-game', linkLabel: 'つみつみタワーで遊ぶ' },
-			{ iconClass: 'ti ti-hammer', title: '絵文字叩きゲーム', body: '次々に現れる絵文字を時間内に叩くゲームです。時間内の得点を競う遊び方、押しそびれるまで続く遊び方、コンピューターとの対戦があります。', link: '/whack-emoji', linkLabel: '絵文字叩きで遊ぶ' },
-			{ iconClass: 'ti ti-rocket', title: 'カスタムエモジシュート', body: '迫ってくる絵文字を撃ち落とすゲームです。進むほど相手が増え、通常とは違う不利な条件が付く遊び方も選べます。', link: '/emoji-shoot', linkLabel: 'エモジシュートで遊ぶ' },
+			{ iconClass: 'ti ti-building', title: entries.stackingGameTitle, body: entries.stackingGameBody, link: '/stacking-game', linkLabel: entries.stackingGameLink },
+			{ iconClass: 'ti ti-hammer', title: entries.whackEmojiTitle, body: entries.whackEmojiBody, link: '/whack-emoji', linkLabel: entries.whackEmojiLink },
+			{ iconClass: 'ti ti-rocket', title: entries.emojiShootTitle, body: entries.emojiShootBody, link: '/emoji-shoot', linkLabel: entries.emojiShootLink },
 		],
 	},
 	{
-		id: 'other', iconClass: 'ti ti-dots', label: 'その他',
+		id: 'other', iconClass: 'ti ti-dots', label: copy.categoryOther,
 		docs: [
-			{ iconClass: 'ti ti-news', title: '更新内容の案内', body: '新しい版へ更新したあと、ログインして最初に旗鯖を開いたときに、主な新機能と変更点をまとめた案内が一度表示されます。<br><br>閉じたあとに読み返すときは、「もっと！」を開き、「ヘルプ」内の「直近の更新内容」を選んでください。', tips: ['案内の各ボタンから、紹介している機能へ直接移動できます'] },
-			{ iconClass: 'ti ti-calendar-stats', title: 'ログイン日数・実績', body: '旗鯖へログインした日数や、次の節目までの日数をHataskのホームで確認できます。', link: '/hatask', linkLabel: 'Hataskを開く' },
-			{ iconClass: 'ti ti-search', title: 'Hatask内検索', body: 'Hataskの検索ボタンから、予定、やること、きもち記録などをまとめて探せます。' },
-			{ iconClass: 'ti ti-school', title: 'Hataskの初回案内', body: 'Hataskを初めて開いたとき、画面の主な場所を順番に案内します。設定からいつでも再表示できます。', link: '/settings/hata-custom', linkLabel: 'Hataskの設定を開く' },
-			{ iconClass: 'ti ti-speakerphone', title: 'お知らせの絞り込み', body: 'お知らせを「現在・過去」や、情報・警告・完了・メンテナンスなどの種類で絞り込めます。メンテナンスのお知らせは見落とさないよう常に表示します。', link: '/announcements', linkLabel: 'お知らせを開く' },
+			{ iconClass: 'ti ti-news', title: entries.whatsNewGuideTitle, body: entries.whatsNewGuideBody, tips: [entries.whatsNewGuideTip1] },
+			{ iconClass: 'ti ti-calendar-stats', title: entries.loginDaysAchievementsTitle, body: entries.loginDaysAchievementsBody, link: '/hatask', linkLabel: entries.loginDaysAchievementsLink },
+			{ iconClass: 'ti ti-search', title: entries.hataskSearchTitle, body: entries.hataskSearchBody },
+			{ iconClass: 'ti ti-school', title: entries.hataskTutorialTitle, body: entries.hataskTutorialBody, link: '/settings/hata-custom', linkLabel: entries.hataskTutorialLink },
+			{ iconClass: 'ti ti-speakerphone', title: entries.announcementsFilterTitle, body: entries.announcementsFilterBody, link: '/announcements', linkLabel: entries.announcementsFilterLink },
 		],
 	},
 	{
-		id: 'mascot', iconClass: 'ti ti-mood-happy', label: 'マスコット',
+		id: 'mascot', iconClass: 'ti ti-mood-happy', label: copy.categoryMascot,
 		docs: [
-			{ iconClass: 'ti ti-mood-happy', title: 'マスコット機能とは', body: '好きなキャラクター画像を画面に表示し、表情やセリフを設定できます。複数のキャラクターを登録して切り替えられます。', tips: ['画像はドライブから選べます', '利用には管理者から付与された権限が必要な場合があります'], link: '/mascot', linkLabel: 'マスコット設定を開く' },
-			{ iconClass: 'ti ti-drag-drop', title: '画面上での表示', body: 'マスコットを好きな位置へ動かし、最小化、左右反転、透明さ、ぼかしを調整できます。位置は次回も引き継がれます。' },
-			{ iconClass: 'ti ti-mood-smile', title: '表情とセリフ', body: '複数の表情と、それぞれに合うセリフを登録できます。表情には、跳ねる・揺れる・回るなどの動きも付けられます。吹き出しの位置、大きさ、向き、文字色も選べます。' },
-			{ iconClass: 'ti ti-refresh', title: '表情とセリフの自動切り替え', body: '表示中の表情やセリフを、5秒から30分までの間隔で自動的に切り替えられます。' },
-			{ iconClass: 'ti ti-bell', title: '通知・誕生日の演出', body: '通知が届いたときや誕生日に、専用の表情とセリフを表示できます。通知用の表情は2種類まで登録できます。' },
-			{ iconClass: 'ti ti-home', title: 'Hataskホームのマスコット', body: 'Hataskのホームにマスコットをカードとして置けます。画面上のマスコットと二重にならないよう自動で調整します。', link: '/hatask', linkLabel: 'Hataskを開く' },
-			{ iconClass: 'ti ti-file-import', title: '設定の保存と読み込み', body: 'マスコットの設定をファイルとして保存し、別の端末で読み込めます。バックアップにも使えます。', link: '/mascot', linkLabel: 'マスコット設定を開く' },
+			{ iconClass: 'ti ti-mood-happy', title: entries.mascotOverviewTitle, body: entries.mascotOverviewBody, tips: [entries.mascotOverviewTip1, entries.mascotOverviewTip2], link: '/mascot', linkLabel: entries.mascotOverviewLink },
+			{ iconClass: 'ti ti-drag-drop', title: entries.mascotDisplayTitle, body: entries.mascotDisplayBody },
+			{ iconClass: 'ti ti-mood-smile', title: entries.expressionsLinesTitle, body: entries.expressionsLinesBody },
+			{ iconClass: 'ti ti-refresh', title: entries.autoSwitchTitle, body: entries.autoSwitchBody },
+			{ iconClass: 'ti ti-bell', title: entries.notificationBirthdayTitle, body: entries.notificationBirthdayBody },
+			{ iconClass: 'ti ti-home', title: entries.hataskMascotTitle, body: entries.hataskMascotBody, link: '/hatask', linkLabel: entries.hataskMascotLink },
+			{ iconClass: 'ti ti-file-import', title: entries.mascotTransferTitle, body: entries.mascotTransferBody, link: '/mascot', linkLabel: entries.mascotTransferLink },
 		],
 	},
 	{
-		id: 'feedback', iconClass: 'ti ti-message-report', label: 'HataFeed（意見・不具合報告）',
+		id: 'feedback', iconClass: 'ti ti-message-report', label: copy.categoryFeedback,
 		docs: [
-			{ iconClass: 'ti ti-message-report', title: 'HataFeedとは', body: '旗鯖の不具合報告、要望、改善案、絵文字の申請をまとめて受け付ける場所です。投稿された話題は種類・状態・投稿者で絞り込み、返信やリアクションで話し合えます。特定の返信へ返事を付けたり、大切な返信や確認が必要な返信に印を付けたりもできます。<br><br>進行予定、お知らせ、絵文字申請も同じ画面から切り替えられます。自分の投稿への反応は通知で受け取れます。安全に関わる報告はスタッフだけが見られる場所で扱います。', tips: ['報告番号を選ぶと該当する内容へ直接移動できます', '絵文字申請は完成イメージを確認してから送信できます'], link: '/hatafeed', linkLabel: 'HataFeedを開く' },
+			{ iconClass: 'ti ti-message-report', title: entries.hatafeedOverviewTitle, body: entries.hatafeedOverviewBody, tips: [entries.hatafeedOverviewTip1, entries.hatafeedOverviewTip2], link: '/hatafeed', linkLabel: entries.hatafeedOverviewLink },
 		],
 	},
 	{
@@ -184,9 +189,9 @@ const categories = [
 		],
 	},
 	{
-		id: 'beta', iconClass: 'ti ti-flask', label: 'お試し機能',
+		id: 'beta', iconClass: 'ti ti-flask', label: copy.categoryBeta,
 		docs: [
-			{ iconClass: 'ti ti-flask', title: '開発中の機能を試す', body: 'HataFeedから、完成前の機能を試せます。現在は、CやC++の短いプログラムを書いて自分の端末内で動かせる遊び場があります。', tips: ['正しく動かない場合はHataFeedでお知らせください'], link: '/hatafeed', linkLabel: 'HataFeedを開く' },
+			{ iconClass: 'ti ti-flask', title: entries.betaOverviewTitle, body: entries.betaOverviewBody, tips: [entries.betaOverviewTip1], link: '/hatafeed', linkLabel: entries.betaOverviewLink },
 		],
 	},
 ];

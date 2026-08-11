@@ -25,7 +25,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</template>
 			</I18n>
 			<div style="margin-top: 0.2em;">
-				<a class="_link" @click="donateCherryPick">こちら</a>
+				<a class="_link" @click="donateCherryPick">{{ i18n.ts._hata._common.openDetails }}</a>
 			</div>
 		</div>
 		<div class="_buttons">

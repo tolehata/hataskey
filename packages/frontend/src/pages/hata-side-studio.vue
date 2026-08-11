@@ -6,115 +6,115 @@ SPDX-License-Identifier: AGPL-3.0-only
 <div :class="$style.root" :data-deck-ui="isHatasabaDeckUi ? 'on' : undefined">
 	<header :class="[$style.header, tutorialStep?.target === 'save' && $style.tutorialFocus]">
 		<div :class="$style.brand">
-			<button v-if="!isHatasabaDeckUi" type="button" class="_button" :class="$style.backButton" aria-label="戻る" @click.stop="closeStudio"><i class="ti ti-chevron-left"></i></button>
+			<button v-if="!isHatasabaDeckUi" type="button" class="_button" :class="$style.backButton" :aria-label="copy.back" @click.stop="closeStudio"><i class="ti ti-chevron-left"></i></button>
 			<strong :class="$style.logo">HataSideStudio</strong>
 		</div>
-		<div :class="$style.profileBar" aria-label="保存プロファイル">
-			<button v-for="profile in draft.profiles" :key="profile.id" type="button" class="_button" :class="$style.profileTab" :aria-pressed="profile.id === draft.activeProfileId" @click.stop="activateProfile(profile.id)">{{ profile.name }}</button>
-			<button type="button" class="_button" :class="$style.profileRename" aria-label="アクティブなプロファイル名を変更" @click.stop="renameProfile"><i class="ti ti-pencil"></i></button>
-			<button type="button" class="_button" :class="$style.profileRename" :disabled="draft.profiles.length <= 1" aria-label="アクティブなプロファイルを削除" @click.stop="removeProfile"><i class="ti ti-trash"></i></button>
-			<button type="button" class="_button" :class="$style.profileAdd" :disabled="draft.profiles.length >= profileLimit" :aria-label="`プロファイルを追加（上限${profileLimit}件）`" @click.stop="addProfile"><i class="ti ti-plus"></i></button>
+		<div :class="$style.profileBar" :aria-label="copy.savedProfiles">
+			<button v-for="profile in draft.profiles" :key="profile.id" type="button" class="_button" :class="$style.profileTab" :aria-pressed="profile.id === draft.activeProfileId" @click.stop="activateProfile(profile.id)">{{ profileDisplayName(profile.name) }}</button>
+			<button type="button" class="_button" :class="$style.profileRename" :aria-label="copy.renameActiveProfile" @click.stop="renameProfile"><i class="ti ti-pencil"></i></button>
+			<button type="button" class="_button" :class="$style.profileRename" :disabled="draft.profiles.length <= 1" :aria-label="copy.removeActiveProfile" @click.stop="removeProfile"><i class="ti ti-trash"></i></button>
+			<button type="button" class="_button" :class="$style.profileAdd" :disabled="draft.profiles.length >= profileLimit" :aria-label="copyx.addProfileLimit({ limit: profileLimit.toString() })" @click.stop="addProfile"><i class="ti ti-plus"></i></button>
 			<span :class="$style.profileLimit">{{ draft.profiles.length }} / {{ profileLimit }}</span>
 		</div>
 		<div :class="$style.headerActions">
-			<span v-if="hasChanges" :class="$style.dirty"><i class="ti ti-device-floppy"></i>未保存</span>
+			<span v-if="hasChanges" :class="$style.dirty"><i class="ti ti-device-floppy"></i>{{ copy.unsaved }}</span>
 			<div :class="$style.headerControlGroup">
 				<div :class="$style.historyActions">
 					<div :class="$style.resetWrap">
-						<button class="_button" :class="$style.historyButton" aria-label="デフォルトに戻す" @click="resetConfirmOpen = !resetConfirmOpen"><i class="ti ti-restore"></i></button>
-						<div v-if="resetConfirmOpen" :class="$style.resetConfirm"><b>このプロファイルを初期化しますか？</b><span>保存するまでは確定しません。</span><div><button class="_button" @click="resetConfirmOpen = false">やめる</button><button class="_buttonPrimary" @click="resetProfile">初期化</button></div></div>
+						<button class="_button" :class="$style.historyButton" :aria-label="copy.restoreDefaults" @click="resetConfirmOpen = !resetConfirmOpen"><i class="ti ti-restore"></i></button>
+						<div v-if="resetConfirmOpen" :class="$style.resetConfirm"><b>{{ copy.resetProfileQuestion }}</b><span>{{ copy.notFinalUntilSaved }}</span><div><button class="_button" @click="resetConfirmOpen = false">{{ copy.cancel }}</button><button class="_buttonPrimary" @click="resetProfile">{{ copy.reset }}</button></div></div>
 					</div>
-					<button class="_button" :class="$style.historyButton" :disabled="historyIndex <= 0" aria-label="ひとつ前へ" @click="undo"><i class="ti ti-arrow-back-up"></i></button>
-					<button class="_button" :class="$style.historyButton" :disabled="historyIndex >= history.length - 1" aria-label="ひとつ後へ" @click="redo"><i class="ti ti-arrow-forward-up"></i></button>
+					<button class="_button" :class="$style.historyButton" :disabled="historyIndex <= 0" :aria-label="copy.undo" @click="undo"><i class="ti ti-arrow-back-up"></i></button>
+					<button class="_button" :class="$style.historyButton" :disabled="historyIndex >= history.length - 1" :aria-label="copy.redo" @click="redo"><i class="ti ti-arrow-forward-up"></i></button>
 				</div>
-				<button type="button" class="_button" :class="$style.actionButton" :aria-label="hasChanges ? '変更を保存' : '保存済み'" @click.stop="save"><i class="ti ti-device-floppy"></i><span>{{ hasChanges ? '保存' : '保存済み' }}</span></button>
-				<button type="button" class="_button" :class="$style.actionButton" aria-label="チュートリアルを表示" @click.stop="startTutorial"><i class="ti ti-help"></i><span>使い方</span></button>
+				<button type="button" class="_button" :class="$style.actionButton" :aria-label="hasChanges ? copy.saveChanges : copy.saved" @click.stop="save"><i class="ti ti-device-floppy"></i><span>{{ hasChanges ? copy.save : copy.saved }}</span></button>
+				<button type="button" class="_button" :class="$style.actionButton" :aria-label="copy.showTutorial" @click.stop="startTutorial"><i class="ti ti-help"></i><span>{{ copy.howToUse }}</span></button>
 			</div>
 		</div>
 	</header>
 
 	<main :class="$style.main">
-		<section :class="$style.pane" aria-label="サイドメニュープレビュー">
+		<section :class="$style.pane" :aria-label="copy.sidebarPreview">
 			<div :class="$style.paneHead">
-				<div><h2>プレビュー</h2><span>{{ previewCount }}</span></div>
+				<div><h2>{{ copy.preview }}</h2><span>{{ previewCount }}</span></div>
 				<div :class="$style.previewHeadActions">
 					<div :class="$style.copyWrap">
-						<button class="_button" :class="$style.copyButton" :aria-expanded="copyMenuOpen" @click="copyMenuOpen = !copyMenuOpen"><i class="ti ti-copy"></i>並びをコピー<i class="ti ti-chevron-down"></i></button>
+						<button class="_button" :class="$style.copyButton" :aria-expanded="copyMenuOpen" @click="copyMenuOpen = !copyMenuOpen"><i class="ti ti-copy"></i>{{ copy.copyOrder }}<i class="ti ti-chevron-down"></i></button>
 						<div v-if="copyMenuOpen" :class="$style.copyMenu">
-							<button class="_button" @click="copyLayout('expandedToCollapsed')"><i class="ti ti-layout-sidebar-left-collapse"></i><span><b>拡大 → 縮小</b><small>ボタンだけを縦一列へコピー</small></span></button>
-							<button class="_button" @click="copyLayout('collapsedToExpanded')"><i class="ti ti-layout-sidebar-left-expand"></i><span><b>縮小 → 拡大</b><small>縮小側の順を拡大側へコピー</small></span></button>
-							<button class="_button" @click="importCurrentSidebar"><i class="ti ti-list-check"></i><span><b>現在の並びを読み込む</b><small>既存のサイドメニュー設定を反映</small></span></button>
+							<button class="_button" @click="copyLayout('expandedToCollapsed')"><i class="ti ti-layout-sidebar-left-collapse"></i><span><b>{{ copy.expandedToCollapsed }}</b><small>{{ copy.copyButtonsIntoOneColumn }}</small></span></button>
+							<button class="_button" @click="copyLayout('collapsedToExpanded')"><i class="ti ti-layout-sidebar-left-expand"></i><span><b>{{ copy.collapsedToExpanded }}</b><small>{{ copy.copyCollapsedOrderToExpanded }}</small></span></button>
+							<button class="_button" @click="importCurrentSidebar"><i class="ti ti-list-check"></i><span><b>{{ copy.importCurrentOrder }}</b><small>{{ copy.applyExistingSidebarSettings }}</small></span></button>
 						</div>
 					</div>
-					<div :class="$style.modeTabs"><button class="_button" :aria-pressed="editMode === 'expanded'" @click="setEditMode('expanded')">拡大</button><button class="_button" :aria-pressed="editMode === 'collapsed'" @click="setEditMode('collapsed')">縮小</button></div>
+					<div :class="$style.modeTabs"><button class="_button" :aria-pressed="editMode === 'expanded'" @click="setEditMode('expanded')">{{ copy.expanded }}</button><button class="_button" :aria-pressed="editMode === 'collapsed'" @click="setEditMode('collapsed')">{{ copy.collapsed }}</button></div>
 				</div>
 			</div>
 			<div ref="stageEl" :class="$style.stage">
-				<div :class="[$style.sideTools, tutorialStep?.target === 'create' && $style.tutorialFocus]" data-side="left" aria-label="追加メニュー">
-					<button class="_button" :class="$style.addAction" :disabled="editMode === 'collapsed'" @click="openWidgetPicker"><i class="ti ti-app-window"></i><span>ウィジェットを作成</span></button>
-					<button class="_button" :class="$style.addAction" :disabled="editMode === 'collapsed'" @click="addGroup"><i class="ti ti-category-plus"></i><span>グループを作成</span></button>
-					<button class="_button" :class="$style.addAction" @click="openButtonPicker"><i class="ti ti-square-rounded-plus"></i><span>ボタンを作成</span></button>
+				<div :class="[$style.sideTools, tutorialStep?.target === 'create' && $style.tutorialFocus]" data-side="left" :aria-label="copy.addMenu">
+					<button class="_button" :class="$style.addAction" :disabled="editMode === 'collapsed'" @click="openWidgetPicker"><i class="ti ti-app-window"></i><span>{{ copy.createWidget }}</span></button>
+					<button class="_button" :class="$style.addAction" :disabled="editMode === 'collapsed'" @click="addGroup"><i class="ti ti-category-plus"></i><span>{{ copy.createGroup }}</span></button>
+					<button class="_button" :class="$style.addAction" @click="openButtonPicker"><i class="ti ti-square-rounded-plus"></i><span>{{ copy.createButton }}</span></button>
 				</div>
 				<div :class="$style.sideTools" data-side="right">
-					<button class="_button" :class="[$style.bulkAction, deleteDropArmed && $style.deleteDropArmed]" :aria-pressed="deleteMode" data-delete-drop @pointerenter="armDeleteDrop" @pointerleave="disarmDeleteDrop" @dragover.prevent="armDeleteDrop" @click="deleteMode = !deleteMode"><i :class="deleteMode ? 'ti ti-check' : 'ti ti-trash-x'"></i><span>{{ dragHintVisible ? 'ここへ移動して削除' : deleteMode ? '編集完了' : '削除' }}</span></button>
-					<button class="_button" :class="$style.reorderAction" :aria-pressed="reorderOpen" @click="toggleReorder"><i class="ti ti-arrows-sort"></i><span>高度な並び替え</span></button>
+					<button class="_button" :class="[$style.bulkAction, deleteDropArmed && $style.deleteDropArmed]" :aria-pressed="deleteMode" data-delete-drop @pointerenter="armDeleteDrop" @pointerleave="disarmDeleteDrop" @dragover.prevent="armDeleteDrop" @click="deleteMode = !deleteMode"><i :class="deleteMode ? 'ti ti-check' : 'ti ti-trash-x'"></i><span>{{ dragHintVisible ? copy.moveHereToDelete : deleteMode ? copy.finishEditing : copy.delete }}</span></button>
+					<button class="_button" :class="$style.reorderAction" :aria-pressed="reorderOpen" @click="toggleReorder"><i class="ti ti-arrows-sort"></i><span>{{ copy.advancedReorder }}</span></button>
 				</div>
 
 				<Teleport to="body">
 				<div :class="$style.teleportTheme">
 				<div v-if="buttonPickerOpen" :class="$style.creationPicker">
-					<div :class="$style.pickerHead"><strong>ボタンを作成</strong><button class="_button" @click="buttonPickerOpen = false"><i class="ti ti-x"></i></button></div>
-					<label>機能<select v-model="newButtonMenuId" :class="$style.select"><option v-for="item in availableMenuItems" :key="item.id" :value="item.id">{{ item.label }}</option></select></label>
-					<span>ボタンの形</span><div :class="$style.shapePicker"><button v-for="shape in buttonShapes" :key="shape.value" class="_button" :aria-pressed="newButtonShape === shape.value" @click="newButtonShape = shape.value"><span :data-shape="shape.value"></span><small>{{ shape.label }}</small></button></div>
-					<div :class="$style.pickerActions"><button class="_button" @click="buttonPickerOpen = false">キャンセル</button><button class="_buttonPrimary" :disabled="!newButtonMenuId" @click="confirmAddButton">追加</button></div>
+					<div :class="$style.pickerHead"><strong>{{ copy.createButton }}</strong><button class="_button" @click="buttonPickerOpen = false"><i class="ti ti-x"></i></button></div>
+					<label>{{ copy.feature }}<select v-model="newButtonMenuId" :class="$style.select"><option v-for="item in availableMenuItems" :key="item.id" :value="item.id">{{ getHataSideStudioMenuDisplayLabel(item.id, item.label) }}</option></select></label>
+					<span>{{ copy.buttonShape }}</span><div :class="$style.shapePicker"><button v-for="shape in buttonShapes" :key="shape.value" class="_button" :aria-pressed="newButtonShape === shape.value" @click="newButtonShape = shape.value"><span :data-shape="shape.value"></span><small>{{ shape.label }}</small></button></div>
+					<div :class="$style.pickerActions"><button class="_button" @click="buttonPickerOpen = false">{{ copy.cancel }}</button><button class="_buttonPrimary" :disabled="!newButtonMenuId" @click="confirmAddButton">{{ copy.add }}</button></div>
 				</div>
 				<div v-if="widgetPickerOpen" :class="$style.creationPicker">
-					<div :class="$style.pickerHead"><strong>ウィジェットを作成</strong><button class="_button" @click="widgetPickerOpen = false"><i class="ti ti-x"></i></button></div>
-					<label>種類<select v-model="newWidgetKind" :class="$style.select"><option v-for="widget in availableWidgetChoices" :key="widget.kind" :value="widget.kind">{{ widget.label }}</option></select></label>
-					<div :class="$style.pickerActions"><button class="_button" @click="widgetPickerOpen = false">キャンセル</button><button class="_buttonPrimary" @click="confirmAddWidget">追加</button></div>
+					<div :class="$style.pickerHead"><strong>{{ copy.createWidget }}</strong><button class="_button" @click="widgetPickerOpen = false"><i class="ti ti-x"></i></button></div>
+					<label>{{ copy.type }}<select v-model="newWidgetKind" :class="$style.select"><option v-for="widget in availableWidgetChoices" :key="widget.kind" :value="widget.kind">{{ widget.label }}</option></select></label>
+					<div :class="$style.pickerActions"><button class="_button" @click="widgetPickerOpen = false">{{ copy.cancel }}</button><button class="_buttonPrimary" @click="confirmAddWidget">{{ copy.add }}</button></div>
 				</div>
 				<div v-if="reorderOpen" :class="$style.reorderWindow">
-					<div :class="$style.pickerHead"><div><strong>高度な並び替え</strong><small>矢印で1段ずつ移動</small></div><button class="_button" aria-label="閉じる" @click="reorderOpen = false"><i class="ti ti-x"></i></button></div>
+					<div :class="$style.pickerHead"><div><strong>{{ copy.advancedReorder }}</strong><small>{{ copy.moveOneStepWithArrows }}</small></div><button class="_button" :aria-label="copy.close" @click="reorderOpen = false"><i class="ti ti-x"></i></button></div>
 					<section v-for="section in reorderSections" :key="section.id" :class="$style.reorderSection" :data-container="section.id">
 						<b>{{ section.label }}</b>
 						<div v-for="(item, index) in section.items" :key="item.id" :class="$style.reorderRow">
 							<i :class="item.icon"></i><span>{{ item.label }}</span>
-							<button class="_button" :disabled="index === 0" :aria-label="`${item.label}を上へ`" @click="moveReorderItem(section.id, index, -1)"><i class="ti ti-arrow-up"></i></button>
-							<button class="_button" :disabled="index === section.items.length - 1" :aria-label="`${item.label}を下へ`" @click="moveReorderItem(section.id, index, 1)"><i class="ti ti-arrow-down"></i></button>
+							<button class="_button" :disabled="index === 0" :aria-label="copyx.moveItemUp({ item: item.label })" @click="moveReorderItem(section.id, index, -1)"><i class="ti ti-arrow-up"></i></button>
+							<button class="_button" :disabled="index === section.items.length - 1" :aria-label="copyx.moveItemDown({ item: item.label })" @click="moveReorderItem(section.id, index, 1)"><i class="ti ti-arrow-down"></i></button>
 						</div>
 					</section>
 				</div>
 				<div v-if="quickEditorOpen && selected != null" :class="$style.quickEditor">
-					<div :class="$style.pickerHead"><div><strong>{{ selected.type === 'group' ? 'グループをその場で調整' : 'その場で調整' }}</strong><small>{{ selectedDisplayName }}</small></div><button class="_button" aria-label="閉じる" @click="quickEditorOpen = false"><i class="ti ti-x"></i></button></div>
+					<div :class="$style.pickerHead"><div><strong>{{ selected.type === 'group' ? copy.adjustGroupHere : copy.adjustHere }}</strong><small>{{ selectedDisplayName }}</small></div><button class="_button" :aria-label="copy.close" @click="quickEditorOpen = false"><i class="ti ti-x"></i></button></div>
 					<template v-if="selected.type === 'group'">
-						<label :class="$style.quickField"><span>グループ名</span><input v-model="selected.name" :class="$style.input" maxlength="80"></label>
-						<label :class="$style.check"><input v-model="selected.showName" type="checkbox">グループ名を表示</label>
-						<div :class="$style.quickSection"><b>レイアウト</b><div :class="$style.layoutPicker"><button class="_button" :aria-pressed="selected.columns === 1 && !selected.masonry" @click="setGroupLayout(selected, 1, false)"><i class="ti ti-layout-list"></i><span>縦1列</span></button><button class="_button" :disabled="!canSetGroupColumns(selected, 2)" :aria-pressed="selected.columns === 2 && !selected.masonry" @click="setGroupLayout(selected, 2, false)"><i class="ti ti-layout-grid"></i><span>田の字</span></button><button class="_button" :disabled="!canSetGroupColumns(selected, 3)" :aria-pressed="selected.columns === 3 && !selected.masonry" @click="setGroupLayout(selected, 3, false)"><i class="ti ti-layout-grid-add"></i><span>3列</span></button><button class="_button" :disabled="!canSetGroupColumns(selected, Math.max(2, selected.columns) as 2 | 3)" :aria-pressed="selected.masonry" @click="setGroupLayout(selected, Math.max(2, selected.columns) as 2 | 3, true)"><i class="ti ti-layout-board-split"></i><span>メイソンリー</span></button></div><small v-if="groupHasLargeItems(selected)">「大」の項目がある間は複数列にできません。</small></div>
-						<div :class="$style.quickColors"><label>背景<input type="color" :value="cssColor(selected.background)" @input="selected.background = ($event.target as HTMLInputElement).value"></label><label>枠<input type="color" :value="cssColor(selected.border)" @input="selected.border = ($event.target as HTMLInputElement).value"></label></div>
+						<label :class="$style.quickField"><span>{{ copy.groupName }}</span><input v-model="selected.name" :class="$style.input" maxlength="80"></label>
+						<label :class="$style.check"><input v-model="selected.showName" type="checkbox">{{ copy.showGroupName }}</label>
+						<div :class="$style.quickSection"><b>{{ copy.layout }}</b><div :class="$style.layoutPicker"><button class="_button" :aria-pressed="selected.columns === 1 && !selected.masonry" @click="setGroupLayout(selected, 1, false)"><i class="ti ti-layout-list"></i><span>{{ copy.oneColumn }}</span></button><button class="_button" :disabled="!canSetGroupColumns(selected, 2)" :aria-pressed="selected.columns === 2 && !selected.masonry" @click="setGroupLayout(selected, 2, false)"><i class="ti ti-layout-grid"></i><span>{{ copy.grid }}</span></button><button class="_button" :disabled="!canSetGroupColumns(selected, 3)" :aria-pressed="selected.columns === 3 && !selected.masonry" @click="setGroupLayout(selected, 3, false)"><i class="ti ti-layout-grid-add"></i><span>{{ copy.threeColumns }}</span></button><button class="_button" :disabled="!canSetGroupColumns(selected, Math.max(2, selected.columns) as 2 | 3)" :aria-pressed="selected.masonry" @click="setGroupLayout(selected, Math.max(2, selected.columns) as 2 | 3, true)"><i class="ti ti-layout-board-split"></i><span>{{ copy.masonry }}</span></button></div><small v-if="groupHasLargeItems(selected)">{{ copy.largeItemsPreventMultipleColumns }}</small></div>
+						<div :class="$style.quickColors"><label>{{ copy.background }}<input type="color" :value="cssColor(selected.background)" @input="selected.background = ($event.target as HTMLInputElement).value"></label><label>{{ copy.border }}<input type="color" :value="cssColor(selected.border)" @input="selected.border = ($event.target as HTMLInputElement).value"></label></div>
 					</template>
 					<template v-else>
-						<div :class="$style.quickSection"><b>形</b><div :class="$style.shapePicker"><button v-for="shape in buttonShapes" :key="shape.value" class="_button" :aria-pressed="selected.shape === shape.value" @click="selected.shape = shape.value"><span :data-shape="shape.value"></span><small>{{ shape.label }}</small></button></div></div>
-						<div v-if="editMode === 'expanded'" :class="$style.quickSection"><b>大きさ</b><div :class="$style.choiceRow"><button v-for="size in sizes" :key="size.value" class="_button" :disabled="!canSetNodeSize(selected, size.value)" :data-active="selected.size === size.value" @click="setNodeSize(selected, size.value)">{{ size.label }}</button></div><small v-if="selectedParentColumns > 1">複数列では「大」を選べません。</small></div>
-						<label v-if="selected.type === 'button' && editMode === 'expanded'" :class="$style.check"><input v-model="selected.showLabel" type="checkbox">ラベルを表示</label>
-						<label v-if="selected.type === 'button' && editMode === 'expanded'" :class="$style.field"><span>回転</span><input v-model.number="selected.rotation" type="range" min="-12" max="12" step="1"><output>{{ selected.rotation }}°</output></label>
-						<label v-if="selected.type === 'button' && editMode === 'collapsed'" :class="$style.check"><input v-model="selected.borderVisible" type="checkbox">枠線を表示</label>
-						<div :class="$style.quickColors"><label>背景<input type="color" :value="cssColor(selected.background)" @input="selected.background = ($event.target as HTMLInputElement).value"></label><label>枠<input type="color" :value="cssColor(selected.border)" @pointerdown="promptCollapsedBorderVisibility(selected, $event)" @keydown.enter.prevent="promptCollapsedBorderVisibility(selected, $event)" @input="selected.border = ($event.target as HTMLInputElement).value"></label><label>文字<input type="color" :value="cssColor(selected.foreground)" @input="selected.foreground = ($event.target as HTMLInputElement).value"></label></div>
+						<div :class="$style.quickSection"><b>{{ copy.shape }}</b><div :class="$style.shapePicker"><button v-for="shape in buttonShapes" :key="shape.value" class="_button" :aria-pressed="selected.shape === shape.value" @click="selected.shape = shape.value"><span :data-shape="shape.value"></span><small>{{ shape.label }}</small></button></div></div>
+						<div v-if="editMode === 'expanded'" :class="$style.quickSection"><b>{{ copy.size }}</b><div :class="$style.choiceRow"><button v-for="size in sizes" :key="size.value" class="_button" :disabled="!canSetNodeSize(selected, size.value)" :data-active="selected.size === size.value" @click="setNodeSize(selected, size.value)">{{ size.label }}</button></div><small v-if="selectedParentColumns > 1">{{ copy.largeUnavailableInMultipleColumns }}</small></div>
+						<label v-if="selected.type === 'button' && editMode === 'expanded'" :class="$style.check"><input v-model="selected.showLabel" type="checkbox">{{ copy.showLabel }}</label>
+						<label v-if="selected.type === 'button' && editMode === 'expanded'" :class="$style.field"><span>{{ copy.rotation }}</span><input v-model.number="selected.rotation" type="range" min="-12" max="12" step="1"><output>{{ selected.rotation }}°</output></label>
+						<label v-if="selected.type === 'button' && editMode === 'collapsed'" :class="$style.check"><input v-model="selected.borderVisible" type="checkbox">{{ copy.showBorder }}</label>
+						<div :class="$style.quickColors"><label>{{ copy.background }}<input type="color" :value="cssColor(selected.background)" @input="selected.background = ($event.target as HTMLInputElement).value"></label><label>{{ copy.border }}<input type="color" :value="cssColor(selected.border)" @pointerdown="promptCollapsedBorderVisibility(selected, $event)" @keydown.enter.prevent="promptCollapsedBorderVisibility(selected, $event)" @input="selected.border = ($event.target as HTMLInputElement).value"></label><label>{{ copy.text }}<input type="color" :value="cssColor(selected.foreground)" @input="selected.foreground = ($event.target as HTMLInputElement).value"></label></div>
 					</template>
-					<label :class="$style.field"><span>枠線</span><input v-model.number="selected.borderWidth" type="range" min="0" max="5"><output>{{ selected.borderWidth }}px</output></label>
-					<label :class="$style.quickField"><span>枠線の種類</span><select v-model="selected.borderStyle" :class="$style.select"><option value="solid">実線</option><option value="dashed">破線</option><option value="double">二重線</option></select></label>
+					<label :class="$style.field"><span>{{ copy.border }}</span><input v-model.number="selected.borderWidth" type="range" min="0" max="5"><output>{{ selected.borderWidth }}px</output></label>
+					<label :class="$style.quickField"><span>{{ copy.borderStyle }}</span><select v-model="selected.borderStyle" :class="$style.select"><option value="solid">{{ copy.solid }}</option><option value="dashed">{{ copy.dashed }}</option><option value="double">{{ copy.double }}</option></select></label>
 					<GradientEditor :modelValue="selected"/>
-					<div :class="$style.pickerActions"><button class="_button" @click="quickEditorOpen = false">閉じる</button><button class="_buttonPrimary" @click="openSelectedInspector"><i class="ti ti-adjustments-horizontal"></i>詳細設定</button></div>
+					<div :class="$style.pickerActions"><button class="_button" @click="quickEditorOpen = false">{{ copy.close }}</button><button class="_buttonPrimary" @click="openSelectedInspector"><i class="ti ti-adjustments-horizontal"></i>{{ copy.advancedSettings }}</button></div>
 				</div>
-				<div v-if="dragHintVisible" :class="$style.dragHint" :style="dragHintStyle"><i class="ti ti-hand-move"></i><span>プレビュー横の簡易タイムラインで、項目同士の隙間へ重ねて移動できます。</span></div>
-				<aside v-if="dragHintVisible" :class="$style.dragTimeline" :style="dragTimelineStyle" aria-label="ドラッグ中の簡易タイムライン" @pointerleave="timelineDropTarget = null">
-					<div :class="$style.dragTimelineHead"><i class="ti ti-timeline"></i><span><b>並び順</b><small>入れたい位置へ重ねる</small></span></div>
-					<button class="_button" :class="[$style.dragTimelineDelete, deleteDropArmed && $style.deleteDropArmed]" data-delete-drop @pointerenter="armDeleteDrop" @pointerleave="disarmDeleteDrop" @dragover.prevent="armDeleteDrop"><i class="ti ti-trash-x"></i><span><b>削除</b><small>ここへ重ねる</small></span></button>
+				<div v-if="dragHintVisible" :class="$style.dragHint" :style="dragHintStyle"><i class="ti ti-hand-move"></i><span>{{ copy.dragTimelineHint }}</span></div>
+				<aside v-if="dragHintVisible" :class="$style.dragTimeline" :style="dragTimelineStyle" :aria-label="copy.dragTimelineAria" @pointerleave="timelineDropTarget = null">
+					<div :class="$style.dragTimelineHead"><i class="ti ti-timeline"></i><span><b>{{ copy.order }}</b><small>{{ copy.dropAtDesiredPosition }}</small></span></div>
+					<button class="_button" :class="[$style.dragTimelineDelete, deleteDropArmed && $style.deleteDropArmed]" data-delete-drop @pointerenter="armDeleteDrop" @pointerleave="disarmDeleteDrop" @dragover.prevent="armDeleteDrop"><i class="ti ti-trash-x"></i><span><b>{{ copy.delete }}</b><small>{{ copy.dropHere }}</small></span></button>
 					<section v-for="section in dragTimelineSections" :key="section.id" :class="$style.dragTimelineSection" :data-container="section.id">
 						<strong @pointerenter="timelineDropTarget = null">{{ section.label }}</strong>
-						<button class="_button" :class="$style.dragTimelineGap" :disabled="!canUseTimelineContainer(section.id)" data-timeline-drop :data-container-id="section.id" :data-index="0" :data-active="timelineDropTarget?.containerId === section.id && timelineDropTarget?.index === 0" @pointerenter="armTimelineDrop(section.id, 0)" @dragover.prevent="armTimelineDrop(section.id, 0)"><i class="ti ti-plus"></i><span>先頭へ挿入</span></button>
+						<button class="_button" :class="$style.dragTimelineGap" :disabled="!canUseTimelineContainer(section.id)" data-timeline-drop :data-container-id="section.id" :data-index="0" :data-active="timelineDropTarget?.containerId === section.id && timelineDropTarget?.index === 0" @pointerenter="armTimelineDrop(section.id, 0)" @dragover.prevent="armTimelineDrop(section.id, 0)"><i class="ti ti-plus"></i><span>{{ copy.insertAtStart }}</span></button>
 						<template v-for="(entry, index) in section.items" :key="entry.id">
 							<div :class="$style.dragTimelineItem" @pointerenter="timelineDropTarget = null"><i :class="entry.icon"></i><span>{{ entry.label }}</span></div>
-							<button class="_button" :class="$style.dragTimelineGap" :disabled="!canUseTimelineContainer(section.id)" data-timeline-drop :data-container-id="section.id" :data-index="index + 1" :data-active="timelineDropTarget?.containerId === section.id && timelineDropTarget?.index === index + 1" @pointerenter="armTimelineDrop(section.id, index + 1)" @dragover.prevent="armTimelineDrop(section.id, index + 1)"><i class="ti ti-plus"></i><span>{{ index === section.items.length - 1 ? '末尾へ挿入' : 'この隙間へ挿入' }}</span></button>
+							<button class="_button" :class="$style.dragTimelineGap" :disabled="!canUseTimelineContainer(section.id)" data-timeline-drop :data-container-id="section.id" :data-index="index + 1" :data-active="timelineDropTarget?.containerId === section.id && timelineDropTarget?.index === index + 1" @pointerenter="armTimelineDrop(section.id, index + 1)" @dragover.prevent="armTimelineDrop(section.id, index + 1)"><i class="ti ti-plus"></i><span>{{ index === section.items.length - 1 ? copy.insertAtEnd : copy.insertInGap }}</span></button>
 						</template>
 					</section>
 				</aside>
@@ -123,123 +123,123 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 				<div ref="sidebarPreviewEl" :class="[$style.sidebarPreview, editMode === 'expanded' && activeProfile.expanded.width === 'wide' && $style.sidebarPreviewWide, editMode === 'collapsed' && $style.sidebarPreviewCollapsed, tutorialStep?.target === 'arrange' && $style.tutorialFocus]">
 					<div :class="$style.serverRow">
-						<button class="_button" :class="$style.serverIcon" aria-label="サーバーメニュー"><img v-if="instance.iconUrl" :src="instance.iconUrl"><i v-else class="ti ti-server"></i></button>
-						<div v-if="editMode === 'expanded'" :class="$style.serverName"><small>ここは</small><b>{{ instance.name ?? 'Hataskey' }}</b></div>
-						<button v-if="editMode === 'expanded'" class="_button" :class="$style.serverAction" aria-label="タイムライン設定"><i class="ti ti-adjustments"></i></button>
-						<button class="_button" :class="$style.serverAction" :aria-label="editMode === 'expanded' ? 'メニューを縮小' : 'メニューを広げる'" @click="togglePreviewWidth"><i :class="editMode === 'expanded' ? 'ti ti-chevron-left' : 'ti ti-chevron-right'"></i></button>
+						<button class="_button" :class="$style.serverIcon" :aria-label="copy.serverMenu"><img v-if="instance.iconUrl" :src="instance.iconUrl"><i v-else class="ti ti-server"></i></button>
+						<div v-if="editMode === 'expanded'" :class="$style.serverName"><small>{{ copy.thisIs }}</small><b>{{ instance.name ?? 'Hataskey' }}</b></div>
+						<button v-if="editMode === 'expanded'" class="_button" :class="$style.serverAction" :aria-label="copy.timelineSettings"><i class="ti ti-adjustments"></i></button>
+						<button class="_button" :class="$style.serverAction" :aria-label="editMode === 'expanded' ? copy.collapseMenu : copy.expandMenu" @click="togglePreviewWidth"><i :class="editMode === 'expanded' ? 'ti ti-chevron-left' : 'ti ti-chevron-right'"></i></button>
 					</div>
 					<div :class="$style.customArea" :data-parallax="activeProfile.expanded.parallax ? 'on' : 'off'">
 						<draggable v-if="editMode === 'expanded'" v-model="activeProfile.expanded.nodes" itemKey="id" :group="expandedDragGroup" handle=".hssDrag" :move="allowExpandedMove" :animation="180" :fallbackOnBody="true" :forceFallback="isTouch" :delay="isTouch ? 140 : 0" :delayOnTouchOnly="true" :class="$style.expandedNodes" :style="{ '--hss-normal-columns': String(activeProfile.expanded.columns) }" @start="onDragStart" @end="onDragEnd">
 							<template #item="{ element: node }">
 								<div :class="[$style.previewNode, node.type === 'group' && $style.previewGroup, node.type === 'widget' && $style.previewWidget]" :style="nodeStyle(node)" :data-node-id="node.id" :data-group-id="node.type === 'group' ? node.id : undefined" :data-shape="node.type !== 'group' ? node.shape : undefined" :data-size="node.type !== 'group' ? node.size : undefined" :data-selected="selectedId === node.id" :data-masonry="node.type === 'group' && node.masonry ? 'on' : undefined" @click.stop="selectNode(node.id)">
 									<div v-if="node.type === 'group'" :class="$style.groupHead">
-										<span v-if="node.showName">{{ node.name }}</span>
+						<span v-if="node.showName">{{ getHataSideStudioGroupDisplayName(node.name) }}</span>
 										<div>
-											<button v-if="groupContrastWarnings.get(node.id)?.low" class="_button" :class="$style.contrastWarning" :aria-expanded="contrastPopoverGroupId === node.id" aria-label="文字の読みやすさを調整" @click.stop="toggleContrastPopover(node.id)"><i class="ti ti-contrast"></i></button>
-											<button class="_button" aria-label="グループを編集" @click.stop="openQuickEditor(node.id)"><i class="ti ti-settings"></i></button>
-											<button class="_button hssDrag" :class="$style.dragHandle" aria-label="グループを移動"><i class="ti ti-grip-vertical"></i></button>
+											<button v-if="groupContrastWarnings.get(node.id)?.low" class="_button" :class="$style.contrastWarning" :aria-expanded="contrastPopoverGroupId === node.id" :aria-label="copy.adjustTextReadability" @click.stop="toggleContrastPopover(node.id)"><i class="ti ti-contrast"></i></button>
+											<button class="_button" :aria-label="copy.editGroup" @click.stop="openQuickEditor(node.id)"><i class="ti ti-settings"></i></button>
+											<button class="_button hssDrag" :class="$style.dragHandle" :aria-label="copy.moveGroup"><i class="ti ti-grip-vertical"></i></button>
 										</div>
 									</div>
 									<div v-if="contrastPopoverGroupId === node.id && groupContrastWarnings.get(node.id)?.low" :class="$style.contrastPopover" @click.stop>
-										<header><i class="ti ti-eye-check"></i><b>文字が読みづらい配色です</b><button class="_button" aria-label="閉じる" @click="contrastPopoverGroupId = null"><i class="ti ti-x"></i></button></header>
-										<p>背景との比率は最小 {{ groupContrastWarnings.get(node.id)?.minimumRatio.toFixed(1) }}:1。グループ内の文字色をまとめて変更できます。</p>
-										<div><button class="_buttonPrimary" @click="applyGroupTextColor(node, groupContrastWarnings.get(node.id)?.recommended ?? '#111111')"><i class="ti ti-wand"></i>推奨色へ一括変更</button><label>任意色<input type="color" :value="cssColor(node.foreground)" @input="applyGroupTextColor(node, ($event.target as HTMLInputElement).value)"></label></div>
+										<header><i class="ti ti-eye-check"></i><b>{{ copy.lowContrastColors }}</b><button class="_button" :aria-label="copy.close" @click="contrastPopoverGroupId = null"><i class="ti ti-x"></i></button></header>
+										<p>{{ copyx.minimumContrast({ ratio: groupContrastWarnings.get(node.id)?.minimumRatio.toFixed(1) ?? '0' }) }}</p>
+										<div><button class="_buttonPrimary" @click="applyGroupTextColor(node, groupContrastWarnings.get(node.id)?.recommended ?? '#111111')"><i class="ti ti-wand"></i>{{ copy.applyRecommendedColor }}</button><label>{{ copy.customColor }}<input type="color" :value="cssColor(node.foreground)" @input="applyGroupTextColor(node, ($event.target as HTMLInputElement).value)"></label></div>
 									</div>
 									<draggable v-if="node.type === 'group'" v-model="node.children" itemKey="id" :group="groupChildDragGroup" handle=".hssDrag" :move="allowGroupChildMove" :animation="180" :fallbackOnBody="true" :forceFallback="isTouch" :delay="isTouch ? 180 : 0" :delayOnTouchOnly="true" :class="$style.groupGrid" :data-empty="node.children.length === 0 ? 'true' : undefined" :style="{ '--hss-columns': String(node.columns) }" @start="onDragStart" @end="onDragEnd">
 										<template #item="{ element: child }">
 											<div :class="child.type === 'button' ? $style.previewButton : $style.previewWidget" :data-node-id="child.id" :data-shape="child.shape" :data-size="child.size" :data-selected="selectedId === child.id" :style="nodeStyle(child)" @click.stop="selectNode(child.id)">
 												<ButtonPreview v-if="child.type === 'button'" :button="child" @search="runPreviewSearch"/>
 												<WidgetPreview v-else :widget="child"/>
-												<button class="_button hssDrag" :class="$style.dragHandle" aria-label="項目を移動"><i class="ti ti-grip-vertical"></i></button>
-												<button v-if="!deleteMode" class="_button" :class="$style.quickTrigger" aria-label="その場で編集" @click.stop="openQuickEditor(child.id)"><i class="ti ti-pencil"></i></button>
-												<button v-if="deleteMode" class="_button" :class="$style.deleteItem" aria-label="削除" @click.stop="requestRemoveNode(child.id)"><i class="ti ti-x"></i></button>
+												<button class="_button hssDrag" :class="$style.dragHandle" :aria-label="copy.moveItem"><i class="ti ti-grip-vertical"></i></button>
+												<button v-if="!deleteMode" class="_button" :class="$style.quickTrigger" :aria-label="copy.editHere" @click.stop="openQuickEditor(child.id)"><i class="ti ti-pencil"></i></button>
+												<button v-if="deleteMode" class="_button" :class="$style.deleteItem" :aria-label="copy.delete" @click.stop="requestRemoveNode(child.id)"><i class="ti ti-x"></i></button>
 											</div>
 										</template>
 									</draggable>
 									<div v-else-if="node.type === 'button'" :class="$style.previewButton" :data-shape="node.shape" :data-size="node.size"><ButtonPreview :button="node" @search="runPreviewSearch"/></div>
 									<div v-else><WidgetPreview :widget="node"/></div>
-									<button v-if="node.type !== 'group'" class="_button hssDrag" :class="$style.dragHandle" :aria-label="node.type === 'button' ? '項目を移動' : 'ウィジェットを移動'"><i class="ti ti-grip-vertical"></i></button>
-									<button v-if="node.type !== 'group' && !deleteMode" class="_button" :class="$style.quickTrigger" aria-label="その場で編集" @click.stop="openQuickEditor(node.id)"><i class="ti ti-pencil"></i></button>
-									<button v-if="deleteMode" class="_button" :class="$style.deleteItem" aria-label="削除" @click.stop="requestRemoveNode(node.id)"><i class="ti ti-x"></i></button>
+									<button v-if="node.type !== 'group'" class="_button hssDrag" :class="$style.dragHandle" :aria-label="node.type === 'button' ? copy.moveItem : copy.moveWidget"><i class="ti ti-grip-vertical"></i></button>
+									<button v-if="node.type !== 'group' && !deleteMode" class="_button" :class="$style.quickTrigger" :aria-label="copy.editHere" @click.stop="openQuickEditor(node.id)"><i class="ti ti-pencil"></i></button>
+									<button v-if="deleteMode" class="_button" :class="$style.deleteItem" :aria-label="copy.delete" @click.stop="requestRemoveNode(node.id)"><i class="ti ti-x"></i></button>
 								</div>
 							</template>
 						</draggable>
 						<draggable v-else v-model="activeProfile.collapsed.buttons" itemKey="id" handle=".hssDrag" :animation="180" :fallbackOnBody="true" :forceFallback="isTouch" :delay="isTouch ? 180 : 0" :delayOnTouchOnly="true" :class="$style.collapsedButtons" @start="onDragStart" @end="onDragEnd">
-							<template #item="{ element: button }"><div class="_button hssDrag" :class="$style.collapsedButton" :data-node-id="button.id" :data-shape="button.shape" :data-selected="selectedId === button.id" :style="nodeStyle(button)" role="button" tabindex="0" :aria-label="button.label" @click.stop="selectNode(button.id)" @keydown.enter.stop="selectNode(button.id)"><i :class="button.icon"></i><button v-if="!deleteMode" class="_button" :class="$style.quickTrigger" aria-label="その場で編集" @click.stop="openQuickEditor(button.id)"><i class="ti ti-pencil"></i></button><button v-if="deleteMode" class="_button" :class="$style.deleteItem" aria-label="削除" @click.stop="requestRemoveNode(button.id)"><i class="ti ti-x"></i></button></div></template>
+						<template #item="{ element: button }"><div class="_button hssDrag" :class="$style.collapsedButton" :data-node-id="button.id" :data-shape="button.shape" :data-selected="selectedId === button.id" :style="nodeStyle(button)" role="button" tabindex="0" :aria-label="getHataSideStudioMenuDisplayLabel(button.menuId, button.label)" @click.stop="selectNode(button.id)" @keydown.enter.stop="selectNode(button.id)"><i :class="button.icon"></i><button v-if="!deleteMode" class="_button" :class="$style.quickTrigger" :aria-label="copy.editHere" @click.stop="openQuickEditor(button.id)"><i class="ti ti-pencil"></i></button><button v-if="deleteMode" class="_button" :class="$style.deleteItem" :aria-label="copy.delete" @click.stop="requestRemoveNode(button.id)"><i class="ti ti-x"></i></button></div></template>
 						</draggable>
 					</div>
-					<div :class="$style.fixedArea"><button class="_button"><i class="ti ti-dots"></i><span v-if="editMode === 'expanded'">もっと</span></button><button class="_button"><i class="ti ti-settings"></i><span v-if="editMode === 'expanded'">設定</span></button><button class="_button"><i class="ti ti-bolt"></i><span v-if="editMode === 'expanded'">リアルタイム</span></button><button v-if="$i?.isAdmin || $i?.isModerator" class="_button"><i class="ti ti-dashboard"></i><span v-if="editMode === 'expanded'">コントロールパネル</span></button></div>
+					<div :class="$style.fixedArea"><button class="_button"><i class="ti ti-dots"></i><span v-if="editMode === 'expanded'">{{ copy.more }}</span></button><button class="_button"><i class="ti ti-settings"></i><span v-if="editMode === 'expanded'">{{ copy.settings }}</span></button><button class="_button"><i class="ti ti-bolt"></i><span v-if="editMode === 'expanded'">{{ copy.realtime }}</span></button><button v-if="$i?.isAdmin || $i?.isModerator" class="_button"><i class="ti ti-dashboard"></i><span v-if="editMode === 'expanded'">{{ copy.controlPanel }}</span></button></div>
 					<div :class="$style.bottomArea">
-						<button class="_button" :class="$style.postButton"><i class="ti ti-pencil"></i><span v-if="editMode === 'expanded'">ノート</span></button>
-						<div :class="$style.modeToggle" aria-label="表示モード"><button class="_button" :aria-pressed="editMode === 'expanded'" aria-label="通常表示" @click="setEditMode('expanded')"><i class="ti ti-device-mobile"></i></button><button class="_button" :aria-pressed="editMode === 'collapsed'" aria-label="デッキ表示" @click="setEditMode('collapsed')"><i class="ti ti-layout-columns"></i></button></div>
-						<button class="_button" :class="$style.accountButton"><img v-if="$i?.avatarUrl" :src="$i.avatarUrl"><i v-else class="ti ti-user-circle"></i><span v-if="editMode === 'expanded'"><b>{{ $i?.name || $i?.username || 'アカウント' }}</b><small>@{{ $i?.username }}</small></span></button>
+						<button class="_button" :class="$style.postButton"><i class="ti ti-pencil"></i><span v-if="editMode === 'expanded'">{{ copy.note }}</span></button>
+						<div :class="$style.modeToggle" :aria-label="copy.displayMode"><button class="_button" :aria-pressed="editMode === 'expanded'" :aria-label="copy.normalView" @click="setEditMode('expanded')"><i class="ti ti-device-mobile"></i></button><button class="_button" :aria-pressed="editMode === 'collapsed'" :aria-label="copy.deckView" @click="setEditMode('collapsed')"><i class="ti ti-layout-columns"></i></button></div>
+						<button class="_button" :class="$style.accountButton"><img v-if="$i?.avatarUrl" :src="$i.avatarUrl"><i v-else class="ti ti-user-circle"></i><span v-if="editMode === 'expanded'"><b>{{ $i?.name || $i?.username || copy.account }}</b><small>@{{ $i?.username }}</small></span></button>
 					</div>
 				</div>
-				<p v-if="editMode === 'collapsed'" :class="$style.collapsedNotice"><i class="ti ti-info-circle"></i>縮小メニューはボタン専用です。グループとウィジェットを持ち込まず、実表示幅の中に縦一列で収めます。</p>
+				<p v-if="editMode === 'collapsed'" :class="$style.collapsedNotice"><i class="ti ti-info-circle"></i>{{ copy.collapsedMenuNotice }}</p>
 			</div>
 		</section>
 
-		<section ref="inspectorPaneEl" :class="[$style.pane, inspectorAttention && $style.inspectorAttention, tutorialStep?.target === 'customize' && $style.tutorialFocus]" aria-label="HataSideStudio設定" tabindex="-1">
-			<div :class="$style.paneHead"><div><h2>スタジオ設定</h2><span>{{ selected?.type === 'button' ? 'ボタン' : selected?.type === 'widget' ? 'ウィジェット' : selected?.type === 'group' ? 'グループ' : '全体' }}</span></div></div>
+		<section ref="inspectorPaneEl" :class="[$style.pane, inspectorAttention && $style.inspectorAttention, tutorialStep?.target === 'customize' && $style.tutorialFocus]" :aria-label="copy.studioSettingsAria" tabindex="-1">
+			<div :class="$style.paneHead"><div><h2>{{ copy.studioSettings }}</h2><span>{{ selected?.type === 'button' ? copy.button : selected?.type === 'widget' ? copy.widget : selected?.type === 'group' ? copy.group : copy.overall }}</span></div></div>
 			<div :class="$style.inspector">
-				<div :class="$style.selectedSummary"><i :class="selected?.type === 'button' ? selected.icon : selected?.type === 'group' ? 'ti ti-category' : selected?.type === 'widget' ? 'ti ti-app-window' : 'ti ti-layout-sidebar-left'"></i><div><b>{{ selectedDisplayName }}</b><small>プレビュー内の項目を選ぶと、ここで細かく調整できます。</small></div></div>
-				<nav :class="$style.inspectorTabs"><button class="_button" :aria-pressed="inspectorTab === 'layout'" @click="inspectorTab = 'layout'">配置</button><button class="_button" :disabled="selected?.type !== 'button'" :aria-pressed="inspectorTab === 'button'" @click="inspectorTab = 'button'">ボタン</button><button class="_button" :disabled="selected?.type !== 'widget'" :aria-pressed="inspectorTab === 'widget'" @click="inspectorTab = 'widget'">ウィジェット</button><button class="_button" :disabled="selected?.type !== 'group'" :aria-pressed="inspectorTab === 'group'" @click="inspectorTab = 'group'">グループ</button><button class="_button" :aria-pressed="inspectorTab === 'role'" @click="inspectorTab = 'role'">上限</button></nav>
+				<div :class="$style.selectedSummary"><i :class="selected?.type === 'button' ? selected.icon : selected?.type === 'group' ? 'ti ti-category' : selected?.type === 'widget' ? 'ti ti-app-window' : 'ti ti-layout-sidebar-left'"></i><div><b>{{ selectedDisplayName }}</b><small>{{ copy.selectPreviewItemHint }}</small></div></div>
+				<nav :class="$style.inspectorTabs"><button class="_button" :aria-pressed="inspectorTab === 'layout'" @click="inspectorTab = 'layout'">{{ copy.placement }}</button><button class="_button" :disabled="selected?.type !== 'button'" :aria-pressed="inspectorTab === 'button'" @click="inspectorTab = 'button'">{{ copy.button }}</button><button class="_button" :disabled="selected?.type !== 'widget'" :aria-pressed="inspectorTab === 'widget'" @click="inspectorTab = 'widget'">{{ copy.widget }}</button><button class="_button" :disabled="selected?.type !== 'group'" :aria-pressed="inspectorTab === 'group'" @click="inspectorTab = 'group'">{{ copy.group }}</button><button class="_button" :aria-pressed="inspectorTab === 'role'" @click="inspectorTab = 'role'">{{ copy.limits }}</button></nav>
 
 				<div v-if="inspectorTab === 'layout'" :class="$style.bento">
-					<InspectorCard title="編集するメニュー"><div :class="$style.choiceRow"><button class="_button" :data-active="editMode === 'expanded'" @click="setEditMode('expanded')">拡大</button><button class="_button" :data-active="editMode === 'collapsed'" @click="setEditMode('collapsed')">縮小</button></div></InspectorCard>
-					<InspectorCard title="通常メニューの列数"><div :class="$style.choiceRow"><button v-for="columns in [1, 2, 3]" :key="columns" class="_button" :disabled="!canSetRootColumns(columns as 1 | 2 | 3)" :data-active="activeProfile.expanded.columns === columns" @click="setRootColumns(columns as 1 | 2 | 3)">{{ columns }}列</button></div><small v-if="rootHasLargeItems">「大」の項目がある間は複数列にできません。</small></InspectorCard>
-					<InspectorCard title="サイドメニューの幅"><div :class="$style.choiceRow"><button class="_button" :data-active="activeProfile.expanded.width === 'normal'" @click="activeProfile.expanded.width = 'normal'">今のサイズ</button><button class="_button" :data-active="activeProfile.expanded.width === 'wide'" @click="activeProfile.expanded.width = 'wide'">ワイド</button></div><small>プレビューと実際のPCサイドメニューへ反映します。</small></InspectorCard>
-					<InspectorCard title="既存設定"><button class="_button" :class="$style.currentSettingsButton" @click="importCurrentSidebar"><i class="ti ti-list-check"></i>現在の並びを読み込む</button><small>設定済みの表示・非表示・並び順を、このプロファイルへ反映します。</small></InspectorCard>
-					<InspectorCard title="動き"><label :class="$style.check"><input v-model="activeProfile.expanded.parallax" type="checkbox">パララックススクロール（ベータ）</label><small>動きを減らす設定では停止します。</small></InspectorCard>
-					<InspectorCard title="縮小メニューの規則"><p>ボタンのみ・縦一列・アイコン表示に固定します。色、グラデーション、形、順番は縮小側で個別に編集できます。</p></InspectorCard>
+					<InspectorCard :title="copy.menuToEdit"><div :class="$style.choiceRow"><button class="_button" :data-active="editMode === 'expanded'" @click="setEditMode('expanded')">{{ copy.expanded }}</button><button class="_button" :data-active="editMode === 'collapsed'" @click="setEditMode('collapsed')">{{ copy.collapsed }}</button></div></InspectorCard>
+					<InspectorCard :title="copy.normalMenuColumns"><div :class="$style.choiceRow"><button v-for="columns in [1, 2, 3]" :key="columns" class="_button" :disabled="!canSetRootColumns(columns as 1 | 2 | 3)" :data-active="activeProfile.expanded.columns === columns" @click="setRootColumns(columns as 1 | 2 | 3)">{{ copyx.columnCount({ count: columns.toString() }) }}</button></div><small v-if="rootHasLargeItems">{{ copy.largeItemsPreventMultipleColumns }}</small></InspectorCard>
+					<InspectorCard :title="copy.sidebarWidth"><div :class="$style.choiceRow"><button class="_button" :data-active="activeProfile.expanded.width === 'normal'" @click="activeProfile.expanded.width = 'normal'">{{ copy.currentSize }}</button><button class="_button" :data-active="activeProfile.expanded.width === 'wide'" @click="activeProfile.expanded.width = 'wide'">{{ copy.wide }}</button></div><small>{{ copy.appliesToPreviewAndPcSidebar }}</small></InspectorCard>
+					<InspectorCard :title="copy.existingSettings"><button class="_button" :class="$style.currentSettingsButton" @click="importCurrentSidebar"><i class="ti ti-list-check"></i>{{ copy.importCurrentOrder }}</button><small>{{ copy.applyConfiguredVisibilityOrder }}</small></InspectorCard>
+					<InspectorCard :title="copy.motion"><label :class="$style.check"><input v-model="activeProfile.expanded.parallax" type="checkbox">{{ copy.parallaxBeta }}</label><small>{{ copy.disabledWithReducedMotion }}</small></InspectorCard>
+					<InspectorCard :title="copy.collapsedMenuRules"><p>{{ copy.collapsedMenuRulesDescription }}</p></InspectorCard>
 				</div>
 				<template v-else-if="inspectorTab === 'button' && selected?.type === 'button'">
-					<InspectorTitle icon="ti ti-square-rounded" :title="selected.label" subtitle="ボタン"/>
+					<InspectorTitle icon="ti ti-square-rounded" :title="getHataSideStudioMenuDisplayLabel(selected.menuId, selected.label)" :subtitle="copy.button"/>
 					<div :class="$style.bento">
-						<InspectorCard v-if="editMode === 'expanded'" title="置き場所"><select :value="selectedParentGroupId" :class="$style.select" @change="moveSelectedTo(($event.target as HTMLSelectElement).value)"><option value="">通常メニュー</option><option v-for="group in availableGroups" :key="group.id" :value="group.id">{{ group.name }}</option></select></InspectorCard>
-						<InspectorCard title="形"><div :class="$style.choiceRow"><button v-for="shape in buttonShapes" :key="shape.value" class="_button" :data-active="selected.shape === shape.value" @click="selected.shape = shape.value"><span :class="$style.shapeSample" :data-shape="shape.value"></span><small>{{ shape.label }}</small></button></div></InspectorCard>
-						<InspectorCard title="大きさ"><div :class="$style.choiceRow"><button v-for="size in sizes" :key="size.value" class="_button" :disabled="!canSetNodeSize(selected, size.value)" :data-active="selected.size === size.value" @click="setNodeSize(selected, size.value)">{{ size.label }}</button></div><small v-if="selectedParentColumns > 1">複数列では「大」を選べません。</small></InspectorCard>
-						<InspectorCard v-if="editMode === 'expanded'" title="表示"><label :class="$style.check"><input v-model="selected.showLabel" type="checkbox">アイコン下の文字を表示</label><label :class="$style.field">回転 <input v-model.number="selected.rotation" type="range" min="-12" max="12" step="1"><output>{{ selected.rotation }}°</output></label></InspectorCard>
+						<InspectorCard v-if="editMode === 'expanded'" :title="copy.location"><select :value="selectedParentGroupId" :class="$style.select" @change="moveSelectedTo(($event.target as HTMLSelectElement).value)"><option value="">{{ copy.normalMenu }}</option><option v-for="group in availableGroups" :key="group.id" :value="group.id">{{ getHataSideStudioGroupDisplayName(group.name) }}</option></select></InspectorCard>
+						<InspectorCard :title="copy.shape"><div :class="$style.choiceRow"><button v-for="shape in buttonShapes" :key="shape.value" class="_button" :data-active="selected.shape === shape.value" @click="selected.shape = shape.value"><span :class="$style.shapeSample" :data-shape="shape.value"></span><small>{{ shape.label }}</small></button></div></InspectorCard>
+						<InspectorCard :title="copy.size"><div :class="$style.choiceRow"><button v-for="size in sizes" :key="size.value" class="_button" :disabled="!canSetNodeSize(selected, size.value)" :data-active="selected.size === size.value" @click="setNodeSize(selected, size.value)">{{ size.label }}</button></div><small v-if="selectedParentColumns > 1">{{ copy.largeUnavailableInMultipleColumns }}</small></InspectorCard>
+						<InspectorCard v-if="editMode === 'expanded'" :title="copy.display"><label :class="$style.check"><input v-model="selected.showLabel" type="checkbox">{{ copy.showTextUnderIcon }}</label><label :class="$style.field">{{ copy.rotation }} <input v-model.number="selected.rotation" type="range" min="-12" max="12" step="1"><output>{{ selected.rotation }}°</output></label></InspectorCard>
 						<AppearanceEditor v-model="selected" :collapsedButton="editMode === 'collapsed'"/>
-						<InspectorCard v-if="selected.menuId === 'lists' || selected.menuId === 'antennas'" title="直接開く項目"><button class="_buttonPrimary" @click="chooseDirectTarget(selected)"><i class="ti ti-list-search"></i>{{ selected.targetId ? '選び直す' : '選択する' }}</button><small>{{ selected.targetId ? '指定した項目を直接開きます。' : '未指定の場合は前回開いた項目を表示します。' }}</small></InspectorCard>
+						<InspectorCard v-if="selected.menuId === 'lists' || selected.menuId === 'antennas'" :title="copy.directOpenItem"><button class="_buttonPrimary" @click="chooseDirectTarget(selected)"><i class="ti ti-list-search"></i>{{ selected.targetId ? copy.chooseAgain : copy.choose }}</button><small>{{ selected.targetId ? copy.opensSpecifiedItem : copy.opensLastItemWhenUnspecified }}</small></InspectorCard>
 					</div>
 				</template>
 				<template v-else-if="inspectorTab === 'widget' && selected?.type === 'widget'">
-					<InspectorTitle icon="ti ti-app-window" :title="selected.label" subtitle="ウィジェット"/>
+					<InspectorTitle icon="ti ti-app-window" :title="widgetDisplayLabel(selected.kind, selected.label)" :subtitle="copy.widget"/>
 					<div :class="$style.bento">
-						<InspectorCard title="置き場所"><select :value="selectedParentGroupId" :class="$style.select" @change="moveSelectedTo(($event.target as HTMLSelectElement).value)"><option value="">グループ外</option><option v-for="group in availableGroups" :key="group.id" :value="group.id">{{ group.name }}</option></select></InspectorCard>
-						<InspectorCard title="種類"><select :value="selected.kind" :class="$style.select" @change="changeWidgetKind(selected, ($event.target as HTMLSelectElement).value as HataSideWidgetKind)"><option v-for="widget in availableWidgetChoices" :key="widget.kind" :value="widget.kind">{{ widget.label }}</option></select></InspectorCard>
-						<InspectorCard title="現在の大きさ"><div :class="$style.choiceRow"><button v-for="size in sizes" :key="size.value" class="_button" :disabled="!canSetNodeSize(selected, size.value)" :data-active="selected.size === size.value" @click="setNodeSize(selected, size.value)">{{ size.label }}</button></div><small>{{ selectedParentColumns > 1 ? '複数列では「大」を選べません。' : 'プレビューと実サイドメニューの表示が同時に切り替わります。' }}</small></InspectorCard>
-						<InspectorCard v-if="widgetBaseSettingEntries(selected).length > 0" title="ウィジェットの内容">
+						<InspectorCard :title="copy.location"><select :value="selectedParentGroupId" :class="$style.select" @change="moveSelectedTo(($event.target as HTMLSelectElement).value)"><option value="">{{ copy.outsideGroup }}</option><option v-for="group in availableGroups" :key="group.id" :value="group.id">{{ getHataSideStudioGroupDisplayName(group.name) }}</option></select></InspectorCard>
+						<InspectorCard :title="copy.type"><select :value="selected.kind" :class="$style.select" @change="changeWidgetKind(selected, ($event.target as HTMLSelectElement).value as HataSideWidgetKind)"><option v-for="widget in availableWidgetChoices" :key="widget.kind" :value="widget.kind">{{ widget.label }}</option></select></InspectorCard>
+						<InspectorCard :title="copy.currentSizeLabel"><div :class="$style.choiceRow"><button v-for="size in sizes" :key="size.value" class="_button" :disabled="!canSetNodeSize(selected, size.value)" :data-active="selected.size === size.value" @click="setNodeSize(selected, size.value)">{{ size.label }}</button></div><small>{{ selectedParentColumns > 1 ? copy.largeUnavailableInMultipleColumns : copy.previewAndSidebarChangeTogether }}</small></InspectorCard>
+						<InspectorCard v-if="widgetBaseSettingEntries(selected).length > 0" :title="copy.widgetContent">
 							<template v-for="entry in widgetBaseSettingEntries(selected)" :key="entry.key">
 								<label v-if="entry.type === 'boolean'" :class="$style.check"><input type="checkbox" :checked="entry.value === true" @change="setWidgetBaseSetting(selected, entry.key, ($event.target as HTMLInputElement).checked)">{{ entry.label }}</label>
 								<label v-else-if="entry.type === 'multiline'" :class="$style.quickField"><span>{{ entry.label }}</span><textarea :class="$style.textarea" :value="String(entry.value ?? '')" rows="5" @input="setWidgetBaseSetting(selected, entry.key, ($event.target as HTMLTextAreaElement).value)"></textarea></label>
 								<label v-else :class="$style.quickField"><span>{{ entry.label }}</span><input :class="$style.input" :value="String(entry.value ?? '')" @input="setWidgetBaseSetting(selected, entry.key, ($event.target as HTMLInputElement).value)"></label>
 							</template>
 						</InspectorCard>
-						<InspectorCard v-for="size in sizes" :key="size.value" :title="`${size.label}サイズの専用設定`">
-							<label :class="$style.field"><span>最低の高さ</span><input v-model.number="selected.sizeSettings[size.value].minHeight" type="range" min="48" max="520" step="4"><output>{{ selected.sizeSettings[size.value].minHeight }}px</output></label>
-							<small>内容は途中で切らず、必要なときだけこの値より縦に伸びます。</small>
+						<InspectorCard v-for="size in sizes" :key="size.value" :title="copyx.sizeSpecificSettings({ size: size.label })">
+							<label :class="$style.field"><span>{{ copy.minimumHeight }}</span><input v-model.number="selected.sizeSettings[size.value].minHeight" type="range" min="48" max="520" step="4"><output>{{ selected.sizeSettings[size.value].minHeight }}px</output></label>
+							<small>{{ copy.contentGrowsWithoutClipping }}</small>
 							<template v-for="entry in widgetSizeSettingEntries(selected, size.value)" :key="entry.key">
 									<label v-if="entry.type === 'boolean'" :class="$style.check"><input type="checkbox" :checked="entry.value === true" @change="setWidgetSizeSetting(selected, size.value, entry.key, ($event.target as HTMLInputElement).checked)">{{ entry.label }}</label>
 								<label v-else-if="entry.type === 'number'" :class="$style.field"><span>{{ entry.label }}</span><input type="number" :value="entry.value" @input="setWidgetSizeSetting(selected, size.value, entry.key, Number(($event.target as HTMLInputElement).value))"></label>
 								<label v-else :class="$style.quickField"><span>{{ entry.label }}</span><input :class="$style.input" :value="entry.value" @input="setWidgetSizeSetting(selected, size.value, entry.key, ($event.target as HTMLInputElement).value)"></label>
 							</template>
-							<small v-if="widgetSizeSettingEntries(selected, size.value).length === 0">この大きさでは、ウィジェット本来の表示を崩さず最低高だけ調整できます。</small>
+							<small v-if="widgetSizeSettingEntries(selected, size.value).length === 0">{{ copy.onlyMinimumHeightAdjustable }}</small>
 						</InspectorCard>
 						<AppearanceEditor v-model="selected"/>
 					</div>
 				</template>
 				<template v-else-if="inspectorTab === 'group' && selected?.type === 'group'">
-					<InspectorTitle icon="ti ti-category" :title="selected.name" subtitle="グループ"/>
-					<div :class="$style.bento"><InspectorCard title="名前"><input v-model="selected.name" :class="$style.input" maxlength="80"><label :class="$style.check"><input v-model="selected.showName" type="checkbox">左上にグループ名を表示</label></InspectorCard><InspectorCard title="レイアウト"><div :class="$style.layoutPicker"><button class="_button" :aria-pressed="selected.columns === 1 && !selected.masonry" @click="setGroupLayout(selected, 1, false)"><i class="ti ti-layout-list"></i><span>縦1列</span></button><button class="_button" :disabled="!canSetGroupColumns(selected, 2)" :aria-pressed="selected.columns === 2 && !selected.masonry" @click="setGroupLayout(selected, 2, false)"><i class="ti ti-layout-grid"></i><span>田の字</span></button><button class="_button" :disabled="!canSetGroupColumns(selected, 3)" :aria-pressed="selected.columns === 3 && !selected.masonry" @click="setGroupLayout(selected, 3, false)"><i class="ti ti-layout-grid-add"></i><span>3列</span></button><button class="_button" :disabled="!canSetGroupColumns(selected, Math.max(2, selected.columns) as 2 | 3)" :aria-pressed="selected.masonry" @click="setGroupLayout(selected, Math.max(2, selected.columns) as 2 | 3, true)"><i class="ti ti-layout-board-split"></i><span>メイソンリー</span></button></div><small v-if="groupHasLargeItems(selected)">「大」の項目がある間は複数列にできません。</small></InspectorCard><GroupAppearanceEditor v-model="selected"/><InspectorCard title="グループ内の要素"><button v-for="child in selected.children" :key="child.id" class="_button" :class="$style.memberButton" @click="selectNode(child.id)"><i :class="child.type === 'button' ? child.icon : 'ti ti-app-window'"></i><span>{{ child.label }}</span><i class="ti ti-chevron-right"></i></button><small v-if="selected.children.length === 0">まだ要素がありません。プレビュー上でボタンかウィジェットをこの囲いへドラッグできます。</small></InspectorCard><InspectorCard v-if="mergeTargets.length > 0" title="別のグループへ統合"><select v-model="mergeTargetId" :class="$style.select"><option value="">統合先を選択</option><option v-for="group in mergeTargets" :key="group.id" :value="group.id">{{ group.name }}</option></select><button class="_button" :disabled="!mergeTargetId" @click="mergeSelectedGroup"><i class="ti ti-arrows-join"></i>統合する</button></InspectorCard></div>
+					<InspectorTitle icon="ti ti-category" :title="getHataSideStudioGroupDisplayName(selected.name)" :subtitle="copy.group"/>
+					<div :class="$style.bento"><InspectorCard :title="copy.name"><input v-model="selected.name" :class="$style.input" maxlength="80"><label :class="$style.check"><input v-model="selected.showName" type="checkbox">{{ copy.showGroupNameTopLeft }}</label></InspectorCard><InspectorCard :title="copy.layout"><div :class="$style.layoutPicker"><button class="_button" :aria-pressed="selected.columns === 1 && !selected.masonry" @click="setGroupLayout(selected, 1, false)"><i class="ti ti-layout-list"></i><span>{{ copy.oneColumn }}</span></button><button class="_button" :disabled="!canSetGroupColumns(selected, 2)" :aria-pressed="selected.columns === 2 && !selected.masonry" @click="setGroupLayout(selected, 2, false)"><i class="ti ti-layout-grid"></i><span>{{ copy.grid }}</span></button><button class="_button" :disabled="!canSetGroupColumns(selected, 3)" :aria-pressed="selected.columns === 3 && !selected.masonry" @click="setGroupLayout(selected, 3, false)"><i class="ti ti-layout-grid-add"></i><span>{{ copy.threeColumns }}</span></button><button class="_button" :disabled="!canSetGroupColumns(selected, Math.max(2, selected.columns) as 2 | 3)" :aria-pressed="selected.masonry" @click="setGroupLayout(selected, Math.max(2, selected.columns) as 2 | 3, true)"><i class="ti ti-layout-board-split"></i><span>{{ copy.masonry }}</span></button></div><small v-if="groupHasLargeItems(selected)">{{ copy.largeItemsPreventMultipleColumns }}</small></InspectorCard><GroupAppearanceEditor v-model="selected"/><InspectorCard :title="copy.itemsInGroup"><button v-for="child in selected.children" :key="child.id" class="_button" :class="$style.memberButton" @click="selectNode(child.id)"><i :class="child.type === 'button' ? child.icon : 'ti ti-app-window'"></i><span>{{ child.type === 'widget' ? widgetDisplayLabel(child.kind, child.label) : getHataSideStudioMenuDisplayLabel(child.menuId, child.label) }}</span><i class="ti ti-chevron-right"></i></button><small v-if="selected.children.length === 0">{{ copy.emptyGroupHint }}</small></InspectorCard><InspectorCard v-if="mergeTargets.length > 0" :title="copy.mergeIntoAnotherGroup"><select v-model="mergeTargetId" :class="$style.select"><option value="">{{ copy.selectMergeTarget }}</option><option v-for="group in mergeTargets" :key="group.id" :value="group.id">{{ getHataSideStudioGroupDisplayName(group.name) }}</option></select><button class="_button" :disabled="!mergeTargetId" @click="mergeSelectedGroup"><i class="ti ti-arrows-join"></i>{{ copy.merge }}</button></InspectorCard></div>
 				</template>
 				<div v-else-if="inspectorTab === 'role'" :class="$style.bento">
-					<InspectorCard title="このアカウントの保存上限"><strong :class="$style.limitValue">{{ profileLimit }}件</strong><small>端末ごとに保存できるレイアウトプロファイル数です。</small></InspectorCard>
-					<InspectorCard title="保存先"><p>レイアウト本体はこの端末だけに保存します。サーバーと連合へは送信しません。</p><button class="_button" :class="$style.currentSettingsButton" @click="openSettingsTransfer"><i class="ti ti-arrows-exchange"></i>設定を書き出す・読み込む</button></InspectorCard>
-					<InspectorCard v-if="$i?.isAdmin || $i?.isModerator" title="ロール設定"><button class="_button" :class="$style.currentSettingsButton" @click="openRoleSettings"><i class="ti ti-users-group"></i>コントロールパネルで設定</button><small>ベースロールと個別ロールの両方から上限を設定できます。</small></InspectorCard>
+					<InspectorCard :title="copy.accountSaveLimit"><strong :class="$style.limitValue">{{ copyx.itemCount({ count: profileLimit.toString() }) }}</strong><small>{{ copy.profileLimitPerDevice }}</small></InspectorCard>
+					<InspectorCard :title="copy.saveDestination"><p>{{ copy.savedOnlyOnDevice }}</p><button class="_button" :class="$style.currentSettingsButton" @click="openSettingsTransfer"><i class="ti ti-arrows-exchange"></i>{{ copy.exportImportSettings }}</button></InspectorCard>
+					<InspectorCard v-if="$i?.isAdmin || $i?.isModerator" :title="copy.roleSettings"><button class="_button" :class="$style.currentSettingsButton" @click="openRoleSettings"><i class="ti ti-users-group"></i>{{ copy.configureInControlPanel }}</button><small>{{ copy.limitConfigurableInRoles }}</small></InspectorCard>
 				</div>
-				<div v-else :class="$style.emptyInspector"><i class="ti ti-pointer"></i><b>プレビューから編集する項目を選んでください</b><span>ボタン・ウィジェット・グループを選ぶと、対応する設定タブが開きます。</span></div>
+				<div v-else :class="$style.emptyInspector"><i class="ti ti-pointer"></i><b>{{ copy.selectItemFromPreview }}</b><span>{{ copy.selectItemOpensSettings }}</span></div>
 			</div>
 		</section>
 	</main>
@@ -247,18 +247,18 @@ SPDX-License-Identifier: AGPL-3.0-only
 	<Teleport to="body">
 	<div :class="$style.teleportTheme">
 	<div v-if="studioDialog" :class="$style.studioDialogWindow" role="dialog" aria-modal="false" :aria-label="studioDialog.title">
-		<header><span><i :class="studioDialog.icon"></i><b>{{ studioDialog.title }}</b></span><button class="_button" aria-label="閉じる" @click="resolveStudioDialog(false)"><i class="ti ti-x"></i></button></header>
+		<header><span><i :class="studioDialog.icon"></i><b>{{ studioDialog.title }}</b></span><button class="_button" :aria-label="copy.close" @click="resolveStudioDialog(false)"><i class="ti ti-x"></i></button></header>
 		<p>{{ studioDialog.text }}</p>
 		<input v-if="studioDialog.kind === 'prompt'" ref="studioDialogControl" v-model="studioDialog.value" :class="$style.input" maxlength="80" @keydown.enter="resolveStudioDialog(true)">
 		<select v-if="studioDialog.kind === 'select'" ref="studioDialogControl" v-model="studioDialog.value" :class="$style.select"><option v-for="option in studioDialog.options" :key="option.value" :value="option.value">{{ option.label }}</option></select>
 		<div><button v-if="studioDialog.cancelLabel" class="_button" @click="resolveStudioDialog(false)">{{ studioDialog.cancelLabel }}</button><button class="_buttonPrimary" @click="resolveStudioDialog(true)">{{ studioDialog.confirmLabel }}</button></div>
 	</div>
-	<div v-if="leaveConfirmOpen" :class="$style.windowLayer"><div :class="$style.leaveDialog"><i class="ti ti-device-floppy"></i><h2>変更を保存しますか？</h2><p>保存していない変更があります。</p><div><button class="_button" @click="confirmLeave(false)">破棄して移動</button><button class="_buttonPrimary" @click="saveAndLeave">保存して移動</button><button class="_button" @click="cancelLeave">戻る</button></div></div></div>
-	<aside v-if="tutorialOpen && tutorialStep" :class="$style.tutorialWindow" role="dialog" aria-modal="false" aria-label="HataSideStudio チュートリアル">
-		<header><span>STEP {{ tutorialIndex + 1 }} / {{ tutorialSteps.length }}</span><button class="_button" aria-label="チュートリアルを閉じる" @click="finishTutorial(true)"><i class="ti ti-x"></i></button></header>
+	<div v-if="leaveConfirmOpen" :class="$style.windowLayer"><div :class="$style.leaveDialog"><i class="ti ti-device-floppy"></i><h2>{{ copy.saveChangesQuestion }}</h2><p>{{ copy.unsavedChanges }}</p><div><button class="_button" @click="confirmLeave(false)">{{ copy.discardAndMove }}</button><button class="_buttonPrimary" @click="saveAndLeave">{{ copy.saveAndMove }}</button><button class="_button" @click="cancelLeave">{{ copy.back }}</button></div></div></div>
+	<aside v-if="tutorialOpen && tutorialStep" :class="$style.tutorialWindow" role="dialog" aria-modal="false" :aria-label="copy.tutorialAria">
+		<header><span>{{ copy.step }} {{ tutorialIndex + 1 }} / {{ tutorialSteps.length }}</span><button class="_button" :aria-label="copy.closeTutorial" @click="finishTutorial(true)"><i class="ti ti-x"></i></button></header>
 		<div :class="$style.tutorialProgress"><span v-for="(_, index) in tutorialSteps" :key="index" :data-active="index <= tutorialIndex"></span></div>
 		<i :class="tutorialStep.icon"></i><h2>{{ tutorialStep.title }}</h2><p>{{ tutorialStep.body }}</p>
-		<div :class="$style.tutorialActions"><button class="_button" @click="finishTutorial(true)">スキップ</button><button class="_button" :disabled="tutorialIndex === 0" @click="tutorialIndex--"><i class="ti ti-chevron-left"></i>戻る</button><button class="_buttonPrimary" @click="advanceTutorial">{{ tutorialIndex === tutorialSteps.length - 1 ? 'はじめる' : '次へ' }}<i class="ti ti-chevron-right"></i></button></div>
+		<div :class="$style.tutorialActions"><button class="_button" @click="finishTutorial(true)">{{ copy.skip }}</button><button class="_button" :disabled="tutorialIndex === 0" @click="tutorialIndex--"><i class="ti ti-chevron-left"></i>{{ copy.back }}</button><button class="_buttonPrimary" @click="advanceTutorial">{{ tutorialIndex === tutorialSteps.length - 1 ? copy.start : copy.next }}<i class="ti ti-chevron-right"></i></button></div>
 	</aside>
 	</div>
 	</Teleport>
@@ -270,6 +270,7 @@ import { computed, defineAsyncComponent, defineComponent, h, nextTick, onBeforeU
 import draggable from 'vuedraggable';
 import type { HataSideButton, HataSideButtonShape, HataSideButtonSize, HataSideGroup, HataSideNode, HataSideStudioStore, HataSideWidget, HataSideWidgetKind } from '@/utility/hata-side-studio.js';
 import { $i } from '@/i.js';
+import { i18n } from '@/i18n.js';
 import { instance } from '@/instance.js';
 import { mainRouter } from '@/router.js';
 import { definePage } from '@/page.js';
@@ -284,41 +285,56 @@ import * as os from '@/os.js';
 import {
 	HATA_SIDE_STUDIO_DEFAULT_PROFILE_LIMIT, applyHataSideStudioStore, cloneHataSideStudioStore,
 	copyCollapsedToExpanded, copyExpandedToCollapsed, createButton, createDefaultProfile, createGroup, createHataSideStudioSourceCatalog, createWidget,
-	ensureHataSideStudioInitialized, getActiveHataSideProfile, gradientCss, hataSideStudioStore, mergeHataSideGroups,
+	ensureHataSideStudioInitialized, getActiveHataSideProfile, getHataSideStudioGroupDisplayName, getHataSideStudioMenuDisplayLabel, getHataSideStudioProfileDisplayName,
+	getHataSideWidgetDisplayLabel, gradientCss, hataSideStudioStore, mergeHataSideGroups,
 } from '@/utility/hata-side-studio.js';
 import { SIDEBAR_ICON_OVERRIDES } from '@/utility/sidebar-icon-overrides.js';
 import HataSideStudioEarthquake from '@/components/HataSideStudioEarthquake.vue';
 import HataSideStudioFlowers from '@/components/HataSideStudioFlowers.vue';
 
+const copy = i18n.ts._hata._hataSideStudio._main;
+const copyx = i18n.tsx._hata._hataSideStudio._main;
 const $style = useCssModule();
+const emptyGroupDropText = JSON.stringify(copy.dropButtonOrWidgetHere);
 const isHatasabaDeckUi = computed(() => miLocalStorage.getItem('ui') === 'simple' && prefer.r['simpleUi.deckMode'].value === true);
 const studioDialogControl = ref<HTMLInputElement | HTMLSelectElement | null>(null);
+
+function widgetDisplayLabel(kind: HataSideWidgetKind, fallback: string): string {
+	return getHataSideWidgetDisplayLabel(kind, fallback);
+}
+
+function profileDisplayName(name: string): string {
+	const translated = getHataSideStudioProfileDisplayName(name);
+	if (translated !== name) return translated;
+	const numbered = /^プロファイル (\d+)$/.exec(name);
+	return numbered == null ? name : copyx.numberedProfile({ number: numbered[1] });
+}
 
 const InspectorTitle = defineComponent({ props: { icon: String, title: String, subtitle: String }, setup: props => () => h('div', { class: $style.inspectorTitle }, [h('i', { class: props.icon }), h('div', [h('small', props.subtitle), h('h2', props.title)])]) });
 const InspectorCard = defineComponent({ props: { title: String }, setup: (props, { slots }) => () => h('section', { class: $style.inspectorCard }, [h('h3', props.title), slots.default?.()]) });
 const GradientEditor = defineComponent({ props: { modelValue: { type: Object, required: true } }, setup: props => () => {
 	const value = props.modelValue as any;
 	return [
-		h('label', { class: $style.check }, [h('input', { type: 'checkbox', checked: value.gradientEnabled, onChange: (event: Event) => value.gradientEnabled = (event.target as HTMLInputElement).checked }), '2色グラデーション']),
+		h('label', { class: $style.check }, [h('input', { type: 'checkbox', checked: value.gradientEnabled, onChange: (event: Event) => value.gradientEnabled = (event.target as HTMLInputElement).checked }), copy.twoColorGradient]),
 		value.gradientEnabled ? h('div', { class: $style.gradientControls }, [
 			h('div', { class: $style.quickGradientPreview, style: { background: gradientCss(value) } }),
-			h('label', { class: $style.quickField }, [h('span', '2色目'), h('input', { type: 'color', value: cssColor(value.gradientTo), onInput: (event: Event) => value.gradientTo = (event.target as HTMLInputElement).value })]),
-			h('label', { class: $style.field }, [h('span', '方向'), h('input', { type: 'range', min: 0, max: 360, value: value.gradientAngle, onInput: (event: Event) => value.gradientAngle = Number((event.target as HTMLInputElement).value) }), h('output', `${value.gradientAngle}°`)]),
-			h('label', { class: $style.quickField }, [h('span', '色の移り方'), h('select', { class: $style.select, value: value.gradientEasing, onChange: (event: Event) => value.gradientEasing = (event.target as HTMLSelectElement).value }, [h('option', { value: 'linear' }, '均等'), h('option', { value: 'ease-in' }, 'ゆっくり始まる'), h('option', { value: 'ease-out' }, 'ゆっくり終わる'), h('option', { value: 'ease-in-out' }, '両端をなめらかに')])]),
+			h('label', { class: $style.quickField }, [h('span', copy.secondColor), h('input', { type: 'color', value: cssColor(value.gradientTo), onInput: (event: Event) => value.gradientTo = (event.target as HTMLInputElement).value })]),
+			h('label', { class: $style.field }, [h('span', copy.direction), h('input', { type: 'range', min: 0, max: 360, value: value.gradientAngle, onInput: (event: Event) => value.gradientAngle = Number((event.target as HTMLInputElement).value) }), h('output', `${value.gradientAngle}°`)]),
+			h('label', { class: $style.quickField }, [h('span', copy.colorTransition), h('select', { class: $style.select, value: value.gradientEasing, onChange: (event: Event) => value.gradientEasing = (event.target as HTMLSelectElement).value }, [h('option', { value: 'linear' }, copy.even), h('option', { value: 'ease-in' }, copy.slowStart), h('option', { value: 'ease-out' }, copy.slowEnd), h('option', { value: 'ease-in-out' }, copy.smoothBothEnds)])]),
 		]) : null,
 	];
 } });
-const AppearanceEditor = defineComponent({ props: { modelValue: { type: Object, required: true }, collapsedButton: Boolean }, setup: props => () => h(InspectorCard, { title: '色とグラデーション' }, { default: () => [
-	props.collapsedButton ? h('label', { class: $style.check }, [h('input', { type: 'checkbox', checked: (props.modelValue as HataSideButton).borderVisible, onChange: (event: Event) => (props.modelValue as HataSideButton).borderVisible = (event.target as HTMLInputElement).checked }), '枠線を表示']) : null,
-	h('div', { class: $style.colorGrid }, [['background', '背景'], ['border', '枠'], ['foreground', '文字']].map(([key, label]) => h('label', { class: $style.colorField }, [h('span', label), h('input', { type: 'color', value: cssColor((props.modelValue as any)[key]), onPointerdown: key === 'border' ? (event: PointerEvent) => promptCollapsedBorderVisibility(props.modelValue as HataSideNode, event) : undefined, onKeydown: key === 'border' ? (event: KeyboardEvent) => { if (event.key === 'Enter') { event.preventDefault(); void promptCollapsedBorderVisibility(props.modelValue as HataSideNode, event); } } : undefined, onInput: (e: Event) => (props.modelValue as any)[key] = (e.target as HTMLInputElement).value })]))),
-	h('label', { class: $style.field }, [h('span', '枠線の太さ'), h('input', { type: 'range', min: 0, max: 5, value: (props.modelValue as any).borderWidth ?? 1, onInput: (e: Event) => (props.modelValue as any).borderWidth = Number((e.target as HTMLInputElement).value) }), h('output', `${(props.modelValue as any).borderWidth ?? 1}px`)]),
-	h('label', { class: $style.field }, [h('span', '枠線の種類'), h('select', { class: $style.select, value: (props.modelValue as any).borderStyle ?? 'solid', onChange: (e: Event) => (props.modelValue as any).borderStyle = (e.target as HTMLSelectElement).value }, [h('option', { value: 'solid' }, '実線'), h('option', { value: 'dashed' }, '破線'), h('option', { value: 'double' }, '二重線')])]),
+const AppearanceEditor = defineComponent({ props: { modelValue: { type: Object, required: true }, collapsedButton: Boolean }, setup: props => () => h(InspectorCard, { title: copy.colorsAndGradient }, { default: () => [
+	props.collapsedButton ? h('label', { class: $style.check }, [h('input', { type: 'checkbox', checked: (props.modelValue as HataSideButton).borderVisible, onChange: (event: Event) => (props.modelValue as HataSideButton).borderVisible = (event.target as HTMLInputElement).checked }), copy.showBorder]) : null,
+	h('div', { class: $style.colorGrid }, [['background', copy.background], ['border', copy.border], ['foreground', copy.text]].map(([key, label]) => h('label', { class: $style.colorField }, [h('span', label), h('input', { type: 'color', value: cssColor((props.modelValue as any)[key]), onPointerdown: key === 'border' ? (event: PointerEvent) => promptCollapsedBorderVisibility(props.modelValue as HataSideNode, event) : undefined, onKeydown: key === 'border' ? (event: KeyboardEvent) => { if (event.key === 'Enter') { event.preventDefault(); void promptCollapsedBorderVisibility(props.modelValue as HataSideNode, event); } } : undefined, onInput: (e: Event) => (props.modelValue as any)[key] = (e.target as HTMLInputElement).value })]))),
+	h('label', { class: $style.field }, [h('span', copy.borderWidth), h('input', { type: 'range', min: 0, max: 5, value: (props.modelValue as any).borderWidth ?? 1, onInput: (e: Event) => (props.modelValue as any).borderWidth = Number((e.target as HTMLInputElement).value) }), h('output', `${(props.modelValue as any).borderWidth ?? 1}px`)]),
+	h('label', { class: $style.field }, [h('span', copy.borderStyle), h('select', { class: $style.select, value: (props.modelValue as any).borderStyle ?? 'solid', onChange: (e: Event) => (props.modelValue as any).borderStyle = (e.target as HTMLSelectElement).value }, [h('option', { value: 'solid' }, copy.solid), h('option', { value: 'dashed' }, copy.dashed), h('option', { value: 'double' }, copy.double)])]),
 	h(GradientEditor, { modelValue: props.modelValue }),
 ] }) });
-const GroupAppearanceEditor = defineComponent({ props: { modelValue: { type: Object, required: true } }, setup: props => () => h(InspectorCard, { title: 'グループの面' }, { default: () => [
-	h('div', { class: $style.colorGrid }, [['background', '背景'], ['border', '枠']].map(([key, label]) => h('label', { class: $style.colorField }, [h('span', label), h('input', { type: 'color', value: cssColor((props.modelValue as any)[key]), onInput: (e: Event) => (props.modelValue as any)[key] = (e.target as HTMLInputElement).value })]))),
-	h('label', { class: $style.field }, [h('span', '枠線の太さ'), h('input', { type: 'range', min: 0, max: 5, value: (props.modelValue as any).borderWidth ?? 1, onInput: (e: Event) => (props.modelValue as any).borderWidth = Number((e.target as HTMLInputElement).value) }), h('output', `${(props.modelValue as any).borderWidth ?? 1}px`)]),
-	h('label', { class: $style.field }, [h('span', '枠線の種類'), h('select', { class: $style.select, value: (props.modelValue as any).borderStyle ?? 'solid', onChange: (e: Event) => (props.modelValue as any).borderStyle = (e.target as HTMLSelectElement).value }, [h('option', { value: 'solid' }, '実線'), h('option', { value: 'dashed' }, '破線'), h('option', { value: 'double' }, '二重線')])]),
+const GroupAppearanceEditor = defineComponent({ props: { modelValue: { type: Object, required: true } }, setup: props => () => h(InspectorCard, { title: copy.groupSurface }, { default: () => [
+	h('div', { class: $style.colorGrid }, [['background', copy.background], ['border', copy.border]].map(([key, label]) => h('label', { class: $style.colorField }, [h('span', label), h('input', { type: 'color', value: cssColor((props.modelValue as any)[key]), onInput: (e: Event) => (props.modelValue as any)[key] = (e.target as HTMLInputElement).value })]))),
+	h('label', { class: $style.field }, [h('span', copy.borderWidth), h('input', { type: 'range', min: 0, max: 5, value: (props.modelValue as any).borderWidth ?? 1, onInput: (e: Event) => (props.modelValue as any).borderWidth = Number((e.target as HTMLInputElement).value) }), h('output', `${(props.modelValue as any).borderWidth ?? 1}px`)]),
+	h('label', { class: $style.field }, [h('span', copy.borderStyle), h('select', { class: $style.select, value: (props.modelValue as any).borderStyle ?? 'solid', onChange: (e: Event) => (props.modelValue as any).borderStyle = (e.target as HTMLSelectElement).value }, [h('option', { value: 'solid' }, copy.solid), h('option', { value: 'dashed' }, copy.dashed), h('option', { value: 'double' }, copy.double)])]),
 	h(GradientEditor, { modelValue: props.modelValue }),
 ] }) });
 const ButtonPreview = defineComponent({
@@ -331,17 +347,17 @@ const ButtonPreview = defineComponent({
 			if (button.menuId === 'search' && button.size === 'large' && button.shape !== 'circle') {
 				return h('form', { class: $style.searchButtonPreview, onSubmit: (event: Event) => { event.preventDefault(); emit('search', query.value); } }, [
 					h('i', { class: button.icon }),
-					h('input', { value: query.value, type: 'search', placeholder: 'ノートやユーザーを検索', 'aria-label': '検索語', onInput: (event: Event) => { query.value = (event.target as HTMLInputElement).value; }, onClick: (event: Event) => event.stopPropagation() }),
-					h('button', { class: '_button', type: 'submit', 'aria-label': '検索する', onClick: (event: Event) => event.stopPropagation() }, [h('i', { class: 'ti ti-arrow-right' })]),
+					h('input', { value: query.value, type: 'search', placeholder: copy.searchNotesOrUsers, 'aria-label': copy.searchQuery, onInput: (event: Event) => { query.value = (event.target as HTMLInputElement).value; }, onClick: (event: Event) => event.stopPropagation() }),
+					h('button', { class: '_button', type: 'submit', 'aria-label': copy.search, onClick: (event: Event) => event.stopPropagation() }, [h('i', { class: 'ti ti-arrow-right' })]),
 				]);
 			}
 			const large = button.size === 'large' && button.shape !== 'circle';
 			const unreadCount = button.menuId === 'notifications' ? Number($i?.unreadNotificationsCount ?? 0) : 0;
 			return h('div', { class: large ? $style.largeButtonPreview : $style.buttonPreviewBody }, [
 				h('i', { class: button.icon }),
-				button.showLabel || large ? h('span', [h('b', button.label), large ? h('small', buttonDetail(button.menuId)) : null]) : null,
-				large && ['hatask', 'hatady', 'hatafeed'].includes(button.menuId) ? h('em', button.menuId === 'hatask' ? '予定・ToDo' : button.menuId === 'hatady' ? '今日の学習' : '申請状況') : null,
-				unreadCount > 0 ? h('span', { class: $style.previewBadge, 'aria-label': `未読${unreadCount}件` }, unreadCount > 99 ? '99+' : String(unreadCount)) : null,
+				button.showLabel || large ? h('span', [h('b', getHataSideStudioMenuDisplayLabel(button.menuId, button.label)), large ? h('small', buttonDetail(button.menuId)) : null]) : null,
+				large && ['hatask', 'hatady', 'hatafeed'].includes(button.menuId) ? h('em', button.menuId === 'hatask' ? copy.scheduleAndTodo : button.menuId === 'hatady' ? copy.todayStudy : copy.applicationStatus) : null,
+				unreadCount > 0 ? h('span', { class: $style.previewBadge, 'aria-label': copyx.unreadCount({ count: unreadCount.toString() }) }, unreadCount > 99 ? '99+' : String(unreadCount)) : null,
 			]);
 		};
 	},
@@ -381,7 +397,7 @@ const WidgetPreview = defineComponent({
 				}),
 			])]);
 		}
-		return h('div', { class: $style.widgetBody }, [h('i', { class: definition.icon }), h('div', [h('b', widget.label), h('span', '直近のお知らせを表示'), h('small', '専用ウィジェットが追加されるまで要約表示を使います')])]);
+		return h('div', { class: $style.widgetBody }, [h('i', { class: definition.icon }), h('div', [h('b', widgetDisplayLabel(widget.kind, widget.label)), h('span', copy.showRecentAnnouncements), h('small', copy.summaryUntilDedicatedWidget)])]);
 	},
 });
 
@@ -435,11 +451,11 @@ type StudioDialogState = {
 };
 const studioDialog = ref<StudioDialogState | null>(null);
 const tutorialSteps = [
-	{ target: 'welcome', icon: 'ti ti-sparkles', title: 'HataSideStudioへようこそ', body: '実際のサイドメニューを見ながら、この端末だけの並び・形・色・ウィジェットを作れます。' },
-	{ target: 'create', icon: 'ti ti-square-rounded-plus', title: '要素を作る', body: '左のボタンから、通常ボタン・グループ・登録済みの全ウィジェットを追加できます。' },
-	{ target: 'arrange', icon: 'ti ti-hand-move', title: 'つまんで並べる', body: '各項目のグリップをつまみます。ドラッグ中に出る簡易タイムラインへ重ねると、長いメニューでも狙った位置へ移動できます。' },
-	{ target: 'customize', icon: 'ti ti-adjustments-horizontal', title: '細部を仕上げる', body: '項目を選ぶと右の設定へ内容が出ます。形・大きさ・配色・グループ配置・ウィジェット固有設定を調整できます。' },
-	{ target: 'save', icon: 'ti ti-device-floppy', title: '端末へ保存する', body: '最後に保存を押すと、同じ端末のサイドメニューへすぐ反映されます。サーバーや連合へ設定は送信されません。' },
+	{ target: 'welcome', icon: 'ti ti-sparkles', title: copy.tutorialWelcomeTitle, body: copy.tutorialWelcomeBody },
+	{ target: 'create', icon: 'ti ti-square-rounded-plus', title: copy.tutorialCreateTitle, body: copy.tutorialCreateBody },
+	{ target: 'arrange', icon: 'ti ti-hand-move', title: copy.tutorialArrangeTitle, body: copy.tutorialArrangeBody },
+	{ target: 'customize', icon: 'ti ti-adjustments-horizontal', title: copy.tutorialCustomizeTitle, body: copy.tutorialCustomizeBody },
+	{ target: 'save', icon: 'ti ti-device-floppy', title: copy.tutorialSaveTitle, body: copy.tutorialSaveBody },
 ] as const;
 const tutorialOpen = ref(false);
 const tutorialIndex = ref(0);
@@ -458,14 +474,14 @@ let historyLocked = false;
 const hasChanges = computed(() => JSON.stringify(draft.value) !== JSON.stringify(original.value));
 const activeProfile = computed(() => getActiveHataSideProfile(draft.value));
 const selected = computed<HataSideNode | null>(() => findNode(selectedId.value));
-const selectedDisplayName = computed(() => selected.value == null ? '全体レイアウト' : selected.value.type === 'group' ? selected.value.name : selected.value.label);
+const selectedDisplayName = computed(() => selected.value == null ? copy.overallLayout : selected.value.type === 'group' ? getHataSideStudioGroupDisplayName(selected.value.name) : selected.value.type === 'widget' ? widgetDisplayLabel(selected.value.kind, selected.value.label) : getHataSideStudioMenuDisplayLabel(selected.value.menuId, selected.value.label));
 const mergeTargets = computed(() => activeProfile.value.expanded.nodes.filter((node): node is HataSideGroup => node.type === 'group' && node.id !== selectedId.value));
 const availableGroups = computed(() => activeProfile.value.expanded.nodes.filter((node): node is HataSideGroup => node.type === 'group'));
 const availableWidgetChoices = computed(() => Object.entries(HATA_SIDE_WIDGET_REGISTRY)
 	.filter(([kind, definition]) => kind !== 'flowers' && (!definition.availability.requiresFederation || instance.federation !== 'none') && (!definition.availability.adminOnly || $i?.isAdmin || $i?.isModerator))
-	.map(([kind, definition]) => ({ kind: kind as HataSideWidgetKind, label: definition.label, icon: definition.icon })));
-const buttonShapes: { value: HataSideButtonShape; label: string }[] = [{ value: 'rounded', label: '角丸' }, { value: 'circle', label: '丸' }, { value: 'pill', label: '錠剤型' }];
-const sizes: { value: HataSideButtonSize; label: string }[] = [{ value: 'small', label: '小' }, { value: 'normal', label: '標準' }, { value: 'large', label: '大' }];
+	.map(([kind, definition]) => ({ kind: kind as HataSideWidgetKind, label: widgetDisplayLabel(kind as HataSideWidgetKind, definition.label), icon: definition.icon })));
+const buttonShapes: { value: HataSideButtonShape; label: string }[] = [{ value: 'rounded', label: copy.rounded }, { value: 'circle', label: copy.circle }, { value: 'pill', label: copy.capsule }];
+const sizes: { value: HataSideButtonSize; label: string }[] = [{ value: 'small', label: copy.small }, { value: 'normal', label: copy.normal }, { value: 'large', label: copy.large }];
 const expandedDragGroup = { name: 'hata-side-items', pull: true, put: true };
 const groupChildDragGroup = { name: 'hata-side-items', pull: true, put: true };
 
@@ -485,7 +501,7 @@ const previewCount = computed(() => {
 	const buttons = nodes.reduce((count, node) => count + (node.type === 'button' ? 1 : node.type === 'group' ? node.children.filter(child => child.type === 'button').length : 0), 0);
 	const widgets = nodes.reduce((count, node) => count + (node.type === 'widget' ? 1 : node.type === 'group' ? node.children.filter(child => child.type === 'widget').length : 0), 0);
 	const groups = nodes.filter(node => node.type === 'group').length;
-	return editMode.value === 'collapsed' ? `${activeProfile.value.collapsed.buttons.length}ボタン・縦1列` : `${buttons}ボタン・${groups}グループ・${widgets}ウィジェット`;
+	return editMode.value === 'collapsed' ? copyx.collapsedPreviewCount({ buttons: activeProfile.value.collapsed.buttons.length.toString() }) : copyx.expandedPreviewCount({ buttons: buttons.toString(), groups: groups.toString(), widgets: widgets.toString() });
 });
 const selectedParentGroupId = computed(() => {
 	if (!selectedId.value) return '';
@@ -507,11 +523,11 @@ const dragTimelineStyle = computed(() => ({
 	maxHeight: `${dragTimelinePosition.value.maxHeight}px`,
 }));
 const reorderSections = computed(() => {
-	const summarize = (items: HataSideNode[]) => items.map(item => ({ id: item.id, label: item.type === 'group' ? `グループ：${item.name}` : item.label, icon: item.type === 'group' ? 'ti ti-category' : item.type === 'widget' ? 'ti ti-app-window' : item.icon }));
-	if (editMode.value === 'collapsed') return [{ id: 'collapsed', label: '縮小メニュー', items: summarize(activeProfile.value.collapsed.buttons) }];
+	const summarize = (items: HataSideNode[]) => items.map(item => ({ id: item.id, label: item.type === 'group' ? copyx.groupNamed({ name: getHataSideStudioGroupDisplayName(item.name) }) : item.type === 'widget' ? widgetDisplayLabel(item.kind, item.label) : getHataSideStudioMenuDisplayLabel(item.menuId, item.label), icon: item.type === 'group' ? 'ti ti-category' : item.type === 'widget' ? 'ti ti-app-window' : item.icon }));
+	if (editMode.value === 'collapsed') return [{ id: 'collapsed', label: copy.collapsedMenu, items: summarize(activeProfile.value.collapsed.buttons) }];
 	return [
-		{ id: 'root', label: 'グループ外・グループの順番', items: summarize(activeProfile.value.expanded.nodes) },
-		...availableGroups.value.map(group => ({ id: group.id, label: `${group.name} の中`, items: summarize(group.children) })),
+		{ id: 'root', label: copy.outsideGroupsAndGroupOrder, items: summarize(activeProfile.value.expanded.nodes) },
+		...availableGroups.value.map(group => ({ id: group.id, label: copyx.insideGroup({ name: getHataSideStudioGroupDisplayName(group.name) }), items: summarize(group.children) })),
 	];
 });
 const dragTimelineSections = computed(() => {
@@ -520,14 +536,14 @@ const dragTimelineSections = computed(() => {
 		.filter(item => item.id !== draggingId)
 		.map(item => ({
 			id: item.id,
-			label: item.type === 'group' ? `グループ：${item.name}` : item.label,
+			label: item.type === 'group' ? copyx.groupNamed({ name: getHataSideStudioGroupDisplayName(item.name) }) : item.type === 'widget' ? widgetDisplayLabel(item.kind, item.label) : getHataSideStudioMenuDisplayLabel(item.menuId, item.label),
 			icon: item.type === 'group' ? 'ti ti-category' : item.type === 'widget' ? 'ti ti-app-window' : item.icon,
 		}));
-	if (editMode.value === 'collapsed') return [{ id: 'collapsed', label: '縮小メニュー', items: summarize(activeProfile.value.collapsed.buttons) }];
+	if (editMode.value === 'collapsed') return [{ id: 'collapsed', label: copy.collapsedMenu, items: summarize(activeProfile.value.collapsed.buttons) }];
 	const dragging = draggingNodeId.value ? findNode(draggingNodeId.value) : null;
 	return [
-		{ id: 'root', label: 'メニュー全体', items: summarize(activeProfile.value.expanded.nodes) },
-		...availableGroups.value.filter(() => dragging?.type !== 'group').map(group => ({ id: group.id, label: group.name, items: summarize(group.children) })),
+		{ id: 'root', label: copy.wholeMenu, items: summarize(activeProfile.value.expanded.nodes) },
+		...availableGroups.value.filter(() => dragging?.type !== 'group').map(group => ({ id: group.id, label: getHataSideStudioGroupDisplayName(group.name), items: summarize(group.children) })),
 	];
 });
 const groupContrastWarnings = computed(() => new Map(availableGroups.value.map(group => [group.id, inspectGroupContrast(group)])));
@@ -578,7 +594,7 @@ function applyGroupTextColor(group: HataSideGroup, color: string) {
 	group.foreground = color;
 	for (const child of group.children) child.foreground = color;
 	contrastPopoverGroupId.value = null;
-	os.toast('グループ内の文字色を一括変更しました', 'ti ti-contrast');
+	os.toast(copy.groupTextColorChanged, 'ti ti-contrast');
 }
 
 function openStudioDialog(config: Omit<StudioDialogState, 'resolve'>): Promise<{ confirmed: boolean; value: string }> {
@@ -596,29 +612,29 @@ function resolveStudioDialog(confirmed: boolean) {
 	current.resolve({ confirmed, value: current.value });
 }
 
-async function askStudioConfirm(title: string, text: string, confirmLabel = '続ける', icon = 'ti ti-alert-circle'): Promise<boolean> {
-	return (await openStudioDialog({ kind: 'confirm', title, text, icon, confirmLabel, cancelLabel: 'やめる', value: '', options: [] })).confirmed;
+async function askStudioConfirm(title: string, text: string, confirmLabel = copy.continue, icon = 'ti ti-alert-circle'): Promise<boolean> {
+	return (await openStudioDialog({ kind: 'confirm', title, text, icon, confirmLabel, cancelLabel: copy.cancel, value: '', options: [] })).confirmed;
 }
 
 async function promptCollapsedBorderVisibility(node: HataSideNode, event?: Event) {
 	if (node.type !== 'button' || editMode.value !== 'collapsed' || node.borderVisible) return;
 	event?.preventDefault();
 	const confirmed = await askStudioConfirm(
-		'先に枠線を表示しますか？',
-		'縮小メニューの枠線は初期状態で非表示です。「枠線を表示」にチェックすると、ここで選んだ色を実際のボタンに表示できます。',
-		'枠線を表示する',
+		copy.showBorderFirstQuestion,
+		copy.collapsedBorderHiddenDescription,
+		copy.showBorderAction,
 		'ti ti-border-corner-i',
 	);
 	if (confirmed) node.borderVisible = true;
 }
 
 async function askStudioPrompt(title: string, text: string, initialValue = ''): Promise<string | null> {
-	const result = await openStudioDialog({ kind: 'prompt', title, text, icon: 'ti ti-pencil', confirmLabel: '変更する', cancelLabel: 'やめる', value: initialValue, options: [] });
+	const result = await openStudioDialog({ kind: 'prompt', title, text, icon: 'ti ti-pencil', confirmLabel: copy.change, cancelLabel: copy.cancel, value: initialValue, options: [] });
 	return result.confirmed ? result.value.trim() : null;
 }
 
 async function askStudioSelect(title: string, text: string, options: Array<{ value: string; label: string }>): Promise<string | null> {
-	const result = await openStudioDialog({ kind: 'select', title, text, icon: 'ti ti-list-search', confirmLabel: '選ぶ', cancelLabel: 'やめる', value: options[0]?.value ?? '', options });
+	const result = await openStudioDialog({ kind: 'select', title, text, icon: 'ti ti-list-search', confirmLabel: copy.choose, cancelLabel: copy.cancel, value: options[0]?.value ?? '', options });
 	return result.confirmed ? result.value : null;
 }
 
@@ -722,12 +738,12 @@ async function onDragEnd() {
 	if (sourceId && source?.type === 'group') {
 		const targetId = pointedGroupId;
 		if (targetId && targetId !== sourceId) {
-				const confirmed = await askStudioConfirm('グループを統合', `「${source.name}」を統合先へまとめ、元の空の囲いを削除します。`, '統合する', 'ti ti-arrows-join');
+				const confirmed = await askStudioConfirm(copy.mergeGroups, copyx.mergeDraggedGroupDescription({ name: source.name }), copy.mergeAction, 'ti ti-arrows-join');
 				if (confirmed) {
 					const merged = mergeHataSideGroups(activeProfile.value, sourceId, targetId);
 					replaceActiveProfile(merged);
 					selectedId.value = targetId;
-					os.toast('グループを統合しました', 'ti ti-arrows-join');
+					os.toast(copy.groupsMerged, 'ti ti-arrows-join');
 				}
 		}
 	}
@@ -777,7 +793,7 @@ function detachNode(id: string): HataSideNode | null {
 
 function moveNodeToTimeline(id: string, containerId: string, requestedIndex: number) {
 	if (!canPlaceNodeInContainer(findNode(id), containerId)) {
-		os.toast('複数列には「大」の項目を移動できません', 'ti ti-layout-grid');
+		os.toast(copy.cannotMoveLargeIntoMultipleColumns, 'ti ti-layout-grid');
 		return;
 	}
 	const moving = detachNode(id);
@@ -833,9 +849,9 @@ function removeNode(id: string) { if (editMode.value === 'collapsed') activeProf
 async function requestRemoveNode(id: string) {
 	const node = findNode(id);
 	if (!node) return;
-	const label = node.type === 'group' ? `グループ「${node.name}」` : `「${node.label}」`;
-	const detail = node.type === 'group' && node.children.length > 0 ? `中の${node.children.length}項目も一緒に削除されます。` : '保存するまでは確定しません。';
-	if (await askStudioConfirm(`${label}を削除`, detail, '削除する', 'ti ti-trash')) removeNode(id);
+	const label = node.type === 'group' ? copyx.groupQuoted({ name: getHataSideStudioGroupDisplayName(node.name) }) : copyx.itemQuoted({ name: node.type === 'widget' ? widgetDisplayLabel(node.kind, node.label) : getHataSideStudioMenuDisplayLabel(node.menuId, node.label) });
+	const detail = node.type === 'group' && node.children.length > 0 ? copyx.deleteChildrenTogether({ count: node.children.length.toString() }) : copy.notFinalUntilSaved;
+	if (await askStudioConfirm(copyx.deleteNamed({ name: label }), detail, copy.deleteAction, 'ti ti-trash')) removeNode(id);
 }
 
 function activateProfile(id: string) { draft.value.activeProfileId = id; selectedId.value = null; inspectorTab.value = 'layout'; closeFloatingMenus(); }
@@ -948,23 +964,23 @@ function confirmAddWidget() {
 }
 
 const widgetSettingLabels: Record<string, string> = {
-	label: '表示ラベル',
-	colored: '強調色を使う',
-	script: '実行するAiScript',
-	showHeader: '見出しを表示',
-	height: '内容の高さ',
-	maxEntries: '表示件数',
-	size: '文字盤サイズ',
-	fontSize: '文字の大きさ',
-	showMs: 'ミリ秒を表示',
-	showLabel: '補助ラベルを表示',
-	maxItems: '表示する花の数',
+	label: copy.displayLabel,
+	colored: copy.useAccentColor,
+	script: copy.aiScriptToRun,
+	showHeader: copy.showHeading,
+	height: copy.contentHeight,
+	maxEntries: copy.displayItemCount,
+	size: copy.clockFaceSize,
+	fontSize: copy.fontSize,
+	showMs: copy.showMilliseconds,
+	showLabel: copy.showAuxiliaryLabel,
+	maxItems: copy.flowerCount,
 };
 
 function widgetBaseSettingEntries(widget: HataSideWidget) {
 	return Object.entries(widget.data ?? {}).map(([key, value]) => ({
 		key,
-		label: widget.kind === 'button' && key === 'label' ? 'ボタンに表示する文字' : widgetSettingLabels[key] ?? key,
+		label: widget.kind === 'button' && key === 'label' ? copy.buttonText : widgetSettingLabels[key] ?? key,
 		value,
 		type: key === 'script' ? 'multiline' : typeof value === 'boolean' ? 'boolean' : typeof value === 'number' ? 'number' : 'text',
 	}));
@@ -1000,15 +1016,15 @@ function changeWidgetKind(widget: HataSideWidget, kind: HataSideWidgetKind) {
 function addGroup() { if (editMode.value === 'collapsed') return; const group = createGroup(); activeProfile.value.expanded.nodes.push(group); openQuickEditor(group.id); }
 
 async function copyLayout(direction: 'expandedToCollapsed' | 'collapsedToExpanded') {
-	const target = direction === 'expandedToCollapsed' ? '縮小メニュー' : '拡大メニュー';
-	if (!await askStudioConfirm(`${target}へコピー`, `${target}の現在の並びを置き換えます。`, 'コピーする', 'ti ti-copy')) return;
+	const target = direction === 'expandedToCollapsed' ? copy.collapsedMenu : copy.expandedMenu;
+	if (!await askStudioConfirm(copyx.copyToMenu({ target }), copyx.replaceCurrentOrder({ target }), copy.copyAction, 'ti ti-copy')) return;
 	replaceActiveProfile(direction === 'expandedToCollapsed' ? copyExpandedToCollapsed(activeProfile.value) : copyCollapsedToExpanded(activeProfile.value));
 	setEditMode(direction === 'expandedToCollapsed' ? 'collapsed' : 'expanded');
 }
 
 async function importCurrentSidebar() {
 	copyMenuOpen.value = false;
-	if (!await askStudioConfirm('現在の並びを読み込む', 'このプロファイルの拡大・縮小メニューを、現在のサイドメニュー設定から作り直します。', '読み込む', 'ti ti-list-check')) return;
+	if (!await askStudioConfirm(copy.importCurrentOrder, copy.rebuildFromCurrentSidebar, copy.importAction, 'ti ti-list-check')) return;
 	const profile = createDefaultProfile(prefer.r['simpleUi.sidebar'].value as any[], activeProfile.value.name);
 	profile.id = activeProfile.value.id;
 	replaceActiveProfile(profile);
@@ -1024,7 +1040,7 @@ function moveSelectedTo(groupId: string) {
 	const moving = selected.value;
 	const containerId = groupId || 'root';
 	if (!canPlaceNodeInContainer(moving, containerId)) {
-		os.toast('複数列には「大」の項目を移動できません', 'ti ti-layout-grid');
+		os.toast(copy.cannotMoveLargeIntoMultipleColumns, 'ti ti-layout-grid');
 		return;
 	}
 	activeProfile.value.expanded.nodes = activeProfile.value.expanded.nodes
@@ -1038,15 +1054,15 @@ function moveSelectedTo(groupId: string) {
 	}
 }
 
-async function mergeSelectedGroup() { if (!selectedId.value || !mergeTargetId.value) return; if (!await askStudioConfirm('グループを統合', '選択中のグループを統合先へまとめます。元の囲いは削除されます。', '統合する', 'ti ti-arrows-join')) return; const sourceId = selectedId.value; const targetId = mergeTargetId.value; const merged = mergeHataSideGroups(activeProfile.value, sourceId, targetId); merged.expanded.nodes = merged.expanded.nodes.filter(node => node.id !== sourceId); replaceActiveProfile(merged); selectedId.value = targetId; mergeTargetId.value = ''; }
+async function mergeSelectedGroup() { if (!selectedId.value || !mergeTargetId.value) return; if (!await askStudioConfirm(copy.mergeGroups, copy.mergeSelectedGroupDescription, copy.mergeAction, 'ti ti-arrows-join')) return; const sourceId = selectedId.value; const targetId = mergeTargetId.value; const merged = mergeHataSideGroups(activeProfile.value, sourceId, targetId); merged.expanded.nodes = merged.expanded.nodes.filter(node => node.id !== sourceId); replaceActiveProfile(merged); selectedId.value = targetId; mergeTargetId.value = ''; }
 
-async function chooseDirectTarget(button: HataSideButton) { const collection = button.menuId === 'lists' ? await userListsCache.fetch().catch(() => []) : await antennasCache.fetch().catch(() => []); if (collection.length === 0) { await openStudioDialog({ kind: 'confirm', title: '選べる項目がありません', text: button.menuId === 'lists' ? 'リストがありません。先にリストを作成してください。' : 'アンテナがありません。先にアンテナを作成してください。', icon: 'ti ti-info-circle', confirmLabel: '閉じる', cancelLabel: '', value: '', options: [] }); return; } const result = await askStudioSelect(button.menuId === 'lists' ? '直接開くリスト' : '直接開くアンテナ', 'このボタンから直接開く項目を選びます。', collection.map((item: any) => ({ value: item.id, label: item.name }))); if (result) button.targetId = result; }
+async function chooseDirectTarget(button: HataSideButton) { const collection = button.menuId === 'lists' ? await userListsCache.fetch().catch(() => []) : await antennasCache.fetch().catch(() => []); if (collection.length === 0) { await openStudioDialog({ kind: 'confirm', title: copy.noSelectableItems, text: button.menuId === 'lists' ? copy.noListsCreateFirst : copy.noAntennasCreateFirst, icon: 'ti ti-info-circle', confirmLabel: copy.close, cancelLabel: '', value: '', options: [] }); return; } const result = await askStudioSelect(button.menuId === 'lists' ? copy.directList : copy.directAntenna, copy.selectDirectTargetDescription, collection.map((item: any) => ({ value: item.id, label: item.name }))); if (result) button.targetId = result; }
 
-async function renameProfile() { const result = await askStudioPrompt('プロファイル名', '端末内で区別しやすい名前を付けます。', activeProfile.value.name); if (result) activeProfile.value.name = result.slice(0, 80); }
+async function renameProfile() { const result = await askStudioPrompt(copy.profileName, copy.profileNameDescription, activeProfile.value.name); if (result) activeProfile.value.name = result.slice(0, 80); }
 
-async function addProfile() { if (draft.value.profiles.length >= profileLimit.value) { await openStudioDialog({ kind: 'confirm', title: 'プロファイル上限', text: `このロールでは最大${profileLimit.value}件まで保存できます。`, icon: 'ti ti-alert-circle', confirmLabel: '閉じる', cancelLabel: '', value: '', options: [] }); return; } const profile = createDefaultProfile(prefer.r['simpleUi.sidebar'].value as any[], `プロファイル ${draft.value.profiles.length + 1}`); draft.value.profiles.push(profile); draft.value.activeProfileId = profile.id; selectedId.value = null; }
+async function addProfile() { if (draft.value.profiles.length >= profileLimit.value) { await openStudioDialog({ kind: 'confirm', title: copy.profileLimit, text: copyx.profileLimitDescription({ limit: profileLimit.value.toString() }), icon: 'ti ti-alert-circle', confirmLabel: copy.close, cancelLabel: '', value: '', options: [] }); return; } const profile = createDefaultProfile(prefer.r['simpleUi.sidebar'].value as any[], `プロファイル ${draft.value.profiles.length + 1}`); draft.value.profiles.push(profile); draft.value.activeProfileId = profile.id; selectedId.value = null; }
 
-async function removeProfile() { if (draft.value.profiles.length <= 1) return; if (!await askStudioConfirm('プロファイルを削除', `「${activeProfile.value.name}」を削除します。保存するまでは確定しません。`, '削除する', 'ti ti-trash')) return; const index = activeProfileIndex(); draft.value.profiles.splice(index, 1); draft.value.activeProfileId = draft.value.profiles[Math.max(0, index - 1)].id; selectedId.value = null; }
+async function removeProfile() { if (draft.value.profiles.length <= 1) return; if (!await askStudioConfirm(copy.deleteProfile, copyx.deleteProfileDescription({ name: profileDisplayName(activeProfile.value.name) }), copy.deleteAction, 'ti ti-trash')) return; const index = activeProfileIndex(); draft.value.profiles.splice(index, 1); draft.value.activeProfileId = draft.value.profiles[Math.max(0, index - 1)].id; selectedId.value = null; }
 
 function resetProfile() { const profile = createDefaultProfile(prefer.r['simpleUi.sidebar'].value as any[], activeProfile.value.name); profile.id = activeProfile.value.id; replaceActiveProfile(profile); resetConfirmOpen.value = false; selectedId.value = null; }
 
@@ -1058,7 +1074,7 @@ function redo() { restoreHistory(historyIndex.value + 1); }
 
 function save() {
 	if (draft.value.profiles.length > profileLimit.value) {
-		void openStudioDialog({ kind: 'confirm', title: '保存できません', text: `このロールでは最大${profileLimit.value}件までです。`, icon: 'ti ti-alert-circle', confirmLabel: '閉じる', cancelLabel: '', value: '', options: [] });
+		void openStudioDialog({ kind: 'confirm', title: copy.cannotSave, text: copyx.profileLimitShort({ limit: profileLimit.value.toString() }), icon: 'ti ti-alert-circle', confirmLabel: copy.close, cancelLabel: '', value: '', options: [] });
 		return false;
 	}
 	for (const profile of draft.value.profiles) profile.updatedAt = new Date().toISOString();
@@ -1072,20 +1088,20 @@ function save() {
 	history.value = [cloneHataSideStudioStore(saved)];
 	historyIndex.value = 0;
 	queueMicrotask(() => { historyLocked = false; });
-	os.toast('HataSideStudio の設定をこの端末に保存しました', 'ti ti-device-floppy');
+	os.toast(copy.savedToThisDevice, 'ti ti-device-floppy');
 	return true;
 }
 
 function buttonDetail(menuId: string): string {
-	if (menuId === 'hatafeed') return ($i?.isAdmin || $i?.isModerator) ? '絵文字審査・イシュー状況' : '申請・イシュー状況';
-	if (menuId === 'hatask') return '予定・ToDo・ごはん・きもち';
-	if (menuId === 'hatady') return '学習状況・読書・本日の記録';
-	if (menuId === 'notifications') return Number($i?.unreadNotificationsCount ?? 0) > 0 ? `直近の通知・未読${$i?.unreadNotificationsCount}件` : '新しい通知はありません';
-	if (menuId === 'announcements') return '最新のお知らせとメンテナンス情報';
-	if (menuId === 'search') return '検索ボックス';
-	if (menuId === 'chat') return '最後に開いた会話へすぐ移動';
-	if (menuId === 'channels') return 'フォロー中チャンネルの新着';
-	return '開く';
+	if (menuId === 'hatafeed') return ($i?.isAdmin || $i?.isModerator) ? copy.hatafeedAdminDetail : copy.hatafeedUserDetail;
+	if (menuId === 'hatask') return copy.hataskDetail;
+	if (menuId === 'hatady') return copy.hatadyDetail;
+	if (menuId === 'notifications') return Number($i?.unreadNotificationsCount ?? 0) > 0 ? copyx.recentNotificationsUnread({ count: String($i?.unreadNotificationsCount) }) : copy.noNewNotifications;
+	if (menuId === 'announcements') return copy.announcementsDetail;
+	if (menuId === 'search') return copy.searchBox;
+	if (menuId === 'chat') return copy.chatDetail;
+	if (menuId === 'channels') return copy.channelsDetail;
+	return copy.open;
 }
 
 function runPreviewSearch(query: string) {
@@ -1111,7 +1127,7 @@ function finishTutorial(skipped: boolean) {
 	tutorialOpen.value = false;
 	miLocalStorage.setItem('hataSideStudioTutorialDone', '1');
 	claimAchievement('hataSideStudioPioneer');
-	os.toast(skipped ? 'チュートリアルをスキップしました' : 'HataSideStudioの準備ができました', skipped ? 'ti ti-player-skip-forward' : 'ti ti-confetti');
+	os.toast(skipped ? copy.tutorialSkipped : copy.studioReady, skipped ? 'ti ti-player-skip-forward' : 'ti ti-confetti');
 }
 
 const leaveConfirmOpen = ref(false);
@@ -1343,7 +1359,7 @@ definePage(() => ({
 .contrastPopover header button { width:28px;height:28px;border-radius:8px; }.contrastPopover p { margin:0;color:var(--studioMuted);font-size:.7rem;line-height:1.45; }
 .contrastPopover > div { display:flex;align-items:center;gap:8px;flex-wrap:wrap; }.contrastPopover > div > button { min-height:34px;padding:7px 10px;border-radius:9px; }.contrastPopover label { display:flex;align-items:center;gap:6px;color:var(--studioMuted);font-size:.68rem; }.contrastPopover input { width:38px;height:30px;padding:0;border:0;background:none; }
 .groupGrid { position:relative;display:grid;grid-template-columns:repeat(var(--hss-columns,1),minmax(0,1fr));align-items:start;gap:4px;min-width:0;min-height:46px;padding:4px;box-sizing:border-box;border-radius:10px; }
-.groupGrid[data-empty="true"]::before { content:'ここへボタン・ウィジェットをドラッグ';position:absolute;inset:0;display:grid;place-items:center;padding:8px;border:1px dashed var(--studioLine);border-radius:10px;color:var(--studioMuted);font-size:.62rem;text-align:center;pointer-events:none; }
+.groupGrid[data-empty="true"]::before { content:v-bind(emptyGroupDropText);position:absolute;inset:0;display:grid;place-items:center;padding:8px;border:1px dashed var(--studioLine);border-radius:10px;color:var(--studioMuted);font-size:.62rem;text-align:center;pointer-events:none; }
 .previewGroup[data-masonry="on"] .groupGrid { display:block;columns:var(--hss-columns,1);column-gap:7px; }
 .previewGroup[data-masonry="on"] .previewButton,.previewGroup[data-masonry="on"] .previewWidget { width:100%;margin:0 0 7px;break-inside:avoid; }
 .previewGroup[data-masonry="on"] .previewWidget { column-span:all; }

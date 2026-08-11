@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+import { i18n } from '@/i18n.js';
+
 export interface HataFeedExportRange {
 	numberFrom: number | null;
 	numberTo: number | null;
@@ -12,13 +14,13 @@ export interface HataFeedExportRange {
 
 export function validateHataFeedExportRange(range: HataFeedExportRange): string | null {
 	if ((range.numberFrom != null && range.numberFrom < 1) || (range.numberTo != null && range.numberTo < 1)) {
-		return 'イシュー番号は1以上で指定してください。';
+		return i18n.ts._hata._hatafeed._exportRange.numberAtLeastOne;
 	}
 	if (range.numberFrom != null && range.numberTo != null && range.numberFrom > range.numberTo) {
-		return 'イシュー番号の開始は終了以下にしてください。';
+		return i18n.ts._hata._hatafeed._exportRange.numberOrder;
 	}
 	if (range.createdFrom && range.createdTo && range.createdFrom > range.createdTo) {
-		return '作成日の開始は終了以前にしてください。';
+		return i18n.ts._hata._hatafeed._exportRange.dateOrder;
 	}
 	return null;
 }

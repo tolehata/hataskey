@@ -8,6 +8,51 @@ import { beforeEach, describe, expect, test, vi } from 'vitest';
 const local = new Map<string, string>();
 const commits: [string, unknown][] = [];
 const api = vi.fn();
+const settingsTransferLocale = vi.hoisted(() => ({
+	ts: {
+		categories: {
+			generalLabel: '旗鯖全体', generalDescription: '投稿フォーム、演出、フォント、プロフィールの表示設定',
+			hatasabaUiLabel: 'HatasabaUI 2', hatasabaUiDescription: 'ナビ、デッキ、見た目と端末ごとの操作設定',
+			hataSideStudioLabel: 'HataSideStudio', hataSideStudioDescription: 'プロファイル、拡大・縮小の配置、色、グループとウィジェット設定',
+			hatacordingUiLabel: 'HataSNSCordUI', hatacordingUiDescription: 'メニュー、右ペイン、ウィジェットと端末ごとの表示設定',
+			hataskLabel: 'Hatask', hataskDescription: 'テーマやホーム表示などの設定（ToDo・記録は含みません）',
+			hatadyLabel: 'Hatady', hatadyDescription: 'テーマ（学習記録・本棚は含みません）',
+			hatafeedLabel: 'HataFeed', hatafeedDescription: 'HataFeedの表示設定（イシュー・申請内容は含みません）',
+			mascotLabel: 'マスコット', mascotDescription: '通知、表示位置、表情切替の設定（キャラクター素材は含みません）',
+		},
+		unknownVersion: '不明な版',
+		validation: {
+			typeMismatch: '値の型が合いません',
+			unsupportedValue: 'この版では扱わない値です',
+			stringLengthMismatch: '文字数の範囲が合いません',
+			numberRangeMismatch: '値の範囲が合いません',
+			noImportableItems: '読み込める項目がありません',
+			unsupportedItem: 'この版では扱わない項目です',
+			requiredItemMissing: '必要な項目がありません',
+			categoryDataMissing: 'このカテゴリのデータがありません',
+			unsupportedDeviceSetting: 'この版では扱わない端末設定です',
+			unsupportedSetting: 'この版では扱わない設定です',
+			unsupportedRegistryArea: 'この版では扱わない保存領域です',
+			valueFormatMismatch: '値の形式が合いません',
+			serverSaveFailed: 'サーバーへ保存できませんでした',
+			notificationSettingsFormatMismatch: '通知設定の形式が合いません',
+		},
+	},
+	tsx: {
+		versionMismatch: ({ fileVersion, serverVersion }: { fileVersion: string; serverVersion: string }) => `この設定ファイルは Hataskey ${fileVersion} で作られ、現在のサーバーは ${serverVersion} です。\n古い／新しい版の設定は一部が合わず、表示や操作が壊れる場合があります。読み込める項目だけを適用し、未知・廃止・型が合わない項目はスキップします。`,
+		validation: {
+			overItemLimit: ({ max }: { max: string }) => `上限${max}件を超えた項目は読み込みません`,
+			tooFewRequiredItems: ({ min }: { min: string }) => `必要な項目が${min}件未満です`,
+		},
+	},
+}));
+
+vi.mock('@/i18n.js', () => ({
+	i18n: {
+		ts: { _hata: { _settingsTransfer: { _utility: settingsTransferLocale.ts } } },
+		tsx: { _hata: { _settingsTransfer: { _utility: settingsTransferLocale.tsx } } },
+	},
+}));
 
 vi.mock('@@/js/config.js', () => ({ version: '2026.7.0-hata.12.1' }));
 vi.mock('@/local-storage.js', () => ({
@@ -38,6 +83,7 @@ import {
 	applyHataSettingsTransfer,
 	createHataSettingsTransfer,
 	getVersionMismatchMessage,
+	HATA_SETTINGS_CATEGORIES,
 	HATA_SETTINGS_TRANSFER_FORMAT,
 	HATA_SETTINGS_TRANSFER_VERSION,
 	parseHataSettingsTransfer,
@@ -49,6 +95,21 @@ describe('旗鯖独自設定の入出力', () => {
 		commits.length = 0;
 		api.mockReset();
 		api.mockRejectedValue(new Error('未設定'));
+	});
+
+	test('カテゴリ表示は共通localeを使い、花常と地震津波だけ日本語固定を維持する', () => {
+		expect(HATA_SETTINGS_CATEGORIES.find(category => category.id === 'general')).toMatchObject({
+			label: '旗鯖全体',
+			description: '投稿フォーム、演出、フォント、プロフィールの表示設定',
+		});
+		expect(HATA_SETTINGS_CATEGORIES.find(category => category.id === 'hanaawase')).toMatchObject({
+			label: '花常',
+			description: '音・環境音・動きなどのゲーム設定（進行は含みません）',
+		});
+		expect(HATA_SETTINGS_CATEGORIES.find(category => category.id === 'earthquake')).toMatchObject({
+			label: '地震・津波情報',
+			description: '地域、更新間隔、通知条件',
+		});
 	});
 
 	test('未知カテゴリを残した新しい版のファイルも解析し、警告対象にする', () => {
@@ -186,7 +247,7 @@ describe('旗鯖独自設定の入出力', () => {
 								frames: [{
 									id: 'frame-1', activeTab: 'tab-ok', height: 420,
 									tabs: [
-										{ id: 'tab-ok', type: 'local', tabColor: '#336699', excludeTypes: ['reaction'], notificationFilterKnownTypes: ['mention', 'reaction'] },
+										{ id: 'tab-ok', type: 'local', tabColor: '#336699', excludeTypes: ['reaction'], notificationFilterKnownTypes: ['mention', 'reaction'], excludeBots: true },
 										{ id: 'tab-broken', type: 42 },
 									],
 								}],
@@ -201,7 +262,7 @@ describe('旗鯖独自設定の入出力', () => {
 		expect(imported).toHaveLength(1);
 		expect(imported[0]).not.toHaveProperty('futureProfileField');
 		expect((((imported[0].slots as Array<Record<string, unknown>>)[0].frames as Array<Record<string, unknown>>)[0].tabs as unknown[])).toEqual([
-			{ id: 'tab-ok', type: 'local', tabColor: '#336699', excludeTypes: ['reaction'], notificationFilterKnownTypes: ['mention', 'reaction'] },
+			{ id: 'tab-ok', type: 'local', tabColor: '#336699', excludeTypes: ['reaction'], notificationFilterKnownTypes: ['mention', 'reaction'], excludeBots: true },
 		]);
 		expect(result.applied).toBe(1);
 		expect(result.skipped).toEqual(expect.arrayContaining([
@@ -264,5 +325,26 @@ describe('旗鯖独自設定の入出力', () => {
 		expect(setCall?.[1].value).toEqual({ showClock: false, theme: 'kisetsu' });
 		expect(result.applied).toBe(1);
 		expect(result.skipped).toContainEqual(expect.objectContaining({ key: 'settings.futureSetting' }));
+	});
+
+	test('Hatadyはテーマだけを書き出し、読み込み時も旧言語設定を消さない', async () => {
+		api.mockImplementation((endpoint: string, data: { value?: unknown }) => {
+			if (endpoint === 'i/registry/get') return Promise.resolve({ theme: 'paper', lang: 'en', futureDisplay: true });
+			if (endpoint === 'i/registry/set') return Promise.resolve(data.value);
+			return Promise.reject(new Error('unexpected'));
+		});
+
+		const exported = await createHataSettingsTransfer(['hatady']);
+		expect(exported.categories.hatady?.registry?.display).toEqual({ theme: 'paper' });
+		expect(exported.categories.hatady?.device).toBeUndefined();
+
+		const imported = parseHataSettingsTransfer(JSON.stringify({
+			...exported,
+			categories: { hatady: { registry: { display: { theme: 'espresso' } } } },
+		})).file;
+		const result = await applyHataSettingsTransfer(imported, ['hatady']);
+		const setCall = api.mock.calls.find(call => call[0] === 'i/registry/set');
+		expect(setCall?.[1].value).toEqual({ theme: 'espresso', lang: 'en', futureDisplay: true });
+		expect(result.applied).toBe(1);
 	});
 });

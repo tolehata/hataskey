@@ -16,7 +16,7 @@ SPDX-License-Identifier: AGPL-3.0-only
             <div :class="$style.bannerFade" aria-hidden="true"></div>
             <div :class="$style.headerBar">
                 <button :class="$style.closeBtn" @click="emit('close')"><i class="ti ti-x"></i></button>
-                <button :class="$style.profileBtn" @click="goToProfile"><i class="ti ti-external-link"></i> 詳細プロフィールへ</button>
+                <button :class="$style.profileBtn" @click="goToProfile"><i class="ti ti-external-link"></i> {{ copy.openFullProfile }}</button>
             </div>
         </div>
 
@@ -26,7 +26,7 @@ SPDX-License-Identifier: AGPL-3.0-only
             <div :class="$style.names">
                 <div :class="$style.displayName"><MkUserName :user="user" /></div>
                 <div :class="$style.acct">@{{ user.username }}{{ user.host ? '@' + user.host : '' }}</div>
-                <div v-if="!isSelf && user.isFollowed" :class="$style.followedBadge"><i class="ti ti-user-heart"></i> フォローされています</div>
+                <div v-if="!isSelf && user.isFollowed" :class="$style.followedBadge"><i class="ti ti-user-heart"></i> {{ copy.followsYou }}</div>
             </div>
         </div>
 
@@ -39,7 +39,7 @@ SPDX-License-Identifier: AGPL-3.0-only
         <div :class="$style.fields" v-if="hasFields">
             <div v-if="user.location" :class="$style.field"><i class="ti ti-map-pin"></i> {{ user.location }}</div>
             <div v-if="user.birthday" :class="$style.field"><i class="ti ti-cake"></i> {{ formatBirthday(user.birthday) }}</div>
-            <div v-if="user.createdAt" :class="$style.field"><i class="ti ti-calendar"></i> {{ formatDate(user.createdAt) }} 登録</div>
+            <div v-if="user.createdAt" :class="$style.field"><i class="ti ti-calendar"></i> {{ copy.joinedAt.replace('{date}', formatDate(user.createdAt)) }}</div>
 			<div v-if="user.uri || user.url" :class="$style.field"><i class="ti ti-link"></i> <a :href="user.uri ?? user.url ?? undefined" target="_blank" rel="noopener" :class="$style.fieldLink">{{ (user.uri || user.url || '').replace(/^https?:\/\//, '') }}</a></div>
         </div>
 
@@ -48,40 +48,40 @@ SPDX-License-Identifier: AGPL-3.0-only
 
         <!-- 統計 -->
         <div :class="$style.stats">
-            <div :class="$style.stat"><span :class="$style.statNum">{{ user.notesCount ?? 0 }}</span><span :class="$style.statLabel">ノート</span></div>
-            <div :class="$style.stat"><span :class="$style.statNum">{{ user.followingCount ?? 0 }}</span><span :class="$style.statLabel">フォロー</span></div>
-            <div :class="$style.stat"><span :class="$style.statNum">{{ user.followersCount ?? 0 }}</span><span :class="$style.statLabel">フォロワー</span></div>
+            <div :class="$style.stat"><span :class="$style.statNum">{{ user.notesCount ?? 0 }}</span><span :class="$style.statLabel">{{ copy.notes }}</span></div>
+            <div :class="$style.stat"><span :class="$style.statNum">{{ user.followingCount ?? 0 }}</span><span :class="$style.statLabel">{{ copy.following }}</span></div>
+            <div :class="$style.stat"><span :class="$style.statNum">{{ user.followersCount ?? 0 }}</span><span :class="$style.statLabel">{{ copy.followers }}</span></div>
         </div>
 
         <!-- アクションボタン -->
         <div v-if="!isSelf" :class="$style.actions">
             <button :class="[$style.actionBtn, isFollowing ? $style.actionActive : $style.actionPrimary]" @click="toggleFollow" :disabled="followLoading">
                 <i :class="isFollowing ? 'ti ti-user-check' : 'ti ti-user-plus'"></i>
-                {{ isFollowing ? 'フォロー中' : 'フォロー' }}
+                {{ isFollowing ? copy.following : copy.follow }}
             </button>
             <button :class="[$style.actionBtn, isMuted ? $style.actionWarn : '']" @click="toggleMute" :disabled="muteLoading">
                 <i :class="isMuted ? 'ti ti-eye-off' : 'ti ti-eye'"></i>
-                {{ isMuted ? 'ミュート中' : 'ミュート' }}
+                {{ isMuted ? copy.muted : copy.mute }}
             </button>
             <button :class="[$style.actionBtn, isBlocked ? $style.actionDanger : '']" @click="toggleBlock" :disabled="blockLoading">
                 <i :class="isBlocked ? 'ti ti-ban' : 'ti ti-shield'"></i>
-                {{ isBlocked ? 'ブロック中' : 'ブロック' }}
+                {{ isBlocked ? copy.blocked : copy.block }}
             </button>
         </div>
-        <div v-else :class="$style.selfLabel">あなたのアカウントです</div>
+        <div v-else :class="$style.selfLabel">{{ copy.yourAccount }}</div>
 
         <!-- 最近のノート -->
         <div :class="$style.recentNotes">
-            <div :class="$style.recentTitle">最近のノート</div>
-            <div v-if="notesLoading" :class="$style.loading">読み込み中...</div>
-            <div v-else-if="recentNotes.length === 0" :class="$style.empty">ノートがありません</div>
+            <div :class="$style.recentTitle">{{ copy.recentNotes }}</div>
+            <div v-if="notesLoading" :class="$style.loading">{{ copy.loading }}</div>
+            <div v-else-if="recentNotes.length === 0" :class="$style.empty">{{ copy.noNotes }}</div>
             <div v-else :class="$style.notesList">
                 <div v-for="note in recentNotes" :key="note.id" :class="$style.noteItem" @click="goToNote(note.id)">
                     <div :class="$style.noteContent">
                         <div :class="$style.noteText">
                             <Mfm v-if="note.text" :text="note.text" :plain="true" :nowrap="true" :author="user" :nyaize="'respect'" />
                             <span v-else-if="note.renoteId" :class="$style.noteRenote"><i class="ti ti-repeat"></i> RN</span>
-                            <span v-else :class="$style.noteEmpty">（テキストなし）</span>
+                            <span v-else :class="$style.noteEmpty">{{ copy.noText }}</span>
                         </div>
                         <div :class="$style.noteMeta"><MkTime :time="note.createdAt" /></div>
                     </div>
@@ -103,6 +103,7 @@ import * as os from '@/os.js';
 import { i18n } from '@/i18n.js';
 import { mainRouter } from '@/router.js';
 import { $i } from '@/i.js';
+import { versatileLang } from '@/utility/intl-const.js';
 
 const props = withDefaults(defineProps<{ userId: string; isMobile: boolean; inline?: boolean; }>(), { inline: false });
 const emit = defineEmits<{ (e: 'close'): void; }>();
@@ -117,6 +118,7 @@ const isBlocked = ref(false);
 const followLoading = ref(false);
 const muteLoading = ref(false);
 const blockLoading = ref(false);
+const copy = i18n.ts._hata._simpleUserPanel;
 
 const isSelf = computed(() => $i && user.value && $i.id === user.value.id);
 const hasFields = computed(() => user.value && (user.value.location || user.value.birthday || user.value.createdAt || user.value.uri || user.value.url));
@@ -145,7 +147,7 @@ function onDragStart(e: MouseEvent) {
 }
 
 function formatBirthday(d: string) { const m = d.match(/(\d{4})-(\d{2})-(\d{2})/); return m ? `${m[1]}/${m[2]}/${m[3]}` : d; }
-function formatDate(d: string) { const dt = new Date(d); return `${dt.getFullYear()}/${dt.getMonth()+1}/${dt.getDate()}`; }
+function formatDate(d: string) { return new Intl.DateTimeFormat(versatileLang, { year: 'numeric', month: 'numeric', day: 'numeric' }).format(new Date(d)); }
 
 function noteThumbnail(note: Misskey.entities.Note): string | null {
     if (!note.files || note.files.length === 0) return null;
@@ -175,17 +177,17 @@ async function loadNotes() {
 async function toggleFollow() {
     if (!user.value || followLoading.value || isSelf.value) return;
     if (isFollowing.value) {
-        const { canceled } = await os.confirm({ type: 'warning', text: `@${user.value.username} のフォローを解除しますか？` });
+        const { canceled } = await os.confirm({ type: 'warning', text: copy.unfollowConfirm.replace('{user}', `@${user.value.username}`) });
         if (canceled) return;
     } else {
-        const { canceled } = await os.confirm({ type: 'info', text: `@${user.value.username} をフォローしますか？` });
+        const { canceled } = await os.confirm({ type: 'info', text: copy.followConfirm.replace('{user}', `@${user.value.username}`) });
         if (canceled) return;
     }
     followLoading.value = true;
     try {
         if (isFollowing.value) { await misskeyApi('following/delete', { userId: user.value.id }); isFollowing.value = false; }
         else { await misskeyApi('following/create', { userId: user.value.id }); isFollowing.value = true; }
-    } catch { os.toast('操作に失敗しました'); } finally { followLoading.value = false; }
+    } catch { os.toast(copy.actionFailed); } finally { followLoading.value = false; }
 }
 
 async function toggleMute() {
@@ -199,11 +201,11 @@ async function toggleMute() {
                 os.alert({ type: 'error', text: i18n.ts.cannotBlockOrMuteAdministrator });
                 muteLoading.value = false; return;
             }
-            const { canceled } = await os.confirm({ type: 'warning', text: `@${user.value.username} をミュートしますか？` });
+            const { canceled } = await os.confirm({ type: 'warning', text: copy.muteConfirm.replace('{user}', `@${user.value.username}`) });
             if (canceled) { muteLoading.value = false; return; }
             await misskeyApi('mute/create', { userId: user.value.id }); isMuted.value = true;
         }
-    } catch { os.toast('操作に失敗しました'); } finally { muteLoading.value = false; }
+    } catch { os.toast(copy.actionFailed); } finally { muteLoading.value = false; }
 }
 
 async function toggleBlock() {
@@ -217,11 +219,11 @@ async function toggleBlock() {
                 os.alert({ type: 'error', text: i18n.ts.cannotBlockOrMuteAdministrator });
                 blockLoading.value = false; return;
             }
-            const { canceled } = await os.confirm({ type: 'warning', text: `@${user.value.username} をブロックしますか？` });
+            const { canceled } = await os.confirm({ type: 'warning', text: copy.blockConfirm.replace('{user}', `@${user.value.username}`) });
             if (canceled) { blockLoading.value = false; return; }
             await misskeyApi('blocking/create', { userId: user.value.id }); isBlocked.value = true;
         }
-    } catch { os.toast('操作に失敗しました'); } finally { blockLoading.value = false; }
+    } catch { os.toast(copy.actionFailed); } finally { blockLoading.value = false; }
 }
 
 function goToProfile() {

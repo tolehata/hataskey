@@ -14,12 +14,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 	:canResize="true"
 	@closed="emit('closed')"
 >
-	<template #header><i class="ti ti-search"></i> {{ t('title') }}</template>
+	<template #header><i class="ti ti-search"></i> {{ copy.title }}</template>
 
 	<div class="hatady-scope" :data-hatady-theme="theme" :class="$style.body">
 		<!-- 検索バー(通常のノート検索と同じカプセル型。対象種別はバー内のプルダウンに内包) -->
 		<div :class="$style.capsule">
-			<button ref="scopeBtn" type="button" :class="$style.target" :aria-label="t('scope')" @click="openScopeMenu">
+			<button ref="scopeBtn" type="button" :class="$style.target" :aria-label="copy.scope" @click="openScopeMenu">
 				<i :class="['ti', scopeIcon]"></i>
 				<span :class="$style.targetLabel">{{ scopeLabel }}</span>
 				<i class="ti ti-chevron-down" :class="$style.targetChevron"></i>
@@ -29,33 +29,33 @@ SPDX-License-Identifier: AGPL-3.0-only
 				v-model="query"
 				type="search"
 				:class="$style.queryInput"
-				:placeholder="t('placeholder')"
+				:placeholder="copy.placeholder"
 				@input="onInput"
 				@keydown.enter.prevent="runSearch(true)"
 			>
-			<button v-if="query" type="button" :class="$style.clearBtn" tabindex="-1" :aria-label="t('clear')" @click="query = ''; results = null;"><i class="ti ti-x"></i></button>
-			<button type="button" :class="$style.searchBtn" :aria-label="t('title')" @click="runSearch(true)"><i class="ti ti-search"></i></button>
+			<button v-if="query" type="button" :class="$style.clearBtn" tabindex="-1" :aria-label="copy.clear" @click="query = ''; results = null;"><i class="ti ti-x"></i></button>
+			<button type="button" :class="$style.searchBtn" :aria-label="copy.title" @click="runSearch(true)"><i class="ti ti-search"></i></button>
 		</div>
 
 		<!-- 結果 -->
 		<div :class="$style.results">
 			<div v-if="query.trim().length < 2" :class="$style.hint">
 				<i class="ti ti-keyboard" :class="$style.hintIcon"></i>
-				<div>{{ t('hint') }}</div>
+				<div>{{ copy.hint }}</div>
 			</div>
-			<div v-else-if="loading" :class="$style.loading">{{ t('loading') }}</div>
+			<div v-else-if="loading" :class="$style.loading">{{ copy.loading }}</div>
 			<div v-else-if="totalCount === 0" :class="$style.empty">
 				<i class="ti ti-mood-empty" :class="$style.hintIcon"></i>
-				<div>{{ t('noResults') }}</div>
+				<div>{{ copy.noResults }}</div>
 			</div>
 			<template v-else>
 				<!-- ログ -->
 				<section v-if="results && results.logs.length" :class="$style.group">
-					<div :class="$style.groupHead"><i class="ti ti-notebook"></i> {{ t('logs') }} <span :class="$style.groupCount">{{ results.logs.length }}</span></div>
+					<div :class="$style.groupHead"><i class="ti ti-notebook"></i> {{ copy.logs }} <span :class="$style.groupCount">{{ results.logs.length }}</span></div>
 					<button v-for="log in results.logs" :key="log.id" :class="$style.row" @click="jumpToLog(log)">
 						<span :class="$style.rowIcon" :style="{ background: '#eadfce' }"><i class="ti ti-pencil"></i></span>
 						<span :class="$style.rowMain">
-							<span :class="$style.rowTitle" v-html="hl(log.title || t('untitled'))"></span>
+							<span :class="$style.rowTitle" v-html="hl(log.title || copy.untitled)"></span>
 							<span :class="$style.rowSub">
 								<span v-if="log.subject" :class="$style.rowTag" v-html="hl(log.subject)"></span>
 								{{ fmtDate(log.studiedAt) }}<span v-if="log.body"> · </span><span v-if="log.body" v-html="hl(snippet(log.body))"></span>
@@ -67,7 +67,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 				<!-- 本 -->
 				<section v-if="results && results.books.length" :class="$style.group">
-					<div :class="$style.groupHead"><i class="ti ti-book"></i> {{ t('books') }} <span :class="$style.groupCount">{{ results.books.length }}</span></div>
+					<div :class="$style.groupHead"><i class="ti ti-book"></i> {{ copy.books }} <span :class="$style.groupCount">{{ results.books.length }}</span></div>
 					<button v-for="b in results.books" :key="b.id" :class="$style.row" @click="openBook(b.id)">
 						<HyBookCover :title="b.title" :author="b.author" :width="30"/>
 						<span :class="$style.rowMain">
@@ -80,12 +80,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 				<!-- 本の内容メモ -->
 				<section v-if="results && results.bookMemos.length" :class="$style.group">
-					<div :class="$style.groupHead"><i class="ti ti-note"></i> {{ t('bookMemos') }} <span :class="$style.groupCount">{{ results.bookMemos.length }}</span></div>
+					<div :class="$style.groupHead"><i class="ti ti-note"></i> {{ copy.bookMemos }} <span :class="$style.groupCount">{{ results.bookMemos.length }}</span></div>
 					<button v-for="m in results.bookMemos" :key="m.id" :class="$style.row" @click="openBook(m.bookId)">
 						<span :class="$style.rowIcon" :style="{ background: '#e5ecd8' }"><i class="ti ti-note"></i></span>
 						<span :class="$style.rowMain">
 							<span :class="$style.rowTitle" v-html="hl(snippet(m.text, 60))"></span>
-							<span :class="$style.rowSub"><i class="ti ti-book-2"></i> {{ m.book?.title || t('inBook') }}<span v-if="m.page != null"> · p.{{ m.page }}</span></span>
+							<span :class="$style.rowSub"><i class="ti ti-book-2"></i> {{ m.book?.title || copy.inBook }}<span v-if="m.page != null"> · {{ i18n.tsx._hata._hatady._search.pageNumber({ page: m.page.toString() }) }}</span></span>
 						</span>
 						<i class="ti ti-chevron-right" :class="$style.rowGo"></i>
 					</button>
@@ -93,12 +93,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 				<!-- しおりメモ -->
 				<section v-if="results && results.bookmarks.length" :class="$style.group">
-					<div :class="$style.groupHead"><i class="ti ti-bookmark"></i> {{ t('bookmarks') }} <span :class="$style.groupCount">{{ results.bookmarks.length }}</span></div>
+					<div :class="$style.groupHead"><i class="ti ti-bookmark"></i> {{ copy.bookmarks }} <span :class="$style.groupCount">{{ results.bookmarks.length }}</span></div>
 					<button v-for="bm in results.bookmarks" :key="bm.id" :class="$style.row" @click="openBook(bm.bookId)">
 						<span :class="$style.rowIcon" :style="{ background: bmColor(bm.color) }"><i class="ti ti-bookmark-filled"></i></span>
 						<span :class="$style.rowMain">
-							<span :class="$style.rowTitle" v-html="hl(bm.name || snippet(bm.memo || '', 60) || t('untitled'))"></span>
-							<span :class="$style.rowSub"><i class="ti ti-book-2"></i> {{ bm.book?.title || t('inBookmark') }}<span v-if="bm.memo && bm.name"> · </span><span v-if="bm.memo && bm.name" v-html="hl(snippet(bm.memo, 40))"></span><span v-if="bm.page != null"> · p.{{ bm.page }}</span></span>
+							<span :class="$style.rowTitle" v-html="hl(bm.name || snippet(bm.memo || '', 60) || copy.untitled)"></span>
+							<span :class="$style.rowSub"><i class="ti ti-book-2"></i> {{ bm.book?.title || copy.inBookmark }}<span v-if="bm.memo && bm.name"> · </span><span v-if="bm.memo && bm.name" v-html="hl(snippet(bm.memo, 40))"></span><span v-if="bm.page != null"> · {{ i18n.tsx._hata._hatady._search.pageNumber({ page: bm.page.toString() }) }}</span></span>
 						</span>
 						<i class="ti ti-chevron-right" :class="$style.rowGo"></i>
 					</button>
@@ -113,7 +113,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 import { ref, computed, onMounted, nextTick } from 'vue';
 import MkWindow from '@/components/MkWindow.vue';
 import HyBookCover from '@/components/HyBookCover.vue';
-import { hatadyTheme, hatadyEffectiveLang } from '@/utility/hatady-prefs.js';
+import { i18n } from '@/i18n.js';
+import { hatadyTheme } from '@/utility/hatady-prefs.js';
+import { versatileLang } from '@/utility/intl-const.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import * as os from '@/os.js';
 
@@ -121,7 +123,8 @@ const props = defineProps<{ initialQuery?: string }>();
 const emit = defineEmits<{ (ev: 'closed'): void; (ev: 'jumpLog', studiedAt: string): void }>();
 const dialog = ref<any>(null);
 const theme = hatadyTheme;
-const lang = hatadyEffectiveLang;
+const copy = i18n.ts._hata._hatady._search;
+const dateFormatter = new Intl.DateTimeFormat(versatileLang, { year: 'numeric', month: 'short', day: 'numeric' });
 
 type Results = { logs: any[]; books: any[]; bookMemos: any[]; bookmarks: any[] };
 const TYPES = [
@@ -144,12 +147,13 @@ const totalCount = computed(() => {
 	const r = results.value;
 	return r ? r.logs.length + r.books.length + r.bookMemos.length + r.bookmarks.length : 0;
 });
-const scopeLabel = computed(() => scope.value === 'all' ? t('scopeAll') : t(scope.value));
+const typeLabel = (key: TypeKey): string => ({ logs: copy.logs, books: copy.books, bookMemos: copy.bookMemos, bookmarks: copy.bookmarks })[key];
+const scopeLabel = computed(() => scope.value === 'all' ? copy.scopeAll : typeLabel(scope.value));
 const scopeIcon = computed(() => scope.value === 'all' ? 'ti-search' : (TYPES.find(x => x.key === scope.value)?.icon ?? 'ti-search'));
 
 function openScopeMenu() {
 	const mk = (key: 'all' | TypeKey, icon: string) => ({
-		text: key === 'all' ? t('scopeAll') : t(key),
+		text: key === 'all' ? copy.scopeAll : typeLabel(key),
 		icon: `ti ${icon}`,
 		active: scope.value === key,
 		action: () => { scope.value = key; if (query.value.trim().length >= 2) runSearch(true); },
@@ -213,19 +217,10 @@ function snippet(s: string, max = 80): string {
 	return one.length > max ? one.slice(0, max) + '…' : one;
 }
 function fmtDate(iso: string): string {
-	const d = new Date(iso);
-	return lang.value === 'en'
-		? d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
-		: `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`;
+	return dateFormatter.format(new Date(iso));
 }
 function statusLabel(st: string): string {
-	const m: Record<string, { ja: string; en: string }> = {
-		reading: { ja: '読書中', en: 'Reading' },
-		finished: { ja: '読了', en: 'Finished' },
-		want: { ja: '気になる', en: 'Want' },
-		tsundoku: { ja: '積読', en: 'Backlog' },
-	};
-	return m[st]?.[lang.value] ?? st;
+	return ({ reading: copy.statusReading, finished: copy.statusFinished, want: copy.statusWant, tsundoku: copy.statusTsundoku } as Record<string, string>)[st] ?? st;
 }
 function bmColor(key: string | null): string {
 	const m: Record<string, string> = { red: '#f2c4bd', orange: '#f4d3b0', yellow: '#f2e6ad', green: '#cfe6c2', blue: '#c3d8ee', purple: '#d9cdec', pink: '#f3cbe0' };
@@ -238,24 +233,6 @@ onMounted(async () => {
 	if (query.value.trim().length >= 2) runSearch(true);
 });
 
-const DICT: Record<string, { ja: string; en: string }> = {
-	title: { ja: '横断検索', en: 'Search' },
-	placeholder: { ja: 'ログ・本・メモ・しおりを検索…', en: 'Search logs, books, memos, bookmarks…' },
-	scope: { ja: '検索対象', en: 'Search target' },
-	scopeAll: { ja: 'すべて', en: 'All' },
-	clear: { ja: 'クリア', en: 'Clear' },
-	logs: { ja: 'ログ', en: 'Logs' },
-	books: { ja: '本', en: 'Books' },
-	bookMemos: { ja: '内容メモ', en: 'Memos' },
-	bookmarks: { ja: 'しおり', en: 'Bookmarks' },
-	hint: { ja: '2文字以上でヒットした記録を横断的に探せます。', en: 'Type 2+ characters to search across your records.' },
-	loading: { ja: '検索中…', en: 'Searching…' },
-	noResults: { ja: '該当する記録が見つかりませんでした。', en: 'No matching records found.' },
-	inBook: { ja: '本の内容メモ', en: 'Book memo' },
-	inBookmark: { ja: 'しおり', en: 'Bookmark' },
-	untitled: { ja: '(無題)', en: '(untitled)' },
-};
-function t(key: string): string { return DICT[key]?.[lang.value] ?? key; }
 </script>
 
 <style lang="scss" module>

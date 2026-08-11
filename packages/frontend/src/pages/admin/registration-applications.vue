@@ -13,42 +13,42 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<div v-if="status === 'rejected' && summary" :class="$style.summaryPanel">
 				<div :class="$style.summaryHeader">
 					<i class="ti ti-shield-lock"></i>
-					<span>却下済み申請の個人情報の管理状況</span>
+					<span>{{ copy.rejectedPrivacySummary }}</span>
 				</div>
 				<div :class="$style.summaryGrid">
 					<div :class="$style.summaryItem">
 						<div :class="$style.summaryValue">{{ summary.cleanedCount }}</div>
-						<div :class="$style.summaryLabel">個人情報削除済み</div>
-						<div :class="$style.summaryDesc">ID・パスワード情報を削除済み (メールは保持中の場合あり)</div>
+						<div :class="$style.summaryLabel">{{ copy.personalDataDeleted }}</div>
+						<div :class="$style.summaryDesc">{{ copy.personalDataDeletedDescription }}</div>
 					</div>
 					<div :class="$style.summaryItem">
 						<div :class="$style.summaryValue">{{ summary.emailRetainedCount }}</div>
-						<div :class="$style.summaryLabel">メール保持中</div>
-						<div :class="$style.summaryDesc">同一メールからの連続申請拒否のため一定期間保持 (90日経過で自動削除)</div>
+						<div :class="$style.summaryLabel">{{ copy.emailRetained }}</div>
+						<div :class="$style.summaryDesc">{{ copy.emailRetainedDescription }}</div>
 					</div>
 					<div v-if="summary.legacyCount > 0" :class="[$style.summaryItem, $style.summaryItemWarning]">
 						<div :class="$style.summaryValue">{{ summary.legacyCount }}</div>
-						<div :class="$style.summaryLabel">⚠️ 旧仕様の未クリーンアップ</div>
-						<div :class="$style.summaryDesc">旧仕様で却下された申請で、まだ個人情報が残っているもの</div>
+						<div :class="$style.summaryLabel">⚠️ {{ copy.legacyNotCleaned }}</div>
+						<div :class="$style.summaryDesc">{{ copy.legacyNotCleanedDescription }}</div>
 					</div>
 				</div>
 				<div v-if="summary.legacyCount > 0" :class="$style.summaryActions">
 					<MkButton danger rounded @click="runLegacyCleanup">
-						<i class="ti ti-trash"></i> 既存データを一括クリーンアップ ({{ summary.legacyCount }}件)
+						<i class="ti ti-trash"></i> {{ copyx.cleanupExisting({ count: summary.legacyCount.toString() }) }}
 					</MkButton>
 					<MkButton rounded @click="runLegacyCleanupDryRun">
-						<i class="ti ti-eye"></i> Dry-run (削除予定の確認のみ)
+						<i class="ti ti-eye"></i> {{ copy.dryRunOnly }}
 					</MkButton>
 				</div>
 			</div>
 
 			<MkSelect v-model="status" :items="statusItems">
-				<template #label>ステータス</template>
+				<template #label>{{ copy.status }}</template>
 			</MkSelect>
 
 			<div v-if="items.length === 0 && !loading" :class="$style.empty">
 				<div :class="$style.emptyIcon"><i class="ti ti-inbox"></i></div>
-				<p>{{ status === 'pending' ? '承認待ちの申請はありません' : '該当する申請はありません' }}</p>
+				<p>{{ status === 'pending' ? copy.noPending : copy.noMatching }}</p>
 			</div>
 
 			<div v-if="loading" :class="$style.empty">
@@ -61,7 +61,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<div :class="$style.cardUser">
 							<i class="ti ti-user"></i>
 							<span v-if="item.username" :class="$style.username">@{{ item.username }}</span>
-							<span v-else :class="[$style.username, $style.usernameDeleted]">@(削除済み)</span>
+							<span v-else :class="[$style.username, $style.usernameDeleted]">@({{ copy.deleted }})</span>
 						</div>
 						<div :class="$style.cardDate">{{ formatDate(item.createdAt) }}</div>
 					</div>
@@ -69,53 +69,53 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<!-- 旗鯖fork: 個人情報の削除状態バッジ (rejected の時のみ表示) -->
 					<div v-if="item.status === 'rejected'" :class="$style.privacyBadges">
 						<span v-if="item.username === null" :class="[$style.privacyBadge, $style.privacyBadgeDeleted]">
-							<i class="ti ti-check"></i> ID・パスワード削除済み
+							<i class="ti ti-check"></i> {{ copy.credentialsDeleted }}
 							<span v-if="item.personalDataDeletedAt" :class="$style.privacyBadgeDate">({{ formatDate(item.personalDataDeletedAt) }})</span>
 						</span>
 						<span v-else :class="[$style.privacyBadge, $style.privacyBadgeWarning]">
-							<i class="ti ti-alert-triangle"></i> ID・パスワード未削除 (旧仕様)
+							<i class="ti ti-alert-triangle"></i> {{ copy.credentialsNotDeleted }}
 						</span>
 						<span v-if="item.email !== null" :class="[$style.privacyBadge, $style.privacyBadgeRetained]">
-							<i class="ti ti-clock"></i> メール保持中
-							<span v-if="item.rejectedAt" :class="$style.privacyBadgeDate">(却下後{{ daysSinceRejection(item.rejectedAt) }}日経過 / 90日で自動削除)</span>
+							<i class="ti ti-clock"></i> {{ copy.emailRetained }}
+							<span v-if="item.rejectedAt" :class="$style.privacyBadgeDate">({{ copyx.rejectedDays({ count: daysSinceRejection(item.rejectedAt).toString() }) }})</span>
 						</span>
 						<span v-else :class="[$style.privacyBadge, $style.privacyBadgeDeleted]">
-							<i class="ti ti-check"></i> メール削除済み
+							<i class="ti ti-check"></i> {{ copy.emailDeleted }}
 						</span>
 					</div>
 
 					<div :class="$style.cardBody">
 						<div v-if="item.email" :class="$style.cardField">
-							<div :class="$style.cardFieldLabel">メールアドレス</div>
+							<div :class="$style.cardFieldLabel">{{ copy.emailAddress }}</div>
 							<div :class="$style.cardFieldValue">{{ item.email }}</div>
 						</div>
 						<div v-else-if="item.status === 'rejected'" :class="$style.cardField">
-							<div :class="$style.cardFieldLabel">メールアドレス</div>
-							<div :class="[$style.cardFieldValue, $style.cardFieldValueDeleted]">(削除済み)</div>
+							<div :class="$style.cardFieldLabel">{{ copy.emailAddress }}</div>
+							<div :class="[$style.cardFieldValue, $style.cardFieldValueDeleted]">({{ copy.deleted }})</div>
 						</div>
 						<div :class="$style.cardField">
-							<div :class="$style.cardFieldLabel">登録したい理由</div>
+							<div :class="$style.cardFieldLabel">{{ copy.reason }}</div>
 							<div :class="$style.cardFieldValue">{{ item.reason }}</div>
 						</div>
 					</div>
 
 					<div v-if="status === 'pending'" :class="$style.cardActions">
 						<MkButton primary rounded @click="approve(item)">
-							<i class="ti ti-check"></i> 承認
+							<i class="ti ti-check"></i> {{ copy.approve }}
 						</MkButton>
 						<MkButton danger rounded @click="reject(item)">
-							<i class="ti ti-x"></i> 却下
+							<i class="ti ti-x"></i> {{ copy.reject }}
 						</MkButton>
 					</div>
 					<div v-else :class="$style.cardStatus">
-						<span v-if="item.status === 'approved'" :class="$style.statusApproved"><i class="ti ti-check"></i> 承認済み</span>
-						<span v-if="item.status === 'rejected'" :class="$style.statusRejected"><i class="ti ti-x"></i> 却下済み</span>
+						<span v-if="item.status === 'approved'" :class="$style.statusApproved"><i class="ti ti-check"></i> {{ copy.approved }}</span>
+						<span v-if="item.status === 'rejected'" :class="$style.statusRejected"><i class="ti ti-x"></i> {{ copy.rejected }}</span>
 					</div>
 				</div>
 			</div>
 
 			<div v-if="hasMore" :class="$style.more">
-				<MkButton rounded @click="loadMore">もっと読み込む</MkButton>
+				<MkButton rounded @click="loadMore">{{ copy.loadMore }}</MkButton>
 			</div>
 		</div>
 	</div>
@@ -129,13 +129,16 @@ import { misskeyApi } from '@/utility/misskey-api.js';
 import MkButton from '@/components/MkButton.vue';
 import MkSelect from '@/components/MkSelect.vue';
 import { definePage } from '@/page.js';
+import { i18n } from '@/i18n.js';
 
 const LIMIT = 20;
+const copy = i18n.ts._hata._registrationApplications._admin;
+const copyx = i18n.tsx._hata._registrationApplications._admin;
 
 const statusItems = [
-	{ value: 'pending', label: '承認待ち' },
-	{ value: 'approved', label: '承認済み' },
-	{ value: 'rejected', label: '却下済み' },
+	{ value: 'pending', label: copy.pending },
+	{ value: 'approved', label: copy.approved },
+	{ value: 'rejected', label: copy.rejected },
 ];
 
 const status = ref<'pending' | 'approved' | 'rejected'>('pending');
@@ -220,8 +223,8 @@ function daysSinceRejection(rejectedAt: string): number {
 async function approve(item: any) {
 	const { canceled } = await os.confirm({
 		type: 'info',
-		title: '申請の承認',
-		text: `@${item.username} の登録申請を承認しますか？\nアカウントが作成され、承認メールが送信されます。`,
+		title: copy.approveApplication,
+		text: copyx.approveConfirm({ username: item.username }),
 	});
 	if (canceled) return;
 
@@ -229,19 +232,19 @@ async function approve(item: any) {
 		await (misskeyApi as any)('admin/approve-registration', {
 			applicationId: item.id,
 		});
-		os.alert({ type: 'success', text: `@${item.username} の申請を承認しました。` });
+		os.alert({ type: 'success', text: copyx.approvedSuccess({ username: item.username }) });
 		items.value = items.value.filter(x => x.id !== item.id);
 	} catch (err: any) {
 		console.error('[registration-applications] approve error:', err);
-		os.alert({ type: 'error', text: err?.message || 'エラーが発生しました。' });
+		os.alert({ type: 'error', text: err?.message || copy.errorOccurred });
 	}
 }
 
 async function reject(item: any) {
 	const { canceled } = await os.confirm({
 		type: 'warning',
-		title: '申請の却下',
-		text: `@${item.username} の登録申請を却下しますか？\n\n却下されると、ID・パスワード情報は即時削除されます。\nメールアドレスは同一メールからの連続申請を拒否するため、90日間保持されます。\n却下メールは送信されません。`,
+		title: copy.rejectApplication,
+		text: copyx.rejectConfirm({ username: item.username }),
 	});
 	if (canceled) return;
 
@@ -249,11 +252,11 @@ async function reject(item: any) {
 		await (misskeyApi as any)('admin/reject-registration', {
 			applicationId: item.id,
 		});
-		os.alert({ type: 'success', text: `@${item.username} の申請を却下しました。\nID・パスワード情報は削除済みです。` });
+		os.alert({ type: 'success', text: copyx.rejectedSuccess({ username: item.username }) });
 		items.value = items.value.filter(x => x.id !== item.id);
 	} catch (err: any) {
 		console.error('[registration-applications] reject error:', err);
-		os.alert({ type: 'error', text: err?.message || 'エラーが発生しました。' });
+		os.alert({ type: 'error', text: err?.message || copy.errorOccurred });
 	}
 }
 
@@ -265,12 +268,12 @@ async function runLegacyCleanupDryRun() {
 		});
 		os.alert({
 			type: 'info',
-			title: 'クリーンアップ確認 (Dry-run)',
-			text: `クリーンアップ対象: ${res.cleanedCount}件\n既にクリーンアップ済み: ${res.alreadyCleanedCount}件\nメール保持中: ${res.emailRetainedCount}件\n\n実際の削除は実行されていません。`,
+			title: copy.cleanupDryRunTitle,
+			text: copyx.cleanupDryRunResult({ target: res.cleanedCount.toString(), cleaned: res.alreadyCleanedCount.toString(), retained: res.emailRetainedCount.toString() }),
 		});
 	} catch (err: any) {
 		console.error('[cleanup-legacy] dry-run error:', err);
-		os.alert({ type: 'error', text: err?.message || 'エラーが発生しました。' });
+		os.alert({ type: 'error', text: err?.message || copy.errorOccurred });
 	}
 }
 
@@ -278,8 +281,8 @@ async function runLegacyCleanupDryRun() {
 async function runLegacyCleanup() {
 	const { canceled } = await os.confirm({
 		type: 'warning',
-		title: '既存データの一括クリーンアップ',
-		text: `旧仕様で却下された申請のID・パスワード情報を一括削除します。\n\n対象: ${summary.value?.legacyCount || 0}件\n\nこの操作は取り消せません。続行しますか？`,
+		title: copy.cleanupExistingTitle,
+		text: copyx.cleanupConfirm({ count: (summary.value?.legacyCount || 0).toString() }),
 	});
 	if (canceled) return;
 
@@ -289,26 +292,26 @@ async function runLegacyCleanup() {
 		});
 		os.alert({
 			type: 'success',
-			title: 'クリーンアップ完了',
-			text: `${res.cleanedCount}件のID・パスワード情報を削除しました。\nメール保持中の申請: ${res.emailRetainedCount}件\n\n削除実行日時: ${formatDate(res.executedAt)}`,
+			title: copy.cleanupComplete,
+			text: copyx.cleanupCompleteResult({ cleaned: res.cleanedCount.toString(), retained: res.emailRetainedCount.toString(), executedAt: formatDate(res.executedAt) }),
 		});
 		// リロード
 		await load();
 	} catch (err: any) {
 		console.error('[cleanup-legacy] execute error:', err);
-		os.alert({ type: 'error', text: err?.message || 'エラーが発生しました。' });
+		os.alert({ type: 'error', text: err?.message || copy.errorOccurred });
 	}
 }
 
 const headerActions = computed(() => [{
 	icon: 'ti ti-refresh',
-	text: '再読み込み',
+	text: copy.reload,
 	handler: () => load(),
 }]);
 const headerTabs = computed(() => []);
 
 definePage(() => ({
-	title: '登録申請管理',
+	title: copy.title,
 	icon: 'ti ti-file-description',
 }));
 </script>

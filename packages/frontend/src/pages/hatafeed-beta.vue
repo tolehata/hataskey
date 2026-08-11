@@ -5,23 +5,23 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 <template>
 <MkStickyContainer>
-	<template #header><MkPageHeader :title="'ベータ機能を試す'" /></template>
+	<template #header><MkPageHeader :title="copy.pageTitle" /></template>
 	<MkSpacer :contentMax="800">
 		<div :class="$style.root">
 			<div :class="$style.hero">
 				<FlaskConical :size="32" :class="$style.heroIcon" />
-				<div :class="$style.heroTitle">ベータ機能</div>
+				<div :class="$style.heroTitle">{{ copy.title }}</div>
 			</div>
 
 			<MkInfo warn>
-				この機能はベータ版であり、正しく機能するとは限りません。何か問題が発生した場合は、お気軽にイシューを立てていただきますよう、よろしくお願いします。
+				{{ copy.warning }}
 			</MkInfo>
 
 			<!-- 旗鯖fork: ベータ機能一覧(hataBetaFeatures と同期) -->
 			<div v-if="hataBetaFeatures.length === 0" :class="$style.empty">
 				<Sparkles :size="48" :class="$style.emptyIcon" />
-				<div>現在、試せるベータ機能はありません。</div>
-				<div :class="$style.emptySub">新しい機能が用意され次第、ここに表示されます。</div>
+				<div>{{ copy.empty }}</div>
+				<div :class="$style.emptySub">{{ copy.emptyDescription }}</div>
 			</div>
 			<button v-for="f in hataBetaFeatures" :key="f.id" type="button" :class="$style.featureCard" @click="openFeature(f.route)">
 				<component :is="getLucideComponent(f.icon)" :size="28" :class="$style.featureIcon" />
@@ -33,19 +33,19 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</button>
 
 			<div :class="$style.toggleSection">
-				<div :class="$style.toggleHead"><Clock :size="18" /> 投稿</div>
+				<div :class="$style.toggleHead"><Clock :size="18" /> {{ copy.posting }}</div>
 				<div :class="$style.toggleCard">
 					<MkSwitch v-model="postDelayEnabledModel">
-						<template #label>投稿前にカウントダウンする</template>
-						<template #caption>投稿ボタンを押してから送信まで猶予を作ります。待機中は投稿フォームの枠が残り時間を示し、「取り消す」「今すぐ投稿」を選べます。この端末だけに保存されます。</template>
+						<template #label>{{ copy.enableCountdown }}</template>
+						<template #caption>{{ copy.countdownDescription }}</template>
 					</MkSwitch>
 					<div v-if="postDelayEnabledModel" :class="$style.delayOptions">
-						<div :class="$style.delayLabel">待機する時間</div>
-						<div :class="$style.presets" aria-label="待機時間の早選び">
-							<button v-for="seconds in POST_SEND_DELAY_PRESETS" :key="seconds" class="_button" :class="[$style.preset, postDelaySecondsModel === seconds && $style.presetActive]" @click="postDelaySecondsModel = seconds">{{ seconds }}秒</button>
+						<div :class="$style.delayLabel">{{ copy.waitTime }}</div>
+						<div :class="$style.presets" :aria-label="copy.waitTimePresets">
+							<button v-for="seconds in POST_SEND_DELAY_PRESETS" :key="seconds" class="_button" :class="[$style.preset, postDelaySecondsModel === seconds && $style.presetActive]" @click="postDelaySecondsModel = seconds">{{ tx.seconds({ count: seconds }) }}</button>
 						</div>
 					</div>
-					<div :class="$style.localNote"><Smartphone :size="16" /> 通常投稿・返信・引用が対象です。編集、予約投稿、下書き、外部アカウント投稿には適用しません。</div>
+					<div :class="$style.localNote"><Smartphone :size="16" /> {{ copy.countdownScope }}</div>
 				</div>
 			</div>
 
@@ -54,12 +54,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 			     ⚠️ここに案内を残す（前の場所を覚えている人が迷子になるため）。
 			     HatasabaUI 2 と吹き出しデザインのトグルも同様に HatasabaUI 2 タブへ移動済み。 -->
 			<div :class="$style.toggleSection">
-				<div :class="$style.toggleHead"><ArrowRightCircle :size="18" /> 正式機能になりました</div>
+				<div :class="$style.toggleHead"><ArrowRightCircle :size="18" /> {{ copy.graduated }}</div>
 				<button :class="$style.featureCard" @click="router.push('/settings/hata-custom')">
 					<Frown :size="28" :class="$style.featureIcon" />
 					<div :class="$style.featureBody">
-						<div :class="$style.featureTitle">ミュートしたユーザーのリアクションを隠す</div>
-						<div :class="$style.featureDesc">ベータを卒業しました。設定は「旗鯖独自設定 → 旗鯖全体 → リアクション」にあります。</div>
+						<div :class="$style.featureTitle">{{ copy.hideMutedReactions }}</div>
+						<div :class="$style.featureDesc">{{ copy.hideMutedReactionsLocation }}</div>
 					</div>
 					<ChevronRight :size="24" :class="$style.featureArrow" />
 				</button>
@@ -74,6 +74,7 @@ import { computed } from 'vue';
 import { FlaskConical, Sparkles, ChevronRight, Clock, Smartphone, ArrowRightCircle, Frown, Code } from '@lucide/vue';
 import MkInfo from '@/components/MkInfo.vue';
 import MkSwitch from '@/components/MkSwitch.vue';
+import { i18n } from '@/i18n.js';
 import { definePage } from '@/page.js';
 import { useRouter } from '@/router.js';
 import { hataBetaFeatures } from '@/utility/hatafeed.js';
@@ -86,6 +87,8 @@ import {
 } from '@/utility/post-send-delay.js';
 
 const router = useRouter();
+const copy = i18n.ts._hata._hatafeed._beta;
+const tx = i18n.tsx._hata._hatafeed._beta;
 
 const postDelayEnabledModel = computed({
 	get: () => postSendDelayEnabled.value,
@@ -112,7 +115,7 @@ function openFeature(route: string) {
 }
 
 definePage(() => ({
-	title: 'ベータ機能を試す',
+	title: copy.pageTitle,
 }));
 </script>
 

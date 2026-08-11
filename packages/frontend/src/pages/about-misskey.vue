@@ -108,7 +108,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					</div>
 				</FormSection>
 				<FormSection>
-					<template #label>Hataskeyプロジェクトメンバー</template>
+					<template #label>{{ copy.hataskeyMembers }}</template>
 					<div :class="$style.contributors">
 						<a href="https://github.com/tolehata" target="_blank" :class="$style.contributor">
 							<img src="https://github.com/tolehata.png" :class="$style.contributorAvatar">
@@ -121,7 +121,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					</div>
 				</FormSection>
 				<FormSection>
-					<template #label>CherryPickプロジェクトメンバー</template>
+					<template #label>{{ copy.cherryPickMembers }}</template>
 					<div :class="$style.contributors">
 						<a href="https://github.com/noridev" target="_blank" :class="$style.contributor">
 							<img src="https://avatars.githubusercontent.com/u/11006910?v=4" :class="$style.contributorAvatar">
@@ -253,6 +253,8 @@ import { claimAchievement, claimedAchievements } from '@/utility/achievements.js
 import { $i } from '@/i.js';
 import { prefer } from '@/preferences.js';
 import { donateCherryPick } from '@/utility/donate-cherrypick.js';
+
+const copy = i18n.ts._hata._aboutHataskey;
 
 // instance.uri (または host) をシードに HSL 色相を決定論的に生成
 // プレーン単色アイコン用（instance.iconUrl 未設定時のフォールバック）

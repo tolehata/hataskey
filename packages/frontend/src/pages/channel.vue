@@ -47,15 +47,15 @@ SPDX-License-Identifier: AGPL-3.0-only  Created                             0.1s
 
 			<!-- 旗鯖fork: プライベートチャンネル -->
 			<div v-if="channel.isPrivate" class="_panel" :class="$style.privatePanel">
-				<div :class="$style.privateHead"><i class="ti ti-lock"></i> プライベートチャンネル</div>
-				<div v-if="canViewContent" :class="$style.privateNote">許可されたメンバーだけが閲覧できます。あなたは閲覧できます。</div>
+				<div :class="$style.privateHead"><i class="ti ti-lock"></i> {{ copy.privateChannel }}</div>
+				<div v-if="canViewContent" :class="$style.privateNote">{{ copy.membersOnlyYouCanView }}</div>
 				<template v-else>
-					<div :class="$style.privateNote">許可されたメンバーだけが閲覧できます。</div>
+					<div :class="$style.privateNote">{{ copy.membersOnly }}</div>
 					<div v-if="channel.hasPassword && $i" class="_buttonsCenter" :class="$style.joinBox">
-						<MkButton primary rounded :disabled="joining" @click="joinByPassword()"><i class="ti ti-door-enter"></i> 合言葉で入室</MkButton>
+						<MkButton primary rounded :disabled="joining" @click="joinByPassword()"><i class="ti ti-door-enter"></i> {{ copy.enterWithPassphrase }}</MkButton>
 					</div>
-					<div v-else-if="!$i" :class="$style.privateNote">入室するにはログインが必要です。</div>
-					<div v-else :class="$style.privateNote">管理者から招待される必要があります。</div>
+					<div v-else-if="!$i" :class="$style.privateNote">{{ copy.loginRequired }}</div>
+					<div v-else :class="$style.privateNote">{{ copy.invitationRequired }}</div>
 				</template>
 			</div>
 
@@ -71,8 +71,8 @@ SPDX-License-Identifier: AGPL-3.0-only  Created                             0.1s
 
 			<!-- 旗鯖fork: プライベートチャンネルの非メンバーには内容を出さず、入室導線を案内 -->
 			<div v-if="channel.isPrivate && !canViewContent" class="_panel" :class="$style.privatePanel">
-				<div :class="$style.privateHead"><i class="ti ti-lock"></i> プライベートチャンネル</div>
-				<div :class="$style.privateNote">許可されたメンバーだけが閲覧できます。{{ channel.hasPassword ? '「概要」タブからあいことばで入室できます。' : '管理者から招待される必要があります。' }}</div>
+				<div :class="$style.privateHead"><i class="ti ti-lock"></i> {{ copy.privateChannel }}</div>
+				<div :class="$style.privateNote">{{ privateTimelineNotice }}</div>
 			</div>
 			<template v-else>
 				<!-- スマホ・タブレットの場合、キーボードが表示されると 投稿が見づらくなるので、デスクトップ場合のみ自動でフォーカスを当てる -->
@@ -102,7 +102,7 @@ SPDX-License-Identifier: AGPL-3.0-only  Created                             0.1s
 						type="button"
 						:class="$style.htkCapsuleClear"
 						tabindex="-1"
-						aria-label="クリア"
+						:aria-label="i18n.ts.clear"
 						@click="searchQuery = ''; searchQueryEl?.focus();"
 					>
 						<i class="ti ti-x"/>
@@ -167,6 +167,7 @@ import { useRouter } from '@/router.js';
 import { Paginator } from '@/utility/paginator.js';
 
 const router = useRouter();
+const copy = i18n.ts._hata._privateChannels;
 
 const props = defineProps<{
 	channelId: string;
@@ -184,6 +185,7 @@ const canViewContent = computed(() => {
 	if (!c.isPrivate) return true;
 	return (c.isMember ?? false) || (c.canManage ?? false);
 });
+const privateTimelineNotice = computed(() => channel.value?.hasPassword ? copy.membersOnlyWithPassphrase : copy.membersOnlyByInvitation);
 const searchQuery = ref('');
 const searchQueryEl = useTemplateRef('searchQueryEl');
 
@@ -298,9 +300,9 @@ function openPostForm() {
 async function joinByPassword() {
 	if (!channel.value) return;
 	const { canceled, result: password } = await os.inputText({
-		title: '合言葉で入室',
-		text: 'あいことば（キーフレーズ）を入力してください。',
-		placeholder: '例: どんぐり',
+		title: copy.enterWithPassphrase,
+		text: copy.passphrasePrompt,
+		placeholder: copy.passphraseExample,
 		default: '',
 	});
 	if (canceled || password == null || password === '') return;
@@ -315,7 +317,7 @@ async function joinByPassword() {
 		os.success();
 		tab.value = 'timeline';
 	} catch (err) {
-		os.alert({ type: 'error', text: 'あいことばが違います。' });
+		os.alert({ type: 'error', text: copy.incorrectPassphrase });
 	} finally {
 		joining.value = false;
 	}
@@ -424,7 +426,7 @@ const headerActions = computed(() => {
 		if (channel.value.isPrivate && (channel.value.canManage || iAmModerator)) {
 			headerItems.push({
 				icon: 'ti ti-users',
-				text: 'メンバー管理',
+				text: copy.membersTitle,
 				handler: manageMembers,
 			});
 		}

@@ -16,17 +16,17 @@ SPDX-License-Identifier: AGPL-3.0-only
 	:canResize="true"
 	@closed="emit('closed')"
 >
-	<template #header><i class="ti ti-mood-smile"></i> 絵文字を申請</template>
+	<template #header><i class="ti ti-mood-smile"></i> {{ copy.header }}</template>
 
 	<div class="_spacer" style="--MI_SPACER-min: 18px; --MI_SPACER-max: 26px;">
 		<!-- ステップインジケータ -->
 		<div :class="$style.steps">
 			<div :class="[$style.step, step >= 1 && $style.stepCur]">
-				<span :class="$style.stepNo"><i v-if="step > 1" class="ti ti-check"></i><template v-else>1</template></span> 画像
+				<span :class="$style.stepNo"><i v-if="step > 1" class="ti ti-check"></i><template v-else>1</template></span> {{ copy.imageStep }}
 			</div>
 			<div :class="$style.stepBar"></div>
 			<div :class="[$style.step, step >= 2 && $style.stepCur]">
-				<span :class="$style.stepNo">2</span> 詳細
+				<span :class="$style.stepNo">2</span> {{ copy.detailsStep }}
 			</div>
 		</div>
 
@@ -37,13 +37,13 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<div v-if="quota && !isStaff" :class="$style.quotaBand">
 					<HfQuotaMeter :remaining="quota.remaining" :limit="quota.limit"/>
 				</div>
-				<div :class="$style.lead">申請する絵文字のソースを選んでください。</div>
+				<div :class="$style.lead">{{ copy.chooseSource }}</div>
 
 				<button :class="$style.srcCard" :disabled="quotaEmpty" @click="pickImage">
 					<span :class="$style.srcTile"><i class="ti ti-photo-up"></i></span>
 					<div :class="$style.srcText">
-						<div :class="$style.srcName">自分の画像から</div>
-						<div :class="$style.srcDesc">ドライブの画像をアップロードして申請します。</div>
+						<div :class="$style.srcName">{{ copy.fromOwnImage }}</div>
+						<div :class="$style.srcDesc">{{ copy.fromOwnImageDescription }}</div>
 					</div>
 					<i class="ti ti-chevron-right" :class="$style.srcArrow"></i>
 				</button>
@@ -51,10 +51,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<button :class="$style.srcCard" :disabled="quotaEmpty || !quota?.canRemote" @click="openRemote">
 					<span :class="$style.srcTile"><i class="ti ti-world-search"></i></span>
 					<div :class="$style.srcText">
-						<div :class="$style.srcName">リモートの絵文字から探す <span v-if="!quota?.canRemote" :class="$style.roleBadge">要ロール</span></div>
+						<div :class="$style.srcName">{{ copy.fromRemoteEmoji }} <span v-if="!quota?.canRemote" :class="$style.roleBadge">{{ copy.roleRequired }}</span></div>
 						<div :class="$style.srcDesc">
-							<template v-if="quota?.canRemote">連合先サーバーの絵文字を検索して申請します。</template>
-							<template v-else>この機能は特定のロールを持つ方のみ利用できます。</template>
+							<template v-if="quota?.canRemote">{{ copy.fromRemoteDescription }}</template>
+							<template v-else>{{ copy.remoteUnavailable }}</template>
 						</div>
 					</div>
 					<i class="ti ti-chevron-right" :class="$style.srcArrow"></i>
@@ -64,18 +64,18 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<!-- 3c: リモート絵文字ブラウザ -->
 			<template v-else>
 				<div :class="$style.remoteHead">
-					<button :class="$style.backBtn" @click="mode = 'source'"><i class="ti ti-arrow-left"></i> 戻る</button>
-					<span :class="$style.lead">リモートの絵文字を検索</span>
+					<button :class="$style.backBtn" @click="mode = 'source'"><i class="ti ti-arrow-left"></i> {{ copy.back }}</button>
+					<span :class="$style.lead">{{ copy.searchRemote }}</span>
 				</div>
 				<div :class="$style.searchRow">
-					<MkInput v-model="remoteQuery" :class="$style.searchInput" type="search" placeholder="絵文字名で検索" @enter="searchRemote(true)">
+					<MkInput v-model="remoteQuery" :class="$style.searchInput" type="search" :placeholder="copy.emojiSearchPlaceholder" @enter="searchRemote(true)">
 						<template #prefix><i class="ti ti-search"></i></template>
 					</MkInput>
-					<MkInput v-model="remoteHostFilter" :class="$style.hostInput" placeholder="ホスト(任意)" @enter="searchRemote(true)"/>
-					<MkButton rounded primary @click="searchRemote(true)">検索</MkButton>
+					<MkInput v-model="remoteHostFilter" :class="$style.hostInput" :placeholder="copy.hostPlaceholder" @enter="searchRemote(true)"/>
+					<MkButton rounded primary @click="searchRemote(true)">{{ copy.search }}</MkButton>
 				</div>
-				<div v-if="remoteLoading && remoteResults.length === 0" :class="$style.remoteHint">検索中…</div>
-				<div v-else-if="remoteResults.length === 0" :class="$style.remoteHint">条件に合う絵文字が見つかりません。</div>
+				<div v-if="remoteLoading && remoteResults.length === 0" :class="$style.remoteHint">{{ copy.searching }}</div>
+				<div v-else-if="remoteResults.length === 0" :class="$style.remoteHint">{{ copy.noResults }}</div>
 				<div v-else :class="$style.remoteGrid">
 					<button v-for="e in remoteResults" :key="e.id" :class="[$style.remoteItem, previewUrl === e.url && $style.remoteItemSel]" @click="pickRemote(e)">
 						<img :src="e.url" :class="$style.remoteImg" :alt="e.name"/>
@@ -83,7 +83,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<div :class="$style.remoteHost">{{ e.host }}</div>
 					</button>
 				</div>
-				<MkButton v-if="remoteResults.length > 0 && remoteHasMore" :class="$style.moreBtn" rounded @click="searchRemote(false)">さらに表示</MkButton>
+				<MkButton v-if="remoteResults.length > 0 && remoteHasMore" :class="$style.moreBtn" rounded @click="searchRemote(false)">{{ copy.showMore }}</MkButton>
 			</template>
 		</div>
 
@@ -92,61 +92,61 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<!-- 左: フォーム -->
 			<div :class="$style.form">
 				<MkInput v-model="name">
-					<template #label>絵文字の名前 <span :class="$style.req">必須</span></template>
+					<template #label>{{ copy.emojiName }} <span :class="$style.req">{{ copy.required }}</span></template>
 					<template #prefix>:</template>
 					<template #suffix>:</template>
-					<template v-if="sourceType === 'remote'" #caption>元の名前から自動入力しています。必要に応じて変更してください。</template>
+					<template v-if="sourceType === 'remote'" #caption>{{ copy.remoteNameHint }}</template>
 				</MkInput>
 
 				<div :class="[$style.licenseField, sourceType === 'remote' && $style.licenseWarn]">
 					<MkInput v-model="license">
-						<template #label>ライセンス</template>
+						<template #label>{{ copy.license }}</template>
 						<template #caption>
-							<span v-if="sourceType === 'remote'" :class="$style.warnText"><i class="ti ti-alert-triangle"></i> 元サーバーの利用条件を確認のうえ記入してください。</span>
-							<span v-else>作者・出典・利用条件など。不明な場合は確認のうえ記入してください。</span>
+							<span v-if="sourceType === 'remote'" :class="$style.warnText"><i class="ti ti-alert-triangle"></i> {{ copy.remoteLicenseHint }}</span>
+							<span v-else>{{ copy.ownLicenseHint }}</span>
 						</template>
 					</MkInput>
 				</div>
 
 				<HataFeedCategorySelect v-model="category" :categories="categories"/>
 				<MkInput v-model="tagsRaw">
-					<template #label>タグ</template>
-					<template #caption>複数指定する場合は半角スペースで区切ってください（例: cat cute mascot）。</template>
+					<template #label>{{ copy.tags }}</template>
+					<template #caption>{{ copy.tagsHint }}</template>
 				</MkInput>
-				<MkSwitch v-model="localOnly">このサーバーのみで使用（連合しない）</MkSwitch>
-				<MkSwitch v-model="isSensitive">センシティブな絵文字</MkSwitch>
+				<MkSwitch v-model="localOnly">{{ copy.localOnly }}</MkSwitch>
+				<MkSwitch v-model="isSensitive">{{ copy.sensitive }}</MkSwitch>
 
 				<!-- 旗鯖fork: 自分の画像から申請した場合、承認されるとドライブの原本は削除される
 				     (絵文字はサーバー側に複製されるため表示自体には影響しない)。事前に周知するための注意書き。 -->
 				<div v-if="sourceType === 'image'" :class="$style.driveNotice">
 					<i class="ti ti-info-circle"></i>
-					<span>申請が承認されると、アップロードした画像はあなたのドライブから削除されます（絵文字自体はサーバー側に複製されるため表示には影響しません）。ノートやアイコン・バナーで使用中の画像は削除されません。</span>
+					<span>{{ copy.driveNotice }}</span>
 				</div>
 
 				<div :class="$style.navRow">
-					<MkButton rounded @click="backToStep1"><i class="ti ti-arrow-left"></i> {{ sourceType === 'remote' ? '検索に戻る' : '戻る' }}</MkButton>
-					<MkButton rounded primary gradate :disabled="!name.trim() || submitting" @click="submit"><i class="ti ti-send"></i> 申請する</MkButton>
+					<MkButton rounded @click="backToStep1"><i class="ti ti-arrow-left"></i> {{ sourceType === 'remote' ? copy.backToSearch : copy.back }}</MkButton>
+					<MkButton rounded primary gradate :disabled="!name.trim() || submitting" @click="submit"><i class="ti ti-send"></i> {{ copy.submit }}</MkButton>
 				</div>
 			</div>
 
 			<!-- 右: ライブプレビュー -->
 			<aside :class="$style.preview">
-				<div :class="$style.previewLabel">プレビュー</div>
+				<div :class="$style.previewLabel">{{ copy.preview }}</div>
 				<HfEmojiPreviewPair :url="previewUrl" :size="52"/>
 
 				<!-- 3d: 出典カード -->
 				<div v-if="sourceType === 'remote'" :class="$style.sourceCard">
-					<div :class="$style.sourceBadge"><i class="ti ti-world"></i> リモート画像</div>
+					<div :class="$style.sourceBadge"><i class="ti ti-world"></i> {{ copy.remoteImage }}</div>
 					<a v-if="safeOriginalUrl" :class="$style.sourceLink" :href="safeOriginalUrl" target="_blank" rel="noopener noreferrer">
-						{{ remoteHost ?? '元画像を開く' }} <i class="ti ti-external-link"></i>
+						{{ remoteHost ?? copy.openOriginal }} <i class="ti ti-external-link"></i>
 					</a>
 				</div>
 
 				<!-- ノートでの見え方 -->
 				<div :class="$style.noteHint">
-					<div :class="$style.noteHintLabel">ノートでの見え方</div>
+					<div :class="$style.noteHintLabel">{{ copy.notePreview }}</div>
 					<div :class="$style.noteFaux">
-						いいね！ <img v-if="previewUrl" :src="previewUrl" :class="$style.noteEmoji" :alt="name"/> です
+						{{ copy.notePreviewPrefix }} <img v-if="previewUrl" :src="previewUrl" :class="$style.noteEmoji" :alt="name"/> {{ copy.notePreviewSuffix }}
 					</div>
 				</div>
 
@@ -154,7 +154,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<HfQuotaMeter :remaining="quota.remaining" :limit="quota.limit"/>
 				</div>
 				<div v-else-if="sourceType !== 'remote'" :class="$style.previewTip">
-					<i class="ti ti-bulb"></i> ライト・ダーク両テーマで見やすい絵文字を推奨します。
+					<i class="ti ti-bulb"></i> {{ copy.themeTip }}
 				</div>
 			</aside>
 		</div>
@@ -171,6 +171,7 @@ import MkSwitch from '@/components/MkSwitch.vue';
 import HataFeedCategorySelect from '@/components/HataFeedCategorySelect.vue';
 import HfQuotaMeter from '@/components/HfQuotaMeter.vue';
 import HfEmojiPreviewPair from '@/components/HfEmojiPreviewPair.vue';
+import { i18n } from '@/i18n.js';
 import * as os from '@/os.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { chooseDriveFile } from '@/utility/drive.js';
@@ -178,6 +179,7 @@ import { chooseDriveFile } from '@/utility/drive.js';
 const props = defineProps<{ isStaff?: boolean }>();
 const emit = defineEmits<{ (ev: 'done', v: any): void; (ev: 'closed'): void }>();
 const dialog = useTemplateRef('dialog');
+const copy = i18n.ts._hata._hatafeed._emojiWizard;
 
 const step = ref(1);
 const mode = ref<'source' | 'remote'>('source');
@@ -285,11 +287,11 @@ function backToStep1() {
 async function submit() {
 	if (!name.value.trim()) return;
 	if (quotaEmpty.value) {
-		os.alert({ type: 'warning', text: '今週の申請上限に達しています。' });
+		os.alert({ type: 'warning', text: copy.quotaReached });
 		return;
 	}
 	if (!license.value.trim()) {
-		const { canceled } = await os.confirm({ type: 'warning', text: 'ライセンス情報が空です。不明なまま申請しますか？' });
+		const { canceled } = await os.confirm({ type: 'warning', text: copy.emptyLicenseConfirm });
 		if (canceled) return;
 	}
 	submitting.value = true;

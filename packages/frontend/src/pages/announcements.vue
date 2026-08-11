@@ -370,7 +370,7 @@ type CategoryKey = 'warning' | 'success' | 'info' | 'error' | 'maintenance';
 // メンテナンスはこのフィルターに関わらず常に表示する (下の maintenanceItems で制御)。
 const typeFilter = ref<'all' | CategoryKey>('all');
 const typeFilters = computed(() => [
-	{ key: 'all' as const, label: i18n.ts.all ?? 'すべて', icon: 'ti ti-list' },
+	{ key: 'all' as const, label: i18n.ts.all, icon: 'ti ti-list' },
 	{ key: 'info' as const, label: i18n.ts._announcement.categoryInfo, icon: 'ti ti-info-circle' },
 	{ key: 'warning' as const, label: i18n.ts._announcement.categoryWarning, icon: 'ti ti-alert-triangle' },
 	{ key: 'error' as const, label: i18n.ts._announcement.categoryError, icon: 'ti ti-circle-x' },

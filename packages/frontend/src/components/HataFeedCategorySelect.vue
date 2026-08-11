@@ -7,10 +7,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 <template>
 <div :class="$style.root">
 	<MkSelect v-model="sel" :items="items">
-		<template #label>カテゴリ</template>
+		<template #label>{{ copy.category }}</template>
 	</MkSelect>
-	<MkInput v-if="sel === '__new__'" v-model="newCat" :class="$style.newInput" placeholder="新しいカテゴリ名">
-		<template #label>新しいカテゴリ名</template>
+	<MkInput v-if="sel === '__new__'" v-model="newCat" :class="$style.newInput" :placeholder="copy.newCategoryName">
+		<template #label>{{ copy.newCategoryName }}</template>
 	</MkInput>
 </div>
 </template>
@@ -19,9 +19,11 @@ SPDX-License-Identifier: AGPL-3.0-only
 import { computed, ref, watch } from 'vue';
 import MkSelect from '@/components/MkSelect.vue';
 import MkInput from '@/components/MkInput.vue';
+import { i18n } from '@/i18n.js';
 
 const props = defineProps<{ modelValue: string | null; categories: string[] }>();
 const emit = defineEmits<{ (ev: 'update:modelValue', v: string | null): void }>();
+const copy = i18n.ts._hata._hatafeed._categorySelect;
 
 const initial = props.modelValue ?? '';
 
@@ -34,9 +36,9 @@ const allCategories = computed(() => {
 
 // MkSelect は items prop 方式(slotted option は不可)。
 const items = computed(() => [
-	{ value: '', label: '未分類' },
+	{ value: '', label: copy.uncategorized },
 	...allCategories.value.map(c => ({ value: c, label: c })),
-	{ value: '__new__', label: '＋ 新しいカテゴリを作成' },
+	{ value: '__new__', label: copy.createNewCategory },
 ]);
 
 const sel = ref<string>(initial);

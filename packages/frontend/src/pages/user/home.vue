@@ -104,13 +104,13 @@ SPDX-License-Identifier: AGPL-3.0-only
 									<div v-if="utageBadgeTipPos.mode === 'tooltip'" class="utageGlobalTipArrow" :style="{ left: utageBadgeTipPos.arrowLeft + 'px' }"></div>
 									<div class="utageGlobalTipBody">
 										<i class="ti ti-info-circle utageGlobalTipIcon"></i>
-										<div class="utageGlobalTipText">
-											<b>旗鯖での実績を表示しています</b><br>
-											宴の成功・阻止回数と、Hataskで育てたお花の数です。表示する項目はプロフィールの高度な設定で選べます。
-										</div>
+									<div class="utageGlobalTipText">
+										<b>{{ profileTipCopy.title }}</b><br>
+										{{ profileTipCopy.description }}
+									</div>
 									</div>
 									<div class="utageGlobalTipFooter">
-										<button class="utageGlobalTipBtn" @click="dismissUtageBadgeTip">わかった</button>
+									<button class="utageGlobalTipBtn" @click="dismissUtageBadgeTip">{{ profileTipCopy.gotIt }}</button>
 									</div>
 								</div>
 							</Teleport>
@@ -229,6 +229,8 @@ import { globalEvents } from '@/events.js';
 import { notesSearchAvailable, canSearchNonLocalNotes } from '@/utility/check-permissions.js';
 import { store } from '@/store.js';
 import { getHataProfileBadges } from '@/utility/hata-profile-badges.js';
+
+const profileTipCopy = i18n.ts._hata._profileTip;
 
 function calcAge(birthdate: string): number {
 	const date = new Date(birthdate);

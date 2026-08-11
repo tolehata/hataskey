@@ -15,31 +15,31 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 			<!-- 戻るリンク -->
 			<button type="button" :class="$style.backLink" @click="emit('back')">
-				<i class="ti ti-arrow-left"></i> 戻る
+				<i class="ti ti-arrow-left"></i> {{ copy.back }}
 			</button>
 
 			<!-- 1. 登録したい理由 -->
 			<div class="_gaps_s">
-				<div :class="$style.label">このサーバーに登録したい理由 <span :class="$style.required">*必須</span></div>
+				<div :class="$style.label">{{ copy.reasonLabel }} <span :class="$style.required">{{ copy.required }}</span></div>
 				<textarea
 					v-model="reason"
 					:class="$style.textarea"
 					rows="4"
 					maxlength="1024"
-					placeholder="このサーバーに登録したい理由をお聞かせください"
+					:placeholder="copy.reasonPlaceholder"
 				></textarea>
 				<div :class="$style.charCount">{{ reason.length }} / 1024</div>
 			</div>
 
 			<!-- 2. ユーザーID -->
 			<MkInput v-model="username" type="text" pattern="^[a-zA-Z0-9_]{1,20}$" :spellcheck="false" autocomplete="username" required @update:modelValue="onChangeUsername">
-				<template #label>ユーザーID <span :class="$style.required">*必須</span></template>
+				<template #label>{{ copy.usernameLabel }} <span :class="$style.required">{{ copy.required }}</span></template>
 				<template #prefix>@</template>
 				<template #caption>
 					<div><i class="ti ti-alert-triangle ti-fw"></i> {{ i18n.ts.cannotBeChangedLater }}</div>
 					<span v-if="usernameState === 'wait'" style="color:#999"><MkLoading :em="true"/> {{ i18n.ts.checking }}</span>
 					<span v-else-if="usernameState === 'ok'" style="color: var(--MI_THEME-success)"><i class="ti ti-check ti-fw"></i> {{ i18n.ts.available }}</span>
-					<span v-else-if="usernameState === 'unavailable'" style="color: var(--MI_THEME-error)"><i class="ti ti-alert-triangle ti-fw"></i> 既に申請中のIDか、既に使用されているIDです。</span>
+					<span v-else-if="usernameState === 'unavailable'" style="color: var(--MI_THEME-error)"><i class="ti ti-alert-triangle ti-fw"></i> {{ copy.usernameUnavailable }}</span>
 					<span v-else-if="usernameState === 'error'" style="color: var(--MI_THEME-error)"><i class="ti ti-alert-triangle ti-fw"></i> {{ i18n.ts.error }}</span>
 					<span v-else-if="usernameState === 'invalid-format'" style="color: var(--MI_THEME-error)"><i class="ti ti-alert-triangle ti-fw"></i> {{ i18n.ts.usernameInvalidFormat }}</span>
 				</template>
@@ -47,7 +47,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 			<!-- 3. パスワード -->
 			<MkInput v-model="password" type="password" autocomplete="new-password" required @update:modelValue="onChangePassword">
-				<template #label>{{ i18n.ts.password }} <span :class="$style.required">*必須</span></template>
+				<template #label>{{ i18n.ts.password }} <span :class="$style.required">{{ copy.required }}</span></template>
 				<template #prefix><i class="ti ti-lock"></i></template>
 				<template #caption>
 					<span v-if="passwordStrength === 'low'" style="color: var(--MI_THEME-error)"><i class="ti ti-alert-triangle ti-fw"></i> {{ i18n.ts.weakPassword }}</span>
@@ -57,7 +57,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</MkInput>
 
 			<MkInput v-model="retypedPassword" type="password" autocomplete="new-password" required @update:modelValue="onChangePasswordRetype">
-				<template #label>{{ i18n.ts.password }} ({{ i18n.ts.retype }}) <span :class="$style.required">*必須</span></template>
+				<template #label>{{ i18n.ts.password }} ({{ i18n.ts.retype }}) <span :class="$style.required">{{ copy.required }}</span></template>
 				<template #prefix><i class="ti ti-lock"></i></template>
 				<template #caption>
 					<span v-if="passwordRetypeState === 'match'" style="color: var(--MI_THEME-success)"><i class="ti ti-check ti-fw"></i> {{ i18n.ts.passwordMatched }}</span>
@@ -67,17 +67,17 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 			<!-- 4. メールアドレス -->
 			<MkInput v-model="email" type="email" required @update:modelValue="onEmailChange">
-				<template #label>メールアドレス <span :class="$style.required">*必須</span></template>
+				<template #label>{{ copy.emailLabel }} <span :class="$style.required">{{ copy.required }}</span></template>
 				<template #prefix><i class="ti ti-mail"></i></template>
 				<template #caption>
 					<!-- 旗鯖fork: メアド重複エラー表示 (送信時にサーバーから EMAIL_ALREADY_EXISTS が返ったら表示) -->
 					<div v-if="emailUnavailable" style="color: var(--MI_THEME-error);">
 						<i class="ti ti-alert-triangle ti-fw"></i>
-						このメールアドレスは過去90日以内に申請に使用されています。別のメールアドレスを使用してください。
+						{{ copy.emailUnavailable }}
 					</div>
 					<span style="color: var(--MI_THEME-fg); opacity: 0.8;">
 						<i class="ti ti-info-circle ti-fw"></i>
-						申請が承認された場合、このアドレスに通知が届きます。今後のセキュリティ通知にも使用されます。
+						{{ copy.emailDescription }}
 					</span>
 				</template>
 			</MkInput>
@@ -91,28 +91,28 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 			<!-- 6. 同意事項 -->
 			<div class="_gaps_s">
-				<div :class="$style.label">同意事項</div>
+				<div :class="$style.label">{{ copy.agreements }}</div>
 
 				<div :class="$style.rulesBox">
-					<div :class="$style.rulesTitle">サーバールール</div>
+					<div :class="$style.rulesTitle">{{ copy.serverRules }}</div>
 					<ol :class="$style.rulesList">
-						<li>18歳未満は登録できません</li>
-						<li>GDPR（EU一般データ保護規則）に対応していないため、いかなる場合もEU圏内からの登録は受け付けておりません。</li>
-						<li>利用規約をよくご確認ください。当サーバーは利用者の意見を反映しつつ、管理者の独断でモデレーションを行います。</li>
+						<li>{{ copy.ruleAge }}</li>
+						<li>{{ copy.ruleGdpr }}</li>
+						<li>{{ copy.ruleModeration }}</li>
 					</ol>
 				</div>
 
 				<label :class="$style.checkboxLabel">
 					<input v-model="agreeRules" type="checkbox" :class="$style.checkbox"/>
-					上記のサーバールールに同意します
+					{{ copy.agreeRules }}
 				</label>
 				<label :class="$style.checkboxLabel">
 					<input v-model="agreeTos" type="checkbox" :class="$style.checkbox"/>
-					<a href="https://misskey.hatachanoima.net/@Hatacha/pages/terms" target="_blank">利用規約</a>に同意します
+					<a href="https://misskey.hatachanoima.net/@Hatacha/pages/terms" target="_blank">{{ copy.terms }}</a>{{ copy.agreeDocumentSuffix }}
 				</label>
 				<label :class="$style.checkboxLabel">
 					<input v-model="agreePrivacy" type="checkbox" :class="$style.checkbox"/>
-					<a href="https://misskey.hatachanoima.net/@Hatacha/pages/privacy" target="_blank">プライバシーポリシー</a>に同意します
+					<a href="https://misskey.hatachanoima.net/@Hatacha/pages/privacy" target="_blank">{{ copy.privacyPolicy }}</a>{{ copy.agreeDocumentSuffix }}
 				</label>
 			</div>
 
@@ -120,32 +120,32 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<div :class="$style.privacyNotice">
 				<div :class="$style.privacyNoticeHeader">
 					<i class="ti ti-info-circle"></i>
-					<span>プライバシー情報の取り扱いについて</span>
+					<span>{{ copy.privacyHandling }}</span>
 				</div>
 				<div :class="$style.privacyNoticeBody">
 					<div :class="$style.privacyNoticeSection">
 						<div :class="$style.privacyNoticeSectionTitle">
 							<i class="ti ti-check" :class="$style.privacyIconApproved"></i>
-							<span>申請が承認された場合</span>
+							<span>{{ copy.ifApproved }}</span>
 						</div>
-						<p>ご入力いただいたメールアドレスは今後のセキュリティ通知等に使用されます。</p>
+						<p>{{ copy.approvedEmailUse }}</p>
 					</div>
 
 					<div :class="$style.privacyNoticeSection">
 						<div :class="$style.privacyNoticeSectionTitle">
 							<i class="ti ti-x" :class="$style.privacyIconRejected"></i>
-							<span>申請が承認されなかった場合</span>
+							<span>{{ copy.ifRejected }}</span>
 						</div>
 						<ul>
-							<li>ご入力いただいた<strong>ID</strong>と<strong>パスワード</strong>はその時点で削除されます。</li>
-							<li><strong>メールアドレス</strong>は同一メールアドレスからの連続申請を拒否するため一定期間 (90日) 保持された後、削除されます。</li>
-							<li>登録申請許可に関するメールは送信されません。</li>
+							<li>{{ copy.rejectedCredentialsDeletedBefore }}<strong>ID</strong>{{ copy.rejectedCredentialsDeletedMiddle }}<strong>{{ i18n.ts.password }}</strong>{{ copy.rejectedCredentialsDeletedAfter }}</li>
+							<li><strong>{{ copy.emailLabel }}</strong>{{ copy.rejectedEmailRetention }}</li>
+							<li>{{ copy.noRejectionEmail }}</li>
 						</ul>
 					</div>
 
 					<div :class="$style.privacyNoticeWarning">
 						<i class="ti ti-info-circle"></i>
-						<span>一度申請に使用したメールアドレスは、90日間は再申請に使えません。</span>
+						<span>{{ copy.emailReuseWarning }}</span>
 					</div>
 				</div>
 			</div>
@@ -155,7 +155,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<template v-if="submitting">
 					<MkLoading :em="true" :colored="false"/>
 				</template>
-				<template v-else><i class="ti ti-send"></i> 申請を送信する</template>
+				<template v-else><i class="ti ti-send"></i> {{ copy.submit }}</template>
 			</MkButton>
 		</form>
 	</div>
@@ -172,6 +172,8 @@ import * as os from '@/os.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { instance } from '@/instance.js';
 import { i18n } from '@/i18n.js';
+
+const copy = i18n.ts._hata._registrationApplications._application;
 
 const emit = defineEmits<{
 	(ev: 'complete'): void;
@@ -336,19 +338,19 @@ async function onSubmit(): Promise<void> {
 		const code = err?.code;
 		if (code === 'USERNAME_ALREADY_EXISTS') {
 			usernameState.value = 'unavailable';
-			os.alert({ type: 'error', text: '既に申請中のIDか、既に使用されているIDです。別のIDを使用してください。' });
+			os.alert({ type: 'error', text: copy.usernameUnavailableAlert });
 		} else if (code === 'EMAIL_ALREADY_EXISTS') {
 			// 旗鯖fork: メアド重複時はフィールド下にも赤字表示し、モーダルでも通知
 			emailUnavailable.value = true;
-			os.alert({ type: 'error', text: 'このメールアドレスは過去90日以内に申請に使用されています。別のメールアドレスを使用してください。' });
+			os.alert({ type: 'error', text: copy.emailUnavailable });
 		} else if (code === 'INVALID_EMAIL') {
-			os.alert({ type: 'error', text: 'メールアドレスの形式が正しくありません。' });
+			os.alert({ type: 'error', text: copy.invalidEmail });
 		} else if (code === 'CAPTCHA_FAILED') {
-			os.alert({ type: 'error', text: 'CAPTCHA認証に失敗しました。もう一度お試しください。' });
+			os.alert({ type: 'error', text: copy.captchaFailed });
 		} else if (code === 'RATE_LIMIT_EXCEEDED') {
-			os.alert({ type: 'error', text: '申請の送信回数が上限に達しました。しばらくお待ちください。' });
+			os.alert({ type: 'error', text: copy.rateLimitExceeded });
 		} else if (code === 'UNKNOWN_API_ENDPOINT') {
-			os.alert({ type: 'error', text: 'APIエンドポイントが見つかりません。バックエンドの再ビルドが必要です。' });
+			os.alert({ type: 'error', text: copy.unknownApiEndpoint });
 		} else {
 			os.alert({ type: 'error', text: `${i18n.ts.somethingHappened} (${code || 'unknown'})` });
 		}

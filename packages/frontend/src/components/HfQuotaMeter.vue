@@ -9,7 +9,11 @@ SPDX-License-Identifier: AGPL-3.0-only
 <template>
 <div :class="[$style.root, { [$style.low]: ratio <= 0.2 }]">
 	<div :class="$style.head">
-		<span :class="$style.text"><i class="ti ti-ticket"></i> {{ prefix }} {{ remaining }}/{{ limit }} 件</span>
+		<span :class="$style.text">
+			<i class="ti ti-ticket"></i>
+			<template v-if="prefix">{{ prefix }} {{ i18n.tsx._hata._hatafeed._quota.count({ remaining, limit }) }}</template>
+			<template v-else>{{ i18n.tsx._hata._hatafeed._quota.thisWeekRemaining({ remaining, limit }) }}</template>
+		</span>
 	</div>
 	<div :class="$style.track">
 		<div :class="$style.fill" :style="{ width: `${Math.round(ratio * 100)}%` }"></div>
@@ -19,14 +23,13 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <script lang="ts" setup>
 import { computed } from 'vue';
+import { i18n } from '@/i18n.js';
 
-const props = withDefaults(defineProps<{
+const props = defineProps<{
 	remaining: number;
 	limit: number;
 	prefix?: string;
-}>(), {
-	prefix: '今週あと',
-});
+}>();
 
 const ratio = computed(() => {
 	if (props.limit <= 0) return 0;

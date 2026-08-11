@@ -13,11 +13,14 @@ import { prefer } from '@/preferences.js';
 import { miLocalStorage } from '@/local-storage.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { $i } from '@/i.js';
+import { i18n } from '@/i18n.js';
 
 export const HATA_SETTINGS_TRANSFER_FORMAT = 'hataskey-custom-settings';
 export const HATA_SETTINGS_TRANSFER_VERSION = 3;
 export const HATA_SETTINGS_TRANSFER_MAX_BYTES = 1024 * 1024;
 const HATACORDING_UI_TRANSFER_KEY = 'hatacordingUi';
+const copy = i18n.ts._hata._settingsTransfer._utility;
+const copyx = i18n.tsx._hata._settingsTransfer._utility;
 
 type PreferenceKey = keyof typeof PREF_DEF;
 export type HataSettingsCategoryId = 'general' | 'hatasabaUi' | 'hataSideStudio' | 'hatacordingUi' | 'hatask' | 'hatady' | 'hatafeed' | 'hanaawase' | 'mascot' | 'earthquake';
@@ -87,6 +90,7 @@ const localValidators: Partial<Record<LocalStorageKey, (value: unknown) => boole
 	hataGlassUi: isBooleanString,
 	hataGlassUiBubble: isBooleanString,
 	hatadyTheme: value => value === 'paper' || value === 'espresso' || value === 'hataskey',
+	// 旧形式の設定ファイルを安全に読み取るため検証器だけ残す。新規の書き出し・読み込み対象にはしない。
 	hatadyLang: value => value === 'ja' || value === 'en' || value === 'auto',
 	hataEarthquakePref: isString,
 	hataEarthquakePollSec: isPollSeconds,
@@ -118,24 +122,24 @@ const hatasabaUiPreferenceKeys = [
 
 export const HATA_SETTINGS_CATEGORIES: readonly CategoryDefinition[] = [
 	{
-		id: 'general', label: '旗鯖全体', description: '投稿フォーム、演出、フォント、プロフィールの表示設定',
+		id: 'general', label: copy.categories.generalLabel, description: copy.categories.generalDescription,
 		preferenceKeys: generalPreferenceKeys, localKeys: ['hataHideMutedReactions'], profileBadges: true,
 	},
 	{
-		id: 'hatasabaUi', label: 'HatasabaUI 2', description: 'ナビ、デッキ、見た目と端末ごとの操作設定',
+		id: 'hatasabaUi', label: copy.categories.hatasabaUiLabel, description: copy.categories.hatasabaUiDescription,
 		preferenceKeys: hatasabaUiPreferenceKeys,
 		localKeys: ['hatasabaLastListId', 'hatasabaLastAntennaId', 'hatasabaDeckIgnoreWidth', 'hatasabaTabSwipeEnabled', 'hataGlassUi', 'hataGlassUiBubble'],
 	},
 	{
-		id: 'hataSideStudio', label: 'HataSideStudio', description: 'プロファイル、拡大・縮小の配置、色、グループとウィジェット設定',
+		id: 'hataSideStudio', label: copy.categories.hataSideStudioLabel, description: copy.categories.hataSideStudioDescription,
 		localKeys: ['hataSideStudio'],
 	},
 	{
-		id: 'hatacordingUi', label: 'HataSNSCordUI', description: 'メニュー、右ペイン、ウィジェットと端末ごとの表示設定',
+		id: 'hatacordingUi', label: copy.categories.hatacordingUiLabel, description: copy.categories.hatacordingUiDescription,
 		hatacordingUi: true,
 	},
 	{
-		id: 'hatask', label: 'Hatask', description: 'テーマやホーム表示などの設定（ToDo・記録は含みません）',
+		id: 'hatask', label: copy.categories.hataskLabel, description: copy.categories.hataskDescription,
 		registry: [{
 			id: 'settings', scope: ['client', 'hatask'], key: 'settings', validate: isRecord,
 			fields: {
@@ -148,18 +152,17 @@ export const HATA_SETTINGS_CATEGORIES: readonly CategoryDefinition[] = [
 		}],
 	},
 	{
-		id: 'hatady', label: 'Hatady', description: 'テーマと言語（学習記録・本棚は含みません）',
-		localKeys: ['hatadyTheme', 'hatadyLang'],
+		id: 'hatady', label: copy.categories.hatadyLabel, description: copy.categories.hatadyDescription,
+		localKeys: ['hatadyTheme'],
 		registry: [{
 			id: 'display', scope: ['client', 'hatady'], key: 'display', validate: isRecord,
 			fields: {
 				theme: value => value === 'paper' || value === 'espresso' || value === 'hataskey',
-				lang: value => value === 'ja' || value === 'en' || value === 'auto',
 			},
 		}],
 	},
 	{
-		id: 'hatafeed', label: 'HataFeed', description: 'HataFeedの表示設定（イシュー・申請内容は含みません）',
+		id: 'hatafeed', label: copy.categories.hatafeedLabel, description: copy.categories.hatafeedDescription,
 		preferenceKeys: ['hatafeed.leaves'],
 		localKeys: ['hataPostDelayEnabled', 'hataPostDelaySeconds'],
 	},
@@ -171,7 +174,7 @@ export const HATA_SETTINGS_CATEGORIES: readonly CategoryDefinition[] = [
 		}],
 	},
 	{
-		id: 'mascot', label: 'マスコット', description: '通知、表示位置、表情切替の設定（キャラクター素材は含みません）',
+		id: 'mascot', label: copy.categories.mascotLabel, description: copy.categories.mascotDescription,
 		registry: [{
 			id: 'displaySettings', scope: ['client', 'hataMascot'], key: 'displaySettings', validate: isRecord,
 			fields: {
@@ -268,6 +271,7 @@ const deckColumnSchema: NestedSchema = {
 		fullHeight: optional({ type: 'boolean' }),
 		excludeTypes: optional({ type: 'array', item: stringSchema(128, 1), maxItems: 100 }),
 		notificationFilterKnownTypes: optional({ type: 'array', item: stringSchema(128, 1), maxItems: 100 }),
+		excludeBots: optional({ type: 'boolean' }),
 	},
 };
 
@@ -283,6 +287,7 @@ const deckTabSchema: NestedSchema = {
 		tabColor: optional(nullableStringSchema),
 		excludeTypes: optional({ type: 'array', item: stringSchema(128, 1), maxItems: 100 }),
 		notificationFilterKnownTypes: optional({ type: 'array', item: stringSchema(128, 1), maxItems: 100 }),
+		excludeBots: optional({ type: 'boolean' }),
 	},
 };
 
@@ -360,20 +365,20 @@ function rejectNested(path: string, reason: string): NestedValueResult {
 
 function sanitizeNestedValue(value: unknown, schema: NestedSchema, path = ''): NestedValueResult {
 	if (schema.type === 'string') {
-		if (typeof value !== 'string') return rejectNested(path, '値の型が合いません');
-		if (schema.values && !schema.values.includes(value)) return rejectNested(path, 'この版では扱わない値です');
-		if ((schema.minLength != null && value.length < schema.minLength) || (schema.maxLength != null && value.length > schema.maxLength)) return rejectNested(path, '文字数の範囲が合いません');
+		if (typeof value !== 'string') return rejectNested(path, copy.validation.typeMismatch);
+		if (schema.values && !schema.values.includes(value)) return rejectNested(path, copy.validation.unsupportedValue);
+		if ((schema.minLength != null && value.length < schema.minLength) || (schema.maxLength != null && value.length > schema.maxLength)) return rejectNested(path, copy.validation.stringLengthMismatch);
 		return { accepted: true, value, skipped: [] };
 	}
-	if (schema.type === 'boolean') return typeof value === 'boolean' ? { accepted: true, value, skipped: [] } : rejectNested(path, '値の型が合いません');
+	if (schema.type === 'boolean') return typeof value === 'boolean' ? { accepted: true, value, skipped: [] } : rejectNested(path, copy.validation.typeMismatch);
 	if (schema.type === 'number') {
-		if (!isFiniteNumber(value) || (schema.integer === true && !Number.isInteger(value))) return rejectNested(path, '値の型が合いません');
-		if ((schema.min != null && value < schema.min) || (schema.max != null && value > schema.max)) return rejectNested(path, '値の範囲が合いません');
+		if (!isFiniteNumber(value) || (schema.integer === true && !Number.isInteger(value))) return rejectNested(path, copy.validation.typeMismatch);
+		if ((schema.min != null && value < schema.min) || (schema.max != null && value > schema.max)) return rejectNested(path, copy.validation.numberRangeMismatch);
 		return { accepted: true, value, skipped: [] };
 	}
 	if (schema.type === 'nullable') return value === null ? { accepted: true, value: null, skipped: [] } : sanitizeNestedValue(value, schema.value, path);
 	if (schema.type === 'array') {
-		if (!Array.isArray(value)) return rejectNested(path, '値の型が合いません');
+		if (!Array.isArray(value)) return rejectNested(path, copy.validation.typeMismatch);
 		const next: unknown[] = [];
 		const skipped: NestedValueSkip[] = [];
 		const limit = Math.min(value.length, schema.maxItems);
@@ -382,24 +387,24 @@ function sanitizeNestedValue(value: unknown, schema: NestedSchema, path = ''): N
 			skipped.push(...item.skipped);
 			if (item.accepted) next.push(item.value);
 		}
-		if (value.length > schema.maxItems) skipped.push({ path: joinNestedPath(path, `[${schema.maxItems}…]`), reason: `上限${schema.maxItems}件を超えた項目は読み込みません` });
+		if (value.length > schema.maxItems) skipped.push({ path: joinNestedPath(path, `[${schema.maxItems}…]`), reason: copyx.validation.overItemLimit({ max: schema.maxItems.toString() }) });
 		if (schema.minItems != null && next.length < schema.minItems) {
-			skipped.push({ path, reason: `必要な項目が${schema.minItems}件未満です` });
+			skipped.push({ path, reason: copyx.validation.tooFewRequiredItems({ min: schema.minItems.toString() }) });
 			return { accepted: false, skipped };
 		}
-		if (value.length > 0 && next.length === 0) return { accepted: false, skipped: skipped.length > 0 ? skipped : [{ path, reason: '読み込める項目がありません' }] };
+		if (value.length > 0 && next.length === 0) return { accepted: false, skipped: skipped.length > 0 ? skipped : [{ path, reason: copy.validation.noImportableItems }] };
 		return { accepted: true, value: next, skipped };
 	}
-	if (!isRecord(value)) return rejectNested(path, '値の型が合いません');
+	if (!isRecord(value)) return rejectNested(path, copy.validation.typeMismatch);
 	const next: Record<string, unknown> = {};
 	const skipped: NestedValueSkip[] = [];
 	for (const key of Object.keys(value)) {
-		if (!Object.hasOwn(schema.fields, key)) skipped.push({ path: joinNestedPath(path, key), reason: 'この版では扱わない項目です' });
+		if (!Object.hasOwn(schema.fields, key)) skipped.push({ path: joinNestedPath(path, key), reason: copy.validation.unsupportedItem });
 	}
 	for (const [key, definition] of Object.entries(schema.fields)) {
 		const childPath = joinNestedPath(path, key);
 		if (!Object.hasOwn(value, key)) {
-			if (definition.required) skipped.push({ path: childPath, reason: '必要な項目がありません' });
+			if (definition.required) skipped.push({ path: childPath, reason: copy.validation.requiredItemMissing });
 			continue;
 		}
 		const child = sanitizeNestedValue(value[key], definition.schema, childPath);
@@ -460,7 +465,7 @@ export function parseHataSettingsTransfer(text: string): { file: HataSettingsTra
 
 export function getVersionMismatchMessage(file: HataSettingsTransferFile): string | null {
 	if (file.serverVersion === version) return null;
-	return `この設定ファイルは Hataskey ${file.serverVersion || '不明な版'} で作られ、現在のサーバーは ${version} です。\n古い／新しい版の設定は一部が合わず、表示や操作が壊れる場合があります。読み込める項目だけを適用し、未知・廃止・型が合わない項目はスキップします。`;
+	return copyx.versionMismatch({ fileVersion: file.serverVersion || copy.unknownVersion, serverVersion: version });
 }
 
 async function registryGet(target: RegistryTarget): Promise<unknown | undefined> {
@@ -521,22 +526,22 @@ export async function applyHataSettingsTransfer(file: HataSettingsTransferFile, 
 	for (const definition of HATA_SETTINGS_CATEGORIES) {
 		if (!selected.includes(definition.id)) continue;
 		const payload = file.categories[definition.id];
-		if (!isRecord(payload)) { result.skipped.push({ category: definition.id, key: '*', reason: 'このカテゴリのデータがありません' }); continue; }
+		if (!isRecord(payload)) { result.skipped.push({ category: definition.id, key: '*', reason: copy.validation.categoryDataMissing }); continue; }
 		if (isRecord(payload.device)) {
 			const known = new Set<string>(definition.localKeys ?? []);
 			if (definition.hatacordingUi && $i) {
 				known.add(HATACORDING_UI_TRANSFER_KEY);
 				known.add(`hatacordingUi:${$i.id}`);
 			}
-			for (const key of Object.keys(payload.device)) if (!known.has(key)) result.skipped.push({ category: definition.id, key, reason: 'この版では扱わない端末設定です' });
+			for (const key of Object.keys(payload.device)) if (!known.has(key)) result.skipped.push({ category: definition.id, key, reason: copy.validation.unsupportedDeviceSetting });
 		}
 		if (isRecord(payload.preferences)) {
 			const known = new Set<string>(definition.preferenceKeys ?? []);
-			for (const key of Object.keys(payload.preferences)) if (!known.has(key)) result.skipped.push({ category: definition.id, key, reason: 'この版では扱わない設定です' });
+			for (const key of Object.keys(payload.preferences)) if (!known.has(key)) result.skipped.push({ category: definition.id, key, reason: copy.validation.unsupportedSetting });
 		}
 		if (isRecord(payload.registry)) {
 			const known = new Set((definition.registry ?? []).map(target => target.id));
-			for (const key of Object.keys(payload.registry)) if (!known.has(key)) result.skipped.push({ category: definition.id, key, reason: 'この版では扱わない保存領域です' });
+			for (const key of Object.keys(payload.registry)) if (!known.has(key)) result.skipped.push({ category: definition.id, key, reason: copy.validation.unsupportedRegistryArea });
 		}
 
 		// 端末設定を先に適用する。サーバー保存に失敗しても、この端末の復元は残る。
@@ -544,7 +549,7 @@ export async function applyHataSettingsTransfer(file: HataSettingsTransferFile, 
 			if (!isRecord(payload.device) || !Object.hasOwn(payload.device, key)) continue;
 			const value = payload.device[key];
 			const validator = localValidators[key] ?? isString;
-			if (!validator(value)) { result.skipped.push({ category: definition.id, key, reason: '値の形式が合いません' }); continue; }
+			if (!validator(value)) { result.skipped.push({ category: definition.id, key, reason: copy.validation.valueFormatMismatch }); continue; }
 			miLocalStorage.setItem(key, value as string);
 			// HataSideStudio は共有refでサイドバーへ即時反映する。静的importすると設定転送を
 			// 開いただけで端末設定を初期化するため、実際に読み込んだ時だけ遅延反映する。
@@ -559,7 +564,7 @@ export async function applyHataSettingsTransfer(file: HataSettingsTransferFile, 
 			const sourceKey = Object.hasOwn(payload.device, HATACORDING_UI_TRANSFER_KEY) ? HATACORDING_UI_TRANSFER_KEY : key;
 			if (Object.hasOwn(payload.device, sourceKey)) {
 				const value = payload.device[sourceKey];
-				if (!isHatacordingUiStorageString(value)) result.skipped.push({ category: definition.id, key, reason: '値の形式が合いません' });
+				if (!isHatacordingUiStorageString(value)) result.skipped.push({ category: definition.id, key, reason: copy.validation.valueFormatMismatch });
 				else { miLocalStorage.setItem(key, value as string); result.applied++; }
 			}
 		}
@@ -574,7 +579,7 @@ export async function applyHataSettingsTransfer(file: HataSettingsTransferFile, 
 				if (!sanitized.accepted) continue;
 				preferAny.commit(key, cloneJson(sanitized.value));
 			} else {
-				if (!valueMatchesDefault(value, getInitialPrefValue(key))) { result.skipped.push({ category: definition.id, key, reason: '値の型が合いません' }); continue; }
+				if (!valueMatchesDefault(value, getInitialPrefValue(key))) { result.skipped.push({ category: definition.id, key, reason: copy.validation.typeMismatch }); continue; }
 				preferAny.commit(key, cloneJson(value));
 			}
 			result.applied++;
@@ -583,14 +588,14 @@ export async function applyHataSettingsTransfer(file: HataSettingsTransferFile, 
 		for (const target of definition.registry ?? []) {
 			if (!isRecord(payload.registry) || !Object.hasOwn(payload.registry, target.id)) continue;
 			const value = payload.registry[target.id];
-			if (!target.validate(value)) { result.skipped.push({ category: definition.id, key: target.id, reason: '値の形式が合いません' }); continue; }
+			if (!target.validate(value)) { result.skipped.push({ category: definition.id, key: target.id, reason: copy.validation.valueFormatMismatch }); continue; }
 			let nextValue: unknown = value;
 			if (target.fields && isRecord(value)) {
 				const accepted: Record<string, unknown> = {};
 				for (const [key, raw] of Object.entries(value)) {
 					const validator = target.fields[key];
-					if (!validator) { result.skipped.push({ category: definition.id, key: `${target.id}.${key}`, reason: 'この版では扱わない設定です' }); continue; }
-					if (!validator(raw)) { result.skipped.push({ category: definition.id, key: `${target.id}.${key}`, reason: '値の型が合いません' }); continue; }
+					if (!validator) { result.skipped.push({ category: definition.id, key: `${target.id}.${key}`, reason: copy.validation.unsupportedSetting }); continue; }
+					if (!validator(raw)) { result.skipped.push({ category: definition.id, key: `${target.id}.${key}`, reason: copy.validation.typeMismatch }); continue; }
 					accepted[key] = cloneJson(raw);
 				}
 				if (Object.keys(accepted).length === 0) continue;
@@ -601,7 +606,7 @@ export async function applyHataSettingsTransfer(file: HataSettingsTransferFile, 
 				await misskeyApi('i/registry/set', { scope: target.scope, key: target.key, value: cloneJson(nextValue) });
 				result.applied++;
 			} catch {
-				result.skipped.push({ category: definition.id, key: target.id, reason: 'サーバーへ保存できませんでした' });
+				result.skipped.push({ category: definition.id, key: target.id, reason: copy.validation.serverSaveFailed });
 			}
 		}
 
@@ -610,12 +615,12 @@ export async function applyHataSettingsTransfer(file: HataSettingsTransferFile, 
 			const updates: Partial<Record<(typeof keys)[number], boolean>> = {};
 			for (const key of keys) {
 				if (!Object.hasOwn(payload.profileBadges, key)) continue;
-				if (typeof payload.profileBadges[key] !== 'boolean') { result.skipped.push({ category: definition.id, key, reason: '値の型が合いません' }); continue; }
+				if (typeof payload.profileBadges[key] !== 'boolean') { result.skipped.push({ category: definition.id, key, reason: copy.validation.typeMismatch }); continue; }
 				updates[key] = payload.profileBadges[key];
 			}
 			if (Object.keys(updates).length > 0) {
 				try { await misskeyApi('i/update', updates); result.applied += Object.keys(updates).length; } catch {
-					result.skipped.push({ category: definition.id, key: 'profileBadges', reason: 'サーバーへ保存できませんでした' });
+					result.skipped.push({ category: definition.id, key: 'profileBadges', reason: copy.validation.serverSaveFailed });
 				}
 			}
 		}
@@ -626,7 +631,7 @@ export async function applyHataSettingsTransfer(file: HataSettingsTransferFile, 
 			const mode = source.mode === 'pref' || source.mode === 'intensity' ? source.mode : undefined;
 			const threshold = typeof source.threshold === 'number' && [30, 40, 45, 50, 55, 60, 70].includes(source.threshold) ? source.threshold : undefined;
 			if (enabled === undefined || mode === undefined || threshold === undefined) {
-				result.skipped.push({ category: definition.id, key: 'notifications', reason: '通知設定の形式が合いません' });
+				result.skipped.push({ category: definition.id, key: 'notifications', reason: copy.validation.notificationSettingsFormatMismatch });
 			} else {
 				try {
 					await misskeyApi('hata/earthquake/notification-settings-update', {
@@ -634,7 +639,7 @@ export async function applyHataSettingsTransfer(file: HataSettingsTransferFile, 
 						pref: enabled && mode === 'pref' ? (miLocalStorage.getItem('hataEarthquakePref') ?? null) : null,
 					});
 					result.applied++;
-				} catch { result.skipped.push({ category: definition.id, key: 'notifications', reason: 'サーバーへ保存できませんでした' }); }
+				} catch { result.skipped.push({ category: definition.id, key: 'notifications', reason: copy.validation.serverSaveFailed }); }
 			}
 		}
 	}

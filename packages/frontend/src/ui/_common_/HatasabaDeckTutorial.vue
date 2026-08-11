@@ -16,7 +16,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 	@close="skip"
 	@closed="emit('closed')"
 >
-	<template #header>HatasabaUI デッキ設定</template>
+	<template #header>{{ copy.header }}</template>
 
 	<div :class="$style.root">
 		<!-- 進捗インジケータ -->
@@ -26,26 +26,26 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 		<!-- ステップ1: ナビバーの位置 -->
 		<div v-if="step === 1" :class="$style.page">
-			<div :class="$style.title">メニューの位置を選ぶ</div>
-			<div :class="$style.desc">デッキ表示中、メニュー(タイムラインや通知などへのリンク)をどこに表示するか選べます。あとから設定で変更できます。</div>
+			<div :class="$style.title">{{ copy.chooseMenuPosition }}</div>
+			<div :class="$style.desc">{{ copy.menuPositionDescription }}</div>
 			<div :class="$style.choices">
 				<button :class="[$style.choice, { [$style.choiceOn]: navTop === false }]" @click="navTop = false">
 					<div :class="$style.previewLeft"><span :class="$style.pvSidebar"></span><span :class="$style.pvBody"></span></div>
-					<div :class="$style.choiceLabel">左サイドバー</div>
-					<div :class="$style.choiceSub">画面左に縦のメニュー。従来のスタイルです。</div>
+					<div :class="$style.choiceLabel">{{ copy.leftSidebar }}</div>
+					<div :class="$style.choiceSub">{{ copy.leftSidebarDescription }}</div>
 				</button>
 				<button :class="[$style.choice, { [$style.choiceOn]: navTop === true }]" @click="navTop = true">
 					<div :class="$style.previewTop"><span :class="$style.pvNav"></span><span :class="$style.pvBody"></span></div>
-					<div :class="$style.choiceLabel">画面上部</div>
-					<div :class="$style.choiceSub">画面上に横並びのナビバー。広い画面を活かせます。</div>
+					<div :class="$style.choiceLabel">{{ copy.topNavigation }}</div>
+					<div :class="$style.choiceSub">{{ copy.topNavigationDescription }}</div>
 				</button>
 			</div>
 		</div>
 
 		<!-- ステップ2: ツールバーの位置 -->
 		<div v-else-if="step === 2" :class="$style.page">
-			<div :class="$style.title">ツールバーの位置を選ぶ</div>
-			<div :class="$style.desc">カラムの追加やレイアウト切替などを行うデッキのツールバーを、どこに置くか選べます。</div>
+			<div :class="$style.title">{{ copy.chooseToolbarPosition }}</div>
+			<div :class="$style.desc">{{ copy.toolbarPositionDescription }}</div>
 			<div :class="$style.choices">
 				<button v-for="opt in toolbarOptions" :key="opt.value" :class="[$style.choice, { [$style.choiceOn]: toolbarPos === opt.value }]" @click="toolbarPos = opt.value">
 					<i :class="[opt.icon, $style.choiceIcon]"></i>
@@ -57,8 +57,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 		<!-- ステップ3: レイアウト -->
 		<div v-else-if="step === 3" :class="$style.page">
-			<div :class="$style.title">レイアウトを選ぶ</div>
-			<div :class="$style.desc">カラムの並べ方を選べます。横並びは従来のデッキ風、グリッドや縦一列も選べます。</div>
+			<div :class="$style.title">{{ copy.chooseLayout }}</div>
+			<div :class="$style.desc">{{ copy.layoutDescription }}</div>
 			<div :class="$style.choices">
 				<button v-for="opt in layoutOptions" :key="opt.value" :class="[$style.choice, { [$style.choiceOn]: layout === opt.value }]" @click="layout = opt.value">
 					<i :class="[opt.icon, $style.choiceIcon]"></i>
@@ -70,10 +70,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 		<!-- フッター -->
 		<div :class="$style.footer">
-			<MkButton v-if="step > 1" rounded @click="step--"><i class="ti ti-arrow-left"></i> 戻る</MkButton>
-			<MkButton transparent @click="skip">スキップ</MkButton>
-			<MkButton v-if="step < 3" primary rounded @click="step++">次へ <i class="ti ti-arrow-right"></i></MkButton>
-			<MkButton v-else primary gradate rounded @click="finish"><i class="ti ti-check"></i> 完了</MkButton>
+			<MkButton v-if="step > 1" rounded @click="step--"><i class="ti ti-arrow-left"></i> {{ copy.back }}</MkButton>
+			<MkButton transparent @click="skip">{{ copy.skip }}</MkButton>
+			<MkButton v-if="step < 3" primary rounded @click="step++">{{ copy.next }} <i class="ti ti-arrow-right"></i></MkButton>
+			<MkButton v-else primary gradate rounded @click="finish"><i class="ti ti-check"></i> {{ copy.finish }}</MkButton>
 		</div>
 	</div>
 </MkModalWindow>
@@ -83,6 +83,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 import { ref, shallowRef } from 'vue';
 import MkModalWindow from '@/components/MkModalWindow.vue';
 import MkButton from '@/components/MkButton.vue';
+import { i18n } from '@/i18n.js';
 import { prefer } from '@/preferences.js';
 import { claimAchievement } from '@/utility/achievements.js';
 
@@ -91,6 +92,7 @@ const emit = defineEmits<{
 }>();
 
 const dialog = shallowRef<InstanceType<typeof MkModalWindow>>();
+const copy = i18n.ts._hata._hatasabaDeckTutorial;
 
 const step = ref(1);
 
@@ -100,15 +102,15 @@ const toolbarPos = ref<'top' | 'right' | 'bottom'>((prefer.r['simpleUi.deckToolb
 const layout = ref<'row' | 'grid2' | 'grid3' | 'stack'>((prefer.r['simpleUi.deckLayout']?.value as 'row' | 'grid2' | 'grid3' | 'stack') ?? 'row');
 
 const toolbarOptions: { value: 'top' | 'right' | 'bottom'; icon: string; label: string; sub: string }[] = [
-	{ value: 'top', icon: 'ti ti-layout-navbar', label: '上', sub: 'デッキの上部にツールバーを表示します。' },
-	{ value: 'right', icon: 'ti ti-layout-sidebar-right', label: '右', sub: '画面右端に縦のツールバーを表示します。' },
-	{ value: 'bottom', icon: 'ti ti-layout-bottombar', label: '下', sub: 'デッキの下部にツールバーを表示します。' },
+	{ value: 'top', icon: 'ti ti-layout-navbar', label: copy.top, sub: copy.toolbarTopDescription },
+	{ value: 'right', icon: 'ti ti-layout-sidebar-right', label: copy.right, sub: copy.toolbarRightDescription },
+	{ value: 'bottom', icon: 'ti ti-layout-bottombar', label: copy.bottom, sub: copy.toolbarBottomDescription },
 ];
 const layoutOptions: { value: 'row' | 'grid2' | 'grid3' | 'stack'; icon: string; label: string; sub: string }[] = [
-	{ value: 'row', icon: 'ti ti-layout-columns', label: '横並び', sub: '従来のデッキ風。カラムを横に並べます。' },
-	{ value: 'grid2', icon: 'ti ti-layout-grid', label: '田の字', sub: '2列のグリッドで並べます。' },
-	{ value: 'grid3', icon: 'ti ti-layout-board-split', label: '3列グリッド', sub: '3列のグリッドで並べます。' },
-	{ value: 'stack', icon: 'ti ti-layout-list', label: '縦一列', sub: 'カラムを縦に積み重ねます。' },
+	{ value: 'row', icon: 'ti ti-layout-columns', label: copy.row, sub: copy.rowDescription },
+	{ value: 'grid2', icon: 'ti ti-layout-grid', label: copy.grid2, sub: copy.grid2Description },
+	{ value: 'grid3', icon: 'ti ti-layout-board-split', label: copy.grid3, sub: copy.grid3Description },
+	{ value: 'stack', icon: 'ti ti-layout-list', label: copy.stack, sub: copy.stackDescription },
 ];
 
 function applyAll() {

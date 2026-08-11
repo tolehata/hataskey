@@ -38,8 +38,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 		type="button"
 		:class="[$style.mutedNotice, { [$style.mutedNoticeOn]: revealMuted }]"
 		:aria-pressed="revealMuted"
-		:title="revealMuted ? 'ミュートしたユーザーのリアクションを隠す' : `ミュートしたユーザーのリアクションが${mutedHiddenCount}件あります。押すと表示します`"
-		:aria-label="revealMuted ? 'ミュートしたユーザーのリアクションを隠す' : `ミュートしたユーザーのリアクションが${mutedHiddenCount}件あります。押すと表示します`"
+		:title="mutedReactionNotice"
+		:aria-label="mutedReactionNotice"
 		@click="revealMuted = !revealMuted"
 	>
 		<i class="ti ti-info-circle"></i>
@@ -49,7 +49,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <script lang="ts" setup>
 import * as Misskey from 'cherrypick-js';
-import { inject, watch, ref } from 'vue';
+import { computed, inject, watch, ref } from 'vue';
 import { TransitionGroup } from 'vue';
 import { isSupportedEmoji } from '@@/js/emojilist.js';
 import XReaction from '@/components/MkReactionsViewer.reaction.vue';
@@ -62,6 +62,7 @@ import { isMutedUser } from '@/utility/muted-users.js';
 import { getMutedReactions, mutedReactionsRevision, requestMutedReactions } from '@/utility/muted-reactions.js';
 import { hideMutedReactionsLocal } from '@/utility/hatasaba-device-prefs.js';
 import { DI } from '@/di.js';
+import { i18n } from '@/i18n.js';
 
 const props = withDefaults(defineProps<{
 	noteId: Misskey.entities.Note['id'];
@@ -91,6 +92,9 @@ const hasMoreReactions = ref(false);
 const revealMuted = ref(false);
 /** 旗鯖fork(#31): いま隠している件数。⚠️0 のときは ⓘ を出さない。 */
 const mutedHiddenCount = ref(0);
+const mutedReactionNotice = computed(() => revealMuted.value
+	? i18n.ts._hata._reactionVisibility.hideMutedAgain
+	: i18n.ts._hata._reactionVisibility.mutedCount.replace('{count}', mutedHiddenCount.value.toString()));
 
 if (props.myReaction && !Object.keys(_reactions.value).includes(props.myReaction)) {
 	_reactions.value[props.myReaction] = props.reactions[props.myReaction];

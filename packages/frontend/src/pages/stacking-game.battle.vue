@@ -9,15 +9,15 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<div :class="$style.root">
 			<!-- 待機中 -->
 			<div v-if="roomState === 'waiting'" :class="$style.waitingBox">
-				<div :class="$style.waitingTitle">対戦相手を待っています...</div>
-				<div :class="$style.waitingRoomId">ルームID: {{ roomId }}</div>
+				<div :class="$style.waitingTitle">{{ common.waitingForOpponent }}</div>
+				<div :class="$style.waitingRoomId">{{ commonx.roomId({ id: roomId }) }}</div>
 				<MkLoading/>
-				<MkButton rounded @click="goBack" style="margin-top:16px;"><i class="ti ti-arrow-left"></i> キャンセル</MkButton>
+				<MkButton rounded @click="goBack" style="margin-top:16px;"><i class="ti ti-arrow-left"></i> {{ common.cancel }}</MkButton>
 			</div>
 
 			<!-- プレイ中 / 観戦 -->
 			<template v-if="roomState === 'playing' || roomState === 'ended'">
-				<div v-if="isSpectator" :class="$style.specBadge">👁 観戦中</div>
+				<div v-if="isSpectator" :class="$style.specBadge">👁 {{ common.spectating }}</div>
 
 				<div :class="$style.header">
 					<div :class="$style.scoreBox">
@@ -25,7 +25,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<div :class="$style.scoreValue">{{ score1 }}</div>
 					</div>
 					<div :class="$style.scoreBox">
-						<div :class="$style.scoreLabel">VS</div>
+						<div :class="$style.scoreLabel">{{ common.versusUpper }}</div>
 						<div :class="$style.scoreValue" style="font-size:1rem;">⚔️</div>
 					</div>
 					<div :class="$style.scoreBox">
@@ -76,7 +76,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 								<div>{{ p2Name }}: <b>{{ score2 }}</b></div>
 							</div>
 							<div :class="$style.overBtns">
-								<MkButton rounded @click="goBack"><i class="ti ti-arrow-left"></i> ロビーに戻る</MkButton>
+								<MkButton rounded @click="goBack"><i class="ti ti-arrow-left"></i> {{ common.backToLobby }}</MkButton>
 							</div>
 						</div>
 					</div>
@@ -96,9 +96,13 @@ import { definePage } from '@/page.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { useStream } from '@/stream.js';
 import { $i } from '@/i.js';
+import { i18n } from '@/i18n.js';
 
 const router = useRouter();
 const props = defineProps<{ roomId?: string }>();
+const common = i18n.ts._hata._games._common;
+const commonx = i18n.tsx._hata._games._common;
+const copy = i18n.ts._hata._games._stacking._battle;
 
 const GW = 300;
 const GH = 450;
@@ -256,14 +260,14 @@ function connectToRoom() {
 
 	connection.on('ended', (data: any) => {
 		roomState.value = 'ended';
-		if (data.winner === 1) resultText.value = `🎉 ${p1Name.value} の勝ち！`;
-		else if (data.winner === 2) resultText.value = `🎉 ${p2Name.value} の勝ち！`;
-		else resultText.value = '🤝 引き分け！';
+		if (data.winner === 1) resultText.value = commonx.playerWon({ name: p1Name.value });
+		else if (data.winner === 2) resultText.value = commonx.playerWon({ name: p2Name.value });
+		else resultText.value = common.draw;
 	});
 
 	connection.on('canceled', () => {
 		roomState.value = 'ended';
-		resultText.value = 'ルームがキャンセルされました';
+		resultText.value = common.roomCanceled;
 	});
 }
 
@@ -365,7 +369,7 @@ onUnmounted(() => {
 	if (p2Engine) Matter.Engine.clear(p2Engine);
 });
 
-definePage(() => ({ title: 'つみつみタワー - 対戦', icon: 'ti ti-swords' }));
+definePage(() => ({ title: copy.pageTitle, icon: 'ti ti-swords' }));
 </script>
 
 <style lang="scss" module>

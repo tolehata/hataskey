@@ -27,6 +27,7 @@ import { ShootingStarEffect } from '@/utility/weather-effect-shootingstar.js';
 import { LeafEffect } from '@/utility/weather-effect-leaves.js';
 import { hasShownWeatherTip, markWeatherTipShown } from '@/utility/weather-effect-tip-seen.js';
 import type { WeatherKind } from '@/utility/weather-effect-detector.js';
+import { i18n } from '@/i18n.js';
 
 // 雪(WeatherEffect)・雨(RainEffect)・日差し(SunnyEffect)を統一的に扱う共通インターフェース。
 // どれも同じ4メソッドを持つ。
@@ -160,28 +161,29 @@ class WeatherEffectManager {
 		this.tipShownThisSession.add(kind);
 		markWeatherTipShown(kind);
 
+		const copy = i18n.ts._hata._weatherEffects;
 		const phrase = kind === 'sunny'
-			? 'おや、日差しが輝いてきました。'
+			? copy.sunny
 			: kind === 'snow'
-				? 'おや、雪が降ってきました。'
+				? copy.snow
 				: kind === 'heavyRain'
-					? 'おや、土砂降りになってきました。'
+					? copy.heavyRain
 					: kind === 'windy'
-						? 'おや、風が強くなってきました。'
+						? copy.windy
 						: kind === 'shootingStar'
-							? 'おや、流れ星が降り注いできました。'
+							? copy.shootingStar
 							: kind === 'freshGreen'
-								? 'おや、若葉が舞い落ちてきました。'
+								? copy.freshGreen
 								: kind === 'summerLeaves'
-									? 'おや、青葉が舞い落ちてきました。'
-									: 'おや、雨が降ってきました。';
+									? copy.summerLeaves
+									: copy.rain;
 
 		// os は Vue 外のこのモジュールからは動的importで読む(循環import回避)。
 		import('@/os.js').then(os => {
 			os.alert({
 				type: 'info',
-				title: '天気エフェクト',
-				text: `${phrase}\n\nノートの内容に合わせて、タイムラインに天気の演出を表示しています。\n不要であれば、設定 → 旗鯖独自設定 → アクセシビリティ タブからいつでも無効にできます。`,
+				title: copy.title,
+				text: copy.description.replace('{weather}', phrase),
 			});
 		}).catch(() => { /* 表示に失敗しても致命的ではない */ });
 	}

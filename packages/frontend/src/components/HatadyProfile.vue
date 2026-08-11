@@ -13,10 +13,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 	:canResize="true"
 	@closed="emit('closed')"
 >
-	<template #header><i class="ti ti-user"></i> {{ t('title') }}</template>
+	<template #header><i class="ti ti-user"></i> {{ copy.title }}</template>
 
 	<div class="hatady-scope" :data-hatady-theme="theme" :class="$style.body">
-		<div v-if="loading" :class="$style.loading">{{ t('loading') }}</div>
+		<div v-if="loading" :class="$style.loading">{{ copy.loading }}</div>
 		<template v-else-if="profile">
 			<!-- バナー -->
 			<div :class="$style.banner" :style="{ background: hyBannerGradient(bannerColor) }">
@@ -27,11 +27,11 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<div :class="$style.bio">@{{ profile.user?.username }}<template v-if="profile.user?.description"> · {{ profile.user.description }}</template></div>
 					</div>
 					<template v-if="profile.isMe">
-						<button :class="$style.colorBtn" :title="t('changeColor')" @click="openColorPicker"><i class="ti ti-palette"></i></button>
-						<button :class="$style.editBtn" @click="editProfile"><i class="ti ti-pencil"></i> {{ t('edit') }}</button>
+						<button :class="$style.colorBtn" :title="copy.changeColor" @click="openColorPicker"><i class="ti ti-palette"></i></button>
+						<button :class="$style.editBtn" @click="editProfile"><i class="ti ti-pencil"></i> {{ copy.edit }}</button>
 					</template>
 					<button v-else :class="[$style.followBtn, following && $style.followingBtn]" :disabled="followBusy" @click="toggleFollow">
-						<i :class="following ? 'ti ti-check' : 'ti ti-user-plus'"></i> {{ following ? t('following') : t('follow') }}
+						<i :class="following ? 'ti ti-check' : 'ti ti-user-plus'"></i> {{ following ? copy.following : copy.follow }}
 					</button>
 				</div>
 				<!-- カラーピッカー(自分のみ) -->
@@ -44,12 +44,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 					></button>
 				</div>
 				<div :class="$style.stats">
-					<div :class="$style.stat"><span :class="$style.statNum">{{ Math.floor(profile.totalMinutes / 60) }}<span :class="$style.statUnit">{{ t('hours') }}</span></span><div :class="$style.statLbl">{{ t('totalTime') }}</div></div>
-					<div :class="$style.stat"><span :class="$style.statNum">{{ profile.streakDays }}<span :class="$style.statUnit">{{ t('days') }}</span></span><div :class="$style.statLbl">{{ t('streak') }}</div></div>
-					<div :class="$style.stat"><span :class="$style.statNum">{{ profile.bookCount }}<span :class="$style.statUnit">{{ t('booksUnit') }}</span></span><div :class="$style.statLbl">{{ t('shelfBooks') }}</div></div>
-					<div :class="$style.stat"><span :class="$style.statNum">{{ profile.logCount }}</span><div :class="$style.statLbl">{{ t('recordedLogs') }}</div></div>
-					<button :class="[$style.stat, $style.statBtn]" @click="openUserList('followers')"><span :class="$style.statNum">{{ profile.followersCount }}</span><div :class="$style.statLbl">{{ t('followers') }}</div></button>
-					<button :class="[$style.stat, $style.statBtn]" @click="openUserList('following')"><span :class="$style.statNum">{{ profile.followingCount }}</span><div :class="$style.statLbl">{{ t('followingCount') }}</div></button>
+					<div :class="$style.stat"><span :class="$style.statNum">{{ Math.floor(profile.totalMinutes / 60) }}<span :class="$style.statUnit">{{ copy.hours }}</span></span><div :class="$style.statLbl">{{ copy.totalTime }}</div></div>
+					<div :class="$style.stat"><span :class="$style.statNum">{{ profile.streakDays }}<span :class="$style.statUnit">{{ copy.days }}</span></span><div :class="$style.statLbl">{{ copy.streak }}</div></div>
+					<div :class="$style.stat"><span :class="$style.statNum">{{ copyx.bookCount({ count: profile.bookCount.toString() }) }}</span><div :class="$style.statLbl">{{ copy.shelfBooks }}</div></div>
+					<div :class="$style.stat"><span :class="$style.statNum">{{ profile.logCount }}</span><div :class="$style.statLbl">{{ copy.recordedLogs }}</div></div>
+					<button :class="[$style.stat, $style.statBtn]" @click="openUserList('followers')"><span :class="$style.statNum">{{ profile.followersCount }}</span><div :class="$style.statLbl">{{ copy.followers }}</div></button>
+					<button :class="[$style.stat, $style.statBtn]" @click="openUserList('following')"><span :class="$style.statNum">{{ profile.followingCount }}</span><div :class="$style.statLbl">{{ copy.followingCount }}</div></button>
 				</div>
 			</div>
 
@@ -57,17 +57,17 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<!-- 得意/苦手/興味 -->
 				<div :class="$style.fields">
 					<div :class="[$style.fieldCard, $style.fieldStrength]">
-						<div :class="$style.fieldTitle"><i class="ti ti-star-filled"></i> {{ t('strength') }}</div>
+						<div :class="$style.fieldTitle"><i class="ti ti-star-filled"></i> {{ hyTagLabel('strength') }}</div>
 						<div v-if="profile.fields.strength.length" :class="$style.chips"><span v-for="s in profile.fields.strength" :key="s" :class="[$style.chip, $style.chipStrength]">{{ s }}</span></div>
 						<div v-else :class="$style.fieldEmpty">—</div>
 					</div>
 					<div :class="[$style.fieldCard, $style.fieldWeak]">
-						<div :class="$style.fieldTitle"><i class="ti ti-flame"></i> {{ t('weak') }}</div>
+						<div :class="$style.fieldTitle"><i class="ti ti-flame"></i> {{ hyTagLabel('weak') }}</div>
 						<div v-if="profile.fields.weak.length" :class="$style.chips"><span v-for="s in profile.fields.weak" :key="s" :class="[$style.chip, $style.chipWeak]">{{ s }}</span></div>
 						<div v-else :class="$style.fieldEmpty">—</div>
 					</div>
 					<div :class="[$style.fieldCard, $style.fieldInterest]">
-						<div :class="$style.fieldTitle"><i class="ti ti-bulb"></i> {{ t('interest') }}</div>
+						<div :class="$style.fieldTitle"><i class="ti ti-bulb"></i> {{ hyTagLabel('interest') }}</div>
 						<div v-if="profile.fields.interest.length" :class="$style.chips"><span v-for="s in profile.fields.interest" :key="s" :class="[$style.chip, $style.chipInterest]">{{ s }}</span></div>
 						<div v-else :class="$style.fieldEmpty">—</div>
 					</div>
@@ -75,7 +75,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 				<!-- おすすめの本 -->
 				<template v-if="recommendedBooks.length">
-					<div :class="$style.recHead"><i class="ti ti-thumb-up"></i> {{ t('recommended') }}</div>
+					<div :class="$style.recHead"><i class="ti ti-thumb-up"></i> {{ copy.recommended }}</div>
 					<div :class="$style.recRow">
 						<button v-for="b in recommendedBooks" :key="b.id" :class="$style.recCell" @click="emit('openBook', b.id)">
 							<HyBookCover :title="b.title" :author="b.author" :colorIndex="b.coverColorIndex" :width="72" showTitle/>
@@ -86,33 +86,33 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 				<!-- 本棚 -->
 				<div :class="$style.shelfHead">
-					<h3 :class="$style.shelfTitle"><i class="ti ti-books"></i> {{ t('bookshelf') }}</h3>
+					<h3 :class="$style.shelfTitle"><i class="ti ti-books"></i> {{ copy.bookshelf }}</h3>
 					<div :class="$style.shelfFilters">
 						<button v-for="f in shelfFilters" :key="f.key" :class="[$style.shelfFilter, shelfFilter === f.key && $style.shelfFilterOn]" @click="shelfFilter = f.key">
-							{{ t(f.label) }} <span v-if="f.key === 'all'">{{ profile.books.length }}</span>
+							{{ f.label }} <span v-if="f.key === 'all'">{{ profile.books.length }}</span>
 						</button>
 					</div>
 				</div>
-				<div v-if="shelfBooks.length === 0" :class="$style.shelfEmpty">{{ t('noBooks') }}</div>
+				<div v-if="shelfBooks.length === 0" :class="$style.shelfEmpty">{{ copy.noBooks }}</div>
 				<div v-else :class="$style.shelfGrid">
 					<button v-for="b in shelfBooks" :key="b.id" :class="$style.bookCell" @click="emit('openBook', b.id)">
 						<div :class="$style.coverWrap">
 							<HyBookCover :title="b.title" :author="b.author" :colorIndex="b.coverColorIndex" :width="106" showTitle/>
 							<span v-if="b.status === 'finished'" :class="[$style.coverBadge, $style.badgeDone]"><i class="ti ti-check"></i></span>
-							<span v-else-if="b.status === 'tsundoku'" :class="[$style.coverBadge, $style.badgeTsundoku]">{{ t('status_tsundoku') }}</span>
-							<span v-else-if="b.status === 'want'" :class="[$style.coverBadge, $style.badgeWant]">{{ t('status_want') }}</span>
+							<span v-else-if="b.status === 'tsundoku'" :class="[$style.coverBadge, $style.badgeTsundoku]">{{ copy.statusTsundoku }}</span>
+							<span v-else-if="b.status === 'want'" :class="[$style.coverBadge, $style.badgeWant]">{{ copy.statusWant }}</span>
 							<span v-else-if="b.progress != null" :class="$style.coverBadge">{{ b.progress }}%</span>
 						</div>
 						<div :class="$style.bookTitle">{{ b.title }}</div>
-						<div :class="$style.bookStatus">{{ t('status_' + b.status) }}</div>
+						<div :class="$style.bookStatus">{{ bookStatus(b.status) }}</div>
 					</button>
 				</div>
 
 				<!-- 公開した学び -->
 				<div :class="$style.postsHead">
-					<h3 :class="$style.shelfTitle"><i class="ti ti-notebook"></i> {{ profile.isMe ? t('myPosts') : t('publicPosts') }}</h3>
+					<h3 :class="$style.shelfTitle"><i class="ti ti-notebook"></i> {{ profile.isMe ? copy.myPosts : copy.publicPosts }}</h3>
 				</div>
-				<div v-if="!profile.logs || profile.logs.length === 0" :class="$style.shelfEmpty">{{ t('noPosts') }}</div>
+				<div v-if="!profile.logs || profile.logs.length === 0" :class="$style.shelfEmpty">{{ copy.noPosts }}</div>
 				<div v-else :class="$style.posts">
 					<button v-for="log in profile.logs" :key="log.id" :class="$style.postCard" :style="{ borderLeftColor: palAccent(log.subject) }" @click="emit('openLog', log.id)">
 						<div :class="$style.postTop">
@@ -131,7 +131,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</div>
 			</div>
 		</template>
-		<div v-else :class="$style.loading">{{ t('notFound') }}</div>
+		<div v-else :class="$style.loading">{{ copy.notFound }}</div>
 	</div>
 </MkWindow>
 </template>
@@ -141,16 +141,20 @@ import { ref, computed, onMounted } from 'vue';
 import MkWindow from '@/components/MkWindow.vue';
 import HyBookCover from '@/components/HyBookCover.vue';
 import HySubjectBadge from '@/components/HySubjectBadge.vue';
+import { versatileLang } from '@@/js/intl-const.js';
+import { i18n } from '@/i18n.js';
 import * as os from '@/os.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
-import { hySubjectPalette, hyBannerGradient, HY_BANNER_PRESETS } from '@/utility/hatady.js';
-import { hatadyTheme, hatadyLang, hatadyTzOffset } from '@/utility/hatady-prefs.js';
+import { hySubjectPalette, hyBannerGradient, hyTagLabel, HY_BANNER_PRESETS } from '@/utility/hatady.js';
+import { hatadyTheme, hatadyTzOffset } from '@/utility/hatady-prefs.js';
 
 const props = defineProps<{ userId?: string | null }>();
 const emit = defineEmits<{ (ev: 'changed'): void; (ev: 'openLog', logId: string): void; (ev: 'openProfile', userId: string): void; (ev: 'openBook', bookId: string): void; (ev: 'closed'): void }>();
 const dialog = ref<any>(null);
 const theme = hatadyTheme;
-const lang = hatadyLang;
+const copy = i18n.ts._hata._hatady._profile;
+const copyx = i18n.tsx._hata._hatady._profile;
+const shortDateFormatter = new Intl.DateTimeFormat(versatileLang, { month: 'short', day: 'numeric' });
 
 const profile = ref<any>(null);
 const loading = ref(true);
@@ -161,64 +165,34 @@ const colorPickerOpen = ref(false);
 const shelfFilter = ref<'all' | 'reading' | 'finished' | 'tsundoku' | 'want'>('all');
 
 const shelfFilters = [
-	{ key: 'all' as const, label: 'filterAll' },
-	{ key: 'reading' as const, label: 'status_reading' },
-	{ key: 'finished' as const, label: 'status_finished' },
-	{ key: 'tsundoku' as const, label: 'status_tsundoku' },
-	{ key: 'want' as const, label: 'status_want' },
+	{ key: 'all' as const, label: copy.filterAll },
+	{ key: 'reading' as const, label: copy.statusReading },
+	{ key: 'finished' as const, label: copy.statusFinished },
+	{ key: 'tsundoku' as const, label: copy.statusTsundoku },
+	{ key: 'want' as const, label: copy.statusWant },
 ];
-
-const DICT: Record<string, { ja: string; en: string }> = {
-	title: { ja: 'プロフィール', en: 'Profile' },
-	loading: { ja: '読み込み中…', en: 'Loading…' },
-	notFound: { ja: 'ユーザーが見つかりません。', en: 'User not found.' },
-	edit: { ja: '編集', en: 'Edit' },
-	changeColor: { ja: 'プロフィールカラーを変更', en: 'Change profile color' },
-	follow: { ja: 'フォロー', en: 'Follow' },
-	following: { ja: 'フォロー中', en: 'Following' },
-	followConfirm: { ja: '{name} さんをフォローしますか？', en: 'Follow {name}?' },
-	unfollowConfirm: { ja: '{name} さんのフォローを解除しますか？', en: 'Unfollow {name}?' },
-	hours: { ja: '時間', en: 'h' },
-	days: { ja: '日', en: 'd' },
-	booksUnit: { ja: '冊', en: '' },
-	totalTime: { ja: '総学習時間', en: 'Total time' },
-	streak: { ja: '連続記録', en: 'Streak' },
-	shelfBooks: { ja: '本棚の本', en: 'Books' },
-	recordedLogs: { ja: '記録した学び', en: 'Logs' },
-	followers: { ja: 'フォロワー', en: 'Followers' },
-	followingCount: { ja: 'フォロー', en: 'Following' },
-	strength: { ja: '得意な分野', en: 'Strengths' },
-	weak: { ja: '苦手な分野', en: 'Weak spots' },
-	interest: { ja: '興味・関心', en: 'Interests' },
-	recommended: { ja: 'おすすめの本', en: 'Recommended books' },
-	bookshelf: { ja: '本棚', en: 'Bookshelf' },
-	filterAll: { ja: 'すべて', en: 'All' },
-	status_reading: { ja: '読書中', en: 'Reading' },
-	status_finished: { ja: '読了', en: 'Finished' },
-	status_tsundoku: { ja: '積読', en: 'Backlog' },
-	status_want: { ja: '読みたい', en: 'Want to read' },
-	noBooks: { ja: 'まだ本がありません。', en: 'No books yet.' },
-	myPosts: { ja: '記録した学び', en: 'My study logs' },
-	publicPosts: { ja: '公開した学び', en: 'Public study logs' },
-	noPosts: { ja: 'まだ公開された学びがありません。', en: 'No public study logs.' },
+const statusLabels: Record<string, string> = {
+	reading: copy.statusReading,
+	finished: copy.statusFinished,
+	tsundoku: copy.statusTsundoku,
+	want: copy.statusWant,
 };
-function t(key: string): string { return DICT[key]?.[lang.value === 'en' ? 'en' : 'ja'] ?? key; }
+function bookStatus(status: string): string { return statusLabels[status] ?? status; }
 function palAccent(subject: string): string { return hySubjectPalette(subject).accent; }
 function fmtDuration(min: number): string {
-	if (min < 60) return lang.value === 'en' ? `${min}m` : `${min}分`;
+	if (min < 60) return copyx.durationMinutes({ minutes: min.toString() });
 	const h = Math.floor(min / 60); const m = min % 60;
-	return lang.value === 'en' ? `${h}h ${m}m` : `${h}時間${m}分`;
+	return copyx.durationHoursMinutes({ hours: h.toString(), minutes: m.toString() });
 }
 function fmtWhen(iso: string): string {
 	const d = new Date(iso);
 	const diffMin = Math.round((Date.now() - d.getTime()) / 60000);
-	const en = lang.value === 'en';
-	if (diffMin < 60) return en ? `${diffMin}m ago` : `${diffMin}分前`;
+	if (diffMin < 60) return copyx.minutesAgo({ count: diffMin.toString() });
 	const diffH = Math.floor(diffMin / 60);
-	if (diffH < 24) return en ? `${diffH}h ago` : `${diffH}時間前`;
+	if (diffH < 24) return copyx.hoursAgo({ count: diffH.toString() });
 	const diffD = Math.floor(diffH / 24);
-	if (diffD < 7) return en ? `${diffD}d ago` : `${diffD}日前`;
-	return en ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : `${d.getMonth() + 1}月${d.getDate()}日`;
+	if (diffD < 7) return copyx.daysAgo({ count: diffD.toString() });
+	return shortDateFormatter.format(d);
 }
 
 async function openUserList(type: 'following' | 'followers') {
@@ -257,7 +231,7 @@ async function toggleFollow() {
 	// フォロー / 解除の前に確認する。
 	const { canceled } = await os.confirm({
 		type: following.value ? 'warning' : 'question',
-		text: (following.value ? t('unfollowConfirm') : t('followConfirm')).replace('{name}', uname),
+		text: following.value ? copyx.unfollowConfirm({ name: uname }) : copyx.followConfirm({ name: uname }),
 	});
 	if (canceled) return;
 	followBusy.value = true;

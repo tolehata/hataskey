@@ -13,33 +13,33 @@ SPDX-License-Identifier: AGPL-3.0-only
 <div :class="$style.root">
 	<!-- パンくず -->
 	<div :class="$style.crumbs">
-		<button :class="$style.crumbLink" @click="$emit('back')">イシュー</button>
+		<button :class="$style.crumbLink" @click="$emit('back')">{{ copy.issues }}</button>
 		<span :class="$style.crumbSep">/</span>
 		<span :class="$style.crumbNo">#{{ issue?.number ?? '' }}</span>
 	</div>
 
-	<div v-if="loading" :class="$style.center">読み込み中…</div>
+	<div v-if="loading" :class="$style.center">{{ copy.loading }}</div>
 	<div v-else-if="loadError" :class="$style.errorBox">
 		<i class="ti ti-lock-off" :class="$style.errorIcon"></i>
-		<div :class="$style.errorTitle">このイシューは表示できません</div>
-		<div :class="$style.errorSub">権限がない（セキュリティ対応など）か、すでに削除された可能性があります。</div>
-		<MkButton rounded primary @click="$emit('back')"><i class="ti ti-arrow-left"></i> 一覧へ戻る</MkButton>
+		<div :class="$style.errorTitle">{{ copy.unavailableTitle }}</div>
+		<div :class="$style.errorSub">{{ copy.unavailableDescription }}</div>
+		<MkButton rounded primary @click="$emit('back')"><i class="ti ti-arrow-left"></i> {{ copy.backToList }}</MkButton>
 	</div>
 	<template v-else-if="issue">
 		<!-- タイトル + 番号コピー -->
 		<div :class="$style.titleRow">
 			<h1 :class="$style.title">{{ issue.title }} <span :class="$style.titleNo">#{{ issue.number }}</span></h1>
-			<button :class="$style.copyBtn" v-tooltip="'タイトルをコピー'" @click="copyText(issue.title, 'タイトル')"><i class="ti ti-copy"></i></button>
+			<button :class="$style.copyBtn" v-tooltip="copy.copyTitle" @click="copyText(issue.title, copy.title)"><i class="ti ti-copy"></i></button>
 		</div>
 
 		<!-- メタ行 -->
 		<div :class="$style.metaRow">
 			<HfStatusPill :status="issue.status" variant="filled"/>
 			<HfCategoryBadge :category="issue.category"/>
-			<span v-if="issue.pinned" :class="$style.metaPin"><i class="ti ti-pin"></i> ピン留め</span>
+			<span v-if="issue.pinned" :class="$style.metaPin"><i class="ti ti-pin"></i> {{ copy.pinned }}</span>
 			<span :class="$style.metaText">
-				<template v-if="issue.createdBy"><MkUserName :class="$style.metaAuthor" :user="issue.createdBy"/> が<MkTime :time="issue.createdAt" mode="relative"/>に作成</template>
-				・ コメント{{ issue.commentsCount ?? comments.length }}件 ・ 参加者{{ participants.length }}人
+				<template v-if="issue.createdBy"><MkUserName :class="$style.metaAuthor" :user="issue.createdBy"/> {{ copy.createdBySuffix }}<MkTime :time="issue.createdAt" mode="relative"/>{{ copy.createdAtSuffix }}</template>
+				{{ copyx.commentsAndParticipants({ comments: (issue.commentsCount ?? comments.length).toString(), participants: participants.length.toString() }) }}
 			</span>
 		</div>
 
@@ -57,15 +57,15 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<div :class="[$style.cardHead, $style.cardHeadAuthor]">
 							<MkUserName v-if="issue.createdBy" :class="$style.cardName" :user="issue.createdBy"/>
 							<MkTime :class="$style.cardTime" :time="issue.createdAt" mode="relative"/>
-							<span :class="[$style.roleBadge, $style.roleAuthor]">作成者</span>
-							<button :class="$style.copyMini" v-tooltip="'補足情報をコピー'" @click="copyText(issue.description, '補足情報')"><i class="ti ti-copy"></i></button>
+							<span :class="[$style.roleBadge, $style.roleAuthor]">{{ copy.author }}</span>
+							<button :class="$style.copyMini" v-tooltip="copy.copyDescription" @click="copyText(issue.description, copy.description)"><i class="ti ti-copy"></i></button>
 						</div>
 						<div v-if="issue.description" :class="$style.cardText"><Mfm :text="linkifyRefs(issue.description)"/></div>
 						<MkMediaList v-if="issue.files && issue.files.length" :class="$style.cardMedia" :mediaList="issue.files"/>
 						<div v-if="issue.code" :class="$style.codeBlock">
 							<div :class="$style.codeHead">
-								<span><i class="ti ti-code"></i> 提出されたコード</span>
-								<button :class="$style.codeCopyBtn" v-tooltip="'コードをコピー'" @click="copyText(issue.code, 'コード')"><i class="ti ti-copy"></i> コピー</button>
+								<span><i class="ti ti-code"></i> {{ copy.submittedCode }}</span>
+								<button :class="$style.codeCopyBtn" v-tooltip="copy.copyCode" @click="copyText(issue.code, copy.code)"><i class="ti ti-copy"></i> {{ copy.copy }}</button>
 							</div>
 							<pre :class="$style.codePre"><code>{{ issue.code }}</code></pre>
 						</div>
@@ -79,9 +79,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<div :class="$style.cardHead">
 							<MkUserName :class="$style.cardName" :user="c.user"/>
 							<MkTime :class="$style.cardTime" :time="c.createdAt" mode="relative"/>
-							<span v-if="issue.createdBy && c.user?.id === issue.createdBy.id" :class="[$style.roleBadge, $style.roleAuthor]">作成者</span>
-							<span v-else-if="isModeratorUser(c.user?.id)" :class="[$style.roleBadge, $style.roleStaff]"><i class="ti ti-shield-check"></i> 対処担当</span>
-							<span v-if="c.mark === 'important'" :class="[$style.roleBadge, $style.roleImportant]"><i class="ti ti-alert-triangle-filled"></i> 重要</span>
+							<span v-if="issue.createdBy && c.user?.id === issue.createdBy.id" :class="[$style.roleBadge, $style.roleAuthor]">{{ copy.author }}</span>
+							<span v-else-if="isModeratorUser(c.user?.id)" :class="[$style.roleBadge, $style.roleStaff]"><i class="ti ti-shield-check"></i> {{ copy.assignee }}</span>
+							<span v-if="c.mark === 'important'" :class="[$style.roleBadge, $style.roleImportant]"><i class="ti ti-alert-triangle-filled"></i> {{ copy.important }}</span>
 							<span v-if="c.mark === 'question'" :class="[$style.roleBadge, $style.roleQuestion]"><i class="ti ti-help-circle-filled"></i> ?</span>
 							<button :class="$style.cardMenu" @click="openCommentMenu(c, $event)"><i class="ti ti-dots"></i></button>
 						</div>
@@ -107,13 +107,13 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</div>
 
 				<!-- コメント投稿(タイムライン末尾) -->
-				<div v-if="issue.closed" :class="$style.closedNotice"><i class="ti ti-lock"></i> このイシューはクローズ（受付終了）されています。コメントはできません。</div>
+				<div v-if="issue.closed" :class="$style.closedNotice"><i class="ti ti-lock"></i> {{ copy.closedNotice }}</div>
 				<div v-else :class="$style.tlRow">
 					<HfAvatar :user="me" :size="36" :class="$style.tlAvatar"/>
 					<div :class="[$style.card, $style.composerCard]">
 						<div v-if="replyTarget" :class="$style.replyBar">
 							<i class="ti ti-arrow-back-up"></i>
-							<span>返信先:</span><MkUserName :user="replyTarget.user"/>
+							<span>{{ copy.replyTo }}</span><MkUserName :user="replyTarget.user"/>
 							<span :class="$style.replyBarText">{{ (replyTarget.text ?? '').slice(0, 40) }}</span>
 							<button :class="$style.replyBarCancel" @click="replyTarget = null"><i class="ti ti-x"></i></button>
 						</div>
@@ -125,11 +125,11 @@ SPDX-License-Identifier: AGPL-3.0-only
 						</div>
 						<div :class="$style.composerRow">
 							<div :class="$style.inputPill">
-								<textarea ref="commentTextarea" v-model="newComment" :class="$style.pillInput" :placeholder="replyTarget ? '返信を書く… :emoji: も使えます' : 'コメントを書く… :emoji: も使えます'" rows="1" @keydown.enter.exact.prevent="sendComment"></textarea>
-								<button :class="$style.pillIcon" title="絵文字を挿入" @click="insertCommentEmoji"><i class="ti ti-mood-happy"></i></button>
-								<button :class="$style.pillIcon" title="画像を添付" @click="attachCommentFiles"><i class="ti ti-photo-plus"></i></button>
+								<textarea ref="commentTextarea" v-model="newComment" :class="$style.pillInput" :placeholder="replyTarget ? copy.replyPlaceholder : copy.commentPlaceholder" rows="1" @keydown.enter.exact.prevent="sendComment"></textarea>
+								<button :class="$style.pillIcon" :title="copy.insertEmoji" @click="insertCommentEmoji"><i class="ti ti-mood-happy"></i></button>
+								<button :class="$style.pillIcon" :title="copy.attachImage" @click="attachCommentFiles"><i class="ti ti-photo-plus"></i></button>
 							</div>
-							<MkButton :class="$style.sendBtn" rounded primary :disabled="!newComment.trim() || sending" @click="sendComment">送信</MkButton>
+							<MkButton :class="$style.sendBtn" rounded primary :disabled="!newComment.trim() || sending" @click="sendComment">{{ copy.send }}</MkButton>
 						</div>
 					</div>
 				</div>
@@ -139,7 +139,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<aside :class="$style.side">
 				<!-- ステータス -->
 				<div :class="$style.sideSec">
-					<div :class="$style.sideLabel">ステータス</div>
+					<div :class="$style.sideLabel">{{ copy.status }}</div>
 					<button :class="[$style.statusSelect, !canManage && $style.statusStatic]" :disabled="!canManage" @click="openStatusSelect">
 						<HfStatusPill :status="issue.status" variant="text"/>
 						<i v-if="canManage" class="ti ti-selector" :class="$style.statusCaret"></i>
@@ -148,10 +148,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 				<!-- カテゴリ / 優先度 -->
 				<div :class="$style.sideSec">
-					<div :class="$style.sideLabel">カテゴリ / 優先度</div>
+					<div :class="$style.sideLabel">{{ copy.categoryAndPriority }}</div>
 					<div :class="$style.sideBadges">
 						<HfCategoryBadge :category="issue.category"/>
-						<button :class="$style.prioBadge" :data-prio="issue.priority ?? 'normal'" :disabled="!canManage" @click="openPrioritySelect">優先度: {{ priorityLabel[issue.priority ?? 'normal'] }}</button>
+						<button :class="$style.prioBadge" :data-prio="issue.priority ?? 'normal'" :disabled="!canManage" @click="openPrioritySelect">{{ copy.priorityPrefix }} {{ priorityLabel[issue.priority ?? 'normal'] }}</button>
 					</div>
 				</div>
 
@@ -159,10 +159,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<div :class="$style.sideSec">
 					<div :class="$style.sideLabelRow">
 						<span class="ti ti-shield-check" :class="$style.sideLabelIcon"></span>
-						<span :class="$style.sideLabel">対処担当</span>
-						<button v-if="isAdmin" :class="$style.sideGear" v-tooltip="'対処権限を付与'" @click="grantModerator"><i class="ti ti-settings"></i></button>
+						<span :class="$style.sideLabel">{{ copy.assignee }}</span>
+						<button v-if="isAdmin" :class="$style.sideGear" v-tooltip="copy.grantAssignee" @click="grantModerator"><i class="ti ti-settings"></i></button>
 					</div>
-					<div v-if="moderators.length === 0" :class="$style.sideMuted">未割り当て</div>
+					<div v-if="moderators.length === 0" :class="$style.sideMuted">{{ copy.unassigned }}</div>
 					<div v-else :class="$style.modList">
 						<div v-for="m in moderators" :key="m.id" :class="$style.modItem">
 							<HfAvatar :user="m" :size="22"/><MkUserName :user="m"/><i class="ti ti-shield-check" :class="$style.modShield"></i>
@@ -172,17 +172,17 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 				<!-- 参加者 -->
 				<div :class="$style.sideSec">
-					<div :class="$style.sideLabel">参加者 {{ participants.length }}人</div>
+					<div :class="$style.sideLabel">{{ copyx.participantCount({ count: participants.length.toString() }) }}</div>
 					<div v-if="participants.length" :class="$style.partStack">
 						<HfAvatar v-for="p in participants" :key="p.id" :user="p" :size="26" stack/>
 					</div>
-					<div v-else :class="$style.sideMuted">まだいません</div>
+					<div v-else :class="$style.sideMuted">{{ copy.noParticipants }}</div>
 				</div>
 
 				<!-- 賛同 -->
 				<div :class="$style.sideSec">
 					<button :class="[$style.agreeBtn, issue.isAgreed && $style.agreeBtnOn]" @click="toggleAgree">
-						<i :class="issue.isAgreed ? 'ti ti-heart-filled' : 'ti ti-heart'"></i> 賛同する ・ {{ issue.agreementsCount }}
+						<i :class="issue.isAgreed ? 'ti ti-heart-filled' : 'ti ti-heart'"></i> {{ copyx.agreeCount({ count: issue.agreementsCount.toString() }) }}
 					</button>
 				</div>
 
@@ -190,13 +190,13 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<div v-if="canManage" :class="[$style.sideSec, $style.sideSecLast]">
 					<div :class="$style.sideLabelRow">
 						<span class="ti ti-shield" :class="$style.sideLabelIcon"></span>
-						<span :class="$style.sideLabel">スタッフ操作</span>
+						<span :class="$style.sideLabel">{{ copy.staffActions }}</span>
 					</div>
 					<div :class="$style.staffActions">
-						<button :class="$style.staffAction" @click="togglePin"><i class="ti ti-pin"></i> {{ issue.pinned ? 'ピン留めを解除' : 'ピン留め' }}</button>
-						<button v-if="isAdmin" :class="$style.staffAction" @click="grantModerator"><i class="ti ti-user-plus"></i> 対処権限を付与</button>
-						<button :class="$style.staffAction" @click="toggleClose"><i :class="issue.closed ? 'ti ti-lock-open' : 'ti ti-lock'"></i> {{ issue.closed ? '再オープン' : 'クローズ（受付終了）' }}</button>
-						<button v-if="isStaff" :class="[$style.staffAction, $style.staffDanger]" @click="removeIssue"><i class="ti ti-trash"></i> イシューを削除</button>
+						<button :class="$style.staffAction" @click="togglePin"><i class="ti ti-pin"></i> {{ issue.pinned ? copy.unpin : copy.pin }}</button>
+						<button v-if="isAdmin" :class="$style.staffAction" @click="grantModerator"><i class="ti ti-user-plus"></i> {{ copy.grantAssignee }}</button>
+						<button :class="$style.staffAction" @click="toggleClose"><i :class="issue.closed ? 'ti ti-lock-open' : 'ti ti-lock'"></i> {{ issue.closed ? copy.reopen : copy.closeIssue }}</button>
+						<button v-if="isStaff" :class="[$style.staffAction, $style.staffDanger]" @click="removeIssue"><i class="ti ti-trash"></i> {{ copy.deleteIssue }}</button>
 					</div>
 				</div>
 			</aside>
@@ -215,6 +215,7 @@ import MkReactionIcon from '@/components/MkReactionIcon.vue';
 import HfStatusPill from '@/components/HfStatusPill.vue';
 import HfCategoryBadge from '@/components/HfCategoryBadge.vue';
 import HfAvatar from '@/components/HfAvatar.vue';
+import { i18n } from '@/i18n.js';
 import * as os from '@/os.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { chooseDriveFile } from '@/utility/drive.js';
@@ -227,6 +228,8 @@ import { copyToClipboard } from '@/utility/copy-to-clipboard.js';
 
 const props = defineProps<{ issueId: string; isStaff: boolean }>();
 const emit = defineEmits<{ (ev: 'back'): void }>();
+const copy = i18n.ts._hata._hatafeed._issue;
+const copyx = i18n.tsx._hata._hatafeed._issue;
 
 const me = $i;
 
@@ -311,11 +314,11 @@ async function load() {
 // 引用やバグ再現に再利用しやすくするユーザー要望に対応。空テキストは noop。
 function copyText(text: string | null | undefined, label: string) {
 	if (!text || text === '') {
-		os.alert({ type: 'warning', text: `${label}が空のためコピーできません。` });
+		os.alert({ type: 'warning', text: copyx.emptyCannotCopy({ label }) });
 		return;
 	}
 	copyToClipboard(text);
-	os.toast(`${label}をコピーしました`, 'ti ti-copy-check');
+	os.toast(copyx.copied({ label }), 'ti ti-copy-check');
 }
 
 async function toggleAgree() {
@@ -364,7 +367,7 @@ async function setMark(c: any, mark: 'important' | 'question' | null) {
 }
 
 async function removeComment(c: any) {
-	const { canceled } = await os.confirm({ type: 'warning', text: 'このコメントを削除しますか？' });
+	const { canceled } = await os.confirm({ type: 'warning', text: copy.deleteCommentConfirm });
 	if (canceled) return;
 	await os.apiWithDialog('hata/feedback/comments/delete', { commentId: c.id });
 	comments.value = comments.value.filter(x => x.id !== c.id);
@@ -378,19 +381,19 @@ function copyComment(c: any) {
 
 function openCommentMenu(c: any, ev: MouseEvent) {
 	const items: any[] = [
-		{ text: '返信', icon: 'ti ti-arrow-back-up', action: () => startReply(c) },
-		{ text: '内容をコピー', icon: 'ti ti-copy', action: () => copyComment(c) },
+		{ text: copy.reply, icon: 'ti ti-arrow-back-up', action: () => startReply(c) },
+		{ text: copy.copyContent, icon: 'ti ti-copy', action: () => copyComment(c) },
 	];
 	if (canManageComment(c)) {
 		items.push({ type: 'divider' });
 		items.push(c.mark === 'important'
-			? { text: '重要マークを外す', icon: 'ti ti-alert-triangle', action: () => setMark(c, null) }
-			: { text: '重要としてマーク', icon: 'ti ti-alert-triangle-filled', action: () => setMark(c, 'important') });
+			? { text: copy.removeImportantMark, icon: 'ti ti-alert-triangle', action: () => setMark(c, null) }
+			: { text: copy.markImportant, icon: 'ti ti-alert-triangle-filled', action: () => setMark(c, 'important') });
 		items.push(c.mark === 'question'
-			? { text: '?マークを外す', icon: 'ti ti-help-circle', action: () => setMark(c, null) }
-			: { text: '?としてマーク', icon: 'ti ti-help-circle-filled', action: () => setMark(c, 'question') });
+			? { text: copy.removeQuestionMark, icon: 'ti ti-help-circle', action: () => setMark(c, null) }
+			: { text: copy.markQuestion, icon: 'ti ti-help-circle-filled', action: () => setMark(c, 'question') });
 		items.push({ type: 'divider' });
-		items.push({ text: '削除', icon: 'ti ti-trash', danger: true, action: () => removeComment(c) });
+		items.push({ text: copy.delete, icon: 'ti ti-trash', danger: true, action: () => removeComment(c) });
 	}
 	os.popupMenu(items, (ev.currentTarget ?? ev.target) as HTMLElement);
 }
@@ -442,7 +445,7 @@ async function changePriority() {
 function openPrioritySelect(ev: MouseEvent) {
 	if (!canManage.value) return;
 	os.popupMenu((['low', 'normal', 'high'] as const).map(p => ({
-		text: '優先度: ' + priorityLabel[p],
+		text: copy.priorityPrefix + ' ' + priorityLabel[p],
 		active: (issue.value.priority ?? 'normal') === p,
 		action: () => { editPriority.value = p; changePriority(); },
 	})), (ev.currentTarget ?? ev.target) as HTMLElement);
@@ -470,7 +473,7 @@ async function grantModerator() {
 }
 
 async function removeIssue() {
-	const { canceled } = await os.confirm({ type: 'warning', text: 'このイシューを削除しますか？ 会話・賛同もすべて削除され、元に戻せません。' });
+	const { canceled } = await os.confirm({ type: 'warning', text: copy.deleteIssueConfirm });
 	if (canceled) return;
 	await misskeyApi('hata/feedback/issues/delete', { issueId: props.issueId });
 	os.success();

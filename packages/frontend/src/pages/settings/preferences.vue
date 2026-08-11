@@ -1046,7 +1046,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 									<template #label><SearchLabel>{{ i18n.ts._settings.smoothTransitionAnimations }}</SearchLabel> <span class="_beta">CherryPick</span></template>
 									<template #caption>
 										<SearchText>{{ i18n.ts.turnOffToImprovePerformance }}</SearchText>
-										<div style="margin-top:4px;opacity:.7;font-size:.85em;"><i class="ti ti-lock" style="margin-right:4px;"></i>旗鯖では常時オンに固定されています</div>
+										<div style="margin-top:4px;opacity:.7;font-size:.85em;"><i class="ti ti-lock" style="margin-right:4px;"></i>{{ i18n.ts._hata._timelineCustom.alwaysEnabled }}</div>
 									</template>
 								</MkSwitch>
 							</MkPreferenceContainer>

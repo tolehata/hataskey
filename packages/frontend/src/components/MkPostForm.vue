@@ -15,9 +15,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 >
 	<div v-if="postDelay.active.value" :class="$style.postDelayFrame" :style="postDelay.frameStyle.value" aria-hidden="true"></div>
 	<div v-if="postDelay.active.value" :class="$style.postDelayStatus" role="status" aria-live="polite">
-		<strong>{{ postDelay.remainingSeconds.value }}秒後に投稿</strong>
-		<button class="_button" :class="$style.postDelayAction" @click="postDelay.cancel()">取り消す</button>
-		<button class="_button" :class="$style.postDelayActionPrimary" @click="postDelay.sendNow()">今すぐ投稿</button>
+		<strong>{{ i18n.ts._hata._postDelay.countdown.replace('{seconds}', postDelay.remainingSeconds.value.toString()) }}</strong>
+		<button class="_button" :class="$style.postDelayAction" @click="postDelay.cancel()">{{ i18n.ts._hata._postDelay.cancel }}</button>
+		<button class="_button" :class="$style.postDelayActionPrimary" @click="postDelay.sendNow()">{{ i18n.ts._hata._postDelay.sendNow }}</button>
 	</div>
 	<header :class="$style.header">
 		<div :class="$style.headerLeft">
@@ -64,11 +64,14 @@ SPDX-License-Identifier: AGPL-3.0-only
 		</div>
 	</header>
 	<MkNoteSimple v-if="replyTargetNote" :class="$style.targetNote" :note="replyTargetNote" :enableNoteClick="false"/>
-        <div v-else-if="externalReplyTarget" :class="$style.targetNote">
+	<div v-else-if="externalReplyTarget" :class="$style.targetNote">
 	  <div :class="$style.externalTargetNote">
             <span :class="$style.externalBadgeInline"><i class="ti ti-external-link"></i></span>
-            <b>@{{ externalReplyTarget.user.username }}@{{ externalReplyTarget.user.host || externalHost }}</b> 
-            <span>へのリプライ</span>
+		<I18n :src="i18n.ts._hata._postFormCustom.externalReplyTo" tag="span">
+			<template #account>
+				<b>@{{ externalReplyTarget.user.username }}@{{ externalReplyTarget.user.host || externalHost }}</b>
+			</template>
+		</I18n>
 	  </div>
 	  <div v-if="externalReplyTarget.text" :class="$style.externalTargetText">{{ externalReplyTarget.text }}</div>
         </div>
@@ -135,7 +138,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<button v-if="prefer.s.showHashtagButtonInPostForm" v-tooltip="i18n.ts.hashtags" class="_button" :class="[$style.footerButton, { [$style.footerButtonActive]: withHashtags }]" @click="withHashtags = !withHashtags"><i class="ti ti-hash"></i></button>
 			<button v-tooltip="i18n.ts.mention" class="_button" :class="$style.footerButton" @click="insertMention"><i class="ti ti-at"></i></button>
                         <button v-if="prefer.s.showEventButtonInPostForm" v-tooltip="i18n.ts.event" class="_button" :class="$style.footerButton" @click="toggleEvent"><i class="ti ti-calendar"></i></button>
-                        <button v-if="prefer.s.showDrawingButtonInPostForm" v-tooltip="'お絵描き'" class="_button" :class="$style.footerButton" @click="openDrawingTool"><i class="ti ti-palette"></i></button>
+                        <button v-if="prefer.s.showDrawingButtonInPostForm" v-tooltip="i18n.ts._hata._drawingTool.drawing" class="_button" :class="$style.footerButton" @click="openDrawingTool"><i class="ti ti-palette"></i></button>
 			<button v-if="showAddMfmFunction" v-tooltip="i18n.ts.addMfmFunction" class="_button" :class="$style.footerButton" @click="insertMfmFunction"><i class="ti ti-palette"></i></button>
 			<button v-if="postFormActions.length > 0" v-tooltip="i18n.ts.plugins" class="_button" :class="$style.footerButton" @click="showActions"><i class="ti ti-plug"></i></button>
 			<!-- 旗鯖fork: 絵文字挿入ボタンを footerRight から footerLeft の末尾に移動。
@@ -1285,7 +1288,7 @@ async function post(ev?: MouseEvent) {
 		if (!externalAccount.value) {
 			await os.alert({
 				type: 'error',
-				text: '外部アカウントが連携されていません',
+				text: i18n.ts._hata._postFormCustom.externalAccountNotLinked,
 			});
 			posting.value = false;
 			return;
@@ -1301,7 +1304,7 @@ async function post(ev?: MouseEvent) {
 					console.error('External file upload error:', uploadErr);
 					const { canceled } = await os.confirm({
 						type: 'warning',
-						text: 'ファイルのアップロードに失敗しました。ファイルなしで投稿しますか？',
+						text: i18n.ts._hata._postFormCustom.externalFileUploadFailed,
 					});
 					if (canceled) {
 						posting.value = false;
@@ -1332,9 +1335,9 @@ async function post(ev?: MouseEvent) {
 				deleteDraft();
 				emit('posted');
 
-				if (externalReplyTarget.value) os.toast('リプライしました（外部）', 'reply');
-				else if (externalRenoteTarget.value) os.toast('引用しました（外部）', 'quote');
-				else os.toast('投稿しました（外部）', 'posted');
+				if (externalReplyTarget.value) os.toast(i18n.ts._hata._postFormCustom.externalReplyPosted, 'reply');
+				else if (externalRenoteTarget.value) os.toast(i18n.ts._hata._postFormCustom.externalQuotePosted, 'quote');
+				else os.toast(i18n.ts._hata._postFormCustom.externalPostPosted, 'posted');
 
 				posting.value = false;
 				useExternalAccount.value = false;
@@ -1343,7 +1346,7 @@ async function post(ev?: MouseEvent) {
 			console.error('External post error:', err);
 			await os.alert({
 				type: 'error',
-				text: '外部サーバーへの投稿に失敗しました',
+				text: i18n.ts._hata._postFormCustom.externalPostFailed,
 			});
 			posting.value = false;
 		}

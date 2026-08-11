@@ -13,6 +13,10 @@
 import { ref, computed } from 'vue';
 import { get as idbGet, set as idbSet, del as idbDel } from '@/utility/idb-proxy.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
+import { i18n } from '@/i18n.js';
+
+const mascotSettingsCopy = i18n.ts._hata._mascotSettings;
+const mascotSettingsCopyx = i18n.tsx._hata._mascotSettings;
 
 export type MascotExpression = { id: string; label: string; url: string; driveFileId: string | null; bubbleX?: number; bubbleY?: number; bubbleScale?: number; bubbleTail?: 'left' | 'right'; motion?: 'none' | 'bounce' | 'shake' | 'sway' | 'spin'; motionIntensity?: number; questionEnabled?: boolean; qBubbleX?: number; qBubbleY?: number; qBubbleScale?: number; qBubbleTail?: 'left' | 'right'; textColor?: string | null; qTextColor?: string | null };
 export type MascotPhrase = { id: string; text: string; expressionId: string | null };
@@ -451,7 +455,7 @@ export function announceExternalNotification(notification: NotificationLike | nu
 	const chosen = variant === 1 ? c?.notifyExpression2 : c?.notifyExpression;
 	const preface = chosen?.text?.trim() ?? '';
 	const content = notificationContentText(notification);
-	const body = `外部アカウントで${content}`;
+	const body = mascotSettingsCopyx.externalAccountNotification({ content });
 	const text = preface ? `${preface}\n${body}` : body;
 	const sec = typeof displaySettings.value.notifyDurationSec === 'number' ? displaySettings.value.notifyDurationSec : 3;
 	announce(text, { expressionType: 'notify', durationMs: Math.max(1, sec) * 1000, notifyVariant: variant ?? 0 });
@@ -470,25 +474,25 @@ type NotificationLike = {
 function notificationContentText(n: NotificationLike): string {
 	// grouped 系は users 配列の先頭から名前を拾う
 	const groupedName = n?.users?.[0]?.name || n?.users?.[0]?.username;
-	const name = n?.user?.name || n?.user?.username || groupedName || 'だれか';
+	const name = n?.user?.name || n?.user?.username || groupedName || mascotSettingsCopy.unknownUser;
 	switch (n?.type) {
-		case 'follow': return `${name}さんにフォローされたよ`;
-		case 'followRequestAccepted': return `${name}さんがフォローを承認したよ`;
-		case 'receiveFollowRequest': return `${name}さんからフォローリクエストが届いたよ`;
-		case 'mention': return `${name}さんからメンションがあったよ`;
-		case 'reply': return `${name}さんから返信があったよ`;
+		case 'follow': return mascotSettingsCopyx.notificationFollow({ name });
+		case 'followRequestAccepted': return mascotSettingsCopyx.notificationFollowRequestAccepted({ name });
+		case 'receiveFollowRequest': return mascotSettingsCopyx.notificationReceiveFollowRequest({ name });
+		case 'mention': return mascotSettingsCopyx.notificationMention({ name });
+		case 'reply': return mascotSettingsCopyx.notificationReply({ name });
 		case 'renote':
-		case 'renote:grouped': return `${name}さんがリノートしたよ`;
-		case 'quote': return `${name}さんが引用したよ`;
+		case 'renote:grouped': return mascotSettingsCopyx.notificationRenote({ name });
+		case 'quote': return mascotSettingsCopyx.notificationQuote({ name });
 		case 'reaction':
 		case 'reaction:grouped':
-		case 'reaction:groupedByUser': return `${name}さんがリアクションしたよ`;
+		case 'reaction:groupedByUser': return mascotSettingsCopyx.notificationReaction({ name });
 		case 'note':
-		case 'note:grouped': return `${name}さんがノートを投稿したよ`;
-		case 'pollEnded': return 'アンケートの結果が出たよ';
-		case 'achievementEarned': return '実績を獲得したよ';
-		case 'roleAssigned': return 'ロールが付与されたよ';
-		case 'login': return 'ログインがあったよ';
+		case 'note:grouped': return mascotSettingsCopyx.notificationNote({ name });
+		case 'pollEnded': return mascotSettingsCopy.notificationPollEnded;
+		case 'achievementEarned': return mascotSettingsCopy.notificationAchievementEarned;
+		case 'roleAssigned': return mascotSettingsCopy.notificationRoleAssigned;
+		case 'login': return mascotSettingsCopy.notificationLogin;
 		case 'app': {
 			// Hatask等のアプリ通知。header(件名)/body(本文)があればそれを使う。
 			const head = (n?.header ?? '').trim();
@@ -496,11 +500,11 @@ function notificationContentText(n: NotificationLike): string {
 			if (head && bdy) return `${head}：${bdy}`;
 			if (head) return head;
 			if (bdy) return bdy;
-			return '新しいお知らせが届いたよ';
+			return mascotSettingsCopy.notificationApp;
 		}
-		case 'test': return 'これはテスト通知だよ';
+		case 'test': return mascotSettingsCopy.notificationTest;
 		default:
-			return '新しい通知が届いたよ';
+			return mascotSettingsCopy.notificationDefault;
 	}
 }
 
@@ -509,7 +513,7 @@ export function announceBirthday(): void {
 	if (!displaySettings.value.tellBirthday) return;
 	const c = activeCharacter.value;
 	const custom = c?.birthdayExpression?.text?.trim();
-	const text = custom || 'お誕生日おめでとう！🎉';
+	const text = custom || mascotSettingsCopy.birthdayDefault;
 	announce(text, { expressionType: 'birthday', durationMs: 12000 });
 }
 
@@ -527,7 +531,7 @@ export function announceCharBirthday(): void {
 	if (!isCharBirthdayToday()) return;
 	const c = activeCharacter.value;
 	const custom = c?.charBirthdayExpression?.text?.trim();
-	const text = custom || '今日はわたしの誕生日なんだ！🎂';
+	const text = custom || mascotSettingsCopy.characterBirthdayDefault;
 	announce(text, { expressionType: 'charBirthday', durationMs: 8000 });
 }
 
@@ -535,7 +539,7 @@ export function announceCharBirthday(): void {
 export function announceUnread(count: number): void {
 	if (!displaySettings.value.tellUnreadOnLogin) return;
 	if (!count || count <= 0) return;
-	announce(`未読の通知が ${count} 件あるよ！`, { expressionType: 'notify' });
+	announce(mascotSettingsCopyx.unreadNotificationCount({ count }), { expressionType: 'notify' });
 }
 
 // 表示すべきテキスト(announce優先、なければ現在のランダム文言)。表示側でエスケープして使う。

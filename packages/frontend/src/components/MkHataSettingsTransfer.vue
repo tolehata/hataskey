@@ -14,7 +14,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 	@closed="emit('closed')"
 >
 	<template #header>
-		<span id="hata-settings-transfer-title" :class="$style.windowHeader"><i class="ti ti-arrows-exchange"></i><span>旗鯖独自設定の入出力</span><em>{{ mode === 'export' ? '書き出し' : '読み込み' }}</em></span>
+		<span id="hata-settings-transfer-title" :class="$style.windowHeader"><i class="ti ti-arrows-exchange"></i><span>{{ copy.title }}</span><em>{{ mode === 'export' ? copy.exportMode : copy.importMode }}</em></span>
 	</template>
 	<section
 		data-hata-settings-transfer-window
@@ -27,17 +27,17 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<div data-hata-settings-transfer-scroll :class="$style.scrollArea">
 			<div :class="$style.body">
 				<div :class="$style.modeTabs">
-					<button type="button" :class="[$style.modeTab, mode === 'export' && $style.modeTabActive]" @click="mode = 'export'"><i class="ti ti-file-export"></i> 書き出す</button>
-					<button type="button" :class="[$style.modeTab, mode === 'import' && $style.modeTabActive]" @click="mode = 'import'"><i class="ti ti-file-import"></i> 読み込む</button>
+					<button type="button" :class="[$style.modeTab, mode === 'export' && $style.modeTabActive]" @click="mode = 'export'"><i class="ti ti-file-export"></i> {{ copy.exportTab }}</button>
+					<button type="button" :class="[$style.modeTab, mode === 'import' && $style.modeTabActive]" @click="mode = 'import'"><i class="ti ti-file-import"></i> {{ copy.importTab }}</button>
 				</div>
 
 				<div :class="$style.notice">
 					<i class="ti ti-shield-lock"></i>
-					<div><b>アカウントのログイン情報や利用記録は設定ファイルに含みません</b><br>外部アカウントのログイン情報、投稿、ToDo、学習記録、花常の進行、マスコット素材は対象外です。Hatadyの学習記録とHataFeedのイシューは、下の専用ボタンから個別に保存できます。</div>
+					<div><b>{{ copy.privacyTitle }}</b><br>{{ copy.privacyDescription }}</div>
 				</div>
 
 				<template v-if="mode === 'export'">
-					<div :class="$style.lead">この端末にだけ保存される設定を先に収集し、同じカテゴリのアカウント設定もまとめます。</div>
+					<div :class="$style.lead">{{ copy.exportLead }}</div>
 					<div :class="$style.categoryList">
 						<label v-for="category in categories" :key="category.id" :class="$style.categoryItem">
 							<input v-model="selectedExport" type="checkbox" :value="category.id">
@@ -47,25 +47,25 @@ SPDX-License-Identifier: AGPL-3.0-only
 					</div>
 					<div :class="$style.privacyWarning" role="note">
 						<i class="ti ti-eye-exclamation"></i>
-						<div><b>共有する前に、ファイル内のURLを確認してください</b><br>選んだ設定には、カスタムフォントURL、非公開RSSや署名付きURLなど、利用者が入力したURLが含まれる場合があります。保存先と共有先を確認してから書き出してください。</div>
+						<div><b>{{ copy.urlWarningTitle }}</b><br>{{ copy.urlWarningDescription }}</div>
 					</div>
 					<section :class="$style.dedicatedExports" aria-labelledby="hata-dedicated-export-title">
 						<div :class="$style.dedicatedHeading">
 							<i class="ti ti-database-export"></i>
 							<div>
-								<b id="hata-dedicated-export-title">利用データを個別に書き出す</b>
-								<small>設定ファイルとは別の専用ファイルとして保存します。</small>
+								<b id="hata-dedicated-export-title">{{ copy.dedicatedExportTitle }}</b>
+								<small>{{ copy.dedicatedExportDescription }}</small>
 							</div>
 						</div>
 						<div :class="$style.dedicatedGrid">
 							<button type="button" :class="$style.dedicatedButton" :disabled="busy || dedicatedExportBusy != null" @click="openHatadyExport">
 								<span :class="$style.dedicatedIcon"><i :class="['ti', dedicatedExportBusy === 'hatady' ? 'ti-loader-2' : 'ti-school']"></i></span>
-								<span :class="$style.dedicatedCopy"><b>Hatady</b><small>期間を選んで学習記録を書き出す</small></span>
+								<span :class="$style.dedicatedCopy"><b>Hatady</b><small>{{ copy.hatadyExportDescription }}</small></span>
 								<i class="ti ti-chevron-right" :class="$style.dedicatedArrow"></i>
 							</button>
 							<button type="button" :class="$style.dedicatedButton" :disabled="busy || dedicatedExportBusy != null" @click="openHataFeedExport">
 								<span :class="$style.dedicatedIcon"><i :class="['ti', dedicatedExportBusy === 'hatafeed' ? 'ti-loader-2' : 'ti-message-report']"></i></span>
-								<span :class="$style.dedicatedCopy"><b>HataFeed</b><small>対象と内容を選んでイシューを書き出す</small></span>
+								<span :class="$style.dedicatedCopy"><b>HataFeed</b><small>{{ copy.hatafeedExportDescription }}</small></span>
 								<i class="ti ti-chevron-right" :class="$style.dedicatedArrow"></i>
 							</button>
 						</div>
@@ -73,13 +73,13 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</template>
 
 				<template v-else>
-					<div :class="$style.lead">古い版・新しい版のファイルも、現在わかる項目だけを読み込めます。合わない設定は個別にスキップします。</div>
-					<button type="button" :class="$style.fileButton" :disabled="busy" @click="chooseFile"><i class="ti ti-file-search"></i> 設定ファイルを選ぶ</button>
+					<div :class="$style.lead">{{ copy.importLead }}</div>
+					<button type="button" :class="$style.fileButton" :disabled="busy" @click="chooseFile"><i class="ti ti-file-search"></i> {{ copy.chooseFile }}</button>
 
 					<div v-if="importFile" :class="$style.fileSummary">
-						<div :class="$style.fileTitle"><i class="ti ti-file-check"></i><span><b>{{ importFileName }}</b><small>作成元: {{ importFile.serverVersion }} ／ 形式 {{ importFile.formatVersion }}</small></span></div>
+						<div :class="$style.fileTitle"><i class="ti ti-file-check"></i><span><b>{{ importFileName }}</b><small>{{ copyx.fileSource({ serverVersion: importFile.serverVersion, formatVersion: importFile.formatVersion.toString() }) }}</small></span></div>
 						<div v-if="compatibilityNotice" :class="$style.warning"><i class="ti ti-alert-triangle"></i>{{ compatibilityNotice }}</div>
-						<div v-if="unknownCategoryCount > 0" :class="$style.skipNote">この版で分からないカテゴリ {{ unknownCategoryCount }}件はスキップします。</div>
+						<div v-if="unknownCategoryCount > 0" :class="$style.skipNote">{{ copyx.unknownCategoriesSkipped({ count: unknownCategoryCount.toString() }) }}</div>
 					</div>
 
 					<div v-if="importFile" :class="$style.categoryList">
@@ -95,14 +95,14 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 		<footer :class="$style.actionBar">
 			<div :class="$style.selectionSummary" aria-live="polite">
-				<span v-if="mode === 'export'">{{ selectedExport.length }} / {{ categories.length }}カテゴリを選択</span>
-				<span v-else-if="importFile">{{ selectedImport.length }} / {{ importableCategories.length }}カテゴリを選択</span>
-				<span v-else>設定ファイルを選んでください</span>
+				<span v-if="mode === 'export'">{{ copyx.categorySelection({ selected: selectedExport.length.toString(), total: categories.length.toString() }) }}</span>
+				<span v-else-if="importFile">{{ copyx.categorySelection({ selected: selectedImport.length.toString(), total: importableCategories.length.toString() }) }}</span>
+				<span v-else>{{ copy.chooseFilePrompt }}</span>
 			</div>
 			<div :class="$style.footerButtons">
-				<button type="button" :class="$style.secondaryButton" @click="closeWindow">閉じる</button>
-				<button v-if="mode === 'export'" type="button" :class="$style.primaryButton" :disabled="busy || selectedExport.length === 0" @click="doExport"><i class="ti ti-download"></i> 選んだ設定を書き出す</button>
-				<button v-else type="button" :class="$style.primaryButton" :disabled="busy || !importFile || selectedImport.length === 0" @click="doImport"><i class="ti ti-device-floppy"></i> 選んだ設定を読み込む</button>
+				<button type="button" :class="$style.secondaryButton" @click="closeWindow">{{ copy.close }}</button>
+				<button v-if="mode === 'export'" type="button" :class="$style.primaryButton" :disabled="busy || selectedExport.length === 0" @click="doExport"><i class="ti ti-download"></i> {{ copy.exportSelected }}</button>
+				<button v-else type="button" :class="$style.primaryButton" :disabled="busy || !importFile || selectedImport.length === 0" @click="doImport"><i class="ti ti-device-floppy"></i> {{ copy.importSelected }}</button>
 			</div>
 		</footer>
 	</section>
@@ -115,6 +115,7 @@ import type { HataSettingsCategoryId, HataSettingsTransferFile } from '@/utility
 import MkWindow from '@/components/MkWindow.vue';
 import * as os from '@/os.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
+import { i18n } from '@/i18n.js';
 import {
 	applyHataSettingsTransfer,
 	createHataSettingsTransfer,
@@ -125,6 +126,9 @@ import {
 	HATA_SETTINGS_TRANSFER_VERSION,
 	parseHataSettingsTransfer,
 } from '@/utility/hata-settings-transfer.js';
+
+const copy = i18n.ts._hata._settingsTransfer._window;
+const copyx = i18n.tsx._hata._settingsTransfer._window;
 
 const emit = defineEmits<{ (ev: 'closed'): void }>();
 const transferWindow = useTemplateRef<InstanceType<typeof MkWindow>>('transferWindow');
@@ -158,7 +162,7 @@ const compatibilityNotice = computed(() => {
 	const server = getVersionMismatchMessage(importFile.value);
 	if (server) messages.push(server);
 	if (importFile.value.formatVersion !== HATA_SETTINGS_TRANSFER_VERSION) {
-		messages.push(`設定形式が現在の ${HATA_SETTINGS_TRANSFER_VERSION} と異なるため、一部を読み込めない場合があります。`);
+		messages.push(copyx.formatVersionMismatch({ version: HATA_SETTINGS_TRANSFER_VERSION.toString() }));
 	}
 	return messages.length > 0 ? messages.join('\n') : null;
 });
@@ -168,10 +172,10 @@ async function doExport() {
 	try {
 		const file = await createHataSettingsTransfer(selectedExport.value);
 		downloadHataSettingsTransfer(file);
-		os.toast('選んだ旗鯖独自設定を書き出しました');
+		os.toast(copy.exportComplete);
 	} catch (error) {
 		console.error(error);
-		os.alert({ type: 'error', text: '設定ファイルを作成できませんでした。' });
+		os.alert({ type: 'error', text: copy.exportFailed });
 	} finally {
 		busy.value = false;
 	}
@@ -186,7 +190,7 @@ async function openHatadyExport() {
 		});
 	} catch (error) {
 		console.error(error);
-		os.alert({ type: 'error', title: 'Hatadyの書き出し画面を開けませんでした', text: '再読み込みして、もう一度お試しください。' });
+		os.alert({ type: 'error', title: copy.hatadyExportOpenFailedTitle, text: copy.reloadAndRetry });
 	} finally {
 		dedicatedExportBusy.value = null;
 	}
@@ -198,7 +202,7 @@ async function openHataFeedExport() {
 	try {
 		const availability = await misskeyApi('hata/feedback/available', {}) as { available: boolean; isStaff: boolean };
 		if (!availability.available) {
-			await os.alert({ type: 'info', title: 'HataFeedを利用できません', text: '現在のロールではHataFeedが解放されていません。' });
+			await os.alert({ type: 'info', title: copy.hatafeedUnavailableTitle, text: copy.hatafeedUnavailableDescription });
 			return;
 		}
 
@@ -208,15 +212,15 @@ async function openHataFeedExport() {
 		}) as unknown as HataFeedProject[];
 		const exportableProjects = projects.filter(project => !project.isOfficial);
 		const items = [
-			...(availability.isStaff ? [{ value: '__official__', label: 'Hataskey（公式）' }] : []),
+			...(availability.isStaff ? [{ value: '__official__', label: copy.hataskeyOfficial }] : []),
 			...exportableProjects.map(project => ({ value: project.id, label: project.name })),
 		];
 
 		if (items.length === 0) {
 			await os.alert({
 				type: 'info',
-				title: '書き出せるHataFeedがありません',
-				text: 'HataFeedでは、自分が作成したプロジェクトのイシューを書き出せます。',
+				title: copy.noExportableHatafeedTitle,
+				text: copy.noExportableHatafeedDescription,
 			});
 			return;
 		}
@@ -224,21 +228,21 @@ async function openHataFeedExport() {
 		const selection = items.length === 1
 			? { canceled: false as const, result: items[0].value }
 			: await os.select<string>({
-				title: 'HataFeedの書き出し対象',
-				text: '書き出すHataFeedを選んでください。',
+				title: copy.hatafeedExportTargetTitle,
+				text: copy.hatafeedExportTargetDescription,
 				items,
 			});
 		if (selection.canceled) return;
 
 		const project = exportableProjects.find(candidate => candidate.id === selection.result) ?? null;
 		if (selection.result !== '__official__' && project == null) {
-			await os.alert({ type: 'error', title: '書き出し対象を確認できませんでした', text: 'HataFeedの一覧を読み直して、もう一度お試しください。' });
+			await os.alert({ type: 'error', title: copy.exportTargetMissingTitle, text: copy.reloadHatafeedAndRetry });
 			return;
 		}
 		const projectId = selection.result === '__official__' ? null : (project?.id ?? null);
 		const projectName = selection.result === '__official__' ? 'Hataskey' : project?.name;
 		if (projectName == null || (selection.result !== '__official__' && projectId == null)) {
-			await os.alert({ type: 'error', title: '書き出し対象を確認できませんでした', text: 'HataFeedの一覧を読み直して、もう一度お試しください。' });
+			await os.alert({ type: 'error', title: copy.exportTargetMissingTitle, text: copy.reloadHatafeedAndRetry });
 			return;
 		}
 		const { dispose } = os.popup((await import('@/components/HataFeedExportWindow.vue')).default, {
@@ -249,7 +253,7 @@ async function openHataFeedExport() {
 		});
 	} catch (error) {
 		console.error(error);
-		os.alert({ type: 'error', title: 'HataFeedの書き出し画面を開けませんでした', text: '権限や通信状態を確認して、もう一度お試しください。' });
+		os.alert({ type: 'error', title: copy.hatafeedExportOpenFailedTitle, text: copy.checkPermissionAndConnection });
 	} finally {
 		dedicatedExportBusy.value = null;
 	}
@@ -263,7 +267,7 @@ function chooseFile() {
 		const file = input.files?.[0];
 		if (!file) return;
 		if (file.size > HATA_SETTINGS_TRANSFER_MAX_BYTES) {
-			os.alert({ type: 'error', text: '設定ファイルが大きすぎます（1MBまで）。' });
+			os.alert({ type: 'error', text: copy.fileTooLarge });
 			return;
 		}
 		try {
@@ -271,12 +275,12 @@ function chooseFile() {
 			const warnings: string[] = [];
 			const serverWarning = getVersionMismatchMessage(parsed.file);
 			if (serverWarning) warnings.push(serverWarning);
-			if (parsed.file.formatVersion !== HATA_SETTINGS_TRANSFER_VERSION) warnings.push(`設定形式も現在の ${HATA_SETTINGS_TRANSFER_VERSION} と異なります。`);
+			if (parsed.file.formatVersion !== HATA_SETTINGS_TRANSFER_VERSION) warnings.push(copyx.formatVersionAlsoMismatch({ version: HATA_SETTINGS_TRANSFER_VERSION.toString() }));
 			if (warnings.length > 0) {
 				const { canceled } = await os.confirm({
 					type: 'warning',
-					title: '異なるバージョンの設定ファイル',
-					text: `${warnings.join('\n\n')}\n\n互換性のある設定だけを読み込む準備を続けますか？`,
+					title: copy.differentVersionTitle,
+					text: copyx.continueCompatibleImport({ warnings: warnings.join('\n\n') }),
 				});
 				if (canceled) return;
 			}
@@ -286,7 +290,7 @@ function chooseFile() {
 			selectedImport.value = importableCategories.value.map(category => category.id);
 		} catch (error) {
 			console.error(error);
-			os.alert({ type: 'error', title: '読み込めません', text: '旗鯖独自設定のファイルとして確認できませんでした。元のファイルを選び直してください。' });
+			os.alert({ type: 'error', title: copy.cannotImportTitle, text: copy.cannotImportDescription });
 		}
 	};
 	input.click();
@@ -297,24 +301,30 @@ async function doImport() {
 	const labels = categories.filter(category => selectedImport.value.includes(category.id)).map(category => category.label);
 	const { canceled } = await os.confirm({
 		type: 'warning',
-		title: '設定を読み込みますか？',
-		text: `次の設定を現在の内容へ上書きします。\n${labels.join('、')}\n\n選んでいないカテゴリは変更しません。`,
+		title: copy.confirmImportTitle,
+		text: copyx.confirmImportDescription({ categories: labels.join(copy.categorySeparator) }),
 	});
 	if (canceled) return;
 	busy.value = true;
 	try {
 		const result = await applyHataSettingsTransfer(importFile.value, selectedImport.value);
-		const skippedDetails = result.skipped.slice(0, 8).map(item => `・${item.category} / ${item.key}: ${item.reason}`).join('\n');
+		const skippedDetails = result.skipped.slice(0, 8).map(item => copyx.skippedDetail({ category: item.category, key: item.key, reason: item.reason })).join('\n');
+		const resultLines = [
+			copyx.appliedCount({ count: result.applied.toString() }),
+			copyx.skippedCount({ count: result.skipped.length.toString() }),
+			...(skippedDetails ? ['', skippedDetails] : []),
+			...(result.skipped.length > 8 ? [copy.moreItems] : []),
+		];
 		await os.alert({
 			type: result.skipped.length > 0 ? 'warning' : 'success',
-			title: '設定を読み込みました',
-			text: `適用: ${result.applied}件\nスキップ: ${result.skipped.length}件${skippedDetails ? `\n\n${skippedDetails}` : ''}${result.skipped.length > 8 ? '\n・ほかの項目' : ''}`,
+			title: copy.importCompleteTitle,
+			text: resultLines.join('\n'),
 		});
-		const reload = await os.confirm({ type: 'info', title: '画面へ反映', text: '端末設定をすべて反映するため、いま再読み込みしますか？' });
+		const reload = await os.confirm({ type: 'info', title: copy.applyToScreenTitle, text: copy.reloadToApplyDescription });
 		if (!reload.canceled) window.location.reload();
 	} catch (error) {
 		console.error(error);
-		os.alert({ type: 'error', text: '設定の読み込み中にエラーが発生しました。適用できた項目は保持されています。' });
+		os.alert({ type: 'error', text: copy.importFailed });
 	} finally {
 		busy.value = false;
 	}

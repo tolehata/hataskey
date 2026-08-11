@@ -9,6 +9,7 @@
  */
 
 import { ref } from 'vue';
+import { i18n } from '@/i18n.js';
 
 // 分野の配色。accent=左ボーダー/ドット, bg=淡色チップ背景, fg=チップ文字, strongBg=タグ濃色。
 export interface HyPalette {
@@ -76,15 +77,23 @@ export function hySubjectPalette(subject: string | null | undefined): HyPalette 
 	return HY_SUBJECT_PALETTES[hashString(key) % HY_SUBJECT_PALETTES.length];
 }
 
-// タグ(得意/苦手/興味)。key はサーバー保存値、label は表示(i18n は呼び出し側で解決)。
+// タグ(得意/苦手/興味)。key はサーバー保存値、表示名は hyTagLabel() で現在の locale から解決する。
 export type HyTag = 'strength' | 'weak' | 'interest';
-export const HY_TAGS: { key: HyTag; icon: string; ja: string; en: string; bg: string; fg: string }[] = [
-	{ key: 'strength', icon: 'ti-star-filled', ja: '得意', en: 'Strength', bg: '#dcecd5', fg: '#4e7d4a' },
-	{ key: 'weak', icon: 'ti-flame', ja: '苦手', en: 'Weak spot', bg: '#f1ddd5', fg: '#b5644a' },
-	{ key: 'interest', icon: 'ti-bulb', ja: '興味', en: 'Interest', bg: '#f7e7c6', fg: '#a97e2e' },
+export const HY_TAGS: { key: HyTag; icon: string; bg: string; fg: string }[] = [
+	{ key: 'strength', icon: 'ti-star-filled', bg: '#dcecd5', fg: '#4e7d4a' },
+	{ key: 'weak', icon: 'ti-flame', bg: '#f1ddd5', fg: '#b5644a' },
+	{ key: 'interest', icon: 'ti-bulb', bg: '#f7e7c6', fg: '#a97e2e' },
 ];
 export function hyTag(key: string | null | undefined): typeof HY_TAGS[number] | null {
 	return HY_TAGS.find(t => t.key === key) ?? null;
+}
+export function hyTagLabel(key: string | null | undefined): string {
+	switch (key) {
+		case 'strength': return i18n.ts._hata._hatady._tags.strength;
+		case 'weak': return i18n.ts._hata._hatady._tags.weak;
+		case 'interest': return i18n.ts._hata._hatady._tags.interest;
+		default: return '';
+	}
 }
 
 // 本の自動表紙: タイトルから決定的に2色のグラデーションを生成する(外部API不使用)。

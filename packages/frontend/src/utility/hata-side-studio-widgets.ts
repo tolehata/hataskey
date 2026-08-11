@@ -6,6 +6,8 @@
  * packages/frontend/src/widgets/index.ts の公開順と同じ順序を保つ。
  */
 
+import { i18n } from '@/i18n.js';
+
 export const HATA_SIDE_WIDGET_SIZES = ['small', 'normal', 'large'] as const;
 
 export type HataSideWidgetSize = typeof HATA_SIDE_WIDGET_SIZES[number];
@@ -23,6 +25,10 @@ export type HataSideWidgetSizeSetting = {
 };
 
 export type HataSideWidgetDefinition = {
+	/**
+	 * 保存互換用の既定名。localeを切り替えても保存JSONを変えないため、
+	 * 表示には getHataSideWidgetDisplayLabel() を使う。
+	 */
 	label: string;
 	icon: string;
 	defaultData: HataSideWidgetData;
@@ -290,4 +296,28 @@ export function isHataSideWidgetKind(value: unknown): value is HataSideWidgetKin
 export function normalizeHataSideWidgetKind(value: unknown): HataSideWidgetKind {
 	if (!isHataSideWidgetKind(value)) return 'clock';
 	return value === 'flowers' ? HATA_SIDE_WIDGET_LEGACY_ALIASES.flowers : value;
+}
+
+const HATA_SIDE_WIDGET_DEFAULT_LABEL_ALIASES: Partial<Record<HataSideWidgetKind, readonly string[]>> = {
+	// v2以前の flowers は sanitize 時に hataskFlowers へ移るが、当時の既定名は残る。
+	hataskFlowers: ['Hatask お花', '育てたお花'],
+};
+
+/**
+ * ウィジェット名を表示時だけ共通localeへ解決する。
+ *
+ * `storedLabel` は既存プロファイルとの互換用であり、利用者が変更した名前はそのまま返す。
+ * 花常と同じく翻訳対象外の地震・津波情報は、localeに関係なく保存済み表示を維持する。
+ */
+export function getHataSideWidgetDisplayLabel(value: unknown, storedLabel?: string): string {
+	const kind = normalizeHataSideWidgetKind(value);
+	const canonicalLabel = HATA_SIDE_WIDGET_REGISTRY[kind].label;
+	const fallback = typeof storedLabel === 'string' && storedLabel.length > 0 ? storedLabel : canonicalLabel;
+	if (kind === 'earthquake') return fallback;
+
+	const defaultAliases = HATA_SIDE_WIDGET_DEFAULT_LABEL_ALIASES[kind] ?? [canonicalLabel];
+	if (typeof storedLabel === 'string' && storedLabel.length > 0 && !defaultAliases.includes(storedLabel)) return storedLabel;
+
+	const labels = i18n.ts._hata._hataSideStudio._utility.widgetLabels as Record<string, string>;
+	return labels[kind] ?? fallback;
 }

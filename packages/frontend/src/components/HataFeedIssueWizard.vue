@@ -16,12 +16,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 	:canResize="true"
 	@closed="emit('closed')"
 >
-	<template #header>イシューを立てる（{{ step }}/3）</template>
+	<template #header>{{ copyx.header({ step: step.toString() }) }}</template>
 
 	<div class="_spacer" style="--MI_SPACER-min: 20px; --MI_SPACER-max: 28px;">
 		<!-- Step1: カテゴリ -->
 		<div v-if="step === 1" :class="$style.gaps">
-			<div :class="$style.lead">イシューの種類を選択してください。</div>
+			<div :class="$style.lead">{{ copy.chooseCategory }}</div>
 			<button
 				v-for="c in availableCategoryKeys"
 				:key="c"
@@ -39,16 +39,16 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 		<!-- Step2: 内容 -->
 		<div v-else-if="step === 2" :class="$style.gaps">
-			<div :class="$style.lead"><span :class="$style.tag">{{ categoryLabel[category] }}</span> の内容をご記入ください。</div>
+			<div :class="$style.lead"><span :class="$style.tag">{{ categoryLabel[category] }}</span> {{ copy.detailsLeadSuffix }}</div>
 			<MkInput v-model="title" :placeholder="titleHint">
-				<template #label>タイトル <span :class="$style.req">必須</span></template>
+				<template #label>{{ copy.title }} <span :class="$style.req">{{ copy.required }}</span></template>
 			</MkInput>
 			<MkTextarea v-model="description" :placeholder="descHint">
-				<template #label>詳しい説明</template>
+				<template #label>{{ copy.description }}</template>
 				<template #caption>{{ descCaption }}</template>
 			</MkTextarea>
 			<div>
-				<div :class="$style.fieldLabel">スクリーンショット等（任意）</div>
+				<div :class="$style.fieldLabel">{{ copy.attachments }}</div>
 				<div :class="$style.fileGrid">
 					<div v-for="f in files" :key="f.id" :class="$style.fileThumb">
 						<img :src="f.thumbnailUrl ?? f.url" :alt="f.name"/>
@@ -61,36 +61,36 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<!-- 旗鯖fork: コード提出（任意） -->
 			<div>
 					<MkSwitch v-model="codeEnabled">
-						<template #label><i class="ti ti-code"></i> コードを提出する（任意）</template>
-						<template #caption>再現コードやパッチ案などを添付できます。</template>
+						<template #label><i class="ti ti-code"></i> {{ copy.submitCode }}</template>
+						<template #caption>{{ copy.submitCodeHint }}</template>
 					</MkSwitch>
-					<MkTextarea v-if="codeEnabled" v-model="code" :class="$style.codeArea" placeholder="// コードをここに貼り付け">
-						<template #label>コード</template>
+					<MkTextarea v-if="codeEnabled" v-model="code" :class="$style.codeArea" :placeholder="copy.codePlaceholder">
+						<template #label>{{ copy.code }}</template>
 					</MkTextarea>
 				</div>
 
 				<div :class="$style.navRow">
-					<MkButton rounded @click="step = 1"><i class="ti ti-arrow-left"></i> 戻る</MkButton>
-					<MkButton rounded primary :disabled="!title.trim()" @click="step = 3">次へ <i class="ti ti-arrow-right"></i></MkButton>
+					<MkButton rounded @click="step = 1"><i class="ti ti-arrow-left"></i> {{ copy.back }}</MkButton>
+					<MkButton rounded primary :disabled="!title.trim()" @click="step = 3">{{ copy.next }} <i class="ti ti-arrow-right"></i></MkButton>
 				</div>
 		</div>
 
 		<!-- Step3: 確認 -->
 		<div v-else :class="$style.gaps">
-			<div :class="$style.lead">優先度を選んで送信してください。</div>
+			<div :class="$style.lead">{{ copy.choosePriority }}</div>
 			<MkSelect v-model="priority" :items="priorityItems">
-				<template #label>優先度</template>
+				<template #label>{{ copy.priority }}</template>
 			</MkSelect>
 
 			<div :class="$style.summary">
-				<div><b>カテゴリ:</b> {{ categoryLabel[category] }}</div>
-				<div><b>タイトル:</b> {{ title }}</div>
-				<div v-if="projectName"><b>プロジェクト:</b> {{ projectName }}</div>
+				<div><b>{{ copy.categorySummary }}</b> {{ categoryLabel[category] }}</div>
+				<div><b>{{ copy.titleSummary }}</b> {{ title }}</div>
+				<div v-if="projectName"><b>{{ copy.projectSummary }}</b> {{ projectName }}</div>
 			</div>
 
 			<div :class="$style.navRow">
-				<MkButton rounded @click="step = 2"><i class="ti ti-arrow-left"></i> 戻る</MkButton>
-				<MkButton rounded primary gradate :disabled="submitting" @click="submit"><i class="ti ti-send"></i> 送信</MkButton>
+				<MkButton rounded @click="step = 2"><i class="ti ti-arrow-left"></i> {{ copy.back }}</MkButton>
+				<MkButton rounded primary gradate :disabled="submitting" @click="submit"><i class="ti ti-send"></i> {{ copy.send }}</MkButton>
 			</div>
 		</div>
 	</div>
@@ -105,6 +105,7 @@ import MkInput from '@/components/MkInput.vue';
 import MkTextarea from '@/components/MkTextarea.vue';
 import MkSelect from '@/components/MkSelect.vue';
 import MkSwitch from '@/components/MkSwitch.vue';
+import { i18n } from '@/i18n.js';
 import * as os from '@/os.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { chooseDriveFile } from '@/utility/drive.js';
@@ -116,6 +117,8 @@ const props = defineProps<{ projectId: string | null; projects: any[] }>();
 const emit = defineEmits<{ (ev: 'done', v: any): void; (ev: 'closed'): void }>();
 
 const dialog = useTemplateRef('dialog');
+const copy = i18n.ts._hata._hatafeed._issueWizard;
+const copyx = i18n.tsx._hata._hatafeed._issueWizard;
 
 const step = ref(1);
 const category = ref<HataFeedCategory>('bug');
@@ -123,9 +126,9 @@ const title = ref('');
 const description = ref('');
 const priority = ref<HataFeedPriority>('normal');
 const priorityItems = [
-	{ value: 'low', label: '低' },
-	{ value: 'normal', label: '通常' },
-	{ value: 'high', label: '高' },
+	{ value: 'low', label: copy.priorityLow },
+	{ value: 'normal', label: copy.priorityNormal },
+	{ value: 'high', label: copy.priorityHigh },
 ];
 const files = ref<any[]>([]);
 const submitting = ref(false);
@@ -141,21 +144,21 @@ const projectName = computed(() => props.projects.find(p => p.id === props.proje
 // カテゴリ別の入力ガイド(書き方がわからない人向け)。
 const titleHint = computed(() => {
 	switch (category.value) {
-		case 'bug': return '例: ○○すると画面が表示されなくなる';
-		case 'featureRequest': return '例: ○○できる機能を追加してほしい';
-		case 'adoptionRequest': return '例: 本家の○○を取り入れてほしい';
-		case 'security': return '例: ○○に関する懸念';
-		default: return '要点を簡潔にご記入ください';
+		case 'bug': return copy.titleHintBug;
+		case 'featureRequest': return copy.titleHintFeatureRequest;
+		case 'adoptionRequest': return copy.titleHintAdoptionRequest;
+		case 'security': return copy.titleHintSecurity;
+		default: return copy.titleHintDefault;
 	}
 });
 const descHint = computed(() => {
 	switch (category.value) {
-		case 'bug': return '【操作内容】【発生した事象】【期待する挙動】をご記入ください。\nご利用の端末・ブラウザも記載いただけると助かります。';
-		case 'featureRequest': return 'どのような場面で、どのように役立つかをご記入ください。';
-		default: return 'できるだけ具体的にご記入ください。';
+		case 'bug': return copy.descriptionHintBug;
+		case 'featureRequest': return copy.descriptionHintFeatureRequest;
+		default: return copy.descriptionHintDefault;
 	}
 });
-const descCaption = computed(() => category.value === 'security' ? 'セキュリティに関わる内容は慎重にお取り扱いください。詳細はスタッフのみの閲覧を想定しています。' : '');
+const descCaption = computed(() => category.value === 'security' ? copy.securityDescriptionCaption : '');
 
 async function addFiles() {
 	const chosen = await chooseDriveFile({ multiple: true }).catch(() => []);

@@ -5,6 +5,9 @@
  * Hatask お花・アイテムデータベース（100種+奇妙アイテム）
  */
 
+import { versatileLang } from '@/utility/intl-const.js';
+import { adjectiveTranslations, floraTranslations } from '@/utility/hatask-flora-i18n.js';
+
 export interface FloraItem {
   emoji: string;
   name: string;
@@ -168,6 +171,10 @@ export const nameAdjectives = [
   'でんせつの','しんわの','ものがたりの','おとぎばなしの','むかしむかしの','みらいの','げんざいの','えいえんの','しゅんかんの','とわの',
 ];
 
+if (floraTranslations.length !== floraData.length || adjectiveTranslations.length !== nameAdjectives.length) {
+  throw new Error('Hatask flora translations are not aligned with the canonical Japanese data.');
+}
+
 export function pickRandomFlora(): FloraItem {
   return floraData[Math.floor(Math.random() * floraData.length)];
 }
@@ -175,4 +182,76 @@ export function pickRandomFlora(): FloraItem {
 export function generateFlowerName(flora: FloraItem): string {
   const adj = nameAdjectives[Math.floor(Math.random() * nameAdjectives.length)];
   return `${adj}${flora.name}`;
+}
+
+export type HataskContentLanguage = 'ja' | 'en' | 'zh';
+
+function resolveContentLanguage(locale: string = versatileLang): HataskContentLanguage {
+  const normalized = locale.toLowerCase();
+  if (normalized.startsWith('en')) return 'en';
+  if (normalized.startsWith('zh')) return 'zh';
+  return 'ja';
+}
+
+const floraNameIndex = new Map(floraData.map((item, index) => [item.name, index]));
+const floraNamesByLength = [...floraData]
+  .map((item) => item.name)
+  .sort((a, b) => b.length - a.length);
+const adjectivesByLength = [...nameAdjectives]
+  .map((item, index) => ({ item, index }))
+  .sort((a, b) => b.item.length - a.item.length);
+const hanakotobaIndex = new Map<string, number>();
+for (const [index, item] of floraData.entries()) {
+  if (item.hanakotoba != null && !hanakotobaIndex.has(item.hanakotoba)) hanakotobaIndex.set(item.hanakotoba, index);
+}
+
+export function localizeFloraName(sourceName: string, locale: string = versatileLang): string {
+  const language = resolveContentLanguage(locale);
+  if (language === 'ja') return sourceName;
+
+  const exactIndex = floraNameIndex.get(sourceName);
+  if (exactIndex != null) return floraTranslations[exactIndex]?.[language].name ?? sourceName;
+
+  for (const floraName of floraNamesByLength) {
+    if (!sourceName.endsWith(floraName)) continue;
+    const prefix = sourceName.slice(0, -floraName.length);
+    const itemIndex = floraNameIndex.get(floraName);
+    if (itemIndex == null) continue;
+    const prefixIndexes = splitAdjectives(prefix);
+    if (prefixIndexes == null) continue;
+    const adjectives = prefixIndexes.map((index) => adjectiveTranslations[index]?.[language]);
+    const translatedName = floraTranslations[itemIndex]?.[language].name;
+    if (adjectives.some((adjective) => adjective == null) || translatedName == null) return sourceName;
+    return language === 'en' ? `${adjectives.join(' ')} ${translatedName}` : `${adjectives.join('')}${translatedName}`;
+  }
+
+  return sourceName;
+}
+
+function splitAdjectives(source: string): number[] | null {
+  if (source === '') return [];
+  const memo = new Map<number, number[] | null>();
+  const visit = (offset: number): number[] | null => {
+    if (offset === source.length) return [];
+    if (memo.has(offset)) return memo.get(offset) ?? null;
+    for (const adjective of adjectivesByLength) {
+      if (!source.startsWith(adjective.item, offset)) continue;
+      const rest = visit(offset + adjective.item.length);
+      if (rest != null) {
+        const result = [adjective.index, ...rest];
+        memo.set(offset, result);
+        return result;
+      }
+    }
+    memo.set(offset, null);
+    return null;
+  };
+  return visit(0);
+}
+
+export function localizeHanakotoba(source: string, locale: string = versatileLang): string {
+  const language = resolveContentLanguage(locale);
+  if (language === 'ja') return source;
+  const index = hanakotobaIndex.get(source);
+  return index == null ? source : (floraTranslations[index]?.[language].hanakotoba ?? source);
 }

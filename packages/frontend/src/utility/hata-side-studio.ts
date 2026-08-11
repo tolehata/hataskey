@@ -8,10 +8,12 @@
  */
 
 import { ref } from 'vue';
+import { i18n } from '@/i18n.js';
 import { miLocalStorage } from '@/local-storage.js';
 import {
 	HATA_SIDE_WIDGET_REGISTRY,
 	HATA_SIDE_WIDGET_SIZES,
+	getHataSideWidgetDisplayLabel,
 	normalizeHataSideWidgetKind,
 } from '@/utility/hata-side-studio-widgets.js';
 import type {
@@ -30,6 +32,8 @@ export type {
 	HataSideWidgetKind,
 	HataSideWidgetSizeSetting,
 } from '@/utility/hata-side-studio-widgets.js';
+
+export { getHataSideWidgetDisplayLabel };
 
 export const HATA_SIDE_STUDIO_FORMAT_VERSION = 7;
 export const HATA_SIDE_STUDIO_DEFAULT_PROFILE_LIMIT = 3;
@@ -153,32 +157,102 @@ export type HataSideStudioSourceCatalog = {
 	all: SidebarSourceItem[];
 };
 
+/**
+ * 既存プロファイルとの互換用の保存名。共通localeの文言を保存JSONへ入れない。
+ */
+const HATA_SIDE_STUDIO_MENU_STORAGE_LABELS: Readonly<Record<string, string>> = {
+	timeline: 'タイムライン',
+	search: '検索',
+	notifications: '通知',
+	chat: 'メッセージ',
+	announcements: 'お知らせ',
+	drive: 'ドライブ',
+	favorites: 'お気に入り',
+	hatask: 'Hatask',
+	hatafeed: 'HataFeed',
+	hatady: 'Hatady',
+	earthquake: '地震・津波情報',
+	uiSetup: 'UI切り替え',
+	explore: 'みつける',
+	followRequests: 'フォロー申請',
+	channels: 'チャンネル',
+	reload: 'リロード',
+	cacheClear: 'キャッシュをクリア',
+};
+
 const fallbackSidebar: SidebarSourceItem[] = [
-	{ id: 'timeline', icon: 'ti ti-home', label: 'タイムライン', group: 'basic' },
-	{ id: 'search', icon: 'ti ti-search', label: '検索', group: 'basic' },
-	{ id: 'notifications', icon: 'ti ti-bell', label: '通知', group: 'basic' },
-	{ id: 'chat', icon: 'ti ti-messages', label: 'メッセージ', group: 'basic' },
-	{ id: 'announcements', icon: 'ti ti-speakerphone', label: 'お知らせ', group: 'basic' },
-	{ id: 'drive', icon: 'ti ti-cloud', label: 'ドライブ', group: 'basic' },
-	{ id: 'favorites', icon: 'ti ti-star', label: 'お気に入り', group: 'basic' },
-	{ id: 'hatask', icon: 'ti ti-eye', label: 'Hatask', group: 'hata' },
-	{ id: 'hatafeed', icon: 'ti ti-message-report', label: 'HataFeed', group: 'hata' },
-	{ id: 'hatady', icon: 'ti ti-book-2', label: 'Hatady', group: 'hata' },
-	{ id: 'earthquake', icon: 'ti ti-activity', label: '地震・津波情報', group: 'hata' },
-	{ id: 'uiSetup', icon: 'ti ti-wand', label: 'UI切り替え', group: 'discover' },
-	{ id: 'explore', icon: 'ti ti-hash', label: 'みつける', group: 'discover' },
-	{ id: 'followRequests', icon: 'ti ti-user-plus', label: 'フォロー申請', group: 'discover' },
-	{ id: 'channels', icon: 'ti ti-device-tv', label: 'チャンネル', group: 'discover' },
-	{ id: 'reload', icon: 'ti ti-refresh', label: 'リロード', group: 'more' },
-	{ id: 'cacheClear', icon: 'ti ti-trash', label: 'キャッシュをクリア', group: 'more' },
+	{ id: 'timeline', icon: 'ti ti-home', label: HATA_SIDE_STUDIO_MENU_STORAGE_LABELS.timeline, group: 'basic' },
+	{ id: 'search', icon: 'ti ti-search', label: HATA_SIDE_STUDIO_MENU_STORAGE_LABELS.search, group: 'basic' },
+	{ id: 'notifications', icon: 'ti ti-bell', label: HATA_SIDE_STUDIO_MENU_STORAGE_LABELS.notifications, group: 'basic' },
+	{ id: 'chat', icon: 'ti ti-messages', label: HATA_SIDE_STUDIO_MENU_STORAGE_LABELS.chat, group: 'basic' },
+	{ id: 'announcements', icon: 'ti ti-speakerphone', label: HATA_SIDE_STUDIO_MENU_STORAGE_LABELS.announcements, group: 'basic' },
+	{ id: 'drive', icon: 'ti ti-cloud', label: HATA_SIDE_STUDIO_MENU_STORAGE_LABELS.drive, group: 'basic' },
+	{ id: 'favorites', icon: 'ti ti-star', label: HATA_SIDE_STUDIO_MENU_STORAGE_LABELS.favorites, group: 'basic' },
+	{ id: 'hatask', icon: 'ti ti-eye', label: HATA_SIDE_STUDIO_MENU_STORAGE_LABELS.hatask, group: 'hata' },
+	{ id: 'hatafeed', icon: 'ti ti-message-report', label: HATA_SIDE_STUDIO_MENU_STORAGE_LABELS.hatafeed, group: 'hata' },
+	{ id: 'hatady', icon: 'ti ti-book-2', label: HATA_SIDE_STUDIO_MENU_STORAGE_LABELS.hatady, group: 'hata' },
+	{ id: 'earthquake', icon: 'ti ti-activity', label: HATA_SIDE_STUDIO_MENU_STORAGE_LABELS.earthquake, group: 'hata' },
+	{ id: 'uiSetup', icon: 'ti ti-wand', label: HATA_SIDE_STUDIO_MENU_STORAGE_LABELS.uiSetup, group: 'discover' },
+	{ id: 'explore', icon: 'ti ti-hash', label: HATA_SIDE_STUDIO_MENU_STORAGE_LABELS.explore, group: 'discover' },
+	{ id: 'followRequests', icon: 'ti ti-user-plus', label: HATA_SIDE_STUDIO_MENU_STORAGE_LABELS.followRequests, group: 'discover' },
+	{ id: 'channels', icon: 'ti ti-device-tv', label: HATA_SIDE_STUDIO_MENU_STORAGE_LABELS.channels, group: 'discover' },
+	{ id: 'reload', icon: 'ti ti-refresh', label: HATA_SIDE_STUDIO_MENU_STORAGE_LABELS.reload, group: 'more' },
+	{ id: 'cacheClear', icon: 'ti ti-trash', label: HATA_SIDE_STUDIO_MENU_STORAGE_LABELS.cacheClear, group: 'more' },
 ];
 
-const groupNames: Record<string, string> = {
+const HATA_SIDE_STUDIO_GROUP_STORAGE_NAMES: Readonly<Record<string, string>> = {
 	basic: '基本機能',
 	hata: '旗鯖独自',
 	discover: '発見・交流',
 	more: 'その他',
 };
+
+const HATA_SIDE_STUDIO_DEFAULT_STORAGE_NAMES = {
+	newGroup: '新しいグループ',
+	defaultProfile: 'デフォルト',
+	groupFallback: 'グループ',
+	profileFallback: 'プロファイル',
+	collapsedCopyGroup: '縮小メニューからコピー',
+} as const;
+
+type HataSideStudioUtilityCopy = {
+	menuLabels: Record<string, string>;
+	groupNames: Record<string, string>;
+	defaultNames: Record<keyof typeof HATA_SIDE_STUDIO_DEFAULT_STORAGE_NAMES, string>;
+};
+
+function utilityCopy(): HataSideStudioUtilityCopy {
+	return i18n.ts._hata._hataSideStudio._utility as HataSideStudioUtilityCopy;
+}
+
+/** 既知のメニュー名を表示時だけ翻訳し、利用者が付けた名前は保持する。 */
+export function getHataSideStudioMenuDisplayLabel(menuId: string, storedLabel?: string): string {
+	const normalizedId = normalizeHataSideStudioMenuId(menuId);
+	const canonicalLabel = HATA_SIDE_STUDIO_MENU_STORAGE_LABELS[normalizedId];
+	const fallback = typeof storedLabel === 'string' && storedLabel.length > 0 ? storedLabel : canonicalLabel ?? normalizedId;
+	if (normalizedId === 'earthquake' || canonicalLabel == null) return fallback;
+	if (typeof storedLabel === 'string' && storedLabel.length > 0 && storedLabel !== canonicalLabel) return storedLabel;
+	return utilityCopy().menuLabels[normalizedId] ?? fallback;
+}
+
+/** 既定のグループ名だけを表示時に翻訳する。利用者が編集した名前はそのまま返す。 */
+export function getHataSideStudioGroupDisplayName(name: string): string {
+	const entry = Object.entries(HATA_SIDE_STUDIO_GROUP_STORAGE_NAMES).find(([, storedName]) => storedName === name);
+	if (entry) return utilityCopy().groupNames[entry[0]] ?? name;
+	if (name === HATA_SIDE_STUDIO_DEFAULT_STORAGE_NAMES.newGroup) return utilityCopy().defaultNames.newGroup ?? name;
+	if (name === HATA_SIDE_STUDIO_DEFAULT_STORAGE_NAMES.groupFallback) return utilityCopy().defaultNames.groupFallback ?? name;
+	if (name === HATA_SIDE_STUDIO_DEFAULT_STORAGE_NAMES.collapsedCopyGroup) return utilityCopy().defaultNames.collapsedCopyGroup ?? name;
+	return name;
+}
+
+/** 既定のプロファイル名だけを表示時に翻訳する。 */
+export function getHataSideStudioProfileDisplayName(name: string): string {
+	return name === HATA_SIDE_STUDIO_DEFAULT_STORAGE_NAMES.defaultProfile
+		? utilityCopy().defaultNames.defaultProfile ?? name
+		: name === HATA_SIDE_STUDIO_DEFAULT_STORAGE_NAMES.profileFallback
+			? utilityCopy().defaultNames.profileFallback ?? name
+			: name;
+}
 
 function uid(prefix: string): string {
 	return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
@@ -211,12 +285,14 @@ export function createDefaultAppearance(): HataSideAppearance {
 }
 
 export function createButton(source: SidebarSourceItem, appearance?: Partial<HataSideAppearance & Pick<HataSideButton, 'borderVisible'>>): HataSideButton {
+	const menuId = normalizeHataSideStudioMenuId(source.id);
 	return {
 		type: 'button',
 		id: uid('button'),
-		menuId: source.id,
+		menuId,
 		icon: source.icon,
-		label: source.label,
+		// 既知IDはlocale表示名ではなく互換用の固定名を保存する。
+		label: HATA_SIDE_STUDIO_MENU_STORAGE_LABELS[menuId] ?? source.label,
 		...createDefaultAppearance(),
 		borderVisible: true,
 		...appearance,
@@ -263,7 +339,7 @@ export function createWidget(kind: HataSideWidgetKind = 'clock'): HataSideWidget
 	};
 }
 
-export function createGroup(name = '新しいグループ'): HataSideGroup {
+export function createGroup(name: string = HATA_SIDE_STUDIO_DEFAULT_STORAGE_NAMES.newGroup): HataSideGroup {
 	return {
 		type: 'group',
 		id: uid('group'),
@@ -332,7 +408,7 @@ function visibleSource(source: readonly SidebarSourceItem[]): SidebarSourceItem[
 	return sanitizeSourceList(source).filter(item => item.visible !== false);
 }
 
-export function createDefaultProfile(source: readonly SidebarSourceItem[] = fallbackSidebar, name = 'デフォルト'): HataSideStudioProfile {
+export function createDefaultProfile(source: readonly SidebarSourceItem[] = fallbackSidebar, name: string = HATA_SIDE_STUDIO_DEFAULT_STORAGE_NAMES.defaultProfile): HataSideStudioProfile {
 	const visible = visibleSource(source);
 	// 同じgroupが途中で再登場しても先頭のgroupへ吸い上げない。設定画面に並んでいる
 	// 順序を連続したまとまりとして写し取り、「現在の並び」を完全に保持する。
@@ -342,7 +418,7 @@ export function createDefaultProfile(source: readonly SidebarSourceItem[] = fall
 	for (const item of visible) {
 		const key = item.group ?? 'basic';
 		if (currentGroup == null || currentGroupKey !== key) {
-			currentGroup = createGroup(groupNames[key] ?? key);
+			currentGroup = createGroup(HATA_SIDE_STUDIO_GROUP_STORAGE_NAMES[key] ?? key);
 			groups.push(currentGroup);
 			currentGroupKey = key;
 		}
@@ -482,7 +558,7 @@ function sanitizeGroup(value: unknown, refreshLayoutDefaults = false): HataSideG
 	const safeChildren = columns === 1 ? children : children.map(child => child.size === 'large' ? { ...child, size: 'normal' as const } : child);
 	return {
 		type: 'group', id: typeof value.id === 'string' ? value.id : uid('group'),
-		name: typeof value.name === 'string' ? value.name.slice(0, 80) : 'グループ', showName: value.showName !== false,
+		name: typeof value.name === 'string' ? value.name.slice(0, 80) : HATA_SIDE_STUDIO_DEFAULT_STORAGE_NAMES.groupFallback, showName: value.showName !== false,
 		columns, masonry: value.masonry === true,
 		background: isColor(value.background) ? value.background : 'transparent', border: isColor(value.border) ? value.border : 'var(--MI_THEME-divider)',
 		foreground: isColor(value.foreground) ? value.foreground : 'var(--MI_THEME-fg)',
@@ -512,7 +588,7 @@ export function sanitizeHataSideStudioStore(value: unknown, source: readonly Sid
 			.map(button => sanitizeButton(button, true))
 			.filter((button): button is HataSideButton => button != null) : [];
 		profiles.push({
-			id: typeof raw.id === 'string' ? raw.id : uid('profile'), name: typeof raw.name === 'string' ? raw.name.slice(0, 80) : 'プロファイル',
+			id: typeof raw.id === 'string' ? raw.id : uid('profile'), name: typeof raw.name === 'string' ? raw.name.slice(0, 80) : HATA_SIDE_STUDIO_DEFAULT_STORAGE_NAMES.profileFallback,
 			expanded: {
 				nodes,
 				columns,
@@ -689,7 +765,7 @@ export function copyExpandedToCollapsed(profile: HataSideStudioProfile): HataSid
 export function copyCollapsedToExpanded(profile: HataSideStudioProfile): HataSideStudioProfile {
 	const widgets = profile.expanded.nodes.filter((node): node is HataSideWidget => node.type === 'widget');
 	const copied = profile.collapsed.buttons.map(button => ({ ...button, id: uid('button'), size: 'normal' as const, showLabel: true, borderVisible: true }));
-	const group = createGroup('縮小メニューからコピー');
+	const group = createGroup(HATA_SIDE_STUDIO_DEFAULT_STORAGE_NAMES.collapsedCopyGroup);
 	group.children = copied;
 	return { ...profile, expanded: { ...profile.expanded, nodes: [group, ...widgets] }, updatedAt: new Date().toISOString() };
 }

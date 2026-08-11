@@ -80,15 +80,16 @@ import { ref, useTemplateRef } from 'vue';
 import MkWindow from '@/components/MkWindow.vue';
 import HyBookCover from '@/components/HyBookCover.vue';
 import * as os from '@/os.js';
+import { i18n } from '@/i18n.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { HY_COVER_SETS } from '@/utility/hatady.js';
-import { hatadyTheme, hatadyLang } from '@/utility/hatady-prefs.js';
+import { hatadyTheme } from '@/utility/hatady-prefs.js';
 
 const props = defineProps<{ editBook?: any }>();
 const emit = defineEmits<{ (ev: 'done', v: any): void; (ev: 'closed'): void }>();
 const dialog = useTemplateRef('dialog');
 const theme = hatadyTheme;
-const lang = hatadyLang;
+const copy = i18n.ts._hata._hatady._bookForm;
 
 const isEdit = props.editBook != null;
 const eb = props.editBook;
@@ -103,30 +104,7 @@ const saving = ref(false);
 // 色見本は表紙グラデーションの濃色側を使う。
 const swatchColors = HY_COVER_SETS.map(s => s[1]);
 
-const DICT: Record<string, { ja: string; en: string }> = {
-	addBook: { ja: '本を追加', en: 'Add a book' },
-	coverLabel: { ja: '表紙', en: 'Cover' },
-	auto: { ja: '自動生成', en: 'auto-generated' },
-	coverHint: { ja: 'タイトルから生成されます。色を選びましょう', en: 'Generated from the title. Pick a color.' },
-	untitled: { ja: 'タイトル', en: 'Title' },
-	titleLabel: { ja: 'タイトル', en: 'Title' },
-	titlePh: { ja: '例: リーダブルコード', en: 'e.g. The Pragmatic Programmer' },
-	authorLabel: { ja: '著者', en: 'Author' },
-	authorPh: { ja: '例: Dustin Boswell 他', en: 'e.g. David Thomas' },
-	optional: { ja: '任意', en: 'optional' },
-	pagesLabel: { ja: '総ページ数', en: 'Total pages' },
-	statusLabel: { ja: '状態', en: 'Status' },
-	status_reading: { ja: '読書中', en: 'Reading' },
-	status_finished: { ja: '読了', en: 'Finished' },
-	status_tsundoku: { ja: '積読', en: 'Backlog' },
-	status_want: { ja: '読みたい', en: 'Want to read' },
-	genHint: { ja: '表紙はタイトルから自動生成されます', en: 'The cover is generated from the title.' },
-	cancel: { ja: 'キャンセル', en: 'Cancel' },
-	submit: { ja: '本棚に追加', en: 'Add to shelf' },
-	editBook: { ja: '本を編集', en: 'Edit book' },
-	updateBtn: { ja: '更新する', en: 'Update' },
-};
-function t(key: string): string { return DICT[key]?.[lang.value === 'en' ? 'en' : 'ja'] ?? key; }
+function t(key: string): string { return (copy as unknown as Record<string, string>)[key] ?? key; }
 
 async function submit() {
 	if (!title.value.trim()) return;

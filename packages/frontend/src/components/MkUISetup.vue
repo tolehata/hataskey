@@ -18,19 +18,19 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<!-- ===== ヘッダー ===== -->
 		<header :class="$style.header">
 			<div :class="$style.headerText">
-				<div :class="$style.headerEyebrow">ここは {{ instanceName }}</div>
-				<h1 id="mkuisetup-title" :class="$style.headerTitle">どのUIを使用しますか？</h1>
+				<div :class="$style.headerEyebrow">{{ i18n.tsx._hata._uiSetup.hereIs({ instance: instanceName }) }}</div>
+				<h1 id="mkuisetup-title" :class="$style.headerTitle">{{ copy.question }}</h1>
 			</div>
 		</header>
 
 		<!-- ===== ヒーロー: HatasabaUI ===== -->
 		<div :class="$style.hero">
-			<div :class="$style.heroBadge">デフォルト</div>
+			<div :class="$style.heroBadge">{{ copy.default }}</div>
 
 			<div :class="$style.heroTop">
 				<h2 :class="$style.wordmark">HatasabaUI</h2>
 			</div>
-			<p :class="$style.heroLead"><b :class="$style.heroLeadStrong">ひとつのUIで「通常表示」と「高機能デッキ」を両立</b>します</p>
+			<p :class="$style.heroLead"><b :class="$style.heroLeadStrong">{{ copy.heroLead }}</b>{{ copy.heroLeadSuffix }}</p>
 
 			<!-- 2機能プレビュー (装飾のため aria-hidden) -->
 			<div :class="$style.features">
@@ -79,8 +79,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 						</div>
 					</div>
 					<div :class="$style.featMeta">
-						<div :class="$style.featLabel"><i class="ti ti-device-mobile" :class="$style.featLabelIcon"></i>通常表示</div>
-						<div :class="$style.featDesc">スマホでも片手で快適。シンプルなUIです</div>
+						<div :class="$style.featLabel"><i class="ti ti-device-mobile" :class="$style.featLabelIcon"></i>{{ copy.normal }}</div>
+						<div :class="$style.featDesc">{{ copy.normalDescription }}</div>
 					</div>
 				</div>
 
@@ -104,16 +104,16 @@ SPDX-License-Identifier: AGPL-3.0-only
 					</div>
 					<div :class="$style.featMeta">
 						<button type="button" :class="$style.deckLabelBtn" :aria-expanded="deckPreviewOpen" @click="deckPreviewOpen = !deckPreviewOpen">
-							<span :class="$style.featLabel"><i class="ti ti-columns" :class="$style.featLabelIcon"></i>高機能デッキ<span :class="$style.newBadge">NEW</span><i class="ti ti-chevron-down" :class="[$style.deckChev, { [$style.deckChevOpen]: deckPreviewOpen }]"></i></span>
+							<span :class="$style.featLabel"><i class="ti ti-columns" :class="$style.featLabelIcon"></i>{{ copy.advancedDeck }}<span :class="$style.newBadge">NEW</span><i class="ti ti-chevron-down" :class="[$style.deckChev, { [$style.deckChevOpen]: deckPreviewOpen }]"></i></span>
 						</button>
-						<div :class="$style.featDesc">複数カラムでリアルタイム監視できます</div>
+						<div :class="$style.featDesc">{{ copy.advancedDeckDescription }}</div>
 					</div>
 				</div>
 			</div>
 
 			<!-- 主 CTA -->
 			<button :class="$style.cta" @click="select('simple')">
-				<i class="ti ti-arrow-right" :class="$style.ctaIcon"></i>HatasabaUI で続行
+				<i class="ti ti-arrow-right" :class="$style.ctaIcon"></i>{{ copy.continueHatasaba }}
 			</button>
 		</div>
 
@@ -123,33 +123,33 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<div :class="$style.cordChoiceIntro">
 						<div>
 							<div id="hata-sns-cord-ui-title" :class="$style.cordChoiceWordmark">HataSNSCordUI</div>
-							<p>会話のように流れるタイムライン、機能を開けるサブペイン、コンパクトな投稿欄を一つの画面にまとめます。</p>
+							<p>{{ copy.hatacordingDescription }}</p>
 						</div>
 					</div>
 
 					<div :class="$style.cordMock" aria-hidden="true">
 						<div :class="$style.cordMockLeft">
 							<div :class="$style.cordMockServer"><span :class="$style.cordMockServerIcon"></span><b>Hataskey</b><SlidersHorizontal :size="8"/></div>
-							<div :class="$style.cordMockNav"><span :class="$style.cordMockNavActive"><Home :size="9"/>ホーム</span><span><Globe2 :size="9"/>ローカル</span><span><Search :size="9"/>検索</span><span><Bell :size="9"/>通知</span></div>
-							<div :class="$style.cordMockCollections"><span><List :size="8"/>リスト</span><span><Radio :size="8"/>アンテナ</span></div>
-							<div :class="$style.cordMockAccount"><UserRound :size="9"/><span>アザラシ</span></div>
+							<div :class="$style.cordMockNav"><span :class="$style.cordMockNavActive"><Home :size="9"/>{{ copy.home }}</span><span><Globe2 :size="9"/>{{ copy.local }}</span><span><Search :size="9"/>{{ copy.search }}</span><span><Bell :size="9"/>{{ copy.notifications }}</span></div>
+							<div :class="$style.cordMockCollections"><span><List :size="8"/>{{ copy.list }}</span><span><Radio :size="8"/>{{ copy.antenna }}</span></div>
+							<div :class="$style.cordMockAccount"><UserRound :size="9"/><span>{{ copy.mockUser }}</span></div>
 						</div>
 						<div :class="$style.cordMockCenter">
-							<div :class="$style.cordMockTitle"><span><Home :size="8"/>ホーム</span><span :class="$style.cordMockStatus">● 42人</span></div>
+							<div :class="$style.cordMockTitle"><span><Home :size="8"/>{{ copy.home }}</span><span :class="$style.cordMockStatus">● {{ i18n.tsx._hata._uiSetup.activeUsers({ count: 42 }) }}</span></div>
 							<div :class="$style.cordMockFeed">
-								<div :class="$style.cordMockOther"><span :class="$style.cordMockAvatar"></span><div><b>花屋さん</b><i></i><i></i><small>↩︎ · ↻ · ♡ · •••</small></div></div>
-								<div :class="$style.cordMockOwn"><div><b>アザラシ</b><i></i><small>↩︎ · ↻ · ♡ · •••</small></div></div>
-								<div :class="$style.cordMockOther"><span :class="[$style.cordMockAvatar, $style.cordMockAvatarAlt]"></span><div><b>配達員</b><i></i><i></i><small>↩︎ · ↻ · ♡ · •••</small></div></div>
+								<div :class="$style.cordMockOther"><span :class="$style.cordMockAvatar"></span><div><b>{{ copy.mockFlorist }}</b><i></i><i></i><small>↩︎ · ↻ · ♡ · •••</small></div></div>
+								<div :class="$style.cordMockOwn"><div><b>{{ copy.mockUser }}</b><i></i><small>↩︎ · ↻ · ♡ · •••</small></div></div>
+								<div :class="$style.cordMockOther"><span :class="[$style.cordMockAvatar, $style.cordMockAvatarAlt]"></span><div><b>{{ copy.mockCourier }}</b><i></i><i></i><small>↩︎ · ↻ · ♡ · •••</small></div></div>
 							</div>
-							<div :class="$style.cordMockComposer"><Star :size="8"/><CloudUpload :size="8"/><span>いまどうしてる？</span><ArrowUp :size="9"/></div>
+							<div :class="$style.cordMockComposer"><Star :size="8"/><CloudUpload :size="8"/><span>{{ copy.whatsHappening }}</span><ArrowUp :size="9"/></div>
 						</div>
 						<div :class="$style.cordMockRight">
-							<div :class="$style.cordMockTabs"><span>投稿詳細</span><span>通知</span><Plus :size="8"/></div>
-							<div :class="$style.cordMockDetail"><span :class="$style.cordMockProfile"></span><b>投稿の情報</b><i></i><i></i><div><Bell :size="10"/><small>通知や検索もここで表示</small></div></div>
+							<div :class="$style.cordMockTabs"><span>{{ copy.noteDetails }}</span><span>{{ copy.notifications }}</span><Plus :size="8"/></div>
+							<div :class="$style.cordMockDetail"><span :class="$style.cordMockProfile"></span><b>{{ copy.noteInformation }}</b><i></i><i></i><div><Bell :size="10"/><small>{{ copy.subpaneHint }}</small></div></div>
 						</div>
 					</div>
 
-					<button :class="$style.cordChoiceCta" @click="selectHatacording"><MessageSquareText :size="17"/><span>HataSNSCordUIを使用する</span><ChevronRight :size="17"/></button>
+					<button :class="$style.cordChoiceCta" @click="selectHatacording"><MessageSquareText :size="17"/><span>{{ copy.useHatacording }}</span><ChevronRight :size="17"/></button>
 			</div>
 		</section>
 
@@ -157,8 +157,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<div :class="$style.disc">
 			<button :class="$style.discToggle" :aria-expanded="showOthers" @click="showOthers = !showOthers">
 				<i class="ti ti-chevron-down" :class="[$style.discChev, { [$style.discChevOpen]: showOthers }]"></i>
-				<span :class="$style.discToggleText">その他のUIも利用できますが、動作が不安定な場合があります</span>
-				<span :class="$style.depBadge">非推奨</span>
+				<span :class="$style.discToggleText">{{ copy.otherUiWarning }}</span>
+				<span :class="$style.depBadge">{{ copy.notRecommended }}</span>
 			</button>
 			<div :class="[$style.discBody, { [$style.discBodyOpen]: showOthers }]">
 				<div :class="$style.discInner">
@@ -169,10 +169,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 							<div :class="$style.depThumbBody"><span :class="$style.bar" style="width:100%;opacity:.16"></span><span :class="$style.bar" style="width:70%;opacity:.12"></span><span :class="$style.bar" style="width:85%;opacity:.13"></span></div>
 						</div>
 						<div :class="$style.depInfo">
-							<div :class="$style.depTitleRow"><span :class="$style.depTitle">Misskey UI</span><span :class="$style.depBadgeSolid">非推奨</span></div>
-							<div :class="$style.depDesc">Misskey標準UI。旗鯖の独自カスタマイズと競合し、意図しない動作が出る場合があります</div>
+							<div :class="$style.depTitleRow"><span :class="$style.depTitle">Misskey UI</span><span :class="$style.depBadgeSolid">{{ copy.notRecommended }}</span></div>
+							<div :class="$style.depDesc">{{ copy.misskeyDescription }}</div>
 						</div>
-						<span :class="$style.depSelect">選択 <i class="ti ti-chevron-right"></i></span>
+						<span :class="$style.depSelect">{{ copy.select }} <i class="ti ti-chevron-right"></i></span>
 					</button>
 					<!-- 従来のデッキUI -->
 					<button :class="$style.depCard" @click="selectDeprecated('deck')">
@@ -180,10 +180,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 							<span :class="$style.depThumbCol" style="opacity:.14"></span><span :class="$style.depThumbCol" style="opacity:.12"></span><span :class="$style.depThumbCol" style="opacity:.1"></span>
 						</div>
 						<div :class="$style.depInfo">
-							<div :class="$style.depTitleRow"><span :class="$style.depTitle">従来のデッキUI</span><span :class="$style.depBadgeSolid">非推奨</span></div>
-							<div :class="$style.depDesc">MisskeyデッキUI。HatasabaUI の高機能デッキの使用をおすすめします</div>
+							<div :class="$style.depTitleRow"><span :class="$style.depTitle">{{ copy.legacyDeck }}</span><span :class="$style.depBadgeSolid">{{ copy.notRecommended }}</span></div>
+							<div :class="$style.depDesc">{{ copy.legacyDeckDescription }}</div>
 						</div>
-						<span :class="$style.depSelect">選択 <i class="ti ti-chevron-right"></i></span>
+						<span :class="$style.depSelect">{{ copy.select }} <i class="ti ti-chevron-right"></i></span>
 					</button>
 				</div>
 			</div>
@@ -191,7 +191,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 		<!-- ===== キャンセル ===== -->
 		<div :class="$style.cancelArea">
-			<button class="_button" :class="$style.cancelButton" @click="close">キャンセル</button>
+			<button class="_button" :class="$style.cancelButton" @click="close">{{ copy.cancel }}</button>
 		</div>
 	</div>
 </MkModal>
@@ -204,6 +204,7 @@ import { instanceName } from '@@/js/config.js';
 import MkModal from '@/components/MkModal.vue';
 import { miLocalStorage } from '@/local-storage.js';
 import { ensureSignin } from '@/i.js';
+import { i18n } from '@/i18n.js';
 import { setHatacordingUiEnabled } from '@/utility/hatacording-ui.js';
 import * as os from '@/os.js';
 
@@ -213,6 +214,7 @@ const emit = defineEmits<{
 
 const modal = ref<InstanceType<typeof MkModal>>();
 const $i = ensureSignin();
+const copy = i18n.ts._hata._uiSetup;
 
 // 旗鯖fork: 非推奨UI (Misskey UI / 従来デッキ) の折りたたみ開閉状態。
 const showOthers = ref(false);
@@ -232,11 +234,11 @@ const select = (type: 'simple' | 'default' | 'deck') => {
 
 // 旗鯖fork: 非推奨UIは誤タップ防止と方針周知のため、確認を挟んでから選択する。
 const selectDeprecated = async (type: 'default' | 'deck') => {
-	const label = type === 'default' ? 'Misskey UI' : '従来のデッキUI';
+	const label = type === 'default' ? 'Misskey UI' : copy.legacyDeck;
 	const { canceled } = await os.confirm({
 		type: 'warning',
-		title: `${label} に切り替えますか？`,
-		text: 'このUIは非推奨です。旗鯖の独自カスタマイズと競合し、意図しない動作が発生する場合があります。あとで「HatasabaUI」に戻すこともできます。',
+		title: i18n.tsx._hata._uiSetup.switchConfirm({ ui: label }),
+		text: copy.deprecatedWarning,
 	});
 	if (canceled) return;
 	select(type);
@@ -244,7 +246,7 @@ const selectDeprecated = async (type: 'default' | 'deck') => {
 
 const selectHatacording = async () => {
 	if (!$i.policies.canUseHatacordingUi) {
-		await os.alert({ type: 'warning', text: 'このUIは現在未開放です。' });
+		await os.alert({ type: 'warning', text: copy.unavailable });
 		return;
 	}
 	setHatacordingUiEnabled($i.id, true);

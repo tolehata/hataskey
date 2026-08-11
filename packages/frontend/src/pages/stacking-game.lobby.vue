@@ -9,16 +9,16 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<div :class="$style.root">
 			<div class="_gaps">
 				<div class="_panel" :class="$style.hero">
-					<div :class="$style.heroTitle">⚔️ サーバー対戦ロビー</div>
-					<div :class="$style.heroSub">他のユーザーと積みゲームで対戦！</div>
+					<div :class="$style.heroTitle">⚔️ {{ copy.title }}</div>
+					<div :class="$style.heroSub">{{ copy.description }}</div>
 				</div>
 
 				<!-- ルーム作成 -->
 				<div class="_panel" :class="$style.card">
 					<div class="_gaps" style="padding: 20px;">
-						<div style="font-weight:bold;">ルームを作成</div>
+						<div style="font-weight:bold;">{{ common._rooms.createRoom }}</div>
 						<MkButton primary gradate rounded @click="createRoom" :disabled="creating">
-							<i class="ti ti-plus"></i> {{ creating ? '作成中...' : '新しいルームを作る' }}
+							<i class="ti ti-plus"></i> {{ creating ? common._rooms.creating : common._rooms.createNewRoom }}
 						</MkButton>
 					</div>
 				</div>
@@ -27,12 +27,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<div class="_panel" :class="$style.card">
 					<div class="_gaps_s" style="padding: 16px;">
 						<div style="display:flex;align-items:center;justify-content:space-between;">
-							<b>🏠 待機中のルーム</b>
+							<b>🏠 {{ common._rooms.waitingRooms }}</b>
 							<button :class="$style.refreshBtn" @click="fetchRooms"><i class="ti ti-refresh"></i></button>
 						</div>
 						<div v-if="loading" style="text-align:center;padding:16px;"><MkLoading/></div>
 						<div v-else-if="rooms.length === 0" style="text-align:center;padding:16px;opacity:.5;">
-							待機中のルームはありません
+							{{ common._rooms.noWaitingRooms }}
 						</div>
 						<div v-else :class="$style.roomList">
 							<div v-for="room in rooms" :key="room.id" :class="$style.roomItem">
@@ -43,10 +43,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 									<div :class="$style.roomName"><MkUserName v-if="room.host1" :user="room.host1"/><span v-else>???</span></div>
 								</div>
 								<MkButton v-if="isMyRoom(room)" rounded small @click="goToMyRoom(room.id)">
-									<i class="ti ti-clock"></i> 待機中
+									<i class="ti ti-clock"></i> {{ common._rooms.waiting }}
 								</MkButton>
 								<MkButton v-else primary rounded small @click="joinRoom(room.id)">
-									<i class="ti ti-door-enter"></i> 参加
+									<i class="ti ti-door-enter"></i> {{ common._rooms.join }}
 								</MkButton>
 							</div>
 						</div>
@@ -66,8 +66,11 @@ import { definePage } from '@/page.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import * as os from '@/os.js';
 import { $i } from '@/i.js';
+import { i18n } from '@/i18n.js';
 
 const router = useRouter();
+const common = i18n.ts._hata._games._common;
+const copy = i18n.ts._hata._games._stacking._lobby;
 
 const rooms = ref<any[]>([]);
 const loading = ref(false);
@@ -92,7 +95,7 @@ async function createRoom() {
 		const room = await misskeyApi('stacking-game/create-room', {}) as any;
 		router.pushByPath(`/stacking-game/battle?roomId=${room.id}`);
 	} catch (e) {
-		os.alert({ type: 'error', text: 'ルーム作成に失敗しました' });
+		os.alert({ type: 'error', text: common._rooms.createFailed });
 	} finally { creating.value = false; }
 }
 
@@ -103,12 +106,12 @@ async function joinRoom(roomId: string) {
 	} catch (e: any) {
 		const code = e?.code || e?.info?.code || '';
 		if (code === 'CANNOT_JOIN_OWN_ROOM') {
-			os.alert({ type: 'warning', text: '自分が作成したルームには参加できません' });
+			os.alert({ type: 'warning', text: common._rooms.cannotJoinOwnRoom });
 		} else if (code === 'NO_SUCH_ROOM') {
-			os.alert({ type: 'error', text: 'ルームが見つかりません' });
+			os.alert({ type: 'error', text: common._rooms.roomNotFound });
 			fetchRooms();
 		} else {
-			os.alert({ type: 'error', text: 'ルームは既に満員か終了しています' });
+			os.alert({ type: 'error', text: common._rooms.roomFullOrEnded });
 			fetchRooms();
 		}
 	}
@@ -120,7 +123,7 @@ function goToMyRoom(roomId: string) {
 
 onMounted(() => { fetchRooms(); });
 
-definePage(() => ({ title: 'つみつみタワー - ロビー', icon: 'ti ti-swords' }));
+definePage(() => ({ title: copy.pageTitle, icon: 'ti ti-swords' }));
 </script>
 
 <style lang="scss" module>

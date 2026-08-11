@@ -14,27 +14,27 @@ SPDX-License-Identifier: AGPL-3.0-only
 	:canResize="true"
 	@closed="emit('closed')"
 >
-	<template #header><i class="ti ti-mood-check"></i> {{ initialTotal > 1 ? '絵文字申請を連続確認' : '絵文字申請の確認' }}</template>
+	<template #header><i class="ti ti-mood-check"></i> {{ initialTotal > 1 ? copy.headerMultiple : copy.headerSingle }}</template>
 
 	<div :class="$style.reviewShell">
 		<template v-if="currentReq">
 			<div v-if="initialTotal > 1" :class="$style.queuePanel">
 				<div :class="$style.queueHead">
 					<div>
-						<div :class="$style.queueTitle">未処理の申請</div>
-						<div :class="$style.queueMeta">確認中 {{ currentIndex + 1 }} / {{ queue.length }} ・ この画面で {{ resolvedCount }}件処理</div>
+						<div :class="$style.queueTitle">{{ copy.pendingRequests }}</div>
+						<div :class="$style.queueMeta">{{ copyx.queueMeta({ current: (currentIndex + 1).toString(), total: queue.length.toString(), resolved: resolvedCount.toString() }) }}</div>
 					</div>
 					<div :class="$style.queueProgress" role="progressbar" :aria-valuemin="0" :aria-valuemax="initialTotal" :aria-valuenow="resolvedCount">
 						<span :style="{ width: `${progressPercent}%` }"></span>
 					</div>
 				</div>
-				<div :class="$style.queueStrip" aria-label="未処理の絵文字申請一覧">
+				<div :class="$style.queueStrip" :aria-label="copy.pendingRequestList">
 					<button
 						v-for="(item, index) in queue"
 						:key="item.id"
 						type="button"
 						:class="[$style.queueItem, index === currentIndex && $style.queueItemCurrent]"
-						:title="`:${item.name}: を確認`"
+						:title="copyx.reviewRequest({ name: `:${item.name}:` })"
 						@click="currentIndex = index"
 					>
 						<img v-if="item.imageUrl" :src="item.imageUrl" :alt="item.name">
@@ -43,77 +43,77 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</div>
 			</div>
 
-			<div v-if="queue.length > 1" :class="$style.mobileNav" aria-label="申請の切り替え">
-				<button type="button" aria-label="前の申請" @click="showPrevious"><i class="ti ti-chevron-left"></i></button>
+			<div v-if="queue.length > 1" :class="$style.mobileNav" :aria-label="copy.switchRequest">
+				<button type="button" :aria-label="copy.previousRequest" @click="showPrevious"><i class="ti ti-chevron-left"></i></button>
 				<span>{{ currentIndex + 1 }} / {{ queue.length }}</span>
-				<button type="button" aria-label="次の申請" @click="showNext"><i class="ti ti-chevron-right"></i></button>
+				<button type="button" :aria-label="copy.nextRequest" @click="showNext"><i class="ti ti-chevron-right"></i></button>
 			</div>
 
 			<Transition :name="slideDirection === 'next' ? 'hfEmojiNext' : 'hfEmojiPrev'" mode="out-in">
 				<div :key="currentReq.id" :class="$style.reviewGrid">
 					<section :class="$style.previewColumn">
-						<div :class="$style.sectionLabel">見え方と申請元</div>
+						<div :class="$style.sectionLabel">{{ copy.appearanceAndSource }}</div>
 						<div :class="$style.previewWrap">
 							<div :class="[$style.preview, $style.previewLight]"><img v-if="currentReq.imageUrl" :src="currentReq.imageUrl" :class="$style.previewImg" :alt="currentReq.name"></div>
 							<div :class="[$style.preview, $style.previewDark]"><img v-if="currentReq.imageUrl" :src="currentReq.imageUrl" :class="$style.previewImg" :alt="currentReq.name"></div>
 						</div>
 						<div :class="$style.notePreview">
-							<div :class="$style.notePreviewLabel">ノートでの見え方</div>
-							<div>いいね！ <img v-if="currentReq.imageUrl" :src="currentReq.imageUrl" :class="$style.noteEmoji" :alt="currentReq.name"> です</div>
+							<div :class="$style.notePreviewLabel">{{ copy.notePreview }}</div>
+							<div>{{ copy.notePreviewPrefix }} <img v-if="currentReq.imageUrl" :src="currentReq.imageUrl" :class="$style.noteEmoji" :alt="currentReq.name"> {{ copy.notePreviewSuffix }}</div>
 						</div>
 
 						<div :class="$style.metaCard">
 							<div :class="$style.metaRow">
 								<MkAvatar v-if="currentReq.requestedBy" :class="$style.avatar" :user="currentReq.requestedBy"/>
 								<div>
-									<div :class="$style.metaName"><MkUserName v-if="currentReq.requestedBy" :user="currentReq.requestedBy"/> が申請</div>
+									<div :class="$style.metaName"><MkUserName v-if="currentReq.requestedBy" :user="currentReq.requestedBy"/> {{ copy.requestedBySuffix }}</div>
 									<div :class="$style.metaSub"><MkTime :time="currentReq.createdAt"/></div>
 								</div>
 							</div>
 							<div :class="$style.sourceRow">
-								<span :class="$style.pill">{{ currentReq.sourceType === 'remote' ? 'リモート画像' : '自前画像' }}</span>
-								<a v-if="safeOriginalUrl" :class="$style.srcLink" :href="safeOriginalUrl" target="_blank" rel="noopener noreferrer">{{ currentReq.remoteHost ?? '元画像を開く' }} <i class="ti ti-external-link"></i></a>
+								<span :class="$style.pill">{{ currentReq.sourceType === 'remote' ? copy.remoteImage : copy.ownImage }}</span>
+								<a v-if="safeOriginalUrl" :class="$style.srcLink" :href="safeOriginalUrl" target="_blank" rel="noopener noreferrer">{{ currentReq.remoteHost ?? copy.openOriginal }} <i class="ti ti-external-link"></i></a>
 							</div>
 						</div>
 					</section>
 
 					<section :class="$style.formColumn">
-						<div :class="$style.sectionLabel">登録内容</div>
-						<MkInfo>内容を修正できます。ライト・ダーク両方での見え方と、ライセンスを確認してください。</MkInfo>
+						<div :class="$style.sectionLabel">{{ copy.registrationDetails }}</div>
+						<MkInfo>{{ copy.reviewHint }}</MkInfo>
 
 						<MkInput v-model="name">
-							<template #label>名前 <span :class="$style.req">必須</span></template>
+							<template #label>{{ copy.name }} <span :class="$style.req">{{ copy.required }}</span></template>
 							<template #prefix>:</template>
 							<template #suffix>:</template>
 						</MkInput>
 						<MkInput v-model="license">
-							<template #label>ライセンス</template>
-							<template #caption>{{ currentReq.sourceType === 'remote' ? '元サーバーの利用条件と一致しているか確認してください。' : '作者・出典・利用条件を確認してください。' }}</template>
+							<template #label>{{ copy.license }}</template>
+							<template #caption>{{ currentReq.sourceType === 'remote' ? copy.remoteLicenseHint : copy.ownLicenseHint }}</template>
 						</MkInput>
 						<HataFeedCategorySelect v-model="category" :categories="categories"/>
 						<MkInput v-model="tagsRaw">
-							<template #label>タグ（半角スペース区切り）</template>
+							<template #label>{{ copy.tags }}</template>
 						</MkInput>
-						<MkSwitch v-model="localOnly">このサーバーのみで使用（連合しない）</MkSwitch>
-						<MkSwitch v-model="isSensitive">センシティブな絵文字</MkSwitch>
+						<MkSwitch v-model="localOnly">{{ copy.localOnly }}</MkSwitch>
+						<MkSwitch v-model="isSensitive">{{ copy.sensitive }}</MkSwitch>
 					</section>
 				</div>
 			</Transition>
 
 			<div :class="$style.actions">
-				<MkButton v-if="queue.length > 1" rounded :disabled="busy" @click="holdAndNext"><i class="ti ti-player-skip-forward"></i> 保留して次へ</MkButton>
+				<MkButton v-if="queue.length > 1" rounded :disabled="busy" @click="holdAndNext"><i class="ti ti-player-skip-forward"></i> {{ copy.holdAndNext }}</MkButton>
 				<div :class="$style.resolveActions">
-					<MkButton rounded danger :disabled="busy" @click="reject"><i class="ti ti-x"></i> リジェクト{{ queue.length > 1 ? 'して次へ' : '' }}</MkButton>
-					<MkButton rounded primary gradate :disabled="!name.trim() || busy" @click="approve"><i class="ti ti-check"></i> 承認して登録{{ queue.length > 1 ? '、次へ' : '' }}</MkButton>
+					<MkButton rounded danger :disabled="busy" @click="reject"><i class="ti ti-x"></i> {{ queue.length > 1 ? copy.rejectAndNext : copy.reject }}</MkButton>
+					<MkButton rounded primary gradate :disabled="!name.trim() || busy" @click="approve"><i class="ti ti-check"></i> {{ queue.length > 1 ? copy.approveAndNext : copy.approve }}</MkButton>
 				</div>
 			</div>
 		</template>
 
 		<div v-else :class="$style.complete">
 			<i class="ti ti-circle-check-filled"></i>
-			<div :class="$style.completeTitle">未処理の申請を確認しました</div>
-			<div :class="$style.completeText">この画面で {{ resolvedCount }}件を処理しました。</div>
-			<MkButton rounded primary @click="closeWindow">閉じる</MkButton>
+			<div :class="$style.completeTitle">{{ copy.completeTitle }}</div>
+			<div :class="$style.completeText">{{ copyx.completeText({ count: resolvedCount.toString() }) }}</div>
+			<MkButton rounded primary @click="closeWindow">{{ copy.close }}</MkButton>
 		</div>
 	</div>
 </MkWindow>
@@ -128,12 +128,15 @@ import MkInput from '@/components/MkInput.vue';
 import MkSwitch from '@/components/MkSwitch.vue';
 import MkInfo from '@/components/MkInfo.vue';
 import HataFeedCategorySelect from '@/components/HataFeedCategorySelect.vue';
+import { i18n } from '@/i18n.js';
 import * as os from '@/os.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 
 const props = defineProps<{ req?: HataFeedEmojiRequest; requests?: HataFeedEmojiRequest[] }>();
 const emit = defineEmits<{ (ev: 'done'): void; (ev: 'closed'): void }>();
 const dialog = useTemplateRef('dialog');
+const copy = i18n.ts._hata._hatafeed._emojiApprove;
+const copyx = i18n.tsx._hata._hatafeed._emojiApprove;
 
 const queue = ref<HataFeedEmojiRequest[]>([]);
 const initialTotal = ref(0);
@@ -214,7 +217,7 @@ function showPrevious(): void {
 async function ensureStillPending(requestId: string): Promise<boolean> {
 	const latest = await misskeyApi('hata/feedback/emoji-requests', { id: requestId, limit: 1 });
 	if (latest[0]?.status === 'pending') return true;
-	os.toast('この申請は別のスタッフが処理済みです。次の申請へ進みます。');
+	os.toast(copy.alreadyProcessed);
 	removeCurrent();
 	emit('done');
 	return false;
@@ -247,7 +250,7 @@ async function approve(): Promise<void> {
 async function reject(): Promise<void> {
 	const req = currentReq.value;
 	if (req == null) return;
-	const { canceled, result } = await os.inputText({ title: 'リジェクト理由（任意）', default: '' });
+	const { canceled, result } = await os.inputText({ title: copy.rejectReason, default: '' });
 	if (canceled) return;
 	busy.value = true;
 	try {

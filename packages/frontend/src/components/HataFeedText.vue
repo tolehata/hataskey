@@ -19,6 +19,7 @@ import { computed } from 'vue';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { useRouter } from '@/router.js';
 import * as os from '@/os.js';
+import { i18n } from '@/i18n.js';
 
 const props = defineProps<{ text: string }>();
 const router = useRouter();
@@ -44,7 +45,7 @@ async function openIssue(number: number) {
 		const res = await misskeyApi('hata/feedback/issues/show', { number });
 		router.pushByPath('/hatafeed/' + res.issue.id);
 	} catch {
-		os.alert({ type: 'warning', text: `イシュー #${number} は見つかりませんでした。` });
+		os.alert({ type: 'warning', text: i18n.tsx._hata._hatafeed._text.issueNotFound({ number: number.toString() }) });
 	}
 }
 </script>

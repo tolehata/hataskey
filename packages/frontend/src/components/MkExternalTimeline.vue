@@ -25,7 +25,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<button class="_buttonPrimary" :class="$style.newButton2" @click="releaseQueue()">
 					<i class="ti ti-arrow-up"></i>
 					<I18n v-if="prefer.s.newNoteReceivedNotificationBehavior === 'count'" :src="i18n.ts.newNoteRecivedCount" textTag="span">
-						<template #n>{{ queuedCount }}</template>
+						<template #n>{{ formatCount(queuedCount) }}</template>
 					</I18n>
 					<span v-else-if="prefer.s.newNoteReceivedNotificationBehavior === 'default'">{{ i18n.ts.newNoteRecived }}</span>
 				</button>
@@ -77,6 +77,7 @@ import * as sound from '@/utility/sound.js';
 import * as os from '@/os.js';
 import { preloadExternalEmojiMap, callExternalApi, getExternalAccount } from '@/utility/external-api.js';
 import { cleanupStaleUiElements } from '@/utility/ui-cleanup.js';
+import { versatileLang } from '@/utility/intl-const.js';
 
 const props = withDefaults(defineProps<{
 	src: 'ohtl' | 'oltl';
@@ -90,6 +91,11 @@ const props = withDefaults(defineProps<{
 });
 
 const noGap = !prefer.s.showGapBetweenNotesInTimeline;
+const copy = i18n.ts._hata._externalTimeline._timeline;
+const copyx = i18n.tsx._hata._externalTimeline._timeline;
+const numberFormatter = new Intl.NumberFormat(versatileLang);
+const shortDateFormatter = new Intl.DateTimeFormat(versatileLang, { month: 'numeric', day: 'numeric' });
+const formatCount = (value: number): string => numberFormatter.format(value);
 
 const notes = shallowRef<any[]>([]);
 const queuedNotes = shallowRef<any[]>([]);
@@ -685,10 +691,10 @@ function formatExtNotifTime(ts: string): string {
 	const d = new Date(ts);
 	const now = new Date();
 	const diff = now.getTime() - d.getTime();
-	if (diff < 60000) return '今';
-	if (diff < 3600000) return `${Math.floor(diff/60000)}分前`;
-	if (diff < 86400000) return `${Math.floor(diff/3600000)}時間前`;
-	return `${d.getMonth()+1}/${d.getDate()}`;
+	if (diff < 60000) return copy.now;
+	if (diff < 3600000) return copyx.minutesAgo({ count: formatCount(Math.floor(diff / 60000)) });
+	if (diff < 86400000) return copyx.hoursAgo({ count: formatCount(Math.floor(diff / 3600000)) });
+	return shortDateFormatter.format(d);
 }
 
 // ========== Mobile: Hide standard footer, show side menu button ==========
@@ -720,13 +726,17 @@ function createNotifPanel() {
 
 	const header = document.createElement('div');
 	header.className = 'ext-notif-header';
-	header.innerHTML = '<span>外部アカウント通知</span><button class="ext-notif-close"><i class="ti ti-x"></i></button>';
+	header.innerHTML = '<span></span><button class="ext-notif-close"><i class="ti ti-x"></i></button>';
+	const headerLabel = header.querySelector('span');
+	if (headerLabel) headerLabel.textContent = copy.notificationTitle;
 
 	panel.appendChild(header);
 
 	const body = document.createElement('div');
 	body.className = 'ext-notif-body';
-	body.innerHTML = '<div class="ext-notif-loading">読み込み中...</div>';
+	body.innerHTML = '<div class="ext-notif-loading"></div>';
+	const loadingLabel = body.querySelector('.ext-notif-loading');
+	if (loadingLabel) loadingLabel.textContent = copy.loading;
 	panel.appendChild(body);
 
 	overlay.appendChild(panel);
@@ -752,7 +762,7 @@ async function renderNotifPanel(body: HTMLElement) {
 		if (extNotifications.value.length === 0) {
 			const empty = document.createElement('div');
 			empty.className = 'ext-notif-empty';
-			empty.textContent = '通知はありません';
+			empty.textContent = copy.noNotifications;
 			body.appendChild(empty);
 			return;
 		}
@@ -786,14 +796,14 @@ async function renderNotifPanel(body: HTMLElement) {
 			typeEl.className = 'ext-notif-type';
 			let typeText = n.type;
 			switch (n.type) {
-				case 'follow': typeText = 'フォローされました'; break;
-				case 'mention': typeText = 'メンションされました'; break;
-				case 'reply': typeText = '返信されました'; break;
-				case 'renote': typeText = 'リノートされました'; break;
-				case 'quote': typeText = '引用されました'; break;
-				case 'reaction': typeText = `リアクション: ${typeof n.reaction === 'string' ? n.reaction : ''}`; break;
-				case 'followRequestAccepted': typeText = 'フォローリクエストが承認されました'; break;
-				case 'receiveFollowRequest': typeText = 'フォローリクエストが届きました'; break;
+				case 'follow': typeText = copy.notificationFollow; break;
+				case 'mention': typeText = copy.notificationMention; break;
+				case 'reply': typeText = copy.notificationReply; break;
+				case 'renote': typeText = copy.notificationRenote; break;
+				case 'quote': typeText = copy.notificationQuote; break;
+				case 'reaction': typeText = copyx.notificationReaction({ reaction: typeof n.reaction === 'string' ? n.reaction : '' }); break;
+				case 'followRequestAccepted': typeText = copy.notificationFollowRequestAccepted; break;
+				case 'receiveFollowRequest': typeText = copy.notificationReceiveFollowRequest; break;
 			}
 			typeEl.textContent = typeText;
 			content.appendChild(typeEl);
@@ -818,7 +828,7 @@ async function renderNotifPanel(body: HTMLElement) {
 		body.textContent = '';
 		const fail = document.createElement('div');
 		fail.className = 'ext-notif-empty';
-		fail.textContent = '読み込みに失敗しました';
+		fail.textContent = copy.loadFailed;
 		body.appendChild(fail);
 	}
 }

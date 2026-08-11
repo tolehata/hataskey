@@ -174,15 +174,19 @@ import HyBookCover from '@/components/HyBookCover.vue';
 import HySubjectBadge from '@/components/HySubjectBadge.vue';
 import { $i } from '@/i.js';
 import * as os from '@/os.js';
+import { i18n } from '@/i18n.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
+import { versatileLang } from '@/utility/intl-const.js';
 import { hySubjectPalette, HY_BOOKMARK_COLORS, hyBookmarkColor } from '@/utility/hatady.js';
-import { hatadyTheme, hatadyLang } from '@/utility/hatady-prefs.js';
+import { hatadyTheme } from '@/utility/hatady-prefs.js';
 
 const props = defineProps<{ bookId: string }>();
 const emit = defineEmits<{ (ev: 'changed'): void; (ev: 'openLog', logId: string): void; (ev: 'closed'): void }>();
 const dialog = ref<any>(null);
 const theme = hatadyTheme;
-const lang = hatadyLang;
+const copy = i18n.ts._hata._hatady._bookDetail;
+const copyx = i18n.tsx._hata._hatady._bookDetail;
+const dateFormat = new Intl.DateTimeFormat(versatileLang, { year: 'numeric', month: 'short', day: 'numeric' });
 
 const scopeEl = ref<HTMLElement | null>(null);
 const book = ref<any>(null);
@@ -291,58 +295,15 @@ const STATUS_COLORS: Record<string, { background: string; color: string }> = {
 };
 function statusStyle(s: string) { return STATUS_COLORS[s] ?? STATUS_COLORS.reading; }
 
-const DICT: Record<string, { ja: string; en: string }> = {
-	title: { ja: '本の詳細', en: 'Book detail' },
-	loading: { ja: '読み込み中…', en: 'Loading…' },
-	notFound: { ja: '本が見つかりません。', en: 'Book not found.' },
-	status_reading: { ja: '読書中', en: 'Reading' },
-	status_finished: { ja: '読了', en: 'Finished' },
-	status_tsundoku: { ja: '積読', en: 'Backlog' },
-	status_want: { ja: '読みたい', en: 'Want to read' },
-	readingRecord: { ja: '読書の記録', en: 'Reading record' },
-	currentPage: { ja: '今のページ', en: 'Current page' },
-	save: { ja: '保存', en: 'Save' },
-	favorite: { ja: 'お気に入り', en: 'Favorite' },
-	recommend: { ja: 'おすすめ', en: 'Recommend' },
-	bookmarks: { ja: 'しおり', en: 'Bookmarks' },
-	noBookmarks: { ja: 'しおりはありません。', en: 'No bookmarks.' },
-	noName: { ja: '(無名のしおり)', en: '(untitled)' },
-	page: { ja: 'ページ', en: 'Page' },
-	bmNamePh: { ja: 'しおりの名前(任意)', en: 'Bookmark name (optional)' },
-	bmMemo: { ja: 'メモ', en: 'Memo' },
-	bmMemoPh: { ja: 'このしおりのメモ(任意)', en: 'Memo for this bookmark (optional)' },
-	memos: { ja: '内容メモ', en: 'Notes' },
-	noMemos: { ja: '内容メモはまだありません。', en: 'No notes yet.' },
-	memoPh: { ja: '内容メモ(要点・引用・感想など)', en: 'Note (key points, quotes, thoughts…)' },
-	pageOpt: { ja: 'ページ(任意)', en: 'Page (optional)' },
-	addMemo: { ja: 'メモを追加', en: 'Add note' },
-	sortNewest: { ja: '新しい順', en: 'Newest' },
-	sortOldest: { ja: '古い順', en: 'Oldest' },
-	edited: { ja: '編集済み', en: 'edited' },
-	memoDeleteConfirm: { ja: 'この内容メモを削除しますか？', en: 'Delete this note?' },
-	edit: { ja: '編集', en: 'Edit' },
-	delete: { ja: '削除', en: 'Delete' },
-	deleteConfirm: { ja: 'この本を本棚から削除しますか？(紐づく学習記録は残ります)', en: 'Remove this book? (Linked logs are kept)' },
-	modDelete: { ja: 'モデレーターとして削除', en: 'Delete as moderator' },
-	modDeleteConfirm: { ja: 'モデレーターとしてこの本を削除しますか？(所有者の本棚から削除されます)', en: 'Delete this book as a moderator? (It will be removed from the owner\'s shelf)' },
-	titleLabel: { ja: 'タイトル', en: 'Title' },
-	authorLabel: { ja: '著者', en: 'Author' },
-	pagesLabel: { ja: '総ページ数', en: 'Total pages' },
-	coverColor: { ja: '表紙の色', en: 'Cover color' },
-	cancel: { ja: 'キャンセル', en: 'Cancel' },
-	relatedLogs: { ja: 'この本の学習', en: 'Study on this book' },
-	noLogs: { ja: 'この本の学習記録はまだありません。', en: 'No study logs for this book yet.' },
-};
-function t(key: string): string { return DICT[key]?.[lang.value === 'en' ? 'en' : 'ja'] ?? key; }
+function t(key: string): string { return (copy as unknown as Record<string, string>)[key] ?? key; }
 function palAccent(subject: string): string { return hySubjectPalette(subject).accent; }
 function fmtDuration(min: number): string {
-	if (min < 60) return lang.value === 'en' ? `${min}m` : `${min}分`;
+	if (min < 60) return copyx.durationMinutes({ minutes: min.toString() });
 	const h = Math.floor(min / 60); const m = min % 60;
-	return lang.value === 'en' ? `${h}h ${m}m` : `${h}時間${m}分`;
+	return copyx.durationHoursMinutes({ hours: h.toString(), minutes: m.toString() });
 }
 function fmtWhen(iso: string): string {
-	const d = new Date(iso);
-	return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`;
+	return dateFormat.format(new Date(iso));
 }
 
 async function reload() {

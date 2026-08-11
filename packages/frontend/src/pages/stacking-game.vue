@@ -10,15 +10,15 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<div class="_gaps">
 				<div class="_panel" :class="$style.hero">
 					<div :class="$style.heroInner">
-						<div :class="$style.heroTitle">🏗️ つみつみタワー</div>
-						<div :class="$style.heroSub">絵文字を積み上げてハイスコアを目指そう！</div>
+						<div :class="$style.heroTitle">🏗️ {{ copy.title }}</div>
+						<div :class="$style.heroSub">{{ copy.description }}</div>
 					</div>
 				</div>
 
 				<div class="_panel" :class="$style.menuCard">
 					<div class="_gaps" style="padding: 20px;">
 						<MkButton primary gradate large rounded inline @click="startGame">
-							<i class="ti ti-player-play"></i> ソロプレイ
+							<i class="ti ti-player-play"></i> {{ copy.soloPlay }}
 						</MkButton>
 					</div>
 				</div>
@@ -26,28 +26,28 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<!-- AI対戦 -->
 				<div class="_panel" :class="$style.menuCard">
 					<div class="_gaps" style="padding: 20px;">
-						<div style="font-weight:bold;">🤖 AI対戦</div>
-						<div style="font-size:.85rem;opacity:.7;">AIと横並びで対決！先に崩した方が負け</div>
+						<div style="font-weight:bold;">🤖 {{ common.aiBattle }}</div>
+						<div style="font-size:.85rem;opacity:.7;">{{ copy.aiDescription }}</div>
 						<div :class="$style.modeList">
 							<button :class="[$style.modeBtn, aiLevel === 'easy' && $style.modeBtnOn]" @click="aiLevel = 'easy'">
 								<span :class="$style.modeEmoji">🐣</span>
-								<span :class="$style.modeName">よわい</span>
+								<span :class="$style.modeName">{{ common._difficulty.easy }}</span>
 							</button>
 							<button :class="[$style.modeBtn, aiLevel === 'hard' && $style.modeBtnOn]" @click="aiLevel = 'hard'">
 								<span :class="$style.modeEmoji">🤖</span>
-								<span :class="$style.modeName">むずかしい</span>
+								<span :class="$style.modeName">{{ common._difficulty.hard }}</span>
 							</button>
 							<button :class="[$style.modeBtn, aiLevel === 'extreme' && $style.modeBtnOn]" @click="aiLevel = 'extreme'">
 								<span :class="$style.modeEmoji">👹</span>
-								<span :class="$style.modeName">つよすぎる</span>
+								<span :class="$style.modeName">{{ common._difficulty.extreme }}</span>
 							</button>
 							<button :class="[$style.modeBtn, aiLevel === 'insane' && $style.modeBtnOn]" @click="aiLevel = 'insane'">
 								<span :class="$style.modeEmoji">💀</span>
-								<span :class="$style.modeName">エグい</span>
+								<span :class="$style.modeName">{{ common._difficulty.insane }}</span>
 							</button>
 						</div>
 						<MkButton primary rounded inline @click="startAiGame">
-							<i class="ti ti-swords"></i> AI対戦スタート
+							<i class="ti ti-swords"></i> {{ copy.startAiBattle }}
 						</MkButton>
 					</div>
 				</div>
@@ -55,23 +55,23 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<!-- サーバー対戦 -->
 				<div class="_panel" :class="$style.menuCard">
 					<div class="_gaps" style="padding: 20px;">
-						<div style="font-weight:bold;">⚔️ サーバー対戦</div>
-						<div style="font-size:.85rem;opacity:.7;">他のユーザーとリアルタイムで対決！観戦もできます</div>
+						<div style="font-weight:bold;">⚔️ {{ common.serverBattle }}</div>
+						<div style="font-size:.85rem;opacity:.7;">{{ copy.serverBattleDescription }}</div>
 						<MkButton primary rounded inline @click="goLobby">
-							<i class="ti ti-door-enter"></i> ロビーに入る
+							<i class="ti ti-door-enter"></i> {{ common.enterLobby }}
 						</MkButton>
 					</div>
 				</div>
 
 				<div class="_panel" :class="$style.menuCard">
 					<div class="_gaps_s" style="padding: 16px;">
-						<div><b> 遊び方</b></div>
+						<div><b>{{ common.howToPlay }}</b></div>
 						<ol :class="$style.howTo">
-							<li>サーバーの絵文字が上から落ちてきます</li>
-							<li>左右に動かして落とす位置を決めましょう</li>
-							<li>タップ/クリックで絵文字を落とします</li>
-							<li>絵文字が台から落ちるとゲームオーバー</li>
-							<li>たくさん積み上げてハイスコアを目指そう！</li>
+							<li>{{ copy.howTo1 }}</li>
+							<li>{{ copy.howTo2 }}</li>
+							<li>{{ copy.howTo3 }}</li>
+							<li>{{ copy.howTo4 }}</li>
+							<li>{{ copy.howTo5 }}</li>
 						</ol>
 					</div>
 				</div>
@@ -80,14 +80,14 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<div class="_panel" :class="$style.menuCard">
 					<div class="_gaps_s" style="padding: 16px;">
 						<div style="display:flex;align-items:center;justify-content:space-between;">
-							<b> ランキング</b>
+							<b>{{ common.ranking }}</b>
 						</div>
 
 						<div v-if="rankingLoading" style="text-align:center;padding:16px;opacity:.5;">
 							<MkLoading/>
 						</div>
 						<div v-else-if="ranking.length === 0" style="text-align:center;padding:16px;opacity:.5;">
-							まだ記録がありません
+							{{ common.noRecords }}
 						</div>
 						<div v-else :class="$style.rankList">
 							<div v-for="(r, i) in ranking" :key="r.id" :class="$style.rankItem">
@@ -97,7 +97,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 								</div>
 								<div :class="$style.rankInfo">
 									<div :class="$style.rankName"><MkUserName v-if="r.user" :user="r.user"/><span v-else>???</span></div>
-									<div :class="$style.rankMeta">{{ r.blockCount }}個積み上げ</div>
+									<div :class="$style.rankMeta">{{ copyx.blocksStacked({ count: String(r.blockCount) }) }}</div>
 								</div>
 								<div :class="$style.rankScore">{{ r.score }}</div>
 							</div>
@@ -108,18 +108,18 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<!-- 自分のスコア履歴 -->
 				<div class="_panel" :class="$style.menuCard">
 					<div class="_gaps_s" style="padding: 16px;">
-						<div><b>あなたの記録</b></div>
+						<div><b>{{ common.yourRecords }}</b></div>
 						<div v-if="myScoresLoading" style="text-align:center;padding:12px;opacity:.5;">
 							<MkLoading/>
 						</div>
 						<div v-else-if="myScores.length === 0" style="text-align:center;padding:12px;opacity:.5;">
-							まだプレイしていません
+							{{ common.notPlayedYet }}
 						</div>
 						<div v-else :class="$style.myScoreList">
 							<div v-for="s in myScores" :key="s.id" :class="$style.myScoreItem">
 								<div :class="$style.myScoreVal">{{ s.score }}</div>
 								<div :class="$style.myScoreMeta">
-									<span>{{ s.blockCount }}個</span>
+									<span>{{ copyx.blocks({ count: String(s.blockCount) }) }}</span>
 									<span :class="$style.myScoreDate">{{ formatDate(s.createdAt) }}</span>
 								</div>
 							</div>
@@ -138,8 +138,14 @@ import MkButton from '@/components/MkButton.vue';
 import { useRouter } from '@/router.js';
 import { definePage } from '@/page.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
+import { i18n } from '@/i18n.js';
+import { versatileLang } from '@/utility/intl-const.js';
 
 const router = useRouter();
+const common = i18n.ts._hata._games._common;
+const copy = i18n.ts._hata._games._stacking._home;
+const copyx = i18n.tsx._hata._games._stacking._home;
+const scoreDateFormatter = new Intl.DateTimeFormat(versatileLang, { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 
 const aiLevel = ref('easy');
 
@@ -152,8 +158,7 @@ const myScores = ref<any[]>([]);
 const myScoresLoading = ref(false);
 
 function formatDate(iso: string): string {
-	const d = new Date(iso);
-	return `${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+	return scoreDateFormatter.format(new Date(iso));
 }
 
 async function fetchRanking() {
@@ -198,7 +203,7 @@ onMounted(() => {
 });
 
 definePage(() => ({
-	title: 'つみつみタワー',
+	title: copy.title,
 	icon: 'ti ti-building',
 }));
 </script>

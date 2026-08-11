@@ -13,23 +13,23 @@ SPDX-License-Identifier: AGPL-3.0-only
 	:canResize="true"
 	@closed="emit('closed')"
 >
-	<template #header><i class="ti ti-file-download"></i> {{ t('title') }}</template>
+	<template #header><i class="ti ti-file-download"></i> {{ copy.title }}</template>
 
 	<div class="hatady-scope" :data-hatady-theme="theme" :class="$style.body">
-		<div :class="$style.label"><i class="ti ti-calendar-search"></i> {{ t('period') }}</div>
+		<div :class="$style.label"><i class="ti ti-calendar-search"></i> {{ copy.period }}</div>
 		<div :class="$style.presets">
 			<button
 				v-for="p in PRESETS" :key="p.key"
 				:class="[$style.chip, mode === p.key && $style.chipOn]"
 				@click="setMode(p.key)"
-			>{{ t(p.key) }}</button>
+			>{{ p.label }}</button>
 		</div>
 
 		<!-- 期間を指定 -->
 		<div v-if="mode === 'custom'" :class="$style.rangeField">
-			<input v-model="sinceInput" type="date" :class="$style.date" :aria-label="t('from')">
+			<input v-model="sinceInput" type="date" :class="$style.date" :aria-label="copy.from">
 			<span :class="$style.tilde">〜</span>
-			<input v-model="untilInput" type="date" :class="$style.date" :aria-label="t('to')">
+			<input v-model="untilInput" type="date" :class="$style.date" :aria-label="copy.to">
 		</div>
 
 		<!-- 対象期間の確認 -->
@@ -37,13 +37,13 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<i class="ti ti-info-circle"></i>
 			<span>{{ summaryText }}</span>
 		</div>
-		<div :class="$style.hint">{{ t('hint') }}</div>
+		<div :class="$style.hint">{{ copy.hint }}</div>
 
 		<div :class="$style.footer">
-			<button :class="[$style.btn, $style.btnGhost]" :disabled="exporting" @click="dialog?.close()">{{ t('cancel') }}</button>
+			<button :class="[$style.btn, $style.btnGhost]" :disabled="exporting" @click="dialog?.close()">{{ copy.cancel }}</button>
 			<button :class="[$style.btn, $style.btnPrimary]" :disabled="exporting || !valid" @click="run">
 				<i :class="['ti', exporting ? 'ti-loader-2 ' + $style.spin : 'ti-file-download']"></i>
-				{{ t('export') }}
+				{{ copy.export }}
 			</button>
 		</div>
 	</div>
@@ -52,23 +52,25 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <script lang="ts" setup>
 import { ref, computed } from 'vue';
+import { versatileLang } from '@@/js/intl-const.js';
 import MkWindow from '@/components/MkWindow.vue';
+import { i18n } from '@/i18n.js';
 import * as os from '@/os.js';
-import { hatadyTheme, hatadyEffectiveLang } from '@/utility/hatady-prefs.js';
+import { hatadyTheme } from '@/utility/hatady-prefs.js';
 import { exportHatadyLogs } from '@/utility/hatady-export.js';
 
 const emit = defineEmits<{ (ev: 'closed'): void }>();
 const dialog = ref<any>(null);
 const theme = hatadyTheme;
-const lang = hatadyEffectiveLang;
+const copy = i18n.ts._hata._hatady._exportDialog;
 
 type Mode = 'all' | 'thisMonth' | 'lastMonth' | 'last30' | 'custom';
 const PRESETS = [
-	{ key: 'all' as const },
-	{ key: 'thisMonth' as const },
-	{ key: 'lastMonth' as const },
-	{ key: 'last30' as const },
-	{ key: 'custom' as const },
+	{ key: 'all' as const, label: copy.all },
+	{ key: 'thisMonth' as const, label: copy.thisMonth },
+	{ key: 'lastMonth' as const, label: copy.lastMonth },
+	{ key: 'last30' as const, label: copy.last30 },
+	{ key: 'custom' as const, label: copy.custom },
 ];
 
 const mode = ref<Mode>('all');
@@ -121,56 +123,32 @@ const valid = computed(() => {
 });
 
 const summaryText = computed(() => {
-	if (mode.value === 'all') return t('summaryAll');
+	if (mode.value === 'all') return copy.summaryAll;
 	const { since, until } = range.value;
-	if (since != null && until != null && since > until) return t('invalidRange');
-	if (since == null && until == null) return t('pickDate');
+	if (since != null && until != null && since > until) return copy.invalidRange;
+	if (since == null && until == null) return copy.pickDate;
 	const f = (ms: number) => {
-		const d = new Date(ms);
-		return lang.value === 'en'
-			? d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
-			: `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`;
+		return new Intl.DateTimeFormat(versatileLang, { year: 'numeric', month: 'short', day: 'numeric' }).format(new Date(ms));
 	};
-	const a = since != null ? f(since) : t('beginning');
-	const b = until != null ? f(until) : t('today');
-	return `${a} 〜 ${b}`;
+	const from = since != null ? f(since) : copy.beginning;
+	const to = until != null ? f(until) : copy.today;
+	return i18n.tsx._hata._hatady._exportDialog.summaryRange({ from, to });
 });
 
 async function run() {
 	if (exporting.value || !valid.value) return;
 	exporting.value = true;
 	try {
-		const { count } = await exportHatadyLogs({ sinceDate: range.value.since, untilDate: range.value.until, lang: lang.value });
-		os.toast(lang.value === 'en' ? `Exported ${count} entries.` : `${count}件を書き出しました。`);
+		const { count } = await exportHatadyLogs({ sinceDate: range.value.since, untilDate: range.value.until });
+		os.toast(i18n.tsx._hata._hatady._exportDialog.exportedCount({ count }));
 		dialog.value?.close();
 	} catch {
-		os.alert({ type: 'error', text: lang.value === 'en' ? 'Export failed.' : '書き出しに失敗しました。' });
+		os.alert({ type: 'error', text: copy.exportFailed });
 	} finally {
 		exporting.value = false;
 	}
 }
 
-const DICT: Record<string, { ja: string; en: string }> = {
-	title: { ja: '記録の書き出し', en: 'Export records' },
-	period: { ja: '対象の期間', en: 'Period' },
-	all: { ja: 'すべての期間', en: 'All time' },
-	thisMonth: { ja: '今月', en: 'This month' },
-	lastMonth: { ja: '先月', en: 'Last month' },
-	last30: { ja: '過去30日', en: 'Last 30 days' },
-	custom: { ja: '期間を指定', en: 'Custom' },
-	from: { ja: '開始日', en: 'From' },
-	to: { ja: '終了日', en: 'To' },
-	summaryAll: { ja: 'これまでのすべての学習記録を書き出します。', en: 'Exports all of your study records.' },
-	pickDate: { ja: '開始日か終了日を選んでください。', en: 'Pick a start or end date.' },
-	invalidRange: { ja: '開始日が終了日より後になっています。', en: 'The start date is after the end date.' },
-	beginning: { ja: '最初', en: 'the beginning' },
-	today: { ja: '今日', en: 'today' },
-	hint: { ja: '人間にも読みやすい .txt 形式で、日付ごとにまとめて出力します。', en: 'Exports a human-readable .txt grouped by day.' },
-	cancel: { ja: 'キャンセル', en: 'Cancel' },
-	export: { ja: '書き出す', en: 'Export' },
-};
-
-function t(key: string): string { return DICT[key]?.[lang.value] ?? key; }
 </script>
 
 <style lang="scss" module>

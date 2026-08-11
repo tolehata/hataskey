@@ -19,36 +19,36 @@ SPDX-License-Identifier: AGPL-3.0-only
 >
 	<template #header>
 		<span :class="$style.headerInner">
-			<span>マスコットの設定</span>
-			<MkButton v-if="canUseMascot" :class="$style.termsBtn" rounded small @click="showTerms"><i class="ti ti-file-text"></i> 利用規約</MkButton>
+			<span>{{ copy.settingsTitle }}</span>
+			<MkButton v-if="canUseMascot" :class="$style.termsBtn" rounded small @click="showTerms"><i class="ti ti-file-text"></i> {{ copy.termsButton }}</MkButton>
 		</span>
 	</template>
 
 	<div :class="$style.root">
-		<div v-if="loading" :class="$style.loading">読み込み中…</div>
+		<div v-if="loading" :class="$style.loading">{{ copy.loading }}</div>
 
 		<!-- 旗鯖fork: マスコット機能がロールで許可されていないユーザー向けの案内。設定内容は一切出さない。 -->
 		<div v-else-if="!canUseMascot" :class="$style.consent">
 			<div :class="$style.consentIcon"><i class="ti ti-lock"></i></div>
-			<div :class="$style.consentTitle">マスコット機能はご利用いただけません</div>
+			<div :class="$style.consentTitle">{{ copy.unavailableTitle }}</div>
 			<div :class="$style.consentBody">
-				<p>お使いのアカウントでは、マスコット機能を現在ご利用いただけません。</p>
+				<p>{{ copy.unavailableBody }}</p>
 			</div>
 		</div>
 
 		<!-- 未同意: 同意ダイアログ -->
 		<div v-else-if="!consented" :class="$style.consent">
 			<div :class="$style.consentIcon"><i class="ti ti-mood-smile"></i></div>
-			<div :class="$style.consentTitle">マスコット機能の利用にあたって</div>
+			<div :class="$style.consentTitle">{{ copy.consentTitle }}</div>
 			<div :class="$style.consentBody">
-				<p>用意した画像をマスコットとして表示できる機能です。利用する前に、以下に同意してください。</p>
+				<p>{{ copy.consentBody }}</p>
 				<ul>
 					<li v-for="(t, i) in MASCOT_TERMS" :key="i">{{ t }}</li>
 				</ul>
 			</div>
 			<div :class="$style.consentBtns">
-				<MkButton @click="dialog?.close()">同意しない</MkButton>
-				<MkButton primary gradate @click="agree">同意して使う</MkButton>
+				<MkButton @click="dialog?.close()">{{ copy.decline }}</MkButton>
+				<MkButton primary gradate @click="agree">{{ copy.agree }}</MkButton>
 			</div>
 		</div>
 
@@ -56,7 +56,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<template v-else>
 			<!-- 旗鯖fork: 保存をブロックしている設定ミスの一覧。解消すると保存ボタンが押せるようになる。 -->
 			<div v-if="validationErrors.length > 0" :class="$style.validationCard">
-				<div :class="$style.validationHead"><i class="ti ti-alert-triangle"></i> 設定に問題があるため保存できません</div>
+				<div :class="$style.validationHead"><i class="ti ti-alert-triangle"></i> {{ copy.validationSummary }}</div>
 				<ul :class="$style.validationList">
 					<li v-for="(err, i) in validationErrors" :key="i">{{ err }}</li>
 				</ul>
@@ -64,32 +64,32 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<div :class="$style.layout">
 			<!-- 旗鯖fork: モバイルでは名前+削除カードを最上部(キャラ切替より上)に表示 -->
 			<div v-if="isMobileLayout && activeChar" :class="$style.card">
-				<div :class="$style.label">名前</div>
-				<input :class="$style.inp" :value="activeChar.name" maxlength="30" @input="onName($event)" placeholder="マスコットの名前" />
-				<button v-if="characters.length > 0" :class="$style.delBtn" @click="removeCharacter(activeCharIdx)"><i class="ti ti-trash"></i> このキャラを削除</button>
+				<div :class="$style.label">{{ copy.name }}</div>
+				<input :class="$style.inp" :value="activeChar.name" maxlength="30" @input="onName($event)" :placeholder="copy.namePlaceholder" />
+				<button v-if="characters.length > 0" :class="$style.delBtn" @click="removeCharacter(activeCharIdx)"><i class="ti ti-trash"></i> {{ copy.deleteCharacter }}</button>
 			</div>
 			<!-- 旗鯖fork(タスク5): モバイル(縦1列)では最上部にキャラ切替カードを表示 -->
 			<div v-if="isMobileLayout" :class="$style.card">
 				<div :class="$style.cardHead">
-					<span :class="$style.label">キャラクター</span>
+					<span :class="$style.label">{{ copy.characters }}</span>
 					<span :class="$style.count">{{ characters.length }} / {{ limits.maxCharacters }}</span>
 				</div>
 				<div :class="$style.charTabs">
 					<button v-for="(c,ci) in characters" :key="c.id" :class="[$style.charTab, activeCharIdx===ci && $style.charTabOn]" @click="selectChar(ci)">
 						<img v-if="c.expressions[0]" :src="c.expressions[0].url" :class="$style.charTabThumb" />
 						<i v-else class="ti ti-user" :class="$style.charTabThumbIcon"></i>
-						<span>{{ c.name || '(無名)' }}</span>
+						<span>{{ c.name || copy.unnamedParenthesized }}</span>
 					</button>
-					<button v-if="characters.length < limits.maxCharacters" :class="$style.charAdd" @click="addCharacter"><i class="ti ti-plus"></i> 追加</button>
+					<button v-if="characters.length < limits.maxCharacters" :class="$style.charAdd" @click="addCharacter"><i class="ti ti-plus"></i> {{ copy.add }}</button>
 				</div>
 				<div :class="$style.ioRow">
-					<button :class="$style.ioBtn" :disabled="!activeChar" @click="exportActiveCharacter"><i class="ti ti-download"></i> このキャラを書き出し</button>
-					<button :class="$style.ioBtn" :disabled="characters.length >= limits.maxCharacters" @click="importCharacterFromFile"><i class="ti ti-upload"></i> ファイルから読み込み</button>
+					<button :class="$style.ioBtn" :disabled="!activeChar" @click="exportActiveCharacter"><i class="ti ti-download"></i> {{ copy.exportCharacter }}</button>
+					<button :class="$style.ioBtn" :disabled="characters.length >= limits.maxCharacters" @click="importCharacterFromFile"><i class="ti ti-upload"></i> {{ copy.importFile }}</button>
 				</div>
 				<p :class="$style.ioDesc">
-					マスコットの設定を .hmtk ファイルとして書き出し・読み込みできます（画像はドライブのURLを参照するため、同じサーバーの方とのやり取りが前提です）。<br>
-					書き出したファイルを同じサーバーの方に渡すと、そのマスコットを使ってもらえます。<br>
-					読み込んだキャラは新しいキャラとして追加されます。他人が作ったマスコットを読み込むときは、作成した方の了承を得てください。
+					{{ copy.ioDescription1 }}<br>
+					{{ copy.ioDescription2 }}<br>
+					{{ copy.ioDescription3 }}
 				</p>
 			</div>
 			<!-- ===== プレビュー(吹き出し位置をドラッグで調整) ===== -->
@@ -104,8 +104,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 							@pointerdown="onBubblePointerDown"
 						>
 							<span v-if="previewPhraseText">{{ previewPhraseText }}</span>
-							<span v-else :class="$style.bubblePlaceholder">文言</span>
-							<span :class="$style.bubbleGrip" title="ドラッグで位置を調整"><i class="ti ti-arrows-move"></i></span>
+							<span v-else :class="$style.bubblePlaceholder">{{ copy.phrase }}</span>
+							<span :class="$style.bubbleGrip" :title="copy.dragPositionTitle"><i class="ti ti-arrows-move"></i></span>
 						</div>
 						<!-- ？小吹き出し(疑問トグルON時。ドラッグで位置調整) -->
 						<div
@@ -113,83 +113,83 @@ SPDX-License-Identifier: AGPL-3.0-only
 							:class="[$style.qBubble, qTail==='right' ? $style.qtail_right : $style.qtail_left, draggingQBubble && $style.previewBubbleDragging]"
 							:style="qBubbleStyle"
 							@pointerdown="onQBubblePointerDown"
-						><span :class="$style.qMark">?</span><span :class="$style.bubbleGrip" title="ドラッグで位置を調整"><i class="ti ti-arrows-move"></i></span></div>
+						><span :class="$style.qMark">?</span><span :class="$style.bubbleGrip" :title="copy.dragPositionTitle"><i class="ti ti-arrows-move"></i></span></div>
 						<!-- ！小吹き出し(通知用プレビュー時、exclaimEnabled) -->
 						<div
 							v-if="(notifyPreviewMode || notify2PreviewMode) && previewExpression.exclaimEnabled"
 							:class="[$style.qBubble, eTail==='right' ? $style.qtail_right : $style.qtail_left, draggingEBubble && $style.previewBubbleDragging]"
 							:style="eBubbleStyle"
 							@pointerdown="onEBubblePointerDown"
-						><span :class="$style.qMark">!</span><span :class="$style.bubbleGrip" title="ドラッグで位置を調整"><i class="ti ti-arrows-move"></i></span></div>
+						><span :class="$style.qMark">!</span><span :class="$style.bubbleGrip" :title="copy.dragPositionTitle"><i class="ti ti-arrows-move"></i></span></div>
 					</template>
 					<div v-else :class="$style.previewEmpty">
 						<i class="ti ti-photo"></i>
-						<span>立ち絵を追加するとここに表示されます</span>
+						<span>{{ copy.previewEmpty }}</span>
 					</div>
 				</div>
 				<div :class="$style.previewMeta">
 					<div v-if="showName && activeChar?.name" :class="$style.previewName">{{ activeChar.name }}</div>
-					<div v-if="previewExpression" :class="$style.previewHint">吹き出しをドラッグすると、この立ち絵（{{ previewExpression.label || '無名' }}）での表示位置を調整できます。</div>
+					<div v-if="previewExpression" :class="$style.previewHint">{{ copyx.previewHint({ label: previewExpression.label || copy.unnamed }) }}</div>
 					<div v-if="previewExpression" :class="$style.bubbleControls">
 						<div :class="$style.bubbleCtrlRow">
-							<span :class="$style.bubbleCtrlLabel">吹き出しサイズ</span>
+							<span :class="$style.bubbleCtrlLabel">{{ copy.bubbleSize }}</span>
 							<input type="range" min="0.6" max="1.6" step="0.05" :value="previewExpression.bubbleScale ?? 1" @input="setBubbleScale($event)" :class="$style.bubbleRange" />
 						</div>
 						<div :class="$style.bubbleCtrlRow">
-							<span :class="$style.bubbleCtrlLabel">しっぽの向き</span>
+							<span :class="$style.bubbleCtrlLabel">{{ copy.tailDirection }}</span>
 							<div :class="$style.tailToggle">
-								<button :class="[$style.tailBtn, bubbleTail==='left' && $style.tailBtnOn]" @click="setBubbleTail('left')">左</button>
-								<button :class="[$style.tailBtn, bubbleTail==='right' && $style.tailBtnOn]" @click="setBubbleTail('right')">右</button>
+								<button :class="[$style.tailBtn, bubbleTail==='left' && $style.tailBtnOn]" @click="setBubbleTail('left')">{{ copy.left }}</button>
+								<button :class="[$style.tailBtn, bubbleTail==='right' && $style.tailBtnOn]" @click="setBubbleTail('right')">{{ copy.right }}</button>
 							</div>
 						</div>
 						<div :class="$style.qDivider"></div>
 						<div :class="$style.bubbleCtrlRow">
-							<span :class="$style.bubbleCtrlLabel">？の吹き出し</span>
+							<span :class="$style.bubbleCtrlLabel">{{ copy.questionBubble }}</span>
 							<button :class="[$style.sw, previewExpression.questionEnabled && $style.swOn]" @click="toggleQuestion"></button>
 						</div>
 						<template v-if="previewExpression.questionEnabled">
 							<div :class="$style.bubbleCtrlRow">
-								<span :class="$style.bubbleCtrlLabel">？のサイズ</span>
+								<span :class="$style.bubbleCtrlLabel">{{ copy.questionSize }}</span>
 								<input type="range" min="0.6" max="1.6" step="0.05" :value="previewExpression.qBubbleScale ?? 1" @input="setQBubbleScale($event)" :class="$style.bubbleRange" />
 							</div>
 							<div :class="$style.bubbleCtrlRow">
-								<span :class="$style.bubbleCtrlLabel">？のしっぽ</span>
+								<span :class="$style.bubbleCtrlLabel">{{ copy.questionTail }}</span>
 								<div :class="$style.tailToggle">
-									<button :class="[$style.tailBtn, qTail==='left' && $style.tailBtnOn]" @click="setQBubbleTail('left')">左</button>
-									<button :class="[$style.tailBtn, qTail==='right' && $style.tailBtnOn]" @click="setQBubbleTail('right')">右</button>
+									<button :class="[$style.tailBtn, qTail==='left' && $style.tailBtnOn]" @click="setQBubbleTail('left')">{{ copy.left }}</button>
+									<button :class="[$style.tailBtn, qTail==='right' && $style.tailBtnOn]" @click="setQBubbleTail('right')">{{ copy.right }}</button>
 								</div>
 							</div>
-							<div :class="$style.qHint">？の吹き出しもドラッグで位置を調整できます。</div>
+							<div :class="$style.qHint">{{ copy.questionDragHint }}</div>
 						</template>
 					</div>
 					<div v-if="(activeChar?.phrases?.length ?? 0) > 0 || activeChar?.notifyExpression || activeChar?.birthdayExpression" :class="$style.previewChipsWrap">
-						<div :class="$style.previewChipsLabel"><i class="ti ti-eye"></i> プレビューに表示する文言・表情を選ぶ</div>
+						<div :class="$style.previewChipsLabel"><i class="ti ti-eye"></i> {{ copy.previewPicker }}</div>
 						<div :class="$style.previewChips">
 							<button
 								v-for="(p,pi) in (activeChar?.phrases ?? [])" :key="p.id"
 								:class="[$style.previewChip, (!notifyPreviewMode && !notify2PreviewMode && !birthdayPreviewMode && !charBirthdayPreviewMode && previewPhraseIdx===pi) && $style.previewChipOn]"
 								@click="selectPreviewPhrase(pi)"
-							><i class="ti ti-message-2"></i> {{ p.text || '(空の文言)' }}</button>
+							><i class="ti ti-message-2"></i> {{ p.text || copy.emptyPhrase }}</button>
 							<button
 								v-if="activeChar?.notifyExpression"
 								:class="[$style.previewChip, notifyPreviewMode && $style.previewChipOn]"
 								@click="selectNotifyPreview"
-							><i class="ti ti-bell"></i> 通知用</button>
+							><i class="ti ti-bell"></i> {{ copy.notificationChip }}</button>
 							<button
 								v-if="activeChar?.notifyExpression2"
 								:class="[$style.previewChip, notify2PreviewMode && $style.previewChipOn]"
 								@click="selectNotify2Preview"
-							><i class="ti ti-bell"></i> 通知用2</button>
+							><i class="ti ti-bell"></i> {{ copy.notificationSecondChip }}</button>
 							<button
 								v-if="activeChar?.birthdayExpression"
 								:class="[$style.previewChip, birthdayPreviewMode && $style.previewChipOn]"
 								@click="selectBirthdayPreview"
-							><i class="ti ti-cake"></i> 誕生日用</button>
+							><i class="ti ti-cake"></i> {{ copy.birthdayChip }}</button>
 							<button
 								v-if="activeChar?.charBirthdayEnabled && activeChar?.charBirthdayExpression"
 								:class="[$style.previewChip, charBirthdayPreviewMode && $style.previewChipOn]"
 								@click="selectCharBirthdayPreview"
-							>キャラ誕生日</button>
+							>{{ copy.characterBirthdayChip }}</button>
 						</div>
 					</div>
 				</div>
@@ -198,63 +198,63 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<div :class="$style.colSettings">
 			<!-- ===== 全体設定 ===== -->
 			<div :class="$style.card">
-				<div :class="$style.row"><span>マスコットの名前を表示する</span><button :class="[$style.sw, showName && $style.swOn]" @click="showName=!showName"></button></div>
+				<div :class="$style.row"><span>{{ copy.showName }}</span><button :class="[$style.sw, showName && $style.swOn]" @click="showName=!showName"></button></div>
 			</div>
 
 			<!-- ===== マスコットが伝えること ===== -->
 			<div :class="$style.card">
-				<div :class="$style.label">マスコットが伝えること</div>
-				<div :class="$style.desc">マスコットに何を伝えてもらうかを選べます。</div>
-				<div :class="$style.row"><span>誕生日を祝う</span><button :class="[$style.sw, displaySettings.tellBirthday && $style.swOn]" @click="toggleDisplay('tellBirthday')"></button></div>
-				<div :class="$style.row"><span>通知を伝える</span><button :class="[$style.sw, displaySettings.tellNotifications && $style.swOn]" @click="toggleDisplay('tellNotifications')"></button></div>
-				<div :class="$style.row"><span>設定した文言をランダムに表示する</span><button :class="[$style.sw, displaySettings.tellRandomPhrases && $style.swOn]" @click="toggleDisplay('tellRandomPhrases')"></button></div>
-				<div :class="$style.row"><span>ログイン時に未読通知の件数を伝える</span><button :class="[$style.sw, displaySettings.tellUnreadOnLogin && $style.swOn]" @click="toggleDisplay('tellUnreadOnLogin')"></button></div>
-				<div :class="$style.row"><span>Hatask の通知を伝える</span><button :class="[$style.sw, displaySettings.tellHataskNotifications && $style.swOn]" @click="toggleDisplay('tellHataskNotifications')"></button></div>
+				<div :class="$style.label">{{ copy.thingsToTell }}</div>
+				<div :class="$style.desc">{{ copy.thingsToTellDescription }}</div>
+				<div :class="$style.row"><span>{{ copy.tellBirthday }}</span><button :class="[$style.sw, displaySettings.tellBirthday && $style.swOn]" @click="toggleDisplay('tellBirthday')"></button></div>
+				<div :class="$style.row"><span>{{ copy.tellNotifications }}</span><button :class="[$style.sw, displaySettings.tellNotifications && $style.swOn]" @click="toggleDisplay('tellNotifications')"></button></div>
+				<div :class="$style.row"><span>{{ copy.tellRandomPhrases }}</span><button :class="[$style.sw, displaySettings.tellRandomPhrases && $style.swOn]" @click="toggleDisplay('tellRandomPhrases')"></button></div>
+				<div :class="$style.row"><span>{{ copy.tellUnreadOnLogin }}</span><button :class="[$style.sw, displaySettings.tellUnreadOnLogin && $style.swOn]" @click="toggleDisplay('tellUnreadOnLogin')"></button></div>
+				<div :class="$style.row"><span>{{ copy.tellHataskNotifications }}</span><button :class="[$style.sw, displaySettings.tellHataskNotifications && $style.swOn]" @click="toggleDisplay('tellHataskNotifications')"></button></div>
 				<div :class="$style.subDivider"></div>
-				<div :class="$style.row"><span>通知を伝える間は標準の通知トーストを表示しない</span><button :class="[$style.sw, displaySettings.suppressStandardToast && $style.swOn]" @click="toggleDisplay('suppressStandardToast')"></button></div>
-				<div :class="$style.desc" style="margin-top:6px;margin-bottom:0">「通知を伝える」がオンのときに有効です。マスコットと標準トーストが二重に出るのを防ぎます。</div>
+				<div :class="$style.row"><span>{{ copy.suppressStandardToast }}</span><button :class="[$style.sw, displaySettings.suppressStandardToast && $style.swOn]" @click="toggleDisplay('suppressStandardToast')"></button></div>
+				<div :class="$style.desc" style="margin-top:6px;margin-bottom:0">{{ copy.suppressStandardToastDescription }}</div>
 					<div :class="$style.subDivider"></div>
 					<div :class="$style.row">
-						<span>通知用表情の表示時間</span>
+						<span>{{ copy.notificationDuration }}</span>
 						<span :class="$style.durationCtrl">
-							<input type="number" min="1" max="60" :value="displaySettings.notifyDurationSec" @input="setNotifyDuration($event)" :class="$style.durationInput" /> 秒
+							<input type="number" min="1" max="60" :value="displaySettings.notifyDurationSec" @input="setNotifyDuration($event)" :class="$style.durationInput" /> {{ copy.seconds }}
 						</span>
 					</div>
-					<div :class="$style.desc" style="margin-top:6px;margin-bottom:0">通知が来てからマスコットが通知用表情を表示する時間です。表示中に次の通知が来ると時間がリセットされ、吹き出しの内容も最新の通知に更新されます。</div>
+					<div :class="$style.desc" style="margin-top:6px;margin-bottom:0">{{ copy.notificationDurationDescription }}</div>
 					<div :class="$style.subDivider"></div>
 					<div :class="$style.row" style="flex-wrap:wrap;gap:6px">
-						<span>表情・文言の入れ替わり間隔</span>
+						<span>{{ copy.rotationInterval }}</span>
 						<span :class="$style.idlePresets">
-							<button :class="[$style.idlePreset, isIdlePreset(3,8) && $style.idlePresetOn]" @click="setIdlePreset(3,8)">頻繁</button>
-							<button :class="[$style.idlePreset, isIdlePreset(5,12) && $style.idlePresetOn]" @click="setIdlePreset(5,12)">標準</button>
-							<button :class="[$style.idlePreset, isIdlePreset(30,90) && $style.idlePresetOn]" @click="setIdlePreset(30,90)">控えめ</button>
+							<button :class="[$style.idlePreset, isIdlePreset(3,8) && $style.idlePresetOn]" @click="setIdlePreset(3,8)">{{ copy.frequent }}</button>
+							<button :class="[$style.idlePreset, isIdlePreset(5,12) && $style.idlePresetOn]" @click="setIdlePreset(5,12)">{{ copy.standard }}</button>
+							<button :class="[$style.idlePreset, isIdlePreset(30,90) && $style.idlePresetOn]" @click="setIdlePreset(30,90)">{{ copy.subtle }}</button>
 						</span>
 					</div>
 					<div :class="$style.row">
-						<span :class="$style.idleManualLabel">手動（秒）</span>
+						<span :class="$style.idleManualLabel">{{ copy.manualSeconds }}</span>
 						<span :class="$style.durationCtrl">
-							最短 <input type="number" min="5" max="1800" :value="displaySettings.idleMinSec" @input="setIdleMin($event)" :class="$style.durationInput" />
-							〜 最長 <input type="number" min="5" max="1800" :value="displaySettings.idleMaxSec" @input="setIdleMax($event)" :class="$style.durationInput" />
+							{{ copy.minimum }} <input type="number" min="5" max="1800" :value="displaySettings.idleMinSec" @input="setIdleMin($event)" :class="$style.durationInput" />
+							{{ copy.rangeSeparator }} {{ copy.maximum }} <input type="number" min="5" max="1800" :value="displaySettings.idleMaxSec" @input="setIdleMax($event)" :class="$style.durationInput" />
 						</span>
 					</div>
-					<div :class="$style.desc" style="margin-top:6px;margin-bottom:0">マスコットの表情と文言が自動で切り替わる間隔です。最短〜最長の範囲でランダムに切り替わります。間隔を長くすると、ちらちら動くのが気になる場合に落ち着きます（5秒〜1800秒/30分）。通知の表示中は切り替わりません。</div>
+					<div :class="$style.desc" style="margin-top:6px;margin-bottom:0">{{ copy.rotationIntervalDescription }}</div>
 					<div :class="$style.subDivider"></div>
-					<div :class="$style.row"><span>フローティング表示(デスクトップ)</span><button :class="[$style.sw, displaySettings.floatingEnabledDesktop && $style.swOn]" @click="toggleDisplay('floatingEnabledDesktop')"></button></div>
-					<div :class="$style.row"><span>フローティング表示(モバイル)</span><button :class="[$style.sw, displaySettings.floatingEnabledMobile && $style.swOn]" @click="toggleDisplay('floatingEnabledMobile')"></button></div>
-					<div :class="$style.desc" style="margin-top:6px;margin-bottom:0">どの画面でもマスコットを画面上に浮かべて表示します。ドラッグで移動でき、クリックで次の文言に切り替わります。通知・誕生日・未読も浮いたマスコットが伝えます。</div>
+					<div :class="$style.row"><span>{{ copy.floatingDesktop }}</span><button :class="[$style.sw, displaySettings.floatingEnabledDesktop && $style.swOn]" @click="toggleDisplay('floatingEnabledDesktop')"></button></div>
+					<div :class="$style.row"><span>{{ copy.floatingMobile }}</span><button :class="[$style.sw, displaySettings.floatingEnabledMobile && $style.swOn]" @click="toggleDisplay('floatingEnabledMobile')"></button></div>
+					<div :class="$style.desc" style="margin-top:6px;margin-bottom:0">{{ copy.floatingDescription }}</div>
 					<div :class="$style.subDivider"></div>
 					<div :class="$style.row">
-						<span>フローティングのぼかし背景の濃さ</span>
+						<span>{{ copy.floatingBackdropOpacity }}</span>
 						<span :class="$style.durationCtrl">
 							<input type="range" min="0" max="1" step="0.05" :value="displaySettings.floatingBackdropOpacity" @input="setBackdropOpacity($event)" />
 							<span :class="$style.backdropVal">{{ Math.round((displaySettings.floatingBackdropOpacity ?? 0) * 100) }}%</span>
 						</span>
 					</div>
 					<div :class="$style.row">
-						<span>フローティングのぼかし背景の色</span>
+						<span>{{ copy.floatingBackdropColor }}</span>
 						<input type="color" :value="displaySettings.floatingBackdropColor || '#000000'" @input="setBackdropColor($event)" :class="$style.backdropColor" />
 					</div>
-					<div :class="$style.desc" style="margin-top:6px;margin-bottom:0">フローティング表示中のマスコットの背後に敷くぼかしの濃さと色です。濃さを0にすると無効になります。視認性が悪い背景のときに調整してください。</div>
+					<div :class="$style.desc" style="margin-top:6px;margin-bottom:0">{{ copy.floatingBackdropDescription }}</div>
 				</div>
 
 			<!-- 旗鯖fork(タスク5): キャラ切替カードは layout 直下(モバイル)または colSpecial(非モバイル)に移動 -->
@@ -263,73 +263,73 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<!-- 立ち絵 -->
 				<div :class="$style.card">
 					<div :class="$style.cardHead">
-						<span :class="$style.label">立ち絵（表情）</span>
+						<span :class="$style.label">{{ copy.expressions }}</span>
 						<span :class="$style.count">{{ activeChar.expressions.length }} / {{ limits.maxExpressions }}</span>
 					</div>
-					<div :class="$style.desc">画像はドライブから選びます（500KB以下・JPEG/PNG/WebP/GIF）。ラベルは「笑顔」「怒り」など分かりやすい名前を。</div>
-					<div v-if="activeChar.expressions.length === 0" :class="$style.empty">まだ立ち絵がありません。下のボタンから追加してください。</div>
+					<div :class="$style.desc">{{ copy.expressionsDescription }}</div>
+					<div v-if="activeChar.expressions.length === 0" :class="$style.empty">{{ copy.noExpressions }}</div>
 					<div v-else :class="$style.expGrid">
 						<div v-for="(e,ei) in activeChar.expressions" :key="e.id" :class="$style.expItem">
 							<img :src="e.url" :class="$style.expImg" :alt="e.label" />
-							<input :class="$style.expLabel" :value="e.label" maxlength="30" @input="onExpLabel(ei,$event)" placeholder="ラベル" />
+							<input :class="$style.expLabel" :value="e.label" maxlength="30" @input="onExpLabel(ei,$event)" :placeholder="copy.labelPlaceholder" />
 							<select :class="$style.expMotion" :value="e.motion ?? 'none'" @change="onExpMotion(ei,$event)">
-								<option value="none">動きなし</option>
-								<option value="bounce">ぴょんぴょん</option>
-								<option value="shake">ガクガク</option>
-								<option value="sway">ゆらゆら</option>
-								<option value="spin">回転</option>
+								<option value="none">{{ copy.motionNone }}</option>
+								<option value="bounce">{{ copy.motionBounce }}</option>
+								<option value="shake">{{ copy.motionShake }}</option>
+								<option value="sway">{{ copy.motionSway }}</option>
+								<option value="spin">{{ copy.motionSpin }}</option>
 							</select>
 							<div v-if="e.motion && e.motion !== 'none' && e.motion !== 'spin'" :class="$style.expIntensity">
-								<span :class="$style.expIntensityLabel">強さ</span>
+								<span :class="$style.expIntensityLabel">{{ copy.strength }}</span>
 								<input type="range" min="0.3" max="2" step="0.1" :value="e.motionIntensity ?? 1" @input="onExpIntensity(ei,$event)" :class="$style.expIntensityRange" />
 							</div>
 							<div :class="$style.colorRow">
-								<span :class="$style.colorLabel">文字色</span>
+								<span :class="$style.colorLabel">{{ copy.textColor }}</span>
 								<input type="color" :value="e.textColor || '#000000'" @input="setExpTextColor(ei,$event)" :class="$style.colorInput" />
-								<button v-if="e.textColor" :class="$style.colorClear" @click="clearExpTextColor(ei)" title="既定色に戻す"><i class="ti ti-x"></i></button>
+								<button v-if="e.textColor" :class="$style.colorClear" @click="clearExpTextColor(ei)" :title="copy.restoreDefault"><i class="ti ti-x"></i></button>
 							</div>
 							<div v-if="e.questionEnabled" :class="$style.colorRow">
-								<span :class="$style.colorLabel">？の色</span>
+								<span :class="$style.colorLabel">{{ copy.questionColor }}</span>
 								<input type="color" :value="e.qTextColor || '#000000'" @input="setExpQTextColor(ei,$event)" :class="$style.colorInput" />
-								<button v-if="e.qTextColor" :class="$style.colorClear" @click="clearExpQTextColor(ei)" title="既定色に戻す"><i class="ti ti-x"></i></button>
+								<button v-if="e.qTextColor" :class="$style.colorClear" @click="clearExpQTextColor(ei)" :title="copy.restoreDefault"><i class="ti ti-x"></i></button>
 							</div>
 							<button :class="$style.expDel" @click="removeExpression(ei)"><i class="ti ti-x"></i></button>
 						</div>
 					</div>
-					<MkButton v-if="activeChar.expressions.length < limits.maxExpressions" rounded @click="addExpression"><i class="ti ti-photo-plus"></i> 立ち絵を追加</MkButton>
+					<MkButton v-if="activeChar.expressions.length < limits.maxExpressions" rounded @click="addExpression"><i class="ti ti-photo-plus"></i> {{ copy.addExpression }}</MkButton>
 				</div>
 
 				<!-- 文言 -->
 				<div :class="$style.card">
 					<div :class="$style.cardHead">
-						<span :class="$style.label">文言（セリフ）</span>
+						<span :class="$style.label">{{ copy.phrases }}</span>
 						<span :class="$style.count">{{ activeChar.phrases.length }} / {{ limits.maxPhrases }}</span>
 					</div>
-					<div :class="$style.desc">マスコットが話す言葉です。各文言に立ち絵を紐づけると、その文言のときに表情が切り替わります。</div>
-					<div v-if="activeChar.phrases.length === 0" :class="$style.empty">まだ文言がありません。下のボタンから追加してください。</div>
+					<div :class="$style.desc">{{ copy.phrasesDescription }}</div>
+					<div v-if="activeChar.phrases.length === 0" :class="$style.empty">{{ copy.noPhrases }}</div>
 					<div v-for="(p,pi) in activeChar.phrases" :key="p.id" :class="$style.phraseCard">
 						<div :class="$style.phraseTop">
-							<input :class="$style.inp" :value="p.text" maxlength="140" @input="onPhraseText(pi,$event)" placeholder="文言を入力" />
+							<input :class="$style.inp" :value="p.text" maxlength="140" @input="onPhraseText(pi,$event)" :placeholder="copy.phraseInputPlaceholder" />
 							<button :class="$style.phraseDel" @click="removePhrase(pi)"><i class="ti ti-trash"></i></button>
 						</div>
 						<!-- 立ち絵をサムネで選んで紐付け -->
 						<div :class="$style.linkRow">
-							<span :class="$style.linkLabel">表情:</span>
-							<button :class="[$style.linkThumb, !p.expressionId && $style.linkThumbOn]" @click="setPhraseExp(pi, null)" title="表情なし">
+							<span :class="$style.linkLabel">{{ copy.expressionLabel }}</span>
+							<button :class="[$style.linkThumb, !p.expressionId && $style.linkThumbOn]" @click="setPhraseExp(pi, null)" :title="copy.noExpression">
 								<i class="ti ti-ban"></i>
 							</button>
 							<button
 								v-for="e in activeChar.expressions" :key="e.id"
 								:class="[$style.linkThumb, p.expressionId===e.id && $style.linkThumbOn]"
-								:title="e.label || '(無名)'"
+								:title="e.label || copy.unnamedParenthesized"
 								@click="setPhraseExp(pi, e.id)"
 							>
 								<img :src="e.url" :class="$style.linkThumbImg" />
 							</button>
-							<span v-if="activeChar.expressions.length === 0" :class="$style.linkEmpty">先に立ち絵を追加してください</span>
+							<span v-if="activeChar.expressions.length === 0" :class="$style.linkEmpty">{{ copy.addExpressionsFirst }}</span>
 						</div>
 					</div>
-					<MkButton v-if="activeChar.phrases.length < limits.maxPhrases" rounded @click="addPhrase"><i class="ti ti-plus"></i> 文言を追加</MkButton>
+					<MkButton v-if="activeChar.phrases.length < limits.maxPhrases" rounded @click="addPhrase"><i class="ti ti-plus"></i> {{ copy.addPhrase }}</MkButton>
 				</div>
 
 				</template>
@@ -338,201 +338,201 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<div :class="$style.colSpecial">
 				<!-- 旗鯖fork: 非モバイルでは名前+削除カードを右列(colSpecial)の一番上に表示 -->
 				<div v-if="!isMobileLayout && activeChar" :class="$style.card">
-					<div :class="$style.label">名前</div>
-					<input :class="$style.inp" :value="activeChar.name" maxlength="30" @input="onName($event)" placeholder="マスコットの名前" />
-					<button v-if="characters.length > 0" :class="$style.delBtn" @click="removeCharacter(activeCharIdx)"><i class="ti ti-trash"></i> このキャラを削除</button>
+					<div :class="$style.label">{{ copy.name }}</div>
+					<input :class="$style.inp" :value="activeChar.name" maxlength="30" @input="onName($event)" :placeholder="copy.namePlaceholder" />
+					<button v-if="characters.length > 0" :class="$style.delBtn" @click="removeCharacter(activeCharIdx)"><i class="ti ti-trash"></i> {{ copy.deleteCharacter }}</button>
 				</div>
 				<!-- 旗鯖fork(タスク5): 非モバイル(横並び)では最右列(colSpecial)の先頭にキャラ切替カードを表示 -->
 				<div v-if="!isMobileLayout" :class="$style.card">
 					<div :class="$style.cardHead">
-						<span :class="$style.label">キャラクター</span>
+						<span :class="$style.label">{{ copy.characters }}</span>
 						<span :class="$style.count">{{ characters.length }} / {{ limits.maxCharacters }}</span>
 					</div>
 					<div :class="$style.charTabs">
 						<button v-for="(c,ci) in characters" :key="c.id" :class="[$style.charTab, activeCharIdx===ci && $style.charTabOn]" @click="selectChar(ci)">
 							<img v-if="c.expressions[0]" :src="c.expressions[0].url" :class="$style.charTabThumb" />
 							<i v-else class="ti ti-user" :class="$style.charTabThumbIcon"></i>
-							<span>{{ c.name || '(無名)' }}</span>
+							<span>{{ c.name || copy.unnamedParenthesized }}</span>
 						</button>
-						<button v-if="characters.length < limits.maxCharacters" :class="$style.charAdd" @click="addCharacter"><i class="ti ti-plus"></i> 追加</button>
+						<button v-if="characters.length < limits.maxCharacters" :class="$style.charAdd" @click="addCharacter"><i class="ti ti-plus"></i> {{ copy.add }}</button>
 					</div>
 					<div :class="$style.ioRow">
-						<button :class="$style.ioBtn" :disabled="!activeChar" @click="exportActiveCharacter"><i class="ti ti-download"></i> このキャラを書き出し</button>
-						<button :class="$style.ioBtn" :disabled="characters.length >= limits.maxCharacters" @click="importCharacterFromFile"><i class="ti ti-upload"></i> ファイルから読み込み</button>
+						<button :class="$style.ioBtn" :disabled="!activeChar" @click="exportActiveCharacter"><i class="ti ti-download"></i> {{ copy.exportCharacter }}</button>
+						<button :class="$style.ioBtn" :disabled="characters.length >= limits.maxCharacters" @click="importCharacterFromFile"><i class="ti ti-upload"></i> {{ copy.importFile }}</button>
 					</div>
 					<p :class="$style.ioDesc">
-						マスコットの設定を .hmtk ファイルとして書き出し・読み込みできます（画像はドライブのURLを参照するため、同じサーバーの方とのやり取りが前提です）。<br>
-						書き出したファイルを同じサーバーの方に渡すと、そのマスコットを使ってもらえます。<br>
-						読み込んだキャラは新しいキャラとして追加されます。他人が作ったマスコットを読み込むときは、作成した方の了承を得てください。
+						{{ copy.ioDescription1 }}<br>
+						{{ copy.ioDescription2 }}<br>
+						{{ copy.ioDescription3 }}
 					</p>
 				</div>
 				<template v-if="activeChar">
 				<!-- ===== 通知用の専用表情 ===== -->
 				<div :class="$style.card">
-					<div :class="$style.label">通知用の表情</div>
-					<div :class="$style.desc">通知が届いたときに表示する専用の立ち絵と文言です。「！」の小吹き出しも付けられます。画像は500KB以下（JPEG/PNG/WebP/GIF）です。</div>
+					<div :class="$style.label">{{ copy.notificationExpression }}</div>
+					<div :class="$style.desc">{{ copy.notificationExpressionDescription }}</div>
 					<template v-if="activeChar.notifyExpression">
 						<div :class="$style.expItem" style="max-width:140px;">
 							<img :src="activeChar.notifyExpression.url || ''" :class="$style.expImg" />
 							<button :class="$style.expDel" @click="clearNotify"><i class="ti ti-x"></i></button>
 						</div>
-						<input :class="$style.expLabel" :value="activeChar.notifyExpression.label" maxlength="30" @input="onNotifyField('label',$event)" placeholder="ラベル(任意)" style="margin-top:8px;" />
-						<div :class="$style.desc" style="margin:8px 0 0">通知時の文言は<b>前置き</b>です。実際の通知内容（「○○さんがフォロー」など）は、この前置きの後に改行して自動でつながります。</div>
-						<input :class="$style.inp" :value="activeChar.notifyExpression.text" maxlength="140" @input="onNotifyField('text',$event)" placeholder="例：通知が届いたよ！" style="margin-top:6px;" />
+						<input :class="$style.expLabel" :value="activeChar.notifyExpression.label" maxlength="30" @input="onNotifyField('label',$event)" :placeholder="copy.optionalLabelPlaceholder" style="margin-top:8px;" />
+						<div :class="$style.desc" style="margin:8px 0 0">{{ copy.notificationPrefaceBefore }}<b>{{ copy.notificationPrefaceTerm }}</b>{{ copy.notificationPrefaceAfter }}</div>
+						<input :class="$style.inp" :value="activeChar.notifyExpression.text" maxlength="140" @input="onNotifyField('text',$event)" :placeholder="copy.notificationTextExample" style="margin-top:6px;" />
 						<div :class="$style.colorRow" style="margin-top:8px;">
-							<span :class="$style.colorLabel">文字色</span>
+							<span :class="$style.colorLabel">{{ copy.textColor }}</span>
 							<input type="color" :value="activeChar.notifyExpression.textColor || '#000000'" @input="setNotifyTextColor($event)" :class="$style.colorInput" />
-							<button v-if="activeChar.notifyExpression.textColor" :class="$style.colorClear" @click="clearNotifyTextColor" title="既定色に戻す"><i class="ti ti-x"></i></button>
+							<button v-if="activeChar.notifyExpression.textColor" :class="$style.colorClear" @click="clearNotifyTextColor" :title="copy.restoreDefault"><i class="ti ti-x"></i></button>
 						</div>
 						<div :class="$style.bubbleCtrlRow" style="margin-top:8px;">
-							<span :class="$style.bubbleCtrlLabel">動き</span>
+							<span :class="$style.bubbleCtrlLabel">{{ copy.motion }}</span>
 							<select :class="$style.expMotion" :value="activeChar.notifyExpression.motion" @change="onNotifyField('motion',$event)">
-								<option value="none">動きなし</option>
-								<option value="bounce">ぴょんぴょん</option>
-								<option value="shake">ガクガク</option>
-								<option value="sway">ゆらゆら</option>
-								<option value="spin">回転</option>
+								<option value="none">{{ copy.motionNone }}</option>
+								<option value="bounce">{{ copy.motionBounce }}</option>
+								<option value="shake">{{ copy.motionShake }}</option>
+								<option value="sway">{{ copy.motionSway }}</option>
+								<option value="spin">{{ copy.motionSpin }}</option>
 							</select>
 						</div>
 						<div v-if="activeChar.notifyExpression.motion !== 'none' && activeChar.notifyExpression.motion !== 'spin'" :class="$style.bubbleCtrlRow">
-							<span :class="$style.bubbleCtrlLabel">動きの強さ</span>
+							<span :class="$style.bubbleCtrlLabel">{{ copy.motionStrength }}</span>
 							<input type="range" min="0.3" max="2" step="0.1" :value="activeChar.notifyExpression.motionIntensity" @input="onNotifyField('motionIntensity',$event)" :class="$style.bubbleRange" />
 						</div>
 						<div :class="$style.subDivider"></div>
 						<div :class="$style.bubbleCtrlRow">
-							<span :class="$style.bubbleCtrlLabel">「！」の吹き出し</span>
+							<span :class="$style.bubbleCtrlLabel">{{ copy.exclaimBubble }}</span>
 							<button :class="[$style.sw, activeChar.notifyExpression.exclaimEnabled && $style.swOn]" @click="toggleNotifyExclaim"></button>
 						</div>
 						<template v-if="activeChar.notifyExpression.exclaimEnabled">
 							<div :class="$style.bubbleCtrlRow">
-								<span :class="$style.bubbleCtrlLabel">！のサイズ</span>
+								<span :class="$style.bubbleCtrlLabel">{{ copy.exclaimSize }}</span>
 								<input type="range" min="0.6" max="1.6" step="0.05" :value="activeChar.notifyExpression.eBubbleScale" @input="setNotifyEScale($event)" :class="$style.bubbleRange" />
 							</div>
 							<div :class="$style.bubbleCtrlRow">
-								<span :class="$style.bubbleCtrlLabel">！のしっぽ</span>
+								<span :class="$style.bubbleCtrlLabel">{{ copy.exclaimTail }}</span>
 								<div :class="$style.tailToggle">
-									<button :class="[$style.tailBtn, activeChar.notifyExpression.eBubbleTail==='left' && $style.tailBtnOn]" @click="setNotifyETail('left')">左</button>
-									<button :class="[$style.tailBtn, activeChar.notifyExpression.eBubbleTail==='right' && $style.tailBtnOn]" @click="setNotifyETail('right')">右</button>
+									<button :class="[$style.tailBtn, activeChar.notifyExpression.eBubbleTail==='left' && $style.tailBtnOn]" @click="setNotifyETail('left')">{{ copy.left }}</button>
+									<button :class="[$style.tailBtn, activeChar.notifyExpression.eBubbleTail==='right' && $style.tailBtnOn]" @click="setNotifyETail('right')">{{ copy.right }}</button>
 								</div>
 							</div>
 							<div :class="$style.colorRow">
-								<span :class="$style.colorLabel">！の色</span>
+								<span :class="$style.colorLabel">{{ copy.exclaimColor }}</span>
 								<input type="color" :value="activeChar.notifyExpression.eTextColor || '#000000'" @input="setNotifyETextColor($event)" :class="$style.colorInput" />
-								<button v-if="activeChar.notifyExpression.eTextColor" :class="$style.colorClear" @click="clearNotifyETextColor" title="既定色に戻す"><i class="ti ti-x"></i></button>
+								<button v-if="activeChar.notifyExpression.eTextColor" :class="$style.colorClear" @click="clearNotifyETextColor" :title="copy.restoreDefault"><i class="ti ti-x"></i></button>
 							</div>
 						</template>
-						<div :class="$style.desc" style="margin:4px 0 0">プレビュー下の「通知用」を選ぶと、吹き出し・！の位置やサイズ・しっぽをドラッグや上のスライダーで調整できます。</div>
+						<div :class="$style.desc" style="margin:4px 0 0">{{ copy.notificationAdjustHint }}</div>
 					</template>
-					<MkButton v-else rounded @click="chooseNotifyImage"><i class="ti ti-plus"></i> 通知用の立ち絵を選ぶ</MkButton>
+					<MkButton v-else rounded @click="chooseNotifyImage"><i class="ti ti-plus"></i> {{ copy.chooseNotificationImage }}</MkButton>
 				</div>
 
 				<!-- ===== 通知用の専用表情(2つ目) ===== -->
 				<div :class="$style.card">
-					<div :class="$style.label">通知用の表情(2つ目・任意)</div>
-					<div :class="$style.desc">2つ目の通知用表情です。設定すると、通知時に1つ目とランダムで切り替わります。画像は500KB以下（JPEG/PNG/WebP/GIF）です。</div>
+					<div :class="$style.label">{{ copy.notificationExpressionSecond }}</div>
+					<div :class="$style.desc">{{ copy.notificationExpressionSecondDescription }}</div>
 					<template v-if="activeChar.notifyExpression2">
 						<div :class="$style.expItem" style="max-width:140px;">
 							<img :src="activeChar.notifyExpression2.url || ''" :class="$style.expImg" />
 							<button :class="$style.expDel" @click="clearNotify2"><i class="ti ti-x"></i></button>
 						</div>
-						<input :class="$style.expLabel" :value="activeChar.notifyExpression2.label" maxlength="30" @input="onNotify2Field('label',$event)" placeholder="ラベル(任意)" style="margin-top:8px;" />
-						<div :class="$style.desc" style="margin:8px 0 0">通知時の文言は<b>前置き</b>です。実際の通知内容（「○○さんがフォロー」など）は、この前置きの後に改行して自動でつながります。</div>
-						<input :class="$style.inp" :value="activeChar.notifyExpression2.text" maxlength="140" @input="onNotify2Field('text',$event)" placeholder="例：通知が届いたよ！" style="margin-top:6px;" />
+						<input :class="$style.expLabel" :value="activeChar.notifyExpression2.label" maxlength="30" @input="onNotify2Field('label',$event)" :placeholder="copy.optionalLabelPlaceholder" style="margin-top:8px;" />
+						<div :class="$style.desc" style="margin:8px 0 0">{{ copy.notificationPrefaceBefore }}<b>{{ copy.notificationPrefaceTerm }}</b>{{ copy.notificationPrefaceAfter }}</div>
+						<input :class="$style.inp" :value="activeChar.notifyExpression2.text" maxlength="140" @input="onNotify2Field('text',$event)" :placeholder="copy.notificationTextExample" style="margin-top:6px;" />
 						<div :class="$style.colorRow" style="margin-top:8px;">
-							<span :class="$style.colorLabel">文字色</span>
+							<span :class="$style.colorLabel">{{ copy.textColor }}</span>
 							<input type="color" :value="activeChar.notifyExpression2.textColor || '#000000'" @input="setNotify2TextColor($event)" :class="$style.colorInput" />
-							<button v-if="activeChar.notifyExpression2.textColor" :class="$style.colorClear" @click="clearNotify2TextColor" title="既定色に戻す"><i class="ti ti-x"></i></button>
+							<button v-if="activeChar.notifyExpression2.textColor" :class="$style.colorClear" @click="clearNotify2TextColor" :title="copy.restoreDefault"><i class="ti ti-x"></i></button>
 						</div>
 						<div :class="$style.bubbleCtrlRow" style="margin-top:8px;">
-							<span :class="$style.bubbleCtrlLabel">動き</span>
+							<span :class="$style.bubbleCtrlLabel">{{ copy.motion }}</span>
 							<select :class="$style.expMotion" :value="activeChar.notifyExpression2.motion" @change="onNotify2Field('motion',$event)">
-								<option value="none">動きなし</option>
-								<option value="bounce">ぴょんぴょん</option>
-								<option value="shake">ガクガク</option>
-								<option value="sway">ゆらゆら</option>
-								<option value="spin">回転</option>
+								<option value="none">{{ copy.motionNone }}</option>
+								<option value="bounce">{{ copy.motionBounce }}</option>
+								<option value="shake">{{ copy.motionShake }}</option>
+								<option value="sway">{{ copy.motionSway }}</option>
+								<option value="spin">{{ copy.motionSpin }}</option>
 							</select>
 						</div>
 						<div v-if="activeChar.notifyExpression2.motion !== 'none' && activeChar.notifyExpression2.motion !== 'spin'" :class="$style.bubbleCtrlRow">
-							<span :class="$style.bubbleCtrlLabel">動きの強さ</span>
+							<span :class="$style.bubbleCtrlLabel">{{ copy.motionStrength }}</span>
 							<input type="range" min="0.3" max="2" step="0.1" :value="activeChar.notifyExpression2.motionIntensity" @input="onNotify2Field('motionIntensity',$event)" :class="$style.bubbleRange" />
 						</div>
 						<div :class="$style.subDivider"></div>
 						<div :class="$style.bubbleCtrlRow">
-							<span :class="$style.bubbleCtrlLabel">「！」の吹き出し</span>
+							<span :class="$style.bubbleCtrlLabel">{{ copy.exclaimBubble }}</span>
 							<button :class="[$style.sw, activeChar.notifyExpression2.exclaimEnabled && $style.swOn]" @click="toggleNotify2Exclaim"></button>
 						</div>
 						<template v-if="activeChar.notifyExpression2.exclaimEnabled">
 							<div :class="$style.bubbleCtrlRow">
-								<span :class="$style.bubbleCtrlLabel">！のサイズ</span>
+								<span :class="$style.bubbleCtrlLabel">{{ copy.exclaimSize }}</span>
 								<input type="range" min="0.6" max="1.6" step="0.05" :value="activeChar.notifyExpression2.eBubbleScale" @input="setNotify2EScale($event)" :class="$style.bubbleRange" />
 							</div>
 							<div :class="$style.bubbleCtrlRow">
-								<span :class="$style.bubbleCtrlLabel">！のしっぽ</span>
+								<span :class="$style.bubbleCtrlLabel">{{ copy.exclaimTail }}</span>
 								<div :class="$style.tailToggle">
-									<button :class="[$style.tailBtn, activeChar.notifyExpression2.eBubbleTail==='left' && $style.tailBtnOn]" @click="setNotify2ETail('left')">左</button>
-									<button :class="[$style.tailBtn, activeChar.notifyExpression2.eBubbleTail==='right' && $style.tailBtnOn]" @click="setNotify2ETail('right')">右</button>
+									<button :class="[$style.tailBtn, activeChar.notifyExpression2.eBubbleTail==='left' && $style.tailBtnOn]" @click="setNotify2ETail('left')">{{ copy.left }}</button>
+									<button :class="[$style.tailBtn, activeChar.notifyExpression2.eBubbleTail==='right' && $style.tailBtnOn]" @click="setNotify2ETail('right')">{{ copy.right }}</button>
 								</div>
 							</div>
 							<div :class="$style.colorRow">
-								<span :class="$style.colorLabel">！の色</span>
+								<span :class="$style.colorLabel">{{ copy.exclaimColor }}</span>
 								<input type="color" :value="activeChar.notifyExpression2.eTextColor || '#000000'" @input="setNotify2ETextColor($event)" :class="$style.colorInput" />
-								<button v-if="activeChar.notifyExpression2.eTextColor" :class="$style.colorClear" @click="clearNotify2ETextColor" title="既定色に戻す"><i class="ti ti-x"></i></button>
+								<button v-if="activeChar.notifyExpression2.eTextColor" :class="$style.colorClear" @click="clearNotify2ETextColor" :title="copy.restoreDefault"><i class="ti ti-x"></i></button>
 							</div>
 						</template>
-						<div :class="$style.desc" style="margin:4px 0 0">プレビュー下の「通知用2」を選ぶと、吹き出し・！の位置やサイズ・しっぽをドラッグや上のスライダーで調整できます。</div>
+						<div :class="$style.desc" style="margin:4px 0 0">{{ copy.notificationSecondAdjustHint }}</div>
 					</template>
-					<MkButton v-else rounded @click="chooseNotifyImage2"><i class="ti ti-plus"></i> 2つ目の通知用の立ち絵を選ぶ</MkButton>
+					<MkButton v-else rounded @click="chooseNotifyImage2"><i class="ti ti-plus"></i> {{ copy.chooseNotificationSecondImage }}</MkButton>
 				</div>
 
 				<!-- ===== 誕生日用の専用表情 ===== -->
 				<div :class="$style.card">
-					<div :class="$style.label">誕生日用の表情</div>
-					<div :class="$style.desc">誕生日にお祝いするときに表示する専用の立ち絵と文言です。画像は500KB以下（JPEG/PNG/WebP/GIF）です。</div>
+					<div :class="$style.label">{{ copy.birthdayExpression }}</div>
+					<div :class="$style.desc">{{ copy.birthdayExpressionDescription }}</div>
 					<template v-if="activeChar.birthdayExpression">
 						<div :class="$style.expItem" style="max-width:140px;">
 							<img :src="activeChar.birthdayExpression.url || ''" :class="$style.expImg" />
 							<button :class="$style.expDel" @click="clearBirthday"><i class="ti ti-x"></i></button>
 						</div>
-						<input :class="$style.expLabel" :value="activeChar.birthdayExpression.label" maxlength="30" @input="onBirthdayField('label',$event)" placeholder="ラベル(任意)" style="margin-top:8px;" />
-						<input :class="$style.inp" :value="activeChar.birthdayExpression.text" maxlength="140" @input="onBirthdayField('text',$event)" placeholder="誕生日の文言" style="margin-top:8px;" />
+						<input :class="$style.expLabel" :value="activeChar.birthdayExpression.label" maxlength="30" @input="onBirthdayField('label',$event)" :placeholder="copy.optionalLabelPlaceholder" style="margin-top:8px;" />
+						<input :class="$style.inp" :value="activeChar.birthdayExpression.text" maxlength="140" @input="onBirthdayField('text',$event)" :placeholder="copy.birthdayPhrasePlaceholder" style="margin-top:8px;" />
 						<div :class="$style.colorRow" style="margin-top:8px;">
-							<span :class="$style.colorLabel">文字色</span>
+							<span :class="$style.colorLabel">{{ copy.textColor }}</span>
 							<input type="color" :value="activeChar.birthdayExpression.textColor || '#000000'" @input="setBirthdayTextColor($event)" :class="$style.colorInput" />
-							<button v-if="activeChar.birthdayExpression.textColor" :class="$style.colorClear" @click="clearBirthdayTextColor" title="既定色に戻す"><i class="ti ti-x"></i></button>
+							<button v-if="activeChar.birthdayExpression.textColor" :class="$style.colorClear" @click="clearBirthdayTextColor" :title="copy.restoreDefault"><i class="ti ti-x"></i></button>
 						</div>
 						<div :class="$style.bubbleCtrlRow" style="margin-top:8px;">
-							<span :class="$style.bubbleCtrlLabel">動き</span>
+							<span :class="$style.bubbleCtrlLabel">{{ copy.motion }}</span>
 							<select :class="$style.expMotion" :value="activeChar.birthdayExpression.motion" @change="onBirthdayField('motion',$event)">
-								<option value="none">動きなし</option>
-								<option value="bounce">ぴょんぴょん</option>
-								<option value="shake">ガクガク</option>
-								<option value="sway">ゆらゆら</option>
-								<option value="spin">回転</option>
+								<option value="none">{{ copy.motionNone }}</option>
+								<option value="bounce">{{ copy.motionBounce }}</option>
+								<option value="shake">{{ copy.motionShake }}</option>
+								<option value="sway">{{ copy.motionSway }}</option>
+								<option value="spin">{{ copy.motionSpin }}</option>
 							</select>
 						</div>
 						<div v-if="activeChar.birthdayExpression.motion !== 'none' && activeChar.birthdayExpression.motion !== 'spin'" :class="$style.bubbleCtrlRow">
-							<span :class="$style.bubbleCtrlLabel">動きの強さ</span>
+							<span :class="$style.bubbleCtrlLabel">{{ copy.motionStrength }}</span>
 							<input type="range" min="0.3" max="2" step="0.1" :value="activeChar.birthdayExpression.motionIntensity" @input="onBirthdayField('motionIntensity',$event)" :class="$style.bubbleRange" />
 						</div>
-						<div :class="$style.desc" style="margin:4px 0 0">プレビュー下の「🎂 誕生日用」を選ぶと、文言吹き出しの位置やサイズ・しっぽをドラッグや上のスライダーで調整できます。</div>
+						<div :class="$style.desc" style="margin:4px 0 0">{{ copy.birthdayAdjustHint }}</div>
 					</template>
-					<MkButton v-else rounded @click="chooseBirthdayImage"><i class="ti ti-plus"></i> 誕生日用の立ち絵を選ぶ</MkButton>
+					<MkButton v-else rounded @click="chooseBirthdayImage"><i class="ti ti-plus"></i> {{ copy.chooseBirthdayImage }}</MkButton>
 				</div>
 
 				<!-- ===== キャラ自身の誕生日 ===== -->
 				<div :class="$style.card">
 					<div :class="$style.cardHead">
-						<span :class="$style.label">キャラの誕生日</span>
+						<span :class="$style.label">{{ copy.characterBirthday }}</span>
 						<button :class="[$style.sw, activeChar.charBirthdayEnabled && $style.swOn]" @click="toggleCharBirthday"></button>
 					</div>
-					<div :class="$style.desc">このキャラ自身の誕生日です。設定した月日になると、専用の文言・表情でキャラがお祝いを伝えます（マスコットページを開いたとき）。</div>
+					<div :class="$style.desc">{{ copy.characterBirthdayDescription }}</div>
 					<template v-if="activeChar.charBirthdayEnabled">
 						<div :class="$style.bubbleCtrlRow">
-							<span :class="$style.bubbleCtrlLabel">誕生日</span>
+							<span :class="$style.bubbleCtrlLabel">{{ copy.birthday }}</span>
 							<span :class="$style.durationCtrl">
-								<input type="number" min="1" max="12" :value="activeChar.charBirthdayMonth ?? ''" @input="setCharBirthdayMonth($event)" :class="$style.durationInput" /> 月
-								<input type="number" min="1" max="31" :value="activeChar.charBirthdayDay ?? ''" @input="setCharBirthdayDay($event)" :class="$style.durationInput" /> 日
+								<input type="number" min="1" max="12" :value="activeChar.charBirthdayMonth ?? ''" @input="setCharBirthdayMonth($event)" :class="$style.durationInput" /> {{ copy.month }}
+								<input type="number" min="1" max="31" :value="activeChar.charBirthdayDay ?? ''" @input="setCharBirthdayDay($event)" :class="$style.durationInput" /> {{ copy.day }}
 							</span>
 						</div>
 						<div :class="$style.subDivider"></div>
@@ -541,30 +541,30 @@ SPDX-License-Identifier: AGPL-3.0-only
 								<img :src="activeChar.charBirthdayExpression.url || ''" :class="$style.expImg" />
 								<button :class="$style.expDel" @click="clearCharBirthday"><i class="ti ti-x"></i></button>
 							</div>
-							<input :class="$style.expLabel" :value="activeChar.charBirthdayExpression.label" maxlength="30" @input="onCharBirthdayField('label',$event)" placeholder="ラベル(任意)" style="margin-top:8px;" />
-							<input :class="$style.inp" :value="activeChar.charBirthdayExpression.text" maxlength="140" @input="onCharBirthdayField('text',$event)" placeholder="例：今日はわたしの誕生日なんだ！" style="margin-top:8px;" />
+							<input :class="$style.expLabel" :value="activeChar.charBirthdayExpression.label" maxlength="30" @input="onCharBirthdayField('label',$event)" :placeholder="copy.optionalLabelPlaceholder" style="margin-top:8px;" />
+							<input :class="$style.inp" :value="activeChar.charBirthdayExpression.text" maxlength="140" @input="onCharBirthdayField('text',$event)" :placeholder="copy.characterBirthdayPhraseExample" style="margin-top:8px;" />
 							<div :class="$style.bubbleCtrlRow" style="margin-top:8px;">
-								<span :class="$style.bubbleCtrlLabel">動き</span>
+								<span :class="$style.bubbleCtrlLabel">{{ copy.motion }}</span>
 								<select :class="$style.expMotion" :value="activeChar.charBirthdayExpression.motion" @change="onCharBirthdayField('motion',$event)">
-									<option value="none">動きなし</option>
-									<option value="bounce">ぴょんぴょん</option>
-									<option value="shake">ガクガク</option>
-									<option value="sway">ゆらゆら</option>
-									<option value="spin">回転</option>
+									<option value="none">{{ copy.motionNone }}</option>
+									<option value="bounce">{{ copy.motionBounce }}</option>
+									<option value="shake">{{ copy.motionShake }}</option>
+									<option value="sway">{{ copy.motionSway }}</option>
+									<option value="spin">{{ copy.motionSpin }}</option>
 								</select>
 							</div>
 							<div v-if="activeChar.charBirthdayExpression.motion !== 'none' && activeChar.charBirthdayExpression.motion !== 'spin'" :class="$style.bubbleCtrlRow">
-								<span :class="$style.bubbleCtrlLabel">動きの強さ</span>
+								<span :class="$style.bubbleCtrlLabel">{{ copy.motionStrength }}</span>
 								<input type="range" min="0.3" max="2" step="0.1" :value="activeChar.charBirthdayExpression.motionIntensity" @input="onCharBirthdayField('motionIntensity',$event)" :class="$style.bubbleRange" />
 							</div>
 							<div :class="$style.colorRow">
-								<span :class="$style.colorLabel">文字色</span>
+								<span :class="$style.colorLabel">{{ copy.textColor }}</span>
 								<input type="color" :value="activeChar.charBirthdayExpression.textColor || '#000000'" @input="setCharBirthdayTextColor($event)" :class="$style.colorInput" />
-								<button v-if="activeChar.charBirthdayExpression.textColor" :class="$style.colorClear" @click="clearCharBirthdayTextColor" title="既定色に戻す"><i class="ti ti-x"></i></button>
+								<button v-if="activeChar.charBirthdayExpression.textColor" :class="$style.colorClear" @click="clearCharBirthdayTextColor" :title="copy.restoreDefault"><i class="ti ti-x"></i></button>
 							</div>
-							<div :class="$style.desc" style="margin:4px 0 0">プレビュー下の「キャラ誕生日」を選ぶと、文言吹き出しの位置やサイズ・しっぽを調整できます。</div>
+							<div :class="$style.desc" style="margin:4px 0 0">{{ copy.characterBirthdayAdjustHint }}</div>
 						</template>
-						<MkButton v-else rounded @click="chooseCharBirthdayImage"><i class="ti ti-plus"></i> キャラ誕生日用の立ち絵を選ぶ</MkButton>
+						<MkButton v-else rounded @click="chooseCharBirthdayImage"><i class="ti ti-plus"></i> {{ copy.chooseCharacterBirthdayImage }}</MkButton>
 					</template>
 				</div>
 			</template>
@@ -584,10 +584,13 @@ import { misskeyApi } from '@/utility/misskey-api.js';
 import { chooseDriveFile } from '@/utility/drive.js';
 import * as os from '@/os.js';
 import { $i } from '@/i.js';
+import { i18n } from '@/i18n.js';
 import { displaySettings, loadDisplaySettings, saveDisplaySettings, type MascotDisplaySettings } from '@/utility/mascot-store.js';
 
 const emit = defineEmits<{ (ev:'closed'):void }>();
 const dialog = shallowRef<InstanceType<typeof MkModalWindow>>();
+const copy = i18n.ts._hata._mascotSettings;
+const copyx = i18n.tsx._hata._mascotSettings;
 
 // 旗鯖fork(タスク5): キャラ切替カードの描画位置を画面幅で出し分けるための判定。
 // CSSレイアウトのブレークポイント(800px)に合わせ、799px以下を「縦1列(モバイル)」とみなす。
@@ -611,16 +614,16 @@ const saving = ref(false);
 const canUseMascot = computed(() => $i?.policies?.canUseMascot === true);
 // 旗鯖fork: 利用規約(同意ウィンドウと右上ボタンの両方から参照する)。
 const MASCOT_TERMS: string[] = [
-	'画像の権利（著作権・肖像権など）を自分が持っている、または許諾を得ていることを確認してください。第三者の権利を侵害する画像は使用しないでください。',
-	'成人向け（性的・暴力的など）や公序良俗に反する画像は使用しないでください。',
-	'本機能の利用で生じた問題について、開発者およびサーバー運営者は責任を負いません。',
-	'不適切な画像が確認された場合、管理者が表示停止やデータ削除を行うことがあります。',
+	copy.termImageRights,
+	copy.termProhibitedImages,
+	copy.termDisclaimer,
+	copy.termModeration,
 ];
 // 右上ボタンから利用規約をいつでも確認できるようにする。
 function showTerms() {
 	os.alert({
 		type: 'info',
-		title: 'マスコット機能の利用規約',
+		title: copy.termsTitle,
 		text: MASCOT_TERMS.map((t, i) => `${i + 1}. ${t}`).join('\n\n'),
 	});
 }
@@ -929,7 +932,7 @@ onMounted(async () => {
 		const ai = characters.value.findIndex(c => c.id === data.activeCharacterId);
 		activeCharIdx.value = ai >= 0 ? ai : 0;
 	} catch (err) {
-		os.alert({ type: 'error', text: 'マスコット情報の取得に失敗しました。' });
+		os.alert({ type: 'error', text: copy.fetchFailed });
 	} finally {
 		loading.value = false;
 	}
@@ -941,7 +944,7 @@ async function agree() {
 		consented.value = true;
 		if (characters.value.length === 0) addCharacter();
 	} catch {
-		os.alert({ type: 'error', text: '同意の記録に失敗しました。' });
+		os.alert({ type: 'error', text: copy.consentRecordFailed });
 	}
 }
 
@@ -954,7 +957,7 @@ function addCharacter() {
 	previewPhraseIdx.value = 0;
 }
 async function removeCharacter(idx:number) {
-	const { canceled } = await os.confirm({ type: 'warning', text: 'このキャラクターを削除しますか？' });
+	const { canceled } = await os.confirm({ type: 'warning', text: copy.confirmDeleteCharacter });
 	if (canceled) return;
 	characters.value.splice(idx, 1);
 	if (activeCharIdx.value >= characters.value.length) activeCharIdx.value = Math.max(0, characters.value.length - 1);
@@ -968,12 +971,12 @@ async function addExpression() {
 	if (files.length === 0) return;
 	const f = files[0];
 	if (!f.type || !f.type.startsWith('image/')) {
-		os.alert({ type: 'warning', text: '画像ファイルを選んでください。' });
+		os.alert({ type: 'warning', text: copy.chooseImageFile });
 		return;
 	}
 	// フロントでも事前にサイズを弾く(サーバーでも検証される)
 	if (typeof f.size === 'number' && f.size > 500 * 1024) {
-		os.alert({ type: 'warning', text: '画像が大きすぎます（500KB以下にしてください）。' });
+		os.alert({ type: 'warning', text: copy.imageTooLarge500kb });
 		return;
 	}
 	c.expressions.push({ id: genId(), label: '', url: f.url, driveFileId: f.id, bubbleX: 0.5, bubbleY: 0.1, bubbleScale: 1, bubbleTail: 'left', motion: 'none', motionIntensity: 1, questionEnabled: false, qBubbleX: 0.7, qBubbleY: 0.05, qBubbleScale: 1, qBubbleTail: 'left', textColor: null, qTextColor: null });
@@ -1015,8 +1018,8 @@ async function chooseNotifyImage() {
 	const files = await chooseDriveFile({ multiple: false }).catch(() => []);
 	if (files.length === 0) return;
 	const f = files[0];
-	if (!f.type || !f.type.startsWith('image/')) { os.alert({ type: 'warning', text: '画像ファイルを選んでください。' }); return; }
-	if (typeof f.size === 'number' && f.size > 500 * 1024) { os.alert({ type: 'warning', text: '画像が大きすぎます（500KB以下にしてください）。' }); return; }
+	if (!f.type || !f.type.startsWith('image/')) { os.alert({ type: 'warning', text: copy.chooseImageFile }); return; }
+	if (typeof f.size === 'number' && f.size > 500 * 1024) { os.alert({ type: 'warning', text: copy.imageTooLarge500kb }); return; }
 	c.notifyExpression = {
 		url: f.url, driveFileId: f.id, label: '', text: '',
 		motion: 'none', motionIntensity: 1,
@@ -1044,8 +1047,8 @@ async function chooseNotifyImage2() {
 	const files = await chooseDriveFile({ multiple: false }).catch(() => []);
 	if (files.length === 0) return;
 	const f = files[0];
-	if (!f.type || !f.type.startsWith('image/')) { os.alert({ type: 'warning', text: '画像ファイルを選んでください。' }); return; }
-	if (typeof f.size === 'number' && f.size > 500 * 1024) { os.alert({ type: 'warning', text: '画像が大きすぎます（500KB以下にしてください）。' }); return; }
+	if (!f.type || !f.type.startsWith('image/')) { os.alert({ type: 'warning', text: copy.chooseImageFile }); return; }
+	if (typeof f.size === 'number' && f.size > 500 * 1024) { os.alert({ type: 'warning', text: copy.imageTooLarge500kb }); return; }
 	c.notifyExpression2 = {
 		url: f.url, driveFileId: f.id, label: '', text: '',
 		motion: 'none', motionIntensity: 1,
@@ -1082,8 +1085,8 @@ async function chooseBirthdayImage() {
 	const files = await chooseDriveFile({ multiple: false }).catch(() => []);
 	if (files.length === 0) return;
 	const f = files[0];
-	if (!f.type || !f.type.startsWith('image/')) { os.alert({ type: 'warning', text: '画像ファイルを選んでください。' }); return; }
-	if (typeof f.size === 'number' && f.size > 500 * 1024) { os.alert({ type: 'warning', text: '画像が大きすぎます（500KB以下にしてください）。' }); return; }
+	if (!f.type || !f.type.startsWith('image/')) { os.alert({ type: 'warning', text: copy.chooseImageFile }); return; }
+	if (typeof f.size === 'number' && f.size > 500 * 1024) { os.alert({ type: 'warning', text: copy.imageTooLarge500kb }); return; }
 	c.birthdayExpression = {
 		url: f.url, driveFileId: f.id, label: '', text: '',
 		motion: 'none', motionIntensity: 1,
@@ -1113,8 +1116,8 @@ async function chooseCharBirthdayImage() {
 	const files = await chooseDriveFile({ multiple: false }).catch(() => []);
 	if (files.length === 0) return;
 	const f = files[0];
-	if (!f.type || !f.type.startsWith('image/')) { os.alert({ type: 'warning', text: '画像ファイルを選んでください。' }); return; }
-	if (typeof f.size === 'number' && f.size > 500 * 1024) { os.alert({ type: 'warning', text: '画像が大きすぎます（500KB以下にしてください）。' }); return; }
+	if (!f.type || !f.type.startsWith('image/')) { os.alert({ type: 'warning', text: copy.chooseImageFile }); return; }
+	if (typeof f.size === 'number' && f.size > 500 * 1024) { os.alert({ type: 'warning', text: copy.imageTooLarge500kb }); return; }
 	c.charBirthdayExpression = {
 		url: f.url, driveFileId: f.id, label: '', text: '',
 		motion: 'none', motionIntensity: 1,
@@ -1185,47 +1188,47 @@ const validationErrors = computed<string[]>(() => {
 	// canSave=true で保存ボタンが押せてしまう (= 空データを backend に送って保存失敗 or 空保存) という
 	// race condition を防ぐ。読み込み完了するまで保存ボタンを無効化する。
 	if (loading.value) {
-		errors.push('読み込み中です。少々お待ちください。');
+		errors.push(copy.loadingValidation);
 		return errors;
 	}
 	// 旗鯖fork: キャラクターが 0 体だと立ち絵の検証ループが回らず canSave=true になり
 	// 「マスコット未設定で保存できる→フローティング ON だけが立って通知が消える」原因に。
 	// 最低 1 体のキャラクターを要求する。
 	if (characters.value.length === 0) {
-		errors.push('キャラクターを少なくとも 1 体追加してください。');
+		errors.push(copy.addCharacterRequired);
 		return errors;
 	}
 	for (const c of characters.value) {
-		const who = c.name && c.name !== '' ? `「${c.name}」` : '(無名のキャラ)';
+		const who = c.name && c.name !== '' ? copyx.quotedName({ name: c.name }) : copy.unnamedCharacter;
 		// 表情が1つも無い
 		if (c.expressions.length === 0) {
-			errors.push(`${who}に立ち絵が1つもありません。`);
+			errors.push(copyx.characterNoExpression({ character: who }));
 		}
 		// 各表情に画像実体が無い
 		for (const e of c.expressions) {
 			if (!hasImage(e)) {
-				const lbl = e.label && e.label !== '' ? `「${e.label}」` : '(無題)';
-				errors.push(`${who}の立ち絵${lbl}に画像が指定されていません。`);
+				const label = e.label && e.label !== '' ? copyx.quotedName({ name: e.label }) : copy.untitled;
+				errors.push(copyx.expressionMissingImage({ character: who, expression: label }));
 			}
 		}
 		// 通知用表情: 設定枠があるのに画像が無い
 		if (c.notifyExpression != null && !hasImage(c.notifyExpression)) {
-			errors.push(`${who}の通知用の立ち絵に画像が指定されていません。`);
+			errors.push(copyx.notificationImageMissing({ character: who }));
 		}
 		if (c.notifyExpression2 != null && !hasImage(c.notifyExpression2)) {
-			errors.push(`${who}の2つ目の通知用の立ち絵に画像が指定されていません。`);
+			errors.push(copyx.notificationSecondImageMissing({ character: who }));
 		}
 		// 誕生日表示
 		if (c.birthdayExpression != null && !hasImage(c.birthdayExpression)) {
-			errors.push(`${who}の誕生日用の立ち絵に画像が指定されていません。`);
+			errors.push(copyx.birthdayImageMissing({ character: who }));
 		}
 		// キャラ誕生日: 有効なのに月日が未入力
 		if (c.charBirthdayEnabled) {
 			if (c.charBirthdayMonth == null || c.charBirthdayDay == null) {
-				errors.push(`${who}のキャラクター誕生日が有効ですが、月日が入力されていません。`);
+				errors.push(copyx.characterBirthdayDateMissing({ character: who }));
 			}
 			if (c.charBirthdayExpression != null && !hasImage(c.charBirthdayExpression)) {
-				errors.push(`${who}のキャラクター誕生日用の立ち絵に画像が指定されていません。`);
+				errors.push(copyx.characterBirthdayImageMissing({ character: who }));
 			}
 		}
 	}
@@ -1236,7 +1239,7 @@ const canSave = computed<boolean>(() => validationErrors.value.length === 0);
 async function save() {
 	// 旗鯖fork: 保険。UI上はボタンをグレアウトしているが、万一すり抜けても設定ミスは保存させない。
 	if (!canSave.value) {
-		os.alert({ type: 'error', text: validationErrors.value[0] ?? '設定に問題があります。' });
+		os.alert({ type: 'error', text: validationErrors.value[0] ?? copy.invalidSettings });
 		return;
 	}
 	saving.value = true;
@@ -1258,10 +1261,10 @@ async function save() {
 			activeCharacterId: activeChar.value?.id ?? null,
 			showName: showName.value,
 		});
-		os.toast('マスコットを保存しました');
+		os.toast(copy.saved);
 	} catch (err:any) {
 		const code = err?.code ?? err?.id;
-		os.alert({ type: 'error', text: '保存に失敗しました。' + (code ? `（${code}）` : '') });
+		os.alert({ type: 'error', text: code ? copyx.saveFailedWithCode({ code }) : copy.saveFailed });
 	} finally {
 		saving.value = false;
 	}
@@ -1412,7 +1415,7 @@ function normalizeImportedCharacter(raw: any, keepExprKeys?: string[], keepPhras
 // 現在アクティブなキャラを .hmtk としてローカルにダウンロードする。
 function exportActiveCharacter() {
 	const c = activeChar.value;
-	if (!c) { os.alert({ type: 'warning', text: '書き出すキャラがいません。' }); return; }
+	if (!c) { os.alert({ type: 'warning', text: copy.noCharacterToExport }); return; }
 	const ds = displaySettings.value;
 	const payload: HmtkFile = {
 		format: HMTK_FORMAT,
@@ -1437,13 +1440,13 @@ function exportActiveCharacter() {
 	a.click();
 	document.body.removeChild(a);
 	setTimeout(() => URL.revokeObjectURL(url), 1000);
-	os.toast('マスコットを書き出しました');
+	os.toast(copy.exported);
 }
 
 // ローカルの .hmtk を選んでキャラとして新規追加し、floating/showName も復元する。
 async function importCharacterFromFile() {
 	if (characters.value.length >= limits.value.maxCharacters) {
-		os.alert({ type: 'warning', text: `キャラはこれ以上追加できません（上限 ${limits.value.maxCharacters}）。` });
+		os.alert({ type: 'warning', text: copyx.characterLimitReached({ limit: limits.value.maxCharacters }) });
 		return;
 	}
 	const input = document.createElement('input');
@@ -1452,16 +1455,16 @@ async function importCharacterFromFile() {
 	input.onchange = async () => {
 		const file = input.files?.[0];
 		if (!file) return;
-		if (file.size > 1024 * 1024) { os.alert({ type: 'error', text: 'ファイルが大きすぎます（1MBまで）。' }); return; }
+		if (file.size > 1024 * 1024) { os.alert({ type: 'error', text: copy.fileTooLarge1mb }); return; }
 		try {
 			const text = await file.text();
 			const data = JSON.parse(text) as Partial<HmtkFile>;
 			if (data?.format !== HMTK_FORMAT || !data?.character) {
-				os.alert({ type: 'error', text: '.hmtk ファイルとして読み込めませんでした。' });
+				os.alert({ type: 'error', text: copy.invalidHmtk });
 				return;
 			}
 			if (typeof data.version === 'number' && data.version > HMTK_VERSION) {
-				const go = await os.confirm({ type: 'warning', text: 'このファイルは新しいバージョンで作られています。読み込みを試みますか？' });
+				const go = await os.confirm({ type: 'warning', text: copy.newerVersionConfirm });
 				if (go.canceled) return;
 			}
 
@@ -1511,9 +1514,9 @@ async function importCharacterFromFile() {
 			}
 			if (typeof data.showName === 'boolean') showName.value = data.showName;
 
-			os.toast('マスコットを読み込みました。内容を確認して保存してください。');
+			os.toast(copy.importedReview);
 		} catch {
-			os.alert({ type: 'error', text: 'ファイルの読み込みに失敗しました。形式を確認してください。' });
+			os.alert({ type: 'error', text: copy.importFailed });
 		}
 	};
 	input.click();

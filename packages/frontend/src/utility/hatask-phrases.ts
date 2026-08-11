@@ -4,6 +4,9 @@
  * Hatask Eye フレーズデータベース（10000+種類）
  */
 
+import { versatileLang } from '@/utility/intl-const.js';
+import { translateHataskPhrase } from '@/utility/hatask-phrases-i18n.js';
+
 const dawn = [
   'まだ暗いね、早起きさん','夜明け前の静けさ…','星がまだ見えるかも',
   'おはよう…ってまだ早すぎ？','静かな朝の始まり','世界がまだ眠ってる時間',
@@ -22,7 +25,7 @@ const dawn = [
   '目覚まし時計より先に起きた','窓の外がうっすら白んできた','早起きの褒美は朝焼け',
   '深夜ラジオ聴いてた？','夜型→朝型チャレンジ中？','パジャマのまま空を見よう',
   'しんしんと冷える朝','今なら流れ星見えるかも',
-];
+] as const;
 
 const morning = [
   'おはよう！今日もいい一日に','朝の空気が気持ちいいね','新しい一日のスタート！',
@@ -52,7 +55,7 @@ const morning = [
   '今日のラッキーアイテムは？','朝の散歩で頭スッキリ','寝ぐせ直した？',
   '今日も一つ成長しよう','朝のヨガはいかが？','目覚めの一杯は最高',
   '通勤途中の景色を楽しんで','新しい出会いがあるかも',
-];
+] as const;
 
 const noon = [
   'こんにちは！お昼ごはんは食べた？','午後も頑張ろう！','ランチタイムだね',
@@ -78,7 +81,7 @@ const noon = [
   '午後は音楽を聴きながら','お散歩日和かも','日向ぼっこしたい',
   '午後のクッキーが食べたい','あくびは脳の冷却機能らしいよ','午後も笑顔でいこう',
   '今日の進捗に自信を持って','15時のおやつタイム','午後の紅茶は贅沢な時間',
-];
+] as const;
 
 const evening = [
   'おつかれさま！','今日も一日よく頑張ったね','夕焼けがきれいな時間',
@@ -99,7 +102,7 @@ const evening = [
   '夕方のラジオもいいね','晩ご飯の匂いが幸せ','明日の自分に期待しよう',
   '今日も一つ学べたかな','夕暮れのオレンジ色が好き','帰宅後の最初の一杯',
   '今日の自分に拍手',
-];
+] as const;
 
 const night = [
   'おやすみ前のひととき','今日もお疲れさま','夜のしじまに包まれて',
@@ -122,7 +125,7 @@ const night = [
   '寝る前の5分瞑想がおすすめ','明日の天気は晴れかな','夜の静けさに包まれて',
   '心地よい眠りを','羊を数えてみる？','夜のカモミールティーは睡眠にいい',
   '布団に入る幸せ','今日もよく頑張ったよ','暗闘のなかの安らぎ',
-];
+] as const;
 
 const trivia = [
   '豆知識: バナナは植物学的にはベリーの一種','豆知識: 蜂蜜は腐らない食べ物',
@@ -594,7 +597,7 @@ const trivia = [
   '今日の色: レモン色は元気をくれる','今日の色: ラベンダー色は心を落ち着ける',
   '今日の色: サーモンピンクは温かみを感じる','今日の色: ミントグリーンは爽やかさを運ぶ',
   '今日の色: アンバーは安心感を与える',
-];
+] as const;
 
 const random = [
   '深呼吸してみて、気持ちいいよ','今日の小さな幸せは何？','水を飲もう、体が喜ぶよ',
@@ -675,9 +678,9 @@ const random = [
   '一歩ずつ、確実に','焦らなくて大丈夫','自分のペースを大切にして',
   '周りと比べなくていいよ','あなたはあなたのままでいい','今日も生きてるだけで素晴らしい',
   'あなたの存在が誰かの力になってる',
-];
+] as const;
 
-const seasonal: Record<number, string[]> = {
+const seasonal = {
   1: ['新年の抱負は決めた？','お正月気分はそろそろ抜けた？','冬の星座がきれいだよ','お餅食べすぎてない？','寒いけど空気が澄んでて好き','こたつから出たくない…','みかん食べた？','雪が降るかな','初詣は行った？','受験シーズン、頑張ってる人応援','温泉行きたいな','おしるこ食べたい','冬の澄んだ空気が好き','手袋忘れないで','お年玉は有意義に使おう'],
   2: ['2月は短いよ、大事に過ごそう','節分の豆まきした？','チョコレートの季節','まだまだ寒いね','春が待ち遠しいね','梅が咲き始めてるかも','手袋忘れないで','ホットチョコレートで温まろう','乾燥対策してる？','2月は逃げるっていうよね','梅の花の香りが好き','受験生頑張れ！','確定申告の準備は？','味噌作りの季節','バレンタインの準備は？'],
   3: ['春が近づいてきたね','卒業シーズンだね','桜の開花予想は？','花粉症大丈夫？','ひな祭りの季節','春の訪れを感じる','新生活の準備はOK？','暖かくなってきたね','春休み楽しんでる？','三寒四温の季節','お花見の計画を立てよう','つくし見つけた？','菜の花きれいだよ','卒業おめでとう！','引越しシーズンだね'],
@@ -690,8 +693,8 @@ const seasonal: Record<number, string[]> = {
   10: ['秋本番だね','紅葉が楽しみ','ハロウィンの準備は？','スポーツの秋','芸術の秋でもある','衣替えした？','秋の味覚を楽しもう','焼き芋の季節','金木犀の香り','秋晴れは最高','読書週間だよ','松茸ご飯いいね','りんご狩り行きたい','夕暮れが早くなったね','鍋の季節が近づいてる'],
   11: ['紅葉は見に行った？','寒くなってきたね','鍋の季節だ','秋から冬へ','毛布が恋しい','七五三のシーズン','ボジョレー解禁！','イルミネーションが始まるね','温かい飲み物が嬉しい','冬支度はOK？','銀杏並木きれいだね','おでんが美味しい季節','肉まんの季節','木枯らしが吹いてきた','勤労感謝の日'],
   12: ['師走だね、忙しい？','クリスマスの予定は？','大掃除はした？','今年を振り返ってみよう','年賀状書いた？','冬至が近いね','あったかいもの食べよう','今年もあと少し','忘年会シーズン','来年の目標考えてる？','手帳を新調しよう','冬の星座がきれい','みかんとこたつの季節','年越しの準備はOK？','シュトーレン食べた？'],
-};
-const weekday: Record<number, string[]> = {
+} as const;
+const weekday = {
   0: ['日曜日！ゆっくりしてね','休日を満喫しよう','日曜の朝は最高','明日から頑張ろう…','日曜のんびりDAY','リフレッシュの日！','サザエさん症候群に注意','明日の準備はした？','来週も頑張ろう','ゆっくり過ごせてる？'],
   1: ['月曜日、今週もスタート！','月曜日、新しい週の始まり','今週も頑張ろう','月曜朝のコーヒーは特別','週の始まり、無理せずに','月曜を乗り切れば何とかなる','今週の目標を立てよう','月曜日は新しい始まり','ブルーマンデーも悪くない','月曜日のハードルを越えよう'],
   2: ['火曜日、ペースつかめてきた？','火曜日、エンジンかかってきた','今週のリズムに乗ろう','コツコツ進もう','火曜日が一番集中できるって説','今週の山場はいつ？','火曜日も全力で','ペースを掴んで走ろう','まだ序盤だよ','テンポよくいこう'],
@@ -699,8 +702,8 @@ const weekday: Record<number, string[]> = {
   4: ['木曜日、あともう少し！','週末が見えてきた','木曜日、ラストスパート','もう少しで金曜日','あと1日で週末！','木曜の夜は前夜祭','明日は花金！','あとちょっと！','木曜日も頑張ろう','ゴールが見えてきた'],
   5: ['金曜日！今週もお疲れ様','花金だね！','華金の予定は？','金曜日の開放感','週末が待ってるよ！','TGIF！今週も乗り切った','今週のご褒美は何？','金曜の夜は最高','週末の計画は？','金曜の仕事はやる気が違う'],
   6: ['土曜日！自由な時間','休日だね、何する？','土曜の朝はゆっくり','好きなことをする日','休日を楽しもう','どこかに出かけたい気分','土曜日の幸福感は異常','友達に会いたいな','趣味に没頭する日','アクティブに過ごす？のんびり？'],
-};
-const specialDays: Record<string, string[]> = {
+} as const;
+const specialDays = {
   '1-1': ['あけましておめでとうございます！','新年の始まり！','今年もよろしくね'],
   '2-3': ['鬼は外、福は内！','節分だよ、豆まきした？','恵方巻きの方角は調べた？'],
   '2-14': ['ハッピーバレンタイン！','チョコレートの日だね','甘い一日を'],
@@ -713,7 +716,7 @@ const specialDays: Record<string, string[]> = {
   '12-24': ['メリークリスマスイブ！','聖なる夜を'],
   '12-25': ['メリークリスマス！','素敵なクリスマスを'],
   '12-31': ['今年も一年お疲れ様でした','大晦日だね'],
-};
+} as const;
 const contextPhrases = {
   manyTasks: ['未完了タスクが溜まってきてるかも…！','やること多いね、優先順位つけてみよう','タスクリスト、見直してみない？','一つずつ片付けよう','焦らないで、ゆっくり'],
   someTasks: ['いくつかタスクが残ってるよ','タスクあと少し！','残りのタスク、片付けちゃおう','もう少しで全部終わるよ','いいペースだね'],
@@ -721,7 +724,20 @@ const contextPhrases = {
   busyDay: ['今日は予定がたくさんあるね','忙しい一日になりそう！','スケジュール詰まってるね、無理しないで','一つずつ片付けよう','予定いっぱい、頑張って'],
   goodMood: ['最近の調子、すごくいい感じ！','絶好調！その調子で','ポジティブパワー全開だね','いい波に乗ってるね','いいコンディション！'],
   lowMood: ['最近ちょっとお疲れでしょうか？','無理せず休んでくださいね','自分を大切にしてね','ゆっくりで大丈夫だよ','つらい時は無理しなくていいよ'],
-};
+} as const;
+
+export type HataskPhrase =
+	typeof dawn[number] |
+	typeof morning[number] |
+	typeof noon[number] |
+	typeof evening[number] |
+	typeof night[number] |
+	typeof trivia[number] |
+	typeof random[number] |
+	typeof seasonal[keyof typeof seasonal][number] |
+	typeof weekday[keyof typeof weekday][number] |
+	typeof specialDays[keyof typeof specialDays][number] |
+	typeof contextPhrases[keyof typeof contextPhrases][number];
 
 export interface PhraseContext {
   pendingTaskCount: number;
@@ -731,6 +747,13 @@ export interface PhraseContext {
   recentMoodAvg: number;
 }
 
+export function getDefaultPhrase(lang: string = versatileLang): string {
+  const normalized = lang.toLowerCase();
+  if (normalized.startsWith('en')) return 'Hello!';
+  if (normalized.startsWith('zh')) return '你好！';
+  return 'こんにちは！';
+}
+
 export function getPhrase(ctx?: PhraseContext): string {
   const now = new Date();
   const h = now.getHours();
@@ -738,15 +761,16 @@ export function getPhrase(ctx?: PhraseContext): string {
   const d = now.getDate();
   const dow = now.getDay();
   const dateKey = `${m + 1}-${d}`;
-  if (specialDays[dateKey] && Math.random() < 0.25) {
-    const arr = specialDays[dateKey];
-    return arr[Math.floor(Math.random() * arr.length)];
+  const specialDayPhrases = (specialDays as Readonly<Record<string, readonly HataskPhrase[]>>)[dateKey];
+  if (specialDayPhrases && Math.random() < 0.25) {
+    const arr = specialDayPhrases;
+    return translateHataskPhrase(arr[Math.floor(Math.random() * arr.length)], versatileLang);
   }
-  let base: string[];
+  let base: readonly HataskPhrase[];
   if (h < 5) base = dawn; else if (h < 11) base = morning; else if (h < 17) base = noon; else if (h < 21) base = evening; else base = night;
   const candidates: string[] = [...base];
-  const mp = seasonal[m + 1]; if (mp) candidates.push(...mp);
-  const dp = weekday[dow]; if (dp) candidates.push(...dp);
+  const mp = (seasonal as Readonly<Record<number, readonly HataskPhrase[]>>)[m + 1]; if (mp) candidates.push(...mp);
+  const dp = (weekday as Readonly<Record<number, readonly HataskPhrase[]>>)[dow]; if (dp) candidates.push(...dp);
   if (Math.random() < 0.25) candidates.push(...trivia);
   candidates.push(...random);
   let msg = candidates[Math.floor(Math.random() * candidates.length)];
@@ -761,7 +785,7 @@ export function getPhrase(ctx?: PhraseContext): string {
     else if (ctx.recentMoodAvg >= 4.5) extras.push(contextPhrases.goodMood[Math.floor(Math.random() * contextPhrases.goodMood.length)]);
     if (extras.length > 0) msg += '\n' + extras[Math.floor(Math.random() * extras.length)];
   }
-  return msg;
+  return translateHataskPhrase(msg, versatileLang);
 }
 
 export function getPhraseCount(): number {

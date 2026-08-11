@@ -6,9 +6,9 @@ Hataskの育成中の花と直近のギャラリーを、通常UI・HatasabaUI�
 <template>
 <MkContainer :naked="widgetProps.transparent" :showHeader="widgetProps.showHeader">
 	<template #icon><i class="ti ti-flower"></i></template>
-	<template #header>お花のお庭</template>
+	<template #header>{{ copy.title }}</template>
 	<template #func="{ buttonStyleClass }">
-		<button class="_button" :class="buttonStyleClass" aria-label="Hataskを開く" @click="goHatask"><i class="ti ti-external-link"></i></button>
+		<button class="_button" :class="buttonStyleClass" :aria-label="copy.openHatask" @click="goHatask"><i class="ti ti-external-link"></i></button>
 	</template>
 
 	<div :class="$style.root">
@@ -17,7 +17,7 @@ Hataskの育成中の花と直近のギャラリーを、通常UI・HatasabaUI�
 				:class="$style.progressRing"
 				:style="{ '--flower-progress': `${flower.progress * 3.6}deg` }"
 				role="progressbar"
-				aria-label="お花の成長度"
+				:aria-label="copy.growthProgress"
 				:aria-valuenow="flower.progress"
 				aria-valuemin="0"
 				aria-valuemax="100"
@@ -25,24 +25,24 @@ Hataskの育成中の花と直近のギャラリーを、通常UI・HatasabaUI�
 				<span :class="$style.progressInner">{{ flower.emoji }}</span>
 			</span>
 			<span :class="$style.growingText">
-				<span :class="$style.kicker">NOW GROWING</span>
-				<strong :class="$style.flowerName">{{ flower.name }}</strong>
+				<span :class="$style.kicker">{{ copy.nowGrowing }}</span>
+				<strong :class="$style.flowerName">{{ growingFlowerName }}</strong>
 				<span :class="$style.progressText">{{ flower.progress }}%<span aria-hidden="true"> ・ </span>{{ remainingText }}</span>
 			</span>
 		</button>
 
 		<div :class="$style.divider"></div>
 		<div :class="$style.collectionHead">
-			<span>さいたお花</span>
-			<span :class="$style.count">{{ totalCount }}輪</span>
+			<span>{{ copy.bloomedFlowers }}</span>
+			<span :class="$style.count">{{ i18n.tsx._hata._hatask._flowerWidget.flowerCount({ count: totalCount }) }}</span>
 		</div>
 		<div v-if="flowers.length" :class="$style.flowerList">
-			<button v-for="item in flowers" :key="item.id" type="button" :class="$style.flowerChip" :title="item.name" @click="goHatask">
+			<button v-for="item in flowers" :key="item.id" type="button" :class="$style.flowerChip" :title="localizeFloraName(item.name)" @click="goHatask">
 				<span :class="$style.flowerEmoji">{{ item.emoji }}</span>
-				<span :class="$style.chipName">{{ item.name }}</span>
+				<span :class="$style.chipName">{{ localizeFloraName(item.name) }}</span>
 			</button>
 		</div>
-		<div v-else :class="$style.empty">最初の一輪を育てています</div>
+		<div v-else :class="$style.empty">{{ copy.growingFirstFlower }}</div>
 	</div>
 </MkContainer>
 </template>
@@ -54,12 +54,15 @@ import type { WidgetComponentEmits, WidgetComponentExpose, WidgetComponentProps 
 import type { FormWithDefault, GetFormResultType } from '@/utility/form.js';
 import type { HataskFlower } from '@/utility/hatask-flower-widget.js';
 import MkContainer from '@/components/MkContainer.vue';
+import { i18n } from '@/i18n.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { useRouter } from '@/router.js';
 import { countFlowerGallery, normalizeFlowerGallery, normalizeGrowingFlower } from '@/utility/hatask-flower-widget.js';
+import { localizeFloraName } from '@/utility/hatask-flora.js';
 
 const name = 'hataskFlowers';
 const SCOPE = ['client', 'hatask'];
+const copy = i18n.ts._hata._hatask._flowerWidget;
 
 const widgetPropsDef = {
 	transparent: { type: 'boolean', default: false },
@@ -67,11 +70,11 @@ const widgetPropsDef = {
 	maxItems: {
 		type: 'enum',
 		default: '5',
-		label: '一覧の表示数',
+		label: copy.listCount,
 		enum: [
-			{ label: '3輪', value: '3' },
-			{ label: '5輪', value: '5' },
-			{ label: '8輪', value: '8' },
+			{ label: i18n.tsx._hata._hatask._flowerWidget.flowerCount({ count: 3 }), value: '3' },
+			{ label: i18n.tsx._hata._hatask._flowerWidget.flowerCount({ count: 5 }), value: '5' },
+			{ label: i18n.tsx._hata._hatask._flowerWidget.flowerCount({ count: 8 }), value: '8' },
 		],
 	},
 } satisfies FormWithDefault;
@@ -85,15 +88,16 @@ const router = useRouter();
 
 const flower = ref<HataskFlower>(normalizeGrowingFlower(null));
 const rawGallery = ref<unknown>([]);
-const flowers = computed(() => normalizeFlowerGallery(rawGallery.value, Number(widgetProps.maxItems)));
+const growingFlowerName = computed(() => localizeFloraName(flower.value.name));
+const flowers = computed(() => normalizeFlowerGallery(rawGallery.value, Number(widgetProps.maxItems), copy.unnamedFlower));
 const totalCount = computed(() => countFlowerGallery(rawGallery.value));
 let refreshTimer: number | null = null;
 
 const remainingText = computed(() => {
-	if (flower.value.progress >= 100) return 'お花が咲きました';
+	if (flower.value.progress >= 100) return copy.flowerBloomed;
 	const minutes = Math.max(0, 1200 - flower.value.totalMinutes);
-	if (minutes < 60) return 'まもなく咲きます';
-	return `あと約${Math.ceil(minutes / 60)}時間`;
+	if (minutes < 60) return copy.bloomingSoon;
+	return i18n.tsx._hata._hatask._flowerWidget.hoursRemaining({ hours: Math.ceil(minutes / 60) });
 });
 
 async function loadFlowers(): Promise<void> {

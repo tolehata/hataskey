@@ -9,45 +9,45 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<!-- チュートリアル -->
 		<div v-if="showTutorial" :class="$style.overlay" @click.stop>
 			<div :class="$style.modalBox">
-				<div :class="$style.modalHeader"><i class="ti ti-brush"></i><h2>お絵描きツール</h2></div>
+				<div :class="$style.modalHeader"><i class="ti ti-brush"></i><h2>{{ copy.drawingToolTitle }}</h2></div>
 				<div :class="$style.modalBody">
-					<div :class="$style.warningBanner"><i class="ti ti-alert-triangle"></i><span>ページを離れると作業内容は失われます</span></div>
+					<div :class="$style.warningBanner"><i class="ti ti-alert-triangle"></i><span>{{ copy.workLostWarning }}</span></div>
 					<div :class="$style.tutorialGrid">
-						<div><i class="ti ti-layers-intersect"></i><strong>レイヤー</strong><p>複数レイヤーで編集</p></div>
-						<div><i class="ti ti-wand"></i><strong>フィルター</strong><p>12種類のエフェクト</p></div>
-						<div><i class="ti ti-device-desktop"></i><strong>PC操作</strong><p>ホイール:拡大縮小<br>ハンドツール:移動<br>ミニマップ:位置移動</p></div>
-						<div><i class="ti ti-device-mobile"></i><strong>スマホ操作</strong><p>2本指:拡大縮小<br>3本指:位置移動</p></div>
+						<div><i class="ti ti-layers-intersect"></i><strong>{{ copy.tutorialLayers }}</strong><p>{{ copy.tutorialLayersDescription }}</p></div>
+						<div><i class="ti ti-wand"></i><strong>{{ copy.tutorialFilters }}</strong><p>{{ copy.tutorialFiltersDescription }}</p></div>
+						<div><i class="ti ti-device-desktop"></i><strong>{{ copy.tutorialPc }}</strong><p>{{ copy.tutorialPcWheel }}<br>{{ copy.tutorialPcHand }}<br>{{ copy.tutorialPcMinimap }}</p></div>
+						<div><i class="ti ti-device-mobile"></i><strong>{{ copy.tutorialMobile }}</strong><p>{{ copy.tutorialMobilePinch }}<br>{{ copy.tutorialMobilePan }}</p></div>
 					</div>
 				</div>
-				<button :class="$style.primaryBtn" @click="showTutorial = false">始める</button>
+				<button :class="$style.primaryBtn" @click="showTutorial = false">{{ copy.start }}</button>
 			</div>
 		</div>
 		<!-- クレジット -->
 		<div v-if="showCredits" :class="$style.overlay" @click.stop>
 			<div :class="$style.modalBox">
-				<div :class="$style.modalHeader"><i class="ti ti-info-circle"></i><h2>クレジット</h2></div>
+				<div :class="$style.modalHeader"><i class="ti ti-info-circle"></i><h2>{{ copy.credits }}</h2></div>
 				<div :class="$style.creditsBody">
-					<div :class="$style.creditItem"><span>開発</span><strong>Tolehata</strong></div>
-					<div :class="$style.creditItem"><span>デバッグ/協力</span><strong>くりきんとん</strong></div>
+					<div :class="$style.creditItem"><span>{{ copy.development }}</span><strong>{{ developmentCreditName }}</strong></div>
+					<div :class="$style.creditItem"><span>{{ copy.debuggingCooperation }}</span><strong>{{ debuggingCreditName }}</strong></div>
 				</div>
-				<div :class="$style.version">Version 2.4</div>
-				<button :class="$style.primaryBtn" @click="showCredits = false">閉じる</button>
+				<div :class="$style.version">{{ copy.version }}</div>
+				<button :class="$style.primaryBtn" @click="showCredits = false">{{ copy.close }}</button>
 			</div>
 		</div>
 		<!-- 閉じる確認 -->
 		<div v-if="showCloseConfirm" :class="$style.overlay" @click.stop>
 			<div :class="$style.modalBox">
-				<div :class="$style.modalHeader"><i class="ti ti-alert-triangle"></i><h2>確認</h2></div>
-				<p :class="$style.confirmText">閉じると現在の作業内容は<br><strong>全て失われます</strong>。<br>よろしいですか？</p>
+				<div :class="$style.modalHeader"><i class="ti ti-alert-triangle"></i><h2>{{ copy.confirmation }}</h2></div>
+				<p :class="$style.confirmText">{{ copy.closeWarningLead }}<br><strong>{{ copy.closeWarningEmphasis }}</strong>{{ copy.closeWarningSuffix }}<br>{{ copy.areYouSure }}</p>
 				<div :class="$style.confirmBtns">
-					<button @click="showCloseConfirm = false">キャンセル</button>
-					<button :class="$style.dangerBtn" @click="forceClose">閉じる</button>
+					<button @click="showCloseConfirm = false">{{ copy.cancel }}</button>
+					<button :class="$style.dangerBtn" @click="forceClose">{{ copy.close }}</button>
 				</div>
 			</div>
 		</div>
 		<!-- ヘッダー -->
 		<div :class="$style.header">
-			<div :class="$style.headerLeft"><i class="ti ti-palette"></i><span :class="$style.appTitle">お絵描き</span></div>
+			<div :class="$style.headerLeft"><i class="ti ti-palette"></i><span :class="$style.appTitle">{{ copy.drawing }}</span></div>
 			<div :class="$style.headerCenter">
 				<button :class="$style.sizeBtn" @click="showSizeDialog"><i class="ti ti-dimensions"></i>{{ canvasWidth }} × {{ canvasHeight }}</button>
 				<div :class="$style.zoomBar">
@@ -58,9 +58,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</div>
 			</div>
 			<div :class="$style.headerRight">
-				<button @click="showCredits = true" title="クレジット"><i class="ti ti-info-circle"></i></button>
-				<button @click="darkMode = !darkMode" :title="darkMode ? 'ライトモード' : 'ダークモード'"><i :class="darkMode ? 'ti ti-sun' : 'ti ti-moon'"></i></button>
-				<button :class="$style.closeBtn" @click="onCloseClick" title="閉じる"><i class="ti ti-x"></i></button>
+				<button @click="showCredits = true" :title="copy.credits"><i class="ti ti-info-circle"></i></button>
+				<button @click="darkMode = !darkMode" :title="darkMode ? copy.lightMode : copy.darkMode"><i :class="darkMode ? 'ti ti-sun' : 'ti ti-moon'"></i></button>
+				<button :class="$style.closeBtn" @click="onCloseClick" :title="copy.close"><i class="ti ti-x"></i></button>
 			</div>
 		</div>
 		<!-- ボディ -->
@@ -68,19 +68,19 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<!-- 左パネル -->
 			<div :class="$style.leftPanel">
 				<div :class="$style.card">
-					<h4>ツール</h4>
+					<h4>{{ copy.tools }}</h4>
 					<div :class="$style.tools">
 						<button v-for="t in tools" :key="t.id" :class="{ [$style.active]: currentTool === t.id }" @click="currentTool = t.id" :title="t.name"><i :class="t.icon"></i></button>
 					</div>
 				</div>
 				<div :class="$style.card">
-					<h4>ブラシサイズ <em>{{ brushSize }}px</em></h4>
+					<h4>{{ copy.brushSize }} <em>{{ brushSize }}px</em></h4>
 					<input type="range" v-model.number="brushSize" min="1" max="100">
 					<div :class="$style.brushPreview"><div :style="{ width: brushSize + 'px', height: brushSize + 'px', background: color, borderRadius: '50%' }"></div></div>
-					<label :class="$style.check"><input type="checkbox" v-model="fillShape">図形を塗りつぶす</label>
+					<label :class="$style.check"><input type="checkbox" v-model="fillShape">{{ copy.fillShape }}</label>
 				</div>
 				<div :class="$style.card">
-					<h4>カラー</h4>
+					<h4>{{ copy.color }}</h4>
 					<div :class="$style.colorWheel">
 						<div
 							ref="hueRing"
@@ -101,7 +101,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<div :class="$style.colorDisplay"><div :class="$style.colorSwatch" :style="{ background: color }"></div><input type="text" v-model="color" @change="colorToHsv"></div>
 				</div>
 				<div :class="$style.card">
-					<h4>パレット</h4>
+					<h4>{{ copy.palette }}</h4>
 					<div :class="$style.palette">
 						<button v-for="c in palette" :key="c" :style="{ background: c }" @click="color = c; colorToHsv()"></button>
 					</div>
@@ -111,27 +111,27 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<div :class="$style.canvasArea">
 				<div :class="$style.toolbar">
 					<div :class="$style.tbGroup">
-						<button @click="undo" :disabled="historyIndex <= 0" title="元に戻す"><i class="ti ti-arrow-back-up"></i></button>
-						<button @click="redo" :disabled="historyIndex >= history.length - 1" title="やり直し"><i class="ti ti-arrow-forward-up"></i></button>
+						<button @click="undo" :disabled="historyIndex <= 0" :title="copy.undo"><i class="ti ti-arrow-back-up"></i></button>
+						<button @click="redo" :disabled="historyIndex >= history.length - 1" :title="copy.redo"><i class="ti ti-arrow-forward-up"></i></button>
 					</div>
 					<div :class="$style.tbGroup">
-						<button @click="importImage" title="画像読込"><i class="ti ti-photo-plus"></i></button>
-						<button @click="clearLayer" :class="$style.danger" title="クリア"><i class="ti ti-trash"></i></button>
+						<button @click="importImage" :title="copy.importImage"><i class="ti ti-photo-plus"></i></button>
+						<button @click="clearLayer" :class="$style.danger" :title="copy.clear"><i class="ti ti-trash"></i></button>
 					</div>
 					<div :class="$style.tbGroup">
-						<button v-if="!isMobile" :data-active="panMode" title="ハンドツール（キャンバス移動）" @click="panMode = !panMode"><i class="ti ti-hand-finger"></i></button>
-						<button :data-active="showMinimap" title="プレビュー表示/非表示" @click="showMinimap = !showMinimap"><i class="ti ti-map"></i></button>
+						<button v-if="!isMobile" :data-active="panMode" :title="copy.handTool" @click="panMode = !panMode"><i class="ti ti-hand-finger"></i></button>
+						<button :data-active="showMinimap" :title="copy.togglePreview" @click="showMinimap = !showMinimap"><i class="ti ti-map"></i></button>
 					</div>
 				</div>
 				<div v-if="lasso" :class="$style.lassoBar">
-					<span :class="$style.lassoStatus"><i class="ti ti-lasso"></i>選択範囲を編集中</span>
+					<span :class="$style.lassoStatus"><i class="ti ti-lasso"></i>{{ copy.editingSelection }}</span>
 					<div :class="$style.lassoControls">
-						<label>拡大 <input type="range" v-model.number="lasso.scale" min="10" max="300"><strong>{{ lasso.scale }}%</strong></label>
-						<label>回転 <input type="range" v-model.number="lasso.rotation" min="-180" max="180"><strong>{{ lasso.rotation }}°</strong></label>
+						<label>{{ copy.scale }} <input type="range" v-model.number="lasso.scale" min="10" max="300"><strong>{{ lasso.scale }}%</strong></label>
+						<label>{{ copy.rotation }} <input type="range" v-model.number="lasso.rotation" min="-180" max="180"><strong>{{ lasso.rotation }}°</strong></label>
 					</div>
 					<div :class="$style.lassoActions">
-						<button :class="$style.lassoCancel" @click="cancelLasso">キャンセル</button>
-						<button :class="$style.lassoApply" @click="applyLasso"><i class="ti ti-check"></i>確定</button>
+						<button :class="$style.lassoCancel" @click="cancelLasso">{{ copy.cancel }}</button>
+						<button :class="$style.lassoApply" @click="applyLasso"><i class="ti ti-check"></i>{{ copy.apply }}</button>
 					</div>
 				</div>
 				<div ref="scroller" :class="$style.scroller" @wheel.prevent="onWheel" @touchstart="onTouchStart" @touchmove="onTouchMove" @touchend="onTouchEnd">
@@ -161,9 +161,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 					     操作方法はハンドルを見れば分かるので、数値と操作だけの最小構成にする。 -->
 					<div v-if="transformMode" :class="$style.placeBar">
 						<span :class="$style.placeInfo">{{ Math.round(transform.w) }} × {{ Math.round(transform.h) }} · {{ transform.rotation }}°</span>
-						<button :class="$style.placeBtn" title="初期サイズ・中央に戻す" @click="resetPlace"><i class="ti ti-refresh"></i></button>
-						<button :class="$style.placeBtn" @click="cancelTransform">キャンセル</button>
-						<button :class="[$style.placeBtn, $style.placeApply]" @click="applyTransform"><i class="ti ti-check"></i>配置</button>
+						<button :class="$style.placeBtn" :title="copy.resetPlacement" @click="resetPlace"><i class="ti ti-refresh"></i></button>
+						<button :class="$style.placeBtn" @click="cancelTransform">{{ copy.cancel }}</button>
+						<button :class="[$style.placeBtn, $style.placeApply]" @click="applyTransform"><i class="ti ti-check"></i>{{ copy.place }}</button>
 					</div>
 					<!-- プレビューは scroller 内に置き、上段の投げ縄操作バーを覆わない。 -->
 					<div v-if="showMinimap" :class="$style.minimap" @pointerdown.stop="onMiniDown" @pointermove.stop="onMiniMove" @pointerup.stop="onMiniUp" @pointerleave.stop="onMiniUp">
@@ -175,8 +175,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<!-- 右パネル -->
 			<div :class="$style.rightPanel">
 				<div :class="$style.card">
-					<h4>レイヤー <button @click="addLayer"><i class="ti ti-plus"></i></button></h4>
-					<div :class="$style.layerHint">※上が手前、下が奥</div>
+					<h4>{{ copy.layers }} <button @click="addLayer"><i class="ti ti-plus"></i></button></h4>
+					<div :class="$style.layerHint">{{ copy.layerOrderHint }}</div>
 					<div :class="$style.layers">
 						<div v-for="(ly, i) in layers" :key="ly.id" :class="[$style.layer, { [$style.active]: i === curLayer }]" @click="curLayer = i">
 							<canvas :class="$style.layerThumb" :ref="el => updateThumb(el as HTMLCanvasElement, ly)"></canvas>
@@ -187,20 +187,20 @@ SPDX-License-Identifier: AGPL-3.0-only
 							</div>
 							<div :class="$style.layerControls">
 								<select :class="$style.blendSelect" v-model="ly.blend" @change="composite()">
-									<option value="normal">通常</option><option value="multiply">乗算</option><option value="screen">スクリーン</option><option value="overlay">オーバーレイ</option>
+									<option value="normal">{{ copy.blendNormal }}</option><option value="multiply">{{ copy.blendMultiply }}</option><option value="screen">{{ copy.blendScreen }}</option><option value="overlay">{{ copy.blendOverlay }}</option>
 								</select>
 								<div :class="$style.layerBtns">
-									<button @click.stop="moveLayer(i, -1)" :disabled="i === 0" title="上へ（手前へ）"><i class="ti ti-chevron-up"></i></button>
-									<button @click.stop="moveLayer(i, 1)" :disabled="i === layers.length - 1" title="下へ（奥へ）"><i class="ti ti-chevron-down"></i></button>
-									<button @click.stop="delLayer(i)" :disabled="layers.length <= 1" title="削除"><i class="ti ti-trash"></i></button>
+									<button @click.stop="moveLayer(i, -1)" :disabled="i === 0" :title="copy.moveLayerUp"><i class="ti ti-chevron-up"></i></button>
+									<button @click.stop="moveLayer(i, 1)" :disabled="i === layers.length - 1" :title="copy.moveLayerDown"><i class="ti ti-chevron-down"></i></button>
+									<button @click.stop="delLayer(i)" :disabled="layers.length <= 1" :title="copy.delete"><i class="ti ti-trash"></i></button>
 								</div>
 							</div>
-							<div :class="$style.opacityRow"><span>透明度</span><input type="range" v-model.number="ly.opacity" min="0" max="1" step="0.01" @input="composite()"><span>{{ Math.round(ly.opacity * 100) }}%</span></div>
+							<div :class="$style.opacityRow"><span>{{ copy.opacity }}</span><input type="range" v-model.number="ly.opacity" min="0" max="1" step="0.01" @input="composite()"><span>{{ Math.round(ly.opacity * 100) }}%</span></div>
 						</div>
 					</div>
 				</div>
 				<div :class="$style.card">
-					<h4>フィルター</h4>
+					<h4>{{ copy.filters }}</h4>
 					<div :class="$style.filters">
 						<button v-for="f in filters" :key="f.id" @click="applyFilter(f.id)">{{ f.name }}</button>
 					</div>
@@ -210,20 +210,20 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<!-- フッター -->
 		<div :class="$style.footer">
 			<div :class="$style.footerLeft">
-				<button @click="showTutorial = true" title="ヘルプ"><i class="ti ti-help"></i></button>
+				<button @click="showTutorial = true" :title="copy.help"><i class="ti ti-help"></i></button>
 				<div :class="$style.bgPicker">
-					<span>背景:</span>
+					<span>{{ copy.background }}:</span>
 					<button :style="{ background: '#fff' }" :class="{ [$style.sel]: bgMode === 'white' }" @click="setBg('white')"></button>
 					<button :style="{ background: '#000' }" :class="{ [$style.sel]: bgMode === 'black' }" @click="setBg('black')"></button>
 					<button :class="[$style.checker, { [$style.sel]: bgMode === 'transparent' }]" @click="setBg('transparent')"></button>
 				</div>
 			</div>
 			<div :class="$style.footerCenter">
-				<input v-model="fileName" placeholder="ファイル名"><span>.png</span>
+				<input v-model="fileName" :placeholder="copy.fileName"><span>.png</span>
 			</div>
 			<div :class="$style.footerRight">
-				<button @click="onCloseClick">キャンセル</button>
-				<button :class="$style.saveBtn" @click="saveImage" :disabled="saving"><i class="ti ti-device-floppy"></i>保存</button>
+				<button @click="onCloseClick">{{ copy.cancel }}</button>
+				<button :class="$style.saveBtn" @click="saveImage" :disabled="saving"><i class="ti ti-device-floppy"></i>{{ copy.save }}</button>
 			</div>
 		</div>
 	</div>
@@ -234,11 +234,17 @@ SPDX-License-Identifier: AGPL-3.0-only
 import { ref, reactive, computed, watch, onMounted, onUnmounted, nextTick, useCssModule } from 'vue';
 import MkModal from '@/components/MkModal.vue';
 import * as os from '@/os.js';
+import { i18n } from '@/i18n.js';
 import { uploadFile, chooseDriveFile } from '@/utility/drive.js';
 import { getProxiedImageUrl } from '@/utility/media-proxy.js';
 
 const emit = defineEmits<{ (ev: 'closed'): void }>();
 const style = useCssModule();
+const copy = i18n.ts._hata._drawingTool;
+const copyx = i18n.tsx._hata._drawingTool;
+const layerName = (number: number): string => copyx.layerName({ number: number.toString() });
+const developmentCreditName = 'Tolehata';
+const debuggingCreditName = 'くりきんとん';
 
 const modal = ref<InstanceType<typeof MkModal>>();
 const canvas = ref<HTMLCanvasElement>();
@@ -286,22 +292,22 @@ const touch = reactive({ count: 0, pinching: false, panning: false, dist: 0, cx:
 const transform = reactive({ img: null as HTMLImageElement | null, x: 0, y: 0, w: 0, h: 0, rotation: 0 });
 
 const tools = [
-	{ id: 'pen', name: 'ペン', icon: 'ti ti-pencil' },
-	{ id: 'eraser', name: '消しゴム', icon: 'ti ti-eraser' },
-	{ id: 'fill', name: '塗りつぶし', icon: 'ti ti-paint-filled' },
-	{ id: 'line', name: '直線', icon: 'ti ti-line' },
-	{ id: 'rect', name: '四角', icon: 'ti ti-square' },
-	{ id: 'circle', name: '円', icon: 'ti ti-circle' },
-	{ id: 'blur', name: 'ぼかし', icon: 'ti ti-blur' },
-	{ id: 'lasso', name: '投げ縄', icon: 'ti ti-lasso' },
-	{ id: 'crop', name: '切り抜き', icon: 'ti ti-crop' },
+	{ id: 'pen', name: copy.toolPen, icon: 'ti ti-pencil' },
+	{ id: 'eraser', name: copy.toolEraser, icon: 'ti ti-eraser' },
+	{ id: 'fill', name: copy.toolFill, icon: 'ti ti-paint-filled' },
+	{ id: 'line', name: copy.toolLine, icon: 'ti ti-line' },
+	{ id: 'rect', name: copy.toolRectangle, icon: 'ti ti-square' },
+	{ id: 'circle', name: copy.toolCircle, icon: 'ti ti-circle' },
+	{ id: 'blur', name: copy.toolBlur, icon: 'ti ti-blur' },
+	{ id: 'lasso', name: copy.toolLasso, icon: 'ti ti-lasso' },
+	{ id: 'crop', name: copy.toolCrop, icon: 'ti ti-crop' },
 ];
 
 const filters = [
-	{ id: 'gray', name: 'グレー' }, { id: 'sepia', name: 'セピア' }, { id: 'invert', name: '反転' },
-	{ id: 'bright+', name: '明るく' }, { id: 'bright-', name: '暗く' }, { id: 'contrast+', name: 'コントラスト+' },
-	{ id: 'contrast-', name: 'コントラスト-' }, { id: 'saturate+', name: '彩度+' }, { id: 'saturate-', name: '彩度-' },
-	{ id: 'blur', name: 'ぼかし' }, { id: 'sharpen', name: 'シャープ' }, { id: 'noise', name: 'ノイズ' },
+	{ id: 'gray', name: copy.filterGrayscale }, { id: 'sepia', name: copy.filterSepia }, { id: 'invert', name: copy.filterInvert },
+	{ id: 'bright+', name: copy.filterBrighter }, { id: 'bright-', name: copy.filterDarker }, { id: 'contrast+', name: copy.filterContrastUp },
+	{ id: 'contrast-', name: copy.filterContrastDown }, { id: 'saturate+', name: copy.filterSaturationUp }, { id: 'saturate-', name: copy.filterSaturationDown },
+	{ id: 'blur', name: copy.filterBlur }, { id: 'sharpen', name: copy.filterSharpen }, { id: 'noise', name: copy.filterNoise },
 ];
 
 const palette = ['#000000', '#ffffff', '#ff0000', '#ff8800', '#ffff00', '#88ff00', '#00ff00', '#00ff88', '#00ffff', '#0088ff', '#0000ff', '#8800ff', '#ff00ff', '#ff0088', '#888888', '#cccccc'];
@@ -339,7 +345,7 @@ onMounted(() => {
 	const c = document.createElement('canvas'); c.width = canvasWidth.value; c.height = canvasHeight.value;
 	const ctx = c.getContext('2d', { willReadFrequently: true })!;
 	ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
-	layers.value = [{ id: nextLayerId++, name: 'レイヤー1', canvas: c, ctx, visible: true, opacity: 1, blend: 'normal' }];
+	layers.value = [{ id: nextLayerId++, name: layerName(1), canvas: c, ctx, visible: true, opacity: 1, blend: 'normal' }];
 	composite(); saveHistory();
 });
 
@@ -349,7 +355,7 @@ function addLayer() {
 	const c = document.createElement('canvas'); c.width = canvasWidth.value; c.height = canvasHeight.value;
 	const newId = nextLayerId++;
 	// 現在のレイヤーの上（手前）に挿入
-	layers.value.splice(curLayer.value, 0, { id: newId, name: `レイヤー${newId}`, canvas: c, ctx: c.getContext('2d', { willReadFrequently: true })!, visible: true, opacity: 1, blend: 'normal' });
+	layers.value.splice(curLayer.value, 0, { id: newId, name: layerName(newId), canvas: c, ctx: c.getContext('2d', { willReadFrequently: true })!, visible: true, opacity: 1, blend: 'normal' });
 	composite(); saveHistory();
 }
 
@@ -408,7 +414,7 @@ function redo() { if (historyIndex.value < history.value.length - 1) { historyIn
 function restoreHistory() {
 	const data = history.value[historyIndex.value];
 	if (!data) return;
-	while (layers.value.length < data.length) { const c = document.createElement('canvas'); c.width = canvasWidth.value; c.height = canvasHeight.value; layers.value.push({ id: nextLayerId++, name: `レイヤー${nextLayerId}`, canvas: c, ctx: c.getContext('2d', { willReadFrequently: true })!, visible: true, opacity: 1, blend: 'normal' }); }
+	while (layers.value.length < data.length) { const c = document.createElement('canvas'); c.width = canvasWidth.value; c.height = canvasHeight.value; layers.value.push({ id: nextLayerId++, name: layerName(nextLayerId), canvas: c, ctx: c.getContext('2d', { willReadFrequently: true })!, visible: true, opacity: 1, blend: 'normal' }); }
 	while (layers.value.length > data.length) layers.value.pop();
 	data.forEach((img, i) => layers.value[i].ctx.putImageData(img, 0, 0));
 	composite();
@@ -524,7 +530,7 @@ function onMiniMove(e: PointerEvent) {
 function onMiniUp() { miniDragging.value = false; }
 
 async function showSizeDialog() {
-	const { canceled, result } = await os.form('キャンバスサイズ', { width: { type: 'number', label: '幅', default: canvasWidth.value }, height: { type: 'number', label: '高さ', default: canvasHeight.value } });
+	const { canceled, result } = await os.form(copy.canvasSize, { width: { type: 'number', label: copy.width, default: canvasWidth.value }, height: { type: 'number', label: copy.height, default: canvasHeight.value } });
 	if (canceled) return;
 	const w = Math.max(100, Math.min(4096, result.width)), h = Math.max(100, Math.min(4096, result.height));
 	for (const ly of layers.value) { const tmp = document.createElement('canvas'); tmp.width = ly.canvas.width; tmp.height = ly.canvas.height; tmp.getContext('2d')!.drawImage(ly.canvas, 0, 0); ly.canvas.width = w; ly.canvas.height = h; ly.ctx.drawImage(tmp, 0, 0); }
@@ -676,7 +682,7 @@ function doCrop(cx: number, cy: number, cw: number, ch: number) {
 	}
 	const nc = document.createElement('canvas'); nc.width = cw; nc.height = ch;
 	nc.getContext('2d')!.drawImage(tmp, cx, cy, cw, ch, 0, 0, cw, ch);
-	layers.value = [{ id: nextLayerId++, name: 'レイヤー1', canvas: nc, ctx: nc.getContext('2d', { willReadFrequently: true })!, visible: true, opacity: 1, blend: 'normal' }];
+	layers.value = [{ id: nextLayerId++, name: layerName(1), canvas: nc, ctx: nc.getContext('2d', { willReadFrequently: true })!, visible: true, opacity: 1, blend: 'normal' }];
 	curLayer.value = 0; canvasWidth.value = cw; canvasHeight.value = ch;
 	composite(); saveHistory();
 }
@@ -765,7 +771,7 @@ function applySharpen(img: ImageData) {
 }
 
 function clearLayer() {
-	os.confirm({ type: 'warning', text: '現在のレイヤーを消去しますか？' }).then(({ canceled }) => {
+	os.confirm({ type: 'warning', text: copy.confirmClearLayer }).then(({ canceled }) => {
 		if (canceled) return;
 		const ly = getLayer(); if (!ly) return;
 		ly.ctx.clearRect(0, 0, canvasWidth.value, canvasHeight.value);
@@ -783,7 +789,7 @@ async function importImage() {
 		transform.img = img;
 		resetPlace();
 		transformMode.value = true;
-	} catch (e) { console.error(e); os.alert({ type: 'error', text: '画像の読み込みに失敗しました' }); }
+	} catch (e) { console.error(e); os.alert({ type: 'error', text: copy.importFailed }); }
 }
 
 // キャンバスに収まる初期サイズ(最大80%)で中央に置く。
@@ -894,7 +900,7 @@ async function saveImage() {
 		const { filePromise } = uploadFile(file, { name: file.name });
 		await filePromise;
 		os.success(); hasChanges.value = false; modal.value?.close();
-	} catch (e) { console.error(e); os.alert({ type: 'error', text: '保存に失敗しました' }); }
+	} catch (e) { console.error(e); os.alert({ type: 'error', text: copy.saveFailed }); }
 	finally { saving.value = false; }
 }
 

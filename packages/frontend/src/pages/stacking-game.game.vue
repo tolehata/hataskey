@@ -9,15 +9,15 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<div :class="$style.root">
 			<div :class="$style.header">
 				<div :class="$style.scoreBox">
-					<div :class="$style.scoreLabel">SCORE</div>
+					<div :class="$style.scoreLabel">{{ common.scoreUpper }}</div>
 					<div :class="$style.scoreValue">{{ score }}</div>
 				</div>
 				<div :class="$style.scoreBox">
-					<div :class="$style.scoreLabel">BEST</div>
+					<div :class="$style.scoreLabel">{{ common.bestUpper }}</div>
 					<div :class="$style.scoreValue">{{ highScore }}</div>
 				</div>
 				<div :class="$style.scoreBox">
-					<div :class="$style.scoreLabel">NEXT</div>
+					<div :class="$style.scoreLabel">{{ common.nextUpper }}</div>
 					<div :class="$style.nextPreview">
 						<img v-if="nextEmoji?.url" :src="nextEmoji.url" :class="$style.nextImg"/>
 						<span v-else-if="nextEmoji?.char" :class="$style.nextChar">{{ nextEmoji.char }}</span>
@@ -41,13 +41,13 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<Transition name="fade">
 				<div v-if="isGameOver" :class="$style.overlay">
 					<div :class="$style.overCard">
-						<div :class="$style.overTitle">GAME OVER</div>
-						<div :class="$style.overScore">スコア: {{ score }}</div>
-						<div :class="$style.overBlocks">{{ blockCount }}個積み上げ</div>
-						<div v-if="isNewRecord" :class="$style.newRecord">🎉 NEW RECORD!</div>
+						<div :class="$style.overTitle">{{ common.gameOverUpper }}</div>
+						<div :class="$style.overScore">{{ commonx.scoreWithValue({ score: String(score) }) }}</div>
+						<div :class="$style.overBlocks">{{ copyx.blocksStacked({ count: String(blockCount) }) }}</div>
+						<div v-if="isNewRecord" :class="$style.newRecord">🎉 {{ common.newRecordUpper }}</div>
 						<div :class="$style.overBtns">
-							<MkButton primary gradate rounded @click="restart"><i class="ti ti-refresh"></i> もう一度</MkButton>
-							<MkButton rounded @click="goBack"><i class="ti ti-arrow-left"></i> 戻る</MkButton>
+							<MkButton primary gradate rounded @click="restart"><i class="ti ti-refresh"></i> {{ common.retry }}</MkButton>
+							<MkButton rounded @click="goBack"><i class="ti ti-arrow-left"></i> {{ common.back }}</MkButton>
 						</div>
 					</div>
 				</div>
@@ -66,8 +66,13 @@ import { definePage } from '@/page.js';
 import { miLocalStorage } from '@/local-storage.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { $i } from '@/i.js';
+import { i18n } from '@/i18n.js';
 
 const router = useRouter();
+const common = i18n.ts._hata._games._common;
+const commonx = i18n.tsx._hata._games._common;
+const copy = i18n.ts._hata._games._stacking._game;
+const copyx = i18n.tsx._hata._games._stacking._game;
 
 const GW = 400;
 const GH = 600;
@@ -313,7 +318,7 @@ onUnmounted(() => {
 	bodyTextures.clear();
 });
 
-definePage(() => ({ title: 'つみつみタワー', icon: 'ti ti-building' }));
+definePage(() => ({ title: copy.pageTitle, icon: 'ti ti-building' }));
 </script>
 
 <style lang="scss" module>

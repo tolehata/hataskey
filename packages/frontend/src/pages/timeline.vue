@@ -12,11 +12,11 @@ SPDX-License-Identifier: AGPL-3.0-only
 			{{ i18n.ts._timelineDescription[src] }}
 		</MkTip>
 		<MkTip v-else-if="src === 'ohtl' || src === 'oltl'" k="tl.external" style="margin-bottom: var(--MI-margin);">
-			外部サーバー（{{ prefer.s['external.host'] }}）の{{ src === 'ohtl' ? 'ホーム' : 'ローカル' }}タイムラインを表示しています
+			{{ i18n.tsx._hata._timelineCustom.externalServerTip({ host: prefer.s['external.host'], timeline: src === 'ohtl' ? i18n.ts._hata._timelineCustom.externalHome : i18n.ts._hata._timelineCustom.externalLocal }) }}
 		</MkTip>
 		<!-- 旗鯖fork: トレンドタブのチュートリアル (項目6) -->
 		<MkTip v-else-if="src === 'trending'" k="tl.trending" style="margin-bottom: var(--MI-margin);">
-			トレンドタイムラインでは、いまサーバー内でリアクションや返信を多く集めている話題のノートが表示されます。フォローしていない人の投稿も流れてくるので、新しいつながりを見つけるのにぴったりです。
+			{{ i18n.ts._hata._timelineCustom.trendingDescription }}
 		</MkTip>
 		<MkInfo v-if="schedulePostList > 0" style="margin-bottom: var(--MI-margin);">
 			<button type="button" :class="$style.checkSchedulePostList" @click="showDraftMenu(true)">

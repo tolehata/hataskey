@@ -6,14 +6,14 @@
 <template>
 <MkContainer :naked="widgetProps.transparent" :showHeader="widgetProps.showHeader" :class="$style.container">
 	<template #icon><i class="ti ti-mood-smile"></i></template>
-	<template #header>マスコット</template>
+	<template #header>{{ copy.title }}</template>
 
 	<div :class="$style.root">
 		<template v-if="character && imageUrl">
 			<div
 				:class="$style.stage"
 				:style="{ height: stageHeight + 'px' }"
-				:title="phraseText ? '' : 'クリックで文言を切り替え'"
+				:title="phraseText ? '' : copy.changePhrase"
 				@click="next"
 			>
 				<img :src="imageUrl" :class="$style.img" draggable="false" :alt="expression?.label || 'mascot'"/>
@@ -22,8 +22,8 @@
 		</template>
 		<div v-else :class="$style.empty">
 			<i class="ti ti-mood-puzzled" :class="$style.emptyIcon"></i>
-			<div :class="$style.emptyText">マスコットが設定されていません</div>
-			<MkButton primary rounded small @click="goToSettings">マスコットを設定</MkButton>
+			<div :class="$style.emptyText">{{ copy.notConfigured }}</div>
+			<MkButton primary rounded small @click="goToSettings">{{ copy.configureMascot }}</MkButton>
 		</div>
 	</div>
 </MkContainer>
@@ -36,6 +36,7 @@ import type { WidgetComponentEmits, WidgetComponentExpose, WidgetComponentProps 
 import type { FormWithDefault, GetFormResultType } from '@/utility/form.js';
 import MkContainer from '@/components/MkContainer.vue';
 import MkButton from '@/components/MkButton.vue';
+import { i18n } from '@/i18n.js';
 import { useRouter } from '@/router.js';
 import {
 	loadMascot,
@@ -51,6 +52,7 @@ import {
 } from '@/utility/mascot-store.js';
 
 const name = 'mascot';
+const copy = i18n.ts._hata._mascotWidget;
 
 const widgetPropsDef = {
 	transparent: {
@@ -65,9 +67,9 @@ const widgetPropsDef = {
 		type: 'radio',
 		default: 'medium',
 		options: [
-			{ value: 'small' as const, label: '小' },
-			{ value: 'medium' as const, label: '中' },
-			{ value: 'large' as const, label: '大' },
+			{ value: 'small' as const, label: copy.sizeSmall },
+			{ value: 'medium' as const, label: copy.sizeMedium },
+			{ value: 'large' as const, label: copy.sizeLarge },
 		],
 	},
 	showPhrase: {

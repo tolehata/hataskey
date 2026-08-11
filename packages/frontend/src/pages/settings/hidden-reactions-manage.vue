@@ -4,24 +4,24 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 
 <template>
-<SearchMarker path="/settings/hidden-reactions" label="非表示リアクション管理" :keywords="['reaction', 'hidden', 'hide', 'emoji']" icon="ti ti-eye-off">
+<SearchMarker path="/settings/hidden-reactions" :label="copy.title" :keywords="['reaction', 'hidden', 'hide', 'emoji']" icon="ti ti-eye-off">
 	<div class="_gaps_m">
 		<FormSection first>
-			<template #label>非表示リアクション管理</template>
+			<template #label>{{ copy.title }}</template>
 
 			<div class="_gaps_s">
 				<MkInfo>
-					ノートごとに非表示にしたリアクションを管理できます。非表示データは30日間保持されます。
+					{{ copy.description }}
 				</MkInfo>
 
 				<div v-if="groupedHidden.length === 0" :class="$style.empty">
 					<i class="ti ti-mood-smile" :class="$style.emptyIcon"></i>
-					<p>非表示のリアクションはありません</p>
+					<p>{{ copy.empty }}</p>
 				</div>
 
 				<div v-else class="_gaps_s">
 					<div :class="$style.summary">
-						{{ groupedHidden.length }}件のノートで {{ totalCount }}件のリアクションが非表示中
+						{{ i18n.tsx._hata._hiddenReactions.summary({ notes: groupedHidden.length, reactions: totalCount }) }}
 					</div>
 
 					<div v-for="group in groupedHidden" :key="group.noteId" :class="$style.noteGroup">
@@ -31,7 +31,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 								{{ group.noteId }}
 							</a>
 							<button class="_button" :class="$style.restoreAllButton" @click="restoreNote(group.noteId, group.reactions)">
-								<i class="ti ti-eye"></i> すべて復元
+								<i class="ti ti-eye"></i> {{ copy.restoreAll }}
 							</button>
 						</div>
 						<div :class="$style.reactions">
@@ -50,7 +50,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 					<div :class="$style.actions">
 						<MkButton danger @click="clearAll">
-							<i class="ti ti-trash"></i> すべての非表示データを削除
+							<i class="ti ti-trash"></i> {{ copy.clearAll }}
 						</MkButton>
 					</div>
 				</div>
@@ -70,6 +70,9 @@ import { definePage } from '@/page.js';
 import * as os from '@/os.js';
 import { getHiddenReactions, unhideReaction, hiddenReactionsVersion } from '@/utility/hidden-reactions.js';
 import { useRouter } from '@/router.js';
+import { i18n } from '@/i18n.js';
+
+const copy = i18n.ts._hata._hiddenReactions;
 
 const router = useRouter();
 
@@ -111,7 +114,7 @@ function restoreOne(noteId: string, reaction: string) {
 async function restoreNote(noteId: string, reactions: { reaction: string }[]) {
 	const { canceled } = await os.confirm({
 		type: 'question',
-		text: `このノートの非表示リアクション(${reactions.length}件)をすべて復元しますか？`,
+		text: i18n.tsx._hata._hiddenReactions.restoreConfirm({ count: reactions.length }),
 	});
 	if (canceled) return;
 
@@ -123,7 +126,7 @@ async function restoreNote(noteId: string, reactions: { reaction: string }[]) {
 async function clearAll() {
 	const { canceled } = await os.confirm({
 		type: 'warning',
-		text: 'すべての非表示リアクションデータを削除しますか？この操作は元に戻せません。',
+		text: copy.clearConfirm,
 	});
 	if (canceled) return;
 
@@ -133,7 +136,7 @@ async function clearAll() {
 }
 
 definePage({
-	title: '非表示リアクション管理',
+	title: copy.title,
 	icon: 'ti ti-eye-off',
 });
 </script>

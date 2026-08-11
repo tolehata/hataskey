@@ -95,7 +95,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<button :class="$style.main" class="_button" @click="donateCherryPick">
 					<span :class="$style.icon"><i class="ti ti-pig-money"></i></span>
 					<!-- <span :class="$style.text">{{ i18n.tsx.supportThisInstance({ name: instance.name ?? host }) }}</span> -->
-					<span :class="$style.text">{{ i18n.tsx.supportThisInstance({ name: 'CherryPick(ベースソフトウェア)' }) }}</span>
+					<span :class="$style.text">{{ i18n.tsx.supportThisInstance({ name: i18n.ts._hata._common.cherryPickBaseSoftware }) }}</span>
 					<span :class="$style.suffix">
 						<i class="ti ti-external-link"></i>
 					</span>

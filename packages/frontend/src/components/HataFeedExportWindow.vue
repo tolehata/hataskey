@@ -12,40 +12,40 @@ SPDX-License-Identifier: AGPL-3.0-only
 	:beforeClose="beforeClose"
 	@closed="emit('closed')"
 >
-	<template #header><i class="ti ti-file-export"></i> HataFeedをエクスポート</template>
+	<template #header><i class="ti ti-file-export"></i> {{ copy.header }}</template>
 
 	<form :class="$style.form" @submit.prevent="runExport">
 		<div :class="$style.intro">
-			<b>{{ projectName }}</b> のイシューをJSONで保存します。空欄の範囲は制限しません。
+			<b>{{ projectName }}</b> {{ copy.introSuffix }}
 		</div>
 
 		<section :class="$style.section">
-			<h3 :class="$style.heading"><i class="ti ti-arrows-range"></i> 範囲</h3>
+			<h3 :class="$style.heading"><i class="ti ti-arrows-range"></i> {{ copy.range }}</h3>
 			<div :class="$style.twoColumns">
 				<MkInput v-model="numberFrom" type="number" :min="1" :disabled="exporting">
-					<template #label>イシュー番号（開始）</template>
+					<template #label>{{ copy.issueNumberFrom }}</template>
 					<template #prefix>#</template>
 				</MkInput>
 				<MkInput v-model="numberTo" type="number" :min="1" :disabled="exporting">
-					<template #label>イシュー番号（終了）</template>
+					<template #label>{{ copy.issueNumberTo }}</template>
 					<template #prefix>#</template>
 				</MkInput>
 				<MkInput v-model="createdFrom" type="date" :disabled="exporting">
-					<template #label>作成日（開始）</template>
+					<template #label>{{ copy.createdFrom }}</template>
 				</MkInput>
 				<MkInput v-model="createdTo" type="date" :disabled="exporting">
-					<template #label>作成日（終了）</template>
+					<template #label>{{ copy.createdTo }}</template>
 				</MkInput>
 			</div>
 			<MkSelect v-model="closedState" :items="closedStateItems" :disabled="exporting">
-				<template #label>受付状態</template>
+				<template #label>{{ copy.acceptanceState }}</template>
 			</MkSelect>
 		</section>
 
 		<section :class="$style.section">
 			<div :class="$style.headingRow">
-				<h3 :class="$style.heading"><i class="ti ti-progress-check"></i> ステータス</h3>
-				<button type="button" :class="$style.textButton" :disabled="exporting" @click="toggleAllStatuses">{{ selectedStatuses.length === exportStatusKeys.length ? 'すべて外す' : 'すべて選ぶ' }}</button>
+				<h3 :class="$style.heading"><i class="ti ti-progress-check"></i> {{ copy.status }}</h3>
+				<button type="button" :class="$style.textButton" :disabled="exporting" @click="toggleAllStatuses">{{ selectedStatuses.length === exportStatusKeys.length ? copy.deselectAll : copy.selectAll }}</button>
 			</div>
 			<div :class="$style.chips">
 				<button
@@ -65,8 +65,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 		<section :class="$style.section">
 			<div :class="$style.headingRow">
-				<h3 :class="$style.heading"><i class="ti ti-tags"></i> カテゴリ</h3>
-				<button type="button" :class="$style.textButton" :disabled="exporting" @click="toggleAllCategories">{{ selectedCategories.length === exportCategoryKeys.length ? 'すべて外す' : 'すべて選ぶ' }}</button>
+				<h3 :class="$style.heading"><i class="ti ti-tags"></i> {{ copy.category }}</h3>
+				<button type="button" :class="$style.textButton" :disabled="exporting" @click="toggleAllCategories">{{ selectedCategories.length === exportCategoryKeys.length ? copy.deselectAll : copy.selectAll }}</button>
 			</div>
 			<div :class="$style.chips">
 				<button
@@ -85,23 +85,23 @@ SPDX-License-Identifier: AGPL-3.0-only
 		</section>
 
 		<section :class="$style.section">
-			<h3 :class="$style.heading"><i class="ti ti-file-description"></i> 含める内容</h3>
+			<h3 :class="$style.heading"><i class="ti ti-file-description"></i> {{ copy.includedContent }}</h3>
 			<div :class="$style.switches">
-				<MkSwitch v-model="includeDescription" :disabled="exporting">イシュー本文</MkSwitch>
-				<MkSwitch v-model="includeComments" :disabled="exporting">会話（コメント）</MkSwitch>
-				<MkSwitch v-model="includeCode" :disabled="exporting">提出されたコード</MkSwitch>
-				<MkSwitch v-model="includeResolution" :disabled="exporting">解決メモ</MkSwitch>
-				<MkSwitch v-model="includeAuthors" :disabled="exporting">投稿者名</MkSwitch>
-				<MkSwitch v-model="includeStats" :disabled="exporting">賛同数・コメント数</MkSwitch>
+				<MkSwitch v-model="includeDescription" :disabled="exporting">{{ copy.issueDescription }}</MkSwitch>
+				<MkSwitch v-model="includeComments" :disabled="exporting">{{ copy.comments }}</MkSwitch>
+				<MkSwitch v-model="includeCode" :disabled="exporting">{{ copy.submittedCode }}</MkSwitch>
+				<MkSwitch v-model="includeResolution" :disabled="exporting">{{ copy.resolutionMemo }}</MkSwitch>
+				<MkSwitch v-model="includeAuthors" :disabled="exporting">{{ copy.authorNames }}</MkSwitch>
+				<MkSwitch v-model="includeStats" :disabled="exporting">{{ copy.statistics }}</MkSwitch>
 			</div>
-			<div :class="$style.caption">番号・タイトル・カテゴリ・ステータス・優先度・作成日時は常に含まれます。</div>
+			<div :class="$style.caption">{{ copy.alwaysIncluded }}</div>
 		</section>
 
 		<div v-if="validationError" :class="$style.error"><i class="ti ti-alert-circle"></i> {{ validationError }}</div>
 		<div :class="$style.actions">
-			<MkButton rounded :disabled="exporting" @click="dialog?.close()">キャンセル</MkButton>
+			<MkButton rounded :disabled="exporting" @click="dialog?.close()">{{ copy.cancel }}</MkButton>
 			<MkButton type="submit" primary gradate rounded :wait="exporting" :disabled="!canExport">
-				<i class="ti ti-download"></i> {{ exporting ? '書き出し中…' : 'エクスポート' }}
+				<i class="ti ti-download"></i> {{ exporting ? copy.exporting : copy.export }}
 			</MkButton>
 		</div>
 	</form>
@@ -115,6 +115,7 @@ import MkButton from '@/components/MkButton.vue';
 import MkInput from '@/components/MkInput.vue';
 import MkSelect from '@/components/MkSelect.vue';
 import MkSwitch from '@/components/MkSwitch.vue';
+import { i18n } from '@/i18n.js';
 import * as os from '@/os.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { categoryKeys, categoryLabel, statusKeys, statusLabel } from '@/utility/hatafeed.js';
@@ -122,6 +123,7 @@ import { downloadHataFeedJson, localDayEndIso, localDayStartIso, validateHataFee
 
 const props = defineProps<{ projectId: string | null; projectName: string }>();
 const emit = defineEmits<{ (ev: 'closed'): void }>();
+const copy = i18n.ts._hata._hatafeed._exportWindow;
 
 type ExportStatus = 'open' | 'planned' | 'inProgress' | 'resolved' | 'wontfix' | 'unknown' | 'closed';
 type ExportCategory = 'bug' | 'improvement' | 'unresolved' | 'featureRequest' | 'adoptionRequest' | 'security' | 'betaFeature' | 'other';
@@ -136,9 +138,9 @@ const createdFrom = ref('');
 const createdTo = ref('');
 const closedState = ref<'all' | 'open' | 'closed'>('all');
 const closedStateItems = [
-	{ value: 'all', label: '受付中・受付終了の両方' },
-	{ value: 'open', label: '受付中のみ' },
-	{ value: 'closed', label: '受付終了のみ' },
+	{ value: 'all', label: copy.acceptanceAll },
+	{ value: 'open', label: copy.acceptanceOpen },
+	{ value: 'closed', label: copy.acceptanceClosed },
 ];
 const selectedStatuses = ref<ExportStatus[]>([...exportStatusKeys]);
 const selectedCategories = ref<ExportCategory[]>([...exportCategoryKeys]);
@@ -156,9 +158,15 @@ const validationError = computed(() => {
 		createdFrom: createdFrom.value,
 		createdTo: createdTo.value,
 	});
-	if (rangeError != null) return rangeError;
-	if (selectedStatuses.value.length === 0) return 'ステータスを1つ以上選んでください。';
-	if (selectedCategories.value.length === 0) return 'カテゴリを1つ以上選んでください。';
+	if (rangeError != null) {
+		const from = optionalNumber(numberFrom.value);
+		const to = optionalNumber(numberTo.value);
+		if ((from != null && from < 1) || (to != null && to < 1)) return copy.numberMinimumError;
+		if (from != null && to != null && from > to) return copy.numberOrderError;
+		return copy.dateOrderError;
+	}
+	if (selectedStatuses.value.length === 0) return copy.statusRequired;
+	if (selectedCategories.value.length === 0) return copy.categoryRequired;
 	return null;
 });
 const canExport = computed(() => !exporting.value && validationError.value == null && selectedStatuses.value.length > 0 && selectedCategories.value.length > 0);
@@ -206,13 +214,17 @@ async function runExport() {
 			includeAuthors: includeAuthors.value,
 			includeStats: includeStats.value,
 		});
+		const exportData = data as unknown as Record<string, unknown> & { project?: Record<string, unknown> | null };
+		const localizedData = props.projectId == null && exportData.project != null
+			? { ...exportData, project: { ...exportData.project, name: copy.officialProjectName } }
+			: exportData;
 		const date = new Date().toISOString().slice(0, 10);
-		downloadHataFeedJson(data, `hatafeed-issues-${props.projectId ?? 'official'}-${date}.json`);
-		os.toast('エクスポートを開始しました。');
+		downloadHataFeedJson(localizedData, `hatafeed-issues-${props.projectId ?? 'official'}-${date}.json`);
+		os.toast(copy.exportStarted);
 		succeeded = true;
 	} catch (error) {
 		console.error(error);
-		os.alert({ type: 'error', title: 'エクスポートできませんでした', text: '範囲や通信状態を確認して、もう一度お試しください。' });
+		os.alert({ type: 'error', title: copy.exportFailed, text: copy.exportFailedDescription });
 	} finally {
 		exporting.value = false;
 	}

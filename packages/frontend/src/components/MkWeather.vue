@@ -223,7 +223,7 @@ function createPressureChart() {
 		data: {
 			labels: hours,
 			datasets: [{
-				label: '気圧 (hPa)',
+				label: `${i18n.ts._weather.pressure} (hPa)`,
 				data: pressures,
 				tension: 0.3,
 				pointRadius: 2,

@@ -10,15 +10,15 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<!-- ヘッダー -->
 			<div :class="$style.header">
 				<div :class="$style.scoreBox">
-					<div :class="$style.scoreLabel">YOU</div>
+					<div :class="$style.scoreLabel">{{ common.youUpper }}</div>
 					<div :class="$style.scoreValue">{{ playerScore }}</div>
 				</div>
 				<div :class="$style.scoreBox">
-					<div :class="$style.scoreLabel">VS</div>
+					<div :class="$style.scoreLabel">{{ common.versusUpper }}</div>
 					<div :class="$style.scoreValue" style="font-size:1rem;">{{ aiLabel }}</div>
 				</div>
 				<div :class="$style.scoreBox">
-					<div :class="$style.scoreLabel">AI</div>
+					<div :class="$style.scoreLabel">{{ common.aiUpper }}</div>
 					<div :class="[$style.scoreValue, $style.aiColor]">{{ aiScore }}</div>
 				</div>
 			</div>
@@ -27,7 +27,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<div :class="$style.dual">
 				<!-- プレイヤー側 -->
 				<div :class="$style.side">
-					<div :class="$style.sideLabel">あなた</div>
+					<div :class="$style.sideLabel">{{ common.you }}</div>
 					<div ref="playerContainerEl" :class="[$style.gameArea, { [$style.gameOverShake]: playerDead }]"
 						@click="onDrop" @mousemove="onMouseMove" @touchmove.prevent="onTouchMove" @touchend="onDrop">
 						<canvas ref="playerCanvasEl"></canvas>
@@ -43,7 +43,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 				<!-- AI側 -->
 				<div :class="$style.side">
-					<div :class="[$style.sideLabel, $style.aiColor]">AI ({{ aiLabel }})</div>
+					<div :class="[$style.sideLabel, $style.aiColor]">{{ common.aiUpper }} ({{ aiLabel }})</div>
 					<div ref="aiContainerEl" :class="[$style.gameArea, { [$style.gameOverShake]: aiDead }]">
 						<canvas ref="aiCanvasEl"></canvas>
 					</div>
@@ -56,13 +56,13 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<div :class="$style.overCard">
 						<div :class="$style.overTitle">{{ resultTitle }}</div>
 						<div :class="$style.overScoreRow">
-							<div>あなた: <b>{{ playerScore }}</b></div>
-							<div>AI: <b>{{ aiScore }}</b></div>
+							<div>{{ common.you }}: <b>{{ playerScore }}</b></div>
+							<div>{{ common.aiUpper }}: <b>{{ aiScore }}</b></div>
 						</div>
-						<div :class="$style.overBlocks">あなた: {{ playerBlocks }}個 / AI: {{ aiBlocks }}個</div>
+						<div :class="$style.overBlocks">{{ copyx.blocksComparison({ player: String(playerBlocks), ai: String(aiBlocks) }) }}</div>
 						<div :class="$style.overBtns">
-							<MkButton primary gradate rounded @click="restart"><i class="ti ti-refresh"></i> もう一度</MkButton>
-							<MkButton rounded @click="goBack"><i class="ti ti-arrow-left"></i> 戻る</MkButton>
+							<MkButton primary gradate rounded @click="restart"><i class="ti ti-refresh"></i> {{ common.retry }}</MkButton>
+							<MkButton rounded @click="goBack"><i class="ti ti-arrow-left"></i> {{ common.back }}</MkButton>
 						</div>
 					</div>
 				</div>
@@ -80,9 +80,13 @@ import { useRouter } from '@/router.js';
 import { definePage } from '@/page.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { $i } from '@/i.js';
+import { i18n } from '@/i18n.js';
 
 const router = useRouter();
 const props = defineProps<{ ai?: string }>();
+const common = i18n.ts._hata._games._common;
+const copy = i18n.ts._hata._games._stacking._ai;
+const copyx = i18n.tsx._hata._games._stacking._ai;
 
 const GW = 300;
 const GH = 450;
@@ -100,11 +104,11 @@ type EmojiItem = { url?: string; char?: string; name: string; score: number };
 // AI難易度パラメータ
 function getAiParams(level: string) {
 	switch (level) {
-		case 'easy': return { dropInterval: 2500, accuracy: 0.3, label: 'よわい' };
-		case 'hard': return { dropInterval: 1500, accuracy: 0.6, label: 'むずかしい' };
-		case 'extreme': return { dropInterval: 900, accuracy: 0.85, label: 'つよすぎる' };
-		case 'insane': return { dropInterval: 600, accuracy: 0.95, label: 'エグい' };
-		default: return { dropInterval: 2000, accuracy: 0.4, label: 'よわい' };
+		case 'easy': return { dropInterval: 2500, accuracy: 0.3, label: common._difficulty.easy };
+		case 'hard': return { dropInterval: 1500, accuracy: 0.6, label: common._difficulty.hard };
+		case 'extreme': return { dropInterval: 900, accuracy: 0.85, label: common._difficulty.extreme };
+		case 'insane': return { dropInterval: 600, accuracy: 0.95, label: common._difficulty.insane };
+		default: return { dropInterval: 2000, accuracy: 0.4, label: common._difficulty.easy };
 	}
 }
 
@@ -127,7 +131,7 @@ const currentEmoji = ref<EmojiItem|null>(null);
 const nextEmoji = ref<EmojiItem|null>(null);
 
 const aiLevel = ref('easy');
-const aiLabel = ref('よわい');
+const aiLabel = ref(common._difficulty.easy);
 
 // Matter.js instances
 let pEngine: Matter.Engine, pRender: Matter.Render, pRunner: Matter.Runner;
@@ -159,16 +163,16 @@ const guideStyle = computed(() => ({ left: (guideXRatio.value * 100) + '%' }));
 const resultTitle = computed(() => {
 	if (playerDead.value && aiDead.value) {
 		// 両方死亡→スコア比較
-		if (playerScore.value > aiScore.value) return '🎉 あなたの勝ち！';
-		if (aiScore.value > playerScore.value) return '😢 AIの勝ち...';
-		return '🤝 引き分け！';
+		if (playerScore.value > aiScore.value) return common.playerWin;
+		if (aiScore.value > playerScore.value) return common.aiWin;
+		return common.draw;
 	}
-	if (playerDead.value && !aiDead.value) return '😢 AIの勝ち...';
-	if (aiDead.value && !playerDead.value) return '🎉 あなたの勝ち！';
+	if (playerDead.value && !aiDead.value) return common.aiWin;
+	if (aiDead.value && !playerDead.value) return common.playerWin;
 	// タイムアウトで終了（両方生存）→スコア比較
-	if (playerScore.value > aiScore.value) return '🎉 あなたの勝ち！';
-	if (aiScore.value > playerScore.value) return '😢 AIの勝ち...';
-	return '🤝 引き分け！';
+	if (playerScore.value > aiScore.value) return common.playerWin;
+	if (aiScore.value > playerScore.value) return common.aiWin;
+	return common.draw;
 });
 
 function buildPool() {
@@ -548,7 +552,7 @@ onUnmounted(() => {
 	pAnimTex.clear(); aAnimTex.clear();
 });
 
-definePage(() => ({ title: 'つみつみタワー vs AI', icon: 'ti ti-robot' }));
+definePage(() => ({ title: copy.pageTitle, icon: 'ti ti-robot' }));
 </script>
 
 <style lang="scss" module>

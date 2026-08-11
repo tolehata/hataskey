@@ -3,12 +3,28 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { describe, expect, test } from 'vitest';
-import { HATA_WHATS_NEW } from './hata-whats-new.js';
+import { describe, expect, test, vi } from 'vitest';
+import { getHataWhatsNewDisplayVersion, HATA_WHATS_NEW } from './hata-whats-new.js';
+import type { Locale } from '../../../../locales/index.js';
+
+vi.mock('@/i18n.js', async () => {
+	const fs = await import('node:fs');
+	const path = await import('node:path');
+	const yaml = await import('js-yaml');
+	const { I18n } = await import('@@/js/i18n.js');
+	const locale = yaml.load(fs.readFileSync(path.resolve(process.cwd(), '../../locales/ja-JP.yml'), 'utf8'));
+	return { i18n: new I18n<Locale>(locale as Locale) };
+});
 
 describe('HATA_WHATS_NEW', () => {
 	test('更新見出しは指定された利用者向け表記になっている', () => {
 		expect(HATA_WHATS_NEW.headline).toBe('大きな新機能を5つ、ゲームを1つ追加、ベースをMisskey2026.7.0へ更新しました');
+	});
+
+	test('機械判定用の完全な版から旗鯖の表示版を生成する', () => {
+		expect(HATA_WHATS_NEW.version).toBe('2026.7.0-hata.12.1');
+		expect(getHataWhatsNewDisplayVersion(HATA_WHATS_NEW.version)).toBe('hata-12.1');
+		expect(getHataWhatsNewDisplayVersion('development')).toBe('development');
 	});
 
 	test('新機能カードはそれぞれ正しい画面へ誘導する', () => {
@@ -86,6 +102,19 @@ describe('HATA_WHATS_NEW', () => {
 		expect(`${viewer?.title}\n${viewer?.text}`).toContain('Misskey本家');
 	});
 
+	test('独自機能の3言語対応と対象外を案内する', () => {
+		const language = HATA_WHATS_NEW.items.find(item => item.preview === 'language');
+		expect(language).toMatchObject({
+			to: '/settings/preferences',
+			linkLabel: '言語設定を開く',
+		});
+		const copy = `${language?.title}\n${language?.text}`;
+		expect(copy).toContain('英語');
+		expect(copy).toContain('中国語（簡体字）');
+		expect(copy).toContain('花常');
+		expect(copy).toContain('地震・津波情報');
+	});
+
 	test('外部アカウント連携の撤去対象と削除内容を明記する', () => {
 		const external = HATA_WHATS_NEW.items.find(item => item.title.includes('外部アカウント連携'));
 		const copy = `${external?.title}\n${external?.text}`;
@@ -98,7 +127,7 @@ describe('HATA_WHATS_NEW', () => {
 	});
 
 	test('すべての更新項目に内容別の実画面風プレビューを割り当てる', () => {
-		expect(HATA_WHATS_NEW.items).toHaveLength(14);
-		expect(new Set(HATA_WHATS_NEW.items.map(item => item.preview)).size).toBe(14);
+		expect(HATA_WHATS_NEW.items).toHaveLength(15);
+		expect(new Set(HATA_WHATS_NEW.items.map(item => item.preview)).size).toBe(15);
 	});
 });

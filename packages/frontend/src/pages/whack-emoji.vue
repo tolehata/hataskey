@@ -10,50 +10,50 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<div class="_gaps">
 				<div class="_panel" :class="$style.hero">
 					<div :class="$style.heroInner">
-						<div :class="$style.heroTitle">🔨 絵文字叩きゲーム</div>
-						<div :class="$style.heroSub">出てくる絵文字を素早くたたこう！</div>
+						<div :class="$style.heroTitle">🔨 {{ copy.title }}</div>
+						<div :class="$style.heroSub">{{ copy.description }}</div>
 					</div>
 				</div>
 
 				<div class="_panel" :class="$style.menuCard">
 					<div class="_gaps" style="padding: 20px;">
-						<div style="font-weight:bold;">難易度を選択</div>
+						<div style="font-weight:bold;">{{ copy.selectDifficulty }}</div>
 						<div :class="$style.diffList">
 							<button v-for="d in 10" :key="d" :class="[$style.diffBtn, selectedDiff === d && $style.diffBtnOn]" @click="selectedDiff = d">
 								{{ d }}
 							</button>
 						</div>
 						<div :class="$style.diffDesc">
-							<span v-if="selectedDiff <= 3">🟢 かんたん — ゆっくりペースで出現</span>
-							<span v-else-if="selectedDiff <= 6">🟡 ふつう — そこそこの速さ</span>
-							<span v-else-if="selectedDiff <= 8">🟠 むずかしい — 素早い反射神経が必要</span>
-							<span v-else>🔴 超上級 — 一瞬の判断力が試される！</span>
+							<span v-if="selectedDiff <= 3">🟢 {{ copy.difficultyEasyDescription }}</span>
+							<span v-else-if="selectedDiff <= 6">🟡 {{ copy.difficultyNormalDescription }}</span>
+							<span v-else-if="selectedDiff <= 8">🟠 {{ copy.difficultyHardDescription }}</span>
+							<span v-else>🔴 {{ copy.difficultyExpertDescription }}</span>
 						</div>
 
 						<div style="border-top: 1px solid var(--MI_THEME-divider); padding-top: 12px; margin-top: 8px;">
-							<div style="font-weight:bold; margin-bottom: 8px;">ゲームモード</div>
+							<div style="font-weight:bold; margin-bottom: 8px;">{{ copy.gameMode }}</div>
 							<div :class="$style.diffList">
-								<button :class="[$style.diffBtn, { [$style.diffBtnOn]: gameMode === 'normal' }]" style="width:auto;padding:6px 14px;" @click="gameMode = 'normal'">⏱️ 通常</button>
-								<button :class="[$style.diffBtn, { [$style.diffBtnOn]: gameMode === 'endless' }]" style="width:auto;padding:6px 14px;" @click="gameMode = 'endless'">♾️ エンドレス</button>
+								<button :class="[$style.diffBtn, { [$style.diffBtnOn]: gameMode === 'normal' }]" style="width:auto;padding:6px 14px;" @click="gameMode = 'normal'">⏱️ {{ copy.normalMode }}</button>
+								<button :class="[$style.diffBtn, { [$style.diffBtnOn]: gameMode === 'endless' }]" style="width:auto;padding:6px 14px;" @click="gameMode = 'endless'">♾️ {{ copy.endlessMode }}</button>
 							</div>
 							<div v-if="gameMode === 'endless'" style="font-size:.8rem;opacity:.6;margin-top:4px;">
-								叩くたびに時間が回復！スコアを稼ぐほど長く遊べます
+								{{ copy.endlessDescription }}
 							</div>
 						</div>
 
 						<div style="border-top: 1px solid var(--MI_THEME-divider); padding-top: 12px; margin-top: 8px;">
-							<div style="font-weight:bold; margin-bottom: 8px;">AI対戦</div>
+							<div style="font-weight:bold; margin-bottom: 8px;">{{ common.aiBattle }}</div>
 							<div :class="$style.diffList">
-								<button :class="[$style.diffBtn, { [$style.diffBtnOn]: aiLevel === '' }]" style="width:auto;padding:6px 10px;" @click="aiLevel = ''">🚫 なし</button>
-								<button :class="[$style.diffBtn, { [$style.diffBtnOn]: aiLevel === 'easy' }]" style="width:auto;padding:6px 10px;" @click="aiLevel = 'easy'">🐣 よわい</button>
-								<button :class="[$style.diffBtn, { [$style.diffBtnOn]: aiLevel === 'hard' }]" style="width:auto;padding:6px 10px;" @click="aiLevel = 'hard'">🤖 むずかしい</button>
-								<button :class="[$style.diffBtn, { [$style.diffBtnOn]: aiLevel === 'extreme' }]" style="width:auto;padding:6px 10px;" @click="aiLevel = 'extreme'">👹 つよすぎる</button>
-								<button :class="[$style.diffBtn, { [$style.diffBtnOn]: aiLevel === 'insane' }]" style="width:auto;padding:6px 10px;" @click="aiLevel = 'insane'">💀 エグい</button>
+								<button :class="[$style.diffBtn, { [$style.diffBtnOn]: aiLevel === '' }]" style="width:auto;padding:6px 10px;" @click="aiLevel = ''">🚫 {{ common._difficulty.none }}</button>
+								<button :class="[$style.diffBtn, { [$style.diffBtnOn]: aiLevel === 'easy' }]" style="width:auto;padding:6px 10px;" @click="aiLevel = 'easy'">🐣 {{ common._difficulty.easy }}</button>
+								<button :class="[$style.diffBtn, { [$style.diffBtnOn]: aiLevel === 'hard' }]" style="width:auto;padding:6px 10px;" @click="aiLevel = 'hard'">🤖 {{ common._difficulty.hard }}</button>
+								<button :class="[$style.diffBtn, { [$style.diffBtnOn]: aiLevel === 'extreme' }]" style="width:auto;padding:6px 10px;" @click="aiLevel = 'extreme'">👹 {{ common._difficulty.extreme }}</button>
+								<button :class="[$style.diffBtn, { [$style.diffBtnOn]: aiLevel === 'insane' }]" style="width:auto;padding:6px 10px;" @click="aiLevel = 'insane'">💀 {{ common._difficulty.insane }}</button>
 							</div>
 						</div>
 
 						<MkButton primary gradate large rounded inline @click="startGame" style="margin-top: 12px;">
-							<i class="ti ti-player-play"></i> ゲームスタート
+							<i class="ti ti-player-play"></i> {{ common.startGame }}
 						</MkButton>
 					</div>
 				</div>
@@ -61,23 +61,23 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<!-- サーバー対戦 -->
 				<div class="_panel" :class="$style.menuCard">
 					<div class="_gaps" style="padding: 20px;">
-						<div style="font-weight:bold;">⚔️ サーバー対戦</div>
-						<div style="font-size:.85rem;opacity:.7;">他のユーザーとリアルタイムでスコアを競おう！観戦もできます</div>
+						<div style="font-weight:bold;">⚔️ {{ common.serverBattle }}</div>
+						<div style="font-size:.85rem;opacity:.7;">{{ copy.serverBattleDescription }}</div>
 						<MkButton primary rounded inline @click="goLobby">
-							<i class="ti ti-door-enter"></i> ロビーに入る
+							<i class="ti ti-door-enter"></i> {{ common.enterLobby }}
 						</MkButton>
 					</div>
 				</div>
 
 				<div class="_panel" :class="$style.menuCard">
 					<div class="_gaps_s" style="padding: 16px;">
-						<div><b> 遊び方</b></div>
+						<div><b>{{ common.howToPlay }}</b></div>
 						<ol :class="$style.howTo">
-							<li>制限時間30秒でスタート</li>
-							<li>穴から出てくる絵文字をクリック/タップで叩きます</li>
-							<li>叩くとスコアが加算！難易度が高いほどスコアも高い</li>
-							<li>出てこないマスを叩くとミス（減点）</li>
-							<li>時間切れでゲームオーバー、ハイスコアを目指そう！</li>
+							<li>{{ copy.howTo1 }}</li>
+							<li>{{ copy.howTo2 }}</li>
+							<li>{{ copy.howTo3 }}</li>
+							<li>{{ copy.howTo4 }}</li>
+							<li>{{ copy.howTo5 }}</li>
 						</ol>
 					</div>
 				</div>
@@ -86,15 +86,15 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<div class="_panel" :class="$style.menuCard">
 					<div class="_gaps_s" style="padding: 16px;">
 						<div style="display:flex;align-items:center;justify-content:space-between;">
-							<b> ランキング</b>
+							<b>{{ common.ranking }}</b>
 							<div :class="$style.rankDiffTabs">
 								<button v-for="d in [1,3,5,7,10]" :key="d" :class="[$style.rankDiffTab, rankDiff === d && $style.rankDiffTabOn]" @click="rankDiff = d; fetchRanking();">
-									Lv{{ d }}
+									{{ commonx.levelShort({ level: String(d) }) }}
 								</button>
 							</div>
 						</div>
 						<div v-if="rankingLoading" style="text-align:center;padding:16px;opacity:.5;"><MkLoading/></div>
-						<div v-else-if="ranking.length === 0" style="text-align:center;padding:16px;opacity:.5;">まだ記録がありません</div>
+						<div v-else-if="ranking.length === 0" style="text-align:center;padding:16px;opacity:.5;">{{ common.noRecords }}</div>
 						<div v-else :class="$style.rankList">
 							<div v-for="(r, i) in ranking" :key="r.id" :class="$style.rankItem">
 								<div :class="[$style.rankNum, i < 3 && $style.rankTop]">{{ i + 1 }}</div>
@@ -103,7 +103,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 								</div>
 								<div :class="$style.rankInfo">
 									<div :class="$style.rankName"><MkUserName v-if="r.user" :user="r.user"/><span v-else>???</span></div>
-									<div :class="$style.rankMeta">{{ r.hits }}hit / {{ r.misses }}miss</div>
+									<div :class="$style.rankMeta">{{ copyx.hitMiss({ hits: String(r.hits), misses: String(r.misses) }) }}</div>
 								</div>
 								<div :class="$style.rankScore">{{ r.score }}</div>
 							</div>
@@ -114,9 +114,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<!-- 自分の記録 -->
 				<div class="_panel" :class="$style.menuCard">
 					<div class="_gaps_s" style="padding: 16px;">
-						<div><b>♾️ エンドレスランキング</b></div>
+						<div><b>♾️ {{ copy.endlessRanking }}</b></div>
 						<div v-if="endlessRankingLoading" style="text-align:center;padding:12px;opacity:.5;"><MkLoading/></div>
-						<div v-else-if="endlessRanking.length === 0" style="text-align:center;padding:12px;opacity:.5;">まだ記録がありません</div>
+						<div v-else-if="endlessRanking.length === 0" style="text-align:center;padding:12px;opacity:.5;">{{ common.noRecords }}</div>
 						<div v-else :class="$style.rankList">
 							<div v-for="(r, i) in endlessRanking" :key="r.id" :class="$style.rankItem">
 								<div :class="[$style.rankNum, i < 3 && $style.rankTop]">{{ i + 1 }}</div>
@@ -125,7 +125,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 								</div>
 								<div :class="$style.rankInfo">
 									<div :class="$style.rankName"><MkUserName v-if="r.user" :user="r.user"/><span v-else>???</span></div>
-									<div :class="$style.rankMeta">{{ r.hits }}hit / {{ r.misses }}miss</div>
+									<div :class="$style.rankMeta">{{ copyx.hitMiss({ hits: String(r.hits), misses: String(r.misses) }) }}</div>
 								</div>
 								<div :class="$style.rankScore">{{ r.score }}</div>
 							</div>
@@ -136,15 +136,15 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<!-- 自分の記録 -->
 				<div class="_panel" :class="$style.menuCard">
 					<div class="_gaps_s" style="padding: 16px;">
-						<div><b> あなたの記録</b></div>
+						<div><b>{{ common.yourRecords }}</b></div>
 						<div v-if="myScoresLoading" style="text-align:center;padding:12px;opacity:.5;"><MkLoading/></div>
-						<div v-else-if="myScores.length === 0" style="text-align:center;padding:12px;opacity:.5;">まだプレイしていません</div>
+						<div v-else-if="myScores.length === 0" style="text-align:center;padding:12px;opacity:.5;">{{ common.notPlayedYet }}</div>
 						<div v-else :class="$style.myScoreList">
 							<div v-for="s in myScores" :key="s.id" :class="$style.myScoreItem">
 								<div :class="$style.myScoreVal">{{ s.score }}</div>
 								<div :class="$style.myScoreMeta">
-									<span>Lv{{ s.difficulty }}</span>
-									<span>{{ s.hits }}hit</span>
+									<span>{{ commonx.levelShort({ level: String(s.difficulty) }) }}</span>
+									<span>{{ copyx.hits({ count: String(s.hits) }) }}</span>
 									<span :class="$style.myScoreDate">{{ formatDate(s.createdAt) }}</span>
 								</div>
 							</div>
@@ -163,8 +163,15 @@ import MkButton from '@/components/MkButton.vue';
 import { useRouter } from '@/router.js';
 import { definePage } from '@/page.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
+import { i18n } from '@/i18n.js';
+import { versatileLang } from '@/utility/intl-const.js';
 
 const router = useRouter();
+const common = i18n.ts._hata._games._common;
+const commonx = i18n.tsx._hata._games._common;
+const copy = i18n.ts._hata._games._whack._home;
+const copyx = i18n.tsx._hata._games._whack._home;
+const scoreDateFormatter = new Intl.DateTimeFormat(versatileLang, { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 
 const selectedDiff = ref(5);
 const rankDiff = ref(5);
@@ -178,8 +185,7 @@ const endlessRanking = ref<any[]>([]);
 const endlessRankingLoading = ref(false);
 
 function formatDate(iso: string): string {
-	const d = new Date(iso);
-	return `${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+	return scoreDateFormatter.format(new Date(iso));
 }
 
 async function fetchRanking() {
@@ -219,7 +225,7 @@ function goLobby() {
 
 onMounted(() => { fetchRanking(); fetchMyScores(); fetchEndlessRanking(); });
 
-definePage(() => ({ title: '絵文字叩きゲーム', icon: 'ti ti-hammer' }));
+definePage(() => ({ title: copy.title, icon: 'ti ti-hammer' }));
 </script>
 
 <style lang="scss" module>

@@ -4,7 +4,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 
 <template>
-<div v-if="badges.length > 0" :class="[$style.root, { [$style.compact]: compact }]" role="list" aria-label="旗鯖の実績">
+<div v-if="badges.length > 0" :class="[$style.root, { [$style.compact]: compact }]" role="list" :aria-label="i18n.ts._hata._profileBadges.ariaLabel">
 	<div
 		v-for="badge in badges"
 		:key="badge.key"
@@ -25,6 +25,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 import { computed } from 'vue';
 import type * as Misskey from 'cherrypick-js';
 import { $i } from '@/i.js';
+import { i18n } from '@/i18n.js';
 import { getHataProfileBadges } from '@/utility/hata-profile-badges.js';
 
 const props = withDefaults(defineProps<{

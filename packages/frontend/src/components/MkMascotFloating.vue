@@ -12,7 +12,7 @@
 	v-if="visible && shownUrl && minimized"
 	:class="[$style.miniBtn, minimizeCorner === 'left' ? $style.miniLeft : $style.miniRight]"
 	@click="restore"
-	title="マスコットを表示"
+	:title="copy.showMascot"
 >
 	<img :src="shownUrl" :class="$style.miniImg" draggable="false" alt="mascot" />
 </button>
@@ -26,18 +26,18 @@
 >
 	<!-- 操作ボタン(ホバー時に表示) -->
 	<div :class="$style.controls">
-		<button :class="$style.ctrlBtn" @click.stop="toggleQuickPanel" title="かんたん設定"><i class="ti ti-adjustments"></i></button>
-		<button :class="$style.ctrlBtn" @click.stop="minimize" title="最小化"><i class="ti ti-minus"></i></button>
+		<button :class="$style.ctrlBtn" @click.stop="toggleQuickPanel" :title="copy.quickSettings"><i class="ti ti-adjustments"></i></button>
+		<button :class="$style.ctrlBtn" @click.stop="minimize" :title="copy.minimize"><i class="ti ti-minus"></i></button>
 	</div>
 
 	<!-- かんたん設定パネル(吹き出し形式) -->
 	<div v-if="quickPanelOpen" :class="$style.quickPanel" @pointerdown.stop @click.stop>
 		<div :class="$style.qpRow">
-			<span>透過度</span>
+			<span>{{ copy.opacity }}</span>
 			<input type="range" min="0.1" max="1" step="0.05" :value="displaySettings.floatingOpacity" @input="setOpacity($event)" />
 		</div>
 		<div :class="$style.qpRow">
-			<span>左右反転</span>
+			<span>{{ copy.flip }}</span>
 			<button :class="[$style.qpToggle, displaySettings.floatingFlip && $style.qpToggleOn]" @click="toggleFlip"></button>
 		</div>
 	</div>
@@ -59,6 +59,7 @@
 <script lang="ts" setup>
 import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue';
 import { deviceKind } from '@/utility/device-kind.js';
+import { i18n } from '@/i18n.js';
 import {
 	mascotLoaded, loadMascot,
 	currentExpression, pickRandomPhrase, clearAnnounce,
@@ -72,6 +73,7 @@ import {
 	floatingMascotShown,
 } from '@/utility/mascot-store.js';
 
+const copy = i18n.ts._hata._mascotFloating;
 const isDesktop = deviceKind === 'desktop';
 
 // 表示するか(デスクトップ/モバイルで別設定)

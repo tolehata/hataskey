@@ -21,6 +21,10 @@ import {
 	ensureHataSideStudioInitialized,
 	getActiveHataSideStudioMenuIds,
 	getAvailableHataSideStudioMoreItems,
+	getHataSideStudioGroupDisplayName,
+	getHataSideStudioMenuDisplayLabel,
+	getHataSideStudioProfileDisplayName,
+	getHataSideWidgetDisplayLabel,
 	gradientCss,
 	hataSideStudioStore,
 	isHataSideStudioStorageString,
@@ -32,6 +36,38 @@ const storage = vi.hoisted(() => ({
 	getItem: vi.fn(() => null as string | null),
 	setItem: vi.fn(),
 	removeItem: vi.fn(),
+}));
+
+const localeState = vi.hoisted(() => ({
+	utility: {
+		menuLabels: {
+			timeline: 'Timeline',
+			notifications: 'Notifications',
+		},
+		groupNames: {
+			basic: 'Core features',
+			hata: 'Hataskey features',
+		},
+		defaultNames: {
+			newGroup: 'New group',
+			defaultProfile: 'Default',
+			groupFallback: 'Group',
+			profileFallback: 'Profile',
+			collapsedCopyGroup: 'Copied from compact menu',
+		},
+		widgetLabels: {
+			clock: 'Clock',
+			hataskFlowers: 'Hatask flowers',
+		},
+	},
+}));
+
+vi.mock('@/i18n.js', () => ({
+	i18n: {
+		get ts() {
+			return { _hata: { _hataSideStudio: { _utility: localeState.utility } } };
+		},
+	},
 }));
 
 vi.mock('@/local-storage.js', () => ({
@@ -51,6 +87,67 @@ describe('HataSideStudio', () => {
 		storage.getItem.mockReturnValue(null);
 		storage.setItem.mockClear();
 		storage.removeItem.mockClear();
+		localeState.utility = {
+			menuLabels: { timeline: 'Timeline', notifications: 'Notifications' },
+			groupNames: { basic: 'Core features', hata: 'Hataskey features' },
+			defaultNames: {
+				newGroup: 'New group',
+				defaultProfile: 'Default',
+				groupFallback: 'Group',
+				profileFallback: 'Profile',
+				collapsedCopyGroup: 'Copied from compact menu',
+			},
+			widgetLabels: { clock: 'Clock', hataskFlowers: 'Hatask flowers' },
+		};
+	});
+
+	test('共通localeは表示時だけ解決し、保存値と利用者名を変更しない', () => {
+		const translatedSource = [
+			{ id: 'timeline', icon: 'ti ti-home', label: 'Timeline', group: 'basic' },
+			{ id: 'earthquake', icon: 'ti ti-activity', label: 'Earthquake', group: 'hata' },
+			{ id: 'custom-menu', icon: 'ti ti-point', label: 'My menu', group: 'custom' },
+		];
+		const profile = createDefaultProfile(translatedSource);
+		const storedButtons = profile.expanded.nodes.flatMap(node => node.type === 'group' ? node.children.filter(child => child.type === 'button') : []);
+		const widget = createWidget('clock');
+		const legacyFlowers = createWidget('hataskFlowers');
+		legacyFlowers.label = '育てたお花';
+		const customWidget = createWidget('clock');
+		customWidget.label = 'My clock';
+
+		expect(profile.name).toBe('デフォルト');
+		expect(profile.expanded.nodes[0].type === 'group' && profile.expanded.nodes[0].name).toBe('基本機能');
+		expect(storedButtons.map(button => button.label)).toEqual(['タイムライン', '地震・津波情報', 'My menu']);
+		expect(widget.label).toBe('時計');
+		expect(getHataSideStudioProfileDisplayName(profile.name)).toBe('Default');
+		expect(getHataSideStudioGroupDisplayName('基本機能')).toBe('Core features');
+		expect(getHataSideStudioGroupDisplayName('利用者のグループ')).toBe('利用者のグループ');
+		expect(getHataSideStudioMenuDisplayLabel('timeline', storedButtons[0].label)).toBe('Timeline');
+		expect(getHataSideStudioMenuDisplayLabel('earthquake', storedButtons[1].label)).toBe('地震・津波情報');
+		expect(getHataSideStudioMenuDisplayLabel('custom-menu', storedButtons[2].label)).toBe('My menu');
+		expect(getHataSideWidgetDisplayLabel(widget.kind, widget.label)).toBe('Clock');
+		expect(getHataSideWidgetDisplayLabel(legacyFlowers.kind, legacyFlowers.label)).toBe('Hatask flowers');
+		expect(getHataSideWidgetDisplayLabel(customWidget.kind, customWidget.label)).toBe('My clock');
+
+		const beforeLanguageSwitch = JSON.stringify({ profile, widget, legacyFlowers, customWidget });
+		localeState.utility = {
+			menuLabels: { timeline: '时间线', notifications: '通知' },
+			groupNames: { basic: '基本功能', hata: '旗服功能' },
+			defaultNames: {
+				newGroup: '新建分组',
+				defaultProfile: '默认',
+				groupFallback: '分组',
+				profileFallback: '配置',
+				collapsedCopyGroup: '从收起菜单复制',
+			},
+			widgetLabels: { clock: '时钟', hataskFlowers: 'Hatask花朵' },
+		};
+		expect(getHataSideStudioProfileDisplayName(profile.name)).toBe('默认');
+		expect(getHataSideStudioMenuDisplayLabel('timeline', storedButtons[0].label)).toBe('时间线');
+		expect(getHataSideWidgetDisplayLabel(widget.kind, widget.label)).toBe('时钟');
+		expect(JSON.stringify({ profile, widget, legacyFlowers, customWidget })).toBe(beforeLanguageSwitch);
+		expect(beforeLanguageSwitch).not.toContain('Timeline');
+		expect(beforeLanguageSwitch).not.toContain('时间线');
 	});
 
 	test('初期状態は拡大グループと縮小専用の縦一列ボタンを別々に持つ', () => {

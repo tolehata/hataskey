@@ -10,20 +10,25 @@ SPDX-License-Identifier: AGPL-3.0-only
 	<button
 		v-for="(count, emoji) in reactionsLocal" :key="emoji"
 		:class="[$style.pill, myReactionLocal === emoji && $style.pillOn]"
+		:title="myReactionLocal === emoji ? copy.remove : copy.add"
+		:aria-label="myReactionLocal === emoji ? copy.remove : copy.add"
 		@click="toggle(emoji)"
 	>
 		<MkReactionIcon :class="$style.icon" :reaction="String(emoji)"/>
 		<span :class="$style.count">{{ count }}</span>
 	</button>
-	<button ref="addEl" :class="$style.add" @click="openPicker"><i class="ti ti-mood-plus"></i></button>
+	<button ref="addEl" :class="$style.add" :title="copy.add" :aria-label="copy.add" @click="openPicker"><i class="ti ti-mood-plus"></i></button>
 </span>
 </template>
 
 <script lang="ts" setup>
 import { ref, useTemplateRef } from 'vue';
 import MkReactionIcon from '@/components/MkReactionIcon.vue';
+import { i18n } from '@/i18n.js';
 import { reactionPicker } from '@/utility/reaction-picker.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
+
+const copy = i18n.ts._hata._hatady._reactions;
 
 const props = defineProps<{
 	target: { logId?: string | null; commentId?: string | null };

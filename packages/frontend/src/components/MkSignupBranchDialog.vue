@@ -27,14 +27,14 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<div v-if="step === 'branch'" key="branch" :class="$style.container">
 				<div :class="$style.branchMessage">
 					<i class="ti ti-user-plus" :class="$style.branchIcon"></i>
-					<p>招待コードをお持ちですか？</p>
+					<p>{{ copy.haveInviteCode }}</p>
 				</div>
 				<div :class="$style.branchButtons">
 					<MkButton primary full rounded @click="goInviteCode">
-						<i class="ti ti-ticket"></i> はい、招待コードを持っています
+						<i class="ti ti-ticket"></i> {{ copy.haveInviteCodeYes }}
 					</MkButton>
 					<MkButton full rounded @click="goApplication">
-						<i class="ti ti-pencil"></i> いいえ、持っていません
+						<i class="ti ti-pencil"></i> {{ copy.haveInviteCodeNo }}
 					</MkButton>
 				</div>
 			</div>
@@ -57,17 +57,17 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<div v-else-if="step === 'applicationComplete'" key="complete" :class="$style.container">
 				<div :class="$style.completeMessage">
 					<i class="ti ti-circle-check" :class="$style.completeIcon"></i>
-					<h3>必要な入力はすべて完了しました</h3>
-					<p>申請が承認された場合、承認のメールが届き、記入されたID名でログインできるようになります。</p>
+					<h3>{{ copy.applicationComplete }}</h3>
+					<p>{{ copy.applicationCompleteDescription }}</p>
 					<div :class="$style.notice">
 						<ul>
-							<li>申請の承認には2〜3日ほどかかる場合があります。</li>
-							<li>申請が承認されなかった場合、登録申請許可に関するメールは送信されません。</li>
-							<li>なお、申請の承認基準は公開していません。</li>
+							<li>{{ copy.reviewTime }}</li>
+							<li>{{ copy.noRejectionEmail }}</li>
+							<li>{{ copy.criteriaNotPublic }}</li>
 						</ul>
 					</div>
 					<div :class="$style.completeButton">
-						<MkButton primary rounded @click="onClose">閉じる</MkButton>
+						<MkButton primary rounded @click="onClose">{{ i18n.ts.close }}</MkButton>
 					</div>
 				</div>
 			</div>
@@ -101,6 +101,7 @@ const emit = defineEmits<{
 const dialog = useTemplateRef('dialog');
 const step = ref<'branch' | 'invite' | 'application' | 'applicationComplete'>('branch');
 const isAcceptedServerRule = ref(false);
+const copy = i18n.ts._hata._common;
 
 onMounted(() => {
 	window.document.documentElement.setAttribute('data-hata-signup-modal-open', 'true');

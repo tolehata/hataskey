@@ -32,5 +32,6 @@ describe('Hataskお花ウィジェットの保存データ正規化', () => {
 			{ id: 'b' },
 		])).toBe(2);
 		expect(normalizeFlowerGallery([{ id: 'a' }], Number.NaN)).toHaveLength(1);
+		expect(normalizeFlowerGallery([{ id: 'a' }], 1, 'Unnamed flower')[0].name).toBe('Unnamed flower');
 	});
 });

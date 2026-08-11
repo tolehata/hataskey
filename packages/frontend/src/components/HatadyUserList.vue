@@ -12,11 +12,11 @@ SPDX-License-Identifier: AGPL-3.0-only
 	:canResize="true"
 	@closed="emit('closed')"
 >
-	<template #header><i :class="type === 'followers' ? 'ti ti-users' : 'ti ti-user-check'"></i> {{ type === 'followers' ? t('followers') : t('followingTitle') }}</template>
+	<template #header><i :class="type === 'followers' ? 'ti ti-users' : 'ti ti-user-check'"></i> {{ type === 'followers' ? copy.followers : copy.followingTitle }}</template>
 
 	<div class="hatady-scope" :data-hatady-theme="theme" :class="$style.body">
-		<div v-if="loading" :class="$style.loading">{{ t('loading') }}</div>
-		<div v-else-if="items.length === 0" :class="$style.empty">{{ t('empty') }}</div>
+		<div v-if="loading" :class="$style.loading">{{ copy.loading }}</div>
+		<div v-else-if="items.length === 0" :class="$style.empty">{{ copy.empty }}</div>
 		<div v-else :class="$style.list">
 			<div v-for="it in items" :key="it.user.id" :class="$style.row">
 				<button :class="$style.who" @click="openProfile(it.user.id)">
@@ -27,7 +27,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					</div>
 				</button>
 				<button v-if="!it.isMe" :class="[$style.followBtn, it.isFollowing && $style.followingBtn]" :disabled="it.busy" @click="toggle(it)">
-					<i :class="it.isFollowing ? 'ti ti-check' : 'ti ti-user-plus'"></i> {{ it.isFollowing ? t('following') : t('follow') }}
+					<i :class="it.isFollowing ? 'ti ti-check' : 'ti ti-user-plus'"></i> {{ it.isFollowing ? copy.following : copy.follow }}
 				</button>
 				<button :class="$style.menuBtn" @click="openRowMenu(it, $event)"><i class="ti ti-dots"></i></button>
 			</div>
@@ -39,46 +39,33 @@ SPDX-License-Identifier: AGPL-3.0-only
 <script lang="ts" setup>
 import { ref, onMounted } from 'vue';
 import MkWindow from '@/components/MkWindow.vue';
+import { i18n } from '@/i18n.js';
 import * as os from '@/os.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { userPage } from '@/filters/user.js';
-import { hatadyTheme, hatadyLang } from '@/utility/hatady-prefs.js';
+import { hatadyTheme } from '@/utility/hatady-prefs.js';
 
 const props = defineProps<{ userId?: string | null; type: 'following' | 'followers' }>();
 const emit = defineEmits<{ (ev: 'openProfile', userId: string): void; (ev: 'changed'): void; (ev: 'closed'): void }>();
 const dialog = ref<any>(null);
 const theme = hatadyTheme;
-const lang = hatadyLang;
+const copy = i18n.ts._hata._hatady._userList;
+const copyx = i18n.tsx._hata._hatady._userList;
 
 const items = ref<any[]>([]);
 const loading = ref(true);
 
-const DICT: Record<string, { ja: string; en: string }> = {
-	followingTitle: { ja: 'フォロー中', en: 'Following' },
-	followers: { ja: 'フォロワー', en: 'Followers' },
-	loading: { ja: '読み込み中…', en: 'Loading…' },
-	empty: { ja: 'まだいません。', en: 'No one yet.' },
-	follow: { ja: 'フォロー', en: 'Follow' },
-	following: { ja: 'フォロー中', en: 'Following' },
-	followConfirm: { ja: '{name} さんをフォローしますか？', en: 'Follow {name}?' },
-	unfollowConfirm: { ja: '{name} さんのフォローを解除しますか？', en: 'Unfollow {name}?' },
-	viewServerProfile: { ja: 'サーバーのプロフィールを見る', en: 'View server profile' },
-	removeFollower: { ja: 'フォロワーから削除', en: 'Remove follower' },
-	removeFollowerConfirm: { ja: 'このユーザーをフォロワーから外しますか？(相手に通知はされません)', en: 'Remove this follower? (They won\'t be notified)' },
-};
-function t(key: string): string { return DICT[key]?.[lang.value === 'en' ? 'en' : 'ja'] ?? key; }
-
 function openRowMenu(it: any, ev: MouseEvent) {
 	const items: any[] = [{
-		text: t('viewServerProfile'), icon: 'ti ti-external-link',
+		text: copy.viewServerProfile, icon: 'ti ti-external-link',
 		action: () => os.pageWindow(userPage(it.user)),
 	}];
 	// フォロワー一覧では、相手を通知なしでフォロワーから外せる。
 	if (props.type === 'followers' && !it.isMe) {
 		items.push({
-			text: t('removeFollower'), icon: 'ti ti-user-minus', danger: true,
+			text: copy.removeFollower, icon: 'ti ti-user-minus', danger: true,
 			action: async () => {
-				const { canceled } = await os.confirm({ type: 'warning', text: t('removeFollowerConfirm') });
+				const { canceled } = await os.confirm({ type: 'warning', text: copy.removeFollowerConfirm });
 				if (canceled) return;
 				await misskeyApi('hata/hatady/followers/remove', { userId: it.user.id }).catch(() => {});
 				items_remove(it);
@@ -108,7 +95,7 @@ async function toggle(it: any) {
 	const uname = it.user.name || it.user.username;
 	const { canceled } = await os.confirm({
 		type: it.isFollowing ? 'warning' : 'question',
-		text: (it.isFollowing ? t('unfollowConfirm') : t('followConfirm')).replace('{name}', uname),
+		text: it.isFollowing ? copyx.unfollowConfirm({ name: uname }) : copyx.followConfirm({ name: uname }),
 	});
 	if (canceled) return;
 	it.busy = true;

@@ -7,20 +7,20 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 <template>
 <MkStickyContainer>
-	<template #header><MkPageHeader :actions="headerActions" :title="'マスコット'" :icon="'ti ti-mood-smile'"/></template>
+	<template #header><MkPageHeader :actions="headerActions" :title="copy.title" :icon="'ti ti-mood-smile'"/></template>
 	<MkSpacer :contentMax="700">
-		<div v-if="!mascotLoaded" :class="$style.center">読み込み中…</div>
+		<div v-if="!mascotLoaded" :class="$style.center">{{ copy.loading }}</div>
 
 		<!-- 旗鯖fork: マスコット機能がロールで許可されていないユーザー向けの案内。操作系は一切出さない。 -->
 		<div v-else-if="!canUseMascot" :class="$style.empty">
 			<i class="ti ti-lock" :class="$style.emptyIcon"></i>
-			<div :class="$style.emptyText">お使いのアカウントでは、マスコット機能を現在ご利用いただけません。</div>
+			<div :class="$style.emptyText">{{ copy.unavailable }}</div>
 		</div>
 
 		<div v-else-if="!hasMascot" :class="$style.empty">
 			<i class="ti ti-mood-empty" :class="$style.emptyIcon"></i>
-			<div :class="$style.emptyText">まだマスコットが設定されていません。</div>
-			<MkButton primary rounded @click="openSettings"><i class="ti ti-settings"></i> マスコットを設定する</MkButton>
+			<div :class="$style.emptyText">{{ copy.notConfigured }}</div>
+			<MkButton primary rounded @click="openSettings"><i class="ti ti-settings"></i> {{ copy.configureMascot }}</MkButton>
 		</div>
 
 		<div v-else :class="$style.stage">
@@ -39,11 +39,11 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</Transition>
 			</div>
 			<div v-if="character && (mascotData?.showName) && character.name" :class="$style.name">{{ character.name }}</div>
-			<div v-if="!phraseText" :class="$style.bubbleEmpty">（文言が設定されていません）</div>
+			<div v-if="!phraseText" :class="$style.bubbleEmpty">{{ copy.noPhrase }}</div>
 			<div :class="$style.controls">
-				<MkButton rounded @click="next"><i class="ti ti-refresh"></i> 次の文言</MkButton>
-				<MkButton v-if="isBirthdayToday" rounded gradate @click="celebrateBirthday"><i class="ti ti-cake"></i> 誕生日を祝ってもらう</MkButton>
-				<MkButton rounded @click="openSettings"><i class="ti ti-settings"></i> 設定</MkButton>
+				<MkButton rounded @click="next"><i class="ti ti-refresh"></i> {{ copy.nextPhrase }}</MkButton>
+				<MkButton v-if="isBirthdayToday" rounded gradate @click="celebrateBirthday"><i class="ti ti-cake"></i> {{ copy.celebrateBirthday }}</MkButton>
+				<MkButton rounded @click="openSettings"><i class="ti ti-settings"></i> {{ i18n.ts.settings }}</MkButton>
 			</div>
 		</div>
 	</MkSpacer>
@@ -55,6 +55,7 @@ import { computed, onMounted, onActivated, onDeactivated, onUnmounted, ref, watc
 import MkButton from '@/components/MkButton.vue';
 import * as os from '@/os.js';
 import { $i } from '@/i.js';
+import { i18n } from '@/i18n.js';
 import { definePage } from '@/page.js';
 import { isBirthday } from '@/utility/is-birthday.js';
 import {
@@ -66,6 +67,7 @@ import {
 	nextIdleDelayMs,
 } from '@/utility/mascot-store.js';
 
+const copy = i18n.ts._hata._mascotPage;
 
 const character = computed(() => activeCharacter.value);
 const hasMascot = computed(() => !!character.value);
@@ -191,12 +193,12 @@ function announceOnOpen() {
 
 const headerActions = computed(() => canUseMascot.value ? [{
 	icon: 'ti ti-settings',
-	text: '設定',
+	text: i18n.ts.settings,
 	handler: openSettings,
 }] : []);
 
 definePage(() => ({
-	title: 'マスコット',
+	title: copy.title,
 	icon: 'ti ti-mood-smile',
 }));
 </script>

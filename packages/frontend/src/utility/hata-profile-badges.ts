@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+import { i18n } from '@/i18n.js';
+
 export type HataProfileBadgeUser = {
 	id: string;
 	host: string | null;
@@ -35,37 +37,38 @@ function safeCount(value: number | undefined): number {
 
 export function getHataProfileBadges(user: HataProfileBadgeUser, currentUserId: string | null): HataProfileBadge[] {
 	const badges: HataProfileBadge[] = [];
+	const copy = i18n.ts._hata._profileBadges;
 
 	if (isShown(user, currentUserId, user.utageSuccessCount, user.showUtageSuccessCount)) {
 		badges.push({
 			key: 'utageSuccess',
-			label: '宴の成功',
+			label: copy.utageSuccess,
 			count: safeCount(user.utageSuccessCount),
-			unit: '回',
+			unit: copy.times,
 			icon: 'ti ti-confetti',
-			description: '15分間、誰にも反応されずに宴を成功させた回数',
+			description: copy.utageSuccessDescription,
 		});
 	}
 
 	if (isShown(user, currentUserId, user.utageInterruptionCount, user.showUtageInterruptionCount)) {
 		badges.push({
 			key: 'utageInterruption',
-			label: '宴の阻止',
+			label: copy.utageInterruption,
 			count: safeCount(user.utageInterruptionCount),
-			unit: '回',
+			unit: copy.times,
 			icon: 'ti ti-shield-x',
-			description: 'ほかの人の宴へ反応し、阻止した回数',
+			description: copy.utageInterruptionDescription,
 		});
 	}
 
 	if (isShown(user, currentUserId, user.hataskFlowerCount, user.showHataskFlowerCount)) {
 		badges.push({
 			key: 'hataskFlower',
-			label: '育てたお花',
+			label: copy.flowersGrown,
 			count: safeCount(user.hataskFlowerCount),
-			unit: '輪',
+			unit: copy.flowersUnit,
 			icon: 'ti ti-flower',
-			description: 'Hatask のお庭で咲かせたお花の数',
+			description: copy.flowersGrownDescription,
 		});
 	}
 

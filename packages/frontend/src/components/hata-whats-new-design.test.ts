@@ -15,7 +15,7 @@ describe('Hata update presentation', () => {
 		expect(whatsNewSource).not.toContain('$style.previewChrome');
 		const previewMarkup = whatsNewSource.slice(whatsNewSource.indexOf(':class="$style.preview"'), whatsNewSource.indexOf(':class="$style.itemBody"'));
 		expect(previewMarkup).not.toContain('<button');
-		for (const actualScreenCopy of ['学習の記録', 'GARDEN', 'スタジオ設定', '季節の花を合わせて、一年をめぐる。', '絵文字申請', 'ベータ機能を試す', 'プライベートチャンネル', '招待拒否', '宴の成功', '二要素認証']) {
+		for (const actualScreenCopy of ['copy.studyHistory', 'copy.garden', 'copy.studioSettings', '季節の花を合わせて、一年をめぐる。', 'copy.emojiRequest', 'copy.tryBeta', 'copy.privateChannel', 'copy.declinedOne', 'copy.feastSuccess', 'copy.twoFactorAuthentication', 'copy.languageSettings', 'copy.languageSupported']) {
 			expect(whatsNewSource).toContain(actualScreenCopy);
 		}
 		expect(whatsNewSource).not.toContain('ti ti-sparkles"></i></div>');
@@ -31,7 +31,7 @@ describe('Hata update presentation', () => {
 	});
 
 	test('実在利用者を思わせない例示名と各モック固有の表示補正を使う', () => {
-		expect(whatsNewSource).toContain('例えば、アザラシ');
+		expect(whatsNewSource).toContain('copy.exampleSeal');
 		expect(whatsNewSource).toContain('@example_seal');
 		expect(whatsNewSource).not.toContain('<b>旗茶</b>');
 		expect(whatsNewSource).toContain('font-family: \'HataWhatsNewRighteous\'');
@@ -48,6 +48,12 @@ describe('Hata update presentation', () => {
 	test('PC幅ではUI設定と更新内容のモーダルを中央に置く', () => {
 		expect(uiSetupSource).toContain('max-width: 720px;\n\tmargin-inline: auto;');
 		expect(whatsNewSource).toContain('max-width: 1180px;\n\tmargin-inline: auto;');
+	});
+
+	test('表示済み判定用の完全な版とは別に旗鯖の表示版を出す', () => {
+		expect(whatsNewSource).toContain('{{ releaseVersion }}');
+		expect(whatsNewSource).toContain('getHataWhatsNewDisplayVersion(whatsNew.version)');
+		expect(whatsNewSource).not.toContain('{{ whatsNew.version }}');
 	});
 
 	test('わかったを押すと更新内容の窓だけを下へ滑らかに退場させる', () => {

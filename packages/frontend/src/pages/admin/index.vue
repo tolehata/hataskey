@@ -15,7 +15,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<div class="_gaps_s">
 					<MkInfo v-if="thereIsUnresolvedAbuseReport" warn>{{ i18n.ts.thereIsUnresolvedAbuseReportWarning }} <MkA to="/admin/abuses" class="_link">{{ i18n.ts.check }}</MkA></MkInfo>
 					<!-- 旗鯖fork(タスク7): 未処理の登録申請がある時の警告 -->
-					<MkInfo v-if="thereIsPendingRegistration" warn>未処理の登録申請があります。 <MkA to="/admin/registration-applications" class="_link">{{ i18n.ts.check }}</MkA></MkInfo>
+					<MkInfo v-if="thereIsPendingRegistration" warn>{{ i18n.ts._hata._adminCommon.pendingRegistration }} <MkA to="/admin/registration-applications" class="_link">{{ i18n.ts.check }}</MkA></MkInfo>
 					<MkInfo v-if="noMaintainerInformation" warn>{{ i18n.ts.noMaintainerInformationWarning }} <MkA to="/admin/settings" class="_link">{{ i18n.ts.configure }}</MkA></MkInfo>
 					<MkInfo v-if="noInquiryUrl" warn>{{ i18n.ts.noInquiryUrlWarning }} <MkA to="/admin/settings" class="_link">{{ i18n.ts.configure }}</MkA></MkInfo>
 					<MkInfo v-if="noBotProtection" warn>{{ i18n.ts.noBotProtectionWarning }} <MkA to="/admin/security" class="_link">{{ i18n.ts.configure }}</MkA></MkInfo>
@@ -120,7 +120,7 @@ const menuDef = computed<SuperMenuDef[]>(() => [{
 		active: currentPage.value?.route.name === 'overview',
 	}, ...(iAmAdmin ? [{
 		icon: 'ti ti-device-gamepad-2',
-		text: 'ゲーム運営',
+		text: i18n.ts._hata._adminCommon.gameManagement,
 		to: '/admin/games',
 		active: currentPage.value?.route.name === 'games',
 	}] : []), {
@@ -262,13 +262,13 @@ const menuDef = computed<SuperMenuDef[]>(() => [{
 		active: currentPage.value?.route.name === 'database',
 	}, {
 		icon: 'ti ti-user-check',
-		text: '登録申請管理',
+		text: i18n.ts._hata._adminCommon.registrationManagement,
 		to: '/admin/registration-applications',
 		active: currentPage.value?.route.name === 'registration-applications',
 		indicated: thereIsPendingRegistration.value,
 	}, {
 		icon: 'ti ti-shield-check',
-		text: '同意管理',
+		text: i18n.ts._hata._adminCommon.consentManagement,
 		to: '/admin/consent-manager',
 		active: currentPage.value?.route.name === 'consent-manager',
 	}],

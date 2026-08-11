@@ -41,7 +41,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 						type="button"
 						:class="$style.htkCapsuleClear"
 						tabindex="-1"
-						aria-label="クリア"
+						:aria-label="i18n.ts.clear"
 						@click="searchQuery = ''; searchQueryEl?.focus();"
 					>
 						<i class="ti ti-x"/>
@@ -99,10 +99,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<div v-else-if="tab === 'adminAll'">
 			<div :class="$style.adminFilterRow">
 				<MkRadios v-model="adminFilter" @update:modelValue="reloadAdminAll()">
-					<option value="all">すべて</option>
-					<option value="public">公開のみ</option>
-					<option value="private">プライベートのみ</option>
-					<option value="archived">アーカイブ済み</option>
+					<option value="all">{{ copy.filterAll }}</option>
+					<option value="public">{{ copy.filterPublic }}</option>
+					<option value="private">{{ copy.filterPrivate }}</option>
+					<option value="archived">{{ copy.filterArchived }}</option>
 				</MkRadios>
 			</div>
 			<MkPagination v-slot="{items}" :key="adminAllKey" :paginator="adminAllPaginator">
@@ -133,6 +133,7 @@ import * as os from '@/os.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 
 const router = useRouter();
+const copy = i18n.ts._hata._privateChannels;
 
 const props = defineProps<{
 	query: string;
@@ -254,9 +255,9 @@ function create() {
 // 旗鯖fork: あいことば(キーフレーズ)だけでプライベートチャンネルに参加する
 async function joinByPassword() {
 	const { canceled, result: password } = await os.inputText({
-		title: 'あいことばで参加',
-		text: 'あいことば（キーフレーズ）を入力してください。',
-		placeholder: '例: どんぐり',
+		title: copy.joinWithPassphrase,
+		text: copy.passphrasePrompt,
+		placeholder: copy.passphraseExample,
 		default: '',
 	});
 	if (canceled || password == null || password === '') return;
@@ -266,13 +267,13 @@ async function joinByPassword() {
 		os.success();
 		router.push('/channels/:channelId', { params: { channelId: ch.id } });
 	} catch (err) {
-		os.alert({ type: 'error', text: 'あいことばが一致するチャンネルが見つかりませんでした。' });
+		os.alert({ type: 'error', text: copy.noMatchingChannel });
 	}
 }
 
 const headerActions = computed(() => [{
 	icon: 'ti ti-door-enter',
-	text: 'あいことばで参加',
+	text: copy.joinWithPassphrase,
 	handler: joinByPassword,
 }, {
 	icon: 'ti ti-plus',
@@ -304,7 +305,7 @@ const headerTabs = computed(() => [{
 // 旗鯖fork: 管理者/モデレーターのみ「全チャンネル」タブを表示 (プライベート含む全件をモデレーション目的で閲覧)
 ...(($i?.isAdmin || $i?.isModerator) ? [{
 	key: 'adminAll',
-	title: 'すべて',
+	title: copy.allChannels,
 	icon: 'ti ti-shield-cog',
 }] : [])]);
 

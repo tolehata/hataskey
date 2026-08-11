@@ -40,7 +40,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					type="button"
 					:class="$style.clearBtn"
 					tabindex="-1"
-					aria-label="クリア"
+					:aria-label="i18n.ts.clear"
 					@click="clearQuery"
 				>
 					<i class="ti ti-x"/>

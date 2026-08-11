@@ -26,7 +26,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 							</MkA>
 							<MkA :to="'/settings/hata-custom'" :class="[$style.htkHataBtn, { [$style.htkHataBtnActive]: currentPage?.route.name === 'hata-custom' }]">
 								<i class="ti ti-flag"></i>
-								<span>旗鯖独自機能</span>
+								<span>{{ i18n.ts._hata._common.customFeatures }}</span>
 							</MkA>
 						</div>
 						<MkSuperMenu :def="menuDef" :grid="narrow" :searchIndex="searchIndex"></MkSuperMenu>

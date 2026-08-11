@@ -14,29 +14,29 @@ SPDX-License-Identifier: AGPL-3.0-only
 	:canResize="true"
 	@closed="emit('closed')"
 >
-	<template #header><i class="ti ti-palette"></i> {{ t('title') }}</template>
+	<template #header><i class="ti ti-palette"></i> {{ copy.title }}</template>
 
 	<div class="hatady-scope" :data-hatady-theme="theme" :class="$style.body">
-		<div :class="$style.intro"><i class="ti ti-info-circle"></i> {{ t('intro') }}</div>
+		<div :class="$style.intro"><i class="ti ti-info-circle"></i> {{ copy.intro }}</div>
 
 		<!-- 追加 -->
 		<div :class="$style.addRow">
-			<input v-model="newName" :class="$style.addInput" :placeholder="t('addPh')" :maxlength="128" @keydown.enter="addSubject">
-			<button :class="$style.addBtn" :disabled="!canAdd || busy" @click="addSubject"><i class="ti ti-plus"></i> {{ t('add') }}</button>
+			<input v-model="newName" :class="$style.addInput" :placeholder="copy.addPlaceholder" :maxlength="128" @keydown.enter="addSubject">
+			<button :class="$style.addBtn" :disabled="!canAdd || busy" @click="addSubject"><i class="ti ti-plus"></i> {{ copy.add }}</button>
 		</div>
 
-		<div v-if="loading" :class="$style.loading">{{ t('loading') }}</div>
-		<div v-else-if="subjects.length === 0" :class="$style.empty">{{ t('empty') }}</div>
+		<div v-if="loading" :class="$style.loading">{{ copy.loading }}</div>
+		<div v-else-if="subjects.length === 0" :class="$style.empty">{{ copy.empty }}</div>
 		<div v-else :class="$style.list">
 			<div v-for="s in subjects" :key="s.name" :class="$style.item">
 				<div :class="$style.itemMain">
 					<span :class="$style.swatch" :style="{ background: pal(s.name).accent }"></span>
 					<div :class="$style.itemInfo">
 						<div :class="$style.itemName">{{ s.name }}</div>
-						<div :class="$style.itemMeta">{{ s.logCount }}{{ t('count') }}<span v-if="s.color" :class="$style.customTag"><i class="ti ti-brush"></i> {{ t('custom') }}</span></div>
+						<div :class="$style.itemMeta">{{ s.logCount }}{{ copy.countSuffix }}<span v-if="s.color" :class="$style.customTag"><i class="ti ti-brush"></i> {{ copy.customColor }}</span></div>
 					</div>
-					<button :class="[$style.iconBtn, editingName === s.name && $style.iconBtnOn]" :title="t('color')" @click="toggleEdit(s)"><i class="ti ti-palette"></i></button>
-					<button :class="[$style.iconBtn, $style.danger]" :title="t('delete')" :disabled="busy" @click="removeSubject(s)"><i class="ti ti-trash"></i></button>
+					<button :class="[$style.iconBtn, editingName === s.name && $style.iconBtnOn]" :title="copy.setColor" @click="toggleEdit(s)"><i class="ti ti-palette"></i></button>
+					<button :class="[$style.iconBtn, $style.danger]" :title="copy.delete" :disabled="busy" @click="removeSubject(s)"><i class="ti ti-trash"></i></button>
 				</div>
 				<!-- 色エディタ(1つずつ展開) -->
 				<div v-if="editingName === s.name" :class="$style.editor">
@@ -52,8 +52,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<div :class="$style.editorRow">
 						<MkColorInput v-model="editColor" :class="$style.colorInput"/>
 						<span :class="$style.editorSpacer"></span>
-						<button :class="$style.textBtn" :disabled="busy" @click="resetColor(s)"><i class="ti ti-restore"></i> {{ t('auto') }}</button>
-						<button :class="$style.saveBtn" :disabled="busy || !editColor" @click="applyColor(s)"><i class="ti ti-check"></i> {{ t('save') }}</button>
+						<button :class="$style.textBtn" :disabled="busy" @click="resetColor(s)"><i class="ti ti-restore"></i> {{ copy.resetColor }}</button>
+						<button :class="$style.saveBtn" :disabled="busy || !editColor" @click="applyColor(s)"><i class="ti ti-check"></i> {{ copy.save }}</button>
 					</div>
 				</div>
 			</div>
@@ -66,15 +66,16 @@ SPDX-License-Identifier: AGPL-3.0-only
 import { ref, computed, useTemplateRef, onMounted } from 'vue';
 import MkWindow from '@/components/MkWindow.vue';
 import MkColorInput from '@/components/MkColorInput.vue';
+import { i18n } from '@/i18n.js';
 import * as os from '@/os.js';
 import { hySubjectPalette } from '@/utility/hatady.js';
 import { hySubjects, loadHySubjects, saveHySubject, deleteHySubject, type HySubjectRow } from '@/utility/hatady-subjects.js';
-import { hatadyTheme, hatadyLang } from '@/utility/hatady-prefs.js';
+import { hatadyTheme } from '@/utility/hatady-prefs.js';
 
 const emit = defineEmits<{ (ev: 'changed'): void; (ev: 'closed'): void }>();
 const dialog = useTemplateRef('dialog');
 const theme = hatadyTheme;
-const lang = hatadyLang;
+const copy = i18n.ts._hata._hatady._subjectManager;
 
 const subjects = hySubjects;
 const loading = ref(true);
@@ -92,23 +93,6 @@ const canAdd = computed(() => {
 });
 
 function pal(name: string) { return hySubjectPalette(name); }
-
-const DICT: Record<string, { ja: string; en: string }> = {
-	title: { ja: '分野の管理', en: 'Manage subjects' },
-	intro: { ja: '分野ごとに色を指定したり、不要な分野を削除できます。色はあなたの画面にのみ反映されます。', en: 'Set a color per subject or delete unused ones. Colors apply only to your own view.' },
-	addPh: { ja: '新しい分野を追加', en: 'Add a new subject' },
-	add: { ja: '追加', en: 'Add' },
-	loading: { ja: '読み込み中…', en: 'Loading…' },
-	empty: { ja: '分野がありません。学習を記録するか、上から追加してください。', en: 'No subjects yet. Record a study or add one above.' },
-	count: { ja: '件', en: '' },
-	custom: { ja: '色指定', en: 'custom' },
-	color: { ja: '色を指定', en: 'Set color' },
-	delete: { ja: '削除', en: 'Delete' },
-	auto: { ja: '自動に戻す', en: 'Auto' },
-	save: { ja: '保存', en: 'Save' },
-};
-function t(key: string): string { return DICT[key]?.[lang.value === 'en' ? 'en' : 'ja'] ?? key; }
-function en(): boolean { return lang.value === 'en'; }
 
 async function addSubject() {
 	const n = newName.value.trim();
@@ -162,11 +146,9 @@ async function removeSubject(s: HySubjectRow) {
 	if (s.logCount > 0 && others.length > 0) {
 		// 付け替え先を選ばせる(この分野が付いたログを別分野へ移す)。
 		const sel = await os.select({
-			title: en() ? `Delete "${s.name}"` : `「${s.name}」を削除`,
-			text: en()
-				? `${s.logCount} log(s) use this subject. Choose a subject to reassign them to.`
-				: `この分野の学習記録が ${s.logCount} 件あります。付け替え先の分野を選んでください。`,
-			items: others.map(x => ({ value: x.name, label: `${x.name}${x.logCount > 0 ? `（${x.logCount}${t('count')}）` : ''}` })),
+			title: i18n.tsx._hata._hatady._subjectManager.deleteTitle({ name: s.name }),
+			text: i18n.tsx._hata._hatady._subjectManager.reassignPrompt({ count: s.logCount.toString() }),
+			items: others.map(x => ({ value: x.name, label: `${x.name}${x.logCount > 0 ? i18n.tsx._hata._hatady._subjectManager.itemCount({ count: x.logCount.toString() }) : ''}` })),
 		});
 		if (sel.canceled || sel.result == null) return;
 		reassignTo = String(sel.result);
@@ -174,10 +156,10 @@ async function removeSubject(s: HySubjectRow) {
 		// 付け替え先が無い or ログ0件 → 確認のみ(ログはそのまま残り、色は自動に戻る)。
 		const c = await os.confirm({
 			type: 'warning',
-			title: en() ? `Delete "${s.name}"` : `「${s.name}」を削除`,
+			title: i18n.tsx._hata._hatady._subjectManager.deleteTitle({ name: s.name }),
 			text: s.logCount > 0
-				? (en() ? `${s.logCount} log(s) keep this subject name; only the color setting is removed.` : `この分野の学習記録 ${s.logCount} 件はそのまま残り、色指定のみ解除されます。`)
-				: (en() ? 'Delete this subject?' : 'この分野を削除しますか？'),
+				? i18n.tsx._hata._hatady._subjectManager.keepLogsPrompt({ count: s.logCount.toString() })
+				: copy.deleteConfirm,
 		});
 		if (c.canceled) return;
 	}

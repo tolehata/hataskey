@@ -31,7 +31,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				v-model="searchQuery"
 				:class="$style.searchInput"
 				type="search"
-				:placeholder="'絵文字を検索...'"
+				:placeholder="copy.searchPlaceholder"
 				autocomplete="off"
 			/>
 			<button v-if="searchQuery" :class="$style.searchClear" class="_button" @click="searchQuery = ''">
@@ -72,7 +72,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<!-- よく使うタブ -->
 		<div v-if="activeTab === 'recent'" :class="$style.content">
 			<div v-if="recentReactions.length === 0" :class="$style.empty">
-				まだリアクション履歴がありません
+				{{ copy.noRecentReactions }}
 			</div>
 			<div v-else :class="$style.emojiGrid">
 				<button
@@ -86,7 +86,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				>
 					<template v-if="emoji.startsWith(':')">
 						<img v-if="getCustomEmojiUrl(emoji)" :src="getCustomEmojiUrl(emoji)" :alt="emoji" :class="$style.emojiImg" loading="lazy"/>
-						<span v-else :class="$style.unresolvedEmoji" :title="`画像が解決できませんでした: ${emoji}`">{{ emoji }}</span>
+						<span v-else :class="$style.unresolvedEmoji" :title="copyx.unresolvedEmoji({ emoji })">{{ emoji }}</span>
 					</template>
 					<span v-else :class="$style.unicodeEmoji">{{ emoji }}</span>
 				</button>
@@ -96,7 +96,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<!-- お気に入りタブ -->
 		<div v-else-if="activeTab === 'favorites'" :class="$style.content">
 			<div v-if="favoriteEmojis.length === 0" :class="$style.empty">
-				お気に入りの絵文字がありません。<br/>絵文字を長押し/右クリックでお気に入りに追加できます。
+				{{ copy.noFavorites }}<br/>{{ copy.favoriteInstructions }}
 			</div>
 			<div v-else :class="$style.emojiGrid">
 				<button
@@ -110,7 +110,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				>
 					<template v-if="emoji.startsWith(':')">
 						<img v-if="getCustomEmojiUrl(emoji)" :src="getCustomEmojiUrl(emoji)" :alt="emoji" :class="$style.emojiImg" loading="lazy"/>
-						<span v-else :class="$style.unresolvedEmoji" :title="`画像が解決できませんでした: ${emoji}`">{{ emoji }}</span>
+						<span v-else :class="$style.unresolvedEmoji" :title="copyx.unresolvedEmoji({ emoji })">{{ emoji }}</span>
 					</template>
 					<span v-else :class="$style.unicodeEmoji">{{ emoji }}</span>
 				</button>
@@ -124,7 +124,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</div>
 
 			<div v-else-if="filteredCustomEmojis.length === 0" :class="$style.empty">
-				{{ searchQuery ? '見つかりません' : 'カスタム絵文字なし' }}
+				{{ searchQuery ? copy.notFound : copy.noCustomEmojis }}
 			</div>
 
 			<template v-else>
@@ -137,8 +137,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 							@click="toggleCategory(cat.name)"
 						>
 							<i class="ti ti-chevron-right" :class="$style.categoryChevron"></i>
-							<span :class="$style.categoryHeaderLabel">{{ cat.name || '未分類' }}</span>
-							<span :class="$style.categoryHeaderCount">{{ cat.emojis.length }}</span>
+							<span :class="$style.categoryHeaderLabel">{{ cat.name || copy.uncategorized }}</span>
+							<span :class="$style.categoryHeaderCount">{{ formatCount(cat.emojis.length) }}</span>
 						</button>
 						<div v-if="openCategories.has(cat.name)" :class="$style.emojiGrid">
 							<button
@@ -181,8 +181,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 						@click="toggleUnicodeCategory(group.name)"
 					>
 						<i class="ti ti-chevron-right" :class="$style.categoryChevron"></i>
-						<span :class="$style.categoryHeaderLabel">{{ group.name }}</span>
-						<span :class="$style.categoryHeaderCount">{{ group.emojis.length }}</span>
+						<span :class="$style.categoryHeaderLabel">{{ group.label }}</span>
+						<span :class="$style.categoryHeaderCount">{{ formatCount(group.emojis.length) }}</span>
 					</button>
 					<div v-if="openUnicodeCategories.has(group.name)" :class="$style.emojiGrid">
 						<button
@@ -221,6 +221,8 @@ import MkModal from '@/components/MkModal.vue';
 import { getExternalCustomEmojis, getExternalFavoriteEmojis, setExternalFavoriteEmojis, addExternalFavoriteEmoji, removeExternalFavoriteEmoji, getExternalRecentReactions, getExternalFavoriteEmojisDetailed, getExternalRecentReactionsDetailed, lookupExternalEmojiUrl, getExternalAccount, setExternalEmojiUrlMapForHost } from '@/utility/external-api.js';
 import type { ExternalCustomEmoji } from '@/utility/external-api.js';
 import * as os from '@/os.js';
+import { i18n } from '@/i18n.js';
+import { versatileLang } from '@/utility/intl-const.js';
 
 const props = withDefaults(defineProps<{
 	anchorElement?: HTMLElement | null;
@@ -234,6 +236,10 @@ const emit = defineEmits<{
 }>();
 
 const modal = useTemplateRef('modal');
+const copy = i18n.ts._hata._externalTimeline._reactionPicker;
+const copyx = i18n.tsx._hata._externalTimeline._reactionPicker;
+const numberFormatter = new Intl.NumberFormat(versatileLang);
+const formatCount = (value: number): string => numberFormatter.format(value);
 const searchEl = useTemplateRef('searchEl');
 const searchQuery = ref('');
 const activeTab = ref<'recent' | 'favorites' | 'custom' | 'unicode'>('recent');
@@ -245,8 +251,8 @@ const recentReactions = ref<string[]>([]);
 // アコーディオン状態（カテゴリプルダウン化）
 // 開いているカテゴリ名のセット。
 const openCategories = ref<Set<string>>(new Set());
-// Unicode は最初のグループ「😀 顔」だけ初期展開（操作のヒントになる）
-const openUnicodeCategories = ref<Set<string>>(new Set(['😀 顔']));
+// Unicode は最初のグループだけ初期展開（操作のヒントになる）
+const openUnicodeCategories = ref<Set<string>>(new Set(['faces']));
 
 function toggleCategory(name: string) {
 	if (openCategories.value.has(name)) {
@@ -281,12 +287,12 @@ function detectDark() {
 
 // ===== Unicode絵文字（コンパクト版） =====
 const unicodeEmojiGroups = [
-	{ name: '😀 顔', emojis: ['😀','😃','😄','😁','😆','😅','🤣','😂','🙂','🙃','😉','😊','😇','🥰','😍','🤩','😘','😋','😛','😜','🤪','🤔','🫡','😏','😒','🙄','😬','😌','😔','😴','🤮','🥵','🥶','🥴','🤯','🥳','😎','🤓','😟','😮','😲','😳','🥺','🥹','😨','😰','😢','😭','😱','😤','😡','🤬','😈','💀','💩','🤡','👻','👽','🤖'] },
-	{ name: '👋 手', emojis: ['👋','🤚','✋','👌','🤌','🤏','✌','🤞','🤟','🤘','🤙','👈','👉','👆','👇','👍','👎','✊','👊','👏','🙌','🫶','👐','🤝','🙏'] },
-	{ name: '❤ 心', emojis: ['❤','🧡','💛','💚','💙','💜','🖤','🤍','💔','❤‍🔥','💕','💞','💓','💗','💖','💘','💝','⭐','✨','⚡','🔥','💥','🎉','💯','💢','💫','💦','👀','🌈','☀','🌙'] },
-	{ name: '🐱 動物', emojis: ['🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐨','🐯','🦁','🐮','🐷','🐸','🐵','🐔','🐧','🐦','🦆','🦉','🐝','🦋','🐌','🐞','🐙','🦑','🐬','🐳','🦈','🐊','🐘','🦒','🐇','🦔'] },
-	{ name: '🍎 食べ物', emojis: ['🍎','🍊','🍋','🍌','🍉','🍇','🍓','🍑','🍍','🍅','🥑','🥦','🍞','🧀','🍳','🍔','🍟','🍕','🌮','🍝','🍜','🍣','🍱','🍤','🍙','🍡','🍧','🍰','🎂','🍮','🍩','🍪','🍫','🍿','☕','🍵','🧃','🍺','🍷'] },
-	{ name: '💻 物', emojis: ['📱','💻','🖥','⌨','🎮','🎧','📷','🔋','💡','🔧','🔨','💊','🧸','🎁','🎈','✉','📌','✂','📝','🔍','🔒'] },
+	{ name: 'faces', label: copy.unicodeFaces, emojis: ['😀','😃','😄','😁','😆','😅','🤣','😂','🙂','🙃','😉','😊','😇','🥰','😍','🤩','😘','😋','😛','😜','🤪','🤔','🫡','😏','😒','🙄','😬','😌','😔','😴','🤮','🥵','🥶','🥴','🤯','🥳','😎','🤓','😟','😮','😲','😳','🥺','🥹','😨','😰','😢','😭','😱','😤','😡','🤬','😈','💀','💩','🤡','👻','👽','🤖'] },
+	{ name: 'hands', label: copy.unicodeHands, emojis: ['👋','🤚','✋','👌','🤌','🤏','✌','🤞','🤟','🤘','🤙','👈','👉','👆','👇','👍','👎','✊','👊','👏','🙌','🫶','👐','🤝','🙏'] },
+	{ name: 'hearts', label: copy.unicodeHearts, emojis: ['❤','🧡','💛','💚','💙','💜','🖤','🤍','💔','❤‍🔥','💕','💞','💓','💗','💖','💘','💝','⭐','✨','⚡','🔥','💥','🎉','💯','💢','💫','💦','👀','🌈','☀','🌙'] },
+	{ name: 'animals', label: copy.unicodeAnimals, emojis: ['🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐨','🐯','🦁','🐮','🐷','🐸','🐵','🐔','🐧','🐦','🦆','🦉','🐝','🦋','🐌','🐞','🐙','🦑','🐬','🐳','🦈','🐊','🐘','🦒','🐇','🦔'] },
+	{ name: 'food', label: copy.unicodeFood, emojis: ['🍎','🍊','🍋','🍌','🍉','🍇','🍓','🍑','🍍','🍅','🥑','🥦','🍞','🧀','🍳','🍔','🍟','🍕','🌮','🍝','🍜','🍣','🍱','🍤','🍙','🍡','🍧','🍰','🎂','🍮','🍩','🍪','🍫','🍿','☕','🍵','🧃','🍺','🍷'] },
+	{ name: 'objects', label: copy.unicodeObjects, emojis: ['📱','💻','🖥','⌨','🎮','🎧','📷','🔋','💡','🔧','🔨','💊','🧸','🎁','🎈','✉','📌','✂','📝','🔍','🔒'] },
 ];
 
 const allUnicodeEmojis = computed(() => unicodeEmojiGroups.flatMap(g => g.emojis));
@@ -326,13 +332,13 @@ function addFavorite(emoji: string) {
 	const meta = resolveEmojiMeta(emoji);
 	addExternalFavoriteEmoji(emoji, meta.host, meta.url);
 	favoriteEmojis.value = getExternalFavoriteEmojis();
-	os.toast('⭐ お気に入りに追加しました');
+	os.toast(copy.favoriteAdded);
 }
 
 function removeFavorite(emoji: string) {
 	removeExternalFavoriteEmoji(emoji);
 	favoriteEmojis.value = getExternalFavoriteEmojis();
-	os.toast('お気に入りから削除しました');
+	os.toast(copy.favoriteRemoved);
 }
 
 /**
@@ -489,7 +495,7 @@ onMounted(async () => {
 	const hintShown = localStorage.getItem('externalReactionPickerHintShown');
 	if (!hintShown) {
 		localStorage.setItem('externalReactionPickerHintShown', 'true');
-		os.toast('💡 絵文字を長押し/右クリックでお気に入りに追加・削除できます');
+		os.toast(copy.favoriteHint);
 	}
 
 	await nextTick();

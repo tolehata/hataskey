@@ -12,16 +12,16 @@ SPDX-License-Identifier: AGPL-3.0-only
 	@close="dialogEl?.close()"
 	@closed="emit('closed')"
 >
-	<template #header><i class="ti ti-users"></i> メンバー管理</template>
+	<template #header><i class="ti ti-users"></i> {{ copy.membersTitle }}</template>
 
 	<MkSpacer :marginMin="14" :marginMax="22">
 		<div class="_gaps">
 			<div class="_buttonsCenter">
-				<MkButton primary rounded @click="addMember"><i class="ti ti-user-plus"></i> 参加招待を送る</MkButton>
+				<MkButton primary rounded @click="addMember"><i class="ti ti-user-plus"></i> {{ copy.sendInvitation }}</MkButton>
 			</div>
 
 			<MkLoading v-if="fetching"/>
-			<div v-else-if="members.length === 0 && invitations.length === 0" :class="$style.empty">招待・参加中のメンバーはいません。</div>
+			<div v-else-if="members.length === 0 && invitations.length === 0" :class="$style.empty">{{ copy.noMembersOrInvitations }}</div>
 			<div v-else class="_gaps_s">
 				<div v-for="u in members" :key="u.id" :class="$style.row">
 					<MkAvatar :user="u" :class="$style.avatar" link/>
@@ -29,9 +29,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<MkUserName :user="u"/>
 						<MkAcct :user="u" :class="$style.acct"/>
 					</div>
-					<span v-if="u.id === ownerId" :class="$style.ownerBadge">作成者</span>
+					<span v-if="u.id === ownerId" :class="$style.ownerBadge">{{ copy.owner }}</span>
 					<template v-else>
-						<span :class="[$style.statusBadge, $style.statusJoined]"><i class="ti ti-circle-check"></i> 参加中</span>
+						<span :class="[$style.statusBadge, $style.statusJoined]"><i class="ti ti-circle-check"></i> {{ copy.joined }}</span>
 						<MkButton danger rounded small @click="removeMember(u)"><i class="ti ti-user-minus"></i></MkButton>
 					</template>
 				</div>
@@ -41,9 +41,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<MkUserName :user="invitation.user"/>
 						<MkAcct :user="invitation.user" :class="$style.acct"/>
 					</div>
-					<span v-if="invitation.status === 'pending'" :class="[$style.statusBadge, $style.statusPending]"><i class="ti ti-clock"></i> 招待中</span>
-					<span v-else :class="[$style.statusBadge, $style.statusRejected]"><i class="ti ti-circle-x"></i> 招待拒否</span>
-					<MkButton v-if="invitation.status === 'rejected'" rounded small @click="inviteUser(invitation.user)"><i class="ti ti-refresh"></i> 再招待</MkButton>
+					<span v-if="invitation.status === 'pending'" :class="[$style.statusBadge, $style.statusPending]"><i class="ti ti-clock"></i> {{ copy.inviting }}</span>
+					<span v-else :class="[$style.statusBadge, $style.statusRejected]"><i class="ti ti-circle-x"></i> {{ copy.invitationRejected }}</span>
+					<MkButton v-if="invitation.status === 'rejected'" rounded small @click="inviteUser(invitation.user)"><i class="ti ti-refresh"></i> {{ copy.inviteAgain }}</MkButton>
 				</div>
 			</div>
 		</div>
@@ -56,8 +56,11 @@ import { ref, useTemplateRef } from 'vue';
 import * as Misskey from 'cherrypick-js';
 import MkModalWindow from '@/components/MkModalWindow.vue';
 import MkButton from '@/components/MkButton.vue';
+import { i18n } from '@/i18n.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import * as os from '@/os.js';
+
+const copy = i18n.ts._hata._privateChannels;
 
 const props = defineProps<{
 	channelId: string;
@@ -116,7 +119,7 @@ async function inviteUser(u: Misskey.entities.UserLite) {
 async function removeMember(u: Misskey.entities.UserLite) {
 	const { canceled } = await os.confirm({
 		type: 'warning',
-		text: `${u.name ?? u.username} をこのチャンネルから外しますか？`,
+		text: i18n.tsx._hata._privateChannels.removeMemberConfirm({ name: u.name ?? u.username }),
 	});
 	if (canceled) return;
 	await os.apiWithDialog('channels/remove-member', {

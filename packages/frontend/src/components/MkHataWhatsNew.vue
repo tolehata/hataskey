@@ -16,11 +16,11 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<header :class="$style.header">
 			<div :class="$style.releaseIdentity">
 				<span :class="$style.releaseDot" aria-hidden="true"></span>
-				<span>HATASKEY RELEASE</span>
+				<span>{{ copy.releaseIdentity }}</span>
 			</div>
-			<div :class="$style.releaseVersion">{{ whatsNew.version }}</div>
+			<div :class="$style.releaseVersion">{{ releaseVersion }}</div>
 			<div :class="$style.headerText">
-				<h1 id="hata-whats-new-title" :class="$style.title">今回の更新内容</h1>
+				<h1 id="hata-whats-new-title" :class="$style.title">{{ copy.title }}</h1>
 				<p :class="$style.headline">{{ whatsNew.headline }}</p>
 			</div>
 		</header>
@@ -29,11 +29,11 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<article v-for="(item, i) in whatsNew.items" :key="i" :class="$style.item">
 				<div :class="$style.preview" :data-preview="item.preview" aria-hidden="true">
 					<div v-if="item.preview === 'hatady'" :class="$style.studyMock">
-						<div :class="$style.studyHeader"><i class="ti ti-book-2"></i><b>Hatady</b><span>マイログ</span><span>見つける</span><em>記録する</em></div>
-						<div :class="$style.studyStats"><b>🔥 12<small>連続日数</small></b><b>4時間20分<small>今週</small></b><b>36<small>学習記録</small></b></div>
+						<div :class="$style.studyHeader"><i class="ti ti-book-2"></i><b>Hatady</b><span>{{ copy.hatadyLog }}</span><span>{{ copy.discover }}</span><em>{{ copy.record }}</em></div>
+						<div :class="$style.studyStats"><b>🔥 12<small>{{ copy.streakDays }}</small></b><b>{{ copy.fourHoursTwentyMinutes }}<small>{{ copy.thisWeek }}</small></b><b>36<small>{{ copy.studyRecords }}</small></b></div>
 						<div :class="$style.studyContent">
-							<strong>学習の記録</strong>
-							<div :class="$style.studyTimeline"><i></i><span><b>TypeScript</b><small>45分 · 今日</small></span></div>
+							<strong>{{ copy.studyHistory }}</strong>
+							<div :class="$style.studyTimeline"><i></i><span><b>TypeScript</b><small>{{ copy.fortyFiveMinutesToday }}</small></span></div>
 							<div :class="$style.studyHeat"><span v-for="n in 28" :key="n" :data-level="n % 5"></span></div>
 						</div>
 					</div>
@@ -41,16 +41,16 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<div v-else-if="item.preview === 'hatask'" :class="$style.hataskMock">
 						<div :class="$style.hataskHeader"><i class="ti ti-arrow-left"></i><b>Hatask</b><i class="ti ti-settings"></i></div>
 						<div :class="$style.hataskBody">
-							<div :class="$style.hataskCalendar"><strong>AUGUST</strong><span v-for="n in 14" :key="n" :data-marked="[3, 7, 11].includes(n)">{{ n }}</span></div>
-							<div :class="$style.flowerProgress"><span>GARDEN</span><div><b>🌸</b></div><small>ひなぎく・78%</small></div>
+							<div :class="$style.hataskCalendar"><strong>{{ copy.august }}</strong><span v-for="n in 14" :key="n" :data-marked="[3, 7, 11].includes(n)">{{ n }}</span></div>
+							<div :class="$style.flowerProgress"><span>{{ copy.garden }}</span><div><b>🌸</b></div><small>{{ copy.daisyProgress }}</small></div>
 						</div>
 						<div :class="$style.hataskTabs"><i class="ti ti-home"></i><i class="ti ti-calendar"></i><i class="ti ti-checkbox"></i><i class="ti ti-flower"></i></div>
 					</div>
 
 					<div v-else-if="item.preview === 'hatacording'" :class="$style.cordUiMock">
-						<aside><div><i class="ti ti-flag"></i><b>Hataskey</b></div><span data-active="true"><i class="ti ti-home"></i>ホーム</span><span><i class="ti ti-world"></i>ローカル</span><span><i class="ti ti-rocket"></i>ソーシャル</span><em></em><span><i class="ti ti-search"></i>検索</span><span><i class="ti ti-bell"></i>通知</span></aside>
-						<main><header><b>ホーム</b><small>128人がオンライン</small><i></i></header><div data-side="left"><i></i><span><b>今日はよく晴れましたね</b><small>🙂 3 / 🌸 2</small></span></div><div data-side="right"><span><b>散歩日和でした</b><small>⭐ 1</small></span><i></i></div><footer><i class="ti ti-star"></i><span>いまどうしてる？</span><b>↑</b></footer></main>
-						<section><header><b>投稿詳細</b><i class="ti ti-plus"></i></header><div><i></i><b>投稿の情報</b><span></span><span></span><small>通知・検索・ウィジェットも表示</small></div></section>
+						<aside><div><i class="ti ti-flag"></i><b>Hataskey</b></div><span data-active="true"><i class="ti ti-home"></i>{{ copy.home }}</span><span><i class="ti ti-world"></i>{{ copy.local }}</span><span><i class="ti ti-rocket"></i>{{ copy.social }}</span><em></em><span><i class="ti ti-search"></i>{{ copy.search }}</span><span><i class="ti ti-bell"></i>{{ copy.notifications }}</span></aside>
+						<main><header><b>{{ copy.home }}</b><small>{{ copy.onlineUsers }}</small><i></i></header><div data-side="left"><i></i><span><b>{{ copy.sampleOtherNote }}</b><small>🙂 3 / 🌸 2</small></span></div><div data-side="right"><span><b>{{ copy.sampleOwnNote }}</b><small>⭐ 1</small></span><i></i></div><footer><i class="ti ti-star"></i><span>{{ copy.postPlaceholder }}</span><b>↑</b></footer></main>
+						<section><header><b>{{ copy.postDetails }}</b><i class="ti ti-plus"></i></header><div><i></i><b>{{ copy.postInformation }}</b><span></span><span></span><small>{{ copy.sidepaneHint }}</small></div></section>
 					</div>
 
 					<div v-else-if="item.preview === 'hanaawase'" :class="$style.hanaawaseMock">
@@ -61,41 +61,41 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 					<div v-else-if="item.preview === 'ui'" :class="$style.uiMock">
 						<nav><i class="ti ti-home"></i><i class="ti ti-bell"></i><i class="ti ti-message-circle"></i><i class="ti ti-settings"></i></nav>
-						<div v-for="(title, column) in ['ホーム', 'ローカル', '通知']" :key="title" :class="$style.uiColumn"><b>{{ title }}</b><span v-for="n in column + 2" :key="n"><i></i><em></em></span></div>
+						<div v-for="(title, column) in uiMockColumns" :key="title" :class="$style.uiColumn"><b>{{ title }}</b><span v-for="n in column + 2" :key="n"><i></i><em></em></span></div>
 					</div>
 
 					<div v-else-if="item.preview === 'hatafeed'" :class="$style.feedMock">
-						<div :class="$style.feedToolbar"><b>HataFeed</b><span><i class="ti ti-search"></i>イシュー・会話を検索</span><i class="ti ti-bell"></i></div>
-						<div :class="$style.feedTabs"><b>イシュー</b><span>ロードマップ</span><span>申請管理</span></div>
-						<div :class="$style.feedActions"><span><i class="ti ti-mood-plus"></i>絵文字申請</span><span><i class="ti ti-pencil-plus"></i>新規イシュー</span></div>
-						<div v-for="(title, n) in ['スマホ表示を改善', '絵文字を追加', '通知を見やすく']" :key="title" :class="$style.issueRow"><span :data-state="n + 1"></span><div><b>#{{ n + 24 }} {{ title }}</b><em>受付中 · 2件の会話</em></div><i class="ti ti-chevron-right"></i></div>
+						<div :class="$style.feedToolbar"><b>HataFeed</b><span><i class="ti ti-search"></i>{{ copy.feedSearch }}</span><i class="ti ti-bell"></i></div>
+						<div :class="$style.feedTabs"><b>{{ copy.issues }}</b><span>{{ copy.roadmap }}</span><span>{{ copy.applicationManagement }}</span></div>
+						<div :class="$style.feedActions"><span><i class="ti ti-mood-plus"></i>{{ copy.emojiRequest }}</span><span><i class="ti ti-pencil-plus"></i>{{ copy.newIssue }}</span></div>
+						<div v-for="(title, n) in feedMockIssues" :key="title" :class="$style.issueRow"><span :data-state="n + 1"></span><div><b>#{{ n + 24 }} {{ title }}</b><em>{{ copy.acceptingWithConversations }}</em></div><i class="ti ti-chevron-right"></i></div>
 					</div>
 
 					<div v-else-if="item.preview === 'beta'" :class="$style.betaMock">
-						<div :class="$style.betaTop"><i class="ti ti-flask-2"></i><b>ベータ機能を試す</b><span>BETA</span></div>
-						<div :class="$style.betaCards"><div><i class="ti ti-code"></i><span><b>C/C++ プレイグラウンド</b><small>ブラウザ内で実行</small></span><i class="ti ti-chevron-right"></i></div><div><i class="ti ti-clock-play"></i><span><b>投稿前カウントダウン</b><small>3 · 5 · 10 秒</small></span><em>ON</em></div></div>
+						<div :class="$style.betaTop"><i class="ti ti-flask-2"></i><b>{{ copy.tryBeta }}</b><span>BETA</span></div>
+						<div :class="$style.betaCards"><div><i class="ti ti-code"></i><span><b>{{ copy.cppPlayground }}</b><small>{{ copy.runInBrowser }}</small></span><i class="ti ti-chevron-right"></i></div><div><i class="ti ti-clock-play"></i><span><b>{{ copy.postCountdown }}</b><small>{{ copy.countdownSeconds }}</small></span><em>ON</em></div></div>
 					</div>
 
 					<div v-else-if="item.preview === 'privateChannel'" :class="$style.privateChannelMock">
-						<div :class="$style.privateChannelTop"><i class="ti ti-lock"></i><b>プライベートチャンネル</b><span>新規作成</span></div>
-						<div :class="$style.privateChannelBody"><b>読書会の部屋</b><small>許可されたメンバーだけが閲覧できます</small><div><span><i class="ti ti-clock"></i> 招待中 2人</span><span><i class="ti ti-user-check"></i> 参加中 5人</span><span><i class="ti ti-circle-x"></i> 招待拒否 1人</span></div></div>
+						<div :class="$style.privateChannelTop"><i class="ti ti-lock"></i><b>{{ copy.privateChannel }}</b><span>{{ copy.createNew }}</span></div>
+						<div :class="$style.privateChannelBody"><b>{{ copy.bookClubRoom }}</b><small>{{ copy.privateChannelDescription }}</small><div><span><i class="ti ti-clock"></i> {{ copy.invitingTwo }}</span><span><i class="ti ti-user-check"></i> {{ copy.joinedFive }}</span><span><i class="ti ti-circle-x"></i> {{ copy.declinedOne }}</span></div></div>
 					</div>
 
 					<div v-else-if="item.preview === 'sideStudio'" :class="$style.sideStudioMock">
-						<div :class="$style.sideStudioBar"><i class="ti ti-chevron-left"></i><b>HataSideStudio</b><span>デフォルト</span><i class="ti ti-device-floppy"></i></div>
+						<div :class="$style.sideStudioBar"><i class="ti ti-chevron-left"></i><b>HataSideStudio</b><span>{{ copy.defaultProfile }}</span><i class="ti ti-device-floppy"></i></div>
 						<div :class="$style.sideStudioBody">
 							<div :class="$style.sideStudioPreview">
 								<div :class="$style.sideStudioServer"><i class="ti ti-flag"></i><b>Hataskey</b><i class="ti ti-chevron-left"></i></div>
-								<div :class="$style.sideStudioGroup"><small>旗鯖ツール</small><span><i class="ti ti-eye"></i>Hatask</span><span><i class="ti ti-book-2"></i>Hatady</span><em><i class="ti ti-message-report"></i><b>HataFeed</b><small>申請状況を確認</small></em></div>
+								<div :class="$style.sideStudioGroup"><small>{{ copy.hataTools }}</small><span><i class="ti ti-eye"></i>Hatask</span><span><i class="ti ti-book-2"></i>Hatady</span><em><i class="ti ti-message-report"></i><b>HataFeed</b><small>{{ copy.checkApplicationStatus }}</small></em></div>
 							</div>
-							<div :class="$style.sideStudioInspector"><strong>スタジオ設定</strong><small>選択中：HataFeed</small><div><b>配置</b><span></span><span></span></div><div><b>色と形</b><i></i><i></i><i></i></div></div>
+							<div :class="$style.sideStudioInspector"><strong>{{ copy.studioSettings }}</strong><small>{{ copy.selectedHataFeed }}</small><div><b>{{ copy.placement }}</b><span></span><span></span></div><div><b>{{ copy.colorAndShape }}</b><i></i><i></i><i></i></div></div>
 						</div>
 					</div>
 
 					<div v-else-if="item.preview === 'profile'" :class="$style.profileMock">
 						<div :class="$style.profileCover"></div><div :class="$style.profileAvatar"></div>
-						<div :class="$style.profileName"><b>例えば、アザラシ</b><small>@example_seal</small></div>
-						<div :class="$style.profileBadges"><span><i class="ti ti-confetti"></i><b>宴の成功</b>12回</span><span><i class="ti ti-shield"></i><b>宴の阻止</b>4回</span><span><i class="ti ti-flower"></i><b>育てたお花</b>36輪</span></div>
+						<div :class="$style.profileName"><b>{{ copy.exampleSeal }}</b><small>@example_seal</small></div>
+						<div :class="$style.profileBadges"><span><i class="ti ti-confetti"></i><b>{{ copy.feastSuccess }}</b>{{ copy.twelveTimes }}</span><span><i class="ti ti-shield"></i><b>{{ copy.feastPrevented }}</b>{{ copy.fourTimes }}</span><span><i class="ti ti-flower"></i><b>{{ copy.flowersGrown }}</b>{{ copy.thirtySixFlowers }}</span></div>
 					</div>
 
 					<div v-else-if="item.preview === 'viewer'" :class="$style.viewerMock">
@@ -105,18 +105,27 @@ SPDX-License-Identifier: AGPL-3.0-only
 					</div>
 
 					<div v-else-if="item.preview === 'mute'" :class="$style.muteMock">
-						<div :class="$style.muteAvatar"></div><div :class="$style.muteBody"><b>はたさばさん <small>@hatasaba</small></b><span>今日もおつかれさまでした。</span><div><i>🙂 3</i><i data-muted>⭐</i><i>🌸 2</i></div></div><i class="ti ti-dots"></i>
+						<div :class="$style.muteAvatar"></div><div :class="$style.muteBody"><b>{{ copy.hatasabaUser }} <small>@hatasaba</small></b><span>{{ copy.sampleNote }}</span><div><i>🙂 3</i><i data-muted>⭐</i><i>🌸 2</i></div></div><i class="ti ti-dots"></i>
 					</div>
 
 					<div v-else-if="item.preview === 'external'" :class="$style.externalMock">
-						<div :class="$style.settingsTitle"><i class="ti ti-chevron-left"></i><b>外部アカウント連携</b></div>
-						<div :class="$style.serverRow"><i class="ti ti-fish"></i><span><b>さめすきーとチョリソリング</b><small>接続済み</small></span><em>管理</em></div>
-						<div :class="$style.serverRow"><i class="ti ti-plus"></i><span><b>サーバーを追加</b><small>対応サーバーから選択</small></span><i class="ti ti-chevron-right"></i></div>
+						<div :class="$style.settingsTitle"><i class="ti ti-chevron-left"></i><b>{{ copy.externalAccounts }}</b></div>
+						<div :class="$style.serverRow"><i class="ti ti-fish"></i><span><b>{{ copy.sampleServerName }}</b><small>{{ copy.connected }}</small></span><em>{{ copy.manage }}</em></div>
+						<div :class="$style.serverRow"><i class="ti ti-plus"></i><span><b>{{ copy.addServer }}</b><small>{{ copy.chooseSupportedServer }}</small></span><i class="ti ti-chevron-right"></i></div>
+					</div>
+
+					<div v-else-if="item.preview === 'language'" :class="$style.languageMock">
+						<div :class="$style.languageTitle"><i class="ti ti-language"></i><span><b>{{ copy.languageSettings }}</b><small>{{ copy.languageFollowsMain }}</small></span></div>
+						<div :class="$style.languageChoices">
+							<span data-active="true"><i class="ti ti-check"></i><b>{{ copy.languageJapanese }}</b><small>{{ copy.languageSelected }}</small></span>
+							<span><i>EN</i><b>{{ copy.languageEnglish }}</b><small>{{ copy.languageSupported }}</small></span>
+							<span><i>中</i><b>{{ copy.languageChinese }}</b><small>{{ copy.languageSupported }}</small></span>
+						</div>
 					</div>
 
 					<div v-else :class="$style.securityMock">
-						<div :class="$style.settingsTitle"><i class="ti ti-shield-check"></i><b>セキュリティ</b></div>
-						<div :class="$style.securityRows"><span><i class="ti ti-lock"></i><b>二要素認証</b><em>設定済み</em></span><span><i class="ti ti-key"></i><b>パスキー</b><em>1件</em></span><span><i class="ti ti-device-mobile"></i><b>ログイン履歴</b><i class="ti ti-chevron-right"></i></span></div>
+						<div :class="$style.settingsTitle"><i class="ti ti-shield-check"></i><b>{{ copy.security }}</b></div>
+						<div :class="$style.securityRows"><span><i class="ti ti-lock"></i><b>{{ copy.twoFactorAuthentication }}</b><em>{{ copy.configured }}</em></span><span><i class="ti ti-key"></i><b>{{ copy.passkey }}</b><em>{{ copy.oneItem }}</em></span><span><i class="ti ti-device-mobile"></i><b>{{ copy.loginHistory }}</b><i class="ti ti-chevron-right"></i></span></div>
 					</div>
 				</div>
 
@@ -124,18 +133,18 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<div :class="$style.itemTitle"><i :class="item.icon" aria-hidden="true"></i>{{ item.title }}</div>
 					<div :class="$style.itemText">{{ item.text }}</div>
 					<button v-if="item.to || item.activateUi" class="_button" :class="$style.itemLink" @click="go(item)">
-						{{ item.linkLabel ?? '開く' }} <i class="ti ti-chevron-right"></i>
+						{{ item.linkLabel ?? copy.open }} <i class="ti ti-chevron-right"></i>
 					</button>
 				</div>
 			</article>
 		</div>
-		<nav :class="$style.carouselControls" aria-label="更新項目の切り替え">
-			<button type="button" :disabled="carouselIndex === 0" aria-label="前の更新項目" @click="moveCarousel(-1)">&lt;</button>
-			<div :class="$style.carouselDots" aria-label="現在位置">
-				<button v-for="(_, i) in whatsNew.items" :key="i" type="button" :aria-label="`${i + 1}件目を表示`" :aria-current="carouselIndex === i ? 'true' : undefined" @click="showCarouselItem(i)"></button>
+		<nav :class="$style.carouselControls" :aria-label="copy.carouselLabel">
+			<button type="button" :disabled="carouselIndex === 0" :aria-label="copy.previousItem" @click="moveCarousel(-1)">&lt;</button>
+			<div :class="$style.carouselDots" :aria-label="copy.currentPosition">
+				<button v-for="(_, i) in whatsNew.items" :key="i" type="button" :aria-label="copyx.showItem({ number: (i + 1).toString() })" :aria-current="carouselIndex === i ? 'true' : undefined" @click="showCarouselItem(i)"></button>
 			</div>
 			<span :class="$style.carouselCount">{{ carouselIndex + 1 }} / {{ whatsNew.items.length }}</span>
-			<button type="button" :disabled="carouselIndex === whatsNew.items.length - 1" aria-label="次の更新項目" @click="moveCarousel(1)">&gt;</button>
+			<button type="button" :disabled="carouselIndex === whatsNew.items.length - 1" :aria-label="copy.nextItem" @click="moveCarousel(1)">&gt;</button>
 		</nav>
 
 		<footer :class="$style.footer">
@@ -145,28 +154,34 @@ SPDX-License-Identifier: AGPL-3.0-only
 					{{ whatsNew.footer.linkLabel }} <i class="ti ti-external-link"></i>
 				</button>
 			</p>
-			<MkButton primary rounded :class="$style.gotIt" :disabled="closing" @click="dismiss">わかった</MkButton>
+			<MkButton primary rounded :class="$style.gotIt" :disabled="closing" @click="dismiss">{{ copy.gotIt }}</MkButton>
 		</footer>
 	</div>
 </MkModal>
 </template>
 
 <script lang="ts" setup>
-import { ref, useTemplateRef } from 'vue';
+import { computed, ref, useTemplateRef } from 'vue';
 import type { HataWhatsNewItem } from '@/utility/hata-whats-new.js';
 import MkModal from '@/components/MkModal.vue';
 import MkButton from '@/components/MkButton.vue';
-import { HATA_WHATS_NEW as whatsNew } from '@/utility/hata-whats-new.js';
+import { getHataWhatsNewDisplayVersion, HATA_WHATS_NEW as whatsNew } from '@/utility/hata-whats-new.js';
 import { mainRouter } from '@/router.js';
 import { ensureSignin } from '@/i.js';
 import { miLocalStorage } from '@/local-storage.js';
 import { setHatacordingUiEnabled } from '@/utility/hatacording-ui.js';
+import { i18n } from '@/i18n.js';
 import * as os from '@/os.js';
 
+const copy = i18n.ts._hata._whatsNew._window;
+const copyx = i18n.tsx._hata._whatsNew._window;
+const uiMockColumns = [copy.home, copy.local, copy.notifications];
+const feedMockIssues = [copy.feedIssueMobile, copy.feedIssueEmoji, copy.feedIssueNotifications];
 const modal = useTemplateRef('modal');
 const itemsViewport = useTemplateRef('itemsViewport');
 const carouselIndex = ref(0);
 const closing = ref(false);
+const releaseVersion = computed(() => getHataWhatsNewDisplayVersion(whatsNew.version));
 const $i = ensureSignin();
 
 const emit = defineEmits<{
@@ -176,7 +191,7 @@ const emit = defineEmits<{
 async function go(item: HataWhatsNewItem) {
 	if (item.activateUi === 'hatacording') {
 		if (!$i.policies.canUseHatacordingUi) {
-			await os.alert({ type: 'warning', text: 'このUIは現在未開放です。' });
+			await os.alert({ type: 'warning', text: copy.uiUnavailable });
 			return;
 		}
 		setHatacordingUiEnabled($i.id, true);
@@ -346,6 +361,20 @@ function openReleaseNotes() {
 .muteMock { display: flex; gap: 11px; height: 100%; align-items: flex-start; padding: 22px 18px; box-sizing: border-box; background: var(--MI_THEME-panel); }.muteAvatar { width: 42px; height: 42px; flex: none; border-radius: 50%; background: color-mix(in srgb, var(--MI_THEME-accent) 38%, var(--MI_THEME-bg)); }.muteBody { display: flex; min-width: 0; flex: 1; flex-direction: column; gap: 4px; padding-top: 1px; }.muteBody b { overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }.muteBody b small { margin-left: 4px; opacity: .55; font-size: 8px; font-weight: 400; }.muteBody > span { font-size: 10px; line-height: 1.5; }.muteBody div { display: flex; gap: 6px; margin-top: 3px; }.muteBody i { padding: 5px 9px; border-radius: 999px; background: var(--MI_THEME-bg); font-style: normal; font-size: 9px; line-height: 1; }.muteBody i[data-muted] { opacity: .28; text-decoration: line-through; }.muteMock > i { flex: none; font-size: 12px; opacity: .5; }
 
 .externalMock, .securityMock { height: 100%; padding: 10px 12px; box-sizing: border-box; background: var(--MI_THEME-bg); }.settingsTitle { display: flex; align-items: center; gap: 7px; margin-bottom: 7px; font-size: 8px; }.settingsTitle b { font-size: 10px; }.serverRow, .securityRows > span { display: flex; align-items: center; gap: 8px; margin-top: 5px; padding: 7px 9px; border: 1px solid var(--MI_THEME-divider); border-radius: 8px; background: var(--MI_THEME-panel); }.serverRow > i:first-child { display: grid; width: 22px; height: 22px; place-items: center; border-radius: 6px; color: var(--MI_THEME-accent); background: var(--MI_THEME-accentedBg); }.serverRow span { flex: 1; }.serverRow b, .serverRow small { display: block; font-size: 6px; }.serverRow small { margin-top: 2px; opacity: .55; }.serverRow > em { padding: 4px 7px; border-radius: 999px; color: #fff; background: var(--MI_THEME-accent); font-size: 5px; font-style: normal; }.securityRows { display: grid; gap: 5px; }.securityRows > span { margin: 0; padding: 7px 9px; }.securityRows > span > i:first-child { color: var(--MI_THEME-accent); }.securityRows b { flex: 1; font-size: 7px; }.securityRows em { color: var(--MI_THEME-success); font-size: 6px; font-style: normal; }
+
+.languageMock { height: 100%; padding: 11px 12px; box-sizing: border-box; background: linear-gradient(150deg, color-mix(in srgb, var(--MI_THEME-accent) 10%, var(--MI_THEME-bg)), var(--MI_THEME-bg) 72%); }
+.languageTitle { display: flex; align-items: center; gap: 8px; margin-bottom: 9px; }
+.languageTitle > i { display: grid; width: 24px; height: 24px; flex: none; place-items: center; border-radius: 8px; color: #fff; background: var(--MI_THEME-accent); font-size: 12px; }
+.languageTitle span { min-width: 0; }
+.languageTitle b, .languageTitle small { display: block; }
+.languageTitle b { font-size: 9px; }
+.languageTitle small { margin-top: 2px; overflow: hidden; opacity: .58; font-size: 5px; text-overflow: ellipsis; white-space: nowrap; }
+.languageChoices { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
+.languageChoices > span { display: grid; min-width: 0; grid-template-columns: 18px minmax(0, 1fr); grid-template-rows: auto auto; align-items: center; gap: 1px 5px; padding: 8px 6px; border: 1px solid var(--MI_THEME-divider); border-radius: 8px; background: var(--MI_THEME-panel); }
+.languageChoices > span[data-active='true'] { border-color: color-mix(in srgb, var(--MI_THEME-accent) 72%, var(--MI_THEME-divider)); box-shadow: 0 0 0 2px color-mix(in srgb, var(--MI_THEME-accent) 12%, transparent); }
+.languageChoices i { grid-row: 1 / 3; display: grid; width: 18px; height: 18px; place-items: center; border-radius: 6px; color: var(--MI_THEME-accent); background: var(--MI_THEME-accentedBg); font-size: 6px; font-style: normal; font-weight: 800; }
+.languageChoices b { min-width: 0; overflow: hidden; font-size: 6px; text-overflow: ellipsis; white-space: nowrap; }
+.languageChoices small { opacity: .55; font-size: 5px; }
 
 .carouselControls { display: none; }
 

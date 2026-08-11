@@ -12,7 +12,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 	     deckEmbedded=false (通常 UI のウィジェット領域等) では従来通りボタンを出す。 -->
 	<template v-if="deckEmbedded">
 		<div v-if="editMode" :class="$style.editingBar">
-			<span><i class="ti ti-pencil"></i> 編集モード</span>
+			<span><i class="ti ti-pencil"></i> {{ i18n.ts._hata._timelineCustom.widgetEditMode }}</span>
 			<button class="_textButton" :class="$style.editingDone" @click="editMode = false"><i class="ti ti-check"></i> {{ i18n.ts.editWidgetsExit }}</button>
 		</div>
 	</template>

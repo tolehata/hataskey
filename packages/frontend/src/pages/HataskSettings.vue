@@ -15,21 +15,21 @@ SPDX-License-Identifier: AGPL-3.0-only
 	@close="dialog?.close()"
 	@closed="emit('closed')"
 >
-	<template #header>Hatask の設定</template>
+	<template #header>{{ copy.title }}</template>
 
 	<div :class="$style.root">
-		<div v-if="loading" :class="$style.loading">読み込み中…</div>
+		<div v-if="loading" :class="$style.loading">{{ copy.loading }}</div>
 		<template v-else>
 			<!-- v2: デザインテーマ選択パネル(「テーマ」カラムからボタン遷移) -->
 			<div v-if="view==='theme'" :class="$style.themePanel">
 				<div :class="$style.themeHead">
-					<button :class="$style.backBtn" @click="view='main'"><i class="ti ti-arrow-left"></i> 設定に戻る</button>
+					<button :class="$style.backBtn" @click="view='main'"><i class="ti ti-arrow-left"></i> {{ copy.backToSettings }}</button>
 				</div>
-				<div :class="$style.label" style="font-size:1.05rem">デザインテーマ</div>
-				<div :class="$style.desc" style="margin-bottom:12px">Hatask 全体の配色・書体・カードの意匠を切り替えます。あとから設定でいつでも変更できます。</div>
+				<div :class="$style.label" style="font-size:1.05rem">{{ copy.designTheme }}</div>
+				<div :class="$style.desc" style="margin-bottom:12px">{{ copy.designThemeDescription }}</div>
 				<!-- v2: 左右スライドで選択(選択中=中央 / 前後=フェードで両脇) -->
 				<div :class="$style.themeCarousel">
-					<button type="button" :class="$style.carArrow" :disabled="themeIndex<=0" @click="slideTheme(-1)" aria-label="前のテーマ"><i class="ti ti-chevron-left"></i></button>
+					<button type="button" :class="$style.carArrow" :disabled="themeIndex<=0" @click="slideTheme(-1)" :aria-label="copy.previousTheme"><i class="ti ti-chevron-left"></i></button>
 					<div :class="$style.carViewport" @touchstart.passive="onThemeTouchStart" @touchend.passive="onThemeTouchEnd">
 						<button v-for="(t,i) in v2Themes" :key="t.id" type="button" :class="[$style.themeCard, settings.theme===t.id && $style.themeCardOn]" :style="themeCardStyle(i)" @click="setV2Theme(t.id)">
 							<div :class="$style.themePrev" :style="{ background:t.bg }" aria-hidden="true">
@@ -38,30 +38,30 @@ SPDX-License-Identifier: AGPL-3.0-only
 									<span :style="{ color:t.accent, fontFamily:t.head, fontWeight:800, fontSize:'1.05rem' }">21:47</span>
 								</div>
 								<div :class="$style.themePrevCard" :style="{ background:t.card, border:t.border, borderRadius:t.radius, boxShadow:t.shadow, color:t.fg }">
-									<span :style="{ fontFamily:t.head, fontWeight:700, fontSize:'.72rem' }">きょうの予定</span>
+									<span :style="{ fontFamily:t.head, fontWeight:700, fontSize:'.72rem' }">{{ copy.todaySchedule }}</span>
 								</div>
 							</div>
 							<div :class="$style.themeName" :style="{ fontFamily:t.head }">{{ t.name }}</div>
-							<div :class="$style.themeJp">{{ t.jp }}</div>
-							<div :class="[$style.themeCheck, settings.theme===t.id && $style.themeCheckOn]"><i :class="settings.theme===t.id ? 'ti ti-check' : 'ti ti-circle'"></i> {{ settings.theme===t.id ? '選択中' : '選択' }}</div>
+							<div :class="$style.themeJp">{{ t.description }}</div>
+							<div :class="[$style.themeCheck, settings.theme===t.id && $style.themeCheckOn]"><i :class="settings.theme===t.id ? 'ti ti-check' : 'ti ti-circle'"></i> {{ settings.theme===t.id ? copy.selected : copy.select }}</div>
 						</button>
 					</div>
-					<button type="button" :class="$style.carArrow" :disabled="themeIndex>=v2Themes.length-1" @click="slideTheme(1)" aria-label="次のテーマ"><i class="ti ti-chevron-right"></i></button>
+					<button type="button" :class="$style.carArrow" :disabled="themeIndex>=v2Themes.length-1" @click="slideTheme(1)" :aria-label="copy.nextTheme"><i class="ti ti-chevron-right"></i></button>
 				</div>
 				<div :class="$style.carDots">
 					<button v-for="(t,i) in v2Themes" :key="t.id" type="button" :class="[$style.carDot, settings.theme===t.id && $style.carDotOn]" @click="setV2Theme(t.id)" :aria-label="t.name"></button>
 				</div>
 				<!-- 外観(ライト/ダーク) -->
 				<div :class="$style.card">
-					<div :class="$style.label">外観（ライト / ダーク）</div>
-					<div :class="$style.row"><span>自動（端末の設定に従う）</span><button :class="[$style.sw, settings.autoTheme && $style.swOn]" @click="toggle('autoTheme')"></button></div>
-					<div :class="$style.row" v-if="!settings.autoTheme"><span>ダークモード</span><button :class="[$style.sw, settings.darkMode && $style.swOn]" @click="toggle('darkMode')"></button></div>
+					<div :class="$style.label">{{ copy.appearance }}</div>
+					<div :class="$style.row"><span>{{ copy.autoAppearance }}</span><button :class="[$style.sw, settings.autoTheme && $style.swOn]" @click="toggle('autoTheme')"></button></div>
+					<div :class="$style.row" v-if="!settings.autoTheme"><span>{{ copy.darkMode }}</span><button :class="[$style.sw, settings.darkMode && $style.swOn]" @click="toggle('darkMode')"></button></div>
 				</div>
 				<!-- アニメーション -->
 				<div :class="$style.card">
-					<div :class="$style.label">アニメーション</div>
-					<div :class="$style.row"><span>起動・切替・敷き詰めの動き</span><button :class="[$style.sw, settings.animations!==false && $style.swOn]" @click="toggle('animations')"></button></div>
-					<div :class="$style.desc">オフにすると動きを止めます。端末の「視差効果を減らす」設定も自動で尊重します。</div>
+					<div :class="$style.label">{{ copy.animation }}</div>
+					<div :class="$style.row"><span>{{ copy.animationMotion }}</span><button :class="[$style.sw, settings.animations!==false && $style.swOn]" @click="toggle('animations')"></button></div>
+					<div :class="$style.desc">{{ copy.animationDescription }}</div>
 				</div>
 			</div>
 
@@ -69,64 +69,64 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<template v-else>
 			<!-- テーマ(デザインテーマへの遷移 + レガシー背景) -->
 			<div :class="$style.card">
-				<div :class="$style.label">テーマ</div>
-				<div :class="$style.desc" style="margin-bottom:10px">Hatask 全体の配色・書体・カードの意匠（季 / 花信 / 刷）とライト / ダーク、アニメーションを設定します。</div>
+				<div :class="$style.label">{{ copy.theme }}</div>
+				<div :class="$style.desc" style="margin-bottom:10px">{{ copy.themeDescription }}</div>
 				<div :class="$style.themeEntry">
 					<div style="min-width:0">
-						<div :class="$style.themeEntryLabel">デザインテーマ</div>
+						<div :class="$style.themeEntryLabel">{{ copy.designTheme }}</div>
 						<div :class="$style.themeEntryVal">{{ currentThemeLabel() }}</div>
 					</div>
-					<button :class="$style.themeEntryBtn" @click="view='theme'">テーマ設定へ <i class="ti ti-arrow-right"></i></button>
+					<button :class="$style.themeEntryBtn" @click="view='theme'">{{ copy.openThemeSettings }} <i class="ti ti-arrow-right"></i></button>
 				</div>
 			</div>
 
 			<!-- カレンダー -->
 			<div :class="$style.card">
-				<div :class="$style.label">カレンダー</div>
-				<div :class="$style.row"><span>週の始まり</span>
-					<select :class="$style.sel" :value="settings.weekStart" @change="onWeekStart($event)"><option value="mon">月曜</option><option value="sun">日曜</option></select>
+				<div :class="$style.label">{{ copy.calendar }}</div>
+				<div :class="$style.row"><span>{{ copy.weekStart }}</span>
+					<select :class="$style.sel" :value="settings.weekStart" @change="onWeekStart($event)"><option value="mon">{{ copy.monday }}</option><option value="sun">{{ copy.sunday }}</option></select>
 				</div>
 			</div>
 
 			<!-- きもち記録 -->
 			<div :class="$style.card">
-				<div :class="$style.label">きもち記録</div>
-				<div :class="$style.row"><span>リマインド通知</span><button :class="[$style.sw, settings.moodRemind && $style.swOn]" @click="toggle('moodRemind')"></button></div>
-				<div :class="$style.desc">記録がない日に、設定した時間帯にリマインド通知を送ります。時間帯の指定は Hatask の「きもち記録」設定から行えます。</div>
+				<div :class="$style.label">{{ copy.moodLog }}</div>
+				<div :class="$style.row"><span>{{ copy.reminderNotification }}</span><button :class="[$style.sw, settings.moodRemind && $style.swOn]" @click="toggle('moodRemind')"></button></div>
+				<div :class="$style.desc">{{ copy.moodReminderDescription }}</div>
 			</div>
 
 			<!-- データ同期 -->
 			<div :class="$style.card">
-				<div :class="$style.label">データ同期</div>
-				<div :class="$style.desc">お使いの旗鯖アカウントに紐づけて同期します。</div>
-				<div :class="$style.row" v-for="s in ['予定','きもち','ToDo','ごはん','お花']" :key="s"><span>{{ s }}</span><button :class="[$style.sw, $style.swOn]"></button></div>
+				<div :class="$style.label">{{ copy.dataSync }}</div>
+				<div :class="$style.desc">{{ copy.dataSyncDescription }}</div>
+				<div :class="$style.row" v-for="s in syncItems" :key="s.id"><span>{{ s.label }}</span><button :class="[$style.sw, $style.swOn]"></button></div>
 			</div>
 
 			<!-- 起動時 -->
 			<div :class="$style.card">
-				<div :class="$style.label">起動時</div>
-				<div :class="$style.row"><span>アプリ起動時にHataskを表示</span><button :class="[$style.sw, settings.openOnStart && $style.swOn]" @click="toggle('openOnStart')"></button></div>
+				<div :class="$style.label">{{ copy.startup }}</div>
+				<div :class="$style.row"><span>{{ copy.openOnStartup }}</span><button :class="[$style.sw, settings.openOnStart && $style.swOn]" @click="toggle('openOnStart')"></button></div>
 			</div>
 
 			<!-- 通知 -->
 			<div :class="$style.card">
-				<div :class="$style.label">通知</div>
-				<div :class="$style.row"><span>テスト通知を送信</span><MkButton rounded small @click="sendTestNotification">テスト送信</MkButton></div>
-				<div :class="$style.desc">設定→通知→プッシュ通知を有効化 でプッシュ通知を有効にしないと、旗鯖が開かれていない状態で通知を受け取ることができません。</div>
+				<div :class="$style.label">{{ copy.notifications }}</div>
+				<div :class="$style.row"><span>{{ copy.sendTestNotification }}</span><MkButton rounded small @click="sendTestNotification">{{ copy.sendTest }}</MkButton></div>
+				<div :class="$style.desc">{{ copy.pushNotificationDescription }}</div>
 			</div>
 
 			<!-- レートリミット -->
 			<div :class="$style.card">
-				<div :class="$style.label">レートリミット</div>
+				<div :class="$style.label">{{ copy.rateLimit }}</div>
 				<div :class="$style.rlBox">
-					<div :class="$style.rlTitle">API制限</div>
+					<div :class="$style.rlTitle">{{ copy.apiLimit }}</div>
 					<table :class="$style.rlTbl">
-						<thead><tr><th>操作</th><th>制限</th><th>期間</th></tr></thead>
+						<thead><tr><th>{{ copy.operation }}</th><th>{{ copy.limit }}</th><th>{{ copy.period }}</th></tr></thead>
 						<tbody>
-							<tr><td>予定作成</td><td>30回</td><td>1h</td></tr>
-							<tr><td>きもち</td><td>20回</td><td>1h</td></tr>
-							<tr><td>ToDo</td><td>60回</td><td>1h</td></tr>
-							<tr><td>検索</td><td>30回</td><td>1m</td></tr>
+							<tr><td>{{ copy.createSchedule }}</td><td>{{ tx.times({ count: 30 }) }}</td><td>{{ tx.hours({ count: 1 }) }}</td></tr>
+							<tr><td>{{ copy.mood }}</td><td>{{ tx.times({ count: 20 }) }}</td><td>{{ tx.hours({ count: 1 }) }}</td></tr>
+							<tr><td>ToDo</td><td>{{ tx.times({ count: 60 }) }}</td><td>{{ tx.hours({ count: 1 }) }}</td></tr>
+							<tr><td>{{ copy.search }}</td><td>{{ tx.times({ count: 30 }) }}</td><td>{{ tx.minutes({ count: 1 }) }}</td></tr>
 						</tbody>
 					</table>
 				</div>
@@ -134,19 +134,19 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 			<!-- ヘルプ -->
 			<div :class="$style.card">
-				<div :class="$style.label">ヘルプ</div>
-				<div :class="$style.row"><span>チュートリアルを再度表示</span><MkButton rounded small @click="reopenTutorial">表示する</MkButton></div>
-				<div :class="$style.desc">Hatask の主要機能をステップごとにハイライト表示しながら解説します。</div>
+				<div :class="$style.label">{{ copy.help }}</div>
+				<div :class="$style.row"><span>{{ copy.showTutorialAgain }}</span><MkButton rounded small @click="reopenTutorial">{{ copy.show }}</MkButton></div>
+				<div :class="$style.desc">{{ copy.tutorialDescription }}</div>
 			</div>
 
 			<!-- Hatask本体を開く -->
 			<div :class="$style.card">
-				<div :class="$style.label">Hatask を開く</div>
-				<div :class="$style.desc">Hatask のホーム画面を開きます。</div>
-				<MkButton primary rounded @click="openHatask"><i class="ti ti-external-link"></i> Hatask を開く</MkButton>
+				<div :class="$style.label">{{ copy.openHatask }}</div>
+				<div :class="$style.desc">{{ copy.openHataskDescription }}</div>
+				<MkButton primary rounded @click="openHatask"><i class="ti ti-external-link"></i> {{ copy.openHatask }}</MkButton>
 			</div>
 
-			<div :class="$style.note">変更は保存され、次に Hatask を開いたときに反映されます。</div>
+			<div :class="$style.note">{{ copy.savedNote }}</div>
 			</template>
 		</template>
 	</div>
@@ -157,6 +157,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 import { ref, shallowRef, computed, onMounted } from 'vue';
 import MkModalWindow from '@/components/MkModalWindow.vue';
 import MkButton from '@/components/MkButton.vue';
+import { i18n } from '@/i18n.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { useRouter } from '@/router.js';
 import * as os from '@/os.js';
@@ -164,6 +165,8 @@ import * as os from '@/os.js';
 const emit = defineEmits<{ (ev:'closed'):void; (ev:'reopenTutorial'):void; (ev:'changed', settings:any):void }>();
 const dialog = shallowRef<InstanceType<typeof MkModalWindow>>();
 const router = useRouter();
+const copy = i18n.ts._hata._hatask._settings;
+const tx = i18n.tsx._hata._hatask._settings;
 
 // Hatask本体と同じ registry スコープ/キーを使うことでデータを共有・同期する
 const SCOPE = ['client', 'hatask'];
@@ -178,21 +181,28 @@ const defaultSettings: any = {
 };
 
 // 旗鯖fork(v2): デザインテーマ(季/花信/刷)。プレビュー用にライト配色・見出しフォントを持つ。
-const v2Themes = [
-	{ id:'kisetsu', name:'季', jp:'エディトリアル明朝', bg:'#f4f1ea', fg:'#211d18', accent:'#a8552f', card:'#ffffff', border:'1px solid #ddd7cb', radius:'5px', shadow:'none', head:"'Shippori Mincho B1','Zen Kaku Gothic New',serif" },
-	{ id:'kashin', name:'花信', jp:'ポップ・ベントー', bg:'#fff5e6', fg:'#25201c', accent:'#ff6b4a', card:'#ffffff', border:'2.5px solid #25201c', radius:'14px', shadow:'3px 3px 0 rgba(37,32,28,.15)', head:"'Zen Maru Gothic',sans-serif" },
-	{ id:'suri', name:'刷', jp:'リソグラフ2色', bg:'#efe7d4', fg:'#1a1a2e', accent:'#2a52c0', card:'#ffffff', border:'2.5px solid #1a1a2e', radius:'0', shadow:'3px 3px 0 #ff4f9a', head:"'Zen Kaku Gothic Antique',sans-serif" },
-];
+const v2Themes = computed(() => [
+	{ id:'kisetsu', name:copy.themeKisetsu, description:copy.themeKisetsuDescription, bg:'#f4f1ea', fg:'#211d18', accent:'#a8552f', card:'#ffffff', border:'1px solid #ddd7cb', radius:'5px', shadow:'none', head:"'Shippori Mincho B1','Zen Kaku Gothic New',serif" },
+	{ id:'kashin', name:copy.themeKashin, description:copy.themeKashinDescription, bg:'#fff5e6', fg:'#25201c', accent:'#ff6b4a', card:'#ffffff', border:'2.5px solid #25201c', radius:'14px', shadow:'3px 3px 0 rgba(37,32,28,.15)', head:"'Zen Maru Gothic',sans-serif" },
+	{ id:'suri', name:copy.themeSuri, description:copy.themeSuriDescription, bg:'#efe7d4', fg:'#1a1a2e', accent:'#2a52c0', card:'#ffffff', border:'2.5px solid #1a1a2e', radius:'0', shadow:'3px 3px 0 #ff4f9a', head:"'Zen Kaku Gothic Antique',sans-serif" },
+]);
+const syncItems = computed(() => [
+	{ id: 'schedule', label: copy.syncSchedule },
+	{ id: 'mood', label: copy.syncMood },
+	{ id: 'todo', label: 'ToDo' },
+	{ id: 'meal', label: copy.syncMeal },
+	{ id: 'flower', label: copy.syncFlower },
+]);
 
 const loading = ref(true);
 const settings = ref<any>({ ...defaultSettings });
 // 旗鯖fork(v2): 設定モーダル内のビュー('main'=通常設定 / 'theme'=デザインテーマ選択)。
 const view = ref<'main'|'theme'>('main');
 function setV2Theme(id:string) { settings.value.theme = id; saveSettings(); }
-function currentThemeLabel():string { const t = v2Themes.find(x => x.id === (settings.value.theme || 'kisetsu')); return t ? `${t.name}（${t.jp}）` : '季'; }
+function currentThemeLabel():string { const t = v2Themes.value.find(x => x.id === (settings.value.theme || 'kisetsu')); return t ? `${t.name} (${t.description})` : copy.themeKisetsu; }
 
 // 旗鯖fork(v2): テーマ選択カルーセル(左右スライド)。選択中を中央・前後をフェードで両脇に。
-const themeIndex = computed(() => { const i = v2Themes.findIndex(t => t.id === (settings.value.theme || 'kisetsu')); return i < 0 ? 0 : i; });
+const themeIndex = computed(() => { const i = v2Themes.value.findIndex(t => t.id === (settings.value.theme || 'kisetsu')); return i < 0 ? 0 : i; });
 function themeCardStyle(i:number) {
 	const off = i - themeIndex.value;
 	const abs = Math.abs(off);
@@ -204,7 +214,7 @@ function themeCardStyle(i:number) {
 		filter: off === 0 ? 'none' : 'saturate(.7)',
 	};
 }
-function slideTheme(dir:number) { const n = themeIndex.value + dir; if (n >= 0 && n < v2Themes.length) setV2Theme(v2Themes[n].id); }
+function slideTheme(dir:number) { const n = themeIndex.value + dir; if (n >= 0 && n < v2Themes.value.length) setV2Theme(v2Themes.value[n].id); }
 let _themeTouchX = 0;
 function onThemeTouchStart(e:TouchEvent) { _themeTouchX = e.changedTouches[0].clientX; }
 function onThemeTouchEnd(e:TouchEvent) { const dx = e.changedTouches[0].clientX - _themeTouchX; if (Math.abs(dx) > 40) slideTheme(dx < 0 ? 1 : -1); }
@@ -247,8 +257,8 @@ function reopenTutorial() {
 
 // 旗鯖fork(#37): Hatask本体から移植したテスト通知
 async function sendTestNotification() {
-	try { await misskeyApi('notifications/test-notification', {}); os.toast('テスト通知を送信しました'); }
-	catch { os.toast('通知の送信に失敗しました'); }
+	try { await misskeyApi('notifications/test-notification', {}); os.toast(copy.testNotificationSent); }
+	catch { os.toast(copy.testNotificationFailed); }
 }
 </script>
 

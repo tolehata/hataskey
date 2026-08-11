@@ -3,34 +3,34 @@
  *   既存の hata/hatady/logs (sinceDate/untilDate + untilId ページング) をループ取得し、
  *   日付見出しごとに整形。冒頭にサマリ(期間/総時間/件数/連続)を付与して Blob ダウンロード。
  */
+import { versatileLang } from '@@/js/intl-const.js';
+import { i18n } from '@/i18n.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { hatadyTzOffset } from '@/utility/hatady-prefs.js';
-
-type Lang = 'ja' | 'en';
 
 const MAX_PAGES = 50; // 100件×50 = 上限5000件(暴走防止)
 
 function pad(n: number): string { return n.toString().padStart(2, '0'); }
-function ymd(d: Date): string { return `${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())}`; }
 function ymdKey(d: Date): string { return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; }
 function fileStamp(d: Date): string { return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}`; }
 
-function fmtDuration(min: number, lang: Lang): string {
-	if (min <= 0) return lang === 'en' ? '0min' : '0分';
+function fmtDuration(min: number): string {
+	const tx = i18n.tsx._hata._hatady._exportText;
 	const h = Math.floor(min / 60);
 	const m = min % 60;
-	if (lang === 'en') return h > 0 ? (m > 0 ? `${h}h${m}m` : `${h}h`) : `${m}min`;
-	return h > 0 ? (m > 0 ? `${h}時間${m}分` : `${h}時間`) : `${m}分`;
+	if (h > 0 && m > 0) return tx.durationHoursMinutes({ hours: h, minutes: m });
+	if (h > 0) return tx.durationHours({ hours: h });
+	return tx.durationMinutes({ minutes: Math.max(0, m) });
 }
 
-const WEEKDAYS_JA = ['日', '月', '火', '水', '木', '金', '土'];
+const dateFormatter = new Intl.DateTimeFormat(versatileLang, { year: 'numeric', month: '2-digit', day: '2-digit' });
+const weekdayFormatter = new Intl.DateTimeFormat(versatileLang, { weekday: 'short' });
 
 /**
  * 期間内の学習ログを取得して .txt をダウンロードする。
  * @param opts.sinceDate / untilDate  ms epoch(端は含む)。null で無制限。
  */
-export async function exportHatadyLogs(opts: { sinceDate: number | null; untilDate: number | null; lang: Lang }): Promise<{ count: number }> {
-	const { lang } = opts;
+export async function exportHatadyLogs(opts: { sinceDate: number | null; untilDate: number | null }): Promise<{ count: number }> {
 	// untilDate はその日の終わりまで含める。
 	const untilDate = opts.untilDate != null ? opts.untilDate + (24 * 60 * 60 * 1000 - 1) : null;
 
@@ -75,38 +75,38 @@ export async function exportHatadyLogs(opts: { sinceDate: number | null; untilDa
 
 	// ===== 整形 =====
 	const now = new Date();
-	const L = lang === 'en';
+	const copy = i18n.ts._hata._hatady._exportText;
+	const tx = i18n.tsx._hata._hatady._exportText;
 	const lines: string[] = [];
-	lines.push(L ? 'Hatady — Study Log Export' : 'Hatady 学習記録エクスポート');
+	lines.push(copy.title);
 	const periodStr = (opts.sinceDate != null || opts.untilDate != null)
-		? `${opts.sinceDate != null ? ymd(new Date(opts.sinceDate)) : '—'} 〜 ${opts.untilDate != null ? ymd(new Date(opts.untilDate)) : '—'}`
-		: (L ? 'All' : 'すべて');
-	lines.push(`${L ? 'Period' : '対象期間'}: ${periodStr}`);
-	lines.push(`${L ? 'Exported' : '出力日時'}: ${ymd(now)} ${pad(now.getHours())}:${pad(now.getMinutes())}`);
-	lines.push(`${L ? 'Total time' : '総学習時間'}: ${fmtDuration(totalMinutes, lang)} / ${L ? 'entries' : '記録'}: ${logs.length}${L ? '' : '件'}`);
+		? tx.periodRange({ from: opts.sinceDate != null ? dateFormatter.format(new Date(opts.sinceDate)) : '—', to: opts.untilDate != null ? dateFormatter.format(new Date(opts.untilDate)) : '—' })
+		: copy.all;
+	lines.push(tx.periodLine({ period: periodStr }));
+	lines.push(tx.exportedLine({ date: dateFormatter.format(now), time: `${pad(now.getHours())}:${pad(now.getMinutes())}` }));
+	lines.push(tx.summaryLine({ duration: fmtDuration(totalMinutes), count: logs.length }));
 	if (stats) {
-		lines.push(`${L ? 'Current streak' : '現在の連続'}: ${stats.streakDays ?? 0}${L ? ' days' : '日'}`);
+		lines.push(tx.streakLine({ days: stats.streakDays ?? 0 }));
 	}
 	lines.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 	lines.push('');
 
 	if (logs.length === 0) {
-		lines.push(L ? '(No study records in this period.)' : '(この期間に記録はありません。)');
+		lines.push(copy.empty);
 	} else {
 		const dayKeys = [...byDay.keys()].sort();
 		for (const k of dayKeys) {
 			const items = byDay.get(k)!;
 			const d = new Date(items[0].studiedAt);
 			const dayMinutes = items.reduce((s, x) => s + (x.durationMinutes ?? 0), 0);
-			const wd = L ? d.toLocaleDateString('en-US', { weekday: 'short' }) : WEEKDAYS_JA[d.getDay()];
-			lines.push(`■ ${ymd(d)} (${wd}) — ${items.length}${L ? ' entries' : '件'} / ${fmtDuration(dayMinutes, lang)}`);
+			lines.push(tx.dayLine({ date: dateFormatter.format(d), weekday: weekdayFormatter.format(d), count: items.length, duration: fmtDuration(dayMinutes) }));
 			for (const log of items) {
 				const time = `${pad(new Date(log.studiedAt).getHours())}:${pad(new Date(log.studiedAt).getMinutes())}`;
 				const subj = log.subject ? `[${log.subject}] ` : '';
-				lines.push(`・${time} ${subj}${log.title ?? ''}（${fmtDuration(log.durationMinutes ?? 0, lang)}）`);
+				lines.push(tx.logLine({ time, subject: subj, title: log.title ?? '', duration: fmtDuration(log.durationMinutes ?? 0) }));
 				if (log.book?.title) {
 					const pages = (log.pageFrom != null && log.pageTo != null) ? ` p.${log.pageFrom} → p.${log.pageTo}` : '';
-					lines.push(`　${L ? 'Book' : '本'}: ${log.book.title}${log.book.author ? ' / ' + log.book.author : ''}${pages}`);
+					lines.push(tx.bookLine({ book: `${log.book.title}${log.book.author ? ' / ' + log.book.author : ''}${pages}` }));
 				}
 				if (log.body) {
 					// メモは複数行対応(各行をインデント)。

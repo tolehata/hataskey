@@ -13,9 +13,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 >
 	<div v-if="postDelay.active.value" :class="$style.postDelayFrame" :style="postDelay.frameStyle.value" aria-hidden="true"></div>
 	<div v-if="postDelay.active.value" :class="$style.postDelayStatus" role="status" aria-live="polite">
-		<strong>{{ postDelay.remainingSeconds.value }}秒後に投稿</strong>
-		<button class="_button" :class="$style.postDelayAction" @click="postDelay.cancel()">取り消す</button>
-		<button class="_button" :class="$style.postDelayActionPrimary" @click="postDelay.sendNow()">今すぐ投稿</button>
+		<strong>{{ i18n.ts._hata._postDelay.countdown.replace('{seconds}', postDelay.remainingSeconds.value.toString()) }}</strong>
+		<button class="_button" :class="$style.postDelayAction" @click="postDelay.cancel()">{{ i18n.ts._hata._postDelay.cancel }}</button>
+		<button class="_button" :class="$style.postDelayActionPrimary" @click="postDelay.sendNow()">{{ i18n.ts._hata._postDelay.sendNow }}</button>
 	</div>
 	<Transition
 		:enterActiveClass="prefer.s.animation ? $style.transition_header_enterActive : ''"

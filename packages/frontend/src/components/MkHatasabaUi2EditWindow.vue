@@ -20,52 +20,52 @@ SPDX-License-Identifier: AGPL-3.0-only
 	:closeButton="true"
 	@closed="onWindowClosed"
 >
-	<template #header><i class="ti ti-sparkles" style="margin-right:.5em;"></i>HatasabaUI 2 の設定</template>
+	<template #header><i class="ti ti-sparkles" style="margin-right:.5em;"></i>{{ copy.windowTitle }}</template>
 
 	<div class="_spacer" style="--MI_SPACER-min: 12px; --MI_SPACER-max: 20px;">
 		<div :class="$style.hint">
 			<i class="ti ti-info-circle"></i>
 			<div>
-				このウィンドウは<b>開いたまま HatasabaUI 全体を見比べられる</b>ように設計されています。編集中の値はプレビューとして即時反映されますが、<b>「保存」ボタンを押すまで永続化されません</b>。
+				{{ copy.hintBeforeCompare }}<b>{{ copy.hintCompare }}</b>{{ copy.hintAfterCompare }}<b>{{ copy.hintSave }}</b>{{ copy.hintAfterSave }}
 			</div>
 		</div>
 
 		<!-- ===== 基本 (旧 HatasabaUI 設定から移設) ===== -->
 		<FormSection first>
-			<template #label>基本</template>
+			<template #label>{{ copy.basic }}</template>
 			<MkSwitch v-model="editedShowTrendingTab">
-				<template #label>トレンドタブを表示する</template>
-				<template #caption>上部ナビバーの最右に「トレンド」タブを表示します。過去 7 日間で反応が多かった投稿をランダム順で表示する発見系タイムラインです。</template>
+				<template #label>{{ copy.showTrendingTab }}</template>
+				<template #caption>{{ copy.showTrendingTabCaption }}</template>
 			</MkSwitch>
 			<MkSwitch v-model="editedTopNavMode">
-				<template #label>メニューを画面上部に表示する</template>
-				<template #caption>ON にすると、左のサイドバーの代わりに画面上部へ横並びナビバーを表示します。<b>※ この設定は HatasabaUI のデッキUIでのみ有効です。</b></template>
+				<template #label>{{ copy.showMenuAtTop }}</template>
+				<template #caption>{{ copy.showMenuAtTopCaption }}<b>{{ copy.deckOnlyNote }}</b></template>
 			</MkSwitch>
 			<MkSwitch v-model="editedDeckIgnoreWidth">
-				<template #label>画面幅に関係なくデッキを表示する</template>
-				<template #caption>通常デッキはデスクトップ幅 (1100px 以上) でのみ有効ですが、ON で画面幅に関係なくデッキモードを適用します。<b>この設定は端末ごとに保存され、他の端末には同期されません。</b></template>
+				<template #label>{{ copy.ignoreDeckWidth }}</template>
+				<template #caption>{{ copy.ignoreDeckWidthCaption }}<b>{{ copy.deviceSpecificSetting }}</b></template>
 			</MkSwitch>
 			<MkSwitch v-model="editedTabSwipeEnabled">
-				<template #label>左右スワイプでタブを切り替える</template>
-				<template #caption>OFF にすると、タッチ操作やトラックパッドの左右スワイプでタイムライン・デッキのタブが勝手に移動しなくなります。既定は ON です。<b>この端末にだけ</b>保存されます。</template>
+				<template #label>{{ copy.swipeTabs }}</template>
+				<template #caption>{{ copy.swipeTabsCaption }}<b>{{ copy.thisDeviceOnly }}</b>{{ copy.savedSuffix }}</template>
 			</MkSwitch>
 			<div :class="$style.subActions">
-				<button class="_button" :class="$style.subBtn" :disabled="!isHatasabaDeckActive" @click="onReplayDeckTutorial"><i class="ti ti-refresh"></i> デッキUIチュートリアルをもう一度</button>
+				<button class="_button" :class="$style.subBtn" :disabled="!isHatasabaDeckActive" @click="onReplayDeckTutorial"><i class="ti ti-refresh"></i> {{ copy.replayDeckTutorial }}</button>
 			</div>
 			<div v-if="!isHatasabaDeckActive" :class="$style.replayHint">
 				<i class="ti ti-info-circle"></i>
-				<span>チュートリアルの再表示は、<b>HatasabaUI のデッキ表示中</b>のみ行えます。上の「画面幅に関係なくデッキを表示する」やサイドメニューのデッキ切替でデッキ表示に切り替えてからお試しください。</span>
+				<span>{{ copy.replayHintBefore }}<b>{{ copy.replayHintDeck }}</b>{{ copy.replayHintAfter }}</span>
 			</div>
 		</FormSection>
 
 		<!-- ===== 透過率スライダー ===== -->
 		<FormSection>
-			<template #label>ガラス面の透過率</template>
+			<template #label>{{ copy.glassOpacity }}</template>
 			<div v-if="!editedGlassUi" :class="$style.warnBanner">
-				<i class="ti ti-info-circle"></i>HatasabaUI 2 が有効なときのみ機能します。
+				<i class="ti ti-info-circle"></i>{{ copy.onlyWhenUi2Enabled }}
 			</div>
 			<div :class="$style.opacityDesc">
-				ノートカード面と上部/下部ナビバーの<b>不透明度</b>を調整します。数字が大きいほど不透明パネル、小さいほど透け感が強くなります。既定 55%。
+				{{ copy.opacityDescriptionBefore }}<b>{{ copy.opacityTerm }}</b>{{ copy.opacityDescriptionAfter }}
 			</div>
 			<div :class="$style.opacityRow">
 				<!-- 旗鯖fork: v-model と @input を併用。v-model がバッファの ref を更新し、
@@ -80,59 +80,59 @@ SPDX-License-Identifier: AGPL-3.0-only
 					@input="onOpacityInput"
 				/>
 				<div :class="$style.opacityValue">{{ editedOpacity }}%</div>
-				<button :class="$style.smallBtn" :disabled="!editedGlassUi || editedOpacity === 55" @click="setOpacity(55)" v-tooltip="'既定値 (55%) に戻す'"><i class="ti ti-restore"></i></button>
+				<button :class="$style.smallBtn" :disabled="!editedGlassUi || editedOpacity === 55" @click="setOpacity(55)" v-tooltip="copy.restoreOpacity"><i class="ti ti-restore"></i></button>
 			</div>
 		</FormSection>
 
 		<!-- ===== HatasabaUI 2 / 吹き出し ===== -->
 		<FormSection>
-			<template #label>HatasabaUI 2</template>
+			<template #label>{{ copy.ui2Name }}</template>
 			<div :class="$style.hataUi2Desc">
-				<b>HatasabaUI 2</b> は、HatasabaUI 全体のデザインの統一をしつつ、使いやすく目に優しい UI デザインを目指して実装されています。<b>常に有効</b>で、ノート・プロフィール・リアクション・タブ・上部/下部ナビバーを、統一された半透明＋ぼかしのデザインで表示します。
+				<b>{{ copy.ui2Name }}</b>{{ copy.ui2DescriptionBefore }}<b>{{ copy.alwaysEnabled }}</b>{{ copy.ui2DescriptionAfter }}
 			</div>
 			<!-- 旗鯖fork: HatasabaUI 2 は強制ON化したため「有効にする」トグルは廃止。 -->
 			<MkSwitch v-model="editedGlassUiBubble" @update:modelValue="v => setGlassUiBubble(v)">
-				<template #label>吹き出しデザインを表示する</template>
-				<template #caption>HatasabaUI 2 のノートを、吹き出し（本文の枠＋＜の口）付きの表示にします。既定オフ（吹き出しなし・角丸カードのみ）です。<b>この端末にだけ</b>保存されます。</template>
+				<template #label>{{ copy.showBubbleDesign }}</template>
+				<template #caption>{{ copy.showBubbleDesignCaption }}<b>{{ copy.thisDeviceOnly }}</b>{{ copy.savedSuffix }}</template>
 			</MkSwitch>
 		</FormSection>
 
 		<!-- ===== 背景ヘッダー画像のぼかし ===== -->
 		<FormSection>
-			<template #label>背景ヘッダー画像のぼかし</template>
+			<template #label>{{ copy.headerImageBlur }}</template>
 			<MkSwitch v-model="editedNormalNoBannerBg">
-				<template #label>通常タイムラインの背景ヘッダー画像のぼかしを使用しない</template>
-				<template #caption>通常タイムライン背景にプロフィールのヘッダー画像のぼかしを敷きません。単色背景となり描画負荷が軽減されます。<br><b>※ この設定はライブプレビューされません (保存後・再描画で反映)。</b></template>
+				<template #label>{{ copy.disableTimelineHeaderBlur }}</template>
+				<template #caption>{{ copy.disableTimelineHeaderBlurCaption }}<br><b>{{ copy.noLivePreviewNote }}</b></template>
 			</MkSwitch>
 			<MkSwitch v-model="editedProfileNoBannerBg" @update:modelValue="v => setProfileNoBannerBg(v)">
-				<template #label>プロフィールページのヘッダー画像のぼかしを使用しない</template>
-				<template #caption>プロフィールカード背後のぼかしレイヤを描画しません。プロフィールカードは不透明パネルに戻り視認性が上がります。</template>
+				<template #label>{{ copy.disableProfileHeaderBlur }}</template>
+				<template #caption>{{ copy.disableProfileHeaderBlurCaption }}</template>
 			</MkSwitch>
 		</FormSection>
 
 		<!-- ===== ノートの表示（デッキ） ===== -->
 		<FormSection>
-			<template #label>ノートの表示（デッキ）</template>
+			<template #label>{{ copy.noteDisplayDeck }}</template>
 			<MkSwitch v-model="editedDisableBubbleInHatasabaDeck">
-				<template #label>HatasabaUIデッキでノートの簡易表示を有効にする</template>
-				<template #caption>ON（既定）にすると、HatasabaUIのデッキ表示モードでノートを簡易表示（標準のカード）で表示します。OFFにすると吹き出しデザインで表示されます。<br><b>※ この設定はライブプレビューされません (保存後・再描画で反映)。</b></template>
+				<template #label>{{ copy.enableSimpleNotesInDeck }}</template>
+				<template #caption>{{ copy.enableSimpleNotesInDeckCaption }}<br><b>{{ copy.noLivePreviewNote }}</b></template>
 			</MkSwitch>
 		</FormSection>
 
 		<!-- ===== 上部ナビバー (旧 HatasabaUI 設定から移設・バッファ保存) ===== -->
 		<FormSection>
-			<template #label>上部ナビバー (タイムラインタブ)</template>
+			<template #label>{{ copy.topNavSection }}</template>
 			<div :class="$style.reorderHead">
-				<div :class="$style.reorderHint">表示するタブとその順番を設定します。編集後、下の「保存」ボタンで確定します。</div>
-				<button :class="$style.navResetBtn" @click="resetTopNav"><i class="ti ti-restore"></i> 並び順を初期化</button>
+				<div :class="$style.reorderHint">{{ copy.topNavReorderHint }}</div>
+				<button :class="$style.navResetBtn" @click="resetTopNav"><i class="ti ti-restore"></i> {{ copy.resetOrder }}</button>
 			</div>
 			<draggable v-model="editedTopNav" :class="$style.reorderList" itemKey="id" handle=".htkNavDragHandle" ghostClass="htkNavDragGhost" :animation="150">
 				<template #item="{element: item, index: idx}">
 					<div :class="[$style.reorderItem, item.visible === false ? $style.reorderItemHidden : '']">
-						<button :class="['htkNavDragHandle', $style.handle]" v-tooltip="'ドラッグで並び替え'" tabindex="-1"><i class="ti ti-grip-vertical"></i></button>
+						<button :class="['htkNavDragHandle', $style.handle]" v-tooltip="copy.dragToReorder" tabindex="-1"><i class="ti ti-grip-vertical"></i></button>
 						<MkSwitch :modelValue="item.visible !== false" :class="$style.reorderToggle" @update:modelValue="v => setTopNavVisible(idx, v)"/>
 						<i :class="[item.icon, $style.reorderIcon]"></i>
-						<span :class="$style.reorderLabel">{{ item.label }}</span>
+						<span :class="$style.reorderLabel">{{ navDisplayLabel(item) }}</span>
 					</div>
 				</template>
 			</draggable>
@@ -140,50 +140,50 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 		<!-- ===== 下部ナビバー (モバイルのみ有効・バッファ保存) ===== -->
 		<FormSection>
-			<template #label>下部ナビバー (モバイル)</template>
+			<template #label>{{ copy.bottomNavSection }}</template>
 			<div v-if="!isBottomNavVisible" :class="$style.disabledNote">
 				<i class="ti ti-device-desktop"></i>
-				<div>下部ナビバーは<b>モバイル (縦型/狭い画面)</b> のときのみ表示されます。現在の画面ではプレビュー・編集できません。<br>スマートフォンでこのモーダルを開くと編集できます。</div>
+				<div>{{ copy.bottomNavUnavailableBefore }}<b>{{ copy.mobileNarrow }}</b>{{ copy.bottomNavUnavailableAfter }}<br>{{ copy.openOnPhone }}</div>
 			</div>
 			<fieldset :class="[$style.bottomNavFieldset, !isBottomNavVisible ? $style.bottomNavFieldsetDisabled : '']" :disabled="!isBottomNavVisible">
 				<div :class="$style.reorderHead">
-					<div :class="$style.reorderHint">表示する項目 (最大 {{ HATASABA_BOTTOM_NAV_MAX }} つ) と順番を設定します。編集後、下の「保存」ボタンで確定します。</div>
-					<button :class="$style.navResetBtn" :disabled="!isBottomNavVisible" @click="resetBottomNav"><i class="ti ti-restore"></i> 並び順を初期化</button>
+					<div :class="$style.reorderHint">{{ copyx.bottomNavReorderHint({ max: HATASABA_BOTTOM_NAV_MAX }) }}</div>
+					<button :class="$style.navResetBtn" :disabled="!isBottomNavVisible" @click="resetBottomNav"><i class="ti ti-restore"></i> {{ copy.resetOrder }}</button>
 				</div>
 				<draggable v-model="editedBottomNav" :class="$style.reorderList" itemKey="id" handle=".htkNavDragHandle" ghostClass="htkNavDragGhost" :animation="150" :disabled="!isBottomNavVisible">
 					<template #item="{element: item, index: idx}">
 						<div :class="[$style.reorderItem, item.visible === false ? $style.reorderItemHidden : '']">
-							<button :class="['htkNavDragHandle', $style.handle]" v-tooltip="'ドラッグで並び替え'" tabindex="-1"><i class="ti ti-grip-vertical"></i></button>
+							<button :class="['htkNavDragHandle', $style.handle]" v-tooltip="copy.dragToReorder" tabindex="-1"><i class="ti ti-grip-vertical"></i></button>
 							<MkSwitch :modelValue="item.visible !== false" :class="$style.reorderToggle" @update:modelValue="v => setBottomNavVisible(idx, v)"/>
 							<i :class="[item.icon, $style.reorderIcon]"></i>
-							<span :class="$style.reorderLabel">{{ item.label }}</span>
+							<span :class="$style.reorderLabel">{{ navDisplayLabel(item) }}</span>
 						</div>
 					</template>
 				</draggable>
 				<div v-if="editedBottomNav.filter(i => i.visible !== false).length > HATASABA_BOTTOM_NAV_MAX" :class="$style.warning">
-					<i class="ti ti-alert-triangle"></i> 最大 {{ HATASABA_BOTTOM_NAV_MAX }} つまで表示できます。超過分は非表示になります。
+					<i class="ti ti-alert-triangle"></i> {{ copyx.maxVisibleItems({ max: HATASABA_BOTTOM_NAV_MAX }) }}
 				</div>
 			</fieldset>
 		</FormSection>
 
 		<!-- ===== サイドメニュー ===== -->
 		<FormSection>
-			<template #label>サイドメニュー (サイドバー / ドロワー)</template>
-			<div :class="$style.reorderHint" style="margin-bottom:10px;"><b>HataSideStudio</b> では、拡大時と縮小時を別々に並び替え、ボタンの形・色・グラデーション、グループ、ウィジェットまで端末ごとに調整できます。</div>
+			<template #label>{{ copy.sideMenuSection }}</template>
+			<div :class="$style.reorderHint" style="margin-bottom:10px;"><b>{{ copy.sideStudioName }}</b>{{ copy.sideStudioDescription }}</div>
 			<div :class="$style.subActions">
-				<button class="_buttonPrimary" :class="$style.openSidebarBtn" @click="openHataSideStudio"><i class="ti ti-layout-dashboard"></i> HataSideStudio を開く</button>
-				<button class="_button" :class="$style.openSidebarBtn" @click="openSidebarEditDialog"><i class="ti ti-list"></i> 従来の並び替えを開く</button>
+				<button class="_buttonPrimary" :class="$style.openSidebarBtn" @click="openHataSideStudio"><i class="ti ti-layout-dashboard"></i> {{ copy.openSideStudio }}</button>
+				<button class="_button" :class="$style.openSidebarBtn" @click="openSidebarEditDialog"><i class="ti ti-list"></i> {{ copy.openLegacyReorder }}</button>
 			</div>
 		</FormSection>
 	</div>
 
 	<!-- 旗鯖fork: MkWindow は #footer スロットを持たないため、body 末尾に footer を配置 -->
 	<div :class="$style.footer">
-		<MkButton :class="$style.resetBtn" @click="resetToDefault"><i class="ti ti-restore"></i> 初期値に戻す</MkButton>
+		<MkButton :class="$style.resetBtn" @click="resetToDefault"><i class="ti ti-restore"></i> {{ copy.resetDefaults }}</MkButton>
 		<div :class="$style.footerRight">
-			<span v-if="hasChanges" :class="$style.unsavedTag"><i class="ti ti-alert-circle"></i> 未保存の変更あり</span>
-			<MkButton @click="closeWithoutSave">閉じる</MkButton>
-			<MkButton primary :disabled="!hasChanges" @click="save"><i class="ti ti-device-floppy"></i> 保存</MkButton>
+			<span v-if="hasChanges" :class="$style.unsavedTag"><i class="ti ti-alert-circle"></i> {{ copy.unsavedChanges }}</span>
+			<MkButton @click="closeWithoutSave">{{ copy.close }}</MkButton>
+			<MkButton primary :disabled="!hasChanges" @click="save"><i class="ti ti-device-floppy"></i> {{ copy.save }}</MkButton>
 		</div>
 	</div>
 </MkWindow>
@@ -209,6 +209,7 @@ import { miLocalStorage } from '@/local-storage.js';
 import { HATASABA_BOTTOM_NAV_MAX, mergeMissingNavItems } from '@/utility/hatasaba-navigation.js';
 import * as os from '@/os.js';
 import { mainRouter } from '@/router.js';
+import { i18n } from '@/i18n.js';
 
 const emit = defineEmits<{
 	(ev: 'closed'): void;
@@ -216,6 +217,8 @@ const emit = defineEmits<{
 }>();
 
 const dialog = useTemplateRef('dialog');
+const copy = i18n.ts._hata._hatasabaUi._editWindow;
+const copyx = i18n.tsx._hata._hatasabaUi._editWindow;
 
 function openHataSideStudio() {
 	dialog.value?.close();
@@ -303,8 +306,8 @@ function setProfileNoBannerBg(v: boolean) {
 async function resetToDefault() {
 	const c = await os.confirm({
 		type: 'warning',
-		title: '初期値に戻す',
-		text: 'HatasabaUI 2 のすべての設定を初期値に戻します (この操作は保存前です — 「保存」を押さない限り永続化されません)',
+		title: copy.resetDefaults,
+		text: copy.resetAllConfirm,
 	});
 	if (c.canceled) return;
 	editedGlassUi.value = true; // 自動 ON がデフォルト挙動
@@ -354,12 +357,12 @@ function setBottomNavVisible(idx: number, visible: boolean) {
 	editedBottomNav.value = editedBottomNav.value.map((it, i) => i === idx ? { ...it, visible } : it);
 }
 async function resetTopNav() {
-	const c = await os.confirm({ type: 'warning', title: '初期値に戻す', text: '上部ナビバーの並び順と表示状態を初期値に戻します。よろしいですか?' });
+	const c = await os.confirm({ type: 'warning', title: copy.resetDefaults, text: copy.resetTopNavConfirm });
 	if (c.canceled) return;
 	editedTopNav.value = JSON.parse(JSON.stringify(getInitialPrefValue('simpleUi.topNav')));
 }
 async function resetBottomNav() {
-	const c = await os.confirm({ type: 'warning', title: '初期値に戻す', text: '下部ナビバーの並び順と表示状態を初期値に戻します。よろしいですか?' });
+	const c = await os.confirm({ type: 'warning', title: copy.resetDefaults, text: copy.resetBottomNavConfirm });
 	if (c.canceled) return;
 	editedBottomNav.value = JSON.parse(JSON.stringify(getInitialPrefValue('simpleUi.bottomNav')));
 }
@@ -378,6 +381,25 @@ const isBottomNavVisible = computed(() => isHatasabaUi.value && !isDesktop.value
 //   simple.vue の deckActive と同条件 (ui=simple かつ deckMode かつ デスクトップ相当)。
 //   デッキUIチュートリアルの再表示ボタンは、この状態のときのみ押下できる。
 const isHatasabaDeckActive = computed(() => isHatasabaUi.value && isDeckModeOn.value && isDesktop.value);
+
+// 保存済みの label は互換性のため変更せず、既定項目だけ表示時に翻訳する。
+const navLabelById: Record<string, string> = {
+	following: copy.navHome,
+	local: copy.navLocal,
+	social: copy.navSocial,
+	mixed: copy.navGlobal,
+	search: copy.navSearch,
+	home: copy.navHome,
+	notifications: copy.navNotifications,
+	hatask: copy.navCustomFeatures,
+	hatady: copy.navHatady,
+	hatafeed: copy.navHataFeed,
+	widgets: copy.navWidgets,
+};
+
+function navDisplayLabel(item: { id: string; label?: string }): string {
+	return navLabelById[item.id] ?? item.label ?? item.id;
+}
 
 // サイドメニュー編集モーダル起動。
 async function openSidebarEditDialog() {
@@ -415,7 +437,7 @@ function save() {
 			prefer.commit('simpleUi.topNav', JSON.parse(JSON.stringify(editedTopNav.value)));
 			prefer.commit('simpleUi.bottomNav', JSON.parse(JSON.stringify(editedBottomNav.value)));
 		}
-		os.toast('HatasabaUI 2 の設定を保存しました。ページを再読み込みします...');
+		os.toast(copy.savedReloading);
 		emit('done', { saved: true });
 		// 旗鯖fork: 保存後に即座にリロード。ライブプレビューで裏で書き換えた <html> クラス・
 		// CSS 変数と、実際の prefer 値との間の齟齬を確実に解消 (フルリロードで全描画を刷新)。
@@ -425,8 +447,8 @@ function save() {
 	} catch (err) {
 		os.alert({
 			type: 'error',
-			title: '保存に失敗しました',
-			text: 'もう一度お試しください。' + (err instanceof Error ? `\n\n詳細: ${err.message}` : ''),
+			title: copy.saveFailedTitle,
+			text: err instanceof Error ? copyx.tryAgainWithDetails({ details: err.message }) : copy.tryAgain,
 		});
 	}
 }
@@ -437,8 +459,8 @@ async function closeWithoutSave() {
 	if (hasChanges.value) {
 		const c = await os.confirm({
 			type: 'warning',
-			title: '変更を破棄しますか?',
-			text: '保存していない変更があります。閉じると変更は失われ、開いた時の状態に戻ります。',
+			title: copy.discardChangesTitle,
+			text: copy.discardChangesText,
 		});
 		if (c.canceled) return;
 	}

@@ -22,8 +22,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<div :class="$style.desc" v-html="page.desc"></div>
 				<div v-if="page.info" :class="$style.info"><i class="ti ti-info-circle"></i> <span v-html="page.info"></span></div>
 				<div :class="$style.footer">
-					<button v-if="!isLast" :class="$style.next" @click="next">{{ t('nextBtn') }} <i class="ti ti-arrow-right"></i></button>
-					<button v-else :class="$style.finish" @click="finish"><i class="ti ti-check"></i> {{ t('begin') }}</button>
+					<button v-if="!isLast" :class="$style.next" @click="next">{{ copy.next }} <i class="ti ti-arrow-right"></i></button>
+					<button v-else :class="$style.finish" @click="finish"><i class="ti ti-check"></i> {{ copy.begin }}</button>
 				</div>
 			</div>
 		</div>
@@ -33,40 +33,28 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <script lang="ts" setup>
 import { ref, computed } from 'vue';
-import { hatadyTheme, hatadyLang } from '@/utility/hatady-prefs.js';
+import { i18n } from '@/i18n.js';
+import { hatadyTheme } from '@/utility/hatady-prefs.js';
 
 const emit = defineEmits<{ (ev: 'done'): void; (ev: 'closed'): void }>();
 const theme = hatadyTheme;
-const lang = hatadyLang;
-const en = computed(() => lang.value === 'en');
-
-const DICT: Record<string, { ja: string; en: string }> = {
-	nextBtn: { ja: '次へ', en: 'Next' },
-	begin: { ja: 'Hatady を始める', en: 'Start Hatady' },
-};
-function t(key: string): string { return DICT[key]?.[en.value ? 'en' : 'ja'] ?? key; }
+const copy = i18n.ts._hata._hatady._tutorial;
 
 // 旗鯖fork: 起動アニメ＋テーマ選択の後に出す「最後のひとこと」に集約。
 //   ① フォローは Hatady の中だけ（始める前に…）→ ② いつでも見返せる、の2ページ構成。
 const pages = computed(() => [
 	{
 		bg: 'linear-gradient(135deg,#6a86b0,#455f8a)', emoji: '', icon: 'ti-users-plus',
-		kicker: en.value ? 'Before you start — one thing.' : '始める前に、ひとつだけ。',
-		title: en.value ? 'Follows stay inside Hatady' : 'フォローは Hatady の中だけ',
-		desc: en.value
-			? 'Hatady follows are <b>independent from your hataskey follows</b>. Following someone here does not affect your hataskey timeline. <b>Study connections stay within Hatady.</b>'
-			: 'Hatady のフォローは <b>hataskey 本体のフォローとは独立</b>しています。ここで誰かをフォローしても、hataskey のタイムラインには影響しません。<b>学びのつながりは Hatady の中で完結</b>します',
-		info: en.value
-			? 'Likewise, people you follow on the server do not automatically appear in Hatady.'
-			: '逆に、サーバーでフォローしている人が Hatady でも表示されるわけではありません',
+		kicker: copy.followKicker,
+		title: copy.followTitle,
+		desc: copy.followDescription,
+		info: copy.followInfo,
 	},
 	{
 		bg: 'linear-gradient(135deg,#e0955a,#d9824a)', emoji: '', icon: 'ti-refresh',
 		kicker: '',
-		title: en.value ? 'Revisit anytime' : 'いつでも見返せます',
-		desc: en.value
-			? 'This tutorial and the intro can be replayed anytime from <b>Hatady settings → Management → Replay tutorial</b>. No need to memorize everything now.'
-			: 'このチュートリアルと簡単な紹介は、<b>Hatady設定 → 管理 → チュートリアルを再度実行</b>からいつでも見返せます。<br>今すべて覚えなくても大丈夫です',
+		title: copy.revisitTitle,
+		desc: copy.revisitDescription,
 		info: '',
 	},
 ]);

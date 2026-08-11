@@ -14,22 +14,22 @@ SPDX-License-Identifier: AGPL-3.0-only
 	:canResize="true"
 	@closed="emit('closed')"
 >
-	<template #header><i class="ti ti-bell"></i> {{ t('title') }}</template>
+	<template #header><i class="ti ti-bell"></i> {{ copy.title }}</template>
 
 	<div class="hatady-scope" :data-hatady-theme="theme" :class="$style.body">
 		<!-- フィルタ -->
 		<div :class="$style.filters">
 			<button v-for="f in filters" :key="f.key" :class="[$style.filter, activeFilter === f.key && $style.filterOn]" @click="activeFilter = f.key">
-				<i v-if="f.icon" :class="['ti', f.icon]"></i> {{ t(f.label) }}
+				<i v-if="f.icon" :class="['ti', f.icon]"></i> {{ f.label }}
 			</button>
-			<button :class="$style.readAll" @click="markAllRead"><i class="ti ti-checks"></i> {{ t('markAllRead') }}</button>
+			<button :class="$style.readAll" @click="markAllRead"><i class="ti ti-checks"></i> {{ copy.markAllRead }}</button>
 		</div>
 
 		<div :class="$style.list">
-			<div v-if="loading" :class="$style.loading">{{ t('loading') }}</div>
+			<div v-if="loading" :class="$style.loading">{{ copy.loading }}</div>
 			<div v-else-if="filtered.length === 0" :class="$style.empty">
 				<i class="ti ti-bell-off" :class="$style.emptyIcon"></i>
-				<div>{{ t('empty') }}</div>
+				<div>{{ copy.empty }}</div>
 			</div>
 			<template v-else>
 				<template v-for="g in groups" :key="g.key">
@@ -52,8 +52,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<!-- 本文 -->
 						<div :class="$style.content">
 							<div :class="$style.text">
-								<template v-if="n.type === 'milestone'"><b :class="$style.streakVal">{{ n.value }}{{ t('daysStreak') }}</b> {{ t('milestoneText') }}</template>
-								<template v-else-if="n.type === 'goalDone'"><b :class="$style.who">{{ t('goalDoneTitle') }}</b> {{ t('goalDoneText') }}</template>
+								<template v-if="n.type === 'milestone'"><b :class="$style.streakVal">{{ copyx.daysStreak({ count: String(n.value) }) }}</b> {{ copy.milestoneText }}</template>
+								<template v-else-if="n.type === 'goalDone'"><b :class="$style.who">{{ copy.goalDoneTitle }}</b> {{ copy.goalDoneText }}</template>
 								<template v-else>
 									<b :class="$style.who"><MkUserName :user="n.user"/></b> {{ verb(n) }}
 									<MkReactionIcon v-if="n.type === 'reaction'" :class="$style.inlineReaction" :reaction="String(n.reaction || '👍')"/>
@@ -69,7 +69,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 								:class="[$style.followBtn, n.isFollowingBack && $style.followingBtn]"
 								:disabled="n.busy"
 								@click.stop="toggleFollowBack(n)"
-							>{{ n.isFollowingBack ? t('followingBack') : t('followBack') }}</button>
+							>{{ n.isFollowingBack ? copy.followingBack : copy.followBack }}</button>
 						</div>
 					</div>
 				</template>
@@ -83,70 +83,46 @@ SPDX-License-Identifier: AGPL-3.0-only
 import { ref, computed, onMounted } from 'vue';
 import MkWindow from '@/components/MkWindow.vue';
 import MkReactionIcon from '@/components/MkReactionIcon.vue';
+import { versatileLang } from '@@/js/intl-const.js';
+import { i18n } from '@/i18n.js';
 import * as os from '@/os.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
-import { hatadyTheme, hatadyLang } from '@/utility/hatady-prefs.js';
+import { hatadyTheme } from '@/utility/hatady-prefs.js';
 
 const emit = defineEmits<{ (ev: 'read'): void; (ev: 'openLog', logId: string): void; (ev: 'openProfile', userId: string): void; (ev: 'closed'): void }>();
 const dialog = ref<any>(null);
 const theme = hatadyTheme;
-const lang = hatadyLang;
+const copy = i18n.ts._hata._hatady._notifications;
+const copyx = i18n.tsx._hata._hatady._notifications;
+const shortDateFormatter = new Intl.DateTimeFormat(versatileLang, { month: 'short', day: 'numeric' });
 
 const items = ref<any[]>([]);
 const loading = ref(true);
 const activeFilter = ref<'all' | 'reaction' | 'comment' | 'follow' | 'milestone'>('all');
 
 const filters = [
-	{ key: 'all' as const, label: 'filterAll', icon: '' },
-	{ key: 'reaction' as const, label: 'filterReaction', icon: 'ti-heart' },
-	{ key: 'comment' as const, label: 'filterComment', icon: 'ti-message-circle-2' },
-	{ key: 'follow' as const, label: 'filterFollow', icon: 'ti-user-plus' },
-	{ key: 'milestone' as const, label: 'filterMilestone', icon: 'ti-flame' },
+	{ key: 'all' as const, label: copy.filterAll, icon: '' },
+	{ key: 'reaction' as const, label: copy.filterReaction, icon: 'ti-heart' },
+	{ key: 'comment' as const, label: copy.filterComment, icon: 'ti-message-circle-2' },
+	{ key: 'follow' as const, label: copy.filterFollow, icon: 'ti-user-plus' },
+	{ key: 'milestone' as const, label: copy.filterMilestone, icon: 'ti-flame' },
 ];
-
-const DICT: Record<string, { ja: string; en: string }> = {
-	title: { ja: '通知', en: 'Notifications' },
-	markAllRead: { ja: 'すべて既読', en: 'Mark all read' },
-	loading: { ja: '読み込み中…', en: 'Loading…' },
-	empty: { ja: '通知はまだありません。', en: 'No notifications yet.' },
-	filterAll: { ja: 'すべて', en: 'All' },
-	filterReaction: { ja: 'リアクション', en: 'Reactions' },
-	filterComment: { ja: 'コメント', en: 'Comments' },
-	filterFollow: { ja: 'フォロー', en: 'Follows' },
-	filterMilestone: { ja: '継続・達成', en: 'Milestones' },
-	verbReaction: { ja: 'があなたの学びにリアクションしました', en: 'reacted to your study' },
-	verbComment: { ja: 'があなたの学びにコメントしました', en: 'commented on your study' },
-	verbFollow: { ja: 'があなたをフォローしました', en: 'followed you' },
-	followBack: { ja: 'フォロー返す', en: 'Follow back' },
-	followingBack: { ja: 'フォロー中', en: 'Following' },
-	followConfirm: { ja: '{name} さんをフォローしますか？', en: 'Follow {name}?' },
-	unfollowConfirm: { ja: '{name} さんのフォローを解除しますか？', en: 'Unfollow {name}?' },
-	milestoneText: { ja: 'で学習を記録しました！この調子🔥', en: 'streak of study logs! Keep going 🔥' },
-	goalDoneTitle: { ja: '目標達成！', en: 'Goal achieved!' },
-	goalDoneText: { ja: '設定した学習目標を達成しました🎯', en: 'You reached your study goal 🎯' },
-	daysStreak: { ja: '日連続', en: '-day' },
-	today: { ja: '今日', en: 'Today' },
-	yesterday: { ja: '昨日', en: 'Yesterday' },
-	earlier: { ja: 'それ以前', en: 'Earlier' },
-};
-function t(key: string): string { return DICT[key]?.[lang.value === 'en' ? 'en' : 'ja'] ?? key; }
 function verb(n: any): string {
-	if (n.type === 'reaction') return t('verbReaction');
-	if (n.type === 'comment') return t('verbComment');
-	if (n.type === 'follow') return t('verbFollow');
+	if (n.type === 'reaction') return copy.verbReaction;
+	if (n.type === 'comment') return copy.verbComment;
+	if (n.type === 'follow') return copy.verbFollow;
 	return '';
 }
 function fmtWhen(iso: string): string {
 	const d = new Date(iso);
 	const diffMin = Math.round((Date.now() - d.getTime()) / 60000);
-	const en = lang.value === 'en';
-	if (diffMin < 1) return en ? 'now' : 'たった今';
-	if (diffMin < 60) return en ? `${diffMin}m ago` : `${diffMin}分前`;
+	if (diffMin < 1) return copy.now;
+	if (diffMin < 60) return copyx.minutesAgo({ count: diffMin.toString() });
 	const diffH = Math.floor(diffMin / 60);
-	if (diffH < 24) return en ? `${diffH}h ago` : `${diffH}時間前`;
+	if (diffH < 24) return copyx.hoursAgo({ count: diffH.toString() });
 	const diffD = Math.floor(diffH / 24);
-	if (diffD < 7) return en ? `${diffD}d ago` : `${diffD}日前`;
-	return en ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : `${d.getMonth() + 1}月${d.getDate()}日`;
+	if (diffD < 7) return copyx.daysAgo({ count: diffD.toString() });
+	return shortDateFormatter.format(d);
 }
 
 const filtered = computed(() => activeFilter.value === 'all' ? items.value : items.value.filter(n => n.type === activeFilter.value));
@@ -163,9 +139,9 @@ const groups = computed(() => {
 		else buckets.earlier.push(n);
 	}
 	return [
-		{ key: 'today', label: t('today'), items: buckets.today },
-		{ key: 'yesterday', label: t('yesterday'), items: buckets.yesterday },
-		{ key: 'earlier', label: t('earlier'), items: buckets.earlier },
+		{ key: 'today', label: copy.today, items: buckets.today },
+		{ key: 'yesterday', label: copy.yesterday, items: buckets.yesterday },
+		{ key: 'earlier', label: copy.earlier, items: buckets.earlier },
 	];
 });
 
@@ -200,7 +176,7 @@ async function toggleFollowBack(n: any) {
 	const uname = n.user.name || n.user.username;
 	const { canceled } = await os.confirm({
 		type: n.isFollowingBack ? 'warning' : 'question',
-		text: (n.isFollowingBack ? t('unfollowConfirm') : t('followConfirm')).replace('{name}', uname),
+		text: n.isFollowingBack ? copyx.unfollowConfirm({ name: uname }) : copyx.followConfirm({ name: uname }),
 	});
 	if (canceled) return;
 	n.busy = true;
