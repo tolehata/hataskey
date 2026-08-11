@@ -22,8 +22,9 @@ describe('HATA_WHATS_NEW', () => {
 	});
 
 	test('機械判定用の完全な版から旗鯖の表示版を生成する', () => {
-		expect(HATA_WHATS_NEW.version).toBe('2026.7.0-hata.12.1');
-		expect(getHataWhatsNewDisplayVersion(HATA_WHATS_NEW.version)).toBe('hata-12.1');
+		expect(HATA_WHATS_NEW.version).toBe('2026.7.0-hata.12.1.1');
+		expect(getHataWhatsNewDisplayVersion(HATA_WHATS_NEW.version)).toBe('hata-12.1.1');
+		expect(getHataWhatsNewDisplayVersion('2026.7.0-hata.12.1')).toBe('hata-12.1');
 		expect(getHataWhatsNewDisplayVersion('development')).toBe('development');
 	});
 
