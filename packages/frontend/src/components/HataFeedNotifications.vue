@@ -29,19 +29,19 @@ SPDX-License-Identifier: AGPL-3.0-only
 		:style="{ maxHeight: maxHeight ? maxHeight + 'px' : undefined, width: type === 'drawer' ? undefined : '360px' }"
 	>
 		<div :class="$style.header">
-			<span :class="$style.title"><i class="ti ti-bell"></i> 通知</span>
-			<button v-if="unreadCount > 0" :class="$style.readBtn" @click="markAllRead"><i class="ti ti-checks"></i> 既読</button>
+			<span :class="$style.title"><i class="ti ti-bell"></i> {{ copy.title }}</span>
+			<button v-if="unreadCount > 0" :class="$style.readBtn" @click="markAllRead"><i class="ti ti-checks"></i> {{ copy.markRead }}</button>
 			<button :class="$style.closeBtn" @click="modal?.close()"><i class="ti ti-x"></i></button>
 		</div>
 
 		<div :class="$style.bar">
-			<button :class="[$style.filterBtn, filter && $style.filterBtnOn]" @click="openFilter"><i class="ti ti-filter"></i> {{ filter ? (notifTypeLabel[filter] ?? filter) : 'すべて' }} <i class="ti ti-chevron-down" :class="$style.filterCaret"></i></button>
+			<button :class="[$style.filterBtn, filter && $style.filterBtnOn]" @click="openFilter"><i class="ti ti-filter"></i> {{ filter ? (notifTypeLabel[filter] ?? filter) : copy.all }} <i class="ti ti-chevron-down" :class="$style.filterCaret"></i></button>
 		</div>
 
-		<div v-if="loading" :class="$style.state">読み込み中…</div>
+		<div v-if="loading" :class="$style.state">{{ copy.loading }}</div>
 		<div v-else-if="items.length === 0" :class="$style.state">
 			<i class="ti ti-bell-off" :class="$style.stateIcon"></i>
-			<div>{{ filter ? 'この種類の通知はありません。' : '通知はありません。' }}</div>
+			<div>{{ filter ? copy.noNotificationsOfType : copy.noNotifications }}</div>
 		</div>
 		<div v-else :class="$style.list">
 			<!-- 旗鯖fork(通知グルーピング): 本体 reaction:grouped の流儀で、同種・同一対象の通知を1行にまとめる。
@@ -53,13 +53,13 @@ SPDX-License-Identifier: AGPL-3.0-only
 				>
 					<i :class="['ti', notifIcon(g.type), $style.rowIcon]"></i>
 					<div :class="$style.rowBody">
-						<div :class="$style.rowMsg">{{ g.count > 1 ? groupSummary(g) : g.items[0].message }}</div>
+						<div :class="$style.rowMsg">{{ g.count > 1 ? groupSummary(g) : notificationDisplayMessage(g.items[0]) }}</div>
 						<div :class="$style.rowMeta">
 							<template v-if="g.count > 1">
 								<span :class="$style.avatars">
 									<HfAvatar v-for="a in g.actors.slice(0, 3)" :key="a.id" :user="a" :size="16" :stack="true"/>
 								</span>
-								<span :class="$style.rowActor">{{ g.count }}件</span>
+								<span :class="$style.rowActor">{{ copyx.itemCount({ count: g.count.toString() }) }}</span>
 							</template>
 							<template v-else>
 								<HfAvatar v-if="g.items[0].actor" :user="g.items[0].actor" :size="16"/>
@@ -79,7 +79,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					>
 						<i :class="['ti', notifIcon(n.type), $style.rowIcon]"></i>
 						<div :class="$style.rowBody">
-							<div :class="$style.rowMsg">{{ n.message }}</div>
+							<div :class="$style.rowMsg">{{ notificationDisplayMessage(n) }}</div>
 							<div :class="$style.rowMeta">
 								<HfAvatar v-if="n.actor" :user="n.actor" :size="16"/>
 								<span v-if="n.actor" :class="$style.rowActor">{{ n.actor.name ?? n.actor.username }}</span>
@@ -108,12 +108,15 @@ import HfAvatar from '@/components/HfAvatar.vue';
 import * as os from '@/os.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { useRouter } from '@/router.js';
-import { notifIcon, notifTypeLabel, groupHataFeedNotifications, groupSummary } from '@/utility/hatafeed.js';
+import { notifIcon, notifTypeLabel, groupHataFeedNotifications, groupSummary, notificationDisplayMessage } from '@/utility/hatafeed.js';
+import { i18n } from '@/i18n.js';
 
 const props = defineProps<{ anchorElement?: HTMLElement | null }>();
 const emit = defineEmits<{ (ev: 'closed'): void; (ev: 'read'): void }>();
 const modal = useTemplateRef('modal');
 const router = useRouter();
+const copy = i18n.ts._hata._hatafeed._notifications;
+const copyx = i18n.tsx._hata._hatafeed._notifications;
 
 const PAGE_SIZE = 8;
 const items = ref<HataFeedNotif[]>([]);
@@ -177,7 +180,7 @@ async function prevPage() {
 function openFilter(ev: MouseEvent) {
 	const present = [...new Set(items.value.map(n => n.type))];
 	os.popupMenu([
-		{ text: 'すべて', active: filter.value === null, action: () => { filter.value = null; reload(); } },
+		{ text: copy.all, active: filter.value === null, action: () => { filter.value = null; reload(); } },
 		...present.map(t => ({
 			text: notifTypeLabel[t] ?? t,
 			active: filter.value === t,
@@ -198,14 +201,14 @@ async function handleEmojiRequestNotif(requestId: string) {
 	try {
 		const list = await misskeyApi('hata/feedback/emoji-requests', { id: requestId, limit: 1 }) as unknown as HataFeedEmojiRequest[];
 		const r = list[0];
-		if (!r) { os.alert({ type: 'info', title: '申請が見つかりません', text: 'この申請は削除された可能性があります。' }); return; }
+		if (!r) { os.alert({ type: 'info', title: copy.requestNotFoundTitle, text: copy.requestNotFoundText }); return; }
 		if (r.status === 'pending') {
-			os.alert({ type: 'info', title: '申請受付中', text: `:${r.name}: の申請はまだ未処理です。` });
+			os.alert({ type: 'info', title: copy.requestPendingTitle, text: copyx.requestPendingText({ name: r.name }) });
 			return;
 		}
-		os.alert({ type: 'info', title: 'この申請は処理済みです', text: `:${r.name}: の申請は処理済みです。` });
+		os.alert({ type: 'info', title: copy.requestProcessedTitle, text: copyx.requestProcessedText({ name: r.name }) });
 	} catch {
-		os.alert({ type: 'error', title: 'エラー', text: '申請の状態を取得できませんでした。' });
+		os.alert({ type: 'error', title: copy.errorTitle, text: copy.requestStatusFailed });
 	}
 }
 

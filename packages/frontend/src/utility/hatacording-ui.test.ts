@@ -159,6 +159,7 @@ describe('HataSNSCordUIの端末ローカル設定', () => {
 		expect(prefs.enabled).toBe(true);
 		expect(prefs.menu).toEqual({ valid: { pinned: true, hidden: false, order: 2 } });
 		expect(prefs.subpaneTabs[0].kind).toBe('detail');
+		expect(prefs.subpaneTabs.map(tab => tab.title)).toEqual(['detail', 'widgets']);
 		expect(prefs.subpaneTabs[1].widgets).toHaveLength(1);
 		expect(prefs.activeSubpaneTabId).toBe(prefs.subpaneTabs[0].id);
 	});
@@ -178,6 +179,7 @@ describe('HataSNSCordUIの端末ローカル設定', () => {
 		const prefs = readHatacordingUiPreferences('user-tabs');
 
 		expect(prefs.subpaneTabs.map(tab => tab.id)).toEqual(['detail', 'same']);
+		expect(prefs.subpaneTabs.map(tab => tab.title)).toEqual(['detail', 'widgets']);
 		expect(prefs.activeSubpaneTabId).toBe('detail');
 	});
 

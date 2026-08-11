@@ -23,6 +23,15 @@ import { UserListService } from '@/core/UserListService.js';
 import { FilterUnionByProperty, groupedNotificationTypes, obsoleteNotificationTypes } from '@/types.js';
 import { trackPromise } from '@/misc/promise-tracker.js';
 
+export function filterNotificationsFromBotIds(
+	notifications: MiNotification[],
+	botUserIds: ReadonlySet<MiUser['id']>,
+): MiNotification[] {
+	return notifications.filter(notification => !('notifierId' in notification)
+		|| notification.notifierId == null
+		|| !botUserIds.has(notification.notifierId));
+}
+
 @Injectable()
 export class NotificationService implements OnApplicationShutdown {
 	#shutdownController = new AbortController();
@@ -287,6 +296,7 @@ export class NotificationService implements OnApplicationShutdown {
 			limit = 20,
 			includeTypes,
 			excludeTypes,
+			excludeBots = false,
 		}: {
 			sinceId?: string,
 			untilId?: string,
@@ -294,6 +304,7 @@ export class NotificationService implements OnApplicationShutdown {
 			// any extra types are allowed, those are no-op
 			includeTypes?: (MiNotification['type'] | string)[],
 			excludeTypes?: (MiNotification['type'] | string)[],
+			excludeBots?: boolean,
 		},
 	): Promise<MiNotification[]> {
 		let sinceTime = sinceId ? this.toXListId(sinceId) : null;
@@ -328,6 +339,19 @@ export class NotificationService implements OnApplicationShutdown {
 				notifications = notifications.filter(notification => includeTypes.includes(notification.type));
 			} else if (excludeTypes && excludeTypes.length > 0) {
 				notifications = notifications.filter(notification => !excludeTypes.includes(notification.type));
+			}
+
+			if (excludeBots && notifications.length > 0) {
+				const notifierIds = [...new Set(notifications.flatMap(notification => (
+					'notifierId' in notification && notification.notifierId != null ? [notification.notifierId] : []
+				)))];
+				if (notifierIds.length > 0) {
+					const botUsers = await this.usersRepository.find({
+						where: { id: In(notifierIds), isBot: true },
+						select: { id: true },
+					});
+					notifications = filterNotificationsFromBotIds(notifications, new Set(botUsers.map(user => user.id)));
+				}
 			}
 
 			if (notifications.length !== 0) {

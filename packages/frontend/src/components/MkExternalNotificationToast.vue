@@ -33,6 +33,7 @@ import { mainRouter } from '@/router.js';
 import { prefer } from '@/preferences.js';
 import { getExternalEmojiUrlMapForHost } from '@/utility/external-api.js';
 import MkReactionIcon from '@/components/MkReactionIcon.vue';
+import { i18n } from '@/i18n.js';
 
 const props = defineProps<{
 	notification: any;
@@ -41,6 +42,7 @@ const props = defineProps<{
 const emit = defineEmits<{
 	(e: 'close'): void;
 }>();
+const notificationCopy = i18n.ts._hata._externalNotifications;
 
 const show = ref(false);
 let autoCloseTimer: ReturnType<typeof setTimeout> | null = null;
@@ -69,26 +71,26 @@ const iconClass = computed(() => {
 // 旗鯖fork: 表示名 (name優先) — MFM対応のため生テキスト
 const displayName = computed(() => {
 	const n = props.notification;
-	return n?.user?.name || n?.user?.username || '誰か';
+	return n?.user?.name || n?.user?.username || notificationCopy.someone;
 });
 
 // 旗鯖fork: アクション文言 (表示名の後ろに付く)
 const actionLabel = computed(() => {
 	const labels: Record<string, string> = {
-		'reaction': ' がリアクションしました',
-		'reply': ' が返信しました',
-		'mention': ' があなたをメンションしました',
-		'renote': ' がリノートしました',
-		'quote': ' が引用しました',
-		'follow': ' にフォローされました',
-		'receiveFollowRequest': ' からフォロー申請が届きました',
-		'followRequestAccepted': ' がフォロー申請を承認しました',
-		'achievementEarned': '実績を獲得しました',
-		'app': 'アプリ通知',
-		'pollEnded': 'アンケートが終了しました',
-		'note': ' が新しいノートを投稿しました',
+		'reaction': notificationCopy.actions.reaction,
+		'reply': notificationCopy.actions.reply,
+		'mention': notificationCopy.actions.mention,
+		'renote': notificationCopy.actions.renote,
+		'quote': notificationCopy.actions.quote,
+		'follow': notificationCopy.actions.follow,
+		'receiveFollowRequest': notificationCopy.actions.receiveFollowRequest,
+		'followRequestAccepted': notificationCopy.actions.followRequestAccepted,
+		'achievementEarned': notificationCopy.actions.achievementEarned,
+		'app': notificationCopy.actions.app,
+		'pollEnded': notificationCopy.actions.pollEnded,
+		'note': notificationCopy.actions.note,
 	};
-	return labels[notificationType.value] ?? '外部から通知が届きました';
+	return labels[notificationType.value] ?? notificationCopy.unknownToastAction;
 });
 
 // 旗鯖fork: ユーザー名のMFMカスタム絵文字URLマップ
@@ -157,11 +159,11 @@ const text = computed(() => {
 const hint = computed(() => {
 	const t = notificationType.value;
 	if (t === 'receiveFollowRequest' || t === 'followRequestAccepted') {
-		return '※ フォロー申請の対応は連携先サーバーで行ってください';
+		return notificationCopy.followRequestHint;
 	}
 	if (t === 'app') {
 		// セキュリティ系のアプリ通知も含めて、連携先確認案内
-		return '※ 詳細は連携先サーバーで確認してください';
+		return notificationCopy.appHint;
 	}
 	return '';
 });

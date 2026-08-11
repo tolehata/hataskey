@@ -17,23 +17,23 @@ SPDX-License-Identifier: AGPL-3.0-only
 <template>
 <MkContainer :style="`height: ${widgetProps.height}px;`" :showHeader="widgetProps.showHeader" :scrollable="true" class="mkw-externalNotifications">
 	<template #icon><i class="ti ti-bell-ringing"></i></template>
-	<template #header>外部通知</template>
+	<template #header>{{ notificationCopy.title }}</template>
 	<template #func="{ buttonStyleClass }">
-		<button v-tooltip="'すべて既読'" class="_button" :class="buttonStyleClass" @click="markAllAsRead()"><i class="ti ti-check"></i></button>
-		<button v-tooltip="'更新'" class="_button" :class="buttonStyleClass" @click="fetchNotifications()"><i class="ti ti-refresh"></i></button>
+		<button v-tooltip="notificationCopy.markAllRead" class="_button" :class="buttonStyleClass" @click="markAllAsRead()"><i class="ti ti-check"></i></button>
+		<button v-tooltip="notificationCopy.refresh" class="_button" :class="buttonStyleClass" @click="fetchNotifications()"><i class="ti ti-refresh"></i></button>
 	</template>
 
 	<div :class="$style.root">
 		<div v-if="!connected" :class="$style.empty">
 			<i class="ti ti-plug-connected-x" :class="$style.emptyIcon"></i>
-			<div :class="$style.emptyText">外部アカウントが未連携です</div>
+			<div :class="$style.emptyText">{{ notificationCopy.notConnected }}</div>
 		</div>
 		<div v-else-if="loading" :class="$style.loading">
 			<MkLoading/>
 		</div>
 		<div v-else-if="notifications.length === 0" :class="$style.empty">
 			<i class="ti ti-bell-off" :class="$style.emptyIcon"></i>
-			<div :class="$style.emptyText">通知はまだありません</div>
+			<div :class="$style.emptyText">{{ notificationCopy.empty }}</div>
 		</div>
 		<div v-else :class="$style.list">
 			<div v-for="n in notifications" :key="n.id" :class="$style.item" @click="onItemClick(n)">
@@ -70,8 +70,13 @@ import { prefer } from '@/preferences.js';
 import { callExternalApi, getExternalEmojiUrlMap } from '@/utility/external-api.js';
 import MkContainer from '@/components/MkContainer.vue';
 import MkReactionIcon from '@/components/MkReactionIcon.vue';
+import { i18n } from '@/i18n.js';
+import { versatileLang } from '@/utility/intl-const.js';
 
 const name = 'externalNotifications';
+const notificationCopy = i18n.ts._hata._externalNotifications;
+const notificationCopyx = i18n.tsx._hata._externalNotifications;
+const notificationDateFormatter = new Intl.DateTimeFormat(versatileLang, { month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 
 const widgetPropsDef = {
 	showHeader: {
@@ -158,25 +163,25 @@ function iconClassOf(n: any): string {
 
 // 旗鯖fork: 表示名 (name優先、なければusername) — MFM対応のため生テキストを返す
 function displayNameOf(n: any): string {
-	return n?.user?.name || n?.user?.username || '誰か';
+	return n?.user?.name || n?.user?.username || notificationCopy.someone;
 }
 
 function actionLabelOf(n: any): string {
 	const labels: Record<string, string> = {
-		'reaction': ' がリアクションしました',
-		'reply': ' が返信しました',
-		'mention': ' があなたをメンションしました',
-		'renote': ' がリノートしました',
-		'quote': ' が引用しました',
-		'follow': ' にフォローされました',
-		'receiveFollowRequest': ' からフォロー申請が届きました',
-		'followRequestAccepted': ' がフォロー申請を承認しました',
-		'achievementEarned': '実績を獲得しました',
-		'app': 'アプリ通知',
-		'pollEnded': 'アンケートが終了しました',
-		'note': ' が新しいノートを投稿しました',
+		'reaction': notificationCopy.actions.reaction,
+		'reply': notificationCopy.actions.reply,
+		'mention': notificationCopy.actions.mention,
+		'renote': notificationCopy.actions.renote,
+		'quote': notificationCopy.actions.quote,
+		'follow': notificationCopy.actions.follow,
+		'receiveFollowRequest': notificationCopy.actions.receiveFollowRequest,
+		'followRequestAccepted': notificationCopy.actions.followRequestAccepted,
+		'achievementEarned': notificationCopy.actions.achievementEarned,
+		'app': notificationCopy.actions.app,
+		'pollEnded': notificationCopy.actions.pollEnded,
+		'note': notificationCopy.actions.note,
 	};
-	return labels[n.type] ?? '外部から通知';
+	return labels[n.type] ?? notificationCopy.unknownAction;
 }
 
 // 旗鯖fork: ユーザー名表示用のMFMカスタム絵文字URLマップ
@@ -238,10 +243,10 @@ function formatTime(ts: string): string {
 	const t = new Date(ts).getTime();
 	if (Number.isNaN(t)) return '';
 	const diff = Math.floor((Date.now() - t) / 1000);
-	if (diff < 60) return `${diff}秒前`;
-	if (diff < 3600) return `${Math.floor(diff / 60)}分前`;
-	if (diff < 86400) return `${Math.floor(diff / 3600)}時間前`;
-	return new Date(ts).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+	if (diff < 60) return notificationCopyx.secondsAgo({ count: diff.toString() });
+	if (diff < 3600) return notificationCopyx.minutesAgo({ count: Math.floor(diff / 60).toString() });
+	if (diff < 86400) return notificationCopyx.hoursAgo({ count: Math.floor(diff / 3600).toString() });
+	return notificationDateFormatter.format(new Date(ts));
 }
 
 function onItemClick(n: any) {

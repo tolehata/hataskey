@@ -9,7 +9,7 @@
 
 <div class="htk-app" @touchstart.passive="htkTouchStart" @touchmove.passive="htkTouchMove" @touchend="htkTouchEnd">
 <!-- HEADER: search left, title center, settings right -->
-<header class="htk-lg htk-header htk-anim"><div class="htk-gc" style="display:flex;align-items:center;justify-content:space-between;padding:14px 22px;position:relative"><div style="display:flex;align-items:center;gap:8px;position:relative;z-index:1"><button class="htk-btn htk-icon-sq htk-header-back" @click="handleBack" title="戻る" aria-label="戻る"><i class="ti ti-arrow-left" style="font-size:1.1rem"></i></button><button class="htk-btn htk-icon-sq" @click="showSearch=true" title="検索" aria-label="検索"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></button></div><h1 style="position:absolute;left:0;right:0;margin:0;text-align:center;pointer-events:none;font-size:1.5rem;font-weight:400;letter-spacing:.5px;font-family:'Righteous',system-ui,sans-serif">Hatask</h1><button class="htk-btn htk-icon-sq" @click="openHataskSettings()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button></div></header>
+<header class="htk-lg htk-header htk-anim"><div class="htk-gc" style="display:flex;align-items:center;justify-content:space-between;padding:14px 22px;position:relative"><div style="display:flex;align-items:center;gap:8px;position:relative;z-index:1"><button class="htk-btn htk-icon-sq htk-header-back" @click="handleBack" :title="copy.back" :aria-label="copy.back"><i class="ti ti-arrow-left" style="font-size:1.1rem"></i></button><button class="htk-btn htk-icon-sq" @click="showSearch=true" :title="copy.search" :aria-label="copy.search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></button></div><h1 style="position:absolute;left:0;right:0;margin:0;text-align:center;pointer-events:none;font-size:1.5rem;font-weight:400;letter-spacing:.5px;font-family:'Righteous',system-ui,sans-serif">Hatask</h1><button class="htk-btn htk-icon-sq" @click="openHataskSettings()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button></div></header>
 
 <!-- NAV (旗鯖fork v2: 上部ナビに一本化。モバイルでも上部・横スクロール。下部固定ナビは廃止し、
      戻るは左上ヘッダーへ。HatasabaUI下部ナビの非表示は body.hataskActive + data-htask-hidden で継続) -->
@@ -21,40 +21,40 @@
   <!-- ===================== 季 KISETSU (Editorial Mincho) ===================== -->
   <template v-if="(settings.theme||'kisetsu')==='kisetsu'">
     <div v-if="pendingRsvps.length" class="hk-rsvp">
-      <div class="dept" data-n="参加確認">RSVP<i></i></div>
+      <div class="dept" :data-n="copy.rsvp">RSVP<i></i></div>
       <div v-for="r in pendingRsvps" :key="r.eventId" class="hk-rsvprow">
         <div><b>{{r.title}}</b><span class="hk-rsvptime">{{r.dateLabel}}</span></div>
-        <div class="hk-rsvpbtns"><button :class="['hk-go',r.myStatus==='going'&&'on']" @click="setRsvp(r.eventId,'going')">行く</button><button :class="[r.myStatus==='maybe'&&'on']" @click="setRsvp(r.eventId,'maybe')">検討中</button><button :class="[r.myStatus==='declined'&&'on']" @click="setRsvp(r.eventId,'declined')">辞退</button></div>
+        <div class="hk-rsvpbtns"><button :class="['hk-go',r.myStatus==='going'&&'on']" @click="setRsvp(r.eventId,'going')">{{copy.rsvpGoing}}</button><button :class="[r.myStatus==='maybe'&&'on']" @click="setRsvp(r.eventId,'maybe')">{{copy.rsvpMaybe}}</button><button :class="[r.myStatus==='declined'&&'on']" @click="setRsvp(r.eventId,'declined')">{{copy.rsvpDeclined}}</button></div>
       </div>
     </div>
     <div class="clock"><div class="ctime">{{currentTime}}</div><div class="cdate">{{clockMD}}<br>{{clockDow}}</div></div>
-    <div class="dept" data-n="其の一">CONTINUITY<i></i></div>
-    <div class="streak"><div class="snum">{{loginDays}}</div><div class="slab">日連続</div><div v-if="loginRanking>0" class="srank"><i class="ti ti-trophy"></i>サーバー内 <b>{{loginRanking}}位</b> / {{loginTotal}}人</div></div>
-    <div class="dept" data-n="其の二">APPS<i></i></div>
+    <div class="dept" :data-n="copy.sectionOne">CONTINUITY<i></i></div>
+    <div class="streak"><div class="snum">{{loginDays}}</div><div class="slab">{{copy.consecutiveDays}}</div><div v-if="loginRanking>0" class="srank"><i class="ti ti-trophy"></i>{{copy.serverRanking}} <b>{{copyx.rank({rank:loginRanking.toString()})}}</b> / {{copyx.people({count:loginTotal.toString()})}}</div></div>
+    <div class="dept" :data-n="copy.sectionTwo">APPS<i></i></div>
     <div class="apps"><button v-for="a in homeApps" :key="a.label" class="app" @click="a.fn"><span class="ai" :style="{background:a.color}"><i :class="a.icon"></i></span><small>{{a.short}}</small></button></div>
-    <div class="dept" data-n="其の三">SCHEDULE<i></i></div>
-    <template v-if="upcomingEvents.length"><div v-for="ev in upcomingEvents.slice(0,4)" :key="ev.id" class="ev" @click="goToEvent(ev)"><span class="evdot" :style="{background:ev.color}"></span><span class="evd">{{evMD(ev.date)}}</span><span class="evt">{{ev.title}}</span><span class="evtime">{{ev.timeLabel}}</span></div></template>
-    <div v-else class="hk-empty" @click="activeTab='cal'">予定はありません</div>
+    <div class="dept" :data-n="copy.sectionThree">SCHEDULE<i></i></div>
+    <template v-if="upcomingEvents.length"><div v-for="ev in upcomingEvents.slice(0,4)" :key="ev.id" class="ev" @click="goToEvent(ev)"><span class="evdot" :style="{background:ev.color}"></span><span class="evd">{{evMD(ev.date)}}</span><span class="evt">{{ev.title}}</span><span class="evtime">{{eventTimeLabel(ev)}}</span></div></template>
+    <div v-else class="hk-empty" @click="activeTab='cal'">{{copy.noEvents}}</div>
     <div class="two">
-      <div><div class="dept" data-n="其の四">MOOD<i></i></div><div class="mood" @click="activeTab='mood'" style="cursor:pointer"><div v-for="(m,i) in weekMoods" :key="i" :class="['md',!m.icon&&'off']"><i :class="m.icon||'ti ti-minus'"></i><small>{{m.day}}</small></div></div></div>
-      <div><div class="dept" data-n="其の五">GARDEN<i></i></div><div class="flow" @click="activeTab='garden'" style="cursor:pointer"><div class="fring"><svg viewBox="0 0 88 88"><circle cx="44" cy="44" r="38" fill="none" stroke="#e0dccf" stroke-width="7"/><circle cx="44" cy="44" r="38" fill="none" stroke="#a8552f" stroke-width="7" stroke-linecap="round" stroke-dasharray="239" :stroke-dashoffset="239-239*(flower.progress/100)"/></svg><div class="femo">{{flower.emoji}}</div></div><div class="fname">{{flower.name}}・{{flower.progress}}%</div></div></div>
+      <div><div class="dept" :data-n="copy.sectionFour">MOOD<i></i></div><div class="mood" @click="activeTab='mood'" style="cursor:pointer"><div v-for="(m,i) in weekMoods" :key="i" :class="['md',!m.icon&&'off']"><i :class="m.icon||'ti ti-minus'"></i><small>{{m.day}}</small></div></div></div>
+      <div><div class="dept" :data-n="copy.sectionFive">GARDEN<i></i></div><div class="flow" @click="activeTab='garden'" style="cursor:pointer"><div class="fring"><svg viewBox="0 0 88 88"><circle cx="44" cy="44" r="38" fill="none" stroke="#e0dccf" stroke-width="7"/><circle cx="44" cy="44" r="38" fill="none" stroke="#a8552f" stroke-width="7" stroke-linecap="round" stroke-dasharray="239" :stroke-dashoffset="239-239*(flower.progress/100)"/></svg><div class="femo">{{flower.emoji}}</div></div><div class="fname">{{currentFlowerDisplayName}}・{{flower.progress}}%</div></div></div>
     </div>
-    <div class="dept" data-n="其の六">HATASK EYE<i></i></div>
+    <div class="dept" :data-n="copy.sectionSix">HATASK EYE<i></i></div>
     <div class="eye" @click="activeTab='eye'" style="cursor:pointer"><div class="eyel">EYE</div><div class="eyep">{{eyePhrase}}</div></div>
     <template v-for="x in forkSections" :key="x">
-      <div v-if="x==='feedbackNotif'&&canAccessHataFeed" class="dept" data-n="其の七">FEEDBACK<i></i></div>
+      <div v-if="x==='feedbackNotif'&&canAccessHataFeed" class="dept" :data-n="copy.sectionSeven">FEEDBACK<i></i></div>
       <div v-if="x==='feedbackNotif'&&canAccessHataFeed" class="hk-fork">
-        <div v-if="hfNotifs.length===0" class="hk-empty">通知はありません</div>
-        <button v-for="n in hfNotifs" :key="n.id" class="ev" :class="{'hk-unread':!n.isRead}" @click="onHfNotifClick(n)" style="width:100%;text-align:left;background:none;border:none;cursor:pointer;font-family:inherit"><i :class="['ti',hfIcon(n.type)]" style="color:var(--accent);min-width:20px"></i><span class="evt">{{n.message}}</span></button>
+        <div v-if="hfNotifs.length===0" class="hk-empty">{{copy.noNotifications}}</div>
+        <button v-for="n in hfNotifs" :key="n.id" class="ev" :class="{'hk-unread':!n.isRead}" @click="onHfNotifClick(n)" style="width:100%;text-align:left;background:none;border:none;cursor:pointer;font-family:inherit"><i :class="['ti',hfIcon(n.type)]" style="color:var(--accent);min-width:20px"></i><span class="evt">{{notificationDisplayMessage(n)}}</span></button>
       </div>
-      <div v-if="x==='earthquake'" class="dept" data-n="其の八">EARTHQUAKE<i></i></div>
+      <div v-if="x==='earthquake'" class="dept" :data-n="copy.sectionEight">EARTHQUAKE<i></i></div>
       <div v-if="x==='earthquake'" class="hk-fork">
         <div style="font-size:.7rem;color:var(--fg-3);margin-bottom:6px">気象庁発表の情報を表示します</div>
         <MkEarthquakeTicker v-if="rawQuakes.length" :quakes="rawQuakes" :tsunami="tsunami" mode="compact" :showEmpty="false" @click="openEarthquake" style="cursor:pointer"/>
         <div v-else class="hk-empty">最近の地震情報はありません</div>
       </div>
-      <div v-if="x==='meal'" class="dept" data-n="其の九">MEAL<i></i></div>
-      <div v-if="x==='meal'" class="hk-fork" @click="activeTab='meal'" style="cursor:pointer"><div class="hk-mealmsg">{{mealSummaryMessage}}</div><div style="font-size:.78rem;color:var(--fg-3)">今日の記録: {{mealTodayCount}}件 — タップで記録</div></div>
+      <div v-if="x==='meal'" class="dept" :data-n="copy.sectionNine">MEAL<i></i></div>
+      <div v-if="x==='meal'" class="hk-fork" @click="activeTab='meal'" style="cursor:pointer"><div class="hk-mealmsg">{{mealSummaryMessage}}</div><div style="font-size:.78rem;color:var(--fg-3)">{{copyx.mealTodayTap({count:mealTodayCount.toString()})}}</div></div>
     </template>
   </template>
 
@@ -62,17 +62,17 @@
   <template v-else-if="(settings.theme||'kisetsu')==='kashin'">
     <div class="bento">
       <div v-if="pendingRsvps.length" class="cell c-rsvp span2">
-        <div class="clabel"><i class="ti ti-mail"></i> さんか確認</div>
-        <div v-for="r in pendingRsvps" :key="r.eventId" class="kb-rsvprow"><b>{{r.title}}</b> <span style="opacity:.85;font-size:.75rem">{{r.dateLabel}}</span><div class="kb-rsvpbtns"><button :class="[r.myStatus==='going'&&'on']" @click="setRsvp(r.eventId,'going')">行く</button><button :class="[r.myStatus==='maybe'&&'on']" @click="setRsvp(r.eventId,'maybe')">検討</button><button :class="[r.myStatus==='declined'&&'on']" @click="setRsvp(r.eventId,'declined')">辞退</button></div></div>
+        <div class="clabel"><i class="ti ti-mail"></i> {{copy.rsvp}}</div>
+        <div v-for="r in pendingRsvps" :key="r.eventId" class="kb-rsvprow"><b>{{r.title}}</b> <span style="opacity:.85;font-size:.75rem">{{r.dateLabel}}</span><div class="kb-rsvpbtns"><button :class="[r.myStatus==='going'&&'on']" @click="setRsvp(r.eventId,'going')">{{copy.rsvpGoing}}</button><button :class="[r.myStatus==='maybe'&&'on']" @click="setRsvp(r.eventId,'maybe')">{{copy.rsvpMaybeShort}}</button><button :class="[r.myStatus==='declined'&&'on']" @click="setRsvp(r.eventId,'declined')">{{copy.rsvpDeclined}}</button></div></div>
       </div>
       <div class="cell c-clock span2"><div class="ctime">{{currentTime}}</div><div class="cdate">{{currentDate}}</div></div>
-      <div class="cell c-streak"><div class="clabel"><i class="ti ti-flame"></i> れんぞく</div><div class="snum">{{loginDays}}</div><div class="slab">日目</div><div v-if="loginRanking>0" class="srank"><i class="ti ti-trophy"></i>{{loginRanking}}位 / {{loginTotal}}</div></div>
-      <div class="cell c-flow" @click="activeTab='garden'" style="cursor:pointer"><div class="clabel"><i class="ti ti-flower"></i> おにわ</div><div class="fring"><svg viewBox="0 0 76 76"><circle cx="38" cy="38" r="32" fill="none" stroke="#f0e4d2" stroke-width="7"/><circle cx="38" cy="38" r="32" fill="none" stroke="#12a89c" stroke-width="7" stroke-linecap="round" stroke-dasharray="201" :stroke-dashoffset="201-201*(flower.progress/100)"/></svg><div class="femo">{{flower.emoji}}</div></div><div class="fname">{{flower.name}} {{flower.progress}}%</div></div>
-      <div class="cell c-apps span2"><div class="clabel"><i class="ti ti-apps"></i> 旗鯖アプリ</div><div class="apps"><button v-for="a in homeApps" :key="a.label" class="app" @click="a.fn"><span class="ai" :style="{background:a.color}"><i :class="a.icon"></i></span><small>{{a.short}}</small></button></div></div>
-      <div class="cell c-ev span2" @click="activeTab='cal'" style="cursor:pointer"><div class="clabel"><i class="ti ti-calendar"></i> ちかごろの予定</div><template v-if="upcomingEvents.length"><div v-for="ev in upcomingEvents.slice(0,3)" :key="ev.id" class="ev" @click.stop="goToEvent(ev)"><span class="evd">{{evMD(ev.date)}}</span><span class="evt">{{ev.title}}</span><span class="evtime">{{ev.timeLabel}}</span></div></template><div v-else style="font-size:.8rem;opacity:.9;padding:6px 0">予定はありません</div></div>
-      <div class="cell c-mood" @click="activeTab='mood'" style="cursor:pointer"><div class="clabel"><i class="ti ti-mood-smile"></i> きもち</div><div class="mood"><div v-for="(m,i) in weekMoods" :key="i" :class="['md',!m.icon&&'off']"><i :class="m.icon||'ti ti-minus'"></i><small>{{m.day}}</small></div></div></div>
+      <div class="cell c-streak"><div class="clabel"><i class="ti ti-flame"></i> {{copy.continuity}}</div><div class="snum">{{loginDays}}</div><div class="slab">{{copy.dayNumber}}</div><div v-if="loginRanking>0" class="srank"><i class="ti ti-trophy"></i>{{copyx.rank({rank:loginRanking.toString()})}} / {{loginTotal}}</div></div>
+      <div class="cell c-flow" @click="activeTab='garden'" style="cursor:pointer"><div class="clabel"><i class="ti ti-flower"></i> {{copy.tabGarden}}</div><div class="fring"><svg viewBox="0 0 76 76"><circle cx="38" cy="38" r="32" fill="none" stroke="#f0e4d2" stroke-width="7"/><circle cx="38" cy="38" r="32" fill="none" stroke="#12a89c" stroke-width="7" stroke-linecap="round" stroke-dasharray="201" :stroke-dashoffset="201-201*(flower.progress/100)"/></svg><div class="femo">{{flower.emoji}}</div></div><div class="fname">{{currentFlowerDisplayName}} {{flower.progress}}%</div></div>
+      <div class="cell c-apps span2"><div class="clabel"><i class="ti ti-apps"></i> {{copy.hataApps}}</div><div class="apps"><button v-for="a in homeApps" :key="a.label" class="app" @click="a.fn"><span class="ai" :style="{background:a.color}"><i :class="a.icon"></i></span><small>{{a.short}}</small></button></div></div>
+      <div class="cell c-ev span2" @click="activeTab='cal'" style="cursor:pointer"><div class="clabel"><i class="ti ti-calendar"></i> {{copy.upcomingSchedule}}</div><template v-if="upcomingEvents.length"><div v-for="ev in upcomingEvents.slice(0,3)" :key="ev.id" class="ev" @click.stop="goToEvent(ev)"><span class="evd">{{evMD(ev.date)}}</span><span class="evt">{{ev.title}}</span><span class="evtime">{{eventTimeLabel(ev)}}</span></div></template><div v-else style="font-size:.8rem;opacity:.9;padding:6px 0">{{copy.noEvents}}</div></div>
+      <div class="cell c-mood" @click="activeTab='mood'" style="cursor:pointer"><div class="clabel"><i class="ti ti-mood-smile"></i> {{copy.tabMood}}</div><div class="mood"><div v-for="(m,i) in weekMoods" :key="i" :class="['md',!m.icon&&'off']"><i :class="m.icon||'ti ti-minus'"></i><small>{{m.day}}</small></div></div></div>
       <div class="cell c-eye" @click="activeTab='eye'" style="cursor:pointer"><div class="clabel"><i class="ti ti-eye"></i> Hatask Eye</div><div class="eyep">{{eyePhrase}}</div></div>
-      <div v-if="canAccessHataFeed" class="cell c-fork span2"><div class="clabel"><i class="ti ti-message-report"></i> HataFeed 通知</div><div v-if="hfNotifs.length===0" style="font-size:.8rem;opacity:.7;padding:4px 0">通知はありません</div><button v-for="n in hfNotifs" :key="n.id" class="ev" @click="onHfNotifClick(n)" style="width:100%;text-align:left;background:none;border:none;cursor:pointer;font-family:inherit;color:inherit"><i :class="['ti',hfIcon(n.type)]" style="min-width:20px"></i><span class="evt">{{n.message}}</span></button></div>
+      <div v-if="canAccessHataFeed" class="cell c-fork span2"><div class="clabel"><i class="ti ti-message-report"></i> {{copy.hataFeedNotifications}}</div><div v-if="hfNotifs.length===0" style="font-size:.8rem;opacity:.7;padding:4px 0">{{copy.noNotifications}}</div><button v-for="n in hfNotifs" :key="n.id" class="ev" @click="onHfNotifClick(n)" style="width:100%;text-align:left;background:none;border:none;cursor:pointer;font-family:inherit;color:inherit"><i :class="['ti',hfIcon(n.type)]" style="min-width:20px"></i><span class="evt">{{notificationDisplayMessage(n)}}</span></button></div>
       <div class="cell c-fork2 span2"><div class="clabel"><i class="ti ti-activity"></i> 地震・津波情報 <span style="font-weight:400;font-size:.6rem;opacity:.7">（気象庁発表）</span></div><MkEarthquakeTicker v-if="rawQuakes.length" :quakes="rawQuakes" :tsunami="tsunami" mode="compact" :showEmpty="false" @click="openEarthquake" style="cursor:pointer"/><div v-else style="font-size:.8rem;opacity:.7;padding:4px 0">最近の地震情報はありません</div></div>
     </div>
   </template>
@@ -81,35 +81,35 @@
   <template v-else>
     <div class="in">
       <div v-if="pendingRsvps.length" class="su-rsvp">
-        <div class="head">RSVP<b>参加確認</b><i></i></div>
+        <div class="head">RSVP<b>{{copy.rsvp}}</b><i></i></div>
         <div v-for="r in pendingRsvps" :key="r.eventId" class="su-rsvprow"><span class="sqd"></span><b>{{r.title}}</b><span style="margin-left:auto;font-size:.72rem;font-weight:700;color:#2a52c0">{{r.dateLabel}}</span></div>
-	        <div class="su-rsvpbtns"><button :class="[pendingRsvps[0].myStatus==='going'&&'on']" @click="setRsvp(pendingRsvps[0].eventId,'going')">行く</button><button :class="[pendingRsvps[0].myStatus==='maybe'&&'on']" @click="setRsvp(pendingRsvps[0].eventId,'maybe')">検討</button><button :class="[pendingRsvps[0].myStatus==='declined'&&'on']" @click="setRsvp(pendingRsvps[0].eventId,'declined')">辞退</button></div>
+	        <div class="su-rsvpbtns"><button :class="[pendingRsvps[0].myStatus==='going'&&'on']" @click="setRsvp(pendingRsvps[0].eventId,'going')">{{copy.rsvpGoing}}</button><button :class="[pendingRsvps[0].myStatus==='maybe'&&'on']" @click="setRsvp(pendingRsvps[0].eventId,'maybe')">{{copy.rsvpMaybeShort}}</button><button :class="[pendingRsvps[0].myStatus==='declined'&&'on']" @click="setRsvp(pendingRsvps[0].eventId,'declined')">{{copy.rsvpDeclined}}</button></div>
       </div>
       <div class="clock"><div class="ctime">{{currentTime}}</div><div class="cdate">{{clockDot}}<br>{{clockEn}}</div></div>
-      <div class="head">CONTINUITY<b>連続</b><i></i></div>
-      <div class="streak"><div class="snum">{{loginDays}}</div><div class="slab">日目</div><div v-if="loginRanking>0" class="srank">SERVER <b>#{{loginRanking}}</b> / {{loginTotal}}</div></div>
-      <div class="head">APPS<b>旗鯖アプリ</b><i></i></div>
+      <div class="head">CONTINUITY<b>{{copy.continuity}}</b><i></i></div>
+      <div class="streak"><div class="snum">{{loginDays}}</div><div class="slab">{{copy.dayNumber}}</div><div v-if="loginRanking>0" class="srank">SERVER <b>#{{loginRanking}}</b> / {{loginTotal}}</div></div>
+      <div class="head">APPS<b>{{copy.hataApps}}</b><i></i></div>
       <div class="apps"><button v-for="(a,ai) in homeApps" :key="a.label" class="app" @click="a.fn"><span class="ai" :style="{background:['#12a89c','#ffe14f','#ff4f9a','#2a52c0'][ai%4]}"><i :class="a.icon"></i></span><small>{{a.short}}</small></button></div>
-      <div class="head">SCHEDULE<b>予定</b><i></i></div>
-      <template v-if="upcomingEvents.length"><div v-for="(ev,ei) in upcomingEvents.slice(0,4)" :key="ev.id" class="ev" @click="goToEvent(ev)"><span class="sqd" :style="{background:['#ff4f9a','#2a52c0','#ffe14f'][ei%3]}"></span><span class="evd">{{evMD(ev.date)}}</span><span class="evt">{{ev.title}}</span><span class="evtime">{{ev.timeLabel}}</span></div></template>
-      <div v-else class="su-empty" @click="activeTab='cal'">予定はありません</div>
+      <div class="head">SCHEDULE<b>{{copy.schedule}}</b><i></i></div>
+      <template v-if="upcomingEvents.length"><div v-for="(ev,ei) in upcomingEvents.slice(0,4)" :key="ev.id" class="ev" @click="goToEvent(ev)"><span class="sqd" :style="{background:['#ff4f9a','#2a52c0','#ffe14f'][ei%3]}"></span><span class="evd">{{evMD(ev.date)}}</span><span class="evt">{{ev.title}}</span><span class="evtime">{{eventTimeLabel(ev)}}</span></div></template>
+      <div v-else class="su-empty" @click="activeTab='cal'">{{copy.noEvents}}</div>
       <div class="two">
-        <div class="box"><div class="head">MOOD<b>気分</b></div><div class="mood" @click="activeTab='mood'" style="cursor:pointer"><div v-for="(m,i) in weekMoods" :key="i" :class="['md',!m.icon&&'off']"><i :class="m.icon||'ti ti-minus'"></i><small>{{m.day}}</small></div></div></div>
-        <div class="box" @click="activeTab='garden'" style="cursor:pointer"><div class="head">GARDEN<b>庭</b></div><div class="flow"><div class="fring"><svg viewBox="0 0 74 74"><circle cx="37" cy="37" r="31" fill="none" stroke="#ded7c4" stroke-width="7"/><circle cx="37" cy="37" r="31" fill="none" stroke="#ff4f9a" stroke-width="7" stroke-dasharray="195" :stroke-dashoffset="195-195*(flower.progress/100)"/></svg><div class="femo">{{flower.emoji}}</div></div><div class="fname">{{flower.name}} {{flower.progress}}%</div></div></div>
+        <div class="box"><div class="head">MOOD<b>{{copy.mood}}</b></div><div class="mood" @click="activeTab='mood'" style="cursor:pointer"><div v-for="(m,i) in weekMoods" :key="i" :class="['md',!m.icon&&'off']"><i :class="m.icon||'ti ti-minus'"></i><small>{{m.day}}</small></div></div></div>
+        <div class="box" @click="activeTab='garden'" style="cursor:pointer"><div class="head">GARDEN<b>{{copy.garden}}</b></div><div class="flow"><div class="fring"><svg viewBox="0 0 74 74"><circle cx="37" cy="37" r="31" fill="none" stroke="#ded7c4" stroke-width="7"/><circle cx="37" cy="37" r="31" fill="none" stroke="#ff4f9a" stroke-width="7" stroke-dasharray="195" :stroke-dashoffset="195-195*(flower.progress/100)"/></svg><div class="femo">{{flower.emoji}}</div></div><div class="fname">{{currentFlowerDisplayName}} {{flower.progress}}%</div></div></div>
       </div>
-      <div class="head">HATASK EYE<b>目</b><i></i></div>
+      <div class="head">HATASK EYE<b>{{copy.eye}}</b><i></i></div>
       <div class="eye" @click="activeTab='eye'" style="cursor:pointer"><div class="eyel">EYE <i></i></div><div class="eyep">{{eyePhrase}}</div></div>
       <template v-if="canAccessHataFeed">
-        <div class="head">FEEDBACK<b>通知</b><i></i></div>
-        <div v-if="hfNotifs.length===0" class="su-empty">通知はありません</div>
-        <button v-for="n in hfNotifs" :key="n.id" class="ev" @click="onHfNotifClick(n)" style="width:100%;text-align:left;background:none;border:none;cursor:pointer;font-family:inherit;color:inherit"><i :class="['ti',hfIcon(n.type)]" style="color:#2a52c0;min-width:20px"></i><span class="evt">{{n.message}}</span></button>
+        <div class="head">FEEDBACK<b>{{copy.notifications}}</b><i></i></div>
+        <div v-if="hfNotifs.length===0" class="su-empty">{{copy.noNotifications}}</div>
+        <button v-for="n in hfNotifs" :key="n.id" class="ev" @click="onHfNotifClick(n)" style="width:100%;text-align:left;background:none;border:none;cursor:pointer;font-family:inherit;color:inherit"><i :class="['ti',hfIcon(n.type)]" style="color:#2a52c0;min-width:20px"></i><span class="evt">{{notificationDisplayMessage(n)}}</span></button>
       </template>
       <div class="head">EARTHQUAKE<b>地震</b><i></i></div>
       <div style="font-size:.68rem;color:#5a5a6a;margin-bottom:6px">気象庁発表の情報を表示します</div>
       <MkEarthquakeTicker v-if="rawQuakes.length" :quakes="rawQuakes" :tsunami="tsunami" mode="compact" :showEmpty="false" @click="openEarthquake" style="cursor:pointer"/>
       <div v-else class="su-empty">最近の地震情報はありません</div>
-      <div class="head">MEAL<b>ごはん</b><i></i></div>
-      <div class="su-meal" @click="activeTab='meal'" style="cursor:pointer"><b>{{mealSummaryMessage}}</b><span style="font-size:.72rem;font-weight:700;color:#2a52c0">今日 {{mealTodayCount}}件</span></div>
+      <div class="head">MEAL<b>{{copy.tabMeal}}</b><i></i></div>
+      <div class="su-meal" @click="activeTab='meal'" style="cursor:pointer"><b>{{mealSummaryMessage}}</b><span style="font-size:.72rem;font-weight:700;color:#2a52c0">{{copyx.todayCount({count:mealTodayCount.toString()})}}</span></div>
     </div>
   </template>
 
@@ -118,43 +118,43 @@
 <!-- ========== CALENDAR ========== -->
 <div v-if="activeTab==='cal'" class="htk-panels htk-tabpage" :class="tabDir==='fwd'?'htk-tab-fwd':'htk-tab-back'">
   <div class="htk-lg htk-anim"><div class="htk-gc">
-    <div class="htk-cal-seg" style="margin-bottom:8px"><button :class="['htk-btn htk-xs',calViewMode==='calendar'&&'htk-sb-on']" @click="calViewMode='calendar'"><i class="ti ti-calendar"></i> カレンダー</button><button :class="['htk-btn htk-xs',calViewMode==='list'&&'htk-sb-on']" @click="calViewMode='list'"><i class="ti ti-list"></i> 一覧</button></div>
+    <div class="htk-cal-seg" style="margin-bottom:8px"><button :class="['htk-btn htk-xs',calViewMode==='calendar'&&'htk-sb-on']" @click="calViewMode='calendar'"><i class="ti ti-calendar"></i> {{copy.tabCalendar}}</button><button :class="['htk-btn htk-xs',calViewMode==='list'&&'htk-sb-on']" @click="calViewMode='list'"><i class="ti ti-list"></i> {{copy.list}}</button></div>
     <template v-if="calViewMode==='calendar'">
-    <div class="htk-cal-hd"><div class="htk-cal-nav"><button class="htk-cal-nb" @click="chMo(-1)">&lt;</button></div><div class="htk-cal-ttl">{{calYear}}年 {{calMonth+1}}月</div><div class="htk-cal-nav"><button class="htk-cal-nb" @click="chMo(1)">&gt;</button><button class="htk-cal-nb" @click="goToday">●</button></div></div>
-    <div class="htk-cal-wk"><div v-for="(d,i) in ['月','火','水','木','金','土','日']" :key="i" :class="['htk-cal-wk-d',i===5&&'sat',i===6&&'sun']">{{d}}</div></div>
+    <div class="htk-cal-hd"><div class="htk-cal-nav"><button class="htk-cal-nb" @click="chMo(-1)">&lt;</button></div><div class="htk-cal-ttl">{{calendarTitle}}</div><div class="htk-cal-nav"><button class="htk-cal-nb" @click="chMo(1)">&gt;</button><button class="htk-cal-nb" @click="goToday">●</button></div></div>
+    <div class="htk-cal-wk"><div v-for="(d,i) in calendarWeekdays" :key="i" :class="['htk-cal-wk-d',i===5&&'sat',i===6&&'sun']">{{d}}</div></div>
     <div class="htk-cal-days"><div v-for="(cell,i) in calCells" :key="i" :class="['htk-cal-d',cell.om&&'om',cell.today&&'td',cell.selected&&'sel']" @click="!cell.om&&selectDay(cell.day)"><span>{{cell.day}}</span><div v-if="cell.dots&&cell.dots.length" class="htk-cal-dots"><span v-for="(dot,di) in cell.dots" :key="di" class="htk-cal-dot" :style="{background:dot.color}"></span></div></div></div>
     </template>
     <template v-else>
-      <div class="htk-cal-hd"><div class="htk-cal-nav"><button class="htk-cal-nb" @click="chMo(-1)">&lt;</button></div><div class="htk-cal-ttl">{{calYear}}年 {{calMonth+1}}月</div><div class="htk-cal-nav"><button class="htk-cal-nb" @click="chMo(1)">&gt;</button><button class="htk-cal-nb" @click="goToday">●</button></div></div>
+      <div class="htk-cal-hd"><div class="htk-cal-nav"><button class="htk-cal-nb" @click="chMo(-1)">&lt;</button></div><div class="htk-cal-ttl">{{calendarTitle}}</div><div class="htk-cal-nav"><button class="htk-cal-nb" @click="chMo(1)">&gt;</button><button class="htk-cal-nb" @click="goToday">●</button></div></div>
       <div style="display:flex;gap:4px;margin:8px 0;flex-wrap:wrap">
-        <button :class="['htk-btn htk-xs',calListMode==='day'&&'htk-sb-on']" @click="calListMode='day';calListPage=1">日</button>
-        <button :class="['htk-btn htk-xs',calListMode==='week'&&'htk-sb-on']" @click="calListMode='week';calListPage=1">週</button>
-        <button :class="['htk-btn htk-xs',calListMode==='month'&&'htk-sb-on']" @click="calListMode='month';calListPage=1">月</button>
+        <button :class="['htk-btn htk-xs',calListMode==='day'&&'htk-sb-on']" @click="calListMode='day';calListPage=1">{{copy.day}}</button>
+        <button :class="['htk-btn htk-xs',calListMode==='week'&&'htk-sb-on']" @click="calListMode='week';calListPage=1">{{copy.week}}</button>
+        <button :class="['htk-btn htk-xs',calListMode==='month'&&'htk-sb-on']" @click="calListMode='month';calListPage=1">{{copy.month}}</button>
         <span style="flex:1"></span>
-        <button :class="['htk-btn htk-xs',calListSort==='asc'&&'htk-sb-on']" @click="calListSort='asc';calListPage=1">↑古い順</button>
-        <button :class="['htk-btn htk-xs',calListSort==='desc'&&'htk-sb-on']" @click="calListSort='desc';calListPage=1">↓新しい順</button>
+        <button :class="['htk-btn htk-xs',calListSort==='asc'&&'htk-sb-on']" @click="calListSort='asc';calListPage=1">{{copy.oldestFirst}}</button>
+        <button :class="['htk-btn htk-xs',calListSort==='desc'&&'htk-sb-on']" @click="calListSort='desc';calListPage=1">{{copy.newestFirst}}</button>
       </div>
       <div v-for="ev in pagedCalList" :key="ev.id" :class="['htk-dayev-row',viewingEvent?.id===ev.id&&'active']" @click="openEventDetail(ev)">
         <div class="htk-dayev-dot" :style="{background:ev.color}"></div>
         <div class="htk-dayev-body">
           <div class="htk-dayev-title">{{ev.emoji}} {{ev.title}}<span v-if="ev.isShared" style="opacity:.4;font-size:.78em;margin-left:6px">@{{ev.username}}</span></div>
-          <div class="htk-dayev-time">{{ev.date}} {{ev.allDay?'終日':((ev.timeStart||'')+(ev.timeEnd?' - '+ev.timeEnd:''))}}</div>
+          <div class="htk-dayev-time">{{eventDateTimeLabel(ev)}}</div>
         </div>
       </div>
-      <div v-if="!calListEvents.length" class="htk-empty"><div class="htk-empI"><i class="ti ti-circle-off"></i></div><div>この期間に予定はありません</div></div>
+      <div v-if="!calListEvents.length" class="htk-empty"><div class="htk-empI"><i class="ti ti-circle-off"></i></div><div>{{copy.noEventsInPeriod}}</div></div>
       <div v-if="calListTotalPages>1" class="htk-pager"><button class="htk-btn htk-xs" :disabled="calListPage<=1" @click="calListPage--">&lt;</button><span class="htk-pager-t">{{calListPage}} / {{calListTotalPages}}</span><button class="htk-btn htk-xs" :disabled="calListPage>=calListTotalPages" @click="calListPage++">&gt;</button></div>
     </template>
   </div></div>
 
   <template v-if="calViewMode==='calendar'">
   <div v-if="selectedDay&&eventsForDay.length" class="htk-lg htk-anim"><div class="htk-gc">
-    <h3 class="htk-sec-title">{{calMonth+1}}月{{selectedDay}}日の予定</h3>
+    <h3 class="htk-sec-title">{{copyx.eventsOnDate({date:selectedDateLabel})}}</h3>
     <div v-for="ev in pagedEvents" :key="ev.id">
       <div :class="['htk-dayev-row',viewingEvent?.id===ev.id&&'active']" @click="openEventDetail(ev)">
         <div class="htk-dayev-dot" :style="{background:ev.color}"></div>
         <div class="htk-dayev-body">
           <div class="htk-dayev-title">{{ev.emoji}} {{ev.title}}<span v-if="ev.isShared" style="opacity:.4;font-size:.78em;margin-left:6px">@{{ev.username}}</span></div>
-          <div class="htk-dayev-time">{{ev.allDay?'終日':((ev.timeStart||'')+(ev.timeEnd?' - '+ev.timeEnd:''))}}</div>
+          <div class="htk-dayev-time">{{eventTimeLabel(ev)}}</div>
         </div>
         <div class="htk-dayev-chevron"><i class="ti" :class="viewingEvent?.id===ev.id?'ti-chevron-up':'ti-chevron-down'"></i></div>
       </div>
@@ -163,11 +163,11 @@
         <div class="htk-evdet-hdr">
           <div class="htk-evdet-meta">
             <div class="htk-evdet-sub">
-              <i class="ti ti-calendar-event"></i> {{ev.date}}{{ev.dateEnd&&ev.dateEnd!==ev.date?' 〜 '+ev.dateEnd:''}}
+              <i class="ti ti-calendar-event"></i> {{eventDateRangeLabel(ev)}}
               <span v-if="!ev.allDay && ev.timeStart"> · <i class="ti ti-clock"></i> {{ev.timeStart}}{{ev.timeEnd?' - '+ev.timeEnd:''}}</span>
-              <span v-else-if="ev.allDay"> · 終日</span>
+              <span v-else-if="ev.allDay"> · {{copy.allDay}}</span>
             </div>
-            <div v-if="ev.isShared" class="htk-evdet-sub" style="margin-top:2px">主催: @{{ev.username}}</div>
+            <div v-if="ev.isShared" class="htk-evdet-sub" style="margin-top:2px">{{copy.organizer}}: @{{ev.username}}</div>
           </div>
         </div>
 
@@ -175,14 +175,14 @@
         <template v-if="sharedEventData(ev.id)?.rsvp">
           <!-- 主催者 view -->
           <template v-if="ev.userId===$i?.id">
-            <div class="htk-evdet-sec-label">参加確認ダッシュボード</div>
-            <div v-if="sharedEventData(ev.id)?.rsvpClosed" class="htk-rsvp-closed-badge" style="margin:4px 0 8px"><i class="ti ti-check"></i> 締め切り済み</div>
-            <div v-else class="htk-rsvp-open-badge" style="margin:4px 0 8px"><i class="ti ti-circle-filled" style="color:#5a9a5a;font-size:.7em;vertical-align:middle;margin-right:3px"></i>受付中</div>
+            <div class="htk-evdet-sec-label">{{copy.rsvpDashboard}}</div>
+            <div v-if="sharedEventData(ev.id)?.rsvpClosed" class="htk-rsvp-closed-badge" style="margin:4px 0 8px"><i class="ti ti-check"></i> {{copy.closed}}</div>
+            <div v-else class="htk-rsvp-open-badge" style="margin:4px 0 8px"><i class="ti ti-circle-filled" style="color:#5a9a5a;font-size:.7em;vertical-align:middle;margin-right:3px"></i>{{copy.accepting}}</div>
             <div class="htk-rsvp-stats">
-              <div class="htk-rsvp-stat-card going"><div class="htk-rsvp-stat-n">{{sharedRsvpResponses(ev.id).filter(r=>r.status==='going').length}}</div><div class="htk-rsvp-stat-l">参加</div></div>
-              <div class="htk-rsvp-stat-card maybe"><div class="htk-rsvp-stat-n">{{sharedRsvpResponses(ev.id).filter(r=>r.status==='maybe').length}}</div><div class="htk-rsvp-stat-l">検討中</div></div>
-              <div class="htk-rsvp-stat-card declined"><div class="htk-rsvp-stat-n">{{sharedRsvpResponses(ev.id).filter(r=>r.status==='declined').length}}</div><div class="htk-rsvp-stat-l">辞退</div></div>
-              <div class="htk-rsvp-stat-card total"><div class="htk-rsvp-stat-n">{{sharedRsvpResponses(ev.id).length}}</div><div class="htk-rsvp-stat-l">合計</div></div>
+              <div class="htk-rsvp-stat-card going"><div class="htk-rsvp-stat-n">{{sharedRsvpResponses(ev.id).filter(r=>r.status==='going').length}}</div><div class="htk-rsvp-stat-l">{{copy.rsvpParticipation}}</div></div>
+              <div class="htk-rsvp-stat-card maybe"><div class="htk-rsvp-stat-n">{{sharedRsvpResponses(ev.id).filter(r=>r.status==='maybe').length}}</div><div class="htk-rsvp-stat-l">{{copy.rsvpMaybe}}</div></div>
+              <div class="htk-rsvp-stat-card declined"><div class="htk-rsvp-stat-n">{{sharedRsvpResponses(ev.id).filter(r=>r.status==='declined').length}}</div><div class="htk-rsvp-stat-l">{{copy.rsvpDeclined}}</div></div>
+              <div class="htk-rsvp-stat-card total"><div class="htk-rsvp-stat-n">{{sharedRsvpResponses(ev.id).length}}</div><div class="htk-rsvp-stat-l">{{copy.total}}</div></div>
             </div>
             <div v-if="sharedRsvpResponses(ev.id).length" class="htk-rsvp-bar-wrap"><div class="htk-rsvp-bar">
               <div class="htk-rsvp-bar-seg going" :style="{width:(sharedRsvpResponses(ev.id).filter(r=>r.status==='going').length/sharedRsvpResponses(ev.id).length*100)+'%'}"></div>
@@ -191,46 +191,46 @@
             </div></div>
             <template v-if="sharedRsvpResponses(ev.id).length">
               <div v-if="sharedRsvpResponses(ev.id).filter(r=>r.status==='going').length" class="htk-rsvp-grp">
-                <div class="htk-rsvp-grp-h"><span class="htk-rsvp-grp-dot going"></span>参加 ({{sharedRsvpResponses(ev.id).filter(r=>r.status==='going').length}})</div>
+                <div class="htk-rsvp-grp-h"><span class="htk-rsvp-grp-dot going"></span>{{copy.rsvpParticipation}} ({{sharedRsvpResponses(ev.id).filter(r=>r.status==='going').length}})</div>
                 <div class="htk-rsvp-grp-names"><span v-for="r in sharedRsvpResponses(ev.id).filter(r=>r.status==='going')" :key="r.userId" class="htk-rsvp-name">@{{r.username}}</span></div>
               </div>
               <div v-if="sharedRsvpResponses(ev.id).filter(r=>r.status==='maybe').length" class="htk-rsvp-grp">
-                <div class="htk-rsvp-grp-h"><span class="htk-rsvp-grp-dot maybe"></span>検討中 ({{sharedRsvpResponses(ev.id).filter(r=>r.status==='maybe').length}})</div>
+                <div class="htk-rsvp-grp-h"><span class="htk-rsvp-grp-dot maybe"></span>{{copy.rsvpMaybe}} ({{sharedRsvpResponses(ev.id).filter(r=>r.status==='maybe').length}})</div>
                 <div class="htk-rsvp-grp-names"><span v-for="r in sharedRsvpResponses(ev.id).filter(r=>r.status==='maybe')" :key="r.userId" class="htk-rsvp-name">@{{r.username}}</span></div>
               </div>
               <div v-if="sharedRsvpResponses(ev.id).filter(r=>r.status==='declined').length" class="htk-rsvp-grp">
-                <div class="htk-rsvp-grp-h"><span class="htk-rsvp-grp-dot declined"></span>辞退 ({{sharedRsvpResponses(ev.id).filter(r=>r.status==='declined').length}})</div>
+                <div class="htk-rsvp-grp-h"><span class="htk-rsvp-grp-dot declined"></span>{{copy.rsvpDeclined}} ({{sharedRsvpResponses(ev.id).filter(r=>r.status==='declined').length}})</div>
                 <div class="htk-rsvp-grp-names"><span v-for="r in sharedRsvpResponses(ev.id).filter(r=>r.status==='declined')" :key="r.userId" class="htk-rsvp-name">@{{r.username}}</span></div>
               </div>
             </template>
-            <div v-else class="htk-rsvp-sum-empty">まだ回答がありません</div>
-            <button v-if="!sharedEventData(ev.id)?.rsvpClosed" class="htk-btn htk-sm htk-danger" style="margin-top:10px;width:100%" @click="closeRsvp(ev.id)">参加確認を締め切る</button>
+            <div v-else class="htk-rsvp-sum-empty">{{copy.noResponses}}</div>
+            <button v-if="!sharedEventData(ev.id)?.rsvpClosed" class="htk-btn htk-sm htk-danger" style="margin-top:10px;width:100%" @click="closeRsvp(ev.id)">{{copy.closeRsvp}}</button>
           </template>
           <!-- 参加者 view -->
           <template v-else>
-            <div class="htk-evdet-sec-label"><i class="ti ti-mail"></i> 参加確認</div>
-            <div v-if="sharedEventData(ev.id)?.rsvpClosed" class="htk-rsvp-closed-badge" style="margin:4px 0 8px">締め切り済み</div>
+            <div class="htk-evdet-sec-label"><i class="ti ti-mail"></i> {{copy.rsvp}}</div>
+            <div v-if="sharedEventData(ev.id)?.rsvpClosed" class="htk-rsvp-closed-badge" style="margin:4px 0 8px">{{copy.closed}}</div>
             <template v-else>
               <div class="htk-evdet-rsvp-btns">
-                <button :class="['htk-rsvp-b','htk-rsvp-go',sharedRsvpMyStatus(ev.id)==='going'&&'on']" @click="setRsvp(ev.id,'going')"><i class="ti ti-check"></i> 行く</button>
-                <button :class="['htk-rsvp-b','htk-rsvp-maybe',sharedRsvpMyStatus(ev.id)==='maybe'&&'on']" @click="setRsvp(ev.id,'maybe')"><i class="ti ti-help-circle"></i> 検討中</button>
-                <button :class="['htk-rsvp-b','htk-rsvp-no',sharedRsvpMyStatus(ev.id)==='declined'&&'on']" @click="setRsvp(ev.id,'declined')"><i class="ti ti-x"></i> 辞退</button>
+                <button :class="['htk-rsvp-b','htk-rsvp-go',sharedRsvpMyStatus(ev.id)==='going'&&'on']" @click="setRsvp(ev.id,'going')"><i class="ti ti-check"></i> {{copy.rsvpGoing}}</button>
+                <button :class="['htk-rsvp-b','htk-rsvp-maybe',sharedRsvpMyStatus(ev.id)==='maybe'&&'on']" @click="setRsvp(ev.id,'maybe')"><i class="ti ti-help-circle"></i> {{copy.rsvpMaybe}}</button>
+                <button :class="['htk-rsvp-b','htk-rsvp-no',sharedRsvpMyStatus(ev.id)==='declined'&&'on']" @click="setRsvp(ev.id,'declined')"><i class="ti ti-x"></i> {{copy.rsvpDeclined}}</button>
               </div>
             </template>
             <div v-if="sharedRsvpResponses(ev.id).length" class="htk-evdet-resp-summary">
-              <span style="opacity:.55;font-size:.78rem">参加 {{sharedRsvpResponses(ev.id).filter(r=>r.status==='going').length}} · 検討 {{sharedRsvpResponses(ev.id).filter(r=>r.status==='maybe').length}} · 辞退 {{sharedRsvpResponses(ev.id).filter(r=>r.status==='declined').length}}</span>
+              <span style="opacity:.55;font-size:.78rem">{{copyx.rsvpSummary({going:sharedRsvpResponses(ev.id).filter(r=>r.status==='going').length.toString(),maybe:sharedRsvpResponses(ev.id).filter(r=>r.status==='maybe').length.toString(),declined:sharedRsvpResponses(ev.id).filter(r=>r.status==='declined').length.toString()})}}</span>
             </div>
           </template>
         </template>
 
         <!-- RSVP無し公開イベント（詳細のみ） -->
-        <div v-else-if="ev.isShared" class="htk-evdet-note" style="opacity:.5;font-size:.8rem">参加確認なしの公開イベントです</div>
+        <div v-else-if="ev.isShared" class="htk-evdet-note" style="opacity:.5;font-size:.8rem">{{copy.publicEventWithoutRsvp}}</div>
 
         <!-- Action buttons -->
         <div class="htk-evdet-acts">
           <template v-if="!ev.isShared || ev.userId===$i?.id">
-            <button class="htk-btn htk-sm" @click="startEditEvent(ev);closeEventDetail()"><i class="ti ti-pencil"></i> 編集</button>
-            <button class="htk-btn htk-sm htk-danger" @click="deleteEventById(ev.id);closeEventDetail()"><i class="ti ti-x"></i> 削除</button>
+            <button class="htk-btn htk-sm" @click="startEditEvent(ev);closeEventDetail()"><i class="ti ti-pencil"></i> {{copy.edit}}</button>
+            <button class="htk-btn htk-sm htk-danger" @click="deleteEventById(ev.id);closeEventDetail()"><i class="ti ti-x"></i> {{copy.delete}}</button>
           </template>
         </div>
       </div>
@@ -238,32 +238,32 @@
   </div></div>
   <div v-if="eventTotalPages>1" class="htk-pager"><button class="htk-btn htk-xs" :disabled="eventPage<=1" @click="eventPage--">&lt;</button><span class="htk-pager-t">{{eventPage}} / {{eventTotalPages}}</span><button class="htk-btn htk-xs" :disabled="eventPage>=eventTotalPages" @click="eventPage++">&gt;</button></div>
   <div v-else-if="selectedDay" class="htk-lg htk-anim"><div class="htk-gc" style="text-align:center;padding:16px">
-    <div style="font-size:.85rem;color:var(--fg-3)">{{calMonth+1}}月{{selectedDay}}日の予定はありません</div>
+    <div style="font-size:.85rem;color:var(--fg-3)">{{copyx.noEventsOnDate({date:selectedDateLabel})}}</div>
   </div></div>
   </template>
 
   <div class="htk-lg htk-anim"><div class="htk-gc">
-    <h3 class="htk-sec-title">{{editingEvent?'予定を編集':'新しい予定'}}</h3>
-    <div class="htk-fg"><span class="htk-fl">タイトル</span><input class="htk-inp" v-model="newEvent.title" placeholder="予定のタイトル..."></div>
-    <div class="htk-fg"><span class="htk-fl">絵文字</span><div class="htk-emp-row"><span v-for="e in eventEmojis" :key="e" :class="['htk-emp-i',newEvent.emoji===e&&'on']" @click="newEvent.emoji=e">{{e}}</span></div></div>
-    <div class="htk-fg"><span class="htk-fl">日時</span>
-      <div class="htk-tg-row" style="margin-bottom:8px"><span class="htk-tg-lab">終日（1日中）</span><button :class="['htk-tg-sw',newEvent.allDay&&'on']" @click="newEvent.allDay=!newEvent.allDay"></button></div>
+    <h3 class="htk-sec-title">{{editingEvent?copy.editEvent:copy.newEvent}}</h3>
+    <div class="htk-fg"><span class="htk-fl">{{copy.title}}</span><input class="htk-inp" v-model="newEvent.title" :placeholder="copy.eventTitlePlaceholder"></div>
+    <div class="htk-fg"><span class="htk-fl">{{copy.emoji}}</span><div class="htk-emp-row"><span v-for="e in eventEmojis" :key="e" :class="['htk-emp-i',newEvent.emoji===e&&'on']" @click="newEvent.emoji=e">{{e}}</span></div></div>
+    <div class="htk-fg"><span class="htk-fl">{{copy.dateAndTime}}</span>
+      <div class="htk-tg-row" style="margin-bottom:8px"><span class="htk-tg-lab">{{copy.allDayFull}}</span><button :class="['htk-tg-sw',newEvent.allDay&&'on']" @click="newEvent.allDay=!newEvent.allDay"></button></div>
       <div class="htk-fr"><input class="htk-inp" type="date" v-model="newEvent.date"><input v-if="!newEvent.allDay" class="htk-inp" type="time" v-model="newEvent.timeStart"></div>
       <div class="htk-fr" style="margin-top:5px"><input class="htk-inp" type="date" v-model="newEvent.dateEnd"><input v-if="!newEvent.allDay" class="htk-inp" type="time" v-model="newEvent.timeEnd"></div>
     </div>
-    <div class="htk-fg"><span class="htk-fl">色</span><div class="htk-clr-row"><div v-for="c in eventColors" :key="c" :class="['htk-clr-o',newEvent.color===c&&'on']" :style="{background:c}" @click="newEvent.color=c"></div></div></div>
-    <div class="htk-fg"><span class="htk-fl">公開範囲</span><div class="htk-vis-row"><div :class="['htk-vis-o',newEvent.visibility==='public'&&'on']" @click="newEvent.visibility='public'"><span class="htk-vi"><i class="ti ti-world"></i></span>公開</div><div :class="['htk-vis-o',newEvent.visibility==='private'&&'on']" @click="newEvent.visibility='private';newEvent.rsvp=false"><span class="htk-vi"><i class="ti ti-lock"></i></span>自分のみ</div></div></div>
-    <div class="htk-fg"><span class="htk-fl">オプション</span><div class="htk-tg-row"><span class="htk-tg-lab">参加確認</span><button :class="['htk-tg-sw',newEvent.rsvp&&'on']" :disabled="newEvent.visibility==='private'" :style="newEvent.visibility==='private'?'opacity:.35;cursor:not-allowed':''" @click="newEvent.visibility!=='private'&&(newEvent.rsvp=!newEvent.rsvp)"></button><span v-if="newEvent.visibility==='private'" style="font-size:.7rem;color:var(--text-3);margin-left:6px">※公開範囲が「自分のみ」の場合は利用不可</span></div>
+    <div class="htk-fg"><span class="htk-fl">{{copy.color}}</span><div class="htk-clr-row"><div v-for="c in eventColors" :key="c" :class="['htk-clr-o',newEvent.color===c&&'on']" :style="{background:c}" @click="newEvent.color=c"></div></div></div>
+    <div class="htk-fg"><span class="htk-fl">{{copy.visibility}}</span><div class="htk-vis-row"><div :class="['htk-vis-o',newEvent.visibility==='public'&&'on']" @click="newEvent.visibility='public'"><span class="htk-vi"><i class="ti ti-world"></i></span>{{copy.public}}</div><div :class="['htk-vis-o',newEvent.visibility==='private'&&'on']" @click="newEvent.visibility='private';newEvent.rsvp=false"><span class="htk-vi"><i class="ti ti-lock"></i></span>{{copy.private}}</div></div></div>
+    <div class="htk-fg"><span class="htk-fl">{{copy.options}}</span><div class="htk-tg-row"><span class="htk-tg-lab">{{copy.rsvp}}</span><button :class="['htk-tg-sw',newEvent.rsvp&&'on']" :disabled="newEvent.visibility==='private'" :style="newEvent.visibility==='private'?'opacity:.35;cursor:not-allowed':''" @click="newEvent.visibility!=='private'&&(newEvent.rsvp=!newEvent.rsvp)"></button><span v-if="newEvent.visibility==='private'" style="font-size:.7rem;color:var(--text-3);margin-left:6px">{{copy.rsvpUnavailablePrivate}}</span></div>
     <div v-if="editingEvent && editingEvent.rsvp" class="htk-rsvp-summary">
-      <div class="htk-rsvp-sum-header"><span class="htk-rsvp-sum-title">参加確認ダッシュボード</span></div>
-      <div v-if="sharedEventData(editingEvent.id)?.rsvpClosed" class="htk-rsvp-closed-badge"><i class="ti ti-check"></i> 締め切り済み</div>
-      <div v-else class="htk-rsvp-open-badge"><i class="ti ti-circle-filled" style="color:#5a9a5a;font-size:.7em;vertical-align:middle;margin-right:3px"></i>受付中</div>
+      <div class="htk-rsvp-sum-header"><span class="htk-rsvp-sum-title">{{copy.rsvpDashboard}}</span></div>
+      <div v-if="sharedEventData(editingEvent.id)?.rsvpClosed" class="htk-rsvp-closed-badge"><i class="ti ti-check"></i> {{copy.closed}}</div>
+      <div v-else class="htk-rsvp-open-badge"><i class="ti ti-circle-filled" style="color:#5a9a5a;font-size:.7em;vertical-align:middle;margin-right:3px"></i>{{copy.accepting}}</div>
       <!-- Stats cards -->
       <div class="htk-rsvp-stats">
-        <div class="htk-rsvp-stat-card going"><div class="htk-rsvp-stat-n">{{sharedRsvpResponses(editingEvent.id).filter(r=>r.status==='going').length}}</div><div class="htk-rsvp-stat-l">参加</div></div>
-        <div class="htk-rsvp-stat-card maybe"><div class="htk-rsvp-stat-n">{{sharedRsvpResponses(editingEvent.id).filter(r=>r.status==='maybe').length}}</div><div class="htk-rsvp-stat-l">検討中</div></div>
-        <div class="htk-rsvp-stat-card declined"><div class="htk-rsvp-stat-n">{{sharedRsvpResponses(editingEvent.id).filter(r=>r.status==='declined').length}}</div><div class="htk-rsvp-stat-l">辞退</div></div>
-        <div class="htk-rsvp-stat-card total"><div class="htk-rsvp-stat-n">{{sharedRsvpResponses(editingEvent.id).length}}</div><div class="htk-rsvp-stat-l">合計</div></div>
+        <div class="htk-rsvp-stat-card going"><div class="htk-rsvp-stat-n">{{sharedRsvpResponses(editingEvent.id).filter(r=>r.status==='going').length}}</div><div class="htk-rsvp-stat-l">{{copy.rsvpParticipation}}</div></div>
+        <div class="htk-rsvp-stat-card maybe"><div class="htk-rsvp-stat-n">{{sharedRsvpResponses(editingEvent.id).filter(r=>r.status==='maybe').length}}</div><div class="htk-rsvp-stat-l">{{copy.rsvpMaybe}}</div></div>
+        <div class="htk-rsvp-stat-card declined"><div class="htk-rsvp-stat-n">{{sharedRsvpResponses(editingEvent.id).filter(r=>r.status==='declined').length}}</div><div class="htk-rsvp-stat-l">{{copy.rsvpDeclined}}</div></div>
+        <div class="htk-rsvp-stat-card total"><div class="htk-rsvp-stat-n">{{sharedRsvpResponses(editingEvent.id).length}}</div><div class="htk-rsvp-stat-l">{{copy.total}}</div></div>
       </div>
       <!-- Progress bar -->
       <div v-if="sharedRsvpResponses(editingEvent.id).length" class="htk-rsvp-bar-wrap">
@@ -276,63 +276,63 @@
       <!-- Respondent names by status -->
       <template v-if="sharedRsvpResponses(editingEvent.id).length">
         <div v-if="sharedRsvpResponses(editingEvent.id).filter(r=>r.status==='going').length" class="htk-rsvp-grp">
-          <div class="htk-rsvp-grp-h"><span class="htk-rsvp-grp-dot going"></span>参加 ({{sharedRsvpResponses(editingEvent.id).filter(r=>r.status==='going').length}})</div>
+          <div class="htk-rsvp-grp-h"><span class="htk-rsvp-grp-dot going"></span>{{copy.rsvpParticipation}} ({{sharedRsvpResponses(editingEvent.id).filter(r=>r.status==='going').length}})</div>
           <div class="htk-rsvp-grp-names"><span v-for="r in sharedRsvpResponses(editingEvent.id).filter(r=>r.status==='going')" :key="r.userId" class="htk-rsvp-name">@{{r.username}}</span></div>
         </div>
         <div v-if="sharedRsvpResponses(editingEvent.id).filter(r=>r.status==='maybe').length" class="htk-rsvp-grp">
-          <div class="htk-rsvp-grp-h"><span class="htk-rsvp-grp-dot maybe"></span>検討中 ({{sharedRsvpResponses(editingEvent.id).filter(r=>r.status==='maybe').length}})</div>
+          <div class="htk-rsvp-grp-h"><span class="htk-rsvp-grp-dot maybe"></span>{{copy.rsvpMaybe}} ({{sharedRsvpResponses(editingEvent.id).filter(r=>r.status==='maybe').length}})</div>
           <div class="htk-rsvp-grp-names"><span v-for="r in sharedRsvpResponses(editingEvent.id).filter(r=>r.status==='maybe')" :key="r.userId" class="htk-rsvp-name">@{{r.username}}</span></div>
         </div>
         <div v-if="sharedRsvpResponses(editingEvent.id).filter(r=>r.status==='declined').length" class="htk-rsvp-grp">
-          <div class="htk-rsvp-grp-h"><span class="htk-rsvp-grp-dot declined"></span>辞退 ({{sharedRsvpResponses(editingEvent.id).filter(r=>r.status==='declined').length}})</div>
+          <div class="htk-rsvp-grp-h"><span class="htk-rsvp-grp-dot declined"></span>{{copy.rsvpDeclined}} ({{sharedRsvpResponses(editingEvent.id).filter(r=>r.status==='declined').length}})</div>
           <div class="htk-rsvp-grp-names"><span v-for="r in sharedRsvpResponses(editingEvent.id).filter(r=>r.status==='declined')" :key="r.userId" class="htk-rsvp-name">@{{r.username}}</span></div>
         </div>
       </template>
-      <div v-else class="htk-rsvp-sum-empty">まだ回答がありません</div>
-      <button v-if="!sharedEventData(editingEvent.id)?.rsvpClosed" class="htk-btn htk-sm htk-danger" style="margin-top:12px;width:100%" @click="closeRsvp(editingEvent.id)">参加確認を締め切る</button>
-    </div><div class="htk-tg-row"><span class="htk-tg-lab">通知</span><button :class="['htk-tg-sw',newEvent.notify&&'on']" @click="newEvent.notify=!newEvent.notify"></button></div></div>
-    <div v-if="newEvent.notify" class="htk-fg"><span class="htk-fl">通知タイミング</span><div class="htk-nt-chips"><span v-for="nt in notifyTimings" :key="nt" :class="['htk-nt-chip',newEvent.notifyTimings.includes(nt)&&'on']" @click="toggleNotifyTiming(nt)">{{nt}}</span></div></div>
-    <div style="margin-top:14px;display:flex;gap:8px"><button class="htk-btn htk-primary" style="flex:1" @click="addEvent">{{editingEvent?'更新':'保存'}}</button><button v-if="editingEvent" class="htk-btn" @click="editingEvent=null;newEvent.title=''">キャンセル</button><button v-if="editingEvent" class="htk-btn htk-danger" @click="deleteEventById(editingEvent.id)">削除</button></div>
+      <div v-else class="htk-rsvp-sum-empty">{{copy.noResponses}}</div>
+      <button v-if="!sharedEventData(editingEvent.id)?.rsvpClosed" class="htk-btn htk-sm htk-danger" style="margin-top:12px;width:100%" @click="closeRsvp(editingEvent.id)">{{copy.closeRsvp}}</button>
+    </div><div class="htk-tg-row"><span class="htk-tg-lab">{{copy.notifications}}</span><button :class="['htk-tg-sw',newEvent.notify&&'on']" @click="newEvent.notify=!newEvent.notify"></button></div></div>
+    <div v-if="newEvent.notify" class="htk-fg"><span class="htk-fl">{{copy.notificationTiming}}</span><div class="htk-nt-chips"><span v-for="nt in notifyTimings" :key="nt" :class="['htk-nt-chip',newEvent.notifyTimings.includes(nt)&&'on']" @click="toggleNotifyTiming(nt)">{{notifyTimingLabel(nt)}}</span></div></div>
+    <div style="margin-top:14px;display:flex;gap:8px"><button class="htk-btn htk-primary" style="flex:1" @click="addEvent">{{editingEvent?copy.update:copy.save}}</button><button v-if="editingEvent" class="htk-btn" @click="editingEvent=null;newEvent.title=''">{{copy.cancel}}</button><button v-if="editingEvent" class="htk-btn htk-danger" @click="deleteEventById(editingEvent.id)">{{copy.delete}}</button></div>
   </div></div>
 </div>
 
 <!-- ========== TODO ========== -->
 <div v-if="activeTab==='todo'" class="htk-tabpage" :class="tabDir==='fwd'?'htk-tab-fwd':'htk-tab-back'"><div class="htk-lg htk-anim"><div class="htk-gc">
-  <h3 class="htk-sec-title">{{editingTodoId?'タスクを編集':'やることリスト'}}</h3>
-  <div class="htk-todo-inp-r"><input class="htk-inp" v-model="newTodo" :placeholder="editingTodoId?'タスク名を編集...':'新しいタスクを追加...'" @keypress.enter="addTodo" style="flex:1"><button class="htk-btn htk-sm" @click="showTodoExtra=!showTodoExtra">詳細</button><button class="htk-btn htk-primary htk-sm" @click="addTodo">{{editingTodoId?'更新':'追加'}}</button><button v-if="editingTodoId" class="htk-btn htk-sm" @click="cancelEditTodo">取消</button></div>
+  <h3 class="htk-sec-title">{{editingTodoId?copy.editTask:copy.todoList}}</h3>
+  <div class="htk-todo-inp-r"><input class="htk-inp" v-model="newTodo" :placeholder="editingTodoId?copy.editTaskPlaceholder:copy.newTaskPlaceholder" @keypress.enter="addTodo" style="flex:1"><button class="htk-btn htk-sm" @click="showTodoExtra=!showTodoExtra">{{copy.details}}</button><button class="htk-btn htk-primary htk-sm" @click="addTodo">{{editingTodoId?copy.update:copy.add}}</button><button v-if="editingTodoId" class="htk-btn htk-sm" @click="cancelEditTodo">{{copy.cancelEdit}}</button></div>
   <div :class="['htk-todo-xf',showTodoExtra&&'open']">
-    <div class="htk-todo-xf-i"><label>期日</label><input class="htk-inp" type="date" v-model="newTodoDue"></div>
-    <div class="htk-todo-xf-i"><label>時刻</label><input class="htk-inp" type="time" v-model="newTodoTime"></div>
-    <div class="htk-todo-xf-i"><label>フォルダ</label><select class="htk-inp" v-model="newTodoFolder"><option value="">フォルダなし</option><option v-for="fo in folders" :key="fo.id" :value="fo.id">{{fo.emoji}} {{fo.name}}</option></select></div>
-    <div class="htk-todo-xf-i" style="flex:2;min-width:170px"><label>コメント</label><input class="htk-inp" v-model="newTodoComment" placeholder="メモ..."></div>
+    <div class="htk-todo-xf-i"><label>{{copy.dueDate}}</label><input class="htk-inp" type="date" v-model="newTodoDue"></div>
+    <div class="htk-todo-xf-i"><label>{{copy.time}}</label><input class="htk-inp" type="time" v-model="newTodoTime"></div>
+    <div class="htk-todo-xf-i"><label>{{copy.folder}}</label><select class="htk-inp" v-model="newTodoFolder"><option value="">{{copy.noFolder}}</option><option v-for="fo in folders" :key="fo.id" :value="fo.id">{{fo.emoji}} {{fo.name}}</option></select></div>
+    <div class="htk-todo-xf-i" style="flex:2;min-width:170px"><label>{{copy.comment}}</label><input class="htk-inp" v-model="newTodoComment" :placeholder="copy.memoPlaceholder"></div>
   </div>
   <div class="htk-fbar">
-    <button :class="['htk-ftab',activeFolder==='all'&&'on']" @click="activeFolder='all'">すべて<span class="htk-fc">{{pendingCount}}</span></button>
+    <button :class="['htk-ftab',activeFolder==='all'&&'on']" @click="activeFolder='all'">{{copy.all}}<span class="htk-fc">{{pendingCount}}</span></button>
     <button v-for="fo in folders" :key="fo.id" :class="['htk-ftab',activeFolder===fo.id&&'on']" :style="fo.color?{borderLeft:'3px solid '+fo.color}:{}" @click="activeFolder=fo.id"><span v-if="fo.color" class="htk-fm-dot" :style="{background:fo.color}"></span>{{fo.emoji}} {{fo.name}}<span class="htk-fc">{{folderCount(fo.id)}}</span></button>
-    <button class="htk-fm-btn" @click="showFolderMgr=!showFolderMgr">+ フォルダ管理</button>
+    <button class="htk-fm-btn" @click="showFolderMgr=!showFolderMgr">+ {{copy.manageFolders}}</button>
   </div>
   <div v-if="showFolderMgr" class="htk-fm-panel htk-lg-in">
-    <div style="font-size:.78rem;color:var(--text-2);margin-bottom:8px;font-weight:600">フォルダ管理</div>
-    <div v-for="(fo,i) in folders" :key="fo.id" class="htk-fm-row"><span v-if="fo.color" class="htk-fm-dot" :style="{background:fo.color}"></span><span class="htk-fm-emoji">{{fo.emoji}}</span><span class="htk-fm-name">{{fo.name}}</span><div class="htk-fm-acts"><button class="htk-btn htk-xs" @click="changeFolderColor(i)" title="色変更"><i class="ti ti-palette"></i></button><button class="htk-btn htk-xs" @click="renameFolder(i)"><i class="ti ti-pencil"></i></button><button class="htk-btn htk-xs" @click="moveFolder(i,-1)" :disabled="i===0"><i class="ti ti-chevron-up"></i></button><button class="htk-btn htk-xs" @click="moveFolder(i,1)" :disabled="i===folders.length-1"><i class="ti ti-chevron-down"></i></button><button class="htk-btn htk-xs htk-danger" @click="deleteFolder(i)"><i class="ti ti-x"></i></button></div></div>
-    <div v-if="!folders.length" style="font-size:.78rem;color:var(--text-3);padding:6px">フォルダなし</div>
+    <div style="font-size:.78rem;color:var(--text-2);margin-bottom:8px;font-weight:600">{{copy.manageFolders}}</div>
+    <div v-for="(fo,i) in folders" :key="fo.id" class="htk-fm-row"><span v-if="fo.color" class="htk-fm-dot" :style="{background:fo.color}"></span><span class="htk-fm-emoji">{{fo.emoji}}</span><span class="htk-fm-name">{{fo.name}}</span><div class="htk-fm-acts"><button class="htk-btn htk-xs" @click="changeFolderColor(i)" :title="copy.changeColor"><i class="ti ti-palette"></i></button><button class="htk-btn htk-xs" @click="renameFolder(i)"><i class="ti ti-pencil"></i></button><button class="htk-btn htk-xs" @click="moveFolder(i,-1)" :disabled="i===0"><i class="ti ti-chevron-up"></i></button><button class="htk-btn htk-xs" @click="moveFolder(i,1)" :disabled="i===folders.length-1"><i class="ti ti-chevron-down"></i></button><button class="htk-btn htk-xs htk-danger" @click="deleteFolder(i)"><i class="ti ti-x"></i></button></div></div>
+    <div v-if="!folders.length" style="font-size:.78rem;color:var(--text-3);padding:6px">{{copy.noFolder}}</div>
     <div style="margin-top:6px">
-      <div style="display:flex;gap:5px;align-items:center"><input class="htk-inp" v-model="newFolderName" placeholder="フォルダ名..." style="flex:1;font-size:.78rem;padding:7px 12px"><button class="htk-btn htk-xs htk-primary" @click="addFolder">追加</button></div>
-      <div class="htk-folder-clr-row"><span style="font-size:.7rem;color:var(--text-3)">色:</span><div v-for="c in folderColors" :key="c.value" :class="['htk-folder-clr-o',newFolderColor===c.value&&'on']" :style="{background:c.value}" :title="c.label" @click="newFolderColor=c.value"></div><div :class="['htk-folder-clr-o htk-folder-clr-none',newFolderColor===''&&'on']" title="なし" @click="newFolderColor=''">×</div></div>
+      <div style="display:flex;gap:5px;align-items:center"><input class="htk-inp" v-model="newFolderName" :placeholder="copy.folderNamePlaceholder" style="flex:1;font-size:.78rem;padding:7px 12px"><button class="htk-btn htk-xs htk-primary" @click="addFolder">{{copy.add}}</button></div>
+      <div class="htk-folder-clr-row"><span style="font-size:.7rem;color:var(--text-3)">{{copy.color}}:</span><div v-for="c in folderColors" :key="c.value" :class="['htk-folder-clr-o',newFolderColor===c.value&&'on']" :style="{background:c.value}" :title="c.label" @click="newFolderColor=c.value"></div><div :class="['htk-folder-clr-o htk-folder-clr-none',newFolderColor===''&&'on']" :title="copy.none" @click="newFolderColor=''">×</div></div>
     </div>
   </div>
-  <div class="htk-sbar"><span class="htk-sbar-l">並び替え:</span><button v-for="s in sortOptions" :key="s.id" :class="['htk-btn htk-xs',sortMode===s.id&&'htk-sb-on']" @click="sortMode=s.id">{{s.label}}</button></div>
+  <div class="htk-sbar"><span class="htk-sbar-l">{{copy.sort}}:</span><button v-for="s in sortOptions" :key="s.id" :class="['htk-btn htk-xs',sortMode===s.id&&'htk-sb-on']" @click="sortMode=s.id">{{s.label}}</button></div>
   <div v-for="todo in pagedTodos" :key="todo.id" :class="['htk-todo-i',todo.done&&'done']">
     <div :class="['htk-todo-cb',todo.done&&'ck']" @click="toggleTodo(todo.id)"></div>
     <div class="htk-todo-ct" @click="expandedTodo=expandedTodo===todo.id?null:todo.id">
       <div class="htk-todo-tx">{{todo.text}}</div>
       <div class="htk-todo-mt"><span v-if="todo.due" :class="['htk-todo-db',isOverdue(todo.due)&&!todo.done&&'od',isDueToday(todo.due)&&'tdy']">{{formatDue(todo.due,todo.time)}}</span><span v-if="getFolderLabel(todo.folder)&&activeFolder==='all'" class="htk-todo-fb">{{getFolderLabel(todo.folder)}}</span></div>
       <div v-if="todo.comment" class="htk-todo-cp">{{todo.comment.split('\n')[0]}}</div>
-      <div v-if="expandedTodo===todo.id" class="htk-todo-dx open"><div v-if="todo.comment" style="font-size:.78rem;color:var(--text-2);line-height:1.5;white-space:pre-wrap">{{todo.comment}}</div><div v-else style="font-size:.73rem;color:var(--text-3)">コメントなし</div></div>
+      <div v-if="expandedTodo===todo.id" class="htk-todo-dx open"><div v-if="todo.comment" style="font-size:.78rem;color:var(--text-2);line-height:1.5;white-space:pre-wrap">{{todo.comment}}</div><div v-else style="font-size:.73rem;color:var(--text-3)">{{copy.noComment}}</div></div>
     </div>
     <div class="htk-todo-acts"><button class="htk-todo-ab" @click="editTodo(todo.id)"><i class="ti ti-pencil"></i></button><button class="htk-todo-ab del" @click="deleteTodo(todo.id)"><i class="ti ti-x"></i></button></div>
   </div>
   <div v-if="todoTotalPages>1" class="htk-pager"><button class="htk-btn htk-xs" :disabled="todoPage<=1" @click="todoPage--">&lt;</button><span class="htk-pager-t">{{todoPage}} / {{todoTotalPages}}</span><button class="htk-btn htk-xs" :disabled="todoPage>=todoTotalPages" @click="todoPage++">&gt;</button></div>
-  <div v-if="!sortedTodos.length" class="htk-empty"><div class="htk-empI"><i class="ti ti-circle-off"></i></div><div>タスクなし</div></div>
+  <div v-if="!sortedTodos.length" class="htk-empty"><div class="htk-empI"><i class="ti ti-circle-off"></i></div><div>{{copy.noTasks}}</div></div>
 </div></div></div>
 
 <!-- ========== NOTIFICATIONS ========== -->
@@ -341,39 +341,39 @@
 <!-- ========== MOOD ========== -->
 <div v-if="activeTab==='mood'" class="htk-panels htk-tabpage" :class="tabDir==='fwd'?'htk-tab-fwd':'htk-tab-back'">
   <div class="htk-lg htk-anim"><div class="htk-gc">
-    <h3 class="htk-sec-title">{{editingMood?'きもちを編集':'きもちを記録'}} <button class="htk-info-btn" @click="showMoodDisclaimer=true">?</button></h3>
-    <div style="font-size:.72rem;opacity:.4;margin-bottom:10px">この機能はセルフケア用です。医療目的ではありません。</div>
+    <h3 class="htk-sec-title">{{editingMood?copy.editMood:copy.recordMood}} <button class="htk-info-btn" @click="showMoodDisclaimer=true">?</button></h3>
+    <div style="font-size:.72rem;opacity:.4;margin-bottom:10px">{{copy.moodShortDisclaimer}}</div>
     <div class="htk-mood-sc"><div v-for="m in moodOptions" :key="m.level" :class="['htk-mood-o',selectedMoodLevel===m.level&&'on']" @click="selectedMoodLevel=m.level"><span class="htk-mood-e"><i :class="m.icon"></i></span><span class="htk-mood-l">{{m.label}}</span></div></div>
-    <div class="htk-coll-h" @click="showMoodNote=!showMoodNote"><span class="htk-fl" style="margin:0">ひとこと</span><span class="htk-ci">{{showMoodNote?'▲':'▼'}}</span></div>
+    <div class="htk-coll-h" @click="showMoodNote=!showMoodNote"><span class="htk-fl" style="margin:0">{{copy.note}}</span><span class="htk-ci">{{showMoodNote?'▲':'▼'}}</span></div>
     <div v-if="showMoodNote">
-      <div class="htk-fg" style="margin-top:5px"><textarea class="htk-inp" v-model="moodNote" placeholder="今日あったことや気持ちをメモ..."></textarea></div>
-      <div class="htk-fg"><span class="htk-fl">絵文字</span><div class="htk-emp-row"><span v-for="e in moodEmojisExtra" :key="e" :class="['htk-emp-i',moodSelectedEmoji===e&&'on']" @click="moodSelectedEmoji=moodSelectedEmoji===e?'':e">{{e}}</span></div></div>
+      <div class="htk-fg" style="margin-top:5px"><textarea class="htk-inp" v-model="moodNote" :placeholder="copy.moodNotePlaceholder"></textarea></div>
+      <div class="htk-fg"><span class="htk-fl">{{copy.emoji}}</span><div class="htk-emp-row"><span v-for="e in moodEmojisExtra" :key="e" :class="['htk-emp-i',moodSelectedEmoji===e&&'on']" @click="moodSelectedEmoji=moodSelectedEmoji===e?'':e">{{e}}</span></div></div>
     </div>
-    <div class="htk-coll-h" @click="showMoodRemind=!showMoodRemind"><span class="htk-fl" style="margin:0">リマインド通知</span><span class="htk-ci">{{showMoodRemind?'▲':'▼'}}</span></div>
+    <div class="htk-coll-h" @click="showMoodRemind=!showMoodRemind"><span class="htk-fl" style="margin:0">{{copy.reminderNotification}}</span><span class="htk-ci">{{showMoodRemind?'▲':'▼'}}</span></div>
     <div v-if="showMoodRemind" style="padding-top:5px">
-      <div class="htk-tg-row"><span class="htk-tg-lab">リマインド</span><button :class="['htk-tg-sw',settings.moodRemind&&'on']" @click="settings.moodRemind=!settings.moodRemind;saveSettings()"></button></div>
-      <div class="htk-nt-chips" style="margin-top:5px"><span v-for="t in moodRemindTimes" :key="t" :class="['htk-nt-chip',settings.moodRemindTimes?.includes(t)&&'on']" @click="toggleMoodRemindTime(t)">{{t}}</span></div>
+      <div class="htk-tg-row"><span class="htk-tg-lab">{{copy.reminder}}</span><button :class="['htk-tg-sw',settings.moodRemind&&'on']" @click="settings.moodRemind=!settings.moodRemind;saveSettings()"></button></div>
+      <div class="htk-nt-chips" style="margin-top:5px"><span v-for="t in moodRemindTimes" :key="t" :class="['htk-nt-chip',settings.moodRemindTimes?.includes(t)&&'on']" @click="toggleMoodRemindTime(t)">{{moodRemindTimeLabel(t)}}</span></div>
     </div>
-    <div style="display:flex;gap:8px;margin-top:12px"><button class="htk-btn htk-primary" style="flex:1" @click="saveMood" :disabled="isSaving">{{isSaving?'保存中...':(editingMood?'更新':'きもちを保存')}}</button><button v-if="editingMood" class="htk-btn" @click="cancelEditMood">キャンセル</button></div>
+    <div style="display:flex;gap:8px;margin-top:12px"><button class="htk-btn htk-primary" style="flex:1" @click="saveMood" :disabled="isSaving">{{isSaving?copy.saving:(editingMood?copy.update:copy.saveMood)}}</button><button v-if="editingMood" class="htk-btn" @click="cancelEditMood">{{copy.cancel}}</button></div>
   </div></div>
 
   <!-- MOOD ANALYSIS -->
   <div v-if="moods.length>=3" class="htk-lg htk-anim"><div class="htk-gc">
-    <h3 class="htk-sec-title">きもち分析</h3>
+    <h3 class="htk-sec-title">{{copy.moodAnalysis}}</h3>
     <div class="htk-ma-grid">
       <div class="htk-ma-card">
-        <div class="htk-ma-label">最近の傾向</div>
+        <div class="htk-ma-label">{{copy.recentTrend}}</div>
         <div class="htk-ma-big" :style="{color: moodAnalysis.trendColor}">{{moodAnalysis.trendEmoji}}</div>
         <div class="htk-ma-desc">{{moodAnalysis.trendLabel}}</div>
       </div>
       <div class="htk-ma-card">
-        <div class="htk-ma-label">平均スコア (7日間)</div>
+        <div class="htk-ma-label">{{copy.averageScore7Days}}</div>
         <div class="htk-ma-big">{{moodAnalysis.avgScore}}</div>
         <div class="htk-ma-bar"><div class="htk-ma-bar-fill" :style="{width: (moodAnalysis.avgScoreRaw/5*100)+'%', background: moodAnalysis.trendColor}"></div></div>
       </div>
     </div>
     <div class="htk-ma-section">
-      <div class="htk-ma-label" style="margin-bottom:8px">時間帯別の傾向</div>
+      <div class="htk-ma-label" style="margin-bottom:8px">{{copy.trendByTime}}</div>
       <div class="htk-ma-times">
         <div v-for="t in moodAnalysis.timeSlots" :key="t.label" class="htk-ma-time">
           <div class="htk-ma-time-emo">{{t.emoji}}</div>
@@ -390,25 +390,25 @@
     </div>
   </div></div>
 
-  <div class="htk-lg htk-anim"><div class="htk-gc"><h3 class="htk-sec-title">きもちの記録</h3>
-    <template v-if="moods.length"><div v-for="date in pagedMoodDates" :key="date" class="htk-mood-dg"><div class="htk-mood-dg-h">{{formatMoodDate(String(date))}}<span v-if="moodsByDate[date].length>1" class="htk-mood-dg-c">{{moodsByDate[date].length}}件</span></div><div v-for="m in moodsByDate[date]" :key="m.id" class="htk-mood-en"><div class="htk-mood-en-t">{{m.time}}</div><span class="htk-mood-en-e"><i :class="moodIcons[m.level]"></i></span><div class="htk-mood-en-ct"><div class="htk-mood-en-n">{{m.note}}</div><div v-if="m.emoji" class="htk-mood-en-ce">{{m.emoji}}</div></div><div class="htk-mood-en-acts"><button class="htk-mood-en-a" @click="startEditMood(m)"><i class="ti ti-pencil"></i></button><button class="htk-mood-en-a del" @click="deleteMood(m.id)"><i class="ti ti-x"></i></button></div></div></div>
+  <div class="htk-lg htk-anim"><div class="htk-gc"><h3 class="htk-sec-title">{{copy.moodRecords}}</h3>
+    <template v-if="moods.length"><div v-for="date in pagedMoodDates" :key="date" class="htk-mood-dg"><div class="htk-mood-dg-h">{{formatMoodDate(String(date))}}<span v-if="moodsByDate[date].length>1" class="htk-mood-dg-c">{{copyx.count({count:moodsByDate[date].length.toString()})}}</span></div><div v-for="m in moodsByDate[date]" :key="m.id" class="htk-mood-en"><div class="htk-mood-en-t">{{m.time}}</div><span class="htk-mood-en-e"><i :class="moodIcons[m.level]"></i></span><div class="htk-mood-en-ct"><div class="htk-mood-en-n">{{moodNoteLabel(m.note)}}</div><div v-if="m.emoji" class="htk-mood-en-ce">{{m.emoji}}</div></div><div class="htk-mood-en-acts"><button class="htk-mood-en-a" @click="startEditMood(m)"><i class="ti ti-pencil"></i></button><button class="htk-mood-en-a del" @click="deleteMood(m.id)"><i class="ti ti-x"></i></button></div></div></div>
     <div v-if="moodTotalPages>1" class="htk-pager"><button class="htk-btn htk-xs" :disabled="moodPage<=1" @click="moodPage--">&lt;</button><span class="htk-pager-t">{{moodPage}} / {{moodTotalPages}}</span><button class="htk-btn htk-xs" :disabled="moodPage>=moodTotalPages" @click="moodPage++">&gt;</button></div>
     </template>
-    <div v-else class="htk-empty"><div class="htk-empI"><i class="ti ti-circle-off"></i></div><div>まだ記録なし</div></div>
+    <div v-else class="htk-empty"><div class="htk-empI"><i class="ti ti-circle-off"></i></div><div>{{copy.noRecordsYet}}</div></div>
   </div></div>
 </div>
 
 <!-- ========== MEAL(食事記録) ========== -->
 <div v-if="activeTab==='meal'" class="htk-panels htk-tabpage" :class="tabDir==='fwd'?'htk-tab-fwd':'htk-tab-back'">
   <div class="htk-lg htk-anim"><div class="htk-gc">
-    <h3 class="htk-sec-title">{{editingMeal?'記録を編集':'ごはんを記録'}} <button class="htk-info-btn" @click="showMealDisclaimerDialog">!</button></h3>
-    <div style="font-size:.72rem;opacity:.4;margin-bottom:10px">この機能は記録の補助用です。医療目的ではありません。</div>
-    <div class="htk-fg"><span class="htk-fl">いつのごはん？</span><div class="htk-meal-slots"><div v-for="s in mealSlots" :key="s.id" :class="['htk-meal-slot',selectedMealSlot===s.id&&'on']" @click="selectedMealSlot=s.id"><span class="htk-meal-slot-e"><i :class="s.emoji"></i></span><span class="htk-meal-slot-l">{{s.label}}</span></div></div></div>
-    <div class="htk-fg"><span class="htk-fl">どうだった？</span><div class="htk-meal-levels"><div v-for="l in mealLevels" :key="l.id" :class="['htk-meal-level',selectedMealLevel===l.id&&'on']" :style="selectedMealLevel===l.id?{borderColor:l.color,background:l.color+'22'}:{}" @click="selectedMealLevel=l.id"><span class="htk-meal-level-e"><i :class="l.emoji"></i></span><span class="htk-meal-level-l">{{l.label}}</span></div></div></div>
+    <h3 class="htk-sec-title">{{editingMeal?copy.editRecord:copy.recordMeal}} <button class="htk-info-btn" @click="showMealDisclaimerDialog">!</button></h3>
+    <div style="font-size:.72rem;opacity:.4;margin-bottom:10px">{{copy.mealShortDisclaimer}}</div>
+    <div class="htk-fg"><span class="htk-fl">{{copy.whichMeal}}</span><div class="htk-meal-slots"><div v-for="s in mealSlots" :key="s.id" :class="['htk-meal-slot',selectedMealSlot===s.id&&'on']" @click="selectedMealSlot=s.id"><span class="htk-meal-slot-e"><i :class="s.emoji"></i></span><span class="htk-meal-slot-l">{{s.label}}</span></div></div></div>
+    <div class="htk-fg"><span class="htk-fl">{{copy.howWasMeal}}</span><div class="htk-meal-levels"><div v-for="l in mealLevels" :key="l.id" :class="['htk-meal-level',selectedMealLevel===l.id&&'on']" :style="selectedMealLevel===l.id?{borderColor:l.color,background:l.color+'22'}:{}" @click="selectedMealLevel=l.id"><span class="htk-meal-level-e"><i :class="l.emoji"></i></span><span class="htk-meal-level-l">{{l.label}}</span></div></div></div>
     <!-- 理由は「少しだけ」「食べれなかった」のときだけ任意で。複数選択可。スキップしてもOK -->
-    <div v-if="selectedMealLevel!=='ate'" class="htk-fg"><span class="htk-fl">よかったら、理由も（任意・複数選べます）</span><div class="htk-meal-reasons"><span v-for="r in mealReasons" :key="r" :class="['htk-meal-reason',selectedMealReasons.includes(r)&&'on']" @click="toggleMealReason(r)">{{r}}</span></div></div>
-    <div class="htk-fg"><span class="htk-fl">ひとこと（任意）</span><textarea class="htk-inp" v-model="mealNote" placeholder="食べたものや、その時のことをメモ..."></textarea></div>
-    <div style="display:flex;gap:8px;margin-top:12px"><button class="htk-btn htk-primary" style="flex:1" @click="saveMeal" :disabled="isSaving">{{isSaving?'保存中...':(editingMeal?'更新':'記録する')}}</button><button v-if="editingMeal" class="htk-btn" @click="cancelEditMeal">キャンセル</button></div>
+    <div v-if="selectedMealLevel!=='ate'" class="htk-fg"><span class="htk-fl">{{copy.optionalMealReasons}}</span><div class="htk-meal-reasons"><span v-for="r in mealReasons" :key="r" :class="['htk-meal-reason',selectedMealReasons.includes(r)&&'on']" @click="toggleMealReason(r)">{{mealReasonLabel(r)}}</span></div></div>
+    <div class="htk-fg"><span class="htk-fl">{{copy.optionalNote}}</span><textarea class="htk-inp" v-model="mealNote" :placeholder="copy.mealNotePlaceholder"></textarea></div>
+    <div style="display:flex;gap:8px;margin-top:12px"><button class="htk-btn htk-primary" style="flex:1" @click="saveMeal" :disabled="isSaving">{{isSaving?copy.saving:(editingMeal?copy.update:copy.record)}}</button><button v-if="editingMeal" class="htk-btn" @click="cancelEditMeal">{{copy.cancel}}</button></div>
   </div></div>
 
   <!-- MEAL SUMMARY: 数値評価はしない。記録した行為を中立に労うのみ -->
@@ -416,28 +416,28 @@
     <div class="htk-meal-summary">{{mealSummaryMessage}}</div>
   </div></div>
 
-  <div class="htk-lg htk-anim"><div class="htk-gc"><h3 class="htk-sec-title">ごはんの記録</h3>
-    <template v-if="meals.length"><div v-for="date in pagedMealDates" :key="date" class="htk-mood-dg"><div class="htk-mood-dg-h">{{formatMoodDate(String(date))}}<span v-if="mealsByDate[date].length>1" class="htk-mood-dg-c">{{mealsByDate[date].length}}件</span></div><div v-for="m in mealsByDate[date]" :key="m.id" class="htk-mood-en"><div class="htk-mood-en-t">{{m.time}}</div><span class="htk-mood-en-e"><i :class="mealSlotInfo(m.slot).emoji"></i></span><div class="htk-mood-en-ct"><div class="htk-meal-en-head"><span class="htk-meal-en-slot">{{mealSlotInfo(m.slot).label}}</span><span class="htk-meal-en-level" :style="{color:mealLevelInfo(m.level).color}"><i :class="mealLevelInfo(m.level).emoji"></i> {{mealLevelInfo(m.level).label}}</span></div><div v-if="m.reasons&&m.reasons.length" class="htk-meal-en-reasons"><span v-for="r in m.reasons" :key="r" class="htk-meal-en-reason">{{r}}</span></div><div v-if="m.note" class="htk-mood-en-n">{{m.note}}</div></div><div class="htk-mood-en-acts"><button class="htk-mood-en-a" @click="startEditMeal(m)"><i class="ti ti-pencil"></i></button><button class="htk-mood-en-a del" @click="deleteMeal(m.id)"><i class="ti ti-x"></i></button></div></div></div>
+  <div class="htk-lg htk-anim"><div class="htk-gc"><h3 class="htk-sec-title">{{copy.mealRecords}}</h3>
+    <template v-if="meals.length"><div v-for="date in pagedMealDates" :key="date" class="htk-mood-dg"><div class="htk-mood-dg-h">{{formatMoodDate(String(date))}}<span v-if="mealsByDate[date].length>1" class="htk-mood-dg-c">{{copyx.count({count:mealsByDate[date].length.toString()})}}</span></div><div v-for="m in mealsByDate[date]" :key="m.id" class="htk-mood-en"><div class="htk-mood-en-t">{{m.time}}</div><span class="htk-mood-en-e"><i :class="mealSlotInfo(m.slot).emoji"></i></span><div class="htk-mood-en-ct"><div class="htk-meal-en-head"><span class="htk-meal-en-slot">{{mealSlotInfo(m.slot).label}}</span><span class="htk-meal-en-level" :style="{color:mealLevelInfo(m.level).color}"><i :class="mealLevelInfo(m.level).emoji"></i> {{mealLevelInfo(m.level).label}}</span></div><div v-if="m.reasons&&m.reasons.length" class="htk-meal-en-reasons"><span v-for="r in m.reasons" :key="r" class="htk-meal-en-reason">{{mealReasonLabel(r)}}</span></div><div v-if="m.note" class="htk-mood-en-n">{{m.note}}</div></div><div class="htk-mood-en-acts"><button class="htk-mood-en-a" @click="startEditMeal(m)"><i class="ti ti-pencil"></i></button><button class="htk-mood-en-a del" @click="deleteMeal(m.id)"><i class="ti ti-x"></i></button></div></div></div>
     <div v-if="mealTotalPages>1" class="htk-pager"><button class="htk-btn htk-xs" :disabled="mealPage<=1" @click="mealPage--">&lt;</button><span class="htk-pager-t">{{mealPage}} / {{mealTotalPages}}</span><button class="htk-btn htk-xs" :disabled="mealPage>=mealTotalPages" @click="mealPage++">&gt;</button></div>
     </template>
-    <div v-else class="htk-empty"><div class="htk-empI"><i class="ti ti-circle-off"></i></div><div>まだ記録なし</div></div>
+    <div v-else class="htk-empty"><div class="htk-empI"><i class="ti ti-circle-off"></i></div><div>{{copy.noRecordsYet}}</div></div>
   </div></div>
 </div>
 
 <!-- ========== GARDEN ========== -->
 <div v-if="activeTab==='garden'" class="htk-panels htk-tabpage" :class="tabDir==='fwd'?'htk-tab-fwd':'htk-tab-back'">
   <div class="htk-lg htk-anim"><div class="htk-gc" style="text-align:center;min-height:240px">
-    <h3 class="htk-sec-title">いま育てているお花 <button class="htk-info-btn" @click="showFlowerInfo=true">?</button></h3>
+    <h3 class="htk-sec-title">{{copy.currentFlower}} <button class="htk-info-btn" @click="showFlowerInfo=true">?</button></h3>
     <div class="htk-fl-ring" style="width:140px;height:140px"><svg viewBox="0 0 160 160"><circle class="htk-fl-track" cx="80" cy="80" r="70"/><circle class="htk-fl-bar" cx="80" cy="80" r="70" :style="{strokeDasharray:'440',strokeDashoffset:440-440*(flower.progress/100)}"/></svg><div class="htk-fl-emo" style="font-size:3rem">{{flower.emoji}}</div></div>
-    <div style="font-weight:600;font-size:1rem">{{flower.name}}</div>
-    <div v-if="currentFlowerHanakotoba" style="font-size:.72rem;color:var(--text-3);margin-top:2px;opacity:.7">花言葉: {{currentFlowerHanakotoba}}</div>
-    <div style="font-size:.75rem;color:var(--text-3);margin-top:4px">成長度: {{flower.progress}}% / 累計: {{formatMinutes(flower.totalMinutes)}}</div>
-    <div v-if="flower.progress<100" style="font-size:.75rem;color:var(--text-3);margin-top:6px">あと約{{estimateRemaining}}で花が咲きます</div>
-    <button v-else class="htk-btn htk-primary htk-sm" style="margin-top:10px" @click="harvestFlower">花を収穫して名前をつける</button>
+    <div style="font-weight:600;font-size:1rem">{{currentFlowerDisplayName}}</div>
+    <div v-if="currentFlowerHanakotoba" style="font-size:.72rem;color:var(--text-3);margin-top:2px;opacity:.7">{{copy.flowerMeaning}}: {{currentFlowerHanakotoba}}</div>
+    <div style="font-size:.75rem;color:var(--text-3);margin-top:4px">{{copyx.flowerProgressTotal({progress:flower.progress.toString(),total:formatMinutes(flower.totalMinutes)})}}</div>
+    <div v-if="flower.progress<100" style="font-size:.75rem;color:var(--text-3);margin-top:6px">{{copyx.flowerBloomsIn({duration:estimateRemaining})}}</div>
+    <button v-else class="htk-btn htk-primary htk-sm" style="margin-top:10px" @click="harvestFlower">{{copy.harvestAndName}}</button>
   </div></div>
-  <div class="htk-lg htk-anim"><div class="htk-gc"><h3 class="htk-sec-title">フラワーギャラリー</h3>
-    <div v-if="gallery.length" class="htk-gal-g"><div v-for="fl in gallery" :key="fl.id" class="htk-gal-i" @click="renameFlower(fl)"><span class="htk-gal-e">{{fl.emoji}}</span><div class="htk-gal-n">{{fl.name}}</div><div v-if="fl.hanakotoba" class="htk-gal-hk">{{fl.hanakotoba}}</div><div class="htk-gal-d">{{fl.date}}</div></div></div>
-    <div v-else class="htk-empty"><div class="htk-empI"><i class="ti ti-circle-off"></i></div><div>まだお花が咲いていません</div></div>
+  <div class="htk-lg htk-anim"><div class="htk-gc"><h3 class="htk-sec-title">{{copy.flowerGallery}}</h3>
+    <div v-if="gallery.length" class="htk-gal-g"><div v-for="fl in gallery" :key="fl.id" class="htk-gal-i" @click="renameFlower(fl)"><span class="htk-gal-e">{{fl.emoji}}</span><div class="htk-gal-n">{{localizeFloraName(fl.name)}}</div><div v-if="fl.hanakotoba" class="htk-gal-hk">{{localizeHanakotoba(fl.hanakotoba)}}</div><div class="htk-gal-d">{{fl.date}}</div></div></div>
+    <div v-else class="htk-empty"><div class="htk-empI"><i class="ti ti-circle-off"></i></div><div>{{copy.noFlowersYet}}</div></div>
   </div></div>
 </div>
 </div>
@@ -447,7 +447,7 @@
   <!-- Eye phrase (big) -->
   <div class="htk-lg htk-anim"><div class="htk-gc htk-eye-page-top" style="position:relative">
     <!-- 旗鯖fork: AI生成文の注意事項を表示するiマーク (いつでも確認可能) -->
-    <button class="htk-eye-info-btn" @click="showEyeDisclaimer=true" title="Hatask Eyeについて" style="position:absolute;top:12px;right:12px;background:rgba(255,255,255,.15);border:none;border-radius:50%;width:30px;height:30px;cursor:pointer;color:inherit;display:flex;align-items:center;justify-content:center"><i class="ti ti-info-circle" style="font-size:1rem"></i></button>
+    <button class="htk-eye-info-btn" @click="showEyeDisclaimer=true" :title="copy.aboutHataskEye" style="position:absolute;top:12px;right:12px;background:rgba(255,255,255,.15);border:none;border-radius:50%;width:30px;height:30px;cursor:pointer;color:inherit;display:flex;align-items:center;justify-content:center"><i class="ti ti-info-circle" style="font-size:1rem"></i></button>
     <div class="htk-eye-logo">◎</div>
     <div class="htk-eye-page-label">Hatask Eye</div>
     <div class="htk-eye-page-phrase-wrap">
@@ -459,30 +459,30 @@
 
   <!-- 統計サマリー -->
   <div class="htk-lg htk-anim"><div class="htk-gc">
-    <h3 class="htk-sec-title">あなたの記録</h3>
+    <h3 class="htk-sec-title">{{copy.yourRecords}}</h3>
     <div class="htk-eye-stats">
-      <div class="htk-eye-stat"><div class="htk-eye-stat-n">{{moods.length}}</div><div class="htk-eye-stat-l">累計きもち記録</div></div>
-      <div class="htk-eye-stat"><div class="htk-eye-stat-n">{{todos.filter(t=>t.done).length}}</div><div class="htk-eye-stat-l">達成タスク</div></div>
-      <div class="htk-eye-stat"><div class="htk-eye-stat-n">{{todos.length}}</div><div class="htk-eye-stat-l">作成タスク</div></div>
-      <div class="htk-eye-stat"><div class="htk-eye-stat-n">{{todoCompletionRate}}%</div><div class="htk-eye-stat-l">達成率</div></div>
+      <div class="htk-eye-stat"><div class="htk-eye-stat-n">{{moods.length}}</div><div class="htk-eye-stat-l">{{copy.totalMoodRecords}}</div></div>
+      <div class="htk-eye-stat"><div class="htk-eye-stat-n">{{todos.filter(t=>t.done).length}}</div><div class="htk-eye-stat-l">{{copy.completedTasks}}</div></div>
+      <div class="htk-eye-stat"><div class="htk-eye-stat-n">{{todos.length}}</div><div class="htk-eye-stat-l">{{copy.createdTasks}}</div></div>
+      <div class="htk-eye-stat"><div class="htk-eye-stat-n">{{todoCompletionRate}}%</div><div class="htk-eye-stat-l">{{copy.completionRate}}</div></div>
     </div>
   </div></div>
 
   <!-- 進捗状況 -->
   <div class="htk-lg htk-anim"><div class="htk-gc">
-    <h3 class="htk-sec-title">進捗状況</h3>
+    <h3 class="htk-sec-title">{{copy.progress}}</h3>
     <div class="htk-eye-progress-row">
-      <span class="htk-eye-prog-label">今週のタスク消化</span>
+      <span class="htk-eye-prog-label">{{copy.weeklyTaskProgress}}</span>
       <div class="htk-eye-prog-bar"><div class="htk-eye-prog-fill" :style="{width:weeklyTaskProgress+'%'}"></div></div>
       <span class="htk-eye-prog-val">{{weeklyTaskProgress}}%</span>
     </div>
     <div class="htk-eye-progress-row">
-      <span class="htk-eye-prog-label">今月のきもち記録</span>
+      <span class="htk-eye-prog-label">{{copy.monthlyMoodRecords}}</span>
       <div class="htk-eye-prog-bar"><div class="htk-eye-prog-fill htk-eye-prog-mood" :style="{width:monthlyMoodProgress+'%'}"></div></div>
-      <span class="htk-eye-prog-val">{{monthlyMoodCount}}日</span>
+      <span class="htk-eye-prog-val">{{copyx.days({count:monthlyMoodCount.toString()})}}</span>
     </div>
     <div class="htk-eye-progress-row">
-      <span class="htk-eye-prog-label">花の成長</span>
+      <span class="htk-eye-prog-label">{{copy.flowerGrowth}}</span>
       <div class="htk-eye-prog-bar"><div class="htk-eye-prog-fill htk-eye-prog-flower" :style="{width:flower.progress+'%'}"></div></div>
       <span class="htk-eye-prog-val">{{flower.progress}}%</span>
     </div>
@@ -490,80 +490,80 @@
 
   <!-- 育てた花の花言葉 -->
   <div class="htk-lg htk-anim"><div class="htk-gc">
-    <h3 class="htk-sec-title">花言葉コレクション</h3>
+    <h3 class="htk-sec-title">{{copy.flowerMeaningCollection}}</h3>
     <div v-if="galleryWithHanakotoba.length" class="htk-eye-hk-list">
       <div v-for="fl in galleryWithHanakotoba" :key="fl.id" class="htk-eye-hk-row">
         <span class="htk-eye-hk-emoji">{{fl.emoji}}</span>
         <div class="htk-eye-hk-info">
-          <div class="htk-eye-hk-name">{{fl.name}}</div>
-          <div class="htk-eye-hk-word">{{fl.hanakotoba}}</div>
+          <div class="htk-eye-hk-name">{{localizeFloraName(fl.name)}}</div>
+          <div class="htk-eye-hk-word">{{localizeHanakotoba(fl.hanakotoba)}}</div>
         </div>
       </div>
     </div>
-    <div v-else class="htk-empty"><div class="htk-empI"><i class="ti ti-circle-off"></i></div><div>お花を収穫すると花言葉が集まります</div></div>
+    <div v-else class="htk-empty"><div class="htk-empI"><i class="ti ti-circle-off"></i></div><div>{{copy.harvestToCollectMeanings}}</div></div>
   </div></div>
 
   <!-- 現在育てている花 -->
   <div class="htk-lg htk-anim"><div class="htk-gc" style="text-align:center">
-    <h3 class="htk-sec-title">いま育てているお花</h3>
+    <h3 class="htk-sec-title">{{copy.currentFlower}}</h3>
     <div class="htk-fl-ring" style="width:100px;height:100px"><svg viewBox="0 0 120 120"><circle class="htk-fl-track" cx="60" cy="60" r="50"/><circle class="htk-fl-bar" cx="60" cy="60" r="50" :style="{strokeDasharray:'314',strokeDashoffset:314-314*(flower.progress/100)}"/></svg><div class="htk-fl-emo" style="font-size:2rem">{{flower.emoji}}</div></div>
-    <div style="font-weight:600;font-size:.9rem">{{flower.name}}</div>
-    <div v-if="currentFlowerHanakotoba" style="font-size:.7rem;color:var(--text-3);opacity:.7">花言葉: {{currentFlowerHanakotoba}}</div>
-    <div v-if="flower.progress>=100" style="margin-top:8px"><button class="htk-btn htk-primary htk-sm" @click="harvestFlower">花を収穫する</button></div>
+    <div style="font-weight:600;font-size:.9rem">{{currentFlowerDisplayName}}</div>
+    <div v-if="currentFlowerHanakotoba" style="font-size:.7rem;color:var(--text-3);opacity:.7">{{copy.flowerMeaning}}: {{currentFlowerHanakotoba}}</div>
+    <div v-if="flower.progress>=100" style="margin-top:8px"><button class="htk-btn htk-primary htk-sm" @click="harvestFlower">{{copy.harvestFlower}}</button></div>
   </div></div>
 </div>
 
 <!-- SEARCH MODAL -->
 <Teleport to="body"><div v-if="showSearch" class="htk-modal-ov" :data-theme="settings.theme||'kisetsu'" :data-mode="themeMode" @click.self="showSearch=false"><div class="htk-lg htk-modal-c htk-sch-modal"><div class="htk-gc">
-  <h3 class="htk-sec-title">検索</h3>
-  <input class="htk-inp htk-sch-inp" v-model="searchQuery" placeholder="予定・きもち・ToDoを検索..." ref="searchInput">
+  <h3 class="htk-sec-title">{{copy.search}}</h3>
+  <input class="htk-inp htk-sch-inp" v-model="searchQuery" :placeholder="copy.searchPlaceholder" ref="searchInput">
   <div class="htk-sch-body">
   <div v-if="!searchQuery">
-    <template v-if="upcomingEvents.length"><div class="htk-sch-sec">直近の予定</div><div v-for="ev in upcomingEvents.slice(0,3)" :key="'se'+ev.id" class="htk-sch-it" @click="showSearch=false;goToEvent(ev)"><div class="htk-ev-dot" :style="{background:ev.color}"></div><div class="htk-sch-it-body"><div class="htk-sch-it-title">{{ev.title}}</div><div class="htk-sch-it-sub">{{formatSearchDate(ev.date)}} {{ev.timeStart}}</div></div></div></template>
-    <template v-if="recentMoodsForSearch.length"><div class="htk-sch-sec">最近のきもち</div><div v-for="m in recentMoodsForSearch" :key="'sm'+m.id" class="htk-sch-it" @click="showSearch=false;activeTab='mood'"><span class="htk-sch-it-emo"><i :class="moodIcons[m.level]"></i></span><div class="htk-sch-it-body"><div class="htk-sch-it-title">{{m.note}}</div><div class="htk-sch-it-sub">{{formatSearchDate(m.date)}} {{m.time}}</div></div></div></template>
-    <template v-if="todos.filter(t=>!t.done).length"><div class="htk-sch-sec">最近のToDo</div><div v-for="t in todos.filter(t=>!t.done).slice(0,3)" :key="'st'+t.id" class="htk-sch-it" @click="showSearch=false;activeTab='todo'"><div class="htk-ev-dot" style="background:var(--primary)"></div><div class="htk-sch-it-body"><div class="htk-sch-it-title">{{t.text}}</div><div class="htk-sch-it-sub">{{t.due?'期日: '+formatSearchDate(t.due):'期日なし'}}</div></div></div></template>
+    <template v-if="upcomingEvents.length"><div class="htk-sch-sec">{{copy.upcomingEvents}}</div><div v-for="ev in upcomingEvents.slice(0,3)" :key="'se'+ev.id" class="htk-sch-it" @click="showSearch=false;goToEvent(ev)"><div class="htk-ev-dot" :style="{background:ev.color}"></div><div class="htk-sch-it-body"><div class="htk-sch-it-title">{{ev.title}}</div><div class="htk-sch-it-sub">{{formatSearchDate(ev.date)}} {{ev.timeStart}}</div></div></div></template>
+    <template v-if="recentMoodsForSearch.length"><div class="htk-sch-sec">{{copy.recentMoods}}</div><div v-for="m in recentMoodsForSearch" :key="'sm'+m.id" class="htk-sch-it" @click="showSearch=false;activeTab='mood'"><span class="htk-sch-it-emo"><i :class="moodIcons[m.level]"></i></span><div class="htk-sch-it-body"><div class="htk-sch-it-title">{{moodNoteLabel(m.note)}}</div><div class="htk-sch-it-sub">{{formatSearchDate(m.date)}} {{m.time}}</div></div></div></template>
+    <template v-if="todos.filter(t=>!t.done).length"><div class="htk-sch-sec">{{copy.recentTodos}}</div><div v-for="t in todos.filter(t=>!t.done).slice(0,3)" :key="'st'+t.id" class="htk-sch-it" @click="showSearch=false;activeTab='todo'"><div class="htk-ev-dot" style="background:var(--primary)"></div><div class="htk-sch-it-body"><div class="htk-sch-it-title">{{t.text}}</div><div class="htk-sch-it-sub">{{t.due?copyx.dueDateLabel({date:formatSearchDate(t.due)}):copy.noDueDate}}</div></div></div></template>
   </div>
   <div v-else>
-    <template v-if="searchResults.events.length"><div class="htk-sch-sec">予定</div><div v-for="ev in searchResults.events" :key="'re'+ev.id" class="htk-sch-it" @click="showSearch=false;goToEvent(ev)"><div class="htk-ev-dot" :style="{background:ev.color}"></div><div class="htk-sch-it-body"><div class="htk-sch-it-title">{{ev.title}}</div><div class="htk-sch-it-sub">{{formatSearchDate(ev.date)}} {{ev.timeStart}}</div></div></div></template>
-    <template v-if="searchResults.moods.length"><div class="htk-sch-sec">きもち</div><div v-for="m in searchResults.moods" :key="'rm'+m.id" class="htk-sch-it"><span class="htk-sch-it-emo"><i :class="moodIcons[m.level]"></i></span><div class="htk-sch-it-body"><div class="htk-sch-it-title">{{m.note}}</div><div class="htk-sch-it-sub">{{formatSearchDate(m.date)}} {{m.time}}</div></div></div></template>
-    <template v-if="searchResults.todos.length"><div class="htk-sch-sec">ToDo</div><div v-for="t in searchResults.todos" :key="'rt'+t.id" class="htk-sch-it"><div class="htk-ev-dot" style="background:var(--primary)"></div><div class="htk-sch-it-body"><div class="htk-sch-it-title">{{t.text}}</div><div class="htk-sch-it-sub">{{t.due?'期日: '+formatSearchDate(t.due):'期日なし'}}</div></div></div></template>
-    <div v-if="!searchResults.todos.length&&!searchResults.moods.length&&!searchResults.events.length" class="htk-empty"><i class="ti ti-circle-off"></i> 見つかりません</div>
+    <template v-if="searchResults.events.length"><div class="htk-sch-sec">{{copy.schedule}}</div><div v-for="ev in searchResults.events" :key="'re'+ev.id" class="htk-sch-it" @click="showSearch=false;goToEvent(ev)"><div class="htk-ev-dot" :style="{background:ev.color}"></div><div class="htk-sch-it-body"><div class="htk-sch-it-title">{{ev.title}}</div><div class="htk-sch-it-sub">{{formatSearchDate(ev.date)}} {{ev.timeStart}}</div></div></div></template>
+    <template v-if="searchResults.moods.length"><div class="htk-sch-sec">{{copy.tabMood}}</div><div v-for="m in searchResults.moods" :key="'rm'+m.id" class="htk-sch-it"><span class="htk-sch-it-emo"><i :class="moodIcons[m.level]"></i></span><div class="htk-sch-it-body"><div class="htk-sch-it-title">{{moodNoteLabel(m.note)}}</div><div class="htk-sch-it-sub">{{formatSearchDate(m.date)}} {{m.time}}</div></div></div></template>
+    <template v-if="searchResults.todos.length"><div class="htk-sch-sec">ToDo</div><div v-for="t in searchResults.todos" :key="'rt'+t.id" class="htk-sch-it"><div class="htk-ev-dot" style="background:var(--primary)"></div><div class="htk-sch-it-body"><div class="htk-sch-it-title">{{t.text}}</div><div class="htk-sch-it-sub">{{t.due?copyx.dueDateLabel({date:formatSearchDate(t.due)}):copy.noDueDate}}</div></div></div></template>
+    <div v-if="!searchResults.todos.length&&!searchResults.moods.length&&!searchResults.events.length" class="htk-empty"><i class="ti ti-circle-off"></i> {{copy.notFound}}</div>
   </div>
   </div>
-  <div class="htk-sch-note">自分が登録したデータのみ検索できます（共通の予定は例外）</div>
-  <div style="text-align:center;margin-top:12px"><button class="htk-btn htk-primary htk-sch-close" @click="showSearch=false">閉じる</button></div>
+  <div class="htk-sch-note">{{copy.searchScopeNote}}</div>
+  <div style="text-align:center;margin-top:12px"><button class="htk-btn htk-primary htk-sch-close" @click="showSearch=false">{{copy.close}}</button></div>
 </div></div></div></Teleport>
 
 <!-- 旗鯖fork: Hatask Eye 注意事項モーダル (初回表示 + iマードからいつでも) -->
 <Teleport to="body"><div v-if="showEyeDisclaimer" class="htk-modal-ov" :data-theme="settings.theme||'kisetsu'" :data-mode="themeMode" @click.self="dismissEyeDisclaimer"><div class="htk-lg htk-modal-c" style="max-width:420px"><div class="htk-gc" style="padding:22px">
-  <h3 class="htk-sec-title" style="display:flex;align-items:center;gap:8px"><i class="ti ti-info-circle"></i> Hatask Eye について</h3>
+  <h3 class="htk-sec-title" style="display:flex;align-items:center;gap:8px"><i class="ti ti-info-circle"></i> {{copy.aboutHataskEye}}</h3>
   <p style="line-height:1.7;font-size:.92rem;opacity:.9;margin:14px 0">
-    Hatask Eye が表示する分析やひとことは、<b>AIが自動生成した文章</b>です。<br>
-    内容の正確性は保証されず、<b>助言や占いのような表現もあくまでエンタメ</b>としてお楽しみください。<br>
-    健康・医療・専門的な判断が必要なことは、専門家にご相談ください。
+    {{copy.eyeDisclaimerPrefix}}<b>{{copy.eyeDisclaimerAiText}}</b>{{copy.eyeDisclaimerSuffix}}<br>
+    {{copy.eyeDisclaimerAccuracyPrefix}}<b>{{copy.eyeDisclaimerEntertainment}}</b>{{copy.eyeDisclaimerEnjoy}}<br>
+    {{copy.eyeDisclaimerProfessional}}
   </p>
-  <div style="text-align:center;margin-top:10px"><button class="htk-btn htk-primary" @click="dismissEyeDisclaimer">わかった</button></div>
+  <div style="text-align:center;margin-top:10px"><button class="htk-btn htk-primary" @click="dismissEyeDisclaimer">{{copy.understood}}</button></div>
 </div></div></div></Teleport>
 
 <!-- 旗鯖fork(#37): 設定モーダルは HataskSettings.vue に統合(openHataskSettings()でpopup) -->
 
 <!-- MOOD DISCLAIMER MODAL -->
-<Teleport to="body"><div v-if="showMoodDisclaimer" class="htk-modal-ov" :data-theme="settings.theme||'kisetsu'" :data-mode="themeMode" @click.self="showMoodDisclaimer=false"><div class="htk-lg htk-modal-c"><div class="htk-gc" style="padding:28px"><div style="text-align:center;font-size:2rem;margin-bottom:8px;text-shadow:none">ⓘ</div><div style="text-align:center;font-size:.92rem;font-weight:700;margin-bottom:10px">きもち記録について</div><div class="htk-popup-b">この機能は日々の気分を振り返るためのセルフケアツールです。<br><br>医療目的で開発されたものではなく、<strong>疾病の診断・治療・治癒、または身体の機能改善を保証するものではありません。</strong><br><br>心身の不調が続く場合は医療機関への受診をおすすめします。</div><div style="text-align:center;margin-top:14px"><button class="htk-btn htk-primary" @click="showMoodDisclaimer=false">了承する</button></div></div></div></div></Teleport>
-<Teleport to="body"><div v-if="showMealDisclaimer" class="htk-modal-ov" :data-theme="settings.theme||'kisetsu'" :data-mode="themeMode" @click.self="ackMealDisclaimer"><div class="htk-lg htk-modal-c"><div class="htk-gc" style="padding:28px"><div style="text-align:center;font-size:2rem;margin-bottom:8px;text-shadow:none">ⓘ</div><div style="text-align:center;font-size:.92rem;font-weight:700;margin-bottom:10px">ごはん記録について</div><div class="htk-popup-b">{{mealDisclaimerText}}</div><div style="text-align:center;margin-top:14px"><button class="htk-btn htk-primary" @click="ackMealDisclaimer">了承する</button></div></div></div></div></Teleport>
+<Teleport to="body"><div v-if="showMoodDisclaimer" class="htk-modal-ov" :data-theme="settings.theme||'kisetsu'" :data-mode="themeMode" @click.self="showMoodDisclaimer=false"><div class="htk-lg htk-modal-c"><div class="htk-gc" style="padding:28px"><div style="text-align:center;font-size:2rem;margin-bottom:8px;text-shadow:none">ⓘ</div><div style="text-align:center;font-size:.92rem;font-weight:700;margin-bottom:10px">{{copy.aboutMoodRecords}}</div><div class="htk-popup-b">{{copy.moodDisclaimerIntro}}<br><br>{{copy.moodDisclaimerMedicalPrefix}}<strong>{{copy.moodDisclaimerMedicalStrong}}</strong><br><br>{{copy.moodDisclaimerConsult}}</div><div style="text-align:center;margin-top:14px"><button class="htk-btn htk-primary" @click="showMoodDisclaimer=false">{{copy.accept}}</button></div></div></div></div></Teleport>
+<Teleport to="body"><div v-if="showMealDisclaimer" class="htk-modal-ov" :data-theme="settings.theme||'kisetsu'" :data-mode="themeMode" @click.self="ackMealDisclaimer"><div class="htk-lg htk-modal-c"><div class="htk-gc" style="padding:28px"><div style="text-align:center;font-size:2rem;margin-bottom:8px;text-shadow:none">ⓘ</div><div style="text-align:center;font-size:.92rem;font-weight:700;margin-bottom:10px">{{copy.aboutMealRecords}}</div><div class="htk-popup-b">{{mealDisclaimerText}}</div><div style="text-align:center;margin-top:14px"><button class="htk-btn htk-primary" @click="ackMealDisclaimer">{{copy.accept}}</button></div></div></div></div></Teleport>
 
 <!-- FLOWER INFO MODAL -->
-<Teleport to="body"><div v-if="showFlowerInfo" class="htk-modal-ov" :data-theme="settings.theme||'kisetsu'" :data-mode="themeMode" @click.self="showFlowerInfo=false"><div class="htk-lg htk-modal-c"><div class="htk-gc" style="padding:28px"><div style="text-align:center;font-size:2rem;margin-bottom:8px;text-shadow:none;color:var(--accent)"><i class="ti ti-plant-2"></i></div><div style="text-align:center;font-size:.92rem;font-weight:700;margin-bottom:10px">お花の育て方</div><div class="htk-popup-b">このサーバーを使用していくにつれて、お花が成長していきます。<br><br>サーバーを開いている時間に応じて少しずつ成長します（約8-32時間）。<br><br>成長が完了すると名前を付けられます。育て終わった花の名前はいつでもギャラリーから変更できます。<br><br>全125種類以上のお花や奇妙なアイテムが用意されています。レアアイテムも！</div><div style="text-align:center;margin-top:14px"><button class="htk-btn htk-primary" @click="showFlowerInfo=false">わかった！</button></div></div></div></div></Teleport>
+<Teleport to="body"><div v-if="showFlowerInfo" class="htk-modal-ov" :data-theme="settings.theme||'kisetsu'" :data-mode="themeMode" @click.self="showFlowerInfo=false"><div class="htk-lg htk-modal-c"><div class="htk-gc" style="padding:28px"><div style="text-align:center;font-size:2rem;margin-bottom:8px;text-shadow:none;color:var(--accent)"><i class="ti ti-plant-2"></i></div><div style="text-align:center;font-size:.92rem;font-weight:700;margin-bottom:10px">{{copy.howToGrowFlowers}}</div><div class="htk-popup-b">{{copy.flowerInfoGrowth}}<br><br>{{copy.flowerInfoTime}}<br><br>{{copy.flowerInfoNaming}}<br><br>{{copy.flowerInfoVariety}}</div><div style="text-align:center;margin-top:14px"><button class="htk-btn htk-primary" @click="showFlowerInfo=false">{{copy.understoodExcited}}</button></div></div></div></div></Teleport>
 
 <!-- 旗鯖fork(v2 §14): チュートリアル テーマ選択ステップ -->
 <!-- 旗鯖fork(v2 §14): テーマ選択(設計 .tpickwrap を忠実移植)。picker自身の light/dark トグルを持つ。 -->
 <Teleport to="body"><div v-if="showTutTheme" class="htk-tut-ov htk-tpick-ov">
   <div class="tpickwrap" :data-mode="themeMode">
-    <div class="tpick-cap">WELCOME TO</div>
+    <div class="tpick-cap">{{copy.welcomeTo}}</div>
     <div class="tpick-logo">Hatask v2</div>
-    <div class="tpick-sub">まずは見た目を選びましょう<br><span class="tpick-sub2">あとで「Hatask設定」からいつでも変更できます</span></div>
+    <div class="tpick-sub">{{copy.chooseAppearance}}<br><span class="tpick-sub2">{{copy.changeAppearanceLater}}</span></div>
     <div class="tpick-seg">
-      <button :class="[themeMode!=='dark'&&'on']" @click="setTutMode(false)"><i class="ti ti-sun"></i>ライト</button>
-      <button :class="[themeMode==='dark'&&'on']" @click="setTutMode(true)"><i class="ti ti-moon"></i>ダーク</button>
+      <button :class="[themeMode!=='dark'&&'on']" @click="setTutMode(false)"><i class="ti ti-sun"></i>{{copy.light}}</button>
+      <button :class="[themeMode==='dark'&&'on']" @click="setTutMode(true)"><i class="ti ti-moon"></i>{{copy.dark}}</button>
     </div>
     <div class="tpick-grid">
       <button v-for="t in tutThemes" :key="t.id" :class="['tp-card',(settings.theme||'kisetsu')===t.id&&'sel']" @click="pickTutTheme(t.id)">
@@ -576,8 +576,8 @@
         <div class="tp-desc">{{t.desc}}</div>
       </button>
     </div>
-    <button class="tpick-go" :style="{background:(tutThemes.find(t=>t.id===(settings.theme||'kisetsu'))||tutThemes[0]).accent}" @click="startTutFromTheme"><i class="ti ti-arrow-right"></i> このテーマではじめる</button>
-    <div class="tpick-note">{{tutThemeStandalone?'選択は保存されます。設定からいつでも変更できます':'選択は保存され、以降のチュートリアルもこの見た目で進みます'}}</div>
+    <button class="tpick-go" :style="{background:(tutThemes.find(t=>t.id===(settings.theme||'kisetsu'))||tutThemes[0]).accent}" @click="startTutFromTheme"><i class="ti ti-arrow-right"></i> {{copy.startWithTheme}}</button>
+    <div class="tpick-note">{{tutThemeStandalone?copy.themeSelectionSaved:copy.tutorialUsesTheme}}</div>
   </div>
 </div></Teleport>
 
@@ -588,10 +588,10 @@
     <div class="htk-tut-welcome">
       <div class="htk-tut-particles"><span v-for="i in 12" :key="i" :style="{animationDelay:i*0.3+'s',left:Math.random()*100+'%',top:Math.random()*100+'%'}"></span></div>
       <div class="htk-tut-hero-emoji"><i class="ti ti-sparkles"></i></div>
-      <div class="htk-tut-catch">SNSに一工夫を</div>
+      <div class="htk-tut-catch">{{copy.tutorialCatch}}</div>
       <div class="htk-tut-appname">Hatask</div>
-      <div class="htk-tut-sub">旗鯖だけの便利機能をご紹介します<br><span style="font-size:.72rem;opacity:.6">実際のUIを見ながらステップバイステップで案内します</span></div>
-      <div class="htk-tut-btns"><button class="htk-tut-btn htk-tut-btn-p" @click="startSpotlightTutorial">はじめる <i class="ti ti-rocket"></i></button><button class="htk-tut-btn htk-tut-btn-s" @click="skipTutorial">スキップ</button></div>
+      <div class="htk-tut-sub">{{copy.tutorialIntro}}<br><span style="font-size:.72rem;opacity:.6">{{copy.tutorialStepByStep}}</span></div>
+      <div class="htk-tut-btns"><button class="htk-tut-btn htk-tut-btn-p" @click="startSpotlightTutorial">{{copy.start}} <i class="ti ti-rocket"></i></button><button class="htk-tut-btn htk-tut-btn-s" @click="skipTutorial">{{copy.skip}}</button></div>
       <div class="htk-tut-dots"><span v-for="i in tutTotalSteps" :key="i" :class="['htk-tut-dot',tutStep===i-1&&'on']"></span></div>
     </div>
   </div>
@@ -621,12 +621,12 @@
         </div>
       </div>
       <div class="htk-spot-tip-nav">
-        <button v-if="tutStep>1" class="htk-tut-btn htk-tut-btn-s htk-tut-btn-xs" @click="prevSpotlightStep">← 戻る</button>
+        <button v-if="tutStep>1" class="htk-tut-btn htk-tut-btn-s htk-tut-btn-xs" @click="prevSpotlightStep">← {{copy.back}}</button>
         <div class="htk-spot-tip-progress"><div class="htk-spot-tip-bar" :style="{width:(tutStep/(tutTotalSteps-1))*100+'%'}"></div></div>
-        <button v-if="tutStep<tutTotalSteps-1" class="htk-tut-btn htk-tut-btn-p htk-tut-btn-xs" @click="nextSpotlightStep">次へ →</button>
-        <button v-else class="htk-tut-btn htk-tut-btn-finish htk-tut-btn-xs" @click="finishTutorial">完了 <i class="ti ti-confetti"></i></button>
+        <button v-if="tutStep<tutTotalSteps-1" class="htk-tut-btn htk-tut-btn-p htk-tut-btn-xs" @click="nextSpotlightStep">{{copy.next}} →</button>
+        <button v-else class="htk-tut-btn htk-tut-btn-finish htk-tut-btn-xs" @click="finishTutorial">{{copy.complete}} <i class="ti ti-confetti"></i></button>
       </div>
-      <button class="htk-tut-skip" @click="skipTutorial">スキップ</button>
+      <button class="htk-tut-skip" @click="skipTutorial">{{copy.skip}}</button>
     </div>
   </template>
 </div></Teleport>
@@ -644,34 +644,81 @@ import { misskeyApi } from '@/utility/misskey-api.js';
 import { $i } from '@/i.js';
 import { useRouter } from '@/router.js';
 import { useStream } from '@/stream.js';
+import { i18n } from '@/i18n.js';
+import { versatileLang } from '@/utility/intl-const.js';
 import MkEarthquakeTicker from '@/components/MkEarthquakeTicker.vue';
-import { getPhrase } from '@/utility/hatask-phrases.js';
-import { floraData, pickRandomFlora, generateFlowerName } from '@/utility/hatask-flora.js';
+import { getDefaultPhrase, getPhrase } from '@/utility/hatask-phrases.js';
+import { floraData, pickRandomFlora, generateFlowerName, localizeFloraName, localizeHanakotoba } from '@/utility/hatask-flora.js';
+import { notificationDisplayMessage } from '@/utility/hatafeed.js';
 import { activeCharacter as mascotActiveCharacter, expressionDisplayUrl, loadMascot, hatakMascotActive, currentExpression as mascotCurrentExpression, currentPhrase as mascotCurrentPhrase, pickRandomPhrase as mascotPickRandomPhrase, displaySettings as mascotDisplaySettings, loadDisplaySettings as loadMascotDisplaySettings, nextIdleDelayMs as mascotNextIdleDelayMs, escapeText as mascotEscapeText } from '@/utility/mascot-store.js';
-const _getPhrase = (ctx?: any): string => { try { return getPhrase(ctx); } catch { return 'こんにちは！'; } };
+const copy = i18n.ts._hata._hatask._main;
+const copyx = i18n.tsx._hata._hatask._main;
+const _getPhrase = (ctx?: any): string => { try { return getPhrase(ctx); } catch { return getDefaultPhrase(); } };
 definePage(()=>({title:'Hatask',icon:'ti ti-checklist'}));
 const SCOPE=['client','hatask'];
-const tabs=[{id:'home',icon:'ti ti-home',label:'ホーム'},{id:'cal',icon:'ti ti-calendar',label:'カレンダー'},{id:'todo',icon:'ti ti-checkbox',label:'ToDo'},{id:'mood',icon:'ti ti-mood-smile',label:'きもち'},{id:'meal',icon:'ti ti-bowl',label:'ごはん'},{id:'garden',icon:'ti ti-flower',label:'お庭'},{id:'eye',icon:'ti ti-eye',label:'Eye'}];
+const tabs=computed(() => [{id:'home',icon:'ti ti-home',label:copy.tabHome},{id:'cal',icon:'ti ti-calendar',label:copy.tabCalendar},{id:'todo',icon:'ti ti-checkbox',label:'ToDo'},{id:'mood',icon:'ti ti-mood-smile',label:copy.tabMood},{id:'meal',icon:'ti ti-bowl',label:copy.tabMeal},{id:'garden',icon:'ti ti-flower',label:copy.tabGarden},{id:'eye',icon:'ti ti-eye',label:'Eye'}]);
 // 旗鯖fork(v2 §16②): タブ切替の方向(配列上の左右関係に追従)。※watchはactiveTab宣言後に登録(下記)。
 const tabDir=ref<'fwd'|'back'>('fwd');
 const showMobileNav=ref(true);
 // 旗鯖fork(v2): きもち5段階は Tabler アイコンに統一(§05)。
 const moodIcons:Record<number,string>={1:'ti ti-mood-cry',2:'ti ti-mood-sad',3:'ti ti-mood-neutral',4:'ti ti-mood-smile',5:'ti ti-mood-heart'};
-const moodOptions=[{level:1,icon:'ti ti-mood-cry',label:'つらい'},{level:2,icon:'ti ti-mood-sad',label:'もやもや'},{level:3,icon:'ti ti-mood-neutral',label:'ふつう'},{level:4,icon:'ti ti-mood-smile',label:'いい感じ'},{level:5,icon:'ti ti-mood-heart',label:'最高！'}];
+const moodOptions=computed(() => [{level:1,icon:'ti ti-mood-cry',label:copy.moodLevelHard},{level:2,icon:'ti ti-mood-sad',label:copy.moodLevelUneasy},{level:3,icon:'ti ti-mood-neutral',label:copy.moodLevelNeutral},{level:4,icon:'ti ti-mood-smile',label:copy.moodLevelGood},{level:5,icon:'ti ti-mood-heart',label:copy.moodLevelGreat}]);
 const moodEmojisExtra=['☀️','🌧️','⚡','🌈','🍵','🎵','💪','😴'];
 const moodRemindTimes=['朝 8:00','昼 12:00','夜 20:00','寝る前 23:00'];
 // ===== 食事記録(meal) 定数。医療目的ではない自己記録メモ。数値評価・カロリー計算はしない =====
-const mealSlots=[{id:'breakfast',emoji:'ti ti-sunrise',label:'朝'},{id:'lunch',emoji:'ti ti-sun',label:'昼'},{id:'dinner',emoji:'ti ti-moon',label:'夜'},{id:'snack',emoji:'ti ti-cookie',label:'間食'}];
+const mealSlots=computed(() => [{id:'breakfast',emoji:'ti ti-sunrise',label:copy.mealSlotBreakfast},{id:'lunch',emoji:'ti ti-sun',label:copy.mealSlotLunch},{id:'dinner',emoji:'ti ti-moon',label:copy.mealSlotDinner},{id:'snack',emoji:'ti ti-cookie',label:copy.mealSlotSnack}]);
 // 3段階はすべて中立・等価に扱う。「食べれなかった」を否定的に強調しない
-const mealLevels=[{id:'ate',emoji:'ti ti-bowl-chopsticks',label:'食べれた',color:'#85cdca'},{id:'little',emoji:'ti ti-bowl-spoon',label:'少しだけ',color:'#e8a87c'},{id:'none',emoji:'ti ti-cup',label:'食べれなかった',color:'#c38d9e'}];
+const mealLevels=computed(() => [{id:'ate',emoji:'ti ti-bowl-chopsticks',label:copy.mealLevelAte,color:'#85cdca'},{id:'little',emoji:'ti ti-bowl-spoon',label:copy.mealLevelLittle,color:'#e8a87c'},{id:'none',emoji:'ti ti-cup',label:copy.mealLevelNone,color:'#c38d9e'}]);
 // 「少しだけ」「食べれなかった」のときだけ任意で表示。複数選択可。体型・体重・カロリーに触れる選択肢は置かない
 const mealReasons=['食欲がなかった','体調がよくなかった','忙しくて時間がなかった','気分がのらなかった','用意できなかった','なんとなく'];
-const mealDisclaimerText='この機能は食事の記録を補助するためのもので、医療目的での利用は想定していません。診断・治療の代わりにはなりません。体調や食事について気になることがあれば、医師など専門家にご相談ください。本機能の利用によって生じたいかなる問題についても、開発者およびサーバー運営者は責任を負いません。';
+const mealDisclaimerText=computed(() => copy.mealDisclaimerFull);
 const eventColors=['#e27d60','#85cdca','#e8a87c','#c38d9e','#7bc67e','#f0c75e','#6cb4ee'];
 const eventEmojis=['⭐','💼','🎮','🔧','📚','🎂','✈️','🎨','🏃','🎤'];
 const notifyTimings=['15分前','30分前','1時間前','1日前'];
-const sortOptions=[{id:'manual',label:'手動'},{id:'dueAsc',label:'期日↑'},{id:'dueDesc',label:'期日↓'},{id:'new',label:'新しい順'}];
+const sortOptions=computed(() => [{id:'manual',label:copy.sortManual},{id:'dueAsc',label:copy.sortDueAsc},{id:'dueDesc',label:copy.sortDueDesc},{id:'new',label:copy.sortNewest}]);
 // Flora data now in hatask-flora.ts
+
+const notifyTimingLabels: Record<string, () => string> = {
+	'15分前': () => copy.notify15MinutesBefore,
+	'30分前': () => copy.notify30MinutesBefore,
+	'1時間前': () => copy.notify1HourBefore,
+	'1日前': () => copy.notify1DayBefore,
+};
+const moodRemindTimeLabels: Record<string, () => string> = {
+	'朝 8:00': () => copy.moodReminderMorning,
+	'昼 12:00': () => copy.moodReminderNoon,
+	'夜 20:00': () => copy.moodReminderEvening,
+	'寝る前 23:00': () => copy.moodReminderBedtime,
+};
+const mealReasonLabels: Record<string, () => string> = {
+	'食欲がなかった': () => copy.mealReasonNoAppetite,
+	'体調がよくなかった': () => copy.mealReasonUnwell,
+	'忙しくて時間がなかった': () => copy.mealReasonBusy,
+	'気分がのらなかった': () => copy.mealReasonNotInMood,
+	'用意できなかった': () => copy.mealReasonCouldNotPrepare,
+	'なんとなく': () => copy.mealReasonJustBecause,
+};
+
+function notifyTimingLabel(value: string): string { return notifyTimingLabels[value]?.() ?? value; }
+
+function moodRemindTimeLabel(value: string): string { return moodRemindTimeLabels[value]?.() ?? value; }
+
+function mealReasonLabel(value: string): string { return mealReasonLabels[value]?.() ?? value; }
+
+function moodNoteLabel(value: string): string { return value === '（ひとことなし）' ? copy.noMoodNote : value; }
+
+function parseIsoDate(value: string): Date {
+	const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+	return match ? new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3])) : new Date(value);
+}
+
+const yearMonthFormatter = new Intl.DateTimeFormat(versatileLang, { year: 'numeric', month: 'long' });
+const longDateFormatter = new Intl.DateTimeFormat(versatileLang, { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
+const monthDayFormatter = new Intl.DateTimeFormat(versatileLang, { month: 'short', day: 'numeric' });
+const monthDayWeekdayFormatter = new Intl.DateTimeFormat(versatileLang, { month: 'short', day: 'numeric', weekday: 'short' });
+const weekdayLongFormatter = new Intl.DateTimeFormat(versatileLang, { weekday: 'long' });
+const weekdayShortFormatter = new Intl.DateTimeFormat(versatileLang, { weekday: 'short' });
+const calendarWeekdays = Array.from({ length: 7 }, (_, index) => weekdayShortFormatter.format(new Date(2024, 0, 1 + index)));
 
 
 const dataLoaded = ref(false);
@@ -699,11 +746,11 @@ const activeTab=ref('home');const isSaving=ref(false);const showSearch=ref(false
 // queryだけが変わった場合も追従する。
 const routeRouter = useRouter();
 watch(() => routeRouter.currentRef.value.props.get('tab'), (requestedTab) => {
-	activeTab.value = typeof requestedTab === 'string' && tabs.some(tab => tab.id === requestedTab) ? requestedTab : 'home';
+	activeTab.value = typeof requestedTab === 'string' && tabs.value.some(tab => tab.id === requestedTab) ? requestedTab : 'home';
 }, { immediate: true });
 // 旗鯖fork(v2 §16②): タブ切替方向を判定(activeTab宣言後に登録してTDZを回避)。
 watch(activeTab, (nv, ov) => {
-  const oi=tabs.findIndex(t=>t.id===ov); const ni=tabs.findIndex(t=>t.id===nv);
+  const oi=tabs.value.findIndex(t=>t.id===ov); const ni=tabs.value.findIndex(t=>t.id===nv);
   tabDir.value = (ni>=oi) ? 'fwd' : 'back';
 });
 // 旗鯖fork: Hatask Eye の注意事項モーダル表示状態
@@ -763,49 +810,49 @@ const spotRect=ref({x:0,y:0,w:0,h:0});
 const tipSide=ref<'bottom'|'top'>('bottom');
 const tipPosition=ref<Record<string,string>>({});
 const tutSteps=computed(()=>[
-  {emoji:'ti ti-sparkles',title:'Welcome',body:'',tab:'home',selector:'',tips:[]},
-  {emoji:'ti ti-layout-navbar',title:'ナビゲーション',body:'上部のタブで各機能に切り替えられます。',tab:'home',selector:'.htk-nav-top',tips:[
-    {icon:'ti ti-device-mobile',text:'ホーム・カレンダー・ToDo・きもち・お庭・Eyeの6画面'},
-    {icon:'ti ti-arrow-left',text:'左の矢印でタイムラインに戻れます'},
+  {emoji:'ti ti-sparkles',title:copy.welcome,body:'',tab:'home',selector:'',tips:[]},
+  {emoji:'ti ti-layout-navbar',title:copy.tutorialNavigationTitle,body:copy.tutorialNavigationBody,tab:'home',selector:'.htk-nav-top',tips:[
+    {icon:'ti ti-device-mobile',text:copy.tutorialNavigationScreens},
+    {icon:'ti ti-arrow-left',text:copy.tutorialNavigationBack},
   ]},
-  {emoji:'ti ti-search',title:'ヘッダー',body:'検索と設定にアクセスできます。',tab:'home',selector:'.htk-header',tips:[
-    {icon:'ti ti-circle-plus',text:'左のボタン → ToDo・きもち・予定を横断検索'},
-    {icon:'ti ti-settings',text:'右のボタン → テーマ・表示項目・各種設定'},
+  {emoji:'ti ti-search',title:copy.tutorialHeaderTitle,body:copy.tutorialHeaderBody,tab:'home',selector:'.htk-header',tips:[
+    {icon:'ti ti-circle-plus',text:copy.tutorialHeaderSearch},
+    {icon:'ti ti-settings',text:copy.tutorialHeaderSettings},
   ]},
-  {emoji:'ti ti-clock',title:'ホーム画面',body:'時計・あいさつ・お花・予定・きもち・Eyeのひとことが一覧できます。',tab:'home',selector:'.htk-home',tips:[
-    {icon:'ti ti-message-circle',text:'500以上のあいさつがランダムに表示されます'},
-    {icon:'ti ti-flower',text:'お花をタップするとお庭画面へジャンプ'},
-    {icon:'ti ti-calendar-event',text:'予定やきもちカードも直接タップで各画面へ'},
+  {emoji:'ti ti-clock',title:copy.tutorialHomeTitle,body:copy.tutorialHomeBody,tab:'home',selector:'.htk-home',tips:[
+    {icon:'ti ti-message-circle',text:copy.tutorialHomeGreeting},
+    {icon:'ti ti-flower',text:copy.tutorialHomeFlower},
+    {icon:'ti ti-calendar-event',text:copy.tutorialHomeCards},
   ]},
-  {emoji:'ti ti-calendar-event',title:'カレンダー',body:'日付をタップして予定を確認・作成できます。',tab:'cal',selector:'.htk-panels',tips:[
-    {icon:'ti ti-palette',text:'絵文字・色・公開範囲・通知タイミングも設定可能'},
-    {icon:'ti ti-users',text:'「公開」にするとみんなの予定に表示されます'},
-    {icon:'ti ti-clipboard-check',text:'参加確認（RSVP）機能で出欠を管理'},
+  {emoji:'ti ti-calendar-event',title:copy.tabCalendar,body:copy.tutorialCalendarBody,tab:'cal',selector:'.htk-panels',tips:[
+    {icon:'ti ti-palette',text:copy.tutorialCalendarOptions},
+    {icon:'ti ti-users',text:copy.tutorialCalendarPublic},
+    {icon:'ti ti-clipboard-check',text:copy.tutorialCalendarRsvp},
   ]},
-  {emoji:'ti ti-checkbox',title:'やることリスト',body:'タスクの追加・フォルダ管理・ソートができます。',tab:'todo',selector:'.htk-todo-inp-r',tips:[
-    {icon:'ti ti-folder',text:'絵文字付きフォルダでタスクを分類整理'},
-    {icon:'ti ti-note',text:'詳細ボタンで期日・時刻・コメントも追加'},
-    {icon:'ti ti-check',text:'チェックで完了、タップでコメント展開'},
+  {emoji:'ti ti-checkbox',title:copy.tutorialTodoTitle,body:copy.tutorialTodoBody,tab:'todo',selector:'.htk-todo-inp-r',tips:[
+    {icon:'ti ti-folder',text:copy.tutorialTodoFolders},
+    {icon:'ti ti-note',text:copy.tutorialTodoDetails},
+    {icon:'ti ti-check',text:copy.tutorialTodoComplete},
   ]},
-  {emoji:'ti ti-mood-smile',title:'きもち記録',body:'5段階の気分を絵文字と一言で記録できます。',tab:'mood',selector:'.htk-mood-sc',tips:[
-    {icon:'ti ti-chart-bar',text:'週間グラフと時間帯別の傾向を分析'},
-    {icon:'ti ti-bell',text:'リマインド通知で記録忘れを防止'},
-    {icon:'ti ti-info-circle',text:'セルフケア用ツールです（医療目的ではありません）'},
+  {emoji:'ti ti-mood-smile',title:copy.tutorialMoodTitle,body:copy.tutorialMoodBody,tab:'mood',selector:'.htk-mood-sc',tips:[
+    {icon:'ti ti-chart-bar',text:copy.tutorialMoodAnalysis},
+    {icon:'ti ti-bell',text:copy.tutorialMoodReminder},
+    {icon:'ti ti-info-circle',text:copy.tutorialMoodDisclaimer},
   ]},
-  {emoji:'ti ti-flower',title:'お庭',body:'サーバーを使うほどお花が育ちます。全125種類以上！',tab:'garden',selector:'.htk-fl-ring',tips:[
-    {icon:'ti ti-alarm',text:'約8-32時間で開花。レアアイテムも…？'},
-    {icon:'ti ti-pencil',text:'咲いたら名前をつけてギャラリーに収穫'},
-    {icon:'ti ti-target',text:'花言葉もコレクションしよう！'},
+  {emoji:'ti ti-flower',title:copy.tabGarden,body:copy.tutorialGardenBody,tab:'garden',selector:'.htk-fl-ring',tips:[
+    {icon:'ti ti-alarm',text:copy.tutorialGardenBloom},
+    {icon:'ti ti-pencil',text:copy.tutorialGardenHarvest},
+    {icon:'ti ti-target',text:copy.tutorialGardenCollection},
   ]},
-  {emoji:'ti ti-eye',title:'Hatask Eye',body:'あなたの使い方を見守る、Hataskのもうひとつの目。',tab:'eye',selector:'.htk-eye-page-top',tips:[
-    {icon:'ti ti-chart-line',text:'タスク達成率・きもちの傾向・お花の成長を分析'},
-    {icon:'ti ti-bulb',text:'Hataskを使うほど、Eyeもあなたのことを少しずつ理解していきます'},
-    {icon:'ti ti-sparkles',text:'使い続けることで、いつかもっと寄り添えるようになるかも…'},
+  {emoji:'ti ti-eye',title:'Hatask Eye',body:copy.tutorialEyeBody,tab:'eye',selector:'.htk-eye-page-top',tips:[
+    {icon:'ti ti-chart-line',text:copy.tutorialEyeAnalysis},
+    {icon:'ti ti-bulb',text:copy.tutorialEyeLearning},
+    {icon:'ti ti-sparkles',text:copy.tutorialEyeFuture},
   ]},
-  {emoji:'ti ti-confetti',title:'チュートリアル完了！',body:'これでHataskの主な機能をひと通り紹介しました。',tab:'home',selector:'',tips:[
-    {icon:'ti ti-settings',text:'チュートリアルは設定画面からいつでも再確認できます'},
-    {icon:'ti ti-message-circle',text:'困ったことがあれば、旗茶にお気軽にどうぞ'},
-    {icon:'ti ti-plant-2',text:'Hataskがあなたの毎日をちょっと楽しくできますように'},
+  {emoji:'ti ti-confetti',title:copy.tutorialCompleteTitle,body:copy.tutorialCompleteBody,tab:'home',selector:'',tips:[
+    {icon:'ti ti-settings',text:copy.tutorialCompleteSettings},
+    {icon:'ti ti-message-circle',text:copy.tutorialCompleteHelp},
+    {icon:'ti ti-plant-2',text:copy.tutorialCompleteWish},
   ]},
 ]);
 function measureTarget(){
@@ -845,7 +892,7 @@ function startSpotlightTutorial(){goToStep(1)}
 function nextSpotlightStep(){if(tutStep.value<tutTotalSteps-1)goToStep(tutStep.value+1)}
 function prevSpotlightStep(){if(tutStep.value>1)goToStep(tutStep.value-1)}
 function skipTutorial(){showTutorial.value=false;settings.value.tutorialDone=true;saveSettings()}
-function finishTutorial(){showTutorial.value=false;settings.value.tutorialDone=true;saveSettings();activeTab.value='home';os.toast('Hataskへようこそ！')}
+function finishTutorial(){showTutorial.value=false;settings.value.tutorialDone=true;saveSettings();activeTab.value='home';os.toast(copy.welcomeToHatask)}
 // 旗鯖fork: 設定からの再表示は本編込みのフル導入(単独モードでない)。
 function reopenTutorial(){tutThemeStandalone.value=false;showTutTheme.value=true}
 // 旗鯖fork(v2 §14): チュートリアル冒頭のテーマ選択ステップ。3テーマ＋明暗を即時プレビューで確定してから本編へ。
@@ -853,18 +900,18 @@ const showTutTheme=ref(false);
 // 旗鯖fork(v2): 既存ユーザーがリデザイン後に初めて開いたときの「単独テーマ選択(告知)モーダル」フラグ。
 //   true のときは確定してもスポットライト本編に進まず閉じるだけ。
 const tutThemeStandalone=ref(false);
-const tutThemes=[
-  {id:'kisetsu',jp:'季',desc:'明朝の落ち着き。余白と罫線。',bg:'#f4f1ea',fg:'#211d18',accent:'#8a3d1f'},
-  {id:'kashin',jp:'花信',desc:'丸ゴと原色。ポップに賑やか。',bg:'#fff5e6',fg:'#25201c',accent:'#ff6b4a'},
-  {id:'suri',jp:'刷',desc:'2色印刷風。太罫で実験的。',bg:'#efe7d4',fg:'#1a1a2e',accent:'#2a52c0'},
-];
+const tutThemes=computed(() => [
+  {id:'kisetsu',jp:copy.themeKisetsu,desc:copy.themeKisetsuDescription,bg:'#f4f1ea',fg:'#211d18',accent:'#8a3d1f'},
+  {id:'kashin',jp:copy.themeKashin,desc:copy.themeKashinDescription,bg:'#fff5e6',fg:'#25201c',accent:'#ff6b4a'},
+  {id:'suri',jp:copy.themeSuri,desc:copy.themeSuriDescription,bg:'#efe7d4',fg:'#1a1a2e',accent:'#2a52c0'},
+]);
 function pickTutTheme(id:string){settings.value.theme=id;saveSettings()}
 function setTutMode(dark:boolean){settings.value.darkMode=dark;settings.value.autoTheme=false;saveSettings()}
 function startTutFromTheme(){
   settings.value.v2Onboarded=true;saveSettings();
   showTutTheme.value=false;
   // 既存ユーザー(単独告知)は本編に進まず閉じるだけ。新規は本編ウェルカムへ。
-  if(tutThemeStandalone.value){tutThemeStandalone.value=false;os.toast('テーマを設定しました');return;}
+  if(tutThemeStandalone.value){tutThemeStandalone.value=false;os.toast(copy.themeSet);return;}
   tutStep.value=0;showTutorial.value=true;
 }
 function skipTutTheme(){showTutTheme.value=false;settings.value.v2Onboarded=true;settings.value.tutorialDone=true;tutThemeStandalone.value=false;saveSettings()}
@@ -896,7 +943,7 @@ function htkTouchEnd(e:TouchEvent){
   if(Math.abs(dy)>Math.abs(dx)*1.2)return; // vertical scroll
   if(Math.abs(dx)<80)return; // too short
   htkSwipeLocked=true;
-  const tabIds=tabs.map(t=>t.id);
+  const tabIds=tabs.value.map(t=>t.id);
   const idx=tabIds.indexOf(activeTab.value);
   if(dx>0&&idx>0)activeTab.value=tabIds[idx-1];
   else if(dx<0&&idx<tabIds.length-1)activeTab.value=tabIds[idx+1];
@@ -929,13 +976,13 @@ function openHatalyze(){window.open('https://kanjo-bunseki.tolehata.net','_blank
 // 旗鯖fork(v2): ホームのアプリ一覧(3テーマ共通データ)。short=短縮ラベル。color=季/花信のアイコン地色。
 const homeApps=computed(()=>{
   const a=[
-    {label:'お絵かき',short:'お絵かき',icon:'ti ti-brush',color:'#7eb5b2',fn:openDrawingTool},
+    {label:copy.appDrawing,short:copy.appDrawingShort,icon:'ti ti-brush',color:'#7eb5b2',fn:openDrawingTool},
     {label:'HATA CARD',short:'CARD',icon:'ti ti-cards',color:'#e8a87c',fn:openHataCard},
 	{label:'HataSideStudio',short:'SideStudio',icon:'ti ti-layout-sidebar-left-expand',color:'#8b7cf6',fn:openHataSideStudio},
-	{label:'今回の更新内容',short:'更新内容',icon:'ti ti-news',color:'#5b8fd6',fn:openHataWhatsNew},
-    {label:'旗鯖ポータル',short:'ポータル',icon:'ti ti-door-enter',color:'#a78bfa',fn:openPortal},
-    {label:'旗鯖設定',short:'旗鯖設定',icon:'ti ti-flag',color:'#f472b6',fn:openHataSettings},
-    {label:'機能解説',short:'解説',icon:'ti ti-book',color:'#60a5fa',fn:openHataDocs},
+	{label:copy.appWhatsNew,short:copy.appWhatsNewShort,icon:'ti ti-news',color:'#5b8fd6',fn:openHataWhatsNew},
+    {label:copy.appPortal,short:copy.appPortalShort,icon:'ti ti-door-enter',color:'#a78bfa',fn:openPortal},
+    {label:copy.appHataSettings,short:copy.appHataSettingsShort,icon:'ti ti-flag',color:'#f472b6',fn:openHataSettings},
+    {label:copy.appGuide,short:copy.appGuideShort,icon:'ti ti-book',color:'#60a5fa',fn:openHataDocs},
     {label:'HATAlyze',short:'HATAlyze',icon:'ti ti-mood-search',color:'#f59e0b',fn:openHatalyze},
   ];
   if(canAccessHataFeed.value)a.push({label:'HataFeed',short:'HataFeed',icon:'ti ti-message-report',color:'#34d399',fn:openHataFeed});
@@ -943,8 +990,18 @@ const homeApps=computed(()=>{
   a.push({label:'地震・津波情報',short:'地震',icon:'ti ti-activity',color:'#f87171',fn:openEarthquake});
   return a;
 });
-// 旗鯖fork(v2): 予定の日付を「M.D」に整形(ホームのスケジュール行用)。
-function evMD(d:string){const p=(d||'').split('-');return p.length===3?`${+p[1]}.${+p[2]}`:''}
+// 旗鯖fork(v2): ホームの予定日付も Hataskey 共通言語の Intl 表示にする。
+function evMD(d:string){return d ? monthDayFormatter.format(parseIsoDate(d)) : ''}
+
+function eventTimeLabel(ev:any):string {return ev.allDay?copy.allDay:((ev.timeStart||'')+(ev.timeEnd?' - ' + ev.timeEnd : ''));}
+
+function eventDateTimeLabel(ev:any):string {return `${longDateFormatter.format(parseIsoDate(ev.date))} ${eventTimeLabel(ev)}`.trim();}
+
+function eventDateRangeLabel(ev:any):string {
+	const start = longDateFormatter.format(parseIsoDate(ev.date));
+	const end = ev.dateEnd && ev.dateEnd !== ev.date ? longDateFormatter.format(parseIsoDate(ev.dateEnd)) : '';
+	return end ? copyx.dateRange({ start, end }) : start;
+}
 // 旗鯖fork(v2): 季ホーム末尾に並べる旗鯖独自セクション。
 const forkSections=['feedbackNotif','earthquake','meal'];
 // 旗鯖fork(#37): 設定UIは HataskSettings.vue に一本化(旗鯖独自設定と同じpopup)
@@ -1055,7 +1112,7 @@ else if(timing==='1日前')msAhead=24*60*60*1000;
 const fireAt=eventTime-msAhead;
 const delay=fireAt-now;
 if(delay>0&&delay<24*60*60*1000){// only schedule within next 24h
-const tid=window.setTimeout(()=>{sendNotification(`${ev.emoji} ${ev.title}`,`${timing}です（${ev.timeStart}〜${ev.timeEnd}）`)},delay);
+const tid=window.setTimeout(()=>{sendNotification(`${ev.emoji} ${ev.title}`,copyx.eventReminderBody({ timing: notifyTimingLabel(timing), start: ev.timeStart, end: ev.timeEnd }), undefined, '/hatask?notice=calendar')},delay);
 notifTimerIds.push(tid)
 }})
 })
@@ -1071,12 +1128,12 @@ const delay=fireAt-Date.now();
 if(delay>0&&delay<24*60*60*1000){
 const tid=window.setTimeout(()=>{
 const todaysMoods=moods.value.filter((m:any)=>m.date===today);
-if(todaysMoods.length===0){sendNotification('◉ きもち記録','今の気分はどうですか？ Hataskで記録してみましょう')}
+if(todaysMoods.length===0){sendNotification(copy.moodReminderTitle, copy.moodReminderBody, undefined,'/hatask?notice=mood')}
 },delay);
 notifTimerIds.push(tid)
 }})
 }
-const currentTime=ref('');const currentDate=ref('');const eyePhrase=ref('こんにちは！');const editingEvent=ref<any>(null);let eyeTimer:ReturnType<typeof setInterval>|null=null;
+const currentTime=ref('');const currentDate=ref('');const eyePhrase=ref(getDefaultPhrase());const editingEvent=ref<any>(null);let eyeTimer:ReturnType<typeof setInterval>|null=null;
 // 旗鯖fork(v2): テーマ別の時計まわり日付パーツ(季=1月9日/金曜日, 刷=2026.01.09/FRIDAY)。
 const clockMD=ref('');const clockDow=ref('');const clockDot=ref('');const clockEn=ref('');
 // 旗鯖fork(タスク8/タスク2): マスコットカード(ミニ版)。
@@ -1140,7 +1197,7 @@ const loginDays=computed(()=>$i?.loggedInDays??0);
 const loginRanking=ref(0);const loginTotal=ref(0);
 const loginMilestones=[3,7,15,30,60,100,200,300,400,500,600,700,800,900,1000];
 const loginNextReward=computed(()=>{const d=loginDays.value;for(const m of loginMilestones){if(d<m)return m-d}return 0});
-const loginMessage=computed(()=>{const d=loginDays.value;if(d<=1)return'ようこそ！最初のログインです！';if(d<7)return'サーバーに慣れてきましたか？';if(d<30)return'もうすっかり常連ですね！';if(d<100)return'これからもよろしくお願いします！';if(d<365)return'すごい…！';return'伝説のユーザーです！'});
+const loginMessage=computed(()=>{const d=loginDays.value;if(d<=1)return copy.loginFirst;if(d<7)return copy.loginGettingUsed;if(d<30)return copy.loginRegular;if(d<100)return copy.loginThankYou;if(d<365)return copy.loginAmazing;return copy.loginLegend});
 async function fetchLoginRanking(){try{const res=await misskeyApi('hata/login-ranking',{});if(res&&typeof res.rank==='number'){loginRanking.value=res.rank;loginTotal.value=res.totalUsers??0}}catch(e){console.warn('Login ranking unavailable:',e)}}
 const settings=ref<any>({darkMode:false,autoTheme:true,weekStart:'mon',showClock:true,showEvents:true,showFlower:true,showMoodSummary:true,showFeedbackNotif:true,showEarthquake:true,moodRemind:false,moodRemindTimes:['昼 12:00','寝る前 23:00'],openOnStart:false,theme:'kisetsu',animations:true});
 const prefersDark=ref(window.matchMedia('(prefers-color-scheme:dark)').matches);
@@ -1178,12 +1235,14 @@ function toggleNotifyTiming(t:string){const i=newEvent.value.notifyTimings.index
 
 // Calendar
 const calYear=ref(new Date().getFullYear());const calMonth=ref(new Date().getMonth());const selectedDay=ref<number|null>(new Date().getDate());
+const calendarTitle = computed(() => yearMonthFormatter.format(new Date(calYear.value, calMonth.value, 1)));
+const selectedDateLabel = computed(() => selectedDay.value == null ? '' : longDateFormatter.format(new Date(calYear.value, calMonth.value, selectedDay.value)));
 function chMo(d:number){calMonth.value+=d;if(calMonth.value>11){calMonth.value=0;calYear.value++}if(calMonth.value<0){calMonth.value=11;calYear.value--}selectedDay.value=null;viewingEvent.value=null}
 function goToday(){const n=new Date();calYear.value=n.getFullYear();calMonth.value=n.getMonth();selectedDay.value=n.getDate()}
 function selectDay(d:number){selectedDay.value=d;viewingEvent.value=null;const ds=`${calYear.value}-${String(calMonth.value+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;newEvent.value.date=ds;newEvent.value.dateEnd=ds;editingEvent.value=null}
 const selectedDateStr=computed(()=>{if(!selectedDay.value)return'';return`${calYear.value}-${String(calMonth.value+1).padStart(2,'0')}-${String(selectedDay.value).padStart(2,'0')}`});
 // allCalendarEvents: ローカル + 共有（公開）イベントをマージ（重複除去）
-const allCalendarEvents=computed(()=>{const local=[...events.value];const localIds=new Set(local.map(e=>e.id));const shared=sharedEvents.value.filter(e=>!localIds.has(e.id)).map(e=>({...e,isShared:true,visibility:'public',timeLabel:e.allDay?`${e.date} 終日`:`${e.date} ${e.timeStart||''}〜${e.timeEnd||''}`.trim()}));return[...local,...shared]});
+const allCalendarEvents=computed(()=>{const local=[...events.value];const localIds=new Set(local.map(e=>e.id));const shared=sharedEvents.value.filter(e=>!localIds.has(e.id)).map(e=>({...e,isShared:true,visibility:'public'}));return[...local,...shared]});
 const eventsForDay=computed(()=>{if(!selectedDateStr.value)return[];return allCalendarEvents.value.filter(e=>{if(e.date===selectedDateStr.value)return true;if(e.dateEnd&&e.date<=selectedDateStr.value&&e.dateEnd>=selectedDateStr.value)return true;return false}).sort((a,b)=>{if(a.allDay&&!b.allDay)return-1;if(!a.allDay&&b.allDay)return 1;return(a.timeStart||'').localeCompare(b.timeStart||'')})});
 function hasEventsOn(ds:string){return allCalendarEvents.value.some(e=>e.date===ds||(e.dateEnd&&e.date<=ds&&e.dateEnd>=ds))}
 function eventDotsFor(ds:string){return allCalendarEvents.value.filter(e=>e.date===ds||(e.dateEnd&&e.date<=ds&&e.dateEnd>=ds)).slice(0,3)}
@@ -1191,9 +1250,9 @@ function startEditEvent(ev:any){editingEvent.value=ev;newEvent.value={title:ev.t
 async function deleteEventById(id:string){
 // 共有イベントの場合は自分のイベントのみ削除可
 const shared=sharedEventData(id);
-if(shared && shared.userId!==$i?.id){os.toast('他のユーザーの予定は削除できません');return}
+if(shared && shared.userId!==$i?.id){os.toast(copy.cannotDeleteOthersEvent);return}
 try{await misskeyApi('hatask/events/delete',{eventId:id})}catch{}
-events.value=events.value.filter(e=>e.id!==id);if(editingEvent.value?.id===id)editingEvent.value=null;viewingEvent.value=null;await registrySet('events',events.value);await loadSharedEvents();os.toast('予定を削除しました')}
+events.value=events.value.filter(e=>e.id!==id);if(editingEvent.value?.id===id)editingEvent.value=null;viewingEvent.value=null;await registrySet('events',events.value);await loadSharedEvents();os.toast(copy.eventDeleted)}
 const calCells=computed(()=>{const fd=new Date(calYear.value,calMonth.value,1).getDay();const dim=new Date(calYear.value,calMonth.value+1,0).getDate();const dip=new Date(calYear.value,calMonth.value,0).getDate();const so=fd===0?6:fd-1;const td=new Date();const cells:any[]=[];for(let i=so-1;i>=0;i--)cells.push({day:dip-i,om:true});for(let d=1;d<=dim;d++){const ds=`${calYear.value}-${String(calMonth.value+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;cells.push({day:d,om:false,today:d===td.getDate()&&calMonth.value===td.getMonth()&&calYear.value===td.getFullYear(),selected:d===selectedDay.value,hasEvents:hasEventsOn(ds),dots:eventDotsFor(ds)})}const rem=(7-cells.length%7)%7;for(let d=1;d<=rem;d++)cells.push({day:d,om:true});return cells});
 
 // Events
@@ -1201,14 +1260,14 @@ const events=ref<any[]>([]);
 const td=()=>new Date().toISOString().slice(0,10);
 const newEvent=ref({title:'',emoji:'⭐',date:td(),timeStart:'14:00',dateEnd:td(),timeEnd:'15:00',color:'#e27d60',visibility:'private',rsvp:false,notify:true,notifyTimings:['15分前','30分前'],allDay:false});
 const upcomingEvents=computed(()=>allCalendarEvents.value.filter(e=>e.date>=td()).sort((a,b)=>a.date.localeCompare(b.date)));
-const publicEvents=computed(()=>{const now=td();const localPublic=events.value.filter(e=>e.visibility==='public'&&e.date>=now);const localIds=new Set(localPublic.map(e=>e.id));const shared=sharedEvents.value.filter(e=>e.date>=now&&!localIds.has(e.id)).map(e=>({...e,isShared:true,timeLabel:e.allDay?`${e.date} 終日`:`${e.date} ${e.timeStart||''}〜${e.timeEnd||''}`.trim()}));return[...localPublic,...shared]});
+const publicEvents=computed(()=>{const now=td();const localPublic=events.value.filter(e=>e.visibility==='public'&&e.date>=now);const localIds=new Set(localPublic.map(e=>e.id));const shared=sharedEvents.value.filter(e=>e.date>=now&&!localIds.has(e.id)).map(e=>({...e,isShared:true}));return[...localPublic,...shared]});
 function goToEvent(ev:any){activeTab.value='cal';const d=new Date(ev.date);calYear.value=d.getFullYear();calMonth.value=d.getMonth();selectedDay.value=d.getDate();viewingEvent.value=ev}
 async function addEvent(){if(!newEvent.value.title.trim())return;
 const isEditing=!!editingEvent.value;
 const ne:any={id:editingEvent.value?.id||generateId(),title:newEvent.value.title.trim(),emoji:newEvent.value.emoji,date:newEvent.value.date,dateEnd:newEvent.value.dateEnd,color:newEvent.value.color,visibility:newEvent.value.visibility,rsvp:newEvent.value.rsvp,notify:newEvent.value.notify,notifyTimings:[...newEvent.value.notifyTimings],allDay:newEvent.value.allDay};
 if(newEvent.value.allDay){ne.timeStart='';ne.timeEnd='';ne.timeLabel=newEvent.value.date+(newEvent.value.dateEnd!==newEvent.value.date?' ~ '+newEvent.value.dateEnd:'')+' 終日'}else{ne.timeStart=newEvent.value.timeStart;ne.timeEnd=newEvent.value.timeEnd;ne.timeLabel=newEvent.value.date+' '+newEvent.value.timeStart+' - '+newEvent.value.timeEnd}
 if(editingEvent.value){const idx=events.value.findIndex(e=>e.id===editingEvent.value.id);if(idx>=0)events.value.splice(idx,1,ne);else events.value.unshift(ne);editingEvent.value=null}else{events.value.unshift(ne)}
-newEvent.value.title='';newEvent.value.allDay=false;await registrySet('events',events.value);scheduleEventNotifications();os.toast(isEditing?'予定を更新しました':'予定を保存しました');
+newEvent.value.title='';newEvent.value.allDay=false;await registrySet('events',events.value);scheduleEventNotifications();os.toast(isEditing?copy.eventUpdated:copy.eventSaved);
 // 公開イベントを新規作成した場合、APIに共有イベントを登録
 if(!isEditing && ne.visibility==='public'){
   try{
@@ -1216,9 +1275,9 @@ if(!isEditing && ne.visibility==='public'){
     await loadSharedEvents();
     // RSVP付きならノートで告知
     if(ne.rsvp){
-      const timeInfo = ne.allDay ? `${ne.date} 終日` : `${ne.date} ${ne.timeStart}〜${ne.timeEnd}`;
+      const timeInfo = ne.allDay ? `${ne.date} ${copy.allDay}` : `${ne.date} ${ne.timeStart}〜${ne.timeEnd}`;
       await misskeyApi('notes/create',{
-        text:`📩 **参加確認のお知らせ**\n\n${ne.emoji} **${ne.title}**\n🗓 ${timeInfo}\n\nHataskの参加確認から回答できます！`,
+        text:copyx.rsvpAnnouncement({ emoji: ne.emoji, title: ne.title, time: timeInfo }),
         visibility:'home',
       });
     }
@@ -1230,7 +1289,7 @@ if(!isEditing && ne.visibility==='public'){
 const newTodo=ref('');const newTodoDue=ref('');const newTodoTime=ref('');const newTodoFolder=ref('');const newTodoComment=ref('');
 const showTodoExtra=ref(false);const activeFolder=ref('all');const showFolderMgr=ref(false);
 const newFolderName=ref('');const newFolderEmoji=ref('📁');const newFolderColor=ref('');const expandedTodo=ref<string|null>(null);const sortMode=ref('manual');
-const folderColors=[{value:'#e57373',label:'レッド'},{value:'#ffb74d',label:'オレンジ'},{value:'#fff176',label:'イエロー'},{value:'#81c784',label:'グリーン'},{value:'#64b5f6',label:'ブルー'},{value:'#ba68c8',label:'パープル'}];
+const folderColors=computed(() => [{value:'#e57373',label:copy.colorRed},{value:'#ffb74d',label:copy.colorOrange},{value:'#fff176',label:copy.colorYellow},{value:'#81c784',label:copy.colorGreen},{value:'#64b5f6',label:copy.colorBlue},{value:'#ba68c8',label:copy.colorPurple}]);
 const todos=ref<any[]>([]);const folders=ref<any[]>([]);
 const pendingCount=computed(()=>todos.value.filter(t=>!t.done).length);
 function folderCount(fid:string){return todos.value.filter(t=>!t.done&&t.folder===fid).length}
@@ -1249,7 +1308,7 @@ const showMealDisclaimer=ref(false);
 const mealsByDate=computed(()=>{const g:Record<string,any[]>={};[...meals.value].sort((a,b)=>b.date.localeCompare(a.date)||b.time.localeCompare(a.time)).forEach(m=>{if(!g[m.date])g[m.date]=[];g[m.date].push(m)});return g});
 // サマリーは数値評価を出さない。記録した行為そのものを中立に肯定する労いのみ
 const mealTodayCount=computed(()=>{const today=new Date().toISOString().slice(0,10);return meals.value.filter(m=>m.date===today).length});
-const mealSummaryMessage=computed(()=>{const c=mealTodayCount.value;if(c===0)return'今日はまだ記録がありません。気が向いたときに、どうぞ。';if(c===1)return'今日はひとつ記録できたね。おつかれさま。';return'今日も記録できたね。おつかれさま。'});
+const mealSummaryMessage=computed(()=>{const c=mealTodayCount.value;if(c===0)return copy.mealSummaryNone;if(c===1)return copy.mealSummaryOne;return copy.mealSummaryMany});
 
 // ===== PAGINATION =====
 const ITEMS_PER_PAGE = 10;
@@ -1320,10 +1379,10 @@ const moodAnalysis=computed(()=>{
   const allRecent=recent.length?recent:moods.value.slice(-10);
   const avg=allRecent.reduce((s:number,m:any)=>s+m.level,0)/Math.max(allRecent.length,1);
   const trendEmoji=avg>=4.2?'🥰':avg>=3.5?'😊':avg>=2.8?'😐':avg>=2?'😞':'😢';
-  const trendLabel=avg>=4.2?'とてもポジティブ':avg>=3.5?'ポジティブ寄り':avg>=2.8?'ふつう':avg>=2?'ネガティブ寄り':'つらい時期';
+  const trendLabel=avg>=4.2?copy.moodTrendVeryPositive:avg>=3.5?copy.moodTrendPositive:avg>=2.8?copy.moodTrendNeutral:avg>=2?copy.moodTrendNegative:copy.moodTrendHard;
   const trendColor=avg>=4.2?'#6bbd67':avg>=3.5?'#85cdca':avg>=2.8?'#d4a574':avg>=2?'#e08760':'#c03050';
   // Time slots
-  const slots=[{label:'朝 (6-11時)',min:6,max:11},{label:'昼 (11-17時)',min:11,max:17},{label:'夜 (17-22時)',min:17,max:22},{label:'深夜 (22-6時)',min:22,max:30}];
+  const slots=[{label:copy.moodTimeMorning,min:6,max:11},{label:copy.moodTimeDay,min:11,max:17},{label:copy.moodTimeEvening,min:17,max:22},{label:copy.moodTimeLateNight,min:22,max:30}];
   const timeSlots=slots.map(s=>{
     const inSlot=moods.value.filter((m:any)=>{if(!m.time)return false;const h=parseInt(m.time.split(':')[0]);const hNorm=h<6?h+24:h;return hNorm>=s.min&&hNorm<s.max});
     const a=inSlot.length?inSlot.reduce((sum:number,m:any)=>sum+m.level,0)/inSlot.length:0;
@@ -1336,32 +1395,33 @@ const moodAnalysis=computed(()=>{
   const best=timeSlots.length?timeSlots.reduce((a,b)=>a.avg>b.avg?a:b):null;
   const worst=timeSlots.length?timeSlots.reduce((a,b)=>a.avg<b.avg?a:b):null;
   if(best&&worst&&best.label!==worst.label&&timeSlots.length>=2){
-    insight=`${best.label}が最もポジティブ（${best.avg.toFixed(1)}）で、${worst.label}は低め（${worst.avg.toFixed(1)}）の傾向があります`
-  }else if(avg>=4){insight='最近はとてもいい調子ですね！この調子を続けましょう'}
-  else if(avg<=2.5){insight='少しつらい時期かもしれません。無理せず自分のペースで過ごしてくださいね'}
+    insight=copyx.moodInsightComparison({ best: best.label, bestScore: best.avg.toFixed(1), worst: worst.label, worstScore: worst.avg.toFixed(1) })
+  }else if(avg>=4){insight=copy.moodInsightPositive}
+  else if(avg<=2.5){insight=copy.moodInsightGentle}
   return{avgScore:avg.toFixed(1),avgScoreRaw:avg,trendEmoji,trendLabel,trendColor,timeSlots,insight}
 });
-const weekMoods=computed(()=>{const days=['月','火','水','木','金','土','日'];const now=new Date();const mon=new Date(now);mon.setDate(now.getDate()-((now.getDay()+6)%7));mon.setHours(0,0,0,0);return days.map((day,i)=>{const d=new Date(mon);d.setDate(mon.getDate()+i);const ds=d.toISOString().slice(0,10);const last=moods.value.filter(m=>m.date===ds).pop();return{day,icon:last?moodIcons[last.level]:''};})});
+const weekMoods=computed(()=>{const now=new Date();const mon=new Date(now);mon.setDate(now.getDate()-((now.getDay()+6)%7));mon.setHours(0,0,0,0);return Array.from({ length: 7 },(_,i)=>{const d=new Date(mon);d.setDate(mon.getDate()+i);const ds=d.toISOString().slice(0,10);const last=moods.value.filter(m=>m.date===ds).pop();return{day: weekdayShortFormatter.format(d),icon:last?moodIcons[last.level]:''};})});
 
 // Garden
 const flower=ref({emoji:'🌱',name:'わかば',progress:0,startedAt:0,totalMinutes:0});
 const gallery=ref<any[]>([]);
-function formatMinutes(m:number){const h=Math.floor(m/60);const mm=m%60;return h>0?`${h}h${mm}m`:`${mm}m`}
-const estimateRemaining=computed(()=>{const rem=Math.max(0,1200-flower.value.totalMinutes);const h=Math.floor(rem/60);return h>0?`${h}時間`:'まもなく'});
+const currentFlowerDisplayName=computed(() => localizeFloraName(flower.value.name));
+function formatMinutes(m:number){const h=Math.floor(m/60);const mm=m%60;return h>0?copyx.hoursMinutes({ hours: h.toString(), minutes: mm.toString() }) : copyx.minutes({ minutes: mm.toString() })}
+const estimateRemaining=computed(()=>{const rem=Math.max(0,1200-flower.value.totalMinutes);const h=Math.floor(rem/60);return h>0?copyx.hours({ hours: h.toString() }):copy.soon});
 
 // Search
 const searchQuery=ref('');const searchInput=ref<HTMLInputElement|null>(null);
 const searchResults=computed(()=>{const q=searchQuery.value.toLowerCase();return{todos:todos.value.filter(t=>t.text.toLowerCase().includes(q)||(t.comment&&t.comment.toLowerCase().includes(q))).slice(0,5),moods:moods.value.filter(m=>m.note.toLowerCase().includes(q)).slice(0,5),events:events.value.filter(e=>e.title.toLowerCase().includes(q)).slice(0,5)}});
 const recentMoodsForSearch=computed(()=>moods.value.slice(0,3));
-function formatSearchDate(d:string):string{const dd=new Date(d);const now=new Date();now.setHours(0,0,0,0);const diff=Math.floor((now.getTime()-new Date(dd.toDateString()).getTime())/(86400000));if(diff===0)return'今日';if(diff===1)return'昨日';return`${dd.getMonth()+1}/${dd.getDate()}`}
+function formatSearchDate(d:string):string{const dd=parseIsoDate(d);const now=new Date();now.setHours(0,0,0,0);const day=new Date(dd); day.setHours(0, 0, 0, 0); const diff=Math.floor((now.getTime()-day.getTime())/(86400000));if(diff===0)return copy.today;if(diff===1)return copy.yesterday;return monthDayFormatter.format(dd)}
 watch(showSearch,v=>{if(v)nextTick(()=>searchInput.value?.focus())});
 
 // Helpers
 function generateId():string{return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
-function formatDue(d:string,t?:string):string{const td=new Date();td.setHours(0,0,0,0);const x=new Date(d);x.setHours(0,0,0,0);let l='';if(x.getTime()===td.getTime())l='今日';else{const tm=new Date(td);tm.setDate(tm.getDate()+1);if(x.getTime()===tm.getTime())l='明日';else l=`${new Date(d).getMonth()+1}/${new Date(d).getDate()}`}if(t)l+=' '+t;return l}
+function formatDue(d:string,t?:string):string{const todayDate=new Date();todayDate.setHours(0,0,0,0);const x=parseIsoDate(d);x.setHours(0,0,0,0);let l='';if(x.getTime()===todayDate.getTime())l=copy.today;else{const tomorrow=new Date(todayDate);tomorrow.setDate(tomorrow.getDate()+1);if(x.getTime()===tomorrow.getTime())l=copy.tomorrow;else l=monthDayFormatter.format(x)}if(t)l+=' '+t;return l}
 function isDueToday(d:string):boolean{return new Date(d).toDateString()===new Date().toDateString()}
 function isOverdue(d:string):boolean{return new Date(d)<new Date(new Date().toDateString())}
-function formatMoodDate(d:string):string{const dd=new Date(d);const dn=['日','月','火','水','木','金','土'];return`${dd.getMonth()+1}/${dd.getDate()} (${dn[dd.getDay()]})`}
+function formatMoodDate(d:string):string{return monthDayWeekdayFormatter.format(parseIsoDate(d))}
 
 // ========== GREETING SYSTEM (500+ variations) ==========
 // Eye page computed stats
@@ -1369,7 +1429,7 @@ const todoCompletionRate=computed(()=>{if(todos.value.length===0)return 0;return
 const weeklyTaskProgress=computed(()=>{const now=new Date();const weekAgo=new Date(now.getTime()-7*86400000);const weekStr=weekAgo.toISOString().slice(0,10);const weekTodos=todos.value.filter(t=>t.createdAt&&new Date(t.createdAt)>=weekAgo);if(weekTodos.length===0)return 0;return Math.round(weekTodos.filter(t=>t.done).length/weekTodos.length*100)});
 const monthlyMoodCount=computed(()=>{const now=new Date();const ym=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;return moods.value.filter(m=>{const d=new Date(m.date||m.createdAt);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`===ym}).length});
 const monthlyMoodProgress=computed(()=>{const now=new Date();const daysInMonth=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();return Math.min(100,Math.round(monthlyMoodCount.value/daysInMonth*100))});
-const currentFlowerHanakotoba=computed(()=>{const flora=floraData.find(f=>f.emoji===flower.value.emoji);return flora?.hanakotoba||''});
+const currentFlowerHanakotoba=computed(()=>{const flora=floraData.find(f=>f.emoji===flower.value.emoji);return flora?.hanakotoba?localizeHanakotoba(flora.hanakotoba) : ''});
 const galleryWithHanakotoba=computed(()=>gallery.value.filter(fl=>fl.hanakotoba).slice(0,20));
 
 // Hatask Eye phrase system
@@ -1384,21 +1444,21 @@ const phrase=_getPhrase({pendingTaskCount:pc,totalTaskCount:todos.value.length,t
 if(phrase)eyePhrase.value=phrase;
 } catch(e) { /* fallback: keep current phrase */ }
 }
-function updateClock(){const now=new Date();currentTime.value=`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;const dn=['日','月','火','水','木','金','土'];const en=['SUNDAY','MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY','SATURDAY'];const M=now.getMonth()+1,D=now.getDate();currentDate.value=`${now.getFullYear()}年${M}月${D}日（${dn[now.getDay()]}）`;clockMD.value=`${M}月${D}日`;clockDow.value=`${dn[now.getDay()]}曜日`;clockDot.value=`${now.getFullYear()}.${String(M).padStart(2,'0')}.${String(D).padStart(2,'0')}`;clockEn.value=en[now.getDay()]}
+function updateClock(){const now=new Date();currentTime.value=new Intl.DateTimeFormat(versatileLang,{ hour: '2-digit',minute: '2-digit',hour12: false }).format(now);currentDate.value=longDateFormatter.format(now);clockMD.value=monthDayFormatter.format(now);clockDow.value=weekdayLongFormatter.format(now);const M=now.getMonth()+1,D=now.getDate();clockDot.value=`${now.getFullYear()}.${String(M).padStart(2,'0')}.${String(D).padStart(2,'0')}`;clockEn.value=weekdayLongFormatter.format(now).toLocaleUpperCase(versatileLang)}
 
 // RSVP logic - uses shared API events (rsvp有効なもののみ)
 const pendingRsvps=computed(()=>{
 const myId=$i?.id;
 return sharedEvents.value.filter(e=>e.rsvp&&!e.rsvpClosed).map(e=>{
 const myResp=e.rsvpResponses?.find((r:any)=>r.userId===myId);
-return{eventId:e.id,emoji:e.emoji||'📅',title:e.title,dateLabel:`${e.date} ${e.timeStart||''}`.trim(),myStatus:myResp?.status||null,creatorUsername:e.username};
+return{eventId:e.id,emoji:e.emoji||'📅',title:e.title,dateLabel:eventDateTimeLabel(e),myStatus:myResp?.status||null,creatorUsername:e.username};
 });
 });
 async function setRsvp(eventId:string,status:'going'|'maybe'|'declined'){
-try{await misskeyApi('hatask/events/rsvp',{eventId,status});await loadSharedEvents();os.toast(status==='going'?'参加します！':status==='maybe'?'検討中にしました':'辞退しました')}catch(e){console.error('RSVP failed:',e);os.toast('回答の送信に失敗しました')}
+try{await misskeyApi('hatask/events/rsvp',{eventId,status});await loadSharedEvents();os.toast(status==='going'?copy.rsvpGoingSaved:status==='maybe'?copy.rsvpMaybeSaved:copy.rsvpDeclinedSaved)}catch(e){console.error('RSVP failed:',e);os.toast(copy.rsvpSendFailed)}
 }
 async function closeRsvp(eventId:string){
-try{await misskeyApi('hatask/events/close',{eventId,closed:true});await loadSharedEvents();os.toast('参加確認を終了しました')}catch(e){console.error('Close RSVP failed:',e);os.toast('締め切りに失敗しました')}
+try{await misskeyApi('hatask/events/close',{eventId,closed:true});await loadSharedEvents();os.toast(copy.rsvpClosed)}catch(e){console.error('Close RSVP failed:',e);os.toast(copy.rsvpCloseFailed)}
 }
 
 // CRUD
@@ -1410,21 +1470,21 @@ closedRsvpNotifs.value=sharedEvents.value.filter(e=>e.rsvpClosed&&e.rsvpResponse
 }
 const editingTodoId=ref<string|null>(null);
 async function addTodo(){if(!newTodo.value.trim()&&!editingTodoId.value)return;
-if(editingTodoId.value){const t=todos.value.find(t=>t.id===editingTodoId.value);if(t){t.text=newTodo.value.trim()||t.text;t.due=newTodoDue.value;t.time=newTodoTime.value;t.folder=newTodoFolder.value;t.comment=newTodoComment.value}editingTodoId.value=null;newTodo.value='';newTodoDue.value='';newTodoTime.value='';newTodoComment.value='';showTodoExtra.value=false;await registrySet('todos',todos.value);os.toast('タスクを更新しました');return}
+if(editingTodoId.value){const t=todos.value.find(t=>t.id===editingTodoId.value);if(t){t.text=newTodo.value.trim()||t.text;t.due=newTodoDue.value;t.time=newTodoTime.value;t.folder=newTodoFolder.value;t.comment=newTodoComment.value}editingTodoId.value=null;newTodo.value='';newTodoDue.value='';newTodoTime.value='';newTodoComment.value='';showTodoExtra.value=false;await registrySet('todos',todos.value);os.toast(copy.todoUpdated);return}
 todos.value.unshift({id:generateId(),text:newTodo.value.trim(),done:false,due:newTodoDue.value,time:newTodoTime.value,folder:newTodoFolder.value||(activeFolder.value!=='all'?activeFolder.value:''),comment:newTodoComment.value,createdAt:Date.now()});newTodo.value='';newTodoDue.value='';newTodoTime.value='';newTodoComment.value='';await registrySet('todos',todos.value)}
 async function toggleTodo(id:string){const t=todos.value.find(t=>t.id===id);if(t){t.done=!t.done;await registrySet('todos',todos.value)}}
-async function deleteTodo(id:string){const{canceled}=await os.confirm({type:'warning',text:'このタスクを削除しますか？'});if(canceled)return;todos.value=todos.value.filter(t=>t.id!==id);await registrySet('todos',todos.value)}
+async function deleteTodo(id:string){const{canceled}=await os.confirm({type:'warning',text:copy.confirmDeleteTodo});if(canceled)return;todos.value=todos.value.filter(t=>t.id!==id);await registrySet('todos',todos.value)}
 async function editTodo(id:string){const t=todos.value.find(t=>t.id===id);if(!t)return;editingTodoId.value=id;newTodo.value=t.text;newTodoDue.value=t.due||'';newTodoTime.value=t.time||'';newTodoFolder.value=t.folder||'';newTodoComment.value=t.comment||'';showTodoExtra.value=true;const el=document.querySelector('.htk-todo-inp-r');if(el)el.scrollIntoView({behavior:'smooth',block:'center'})}
 function cancelEditTodo(){editingTodoId.value=null;newTodo.value='';newTodoDue.value='';newTodoTime.value='';newTodoComment.value='';showTodoExtra.value=false}
 async function addFolder(){if(!newFolderName.value.trim())return;folders.value.push({id:generateId(),name:newFolderName.value.trim(),emoji:newFolderEmoji.value||'📁',color:newFolderColor.value||''});newFolderName.value='';newFolderEmoji.value='📁';newFolderColor.value='';await registrySet('folders',folders.value)}
-async function deleteFolder(i:number){const{canceled}=await os.confirm({type:'warning',text:`フォルダ「${folders.value[i].name}」を削除しますか？`});if(canceled)return;const fid=folders.value[i].id;todos.value.forEach(t=>{if(t.folder===fid)t.folder=''});if(activeFolder.value===fid)activeFolder.value='all';folders.value.splice(i,1);await registrySet('folders',folders.value);await registrySet('todos',todos.value)}
-async function renameFolder(i:number){const{canceled,result}=await os.inputText({title:'フォルダ名変更',text:'新しい名前:',default:folders.value[i].name});if(!canceled&&result){folders.value[i].name=result;await registrySet('folders',folders.value)}}
+async function deleteFolder(i:number){const{canceled}=await os.confirm({type:'warning',text:copyx.confirmDeleteFolder({ name:folders.value[i].name })});if(canceled)return;const fid=folders.value[i].id;todos.value.forEach(t=>{if(t.folder===fid)t.folder=''});if(activeFolder.value===fid)activeFolder.value='all';folders.value.splice(i,1);await registrySet('folders',folders.value);await registrySet('todos',todos.value)}
+async function renameFolder(i:number){const{canceled,result}=await os.inputText({title:copy.renameFolderTitle,text: copy.newNamePrompt,default:folders.value[i].name});if(!canceled&&result){folders.value[i].name=result;await registrySet('folders',folders.value)}}
 async function moveFolder(i:number,d:number){const ni=i+d;if(ni<0||ni>=folders.value.length)return;[folders.value[i],folders.value[ni]]=[folders.value[ni],folders.value[i]];await registrySet('folders',folders.value)}
-async function changeFolderColor(i:number){const {canceled,result}=await os.actions({type:'question',title:'フォルダの色',actions:[...folderColors.map(c=>({value:c.value,text:c.label})),{value:'',text:'なし'}]});if(canceled)return;folders.value[i].color=result;await registrySet('folders',folders.value)}
-async function saveMood(){isSaving.value=true;try{if(editingMood.value){const idx=moods.value.findIndex(m=>m.id===editingMood.value.id);if(idx>=0){moods.value[idx]={...moods.value[idx],level:selectedMoodLevel.value,note:moodNote.value.trim()||'（ひとことなし）',emoji:moodSelectedEmoji.value}}editingMood.value=null;moodNote.value='';moodSelectedEmoji.value='';await registrySet('moods',moods.value);os.toast('きもちを更新しました')}else{const now=new Date();moods.value.unshift({id:generateId(),level:selectedMoodLevel.value,note:moodNote.value.trim()||'（ひとことなし）',emoji:moodSelectedEmoji.value,date:now.toISOString().slice(0,10),time:`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`});moodNote.value='';moodSelectedEmoji.value='';await registrySet('moods',moods.value);os.toast('きもちを保存しました')}}finally{isSaving.value=false}}
+async function changeFolderColor(i:number){const {canceled,result}=await os.actions({type:'question',title:copy.folderColorTitle,actions:[...folderColors.value.map(c=>({value:c.value,text:c.label})),{value:'',text:copy.none}]});if(canceled)return;folders.value[i].color=result;await registrySet('folders',folders.value)}
+async function saveMood(){isSaving.value=true;try{if(editingMood.value){const idx=moods.value.findIndex(m=>m.id===editingMood.value.id);if(idx>=0){moods.value[idx]={...moods.value[idx],level:selectedMoodLevel.value,note:moodNote.value.trim()||'（ひとことなし）',emoji:moodSelectedEmoji.value}}editingMood.value=null;moodNote.value='';moodSelectedEmoji.value='';await registrySet('moods',moods.value);os.toast(copy.moodUpdated)}else{const now=new Date();moods.value.unshift({id:generateId(),level:selectedMoodLevel.value,note:moodNote.value.trim()||'（ひとことなし）',emoji:moodSelectedEmoji.value,date:now.toISOString().slice(0,10),time:`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`});moodNote.value='';moodSelectedEmoji.value='';await registrySet('moods',moods.value);os.toast(copy.moodSaved)}}finally{isSaving.value=false}}
 function startEditMood(m:any){editingMood.value=m;selectedMoodLevel.value=m.level;moodNote.value=m.note==='（ひとことなし）'?'':m.note;moodSelectedEmoji.value=m.emoji||'';showMoodNote.value=true;window.scrollTo({top:0,behavior:'smooth'})}
 function cancelEditMood(){editingMood.value=null;selectedMoodLevel.value=4;moodNote.value='';moodSelectedEmoji.value=''}
-async function deleteMood(id:string){const{canceled}=await os.confirm({type:'warning',text:'この記録を削除しますか？'});if(canceled)return;moods.value=moods.value.filter(m=>m.id!==id);await registrySet('moods',moods.value)}
+async function deleteMood(id:string){const{canceled}=await os.confirm({type:'warning',text:copy.confirmDeleteRecord});if(canceled)return;moods.value=moods.value.filter(m=>m.id!==id);await registrySet('moods',moods.value)}
 
 // ===== 食事記録(meal) ロジック。3段階は等価に扱い、数値評価・スコア化はしない =====
 function toggleMealReason(r:string){const i=selectedMealReasons.value.indexOf(r);if(i>=0)selectedMealReasons.value.splice(i,1);else selectedMealReasons.value.push(r)}
@@ -1432,19 +1492,19 @@ function resetMealForm(){selectedMealSlot.value='breakfast';selectedMealLevel.va
 async function saveMeal(){isSaving.value=true;try{
   // 「食べれた」のときは理由を保存しない(尋問感を出さないため)
   const reasons=selectedMealLevel.value==='ate'?[]:[...selectedMealReasons.value];
-  if(editingMeal.value){const idx=meals.value.findIndex(m=>m.id===editingMeal.value.id);if(idx>=0){meals.value[idx]={...meals.value[idx],slot:selectedMealSlot.value,level:selectedMealLevel.value,reasons,note:mealNote.value.trim()};}resetMealForm();await registrySet('meals',meals.value);os.toast('記録を更新しました')}
-  else{const now=new Date();meals.value.unshift({id:generateId(),slot:selectedMealSlot.value,level:selectedMealLevel.value,reasons,note:mealNote.value.trim(),date:now.toISOString().slice(0,10),time:`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`});resetMealForm();await registrySet('meals',meals.value);os.toast('記録できたね')}
+  if(editingMeal.value){const idx=meals.value.findIndex(m=>m.id===editingMeal.value.id);if(idx>=0){meals.value[idx]={...meals.value[idx],slot:selectedMealSlot.value,level:selectedMealLevel.value,reasons,note:mealNote.value.trim()};}resetMealForm();await registrySet('meals',meals.value);os.toast(copy.recordUpdated)}
+  else{const now=new Date();meals.value.unshift({id:generateId(),slot:selectedMealSlot.value,level:selectedMealLevel.value,reasons,note:mealNote.value.trim(),date:now.toISOString().slice(0,10),time:`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`});resetMealForm();await registrySet('meals',meals.value);os.toast(copy.mealRecorded)}
 }finally{isSaving.value=false}}
 function startEditMeal(m:any){editingMeal.value=m;selectedMealSlot.value=m.slot;selectedMealLevel.value=m.level;selectedMealReasons.value=Array.isArray(m.reasons)?[...m.reasons]:[];mealNote.value=m.note||'';window.scrollTo({top:0,behavior:'smooth'})}
 function cancelEditMeal(){resetMealForm()}
-async function deleteMeal(id:string){const{canceled}=await os.confirm({type:'warning',text:'この記録を削除しますか？'});if(canceled)return;meals.value=meals.value.filter(m=>m.id!==id);await registrySet('meals',meals.value)}
-function mealSlotInfo(id:string){return mealSlots.find(s=>s.id===id)||{emoji:'ti ti-tools-kitchen-2',label:''}}
-function mealLevelInfo(id:string){return mealLevels.find(l=>l.id===id)||{emoji:'ti ti-tools-kitchen-2',label:'',color:'var(--MI_THEME-fg)'}}
+async function deleteMeal(id:string){const{canceled}=await os.confirm({type:'warning',text:copy.confirmDeleteRecord});if(canceled)return;meals.value=meals.value.filter(m=>m.id!==id);await registrySet('meals',meals.value)}
+function mealSlotInfo(id:string){return mealSlots.value.find(s=>s.id===id)||{emoji:'ti ti-tools-kitchen-2',label:''}}
+function mealLevelInfo(id:string){return mealLevels.value.find(l=>l.id===id)||{emoji:'ti ti-tools-kitchen-2',label:'',color:'var(--MI_THEME-fg)'}}
 // 免責ダイアログ: 初回必ず表示、以降は!マークから手動表示
 async function showMealDisclaimerDialog(){showMealDisclaimer.value=true}
 async function ackMealDisclaimer(){showMealDisclaimer.value=false;if(!settings.value.mealDisclaimerShown){settings.value.mealDisclaimerShown=true;await registrySet('settings',settings.value)}}
-async function harvestFlower(){const autoName=generateFlowerName({emoji:flower.value.emoji,name:flower.value.name});const{canceled,result}=await os.inputText({title:'お花が咲きました！',text:'お花に名前をつけてあげましょう（自動生成名が入っています）:',default:autoName});if(canceled||!result)return;const flora=floraData.find(f=>f.emoji===flower.value.emoji);gallery.value.unshift({id:generateId(),emoji:flower.value.emoji,name:result,hanakotoba:flora?.hanakotoba||'',date:new Date().toLocaleDateString('ja-JP')});const nf=pickRandomFlora();flower.value={emoji:nf.emoji,name:generateFlowerName(nf),progress:0,startedAt:Date.now(),totalMinutes:0};await registrySet('gallery',gallery.value);await registrySet('flower',flower.value);await syncHataskFlowerCount();os.toast('お花を収穫しました！')}
-async function renameFlower(fl:any){const{canceled,result}=await os.inputText({title:'お花の名前を変更',text:'新しい名前:',default:fl.name});if(!canceled&&result){fl.name=result;await registrySet('gallery',gallery.value)}}
+async function harvestFlower(){const autoName=generateFlowerName({emoji:flower.value.emoji,name:flower.value.name});const localizedAutoName = localizeFloraName(autoName); const{canceled,result}=await os.inputText({title:copy.flowerBloomedTitle,text:copy.flowerNamingPrompt,default:localizedAutoName});if(canceled||!result)return;const flora=floraData.find(f=>f.emoji===flower.value.emoji);gallery.value.unshift({id:generateId(),emoji:flower.value.emoji,name:result === localizedAutoName ? autoName : result,hanakotoba:flora?.hanakotoba||'',date:new Date().toLocaleDateString('ja-JP')});const nf=pickRandomFlora();flower.value={emoji:nf.emoji,name:generateFlowerName(nf),progress:0,startedAt:Date.now(),totalMinutes:0};await registrySet('gallery',gallery.value);await registrySet('flower',flower.value);await syncHataskFlowerCount();os.toast(copy.flowerHarvested)}
+async function renameFlower(fl:any){const sourceName = fl.name; const localizedName = localizeFloraName(sourceName); const{canceled,result}=await os.inputText({title:copy.renameFlowerTitle,text:copy.newNamePrompt,default:localizedName});if(!canceled&&result){fl.name=result === localizedName ? sourceName : result;await registrySet('gallery',gallery.value)}}
 
 let growthInterval:ReturnType<typeof setInterval>|null=null;
 // 旗鯖fork: お花の成長は「setIntervalの発火回数」ではなく「実経過時間」で数える。

@@ -69,12 +69,13 @@ export type HatacordingUiDevicePreferences = {
 
 const DEFAULT_TABS: HatacordingUiSubpaneTab[] = [{
 	id: 'detail',
-	title: '詳細',
+	// 保存値に表示言語を混ぜず、表示時にlocaleから解決する。
+	title: 'detail',
 	kind: 'detail',
 	widgets: [],
 }, {
 	id: 'widgets',
-	title: 'ウィジェット',
+	title: 'widgets',
 	kind: 'widgets',
 	widgets: [],
 }];
@@ -144,7 +145,9 @@ function safeTabs(value: unknown): HatacordingUiSubpaneTab[] {
 			&& !Array.isArray(widget.data)
 		)) : [];
 		usedIds.add(id);
-		tabs.push({ id, title: tab.title.slice(0, 24), kind: tab.kind, widgets });
+		// 旧バージョンが翻訳済みタイトルを保存していても、
+		// 今後は種類ごとのstable tokenへ正規化する。
+		tabs.push({ id, title: tab.kind, kind: tab.kind, widgets });
 	}
 	if (!tabs.some(tab => tab.kind === 'detail')) {
 		// `detail` を名乗る壊れたwidgetタブがあっても、正規の詳細タブを優先する。

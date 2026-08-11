@@ -52,6 +52,7 @@ export const paramDef = {
 		sinceDate: { type: 'integer' },
 		untilDate: { type: 'integer' },
 		markAsRead: { type: 'boolean', default: true },
+		excludeBots: { type: 'boolean', default: false },
 		// 後方互換のため、廃止された通知タイプも受け付ける
 		includeTypes: { type: 'array', items: {
 			type: 'string', enum: [...notificationFilterTypes, ...obsoleteNotificationTypes],
@@ -94,6 +95,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				limit: ps.limit + EXTRA_LIMIT,
 				includeTypes,
 				excludeTypes,
+				excludeBots: ps.excludeBots,
 			});
 
 			if (notifications.length === 0) {

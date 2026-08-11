@@ -9,8 +9,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 	data-hatacording-ui-settings
 >
 	<div :class="$style.section">
-		<div :class="$style.heading"><strong>UIカラー</strong><span>表示に合わせて全体の配色を切り替えます</span></div>
-		<div :class="$style.choiceBar" role="group" aria-label="UIカラー">
+		<div :class="$style.heading"><strong>{{ copy.uiColor }}</strong><span>{{ copy.uiColorDescription }}</span></div>
+		<div :class="$style.choiceBar" role="group" :aria-label="copy.uiColor">
 			<button
 				v-for="choice in colorChoices"
 				:key="choice.id"
@@ -26,8 +26,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 	</div>
 
 	<div :class="$style.section" data-hatacording-ui-scale-selector>
-		<div :class="$style.heading"><strong>UI全体の大きさ</strong><span>情報量と読みやすさを調整します</span></div>
-		<div :class="$style.choiceBar" role="group" aria-label="UI全体の大きさ">
+		<div :class="$style.heading"><strong>{{ copy.uiScale }}</strong><span>{{ copy.uiScaleDescription }}</span></div>
+		<div :class="$style.choiceBar" role="group" :aria-label="copy.uiScale">
 			<button
 				v-for="choice in scaleChoices"
 				:key="choice.id"
@@ -44,24 +44,24 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 	<div :class="$style.switches">
 		<MkSwitch :modelValue="preferences.timelineRealtime" :disabled="!realtimeAvailable" @update:modelValue="value => updatePreferences({ timelineRealtime: value })">
-			リアルタイム更新
-			<template #caption>{{ realtimeAvailable ? '新しい投稿と投稿の変化をその場で反映します。' : '現在のタイムラインはリアルタイム更新に対応していません。' }}</template>
+			{{ copy.realtimeUpdate }}
+			<template #caption>{{ realtimeAvailable ? copy.realtimeUpdateDescription : copy.realtimeUnavailable }}</template>
 		</MkSwitch>
 		<MkSwitch :modelValue="preferences.reuseSubpaneTab" @update:modelValue="value => updatePreferences({ reuseSubpaneTab: value })">
-			右ペインは同じタブで遷移
+			{{ copy.reuseSubpaneTab }}
 		</MkSwitch>
 		<MkSwitch :modelValue="preferences.showRateLimitNumber" @update:modelValue="value => updatePreferences({ showRateLimitNumber: value })">
-			レートリミット円に数値を表示
+			{{ copy.showRateLimitNumber }}
 		</MkSwitch>
 		<MkSwitch :modelValue="preferences.showCharacterCounter" @update:modelValue="value => updatePreferences({ showCharacterCounter: value })">
-			投稿欄に文字数チェッカーを表示
+			{{ copy.showCharacterCounter }}
 		</MkSwitch>
 		<MkSwitch :modelValue="preferences.showFoilAnimation" @update:modelValue="value => updatePreferences({ showFoilAnimation: value })">
-			テキストのshimmerアニメーションを表示
+			{{ copy.showShimmerAnimation }}
 		</MkSwitch>
 	</div>
 
-	<p v-if="!compact" :class="$style.note">この内容は端末内に保存され、HataSNSCordUI左上の調整メニューと常に同期します。</p>
+	<p v-if="!compact" :class="$style.note">{{ copy.savedLocally }}</p>
 </div>
 </template>
 
@@ -79,6 +79,7 @@ import {
 	readHatacordingUiPreferences,
 	writeHatacordingUiPreferences,
 } from '@/utility/hatacording-ui.js';
+import { i18n } from '@/i18n.js';
 
 const props = withDefaults(defineProps<{
 	accountId: string;
@@ -91,15 +92,16 @@ const props = withDefaults(defineProps<{
 const { accountId } = toRefs(props);
 
 const preferences = ref(readHatacordingUiPreferences(accountId.value));
+const copy = i18n.ts._hata._hatacordingUi._settings;
 const colorChoices: { id: HatacordingUiColorMode; label: string }[] = [
-	{ id: 'theme', label: 'テーマ' },
-	{ id: 'light', label: 'ライト' },
-	{ id: 'dark', label: 'ダーク' },
+	{ id: 'theme', label: copy.theme },
+	{ id: 'light', label: copy.light },
+	{ id: 'dark', label: copy.dark },
 ];
 const scaleChoices: { id: HatacordingUiScale; label: string }[] = [
-	{ id: 'small', label: '小' },
-	{ id: 'medium', label: '中' },
-	{ id: 'large', label: '大' },
+	{ id: 'small', label: copy.small },
+	{ id: 'medium', label: copy.medium },
+	{ id: 'large', label: copy.large },
 ];
 
 function updatePreferences(patch: Partial<HatacordingUiDevicePreferences>) {

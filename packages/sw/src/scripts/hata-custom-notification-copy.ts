@@ -3,20 +3,8 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import type * as Misskey from 'cherrypick-js';
-import { i18n } from '@/i18n.js';
-import { versatileLang } from '@/utility/intl-const.js';
-
-export type HataFeedBellNotification = Extract<Misskey.entities.Notification, { type: 'hataFeed' }>;
-
-export type HataFeedBellGroup = {
-	type: 'hataFeed:grouped';
-	id: string;
-	createdAt: string;
-	items: HataFeedBellNotification[];
-};
-
-export type BellNotificationForDisplay = Misskey.entities.Notification | HataFeedBellGroup;
+import type { I18n } from '@@/js/i18n.js';
+import type { Locale } from '../../../../locales/index.js';
 
 type HataFeedFixedMessageKey =
 	| 'emojiApproved'
@@ -55,17 +43,16 @@ const HATAFEED_STATUS_KEYS = {
 	受付終了: 'statusClosed',
 } as const;
 
-function localizedStatus(status: string): string {
+type HataI18n = I18n<Locale>;
+
+function localizedStatus(status: string, i18n: HataI18n): string {
 	const key = HATAFEED_STATUS_KEYS[status as keyof typeof HATAFEED_STATUS_KEYS];
 	return key == null ? status : i18n.ts._hata._hatafeed._notificationGroup[key];
 }
 
-// 旗鯖fork(i18n): HataFeed のベル通知本文は作成時点の日本語として保存される。
-// API/DB形状を変えず、既知の固定・動的パターンだけを表示時に分解して翻訳する。
-// 未知の本文は情報を失わないよう、汎用文へ潰さず原文をそのまま返す。
-export function hataFeedNotificationDisplayBody(body: string, lang = versatileLang): string {
-	if (lang.toLowerCase().startsWith('ja')) return body;
-
+// HataFeed の通知本文は既存DB・Push形式との互換のため日本語のまま届く。
+// 既知の固定・動的形式だけを現在のSW localeへ変換し、未知本文は原文を保持する。
+export function hataFeedNotificationDisplayBody(body: string, i18n: HataI18n): string {
 	const copy = i18n.ts._hata._hatafeed._notificationGroup;
 	const copyx = i18n.tsx._hata._hatafeed._notificationGroup;
 	const fixedKey = HATAFEED_FIXED_MESSAGES[body as keyof typeof HATAFEED_FIXED_MESSAGES];
@@ -75,7 +62,7 @@ export function hataFeedNotificationDisplayBody(body: string, lang = versatileLa
 	if (match) return copyx.issuePosted({ title: match[1] });
 
 	match = body.match(/^イシュー「(.+)」の状態が「(.+)」に変更されました。$/su);
-	if (match) return copyx.issueStatusChangedWithTitle({ title: match[1], status: localizedStatus(match[2]) });
+	if (match) return copyx.issueStatusChangedWithTitle({ title: match[1], status: localizedStatus(match[2], i18n) });
 
 	match = body.match(/^「(.+)」のイシューが解決済みになりました。$/su);
 	if (match) return copyx.issueResolvedWithTitle({ title: match[1] });
@@ -119,33 +106,52 @@ export function hataFeedNotificationDisplayBody(body: string, lang = versatileLa
 	return body;
 }
 
-/**
- * 本体の通知一覧にある HataFeed 通知を、時系列上の最初の位置へ1つにまとめる。
- * 単独の場合は従来の通知行をそのまま返す。
- */
-export function groupHataFeedBellNotifications(
-	notifications: Misskey.entities.Notification[],
-): BellNotificationForDisplay[] {
-	const hataFeedItems = notifications.filter((notification): notification is HataFeedBellNotification => notification.type === 'hataFeed');
-	if (hataFeedItems.length < 2) return notifications;
+export type PrivateChannelNotificationType = 'addedToPrivateChannel' | 'removedFromPrivateChannel';
 
-	const group: HataFeedBellGroup = {
-		type: 'hataFeed:grouped',
-		id: `hatafeed-group:${hataFeedItems[0].id}`,
-		createdAt: hataFeedItems[0].createdAt,
-		items: hataFeedItems,
-	};
-	const result: BellNotificationForDisplay[] = [];
-	let emitted = false;
-	for (const notification of notifications) {
-		if (notification.type === 'hataFeed') {
-			if (!emitted) {
-				result.push(group);
-				emitted = true;
-			}
-			continue;
+export function privateChannelNotificationDisplayCopy(
+	type: PrivateChannelNotificationType,
+	header: string,
+	body: string,
+	i18n: HataI18n,
+): { header: string; body: string } {
+	const copy = i18n.ts._hata._privateChannels;
+	const copyx = i18n.tsx._hata._privateChannels;
+
+	if (type === 'addedToPrivateChannel') {
+		let match = body.match(/^プライベートチャンネル「(.+)」への参加招待が届きました。参加するか選んでください。$/su);
+		if (match) {
+			return {
+				header: copy.invitationNotificationHeader,
+				body: copyx.invitationNotificationBodyWithName({ name: match[1] }),
+			};
 		}
-		result.push(notification);
+
+		match = body.match(/^プライベートチャンネル「(.+)」の副管理者に追加されました。タップしてチャンネルを開く。$/su);
+		if (match) {
+			return {
+				header: copy.addedNotificationHeader,
+				body: copyx.addedManagerNotificationBodyWithName({ name: match[1] }),
+			};
+		}
 	}
-	return result;
+
+	if (type === 'removedFromPrivateChannel') {
+		let match = body.match(/^プライベートチャンネル「(.+)」の副管理者から外れました。$/su);
+		if (match) {
+			return {
+				header: copy.removedNotificationHeader,
+				body: copyx.removedManagerNotificationBodyWithName({ name: match[1] }),
+			};
+		}
+
+		match = body.match(/^プライベートチャンネル「(.+)」のメンバーから外れました。$/su);
+		if (match) {
+			return {
+				header: copy.removedNotificationHeader,
+				body: copyx.removedMemberNotificationBodyWithName({ name: match[1] }),
+			};
+		}
+	}
+
+	return { header, body };
 }

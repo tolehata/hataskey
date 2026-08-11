@@ -34,6 +34,20 @@ function notification(id: string, createdAt: number): HatacordingCachedActivity 
 	};
 }
 
+function sourceNotification(id: string, createdAt: number): HatacordingCachedActivity {
+	return {
+		...notification(id, createdAt),
+		action: 'さんが投稿しました',
+		cacheSource: {
+			kind: 'notification',
+			type: 'follow',
+			external: false,
+			groupedCount: 0,
+			user: { id: 'user-1', username: 'seal', host: null } as never,
+		},
+	};
+}
+
 describe('HataSNSCordUIの通知履歴キャッシュ', () => {
 	beforeEach(() => {
 		stored.clear();
@@ -83,5 +97,83 @@ describe('HataSNSCordUIの通知履歴キャッシュ', () => {
 		expect(readHatacordingActivityCache('user-a', now)).toEqual([
 			expect.objectContaining({ id: 'safe', to: '' }),
 		]);
+	});
+
+	test('通知は翻訳済み文言ではなく再解決可能なsourceだけをv2へ保存する', () => {
+		const now = Date.UTC(2026, 7, 10, 12);
+		writeHatacordingActivityCache('user-a', [sourceNotification('source', now)], now, 'en-US');
+
+		const raw = stored.get('hatacordingActivityCache:user-a') as { version: number; locale: string; items: HatacordingCachedActivity[] };
+		expect(raw).toMatchObject({ version: 2, locale: 'en-us' });
+		expect(raw.items[0]).toMatchObject({ id: 'source', cacheSource: { kind: 'notification', type: 'follow' } });
+		expect(raw.items[0]).not.toHaveProperty('text');
+		expect(raw.items[0]).not.toHaveProperty('detail');
+		expect(raw.items[0]).not.toHaveProperty('action');
+	});
+
+	test('Bot由来フラグをキャッシュへ保持する', () => {
+		const now = Date.UTC(2026, 7, 10, 12);
+		const item = sourceNotification('bot-source', now);
+		item.cacheSource = {
+			...item.cacheSource!,
+			user: { id: 'bot-1', username: 'helper', host: null, isBot: true } as never,
+		};
+
+		writeHatacordingActivityCache('user-a', [item], now);
+		expect(readHatacordingActivityCache('user-a', now)[0]).toMatchObject({
+			cacheSource: { botOrigin: true, user: { id: 'bot-1', isBot: true } },
+		});
+	});
+
+	test('添付を含む完全なNoteは保存せず、上限付きの要約だけを保持する', () => {
+		const now = Date.UTC(2026, 7, 10, 12);
+		const item = sourceNotification('source', now);
+		item.cacheSource = {
+			...item.cacheSource!,
+			note: {
+				id: 'note-1',
+				text: 'x'.repeat(5000),
+				cw: 'y'.repeat(1000),
+				files: [{ id: 'file-1', comment: 'z'.repeat(200_000) }],
+			} as never,
+			noteId: 'note-1',
+			noteText: 'x'.repeat(5000),
+			noteCw: 'y'.repeat(1000),
+			noteEmojiUrls: Object.fromEntries(Array.from({ length: 30 }, (_, index) => [`emoji${index}`, `https://example.test/${index}.webp`])),
+		};
+
+		writeHatacordingActivityCache('user-a', [item], now);
+		const raw = stored.get('hatacordingActivityCache:user-a') as { items: HatacordingCachedActivity[] };
+		const source = raw.items[0].cacheSource!;
+		expect(source).not.toHaveProperty('note');
+		expect(source.noteText).toHaveLength(1000);
+		expect(source.noteCw).toHaveLength(500);
+		expect(Object.keys(source.noteEmojiUrls ?? {})).toHaveLength(20);
+		expect(JSON.stringify(raw).length).toBeLessThan(50_000);
+	});
+
+	test('言語変更時もsource付き通知と翻訳不能な旧履歴を削除しない', () => {
+		const now = Date.UTC(2026, 7, 10, 12);
+		writeHatacordingActivityCache('user-a', [
+			sourceNotification('source', now),
+			notification('legacy', now - 1000),
+			{ ...notification('earthquake', now - 2000), kind: 'earthquake', emergency: true },
+		], now, 'en-US');
+
+		expect(readHatacordingActivityCache('user-a', now, 'zh-CN').map(item => item.id)).toEqual(['earthquake', 'legacy', 'source']);
+	});
+
+	test('v1キャッシュは表示言語にかかわらず互換読込する', () => {
+		const now = Date.UTC(2026, 7, 10, 12);
+		stored.set('hatacordingActivityCache:user-a', {
+			version: 1,
+			items: [
+				notification('legacy', now),
+				{ ...notification('earthquake', now - 1000), kind: 'earthquake', emergency: true },
+			],
+		});
+
+		expect(readHatacordingActivityCache('user-a', now, 'ja-JP').map(item => item.id)).toEqual(['earthquake', 'legacy']);
+		expect(readHatacordingActivityCache('user-a', now, 'en-US').map(item => item.id)).toEqual(['earthquake', 'legacy']);
 	});
 });

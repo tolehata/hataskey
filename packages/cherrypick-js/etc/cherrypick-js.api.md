@@ -306,6 +306,9 @@ type AdminGetUserIpsResponse = operations['admin___get-user-ips']['responses']['
 type AdminHataConsentListRequest = operations['admin___hata___consent-list']['requestBody']['content']['application/json'];
 
 // @public (undocumented)
+type AdminHataConsentListResponse = operations['admin___hata___consent-list']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
 type AdminInviteCreateRequest = operations['admin___invite___create']['requestBody']['content']['application/json'];
 
 // @public (undocumented)
@@ -967,6 +970,88 @@ export type Channels = {
             updateSettings: ReversiUpdateSettings<ReversiUpdateKey>;
             claimTimeIsUp: null | Record<string, never>;
             reaction: string;
+        };
+    };
+    stackingGameRoom: {
+        params: {
+            roomId: string;
+        };
+        events: {
+            started: (payload: {
+                roomId: string;
+                host2Id: User['id'];
+            }) => void;
+            drop: (payload: {
+                userId: User['id'];
+                dropX: number;
+                emojiName: string;
+                emojiUrl?: string;
+                emojiChar?: string;
+            }) => void;
+            scoreUpdate: (payload: {
+                userId: User['id'];
+                score: number;
+                blocks: number;
+            }) => void;
+            ended: (payload: {
+                winner: number;
+                loserId: User['id'];
+                reason?: 'disconnect';
+            }) => void;
+            canceled: (payload: {
+                userId: User['id'];
+            }) => void;
+        };
+        receives: {
+            drop: {
+                dropX: number;
+                emojiName: string;
+                emojiUrl?: string;
+                emojiChar?: string;
+            };
+            scoreUpdate: {
+                score: number;
+                blocks: number;
+            };
+            dead: Record<string, never>;
+        };
+    };
+    whackEmojiRoom: {
+        params: {
+            roomId: string;
+        };
+        events: {
+            started: (payload: {
+                roomId: string;
+                host2Id: User['id'];
+            }) => void;
+            whack: (payload: {
+                userId: User['id'];
+                cellIndex: number;
+                isHit: boolean;
+            }) => void;
+            scoreUpdate: (payload: {
+                userId: User['id'];
+                score: number;
+                hits: number;
+            }) => void;
+            ended: (payload: {
+                winner: number;
+                score1: number;
+                score2: number;
+                reason?: 'disconnect';
+            }) => void;
+        };
+        receives: {
+            scoreUpdate: {
+                score: number;
+                hits: number;
+            };
+            whack: {
+                cellIndex: number;
+                isHit: boolean;
+            };
+            timeUp: Record<string, never>;
         };
     };
     chatUser: {
@@ -1741,6 +1826,7 @@ declare namespace entities {
         AdminGetUserIpsRequest,
         AdminGetUserIpsResponse,
         AdminHataConsentListRequest,
+        AdminHataConsentListResponse,
         AdminInviteCreateRequest,
         AdminInviteCreateResponse,
         AdminInviteListRequest,
@@ -4194,7 +4280,7 @@ type QueueStats = {
 type QueueStatsLog = QueueStats[];
 
 // @public (undocumented)
-export const queueTypes: readonly ["system", "endedPollNotification", "postScheduledNote", "deliver", "inbox", "db", "relationship", "objectStorage", "userWebhookDeliver", "systemWebhookDeliver"];
+export const queueTypes: readonly ["system", "endedPollNotification", "postScheduledNote", "deliver", "inbox", "db", "relationship", "objectStorage", "userWebhookDeliver", "systemWebhookDeliver", "utageResolve"];
 
 // @public (undocumented)
 type RegistrationApplyRequest = operations['registration___apply']['requestBody']['content']['application/json'];
@@ -4302,7 +4388,7 @@ type RoleLite = components['schemas']['RoleLite'];
 type RolePolicies = components['schemas']['RolePolicies'];
 
 // @public (undocumented)
-export const rolePolicies: readonly ["gtlAvailable", "ltlAvailable", "btlAvailable", "canPublicNote", "canEditNote", "mentionLimit", "canInvite", "inviteLimit", "inviteLimitCycle", "inviteExpirationTime", "canManageCustomEmojis", "canManageAvatarDecorations", "canSearchNotes", "canSearchUsers", "canHideAds", "mascotMaxExpressions", "mascotMaxPhrases", "mascotMaxCharacters", "hataSideStudioProfileLimit", "canAccessHataFeed", "canUseHatacordingUi", "hatacordingUiSubpaneMaxTabs", "hatacordingUiRateLimit", "canUseHatadySync", "hatadyBookLimit", "hatadyBookmarkLimit", "canMakePrivateChannel", "canRequestRemoteEmoji", "emojiRequestLimit", "driveCapacityMb", "maxFileSizeMb", "alwaysMarkNsfw", "canUpdateBioMedia", "pinLimit", "antennaLimit", "wordMuteLimit", "webhookLimit", "clipLimit", "noteEachClipsLimit", "userListLimit", "userEachUserListsLimit", "rateLimitFactor", "avatarDecorationLimit", "canImportAntennas", "canImportBlocking", "canImportFollowing", "canImportMuting", "canImportUserLists", "chatAvailability", "uploadableFileTypes", "noteDraftLimit", "scheduledNoteLimit", "watermarkAvailable", "canSetFederationAvatarShape"];
+export const rolePolicies: readonly ["gtlAvailable", "ltlAvailable", "btlAvailable", "canPublicNote", "canEditNote", "mentionLimit", "canInvite", "inviteLimit", "inviteLimitCycle", "inviteExpirationTime", "canManageCustomEmojis", "canManageAvatarDecorations", "canSearchNotes", "canSearchUsers", "canHideAds", "mascotMaxExpressions", "mascotMaxPhrases", "mascotMaxCharacters", "hataSideStudioProfileLimit", "canUseMascot", "canAccessHataFeed", "canUseHatacordingUi", "hatacordingUiSubpaneMaxTabs", "hatacordingUiRateLimit", "canUseHatadySync", "hatadyBookLimit", "hatadyBookmarkLimit", "canMakePrivateChannel", "canRequestRemoteEmoji", "emojiRequestLimit", "driveCapacityMb", "maxFileSizeMb", "alwaysMarkNsfw", "canUpdateBioMedia", "pinLimit", "antennaLimit", "wordMuteLimit", "webhookLimit", "clipLimit", "noteEachClipsLimit", "userListLimit", "userEachUserListsLimit", "rateLimitFactor", "avatarDecorationLimit", "canImportAntennas", "canImportBlocking", "canImportFollowing", "canImportMuting", "canImportUserLists", "chatAvailability", "uploadableFileTypes", "noteDraftLimit", "scheduledNoteLimit", "watermarkAvailable", "canSetFederationAvatarShape"];
 
 // @public (undocumented)
 type RolesListResponse = operations['roles___list']['responses']['200']['content']['application/json'];
@@ -4361,6 +4447,7 @@ type SigninFlowRequest = {
     'g-recaptcha-response'?: string | null;
     'turnstile-response'?: string | null;
     'm-captcha-response'?: string | null;
+    'testcaptcha-response'?: string | null;
 };
 
 // @public (undocumented)

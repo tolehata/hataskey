@@ -23,11 +23,11 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</div>
 			</div>
 			<footer :class="$style.footer">
-				<button type="button" :class="$style.secondary" :disabled="stepIndex === 0" @click="stepIndex--"><ArrowLeft :size="16"/>前へ</button>
-				<button v-if="stepIndex < copy.steps.length - 1" type="button" :class="$style.primary" @click="stepIndex++">次へ<ArrowRight :size="16"/></button>
-				<button v-else type="button" :class="$style.primary" @click="emit('done')"><Check :size="16"/>使い始める</button>
+				<button type="button" :class="$style.secondary" :disabled="stepIndex === 0" @click="stepIndex--"><ArrowLeft :size="16"/>{{ copy.previous }}</button>
+				<button v-if="stepIndex < copy.steps.length - 1" type="button" :class="$style.primary" @click="stepIndex++">{{ copy.next }}<ArrowRight :size="16"/></button>
+				<button v-else type="button" :class="$style.primary" @click="emit('done')"><Check :size="16"/>{{ copy.start }}</button>
 			</footer>
-			<p :class="$style.required">初回のみ表示されます。安全に使えるよう、最後まで確認してください。</p>
+			<p :class="$style.required">{{ copy.required }}</p>
 		</section>
 	</div>
 </Teleport>

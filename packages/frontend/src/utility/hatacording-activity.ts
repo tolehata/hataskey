@@ -4,11 +4,44 @@
  */
 
 import type * as Misskey from 'cherrypick-js';
+import { i18n } from '@/i18n.js';
 import { domesticTsunamiLabel, issueTypeLabel, scaleToLabel, tsunamiGradeLabel } from '@/utility/earthquake.js';
+import { hataFeedNotificationDisplayBody } from '@/utility/hatafeed-bell-group.js';
+import { privateChannelNotificationDisplayBody } from '@/utility/private-channel-notification-copy.js';
+
+const copy = i18n.ts._hata._hatacordingUi._activity;
+const tx = i18n.tsx._hata._hatacordingUi._activity;
 
 export type HatacordingActivityKind = 'notification' | 'external' | 'favorite' | 'clip' | 'earthquake' | 'tsunami' | 'connection';
 export type HatacordingActivityIcon = 'bell' | 'user' | 'sparkles' | 'message' | 'activity' | 'unplug';
 export type ServerDisconnectedBehavior = 'quiet' | 'reload' | 'dialog' | 'none';
+
+export type HatacordingNotificationActivitySource = {
+	kind: 'notification';
+	type: string;
+	external: boolean;
+	botOrigin?: boolean;
+	user?: Misskey.entities.UserLite;
+	/** Live reception only. The cache sanitizer deliberately never persists a full Note. */
+	note?: Misskey.entities.Note;
+	noteId?: string;
+	noteText?: string;
+	noteCw?: string;
+	noteEmojiUrls?: Record<string, string>;
+	reaction?: string;
+	reactionEmojiUrl?: string;
+	groupedCount: number;
+	header?: string;
+	body?: string;
+	message?: string;
+	link?: string;
+	roleId?: string;
+	roleName?: string;
+	roleDescription?: string;
+	chatRoomId?: string;
+	invitationName?: string;
+	fileId?: string;
+};
 
 export type HatacordingActivityCopy = {
 	kind: HatacordingActivityKind;
@@ -21,20 +54,30 @@ export type HatacordingActivityCopy = {
 	action?: string;
 	reaction?: string;
 	reactionEmojiUrl?: string;
+	emojiUrls?: Record<string, string>;
 	note?: Misskey.entities.Note;
 	notificationType?: string;
+	botOrigin?: boolean;
+	cacheSource?: HatacordingNotificationActivitySource;
 };
+
+export function sharesHatacordingNotificationAudience(
+	left: Pick<HatacordingActivityCopy, 'botOrigin'>,
+	right: Pick<HatacordingActivityCopy, 'botOrigin'>,
+): boolean {
+	return (left.botOrigin === true) === (right.botOrigin === true);
+}
 
 export function createServerDisconnectedActivity(behavior: ServerDisconnectedBehavior): HatacordingActivityCopy {
 	const detail: Record<ServerDisconnectedBehavior, string> = {
-		reload: '自動でリロードする設定です。案内の表示後に画面を再読み込みします。',
-		dialog: 'ダイアログ警告の代わりに、この案内から再接続できます。',
-		quiet: '自動再接続を待っています。必要な場合は再接続してください。',
-		none: '自動ではリロードしない設定です。必要な場合は再接続してください。',
+		reload: copy.disconnectedReload,
+		dialog: copy.disconnectedDialog,
+		quiet: copy.disconnectedQuiet,
+		none: copy.disconnectedNone,
 	};
 	return {
 		kind: 'connection',
-		title: 'サーバーから切断されました...',
+		title: copy.disconnected,
 		detail: detail[behavior],
 		to: '',
 		icon: 'unplug',
@@ -45,8 +88,8 @@ export function createServerDisconnectedActivity(behavior: ServerDisconnectedBeh
 export function createServerReconnectedActivity(autoReloadPending: boolean): HatacordingActivityCopy {
 	return {
 		kind: 'connection',
-		title: 'サーバーへ再接続しました',
-		detail: autoReloadPending ? '自動リロードの設定に従い、まもなく画面を再読み込みします。' : 'タイムラインのリアルタイム受信を再開しました。',
+		title: copy.reconnected,
+		detail: autoReloadPending ? copy.reconnectedReload : copy.reconnectedRealtime,
 		to: '',
 		icon: 'activity',
 		emergency: false,
@@ -56,10 +99,10 @@ export function createServerReconnectedActivity(autoReloadPending: boolean): Hat
 export function createTimelineRealtimeActivity(enabled: boolean): HatacordingActivityCopy {
 	return {
 		kind: 'connection',
-		title: enabled ? 'リアルタイム更新を開始しました' : 'リアルタイム更新を停止しました',
+		title: enabled ? copy.realtimeStarted : copy.realtimeStopped,
 		detail: enabled
-			? '新しいノートや更新を受信すると、タイムラインへすぐに反映します。'
-			: '現在の表示はそのまま残ります。再開するまで新しいノートや更新は自動反映されません。',
+			? copy.realtimeStartedDescription
+			: copy.realtimeStoppedDescription,
 		to: '',
 		icon: 'activity',
 		emergency: false,
@@ -78,6 +121,37 @@ function noteDetail(notification: Record<string, any>): string {
 	return [cw, text].filter(Boolean).join(' — ');
 }
 
+function noteSummary(source: Pick<HatacordingNotificationActivitySource, 'note' | 'noteText' | 'noteCw'>): string {
+	return noteDetail({
+		note: source.note ?? {
+			text: source.noteText,
+			cw: source.noteCw,
+		},
+	});
+}
+
+function referencedNoteEmojiUrls(note: Misskey.entities.Note | undefined, text: string): Record<string, string> | undefined {
+	if (note == null || text.length === 0) return undefined;
+	const names = new Set((text.match(/:([A-Za-z0-9_+-]+(?:@[A-Za-z0-9.-]+)?):/gu) ?? [])
+		.map(shortcode => shortcode.slice(1, -1)));
+	if (names.size === 0) return undefined;
+	const result: Record<string, string> = {};
+	for (const source of [note.emojis, note.reactionEmojis]) {
+		if (source == null || typeof source !== 'object') continue;
+		for (const name of names) {
+			const pureName = name.split('@', 1)[0];
+			for (const candidate of [name, pureName, `${pureName}@.`]) {
+				const url = (source as Record<string, unknown>)[candidate];
+				if (typeof url === 'string' && url.length > 0) {
+					result[name] = url;
+					break;
+				}
+			}
+		}
+	}
+	return Object.keys(result).length > 0 ? result : undefined;
+}
+
 function truncateInlineText(value: string, maxLength = 36): string {
 	// カスタム絵文字のショートコードは画面上で1文字分になる。
 	// コードポイント数で切ると `:emoji:` の途中で分断され、MFMが
@@ -87,11 +161,11 @@ function truncateInlineText(value: string, maxLength = 36): string {
 }
 
 function inlineNoteLabel(note: string): string {
-	return `ノート「${truncateInlineText(note || '本文なし')}」`;
+	return tx.noteLabel({ note: truncateInlineText(note || copy.noContent) });
 }
 
 function inlineReactionLabel(reaction: string): string {
-	return reaction.length > 0 ? reaction : 'リアクション';
+	return reaction.length > 0 ? reaction : copy.reaction;
 }
 
 function reactionEmojiUrl(notification: Record<string, any>, externalHost?: string | null): string | undefined {
@@ -134,7 +208,7 @@ function notificationUser(value: unknown): Misskey.entities.UserLite | undefined
 		: undefined;
 }
 
-export function createNotificationActivity(notification: Record<string, any>, external = false, externalHost?: string | null): HatacordingActivityCopy {
+function notificationActivitySource(notification: Record<string, any>, external: boolean, externalHost?: string | null): HatacordingNotificationActivitySource {
 	const type = String(notification.type ?? 'unknown');
 	const firstReaction = Array.isArray(notification.reactions) ? notification.reactions[0] : undefined;
 	const firstGroupedUser = Array.isArray(notification.users) ? notification.users[0] : undefined;
@@ -142,15 +216,21 @@ export function createNotificationActivity(notification: Record<string, any>, ex
 		?? notificationUser(firstReaction?.user)
 		?? notificationUser(firstGroupedUser)
 		?? (type === 'note' ? notificationUser(notification.note?.user) : undefined);
-	const userName = compactText(user?.name) || compactText(user?.username) || 'だれか';
+	const groupedUsers = [
+		...(Array.isArray(notification.reactions) ? notification.reactions.map((item: Record<string, unknown>) => notificationUser(item.user)) : []),
+		...(Array.isArray(notification.users) ? notification.users.map(notificationUser) : []),
+	].filter((item): item is Misskey.entities.UserLite => item != null);
+	const botOrigin = groupedUsers.length > 0
+		? groupedUsers.every(item => item.isBot === true)
+		: user?.isBot === true;
 	const reaction = compactText(notification.reaction) || compactText(firstReaction?.reaction);
 	const resolvedNote = (notification.note != null && typeof notification.note === 'object'
 		? notification.note
 		: firstReaction?.note) as Misskey.entities.Note | undefined;
 	const normalized = reaction === compactText(notification.reaction) ? notification : { ...notification, user, note: resolvedNote, reaction };
-	const note = noteDetail(normalized);
-	const noteLabel = inlineNoteLabel(note);
-	const reactionLabel = inlineReactionLabel(reaction);
+	const noteText = compactText(resolvedNote?.text);
+	const noteCw = compactText(resolvedNote?.cw);
+	const noteEmojiUrls = referencedNoteEmojiUrls(resolvedNote, `${noteCw} ${noteText}`);
 	const groupedCount = Array.isArray(notification.reactions)
 		? notification.reactions.length
 		: Array.isArray(notification.users)
@@ -158,111 +238,159 @@ export function createNotificationActivity(notification: Record<string, any>, ex
 			: Array.isArray(notification.noteIds)
 				? notification.noteIds.length
 				: 0;
+	return {
+		kind: 'notification',
+		type,
+		external,
+		botOrigin,
+		user,
+		note: resolvedNote,
+		noteId: compactText(resolvedNote?.id) || undefined,
+		noteText: noteText || undefined,
+		noteCw: noteCw || undefined,
+		noteEmojiUrls,
+		reaction: reaction || undefined,
+		reactionEmojiUrl: reaction ? reactionEmojiUrl(normalized, externalHost) : undefined,
+		groupedCount,
+		header: compactText(notification.header) || undefined,
+		body: compactText(notification.body) || undefined,
+		message: compactText(notification.message) || undefined,
+		link: compactText(notification.link) || undefined,
+		roleId: compactText(notification.role?.id) || undefined,
+		roleName: compactText(notification.role?.name) || undefined,
+		roleDescription: compactText(notification.role?.description) || undefined,
+		chatRoomId: compactText(notification.invitation?.roomId) || undefined,
+		invitationName: compactText(notification.invitation?.room?.name) || compactText(notification.invitation?.group?.name) || undefined,
+		fileId: compactText(notification.fileId) || undefined,
+	};
+}
+
+export function createNotificationActivityFromSource(source: HatacordingNotificationActivitySource): HatacordingActivityCopy {
+	const type = source.type;
+	const user = source.user;
+	const userName = compactText(user?.name) || compactText(user?.username) || copy.someone;
+	const reaction = compactText(source.reaction);
+	const note = noteSummary(source);
+	const noteLabel = inlineNoteLabel(note);
+	const reactionLabel = inlineReactionLabel(reaction);
+	const groupedCount = source.groupedCount;
 	const actionMap: Record<string, string> = {
-		note: `さんが${noteLabel}を投稿しました`,
-		mention: `さんが${noteLabel}であなたをメンションしました`,
-		reply: `さんが${noteLabel}へ返信しました`,
-		renote: `さんが${noteLabel}をリノートしました`,
-		quote: `さんが${noteLabel}を引用しました`,
-		reaction: `さんが${noteLabel}に「${reactionLabel}」のリアクションを付けました`,
-		follow: 'さんにフォローされました',
-		receiveFollowRequest: 'さんからフォロー申請が届きました',
-		followRequestAccepted: 'さんがフォロー申請を承認しました',
-		groupInvited: 'さんからグループへ招待されました',
+		note: tx.actionNote({ note: noteLabel }),
+		mention: tx.actionMention({ note: noteLabel }),
+		reply: tx.actionReply({ note: noteLabel }),
+		renote: tx.actionRenote({ note: noteLabel }),
+		quote: tx.actionQuote({ note: noteLabel }),
+		reaction: tx.actionReaction({ note: noteLabel, reaction: reactionLabel }),
+		follow: copy.actionFollow,
+		receiveFollowRequest: copy.actionFollowRequest,
+		followRequestAccepted: copy.actionFollowRequestAccepted,
+		groupInvited: copy.actionGroupInvited,
 		'reaction:grouped': groupedCount > 1
-			? `さんほか${groupedCount - 1}人が${noteLabel}にリアクションを付けました`
-			: `さんが${noteLabel}にリアクションを付けました`,
-		'reaction:groupedByUser': `さんが${groupedCount}件のノートにリアクションを付けました`,
+			? tx.actionGroupedReaction({ count: groupedCount - 1, note: noteLabel })
+			: tx.actionSingleGroupedReaction({ note: noteLabel }),
+		'reaction:groupedByUser': tx.actionGroupedByUserReaction({ count: groupedCount }),
 		'renote:grouped': groupedCount > 1
-			? `さんほか${groupedCount - 1}人が${noteLabel}をリノートしました`
-			: `さんが${noteLabel}をリノートしました`,
+			? tx.actionGroupedRenote({ count: groupedCount - 1, note: noteLabel })
+			: tx.actionSingleGroupedRenote({ note: noteLabel }),
 	};
-	const notePath = resolvedNote?.id ? `/notes/${resolvedNote.id}` : '/my/notifications';
+	const noteId = compactText(source.note?.id) || compactText(source.noteId);
+	const notePath = noteId ? `/notes/${noteId}` : '/my/notifications';
 	const typeMap: Record<string, { title: string; icon: HatacordingActivityIcon; to?: string; note?: Misskey.entities.Note }> = {
-		note: { title: `${userName}が投稿しました`, icon: 'message', to: notePath, note: resolvedNote },
-		mention: { title: `${userName}からメンション`, icon: 'message', to: notePath, note: resolvedNote },
-		reply: { title: `${userName}から返信`, icon: 'message', to: notePath, note: resolvedNote },
-		renote: { title: `${userName}がリノート`, icon: 'message', to: notePath, note: resolvedNote },
-		quote: { title: `${userName}が引用しました`, icon: 'message', to: notePath, note: resolvedNote },
-		reaction: { title: `${userName}がリアクションしました`, icon: 'sparkles', to: notePath, note: resolvedNote },
-		pollEnded: { title: 'アンケートが終了しました', icon: 'message', to: notePath, note: resolvedNote },
-		pollVote: { title: 'アンケートに投票されました', icon: 'message', to: notePath, note: resolvedNote },
-		scheduledNotePosted: { title: '予約投稿を公開しました', icon: 'message', to: notePath, note: resolvedNote },
-		scheduledNotePostFailed: { title: '予約投稿に失敗しました', icon: 'bell' },
-		follow: { title: `${userName}にフォローされました`, icon: 'user', to: userPath(user) },
-		receiveFollowRequest: { title: `${userName}からフォロー申請`, icon: 'user', to: '/my/follow-requests' },
-		followRequestAccepted: { title: `${userName}がフォロー申請を承認しました`, icon: 'user', to: userPath(user) },
+		note: { title: tx.titleNote({ name: userName }), icon: 'message', to: notePath, note: source.note },
+		mention: { title: tx.titleMention({ name: userName }), icon: 'message', to: notePath, note: source.note },
+		reply: { title: tx.titleReply({ name: userName }), icon: 'message', to: notePath, note: source.note },
+		renote: { title: tx.titleRenote({ name: userName }), icon: 'message', to: notePath, note: source.note },
+		quote: { title: tx.titleQuote({ name: userName }), icon: 'message', to: notePath, note: source.note },
+		reaction: { title: tx.titleReaction({ name: userName }), icon: 'sparkles', to: notePath, note: source.note },
+		pollEnded: { title: copy.pollEnded, icon: 'message', to: notePath, note: source.note },
+		pollVote: { title: copy.pollVote, icon: 'message', to: notePath, note: source.note },
+		scheduledNotePosted: { title: copy.scheduledNotePosted, icon: 'message', to: notePath, note: source.note },
+		scheduledNotePostFailed: { title: copy.scheduledNotePostFailed, icon: 'bell' },
+		follow: { title: tx.titleFollow({ name: userName }), icon: 'user', to: userPath(user) },
+		receiveFollowRequest: { title: tx.titleFollowRequest({ name: userName }), icon: 'user', to: '/my/follow-requests' },
+		followRequestAccepted: { title: tx.titleFollowRequestAccepted({ name: userName }), icon: 'user', to: userPath(user) },
 		// 承認・拒否の操作は通知カードにあるため、一覧ではなく通知画面へ結ぶ。
-		groupInvited: { title: `${userName}からグループへの招待`, icon: 'user', to: '/my/notifications' },
-		roleAssigned: { title: `ロール「${compactText(notification.role?.name) || '名称未設定'}」が付与されました`, icon: 'sparkles', to: notification.role?.id ? `/roles/${notification.role.id}` : '/my/notifications' },
-		chatRoomInvitationReceived: { title: 'チャットルームへの招待が届きました', icon: 'message', to: notification.invitation?.roomId ? `/chat/room/${notification.invitation.roomId}` : '/chat' },
-		achievementEarned: { title: '実績を獲得しました', icon: 'sparkles', to: '/my/achievements' },
-		exportCompleted: { title: 'データの書き出しが完了しました', icon: 'bell', to: notification.fileId ? `/my/drive/file/${notification.fileId}` : '/my/drive' },
-		login: { title: 'アカウントへのログインを検知しました', icon: 'bell', to: '/settings/security' },
-		createToken: { title: 'アクセストークンが作成されました', icon: 'bell', to: '/settings/apps' },
-		app: { title: compactText(notification.header) || 'アプリからのお知らせ', icon: 'bell', to: internalLink(notification.link, '/my/notifications') },
-		hataFeed: { title: compactText(notification.header) || 'HataFeedからのお知らせ', icon: 'bell', to: internalLink(notification.link, '/hatafeed') },
-		earthquake: { title: compactText(notification.header) || '地震・津波情報', icon: 'activity', to: internalLink(notification.link, '/earthquake') },
-		addedToPrivateChannel: { title: compactText(notification.header) || 'プライベートチャンネルへの招待', icon: 'message', to: '/my/notifications' },
-		removedFromPrivateChannel: { title: compactText(notification.header) || 'プライベートチャンネルから退出しました', icon: 'message', to: internalLink(notification.link, '/channels') },
-		'reaction:grouped': { title: `${groupedCount}件のリアクションがあります`, icon: 'sparkles', to: notePath, note: resolvedNote },
-		'reaction:groupedByUser': { title: `${userName}が${groupedCount}件の投稿にリアクションしました`, icon: 'sparkles', to: '/my/notifications' },
-		'renote:grouped': { title: `${groupedCount}件のリノートがあります`, icon: 'message', to: notePath, note: resolvedNote },
-		'note:grouped': { title: `${groupedCount}件の新しい投稿があります`, icon: 'message' },
-		test: { title: 'テスト通知を受信しました', icon: 'bell' },
+		groupInvited: { title: tx.titleGroupInvited({ name: userName }), icon: 'user', to: '/my/notifications' },
+		roleAssigned: { title: tx.roleAssigned({ role: source.roleName || copy.unnamed }), icon: 'sparkles', to: source.roleId ? `/roles/${source.roleId}` : '/my/notifications' },
+		chatRoomInvitationReceived: { title: copy.chatRoomInvitation, icon: 'message', to: source.chatRoomId ? `/chat/room/${source.chatRoomId}` : '/chat' },
+		achievementEarned: { title: copy.achievementEarned, icon: 'sparkles', to: '/my/achievements' },
+		exportCompleted: { title: copy.exportCompleted, icon: 'bell', to: source.fileId ? `/my/drive/file/${source.fileId}` : '/my/drive' },
+		login: { title: copy.loginDetected, icon: 'bell', to: '/settings/security' },
+		createToken: { title: copy.tokenCreated, icon: 'bell', to: '/settings/apps' },
+		app: { title: source.header || copy.appNotification, icon: 'bell', to: internalLink(source.link, '/my/notifications') },
+		hataFeed: { title: source.header || copy.hataFeedNotification, icon: 'bell', to: internalLink(source.link, '/hatafeed') },
+		earthquake: { title: source.header || '地震・津波情報', icon: 'activity', to: internalLink(source.link, '/earthquake') },
+		addedToPrivateChannel: { title: copy.privateChannelInvitation, icon: 'message', to: '/my/notifications' },
+		removedFromPrivateChannel: { title: copy.privateChannelRemoved, icon: 'message', to: internalLink(source.link, '/channels') },
+		'reaction:grouped': { title: tx.groupedReactions({ count: groupedCount }), icon: 'sparkles', to: notePath, note: source.note },
+		'reaction:groupedByUser': { title: tx.groupedReactionsByUser({ name: userName, count: groupedCount }), icon: 'sparkles', to: '/my/notifications' },
+		'renote:grouped': { title: tx.groupedRenotes({ count: groupedCount }), icon: 'message', to: notePath, note: source.note },
+		'note:grouped': { title: tx.groupedNotes({ count: groupedCount }), icon: 'message' },
+		test: { title: copy.testNotification, icon: 'bell' },
 	};
-	const mapped = typeMap[type] ?? { title: '新しい通知があります', icon: 'bell' as const };
-	const detail = compactText(notification.body)
-		|| compactText(notification.message)
+	const mapped = typeMap[type] ?? { title: copy.newNotification, icon: 'bell' as const };
+	const localizedBody = type === 'hataFeed' || (type === 'app' && source.header === 'HataFeed')
+		? hataFeedNotificationDisplayBody(source.body ?? '')
+		: type === 'addedToPrivateChannel' || type === 'removedFromPrivateChannel'
+			? privateChannelNotificationDisplayBody(source.body ?? '')
+			: source.body;
+	const detail = localizedBody
+		|| source.message
 		|| (reaction && note ? `${reaction} ${note}` : reaction || note)
-		|| compactText(notification.invitation?.room?.name)
-		|| compactText(notification.invitation?.group?.name)
-		|| compactText(notification.role?.description)
-		|| '通知画面で詳しい内容を確認できます。';
+		|| source.invitationName
+		|| source.roleDescription
+		|| copy.notificationDetails;
 
 	return {
-		kind: external ? 'external' : 'notification',
-		title: external ? `外部アカウント・${mapped.title}` : mapped.title,
+		kind: source.external ? 'external' : 'notification',
+		title: source.external ? tx.externalAccountTitle({ title: mapped.title }) : mapped.title,
 		detail,
-		to: external ? '/my/external-notifications' : (mapped.to ?? '/my/notifications'),
+		to: source.external ? '/my/external-notifications' : (mapped.to ?? '/my/notifications'),
 		icon: mapped.icon,
 		emergency: false,
 		user: actionMap[type] ? user : undefined,
 		action: user ? actionMap[type] : undefined,
 		reaction: reaction || undefined,
-		reactionEmojiUrl: reaction ? reactionEmojiUrl(normalized, externalHost) : undefined,
+		reactionEmojiUrl: source.reactionEmojiUrl,
+		emojiUrls: source.noteEmojiUrls,
 		note: mapped.note,
 		notificationType: type,
+		botOrigin: source.botOrigin === true || source.user?.isBot === true,
+		cacheSource: source,
 	};
+}
+
+export function createNotificationActivity(notification: Record<string, any>, external = false, externalHost?: string | null): HatacordingActivityCopy {
+	return createNotificationActivityFromSource(notificationActivitySource(notification, external, externalHost));
 }
 
 export function createApiActionActivity(endpoint: string): HatacordingActivityCopy | null {
 	const actions: Record<string, Omit<HatacordingActivityCopy, 'emergency'>> = {
 		'notes/favorites/create': {
 			kind: 'favorite',
-			title: 'お気に入りに追加しました',
-			detail: 'お気に入り画面から、あとで読み返せます。',
+			title: copy.favoriteAdded,
+			detail: copy.favoriteAddedDescription,
 			to: '/my/favorites',
 			icon: 'sparkles',
 		},
 		'notes/favorites/delete': {
 			kind: 'favorite',
-			title: 'お気に入りから外しました',
-			detail: 'お気に入りの一覧を更新しました。',
+			title: copy.favoriteRemoved,
+			detail: copy.favoriteRemovedDescription,
 			to: '/my/favorites',
 			icon: 'sparkles',
 		},
 		'clips/add-note': {
 			kind: 'clip',
-			title: 'クリップに追加しました',
-			detail: 'クリップ画面から、保存したノートを確認できます。',
+			title: copy.clipAdded,
+			detail: copy.clipAddedDescription,
 			to: '/my/clips',
 			icon: 'message',
 		},
 		'clips/remove-note': {
 			kind: 'clip',
-			title: 'クリップから外しました',
-			detail: 'クリップの一覧を更新しました。',
+			title: copy.clipRemoved,
+			detail: copy.clipRemovedDescription,
 			to: '/my/clips',
 			icon: 'message',
 		},

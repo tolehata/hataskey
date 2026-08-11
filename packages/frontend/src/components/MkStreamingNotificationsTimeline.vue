@@ -63,10 +63,11 @@ import { globalEvents } from '@/events.js';
 import { groupHataFeedBellNotifications } from '@/utility/hatafeed-bell-group.js';
 import { $i } from '@/i.js';
 import { miLocalStorage } from '@/local-storage.js';
-import { NOTIFICATION_FILTER_POLICY_NOTICE } from '@/utility/notification-filter.js';
+import { isNotificationFromBot, NOTIFICATION_FILTER_POLICY_NOTICE } from '@/utility/notification-filter.js';
 
 const props = defineProps<{
 	excludeTypes?: typeof notificationTypes[number][] | null;
+	excludeBots?: boolean;
 	notUseGrouped?: boolean;
 	showFilterPolicyNotice?: boolean;
 }>();
@@ -78,19 +79,23 @@ const paginator = shouldGroupHataFeed.value ? markRaw(new Paginator('i/notificat
 	limit: 20,
 	computedParams: computed(() => ({
 		excludeTypes: props.excludeTypes ?? undefined,
+		excludeBots: props.excludeBots || undefined,
 	})),
 })) : markRaw(new Paginator('i/notifications', {
 	limit: 20,
 	computedParams: computed(() => ({
 		excludeTypes: props.excludeTypes ?? undefined,
+		excludeBots: props.excludeBots || undefined,
 	})),
 }));
 
 const filterPolicyNotice = ref<Misskey.entities.Notification | null>(null);
 const displayNotifications = computed(() => {
+	const sourceNotifications = (paginator.items.value as Misskey.entities.Notification[])
+		.filter(notification => !props.excludeBots || !isNotificationFromBot(notification));
 	const notifications = shouldGroupHataFeed.value
-		? groupHataFeedBellNotifications(paginator.items.value as Misskey.entities.Notification[])
-		: paginator.items.value as Misskey.entities.Notification[];
+		? groupHataFeedBellNotifications(sourceNotifications)
+		: sourceNotifications;
 	return filterPolicyNotice.value == null ? notifications : [filterPolicyNotice.value, ...notifications];
 });
 
@@ -155,8 +160,10 @@ watch(visibility, () => {
 	}
 });
 
-function onNotification(notification) {
-	const isMuted = props.excludeTypes ? props.excludeTypes.includes(notification.type) : false;
+function onNotification(notification: Misskey.entities.Notification) {
+	const excludedTypes: readonly string[] | undefined = props.excludeTypes ?? undefined;
+	const isMuted = (excludedTypes?.includes(notification.type) ?? false)
+		|| (props.excludeBots === true && isNotificationFromBot(notification));
 	if (isMuted || window.document.visibilityState === 'visible') {
 		if (store.s.realtimeMode) {
 			useStream().send('readNotification');

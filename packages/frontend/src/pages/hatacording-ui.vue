@@ -5,7 +5,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 <template>
 <div ref="rootEl" :class="$style.root" :data-compact="isCompact ? 'true' : 'false'" :data-sidebar-collapsed="sidebarCollapsed ? 'true' : 'false'" :data-right-collapsed="prefs.rightPaneCollapsed ? 'true' : 'false'" :data-color-mode="prefs.colorMode" :data-ui-scale="prefs.uiScale" :data-theme-changing="colorModeTransitioning ? 'true' : 'false'" @touchstart.passive="onMobileEdgeTouchStart" @touchend.passive="onMobileEdgeTouchEnd">
-	<button v-if="(isCompact && drawerOpen) || (rightPaneOverlay && rightPaneOpen)" type="button" :class="$style.scrim" aria-label="パネルを閉じる" @click="closeOverlays"></button>
+	<button v-if="(isCompact && drawerOpen) || (rightPaneOverlay && rightPaneOpen)" type="button" :class="$style.scrim" :aria-label="copy.closePanels" @click="closeOverlays"></button>
 
 	<aside :class="[$style.leftPane, drawerOpen && $style.drawerOpen]">
 		<header :class="$style.serverHeader">
@@ -14,32 +14,32 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<span :class="$style.serverName">{{ instance.name || 'Hataskey' }}</span>
 			</button>
 			<div v-if="!sidebarCollapsed" :class="$style.serverActions">
-				<button type="button" :class="$style.iconButton" title="タイムライン設定" @click="openTimelineOptions"><SlidersHorizontal :size="16"/></button>
-				<button v-if="!isCompact" type="button" :class="$style.iconButton" title="メニューを縮める" @click="toggleSidebar"><PanelLeftClose :size="16"/></button>
-				<button v-else type="button" :class="$style.iconButton" title="閉じる" @click="drawerOpen = false"><X :size="16"/></button>
+				<button type="button" :class="$style.iconButton" :title="copy.timelineSettings" @click="openTimelineOptions"><SlidersHorizontal :size="16"/></button>
+				<button v-if="!isCompact" type="button" :class="$style.iconButton" :title="copy.collapseMenu" @click="toggleSidebar"><PanelLeftClose :size="16"/></button>
+				<button v-else type="button" :class="$style.iconButton" :title="copy.close" @click="drawerOpen = false"><X :size="16"/></button>
 			</div>
 		</header>
-		<button v-if="sidebarCollapsed" type="button" :class="$style.expandButton" title="メニューを広げる" @click="toggleSidebar"><PanelLeftOpen :size="16"/></button>
+		<button v-if="sidebarCollapsed" type="button" :class="$style.expandButton" :title="copy.expandMenu" @click="toggleSidebar"><PanelLeftOpen :size="16"/></button>
 
 		<div v-if="menuEditing && !sidebarCollapsed" :class="$style.editNotice">
-			<div><strong>このUIのメニューを編集</strong><span>表示・順序はこの端末だけに保存されます。分類横の色見本ボタンからアイコンを変更できます。</span></div>
+			<div><strong>{{ copy.editMenuTitle }}</strong><span>{{ copy.editMenuDescription }}</span></div>
 			<div :class="$style.editActions">
-				<button type="button" :class="[$style.textButton, $style.copyOrderButton]" @click="copyCollapsedOrder"><Copy :size="14"/><span>HatasabaUI<br/>縮小順を取込</span></button>
-				<button type="button" :class="$style.textButton" @click="resetMenu"><RefreshCw :size="14"/>初期化</button>
-				<button type="button" :class="$style.saveMenuButton" @click="saveMenuEditing"><Save :size="14"/>保存して終了</button>
+				<button type="button" :class="[$style.textButton, $style.copyOrderButton]" @click="copyCollapsedOrder"><Copy :size="14"/><span>HatasabaUI<br/>{{ copy.importCollapsedOrder }}</span></button>
+				<button type="button" :class="$style.textButton" @click="resetMenu"><RefreshCw :size="14"/>{{ copy.reset }}</button>
+				<button type="button" :class="$style.saveMenuButton" @click="saveMenuEditing"><Save :size="14"/>{{ copy.saveAndFinish }}</button>
 			</div>
 		</div>
 
-		<nav :class="$style.menuList" aria-label="HataSNSCordUI メニュー">
+		<nav :class="$style.menuList" :aria-label="copy.menuAria">
 			<section :class="$style.menuSection">
 				<div v-if="!sidebarCollapsed" :class="$style.sectionHeading">
-					<h2 :class="$style.sectionTitle">タイムライン</h2>
-					<button type="button" :class="$style.sectionAddButton" title="タイムラインを追加" @click="openAddTimelineMenu"><Plus :size="13"/><span>追加</span></button>
+					<h2 :class="$style.sectionTitle">{{ copy.timelines }}</h2>
+					<button type="button" :class="$style.sectionAddButton" :title="copy.addTimeline" @click="openAddTimelineMenu"><Plus :size="13"/><span>{{ copy.add }}</span></button>
 				</div>
 				<MenuRow v-for="item in primaryTimelineItems" :key="item.id" :item="item"/>
 			</section>
 			<section :class="$style.menuSection">
-				<h2 v-if="!sidebarCollapsed" :class="$style.sectionTitle">よく使う機能</h2>
+				<h2 v-if="!sidebarCollapsed" :class="$style.sectionTitle">{{ copy.frequentFeatures }}</h2>
 				<MenuRow v-for="item in primaryToolItems" :key="item.id" :item="item"/>
 			</section>
 
@@ -50,42 +50,42 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<span v-if="!sidebarCollapsed" :class="$style.collectionCount">{{ group.items.length }}</span>
 						<ChevronDown v-if="!sidebarCollapsed" :size="16" :class="prefs.collectionExpanded[group.id] && $style.rotated"/>
 					</button>
-					<button v-if="menuEditing && !sidebarCollapsed" type="button" :class="$style.collectionIconButton" :title="`${group.label}の分類アイコンを変更`" @click="openCollectionIconMenu(group, $event)"><SwatchBook :size="14"/></button>
+					<button v-if="menuEditing && !sidebarCollapsed" type="button" :class="$style.collectionIconButton" :title="copyx.changeCategoryIcon({ category: group.label })" @click="openCollectionIconMenu(group, $event)"><SwatchBook :size="14"/></button>
 				</div>
 				<div v-if="!sidebarCollapsed && prefs.collectionExpanded[group.id]" :class="$style.collectionItems">
-					<div v-if="group.items.length === 0" :class="$style.collectionEmpty">まだありません</div>
+					<div v-if="group.items.length === 0" :class="$style.collectionEmpty">{{ copy.noneYet }}</div>
 					<MenuRow v-for="item in group.items" :key="item.id" :item="item" compact/>
 				</div>
 			</section>
 
 			<section :class="$style.moreSection">
-				<button type="button" :class="$style.moreButton" @click="openMoreMenu"><MoreHorizontal :size="18"/><span v-if="!sidebarCollapsed">もっと！</span></button>
+				<button type="button" :class="$style.moreButton" @click="openMoreMenu"><MoreHorizontal :size="18"/><span v-if="!sidebarCollapsed">{{ copy.more }}</span></button>
 				<div v-if="showMore && !sidebarCollapsed" :class="$style.morePanel">
 					<div v-for="item in hiddenMenuItems" :key="item.id" :class="$style.moreItemRow">
 						<button type="button" :class="$style.moreItem" @click="handleMoreItem(item)"><component :is="item.icon" :size="18"/><span>{{ item.label }}</span><ChevronRight :size="15"/></button>
-						<button v-if="menuEditing" type="button" :class="$style.moreRestoreButton" :title="`${item.label}を上部メニューへ追加`" @click="restoreMenuItem(item)"><Plus :size="15"/><span>上部へ</span></button>
+						<button v-if="menuEditing" type="button" :class="$style.moreRestoreButton" :title="copyx.addToTopMenu({ item: item.label })" @click="restoreMenuItem(item)"><Plus :size="15"/><span>{{ copy.moveToTop }}</span></button>
 					</div>
 				</div>
-				<button type="button" :class="$style.feedbackButton" title="HataFeedで新規イシューを作成" @click="openFeedbackIssue"><MessageSquareWarning :size="17"/><span v-if="!sidebarCollapsed">フィードバックを送る</span></button>
+				<button type="button" :class="$style.feedbackButton" :title="copy.createHataFeedIssue" @click="openFeedbackIssue"><MessageSquareWarning :size="17"/><span v-if="!sidebarCollapsed">{{ copy.sendFeedback }}</span></button>
 			</section>
 		</nav>
 
 		<footer :class="$style.accountFooter">
-			<button type="button" :class="$style.accountButton" title="アカウントメニュー" @click="openAccountMenu">
+			<button type="button" :class="$style.accountButton" :title="copy.accountMenu" @click="openAccountMenu">
 				<MkAvatar :user="$i" :class="$style.avatar"/>
 				<span v-if="!sidebarCollapsed" :class="$style.accountText"><MkUserName :user="$i"/><small>@{{ $i.username }}</small></span>
 				<ChevronUp v-if="!sidebarCollapsed" :size="16"/>
 			</button>
-			<button v-if="!sidebarCollapsed" type="button" :class="$style.iconButton" title="設定" @click="openCenterPage('/settings', '設定')"><Settings :size="17"/></button>
-			<button v-if="!sidebarCollapsed && ($i.isAdmin || $i.isModerator)" type="button" :class="$style.iconButton" title="コントロールパネル" @click="openCenterPage('/admin', 'コントロールパネル')"><Shield :size="17"/></button>
+			<button v-if="!sidebarCollapsed" type="button" :class="$style.iconButton" :title="copy.settings" @click="openCenterPage('/settings', copy.settings)"><Settings :size="17"/></button>
+			<button v-if="!sidebarCollapsed && ($i.isAdmin || $i.isModerator)" type="button" :class="$style.iconButton" :title="copy.controlPanel" @click="openCenterPage('/admin', copy.controlPanel)"><Shield :size="17"/></button>
 		</footer>
 	</aside>
 
 	<main :class="$style.centerPane">
 		<header :class="$style.timelineHeader">
-			<button v-if="isCompact" type="button" :class="$style.iconButton" title="メニュー" @click="openLeftPane"><MenuIcon :size="18"/></button>
-			<button v-if="centerPageOpen" type="button" :class="$style.iconButton" :title="centerPageHistory.length > 1 ? 'ひとつ前のページへ戻る' : 'タイムラインへ戻る'" @click="backCenterPage"><ArrowLeft :size="18"/></button>
-			<div :class="$style.timelineTitle"><component :is="centerPageOpen ? Layers : (activeMenuItem?.icon || Activity)" :size="18"/><div><strong>{{ centerPageOpen ? centerPageTitle : (activeMenuItem?.label || 'タイムライン') }}</strong><small v-if="centerPageOpen">HataSNSCordUI内で表示</small><small v-else><Circle :size="7" fill="currentColor"/> {{ onlineUsersCount }}人がオンライン</small></div></div>
+			<button v-if="isCompact" type="button" :class="$style.iconButton" :title="copy.menu" @click="openLeftPane"><MenuIcon :size="18"/></button>
+			<button v-if="centerPageOpen" type="button" :class="$style.iconButton" :title="centerPageHistory.length > 1 ? copy.backOnePage : copy.backToTimeline" @click="backCenterPage"><ArrowLeft :size="18"/></button>
+			<div :class="$style.timelineTitle"><component :is="centerPageOpen ? Layers : (activeMenuItem?.icon || Activity)" :size="18"/><div><strong>{{ centerPageOpen ? centerPageTitle : (activeMenuItem?.label || copy.timelines) }}</strong><small v-if="centerPageOpen">{{ copy.shownInsideUi }}</small><small v-else><Circle :size="7" fill="currentColor"/> {{ copyx.onlineUsers({ count: onlineUsersCount.toString() }) }}</small></div></div>
 			<div :class="$style.headerActions">
 				<button type="button" :class="$style.rateLimitButton" :data-level="rateLimitLevel" :title="rateLimitTitle" :aria-label="rateLimitTitle" @click="openRateLimitDetails">
 					<svg :class="$style.rateLimitRing" viewBox="0 0 26 26" aria-hidden="true">
@@ -95,8 +95,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<span v-if="prefs.showRateLimitNumber">{{ rateLimitMeterLabel }}</span>
 				</button>
 				<button v-if="!centerPageOpen && activeCollectionSettings" type="button" :class="$style.iconButton" :title="activeCollectionSettings.label" @click="openActiveCollectionSettings"><Settings :size="16"/></button>
-				<button v-if="!centerPageOpen" type="button" :class="$style.iconButton" title="更新" :disabled="fetching" @click="reloadTimeline"><RefreshCw :size="16" :class="fetching && $style.spinning"/></button>
-				<button v-if="prefs.rightPaneCollapsed || rightPaneOverlay" type="button" :class="$style.iconButton" title="サブペインを開く" @click="openRightPane"><PanelRightOpen :size="18"/></button>
+				<button v-if="!centerPageOpen" type="button" :class="$style.iconButton" :title="copy.refresh" :disabled="fetching" @click="reloadTimeline"><RefreshCw :size="16" :class="fetching && $style.spinning"/></button>
+				<button v-if="prefs.rightPaneCollapsed || rightPaneOverlay" type="button" :class="$style.iconButton" :title="copy.openSubpane" @click="openRightPane"><PanelRightOpen :size="18"/></button>
 			</div>
 		</header>
 
@@ -110,43 +110,43 @@ SPDX-License-Identifier: AGPL-3.0-only
 				@pointerdown="onTimelinePointerDown"
 				@scroll="onTimelineScroll"
 			>
-				<div v-if="fetching && feedEntries.length === 0" :class="$style.state"><LoaderCircle :size="24" :class="$style.spinning"/><span>タイムラインを読み込んでいます</span></div>
-				<div v-else-if="loadError && feedEntries.length === 0" :class="$style.state"><CircleAlert :size="26"/><strong>タイムラインを読み込めませんでした</strong><button type="button" :class="$style.primaryButton" @click="reloadTimeline">再試行</button></div>
-				<div v-else-if="feedEntries.length === 0" :class="$style.state"><Inbox :size="26"/><span>表示できるノートはありません</span></div>
+				<div v-if="fetching && feedEntries.length === 0" :class="$style.state"><LoaderCircle :size="24" :class="$style.spinning"/><span>{{ copy.loadingTimeline }}</span></div>
+				<div v-else-if="loadError && feedEntries.length === 0" :class="$style.state"><CircleAlert :size="26"/><strong>{{ copy.timelineLoadFailed }}</strong><button type="button" :class="$style.primaryButton" @click="reloadTimeline">{{ copy.retry }}</button></div>
+				<div v-else-if="feedEntries.length === 0" :class="$style.state"><Inbox :size="26"/><span>{{ copy.noNotes }}</span></div>
 				<template v-else>
-					<button v-if="notes.length > 0 && hasMore" type="button" :class="$style.historyLoader" :disabled="loadingMore" @click="loadMore"><span :class="$style.historyLine"></span><span :class="$style.historyLabel"><LoaderCircle v-if="loadingMore" :size="15" :class="$style.spinning"/><History v-else :size="15"/>{{ loadingMore ? '過去の会話を読み込み中' : '過去の会話をたどる' }}</span><span :class="$style.historyLine"></span></button>
+					<button v-if="notes.length > 0 && hasMore" type="button" :class="$style.historyLoader" :disabled="loadingMore" @click="loadMore"><span :class="$style.historyLine"></span><span :class="$style.historyLabel"><LoaderCircle v-if="loadingMore" :size="15" :class="$style.spinning"/><History v-else :size="15"/>{{ loadingMore ? copy.loadingPastConversations : copy.browsePastConversations }}</span><span :class="$style.historyLine"></span></button>
 					<TransitionGroup name="hatacording-feed" tag="div" :class="$style.feedList">
 						<template v-for="entry in feedEntries" :key="`${entry.id}:${prefs.timelineRealtime}`">
 							<section v-if="entry.type === 'activity'" :class="$style.activityBlock">
-									<article :class="[$style.activityEvent, entry.activity!.phase === 'revealing' && $style.activityRevealing, entry.activity!.phase === 'highlighting' && prefs.showFoilAnimation && !entry.activity!.notificationItems?.length && $style.activityShimmering, entry.activity!.emergency && $style.activityEmergency]" :data-phase="entry.activity!.phase">
+								<article :class="[$style.activityEvent, entry.activity!.phase === 'revealing' && $style.activityRevealing, entry.activity!.phase === 'highlighting' && prefs.showFoilAnimation && !entry.activity!.notificationItems?.length && $style.activityShimmering, entry.activity!.emergency && $style.activityEmergency]" :data-phase="entry.activity!.phase">
 									<button type="button" :class="$style.activityMain" :aria-label="activityAriaLabel(entry.activity!)" @click="openActivityEvent(entry.activity!)">
 										<component :is="entry.activity!.icon" :size="16"/>
 										<Activity v-if="isGroupedEarthquakeActivity(entry.activity!)" :size="15" :class="$style.activityEarthquakeGroupIcon" aria-hidden="true"/>
 										<span :class="$style.activityCopy">
 											<span :class="$style.activityTitle">
 												<template v-if="entry.activity!.notificationItems?.length">
-											<Transition name="hatacording-count" mode="out-in"><strong :key="entry.activity!.notificationItems!.length" :class="$style.activityCount">{{ entry.activity!.notificationItems!.length }}</strong></Transition><span>{{ isGroupedEarthquakeActivity(entry.activity!) ? '件の地震・津波情報があります' : entry.activity!.archived ? '件の通知がありました' : '件の通知があります' }}</span>
+													<Transition name="hatacording-count" mode="out-in"><strong :key="entry.activity!.notificationItems!.length" :class="$style.activityCount">{{ entry.activity!.notificationItems!.length }}</strong></Transition><span>{{ groupedActivitySuffix(entry.activity!) }}</span>
 												</template>
 												<template v-else>
-													<span v-if="entry.activity!.kind === 'external'" :class="$style.activitySource">外部</span>
+													<span v-if="entry.activity!.kind === 'external'" :class="$style.activitySource">{{ copy.external }}</span>
 													<span v-if="entry.activity!.user" :class="$style.activityActor"><MkAvatar :user="entry.activity!.user" :class="$style.activityActorAvatar" :forceShowDecoration="true"/><MkUserName :user="entry.activity!.user" :enableEmojiMenu="true"/></span>
-														<span :class="$style.activityShimmerText"><Mfm :text="entry.activity!.action || entry.activity!.text" :author="activityMfmAuthor(entry.activity!)" :plain="true" :nowrap="true" :nyaize="false" :emojiUrls="activityEmojiUrls(entry.activity!)" :enableEmojiMenu="true"/></span>
+													<span :class="$style.activityShimmerText"><Mfm :text="entry.activity!.action || entry.activity!.text" :author="activityMfmAuthor(entry.activity!)" :plain="true" :nowrap="true" :nyaize="false" :emojiUrls="activityEmojiUrls(entry.activity!)" :enableEmojiMenu="true"/></span>
 												</template>
 											</span>
-												<Transition name="hatacording-activity-detail"><span v-if="entry.activity!.expanded && entry.activity!.detail && !isNotificationActivity(entry.activity!)" :class="[$style.activityDetail, $style.activityShimmerText]">{{ entry.activity!.detail }}</span></Transition>
-									</span>
-									<time :class="$style.activityTime" :datetime="entry.activity!.createdAt" :title="activityAbsoluteTime(entry.activity!.createdAt)">{{ activityTimeLabel(entry.activity!.createdAt) }}</time>
-								</button>
-									<button v-if="entry.activity!.kind === 'connection' && entry.activity!.id === activeDisconnectActivityId" type="button" :class="$style.activityReconnect" title="画面を再読み込みして再接続" @click.stop="reconnectServer"><RefreshCw :size="14"/><span>再接続</span></button>
-									<button v-if="entry.activity!.phase === 'settled' && (entry.activity!.notificationItems?.length || (entry.activity!.detail && !isNotificationActivity(entry.activity!)))" type="button" :class="$style.activityExpand" :title="entry.activity!.expanded ? '詳細をたたむ' : '詳細を表示'" :aria-expanded="entry.activity!.expanded" @click.stop="entry.activity!.expanded = !entry.activity!.expanded"><ChevronRight :size="15" :class="entry.activity!.expanded && $style.activityExpandOpen"/></button>
+											<Transition name="hatacording-activity-detail"><span v-if="entry.activity!.expanded && entry.activity!.detail && !isNotificationActivity(entry.activity!)" :class="[$style.activityDetail, $style.activityShimmerText]">{{ entry.activity!.detail }}</span></Transition>
+										</span>
+										<time :class="$style.activityTime" :datetime="entry.activity!.createdAt" :title="activityAbsoluteTime(entry.activity!.createdAt)">{{ activityTimeLabel(entry.activity!.createdAt) }}</time>
+									</button>
+									<button v-if="entry.activity!.kind === 'connection' && entry.activity!.id === activeDisconnectActivityId" type="button" :class="$style.activityReconnect" :title="copy.reloadAndReconnect" @click.stop="reconnectServer"><RefreshCw :size="14"/><span>{{ copy.reconnect }}</span></button>
+									<button v-if="entry.activity!.phase === 'settled' && (entry.activity!.notificationItems?.length || (entry.activity!.detail && !isNotificationActivity(entry.activity!)))" type="button" :class="$style.activityExpand" :title="entry.activity!.expanded ? copy.collapseDetails : copy.showDetails" :aria-expanded="entry.activity!.expanded" @click.stop="entry.activity!.expanded = !entry.activity!.expanded"><ChevronRight :size="15" :class="entry.activity!.expanded && $style.activityExpandOpen"/></button>
 								</article>
 								<TransitionGroup v-if="entry.activity!.notificationItems?.length && entry.activity!.expanded" name="hatacording-notification-group" tag="div" :class="$style.activityGroupList">
 									<button v-for="item in entry.activity!.notificationItems" :key="item.id" type="button" :class="$style.activityGroupItem" @click.stop="activateActivity(item)">
 										<component :is="item.icon" :size="15"/>
-									<span v-if="item.user" :class="$style.activityActor"><MkAvatar :user="item.user" :class="$style.activityActorAvatar" :forceShowDecoration="true"/><MkUserName :user="item.user" :enableEmojiMenu="true"/></span>
-									<span :class="$style.activityGroupCopy"><strong><Mfm :text="item.action || item.text" :author="activityMfmAuthor(item)" :plain="true" :nowrap="true" :nyaize="false" :emojiUrls="activityEmojiUrls(item)" :enableEmojiMenu="true"/></strong></span>
-									<time :class="$style.activityGroupTime" :datetime="item.createdAt" :title="activityAbsoluteTime(item.createdAt)">{{ activityTimeLabel(item.createdAt) }}</time>
-									<ChevronRight :size="14"/>
+										<span v-if="item.user" :class="$style.activityActor"><MkAvatar :user="item.user" :class="$style.activityActorAvatar" :forceShowDecoration="true"/><MkUserName :user="item.user" :enableEmojiMenu="true"/></span>
+										<span :class="$style.activityGroupCopy"><strong><Mfm :text="item.action || item.text" :author="activityMfmAuthor(item)" :plain="true" :nowrap="true" :nyaize="false" :emojiUrls="activityEmojiUrls(item)" :enableEmojiMenu="true"/></strong></span>
+										<time :class="$style.activityGroupTime" :datetime="item.createdAt" :title="activityAbsoluteTime(item.createdAt)">{{ activityTimeLabel(item.createdAt) }}</time>
+										<ChevronRight :size="14"/>
 									</button>
 								</TransitionGroup>
 							</section>
@@ -154,13 +154,13 @@ SPDX-License-Identifier: AGPL-3.0-only
 								<MkExternalNote :note="entry.note!" :host="externalAccount.host" :token="externalAccount.token" :class="$style.externalEmbeddedNote" @reactionChanged="onExternalReactionChanged" @noteDeleted="removeExternalNote"/>
 							</article>
 							<article v-else :class="[$style.noteRow, entry.note!.userId === $i.id && $style.ownNote]">
-								<button type="button" :class="$style.noteAvatarButton" title="プロフィールを開く" @click.stop="openProfileTab(entry.note!.user)">
+								<button type="button" :class="$style.noteAvatarButton" :title="copy.openProfile" @click.stop="openProfileTab(entry.note!.user)">
 									<MkAvatar :user="entry.note!.user" :class="$style.noteAvatar"/>
 								</button>
 								<div data-hatacording-note :data-own="entry.note!.userId === $i.id ? 'true' : 'false'" :data-channel="entry.note!.channel ? 'true' : 'false'" :data-private-channel="entry.note!.channel?.isPrivate ? 'true' : 'false'" :class="$style.noteBubble" :style="entry.note!.channel ? { '--cord-channel-color': entry.note!.channel.color ?? 'var(--MI_THEME-accent)' } : undefined" @click.capture="onEmbeddedNoteClick($event, entry.note!)">
 									<MkNote :note="entry.note!" :withHardMute="true" :class="$style.embeddedNote"/>
 								</div>
-								<button type="button" :class="$style.noteOpenButton" title="サブペインで投稿詳細を開く" @click="openNoteTab(entry.note!)"><Maximize2 :size="14"/></button>
+								<button type="button" :class="$style.noteOpenButton" :title="copy.openNoteInSubpane" @click="openNoteTab(entry.note!)"><Maximize2 :size="14"/></button>
 							</article>
 						</template>
 					</TransitionGroup>
@@ -172,7 +172,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<Transition name="hatacording-jump-content" mode="out-in">
 						<span :key="pendingNotes.length ? 'pending' : 'latest'" :class="$style.jumpContent">
 							<Sparkles v-if="pendingNotes.length" :size="17"/><ArrowDownToLine v-else :size="17"/>
-							<span>{{ pendingNotes.length ? `${pendingNotes.length}件の新しいノート` : '最新へ戻る' }}</span><ChevronDown :size="16"/>
+							<span>{{ pendingNotes.length ? copyx.newNotes({ count: pendingNotes.length.toString() }) : copy.backToLatest }}</span><ChevronDown :size="16"/>
 						</span>
 					</Transition>
 				</button>
@@ -184,52 +184,52 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<component :is="composerContextIcon" :size="15"/>
 				<MkAvatar v-if="composerContext?.note" :user="composerContext.note.user" :class="$style.composerContextAvatar"/>
 				<span :class="$style.composerContextCopy"><b>{{ composerContextLabel }}</b><small v-if="composerContextExcerpt">{{ composerContextExcerpt }}</small></span>
-				<button v-if="composerContext" type="button" title="返信・引用を解除" @click="composerContext = null"><X :size="14"/></button>
+				<button v-if="composerContext" type="button" :title="copy.clearReplyOrQuote" @click="composerContext = null"><X :size="14"/></button>
 			</div>
 			<div v-if="!composerChannel && visibility === 'specified'" :class="$style.recipientEditor">
-				<span :class="$style.recipientLabel"><AtSign :size="14"/>宛先</span>
+				<span :class="$style.recipientLabel"><AtSign :size="14"/>{{ copy.recipients }}</span>
 				<div :class="$style.recipientList">
-					<button v-for="user in visibleUsers" :key="user.id" type="button" :class="$style.recipientChip" :title="`${userAcct(user)}を宛先から外す`" @click="removeVisibleUser(user)"><MkAvatar :user="user"/><span><MkUserName :user="user"/><small>@{{ userAcct(user) }}</small></span><X :size="13"/></button>
-					<button type="button" :class="$style.addRecipientButton" @click="pickMention"><Plus :size="14"/>宛先を追加</button>
+					<button v-for="user in visibleUsers" :key="user.id" type="button" :class="$style.recipientChip" :title="copyx.removeRecipient({ user: userAcct(user) })" @click="removeVisibleUser(user)"><MkAvatar :user="user"/><span><MkUserName :user="user"/><small>@{{ userAcct(user) }}</small></span><X :size="13"/></button>
+					<button type="button" :class="$style.addRecipientButton" @click="pickMention"><Plus :size="14"/>{{ copy.addRecipient }}</button>
 				</div>
 			</div>
-			<div v-if="!composerChannel && visibility === 'specified' && hasNotSpecifiedMentions" :class="$style.mentionNotice"><span>本文のメンションが宛先に含まれていません。</span><button type="button" @click="addMissingMentions">宛先に追加</button></div>
-			<div v-if="cwEnabled" :class="$style.inlineEditor"><EyeOff :size="16"/><input v-model="cwText" maxlength="100" placeholder="内容を隠す理由"/></div>
+			<div v-if="!composerChannel && visibility === 'specified' && hasNotSpecifiedMentions" :class="$style.mentionNotice"><span>{{ copy.mentionsMissingRecipients }}</span><button type="button" @click="addMissingMentions">{{ copy.addToRecipients }}</button></div>
+			<div v-if="cwEnabled" :class="$style.inlineEditor"><EyeOff :size="16"/><input v-model="cwText" maxlength="100" :placeholder="copy.cwReason"/></div>
 			<div v-if="pollEnabled" :class="$style.pollEditor">
-				<div v-for="(_, index) in pollChoices" :key="index"><input v-model="pollChoices[index]" :placeholder="`選択肢 ${index + 1}`"/><button v-if="pollChoices.length > 2" type="button" @click="pollChoices.splice(index, 1)"><X :size="14"/></button></div>
-				<button v-if="pollChoices.length < 10" type="button" @click="pollChoices.push('')"><Plus :size="15"/>選択肢を追加</button>
-				<label><input v-model="pollMultiple" type="checkbox"/>複数選択を許可</label>
+				<div v-for="(_, index) in pollChoices" :key="index"><input v-model="pollChoices[index]" :placeholder="copyx.pollChoice({ number: (index + 1).toString() })"/><button v-if="pollChoices.length > 2" type="button" @click="pollChoices.splice(index, 1)"><X :size="14"/></button></div>
+				<button v-if="pollChoices.length < 10" type="button" @click="pollChoices.push('')"><Plus :size="15"/>{{ copy.addPollChoice }}</button>
+				<label><input v-model="pollMultiple" type="checkbox"/>{{ copy.allowMultipleChoices }}</label>
 				<div :class="$style.pollOptions">
-					<label>締め切り<select v-model="pollExpiration"><option value="infinite">なし</option><option value="at">日時を指定</option><option value="after">投稿後の時間を指定</option></select></label>
-					<input v-if="pollExpiration === 'at'" v-model="pollExpiresAt" type="datetime-local" aria-label="アンケートの締め切り日時"/>
+					<label>{{ copy.deadline }}<select v-model="pollExpiration"><option value="infinite">{{ copy.none }}</option><option value="at">{{ copy.specifyDateTime }}</option><option value="after">{{ copy.specifyTimeAfterPosting }}</option></select></label>
+					<input v-if="pollExpiration === 'at'" v-model="pollExpiresAt" type="datetime-local" :aria-label="copy.pollDeadlineDateTime"/>
 					<template v-else-if="pollExpiration === 'after'">
-						<input v-model.number="pollExpiredAfter" type="number" min="1" max="100000" aria-label="アンケート終了までの時間"/>
-						<select v-model="pollExpiredAfterUnit" aria-label="アンケート終了までの時間単位"><option value="second">秒</option><option value="minute">分</option><option value="hour">時間</option><option value="day">日</option></select>
+						<input v-model.number="pollExpiredAfter" type="number" min="1" max="100000" :aria-label="copy.pollTimeUntilEnd"/>
+						<select v-model="pollExpiredAfterUnit" :aria-label="copy.pollTimeUnit"><option value="second">{{ copy.seconds }}</option><option value="minute">{{ copy.minutes }}</option><option value="hour">{{ copy.hours }}</option><option value="day">{{ copy.days }}</option></select>
 					</template>
 				</div>
 			</div>
 			<MkEventEditor v-if="event" v-model="event" :class="$style.eventEditor" @destroyed="event = null"/>
 			<XPostFormAttaches v-model="draftFiles" :class="$style.composerAttachments" @detach="removeDraftFile" @changeSensitive="updateDraftFileSensitive" @changeName="updateDraftFileName"/>
-			<div v-if="postDelay.active.value" :class="$style.delayStatus"><span>あと {{ postDelay.remainingSeconds.value }} 秒</span><button type="button" @click="postDelay.sendNow">今すぐ投稿</button></div>
+			<div v-if="postDelay.active.value" :class="$style.delayStatus"><span>{{ copyx.secondsRemaining({ seconds: postDelay.remainingSeconds.value.toString() }) }}</span><button type="button" @click="postDelay.sendNow">{{ copy.postNow }}</button></div>
 			<Transition name="hatacording-composer-preview">
-				<section v-if="draftText.trim().length > 0" :class="$style.composerPreview" aria-label="投稿プレビュー">
-					<header :class="$style.composerPreviewHeader"><Sparkles :size="13"/><span>プレビュー</span></header>
+				<section v-if="draftText.trim().length > 0" :class="$style.composerPreview" :aria-label="copy.postPreview">
+					<header :class="$style.composerPreviewHeader"><Sparkles :size="13"/><span>{{ copy.preview }}</span></header>
 					<div :class="$style.composerPreviewBody"><Mfm :text="draftText" :author="$i" :nyaize="'respect'"/></div>
 				</section>
 			</Transition>
 			<div :class="[$style.postFormPill, postDelay.active.value && $style.delayActive]" :style="[visibilityBorderStyle, postDelay.frameStyle.value]">
-				<button type="button" :class="[$style.pillButton, composerToolsOpen && $style.pillActive]" title="投稿機能" aria-haspopup="menu" :aria-expanded="composerToolsOpen" @click="openComposerToolsMenu"><Star :size="18"/></button>
-				<button type="button" :class="$style.pillButton" title="添付メニュー" @click="openAttachmentMenu"><CloudUpload :size="18"/></button>
-				<button type="button" :class="[$style.pillButton, cwEnabled && $style.pillActive]" :title="cwEnabled ? 'CWを解除' : 'CWを使う'" :aria-pressed="cwEnabled" @click="cwEnabled = !cwEnabled"><EyeOff :size="18"/></button>
-				<div v-if="activeComposerShortcuts.length" :class="$style.composerShortcutInline" aria-label="よく使う投稿機能">
+				<button type="button" :class="[$style.pillButton, composerToolsOpen && $style.pillActive]" :title="copy.postFeatures" aria-haspopup="menu" :aria-expanded="composerToolsOpen" @click="openComposerToolsMenu"><Star :size="18"/></button>
+				<button type="button" :class="$style.pillButton" :title="copy.attachmentMenu" @click="openAttachmentMenu"><CloudUpload :size="18"/></button>
+				<button type="button" :class="[$style.pillButton, cwEnabled && $style.pillActive]" :title="cwEnabled ? copy.disableCw : copy.enableCw" :aria-pressed="cwEnabled" @click="cwEnabled = !cwEnabled"><EyeOff :size="18"/></button>
+				<div v-if="activeComposerShortcuts.length" :class="$style.composerShortcutInline" :aria-label="copy.frequentPostFeatures">
 					<button v-for="shortcut in activeComposerShortcuts" :key="shortcut.id" type="button" :class="[$style.composerShortcutButton, isComposerShortcutActive(shortcut.id) && $style.composerShortcutActive]" :title="shortcut.label" :aria-label="shortcut.label" @click="runComposerShortcut(shortcut.id, $event)"><component :is="shortcut.icon" :size="15"/></button>
 				</div>
 				<textarea ref="composerInput" v-model="draftText" :class="$style.pillInput" rows="1" :placeholder="composerPlaceholder" @focus="composerInputFocused = true" @blur="composerInputFocused = false" @input="resizeComposerInput" @keydown.ctrl.enter.prevent="submitPost" @keydown.meta.enter.prevent="submitPost"></textarea>
-				<button type="button" :class="$style.pillButton" title="カスタム絵文字を挿入" aria-label="カスタム絵文字を挿入" @click="openComposerEmojiPicker"><SmilePlus :size="18"/></button>
+				<button type="button" :class="$style.pillButton" :title="copy.insertCustomEmoji" :aria-label="copy.insertCustomEmoji" @click="openComposerEmojiPicker"><SmilePlus :size="18"/></button>
 				<button type="button" :class="[$style.visibilityButton, localOnly && $style.localOnly]" :title="visibilityLabel" @click="openVisibilityMenu"><component :is="visibilityIcon" :size="17"/><span>{{ visibilityShortLabel }}</span></button>
 				<div v-if="prefs.showCharacterCounter" :class="[$style.charCounter, characterCount > maxNoteLength && $style.counterOver]" :style="characterCounterStyle"><span>{{ maxNoteLength - characterCount }}</span></div>
-				<button v-if="postDelay.active.value" type="button" :class="$style.sendButton" title="待機を取り消す" @click="postDelay.cancel"><Square :size="16" fill="currentColor"/></button>
-				<button v-else type="button" :class="$style.sendButton" title="投稿" :disabled="!canSubmit" @click="submitPost"><ArrowUp :size="17"/></button>
+				<button v-if="postDelay.active.value" type="button" :class="$style.sendButton" :title="copy.cancelWait" @click="postDelay.cancel"><Square :size="16" fill="currentColor"/></button>
+				<button v-else type="button" :class="$style.sendButton" :title="copy.post" :disabled="!canSubmit" @click="submitPost"><ArrowUp :size="17"/></button>
 			</div>
 		</div>
 		</template>
@@ -240,26 +240,26 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 	<div v-if="!prefs.rightPaneCollapsed && !rightPaneOverlay" :class="$style.rightResizer" @pointerdown="startRightResize"></div>
 	<aside :class="[$style.rightPane, rightPaneOpen && $style.rightPaneOpen, prefs.rightPaneCollapsed && !rightPaneOverlay && $style.rightPaneCollapsed]" :style="rightPaneStyle">
-		<div v-if="rightPaneOverlay && rightPaneOpen" :class="$style.mobileRightResizer" role="separator" aria-label="サブペインの幅を調整" aria-orientation="vertical" @pointerdown="startRightResize"><span></span></div>
+		<div v-if="rightPaneOverlay && rightPaneOpen" :class="$style.mobileRightResizer" role="separator" :aria-label="copy.resizeSubpane" aria-orientation="vertical" @pointerdown="startRightResize"><span></span></div>
 		<header :class="$style.subpaneHeader">
 			<div :class="$style.tabs" role="tablist">
 				<div v-for="(tab, index) in rightTabs" :key="tab.id" :class="[$style.tabWrap, activeRightTab?.id === tab.id && $style.activeTab]" draggable="true" @dragstart="dragTabIndex = index" @dragover.prevent @drop="dropTab(index)">
-					<button type="button" :class="$style.tab" @click="selectRightTab(tab)">{{ tab.title }}</button><button type="button" :class="$style.tabClose" title="タブを閉じる" @click="closeRightTab(tab.id)"><X :size="13"/></button>
+					<button type="button" :class="$style.tab" @click="selectRightTab(tab)">{{ tab.title }}</button><button type="button" :class="$style.tabClose" :title="copy.closeTab" @click="closeRightTab(tab.id)"><X :size="13"/></button>
 				</div>
 			</div>
-			<button type="button" :class="$style.iconButton" :title="rightTabs.length < subpaneMaxTabs ? '表示内容を追加' : '表示内容を入れ替え'" @click="openAddTabMenu"><Plus :size="16"/></button>
-			<button v-if="activeRightTab?.kind === 'widgets' && !widgetEditing" type="button" :class="$style.iconButton" title="ウィジェットを編集" @click="widgetEditing = true"><Pencil :size="16"/></button>
-			<button v-if="activeRightTab?.kind === 'widgets' && widgetEditing" type="button" :class="$style.iconButton" title="HatasabaUIのウィジェット構成を取り込む" @click="importHatasabaWidgets(activeRightTab)"><Import :size="16"/></button>
-			<button v-if="rightPaneOverlay" type="button" :class="$style.iconButton" title="閉じる" @click="rightPaneOpen = false"><X :size="16"/></button>
-			<button v-else type="button" :class="$style.iconButton" title="サブペインを収納" @click="collapseRightPane"><PanelRightClose :size="16"/></button>
+			<button type="button" :class="$style.iconButton" :title="rightTabs.length < subpaneMaxTabs ? copy.addContent : copy.replaceContent" @click="openAddTabMenu"><Plus :size="16"/></button>
+			<button v-if="activeRightTab?.kind === 'widgets' && !widgetEditing" type="button" :class="$style.iconButton" :title="copy.editWidgets" @click="widgetEditing = true"><Pencil :size="16"/></button>
+			<button v-if="activeRightTab?.kind === 'widgets' && widgetEditing" type="button" :class="$style.iconButton" :title="copy.importHatasabaWidgets" @click="importHatasabaWidgets(activeRightTab)"><Import :size="16"/></button>
+			<button v-if="rightPaneOverlay" type="button" :class="$style.iconButton" :title="copy.close" @click="rightPaneOpen = false"><X :size="16"/></button>
+			<button v-else type="button" :class="$style.iconButton" :title="copy.collapseSubpane" @click="collapseRightPane"><PanelRightClose :size="16"/></button>
 		</header>
 
 		<div ref="subpaneContent" :class="$style.subpaneContent">
 			<Suspense :timeout="0">
 				<template #default>
 					<div :key="activeRightTab?.id ?? 'empty'" :class="$style.subpaneView">
-						<div v-if="!activeRightTab" :class="$style.welcomePane"><div :class="$style.welcomeWordmark">HataSNSCordUI</div><strong>ここがサブペインです</strong><span>ノートや通知、検索結果などを選ぶと、この場所に新しいタブで表示します。</span></div>
-						<div v-else-if="activeRightTab.kind === 'welcome'" :class="$style.welcomePane"><div :class="$style.welcomeWordmark">HataSNSCordUI</div><strong>会話の横で、必要な情報を。</strong><span>投稿やアクションを選ぶと、この場所に内容が表示されます。タブは並び替えも削除もできます。</span></div>
+					<div v-if="!activeRightTab" :class="$style.welcomePane"><div :class="$style.welcomeWordmark">HataSNSCordUI</div><strong>{{ copy.subpaneHere }}</strong><span>{{ copy.subpaneHereDescription }}</span></div>
+					<div v-else-if="activeRightTab.kind === 'welcome'" :class="$style.welcomePane"><div :class="$style.welcomeWordmark">HataSNSCordUI</div><strong>{{ copy.welcomeSubpaneTitle }}</strong><span>{{ copy.welcomeSubpaneDescription }}</span></div>
 						<MkNoteDetailed v-else-if="activeRightTab.kind === 'note' && activeRightTab.note" :key="activeRightTab.note.id" :note="activeRightTab.note" :class="[$style.detailPane, $style.subpanePage]"/>
 						<FullUserPage v-else-if="activeRightTab.kind === 'profile' && activeRightTab.user" :key="activeRightTab.id" :class="$style.subpanePage" :acct="userAcct(activeRightTab.user)"/>
 						<FullNotificationsPage v-else-if="activeRightTab.kind === 'notifications'" :key="activeRightTab.id" :class="$style.subpanePage" :disableRefreshButton="false" :notification="true"/>
@@ -267,9 +267,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<FullSearchPage v-else-if="activeRightTab.kind === 'search'" :key="activeRightTab.id" :class="$style.subpanePage"/>
 						<div v-else-if="activeRightTab.kind === 'externalNotifications' && !externalAccount" :class="$style.welcomePane">
 							<Unplug :size="32"/>
-							<strong>外部アカウントが未接続です</strong>
-							<span>接続情報がないため、外部サーバーへの通信は行っていません。通知を利用する場合だけ連携設定を開いてください。</span>
-							<button type="button" :class="$style.primaryButton" @click="openCenterPage('/settings/external-account', '外部アカウント連携')">連携設定を開く</button>
+						<strong>{{ copy.externalAccountNotConnected }}</strong>
+						<span>{{ copy.externalAccountNotConnectedDescription }}</span>
+						<button type="button" :class="$style.primaryButton" @click="openCenterPage('/settings/external-account', copy.externalAccountLinking)">{{ copy.openLinkSettings }}</button>
 						</div>
 						<FullExternalNotificationsPage v-else-if="activeRightTab.kind === 'externalNotifications' && externalAccount" :key="activeRightTab.id" :class="$style.subpanePage"/>
 						<FullFavoritesPage v-else-if="activeRightTab.kind === 'favorites'" :key="activeRightTab.id" :class="$style.subpanePage"/>
@@ -281,15 +281,15 @@ SPDX-License-Identifier: AGPL-3.0-only
 							<MkTrendingTimeline v-else-if="activeRightTab.timelineSource === 'trending'"/>
 							<MkStreamingNotesTimeline v-else :src="nativeSubpaneTimelineSource(activeRightTab.timelineSource)" :list="activeRightTab.timelineSource === 'list' ? activeRightTab.timelineSourceId : undefined" :antenna="activeRightTab.timelineSource === 'antenna' ? activeRightTab.timelineSourceId : undefined" :channel="activeRightTab.timelineSource === 'channel' ? activeRightTab.timelineSourceId : undefined"/>
 						</div>
-						<div v-else-if="activeRightTab.kind === 'studioUnavailable'" :class="$style.welcomePane"><PanelLeftClose :size="34"/><strong>このUIではHataSideStudioを使用できません</strong><span>HataSideStudioはHatasabaUIのサイドメニュー専用です。</span><button type="button" :class="$style.primaryButton" @click="openUiSetup">UI切り替えを開く</button></div>
+					<div v-else-if="activeRightTab.kind === 'studioUnavailable'" :class="$style.welcomePane"><PanelLeftClose :size="34"/><strong>{{ copy.studioUnavailable }}</strong><span>{{ copy.studioUnavailableDescription }}</span><button type="button" :class="$style.primaryButton" @click="openUiSetup">{{ copy.openUiSwitcher }}</button></div>
 						<div v-else-if="activeRightTab.kind === 'widgets'" :class="$style.widgetPane">
-							<div v-if="!widgetEditing && (activeRightTab.widgets?.length ?? 0) === 0" :class="$style.widgetEmpty"><LayoutDashboard :size="28"/><strong>何かウィジェットを追加してみませんか？</strong><span>このタブはまだ空です。編集を始めるか、HatasabaUIの構成を取り込めます。</span><div><button type="button" :class="$style.primaryButton" @click="widgetEditing = true">編集を始める</button><button type="button" :class="$style.secondaryButton" @click="importHatasabaWidgets(activeRightTab)">既存構成を取り込む</button></div></div>
+						<div v-if="!widgetEditing && (activeRightTab.widgets?.length ?? 0) === 0" :class="$style.widgetEmpty"><LayoutDashboard :size="28"/><strong>{{ copy.addWidgetsPrompt }}</strong><span>{{ copy.emptyWidgetTabDescription }}</span><div><button type="button" :class="$style.primaryButton" @click="widgetEditing = true">{{ copy.startEditing }}</button><button type="button" :class="$style.secondaryButton" @click="importHatasabaWidgets(activeRightTab)">{{ copy.importExistingLayout }}</button></div></div>
 							<WidgetEditor v-else :tab="activeRightTab"/>
 						</div>
-						<div v-else :class="$style.welcomePane"><ExternalLink :size="30"/><strong>{{ activeRightTab.title }}</strong><span>中央ペインで開きます。左右のペインはそのまま残ります。</span><button type="button" :class="$style.primaryButton" @click="openCenterPage(activeRightTab.path || '/', activeRightTab.title)">中央で開く</button></div>
+					<div v-else :class="$style.welcomePane"><ExternalLink :size="30"/><strong>{{ activeRightTab.title }}</strong><span>{{ copy.openInCenterDescription }}</span><button type="button" :class="$style.primaryButton" @click="openCenterPage(activeRightTab.path || '/', activeRightTab.title)">{{ copy.openInCenter }}</button></div>
 					</div>
 				</template>
-				<template #fallback><div :class="$style.subpaneLoading"><LoaderCircle :size="22" :class="$style.spinning"/><span>サブペインを読み込んでいます</span></div></template>
+			<template #fallback><div :class="$style.subpaneLoading"><LoaderCircle :size="22" :class="$style.spinning"/><span>{{ copy.loadingSubpane }}</span></div></template>
 			</Suspense>
 		</div>
 	</aside>
@@ -310,6 +310,7 @@ import '@fontsource-variable/noto-sans-jp/wght.css';
 import type { HatacordingUiCollectionIcon, HatacordingUiComposerShortcut, HatacordingUiMenuPreference, HatacordingUiPreferencesChangeDetail, HatacordingUiWidget } from '@/utility/hatacording-ui.js';
 import type { Widget } from '@/components/MkWidgets.vue';
 import { ensureSignin, incNotesCount, notesCount } from '@/i.js';
+import { i18n } from '@/i18n.js';
 import { getAccountMenu, refreshCurrentAccount } from '@/accounts.js';
 import { instance } from '@/instance.js';
 import { definePage } from '@/page.js';
@@ -338,14 +339,15 @@ import { miLocalStorage } from '@/local-storage.js';
 import { getEffectiveHatacordingRateLimit, hatacordingRateLimitSnapshot } from '@/utility/hatacording-rate-limit.js';
 import { readHatacordingActivityCache, writeHatacordingActivityCache } from '@/utility/hatacording-activity-cache.js';
 import type { HatacordingCachedActivity } from '@/utility/hatacording-activity-cache.js';
-import type { HatacordingActivityCopy, HatacordingActivityIcon, HatacordingActivityKind } from '@/utility/hatacording-activity.js';
-import { createApiActionActivity, createEarthquakeActivity, createNotificationActivity, createServerDisconnectedActivity, createServerReconnectedActivity, createTimelineRealtimeActivity } from '@/utility/hatacording-activity.js';
+import type { HatacordingActivityCopy, HatacordingActivityIcon, HatacordingActivityKind, HatacordingNotificationActivitySource } from '@/utility/hatacording-activity.js';
+import { createApiActionActivity, createEarthquakeActivity, createNotificationActivity, createNotificationActivityFromSource, createServerDisconnectedActivity, createServerReconnectedActivity, createTimelineRealtimeActivity, sharesHatacordingNotificationAudience } from '@/utility/hatacording-activity.js';
 import { HATACORDING_TUTORIAL_ACHIEVEMENT_ID } from '@/utility/hatacording-copy.js';
 import { acquireNotificationToastSuppression } from '@/utility/notification-toast-suppression.js';
 import { acquireServerDisconnectUiSuppression } from '@/utility/server-disconnect-ui-suppression.js';
 import { Autocomplete } from '@/utility/autocomplete.js';
 import { extractMentions } from '@/utility/extract-mentions.js';
 import { parseMfmCached } from '@/utility/mfm-cache.js';
+import { versatileLang } from '@/utility/intl-const.js';
 import MkAvatar from '@/components/global/MkAvatar.vue';
 import MkUserName from '@/components/global/MkUserName.vue';
 import MkNote from '@/components/MkNote.vue';
@@ -393,8 +395,11 @@ type ActivityPayload = {
 	action?: string;
 	reaction?: string;
 	reactionEmojiUrl?: string;
+	emojiUrls?: Record<string, string>;
 	note?: Misskey.entities.Note;
 	notificationType?: string;
+	botOrigin?: boolean;
+	cacheSource?: HatacordingNotificationActivitySource;
 };
 type PendingActivityEvent = ActivityPayload & { notificationItems?: ActivityPayload[]; archived?: boolean; onSettled?: () => void };
 type ActivityEvent = PendingActivityEvent & { phase: ActivityPhase; expanded: boolean; animationRevision: number };
@@ -404,6 +409,8 @@ type ComposerContext = { kind: 'reply' | 'quote' | 'mention' | 'channel'; note?:
 type RightTabKind = 'welcome' | 'note' | 'profile' | 'notifications' | 'announcements' | 'search' | 'drive' | 'widgets' | 'timeline' | 'studioUnavailable' | 'externalNotifications' | 'favorites' | 'clips' | 'chat' | 'page';
 type RightTab = { id: string; title: string; kind: RightTabKind; note?: Misskey.entities.Note; user?: Misskey.entities.UserDetailed | Misskey.entities.UserLite; path?: string; widgets?: HatacordingUiWidget[]; timelineSource?: TimelineSource; timelineSourceId?: string };
 
+const copy = i18n.ts._hata._hatacordingUi._main;
+const copyx = i18n.tsx._hata._hatacordingUi._main;
 const $i = ensureSignin();
 const styles = useCssModule();
 const stream = useStream();
@@ -426,7 +433,7 @@ const widgetEditing = ref(false);
 const tutorialOpen = ref(false);
 const centerPageOpen = ref(false);
 const centerPagePath = ref('/timeline');
-const centerPageTitle = ref('タイムライン');
+const centerPageTitle = ref(copy.timelines);
 const centerPageHistory = ref<string[]>([]);
 let requestedCenterPageTitle: string | null = null;
 const activeMenuId = ref(prefs.value.currentTimelineId);
@@ -466,23 +473,23 @@ const composerContext = ref<ComposerContext | null>(null);
 const visibleUsers = ref<Misskey.entities.UserLite[]>([]);
 const hasNotSpecifiedMentions = ref(false);
 const postDelay = createPostSendDelayController();
-const rightTabs = ref<RightTab[]>([{ id: 'detail', title: '詳細', kind: 'welcome' }]);
+const rightTabs = ref<RightTab[]>([{ id: 'detail', title: copy.details, kind: 'welcome' }]);
 const activeRightTabId = ref('detail');
 const dragTabIndex = ref<number | null>(null);
 const colorModeTransitioning = ref(false);
 const rateLimitNow = ref(Date.now());
 const postFormActions = getPluginHandlers('post_form_action');
 const composerShortcutDefinitions: { id: HatacordingUiComposerShortcut; label: string; icon: Component }[] = [
-	{ id: 'poll', label: 'アンケート', icon: List },
-	{ id: 'mention', label: 'メンション', icon: AtSign },
+	{ id: 'poll', label: copy.poll, icon: List },
+	{ id: 'mention', label: copy.mention, icon: AtSign },
 	{ id: 'mfm', label: 'MFM', icon: SwatchBook },
-	{ id: 'hashtag', label: 'ハッシュタグ', icon: Hash },
-	{ id: 'event', label: 'イベント', icon: CalendarPlus },
-	{ id: 'drawing', label: 'お絵描き', icon: Pencil },
-	{ id: 'schedule', label: '予約・自動削除', icon: History },
-	{ id: 'reaction', label: 'リアクション制限', icon: Shield },
-	{ id: 'delivery', label: '配信先', icon: Globe2 },
-	{ id: 'full', label: '完全な投稿フォーム', icon: Settings },
+	{ id: 'hashtag', label: copy.hashtag, icon: Hash },
+	{ id: 'event', label: copy.event, icon: CalendarPlus },
+	{ id: 'drawing', label: copy.drawing, icon: Pencil },
+	{ id: 'schedule', label: copy.scheduleAndAutoDelete, icon: History },
+	{ id: 'reaction', label: copy.reactionRestrictions, icon: Shield },
+	{ id: 'delivery', label: copy.deliveryDestination, icon: Globe2 },
+	{ id: 'full', label: copy.fullPostForm, icon: Settings },
 ];
 let resizeObserver: ResizeObserver | null = null;
 let onlineTimer: number | null = null;
@@ -608,33 +615,33 @@ const rateLimitPercentage = computed(() => effectiveRateLimit.value == null ? nu
 const rateLimitMeterLabel = computed(() => rateLimitPercentage.value == null ? '—' : String(rateLimitPercentage.value));
 const rateLimitLevel = computed(() => rateLimitPercentage.value == null ? 'waiting' : rateLimitPercentage.value <= 20 ? 'low' : rateLimitPercentage.value <= 45 ? 'medium' : 'normal');
 const rateLimitMeterStyle = computed(() => ({ '--rate-limit-offset': String(100 - (rateLimitPercentage.value ?? 0)) }));
-const rateLimitTitle = computed(() => effectiveRateLimit.value == null ? '全動作のレートリミットを計測中' : `全動作のレートリミット 残り ${effectiveRateLimit.value.remaining}/${effectiveRateLimit.value.limit}`);
+const rateLimitTitle = computed(() => effectiveRateLimit.value == null ? copy.measuringRateLimit : copyx.rateLimitRemaining({ remaining: effectiveRateLimit.value.remaining.toString(), limit: effectiveRateLimit.value.limit.toString() }));
 
 const staticMenuItems = computed<HatacordingMenuItem[]>(() => {
 	const items: HatacordingMenuItem[] = [
-	{ id: 'timeline:home', label: 'ホーム', icon: Home, source: 'home', defaultVisible: true },
-	{ id: 'timeline:local', label: 'ローカル', icon: Earth, source: 'local', defaultVisible: true },
-		{ id: 'timeline:social', label: 'ソーシャル', icon: Rocket, source: 'social', defaultVisible: true },
-		{ id: 'timeline:global', label: 'グローバル', icon: Globe2, source: 'global' },
-		{ id: 'timeline:trending', label: 'トレンド', icon: Flame, source: 'trending' },
-		...(externalAccount.value && prefer.s['external.enableOHTL'] ? [{ id: 'timeline:external-home', label: `外部ホーム・${externalAccount.value.host}`, icon: ExternalLink, source: 'externalHome' as const }] : []),
-		...(externalAccount.value && prefer.s['external.enableOLTL'] ? [{ id: 'timeline:external-local', label: `外部ローカル・${externalAccount.value.host}`, icon: ExternalLink, source: 'externalLocal' as const }] : []),
-		{ id: 'tool:search', label: '検索', icon: Search, defaultVisible: true },
-	{ id: 'tool:notifications', label: '通知', icon: Bell, defaultVisible: true, badge: $i.unreadNotificationsCount ? String(Math.min(99, $i.unreadNotificationsCount)) : undefined },
-	{ id: 'tool:drive', label: 'ドライブ', icon: CloudUpload, defaultVisible: true },
-		{ id: 'tool:ui', label: 'UI切り替え', icon: WandSparkles, defaultVisible: true },
-	{ id: 'tool:announcements', label: 'お知らせ', icon: Megaphone, badge: $i.hasUnreadAnnouncement ? '●' : undefined },
-	{ id: 'tool:externalNotifications', label: '外部通知', icon: Bell, badge: externalUnread.value ? '●' : undefined },
+		{ id: 'timeline:home', label: copy.home, icon: Home, source: 'home', defaultVisible: true },
+		{ id: 'timeline:local', label: copy.local, icon: Earth, source: 'local', defaultVisible: true },
+		{ id: 'timeline:social', label: copy.social, icon: Rocket, source: 'social', defaultVisible: true },
+		{ id: 'timeline:global', label: copy.global, icon: Globe2, source: 'global' },
+		{ id: 'timeline:trending', label: copy.trending, icon: Flame, source: 'trending' },
+		...(externalAccount.value && prefer.s['external.enableOHTL'] ? [{ id: 'timeline:external-home', label: copyx.externalHome({ host: externalAccount.value.host }), icon: ExternalLink, source: 'externalHome' as const }] : []),
+		...(externalAccount.value && prefer.s['external.enableOLTL'] ? [{ id: 'timeline:external-local', label: copyx.externalLocal({ host: externalAccount.value.host }), icon: ExternalLink, source: 'externalLocal' as const }] : []),
+		{ id: 'tool:search', label: copy.search, icon: Search, defaultVisible: true },
+		{ id: 'tool:notifications', label: copy.notifications, icon: Bell, defaultVisible: true, badge: $i.unreadNotificationsCount ? String(Math.min(99, $i.unreadNotificationsCount)) : undefined },
+		{ id: 'tool:drive', label: copy.drive, icon: CloudUpload, defaultVisible: true },
+		{ id: 'tool:ui', label: copy.switchUi, icon: WandSparkles, defaultVisible: true },
+		{ id: 'tool:announcements', label: copy.announcements, icon: Megaphone, badge: $i.hasUnreadAnnouncement ? '●' : undefined },
+		{ id: 'tool:externalNotifications', label: copy.externalNotifications, icon: Bell, badge: externalUnread.value ? '●' : undefined },
 	{ id: 'tool:hatask', label: 'Hatask', icon: LayoutDashboard, to: '/hatask' },
 	{ id: 'tool:hatafeed', label: 'HataFeed', icon: MessageSquareWarning, to: '/hatafeed' },
 	{ id: 'tool:hatady', label: 'Hatady', icon: BookOpen, to: '/hatady' },
 	{ id: 'tool:hanaawase', label: '花常', icon: Sparkles, to: '/hanaawase' },
 	{ id: 'tool:games', label: 'Hataskey Games', icon: Gamepad2, to: '/games' },
 	{ id: 'tool:earthquake', label: '地震・津波情報', icon: Activity, to: '/earthquake' },
-	{ id: 'tool:explore', label: 'みつける', icon: Compass, to: '/explore' },
-	{ id: 'tool:favorites', label: 'お気に入り', icon: Sparkles, to: '/my/favorites' },
-	{ id: 'tool:clips', label: 'クリップ', icon: Paperclip, to: '/my/clips' },
-	{ id: 'tool:chat', label: 'チャット', icon: MessageCircle, to: '/chat' },
+		{ id: 'tool:explore', label: copy.explore, icon: Compass, to: '/explore' },
+		{ id: 'tool:favorites', label: copy.favorites, icon: Sparkles, to: '/my/favorites' },
+		{ id: 'tool:clips', label: copy.clips, icon: Paperclip, to: '/my/clips' },
+		{ id: 'tool:chat', label: copy.chat, icon: MessageCircle, to: '/chat' },
 		{ id: 'tool:studio', label: 'HataSideStudio', icon: PanelLeftClose },
 	];
 	return items.filter(item => item.id !== 'timeline:local' || $i.policies.ltlAvailable).filter(item => item.id !== 'timeline:global' || $i.policies.gtlAvailable).filter(item => item.id !== 'tool:chat' || $i.policies.chatAvailability !== 'unavailable');
@@ -659,14 +666,14 @@ const realtimeAvailable = computed(() => activeMenuItem.value?.source != null &&
 const activeCollectionSettings = computed<{ path: string; title: string; label: string } | null>(() => {
 	const item = activeMenuItem.value;
 	if (!item?.sourceId) return null;
-	if (item.source === 'list') return { path: `/my/lists/${item.sourceId}`, title: 'リストの設定', label: '表示中のリストを設定' };
-	if (item.source === 'antenna') return { path: `/my/antennas/${item.sourceId}`, title: 'アンテナの設定', label: '表示中のアンテナを設定' };
+	if (item.source === 'list') return { path: `/my/lists/${item.sourceId}`, title: copy.listSettings, label: copy.configureCurrentList };
+	if (item.source === 'antenna') return { path: `/my/antennas/${item.sourceId}`, title: copy.antennaSettings, label: copy.configureCurrentAntenna };
 	if (item.source === 'channel') {
 		const channel = activeChannel.value;
 		const canManage = channel?.canManage === true || channel?.userId === $i.id || $i.isAdmin || $i.isModerator;
 		return canManage
-			? { path: `/channels/${item.sourceId}/edit`, title: 'チャンネルの設定', label: '表示中のチャンネルを設定' }
-			: { path: `/channels/${item.sourceId}`, title: 'チャンネル', label: '表示中のチャンネルを開く' };
+			? { path: `/channels/${item.sourceId}/edit`, title: copy.channelSettings, label: copy.configureCurrentChannel }
+			: { path: `/channels/${item.sourceId}`, title: copy.channel, label: copy.openCurrentChannel };
 	}
 	return null;
 });
@@ -681,9 +688,9 @@ const rememberNoteVisibility = computed({
 	},
 });
 const collectionGroups = computed(() => [
-	{ id: 'channels' as const, label: '購読チャンネル', icon: collectionIcon(prefs.value.collectionIcons.channels), items: sortedItems(dynamicMenuItems.value.filter(item => item.id.startsWith('channel:'))) },
-	{ id: 'lists' as const, label: 'リスト', icon: collectionIcon(prefs.value.collectionIcons.lists), items: sortedItems(dynamicMenuItems.value.filter(item => item.id.startsWith('list:'))) },
-	{ id: 'antennas' as const, label: 'アンテナ', icon: collectionIcon(prefs.value.collectionIcons.antennas), items: sortedItems(dynamicMenuItems.value.filter(item => item.id.startsWith('antenna:'))) },
+	{ id: 'channels' as const, label: copy.followedChannels, icon: collectionIcon(prefs.value.collectionIcons.channels), items: sortedItems(dynamicMenuItems.value.filter(item => item.id.startsWith('channel:'))) },
+	{ id: 'lists' as const, label: copy.lists, icon: collectionIcon(prefs.value.collectionIcons.lists), items: sortedItems(dynamicMenuItems.value.filter(item => item.id.startsWith('list:'))) },
+	{ id: 'antennas' as const, label: copy.antennas, icon: collectionIcon(prefs.value.collectionIcons.antennas), items: sortedItems(dynamicMenuItems.value.filter(item => item.id.startsWith('antenna:'))) },
 ]);
 const inLocalTimeline = computed(() => activeMenuItem.value?.source === 'local');
 const inChannel = computed(() => activeMenuItem.value?.source === 'channel');
@@ -708,8 +715,8 @@ const activeComposerShortcuts = computed(() => prefs.value.composerShortcuts.map
 
 function collectionIcon(icon: HatacordingUiCollectionIcon): Component { return ({ tv: Tv, list: List, radio: Radio, folder: Folder, layers: Layers })[icon]; }
 
-const visibilityLabel = computed(() => composerChannel.value ? 'チャンネル投稿（公開・サーバー内固定）' : ({ public: 'パブリック', home: 'ホーム', followers: 'フォロワー', specified: 'ダイレクト' })[visibility.value]);
-const visibilityShortLabel = computed(() => composerChannel.value ? 'チャンネル・鯖内' : `${({ public: '公開', home: 'ホーム', followers: '限定', specified: '宛先' })[visibility.value]}${localOnly.value && visibility.value !== 'specified' ? '・鯖内' : ''}`);
+const visibilityLabel = computed(() => composerChannel.value ? copy.channelPostServerOnly : ({ public: copy.public, home: copy.home, followers: copy.followers, specified: copy.direct })[visibility.value]);
+const visibilityShortLabel = computed(() => composerChannel.value ? copy.channelServerShort : `${({ public: copy.publicShort, home: copy.home, followers: copy.followersShort, specified: copy.recipientsShort })[visibility.value]}${localOnly.value && visibility.value !== 'specified' ? copy.serverOnlySuffix : ''}`);
 const visibilityIcon = computed(() => composerChannel.value ? (composerChannel.value.isPrivate ? Lock : Tv) : ({ public: Globe2, home: Home, followers: UserRound, specified: AtSign })[visibility.value]);
 const visibilityBorderEnabled = prefer.r['postFormVisibilityBorder.enabled'];
 const visibilityBorderWidth = prefer.r['postFormVisibilityBorder.width'];
@@ -729,12 +736,12 @@ const visibilityBorderStyle = computed(() => {
 		boxShadow: `inset 0 0 0 ${visibilityBorderWidth.value}px ${color}, 0 14px 34px var(--cordShadow), 0 2px 8px color-mix(in srgb, #000 8%, transparent)`,
 	};
 });
-const composerPlaceholder = computed(() => composerContext.value?.kind === 'reply' ? '返信を書く' : composerContext.value?.kind === 'quote' ? '引用してひとこと' : composerChannel.value ? `${composerChannel.value.name}へ投稿` : 'いまどうしてる？');
-const composerContextLabel = computed(() => composerContext.value?.label ?? (composerChannel.value ? `${composerChannel.value.isPrivate ? 'プライベート ' : ''}${composerChannel.value.name}へ投稿` : ''));
+const composerPlaceholder = computed(() => composerContext.value?.kind === 'reply' ? copy.writeReply : composerContext.value?.kind === 'quote' ? copy.commentOnQuote : composerChannel.value ? copyx.postTo({ name: composerChannel.value.name }) : copy.whatsHappening);
+const composerContextLabel = computed(() => composerContext.value?.label ?? (composerChannel.value ? copyx.postToChannel({ privacy: composerChannel.value.isPrivate ? copy.privatePrefix : '', name: composerChannel.value.name }) : ''));
 const composerContextExcerpt = computed(() => {
 	const note = composerContext.value?.note;
 	if (!note) return '';
-	const text = (note.cw || note.text || '添付ファイルのある投稿').replace(/\s+/g, ' ').trim();
+	const text = (note.cw || note.text || copy.postWithAttachments).replace(/\s+/g, ' ').trim();
 	return text.length > 90 ? `${text.slice(0, 89)}…` : text;
 });
 const composerContextIcon = computed(() => composerContext.value?.kind === 'reply' ? Reply : composerContext.value?.kind === 'quote' ? Quote : composerChannel.value?.isPrivate ? Lock : Tv);
@@ -790,7 +797,7 @@ async function removeTimelineItem(item: HatacordingMenuItem) {
 	if (!item.source || item.sourceId) return;
 	const remaining = primaryTimelineItems.value.filter(candidate => candidate.id !== item.id);
 	if (remaining.length === 0) {
-		await os.alert({ type: 'warning', text: '表示するタイムラインを1つ以上残してください。' });
+		await os.alert({ type: 'warning', text: copy.keepOneTimeline });
 		return;
 	}
 	hideMenuItem(item);
@@ -802,9 +809,9 @@ function handleMoreItem(item: HatacordingMenuItem) {
 	void activateMenuItem(item);
 }
 
-async function resetMenu() { const { canceled } = await os.confirm({ type: 'warning', title: 'メニューを初期化しますか？', text: 'この端末のHataSNSCordUIメニュー設定を元に戻します。' }); if (!canceled) { prefs.value.menu = {}; persistPreferences(); } }
+async function resetMenu() { const { canceled } = await os.confirm({ type: 'warning', title: copy.resetMenuTitle, text: copy.resetMenuDescription }); if (!canceled) { prefs.value.menu = {}; persistPreferences(); } }
 
-function copyCollapsedOrder() { const ids = getActiveHataSideProfile(hataSideStudioStore.value).collapsed.buttons.map(button => button.menuId); const map: Record<string, string> = { home: 'timeline:home', local: 'timeline:local', social: 'timeline:social', global: 'timeline:global', search: 'tool:search', notifications: 'tool:notifications', drive: 'tool:drive', announcements: 'tool:announcements', hatask: 'tool:hatask', hatafeed: 'tool:hatafeed', hatady: 'tool:hatady', games: 'tool:games' }; ids.forEach((id, index) => { const item = staticMenuItems.value.find(candidate => candidate.id === map[id]); if (item) updateMenuPreference(item, { order: index, hidden: false }); }); os.toast('HatasabaUIの縮小順を取り込みました'); }
+function copyCollapsedOrder() { const ids = getActiveHataSideProfile(hataSideStudioStore.value).collapsed.buttons.map(button => button.menuId); const map: Record<string, string> = { home: 'timeline:home', local: 'timeline:local', social: 'timeline:social', global: 'timeline:global', search: 'tool:search', notifications: 'tool:notifications', drive: 'tool:drive', announcements: 'tool:announcements', hatask: 'tool:hatask', hatafeed: 'tool:hatafeed', hatady: 'tool:hatady', games: 'tool:games' }; ids.forEach((id, index) => { const item = staticMenuItems.value.find(candidate => candidate.id === map[id]); if (item) updateMenuPreference(item, { order: index, hidden: false }); }); os.toast(copy.importedCollapsedOrder); }
 
 const MenuRow = defineComponent({
 	props: { item: { type: Object as PropType<HatacordingMenuItem>, required: true }, compact: Boolean },
@@ -824,15 +831,15 @@ const MenuRow = defineComponent({
 				? h('button', {
 					type: 'button',
 					class: styles.rowSubpaneButton,
-					title: `${props.item.label}を右ペインで開く`,
+					title: copyx.openInRightPane({ item: props.item.label }),
 					onClick: () => openTimelineInSubpane(props.item, true),
 				}, [h(Plus, { size: 13 })])
 				: null,
 			menuEditing.value && !sidebarCollapsed.value ? h('span', { class: styles.rowActions }, [
-				h('button', { type: 'button', class: styles.rowAction, title: isPinned(props.item.id) ? 'ピン留めを外す' : 'ピン留め', onClick: () => togglePinned(props.item) }, [h(isPinned(props.item.id) ? PinOff : Pin, { size: 13 })]),
-				h('button', { type: 'button', class: styles.rowAction, title: '上へ', onClick: () => moveMenuItem(props.item, -1) }, [h(ChevronUp, { size: 13 })]),
-				h('button', { type: 'button', class: styles.rowAction, title: '下へ', onClick: () => moveMenuItem(props.item, 1) }, [h(ChevronDown, { size: 13 })]),
-				!props.item.sourceId ? h('button', { type: 'button', class: styles.rowAction, title: props.item.source ? 'タイムラインから外す' : 'もっと！へ移動', onClick: () => props.item.source ? void removeTimelineItem(props.item) : hideMenuItem(props.item) }, [h(props.item.source ? X : EyeOff, { size: 13 })]) : null,
+				h('button', { type: 'button', class: styles.rowAction, title: isPinned(props.item.id) ? copy.unpin : copy.pin, onClick: () => togglePinned(props.item) }, [h(isPinned(props.item.id) ? PinOff : Pin, { size: 13 })]),
+				h('button', { type: 'button', class: styles.rowAction, title: copy.moveUp, onClick: () => moveMenuItem(props.item, -1) }, [h(ChevronUp, { size: 13 })]),
+				h('button', { type: 'button', class: styles.rowAction, title: copy.moveDown, onClick: () => moveMenuItem(props.item, 1) }, [h(ChevronDown, { size: 13 })]),
+				!props.item.sourceId ? h('button', { type: 'button', class: styles.rowAction, title: props.item.source ? copy.removeFromTimelines : copy.moveToMore, onClick: () => props.item.source ? void removeTimelineItem(props.item) : hideMenuItem(props.item) }, [h(props.item.source ? X : EyeOff, { size: 13 })]) : null,
 			]) : null,
 		]);
 	},
@@ -842,21 +849,21 @@ function openAddTimelineMenu(event: MouseEvent) {
 	const anchor = event.currentTarget as HTMLElement;
 	const items = availableTimelineItems.value.length > 0
 		? availableTimelineItems.value.map(item => ({ type: 'button' as const, text: item.label, action: () => updateMenuPreference(item, { hidden: false }) }))
-		: [{ type: 'label' as const, text: '追加できるタイムラインはありません' }];
+		: [{ type: 'label' as const, text: copy.noTimelinesToAdd }];
 	os.popupMenu(items, anchor);
 }
 
 async function activateMenuItem(item: HatacordingMenuItem) {
 	if (item.id === 'tool:studio') { openRightTab({ title: 'HataSideStudio', kind: 'studioUnavailable' }); return; }
 	if (item.id === 'tool:ui') { openUiSetup(); return; }
-	if (item.id === 'tool:search') { openInternalPage('search', '検索'); return; }
-	if (item.id === 'tool:notifications') { await openInternalPage('notifications', '通知'); return; }
-	if (item.id === 'tool:announcements') { await openInternalPage('announcements', 'お知らせ'); return; }
-	if (item.id === 'tool:drive') { openInternalPage('drive', 'ドライブ'); return; }
+	if (item.id === 'tool:search') { openInternalPage('search', copy.search); return; }
+	if (item.id === 'tool:notifications') { await openInternalPage('notifications', copy.notifications); return; }
+	if (item.id === 'tool:announcements') { await openInternalPage('announcements', copy.announcements); return; }
+	if (item.id === 'tool:drive') { openInternalPage('drive', copy.drive); return; }
 	if (item.id === 'tool:externalNotifications') { openExternalNotifications(); return; }
-	if (item.id === 'tool:favorites') { openInternalPage('favorites', 'お気に入り'); return; }
-	if (item.id === 'tool:clips') { openInternalPage('clips', 'クリップ'); return; }
-	if (item.id === 'tool:chat') { openInternalPage('chat', 'チャット'); return; }
+	if (item.id === 'tool:favorites') { openInternalPage('favorites', copy.favorites); return; }
+	if (item.id === 'tool:clips') { openInternalPage('clips', copy.clips); return; }
+	if (item.id === 'tool:chat') { openInternalPage('chat', copy.chat); return; }
 	if (item.to) { openCenterPage(item.to, item.label); return; }
 	if (!item.source) return;
 	centerPageOpen.value = false;
@@ -868,14 +875,14 @@ function centerPageTitleForPath(path: string): string {
 	const normalized = path.split(/[?#]/, 1)[0];
 	const exact = allMenuItems.value.find(item => item.to === normalized);
 	if (exact) return exact.label;
-	if (normalized.startsWith('/settings')) return '設定';
-	if (normalized.startsWith('/admin')) return 'コントロールパネル';
-	if (normalized.startsWith('/@')) return 'プロフィール';
-	if (normalized.startsWith('/notes/')) return '投稿詳細';
-	if (normalized.startsWith('/search')) return '検索';
-	if (normalized.startsWith('/my/notifications')) return '通知';
-	if (normalized.startsWith('/announcements')) return 'お知らせ';
-	return 'ページ';
+	if (normalized.startsWith('/settings')) return copy.settings;
+	if (normalized.startsWith('/admin')) return copy.controlPanel;
+	if (normalized.startsWith('/@')) return copy.profile;
+	if (normalized.startsWith('/notes/')) return copy.noteDetails;
+	if (normalized.startsWith('/search')) return copy.search;
+	if (normalized.startsWith('/my/notifications')) return copy.notifications;
+	if (normalized.startsWith('/announcements')) return copy.announcements;
+	return copy.page;
 }
 
 function openCenterPage(path: string, title?: string) {
@@ -924,14 +931,14 @@ function openCollection(group: { id: CollectionId; label: string; items: Hatacor
 	const anchor = event.currentTarget as HTMLElement;
 	const items = group.items.length > 0
 		? group.items.map(item => ({ type: 'button' as const, text: item.label, action: () => activateMenuItem(item) }))
-		: [{ type: 'label' as const, text: `${group.label}はまだありません` }];
+		: [{ type: 'label' as const, text: copyx.collectionEmpty({ collection: group.label }) }];
 	os.popupMenu(items, anchor, { width: 240 });
 }
 
 function openCollectionIconMenu(group: { id: CollectionId; label: string }, event: MouseEvent) {
 	if (!menuEditing.value || sidebarCollapsed.value) return;
 	const anchor = event.currentTarget as HTMLElement;
-	const choices: [HatacordingUiCollectionIcon, string][] = [['tv', 'テレビ'], ['list', 'リスト'], ['radio', 'アンテナ'], ['folder', 'フォルダー'], ['layers', 'レイヤー']];
+	const choices: [HatacordingUiCollectionIcon, string][] = [['tv', copy.television], ['list', copy.lists], ['radio', copy.antennas], ['folder', copy.folder], ['layers', copy.layers]];
 	os.popupMenu(choices.map(([value, label]) => ({ type: 'button' as const, text: label, active: prefs.value.collectionIcons[group.id] === value, action: () => { prefs.value.collectionIcons[group.id] = value; persistPreferences(); } })), anchor);
 }
 
@@ -943,7 +950,7 @@ function openMoreMenu(event: MouseEvent) {
 	const anchor = event.currentTarget as HTMLElement;
 	const items = hiddenMenuItems.value.length > 0
 		? hiddenMenuItems.value.map(item => ({ type: 'button' as const, text: item.label, action: () => activateMenuItem(item) }))
-		: [{ type: 'label' as const, text: 'ほかの項目はありません' }];
+		: [{ type: 'label' as const, text: copy.noOtherItems }];
 	os.popupMenu(items, anchor);
 }
 
@@ -1015,18 +1022,18 @@ function saveHatacordingTimelineFilter(key: 'withRenotes' | 'withSensitive' | 'o
 function openTimelineOptions(event: MouseEvent) {
 	const anchor = event.currentTarget as HTMLElement;
 	os.popupMenu([
-		{ type: 'label', text: 'タイムライン表示' },
-		{ type: 'switch', text: 'リノートを表示', ref: timelineWithRenotes },
-		{ type: 'switch', text: 'センシティブなファイルを表示', ref: timelineWithSensitive },
-		{ type: 'switch', text: 'ファイル付きの投稿のみ表示', ref: timelineOnlyFiles },
-		{ type: 'switch', text: '投稿フォームを表示', ref: timelineShowFixedPostForm },
+		{ type: 'label', text: copy.timelineDisplay },
+		{ type: 'switch', text: copy.showRenotes, ref: timelineWithRenotes },
+		{ type: 'switch', text: copy.showSensitiveFiles, ref: timelineWithSensitive },
+		{ type: 'switch', text: copy.onlyPostsWithFiles, ref: timelineOnlyFiles },
+		{ type: 'switch', text: copy.showPostForm, ref: timelineShowFixedPostForm },
 		{ type: 'divider' },
 		{ type: 'label', text: 'HataSNSCordUI' },
 		{ type: 'component', component: HatacordingUiSettings, props: { accountId: $i.id, compact: true, realtimeAvailable: realtimeAvailable.value } },
-		{ type: 'button', text: '投稿欄のショートカットを選ぶ', action: () => openComposerShortcutSettings(anchor) },
-		{ type: 'button', text: 'チュートリアルを再度見る', action: () => { tutorialOpen.value = true; } },
+		{ type: 'button', text: copy.chooseComposerShortcuts, action: () => openComposerShortcutSettings(anchor) },
+		{ type: 'button', text: copy.replayTutorial, action: () => { tutorialOpen.value = true; } },
 		{ type: 'divider' },
-		{ type: 'button', text: 'メニューを編集', action: () => { menuEditing.value = true; openLeftPane(); } },
+		{ type: 'button', text: copy.editMenu, action: () => { menuEditing.value = true; openLeftPane(); } },
 	], anchor);
 }
 
@@ -1052,7 +1059,7 @@ function openActiveCollectionSettings() {
 function saveMenuEditing() {
 	persistPreferences();
 	menuEditing.value = false;
-	os.toast('HataSNSCordUIのメニューを保存しました');
+	os.toast(copy.menuSaved);
 }
 
 function userAcct(user: Misskey.entities.UserLite) { return `${user.username}${user.host ? `@${user.host}` : ''}`; }
@@ -1137,7 +1144,7 @@ async function loadMore() {
 		await nextTick();
 		if (el) el.scrollTop += el.scrollHeight - oldHeight;
 	} catch {
-		await os.alert({ type: 'error', text: '過去の会話を読み込めませんでした。' });
+		await os.alert({ type: 'error', text: copy.pastConversationsLoadFailed });
 	} finally {
 		loadingMore.value = false;
 	}
@@ -1345,7 +1352,7 @@ function activityMfmAuthor(activity: ActivityPayload): Misskey.entities.UserLite
 
 function activityEmojiUrls(activity: ActivityPayload): Record<string, string> {
 	const result: Record<string, string> = {};
-	for (const source of [activity.user?.emojis, activity.note?.emojis, activity.note?.reactionEmojis]) {
+	for (const source of [activity.user?.emojis, activity.note?.emojis, activity.note?.reactionEmojis, activity.emojiUrls]) {
 		if (source == null || typeof source !== 'object') continue;
 		for (const [name, url] of Object.entries(source)) {
 			if (typeof url === 'string' && url.length > 0) result[name] = url;
@@ -1388,6 +1395,18 @@ function isGroupedEarthquakeActivity(activity: PendingActivityEvent): boolean {
 	return activity.notificationItems?.some(isEarthquakeActivity) === true;
 }
 
+function groupedActivitySuffix(activity: PendingActivityEvent): string {
+	if (isGroupedEarthquakeActivity(activity)) return '件の地震・津波情報があります';
+	if (activity.botOrigin === true) return activity.archived ? copy.pastBotNotificationsSuffix : copy.currentBotNotificationsSuffix;
+	return activity.archived ? copy.pastNotificationsSuffix : copy.currentNotificationsSuffix;
+}
+
+function notificationSummaryText(count: number, botOrigin: boolean, archived: boolean): string {
+	const params = { count: count.toString() };
+	if (botOrigin) return archived ? copyx.pastBotNotifications(params) : copyx.currentBotNotifications(params);
+	return archived ? copyx.pastNotifications(params) : copyx.currentNotifications(params);
+}
+
 function activityPayload(event: ActivityPayload): ActivityPayload {
 	return {
 		id: event.id,
@@ -1403,8 +1422,11 @@ function activityPayload(event: ActivityPayload): ActivityPayload {
 		action: event.action,
 		reaction: event.reaction,
 		reactionEmojiUrl: event.reactionEmojiUrl,
+		emojiUrls: event.emojiUrls,
 		note: event.note,
 		notificationType: event.notificationType,
+		botOrigin: event.botOrigin,
+		cacheSource: event.cacheSource,
 	};
 }
 
@@ -1428,13 +1450,40 @@ function toCachedActivity(event: ActivityPayload): HatacordingCachedActivity | n
 		reaction: event.reaction,
 		reactionEmojiUrl: event.reactionEmojiUrl,
 		notificationType: event.notificationType,
+		cacheSource: event.cacheSource,
 	};
 }
 
 function fromCachedActivity(event: HatacordingCachedActivity): ActivityPayload {
+	if (event.cacheSource != null) {
+		const localized = createNotificationActivityFromSource(event.cacheSource);
+		return {
+			id: event.id,
+			text: localized.title,
+			detail: localized.detail,
+			icon: activityIcon(localized.icon),
+			iconName: localized.icon,
+			to: localized.to,
+			createdAt: event.createdAt,
+			kind: localized.kind,
+			emergency: localized.emergency,
+			user: localized.user,
+			action: localized.action,
+			reaction: localized.reaction,
+			reactionEmojiUrl: localized.reactionEmojiUrl,
+			emojiUrls: localized.emojiUrls,
+			note: localized.note,
+			notificationType: localized.notificationType,
+			botOrigin: localized.botOrigin,
+			cacheSource: localized.cacheSource,
+		};
+	}
 	return {
 		...event,
+		text: event.text ?? '',
+		detail: event.detail ?? '',
 		icon: activityIcon(event.iconName),
+		botOrigin: event.user?.isBot === true,
 	};
 }
 
@@ -1451,19 +1500,22 @@ function restoreActivityHistory() {
 	if (cached.length === 0) return;
 	const notifications = cached.filter(event => event.kind === 'notification' || event.kind === 'external').map(fromCachedActivity);
 	const earthquakes = cached.filter(event => event.kind === 'earthquake' || event.kind === 'tsunami').map(fromCachedActivity);
-	if (notifications.length > 0) {
-		const latest = notifications.at(-1)!;
+	for (const botOrigin of [false, true]) {
+		const groupedNotifications = notifications.filter(event => (event.botOrigin === true) === botOrigin);
+		if (groupedNotifications.length === 0) continue;
+		const latest = groupedNotifications.at(-1)!;
 		activityEvents.value.push(reactive<ActivityEvent>({
-			id: `notification-history:cached:${latest.id}`,
-			text: `${notifications.length}件の通知がありました`,
-			detail: '展開すると、過去の通知をそれぞれ確認できます。',
+			id: `notification-history:cached:${botOrigin ? 'bot' : 'human'}:${latest.id}`,
+			text: notificationSummaryText(groupedNotifications.length, botOrigin, true),
+			detail: copy.expandPastNotifications,
 			icon: activityIcon('bell'),
 			iconName: 'bell',
 			to: '/my/notifications',
 			createdAt: latest.createdAt,
 			kind: 'notification',
 			emergency: false,
-			notificationItems: notifications,
+			botOrigin,
+			notificationItems: groupedNotifications,
 			archived: true,
 			phase: 'settled',
 			expanded: false,
@@ -1493,30 +1545,30 @@ function restoreActivityHistory() {
 	persistActivityHistory();
 }
 
-const activityAbsoluteFormatter = new Intl.DateTimeFormat('ja-JP', {
+const activityAbsoluteFormatter = new Intl.DateTimeFormat(versatileLang, {
 	year: 'numeric',
 	month: 'numeric',
 	day: 'numeric',
 	hour: '2-digit',
 	minute: '2-digit',
 });
-const activityClockFormatter = new Intl.DateTimeFormat('ja-JP', { hour: '2-digit', minute: '2-digit' });
-const activityMonthDayFormatter = new Intl.DateTimeFormat('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+const activityClockFormatter = new Intl.DateTimeFormat(versatileLang, { hour: '2-digit', minute: '2-digit' });
+const activityMonthDayFormatter = new Intl.DateTimeFormat(versatileLang, { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 
 function activityAbsoluteTime(createdAt: string): string {
 	const date = new Date(createdAt);
-	return Number.isFinite(date.getTime()) ? activityAbsoluteFormatter.format(date) : '日時不明';
+	return Number.isFinite(date.getTime()) ? activityAbsoluteFormatter.format(date) : copy.unknownDateTime;
 }
 
 function activityTimeLabel(createdAt: string): string {
 	const date = new Date(createdAt);
 	const time = date.getTime();
-	if (!Number.isFinite(time)) return '日時不明';
+	if (!Number.isFinite(time)) return copy.unknownDateTime;
 	const now = rateLimitNow.value;
 	const elapsed = Math.max(0, now - time);
-	if (elapsed < 10_000) return 'たった今';
-	if (elapsed < 120_000) return '少し前';
-	if (elapsed < 60 * 60 * 1000) return `${Math.floor(elapsed / 60_000)}分前`;
+	if (elapsed < 10_000) return copy.justNow;
+	if (elapsed < 120_000) return copy.momentsAgo;
+	if (elapsed < 60 * 60 * 1000) return copyx.minutesAgo({ minutes: Math.floor(elapsed / 60_000).toString() });
 	const current = new Date(now);
 	if (date.toDateString() === current.toDateString()) return activityClockFormatter.format(date);
 	if (date.getFullYear() === current.getFullYear()) return activityMonthDayFormatter.format(date);
@@ -1524,14 +1576,13 @@ function activityTimeLabel(createdAt: string): string {
 }
 
 function trimActivityEvents() {
-	const archived = activityEvents.value.find(event => event.archived);
+	const archived = activityEvents.value.filter(event => event.archived);
 	const current = activityEvents.value.filter(event => !event.archived);
 	// 通知は2分後に履歴カードへ集約するまでは捨てない。操作完了などの
 	// 一時的なイベントだけを末尾12件に絞り、通知の取りこぼしを防ぐ。
 	const notifications = current.filter(isNotificationActivity);
 	const transient = current.filter(event => !isNotificationActivity(event)).slice(-12);
-	activityEvents.value = [archived, ...notifications, ...transient]
-		.filter((event): event is ActivityEvent => event != null)
+	activityEvents.value = [...archived, ...notifications, ...transient]
 		.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 }
 
@@ -1568,20 +1619,22 @@ function hasActivityId(id: string): boolean {
 	return [...activityEvents.value, ...activityQueue].some(event => event.id === id || event.notificationItems?.some(item => item.id === id));
 }
 
-function newestActivityCandidate(): PendingActivityEvent | ActivityEvent | undefined {
-	const candidates = [activityEvents.value.at(-1), activityQueue.at(-1)].filter((event): event is ActivityEvent | PendingActivityEvent => event != null);
-	return candidates.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+function newestNotificationCandidateForAudience(pending: PendingActivityEvent): PendingActivityEvent | ActivityEvent | undefined {
+	return [...activityEvents.value, ...activityQueue]
+		.filter(event => !event.archived && isNotificationActivity(event) && sharesHatacordingNotificationAudience(event, pending))
+		.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
 }
 
 function mergeConsecutiveNotification(pending: PendingActivityEvent): boolean {
-	const target = newestActivityCandidate();
-	if (!target || target.archived || !isNotificationActivity(target)) return false;
+	const target = newestNotificationCandidateForAudience(pending);
+	if (!target) return false;
 	const gap = Math.abs(new Date(pending.createdAt).getTime() - new Date(target.createdAt).getTime());
 	if (!Number.isFinite(gap) || gap > NOTIFICATION_GROUP_WINDOW_MS) return false;
 	const items = target.notificationItems?.length ? target.notificationItems : [activityPayload(target)];
 	target.notificationItems = [...items, activityPayload(pending)];
-	target.text = `${target.notificationItems.length}件の通知があります`;
-	target.detail = '展開すると、それぞれの通知を確認できます。';
+	target.botOrigin = pending.botOrigin === true;
+	target.text = notificationSummaryText(target.notificationItems.length, target.botOrigin, false);
+	target.detail = copy.expandNotifications;
 	target.createdAt = pending.createdAt;
 	target.kind = 'notification';
 	target.icon = activityIcon('bell');
@@ -1601,6 +1654,23 @@ function mergeConsecutiveNotification(pending: PendingActivityEvent): boolean {
 	nextTick(() => { if (isNearBottom()) scrollToBottom(); });
 	persistActivityHistory();
 	return true;
+}
+
+function turnBotNotificationIntoGroup(pending: PendingActivityEvent) {
+	if (pending.botOrigin !== true || pending.notificationItems?.length) return;
+	const item = activityPayload(pending);
+	pending.notificationItems = [item];
+	pending.text = notificationSummaryText(1, true, false);
+	pending.detail = copy.expandNotifications;
+	pending.icon = activityIcon('bell');
+	pending.iconName = 'bell';
+	pending.to = '/my/notifications';
+	pending.user = undefined;
+	pending.action = undefined;
+	pending.reaction = undefined;
+	pending.reactionEmojiUrl = undefined;
+	pending.note = undefined;
+	pending.notificationType = undefined;
 }
 
 function mergeConsecutiveEarthquake(pending: PendingActivityEvent): boolean {
@@ -1639,43 +1709,48 @@ function flattenedNotifications(event: PendingActivityEvent): ActivityPayload[] 
 }
 
 function archiveNotifications(now = Date.now(), includeRecent = false) {
-	const archive = activityEvents.value.find(event => event.archived);
 	const targets = activityEvents.value.filter(event => !event.archived
 		&& isNotificationActivity(event)
 		&& (includeRecent || now - new Date(event.createdAt).getTime() >= NOTIFICATION_ARCHIVE_AGE_MS));
-	const incoming = targets.flatMap(flattenedNotifications);
 	// 1枚のグループカード内に複数通知がある場合も「複数」として集約する。
-	if (incoming.length === 0) return;
+	if (targets.length === 0) return;
 	// 元通知の受信時刻をそのまま使うと、集約した瞬間に時系列ソートで
 	// 過去のノート群へ移動し、画面上では通知が消えたように見える。
 	// 集約という新しい表示イベントが起きた時刻へ更新し、最新位置に残す。
 	const archiveCreatedAt = new Date(now).toISOString();
-	if (archive) {
-		archive.notificationItems = [...(archive.notificationItems ?? []), ...incoming];
-		archive.text = `${archive.notificationItems.length}件の通知がありました`;
-		archive.detail = '展開すると、過去の通知をそれぞれ確認できます。';
-		archive.createdAt = archiveCreatedAt;
-		archive.expanded = false;
-		archive.animationRevision += 1;
-		archive.phase = 'settled';
-	} else {
-		const historyEvent = reactive<ActivityEvent>({
-			id: `notification-history:${now}`,
-			text: `${incoming.length}件の通知がありました`,
-			detail: '展開すると、過去の通知をそれぞれ確認できます。',
-			icon: activityIcon('bell'),
-			iconName: 'bell',
-			to: '/my/notifications',
-			createdAt: archiveCreatedAt,
-			kind: 'notification',
-			emergency: false,
-			notificationItems: incoming,
-			archived: true,
-			phase: 'settled',
-			expanded: false,
-			animationRevision: 0,
-		});
-		activityEvents.value.push(historyEvent);
+	for (const botOrigin of [false, true]) {
+		const audienceTargets = targets.filter(event => (event.botOrigin === true) === botOrigin);
+		const incoming = audienceTargets.flatMap(flattenedNotifications);
+		if (incoming.length === 0) continue;
+		const archive = activityEvents.value.find(event => event.archived && (event.botOrigin === true) === botOrigin);
+		if (archive) {
+			archive.notificationItems = [...(archive.notificationItems ?? []), ...incoming];
+			archive.text = notificationSummaryText(archive.notificationItems.length, botOrigin, true);
+			archive.detail = copy.expandPastNotifications;
+			archive.createdAt = archiveCreatedAt;
+			archive.expanded = false;
+			archive.animationRevision += 1;
+			archive.phase = 'settled';
+		} else {
+			const historyEvent = reactive<ActivityEvent>({
+				id: `notification-history:${botOrigin ? 'bot' : 'human'}:${now}`,
+				text: notificationSummaryText(incoming.length, botOrigin, true),
+				detail: copy.expandPastNotifications,
+				icon: activityIcon('bell'),
+				iconName: 'bell',
+				to: '/my/notifications',
+				createdAt: archiveCreatedAt,
+				kind: 'notification',
+				emergency: false,
+				botOrigin,
+				notificationItems: incoming,
+				archived: true,
+				phase: 'settled',
+				expanded: false,
+				animationRevision: 0,
+			});
+			activityEvents.value.push(historyEvent);
+		}
 	}
 	// スクロール中に表示アニメーションが残っても、除去済みカードを後から更新しない。
 	for (const event of targets) event.animationRevision += 1;
@@ -1728,8 +1803,11 @@ function enqueueActivity(copy: HatacordingActivityCopy, id: string, createdAt = 
 		action: copy.action,
 		reaction: copy.reaction,
 		reactionEmojiUrl: copy.reactionEmojiUrl,
+		emojiUrls: copy.emojiUrls,
 		note: copy.note,
 		notificationType: copy.notificationType,
+		botOrigin: copy.botOrigin,
+		cacheSource: copy.cacheSource,
 		onSettled: options.onSettled,
 	};
 	if (copy.emergency) {
@@ -1740,7 +1818,10 @@ function enqueueActivity(copy: HatacordingActivityCopy, id: string, createdAt = 
 		nextTick(() => { if (isNearBottom()) scrollToBottom(); });
 		return;
 	}
-	if (isNotificationActivity(pending) && mergeConsecutiveNotification(pending)) return;
+	if (isNotificationActivity(pending)) {
+		if (mergeConsecutiveNotification(pending)) return;
+		turnBotNotificationIntoGroup(pending);
+	}
 	if (options.priority) activityQueue.unshift(pending);
 	else activityQueue.push(pending);
 	persistActivityHistory();
@@ -1855,7 +1936,7 @@ function onEmbeddedNoteClick(event: MouseEvent, note: Misskey.entities.Note) {
 }
 
 function activityAriaLabel(event: ActivityEvent): string {
-	return event.detail ? `${event.text}。${event.detail}` : event.text;
+	return event.detail ? copyx.activityWithDetail({ title: event.text, detail: event.detail }) : event.text;
 }
 
 function activateActivity(event: ActivityPayload) {
@@ -1866,13 +1947,13 @@ function activateActivity(event: ActivityPayload) {
 	} else if (event.note) {
 		openNoteTab(event.note);
 	} else if (event.to === '/my/notifications') {
-		void openInternalPage('notifications', '通知');
+		void openInternalPage('notifications', copy.notifications);
 	} else if (event.to === '/chat') {
-		void openInternalPage('chat', 'チャット');
+		void openInternalPage('chat', copy.chat);
 	} else if (event.to === '/my/favorites') {
-		void openInternalPage('favorites', 'お気に入り');
+		void openInternalPage('favorites', copy.favorites);
 	} else if (event.to === '/my/clips') {
-		void openInternalPage('clips', 'クリップ');
+		void openInternalPage('clips', copy.clips);
 	} else if ((event.notificationType === 'follow' || event.notificationType === 'followRequestAccepted') && event.user) {
 		void openProfileTab(event.user);
 	} else {
@@ -1889,7 +1970,7 @@ function openActivityEvent(event: ActivityEvent) {
 }
 
 function openExternalNotifications() {
-	openInternalPage('externalNotifications', '外部通知');
+	openInternalPage('externalNotifications', copy.externalNotifications);
 	if (externalAccount.value) externalUnread.value = false;
 }
 
@@ -1897,7 +1978,7 @@ function mentionUser(user: Misskey.entities.UserLite) {
 	const mention = `@${user.username}${user.host ? `@${user.host}` : ''}`;
 	if (!draftText.value.includes(mention)) draftText.value = `${draftText.value}${draftText.value ? ' ' : ''}${mention} `;
 	if (!visibleUsers.value.some(recipient => recipient.id === user.id)) visibleUsers.value.push(user);
-	composerContext.value = { kind: 'mention', label: `${mention}をメンション` };
+	composerContext.value = { kind: 'mention', label: copyx.mentionUser({ user: mention }) };
 }
 
 function mergeInitialComposerText(text?: string) {
@@ -1915,12 +1996,12 @@ function adoptPostFormRequest(props: PostFormProps): boolean {
 	const requestedChannel = (props.channel ?? sourceNote?.channel ?? null) as ComposerChannel | null;
 	if (props.reply) {
 		const name = props.reply.user.name || props.reply.user.username;
-		composerContext.value = { kind: 'reply', note: props.reply, channel: requestedChannel, label: `${name}への返信` };
+		composerContext.value = { kind: 'reply', note: props.reply, channel: requestedChannel, label: copyx.replyTo({ name }) };
 	} else if (props.renote) {
 		const name = props.renote.user.name || props.renote.user.username;
-		composerContext.value = { kind: 'quote', note: props.renote, channel: requestedChannel, label: `${name}の投稿を引用` };
+		composerContext.value = { kind: 'quote', note: props.renote, channel: requestedChannel, label: copyx.quotePostBy({ name }) };
 	} else if (requestedChannel) {
-		composerContext.value = { kind: 'channel', channel: requestedChannel, label: `${requestedChannel.name}へ投稿` };
+		composerContext.value = { kind: 'channel', channel: requestedChannel, label: copyx.postTo({ name: requestedChannel.name }) };
 	}
 
 	mergeInitialComposerText(props.initialText);
@@ -2045,31 +2126,31 @@ async function openComposerToolsMenu(triggerEvent: MouseEvent) {
 	if (composerToolsOpen.value) return;
 	const anchor = triggerEvent.currentTarget as HTMLElement;
 	const items: MenuItem[] = [
-		{ type: 'label', text: '投稿内容' },
-		{ type: 'button', text: pollEnabled.value ? 'アンケートを解除' : 'アンケートを追加', indicate: pollEnabled.value, action: togglePoll },
-		{ type: 'button', text: 'メンション', action: () => { void pickMention(); } },
+		{ type: 'label', text: copy.postContent },
+		{ type: 'button', text: pollEnabled.value ? copy.removePoll : copy.addPoll, indicate: pollEnabled.value, action: togglePoll },
+		{ type: 'button', text: copy.mention, action: () => { void pickMention(); } },
 		// メニュ項目自身は action 後に破棄される。次のポップアップは
 		// 残り続ける☆ボタンを基準にし、座標と描画順の喪失を防ぐ。
-		{ type: 'button', text: '絵文字', action: () => openEmojiPicker(anchor) },
+		{ type: 'button', text: copy.emoji, action: () => openEmojiPicker(anchor) },
 		{ type: 'button', text: 'MFM', action: () => openMfmPicker(anchor) },
-		{ type: 'button', text: 'ハッシュタグ', action: insertHashtag },
-		{ type: 'button', text: event.value == null ? 'イベントを追加' : 'イベントを解除', indicate: event.value != null, action: toggleEvent },
+		{ type: 'button', text: copy.hashtag, action: insertHashtag },
+		{ type: 'button', text: event.value == null ? copy.addEvent : copy.removeEvent, indicate: event.value != null, action: toggleEvent },
 		{ type: 'divider' },
-		{ type: 'label', text: '添付・拡張' },
-		{ type: 'button', text: 'お絵描き', action: openDrawingTool },
+		{ type: 'label', text: copy.attachmentsAndExtensions },
+		{ type: 'button', text: copy.drawing, action: openDrawingTool },
 	];
-	if (postFormActions.length > 0) items.push({ type: 'parent', text: 'プラグイン', children: pluginMenuItems });
+	if (postFormActions.length > 0) items.push({ type: 'parent', text: copy.plugins, children: pluginMenuItems });
 	items.push(
 		{ type: 'divider' },
-		{ type: 'button', text: 'よく使うボタンを選ぶ', action: () => openComposerShortcutSettings(anchor) },
+		{ type: 'button', text: copy.chooseFrequentButtons, action: () => openComposerShortcutSettings(anchor) },
 		{ type: 'divider' },
-		{ type: 'label', text: '詳細設定' },
-		{ type: 'button', text: '予約・自動削除', action: openFullComposer },
-		{ type: 'button', text: reactionAcceptance.value == null ? 'リアクション制限' : 'リアクション制限を変更', indicate: reactionAcceptance.value != null, action: () => { void selectReactionAcceptance(); } },
-		{ type: 'button', text: '配信先', action: openFullComposer },
-		{ type: 'button', text: '完全な投稿フォーム', action: openFullComposer },
+		{ type: 'label', text: copy.advancedSettings },
+		{ type: 'button', text: copy.scheduleAndAutoDelete, action: openFullComposer },
+		{ type: 'button', text: reactionAcceptance.value == null ? copy.reactionRestrictions : copy.changeReactionRestrictions, indicate: reactionAcceptance.value != null, action: () => { void selectReactionAcceptance(); } },
+		{ type: 'button', text: copy.deliveryDestination, action: openFullComposer },
+		{ type: 'button', text: copy.fullPostForm, action: openFullComposer },
 		{ type: 'divider' },
-		{ type: 'button', text: '内容をクリア', danger: true, action: clearComposer },
+		{ type: 'button', text: copy.clearContent, danger: true, action: clearComposer },
 	);
 
 	composerToolsOpen.value = true;
@@ -2086,7 +2167,7 @@ function composerShortcutToggle(id: HatacordingUiComposerShortcut) {
 		set: (enabled: boolean) => {
 			if (enabled && !prefs.value.composerShortcuts.includes(id)) {
 				if (prefs.value.composerShortcuts.length >= 2) {
-					void os.alert({ type: 'warning', text: 'よく使うボタンは2個まで設置できます。' });
+					void os.alert({ type: 'warning', text: copy.frequentButtonsLimit });
 					return;
 				}
 				prefs.value.composerShortcuts.push(id);
@@ -2101,7 +2182,7 @@ function composerShortcutToggle(id: HatacordingUiComposerShortcut) {
 function openComposerShortcutSettings(anchor: HTMLElement) {
 	window.setTimeout(() => {
 		void os.popupMenu([
-			{ type: 'label', text: 'よく使うボタン（最大2個）' },
+			{ type: 'label', text: copy.frequentButtonsMaxTwo },
 			...composerShortcutDefinitions.map(item => ({ type: 'switch' as const, text: item.label, ref: composerShortcutToggle(item.id) })),
 		], anchor, { width: 260 });
 	}, 0);
@@ -2143,7 +2224,7 @@ function openDrawingTool() {
 			try {
 				draftFiles.value.push(...await os.launchUploader([file], { multiple: false }));
 			} catch {
-				await os.alert({ type: 'error', text: 'お絵描き画像を添付できませんでした。' });
+				await os.alert({ type: 'error', text: copy.drawingAttachFailed });
 			}
 		},
 	});
@@ -2151,13 +2232,13 @@ function openDrawingTool() {
 
 async function selectReactionAcceptance() {
 	const selected = await os.select({
-		title: 'リアクションの受け付け範囲',
+		title: copy.reactionAcceptanceRange,
 		items: [
-			{ value: null, label: 'すべて' },
-			{ value: 'likeOnlyForRemote' as const, label: 'リモートからはいいねのみ' },
-			{ value: 'nonSensitiveOnly' as const, label: 'センシティブではないリアクションのみ' },
-			{ value: 'nonSensitiveOnlyForLocalLikeOnlyForRemote' as const, label: 'ローカルは非センシティブ、リモートはいいねのみ' },
-			{ value: 'likeOnly' as const, label: 'いいねのみ' },
+			{ value: null, label: copy.all },
+			{ value: 'likeOnlyForRemote' as const, label: copy.remoteLikesOnly },
+			{ value: 'nonSensitiveOnly' as const, label: copy.nonSensitiveOnly },
+			{ value: 'nonSensitiveOnlyForLocalLikeOnlyForRemote' as const, label: copy.localNonSensitiveRemoteLikesOnly },
+			{ value: 'likeOnly' as const, label: copy.likesOnly },
 		],
 		default: reactionAcceptance.value ?? null,
 	});
@@ -2182,10 +2263,10 @@ function openAttachmentMenu(event: MouseEvent) {
 	const anchor = event.currentTarget as HTMLElement;
 	const addFiles = async (loader: () => Promise<Misskey.entities.DriveFile[]>) => { try { draftFiles.value.push(...await loader()); } catch { /* 選択・アップロードの取り消し */ } };
 	os.popupMenu([
-		{ type: 'button', text: 'ファイル・画像を選ぶ', action: () => addFiles(() => chooseFileFromPcAndUpload({ multiple: true })) },
-		{ type: 'button', text: 'カメラで撮る', action: openCamera },
-		{ type: 'button', text: 'ドライブから選ぶ', action: () => addFiles(() => chooseDriveFile({ multiple: true })) },
-		{ type: 'button', text: 'URLから取り込む', action: () => addFiles(async () => [await chooseFileFromUrl()]) },
+		{ type: 'button', text: copy.chooseFileOrImage, action: () => addFiles(() => chooseFileFromPcAndUpload({ multiple: true })) },
+		{ type: 'button', text: copy.takePhoto, action: openCamera },
+		{ type: 'button', text: copy.chooseFromDrive, action: () => addFiles(() => chooseDriveFile({ multiple: true })) },
+		{ type: 'button', text: copy.importFromUrl, action: () => addFiles(async () => [await chooseFileFromUrl()]) },
 	], anchor);
 }
 
@@ -2196,13 +2277,13 @@ function openVisibilityMenu(event: MouseEvent) {
 	if (composerChannel.value) {
 		os.popupMenu([
 			{ type: 'label', text: composerChannel.value.name },
-			{ type: 'label', text: '公開・サーバー内（チャンネル設定に固定）' },
+			{ type: 'label', text: copy.channelVisibilityFixed },
 		], anchor);
 		return;
 	}
 	const visibilityItems = (['public', 'home', 'followers', 'specified'] as Visibility[]).map(value => ({
 		type: 'button' as const,
-		text: ({ public: 'パブリック', home: 'ホーム', followers: 'フォロワーのみ', specified: 'ダイレクト' })[value],
+		text: ({ public: copy.public, home: copy.home, followers: copy.followersOnly, specified: copy.direct })[value],
 		active: visibility.value === value,
 		action: () => {
 			visibility.value = value;
@@ -2221,8 +2302,8 @@ function openVisibilityMenu(event: MouseEvent) {
 	os.popupMenu([
 		...visibilityItems,
 		{ type: 'divider' },
-		{ type: 'switch', text: '連合する', ref: federation, disabled: visibility.value === 'specified' },
-		{ type: 'switch', text: '公開範囲を記憶する', ref: rememberNoteVisibility },
+		{ type: 'switch', text: copy.federate, ref: federation, disabled: visibility.value === 'specified' },
+		{ type: 'switch', text: copy.rememberVisibility, ref: rememberNoteVisibility },
 	], anchor);
 }
 
@@ -2238,17 +2319,17 @@ function isAnnoyingMfm(text: string): boolean {
 
 async function confirmComposerWarnings(): Promise<boolean> {
 	if (cwEnabled.value && cwText.value.trim() === '') {
-		await os.alert({ type: 'warning', text: 'CWを使用するときは注釈を入力してください。' });
+		await os.alert({ type: 'warning', text: copy.cwAnnotationRequired });
 		return false;
 	}
 	if (prefer.s.showNoAltTextWarning && draftFiles.value.some(file => file.comment == null || file.comment.length === 0)) {
 		const confirm = await os.actions({
 			type: 'warning',
-			title: '説明のない添付ファイルがあります',
-			text: '画像やファイルの内容を説明する代替テキストがありません。',
+			title: copy.attachmentsWithoutDescription,
+			text: copy.attachmentsWithoutAltText,
 			actions: [
-				{ value: 'post' as const, text: 'このまま投稿' },
-				{ value: 'cancel' as const, text: '戻る', primary: true },
+				{ value: 'post' as const, text: copy.postAsIs },
+				{ value: 'cancel' as const, text: copy.back, primary: true },
 			],
 		});
 		if (confirm.canceled || confirm.result === 'cancel') return false;
@@ -2257,11 +2338,11 @@ async function confirmComposerWarnings(): Promise<boolean> {
 	if (effectiveVisibility.value === 'public' && isAnnoyingMfm(warningText)) {
 		const confirm = await os.actions({
 			type: 'warning',
-			text: '大きな表示や位置移動を含むMFMです。公開範囲を確認してください。',
+			text: copy.annoyingMfmWarning,
 			actions: [
-				{ value: 'home' as const, text: 'ホームへ変更', primary: true },
-				{ value: 'post' as const, text: 'パブリックのまま' },
-				{ value: 'cancel' as const, text: '戻る' },
+				{ value: 'home' as const, text: copy.changeToHome },
+				{ value: 'post' as const, text: copy.keepPublic },
+				{ value: 'cancel' as const, text: copy.back },
 			],
 		});
 		if (confirm.canceled || confirm.result === 'cancel') return false;
@@ -2273,12 +2354,12 @@ async function confirmComposerWarnings(): Promise<boolean> {
 async function submitPost() {
 	if (!canSubmit.value) return;
 	if (!composerChannel.value && visibility.value === 'specified' && visibleUserIds.value.length === 0) {
-		await os.alert({ type: 'warning', text: 'ダイレクト投稿にはメンションボタンで宛先を指定してください。' });
+		await os.alert({ type: 'warning', text: copy.directRecipientRequired });
 		return;
 	}
 	const choices = pollChoices.value.map(value => value.trim()).filter(Boolean);
 	if (pollEnabled.value && choices.length < 2) {
-		await os.alert({ type: 'warning', text: 'アンケートの選択肢を2つ以上入力してください。' });
+		await os.alert({ type: 'warning', text: copy.pollNeedsTwoChoices });
 		return;
 	}
 	let pollExpiresAtValue: number | null = null;
@@ -2286,12 +2367,12 @@ async function submitPost() {
 	if (pollEnabled.value && pollExpiration.value === 'at') {
 		pollExpiresAtValue = new Date(pollExpiresAt.value).getTime();
 		if (!Number.isFinite(pollExpiresAtValue) || pollExpiresAtValue <= Date.now()) {
-			await os.alert({ type: 'warning', text: 'アンケートの締め切りは現在より後の日時にしてください。' });
+			await os.alert({ type: 'warning', text: copy.pollDeadlineMustBeFuture });
 			return;
 		}
 	} else if (pollEnabled.value && pollExpiration.value === 'after') {
 		if (!Number.isFinite(pollExpiredAfter.value) || pollExpiredAfter.value < 1) {
-			await os.alert({ type: 'warning', text: 'アンケート終了までの時間を1以上で指定してください。' });
+			await os.alert({ type: 'warning', text: copy.pollDurationAtLeastOne });
 			return;
 		}
 		const unitMs = { second: 1000, minute: 60_000, hour: 3_600_000, day: 86_400_000 }[pollExpiredAfterUnit.value];
@@ -2322,7 +2403,7 @@ async function submitPost() {
 		}
 	}
 	if (postData == null || typeof postData !== 'object') {
-		await os.alert({ type: 'error', text: 'プラグインが投稿内容を正しく返しませんでした。投稿は送信していません。' });
+		await os.alert({ type: 'error', text: copy.pluginReturnedInvalidPost });
 		return;
 	}
 
@@ -2345,14 +2426,14 @@ async function submitPost() {
 		const now = new Date();
 		if (now.getHours() <= 3) claimAchievement('postedAtLateNight');
 		if (now.getMinutes() === 0 && now.getSeconds() === 0) claimAchievement('postedAt0min0sec');
-		os.toast(composerContext.value?.kind === 'reply' ? '返信しました' : composerContext.value?.kind === 'quote' ? '引用しました' : '投稿しました', composerContext.value?.kind === 'reply' ? 'reply' : composerContext.value?.kind === 'quote' ? 'quote' : 'posted');
+		os.toast(composerContext.value?.kind === 'reply' ? copy.replied : composerContext.value?.kind === 'quote' ? copy.quoted : copy.posted, composerContext.value?.kind === 'reply' ? 'reply' : composerContext.value?.kind === 'quote' ? 'quote' : 'posted');
 		clearComposer();
 		composerToolsOpen.value = false;
 		await nextTick();
 		scrollToBottom();
 	} catch (error) {
 		console.error('HataSNSCordUI post failed', error);
-		await os.alert({ type: 'error', text: '投稿できませんでした。入力内容は残しています。' });
+		await os.alert({ type: 'error', text: copy.postFailedDraftKept });
 	} finally {
 		submitting.value = false;
 	}
@@ -2385,7 +2466,7 @@ async function selectRightTab(tab: RightTab) {
 
 function openRightTab(input: Omit<RightTab, 'id'>, forceNew = false) { const reusable = prefs.value.reuseSubpaneTab && !forceNew ? activeRightTab.value : null; if (reusable && reusable.kind !== 'widgets') Object.assign(reusable, input); else { if (rightTabs.value.length >= subpaneMaxTabs.value) { const replace = rightTabs.value.find(tab => tab.kind !== 'widgets') ?? rightTabs.value[0]; if (replace) Object.assign(replace, input); activeRightTabId.value = replace?.id ?? ''; } else { const tab = { id: genId(), ...input }; rightTabs.value.push(tab); activeRightTabId.value = tab.id; } } openRightPane(); }
 
-function openNoteTab(note: Misskey.entities.Note) { openRightTab({ title: '投稿詳細', kind: 'note', note }); }
+function openNoteTab(note: Misskey.entities.Note) { openRightTab({ title: copy.noteDetails, kind: 'note', note }); }
 
 async function openProfileTab(user: Misskey.entities.UserLite) { let detailed: Misskey.entities.UserDetailed | Misskey.entities.UserLite = user; try { detailed = await misskeyApi('users/show', { userId: user.id }); } catch {} openRightTab({ title: user.name || `@${user.username}`, kind: 'profile', user: detailed }); }
 
@@ -2427,7 +2508,7 @@ function collectionSelectionItems(label: string, prefix: 'list:' | 'antenna:' | 
 	const items = dynamicMenuItems.value.filter(item => item.id.startsWith(prefix));
 	return items.length > 0
 		? timelineSelectionItems(items)
-		: [{ type: 'label', text: `${label}はまだありません` }];
+		: [{ type: 'label', text: copyx.collectionEmpty({ collection: label }) }];
 }
 
 function compactSubpaneMenuWidth() {
@@ -2444,22 +2525,22 @@ async function openCompactAddTabMenu(anchor: HTMLElement, standardTimelines: Hat
 	// 狭い画面では二列の親子メニューを横へ展開しない。一度カテゴリを
 	// 選んでから同じ位置に一覧を出し、長いリスト名も画面内で省略表示する。
 	await os.popupMenu([
-		{ type: 'button', text: 'タイムライン', action: () => selectChild('タイムライン', timelineSelectionItems(standardTimelines)) },
-		{ type: 'button', text: 'リスト', action: () => selectChild('リスト', collectionSelectionItems('リスト', 'list:')) },
-		{ type: 'button', text: 'アンテナ', action: () => selectChild('アンテナ', collectionSelectionItems('アンテナ', 'antenna:')) },
-		{ type: 'button', text: 'チャンネル', action: () => selectChild('チャンネル', collectionSelectionItems('チャンネル', 'channel:')) },
+		{ type: 'button', text: copy.timelines, action: () => selectChild(copy.timelines, timelineSelectionItems(standardTimelines)) },
+		{ type: 'button', text: copy.lists, action: () => selectChild(copy.lists, collectionSelectionItems(copy.lists, 'list:')) },
+		{ type: 'button', text: copy.antennas, action: () => selectChild(copy.antennas, collectionSelectionItems(copy.antennas, 'antenna:')) },
+		{ type: 'button', text: copy.channels, action: () => selectChild(copy.channels, collectionSelectionItems(copy.channels, 'channel:')) },
 		{ type: 'divider' },
-		{ type: 'button', text: 'ウィジェット', action: () => addWidgetTab() },
-		{ type: 'button', text: '検索', action: () => openRightTab({ title: '検索', kind: 'search' }, true) },
-		{ type: 'button', text: '通知', action: () => openRightTab({ title: '通知', kind: 'notifications' }, true) },
-		{ type: 'button', text: 'ドライブ', action: () => openRightTab({ title: 'ドライブ', kind: 'drive' }, true) },
-		{ type: 'button', text: 'お知らせ', action: () => openRightTab({ title: 'お知らせ', kind: 'announcements' }, true) },
+		{ type: 'button', text: copy.widgets, action: () => addWidgetTab() },
+		{ type: 'button', text: copy.search, action: () => openRightTab({ title: copy.search, kind: 'search' }, true) },
+		{ type: 'button', text: copy.notifications, action: () => openRightTab({ title: copy.notifications, kind: 'notifications' }, true) },
+		{ type: 'button', text: copy.drive, action: () => openRightTab({ title: copy.drive, kind: 'drive' }, true) },
+		{ type: 'button', text: copy.announcements, action: () => openRightTab({ title: copy.announcements, kind: 'announcements' }, true) },
 	], anchor, { width: menuWidth });
 
 	const selectedChildMenu = childMenu as { label: string; items: MenuItem[] } | null;
 	if (selectedChildMenu == null) return;
 	await os.popupMenu([
-		{ type: 'label', text: `${selectedChildMenu.label}を選択` },
+		{ type: 'label', text: copyx.chooseCollection({ collection: selectedChildMenu.label }) },
 		...selectedChildMenu.items,
 	], anchor, { width: menuWidth });
 }
@@ -2472,20 +2553,20 @@ function openAddTabMenu(event: MouseEvent) {
 		return;
 	}
 	os.popupMenu([
-		{ type: 'parent', text: 'タイムライン', children: timelineSelectionItems(standardTimelines) },
-		collectionSelectionItem('リスト', 'list:'),
-		collectionSelectionItem('アンテナ', 'antenna:'),
-		collectionSelectionItem('チャンネル', 'channel:'),
+		{ type: 'parent', text: copy.timelines, children: timelineSelectionItems(standardTimelines) },
+		collectionSelectionItem(copy.lists, 'list:'),
+		collectionSelectionItem(copy.antennas, 'antenna:'),
+		collectionSelectionItem(copy.channels, 'channel:'),
 		{ type: 'divider' },
-		{ type: 'button', text: 'ウィジェット', action: () => addWidgetTab() },
-		{ type: 'button', text: '検索', action: () => openRightTab({ title: '検索', kind: 'search' }, true) },
-		{ type: 'button', text: '通知', action: () => openRightTab({ title: '通知', kind: 'notifications' }, true) },
-		{ type: 'button', text: 'ドライブ', action: () => openRightTab({ title: 'ドライブ', kind: 'drive' }, true) },
-		{ type: 'button', text: 'お知らせ', action: () => openRightTab({ title: 'お知らせ', kind: 'announcements' }, true) },
+		{ type: 'button', text: copy.widgets, action: () => addWidgetTab() },
+		{ type: 'button', text: copy.search, action: () => openRightTab({ title: copy.search, kind: 'search' }, true) },
+		{ type: 'button', text: copy.notifications, action: () => openRightTab({ title: copy.notifications, kind: 'notifications' }, true) },
+		{ type: 'button', text: copy.drive, action: () => openRightTab({ title: copy.drive, kind: 'drive' }, true) },
+		{ type: 'button', text: copy.announcements, action: () => openRightTab({ title: copy.announcements, kind: 'announcements' }, true) },
 	], anchor);
 }
 
-function addWidgetTab() { openRightTab({ title: 'ウィジェット', kind: 'widgets', widgets: [] }, true); }
+function addWidgetTab() { openRightTab({ title: copy.widgets, kind: 'widgets', widgets: [] }, true); }
 
 async function importHatasabaWidgets(tab: RightTab) {
 	if (tab.kind !== 'widgets') return;
@@ -2493,16 +2574,16 @@ async function importHatasabaWidgets(tab: RightTab) {
 		.filter(widget => availableWidgets.includes(widget.name))
 		.map(widget => ({ id: genId(), name: widget.name, data: deepClone(widget.data ?? {}) }));
 	if (imported.length === 0) {
-		await os.alert({ type: 'info', text: '取り込めるHatasabaUIのウィジェットがありません。' });
+		await os.alert({ type: 'info', text: copy.noHatasabaWidgetsToImport });
 		return;
 	}
 	const result = await os.actions({
 		type: 'question',
-		title: 'HatasabaUIのウィジェットを取り込む',
-		text: `${imported.length}個のウィジェットを、このタブへ取り込みます。`,
+		title: copy.importHatasabaWidgets,
+		text: copyx.importWidgetCount({ count: imported.length.toString() }),
 		actions: [
-			{ value: 'replace' as const, text: '現在の内容と置き換える', primary: true },
-			{ value: 'append' as const, text: '現在の内容へ追加する' },
+			{ value: 'replace' as const, text: copy.replaceCurrentContent, primary: true },
+			{ value: 'append' as const, text: copy.appendToCurrentContent },
 		],
 	});
 	if (result.canceled) return;
@@ -2524,9 +2605,9 @@ function dropTab(index: number) { if (dragTabIndex.value == null || dragTabIndex
 function persistWidgetTabs() {
 	const widgetTabs = rightTabs.value
 		.filter(tab => tab.kind === 'widgets')
-		.map(tab => ({ id: tab.id, title: tab.title, kind: 'widgets' as const, widgets: tab.widgets ?? [] }));
+		.map(tab => ({ id: tab.id, title: 'widgets', kind: 'widgets' as const, widgets: tab.widgets ?? [] }));
 	prefs.value.subpaneTabs = [
-		{ id: 'detail', title: '詳細', kind: 'detail' as const, widgets: [] },
+		{ id: 'detail', title: 'detail', kind: 'detail' as const, widgets: [] },
 		...widgetTabs,
 	].slice(0, subpaneMaxTabs.value);
 	prefs.value.activeSubpaneTabId = activeRightTab.value?.kind === 'widgets' ? activeRightTab.value.id : 'detail';
@@ -2635,7 +2716,7 @@ async function onHatacordingOpenUser(event: Event) {
 		const user = await misskeyApi('users/show', { userId });
 		await openProfileTab(user);
 	} catch {
-		await os.alert({ type: 'error', text: 'プロフィールを読み込めませんでした。' });
+		await os.alert({ type: 'error', text: copy.profileLoadFailed });
 	}
 }
 
@@ -2652,7 +2733,7 @@ onMounted(async () => {
 	if (stream.state === 'reconnecting') onServerDisconnected();
 	await refreshCurrentAccount();
 	if (!$i.policies.canUseHatacordingUi) {
-		await os.alert({ type: 'warning', text: 'このUIは現在未開放です。' });
+		await os.alert({ type: 'warning', text: copy.uiUnavailable });
 		leaveHatacordingUi('/');
 		return;
 	}
@@ -2679,9 +2760,9 @@ onMounted(async () => {
 			usedTabIds.add(tab.id);
 			return true;
 		})
-		.map(tab => ({ id: tab.id, title: tab.title, kind: 'widgets' as const, widgets: tab.widgets }));
+		.map(tab => ({ id: tab.id, title: copy.widgets, kind: 'widgets' as const, widgets: tab.widgets }));
 	rightTabs.value = [
-		{ id: 'detail', title: '詳細', kind: 'welcome' },
+		{ id: 'detail', title: copy.details, kind: 'welcome' },
 		...widgetTabs.slice(0, Math.max(0, subpaneMaxTabs.value - 1)),
 	];
 	activeRightTabId.value = rightTabs.value.some(tab => tab.id === prefs.value.activeSubpaneTabId)

@@ -148,11 +148,8 @@ export async function common(createVue: () => Promise<App<Element>>) {
 			window.setTimeout(() => {
 				import('@/os.js').then(os => os.alert({
 					type: 'info',
-					title: '「ミュートユーザーのリアクション非表示」が新しくなりました',
-					text: 'これまでは「誰がリアクションしたか」の一覧から名前を隠すだけでしたが、今後は'
-						+ 'ミュートしたユーザーのリアクション自体（リアクションのチップ）がノートから隠れるようになりました。\n\n'
-						+ 'また、この設定は「端末ごと」の管理になり、HataFeed の「ベータ機能を試す」に移動しました。'
-						+ '以前から有効にしていたため、この端末では自動でONにしています。',
+					title: i18n.ts._hata._mutedReactionMigration.title,
+					text: i18n.ts._hata._mutedReactionMigration.body,
 				})).catch(() => { /* 表示失敗は致命的でない */ });
 			}, 2500);
 		}

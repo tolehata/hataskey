@@ -19,8 +19,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 			:aria-expanded="expanded"
 			@click="expanded = !expanded"
 		>
-			<span :class="$style.summaryText">複数のHataFeed通知があります</span>
-			<span :class="$style.count">{{ group.items.length }}件</span>
+			<span :class="$style.summaryText">{{ copy.multipleNotifications }}</span>
+			<span :class="$style.count">{{ copyx.itemCount({ count: group.items.length.toString() }) }}</span>
 			<i class="ti" :class="expanded ? 'ti-chevron-up' : 'ti-chevron-down'"></i>
 		</button>
 		<div v-if="expanded" :class="$style.items">
@@ -30,7 +30,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				:to="item.link ?? '/hatafeed'"
 				:class="$style.item"
 			>
-				<span :class="$style.itemBody">{{ item.body }}</span>
+				<span :class="$style.itemBody">{{ hataFeedNotificationDisplayBody(item.body) }}</span>
 				<MkTime :time="item.createdAt" :class="$style.itemTime" :mode="prefer.s.enableAbsoluteTime ? 'absolute' : 'relative'"/>
 			</MkA>
 		</div>
@@ -41,7 +41,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 <script lang="ts" setup>
 import { ref } from 'vue';
 import type { HataFeedBellGroup } from '@/utility/hatafeed-bell-group.js';
+import { hataFeedNotificationDisplayBody } from '@/utility/hatafeed-bell-group.js';
 import { prefer } from '@/preferences.js';
+import { i18n } from '@/i18n.js';
 
 withDefaults(defineProps<{
 	group: HataFeedBellGroup;
@@ -51,6 +53,8 @@ withDefaults(defineProps<{
 });
 
 const expanded = ref(false);
+const copy = i18n.ts._hata._hatafeed._notificationGroup;
+const copyx = i18n.tsx._hata._hatafeed._notificationGroup;
 </script>
 
 <style lang="scss" module>

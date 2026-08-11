@@ -5,7 +5,8 @@
 
 import { describe, expect, test } from 'vitest';
 import { notificationTypes } from 'cherrypick-js';
-import { hasConfiguredNotificationFilter, migrateNotificationFilterSnapshot, resolveNotificationFilter, serializeNotificationFilter } from './notification-filter.js';
+import { hasConfiguredNotificationFilter, isNotificationFromBot, migrateNotificationFilterSnapshot, resolveNotificationFilter, serializeNotificationFilter } from './notification-filter.js';
+import type * as Misskey from 'cherrypick-js';
 
 describe('notification filter persistence', () => {
 	test('旧設定は現在の表示状態を勝手に変えない', () => {
@@ -50,5 +51,21 @@ describe('notification filter persistence', () => {
 		expect(result.excludeTypes).toEqual(['futureNotification', 'reaction']);
 		expect(result.knownTypes).toContain('futureNotification');
 		expect(result.knownTypes).toEqual(expect.arrayContaining([...notificationTypes]));
+	});
+
+	test('Botフラグ付き通知だけをBot由来として判定する', () => {
+		const bot = { id: 'bot', isBot: true };
+		const person = { id: 'person', isBot: false };
+		expect(isNotificationFromBot({ type: 'follow', user: bot } as Misskey.entities.Notification)).toBe(true);
+		expect(isNotificationFromBot({ type: 'follow', user: person } as Misskey.entities.Notification)).toBe(false);
+		expect(isNotificationFromBot({ type: 'app' } as Misskey.entities.Notification)).toBe(false);
+	});
+
+	test('グループ通知は全員がBotの場合だけ全体をBot由来として判定する', () => {
+		const bot = { id: 'bot', isBot: true };
+		const person = { id: 'person', isBot: false };
+		expect(isNotificationFromBot({ type: 'reaction:grouped', reactions: [{ user: bot }] } as Misskey.entities.Notification)).toBe(true);
+		expect(isNotificationFromBot({ type: 'reaction:grouped', reactions: [{ user: bot }, { user: person }] } as Misskey.entities.Notification)).toBe(false);
+		expect(isNotificationFromBot({ type: 'renote:grouped', users: [bot] } as Misskey.entities.Notification)).toBe(true);
 	});
 });

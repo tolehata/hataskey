@@ -17,7 +17,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		</div>
 		<div v-else-if="notifications.length === 0" :class="$style.empty">
 			<i class="ti ti-bell-off" :class="$style.emptyIcon"></i>
-			<div :class="$style.emptyText">通知はまだありません</div>
+			<div :class="$style.emptyText">{{ notificationCopy.empty }}</div>
 		</div>
 		<div v-else :class="$style.list">
 			<div v-for="n in notifications" :key="n.id" :class="$style.item" @click="onItemClick(n)">
@@ -56,6 +56,7 @@ import { useRouter } from '@/router.js';
 import { callExternalApi } from '@/utility/external-api.js';
 import { getExternalEmojiUrlMap } from '@/utility/external-api.js';
 import { i18n } from '@/i18n.js';
+import { versatileLang } from '@/utility/intl-const.js';
 import { definePage } from '@/page.js';
 import MkLoading from '@/components/global/MkLoading.vue';
 import MkReactionIcon from '@/components/MkReactionIcon.vue';
@@ -63,6 +64,9 @@ import MkReactionIcon from '@/components/MkReactionIcon.vue';
 const notifications = ref<any[]>([]);
 const loading = ref(true);
 const router = useRouter();
+const notificationCopy = i18n.ts._hata._externalNotifications;
+const notificationCopyx = i18n.tsx._hata._externalNotifications;
+const notificationDateFormatter = new Intl.DateTimeFormat(versatileLang, { month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 // 旗鯖fork: 外部サーバーのカスタム絵文字URLマップ (reactionEmojis に無い絵文字の解決用)
 const externalEmojiUrlMap = ref<Record<string, string>>({});
 
@@ -108,13 +112,13 @@ function onExternalNotification(ev: Event) {
 
 const headerActions = computed(() => [{
 	icon: 'ti ti-check',
-	text: 'すべて既読',
+	text: notificationCopy.markAllRead,
 	handler: async () => {
 		await markAllAsRead();
 	},
 }, {
 	icon: 'ti ti-refresh',
-	text: '更新',
+	text: notificationCopy.refresh,
 	handler: async () => {
 		await fetchNotifications();
 	},
@@ -140,26 +144,26 @@ function iconClassOf(n: any): string {
 
 // 旗鯖fork: 表示名 (name優先、なければusername) — MFM対応のため生テキストを返す
 function displayNameOf(n: any): string {
-	return n?.user?.name || n?.user?.username || '誰か';
+	return n?.user?.name || n?.user?.username || notificationCopy.someone;
 }
 
 // 旗鯖fork: アクション文言 (表示名と分離してMFM名の後ろに付ける)
 function actionLabelOf(n: any): string {
 	const labels: Record<string, string> = {
-		'reaction': ' がリアクションしました',
-		'reply': ' が返信しました',
-		'mention': ' があなたをメンションしました',
-		'renote': ' がリノートしました',
-		'quote': ' が引用しました',
-		'follow': ' にフォローされました',
-		'receiveFollowRequest': ' からフォロー申請が届きました',
-		'followRequestAccepted': ' がフォロー申請を承認しました',
-		'achievementEarned': '実績を獲得しました',
-		'app': 'アプリ通知',
-		'pollEnded': 'アンケートが終了しました',
-		'note': ' が新しいノートを投稿しました',
+		'reaction': notificationCopy.actions.reaction,
+		'reply': notificationCopy.actions.reply,
+		'mention': notificationCopy.actions.mention,
+		'renote': notificationCopy.actions.renote,
+		'quote': notificationCopy.actions.quote,
+		'follow': notificationCopy.actions.follow,
+		'receiveFollowRequest': notificationCopy.actions.receiveFollowRequest,
+		'followRequestAccepted': notificationCopy.actions.followRequestAccepted,
+		'achievementEarned': notificationCopy.actions.achievementEarned,
+		'app': notificationCopy.actions.app,
+		'pollEnded': notificationCopy.actions.pollEnded,
+		'note': notificationCopy.actions.note,
 	};
-	return labels[n.type] ?? '外部から通知';
+	return labels[n.type] ?? notificationCopy.unknownAction;
 }
 
 // 旗鯖fork: ユーザー名表示用のMFMカスタム絵文字URLマップ
@@ -230,10 +234,10 @@ function textOf(n: any): string {
 // 旗鯖fork: フォロー許可リクエスト・セキュリティ系通知は連携先で対応が必要
 function hintOf(n: any): string {
 	if (n.type === 'receiveFollowRequest' || n.type === 'followRequestAccepted') {
-		return '※ フォロー申請の対応は連携先サーバーで行ってください';
+		return notificationCopy.followRequestHint;
 	}
 	if (n.type === 'app') {
-		return '※ 詳細は連携先サーバーで確認してください';
+		return notificationCopy.appHint;
 	}
 	return '';
 }
@@ -243,10 +247,10 @@ function formatTime(ts: string): string {
 	const t = new Date(ts).getTime();
 	if (Number.isNaN(t)) return '';
 	const diff = Math.floor((Date.now() - t) / 1000);
-	if (diff < 60) return `${diff}秒前`;
-	if (diff < 3600) return `${Math.floor(diff / 60)}分前`;
-	if (diff < 86400) return `${Math.floor(diff / 3600)}時間前`;
-	return new Date(ts).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+	if (diff < 60) return notificationCopyx.secondsAgo({ count: diff.toString() });
+	if (diff < 3600) return notificationCopyx.minutesAgo({ count: Math.floor(diff / 60).toString() });
+	if (diff < 86400) return notificationCopyx.hoursAgo({ count: Math.floor(diff / 3600).toString() });
+	return notificationDateFormatter.format(new Date(ts));
 }
 
 function onItemClick(n: any) {
@@ -275,7 +279,7 @@ onUnmounted(() => {
 });
 
 definePage(() => ({
-	title: '外部通知',
+	title: notificationCopy.title,
 	icon: 'ti ti-bell',
 }));
 </script>

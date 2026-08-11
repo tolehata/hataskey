@@ -59,6 +59,7 @@ export type Column = {
 	roleId?: string;
 	excludeTypes?: string[];
 	notificationFilterKnownTypes?: string[];
+	excludeBots?: boolean;
 	tl?: BasicTimelineType | 'ohtl' | 'oltl' | 'trending';
 	withRenotes?: boolean;
 	withReplies?: boolean;

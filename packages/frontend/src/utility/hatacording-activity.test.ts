@@ -4,8 +4,19 @@
  */
 
 import { notificationTypes } from 'cherrypick-js';
-import { describe, expect, test } from 'vitest';
-import { createApiActionActivity, createEarthquakeActivity, createNotificationActivity, createServerDisconnectedActivity, createServerReconnectedActivity, createTimelineRealtimeActivity } from './hatacording-activity.js';
+import { describe, expect, test, vi } from 'vitest';
+import type { Locale } from '../../../../locales/index.js';
+
+vi.mock('@/i18n.js', async () => {
+	const fs = await import('node:fs');
+	const path = await import('node:path');
+	const yaml = await import('js-yaml');
+	const { I18n } = await import('@@/js/i18n.js');
+	const locale = yaml.load(fs.readFileSync(path.resolve(process.cwd(), '../../locales/ja-JP.yml'), 'utf8'));
+	return { i18n: new I18n<Locale>(locale as Locale) };
+});
+
+import { createApiActionActivity, createEarthquakeActivity, createNotificationActivity, createNotificationActivityFromSource, createServerDisconnectedActivity, createServerReconnectedActivity, createTimelineRealtimeActivity, sharesHatacordingNotificationAudience } from './hatacording-activity.js';
 
 describe('HataSNSCordUIの受信イベント表示', () => {
 	test('通常通知は本文を保持し、外部通知だけ専用画面へ結ぶ', () => {
@@ -45,8 +56,35 @@ describe('HataSNSCordUIの受信イベント表示', () => {
 				emojis: { flower: 'https://example.test/flower.webp' },
 				reactionEmojis: { seal: 'https://example.test/seal.webp' },
 			},
+			cacheSource: {
+				kind: 'notification',
+				type: 'reaction',
+				external: false,
+				reaction: ':seal:',
+				groupedCount: 0,
+			},
 		});
-		expect(createNotificationActivity(notification, true)).toMatchObject({ title: '外部アカウント・アザラシ :name_emoji:がリアクションしました', to: '/my/external-notifications' });
+		expect(createNotificationActivity(notification, true)).toMatchObject({
+			title: '外部アカウント・アザラシ :name_emoji:がリアクションしました',
+			to: '/my/external-notifications',
+			cacheSource: { external: true },
+		});
+	});
+
+	test('Bot通知を判別し、人間の通知とは別の集約対象にする', () => {
+		const botNotification = createNotificationActivity({
+			type: 'follow',
+			user: { id: 'bot-1', username: 'helper', name: 'お手伝いBot', host: null, isBot: true },
+		});
+		const humanNotification = createNotificationActivity({
+			type: 'follow',
+			user: { id: 'user-1', username: 'person', name: '利用者', host: null, isBot: false },
+		});
+
+		expect(botNotification).toMatchObject({ botOrigin: true, cacheSource: { botOrigin: true } });
+		expect(humanNotification).toMatchObject({ botOrigin: false, cacheSource: { botOrigin: false } });
+		expect(sharesHatacordingNotificationAudience(botNotification, humanNotification)).toBe(false);
+		expect(sharesHatacordingNotificationAudience(botNotification, { botOrigin: true })).toBe(true);
 	});
 
 	test('通知本文を一行用に整形し、長いノートだけ省略する', () => {
@@ -68,6 +106,27 @@ describe('HataSNSCordUIの受信イベント表示', () => {
 		});
 		expect(customEmoji.action).toContain(`${'あ'.repeat(35)}:flower:…`);
 		expect(customEmoji.action).not.toContain(':flow…');
+	});
+
+	test('キャッシュ用の最小要約から本文と遷移先を復元し、完全なNoteを要求しない', () => {
+		const copy = createNotificationActivityFromSource({
+			kind: 'notification',
+			type: 'reaction',
+			external: false,
+			groupedCount: 0,
+			user: { id: 'user-1', username: 'seal', name: 'アザラシ', host: null } as never,
+			noteId: 'note-1',
+			noteText: '保存後も残る :flower:',
+			noteEmojiUrls: { flower: 'https://example.test/flower.webp' },
+			reaction: '👍',
+		});
+
+		expect(copy).toMatchObject({
+			to: '/notes/note-1',
+			action: 'さんがノート「保存後も残る :flower:」に「👍」のリアクションを付けました',
+			emojiUrls: { flower: 'https://example.test/flower.webp' },
+			note: undefined,
+		});
 	});
 
 	test('通知種別ごとの操作先を保ち、危険なアプリリンクは通知画面へ戻す', () => {

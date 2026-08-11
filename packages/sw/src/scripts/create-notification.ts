@@ -10,6 +10,7 @@ import type { BadgeNames, PushNotificationDataMap } from '@/types.js';
 import { char2fileName } from '@/scripts/twemoji-base.js';
 import { cli } from '@/scripts/operations.js';
 import { getAccountFromId } from '@/scripts/get-account-from-id.js';
+import { hataFeedNotificationDisplayBody, privateChannelNotificationDisplayCopy } from '@/scripts/hata-custom-notification-copy.js';
 import { swLang } from '@/scripts/lang.js';
 import { getUserName } from '@/scripts/get-user-name.js';
 
@@ -301,9 +302,17 @@ async function composeNotification(data: PushNotificationDataMap[keyof PushNotif
 					// 旗鯖fork: 独自通知はすべて app 通知と同じ header/body/icon/link 形状。
 					// 専用 type を追加した際にここへ結線し忘れると composeNotification が null となり、
 					// OSには「Hataskey v...」だけの空通知が出るため、同じ分岐でまとめて扱う。
-					const body = data.body.body?.trim() ?? '';
-					const header = data.body.header?.trim() ?? '';
-					const title = header || body || '新しいお知らせ';
+					const rawBody = data.body.body?.trim() ?? '';
+					const rawHeader = data.body.header?.trim() ?? '';
+					let body = rawBody;
+					let header = rawHeader;
+					if (data.body.type === 'hataFeed') {
+						body = hataFeedNotificationDisplayBody(rawBody, i18n);
+					} else if (data.body.type === 'addedToPrivateChannel' || data.body.type === 'removedFromPrivateChannel') {
+						({ body, header } = privateChannelNotificationDisplayCopy(data.body.type, rawHeader, rawBody, i18n));
+					}
+					const newNotice = i18n.ts._hata._customNotifications.newNotice;
+					const title = header || body || newNotice;
 					// 旗鯖fork: HataFeed は同じ案件の OS 通知を1つにまとめる。
 					// link が無い通知も HataFeed 全体でまとめ、他の独自通知には影響させない。
 					const tag = data.body.type === 'hataFeed' ? `hatafeed:${data.body.link ?? 'general'}` : undefined;

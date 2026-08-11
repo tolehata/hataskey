@@ -16,7 +16,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 	</div>
 	<div :class="{['_spacer']: !notification }" style="--MI_SPACER-w: 800px;">
 		<div v-if="tab === 'all'">
-			<MkStreamingNotificationsTimeline :class="[$style.notifications, { [$style.noRadius]: notification }]" :excludeTypes="excludeTypes"/>
+			<MkStreamingNotificationsTimeline :class="[$style.notifications, { [$style.noRadius]: notification }]" :excludeTypes="excludeTypes" :excludeBots="excludeBots"/>
 		</div>
 		<div v-else-if="tab === 'mentions'">
 			<MkNotesTimeline :paginator="mentionsPaginator" :notification="notification"/>
@@ -42,7 +42,12 @@ import { globalEvents } from '@/events.js';
 
 const tab = ref('all');
 const includeTypes = ref<string[] | null>(null);
+const excludeBots = ref(false);
 const excludeTypes = computed(() => includeTypes.value ? notificationTypes.filter(t => !includeTypes.value!.includes(t)) : null);
+const showBots = computed({
+	get: () => !excludeBots.value,
+	set: value => { excludeBots.value = !value; },
+});
 
 const props = defineProps<{
 	disableRefreshButton?: boolean;
@@ -68,13 +73,21 @@ function setFilter(ev) {
 			includeTypes.value = [t];
 		},
 	}));
-	const items = includeTypes.value != null ? [{
+	const filterItems = [{
+		type: 'switch' as const,
+		text: i18n.ts._hata._notificationFilter.botNotifications,
+		ref: showBots,
+	}, {
+		type: 'divider' as const,
+	}, ...typeItems];
+	const items = includeTypes.value != null || excludeBots.value ? [{
 		icon: 'ti ti-x',
 		text: i18n.ts.clear,
 		action: () => {
 			includeTypes.value = null;
+			excludeBots.value = false;
 		},
-	}, { type: 'divider' as const }, ...typeItems] : typeItems;
+	}, { type: 'divider' as const }, ...filterItems] : filterItems;
 	os.popupMenu(items, ev.currentTarget ?? ev.target);
 }
 
@@ -87,7 +100,7 @@ const headerActions = computed(() => [deviceKind === 'desktop' && !props.disable
 } : undefined, tab.value === 'all' ? {
 	text: i18n.ts.filter,
 	icon: 'ti ti-filter',
-	highlighted: includeTypes.value != null,
+	highlighted: includeTypes.value != null || excludeBots.value,
 	handler: setFilter,
 } : undefined, tab.value === 'all' ? {
 	text: i18n.ts.markAllAsRead,

@@ -5,6 +5,11 @@
  */
 
 import type * as Misskey from 'cherrypick-js';
+import { i18n } from '@/i18n.js';
+import { hataFeedNotificationDisplayBody } from '@/utility/hatafeed-bell-group.js';
+
+const copy = i18n.ts._hata._hatafeed._shared;
+const tx = i18n.tsx._hata._hatafeed._shared;
 
 // 旗鯖fork: 絵文字申請一覧・単件確認・連続確認で共有する表示用の形。
 // SDKの独自エンドポイント応答型が空オブジェクト扱いでも、画面内ではこの形を一貫して使う。
@@ -37,8 +42,8 @@ export interface HataBetaFeature {
 export const hataBetaFeatures: HataBetaFeature[] = [
 	{
 		id: 'cpp-playground',
-		title: 'C/C++ プレイグラウンド',
-		desc: 'ブラウザ内だけで C/C++ を書いて実行できる遊び場（サーバーに送られません）。',
+		title: copy.cppPlayground,
+		desc: copy.cppPlaygroundDescription,
 		icon: 'Code',
 		route: '/playground/cpp',
 	},
@@ -47,7 +52,7 @@ export const hataBetaFeatures: HataBetaFeature[] = [
 // 旗鯖fork: トグル式(ページではなくスイッチで切り替える)のベータ機能。
 //   ベータページのスイッチと、ベータボタンのバッジ数の両方で数える。
 export const hataBetaToggleFeatures = [
-	{ id: 'post-send-delay', title: '投稿前カウントダウン' },
+	{ id: 'post-send-delay', title: copy.postCountdown },
 ];
 
 // 旗鯖fork: 現在試せるベータ機能の総数(カード＋トグル)。ベータボタンのバッジに使う。
@@ -55,14 +60,14 @@ export const hataBetaTotal = hataBetaFeatures.length + hataBetaToggleFeatures.le
 
 // カテゴリ(7種)。
 export const categoryLabel: Record<string, string> = {
-	bug: '不具合',
-	improvement: '改善予定',
-	unresolved: '未解決',
-	featureRequest: '機能要望',
-	adoptionRequest: '取入要望',
-	security: 'セキュリティ対応',
-	betaFeature: 'ベータ機能',
-	other: 'その他',
+	bug: copy.categoryBug,
+	improvement: copy.categoryImprovement,
+	unresolved: copy.categoryUnresolved,
+	featureRequest: copy.categoryFeatureRequest,
+	adoptionRequest: copy.categoryAdoptionRequest,
+	security: copy.categorySecurity,
+	betaFeature: copy.categoryBetaFeature,
+	other: copy.categoryOther,
 };
 export const categoryKeys = ['bug', 'improvement', 'unresolved', 'featureRequest', 'adoptionRequest', 'security', 'betaFeature', 'other'] as const;
 export type HataFeedCategory = typeof categoryKeys[number];
@@ -77,14 +82,14 @@ export const staffOnlyCategoryKeys = ['security'] as const satisfies readonly Ha
 
 // カテゴリの説明(ウィザードで選びやすくするため)。
 export const categoryDesc: Record<string, string> = {
-	bug: '動作がおかしい・エラーが出る等の不具合報告',
-	improvement: 'すでに改善が予定されている事柄',
-	unresolved: '原因不明・未解決の事象',
-	featureRequest: 'こんな機能がほしい、という要望',
-	adoptionRequest: '本家などの機能を旗鯖にも取り入れてほしい要望',
-	security: 'セキュリティに関わる報告(取り扱い注意)',
-	betaFeature: 'ベータ機能で起きた不具合・要望',
-	other: 'どれにも当てはまらないもの',
+	bug: copy.categoryBugDescription,
+	improvement: copy.categoryImprovementDescription,
+	unresolved: copy.categoryUnresolvedDescription,
+	featureRequest: copy.categoryFeatureRequestDescription,
+	adoptionRequest: copy.categoryAdoptionRequestDescription,
+	security: copy.categorySecurityDescription,
+	betaFeature: copy.categoryBetaFeatureDescription,
+	other: copy.categoryOtherDescription,
 };
 export const categoryIcon: Record<string, string> = {
 	bug: 'ti ti-bug',
@@ -99,13 +104,13 @@ export const categoryIcon: Record<string, string> = {
 
 // ステータス(6種)。
 export const statusLabel: Record<string, string> = {
-	open: '受付中',
-	planned: '対応予定',
-	inProgress: '対応中',
-	resolved: '解決済み',
-	wontfix: '見送り',
-	unknown: '用途不明',
-	closed: '受付終了',
+	open: copy.statusOpen,
+	planned: copy.statusPlanned,
+	inProgress: copy.statusInProgress,
+	resolved: copy.statusResolved,
+	wontfix: copy.statusWontfix,
+	unknown: copy.statusUnknown,
+	closed: copy.statusClosed,
 };
 export const editableStatusKeys = ['open', 'planned', 'inProgress', 'resolved', 'wontfix', 'unknown'] as const;
 export type HataFeedEditableStatus = typeof editableStatusKeys[number];
@@ -126,16 +131,16 @@ export const statusIcon: Record<string, string> = {
 };
 
 export const priorityLabel = {
-	low: '低',
-	normal: '通常',
-	high: '高',
+	low: copy.priorityLow,
+	normal: copy.priorityNormal,
+	high: copy.priorityHigh,
 } as const;
 export type HataFeedPriority = keyof typeof priorityLabel;
 
 export const emojiStatusLabel: Record<string, string> = {
-	pending: '未処理',
-	approved: '承認済み',
-	rejected: 'リジェクト',
+	pending: copy.emojiPending,
+	approved: copy.emojiApproved,
+	rejected: copy.emojiRejected,
 };
 
 // 絵文字申請の状態アイコン(承認=✓ / 審査中=時計 / 却下=🚫)。
@@ -147,16 +152,17 @@ export const emojiStatusIcon: Record<string, string> = {
 
 // 通知タイプ → 日本語ラベル(ホーム通知フィルタ用)。
 export const notifTypeLabel: Record<string, string> = {
-	newComment: 'コメント',
-	issueStatusChanged: 'ステータス変更',
-	issueClosed: 'クローズ',
-	issueReopened: '再オープン',
-	issueResolved: '解決',
-	newIssue: '新規イシュー',
-	moderatorGranted: '権限付与',
-	newEmojiRequest: '絵文字申請',
-	emojiApproved: '絵文字承認',
-	emojiRejected: '絵文字却下',
+	newComment: copy.notificationComment,
+	commentReaction: copy.notificationCommentReaction,
+	issueStatusChanged: copy.notificationStatusChanged,
+	issueClosed: copy.notificationClosed,
+	issueReopened: copy.notificationReopened,
+	issueResolved: copy.notificationResolved,
+	newIssue: copy.notificationNewIssue,
+	moderatorGranted: copy.notificationModeratorGranted,
+	newEmojiRequest: copy.notificationNewEmojiRequest,
+	emojiApproved: copy.notificationEmojiApproved,
+	emojiRejected: copy.notificationEmojiRejected,
 };
 
 // 旗鯖fork(デザイン改修 §2.4): アバターのフォールバック色。既存アバター画像が無いときだけ
@@ -211,6 +217,10 @@ export interface HataFeedNotifGroup {
 	createdAt: string; // 代表(最新)の createdAt
 	feedbackId: string | null;
 	emojiRequestId: string | null;
+}
+
+export function notificationDisplayMessage(notification: HataFeedNotif): string {
+	return hataFeedNotificationDisplayBody(notification.message);
 }
 
 // 旗鯖fork(通知グルーピング): 本体 Misskey の reaction:grouped(同一ノートへの複数リアクション)の流儀に倣い、
@@ -273,20 +283,20 @@ export function groupHataFeedNotifications(notifications: HataFeedNotif[]): Hata
 // 旗鯖fork(通知グルーピング): まとめ行の見出し文。単一件は元メッセージをそのまま返す。
 //   複数件は本体の「〇〇他N人が〜」/「〜 N件」に倣った短い集約表現にする。
 export function groupSummary(g: HataFeedNotifGroup): string {
-	if (g.count === 1) return g.items[0].message;
+	if (g.count === 1) return notificationDisplayMessage(g.items[0]);
 	const label = notifTypeLabel[g.type] ?? g.type;
 	const first = g.actors[0];
 	const firstName = first ? (first.name ?? first.username ?? '') : '';
 
 	// 同一対象へ複数アクター(コメント等) → 「〇〇 他N人が{ラベル}」。
 	if (TARGET_GROUPED_TYPES.has(g.type)) {
-		if (g.actors.length >= 2) return `${firstName} 他${g.actors.length - 1}人が${label}`;
-		if (firstName) return `${firstName}が${label}（${g.count}件）`;
-		return `${label} ${g.count}件`;
+		if (g.actors.length >= 2) return tx.groupActors({ name: firstName, count: g.actors.length - 1, label });
+		if (firstName) return tx.groupActor({ name: firstName, label, count: g.count });
+		return tx.groupCount({ label, count: g.count });
 	}
 
 	// 種類まとめ(新規イシュー/絵文字申請など) → 「{ラベル} N件」。
-	return `${label} ${g.count}件`;
+	return tx.groupCount({ label, count: g.count });
 }
 
 // 通知タイプ → アイコン。
@@ -295,6 +305,7 @@ export function notifIcon(type: string): string {
 		case 'emojiApproved': return 'ti-check';
 		case 'emojiRejected': return 'ti-x';
 		case 'newComment': return 'ti-message-circle';
+		case 'commentReaction': return 'ti-mood-plus';
 		case 'issueClosed': return 'ti-lock';
 		case 'issueReopened': return 'ti-lock-open';
 		case 'issueStatusChanged': return 'ti-refresh';

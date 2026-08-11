@@ -7,7 +7,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 <XColumn :column="column" :isStacked="isStacked" :menu="menu" :refresher="reload">
 	<template #header><i class="ti ti-bell" style="margin-right: 8px;"></i>{{ column.name || i18n.ts._deck._columns.notifications }}</template>
 
-	<MkStreamingNotificationsTimeline ref="notificationsComponent" :excludeTypes="resolvedExcludeTypes" :showFilterPolicyNotice="hasConfiguredFilter"/>
+	<MkStreamingNotificationsTimeline ref="notificationsComponent" :excludeTypes="resolvedExcludeTypes" :excludeBots="props.column.excludeBots" :showFilterPolicyNotice="hasConfiguredFilter"/>
 </XColumn>
 </template>
 
@@ -52,12 +52,14 @@ async function func() {
 	const { dispose } = await os.popupAsyncWithDialog(import('@/components/MkNotificationSelectWindow.vue').then(x => x.default), {
 		excludeTypes: props.column.excludeTypes,
 		knownTypes: props.column.notificationFilterKnownTypes,
+		excludeBots: props.column.excludeBots,
 	}, {
 		done: async (res) => {
-			const { excludeTypes, knownTypes } = res;
+			const { excludeTypes, knownTypes, excludeBots } = res;
 			updateColumn(props.column.id, {
 				excludeTypes: excludeTypes,
 				notificationFilterKnownTypes: knownTypes,
+				excludeBots: excludeBots,
 			});
 		},
 		closed: () => dispose(),

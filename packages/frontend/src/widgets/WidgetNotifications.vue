@@ -13,7 +13,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 	</template>
 
 	<div>
-		<MkStreamingNotificationsTimeline :excludeTypes="resolvedExcludeTypes" :showFilterPolicyNotice="hasConfiguredFilter"/>
+		<MkStreamingNotificationsTimeline :excludeTypes="resolvedExcludeTypes" :excludeBots="widgetProps.excludeBots" :showFilterPolicyNotice="hasConfiguredFilter"/>
 	</div>
 </MkContainer>
 </template>
@@ -50,6 +50,11 @@ const widgetPropsDef = {
 		hidden: true,
 		default: [] as string[],
 	},
+	excludeBots: {
+		type: 'boolean',
+		hidden: true,
+		default: false,
+	},
 } satisfies FormWithDefault;
 
 type WidgetProps = GetFormResultType<typeof widgetPropsDef>;
@@ -83,11 +88,13 @@ const configureNotification = async () => {
 	const { dispose } = await os.popupAsyncWithDialog(import('@/components/MkNotificationSelectWindow.vue').then(x => x.default), {
 		excludeTypes: widgetProps.excludeTypes,
 		knownTypes: widgetProps.notificationFilterKnownTypes,
+		excludeBots: widgetProps.excludeBots,
 	}, {
 		done: async (res) => {
-			const { excludeTypes, knownTypes } = res;
+			const { excludeTypes, knownTypes, excludeBots } = res;
 			widgetProps.excludeTypes = excludeTypes;
 			widgetProps.notificationFilterKnownTypes = knownTypes;
+			widgetProps.excludeBots = excludeBots;
 			save();
 		},
 		closed: () => dispose(),

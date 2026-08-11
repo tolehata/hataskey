@@ -11,8 +11,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 	<div :class="$style.root">
 		<div v-if="!externalReady" :class="$style.notLinked">
 			<i class="ti ti-link-off" :class="$style.notLinkedIcon"></i>
-			<div>外部アカウントが未連携です</div>
-			<MkA to="/settings/external-account" :class="$style.notLinkedLink">連携設定を開く</MkA>
+			<div>{{ copy.notConnected }}</div>
+			<MkA to="/settings/external-account" :class="$style.notLinkedLink">{{ copy.openConnectionSettings }}</MkA>
 		</div>
 		<WidgetExternalNotifications v-else ref="bodyEl" :widget="widgetProps" :showHeader="false"/>
 	</div>
@@ -32,6 +32,7 @@ const props = defineProps<{
 	column: Column;
 	isStacked: boolean;
 }>();
+const copy = i18n.ts._hata._externalNotifications;
 
 const bodyEl = useTemplateRef<{ fetchNotifications?: () => void; markRead?: () => void }>('bodyEl');
 
@@ -49,11 +50,11 @@ const menu = [{
 	action: () => { bodyEl.value?.fetchNotifications?.(); },
 }, {
 	icon: 'ti ti-check',
-	text: '既読にする',
+	text: copy.markAllRead,
 	action: markRead,
 }, {
 	icon: 'ti ti-link',
-	text: '外部アカウント連携設定',
+	text: copy.connectionSettings,
 	action: () => { window.location.href = '/settings/external-account'; },
 }];
 </script>

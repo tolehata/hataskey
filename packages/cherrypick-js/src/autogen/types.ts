@@ -36968,6 +36968,8 @@ export interface operations {
                     untilDate?: number;
                     /** @default true */
                     markAsRead?: boolean;
+                    /** @default false */
+                    excludeBots?: boolean;
                     includeTypes?: ('note' | 'follow' | 'mention' | 'reply' | 'renote' | 'quote' | 'reaction' | 'pollEnded' | 'scheduledNotePosted' | 'scheduledNotePostFailed' | 'receiveFollowRequest' | 'followRequestAccepted' | 'groupInvited' | 'roleAssigned' | 'chatRoomInvitationReceived' | 'achievementEarned' | 'exportCompleted' | 'login' | 'createToken' | 'app' | 'hataFeed' | 'earthquake' | 'test' | 'addedToPrivateChannel' | 'removedFromPrivateChannel' | 'pollVote')[];
                     excludeTypes?: ('note' | 'follow' | 'mention' | 'reply' | 'renote' | 'quote' | 'reaction' | 'pollEnded' | 'scheduledNotePosted' | 'scheduledNotePostFailed' | 'receiveFollowRequest' | 'followRequestAccepted' | 'groupInvited' | 'roleAssigned' | 'chatRoomInvitationReceived' | 'achievementEarned' | 'exportCompleted' | 'login' | 'createToken' | 'app' | 'hataFeed' | 'earthquake' | 'test' | 'addedToPrivateChannel' | 'removedFromPrivateChannel' | 'pollVote')[];
                 };
@@ -37053,6 +37055,8 @@ export interface operations {
                     untilDate?: number;
                     /** @default true */
                     markAsRead?: boolean;
+                    /** @default false */
+                    excludeBots?: boolean;
                     includeTypes?: ('note' | 'follow' | 'mention' | 'reply' | 'renote' | 'quote' | 'reaction' | 'pollEnded' | 'scheduledNotePosted' | 'scheduledNotePostFailed' | 'receiveFollowRequest' | 'followRequestAccepted' | 'groupInvited' | 'roleAssigned' | 'chatRoomInvitationReceived' | 'achievementEarned' | 'exportCompleted' | 'login' | 'createToken' | 'app' | 'hataFeed' | 'earthquake' | 'test' | 'addedToPrivateChannel' | 'removedFromPrivateChannel' | 'pollVote')[];
                     excludeTypes?: ('note' | 'follow' | 'mention' | 'reply' | 'renote' | 'quote' | 'reaction' | 'pollEnded' | 'scheduledNotePosted' | 'scheduledNotePostFailed' | 'receiveFollowRequest' | 'followRequestAccepted' | 'groupInvited' | 'roleAssigned' | 'chatRoomInvitationReceived' | 'achievementEarned' | 'exportCompleted' | 'login' | 'createToken' | 'app' | 'hataFeed' | 'earthquake' | 'test' | 'addedToPrivateChannel' | 'removedFromPrivateChannel' | 'pollVote')[];
                 };

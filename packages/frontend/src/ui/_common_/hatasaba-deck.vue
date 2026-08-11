@@ -23,7 +23,7 @@
 <div :class="[$style.deckWrap, toolbarPos === 'right' ? $style.deckWrapRight : toolbarPos === 'bottom' ? $style.deckWrapBottom : $style.deckWrapTop]" :data-widget-border="prefer.r['simpleUi.widgetBorder']?.value ? 'on' : 'off'">
 	<!-- 折り畳み式ツールバー (上部メニューモード時は、開いている時だけ表示) -->
 	<div v-if="!topNavMode || toolbarOpen" :class="$style.toolbarBar">
-		<button v-if="!topNavMode" :class="[$style.toolbarToggle, { [$style.toolbarToggleOn]: toolbarOpen }]" v-tooltip="toolbarOpen ? 'ツールバーを隠す' : 'ツールバーを表示'" @click="toolbarOpen = !toolbarOpen">
+		<button v-if="!topNavMode" :class="[$style.toolbarToggle, { [$style.toolbarToggleOn]: toolbarOpen }]" v-tooltip="toolbarOpen ? copy.hideToolbar : copy.showToolbar" @click="toolbarOpen = !toolbarOpen">
 			<i :class="toolbarOpen ? 'ti ti-chevron-up' : 'ti ti-adjustments-horizontal'"></i>
 		</button>
 		<div v-if="toolbarOpen" :class="$style.toolbarInner">
@@ -33,16 +33,16 @@
 			<button :class="$style.profileBtn" @click="openProfileMenu($event)">
 				<i class="ti ti-layout-board"></i><span v-if="toolbarPos !== 'right'" :class="$style.profileName">{{ activeProfileName }}</span><i v-if="toolbarPos !== 'right'" class="ti ti-chevron-down" :class="$style.profileChevron"></i>
 			</button>
-			<button :class="$style.iconBtn" v-tooltip="'すべてのカラムを更新'" @click="reloadAll"><i class="ti ti-refresh"></i></button>
-			<button :class="[$style.iconBtn, { [$style.iconBtnOn]: locked }]" v-tooltip="locked ? 'ロック中(タップで解除)' : 'カラム編集をロック'" @click="toggleLock"><i :class="locked ? 'ti ti-lock' : 'ti ti-lock-open'"></i></button>
+			<button :class="$style.iconBtn" v-tooltip="copy.reloadAllColumns" @click="reloadAll"><i class="ti ti-refresh"></i></button>
+			<button :class="[$style.iconBtn, { [$style.iconBtnOn]: locked }]" v-tooltip="locked ? copy.unlockColumnEditing : copy.lockColumnEditing" @click="toggleLock"><i :class="locked ? 'ti ti-lock' : 'ti ti-lock-open'"></i></button>
 			<button :class="$style.iconBtn" v-tooltip="toolbarPosLabel" @click="cycleToolbarPos"><i :class="toolbarPosIcon"></i></button>
 			<!-- 旗鯖fork(タスク5): 上部メニュー(topNav)⇔左サイドメニューの切替 -->
-			<button :class="[$style.iconBtn, { [$style.iconBtnOn]: topNavMode }]" v-tooltip="topNavMode ? 'ナビ: 上部メニュー（左サイドに切替）' : 'ナビ: 左サイドメニュー（上部に切替）'" @click="toggleTopNavMode"><i :class="topNavMode ? 'ti ti-layout-navbar' : 'ti ti-layout-sidebar'"></i></button>
-			<button v-if="toolbarPos !== 'right'" :class="[$style.iconBtn, { [$style.iconBtnOn]: clockEnabled }]" v-tooltip="'時計の表示'" @click="toggleClock"><i class="ti ti-clock"></i></button>
+			<button :class="[$style.iconBtn, { [$style.iconBtnOn]: topNavMode }]" v-tooltip="topNavMode ? copy.switchToSideNavigation : copy.switchToTopNavigation" @click="toggleTopNavMode"><i :class="topNavMode ? 'ti ti-layout-navbar' : 'ti ti-layout-sidebar'"></i></button>
+			<button v-if="toolbarPos !== 'right'" :class="[$style.iconBtn, { [$style.iconBtnOn]: clockEnabled }]" v-tooltip="copy.showClock" @click="toggleClock"><i class="ti ti-clock"></i></button>
 			<div v-if="showClock" :class="$style.clock">{{ clockText }}</div>
-			<button v-if="toolbarPos !== 'right'" :class="[$style.iconBtn, { [$style.iconBtnOn]: onlineEnabled }]" v-tooltip="'オンラインユーザー数の表示'" @click="toggleOnline"><i class="ti ti-users"></i></button>
-			<div v-if="showOnline && onlineCount != null" :class="$style.online"><span :class="$style.onlineDot"></span>{{ onlineCount }}人がオンラインです</div>
-			<button v-if="toolbarPos !== 'right'" :class="[$style.iconBtn, { [$style.iconBtnOn]: rssEnabled }]" v-tooltip="'RSSフィードの管理'" @click="openRssMenu($event)"><i class="ti ti-rss"></i></button>
+			<button v-if="toolbarPos !== 'right'" :class="[$style.iconBtn, { [$style.iconBtnOn]: onlineEnabled }]" v-tooltip="copy.showOnlineUsers" @click="toggleOnline"><i class="ti ti-users"></i></button>
+			<div v-if="showOnline && onlineCount != null" :class="$style.online"><span :class="$style.onlineDot"></span>{{ copyx.onlineUsers({ count: numberFormatter.format(onlineCount) }) }}</div>
+			<button v-if="toolbarPos !== 'right'" :class="[$style.iconBtn, { [$style.iconBtnOn]: rssEnabled }]" v-tooltip="copy.manageRssFeeds" @click="openRssMenu($event)"><i class="ti ti-rss"></i></button>
 			<div v-if="showRssTicker" ref="rssTickerEl" :class="$style.rssTicker">
 				<Transition :name="$style.rssFade">
 					<div :key="rssOffset" :class="$style.rssItems">
@@ -75,15 +75,15 @@
 									@contextmenu.prevent="openTabMenu(slot, frame, tab, $event)"
 									:data-deck-tab="tab.id" :data-deck-tab-frame="frame.id" :data-deck-tab-slot="slot.id"
 								>
-									<span v-if="!locked" :class="$style.tabGrip" v-tooltip="'ドラッグでタブを移動'" @pointerdown="onTabPointerDown(slot.id, frame.id, tab.id, $event)" @click.stop><i class="ti ti-grip-vertical"></i></span>
+									<span v-if="!locked" :class="$style.tabGrip" v-tooltip="copy.dragTab" @pointerdown="onTabPointerDown(slot.id, frame.id, tab.id, $event)" @click.stop><i class="ti ti-grip-vertical"></i></span>
 									<i :class="[tabIcon(tab), $style.tabIcon, { [$style.tabIconActiveColored]: tab.tabColor && activeTabOf(frame).id === tab.id }]"></i>
 									<span :class="$style.tabLabel">{{ tabTitle(tab) }}</span>
 								</button>
 							</div>
 							<!-- 旗鯖fork: チャンネル投稿ボタンは `simpleUi.showLegacyChannelPostButton` (default false) 時のみ表示。
-	既定ではノートリスト最上部の固定投稿ボタンを主導線とし、ここは非表示。 --><button v-if="showLegacyChannelPostButton && activeTabOf(frame).type === 'channel' && activeTabOf(frame).sourceId" class="_button" :class="$style.frameHeadBtn" v-tooltip="'このチャンネルへ投稿'" @click.stop="postToChannel(activeTabOf(frame).sourceId!)"><i class="ti ti-pencil-plus"></i></button><!-- 旗鯖fork: お気に入り/クリップにはリロードボタン。ストリーミングでないため手動更新が要る。 --><button v-if="activeTabOf(frame).type === 'clip' || activeTabOf(frame).type === 'favorites'" class="_button" :class="$style.frameHeadBtn" v-tooltip="'再読み込み'" @click.stop="reloadPaginated(activeTabOf(frame).id)"><i class="ti ti-refresh"></i></button><button v-if="activeTabOf(frame).type === 'externalNotifications'" class="_button" :class="$style.frameHeadBtn" v-tooltip="'既読にする'" @click.stop="markExtRead(activeTabOf(frame).id)"><i class="ti ti-check"></i></button>
-							<button v-if="frame.tabs.length > 1" class="_button" :class="$style.frameTabsBtn" v-tooltip="'タブの管理'" @click.stop="openTabManageMenu(slot, frame, $event)"><i class="ti ti-layout-navbar"></i></button>
-							<button v-if="!locked" class="_button" :class="$style.slotHandle" v-tooltip="'ドラッグで列を移動 / クリックで列設定'" @pointerdown="onSlotPointerDown(slot.id, $event)" @click.stop="openSlotMenu(slot, $event)"><i class="ti ti-grip-vertical"></i></button>
+	既定ではノートリスト最上部の固定投稿ボタンを主導線とし、ここは非表示。 --><button v-if="showLegacyChannelPostButton && activeTabOf(frame).type === 'channel' && activeTabOf(frame).sourceId" class="_button" :class="$style.frameHeadBtn" v-tooltip="copy.postToThisChannel" @click.stop="postToChannel(activeTabOf(frame).sourceId!)"><i class="ti ti-pencil-plus"></i></button><!-- 旗鯖fork: お気に入り/クリップにはリロードボタン。ストリーミングでないため手動更新が要る。 --><button v-if="activeTabOf(frame).type === 'clip' || activeTabOf(frame).type === 'favorites'" class="_button" :class="$style.frameHeadBtn" v-tooltip="copy.reload" @click.stop="reloadPaginated(activeTabOf(frame).id)"><i class="ti ti-refresh"></i></button><button v-if="activeTabOf(frame).type === 'externalNotifications'" class="_button" :class="$style.frameHeadBtn" v-tooltip="copy.markAsRead" @click.stop="markExtRead(activeTabOf(frame).id)"><i class="ti ti-check"></i></button>
+							<button v-if="frame.tabs.length > 1" class="_button" :class="$style.frameTabsBtn" v-tooltip="copy.manageTabs" @click.stop="openTabManageMenu(slot, frame, $event)"><i class="ti ti-layout-navbar"></i></button>
+							<button v-if="!locked" class="_button" :class="$style.slotHandle" v-tooltip="copy.moveOrConfigureColumn" @pointerdown="onSlotPointerDown(slot.id, $event)" @click.stop="openSlotMenu(slot, $event)"><i class="ti ti-grip-vertical"></i></button>
 							<button class="_button" :class="$style.frameMenuBtn" @click.stop="openFrameMenu(slot, frame, $event)"><i class="ti ti-dots"></i></button>
 						</div>
 						<!-- 本体(アクティブタブ) -->
@@ -96,15 +96,15 @@
 						</div>
 					</div>
 					<!-- 縦積みframe間のリサイズハンドル(横並び&複数frame&最後以外&非ロック) -->
-					<div v-if="!locked && layout === 'row' && slot.frames.length > 1 && frame.id !== slot.frames[slot.frames.length - 1].id" :class="$style.frameResizer" v-tooltip="'ドラッグで高さを調節'" @pointerdown="onFrameResizeDown(slot.id, frame.id, $event)"><span :class="$style.frameResizerBar"></span></div>
+					<div v-if="!locked && layout === 'row' && slot.frames.length > 1 && frame.id !== slot.frames[slot.frames.length - 1].id" :class="$style.frameResizer" v-tooltip="copy.dragToResizeHeight" @pointerdown="onFrameResizeDown(slot.id, frame.id, $event)"><span :class="$style.frameResizerBar"></span></div>
 				</template>
 				<!-- 縦積みドロップ帯 -->
-				<div v-if="dragSrc" :class="[$style.stackDrop, { [$style.stackDropOver]: dragOverSlotStack === slot.id }]" :data-deck-stackdrop="slot.id">ここに縦積み</div>
+				<div v-if="dragSrc" :class="[$style.stackDrop, { [$style.stackDropOver]: dragOverSlotStack === slot.id }]" :data-deck-stackdrop="slot.id">{{ copy.stackHere }}</div>
 			</div>
 		</div>
 		<!-- 新規列ドロップ帯 + 追加ボタン -->
-		<div v-if="dragSrc" :class="$style.newSlotDrop" data-deck-newslot>新しい列</div>
-		<button v-if="!locked" :class="$style.addColumn" @click="addColumn($event)"><i class="ti ti-plus"></i><span>カラムを追加</span></button>
+		<div v-if="dragSrc" :class="$style.newSlotDrop" data-deck-newslot>{{ copy.newColumn }}</div>
+		<button v-if="!locked" :class="$style.addColumn" @click="addColumn($event)"><i class="ti ti-plus"></i><span>{{ copy.addColumn }}</span></button>
 	</div>
 
 	<!-- grid2 / grid3 共通(クラスのみ差し替え) -->
@@ -116,13 +116,13 @@
 						<div :class="$style.tabBar">
 							<div :class="$style.tabs" @wheel="onTabsWheel">
 								<button v-for="tab in frame.tabs" :key="tab.id" :class="[$style.tab, { [$style.tabActive]: activeTabOf(frame).id === tab.id, [$style.tabDragOver]: tabDragOverId === tab.id }]" :style="tabStyle(tab, activeTabOf(frame).id === tab.id)" @click="onTabClick(slot, frame, tab)" @dblclick="renameTab(slot.id, frame.id, tab.id)" @contextmenu.prevent="openTabMenu(slot, frame, tab, $event)" :data-deck-tab="tab.id" :data-deck-tab-frame="frame.id" :data-deck-tab-slot="slot.id">
-									<span v-if="!locked" :class="$style.tabGrip" v-tooltip="'ドラッグでタブを移動'" @pointerdown="onTabPointerDown(slot.id, frame.id, tab.id, $event)" @click.stop><i class="ti ti-grip-vertical"></i></span><i :class="[tabIcon(tab), $style.tabIcon, { [$style.tabIconActiveColored]: tab.tabColor && activeTabOf(frame).id === tab.id }]"></i><span :class="$style.tabLabel">{{ tabTitle(tab) }}</span>
+									<span v-if="!locked" :class="$style.tabGrip" v-tooltip="copy.dragTab" @pointerdown="onTabPointerDown(slot.id, frame.id, tab.id, $event)" @click.stop><i class="ti ti-grip-vertical"></i></span><i :class="[tabIcon(tab), $style.tabIcon, { [$style.tabIconActiveColored]: tab.tabColor && activeTabOf(frame).id === tab.id }]"></i><span :class="$style.tabLabel">{{ tabTitle(tab) }}</span>
 								</button>
 							</div>
 							<!-- 旗鯖fork: チャンネル投稿ボタンは `simpleUi.showLegacyChannelPostButton` (default false) 時のみ表示。
-	既定ではノートリスト最上部の固定投稿ボタンを主導線とし、ここは非表示。 --><button v-if="showLegacyChannelPostButton && activeTabOf(frame).type === 'channel' && activeTabOf(frame).sourceId" class="_button" :class="$style.frameHeadBtn" v-tooltip="'このチャンネルへ投稿'" @click.stop="postToChannel(activeTabOf(frame).sourceId!)"><i class="ti ti-pencil-plus"></i></button><!-- 旗鯖fork: お気に入り/クリップにはリロードボタン。ストリーミングでないため手動更新が要る。 --><button v-if="activeTabOf(frame).type === 'clip' || activeTabOf(frame).type === 'favorites'" class="_button" :class="$style.frameHeadBtn" v-tooltip="'再読み込み'" @click.stop="reloadPaginated(activeTabOf(frame).id)"><i class="ti ti-refresh"></i></button><button v-if="activeTabOf(frame).type === 'externalNotifications'" class="_button" :class="$style.frameHeadBtn" v-tooltip="'既読にする'" @click.stop="markExtRead(activeTabOf(frame).id)"><i class="ti ti-check"></i></button>
-							<button v-if="frame.tabs.length > 1" class="_button" :class="$style.frameTabsBtn" v-tooltip="'タブの管理'" @click.stop="openTabManageMenu(slot, frame, $event)"><i class="ti ti-layout-navbar"></i></button>
-							<button v-if="!locked" class="_button" :class="$style.slotHandle" v-tooltip="'ドラッグで列を移動 / クリックで列設定'" @pointerdown="onSlotPointerDown(slot.id, $event)" @click.stop="openSlotMenu(slot, $event)"><i class="ti ti-grip-vertical"></i></button>
+	既定ではノートリスト最上部の固定投稿ボタンを主導線とし、ここは非表示。 --><button v-if="showLegacyChannelPostButton && activeTabOf(frame).type === 'channel' && activeTabOf(frame).sourceId" class="_button" :class="$style.frameHeadBtn" v-tooltip="copy.postToThisChannel" @click.stop="postToChannel(activeTabOf(frame).sourceId!)"><i class="ti ti-pencil-plus"></i></button><!-- 旗鯖fork: お気に入り/クリップにはリロードボタン。ストリーミングでないため手動更新が要る。 --><button v-if="activeTabOf(frame).type === 'clip' || activeTabOf(frame).type === 'favorites'" class="_button" :class="$style.frameHeadBtn" v-tooltip="copy.reload" @click.stop="reloadPaginated(activeTabOf(frame).id)"><i class="ti ti-refresh"></i></button><button v-if="activeTabOf(frame).type === 'externalNotifications'" class="_button" :class="$style.frameHeadBtn" v-tooltip="copy.markAsRead" @click.stop="markExtRead(activeTabOf(frame).id)"><i class="ti ti-check"></i></button>
+							<button v-if="frame.tabs.length > 1" class="_button" :class="$style.frameTabsBtn" v-tooltip="copy.manageTabs" @click.stop="openTabManageMenu(slot, frame, $event)"><i class="ti ti-layout-navbar"></i></button>
+							<button v-if="!locked" class="_button" :class="$style.slotHandle" v-tooltip="copy.moveOrConfigureColumn" @pointerdown="onSlotPointerDown(slot.id, $event)" @click.stop="openSlotMenu(slot, $event)"><i class="ti ti-grip-vertical"></i></button>
 							<button class="_button" :class="$style.frameMenuBtn" @click.stop="openFrameMenu(slot, frame, $event)"><i class="ti ti-dots"></i></button>
 						</div>
 						<div :class="['frameBody', $style.frameBody]" @touchstart.passive="onFrameTouchStart(frame, $event)" @touchend="onFrameTouchEnd(slot, frame, $event)">
@@ -132,10 +132,10 @@
 						</div>
 					</div>
 				</template>
-				<div v-if="dragSrc" :class="[$style.stackDrop, { [$style.stackDropOver]: dragOverSlotStack === slot.id }]" :data-deck-stackdrop="slot.id">ここに縦積み</div>
+				<div v-if="dragSrc" :class="[$style.stackDrop, { [$style.stackDropOver]: dragOverSlotStack === slot.id }]" :data-deck-stackdrop="slot.id">{{ copy.stackHere }}</div>
 			</div>
 		</div>
-		<button v-if="!locked" :class="[$style.addColumn, $style.addColumnGrid]" @click="addColumn($event)"><i class="ti ti-plus"></i><span>カラムを追加</span></button>
+		<button v-if="!locked" :class="[$style.addColumn, $style.addColumnGrid]" @click="addColumn($event)"><i class="ti ti-plus"></i><span>{{ copy.addColumn }}</span></button>
 	</div>
 
 	<!-- stack -->
@@ -147,13 +147,13 @@
 						<div :class="$style.tabBar">
 							<div :class="$style.tabs" @wheel="onTabsWheel">
 								<button v-for="tab in frame.tabs" :key="tab.id" :class="[$style.tab, { [$style.tabActive]: activeTabOf(frame).id === tab.id, [$style.tabDragOver]: tabDragOverId === tab.id }]" :style="tabStyle(tab, activeTabOf(frame).id === tab.id)" @click="onTabClick(slot, frame, tab)" @dblclick="renameTab(slot.id, frame.id, tab.id)" @contextmenu.prevent="openTabMenu(slot, frame, tab, $event)" :data-deck-tab="tab.id" :data-deck-tab-frame="frame.id" :data-deck-tab-slot="slot.id">
-									<span v-if="!locked" :class="$style.tabGrip" v-tooltip="'ドラッグでタブを移動'" @pointerdown="onTabPointerDown(slot.id, frame.id, tab.id, $event)" @click.stop><i class="ti ti-grip-vertical"></i></span><i :class="[tabIcon(tab), $style.tabIcon, { [$style.tabIconActiveColored]: tab.tabColor && activeTabOf(frame).id === tab.id }]"></i><span :class="$style.tabLabel">{{ tabTitle(tab) }}</span>
+									<span v-if="!locked" :class="$style.tabGrip" v-tooltip="copy.dragTab" @pointerdown="onTabPointerDown(slot.id, frame.id, tab.id, $event)" @click.stop><i class="ti ti-grip-vertical"></i></span><i :class="[tabIcon(tab), $style.tabIcon, { [$style.tabIconActiveColored]: tab.tabColor && activeTabOf(frame).id === tab.id }]"></i><span :class="$style.tabLabel">{{ tabTitle(tab) }}</span>
 								</button>
 							</div>
 							<!-- 旗鯖fork: チャンネル投稿ボタンは `simpleUi.showLegacyChannelPostButton` (default false) 時のみ表示。
-	既定ではノートリスト最上部の固定投稿ボタンを主導線とし、ここは非表示。 --><button v-if="showLegacyChannelPostButton && activeTabOf(frame).type === 'channel' && activeTabOf(frame).sourceId" class="_button" :class="$style.frameHeadBtn" v-tooltip="'このチャンネルへ投稿'" @click.stop="postToChannel(activeTabOf(frame).sourceId!)"><i class="ti ti-pencil-plus"></i></button><!-- 旗鯖fork: お気に入り/クリップにはリロードボタン。ストリーミングでないため手動更新が要る。 --><button v-if="activeTabOf(frame).type === 'clip' || activeTabOf(frame).type === 'favorites'" class="_button" :class="$style.frameHeadBtn" v-tooltip="'再読み込み'" @click.stop="reloadPaginated(activeTabOf(frame).id)"><i class="ti ti-refresh"></i></button><button v-if="activeTabOf(frame).type === 'externalNotifications'" class="_button" :class="$style.frameHeadBtn" v-tooltip="'既読にする'" @click.stop="markExtRead(activeTabOf(frame).id)"><i class="ti ti-check"></i></button>
-							<button v-if="frame.tabs.length > 1" class="_button" :class="$style.frameTabsBtn" v-tooltip="'タブの管理'" @click.stop="openTabManageMenu(slot, frame, $event)"><i class="ti ti-layout-navbar"></i></button>
-							<button v-if="!locked" class="_button" :class="$style.slotHandle" v-tooltip="'ドラッグで列を移動 / クリックで列設定'" @pointerdown="onSlotPointerDown(slot.id, $event)" @click.stop="openSlotMenu(slot, $event)"><i class="ti ti-grip-vertical"></i></button>
+	既定ではノートリスト最上部の固定投稿ボタンを主導線とし、ここは非表示。 --><button v-if="showLegacyChannelPostButton && activeTabOf(frame).type === 'channel' && activeTabOf(frame).sourceId" class="_button" :class="$style.frameHeadBtn" v-tooltip="copy.postToThisChannel" @click.stop="postToChannel(activeTabOf(frame).sourceId!)"><i class="ti ti-pencil-plus"></i></button><!-- 旗鯖fork: お気に入り/クリップにはリロードボタン。ストリーミングでないため手動更新が要る。 --><button v-if="activeTabOf(frame).type === 'clip' || activeTabOf(frame).type === 'favorites'" class="_button" :class="$style.frameHeadBtn" v-tooltip="copy.reload" @click.stop="reloadPaginated(activeTabOf(frame).id)"><i class="ti ti-refresh"></i></button><button v-if="activeTabOf(frame).type === 'externalNotifications'" class="_button" :class="$style.frameHeadBtn" v-tooltip="copy.markAsRead" @click.stop="markExtRead(activeTabOf(frame).id)"><i class="ti ti-check"></i></button>
+							<button v-if="frame.tabs.length > 1" class="_button" :class="$style.frameTabsBtn" v-tooltip="copy.manageTabs" @click.stop="openTabManageMenu(slot, frame, $event)"><i class="ti ti-layout-navbar"></i></button>
+							<button v-if="!locked" class="_button" :class="$style.slotHandle" v-tooltip="copy.moveOrConfigureColumn" @pointerdown="onSlotPointerDown(slot.id, $event)" @click.stop="openSlotMenu(slot, $event)"><i class="ti ti-grip-vertical"></i></button>
 							<button class="_button" :class="$style.frameMenuBtn" @click.stop="openFrameMenu(slot, frame, $event)"><i class="ti ti-dots"></i></button>
 						</div>
 						<div :class="['frameBody', $style.frameBody]" @touchstart.passive="onFrameTouchStart(frame, $event)" @touchend="onFrameTouchEnd(slot, frame, $event)">
@@ -163,10 +163,10 @@
 						</div>
 					</div>
 				</template>
-				<div v-if="dragSrc" :class="[$style.stackDrop, { [$style.stackDropOver]: dragOverSlotStack === slot.id }]" :data-deck-stackdrop="slot.id">ここに縦積み</div>
+				<div v-if="dragSrc" :class="[$style.stackDrop, { [$style.stackDropOver]: dragOverSlotStack === slot.id }]" :data-deck-stackdrop="slot.id">{{ copy.stackHere }}</div>
 			</div>
 		</div>
-		<button v-if="!locked" :class="[$style.addColumn, $style.addColumnStack]" @click="addColumn($event)"><i class="ti ti-plus"></i><span>カラムを追加</span></button>
+		<button v-if="!locked" :class="[$style.addColumn, $style.addColumnStack]" @click="addColumn($event)"><i class="ti ti-plus"></i><span>{{ copy.addColumn }}</span></button>
 	</div>
 
 	<!-- ドラッグゴースト(指/カーソル追従) -->
@@ -192,6 +192,20 @@ import MkTrendingTimeline from '@/components/MkTrendingTimeline.vue';
 import MkPostForm from '@/components/MkPostForm.vue';
 import { tabSwipeEnabled } from '@/utility/hatasaba-device-prefs.js';
 import { hasConfiguredNotificationFilter, migrateNotificationFilterSnapshot, resolveNotificationFilter } from '@/utility/notification-filter.js';
+import { i18n } from '@/i18n.js';
+import { versatileLang } from '@/utility/intl-const.js';
+
+const copy = i18n.ts._hata._hatasabaUi._deck;
+const copyx = i18n.tsx._hata._hatasabaUi._deck;
+const numberFormatter = new Intl.NumberFormat(versatileLang);
+const clockFormatter = new Intl.DateTimeFormat(versatileLang, {
+	month: 'numeric',
+	day: 'numeric',
+	weekday: 'short',
+	hour: 'numeric',
+	minute: '2-digit',
+	second: '2-digit',
+});
 
 const XWidgets = defineAsyncComponent(() => import('./widgets.vue'));
 const WidgetExternalNotifications = defineAsyncComponent(() => import('@/widgets/WidgetExternalNotifications.vue'));
@@ -215,6 +229,7 @@ type DeckTab = {
 	tabColor?: string | null; // タブ(クリックして切り替える部分)の色
 	excludeTypes?: string[]; // 通知カラムで除外する通知タイプ(通知フィルタ)
 	notificationFilterKnownTypes?: string[]; // 保存時点で存在した通知タイプ。新種別を勝手にONにしないためのスナップショット
+	excludeBots?: boolean; // Botフラグ付きアカウントからの通知を除外
 };
 // frame = スロット内の箱。tabs 複数ならタブ表示
 type DeckFrame = {
@@ -240,10 +255,10 @@ type LegacyColumn = { id: string; type: ColumnType; width: number; height?: numb
 type LegacyProfile = { id: string; name: string; layout: DeckLayout; columns: LegacyColumn[]; };
 
 const LAYOUTS: { id: DeckLayout; icon: string; label: string }[] = [
-	{ id: 'row', icon: 'ti ti-layout-columns', label: '横並び (従来デッキ風)' },
-	{ id: 'grid2', icon: 'ti ti-layout-grid', label: '田の字 (2列グリッド)' },
-	{ id: 'grid3', icon: 'ti ti-layout-board-split', label: '3列グリッド' },
-	{ id: 'stack', icon: 'ti ti-layout-list', label: '縦一列' },
+	{ id: 'row', icon: 'ti ti-layout-columns', label: copy.layoutRow },
+	{ id: 'grid2', icon: 'ti ti-layout-grid', label: copy.layoutGrid2 },
+	{ id: 'grid3', icon: 'ti ti-layout-board-split', label: copy.layoutGrid3 },
+	{ id: 'stack', icon: 'ti ti-layout-list', label: copy.layoutStack },
 ];
 
 const toolbarOpen = ref((prefer.r['simpleUi.topNavMode']?.value as boolean) ?? false);
@@ -260,26 +275,14 @@ function cycleToolbarPos() {
 	prefer.commit('simpleUi.deckToolbarPos', next);
 }
 const toolbarPosIcon = computed(() => toolbarPos.value === 'top' ? 'ti ti-layout-navbar' : toolbarPos.value === 'bottom' ? 'ti ti-layout-bottombar' : 'ti ti-layout-sidebar-right');
-const toolbarPosLabel = computed(() => toolbarPos.value === 'top' ? 'ツールバー: 上' : toolbarPos.value === 'bottom' ? 'ツールバー: 下' : 'ツールバー: 右');
+const toolbarPosLabel = computed(() => toolbarPos.value === 'top' ? copy.toolbarTop : toolbarPos.value === 'bottom' ? copy.toolbarBottom : copy.toolbarRight);
 // 時計(上下配置 かつ ツールバー表示時のみ)。ON/OFFは simpleUi.deckClock。
 const clockEnabled = computed<boolean>(() => prefer.r['simpleUi.deckClock']?.value as boolean ?? false);
 function toggleClock() { prefer.commit('simpleUi.deckClock', !clockEnabled.value); }
 const showClock = computed(() => clockEnabled.value && (toolbarPos.value === 'top' || toolbarPos.value === 'bottom'));
 const now = ref(new Date());
 let clockTimer: ReturnType<typeof setInterval> | null = null;
-const WEEKDAYS_JA = ['日', '月', '火', '水', '木', '金', '土'];
-const clockText = computed(() => {
-	const d = now.value;
-	const mon = d.getMonth() + 1;
-	const day = d.getDate();
-	const wd = WEEKDAYS_JA[d.getDay()];
-	const h24 = d.getHours();
-	const ampm = h24 < 12 ? '午前' : '午後';
-	const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
-	const m = d.getMinutes().toString().padStart(2, '0');
-	const sec = d.getSeconds().toString().padStart(2, '0');
-	return `${mon}月${day}日(${wd}) ${ampm}${h12}時${m}分${sec}秒`;
-});
+const clockText = computed(() => clockFormatter.format(now.value));
 onMounted(() => { clockTimer = setInterval(() => { now.value = new Date(); }, 1000); });
 onUnmounted(() => { if (clockTimer) clearInterval(clockTimer); });
 
@@ -360,7 +363,7 @@ async function fetchOneFeed(feed: RssFeed): Promise<RssItem[]> {
 		if (!res.ok) return [];
 		const data = await res.json();
 		const items = Array.isArray(data?.items) ? data.items : [];
-		return items.map((it: any) => ({ title: it.title ?? '(無題)', link: it.link ?? '#', color: feed.color, feedName: feed.name })).filter((it: RssItem) => it.link !== '#');
+		return items.map((it: any) => ({ title: it.title ?? copy.untitled, link: it.link ?? '#', color: feed.color, feedName: feed.name })).filter((it: RssItem) => it.link !== '#');
 	} catch { return []; }
 }
 async function fetchAllRss() {
@@ -427,15 +430,15 @@ watch([rssEnabled, rssFeeds, toolbarPos], () => { startRss(); });
 
 // RSS管理
 const RSS_PALETTE: { name: string; value: string }[] = [
-	{ name: 'レッド', value: '#e0566f' }, { name: 'オレンジ', value: '#e08a3c' }, { name: 'イエロー', value: '#d8b13a' },
-	{ name: 'グリーン', value: '#4caf7d' }, { name: 'ブルー', value: '#4a9eff' }, { name: 'パープル', value: '#9b6dde' }, { name: 'ピンク', value: '#e06699' },
+	{ name: copy.colorRed, value: '#e0566f' }, { name: copy.colorOrange, value: '#e08a3c' }, { name: copy.colorYellow, value: '#d8b13a' },
+	{ name: copy.colorGreen, value: '#4caf7d' }, { name: copy.colorBlue, value: '#4a9eff' }, { name: copy.colorPurple, value: '#9b6dde' }, { name: copy.colorPink, value: '#e06699' },
 ];
 function commitRssFeeds(list: RssFeed[]) { prefer.commit('simpleUi.deckRssFeeds', list); }
 async function addRssFeed() {
-	if (rssFeeds.value.length >= RSS_MAX_FEEDS) { os.alert({ type: 'warning', text: `フィードは最大${RSS_MAX_FEEDS}件までです` }); return; }
-	const { canceled: c1, result: url } = await os.inputText({ title: 'RSSフィードのURL', placeholder: 'https://example.com/feed.xml' });
+	if (rssFeeds.value.length >= RSS_MAX_FEEDS) { os.alert({ type: 'warning', text: copyx.maxRssFeeds({ max: RSS_MAX_FEEDS.toString() }) }); return; }
+	const { canceled: c1, result: url } = await os.inputText({ title: copy.rssFeedUrl, placeholder: 'https://example.com/feed.xml' });
 	if (c1 || !url || url.trim() === '') return;
-	const { canceled: c2, result: name } = await os.inputText({ title: '表示名(任意)', placeholder: '空欄可' });
+	const { canceled: c2, result: name } = await os.inputText({ title: copy.optionalDisplayName, placeholder: copy.mayBeBlank });
 	const feed: RssFeed = { id: genId('rss'), url: url.trim(), name: (!c2 && name && name.trim() !== '') ? name.trim() : undefined, color: RSS_PALETTE[rssFeeds.value.length % RSS_PALETTE.length].value };
 	commitRssFeeds([...rssFeeds.value, feed]);
 	if (!rssEnabled.value) prefer.commit('simpleUi.deckRssEnabled', true);
@@ -463,21 +466,21 @@ function openRssMenu(ev: MouseEvent) {
 		text: f.name ?? f.url,
 		icon: 'ti ti-rss',
 		children: [
-			{ type: 'parent' as const, text: 'フィードの色', icon: 'ti ti-palette', children: RSS_PALETTE.map(c => ({ text: c.name, icon: f.color === c.value ? 'ti ti-check' : 'ti ti-circle-filled', action: () => setRssColor(f.id, c.value) })) },
-			{ text: '上へ(優先度を上げる)', icon: 'ti ti-arrow-up', action: () => moveRssFeed(f.id, -1) },
-			{ text: '下へ(優先度を下げる)', icon: 'ti ti-arrow-down', action: () => moveRssFeed(f.id, 1) },
+			{ type: 'parent' as const, text: copy.feedColor, icon: 'ti ti-palette', children: RSS_PALETTE.map(c => ({ text: c.name, icon: f.color === c.value ? 'ti ti-check' : 'ti ti-circle-filled', action: () => setRssColor(f.id, c.value) })) },
+			{ text: copy.moveUpIncreasePriority, icon: 'ti ti-arrow-up', action: () => moveRssFeed(f.id, -1) },
+			{ text: copy.moveDownDecreasePriority, icon: 'ti ti-arrow-down', action: () => moveRssFeed(f.id, 1) },
 			{ type: 'divider' as const },
-			{ text: '削除', icon: 'ti ti-trash', danger: true, action: () => removeRssFeed(f.id) },
+			{ text: copy.delete, icon: 'ti ti-trash', danger: true, action: () => removeRssFeed(f.id) },
 		],
 	}));
 	os.popupMenu([
-		{ type: 'label' as const, text: `RSSフィード (${rssFeeds.value.length}/${RSS_MAX_FEEDS})` },
-		{ type: 'switch' as const, text: 'RSSを表示', ref: computed({ get: () => rssEnabled.value, set: () => toggleRss() }) },
+		{ type: 'label' as const, text: copyx.rssFeedCount({ count: rssFeeds.value.length.toString(), max: RSS_MAX_FEEDS.toString() }) },
+		{ type: 'switch' as const, text: copy.showRss, ref: computed({ get: () => rssEnabled.value, set: () => toggleRss() }) },
 		{ type: 'divider' as const },
 		...feedItems,
 		{ type: 'divider' as const },
-		...(rssFeeds.value.length < RSS_MAX_FEEDS ? [{ text: 'フィードを追加', icon: 'ti ti-plus', action: () => addRssFeed() }] : []),
-		{ text: '今すぐ更新', icon: 'ti ti-refresh', action: () => fetchAllRss() },
+		...(rssFeeds.value.length < RSS_MAX_FEEDS ? [{ text: copy.addFeed, icon: 'ti ti-plus', action: () => addRssFeed() }] : []),
+		{ text: copy.updateNow, icon: 'ti ti-refresh', action: () => fetchAllRss() },
 	], anchor);
 }
 
@@ -599,6 +602,12 @@ onMounted(async () => {
 
 // ===== プロファイル/slots アクセサ(副作用なし・読むだけ) =====
 const FALLBACK_PROFILE: DeckProfile = { id: 'default', name: 'デフォルト', layout: 'row', slots: [] };
+const LEGACY_DEFAULT_PROFILE_NAME = 'デフォルト';
+
+// 既存・移行済みの保存名は変更せず、既定プロファイルだけ表示時に解決する。
+function displayProfileName(profile: DeckProfile): string {
+	return profile.id === 'default' && profile.name === LEGACY_DEFAULT_PROFILE_NAME ? copy.defaultProfile : profile.name;
+}
 
 const profiles = computed<DeckProfile[]>(() => {
 	const p = prefer.r['simpleUi.deckProfilesV2'].value as DeckProfile[];
@@ -614,7 +623,7 @@ const activeProfile = computed<DeckProfile>(() => {
 	const list = profiles.value;
 	return list.find(p => p.id === activeProfileId.value) ?? list[0];
 });
-const activeProfileName = computed<string>(() => activeProfile.value?.name ?? 'デフォルト');
+const activeProfileName = computed<string>(() => activeProfile.value ? displayProfileName(activeProfile.value) : copy.defaultProfile);
 const slots = computed<DeckSlot[]>(() => activeProfile.value?.slots ?? []);
 const layout = computed<DeckLayout>(() => activeProfile.value?.layout ?? 'row');
 
@@ -632,30 +641,31 @@ function setLayout(l: DeckLayout) { commitActiveProfile(p => ({ ...p, layout: l 
 
 // ===== カラム(tab)描画ロジック =====
 const COLUMN_META: Record<ColumnType, { title: string; icon: string }> = {
-	home: { title: 'ホーム', icon: 'ti ti-home' },
-	local: { title: 'ローカル', icon: 'ti ti-planet' },
-	social: { title: 'ソーシャル', icon: 'ti ti-universe' },
-	global: { title: 'グローバル', icon: 'ti ti-world' },
-	trending: { title: 'トレンド', icon: 'ti ti-chart-line' },
-	ohtl: { title: '外部ホーム', icon: 'ti ti-home-link' },
-	oltl: { title: '外部ローカル', icon: 'ti ti-world-share' },
-	list: { title: 'リスト', icon: 'ti ti-list' },
-	antenna: { title: 'アンテナ', icon: 'ti ti-antenna' },
-	channel: { title: 'チャンネル', icon: 'ti ti-device-tv' },
-	mentions: { title: 'メンション', icon: 'ti ti-at' },
-	directs: { title: '指名', icon: 'ti ti-mail' },
-	notifications: { title: '通知', icon: 'ti ti-bell' },
-	externalNotifications: { title: '外部通知', icon: 'ti ti-bell-ringing' },
-	widgets: { title: 'ウィジェット', icon: 'ti ti-apps' },
-	postForm: { title: '投稿フォーム', icon: 'ti ti-pencil-plus' },
+	home: { title: copy.columnHome, icon: 'ti ti-home' },
+	local: { title: copy.columnLocal, icon: 'ti ti-planet' },
+	social: { title: copy.columnSocial, icon: 'ti ti-universe' },
+	global: { title: copy.columnGlobal, icon: 'ti ti-world' },
+	trending: { title: copy.columnTrending, icon: 'ti ti-chart-line' },
+	ohtl: { title: copy.columnExternalHome, icon: 'ti ti-home-link' },
+	oltl: { title: copy.columnExternalLocal, icon: 'ti ti-world-share' },
+	list: { title: copy.columnList, icon: 'ti ti-list' },
+	antenna: { title: copy.columnAntenna, icon: 'ti ti-antenna' },
+	channel: { title: copy.columnChannel, icon: 'ti ti-device-tv' },
+	mentions: { title: copy.columnMentions, icon: 'ti ti-at' },
+	directs: { title: copy.columnDirects, icon: 'ti ti-mail' },
+	notifications: { title: copy.columnNotifications, icon: 'ti ti-bell' },
+	externalNotifications: { title: copy.columnExternalNotifications, icon: 'ti ti-bell-ringing' },
+	widgets: { title: copy.columnWidgets, icon: 'ti ti-apps' },
+	postForm: { title: copy.columnPostForm, icon: 'ti ti-pencil-plus' },
 	earthquake: { title: '地震・津波', icon: 'ti ti-activity' },
 	// 旗鯖fork(新デッキ): クリップ/お気に入り
-	clip: { title: 'クリップ', icon: 'ti ti-paperclip' },
-	favorites: { title: 'お気に入り', icon: 'ti ti-star' },
+	clip: { title: copy.columnClip, icon: 'ti ti-paperclip' },
+	favorites: { title: copy.columnFavorites, icon: 'ti ti-star' },
 };
 function tabTitle(tab: DeckTab): string {
 	if (tab.tabName && tab.tabName.trim() !== '') return tab.tabName;
 	// 旗鯖fork(新デッキ): クリップも sourceId 経由で個別を指すので、name があればそれをタイトルに。
+	// 利用者が「リスト」等の既定名と同じ名前を付けた場合も、その入力値を翻訳しない。
 	if ((tab.type === 'list' || tab.type === 'antenna' || tab.type === 'channel' || tab.type === 'clip') && tab.name) return tab.name;
 	return COLUMN_META[tab.type]?.title ?? tab.type;
 }
@@ -692,6 +702,7 @@ function columnProps(tab: DeckTab): Record<string, unknown> {
 	if (tab.type === 'trending') return {};
 	if (tab.type === 'notifications') return {
 		excludeTypes: resolveNotificationFilter(tab.excludeTypes, tab.notificationFilterKnownTypes).excludeTypes,
+		excludeBots: tab.excludeBots === true,
 		showFilterPolicyNotice: hasConfiguredNotificationFilter(tab.excludeTypes, tab.notificationFilterKnownTypes),
 	};
 	if (tab.type === 'postForm') return { fixed: true, autofocus: false };
@@ -702,8 +713,8 @@ function columnProps(tab: DeckTab): Record<string, unknown> {
 	// 旗鯖fork(新デッキ): クリップ/お気に入り。favorites は endpoint のみで clipId 不要。
 	if (tab.type === 'clip' && tab.sourceId) return { endpoint: 'clips/notes', clipId: tab.sourceId };
 	if (tab.type === 'favorites') return { endpoint: 'i/favorites' };
-	if (tab.type === 'clip' && !tab.sourceId) return { message: 'クリップが未指定です' };
-	return { message: (tab.type === 'ohtl' || tab.type === 'oltl' || tab.type === 'externalNotifications') ? '外部アカウントが未連携です' : 'このカラムを表示できません' };
+	if (tab.type === 'clip' && !tab.sourceId) return { message: copy.clipNotSelected };
+	return { message: (tab.type === 'ohtl' || tab.type === 'oltl' || tab.type === 'externalNotifications') ? copy.externalAccountNotConnected : copy.cannotDisplayColumn };
 }
 const ColumnError = defineAsyncComponent(() => Promise.resolve({
 	props: { message: { type: String, default: '' } },
@@ -797,7 +808,7 @@ async function postToChannel(channelId: string) {
 			},
 		});
 	} catch (err) {
-		os.alert({ type: 'error', text: 'チャンネル情報の取得に失敗しました。' });
+		os.alert({ type: 'error', text: copy.failedToLoadChannel });
 	}
 }
 
@@ -882,9 +893,13 @@ function activeTabOf(frame: DeckFrame): DeckTab {
 async function renameTab(slotId: string, frameId: string, tabId: string) {
 	const loc = findFrame(slotId, frameId); if (!loc) return;
 	const tab = slots.value[loc.s].frames[loc.f].tabs.find(t => t.id === tabId); if (!tab) return;
-	const { canceled, result } = await os.inputText({ title: 'タブ名を変更', default: tabTitle(tab), placeholder: '空にすると種別名に戻ります' });
+	const defaultTitle = tabTitle(tab);
+	const { canceled, result } = await os.inputText({ title: copy.renameTab, default: defaultTitle, placeholder: copy.emptyRestoresTypeName });
 	if (canceled) return;
-	mapSlots(ss => ss.map(s => s.id !== slotId ? s : { ...s, frames: s.frames.map(f => f.id !== frameId ? f : { ...f, tabs: f.tabs.map(t => t.id !== tabId ? t : { ...t, tabName: (result && result.trim() !== '') ? result.trim() : undefined }) }) }));
+	const trimmed = result?.trim() ?? '';
+	// 翻訳された既定名を保存値へ書き込まず、未設定の意味を維持する。
+	const nextTabName = trimmed === '' || (tab.tabName == null && trimmed === defaultTitle) ? undefined : trimmed;
+	mapSlots(ss => ss.map(s => s.id !== slotId ? s : { ...s, frames: s.frames.map(f => f.id !== frameId ? f : { ...f, tabs: f.tabs.map(t => t.id !== tabId ? t : { ...t, tabName: nextTabName }) }) }));
 }
 function removeTab(slotId: string, frameId: string, tabId: string) {
 	mapSlots(ss => {
@@ -1032,7 +1047,7 @@ function onPointerMove(ev: PointerEvent) {
 			if (tab) ghost.value = { x: ev.clientX, y: ev.clientY, label: tabTitle(tab), icon: tabIcon(tab), color: tab.tabColor };
 		} else if (dragState.kind === 'slot' && dragState.slotId) {
 			slotDragId.value = dragState.slotId;
-			ghost.value = { x: ev.clientX, y: ev.clientY, label: '列を移動', icon: 'ti ti-grip-vertical' };
+			ghost.value = { x: ev.clientX, y: ev.clientY, label: copy.moveColumn, icon: 'ti ti-grip-vertical' };
 		}
 	}
 	if (ghost.value) { ghost.value.x = ev.clientX; ghost.value.y = ev.clientY; }
@@ -1173,7 +1188,7 @@ function setTabColor(slotId: string, frameId: string, tabId: string, color: stri
 async function setTabColorCustom(slotId: string, frameId: string, tabId: string) {
 	const loc = findFrame(slotId, frameId); if (!loc) return;
 	const tab = slots.value[loc.s].frames[loc.f].tabs.find(t => t.id === tabId);
-	const { canceled, result } = await os.inputText({ title: 'タブの色 (カラーコード)', placeholder: '#ff6699', default: tab?.tabColor ?? '' });
+	const { canceled, result } = await os.inputText({ title: copy.tabColorCode, placeholder: '#ff6699', default: tab?.tabColor ?? '' });
 	if (canceled) return;
 	setTabColor(slotId, frameId, tabId, (result && result.trim() !== '') ? result.trim() : null);
 }
@@ -1188,24 +1203,24 @@ function tabStyle(tab: DeckTab, active: boolean): Record<string, string> {
 // タブ管理メニュー(タブが複数ある時、frameごとに出す)
 function openTabManageMenu(slot: DeckSlot, frame: DeckFrame, ev: MouseEvent) {
 	const anchor = (ev.currentTarget ?? ev.target) as HTMLElement;
-	const items: any[] = [{ type: 'label' as const, text: 'タブの管理' }];
+	const items: any[] = [{ type: 'label' as const, text: copy.manageTabs }];
 	for (const tab of frame.tabs) {
 		items.push({
 			type: 'parent' as const,
 			text: tabTitle(tab),
 			icon: tabIcon(tab),
 			children: [
-				{ text: '名前を変更', icon: 'ti ti-forms', action: () => renameTab(slot.id, frame.id, tab.id) },
+				{ text: copy.rename, icon: 'ti ti-forms', action: () => renameTab(slot.id, frame.id, tab.id) },
 				{
-					type: 'parent' as const, text: 'タブの色', icon: 'ti ti-palette',
+					type: 'parent' as const, text: copy.tabColor, icon: 'ti ti-palette',
 					children: [
 						...BORDER_PALETTE.map(c => ({ text: c.name, icon: 'ti ti-circle-filled', action: () => setTabColor(slot.id, frame.id, tab.id, c.value) })),
 						{ type: 'divider' as const },
-						{ text: 'カスタム…', icon: 'ti ti-pencil', action: () => setTabColorCustom(slot.id, frame.id, tab.id) },
-						{ text: '色をクリア', icon: 'ti ti-circle-off', action: () => setTabColor(slot.id, frame.id, tab.id, null) },
+						{ text: copy.customColor, icon: 'ti ti-pencil', action: () => setTabColorCustom(slot.id, frame.id, tab.id) },
+						{ text: copy.clearColor, icon: 'ti ti-circle-off', action: () => setTabColor(slot.id, frame.id, tab.id, null) },
 					],
 				},
-				...(frame.tabs.length > 1 ? [{ text: 'このタブを削除', icon: 'ti ti-trash', danger: true, action: () => removeTab(slot.id, frame.id, tab.id) }] : []),
+				...(frame.tabs.length > 1 ? [{ text: copy.deleteThisTab, icon: 'ti ti-trash', danger: true, action: () => removeTab(slot.id, frame.id, tab.id) }] : []),
 			],
 		});
 	}
@@ -1249,66 +1264,66 @@ function moveTab(src: DragSrc, dest: { kind: 'frame'; slotId: string; frameId: s
 // ===== カラム追加メニュー(末尾に新slot) =====
 async function pickListId(anchor: HTMLElement, then: (id: string, name: string) => void) {
 	const lists = await misskeyApi('users/lists/list', {});
-	if (!Array.isArray(lists) || lists.length === 0) { os.alert({ type: 'info', text: 'リストがありません' }); return; }
-	const { canceled, result } = await os.select({ title: 'リストを選択', items: lists.map((l: any) => ({ value: l.id, label: l.name })) });
+	if (!Array.isArray(lists) || lists.length === 0) { os.alert({ type: 'info', text: copy.noLists }); return; }
+	const { canceled, result } = await os.select({ title: copy.selectList, items: lists.map((l: any) => ({ value: l.id, label: l.name })) });
 	if (canceled || result == null) return;
 	const picked = lists.find((l: any) => l.id === result);
-	then(result as string, picked?.name ?? 'リスト');
+	then(result as string, picked?.name ?? copy.fallbackListName);
 }
 async function pickAntennaId(anchor: HTMLElement, then: (id: string, name: string) => void) {
 	const antennas = await misskeyApi('antennas/list', {});
-	if (!Array.isArray(antennas) || antennas.length === 0) { os.alert({ type: 'info', text: 'アンテナがありません' }); return; }
-	const { canceled, result } = await os.select({ title: 'アンテナを選択', items: antennas.map((a: any) => ({ value: a.id, label: a.name })) });
+	if (!Array.isArray(antennas) || antennas.length === 0) { os.alert({ type: 'info', text: copy.noAntennas }); return; }
+	const { canceled, result } = await os.select({ title: copy.selectAntenna, items: antennas.map((a: any) => ({ value: a.id, label: a.name })) });
 	if (canceled || result == null) return;
 	const picked = antennas.find((a: any) => a.id === result);
-	then(result as string, picked?.name ?? 'アンテナ');
+	then(result as string, picked?.name ?? copy.fallbackAntennaName);
 }
 async function pickChannelId(anchor: HTMLElement, then: (id: string, name: string) => void) {
 	const channels = await misskeyApi('channels/followed', { limit: 100 });
-	if (!Array.isArray(channels) || channels.length === 0) { os.alert({ type: 'info', text: 'フォロー中のチャンネルがありません' }); return; }
-	const { canceled, result } = await os.select({ title: 'チャンネルを選択', items: channels.map((c: any) => ({ value: c.id, label: c.name })) });
+	if (!Array.isArray(channels) || channels.length === 0) { os.alert({ type: 'info', text: copy.noFollowedChannels }); return; }
+	const { canceled, result } = await os.select({ title: copy.selectChannel, items: channels.map((c: any) => ({ value: c.id, label: c.name })) });
 	if (canceled || result == null) return;
 	const picked = channels.find((c: any) => c.id === result);
-	then(result as string, picked?.name ?? 'チャンネル');
+	then(result as string, picked?.name ?? copy.fallbackChannelName);
 }
 // 旗鯖fork(新デッキ): クリップ選択。自分のクリップ一覧 (clips/list) から選ばせる。
 async function pickClipId(anchor: HTMLElement, then: (id: string, name: string) => void) {
 	const clips = await misskeyApi('clips/list', {});
-	if (!Array.isArray(clips) || clips.length === 0) { os.alert({ type: 'info', text: 'クリップがありません' }); return; }
-	const { canceled, result } = await os.select({ title: 'クリップを選択', items: clips.map((c: any) => ({ value: c.id, label: c.name })) });
+	if (!Array.isArray(clips) || clips.length === 0) { os.alert({ type: 'info', text: copy.noClips }); return; }
+	const { canceled, result } = await os.select({ title: copy.selectClip, items: clips.map((c: any) => ({ value: c.id, label: c.name })) });
 	if (canceled || result == null) return;
 	const picked = clips.find((c: any) => c.id === result);
-	then(result as string, picked?.name ?? 'クリップ');
+	then(result as string, picked?.name ?? copy.fallbackClipName);
 }
 
 // 種別選択メニューを作る共通関数。onPick(partial) でカラムを確定。
 function columnTypeMenu(anchor: HTMLElement, onPick: (partial: Partial<DeckTab> & { type: ColumnType }) => void) {
 	return [
-		{ text: 'ホーム', icon: 'ti ti-home', action: () => onPick({ type: 'home' }) },
-		{ text: 'ローカル', icon: 'ti ti-planet', action: () => onPick({ type: 'local' }) },
-		{ text: 'ソーシャル', icon: 'ti ti-universe', action: () => onPick({ type: 'social' }) },
-		{ text: 'グローバル', icon: 'ti ti-world', action: () => onPick({ type: 'global' }) },
-		{ text: 'トレンド', icon: 'ti ti-chart-line', action: () => onPick({ type: 'trending' }) },
+		{ text: COLUMN_META.home.title, icon: 'ti ti-home', action: () => onPick({ type: 'home' }) },
+		{ text: COLUMN_META.local.title, icon: 'ti ti-planet', action: () => onPick({ type: 'local' }) },
+		{ text: COLUMN_META.social.title, icon: 'ti ti-universe', action: () => onPick({ type: 'social' }) },
+		{ text: COLUMN_META.global.title, icon: 'ti ti-world', action: () => onPick({ type: 'global' }) },
+		{ text: COLUMN_META.trending.title, icon: 'ti ti-chart-line', action: () => onPick({ type: 'trending' }) },
 		{ type: 'divider' as const },
-		{ text: 'メンション', icon: 'ti ti-at', action: () => onPick({ type: 'mentions' }) },
-		{ text: '指名', icon: 'ti ti-mail', action: () => onPick({ type: 'directs' }) },
+		{ text: COLUMN_META.mentions.title, icon: 'ti ti-at', action: () => onPick({ type: 'mentions' }) },
+		{ text: COLUMN_META.directs.title, icon: 'ti ti-mail', action: () => onPick({ type: 'directs' }) },
 		{ type: 'divider' as const },
-		{ text: 'リスト', icon: 'ti ti-list', action: () => pickListId(anchor, (id, name) => onPick({ type: 'list', sourceId: id, name })) },
-		{ text: 'アンテナ', icon: 'ti ti-antenna', action: () => pickAntennaId(anchor, (id, name) => onPick({ type: 'antenna', sourceId: id, name })) },
-		{ text: 'チャンネル', icon: 'ti ti-device-tv', action: () => pickChannelId(anchor, (id, name) => onPick({ type: 'channel', sourceId: id, name })) },
-		{ text: 'クリップ', icon: 'ti ti-paperclip', action: () => pickClipId(anchor, (id, name) => onPick({ type: 'clip', sourceId: id, name })) },
-		{ text: 'お気に入り', icon: 'ti ti-star', action: () => onPick({ type: 'favorites' }) },
+		{ text: COLUMN_META.list.title, icon: 'ti ti-list', action: () => pickListId(anchor, (id, name) => onPick({ type: 'list', sourceId: id, name })) },
+		{ text: COLUMN_META.antenna.title, icon: 'ti ti-antenna', action: () => pickAntennaId(anchor, (id, name) => onPick({ type: 'antenna', sourceId: id, name })) },
+		{ text: COLUMN_META.channel.title, icon: 'ti ti-device-tv', action: () => pickChannelId(anchor, (id, name) => onPick({ type: 'channel', sourceId: id, name })) },
+		{ text: COLUMN_META.clip.title, icon: 'ti ti-paperclip', action: () => pickClipId(anchor, (id, name) => onPick({ type: 'clip', sourceId: id, name })) },
+		{ text: COLUMN_META.favorites.title, icon: 'ti ti-star', action: () => onPick({ type: 'favorites' }) },
 		...(externalReady.value ? [
 			{ type: 'divider' as const },
-			{ text: '外部ホーム', icon: 'ti ti-home-link', action: () => onPick({ type: 'ohtl' as const }) },
-			{ text: '外部ローカル', icon: 'ti ti-world-share', action: () => onPick({ type: 'oltl' as const }) },
-			{ text: '外部通知', icon: 'ti ti-bell-ringing', action: () => onPick({ type: 'externalNotifications' as const }) },
+			{ text: COLUMN_META.ohtl.title, icon: 'ti ti-home-link', action: () => onPick({ type: 'ohtl' as const }) },
+			{ text: COLUMN_META.oltl.title, icon: 'ti ti-world-share', action: () => onPick({ type: 'oltl' as const }) },
+			{ text: COLUMN_META.externalNotifications.title, icon: 'ti ti-bell-ringing', action: () => onPick({ type: 'externalNotifications' as const }) },
 		] : []),
 		{ type: 'divider' as const },
-		{ text: '通知', icon: 'ti ti-bell', action: () => onPick({ type: 'notifications' }) },
+		{ text: COLUMN_META.notifications.title, icon: 'ti ti-bell', action: () => onPick({ type: 'notifications' }) },
 		{ text: '地震・津波', icon: 'ti ti-activity', action: () => onPick({ type: 'earthquake' }) },
-		{ text: 'ウィジェット', icon: 'ti ti-apps', action: () => onPick({ type: 'widgets' }) },
-		{ text: '投稿フォーム', icon: 'ti ti-pencil-plus', action: () => onPick({ type: 'postForm' }) },
+		{ text: COLUMN_META.widgets.title, icon: 'ti ti-apps', action: () => onPick({ type: 'widgets' }) },
+		{ text: COLUMN_META.postForm.title, icon: 'ti ti-pencil-plus', action: () => onPick({ type: 'postForm' }) },
 	];
 }
 async function addColumn(ev: MouseEvent) {
@@ -1318,29 +1333,29 @@ async function addColumn(ev: MouseEvent) {
 	const anchor = (ev.currentTarget ?? ev.target) as HTMLElement;
 	const ext = externalReady.value;
 	const items = [
-		{ value: 'home', label: 'ホーム' },
-		{ value: 'local', label: 'ローカル' },
-		{ value: 'social', label: 'ソーシャル' },
-		{ value: 'global', label: 'グローバル' },
-		{ value: 'trending', label: 'トレンド' },
-		{ value: 'mentions', label: 'メンション' },
-		{ value: 'directs', label: '指名' },
-		{ value: 'list', label: 'リスト' },
-		{ value: 'antenna', label: 'アンテナ' },
-		{ value: 'channel', label: 'チャンネル' },
-		{ value: 'clip', label: 'クリップ' },
-		{ value: 'favorites', label: 'お気に入り' },
+		{ value: 'home', label: COLUMN_META.home.title },
+		{ value: 'local', label: COLUMN_META.local.title },
+		{ value: 'social', label: COLUMN_META.social.title },
+		{ value: 'global', label: COLUMN_META.global.title },
+		{ value: 'trending', label: COLUMN_META.trending.title },
+		{ value: 'mentions', label: COLUMN_META.mentions.title },
+		{ value: 'directs', label: COLUMN_META.directs.title },
+		{ value: 'list', label: COLUMN_META.list.title },
+		{ value: 'antenna', label: COLUMN_META.antenna.title },
+		{ value: 'channel', label: COLUMN_META.channel.title },
+		{ value: 'clip', label: COLUMN_META.clip.title },
+		{ value: 'favorites', label: COLUMN_META.favorites.title },
 		...(ext ? [
-			{ value: 'ohtl', label: '外部ホーム' },
-			{ value: 'oltl', label: '外部ローカル' },
-			{ value: 'externalNotifications', label: '外部通知' },
+			{ value: 'ohtl', label: COLUMN_META.ohtl.title },
+			{ value: 'oltl', label: COLUMN_META.oltl.title },
+			{ value: 'externalNotifications', label: COLUMN_META.externalNotifications.title },
 		] : []),
-		{ value: 'notifications', label: '通知' },
+		{ value: 'notifications', label: COLUMN_META.notifications.title },
 		{ value: 'earthquake', label: '地震・津波' },
-		{ value: 'widgets', label: 'ウィジェット' },
-		{ value: 'postForm', label: '投稿フォーム' },
+		{ value: 'widgets', label: COLUMN_META.widgets.title },
+		{ value: 'postForm', label: COLUMN_META.postForm.title },
 	];
-	const { canceled, result } = await os.select({ title: 'カラムを追加', items });
+	const { canceled, result } = await os.select({ title: copy.addColumn, items });
 	if (canceled || result == null) return;
 	const type = result as ColumnType;
 	// ID選択が要る種別は二段で選ぶ
@@ -1353,13 +1368,13 @@ async function addColumn(ev: MouseEvent) {
 }
 
 const BORDER_PALETTE: { name: string; value: string }[] = [
-	{ name: 'レッド', value: '#e0566f' }, { name: 'オレンジ', value: '#e08a3c' }, { name: 'イエロー', value: '#d8b13a' },
-	{ name: 'グリーン', value: '#4caf7d' }, { name: 'ブルー', value: '#4a9eff' }, { name: 'パープル', value: '#9b6dde' }, { name: 'ピンク', value: '#e06699' },
+	{ name: copy.colorRed, value: '#e0566f' }, { name: copy.colorOrange, value: '#e08a3c' }, { name: copy.colorYellow, value: '#d8b13a' },
+	{ name: copy.colorGreen, value: '#4caf7d' }, { name: copy.colorBlue, value: '#4a9eff' }, { name: copy.colorPurple, value: '#9b6dde' }, { name: copy.colorPink, value: '#e06699' },
 ];
 async function setFrameBorderCustom(slotId: string, frameId: string) {
 	const loc = findFrame(slotId, frameId); if (!loc) return;
 	const cur = slots.value[loc.s].frames[loc.f].borderColor ?? '';
-	const { canceled, result } = await os.inputText({ title: '枠色 (カラーコード)', placeholder: '#ff6699', default: cur });
+	const { canceled, result } = await os.inputText({ title: copy.borderColorCode, placeholder: '#ff6699', default: cur });
 	if (canceled) return;
 	setFrameBorderColor(slotId, frameId, (result && result.trim() !== '') ? result.trim() : null);
 }
@@ -1370,11 +1385,12 @@ async function openNotificationFilter(slotId: string, frameId: string, tab: Deck
 	const { dispose } = await os.popupAsyncWithDialog(import('@/components/MkNotificationSelectWindow.vue').then(x => x.default), {
 		excludeTypes: tab.excludeTypes,
 		knownTypes: tab.notificationFilterKnownTypes,
+		excludeBots: tab.excludeBots,
 	}, {
-		done: (res: { excludeTypes: string[]; knownTypes: string[] }) => {
+		done: (res: { excludeTypes: string[]; knownTypes: string[]; excludeBots: boolean }) => {
 			// excludeTypes を更新すると columnProps 経由でプロップが変わり、
 			// MkStreamingNotificationsTimeline 側の computedParams ウォッチャが自動で再読み込みする。
-			mapSlots(ss => ss.map(s => s.id !== slotId ? s : { ...s, frames: s.frames.map(f => f.id !== frameId ? f : { ...f, tabs: f.tabs.map(t => t.id !== tab.id ? t : { ...t, excludeTypes: res.excludeTypes, notificationFilterKnownTypes: res.knownTypes }) }) }));
+			mapSlots(ss => ss.map(s => s.id !== slotId ? s : { ...s, frames: s.frames.map(f => f.id !== frameId ? f : { ...f, tabs: f.tabs.map(t => t.id !== tab.id ? t : { ...t, excludeTypes: res.excludeTypes, notificationFilterKnownTypes: res.knownTypes, excludeBots: res.excludeBots }) }) }));
 		},
 		closed: () => dispose(),
 	});
@@ -1385,14 +1401,14 @@ function openFrameMenu(slot: DeckSlot, frame: DeckFrame, ev: MouseEvent) {
 	const anchor = (ev.currentTarget ?? ev.target) as HTMLElement;
 	const active = activeTabOf(frame);
 	const renoteItem = supportsRenoteToggle(active) ? [
-		{ type: 'switch' as const, text: 'リノートを表示', ref: computed({ get: () => active.withRenotes !== false, set: (v: boolean) => {
+		{ type: 'switch' as const, text: copy.showRenotes, ref: computed({ get: () => active.withRenotes !== false, set: (v: boolean) => {
 			mapSlots(ss => ss.map(s => s.id !== slot.id ? s : { ...s, frames: s.frames.map(f => f.id !== frame.id ? f : { ...f, tabs: f.tabs.map(t => t.id !== active.id ? t : { ...t, withRenotes: v }) }) }));
 		} }) },
 		{ type: 'divider' as const },
 	] : [];
 	// 通知タブ(通常/外部)のときは再読み込み項目を出す
 	const reloadItem = (active.type === 'notifications' || active.type === 'externalNotifications') ? [
-		{ text: '再読み込み', icon: 'ti ti-refresh', action: () => {
+		{ text: copy.reload, icon: 'ti ti-refresh', action: () => {
 			if (active.type === 'externalNotifications') { colRefs.get(active.id)?.fetchNotifications?.(); }
 			else { globalEvents.emit('reloadNotification'); }
 		} },
@@ -1400,14 +1416,14 @@ function openFrameMenu(slot: DeckSlot, frame: DeckFrame, ev: MouseEvent) {
 	] : [];
 	// 通知タブのときは、通知ページと同様の通知フィルタ(タイプ別の表示/非表示)を出す
 	const notifFilterItem = (active.type === 'notifications') ? [
-		{ text: '通知フィルタ', icon: 'ti ti-filter', action: () => openNotificationFilter(slot.id, frame.id, active) },
+		{ text: copy.notificationFilter, icon: 'ti ti-filter', action: () => openNotificationFilter(slot.id, frame.id, active) },
 		{ type: 'divider' as const },
 	] : [];
 	// 旗鯖fork(新デッキ): ウィジェットタブのときは「ウィジェットを編集」をこのメニューに出す。
 	// 常時表示ボタンを廃止して表示領域を最大化した代わりの編集導線 (通知フィルタと同パターン)。
 	const widgetEditItem = (active.type === 'widgets') ? [
 		{
-			text: (colRefs.get(active.id)?.getWidgetEditMode?.() ? 'ウィジェットの編集を終了' : 'ウィジェットを編集'),
+			text: (colRefs.get(active.id)?.getWidgetEditMode?.() ? copy.finishEditingWidgets : copy.editWidgets),
 			icon: (colRefs.get(active.id)?.getWidgetEditMode?.() ? 'ti ti-check' : 'ti ti-pencil'),
 			action: () => { colRefs.get(active.id)?.toggleWidgetEditMode?.(); },
 		},
@@ -1417,12 +1433,12 @@ function openFrameMenu(slot: DeckSlot, frame: DeckFrame, ev: MouseEvent) {
 	//   default では「新設のノートリスト最上部固定ボタン」に導線を統一するため非表示。
 	//   従来 UI を望むユーザーは hata-custom.vue → ビジュアル → 従来のチャンネル投稿ボタンを表示する ON で復活。
 	const channelPostItem = (showLegacyChannelPostButton.value && active.type === 'channel' && active.sourceId) ? [
-		{ text: 'このチャンネルへ投稿', icon: 'ti ti-pencil-plus', action: () => postToChannel(active.sourceId!) },
+		{ text: copy.postToThisChannel, icon: 'ti ti-pencil-plus', action: () => postToChannel(active.sourceId!) },
 		{ type: 'divider' as const },
 	] : [];
 	// 旗鯖fork(新デッキ): お気に入り/クリップカラムのリロードメニュー項目。
 	const paginatedReloadItem = (active.type === 'clip' || active.type === 'favorites') ? [
-		{ text: '再読み込み', icon: 'ti ti-refresh', action: () => reloadPaginated(active.id) },
+		{ text: copy.reload, icon: 'ti ti-refresh', action: () => reloadPaginated(active.id) },
 		{ type: 'divider' as const },
 	] : [];
 	// 旗鯖fork(#34): 地震・津波カラムは「更新」「設定」をこのメニュー(タブ部)に統合する。
@@ -1432,32 +1448,32 @@ function openFrameMenu(slot: DeckSlot, frame: DeckFrame, ev: MouseEvent) {
 		{ type: 'divider' as const },
 	] : [];
 	const colorItem = {
-		type: 'parent' as const, text: '枠色', icon: 'ti ti-palette',
+		type: 'parent' as const, text: copy.borderColor, icon: 'ti ti-palette',
 		children: [
 			...BORDER_PALETTE.map(c => ({ text: c.name, icon: 'ti ti-circle-filled', action: () => setFrameBorderColor(slot.id, frame.id, c.value) })),
 			{ type: 'divider' as const },
-			{ text: 'カスタム…', icon: 'ti ti-pencil', action: () => setFrameBorderCustom(slot.id, frame.id) },
-			{ text: '枠色をクリア', icon: 'ti ti-circle-off', action: () => setFrameBorderColor(slot.id, frame.id, null) },
+			{ text: copy.customColor, icon: 'ti ti-pencil', action: () => setFrameBorderCustom(slot.id, frame.id) },
+			{ text: copy.clearBorderColor, icon: 'ti ti-circle-off', action: () => setFrameBorderColor(slot.id, frame.id, null) },
 		],
 	};
 	// タブの色(タブが1つでも変えられるよう、フレームメニューからアクティブタブの色を設定可能にする)
 	const tabColorItem = {
-		type: 'parent' as const, text: 'タブの色', icon: 'ti ti-color-swatch',
+		type: 'parent' as const, text: copy.tabColor, icon: 'ti ti-color-swatch',
 		children: [
 			...BORDER_PALETTE.map(c => ({ text: c.name, icon: active.tabColor === c.value ? 'ti ti-check' : 'ti ti-circle-filled', action: () => setTabColor(slot.id, frame.id, active.id, c.value) })),
 			{ type: 'divider' as const },
-			{ text: 'カスタム…', icon: 'ti ti-pencil', action: () => setTabColorCustom(slot.id, frame.id, active.id) },
-			{ text: '色をクリア', icon: 'ti ti-circle-off', action: () => setTabColor(slot.id, frame.id, active.id, null) },
+			{ text: copy.customColor, icon: 'ti ti-pencil', action: () => setTabColorCustom(slot.id, frame.id, active.id) },
+			{ text: copy.clearColor, icon: 'ti ti-circle-off', action: () => setTabColor(slot.id, frame.id, active.id, null) },
 		],
 	};
 	// 横並びレイアウトで縦積み(この列にframeが2つ以上)のとき、箱の高さを設定できる
 	const heightItem = (layout.value === 'row' && slot.frames.length > 1) ? [{
-		type: 'parent' as const, text: '高さ', icon: 'ti ti-arrows-vertical',
+		type: 'parent' as const, text: copy.height, icon: 'ti ti-arrows-vertical',
 		children: [
-			{ text: '自動(均等)', icon: !frame.height ? 'ti ti-check' : 'ti ti-arrows-vertical', action: () => setFrameHeight(slot.id, frame.id, null) },
-			{ text: 'コンパクト (260px)', icon: frame.height === 260 ? 'ti ti-check' : 'ti ti-fold', action: () => setFrameHeight(slot.id, frame.id, 260) },
-			{ text: '標準 (360px)', icon: frame.height === 360 ? 'ti ti-check' : 'ti ti-arrows-vertical', action: () => setFrameHeight(slot.id, frame.id, 360) },
-			{ text: 'たっぷり (500px)', icon: frame.height === 500 ? 'ti ti-check' : 'ti ti-arrows-maximize', action: () => setFrameHeight(slot.id, frame.id, 500) },
+			{ text: copy.heightAuto, icon: !frame.height ? 'ti ti-check' : 'ti ti-arrows-vertical', action: () => setFrameHeight(slot.id, frame.id, null) },
+			{ text: copy.heightCompact260, icon: frame.height === 260 ? 'ti ti-check' : 'ti ti-fold', action: () => setFrameHeight(slot.id, frame.id, 260) },
+			{ text: copy.heightStandard360, icon: frame.height === 360 ? 'ti ti-check' : 'ti ti-arrows-vertical', action: () => setFrameHeight(slot.id, frame.id, 360) },
+			{ text: copy.heightRoomy500, icon: frame.height === 500 ? 'ti ti-check' : 'ti ti-arrows-maximize', action: () => setFrameHeight(slot.id, frame.id, 500) },
 		],
 	}] : [];
 	os.popupMenu([
@@ -1469,14 +1485,14 @@ function openFrameMenu(slot: DeckSlot, frame: DeckFrame, ev: MouseEvent) {
 		...notifFilterItem,
 		...widgetEditItem,
 		...renoteItem,
-		{ text: 'タブ名を変更', icon: 'ti ti-forms', action: () => renameTab(slot.id, frame.id, active.id) },
-		{ text: 'このカラムに別カラムをタブ追加', icon: 'ti ti-plus', action: () => os.popupMenu(columnTypeMenu(anchor, p => addTabToFrame(slot.id, frame.id, p)), anchor) },
+		{ text: copy.renameTab, icon: 'ti ti-forms', action: () => renameTab(slot.id, frame.id, active.id) },
+		{ text: copy.addColumnAsTab, icon: 'ti ti-plus', action: () => os.popupMenu(columnTypeMenu(anchor, p => addTabToFrame(slot.id, frame.id, p)), anchor) },
 		...heightItem,
 		colorItem,
 		...(frame.tabs.length === 1 ? [tabColorItem] : []),
 		{ type: 'divider' as const },
-		{ text: 'カラムサイズをリセット', icon: 'ti ti-arrow-back-up', action: () => resetSlotSize(slot.id) },
-		{ text: 'この箱を削除', icon: 'ti ti-trash', danger: true, action: () => removeFrame(slot.id, frame.id) },
+		{ text: copy.resetColumnSize, icon: 'ti ti-arrow-back-up', action: () => resetSlotSize(slot.id) },
+		{ text: copy.deleteThisFrame, icon: 'ti ti-trash', danger: true, action: () => removeFrame(slot.id, frame.id) },
 	], anchor);
 }
 // タブ自体の右クリック/長押し相当(タブ単体メニュー)
@@ -1485,7 +1501,7 @@ function openTabMenu(slot: DeckSlot, frame: DeckFrame, tab: DeckTab, ev: MouseEv
 	// 旗鯖fork(新デッキ): ウィジェットタブを右クリックした時は先頭に「ウィジェットを編集」を出す。
 	const widgetEditTabItem = (tab.type === 'widgets') ? [
 		{
-			text: (colRefs.get(tab.id)?.getWidgetEditMode?.() ? 'ウィジェットの編集を終了' : 'ウィジェットを編集'),
+			text: (colRefs.get(tab.id)?.getWidgetEditMode?.() ? copy.finishEditingWidgets : copy.editWidgets),
 			icon: (colRefs.get(tab.id)?.getWidgetEditMode?.() ? 'ti ti-check' : 'ti ti-pencil'),
 			action: () => { colRefs.get(tab.id)?.toggleWidgetEditMode?.(); },
 		},
@@ -1493,17 +1509,17 @@ function openTabMenu(slot: DeckSlot, frame: DeckFrame, tab: DeckTab, ev: MouseEv
 	] : [];
 	os.popupMenu([
 		...widgetEditTabItem,
-		{ text: 'タブ名を変更', icon: 'ti ti-forms', action: () => renameTab(slot.id, frame.id, tab.id) },
+		{ text: copy.renameTab, icon: 'ti ti-forms', action: () => renameTab(slot.id, frame.id, tab.id) },
 		...(frame.tabs.length === 1 ? [{
-			type: 'parent' as const, text: 'タブの色', icon: 'ti ti-palette',
+			type: 'parent' as const, text: copy.tabColor, icon: 'ti ti-palette',
 			children: [
 				...BORDER_PALETTE.map(c => ({ text: c.name, icon: tab.tabColor === c.value ? 'ti ti-check' : 'ti ti-circle-filled', action: () => setTabColor(slot.id, frame.id, tab.id, c.value) })),
 				{ type: 'divider' as const },
-				{ text: 'カスタム…', icon: 'ti ti-pencil', action: () => setTabColorCustom(slot.id, frame.id, tab.id) },
-				{ text: '色をクリア', icon: 'ti ti-circle-off', action: () => setTabColor(slot.id, frame.id, tab.id, null) },
+				{ text: copy.customColor, icon: 'ti ti-pencil', action: () => setTabColorCustom(slot.id, frame.id, tab.id) },
+				{ text: copy.clearColor, icon: 'ti ti-circle-off', action: () => setTabColor(slot.id, frame.id, tab.id, null) },
 			],
 		}] : []),
-		...(frame.tabs.length > 1 ? [{ text: 'このタブを外す', icon: 'ti ti-trash', danger: true, action: () => removeTab(slot.id, frame.id, tab.id) }] : []),
+		...(frame.tabs.length > 1 ? [{ text: copy.detachThisTab, icon: 'ti ti-trash', danger: true, action: () => removeTab(slot.id, frame.id, tab.id) }] : []),
 	], anchor);
 }
 
@@ -1512,43 +1528,43 @@ function openSlotMenu(slot: DeckSlot, ev: MouseEvent) {
 	const anchor = (ev.currentTarget ?? ev.target) as HTMLElement;
 	const l = layout.value;
 	const sizeItems = l === 'row' ? [
-		{ text: '幅: 狭い', icon: 'ti ti-arrows-diff', action: () => setSlotWidth(slot.id, 300) },
-		{ text: '幅: 標準', icon: 'ti ti-arrows-horizontal', action: () => setSlotWidth(slot.id, 380) },
-		{ text: '幅: 広い', icon: 'ti ti-arrows-maximize', action: () => setSlotWidth(slot.id, 460) },
+		{ text: copy.widthNarrow, icon: 'ti ti-arrows-diff', action: () => setSlotWidth(slot.id, 300) },
+		{ text: copy.widthStandard, icon: 'ti ti-arrows-horizontal', action: () => setSlotWidth(slot.id, 380) },
+		{ text: copy.widthWide, icon: 'ti ti-arrows-maximize', action: () => setSlotWidth(slot.id, 460) },
 		// 旗鯖fork(#10): カラム幅(横幅)をpxで数値指定する。
-		{ text: `幅: 数値指定 (現在 ${slot.width}px)`, icon: 'ti ti-ruler-measure', action: async () => {
-			const { canceled, result } = await os.inputNumber({ title: 'カラム幅 (px)', text: '横幅をpxで指定します（200〜1200）', default: slot.width });
+		{ text: copyx.widthCustomCurrent({ width: slot.width.toString() }), icon: 'ti ti-ruler-measure', action: async () => {
+			const { canceled, result } = await os.inputNumber({ title: copy.columnWidthPx, text: copy.columnWidthRange, default: slot.width });
 			if (canceled || result == null) return;
 			setSlotWidth(slot.id, Math.round(Math.max(200, Math.min(1200, result))));
 		} },
 		{ type: 'divider' as const },
 	] : l === 'stack' ? [
-		{ text: '高さ: コンパクト', icon: 'ti ti-fold', action: () => setSlotHeight(slot.id, 340) },
-		{ text: '高さ: 標準', icon: 'ti ti-arrows-vertical', action: () => setSlotHeight(slot.id, 460) },
-		{ text: '高さ: たっぷり', icon: 'ti ti-arrows-maximize', action: () => setSlotHeight(slot.id, 640) },
+		{ text: copy.slotHeightCompact, icon: 'ti ti-fold', action: () => setSlotHeight(slot.id, 340) },
+		{ text: copy.slotHeightStandard, icon: 'ti ti-arrows-vertical', action: () => setSlotHeight(slot.id, 460) },
+		{ text: copy.slotHeightRoomy, icon: 'ti ti-arrows-maximize', action: () => setSlotHeight(slot.id, 640) },
 		{ type: 'divider' as const },
 	] : [];
 	const span = currentFullSpan(slot);
 	const fullItem = (l === 'grid2' || l === 'grid3') ? [{
-		type: 'parent' as const, text: '全幅で表示',
+		type: 'parent' as const, text: copy.fullSpan,
 		icon: span === 'col' ? 'ti ti-arrows-horizontal' : span === 'row' ? 'ti ti-arrows-vertical' : 'ti ti-square',
 		children: [
-			{ text: 'なし', icon: span === 'none' ? 'ti ti-check' : 'ti ti-square', action: () => setSlotFullSpan(slot.id, 'none') },
-			{ text: '横ぶち抜き', icon: span === 'col' ? 'ti ti-check' : 'ti ti-arrows-horizontal', action: () => setSlotFullSpan(slot.id, 'col') },
-			{ text: '縦ぶち抜き', icon: span === 'row' ? 'ti ti-check' : 'ti ti-arrows-vertical', action: () => setSlotFullSpan(slot.id, 'row') },
+			{ text: copy.none, icon: span === 'none' ? 'ti ti-check' : 'ti ti-square', action: () => setSlotFullSpan(slot.id, 'none') },
+			{ text: copy.spanAcrossColumns, icon: span === 'col' ? 'ti ti-check' : 'ti ti-arrows-horizontal', action: () => setSlotFullSpan(slot.id, 'col') },
+			{ text: copy.spanAcrossRows, icon: span === 'row' ? 'ti ti-check' : 'ti ti-arrows-vertical', action: () => setSlotFullSpan(slot.id, 'row') },
 		],
 	}] : [];
-	const backLabel = l === 'stack' ? '上へ移動' : (l === 'row' ? '左へ移動' : '前へ移動');
-	const fwdLabel = l === 'stack' ? '下へ移動' : (l === 'row' ? '右へ移動' : '後ろへ移動');
+	const backLabel = l === 'stack' ? copy.moveUp : (l === 'row' ? copy.moveLeft : copy.moveEarlier);
+	const fwdLabel = l === 'stack' ? copy.moveDown : (l === 'row' ? copy.moveRight : copy.moveLater);
 	os.popupMenu([
 		...sizeItems,
 		...fullItem,
-		{ text: 'この列に縦積みで追加', icon: 'ti ti-rows', action: () => os.popupMenu(columnTypeMenu(anchor, p => addFrameToSlot(slot.id, p)), anchor) },
+		{ text: copy.addStackedToColumn, icon: 'ti ti-rows', action: () => os.popupMenu(columnTypeMenu(anchor, p => addFrameToSlot(slot.id, p)), anchor) },
 		{ type: 'divider' as const },
 		{ text: backLabel, icon: l === 'stack' ? 'ti ti-arrow-up' : 'ti ti-arrow-left', action: () => moveSlot(slot.id, -1) },
 		{ text: fwdLabel, icon: l === 'stack' ? 'ti ti-arrow-down' : 'ti ti-arrow-right', action: () => moveSlot(slot.id, 1) },
 		{ type: 'divider' as const },
-		{ text: 'この列を削除', icon: 'ti ti-trash', danger: true, action: () => removeSlot(slot.id) },
+		{ text: copy.deleteThisColumn, icon: 'ti ti-trash', danger: true, action: () => removeSlot(slot.id) },
 	], anchor);
 }
 
@@ -1562,7 +1578,7 @@ function defaultSlots(): DeckSlot[] {
 	];
 }
 async function createProfile() {
-	const { canceled, result } = await os.inputText({ title: 'プロファイル名', placeholder: '例: 趣味アカ用' });
+	const { canceled, result } = await os.inputText({ title: copy.profileName, placeholder: copy.profileNameExample });
 	if (canceled || !result) return;
 	const id = genId('prof');
 	commitProfiles([...profiles.value, { id, name: result, layout: 'row', slots: defaultSlots() }]);
@@ -1572,22 +1588,26 @@ async function duplicateProfile() {
 	const src = activeProfile.value;
 	const id = genId('prof');
 	const clonedSlots: DeckSlot[] = src.slots.map(s => ({ ...s, id: genId('slot'), frames: s.frames.map(f => ({ ...f, id: genId('frame'), tabs: f.tabs.map(t => ({ ...t, id: genId('tab') })) })) }));
-	commitProfiles([...profiles.value, { id, name: `${src.name} のコピー`, layout: src.layout, slots: clonedSlots }]);
+	commitProfiles([...profiles.value, { id, name: copy.copiedProfileName.replace('{name}', src.name), layout: src.layout, slots: clonedSlots }]);
 	prefer.commit('simpleUi.deckActiveProfileV2', id);
 }
 async function renameProfile() {
-	const { canceled, result } = await os.inputText({ title: 'プロファイル名を変更', default: activeProfile.value.name });
+	const currentDisplayName = displayProfileName(activeProfile.value);
+	const { canceled, result } = await os.inputText({ title: copy.renameProfile, default: currentDisplayName });
 	if (canceled || !result) return;
-	commitActiveProfile(p => ({ ...p, name: result }));
+	const nextName = activeProfile.value.id === 'default' && activeProfile.value.name === LEGACY_DEFAULT_PROFILE_NAME && result === currentDisplayName
+		? LEGACY_DEFAULT_PROFILE_NAME
+		: result;
+	commitActiveProfile(p => ({ ...p, name: nextName }));
 }
 async function resetProfile() {
-	const { canceled } = await os.confirm({ type: 'warning', text: `プロファイル「${activeProfile.value.name}」のレイアウトを初期状態(ローカル・ホーム・通知)に戻しますか?` });
+	const { canceled } = await os.confirm({ type: 'warning', text: copyx.resetProfileConfirm({ name: displayProfileName(activeProfile.value) }) });
 	if (canceled) return;
 	commitActiveProfile(p => ({ ...p, layout: 'row', slots: defaultSlots() }));
 }
 async function deleteProfile() {
-	if (profiles.value.length <= 1) { os.alert({ type: 'warning', text: '最後のプロファイルは削除できません' }); return; }
-	const { canceled } = await os.confirm({ type: 'warning', text: `プロファイル「${activeProfile.value.name}」を削除しますか?` });
+	if (profiles.value.length <= 1) { os.alert({ type: 'warning', text: copy.cannotDeleteLastProfile }); return; }
+	const { canceled } = await os.confirm({ type: 'warning', text: copyx.deleteProfileConfirm({ name: displayProfileName(activeProfile.value) }) });
 	if (canceled) return;
 	const remaining = profiles.value.filter(p => p.id !== activeProfileId.value);
 	commitProfiles(remaining);
@@ -1596,15 +1616,15 @@ async function deleteProfile() {
 function openProfileMenu(ev: MouseEvent) {
 	const anchor = (ev.currentTarget ?? ev.target) as HTMLElement;
 	os.popupMenu([
-		{ type: 'label' as const, text: 'プロファイル切替' },
-		...profiles.value.map(p => ({ text: p.name, icon: p.id === activeProfileId.value ? 'ti ti-check' : 'ti ti-layout-board', action: () => switchProfile(p.id) })),
+		{ type: 'label' as const, text: copy.switchProfile },
+		...profiles.value.map(p => ({ text: displayProfileName(p), icon: p.id === activeProfileId.value ? 'ti ti-check' : 'ti ti-layout-board', action: () => switchProfile(p.id) })),
 		{ type: 'divider' as const },
-		{ text: '新規プロファイル', icon: 'ti ti-plus', action: () => createProfile() },
-		{ text: '複製', icon: 'ti ti-copy', action: () => duplicateProfile() },
-		{ text: '名前を変更', icon: 'ti ti-pencil', action: () => renameProfile() },
+		{ text: copy.newProfile, icon: 'ti ti-plus', action: () => createProfile() },
+		{ text: copy.duplicate, icon: 'ti ti-copy', action: () => duplicateProfile() },
+		{ text: copy.rename, icon: 'ti ti-pencil', action: () => renameProfile() },
 		{ type: 'divider' as const },
-		{ text: 'レイアウトをリセット', icon: 'ti ti-refresh-dot', action: () => resetProfile() },
-		{ text: '削除', icon: 'ti ti-trash', danger: true, action: () => deleteProfile() },
+		{ text: copy.resetLayout, icon: 'ti ti-refresh-dot', action: () => resetProfile() },
+		{ text: copy.delete, icon: 'ti ti-trash', danger: true, action: () => deleteProfile() },
 	], anchor);
 }
 

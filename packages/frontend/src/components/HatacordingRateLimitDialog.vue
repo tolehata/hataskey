@@ -5,19 +5,19 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <template>
 <MkModalWindow ref="dialog" :width="380" :height="430" :withOkButton="false" :withCloseButton="true" @close="dialog?.close()" @closed="emit('closed')">
-	<template #header><span :class="$style.heading"><Gauge :size="18"/> APIのひと息メーター</span></template>
+	<template #header><span :class="$style.heading"><Gauge :size="18"/> {{ copy.title }}</span></template>
 	<div :class="$style.body">
 		<template v-if="effectiveStatus">
 			<div :class="$style.hero">
-				<div :class="$style.ring" :data-level="level" :style="ringStyle" role="img" :aria-label="`レートリミット残量 ${effectiveStatus.remaining}/${effectiveStatus.limit}`">
+				<div :class="$style.ring" :data-level="level" :style="ringStyle" role="img" :aria-label="remainingAccessibleLabel">
 					<div :class="$style.ringInner"><strong>{{ percentage }}</strong><span>%</span></div>
 				</div>
-				<div :class="$style.heroCopy"><strong>{{ availabilityMessage }}</strong><span>1時間の共通枠 {{ effectiveStatus.limit }} 回のうち</span></div>
+				<div :class="$style.heroCopy"><strong>{{ availabilityMessage }}</strong><span>{{ hourlyQuotaLabel }}</span></div>
 			</div>
 
 			<section :class="$style.meterSection">
-				<div :class="$style.meterLabel"><span>残りのレートリミット</span><b>{{ effectiveStatus.remaining }} / {{ effectiveStatus.limit }}</b></div>
-				<div :class="$style.progress" role="progressbar" aria-label="残りのレートリミット" aria-valuemin="0" :aria-valuemax="effectiveStatus.limit" :aria-valuenow="effectiveStatus.remaining"><span :style="{ width: `${percentage}%` }"></span></div>
+				<div :class="$style.meterLabel"><span>{{ copy.remaining }}</span><b>{{ effectiveStatus.remaining }} / {{ effectiveStatus.limit }}</b></div>
+				<div :class="$style.progress" role="progressbar" :aria-label="copy.remaining" aria-valuemin="0" :aria-valuemax="effectiveStatus.limit" :aria-valuenow="effectiveStatus.remaining"><span :style="{ width: `${percentage}%` }"></span></div>
 			</section>
 
 			<div :class="$style.resetCard">
@@ -26,10 +26,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</div>
 		</template>
 		<div v-else :class="$style.waiting">
-			<Gauge :size="34"/><strong>最初のAPI操作を待っています</strong><span>タイムラインの更新などを行うと、サーバーから実際の残量を受け取ります。</span>
+			<Gauge :size="34"/><strong>{{ copy.waitingTitle }}</strong><span>{{ copy.waitingDescription }}</span>
 		</div>
 
-		<p :class="$style.note"><Info :size="16"/><span>HataSNSCordUIからサーバーへ送るAPI操作の共通枠です。受信するだけのリアルタイム配信や、通常UI・外部アプリ・連合処理には適用されません。</span></p>
+		<p :class="$style.note"><Info :size="16"/><span>{{ copy.description }}</span></p>
 	</div>
 </MkModalWindow>
 </template>
@@ -39,12 +39,16 @@ import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue';
 import { Gauge, Info, TimerReset } from '@lucide/vue';
 import MkModalWindow from '@/components/MkModalWindow.vue';
 import { getEffectiveHatacordingRateLimit, hatacordingRateLimitSnapshot } from '@/utility/hatacording-rate-limit.js';
+import { i18n } from '@/i18n.js';
+import { miLocalStorage } from '@/local-storage.js';
 
 const emit = defineEmits<{
 	(ev: 'closed'): void;
 }>();
 
 const dialog = useTemplateRef('dialog');
+const copy = i18n.ts._hata._hatacordingUi._rateLimit;
+const displayLocale = miLocalStorage.getItem('lang') ?? 'ja-JP';
 const now = ref(Date.now());
 let clockTimer: number | null = null;
 
@@ -54,24 +58,32 @@ const level = computed(() => percentage.value <= 20 ? 'low' : percentage.value <
 const ringStyle = computed(() => ({ '--rate-progress': `${percentage.value * 3.6}deg` }));
 const secondsUntilReset = computed(() => effectiveStatus.value == null ? 0 : Math.max(0, Math.ceil((effectiveStatus.value.resetAt - now.value) / 1000)));
 const resetReached = computed(() => effectiveStatus.value != null && effectiveStatus.value.resetAt <= now.value);
+const remainingAccessibleLabel = computed(() => effectiveStatus.value == null ? '' : i18n.tsx._hata._hatacordingUi._rateLimit.remainingAccessible({
+	remaining: effectiveStatus.value.remaining.toString(),
+	limit: effectiveStatus.value.limit.toString(),
+}));
+const hourlyQuotaLabel = computed(() => effectiveStatus.value == null ? '' : i18n.tsx._hata._hatacordingUi._rateLimit.hourlyQuota({ limit: effectiveStatus.value.limit.toString() }));
 const availabilityMessage = computed(() => {
 	if (effectiveStatus.value == null) return '';
-	if (resetReached.value) return '次の操作で残量を再計測';
-	if (effectiveStatus.value.remaining >= effectiveStatus.value.limit) return '利用する準備ができています';
-	return `まだ ${effectiveStatus.value.remaining} 回活用できます`;
+	if (resetReached.value) return copy.remeasureNext;
+	if (effectiveStatus.value.remaining >= effectiveStatus.value.limit) return copy.ready;
+	return i18n.tsx._hata._hatacordingUi._rateLimit.availableCount({ remaining: effectiveStatus.value.remaining.toString() });
 });
 const resetMessage = computed(() => {
-	if (secondsUntilReset.value === 0) return '新しい計測枠へ切り替わる時刻です';
+	if (secondsUntilReset.value === 0) return copy.newWindowNow;
 	const hours = Math.floor(secondsUntilReset.value / 3600);
 	const minutes = Math.floor((secondsUntilReset.value % 3600) / 60);
 	const seconds = secondsUntilReset.value % 60;
-	if (hours > 0) return `あと ${hours}時間${minutes > 0 ? `${minutes}分` : ''}で操作枠が復活`;
-	if (minutes > 0) return `あと ${minutes}分${seconds > 0 ? `${seconds}秒` : ''}で操作枠が復活`;
-	return `あと ${seconds}秒で操作枠が復活`;
+	if (hours > 0 && minutes > 0) return i18n.tsx._hata._hatacordingUi._rateLimit.resetInHoursMinutes({ hours: hours.toString(), minutes: minutes.toString() });
+	if (hours > 0) return i18n.tsx._hata._hatacordingUi._rateLimit.resetInHours({ hours: hours.toString() });
+	if (minutes > 0 && seconds > 0) return i18n.tsx._hata._hatacordingUi._rateLimit.resetInMinutesSeconds({ minutes: minutes.toString(), seconds: seconds.toString() });
+	if (minutes > 0) return i18n.tsx._hata._hatacordingUi._rateLimit.resetInMinutes({ minutes: minutes.toString() });
+	return i18n.tsx._hata._hatacordingUi._rateLimit.resetInSeconds({ seconds: seconds.toString() });
 });
 const resetClock = computed(() => {
-	if (effectiveStatus.value == null || secondsUntilReset.value === 0) return '次のAPI操作から新しい計測区間になります';
-	return `${new Intl.DateTimeFormat('ja-JP', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(new Date(effectiveStatus.value.resetAt))} ごろ復活`;
+	if (effectiveStatus.value == null || secondsUntilReset.value === 0) return copy.nextOperationStartsWindow;
+	const time = new Intl.DateTimeFormat(displayLocale, { hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(new Date(effectiveStatus.value.resetAt));
+	return i18n.tsx._hata._hatacordingUi._rateLimit.resetAround({ time });
 });
 
 onMounted(() => {
