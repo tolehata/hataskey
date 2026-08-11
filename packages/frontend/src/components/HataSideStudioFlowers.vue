@@ -20,7 +20,9 @@ HataSideStudio のサイドメニュー専用。元の Hatask お花ウィジェ
 <script lang="ts" setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import type { HataskFlower } from '@/utility/hatask-flower-widget.js';
+import type { HataskGrowingFlower } from '@/utility/hatask-flower-growth.js';
 import { normalizeGrowingFlower } from '@/utility/hatask-flower-widget.js';
+import { HATASK_FLOWER_GROWTH_EVENT } from '@/utility/hatask-flower-growth.js';
 import { localizeFloraName } from '@/utility/hatask-flora.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { useRouter } from '@/router.js';
@@ -48,11 +50,19 @@ async function loadFlower() {
 	}
 }
 
+function onFlowerGrowth(event: Event): void {
+	flower.value = normalizeGrowingFlower((event as CustomEvent<HataskGrowingFlower>).detail);
+}
+
 onMounted(() => {
 	void loadFlower();
 	refreshTimer = window.setInterval(() => void loadFlower(), 60_000);
+	window.addEventListener(HATASK_FLOWER_GROWTH_EVENT, onFlowerGrowth);
 });
-onUnmounted(() => { if (refreshTimer != null) window.clearInterval(refreshTimer); });
+onUnmounted(() => {
+	if (refreshTimer != null) window.clearInterval(refreshTimer);
+	window.removeEventListener(HATASK_FLOWER_GROWTH_EVENT, onFlowerGrowth);
+});
 </script>
 
 <style lang="scss" module>

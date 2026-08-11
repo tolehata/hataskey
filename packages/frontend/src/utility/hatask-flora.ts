@@ -186,8 +186,18 @@ export function generateFlowerName(flora: FloraItem): string {
 
 export type HataskContentLanguage = 'ja' | 'en' | 'zh';
 
-function resolveContentLanguage(locale: string = versatileLang): HataskContentLanguage {
-  const normalized = locale.toLowerCase();
+function activeContentLocale(): string {
+  // 起動時に選ばれた言語は <html lang> が正本。言語を端末へ明示保存していない場合、
+  // versatileLang だけを見ると既定の en-US と食い違うことがある。
+  if (typeof window !== 'undefined') {
+    const documentLocale = window.document.documentElement.lang.trim();
+    if (documentLocale !== '') return documentLocale;
+  }
+  return versatileLang;
+}
+
+function resolveContentLanguage(locale?: string): HataskContentLanguage {
+  const normalized = (locale ?? activeContentLocale()).toLowerCase();
   if (normalized.startsWith('en')) return 'en';
   if (normalized.startsWith('zh')) return 'zh';
   return 'ja';
@@ -205,7 +215,7 @@ for (const [index, item] of floraData.entries()) {
   if (item.hanakotoba != null && !hanakotobaIndex.has(item.hanakotoba)) hanakotobaIndex.set(item.hanakotoba, index);
 }
 
-export function localizeFloraName(sourceName: string, locale: string = versatileLang): string {
+export function localizeFloraName(sourceName: string, locale?: string): string {
   const language = resolveContentLanguage(locale);
   if (language === 'ja') return sourceName;
 
@@ -249,7 +259,7 @@ function splitAdjectives(source: string): number[] | null {
   return visit(0);
 }
 
-export function localizeHanakotoba(source: string, locale: string = versatileLang): string {
+export function localizeHanakotoba(source: string, locale?: string): string {
   const language = resolveContentLanguage(locale);
   if (language === 'ja') return source;
   const index = hanakotobaIndex.get(source);

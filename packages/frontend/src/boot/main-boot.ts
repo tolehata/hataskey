@@ -36,6 +36,7 @@ import { fetchMutedUsers } from '@/utility/muted-users.js';
 import { enqueueHataDialog } from '@/utility/hata-dialog-queue.js';
 import { HATA_WHATS_NEW } from '@/utility/hata-whats-new.js';
 import { shouldSuppressServerDisconnectUi } from '@/utility/server-disconnect-ui-suppression.js';
+import { startHataskFlowerGrowthTracker } from '@/utility/hatask-flower-growth.js';
 
 export async function mainBoot() {
 	cleanupStaleUiElements();
@@ -107,6 +108,10 @@ export async function mainBoot() {
 
 		return createApp(rootComponent);
 	});
+
+	// Hataskのお花はページやUIの表示有無に依存せず、保存時刻から実経過で育てる。
+	// 背景・終了中の分も、復帰または次回起動時にまとめて反映する。
+	if ($i) startHataskFlowerGrowthTracker();
 
 	// 廃止した接続先の認証情報を common() 内で消してから、許可された外部通知ストリームだけを起動する。
 	const { startExternalNotificationStream } = await import('@/utility/external-notification-stream.js');

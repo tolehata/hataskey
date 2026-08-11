@@ -1,0 +1,28 @@
+/*
+ * SPDX-FileCopyrightText: tolehata
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+
+export type HataCardStyle = 'standard' | 'gold';
+
+export const HATA_CARD_GOLD_UNLOCK_AGE_MS = 365 * 24 * 60 * 60 * 1000;
+
+export function isHataCardGoldUnlocked(createdAt: string | null | undefined, now = Date.now()): boolean {
+	if (createdAt == null) return false;
+	const createdAtMs = Date.parse(createdAt);
+	return Number.isFinite(createdAtMs) && now - createdAtMs >= HATA_CARD_GOLD_UNLOCK_AGE_MS;
+}
+
+export function normalizeHataCardGlassOpacity(value: number): number {
+	if (!Number.isFinite(value)) return 55;
+	return Math.min(90, Math.max(20, Math.round(value / 5) * 5));
+}
+
+export function makeHataCardFileName(username: string, style: HataCardStyle): string {
+	const safeUsername = username
+		.normalize('NFKC')
+		.replace(/[^\p{L}\p{N}._-]+/gu, '-')
+		.replace(/^[.-]+|[.-]+$/g, '')
+		.slice(0, 48) || 'member';
+	return `hata-card-${style}-${safeUsername}.png`;
+}

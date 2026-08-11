@@ -53,11 +53,13 @@ import { useWidgetPropsManager } from './widget.js';
 import type { WidgetComponentEmits, WidgetComponentExpose, WidgetComponentProps } from './widget.js';
 import type { FormWithDefault, GetFormResultType } from '@/utility/form.js';
 import type { HataskFlower } from '@/utility/hatask-flower-widget.js';
+import type { HataskGrowingFlower } from '@/utility/hatask-flower-growth.js';
 import MkContainer from '@/components/MkContainer.vue';
 import { i18n } from '@/i18n.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { useRouter } from '@/router.js';
 import { countFlowerGallery, normalizeFlowerGallery, normalizeGrowingFlower } from '@/utility/hatask-flower-widget.js';
+import { HATASK_FLOWER_GROWTH_EVENT } from '@/utility/hatask-flower-growth.js';
 import { localizeFloraName } from '@/utility/hatask-flora.js';
 
 const name = 'hataskFlowers';
@@ -119,15 +121,21 @@ function onVisibilityChange(): void {
 	if (!window.document.hidden) void loadFlowers();
 }
 
+function onFlowerGrowth(event: Event): void {
+	flower.value = normalizeGrowingFlower((event as CustomEvent<HataskGrowingFlower>).detail);
+}
+
 onMounted(() => {
 	void loadFlowers();
 	refreshTimer = window.setInterval(() => void loadFlowers(), 60 * 1000);
 	window.document.addEventListener('visibilitychange', onVisibilityChange);
+	window.addEventListener(HATASK_FLOWER_GROWTH_EVENT, onFlowerGrowth);
 });
 
 onUnmounted(() => {
 	if (refreshTimer != null) window.clearInterval(refreshTimer);
 	window.document.removeEventListener('visibilitychange', onVisibilityChange);
+	window.removeEventListener(HATASK_FLOWER_GROWTH_EVENT, onFlowerGrowth);
 });
 
 defineExpose<WidgetComponentExpose>({

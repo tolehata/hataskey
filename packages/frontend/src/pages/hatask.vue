@@ -637,6 +637,7 @@
 
 <script lang="ts" setup>
 import { ref, computed, onMounted, onUnmounted, onBeforeUnmount, onActivated, onDeactivated, nextTick, watch, defineAsyncComponent } from 'vue';
+import type { HataskGrowingFlower } from '@/utility/hatask-flower-growth.js';
 import { definePage } from '@/page.js';
 import * as os from '@/os.js';
 import { claimAchievement } from '@/utility/achievements.js';
@@ -649,6 +650,7 @@ import { versatileLang } from '@/utility/intl-const.js';
 import MkEarthquakeTicker from '@/components/MkEarthquakeTicker.vue';
 import { getDefaultPhrase, getPhrase } from '@/utility/hatask-phrases.js';
 import { floraData, pickRandomFlora, generateFlowerName, localizeFloraName, localizeHanakotoba } from '@/utility/hatask-flora.js';
+import { HATASK_FLOWER_GROWTH_EVENT, seedHataskFlowerGrowth } from '@/utility/hatask-flower-growth.js';
 import { notificationDisplayMessage, type HataFeedNotif } from '@/utility/hatafeed.js';
 import { activeCharacter as mascotActiveCharacter, expressionDisplayUrl, loadMascot, hatakMascotActive, currentExpression as mascotCurrentExpression, currentPhrase as mascotCurrentPhrase, pickRandomPhrase as mascotPickRandomPhrase, displaySettings as mascotDisplaySettings, loadDisplaySettings as loadMascotDisplaySettings, nextIdleDelayMs as mascotNextIdleDelayMs, escapeText as mascotEscapeText } from '@/utility/mascot-store.js';
 const copy = i18n.ts._hata._hatask._main;
@@ -919,7 +921,11 @@ function openDrawingTool(){
   showMobileNav.value=false;
 	  os.popup(defineAsyncComponent(()=>import('@/components/MkDrawingTool.vue')),{},{closed:()=>{showMobileNav.value=true}});
 }
-function openHataCard(){window.open('https://hatacardcreate.tolehata.net/','_blank')}
+
+function openHataCard() {
+	cleanupHataskState();
+	routeRouter.push('/hatask/card-maker');
+}
 // ===== Hatask page swipe navigation =====
 const htkTouchStartPos=ref<{x:number;y:number}|null>(null);
 const htkTouchLastPos=ref<{x:number;y:number}|null>(null);
@@ -977,7 +983,7 @@ function openHatalyze(){window.open('https://kanjo-bunseki.tolehata.net','_blank
 const homeApps=computed(()=>{
   const a=[
     {label:copy.appDrawing,short:copy.appDrawingShort,icon:'ti ti-brush',color:'#7eb5b2',fn:openDrawingTool},
-    {label:'HATA CARD',short:'CARD',icon:'ti ti-cards',color:'#e8a87c',fn:openHataCard},
+		{ label: copy.appCardMaker, short: copy.appCardMakerShort, icon: 'ti ti-cards', color: '#e8a87c', fn: openHataCard },
 	{label:'HataSideStudio',short:'SideStudio',icon:'ti ti-layout-sidebar-left-expand',color:'#8b7cf6',fn:openHataSideStudio},
 	{label:copy.appWhatsNew,short:copy.appWhatsNewShort,icon:'ti ti-news',color:'#5b8fd6',fn:openHataWhatsNew},
     {label:copy.appPortal,short:copy.appPortalShort,icon:'ti ti-door-enter',color:'#a78bfa',fn:openPortal},
@@ -1417,8 +1423,13 @@ const moodAnalysis=computed(()=>{
 const weekMoods=computed(()=>{const now=new Date();const mon=new Date(now);mon.setDate(now.getDate()-((now.getDay()+6)%7));mon.setHours(0,0,0,0);return Array.from({ length: 7 },(_,i)=>{const d=new Date(mon);d.setDate(mon.getDate()+i);const ds=d.toISOString().slice(0,10);const last=moods.value.filter(m=>m.date===ds).pop();return{day: weekdayShortFormatter.format(d),icon:last?moodIcons[last.level]:''};})});
 
 // Garden
-const flower=ref({emoji:'🌱',name:'わかば',progress:0,startedAt:0,totalMinutes:0});
+const flower = ref({ emoji: '🌱', name: 'わかば', progress: 0, startedAt: 0, totalMinutes: 0, lastGrowthAt: 0 });
 const gallery=ref<any[]>([]);
+
+function onHataskFlowerGrowth(event: Event): void {
+	const next = (event as CustomEvent<HataskGrowingFlower>).detail;
+	flower.value = { ...flower.value, ...next };
+}
 const currentFlowerDisplayName=computed(() => localizeFloraName(flower.value.name));
 function formatMinutes(m:number){const h=Math.floor(m/60);const mm=m%60;return h>0?copyx.hoursMinutes({ hours: h.toString(), minutes: mm.toString() }) : copyx.minutes({ minutes: mm.toString() })}
 const estimateRemaining=computed(()=>{const rem=Math.max(0,1200-flower.value.totalMinutes);const h=Math.floor(rem/60);return h>0?copyx.hours({ hours: h.toString() }):copy.soon});
@@ -1517,22 +1528,38 @@ function mealLevelInfo(id:string){return mealLevels.value.find(l=>l.id===id)||{e
 // 免責ダイアログ: 初回必ず表示、以降は!マークから手動表示
 async function showMealDisclaimerDialog(){showMealDisclaimer.value=true}
 async function ackMealDisclaimer(){showMealDisclaimer.value=false;if(!settings.value.mealDisclaimerShown){settings.value.mealDisclaimerShown=true;await registrySet('settings',settings.value)}}
-async function harvestFlower(){const autoName=generateFlowerName({emoji:flower.value.emoji,name:flower.value.name});const localizedAutoName = localizeFloraName(autoName); const{canceled,result}=await os.inputText({title:copy.flowerBloomedTitle,text:copy.flowerNamingPrompt,default:localizedAutoName});if(canceled||!result)return;const flora=floraData.find(f=>f.emoji===flower.value.emoji);gallery.value.unshift({id:generateId(),emoji:flower.value.emoji,name:result === localizedAutoName ? autoName : result,hanakotoba:flora?.hanakotoba||'',date:new Date().toLocaleDateString('ja-JP')});const nf=pickRandomFlora();flower.value={emoji:nf.emoji,name:generateFlowerName(nf),progress:0,startedAt:Date.now(),totalMinutes:0};await registrySet('gallery',gallery.value);await registrySet('flower',flower.value);await syncHataskFlowerCount();os.toast(copy.flowerHarvested)}
+
+async function harvestFlower() {
+	const autoName = generateFlowerName({ emoji: flower.value.emoji, name: flower.value.name });
+	const localizedAutoName = localizeFloraName(autoName);
+	const { canceled, result } = await os.inputText({
+		title: copy.flowerBloomedTitle,
+		text: copy.flowerNamingPrompt,
+		default: localizedAutoName,
+	});
+	if (canceled || !result) return;
+	const flora = floraData.find(f => f.emoji === flower.value.emoji);
+	gallery.value.unshift({
+		id: generateId(),
+		emoji: flower.value.emoji,
+		name: result === localizedAutoName ? autoName : result,
+		hanakotoba: flora?.hanakotoba ?? '',
+		date: new Date().toLocaleDateString('ja-JP'),
+	});
+	const nf = pickRandomFlora();
+	const startedAt = Date.now();
+	flower.value = { emoji: nf.emoji, name: generateFlowerName(nf), progress: 0, startedAt, totalMinutes: 0, lastGrowthAt: startedAt };
+	await registrySet('gallery', gallery.value);
+	await registrySet('flower', flower.value);
+	await syncHataskFlowerCount();
+	os.toast(copy.flowerHarvested);
+}
 async function renameFlower(fl:any){const sourceName = fl.name; const localizedName = localizeFloraName(sourceName); const{canceled,result}=await os.inputText({title:copy.renameFlowerTitle,text:copy.newNamePrompt,default:localizedName});if(!canceled&&result){fl.name=result === localizedName ? sourceName : result;await registrySet('gallery',gallery.value)}}
 
-let growthInterval:ReturnType<typeof setInterval>|null=null;
-// 旗鯖fork: お花の成長は「setIntervalの発火回数」ではなく「実経過時間」で数える。
-// setInterval は非アクティブタブ・省電力・モバイルで大きく間引かれるため、
-// 発火回数ベースだと「開いているのに育たない」環境依存バグが起きる(修正済み)。
-let growthLastTickAt=Date.now();  // 最後に経過を計上した時刻
-let growthCarryMs=0;              // まだ分に満たない繰り越しミリ秒
-// タブが可視に戻った瞬間に経過起点をリセットする。
-// これがないと、非表示中(setInterval が間引かれて発火しない時間)を
-// 復帰時に一気に計上してしまい「開いていない時間」まで育ってしまう。
-function onGrowthVisibility(){ if(!document.hidden){ growthLastTickAt=Date.now(); growthCarryMs=0; } }
 let navProtectionObserver:MutationObserver|null=null;
 let navVisibilityTimer:ReturnType<typeof setInterval>|null=null;
 onMounted(async () => {
+	window.addEventListener(HATASK_FLOWER_GROWTH_EVENT, onHataskFlowerGrowth);
 // 旗鯖fork(v2 §16①): ブートは onActivated(表示されるたび)で再生する。
 //   hatask は keep-alive のため遷移復帰では onMounted が走らず、以前は初回リロード時しか出なかった。
 //   keep-alive なら onActivated が初回mount含め必ず走るので、そちらに一本化。
@@ -1660,7 +1687,8 @@ nextTick(() => {
   } catch {}
 });
 const initFlower = pickRandomFlora();
-const defaultFlower = { emoji: initFlower.emoji, name: generateFlowerName(initFlower), progress: 0, startedAt: Date.now(), totalMinutes: 0 };
+	const defaultFlowerStartedAt = Date.now();
+	const defaultFlower = { emoji: initFlower.emoji, name: generateFlowerName(initFlower), progress: 0, startedAt: defaultFlowerStartedAt, totalMinutes: 0, lastGrowthAt: defaultFlowerStartedAt };
 const defaultSettings = { darkMode: false, autoTheme: true, weekStart: 'mon', showClock: true, showEvents: true, showFlower: true, showMoodSummary: true, showMealSection: true, showFeedbackNotif: true, showEarthquake: true, moodRemind: false, moodRemindTimes: ['昼 12:00', '寝る前 23:00'], openOnStart: false, showMealSummary: true, mealDisclaimerShown: false, eyeDisclaimerShown: false, theme: 'kisetsu', animations: true, v2Onboarded: false };
 
 // 各データを個別に取得（1つの失敗が他に影響しないようにする）
@@ -1678,12 +1706,15 @@ const loadResults = await Promise.allSettled([
 if (loadResults[0].status === 'fulfilled' && loadedKeys.has('todos')) todos.value = loadResults[0].value as any;
 if (loadResults[1].status === 'fulfilled' && loadedKeys.has('folders')) folders.value = loadResults[1].value as any;
 if (loadResults[2].status === 'fulfilled' && loadedKeys.has('moods')) moods.value = loadResults[2].value as any;
-if (loadResults[3].status === 'fulfilled' && loadedKeys.has('flower')) flower.value = loadResults[3].value as any;
+	// 花が未作成でもregistryGetが返した既定値は画面へ反映する。
+	// 永続化は成長トラッカーがNO_SUCH_KEYを再確認してから行うため、通信失敗時に既存値を上書きしない。
+	if (loadResults[3].status === 'fulfilled') flower.value = loadResults[3].value as typeof flower.value;
 if (loadResults[4].status === 'fulfilled' && loadedKeys.has('gallery')) gallery.value = loadResults[4].value as any;
 if (loadResults[5].status === 'fulfilled' && loadedKeys.has('settings')) settings.value = loadResults[5].value as any;
 if (loadResults[6].status === 'fulfilled' && loadedKeys.has('events')) events.value = loadResults[6].value as any;
 if (loadResults[7].status === 'fulfilled' && loadedKeys.has('meals')) meals.value = loadResults[7].value as any;
 dataLoaded.value = true;
+	seedHataskFlowerGrowth(flower.value);
 await syncHataskFlowerCount();
 // 旗鯖fork(v2): 未設定キーを既定で補完(後方互換)。theme/animations 未設定の既存ユーザーには
 //   既定テーマ(季 kisetsu)・アニメON を割り当てる。保存済みの値は保持される。
@@ -1705,39 +1736,6 @@ fetchLoginRanking();
 // Eye phrase
 updateEyePhrase();
 eyeTimer = setInterval(updateEyePhrase, 10000);
-growthInterval = setInterval(async () => {
-  if (flower.value.progress >= 100) return;
-  const now = Date.now();
-  // タブが非表示(バックグラウンド)の間は「開いている時間」に数えない。
-  // 経過起点だけ進めて、次にアクティブへ戻ったとき裏の時間を計上しない。
-  if (document.hidden) { growthLastTickAt = now; return; }
-  // 実経過(ミリ秒)を積み、分に達したぶんだけ加算する。
-  // これで setInterval が間引かれて発火が遅れても、正しい経過時間が計上される。
-  growthCarryMs += Math.max(0, now - growthLastTickAt);
-  growthLastTickAt = now;
-  const addMinutes = Math.floor(growthCarryMs / 60000);
-  if (addMinutes <= 0) return;
-  growthCarryMs -= addMinutes * 60000;
-  // 旗鯖fork: 複数端末で「開いている時間」を合算して同期する。
-  // 各端末が独立に += して上書きすると最後の端末の値で上書きされてしまうため、
-  // 必ず registry から最新値を読み直し、それに この端末ぶんの経過を足して保存する。
-  // これで他端末が育てたぶんも取り込まれ、累積が合算される。
-  try {
-    const latest = await registryGet<any>('flower', flower.value);
-    // 別の花に切り替わっている(収穫された)場合は、現在開いている花を優先して競合を避ける
-    if (latest && latest.startedAt === flower.value.startedAt && latest.emoji === flower.value.emoji) {
-      const base = typeof latest.totalMinutes === 'number' ? latest.totalMinutes : flower.value.totalMinutes;
-      flower.value.totalMinutes = base + addMinutes;
-    } else {
-      flower.value.totalMinutes += addMinutes;
-    }
-  } catch {
-    flower.value.totalMinutes += addMinutes;
-  }
-  flower.value.progress = Math.min(100, Math.floor((flower.value.totalMinutes / 1200) * 100));
-  await registrySet('flower', flower.value);
-}, 60000);
-document.addEventListener('visibilitychange', onGrowthVisibility);
 });
 
 // KeepAlive対応: ページ離脱時にナビバーを非表示にする
@@ -1797,8 +1795,7 @@ cleanupHataskState();
 if (bootTimer) { clearTimeout(bootTimer); bootTimer=null; }
 if (clockInterval) clearInterval(clockInterval);
 if (eyeTimer) clearInterval(eyeTimer);
-if (growthInterval) clearInterval(growthInterval);
-document.removeEventListener('visibilitychange', onGrowthVisibility);
+	window.removeEventListener(HATASK_FLOWER_GROWTH_EVENT, onHataskFlowerGrowth);
 if (mediaQuery) mediaQuery.removeEventListener('change', onMediaChange);
 stopHtkThemeWatch();
 notifTimerIds.forEach(id => clearTimeout(id));
