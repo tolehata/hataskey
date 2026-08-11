@@ -196,12 +196,19 @@ async function markAllRead() {
 	emit('read', 0);
 }
 
+const readingNotificationIds = new Set<string>();
+
 async function markRead(n: HataFeedNotif) {
-	if (n.isRead) return;
-	await misskeyApi('hata/feedback/notifications/read', { notificationId: n.id });
-	items.value = items.value.map(item => item.id === n.id ? { ...item, isRead: true } : item);
-	unreadCount.value = Math.max(0, unreadCount.value - 1);
-	emit('read', unreadCount.value);
+	if (n.isRead || readingNotificationIds.has(n.id)) return;
+	readingNotificationIds.add(n.id);
+	try {
+		await misskeyApi('hata/feedback/notifications/read', { notificationId: n.id });
+		items.value = items.value.map(item => item.id === n.id ? { ...item, isRead: true } : item);
+		unreadCount.value = Math.max(0, unreadCount.value - 1);
+		emit('read', unreadCount.value);
+	} finally {
+		readingNotificationIds.delete(n.id);
+	}
 }
 
 // 旗鯖fork(#38): 絵文字申請通知は処理状況を確認してから開く。

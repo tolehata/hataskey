@@ -6,12 +6,20 @@ import ms from 'ms';
 import { Injectable } from '@nestjs/common';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import { FeedbackService } from '@/core/FeedbackService.js';
+import { ApiError } from '@/server/api/error.js';
 
 export const meta = {
 	tags: ['hata'],
 	requireCredential: true,
 	kind: 'write:account',
 	limit: { duration: ms('1min'), max: 30 },
+	errors: {
+		accessDenied: {
+			message: 'HataFeed is not available for your account.',
+			code: 'HATAFEED_ACCESS_DENIED',
+			id: 'f42ca8d4-784d-47cb-a5da-b477be0369f8',
+		},
+	},
 } as const;
 
 export const paramDef = {
@@ -28,6 +36,8 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		private feedbackService: FeedbackService,
 	) {
 		super(meta, paramDef, async (ps, me) => {
+			if (!await this.feedbackService.canAccess(me.id)) throw new ApiError(meta.errors.accessDenied);
+
 			if (ps.notificationId != null) {
 				await this.feedbackService.markNotificationRead(me.id, ps.notificationId);
 			} else {

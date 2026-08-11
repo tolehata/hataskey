@@ -1021,6 +1021,7 @@ function openEarthquake(){cleanupHataskState();routeRouter.push('/earthquake')}
 // 旗鯖fork(#36): HataFeed通知タイル
 const hfNotifs=ref<HataFeedNotif[]>([]);
 const hfUnread=ref(0);
+const hfReadingNotificationIds = new Set<string>();
 let hfTimer:ReturnType<typeof setInterval>|null=null;
 async function loadHfNotifs(){
   if(!canAccessHataFeed.value)return;
@@ -1044,13 +1045,16 @@ function hfIcon(type:string):string{
 }
 
 async function onHfNotifClick(n: HataFeedNotif) {
-	if (!n.isRead) {
+	if (!n.isRead && !hfReadingNotificationIds.has(n.id)) {
+		hfReadingNotificationIds.add(n.id);
 		try {
 			await misskeyApi('hata/feedback/notifications/read', { notificationId: n.id });
 			hfNotifs.value = hfNotifs.value.map(item => item.id === n.id ? { ...item, isRead: true } : item);
 			hfUnread.value = Math.max(0, hfUnread.value - 1);
 		} catch {
 			// 既読更新に失敗しても、通知先を読む動線は妨げない。
+		} finally {
+			hfReadingNotificationIds.delete(n.id);
 		}
 	}
 	cleanupHataskState();
