@@ -492,6 +492,7 @@ export type HataFeedbackModeratorsGrantRequest = operations['hata___feedback___m
 export type HataFeedbackModeratorsRevokeRequest = operations['hata___feedback___moderators___revoke']['requestBody']['content']['application/json'];
 export type HataFeedbackNotificationsRequest = operations['hata___feedback___notifications']['requestBody']['content']['application/json'];
 export type HataFeedbackNotificationsResponse = operations['hata___feedback___notifications']['responses']['200']['content']['application/json'];
+export type HataFeedbackNotificationsReadRequest = operations['hata___feedback___notifications___read']['requestBody']['content']['application/json'];
 export type HataFeedbackProjectsRequest = operations['hata___feedback___projects']['requestBody']['content']['application/json'];
 export type HataFeedbackProjectsResponse = operations['hata___feedback___projects']['responses']['200']['content']['application/json'];
 export type HataFeedbackProjectsCreateRequest = operations['hata___feedback___projects___create']['requestBody']['content']['application/json'];

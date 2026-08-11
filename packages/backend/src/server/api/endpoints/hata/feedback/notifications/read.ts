@@ -1,6 +1,7 @@
 import ms from 'ms';
 /*
- * 旗鯖fork: HataFeed のフィードバックセンター内通知をすべて既読にする(未読バッジをクリア)。
+ * 旗鯖fork: HataFeed のフィードバックセンター内通知を既読にする。
+ * notificationId 指定時は本人のその通知だけ、省略時は従来どおり本人の通知をすべて既読にする。
  */
 import { Injectable } from '@nestjs/common';
 import { Endpoint } from '@/server/api/endpoint-base.js';
@@ -15,7 +16,9 @@ export const meta = {
 
 export const paramDef = {
 	type: 'object',
-	properties: {},
+	properties: {
+		notificationId: { type: 'string', format: 'misskey:id' },
+	},
 	required: [],
 } as const;
 
@@ -25,7 +28,11 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		private feedbackService: FeedbackService,
 	) {
 		super(meta, paramDef, async (ps, me) => {
-			await this.feedbackService.markAllNotificationsRead(me.id);
+			if (ps.notificationId != null) {
+				await this.feedbackService.markNotificationRead(me.id, ps.notificationId);
+			} else {
+				await this.feedbackService.markAllNotificationsRead(me.id);
+			}
 		});
 	}
 }

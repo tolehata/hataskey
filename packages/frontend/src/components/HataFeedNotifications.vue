@@ -112,7 +112,7 @@ import { notifIcon, notifTypeLabel, groupHataFeedNotifications, groupSummary, no
 import { i18n } from '@/i18n.js';
 
 const props = defineProps<{ anchorElement?: HTMLElement | null }>();
-const emit = defineEmits<{ (ev: 'closed'): void; (ev: 'read'): void }>();
+const emit = defineEmits<{ (ev: 'closed'): void; (ev: 'read', unreadCount: number): void }>();
 const modal = useTemplateRef('modal');
 const router = useRouter();
 const copy = i18n.ts._hata._hatafeed._notifications;
@@ -193,7 +193,15 @@ async function markAllRead() {
 	await misskeyApi('hata/feedback/notifications/read', {});
 	unreadCount.value = 0;
 	items.value = items.value.map(n => ({ ...n, isRead: true }));
-	emit('read');
+	emit('read', 0);
+}
+
+async function markRead(n: HataFeedNotif) {
+	if (n.isRead) return;
+	await misskeyApi('hata/feedback/notifications/read', { notificationId: n.id });
+	items.value = items.value.map(item => item.id === n.id ? { ...item, isRead: true } : item);
+	unreadCount.value = Math.max(0, unreadCount.value - 1);
+	emit('read', unreadCount.value);
 }
 
 // 旗鯖fork(#38): 絵文字申請通知は処理状況を確認してから開く。
@@ -212,7 +220,12 @@ async function handleEmojiRequestNotif(requestId: string) {
 	}
 }
 
-function onClick(n: HataFeedNotif) {
+async function onClick(n: HataFeedNotif) {
+	try {
+		await markRead(n);
+	} catch {
+		// 既読更新に失敗しても、通知先を読む動線は妨げない。
+	}
 	const feedbackId = n.feedbackId;
 	if (typeof feedbackId === 'string') {
 		router.push('/hatafeed/:issueId', { params: { issueId: feedbackId } });

@@ -246,6 +246,12 @@ export class FeedbackService {
 		await this.feedbackNotificationsRepository.update({ userId, isRead: false }, { isRead: true });
 	}
 
+	@bindThis
+	public async markNotificationRead(userId: MiUser['id'], notificationId: string): Promise<void> {
+		// 通知IDだけでは更新しない。必ず所有者も条件に含め、他人の通知を既読にできないようにする。
+		await this.feedbackNotificationsRepository.update({ id: notificationId, userId, isRead: false }, { isRead: true });
+	}
+
 	//#endregion
 
 	//#region プロジェクト

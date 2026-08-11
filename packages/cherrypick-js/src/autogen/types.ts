@@ -30276,6 +30276,14 @@ export interface operations {
         };
     };
     hata___feedback___notifications___read: {
+        requestBody: {
+            content: {
+                'application/json': {
+                    /** Format: misskey:id */
+                    notificationId?: string;
+                };
+            };
+        };
         responses: {
             /** @description OK (without any results) */
             204: {

@@ -489,6 +489,7 @@ import type {
 	HataFeedbackModeratorsRevokeRequest,
 	HataFeedbackNotificationsRequest,
 	HataFeedbackNotificationsResponse,
+	HataFeedbackNotificationsReadRequest,
 	HataFeedbackProjectsRequest,
 	HataFeedbackProjectsResponse,
 	HataFeedbackProjectsCreateRequest,
@@ -1206,7 +1207,7 @@ export type Endpoints = {
 	'hata/feedback/moderators/grant': { req: HataFeedbackModeratorsGrantRequest; res: EmptyResponse };
 	'hata/feedback/moderators/revoke': { req: HataFeedbackModeratorsRevokeRequest; res: EmptyResponse };
 	'hata/feedback/notifications': { req: HataFeedbackNotificationsRequest; res: HataFeedbackNotificationsResponse };
-	'hata/feedback/notifications/read': { req: EmptyRequest; res: EmptyResponse };
+	'hata/feedback/notifications/read': { req: HataFeedbackNotificationsReadRequest; res: EmptyResponse };
 	'hata/feedback/projects': { req: HataFeedbackProjectsRequest; res: HataFeedbackProjectsResponse };
 	'hata/feedback/projects/create': { req: HataFeedbackProjectsCreateRequest; res: HataFeedbackProjectsCreateResponse };
 	'hata/feedback/projects/delete': { req: HataFeedbackProjectsDeleteRequest; res: EmptyResponse };

@@ -666,7 +666,7 @@ async function openNotifications() {
 	const { dispose } = os.popup((await import('@/components/HataFeedNotifications.vue')).default, {
 		anchorElement: bellEl.value,
 	}, {
-		read: () => { unreadCount.value = 0; },
+		read: (count: number) => { unreadCount.value = count; },
 		closed: () => { loadNotifications(); dispose(); },
 	});
 }

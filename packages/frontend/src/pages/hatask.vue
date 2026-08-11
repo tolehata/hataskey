@@ -649,7 +649,7 @@ import { versatileLang } from '@/utility/intl-const.js';
 import MkEarthquakeTicker from '@/components/MkEarthquakeTicker.vue';
 import { getDefaultPhrase, getPhrase } from '@/utility/hatask-phrases.js';
 import { floraData, pickRandomFlora, generateFlowerName, localizeFloraName, localizeHanakotoba } from '@/utility/hatask-flora.js';
-import { notificationDisplayMessage } from '@/utility/hatafeed.js';
+import { notificationDisplayMessage, type HataFeedNotif } from '@/utility/hatafeed.js';
 import { activeCharacter as mascotActiveCharacter, expressionDisplayUrl, loadMascot, hatakMascotActive, currentExpression as mascotCurrentExpression, currentPhrase as mascotCurrentPhrase, pickRandomPhrase as mascotPickRandomPhrase, displaySettings as mascotDisplaySettings, loadDisplaySettings as loadMascotDisplaySettings, nextIdleDelayMs as mascotNextIdleDelayMs, escapeText as mascotEscapeText } from '@/utility/mascot-store.js';
 const copy = i18n.ts._hata._hatask._main;
 const copyx = i18n.tsx._hata._hatask._main;
@@ -1019,7 +1019,7 @@ function openHatady(){cleanupHataskState();routeRouter.push('/hatady')}
 function openEarthquake(){cleanupHataskState();routeRouter.push('/earthquake')}
 
 // 旗鯖fork(#36): HataFeed通知タイル
-const hfNotifs=ref<any[]>([]);
+const hfNotifs=ref<HataFeedNotif[]>([]);
 const hfUnread=ref(0);
 let hfTimer:ReturnType<typeof setInterval>|null=null;
 async function loadHfNotifs(){
@@ -1042,10 +1042,20 @@ function hfIcon(type:string):string{
   if(type==='emojiRejected')return 'ti-mood-sad';
   return 'ti-bell';
 }
-function onHfNotifClick(n:any){
-  cleanupHataskState();
-	  if(n.feedbackId)routeRouter.pushByPath('/hatafeed/'+n.feedbackId);
-  else routeRouter.push('/hatafeed');
+
+async function onHfNotifClick(n: HataFeedNotif) {
+	if (!n.isRead) {
+		try {
+			await misskeyApi('hata/feedback/notifications/read', { notificationId: n.id });
+			hfNotifs.value = hfNotifs.value.map(item => item.id === n.id ? { ...item, isRead: true } : item);
+			hfUnread.value = Math.max(0, hfUnread.value - 1);
+		} catch {
+			// 既読更新に失敗しても、通知先を読む動線は妨げない。
+		}
+	}
+	cleanupHataskState();
+	if (n.feedbackId) routeRouter.pushByPath('/hatafeed/' + n.feedbackId);
+	else routeRouter.push('/hatafeed');
 }
 
 // 旗鯖fork(#36): 地震・津波タイル(WS購読＋ポーリング)
