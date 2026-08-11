@@ -9,6 +9,18 @@ import { describe, expect, test } from 'vitest';
 const read = (path: string) => readFileSync(`${process.cwd()}/src/${path}`, 'utf8');
 
 describe('HataSideStudio UI integration', () => {
+	test('ノートボタンの肉球アイコン・色・グラデーションをプレビューと実サイドメニューへ反映する', () => {
+		const studio = read('pages/hata-side-studio.vue');
+		const simple = read('ui/simple.vue');
+		expect(studio).toContain("activeProfile.postButton.icon = 'paw'");
+		expect(studio).toContain('class="ti ti-paw"');
+		expect(studio).toContain('<GradientEditor :modelValue="activeProfile.postButton"/>');
+		expect(studio).toContain(':style="postButtonStyle(activeProfile.postButton)"');
+		expect(simple.match(/:style="studioPostButtonStyle"/g)).toHaveLength(2);
+		expect(simple.match(/:class="studioPostButtonIcon"/g)).toHaveLength(2);
+		expect(simple).toContain("studioProfile.value.postButton.icon === 'paw' ? 'ti ti-paw' : 'ti ti-pencil'");
+	});
+
 	test('モバイルのHatasabaUIドロワーにも固定のもっとメニューを表示する', () => {
 		const simple = read('ui/simple.vue');
 		expect(simple).toContain('data-hatasaba-mobile-more');
@@ -28,8 +40,8 @@ describe('HataSideStudio UI integration', () => {
 		expect(simple).not.toMatch(/v-for="item in studioCollapsedButtons"[\s\S]{0,300}type === 'widget'/);
 		expect(simple).toContain("item.type !== 'button' || item.borderVisible !== false");
 		expect(studio).toContain("node.type !== 'button' || node.borderVisible !== false");
-		expect(studio).toContain('枠線を表示');
-		expect(studio).toContain('縮小メニューの枠線は初期状態で非表示です');
+		expect(studio).toContain('copy.showBorder');
+		expect(studio).toContain('copy.collapsedBorderHiddenDescription');
 	});
 
 	test('編集画面は拡大と縮小の相互コピー、PC二ペイン、削除モードを備える', () => {
@@ -38,12 +50,12 @@ describe('HataSideStudio UI integration', () => {
 		expect(studio).toContain('copyLayout(\'collapsedToExpanded\')');
 		expect(studio).toContain('grid-template-columns:minmax(390px,1fr) minmax(430px,1fr)');
 		expect(studio).toContain('deleteMode = !deleteMode');
-		expect(studio).toContain('変更を保存しますか？');
+		expect(studio).toContain('copy.saveChangesQuestion');
 		expect(studio).toContain('src:url(\'/client-assets/Righteous-Regular.woff2\')');
 		expect(studio).toContain('font-family:\'Righteous\'');
 		expect(studio).toContain('instance.iconUrl');
 		expect(studio).toContain('$i?.avatarUrl');
-		expect(studio).toContain('現在の並びを読み込む');
+		expect(studio).toContain('copy.importCurrentOrder');
 		expect(studio).toContain('buttonPickerOpen');
 		expect(studio).toContain('quickEditorOpen');
 	});
@@ -53,25 +65,25 @@ describe('HataSideStudio UI integration', () => {
 		expect(studio).toContain('<GradientEditor :modelValue="selected"/>');
 		expect(studio).toContain('const GradientEditor = defineComponent');
 		expect(studio).toContain("h(GradientEditor, { modelValue: props.modelValue })");
-		expect(studio).toContain("h('span', '2色目')");
-		expect(studio).toContain("h('span', '色の移り方')");
+		expect(studio).toContain("h('span', copy.secondColor)");
+		expect(studio).toContain("h('span', copy.colorTransition)");
 		expect(studio).toContain('style: { background: gradientCss(value) }');
 		expect(studio).toContain('openSelectedInspector');
 		expect(studio).toContain('inspectorPaneEl.value?.scrollIntoView');
 		expect(studio).toContain('@click.stop="openQuickEditor(node.id)"');
-		expect(studio).toContain('グループをその場で調整');
-		expect(studio).toContain('田の字');
+		expect(studio).toContain('copy.adjustGroupHere');
+		expect(studio).toContain('copy.grid');
 	});
 
 	test('グループへのドラッグ、高度な並び替え、機能ラベルを省略しない', () => {
 		const studio = read('pages/hata-side-studio.vue');
 		expect(studio).toContain(':group="groupChildDragGroup"');
-		expect(studio).toContain('ここへボタン・ウィジェットをドラッグ');
-		expect(studio).toContain('高度な並び替え');
+		expect(studio).toContain('copy.dropButtonOrWidgetHere');
+		expect(studio).toContain('copy.advancedReorder');
 		expect(studio).toContain('moveReorderItem');
-		expect(studio).toContain('ウィジェットを作成');
-		expect(studio).toContain('グループを作成');
-		expect(studio).toContain('ボタンを作成');
+		expect(studio).toContain('copy.createWidget');
+		expect(studio).toContain('copy.createGroup');
+		expect(studio).toContain('copy.createButton');
 		expect(studio).toContain(':data-container="section.id"');
 		expect(studio).toContain('.reorderSection:not([data-container="root"])');
 		expect(studio).toContain('.dragTimelineSection:not([data-container="root"])');
@@ -99,7 +111,7 @@ describe('HataSideStudio UI integration', () => {
 		expect(studio).toContain('.collapsedButton { position:relative;display:grid!important;place-items:center;align-self:center;flex:0 0 44px!important;width:44px!important;min-width:44px!important;max-width:44px!important;');
 		expect(simple).toContain('.hssButton[data-hss-shape="circle"]');
 		expect(simple).toContain('width:calc(100% - 4px);margin-inline:2px;border-radius:999px');
-		expect(studio).toContain('{ value: \'pill\', label: \'錠剤型\' }');
+		expect(studio).toContain("{ value: 'pill', label: copy.capsule }");
 	});
 
 	test('枠線の四隅を選択枠や回転で切らず、回転時だけ必要な上下幅を予約する', () => {
@@ -117,7 +129,7 @@ describe('HataSideStudio UI integration', () => {
 		expect(studio).toContain('HATA_SIDE_WIDGET_REGISTRY');
 		expect(studio).toContain('resolveDynamicComponent(`widget-${nativeKind}`)');
 		expect(studio).toContain('widgetSizeSettingEntries');
-		expect(studio).toContain('専用設定');
+		expect(studio).toContain('copy.widgetContent');
 		expect(simple).toContain('studioWidgetComponent');
 		expect(simple).toContain(':widget="studioWidgetModel(');
 	});
@@ -125,7 +137,7 @@ describe('HataSideStudio UI integration', () => {
 	test('低コントラストのグループへ端末内判定のポップオーバーと一括文字色変更を出す', () => {
 		const studio = read('pages/hata-side-studio.vue');
 		expect(studio).toContain('inspectHataSideContrast');
-		expect(studio).toContain('文字が読みづらい配色です');
+		expect(studio).toContain('copy.lowContrastColors');
 		expect(studio).toContain('applyGroupTextColor');
 		expect(studio).toContain('for (const child of group.children) child.foreground = color');
 	});
@@ -153,7 +165,7 @@ describe('HataSideStudio UI integration', () => {
 		}
 		expect(studio).toContain('ref="studioDialogControl"');
 		expect(studio).toContain('studioDialogControl.value?.focus');
-		expect(studio).toContain("{{ hasChanges ? '保存' : '保存済み' }}");
+		expect(studio).toContain('{{ hasChanges ? copy.save : copy.saved }}');
 		expect(studio).not.toContain(':disabled="!hasChanges"');
 		expect(studio).toContain('cloneHataSideStudioStore(hataSideStudioStore.value)');
 	});
@@ -167,7 +179,7 @@ describe('HataSideStudio UI integration', () => {
 		expect(studio).toContain('canUseTimelineContainer');
 		expect(studio).toContain('dragTimelineDelete');
 		expect(studio).toContain('dragTimelineGap');
-		expect(studio).toContain('この隙間へ挿入');
+		expect(studio).toContain('copy.insertInGap');
 		expect(studio).toContain('sidebarPreviewEl.value?.getBoundingClientRect()');
 		expect(studio).toContain('opacity:0;visibility:hidden;pointer-events:none');
 		expect(studio).toContain('[data-node-id]:hover > .dragHandle');
@@ -216,13 +228,13 @@ describe('HataSideStudio UI integration', () => {
 		const hatask = read('pages/hatask.vue');
 		expect(simple).toContain('$style.hssMobileRoot');
 		expect(simple).toContain('submitStudioMobileSearch');
-		expect(simple).toContain('HataSideStudioを起動');
+		expect(simple).toContain('copy.openHataSideStudio');
 		expect(hatask).toContain("label:'HataSideStudio'");
 		expect(hatask).toContain("routeRouter.push('/hata-side-studio')");
-		expect(hatask).toContain("label:'今回の更新内容'");
+		expect(hatask).toContain('label:copy.appWhatsNew');
 		expect(hatask).toContain("import('@/components/MkHataWhatsNew.vue')");
 		expect(studio).not.toContain('端末内で編集');
-		expect(studio).toContain('設定を書き出す・読み込む');
+		expect(studio).toContain('copy.exportImportSettings');
 	});
 
 	test('縮小プレビューのモード切替はChromeでも中央に収まる固定寸法を使う', () => {
@@ -250,7 +262,7 @@ describe('HataSideStudio UI integration', () => {
 		expect(simple).not.toContain('.hssWidget[data-hss-size="small"] .hssWidgetFrame > * { max-height:100%;overflow:hidden!important; }');
 		expect(studio).toContain('.nativeWidgetPreview { width:100%;height:auto;min-width:0;min-height:var(--hss-widget-height,160px);');
 		expect(studio).toContain('.nativeWidgetFrame { width:100%;height:auto;min-width:0;min-height:var(--hss-widget-height,160px);box-sizing:border-box;overflow:visible;');
-		expect(studio).toContain('内容は途中で切らず、必要なときだけこの値より縦に伸びます。');
+		expect(studio).toContain('copy.contentGrowsWithoutClipping');
 		expect(studio).not.toContain('.nativeWidgetPreview[data-hss-size="small"] .nativeWidgetFrame > * { max-height:100%;overflow:hidden!important; }');
 	});
 
@@ -276,10 +288,10 @@ describe('HataSideStudio UI integration', () => {
 		const simple = read('ui/simple.vue');
 		const hatask = read('pages/hatask.vue');
 		const routes = read('router.definition.ts');
-		expect(studio).toContain('ウィジェットを作成');
-		expect(studio).toContain('グループを作成');
-		expect(studio).toContain('ボタンを作成');
-		expect(studio).toContain('並びをコピー');
+		expect(studio).toContain('copy.createWidget');
+		expect(studio).toContain('copy.createGroup');
+		expect(studio).toContain('copy.createButton');
+		expect(studio).toContain('copy.copyOrder');
 		expect(studio).toContain('togglePreviewWidth');
 		expect(studio).toContain('instance.name');
 		expect(studio).toContain('instance.iconUrl');

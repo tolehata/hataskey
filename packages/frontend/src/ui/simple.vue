@@ -138,8 +138,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<button v-if="deckActive" v-tooltip.right="sidebarFolded ? copy.reload : null" :class="$style.sbReloadBtn" @click="reloadPage">
 					<i class="ti ti-refresh"></i>
 				</button>
-				<button v-tooltip.right="sidebarFolded ? copy.note : null" :class="$style.sbPostBtn" data-cy-open-post-form @click="onPostClick">
-					<i class="ti ti-pencil"></i>
+				<button v-tooltip.right="sidebarFolded ? copy.note : null" :class="$style.sbPostBtn" :style="studioPostButtonStyle" data-cy-open-post-form @click="onPostClick">
+					<i :class="studioPostButtonIcon"></i>
 				</button>
 				<!-- 旗鯖fork: デッキモード切替トグル (アカウント表示の上) -->
 				<div ref="deckAnchorEl" :class="$style.sbModeToggle">
@@ -435,8 +435,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 						</template>
 					</div>
 					<div :class="$style.sbBottom">
-						<button :class="$style.sbPostBtn" @click="onPostClick(); simpleDrawerShowing = false">
-							<i class="ti ti-pencil"></i><span>{{ copy.note }}</span>
+						<button :class="$style.sbPostBtn" :style="studioPostButtonStyle" @click="onPostClick(); simpleDrawerShowing = false">
+							<i :class="studioPostButtonIcon"></i><span>{{ copy.note }}</span>
 						</button>
 						<div :class="$style.sbBottomRow">
 							<button :class="$style.sbAccount" @click="openAccountMenu">
@@ -1031,6 +1031,11 @@ const sidebarOrder = computed(() => prefer.r['simpleUi.sidebar'].value as any[])
 // 拡大/縮小の両レイアウトを作るため、これまでの利用者の並びを失わない。
 ensureHataSideStudioInitialized(sidebarOrder.value);
 const studioProfile = computed(() => getActiveHataSideProfile(hataSideStudioStore.value));
+const studioPostButtonIcon = computed(() => studioProfile.value.postButton.icon === 'paw' ? 'ti ti-paw' : 'ti ti-pencil');
+const studioPostButtonStyle = computed(() => ({
+	background: gradientCss(studioProfile.value.postButton),
+	color: studioProfile.value.postButton.foreground,
+}));
 const studioExpandedNodes = computed(() => studioProfile.value.expanded.nodes);
 const studioCollapsedButtons = computed(() => studioProfile.value.collapsed.buttons);
 const studioExpandedMenuIds = computed(() => {

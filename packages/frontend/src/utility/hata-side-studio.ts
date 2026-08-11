@@ -35,7 +35,7 @@ export type {
 
 export { getHataSideWidgetDisplayLabel };
 
-export const HATA_SIDE_STUDIO_FORMAT_VERSION = 7;
+export const HATA_SIDE_STUDIO_FORMAT_VERSION = 8;
 export const HATA_SIDE_STUDIO_DEFAULT_PROFILE_LIMIT = 3;
 export const HATA_SIDE_STUDIO_STORAGE_KEY = 'hataSideStudio';
 export const HATA_SIDE_STUDIO_CHANGE_EVENT = 'hata-side-studio:change';
@@ -58,6 +58,17 @@ export type HataSideButtonSize = HataSideWidgetSize;
 export type HataSideExpandedWidth = 'normal' | 'wide';
 export type HataSideGradientEasing = 'linear' | 'ease-in' | 'ease-out' | 'ease-in-out';
 export type HataSideBorderStyle = 'solid' | 'dashed' | 'double';
+export type HataSidePostButtonIcon = 'pencil' | 'paw';
+
+export type HataSidePostButtonAppearance = {
+	icon: HataSidePostButtonIcon;
+	background: string;
+	foreground: string;
+	gradientEnabled: boolean;
+	gradientTo: string;
+	gradientAngle: number;
+	gradientEasing: HataSideGradientEasing;
+};
 
 export type HataSideAppearance = {
 	shape: HataSideButtonShape;
@@ -123,6 +134,7 @@ export type HataSideNode = HataSideButton | HataSideWidget | HataSideGroup;
 export type HataSideStudioProfile = {
 	id: string;
 	name: string;
+	postButton: HataSidePostButtonAppearance;
 	expanded: {
 		nodes: HataSideNode[];
 		columns: 1 | 2 | 3;
@@ -284,6 +296,18 @@ export function createDefaultAppearance(): HataSideAppearance {
 	};
 }
 
+export function createDefaultPostButtonAppearance(): HataSidePostButtonAppearance {
+	return {
+		icon: 'pencil',
+		background: 'var(--MI_THEME-buttonGradateA)',
+		foreground: 'var(--MI_THEME-fgOnAccent, #fff)',
+		gradientEnabled: true,
+		gradientTo: 'var(--MI_THEME-buttonGradateB)',
+		gradientAngle: 90,
+		gradientEasing: 'linear',
+	};
+}
+
 export function createButton(source: SidebarSourceItem, appearance?: Partial<HataSideAppearance & Pick<HataSideButton, 'borderVisible'>>): HataSideButton {
 	const menuId = normalizeHataSideStudioMenuId(source.id);
 	return {
@@ -427,6 +451,7 @@ export function createDefaultProfile(source: readonly SidebarSourceItem[] = fall
 	return {
 		id: uid('profile'),
 		name,
+		postButton: createDefaultPostButtonAppearance(),
 		expanded: { nodes: groups.filter(group => group.children.length > 0), columns: 1, width: 'normal', parallax: false },
 		collapsed: { buttons: visible.map(item => createButton(item, { shape: 'circle', showLabel: false, size: 'small', border: 'var(--MI_THEME-divider)', borderVisible: false })) },
 		updatedAt: new Date().toISOString(),
@@ -499,6 +524,20 @@ function sanitizeAppearance(value: Record<string, unknown>, collapsed = false): 
 		gradientEasing: value.gradientEasing === 'ease-in' || value.gradientEasing === 'ease-out' || value.gradientEasing === 'ease-in-out' ? value.gradientEasing : 'linear',
 		rotation: collapsed ? 0 : clamp(Number(value.rotation), -12, 12),
 		showLabel: collapsed ? false : value.showLabel !== false,
+	};
+}
+
+function sanitizePostButtonAppearance(value: unknown): HataSidePostButtonAppearance {
+	const base = createDefaultPostButtonAppearance();
+	const raw = isRecord(value) ? value : {};
+	return {
+		icon: raw.icon === 'paw' ? 'paw' : 'pencil',
+		background: isColor(raw.background) ? raw.background : base.background,
+		foreground: isColor(raw.foreground) ? raw.foreground : base.foreground,
+		gradientEnabled: raw.gradientEnabled == null ? base.gradientEnabled : raw.gradientEnabled === true,
+		gradientTo: isColor(raw.gradientTo) ? raw.gradientTo : base.gradientTo,
+		gradientAngle: raw.gradientAngle == null ? base.gradientAngle : clamp(Number(raw.gradientAngle), 0, 360),
+		gradientEasing: raw.gradientEasing === 'ease-in' || raw.gradientEasing === 'ease-out' || raw.gradientEasing === 'ease-in-out' ? raw.gradientEasing : 'linear',
 	};
 }
 
@@ -589,6 +628,7 @@ export function sanitizeHataSideStudioStore(value: unknown, source: readonly Sid
 			.filter((button): button is HataSideButton => button != null) : [];
 		profiles.push({
 			id: typeof raw.id === 'string' ? raw.id : uid('profile'), name: typeof raw.name === 'string' ? raw.name.slice(0, 80) : HATA_SIDE_STUDIO_DEFAULT_STORAGE_NAMES.profileFallback,
+			postButton: sanitizePostButtonAppearance(raw.postButton),
 			expanded: {
 				nodes,
 				columns,

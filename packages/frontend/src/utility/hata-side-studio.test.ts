@@ -152,6 +152,15 @@ describe('HataSideStudio', () => {
 
 	test('初期状態は拡大グループと縮小専用の縦一列ボタンを別々に持つ', () => {
 		const profile = createDefaultProfile(source);
+		expect(profile.postButton).toEqual({
+			icon: 'pencil',
+			background: 'var(--MI_THEME-buttonGradateA)',
+			foreground: 'var(--MI_THEME-fgOnAccent, #fff)',
+			gradientEnabled: true,
+			gradientTo: 'var(--MI_THEME-buttonGradateB)',
+			gradientAngle: 90,
+			gradientEasing: 'linear',
+		});
 		expect(profile.expanded.width).toBe('normal');
 		expect(profile.expanded.nodes.every(node => node.type === 'group')).toBe(true);
 		expect(profile.expanded.nodes.every(node => node.type !== 'group' || node.foreground === 'var(--MI_THEME-fg)')).toBe(true);
@@ -160,6 +169,39 @@ describe('HataSideStudio', () => {
 		expect(profile.collapsed.buttons.every(button => button.border === 'var(--MI_THEME-divider)')).toBe(true);
 		expect(profile.collapsed.buttons.every(button => button.borderVisible === false)).toBe(true);
 		expect(profile.collapsed.buttons.some(button => button.menuId === 'more')).toBe(false);
+	});
+
+	test('旧プロファイルへノートボタン設定を補い、利用者の肉球・色・グラデーション設定を保持する', () => {
+		const legacyProfile = createDefaultProfile(source) as any;
+		delete legacyProfile.postButton;
+		const migrated = sanitizeHataSideStudioStore({ version: 7, activeProfileId: legacyProfile.id, profiles: [legacyProfile] }, source);
+		expect(migrated.profiles[0].postButton).toMatchObject({ icon: 'pencil', gradientEnabled: true, gradientAngle: 90 });
+
+		const customized = {
+			...legacyProfile,
+			postButton: {
+				icon: 'paw',
+				background: '#123456',
+				foreground: '#fefefe',
+				gradientEnabled: true,
+				gradientTo: '#abcdef',
+				gradientAngle: 245,
+				gradientEasing: 'ease-in-out',
+			},
+		};
+		const sanitized = sanitizeHataSideStudioStore({ version: 8, activeProfileId: customized.id, profiles: [customized] }, source);
+		expect(sanitized.profiles[0].postButton).toEqual(customized.postButton);
+
+		customized.postButton = { icon: 'heart', background: 'url(javascript:1)', foreground: '', gradientTo: 'red', gradientAngle: 999, gradientEasing: 'spring' };
+		const repaired = sanitizeHataSideStudioStore({ version: 8, activeProfileId: customized.id, profiles: [customized] }, source);
+		expect(repaired.profiles[0].postButton).toMatchObject({
+			icon: 'pencil',
+			background: 'var(--MI_THEME-buttonGradateA)',
+			foreground: 'var(--MI_THEME-fgOnAccent, #fff)',
+			gradientTo: 'var(--MI_THEME-buttonGradateB)',
+			gradientAngle: 360,
+			gradientEasing: 'linear',
+		});
 	});
 
 	test('現在の並びは同じグループが再登場しても順番を入れ替えない', () => {

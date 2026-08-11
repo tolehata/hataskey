@@ -170,7 +170,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					</div>
 					<div :class="$style.fixedArea"><button class="_button"><i class="ti ti-dots"></i><span v-if="editMode === 'expanded'">{{ copy.more }}</span></button><button class="_button"><i class="ti ti-settings"></i><span v-if="editMode === 'expanded'">{{ copy.settings }}</span></button><button class="_button"><i class="ti ti-bolt"></i><span v-if="editMode === 'expanded'">{{ copy.realtime }}</span></button><button v-if="$i?.isAdmin || $i?.isModerator" class="_button"><i class="ti ti-dashboard"></i><span v-if="editMode === 'expanded'">{{ copy.controlPanel }}</span></button></div>
 					<div :class="$style.bottomArea">
-						<button class="_button" :class="$style.postButton"><i class="ti ti-pencil"></i><span v-if="editMode === 'expanded'">{{ copy.note }}</span></button>
+						<button class="_button" :class="$style.postButton" :style="postButtonStyle(activeProfile.postButton)"><i :class="postButtonIconClass(activeProfile.postButton.icon)"></i><span v-if="editMode === 'expanded'">{{ copy.note }}</span></button>
 						<div :class="$style.modeToggle" :aria-label="copy.displayMode"><button class="_button" :aria-pressed="editMode === 'expanded'" :aria-label="copy.normalView" @click="setEditMode('expanded')"><i class="ti ti-device-mobile"></i></button><button class="_button" :aria-pressed="editMode === 'collapsed'" :aria-label="copy.deckView" @click="setEditMode('collapsed')"><i class="ti ti-layout-columns"></i></button></div>
 						<button class="_button" :class="$style.accountButton"><img v-if="$i?.avatarUrl" :src="$i.avatarUrl"><i v-else class="ti ti-user-circle"></i><span v-if="editMode === 'expanded'"><b>{{ $i?.name || $i?.username || copy.account }}</b><small>@{{ $i?.username }}</small></span></button>
 					</div>
@@ -191,6 +191,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<InspectorCard :title="copy.sidebarWidth"><div :class="$style.choiceRow"><button class="_button" :data-active="activeProfile.expanded.width === 'normal'" @click="activeProfile.expanded.width = 'normal'">{{ copy.currentSize }}</button><button class="_button" :data-active="activeProfile.expanded.width === 'wide'" @click="activeProfile.expanded.width = 'wide'">{{ copy.wide }}</button></div><small>{{ copy.appliesToPreviewAndPcSidebar }}</small></InspectorCard>
 					<InspectorCard :title="copy.existingSettings"><button class="_button" :class="$style.currentSettingsButton" @click="importCurrentSidebar"><i class="ti ti-list-check"></i>{{ copy.importCurrentOrder }}</button><small>{{ copy.applyConfiguredVisibilityOrder }}</small></InspectorCard>
 					<InspectorCard :title="copy.motion"><label :class="$style.check"><input v-model="activeProfile.expanded.parallax" type="checkbox">{{ copy.parallaxBeta }}</label><small>{{ copy.disabledWithReducedMotion }}</small></InspectorCard>
+					<InspectorCard :title="copy.noteButtonCustomization">
+						<small>{{ copy.noteButtonCustomizationDescription }}</small>
+						<label :class="$style.field"><span>{{ copy.noteButtonIcon }}</span><span :class="$style.choiceRow"><button class="_button" :data-active="activeProfile.postButton.icon === 'pencil'" @click="activeProfile.postButton.icon = 'pencil'"><i class="ti ti-pencil"></i>{{ copy.pencilIcon }}</button><button class="_button" :data-active="activeProfile.postButton.icon === 'paw'" @click="activeProfile.postButton.icon = 'paw'"><i class="ti ti-paw"></i>{{ copy.pawIcon }}</button></span></label>
+						<div :class="$style.colorGrid"><label :class="$style.colorField"><span>{{ copy.background }}</span><input type="color" :value="cssColor(activeProfile.postButton.background)" @input="activeProfile.postButton.background = ($event.target as HTMLInputElement).value"></label><label :class="$style.colorField"><span>{{ copy.text }}</span><input type="color" :value="cssColor(activeProfile.postButton.foreground)" @input="activeProfile.postButton.foreground = ($event.target as HTMLInputElement).value"></label></div>
+						<GradientEditor :modelValue="activeProfile.postButton"/>
+					</InspectorCard>
 					<InspectorCard :title="copy.collapsedMenuRules"><p>{{ copy.collapsedMenuRulesDescription }}</p></InspectorCard>
 				</div>
 				<template v-else-if="inspectorTab === 'button' && selected?.type === 'button'">
@@ -268,7 +274,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 <script lang="ts" setup>
 import { computed, defineAsyncComponent, defineComponent, h, nextTick, onBeforeUnmount, onMounted, ref, resolveDynamicComponent, useCssModule, watch } from 'vue';
 import draggable from 'vuedraggable';
-import type { HataSideButton, HataSideButtonShape, HataSideButtonSize, HataSideGroup, HataSideNode, HataSideStudioStore, HataSideWidget, HataSideWidgetKind } from '@/utility/hata-side-studio.js';
+import type { HataSideButton, HataSideButtonShape, HataSideButtonSize, HataSideGroup, HataSideNode, HataSidePostButtonAppearance, HataSidePostButtonIcon, HataSideStudioStore, HataSideWidget, HataSideWidgetKind } from '@/utility/hata-side-studio.js';
 import { $i } from '@/i.js';
 import { i18n } from '@/i18n.js';
 import { instance } from '@/instance.js';
@@ -837,6 +843,17 @@ function nodeStyle(node: HataSideNode) {
 		'--hss-fg': node.foreground,
 		'--hss-rotation': `${rotation}deg`,
 		'--hss-rotation-space': `${rotationSpace}px`,
+	};
+}
+
+function postButtonIconClass(icon: HataSidePostButtonIcon): string {
+	return icon === 'paw' ? 'ti ti-paw' : 'ti ti-pencil';
+}
+
+function postButtonStyle(postButton: HataSidePostButtonAppearance) {
+	return {
+		background: gradientCss(postButton),
+		color: postButton.foreground,
 	};
 }
 
