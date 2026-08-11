@@ -4130,10 +4130,15 @@ definePage(() => ({ title: 'HataSNSCordUI', hideHeader: true }));
 	font-size: .7rem;
 }
 
-.composerContextAvatar {
+.composerContext > .composerContextAvatar {
 	width: 25px;
+	min-width: 25px;
+	max-width: 25px;
 	height: 25px;
+	min-height: 25px;
+	max-height: 25px;
 	flex: 0 0 25px;
+	aspect-ratio: 1;
 }
 
 .composerContextCopy {
@@ -4772,6 +4777,17 @@ definePage(() => ({ title: 'HataSNSCordUI', hideHeader: true }));
 /* Popup menus and dialogs are teleported outside the page root. Mirror only the
    active HataSNSCordUI color surface on <html> while this route is mounted, so
    those controls remain readable and are restored on unmount. */
+/* 動くタイムラインを背面ぼかしへ再合成すると Chrome で点滅するため、
+   このUIを表示中のポップアップだけは不透明面で合成する。 */
+html[data-hatacording-color-mode] :is(._modalBg, ._popup, ._popupAcrylic) {
+	-webkit-backdrop-filter: none !important;
+	backdrop-filter: none !important;
+}
+
+html[data-hatacording-color-mode] ._popupAcrylic {
+	background: var(--MI_THEME-popup);
+}
+
 html[data-hatacording-color-mode='light'] {
 	--MI_THEME-bg: #f3f5f8;
 	--MI_THEME-panel: #ffffff;

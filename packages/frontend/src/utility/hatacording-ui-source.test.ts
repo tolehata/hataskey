@@ -290,6 +290,7 @@ describe('HataSNSCordUIの結線', () => {
 		expect(page).toContain('channelId: composerChannel.value?.id');
 		expect(page).toContain(':class="$style.composerContextAvatar"');
 		expect(page).toContain('{{ composerContextExcerpt }}');
+		expect(page).toMatch(/\.composerContext > \.composerContextAvatar\s*\{[^}]*min-width:\s*25px;[^}]*max-width:\s*25px;[^}]*min-height:\s*25px;[^}]*max-height:\s*25px;[^}]*flex:\s*0 0 25px;[^}]*aspect-ratio:\s*1;/s);
 	});
 
 	test('テーマ・UI倍率・リアルタイム切替を共通設定へ集約し、設定タブと同期する', () => {
@@ -301,6 +302,8 @@ describe('HataSNSCordUIの結線', () => {
 		expect(settingsComponent).toContain('data-hatacording-ui-scale-selector');
 		expect(settingsComponent).toContain('preferences.timelineRealtime');
 		expect(settingsComponent).toContain(".root[data-color-mode='dark'] .activeChoice");
+		expect(settingsComponent).toMatch(/\.choice\[data-active='true'\]:hover,[\s\S]*?background: var\(--MI_THEME-accent\);[\s\S]*?color: var\(--MI_THEME-fgOnAccent\);/);
+		expect(settingsComponent).toMatch(/\.root\[data-color-mode='dark'\] \[data-hatacording-ui-scale-selector\] \.choice\[data-active='true'\]:hover,[\s\S]*?background: color-mix\(in srgb, var\(--MI_THEME-accent\) 68%, #202632\);[\s\S]*?color: #fff;/);
 		expect(page).toContain("{ type: 'component', component: HatacordingUiSettings");
 		expect(page).toContain('window.addEventListener(HATACORDING_UI_PREFERENCES_CHANGE_EVENT, syncHatacordingPreferences)');
 		expect(page).not.toContain(':class="$style.colorSwitcher"');
@@ -677,5 +680,16 @@ describe('HataSNSCordUIの結線', () => {
 		expect(page).toContain("{ id: 'tool:ui', label: copy.switchUi");
 		expect(page).toContain('function openUiSetup()');
 		expect(page).toContain('@click="openUiSetup">{{ copy.openUiSwitcher }}</button>');
+	});
+
+	test('ポップアップ表示時は背景のキャレットとぼかし再合成を残さない', () => {
+		const modal = readFrontendFile('src/components/MkModal.vue');
+		const setup = readFrontendFile('src/components/MkUISetup.vue');
+		expect(modal).toContain('tabindex="-1"');
+		expect(modal).toContain('!modalRootEl.value.contains(window.document.activeElement)');
+		expect(modal).toContain('modalRootEl.value.focus({ preventScroll: true });');
+		expect(setup).toContain(':disableBgBlur="true"');
+		expect(setup).toMatch(/\.root\s*\{[\s\S]*?-webkit-backdrop-filter:\s*none;[\s\S]*?backdrop-filter:\s*none;/);
+		expect(page).toMatch(/html\[data-hatacording-color-mode\] :is\(\._modalBg, \._popup, \._popupAcrylic\)\s*\{[\s\S]*?-webkit-backdrop-filter:\s*none !important;[\s\S]*?backdrop-filter:\s*none !important;/);
 	});
 });

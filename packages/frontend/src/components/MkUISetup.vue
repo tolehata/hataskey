@@ -13,7 +13,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 	- 選択・保存・リロードの既存ロジック (miLocalStorage + location.reload) は変更しない。
 -->
 <template>
-<MkModal ref="modal" :preferType="'dialog'" @click="close" @closed="emit('closed')">
+<MkModal ref="modal" :preferType="'dialog'" :disableBgBlur="true" @click="close" @closed="emit('closed')">
 	<div :class="$style.root" role="dialog" aria-modal="true" aria-labelledby="mkuisetup-title">
 		<!-- ===== ヘッダー ===== -->
 		<header :class="$style.header">
@@ -276,9 +276,11 @@ const selectHatacording = async () => {
 	overflow-y: auto;
 	overscroll-behavior: contain;
 	color: #fff;
-	background: rgba(12, 14, 18, 0.62);
-	backdrop-filter: blur(26px);
-	-webkit-backdrop-filter: blur(26px);
+	/* 動くタイムラインを背面ぼかしへ再合成すると Chrome で背景が点滅する。
+	   十分に不透明な面へ置き換え、UI選択窓の視認性は維持する。 */
+	background: rgba(12, 14, 18, 0.96);
+	-webkit-backdrop-filter: none;
+	backdrop-filter: none;
 	border: 1px solid rgba(255, 255, 255, 0.13);
 	box-shadow: 0 30px 70px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }

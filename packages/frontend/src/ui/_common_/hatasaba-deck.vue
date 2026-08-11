@@ -39,7 +39,7 @@
 			<!-- 旗鯖fork(タスク5): 上部メニュー(topNav)⇔左サイドメニューの切替 -->
 			<button :class="[$style.iconBtn, { [$style.iconBtnOn]: topNavMode }]" v-tooltip="topNavMode ? copy.switchToSideNavigation : copy.switchToTopNavigation" @click="toggleTopNavMode"><i :class="topNavMode ? 'ti ti-layout-navbar' : 'ti ti-layout-sidebar'"></i></button>
 			<button v-if="toolbarPos !== 'right'" :class="[$style.iconBtn, { [$style.iconBtnOn]: clockEnabled }]" v-tooltip="copy.showClock" @click="toggleClock"><i class="ti ti-clock"></i></button>
-			<div v-if="showClock" :class="$style.clock">{{ clockText }}</div>
+			<HatasabaDeckClock v-if="showClock" :class="$style.clock"/>
 			<button v-if="toolbarPos !== 'right'" :class="[$style.iconBtn, { [$style.iconBtnOn]: onlineEnabled }]" v-tooltip="copy.showOnlineUsers" @click="toggleOnline"><i class="ti ti-users"></i></button>
 			<div v-if="showOnline && onlineCount != null" :class="$style.online"><span :class="$style.onlineDot"></span>{{ copyx.onlineUsers({ count: numberFormatter.format(onlineCount) }) }}</div>
 			<button v-if="toolbarPos !== 'right'" :class="[$style.iconBtn, { [$style.iconBtnOn]: rssEnabled }]" v-tooltip="copy.manageRssFeeds" @click="openRssMenu($event)"><i class="ti ti-rss"></i></button>
@@ -190,6 +190,7 @@ import MkExternalTimeline from '@/components/MkExternalTimeline.vue';
 import MkStreamingNotificationsTimeline from '@/components/MkStreamingNotificationsTimeline.vue';
 import MkTrendingTimeline from '@/components/MkTrendingTimeline.vue';
 import MkPostForm from '@/components/MkPostForm.vue';
+import HatasabaDeckClock from '@/ui/_common_/hatasaba-deck-clock.vue';
 import { tabSwipeEnabled } from '@/utility/hatasaba-device-prefs.js';
 import { hasConfiguredNotificationFilter, migrateNotificationFilterSnapshot, resolveNotificationFilter } from '@/utility/notification-filter.js';
 import { i18n } from '@/i18n.js';
@@ -198,14 +199,6 @@ import { versatileLang } from '@/utility/intl-const.js';
 const copy = i18n.ts._hata._hatasabaUi._deck;
 const copyx = i18n.tsx._hata._hatasabaUi._deck;
 const numberFormatter = new Intl.NumberFormat(versatileLang);
-const clockFormatter = new Intl.DateTimeFormat(versatileLang, {
-	month: 'numeric',
-	day: 'numeric',
-	weekday: 'short',
-	hour: 'numeric',
-	minute: '2-digit',
-	second: '2-digit',
-});
 
 const XWidgets = defineAsyncComponent(() => import('./widgets.vue'));
 const WidgetExternalNotifications = defineAsyncComponent(() => import('@/widgets/WidgetExternalNotifications.vue'));
@@ -280,11 +273,6 @@ const toolbarPosLabel = computed(() => toolbarPos.value === 'top' ? copy.toolbar
 const clockEnabled = computed<boolean>(() => prefer.r['simpleUi.deckClock']?.value as boolean ?? false);
 function toggleClock() { prefer.commit('simpleUi.deckClock', !clockEnabled.value); }
 const showClock = computed(() => clockEnabled.value && (toolbarPos.value === 'top' || toolbarPos.value === 'bottom'));
-const now = ref(new Date());
-let clockTimer: ReturnType<typeof setInterval> | null = null;
-const clockText = computed(() => clockFormatter.format(now.value));
-onMounted(() => { clockTimer = setInterval(() => { now.value = new Date(); }, 1000); });
-onUnmounted(() => { if (clockTimer) clearInterval(clockTimer); });
 
 // 旗鯖fork: デッキ表示中は、各種ページ遷移をモーダルウィンドウで開く(従来のMisskeyデッキと同じ挙動)。
 // mainRouter.navHook を設定し、アンマウント時に解除する。
@@ -691,7 +679,8 @@ function resolveColumn(tab: DeckTab): Component {
 	if (tab.type === 'favorites') return MkDeckPaginatedNotes;
 	return ColumnError;
 }
-function columnProps(tab: DeckTab): Record<string, unknown> {
+
+function buildColumnProps(tab: DeckTab): Record<string, unknown> {
 	const wr = tab.withRenotes !== false;
 	if (tab.type in NOTE_SRC) return { src: NOTE_SRC[tab.type], withRenotes: wr };
 	if (tab.type === 'list' && tab.sourceId) return { src: 'list', list: tab.sourceId, withRenotes: wr };
@@ -715,6 +704,30 @@ function columnProps(tab: DeckTab): Record<string, unknown> {
 	if (tab.type === 'favorites') return { endpoint: 'i/favorites' };
 	if (tab.type === 'clip' && !tab.sourceId) return { message: copy.clipNotSelected };
 	return { message: (tab.type === 'ohtl' || tab.type === 'oltl' || tab.type === 'externalNotifications') ? copy.externalAccountNotConnected : copy.cannotDisplayColumn };
+}
+
+// 時計・オンライン人数・RSSティッカーなど、ツールバーだけの更新で親が再描画されても
+// 各カラムへ新しい配列/オブジェクト参照を渡さない。通知カラムはexcludeTypesの参照変更を
+// 設定変更と見なしてreloadするため、毎秒の点滅を防ぐにはpropsの安定化も必要になる。
+const columnPropsCache = new Map<string, { signature: string; value: Record<string, unknown> }>();
+
+function columnProps(tab: DeckTab): Record<string, unknown> {
+	const signature = JSON.stringify({
+		type: tab.type,
+		sourceId: tab.sourceId,
+		withRenotes: tab.withRenotes,
+		excludeTypes: tab.excludeTypes,
+		notificationFilterKnownTypes: tab.notificationFilterKnownTypes,
+		excludeBots: tab.excludeBots,
+		externalReady: externalReady.value,
+		externalHost: externalHost.value,
+		externalToken: externalToken.value,
+	});
+	const cached = columnPropsCache.get(tab.id);
+	if (cached?.signature === signature) return cached.value;
+	const value = buildColumnProps(tab);
+	columnPropsCache.set(tab.id, { signature, value });
+	return value;
 }
 const ColumnError = defineAsyncComponent(() => Promise.resolve({
 	props: { message: { type: String, default: '' } },

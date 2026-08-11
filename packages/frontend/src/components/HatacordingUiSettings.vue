@@ -195,6 +195,13 @@ onBeforeUnmount(() => window.removeEventListener(HATACORDING_UI_PREFERENCES_CHAN
 	font-weight: 800;
 }
 
+.choice[data-active='true']:hover,
+.choice[data-active='true']:focus-visible {
+	border-color: color-mix(in srgb, var(--MI_THEME-accent) 60%, transparent);
+	background: var(--MI_THEME-accent);
+	color: var(--MI_THEME-fgOnAccent);
+}
+
 .root[data-color-mode='dark'] .choiceBar {
 	border-color: #515c70;
 	background: #202632;
@@ -212,6 +219,14 @@ onBeforeUnmount(() => window.removeEventListener(HATACORDING_UI_PREFERENCES_CHAN
 }
 
 .root[data-color-mode='dark'] .activeChoice {
+	border-color: color-mix(in srgb, var(--MI_THEME-accent) 78%, #8b96aa);
+	background: color-mix(in srgb, var(--MI_THEME-accent) 68%, #202632);
+	color: #fff;
+	-webkit-text-fill-color: #fff;
+}
+
+.root[data-color-mode='dark'] [data-hatacording-ui-scale-selector] .choice[data-active='true']:hover,
+.root[data-color-mode='dark'] [data-hatacording-ui-scale-selector] .choice[data-active='true']:focus-visible {
 	border-color: color-mix(in srgb, var(--MI_THEME-accent) 78%, #8b96aa);
 	background: color-mix(in srgb, var(--MI_THEME-accent) 68%, #202632);
 	color: #fff;
