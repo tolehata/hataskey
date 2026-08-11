@@ -18,6 +18,6 @@ describe('HataFeed top actions', () => {
 		expect(hatafeedSource).toContain('v-if="isStaff && emojiRequests.length > 1"');
 		expect(hatafeedSource).toContain(':class="$style.sideReviewQueue"');
 		expect(hatafeedSource).toContain('@click="openReviewQueue"');
-		expect(hatafeedSource).toContain('> まとめて確認</button>');
+		expect(hatafeedSource).toContain('> {{ copy.reviewTogether }}</button>');
 	});
 });

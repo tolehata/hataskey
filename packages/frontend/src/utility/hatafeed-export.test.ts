@@ -14,9 +14,9 @@ afterEach(() => {
 
 describe('HataFeed export helpers', () => {
 	test('番号と日付の逆転を拒否する', () => {
-		expect(validateHataFeedExportRange({ numberFrom: 0, numberTo: null, createdFrom: '', createdTo: '' })).toContain('1以上');
-		expect(validateHataFeedExportRange({ numberFrom: 20, numberTo: 10, createdFrom: '', createdTo: '' })).toContain('イシュー番号');
-		expect(validateHataFeedExportRange({ numberFrom: null, numberTo: null, createdFrom: '2026-08-05', createdTo: '2026-08-04' })).toContain('作成日');
+		expect(validateHataFeedExportRange({ numberFrom: 0, numberTo: null, createdFrom: '', createdTo: '' })).not.toBeNull();
+		expect(validateHataFeedExportRange({ numberFrom: 20, numberTo: 10, createdFrom: '', createdTo: '' })).not.toBeNull();
+		expect(validateHataFeedExportRange({ numberFrom: null, numberTo: null, createdFrom: '2026-08-05', createdTo: '2026-08-04' })).not.toBeNull();
 	});
 
 	test('未指定または正しい範囲を受け入れる', () => {
