@@ -22,10 +22,24 @@ describe('HATA_WHATS_NEW', () => {
 	});
 
 	test('機械判定用の完全な版から旗鯖の表示版を生成する', () => {
-		expect(HATA_WHATS_NEW.version).toBe('2026.7.0-hata.12.1.1');
-		expect(getHataWhatsNewDisplayVersion(HATA_WHATS_NEW.version)).toBe('hata-12.1.1');
+		expect(HATA_WHATS_NEW.version).toBe('2026.7.0-hata.12.1.2');
+		expect(getHataWhatsNewDisplayVersion(HATA_WHATS_NEW.version)).toBe('hata-12.1.2');
 		expect(getHataWhatsNewDisplayVersion('2026.7.0-hata.12.1')).toBe('hata-12.1');
 		expect(getHataWhatsNewDisplayVersion('development')).toBe('development');
+	});
+
+	test('12.1.2で追加・改善した利用者向け機能を案内する', () => {
+		const hatask = HATA_WHATS_NEW.items.find(item => item.preview === 'hatask');
+		const sideStudio = HATA_WHATS_NEW.items.find(item => item.preview === 'sideStudio');
+		const hatacording = HATA_WHATS_NEW.items.find(item => item.preview === 'hatacording');
+		const ui = HATA_WHATS_NEW.items.find(item => item.preview === 'ui');
+		const language = HATA_WHATS_NEW.items.find(item => item.preview === 'language');
+		expect(hatask?.text).toContain('カードメーカー');
+		expect(hatask?.text).toContain('バックグラウンド');
+		expect(sideStudio?.text).toContain('猫の肉球');
+		expect(hatacording?.text).toContain('返信先');
+		expect(ui?.text).toContain('時計');
+		expect(language?.text).toContain('サーバー情報');
 	});
 
 	test('新機能カードはそれぞれ正しい画面へ誘導する', () => {

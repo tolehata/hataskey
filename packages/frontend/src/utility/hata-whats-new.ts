@@ -11,7 +11,7 @@
  * ⚠️版を上げたら `version` を package.json の値に合わせ、`items` を書き直すこと。
  *   合っていないと「更新したのに前回の内容が出る」ことになる。
  *
- * ⚠️今回（hata-12.1.1）は**本番の 11.7 から一気に上がる**ため、
+ * ⚠️今回（hata-12.1.2）は**本番の 11.7 から一気に上がる**ため、
  *   11.7.5 / 11.7.6 / 11.7.7 / 11.8 とその後の追加を**まとめて**案内する。
  */
 
@@ -64,7 +64,7 @@ export function getHataWhatsNewDisplayVersion(version: string): string {
 }
 
 export const HATA_WHATS_NEW: HataWhatsNew = {
-	version: '2026.7.0-hata.12.1.1',
+	version: '2026.7.0-hata.12.1.2',
 	headline: copy.headline,
 	items: [
 		{
