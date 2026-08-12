@@ -146,6 +146,8 @@ export class SignupService {
 			await transactionalEntityManager.save(new MiUserProfile({
 				userId: account.id,
 				autoAcceptFollowed: true,
+				// 旗鯖の既定表示言語。リモートユーザーのプロフィールには設定しない。
+				lang: 'ja-JP',
 				password: hash,
 			}));
 
@@ -165,4 +167,3 @@ export class SignupService {
 		return { account, secret };
 	}
 }
-
