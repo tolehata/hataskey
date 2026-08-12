@@ -18,6 +18,14 @@ export function normalizeHataCardGlassOpacity(value: number): number {
 	return Math.min(90, Math.max(20, Math.round(value / 5) * 5));
 }
 
+/**
+ * MkAvatar の装飾はアバター直径の2倍の画像に対して、offsetを割合指定する。
+ * Canvas出力でも同じ基準へ揃え、プレビューと保存画像の位置を一致させる。
+ */
+export function calculateHataCardDecorationOffset(avatarSize: number, offset: number | null | undefined): number {
+	return avatarSize * 2 * (offset ?? 0);
+}
+
 export function calculateHataCardDeviceTilt(betaDelta: number, gammaDelta: number, screenAngle: number): { x: number; y: number } {
 	const angle = ((screenAngle % 360) + 360) % 360;
 	let vertical = betaDelta;

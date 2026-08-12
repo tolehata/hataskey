@@ -139,7 +139,7 @@ import { userName, userPage } from '@/filters/user.js';
 import { i18n } from '@/i18n.js';
 import { versatileLang } from '@/utility/intl-const.js';
 import { getProxiedImageUrl, getStaticImageUrl } from '@/utility/media-proxy.js';
-import { calculateHataCardDeviceTilt, isHataCardGoldUnlocked, makeHataCardFileName, normalizeHataCardGlassOpacity } from '@/utility/hata-card-maker.js';
+import { calculateHataCardDecorationOffset, calculateHataCardDeviceTilt, isHataCardGoldUnlocked, makeHataCardFileName, normalizeHataCardGlassOpacity } from '@/utility/hata-card-maker.js';
 import * as os from '@/os.js';
 
 const $i = ensureSignin();
@@ -424,7 +424,10 @@ async function drawAvatarDecorations(ctx: CanvasRenderingContext2D, centerX: num
 			const drawSize = avatarSize * 2 * scale;
 			ctx.save();
 			ctx.globalAlpha = decoration.opacity ?? 1;
-			ctx.translate(centerX + (decoration.offsetX ?? 0) * avatarSize, centerY + (decoration.offsetY ?? 0) * avatarSize);
+			ctx.translate(
+				centerX + calculateHataCardDecorationOffset(avatarSize, decoration.offsetX),
+				centerY + calculateHataCardDecorationOffset(avatarSize, decoration.offsetY),
+			);
 			ctx.rotate((decoration.angle ?? 0) * Math.PI * 2);
 			ctx.scale(decoration.flipH ? -1 : 1, 1);
 			ctx.drawImage(image, -drawSize / 2, -drawSize / 2, drawSize, drawSize);

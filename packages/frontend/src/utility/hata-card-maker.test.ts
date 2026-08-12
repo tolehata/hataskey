@@ -7,6 +7,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, test } from 'vitest';
 import {
+	calculateHataCardDecorationOffset,
 	calculateHataCardDeviceTilt,
 	HATA_CARD_GOLD_UNLOCK_AGE_MS,
 	isHataCardGoldUnlocked,
@@ -30,6 +31,12 @@ describe('カードメーカー', () => {
 		expect(normalizeHataCardGlassOpacity(57)).toBe(55);
 		expect(normalizeHataCardGlassOpacity(120)).toBe(90);
 		expect(makeHataCardFileName('../旗茶 / test', 'gold')).toBe('hata-card-gold-旗茶-test.png');
+	});
+
+	test('画像出力のアイコンデコ移動量をプレビューと同じ装飾直径基準で計算する', () => {
+		expect(calculateHataCardDecorationOffset(184, 0.25)).toBe(92);
+		expect(calculateHataCardDecorationOffset(184, -0.1)).toBeCloseTo(-36.8);
+		expect(calculateHataCardDecorationOffset(184, undefined)).toBe(0);
 	});
 
 	test('端末の向きに合わせて傾き軸を切り替え、最大角度を制限する', () => {
