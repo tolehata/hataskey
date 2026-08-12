@@ -54,7 +54,7 @@ vi.mock('@/i18n.js', () => ({
 	},
 }));
 
-vi.mock('@@/js/config.js', () => ({ version: '2026.7.0-hata.12.1.2' }));
+vi.mock('@@/js/config.js', () => ({ version: '2026.7.0-hata.12.1.3' }));
 vi.mock('@/local-storage.js', () => ({
 	miLocalStorage: {
 		getItem: (key: string) => local.get(key) ?? null,
