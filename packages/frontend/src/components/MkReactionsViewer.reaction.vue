@@ -9,23 +9,25 @@ SPDX-License-Identifier: AGPL-3.0-only
 	v-ripple="canToggle"
 	class="_button"
 	:class="[$style.root, { [$style.reacted]: myReaction == reaction, [$style.canToggle]: (canToggle || alternative), [$style.small]: prefer.s.reactionsDisplaySize === 'small', [$style.large]: prefer.s.reactionsDisplaySize === 'large' }]"
-	@click.stop="(ev) => { canToggle || alternative ? toggleReaction(ev) : stealReaction(ev) }"
-	@touchstart.stop="(ev) => openEmojiMenu(ev)"
-	@touchend.stop="closeEmojiMenu"
-	@contextmenu.prevent.stop="menu"
+	@click.stop="onReactionClick"
+	@touchstart.stop="onReactionTouchStart"
+	@touchmove.passive="onReactionTouchMove"
+	@touchend.stop="onReactionTouchEnd"
+	@touchcancel.stop="onReactionTouchCancel"
+	@contextmenu.prevent.stop="onReactionContextMenu"
 >
-	<MkReactionIcon style="pointer-events: none;" :class="prefer.s.limitWidthOfReaction ? $style.limitWidth : ''" :reaction="reaction" :emojiUrl="reactionEmojis[reaction.substring(1, reaction.length - 1)]" @click.stop="(ev) => { canToggle || alternative ? toggleReaction(ev) : stealReaction(ev) }"/>
+	<MkReactionIcon style="pointer-events: none;" :class="prefer.s.limitWidthOfReaction ? $style.limitWidth : ''" :reaction="reaction" :emojiUrl="reactionEmojis[reaction.substring(1, reaction.length - 1)]"/>
 	<span :class="$style.count">{{ count }}</span>
 </button>
 </template>
 
 <script lang="ts" setup>
-import { computed, inject, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { computed, inject, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 import * as Misskey from 'cherrypick-js';
 import { getUnicodeEmojiOrNull } from '@@/js/emojilist.js';
 import MkCustomEmojiDetailedDialog from './MkCustomEmojiDetailedDialog.vue';
 import type { MenuItem } from '@/types/menu';
-import type { ComputedRef } from 'vue';
+import type { ComputedRef, Ref } from 'vue';
 import XDetails from '@/components/MkReactionsViewer.details.vue';
 import MkReactionIcon from '@/components/MkReactionIcon.vue';
 import * as os from '@/os.js';
@@ -48,6 +50,7 @@ import { addToEmojiPalette } from '@/utility/emoji-palette.js';
 import { haptic } from '@/utility/haptic.js';
 import { hideReaction, unhideReaction, isReactionHidden } from '@/utility/hidden-reactions.js';
 import { copyToClipboard } from '@/utility/copy-to-clipboard.js';
+import { ReactionTouchGesture } from '@/utility/reaction-touch-gesture.js';
 
 const props = defineProps<{
 	noteId: Misskey.entities.Note['id'];
@@ -83,7 +86,7 @@ const canToggle = computed(() => {
 	return props.reaction.match(/@\w/) == null && $i != null && emoji != null;
 });
 const canGetInfo = computed(() => !props.reaction.match(/@\w/) && props.reaction.includes(':'));
-const isLocalCustomEmoji = props.reaction[0] === ':' && props.reaction.includes('@.');
+const isLocalCustomEmoji = computed(() => props.reaction[0] === ':' && props.reaction.includes('@.'));
 
 const reactionName = computed(() => {
 	const r = props.reaction.replace(':', '');
@@ -94,7 +97,68 @@ const alternative: ComputedRef<string | null> = computed(() => prefer.s.reactabl
 
 const canSteal = computed(() => props.note.user.host && $i && ($i.isAdmin || $i.policies.canManageCustomEmojis));
 
-const longTouchEmoji = ref(false);
+let touchDetailsShowing: Ref<boolean> | null = null;
+
+const reactionTouchGesture = new ReactionTouchGesture({
+	showDetails: () => {
+		if (mock) return;
+		const showing = ref(true);
+		touchDetailsShowing = showing;
+		haptic();
+		void showReactionDetails(showing);
+	},
+	hideDetails: () => {
+		if (touchDetailsShowing != null) touchDetailsShowing.value = false;
+		touchDetailsShowing = null;
+	},
+	showMenu: () => {
+		if (buttonEl.value != null) stealReaction(buttonEl.value);
+	},
+});
+
+function onReactionClick(ev: MouseEvent) {
+	if (reactionTouchGesture.consumeSyntheticClick()) {
+		ev.preventDefault();
+		return;
+	}
+	if (canToggle.value || alternative.value) {
+		void toggleReaction(ev);
+	} else if (ev.currentTarget instanceof HTMLElement) {
+		stealReaction(ev.currentTarget);
+	}
+}
+
+function touchPoint(ev: TouchEvent) {
+	const touch = ev.touches.item(0) ?? ev.changedTouches.item(0);
+	return touch == null ? null : { x: touch.clientX, y: touch.clientY };
+}
+
+function onReactionTouchStart(ev: TouchEvent) {
+	const point = touchPoint(ev);
+	if (point == null || ev.touches.length !== 1) {
+		reactionTouchGesture.cancel();
+		return;
+	}
+	reactionTouchGesture.start(point);
+}
+
+function onReactionTouchMove(ev: TouchEvent) {
+	const point = touchPoint(ev);
+	if (point != null) reactionTouchGesture.move(point);
+}
+
+function onReactionTouchEnd() {
+	reactionTouchGesture.end();
+}
+
+function onReactionTouchCancel() {
+	reactionTouchGesture.cancel();
+}
+
+function onReactionContextMenu(ev: MouseEvent) {
+	if (reactionTouchGesture.shouldBlockContextMenu()) return;
+	void menu(ev);
+}
 
 async function toggleReaction(ev: MouseEvent) {
 	haptic();
@@ -185,7 +249,7 @@ async function toggleReaction(ev: MouseEvent) {
 	}
 }
 
-function stealReaction(ev: MouseEvent) {
+function stealReaction(anchorElement: HTMLElement) {
 	haptic();
 
 	let menuItems: MenuItem[] = [];
@@ -196,8 +260,8 @@ function stealReaction(ev: MouseEvent) {
 	});
 
 	// 旗鯖fork: リアクション非表示/表示。
-	// 右クリック(menu関数)側にはあったが、長押しで開くこのメニュー(stealReaction、
-	// openEmojiMenu から呼ばれる)側に入れ忘れていたため、モバイルの長押しでは
+	// 右クリック(menu関数)側にはあったが、継続長押しで開くこのメニュー
+	// (stealReaction)側に入れ忘れていたため、モバイルの長押しでは
 	// 「このリアクションを非表示」が出ず絵文字ミュート等しか表示されなかった。
 	// 両方のメニューに同じ項目を出すよう揃える。
 	{
@@ -275,7 +339,7 @@ function stealReaction(ev: MouseEvent) {
 			action: () => {
 				os.confirm({
 					type: 'question',
-					title: i18n.tsx.unmuteX({ x: isLocalCustomEmoji ? `:${emojiName.value}:` : props.reaction }),
+					title: i18n.tsx.unmuteX({ x: isLocalCustomEmoji.value ? `:${emojiName.value}:` : props.reaction }),
 				}).then(({ canceled }) => {
 					if (canceled) return;
 					unmuteEmoji(props.reaction);
@@ -289,7 +353,7 @@ function stealReaction(ev: MouseEvent) {
 			action: () => {
 				os.confirm({
 					type: 'question',
-					title: i18n.tsx.muteX({ x: isLocalCustomEmoji ? `:${emojiName.value}:` : props.reaction }),
+					title: i18n.tsx.muteX({ x: isLocalCustomEmoji.value ? `:${emojiName.value}:` : props.reaction }),
 				}).then(({ canceled }) => {
 					if (canceled) return;
 					muteEmoji(props.reaction);
@@ -303,12 +367,12 @@ function stealReaction(ev: MouseEvent) {
 			text: i18n.ts.addToEmojiPalette,
 			icon: 'ti ti-palette',
 			action: () => {
-				addToEmojiPalette(isLocalCustomEmoji ? `:${emojiName.value}:` : props.reaction);
+				addToEmojiPalette(isLocalCustomEmoji.value ? `:${emojiName.value}:` : props.reaction);
 			},
 		});
 	}
 
-	os.popupMenu(menuItems, ev.currentTarget ?? ev.target);
+	os.popupMenu(menuItems, anchorElement);
 }
 
 async function menu(ev) {
@@ -393,7 +457,7 @@ async function menu(ev) {
 			action: () => {
 				os.confirm({
 					type: 'question',
-					title: i18n.tsx.unmuteX({ x: isLocalCustomEmoji ? `:${emojiName.value}:` : props.reaction }),
+					title: i18n.tsx.unmuteX({ x: isLocalCustomEmoji.value ? `:${emojiName.value}:` : props.reaction }),
 				}).then(({ canceled }) => {
 					if (canceled) return;
 					unmuteEmoji(props.reaction);
@@ -407,7 +471,7 @@ async function menu(ev) {
 			action: () => {
 				os.confirm({
 					type: 'question',
-					title: i18n.tsx.muteX({ x: isLocalCustomEmoji ? `:${emojiName.value}:` : props.reaction }),
+					title: i18n.tsx.muteX({ x: isLocalCustomEmoji.value ? `:${emojiName.value}:` : props.reaction }),
 				}).then(({ canceled }) => {
 					if (canceled) return;
 					muteEmoji(props.reaction);
@@ -421,7 +485,7 @@ async function menu(ev) {
 			text: i18n.ts.addToEmojiPalette,
 			icon: 'ti ti-palette',
 			action: () => {
-				addToEmojiPalette(isLocalCustomEmoji ? `:${emojiName.value}:` : props.reaction);
+				addToEmojiPalette(isLocalCustomEmoji.value ? `:${emojiName.value}:` : props.reaction);
 			},
 		});
 	}
@@ -450,17 +514,6 @@ function chooseAlternative(ev) {
 	});
 }
 
-async function openEmojiMenu(ev) {
-	longTouchEmoji.value = true;
-	window.setTimeout(async () => {
-		if (longTouchEmoji.value === true) stealReaction(ev);
-	}, 500);
-}
-
-function closeEmojiMenu() {
-	longTouchEmoji.value = false;
-}
-
 watch(() => props.count, (newCount, oldCount) => {
 	if (oldCount < newCount) anime();
 });
@@ -469,35 +522,43 @@ onMounted(() => {
 	if (!props.isInitial) anime();
 });
 
+async function showReactionDetails(showing: Ref<boolean>) {
+	const reactions = await misskeyApiGet('notes/reactions', {
+		noteId: props.noteId,
+		type: props.reaction,
+		limit: 10,
+		_cacheKey_: props.count,
+	});
+
+	if (!showing.value || buttonEl.value == null) return;
+
+	let users = reactions.map(x => x.user);
+	// ミュートユーザーを非表示（旗鯖独自機能・端末ローカル/ベータ）
+	// ⚠️詳細画面で ⓘ を押して開いている間だけは除外しない（そこで初めて中身を見せる）。
+	if (hideMutedReactionsLocal.value && !props.revealMuted) {
+		users = users.filter(u => !isMutedUser(u.id));
+	}
+
+	const { dispose } = os.popup(XDetails, {
+		showing,
+		reaction: props.reaction,
+		users,
+		count: props.count,
+		anchorElement: buttonEl.value,
+	}, {
+		closed: () => dispose(),
+	});
+}
+
 if (!mock) {
 	useTooltip(buttonEl, async (showing) => {
-		if (buttonEl.value == null) return;
-
-		const reactions = await misskeyApiGet('notes/reactions', {
-			noteId: props.noteId,
-			type: props.reaction,
-			limit: 10,
-			_cacheKey_: props.count,
-		});
-
-		let users = reactions.map(x => x.user);
-		// ミュートユーザーを非表示（旗鯖独自機能・端末ローカル/ベータ）
-		// ⚠️詳細画面で ⓘ を押して開いている間だけは除外しない（そこで初めて中身を見せる）。
-		if (hideMutedReactionsLocal.value && !props.revealMuted) {
-			users = users.filter(u => u && !isMutedUser(u.id));
-		}
-
-		const { dispose } = os.popup(XDetails, {
-			showing,
-			reaction: props.reaction,
-			users,
-			count: props.count,
-			anchorElement: buttonEl.value,
-		}, {
-			closed: () => dispose(),
-		});
+		await showReactionDetails(showing);
 	}, 100);
 }
+
+onBeforeUnmount(() => {
+	reactionTouchGesture.dispose();
+});
 </script>
 
 <style lang="scss" module>

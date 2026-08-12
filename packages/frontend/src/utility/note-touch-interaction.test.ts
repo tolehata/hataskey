@@ -89,4 +89,14 @@ describe('iPhoneのノート操作をタッチ補助UIが奪わない', () => {
 			expect(componentSource).toMatch(/\.(?:noteFooterButton|footerButton)\s*\{[\s\S]{0,180}touch-action:\s*manipulation;/);
 		}
 	});
+
+	test('既存リアクションは短いタップと段階的な長押しを別経路で扱う', () => {
+		const reaction = source('src/components/MkReactionsViewer.reaction.vue');
+
+		expect(reaction).toContain('@click.stop="onReactionClick"');
+		expect(reaction).toContain('@touchcancel.stop="onReactionTouchCancel"');
+		expect(reaction).toContain('new ReactionTouchGesture({');
+		expect(reaction).not.toContain('openEmojiMenu');
+		expect(reaction).not.toMatch(/window\.setTimeout\([\s\S]{0,120}stealReaction/);
+	});
 });
