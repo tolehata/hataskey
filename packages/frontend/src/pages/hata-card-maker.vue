@@ -60,14 +60,13 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<div
 					ref="tiltEl"
 					:class="$style.tilt"
-					:style="tiltStyle"
 					@pointerdown="startTilt"
 					@pointermove="moveTilt"
 					@pointerup="stopTilt"
 					@pointercancel="stopTilt"
 					@pointerleave="leaveTilt"
 				>
-					<article :class="[$style.card, { [$style.gold]: cardStyle === 'gold' }]" :style="cardSurfaceStyle">
+					<article :class="[$style.card, { [$style.gold]: cardStyle === 'gold' }]" :style="[cardSurfaceStyle, tiltStyle]">
 						<img v-if="bannerSrc && !bannerFailed" :src="bannerSrc" :class="$style.cardBanner" alt="" @error="bannerFailed = true">
 						<div :class="$style.brushed"></div>
 						<div :class="$style.shine" :style="shineStyle"></div>
@@ -208,7 +207,9 @@ const cardSurfaceStyle = computed(() => {
 });
 
 const tiltStyle = computed(() => ({
-	transform: `rotateX(${tiltX.value}deg) rotateY(${tiltY.value}deg)`,
+	// Safariでは親要素のperspectiveだけに依存すると、子の光沢は動いても
+	// カード面の3D変形が合成されない場合がある。描画するarticleへ直接適用する。
+	transform: `perspective(1400px) rotateX(${tiltX.value}deg) rotateY(${tiltY.value}deg) translateZ(0)`,
 	transition: dragging.value ? 'none' : deviceTiltEnabled.value ? 'transform .12s ease-out' : 'transform .55s cubic-bezier(.2,.8,.2,1)',
 }));
 
@@ -689,9 +690,9 @@ onUnmounted(() => {
 .lockHint { display: inline-flex; align-items: center; gap: 6px; margin: -10px 0 0; opacity: .58; font-size: 12px; }
 
 .stage { display: grid; width: 100%; min-height: 390px; place-items: center; perspective: 1400px; }
-.tilt { width: min(560px, 92cqw); aspect-ratio: 1 / .615; cursor: grab; transform-style: preserve-3d; touch-action: pan-y; user-select: none; }
+.tilt { width: min(560px, 92cqw); aspect-ratio: 1 / .615; cursor: grab; touch-action: pan-y; user-select: none; }
 .tilt:active { cursor: grabbing; }
-.card { position: relative; width: 100%; height: 100%; overflow: hidden; border: 1px solid rgba(255,255,255,.68); border-radius: 26px; box-shadow: 0 30px 60px -24px color-mix(in srgb, var(--maker-accent) 42%, transparent), inset 0 1px 0 rgba(255,255,255,.7); color: #1c2434; }
+.card { position: relative; width: 100%; height: 100%; overflow: hidden; transform-style: preserve-3d; transform-origin: 50% 50%; will-change: transform; border: 1px solid rgba(255,255,255,.68); border-radius: 26px; box-shadow: 0 30px 60px -24px color-mix(in srgb, var(--maker-accent) 42%, transparent), inset 0 1px 0 rgba(255,255,255,.7); color: #1c2434; }
 .card.gold { border-color: rgba(231,199,102,.44); box-shadow: 0 30px 60px -22px rgba(0,0,0,.62), inset 0 1px 0 rgba(255,255,255,.08); color: #f5ecd2; }
 .cardBanner { position: absolute; inset: -10px; width: calc(100% + 20px); height: calc(100% + 20px); object-fit: cover; opacity: .13; filter: blur(4px) grayscale(.25); }
 .gold .cardBanner { opacity: .08; filter: blur(4px) grayscale(.6) brightness(.7); }

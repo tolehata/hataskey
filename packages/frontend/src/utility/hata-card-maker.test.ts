@@ -60,7 +60,11 @@ describe('カードメーカー', () => {
 		expect(page).not.toContain('copy.localProfileNotice');
 		expect(page).toContain('window.addEventListener(\'deviceorientation\', onDeviceOrientation');
 		expect(page).toContain('orientationEvent.requestPermission()');
-		expect(page).toContain("image: instance.iconUrl ? getStaticImageUrl(instance.iconUrl) : '/favicon.ico'");
+		expect(page).toContain(':style="[cardSurfaceStyle, tiltStyle]"');
+		expect(page).not.toContain(':class="$style.tilt"\n\t\t\t\t\t:style="tiltStyle"');
+		expect(page).toContain('transform: `perspective(1400px) rotateX(${tiltX.value}deg) rotateY(${tiltY.value}deg) translateZ(0)`');
+		expect(page).toContain('will-change: transform;');
+		expect(page).toContain('image: instance.iconUrl ? getStaticImageUrl(instance.iconUrl) : \'/favicon.ico\'');
 		expect(page).toContain('imageSize: 0.3');
 		expect(page).toContain('dotsOptions: { type: \'dots\', color: dark }');
 		expect(page).toContain('cornersSquareOptions: { type: \'extra-rounded\', color: dark }');
