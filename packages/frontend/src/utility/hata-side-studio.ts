@@ -153,6 +153,20 @@ export type HataSideStudioStore = {
 	profiles: HataSideStudioProfile[];
 };
 
+/**
+ * 要素の現在位置を解決する。ドラッグ中はvuedraggableの更新順によって
+ * 移動先のルートと移動元グループへ同じIDが一時的に見えることがあるため、
+ * ルート直下に存在する要素を常に正本として優先する。
+ */
+export function findHataSideNodeParentGroup(profile: HataSideStudioProfile, nodeId: string): HataSideGroup | null {
+	if (profile.expanded.nodes.some(node => node.id === nodeId)) return null;
+	return profile.expanded.nodes.find((node): node is HataSideGroup => node.type === 'group' && node.children.some(child => child.id === nodeId)) ?? null;
+}
+
+export function getHataSideNodeContainerColumns(profile: HataSideStudioProfile, nodeId: string): 1 | 2 | 3 {
+	return findHataSideNodeParentGroup(profile, nodeId)?.columns ?? profile.expanded.columns;
+}
+
 export type SidebarSourceItem = {
 	id: string;
 	icon: string;

@@ -87,6 +87,9 @@ describe('HataSideStudio UI integration', () => {
 		expect(studio).toContain(':data-container="section.id"');
 		expect(studio).toContain('.reorderSection:not([data-container="root"])');
 		expect(studio).toContain('.dragTimelineSection:not([data-container="root"])');
+		expect(studio).toContain('notifyDragConstraint();');
+		expect(studio).toContain(':data-disabled="!canUseTimelineContainer(section.id) ? \'true\' : undefined"');
+		expect(studio).toContain('.dragTimelineGap[data-disabled="true"]');
 	});
 
 	test('モバイルのドラッグは座標から簡易タイムラインを判定し、上部操作を機能ごと整列する', () => {

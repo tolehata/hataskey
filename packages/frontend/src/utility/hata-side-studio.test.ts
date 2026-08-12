@@ -19,8 +19,10 @@ import {
 	createGroup,
 	createWidget,
 	ensureHataSideStudioInitialized,
+	findHataSideNodeParentGroup,
 	getActiveHataSideStudioMenuIds,
 	getAvailableHataSideStudioMoreItems,
+	getHataSideNodeContainerColumns,
 	getHataSideStudioGroupDisplayName,
 	getHataSideStudioMenuDisplayLabel,
 	getHataSideStudioProfileDisplayName,
@@ -232,6 +234,28 @@ describe('HataSideStudio', () => {
 		expect(sanitizedProfile.expanded.width).toBe('wide');
 		expect(sanitizedProfile.expanded.nodes[0]).toMatchObject({ type: 'button', size: 'normal' });
 		expect(sanitizedProfile.expanded.nodes[1].type === 'group' && sanitizedProfile.expanded.nodes[1].children[0].size).toBe('normal');
+	});
+
+	test('複数列グループから外へ出した要素はルートの列数でサイズ制約を判定する', () => {
+		const profile = createDefaultProfile(source);
+		const group = createGroup('二列グループ');
+		group.columns = 2;
+		const button = createButton(source[0]);
+		group.children = [button];
+		profile.expanded = { nodes: [group], columns: 1, width: 'normal', parallax: false };
+
+		expect(findHataSideNodeParentGroup(profile, button.id)?.id).toBe(group.id);
+		expect(getHataSideNodeContainerColumns(profile, button.id)).toBe(2);
+
+		group.children = [];
+		profile.expanded.nodes.push(button);
+		expect(findHataSideNodeParentGroup(profile, button.id)).toBeNull();
+		expect(getHataSideNodeContainerColumns(profile, button.id)).toBe(1);
+
+		// vuedraggableの更新途中に移動元側が一時的に残ってもルートを優先する。
+		group.children = [button];
+		expect(findHataSideNodeParentGroup(profile, button.id)).toBeNull();
+		expect(getHataSideNodeContainerColumns(profile, button.id)).toBe(1);
 	});
 
 	test('拡大から縮小へコピーしてもウィジェットとグループを混入させない', () => {

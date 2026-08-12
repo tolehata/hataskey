@@ -111,10 +111,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<button class="_button" :class="[$style.dragTimelineDelete, deleteDropArmed && $style.deleteDropArmed]" data-delete-drop @pointerenter="armDeleteDrop" @pointerleave="disarmDeleteDrop" @dragover.prevent="armDeleteDrop"><i class="ti ti-trash-x"></i><span><b>{{ copy.delete }}</b><small>{{ copy.dropHere }}</small></span></button>
 					<section v-for="section in dragTimelineSections" :key="section.id" :class="$style.dragTimelineSection" :data-container="section.id">
 						<strong @pointerenter="timelineDropTarget = null">{{ section.label }}</strong>
-						<button class="_button" :class="$style.dragTimelineGap" :disabled="!canUseTimelineContainer(section.id)" data-timeline-drop :data-container-id="section.id" :data-index="0" :data-active="timelineDropTarget?.containerId === section.id && timelineDropTarget?.index === 0" @pointerenter="armTimelineDrop(section.id, 0)" @dragover.prevent="armTimelineDrop(section.id, 0)"><i class="ti ti-plus"></i><span>{{ copy.insertAtStart }}</span></button>
+						<button class="_button" :class="$style.dragTimelineGap" :aria-disabled="!canUseTimelineContainer(section.id)" :data-disabled="!canUseTimelineContainer(section.id) ? 'true' : undefined" data-timeline-drop :data-container-id="section.id" :data-index="0" :data-active="timelineDropTarget?.containerId === section.id && timelineDropTarget?.index === 0" @pointerenter="armTimelineDrop(section.id, 0)" @dragover.prevent="armTimelineDrop(section.id, 0)"><i class="ti ti-plus"></i><span>{{ copy.insertAtStart }}</span></button>
 						<template v-for="(entry, index) in section.items" :key="entry.id">
 							<div :class="$style.dragTimelineItem" @pointerenter="timelineDropTarget = null"><i :class="entry.icon"></i><span>{{ entry.label }}</span></div>
-							<button class="_button" :class="$style.dragTimelineGap" :disabled="!canUseTimelineContainer(section.id)" data-timeline-drop :data-container-id="section.id" :data-index="index + 1" :data-active="timelineDropTarget?.containerId === section.id && timelineDropTarget?.index === index + 1" @pointerenter="armTimelineDrop(section.id, index + 1)" @dragover.prevent="armTimelineDrop(section.id, index + 1)"><i class="ti ti-plus"></i><span>{{ index === section.items.length - 1 ? copy.insertAtEnd : copy.insertInGap }}</span></button>
+							<button class="_button" :class="$style.dragTimelineGap" :aria-disabled="!canUseTimelineContainer(section.id)" :data-disabled="!canUseTimelineContainer(section.id) ? 'true' : undefined" data-timeline-drop :data-container-id="section.id" :data-index="index + 1" :data-active="timelineDropTarget?.containerId === section.id && timelineDropTarget?.index === index + 1" @pointerenter="armTimelineDrop(section.id, index + 1)" @dragover.prevent="armTimelineDrop(section.id, index + 1)"><i class="ti ti-plus"></i><span>{{ index === section.items.length - 1 ? copy.insertAtEnd : copy.insertInGap }}</span></button>
 						</template>
 					</section>
 				</aside>
@@ -291,7 +291,7 @@ import * as os from '@/os.js';
 import {
 	HATA_SIDE_STUDIO_DEFAULT_PROFILE_LIMIT, applyHataSideStudioStore, cloneHataSideStudioStore,
 	copyCollapsedToExpanded, copyExpandedToCollapsed, createButton, createDefaultProfile, createGroup, createHataSideStudioSourceCatalog, createWidget,
-	ensureHataSideStudioInitialized, getActiveHataSideProfile, getHataSideStudioGroupDisplayName, getHataSideStudioMenuDisplayLabel, getHataSideStudioProfileDisplayName,
+	ensureHataSideStudioInitialized, findHataSideNodeParentGroup, getActiveHataSideProfile, getHataSideNodeContainerColumns, getHataSideStudioGroupDisplayName, getHataSideStudioMenuDisplayLabel, getHataSideStudioProfileDisplayName,
 	getHataSideWidgetDisplayLabel, gradientCss, hataSideStudioStore, mergeHataSideGroups,
 } from '@/utility/hata-side-studio.js';
 import { SIDEBAR_ICON_OVERRIDES } from '@/utility/sidebar-icon-overrides.js';
@@ -436,6 +436,7 @@ const dragHintVisible = ref(false);
 const dragPointer = ref({ x: 24, y: 24 });
 const dragTimelinePosition = ref({ left: 12, top: 12, maxHeight: 360 });
 const draggingNodeId = ref<string | null>(null);
+let dragConstraintNoticeShown = false;
 const deleteDropArmed = ref(false);
 const timelineDropTarget = ref<{ containerId: string; index: number } | null>(null);
 const newButtonMenuId = ref('');
@@ -511,12 +512,11 @@ const previewCount = computed(() => {
 });
 const selectedParentGroupId = computed(() => {
 	if (!selectedId.value) return '';
-	return availableGroups.value.find(group => group.children.some(child => child.id === selectedId.value))?.id ?? '';
+	return findHataSideNodeParentGroup(activeProfile.value, selectedId.value)?.id ?? '';
 });
 const selectedParentColumns = computed(() => {
 	if (editMode.value === 'collapsed' || selected.value?.type === 'group') return 1;
-	const parent = availableGroups.value.find(group => group.children.some(child => child.id === selectedId.value));
-	return parent?.columns ?? activeProfile.value.expanded.columns;
+	return selectedId.value == null ? activeProfile.value.expanded.columns : getHataSideNodeContainerColumns(activeProfile.value, selectedId.value);
 });
 const rootHasLargeItems = computed(() => activeProfile.value.expanded.nodes.some(node => node.type !== 'group' && node.size === 'large'));
 const dragHintStyle = computed(() => ({
@@ -644,7 +644,7 @@ async function askStudioSelect(title: string, text: string, options: Array<{ val
 	return result.confirmed ? result.value : null;
 }
 
-function findNode(id: string | null): HataSideNode | null { if (!id) return null; for (const node of activeProfile.value.expanded.nodes) { if (node.id === id) return node; if (node.type === 'group') { const child = node.children.find(item => item.id === id); if (child) return child; } } return activeProfile.value.collapsed.buttons.find(button => button.id === id) ?? null; }
+function findNode(id: string | null): HataSideNode | null { if (!id) return null; const rootNode = activeProfile.value.expanded.nodes.find(node => node.id === id); if (rootNode) return rootNode; for (const node of activeProfile.value.expanded.nodes) { if (node.type === 'group') { const child = node.children.find(item => item.id === id); if (child) return child; } } return activeProfile.value.collapsed.buttons.find(button => button.id === id) ?? null; }
 
 function selectNode(id: string) {
 	selectedId.value = id;
@@ -680,7 +680,7 @@ function updateDragDropTargetFromPoint() {
 	const target = pointTarget('[data-timeline-drop]');
 	const containerId = target?.dataset.containerId;
 	const index = Number(target?.dataset.index);
-	if (target && containerId && Number.isInteger(index) && canUseTimelineContainer(containerId)) {
+	if (target && containerId && Number.isInteger(index)) {
 		armTimelineDrop(containerId, index);
 		return;
 	}
@@ -704,6 +704,7 @@ function updateDragTimelinePosition() {
 
 function onDragStart(event: any) {
 	dragHintVisible.value = true;
+	dragConstraintNoticeShown = false;
 	draggingNodeId.value = event?.item?.dataset?.nodeId ?? event?.item?.closest?.('[data-node-id]')?.dataset?.nodeId ?? null;
 	deleteDropArmed.value = false;
 	timelineDropTarget.value = null;
@@ -730,6 +731,7 @@ async function onDragEnd() {
 	deleteDropArmed.value = false;
 	timelineDropTarget.value = null;
 	draggingNodeId.value = null;
+	dragConstraintNoticeShown = false;
 	if (sourceId && shouldDelete) {
 		await requestRemoveNode(sourceId);
 		selectAfterDrag();
@@ -777,7 +779,11 @@ function canUseTimelineContainer(containerId: string): boolean {
 }
 
 function armTimelineDrop(containerId: string, index: number) {
-	if (!dragHintVisible.value || !canUseTimelineContainer(containerId)) return;
+	if (!dragHintVisible.value) return;
+	if (!canUseTimelineContainer(containerId)) {
+		notifyDragConstraint();
+		return;
+	}
 	timelineDropTarget.value = { containerId, index };
 	deleteDropArmed.value = false;
 }
@@ -820,7 +826,15 @@ function moveNodeToTimeline(id: string, containerId: string, requestedIndex: num
 function allowNodeMove(evt: any, fallbackContainerId: string): boolean {
 	const moving = evt?.draggedContext?.element as HataSideNode | undefined;
 	const targetGroupId = evt?.to?.closest?.('[data-group-id]')?.dataset?.groupId as string | undefined;
-	return canPlaceNodeInContainer(moving ?? null, targetGroupId ?? fallbackContainerId);
+	const allowed = canPlaceNodeInContainer(moving ?? null, targetGroupId ?? fallbackContainerId);
+	if (!allowed && moving?.type !== 'group' && moving?.size === 'large') notifyDragConstraint();
+	return allowed;
+}
+
+function notifyDragConstraint() {
+	if (dragConstraintNoticeShown) return;
+	dragConstraintNoticeShown = true;
+	os.toast(copy.cannotMoveLargeIntoMultipleColumns, 'ti ti-layout-grid');
 }
 
 function allowExpandedMove(evt: any) { return allowNodeMove(evt, 'root'); }
@@ -912,8 +926,7 @@ function canSetGroupColumns(group: HataSideGroup, columns: 1 | 2 | 3): boolean {
 function canSetNodeSize(node: HataSideButton | HataSideWidget, size: HataSideButtonSize): boolean {
 	if (editMode.value === 'collapsed') return size === 'small';
 	if (size !== 'large') return true;
-	const parent = availableGroups.value.find(group => group.children.some(child => child.id === node.id));
-	return (parent?.columns ?? activeProfile.value.expanded.columns) === 1;
+	return getHataSideNodeContainerColumns(activeProfile.value, node.id) === 1;
 }
 
 function setNodeSize(node: HataSideButton | HataSideWidget, size: HataSideButtonSize) {
@@ -1332,7 +1345,7 @@ definePage(() => ({
 .dragTimelineItem span { overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
 .dragTimelineGap { display:grid;grid-template-columns:16px minmax(0,1fr);align-items:center;gap:4px;min-height:22px;margin:0 7px;padding:2px 6px;color:var(--studioMuted);border:1px dashed color-mix(in srgb,var(--studioAccent) 38%,var(--studioLine));border-radius:7px;background:color-mix(in srgb,var(--studioAccentSoft) 55%,transparent);text-align:left;font-size:.59rem;transition:min-height .12s ease,margin .12s ease,background .12s ease; }
 .dragTimelineGap span { overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }.dragTimelineGap[data-active="true"] { min-height:32px;margin-block:2px;color:var(--studioAccentFg);border-style:solid;border-color:var(--studioAccent);background:var(--studioAccent); }
-.dragTimelineGap:disabled { opacity:.3;cursor:not-allowed; }
+.dragTimelineGap[data-disabled="true"] { opacity:.3;cursor:not-allowed; }
 .creationPicker label { display:grid;gap:5px;font-size:.78rem;color:var(--studioMuted); }
 .pickerHead,.pickerActions { display:flex;align-items:center;justify-content:space-between;gap:8px; }
 .pickerHead button { width:30px;height:30px;border-radius:9px; }
