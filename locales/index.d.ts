@@ -16608,11 +16608,11 @@ export interface Locale extends ILocale {
                  */
                 "drawingToolTip1": string;
                 /**
-                 * 旗鯖カードメーカー
+                 * カードメーカー
                  */
                 "hataCardMakerTitle": string;
                 /**
-                 * ログイン中の旗鯖プロフィールから、デジタル通行証カードを作るHatask内蔵ツールです。外部サービスへのログインやサーバー選択は必要ありません。
+                 * 自分のプロフィールから、デジタル通行証カードを作れます。通常・ゴールドの外観やアクセント色を選び、完成した画像を端末へ保存できます。
                  */
                 "hataCardMakerBody": string;
                 /**
@@ -21222,21 +21222,13 @@ export interface Locale extends ILocale {
             };
             "_cardMaker": {
                 /**
-                 * 旗鯖カードメーカー
+                 * カードメーカー
                  */
                 "title": string;
                 /**
                  * あなたの旗鯖プロフィールをデジタル通行証カードに
                  */
                 "subtitle": string;
-                /**
-                 * Hatask ツール
-                 */
-                "hataskTool": string;
-                /**
-                 * ログイン中のプロフィール情報をHataskey内で直接読み込んでいます。追加のログインやサーバー選択は必要ありません。
-                 */
-                "localProfileNotice": string;
                 /**
                  * カードの外観設定
                  */
@@ -21289,6 +21281,18 @@ export interface Locale extends ILocale {
                  * カードをドラッグ、またはスワイプで傾けられます
                  */
                 "tiltHint": string;
+                /**
+                 * 端末の動きで傾ける
+                 */
+                "enableDeviceTilt": string;
+                /**
+                 * 端末の動きを停止
+                 */
+                "disableDeviceTilt": string;
+                /**
+                 * 端末の動きへのアクセスが許可されませんでした
+                 */
+                "deviceTiltPermissionDenied": string;
                 /**
                  * 画像を保存
                  */
@@ -22576,7 +22580,7 @@ export interface Locale extends ILocale {
                  */
                 "appDrawingShort": string;
                 /**
-                 * 旗鯖カードメーカー
+                 * カードメーカー
                  */
                 "appCardMaker": string;
                 /**

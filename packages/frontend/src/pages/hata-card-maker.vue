@@ -18,13 +18,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<p>{{ copy.subtitle }}</p>
 					</div>
 				</div>
-				<div :class="$style.toolBadge"><i class="ti ti-apps"></i>{{ copy.hataskTool }}</div>
 			</header>
-
-			<div :class="$style.localNotice">
-				<i class="ti ti-shield-check"></i>
-				<span>{{ copy.localProfileNotice }}</span>
-			</div>
 
 			<section :class="$style.controls" :aria-label="copy.appearanceSettings">
 				<div :class="$style.segmented">
@@ -37,7 +31,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</div>
 
 				<div :class="$style.tweaks">
-					<label :class="$style.colorField">
+					<div :class="$style.colorField" role="group" :aria-label="copy.accentColor">
 						<span>{{ copy.accentColor }}</span>
 						<span :class="$style.swatches">
 							<button
@@ -51,7 +45,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 								@click="accentColor = color"
 							></button>
 						</span>
-					</label>
+					</div>
 					<label :class="$style.opacityField">
 						<span>{{ copy.glassOpacity }}</span>
 						<input v-model.number="glassOpacity" type="range" min="20" max="90" step="5">
@@ -101,18 +95,24 @@ SPDX-License-Identifier: AGPL-3.0-only
 						</div>
 
 						<div :class="$style.qrBox">
-							<img v-if="activeQrCode" :src="activeQrCode" :alt="copy.profileQrCode">
-							<i v-else class="ti ti-loader-2"></i>
+							<img v-if="profileCode" :src="profileCode" :alt="copy.profileQrCode">
+							<i v-else :class="['ti', 'ti-loader-2', $style.qrLoader]"></i>
 						</div>
 						<div :class="$style.dots"><i></i><i></i><i></i></div>
 					</article>
 				</div>
 			</section>
 
-			<p :class="$style.tiltHint"><i class="ti ti-hand-move"></i>{{ copy.tiltHint }}</p>
+			<div :class="$style.tiltControls">
+				<p :class="$style.tiltHint"><i class="ti ti-hand-move"></i>{{ copy.tiltHint }}</p>
+				<button v-if="deviceTiltSupported" class="_button" :class="[$style.deviceTiltButton, { [$style.active]: deviceTiltEnabled }]" type="button" @click="toggleDeviceTilt">
+					<i :class="deviceTiltEnabled ? 'ti ti-device-mobile-check' : 'ti ti-device-mobile-rotated'"></i>
+					{{ deviceTiltEnabled ? copy.disableDeviceTilt : copy.enableDeviceTilt }}
+				</button>
+			</div>
 
 			<div :class="$style.actions">
-				<button class="_button" :class="$style.saveButton" type="button" :disabled="saving || !activeQrCode" @click="saveCard">
+				<button class="_button" :class="$style.saveButton" type="button" :disabled="saving || !profileCode" @click="saveCard">
 					<i :class="saving ? 'ti ti-loader-2' : 'ti ti-download'"></i>
 					{{ saving ? copy.saving : copy.saveImage }}
 				</button>
@@ -128,19 +128,19 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { computed, nextTick, onMounted, ref, useTemplateRef } from 'vue';
-import * as QRCode from 'qrcode';
+import { computed, nextTick, onMounted, onUnmounted, ref, useTemplateRef } from 'vue';
+import QRCodeStyling from 'qr-code-styling';
 import tinycolor from 'tinycolor2';
 import { host, url } from '@@/js/config.js';
+import type { HataCardStyle } from '@/utility/hata-card-maker.js';
 import { definePage } from '@/page.js';
 import { ensureSignin } from '@/i.js';
 import { instance } from '@/instance.js';
 import { userName, userPage } from '@/filters/user.js';
 import { i18n } from '@/i18n.js';
 import { versatileLang } from '@/utility/intl-const.js';
-import { getProxiedImageUrl } from '@/utility/media-proxy.js';
-import { isHataCardGoldUnlocked, makeHataCardFileName, normalizeHataCardGlassOpacity } from '@/utility/hata-card-maker.js';
-import type { HataCardStyle } from '@/utility/hata-card-maker.js';
+import { getProxiedImageUrl, getStaticImageUrl } from '@/utility/media-proxy.js';
+import { calculateHataCardDeviceTilt, isHataCardGoldUnlocked, makeHataCardFileName, normalizeHataCardGlassOpacity } from '@/utility/hata-card-maker.js';
 import * as os from '@/os.js';
 
 const $i = ensureSignin();
@@ -155,14 +155,21 @@ const glassOpacity = ref(55);
 const saving = ref(false);
 const avatarFailed = ref(false);
 const bannerFailed = ref(false);
-const qrStandard = ref<string | null>(null);
-const qrGold = ref<string | null>(null);
+const profileCode = ref<string | null>(null);
 const tiltX = ref(0);
 const tiltY = ref(0);
 const shineX = ref(50);
 const shineY = ref(50);
 const dragging = ref(false);
+const deviceTiltSupported = ref(false);
+const deviceTiltEnabled = ref(false);
 const tiltEl = useTemplateRef('tiltEl');
+
+type DeviceOrientationEventConstructorWithPermission = typeof DeviceOrientationEvent & {
+	requestPermission?: () => Promise<'granted' | 'denied'>;
+};
+
+let deviceTiltBaseline: { beta: number; gamma: number; angle: number } | null = null;
 
 const profileName = computed(() => userName($i));
 const profileHandle = computed(() => `@${$i.username}@${host}`);
@@ -171,7 +178,7 @@ const goldUnlocked = computed(() => isHataCardGoldUnlocked($i.createdAt));
 const avatarFallback = computed(() => profileName.value.trim().slice(0, 1).toUpperCase() || '?');
 const avatarSrc = computed(() => getProxiedImageUrl($i.avatarUrl, 'avatar', true));
 const bannerSrc = computed(() => $i.bannerUrl ? getProxiedImageUrl($i.bannerUrl, 'preview', true) : null);
-const avatarDecorations = computed(() => $i.avatarDecorations ?? []);
+const avatarDecorations = computed(() => $i.avatarDecorations);
 const memberLabel = computed(() => copyx.memberLabel({ server: instance.name ?? host }));
 const joinedDateLabel = computed(() => {
 	const date = new Date($i.createdAt);
@@ -179,8 +186,6 @@ const joinedDateLabel = computed(() => {
 	const formatted = new Intl.DateTimeFormat(versatileLang, { year: 'numeric', month: '2-digit', day: '2-digit' }).format(date);
 	return copyx.registeredOn({ date: formatted });
 });
-const activeQrCode = computed(() => cardStyle.value === 'gold' ? qrGold.value : qrStandard.value);
-
 const accentChoices = computed(() => {
 	const values = [accentColor.value, '#4f8ff7', '#6abf8b', '#9b7bf0', '#e76f9a'];
 	return [...new Set(values.map(color => tinycolor(color).toHexString()))];
@@ -204,7 +209,7 @@ const cardSurfaceStyle = computed(() => {
 
 const tiltStyle = computed(() => ({
 	transform: `rotateX(${tiltX.value}deg) rotateY(${tiltY.value}deg)`,
-	transition: dragging.value ? 'none' : 'transform .55s cubic-bezier(.2,.8,.2,1)',
+	transition: dragging.value ? 'none' : deviceTiltEnabled.value ? 'transform .12s ease-out' : 'transform .55s cubic-bezier(.2,.8,.2,1)',
 }));
 
 const shineStyle = computed(() => ({
@@ -228,7 +233,7 @@ function updateTilt(clientX: number, clientY: number) {
 
 function startTilt(event: PointerEvent) {
 	dragging.value = true;
-	(event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
+	(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
 	updateTilt(event.clientX, event.clientY);
 }
 
@@ -247,12 +252,65 @@ function resetTilt() {
 
 function stopTilt(event: PointerEvent) {
 	const target = event.currentTarget as HTMLElement;
-	if (target.hasPointerCapture?.(event.pointerId)) target.releasePointerCapture(event.pointerId);
+	if (target.hasPointerCapture(event.pointerId)) target.releasePointerCapture(event.pointerId);
 	resetTilt();
 }
 
 function leaveTilt(event: PointerEvent) {
 	if (event.pointerType === 'mouse' && !dragging.value) resetTilt();
+}
+
+function screenAngle(): number {
+	const legacyOrientation = typeof window.orientation === 'number' ? window.orientation : 0;
+	const screenOrientation = (window.screen as unknown as { orientation?: { angle?: number } }).orientation;
+	const angle = screenOrientation?.angle ?? legacyOrientation;
+	return ((angle % 360) + 360) % 360;
+}
+
+function onDeviceOrientation(event: DeviceOrientationEvent) {
+	if (!deviceTiltEnabled.value || dragging.value || event.beta == null || event.gamma == null) return;
+	const angle = screenAngle();
+	if (deviceTiltBaseline == null || deviceTiltBaseline.angle !== angle) {
+		deviceTiltBaseline = { beta: event.beta, gamma: event.gamma, angle };
+		return;
+	}
+
+	const target = calculateHataCardDeviceTilt(event.beta - deviceTiltBaseline.beta, event.gamma - deviceTiltBaseline.gamma, angle);
+	tiltX.value += (target.x - tiltX.value) * 0.24;
+	tiltY.value += (target.y - tiltY.value) * 0.24;
+	shineX.value = 50 + tiltY.value * 3.5;
+	shineY.value = 50 - tiltX.value * 3.5;
+}
+
+function stopDeviceTilt() {
+	window.removeEventListener('deviceorientation', onDeviceOrientation);
+	deviceTiltEnabled.value = false;
+	deviceTiltBaseline = null;
+	resetTilt();
+}
+
+async function toggleDeviceTilt() {
+	if (deviceTiltEnabled.value) {
+		stopDeviceTilt();
+		return;
+	}
+
+	try {
+		const orientationEvent = window.DeviceOrientationEvent as DeviceOrientationEventConstructorWithPermission | undefined;
+		if (orientationEvent?.requestPermission != null) {
+			const permission = await orientationEvent.requestPermission();
+			if (permission !== 'granted') {
+				os.toast(copy.deviceTiltPermissionDenied);
+				return;
+			}
+		}
+		deviceTiltBaseline = null;
+		deviceTiltEnabled.value = true;
+		window.addEventListener('deviceorientation', onDeviceOrientation, { passive: true });
+	} catch (error) {
+		console.error(error);
+		os.toast(copy.deviceTiltPermissionDenied);
+	}
 }
 
 function getDecorationSrc(decorationUrl: string) {
@@ -270,12 +328,51 @@ function getDecorationStyle(decoration: (typeof $i.avatarDecorations)[number]) {
 	};
 }
 
-async function generateQrCodes() {
+function blobToDataUrl(blob: Blob): Promise<string> {
+	return new Promise((resolve, reject) => {
+		const reader = new FileReader();
+		reader.onload = () => typeof reader.result === 'string' ? resolve(reader.result) : reject(new Error('invalid image result'));
+		reader.onerror = () => reject(reader.error ?? new Error('image read failed'));
+		reader.readAsDataURL(blob);
+	});
+}
+
+async function generateProfileCode(): Promise<string> {
+	// 「もっと！ → 二次元コード」と同じ配色・サーバーアイコン・形状を使う。
+	// カード側だけ独自装飾へ分岐させず、既存UIの見慣れた意匠を正本にする。
+	const themeColor = tinycolor(instance.themeColor ?? 'rgb(255, 188, 220)').toHsl();
+	const dark = tinycolor(`hsl(${themeColor.h}, 100, 18)`).toRgbString();
+	const code = new QRCodeStyling({
+		width: 600,
+		height: 600,
+		margin: 42,
+		type: 'canvas',
+		data: profileUrl.value,
+		image: instance.iconUrl ? getStaticImageUrl(instance.iconUrl) : '/favicon.ico',
+		qrOptions: {
+			typeNumber: 0,
+			mode: 'Byte',
+			errorCorrectionLevel: 'H',
+		},
+		imageOptions: {
+			hideBackgroundDots: true,
+			imageSize: 0.3,
+			margin: 16,
+			crossOrigin: 'anonymous',
+		},
+		dotsOptions: { type: 'dots', color: dark },
+		cornersDotOptions: { type: 'dot', color: dark },
+		cornersSquareOptions: { type: 'extra-rounded', color: dark },
+		backgroundOptions: { color: '#ffffff' },
+	});
+	const blob = await code.getRawData('png') as Blob | null;
+	if (blob == null) throw new Error('two-dimensional code generation failed');
+	return blobToDataUrl(blob);
+}
+
+async function generateProfileCodeImage() {
 	try {
-		[qrStandard.value, qrGold.value] = await Promise.all([
-			QRCode.toDataURL(profileUrl.value, { width: 240, margin: 1, errorCorrectionLevel: 'M', color: { dark: '#33415cff', light: '#ffffffff' } }),
-			QRCode.toDataURL(profileUrl.value, { width: 240, margin: 1, errorCorrectionLevel: 'M', color: { dark: '#e7c766ff', light: '#111114ff' } }),
-		]);
+		profileCode.value = await generateProfileCode();
 	} catch (error) {
 		console.error(error);
 		os.alert({ type: 'error', title: copy.qrFailedTitle, text: copy.qrFailed });
@@ -449,15 +546,16 @@ async function renderCardCanvas(): Promise<HTMLCanvasElement> {
 	ctx.font = '800 28px system-ui, sans-serif';
 	ctx.fillText(copy.passLabel, width - 44, 62);
 
-	if (activeQrCode.value != null) {
-		const qr = await loadImage(activeQrCode.value);
-		const qrSize = 126;
-		const qrX = width - qrSize - 44;
-		const qrY = height - qrSize - 40;
-		roundedRectPath(ctx, qrX - 12, qrY - 12, qrSize + 24, qrSize + 24, 20);
-		ctx.fillStyle = isGold ? '#111114' : 'rgba(255,255,255,.94)';
-		ctx.fill();
+	if (profileCode.value != null) {
+		const qr = await loadImage(profileCode.value);
+		const qrSize = 150;
+		const qrX = width - qrSize - 38;
+		const qrY = height - qrSize - 34;
+		ctx.save();
+		roundedRectPath(ctx, qrX, qrY, qrSize, qrSize, 18);
+		ctx.clip();
 		ctx.drawImage(qr, qrX, qrY, qrSize, qrSize);
+		ctx.restore();
 	}
 
 	ctx.strokeStyle = isGold ? 'rgba(231,199,102,.46)' : 'rgba(255,255,255,.72)';
@@ -468,12 +566,12 @@ async function renderCardCanvas(): Promise<HTMLCanvasElement> {
 }
 
 async function saveCard() {
-	if (saving.value || activeQrCode.value == null) return;
+	if (saving.value || profileCode.value == null) return;
 	saving.value = true;
 	resetTilt();
 	await nextTick();
 	try {
-		await window.document.fonts?.ready;
+		await window.document.fonts.ready;
 		const canvas = await renderCardCanvas();
 		const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'));
 		if (blob == null) throw new Error('PNG encode failed');
@@ -497,7 +595,12 @@ onMounted(() => {
 	const themeAccent = tinycolor(window.getComputedStyle(window.document.documentElement).getPropertyValue('--MI_THEME-accent').trim());
 	if (themeAccent.isValid()) accentColor.value = themeAccent.toHexString();
 	glassOpacity.value = normalizeHataCardGlassOpacity(glassOpacity.value);
-	generateQrCodes();
+	deviceTiltSupported.value = 'DeviceOrientationEvent' in window && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
+	generateProfileCodeImage();
+});
+
+onUnmounted(() => {
+	window.removeEventListener('deviceorientation', onDeviceOrientation);
 });
 </script>
 
@@ -507,6 +610,9 @@ onMounted(() => {
 	min-height: 100dvh;
 	overflow: hidden;
 	container-type: inline-size;
+	/* この画面には文字入力欄が無い。Chromeがボタン操作位置へ残す
+	   テキストキャレットを描画させず、フォーカスリングは維持する。 */
+	caret-color: transparent;
 	color: var(--MI_THEME-fg);
 	background:
 		radial-gradient(circle at 14% -8%, color-mix(in srgb, var(--maker-accent) 17%, transparent), transparent 43%),
@@ -543,8 +649,8 @@ onMounted(() => {
 .hero {
 	display: flex;
 	width: 100%;
-	align-items: flex-start;
-	justify-content: space-between;
+	align-items: center;
+	justify-content: flex-start;
 	gap: 18px;
 }
 
@@ -552,18 +658,6 @@ onMounted(() => {
 .heroIcon { display: grid; width: 50px; height: 50px; flex: 0 0 50px; place-items: center; border-radius: 16px; color: var(--maker-accent); background: color-mix(in srgb, var(--maker-accent) 16%, var(--MI_THEME-panel)); font-size: 24px; }
 .hero h1 { margin: 0; font-size: 21px; font-weight: 800; letter-spacing: .02em; }
 .hero p { margin: 3px 0 0; opacity: .66; font-size: 13px; line-height: 1.55; }
-.toolBadge { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 6px; padding: 7px 14px; border: 1px solid color-mix(in srgb, var(--maker-accent) 24%, transparent); border-radius: 999px; color: var(--maker-accent); background: color-mix(in srgb, var(--maker-accent) 10%, var(--MI_THEME-panel)); font-size: 12px; font-weight: 700; }
-
-.localNotice {
-	display: flex;
-	align-self: flex-start;
-	align-items: flex-start;
-	gap: 8px;
-	opacity: .68;
-	font-size: 12.5px;
-	line-height: 1.6;
-}
-.localNotice i { margin-top: .2em; color: var(--maker-accent); }
 
 .controls {
 	display: flex;
@@ -576,6 +670,7 @@ onMounted(() => {
 	border: 1px solid var(--MI_THEME-divider);
 	border-radius: 18px;
 	background: color-mix(in srgb, var(--MI_THEME-panel) 88%, transparent);
+	user-select: none;
 }
 
 .segmented { display: inline-flex; flex: 0 0 auto; gap: 4px; padding: 4px; border: 1px solid var(--MI_THEME-divider); border-radius: 999px; background: var(--MI_THEME-bg); }
@@ -619,15 +714,17 @@ onMounted(() => {
 .gold .cardInfo span, .gold .cardInfo small { color: rgba(231,199,102,.76); }
 .cardInfo em { display: inline-block; max-width: min(100%, 250px); overflow: hidden; margin-top: 12px; padding: 5px 14px; border: 1px solid color-mix(in srgb, var(--maker-accent) 32%, transparent); border-radius: 999px; color: var(--maker-accent); background: color-mix(in srgb, var(--maker-accent) 16%, white); font-size: 10.5px; font-style: normal; font-weight: 800; letter-spacing: .08em; text-overflow: ellipsis; white-space: nowrap; }
 .gold .cardInfo em { border-color: rgba(231,199,102,.42); color: #e7c766; background: rgba(231,199,102,.18); }
-.qrBox { position: absolute; z-index: 3; right: 22px; bottom: 20px; display: grid; width: 62px; height: 62px; padding: 6px; place-items: center; border: 1px solid rgba(255,255,255,.62); border-radius: 12px; background: rgba(255,255,255,.93); box-shadow: 0 6px 16px rgba(0,0,0,.18); box-sizing: border-box; }
-.gold .qrBox { border-color: rgba(231,199,102,.36); background: #111114; }
-.qrBox img { width: 100%; height: 100%; border-radius: 5px; }
-.qrBox i { color: var(--maker-accent); animation: spin 1s linear infinite; }
-.dots { position: absolute; z-index: 2; right: 102px; bottom: 26px; display: flex; gap: 5px; }
+.qrBox { position: absolute; z-index: 3; right: 18px; bottom: 16px; display: grid; width: 78px; height: 78px; overflow: clip; place-items: center; border-radius: 12px; background: #fff; box-shadow: 0 8px 20px rgba(0,0,0,.16); }
+.qrBox img { width: 100%; height: 100%; }
+.qrLoader { color: var(--maker-accent); animation: spin 1s linear infinite; }
+.dots { position: absolute; z-index: 2; right: 108px; bottom: 26px; display: flex; gap: 5px; }
 .dots i { width: 5px; height: 5px; border-radius: 50%; background: #78808c; }
 .gold .dots i { background: #d4af37; box-shadow: 0 0 6px rgba(212,175,55,.3); }
 
-.tiltHint { display: inline-flex; align-items: center; gap: 7px; margin: -13px 0 0; opacity: .55; font-size: 12.5px; }
+.tiltControls { display: flex; align-items: center; justify-content: center; gap: 10px; margin: -13px 0 0; }
+.tiltHint { display: inline-flex; align-items: center; gap: 7px; margin: 0; opacity: .55; font-size: 12.5px; }
+.deviceTiltButton { display: inline-flex; align-items: center; gap: 6px; padding: 7px 11px; border: 1px solid var(--MI_THEME-divider); border-radius: 999px; color: var(--MI_THEME-fg); background: color-mix(in srgb, var(--MI_THEME-panel) 88%, transparent); font-size: 11.5px; font-weight: 700; }
+.deviceTiltButton.active { border-color: color-mix(in srgb, var(--maker-accent) 55%, transparent); color: var(--maker-accent); background: color-mix(in srgb, var(--maker-accent) 13%, var(--MI_THEME-panel)); }
 .actions { display: flex; justify-content: center; }
 .saveButton { display: inline-flex; align-items: center; gap: 9px; padding: 13px 30px; border-radius: 999px; color: var(--MI_THEME-fgOnAccent); background: linear-gradient(100deg, var(--maker-accent), color-mix(in srgb, var(--maker-accent) 62%, #7a4de0)); box-shadow: 0 14px 30px -12px color-mix(in srgb, var(--maker-accent) 62%, transparent); font-size: 14px; font-weight: 800; }
 .saveButton:disabled { cursor: wait; opacity: .56; }
@@ -648,8 +745,6 @@ onMounted(() => {
 	.heroIcon { width: 42px; height: 42px; flex-basis: 42px; border-radius: 13px; font-size: 21px; }
 	.hero h1 { font-size: 18px; }
 	.hero p { font-size: 12px; }
-	.toolBadge { padding: 6px 10px; font-size: 0; }
-	.toolBadge i { font-size: 16px; }
 	.controls { flex-direction: column; align-items: stretch; }
 	.segmented { align-self: center; }
 	.tweaks { justify-content: space-between; }
@@ -662,8 +757,8 @@ onMounted(() => {
 	.cardInfo small { margin-top: 5px; font-size: 8px; }
 	.cardInfo em { margin-top: 8px; padding: 4px 10px; font-size: 8px; }
 	.cardLogo { top: 13px; right: 14px; font-size: 11px; }
-	.qrBox { right: 14px; bottom: 13px; width: 49px; height: 49px; padding: 5px; border-radius: 9px; }
-	.dots { right: 72px; bottom: 18px; }
+	.qrBox { right: 12px; bottom: 11px; width: 58px; height: 58px; border-radius: 9px; }
+	.dots { right: 78px; bottom: 18px; }
 }
 
 @container (max-width: 430px) {
@@ -679,13 +774,14 @@ onMounted(() => {
 	.cardInfo small { font-size: 7px; }
 	.cardInfo em { max-width: 132px; margin-top: 5px; padding: 3px 7px; font-size: 6.5px; }
 	.cardLogo { top: 9px; right: 10px; font-size: 8px; }
-	.qrBox { right: 9px; bottom: 9px; width: 39px; height: 39px; padding: 4px; }
-	.dots { right: 53px; bottom: 13px; gap: 3px; }
+	.qrBox { right: 7px; bottom: 7px; width: 45px; height: 45px; border-radius: 7px; }
+	.dots { right: 58px; bottom: 13px; gap: 3px; }
 	.dots i { width: 3px; height: 3px; }
+	.tiltControls { flex-direction: column; gap: 7px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.ambient, .qrBox i, .saveButton i { animation: none !important; }
+	.ambient, .qrLoader, .saveButton i { animation: none !important; }
 	.tilt { transition: none !important; transform: none !important; }
 }
 </style>
