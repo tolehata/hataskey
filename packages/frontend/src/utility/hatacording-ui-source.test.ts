@@ -110,7 +110,8 @@ describe('HataSNSCordUIの結線', () => {
 		expect(page).toContain('<MkNote :note=');
 		expect(page).toContain(':withHardMute="true"');
 		expect(page).toContain(':class="$style.embeddedNote"');
-		expect(page).toContain('@click.capture="onEmbeddedNoteClick');
+		expect(page).toContain('@click="onEmbeddedNoteClick');
+		expect(page).not.toContain('@click.capture="onEmbeddedNoteClick');
 		expect(page).toContain("target.closest('a, button, input, textarea, select, [role=\"button\"], [contenteditable=\"true\"]')");
 		expect(page).toContain("new CustomEvent('hatacording-open-user'");
 		expect(page).toContain("window.addEventListener('simple-user-panel', onHatacordingSimpleUserPanel)");
@@ -430,6 +431,8 @@ describe('HataSNSCordUIの結線', () => {
 	test('モバイルの両端スワイプと右ペイン一覧の独立スクロールを持つ', () => {
 		expect(page).toContain('@touchstart.passive="onMobileEdgeTouchStart"');
 		expect(page).toContain('@touchend.passive="onMobileEdgeTouchEnd"');
+		expect(page).toContain('@touchcancel.passive="onMobileEdgeTouchCancel"');
+		expect(page).toContain('function onMobileEdgeTouchCancel()');
 		expect(page).toContain("if (start.edge === 'left' && deltaX > 0) openLeftPane()");
 		expect(page).toContain("if (start.edge === 'right' && deltaX < 0) openRightPane()");
 		expect(page).toContain('rightPaneOpen.value = false;\n\tdrawerOpen.value = true;');

@@ -11,9 +11,6 @@ import type { Directive } from 'vue';
 import { isTouchUsing } from '@/utility/touch.js';
 import { popup, alert } from '@/os.js';
 
-const start = isTouchUsing ? 'touchstart' : 'mouseenter';
-const end = isTouchUsing ? 'touchend' : 'mouseleave';
-
 type TooltipDirectiveState = {
 	text: string | null | undefined;
 	_close: null | (() => void);
@@ -88,7 +85,11 @@ export const tooltipDirective = {
 			ev.preventDefault();
 		}, { signal: state.abortController.signal });
 
-		el.addEventListener(start, () => {
+		// iOS Safari では touchstart と合成 click の間にツールチップDOMを
+		// 追加すると、同じジェスチャーの click 対象判定が不安定になる。
+		// ツールチップはマウスの hover 専用とし、タッチ操作を奪わない。
+		el.addEventListener('mouseenter', () => {
+			if (isTouchUsing) return;
 			if (state.showTimer) window.clearTimeout(state.showTimer);
 			if (state.hideTimer) window.clearTimeout(state.hideTimer);
 			if (delay === 0) {
@@ -98,7 +99,8 @@ export const tooltipDirective = {
 			}
 		}, { passive: true, signal: state.abortController.signal });
 
-		el.addEventListener(end, () => {
+		el.addEventListener('mouseleave', () => {
+			if (isTouchUsing) return;
 			if (state.showTimer) window.clearTimeout(state.showTimer);
 			if (state.hideTimer) window.clearTimeout(state.hideTimer);
 			if (delay === 0) {

@@ -4,7 +4,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 旗鯖fork: UI選択画面から利用する「HataSNSCordUI」。独立3ペインUIと端末ローカル設定。
 -->
 <template>
-<div ref="rootEl" :class="$style.root" :data-compact="isCompact ? 'true' : 'false'" :data-sidebar-collapsed="sidebarCollapsed ? 'true' : 'false'" :data-right-collapsed="prefs.rightPaneCollapsed ? 'true' : 'false'" :data-color-mode="prefs.colorMode" :data-ui-scale="prefs.uiScale" :data-theme-changing="colorModeTransitioning ? 'true' : 'false'" @touchstart.passive="onMobileEdgeTouchStart" @touchend.passive="onMobileEdgeTouchEnd">
+<div ref="rootEl" :class="$style.root" :data-compact="isCompact ? 'true' : 'false'" :data-sidebar-collapsed="sidebarCollapsed ? 'true' : 'false'" :data-right-collapsed="prefs.rightPaneCollapsed ? 'true' : 'false'" :data-color-mode="prefs.colorMode" :data-ui-scale="prefs.uiScale" :data-theme-changing="colorModeTransitioning ? 'true' : 'false'" @touchstart.passive="onMobileEdgeTouchStart" @touchend.passive="onMobileEdgeTouchEnd" @touchcancel.passive="onMobileEdgeTouchCancel">
 	<button v-if="(isCompact && drawerOpen) || (rightPaneOverlay && rightPaneOpen)" type="button" :class="$style.scrim" :aria-label="copy.closePanels" @click="closeOverlays"></button>
 
 	<aside :class="[$style.leftPane, drawerOpen && $style.drawerOpen]">
@@ -157,7 +157,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 								<button type="button" :class="$style.noteAvatarButton" :title="copy.openProfile" @click.stop="openProfileTab(entry.note!.user)">
 									<MkAvatar :user="entry.note!.user" :class="$style.noteAvatar"/>
 								</button>
-								<div data-hatacording-note :data-own="entry.note!.userId === $i.id ? 'true' : 'false'" :data-channel="entry.note!.channel ? 'true' : 'false'" :data-private-channel="entry.note!.channel?.isPrivate ? 'true' : 'false'" :class="$style.noteBubble" :style="entry.note!.channel ? { '--cord-channel-color': entry.note!.channel.color ?? 'var(--MI_THEME-accent)' } : undefined" @click.capture="onEmbeddedNoteClick($event, entry.note!)">
+								<div data-hatacording-note :data-own="entry.note!.userId === $i.id ? 'true' : 'false'" :data-channel="entry.note!.channel ? 'true' : 'false'" :data-private-channel="entry.note!.channel?.isPrivate ? 'true' : 'false'" :class="$style.noteBubble" :style="entry.note!.channel ? { '--cord-channel-color': entry.note!.channel.color ?? 'var(--MI_THEME-accent)' } : undefined" @click="onEmbeddedNoteClick($event, entry.note!)">
 									<MkNote :note="entry.note!" :withHardMute="true" :class="$style.embeddedNote"/>
 								</div>
 								<button type="button" :class="$style.noteOpenButton" :title="copy.openNoteInSubpane" @click="openNoteTab(entry.note!)"><Maximize2 :size="14"/></button>
@@ -1094,6 +1094,10 @@ function onMobileEdgeTouchEnd(event: TouchEvent) {
 	if (Math.abs(deltaX) < 64 || Math.abs(deltaX) <= Math.abs(deltaY) * 1.25) return;
 	if (start.edge === 'left' && deltaX > 0) openLeftPane();
 	if (start.edge === 'right' && deltaX < 0) openRightPane();
+}
+
+function onMobileEdgeTouchCancel() {
+	mobileEdgeTouch = null;
 }
 
 function openUiSetup() {

@@ -1170,6 +1170,7 @@ function loadHistories() {
 .noteFooterButton {
 	margin: 0;
 	padding: 8px;
+	touch-action: manipulation;
 	opacity: 0.7;
 
 	&:not(:last-child) {
