@@ -80,4 +80,12 @@ describe('カードメーカー', () => {
 		expect(page).not.toContain('$style.qrSignal');
 		expect(page).not.toContain('conic-gradient(from 35deg');
 	});
+
+	test('カードを指で傾ける間はページスクロールにジェスチャーを渡さない', () => {
+		const page = readFrontendFile('src/pages/hata-card-maker.vue');
+		expect(page).toMatch(/\.tilt\s*\{[^}]*touch-action:\s*none;/);
+		expect(page).not.toMatch(/\.tilt\s*\{[^}]*touch-action:\s*pan-y;/);
+		expect(page).toMatch(/function startTilt[\s\S]*?event\.preventDefault\(\);[\s\S]*?function moveTilt/);
+		expect(page).toMatch(/function moveTilt[\s\S]*?event\.preventDefault\(\);[\s\S]*?function resetTilt/);
+	});
 });

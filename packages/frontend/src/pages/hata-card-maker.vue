@@ -233,6 +233,7 @@ function updateTilt(clientX: number, clientY: number) {
 }
 
 function startTilt(event: PointerEvent) {
+	if (event.pointerType !== 'mouse' && event.cancelable) event.preventDefault();
 	dragging.value = true;
 	(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
 	updateTilt(event.clientX, event.clientY);
@@ -240,6 +241,7 @@ function startTilt(event: PointerEvent) {
 
 function moveTilt(event: PointerEvent) {
 	if (event.pointerType !== 'mouse' && !dragging.value) return;
+	if (event.pointerType !== 'mouse' && event.cancelable) event.preventDefault();
 	updateTilt(event.clientX, event.clientY);
 }
 
@@ -693,7 +695,7 @@ onUnmounted(() => {
 .lockHint { display: inline-flex; align-items: center; gap: 6px; margin: -10px 0 0; opacity: .58; font-size: 12px; }
 
 .stage { display: grid; width: 100%; min-height: 390px; place-items: center; perspective: 1400px; }
-.tilt { width: min(560px, 92cqw); aspect-ratio: 1 / .615; cursor: grab; touch-action: pan-y; user-select: none; }
+.tilt { width: min(560px, 92cqw); aspect-ratio: 1 / .615; cursor: grab; touch-action: none; user-select: none; }
 .tilt:active { cursor: grabbing; }
 .card { position: relative; width: 100%; height: 100%; overflow: hidden; transform-style: preserve-3d; transform-origin: 50% 50%; will-change: transform; border: 1px solid rgba(255,255,255,.68); border-radius: 26px; box-shadow: 0 30px 60px -24px color-mix(in srgb, var(--maker-accent) 42%, transparent), inset 0 1px 0 rgba(255,255,255,.7); color: #1c2434; }
 .card.gold { border-color: rgba(231,199,102,.44); box-shadow: 0 30px 60px -22px rgba(0,0,0,.62), inset 0 1px 0 rgba(255,255,255,.08); color: #f5ecd2; }
