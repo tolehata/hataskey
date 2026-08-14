@@ -1595,8 +1595,12 @@ const onTouchEnd = (e:TouchEvent) => {
 const onTopNavWheel = (ev: WheelEvent) => { const el = ev.currentTarget as HTMLElement; el.scrollLeft += (Math.abs(ev.deltaY) > Math.abs(ev.deltaX) ? ev.deltaY : ev.deltaX); };
 const onPostClick = () => { os.post({}); };
 const scrollToTop = () => { if (contentEl.value) contentEl.value.scrollTo({ top: 0, behavior: 'smooth' }); };
+// 旗鯖fork: ホームボタンは「HTLへ強制的に切り替える」ボタンではなく、今見ているTLタブを
+// 一番上(最新)まで戻すボタンとして扱う。以前は following(HTL)以外のタブを見ている時に
+// switchTab('following') を呼んでいたため、どのタブを見ていても強制的にHTLへ切り替わってしまい、
+// 元のタブへ戻す手間が発生していた。
 const goHome = () => {
-	if (isPageView.value) { mainRouter.push('/'); } else if (tab.value === 'following') { scrollToTop(); } else { switchTab('following'); }
+	if (isPageView.value) { mainRouter.push('/'); } else { scrollToTop(); }
 };
 const goBack = () => {
 	if (window.history.length > 1) { window.history.back(); } else { goHome(); }
