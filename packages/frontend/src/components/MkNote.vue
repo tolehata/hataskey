@@ -8,7 +8,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 	v-if="!hardMuted && muted === false && !hideAsBot"
 	ref="rootEl"
 	v-hotkey="keymap"
-	:class="[$style.root, { [$style.showActionsOnlyHover]: prefer.s.showNoteActionsOnlyHover, [$style.skipRender]: prefer.s.skipNoteRender && utageState === 'none' && !noteGlassActive, [$style.utageActive]: utageState !== 'none' && utageOutsideFrame }]"
+	:class="[$style.root, { [$style.showActionsOnlyHover]: prefer.s.showNoteActionsOnlyHover, [$style.skipRender]: prefer.s.skipNoteRender && utageState === 'none' && !noteGlassActive, [$style.utageActive]: utageState !== 'none' && utageOutsideFrame && !utageFrameSuppressed }]"
+	:data-utage-state="utageState !== 'none' ? utageState : null"
 	tabindex="0"
 >
 	<div v-if="pinned" :class="$style.tip"><i class="ti ti-pin"></i> {{ i18n.ts.pinnedNote }}</div>
@@ -64,12 +65,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<MkAvatar v-if="!prefer.s.hideAvatarsInNote" :class="$style.collapsedRenoteTargetAvatar" :user="appearNote.user" link preview/>
 		<Mfm :text="getNoteSummary(appearNote)" :plain="true" :nowrap="true" :author="appearNote.user" :nyaize="'respect'" :class="[$style.collapsedRenoteTargetText, { [$style.showReplyTargetNoteInSemiTransparent]: prefer.s.showReplyTargetNoteInSemiTransparent }]" @click="renoteCollapsed ? renoteCollapsed = false : replyCollapsed ? replyCollapsed = false : ''"/>
 	</div>
-	<article v-else :class="$style.article" :data-utage-square="(!utageOutsideFrame && utageState !== 'none') ? utageState : null" :style="{ cursor: expandOnNoteClick ? 'pointer' : '', paddingTop: prefer.s.showSubNoteFooterButton && appearNote.reply && (!renoteCollapsed && !replyCollapsed && ((!notification && (forceShowReplyTargetNote || prefer.s.showReplyTargetNote)) || (notification && prefer.s.showReplyInNotification))) ? '14px' : '' }" @click.stop="noteClick" @dblclick.stop="noteDblClick" @contextmenu.stop="onContextmenu">
+	<article v-else :class="$style.article" :data-utage-square="(!utageOutsideFrame && utageState !== 'none' && !utageFrameSuppressed) ? utageState : null" :style="{ cursor: expandOnNoteClick ? 'pointer' : '', paddingTop: prefer.s.showSubNoteFooterButton && appearNote.reply && (!renoteCollapsed && !replyCollapsed && ((!notification && (forceShowReplyTargetNote || prefer.s.showReplyTargetNote)) || (notification && prefer.s.showReplyInNotification))) ? '14px' : '' }" @click.stop="noteClick" @dblclick.stop="noteDblClick" @contextmenu.stop="onContextmenu">
 		<!-- 旗鯖fork: C7 宴チュートリアル (自分の宴ノート初回のみ) -->
 		<MkTip v-if="showUtageTip" k="note.utage" style="margin-bottom: 8px;">
 			{{ utageCopy.tipBefore }}<b style="color: var(--MI_THEME-success);">{{ utageCopy.tipSuccess }}</b>{{ utageCopy.tipMiddle }}<b style="color: var(--MI_THEME-error);">{{ utageCopy.tipFailure }}</b>{{ utageCopy.tipAfter }}
 		</MkTip>
-		<div :class="[$style.bubbleBody, { [$style.utageFlashing]: utageState === 'flashing' && utageOutsideFrame, [$style.utageFailed]: utageState === 'failed' && utageOutsideFrame, [$style.utageSuccess]: utageState === 'success' && utageOutsideFrame }]">
+		<div :class="[$style.bubbleBody, { [$style.utageFlashing]: utageState === 'flashing' && utageOutsideFrame && !utageFrameSuppressed, [$style.utageFailed]: utageState === 'failed' && utageOutsideFrame && !utageFrameSuppressed, [$style.utageSuccess]: utageState === 'success' && utageOutsideFrame && !utageFrameSuppressed }]">
 		<!-- 旗鯖fork: C7 宴 結果バッジ (吹き出し右下隅) -->
 		<div v-if="utageState === 'failed'" :class="[$style.utageBadge, $style.utageBadgeFailed]">{{ utageCopy.failed }}</div>
 		<div v-else-if="utageState === 'success'" :class="[$style.utageBadge, $style.utageBadgeSuccess]">{{ utageCopy.success }}</div>
@@ -454,6 +455,12 @@ const inLocalTimeline = inject<Ref<boolean> | null>('inLocalTimeline', null);
 // 宴枠(outline)を吹き出しON時は外側に、OFF時は内側(inset)に描くため。未提供時(=吹き出し文脈外)は内側にする。
 const noteBubbleEnabled = inject<Ref<boolean> | null>('noteBubbleEnabled', null);
 const utageOutsideFrame = computed(() => noteBubbleEnabled?.value ?? false);
+// 旗鯖fork(HataSNSCordUI): MkNote がさらに外側の吹き出し(.noteBubble等)にネストされる文脈では、
+// 内側で枠を描くと外枠との間に隙間ができ「枠が内側でノート内容に被さる」ように見える。
+// ホスト側がこのキーで true を provide すると、内側の枠描画(outline/inset/背景の色付け)を止め、
+// 代わりに data-utage-state 属性だけを出す。ホストはそれを :has() 等で拾い、自分の外枠に描く。
+const utageFrameExternal = inject<Ref<boolean> | null>('utageFrameExternal', null);
+const utageFrameSuppressed = computed(() => utageFrameExternal?.value ?? false);
 // 旗鯖fork: 背景ぼかし(glass)有効時は skipRender(content-visibility:auto)を付けない。
 // glass = 背景ぼかし(noteTimelineGlassBg) または グラスUIベータ(glassUiLocal)。
 const noteTimelineGlassBg = inject<Ref<boolean> | null>('noteTimelineGlassBg', null);

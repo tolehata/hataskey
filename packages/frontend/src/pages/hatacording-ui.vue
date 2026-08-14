@@ -2287,6 +2287,7 @@ function openVisibilityMenu(event: MouseEvent) {
 	}
 	const visibilityItems = (['public', 'home', 'followers', 'specified'] as Visibility[]).map(value => ({
 		type: 'button' as const,
+		icon: ({ public: 'ti ti-world', home: 'ti ti-home', followers: 'ti ti-lock', specified: 'ti ti-mail' })[value],
 		text: ({ public: copy.public, home: copy.home, followers: copy.followersOnly, specified: copy.direct })[value],
 		active: visibility.value === value,
 		action: () => {
@@ -2821,6 +2822,11 @@ provide('inLocalTimeline', inLocalTimeline);
 provide('inChannel', inChannel);
 provide('currentAntenna', currentAntenna);
 provide('noteBubbleEnabled', noteBubbleEnabled);
+// 旗鯖fork(HataSNSCordUI): MkNote をさらに .noteBubble(チャット風の吹き出し)でラップしているため、
+// MkNote 自身に内側で枠を描かせると外枠(.noteBubble)との間に隙間ができ、枠が中途半端に内側へ
+// 表示されてノート内容に被さって見えてしまう。MkNote 側の枠描画は止め、.noteBubble 側で
+// (MkNote が出す data-utage-state を :has() で拾って)外枠に直接描く。
+provide('utageFrameExternal', ref(true));
 provide('noteTimelineGlassBg', noteTimelineGlassBg);
 provide('tl_withSensitive', tlWithSensitive);
 // このUIのリアルタイム切替を、既存 MkNote の全更新経路
@@ -3333,6 +3339,14 @@ definePage(() => ({ title: 'HataSNSCordUI', hideHeader: true }));
 	width: 26px;
 	height: 26px;
 	overflow: visible;
+	/* 旗鯖fork(HataSNSCordUI): 12時位置を開始点にする回転はここ(svg自体)にかける。
+	   内側の<circle>に直接 transform-origin を px指定すると、transform-box の既定値が
+	   ブラウザによって circle の bounding box(fill-box)基準になり、円の中心(13,13)と
+	   ズレて変な位置を軸に回ってしまう(結果、進捗が下側から欠けて見える)。
+	   svg 要素自身は通常のCSSレイアウト矩形(26x26)を持つので、transform-origin: center は
+	   常にその中心=(13,13)を指し、ズレが起きない。 */
+	transform: rotate(-90deg);
+	transform-origin: center;
 }
 
 .rateLimitTrack,
@@ -3351,8 +3365,6 @@ definePage(() => ({ title: 'HataSNSCordUI', hideHeader: true }));
 	stroke-dasharray: 100;
 	stroke-dashoffset: var(--rate-limit-offset);
 	stroke-linecap: round;
-	transform: rotate(-90deg);
-	transform-origin: 13px 13px;
 	transition: stroke-dashoffset .2s ease;
 }
 
@@ -3550,6 +3562,53 @@ definePage(() => ({ title: 'HataSNSCordUI', hideHeader: true }));
 	border-radius: 17px 0 0 17px;
 	background: var(--cord-channel-color, var(--MI_THEME-accent));
 	pointer-events: none;
+}
+
+/* 旗鯖fork(HataSNSCordUI): 宴(うたげ)の枠。MkNote は内側での枠描画を止め(utageFrameExternal)、
+   代わりに data-utage-state 属性だけを自身のルートに出す。ここではそれを :has() で拾って、
+   ノートの本当の外枠であるこの .noteBubble 自体に枠を描く。 */
+.noteBubble:has([data-utage-state='flashing']) {
+	outline: 2px solid transparent;
+	outline-offset: 2px;
+	border-radius: 17px 17px 17px 5px;
+	animation: cordUtageFlash 2.4s ease-in-out infinite;
+}
+
+.ownNote .noteBubble:has([data-utage-state='flashing']) {
+	border-radius: 17px 17px 5px;
+}
+
+@keyframes cordUtageFlash {
+	0%, 100% {
+		outline-color: color-mix(in srgb, var(--MI_THEME-accent) 18%, transparent);
+	}
+	50% {
+		outline-color: color-mix(in srgb, var(--MI_THEME-accent) 92%, transparent);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.noteBubble:has([data-utage-state='flashing']) {
+		animation: none;
+		outline-color: color-mix(in srgb, var(--MI_THEME-accent) 70%, transparent);
+	}
+}
+
+.noteBubble:has([data-utage-state='failed']) {
+	outline: 2px solid color-mix(in srgb, var(--MI_THEME-error) 80%, transparent);
+	outline-offset: 2px;
+	border-radius: 17px 17px 17px 5px;
+}
+
+.noteBubble:has([data-utage-state='success']) {
+	outline: 2px solid color-mix(in srgb, var(--MI_THEME-success) 75%, transparent);
+	outline-offset: 2px;
+	border-radius: 17px 17px 17px 5px;
+}
+
+.ownNote .noteBubble:has([data-utage-state='failed']),
+.ownNote .noteBubble:has([data-utage-state='success']) {
+	border-radius: 17px 17px 5px;
 }
 
 .noteOpenButton {

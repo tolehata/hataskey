@@ -271,6 +271,11 @@ const bubbleEnabled = computed(() => {
 // 旗鯖fork(#1): 宴枠(outline)の描き方を MkNote 側で吹き出し有無に合わせて切り替えるため、
 // 吹き出し有効状態を子(MkNote)へ伝える。吹き出しON=枠を外側に、OFF=枠を内側に描く。
 provide('noteBubbleEnabled', bubbleEnabled);
+// 旗鯖fork(HataSNSCordUI): このタイムラインはノートをさらに外側の吹き出し等でラップしないため、
+// 祖先(HataSNSCordUI本体)が utageFrameExternal を true で provide していても、ここで false に
+// 打ち消しておく。打ち消さないと、サブペインにこのコンポーネントを埋め込んだ時に MkNote 側の
+// 宴の枠描画が誤って抑制され、枠を描く外側の器も無いため枠が消えてしまう。
+provide('utageFrameExternal', ref(false));
 // 旗鯖fork: 背景ぼかし(glass)が有効な時、MkNote 側で skipRender(content-visibility:auto)を
 // 付けないようにするため、glass 状態を伝える。content-visibility は contain:paint を含み、
 // カードを透明にしても背景が透けない上、CSS の visible 上書きでは Firefox の再描画が追いつかず
