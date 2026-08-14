@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  * 旗鯖fork: Hatady(学習・読書記録ツール)共通の定義とヘルパー。
  *   - 分野(subject)の色パレット。既知分野は固定色、未知分野はタイトルハッシュで安定割当。
- *   - タグ(得意/苦手/興味)の定義。
+ *   - タグ(得意/苦手/興味/映画/ゲーム)の定義。
  *   - 本の自動表紙(タイトルから決定的にグラデーションを生成)。
  *   - デザイン言語は hataskey 本体と独立(暖色クラフト紙)。色は Hatady 内で完結する。
  */
@@ -77,12 +77,15 @@ export function hySubjectPalette(subject: string | null | undefined): HyPalette 
 	return HY_SUBJECT_PALETTES[hashString(key) % HY_SUBJECT_PALETTES.length];
 }
 
-// タグ(得意/苦手/興味)。key はサーバー保存値、表示名は hyTagLabel() で現在の locale から解決する。
-export type HyTag = 'strength' | 'weak' | 'interest';
+// タグ。key はサーバー保存値、表示名は hyTagLabel() で現在の locale から解決する。
+// movie/game は作品種別そのものではなく、学習ログから関連する媒体へ目印を付けるためのタグ。
+export type HyTag = 'strength' | 'weak' | 'interest' | 'movie' | 'game';
 export const HY_TAGS: { key: HyTag; icon: string; bg: string; fg: string }[] = [
 	{ key: 'strength', icon: 'ti-star-filled', bg: '#dcecd5', fg: '#4e7d4a' },
 	{ key: 'weak', icon: 'ti-flame', bg: '#f1ddd5', fg: '#b5644a' },
 	{ key: 'interest', icon: 'ti-bulb', bg: '#f7e7c6', fg: '#a97e2e' },
+	{ key: 'movie', icon: 'ti-movie', bg: '#e3ebf3', fg: '#45688f' },
+	{ key: 'game', icon: 'ti-device-gamepad-2', bg: '#ece0ec', fg: '#7a4f91' },
 ];
 export function hyTag(key: string | null | undefined): typeof HY_TAGS[number] | null {
 	return HY_TAGS.find(t => t.key === key) ?? null;
@@ -92,6 +95,8 @@ export function hyTagLabel(key: string | null | undefined): string {
 		case 'strength': return i18n.ts._hata._hatady._tags.strength;
 		case 'weak': return i18n.ts._hata._hatady._tags.weak;
 		case 'interest': return i18n.ts._hata._hatady._tags.interest;
+		case 'movie': return i18n.ts._hata._hatady._tags.movie;
+		case 'game': return i18n.ts._hata._hatady._tags.game;
 		default: return '';
 	}
 }

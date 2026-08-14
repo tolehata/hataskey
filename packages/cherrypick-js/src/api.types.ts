@@ -19,6 +19,7 @@ import {
 	SignupRequest,
 	SignupResponse,
 } from './entities.js';
+import type { HatadyNotification } from './hata-media.js';
 
 type Overwrite<T, U extends { [Key in keyof T]?: unknown }> = Omit<
 	T,
@@ -116,6 +117,10 @@ export type Endpoints = Overwrite<
 		'clear-browser-cache': {
 			req: EmptyRequest;
 			res: EmptyResponse;
+		},
+		'hata/hatady/notifications': {
+			req: { limit?: number; untilId?: string };
+			res: HatadyNotification[];
 		},
 	}
 >;

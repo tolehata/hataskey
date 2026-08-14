@@ -1,0 +1,62 @@
+/* 旗鯖fork: Hatady の映画鑑賞・ゲームプレイ記録。 */
+
+import { PrimaryColumn, Entity, Index, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { id } from './util/id.js';
+import { MiUser } from './User.js';
+import { MiHatadyMediaWork, type HatadyMediaVisibility } from './HatadyMediaWork.js';
+
+export const HATADY_MEDIA_SESSION_KINDS = ['movie_viewing', 'game_play', 'game_match', 'game_roguelike'] as const;
+export type HatadyMediaSessionKind = typeof HATADY_MEDIA_SESSION_KINDS[number];
+
+@Entity('hatady_media_session')
+@Index(['userId', 'id'])
+@Index(['workId', 'id'])
+export class MiHatadyMediaSession {
+	@PrimaryColumn(id())
+	public id: string;
+
+	@Index()
+	@Column('timestamp with time zone')
+	public createdAt: Date;
+
+	@Column('timestamp with time zone')
+	public updatedAt: Date;
+
+	@Index()
+	@Column(id())
+	public userId: MiUser['id'];
+
+	@ManyToOne(type => MiUser, { onDelete: 'CASCADE' })
+	@JoinColumn()
+	public user: MiUser | null;
+
+	@Index()
+	@Column(id())
+	public workId: MiHatadyMediaWork['id'];
+
+	@ManyToOne(type => MiHatadyMediaWork, { onDelete: 'CASCADE' })
+	@JoinColumn()
+	public work: MiHatadyMediaWork | null;
+
+	@Column('varchar', { length: 32 })
+	public kind: HatadyMediaSessionKind;
+
+	@Index()
+	@Column('timestamp with time zone')
+	public occurredAt: Date;
+
+	@Column('integer', { nullable: true })
+	public durationMinutes: number | null;
+
+	@Column('varchar', { length: 8192, nullable: true })
+	public note: string | null;
+
+	@Column('boolean', { default: false })
+	public noteSpoiler: boolean;
+
+	@Column('varchar', { length: 16, default: 'private' })
+	public visibility: HatadyMediaVisibility;
+
+	@Column('jsonb', { default: () => "'{}'::jsonb" })
+	public details: Record<string, unknown>;
+}

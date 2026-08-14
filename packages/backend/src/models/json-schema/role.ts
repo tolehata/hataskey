@@ -272,6 +272,12 @@ export const packedRolePoliciesSchema = {
 			type: 'integer',
 			optional: false, nullable: false,
 		},
+		hatadyGameTitleLimit: {
+			type: 'integer',
+			minimum: 0,
+			maximum: 1000,
+			optional: false, nullable: false,
+		},
 		canMakePrivateChannel: {
 			type: 'boolean',
 			optional: false, nullable: false,

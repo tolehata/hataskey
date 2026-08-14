@@ -9,6 +9,8 @@ import { id } from './util/id.js';
 import { MiUser } from './User.js';
 import { MiHatadyLog } from './HatadyLog.js';
 import { MiHatadyComment } from './HatadyComment.js';
+import { MiHatadyMediaWork } from './HatadyMediaWork.js';
+import { MiHatadyMediaComment } from './HatadyMediaComment.js';
 
 @Entity('hatady_notification')
 @Index(['notifieeId', 'createdAt'])
@@ -46,7 +48,7 @@ export class MiHatadyNotification {
 	@JoinColumn()
 	public notifier: MiUser | null;
 
-	// reaction / comment / follow / milestone
+	// reaction / comment / follow / milestone / mediaComment / mediaReply / mediaReaction
 	@Column('varchar', {
 		length: 32,
 		comment: 'reaction / comment / follow / milestone',
@@ -78,6 +80,30 @@ export class MiHatadyNotification {
 	})
 	@JoinColumn()
 	public comment: MiHatadyComment | null;
+
+	@Index()
+	@Column({
+		...id(),
+		nullable: true,
+		comment: 'The related Hatady movie/game work.',
+	})
+	public mediaWorkId: MiHatadyMediaWork['id'] | null;
+
+	@ManyToOne(type => MiHatadyMediaWork, { onDelete: 'SET NULL' })
+	@JoinColumn()
+	public mediaWork: MiHatadyMediaWork | null;
+
+	@Index()
+	@Column({
+		...id(),
+		nullable: true,
+		comment: 'The related Hatady movie/game comment.',
+	})
+	public mediaCommentId: MiHatadyMediaComment['id'] | null;
+
+	@ManyToOne(type => MiHatadyMediaComment, { onDelete: 'SET NULL' })
+	@JoinColumn()
+	public mediaComment: MiHatadyMediaComment | null;
 
 	// リアクション通知の絵文字。
 	@Column('varchar', {

@@ -142,7 +142,8 @@ async function rerunTutorialOnly() {
 	});
 }
 
-// 旗鯖fork: 学習記録の書き出し。期間(すべて/今月/先月/過去30日/指定)はダイアログで選ぶ。
+// 旗鯖fork: 学習記録(.txt)と映画・ゲーム記録(.json)の書き出し。
+//   学習記録を選んだ場合だけ、期間(すべて/今月/先月/過去30日/指定)を続けて選ぶ。
 async function doExportAll() {
 	const { dispose } = os.popup((await import('@/components/HatadyExportDialog.vue')).default, {}, {
 		closed: () => dispose(),

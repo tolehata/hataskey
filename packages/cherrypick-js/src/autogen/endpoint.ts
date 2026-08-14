@@ -499,6 +499,8 @@ import type {
 	HataFeedbackProjectsUpdateResponse,
 	HataFeedbackRemoteEmojisRequest,
 	HataFeedbackRemoteEmojisResponse,
+	HataHatadyActivitiesRequest,
+	HataHatadyActivitiesResponse,
 	HataHatadyAdminBooksRequest,
 	HataHatadyAdminBooksResponse,
 	HataHatadyAdminDeleteBookRequest,
@@ -539,6 +541,31 @@ import type {
 	HataHatadyLogsShowResponse,
 	HataHatadyLogsUpdateRequest,
 	HataHatadyLogsUpdateResponse,
+	HataHatadyMediaCommentsCreateRequest,
+	HataHatadyMediaCommentsCreateResponse,
+	HataHatadyMediaCommentsDeleteRequest,
+	HataHatadyMediaCommentsListRequest,
+	HataHatadyMediaCommentsListResponse,
+	HataHatadyMediaCommentsUpdateRequest,
+	HataHatadyMediaCommentsUpdateResponse,
+	HataHatadyMediaReactionsCreateRequest,
+	HataHatadyMediaReactionsDeleteRequest,
+	HataHatadyMediaSessionsCreateRequest,
+	HataHatadyMediaSessionsCreateResponse,
+	HataHatadyMediaSessionsDeleteRequest,
+	HataHatadyMediaSessionsListRequest,
+	HataHatadyMediaSessionsListResponse,
+	HataHatadyMediaSessionsUpdateRequest,
+	HataHatadyMediaSessionsUpdateResponse,
+	HataHatadyMediaWorksCreateRequest,
+	HataHatadyMediaWorksCreateResponse,
+	HataHatadyMediaWorksDeleteRequest,
+	HataHatadyMediaWorksListRequest,
+	HataHatadyMediaWorksListResponse,
+	HataHatadyMediaWorksShowRequest,
+	HataHatadyMediaWorksShowResponse,
+	HataHatadyMediaWorksUpdateRequest,
+	HataHatadyMediaWorksUpdateResponse,
 	HataHatadyMemosCreateRequest,
 	HataHatadyMemosCreateResponse,
 	HataHatadyMemosDeleteRequest,
@@ -1213,6 +1240,7 @@ export type Endpoints = {
 	'hata/feedback/projects/delete': { req: HataFeedbackProjectsDeleteRequest; res: EmptyResponse };
 	'hata/feedback/projects/update': { req: HataFeedbackProjectsUpdateRequest; res: HataFeedbackProjectsUpdateResponse };
 	'hata/feedback/remote-emojis': { req: HataFeedbackRemoteEmojisRequest; res: HataFeedbackRemoteEmojisResponse };
+	'hata/hatady/activities': { req: HataHatadyActivitiesRequest; res: HataHatadyActivitiesResponse };
 	'hata/hatady/admin/books': { req: HataHatadyAdminBooksRequest; res: HataHatadyAdminBooksResponse };
 	'hata/hatady/admin/delete-book': { req: HataHatadyAdminDeleteBookRequest; res: EmptyResponse };
 	'hata/hatady/bookmarks/create': { req: HataHatadyBookmarksCreateRequest; res: HataHatadyBookmarksCreateResponse };
@@ -1238,6 +1266,21 @@ export type Endpoints = {
 	'hata/hatady/logs/delete': { req: HataHatadyLogsDeleteRequest; res: EmptyResponse };
 	'hata/hatady/logs/show': { req: HataHatadyLogsShowRequest; res: HataHatadyLogsShowResponse };
 	'hata/hatady/logs/update': { req: HataHatadyLogsUpdateRequest; res: HataHatadyLogsUpdateResponse };
+	'hata/hatady/media/comments/create': { req: HataHatadyMediaCommentsCreateRequest; res: HataHatadyMediaCommentsCreateResponse };
+	'hata/hatady/media/comments/delete': { req: HataHatadyMediaCommentsDeleteRequest; res: EmptyResponse };
+	'hata/hatady/media/comments/list': { req: HataHatadyMediaCommentsListRequest; res: HataHatadyMediaCommentsListResponse };
+	'hata/hatady/media/comments/update': { req: HataHatadyMediaCommentsUpdateRequest; res: HataHatadyMediaCommentsUpdateResponse };
+	'hata/hatady/media/reactions/create': { req: HataHatadyMediaReactionsCreateRequest; res: EmptyResponse };
+	'hata/hatady/media/reactions/delete': { req: HataHatadyMediaReactionsDeleteRequest; res: EmptyResponse };
+	'hata/hatady/media/sessions/create': { req: HataHatadyMediaSessionsCreateRequest; res: HataHatadyMediaSessionsCreateResponse };
+	'hata/hatady/media/sessions/delete': { req: HataHatadyMediaSessionsDeleteRequest; res: EmptyResponse };
+	'hata/hatady/media/sessions/list': { req: HataHatadyMediaSessionsListRequest; res: HataHatadyMediaSessionsListResponse };
+	'hata/hatady/media/sessions/update': { req: HataHatadyMediaSessionsUpdateRequest; res: HataHatadyMediaSessionsUpdateResponse };
+	'hata/hatady/media/works/create': { req: HataHatadyMediaWorksCreateRequest; res: HataHatadyMediaWorksCreateResponse };
+	'hata/hatady/media/works/delete': { req: HataHatadyMediaWorksDeleteRequest; res: EmptyResponse };
+	'hata/hatady/media/works/list': { req: HataHatadyMediaWorksListRequest; res: HataHatadyMediaWorksListResponse };
+	'hata/hatady/media/works/show': { req: HataHatadyMediaWorksShowRequest; res: HataHatadyMediaWorksShowResponse };
+	'hata/hatady/media/works/update': { req: HataHatadyMediaWorksUpdateRequest; res: HataHatadyMediaWorksUpdateResponse };
 	'hata/hatady/memos/create': { req: HataHatadyMemosCreateRequest; res: HataHatadyMemosCreateResponse };
 	'hata/hatady/memos/delete': { req: HataHatadyMemosDeleteRequest; res: EmptyResponse };
 	'hata/hatady/memos/update': { req: HataHatadyMemosUpdateRequest; res: HataHatadyMemosUpdateResponse };

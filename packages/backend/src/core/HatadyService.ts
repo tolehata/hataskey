@@ -5,17 +5,19 @@
  */
 
 import { Inject, Injectable } from '@nestjs/common';
-import { IsNull, MoreThan } from 'typeorm';
+import { MoreThan } from 'typeorm';
 import { DI } from '@/di-symbols.js';
-import type { HatadyBooksRepository, HatadyLogsRepository, HatadyCommentsRepository, HatadyReactionsRepository, HatadyNotificationsRepository, HatadyFollowingsRepository, HatadyUserProfilesRepository, HatadyBookmarksRepository, HatadyBookMemosRepository, HatadySubjectsRepository, HatadyGoalsRepository } from '@/models/_.js';
+import type { HatadyBooksRepository, HatadyLogsRepository, HatadyCommentsRepository, HatadyReactionsRepository, HatadyNotificationsRepository, HatadyFollowingsRepository, HatadyUserProfilesRepository, HatadyBookmarksRepository, HatadyBookMemosRepository, HatadySubjectsRepository, HatadyGoalsRepository, HatadyMediaSessionsRepository } from '@/models/_.js';
 import type { MiUser } from '@/models/User.js';
 import type { MiHatadyBook } from '@/models/HatadyBook.js';
-import type { MiHatadyLog } from '@/models/HatadyLog.js';
-import type { MiHatadyComment } from '@/models/HatadyComment.js';
-import type { MiHatadyNotification } from '@/models/HatadyNotification.js';
+import { MiHatadyLog } from '@/models/HatadyLog.js';
+import { MiHatadyComment } from '@/models/HatadyComment.js';
+import { MiHatadyNotification } from '@/models/HatadyNotification.js';
 import type { MiHatadyBookmark } from '@/models/HatadyBookmark.js';
 import type { MiHatadyBookMemo } from '@/models/HatadyBookMemo.js';
 import type { MiHatadyGoal } from '@/models/HatadyGoal.js';
+import { MiHatadyReaction } from '@/models/HatadyReaction.js';
+import { MiHatadyFollowing } from '@/models/HatadyFollowing.js';
 import { IdService } from '@/core/IdService.js';
 import { RoleService } from '@/core/RoleService.js';
 import { sqlLikeEscape } from '@/misc/sql-like-escape.js';
@@ -46,6 +48,8 @@ export class HatadyService {
 		private hatadySubjectsRepository: HatadySubjectsRepository,
 		@Inject(DI.hatadyGoalsRepository)
 		private hatadyGoalsRepository: HatadyGoalsRepository,
+		@Inject(DI.hatadyMediaSessionsRepository)
+		private hatadyMediaSessionsRepository: HatadyMediaSessionsRepository,
 
 		private idService: IdService,
 		private roleService: RoleService,
@@ -304,7 +308,9 @@ export class HatadyService {
 		await this.hatadyFollowingsRepository.delete(existing.id);
 	}
 
-	// プロフィール用の集計(統計 + 分野タグ)。自分以外は公開ログのみ対象。
+	// プロフィール用の集計(統計 + 分野タグ)。表示中のログと同じ公開範囲を対象にする。
+	// 旗鯖fork(Hatady次期: ゲーム/映画記録): streakDays は学習ログに加え、閲覧者から見える
+	//   範囲の映画・ゲーム記録セッションも含めて数える(マイログのstreak判定と基準を揃える)。
 	@bindThis
 	public async getProfileAggregates(targetUserId: MiUser['id'], viewerId: MiUser['id'], tz = 0): Promise<{
 		totalMinutes: number;
@@ -319,17 +325,33 @@ export class HatadyService {
 		bannerColor: string | null;
 	}> {
 		const isMe = targetUserId === viewerId;
+		const viewerFollows = isMe ? false : await this.isFollowing(viewerId, targetUserId);
 
 		const logQuery = this.hatadyLogsRepository.createQueryBuilder('log').where('log.userId = :uid', { uid: targetUserId });
-		if (!isMe) logQuery.andWhere('log.isPublic = TRUE');
+		if (!isMe) {
+			if (viewerFollows) logQuery.andWhere('log.visibility IN (:...vis)', { vis: ['public', 'followers'] });
+			else logQuery.andWhere('log.isPublic = TRUE');
+		}
 		const logs = await logQuery.getMany();
+
+		// 映画・ゲームの記録セッションも、ログと同じ可視性規則(本人は全件・フォロワーは public+followers・
+		// それ以外は public のみ)で streak の対象にする。
+		const sessionQuery = this.hatadyMediaSessionsRepository.createQueryBuilder('session').where('session.userId = :uid', { uid: targetUserId });
+		if (!isMe) {
+			if (viewerFollows) sessionQuery.andWhere("session.visibility IN ('public', 'followers')");
+			else sessionQuery.andWhere("session.visibility = 'public'");
+		}
+		const mediaSessions = await sessionQuery.getMany();
 
 		const totalMinutes = logs.reduce((a, l) => a + (l.durationMinutes || 0), 0);
 		const bookCount = await this.hatadyBooksRepository.countBy({ userId: targetUserId });
 
 		// 連続日数(記録がある日を遡って数える)。日付はユーザーのローカル基準(マイログの表示と一致させる)。
 		const dayKey = (d: Date) => this.dayKeyTz(d, tz);
-		const daySet = new Set(logs.map(l => dayKey(new Date(l.studiedAt))));
+		const daySet = new Set([
+			...logs.map(l => dayKey(new Date(l.studiedAt))),
+			...mediaSessions.map(s => dayKey(new Date(s.occurredAt))),
+		]);
 		let streakDays = 0;
 		let cursorMs = this.localMidnightMs(new Date(), tz);
 		if (!daySet.has(dayKey(new Date(cursorMs)))) cursorMs -= 86400000;
@@ -350,7 +372,7 @@ export class HatadyService {
 		const [followersCount, followingCount, isFollowing, bannerColor] = await Promise.all([
 			this.hatadyFollowingsRepository.countBy({ followeeId: targetUserId }),
 			this.hatadyFollowingsRepository.countBy({ followerId: targetUserId }),
-			isMe ? Promise.resolve(false) : this.isFollowing(viewerId, targetUserId),
+			Promise.resolve(viewerFollows),
 			this.getBannerColor(targetUserId),
 		]);
 
@@ -546,6 +568,8 @@ export class HatadyService {
 			type: params.type,
 			logId: params.logId ?? null,
 			commentId: params.commentId ?? null,
+			mediaWorkId: null,
+			mediaCommentId: null,
 			reaction: params.reaction ?? null,
 			value: params.value ?? null,
 			isRead: false,
@@ -656,24 +680,43 @@ export class HatadyService {
 		});
 
 		// 継続・達成(マイルストーン)通知の判定。
-		await this.maybeNotifyMilestone(user);
+		await this.notifyMilestoneIfReached(user.id);
 
 		return log;
 	}
 
+	// 旗鯖fork(Hatady次期: ゲーム/映画記録): 学習ログとメディア(映画/ゲーム)セッションを合わせた
+	//   「その日に記録があったか」の判定用データ。連続記録・ヒートマップ・週間集計は種別を問わず
+	//   「記録した日」を数えるため、ここで一本化する(本人の全記録。可視性は絞らない)。
+	@bindThis
+	private async loadOwnActivityMoments(userId: MiUser['id'], since: Date): Promise<{ occurredAt: Date; minutes: number }[]> {
+		const [logs, sessions] = await Promise.all([
+			this.hatadyLogsRepository.createQueryBuilder('log')
+				.select('log.studiedAt', 'occurredAt')
+				.addSelect('log.durationMinutes', 'minutes')
+				.where('log.userId = :uid', { uid: userId })
+				.andWhere('log.studiedAt > :since', { since })
+				.getRawMany<{ occurredAt: Date; minutes: number }>(),
+			this.hatadyMediaSessionsRepository.createQueryBuilder('session')
+				.select('session.occurredAt', 'occurredAt')
+				.addSelect('session.durationMinutes', 'minutes')
+				.where('session.userId = :uid', { uid: userId })
+				.andWhere('session.occurredAt > :since', { since })
+				.getRawMany<{ occurredAt: Date; minutes: number }>(),
+		]);
+		return [...logs, ...sessions].map(r => ({ occurredAt: new Date(r.occurredAt), minutes: Number(r.minutes) || 0 }));
+	}
+
 	// 連続記録日数を計算する(今日/昨日から遡って連続で記録がある日数)。
+	// 旗鯖fork(Hatady次期): 学習ログだけでなく映画・ゲームの記録セッションも連続日数に含める。
 	@bindThis
 	private async computeStreak(userId: MiUser['id']): Promise<number> {
 		const since = new Date();
 		since.setHours(0, 0, 0, 0);
 		since.setDate(since.getDate() - 400);
-		const logs = await this.hatadyLogsRepository.createQueryBuilder('log')
-			.select('log.studiedAt', 'studiedAt')
-			.where('log.userId = :uid', { uid: userId })
-			.andWhere('log.studiedAt > :since', { since })
-			.getRawMany();
+		const moments = await this.loadOwnActivityMoments(userId, since);
 		const dayKey = (d: Date) => `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getDate().toString().padStart(2, '0')}`;
-		const daySet = new Set(logs.map(r => dayKey(new Date(r.studiedAt))));
+		const daySet = new Set(moments.map(m => dayKey(m.occurredAt)));
 		let streak = 0;
 		const cursor = new Date(); cursor.setHours(0, 0, 0, 0);
 		if (!daySet.has(dayKey(cursor))) cursor.setDate(cursor.getDate() - 1);
@@ -682,23 +725,30 @@ export class HatadyService {
 	}
 
 	// 連続記録が節目(3/7/14/30/50/100/200/365日)に達したら1回だけ達成通知を出す。
+	// 旗鯖fork(Hatady次期): 学習ログの作成時だけでなく、映画・ゲームのセッション作成時にも
+	//   HatadyMediaService から呼べるよう、userId 直渡しの公開メソッドとして持つ
+	//   (中身は user.id しか使っていなかったため、MiUser 丸ごとの受け渡しをやめて単純化した)。
 	private static readonly MILESTONES = [3, 7, 14, 30, 50, 100, 200, 365];
 	@bindThis
-	private async maybeNotifyMilestone(user: MiUser): Promise<void> {
-		const streak = await this.computeStreak(user.id);
+	public async notifyMilestoneIfReached(userId: MiUser['id']): Promise<void> {
+		const streak = await this.computeStreak(userId);
 		if (streak <= 0) return;
 		for (const m of HatadyService.MILESTONES) {
 			if (m > streak) break;
 			// その節目の達成通知が未発行なら発行(値が同じものが無ければ)。
-			const already = await this.hatadyNotificationsRepository.countBy({ notifieeId: user.id, type: 'milestone', value: m });
+			const already = await this.hatadyNotificationsRepository.countBy({ notifieeId: userId, type: 'milestone', value: m });
 			if (already === 0) {
-				await this.notify({ notifieeId: user.id, notifierId: null, type: 'milestone', value: m });
+				await this.notify({ notifieeId: userId, notifierId: null, type: 'milestone', value: m });
 			}
 		}
 	}
 
 	// 旗鯖fork: マイログのヘッダ統計 + ヒートマップ + 分野別フォーカスを集計する。
-	//   直近140日(20週)分のログを1回取得し、JS 側で集計する(件数が限られるため十分)。
+	//   直近140日(20週)分の記録を1回取得し、JS 側で集計する(件数が限られるため十分)。
+	// 旗鯖fork(Hatady次期: ゲーム/映画記録): streakDays・recordedToday・heatmap・weeklyMinutes・
+	//   weeklySessions・totalLogs は学習ログに加え、映画・ゲームの記録セッションも合算する。
+	//   focusBySubject だけは学習ログの「分野」に固有の集計のため学習ログのみを対象に残す
+	//   (作品タイトルは分野ではないため、素朴に混ぜるとかえって意味を失う)。
 	@bindThis
 	public async getStats(userId: MiUser['id'], tz = 0): Promise<{
 		streakDays: number;
@@ -716,24 +766,29 @@ export class HatadyService {
 		const sinceMs = todayMs - (DAYS - 1) * 86400000;
 		const since = new Date(sinceMs);
 
-		const logs = await this.hatadyLogsRepository.findBy({
-			userId,
-			studiedAt: MoreThan(since),
-		});
+		const [logs, mediaSessions] = await Promise.all([
+			this.hatadyLogsRepository.findBy({ userId, studiedAt: MoreThan(since) }),
+			this.hatadyMediaSessionsRepository.findBy({ userId, occurredAt: MoreThan(since) }),
+		]);
 
-		const totalLogs = await this.hatadyLogsRepository.countBy({ userId });
-		const totalBooks = await this.hatadyBooksRepository.countBy({ userId });
+		const [logCount, mediaSessionCount, totalBooks] = await Promise.all([
+			this.hatadyLogsRepository.countBy({ userId }),
+			this.hatadyMediaSessionsRepository.countBy({ userId }),
+			this.hatadyBooksRepository.countBy({ userId }),
+		]);
+		const totalLogs = logCount + mediaSessionCount;
 
-		// 日付キー(ユーザーのローカル日付) → { minutes, count }
+		// 日付キー(ユーザーのローカル日付) → { minutes, count }。学習ログ・メディアセッション共通の集計先。
 		const dayKey = (d: Date) => this.dayKeyTz(d, tz);
 		const byDay = new Map<string, { minutes: number; count: number }>();
-		for (const log of logs) {
-			const k = dayKey(new Date(log.studiedAt));
+		const addToDay = (k: string, minutes: number) => {
 			const cur = byDay.get(k) ?? { minutes: 0, count: 0 };
-			cur.minutes += log.durationMinutes;
+			cur.minutes += minutes;
 			cur.count += 1;
 			byDay.set(k, cur);
-		}
+		};
+		for (const log of logs) addToDay(dayKey(new Date(log.studiedAt)), log.durationMinutes);
+		for (const session of mediaSessions) addToDay(dayKey(new Date(session.occurredAt)), session.durationMinutes ?? 0);
 
 		// ヒートマップ(140日分、古い順)。ユーザーのローカル日で1日ずつ進める。
 		const heatmap: { date: string; minutes: number; count: number }[] = [];
@@ -767,6 +822,12 @@ export class HatadyService {
 				subjectMinutes.set(log.subject, (subjectMinutes.get(log.subject) ?? 0) + log.durationMinutes);
 			}
 		}
+		for (const session of mediaSessions) {
+			if (this.localMidnightMs(new Date(session.occurredAt), tz) >= weekAgoMs) {
+				weeklyMinutes += session.durationMinutes ?? 0;
+				weeklySessions += 1;
+			}
+		}
 		const focusBySubject = [...subjectMinutes.entries()]
 			.map(([subject, minutes]) => ({ subject, minutes }))
 			.sort((a, b) => b.minutes - a.minutes)
@@ -785,8 +846,8 @@ export class HatadyService {
 	// ログを閲覧できるか: 公開 or 本人 or (フォロワー限定 かつ 閲覧者がフォロー中)。
 	@bindThis
 	public async canViewLog(log: MiHatadyLog, viewerId: MiUser['id']): Promise<boolean> {
-		if (log.isPublic) return true;
 		if (log.userId === viewerId) return true;
+		if (log.visibility === 'public') return true;
 		if (log.visibility === 'followers') return this.isFollowing(viewerId, log.userId);
 		return false;
 	}
@@ -852,62 +913,103 @@ export class HatadyService {
 	public async react(user: MiUser, target: { logId?: string | null; commentId?: string | null }, reaction: string): Promise<void> {
 		const reactionStr = reaction.trim().slice(0, 260);
 		if (reactionStr.length === 0) throw new Error('empty reaction');
+		if (!target.logId && !target.commentId) throw new Error('no such target or access denied');
 
-		// 旗鯖fork: typeorm 1.1 の FindOptionsWhere 型厳格化に伴い、logId が null の場合は
-		// IsNull() を使う(挙動は変えない。null をそのまま渡すのは新しい型定義で不可になったため)。
-		const where = target.commentId
-			? { userId: user.id, commentId: target.commentId }
-			: { userId: user.id, logId: target.logId === null ? IsNull() : target.logId };
+		await this.hatadyReactionsRepository.manager.transaction(async manager => {
+			let targetComment: MiHatadyComment | null = null;
+			let logId = target.logId ?? null;
+			if (target.commentId) {
+				const commentRef = await manager.getRepository(MiHatadyComment).findOneBy({ id: target.commentId });
+				if (commentRef == null) throw new Error('no such target or access denied');
+				logId = commentRef.logId;
+			}
+			const targetLog = logId == null
+				? null
+				: await manager.getRepository(MiHatadyLog).findOne({ where: { id: logId }, lock: { mode: 'pessimistic_write' } });
+			if (targetLog == null) throw new Error('no such target or access denied');
+			if (targetLog.userId !== user.id && targetLog.visibility !== 'public') {
+				const follows = targetLog.visibility === 'followers'
+					&& await manager.getRepository(MiHatadyFollowing).findOne({
+						where: { followerId: user.id, followeeId: targetLog.userId },
+						lock: { mode: 'pessimistic_read' },
+					});
+				if (!follows) throw new Error('no such target or access denied');
+			}
+			if (target.commentId) {
+				targetComment = await manager.getRepository(MiHatadyComment).findOne({ where: { id: target.commentId, logId: targetLog.id }, lock: { mode: 'pessimistic_write' } });
+				if (targetComment == null) throw new Error('no such target or access denied');
+			}
 
-		const existing = await this.hatadyReactionsRepository.findOneBy(where);
-		if (existing) {
-			// 同じ絵文字の再指定は何もしない。付け替え(絵文字変更)時は通知を送る。
-			if (existing.reaction === reactionStr) return;
-			await this.hatadyReactionsRepository.update(existing.id, { reaction: reactionStr, createdAt: new Date() });
-		} else {
+			const reactionRepo = manager.getRepository(MiHatadyReaction);
+			const existing = targetComment
+				? await reactionRepo.findOneBy({ userId: user.id, commentId: targetComment.id })
+				: await reactionRepo.findOneBy({ userId: user.id, logId: targetLog.id });
+			if (existing?.reaction === reactionStr) return;
 			const now = new Date();
-			await this.hatadyReactionsRepository.insertOne({
-				id: this.idService.gen(now.getTime()),
-				createdAt: now,
-				userId: user.id,
-				logId: target.commentId ? null : (target.logId ?? null),
-				commentId: target.commentId ?? null,
-				reaction: reactionStr,
-			});
-			await this.refreshReactionCount(target);
-		}
+			if (existing) {
+				await reactionRepo.update(existing.id, { reaction: reactionStr, createdAt: now });
+			} else {
+				await reactionRepo.insert({
+					id: this.idService.gen(now.getTime()),
+					createdAt: now,
+					userId: user.id,
+					logId: targetComment ? null : targetLog.id,
+					commentId: targetComment?.id ?? null,
+					reaction: reactionStr,
+				});
+				if (targetComment) {
+					const count = await reactionRepo.countBy({ commentId: targetComment.id });
+					await manager.getRepository(MiHatadyComment).update(targetComment.id, { reactionsCount: count });
+				} else {
+					const count = await reactionRepo.countBy({ logId: targetLog.id });
+					await manager.getRepository(MiHatadyLog).update(targetLog.id, { reactionsCount: count });
+				}
+			}
 
-		// 通知: 対象の所有者へ(新規付与・付け替えの両方)。
-		if (target.commentId) {
-			const comment = await this.hatadyCommentsRepository.findOneBy({ id: target.commentId });
-			if (comment) await this.notify({ notifieeId: comment.userId, notifierId: user.id, type: 'reaction', logId: comment.logId, commentId: comment.id, reaction: reactionStr });
-		} else if (target.logId) {
-			const log = await this.hatadyLogsRepository.findOneBy({ id: target.logId });
-			if (log) await this.notify({ notifieeId: log.userId, notifierId: user.id, type: 'reaction', logId: log.id, reaction: reactionStr });
-		}
+			const notifieeId = targetComment?.userId ?? targetLog.userId;
+			if (notifieeId !== user.id) {
+				await manager.getRepository(MiHatadyNotification).insert({
+					id: this.idService.gen(now.getTime()), createdAt: now, notifieeId, notifierId: user.id,
+					type: 'reaction', logId: targetLog.id, commentId: targetComment?.id ?? null,
+					mediaWorkId: null, mediaCommentId: null, reaction: reactionStr, value: null, isRead: false,
+				});
+			}
+		});
 	}
 
 	@bindThis
 	public async unreact(user: MiUser, target: { logId?: string | null; commentId?: string | null }): Promise<void> {
-		const where = target.commentId
-			? { userId: user.id, commentId: target.commentId }
-			: { userId: user.id, logId: target.logId === null ? IsNull() : target.logId };
-		const existing = await this.hatadyReactionsRepository.findOneBy(where);
-		if (existing == null) return;
-		await this.hatadyReactionsRepository.delete(existing.id);
-		await this.refreshReactionCount(target);
-	}
-
-	// 対象の非正規化リアクション数を再計算する。
-	@bindThis
-	private async refreshReactionCount(target: { logId?: string | null; commentId?: string | null }): Promise<void> {
-		if (target.commentId) {
-			const count = await this.hatadyReactionsRepository.countBy({ commentId: target.commentId });
-			await this.hatadyCommentsRepository.update(target.commentId, { reactionsCount: count });
-		} else if (target.logId) {
-			const count = await this.hatadyReactionsRepository.countBy({ logId: target.logId });
-			await this.hatadyLogsRepository.update(target.logId, { reactionsCount: count });
-		}
+		if (!target.logId && !target.commentId) return;
+		await this.hatadyReactionsRepository.manager.transaction(async manager => {
+			let targetComment: MiHatadyComment | null = null;
+			let logId = target.logId ?? null;
+			if (target.commentId) {
+				const commentRef = await manager.getRepository(MiHatadyComment).findOneBy({ id: target.commentId });
+				if (commentRef == null) return;
+				logId = commentRef.logId;
+			}
+			const targetLog = logId == null
+				? null
+				: await manager.getRepository(MiHatadyLog).findOne({ where: { id: logId }, lock: { mode: 'pessimistic_write' } });
+			if (targetLog == null) return;
+			if (target.commentId) {
+				targetComment = await manager.getRepository(MiHatadyComment).findOne({ where: { id: target.commentId, logId: targetLog.id }, lock: { mode: 'pessimistic_write' } });
+				if (targetComment == null) return;
+			}
+			const reactionRepo = manager.getRepository(MiHatadyReaction);
+			const existing = targetComment
+				? await reactionRepo.findOneBy({ userId: user.id, commentId: targetComment.id })
+				: await reactionRepo.findOneBy({ userId: user.id, logId: targetLog.id });
+			if (existing == null) return;
+			await reactionRepo.delete(existing.id);
+			if (targetComment) {
+				const count = await reactionRepo.countBy({ commentId: targetComment.id });
+				await manager.getRepository(MiHatadyComment).update(targetComment.id, { reactionsCount: count });
+			} else {
+				const count = await reactionRepo.countBy({ logId: targetLog.id });
+				await manager.getRepository(MiHatadyLog).update(targetLog.id, { reactionsCount: count });
+			}
+		});
 	}
 
 	// ===================================================================
@@ -947,7 +1049,9 @@ export class HatadyService {
 		return Date.UTC(s.getUTCFullYear(), s.getUTCMonth(), s.getUTCDate()) + tz * 60000;
 	}
 
-	// 旗鯖fork(P3): 連続学習の詳細履歴。現在・最長・過去の連続期間(降順)を返す。
+	// 旗鯖fork(P3): 連続記録の詳細履歴。現在・最長・過去の連続期間(降順)を返す。
+	// 旗鯖fork(Hatady次期: ゲーム/映画記録): 学習ログに加え、映画・ゲームの記録セッションも
+	//   「記録がある日」に含める(loadOwnActivityMoments と同じ判定基準)。
 	@bindThis
 	public async getStreaks(userId: MiUser['id'], tz = 0): Promise<{
 		current: number;
@@ -957,14 +1061,10 @@ export class HatadyService {
 		// 過去2年分の記録日を取得(件数は限られるため十分)。起点はユーザーのローカル「今日 0:00」。
 		const todayMs = this.localMidnightMs(new Date(), tz);
 		const since = new Date(todayMs - 730 * 86400000);
-		const rows = await this.hatadyLogsRepository.createQueryBuilder('log')
-			.select('log.studiedAt', 'studiedAt')
-			.where('log.userId = :uid', { uid: userId })
-			.andWhere('log.studiedAt > :since', { since })
-			.getRawMany();
+		const moments = await this.loadOwnActivityMoments(userId, since);
 
 		// 記録がある日を昇順のユニーク配列に(ユーザーのローカル日付で判定)。
-		const daySet = new Set<string>(rows.map(r => this.dayKeyTz(new Date(r.studiedAt), tz)));
+		const daySet = new Set<string>(moments.map(m => this.dayKeyTz(m.occurredAt, tz)));
 		const days = [...daySet].sort();
 		if (days.length === 0) return { current: 0, best: 0, periods: [] };
 

@@ -229,6 +229,7 @@ export const rolePolicies = [
 	'canUseHatadySync',
 	'hatadyBookLimit',
 	'hatadyBookmarkLimit',
+	'hatadyGameTitleLimit',
 	'canMakePrivateChannel',
 	'canRequestRemoteEmoji',
 	'emojiRequestLimit',

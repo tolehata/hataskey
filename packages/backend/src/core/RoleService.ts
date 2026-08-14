@@ -71,6 +71,8 @@ export type RolePolicies = {
 	// 旗鯖fork(Hatady): 追加できる本の最大数 / 1冊あたりのしおりの最大数(ロールで管理)。
 	hatadyBookLimit: number;
 	hatadyBookmarkLimit: number;
+	// 旗鯖fork(Hatady): 記録できる異なるゲーム作品数。映画にはロール上限を設けない。
+	hatadyGameTitleLimit: number;
 	// 旗鯖fork: プライベートチャンネルを作成できるか(デフォルト不許可。許可ロールでのみ作成可)
 	canMakePrivateChannel: boolean;
 	canRequestRemoteEmoji: boolean;
@@ -130,6 +132,7 @@ export const DEFAULT_POLICIES: RolePolicies = {
 	canUseHatadySync: true,
 	hatadyBookLimit: 100,
 	hatadyBookmarkLimit: 20,
+	hatadyGameTitleLimit: 100,
 	canMakePrivateChannel: false,
 	canRequestRemoteEmoji: false,
 	emojiRequestLimit: 10,
@@ -176,6 +179,12 @@ export function normalizeHatacordingUiRateLimit(values: readonly unknown[]): num
 	const finiteValues = values.map(Number).filter(Number.isFinite);
 	const value = finiteValues.length > 0 ? Math.max(...finiteValues) : DEFAULT_POLICIES.hatacordingUiRateLimit;
 	return Math.max(1, Math.min(1000, Math.floor(value)));
+}
+
+export function normalizeHatadyGameTitleLimit(values: readonly unknown[]): number {
+	const finiteValues = values.map(Number).filter(Number.isFinite);
+	const value = finiteValues.length > 0 ? Math.max(...finiteValues) : DEFAULT_POLICIES.hatadyGameTitleLimit;
+	return Math.max(0, Math.min(1000, Math.floor(value)));
 }
 
 @Injectable()
@@ -489,6 +498,7 @@ export class RoleService implements OnApplicationShutdown, OnModuleInit {
 			canUseHatadySync: calc('canUseHatadySync', vs => vs.every(v => v === true)),
 			hatadyBookLimit: calc('hatadyBookLimit', vs => Math.max(...vs)),
 			hatadyBookmarkLimit: calc('hatadyBookmarkLimit', vs => Math.max(...vs)),
+			hatadyGameTitleLimit: calc('hatadyGameTitleLimit', normalizeHatadyGameTitleLimit),
 			canMakePrivateChannel: calc('canMakePrivateChannel', vs => vs.some(v => v === true)),
 			canRequestRemoteEmoji: calc('canRequestRemoteEmoji', vs => vs.some(v => v === true)),
 			emojiRequestLimit: calc('emojiRequestLimit', vs => Math.max(...vs)),

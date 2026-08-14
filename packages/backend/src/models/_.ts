@@ -128,6 +128,10 @@ import { MiHatadyBookmark } from '@/models/HatadyBookmark.js';
 import { MiHatadyBookMemo } from '@/models/HatadyBookMemo.js';
 import { MiHatadySubject } from '@/models/HatadySubject.js';
 import { MiHatadyGoal } from '@/models/HatadyGoal.js';
+import { MiHatadyMediaWork } from '@/models/HatadyMediaWork.js';
+import { MiHatadyMediaSession } from '@/models/HatadyMediaSession.js';
+import { MiHatadyMediaComment } from '@/models/HatadyMediaComment.js';
+import { MiHatadyMediaReaction } from '@/models/HatadyMediaReaction.js';
 import type { QueryDeepPartialEntity } from 'typeorm';
 
 export interface MiRepository<T extends ObjectLiteral> {
@@ -308,6 +312,10 @@ export {
 	MiHatadyBookMemo,
 	MiHatadySubject,
 	MiHatadyGoal,
+	MiHatadyMediaWork,
+	MiHatadyMediaSession,
+	MiHatadyMediaComment,
+	MiHatadyMediaReaction,
 };
 
 export type AbuseReportResolversRepository = Repository<MiAbuseReportResolver> & MiRepository<MiAbuseReportResolver>;
@@ -424,3 +432,7 @@ export type HatadyBookmarksRepository = Repository<MiHatadyBookmark> & MiReposit
 export type HatadyBookMemosRepository = Repository<MiHatadyBookMemo> & MiRepository<MiHatadyBookMemo>;
 export type HatadySubjectsRepository = Repository<MiHatadySubject> & MiRepository<MiHatadySubject>;
 export type HatadyGoalsRepository = Repository<MiHatadyGoal> & MiRepository<MiHatadyGoal>;
+export type HatadyMediaWorksRepository = Repository<MiHatadyMediaWork> & MiRepository<MiHatadyMediaWork>;
+export type HatadyMediaSessionsRepository = Repository<MiHatadyMediaSession> & MiRepository<MiHatadyMediaSession>;
+export type HatadyMediaCommentsRepository = Repository<MiHatadyMediaComment> & MiRepository<MiHatadyMediaComment>;
+export type HatadyMediaReactionsRepository = Repository<MiHatadyMediaReaction> & MiRepository<MiHatadyMediaReaction>;

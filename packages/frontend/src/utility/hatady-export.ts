@@ -2,6 +2,9 @@
  * 旗鯖fork(Hatady P5): 学習記録を人間可読な .txt にエクスポートする。
  *   既存の hata/hatady/logs (sinceDate/untilDate + untilId ページング) をループ取得し、
  *   日付見出しごとに整形。冒頭にサマリ(期間/総時間/件数/連続)を付与して Blob ダウンロード。
+ * 旗鯖fork(Hatady media): 映画・ゲームの作品/記録は、将来の読込拡張に備えた版付き JSON
+ *   として別に書き出す。学習時間へ混ぜず、保存済みの言語非依存 enum と公開範囲を維持する。
+ *   現時点では書き出し専用で、読込UIは提供しない。
  */
 import { versatileLang } from '@@/js/intl-const.js';
 import { i18n } from '@/i18n.js';
@@ -10,8 +13,43 @@ import { hatadyTzOffset } from '@/utility/hatady-prefs.js';
 
 const MAX_PAGES = 50; // 100件×50 = 上限5000件(暴走防止)
 
+export const HATADY_MEDIA_EXPORT_FORMAT = 'hatady-media' as const;
+export const HATADY_MEDIA_EXPORT_VERSION = 1 as const;
+export const HATADY_MEDIA_EXPORT_LIMIT_ERROR = 'HATADY_MEDIA_EXPORT_LIMIT_EXCEEDED' as const;
+export const HATADY_MEDIA_EXPORT_INVALID_RESPONSE = 'HATADY_MEDIA_EXPORT_INVALID_RESPONSE' as const;
+export const HATADY_MEDIA_EXPORT_CURSOR_STALLED = 'HATADY_MEDIA_EXPORT_CURSOR_STALLED' as const;
+
+export type HatadyMediaExportArchive = {
+	format: typeof HATADY_MEDIA_EXPORT_FORMAT;
+	formatVersion: typeof HATADY_MEDIA_EXPORT_VERSION;
+	serverVersion: string;
+	exportedAt: string;
+	timezone: string;
+	works: unknown[];
+	sessions: unknown[];
+};
+
+export function buildHatadyMediaExportArchive(
+	works: unknown[],
+	sessions: unknown[],
+	opts?: { now?: Date; serverVersion?: string; timezone?: string },
+): HatadyMediaExportArchive {
+	const now = opts?.now ?? new Date();
+	return {
+		format: HATADY_MEDIA_EXPORT_FORMAT,
+		formatVersion: HATADY_MEDIA_EXPORT_VERSION,
+		serverVersion: opts?.serverVersion ?? (typeof _VERSION_ === 'string' ? _VERSION_ : 'unknown'),
+		exportedAt: now.toISOString(),
+		timezone: opts?.timezone ?? (Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'),
+		works,
+		sessions,
+	};
+}
+
 function pad(n: number): string { return n.toString().padStart(2, '0'); }
+
 function ymdKey(d: Date): string { return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; }
+
 function fileStamp(d: Date): string { return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}`; }
 
 function fmtDuration(min: number): string {
@@ -110,7 +148,7 @@ export async function exportHatadyLogs(opts: { sinceDate: number | null; untilDa
 				}
 				if (log.body) {
 					// メモは複数行対応(各行をインデント)。
-					for (const bl of String(log.body).split('\n')) lines.push(`　${bl}`);
+					for (const bl of String(log.body).split('\n')) lines.push(`\u3000${bl}`);
 				}
 			}
 			lines.push('');
@@ -125,13 +163,79 @@ export async function exportHatadyLogs(opts: { sinceDate: number | null; untilDa
 	// Blob ダウンロード。
 	const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
 	const url = URL.createObjectURL(blob);
-	const a = document.createElement('a');
+	const a = window.document.createElement('a');
 	a.href = url;
 	a.download = filename;
-	document.body.appendChild(a);
+	window.document.body.appendChild(a);
 	a.click();
-	document.body.removeChild(a);
-	setTimeout(() => URL.revokeObjectURL(url), 1000);
+	window.document.body.removeChild(a);
+	window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 
 	return { count: logs.length };
+}
+
+function downloadBlob(blob: Blob, filename: string): void {
+	const url = URL.createObjectURL(blob);
+	const a = window.document.createElement('a');
+	a.href = url;
+	a.download = filename;
+	window.document.body.appendChild(a);
+	a.click();
+	window.document.body.removeChild(a);
+	window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function asItems(value: unknown): unknown[] {
+	if (Array.isArray(value)) return value;
+	if (value != null && typeof value === 'object') {
+		const items = (value as { items?: unknown }).items;
+		if (Array.isArray(items)) return items;
+	}
+	throw new Error(HATADY_MEDIA_EXPORT_INVALID_RESPONSE);
+}
+
+export async function fetchMediaPages(endpoint: 'hata/hatady/media/works/list' | 'hata/hatady/media/sessions/list'): Promise<unknown[]> {
+	const all: unknown[] = [];
+	const seen = new Set<string>();
+	let untilId: string | undefined;
+	for (let page = 0; page < MAX_PAGES; page++) {
+		const response = await misskeyApi(endpoint, { limit: 100, untilId });
+		const items = asItems(response);
+		if (items.length === 0) break;
+		if (items.length > 100) throw new Error(HATADY_MEDIA_EXPORT_INVALID_RESPONSE);
+		for (const item of items) {
+			if (item == null || typeof item !== 'object') throw new Error(HATADY_MEDIA_EXPORT_INVALID_RESPONSE);
+			const itemId = (item as { id?: unknown }).id;
+			if (typeof itemId !== 'string' || itemId.length === 0) throw new Error(HATADY_MEDIA_EXPORT_INVALID_RESPONSE);
+			if (seen.has(itemId)) throw new Error(HATADY_MEDIA_EXPORT_CURSOR_STALLED);
+			seen.add(itemId);
+			all.push(item);
+		}
+		if (items.length < 100) break;
+		const lastId = (items.at(-1) as { id?: unknown } | undefined)?.id;
+		if (typeof lastId !== 'string' || lastId.length === 0) throw new Error(HATADY_MEDIA_EXPORT_INVALID_RESPONSE);
+		if (lastId === untilId) throw new Error(HATADY_MEDIA_EXPORT_CURSOR_STALLED);
+		untilId = lastId;
+		if (page === MAX_PAGES - 1) {
+			const probeResponse = await misskeyApi(endpoint, { limit: 1, untilId });
+			if (asItems(probeResponse).length > 0) throw new Error(HATADY_MEDIA_EXPORT_LIMIT_ERROR);
+		}
+	}
+	return all;
+}
+
+/**
+ * 映画・ゲーム作品と、その視聴/プレイ記録を版付き JSON へ書き出す。
+ * 将来の読込実装が部分データを黙って受理しないよう、format/versionを必ず含める。
+ */
+export async function exportHatadyMediaArchive(): Promise<{ works: number; sessions: number }> {
+	const [works, sessions] = await Promise.all([
+		fetchMediaPages('hata/hatady/media/works/list'),
+		fetchMediaPages('hata/hatady/media/sessions/list'),
+	]);
+	const now = new Date();
+	const archive = buildHatadyMediaExportArchive(works, sessions, { now });
+	const blob = new Blob([JSON.stringify(archive, null, 2)], { type: 'application/json;charset=utf-8' });
+	downloadBlob(blob, `hatady_media_${fileStamp(now)}.json`);
+	return { works: works.length, sessions: sessions.length };
 }

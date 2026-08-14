@@ -1,21 +1,33 @@
 <!--
 SPDX-FileCopyrightText: Tolehata and hatasaba-project
 SPDX-License-Identifier: AGPL-3.0-only
-旗鯖fork(Hatady): 学習記録の書き出し(期間指定)ダイアログ。
-  すべての期間 / 今月 / 先月 / 過去30日 / 期間を指定 から選び、人間にも読みやすい .txt を出力する。
-  実処理は utility/hatady-export.ts の exportHatadyLogs()。
+旗鯖fork(Hatady): 記録の書き出しダイアログ。
+  学習記録は期間を選んで人間にも読みやすい .txt、映画・ゲームは作品と記録を
+  将来の読込にも拡張できる版付き .json として出力する。現時点では書き出し専用。
+  実処理は utility/hatady-export.ts。
 -->
 <template>
 <MkWindow
 	ref="dialog"
 	:initialWidth="430"
-	:initialHeight="470"
+	:initialHeight="520"
 	:canResize="true"
 	@closed="emit('closed')"
 >
 	<template #header><i class="ti ti-file-download"></i> {{ copy.title }}</template>
 
 	<div class="hatady-scope" :data-hatady-theme="theme" :class="$style.body">
+		<div :class="$style.label"><i class="ti ti-package-export"></i> {{ copy.exportTarget }}</div>
+		<div :class="$style.targets" role="group" :aria-label="copy.exportTarget">
+			<button :class="[$style.target, target === 'learning' && $style.targetOn]" @click="target = 'learning'">
+				<i class="ti ti-school"></i><span><b>{{ copy.learningLogs }}</b><small>{{ copy.learningLogsFormat }}</small></span>
+			</button>
+			<button :class="[$style.target, target === 'media' && $style.targetOn]" @click="target = 'media'">
+				<i class="ti ti-library"></i><span><b>{{ copy.mediaRecords }}</b><small>{{ copy.mediaRecordsFormat }}</small></span>
+			</button>
+		</div>
+
+		<template v-if="target === 'learning'">
 		<div :class="$style.label"><i class="ti ti-calendar-search"></i> {{ copy.period }}</div>
 		<div :class="$style.presets">
 			<button
@@ -38,6 +50,14 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<span>{{ summaryText }}</span>
 		</div>
 		<div :class="$style.hint">{{ copy.hint }}</div>
+		</template>
+		<template v-else>
+			<div :class="$style.summary">
+				<i class="ti ti-shield-check"></i>
+				<span>{{ copy.mediaSummary }}</span>
+			</div>
+			<div :class="$style.hint">{{ copy.mediaHint }}</div>
+		</template>
 
 		<div :class="$style.footer">
 			<button :class="[$style.btn, $style.btnGhost]" :disabled="exporting" @click="dialog?.close()">{{ copy.cancel }}</button>
@@ -57,7 +77,7 @@ import MkWindow from '@/components/MkWindow.vue';
 import { i18n } from '@/i18n.js';
 import * as os from '@/os.js';
 import { hatadyTheme } from '@/utility/hatady-prefs.js';
-import { exportHatadyLogs } from '@/utility/hatady-export.js';
+import { exportHatadyLogs, exportHatadyMediaArchive } from '@/utility/hatady-export.js';
 
 const emit = defineEmits<{ (ev: 'closed'): void }>();
 const dialog = ref<any>(null);
@@ -65,6 +85,7 @@ const theme = hatadyTheme;
 const copy = i18n.ts._hata._hatady._exportDialog;
 
 type Mode = 'all' | 'thisMonth' | 'lastMonth' | 'last30' | 'custom';
+type ExportTarget = 'learning' | 'media';
 const PRESETS = [
 	{ key: 'all' as const, label: copy.all },
 	{ key: 'thisMonth' as const, label: copy.thisMonth },
@@ -74,6 +95,7 @@ const PRESETS = [
 ];
 
 const mode = ref<Mode>('all');
+const target = ref<ExportTarget>('learning');
 const sinceInput = ref('');
 const untilInput = ref('');
 const exporting = ref(false);
@@ -115,6 +137,7 @@ const range = computed<{ since: number | null; until: number | null }>(() => {
 });
 // 「期間を指定」は少なくとも片方の日付が要る。開始>終了は不可。
 const valid = computed(() => {
+	if (target.value === 'media') return true;
 	if (mode.value === 'all') return true;
 	const { since, until } = range.value;
 	if (since == null && until == null) return false;
@@ -139,8 +162,13 @@ async function run() {
 	if (exporting.value || !valid.value) return;
 	exporting.value = true;
 	try {
-		const { count } = await exportHatadyLogs({ sinceDate: range.value.since, untilDate: range.value.until });
-		os.toast(i18n.tsx._hata._hatady._exportDialog.exportedCount({ count }));
+		if (target.value === 'media') {
+			const result = await exportHatadyMediaArchive();
+			os.toast(i18n.tsx._hata._hatady._exportDialog.exportedMediaCount({ works: result.works, sessions: result.sessions }));
+		} else {
+			const { count } = await exportHatadyLogs({ sinceDate: range.value.since, untilDate: range.value.until });
+			os.toast(i18n.tsx._hata._hatady._exportDialog.exportedCount({ count }));
+		}
 		dialog.value?.close();
 	} catch {
 		os.alert({ type: 'error', text: copy.exportFailed });
@@ -163,7 +191,7 @@ async function run() {
 	display: flex; flex-direction: column;
 	background: var(--hy-bg, var(--MI_THEME-bg)); color: var(--hy-body, var(--MI_THEME-fg));
 	font-family: 'Noto Sans JP', 'Hiragino Sans', system-ui, sans-serif;
-	min-height: 100%; box-sizing: border-box;
+	min-height: 100%; box-sizing: border-box; container-type: inline-size;
 }
 
 .body[data-hatady-theme="paper"] {
@@ -210,6 +238,19 @@ async function run() {
 .label { display: flex; align-items: center; gap: 6px; font-family: var(--hy-heading); font-size: 12.5px; font-weight: 700; color: var(--hy-ink); margin-bottom: 10px; }
 .label i { color: var(--hy-accent); }
 
+.targets { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 18px; }
+.target {
+	display: flex; align-items: center; gap: 9px; min-width: 0; padding: 11px 12px;
+	background: var(--hy-surface); border: 1px solid var(--hy-border); border-radius: 12px;
+	color: var(--hy-body); text-align: left; cursor: pointer; font-family: inherit;
+}
+.target > i { flex: 0 0 auto; font-size: 20px; color: var(--hy-muted); }
+.target > span { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.target b { color: var(--hy-ink); font-family: var(--hy-heading); font-size: 12.5px; }
+.target small { color: var(--hy-muted); font-size: 10.5px; }
+.targetOn { border-color: var(--hy-accent); background: color-mix(in srgb, var(--hy-accent) 10%, var(--hy-surface)); box-shadow: 0 0 0 1px color-mix(in srgb, var(--hy-accent) 35%, transparent); }
+.targetOn > i { color: var(--hy-accent); }
+
 .presets { display: flex; flex-wrap: wrap; gap: 7px; }
 .chip { background: var(--hy-surface); border: 1px solid var(--hy-border); border-radius: 999px; padding: 6px 14px; font-size: 12px; font-weight: 700; color: var(--hy-muted); cursor: pointer; font-family: var(--hy-heading); }
 .chip:hover { border-color: var(--hy-accent); }
@@ -232,4 +273,8 @@ async function run() {
 .btnPrimary:not(:disabled):hover { filter: brightness(1.05); }
 .spin { animation: hy-exp-spin .8s linear infinite; }
 @keyframes hy-exp-spin { to { transform: rotate(360deg); } }
+
+@container (max-width: 360px) {
+	.targets { grid-template-columns: 1fr; }
+}
 </style>

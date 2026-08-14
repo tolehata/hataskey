@@ -19,6 +19,16 @@ export const meta = {
 			code: 'INVALID_TARGET',
 			id: 'd2e3f4a5-b6c7-4d8e-9f0a-1b2c3d4e5f6a',
 		},
+		noSuchTarget: {
+			message: 'No such Hatady reaction target or access denied.',
+			code: 'NO_SUCH_HATADY_REACTION_TARGET',
+			id: '600f3d7d-132d-4a37-95ec-ae4616087cf4',
+		},
+		invalidReaction: {
+			message: 'Reaction must contain a non-whitespace character.',
+			code: 'INVALID_REACTION',
+			id: '45cdbfb0-9dc0-4d77-9bfc-f4b7e47aeb20',
+		},
 	},
 } as const;
 
@@ -27,7 +37,7 @@ export const paramDef = {
 	properties: {
 		logId: { type: 'string', format: 'misskey:id', nullable: true },
 		commentId: { type: 'string', format: 'misskey:id', nullable: true },
-		reaction: { type: 'string', minLength: 1, maxLength: 260 },
+		reaction: { type: 'string', minLength: 1, maxLength: 260, pattern: '\\S' },
 	},
 	required: ['reaction'],
 } as const;
@@ -41,7 +51,13 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 			const hasLog = ps.logId != null;
 			const hasComment = ps.commentId != null;
 			if (hasLog === hasComment) throw new ApiError(meta.errors.invalidTarget); // 両方 or 両方無しはNG
-			await this.hatadyService.react(me, { logId: ps.logId ?? null, commentId: ps.commentId ?? null }, ps.reaction);
+			try {
+				await this.hatadyService.react(me, { logId: ps.logId ?? null, commentId: ps.commentId ?? null }, ps.reaction);
+			} catch (error) {
+				if (error instanceof Error && error.message === 'no such target or access denied') throw new ApiError(meta.errors.noSuchTarget);
+				if (error instanceof Error && error.message === 'empty reaction') throw new ApiError(meta.errors.invalidReaction);
+				throw error;
+			}
 		});
 	}
 }

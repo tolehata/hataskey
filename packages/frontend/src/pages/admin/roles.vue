@@ -231,6 +231,15 @@ SPDX-License-Identifier: AGPL-3.0-only
 						</MkInput>
 					</MkFolder>
 
+					<!-- 旗鯖fork(Hatady): 記録できる異なるゲーム作品数。対戦/プレイ件数は制限しない。 -->
+					<MkFolder v-if="matchQuery([roleCopy.hatadyGameTitleLimitName, 'hatadyGameTitleLimit'])">
+						<template #label>{{ roleCopy.hatadyGameTitleLimitName }}</template>
+						<template #suffix>{{ policies.hatadyGameTitleLimit }}</template>
+						<MkInput v-model="policies.hatadyGameTitleLimit" type="number" :min="0" :max="1000" :step="1">
+							<template #caption>{{ roleCopy.hatadyGameTitleLimitBaseCaption }}</template>
+						</MkInput>
+					</MkFolder>
+
 					<!-- 旗鯖fork(Hatady): 本1冊あたりのしおりの最大数 -->
 					<MkFolder v-if="matchQuery([roleCopy.hatadyBookmarkLimitName, 'hatadyBookmarkLimit'])">
 						<template #label>{{ roleCopy.hatadyBookmarkLimitName }}</template>

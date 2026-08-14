@@ -36,7 +36,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<div v-if="g.items.length" :class="$style.groupHead">{{ g.label }}</div>
 					<div
 						v-for="n in g.items" :key="n.id"
-						:class="[$style.notif, !n.isRead && $style.unread, n.logId && $style.clickable]"
+						:class="[$style.notif, !n.isRead && $style.unread, isClickable(n) && $style.clickable]"
 						@click="onClickNotif(n)"
 					>
 						<span v-if="!n.isRead" :class="$style.dot"></span>
@@ -45,8 +45,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<span v-else-if="n.type === 'goalDone'" :class="$style.goalIcon"><i class="ti ti-target-arrow"></i></span>
 						<span v-else :class="$style.avatarWrap">
 							<MkAvatar :class="$style.avatar" :user="n.user"/>
-							<span v-if="n.type === 'reaction'" :class="$style.badgeReaction"><MkReactionIcon :reaction="String(n.reaction || '👍')"/></span>
-							<span v-else-if="n.type === 'comment'" :class="$style.badgeComment"><i class="ti ti-message-circle-2"></i></span>
+							<span v-if="isReaction(n)" :class="$style.badgeReaction"><MkReactionIcon :reaction="String(n.reaction || '👍')"/></span>
+							<span v-else-if="isComment(n)" :class="$style.badgeComment"><i :class="['ti', n.type === 'mediaReply' ? 'ti-message-reply' : 'ti-message-circle-2']"></i></span>
 							<span v-else-if="n.type === 'follow'" :class="$style.badgeFollow"><i class="ti ti-user-plus"></i></span>
 						</span>
 						<!-- 本文 -->
@@ -56,11 +56,15 @@ SPDX-License-Identifier: AGPL-3.0-only
 								<template v-else-if="n.type === 'goalDone'"><b :class="$style.who">{{ copy.goalDoneTitle }}</b> {{ copy.goalDoneText }}</template>
 								<template v-else>
 									<b :class="$style.who"><MkUserName :user="n.user"/></b> {{ verb(n) }}
-									<MkReactionIcon v-if="n.type === 'reaction'" :class="$style.inlineReaction" :reaction="String(n.reaction || '👍')"/>
+									<MkReactionIcon v-if="isReaction(n)" :class="$style.inlineReaction" :reaction="String(n.reaction || '👍')"/>
 								</template>
 							</div>
-							<div v-if="n.type === 'reaction' && n.logTitle" :class="$style.snippet">{{ n.logTitle }}</div>
-							<div v-else-if="n.type === 'comment' && n.commentText" :class="$style.bubble">{{ n.commentText }}</div>
+							<div v-if="isMediaNotification(n) && mediaTitle(n)" :class="$style.mediaTarget">
+								<i :class="['ti', mediaIcon(n)]"></i>
+								<span>{{ mediaTitle(n) }}</span>
+							</div>
+							<div v-else-if="n.type === 'reaction' && n.logTitle" :class="$style.snippet">{{ n.logTitle }}</div>
+							<div v-if="isComment(n) && notificationCommentText(n)" :class="$style.bubble">{{ notificationCommentText(n) }}</div>
 						</div>
 						<div :class="$style.right">
 							<span :class="$style.time">{{ fmtWhen(n.createdAt) }}</span>
@@ -89,7 +93,7 @@ import * as os from '@/os.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { hatadyTheme } from '@/utility/hatady-prefs.js';
 
-const emit = defineEmits<{ (ev: 'read'): void; (ev: 'openLog', logId: string): void; (ev: 'openProfile', userId: string): void; (ev: 'closed'): void }>();
+const emit = defineEmits<{ (ev: 'read'): void; (ev: 'openLog', logId: string): void; (ev: 'openMedia', workId: string): void; (ev: 'openProfile', userId: string): void; (ev: 'closed'): void }>();
 const dialog = ref<any>(null);
 const theme = hatadyTheme;
 const copy = i18n.ts._hata._hatady._notifications;
@@ -107,12 +111,45 @@ const filters = [
 	{ key: 'follow' as const, label: copy.filterFollow, icon: 'ti-user-plus' },
 	{ key: 'milestone' as const, label: copy.filterMilestone, icon: 'ti-flame' },
 ];
+
 function verb(n: any): string {
 	if (n.type === 'reaction') return copy.verbReaction;
 	if (n.type === 'comment') return copy.verbComment;
+	if (n.type === 'mediaReaction') return copy.verbMediaReaction;
+	if (n.type === 'mediaComment') return copy.verbMediaComment;
+	if (n.type === 'mediaReply') return copy.verbMediaReply;
 	if (n.type === 'follow') return copy.verbFollow;
 	return '';
 }
+
+function isReaction(n: any): boolean { return n.type === 'reaction' || n.type === 'mediaReaction'; }
+
+function isComment(n: any): boolean { return n.type === 'comment' || n.type === 'mediaComment' || n.type === 'mediaReply'; }
+
+function isMediaNotification(n: any): boolean { return n.type === 'mediaComment' || n.type === 'mediaReply' || n.type === 'mediaReaction'; }
+
+function mediaWork(n: any): any | null { return n.mediaWork ?? null; }
+
+function mediaTitle(n: any): string { return String(n.mediaTitle ?? mediaWork(n)?.title ?? ''); }
+
+function mediaKind(n: any): 'movie' | 'game' | null {
+	const kind = n.mediaKind ?? mediaWork(n)?.kind;
+	return kind === 'movie' || kind === 'game' ? kind : null;
+}
+
+function mediaIcon(n: any): string {
+	return mediaKind(n) === 'movie' ? 'ti-movie' : mediaKind(n) === 'game' ? 'ti-device-gamepad-2' : 'ti-library';
+}
+
+function notificationCommentText(n: any): string {
+	if (isMediaNotification(n) && (n.mediaCommentSpoiler === true || n.mediaComment?.spoiler === true)) return '';
+	return String(n.mediaCommentText ?? n.mediaComment?.text ?? n.commentText ?? '');
+}
+
+function isClickable(n: any): boolean {
+	return Boolean(n.logId || n.mediaWorkId || mediaWork(n)?.id || (n.type === 'follow' && n.user));
+}
+
 function fmtWhen(iso: string): string {
 	const d = new Date(iso);
 	const diffMin = Math.round((Date.now() - d.getTime()) / 60000);
@@ -125,7 +162,12 @@ function fmtWhen(iso: string): string {
 	return shortDateFormatter.format(d);
 }
 
-const filtered = computed(() => activeFilter.value === 'all' ? items.value : items.value.filter(n => n.type === activeFilter.value));
+const filtered = computed(() => {
+	if (activeFilter.value === 'all') return items.value;
+	if (activeFilter.value === 'reaction') return items.value.filter(isReaction);
+	if (activeFilter.value === 'comment') return items.value.filter(isComment);
+	return items.value.filter(n => n.type === activeFilter.value);
+});
 
 // 今日/昨日/それ以前 でグループ化。
 const groups = computed(() => {
@@ -166,7 +208,9 @@ async function markAllRead() {
 }
 
 function onClickNotif(n: any) {
-	if (n.logId) emit('openLog', n.logId);
+	const mediaWorkId = n.mediaWorkId ?? mediaWork(n)?.id;
+	if (mediaWorkId) emit('openMedia', mediaWorkId);
+	else if (n.logId) emit('openLog', n.logId);
 	else if (n.type === 'follow' && n.user) emit('openProfile', n.user.id);
 }
 
@@ -272,6 +316,12 @@ onMounted(reload);
 .who { font-family: var(--hy-heading); }
 .streakVal { font-family: var(--hy-heading); color: var(--hy-accent-ink); }
 .snippet { font-size: 12px; color: var(--hy-muted); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mediaTarget {
+	display: flex; align-items: center; gap: 5px; min-width: 0; margin-top: 2px;
+	font-size: 12px; color: var(--hy-muted);
+}
+.mediaTarget i { color: var(--hy-accent-ink); flex-shrink: 0; }
+.mediaTarget span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bubble { font-size: 12px; color: var(--hy-body); margin-top: 4px; background: var(--hy-surface-2); border-radius: 7px; padding: 5px 9px; display: inline-block; max-width: 100%; word-break: break-word; }
 .right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
 .time { font-size: 11px; color: var(--hy-muted); white-space: nowrap; flex-shrink: 0; }

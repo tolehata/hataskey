@@ -574,6 +574,26 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</div>
 			</MkFolder>
 
+			<MkFolder v-if="role.policies.hatadyGameTitleLimit && matchQuery([roleCopy.hatadyGameTitleLimitName, 'hatadyGameTitleLimit'])">
+				<template #label>{{ roleCopy.hatadyGameTitleLimitName }}</template>
+				<template #suffix>
+					<span v-if="role.policies.hatadyGameTitleLimit.useDefault" :class="$style.useDefaultLabel">{{ i18n.ts._role.useBaseValue }}</span>
+					<span v-else>{{ role.policies.hatadyGameTitleLimit.value }}</span>
+					<span :class="$style.priorityIndicator"><i :class="getPriorityIcon(role.policies.hatadyGameTitleLimit)"></i></span>
+				</template>
+				<div class="_gaps">
+					<MkSwitch v-model="role.policies.hatadyGameTitleLimit.useDefault" :readonly="readonly">
+						<template #label>{{ i18n.ts._role.useBaseValue }}</template>
+					</MkSwitch>
+					<MkInput v-model="role.policies.hatadyGameTitleLimit.value" :disabled="role.policies.hatadyGameTitleLimit.useDefault" type="number" :min="0" :max="1000" :step="1" :readonly="readonly">
+						<template #caption>{{ roleCopy.hatadyGameTitleLimitBaseCaption }}</template>
+					</MkInput>
+					<MkRange v-model="role.policies.hatadyGameTitleLimit.priority" :min="0" :max="2" :step="1" easing :textConverter="(v) => v === 0 ? i18n.ts._role._priority.low : v === 1 ? i18n.ts._role._priority.middle : v === 2 ? i18n.ts._role._priority.high : ''">
+						<template #label>{{ i18n.ts._role.priority }}</template>
+					</MkRange>
+				</div>
+			</MkFolder>
+
 			<MkFolder v-if="role.policies.hatadyBookmarkLimit && matchQuery([roleCopy.hatadyBookmarkLimitName, 'hatadyBookmarkLimit'])">
 				<template #label>{{ roleCopy.hatadyBookmarkLimitName }}</template>
 				<template #suffix>

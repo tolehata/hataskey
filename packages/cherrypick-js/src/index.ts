@@ -41,4 +41,5 @@ export type {
 	IStream,
 	IChannelConnection,
 };
+export type * from './hata-media.js';
 //#endregion

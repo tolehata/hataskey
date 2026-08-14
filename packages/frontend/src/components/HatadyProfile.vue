@@ -73,6 +73,38 @@ SPDX-License-Identifier: AGPL-3.0-only
 					</div>
 				</div>
 
+				<!-- 公開範囲を満たす映画・ゲーム作品 -->
+				<template v-if="recommendedMedia.length">
+					<div :class="$style.recHead"><i class="ti ti-sparkles"></i> {{ copy.recommendedMedia }}</div>
+					<div :class="$style.mediaRecRow">
+						<button v-for="work in recommendedMedia" :key="work.id" :class="$style.mediaRecCell" @click="emit('openMedia', work.id)">
+							<HyMediaCover :kind="work.kind" :title="work.title" :subtitle="work.creator || work.developer" :colorIndex="work.coverColorIndex" :width="82"/>
+							<div :class="$style.mediaKind"><i :class="['ti', work.kind === 'movie' ? 'ti-movie' : 'ti-device-gamepad-2']"></i> {{ work.kind === 'movie' ? copy.movie : copy.game }}</div>
+							<div v-if="work.recommendationRating != null" :class="$style.mediaRating"><i class="ti ti-star-filled"></i> {{ (work.recommendationRating / 2).toFixed(1) }}</div>
+						</button>
+					</div>
+				</template>
+
+				<div v-if="mediaWorks.length || mediaLoading" :class="$style.mediaSection">
+					<div :class="$style.shelfHead">
+						<h3 :class="$style.shelfTitle"><i class="ti ti-layout-grid"></i> {{ profile.isMe ? copy.mediaCollection : copy.publicMediaCollection }}</h3>
+						<div :class="$style.mediaCounts">
+							<span><i class="ti ti-movie"></i> {{ mediaWorksTruncated ? '≥' : '' }}{{ movieCount }}</span>
+							<span><i class="ti ti-device-gamepad-2"></i> {{ mediaWorksTruncated ? '≥' : '' }}{{ gameCount }}</span>
+						</div>
+					</div>
+					<div v-if="mediaLoading" :class="$style.shelfEmpty">{{ copy.loading }}</div>
+					<div v-else :class="$style.mediaGrid">
+						<button v-for="work in mediaWorks" :key="work.id" :class="$style.mediaCell" @click="emit('openMedia', work.id)">
+							<HyMediaCover :kind="work.kind" :title="work.title" :subtitle="work.creator || work.developer" :colorIndex="work.coverColorIndex" :width="92"/>
+							<div :class="$style.mediaCellMeta">
+								<span><i :class="['ti', work.kind === 'movie' ? 'ti-movie' : 'ti-device-gamepad-2']"></i> {{ work.kind === 'movie' ? copy.movie : copy.game }}</span>
+								<span v-if="work.recommendationRating != null"><i class="ti ti-star-filled"></i> {{ (work.recommendationRating / 2).toFixed(1) }}</span>
+							</div>
+						</button>
+					</div>
+				</div>
+
 				<!-- おすすめの本 -->
 				<template v-if="recommendedBooks.length">
 					<div :class="$style.recHead"><i class="ti ti-thumb-up"></i> {{ copy.recommended }}</div>
@@ -140,6 +172,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 import { ref, computed, onMounted } from 'vue';
 import MkWindow from '@/components/MkWindow.vue';
 import HyBookCover from '@/components/HyBookCover.vue';
+import HyMediaCover from '@/components/HyMediaCover.vue';
 import HySubjectBadge from '@/components/HySubjectBadge.vue';
 import { versatileLang } from '@@/js/intl-const.js';
 import { i18n } from '@/i18n.js';
@@ -149,7 +182,7 @@ import { hySubjectPalette, hyBannerGradient, hyTagLabel, HY_BANNER_PRESETS } fro
 import { hatadyTheme, hatadyTzOffset } from '@/utility/hatady-prefs.js';
 
 const props = defineProps<{ userId?: string | null }>();
-const emit = defineEmits<{ (ev: 'changed'): void; (ev: 'openLog', logId: string): void; (ev: 'openProfile', userId: string): void; (ev: 'openBook', bookId: string): void; (ev: 'closed'): void }>();
+const emit = defineEmits<{ (ev: 'changed'): void; (ev: 'openLog', logId: string): void; (ev: 'openProfile', userId: string): void; (ev: 'openBook', bookId: string): void; (ev: 'openMedia', workId: string): void; (ev: 'closed'): void }>();
 const dialog = ref<any>(null);
 const theme = hatadyTheme;
 const copy = i18n.ts._hata._hatady._profile;
@@ -158,6 +191,9 @@ const shortDateFormatter = new Intl.DateTimeFormat(versatileLang, { month: 'shor
 
 const profile = ref<any>(null);
 const loading = ref(true);
+const mediaLoading = ref(false);
+const mediaWorks = ref<any[]>([]);
+const mediaWorksTruncated = ref(false);
 const following = ref(false);
 const followBusy = ref(false);
 const bannerColor = ref<string | null>(null);
@@ -177,13 +213,17 @@ const statusLabels: Record<string, string> = {
 	tsundoku: copy.statusTsundoku,
 	want: copy.statusWant,
 };
+
 function bookStatus(status: string): string { return statusLabels[status] ?? status; }
+
 function palAccent(subject: string): string { return hySubjectPalette(subject).accent; }
+
 function fmtDuration(min: number): string {
 	if (min < 60) return copyx.durationMinutes({ minutes: min.toString() });
 	const h = Math.floor(min / 60); const m = min % 60;
 	return copyx.durationHoursMinutes({ hours: h.toString(), minutes: m.toString() });
 }
+
 function fmtWhen(iso: string): string {
 	const d = new Date(iso);
 	const diffMin = Math.round((Date.now() - d.getTime()) / 60000);
@@ -211,6 +251,83 @@ const shelfBooks = computed(() => {
 	return shelfFilter.value === 'all' ? profile.value.books : profile.value.books.filter((b: any) => b.status === shelfFilter.value);
 });
 const recommendedBooks = computed(() => (profile.value?.books ?? []).filter((b: any) => b.isRecommended));
+const recommendedMedia = computed(() => mediaWorks.value.filter(work => work.isRecommended));
+const movieCount = computed(() => mediaWorks.value.filter(work => work.kind === 'movie').length);
+const gameCount = computed(() => mediaWorks.value.filter(work => work.kind === 'game').length);
+
+async function reloadMedia(userId: string) {
+	const PAGE_LIMIT = 100;
+	const MAX_PAGES = 50;
+	mediaLoading.value = true;
+	mediaWorksTruncated.value = false;
+	try {
+		const collected: any[] = [];
+		const seenIds = new Set<string>();
+		const seenCursors = new Set<string>();
+		let untilId: string | undefined;
+		let completed = false;
+
+		for (let pageIndex = 0; pageIndex < MAX_PAGES; pageIndex++) {
+			let page: any[];
+			try {
+				const response = await misskeyApi('hata/hatady/media/works/list' as never, {
+					userId,
+					sort: 'updatedAt',
+					order: 'desc',
+					limit: PAGE_LIMIT,
+					...(untilId ? { untilId } : {}),
+				} as never);
+				if (!Array.isArray(response)) throw new TypeError('Invalid Hatady media work list response');
+				page = response;
+			} catch {
+				mediaWorksTruncated.value = true;
+				break;
+			}
+
+			for (const work of page) {
+				if (typeof work?.id !== 'string' || seenIds.has(work.id)) continue;
+				seenIds.add(work.id);
+				collected.push(work);
+			}
+
+			if (page.length < PAGE_LIMIT) {
+				completed = true;
+				break;
+			}
+
+			const nextUntilId = page.at(-1)?.id;
+			if (typeof nextUntilId !== 'string' || seenCursors.has(nextUntilId)) {
+				mediaWorksTruncated.value = true;
+				break;
+			}
+			seenCursors.add(nextUntilId);
+			untilId = nextUntilId;
+		}
+
+		// 50ページ目が満杯でも、ちょうど5000件なら「打ち切り」ではない。
+		// 次の1件だけを確認し、実際に続きがある場合だけ下限表示(≥)にする。
+		if (!completed && untilId) {
+			try {
+				const probe: unknown = await misskeyApi('hata/hatady/media/works/list' as never, {
+					userId,
+					sort: 'updatedAt',
+					order: 'desc',
+					limit: 1,
+					untilId,
+				} as never);
+				if (!Array.isArray(probe)) throw new TypeError('Invalid Hatady media work list response');
+				completed = probe.length === 0;
+			} catch {
+				mediaWorksTruncated.value = true;
+			}
+		}
+
+		mediaWorks.value = collected;
+		if (!completed) mediaWorksTruncated.value = true;
+	} finally {
+		mediaLoading.value = false;
+	}
+}
 
 async function reload() {
 	loading.value = true;
@@ -220,6 +337,11 @@ async function reload() {
 		profile.value = await misskeyApi('hata/hatady/users/show', payload).catch(() => null);
 		following.value = profile.value?.isFollowing ?? false;
 		bannerColor.value = profile.value?.bannerColor ?? null;
+		if (profile.value?.user?.id) await reloadMedia(profile.value.user.id);
+		else {
+			mediaWorks.value = [];
+			mediaWorksTruncated.value = false;
+		}
 	} finally {
 		loading.value = false;
 	}
@@ -246,6 +368,9 @@ async function toggleFollow() {
 			profile.value.followersCount += 1;
 			await misskeyApi('hata/hatady/following/create', { userId: target }).catch(() => {});
 		}
+		// フォロー境界が変わった直後に、APIが現在許可する作品だけへ同期する。
+		// 特に解除後、取得済みの followers 作品をプロフィール内へ残さない。
+		await reloadMedia(target);
 		emit('changed');
 	} finally {
 		followBusy.value = false;
@@ -253,6 +378,7 @@ async function toggleFollow() {
 }
 
 function openColorPicker() { colorPickerOpen.value = !colorPickerOpen.value; }
+
 async function pickColor(key: string) {
 	bannerColor.value = key === 'orange' ? null : key; // orange=既定なので null 保存
 	colorPickerOpen.value = false;
@@ -274,6 +400,7 @@ onMounted(reload);
 	font-family: 'Noto Sans JP', 'Hiragino Sans', system-ui, sans-serif;
 	min-height: 100%;
 	box-sizing: border-box;
+	container-type: inline-size;
 }
 .loading { opacity: .6; padding: 40px 0; text-align: center; }
 
@@ -337,6 +464,26 @@ onMounted(reload);
 .recCell { flex-shrink: 0; width: 72px; background: none; border: none; padding: 0; cursor: pointer; text-align: left; }
 .recTitle { font-family: var(--hy-serif); font-weight: 600; font-size: 10.5px; color: var(--hy-ink); margin-top: 6px; line-height: 1.3; }
 
+/* 映画・ゲームコレクション。作品種別に関係しない共通情報だけを表示する。 */
+.mediaRecRow { display: flex; gap: 14px; overflow-x: auto; padding: 2px 2px 8px; margin: -2px -2px 22px; }
+.mediaRecCell, .mediaCell {
+	position: relative; min-width: 0; background: none; border: none; padding: 4px; margin: -4px;
+	border-radius: 10px; cursor: pointer; text-align: left; color: var(--hy-body); font: inherit;
+	transition: background .12s, transform .12s;
+}
+.mediaRecCell { flex: 0 0 90px; }
+.mediaRecCell:hover, .mediaCell:hover { background: var(--hy-surface-2); transform: translateY(-1px); }
+.mediaKind, .mediaCellMeta, .mediaRating { color: var(--hy-muted); font-size: 10px; }
+.mediaKind { display: flex; align-items: center; gap: 4px; margin-top: 7px; }
+.mediaRating { display: flex; align-items: center; gap: 3px; margin-top: 2px; color: var(--hy-accent-ink); }
+.mediaSection { margin-bottom: 24px; }
+.mediaCounts { display: flex; gap: 10px; color: var(--hy-muted); font-size: 11px; }
+.mediaCounts span, .mediaCellMeta span { display: inline-flex; align-items: center; gap: 4px; }
+.mediaGrid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 16px 12px; }
+.mediaCell { display: flex; flex-direction: column; align-items: flex-start; }
+.mediaCellMeta { display: flex; width: 92px; justify-content: space-between; gap: 5px; margin-top: 7px; }
+.mediaCellMeta span:last-child { color: var(--hy-accent-ink); }
+
 /* 本棚 */
 .shelfHead { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
 .shelfTitle { margin: 0; font-family: var(--hy-heading); font-weight: 900; font-size: 16px; color: var(--hy-ink); }
@@ -377,8 +524,23 @@ onMounted(reload);
 .postFoot { display: flex; gap: 14px; margin-top: 8px; }
 .postStat { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; color: var(--hy-muted); }
 
-@media (max-width: 720px) {
+@container (max-width: 720px) {
 	.fields { grid-template-columns: 1fr; }
 	.shelfGrid { grid-template-columns: repeat(3, 1fr); }
+	.mediaGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@container (max-width: 430px) {
+	.banner { padding: 18px 16px; }
+	.content { padding: 18px 16px; }
+	.bannerTop { flex-wrap: wrap; }
+	.stats { gap: 14px; }
+	.shelfGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 10px; }
+	.mediaGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 10px; }
+}
+
+@container (max-width: 300px) {
+	.shelfGrid, .mediaGrid { grid-template-columns: 1fr; }
+	.bookCell, .mediaCell { align-items: center; }
 }
 </style>

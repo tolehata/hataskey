@@ -54,6 +54,8 @@ import { PollService } from './PollService.js';
 import { UtageService } from './UtageService.js';
 import { FeedbackService } from './FeedbackService.js';
 import { HatadyService } from './HatadyService.js';
+import { HatadyMediaService } from './HatadyMediaService.js';
+import { HatadyActivityService } from './HatadyActivityService.js';
 import { ChannelService } from './ChannelService.js';
 import { EarthquakeService } from './EarthquakeService.js';
 import { PushNotificationService } from './PushNotificationService.js';
@@ -219,6 +221,8 @@ const $PollService: Provider = { provide: 'PollService', useExisting: PollServic
 const $UtageService: Provider = { provide: 'UtageService', useExisting: UtageService };
 const $FeedbackService: Provider = { provide: 'FeedbackService', useExisting: FeedbackService };
 const $HatadyService: Provider = { provide: 'HatadyService', useExisting: HatadyService };
+const $HatadyMediaService: Provider = { provide: 'HatadyMediaService', useExisting: HatadyMediaService };
+const $HatadyActivityService: Provider = { provide: 'HatadyActivityService', useExisting: HatadyActivityService };
 const $ChannelService: Provider = { provide: 'ChannelService', useExisting: ChannelService };
 const $EarthquakeService: Provider = { provide: 'EarthquakeService', useExisting: EarthquakeService };
 const $SystemAccountService: Provider = { provide: 'SystemAccountService', useExisting: SystemAccountService };
@@ -390,6 +394,8 @@ const $ApEventService: Provider = { provide: 'ApEventService', useExisting: ApEv
 		UtageService,
 		FeedbackService,
 		HatadyService,
+		HatadyMediaService,
+		HatadyActivityService,
 		ChannelService,
 		EarthquakeService,
 		SystemAccountService,
@@ -558,6 +564,8 @@ const $ApEventService: Provider = { provide: 'ApEventService', useExisting: ApEv
 		$UtageService,
 		$FeedbackService,
 		$HatadyService,
+		$HatadyMediaService,
+		$HatadyActivityService,
 		$ChannelService,
 		$EarthquakeService,
 		$SystemAccountService,
@@ -726,6 +734,8 @@ const $ApEventService: Provider = { provide: 'ApEventService', useExisting: ApEv
 		UtageService,
 		FeedbackService,
 		HatadyService,
+		HatadyMediaService,
+		HatadyActivityService,
 		ChannelService,
 		EarthquakeService,
 		SystemAccountService,

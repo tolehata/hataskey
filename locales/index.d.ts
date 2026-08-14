@@ -15655,6 +15655,14 @@ export interface Locale extends ILocale {
              */
             "hatadyBookLimitName": string;
             /**
+             * ユーザーが記録できる異なるゲーム作品数の上限です。対戦・プレイ記録の件数ではありません（デフォルト100、最大1000）。
+             */
+            "hatadyGameTitleLimitBaseCaption": string;
+            /**
+             * Hatady で記録できるゲーム作品数
+             */
+            "hatadyGameTitleLimitName": string;
+            /**
              * 1冊の本に追加できるしおりの上限（デフォルト 20）。
              */
             "hatadyBookmarkLimitBaseCaption": string;
@@ -16340,7 +16348,7 @@ export interface Locale extends ILocale {
                  */
                 "hatadyOverviewTitle": string;
                 /**
-                 * 勉強や読書を自分のペースで記録する場所です。「マイログ」「みんなの学習」「本棚」から、記録を残したり公開された学びを読んだり、本を整理したりできます。
+                 * 勉強や読書、映画の鑑賞、ゲームのプレイを自分のペースで記録する場所です。「マイログ」「みんなの活動」「コレクション」から、記録を残したり公開された活動を読んだり、本・映画・ゲームを整理したりできます。
                  */
                 "hatadyOverviewBody": string;
                 /**
@@ -16388,15 +16396,15 @@ export interface Locale extends ILocale {
                  */
                 "goalsReviewTip1": string;
                 /**
-                 * みんなの学習
+                 * みんなの活動
                  */
                 "publicStudyTitle": string;
                 /**
-                 * 公開された学習記録を、新しい順・注目順・フォロー中に分けて読めます。気になる記録にはリアクションやコメントを送れます。
+                 * 公開された学習・映画鑑賞・ゲームプレイの記録を、新しい順・注目順・フォロー中に分けて読めます。気になる学習記録や作品にはリアクションや返信を送れます。
                  */
                 "publicStudyBody": string;
                 /**
-                 * 非公開の記録はほかの人に表示されません
+                 * 非公開の活動はほかの人に表示されません
                  */
                 "publicStudyTip1": string;
                 /**
@@ -18878,11 +18886,999 @@ export interface Locale extends ILocale {
             "unavailable": string;
         };
         "_hatady": {
+            "_media": {
+                /**
+                 * コレクション
+                 */
+                "collection": string;
+                /**
+                 * 本棚
+                 */
+                "books": string;
+                /**
+                 * 映画
+                 */
+                "movies": string;
+                /**
+                 * ゲーム
+                 */
+                "games": string;
+                /**
+                 * 映画を追加
+                 */
+                "addMovie": string;
+                /**
+                 * ゲームを追加
+                 */
+                "addGame": string;
+                /**
+                 * 編集
+                 */
+                "edit": string;
+                /**
+                 * 削除
+                 */
+                "delete": string;
+                /**
+                 * 保存
+                 */
+                "save": string;
+                /**
+                 * キャンセル
+                 */
+                "cancel": string;
+                /**
+                 * 追加
+                 */
+                "add": string;
+                /**
+                 * すべて
+                 */
+                "all": string;
+                /**
+                 * タイトルや制作者を検索
+                 */
+                "searchPlaceholder": string;
+                /**
+                 * 検索
+                 */
+                "search": string;
+                /**
+                 * 詳細な絞り込み
+                 */
+                "advancedFilters": string;
+                /**
+                 * おすすめのみ
+                 */
+                "recommendedOnly": string;
+                /**
+                 * おすすめ以外
+                 */
+                "notRecommended": string;
+                /**
+                 * おすすめ度の下限
+                 */
+                "minimumRecommendation": string;
+                /**
+                 * 記録の種類
+                 */
+                "sessionType": string;
+                /**
+                 * 記録日（開始）
+                 */
+                "sinceDate": string;
+                /**
+                 * 記録日（終了）
+                 */
+                "untilDate": string;
+                /**
+                 * 条件を解除
+                 */
+                "resetFilters": string;
+                /**
+                 * 条件を適用
+                 */
+                "applyFilters": string;
+                /**
+                 * 映画はまだありません
+                 */
+                "emptyMovie": string;
+                /**
+                 * ゲームはまだありません
+                 */
+                "emptyGame": string;
+                /**
+                 * 最近更新
+                 */
+                "sortUpdated": string;
+                /**
+                 * タイトル
+                 */
+                "sortTitle": string;
+                /**
+                 * 公開・発売日
+                 */
+                "sortRelease": string;
+                /**
+                 * おすすめ度
+                 */
+                "sortRecommendation": string;
+                /**
+                 * 状態
+                 */
+                "statusLabel": string;
+                /**
+                 * コレクションを読み込めませんでした。
+                 */
+                "loadFailed": string;
+                /**
+                 * さらに読み込む
+                 */
+                "loadMore": string;
+                "status": {
+                    /**
+                     * これから
+                     */
+                    "planned": string;
+                    /**
+                     * 鑑賞中
+                     */
+                    "movie_in_progress": string;
+                    /**
+                     * 鑑賞済み
+                     */
+                    "movie_completed": string;
+                    /**
+                     * プレイ中
+                     */
+                    "game_in_progress": string;
+                    /**
+                     * クリア済み
+                     */
+                    "game_completed": string;
+                    /**
+                     * 完全達成
+                     */
+                    "mastered": string;
+                    /**
+                     * 一時休止
+                     */
+                    "on_hold": string;
+                    /**
+                     * 中断
+                     */
+                    "dropped": string;
+                };
+                "form": {
+                    /**
+                     * 作品を編集
+                     */
+                    "editWork": string;
+                    /**
+                     * 映画を追加
+                     */
+                    "addMovie": string;
+                    /**
+                     * ゲームを追加
+                     */
+                    "addGame": string;
+                    /**
+                     * タイトル未入力
+                     */
+                    "untitled": string;
+                    /**
+                     * カバーの色
+                     */
+                    "coverColor": string;
+                    /**
+                     * タイトル
+                     */
+                    "title": string;
+                    /**
+                     * 原題・別名
+                     */
+                    "originalTitle": string;
+                    /**
+                     * 監督・制作者
+                     */
+                    "director": string;
+                    /**
+                     * 原案・制作者
+                     */
+                    "creator": string;
+                    /**
+                     * 開発元
+                     */
+                    "developer": string;
+                    /**
+                     * 状態
+                     */
+                    "statusLabel": string;
+                    /**
+                     * 公開範囲
+                     */
+                    "visibility": string;
+                    /**
+                     * 自分のみ
+                     */
+                    "private": string;
+                    /**
+                     * フォロワー
+                     */
+                    "followers": string;
+                    /**
+                     * 公開
+                     */
+                    "public": string;
+                    /**
+                     * お気に入り
+                     */
+                    "favorite": string;
+                    /**
+                     * おすすめに表示
+                     */
+                    "recommend": string;
+                    /**
+                     * 作品情報
+                     */
+                    "basicInfo": string;
+                    /**
+                     * 公開・発売日
+                     */
+                    "releaseDate": string;
+                    /**
+                     * 公開・発売年
+                     */
+                    "releaseYear": string;
+                    /**
+                     * 公式URL
+                     */
+                    "officialUrl": string;
+                    /**
+                     * 映画の情報
+                     */
+                    "movieInfo": string;
+                    /**
+                     * 洋画・邦画
+                     */
+                    "movieOrigin": string;
+                    /**
+                     * 邦画
+                     */
+                    "domestic": string;
+                    /**
+                     * 洋画
+                     */
+                    "foreign": string;
+                    /**
+                     * 共同製作
+                     */
+                    "coProduction": string;
+                    /**
+                     * その他
+                     */
+                    "otherOrigin": string;
+                    /**
+                     * 鑑賞方法
+                     */
+                    "viewingMode": string;
+                    /**
+                     * オリジナル音声
+                     */
+                    "original": string;
+                    /**
+                     * 字幕
+                     */
+                    "subtitled": string;
+                    /**
+                     * 吹替
+                     */
+                    "dubbed": string;
+                    /**
+                     * 主言語
+                     */
+                    "primaryLanguage": string;
+                    /**
+                     * 上映時間（分）
+                     */
+                    "runtimeMinutes": string;
+                    /**
+                     * ジャンル
+                     */
+                    "genres": string;
+                    /**
+                     * 1行に1ジャンル（例: ドラマ）
+                     */
+                    "genresHint": string;
+                    /**
+                     * おすすめ度
+                     */
+                    "recommendation": string;
+                    /**
+                     * 未評価
+                     */
+                    "unrated": string;
+                    /**
+                     * ゲームの情報
+                     */
+                    "gameInfo": string;
+                    /**
+                     * 機種・プラットフォーム
+                     */
+                    "platform": string;
+                    /**
+                     * 1行に1機種（例: PC）
+                     */
+                    "platformsHint": string;
+                    /**
+                     * 発売元
+                     */
+                    "publisher": string;
+                    /**
+                     * 作品ノート
+                     */
+                    "notes": string;
+                    /**
+                     * あらすじ
+                     */
+                    "summary": string;
+                    /**
+                     * 見どころ（1行に1件）
+                     */
+                    "highlights": string;
+                    /**
+                     * 感想
+                     */
+                    "review": string;
+                    /**
+                     * ネタバレを含む
+                     */
+                    "containsSpoiler": string;
+                    /**
+                     * 指定なし
+                     */
+                    "notSet": string;
+                    /**
+                     * 更新
+                     */
+                    "update": string;
+                    /**
+                     * 追加
+                     */
+                    "add": string;
+                    /**
+                     * キャンセル
+                     */
+                    "cancel": string;
+                    /**
+                     * 保存できませんでした。入力内容を確認してください。
+                     */
+                    "saveFailed": string;
+                    /**
+                     * 日付（YYYY-MM-DD）
+                     */
+                    "eventDate": string;
+                    /**
+                     * 開始時刻（HH:MM）
+                     */
+                    "eventTime": string;
+                    /**
+                     * 日付と時刻を正しい形式で入力してください。
+                     */
+                    "invalidDateTime": string;
+                };
+                "session": {
+                    /**
+                     * 記録を編集
+                     */
+                    "editSession": string;
+                    /**
+                     * 鑑賞を記録
+                     */
+                    "addViewing": string;
+                    /**
+                     * プレイを記録
+                     */
+                    "addPlay": string;
+                    /**
+                     * 鑑賞日時
+                     */
+                    "watchedAt": string;
+                    /**
+                     * プレイ日時
+                     */
+                    "playedAt": string;
+                    /**
+                     * 時間（分）
+                     */
+                    "durationMinutes": string;
+                    /**
+                     * 公開範囲
+                     */
+                    "visibility": string;
+                    /**
+                     * 自分のみ
+                     */
+                    "private": string;
+                    /**
+                     * フォロワー
+                     */
+                    "followers": string;
+                    /**
+                     * 公開
+                     */
+                    "public": string;
+                    /**
+                     * 鑑賞の内容
+                     */
+                    "viewingDetails": string;
+                    /**
+                     * 鑑賞方法
+                     */
+                    "viewingMode": string;
+                    /**
+                     * オリジナル音声
+                     */
+                    "original": string;
+                    /**
+                     * 字幕
+                     */
+                    "subtitled": string;
+                    /**
+                     * 吹替
+                     */
+                    "dubbed": string;
+                    /**
+                     * 劇場・サービス
+                     */
+                    "theaterName": string;
+                    /**
+                     * 上映形式
+                     */
+                    "screeningFormat": string;
+                    /**
+                     * 例: 通常上映、立体音響
+                     */
+                    "screeningFormatHint": string;
+                    /**
+                     * 一緒に観た人
+                     */
+                    "companions": string;
+                    /**
+                     * 再鑑賞
+                     */
+                    "rewatch": string;
+                    /**
+                     * 1行に1項目入力します
+                     */
+                    "commaSeparated": string;
+                    /**
+                     * 使用端末
+                     */
+                    "device": string;
+                    /**
+                     * 進み具合
+                     */
+                    "progress": string;
+                    /**
+                     * 例: 第3章まで
+                     */
+                    "progressHint": string;
+                    /**
+                     * 難易度
+                     */
+                    "difficulty": string;
+                    /**
+                     * プレイ後の気分
+                     */
+                    "mood": string;
+                    /**
+                     * とても良い
+                     */
+                    "moodGreat": string;
+                    /**
+                     * 良い
+                     */
+                    "moodGood": string;
+                    /**
+                     * ふつう
+                     */
+                    "moodNeutral": string;
+                    /**
+                     * 疲れた
+                     */
+                    "moodTired": string;
+                    /**
+                     * 悔しい
+                     */
+                    "moodFrustrated": string;
+                    /**
+                     * キャラクター
+                     */
+                    "character": string;
+                    /**
+                     * 武器・装備
+                     */
+                    "weapon": string;
+                    /**
+                     * 武器・装備の順序
+                     */
+                    "weaponOrder": string;
+                    /**
+                     * プレイ人数
+                     */
+                    "playMode": string;
+                    /**
+                     * ひとり
+                     */
+                    "single": string;
+                    /**
+                     * 複数人
+                     */
+                    "multi": string;
+                    /**
+                     * マッチング
+                     */
+                    "matchmaking": string;
+                    /**
+                     * 野良
+                     */
+                    "random": string;
+                    /**
+                     * ソロ（旧設定）
+                     */
+                    "solo": string;
+                    /**
+                     * パーティー
+                     */
+                    "party": string;
+                    /**
+                     * 相手を指定
+                     */
+                    "specific": string;
+                    /**
+                     * ランク
+                     */
+                    "rank": string;
+                    /**
+                     * レーティング
+                     */
+                    "rating": string;
+                    /**
+                     * 実績・達成項目
+                     */
+                    "achievements": string;
+                    /**
+                     * 対戦の内容
+                     */
+                    "matchDetails": string;
+                    /**
+                     * 対戦相手の種類
+                     */
+                    "opponentType": string;
+                    /**
+                     * 人
+                     */
+                    "human": string;
+                    /**
+                     * CPU
+                     */
+                    "cpu": string;
+                    /**
+                     * チーム
+                     */
+                    "team": string;
+                    /**
+                     * その他
+                     */
+                    "other": string;
+                    /**
+                     * 対戦相手
+                     */
+                    "opponent": string;
+                    /**
+                     * 結果
+                     */
+                    "result": string;
+                    /**
+                     * 勝ち
+                     */
+                    "win": string;
+                    /**
+                     * 負け
+                     */
+                    "loss": string;
+                    /**
+                     * 引き分け
+                     */
+                    "draw": string;
+                    /**
+                     * 勝敗理由
+                     */
+                    "reason": string;
+                    /**
+                     * スコア・戦績
+                     */
+                    "score": string;
+                    /**
+                     * 対戦モード
+                     */
+                    "mode": string;
+                    /**
+                     * マップ
+                     */
+                    "map": string;
+                    /**
+                     * ラウンド結果
+                     */
+                    "roundResults": string;
+                    /**
+                     * 最大ラウンド数
+                     */
+                    "bestOf": string;
+                    /**
+                     * 撃破 / 被撃破 / 支援
+                     */
+                    "killsDeathsAssists": string;
+                    /**
+                     * レーティング（前 / 後）
+                     */
+                    "ratingBeforeAfter": string;
+                    /**
+                     * 延長戦
+                     */
+                    "overtime": string;
+                    /**
+                     * 今回のラン
+                     */
+                    "runDetails": string;
+                    /**
+                     * クリア
+                     */
+                    "cleared": string;
+                    /**
+                     * 失敗
+                     */
+                    "failed": string;
+                    /**
+                     * 中断
+                     */
+                    "retired": string;
+                    /**
+                     * 終了理由
+                     */
+                    "cause": string;
+                    /**
+                     * シード
+                     */
+                    "seed": string;
+                    /**
+                     * 到達階層
+                     */
+                    "floor": string;
+                    /**
+                     * ラン回数
+                     */
+                    "runNumber": string;
+                    /**
+                     * ルート
+                     */
+                    "route": string;
+                    /**
+                     * 分岐
+                     */
+                    "branches": string;
+                    /**
+                     * ビルド・構成
+                     */
+                    "build": string;
+                    /**
+                     * 記録・メモ
+                     */
+                    "sessionNote": string;
+                    /**
+                     * ネタバレを含む
+                     */
+                    "containsSpoiler": string;
+                    /**
+                     * 指定なし
+                     */
+                    "notSet": string;
+                    /**
+                     * 更新
+                     */
+                    "update": string;
+                    /**
+                     * 記録する
+                     */
+                    "saveSession": string;
+                    /**
+                     * 記録を保存できませんでした。
+                     */
+                    "saveFailed": string;
+                    "types": {
+                        /**
+                         * 鑑賞
+                         */
+                        "movie_viewing": string;
+                        /**
+                         * 通常プレイ
+                         */
+                        "game_play": string;
+                        /**
+                         * 対戦
+                         */
+                        "game_match": string;
+                        /**
+                         * ローグライク
+                         */
+                        "game_roguelike": string;
+                    };
+                };
+                "detail": {
+                    /**
+                     * 読み込んでいます…
+                     */
+                    "loading": string;
+                    /**
+                     * 公式サイト
+                     */
+                    "officialSite": string;
+                    /**
+                     * 鑑賞を記録
+                     */
+                    "addViewing": string;
+                    /**
+                     * プレイを記録
+                     */
+                    "addPlay": string;
+                    /**
+                     * Hataskで鑑賞会を作る
+                     */
+                    "scheduleViewing": string;
+                    /**
+                     * {title} 鑑賞会
+                     */
+                    "viewingEventTitle": ParameterizedString<"title">;
+                    /**
+                     * 作品ノート
+                     */
+                    "workNotes": string;
+                    /**
+                     * あらすじ
+                     */
+                    "summary": string;
+                    /**
+                     * 見どころ
+                     */
+                    "highlights": string;
+                    /**
+                     * 感想
+                     */
+                    "review": string;
+                    /**
+                     * ネタバレを表示
+                     */
+                    "showSpoiler": string;
+                    /**
+                     * プレイ分析
+                     */
+                    "gameDashboard": string;
+                    /**
+                     * 全期間
+                     */
+                    "periodAll": string;
+                    /**
+                     * 30日
+                     */
+                    "period30": string;
+                    /**
+                     * 90日
+                     */
+                    "period90": string;
+                    /**
+                     * プレイ時間
+                     */
+                    "playTime": string;
+                    /**
+                     * 試合数
+                     */
+                    "matches": string;
+                    /**
+                     * 勝率
+                     */
+                    "winRate": string;
+                    /**
+                     * 母数
+                     */
+                    "sampleSize": string;
+                    /**
+                     * 武器別の成績
+                     */
+                    "weaponPerformance": string;
+                    /**
+                     * 武器を記録するとここに集計されます。
+                     */
+                    "noWeaponStats": string;
+                    /**
+                     * 試合
+                     */
+                    "matchesUnit": string;
+                    /**
+                     * 何本目の勝敗傾向
+                     */
+                    "roundTrend": string;
+                    /**
+                     * ラウンド結果を記録すると傾向が見えます。
+                     */
+                    "noRoundStats": string;
+                    /**
+                     * 第{index}本
+                     */
+                    "roundNumber": ParameterizedString<"index">;
+                    /**
+                     * ランク・レーティング
+                     */
+                    "rankRating": string;
+                    /**
+                     * 最新ランク
+                     */
+                    "latestRank": string;
+                    /**
+                     * 最新レーティング
+                     */
+                    "latestRating": string;
+                    /**
+                     * 期間内の増減
+                     */
+                    "ratingChange": string;
+                    /**
+                     * ローグライク
+                     */
+                    "roguelikeStats": string;
+                    /**
+                     * ラン数
+                     */
+                    "runs": string;
+                    /**
+                     * クリア率
+                     */
+                    "clearRate": string;
+                    /**
+                     * 最高到達階層
+                     */
+                    "maxFloor": string;
+                    /**
+                     * 多いルート
+                     */
+                    "popularRoute": string;
+                    /**
+                     * 鑑賞の記録
+                     */
+                    "viewingHistory": string;
+                    /**
+                     * プレイ記録
+                     */
+                    "playHistory": string;
+                    /**
+                     * 最初の鑑賞を記録してみませんか？
+                     */
+                    "emptyViewing": string;
+                    /**
+                     * 最初のプレイを記録してみませんか？
+                     */
+                    "emptyPlay": string;
+                    /**
+                     * リアクション
+                     */
+                    "reactions": string;
+                    /**
+                     * リアクションを追加
+                     */
+                    "addReaction": string;
+                    /**
+                     * 返信
+                     */
+                    "comments": string;
+                    /**
+                     * 作品について返信する
+                     */
+                    "commentPlaceholder": string;
+                    /**
+                     * ネタバレを含む
+                     */
+                    "containsSpoiler": string;
+                    /**
+                     * 返信中
+                     */
+                    "replying": string;
+                    /**
+                     * 送信
+                     */
+                    "send": string;
+                    /**
+                     * まだ返信はありません。
+                     */
+                    "noComments": string;
+                    /**
+                     * さらに返信を読み込む
+                     */
+                    "loadMoreComments": string;
+                    /**
+                     * 記録が多いため、直近5,000件で集計しています。
+                     */
+                    "sessionLimitNotice": string;
+                    /**
+                     * ネタバレを含む記録{count}件は分析から除外しています。
+                     */
+                    "spoilerSessionsExcluded": ParameterizedString<"count">;
+                    /**
+                     * ネタバレを含む記録の詳細を表示
+                     */
+                    "showSpoilerSession": string;
+                    /**
+                     * 返信
+                     */
+                    "reply": string;
+                    /**
+                     * 作品が見つかりません。
+                     */
+                    "notFound": string;
+                    /**
+                     * この作品と記録を削除しますか？
+                     */
+                    "deleteWorkConfirm": string;
+                    /**
+                     * この記録を削除しますか？
+                     */
+                    "deleteSessionConfirm": string;
+                    /**
+                     * この返信を削除しますか？
+                     */
+                    "deleteCommentConfirm": string;
+                    /**
+                     * 到達階層
+                     */
+                    "floor": string;
+                    /**
+                     * 武器・装備
+                     */
+                    "weapons": string;
+                    /**
+                     * ビルド
+                     */
+                    "build": string;
+                    /**
+                     * シード
+                     */
+                    "seed": string;
+                };
+            };
             "_exportDialog": {
                 /**
                  * 記録の書き出し
                  */
                 "title": string;
+                /**
+                 * 書き出す内容
+                 */
+                "exportTarget": string;
+                /**
+                 * 学習記録
+                 */
+                "learningLogs": string;
+                /**
+                 * 読みやすいテキスト (.txt)
+                 */
+                "learningLogsFormat": string;
+                /**
+                 * 映画・ゲーム
+                 */
+                "mediaRecords": string;
+                /**
+                 * 構造化バックアップ (.json)
+                 */
+                "mediaRecordsFormat": string;
                 /**
                  * 対象の期間
                  */
@@ -18940,6 +19936,14 @@ export interface Locale extends ILocale {
                  */
                 "hint": string;
                 /**
+                 * 映画・ゲームの作品情報と視聴・プレイ記録を、まとめて書き出します。
+                 */
+                "mediaSummary": string;
+                /**
+                 * 公開範囲やネタバレ設定を含む、現在は書き出し専用の版付きJSONです。共有するときは、私的な感想・対戦相手名・シード値が含まれていないか確認してください。
+                 */
+                "mediaHint": string;
+                /**
                  * キャンセル
                  */
                 "cancel": string;
@@ -18955,6 +19959,10 @@ export interface Locale extends ILocale {
                  * {count}件を書き出しました。
                  */
                 "exportedCount": ParameterizedString<"count">;
+                /**
+                 * 作品{works}件と記録{sessions}件を書き出しました。
+                 */
+                "exportedMediaCount": ParameterizedString<"works" | "sessions">;
                 /**
                  * 書き出しに失敗しました。
                  */
@@ -19024,7 +20032,7 @@ export interface Locale extends ILocale {
                  */
                 "mylog": string;
                 /**
-                 * みんなの学習
+                 * みんなの活動
                  */
                 "discover": string;
                 /**
@@ -19032,7 +20040,7 @@ export interface Locale extends ILocale {
                  */
                 "shelf": string;
                 /**
-                 * 本・分野を検索
+                 * 本・作品・分野を検索
                  */
                 "searchPlaceholder": string;
                 /**
@@ -19068,6 +20076,94 @@ export interface Locale extends ILocale {
                  */
                 "record": string;
                 /**
+                 * 活動を記録
+                 */
+                "recordActivity": string;
+                /**
+                 * 何を記録しますか？
+                 */
+                "chooseRecordType": string;
+                /**
+                 * 学習、映画の鑑賞、ゲームのプレイから選べます。
+                 */
+                "chooseRecordTypeDescription": string;
+                /**
+                 * 学習を記録
+                 */
+                "recordStudy": string;
+                /**
+                 * 勉強や読書の内容と時間を残します。
+                 */
+                "recordStudyDescription": string;
+                /**
+                 * 映画を記録
+                 */
+                "recordMovie": string;
+                /**
+                 * 映画の鑑賞日時や感想を残します。
+                 */
+                "recordMovieDescription": string;
+                /**
+                 * ゲームを記録
+                 */
+                "recordGame": string;
+                /**
+                 * ゲームのプレイや対戦の内容を残します。
+                 */
+                "recordGameDescription": string;
+                /**
+                 * 鑑賞した映画を選ぶ
+                 */
+                "selectMovie": string;
+                /**
+                 * プレイしたゲームを選ぶ
+                 */
+                "selectGame": string;
+                /**
+                 * 記録を追加する作品を選んでください。
+                 */
+                "selectWorkDescription": string;
+                /**
+                 * 作品が見つかりません
+                 */
+                "noMatchingWorks": string;
+                /**
+                 * 先にコレクションへ作品を追加してください。
+                 */
+                "createWorkFirst": string;
+                /**
+                 * 制作者未設定
+                 */
+                "creatorUnknown": string;
+                /**
+                 * 活動のメニュー
+                 */
+                "activityMenu": string;
+                /**
+                 * 学習
+                 */
+                "activityStudy": string;
+                /**
+                 * 公開
+                 */
+                "activityPublic": string;
+                /**
+                 * フォロワー
+                 */
+                "activityFollowers": string;
+                /**
+                 * 自分のみ
+                 */
+                "activityPrivate": string;
+                /**
+                 * リアクションと返信は作品詳細から行えます
+                 */
+                "mediaInteractionHint": string;
+                /**
+                 * 作品詳細を開く
+                 */
+                "openWorkDetails": string;
+                /**
                  * この画面はこれから実装します。
                  */
                 "comingSoon": string;
@@ -19080,11 +20176,11 @@ export interface Locale extends ILocale {
                  */
                 "streak": string;
                 /**
-                 * 今週
+                 * 今週の学習
                  */
                 "thisWeek": string;
                 /**
-                 * ログ
+                 * 学習ログ
                  */
                 "logs": string;
                 /**
@@ -19100,11 +20196,15 @@ export interface Locale extends ILocale {
                  */
                 "timeline": string;
                 /**
+                 * 活動タイムライン
+                 */
+                "activityTimeline": string;
+                /**
                  * 読み込み中…
                  */
                 "loading": string;
                 /**
-                 * まだ記録がありません。最初の学習を記録しましょう。
+                 * まだ活動がありません。最初の活動を記録しましょう。
                  */
                 "emptyLog": string;
                 /**
@@ -19256,27 +20356,31 @@ export interface Locale extends ILocale {
                  */
                 "language": string;
                 /**
-                 * みんなの学習
+                 * みんなの活動
                  */
                 "discoverTitle": string;
                 /**
-                 * まだ公開された学習がありません。
+                 * まだ公開された活動がありません。
                  */
                 "emptyDiscover": string;
                 /**
-                 * フォロー中の人の学習がまだありません。気になる人をフォローしましょう。
+                 * フォロー中の人の活動がまだありません。気になる人をフォローしましょう。
                  */
                 "emptyFollowing": string;
                 /**
-                 * 検索に一致する学習が見つかりません。
+                 * 検索に一致する活動が見つかりません。
                  */
                 "noResults": string;
+                /**
+                 * 読み込み済みの活動には一致がありません。さらに読み込んで検索できます。
+                 */
+                "searchMore": string;
                 /**
                  * 新着
                  */
                 "tabRecent": string;
                 /**
-                 * 人気
+                 * 人気の学習
                  */
                 "tabPopular": string;
                 /**
@@ -19352,6 +20456,10 @@ export interface Locale extends ILocale {
                  */
                 "sessionSummary": ParameterizedString<"sessions" | "duration">;
                 /**
+                 * {activities}件の活動 · {duration}
+                 */
+                "activitySummary": ParameterizedString<"activities" | "duration">;
+                /**
                  * たった今
                  */
                 "now": string;
@@ -19422,7 +20530,7 @@ export interface Locale extends ILocale {
                  */
                 "rerunTutorial": string;
                 /**
-                 * 今までの記録を書き出す
+                 * 記録を書き出す
                  */
                 "exportAll": string;
                 /**
@@ -19614,11 +20722,11 @@ export interface Locale extends ILocale {
                  */
                 "bookshelfDescription": string;
                 /**
-                 * 見つける
+                 * みんなの活動
                  */
                 "discover": string;
                 /**
-                 * みんなの学習を覗いて、刺激をもらう。
+                 * 公開された学習・映画鑑賞・ゲームプレイの記録を見て、新しい刺激をもらう。
                  */
                 "discoverDescription": string;
                 /**
@@ -19679,6 +20787,66 @@ export interface Locale extends ILocale {
                  * Hatady を始める
                  */
                 "begin": string;
+                /**
+                 * 本の隣に、新しい記録棚。
+                 */
+                "mediaKicker": string;
+                /**
+                 * 映画とゲームも、Hatadyらしく
+                 */
+                "mediaTitle": string;
+                /**
+                 * <b>コレクション</b>では本棚・映画・ゲームを切り替えられます。映画の鑑賞記録、ゲームのプレイや対戦記録を、それぞれに必要な項目だけで残せます。
+                 */
+                "mediaDescription": string;
+                /**
+                 * 映画からはHataskに鑑賞会の予定を作成できます。感想とネタバレは分けて折り畳めます
+                 */
+                "mediaInfo": string;
+                /**
+                 * 本棚
+                 */
+                "mediaMockBooks": string;
+                /**
+                 * 映画
+                 */
+                "mediaMockMovies": string;
+                /**
+                 * ゲーム
+                 */
+                "mediaMockGames": string;
+                /**
+                 * 星明かりの航路
+                 */
+                "mediaMockMovieTitle": string;
+                /**
+                 * 字幕 · 128分 · 鑑賞済み
+                 */
+                "mediaMockMovieMeta": string;
+                /**
+                 * 鑑賞会
+                 */
+                "mediaMockSchedule": string;
+                /**
+                 * 蒼風の遠征譜
+                 */
+                "mediaMockGameTitle": string;
+                /**
+                 * プレイ中 · 42時間
+                 */
+                "mediaMockGameMeta": string;
+                /**
+                 * 対戦 28
+                 */
+                "mediaMockMatches": string;
+                /**
+                 * 勝率 64%
+                 */
+                "mediaMockWinRate": string;
+                /**
+                 * 分析
+                 */
+                "mediaMockAnalysis": string;
                 /**
                  * 始める前に、ひとつだけ。
                  */
@@ -19797,6 +20965,14 @@ export interface Locale extends ILocale {
                  * 興味
                  */
                 "interest": string;
+                /**
+                 * 映画
+                 */
+                "movie": string;
+                /**
+                 * ゲーム
+                 */
+                "game": string;
             };
             "_bookDetail": {
                 /**
@@ -20324,6 +21500,26 @@ export interface Locale extends ILocale {
                  */
                 "recommended": string;
                 /**
+                 * おすすめの映画
+                 */
+                "recommendedMedia": string;
+                /**
+                 * 映画・ゲームコレクション
+                 */
+                "mediaCollection": string;
+                /**
+                 * 公開された映画・ゲーム
+                 */
+                "publicMediaCollection": string;
+                /**
+                 * 映画
+                 */
+                "movie": string;
+                /**
+                 * ゲーム
+                 */
+                "game": string;
+                /**
                  * 本棚
                  */
                 "bookshelf": string;
@@ -20433,6 +21629,18 @@ export interface Locale extends ILocale {
                  * があなたをフォローしました
                  */
                 "verbFollow": string;
+                /**
+                 * があなたの作品記録にリアクションしました
+                 */
+                "verbMediaReaction": string;
+                /**
+                 * があなたの作品記録にコメントしました
+                 */
+                "verbMediaComment": string;
+                /**
+                 * が作品記録のコメントに返信しました
+                 */
+                "verbMediaReply": string;
                 /**
                  * フォロー返す
                  */
@@ -26353,7 +27561,7 @@ export interface Locale extends ILocale {
                  */
                 "hataskTitle": string;
                 /**
-                 * ホーム画面を「季」「花信」「刷」の3つのテーマから選べるようになりました。表示切替、HataFeed の通知タイル、地震・津波情報タイルにも対応しています。育てている花は画面を閉じている間やバックグラウンドでも経過時間に応じて育ち、進み具合と咲いた花をウィジェットで確認できます。ログイン中のプロフィールからデジタル通行証を作るカードメーカーもHatask内に追加しました。
+                 * ホーム画面を「季」「花信」「刷」の3つのテーマから選べるようになりました。表示切替、HataFeed の通知タイル、地震・津波情報タイルにも対応しています。育てている花は画面を閉じている間やバックグラウンドでも経過時間に応じて育ち、進み具合と咲いた花をウィジェットで確認できます。ログイン中のプロフィールからデジタル通行証を作るカードメーカーもHatask内に追加しました。カードの二次元コードはサーバーアイコン付きのデザインになり、対応するiPhoneでは許可後に端末の動きでカード本体を傾けられます。
                  */
                 "hataskText": string;
                 /**
@@ -26397,7 +27605,7 @@ export interface Locale extends ILocale {
                  */
                 "languageTitle": string;
                 /**
-                 * 旗鯖独自機能を、日本語・英語・中国語（簡体字）で利用できるようになりました。Hatadyを含む対応機能と「Hataskeyについて」・サーバー情報ページはHataskey本体の言語設定に従い、自分で入力した投稿・記録・名前は変わりません。花常と地震・津波情報は引き続き日本語のみです。
+                 * 旗鯖独自機能を、日本語・英語・中国語（簡体字）で利用できるようになりました。Hatadyを含む対応機能と「Hataskeyについて」・サーバー情報ページはHataskey本体の言語設定に従い、自分で入力した投稿・記録・名前は変わりません。表示言語が未設定だった既存のローカルアカウントは日本語を既定にし、既に選んだ言語は変更しません。花常と地震・津波情報は引き続き日本語のみです。
                  */
                 "languageText": string;
                 /**
@@ -26421,7 +27629,7 @@ export interface Locale extends ILocale {
                  */
                 "hatasabaUiTitle": string;
                 /**
-                 * ノートやカラムをすりガラス調にする新しい見た目を選べるようになりました。透過の強さはその場で確かめながら調整できます。デッキにはクリップ・お気に入りのカラム、カラムごとの再読み込みが増えています。時計の秒表示で通知などのカラムが点滅しないよう更新処理も安定化しました。タブを左右スワイプで切り替えない設定と、Bot投稿を隠す設定にも対応しました。
+                 * ノートやカラムをすりガラス調にする新しい見た目を選べるようになりました。透過の強さはその場で確かめながら調整できます。デッキにはクリップ・お気に入りのカラム、カラムごとの再読み込みが増えています。時計の秒表示で通知などのカラムが点滅しないよう更新処理も安定化しました。タブを左右スワイプで切り替えない設定と、Bot投稿を隠す設定にも対応しました。iPhoneでは返信・リノート・リアクションなどのノート操作をタッチ補助表示が妨げないようにし、リアクション選択メニューが開かない場合がある問題も修正しました。
                  */
                 "hatasabaUiText": string;
                 /**

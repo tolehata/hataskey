@@ -760,6 +760,7 @@ export type Channels = {
             readAntenna: (payload: Antenna) => void;
             receiveFollowRequest: (payload: User) => void;
             announcementCreated: (payload: AnnouncementCreated) => void;
+            mutingImportCompleted: () => void;
         };
         receives: null;
     };
@@ -1706,6 +1707,13 @@ export type Endpoints = Overwrite<Endpoints_2, {
         req: EmptyRequest;
         res: EmptyResponse;
     };
+    'hata/hatady/notifications': {
+        req: {
+            limit?: number;
+            untilId?: string;
+        };
+        res: HatadyNotification[];
+    };
 }>;
 
 // @public (undocumented)
@@ -2226,6 +2234,7 @@ declare namespace entities {
         HataFeedbackModeratorsRevokeRequest,
         HataFeedbackNotificationsRequest,
         HataFeedbackNotificationsResponse,
+        HataFeedbackNotificationsReadRequest,
         HataFeedbackProjectsRequest,
         HataFeedbackProjectsResponse,
         HataFeedbackProjectsCreateRequest,
@@ -2235,6 +2244,8 @@ declare namespace entities {
         HataFeedbackProjectsUpdateResponse,
         HataFeedbackRemoteEmojisRequest,
         HataFeedbackRemoteEmojisResponse,
+        HataHatadyActivitiesRequest,
+        HataHatadyActivitiesResponse,
         HataHatadyAdminBooksRequest,
         HataHatadyAdminBooksResponse,
         HataHatadyAdminDeleteBookRequest,
@@ -2275,6 +2286,31 @@ declare namespace entities {
         HataHatadyLogsShowResponse,
         HataHatadyLogsUpdateRequest,
         HataHatadyLogsUpdateResponse,
+        HataHatadyMediaCommentsCreateRequest,
+        HataHatadyMediaCommentsCreateResponse,
+        HataHatadyMediaCommentsDeleteRequest,
+        HataHatadyMediaCommentsListRequest,
+        HataHatadyMediaCommentsListResponse,
+        HataHatadyMediaCommentsUpdateRequest,
+        HataHatadyMediaCommentsUpdateResponse,
+        HataHatadyMediaReactionsCreateRequest,
+        HataHatadyMediaReactionsDeleteRequest,
+        HataHatadyMediaSessionsCreateRequest,
+        HataHatadyMediaSessionsCreateResponse,
+        HataHatadyMediaSessionsDeleteRequest,
+        HataHatadyMediaSessionsListRequest,
+        HataHatadyMediaSessionsListResponse,
+        HataHatadyMediaSessionsUpdateRequest,
+        HataHatadyMediaSessionsUpdateResponse,
+        HataHatadyMediaWorksCreateRequest,
+        HataHatadyMediaWorksCreateResponse,
+        HataHatadyMediaWorksDeleteRequest,
+        HataHatadyMediaWorksListRequest,
+        HataHatadyMediaWorksListResponse,
+        HataHatadyMediaWorksShowRequest,
+        HataHatadyMediaWorksShowResponse,
+        HataHatadyMediaWorksUpdateRequest,
+        HataHatadyMediaWorksUpdateResponse,
         HataHatadyMemosCreateRequest,
         HataHatadyMemosCreateResponse,
         HataHatadyMemosDeleteRequest,
@@ -2694,7 +2730,22 @@ declare namespace entities {
         ChatRoom,
         ChatRoomInvitation,
         ChatRoomMembership,
-        NoteHistory
+        NoteHistory,
+        HatadyMediaWorkKind,
+        HatadyMediaWorkStatus,
+        HatadyMediaVisibility,
+        HatadyMovieOrigin,
+        HatadyMovieViewingMode,
+        HatadyMediaSessionKind,
+        HatadyMediaReactionSummary,
+        HatadyMediaWork,
+        HatadyMediaWorkDetail,
+        HatadyMediaWorkInput,
+        HatadyMediaWorkListRequest,
+        HatadyMediaSession,
+        HatadyMediaSessionInput,
+        HatadyMediaComment,
+        HatadyNotification
     }
 }
 export { entities }
@@ -2984,6 +3035,165 @@ type HataConsentUpdateRequest = operations['hata___consent___update']['requestBo
 type HataConsentUpdateResponse = operations['hata___consent___update']['responses']['200']['content']['application/json'];
 
 // @public (undocumented)
+export type HatadyMediaComment = {
+    id: string;
+    createdAt: string;
+    updatedAt: string;
+    workId: string;
+    userId: string;
+    user: UserLite | null;
+    replyId: string | null;
+    text: string;
+    spoiler: boolean;
+    reactionsCount: number;
+    reactions: HatadyMediaReactionSummary[];
+    myReaction: string | null;
+};
+
+// @public (undocumented)
+export type HatadyMediaReactionSummary = {
+    reaction: string;
+    count: number;
+};
+
+// @public (undocumented)
+export type HatadyMediaSession = {
+    id: string;
+    createdAt: string;
+    updatedAt: string;
+    userId: string;
+    workId: string;
+    kind: HatadyMediaSessionKind;
+    occurredAt: string;
+    durationMinutes: number | null;
+    note: string | null;
+    noteSpoiler: boolean;
+    visibility: HatadyMediaVisibility;
+    details: Record<string, unknown>;
+};
+
+// @public (undocumented)
+export type HatadyMediaSessionInput = {
+    occurredAt?: string;
+    durationMinutes?: number | null;
+    note?: string | null;
+    noteSpoiler?: boolean;
+    visibility?: HatadyMediaVisibility;
+    details?: Record<string, unknown>;
+};
+
+// @public (undocumented)
+export type HatadyMediaSessionKind = 'movie_viewing' | 'game_play' | 'game_match' | 'game_roguelike';
+
+// @public (undocumented)
+export type HatadyMediaVisibility = 'private' | 'followers' | 'public';
+
+// @public (undocumented)
+export type HatadyMediaWork = {
+    id: string;
+    createdAt: string;
+    updatedAt: string;
+    userId: string;
+    kind: HatadyMediaWorkKind;
+    title: string;
+    originalTitle: string | null;
+    creator: string | null;
+    releaseDate: string | null;
+    releaseYear: number | null;
+    status: HatadyMediaWorkStatus;
+    visibility: HatadyMediaVisibility;
+    isFavorite: boolean;
+    isRecommended: boolean;
+    recommendationRating: number | null;
+    coverColorIndex: number | null;
+    synopsis: string | null;
+    synopsisSpoiler: boolean;
+    review: string | null;
+    reviewSpoiler: boolean;
+    officialUrl: string | null;
+    runtimeMinutes: number | null;
+    genres: string[];
+    origin: HatadyMovieOrigin | null;
+    viewingMode: HatadyMovieViewingMode | null;
+    primaryLanguage: string | null;
+    highlights: string[];
+    highlightsSpoiler: boolean;
+    platforms: string[];
+    developer: string | null;
+    publisher: string | null;
+};
+
+// @public (undocumented)
+export type HatadyMediaWorkDetail = HatadyMediaWork & {
+    isMine: boolean;
+    reactions: HatadyMediaReactionSummary[];
+    myReaction: string | null;
+    commentsCount: number;
+};
+
+// @public (undocumented)
+export type HatadyMediaWorkInput = Partial<Omit<HatadyMediaWork, 'id' | 'createdAt' | 'updatedAt' | 'userId' | 'kind'>> & {
+    title?: string;
+};
+
+// @public (undocumented)
+export type HatadyMediaWorkKind = 'movie' | 'game';
+
+// @public (undocumented)
+export type HatadyMediaWorkListRequest = {
+    userId?: string;
+    kind?: HatadyMediaWorkKind;
+    status?: HatadyMediaWorkStatus;
+    origin?: HatadyMovieOrigin;
+    viewingMode?: HatadyMovieViewingMode;
+    isRecommended?: boolean;
+    minRecommendation?: number;
+    sessionKind?: HatadyMediaSessionKind;
+    result?: string;
+    weapon?: string;
+    rank?: string;
+    route?: string;
+    since?: string;
+    until?: string;
+    sort?: 'createdAt' | 'updatedAt' | 'title' | 'releaseDate' | 'releaseYear' | 'status' | 'recommendationRating';
+    order?: 'asc' | 'desc';
+    query?: string;
+    untilId?: string;
+    limit?: number;
+};
+
+// @public (undocumented)
+export type HatadyMediaWorkStatus = 'planned' | 'in_progress' | 'completed' | 'mastered' | 'on_hold' | 'dropped';
+
+// @public (undocumented)
+export type HatadyMovieOrigin = 'domestic' | 'foreign' | 'co_production' | 'other';
+
+// @public (undocumented)
+export type HatadyMovieViewingMode = 'dubbed' | 'subtitled' | 'original';
+
+// @public (undocumented)
+export type HatadyNotification = {
+    id: string;
+    createdAt: string;
+    type: string;
+    isRead: boolean;
+    user: UserLite | null;
+    logId: string | null;
+    logTitle: string | null;
+    commentId: string | null;
+    commentText: string | null;
+    mediaWorkId: string | null;
+    mediaTitle: string | null;
+    mediaKind: HatadyMediaWorkKind | null;
+    mediaCommentId: string | null;
+    mediaCommentText: string | null;
+    mediaCommentSpoiler: boolean | null;
+    reaction: string | null;
+    value: number | null;
+    isFollowingBack: boolean;
+};
+
+// @public (undocumented)
 type HataEarthquakeHistoryRequest = operations['hata___earthquake___history']['requestBody']['content']['application/json'];
 
 // @public (undocumented)
@@ -3107,6 +3317,9 @@ type HataFeedbackModeratorsGrantRequest = operations['hata___feedback___moderato
 type HataFeedbackModeratorsRevokeRequest = operations['hata___feedback___moderators___revoke']['requestBody']['content']['application/json'];
 
 // @public (undocumented)
+type HataFeedbackNotificationsReadRequest = operations['hata___feedback___notifications___read']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
 type HataFeedbackNotificationsRequest = operations['hata___feedback___notifications']['requestBody']['content']['application/json'];
 
 // @public (undocumented)
@@ -3138,6 +3351,12 @@ type HataFeedbackRemoteEmojisRequest = operations['hata___feedback___remote-emoj
 
 // @public (undocumented)
 type HataFeedbackRemoteEmojisResponse = operations['hata___feedback___remote-emojis']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyActivitiesRequest = operations['hata___hatady___activities']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyActivitiesResponse = operations['hata___hatady___activities']['responses']['200']['content']['application/json'];
 
 // @public (undocumented)
 type HataHatadyAdminBooksRequest = operations['hata___hatady___admin___books']['requestBody']['content']['application/json'];
@@ -3258,6 +3477,81 @@ type HataHatadyLogsUpdateRequest = operations['hata___hatady___logs___update']['
 
 // @public (undocumented)
 type HataHatadyLogsUpdateResponse = operations['hata___hatady___logs___update']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyMediaCommentsCreateRequest = operations['hata___hatady___media___comments___create']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyMediaCommentsCreateResponse = operations['hata___hatady___media___comments___create']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyMediaCommentsDeleteRequest = operations['hata___hatady___media___comments___delete']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyMediaCommentsListRequest = operations['hata___hatady___media___comments___list']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyMediaCommentsListResponse = operations['hata___hatady___media___comments___list']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyMediaCommentsUpdateRequest = operations['hata___hatady___media___comments___update']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyMediaCommentsUpdateResponse = operations['hata___hatady___media___comments___update']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyMediaReactionsCreateRequest = operations['hata___hatady___media___reactions___create']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyMediaReactionsDeleteRequest = operations['hata___hatady___media___reactions___delete']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyMediaSessionsCreateRequest = operations['hata___hatady___media___sessions___create']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyMediaSessionsCreateResponse = operations['hata___hatady___media___sessions___create']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyMediaSessionsDeleteRequest = operations['hata___hatady___media___sessions___delete']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyMediaSessionsListRequest = operations['hata___hatady___media___sessions___list']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyMediaSessionsListResponse = operations['hata___hatady___media___sessions___list']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyMediaSessionsUpdateRequest = operations['hata___hatady___media___sessions___update']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyMediaSessionsUpdateResponse = operations['hata___hatady___media___sessions___update']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyMediaWorksCreateRequest = operations['hata___hatady___media___works___create']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyMediaWorksCreateResponse = operations['hata___hatady___media___works___create']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyMediaWorksDeleteRequest = operations['hata___hatady___media___works___delete']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyMediaWorksListRequest = operations['hata___hatady___media___works___list']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyMediaWorksListResponse = operations['hata___hatady___media___works___list']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyMediaWorksShowRequest = operations['hata___hatady___media___works___show']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyMediaWorksShowResponse = operations['hata___hatady___media___works___show']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyMediaWorksUpdateRequest = operations['hata___hatady___media___works___update']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyMediaWorksUpdateResponse = operations['hata___hatady___media___works___update']['responses']['200']['content']['application/json'];
 
 // @public (undocumented)
 type HataHatadyMemosCreateRequest = operations['hata___hatady___memos___create']['requestBody']['content']['application/json'];
@@ -4388,7 +4682,7 @@ type RoleLite = components['schemas']['RoleLite'];
 type RolePolicies = components['schemas']['RolePolicies'];
 
 // @public (undocumented)
-export const rolePolicies: readonly ["gtlAvailable", "ltlAvailable", "btlAvailable", "canPublicNote", "canEditNote", "mentionLimit", "canInvite", "inviteLimit", "inviteLimitCycle", "inviteExpirationTime", "canManageCustomEmojis", "canManageAvatarDecorations", "canSearchNotes", "canSearchUsers", "canHideAds", "mascotMaxExpressions", "mascotMaxPhrases", "mascotMaxCharacters", "hataSideStudioProfileLimit", "canUseMascot", "canAccessHataFeed", "canUseHatacordingUi", "hatacordingUiSubpaneMaxTabs", "hatacordingUiRateLimit", "canUseHatadySync", "hatadyBookLimit", "hatadyBookmarkLimit", "canMakePrivateChannel", "canRequestRemoteEmoji", "emojiRequestLimit", "driveCapacityMb", "maxFileSizeMb", "alwaysMarkNsfw", "canUpdateBioMedia", "pinLimit", "antennaLimit", "wordMuteLimit", "webhookLimit", "clipLimit", "noteEachClipsLimit", "userListLimit", "userEachUserListsLimit", "rateLimitFactor", "avatarDecorationLimit", "canImportAntennas", "canImportBlocking", "canImportFollowing", "canImportMuting", "canImportUserLists", "chatAvailability", "uploadableFileTypes", "noteDraftLimit", "scheduledNoteLimit", "watermarkAvailable", "canSetFederationAvatarShape"];
+export const rolePolicies: readonly ["gtlAvailable", "ltlAvailable", "btlAvailable", "canPublicNote", "canEditNote", "mentionLimit", "canInvite", "inviteLimit", "inviteLimitCycle", "inviteExpirationTime", "canManageCustomEmojis", "canManageAvatarDecorations", "canSearchNotes", "canSearchUsers", "canHideAds", "mascotMaxExpressions", "mascotMaxPhrases", "mascotMaxCharacters", "hataSideStudioProfileLimit", "canUseMascot", "canAccessHataFeed", "canUseHatacordingUi", "hatacordingUiSubpaneMaxTabs", "hatacordingUiRateLimit", "canUseHatadySync", "hatadyBookLimit", "hatadyBookmarkLimit", "hatadyGameTitleLimit", "canMakePrivateChannel", "canRequestRemoteEmoji", "emojiRequestLimit", "driveCapacityMb", "maxFileSizeMb", "alwaysMarkNsfw", "canUpdateBioMedia", "pinLimit", "antennaLimit", "wordMuteLimit", "webhookLimit", "clipLimit", "noteEachClipsLimit", "userListLimit", "userEachUserListsLimit", "rateLimitFactor", "avatarDecorationLimit", "canImportAntennas", "canImportBlocking", "canImportFollowing", "canImportMuting", "canImportUserLists", "chatAvailability", "uploadableFileTypes", "noteDraftLimit", "scheduledNoteLimit", "watermarkAvailable", "canSetFederationAvatarShape"];
 
 // @public (undocumented)
 type RolesListResponse = operations['roles___list']['responses']['200']['content']['application/json'];
@@ -4895,10 +5189,10 @@ type WhackEmojiRoomsRequest = operations['whack-emoji___rooms']['requestBody']['
 
 // Warnings were encountered during analysis:
 //
-// src/entities.ts:55:2 - (ae-forgotten-export) The symbol "ModerationLogPayloads" needs to be exported by the entry point index.d.ts
+// src/entities.ts:56:2 - (ae-forgotten-export) The symbol "ModerationLogPayloads" needs to be exported by the entry point index.d.ts
 // src/streaming.ts:57:3 - (ae-forgotten-export) The symbol "ReconnectingWebSocket" needs to be exported by the entry point index.d.ts
-// src/streaming.types.ts:243:4 - (ae-forgotten-export) The symbol "ReversiUpdateKey" needs to be exported by the entry point index.d.ts
-// src/streaming.types.ts:254:4 - (ae-forgotten-export) The symbol "ReversiUpdateSettings" needs to be exported by the entry point index.d.ts
+// src/streaming.types.ts:244:4 - (ae-forgotten-export) The symbol "ReversiUpdateKey" needs to be exported by the entry point index.d.ts
+// src/streaming.types.ts:255:4 - (ae-forgotten-export) The symbol "ReversiUpdateSettings" needs to be exported by the entry point index.d.ts
 
 // (No @packageDocumentation comment for this package)
 

@@ -100,6 +100,10 @@ import { MiHatadyBookmark } from '@/models/HatadyBookmark.js';
 import { MiHatadyBookMemo } from '@/models/HatadyBookMemo.js';
 import { MiHatadySubject } from '@/models/HatadySubject.js';
 import { MiHatadyGoal } from '@/models/HatadyGoal.js';
+import { MiHatadyMediaWork } from '@/models/HatadyMediaWork.js';
+import { MiHatadyMediaSession } from '@/models/HatadyMediaSession.js';
+import { MiHatadyMediaComment } from '@/models/HatadyMediaComment.js';
+import { MiHatadyMediaReaction } from '@/models/HatadyMediaReaction.js';
 import { MiUserSecurityKey } from '@/models/UserSecurityKey.js';
 import { MiWebhook } from '@/models/Webhook.js';
 import { MiSystemWebhook } from '@/models/SystemWebhook.js';
@@ -258,6 +262,10 @@ export const entities = [
 	MiHatadyBookMemo,
 	MiHatadySubject,
 	MiHatadyGoal,
+	MiHatadyMediaWork,
+	MiHatadyMediaSession,
+	MiHatadyMediaComment,
+	MiHatadyMediaReaction,
 	MiUserList,
 	MiUserListFavorite,
 	MiUserListMembership,

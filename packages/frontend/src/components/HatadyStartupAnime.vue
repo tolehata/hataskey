@@ -220,7 +220,7 @@ const books = computed(() => {
 	});
 });
 
-// ===== みんなの学習フィード =====
+// ===== みんなの活動フィード =====
 const FN = ['@mika', '@ren'], AV = ['#c07a4a', '#5a8a6a'];
 const feedRows = computed(() => [0, 1].map(i => {
 	const d = (1.0 + i * 0.16).toFixed(2);

@@ -14,6 +14,7 @@ import type { AuthenticationResponseJSON, PublicKeyCredentialRequestOptionsJSON 
 
 export * from './autogen/entities.js';
 export * from './autogen/models.js';
+export * from './hata-media.js';
 
 export type ID = string;
 export type DateString = string;

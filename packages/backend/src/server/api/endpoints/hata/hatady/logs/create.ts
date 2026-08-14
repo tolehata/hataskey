@@ -20,7 +20,7 @@ export const paramDef = {
 	properties: {
 		title: { type: 'string', minLength: 1, maxLength: 512 },
 		subject: { type: 'string', minLength: 1, maxLength: 64 },
-		tag: { type: 'string', enum: ['strength', 'weak', 'interest'], nullable: true },
+		tag: { type: 'string', enum: ['strength', 'weak', 'interest', 'movie', 'game'], nullable: true },
 		body: { type: 'string', maxLength: 4096, nullable: true },
 		bookId: { type: 'string', format: 'misskey:id', nullable: true },
 		pageFrom: { type: 'integer', nullable: true },

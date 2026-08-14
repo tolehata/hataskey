@@ -7,7 +7,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { In } from 'typeorm';
 import { DI } from '@/di-symbols.js';
-import type { HatadyBooksRepository, HatadyLogsRepository, HatadyReactionsRepository, HatadyCommentsRepository, HatadyFollowingsRepository, HatadyBookmarksRepository } from '@/models/_.js';
+import type { HatadyBooksRepository, HatadyLogsRepository, HatadyReactionsRepository, HatadyCommentsRepository, HatadyFollowingsRepository, HatadyBookmarksRepository, HatadyMediaWorksRepository, HatadyMediaCommentsRepository } from '@/models/_.js';
 import type { MiUser } from '@/models/User.js';
 import type { MiHatadyBook } from '@/models/HatadyBook.js';
 import type { MiHatadyLog } from '@/models/HatadyLog.js';
@@ -33,6 +33,10 @@ export class HatadyEntityService {
 		private hatadyFollowingsRepository: HatadyFollowingsRepository,
 		@Inject(DI.hatadyBookmarksRepository)
 		private hatadyBookmarksRepository: HatadyBookmarksRepository,
+		@Inject(DI.hatadyMediaWorksRepository)
+		private hatadyMediaWorksRepository: HatadyMediaWorksRepository,
+		@Inject(DI.hatadyMediaCommentsRepository)
+		private hatadyMediaCommentsRepository: HatadyMediaCommentsRepository,
 
 		private userEntityService: UserEntityService,
 	) {
@@ -247,33 +251,93 @@ export class HatadyEntityService {
 			}
 		}
 
-		const logIds = [...new Set(notifications.map(n => n.logId).filter((x): x is string => x != null))];
+		const commentIds = [...new Set(notifications.map(n => n.commentId).filter((x): x is string => x != null))];
+		const loadedComments = commentIds.length > 0
+			? await this.hatadyCommentsRepository.findBy({ id: In(commentIds) })
+			: [];
+		const logIds = [...new Set([
+			...notifications.map(n => n.logId).filter((x): x is string => x != null),
+			...loadedComments.map(comment => comment.logId),
+		])];
 		const logsMap = new Map<string, MiHatadyLog>();
-		if (logIds.length > 0) {
+		if (logIds.length > 0 && viewerId) {
 			const logs = await this.hatadyLogsRepository.findBy({ id: In(logIds) });
-			for (const l of logs) logsMap.set(l.id, l);
+			const followerOwnerIds = [...new Set(logs
+				.filter(log => log.userId !== viewerId && log.visibility === 'followers')
+				.map(log => log.userId))];
+			const followedIds = new Set<string>();
+			if (followerOwnerIds.length > 0) {
+				const rows = await this.hatadyFollowingsRepository.createQueryBuilder('log_following')
+					.where('log_following.followerId = :viewerId', { viewerId })
+					.andWhere('log_following.followeeId IN (:...ownerIds)', { ownerIds: followerOwnerIds })
+					.getMany();
+				for (const row of rows) followedIds.add(row.followeeId);
+			}
+			for (const log of logs) {
+				if (log.userId === viewerId || log.visibility === 'public' || (log.visibility === 'followers' && followedIds.has(log.userId))) {
+					logsMap.set(log.id, log);
+				}
+			}
 		}
 
-		const commentIds = [...new Set(notifications.map(n => n.commentId).filter((x): x is string => x != null))];
 		const commentsMap = new Map<string, MiHatadyComment>();
 		if (commentIds.length > 0) {
-			const comments = await this.hatadyCommentsRepository.findBy({ id: In(commentIds) });
-			for (const c of comments) commentsMap.set(c.id, c);
+			for (const comment of loadedComments) {
+				if (logsMap.has(comment.logId)) commentsMap.set(comment.id, comment);
+			}
+		}
+
+		const mediaWorkIds = [...new Set(notifications.map(n => n.mediaWorkId).filter((x): x is string => x != null))];
+		const mediaWorksMap = new Map<string, { title: string; kind: string }>();
+		if (mediaWorkIds.length > 0 && viewerId) {
+			const works = await this.hatadyMediaWorksRepository.findBy({ id: In(mediaWorkIds) });
+			const followedIds = new Set<string>();
+			const ownerIds = [...new Set(works.filter(work => work.userId !== viewerId && work.visibility === 'followers').map(work => work.userId))];
+			if (ownerIds.length > 0) {
+				const rows = await this.hatadyFollowingsRepository.createQueryBuilder('following')
+					.where('following.followerId = :viewerId', { viewerId })
+					.andWhere('following.followeeId IN (:...ownerIds)', { ownerIds })
+					.getMany();
+				for (const row of rows) followedIds.add(row.followeeId);
+			}
+			const visible = works.map(work => ({ work, allowed: work.userId === viewerId || work.visibility === 'public' || (work.visibility === 'followers' && followedIds.has(work.userId)) }));
+			for (const { work, allowed } of visible) if (allowed) mediaWorksMap.set(work.id, { title: work.title, kind: work.kind });
+		}
+
+		const mediaCommentIds = [...new Set(notifications.map(n => n.mediaCommentId).filter((x): x is string => x != null))];
+		const mediaCommentsMap = new Map<string, { text: string | null; spoiler: boolean }>();
+		if (mediaCommentIds.length > 0) {
+			const comments = await this.hatadyMediaCommentsRepository.findBy({ id: In(mediaCommentIds) });
+			for (const comment of comments) {
+				if (mediaWorksMap.has(comment.workId)) mediaCommentsMap.set(comment.id, { text: comment.spoiler ? null : comment.text, spoiler: comment.spoiler });
+			}
 		}
 
 		return notifications.map(n => {
 			const log = n.logId ? logsMap.get(n.logId) : null;
 			const comment = n.commentId ? commentsMap.get(n.commentId) : null;
+			const visibleLogId = log?.id ?? (comment != null && logsMap.has(comment.logId) ? comment.logId : null);
+			const visibleCommentId = comment?.id ?? null;
+			// 作品が削除済み、または通知後に非公開化されて現在の受信者が閲覧できない場合は、
+			// stable ID 自体も返さない。タイトルだけを隠して ID を残すと存在確認の oracle になる。
+			const visibleMediaWorkId = n.mediaWorkId != null && mediaWorksMap.has(n.mediaWorkId) ? n.mediaWorkId : null;
+			const visibleMediaCommentId = n.mediaCommentId != null && mediaCommentsMap.has(n.mediaCommentId) ? n.mediaCommentId : null;
 			return {
 				id: n.id,
 				createdAt: n.createdAt.toISOString(),
 				type: n.type,
 				isRead: n.isRead,
 				user: n.notifierId ? (usersMap.get(n.notifierId) ?? null) : null,
-				logId: n.logId,
-				logTitle: log?.title ?? null,
-				commentId: n.commentId,
+				logId: visibleLogId,
+				logTitle: visibleLogId ? (logsMap.get(visibleLogId)?.title ?? null) : null,
+				commentId: visibleCommentId,
 				commentText: comment?.text ?? null,
+				mediaWorkId: visibleMediaWorkId,
+				mediaTitle: visibleMediaWorkId ? (mediaWorksMap.get(visibleMediaWorkId)?.title ?? null) : null,
+				mediaKind: visibleMediaWorkId ? (mediaWorksMap.get(visibleMediaWorkId)?.kind ?? null) : null,
+				mediaCommentId: visibleMediaCommentId,
+				mediaCommentText: visibleMediaCommentId ? (mediaCommentsMap.get(visibleMediaCommentId)?.text ?? null) : null,
+				mediaCommentSpoiler: visibleMediaCommentId ? (mediaCommentsMap.get(visibleMediaCommentId)?.spoiler ?? null) : null,
 				reaction: n.reaction,
 				value: n.value,
 				isFollowingBack: n.type === 'follow' && n.notifierId ? followBackSet.has(n.notifierId) : false,
