@@ -14,8 +14,8 @@ import { $i } from '@/i.js';
 import { store } from '@/store.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { prefer } from '@/preferences.js';
-import { isMutedUser, fetchMutedUsers } from '@/utility/muted-users.js';
 import { globalEvents } from '@/events.js';
+import { notifyMutedReactionSourceChanged, reactionCountsChanged, shouldRevalidateMutedReactionActors } from '@/utility/muted-reactions.js';
 
 export const noteEvents = new EventEmitter<{
 	[ev: `reacted:${string}`]: (ctx: { userId: Misskey.entities.User['id']; reaction: string; emoji?: { name: string; url: string; }; }) => void;
@@ -102,9 +102,12 @@ function pollingSubscribe(props: {
 	const { note, $note } = props;
 
 	function onFetched(data: Pick<Misskey.entities.Note, 'reactions' | 'reactionEmojis'>): void {
+		const sourceChanged = reactionCountsChanged($note.reactions, data.reactions);
 		$note.reactions = data.reactions;
 		$note.reactionCount = Object.values(data.reactions).reduce((a, b) => a + b, 0);
 		$note.reactionEmojis = data.reactionEmojis;
+		// 総数が同じまま種別が入れ替わる場合も、リアクター一覧の旧cacheを再利用しない。
+		if (sourceChanged || shouldRevalidateMutedReactionActors(note.id)) notifyMutedReactionSourceChanged(note.id);
 	}
 
 	pollingEnqueue(note);
@@ -226,9 +229,6 @@ export function useNoteCapture(props: {
 	// 既存UIでは未提供のまま false となり、従来挙動を変えない。
 	const forceRealtimeCapture = inject<MaybeRef<boolean>>('forceNoteRealtimeCapture', false);
 
-	// ミュートユーザーリストの初期化（旗鯖独自機能）
-	if (prefer.s.hideMutedUserReactions) fetchMutedUsers();
-
 	const $note = reactive<ReactiveNoteData>({
 		reactions: Object.entries(note.reactions).reduce((acc, [name, count]) => {
 			// Normalize reactions
@@ -257,9 +257,6 @@ export function useNoteCapture(props: {
 	let latestPollVotedKey: string | null = null;
 
 	function onReacted(ctx: { userId: Misskey.entities.User['id']; reaction: string; emoji?: { name: string; url: string; }; }): void {
-		// ミュートユーザーのリアクションを無視（旗鯖独自機能）
-		if (prefer.s.hideMutedUserReactions && isMutedUser(ctx.userId)) return;
-
 		let normalizedName = ctx.reaction.replace(/^:(\w+):$/, ':$1@.:');
 		normalizedName = normalizedName.match('\u200d') ? normalizedName : normalizedName.replace(/\ufe0f/g, '');
 		if (reactionUserMap.has(ctx.userId) && reactionUserMap.get(ctx.userId) === normalizedName) return;
@@ -273,6 +270,7 @@ export function useNoteCapture(props: {
 
 		$note.reactions[normalizedName] = currentCount + 1;
 		$note.reactionCount += 1;
+		notifyMutedReactionSourceChanged(note.id);
 
 		if ($i && (ctx.userId === $i.id)) {
 			$note.myReaction = normalizedName;
@@ -292,6 +290,7 @@ export function useNoteCapture(props: {
 		$note.reactions[normalizedName] = Math.max(0, currentCount - 1);
 		$note.reactionCount = Math.max(0, $note.reactionCount - 1);
 		if ($note.reactions[normalizedName] === 0) delete $note.reactions[normalizedName];
+		notifyMutedReactionSourceChanged(note.id);
 
 		if ($i && (ctx.userId === $i.id)) {
 			$note.myReaction = null;

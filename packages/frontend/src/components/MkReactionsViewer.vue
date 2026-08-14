@@ -57,7 +57,7 @@ import { $i } from '@/i.js';
 import { prefer } from '@/preferences.js';
 import { customEmojisMap } from '@/custom-emojis.js';
 import { checkMuted as isEmojiMuted } from '@/utility/emoji-mute.js';
-import { isMutedUser } from '@/utility/muted-users.js';
+import { fetchMutedUsers, mutedUsersRevision } from '@/utility/muted-users.js';
 // 旗鯖fork(#31): リアクターを共有ストア経由で取る（間引き・キャッシュはストア側の責任）
 import { getMutedReactions, mutedReactionsRevision, requestMutedReactions } from '@/utility/muted-reactions.js';
 import { hideMutedReactionsLocal } from '@/utility/hatasaba-device-prefs.js';
@@ -92,6 +92,7 @@ const hasMoreReactions = ref(false);
 const revealMuted = ref(false);
 /** 旗鯖fork(#31): いま隠している件数。⚠️0 のときは ⓘ を出さない。 */
 const mutedHiddenCount = ref(0);
+let lastHideMutedEnabled = hideMutedReactionsLocal.value;
 const mutedReactionNotice = computed(() => revealMuted.value
 	? i18n.ts._hata._reactionVisibility.hideMutedAgain
 	: i18n.ts._hata._reactionVisibility.mutedCount.replace('{count}', mutedHiddenCount.value.toString()));
@@ -119,44 +120,50 @@ watch([
 	() => props.reactions,
 	() => props.maxNumber,
 	hideMutedReactionsLocal,
+	mutedUsersRevision,
 	// 旗鯖fork(#31): リアクターの取得が届いたら描き直す／ⓘ で表示を切り替えたら描き直す。
 	mutedReactionsRevision,
 	revealMuted,
 ], ([newSource, maxNumber]) => {
+	const hideMutedEnabled = hideMutedReactionsLocal.value;
+	const justEnabled = hideMutedEnabled && !lastHideMutedEnabled;
+	lastHideMutedEnabled = hideMutedEnabled;
 	/*
 	旗鯖fork(#31): ミュートしたユーザーのリアクションを**チップごと**消す。
 	⚠️従来は `reactionAndUserPairCache` だけを見ていたが、⚠️**backend はこの項目を
 	  ノート作成時のストリーム配信でしか返さない**ので、実際にはほぼ常に空だった
 	  （＝「名前は隠れるがリアクションは出る」状態の原因）。
-	⚠️そこで `notes/reactions` から取ったリアクターを正とし、ペアキャッシュは
-	  「あれば使う」補助に落とす。⚠️取得は共有ストア側で間引く（utility/muted-reactions.ts）。
+	⚠️そこで `notes/reactions` から取ったリアクターを正とする。
+	  ⚠️取得は共有ストア側で間引く（utility/muted-reactions.ts）。
 	⚠️自分のリアクションは隠さない。
 	*/
 	const mutedDelta: Record<string, number> = {};
-	const reactionCount = props.note?.reactionCount
-		?? Object.values(newSource).reduce((a, b) => a + b, 0);
+	// 表示元と同じreactive mapから算出する。props.note.reactionCountは初期noteの値のまま
+	// 残る経路があり、新しいmapと古いcache keyが混ざるとチップが出入りしてしまう。
+	const reactionCount = Object.values(newSource).reduce((a, b) => a + b, 0);
 
 	// ⚠️隠す件数は「ⓘ を押しているか」に関係なく数える。
 	//   ⚠️押した瞬間に 0 になると ⓘ 自体が消えて、隠す側へ戻せなくなる。
-	if (hideMutedReactionsLocal.value) {
+	if (hideMutedEnabled) {
+		void fetchMutedUsers();
 		// ①正：サーバーから取ったリアクター（自分の投稿かどうかに関係なく効く）
 		requestMutedReactions(props.noteId, reactionCount);
 		const entry = getMutedReactions(props.noteId, reactionCount);
-		if (entry) {
-			for (const [reaction, count] of Object.entries(entry.delta)) {
-				if (reaction === props.myReaction) continue;
-				mutedDelta[reaction] = count;
+		// 正確なミュート差分の取得待ちは、直前の安定表示を維持する（初回は空）。
+		// rawを一瞬描いてから消すと、折返し行の高さが連続して変わってしまう。
+		if (entry == null) {
+			// OFF中に描いたrawをON切替後まで持ち越さない。すでにフィルタ済みなら
+			// 取得中もその安定表示とⓘ件数をそのまま維持する。
+			if (justEnabled) {
+				_reactions.value = [];
+				hasMoreReactions.value = false;
+				mutedHiddenCount.value = 0;
 			}
-		} else if (Array.isArray(props.note?.reactionAndUserPairCache)) {
-			// ②補助：作成直後のストリームで来たペアキャッシュ（"userId/reaction" 形式）
-			for (const pair of props.note.reactionAndUserPairCache) {
-				const sep = pair.indexOf('/');
-				if (sep < 0) continue;
-				const userId = pair.slice(0, sep);
-				const reaction = pair.slice(sep + 1);
-				if (reaction === props.myReaction) continue;
-				if (isMutedUser(userId)) mutedDelta[reaction] = (mutedDelta[reaction] ?? 0) + 1;
-			}
+			return;
+		}
+		for (const [reaction, count] of Object.entries(entry.delta)) {
+			if (reaction === props.myReaction) continue;
+			mutedDelta[reaction] = count;
 		}
 	}
 	mutedHiddenCount.value = Object.values(mutedDelta).reduce((a, b) => a + b, 0);

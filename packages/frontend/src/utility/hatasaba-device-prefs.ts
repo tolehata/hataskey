@@ -27,8 +27,8 @@ export function setTabSwipeEnabled(v: boolean): void {
 	miLocalStorage.setItem('hatasabaTabSwipeEnabled', v ? 'true' : 'false');
 }
 
-// 旗鯖fork(#31・ベータ): ミュートしたユーザーのリアクションを、ノートのリアクションチップ自体から隠す。
-//   端末ごと(プロファイル非同期)に管理する。直近のリアクション(reactionAndUserPairCache)を使う best-effort。
+// 旗鯖fork(#31): ミュートしたユーザーのリアクションを、ノートのリアクションチップ自体から隠す。
+//   端末ごと(プロファイル非同期)に管理し、リアクター一覧は共有ストアで安定化して参照する。
 export const hideMutedReactionsLocal = ref(miLocalStorage.getItem('hataHideMutedReactions') === 'true');
 export function setHideMutedReactionsLocal(v: boolean): void {
 	hideMutedReactionsLocal.value = v;

@@ -13,6 +13,7 @@ import { RemoteUserResolveService } from '@/core/RemoteUserResolveService.js';
 import { DownloadService } from '@/core/DownloadService.js';
 import { UserMutingService } from '@/core/UserMutingService.js';
 import { UtilityService } from '@/core/UtilityService.js';
+import { GlobalEventService } from '@/core/GlobalEventService.js';
 import { bindThis } from '@/decorators.js';
 import { QueueLoggerService } from '../QueueLoggerService.js';
 import type * as Bull from 'bullmq';
@@ -31,6 +32,7 @@ export class ImportMutingProcessorService {
 
 		private utilityService: UtilityService,
 		private userMutingService: UserMutingService,
+		private globalEventService: GlobalEventService,
 		private remoteUserResolveService: RemoteUserResolveService,
 		private downloadService: DownloadService,
 		private queueLoggerService: QueueLoggerService,
@@ -97,5 +99,6 @@ export class ImportMutingProcessorService {
 		}
 
 		this.logger.succ('Imported');
+		this.globalEventService.publishMainStream(user.id, 'mutingImportCompleted');
 	}
 }

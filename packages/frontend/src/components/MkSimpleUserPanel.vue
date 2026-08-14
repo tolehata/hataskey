@@ -99,6 +99,7 @@ import { ref, computed, watch, onMounted, reactive } from 'vue';
 import * as Misskey from 'cherrypick-js';
 import MkHataProfileBadges from '@/components/MkHataProfileBadges.vue';
 import { misskeyApi } from '@/utility/misskey-api.js';
+import { updateMutedUserState } from '@/utility/muted-users.js';
 import * as os from '@/os.js';
 import { i18n } from '@/i18n.js';
 import { mainRouter } from '@/router.js';
@@ -126,6 +127,7 @@ const userIsAdmin = computed(() => {
 	if (!user.value) return false;
 	return 'isAdmin' in user.value ? user.value.isAdmin : user.value.roles.some(role => role.isAdministrator);
 });
+const excludedFromReactionHiding = computed(() => userIsAdmin.value || user.value?.roles.some(role => role.isModerator) === true);
 
 // ドラッグ移動（ポップアップ時のみ）
 const dragPos = reactive({ x: 0, y: 0 });
@@ -194,7 +196,7 @@ async function toggleMute() {
     if (!user.value || muteLoading.value) return;
     muteLoading.value = true;
     try {
-        if (isMuted.value) { await misskeyApi('mute/delete', { userId: user.value.id }); isMuted.value = false; }
+        if (isMuted.value) { await misskeyApi('mute/delete', { userId: user.value.id }); isMuted.value = false; updateMutedUserState(user.value.id, false); }
         else {
             // 旗鯖fork: サーバー管理者へのミュートはモデレーション上の理由で禁止
             if (userIsAdmin.value) {
@@ -203,7 +205,7 @@ async function toggleMute() {
             }
             const { canceled } = await os.confirm({ type: 'warning', text: copy.muteConfirm.replace('{user}', `@${user.value.username}`) });
             if (canceled) { muteLoading.value = false; return; }
-            await misskeyApi('mute/create', { userId: user.value.id }); isMuted.value = true;
+			await misskeyApi('mute/create', { userId: user.value.id }); isMuted.value = true; updateMutedUserState(user.value.id, true, null, excludedFromReactionHiding.value);
         }
     } catch { os.toast(copy.actionFailed); } finally { muteLoading.value = false; }
 }

@@ -167,6 +167,7 @@ import { misskeyApi } from '@/utility/misskey-api.js';
 import { selectFile } from '@/utility/drive.js';
 import { i18n } from '@/i18n.js';
 import { definePage } from '@/page.js';
+import { refreshMutedUsers } from '@/utility/muted-users.js';
 import { $i } from '@/i.js';
 import MkFeatureBanner from '@/components/MkFeatureBanner.vue';
 import { prefer } from '@/preferences.js';
@@ -256,7 +257,13 @@ const importMuting = async (ev) => {
 		anchorElement: ev.currentTarget ?? ev.target,
 		multiple: false,
 	});
-	misskeyApi('i/import-muting', { fileId: file.id }).then(onImportSuccess).catch(onError);
+	misskeyApi('i/import-muting', { fileId: file.id }).then(() => {
+		onImportSuccess();
+		// API応答はジョブ投入時点なので、remote resolveを含む処理完了まで時間差がある。
+		// 直後のcacheを無効化し、上限付きの複数回再取得で大きいインポートも追従する。
+		// WebSocketの完了イベントを正本とし、切断中に完了した場合だけ段階再取得で補う。
+		refreshMutedUsers([3000, 10_000, 30_000, 60_000, 120_000, 300_000]);
+	}).catch(onError);
 };
 
 const importBlocking = async (ev) => {

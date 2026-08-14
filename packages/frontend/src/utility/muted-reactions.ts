@@ -18,7 +18,7 @@
   ⚠️だから素朴に叩いても毎回サーバーまで飛ぶわけではない。それでも:
   - ⚠️**ノート1件につき1リクエストまで**（種別ごとに分けない＝`type` を渡さない）
   - ⚠️**同時実行を絞る**（スクロールで一気に走らせない）
-  - ⚠️**リアクション総数が変わるまで再取得しない**（キャッシュ鍵に総数を混ぜる）
+  - ⚠️リアクションのstream更新世代が変わるまで再取得しない
   - ⚠️ミュートが空／設定が切のときは**1回も投げない**
 
 ⚠️限界（正直に）
@@ -39,7 +39,7 @@
 import { ref } from 'vue';
 import type * as Misskey from 'cherrypick-js';
 import { misskeyApiGet } from '@/utility/misskey-api.js';
-import { isMutedUser, isMutedUsersReady } from '@/utility/muted-users.js';
+import { hasMutedUsers, isMutedUser, isMutedUsersReady, mutedUsersRevision } from '@/utility/muted-users.js';
 
 /** `notes/reactions` の上限。⚠️これを超えるぶんは取りこぼす（endpoint 側の maximum: 100）。 */
 const FETCH_LIMIT = 100;
@@ -59,8 +59,24 @@ type CacheValue = MutedReactionEntry & { key: string };
 
 const cache = new Map<string, CacheValue>();
 const inflight = new Set<string>();
-const waiting: (() => void)[] = [];
+/** ノートごとに最後に要求された鍵。古い通信結果による後勝ちを防ぐ。 */
+const latestKeyByNote = new Map<string, string>();
+const noteRevisionById = new Map<string, number>();
+const lastActorRefreshAtByNote = new Map<string, number>();
+const failureAttempts = new Map<string, number>();
+const retryTimers = new Map<string, number>();
+const waiting: { key: string; noteId: string; generation: number; run: () => Promise<void> }[] = [];
 let running = 0;
+let generation = 0;
+
+const RETRY_DELAYS_MS = [1500, 5000] as const;
+const POLLING_ACTOR_REFRESH_MS = 60_000;
+
+const EMPTY_ENTRY: MutedReactionEntry = Object.freeze({
+	delta: Object.freeze({}),
+	hidden: 0,
+	truncated: false,
+});
 
 /**
  * 新しい結果が入るたびに増える。
@@ -68,7 +84,30 @@ let running = 0;
  */
 export const mutedReactionsRevision = ref(0);
 
-const cacheKeyOf = (noteId: string, reactionCount: number) => `${noteId}:${reactionCount}`;
+const noteRevisionOf = (noteId: string) => noteRevisionById.get(noteId) ?? 0;
+const cacheKeyOf = (noteId: string, reactionCount: number) => `${noteId}:${reactionCount}:${noteRevisionOf(noteId)}:${mutedUsersRevision.value}`;
+
+/** pollingで受け取った集計が変わったかを、総数ではなく種別ごとの件数で比較する。 */
+export function reactionCountsChanged(
+	current: Readonly<Record<string, number>>,
+	next: Readonly<Record<string, number>>,
+): boolean {
+	const currentKeys = Object.keys(current);
+	const nextKeys = Object.keys(next);
+	if (currentKeys.length !== nextKeys.length) return true;
+	return nextKeys.some(key => current[key] !== next[key]);
+}
+
+/**
+ * pollingの集計だけでは「同じ絵文字・同じ件数のまま反応者だけ交代」を検出できない。
+ * activeなノートだけ、endpointのcacheSecと同じ60秒間隔でリアクター詳細を再確認する。
+ */
+export function shouldRevalidateMutedReactionActors(noteId: string, now = Date.now()): boolean {
+	const lastRefreshAt = lastActorRefreshAtByNote.get(noteId) ?? 0;
+	if (now - lastRefreshAt < POLLING_ACTOR_REFRESH_MS) return false;
+	lastActorRefreshAtByNote.set(noteId, now);
+	return true;
+}
 
 /** ⚠️そもそも取りに行く価値があるか。ここで弾けるものは1回も通信しない。 */
 function shouldFetch(reactionCount: number): boolean {
@@ -79,19 +118,49 @@ function shouldFetch(reactionCount: number): boolean {
 }
 
 function runNext(): void {
-	if (running >= MAX_PARALLEL) return;
-	const next = waiting.shift();
-	if (!next) return;
-	running++;
-	next();
+	while (running < MAX_PARALLEL) {
+		const next = waiting.shift();
+		if (!next) return;
+		if (next.generation !== generation || latestKeyByNote.get(next.noteId) !== next.key) {
+			inflight.delete(next.key);
+			continue;
+		}
+		running++;
+		void next.run().finally(() => {
+			inflight.delete(next.key);
+			running--;
+			runNext();
+		});
+	}
+}
+
+function scheduleRetry(noteId: string, key: string, requestGeneration: number): boolean {
+	const attempt = (failureAttempts.get(key) ?? 0) + 1;
+	failureAttempts.set(key, attempt);
+	if (attempt > RETRY_DELAYS_MS.length) return false;
+	const delay = RETRY_DELAYS_MS[attempt - 1];
+	const previous = retryTimers.get(key);
+	if (previous != null) window.clearTimeout(previous);
+	const timer = window.setTimeout(() => {
+		retryTimers.delete(key);
+		if (generation !== requestGeneration || latestKeyByNote.get(noteId) !== key) return;
+		mutedReactionsRevision.value++;
+	}, delay);
+	retryTimers.set(key, timer);
+	return true;
 }
 
 /**
- * 取得済みの結果を同期で読む。⚠️無ければ `undefined`（呼び出し側は素の件数を出す）。
+ * 取得済みの結果を同期で読む。⚠️無ければ `undefined`（呼び出し側は直前の安定表示を保つ）。
  */
 export function getMutedReactions(noteId: string, reactionCount: number): MutedReactionEntry | undefined {
+	if (reactionCount <= 0) return EMPTY_ENTRY;
+	if (!isMutedUsersReady()) return undefined;
+	if (!hasMutedUsers()) return EMPTY_ENTRY;
 	const hit = cache.get(noteId);
-	return hit && hit.key === cacheKeyOf(noteId, reactionCount) ? hit : undefined;
+	return hit && hit.key === cacheKeyOf(noteId, reactionCount)
+		? { delta: hit.delta, hidden: hit.hidden, truncated: hit.truncated }
+		: undefined;
 }
 
 /**
@@ -100,46 +169,80 @@ export function getMutedReactions(noteId: string, reactionCount: number): MutedR
 export function requestMutedReactions(noteId: string, reactionCount: number): void {
 	if (!shouldFetch(reactionCount)) return;
 	const key = cacheKeyOf(noteId, reactionCount);
+	latestKeyByNote.set(noteId, key);
+	// ミュート対象が0人なら取得不要。getMutedReactions() が空の確定結果を返す。
+	if (!hasMutedUsers()) return;
 	if (cache.get(noteId)?.key === key) return;
 	if (inflight.has(key)) return;
+	// 失敗後の待機中は、ほかのノートがglobal revisionを進めても再試行を早送りしない。
+	if (retryTimers.has(key)) return;
 	inflight.add(key);
+	lastActorRefreshAtByNote.set(noteId, Date.now());
+	const requestGeneration = generation;
 
 	const task = async () => {
 		try {
+			const cacheNonce = `${reactionCount}:${noteRevisionOf(noteId)}:${mutedUsersRevision.value}`;
 			const rows = await misskeyApiGet('notes/reactions', {
 				noteId,
 				limit: FETCH_LIMIT,
-				// ⚠️総数を鍵に混ぜて、増減したときだけ取り直す（tooltip 側の `_cacheKey_` と同じ考え方）。
-				_cacheKey_: reactionCount,
+				// GETキャッシュも同数復帰を区別する。endpoint側では未知queryを無視する。
+				_cacheKey_: cacheNonce,
 			}) as Misskey.entities.NoteReaction[];
 
 			const delta: Record<string, number> = {};
 			let hidden = 0;
 			for (const row of rows) {
-				const userId = row.user?.id;
-				if (userId == null || !isMutedUser(userId)) continue;
+				const userId = row.user.id;
+				if (!isMutedUser(userId)) continue;
 				// ⚠️`type` は `:name@host:` 形式。チップ側の見出しと同じ文字列なのでそのまま使う。
 				delta[row.type] = (delta[row.type] ?? 0) + 1;
 				hidden++;
 			}
-			cache.set(noteId, { key, delta, hidden, truncated: rows.length >= FETCH_LIMIT });
-			mutedReactionsRevision.value++;
+			if (requestGeneration === generation && latestKeyByNote.get(noteId) === key) {
+				cache.set(noteId, { key, delta, hidden, truncated: rows.length >= FETCH_LIMIT });
+				failureAttempts.delete(key);
+				mutedReactionsRevision.value++;
+			}
 		} catch {
-			// ⚠️失敗しても素の件数を出すだけ。⚠️ここで例外を投げるとノートが描けなくなる。
-			// ⚠️再取得は総数が動いたときに自然に起きる（ここでは何も記録しない）。
-		} finally {
-			inflight.delete(key);
-			running--;
-			runNext();
+			if (requestGeneration === generation && latestKeyByNote.get(noteId) === key) {
+				// 一時失敗では直前の安定表示を維持し、上限付きで再試行する。
+				// 再試行を使い切った場合だけfail-openし、表示を永久に空にしない。
+				if (!scheduleRetry(noteId, key, requestGeneration)) {
+					cache.set(noteId, { key, ...EMPTY_ENTRY });
+					mutedReactionsRevision.value++;
+				}
+			}
 		}
 	};
 
-	waiting.push(() => { void task(); });
+	waiting.push({ key, noteId, generation: requestGeneration, run: task });
 	runNext();
+}
+
+/** streamでリアクター構成が変わったことを通知する（総数が同じ値へ戻る場合も区別する）。 */
+export function notifyMutedReactionSourceChanged(noteId: string): void {
+	noteRevisionById.set(noteId, noteRevisionOf(noteId) + 1);
+	cache.delete(noteId);
+	latestKeyByNote.delete(noteId);
+	for (let i = waiting.length - 1; i >= 0; i--) {
+		if (waiting[i].noteId !== noteId) continue;
+		inflight.delete(waiting[i].key);
+		waiting.splice(i, 1);
+	}
 }
 
 /** ミュートの設定が変わったときに呼ぶ。⚠️持っている結果は全部作り直す。 */
 export function invalidateMutedReactions(): void {
+	generation++;
 	cache.clear();
+	latestKeyByNote.clear();
+	noteRevisionById.clear();
+	lastActorRefreshAtByNote.clear();
+	failureAttempts.clear();
+	for (const timer of retryTimers.values()) window.clearTimeout(timer);
+	retryTimers.clear();
+	for (const queued of waiting) inflight.delete(queued.key);
+	waiting.length = 0;
 	mutedReactionsRevision.value++;
 }

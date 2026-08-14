@@ -532,15 +532,17 @@ const showDrawingButtonInPostForm = prefer.model('showDrawingButtonInPostForm');
 const showLoginBonusPopup = prefer.model('showLoginBonusPopup');
 // 旗鯖fork(#31): ミュートユーザーのリアクション非表示（端末ローカル）。ベータ機能から正式機能へ移動。
 const hideMutedReactions = computed({
-    get: () => hideMutedReactionsLocal.value,
-    set: (v: boolean) => setHideMutedReactionsLocal(v),
+	get: () => hideMutedReactionsLocal.value,
+	set: (v: boolean) => setHideMutedReactionsLocal(v),
 });
 // ⚠️OFF→ON の瞬間にミュートリストを取り直す（取りこぼすと「効かない」と見える）。
 watch(hideMutedReactions, async (newVal) => {
-    if (!newVal) return;
-    const { fetchMutedUsers, invalidateMutedUsers } = await import('@/utility/muted-users.js');
-    invalidateMutedUsers();
-    fetchMutedUsers();
+	if (!newVal) return;
+	const { fetchMutedUsers, invalidateMutedUsers } = await import('@/utility/muted-users.js');
+	const { invalidateMutedReactions } = await import('@/utility/muted-reactions.js');
+	invalidateMutedReactions();
+	invalidateMutedUsers();
+	fetchMutedUsers();
 });
 const timelineAnimationDirection = prefer.model('timelineAnimationDirection');
 const timelineAnimationOptions = [

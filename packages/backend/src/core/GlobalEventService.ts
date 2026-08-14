@@ -100,6 +100,8 @@ export interface MainEventTypes {
 	announcementCreated: {
 		announcement: Packed<'Announcement'>;
 	};
+	/** 旗鯖fork: 非同期ミュート取込完了後、表示用キャッシュを正確に再取得させる。 */
+	mutingImportCompleted: undefined;
 }
 
 export interface DriveEventTypes {

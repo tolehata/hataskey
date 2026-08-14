@@ -32,7 +32,8 @@ import { misskeyApi } from '@/utility/misskey-api.js';
 import * as os from '@/os.js';
 import { cleanupStaleUiElements } from '@/utility/ui-cleanup.js';
 import { initHataFontWatcher } from '@/scripts/hata-font-manager.js';
-import { fetchMutedUsers } from '@/utility/muted-users.js';
+import { fetchMutedUsers, refreshMutedUsers } from '@/utility/muted-users.js';
+import { hideMutedReactionsLocal } from '@/utility/hatasaba-device-prefs.js';
 import { enqueueHataDialog } from '@/utility/hata-dialog-queue.js';
 import { HATA_WHATS_NEW } from '@/utility/hata-whats-new.js';
 import { shouldSuppressServerDisconnectUi } from '@/utility/server-disconnect-ui-suppression.js';
@@ -58,12 +59,11 @@ export async function mainBoot() {
 		prefer.commit('showLikeButtonInNoteFooter', false);
 	}
 
-	// 旗鯖独自: ミュートユーザーリスト先読み（hideMutedUserReactions が有効な場合のみ）
+	// 旗鯖独自: ミュートユーザーリスト先読み（端末ローカル設定が有効な場合のみ）。
 	// ノートが流れる前にリスト取得を完了させることで、リアルタイムフィルタの取りこぼしを防ぐ
-	if (prefer.s.hideMutedUserReactions) {
+	if (hideMutedReactionsLocal.value) {
 		// 意図的に await しない: mainBootを遅延させないため。
-		// 取得完了前に来たリアクションは取りこぼす可能性があるが、
-		// 実用上の取りこぼしは最初の数秒のみで許容範囲。
+		// capture側はrawの更新を保持し、表示側が取得完了後にまとめてフィルタする。
 		fetchMutedUsers();
 	}
 
@@ -464,6 +464,11 @@ export async function mainBoot() {
 
 			// 個人宛てお知らせが発行されたとき
 			main.on('announcementCreated', onAnnouncementCreated);
+
+			// 非同期のミュート取込が本当に完了した時点で、表示用一覧を取り直す。
+			main.on('mutingImportCompleted', () => {
+				refreshMutedUsers();
+			});
 		}
 
 		// 프로필 아이콘 모양 설정 연합 초기화
