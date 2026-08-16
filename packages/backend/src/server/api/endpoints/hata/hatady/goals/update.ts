@@ -25,7 +25,7 @@ export const paramDef = {
 		description: { type: 'string', nullable: true, maxLength: 2048 },
 		termType: { type: 'string', enum: ['short', 'long'] },
 		targetDate: { type: 'integer', nullable: true },
-		metricType: { type: 'string', enum: ['minutes', 'logs', 'books'], nullable: true },
+		metricType: { type: 'string', enum: ['minutes', 'logs', 'books', null], nullable: true },
 		metricTarget: { type: 'integer', nullable: true, minimum: 0 },
 		done: { type: 'boolean' },
 	},

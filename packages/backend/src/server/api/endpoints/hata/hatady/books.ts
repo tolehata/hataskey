@@ -19,7 +19,7 @@ export const meta = {
 export const paramDef = {
 	type: 'object',
 	properties: {
-		status: { type: 'string', enum: ['reading', 'finished', 'want'], nullable: true },
+		status: { type: 'string', enum: ['reading', 'finished', 'want', null], nullable: true },
 		limit: { type: 'integer', minimum: 1, maximum: 100, default: 50 },
 		untilId: { type: 'string', format: 'misskey:id' },
 	},

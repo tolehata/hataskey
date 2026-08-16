@@ -30,7 +30,7 @@ export const paramDef = {
 	properties: {
 		commentId: { type: 'string', format: 'misskey:id' },
 		// null でマーク解除
-		mark: { type: 'string', enum: ['important', 'question'], nullable: true },
+		mark: { type: 'string', enum: ['important', 'question', null], nullable: true },
 	},
 	required: ['commentId'],
 } as const;

@@ -29,7 +29,7 @@ export const paramDef = {
 		logId: { type: 'string', format: 'misskey:id' },
 		title: { type: 'string', minLength: 1, maxLength: 512 },
 		subject: { type: 'string', minLength: 1, maxLength: 64 },
-		tag: { type: 'string', enum: ['strength', 'weak', 'interest', 'movie', 'game'], nullable: true },
+		tag: { type: 'string', enum: ['strength', 'weak', 'interest', 'movie', 'game', null], nullable: true },
 		body: { type: 'string', maxLength: 4096, nullable: true },
 		durationMinutes: { type: 'integer', minimum: 0, maximum: 100000 },
 		isPublic: { type: 'boolean' },
