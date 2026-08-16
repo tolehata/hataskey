@@ -8,6 +8,7 @@ import { resolve } from 'node:path';
 import { describe, expect, test, vi } from 'vitest';
 import { HATADY_RATE_LIMITS } from '@/misc/hatady-rate-limit.js';
 import { RateLimiterService } from '@/server/api/RateLimiterService.js';
+import { meta as activitiesMeta } from '@/server/api/endpoints/hata/hatady/activities.js';
 import { meta as adminBooksMeta } from '@/server/api/endpoints/hata/hatady/admin/books.js';
 import { meta as adminDeleteBookMeta } from '@/server/api/endpoints/hata/hatady/admin/delete-book.js';
 import { meta as bookmarkCreateMeta } from '@/server/api/endpoints/hata/hatady/bookmarks/create.js';
@@ -33,6 +34,21 @@ import { meta as logCreateMeta } from '@/server/api/endpoints/hata/hatady/logs/c
 import { meta as logDeleteMeta } from '@/server/api/endpoints/hata/hatady/logs/delete.js';
 import { meta as logShowMeta } from '@/server/api/endpoints/hata/hatady/logs/show.js';
 import { meta as logUpdateMeta } from '@/server/api/endpoints/hata/hatady/logs/update.js';
+import { meta as mediaCommentCreateMeta } from '@/server/api/endpoints/hata/hatady/media/comments/create.js';
+import { meta as mediaCommentDeleteMeta } from '@/server/api/endpoints/hata/hatady/media/comments/delete.js';
+import { meta as mediaCommentListMeta } from '@/server/api/endpoints/hata/hatady/media/comments/list.js';
+import { meta as mediaCommentUpdateMeta } from '@/server/api/endpoints/hata/hatady/media/comments/update.js';
+import { meta as mediaReactionCreateMeta } from '@/server/api/endpoints/hata/hatady/media/reactions/create.js';
+import { meta as mediaReactionDeleteMeta } from '@/server/api/endpoints/hata/hatady/media/reactions/delete.js';
+import { meta as mediaSessionCreateMeta } from '@/server/api/endpoints/hata/hatady/media/sessions/create.js';
+import { meta as mediaSessionDeleteMeta } from '@/server/api/endpoints/hata/hatady/media/sessions/delete.js';
+import { meta as mediaSessionListMeta } from '@/server/api/endpoints/hata/hatady/media/sessions/list.js';
+import { meta as mediaSessionUpdateMeta } from '@/server/api/endpoints/hata/hatady/media/sessions/update.js';
+import { meta as mediaWorkCreateMeta } from '@/server/api/endpoints/hata/hatady/media/works/create.js';
+import { meta as mediaWorkDeleteMeta } from '@/server/api/endpoints/hata/hatady/media/works/delete.js';
+import { meta as mediaWorkListMeta } from '@/server/api/endpoints/hata/hatady/media/works/list.js';
+import { meta as mediaWorkShowMeta } from '@/server/api/endpoints/hata/hatady/media/works/show.js';
+import { meta as mediaWorkUpdateMeta } from '@/server/api/endpoints/hata/hatady/media/works/update.js';
 import { meta as memoCreateMeta } from '@/server/api/endpoints/hata/hatady/memos/create.js';
 import { meta as memoDeleteMeta } from '@/server/api/endpoints/hata/hatady/memos/delete.js';
 import { meta as memoUpdateMeta } from '@/server/api/endpoints/hata/hatady/memos/update.js';
@@ -77,6 +93,10 @@ const endpointGroups = [
 			['通知一覧', notificationsMeta],
 			['未読通知数', notificationsUnreadCountMeta],
 			['科目一覧', subjectsMeta],
+			['作品一覧', mediaWorkListMeta],
+			['作品の詳細', mediaWorkShowMeta],
+			['記録一覧', mediaSessionListMeta],
+			['作品コメント一覧', mediaCommentListMeta],
 		],
 	},
 	{
@@ -92,6 +112,7 @@ const endpointGroups = [
 			['連続記録', streaksMeta],
 			['タイムライン', timelineMeta],
 			['利用者詳細', userShowMeta],
+			['活動一覧', activitiesMeta],
 		],
 	},
 	{
@@ -116,6 +137,13 @@ const endpointGroups = [
 			['リアクション作成', reactionCreateMeta],
 			['リアクション解除', reactionDeleteMeta],
 			['科目保存', subjectSaveMeta],
+			['作品の作成', mediaWorkCreateMeta],
+			['作品の更新', mediaWorkUpdateMeta],
+			['記録の作成', mediaSessionCreateMeta],
+			['記録の更新', mediaSessionUpdateMeta],
+			['作品コメント作成', mediaCommentCreateMeta],
+			['作品コメント更新', mediaCommentUpdateMeta],
+			['作品リアクション作成', mediaReactionCreateMeta],
 		],
 	},
 	{
@@ -127,6 +155,10 @@ const endpointGroups = [
 			['学習記録削除', logDeleteMeta],
 			['メモ削除', memoDeleteMeta],
 			['科目削除', subjectDeleteMeta],
+			['作品の削除', mediaWorkDeleteMeta],
+			['記録の削除', mediaSessionDeleteMeta],
+			['作品コメント削除', mediaCommentDeleteMeta],
+			['作品リアクション解除', mediaReactionDeleteMeta],
 		],
 	},
 	{
@@ -138,13 +170,14 @@ const endpointGroups = [
 ] as const;
 
 describe('Hatady API のレート制限', () => {
-	test('全43エンドポイントに用途別の基準値が設定されている', () => {
+	test('全59エンドポイントに用途別の基準値が設定されている', () => {
 		const endpoints = endpointGroups.flatMap(group => group.endpoints);
 		const endpointDirectory = resolve(process.cwd(), 'src/server/api/endpoints/hata/hatady');
 		const endpointFiles = readdirSync(endpointDirectory, { recursive: true })
-			.filter(path => typeof path === 'string' && path.endsWith('.ts'));
+			//  で始まるのは共有スキーマ等でエンドポイントではない(_schemas.ts / _shared.ts)。
+			.filter(path => typeof path === 'string' && path.endsWith('.ts') && !path.split('/').pop()!.startsWith('_'));
 
-		expect(endpoints).toHaveLength(43);
+		expect(endpoints).toHaveLength(59);
 		expect(endpointFiles).toHaveLength(endpoints.length);
 		for (const group of endpointGroups) {
 			for (const [name, meta] of group.endpoints) {
