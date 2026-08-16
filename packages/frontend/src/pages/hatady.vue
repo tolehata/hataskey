@@ -124,6 +124,20 @@ SPDX-License-Identifier: AGPL-3.0-only
 								<span v-if="filterActive" :class="$style.periodDot"></span>
 							</button>
 						</div>
+						<!-- 旗鯖fork(Hatady): 学習/映画/ゲームの表示切替。絞り込みはサーバー側で行うので、
+						     「読み込んだ50件のうち3件しか出ない」といった継ぎ足し読み込みの破綻が起きない。 -->
+						<div :class="$style.logKinds" role="group" :aria-label="t('logKindsLabel')">
+							<span :class="$style.logKindsLead">{{ t('logKindsLabel') }}</span>
+							<button
+								v-for="item in logKindChoices" :key="item.kind"
+								type="button"
+								:class="[$style.logKindChip, logKinds.includes(item.kind) && $style.logKindChipOn]"
+								:aria-pressed="logKinds.includes(item.kind)"
+								@click="toggleLogKind(item.kind)"
+							>
+								<i :class="['ti', item.icon]"></i> {{ item.label }}
+							</button>
+						</div>
 						<!-- 期間フィルタ / 日付ジャンプ (旗鯖fork: 2ブロックに整理して洗練) -->
 						<div v-if="periodOpen || filterActive" :class="$style.periodPanel">
 							<!-- 期間で絞り込む -->
@@ -156,7 +170,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 							<i class="ti ti-filter"></i> {{ filteredNoticeLabel(activityGroups.length) }}
 							<button :class="$style.filterNoticeClear" @click="clearPeriod">{{ t('showAll') }}</button>
 						</div>
-						<div v-if="activitiesLoading" :class="$style.loading">{{ t('loading') }}</div>
+						<div v-if="logKinds.length === 0" :class="$style.emptyTl">
+							<i class="ti ti-eye-off" :class="$style.emptyIcon"></i>
+							<div>{{ t('logKindsEmpty') }}</div>
+							<button :class="$style.emptyCta" @click="resetLogKinds"><i class="ti ti-eye"></i> {{ t('showAllKinds') }}</button>
+						</div>
+						<div v-else-if="activitiesLoading" :class="$style.loading">{{ t('loading') }}</div>
 						<div v-else-if="activityGroups.length === 0 && filterActive" :class="$style.emptyTl">
 							<i class="ti ti-calendar-off" :class="$style.emptyIcon"></i>
 							<div>{{ t('emptyFiltered') }}</div>
@@ -350,8 +369,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 					</details>
 					<div v-if="mediaLoading" :class="$style.loading">{{ t('loading') }}</div>
 					<div v-else-if="mediaWorks.length === 0" :class="$style.emptyTl"><i :class="['ti', collectionKind === 'movies' ? 'ti-movie-off' : 'ti-device-gamepad-off', $style.emptyIcon]"></i><div>{{ collectionKind === 'movies' ? mediaCopy.emptyMovie : mediaCopy.emptyGame }}</div><button :class="$style.emptyCta" @click="openMediaForm"><i class="ti ti-plus"></i> {{ collectionKind === 'movies' ? mediaCopy.addMovie : mediaCopy.addGame }}</button></div>
-					<div v-else :class="$style.mediaGrid">
-						<button v-for="item in mediaWorks" :key="item.id" :class="$style.mediaCard" @click="openMediaDetail(item)">
+					<div v-else :class="$style.mediaGrid" :data-anim="prefer.s.animation ? '1' : '0'" :data-media-kind="collectionKind">
+						<button v-for="(item, mi) in mediaWorks" :key="item.id" :class="$style.mediaCard" :style="{ animationDelay: shelfDelay(mi) }" @click="openMediaDetail(item)">
 							<HyMediaCover :kind="item.kind" :title="item.title" :subtitle="item.kind === 'movie' ? item.creator : item.developer || item.creator" :width="item.kind === 'movie' ? 100 : 126" :colorIndex="item.coverColorIndex" showTitle/>
 							<div :class="$style.mediaCardBody"><div :class="$style.mediaCardTop"><span :class="$style.mediaStatus">{{ mediaStatusLabel(item.status) }}</span><i v-if="item.isFavorite" class="ti ti-star-filled" :class="$style.mediaFavorite"></i></div><div :class="$style.mediaTitle">{{ item.title }}</div><div v-if="item.originalTitle" :class="$style.mediaOriginal">{{ item.originalTitle }}</div><div :class="$style.mediaCreator">{{ item.kind === 'movie' ? item.creator : item.developer || item.publisher || item.creator }}</div><div :class="$style.mediaFacts"><span v-if="item.releaseDate || item.releaseYear"><i class="ti ti-calendar"></i> {{ item.releaseDate ? formatMediaDate(item.releaseDate) : item.releaseYear }}</span><span v-if="item.kind === 'movie' && item.recommendationRating != null"><i class="ti ti-star"></i> {{ (item.recommendationRating / 2).toFixed(1) }}</span><span v-if="item.kind === 'game' && item.platforms?.length">{{ item.platforms.slice(0, 2).join(' · ') }}</span></div></div>
 						</button>
@@ -366,7 +385,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <script lang="ts" setup>
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
-import type { HatadyActivity, HatadyMediaAdvancedFilters, HatadyMediaKind, HatadyMediaSession, HatadyMediaSort, HatadyMediaStatus, HatadyMediaWork } from '@/utility/hatady-media.js';
+import type { HatadyActivity, HatadyLogKind, HatadyMediaAdvancedFilters, HatadyMediaKind, HatadyMediaSession, HatadyMediaSort, HatadyMediaStatus, HatadyMediaWork } from '@/utility/hatady-media.js';
 import { $i } from '@/i.js';
 import { mainRouter, useRouter } from '@/router.js';
 import { definePage } from '@/page.js';
@@ -383,7 +402,7 @@ import { loadHySubjects } from '@/utility/hatady-subjects.js';
 import { hatadyTheme, hatadyTzOffset, loadHatadyDisplay, loadTutorialDone, setTutorialDone } from '@/utility/hatady-prefs.js';
 import { claimAchievement } from '@/utility/achievements.js';
 import { miLocalStorage } from '@/local-storage.js';
-import { hatadyMediaCopy, hatadyViewingEventPayload, mediaAdvancedFilterPayload, mediaSessionTypes, mediaStatusCopyKey, mediaStatusOptions, normalizeHatadyActivityPage, normalizeMediaSortForKind, normalizeMediaWorks } from '@/utility/hatady-media.js';
+import { HATADY_LOG_KINDS, hatadyMediaCopy, hatadyViewingEventPayload, mediaAdvancedFilterPayload, mediaSessionTypes, mediaStatusCopyKey, mediaStatusOptions, normalizeHatadyActivityPage, normalizeHatadyLogKinds, normalizeMediaSortForKind, normalizeMediaWorks } from '@/utility/hatady-media.js';
 
 const isHatasabaDeckUi = computed(() => miLocalStorage.getItem('ui') === 'simple' && prefer.r['simpleUi.deckMode'].value === true);
 const router = useRouter();
@@ -488,6 +507,41 @@ const activitiesCursor = ref<string | null>(null);
 const activitiesHasMore = ref(false);
 let activitiesRequest = 0;
 
+// 旗鯖fork(Hatady): マイログに出す記録の種類。端末ごとに覚える(他の端末の見え方は変えない)。
+type LogKind = HatadyLogKind;
+const LOG_KINDS = HATADY_LOG_KINDS;
+const LOG_KINDS_KEY = 'hatadyLogKinds';
+
+function readLogKinds(): LogKind[] {
+	try { return normalizeHatadyLogKinds(localStorage.getItem(LOG_KINDS_KEY)); } catch { return [...LOG_KINDS]; }
+}
+
+const logKinds = ref<LogKind[]>(readLogKinds());
+const logKindChoices = computed(() => [
+	{ kind: 'study' as const, label: t('activityStudy'), icon: 'ti-notebook' },
+	{ kind: 'movie' as const, label: String(mediaCopy.movies), icon: 'ti-movie' },
+	{ kind: 'game' as const, label: String(mediaCopy.games), icon: 'ti-device-gamepad-2' },
+]);
+
+function persistLogKinds() {
+	try { localStorage.setItem(LOG_KINDS_KEY, JSON.stringify(logKinds.value)); } catch { /* noop */ }
+}
+
+function toggleLogKind(kind: LogKind) {
+	const next = logKinds.value.includes(kind) ? logKinds.value.filter(item => item !== kind) : [...logKinds.value, kind];
+	logKinds.value = LOG_KINDS.filter(item => next.includes(item));
+	persistLogKinds();
+	activitiesCursor.value = null;
+	loadActivities();
+}
+
+function resetLogKinds() {
+	logKinds.value = [...LOG_KINDS];
+	persistLogKinds();
+	activitiesCursor.value = null;
+	loadActivities();
+}
+
 // 旗鯖fork: マイログの期間指定ジャンプ。studiedAt の範囲(エポックms)で絞り込む。
 //   filterSince/filterUntil が両方 null なら通常の直近表示。期間指定時は多めに読み込む。
 const filterSince = ref<number | null>(null);
@@ -496,11 +550,21 @@ const filterActive = computed(() => filterSince.value != null || filterUntil.val
 
 async function loadActivities(options: { append?: boolean } = {}) {
 	if (options.append && (activitiesLoading.value || activitiesLoadingMore.value)) return;
+	// 何も選ばれていない = 何も出さない。空配列はAPIが「全件」と解釈するため、そもそも問い合わせない。
+	if (logKinds.value.length === 0) {
+		activities.value = [];
+		activitiesCursor.value = null;
+		activitiesHasMore.value = false;
+		activitiesLoading.value = false;
+		return;
+	}
 	const currentRequest = ++activitiesRequest;
 	if (options.append) activitiesLoadingMore.value = true;
 	else activitiesLoading.value = true;
 	try {
 		const params: Record<string, unknown> = { scope: 'mine', limit: filterActive.value ? 100 : 50 };
+		// 全種類が選ばれているときは kinds を送らない(APIの既定が全件のため、余計な条件を増やさない)。
+		if (logKinds.value.length < LOG_KINDS.length) params.kinds = [...logKinds.value];
 		if (filterSince.value != null) params.sinceDate = filterSince.value;
 		if (filterUntil.value != null) params.untilDate = filterUntil.value;
 		if (options.append && activitiesCursor.value) params.cursor = activitiesCursor.value;
@@ -1695,6 +1759,67 @@ definePage(() => ({
 .mediaFilterActions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
 .actionGhost { display: inline-flex; align-items: center; gap: 5px; padding: 7px 12px; border: 1px solid var(--hy-border); border-radius: 999px; background: var(--hy-bg); color: var(--hy-body); font: 700 11.5px var(--hy-heading); cursor: pointer; }
 .mediaGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 11px; }
+
+/* =====================================================================
+   旗鯖fork(Hatady): コレクションの入場演出。本棚の「本が立ち上がる」に相当するものを
+   映画・ゲームにもそれぞれの質感で用意する。
+   - 映画: 映写機のゲートから絵が現れるように、上下から開いて光が一度走る
+   - ゲーム: 実体化するようにポンと出て、縁が一瞬光る
+   ⚠️どちらも一度きり。ホバーや再描画のたびに光らせると目に痛いため。
+   ⚠️アプリのアニメOFF設定 / prefers-reduced-motion では最終状態で静止させる。
+   ===================================================================== */
+.mediaGrid[data-media-kind='movies'] .mediaCard { animation: hyFilmIn .62s cubic-bezier(.22, .9, .3, 1) both; }
+.mediaGrid[data-media-kind='games'] .mediaCard { animation: hyGameIn .55s cubic-bezier(.34, 1.56, .64, 1) both; }
+
+/* 光の走り。カード本体とは別レイヤーにして、中身のレイアウトに一切触れないようにする。 */
+.mediaGrid[data-anim='1'] .mediaCard::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+	z-index: 2;
+	border-radius: inherit;
+	pointer-events: none;
+	opacity: 0;
+}
+.mediaGrid[data-anim='1'][data-media-kind='movies'] .mediaCard::after {
+	background: linear-gradient(105deg, transparent 38%, rgba(255, 255, 255, .55) 50%, transparent 62%);
+	animation: hySheen .95s ease-out both;
+	animation-delay: inherit;
+}
+.mediaGrid[data-anim='1'][data-media-kind='games'] .mediaCard::after {
+	background: radial-gradient(120% 90% at 50% 50%, transparent 55%, color-mix(in srgb, var(--hy-accent) 60%, transparent) 100%);
+	animation: hySpark .8s ease-out both;
+	animation-delay: inherit;
+}
+/* ::after を敷くため、カード自身を位置の基準にする(既に overflow: hidden 済み)。 */
+.mediaCard { position: relative; }
+
+@keyframes hyFilmIn {
+	0% { opacity: 0; transform: translateY(10px) scaleY(.82); }
+	55% { opacity: 1; }
+	100% { opacity: 1; transform: none; }
+}
+@keyframes hyGameIn {
+	0% { opacity: 0; transform: scale(.86) translateY(8px); }
+	60% { opacity: 1; }
+	100% { opacity: 1; transform: none; }
+}
+@keyframes hySheen {
+	0% { opacity: 0; transform: translateX(-115%); }
+	28% { opacity: 1; }
+	100% { opacity: 0; transform: translateX(115%); }
+}
+@keyframes hySpark {
+	0% { opacity: 0; }
+	35% { opacity: .85; }
+	100% { opacity: 0; }
+}
+.mediaGrid[data-anim='0'] .mediaCard { animation: none; }
+.mediaGrid[data-anim='0'] .mediaCard::after { content: none; }
+@media (prefers-reduced-motion: reduce) {
+	.mediaGrid .mediaCard { animation: none; }
+	.mediaGrid .mediaCard::after { content: none; }
+}
 .mediaCard { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 15px; min-width: 0; padding: 12px; border: 1px solid var(--hy-border); border-radius: 15px; background: var(--hy-surface); color: var(--hy-body); text-align: left; font: inherit; cursor: pointer; transition: border-color .14s, transform .14s, box-shadow .14s; overflow: hidden; }
 .mediaCard:hover { border-color: color-mix(in srgb, var(--hy-accent) 60%, var(--hy-border)); transform: translateY(-1px); box-shadow: 0 7px 20px color-mix(in srgb, var(--hy-ink) 9%, transparent); }
 .mediaCardBody { min-width: 0; }
@@ -1730,6 +1855,14 @@ definePage(() => ({
 .shelfFilter { border: 1.5px solid var(--hy-border); background: var(--hy-surface); color: var(--hy-body); border-radius: 999px; padding: 6px 15px; font-size: 12.5px; font-weight: 700; cursor: pointer; transition: all .15s; }
 .shelfFilter:hover { border-color: var(--hy-accent); }
 .shelfFilterOn { background: var(--hy-ink); color: var(--hy-bg); border-color: var(--hy-ink); }
+/* 旗鯖fork(Hatady): マイログに出す種類の切替。 */
+.logKinds { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin-bottom: 14px; }
+.logKindsLead { margin-right: 2px; color: var(--hy-muted); font-family: var(--hy-heading); font-size: 10.5px; font-weight: 700; }
+.logKindChip { display: inline-flex; align-items: center; gap: 5px; padding: 6px 13px; border: 1.5px solid var(--hy-border); border-radius: 999px; background: var(--hy-surface); color: var(--hy-muted); font-family: var(--hy-heading); font-size: 12px; font-weight: 700; cursor: pointer; transition: all .15s; }
+.logKindChip:hover { border-color: var(--hy-accent); }
+/* ⚠️オフは「枠線＋淡色」で表す。色だけでなく塗りの有無でも差が出るようにする。 */
+.logKindChipOn { border-color: transparent; background: var(--hy-accent); color: #fff; }
+
 .shelfGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: 20px; }
 .shelfItem { display: flex; flex-direction: column; gap: 10px; background: none; border: none; padding: 6px; margin: -6px; border-radius: 10px; cursor: pointer; text-align: left; transition: background .12s; font: inherit; transform-origin: bottom center; animation: hyShelfIn .5s cubic-bezier(.34, 1.5, .6, 1) both; }
 /* 起動アニメの hyBook と同じ「本が立ち上がる」入場。遅延は :style で 1冊ずつずらす。 */
