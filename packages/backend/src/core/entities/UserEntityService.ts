@@ -323,6 +323,28 @@ export class UserEntityService implements OnModuleInit {
 		);
 	}
 
+	/**
+	 * 旗鯖fork: 宴の成功数・阻止数。
+	 *
+	 * ⚠️宴はLTL(ローカルタイムライン)の上で成立するゲームで、LTLは public しか流さない
+	 *   (notes/local-timeline.ts / stream/channels/local-timeline.ts)。
+	 *   ところが以前は home の投稿でもセッションを作っていたため、
+	 *     - LTLに出ない = 誰にも邪魔されず15分を通過して「成功」が積み増しされる
+	 *     - HTLやプロフィールから反応が付くと「阻止」としても数えられる
+	 *   という水増しが起きていた。作成側は public 限定に直したが、
+	 *   ⚠️既に積まれてしまった行が本番に残っているため、集計時にも元ノートの可視性で絞る。
+	 *   (utage_session.note は onDelete: CASCADE なので、内部結合で取りこぼす行は出ない)
+	 */
+	@bindThis
+	private countUtageSessions(actorColumn: 'session.userId' | 'session.interruptedByUserId', userId: MiUser['id'], status: 'succeeded' | 'failed'): Promise<number> {
+		return this.utageSessionsRepository.createQueryBuilder('session')
+			.innerJoin('session.note', 'note')
+			.where(`${actorColumn} = :userId`, { userId })
+			.andWhere('session.status = :status', { status })
+			.andWhere('note.visibility = :visibility', { visibility: 'public' })
+			.getCount();
+	}
+
 	@bindThis
 	public async getHasUnreadAntenna(userId: MiUser['id']): Promise<boolean> {
 		/*
@@ -569,16 +591,10 @@ export class UserEntityService implements OnModuleInit {
 				// 本人は設定・Hatask同期に必要なため非表示中も値を受け取るが、
 				// 他人には各表示トグルが有効な値だけを返す。ActivityPub renderer はこれらを参照しない。
 				...(canExposeLocalProfileBadge(user.host, isMe, profile!.showUtageSuccessCount) ? {
-					utageSuccessCount: this.utageSessionsRepository.countBy({
-						userId: user.id,
-						status: 'succeeded',
-					}).catch(() => 0),
+					utageSuccessCount: this.countUtageSessions('session.userId', user.id, 'succeeded').catch(() => 0),
 				} : {}),
 				...(canExposeLocalProfileBadge(user.host, isMe, profile!.showUtageInterruptionCount) ? {
-					utageInterruptionCount: this.utageSessionsRepository.countBy({
-						interruptedByUserId: user.id,
-						status: 'failed',
-					}).catch(() => 0),
+					utageInterruptionCount: this.countUtageSessions('session.interruptedByUserId', user.id, 'failed').catch(() => 0),
 				} : {}),
 				...(canExposeLocalProfileBadge(user.host, isMe, profile!.showHataskFlowerCount) ? {
 					hataskFlowerCount: profile!.hataskFlowerCount,

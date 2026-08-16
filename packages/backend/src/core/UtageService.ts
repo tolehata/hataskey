@@ -59,7 +59,12 @@ export class UtageService {
 	@bindThis
 	public async onNoteCreated(note: MiNote, user: { id: MiUser['id']; host: MiUser['host'] }): Promise<void> {
 		if (user.host != null) return; // ローカルユーザーのみ
-		if (note.visibility !== 'public' && note.visibility !== 'home') return; // LTLに乗る範囲
+		// ⚠️宴はLTL上のゲームなので、対象は LTL に載る public だけ。
+		//   LTL は REST・ストリーミングとも visibility = 'public' しか流さない
+		//   (notes/local-timeline.ts / stream/channels/local-timeline.ts)。
+		//   home を含めていた頃は、LTLに出ないので誰にも邪魔されず15分を通過して
+		//   成功が積み増しされ、HTLやプロフィールから反応が付けば阻止まで数えていた。
+		if (note.visibility !== 'public') return;
 		if (!this.isUtageText(note)) return;
 
 		// 旗鯖fork: note.createdAt カラムは廃止された(IDに生成時刻が埋め込まれている)ため、
@@ -144,7 +149,7 @@ export class UtageService {
 	}
 
 	// 宴ステータス確定をノート購読チャンネル(noteStream:${id})に配信。
-	// 宴ノートは public/home 前提のため visibleUserIds は空で問題ない。
+	// 宴ノートは public 限定のため visibleUserIds は空で問題ない。
 	@bindThis
 	private publishStatus(noteId: MiNote['id'], userId: MiNote['userId'], status: 'succeeded' | 'failed'): void {
 		this.globalEventService.publishNoteStream(
