@@ -74,7 +74,7 @@ import HyMediaCover from '@/components/HyMediaCover.vue';
 import HySubjectBadge from '@/components/HySubjectBadge.vue';
 import HatadyReactions from '@/components/HatadyReactions.vue';
 import { hyTag, hyTagLabel } from '@/utility/hatady.js';
-import { formatMediaMinutes, hatadyMediaCopy, mediaSessionDisplayFacts } from '@/utility/hatady-media.js';
+import { HATADY_STAT_FIELDS, formatMediaMinutes, hatadyMediaCopy, mediaSessionDisplayFacts } from '@/utility/hatady-media.js';
 
 const props = withDefaults(defineProps<{ activity: HatadyActivity; showAuthor?: boolean }>(), { showAuthor: false });
 const emit = defineEmits<{
@@ -95,7 +95,7 @@ const activity = computed(() => props.activity);
 const isStudy = computed(() => activity.value.type === 'study');
 const study = computed<any>(() => activity.value.study ?? null);
 const media = computed(() => activity.value.media ?? null);
-const kindIcon = computed(() => activity.value.type === 'study' ? 'ti-notebook' : activity.value.type === 'movie_viewing' ? 'ti-movie' : activity.value.type === 'game_match' ? 'ti-swords' : activity.value.type === 'game_roguelike' ? 'ti-route-square' : 'ti-device-gamepad-2');
+const kindIcon = computed(() => activity.value.type === 'study' ? 'ti-notebook' : activity.value.type === 'movie_viewing' ? 'ti-movie' : activity.value.type === 'game_match' ? 'ti-swords' : activity.value.type === 'game_roguelike' ? 'ti-route-square' : activity.value.type === 'game_pve' ? 'ti-users' : 'ti-device-gamepad-2');
 const kindLabel = computed(() => activity.value.type === 'study' ? homeCopy.activityStudy : String(mediaCopy.session.types[activity.value.type] ?? activity.value.type));
 const whenLabel = computed(() => timeFormatter.format(new Date(activity.value.occurredAt)));
 const factRows = computed(() => media.value ? mediaSessionDisplayFacts(media.value.session).slice(0, 6).map(({ key, value }) => ({ key, label: detailLabel(key), value: detailValue(key, value) })) : []);
@@ -107,7 +107,22 @@ function durationLabel(minutes: number): string {
 
 function detailLabel(key: string): string { return String(mediaCopy.session?.[key] ?? key); }
 
+function formatWeaponStatRow(row: unknown): string {
+	if (row == null || typeof row !== 'object' || Array.isArray(row)) return '';
+	const entry = row as Record<string, unknown>;
+	const weapon = typeof entry.weapon === 'string' ? entry.weapon.trim() : '';
+	if (weapon.length === 0) return '';
+	const stats = HATADY_STAT_FIELDS
+		.filter(field => typeof entry[field] === 'number')
+		.map(field => `${detailLabel(field)} ${entry[field]}`)
+		.join(' · ');
+	return stats.length > 0 ? `${weapon}（${stats}）` : weapon;
+}
+
 function detailValue(key: string, value: unknown): string {
+	// 旗鯖fork(Hatady): 武器ごとの成績は行オブジェクトの配列。指標の組み合わせが記録ごとに変わるので、
+	// 数字だけ並べても意味が取れない。ここで指標名を添えて1行の文にする。
+	if (key === 'weaponStats' && Array.isArray(value)) return value.map(row => formatWeaponStatRow(row)).filter(Boolean).join(' / ');
 	if (Array.isArray(value)) return value.map(String).join(' · ');
 	if (typeof value === 'boolean') return value ? i18n.ts.yes : i18n.ts.no;
 	const translations: Record<string, string> = { great: 'moodGreat', good: 'moodGood', neutral: 'moodNeutral', tired: 'moodTired', frustrated: 'moodFrustrated' };

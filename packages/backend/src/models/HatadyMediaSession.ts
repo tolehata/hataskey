@@ -5,7 +5,9 @@ import { id } from './util/id.js';
 import { MiUser } from './User.js';
 import { MiHatadyMediaWork, type HatadyMediaVisibility } from './HatadyMediaWork.js';
 
-export const HATADY_MEDIA_SESSION_KINDS = ['movie_viewing', 'game_play', 'game_match', 'game_roguelike'] as const;
+// 旗鯖fork(Hatady): game_pve は4人以上の協力プレイ(敵の種類・数・ウェーブ)を記録する種別。
+// kind は varchar なので、種別の追加にマイグレーションは要らない。
+export const HATADY_MEDIA_SESSION_KINDS = ['movie_viewing', 'game_play', 'game_match', 'game_roguelike', 'game_pve'] as const;
 export type HatadyMediaSessionKind = typeof HATADY_MEDIA_SESSION_KINDS[number];
 
 @Entity('hatady_media_session')

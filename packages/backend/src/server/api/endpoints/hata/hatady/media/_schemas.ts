@@ -73,7 +73,7 @@ export const mediaSessionSchema = {
 		updatedAt: { type: 'string', format: 'date-time', optional: false, nullable: false },
 		userId: { type: 'string', format: 'misskey:id', optional: false, nullable: false },
 		workId: { type: 'string', format: 'misskey:id', optional: false, nullable: false },
-		kind: { type: 'string', enum: ['movie_viewing', 'game_play', 'game_match', 'game_roguelike'], optional: false, nullable: false },
+		kind: { type: 'string', enum: ['movie_viewing', 'game_play', 'game_match', 'game_roguelike', 'game_pve'], optional: false, nullable: false },
 		occurredAt: { type: 'string', format: 'date-time', optional: false, nullable: false },
 		durationMinutes: { type: 'integer', optional: false, nullable: true },
 		note: { type: 'string', optional: false, nullable: true },

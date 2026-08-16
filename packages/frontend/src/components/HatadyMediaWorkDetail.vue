@@ -331,7 +331,7 @@ function fmtDate(value: string): string { return dateFormatter.format(new Date(v
 
 function fmtWhen(value: unknown): string { if (!value) return ''; const d = new Date(String(value)); return Number.isNaN(d.getTime()) ? '' : timeFormatter.format(d); }
 
-function sessionIcon(type: HatadyMediaSessionKind): string { return type === 'movie_viewing' ? 'ti-movie' : type === 'game_match' ? 'ti-swords' : type === 'game_roguelike' ? 'ti-route-square' : 'ti-device-gamepad-2'; }
+function sessionIcon(type: HatadyMediaSessionKind): string { return type === 'movie_viewing' ? 'ti-movie' : type === 'game_match' ? 'ti-swords' : type === 'game_roguelike' ? 'ti-route-square' : type === 'game_pve' ? 'ti-users' : 'ti-device-gamepad-2'; }
 
 function sessionKindLabel(type: HatadyMediaSessionKind): string { return String(copy.session?.types?.[type] ?? type); }
 

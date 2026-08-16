@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 import { describe, expect, test } from 'vitest';
-import { hatadyViewingEventPayload, mediaAdvancedFilterPayload, mediaCommentCreatePayload, mediaDashboardSessions, mediaReactionPayload, mediaSessionDetailsPayload, mediaSessionDisplayFacts, mediaStatusOptions, mediaWorkSpecificPayload, normalizeMediaList, normalizeMediaSortForKind } from './hatady-media.js';
+import { collectMediaSessionSuggestions, hatadyViewingEventPayload, normalizeHatadyLogKinds, mediaAdvancedFilterPayload, mediaCommentCreatePayload, mediaDashboardSessions, mediaReactionPayload, mediaSessionDetailsPayload, mediaSessionDisplayFacts, mediaStatusOptions, mediaWorkSpecificPayload, normalizeMediaList, normalizeMediaSortForKind } from './hatady-media.js';
 
 describe('Hatady media API payload helpers', () => {
 	test('movie payload excludes every game-only field', () => {
@@ -77,7 +77,9 @@ describe('Hatady media API payload helpers', () => {
 		expect(matchFacts).toEqual(expect.arrayContaining([
 			{ key: 'device', value: 'PC' }, { key: 'character', value: 'Rin' }, { key: 'weapon', value: 'Sword' },
 			{ key: 'score', value: '3-1' }, { key: 'roundResults', value: ['win', 'loss'] },
-			{ key: 'killsDeathsAssists', value: '8 / 2 / 4' }, { key: 'ratingBeforeAfter', value: '1200 → 1225' },
+			// 旗鯖fork(Hatady): 指標は記録ごとに増減するので、固定3枠ではなく指標ごとの事実として出す。
+			{ key: 'kills', value: 8 }, { key: 'deaths', value: 2 }, { key: 'assists', value: 4 },
+			{ key: 'ratingBeforeAfter', value: '1200 → 1225' },
 		]));
 		expect(matchFacts.map(fact => fact.key)).not.toContain('theaterName');
 
@@ -94,6 +96,37 @@ describe('Hatady media API payload helpers', () => {
 		expect(mediaSessionDisplayFacts({ kind: 'game_roguelike', details: rogueDetails }).map(fact => fact.key)).toEqual([
 			'result', 'seed', 'floor', 'route', 'branches', 'build', 'runNumber', 'difficulty', 'character', 'weapon', 'weaponOrder', 'mood', 'device', 'cause',
 		]);
+	});
+
+	// 旗鯖fork(Hatady): マイログの表示種別。端末ローカルの保存値から復元するため壊れた値も来る。
+	test('log kind selection survives broken storage but keeps an explicit empty choice', () => {
+		// 保存が無い(初回)ときだけ全部表示に倒す。
+		expect(normalizeHatadyLogKinds(null)).toEqual(['study', 'movie', 'game']);
+		expect(normalizeHatadyLogKinds('not json')).toEqual(['study', 'movie', 'game']);
+		expect(normalizeHatadyLogKinds('{"a":1}')).toEqual(['study', 'movie', 'game']);
+		// ⚠️空配列は「何も表示しない」という利用者の選択。全部表示に読み替えてはいけない。
+		expect(normalizeHatadyLogKinds('[]')).toEqual([]);
+		// 未知の値は落とし、保存順の揺れは定義順へ揃える。
+		expect(normalizeHatadyLogKinds('["game","unknown","study"]')).toEqual(['study', 'game']);
+		expect(normalizeHatadyLogKinds(['movie'])).toEqual(['movie']);
+	});
+
+	// 旗鯖fork(Hatady): 一度使った武器名・ウェーブ数・実績名を打ち直さずに済ませるための入力候補。
+	test('past values become suggestions, newest first and without duplicates', () => {
+		const session = (occurredAt: string, details: Record<string, unknown>) => ({ occurredAt, details });
+		const suggestions = collectMediaSessionSuggestions([
+			// ⚠️渡す順序に依存せず、新しい記録の値が先に来ること。
+			session('2026-08-01T00:00:00.000Z', { weapon: 'ローラー', waves: 3, achievements: ['初勝利', '無傷'] }),
+			session('2026-08-10T00:00:00.000Z', { weapon: ' シューター ', waves: 5, achievements: ['無傷'] }),
+			session('2026-07-01T00:00:00.000Z', { weaponStats: [{ weapon: 'チャージャー', kills: 3 }] }),
+		]);
+		expect(suggestions.weapon).toEqual(['シューター', 'ローラー', 'チャージャー']);
+		expect(suggestions.waves).toEqual(['5', '3']);
+		expect(suggestions.achievements).toEqual(['無傷', '初勝利']);
+		// 候補にしても邪魔になるだけの欄(毎回違う値)は集めない。
+		expect(collectMediaSessionSuggestions([session('2026-08-01T00:00:00.000Z', { seed: 'abc' })].map(s => s)).seed).toBeUndefined();
+		// 空文字・空白だけの値はキーごと作らない。
+		expect(collectMediaSessionSuggestions([session('2026-08-01T00:00:00.000Z', { weapon: '   ' })]).weapon).toBeUndefined();
 	});
 
 	test('spoiler sessions join dashboard only for their owner', () => {

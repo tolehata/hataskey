@@ -83,7 +83,7 @@ const activitySchema = {
 	nullable: false,
 	properties: {
 		id: { type: 'string', format: 'misskey:id', optional: false, nullable: false },
-		type: { type: 'string', enum: ['study', 'movie_viewing', 'game_play', 'game_match', 'game_roguelike'], optional: false, nullable: false },
+		type: { type: 'string', enum: ['study', 'movie_viewing', 'game_play', 'game_match', 'game_roguelike', 'game_pve'], optional: false, nullable: false },
 		occurredAt: { type: 'string', format: 'date-time', optional: false, nullable: false },
 		visibility: { type: 'string', enum: ['private', 'followers', 'public'], optional: false, nullable: false },
 		user: userLiteSchema,

@@ -175,6 +175,56 @@ describe('Hatady media session detail boundaries', () => {
 		expect(() => validateHatadyMediaSessionDetails('game_match', { roundResults: [{ result: 'win' }] })).toThrow('invalid roundResults');
 		expect(() => validateHatadyMediaSessionDetails('game_play', { unexpected: true })).toThrow();
 	});
+
+	// 旗鯖fork(Hatady): 4対4の対人戦・4人以上のPvE・武器ごとの成績への対応。
+	test('team sizes are bounded and only exist where the format has two sides', () => {
+		expect(validateHatadyMediaSessionDetails('game_match', { teamSize: 4, opponentSize: 4 })).toMatchObject({ teamSize: 4, opponentSize: 4 });
+		expect(validateHatadyMediaSessionDetails('game_pve', { teamSize: 8 })).toMatchObject({ teamSize: 8 });
+		// PvE に「相手チーム」は無い。人数の概念を取り違えた記録を作らせない。
+		expect(() => validateHatadyMediaSessionDetails('game_pve', { opponentSize: 4 })).toThrow();
+		expect(() => validateHatadyMediaSessionDetails('game_match', { teamSize: 0 })).toThrow('invalid teamSize');
+		expect(() => validateHatadyMediaSessionDetails('game_match', { teamSize: 101 })).toThrow('invalid teamSize');
+		expect(() => validateHatadyMediaSessionDetails('game_match', { teamSize: 2.5 })).toThrow('invalid teamSize');
+	});
+
+	test('pve keeps its own vocabulary and stays out of the other game kinds', () => {
+		expect(validateHatadyMediaSessionDetails('game_pve', {
+			result: 'cleared', waves: 3, enemyCount: 40, enemyTypes: [' シャケ ', 'シャケ'], boss: 'ヨコヅナ',
+		})).toMatchObject({ result: 'cleared', waves: 3, enemyCount: 40, enemyTypes: ['シャケ', 'シャケ'], boss: 'ヨコヅナ' });
+		// PvE は勝敗ではなく踏破結果で終わる。
+		expect(() => validateHatadyMediaSessionDetails('game_pve', { result: 'win' })).toThrow();
+		// 敵の構成は PvE 専用。対戦やローグライクへは漏らさない。
+		for (const key of ['waves', 'enemyCount']) {
+			expect(() => validateHatadyMediaSessionDetails('game_match', { [key]: 1 })).toThrow();
+			expect(() => validateHatadyMediaSessionDetails('game_roguelike', { [key]: 1 })).toThrow();
+		}
+		expect(() => validateHatadyMediaSessionDetails('game_match', { boss: 'x' })).toThrow();
+	});
+
+	test('weapon stat rows require a weapon and accept only known metrics', () => {
+		const rows = [{ weapon: ' シューター ', kills: 8, deaths: 2, specials: 3 }, { weapon: 'ローラー', rescues: 1, assists: 4 }];
+		expect(validateHatadyMediaSessionDetails('game_match', { weaponStats: rows })).toMatchObject({
+			weaponStats: [{ weapon: 'シューター', kills: 8, deaths: 2, specials: 3 }, { weapon: 'ローラー', rescues: 1, assists: 4 }],
+		});
+		// ⚠️未記録の指標は 0 で埋めない(0キルと「記録していない」を区別するため)。
+		expect((validateHatadyMediaSessionDetails('game_pve', { weaponStats: [{ weapon: 'w', kills: 1 }] }).weaponStats as Record<string, unknown>[])[0]).toEqual({ weapon: 'w', kills: 1 });
+		expect(() => validateHatadyMediaSessionDetails('game_match', { weaponStats: [{ weapon: '  ' }] })).toThrow('invalid weaponStats weapon');
+		expect(() => validateHatadyMediaSessionDetails('game_match', { weaponStats: [{ weapon: 'w', headshots: 1 }] })).toThrow('invalid weaponStats field headshots');
+		expect(() => validateHatadyMediaSessionDetails('game_match', { weaponStats: [{ weapon: 'w', kills: -1 }] })).toThrow('invalid weaponStats kills');
+		expect(() => validateHatadyMediaSessionDetails('game_match', { weaponStats: [{ weapon: 'w', kills: 1.5 }] })).toThrow('invalid weaponStats kills');
+		expect(() => validateHatadyMediaSessionDetails('game_match', { weaponStats: 'shooter' })).toThrow('invalid weaponStats');
+		expect(() => validateHatadyMediaSessionDetails('game_match', { weaponStats: Array.from({ length: 21 }, () => ({ weapon: 'w' })) })).toThrow('invalid weaponStats');
+		// 成績表は対戦と PvE のもの。通常プレイ・ローグライクは1回1構成なので持たせない。
+		expect(() => validateHatadyMediaSessionDetails('game_play', { weaponStats: rows })).toThrow();
+		expect(() => validateHatadyMediaSessionDetails('game_roguelike', { weaponStats: rows })).toThrow();
+	});
+
+	test('stat field selection is a unique subset in a stable order', () => {
+		expect(validateHatadyMediaSessionDetails('game_match', { statFields: ['deaths', 'kills'] })).toMatchObject({ statFields: ['kills', 'deaths'] });
+		expect(() => validateHatadyMediaSessionDetails('game_match', { statFields: ['kills', 'kills'] })).toThrow('invalid statFields');
+		expect(() => validateHatadyMediaSessionDetails('game_match', { statFields: ['headshots'] })).toThrow('invalid statFields');
+		expect(() => validateHatadyMediaSessionDetails('game_match', { statFields: 'kills' })).toThrow('invalid statFields');
+	});
 });
 
 describe('Hatady media centralized visibility', () => {
@@ -343,6 +393,23 @@ describe('Hatady game title insertion serialization', () => {
 		const sut = service({ db });
 		await sut.createWork({ id: 'owner' } as never, 'game', { title: 'Game', isRecommended: true, recommendationRating: 10 });
 		expect(inserted).toMatchObject({ isRecommended: false, recommendationRating: null });
+	});
+
+	// 旗鯖fork(Hatady): 映画の作品作成。フォームが実際に送る形(未入力は null / 空配列)をそのまま通せること。
+	test('a movie work is accepted with the exact payload the form sends', async () => {
+		const inserted: Record<string, unknown>[] = [];
+		const worksRepository = { insertOne: vi.fn(async (entity: Record<string, unknown>) => { inserted.push(entity); return entity; }), findOneBy: vi.fn() };
+		const sut = service({ worksRepository });
+		await sut.createWork({ id: 'owner' } as never, 'movie', {
+			title: 'テスト映画', originalTitle: null, creator: null, status: 'planned', visibility: 'private',
+			coverColorIndex: null, isFavorite: false, isRecommended: false, recommendationRating: null,
+			releaseDate: null, releaseYear: null, officialUrl: null,
+			synopsis: null, synopsisSpoiler: false, review: null, reviewSpoiler: false,
+			genres: [], origin: null, viewingMode: null, primaryLanguage: null, runtimeMinutes: null,
+			highlights: [], highlightsSpoiler: false,
+		} as never);
+		expect(worksRepository.insertOne).toHaveBeenCalledTimes(1);
+		expect(inserted[0]).toMatchObject({ kind: 'movie', title: 'テスト映画', platforms: [], developer: null, publisher: null });
 	});
 });
 

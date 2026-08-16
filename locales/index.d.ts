@@ -19453,6 +19453,26 @@ export interface Locale extends ILocale {
                      */
                     "matchDetails": string;
                     /**
+                     * 対戦相手
+                     */
+                    "opponentGroup": string;
+                    /**
+                     * 試合内容
+                     */
+                    "matchSetupGroup": string;
+                    /**
+                     * 結果・成績
+                     */
+                    "resultGroup": string;
+                    /**
+                     * 結果
+                     */
+                    "runResultGroup": string;
+                    /**
+                     * 経路・構成
+                     */
+                    "routeGroup": string;
+                    /**
                      * 対戦相手の種類
                      */
                     "opponentType": string;
@@ -19528,6 +19548,142 @@ export interface Locale extends ILocale {
                      * 延長戦
                      */
                     "overtime": string;
+                    /**
+                     * 今回の結果
+                     */
+                    "outcomeGroup": string;
+                    /**
+                     * キル・デス・サポート
+                     */
+                    "kdaGroup": string;
+                    /**
+                     * キル
+                     */
+                    "kills": string;
+                    /**
+                     * デス
+                     */
+                    "deaths": string;
+                    /**
+                     * サポート
+                     */
+                    "assists": string;
+                    /**
+                     * スペシャル
+                     */
+                    "specials": string;
+                    /**
+                     * 救助
+                     */
+                    "rescues": string;
+                    /**
+                     * 成績
+                     */
+                    "statTotals": string;
+                    /**
+                     * 武器ごとの成績
+                     */
+                    "weaponStatsGroup": string;
+                    /**
+                     * 武器ごとの成績
+                     */
+                    "weaponStats": string;
+                    /**
+                     * 記録する項目
+                     */
+                    "statFieldsLabel": string;
+                    /**
+                     * 武器・ブキ名
+                     */
+                    "weaponPlaceholder": string;
+                    /**
+                     * 武器を追加
+                     */
+                    "addWeaponRow": string;
+                    /**
+                     * この行を削除
+                     */
+                    "removeWeaponRow": string;
+                    /**
+                     * 合計
+                     */
+                    "totalLabel": string;
+                    /**
+                     * 記録する項目を1つ以上選ぶと入力欄が出ます。
+                     */
+                    "pickAtLeastOne": string;
+                    /**
+                     * 編成
+                     */
+                    "teamComposition": string;
+                    /**
+                     * 味方の人数
+                     */
+                    "teamSize": string;
+                    /**
+                     * 相手の人数
+                     */
+                    "opponentSize": string;
+                    /**
+                     * ウェーブ
+                     */
+                    "waves": string;
+                    /**
+                     * 敵の種類
+                     */
+                    "enemyTypes": string;
+                    /**
+                     * 敵の数
+                     */
+                    "enemyCount": string;
+                    /**
+                     * ボス
+                     */
+                    "boss": string;
+                    /**
+                     * レーティングの変化
+                     */
+                    "ratingChange": string;
+                    /**
+                     * 前
+                     */
+                    "ratingBefore": string;
+                    /**
+                     * 後
+                     */
+                    "ratingAfter": string;
+                    /**
+                     * 詳しく記録する
+                     */
+                    "moreDetails": string;
+                    /**
+                     * すべて任意
+                     */
+                    "moreDetailsHint": string;
+                    /**
+                     * キャラクター・装備・端末
+                     */
+                    "gearGroup": string;
+                    /**
+                     * プレイの詳細
+                     */
+                    "playDetailGroup": string;
+                    /**
+                     * ランの設定
+                     */
+                    "runSetupGroup": string;
+                    /**
+                     * 追加
+                     */
+                    "tagAdd": string;
+                    /**
+                     * 削除
+                     */
+                    "tagRemove": string;
+                    /**
+                     * 入力してEnterで追加
+                     */
+                    "tagInputHint": string;
                     /**
                      * 今回のラン
                      */
@@ -19613,6 +19769,10 @@ export interface Locale extends ILocale {
                          * ローグライク
                          */
                         "game_roguelike": string;
+                        /**
+                         * 協力プレイ
+                         */
+                        "game_pve": string;
                     };
                 };
                 "detail": {
@@ -20176,11 +20336,11 @@ export interface Locale extends ILocale {
                  */
                 "streak": string;
                 /**
-                 * 今週の学習
+                 * 今週の記録
                  */
                 "thisWeek": string;
                 /**
-                 * 学習ログ
+                 * 記録
                  */
                 "logs": string;
                 /**
@@ -20188,11 +20348,11 @@ export interface Locale extends ILocale {
                  */
                 "books": string;
                 /**
-                 * 学習の記録 · 過去20週
+                 * 記録の履歴 · 過去20週
                  */
                 "heatTitle": string;
                 /**
-                 * 学習タイムライン
+                 * 活動タイムライン
                  */
                 "timeline": string;
                 /**
@@ -20260,7 +20420,7 @@ export interface Locale extends ILocale {
                  */
                 "daysStreak": string;
                 /**
-                 * 学習を記録中！
+                 * 今日も記録中！
                  */
                 "keepGoing": string;
                 /**
@@ -20276,7 +20436,7 @@ export interface Locale extends ILocale {
                  */
                 "searchAll": string;
                 /**
-                 * 学習ツール
+                 * 記録ツール
                  */
                 "toolsTitle": string;
                 /**
@@ -20320,7 +20480,7 @@ export interface Locale extends ILocale {
                  */
                 "streakBrokenSubLine2": string;
                 /**
-                 * 今日も学習を記録しました！この調子で続けましょう
+                 * 今日も記録しました！この調子で続けましょう
                  */
                 "doneTitle": string;
                 /**
@@ -20380,7 +20540,7 @@ export interface Locale extends ILocale {
                  */
                 "tabRecent": string;
                 /**
-                 * 人気の学習
+                 * 人気の投稿
                  */
                 "tabPopular": string;
                 /**

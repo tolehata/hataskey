@@ -144,6 +144,52 @@ function visibilityRank(visibility: HatadyMediaVisibility): number {
 	return visibility === 'private' ? 0 : visibility === 'followers' ? 1 : 2;
 }
 
+/**
+ * 旗鯖fork(Hatady): 記録できる成績の指標。ゲームによって存在する指標が違う(スペシャルや救助が無い作品もある)ため、
+ * どれを使うかは記録ごとに利用者が選ぶ。ここはその選択肢の正本。
+ */
+export const HATADY_STAT_FIELDS = ['kills', 'deaths', 'specials', 'rescues', 'assists'] as const;
+export type HatadyStatField = typeof HATADY_STAT_FIELDS[number];
+
+export function normalizeHatadyStatFields(raw: unknown): HatadyStatField[] {
+	if (!Array.isArray(raw)) throw new Error('invalid statFields');
+	if (raw.length > HATADY_STAT_FIELDS.length) throw new Error('invalid statFields');
+	const seen = new Set<string>();
+	for (const value of raw) {
+		if (typeof value !== 'string' || !HATADY_STAT_FIELDS.includes(value as HatadyStatField)) throw new Error('invalid statFields');
+		if (seen.has(value)) throw new Error('invalid statFields');
+		seen.add(value);
+	}
+	// 保存順の揺れが表示順に出ないよう、定義順へ揃えてから返す。
+	return HATADY_STAT_FIELDS.filter(field => seen.has(field));
+}
+
+/**
+ * 旗鯖fork(Hatady): 武器ごとの成績行。武器名は必須で、指標は入っているものだけを持つ。
+ * 未入力の指標を 0 で埋めると「0キル」と「記録していない」が区別できなくなるため、キーごと落とす。
+ */
+export function normalizeHatadyWeaponStats(raw: unknown): Record<string, unknown>[] {
+	if (!Array.isArray(raw)) throw new Error('invalid weaponStats');
+	if (raw.length > 20) throw new Error('invalid weaponStats');
+	return raw.map(entry => {
+		if (entry == null || typeof entry !== 'object' || Array.isArray(entry)) throw new Error('invalid weaponStats');
+		const row = entry as Record<string, unknown>;
+		for (const key of Object.keys(row)) {
+			if (key !== 'weapon' && !HATADY_STAT_FIELDS.includes(key as HatadyStatField)) throw new Error(`invalid weaponStats field ${key}`);
+		}
+		const weapon = typeof row.weapon === 'string' ? row.weapon.trim() : '';
+		if (weapon.length === 0 || weapon.length > 256) throw new Error('invalid weaponStats weapon');
+		const normalized: Record<string, unknown> = { weapon };
+		for (const field of HATADY_STAT_FIELDS) {
+			const value = row[field];
+			if (value === undefined || value === null) continue;
+			if (!Number.isInteger(value) || (value as number) < 0 || (value as number) > 1000000) throw new Error(`invalid weaponStats ${field}`);
+			normalized[field] = value;
+		}
+		return normalized;
+	});
+}
+
 export function validateHatadyMediaSessionDetails(kind: HatadyMediaSessionKind, raw: unknown): Record<string, unknown> {
 	if (raw == null) return {};
 	if (typeof raw !== 'object' || Array.isArray(raw)) throw new Error('invalid session details');
@@ -152,17 +198,19 @@ export function validateHatadyMediaSessionDetails(kind: HatadyMediaSessionKind, 
 	const allowed: Record<HatadyMediaSessionKind, ReadonlySet<string>> = {
 		movie_viewing: new Set(['theaterName', 'screeningFormat', 'companions', 'rewatch', 'viewingMode']),
 		game_play: new Set(['playMode', 'matchmaking', 'progress', 'difficulty', 'device', 'rank', 'rating', 'mood', 'achievements', 'character', 'weapon', 'weaponOrder']),
-		game_match: new Set(['result', 'reason', 'opponentType', 'opponent', 'matchmaking', 'score', 'mode', 'map', 'character', 'weapon', 'weaponOrder', 'roundResults', 'bestOf', 'kills', 'deaths', 'assists', 'rank', 'ratingBefore', 'ratingAfter', 'overtime', 'mood', 'device']),
+		game_match: new Set(['result', 'reason', 'opponentType', 'opponent', 'matchmaking', 'score', 'mode', 'map', 'character', 'weapon', 'weaponOrder', 'roundResults', 'bestOf', 'kills', 'deaths', 'assists', 'rank', 'ratingBefore', 'ratingAfter', 'overtime', 'mood', 'device', 'teamSize', 'opponentSize', 'weaponStats', 'statFields', 'specials', 'rescues']),
 		game_roguelike: new Set(['result', 'seed', 'floor', 'route', 'branches', 'build', 'runNumber', 'difficulty', 'character', 'weapon', 'weaponOrder', 'mood', 'device', 'cause']),
+		// 旗鯖fork(Hatady): 4人以上の協力プレイ。敵の構成とウェーブを持ち、勝敗ではなく踏破結果で終わる。
+		game_pve: new Set(['result', 'reason', 'difficulty', 'mode', 'map', 'character', 'weapon', 'weaponOrder', 'rank', 'score', 'mood', 'device', 'achievements', 'teamSize', 'waves', 'enemyTypes', 'enemyCount', 'boss', 'weaponStats', 'statFields', 'kills', 'deaths', 'assists', 'specials', 'rescues']),
 	};
 	for (const key of Object.keys(details)) {
 		if (!allowed[kind].has(key)) throw new Error(`field ${key} is not allowed for ${kind}`);
 	}
-	const stringKeys = ['theaterName', 'screeningFormat', 'progress', 'difficulty', 'device', 'rank', 'mood', 'character', 'weapon', 'reason', 'opponent', 'score', 'mode', 'map', 'seed', 'route', 'build', 'cause'];
+	const stringKeys = ['theaterName', 'screeningFormat', 'progress', 'difficulty', 'device', 'rank', 'mood', 'character', 'weapon', 'reason', 'opponent', 'score', 'mode', 'map', 'seed', 'route', 'build', 'cause', 'boss'];
 	for (const key of stringKeys) {
 		if (details[key] !== undefined && (typeof details[key] !== 'string' || (details[key] as string).length > 512)) throw new Error(`invalid ${key}`);
 	}
-	for (const key of ['companions', 'achievements', 'weaponOrder', 'branches']) {
+	for (const key of ['companions', 'achievements', 'weaponOrder', 'branches', 'enemyTypes']) {
 		if (details[key] !== undefined) normalizedDetails[key] = normalizeStringArray(details[key] as string[], 30, 256, key, false);
 	}
 	if (details.rewatch !== undefined && typeof details.rewatch !== 'boolean') throw new Error('invalid rewatch');
@@ -175,8 +223,18 @@ export function validateHatadyMediaSessionDetails(kind: HatadyMediaSessionKind, 
 		const values = kind === 'game_match' ? ['win', 'loss', 'draw'] : ['cleared', 'failed', 'retired'];
 		assertEnum(details.result, values, 'result');
 	}
-	for (const key of ['floor', 'runNumber', 'bestOf', 'kills', 'deaths', 'assists']) {
+	for (const key of ['floor', 'runNumber', 'bestOf', 'kills', 'deaths', 'assists', 'specials', 'rescues', 'waves', 'enemyCount']) {
 		if (details[key] !== undefined && (!Number.isInteger(details[key]) || (details[key] as number) < 0 || (details[key] as number) > 1000000)) throw new Error(`invalid ${key}`);
+	}
+	// 編成人数は「4対4」のような表示にしか使わないので、現実的な上限で抑える。
+	for (const key of ['teamSize', 'opponentSize']) {
+		if (details[key] !== undefined && (!Number.isInteger(details[key]) || (details[key] as number) < 1 || (details[key] as number) > 100)) throw new Error(`invalid ${key}`);
+	}
+	if (details.statFields !== undefined) {
+		normalizedDetails.statFields = normalizeHatadyStatFields(details.statFields);
+	}
+	if (details.weaponStats !== undefined) {
+		normalizedDetails.weaponStats = normalizeHatadyWeaponStats(details.weaponStats);
 	}
 	for (const key of ['rating', 'ratingBefore', 'ratingAfter']) {
 		if (details[key] !== undefined && (typeof details[key] !== 'number' || !Number.isFinite(details[key]) || Math.abs(details[key] as number) > 1000000000)) throw new Error(`invalid ${key}`);

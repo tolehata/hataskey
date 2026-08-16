@@ -10,7 +10,7 @@ export type HatadyMediaWorkStatus = 'planned' | 'in_progress' | 'completed' | 'm
 export type HatadyMediaVisibility = 'private' | 'followers' | 'public';
 export type HatadyMovieOrigin = 'domestic' | 'foreign' | 'co_production' | 'other';
 export type HatadyMovieViewingMode = 'dubbed' | 'subtitled' | 'original';
-export type HatadyMediaSessionKind = 'movie_viewing' | 'game_play' | 'game_match' | 'game_roguelike';
+export type HatadyMediaSessionKind = 'movie_viewing' | 'game_play' | 'game_match' | 'game_roguelike' | 'game_pve';
 
 export type HatadyMediaReactionSummary = { reaction: string; count: number };
 

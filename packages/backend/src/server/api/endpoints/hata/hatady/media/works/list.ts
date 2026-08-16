@@ -16,7 +16,7 @@ export const paramDef = {
 		viewingMode: { type: 'string', enum: ['dubbed', 'subtitled', 'original'] },
 		isRecommended: { type: 'boolean' },
 		minRecommendation: { type: 'integer', minimum: 0, maximum: 10 },
-		sessionKind: { type: 'string', enum: ['movie_viewing', 'game_play', 'game_match', 'game_roguelike'] },
+		sessionKind: { type: 'string', enum: ['movie_viewing', 'game_play', 'game_match', 'game_roguelike', 'game_pve'] },
 		result: { type: 'string', minLength: 1, maxLength: 64 },
 		weapon: { type: 'string', minLength: 1, maxLength: 512 },
 		rank: { type: 'string', minLength: 1, maxLength: 512 },
