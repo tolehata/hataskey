@@ -327,6 +327,7 @@ import { useRouter } from '@/router.js';
 import { prefer } from '@/preferences.js';
 import {
 	categoryLabel, categoryKeys, staffOnlyCategoryKeys, statusLabel, statusKeys, emojiStatusLabel, emojiStatusIcon, hataBetaTotal,
+	hataFeedUnreadCount,
 } from '@/utility/hatafeed.js';
 import { iAmModerator, $i } from '@/i.js';
 import { i18n } from '@/i18n.js';
@@ -378,7 +379,8 @@ const includeClosed = ref(false);
 const searchQuery = ref('');
 const exportWindowOpen = ref(false);
 
-const unreadCount = ref(0);
+// 旗鯖fork: バッジは共有の状態を見る(標準通知から既読にしたときも消えるように)。
+const unreadCount = hataFeedUnreadCount;
 const emojiRequests = ref<HataFeedEmojiRequest[]>([]);
 const emojiQuota = ref<{ limit: number; remaining: number } | null>(null);
 

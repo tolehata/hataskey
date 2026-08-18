@@ -29,7 +29,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { computed, markRaw, ref } from 'vue';
+import { computed, markRaw, onMounted, ref } from 'vue';
 import { notificationTypes } from 'cherrypick-js';
 import MkStreamingNotificationsTimeline from '@/components/MkStreamingNotificationsTimeline.vue';
 import MkNotesTimeline from '@/components/MkNotesTimeline.vue';
@@ -39,6 +39,8 @@ import { definePage } from '@/page.js';
 import { Paginator } from '@/utility/paginator.js';
 import { deviceKind } from '@/utility/device-kind.js';
 import { globalEvents } from '@/events.js';
+// 旗鯖fork: HataFeed通知は標準通知とは別カウンタなので、ここでも明示的に既読にする。
+import { markHataFeedNotificationsRead } from '@/utility/hatafeed.js';
 
 const tab = ref('all');
 const includeTypes = ref<string[] | null>(null);
@@ -131,6 +133,13 @@ definePage(() => !props.notification ? {
 	title: '',
 	icon: 'ti ti-bell',
 });
+
+// 旗鯖fork: 通知一覧を開いた時点で HataFeed のバッジも消す。
+//   ⚠️HataFeedのベルから開いた場合と挙動を揃えるため、ここでも必ず既読にする。
+onMounted(() => {
+	void markHataFeedNotificationsRead();
+});
+
 </script>
 
 <style lang="scss" module>

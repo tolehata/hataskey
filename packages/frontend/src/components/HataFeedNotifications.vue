@@ -108,7 +108,7 @@ import HfAvatar from '@/components/HfAvatar.vue';
 import * as os from '@/os.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { useRouter } from '@/router.js';
-import { notifIcon, notifTypeLabel, groupHataFeedNotifications, groupSummary, notificationDisplayMessage } from '@/utility/hatafeed.js';
+import { markHataFeedNotificationsRead, notifIcon, notifTypeLabel, groupHataFeedNotifications, groupSummary, notificationDisplayMessage } from '@/utility/hatafeed.js';
 import { i18n } from '@/i18n.js';
 
 const props = defineProps<{ anchorElement?: HTMLElement | null }>();
@@ -146,7 +146,13 @@ async function fetchPage(untilId: string | undefined) {
 	try {
 		const limit = (filter.value ? PAGE_SIZE * 4 : PAGE_SIZE) + 1;
 		const res = await misskeyApi('hata/feedback/notifications', { limit, untilId });
+		// ⚠️表示した時点でバッジを消す。ただし「どれが新しいか」は消さないので、
+		//   この一覧の未読表示は取得時の状態のまま残る。
 		unreadCount.value = res.unreadCount;
+		if (res.unreadCount > 0) {
+			void markHataFeedNotificationsRead();
+			emit('read', 0);
+		}
 		let list = res.notifications as unknown as HataFeedNotif[];
 		if (filter.value) list = list.filter(n => n.type === filter.value);
 		hasNext.value = list.length > PAGE_SIZE;

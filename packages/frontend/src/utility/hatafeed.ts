@@ -4,9 +4,30 @@
  * 旗鯖fork: HataFeed 共通のラベル定義とヘルパー(カテゴリ/ステータス/通知アイコン)。
  */
 
+import { ref } from 'vue';
 import type * as Misskey from 'cherrypick-js';
 import { i18n } from '@/i18n.js';
+import { misskeyApi } from '@/utility/misskey-api.js';
 import { hataFeedNotificationDisplayBody } from '@/utility/hatafeed-bell-group.js';
+
+// 旗鯖fork: HataFeed通知の未読数。⚠️標準通知の未読数とは別のカウンタ。
+//   バッジを出す画面と既読にする画面が別なので、共有の ref を通して同期する。
+export const hataFeedUnreadCount = ref(0);
+
+/**
+ * 旗鯖fork: HataFeed通知をすべて既読にしてバッジを消す。
+ * ⚠️「一覧を表示した時点」で呼ぶ。HataFeedのベルからでも標準通知からでも同じ挙動にするため、
+ *   未読数を持っていない画面から呼ばれても動くよう、件数を見ずに必ずAPIを叩く。
+ * ⚠️失敗しても画面を止めない(バッジが残るだけ)。
+ */
+export async function markHataFeedNotificationsRead(): Promise<void> {
+	try {
+		await misskeyApi('hata/feedback/notifications/read', {});
+		hataFeedUnreadCount.value = 0;
+	} catch {
+		// バッジが消えないだけなので、利用者の操作は妨げない
+	}
+}
 
 const copy = i18n.ts._hata._hatafeed._shared;
 const tx = i18n.tsx._hata._hatafeed._shared;
