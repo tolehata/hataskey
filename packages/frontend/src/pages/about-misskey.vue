@@ -118,6 +118,18 @@ SPDX-License-Identifier: AGPL-3.0-only
 								</span>
 							</span>
 						</a>
+						<!-- Hataskey fork: niganigafish. の表示画像は本人のアバターではなく、
+						     ハタキュアセット(heartHug)による装飾。⚠️本人アバターURLを推測して
+						     使ってはいけない方針のため、MkHatakyuIllustration の装飾画像(既定で
+						     alt=""/aria-hidden の非情報扱い)で代用している。 -->
+						<a href="https://misskey.hatachanoima.net/@niganigafish" target="_blank" :class="$style.contributor">
+							<MkHatakyuIllustration v-if="useHatakyuBranding()" asset="heartHug" :size="30" :class="$style.contributorIllustration"/>
+							<span :class="$style.contributorUsername">@niganigafish
+								<span :class="$style.contributorClient">
+									<span :class="$style.hataskey">オリジナルアイコンブランディング</span>
+								</span>
+							</span>
+						</a>
 					</div>
 				</FormSection>
 				<FormSection>
@@ -244,6 +256,8 @@ import FormLink from '@/components/form/link.vue';
 import FormSection from '@/components/form/section.vue';
 import MkButton from '@/components/MkButton.vue';
 import MkInfo from '@/components/MkInfo.vue';
+import MkHatakyuIllustration from '@/components/MkHatakyuIllustration.vue';
+import { useHatakyuBranding } from '@/utility/hatakyu-assets.js';
 import { physics } from '@/utility/physics.js';
 import { i18n } from '@/i18n.js';
 import { instance } from '@/instance.js';
@@ -802,6 +816,13 @@ definePage(() => ({
 .contributorAvatar {
 	width: 30px;
 	border-radius: 100%;
+}
+
+/* Hataskey fork: 装飾画像用。本人アバターではないため、顔写真であるかのように見える
+ * 円形トリミング(.contributorAvatar の border-radius)は意図的に付けない。 */
+.contributorIllustration {
+	width: 30px;
+	height: 30px;
 }
 
 .contributorUsername {

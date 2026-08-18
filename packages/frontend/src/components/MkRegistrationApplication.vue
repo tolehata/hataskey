@@ -8,7 +8,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 <template>
 <div>
 	<div :class="$style.banner">
-		<i class="ti ti-file-description"></i>
+		<MkHatakyuIllustration v-if="useHatakyuBranding()" asset="showingId" :size="64" style="margin: 0 auto;"/><i v-else class="ti ti-file-description"></i>
 	</div>
 	<div class="_spacer" style="--MI_SPACER-min: 20px; --MI_SPACER-max: 32px;">
 		<form class="_gaps_m" @submit.prevent="onSubmit">
@@ -171,6 +171,8 @@ import MkCaptcha from '@/components/MkCaptcha.vue';
 import * as os from '@/os.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { instance } from '@/instance.js';
+import MkHatakyuIllustration from '@/components/MkHatakyuIllustration.vue';
+import { useHatakyuBranding } from '@/utility/hatakyu-assets.js';
 import { i18n } from '@/i18n.js';
 
 const copy = i18n.ts._hata._registrationApplications._application;

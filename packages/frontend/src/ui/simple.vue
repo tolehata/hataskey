@@ -536,7 +536,7 @@ const SIMPLE_MENU_STORAGE_LABELS: Readonly<Record<string, string>> = {
 	hatafeed: 'HataFeed',
 	hatady: 'Hatady',
 	earthquake: '地震・津波情報',
-	portal: '旗鯖ポータル',
+	portal: 'Hataskeyポータル',
 	uiSetup: 'UI切り替え',
 	explore: 'みつける',
 	followRequests: 'フォロー申請',

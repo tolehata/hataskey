@@ -15,7 +15,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 	<div class="_spacer" style="--MI_SPACER-min: 20px; --MI_SPACER-max: 28px;">
 		<div style="padding: 0 0 16px 0; text-align: center;">
-			<img src="/fluent-emoji/1f510.png" alt="🔐" style="display: block; margin: 0 auto; width: 48px;">
+			<!-- Hataskey fork: 3D絵文字をハタキュへ。OFF時は元の絵文字画像に戻る。 -->
+			<img :src="brandedIconUrl('showingId', '/fluent-emoji/1f510.png')" alt="🔐" style="display: block; margin: 0 auto; width: 48px;">
 			<div style="margin-top: 16px;">{{ i18n.ts.authenticationRequiredToContinue }}</div>
 		</div>
 
@@ -47,6 +48,7 @@ import { onMounted, useTemplateRef, ref, onUnmounted } from 'vue';
 import MkInput from '@/components/MkInput.vue';
 import MkButton from '@/components/MkButton.vue';
 import MkModalWindow from '@/components/MkModalWindow.vue';
+import { brandedIconUrl } from '@/utility/hatakyu-assets.js';
 import { i18n } from '@/i18n.js';
 import { ensureSignin } from '@/i.js';
 

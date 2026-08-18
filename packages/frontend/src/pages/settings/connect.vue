@@ -6,7 +6,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 <template>
 <SearchMarker path="/settings/connect" :label="i18n.ts._settings.serviceConnection" :keywords="['app', 'service', 'connect', 'webhook', 'api', 'token']" icon="ti ti-link">
 	<div class="_gaps_m">
-		<MkFeatureBanner icon="/fluent-emoji/1f517.png" color="#ff0088">
+		<MkFeatureBanner :icon="brandedIconUrl('computerChat', '/fluent-emoji/1f517.png')" color="#ff0088">
 			<SearchText>{{ i18n.ts._settings.serviceConnectionBanner }}</SearchText>
 		</MkFeatureBanner>
 
@@ -68,6 +68,7 @@ import FormLink from '@/components/form/link.vue';
 import { definePage } from '@/page.js';
 import { i18n } from '@/i18n.js';
 import MkFeatureBanner from '@/components/MkFeatureBanner.vue';
+import { brandedIconUrl } from '@/utility/hatakyu-assets.js';
 import * as os from '@/os.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import MkButton from '@/components/MkButton.vue';

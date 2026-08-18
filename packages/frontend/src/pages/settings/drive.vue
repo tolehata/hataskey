@@ -6,7 +6,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 <template>
 <SearchMarker path="/settings/drive" :label="i18n.ts.drive" :keywords="['drive']" icon="ti ti-cloud">
 	<div class="_gaps_m">
-		<MkFeatureBanner icon="/fluent-emoji/2601.png" color="#0059ff">
+		<MkFeatureBanner :icon="brandedIconUrl('packingBox', '/fluent-emoji/2601.png')" color="#0059ff">
 			<SearchText>{{ i18n.ts._settings.driveBanner }}</SearchText>
 		</MkFeatureBanner>
 
@@ -193,6 +193,7 @@ import { ensureSignin } from '@/i.js';
 import { prefer } from '@/preferences.js';
 import MkPreferenceContainer from '@/components/MkPreferenceContainer.vue';
 import MkFeatureBanner from '@/components/MkFeatureBanner.vue';
+import { brandedIconUrl } from '@/utility/hatakyu-assets.js';
 import { selectDriveFolder } from '@/utility/drive.js';
 import MkFolder from '@/components/MkFolder.vue';
 import MkButton from '@/components/MkButton.vue';

@@ -26,21 +26,25 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<template v-for="(item, i) in group.items">
 					<a v-if="item.type === 'a'" :href="item.href" :target="item.target" class="_button item" :class="{ danger: item.danger, active: item.active }">
 						<span>
-							<span v-if="item.icon" class="icon"><i :class="item.icon" class="ti-fw"></i></span>
+							<!-- Hataskey fork: hatakyuAsset があればハタキュ画像を、無ければ従来の Tabler アイコンを出す -->
+							<span v-if="item.hatakyuAsset && useHatakyuBranding()" class="icon"><MkHatakyuIllustration :asset="item.hatakyuAsset" :size="28"/></span>
+							<span v-else-if="item.icon" class="icon"><i :class="item.icon" class="ti-fw"></i></span>
 							<span class="text">{{ item.text }}</span>
 						</span>
 						<span v-if="item.indicated" class="itemIndicator _blink"><i class="_indicatorCircle"></i></span>
 					</a>
 					<button v-else-if="item.type === 'button'" class="_button item" :class="{ danger: item.danger, active: item.active }" :disabled="item.active" @click="ev => item.action(ev)">
 						<span>
-							<span v-if="item.icon" class="icon"><i :class="item.icon" class="ti-fw"></i></span>
+							<span v-if="item.hatakyuAsset && useHatakyuBranding()" class="icon"><MkHatakyuIllustration :asset="item.hatakyuAsset" :size="28"/></span>
+							<span v-else-if="item.icon" class="icon"><i :class="item.icon" class="ti-fw"></i></span>
 							<span class="text">{{ item.text }}</span>
 						</span>
 						<span v-if="item.indicated" class="itemIndicator _blink"><i class="_indicatorCircle"></i></span>
 					</button>
 					<MkA v-else :to="item.to" class="_button item" :class="{ danger: item.danger, active: item.active }">
 						<span>
-							<span v-if="item.icon" class="icon"><i :class="item.icon" class="ti-fw"></i></span>
+							<span v-if="item.hatakyuAsset && useHatakyuBranding()" class="icon"><MkHatakyuIllustration :asset="item.hatakyuAsset" :size="28"/></span>
+							<span v-else-if="item.icon" class="icon"><i :class="item.icon" class="ti-fw"></i></span>
 							<span class="text">{{ item.text }}</span>
 						</span>
 						<span v-if="item.indicated" class="itemIndicator _blink"><i class="_indicatorCircle"></i></span>
@@ -56,6 +60,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				class="_button searchResultItem"
 				:class="{ selected: searchSelectedIndex !== null && searchSelectedIndex === index }"
 			>
+				<!-- Hataskey fork: 検索結果は SearchIndexItem 由来で hatakyuAsset を持たないため、従来どおり icon のみで描画する -->
 				<span v-if="item.icon" class="icon"><i :class="item.icon" class="ti-fw"></i></span>
 				<span class="text">
 					<template v-if="item.isRoot">
@@ -76,6 +81,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <script lang="ts">
 import type { Awaitable } from '@/types/misc.js';
+import type { HatakyuAssetKey } from '@/utility/hatakyu-assets.js';
 
 export type SuperMenuDef = {
 	title?: string;
@@ -84,6 +90,8 @@ export type SuperMenuDef = {
 		href: string;
 		target?: string;
 		icon?: string;
+		/** Hataskey fork: 指定があればハタキュイラストを icon の代わりに描画する(後方互換のため任意プロパティ)。 */
+		hatakyuAsset?: HatakyuAssetKey;
 		text: string;
 		danger?: boolean;
 		active?: boolean;
@@ -91,6 +99,7 @@ export type SuperMenuDef = {
 	} | {
 		type: 'button';
 		icon?: string;
+		hatakyuAsset?: HatakyuAssetKey;
 		text: string;
 		danger?: boolean;
 		active?: boolean;
@@ -100,6 +109,7 @@ export type SuperMenuDef = {
 		type?: 'link';
 		to: string;
 		icon?: string;
+		hatakyuAsset?: HatakyuAssetKey;
 		text: string;
 		danger?: boolean;
 		active?: boolean;
@@ -113,6 +123,8 @@ import { useTemplateRef, ref, watch, nextTick, computed } from 'vue';
 import { getScrollContainer } from '@@/js/scroll.js';
 import type { SearchIndexItem } from '@/utility/inapp-search.js';
 import MkInput from '@/components/MkInput.vue';
+import MkHatakyuIllustration from '@/components/MkHatakyuIllustration.vue';
+import { useHatakyuBranding } from '@/utility/hatakyu-assets.js';
 import { i18n } from '@/i18n.js';
 import { useRouter } from '@/router.js';
 import { initIntlString, compareStringIncludes } from '@/utility/intl-string.js';
@@ -308,6 +320,14 @@ function searchOnKeyDown(ev: KeyboardEvent) {
 						flex-shrink: 0;
 						text-align: center;
 						opacity: 0.8;
+
+						/* Hataskey fork: ハタキュ立ち絵は字形と違い font-size で伸びないため、実寸で指定する。
+						   ⚠️text-align では中央に寄らない(ブロック要素)ので margin で寄せる。 */
+						> img {
+							width: 28px;
+							height: 28px;
+							margin: 0 auto;
+						}
 					}
 
 					> .text {
@@ -382,6 +402,13 @@ function searchOnKeyDown(ev: KeyboardEvent) {
 							aspect-ratio: 1;
 							background: var(--MI_THEME-panel);
 							border-radius: 100%;
+
+							/* Hataskey fork: 60pxの丸枠に対し24pxでは小さすぎて絵柄が判別できないため、枠いっぱいに寄せる。 */
+							> img {
+								width: 48px;
+								height: 48px;
+								margin: 0;
+							}
 						}
 
 						> .text {

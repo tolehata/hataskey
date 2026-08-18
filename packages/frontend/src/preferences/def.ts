@@ -878,6 +878,13 @@ export const PREF_DEF = definePreferences({
 	'simpleUi.glassEffect': {
 		default: true,
 	},
+	// 旗鯖fork: Hataskeyオリジナルのブランディングイラスト(ハタキュ)を各所のアイコンとして使うか。
+	//   false にすると、設定メニュー・UIタブ・各設定ページのバナー・エラー表示・ダイアログ等が
+	//   従来の Tabler アイコン / 絵文字 / SVG へ戻る。
+	//   ⚠️管理画面のブランディング画像(instance.*ImageUrl)は、この値に関わらず従来どおり最優先。
+	'hataBranding.useHatakyu': {
+		default: true,
+	},
 	// 旗鯖fork: HatasabaUI のページヘッダー(ページタイトル+戻るボタン)を表示するか。
 	// ページ自身が MkPageHeader を持っているため、デフォルトでは非表示にしてタイトル二重表示を回避する。
 	// ONにすると HatasabaUI 独自のシンプルなヘッダーがページの上に追加で出る。

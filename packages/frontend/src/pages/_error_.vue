@@ -8,6 +8,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 <Transition :name="prefer.s.animation ? '_transition_zoom' : ''" appear>
 	<div v-show="loaded" :class="$style.root">
 		<img v-if="instance.serverErrorImageUrl" :src="instance.serverErrorImageUrl" draggable="false" :class="$style.img"/>
+		<!-- Hataskey fork: 管理者画像(instance.serverErrorImageUrl)を最優先。上のv-if条件は変更せず、未設定時のみフォールバック。
+		     ⚠️変更前は管理者画像が無いと何も出ない状態だったため、ハタキュOFF時は従来のSVGアイコンを出す。 -->
+		<MkHatakyuIllustration v-else-if="useHatakyuBranding()" asset="overwhelmed" :size="128" :class="$style.img"/>
+		<MkSystemIcon v-else type="error" :class="$style.img"/>
 		<div class="_gaps">
 			<div><b><i class="ti ti-alert-triangle"></i> {{ i18n.ts.pageLoadError }}</b></div>
 			<div v-if="meta && (version === meta.version)">{{ i18n.ts.pageLoadErrorDescription }}</div>
@@ -37,6 +41,9 @@ import { definePage } from '@/page.js';
 import { miLocalStorage } from '@/local-storage.js';
 import { prefer } from '@/preferences.js';
 import { instance } from '@/instance.js';
+// Hataskey fork: 管理者画像未設定時のローカルフォールバック用イラスト
+import MkHatakyuIllustration from '@/components/MkHatakyuIllustration.vue';
+import { useHatakyuBranding } from '@/utility/hatakyu-assets.js';
 
 const props = withDefaults(defineProps<{
 	error?: Error;
@@ -84,5 +91,8 @@ definePage(() => ({
 	height: 128px;
 	margin-bottom: 24px;
 	border-radius: 16px;
+	/* Hataskey fork: ハタキュ立ち絵とMkSystemIconはブロック要素なので、
+	   親の text-align では中央に寄らない。⚠️margin-bottom を潰さないよう横方向だけ auto にする。 */
+	margin-inline: auto;
 }
 </style>

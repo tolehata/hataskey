@@ -228,7 +228,7 @@ const fallbackSidebar: SidebarSourceItem[] = [
 
 const HATA_SIDE_STUDIO_GROUP_STORAGE_NAMES: Readonly<Record<string, string>> = {
 	basic: '基本機能',
-	hata: '旗鯖独自',
+	hata: 'Hataskey独自',
 	discover: '発見・交流',
 	more: 'その他',
 };

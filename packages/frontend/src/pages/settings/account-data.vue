@@ -6,7 +6,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 <template>
 <SearchMarker path="/settings/account-data" :label="i18n.ts._settings.accountData" :keywords="['import', 'export', 'data', 'archive']" icon="ti ti-package">
 	<div class="_gaps_m">
-		<MkFeatureBanner icon="/fluent-emoji/1f4e6.png" color="#ff9100">
+		<MkFeatureBanner :icon="brandedIconUrl('unpackingBox', '/fluent-emoji/1f4e6.png')" color="#ff9100">
 			<SearchText>{{ i18n.ts._settings.accountDataBanner }}</SearchText>
 		</MkFeatureBanner>
 
@@ -170,6 +170,7 @@ import { definePage } from '@/page.js';
 import { refreshMutedUsers } from '@/utility/muted-users.js';
 import { $i } from '@/i.js';
 import MkFeatureBanner from '@/components/MkFeatureBanner.vue';
+import { brandedIconUrl } from '@/utility/hatakyu-assets.js';
 import { prefer } from '@/preferences.js';
 
 const excludeMutingUsers = ref(false);

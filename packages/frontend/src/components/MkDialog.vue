@@ -6,18 +6,22 @@ SPDX-License-Identifier: AGPL-3.0-only
 <template>
 <MkModal ref="modal" :preferType="'dialog'" :zPriority="'high'" @click="done(true)" @closed="emit('closed')" @esc="cancel()">
 	<div :class="$style.root">
-		<div v-if="icon" :class="$style.icon">
+		<!-- Hataskey fork: 既存の icon / type別アイコンの優先順位に割り込まないよう、hatakyuAsset は独立した最優先の枝として先頭に置く -->
+		<div v-if="hatakyuAsset && useHatakyuBranding()" :class="$style.icon">
+			<MkHatakyuIllustration :asset="hatakyuAsset" :size="96"/>
+		</div>
+		<div v-else-if="icon" :class="$style.icon">
 			<i :class="icon"></i>
 		</div>
 		<div
 			v-else-if="!input && !select"
 			:class="[$style.icon]"
 		>
-			<MkSystemIcon v-if="type === 'success'" :class="$style.iconInner" style="width: 45px;" type="success"/>
-			<MkSystemIcon v-else-if="type === 'error'" :class="$style.iconInner" style="width: 45px;" type="error"/>
-			<MkSystemIcon v-else-if="type === 'warning'" :class="$style.iconInner" style="width: 45px;" type="warn"/>
-			<MkSystemIcon v-else-if="type === 'info'" :class="$style.iconInner" style="width: 45px;" type="info"/>
-			<MkSystemIcon v-else-if="type === 'question'" :class="$style.iconInner" style="width: 45px;" type="question"/>
+			<MkSystemIcon v-if="type === 'success'" :class="$style.iconInner" :style="{ width: useHatakyuBranding() ? '88px' : '45px' }" type="success"/>
+			<MkSystemIcon v-else-if="type === 'error'" :class="$style.iconInner" :style="{ width: useHatakyuBranding() ? '88px' : '45px' }" type="error"/>
+			<MkSystemIcon v-else-if="type === 'warning'" :class="$style.iconInner" :style="{ width: useHatakyuBranding() ? '88px' : '45px' }" type="warn"/>
+			<MkSystemIcon v-else-if="type === 'info'" :class="$style.iconInner" :style="{ width: useHatakyuBranding() ? '88px' : '45px' }" type="info"/>
+			<MkSystemIcon v-else-if="type === 'question'" :class="$style.iconInner" :style="{ width: useHatakyuBranding() ? '88px' : '45px' }" type="question"/>
 			<MkLoading v-else-if="type === 'waiting'" :class="$style.iconInner" :em="true"/>
 		</div>
 		<header v-if="title" :class="$style.title" class="_selectable"><Mfm :text="title"/></header>
@@ -52,6 +56,10 @@ import MkInput from '@/components/MkInput.vue';
 import MkSelect from '@/components/MkSelect.vue';
 import { useMkSelect } from '@/composables/use-mkselect.js';
 import { i18n } from '@/i18n.js';
+// Hataskey fork: ダイアログの既定アイコンをハタキュ立ち絵へ差し替え可能にするための任意プロパティ
+import MkHatakyuIllustration from '@/components/MkHatakyuIllustration.vue';
+import { useHatakyuBranding } from '@/utility/hatakyu-assets.js';
+import type { HatakyuAssetKey } from '@/utility/hatakyu-assets.js';
 
 type Input = {
 	type?: 'text' | 'number' | 'password' | 'email' | 'url' | 'date' | 'time' | 'search' | 'datetime-local';
@@ -77,6 +85,8 @@ const props = withDefaults(defineProps<{
 	input?: Input;
 	select?: Select;
 	icon?: string;
+	/** Hataskey fork: 指定時はデフォルトアイコンの代わりにハタキュ立ち絵を表示する（icon/type別アイコンより優先） */
+	hatakyuAsset?: HatakyuAssetKey;
 	actions?: {
 		text: string;
 		primary?: boolean,
@@ -184,6 +194,11 @@ function onInputKeydown(evt: KeyboardEvent) {
 
 .icon {
 	font-size: 24px;
+
+	/* Hataskey fork: ハタキュ立ち絵はブロック要素なので、親の text-align では中央に寄らない。 */
+	> img {
+		margin: 0 auto;
+	}
 
 	& + .title {
 		margin-top: 8px;

@@ -6,8 +6,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 <template>
 <div :class="$style.wrapper" data-cy-signin-page-input>
 	<div :class="$style.root">
+		<!-- Hataskey fork: 利用者名を入れる前の人型プレースホルダーをハタキュ(手を振る)にする。OFF時は元の人型アイコン。 -->
 		<div :class="[$style.avatar, { [$style.square]: prefer.s.squareAvatars }]">
-			<i class="ti ti-user"></i>
+			<MkHatakyuIllustration v-if="useHatakyuBranding()" asset="waving" :size="64" :class="$style.avatarIllustration"/>
+			<i v-else class="ti ti-user"></i>
 		</div>
 
 		<!-- ログイン画面メッセージ -->
@@ -61,6 +63,8 @@ import { host as configHost } from '@@/js/config.js';
 import type { OpenOnRemoteOptions } from '@/utility/please-login.js';
 import { i18n } from '@/i18n.js';
 import * as os from '@/os.js';
+import MkHatakyuIllustration from '@/components/MkHatakyuIllustration.vue';
+import { useHatakyuBranding } from '@/utility/hatakyu-assets.js';
 import { prefer } from '@/preferences.js';
 
 import MkButton from '@/components/MkButton.vue';
@@ -177,6 +181,13 @@ async function specifyHostAndOpenRemote(options: OpenOnRemoteOptions): Promise<v
 	&.square {
 		border-radius: 20%;
 	}
+}
+
+/* Hataskey fork: 丸枠(64px)からはみ出さず、枠いっぱいに立ち絵を収める */
+.avatarIllustration {
+	width: 100%;
+	height: 100%;
+	object-fit: contain;
 }
 
 .instanceManualSelectButton {

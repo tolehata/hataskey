@@ -6,7 +6,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 <template>
 <SearchMarker path="/settings/preferences" :label="i18n.ts.preferences" :keywords="['general', 'preferences']" icon="ti ti-adjustments">
 	<div class="_gaps_m">
-		<MkFeatureBanner icon="/fluent-emoji/2699.png" color="#00ff9d">
+		<MkFeatureBanner :icon="brandedIconUrl('wrench', '/fluent-emoji/2699.png')" color="#00ff9d">
 			<SearchText>{{ i18n.ts._settings.preferencesBanner }}</SearchText>
 		</MkFeatureBanner>
 
@@ -1375,6 +1375,7 @@ import { miLocalStorage } from '@/local-storage.js';
 import { prefer } from '@/preferences.js';
 import MkPreferenceContainer from '@/components/MkPreferenceContainer.vue';
 import MkFeatureBanner from '@/components/MkFeatureBanner.vue';
+import { brandedIconUrl } from '@/utility/hatakyu-assets.js';
 import { globalEvents } from '@/events.js';
 import { claimAchievement } from '@/utility/achievements.js';
 import { instance } from '@/instance.js';

@@ -6,13 +6,17 @@ SPDX-License-Identifier: AGPL-3.0-only
 <template>
 <SearchMarker path="/settings/hata-custom" :label="copy.title" :keywords="['hata', 'custom', 'simple', 'widget', 'timeline', 'font']" icon="ti ti-flag">
     <div class="_gaps_m">
-        <MkFeatureBanner icon="/client-assets/package_3d.png" color="#e74040">
+        <MkFeatureBanner :icon="brandedIconUrl('treasureFound', '/client-assets/package_3d.png')" color="#e74040">
             {{ copy.banner }}
         </MkFeatureBanner>
 
         <div :class="$style.catTabs">
             <button v-for="cat in categories" :key="cat.id" :class="[$style.catTab, activeCat === cat.id && $style.catTabOn]" @click="activeCat = cat.id">
-                <i :class="cat.icon"></i> {{ cat.label }}
+                <!-- Hataskey fork: 地震ビューアだけは既存の Tabler アイコンを維持する(ゲーム/地震機能へハタキュを持ち込まない方針のため明示除外)。
+                     それ以外は hatakyuAsset があればハタキュイラストを優先して出す。 -->
+                <i v-if="cat.id === 'earthquake' || !cat.hatakyuAsset || !useHatakyuBranding()" :class="cat.icon"></i>
+                <MkHatakyuIllustration v-else :asset="cat.hatakyuAsset" :size="24"/>
+                {{ cat.label }}
             </button>
         </div>
 
@@ -223,6 +227,15 @@ SPDX-License-Identifier: AGPL-3.0-only
             </div>
             <HatacordingUiSettings :accountId="$i.id"/>
         </FormSection>
+        <!-- Hataskey fork: ハタキュ(オリジナルアイコンブランディング)を使うかどうか。
+             ⚠️OFFにすると、変更前と同じ Tabler アイコン / 絵文字 / SVG に戻る。 -->
+        <FormSection>
+            <template #label>{{ uiCopy.brandingSection }}</template>
+            <MkSwitch v-model="useHatakyuIllustrations">
+                <template #label>{{ uiCopy.useHatakyu }}</template>
+                <template #caption>{{ uiCopy.useHatakyuDescription }}</template>
+            </MkSwitch>
+        </FormSection>
         </template>
 
         <!-- ===== ビジュアル (新設) ===== -->
@@ -383,7 +396,11 @@ import MkColorInput from '@/components/MkColorInput.vue';
 import FormSection from '@/components/form/section.vue';
 import FormLink from '@/components/form/link.vue';
 import MkFeatureBanner from '@/components/MkFeatureBanner.vue';
+import { brandedIconUrl } from '@/utility/hatakyu-assets.js';
 import HatacordingUiSettings from '@/components/HatacordingUiSettings.vue';
+import MkHatakyuIllustration from '@/components/MkHatakyuIllustration.vue';
+import { useHatakyuBranding } from '@/utility/hatakyu-assets.js';
+import type { HatakyuAssetKey } from '@/utility/hatakyu-assets.js';
 import { i18n } from '@/i18n.js';
 import * as os from '@/os.js';
 import { ensureSignin } from '@/i.js';
@@ -408,6 +425,8 @@ const copyx = i18n.tsx._hata._customSettings;
 const generalCopy = copy._general;
 const fontCopy = copy._font;
 const uiCopy = copy._ui;
+// Hataskey fork: ハタキュ表示のON/OFF(プロフィール同期)。
+const useHatakyuIllustrations = prefer.model('hataBranding.useHatakyu');
 const visualCopy = copy._visual;
 const hataskCopy = copy._hatask;
 const hatadyCopy = copy._hatady;
@@ -420,16 +439,18 @@ const otherCopy = copy._other;
 //   - accessibility タブは「その他」にリネームし、天気エフェクトなど余ったものだけ残す
 //   - 見た目に関わらない設定 (directProfile / postFormVisibilityBorder 等) は general に移動
 // preferences のキー自体は変更しないため、既存ユーザーの設定は移動先タブでもそのまま保持される。
-const categories = [
-    { id: 'general', icon: 'ti ti-flag', label: copy.categoryGeneral },
-    { id: 'font', icon: 'ti ti-typography', label: copy.categoryFont },
-    { id: 'glassUi', icon: 'ti ti-layout-dashboard', label: 'UI' },
-    { id: 'visual', icon: 'ti ti-palette', label: copy.categoryVisual },
-    { id: 'hatask', icon: 'ti ti-checklist', label: 'Hatask' },
-    { id: 'hatady', icon: 'ti ti-book-2', label: 'Hatady' },
-    { id: 'mascot', icon: 'ti ti-mood-smile', label: copy.categoryMascot },
+// Hataskey fork: 各カテゴリタブにハタキュイラストを割り当てる。
+//   ⚠️地震ビューア(earthquake)は地震・津波情報機能に触れるため対象外(icon のみ・テンプレート側でも明示除外)。
+const categories: { id: string; icon: string; label: string; hatakyuAsset?: HatakyuAssetKey }[] = [
+    { id: 'general', icon: 'ti ti-flag', label: copy.categoryGeneral, hatakyuAsset: 'wrench' },
+    { id: 'font', icon: 'ti ti-typography', label: copy.categoryFont, hatakyuAsset: 'readingBook' },
+    { id: 'glassUi', icon: 'ti ti-layout-dashboard', label: 'UI', hatakyuAsset: 'computerChat' },
+    { id: 'visual', icon: 'ti ti-palette', label: copy.categoryVisual, hatakyuAsset: 'stargazing' },
+    { id: 'hatask', icon: 'ti ti-checklist', label: 'Hatask', hatakyuAsset: 'checkingTime' },
+    { id: 'hatady', icon: 'ti ti-book-2', label: 'Hatady', hatakyuAsset: 'readingBook' },
+    { id: 'mascot', icon: 'ti ti-mood-smile', label: copy.categoryMascot, hatakyuAsset: 'dogPawUp' },
     { id: 'earthquake', icon: 'ti ti-activity', label: '地震ビューア' },
-    { id: 'accessibility', icon: 'ti ti-dots', label: copy.categoryOther },
+    { id: 'accessibility', icon: 'ti ti-dots', label: copy.categoryOther, hatakyuAsset: 'umbrellaRain' },
 ];
 const activeCat = ref('general');
 

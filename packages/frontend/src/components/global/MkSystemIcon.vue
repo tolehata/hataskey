@@ -4,7 +4,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 
 <template>
-<svg v-if="type === 'info'" :class="[$style.icon, $style.info]" viewBox="0 0 160 160">
+<!-- Hataskey fork: ！や i などの記号アイコンをハタキュ立ち絵に差し替える。
+     ⚠️'waiting' は回転し続けること自体が「処理中」の意味を持つので、立ち絵には替えず従来のスピナーのまま。
+     ⚠️利用者がハタキュ表示をOFFにすると hatakyuAsset が null になり、以下の従来SVGへそのまま戻る。
+     ⚠️寸法は呼び出し側がCSSで決めるため、:size は属性(=CSSに負ける)としてのみ効く既定値。 -->
+<MkHatakyuIllustration v-if="hatakyuAsset != null" :asset="hatakyuAsset" :size="45"/>
+<svg v-else-if="type === 'info'" :class="[$style.icon, $style.info]" viewBox="0 0 160 160">
 	<path d="M80,108L80,72" style="--l:37;" :class="[$style.line, $style.animLine]"/>
 	<path d="M80,52L80,52" :class="[$style.line, $style.animFade]"/>
 	<circle cx="80" cy="80" r="56" style="--l:350;" :class="[$style.line, $style.animCircle]"/>
@@ -35,11 +40,29 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import {} from 'vue';
+import { computed } from 'vue';
+import type { HatakyuAssetKey } from '@/utility/hatakyu-assets.js';
+import MkHatakyuIllustration from '@/components/MkHatakyuIllustration.vue';
+import { useHatakyuBranding } from '@/utility/hatakyu-assets.js';
 
 const props = defineProps<{
 	type: 'info' | 'question' | 'success' | 'warn' | 'error' | 'waiting' | 'blocked';
 }>();
+
+// Hataskey fork: 記号アイコンに対応するハタキュ立ち絵。'waiting' は意図的に持たせない。
+const HATAKYU_BY_TYPE = {
+	info: 'chatting',
+	question: 'questioning',
+	success: 'treasureFound',
+	warn: 'surprised',
+	error: 'overwhelmed',
+	blocked: 'refusing',
+} as const satisfies Partial<Record<typeof props.type, HatakyuAssetKey>>;
+
+const hatakyuAsset = computed<HatakyuAssetKey | null>(() => {
+	if (!useHatakyuBranding()) return null;
+	return props.type in HATAKYU_BY_TYPE ? HATAKYU_BY_TYPE[props.type as keyof typeof HATAKYU_BY_TYPE] : null;
+});
 </script>
 
 <style lang="scss" module>

@@ -6,7 +6,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 <template>
 <SearchMarker path="/settings/mute-block" :label="i18n.ts.muteAndBlock" icon="ti ti-ban" :keywords="['mute', 'block']">
 	<div class="_gaps_m">
-		<MkFeatureBanner icon="/fluent-emoji/1f6ab.png" color="#ff2600">
+		<MkFeatureBanner :icon="brandedIconUrl('refusing', '/fluent-emoji/1f6ab.png')" color="#ff2600">
 			<SearchText>{{ i18n.ts._settings.muteAndBlockBanner }}</SearchText>
 		</MkFeatureBanner>
 
@@ -190,6 +190,7 @@ import MkFolder from '@/components/MkFolder.vue';
 import MkSwitch from '@/components/MkSwitch.vue';
 import { prefer } from '@/preferences.js';
 import MkFeatureBanner from '@/components/MkFeatureBanner.vue';
+import { brandedIconUrl } from '@/utility/hatakyu-assets.js';
 import { Paginator } from '@/utility/paginator.js';
 import { suggestReload } from '@/utility/reload-suggest.js';
 

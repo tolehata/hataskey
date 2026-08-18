@@ -26,7 +26,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<!-- ステップ1: 分岐選択 -->
 			<div v-if="step === 'branch'" key="branch" :class="$style.container">
 				<div :class="$style.branchMessage">
-					<i class="ti ti-user-plus" :class="$style.branchIcon"></i>
+					<MkHatakyuIllustration v-if="useHatakyuBranding()" asset="waving" :size="72" style="margin: 0 auto;"/><i v-else class="ti ti-user-plus" :class="$style.branchIcon"></i>
 					<p>{{ copy.haveInviteCode }}</p>
 				</div>
 				<div :class="$style.branchButtons">
@@ -56,7 +56,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<!-- ステップ3: 申請完了メッセージ -->
 			<div v-else-if="step === 'applicationComplete'" key="complete" :class="$style.container">
 				<div :class="$style.completeMessage">
-					<i class="ti ti-circle-check" :class="$style.completeIcon"></i>
+					<MkHatakyuIllustration v-if="useHatakyuBranding()" asset="treasureFound" :size="72" style="margin: 0 auto;"/><i v-else class="ti ti-circle-check" :class="$style.completeIcon"></i>
 					<h3>{{ copy.applicationComplete }}</h3>
 					<p>{{ copy.applicationCompleteDescription }}</p>
 					<div :class="$style.notice">
@@ -84,6 +84,8 @@ import XServerRules from '@/components/MkSignupDialog.rules.vue';
 import MkModalWindow from '@/components/MkModalWindow.vue';
 import MkButton from '@/components/MkButton.vue';
 import MkRegistrationApplication from '@/components/MkRegistrationApplication.vue';
+import MkHatakyuIllustration from '@/components/MkHatakyuIllustration.vue';
+import { useHatakyuBranding } from '@/utility/hatakyu-assets.js';
 import { i18n } from '@/i18n.js';
 
 const props = withDefaults(defineProps<{

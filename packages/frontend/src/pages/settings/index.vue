@@ -25,7 +25,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 								</div>
 							</MkA>
 							<MkA :to="'/settings/hata-custom'" :class="[$style.htkHataBtn, { [$style.htkHataBtnActive]: currentPage?.route.name === 'hata-custom' }]">
-								<i class="ti ti-flag"></i>
+								<!-- Hataskey fork: Hataskey独自機能入口だけハタキュイラスト(treasureFound)にして目立たせる。
+								     ⚠️利用者がハタキュ表示をOFFにしたときは元の Tabler アイコンへ戻す。 -->
+								<MkHatakyuIllustration v-if="useHatakyuBranding()" asset="treasureFound" :size="28"/>
+								<i v-else class="ti ti-flag"></i>
 								<span>{{ i18n.ts._hata._common.customFeatures }}</span>
 							</MkA>
 						</div>
@@ -50,6 +53,8 @@ import type { SuperMenuDef } from '@/components/MkSuperMenu.vue';
 import { i18n } from '@/i18n.js';
 import MkInfo from '@/components/MkInfo.vue';
 import MkSuperMenu from '@/components/MkSuperMenu.vue';
+import MkHatakyuIllustration from '@/components/MkHatakyuIllustration.vue';
+import { useHatakyuBranding } from '@/utility/hatakyu-assets.js';
 import { $i } from '@/i.js';
 import { clearCache } from '@/utility/clear-cache.js';
 import { instance } from '@/instance.js';
@@ -88,24 +93,32 @@ function skipAutoBackup() {
 	store.set('showPreferencesAutoCloudBackupSuggestion', false);
 }
 
+// Hataskey fork: メニュー項目にハタキュイラストを割り当てる。
+//   icon (Tabler) は検索インデックス等で使われている可能性があるため残したまま、
+//   表示用の hatakyuAsset だけを追加する(MkSuperMenu 側で hatakyuAsset 優先描画)。
+//   即時操作・破壊的操作の項目(プロフィール/設定プロファイル/キャッシュ削除/ログアウト/全端末ログアウト)には付けない。
 const menuDef = computed<SuperMenuDef[]>(() => [{
 	items: [{
 		icon: 'ti ti-lock-open',
+		hatakyuAsset: 'showingKey',
 		text: i18n.ts.privacy,
 		to: '/settings/privacy',
 		active: currentPage.value?.route.name === 'privacy',
 	}, {
 		icon: 'ti ti-bell',
+		hatakyuAsset: 'waving',
 		text: i18n.ts.notifications,
 		to: '/settings/notifications',
 		active: currentPage.value?.route.name === 'notifications',
 	}, {
 		icon: 'ti ti-mail',
+		hatakyuAsset: 'reviewingDocuments',
 		text: i18n.ts.email,
 		to: '/settings/email',
 		active: currentPage.value?.route.name === 'email',
 	}, {
 		icon: 'ti ti-lock',
+		hatakyuAsset: 'showingId',
 		text: i18n.ts.security,
 		to: '/settings/security',
 		active: currentPage.value?.route.name === 'security',
@@ -113,26 +126,31 @@ const menuDef = computed<SuperMenuDef[]>(() => [{
 }, {
 	items: [{
 		icon: 'ti ti-adjustments',
+		hatakyuAsset: 'wrench',
 		text: i18n.ts.preferences,
 		to: '/settings/preferences',
 		active: currentPage.value?.route.name === 'preferences',
 	}, {
 		icon: 'ti ti-palette',
+		hatakyuAsset: 'stargazing',
 		text: i18n.ts.theme,
 		to: '/settings/theme',
 		active: currentPage.value?.route.name === 'theme',
 	}, {
 		icon: 'ti ti-mood-happy',
+		hatakyuAsset: 'heartHands',
 		text: i18n.ts.emojiPalette,
 		to: '/settings/emoji-palette',
 		active: currentPage.value?.route.name === 'emoji-palette',
 	}, {
 		icon: 'ti ti-music',
+		hatakyuAsset: 'chatting',
 		text: i18n.ts.sounds,
 		to: '/settings/sounds',
 		active: currentPage.value?.route.name === 'sounds',
 	}, {
 		icon: 'ti ti-plug',
+		hatakyuAsset: 'wrenchAlt',
 		text: i18n.ts.plugins,
 		to: '/settings/plugin',
 		active: currentPage.value?.route.name === 'plugin',
@@ -140,26 +158,31 @@ const menuDef = computed<SuperMenuDef[]>(() => [{
 }, {
 	items: [{
 		icon: 'ti ti-cloud',
+		hatakyuAsset: 'packingBox',
 		text: i18n.ts.drive,
 		to: '/settings/drive',
 		active: currentPage.value?.route.name === 'drive',
 	}, {
 		icon: 'ti ti-ban',
+		hatakyuAsset: 'refusing',
 		text: i18n.ts.muteAndBlock,
 		to: '/settings/mute-block',
 		active: currentPage.value?.route.name === 'mute-block',
 	}, {
 		icon: 'ti ti-link',
+		hatakyuAsset: 'computerChat',
 		text: i18n.ts._settings.serviceConnection,
 		to: '/settings/connect',
 		active: currentPage.value?.route.name === 'connect',
 	}, {
 		icon: 'ti ti-package',
+		hatakyuAsset: 'unpackingBox',
 		text: i18n.ts._settings.accountData,
 		to: '/settings/account-data',
 		active: currentPage.value?.route.name === 'account-data',
 	}, {
 		icon: 'ti ti-dots',
+		hatakyuAsset: 'questioning',
 		text: i18n.ts.other,
 		to: '/settings/other',
 		active: currentPage.value?.route.name === 'other',

@@ -210,6 +210,8 @@ async function deleteAccount() {
 		const { canceled } = await os.confirm({
 			type: 'warning',
 			text: i18n.ts.deleteAccountConfirm,
+			// Hataskey fork: アカウント削除の重さに合わせた立ち絵
+			hatakyuAsset: 'bowDeep',
 		});
 		if (canceled) return;
 	}
@@ -224,6 +226,8 @@ async function deleteAccount() {
 
 	await os.alert({
 		title: i18n.ts._accountDelete.started,
+		// Hataskey fork: 削除開始後の待機案内に合わせた立ち絵
+		hatakyuAsset: 'loadingWait',
 	});
 
 	await signout();
@@ -253,6 +257,8 @@ async function truncateAccount() {
 		const { canceled } = await os.confirm({
 			type: 'warning',
 			text: i18n.ts.truncateAccountConfirm,
+			// Hataskey fork: アカウント整理（データ整理）のイメージに合わせた立ち絵
+			hatakyuAsset: 'packingBox',
 		});
 		if (canceled) return;
 	}
@@ -267,6 +273,8 @@ async function truncateAccount() {
 
 	await os.alert({
 		title: i18n.ts._accountTruncate.started,
+		// Hataskey fork: 整理開始後の待機案内に合わせた立ち絵
+		hatakyuAsset: 'loadingWait',
 	});
 }
 

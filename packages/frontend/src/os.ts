@@ -15,6 +15,8 @@ import type { MenuItem } from '@/types/menu.js';
 import type { PostFormProps } from '@/types/post-form.js';
 import type { UploaderFeatures } from '@/composables/use-uploader.js';
 import type { MkSelectItem, OptionValue } from '@/components/MkSelect.vue';
+// Hataskey fork: alert/confirm から MkDialog へ hatakyuAsset を型付きで渡すための参照
+import type { HatakyuAssetKey } from '@/utility/hatakyu-assets.js';
 import type MkRoleSelectDialog_TypeReferenceOnly from '@/components/MkRoleSelectDialog.vue';
 import type MkEmojiPickerDialog_TypeReferenceOnly from '@/components/MkEmojiPickerDialog.vue';
 import { misskeyApi } from '@/utility/misskey-api.js';
@@ -267,6 +269,8 @@ export function alert(props: {
 	title?: string;
 	text?: string;
 	caption?: string | null;
+	// Hataskey fork: MkDialog へそのまま popup() で渡るだけなので型追加のみで配線不要
+	hatakyuAsset?: HatakyuAssetKey;
 }): Promise<void> {
 	return new Promise(resolve => {
 		const { dispose } = popup(MkDialog, props, {
@@ -285,6 +289,8 @@ export function confirm(props: {
 	caption?: string | null;
 	okText?: string;
 	cancelText?: string;
+	// Hataskey fork: MkDialog へそのまま popup() で渡るだけなので型追加のみで配線不要
+	hatakyuAsset?: HatakyuAssetKey;
 }): Promise<{ canceled: boolean }> {
 	return new Promise(resolve => {
 		const { dispose } = popup(MkDialog, {

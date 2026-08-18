@@ -31,7 +31,8 @@ withDefaults(defineProps<{
 .img {
 	display: block;
 	margin: 0 auto;
-	width: 40px;
+	/* Hataskey fork: 絵文字1個と違い立ち絵は40pxだと絵柄が潰れるため拡大する。 */
+	width: 64px;
 	aspect-ratio: 1;
 }
 

@@ -6,7 +6,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 <template>
 <SearchMarker path="/settings/plugin" :label="i18n.ts.plugins" :keywords="['plugin', 'addon', 'extension']" icon="ti ti-plug">
 	<div class="_gaps_m">
-		<MkFeatureBanner icon="/fluent-emoji/1f50c.png" color="#ffbb00">
+		<MkFeatureBanner :icon="brandedIconUrl('wrenchAlt', '/fluent-emoji/1f50c.png')" color="#ffbb00">
 			<SearchText>{{ i18n.ts._settings.pluginBanner }}</SearchText>
 		</MkFeatureBanner>
 
@@ -106,6 +106,7 @@ import MkCode from '@/components/MkCode.vue';
 import MkFolder from '@/components/MkFolder.vue';
 import MkKeyValue from '@/components/MkKeyValue.vue';
 import MkFeatureBanner from '@/components/MkFeatureBanner.vue';
+import { brandedIconUrl } from '@/utility/hatakyu-assets.js';
 import MkInfo from '@/components/MkInfo.vue';
 import { i18n } from '@/i18n.js';
 import { definePage } from '@/page.js';
