@@ -1300,7 +1300,7 @@ export interface Locale extends ILocale {
      */
     "flagAsBotDescription": string;
     /**
-     * 旗鯖のユーザーパネルとプロフィールに表示する実績を選べます。他サーバーへは送信されません。
+     * Hataskeyのユーザーパネルとプロフィールに表示する実績を選べます。他サーバーへは送信されません。
      */
     "profileBadgeVisibilityDescription": string;
     /**
@@ -8612,7 +8612,7 @@ export interface Locale extends ILocale {
                  */
                 "description": string;
                 /**
-                 * Hataskeyを使ってくださりありがとうございます! by 旗鯖fork開発者
+                 * Hataskeyを使ってくださりありがとうございます! by Hataskey fork開発者
                  */
                 "flavor": string;
             };
@@ -16127,7 +16127,7 @@ export interface Locale extends ILocale {
         };
         "_docs": {
             /**
-             * 旗鯖機能解説
+             * Hataskey機能解説
              */
             "pageTitle": string;
             /**
@@ -16300,7 +16300,7 @@ export interface Locale extends ILocale {
                  */
                 "gardenTitle": string;
                 /**
-                 * 旗鯖を使っている時間に応じて、お花が少しずつ育ちます。咲いた花には名前を付けられ、これまでのお花の一覧に加わります。<br><br>ホームのウィジェットでも、育成中の花の進み具合と咲いた花をコンパクトに確認できます。
+                 * Hataskeyを使っている時間に応じて、お花が少しずつ育ちます。咲いた花には名前を付けられ、これまでのお花の一覧に加わります。<br><br>ホームのウィジェットでも、育成中の花の進み具合と咲いた花をコンパクトに確認できます。
                  */
                 "gardenBody": string;
                 /**
@@ -16320,7 +16320,7 @@ export interface Locale extends ILocale {
                  */
                 "hataskEyeTitle": string;
                 /**
-                 * 旗鯖の利用状況をもとに、ひとことメッセージを表示します。Hataskのホームにも置け、選ぶと詳しい画面へ移動します。
+                 * Hataskeyの利用状況をもとに、ひとことメッセージを表示します。Hataskのホームにも置け、選ぶと詳しい画面へ移動します。
                  */
                 "hataskEyeBody": string;
                 /**
@@ -16340,7 +16340,7 @@ export interface Locale extends ILocale {
                  */
                 "hataskAppearanceLink": string;
                 /**
-                 * 初回の案内または旗鯖独自設定から変更できます
+                 * 初回の案内またはHataskey独自設定から変更できます
                  */
                 "hataskAppearanceTip1": string;
                 /**
@@ -16424,7 +16424,7 @@ export interface Locale extends ILocale {
                  */
                 "externalOverviewTitle": string;
                 /**
-                 * 別の旗鯖アカウントや「さめすきーとチョリソリング」のアカウントを今見ている旗鯖へつなぎ、接続先の投稿を読んだり、投稿・返信・リアクション・リノートをしたりできます。<br><br>連携時は接続先の確認画面で許可する内容を確かめます。接続先の利用規約も事前にご確認ください。
+                 * 別のHataskeyアカウントや「さめすきーとチョリソリング」のアカウントを今見ているHataskeyへつなぎ、接続先の投稿を読んだり、投稿・返信・リアクション・リノートをしたりできます。<br><br>連携時は接続先の確認画面で許可する内容を確かめます。接続先の利用規約も事前にご確認ください。
                  */
                 "externalOverviewBody": string;
                 /**
@@ -16472,7 +16472,7 @@ export interface Locale extends ILocale {
                  */
                 "externalNotificationsTitle": string;
                 /**
-                 * 連携先で届いた通知を旗鯖でも受け取れます。新しい通知は画面の端に表示され、専用ページでまとめて確認できます。
+                 * 連携先で届いた通知をHataskeyでも受け取れます。新しい通知は画面の端に表示され、専用ページでまとめて確認できます。
                  */
                 "externalNotificationsBody": string;
                 /**
@@ -16480,11 +16480,11 @@ export interface Locale extends ILocale {
                  */
                 "externalNotificationsLink": string;
                 /**
-                 * 旗鯖独自機能の表示言語
+                 * Hataskey独自機能の表示言語
                  */
                 "languageSupportTitle": string;
                 /**
-                 * 旗鯖独自機能は、日本語に加えて英語と中国語（簡体字）で表示できます。Hatadyを含む対応機能は、Hataskey本体の表示言語に従ってまとめて切り替わります。<br><br>自分で入力した投稿・記録・名前は自動翻訳されません。花常と地震・津波情報は、引き続き日本語のみです。
+                 * Hataskey独自機能は、日本語に加えて英語と中国語（簡体字）で表示できます。Hatadyを含む対応機能は、Hataskey本体の表示言語に従ってまとめて切り替わります。<br><br>自分で入力した投稿・記録・名前は自動翻訳されません。花常と地震・津波情報は、引き続き日本語のみです。
                  */
                 "languageSupportBody": string;
                 /**
@@ -16504,7 +16504,7 @@ export interface Locale extends ILocale {
                  */
                 "chooseUiTitle": string;
                 /**
-                 * 標準の画面、旗鯖独自のHatasabaUI、複数の列を並べるデッキ画面から選べます。HatasabaUIはスマートフォンでも操作しやすい構成です。
+                 * 標準の画面、Hataskey独自のHatasabaUI、複数の列を並べるデッキ画面から選べます。HatasabaUIはスマートフォンでも操作しやすい構成です。
                  */
                 "chooseUiBody": string;
                 /**
@@ -16516,7 +16516,7 @@ export interface Locale extends ILocale {
                  */
                 "hatasabaUiTitle": string;
                 /**
-                 * 投稿を見ることを中心にした旗鯖独自の画面です。上部の項目や左右スワイプで、ホーム・ローカル・グローバルなどを切り替えられます。スワイプで切り替えたくない場合は設定で止められます。<br><br>HatasabaUI 2の見た目もこの画面に統合されており、カードをすりガラス風にするか、透け具合をどの程度にするかを選べます。通常表示とデッキ表示の両方に反映されます。
+                 * 投稿を見ることを中心にしたHataskey独自の画面です。上部の項目や左右スワイプで、ホーム・ローカル・グローバルなどを切り替えられます。スワイプで切り替えたくない場合は設定で止められます。<br><br>HatasabaUI 2の見た目もこの画面に統合されており、カードをすりガラス風にするか、透け具合をどの程度にするかを選べます。通常表示とデッキ表示の両方に反映されます。
                  */
                 "hatasabaUiBody": string;
                 /**
@@ -16608,7 +16608,7 @@ export interface Locale extends ILocale {
                  */
                 "drawingToolTitle": string;
                 /**
-                 * 旗鯖の画面内で絵を描けます。線の太さ・色・透明さを変え、複数の層に分けて描いたり、直前の操作を取り消したりできます。スマートフォンの指操作にも対応しています。
+                 * Hataskeyの画面内で絵を描けます。線の太さ・色・透明さを変え、複数の層に分けて描いたり、直前の操作を取り消したりできます。スマートフォンの指操作にも対応しています。
                  */
                 "drawingToolBody": string;
                 /**
@@ -16652,11 +16652,11 @@ export interface Locale extends ILocale {
                  */
                 "hatalyzeTip2": string;
                 /**
-                 * 旗鯖ポータル
+                 * Hataskeyポータル
                  */
                 "portalTitle": string;
                 /**
-                 * 旗鯖の各種ツール、絵文字申請、ガイドラインなどへの入口をまとめたページです。
+                 * Hataskeyの各種ツール、絵文字申請、ガイドラインなどへの入口をまとめたページです。
                  */
                 "portalBody": string;
                 /**
@@ -16664,7 +16664,7 @@ export interface Locale extends ILocale {
                  */
                 "drawingButtonTitle": string;
                 /**
-                 * 投稿を書く画面からお絵かきツールを開き、描いた絵をそのまま添付できます。ボタンが不要な場合は旗鯖独自設定で隠せます。
+                 * 投稿を書く画面からお絵かきツールを開き、描いた絵をそのまま添付できます。ボタンが不要な場合はHataskey独自設定で隠せます。
                  */
                 "drawingButtonBody": string;
                 /**
@@ -16724,7 +16724,7 @@ export interface Locale extends ILocale {
                  */
                 "gamesOverviewTitle": string;
                 /**
-                 * 旗鯖のゲームをまとめたページです。各ゲームへの入口があり、対応するゲームでは記録をほかの利用者と比べられます。
+                 * Hataskeyのゲームをまとめたページです。各ゲームへの入口があり、対応するゲームでは記録をほかの利用者と比べられます。
                  */
                 "gamesOverviewBody": string;
                 /**
@@ -16772,7 +16772,7 @@ export interface Locale extends ILocale {
                  */
                 "whatsNewGuideTitle": string;
                 /**
-                 * 新しい版へ更新したあと、ログインして最初に旗鯖を開いたときに、主な新機能と変更点をまとめた案内が一度表示されます。<br><br>閉じたあとに読み返すときは、「もっと！」を開き、「ヘルプ」内の「直近の更新内容」を選んでください。
+                 * 新しい版へ更新したあと、ログインして最初にHataskeyを開いたときに、主な新機能と変更点をまとめた案内が一度表示されます。<br><br>閉じたあとに読み返すときは、「もっと！」を開き、「ヘルプ」内の「直近の更新内容」を選んでください。
                  */
                 "whatsNewGuideBody": string;
                 /**
@@ -16784,7 +16784,7 @@ export interface Locale extends ILocale {
                  */
                 "loginDaysAchievementsTitle": string;
                 /**
-                 * 旗鯖へログインした日数や、次の節目までの日数をHataskのホームで確認できます。
+                 * Hataskeyへログインした日数や、次の節目までの日数をHataskのホームで確認できます。
                  */
                 "loginDaysAchievementsBody": string;
                 /**
@@ -16904,7 +16904,7 @@ export interface Locale extends ILocale {
                  */
                 "hatafeedOverviewTitle": string;
                 /**
-                 * 旗鯖の不具合報告、要望、改善案、絵文字の申請をまとめて受け付ける場所です。投稿された話題は種類・状態・投稿者で絞り込み、返信やリアクションで話し合えます。特定の返信へ返事を付けたり、大切な返信や確認が必要な返信に印を付けたりもできます。<br><br>進行予定、お知らせ、絵文字申請も同じ画面から切り替えられます。自分の投稿への反応は通知で受け取れます。安全に関わる報告はスタッフだけが見られる場所で扱います。
+                 * Hataskeyの不具合報告、要望、改善案、絵文字の申請をまとめて受け付ける場所です。投稿された話題は種類・状態・投稿者で絞り込み、返信やリアクションで話し合えます。特定の返信へ返事を付けたり、大切な返信や確認が必要な返信に印を付けたりもできます。<br><br>進行予定、お知らせ、絵文字申請も同じ画面から切り替えられます。自分の投稿への反応は通知で受け取れます。安全に関わる報告はスタッフだけが見られる場所で扱います。
                  */
                 "hatafeedOverviewBody": string;
                 /**
@@ -18853,7 +18853,7 @@ export interface Locale extends ILocale {
              */
             "notRecommended": string;
             /**
-             * Misskey標準UI。旗鯖の独自カスタマイズと競合し、意図しない動作が出る場合があります
+             * Misskey標準UI。Hataskeyの独自カスタマイズと競合し、意図しない動作が出る場合があります
              */
             "misskeyDescription": string;
             /**
@@ -18877,7 +18877,7 @@ export interface Locale extends ILocale {
              */
             "switchConfirm": ParameterizedString<"ui">;
             /**
-             * このUIは非推奨です。旗鯖の独自カスタマイズと競合し、意図しない動作が発生する場合があります。あとで「HatasabaUI」に戻すこともできます。
+             * このUIは非推奨です。Hataskeyの独自カスタマイズと競合し、意図しない動作が発生する場合があります。あとで「HatasabaUI」に戻すこともできます。
              */
             "deprecatedWarning": string;
             /**
@@ -20303,6 +20303,18 @@ export interface Locale extends ILocale {
                  * 学習
                  */
                 "activityStudy": string;
+                /**
+                 * 表示する記録
+                 */
+                "logKindsLabel": string;
+                /**
+                 * 表示する記録が選ばれていません。
+                 */
+                "logKindsEmpty": string;
+                /**
+                 * すべて表示
+                 */
+                "showAllKinds": string;
                 /**
                  * 公開
                  */
@@ -22440,7 +22452,7 @@ export interface Locale extends ILocale {
                  */
                 "dataSync": string;
                 /**
-                 * お使いの旗鯖アカウントに紐づけて同期します。
+                 * お使いのHataskeyアカウントに紐づけて同期します。
                  */
                 "dataSyncDescription": string;
                 /**
@@ -22480,7 +22492,7 @@ export interface Locale extends ILocale {
                  */
                 "sendTest": string;
                 /**
-                 * 設定→通知→プッシュ通知を有効化 でプッシュ通知を有効にしないと、旗鯖が開かれていない状態で通知を受け取ることができません。
+                 * 設定→通知→プッシュ通知を有効化 でプッシュ通知を有効にしないと、Hataskeyが開かれていない状態で通知を受け取ることができません。
                  */
                 "pushNotificationDescription": string;
                 /**
@@ -22594,7 +22606,7 @@ export interface Locale extends ILocale {
                  */
                 "title": string;
                 /**
-                 * あなたの旗鯖プロフィールをデジタル通行証カードに
+                 * あなたのHataskeyプロフィールをデジタル通行証カードに
                  */
                 "subtitle": string;
                 /**
@@ -22630,7 +22642,7 @@ export interface Locale extends ILocale {
                  */
                 "cardPreview": string;
                 /**
-                 * 旗鯖 通行証
+                 * Hataskey 通行証
                  */
                 "passLabel": string;
                 /**
@@ -22860,7 +22872,7 @@ export interface Locale extends ILocale {
                  */
                 "serverRanking": string;
                 /**
-                 * 旗鯖アプリ
+                 * Hataskeyアプリ
                  */
                 "hataApps": string;
                 /**
@@ -23744,7 +23756,7 @@ export interface Locale extends ILocale {
                  */
                 "tutorialCatch": string;
                 /**
-                 * 旗鯖だけの便利機能をご紹介します
+                 * Hataskeyだけの便利機能をご紹介します
                  */
                 "tutorialIntro": string;
                 /**
@@ -23964,7 +23976,7 @@ export interface Locale extends ILocale {
                  */
                 "appWhatsNewShort": string;
                 /**
-                 * 旗鯖ポータル
+                 * Hataskeyポータル
                  */
                 "appPortal": string;
                 /**
@@ -23972,11 +23984,11 @@ export interface Locale extends ILocale {
                  */
                 "appPortalShort": string;
                 /**
-                 * 旗鯖設定
+                 * Hataskey設定
                  */
                 "appHataSettings": string;
                 /**
-                 * 旗鯖設定
+                 * Hataskey設定
                  */
                 "appHataSettingsShort": string;
                 /**
@@ -24221,7 +24233,7 @@ export interface Locale extends ILocale {
                  */
                 "categoryFeatureRequestDescription": string;
                 /**
-                 * 本家などの機能を旗鯖にも取り入れてほしい要望
+                 * 本家などの機能をHataskeyにも取り入れてほしい要望
                  */
                 "categoryAdoptionRequestDescription": string;
                 /**
@@ -24288,6 +24300,7 @@ export interface Locale extends ILocale {
                  * リジェクト
                  */
                 "emojiRejected": string;
+                "emojiHeld": string;
                 /**
                  * コメント
                  */
@@ -24332,6 +24345,7 @@ export interface Locale extends ILocale {
                  * 絵文字却下
                  */
                 "notificationEmojiRejected": string;
+                "notificationEmojiHeld": string;
                 /**
                  * 新しいコメントがあります。
                  */
@@ -24451,7 +24465,7 @@ export interface Locale extends ILocale {
                  */
                 "hideMutedReactions": string;
                 /**
-                 * ベータを卒業しました。設定は「旗鯖独自設定 → 旗鯖全体 → リアクション」にあります。
+                 * ベータを卒業しました。設定は「Hataskey独自設定 → Hataskey全体 → リアクション」にあります。
                  */
                 "hideMutedReactionsLocation": string;
             };
@@ -25022,6 +25036,8 @@ export interface Locale extends ILocale {
                  * 保留して次へ
                  */
                 "holdAndNext": string;
+                "holdReason": string;
+                "hold": string;
                 /**
                  * リジェクト
                  */
@@ -25789,6 +25805,7 @@ export interface Locale extends ILocale {
                  * 絵文字の申請がリジェクトされました。
                  */
                 "emojiRejected": string;
+                "emojiHeld": string;
                 /**
                  * 新しいコメントが来ています。
                  */
@@ -25917,7 +25934,7 @@ export interface Locale extends ILocale {
         };
         "_profileBadges": {
             /**
-             * 旗鯖の実績
+             * Hataskeyの実績
              */
             "ariaLabel": string;
             /**
@@ -26259,7 +26276,7 @@ export interface Locale extends ILocale {
              */
             "title": string;
             /**
-             * 旗鯖連携
+             * Hataskey連携
              */
             "miAuthApplicationName": string;
             /**
@@ -26447,13 +26464,13 @@ export interface Locale extends ILocale {
              */
             "clearCache": string;
             /**
-             * 旗鯖間アカウント連携
+             * Hataskeyサーバー間アカウント連携
              */
             "hataLinkTitle": string;
             /**
-             * お使いの別の旗鯖アカウントへ接続します。
+             * お使いの別のHataskeyアカウントへ接続します。
              *
-             * 旗鯖同士のご利用の場合は利用規約とプライバシーポリシーは旗鯖と同様の規約が適用されます。
+             * Hataskey同士のご利用の場合は利用規約とプライバシーポリシーはHataskeyと同様の規約が適用されます。
              */
             "hataLinkDescription": string;
             /**
@@ -26469,9 +26486,9 @@ export interface Locale extends ILocale {
              */
             "externalDisclaimerTitle": string;
             /**
-             * この機能を有効にして {host} にアクセスし、いかなる損害を被ったとしても旗鯖は責任を負いません。
+             * この機能を有効にして {host} にアクセスし、いかなる損害を被ったとしてもHataskeyは責任を負いません。
              *
-             * また、外部アカウントを使用し、外部サーバーに対して行った行為は外部サーバーの各種規約が適用され、旗鯖の利用規約・プライバシーポリシーの適用外となります。
+             * また、外部アカウントを使用し、外部サーバーに対して行った行為は外部サーバーの各種規約が適用され、Hataskeyの利用規約・プライバシーポリシーの適用外となります。
              *
              * 連携前に、接続先の各種利用規約をご確認ください。
              */
@@ -27345,7 +27362,6 @@ export interface Locale extends ILocale {
                 /**
                  * マイログ
                  */
-                "hatadyLog": string;
                 /**
                  * 見つける
                  */
@@ -27357,19 +27373,15 @@ export interface Locale extends ILocale {
                 /**
                  * 連続日数
                  */
-                "streakDays": string;
                 /**
                  * 4時間20分
                  */
-                "fourHoursTwentyMinutes": string;
                 /**
                  * 今週
                  */
-                "thisWeek": string;
                 /**
                  * 学習記録
                  */
-                "studyRecords": string;
                 /**
                  * 学習の記録
                  */
@@ -27377,11 +27389,9 @@ export interface Locale extends ILocale {
                 /**
                  * 45分 · 今日
                  */
-                "fortyFiveMinutesToday": string;
                 /**
                  * AUGUST
                  */
-                "august": string;
                 /**
                  * GARDEN
                  */
@@ -27389,7 +27399,6 @@ export interface Locale extends ILocale {
                 /**
                  * ひなぎく・78%
                  */
-                "daisyProgress": string;
                 /**
                  * ホーム
                  */
@@ -27417,31 +27426,24 @@ export interface Locale extends ILocale {
                 /**
                  * 今日はよく晴れましたね
                  */
-                "sampleOtherNote": string;
                 /**
                  * 散歩日和でした
                  */
-                "sampleOwnNote": string;
                 /**
                  * いまどうしてる？
                  */
-                "postPlaceholder": string;
                 /**
                  * 投稿詳細
                  */
-                "postDetails": string;
                 /**
                  * 投稿の情報
                  */
-                "postInformation": string;
                 /**
                  * 通知・検索・ウィジェットも表示
                  */
-                "sidepaneHint": string;
                 /**
                  * イシュー・会話を検索
                  */
-                "feedSearch": string;
                 /**
                  * イシュー
                  */
@@ -27453,7 +27455,6 @@ export interface Locale extends ILocale {
                 /**
                  * 申請管理
                  */
-                "applicationManagement": string;
                 /**
                  * 絵文字申請
                  */
@@ -27465,19 +27466,15 @@ export interface Locale extends ILocale {
                 /**
                  * スマホ表示を改善
                  */
-                "feedIssueMobile": string;
                 /**
                  * 絵文字を追加
                  */
-                "feedIssueEmoji": string;
                 /**
                  * 通知を見やすく
                  */
-                "feedIssueNotifications": string;
                 /**
                  * 受付中 · 2件の会話
                  */
-                "acceptingWithConversations": string;
                 /**
                  * ベータ機能を試す
                  */
@@ -27489,7 +27486,6 @@ export interface Locale extends ILocale {
                 /**
                  * ブラウザ内で実行
                  */
-                "runInBrowser": string;
                 /**
                  * 投稿前カウントダウン
                  */
@@ -27497,7 +27493,6 @@ export interface Locale extends ILocale {
                 /**
                  * 3 · 5 · 10 秒
                  */
-                "countdownSeconds": string;
                 /**
                  * プライベートチャンネル
                  */
@@ -27505,23 +27500,18 @@ export interface Locale extends ILocale {
                 /**
                  * 新規作成
                  */
-                "createNew": string;
                 /**
                  * 読書会の部屋
                  */
-                "bookClubRoom": string;
                 /**
                  * 許可されたメンバーだけが閲覧できます
                  */
-                "privateChannelDescription": string;
                 /**
                  * 招待中 2人
                  */
-                "invitingTwo": string;
                 /**
                  * 参加中 5人
                  */
-                "joinedFive": string;
                 /**
                  * 招待拒否 1人
                  */
@@ -27531,13 +27521,11 @@ export interface Locale extends ILocale {
                  */
                 "defaultProfile": string;
                 /**
-                 * 旗鯖ツール
+                 * Hataskeyツール
                  */
-                "hataTools": string;
                 /**
                  * 申請状況を確認
                  */
-                "checkApplicationStatus": string;
                 /**
                  * スタジオ設定
                  */
@@ -27545,7 +27533,6 @@ export interface Locale extends ILocale {
                 /**
                  * 選択中：HataFeed
                  */
-                "selectedHataFeed": string;
                 /**
                  * 配置
                  */
@@ -27553,7 +27540,6 @@ export interface Locale extends ILocale {
                 /**
                  * 色と形
                  */
-                "colorAndShape": string;
                 /**
                  * 例えば、アザラシ
                  */
@@ -27565,7 +27551,6 @@ export interface Locale extends ILocale {
                 /**
                  * 宴の阻止
                  */
-                "feastPrevented": string;
                 /**
                  * 育てたお花
                  */
@@ -27573,35 +27558,27 @@ export interface Locale extends ILocale {
                 /**
                  * 12回
                  */
-                "twelveTimes": string;
                 /**
                  * 4回
                  */
-                "fourTimes": string;
                 /**
                  * 36輪
                  */
-                "thirtySixFlowers": string;
                 /**
                  * はたさばさん
                  */
-                "hatasabaUser": string;
                 /**
                  * 今日もおつかれさまでした。
                  */
-                "sampleNote": string;
                 /**
                  * 外部アカウント連携
                  */
-                "externalAccounts": string;
                 /**
                  * さめすきーとチョリソリング
                  */
-                "sampleServerName": string;
                 /**
                  * 接続済み
                  */
-                "connected": string;
                 /**
                  * 管理
                  */
@@ -27609,15 +27586,12 @@ export interface Locale extends ILocale {
                 /**
                  * サーバーを追加
                  */
-                "addServer": string;
                 /**
                  * 対応サーバーから選択
                  */
-                "chooseSupportedServer": string;
                 /**
                  * セキュリティ
                  */
-                "security": string;
                 /**
                  * 二要素認証
                  */
@@ -27625,19 +27599,15 @@ export interface Locale extends ILocale {
                 /**
                  * 設定済み
                  */
-                "configured": string;
                 /**
                  * パスキー
                  */
-                "passkey": string;
                 /**
                  * 1件
                  */
-                "oneItem": string;
                 /**
                  * ログイン履歴
                  */
-                "loginHistory": string;
                 /**
                  * 開く
                  */
@@ -27675,25 +27645,20 @@ export interface Locale extends ILocale {
                  */
                 "languageSettings": string;
                 /**
-                 * 旗鯖独自機能も同じ言語で表示
+                 * Hataskey独自機能も同じ言語で表示
                  */
-                "languageFollowsMain": string;
                 /**
                  * 日本語
                  */
-                "languageJapanese": string;
                 /**
                  * English
                  */
-                "languageEnglish": string;
                 /**
                  * 简体中文
                  */
-                "languageChinese": string;
                 /**
                  * 選択中
                  */
-                "languageSelected": string;
                 /**
                  * 対応
                  */
@@ -27707,151 +27672,140 @@ export interface Locale extends ILocale {
                 /**
                  * Hatady（ハタディ）— 学習と読書の記録
                  */
-                "hatadyTitle": string;
+                "brandingTitle": string;
+                "brandingText": string;
+                "brandingLink": string;
+                "mobileFixText": string;
+                "mobileFixTitle": string;
+                "sideStudioFixLink": string;
+                "sideStudioFixText": string;
+                "sideStudioFixTitle": string;
+                "hatasabaHomeText": string;
+                "hatasabaHomeTitle": string;
+                "cardMakerLink": string;
+                "cardMakerText": string;
+                "cardMakerTitle": string;
+                "muteReactionLink": string;
+                "muteReactionText": string;
+                "muteReactionTitle": string;
+                "utageBadgeText": string;
+                "utageBadgeTitle": string;
+                "hatacordingFixLink": string;
+                "hatacordingFixText": string;
+                "hatacordingFixTitle": string;
+                "hatadyVisibilityText": string;
+                "hatadyVisibilityTitle": string;
+                "hatadyRecordLink": string;
+                "hatadyRecordText": string;
+                "hatadyRecordTitle": string;
                 /**
                  * 読んだ本や勉強したことを記録して、続けた日数や積み上げを振り返れる新しいツールです。本ごとのしおりと内容メモ、目標の設定、連続記録、横断検索、テキストでの書き出しに対応しています。記録の公開範囲は自分で選べ、通常表示では左上のボタンから前の画面へ戻れます。
                  */
-                "hatadyText": string;
                 /**
                  * Hatadyへ
                  */
-                "hatadyLink": string;
                 /**
                  * Hatask を全面リデザイン
                  */
-                "hataskTitle": string;
                 /**
                  * ホーム画面を「季」「花信」「刷」の3つのテーマから選べるようになりました。表示切替、HataFeed の通知タイル、地震・津波情報タイルにも対応しています。育てている花は画面を閉じている間やバックグラウンドでも経過時間に応じて育ち、進み具合と咲いた花をウィジェットで確認できます。ログイン中のプロフィールからデジタル通行証を作るカードメーカーもHatask内に追加しました。カードの二次元コードはサーバーアイコン付きのデザインになり、対応するiPhoneでは許可後に端末の動きでカード本体を傾けられます。
                  */
-                "hataskText": string;
                 /**
                  * Hataskへ
                  */
-                "hataskLink": string;
                 /**
                  * HataSNSCordUI — 会話型の高機能UI
                  */
-                "hatacordingTitle": string;
                 /**
-                 * タイムラインを会話のように読みながら、左ペインで表示先を選び、右ペインで投稿詳細・検索・通知・ウィジェットを同時に扱える新しいUIです。設定や旗鯖ツールを開いても左右のペインを保ち、このUIの中で操作を続けられます。リアクションやノートの変更もその場で反映され、スマートフォンでは左右の端から各ペインを呼び出せます。初回チュートリアル、端末ごとの並び替え、UI専用レートリミット表示にも対応しています。返信先のアバター表示、ダークテーマのサイズ選択、ポップアップ表示も安定化しました。
+                 * タイムラインを会話のように読みながら、左ペインで表示先を選び、右ペインで投稿詳細・検索・通知・ウィジェットを同時に扱える新しいUIです。設定やHataskeyツールを開いても左右のペインを保ち、このUIの中で操作を続けられます。リアクションやノートの変更もその場で反映され、スマートフォンでは左右の端から各ペインを呼び出せます。初回チュートリアル、端末ごとの並び替え、UI専用レートリミット表示にも対応しています。返信先のアバター表示、ダークテーマのサイズ選択、ポップアップ表示も安定化しました。
                  */
-                "hatacordingText": string;
                 /**
                  * HataSNSCordUIへ
                  */
-                "hatacordingLink": string;
                 /**
                  * HataFeedを全面リデザイン
                  */
-                "hatafeedTitle": string;
                 /**
                  * HataFeedを、イシューの検索・絞り込み・ロードマップ・通知をひと目で確認できる画面へ刷新しました。トップから絵文字を申請でき、スタッフは複数の申請を1件ずつ続けて確認できます。イシューは範囲と含める内容を選んで書き出せます。同じHataFeedの通知をまとめ、複数のHataFeedから届いた場合もひとまとまりで確認できるようになりました。Hatask、HataFeed、地震・津波、プライベートチャンネルのOS通知にも、内容と移動先を表示します。通知ウィジェットのフィルタを安定化し、今後追加される通知種別は設定中のフィルタへ自動で加えず、必要なものを選んで有効にできるようにしました。Botからの通知は通常の通知画面・ウィジェット・HatasabaUIデッキ・HataSNSCordUIで非表示にでき、HataSNSCordUIでは人間からの通知と分けてまとめます。
                  */
-                "hatafeedText": string;
                 /**
                  * HataSideStudio — サイドメニューを自分の形に
                  */
-                "sideStudioTitle": string;
                 /**
                  * 実際のサイドメニューを見ながら、ボタン・グループ・ウィジェットの並び、形、色、表示内容を端末ごとに編集できる新しいツールです。拡大時と縮小時を分けて作れ、複数のプロファイル、ドラッグ操作、元に戻す・やり直し、設定の書き出しと読み込みにも対応しています。ノートボタンも鉛筆・猫の肉球アイコン、色、グラデーションから設定できます。スマートフォンでも簡易タイムラインへ指で移動でき、上部の各操作を省略せず使えます。設定は端末内で処理され、サーバーや連合へ送信されません。
                  */
-                "sideStudioText": string;
                 /**
                  * HataSideStudioへ
                  */
-                "sideStudioLink": string;
                 /**
-                 * 旗鯖独自機能が3言語に対応
+                 * Hataskey独自機能が3言語に対応
                  */
-                "languageTitle": string;
                 /**
-                 * 旗鯖独自機能を、日本語・英語・中国語（簡体字）で利用できるようになりました。Hatadyを含む対応機能と「Hataskeyについて」・サーバー情報ページはHataskey本体の言語設定に従い、自分で入力した投稿・記録・名前は変わりません。表示言語が未設定だった既存のローカルアカウントは日本語を既定にし、既に選んだ言語は変更しません。花常と地震・津波情報は引き続き日本語のみです。
+                 * Hataskey独自機能を、日本語・英語・中国語（簡体字）で利用できるようになりました。Hatadyを含む対応機能と「Hataskeyについて」・サーバー情報ページはHataskey本体の言語設定に従い、自分で入力した投稿・記録・名前は変わりません。表示言語が未設定だった既存のローカルアカウントは日本語を既定にし、既に選んだ言語は変更しません。花常と地震・津波情報は引き続き日本語のみです。
                  */
-                "languageText": string;
                 /**
                  * 言語設定を開く
                  */
-                "languageLink": string;
                 /**
                  * プライベートチャンネルを作れます
                  */
-                "privateChannelTitle": string;
                 /**
                  * 管理者から許可された利用者は、メンバーだけが閲覧できるチャンネルを作れます。招待した相手は通知から参加するかを選び、承認して初めて参加します。管理画面では招待中・参加中・招待拒否を確認できます。
                  */
-                "privateChannelText": string;
                 /**
                  * チャンネルを作る
                  */
-                "privateChannelLink": string;
                 /**
                  * HatasabaUI 2（すりガラス調）
                  */
-                "hatasabaUiTitle": string;
                 /**
                  * ノートやカラムをすりガラス調にする新しい見た目を選べるようになりました。透過の強さはその場で確かめながら調整できます。デッキにはクリップ・お気に入りのカラム、カラムごとの再読み込みが増えています。時計の秒表示で通知などのカラムが点滅しないよう更新処理も安定化しました。タブを左右スワイプで切り替えない設定と、Bot投稿を隠す設定にも対応しました。iPhoneでは返信・リノート・リアクションなどのノート操作をタッチ補助表示が妨げないようにし、リアクション選択メニューが開かない場合がある問題も修正しました。
                  */
-                "hatasabaUiText": string;
                 /**
                  * 設定を開く
                  */
-                "settingsLink": string;
                 /**
                  * ベータ機能を試せます
                  */
-                "betaTitle": string;
                 /**
                  * ブラウザ内だけでC/C++を書いて実行できるプレイグラウンドと、投稿前に3・5・10秒の猶予を作れるカウントダウンを用意しました。どちらも端末内で動き、投稿前カウントダウンは取り消しや今すぐ投稿も選べます。
                  */
-                "betaText": string;
                 /**
                  * ベータ機能を見る
                  */
-                "betaLink": string;
                 /**
-                 * プロフィールに旗鯖の記録を表示
+                 * プロフィールにHataskeyの記録を表示
                  */
-                "profileTitle": string;
                 /**
                  * 自サーバーのプロフィールに、宴の成功回数・宴の阻止回数・育てた花の数を表示できるようになりました。自分のプロフィール設定から、項目ごとに表示を切り替えられます。
                  */
-                "profileText": string;
                 /**
                  * 画像ビューワーを刷新（Misskey本家由来）
                  */
-                "viewerTitle": string;
                 /**
                  * Misskey本家の更新を取り込み、ホイールでの拡大縮小、動画をそのまま開いての再生、投稿する前のプレビューに対応しました。
                  */
-                "viewerText": string;
                 /**
                  * ミュートしたユーザーのリアクションを隠せます
                  */
-                "muteTitle": string;
                 /**
                  * ミュートした人が付けたリアクションを、ノートから隠せるようになりました。他のユーザーの投稿に付いたものも対象です。隠したものがあるノートは、詳細画面に ⓘ が出ます。（管理者からのリアクションは隠せません。設定はこの端末にだけ保存されます）
                  */
-                "muteText": string;
                 /**
                  * 外部アカウント連携の接続先を整理
                  */
-                "externalTitle": string;
                 /**
                  * 旗池3丁目とシュリンピアへの連携を終了しました。以前この2サーバーを利用していた場合は、更新時にログイン情報と絵文字キャッシュを削除します。対象サーバーの投稿は、更新後はこのサーバーから閲覧できません。「les-requin」の表示名は「さめすきーとチョリソリング」に変更しました。
                  */
-                "externalText": string;
                 /**
                  * 外部アカウント連携を確認
                  */
-                "externalLink": string;
                 /**
                  * 安全性と土台の更新
                  */
-                "securityTitle": string;
                 /**
-                 * 土台を Misskey 2026.7.0 相当へ上げ、二要素認証・URLプレビュー・OAuth まわりの修正を取り込みました。旗鯖独自の機能についても点検し、他の人の記録が見えてしまう不具合などを修正しています。また、見られなくなったHataFeedの内容が通知へ残らないようにしました。
+                 * 土台を Misskey 2026.7.0 相当へ上げ、二要素認証・URLプレビュー・OAuth まわりの修正を取り込みました。Hataskey独自の機能についても点検し、他の人の記録が見えてしまう不具合などを修正しています。また、見られなくなったHataFeedの内容が通知へ残らないようにしました。
                  */
-                "securityText": string;
                 /**
                  * ここに載せたのは主な変更だけです。細かな修正を含むすべての変更点は、リリースノートをご確認ください。
                  */
@@ -27864,7 +27818,7 @@ export interface Locale extends ILocale {
         };
         "_common": {
             /**
-             * 旗鯖独自機能
+             * Hataskey独自機能
              */
             "customFeatures": string;
             /**
@@ -27872,7 +27826,7 @@ export interface Locale extends ILocale {
              */
             "externalNotifications": string;
             /**
-             * 旗鯖ポータル
+             * Hataskeyポータル
              */
             "portal": string;
             /**
@@ -27884,7 +27838,7 @@ export interface Locale extends ILocale {
              */
             "latestUpdates": string;
             /**
-             * 旗鯖機能解説
+             * Hataskey機能解説
              */
             "featureGuide": string;
             /**
@@ -28022,7 +27976,7 @@ export interface Locale extends ILocale {
              */
             "itemHatady": string;
             /**
-             * 旗鯖ポータル
+             * Hataskeyポータル
              */
             "itemPortal": string;
             /**
@@ -28190,7 +28144,7 @@ export interface Locale extends ILocale {
              */
             "widgetEditMode": string;
             /**
-             * 旗鯖では常時オンに固定されています
+             * Hataskeyでは常時オンに固定されています
              */
             "alwaysEnabled": string;
             /**
@@ -28336,7 +28290,7 @@ export interface Locale extends ILocale {
         };
         "_profileTip": {
             /**
-             * 旗鯖での実績を表示しています
+             * Hataskeyでの実績を表示しています
              */
             "title": string;
             /**
@@ -28575,7 +28529,7 @@ export interface Locale extends ILocale {
              * {weather}
              *
              * ノートの内容に合わせて、タイムラインに天気の演出を表示しています。
-             * 不要であれば、設定 → 旗鯖独自設定 → アクセシビリティ タブからいつでも無効にできます。
+             * 不要であれば、設定 → Hataskey独自設定 → アクセシビリティ タブからいつでも無効にできます。
              */
             "description": ParameterizedString<"weather">;
         };
@@ -29409,7 +29363,7 @@ export interface Locale extends ILocale {
                  */
                 "groupBasic": string;
                 /**
-                 * 旗鯖独自
+                 * Hataskey独自
                  */
                 "groupHata": string;
                 /**
@@ -29618,7 +29572,7 @@ export interface Locale extends ILocale {
                      */
                     "hatady": string;
                     /**
-                     * 旗鯖ポータル
+                     * Hataskeyポータル
                      */
                     "portal": string;
                     /**
@@ -30916,7 +30870,7 @@ export interface Locale extends ILocale {
                      */
                     "basic": string;
                     /**
-                     * 旗鯖独自
+                     * Hataskey独自
                      */
                     "hata": string;
                     /**
@@ -32240,7 +32194,7 @@ export interface Locale extends ILocale {
             "_utility": {
                 "categories": {
                     /**
-                     * 旗鯖全体
+                     * Hataskey全体
                      */
                     "generalLabel": string;
                     /**
@@ -32382,7 +32336,7 @@ export interface Locale extends ILocale {
             };
             "_window": {
                 /**
-                 * 旗鯖独自設定の入出力
+                 * Hataskey独自設定の入出力
                  */
                 "title": string;
                 /**
@@ -32478,7 +32432,7 @@ export interface Locale extends ILocale {
                  */
                 "formatVersionMismatch": ParameterizedString<"version">;
                 /**
-                 * 選んだ旗鯖独自設定を書き出しました
+                 * 選んだHataskey独自設定を書き出しました
                  */
                 "exportComplete": string;
                 /**
@@ -32560,7 +32514,7 @@ export interface Locale extends ILocale {
                  */
                 "cannotImportTitle": string;
                 /**
-                 * 旗鯖独自設定のファイルとして確認できませんでした。元のファイルを選び直してください。
+                 * Hataskey独自設定のファイルとして確認できませんでした。元のファイルを選び直してください。
                  */
                 "cannotImportDescription": string;
                 /**
@@ -32614,15 +32568,15 @@ export interface Locale extends ILocale {
         };
         "_customSettings": {
             /**
-             * 旗鯖独自機能
+             * Hataskey独自機能
              */
             "title": string;
             /**
-             * 旗鯖独自の機能設定です。カテゴリごとに設定を管理できます。
+             * Hataskey独自の機能設定です。カテゴリごとに設定を管理できます。
              */
             "banner": string;
             /**
-             * 旗鯖全体
+             * Hataskey全体
              */
             "categoryGeneral": string;
             /**
@@ -32647,11 +32601,11 @@ export interface Locale extends ILocale {
             "hiddenReactionCount": ParameterizedString<"count">;
             "_general": {
                 /**
-                 * 旗鯖独自設定の一括入出力
+                 * Hataskey独自設定の一括入出力
                  */
                 "transferTitle": string;
                 /**
-                 * この端末の設定を優先し、旗鯖独自ツールごとに選んでJSONファイルへ保存・復元できます。
+                 * この端末の設定を優先し、Hataskey独自ツールごとに選んでJSONファイルへ保存・復元できます。
                  */
                 "transferDescription": string;
                 /**
@@ -32865,7 +32819,7 @@ export interface Locale extends ILocale {
                  */
                 "presetDescriptionLine2": string;
                 /**
-                 * 旗鯖へようこそ！ The quick brown fox
+                 * Hataskeyへようこそ！ The quick brown fox
                  */
                 "samplePrimary": string;
                 /**
@@ -33010,6 +32964,9 @@ export interface Locale extends ILocale {
                  * します。
                  */
                 "hataSnsCordUiDescriptionSuffix": string;
+                "brandingSection": string;
+                "useHatakyu": string;
+                "useHatakyuDescription": string;
             };
             "_visual": {
                 /**

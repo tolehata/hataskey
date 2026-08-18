@@ -19,6 +19,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<span>{{ copy.releaseIdentity }}</span>
 			</div>
 			<div :class="$style.releaseVersion">{{ releaseVersion }}</div>
+			<!-- Hataskey fork: ヘッダー左上にハタキュ(treasureFound)を置く。version・storage key・
+			     queue・carousel には一切手を入れていない。⚠️寸法はCSSで決めるので :size は属性上の既定値。 -->
+			<MkHatakyuIllustration v-if="useHatakyuBranding()" asset="treasureFound" :size="96" :class="$style.headerIllustration"/>
 			<div :class="$style.headerText">
 				<h1 id="hata-whats-new-title" :class="$style.title">{{ copy.title }}</h1>
 				<p :class="$style.headline">{{ whatsNew.headline }}</p>
@@ -28,104 +31,107 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<div ref="itemsViewport" :class="$style.items" @scroll.passive="syncCarouselPosition">
 			<article v-for="(item, i) in whatsNew.items" :key="i" :class="$style.item">
 				<div :class="$style.preview" :data-preview="item.preview" aria-hidden="true">
-					<div v-if="item.preview === 'hatady'" :class="$style.studyMock">
-						<div :class="$style.studyHeader"><i class="ti ti-book-2"></i><b>Hatady</b><span>{{ copy.hatadyLog }}</span><span>{{ copy.discover }}</span><em>{{ copy.record }}</em></div>
-						<div :class="$style.studyStats"><b>🔥 12<small>{{ copy.streakDays }}</small></b><b>{{ copy.fourHoursTwentyMinutes }}<small>{{ copy.thisWeek }}</small></b><b>36<small>{{ copy.studyRecords }}</small></b></div>
-						<div :class="$style.studyContent">
-							<strong>{{ copy.studyHistory }}</strong>
-							<div :class="$style.studyTimeline"><i></i><span><b>TypeScript</b><small>{{ copy.fortyFiveMinutesToday }}</small></span></div>
-							<div :class="$style.studyHeat"><span v-for="n in 28" :key="n" :data-level="n % 5"></span></div>
+					<!-- Hataskey fork: 今回の更新に合わせて作り直したプレビュー。
+					     ⚠️文言は持たせない（翻訳漏れで空欄になる事故を作らないため）。形・色・配置だけで伝える。 -->
+					<div v-if="item.preview === 'branding'" :class="$style.brandingMock">
+						<div :class="$style.brandingBefore"><i class="ti ti-mood-smile"></i><i class="ti ti-alert-circle"></i><i class="ti ti-flag"></i></div>
+						<i :class="[$style.brandingArrow, 'ti', 'ti-arrow-right']"></i>
+						<div :class="$style.brandingAfter">
+							<MkHatakyuIllustration asset="waving" :size="44"/>
+							<MkHatakyuIllustration asset="overwhelmed" :size="56"/>
+							<MkHatakyuIllustration asset="treasureFound" :size="44"/>
 						</div>
 					</div>
 
-					<div v-else-if="item.preview === 'hatask'" :class="$style.hataskMock">
-						<div :class="$style.hataskHeader"><i class="ti ti-arrow-left"></i><b>Hatask</b><i class="ti ti-settings"></i></div>
-						<div :class="$style.hataskBody">
-							<div :class="$style.hataskCalendar"><strong>{{ copy.august }}</strong><span v-for="n in 14" :key="n" :data-marked="[3, 7, 11].includes(n)">{{ n }}</span></div>
-							<div :class="$style.flowerProgress"><span>{{ copy.garden }}</span><div><b>🌸</b></div><small>{{ copy.daisyProgress }}</small></div>
+					<div v-else-if="item.preview === 'hatadyRecord'" :class="$style.recordMock">
+						<div :class="$style.recordTabs">
+							<span data-active="true"><i class="ti ti-device-gamepad-2"></i></span>
+							<span><i class="ti ti-movie"></i></span>
+							<span><i class="ti ti-book-2"></i></span>
 						</div>
-						<div :class="$style.hataskTabs"><i class="ti ti-home"></i><i class="ti ti-calendar"></i><i class="ti ti-checkbox"></i><i class="ti ti-flower"></i></div>
-					</div>
-
-					<div v-else-if="item.preview === 'hatacording'" :class="$style.cordUiMock">
-						<aside><div><i class="ti ti-flag"></i><b>Hataskey</b></div><span data-active="true"><i class="ti ti-home"></i>{{ copy.home }}</span><span><i class="ti ti-world"></i>{{ copy.local }}</span><span><i class="ti ti-rocket"></i>{{ copy.social }}</span><em></em><span><i class="ti ti-search"></i>{{ copy.search }}</span><span><i class="ti ti-bell"></i>{{ copy.notifications }}</span></aside>
-						<main><header><b>{{ copy.home }}</b><small>{{ copy.onlineUsers }}</small><i></i></header><div data-side="left"><i></i><span><b>{{ copy.sampleOtherNote }}</b><small>🙂 3 / 🌸 2</small></span></div><div data-side="right"><span><b>{{ copy.sampleOwnNote }}</b><small>⭐ 1</small></span><i></i></div><footer><i class="ti ti-star"></i><span>{{ copy.postPlaceholder }}</span><b>↑</b></footer></main>
-						<section><header><b>{{ copy.postDetails }}</b><i class="ti ti-plus"></i></header><div><i></i><b>{{ copy.postInformation }}</b><span></span><span></span><small>{{ copy.sidepaneHint }}</small></div></section>
-					</div>
-
-					<div v-else-if="item.preview === 'hanaawase'" :class="$style.hanaawaseMock">
-						<div :class="$style.hanaHeading"><span>✿</span><b>花常</b><small>季節の花を合わせて、一年をめぐる。</small></div>
-						<div :class="$style.hanaMenu"><span><i>❀</i><b>続きから</b><small>八月・向日葵</small></span><span><i>帳</i><b>花仕事</b></span><span><i>花</i><b>花手帖</b></span></div>
-						<div :class="$style.hanaTown">街の様子 <i></i><i></i><i></i></div>
-					</div>
-
-					<div v-else-if="item.preview === 'ui'" :class="$style.uiMock">
-						<nav><i class="ti ti-home"></i><i class="ti ti-bell"></i><i class="ti ti-message-circle"></i><i class="ti ti-settings"></i></nav>
-						<div v-for="(title, column) in uiMockColumns" :key="title" :class="$style.uiColumn"><b>{{ title }}</b><span v-for="n in column + 2" :key="n"><i></i><em></em></span></div>
-					</div>
-
-					<div v-else-if="item.preview === 'hatafeed'" :class="$style.feedMock">
-						<div :class="$style.feedToolbar"><b>HataFeed</b><span><i class="ti ti-search"></i>{{ copy.feedSearch }}</span><i class="ti ti-bell"></i></div>
-						<div :class="$style.feedTabs"><b>{{ copy.issues }}</b><span>{{ copy.roadmap }}</span><span>{{ copy.applicationManagement }}</span></div>
-						<div :class="$style.feedActions"><span><i class="ti ti-mood-plus"></i>{{ copy.emojiRequest }}</span><span><i class="ti ti-pencil-plus"></i>{{ copy.newIssue }}</span></div>
-						<div v-for="(title, n) in feedMockIssues" :key="title" :class="$style.issueRow"><span :data-state="n + 1"></span><div><b>#{{ n + 24 }} {{ title }}</b><em>{{ copy.acceptingWithConversations }}</em></div><i class="ti ti-chevron-right"></i></div>
-					</div>
-
-					<div v-else-if="item.preview === 'beta'" :class="$style.betaMock">
-						<div :class="$style.betaTop"><i class="ti ti-flask-2"></i><b>{{ copy.tryBeta }}</b><span>BETA</span></div>
-						<div :class="$style.betaCards"><div><i class="ti ti-code"></i><span><b>{{ copy.cppPlayground }}</b><small>{{ copy.runInBrowser }}</small></span><i class="ti ti-chevron-right"></i></div><div><i class="ti ti-clock-play"></i><span><b>{{ copy.postCountdown }}</b><small>{{ copy.countdownSeconds }}</small></span><em>ON</em></div></div>
-					</div>
-
-					<div v-else-if="item.preview === 'privateChannel'" :class="$style.privateChannelMock">
-						<div :class="$style.privateChannelTop"><i class="ti ti-lock"></i><b>{{ copy.privateChannel }}</b><span>{{ copy.createNew }}</span></div>
-						<div :class="$style.privateChannelBody"><b>{{ copy.bookClubRoom }}</b><small>{{ copy.privateChannelDescription }}</small><div><span><i class="ti ti-clock"></i> {{ copy.invitingTwo }}</span><span><i class="ti ti-user-check"></i> {{ copy.joinedFive }}</span><span><i class="ti ti-circle-x"></i> {{ copy.declinedOne }}</span></div></div>
-					</div>
-
-					<div v-else-if="item.preview === 'sideStudio'" :class="$style.sideStudioMock">
-						<div :class="$style.sideStudioBar"><i class="ti ti-chevron-left"></i><b>HataSideStudio</b><span>{{ copy.defaultProfile }}</span><i class="ti ti-device-floppy"></i></div>
-						<div :class="$style.sideStudioBody">
-							<div :class="$style.sideStudioPreview">
-								<div :class="$style.sideStudioServer"><i class="ti ti-flag"></i><b>Hataskey</b><i class="ti ti-chevron-left"></i></div>
-								<div :class="$style.sideStudioGroup"><small>{{ copy.hataTools }}</small><span><i class="ti ti-eye"></i>Hatask</span><span><i class="ti ti-book-2"></i>Hatady</span><em><i class="ti ti-message-report"></i><b>HataFeed</b><small>{{ copy.checkApplicationStatus }}</small></em></div>
-							</div>
-							<div :class="$style.sideStudioInspector"><strong>{{ copy.studioSettings }}</strong><small>{{ copy.selectedHataFeed }}</small><div><b>{{ copy.placement }}</b><span></span><span></span></div><div><b>{{ copy.colorAndShape }}</b><i></i><i></i><i></i></div></div>
+						<div :class="$style.recordStats">
+							<b v-for="n in 4" :key="n"><i></i><u></u></b>
+						</div>
+						<div :class="$style.recordRows">
+							<span v-for="n in 3" :key="n"><em></em><u :data-level="n"></u></span>
 						</div>
 					</div>
 
-					<div v-else-if="item.preview === 'profile'" :class="$style.profileMock">
-						<div :class="$style.profileCover"></div><div :class="$style.profileAvatar"></div>
-						<div :class="$style.profileName"><b>{{ copy.exampleSeal }}</b><small>@example_seal</small></div>
-						<div :class="$style.profileBadges"><span><i class="ti ti-confetti"></i><b>{{ copy.feastSuccess }}</b>{{ copy.twelveTimes }}</span><span><i class="ti ti-shield"></i><b>{{ copy.feastPrevented }}</b>{{ copy.fourTimes }}</span><span><i class="ti ti-flower"></i><b>{{ copy.flowersGrown }}</b>{{ copy.thirtySixFlowers }}</span></div>
+					<div v-else-if="item.preview === 'hatadyVisibility'" :class="$style.visibilityMock">
+						<div :class="$style.visibilitySheet">
+							<span><i class="ti ti-world"></i><u></u></span>
+							<span data-active="true"><i class="ti ti-home"></i><u></u><i class="ti ti-check"></i></span>
+							<span><i class="ti ti-lock"></i><u></u></span>
+						</div>
+						<div :class="$style.visibilitySave"><i class="ti ti-device-floppy"></i></div>
 					</div>
 
-					<div v-else-if="item.preview === 'viewer'" :class="$style.viewerMock">
-						<div :class="$style.viewerTop"><span>1 / 3</span><i class="ti ti-download"></i><i class="ti ti-x"></i></div>
-						<div :class="$style.viewerImage"><i class="ti ti-photo"></i><span class="ti ti-chevron-left"></span><span class="ti ti-chevron-right"></span></div>
-						<div :class="$style.viewerControls"><i class="ti ti-minus"></i><span></span><i class="ti ti-plus"></i><i class="ti ti-picture-in-picture"></i></div>
-					</div>
-
-					<div v-else-if="item.preview === 'mute'" :class="$style.muteMock">
-						<div :class="$style.muteAvatar"></div><div :class="$style.muteBody"><b>{{ copy.hatasabaUser }} <small>@hatasaba</small></b><span>{{ copy.sampleNote }}</span><div><i>🙂 3</i><i data-muted>⭐</i><i>🌸 2</i></div></div><i class="ti ti-dots"></i>
-					</div>
-
-					<div v-else-if="item.preview === 'external'" :class="$style.externalMock">
-						<div :class="$style.settingsTitle"><i class="ti ti-chevron-left"></i><b>{{ copy.externalAccounts }}</b></div>
-						<div :class="$style.serverRow"><i class="ti ti-fish"></i><span><b>{{ copy.sampleServerName }}</b><small>{{ copy.connected }}</small></span><em>{{ copy.manage }}</em></div>
-						<div :class="$style.serverRow"><i class="ti ti-plus"></i><span><b>{{ copy.addServer }}</b><small>{{ copy.chooseSupportedServer }}</small></span><i class="ti ti-chevron-right"></i></div>
-					</div>
-
-					<div v-else-if="item.preview === 'language'" :class="$style.languageMock">
-						<div :class="$style.languageTitle"><i class="ti ti-language"></i><span><b>{{ copy.languageSettings }}</b><small>{{ copy.languageFollowsMain }}</small></span></div>
-						<div :class="$style.languageChoices">
-							<span data-active="true"><i class="ti ti-check"></i><b>{{ copy.languageJapanese }}</b><small>{{ copy.languageSelected }}</small></span>
-							<span><i>EN</i><b>{{ copy.languageEnglish }}</b><small>{{ copy.languageSupported }}</small></span>
-							<span><i>中</i><b>{{ copy.languageChinese }}</b><small>{{ copy.languageSupported }}</small></span>
+					<div v-else-if="item.preview === 'hatacordingFix'" :class="$style.cordFixMock">
+						<div :class="$style.cordFixNote">
+							<span :class="$style.cordFixAvatar"></span>
+							<span :class="$style.cordFixLines"><u></u><u></u></span>
+						</div>
+						<div :class="$style.cordFixSide">
+							<div :class="$style.cordFixPopup"><i class="ti ti-world"></i><i class="ti ti-home"></i><i class="ti ti-lock"></i></div>
+							<div :class="$style.cordFixGauge"></div>
 						</div>
 					</div>
 
-					<div v-else :class="$style.securityMock">
-						<div :class="$style.settingsTitle"><i class="ti ti-shield-check"></i><b>{{ copy.security }}</b></div>
-						<div :class="$style.securityRows"><span><i class="ti ti-lock"></i><b>{{ copy.twoFactorAuthentication }}</b><em>{{ copy.configured }}</em></span><span><i class="ti ti-key"></i><b>{{ copy.passkey }}</b><em>{{ copy.oneItem }}</em></span><span><i class="ti ti-device-mobile"></i><b>{{ copy.loginHistory }}</b><i class="ti ti-chevron-right"></i></span></div>
+					<div v-else-if="item.preview === 'utageBadge'" :class="$style.badgeMock">
+						<div :class="$style.badgeBanner"></div>
+						<div :class="$style.badgeAvatar"></div>
+						<div :class="$style.badgeName"><u></u><u></u></div>
+						<div :class="$style.badgeChips">
+							<em><i class="ti ti-award"></i></em>
+							<em><i class="ti ti-shield-half"></i></em>
+						</div>
+					</div>
+
+					<div v-else-if="item.preview === 'muteReaction'" :class="$style.muteFixMock">
+						<div :class="$style.muteNote">
+							<span :class="$style.muteAvatar"></span>
+							<span :class="$style.muteLines"><u></u><u></u></span>
+						</div>
+						<div :class="$style.muteChips">
+							<em></em>
+							<em data-hidden="true"><i class="ti ti-mood-off"></i></em>
+							<em></em>
+						</div>
+					</div>
+
+					<div v-else-if="item.preview === 'cardMaker'" :class="$style.cardMock">
+						<div :class="$style.cardTilt">
+							<span :class="$style.cardShine"></span>
+							<span :class="$style.cardPhoto"></span>
+							<span :class="$style.cardLines"><u></u><u></u></span>
+							<i :class="[$style.cardDeco, 'ti', 'ti-sparkles']"></i>
+						</div>
+					</div>
+
+					<div v-else-if="item.preview === 'hatasabaHome'" :class="$style.homeMock">
+						<div :class="$style.homePhone">
+							<div :class="$style.homeTabs"><span></span><span data-active="true"></span><span></span></div>
+							<div :class="$style.homeBody"><u v-for="n in 3" :key="n"></u></div>
+							<div :class="$style.homeNav"><i class="ti ti-home"></i></div>
+						</div>
+						<i :class="[$style.homeKeep, 'ti', 'ti-lock-check']"></i>
+					</div>
+
+					<div v-else-if="item.preview === 'sideStudioFix'" :class="$style.studioMock">
+						<div :class="$style.studioSide">
+							<span></span>
+							<span data-drop="true"></span>
+							<span data-dragging="true"><i class="ti ti-grip-vertical"></i></span>
+						</div>
+						<div :class="$style.studioMain"><u></u><u></u></div>
+					</div>
+
+					<div v-else :class="$style.mobileMock">
+						<div :class="$style.mobilePhone">
+							<div :class="$style.mobilePicker"><i class="ti ti-mood-smile"></i><i class="ti ti-heart"></i><i class="ti ti-thumb-up"></i></div>
+							<div :class="$style.mobileNote"><u></u><u></u></div>
+							<span :class="$style.mobileTouch"></span>
+						</div>
 					</div>
 				</div>
 
@@ -165,6 +171,8 @@ import { computed, ref, useTemplateRef } from 'vue';
 import type { HataWhatsNewItem } from '@/utility/hata-whats-new.js';
 import MkModal from '@/components/MkModal.vue';
 import MkButton from '@/components/MkButton.vue';
+import MkHatakyuIllustration from '@/components/MkHatakyuIllustration.vue';
+import { useHatakyuBranding } from '@/utility/hatakyu-assets.js';
 import { getHataWhatsNewDisplayVersion, HATA_WHATS_NEW as whatsNew } from '@/utility/hata-whats-new.js';
 import { mainRouter } from '@/router.js';
 import { ensureSignin } from '@/i.js';
@@ -175,8 +183,6 @@ import * as os from '@/os.js';
 
 const copy = i18n.ts._hata._whatsNew._window;
 const copyx = i18n.tsx._hata._whatsNew._window;
-const uiMockColumns = [copy.home, copy.local, copy.notifications];
-const feedMockIssues = [copy.feedIssueMobile, copy.feedIssueEmoji, copy.feedIssueNotifications];
 const modal = useTemplateRef('modal');
 const itemsViewport = useTemplateRef('itemsViewport');
 const carouselIndex = ref(0);
@@ -277,16 +283,37 @@ function openReleaseNotes() {
 
 .header {
 	display: grid;
-	grid-template-columns: 1fr auto;
+	/* Hataskey fork: 1列目をハタキュ用に足した(元は `1fr auto` の2列)。 */
+	grid-template-columns: auto 1fr auto;
 	gap: 14px 20px;
 	padding: 24px 24px 20px;
 	border-bottom: 1px solid var(--MI_THEME-divider);
 }
 
-.releaseIdentity { display: inline-flex; align-items: center; gap: 8px; font: 700 0.72em/1 ui-monospace, monospace; letter-spacing: .12em; opacity: .66; }
+/* Hataskey fork: 装飾イラストは独立した列に置き、両方の行(識別子/バージョン行 + タイトル行)に
+ * またがせて縦中央に配置する。既存の releaseIdentity/releaseVersion/headerText の配置・順序は変更しない。 */
+.headerIllustration {
+	grid-row: 1 / 3;
+	grid-column: 1;
+	align-self: start;
+	justify-self: start;
+	width: 96px;
+	height: auto;
+}
+
+@container (max-width: 520px) {
+	/* ⚠️狭い幅では隠さず縮める(ブランド表示なので消したくない)。 */
+	.headerIllustration {
+		width: 64px;
+	}
+}
+
+.releaseIdentity { grid-column: 2; align-self: center; display: inline-flex; align-items: center; gap: 8px; font: 700 0.72em/1 ui-monospace, monospace; letter-spacing: .12em; opacity: .66; }
 .releaseDot { width: 8px; height: 8px; border-radius: 50%; background: var(--MI_THEME-accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--MI_THEME-accent) 13%, transparent); }
-.releaseVersion { font: 600 .75em/1 ui-monospace, monospace; opacity: .58; }
-.headerText { grid-column: 1 / -1; min-width: 0; }
+.releaseVersion { grid-column: 3; align-self: center; font: 600 .75em/1 ui-monospace, monospace; opacity: .58; }
+/* Hataskey fork: 3列目(装飾イラスト)を追加したため、タイトル行がその列の下へ回り込んで
+ * 重ならないよう、既存の 1〜2列目までに収める。 */
+.headerText { grid-column: 2 / 4; min-width: 0; }
 .title { margin: 0; font-size: clamp(1.45em, 4cqw, 2em); line-height: 1.15; font-weight: 800; letter-spacing: -.025em; }
 
 .headline {
@@ -326,6 +353,7 @@ function openReleaseNotes() {
 .itemLink:hover { border-bottom-color: currentColor; }
 
 /* 実画面のデザイン言語を縮小して再現した各プレビュー。 */
+
 .studyMock { height: 100%; color: #443a2c; background: #f4ecdd; font-family: 'Zen Maru Gothic', system-ui, sans-serif; }
 .studyHeader { display: flex; height: 31px; align-items: center; gap: 8px; padding: 0 10px; border-bottom: 1px solid rgba(96,70,35,.13); background: #fffdf8; font-size: 7px; }.studyHeader > i { display: grid; width: 17px; height: 17px; place-items: center; border-radius: 5px; color: #fff; background: #d9824a; }.studyHeader > b { color: #d9824a; font-family: 'HataWhatsNewRighteous', cursive; font-size: 13px; font-weight: 400; letter-spacing: .03em; }.studyHeader > em { margin-left: auto; padding: 4px 7px; border-radius: 7px; color: #fff; background: #d9824a; font-style: normal; }
 .studyStats { display: grid; grid-template-columns: repeat(3, 1fr); margin: 7px 9px 5px; overflow: hidden; border: 1px solid rgba(96,70,35,.13); border-radius: 8px; background: #fffdf8; }.studyStats b { padding: 5px 7px; border-left: 1px solid rgba(96,70,35,.13); font-size: 8px; }.studyStats b:first-child { border: 0; }.studyStats small { display: block; margin-top: 1px; color: #a2937c; font-size: 5px; font-weight: 500; }
@@ -475,4 +503,107 @@ function openReleaseNotes() {
 	.footer { align-items: stretch; flex-direction: column; gap: 9px; }
 	.gotIt { width: 100%; }
 }
+/* ===== Hataskey fork: 今回の更新内容のプレビュー ===== */
+/* ⚠️枠は 148px 高。各モックは中身が溢れても隠れるよう overflow:hidden の中で組む。 */
+.brandingMock { height: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 0 10px; background: linear-gradient(135deg, #eef3ff, #f7eefc); }
+.brandingBefore { display: flex; flex-direction: column; gap: 6px; opacity: .38; }
+.brandingBefore > i { width: 24px; height: 24px; border-radius: 50%; display: grid; place-content: center; font-size: 13px; color: #5a6076; background: #fff; }
+.brandingArrow { color: #8a93b2; font-size: 14px; }
+.brandingAfter { display: flex; align-items: center; gap: 4px; }
+
+.recordMock { height: 100%; display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; background: #eef3fb; }
+.recordTabs { display: flex; gap: 5px; }
+.recordTabs > span { width: 30px; height: 20px; border-radius: 999px; display: grid; place-content: center; font-size: 12px; color: #7a89a6; background: #fff; }
+.recordTabs > span[data-active="true"] { color: #fff; background: #3f6fd0; }
+.recordStats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
+.recordStats > b { display: flex; flex-direction: column; gap: 3px; padding: 5px; border-radius: 7px; background: #fff; }
+.recordStats > b > i { width: 60%; height: 5px; border-radius: 999px; background: #cddaee; }
+.recordStats > b > u { width: 85%; height: 8px; border-radius: 3px; background: #3f6fd0; opacity: .8; }
+.recordRows { display: flex; flex-direction: column; gap: 4px; }
+.recordRows > span { display: flex; align-items: center; gap: 5px; }
+.recordRows > span > em { width: 16px; height: 8px; border-radius: 3px; background: #b6c8e4; }
+.recordRows > span > u { height: 8px; border-radius: 999px; background: #7fa3dd; }
+.recordRows > span > u[data-level="1"] { width: 62%; }
+.recordRows > span > u[data-level="2"] { width: 44%; }
+.recordRows > span > u[data-level="3"] { width: 72%; }
+
+.visibilityMock { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px; background: #edf4ee; }
+.visibilitySheet { width: 74%; display: flex; flex-direction: column; gap: 4px; padding: 7px; border-radius: 10px; background: #fff; box-shadow: 0 4px 12px rgba(60, 90, 65, .12); }
+.visibilitySheet > span { display: flex; align-items: center; gap: 6px; padding: 5px 7px; border-radius: 7px; font-size: 12px; color: #4d7a55; }
+.visibilitySheet > span > u { flex: 1; height: 6px; border-radius: 999px; background: #d8e6da; }
+.visibilitySheet > span[data-active="true"] { color: #fff; background: #4d7a55; }
+.visibilitySheet > span[data-active="true"] > u { background: rgba(255, 255, 255, .55); }
+.visibilitySave { width: 30px; height: 22px; border-radius: 999px; display: grid; place-content: center; font-size: 12px; color: #fff; background: #4d7a55; }
+
+.cordFixMock { height: 100%; display: flex; align-items: center; gap: 9px; padding: 0 12px; background: #262a35; }
+/* 宴の枠がノートの外側に付くようになったことを、外周のアクセント枠で示す。 */
+.cordFixNote { flex: 1; display: flex; gap: 7px; padding: 9px; border-radius: 11px; background: #333846; outline: 2px solid #ffc65c; outline-offset: 3px; }
+.cordFixAvatar { width: 22px; height: 22px; border-radius: 50%; flex: none; background: #5d6478; }
+.cordFixLines { flex: 1; display: flex; flex-direction: column; gap: 5px; justify-content: center; }
+.cordFixLines > u { height: 6px; border-radius: 999px; background: #565e73; }
+.cordFixLines > u:last-child { width: 60%; }
+.cordFixSide { display: flex; flex-direction: column; align-items: center; gap: 7px; }
+.cordFixPopup { display: flex; flex-direction: column; gap: 3px; padding: 5px; border-radius: 8px; background: #3c4353; color: #cdd6ea; font-size: 11px; }
+.cordFixGauge { width: 26px; height: 26px; border-radius: 50%; background: conic-gradient(#6fa8ff 0 68%, #454c5e 68% 100%); }
+
+.badgeMock { height: 100%; position: relative; background: #fbf6ec; overflow: hidden; }
+.badgeBanner { height: 46px; background: linear-gradient(120deg, #e0b769, #d68f5a); }
+.badgeAvatar { position: absolute; top: 30px; left: 14px; width: 34px; height: 34px; border-radius: 50%; border: 3px solid #fbf6ec; background: #c9a06a; }
+.badgeName { position: absolute; top: 72px; left: 14px; display: flex; flex-direction: column; gap: 4px; }
+.badgeName > u { height: 6px; border-radius: 999px; background: #ddcbb0; }
+.badgeName > u:first-child { width: 62px; }
+.badgeName > u:last-child { width: 40px; }
+.badgeChips { position: absolute; right: 12px; bottom: 12px; display: flex; gap: 6px; }
+.badgeChips > em { width: 26px; height: 26px; border-radius: 50%; display: grid; place-content: center; font-size: 13px; color: #fff; background: #d8a13c; box-shadow: 0 2px 6px rgba(160, 120, 50, .3); }
+.badgeChips > em:last-child { background: #9a7bd0; }
+
+.muteFixMock { height: 100%; display: flex; flex-direction: column; justify-content: center; gap: 9px; padding: 0 14px; background: #f5eff5; }
+.muteNote { display: flex; gap: 8px; }
+.muteAvatar { width: 24px; height: 24px; border-radius: 50%; flex: none; background: #cbb8cd; }
+.muteLines { flex: 1; display: flex; flex-direction: column; gap: 5px; justify-content: center; }
+.muteLines > u { height: 6px; border-radius: 999px; background: #d9c9da; }
+.muteLines > u:last-child { width: 55%; }
+.muteChips { display: flex; gap: 6px; padding-left: 32px; }
+.muteChips > em { width: 30px; height: 17px; border-radius: 999px; background: #b98fb9; }
+.muteChips > em[data-hidden="true"] { color: #9a879b; background: #e6dce6; display: grid; place-content: center; font-size: 10px; }
+
+.cardMock { height: 100%; display: grid; place-content: center; background: linear-gradient(160deg, #e8edfa, #f2eaf7); }
+.cardTilt { position: relative; width: 108px; height: 68px; padding: 9px; border-radius: 10px; display: flex; gap: 8px; overflow: hidden; background: linear-gradient(135deg, #5b8def, #9b6fe0); transform: rotate(-7deg); box-shadow: 0 8px 18px rgba(70, 80, 150, .3); }
+.cardShine { position: absolute; inset: -40% -20% auto; height: 180%; background: linear-gradient(105deg, transparent 42%, rgba(255, 255, 255, .38) 50%, transparent 58%); }
+.cardPhoto { width: 26px; height: 26px; border-radius: 6px; background: rgba(255, 255, 255, .78); }
+.cardLines { flex: 1; display: flex; flex-direction: column; gap: 5px; padding-top: 3px; }
+.cardLines > u { height: 5px; border-radius: 999px; background: rgba(255, 255, 255, .72); }
+.cardLines > u:last-child { width: 58%; background: rgba(255, 255, 255, .45); }
+/* 位置ずれを直した装飾アイコンなので、角にきっちり収まっていることを見せる。 */
+.cardDeco { position: absolute; right: 7px; bottom: 6px; font-size: 13px; color: #fff8d0; }
+
+.homeMock { height: 100%; position: relative; display: grid; place-content: center; background: #eef2fb; }
+.homePhone { width: 82px; height: 116px; display: flex; flex-direction: column; gap: 6px; padding: 8px; border-radius: 12px; background: #fff; box-shadow: 0 5px 14px rgba(60, 80, 140, .16); }
+.homeTabs { display: flex; gap: 4px; }
+.homeTabs > span { flex: 1; height: 5px; border-radius: 999px; background: #ccd8ec; }
+.homeTabs > span[data-active="true"] { background: #3f6fd0; }
+.homeBody { flex: 1; display: flex; flex-direction: column; gap: 5px; }
+.homeBody > u { height: 7px; border-radius: 999px; background: #e0e7f4; }
+.homeBody > u:last-child { width: 64%; }
+.homeNav { display: grid; place-content: center; padding-top: 2px; font-size: 14px; color: #3f6fd0; border-top: 1px solid #e6ecf7; }
+/* 「押しても選んだタブが変わらない」ことを鍵アイコンで示す。 */
+.homeKeep { position: absolute; top: 16px; right: 20px; font-size: 15px; color: #3f6fd0; opacity: .55; }
+
+.studioMock { height: 100%; display: flex; gap: 9px; padding: 12px; background: #f1eef8; }
+.studioSide { width: 46%; display: flex; flex-direction: column; gap: 6px; }
+.studioSide > span { height: 20px; border-radius: 6px; background: #d3c9e9; }
+.studioSide > span[data-drop="true"] { background: transparent; border: 2px dashed #7d63c9; }
+.studioSide > span[data-dragging="true"] { display: grid; place-content: center; color: #fff; background: #7d63c9; box-shadow: 0 4px 10px rgba(90, 60, 160, .3); font-size: 12px; }
+.studioMain { flex: 1; display: flex; flex-direction: column; gap: 6px; padding: 8px; border-radius: 8px; background: #e2dbf2; }
+.studioMain > u { height: 7px; border-radius: 999px; background: #cfc5e6; }
+.studioMain > u:last-child { width: 62%; }
+
+.mobileMock { height: 100%; display: grid; place-content: center; background: #eaf4f1; }
+.mobilePhone { position: relative; width: 92px; height: 116px; display: flex; flex-direction: column; justify-content: flex-end; gap: 7px; padding: 9px; border-radius: 13px; background: #fff; box-shadow: 0 5px 14px rgba(50, 110, 100, .16); }
+.mobilePicker { display: flex; justify-content: center; gap: 5px; padding: 5px 6px; border-radius: 999px; background: #4f9184; color: #fff; font-size: 12px; box-shadow: 0 4px 10px rgba(50, 110, 100, .25); }
+.mobileNote { display: flex; flex-direction: column; gap: 5px; }
+.mobileNote > u { height: 6px; border-radius: 999px; background: #dceae6; }
+.mobileNote > u:last-child { width: 58%; }
+.mobileTouch { position: absolute; left: 20px; bottom: 22px; width: 26px; height: 26px; border-radius: 50%; border: 2px solid #4f9184; opacity: .5; }
+
 </style>

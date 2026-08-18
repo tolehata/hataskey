@@ -8,17 +8,19 @@ import whatsNewSource from './MkHataWhatsNew.vue?raw';
 import uiSetupSource from './MkUISetup.vue?raw';
 
 describe('Hata update presentation', () => {
-	test('更新内容を3列対応の実画面風プレビューで表示する', () => {
+	test('更新内容を3列対応のプレビュー付きで表示する', () => {
 		expect(whatsNewSource).toContain(':data-preview="item.preview"');
 		expect(whatsNewSource).toContain('@container (min-width: 940px)');
 		expect(whatsNewSource).toContain('grid-template-columns: repeat(3, minmax(0, 1fr))');
 		expect(whatsNewSource).not.toContain('$style.previewChrome');
 		const previewMarkup = whatsNewSource.slice(whatsNewSource.indexOf(':class="$style.preview"'), whatsNewSource.indexOf(':class="$style.itemBody"'));
+		// ⚠️プレビューは飾りなので、押せる要素を入れない(読み上げ対象にもしない)。
 		expect(previewMarkup).not.toContain('<button');
-		for (const actualScreenCopy of ['copy.studyHistory', 'copy.garden', 'copy.studioSettings', '季節の花を合わせて、一年をめぐる。', 'copy.emojiRequest', 'copy.tryBeta', 'copy.privateChannel', 'copy.declinedOne', 'copy.feastSuccess', 'copy.twoFactorAuthentication', 'copy.languageSettings', 'copy.languageSupported']) {
-			expect(whatsNewSource).toContain(actualScreenCopy);
+		expect(whatsNewSource).toContain('aria-hidden="true"');
+		// 項目ごとに専用のモックがあること(使い回しで済ませない)。
+		for (const mock of ['brandingMock', 'recordMock', 'visibilityMock', 'cordFixMock', 'badgeMock', 'muteFixMock', 'cardMock', 'homeMock', 'studioMock', 'mobileMock']) {
+			expect(previewMarkup).toContain(`$style.${mock}`);
 		}
-		expect(whatsNewSource).not.toContain('ti ti-sparkles"></i></div>');
 	});
 
 	test('スマホではスワイプ・左右ボタン・現在位置ドットで一件ずつ確認できる', () => {
@@ -30,14 +32,14 @@ describe('Hata update presentation', () => {
 		expect(whatsNewSource).toContain('flex: 0 0 100%');
 	});
 
-	test('実在利用者を思わせない例示名と各モック固有の表示補正を使う', () => {
-		expect(whatsNewSource).toContain('copy.exampleSeal');
-		expect(whatsNewSource).toContain('@example_seal');
-		expect(whatsNewSource).not.toContain('<b>旗茶</b>');
-		expect(whatsNewSource).toContain('font-family: \'HataWhatsNewRighteous\'');
-		expect(whatsNewSource).toContain('grid-template-columns: repeat(7, minmax(0, 1fr))');
-		expect(whatsNewSource).toContain('.muteBody > span { font-size: 10px; line-height: 1.5; }');
-		expect(whatsNewSource).toContain('.muteBody div { display: flex; gap: 6px; margin-top: 3px; }');
+	test('プレビューに文言を持たせない(翻訳漏れで空欄にしない)', () => {
+		const previewMarkup = whatsNewSource.slice(whatsNewSource.indexOf(':class="$style.preview"'), whatsNewSource.indexOf(':class="$style.itemBody"'));
+		// ⚠️ここに copy.* を入れると、訳が無い言語で空欄のモックが出る。形と色だけで伝える方針。
+		expect(previewMarkup).not.toMatch(/\{\{\s*copy\./);
+		expect(previewMarkup).not.toMatch(/\{\{\s*copyx\./);
+		// 実在利用者を思わせる例示名も置かない。
+		expect(previewMarkup).not.toContain('@');
+		expect(previewMarkup).not.toContain('旗茶');
 	});
 
 	test('MkUISetupの左上に装飾用の星アイコンを置かない', () => {
