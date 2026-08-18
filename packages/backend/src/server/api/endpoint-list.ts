@@ -538,6 +538,7 @@ export * as 'hata/feedback/emoji-requests' from './endpoints/hata/feedback/emoji
 export * as 'hata/feedback/emoji-requests/create' from './endpoints/hata/feedback/emoji-requests/create.js';
 export * as 'hata/feedback/emoji-requests/approve' from './endpoints/hata/feedback/emoji-requests/approve.js';
 export * as 'hata/feedback/emoji-requests/reject' from './endpoints/hata/feedback/emoji-requests/reject.js';
+export * as 'hata/feedback/emoji-requests/hold' from './endpoints/hata/feedback/emoji-requests/hold.js';
 export * as 'hata/feedback/emoji-quota' from './endpoints/hata/feedback/emoji-quota.js';
 export * as 'hata/feedback/remote-emojis' from './endpoints/hata/feedback/remote-emojis.js';
 export * as 'hata/feedback/issues/show' from './endpoints/hata/feedback/issues/show.js';

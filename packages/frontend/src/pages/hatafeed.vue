@@ -611,6 +611,7 @@ const emojiAdminCursors = ref<(string | undefined)[]>([undefined]);
 const emojiAdminHasNext = ref(false);
 const emojiAdminFilters: { value: HataFeedEmojiRequest['status'] | null; label: string }[] = [
 	{ value: 'pending', label: emojiStatusLabel.pending },
+	{ value: 'held', label: emojiStatusLabel.held },
 	{ value: 'approved', label: emojiStatusLabel.approved },
 	{ value: 'rejected', label: emojiStatusLabel.rejected },
 	{ value: null, label: copy.all },
@@ -1205,6 +1206,7 @@ definePage(() => ({
 .hfEstIcon { font-size: 1.05rem; flex-shrink: 0; opacity: .9; }
 .hfEstIcon[data-est="approved"] { color: #1f8a5b; }
 .hfEstIcon[data-est="pending"] { color: #c9971f; }
+.hfEstIcon[data-est="held"] { color: #6f6fd0; }
 .hfEstIcon[data-est="rejected"] { color: #c0392b; }
 
 /* みんなの動きの入場/並べ替えアニメーション(TransitionGroup name=hfAct はグローバルクラス) */

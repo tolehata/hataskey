@@ -101,7 +101,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</Transition>
 
 			<div :class="$style.actions">
-				<MkButton v-if="queue.length > 1" rounded :disabled="busy" @click="holdAndNext"><i class="ti ti-player-skip-forward"></i> {{ copy.holdAndNext }}</MkButton>
+				<MkButton rounded :disabled="busy" @click="holdAndNext"><i class="ti ti-player-pause"></i> {{ queue.length > 1 ? copy.holdAndNext : copy.hold }}</MkButton>
 				<div :class="$style.resolveActions">
 					<MkButton rounded danger :disabled="busy" @click="reject"><i class="ti ti-x"></i> {{ queue.length > 1 ? copy.rejectAndNext : copy.reject }}</MkButton>
 					<MkButton rounded primary gradate :disabled="!name.trim() || busy" @click="approve"><i class="ti ti-check"></i> {{ queue.length > 1 ? copy.approveAndNext : copy.approve }}</MkButton>
@@ -150,7 +150,8 @@ let initialized = false;
 watch([() => props.requests, () => props.req], ([requests, req]) => {
 	if (initialized) return;
 	const seed = requests?.length ? requests : (req ? [req] : []);
-	queue.value = seed.filter(item => item.status === 'pending');
+	// ⚠️保留中も1件ずつ見ていく流れに含める（保留した申請が誰の目にも触れなくなるのを防ぐ）。
+	queue.value = seed.filter(item => item.status === 'pending' || item.status === 'held');
 	initialTotal.value = queue.value.length;
 	initialized = true;
 }, { immediate: true });
@@ -196,10 +197,36 @@ function removeCurrent(): void {
 	if (queue.value.length === 0 && initialTotal.value <= 1) closeWindow();
 }
 
-function holdAndNext(): void {
-	if (queue.value.length <= 1) return;
-	slideDirection.value = 'next';
-	currentIndex.value = (currentIndex.value + 1) % queue.value.length;
+// 旗鯖fork: 保留。⚠️従来はここで次の申請へ送るだけで、管理者が直した入力値は保存していなかった。
+//   保留は「あとで続きから見る」ための状態なので、入力値をサーバーへ保存してから離れる。
+async function holdAndNext(): Promise<void> {
+	const req = currentReq.value;
+	if (req == null) return;
+	const { canceled, result } = await os.inputText({ title: copy.holdReason, default: '' });
+	if (canceled) return;
+	busy.value = true;
+	try {
+		if (!await ensureStillPending(req.id)) return;
+		await misskeyApi('hata/feedback/emoji-requests/hold', {
+			requestId: req.id,
+			comment: result.trim() === '' ? null : result,
+			name: name.value.trim() === '' ? undefined : name.value.trim(),
+			category: category.value === '' ? null : category.value,
+			aliases: tagsRaw.value.trim() ? tagsRaw.value.trim().split(/\s+/) : [],
+			license: license.value.trim() === '' ? null : license.value.trim(),
+			localOnly: localOnly.value,
+			isSensitive: isSensitive.value,
+		});
+		emit('done');
+		if (queue.value.length > 1) {
+			slideDirection.value = 'next';
+			currentIndex.value = (currentIndex.value + 1) % queue.value.length;
+		} else {
+			removeCurrent();
+		}
+	} finally {
+		busy.value = false;
+	}
 }
 
 function showNext(): void {
@@ -216,7 +243,9 @@ function showPrevious(): void {
 
 async function ensureStillPending(requestId: string): Promise<boolean> {
 	const latest = await misskeyApi('hata/feedback/emoji-requests', { id: requestId, limit: 1 });
-	if (latest[0]?.status === 'pending') return true;
+	// ⚠️保留中(held)も引き続き処理できる。ここを pending だけにすると保留した申請が
+	//   「もう処理済みです」と誤判定され、二度と承認・却下できなくなる。
+	if (latest[0]?.status === 'pending' || latest[0]?.status === 'held') return true;
 	os.toast(copy.alreadyProcessed);
 	removeCurrent();
 	emit('done');

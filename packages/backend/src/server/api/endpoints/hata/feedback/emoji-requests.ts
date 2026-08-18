@@ -24,7 +24,7 @@ export const meta = {
 export const paramDef = {
 	type: 'object',
 	properties: {
-		status: { type: 'string', enum: ['pending', 'approved', 'rejected', null], nullable: true },
+		status: { type: 'string', enum: ['pending', 'held', 'approved', 'rejected', null], nullable: true },
 		mine: { type: 'boolean', default: false },
 		// 旗鯖fork(#38): 特定IDで1件取得(通知クリック時の状態確認用)
 		id: { type: 'string', format: 'misskey:id', nullable: true },

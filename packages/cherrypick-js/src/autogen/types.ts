@@ -2781,6 +2781,16 @@ export type paths = {
          */
         post: operations['hata___feedback___emoji-requests___create'];
     };
+    '/hata/feedback/emoji-requests/hold': {
+        /**
+         * hata/feedback/emoji-requests/hold
+         * @description No description provided.
+         *
+         *     **Internal Endpoint**: This endpoint is an API for the cherrypick mainframe and is not intended for use by third parties.
+         *     **Credential required**: *Yes* / **Permission**: *write:admin*
+         */
+        post: operations['hata___feedback___emoji-requests___hold'];
+    };
     '/hata/feedback/emoji-requests/reject': {
         /**
          * hata/feedback/emoji-requests/reject
@@ -29309,7 +29319,7 @@ export interface operations {
             content: {
                 'application/json': {
                     /** @enum {string|null} */
-                    status?: 'pending' | 'approved' | 'rejected' | null;
+                    status?: 'pending' | 'held' | 'approved' | 'rejected' | null;
                     /** @default false */
                     mine?: boolean;
                     /** Format: misskey:id */
@@ -29488,6 +29498,85 @@ export interface operations {
                 };
                 content: {
                     'application/json': Record<string, never>;
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+        };
+    };
+    'hata___feedback___emoji-requests___hold': {
+        requestBody: {
+            content: {
+                'application/json': {
+                    /** Format: misskey:id */
+                    requestId: string;
+                    comment?: string | null;
+                    name?: string;
+                    category?: string | null;
+                    aliases?: string[];
+                    license?: string | null;
+                    localOnly?: boolean;
+                    isSensitive?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description OK (without any results) */
+            204: {
+                headers: {
+                    [name: string]: unknown;
                 };
             };
             /** @description Client error */
@@ -30900,7 +30989,7 @@ export interface operations {
                             /** Format: misskey:id */
                             id: string;
                             /** @enum {string} */
-                            type: 'study' | 'movie_viewing' | 'game_play' | 'game_match' | 'game_roguelike';
+                            type: 'study' | 'movie_viewing' | 'game_play' | 'game_match' | 'game_roguelike' | 'game_pve';
                             /** Format: date-time */
                             occurredAt: string;
                             /** @enum {string} */
@@ -31014,7 +31103,7 @@ export interface operations {
                                     /** Format: misskey:id */
                                     workId: string;
                                     /** @enum {string} */
-                                    kind: 'movie_viewing' | 'game_play' | 'game_match' | 'game_roguelike';
+                                    kind: 'movie_viewing' | 'game_play' | 'game_match' | 'game_roguelike' | 'game_pve';
                                     /** Format: date-time */
                                     occurredAt: string;
                                     durationMinutes: number | null;
@@ -33544,7 +33633,7 @@ export interface operations {
                     /** Format: misskey:id */
                     workId: string;
                     /** @enum {string} */
-                    kind: 'movie_viewing' | 'game_play' | 'game_match' | 'game_roguelike';
+                    kind: 'movie_viewing' | 'game_play' | 'game_match' | 'game_roguelike' | 'game_pve';
                     occurredAt: string;
                     durationMinutes?: number | null;
                     note?: string | null;
@@ -33576,7 +33665,7 @@ export interface operations {
                         /** Format: misskey:id */
                         workId: string;
                         /** @enum {string} */
-                        kind: 'movie_viewing' | 'game_play' | 'game_match' | 'game_roguelike';
+                        kind: 'movie_viewing' | 'game_play' | 'game_match' | 'game_roguelike' | 'game_pve';
                         /** Format: date-time */
                         occurredAt: string;
                         durationMinutes: number | null;
@@ -33750,7 +33839,7 @@ export interface operations {
                         /** Format: misskey:id */
                         workId: string;
                         /** @enum {string} */
-                        kind: 'movie_viewing' | 'game_play' | 'game_match' | 'game_roguelike';
+                        kind: 'movie_viewing' | 'game_play' | 'game_match' | 'game_roguelike' | 'game_pve';
                         /** Format: date-time */
                         occurredAt: string;
                         durationMinutes: number | null;
@@ -33857,7 +33946,7 @@ export interface operations {
                         /** Format: misskey:id */
                         workId: string;
                         /** @enum {string} */
-                        kind: 'movie_viewing' | 'game_play' | 'game_match' | 'game_roguelike';
+                        kind: 'movie_viewing' | 'game_play' | 'game_match' | 'game_roguelike' | 'game_pve';
                         /** Format: date-time */
                         occurredAt: string;
                         durationMinutes: number | null;
@@ -34162,7 +34251,7 @@ export interface operations {
                     isRecommended?: boolean;
                     minRecommendation?: number;
                     /** @enum {string} */
-                    sessionKind?: 'movie_viewing' | 'game_play' | 'game_match' | 'game_roguelike';
+                    sessionKind?: 'movie_viewing' | 'game_play' | 'game_match' | 'game_roguelike' | 'game_pve';
                     result?: string;
                     weapon?: string;
                     rank?: string;

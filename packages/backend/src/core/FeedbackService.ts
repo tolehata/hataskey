@@ -35,6 +35,7 @@ import { mergeHataFeedRecipients } from '@/misc/hatafeed-notification.js';
 const NOTIFY_MESSAGE = {
 	emojiApproved: '絵文字の申請が承認されました。',
 	emojiRejected: '絵文字の申請がリジェクトされました。',
+	emojiHeld: '絵文字の申請が保留になりました。',
 	newComment: '新しいコメントが来ています。',
 	commentReaction: 'あなたのコメントにリアクションが付きました。',
 	issueClosed: 'イシューがクローズされました。',
@@ -675,7 +676,8 @@ export class FeedbackService {
 		localOnly?: boolean;
 		isSensitive?: boolean;
 	}): Promise<void> {
-		if (req.status !== 'pending') return;
+		// ⚠️保留中(held)も承認できるようにする。ここを pending だけにすると保留した申請が二度と処理できなくなる。
+		if (req.status !== 'pending' && req.status !== 'held') return;
 
 		// 承認者の修正を反映した最終値。
 		const rawName = overrides?.name ?? req.name;
@@ -753,7 +755,8 @@ export class FeedbackService {
 
 	@bindThis
 	public async rejectEmojiRequest(actor: MiUser, req: MiFeedbackEmojiRequest, comment?: string | null): Promise<void> {
-		if (req.status !== 'pending') return;
+		// ⚠️保留中(held)もリジェクトできるようにする。
+		if (req.status !== 'pending' && req.status !== 'held') return;
 		await this.feedbackEmojiRequestsRepository.update(req.id, {
 			status: 'rejected',
 			resolvedById: actor.id,
@@ -767,6 +770,48 @@ export class FeedbackService {
 			: `絵文字「:${req.name}:」の申請がリジェクトされました。`;
 		await this.notify(req.requestedById, 'emojiRejected', { actorId: actor.id, emojiRequestId: req.id }, rejectedMsg);
 		await this.notifyStaff(actor.id, 'emojiRejected', { emojiRequestId: req.id }, `${this.displayName(actor)}が絵文字「:${req.name}:」の申請をリジェクトしました。`, [req.requestedById]);
+	}
+
+	/**
+	 * 旗鯖fork: 絵文字申請を保留にする。
+	 * ⚠️承認画面で管理者が直した入力値をそのまま申請レコードへ保存してから保留にする。
+	 *   （保留のたびに入力が消えると、結局あとで最初から入力し直すことになるため）
+	 * ⚠️保留専用の列は増やさない（マイグレーションを増やさないため）。
+	 *   最後に誰がいつ触ったかは resolvedBy/resolvedAt、理由は resolvedComment を流用する。
+	 *   status が held の間は「未解決」であり、resolved* は解決記録ではなく最終操作の記録。
+	 */
+	@bindThis
+	public async holdEmojiRequest(actor: MiUser, req: MiFeedbackEmojiRequest, overrides?: {
+		name?: string;
+		category?: string | null;
+		aliases?: string[];
+		license?: string | null;
+		localOnly?: boolean;
+		isSensitive?: boolean;
+	}, comment?: string | null): Promise<void> {
+		// ⚠️既に承認・却下したものは保留に戻さない。保留中の再保留（入力の上書き保存）は許す。
+		if (req.status !== 'pending' && req.status !== 'held') return;
+
+		await this.feedbackEmojiRequestsRepository.update(req.id, {
+			...(overrides?.name !== undefined ? { name: overrides.name } : {}),
+			...(overrides?.category !== undefined ? { category: overrides.category } : {}),
+			...(overrides?.aliases !== undefined ? { aliases: overrides.aliases } : {}),
+			...(overrides?.license !== undefined ? { license: overrides.license } : {}),
+			...(overrides?.localOnly !== undefined ? { localOnly: overrides.localOnly } : {}),
+			...(overrides?.isSensitive !== undefined ? { isSensitive: overrides.isSensitive } : {}),
+			status: 'held',
+			resolvedById: actor.id,
+			resolvedAt: new Date(),
+			resolvedComment: comment ?? null,
+			updatedAt: new Date(),
+		});
+
+		const finalName = overrides?.name ?? req.name;
+		const heldMsg = comment
+			? `絵文字「:${finalName}:」の申請が保留になりました。（理由: ${comment}）`
+			: `絵文字「:${finalName}:」の申請が保留になりました。`;
+		await this.notify(req.requestedById, 'emojiHeld', { actorId: actor.id, emojiRequestId: req.id }, heldMsg);
+		await this.notifyStaff(actor.id, 'emojiHeld', { emojiRequestId: req.id }, `${this.displayName(actor)}が絵文字「:${finalName}:」の申請を保留にしました。`, [req.requestedById]);
 	}
 
 	//#endregion

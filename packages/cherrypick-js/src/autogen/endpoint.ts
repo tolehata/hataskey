@@ -472,6 +472,7 @@ import type {
 	HataFeedbackEmojiRequestsApproveRequest,
 	HataFeedbackEmojiRequestsCreateRequest,
 	HataFeedbackEmojiRequestsCreateResponse,
+	HataFeedbackEmojiRequestsHoldRequest,
 	HataFeedbackEmojiRequestsRejectRequest,
 	HataFeedbackIssuesRequest,
 	HataFeedbackIssuesResponse,
@@ -1223,6 +1224,7 @@ export type Endpoints = {
 	'hata/feedback/emoji-requests': { req: HataFeedbackEmojiRequestsRequest; res: HataFeedbackEmojiRequestsResponse };
 	'hata/feedback/emoji-requests/approve': { req: HataFeedbackEmojiRequestsApproveRequest; res: EmptyResponse };
 	'hata/feedback/emoji-requests/create': { req: HataFeedbackEmojiRequestsCreateRequest; res: HataFeedbackEmojiRequestsCreateResponse };
+	'hata/feedback/emoji-requests/hold': { req: HataFeedbackEmojiRequestsHoldRequest; res: EmptyResponse };
 	'hata/feedback/emoji-requests/reject': { req: HataFeedbackEmojiRequestsRejectRequest; res: EmptyResponse };
 	'hata/feedback/issues': { req: HataFeedbackIssuesRequest; res: HataFeedbackIssuesResponse };
 	'hata/feedback/issues/close': { req: HataFeedbackIssuesCloseRequest; res: EmptyResponse };

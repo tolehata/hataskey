@@ -475,6 +475,7 @@ export type HataFeedbackEmojiRequestsResponse = operations['hata___feedback___em
 export type HataFeedbackEmojiRequestsApproveRequest = operations['hata___feedback___emoji-requests___approve']['requestBody']['content']['application/json'];
 export type HataFeedbackEmojiRequestsCreateRequest = operations['hata___feedback___emoji-requests___create']['requestBody']['content']['application/json'];
 export type HataFeedbackEmojiRequestsCreateResponse = operations['hata___feedback___emoji-requests___create']['responses']['200']['content']['application/json'];
+export type HataFeedbackEmojiRequestsHoldRequest = operations['hata___feedback___emoji-requests___hold']['requestBody']['content']['application/json'];
 export type HataFeedbackEmojiRequestsRejectRequest = operations['hata___feedback___emoji-requests___reject']['requestBody']['content']['application/json'];
 export type HataFeedbackIssuesRequest = operations['hata___feedback___issues']['requestBody']['content']['application/json'];
 export type HataFeedbackIssuesResponse = operations['hata___feedback___issues']['responses']['200']['content']['application/json'];

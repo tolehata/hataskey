@@ -27,7 +27,7 @@ export interface HataFeedEmojiRequest {
 	originalUrl: string | null;
 	remoteHost: string | null;
 	imageUrl: string | null;
-	status: 'pending' | 'approved' | 'rejected';
+	status: 'pending' | 'held' | 'approved' | 'rejected';
 }
 
 // 旗鯖fork: 現在試せるベータ機能の一覧。ベータページのカードと、ベータボタンのバッジ数の両方で使う。
@@ -139,6 +139,7 @@ export type HataFeedPriority = keyof typeof priorityLabel;
 
 export const emojiStatusLabel: Record<string, string> = {
 	pending: copy.emojiPending,
+	held: copy.emojiHeld,
 	approved: copy.emojiApproved,
 	rejected: copy.emojiRejected,
 };
@@ -146,6 +147,7 @@ export const emojiStatusLabel: Record<string, string> = {
 // 絵文字申請の状態アイコン(承認=✓ / 審査中=時計 / 却下=🚫)。
 export const emojiStatusIcon: Record<string, string> = {
 	pending: 'ti-clock-hour-4',
+	held: 'ti-player-pause',
 	approved: 'ti-circle-check',
 	rejected: 'ti-ban',
 };
@@ -163,6 +165,7 @@ export const notifTypeLabel: Record<string, string> = {
 	newEmojiRequest: copy.notificationNewEmojiRequest,
 	emojiApproved: copy.notificationEmojiApproved,
 	emojiRejected: copy.notificationEmojiRejected,
+	emojiHeld: copy.notificationEmojiHeld,
 };
 
 // 旗鯖fork(デザイン改修 §2.4): アバターのフォールバック色。既存アバター画像が無いときだけ

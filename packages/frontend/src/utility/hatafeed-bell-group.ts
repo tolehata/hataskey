@@ -21,6 +21,7 @@ export type BellNotificationForDisplay = Misskey.entities.Notification | HataFee
 type HataFeedFixedMessageKey =
 	| 'emojiApproved'
 	| 'emojiRejected'
+	| 'emojiHeld'
 	| 'newComment'
 	| 'commentReaction'
 	| 'issueClosed'
@@ -34,6 +35,7 @@ type HataFeedFixedMessageKey =
 const HATAFEED_FIXED_MESSAGES = {
 	'絵文字の申請が承認されました。': 'emojiApproved',
 	'絵文字の申請がリジェクトされました。': 'emojiRejected',
+	'絵文字の申請が保留になりました。': 'emojiHeld',
 	'新しいコメントが来ています。': 'newComment',
 	'あなたのコメントにリアクションが付きました。': 'commentReaction',
 	'イシューがクローズされました。': 'issueClosed',
