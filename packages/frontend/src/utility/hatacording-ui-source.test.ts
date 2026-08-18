@@ -113,6 +113,10 @@ describe('HataSNSCordUIの結線', () => {
 		expect(page).toContain('@click="onEmbeddedNoteClick');
 		expect(page).not.toContain('@click.capture="onEmbeddedNoteClick');
 		expect(page).toContain("target.closest('a, button, input, textarea, select, [role=\"button\"], [contenteditable=\"true\"]')");
+		// ⚠️入力欄以外でキャレットが出る不具合が何度も再発しているため、UI全体で止めたうえで
+		//   本物の入力欄だけ戻す指定が消えていないことを検査で固定する。
+		expect(page).toContain('.root{caret-color:transparent}');
+		expect(page).toContain('.root input,.root textarea,.root [contenteditable="true"]{caret-color:auto}');
 		expect(page).toContain("new CustomEvent('hatacording-open-user'");
 		expect(page).toContain("window.addEventListener('simple-user-panel', onHatacordingSimpleUserPanel)");
 		expect(simple).toContain('<XCommon v-model:widgetsShowing="widgetsShowing"/>');
@@ -314,7 +318,8 @@ describe('HataSNSCordUIの結線', () => {
 		expect(page).not.toContain("os.toast(prefs.value.timelineRealtime ? 'リアルタイム更新を開始しました'");
 		expect(page).toContain(".root[data-ui-scale='small']");
 		expect(page).toContain(".root[data-ui-scale='large']");
-		expect(hataCustom).toContain("{ id: 'glassUi', icon: 'ti ti-layout-dashboard', label: 'UI' }");
+		// ⚠️末尾に hatakyuAsset 等が増えても壊れないよう、id/icon/label までを照合する。
+		expect(hataCustom).toContain("{ id: 'glassUi', icon: 'ti ti-layout-dashboard', label: 'UI'");
 		expect(hataCustom).toContain('<HatacordingUiSettings :accountId="$i.id"/>');
 		expect(tutorialCopy).toContain('tutorial.step3Body');
 		expect(page).toMatch(/\[data-hatacording-ui-scale-selector\] button\[data-active='true'\]\s*\{[^}]*background:[^}]*!important;[^}]*color:\s*#fff !important;/s);
