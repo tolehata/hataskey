@@ -4,7 +4,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 旗鯖fork: UI選択画面から利用する「HataSNSCordUI」。独立3ペインUIと端末ローカル設定。
 -->
 <template>
-<div ref="rootEl" :class="$style.root" :data-compact="isCompact ? 'true' : 'false'" :data-sidebar-collapsed="sidebarCollapsed ? 'true' : 'false'" :data-right-collapsed="prefs.rightPaneCollapsed ? 'true' : 'false'" :data-color-mode="prefs.colorMode" :data-ui-scale="prefs.uiScale" :data-theme-changing="colorModeTransitioning ? 'true' : 'false'" @touchstart.passive="onMobileEdgeTouchStart" @touchend.passive="onMobileEdgeTouchEnd" @touchcancel.passive="onMobileEdgeTouchCancel">
+<div ref="rootEl" :class="$style.root" :data-hata-foldable="isFoldableWide ? 'true' : undefined" :data-compact="isCompact ? 'true' : 'false'" :data-sidebar-collapsed="sidebarCollapsed ? 'true' : 'false'" :data-right-collapsed="prefs.rightPaneCollapsed ? 'true' : 'false'" :data-color-mode="prefs.colorMode" :data-ui-scale="prefs.uiScale" :data-theme-changing="colorModeTransitioning ? 'true' : 'false'" @touchstart.passive="onMobileEdgeTouchStart" @touchend.passive="onMobileEdgeTouchEnd" @touchcancel.passive="onMobileEdgeTouchCancel">
 	<button v-if="(isCompact && drawerOpen) || (rightPaneOverlay && rightPaneOpen)" type="button" :class="$style.scrim" :aria-label="copy.closePanels" @click="closeOverlays"></button>
 
 	<aside :class="[$style.leftPane, drawerOpen && $style.drawerOpen]">
@@ -336,6 +336,7 @@ import { getPluginHandlers } from '@/plugin.js';
 import { globalEvents, useGlobalEvent } from '@/events.js';
 import { claimAchievement } from '@/utility/achievements.js';
 import { miLocalStorage } from '@/local-storage.js';
+import { useFoldableScrollAnchor, useFoldableWide } from '@/utility/hata-foldable.js';
 import { getEffectiveHatacordingRateLimit, hatacordingRateLimitSnapshot } from '@/utility/hatacording-rate-limit.js';
 import { readHatacordingActivityCache, writeHatacordingActivityCache } from '@/utility/hatacording-activity-cache.js';
 import type { HatacordingCachedActivity } from '@/utility/hatacording-activity-cache.js';
@@ -427,6 +428,33 @@ const isCompact = ref(false);
 const rightPaneOverlay = ref(false);
 const drawerOpen = ref(false);
 const rightPaneOpen = ref(false);
+// 旗鯖fork: 横開き折りたたみ端末(メインディスプレイ)では、右ペインをドロワーにせず常時表示する。
+//   閾値には「このUIが元から右ペインをドロワー化する幅」をそのまま渡す。
+//   ⚠️これ以上広ければ元から常時表示なので、折りたたみ判定を持ち込む必要がない。
+const HATACORDING_RIGHT_PANE_DOCK_WIDTH = 1120;
+// 折りたたみ端末での右ペインの下限幅と、コンテナ幅に対する上限割合。
+// ⚠️PC用の 280px / 560px をそのまま使うと中央が潰れる。⚠️どちらも実測前の暫定値。
+const FOLDABLE_RIGHT_PANE_MIN_WIDTH = 240;
+const FOLDABLE_RIGHT_PANE_MAX_RATIO = 0.42;
+const isFoldableWide = useFoldableWide(HATACORDING_RIGHT_PANE_DOCK_WIDTH);
+// 折りたたむ/開くでレイアウトが切り替わっても、読んでいた位置を保つ。
+useFoldableScrollAnchor(isFoldableWide, () => scrollEl.value);
+// ResizeObserver が最後に観測した .root の幅。折りたたみ設定の切り替えでも
+// 同じ判定を再実行できるよう、幅を保持して一箇所で計算する。
+const rootWidth = ref(0);
+
+function applyResponsiveState(): void {
+	const width = rootWidth.value;
+	isCompact.value = width > 0 && width <= 760;
+	rightPaneOverlay.value = width > 0 && width <= HATACORDING_RIGHT_PANE_DOCK_WIDTH && !isFoldableWide.value;
+	if (!isCompact.value) drawerOpen.value = false;
+	if (!rightPaneOverlay.value) rightPaneOpen.value = false;
+	resizeComposerInput();
+}
+
+// 設定画面で auto/on/off を切り替えたときは幅が変わらないので、resize は飛んでこない。
+watch(isFoldableWide, () => applyResponsiveState());
+
 const menuEditing = ref(false);
 const showMore = ref(false);
 const widgetEditing = ref(false);
@@ -592,10 +620,12 @@ const canSubmit = computed(() => !submitting.value && characterCount.value <= ma
 const characterCounterStyle = computed(() => ({ '--char-progress': `${Math.min(360, characterCount.value / Math.max(1, maxNoteLength.value) * 360)}deg` }));
 const activeRightTab = computed(() => rightTabs.value.find(tab => tab.id === activeRightTabId.value) ?? rightTabs.value[0] ?? null);
 const rightPaneStyle = computed(() => {
-	const width = Math.max(280, Math.min(560, Number(prefs.value.rightPaneWidth) || 360));
-	return rightPaneOverlay.value
-		? { width: `min(${width}px, 92cqw)` }
-		: { flexBasis: `${width}px` };
+	const min = isFoldableWide.value ? FOLDABLE_RIGHT_PANE_MIN_WIDTH : 280;
+	const width = Math.max(min, Math.min(560, Number(prefs.value.rightPaneWidth) || 360));
+	if (rightPaneOverlay.value) return { width: `min(${width}px, 92cqw)` };
+	// 旗鯖fork: 折りたたみ端末では中央が潰れないよう、コンテナ幅の割合でも頭打ちにする。
+	if (isFoldableWide.value) return { flexBasis: `min(${width}px, ${Math.round(FOLDABLE_RIGHT_PANE_MAX_RATIO * 100)}cqw)` };
+	return { flexBasis: `${width}px` };
 });
 
 // 破損した端末保存値・上限変更・タブ削除が重なっても、存在しないIDを
@@ -2644,8 +2674,10 @@ function startRightResize(event: PointerEvent) {
 	const move = (moveEvent: PointerEvent) => {
 		if (!resizingRight) return;
 		const containerWidth = rootEl.value?.getBoundingClientRect().width ?? window.innerWidth;
-		const maxWidth = rightPaneOverlay.value ? Math.min(560, containerWidth * 0.92) : 560;
-		const minWidth = Math.min(280, maxWidth);
+		// 旗鯖fork: 折りたたみ端末のドッキング表示では、PCの 560px 上限だと中央が潰れる。
+		const dockedMax = isFoldableWide.value ? Math.min(560, containerWidth * FOLDABLE_RIGHT_PANE_MAX_RATIO) : 560;
+		const maxWidth = rightPaneOverlay.value ? Math.min(560, containerWidth * 0.92) : dockedMax;
+		const minWidth = Math.min(isFoldableWide.value ? FOLDABLE_RIGHT_PANE_MIN_WIDTH : 280, maxWidth);
 		prefs.value.rightPaneWidth = Math.round(Math.max(minWidth, Math.min(maxWidth, startWidth + startX - moveEvent.clientX)));
 	};
 	const stop = () => {
@@ -2756,7 +2788,7 @@ onMounted(async () => {
 	await nextTick();
 	if (composerInput.value) composerAutocomplete = new Autocomplete(composerInput.value, draftText);
 	resizeComposerInput();
-	resizeObserver = new ResizeObserver(entries => { const width = entries[0]?.contentRect.width ?? 0; isCompact.value = width > 0 && width <= 760; rightPaneOverlay.value = width > 0 && width <= 1120; if (!isCompact.value) drawerOpen.value = false; if (!rightPaneOverlay.value) rightPaneOpen.value = false; resizeComposerInput(); });
+	resizeObserver = new ResizeObserver(entries => { rootWidth.value = entries[0]?.contentRect.width ?? 0; applyResponsiveState(); });
 	if (rootEl.value) resizeObserver.observe(rootEl.value);
 	const usedTabIds = new Set(['detail']);
 	const widgetTabs = prefs.value.subpaneTabs
@@ -4837,6 +4869,31 @@ definePage(() => ({ title: 'HataSNSCordUI', hideHeader: true }));
 		transition: none;
 	}
 }
+
+/* ===== 旗鯖fork: 横開き折りたたみ端末(メインディスプレイ) =====
+   右ペインをドロワーにせず、中央の隣に常時ドッキングさせる。
+   ⚠️@container(max-width:1120px) 側の指定は一切変更しない。
+     data-hata-foldable が付いたときだけ、詳細度で勝つ形で打ち消す
+     (コンテナクエリは詳細度を足さないので .root[...] .rightPane が確実に勝つ)。
+   ⚠️左ペインは 760px 未満なら従来どおりドロワーのまま。
+     「画面はモバイル表示のまま」を守るため、ここでは触らない。 */
+.root[data-hata-foldable='true'] .rightPane {
+	position: static;
+	width: auto;
+	min-width: 240px;
+	max-width: none;
+	transform: none;
+	box-shadow: none;
+	z-index: 1;
+}
+
+/* ドッキング時は本来の縦リサイザーが出るので、ドロワー用の掴み手は隠す。 */
+.root[data-hata-foldable='true'] .mobileRightResizer {
+	display: none;
+}
+
+/* ⚠️「畳む」は .rightPaneCollapsed 側が !important を持っているので、
+     上の min-width: 240px には勝つ。ここで追加指定はしない。 */
 </style>
 
 <!-- MkNote is intentionally left functionally intact. These selectors only

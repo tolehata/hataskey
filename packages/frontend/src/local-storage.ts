@@ -60,6 +60,7 @@ export type Keys = (
 	'hatasabaLastAntennaId' | // 旗鯖fork: HatasabaUIで最後に開いたアンテナ(端末ごと)
 	'hatasabaDeckIgnoreWidth' | // 旗鯖fork(#6): 画面幅に関係なくデッキ表示を強制する端末ローカル設定(プロファイル非同期)
 	'hatasabaTabSwipeEnabled' | // 旗鯖fork: HatasabaUIの左右スワイプによるタブ移動(端末ローカル・既定ON)
+	'hataFoldableLayout' | // 旗鯖fork: 横開き折りたたみ端末向けレイアウト(auto/on/off・端末ローカル・プロファイル非同期)
 	'hataHideMutedReactions' | // 旗鯖fork(#31): ミュートユーザーのリアクションをチップから隠す端末ローカル設定
 	'hataGlassUi' | // 旗鯖fork(ベータ): HatasabaUI 2(グラスモーフィズム刷新)を有効化する端末ローカル設定
 	'hataGlassUiBubble' | // 旗鯖fork(ベータ): HatasabaUI 2 でノートの吹き出しデザイン(枠+＜口)を表示する端末ローカル設定

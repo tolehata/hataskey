@@ -18,6 +18,23 @@ export function setDeckIgnoreWidth(v: boolean): void {
 	miLocalStorage.setItem('hatasabaDeckIgnoreWidth', v ? 'true' : 'false');
 }
 
+// 旗鯖fork: 横開きの折りたたみ端末(メインディスプレイ)向けレイアウトを使うか。
+//   'auto' = 幅と入力方式から自動判定 / 'on' = 常に使う / 'off' = 使わない。
+//   ⚠️端末ごとに違って当然の設定なのでプロフィール同期しない。
+//     同期すると、折りたたみ端末と通常のスマホで同じアカウントを使ったときに片方が壊れる。
+export type HataFoldableMode = 'auto' | 'on' | 'off';
+
+function readFoldableMode(): HataFoldableMode {
+	const v = miLocalStorage.getItem('hataFoldableLayout');
+	return v === 'on' || v === 'off' ? v : 'auto';
+}
+
+export const foldableLayoutMode = ref<HataFoldableMode>(readFoldableMode());
+export function setFoldableLayoutMode(v: HataFoldableMode): void {
+	foldableLayoutMode.value = v;
+	miLocalStorage.setItem('hataFoldableLayout', v);
+}
+
 // HatasabaUI のタイムライン・デッキで、左右スワイプをタブ移動に使うか。
 // タッチやトラックパッドの操作感は端末ごとに異なるため、プロファイル同期しない。
 // 未設定は true。従来どおりスワイプで移動できる。

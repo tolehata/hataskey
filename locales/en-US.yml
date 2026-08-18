@@ -8405,6 +8405,13 @@ _hata:
       brandingSection: "Original icon branding"
       useHatakyu: "Use Hataskey's original icons"
       useHatakyuDescription: "Shows Hataskey's original illustrations for icons in the settings menu, settings pages, error screens and dialogs. Turn this off to go back to the standard icons. If branding images are configured in the server control panel, those take precedence regardless of this setting."
+      foldableSection: "Foldable device layout"
+      foldableDescription: "On the larger screen of a book-style foldable phone (Galaxy Z Fold, Pixel Fold, etc.), keeps the phone layout while always showing widgets on the right. Applies to HatasabaUI and HataSNSCordUI."
+      foldableModeAuto: "Auto"
+      foldableModeOn: "Always on"
+      foldableModeOff: "Off"
+      foldableAutoCaption: "\"Auto\" decides from the screen width and whether the device is touch-operated, never from the device name. Flip-style foldables are excluded because their screen is not wide enough."
+      foldableDeviceOnly: "This setting is stored on this device only and is not synced to your other devices."
     _visual:
       noteSpacing: "Note spacing"
       noteSpacingDescription: "Adjust the spacing between timeline posts. Changes apply immediately."

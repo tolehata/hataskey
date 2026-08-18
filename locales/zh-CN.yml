@@ -7983,6 +7983,13 @@ _hata:
       brandingSection: "原创图标品牌化"
       useHatakyu: "使用 Hataskey 原创图标"
       useHatakyuDescription: "将设置菜单、设置页面、错误提示和对话框中的图标显示为 Hataskey 的原创插画。关闭后将恢复为普通图标。若服务器管理界面已设置品牌图片，则无论此设置如何都以其为准。"
+      foldableSection: "折叠屏设备布局"
+      foldableDescription: "在左右翻开式折叠屏手机（Galaxy Z Fold、Pixel Fold 等）的大屏幕上，保持手机版显示的同时，在右侧常驻显示小组件。适用于 HatasabaUI 与 HataSNSCordUI。"
+      foldableModeAuto: "自动"
+      foldableModeOn: "始终启用"
+      foldableModeOff: "不使用"
+      foldableAutoCaption: "“自动”根据屏幕宽度与是否为触摸操作的设备来判断，不会依据机型名称判断。上下翻盖式折叠屏因宽度不足而不在适用范围内。"
+      foldableDeviceOnly: "此设置仅保存在当前设备，不会同步到其他设备。"
     _visual:
       noteSpacing: "帖子间距"
       noteSpacingDescription: "调整时间线帖子之间的间距，更改会立即生效。"

@@ -32967,6 +32967,13 @@ export interface Locale extends ILocale {
                 "brandingSection": string;
                 "useHatakyu": string;
                 "useHatakyuDescription": string;
+                "foldableSection": string;
+                "foldableDescription": string;
+                "foldableModeAuto": string;
+                "foldableModeOn": string;
+                "foldableModeOff": string;
+                "foldableAutoCaption": string;
+                "foldableDeviceOnly": string;
             };
             "_visual": {
                 /**

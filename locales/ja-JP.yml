@@ -8541,6 +8541,13 @@ _hata:
       brandingSection: "オリジナルアイコンブランディング"
       useHatakyu: "Hataskeyオリジナルのアイコンを使う"
       useHatakyuDescription: "設定メニュー・各設定ページ・エラー表示・ダイアログなどのアイコンを、Hataskeyオリジナルのイラストにします。オフにすると通常のアイコンに戻ります。サーバーの管理画面でブランディング画像が設定されている場合は、この設定に関わらずそちらが優先されます。"
+      foldableSection: "折りたたみ端末向けレイアウト"
+      foldableDescription: "横開きの折りたたみスマホ（Galaxy Z Fold・Pixel Fold など）の大きい方の画面で、表示はスマホのままにしつつ、右側にウィジェットを常に出します。HatasabaUI と HataSNSCordUI が対象です。"
+      foldableModeAuto: "自動"
+      foldableModeOn: "常に使う"
+      foldableModeOff: "使わない"
+      foldableAutoCaption: "「自動」は画面の広さと指で操作する端末かどうかで判定します。機種名では判定しません。縦折り（Flip 系）は画面の幅が足りないため対象外です。"
+      foldableDeviceOnly: "この設定はこの端末にのみ保存され、ほかの端末には同期されません。"
     _visual:
       noteSpacing: "ノートの間隔"
       noteSpacingDescription: "タイムラインの投稿同士の間隔を調整します。即座に反映されます。"

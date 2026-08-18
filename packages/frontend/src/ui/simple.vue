@@ -4,7 +4,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 
 <template>
-<div :class="[$style.root, { [$style.desktopLayout]: isDesktop }]">
+<div :class="[$style.root, { [$style.desktopLayout]: isDesktop }]" :data-hata-foldable="isFoldableWide ? 'true' : undefined">
 	<!-- PC/タブレット: オリジナル左サイドバー (上部メニューモード時は隠す) -->
 	<nav v-if="isDesktop && !topNavActive" :class="[$style.sidebar, { [$style.sidebarSolid]: !glassEffect, [$style.sidebarWide]: !sidebarFolded && studioProfile.expanded.width === 'wide', [$style.sidebarDeckFolded]: deckActive || sidebarCollapsed }]">
 		<!-- バナーすりガラス背景 -->
@@ -451,7 +451,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 	</Teleport>
 
 	<!-- PC/タブレット: 右ウィジェットバー -->
-	<div v-if="isDesktop && !deckActive" :class="[$style.desktopWidgets, { [$style.desktopWidgetsSolid]: !glassEffect }]" :data-widget-border="showWidgetBorder ? 'on' : 'off'">
+	<!-- 旗鯖fork: 折りたたみ端末の広い面でも、このバーだけPCと同じ構成・同じ表示で常時出す。
+	     ⚠️isDesktop は広げない(下部ナビ等までPC化して「モバイル表示のまま」が崩れるため)。 -->
+	<div v-if="(isDesktop || isFoldableWide) && !deckActive" :class="[$style.desktopWidgets, { [$style.desktopWidgetsSolid]: !glassEffect }]" :data-widget-border="showWidgetBorder ? 'on' : 'off'">
 		<div v-if="glassEffect" :class="$style.desktopWidgetsBanner">
 			<img v-if="$i?.bannerUrl" :src="$i.bannerUrl" :class="$style.desktopWidgetsBannerImg"/>
 		</div>
@@ -479,6 +481,7 @@ import MkExternalTimeline from '@/components/MkExternalTimeline.vue';
 import HataSideStudioEarthquake from '@/components/HataSideStudioEarthquake.vue';
 import HataSideStudioFlowers from '@/components/HataSideStudioFlowers.vue';
 import { getHataSideWidgetDisplayLabel, HATA_SIDE_WIDGET_REGISTRY } from '@/utility/hata-side-studio-widgets.js';
+import { useFoldableScrollAnchor, useFoldableWide } from '@/utility/hata-foldable.js';
 // 旗鯖fork: トレンドタイムライン (TTL)
 import MkTrendingTimeline from '@/components/MkTrendingTimeline.vue';
 import { provideMetadataReceiver, provideReactiveMetadata } from '@/page.js';
@@ -710,6 +713,10 @@ function onContentWheel(ev: WheelEvent) {
 
 // ===== デスクトップ判定 =====
 const DESKTOP_THRESHOLD = 1100;
+// 旗鯖fork: 横開きの折りたたみ端末(メインディスプレイ)向け。PC幅未満でもウィジェットを常時出す。
+const isFoldableWide = useFoldableWide(DESKTOP_THRESHOLD);
+// 折りたたむ/開くでレイアウトが切り替わっても、読んでいた位置を保つ。
+useFoldableScrollAnchor(isFoldableWide, () => contentEl.value);
 const windowWidth = ref(window.innerWidth);
 // 旗鯖fork(#6): 「画面幅に関係なくデッキ表示」設定がON かつ デッキモードONのときは、
 // 狭幅でもデスクトップ相当のレイアウト(=デッキが使える)として扱う。
@@ -3512,6 +3519,27 @@ onUnmounted(() => {
 // デスクトップではウィジェットバーを非表示にする閾値
 @media (max-width: 1100px) {
     .desktopWidgets { display:none; }
+}
+
+// ===== 旗鯖fork: 横開き折りたたみ端末(メインディスプレイ) =====
+// 中央はモバイル表示のまま、右にウィジェットを常時出して少しPCライクにする。
+// ⚠️PC用の .desktopLayout / .desktopWidgets の指定は一切変更せず、
+//   data-hata-foldable が付いたときだけ上書きする(PC表示を巻き込まないため)。
+// ⚠️上の @media(max-width:1100px) が .desktopWidgets を display:none にしているので、
+//   ここで戻す。詳細度で勝つ形にしてあり、記述順には依存しない。
+// ⚠️この2規則は必ず module ブロック(この <style module> の中)に置くこと。
+//   末尾の global ブロックへ書くと .root / .desktopWidgets がハッシュ名に解決されず、
+//   セレクタがどこにも当たらないまま「書いたのに効かない」状態になる。
+// ⚠️.root の直下の子は サイドバー(PC時のみ) / .mainColumn / .desktopWidgets だけ。
+//   上下のバーは .mainColumn の中にあるので、row にしてもモバイル表示は崩れない。
+.root[data-hata-foldable='true'] {
+    flex-direction: row;
+}
+
+.root[data-hata-foldable='true'] .desktopWidgets {
+    display: block;
+    // PCの350pxは折りたたみ端末には広すぎるので詰める。⚠️実測後に見直すこと。
+    width: 300px;
 }
 
 .bottomBarDark {}

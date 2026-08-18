@@ -227,6 +227,22 @@ SPDX-License-Identifier: AGPL-3.0-only
             </div>
             <HatacordingUiSettings :accountId="$i.id"/>
         </FormSection>
+        <!-- 旗鯖fork: 横開き折りたたみ端末向けレイアウト。
+             ⚠️端末ローカル設定(プロファイル非同期)。折りたたみ端末と通常のスマホで
+               同じアカウントを使ったときに片方が壊れるため、同期させてはいけない。 -->
+        <FormSection>
+            <template #label>{{ uiCopy.foldableSection }}</template>
+            <div style="font-size:.85em;opacity:.7;margin-bottom:12px;line-height:1.6;">{{ uiCopy.foldableDescription }}</div>
+            <MkRadios v-model="foldableLayout">
+                <option value="auto">{{ uiCopy.foldableModeAuto }}</option>
+                <option value="on">{{ uiCopy.foldableModeOn }}</option>
+                <option value="off">{{ uiCopy.foldableModeOff }}</option>
+            </MkRadios>
+            <div style="font-size:.8em;opacity:.65;margin-top:10px;line-height:1.6;">
+                {{ uiCopy.foldableAutoCaption }}<br>
+                {{ uiCopy.foldableDeviceOnly }}
+            </div>
+        </FormSection>
         <!-- Hataskey fork: ハタキュ(オリジナルアイコンブランディング)を使うかどうか。
              ⚠️OFFにすると、変更前と同じ Tabler アイコン / 絵文字 / SVG に戻る。 -->
         <FormSection>
@@ -413,7 +429,8 @@ import { definePage } from '@/page.js';
 import { getHiddenReactions, hiddenReactionsVersion } from '@/utility/hidden-reactions.js';
 // 旗鯖fork: deckIgnoreWidth / setDeckIgnoreWidth は HatasabaUI 設定モーダル側で消費するのみ。
 // 旗鯖fork(HatasabaUI 2): 端末ローカルの glassUi 系を hata-custom.vue から使うため import。
-import { glassUiLocal, setGlassUiLocal, glassUiBubbleLocal, setGlassUiBubbleLocal, hideMutedReactionsLocal, setHideMutedReactionsLocal } from '@/utility/hatasaba-device-prefs.js';
+import { glassUiLocal, setGlassUiLocal, glassUiBubbleLocal, setGlassUiBubbleLocal, hideMutedReactionsLocal, setHideMutedReactionsLocal, foldableLayoutMode, setFoldableLayoutMode } from '@/utility/hatasaba-device-prefs.js';
+import type { HataFoldableMode } from '@/utility/hatasaba-device-prefs.js';
 import { HATA_FONT_PRESETS, applyHataFont, type HataFontId } from '@/scripts/hata-font-manager.js';
 import { chooseDriveFile } from '@/utility/drive.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
@@ -713,6 +730,11 @@ const glassUi = computed({
 const glassUiBubble = computed({
     get: () => glassUiBubbleLocal.value,
     set: (v: boolean) => setGlassUiBubbleLocal(v),
+});
+// 旗鯖fork: 横開き折りたたみ端末向けレイアウト(端末ローカル・auto/on/off)
+const foldableLayout = computed({
+    get: () => foldableLayoutMode.value,
+    set: (v: HataFoldableMode) => setFoldableLayoutMode(v),
 });
 
 // 旗鯖fork: 天気エフェクト(weatherEffect)
