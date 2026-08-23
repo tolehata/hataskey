@@ -16,7 +16,7 @@ vi.mock('@/i18n.js', async () => {
 	return { i18n: new I18n<Locale>(locale as Locale) };
 });
 
-import { createApiActionActivity, createEarthquakeActivity, createNotificationActivity, createNotificationActivityFromSource, createServerDisconnectedActivity, createServerReconnectedActivity, createTimelineRealtimeActivity, sharesHatacordingNotificationAudience } from './hatacording-activity.js';
+import { createApiActionActivity, createEarthquakeActivity, createNotificationActivity, createNotificationActivityFromSource, createServerDisconnectedActivity, createServerReconnectedActivity, createTimelineRealtimeActivity, hatacordingEarthquakeGroupLabel, sharesHatacordingNotificationAudience } from './hatacording-activity.js';
 
 describe('HataSNSCordUIの受信イベント表示', () => {
 	test('通常通知は本文を保持し、外部通知だけ専用画面へ結ぶ', () => {
@@ -158,6 +158,12 @@ describe('HataSNSCordUIの受信イベント表示', () => {
 		expect(earthquake).toMatchObject({ title: '地震情報・最大震度5強', emergency: true, to: '/earthquake' });
 		expect(earthquake?.detail).toContain('各地の震度');
 		expect(tsunami).toMatchObject({ title: '津波情報・津波警報', emergency: true, to: '/earthquake' });
+	});
+
+	test('概要の種別は受信内容に存在する情報だけを記載する', () => {
+		expect(hatacordingEarthquakeGroupLabel([{ kind: 'earthquake' }, { kind: 'earthquake' }])).toBe('地震情報');
+		expect(hatacordingEarthquakeGroupLabel([{ kind: 'tsunami' }])).toBe('津波情報');
+		expect(hatacordingEarthquakeGroupLabel([{ kind: 'earthquake' }, { kind: 'tsunami' }])).toBe('地震・津波情報');
 	});
 
 	test('お気に入りとクリップの成功操作だけを遷移可能な表示へ変換する', () => {

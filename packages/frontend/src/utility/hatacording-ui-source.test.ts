@@ -13,6 +13,7 @@ function readFrontendFile(relativePath: string): string {
 
 describe('HataSNSCordUIの結線', () => {
 	const page = readFrontendFile('src/pages/hatacording-ui.vue');
+	const commonBoot = readFrontendFile('src/boot/common.ts');
 	const settingsComponent = readFrontendFile('src/components/HatacordingUiSettings.vue');
 	const hataCustom = readFrontendFile('src/pages/settings/hata-custom.vue');
 	const tutorialCopy = readFrontendFile('src/utility/hatacording-copy.ts');
@@ -91,6 +92,19 @@ describe('HataSNSCordUIの結線', () => {
 		expect(dialog).toContain('_rateLimit.resetInSeconds');
 	});
 
+	test('レート制限通知は投稿フォーム直上に置き、リセット時刻を表示する', () => {
+		const composerDock = page.indexOf('<div :class="$style.composerDock">');
+		const rateLimitNotice = page.indexOf('v-if="timelineErrorKind === \'rateLimit\'"', composerDock);
+		const postForm = page.indexOf('<div :class="$style.postFormPill"', composerDock);
+		expect(page).toContain('v-if="timelineErrorKind === \'generic\'"');
+		expect(rateLimitNotice).toBeGreaterThan(composerDock);
+		expect(postForm).toBeGreaterThan(rateLimitNotice);
+		expect(page).toContain('rateLimitResetText');
+		expect(readFrontendFile('../../locales/ja-JP.yml')).toContain('bannerResetAt: "{time}にリセットされます"');
+		expect(readFrontendFile('../../locales/en-US.yml')).toContain('bannerResetAt: "Resets at {time}"');
+		expect(readFrontendFile('../../locales/zh-CN.yml')).toContain('bannerResetAt: "将在 {time} 重置"');
+	});
+
 	test('独立UI・下が最新の会話表示・右ペイン遷移タブを結線する', () => {
 		const simple = readFrontendFile('src/ui/simple.vue');
 		const rootUi = readFrontendFile('src/ui/hatacording.vue');
@@ -104,7 +118,9 @@ describe('HataSNSCordUIの結線', () => {
 		expect(page).toContain('notes.value = [...result].reverse()');
 		expect(page).toContain('notes.value.push(note)');
 		expect(page).toContain('new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()');
-		expect(page).toContain('<TransitionGroup name="hatacording-feed"');
+		expect(page).toContain('<TransitionGroup :name="prefer.s.animation ? \'hatacording-feed\' : \'\'"');
+		expect(page).not.toContain('.hatacording-feed-move');
+		expect(page).not.toMatch(/hatacording-feed-(?:enter-from|leave-to)[^}]*transform:/s);
 		expect(page).toContain('reuseSubpaneTab');
 		expect(page).toContain('getAccountMenu');
 		expect(page).toContain('<MkNote :note=');
@@ -144,6 +160,8 @@ describe('HataSNSCordUIの結線', () => {
 		expect(page).toContain("if (path === '/' || path === '/hatafeed/hatacording-ui')");
 		expect(page).toContain("if (path === '/hata-side-studio')");
 		expect(page).toContain("if (item.to) { openCenterPage(item.to, item.label); return; }");
+		expect(page).toContain("import('@/components/MkLaunchPad.vue')");
+		expect(page).toContain("if (menuEditing.value && !sidebarCollapsed.value)");
 		// このUI専用に機能を写経せず、実運用のMkNoteを使うことで旗鯖拡張も同時に維持する。
 		expect(note).toContain('<MkReactionsViewer');
 		expect(note).toContain('@click.stop="showMenu()"');
@@ -217,18 +235,24 @@ describe('HataSNSCordUIの結線', () => {
 		expect(page).toContain("callExternalApi('i/notifications', { limit: 20, markAsRead: false }, account)");
 	});
 
-	test('投稿欄を通常フローに置き、星メニューと標準投稿の安全処理を維持する', () => {
+	test('投稿欄を二段フローに置き、クリック選択式の星メニューと標準投稿の安全処理を維持する', () => {
 		const popupMenu = readFrontendFile('src/components/MkPopupMenu.vue');
 		const menu = readFrontendFile('src/components/MkMenu.vue');
 		expect(page).toContain(':class="$style.composerDock"');
 		expect(page).not.toContain('$style.postFormOverlay');
 		expect(page).not.toContain('.postFormOverlay');
 		expect(page).toContain("getPluginHandlers('post_form_action')");
-		expect(page).toContain('@click="openComposerToolsMenu"');
-		expect(page).toContain('await os.popupMenu(items, anchor, { width: 272 })');
-		expect(page).not.toContain('v-if="composerToolsOpen" :class="$style.composerTools"');
+		expect(page).toContain('@click="openComposerToolsMenu($event)"');
+		expect(page).toContain('v-if="composerToolsOpen" :class="$style.composerTools"');
+		expect(page).toContain(':data-expanded="selectedComposerToolId === tool.id"');
+		expect(page).toContain('@click="selectComposerTool(tool.id, $event)"');
+		expect(page).toContain(':class="$style.composerActionRow"');
+		expect(page).toContain("submitMotionState.value = 'sending'");
+		expect(page).toContain("submitMotionState.value = 'success'");
+		expect(page).toContain("submitMotionState.value = 'failure'");
 		expect(popupMenu).toContain(':zPriority="\'high\'"');
 		expect(popupMenu).toContain(':max-height="maxHeight"');
+		expect(popupMenu).toContain(':motionPreset="motionPreset"');
 		expect(menu).toContain('overflow: auto;');
 		expect(page).toMatch(/\.composerDock\s*\{[^}]*background:\s*transparent;/s);
 		expect(page).toContain("getPluginHandlers('note_post_interruptor')");
@@ -240,13 +264,17 @@ describe('HataSNSCordUIの結線', () => {
 		expect(page).toContain('pollExpiration');
 		expect(page).toContain('expiredAfter: pollExpiredAfterValue');
 		expect(page).toContain("globalEvents.emit('notePosted', created)");
-		expect(page).toContain('<ArrowUp :size="17"/>');
-		expect(page).toContain('<Square :size="16" fill="currentColor"/>');
+		expect(page).toContain('<component :is="sendIcon" v-else key="idle" :size="17"/>');
+		expect(page).toContain('<component :is="cancelIcon" v-if="submitMotionState === \'countdown\'" key="countdown" :size="15"/>');
+		expect(page).toContain('<component :is="sendingIcon" v-else-if="submitMotionState === \'sending\'"');
+		expect(page).toContain('<component :is="successIcon" v-else-if="submitMotionState === \'success\'"');
+		expect(page).toContain('<component :is="failureIcon" v-else-if="submitMotionState === \'failure\'"');
 		expect(page).toContain("new Autocomplete(composerInput.value, draftText)");
 		expect(page).toContain("composerAutocomplete?.detach()");
 		expect(page).toContain(':class="$style.recipientEditor"');
 		expect(page).toContain('copy.mentionsMissingRecipients');
-		expect(page).toContain("{ type: 'switch', text: copy.rememberVisibility, ref: rememberNoteVisibility }");
+		expect(page).toContain('rememberLabel: copy.rememberVisibility');
+		expect(page).toContain("prefer.commit('rememberNoteVisibility', value)");
 		expect(page).toContain("visibility: effectiveVisibility.value");
 		expect(page).toContain("localOnly: effectiveLocalOnly.value");
 		expect(page).toContain("composerChannel.value ? 'public' : visibility.value");
@@ -256,7 +284,7 @@ describe('HataSNSCordUIの結線', () => {
 		expect(page).toContain("home: prefer.r['postFormVisibilityBorder.color.home']");
 		expect(page).toContain("followers: prefer.r['postFormVisibilityBorder.color.followers']");
 		expect(page).toContain("specified: prefer.r['postFormVisibilityBorder.color.specified']");
-		expect(page).toContain(':style="[visibilityBorderStyle, postDelay.frameStyle.value]"');
+		expect(page).toContain(':class="$style.postFormPill" :style="visibilityBorderStyle"');
 		expect(page).toContain('@focus="composerInputFocused = true"');
 		expect(page).toContain('@blur="composerInputFocused = false"');
 		expect(page).toContain('if (!composerInputFocused.value || postDelay.active.value || !visibilityBorderEnabled.value) return undefined;');
@@ -264,17 +292,18 @@ describe('HataSNSCordUIの結線', () => {
 		expect(page).toContain('copy.channelVisibilityFixed');
 		expect(page).toContain(':aria-pressed="cwEnabled"');
 		expect(page).not.toContain("text: cwEnabled.value ? 'CWを解除' : 'CWを使う'");
-		expect(page).toContain('text: copy.chooseFrequentButtons');
+		expect(page).toContain('text: copy.chooseComposerShortcuts');
 		expect(page).toContain('activeComposerShortcuts');
 		expect(page).toContain('text: copy.frequentButtonsMaxTwo');
 		expect(page).toContain(':class="$style.composerShortcutInline"');
 		expect(page).not.toContain(':class="$style.composerShortcutRail"');
 		expect(page).toContain(':aria-label="copy.insertCustomEmoji"');
-		expect(page).toMatch(/<textarea[^>]+@input="resizeComposerInput"[^>]*><\/textarea>\s*<button[^>]+:aria-label="copy\.insertCustomEmoji"[^>]+@click="openComposerEmojiPicker"/s);
+		expect(page).toMatch(/<textarea[^>]+@input="resizeComposerInput"[^>]*><\/textarea>/s);
+		expect(page).toMatch(/:class="\$style\.composerActionRow"[\s\S]+:aria-label="copy\.insertCustomEmoji"[^>]+@click="openComposerEmojiPicker"/s);
 		expect(page).toContain('composerInput.value?.setSelectionRange(caret, caret)');
 		expect(page).toContain("input.style.height = 'auto'");
 		expect(page).toContain('Math.min(input.scrollHeight, maxHeight)');
-		expect(page).toMatch(/\.pillInput\s*\{[^}]*min-height:\s*32px;[^}]*max-height:\s*120px;[^}]*overflow-y:\s*hidden;/s);
+		expect(page).toMatch(/\.pillInput\s*\{[^}]*min-height:\s*42px;[^}]*max-height:\s*150px;/s);
 		expect(page).toContain(':aria-label="copy.postPreview"');
 		expect(page).toContain('<Mfm :text="draftText" :author="$i" :nyaize="\'respect\'"/>');
 		expect(page).toMatch(/\.composerPreview\s*\{[^}]*max-height:\s*156px;[^}]*overflow:\s*hidden;/s);
@@ -293,9 +322,13 @@ describe('HataSNSCordUIの結線', () => {
 		expect(page).toContain('function adoptPostFormRequest(props: PostFormProps)');
 		expect(page).toContain('void os.postDirect({');
 		expect(page).toContain('channelId: composerChannel.value?.id');
+		expect(page).toContain('data-hatacording-reply-target-avatar');
+		expect(page).toContain(':class="$style.composerContextAvatarFrame"');
 		expect(page).toContain(':class="$style.composerContextAvatar"');
 		expect(page).toContain('{{ composerContextExcerpt }}');
-		expect(page).toMatch(/\.composerContext > \.composerContextAvatar\s*\{[^}]*min-width:\s*25px;[^}]*max-width:\s*25px;[^}]*min-height:\s*25px;[^}]*max-height:\s*25px;[^}]*flex:\s*0 0 25px;[^}]*aspect-ratio:\s*1;/s);
+		expect(page).toMatch(/\.composerContext > \.composerContextAvatarFrame\s*\{[^}]*width:\s*24px;[^}]*min-width:\s*24px;[^}]*max-width:\s*24px;[^}]*height:\s*24px;[^}]*min-height:\s*24px;[^}]*max-height:\s*24px;[^}]*flex:\s*0 0 24px;[^}]*aspect-ratio:\s*1;/s);
+		expect(page).toMatch(/\.composerContext > \.composerContextAvatarFrame > \.composerContextAvatar\s*\{[^}]*max-width:\s*100%;[^}]*max-height:\s*100%;[^}]*aspect-ratio:\s*1;/s);
+		expect(page).toMatch(/\.composerContextCopy\s*\{[^}]*max-width:\s*100%;[^}]*font-size:\s*\.68rem;[^}]*line-height:\s*1\.25;/s);
 	});
 
 	test('テーマ・UI倍率・リアルタイム切替を共通設定へ集約し、設定タブと同期する', () => {
@@ -307,6 +340,8 @@ describe('HataSNSCordUIの結線', () => {
 		expect(settingsComponent).toContain('data-hatacording-ui-scale-selector');
 		expect(settingsComponent).toContain('preferences.timelineRealtime');
 		expect(settingsComponent).toContain(".root[data-color-mode='dark'] .activeChoice");
+		expect(settingsComponent).toMatch(/\.choiceBar\s*\{[^}]*grid-auto-rows:\s*28px;[^}]*align-items:\s*stretch;/s);
+		expect(settingsComponent).toMatch(/\.choice\s*\{[^}]*height:\s*28px;[^}]*min-height:\s*28px;[^}]*max-height:\s*28px;[^}]*place-items:\s*center;[^}]*line-height:\s*1;/s);
 		expect(settingsComponent).toMatch(/\.choice\[data-active='true'\]:hover,[\s\S]*?background: var\(--MI_THEME-accent\);[\s\S]*?color: var\(--MI_THEME-fgOnAccent\);/);
 		expect(settingsComponent).toMatch(/\.root\[data-color-mode='dark'\] \[data-hatacording-ui-scale-selector\] \.choice\[data-active='true'\]:hover,[\s\S]*?background: color-mix\(in srgb, var\(--MI_THEME-accent\) 68%, #202632\);[\s\S]*?color: #fff;/);
 		expect(page).toContain("{ type: 'component', component: HatacordingUiSettings");
@@ -323,6 +358,21 @@ describe('HataSNSCordUIの結線', () => {
 		expect(hataCustom).toContain('<HatacordingUiSettings :accountId="$i.id"/>');
 		expect(tutorialCopy).toContain('tutorial.step3Body');
 		expect(page).toMatch(/\[data-hatacording-ui-scale-selector\] button\[data-active='true'\]\s*\{[^}]*background:[^}]*!important;[^}]*color:\s*#fff !important;/s);
+	});
+
+	test('レート制限は操作を塞がない小型表示にし、復活前の再試行を止める', () => {
+		expect(page).toContain('v-if="timelineErrorKind === \'generic\'" :class="$style.timelineError"');
+		expect(page).toContain('v-if="timelineErrorKind === \'rateLimit\'" :class="$style.composerRateLimit"');
+		expect(page).toContain("const timelineRetryBlocked = computed(() => timelineErrorKind.value === 'rateLimit' && effectiveRateLimit.value?.remaining === 0)");
+		expect(page).toContain('if (timelineRetryBlocked.value) return;');
+		expect(page).toContain("timelineErrorKind.value = 'rateLimit';");
+		expect(page).toContain("window.addEventListener('unhandledrejection', onHatacordingUnhandledRejection, { capture: true })");
+		expect(page).toContain("window.removeEventListener('unhandledrejection', onHatacordingUnhandledRejection, { capture: true })");
+		expect(page).toContain('event.preventDefault();');
+		expect(commonBoot).toContain('if (event.defaultPrevented) return;');
+		expect(page).not.toContain('loadError && feedEntries.length === 0');
+		expect(page).toMatch(/\.timelineError\s*\{[^}]*min-height:\s*0;[^}]*padding:\s*8px 10px;/s);
+		expect(page).toMatch(/\.composerRateLimit\s*\{[^}]*width:\s*min\(100%, 700px\);[^}]*padding:\s*8px 10px;/s);
 	});
 
 	test('通知・地震津波履歴を期限付き端末キャッシュから復元し、相対日時を表示する', () => {
@@ -619,11 +669,12 @@ describe('HataSNSCordUIの結線', () => {
 		expect(page).toContain('return activity.kind === \'earthquake\' || activity.kind === \'tsunami\';');
 		expect(page).toContain('function mergeConsecutiveEarthquake(pending: PendingActivityEvent): boolean');
 		expect(page).toContain('if (isEarthquakeActivity(pending) && mergeConsecutiveEarthquake(pending)) return;');
-		expect(page).toContain('target.text = `${target.notificationItems.length}件の地震・津波情報があります`;');
+		expect(page).toContain('const groupLabel = hatacordingEarthquakeGroupLabel(target.notificationItems);');
+		expect(page).toContain('target.text = `${target.notificationItems.length}件の${groupLabel}があります`;');
 		expect(page).toContain('target.to = \'/earthquake\';');
 		expect(page).toContain('target.emergency = true;');
 		expect(page).toContain('<Activity v-if="isGroupedEarthquakeActivity(entry.activity!)"');
-		expect(page).toContain('\'件の地震・津波情報があります\'');
+		expect(page).toContain('`件の${hatacordingEarthquakeGroupLabel(activity.notificationItems ?? [])}があります`');
 		expect(page).toContain('.activityEarthquakeGroupIcon');
 		expect(page).toContain('if (notification.type === \'earthquake\') return;');
 	});
@@ -676,6 +727,10 @@ describe('HataSNSCordUIの結線', () => {
 		expect(setup).toContain('$style.cordMockLeft');
 		expect(setup).toContain('$style.cordMockCenter');
 		expect(setup).toContain('$style.cordMockRight');
+		expect(setup).toContain('src="/client-assets/hatacording/mascot-shiba-v1.webp"');
+		expect(setup).toContain(':class="$style.cordChoiceMascot"');
+		expect(setup).toMatch(/\.cordChoiceMascot\s*\{[^}]*width:\s*72px;[^}]*height:\s*72px;[^}]*object-fit:\s*cover;/s);
+		expect(setup).toMatch(/<img[\s\S]*?alt=""[\s\S]*?aria-hidden="true"/);
 		expect(setup).toContain("font-family: 'Righteous'");
 		expect(setup).toContain("src: url('/client-assets/Righteous-Regular.woff2') format('woff2')");
 		expect(setup).toContain('const copy = i18n.ts._hata._uiSetup;');
@@ -697,7 +752,39 @@ describe('HataSNSCordUIの結線', () => {
 		expect(modal).toContain('!modalRootEl.value.contains(window.document.activeElement)');
 		expect(modal).toContain('modalRootEl.value.focus({ preventScroll: true });');
 		expect(setup).toContain(':disableBgBlur="true"');
+		expect(setup).toMatch(/\.root\s*\{[\s\S]*?caret-color:\s*transparent;/);
+		expect(setup).not.toMatch(/<label\b[\s\S]*?<button\b/);
 		expect(setup).toMatch(/\.root\s*\{[\s\S]*?-webkit-backdrop-filter:\s*none;[\s\S]*?backdrop-filter:\s*none;/);
 		expect(page).toMatch(/html\[data-hatacording-color-mode\] :is\(\._modalBg, \._popup, \._popupAcrylic\)\s*\{[\s\S]*?-webkit-backdrop-filter:\s*none !important;[\s\S]*?backdrop-filter:\s*none !important;/);
+	});
+
+	test('意味別アイコン動作と公開範囲の新パネルを本実装へ接続する', () => {
+		const motion = readFrontendFile('src/utility/hata-icon-motion.ts');
+		const picker = readFrontendFile('src/components/HatacordingVisibilityPicker.vue');
+		const simple = readFrontendFile('src/ui/simple.vue');
+		expect(motion).toContain("notifications: 'bell-ring'");
+		expect(motion).toContain("announcements: 'announcement-recoil'");
+		expect(motion).toContain("followRequests: 'follow-emphasis'");
+		expect(motion).toContain("cacheClear: 'cache-clear'");
+		expect(motion).toContain("motion === 'more-dots'");
+		expect(simple).toContain("playSimpleNavMotion($event, 'home'); goHome()");
+		expect(simple).toContain("playSimpleNavMotion($event, 'notifications'); goToNotifications()");
+		expect(page).toContain('playHataNavigationMotion(event, props.item.id, 620)');
+		expect(page).toContain('os.popup(HatacordingVisibilityPicker');
+		expect(page).toContain('colorMode: prefs.value.colorMode');
+		expect(picker).toContain('grid-template-columns:repeat(2,minmax(0,1fr))');
+		expect(picker).toContain('role="switch"');
+		expect(picker).toContain(':data-color-mode="colorMode"');
+		expect(picker).toContain(".root[data-color-mode='light']");
+		expect(picker).toContain(".root[data-color-mode='dark']");
+	});
+
+	test('公開範囲フラッシュ・星メニューのホバー展開・TL縦リビールを残す', () => {
+		expect(page).toContain('visibilityFlashIcon');
+		expect(page).toContain("'hatacording-visibility-flash'");
+		expect(page).toContain('.composerTool:hover > span');
+		expect(page).toContain('timelineSwitchRevealing');
+		expect(page).toContain('@keyframes hatacordingTimelineLineIn');
+		expect(page).toContain(':style="{ \'--cord-reveal-order\': timelineRevealOrder(entryIndex) }"');
 	});
 });

@@ -16,6 +16,14 @@ export type HatacordingActivityKind = 'notification' | 'external' | 'favorite' |
 export type HatacordingActivityIcon = 'bell' | 'user' | 'sparkles' | 'message' | 'activity' | 'unplug';
 export type ServerDisconnectedBehavior = 'quiet' | 'reload' | 'dialog' | 'none';
 
+export function hatacordingEarthquakeGroupLabel(items: Pick<HatacordingActivityCopy, 'kind'>[]): string {
+	const hasEarthquake = items.some(item => item.kind === 'earthquake');
+	const hasTsunami = items.some(item => item.kind === 'tsunami');
+	if (hasEarthquake && !hasTsunami) return '地震情報';
+	if (hasTsunami && !hasEarthquake) return '津波情報';
+	return '地震・津波情報';
+}
+
 export type HatacordingNotificationActivitySource = {
 	kind: 'notification';
 	type: string;

@@ -53,6 +53,7 @@ export async function common(createVue: () => Promise<App<Element>>) {
 		});
 
 		window.addEventListener('unhandledrejection', event => {
+			if (event.defaultPrevented) return;
 			console.error(event);
 			/*
 			alert({

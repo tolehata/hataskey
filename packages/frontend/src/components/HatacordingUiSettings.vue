@@ -163,6 +163,8 @@ onBeforeUnmount(() => window.removeEventListener(HATACORDING_UI_PREFERENCES_CHAN
 .choiceBar {
 	display: grid;
 	grid-template-columns: repeat(3, minmax(0, 1fr));
+	grid-auto-rows: 28px;
+	align-items: stretch;
 	gap: 4px;
 	padding: 3px;
 	border: 1px solid var(--MI_THEME-divider);
@@ -171,16 +173,23 @@ onBeforeUnmount(() => window.removeEventListener(HATACORDING_UI_PREFERENCES_CHAN
 }
 
 .choice {
+	display: grid;
 	min-width: 0;
-	min-height: 32px;
-	padding: 5px 9px;
+	height: 28px;
+	min-height: 28px;
+	max-height: 28px;
+	place-items: center;
+	padding: 0 8px;
 	border: 1px solid transparent;
 	border-radius: 9px;
+	appearance: none;
 	background: transparent;
 	color: var(--MI_THEME-fg);
 	font: inherit;
 	font-size: .82em;
 	font-weight: 650;
+	line-height: 1;
+	white-space: nowrap;
 	cursor: pointer;
 }
 

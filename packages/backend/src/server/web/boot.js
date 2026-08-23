@@ -7,11 +7,22 @@
 
 // ブロックの中に入れないと、定義した変数がブラウザのグローバルスコープに登録されてしまい邪魔なので
 (async () => {
+	function isExpectedRateLimitRejection(event) {
+		const code = event && event.reason && event.reason.code;
+		return code === 'RATE_LIMIT_EXCEEDED' || code === 'BRIEF_REQUEST_INTERVAL';
+	}
+
 	window.onerror = (e) => {
 		console.error(e);
 		renderError('SOMETHING_HAPPENED', e);
 	};
 	window.onunhandledrejection = (e) => {
+		// APIの利用上限はアプリ側で回復時刻と再試行導線を表示する。
+		// ブート失敗へ昇格すると、既に起動済みのUI全体を覆ってしまう。
+		if (isExpectedRateLimitRejection(e)) {
+			e.preventDefault();
+			return;
+		}
 		console.error(e);
 		renderError('SOMETHING_HAPPENED_IN_PROMISE', e.reason || e);
 	};

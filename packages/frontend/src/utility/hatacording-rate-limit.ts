@@ -22,7 +22,17 @@ export type HatacordingRateLimitSnapshot = {
 
 type HeaderReader = Pick<Headers, 'get'>;
 
+type ApiErrorLike = {
+	code?: unknown;
+};
+
 export const hatacordingRateLimitSnapshot = ref<HatacordingRateLimitSnapshot | null>(null);
+
+export function isHatacordingRateLimitError(error: unknown): boolean {
+	if (error == null || typeof error !== 'object') return false;
+	const code = (error as ApiErrorLike).code;
+	return code === 'RATE_LIMIT_EXCEEDED' || code === 'BRIEF_REQUEST_INTERVAL';
+}
 
 export function isHatacordingRateLimitTrackingActive(): boolean {
 	return typeof window !== 'undefined' && miLocalStorage.getItem('ui') === 'hatacording';

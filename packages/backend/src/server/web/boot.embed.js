@@ -7,11 +7,20 @@
 
 // ブロックの中に入れないと、定義した変数がブラウザのグローバルスコープに登録されてしまい邪魔なので
 (async () => {
+	function isExpectedRateLimitRejection(event) {
+		const code = event && event.reason && event.reason.code;
+		return code === 'RATE_LIMIT_EXCEEDED' || code === 'BRIEF_REQUEST_INTERVAL';
+	}
+
 	window.onerror = (e) => {
 		console.error(e);
 		renderError('SOMETHING_HAPPENED');
 	};
 	window.onunhandledrejection = (e) => {
+		if (isExpectedRateLimitRejection(e)) {
+			e.preventDefault();
+			return;
+		}
 		console.error(e);
 		renderError('SOMETHING_HAPPENED_IN_PROMISE');
 	};

@@ -4,22 +4,22 @@ SPDX-License-Identifier: AGPL-3.0-only
 旗鯖fork: UI選択画面から利用する「HataSNSCordUI」。独立3ペインUIと端末ローカル設定。
 -->
 <template>
-<div ref="rootEl" :class="$style.root" :data-hata-foldable="isFoldableWide ? 'true' : undefined" :data-compact="isCompact ? 'true' : 'false'" :data-sidebar-collapsed="sidebarCollapsed ? 'true' : 'false'" :data-right-collapsed="prefs.rightPaneCollapsed ? 'true' : 'false'" :data-color-mode="prefs.colorMode" :data-ui-scale="prefs.uiScale" :data-theme-changing="colorModeTransitioning ? 'true' : 'false'" @touchstart.passive="onMobileEdgeTouchStart" @touchend.passive="onMobileEdgeTouchEnd" @touchcancel.passive="onMobileEdgeTouchCancel">
+<div ref="rootEl" :class="$style.root" :data-hata-foldable="isFoldableWide ? 'true' : undefined" :data-compact="isCompact ? 'true' : 'false'" :data-sidebar-collapsed="sidebarCollapsed ? 'true' : 'false'" :data-right-collapsed="prefs.rightPaneCollapsed ? 'true' : 'false'" :data-color-mode="prefs.colorMode" :data-ui-scale="prefs.uiScale" :data-animation="prefer.s.animation ? 'true' : 'false'" :data-theme-changing="colorModeTransitioning ? 'true' : 'false'" @touchstart.passive="onMobileEdgeTouchStart" @touchend.passive="onMobileEdgeTouchEnd" @touchcancel.passive="onMobileEdgeTouchCancel">
 	<button v-if="(isCompact && drawerOpen) || (rightPaneOverlay && rightPaneOpen)" type="button" :class="$style.scrim" :aria-label="copy.closePanels" @click="closeOverlays"></button>
 
 	<aside :class="[$style.leftPane, drawerOpen && $style.drawerOpen]">
 		<header :class="$style.serverHeader">
-			<button type="button" :class="$style.serverButton" @click="openServerMenu">
+			<button type="button" :class="$style.serverButton" :title="sidebarCollapsed ? (instance.name || 'Hataskey') : undefined" :aria-label="sidebarCollapsed ? (instance.name || 'Hataskey') : undefined" @click="openServerMenu">
 				<img :src="instance.iconUrl || '/favicon.ico'" :class="$style.serverIcon" alt=""/>
 				<span :class="$style.serverName">{{ instance.name || 'Hataskey' }}</span>
 			</button>
 			<div v-if="!sidebarCollapsed" :class="$style.serverActions">
-				<button type="button" :class="$style.iconButton" :title="copy.timelineSettings" @click="openTimelineOptions"><SlidersHorizontal :size="16"/></button>
-				<button v-if="!isCompact" type="button" :class="$style.iconButton" :title="copy.collapseMenu" @click="toggleSidebar"><PanelLeftClose :size="16"/></button>
-				<button v-else type="button" :class="$style.iconButton" :title="copy.close" @click="drawerOpen = false"><X :size="16"/></button>
+				<button type="button" :class="$style.iconButton" :title="copy.timelineSettings" @click="openTimelineOptions"><component :is="timelineSettingsIcon" :size="16"/></button>
+				<button v-if="!isCompact" type="button" :class="$style.iconButton" :title="copy.collapseMenu" @click="toggleSidebar"><component :is="sidebarCollapseIcon" :size="16"/></button>
+				<button v-else type="button" :class="$style.iconButton" :title="copy.close" @click="drawerOpen = false"><component :is="closeIcon" :size="16"/></button>
 			</div>
 		</header>
-		<button v-if="sidebarCollapsed" type="button" :class="$style.expandButton" :title="copy.expandMenu" @click="toggleSidebar"><PanelLeftOpen :size="16"/></button>
+		<button v-if="sidebarCollapsed" type="button" :class="$style.expandButton" :title="copy.expandMenu" @click="toggleSidebar"><component :is="sidebarExpandIcon" :size="16"/></button>
 
 		<div v-if="menuEditing && !sidebarCollapsed" :class="$style.editNotice">
 			<div><strong>{{ copy.editMenuTitle }}</strong><span>{{ copy.editMenuDescription }}</span></div>
@@ -34,7 +34,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<section :class="$style.menuSection">
 				<div v-if="!sidebarCollapsed" :class="$style.sectionHeading">
 					<h2 :class="$style.sectionTitle">{{ copy.timelines }}</h2>
-					<button type="button" :class="$style.sectionAddButton" :title="copy.addTimeline" @click="openAddTimelineMenu"><Plus :size="13"/><span>{{ copy.add }}</span></button>
+					<button type="button" :class="$style.sectionAddButton" :title="copy.addTimeline" @click="openAddTimelineMenu"><component :is="addIcon" :size="13"/><span>{{ copy.add }}</span></button>
 				</div>
 				<MenuRow v-for="item in primaryTimelineItems" :key="item.id" :item="item"/>
 			</section>
@@ -45,7 +45,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 			<section v-for="group in collectionGroups" :key="group.id" :class="$style.collectionSection">
 				<div :class="$style.collectionHeaderRow">
-					<button type="button" :class="$style.collectionHeader" @click="openCollection(group, $event)">
+					<button type="button" :class="$style.collectionHeader" :title="sidebarCollapsed ? group.label : undefined" :aria-label="sidebarCollapsed ? group.label : undefined" @click="openCollection(group, $event)">
 						<component :is="group.icon" :size="17"/><span v-if="!sidebarCollapsed">{{ group.label }}</span>
 						<span v-if="!sidebarCollapsed" :class="$style.collectionCount">{{ group.items.length }}</span>
 						<ChevronDown v-if="!sidebarCollapsed" :size="16" :class="prefs.collectionExpanded[group.id] && $style.rotated"/>
@@ -59,14 +59,14 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</section>
 
 			<section :class="$style.moreSection">
-				<button type="button" :class="$style.moreButton" @click="openMoreMenu"><MoreHorizontal :size="18"/><span v-if="!sidebarCollapsed">{{ copy.more }}</span></button>
-				<div v-if="showMore && !sidebarCollapsed" :class="$style.morePanel">
+				<button type="button" :class="$style.moreButton" :title="sidebarCollapsed ? copy.more : undefined" :aria-label="sidebarCollapsed ? copy.more : undefined" @click="openMoreMenu"><component :is="moreNavigationIcon" :size="18"/><span v-if="!sidebarCollapsed">{{ copy.more }}</span></button>
+				<div v-if="showMore && !sidebarCollapsed && menuEditing" :class="$style.morePanel">
 					<div v-for="item in hiddenMenuItems" :key="item.id" :class="$style.moreItemRow">
 						<button type="button" :class="$style.moreItem" @click="handleMoreItem(item)"><component :is="item.icon" :size="18"/><span>{{ item.label }}</span><ChevronRight :size="15"/></button>
 						<button v-if="menuEditing" type="button" :class="$style.moreRestoreButton" :title="copyx.addToTopMenu({ item: item.label })" @click="restoreMenuItem(item)"><Plus :size="15"/><span>{{ copy.moveToTop }}</span></button>
 					</div>
 				</div>
-				<button type="button" :class="$style.feedbackButton" :title="copy.createHataFeedIssue" @click="openFeedbackIssue"><MessageSquareWarning :size="17"/><span v-if="!sidebarCollapsed">{{ copy.sendFeedback }}</span></button>
+				<button type="button" :class="$style.feedbackButton" :title="copy.createHataFeedIssue" :aria-label="sidebarCollapsed ? copy.createHataFeedIssue : undefined" @click="openFeedbackIssue"><MessageSquareWarning :size="17"/><span v-if="!sidebarCollapsed">{{ copy.sendFeedback }}</span></button>
 			</section>
 		</nav>
 
@@ -74,18 +74,18 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<button type="button" :class="$style.accountButton" :title="copy.accountMenu" @click="openAccountMenu">
 				<MkAvatar :user="$i" :class="$style.avatar"/>
 				<span v-if="!sidebarCollapsed" :class="$style.accountText"><MkUserName :user="$i"/><small>@{{ $i.username }}</small></span>
-				<ChevronUp v-if="!sidebarCollapsed" :size="16"/>
+				<component :is="accountSwitchIcon" :size="16"/>
 			</button>
-			<button v-if="!sidebarCollapsed" type="button" :class="$style.iconButton" :title="copy.settings" @click="openCenterPage('/settings', copy.settings)"><Settings :size="17"/></button>
-			<button v-if="!sidebarCollapsed && ($i.isAdmin || $i.isModerator)" type="button" :class="$style.iconButton" :title="copy.controlPanel" @click="openCenterPage('/admin', copy.controlPanel)"><Shield :size="17"/></button>
+			<button v-if="!sidebarCollapsed" type="button" :class="$style.iconButton" :title="copy.settings" @click="openCenterPage('/settings', copy.settings)"><component :is="settingsIcon" :size="17"/></button>
+			<button v-if="!sidebarCollapsed && ($i.isAdmin || $i.isModerator)" type="button" :class="$style.iconButton" :title="copy.controlPanel" @click="openCenterPage('/admin', copy.controlPanel)"><component :is="adminIcon" :size="17"/></button>
 		</footer>
 	</aside>
 
 	<main :class="$style.centerPane">
 		<header :class="$style.timelineHeader">
-			<button v-if="isCompact" type="button" :class="$style.iconButton" :title="copy.menu" @click="openLeftPane"><MenuIcon :size="18"/></button>
-			<button v-if="centerPageOpen" type="button" :class="$style.iconButton" :title="centerPageHistory.length > 1 ? copy.backOnePage : copy.backToTimeline" @click="backCenterPage"><ArrowLeft :size="18"/></button>
-			<div :class="$style.timelineTitle"><component :is="centerPageOpen ? Layers : (activeMenuItem?.icon || Activity)" :size="18"/><div><strong>{{ centerPageOpen ? centerPageTitle : (activeMenuItem?.label || copy.timelines) }}</strong><small v-if="centerPageOpen">{{ copy.shownInsideUi }}</small><small v-else><Circle :size="7" fill="currentColor"/> {{ copyx.onlineUsers({ count: onlineUsersCount.toString() }) }}</small></div></div>
+			<button v-if="isCompact" type="button" :class="$style.iconButton" :title="copy.menu" @click="openLeftPane"><component :is="sidebarMenuIcon" :size="18"/></button>
+			<button v-if="centerPageOpen" type="button" :class="$style.iconButton" :title="centerPageHistory.length > 1 ? copy.backOnePage : copy.backToTimeline" @click="backCenterPage"><component :is="backIcon" :size="18"/></button>
+			<div :class="$style.timelineTitle"><component :is="centerPageOpen ? layersNavigationIcon : (activeMenuItem?.icon || Activity)" :size="18"/><div><strong>{{ centerPageOpen ? centerPageTitle : (activeMenuItem?.label || copy.timelines) }}</strong><small v-if="centerPageOpen">{{ copy.shownInsideUi }}</small><small v-else><Circle :size="7" fill="currentColor"/> {{ copyx.onlineUsers({ count: onlineUsersCount.toString() }) }}</small></div></div>
 			<div :class="$style.headerActions">
 				<button type="button" :class="$style.rateLimitButton" :data-level="rateLimitLevel" :title="rateLimitTitle" :aria-label="rateLimitTitle" @click="openRateLimitDetails">
 					<svg :class="$style.rateLimitRing" viewBox="0 0 26 26" aria-hidden="true">
@@ -94,9 +94,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 					</svg>
 					<span v-if="prefs.showRateLimitNumber">{{ rateLimitMeterLabel }}</span>
 				</button>
-				<button v-if="!centerPageOpen && activeCollectionSettings" type="button" :class="$style.iconButton" :title="activeCollectionSettings.label" @click="openActiveCollectionSettings"><Settings :size="16"/></button>
-				<button v-if="!centerPageOpen" type="button" :class="$style.iconButton" :title="copy.refresh" :disabled="fetching" @click="reloadTimeline"><RefreshCw :size="16" :class="fetching && $style.spinning"/></button>
-				<button v-if="prefs.rightPaneCollapsed || rightPaneOverlay" type="button" :class="$style.iconButton" :title="copy.openSubpane" @click="openRightPane"><PanelRightOpen :size="18"/></button>
+				<button v-if="!centerPageOpen && activeCollectionSettings" type="button" :class="$style.iconButton" :title="activeCollectionSettings.label" @click="openActiveCollectionSettings"><component :is="settingsIcon" :size="16"/></button>
+				<button v-if="!centerPageOpen" type="button" :class="$style.iconButton" :title="copy.refresh" :disabled="fetching" @click="playHataNavigationMotion($event, 'reload'); reloadTimeline()"><RefreshCw :size="16" :class="fetching && $style.spinning"/></button>
+				<button v-if="prefs.rightPaneCollapsed || rightPaneOverlay" type="button" :class="$style.iconButton" :title="copy.openSubpane" @click="openRightPane"><component :is="panelOpenIcon" :size="18"/></button>
 			</div>
 		</header>
 
@@ -110,14 +110,18 @@ SPDX-License-Identifier: AGPL-3.0-only
 				@pointerdown="onTimelinePointerDown"
 				@scroll="onTimelineScroll"
 			>
+				<div v-if="timelineErrorKind === 'generic'" :class="$style.timelineError" data-kind="generic" role="status" aria-live="polite">
+					<CircleAlert :size="18"/>
+					<strong>{{ copy.timelineLoadFailed }}</strong>
+					<button type="button" :disabled="fetching" @click="reloadTimeline()">{{ copy.retry }}</button>
+				</div>
 				<div v-if="fetching && feedEntries.length === 0" :class="$style.state"><LoaderCircle :size="24" :class="$style.spinning"/><span>{{ copy.loadingTimeline }}</span></div>
-				<div v-else-if="loadError && feedEntries.length === 0" :class="$style.state"><CircleAlert :size="26"/><strong>{{ copy.timelineLoadFailed }}</strong><button type="button" :class="$style.primaryButton" @click="reloadTimeline">{{ copy.retry }}</button></div>
-				<div v-else-if="feedEntries.length === 0" :class="$style.state"><Inbox :size="26"/><span>{{ copy.noNotes }}</span></div>
+				<div v-else-if="feedEntries.length === 0 && timelineErrorKind == null" :class="$style.state"><Inbox :size="26"/><span>{{ copy.noNotes }}</span></div>
 				<template v-else>
 					<button v-if="notes.length > 0 && hasMore" type="button" :class="$style.historyLoader" :disabled="loadingMore" @click="loadMore"><span :class="$style.historyLine"></span><span :class="$style.historyLabel"><LoaderCircle v-if="loadingMore" :size="15" :class="$style.spinning"/><History v-else :size="15"/>{{ loadingMore ? copy.loadingPastConversations : copy.browsePastConversations }}</span><span :class="$style.historyLine"></span></button>
-					<TransitionGroup name="hatacording-feed" tag="div" :class="$style.feedList">
-						<template v-for="entry in feedEntries" :key="`${entry.id}:${prefs.timelineRealtime}`">
-							<section v-if="entry.type === 'activity'" :class="$style.activityBlock">
+					<TransitionGroup :name="prefer.s.animation ? 'hatacording-feed' : ''" tag="div" :class="[$style.feedList, timelineSwitchRevealing && $style.timelineSwitchRevealing]">
+						<template v-for="(entry, entryIndex) in feedEntries" :key="entry.id">
+			<section v-if="entry.type === 'activity'" :class="$style.activityBlock" :style="{ '--cord-reveal-order': timelineRevealOrder(entryIndex) }">
 								<article :class="[$style.activityEvent, entry.activity!.phase === 'revealing' && $style.activityRevealing, entry.activity!.phase === 'highlighting' && prefs.showFoilAnimation && !entry.activity!.notificationItems?.length && $style.activityShimmering, entry.activity!.emergency && $style.activityEmergency]" :data-phase="entry.activity!.phase">
 									<button type="button" :class="$style.activityMain" :aria-label="activityAriaLabel(entry.activity!)" @click="openActivityEvent(entry.activity!)">
 										<component :is="entry.activity!.icon" :size="16"/>
@@ -150,10 +154,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 									</button>
 								</TransitionGroup>
 							</section>
-							<article v-else-if="entry.external && externalAccount" :class="$style.externalNoteRow">
+			<article v-else-if="entry.external && externalAccount" :class="$style.externalNoteRow" :style="{ '--cord-reveal-order': timelineRevealOrder(entryIndex) }">
 								<MkExternalNote :note="entry.note!" :host="externalAccount.host" :token="externalAccount.token" :class="$style.externalEmbeddedNote" @reactionChanged="onExternalReactionChanged" @noteDeleted="removeExternalNote"/>
 							</article>
-							<article v-else :class="[$style.noteRow, entry.note!.userId === $i.id && $style.ownNote]">
+			<article v-else :class="[$style.noteRow, entry.note!.userId === $i.id && $style.ownNote]" :style="{ '--cord-reveal-order': timelineRevealOrder(entryIndex) }">
 								<button type="button" :class="$style.noteAvatarButton" :title="copy.openProfile" @click.stop="openProfileTab(entry.note!.user)">
 									<MkAvatar :user="entry.note!.user" :class="$style.noteAvatar"/>
 								</button>
@@ -180,24 +184,37 @@ SPDX-License-Identifier: AGPL-3.0-only
 		</div>
 
 		<div :class="$style.composerDock">
-			<div v-if="composerContext || composerChannel" :class="[$style.composerContext, (composerContext?.kind === 'channel' || composerChannel?.isPrivate) && $style.privateComposerContext]">
+			<div v-if="timelineErrorKind === 'rateLimit'" :class="$style.composerRateLimit" role="status" aria-live="polite">
+				<CircleAlert :size="18"/>
+				<span :class="$style.composerRateLimitCopy">
+					<strong>{{ i18n.ts.rateLimitExceeded }}</strong>
+					<small v-if="rateLimitResetText">{{ rateLimitResetText }}</small>
+				</span>
+				<button type="button" @click="openRateLimitDetails">{{ copy.showDetails }}</button>
+			</div>
+			<Transition :name="prefer.s.animation ? 'hatacording-visibility-flash' : ''">
+				<div v-if="visibilityFlashIcon" :class="$style.visibilityFlash" aria-hidden="true"><component :is="visibilityFlashIcon" :size="30"/></div>
+			</Transition>
+			<div v-if="composerContext || composerChannel" :class="[$style.composerContext, (composerContext?.kind === 'channel' || composerChannel?.isPrivate) && $style.privateComposerContext]" :data-context-kind="composerContext?.kind ?? 'channel'">
 				<component :is="composerContextIcon" :size="15"/>
-				<MkAvatar v-if="composerContext?.note" :user="composerContext.note.user" :class="$style.composerContextAvatar"/>
+				<span v-if="composerContext?.note" data-hatacording-reply-target-avatar :class="$style.composerContextAvatarFrame" aria-hidden="true">
+					<MkAvatar :user="composerContext.note.user" :class="$style.composerContextAvatar"/>
+				</span>
 				<span :class="$style.composerContextCopy"><b>{{ composerContextLabel }}</b><small v-if="composerContextExcerpt">{{ composerContextExcerpt }}</small></span>
-				<button v-if="composerContext" type="button" :title="copy.clearReplyOrQuote" @click="composerContext = null"><X :size="14"/></button>
+				<button v-if="composerContext" type="button" :title="copy.clearReplyOrQuote" @click="composerContext = null"><component :is="closeIcon" :size="14"/></button>
 			</div>
 			<div v-if="!composerChannel && visibility === 'specified'" :class="$style.recipientEditor">
-				<span :class="$style.recipientLabel"><AtSign :size="14"/>{{ copy.recipients }}</span>
+				<span :class="$style.recipientLabel"><component :is="mentionIcon" :size="14"/>{{ copy.recipients }}</span>
 				<div :class="$style.recipientList">
-					<button v-for="user in visibleUsers" :key="user.id" type="button" :class="$style.recipientChip" :title="copyx.removeRecipient({ user: userAcct(user) })" @click="removeVisibleUser(user)"><MkAvatar :user="user"/><span><MkUserName :user="user"/><small>@{{ userAcct(user) }}</small></span><X :size="13"/></button>
-					<button type="button" :class="$style.addRecipientButton" @click="pickMention"><Plus :size="14"/>{{ copy.addRecipient }}</button>
+					<button v-for="user in visibleUsers" :key="user.id" type="button" :class="$style.recipientChip" :title="copyx.removeRecipient({ user: userAcct(user) })" @click="removeVisibleUser(user)"><MkAvatar :user="user"/><span><MkUserName :user="user"/><small>@{{ userAcct(user) }}</small></span><component :is="closeIcon" :size="13"/></button>
+					<button type="button" :class="$style.addRecipientButton" @click="pickMention"><component :is="addIcon" :size="14"/>{{ copy.addRecipient }}</button>
 				</div>
 			</div>
 			<div v-if="!composerChannel && visibility === 'specified' && hasNotSpecifiedMentions" :class="$style.mentionNotice"><span>{{ copy.mentionsMissingRecipients }}</span><button type="button" @click="addMissingMentions">{{ copy.addToRecipients }}</button></div>
-			<div v-if="cwEnabled" :class="$style.inlineEditor"><EyeOff :size="16"/><input v-model="cwText" maxlength="100" :placeholder="copy.cwReason"/></div>
+			<div v-if="cwEnabled" :class="$style.inlineEditor"><component :is="contentWarningIcon" :size="16"/><input v-model="cwText" maxlength="100" :placeholder="copy.cwReason"/></div>
 			<div v-if="pollEnabled" :class="$style.pollEditor">
-				<div v-for="(_, index) in pollChoices" :key="index"><input v-model="pollChoices[index]" :placeholder="copyx.pollChoice({ number: (index + 1).toString() })"/><button v-if="pollChoices.length > 2" type="button" @click="pollChoices.splice(index, 1)"><X :size="14"/></button></div>
-				<button v-if="pollChoices.length < 10" type="button" @click="pollChoices.push('')"><Plus :size="15"/>{{ copy.addPollChoice }}</button>
+				<div v-for="(_, index) in pollChoices" :key="index"><input v-model="pollChoices[index]" :placeholder="copyx.pollChoice({ number: (index + 1).toString() })"/><button v-if="pollChoices.length > 2" type="button" @click="pollChoices.splice(index, 1)"><component :is="closeIcon" :size="14"/></button></div>
+				<button v-if="pollChoices.length < 10" type="button" @click="pollChoices.push('')"><component :is="addIcon" :size="15"/>{{ copy.addPollChoice }}</button>
 				<label><input v-model="pollMultiple" type="checkbox"/>{{ copy.allowMultipleChoices }}</label>
 				<div :class="$style.pollOptions">
 					<label>{{ copy.deadline }}<select v-model="pollExpiration"><option value="infinite">{{ copy.none }}</option><option value="at">{{ copy.specifyDateTime }}</option><option value="after">{{ copy.specifyTimeAfterPosting }}</option></select></label>
@@ -210,26 +227,44 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</div>
 			<MkEventEditor v-if="event" v-model="event" :class="$style.eventEditor" @destroyed="event = null"/>
 			<XPostFormAttaches v-model="draftFiles" :class="$style.composerAttachments" @detach="removeDraftFile" @changeSensitive="updateDraftFileSensitive" @changeName="updateDraftFileName"/>
-			<div v-if="postDelay.active.value" :class="$style.delayStatus"><span>{{ copyx.secondsRemaining({ seconds: postDelay.remainingSeconds.value.toString() }) }}</span><button type="button" @click="postDelay.sendNow">{{ copy.postNow }}</button></div>
-			<Transition name="hatacording-composer-preview">
-				<section v-if="draftText.trim().length > 0" :class="$style.composerPreview" :aria-label="copy.postPreview">
-					<header :class="$style.composerPreviewHeader"><Sparkles :size="13"/><span>{{ copy.preview }}</span></header>
+			<Transition :name="prefer.s.animation ? `hata-delay-status-${postDelay.exitMode.value}` : ''"><MkHataPostDelayStatus v-if="postDelay.active.value" :class="$style.delayStatus" :pattern="i18n.ts._hata._postDelay.countdown" :seconds="postDelay.remainingSeconds.value" :progress="postDelay.progress.value" :cancelLabel="i18n.ts._hata._postDelay.cancel" :sendNowLabel="i18n.ts._hata._postDelay.sendNow" @cancel="postDelay.cancel()" @sendNow="postDelay.sendNow()"/></Transition>
+			<Transition :name="prefer.s.animation ? 'hatacording-composer-preview' : ''">
+				<section v-if="draftText.trim().length > 0 && submitMotionState === 'idle'" :class="$style.composerPreview" :aria-label="copy.postPreview">
+					<header :class="$style.composerPreviewHeader"><component :is="postToolsIcon" :size="13"/><span>{{ copy.preview }}</span></header>
 					<div :class="$style.composerPreviewBody"><Mfm :text="draftText" :author="$i" :nyaize="'respect'"/></div>
 				</section>
 			</Transition>
-			<div :class="[$style.postFormPill, postDelay.active.value && $style.delayActive]" :style="[visibilityBorderStyle, postDelay.frameStyle.value]">
-				<button type="button" :class="[$style.pillButton, composerToolsOpen && $style.pillActive]" :title="copy.postFeatures" aria-haspopup="menu" :aria-expanded="composerToolsOpen" @click="openComposerToolsMenu"><Star :size="18"/></button>
-				<button type="button" :class="$style.pillButton" :title="copy.attachmentMenu" @click="openAttachmentMenu"><CloudUpload :size="18"/></button>
-				<button type="button" :class="[$style.pillButton, cwEnabled && $style.pillActive]" :title="cwEnabled ? copy.disableCw : copy.enableCw" :aria-pressed="cwEnabled" @click="cwEnabled = !cwEnabled"><EyeOff :size="18"/></button>
-				<div v-if="activeComposerShortcuts.length" :class="$style.composerShortcutInline" :aria-label="copy.frequentPostFeatures">
-					<button v-for="shortcut in activeComposerShortcuts" :key="shortcut.id" type="button" :class="[$style.composerShortcutButton, isComposerShortcutActive(shortcut.id) && $style.composerShortcutActive]" :title="shortcut.label" :aria-label="shortcut.label" @click="runComposerShortcut(shortcut.id, $event)"><component :is="shortcut.icon" :size="15"/></button>
+			<Transition :name="prefer.s.animation ? 'hatacording-tools' : ''">
+				<div v-if="composerToolsOpen" :class="$style.composerTools" role="menu" :aria-label="copy.postFeatures">
+					<button v-for="tool in composerShortcutDefinitions" :key="tool.id" type="button" role="menuitem" :class="[$style.composerTool, isComposerShortcutActive(tool.id) && $style.toolActive]" :data-expanded="selectedComposerToolId === tool.id" :title="tool.label" :aria-label="tool.label" @click="selectComposerTool(tool.id, $event)">
+						<component :is="tool.icon" :size="17"/><span>{{ tool.label }}</span>
+					</button>
+					<button v-if="postFormActions.length > 0" type="button" role="menuitem" :class="$style.composerTool" :title="copy.plugins" :aria-label="copy.plugins" @click="openComposerPluginMenu"><component :is="pluginIcon" :size="17"/><span>{{ copy.plugins }}</span></button>
 				</div>
+			</Transition>
+			<div :class="$style.postFormPill" :style="visibilityBorderStyle">
 				<textarea ref="composerInput" v-model="draftText" :class="$style.pillInput" rows="1" :placeholder="composerPlaceholder" @focus="composerInputFocused = true" @blur="composerInputFocused = false" @input="resizeComposerInput" @keydown.ctrl.enter.prevent="submitPost" @keydown.meta.enter.prevent="submitPost"></textarea>
-				<button type="button" :class="$style.pillButton" :title="copy.insertCustomEmoji" :aria-label="copy.insertCustomEmoji" @click="openComposerEmojiPicker"><SmilePlus :size="18"/></button>
-				<button type="button" :class="[$style.visibilityButton, localOnly && $style.localOnly]" :title="visibilityLabel" @click="openVisibilityMenu"><component :is="visibilityIcon" :size="17"/><span>{{ visibilityShortLabel }}</span></button>
-				<div v-if="prefs.showCharacterCounter" :class="[$style.charCounter, characterCount > maxNoteLength && $style.counterOver]" :style="characterCounterStyle"><span>{{ maxNoteLength - characterCount }}</span></div>
-				<button v-if="postDelay.active.value" type="button" :class="$style.sendButton" :title="copy.cancelWait" @click="postDelay.cancel"><Square :size="16" fill="currentColor"/></button>
-				<button v-else type="button" :class="$style.sendButton" :title="copy.post" :disabled="!canSubmit" @click="submitPost"><ArrowUp :size="17"/></button>
+				<div :class="$style.composerActionRow">
+					<button type="button" :class="[$style.pillButton, composerToolsOpen && $style.pillActive]" :title="copy.postFeatures" aria-haspopup="menu" :aria-expanded="composerToolsOpen" @click="openComposerToolsMenu($event)"><component :is="postToolsIcon" :size="18"/></button>
+					<button type="button" :class="$style.pillButton" :title="copy.attachmentMenu" @click="openAttachmentMenu"><component :is="attachmentIcon" :size="18"/></button>
+					<button type="button" :class="[$style.pillButton, cwEnabled && $style.pillActive]" :title="cwEnabled ? copy.disableCw : copy.enableCw" :aria-pressed="cwEnabled" @click="cwEnabled = !cwEnabled"><component :is="contentWarningIcon" :size="18"/></button>
+					<div v-if="activeComposerShortcuts.length" :class="$style.composerShortcutInline" :aria-label="copy.frequentPostFeatures">
+						<button v-for="shortcut in activeComposerShortcuts" :key="shortcut.id" type="button" :class="[$style.composerShortcutButton, isComposerShortcutActive(shortcut.id) && $style.composerShortcutActive]" :title="shortcut.label" :aria-label="shortcut.label" @click="runComposerShortcut(shortcut.id, $event)"><component :is="shortcut.icon" :size="15"/></button>
+					</div>
+					<span :class="$style.composerActionSpacer"></span>
+					<button type="button" :class="$style.pillButton" :title="copy.insertCustomEmoji" :aria-label="copy.insertCustomEmoji" @click="openComposerEmojiPicker"><component :is="emojiIcon" :size="18"/></button>
+					<button type="button" :class="[$style.visibilityButton, localOnly && $style.localOnly]" :title="visibilityLabel" @click="openVisibilityMenu"><component :is="visibilityIcon" :size="17"/><span>{{ visibilityShortLabel }}</span></button>
+					<div v-if="prefs.showCharacterCounter" :class="[$style.charCounter, characterCount > maxNoteLength && $style.counterOver]" :style="characterCounterStyle"><span>{{ maxNoteLength - characterCount }}</span></div>
+					<button type="button" :class="$style.sendButton" :data-state="submitMotionState" :title="postDelay.active.value ? copy.cancelWait : copy.post" :disabled="!postDelay.active.value && !canSubmit" @click="postDelay.active.value ? cancelPostDelay() : submitPost()">
+						<Transition :name="prefer.s.animation ? 'hatacording-submit-state' : ''" mode="out-in">
+							<component :is="cancelIcon" v-if="submitMotionState === 'countdown'" key="countdown" :size="15"/>
+							<component :is="sendingIcon" v-else-if="submitMotionState === 'sending'" key="sending" :size="16" :class="$style.submitArc"/>
+							<component :is="successIcon" v-else-if="submitMotionState === 'success'" key="success" :size="17"/>
+							<component :is="failureIcon" v-else-if="submitMotionState === 'failure'" key="failure" :size="17"/>
+							<component :is="sendIcon" v-else key="idle" :size="17"/>
+						</Transition>
+					</button>
+				</div>
 			</div>
 		</div>
 		</template>
@@ -244,19 +279,20 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<header :class="$style.subpaneHeader">
 			<div :class="$style.tabs" role="tablist">
 				<div v-for="(tab, index) in rightTabs" :key="tab.id" :class="[$style.tabWrap, activeRightTab?.id === tab.id && $style.activeTab]" draggable="true" @dragstart="dragTabIndex = index" @dragover.prevent @drop="dropTab(index)">
-					<button type="button" :class="$style.tab" @click="selectRightTab(tab)">{{ tab.title }}</button><button type="button" :class="$style.tabClose" :title="copy.closeTab" @click="closeRightTab(tab.id)"><X :size="13"/></button>
+					<button type="button" :class="$style.tab" @click="selectRightTab(tab)">{{ tab.title }}</button><button type="button" :class="$style.tabClose" :title="copy.closeTab" @click="closeRightTab(tab.id)"><component :is="closeIcon" :size="13"/></button>
 				</div>
 			</div>
-			<button type="button" :class="$style.iconButton" :title="rightTabs.length < subpaneMaxTabs ? copy.addContent : copy.replaceContent" @click="openAddTabMenu"><Plus :size="16"/></button>
-			<button v-if="activeRightTab?.kind === 'widgets' && !widgetEditing" type="button" :class="$style.iconButton" :title="copy.editWidgets" @click="widgetEditing = true"><Pencil :size="16"/></button>
-			<button v-if="activeRightTab?.kind === 'widgets' && widgetEditing" type="button" :class="$style.iconButton" :title="copy.importHatasabaWidgets" @click="importHatasabaWidgets(activeRightTab)"><Import :size="16"/></button>
-			<button v-if="rightPaneOverlay" type="button" :class="$style.iconButton" :title="copy.close" @click="rightPaneOpen = false"><X :size="16"/></button>
-			<button v-else type="button" :class="$style.iconButton" :title="copy.collapseSubpane" @click="collapseRightPane"><PanelRightClose :size="16"/></button>
+			<button type="button" :class="$style.iconButton" :title="rightTabs.length < subpaneMaxTabs ? copy.addContent : copy.replaceContent" @click="openAddTabMenu"><component :is="addIcon" :size="16"/></button>
+			<button v-if="activeRightTab?.kind === 'widgets' && !widgetEditing" type="button" :class="$style.iconButton" :title="copy.editWidgets" @click="widgetEditing = true"><component :is="editIcon" :size="16"/></button>
+			<button v-if="activeRightTab?.kind === 'widgets' && widgetEditing" type="button" :class="$style.iconButton" :title="copy.importHatasabaWidgets" @click="importHatasabaWidgets(activeRightTab)"><component :is="importIcon" :size="16"/></button>
+			<button v-if="rightPaneOverlay" type="button" :class="$style.iconButton" :title="copy.close" @click="rightPaneOpen = false"><component :is="closeIcon" :size="16"/></button>
+			<button v-else type="button" :class="$style.iconButton" :title="copy.collapseSubpane" @click="collapseRightPane"><component :is="panelCloseIcon" :size="16"/></button>
 		</header>
 
 		<div ref="subpaneContent" :class="$style.subpaneContent">
 			<Suspense :timeout="0">
 				<template #default>
+					<Transition :name="prefer.s.animation ? 'hatacording-subpane' : ''" mode="out-in">
 					<div :key="activeRightTab?.id ?? 'empty'" :class="$style.subpaneView">
 					<div v-if="!activeRightTab" :class="$style.welcomePane"><div :class="$style.welcomeWordmark">HataSNSCordUI</div><strong>{{ copy.subpaneHere }}</strong><span>{{ copy.subpaneHereDescription }}</span></div>
 					<div v-else-if="activeRightTab.kind === 'welcome'" :class="$style.welcomePane"><div :class="$style.welcomeWordmark">HataSNSCordUI</div><strong>{{ copy.welcomeSubpaneTitle }}</strong><span>{{ copy.welcomeSubpaneDescription }}</span></div>
@@ -288,6 +324,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 						</div>
 					<div v-else :class="$style.welcomePane"><ExternalLink :size="30"/><strong>{{ activeRightTab.title }}</strong><span>{{ copy.openInCenterDescription }}</span><button type="button" :class="$style.primaryButton" @click="openCenterPage(activeRightTab.path || '/', activeRightTab.title)">{{ copy.openInCenter }}</button></div>
 					</div>
+					</Transition>
 				</template>
 			<template #fallback><div :class="$style.subpaneLoading"><LoaderCircle :size="22" :class="$style.spinning"/><span>{{ copy.loadingSubpane }}</span></div></template>
 			</Suspense>
@@ -300,7 +337,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 <script lang="ts" setup>
 import { computed, defineAsyncComponent, defineComponent, h, nextTick, onBeforeUnmount, onMounted, provide, reactive, ref, useCssModule, useTemplateRef, watch } from 'vue';
 import {
-	Activity, ArrowDownToLine, ArrowLeft, ArrowUp, AtSign, Bell, BookOpen, CalendarPlus, ChevronDown, ChevronRight, ChevronUp, Circle, CircleAlert, CloudUpload, Compass, Copy, Earth, ExternalLink, EyeOff, Flame, Folder, Gamepad2, Globe2, Hash, History, Home, Import, Inbox, Layers, LayoutDashboard, List, LoaderCircle, Lock, Maximize2, Megaphone, Menu as MenuIcon, MessageCircle, MessageSquareWarning, MoreHorizontal, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Paperclip, Pencil, Pin, PinOff, Plus, Quote, Radio, RefreshCw, Reply, Rocket, Save, Search, Settings, Shield, SlidersHorizontal, SmilePlus, Sparkles, Square, Star, SwatchBook, Tv, Unplug, UserRound, WandSparkles, X,
+	Activity, ArrowDownToLine, ArrowLeft, ArrowUp, AtSign, Bell, BookOpen, CalendarPlus, Check, ChevronDown, ChevronRight, ChevronUp, Circle, CircleAlert, CloudUpload, Compass, Copy, Earth, ExternalLink, EyeOff, Flame, Folder, Gamepad2, Globe2, Hash, History, Home, Import, Inbox, Layers, LayoutDashboard, List, LoaderCircle, Lock, Maximize2, Megaphone, Menu as MenuIcon, MessageCircle, MessageSquareWarning, MoreHorizontal, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Paperclip, Pencil, Pin, PinOff, Plug, Plus, Quote, Radio, RefreshCw, Reply, Rocket, Save, Search, Settings, Shield, SlidersHorizontal, SmilePlus, Sparkles, Square, Star, SwatchBook, Tv, Unplug, UserRound, WandSparkles, X,
 } from '@lucide/vue';
 import type { Component, PropType } from 'vue';
 import type * as Misskey from 'cherrypick-js';
@@ -329,6 +366,7 @@ import { widgets as availableWidgets } from '@/widgets/index.js';
 import { useStream } from '@/stream.js';
 import { callExternalApi, getExternalAccount } from '@/utility/external-api.js';
 import { createPostSendDelayController, postSendDelayEnabled, postSendDelaySeconds } from '@/utility/post-send-delay.js';
+import { playHataIconMotion, playHataNavigationMotion } from '@/utility/hata-icon-motion.js';
 import { getActiveHataSideProfile, hataSideStudioStore } from '@/utility/hata-side-studio.js';
 import { HATACORDING_UI_PREFERENCES_CHANGE_EVENT, readHatacordingUiPreferences, writeHatacordingUiPreferences } from '@/utility/hatacording-ui.js';
 import { deepClone } from '@/utility/clone.js';
@@ -337,11 +375,11 @@ import { globalEvents, useGlobalEvent } from '@/events.js';
 import { claimAchievement } from '@/utility/achievements.js';
 import { miLocalStorage } from '@/local-storage.js';
 import { useFoldableScrollAnchor, useFoldableWide } from '@/utility/hata-foldable.js';
-import { getEffectiveHatacordingRateLimit, hatacordingRateLimitSnapshot } from '@/utility/hatacording-rate-limit.js';
+import { getEffectiveHatacordingRateLimit, hatacordingRateLimitSnapshot, isHatacordingRateLimitError } from '@/utility/hatacording-rate-limit.js';
 import { readHatacordingActivityCache, writeHatacordingActivityCache } from '@/utility/hatacording-activity-cache.js';
 import type { HatacordingCachedActivity } from '@/utility/hatacording-activity-cache.js';
 import type { HatacordingActivityCopy, HatacordingActivityIcon, HatacordingActivityKind, HatacordingNotificationActivitySource } from '@/utility/hatacording-activity.js';
-import { createApiActionActivity, createEarthquakeActivity, createNotificationActivity, createNotificationActivityFromSource, createServerDisconnectedActivity, createServerReconnectedActivity, createTimelineRealtimeActivity, sharesHatacordingNotificationAudience } from '@/utility/hatacording-activity.js';
+import { createApiActionActivity, createEarthquakeActivity, createNotificationActivity, createNotificationActivityFromSource, createServerDisconnectedActivity, createServerReconnectedActivity, createTimelineRealtimeActivity, hatacordingEarthquakeGroupLabel, sharesHatacordingNotificationAudience } from '@/utility/hatacording-activity.js';
 import { HATACORDING_TUTORIAL_ACHIEVEMENT_ID } from '@/utility/hatacording-copy.js';
 import { acquireNotificationToastSuppression } from '@/utility/notification-toast-suppression.js';
 import { acquireServerDisconnectUiSuppression } from '@/utility/server-disconnect-ui-suppression.js';
@@ -356,6 +394,8 @@ import MkNoteDetailed from '@/components/MkNoteDetailed.vue';
 import MkDrive from '@/components/MkDrive.vue';
 import MkWidgets from '@/components/MkWidgets.vue';
 import MkEventEditor from '@/components/MkEventEditor.vue';
+import MkHataPostDelayStatus from '@/components/MkHataPostDelayStatus.vue';
+import type { HataPostSubmitState } from '@/components/MkHataPostSubmitVisual.vue';
 import XPostFormAttaches from '@/components/MkPostFormAttaches.vue';
 import MkExternalNote from '@/components/MkExternalNote.vue';
 import MkExternalTimeline from '@/components/MkExternalTimeline.vue';
@@ -375,6 +415,7 @@ const FullClipsPage = defineAsyncComponent(() => import('@/pages/my-clips/index.
 const FullChatPage = defineAsyncComponent(() => import('@/pages/chat/home.vue'));
 const MkDrawingTool = defineAsyncComponent(() => import('@/components/MkDrawingTool.vue'));
 const MkUISetup = defineAsyncComponent(() => import('@/components/MkUISetup.vue'));
+const HatacordingVisibilityPicker = defineAsyncComponent(() => import('@/components/HatacordingVisibilityPicker.vue'));
 
 type TimelineSource = 'home' | 'local' | 'social' | 'global' | 'trending' | 'externalHome' | 'externalLocal' | 'list' | 'antenna' | 'channel';
 type CollectionId = 'lists' | 'antennas' | 'channels';
@@ -470,7 +511,7 @@ const pendingNotes = ref<TimelineNote[]>([]);
 const activityEvents = ref<ActivityEvent[]>([]);
 const fetching = ref(false);
 const loadingMore = ref(false);
-const loadError = ref(false);
+const timelineErrorKind = ref<'rateLimit' | 'generic' | null>(null);
 const hasMore = ref(true);
 const showJumpControl = ref(false);
 const activeDisconnectActivityId = ref<string | null>(null);
@@ -483,7 +524,9 @@ const draftText = ref('');
 const composerInputFocused = ref(false);
 const draftFiles = ref<Misskey.entities.DriveFile[]>([]);
 const submitting = ref(false);
+const submitMotionState = ref<HataPostSubmitState>('idle');
 const composerToolsOpen = ref(false);
+const selectedComposerToolId = ref<HatacordingUiComposerShortcut | null>(null);
 const cwEnabled = ref(false);
 const cwText = ref('');
 const pollEnabled = ref(false);
@@ -501,29 +544,84 @@ const composerContext = ref<ComposerContext | null>(null);
 const visibleUsers = ref<Misskey.entities.UserLite[]>([]);
 const hasNotSpecifiedMentions = ref(false);
 const postDelay = createPostSendDelayController();
+
+function waitForSubmitMotion(duration: number): Promise<void> {
+	if (!prefer.s.animation || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return Promise.resolve();
+	return new Promise(resolve => window.setTimeout(resolve, duration));
+}
+
 const rightTabs = ref<RightTab[]>([{ id: 'detail', title: copy.details, kind: 'welcome' }]);
 const activeRightTabId = ref('detail');
 const dragTabIndex = ref<number | null>(null);
 const colorModeTransitioning = ref(false);
+const timelineSwitchRevealing = ref(false);
+const visibilityFlashIcon = ref<Component | null>(null);
 const rateLimitNow = ref(Date.now());
 const postFormActions = getPluginHandlers('post_form_action');
+
+const accountSwitchIcon = ChevronUp;
+const timelineSettingsIcon = SlidersHorizontal;
+const sidebarCollapseIcon = PanelLeftClose;
+const sidebarExpandIcon = PanelLeftOpen;
+const sidebarMenuIcon = MenuIcon;
+const backIcon = ArrowLeft;
+const settingsIcon = Settings;
+const adminIcon = Shield;
+const panelOpenIcon = PanelRightOpen;
+const panelCloseIcon = PanelRightClose;
+const addIcon = Plus;
+const editIcon = Pencil;
+const importIcon = Import;
+const closeIcon = X;
+const postToolsIcon = Star;
+const attachmentIcon = CloudUpload;
+const contentWarningIcon = EyeOff;
+const emojiIcon = SmilePlus;
+const followersIcon = UserRound;
+const directIcon = AtSign;
+const sendIcon = ArrowUp;
+const cancelIcon = Square;
+const sendingIcon = LoaderCircle;
+const successIcon = Check;
+const failureIcon = X;
+const pluginIcon = Plug;
+const replyIcon = Reply;
+const quoteIcon = Quote;
+const pollIcon = List;
+const mentionIcon = AtSign;
+const mfmIcon = SwatchBook;
+const hashtagIcon = Hash;
+const eventIcon = CalendarPlus;
+const drawingIcon = Pencil;
+const scheduleIcon = History;
+const reactionIcon = Shield;
+const deliveryIcon = Globe2;
+const fullFormIcon = Settings;
+const layersNavigationIcon = Layers;
+const publicVisibilityIcon = Globe2;
+const homeVisibilityIcon = Home;
+const publicChannelIcon = Tv;
+const privateChannelIcon = Lock;
+
 const composerShortcutDefinitions: { id: HatacordingUiComposerShortcut; label: string; icon: Component }[] = [
-	{ id: 'poll', label: copy.poll, icon: List },
-	{ id: 'mention', label: copy.mention, icon: AtSign },
-	{ id: 'mfm', label: 'MFM', icon: SwatchBook },
-	{ id: 'hashtag', label: copy.hashtag, icon: Hash },
-	{ id: 'event', label: copy.event, icon: CalendarPlus },
-	{ id: 'drawing', label: copy.drawing, icon: Pencil },
-	{ id: 'schedule', label: copy.scheduleAndAutoDelete, icon: History },
-	{ id: 'reaction', label: copy.reactionRestrictions, icon: Shield },
-	{ id: 'delivery', label: copy.deliveryDestination, icon: Globe2 },
-	{ id: 'full', label: copy.fullPostForm, icon: Settings },
+	{ id: 'poll', label: copy.poll, icon: pollIcon },
+	{ id: 'mention', label: copy.mention, icon: mentionIcon },
+	{ id: 'mfm', label: 'MFM', icon: mfmIcon },
+	{ id: 'hashtag', label: copy.hashtag, icon: hashtagIcon },
+	{ id: 'event', label: copy.event, icon: eventIcon },
+	{ id: 'drawing', label: copy.drawing, icon: drawingIcon },
+	{ id: 'schedule', label: copy.scheduleAndAutoDelete, icon: scheduleIcon },
+	{ id: 'reaction', label: copy.reactionRestrictions, icon: reactionIcon },
+	{ id: 'delivery', label: copy.deliveryDestination, icon: deliveryIcon },
+	{ id: 'full', label: copy.fullPostForm, icon: fullFormIcon },
 ];
 let resizeObserver: ResizeObserver | null = null;
 let onlineTimer: number | null = null;
 let rateLimitTimer: number | null = null;
 let activityArchiveTimer: number | null = null;
 let colorTransitionTimer: number | null = null;
+let timelineRevealTimer: number | null = null;
+let visibilityFlashTimer: number | null = null;
 let mainConnection: any = null;
 let timelineConnection: any = null;
 let externalTimelineSocket: WebSocket | null = null;
@@ -640,12 +738,27 @@ watch([
 const externalAccount = computed(() => getExternalAccount());
 const isExternalTimeline = computed(() => activeMenuItem.value?.source === 'externalHome' || activeMenuItem.value?.source === 'externalLocal');
 const feedEntries = computed<FeedEntry[]>(() => [...notes.value.map(note => ({ id: `note:${note.id}`, type: 'note' as const, note, external: note.__hatacordingExternal === true, createdAt: note.createdAt })), ...activityEvents.value.map(activity => ({ id: activity.id, type: 'activity' as const, activity, createdAt: activity.createdAt }))].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()));
+
+function timelineRevealOrder(index: number): number {
+	return Math.min(9, Math.max(0, index - Math.max(0, feedEntries.value.length - 10)));
+}
+
 const effectiveRateLimit = computed(() => getEffectiveHatacordingRateLimit(hatacordingRateLimitSnapshot.value, rateLimitNow.value));
 const rateLimitPercentage = computed(() => effectiveRateLimit.value == null ? null : Math.round(effectiveRateLimit.value.remaining / effectiveRateLimit.value.limit * 100));
 const rateLimitMeterLabel = computed(() => rateLimitPercentage.value == null ? '—' : String(rateLimitPercentage.value));
 const rateLimitLevel = computed(() => rateLimitPercentage.value == null ? 'waiting' : rateLimitPercentage.value <= 20 ? 'low' : rateLimitPercentage.value <= 45 ? 'medium' : 'normal');
 const rateLimitMeterStyle = computed(() => ({ '--rate-limit-offset': String(100 - (rateLimitPercentage.value ?? 0)) }));
 const rateLimitTitle = computed(() => effectiveRateLimit.value == null ? copy.measuringRateLimit : copyx.rateLimitRemaining({ remaining: effectiveRateLimit.value.remaining.toString(), limit: effectiveRateLimit.value.limit.toString() }));
+const timelineRetryBlocked = computed(() => timelineErrorKind.value === 'rateLimit' && effectiveRateLimit.value?.remaining === 0);
+const rateLimitResetClockFormatter = new Intl.DateTimeFormat(versatileLang, { hour: '2-digit', minute: '2-digit' });
+const rateLimitResetText = computed(() => {
+	const snapshot = hatacordingRateLimitSnapshot.value;
+	if (snapshot == null) return null;
+	if (snapshot.resetAt <= rateLimitNow.value) return i18n.ts._hata._hatacordingUi._rateLimit.newWindowNow;
+	return i18n.tsx._hata._hatacordingUi._rateLimit.bannerResetAt({
+		time: rateLimitResetClockFormatter.format(new Date(snapshot.resetAt)),
+	});
+});
 
 const staticMenuItems = computed<HatacordingMenuItem[]>(() => {
 	const items: HatacordingMenuItem[] = [
@@ -662,12 +775,12 @@ const staticMenuItems = computed<HatacordingMenuItem[]>(() => {
 		{ id: 'tool:ui', label: copy.switchUi, icon: WandSparkles, defaultVisible: true },
 		{ id: 'tool:announcements', label: copy.announcements, icon: Megaphone, badge: $i.hasUnreadAnnouncement ? '●' : undefined },
 		{ id: 'tool:externalNotifications', label: copy.externalNotifications, icon: Bell, badge: externalUnread.value ? '●' : undefined },
-	{ id: 'tool:hatask', label: 'Hatask', icon: LayoutDashboard, to: '/hatask' },
-	{ id: 'tool:hatafeed', label: 'HataFeed', icon: MessageSquareWarning, to: '/hatafeed' },
-	{ id: 'tool:hatady', label: 'Hatady', icon: BookOpen, to: '/hatady' },
-	{ id: 'tool:hanaawase', label: '花常', icon: Sparkles, to: '/hanaawase' },
-	{ id: 'tool:games', label: 'Hataskey Games', icon: Gamepad2, to: '/games' },
-	{ id: 'tool:earthquake', label: '地震・津波情報', icon: Activity, to: '/earthquake' },
+		{ id: 'tool:hatask', label: 'Hatask', icon: LayoutDashboard, to: '/hatask' },
+		{ id: 'tool:hatafeed', label: 'HataFeed', icon: MessageSquareWarning, to: '/hatafeed' },
+		{ id: 'tool:hatady', label: 'Hatady', icon: BookOpen, to: '/hatady' },
+		{ id: 'tool:hanaawase', label: '花常', icon: Sparkles, to: '/hanaawase' },
+		{ id: 'tool:games', label: 'Hataskey Games', icon: Gamepad2, to: '/games' },
+		{ id: 'tool:earthquake', label: '地震・津波情報', icon: Activity, to: '/earthquake' },
 		{ id: 'tool:explore', label: copy.explore, icon: Compass, to: '/explore' },
 		{ id: 'tool:favorites', label: copy.favorites, icon: Sparkles, to: '/my/favorites' },
 		{ id: 'tool:clips', label: copy.clips, icon: Paperclip, to: '/my/clips' },
@@ -743,11 +856,21 @@ const timelineOnlyFiles = computed({
 const timelineShowFixedPostForm = prefer.model('showFixedPostForm');
 const activeComposerShortcuts = computed(() => prefs.value.composerShortcuts.map(id => composerShortcutDefinitions.find(item => item.id === id)).filter((item): item is typeof composerShortcutDefinitions[number] => item != null));
 
-function collectionIcon(icon: HatacordingUiCollectionIcon): Component { return ({ tv: Tv, list: List, radio: Radio, folder: Folder, layers: Layers })[icon]; }
+function collectionIcon(icon: HatacordingUiCollectionIcon): Component {
+	return ({
+		tv: Tv,
+		list: List,
+		radio: Radio,
+		folder: Folder,
+		layers: Layers,
+	})[icon];
+}
+
+const moreNavigationIcon = MoreHorizontal;
 
 const visibilityLabel = computed(() => composerChannel.value ? copy.channelPostServerOnly : ({ public: copy.public, home: copy.home, followers: copy.followers, specified: copy.direct })[visibility.value]);
 const visibilityShortLabel = computed(() => composerChannel.value ? copy.channelServerShort : `${({ public: copy.publicShort, home: copy.home, followers: copy.followersShort, specified: copy.recipientsShort })[visibility.value]}${localOnly.value && visibility.value !== 'specified' ? copy.serverOnlySuffix : ''}`);
-const visibilityIcon = computed(() => composerChannel.value ? (composerChannel.value.isPrivate ? Lock : Tv) : ({ public: Globe2, home: Home, followers: UserRound, specified: AtSign })[visibility.value]);
+const visibilityIcon = computed(() => composerChannel.value ? (composerChannel.value.isPrivate ? privateChannelIcon : publicChannelIcon) : ({ public: publicVisibilityIcon, home: homeVisibilityIcon, followers: followersIcon, specified: directIcon })[visibility.value]);
 const visibilityBorderEnabled = prefer.r['postFormVisibilityBorder.enabled'];
 const visibilityBorderWidth = prefer.r['postFormVisibilityBorder.width'];
 const visibilityBorderColors = {
@@ -774,7 +897,7 @@ const composerContextExcerpt = computed(() => {
 	const text = (note.cw || note.text || copy.postWithAttachments).replace(/\s+/g, ' ').trim();
 	return text.length > 90 ? `${text.slice(0, 89)}…` : text;
 });
-const composerContextIcon = computed(() => composerContext.value?.kind === 'reply' ? Reply : composerContext.value?.kind === 'quote' ? Quote : composerChannel.value?.isPrivate ? Lock : Tv);
+const composerContextIcon = computed(() => composerContext.value?.kind === 'reply' ? replyIcon : composerContext.value?.kind === 'quote' ? quoteIcon : composerChannel.value?.isPrivate ? privateChannelIcon : publicChannelIcon);
 
 function persistPreferences() { writeHatacordingUiPreferences($i.id, prefs.value); }
 
@@ -850,8 +973,12 @@ const MenuRow = defineComponent({
 			h('button', {
 				type: 'button',
 				class: [styles.menuItem, activeMenuId.value === props.item.id && styles.activeMenuItem, props.compact && styles.compactMenuItem],
+				'data-hatacording-menu-active': activeMenuId.value === props.item.id ? 'true' : undefined,
 				title: sidebarCollapsed.value ? props.item.label : undefined,
-				onClick: () => activateMenuItem(props.item),
+				onClick: (event: MouseEvent) => {
+					playHataNavigationMotion(event, props.item.id, 620);
+					void activateMenuItem(props.item);
+				},
 			}, [
 				h(props.item.icon, { size: 18 }),
 				!sidebarCollapsed.value ? h('span', { class: styles.menuLabel }, props.item.label) : null,
@@ -898,7 +1025,8 @@ async function activateMenuItem(item: HatacordingMenuItem) {
 	if (!item.source) return;
 	centerPageOpen.value = false;
 	centerPageHistory.value = [];
-	activeMenuId.value = item.id; prefs.value.currentTimelineId = item.id; persistPreferences(); drawerOpen.value = false; await reloadTimeline();
+	const changedTimeline = activeMenuId.value !== item.id;
+	activeMenuId.value = item.id; prefs.value.currentTimelineId = item.id; persistPreferences(); drawerOpen.value = false; await reloadTimeline(changedTimeline);
 }
 
 function centerPageTitleForPath(path: string): string {
@@ -972,16 +1100,20 @@ function openCollectionIconMenu(group: { id: CollectionId; label: string }, even
 	os.popupMenu(choices.map(([value, label]) => ({ type: 'button' as const, text: label, active: prefs.value.collectionIcons[group.id] === value, action: () => { prefs.value.collectionIcons[group.id] = value; persistPreferences(); } })), anchor);
 }
 
-function openMoreMenu(event: MouseEvent) {
-	if (!sidebarCollapsed.value) {
+async function openMoreMenu(event: MouseEvent) {
+	playHataIconMotion(event, 'more-dots', 520);
+	// 編集中だけは「もっと」へ退避した項目を戻す専用パネルを使う。
+	// 通常時は他UIと同じ MkLaunchPad を正本にし、独自の不完全な複製を持たない。
+	if (menuEditing.value && !sidebarCollapsed.value) {
 		showMore.value = !showMore.value;
 		return;
 	}
 	const anchor = event.currentTarget as HTMLElement;
-	const items = hiddenMenuItems.value.length > 0
-		? hiddenMenuItems.value.map(item => ({ type: 'button' as const, text: item.label, action: () => activateMenuItem(item) }))
-		: [{ type: 'label' as const, text: copy.noOtherItems }];
-	os.popupMenu(items, anchor);
+	const { dispose } = await os.popupAsyncWithDialog(import('@/components/MkLaunchPad.vue').then(module => module.default), {
+		anchorElement: anchor,
+	}, {
+		closed: () => dispose(),
+	});
 }
 
 async function openFeedbackIssue() {
@@ -1064,7 +1196,7 @@ function openTimelineOptions(event: MouseEvent) {
 		{ type: 'button', text: copy.replayTutorial, action: () => { tutorialOpen.value = true; } },
 		{ type: 'divider' },
 		{ type: 'button', text: copy.editMenu, action: () => { menuEditing.value = true; openLeftPane(); } },
-	], anchor);
+	], anchor, { motionPreset: 'postform' });
 }
 
 function syncHatacordingPreferences(event: Event) {
@@ -1160,7 +1292,39 @@ async function fetchTimelinePage(untilId?: string): Promise<TimelineNote[]> {
 	return await misskeyApi('notes/trending', { limit: 20, offset: untilId ? notes.value.length : 0, seed: 1 });
 }
 
-async function reloadTimeline() { fetching.value = true; loadError.value = false; pendingNotes.value = []; disconnectTimelineStream(); try { const result = await fetchTimelinePage(); notes.value = [...result].reverse(); hasMore.value = result.length >= 20; connectTimelineStream(); await nextTick(); scrollToBottom(false); } catch (error) { console.error('Failed to load HataSNSCordUI timeline', error); loadError.value = true; } finally { fetching.value = false; } }
+async function reloadTimeline(revealFromTop = false) {
+	if (timelineRetryBlocked.value) return;
+	fetching.value = true;
+	timelineErrorKind.value = null;
+	pendingNotes.value = [];
+	disconnectTimelineStream();
+	if (revealFromTop) timelineSwitchRevealing.value = false;
+	try {
+		const result = await fetchTimelinePage();
+		notes.value = [...result].reverse();
+		hasMore.value = result.length >= 20;
+		connectTimelineStream();
+		await nextTick();
+		if (revealFromTop && prefer.s.animation && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+			timelineSwitchRevealing.value = true;
+			if (timelineRevealTimer != null) window.clearTimeout(timelineRevealTimer);
+			timelineRevealTimer = window.setTimeout(() => {
+				timelineSwitchRevealing.value = false;
+				timelineRevealTimer = null;
+			}, 980);
+		}
+		scrollToBottom(false);
+	} catch (error) {
+		if (isHatacordingRateLimitError(error)) {
+			timelineErrorKind.value = 'rateLimit';
+		} else {
+			console.error('Failed to load HataSNSCordUI timeline', error);
+			timelineErrorKind.value = 'generic';
+		}
+	} finally {
+		fetching.value = false;
+	}
+}
 
 async function loadMore() {
 	if (loadingMore.value || !hasMore.value) return;
@@ -1430,7 +1594,7 @@ function isGroupedEarthquakeActivity(activity: PendingActivityEvent): boolean {
 }
 
 function groupedActivitySuffix(activity: PendingActivityEvent): string {
-	if (isGroupedEarthquakeActivity(activity)) return '件の地震・津波情報があります';
+	if (isGroupedEarthquakeActivity(activity)) return `件の${hatacordingEarthquakeGroupLabel(activity.notificationItems ?? [])}があります`;
 	if (activity.botOrigin === true) return activity.archived ? copy.pastBotNotificationsSuffix : copy.currentBotNotificationsSuffix;
 	return activity.archived ? copy.pastNotificationsSuffix : copy.currentNotificationsSuffix;
 }
@@ -1558,10 +1722,11 @@ function restoreActivityHistory() {
 	}
 	if (earthquakes.length > 0) {
 		const latest = earthquakes.at(-1)!;
+		const groupLabel = hatacordingEarthquakeGroupLabel(earthquakes);
 		activityEvents.value.push(reactive<ActivityEvent>({
 			id: `earthquake-history:cached:${latest.id}`,
-			text: `${earthquakes.length}件の地震・津波情報があります`,
-			detail: '展開すると、過去の地震・津波情報を確認できます。',
+			text: `${earthquakes.length}件の${groupLabel}があります`,
+			detail: `展開すると、過去の${groupLabel}を確認できます。`,
 			icon: activityIcon('activity'),
 			iconName: 'activity',
 			to: '/earthquake',
@@ -1716,8 +1881,9 @@ function mergeConsecutiveEarthquake(pending: PendingActivityEvent): boolean {
 	if (!Number.isFinite(gap) || gap > EARTHQUAKE_GROUP_WINDOW_MS) return false;
 	const items = target.notificationItems?.length ? target.notificationItems : [activityPayload(target)];
 	target.notificationItems = [...items, activityPayload(pending)];
-	target.text = `${target.notificationItems.length}件の地震・津波情報があります`;
-	target.detail = '展開すると、それぞれの地震・津波情報を確認できます。';
+	const groupLabel = hatacordingEarthquakeGroupLabel(target.notificationItems);
+	target.text = `${target.notificationItems.length}件の${groupLabel}があります`;
+	target.detail = `展開すると、それぞれの${groupLabel}を確認できます。`;
 	target.createdAt = pending.createdAt;
 	target.kind = 'earthquake';
 	target.icon = activityIcon('activity');
@@ -2108,6 +2274,7 @@ function openEmojiPicker(anchor: HTMLElement) {
 }
 
 function openComposerEmojiPicker(event: MouseEvent) {
+	playHataIconMotion(event, 'emoji-pop', 520);
 	openEmojiPicker(event.currentTarget as HTMLElement);
 }
 
@@ -2142,9 +2309,16 @@ function openFullComposer() {
 	});
 }
 
-function pluginMenuItems(): MenuItem[] {
-	return postFormActions.map(action => ({
-		type: 'button',
+function openComposerToolsMenu(event?: MouseEvent) {
+	if (event) playHataIconMotion(event, 'star-turn', 560);
+	composerToolsOpen.value = !composerToolsOpen.value;
+	if (!composerToolsOpen.value) selectedComposerToolId.value = null;
+}
+
+function openComposerPluginMenu(event: MouseEvent) {
+	playHataIconMotion(event, 'plug-connect', 520);
+	void os.popupMenu(postFormActions.map(action => ({
+		type: 'button' as const,
 		text: action.title,
 		action: () => action.handler({ text: draftText.value, cw: cwEnabled.value ? cwText.value : null }, (key, value) => {
 			if (key === 'text' && typeof value === 'string') draftText.value = value;
@@ -2153,46 +2327,7 @@ function pluginMenuItems(): MenuItem[] {
 				cwText.value = value ?? '';
 			}
 		}),
-	}));
-}
-
-async function openComposerToolsMenu(triggerEvent: MouseEvent) {
-	if (composerToolsOpen.value) return;
-	const anchor = triggerEvent.currentTarget as HTMLElement;
-	const items: MenuItem[] = [
-		{ type: 'label', text: copy.postContent },
-		{ type: 'button', text: pollEnabled.value ? copy.removePoll : copy.addPoll, indicate: pollEnabled.value, action: togglePoll },
-		{ type: 'button', text: copy.mention, action: () => { void pickMention(); } },
-		// メニュ項目自身は action 後に破棄される。次のポップアップは
-		// 残り続ける☆ボタンを基準にし、座標と描画順の喪失を防ぐ。
-		{ type: 'button', text: copy.emoji, action: () => openEmojiPicker(anchor) },
-		{ type: 'button', text: 'MFM', action: () => openMfmPicker(anchor) },
-		{ type: 'button', text: copy.hashtag, action: insertHashtag },
-		{ type: 'button', text: event.value == null ? copy.addEvent : copy.removeEvent, indicate: event.value != null, action: toggleEvent },
-		{ type: 'divider' },
-		{ type: 'label', text: copy.attachmentsAndExtensions },
-		{ type: 'button', text: copy.drawing, action: openDrawingTool },
-	];
-	if (postFormActions.length > 0) items.push({ type: 'parent', text: copy.plugins, children: pluginMenuItems });
-	items.push(
-		{ type: 'divider' },
-		{ type: 'button', text: copy.chooseFrequentButtons, action: () => openComposerShortcutSettings(anchor) },
-		{ type: 'divider' },
-		{ type: 'label', text: copy.advancedSettings },
-		{ type: 'button', text: copy.scheduleAndAutoDelete, action: openFullComposer },
-		{ type: 'button', text: reactionAcceptance.value == null ? copy.reactionRestrictions : copy.changeReactionRestrictions, indicate: reactionAcceptance.value != null, action: () => { void selectReactionAcceptance(); } },
-		{ type: 'button', text: copy.deliveryDestination, action: openFullComposer },
-		{ type: 'button', text: copy.fullPostForm, action: openFullComposer },
-		{ type: 'divider' },
-		{ type: 'button', text: copy.clearContent, danger: true, action: clearComposer },
-	);
-
-	composerToolsOpen.value = true;
-	try {
-		await os.popupMenu(items, anchor, { width: 272 });
-	} finally {
-		composerToolsOpen.value = false;
-	}
+	})), event.currentTarget, { motionPreset: 'postform' });
 }
 
 function composerShortcutToggle(id: HatacordingUiComposerShortcut) {
@@ -2239,6 +2374,22 @@ function runComposerShortcut(id: HatacordingUiComposerShortcut, event: MouseEven
 	else if (id === 'drawing') openDrawingTool();
 	else if (id === 'reaction') void selectReactionAcceptance();
 	else openFullComposer();
+}
+
+function selectComposerTool(id: HatacordingUiComposerShortcut, event: MouseEvent) {
+	const motion = ({ poll: 'poll-grow', mention: 'mention-orbit', mfm: 'palette-tilt', hashtag: 'hash-tilt', event: 'calendar-page', drawing: 'pencil-write', schedule: 'reload-spin', reaction: 'emoji-pop', delivery: 'globe-spin', full: 'settings-turn' } as const)[id];
+	playHataIconMotion(event, motion, 560);
+	if (selectedComposerToolId.value === id) {
+		selectedComposerToolId.value = null;
+		return;
+	}
+	selectedComposerToolId.value = id;
+	runComposerShortcut(id, event);
+}
+
+function cancelPostDelay() {
+	postDelay.cancel();
+	submitMotionState.value = 'idle';
 }
 
 function togglePoll() { pollEnabled.value = !pollEnabled.value; if (pollChoices.value.length < 2) pollChoices.value = ['', '']; }
@@ -2294,6 +2445,7 @@ function updateDraftFileName(file: Misskey.entities.DriveFile, name: string) {
 }
 
 function openAttachmentMenu(event: MouseEvent) {
+	playHataIconMotion(event, 'image-rise', 520);
 	const anchor = event.currentTarget as HTMLElement;
 	const addFiles = async (loader: () => Promise<Misskey.entities.DriveFile[]>) => { try { draftFiles.value.push(...await loader()); } catch { /* 選択・アップロードの取り消し */ } };
 	os.popupMenu([
@@ -2301,45 +2453,60 @@ function openAttachmentMenu(event: MouseEvent) {
 		{ type: 'button', text: copy.takePhoto, action: openCamera },
 		{ type: 'button', text: copy.chooseFromDrive, action: () => addFiles(() => chooseDriveFile({ multiple: true })) },
 		{ type: 'button', text: copy.importFromUrl, action: () => addFiles(async () => [await chooseFileFromUrl()]) },
-	], anchor);
+	], anchor, { motionPreset: 'postform' });
 }
 
 function openCamera() { const input = window.document.createElement('input'); input.type = 'file'; input.accept = 'image/*'; input.setAttribute('capture', 'environment'); input.onchange = async () => { const files = input.files ? [...input.files] : []; if (files.length) draftFiles.value.push(...await os.launchUploader(files, { multiple: false })); }; input.click(); }
 
 function openVisibilityMenu(event: MouseEvent) {
+	playHataIconMotion(event, visibility.value === 'public' ? 'globe-spin' : visibility.value === 'home' ? 'home-rock' : visibility.value === 'followers' ? 'user-rise' : 'mention-orbit', 620);
 	const anchor = event.currentTarget as HTMLElement;
 	if (composerChannel.value) {
 		os.popupMenu([
 			{ type: 'label', text: composerChannel.value.name },
 			{ type: 'label', text: copy.channelVisibilityFixed },
-		], anchor);
+		], anchor, { motionPreset: 'postform' });
 		return;
 	}
-	const visibilityItems = (['public', 'home', 'followers', 'specified'] as Visibility[]).map(value => ({
-		type: 'button' as const,
-		icon: ({ public: 'ti ti-world', home: 'ti ti-home', followers: 'ti ti-lock', specified: 'ti ti-mail' })[value],
-		text: ({ public: copy.public, home: copy.home, followers: copy.followersOnly, specified: copy.direct })[value],
-		active: visibility.value === value,
-		action: () => {
+	const { dispose } = os.popup(HatacordingVisibilityPicker, {
+		anchorElement: anchor,
+		colorMode: prefs.value.colorMode,
+		currentVisibility: visibility.value,
+		localOnly: localOnly.value,
+		remember: rememberNoteVisibility.value,
+		audienceLabel: copy.visibilityAudience,
+		federateLabel: copy.federate,
+		rememberLabel: copy.rememberVisibility,
+		labels: { public: copy.public, home: copy.home, followers: copy.followersOnly, specified: copy.direct },
+	}, {
+		changeVisibility: (value: Visibility) => {
+			const changed = visibility.value !== value;
 			visibility.value = value;
 			if (value === 'specified') localOnly.value = true;
 			persistRememberedVisibility();
+			if (changed) showVisibilityFlash(value);
 		},
-	}));
-	const federation = computed({
-		get: () => !localOnly.value,
-		set: (value: boolean) => {
+		changeLocalOnly: (value: boolean) => {
 			if (visibility.value === 'specified') return;
-			localOnly.value = !value;
+			localOnly.value = value;
 			persistRememberedVisibility();
 		},
+		changeRemember: (value: boolean) => {
+			prefer.commit('rememberNoteVisibility', value);
+			if (value) persistRememberedVisibility();
+		},
+		closed: () => dispose(),
 	});
-	os.popupMenu([
-		...visibilityItems,
-		{ type: 'divider' },
-		{ type: 'switch', text: copy.federate, ref: federation, disabled: visibility.value === 'specified' },
-		{ type: 'switch', text: copy.rememberVisibility, ref: rememberNoteVisibility },
-	], anchor);
+}
+
+function showVisibilityFlash(value: Visibility): void {
+	if (!prefer.s.animation || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+	if (visibilityFlashTimer != null) window.clearTimeout(visibilityFlashTimer);
+	visibilityFlashIcon.value = ({ public: Globe2, home: Home, followers: Lock, specified: AtSign })[value];
+	visibilityFlashTimer = window.setTimeout(() => {
+		visibilityFlashIcon.value = null;
+		visibilityFlashTimer = null;
+	}, 560);
 }
 
 function persistRememberedVisibility() {
@@ -2442,9 +2609,17 @@ async function submitPost() {
 		return;
 	}
 
+	if (postSendDelayEnabled.value) {
+		submitMotionState.value = 'countdown';
+		if (!await postDelay.begin(postSendDelaySeconds.value)) {
+			submitMotionState.value = 'idle';
+			return;
+		}
+	}
+
 	submitting.value = true;
+	submitMotionState.value = 'sending';
 	try {
-		if (postSendDelayEnabled.value && !await postDelay.begin(postSendDelaySeconds.value)) return;
 		const result = await misskeyApi('notes/create', postData);
 		const created = result.createdNote;
 		if (created) {
@@ -2461,16 +2636,24 @@ async function submitPost() {
 		const now = new Date();
 		if (now.getHours() <= 3) claimAchievement('postedAtLateNight');
 		if (now.getMinutes() === 0 && now.getSeconds() === 0) claimAchievement('postedAt0min0sec');
+		submitMotionState.value = 'success';
+		await waitForSubmitMotion(720);
 		os.toast(composerContext.value?.kind === 'reply' ? copy.replied : composerContext.value?.kind === 'quote' ? copy.quoted : copy.posted, composerContext.value?.kind === 'reply' ? 'reply' : composerContext.value?.kind === 'quote' ? 'quote' : 'posted');
 		clearComposer();
+		submitMotionState.value = 'idle';
 		composerToolsOpen.value = false;
+		selectedComposerToolId.value = null;
 		await nextTick();
 		scrollToBottom();
 	} catch (error) {
 		console.error('HataSNSCordUI post failed', error);
+		submitMotionState.value = 'failure';
+		await waitForSubmitMotion(980);
 		await os.alert({ type: 'error', text: copy.postFailedDraftKept });
+		submitMotionState.value = 'idle';
 	} finally {
 		submitting.value = false;
+		if (submitMotionState.value === 'sending') submitMotionState.value = 'idle';
 	}
 }
 
@@ -2697,6 +2880,14 @@ const WidgetEditor = defineComponent({ props: { tab: { type: Object as PropType<
 
 async function updateOnlineUsers() { try { onlineUsersCount.value = (await misskeyApiGet('get-online-users-count')).count; } catch { onlineUsersCount.value = 0; } }
 
+function onHatacordingUnhandledRejection(event: PromiseRejectionEvent) {
+	if (!isHatacordingRateLimitError(event.reason)) return;
+	// 中央・サブペイン内の既存コンポーネントが429を未処理で返しても、
+	// 画面全体の例外へ昇格させず、このUIの小型通知へ集約する。
+	event.preventDefault();
+	timelineErrorKind.value = 'rateLimit';
+}
+
 async function updateExternalUnread() {
 	const account = externalAccount.value;
 	if (!account) {
@@ -2765,6 +2956,7 @@ function onHatacordingSimpleUserPanel(event: Event) {
 }
 
 onMounted(async () => {
+	window.addEventListener('unhandledrejection', onHatacordingUnhandledRejection, { capture: true });
 	stream.on('_disconnected_', onServerDisconnected);
 	stream.on('_connected_', onServerConnected);
 	if (stream.state === 'reconnecting') onServerDisconnected();
@@ -2817,12 +3009,15 @@ onMounted(async () => {
 	stream.on('earthquakeEvent', onEarthquakeEvent);
 });
 onBeforeUnmount(() => {
+	window.removeEventListener('unhandledrejection', onHatacordingUnhandledRejection, { capture: true });
 	resizeObserver?.disconnect();
 	if (onlineTimer != null) window.clearInterval(onlineTimer);
 	if (rateLimitTimer != null) window.clearInterval(rateLimitTimer);
 	if (activityArchiveTimer != null) window.clearInterval(activityArchiveTimer);
 	if (timelineScrollInteractionTimer != null) window.clearTimeout(timelineScrollInteractionTimer);
 	if (colorTransitionTimer != null) window.clearTimeout(colorTransitionTimer);
+	if (timelineRevealTimer != null) window.clearTimeout(timelineRevealTimer);
+	if (visibilityFlashTimer != null) window.clearTimeout(visibilityFlashTimer);
 	activityDisposed = true;
 	activityQueue.length = 0;
 	for (const timer of activityTimers) window.clearTimeout(timer);
@@ -2890,9 +3085,9 @@ definePage(() => ({ title: 'HataSNSCordUI', hideHeader: true }));
 .menuList{flex:1;min-height:0;overflow:auto;padding:8px}.menuSection+.menuSection,.collectionSection,.moreSection{margin-top:9px;padding-top:9px;border-top:1px solid color-mix(in srgb,var(--MI_THEME-divider) 75%,transparent)}.sectionTitle{margin:0 8px 4px;color:var(--MI_THEME-fg);font-size:.68em;font-weight:700;letter-spacing:.07em;opacity:.52}.menuItemRow{display:flex;width:100%;align-items:center;border-radius:11px}.menuItem,.moreButton,.collectionHeader{display:flex;position:relative;min-width:0;flex:1;align-items:center;gap:10px;min-height:40px;padding:6px 9px;border:0;border-radius:11px;background:transparent;color:inherit;font:inherit;font-weight:500;text-align:left;cursor:pointer}.menuItem:hover,.moreButton:hover,.collectionHeader:hover{background:var(--MI_THEME-hover)}.activeMenuItem{background:color-mix(in srgb,var(--MI_THEME-accent) 13%,transparent);color:var(--MI_THEME-accent);font-weight:700}.compactMenuItem{min-height:36px;padding-left:14px;font-size:.88em}.menuLabel{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.badge,.collectionCount{min-width:18px;padding:2px 5px;border-radius:999px;background:var(--MI_THEME-accent);color:var(--MI_THEME-fgOnAccent);font-size:.68em;font-weight:800;text-align:center}.collectionCount{margin-left:auto;background:var(--MI_THEME-bg);color:inherit}.collectionHeader span:first-of-type{flex:1}.rotated{transform:rotate(180deg)}.collectionItems{margin-left:10px;padding-left:6px;border-left:2px solid color-mix(in srgb,var(--MI_THEME-accent) 30%,var(--MI_THEME-divider))}.collectionEmpty{padding:8px 12px;font-size:.75em;opacity:.55}.rowActions{display:flex}.rowAction{display:grid;width:24px;height:24px;place-items:center;border:0;border-radius:6px;background:transparent;color:inherit;cursor:pointer}.rowAction:hover{background:var(--MI_THEME-hover)}.moreButton{width:100%}.moreButton span:first-of-type{flex:1}.morePanel{display:flex;flex-direction:column;gap:3px;margin:4px 1px;padding:6px;border:1px solid var(--MI_THEME-divider);border-radius:12px;background:var(--MI_THEME-panel)}.moreItem{display:flex;align-items:center;gap:8px;padding:8px;border:0;border-radius:8px;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}.moreItem span{flex:1}.moreItem:hover{background:var(--MI_THEME-hover)}
 .accountFooter{margin-top:auto;border-top:1px solid var(--MI_THEME-divider);border-bottom:0}.avatar{width:36px;height:36px;flex:0 0 36px}.accountText{display:flex;min-width:0;flex:1;flex-direction:column;overflow:hidden}.accountText>*{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.accountText small{opacity:.65}.root[data-sidebar-collapsed=true] .serverHeader{flex-direction:column;min-height:auto}.root[data-sidebar-collapsed=true] .serverButton,.root[data-sidebar-collapsed=true] .accountButton{flex:0 0 auto;justify-content:center}.root[data-sidebar-collapsed=true] .serverName{display:none}.root[data-sidebar-collapsed=true] .menuList{padding-inline:7px}.root[data-sidebar-collapsed=true] .menuSection,.root[data-sidebar-collapsed=true] .collectionSection,.root[data-sidebar-collapsed=true] .moreSection{margin-top:4px;padding-top:4px}.root[data-sidebar-collapsed=true] .menuItem,.root[data-sidebar-collapsed=true] .collectionHeader,.root[data-sidebar-collapsed=true] .moreButton{width:100%;justify-content:center;padding-inline:6px}.root[data-sidebar-collapsed=true] .menuItemRow{justify-content:center}.root[data-sidebar-collapsed=true] .badge{position:absolute;top:1px;right:1px;min-width:15px;padding:1px 4px;font-size:.58em;line-height:14px}.root[data-sidebar-collapsed=true] .accountFooter{justify-content:center;padding-inline:6px}
 .centerPane{display:flex;position:relative;min-width:0;flex:1;flex-direction:column;background:color-mix(in srgb,var(--MI_THEME-bg) 97%,var(--MI_THEME-accent) 3%)}.timelineHeader{justify-content:space-between;flex:0 0 auto;background:color-mix(in srgb,var(--MI_THEME-panel) 91%,transparent);backdrop-filter:blur(18px);z-index:5}.timelineTitle{display:flex;min-width:0;flex:1;align-items:center;gap:10px}.timelineTitle>div{display:flex;min-width:0;flex-direction:column}.timelineTitle strong{overflow:hidden;font-weight:700;text-overflow:ellipsis;white-space:nowrap}.timelineTitle small{display:flex;align-items:center;gap:4px;color:#41b781;font-size:.72em}.timelineScroll{min-height:0;flex:1;overflow-y:auto;padding:14px max(12px,3cqw) 132px;overscroll-behavior:contain}.feedList{display:flex;width:min(100%,780px);margin:0 auto;flex-direction:column;gap:8px}.noteRow{display:flex;width:min(92%,700px);align-self:flex-start;align-items:flex-start;cursor:pointer}.ownNote{align-self:flex-end}.noteBubble{width:100%;max-width:100%;border-inline-start:2px solid color-mix(in srgb,var(--MI_THEME-divider) 72%,transparent);background:transparent;overflow:visible;overflow-wrap:anywhere}.ownNote .noteBubble{border-inline-start-color:var(--MI_THEME-accent);background:linear-gradient(90deg,color-mix(in srgb,var(--MI_THEME-accent) 8%,transparent),transparent 72%);color:inherit}.embeddedNote{margin:0!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;overflow:visible!important}.embeddedNote::after{display:none!important}.embeddedNote>article{border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important}.activityEvent{display:flex;width:fit-content;max-width:min(92%,640px);align-self:center;align-items:center;gap:7px;padding:3px 2px;border:0;border-radius:0;background:transparent;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none;color:inherit;font:inherit;font-size:.82em;cursor:pointer}.activityEvent span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.historyLoader{display:flex;width:min(100%,780px);align-items:center;gap:10px;margin:0 auto 18px;border:0;background:transparent;color:inherit;font:inherit;cursor:pointer}.historyLine{height:1px;flex:1;background:linear-gradient(90deg,transparent,var(--MI_THEME-divider))}.historyLine:last-child{background:linear-gradient(90deg,var(--MI_THEME-divider),transparent)}.historyLabel{display:flex;align-items:center;gap:6px;padding:7px 11px;border:1px solid var(--MI_THEME-divider);border-radius:999px;background:var(--MI_THEME-panel);font-size:.76em}.state{display:flex;min-height:240px;align-items:center;justify-content:center;flex-direction:column;gap:10px;text-align:center;opacity:.72}.primaryButton{padding:9px 14px;border:0;border-radius:10px;background:var(--MI_THEME-accent);color:var(--MI_THEME-fgOnAccent);font:inherit;font-weight:700;cursor:pointer}.jumpControl{display:flex;position:absolute;left:50%;bottom:106px;z-index:30;align-items:center;gap:7px;padding:9px 12px;border:1px solid var(--MI_THEME-divider);border-radius:999px;background:color-mix(in srgb,var(--MI_THEME-panel) 92%,transparent);color:inherit;font:inherit;font-weight:700;box-shadow:0 8px 24px color-mix(in srgb,#000 18%,transparent);backdrop-filter:blur(16px);cursor:pointer;transform:translateX(-50%)}.jumpHasNew{border-color:var(--MI_THEME-accent);background:var(--MI_THEME-accent);color:var(--MI_THEME-fgOnAccent)}
-.postFormPill{display:flex;position:relative;width:min(100%,720px);margin:0 auto;align-items:center;gap:6px;padding:8px 10px;border:1px solid color-mix(in srgb,var(--MI_THEME-accent) 25%,var(--MI_THEME-divider));border-radius:999px;background:color-mix(in srgb,var(--MI_THEME-panel) 94%,transparent);box-shadow:0 10px 35px color-mix(in srgb,#000 18%,transparent);backdrop-filter:blur(18px);box-sizing:border-box}.delayActive::before{content:"";position:absolute;inset:-3px;border-radius:inherit;padding:3px;background:conic-gradient(from -90deg,var(--MI_THEME-accent) 0deg var(--hata-post-delay-progress),color-mix(in srgb,var(--MI_THEME-accent) 15%,transparent) 0deg 360deg);mask:linear-gradient(#000 0 0) content-box exclude,linear-gradient(#000 0 0)}.pillButton,.sendButton,.federationButton{display:grid;width:38px;height:38px;flex:0 0 38px;place-items:center;border:0;border-radius:50%;background:transparent;color:inherit;cursor:pointer}.pillButton:hover,.federationButton:hover,.pillActive{background:var(--MI_THEME-hover)}.sendButton{background:var(--MI_THEME-accent);color:var(--MI_THEME-fgOnAccent)}.sendButton:disabled{opacity:.42;cursor:default}.pillInput{min-width:0;min-height:32px;flex:1;max-height:120px;padding:8px 4px;border:0;outline:0;resize:none;overflow-y:hidden;box-sizing:border-box;background:transparent;color:inherit;font:inherit;line-height:1.4}.visibilityButton{display:flex;height:34px;align-items:center;gap:4px;padding:0 8px;border:0;border-radius:999px;background:var(--MI_THEME-bg);color:inherit;font:inherit;font-size:.7em;cursor:pointer}.localOnly{color:#e6a23c}.charCounter{display:grid;position:relative;width:34px;height:34px;flex:0 0 34px;place-items:center;border-radius:50%;background:conic-gradient(var(--MI_THEME-accent) var(--char-progress),color-mix(in srgb,var(--MI_THEME-divider) 70%,transparent) 0);font-size:.58em;font-variant-numeric:tabular-nums}.charCounter::after{content:"";position:absolute;inset:3px;border-radius:50%;background:var(--MI_THEME-panel)}.charCounter span{position:relative;z-index:1}.counterOver{color:#f45;background:#f45}.composerTools,.inlineEditor,.pollEditor,.attachedFiles,.composerContext,.delayStatus{width:min(100%,700px);margin:0 auto 7px;border:1px solid var(--MI_THEME-divider);border-radius:14px;background:color-mix(in srgb,var(--MI_THEME-panel) 96%,transparent);box-shadow:0 7px 24px color-mix(in srgb,#000 12%,transparent);backdrop-filter:blur(14px)}.composerTools{display:flex;gap:5px;padding:7px;overflow-x:auto}.composerTools button{display:flex;flex:0 0 auto;align-items:center;gap:5px;padding:7px 9px;border:0;border-radius:9px;background:transparent;color:inherit;font:inherit;cursor:pointer}.composerTools button:hover,.composerTools .toolActive{background:color-mix(in srgb,var(--MI_THEME-accent) 14%,transparent);color:var(--MI_THEME-accent)}.inlineEditor{display:flex;align-items:center;gap:8px;padding:8px 11px}.inlineEditor input,.pollEditor input{min-width:0;flex:1;border:0;outline:0;background:transparent;color:inherit;font:inherit}.pollEditor{display:flex;flex-direction:column;gap:5px;padding:9px}.pollEditor>div{display:flex;gap:5px;padding:6px 8px;border-radius:8px;background:var(--MI_THEME-bg)}.pollEditor button,.pollEditor label{display:flex;width:fit-content;align-items:center;gap:5px;border:0;background:transparent;color:inherit;font:inherit;font-size:.78em;cursor:pointer}.attachedFiles{display:flex;gap:5px;padding:7px;overflow-x:auto}.attachedFiles span{display:flex;flex:0 0 auto;align-items:center;gap:4px;padding:5px 8px;border-radius:999px;background:var(--MI_THEME-bg);font-size:.72em}.attachedFiles button,.composerContext button{display:grid;padding:0;border:0;background:transparent;color:inherit;cursor:pointer}.composerContext{display:flex;align-items:center;gap:6px;padding:7px 11px;font-size:.76em}.composerContext span{flex:1}.privateComposerContext{border-color:#d59a31;background:color-mix(in srgb,#d59a31 12%,var(--MI_THEME-panel))}.delayStatus{display:flex;justify-content:space-between;padding:5px 12px;font-size:.72em}.delayStatus button{border:0;background:transparent;color:var(--MI_THEME-accent);font:inherit;font-weight:800;cursor:pointer}
+.postFormPill{display:flex;position:relative;width:min(100%,720px);margin:0 auto;align-items:center;gap:6px;padding:8px 10px;border:1px solid color-mix(in srgb,var(--MI_THEME-accent) 25%,var(--MI_THEME-divider));border-radius:999px;background:color-mix(in srgb,var(--MI_THEME-panel) 94%,transparent);box-shadow:0 10px 35px color-mix(in srgb,#000 18%,transparent);backdrop-filter:blur(18px);box-sizing:border-box}.pillButton,.sendButton,.federationButton{display:grid;width:38px;height:38px;flex:0 0 38px;place-items:center;border:0;border-radius:50%;background:transparent;color:inherit;cursor:pointer}.pillButton:hover,.federationButton:hover,.pillActive{background:var(--MI_THEME-hover)}.sendButton{background:var(--MI_THEME-accent);color:var(--MI_THEME-fgOnAccent)}.sendButton:disabled{opacity:.42;cursor:default}.pillInput{min-width:0;min-height:32px;flex:1;max-height:120px;padding:8px 4px;border:0;outline:0;resize:none;overflow-y:hidden;box-sizing:border-box;background:transparent;color:inherit;font:inherit;line-height:1.4}.visibilityButton{display:flex;height:34px;align-items:center;gap:4px;padding:0 8px;border:0;border-radius:999px;background:var(--MI_THEME-bg);color:inherit;font:inherit;font-size:.7em;cursor:pointer}.localOnly{color:#e6a23c}.charCounter{display:grid;position:relative;width:34px;height:34px;flex:0 0 34px;place-items:center;border-radius:50%;background:conic-gradient(var(--MI_THEME-accent) var(--char-progress),color-mix(in srgb,var(--MI_THEME-divider) 70%,transparent) 0);font-size:.58em;font-variant-numeric:tabular-nums}.charCounter::after{content:"";position:absolute;inset:3px;border-radius:50%;background:var(--MI_THEME-panel)}.charCounter span{position:relative;z-index:1}.counterOver{color:#f45;background:#f45}.composerTools,.inlineEditor,.pollEditor,.attachedFiles,.composerContext,.delayStatus{width:min(100%,700px);margin:0 auto 7px;border:1px solid var(--MI_THEME-divider);border-radius:14px;background:color-mix(in srgb,var(--MI_THEME-panel) 96%,transparent);box-shadow:0 7px 24px color-mix(in srgb,#000 12%,transparent);backdrop-filter:blur(14px)}.composerTools{display:flex;gap:5px;padding:7px;overflow-x:auto}.composerTools button{display:flex;flex:0 0 auto;align-items:center;gap:5px;padding:7px 9px;border:0;border-radius:9px;background:transparent;color:inherit;font:inherit;cursor:pointer}.composerTools button:hover,.composerTools .toolActive{background:color-mix(in srgb,var(--MI_THEME-accent) 14%,transparent);color:var(--MI_THEME-accent)}.inlineEditor{display:flex;align-items:center;gap:8px;padding:8px 11px}.inlineEditor input,.pollEditor input{min-width:0;flex:1;border:0;outline:0;background:transparent;color:inherit;font:inherit}.pollEditor{display:flex;flex-direction:column;gap:5px;padding:9px}.pollEditor>div{display:flex;gap:5px;padding:6px 8px;border-radius:8px;background:var(--MI_THEME-bg)}.pollEditor button,.pollEditor label{display:flex;width:fit-content;align-items:center;gap:5px;border:0;background:transparent;color:inherit;font:inherit;font-size:.78em;cursor:pointer}.attachedFiles{display:flex;gap:5px;padding:7px;overflow-x:auto}.attachedFiles span{display:flex;flex:0 0 auto;align-items:center;gap:4px;padding:5px 8px;border-radius:999px;background:var(--MI_THEME-bg);font-size:.72em}.attachedFiles button,.composerContext button{display:grid;padding:0;border:0;background:transparent;color:inherit;cursor:pointer}.composerContext{display:flex;align-items:center;gap:6px;padding:7px 11px;font-size:.76em}.composerContext span{flex:1}.privateComposerContext{border-color:#d59a31;background:color-mix(in srgb,#d59a31 12%,var(--MI_THEME-panel))}.delayStatus{display:flex;justify-content:space-between;padding:5px 12px;font-size:.72em;--hata-delay-base-transform:translateY(0);transform:var(--hata-delay-base-transform)}.delayStatus button{border:0;background:transparent;color:var(--MI_THEME-accent);font:inherit;font-weight:800;cursor:pointer}
 .rightResizer{width:6px;flex:0 0 6px;cursor:col-resize;background:transparent;z-index:72}.rightResizer:hover{background:color-mix(in srgb,var(--MI_THEME-accent) 28%,transparent)}.rightPane{display:flex;min-width:300px;max-width:620px;flex-direction:column;border-left:1px solid var(--MI_THEME-divider);background:var(--MI_THEME-panel);opacity:1;transition:flex-basis .24s cubic-bezier(.2,.8,.2,1),min-width .24s cubic-bezier(.2,.8,.2,1),opacity .18s ease,transform .24s cubic-bezier(.2,.8,.2,1);z-index:70}.rightPaneCollapsed{min-width:0!important;flex-basis:0!important;border-left-width:0;opacity:0;overflow:hidden;pointer-events:none}.subpaneHeader{padding-inline:7px}.tabs{display:flex;min-width:0;flex:1;overflow-x:auto;scrollbar-width:none}.tabWrap{display:flex;flex:0 0 auto;align-items:center;border-bottom:2px solid transparent;opacity:.67}.activeTab{border-bottom-color:var(--MI_THEME-accent);color:var(--MI_THEME-accent);font-weight:700;opacity:1}.tab{max-width:135px;overflow:hidden;padding:8px 4px 8px 10px;border:0;background:transparent;color:inherit;font:inherit;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}.tabClose{display:grid;width:25px;height:25px;place-items:center;border:0;border-radius:7px;background:transparent;color:inherit;cursor:pointer}.tabClose:hover{background:var(--MI_THEME-hover)}.subpaneContent{min-height:0;flex:1;overflow:hidden;padding:0}.subpaneContent>:global(._pageScrollable){height:100%;overflow-y:auto}.subpaneContent>:not(:global(._pageScrollable)){box-sizing:border-box}.welcomePane{display:flex;min-height:75%;align-items:center;justify-content:center;flex-direction:column;gap:10px;padding:20px;text-align:center}.welcomePane span{max-width:290px;font-size:.84em;line-height:1.65;opacity:.65}.welcomeWordmark{color:var(--MI_THEME-accent);font-family:'HataSNSCordRighteous',system-ui,sans-serif;font-size:2em}.detailPane{height:100%;overflow:auto}.spinning{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
-:global(.hatacording-feed-enter-active),:global(.hatacording-feed-leave-active){transition:opacity .22s ease,transform .22s ease}:global(.hatacording-feed-enter-from){opacity:0;transform:translateY(14px)}:global(.hatacording-feed-leave-to){opacity:0;transform:translateX(18px)}:global(.hatacording-jump-enter-active),:global(.hatacording-jump-leave-active){transition:opacity .18s ease,transform .18s ease}:global(.hatacording-jump-enter-from),:global(.hatacording-jump-leave-to){opacity:0;transform:translate(-50%,10px)}
+:global(.hatacording-jump-enter-active),:global(.hatacording-jump-leave-active){transition:opacity .18s ease,transform .18s ease}:global(.hatacording-jump-enter-from),:global(.hatacording-jump-leave-to){opacity:0;transform:translate(-50%,10px)}
 @container(max-width:1120px){.rightPane{position:absolute;top:0;right:0;bottom:0;width:min(410px,92cqw);max-width:none;transform:translateX(105%);box-shadow:-12px 0 35px color-mix(in srgb,#000 20%,transparent);transition:transform .2s ease}.rightPaneOpen{transform:translateX(0)}}
 @container(max-width:760px){.leftPane{position:absolute;top:0;bottom:0;left:0;width:min(310px,88cqw);transform:translateX(-105%);box-shadow:12px 0 35px color-mix(in srgb,#000 20%,transparent)}.drawerOpen{transform:translateX(0)}.timelineScroll{padding-inline:8px}.feedList{gap:7px}.noteRow{width:98%}.postFormPill{gap:3px;padding-inline:7px;border-radius:22px}.pillButton,.sendButton{width:34px;height:34px;flex-basis:34px}.visibilityButton span{display:none}.visibilityButton{width:34px;padding:0;justify-content:center}.charCounter{width:31px;height:31px;flex-basis:31px}.jumpControl{bottom:102px}.composerTools,.inlineEditor,.pollEditor,.attachedFiles,.composerContext,.delayStatus{border-radius:11px}.accountFooter{padding-bottom:max(8px,env(safe-area-inset-bottom))}}
 /* HataSNSCordUI compact native-app surface overrides. Keep every layer inside
@@ -4044,6 +4239,124 @@ definePage(() => ({ title: 'HataSNSCordUI', hideHeader: true }));
 	font-size: .78rem;
 }
 
+.timelineError {
+	display: flex;
+	width: min(100%, 760px);
+	min-height: 0;
+	box-sizing: border-box;
+	align-items: center;
+	gap: 8px;
+	margin: 0 auto 9px;
+	padding: 8px 10px;
+	border: 1px solid color-mix(in srgb, #e45c64 48%, var(--cordDivider));
+	border-radius: 10px;
+	background: color-mix(in srgb, #e45c64 9%, var(--cordSurface));
+	color: var(--cordFg);
+	font-size: .72rem;
+}
+
+.timelineError[data-kind='rateLimit'] {
+	border-color: color-mix(in srgb, #d79621 52%, var(--cordDivider));
+	background: color-mix(in srgb, #d79621 10%, var(--cordSurface));
+}
+
+.timelineError > svg {
+	flex: 0 0 auto;
+	color: #e45c64;
+}
+
+.timelineError[data-kind='rateLimit'] > svg {
+	color: #d79621;
+}
+
+.timelineError strong {
+	min-width: 0;
+	flex: 1;
+	font-size: inherit;
+	font-weight: 700;
+	line-height: 1.35;
+}
+
+.timelineError button {
+	flex: 0 0 auto;
+	padding: 4px 8px;
+	border: 1px solid var(--cordDivider);
+	border-radius: 7px;
+	background: var(--cordPanel);
+	color: inherit;
+	font: inherit;
+	font-weight: 700;
+	line-height: 1.2;
+	cursor: pointer;
+}
+
+.timelineError button:is(:hover, :focus-visible) {
+	border-color: color-mix(in srgb, var(--MI_THEME-accent) 58%, var(--cordDivider));
+	background: color-mix(in srgb, var(--MI_THEME-accent) 10%, var(--cordPanel));
+}
+
+.timelineError button:disabled {
+	opacity: .5;
+	cursor: default;
+}
+
+.composerRateLimit {
+	display: flex;
+	width: min(100%, 700px);
+	box-sizing: border-box;
+	align-items: center;
+	gap: 9px;
+	margin: 0 auto 7px;
+	padding: 8px 10px;
+	border: 1px solid color-mix(in srgb, #d79621 52%, var(--cordDivider));
+	border-radius: 11px;
+	background: color-mix(in srgb, #d79621 10%, var(--cordSurface));
+	color: var(--cordFg);
+	font-size: .72rem;
+}
+
+.composerRateLimit > svg {
+	flex: 0 0 auto;
+	color: #d79621;
+}
+
+.composerRateLimitCopy {
+	display: flex;
+	min-width: 0;
+	flex: 1;
+	flex-direction: column;
+	gap: 1px;
+	line-height: 1.35;
+}
+
+.composerRateLimitCopy strong {
+	font-size: inherit;
+	font-weight: 750;
+}
+
+.composerRateLimitCopy small {
+	font-size: .67rem;
+	opacity: .72;
+}
+
+.composerRateLimit button {
+	flex: 0 0 auto;
+	padding: 4px 8px;
+	border: 1px solid var(--cordDivider);
+	border-radius: 7px;
+	background: var(--cordPanel);
+	color: inherit;
+	font: inherit;
+	font-weight: 700;
+	line-height: 1.2;
+	cursor: pointer;
+}
+
+.composerRateLimit button:is(:hover, :focus-visible) {
+	border-color: color-mix(in srgb, var(--MI_THEME-accent) 58%, var(--cordDivider));
+	background: color-mix(in srgb, var(--MI_THEME-accent) 10%, var(--cordPanel));
+}
+
 .primaryButton {
 	padding: 7px 11px;
 	border-radius: 8px;
@@ -4073,6 +4386,7 @@ definePage(() => ({ title: 'HataSNSCordUI', hideHeader: true }));
 }
 
 .composerDock {
+	position: relative;
 	flex: 0 0 auto;
 	min-width: 0;
 	padding: 8px max(10px, 2cqw) max(9px, env(safe-area-inset-bottom));
@@ -4080,6 +4394,43 @@ definePage(() => ({ title: 'HataSNSCordUI', hideHeader: true }));
 	background: transparent;
 	box-shadow: none;
 	backdrop-filter: none;
+}
+
+.visibilityFlash {
+	display: grid;
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	z-index: 8;
+	width: 58px;
+	height: 58px;
+	place-items: center;
+	border: 1px solid color-mix(in srgb, var(--MI_THEME-accent) 42%, var(--cordDivider));
+	border-radius: 18px;
+	background: color-mix(in srgb, var(--cordPanel) 88%, transparent);
+	color: var(--MI_THEME-accent);
+	box-shadow: 0 14px 38px color-mix(in srgb, #000 18%, transparent);
+	backdrop-filter: blur(12px);
+	pointer-events: none;
+	transform: translate(-50%, -50%);
+}
+
+:global(.hatacording-visibility-flash-enter-active) {
+	transition: opacity .18s ease-out, transform .24s cubic-bezier(.16,1,.3,1);
+}
+
+:global(.hatacording-visibility-flash-leave-active) {
+	transition: opacity .22s ease-in, transform .24s cubic-bezier(.4,0,1,1);
+}
+
+:global(.hatacording-visibility-flash-enter-from) {
+	opacity: 0;
+	transform: translate(-50%, -44%) scale(.82);
+}
+
+:global(.hatacording-visibility-flash-leave-to) {
+	opacity: 0;
+	transform: translate(-50%, -56%) scale(.96);
 }
 
 .composerPreview {
@@ -4230,30 +4581,59 @@ definePage(() => ({ title: 'HataSNSCordUI', hideHeader: true }));
 	font-size: .7rem;
 }
 
-.composerContext > .composerContextAvatar {
-	width: 25px;
-	min-width: 25px;
-	max-width: 25px;
-	height: 25px;
-	min-height: 25px;
-	max-height: 25px;
-	flex: 0 0 25px;
+.composerContext > .composerContextAvatarFrame {
+	display: grid;
+	width: 24px;
+	min-width: 24px;
+	max-width: 24px;
+	height: 24px;
+	min-height: 24px;
+	max-height: 24px;
+	flex: 0 0 24px;
+	place-items: center;
+	box-sizing: border-box;
 	aspect-ratio: 1;
+	font-size: 0;
+	line-height: 0;
+}
+
+.composerContext > .composerContextAvatarFrame > .composerContextAvatar {
+	display: block;
+	width: 100%;
+	min-width: 0;
+	max-width: 100%;
+	height: 100%;
+	min-height: 0;
+	max-height: 100%;
+	flex: 0 0 auto;
+	aspect-ratio: 1;
+	font-size: 0;
+	line-height: 0;
 }
 
 .composerContextCopy {
 	display: flex;
 	min-width: 0;
+	max-width: 100%;
 	flex: 1;
 	flex-direction: column;
-	line-height: 1.35;
+	font-size: .68rem;
+	line-height: 1.25;
 }
 
 .composerContextCopy b,
 .composerContextCopy small {
+	display: block;
+	min-width: 0;
+	max-width: 100%;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+.composerContextCopy b {
+	font-size: 1em;
+	font-weight: 700;
 }
 
 .composerContextCopy small {
@@ -4601,9 +4981,8 @@ definePage(() => ({ title: 'HataSNSCordUI', hideHeader: true }));
 }
 
 :global(.hatacording-feed-enter-active),
-:global(.hatacording-feed-leave-active),
-:global(.hatacording-feed-move) {
-	transition: opacity .24s cubic-bezier(.2,.8,.2,1), transform .24s cubic-bezier(.2,.8,.2,1);
+:global(.hatacording-feed-leave-active) {
+	transition: opacity .14s ease;
 }
 
 :global(.hatacording-activity-detail-enter-active),
@@ -4647,24 +5026,25 @@ definePage(() => ({ title: 'HataSNSCordUI', hideHeader: true }));
 
 :global(.hatacording-composer-preview-enter-active),
 :global(.hatacording-composer-preview-leave-active) {
-	transition: max-height .16s ease, opacity .16s ease, transform .16s ease;
+	overflow: hidden;
+	transition: max-height .24s cubic-bezier(.4,0,.2,1), margin .24s cubic-bezier(.4,0,.2,1), opacity .18s ease, transform .24s cubic-bezier(.4,0,.2,1);
 }
 
 :global(.hatacording-composer-preview-enter-from),
 :global(.hatacording-composer-preview-leave-to) {
 	max-height: 0;
+	margin-top: 0;
+	margin-bottom: 0;
 	opacity: 0;
-	transform: translateY(4px);
+	transform: translateY(5px) scale(.99);
 }
 
 :global(.hatacording-feed-enter-from) {
 	opacity: 0;
-	transform: translateY(12px) scale(.985);
 }
 
 :global(.hatacording-feed-leave-to) {
 	opacity: 0;
-	transform: translateX(12px);
 }
 
 .jumpControl {
@@ -4855,6 +5235,215 @@ definePage(() => ({ title: 'HataSNSCordUI', hideHeader: true }));
 	min-height: 42px;
 }
 
+/* 本文と操作を明確な二段に分けるが、横線は置かず一枚の面として扱う。 */
+.postFormPill {
+	display: grid;
+	align-items: stretch;
+	gap: 2px;
+	padding: 8px 10px 7px;
+	border-radius: 20px;
+}
+
+.pillInput {
+	width: 100%;
+	min-height: 42px;
+	max-height: 150px;
+	padding: 7px 8px 4px;
+}
+
+.composerActionRow {
+	display: flex;
+	min-width: 0;
+	align-items: center;
+	gap: 5px;
+}
+
+.composerActionSpacer {
+	min-width: 4px;
+	flex: 1;
+}
+
+.composerTools {
+	display: flex;
+	width: min(100%, 720px);
+	margin: 0 auto 7px;
+	flex-wrap: wrap;
+	gap: 6px;
+	padding: 8px;
+	overflow: visible;
+}
+
+.composerTool {
+	display: inline-flex;
+	width: 35px;
+	height: 35px;
+	min-width: 35px;
+	max-width: 35px;
+	align-items: center;
+	gap: 7px;
+	padding: 0 9px;
+	border: 0;
+	border-radius: 10px;
+	overflow: hidden;
+	background: transparent;
+	color: inherit;
+	font: inherit;
+	white-space: nowrap;
+	cursor: pointer;
+	transition: max-width .38s cubic-bezier(.2,.8,.2,1), width .38s cubic-bezier(.2,.8,.2,1), background-color .18s ease, color .18s ease;
+}
+
+.composerTool > svg {
+	flex: 0 0 auto;
+	transition: transform .32s cubic-bezier(.2,.8,.2,1);
+}
+
+.composerTool > span {
+	overflow: hidden;
+	opacity: 0;
+	transform: translateX(-5px);
+	transition: opacity .2s ease .05s, transform .28s cubic-bezier(.2,.8,.2,1) .04s;
+}
+
+.composerTool[data-expanded='true'],
+.composerTool:hover,
+.composerTool:focus-visible {
+	width: max-content;
+	max-width: min(240px, 72cqw);
+	background: color-mix(in srgb, var(--MI_THEME-accent) 14%, transparent);
+	color: var(--MI_THEME-accent);
+}
+
+.composerTool[data-expanded='true'] > svg,
+.composerTool:hover > svg,
+.composerTool:focus-visible > svg {
+	transform: scale(1.08);
+}
+
+.composerTool[data-expanded='true'] > span,
+.composerTool:hover > span,
+.composerTool:focus-visible > span {
+	opacity: 1;
+	transform: translateX(0);
+}
+
+.composerTool:hover {
+	background: color-mix(in srgb, var(--MI_THEME-accent) 10%, transparent);
+	color: var(--MI_THEME-accent);
+}
+
+.timelineSwitchRevealing > * {
+	animation: hatacordingTimelineLineIn .46s cubic-bezier(.16,1,.3,1) both;
+	animation-delay: calc(var(--cord-reveal-order, 0) * 48ms);
+}
+
+@keyframes hatacordingTimelineLineIn {
+	from {
+		opacity: 0;
+		clip-path: inset(0 0 100% 0 round 12px);
+		transform: translateY(-7px);
+	}
+	to {
+		opacity: 1;
+		clip-path: inset(0 0 0 0 round 12px);
+		transform: translateY(0);
+	}
+}
+
+.root[data-animation='false'] :is(.composerTool, .composerTool > svg, .composerTool > span, .sendButton) {
+	transition: none;
+}
+
+.root[data-animation='false'] .submitArc {
+	animation: none;
+}
+
+.sendButton {
+	overflow: hidden;
+	transition: background-color .22s ease, color .22s ease, transform .18s ease;
+}
+
+.sendButton[data-state='success'] {
+	background: #2fa66a;
+}
+
+.sendButton[data-state='failure'] {
+	background: #d84a5b;
+}
+
+.submitArc {
+	animation: spin .72s linear infinite;
+}
+
+:global(.hatacording-submit-state-enter-active) {
+	transition: opacity .22s ease, transform .26s cubic-bezier(.2,1.35,.35,1);
+}
+
+:global(.hatacording-submit-state-leave-active) {
+	position: absolute;
+	transition: opacity .14s ease, transform .14s ease;
+}
+
+:global(.hatacording-submit-state-enter-from) {
+	opacity: 0;
+	transform: translateY(6px) scale(.72);
+}
+
+:global(.hatacording-submit-state-leave-to) {
+	opacity: 0;
+	transform: translateY(-5px) scale(.78);
+}
+
+:global(.hatacording-tools-enter-active),
+:global(.hatacording-tools-leave-active) {
+	transform-origin: 24px 100%;
+	transition: opacity .22s ease, transform .3s cubic-bezier(.2,.8,.2,1);
+}
+
+:global(.hatacording-tools-enter-from),
+:global(.hatacording-tools-leave-to) {
+	opacity: 0;
+	transform: translateY(8px) scale(.97);
+}
+
+.tabWrap {
+	transition: color .24s ease, opacity .24s ease, border-color .28s ease, background-color .24s ease, flex-grow .3s cubic-bezier(.2,.8,.2,1);
+}
+
+.activeTab {
+	flex-grow: 1;
+	background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--MI_THEME-accent) 8%, transparent));
+}
+
+:global(.hatacording-subpane-enter-active),
+:global(.hatacording-subpane-leave-active) {
+	transition: opacity .22s ease, transform .3s cubic-bezier(.2,.8,.2,1);
+}
+
+:global(.hatacording-subpane-enter-from) {
+	opacity: 0;
+	transform: translateX(10px) scale(.992);
+}
+
+:global(.hatacording-subpane-leave-to) {
+	opacity: 0;
+	transform: translateX(-7px) scale(.995);
+}
+
+@container (max-width: 760px) {
+	.postFormPill {
+		padding-inline: 7px;
+	}
+
+	.composerActionRow {
+		gap: 2px;
+	}
+
+	.composerTools {
+		gap: 4px;
+	}
+}
+
 @media (prefers-reduced-motion: reduce) {
 	.leftPane,
 	.rightPane,
@@ -4865,8 +5454,23 @@ definePage(() => ({ title: 'HataSNSCordUI', hideHeader: true }));
 	.rateLimitButton,
 	:global(.hatacording-feed-enter-active),
 	:global(.hatacording-feed-leave-active),
-	:global(.hatacording-feed-move) {
+	:global(.hatacording-submit-state-enter-active),
+	:global(.hatacording-submit-state-leave-active),
+	:global(.hatacording-tools-enter-active),
+	:global(.hatacording-tools-leave-active),
+	:global(.hatacording-subpane-enter-active),
+	:global(.hatacording-subpane-leave-active),
+	.tabWrap,
+	.composerTool,
+	.composerTool > svg,
+	.composerTool > span,
+	.timelineSwitchRevealing > * {
 		transition: none;
+		animation: none;
+	}
+
+	.submitArc {
+		animation: none;
 	}
 }
 
