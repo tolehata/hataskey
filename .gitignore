@@ -121,6 +121,10 @@ HATA-PITFALLS.md
 /cmp.json
 /backend-pkg-imports.txt
 
+# ローカル型検査の一時出力
+/vuetsc_out.txt
+/packages/frontend/tsc_out.txt
+
 # Serena
 .serena
 /tarball/
