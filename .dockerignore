@@ -40,3 +40,10 @@ packages/*/.vscode/
 packages/backend/test/compose.yml
 
 .pnpm-store/
+
+# HataSNSCord アイコンパイロット（完成版イメージには含めないローカル設計資産）
+packages/frontend/src/components/hatacording-icons/HatacordingMascotIcon.vue
+packages/frontend/src/components/hatacording-icons/UI-ICON-SPEC.md
+packages/frontend/src/components/hatacording-icons/icon-manifest.json
+packages/frontend/src/components/hatacording-icons/concepts/
+packages/frontend/src/utility/hatacording-mascot-icon-contract.test.ts

@@ -120,36 +120,46 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<!-- ===== 通常候補: HataSNSCordUI（HatasabaUIの次に常時表示） ===== -->
 		<section :class="$style.cordChoice" aria-labelledby="hata-sns-cord-ui-title">
 			<div :class="$style.cordChoiceInner">
-					<div :class="$style.cordChoiceIntro">
-						<div>
-							<div id="hata-sns-cord-ui-title" :class="$style.cordChoiceWordmark">HataSNSCordUI</div>
-							<p>{{ copy.hatacordingDescription }}</p>
-						</div>
+				<div :class="$style.cordChoiceIntro">
+					<img
+						:class="$style.cordChoiceMascot"
+						src="/client-assets/hatacording/mascot-shiba-v1.webp"
+						alt=""
+						width="72"
+						height="72"
+						decoding="async"
+						draggable="false"
+						aria-hidden="true"
+					>
+					<div>
+						<div id="hata-sns-cord-ui-title" :class="$style.cordChoiceWordmark">HataSNSCordUI</div>
+						<p>{{ copy.hatacordingDescription }}</p>
 					</div>
+				</div>
 
-					<div :class="$style.cordMock" aria-hidden="true">
-						<div :class="$style.cordMockLeft">
-							<div :class="$style.cordMockServer"><span :class="$style.cordMockServerIcon"></span><b>Hataskey</b><SlidersHorizontal :size="8"/></div>
-							<div :class="$style.cordMockNav"><span :class="$style.cordMockNavActive"><Home :size="9"/>{{ copy.home }}</span><span><Globe2 :size="9"/>{{ copy.local }}</span><span><Search :size="9"/>{{ copy.search }}</span><span><Bell :size="9"/>{{ copy.notifications }}</span></div>
-							<div :class="$style.cordMockCollections"><span><List :size="8"/>{{ copy.list }}</span><span><Radio :size="8"/>{{ copy.antenna }}</span></div>
-							<div :class="$style.cordMockAccount"><UserRound :size="9"/><span>{{ copy.mockUser }}</span></div>
-						</div>
-						<div :class="$style.cordMockCenter">
-							<div :class="$style.cordMockTitle"><span><Home :size="8"/>{{ copy.home }}</span><span :class="$style.cordMockStatus">● {{ i18n.tsx._hata._uiSetup.activeUsers({ count: 42 }) }}</span></div>
-							<div :class="$style.cordMockFeed">
-								<div :class="$style.cordMockOther"><span :class="$style.cordMockAvatar"></span><div><b>{{ copy.mockFlorist }}</b><i></i><i></i><small>↩︎ · ↻ · ♡ · •••</small></div></div>
-								<div :class="$style.cordMockOwn"><div><b>{{ copy.mockUser }}</b><i></i><small>↩︎ · ↻ · ♡ · •••</small></div></div>
-								<div :class="$style.cordMockOther"><span :class="[$style.cordMockAvatar, $style.cordMockAvatarAlt]"></span><div><b>{{ copy.mockCourier }}</b><i></i><i></i><small>↩︎ · ↻ · ♡ · •••</small></div></div>
-							</div>
-							<div :class="$style.cordMockComposer"><Star :size="8"/><CloudUpload :size="8"/><span>{{ copy.whatsHappening }}</span><ArrowUp :size="9"/></div>
-						</div>
-						<div :class="$style.cordMockRight">
-							<div :class="$style.cordMockTabs"><span>{{ copy.noteDetails }}</span><span>{{ copy.notifications }}</span><Plus :size="8"/></div>
-							<div :class="$style.cordMockDetail"><span :class="$style.cordMockProfile"></span><b>{{ copy.noteInformation }}</b><i></i><i></i><div><Bell :size="10"/><small>{{ copy.subpaneHint }}</small></div></div>
-						</div>
+				<div :class="$style.cordMock" aria-hidden="true">
+					<div :class="$style.cordMockLeft">
+						<div :class="$style.cordMockServer"><span :class="$style.cordMockServerIcon"></span><b>Hataskey</b><SlidersHorizontal :size="8"/></div>
+						<div :class="$style.cordMockNav"><span :class="$style.cordMockNavActive"><Home :size="9"/>{{ copy.home }}</span><span><Globe2 :size="9"/>{{ copy.local }}</span><span><Search :size="9"/>{{ copy.search }}</span><span><Bell :size="9"/>{{ copy.notifications }}</span></div>
+						<div :class="$style.cordMockCollections"><span><List :size="8"/>{{ copy.list }}</span><span><Radio :size="8"/>{{ copy.antenna }}</span></div>
+						<div :class="$style.cordMockAccount"><UserRound :size="9"/><span>{{ copy.mockUser }}</span></div>
 					</div>
+					<div :class="$style.cordMockCenter">
+						<div :class="$style.cordMockTitle"><span><Home :size="8"/>{{ copy.home }}</span><span :class="$style.cordMockStatus">● {{ i18n.tsx._hata._uiSetup.activeUsers({ count: 42 }) }}</span></div>
+						<div :class="$style.cordMockFeed">
+							<div :class="$style.cordMockOther"><span :class="$style.cordMockAvatar"></span><div><b>{{ copy.mockFlorist }}</b><i></i><i></i><small>↩︎ · ↻ · ♡ · •••</small></div></div>
+							<div :class="$style.cordMockOwn"><div><b>{{ copy.mockUser }}</b><i></i><small>↩︎ · ↻ · ♡ · •••</small></div></div>
+							<div :class="$style.cordMockOther"><span :class="[$style.cordMockAvatar, $style.cordMockAvatarAlt]"></span><div><b>{{ copy.mockCourier }}</b><i></i><i></i><small>↩︎ · ↻ · ♡ · •••</small></div></div>
+						</div>
+						<div :class="$style.cordMockComposer"><Star :size="8"/><CloudUpload :size="8"/><span>{{ copy.whatsHappening }}</span><ArrowUp :size="9"/></div>
+					</div>
+					<div :class="$style.cordMockRight">
+						<div :class="$style.cordMockTabs"><span>{{ copy.noteDetails }}</span><span>{{ copy.notifications }}</span><Plus :size="8"/></div>
+						<div :class="$style.cordMockDetail"><span :class="$style.cordMockProfile"></span><b>{{ copy.noteInformation }}</b><i></i><i></i><div><Bell :size="10"/><small>{{ copy.subpaneHint }}</small></div></div>
+					</div>
+				</div>
 
-					<button :class="$style.cordChoiceCta" @click="selectHatacording"><MessageSquareText :size="17"/><span>{{ copy.useHatacording }}</span><ChevronRight :size="17"/></button>
+				<button :class="$style.cordChoiceCta" @click="selectHatacording"><MessageSquareText :size="17"/><span>{{ copy.useHatacording }}</span><ChevronRight :size="17"/></button>
 			</div>
 		</section>
 
@@ -276,6 +286,8 @@ const selectHatacording = async () => {
 	overflow-y: auto;
 	overscroll-behavior: contain;
 	color: #fff;
+	/* 旗鯖fork: 入力欄のない専用UIでクリック位置へテキストキャレットを残さない。 */
+	caret-color: transparent;
 	/* 動くタイムラインを背面ぼかしへ再合成すると Chrome で背景が点滅する。
 	   十分に不透明な面へ置き換え、UI選択窓の視認性は維持する。 */
 	background: rgba(12, 14, 18, 0.96);
@@ -722,9 +734,21 @@ const selectHatacording = async () => {
 
 .cordChoiceIntro {
 	display: flex;
-	align-items: flex-start;
+	align-items: center;
 	gap: 12px;
 	padding-inline: 2px;
+}
+
+.cordChoiceMascot {
+	width: 72px;
+	height: 72px;
+	flex: 0 0 72px;
+	border: 1px solid color-mix(in srgb, var(--htkAccent) 34%, rgba(255, 255, 255, .18));
+	border-radius: 18px;
+	object-fit: cover;
+	box-shadow: 0 8px 22px rgba(0, 0, 0, .28);
+	user-select: none;
+	pointer-events: none;
 }
 
 .cordChoiceIntro > div {
@@ -1055,6 +1079,11 @@ const selectHatacording = async () => {
 	transform: translateY(-1px);
 }
 
+.cordChoiceCta:focus-visible {
+	outline: 2px solid #fff;
+	outline-offset: 3px;
+}
+
 .cordChoiceCta svg {
 	justify-self: center;
 }
@@ -1122,7 +1151,8 @@ const selectHatacording = async () => {
 	.depCard { gap: 10px; padding: 11px 12px; }
 	.depSelect { display: none; }
 	.cordChoice { padding: 12px; }
-	.cordChoiceIntro { flex-direction: column; gap: 7px; }
+	.cordChoiceIntro { gap: 10px; }
+	.cordChoiceMascot { width: 56px; height: 56px; flex-basis: 56px; border-radius: 14px; }
 	.cordMock { grid-template-columns: 25% minmax(0, 1fr); height: 182px; }
 	.cordMockRight { display: none; }
 }

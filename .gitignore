@@ -133,3 +133,10 @@ HATA-PITFALLS.md
 
 # 花常の開発書類・作業進捗・画像生成用リファレンス（実行時アセットではないため配布しない）
 /packages/frontend/hanaawase/
+
+# HataSNSCord アイコンパイロット（完成版には含めないローカル設計資産）
+/packages/frontend/src/components/hatacording-icons/HatacordingMascotIcon.vue
+/packages/frontend/src/components/hatacording-icons/UI-ICON-SPEC.md
+/packages/frontend/src/components/hatacording-icons/icon-manifest.json
+/packages/frontend/src/components/hatacording-icons/concepts/
+/packages/frontend/src/utility/hatacording-mascot-icon-contract.test.ts
