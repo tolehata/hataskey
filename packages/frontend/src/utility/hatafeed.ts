@@ -49,6 +49,10 @@ export interface HataFeedEmojiRequest {
 	remoteHost: string | null;
 	imageUrl: string | null;
 	status: 'pending' | 'held' | 'approved' | 'rejected';
+	resolvedComment: string | null;
+	resolvedById: string | null;
+	resolvedAt: string | null;
+	resolvedEmojiId: string | null;
 }
 
 // 旗鯖fork: 現在試せるベータ機能の一覧。ベータページのカードと、ベータボタンのバッジ数の両方で使う。

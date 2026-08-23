@@ -107,9 +107,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 									・ <MkTime :time="r.createdAt" mode="relative"/>
 									・ {{ r.sourceType === 'remote' ? (r.remoteHost ? copyx.remoteSource({ host: r.remoteHost }) : copy.remote) : copy.ownSource }}
 								</div>
+								<div v-if="r.resolvedComment" :class="$style.eaResolution"><i class="ti ti-message-circle"></i><span><strong>{{ copy.resolutionReason }}</strong> {{ r.resolvedComment }}</span></div>
 							</div>
 							<div :class="$style.eaAction">
-								<button v-if="r.status === 'pending'" :class="$style.eaReview" @click="openApprove(r)"><i class="ti ti-eye"></i> {{ copy.review }}</button>
+								<button v-if="r.status === 'pending' || r.status === 'held'" :class="$style.eaReview" @click="openApprove(r)"><i class="ti ti-eye"></i> {{ copy.review }}</button>
 								<span v-else :class="['ti', emojiStatusIcon[r.status] ?? '', 'hfEstIcon']" :data-est="r.status" :title="emojiStatusLabel[r.status]"></span>
 							</div>
 						</div>
@@ -1111,6 +1112,8 @@ definePage(() => ({
 .eaInfo { flex: 1; min-width: 0; }
 .eaName { font-family: ui-monospace, Menlo, monospace; font-weight: 700; font-size: .92em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .eaMeta { display: flex; align-items: center; gap: 5px; font-size: .76em; opacity: .7; margin-top: 3px; flex-wrap: wrap; }
+.eaResolution { display: flex; align-items: flex-start; gap: 5px; margin-top: 6px; color: var(--MI_THEME-warn); font-size: .78em; line-height: 1.45; overflow-wrap: anywhere; }
+.eaResolution i { flex: 0 0 auto; margin-top: .15em; }
 .eaAction { flex-shrink: 0; }
 .eaReview {
 	display: inline-flex; align-items: center; gap: 5px;

@@ -53,7 +53,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				>
 					<i :class="['ti', notifIcon(g.type), $style.rowIcon]"></i>
 					<div :class="$style.rowBody">
-						<div :class="$style.rowMsg">{{ g.count > 1 ? groupSummary(g) : notificationDisplayMessage(g.items[0]) }}</div>
+						<HataFeedNotificationBody :class="$style.rowMsg" :text="g.count > 1 ? groupSummary(g) : notificationDisplayMessage(g.items[0])"/>
 						<div :class="$style.rowMeta">
 							<template v-if="g.count > 1">
 								<span :class="$style.avatars">
@@ -79,7 +79,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					>
 						<i :class="['ti', notifIcon(n.type), $style.rowIcon]"></i>
 						<div :class="$style.rowBody">
-							<div :class="$style.rowMsg">{{ notificationDisplayMessage(n) }}</div>
+							<HataFeedNotificationBody :class="$style.rowMsg" :text="notificationDisplayMessage(n)"/>
 							<div :class="$style.rowMeta">
 								<HfAvatar v-if="n.actor" :user="n.actor" :size="16"/>
 								<span v-if="n.actor" :class="$style.rowActor">{{ n.actor.name ?? n.actor.username }}</span>
@@ -105,6 +105,7 @@ import { ref, computed, useTemplateRef, onMounted } from 'vue';
 import type { HataFeedEmojiRequest, HataFeedNotif } from '@/utility/hatafeed.js';
 import MkModal from '@/components/MkModal.vue';
 import HfAvatar from '@/components/HfAvatar.vue';
+import HataFeedNotificationBody from '@/components/HataFeedNotificationBody.vue';
 import * as os from '@/os.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { useRouter } from '@/router.js';

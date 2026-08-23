@@ -29,6 +29,9 @@ describe('絵文字申請の保留', () => {
 	const listEndpoint = readRepoFile('packages/backend/src/server/api/endpoints/hata/feedback/emoji-requests.ts');
 	const endpointList = readRepoFile('packages/backend/src/server/api/endpoint-list.ts');
 	const approveUi = readRepoFile('packages/frontend/src/components/HataFeedEmojiApprove.vue');
+	const wizardUi = readRepoFile('packages/frontend/src/components/HataFeedEmojiWizard.vue');
+	const feedPage = readRepoFile('packages/frontend/src/pages/hatafeed.vue');
+	const feedEntity = readRepoFile('packages/backend/src/core/entities/FeedbackEntityService.ts');
 
 	test('保留中の申請を承認・却下できる（詰まらせない）', () => {
 		// ⚠️ここが pending だけに戻ると、保留した申請が二度と処理できなくなる。
@@ -89,5 +92,27 @@ describe('絵文字申請の保留', () => {
 	test('連続確認のキューに保留中も並ぶ', () => {
 		// ⚠️ここを pending だけにすると、保留した申請が誰の目にも触れなくなる。
 		expect(approveUi).toContain("item.status === 'pending' || item.status === 'held'");
+	});
+
+	test('保留も現在項目をキューから外し、同じ申請を無限巡回しない', () => {
+		const holdBody = approveUi.slice(approveUi.indexOf('async function holdAndNext'), approveUi.indexOf('function showNext'));
+		expect(holdBody).toContain('heldCount.value++;');
+		expect(holdBody).toContain('removeCurrent();');
+		expect(holdBody).not.toContain('currentIndex.value = (currentIndex.value + 1) % queue.value.length');
+		expect(approveUi).toContain('held: heldCount.toString()');
+		expect(approveUi).toContain('approved: approvedCount.toString()');
+		expect(approveUi).toContain('rejected: rejectedCount.toString()');
+	});
+
+	test('管理一覧でリジェクト・保留理由を表示し、保留中を再確認できる', () => {
+		expect(feedEntity).toContain('resolvedComment: src.resolvedComment');
+		expect(feedPage).toContain('v-if="r.resolvedComment"');
+		expect(feedPage).toContain("r.status === 'pending' || r.status === 'held'");
+	});
+
+	test('申請後にウィザードを閉じず次の絵文字へ進める', () => {
+		expect(wizardUi).toContain('@click="submit(false)"');
+		expect(wizardUi).toContain('function resetForNextRequest()');
+		expect(wizardUi).toContain("misskeyApi('hata/feedback/emoji-quota'");
 	});
 });

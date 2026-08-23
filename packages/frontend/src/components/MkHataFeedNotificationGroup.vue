@@ -30,7 +30,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				:to="item.link ?? '/hatafeed'"
 				:class="$style.item"
 			>
-				<span :class="$style.itemBody">{{ hataFeedNotificationDisplayBody(item.body) }}</span>
+				<HataFeedNotificationBody :class="$style.itemBody" :text="hataFeedNotificationDisplayBody(item.body)"/>
 				<MkTime :time="item.createdAt" :class="$style.itemTime" :mode="prefer.s.enableAbsoluteTime ? 'absolute' : 'relative'"/>
 			</MkA>
 		</div>
@@ -44,6 +44,7 @@ import type { HataFeedBellGroup } from '@/utility/hatafeed-bell-group.js';
 import { hataFeedNotificationDisplayBody } from '@/utility/hatafeed-bell-group.js';
 import { prefer } from '@/preferences.js';
 import { i18n } from '@/i18n.js';
+import HataFeedNotificationBody from '@/components/HataFeedNotificationBody.vue';
 
 withDefaults(defineProps<{
 	group: HataFeedBellGroup;

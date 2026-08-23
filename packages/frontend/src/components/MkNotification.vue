@@ -196,8 +196,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<span v-else-if="notification.type === 'app' || notification.type === 'hataFeed' || notification.type === 'earthquake' || notification.type === 'addedToPrivateChannel' || notification.type === 'removedFromPrivateChannel'" :class="$style.text">
 				<!-- 旗鯖fork: notification.link があればクリックで該当画面に遷移 (hatask/HataFeed 等の旗鯖独自機能向け) -->
 				<MkA v-if="notification.link" :to="notification.link" :class="$style.appLink">
-					<Mfm :text="customNotificationBody(notification)" :nowrap="false"/>
+					<HataFeedNotificationBody v-if="isHataFeedNotification(notification)" :text="customNotificationBody(notification)"/>
+					<Mfm v-else :text="customNotificationBody(notification)" :nowrap="false"/>
 				</MkA>
+				<HataFeedNotificationBody v-else-if="isHataFeedNotification(notification)" :text="customNotificationBody(notification)"/>
 				<Mfm v-else :text="customNotificationBody(notification)" :nowrap="false"/>
 			</span>
 
@@ -251,6 +253,7 @@ import * as Misskey from 'cherrypick-js';
 import MkReactionIcon from '@/components/MkReactionIcon.vue';
 import MkFollowButton from '@/components/MkFollowButton.vue';
 import MkButton from '@/components/MkButton.vue';
+import HataFeedNotificationBody from '@/components/HataFeedNotificationBody.vue';
 import { getNoteSummary } from '@/utility/get-note-summary.js';
 import { notePage } from '@/filters/note.js';
 import { userPage } from '@/filters/user.js';
@@ -302,6 +305,10 @@ function isCustomBodyNotification(notification: Misskey.entities.Notification): 
 		|| notification.type === 'earthquake'
 		|| notification.type === 'addedToPrivateChannel'
 		|| notification.type === 'removedFromPrivateChannel';
+}
+
+function isHataFeedNotification(notification: Misskey.entities.Notification): boolean {
+	return notification.type === 'hataFeed' || (notification.type === 'app' && notification.header === 'HataFeed');
 }
 
 function customNotificationHeader(notification: Misskey.entities.Notification): string {

@@ -22,9 +22,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<div :class="$style.queueHead">
 					<div>
 						<div :class="$style.queueTitle">{{ copy.pendingRequests }}</div>
-						<div :class="$style.queueMeta">{{ copyx.queueMeta({ current: (currentIndex + 1).toString(), total: queue.length.toString(), resolved: resolvedCount.toString() }) }}</div>
+						<div :class="$style.queueMeta">{{ copyx.queueMeta({ current: (currentIndex + 1).toString(), total: queue.length.toString(), resolved: processedCount.toString() }) }}</div>
 					</div>
-					<div :class="$style.queueProgress" role="progressbar" :aria-valuemin="0" :aria-valuemax="initialTotal" :aria-valuenow="resolvedCount">
+					<div :class="$style.queueProgress" role="progressbar" :aria-valuemin="0" :aria-valuemax="initialTotal" :aria-valuenow="processedCount">
 						<span :style="{ width: `${progressPercent}%` }"></span>
 					</div>
 				</div>
@@ -112,7 +112,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<div v-else :class="$style.complete">
 			<i class="ti ti-circle-check-filled"></i>
 			<div :class="$style.completeTitle">{{ copy.completeTitle }}</div>
-			<div :class="$style.completeText">{{ copyx.completeText({ count: resolvedCount.toString() }) }}</div>
+			<div :class="$style.completeText">{{ copyx.completeText({ held: heldCount.toString(), approved: approvedCount.toString(), rejected: rejectedCount.toString() }) }}</div>
 			<MkButton rounded primary @click="closeWindow">{{ copy.close }}</MkButton>
 		</div>
 	</div>
@@ -142,8 +142,11 @@ const queue = ref<HataFeedEmojiRequest[]>([]);
 const initialTotal = ref(0);
 const currentIndex = ref(0);
 const currentReq = computed<HataFeedEmojiRequest | null>(() => queue.value.at(currentIndex.value) ?? null);
-const resolvedCount = ref(0);
-const progressPercent = computed(() => initialTotal.value === 0 ? 100 : Math.round((resolvedCount.value / initialTotal.value) * 100));
+const heldCount = ref(0);
+const approvedCount = ref(0);
+const rejectedCount = ref(0);
+const processedCount = computed(() => Math.max(0, initialTotal.value - queue.value.length));
+const progressPercent = computed(() => initialTotal.value === 0 ? 100 : Math.round((processedCount.value / initialTotal.value) * 100));
 const slideDirection = ref<'next' | 'prev'>('next');
 
 let initialized = false;
@@ -193,8 +196,6 @@ function removeCurrent(): void {
 	if (currentReq.value == null) return;
 	queue.value.splice(currentIndex.value, 1);
 	if (currentIndex.value >= queue.value.length) currentIndex.value = Math.max(0, queue.value.length - 1);
-	// 従来の単件確認は処理後すぐ閉じる。完了画面は複数申請を連続確認した場合だけ表示する。
-	if (queue.value.length === 0 && initialTotal.value <= 1) closeWindow();
 }
 
 // 旗鯖fork: 保留。⚠️従来はここで次の申請へ送るだけで、管理者が直した入力値は保存していなかった。
@@ -217,13 +218,10 @@ async function holdAndNext(): Promise<void> {
 			localOnly: localOnly.value,
 			isSensitive: isSensitive.value,
 		});
+		heldCount.value++;
+		slideDirection.value = 'next';
+		removeCurrent();
 		emit('done');
-		if (queue.value.length > 1) {
-			slideDirection.value = 'next';
-			currentIndex.value = (currentIndex.value + 1) % queue.value.length;
-		} else {
-			removeCurrent();
-		}
 	} finally {
 		busy.value = false;
 	}
@@ -267,7 +265,7 @@ async function approve(): Promise<void> {
 			localOnly: localOnly.value,
 			isSensitive: isSensitive.value,
 		});
-		resolvedCount.value++;
+		approvedCount.value++;
 		removeCurrent();
 		emit('done');
 		os.success();
@@ -285,7 +283,7 @@ async function reject(): Promise<void> {
 	try {
 		if (!await ensureStillPending(req.id)) return;
 		await misskeyApi('hata/feedback/emoji-requests/reject', { requestId: req.id, comment: result.trim() === '' ? null : result });
-		resolvedCount.value++;
+		rejectedCount.value++;
 		removeCurrent();
 		emit('done');
 	} finally {
