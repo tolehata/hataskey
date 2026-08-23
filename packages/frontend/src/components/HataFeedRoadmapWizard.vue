@@ -74,6 +74,7 @@ import * as os from '@/os.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { chooseDriveFile } from '@/utility/drive.js';
 import type { HataFeedEditableStatus } from '@/utility/hatafeed.js';
+import { useHataFormDraft } from '@/utility/hata-form-draft.js';
 
 const emit = defineEmits<{ (ev: 'done', v: any): void; (ev: 'closed'): void }>();
 
@@ -85,6 +86,18 @@ const description = ref('');
 const status = ref<Extract<HataFeedEditableStatus, 'planned' | 'inProgress'>>('planned');
 const files = ref<any[]>([]);
 const submitting = ref(false);
+type RoadmapDraft = { title: string; description: string; status: 'planned' | 'inProgress'; files: any[] };
+const { clearDraft } = useHataFormDraft<RoadmapDraft>({
+	id: 'hatafeed:roadmap',
+	capture: () => ({ title: title.value, description: description.value, status: status.value, files: files.value }),
+	restore: draft => {
+		title.value = typeof draft.title === 'string' ? draft.title : '';
+		description.value = typeof draft.description === 'string' ? draft.description : '';
+		if (draft.status === 'planned' || draft.status === 'inProgress') status.value = draft.status;
+		files.value = Array.isArray(draft.files) ? draft.files : [];
+	},
+	isMeaningful: draft => draft.title.trim().length > 0 || draft.description.trim().length > 0 || draft.files.length > 0,
+});
 
 // ロードマップは「対応予定 / 対応中」の2状態で掲示する。
 const statusOptions = [
@@ -113,6 +126,7 @@ async function submit() {
 		});
 		// 作成直後は open のため、選んだ掲示状態(planned/inProgress)へ更新する。
 		await misskeyApi('hata/feedback/issues/update', { issueId: issue.id, status: status.value }).catch(() => {});
+		clearDraft();
 		os.success();
 		emit('done', issue);
 		dialog.value?.close();

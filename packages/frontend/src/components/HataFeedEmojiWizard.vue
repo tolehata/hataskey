@@ -125,7 +125,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 				<div :class="$style.navRow">
 					<MkButton rounded @click="backToStep1"><i class="ti ti-arrow-left"></i> {{ sourceType === 'remote' ? copy.backToSearch : copy.back }}</MkButton>
-					<MkButton rounded primary gradate :disabled="!name.trim() || submitting" @click="submit"><i class="ti ti-send"></i> {{ copy.submit }}</MkButton>
+					<div :class="$style.submitActions">
+						<MkButton rounded :disabled="!name.trim() || submitting" @click="submit(false)"><i class="ti ti-library-plus"></i> {{ copy.submitAndContinue }}</MkButton>
+						<MkButton rounded primary gradate :disabled="!name.trim() || submitting" @click="submit(true)"><i class="ti ti-send"></i> {{ copy.submit }}</MkButton>
+					</div>
 				</div>
 			</div>
 
@@ -175,6 +178,7 @@ import { i18n } from '@/i18n.js';
 import * as os from '@/os.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { chooseDriveFile } from '@/utility/drive.js';
+import { useHataFormDraft } from '@/utility/hata-form-draft.js';
 
 const props = defineProps<{ isStaff?: boolean }>();
 const emit = defineEmits<{ (ev: 'done', v: any): void; (ev: 'closed'): void }>();
@@ -215,6 +219,46 @@ const remoteHostFilter = ref('');
 const remoteResults = ref<any[]>([]);
 const remoteLoading = ref(false);
 const remoteHasMore = ref(false);
+
+type EmojiDraft = {
+	step: number;
+	mode: 'source' | 'remote';
+	sourceType: 'image' | 'remote';
+	fileId: string | null;
+	originalUrl: string | null;
+	remoteHost: string | null;
+	previewUrl: string | null;
+	name: string;
+	license: string;
+	category: string | null;
+	tagsRaw: string;
+	localOnly: boolean;
+	isSensitive: boolean;
+	remoteQuery: string;
+	remoteHostFilter: string;
+};
+const { clearDraft } = useHataFormDraft<EmojiDraft>({
+	id: `hatafeed:emoji:${props.isStaff ? 'staff' : 'member'}`,
+	capture: () => ({ step: step.value, mode: mode.value, sourceType: sourceType.value, fileId: fileId.value, originalUrl: originalUrl.value, remoteHost: remoteHost.value, previewUrl: previewUrl.value, name: name.value, license: license.value, category: category.value, tagsRaw: tagsRaw.value, localOnly: localOnly.value, isSensitive: isSensitive.value, remoteQuery: remoteQuery.value, remoteHostFilter: remoteHostFilter.value }),
+	restore: draft => {
+		step.value = draft.step === 2 ? 2 : 1;
+		mode.value = draft.mode === 'remote' ? 'remote' : 'source';
+		sourceType.value = draft.sourceType === 'remote' ? 'remote' : 'image';
+		fileId.value = typeof draft.fileId === 'string' ? draft.fileId : null;
+		originalUrl.value = typeof draft.originalUrl === 'string' ? draft.originalUrl : null;
+		remoteHost.value = typeof draft.remoteHost === 'string' ? draft.remoteHost : null;
+		previewUrl.value = typeof draft.previewUrl === 'string' ? draft.previewUrl : null;
+		name.value = typeof draft.name === 'string' ? draft.name : '';
+		license.value = typeof draft.license === 'string' ? draft.license : '';
+		category.value = typeof draft.category === 'string' ? draft.category : null;
+		tagsRaw.value = typeof draft.tagsRaw === 'string' ? draft.tagsRaw : '';
+		localOnly.value = draft.localOnly === true;
+		isSensitive.value = draft.isSensitive === true;
+		remoteQuery.value = typeof draft.remoteQuery === 'string' ? draft.remoteQuery : '';
+		remoteHostFilter.value = typeof draft.remoteHostFilter === 'string' ? draft.remoteHostFilter : '';
+	},
+	isMeaningful: draft => draft.fileId != null || draft.originalUrl != null || draft.name.trim().length > 0 || draft.license.trim().length > 0 || draft.tagsRaw.trim().length > 0,
+});
 
 onMounted(async () => {
 	categories.value = await misskeyApi('hata/feedback/emoji-categories', {}).catch(() => []);
@@ -284,7 +328,19 @@ function backToStep1() {
 	mode.value = sourceType.value === 'remote' ? 'remote' : 'source';
 }
 
-async function submit() {
+function resetForNextRequest() {
+	step.value = 1;
+	mode.value = sourceType.value === 'remote' ? 'remote' : 'source';
+	fileId.value = null;
+	originalUrl.value = null;
+	remoteHost.value = null;
+	previewUrl.value = null;
+	name.value = '';
+	license.value = '';
+	tagsRaw.value = '';
+}
+
+async function submit(closeAfter: boolean) {
 	if (!name.value.trim()) return;
 	if (quotaEmpty.value) {
 		os.alert({ type: 'warning', text: copy.quotaReached });
@@ -308,9 +364,19 @@ async function submit() {
 			remoteHost: remoteHost.value,
 			fileId: fileId.value,
 		});
+		clearDraft();
 		os.success();
 		emit('done', req);
-		dialog.value?.close();
+		if (closeAfter) {
+			dialog.value?.close();
+		} else {
+			quota.value = await misskeyApi('hata/feedback/emoji-quota', {}).catch(() => quota.value);
+			resetForNextRequest();
+			if (quotaEmpty.value) {
+				await os.alert({ type: 'info', text: copy.quotaReached });
+				dialog.value?.close();
+			}
+		}
 	} finally {
 		submitting.value = false;
 	}
@@ -361,7 +427,8 @@ async function submit() {
 /* 2f/3d: 詳細 2ペイン */
 .detailGrid { display: grid; grid-template-columns: 1fr 240px; gap: 20px; align-items: start; }
 .form { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
-.navRow { display: flex; justify-content: space-between; margin-top: 6px; }
+.navRow { display: flex; justify-content: space-between; gap: 10px; margin-top: 6px; }
+.submitActions { display: flex; justify-content: flex-end; gap: 8px; }
 
 .licenseField { border-radius: 10px; }
 .licenseWarn { outline: 1px solid color-mix(in srgb, #ecb637 60%, transparent); outline-offset: 4px; border-radius: 8px; }
@@ -390,5 +457,6 @@ async function submit() {
 	.detailGrid { grid-template-columns: 1fr; }
 	.preview { order: -1; position: static; }
 	.remoteGrid { grid-template-columns: repeat(4, 1fr); }
+	.navRow, .submitActions { align-items: stretch; flex-direction: column; }
 }
 </style>

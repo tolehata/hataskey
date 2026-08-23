@@ -95,6 +95,7 @@ import { hySubjectPalette, HY_TAGS, hyTagLabel } from '@/utility/hatady.js';
 import type { HyTag } from '@/utility/hatady.js';
 import { hySubjects, loadHySubjects, saveHySubject } from '@/utility/hatady-subjects.js';
 import { hatadyTheme } from '@/utility/hatady-prefs.js';
+import { useHataFormDraft } from '@/utility/hata-form-draft.js';
 
 const props = defineProps<{ editLog?: any }>();
 const emit = defineEmits<{ (ev: 'done', v: any): void; (ev: 'closed'): void }>();
@@ -120,6 +121,7 @@ const DEFAULT_SUBJECT_LABELS: Record<string, () => string> = {
 function subjectDisplayName(name: string): string {
 	return DEFAULT_SUBJECT_LABELS[name]?.() ?? name;
 }
+
 const subjectChoices = computed<string[]>(() => {
 	const names: string[] = [];
 	const seen = new Set<string>();
@@ -142,7 +144,9 @@ const initVis: Vis = (editLog?.visibility === 'public' || editLog?.visibility ==
 	? editLog.visibility
 	: (editLog ? (editLog.isPublic ? 'public' : 'private') : 'public');
 const visibility = ref<Vis>(initVis);
+
 function cycleVis() { visibility.value = VIS_ORDER[(VIS_ORDER.indexOf(visibility.value) + 1) % VIS_ORDER.length]; }
+
 const saving = ref(false);
 const myBooks = ref<any[]>([]);
 
@@ -152,14 +156,36 @@ function nowLocal(): string {
 	d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
 	return d.toISOString().slice(0, 16);
 }
+
 function toLocal(iso: string): string {
 	const d = new Date(iso);
 	d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
 	return d.toISOString().slice(0, 16);
 }
+
 const studiedAtLocal = ref(editLog?.studiedAt ? toLocal(editLog.studiedAt) : nowLocal());
 
+type ComposerDraft = { title: string; subject: string; selectedBook: any | null; pageFrom: number | null; pageTo: number | null; durationMinutes: number; body: string; tag: HyTag | null; visibility: Vis; studiedAtLocal: string };
+const { clearDraft } = useHataFormDraft<ComposerDraft>({
+	id: `hatady:log:${isEdit ? `edit:${editLog.id}` : 'create'}`,
+	capture: () => ({ title: title.value, subject: subject.value, selectedBook: selectedBook.value, pageFrom: pageFrom.value, pageTo: pageTo.value, durationMinutes: durationMinutes.value, body: body.value, tag: tag.value, visibility: visibility.value, studiedAtLocal: studiedAtLocal.value }),
+	restore: draft => {
+		title.value = typeof draft.title === 'string' ? draft.title : '';
+		subject.value = typeof draft.subject === 'string' ? draft.subject : '';
+		selectedBook.value = draft.selectedBook && typeof draft.selectedBook === 'object' ? draft.selectedBook : null;
+		pageFrom.value = typeof draft.pageFrom === 'number' ? draft.pageFrom : null;
+		pageTo.value = typeof draft.pageTo === 'number' ? draft.pageTo : null;
+		durationMinutes.value = typeof draft.durationMinutes === 'number' ? draft.durationMinutes : 30;
+		body.value = typeof draft.body === 'string' ? draft.body : '';
+		tag.value = draft.tag === 'strength' || draft.tag === 'weak' || draft.tag === 'interest' ? draft.tag : null;
+		visibility.value = draft.visibility === 'followers' || draft.visibility === 'private' ? draft.visibility : 'public';
+		studiedAtLocal.value = typeof draft.studiedAtLocal === 'string' ? draft.studiedAtLocal : nowLocal();
+	},
+	isMeaningful: draft => draft.title.trim().length > 0 || draft.subject.trim().length > 0 || draft.body.trim().length > 0 || draft.selectedBook != null,
+});
+
 function t(key: string): string { return (copy as unknown as Record<string, string>)[key] ?? key; }
+
 function pal(s: string) { return hySubjectPalette(s); }
 
 onMounted(async () => {
@@ -235,6 +261,7 @@ async function submit() {
 				body: body.value.trim() || null,
 			};
 			const log = await misskeyApi('hata/hatady/logs/update', payload);
+			clearDraft();
 			os.success();
 			emit('done', log);
 			dialog.value?.close();
@@ -259,6 +286,7 @@ async function submit() {
 			if (!isNaN(d.getTime())) payload.studiedAt = d.toISOString();
 		}
 		const log = await misskeyApi('hata/hatady/logs/create', payload);
+		clearDraft();
 		os.success();
 		emit('done', log);
 		dialog.value?.close();

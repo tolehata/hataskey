@@ -84,6 +84,7 @@ import { i18n } from '@/i18n.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { HY_COVER_SETS } from '@/utility/hatady.js';
 import { hatadyTheme } from '@/utility/hatady-prefs.js';
+import { useHataFormDraft } from '@/utility/hata-form-draft.js';
 
 const props = defineProps<{ editBook?: any }>();
 const emit = defineEmits<{ (ev: 'done', v: any): void; (ev: 'closed'): void }>();
@@ -100,6 +101,19 @@ const totalPages = ref<number | null>(eb?.totalPages ?? null);
 const status = ref<'reading' | 'finished' | 'want' | 'tsundoku'>(eb?.status ?? 'reading');
 const colorIndex = ref<number | null>(eb?.coverColorIndex ?? null);
 const saving = ref(false);
+type BookDraft = { title: string; author: string; totalPages: number | null; status: 'reading' | 'finished' | 'want' | 'tsundoku'; colorIndex: number | null };
+const { clearDraft } = useHataFormDraft<BookDraft>({
+	id: `hatady:book:${isEdit ? `edit:${eb.id}` : 'create'}`,
+	capture: () => ({ title: title.value, author: author.value, totalPages: totalPages.value, status: status.value, colorIndex: colorIndex.value }),
+	restore: draft => {
+		title.value = typeof draft.title === 'string' ? draft.title : '';
+		author.value = typeof draft.author === 'string' ? draft.author : '';
+		totalPages.value = typeof draft.totalPages === 'number' ? draft.totalPages : null;
+		if (draft.status === 'reading' || draft.status === 'finished' || draft.status === 'want' || draft.status === 'tsundoku') status.value = draft.status;
+		colorIndex.value = typeof draft.colorIndex === 'number' ? draft.colorIndex : null;
+	},
+	isMeaningful: draft => draft.title.trim().length > 0 || draft.author.trim().length > 0 || draft.totalPages != null || draft.colorIndex != null,
+});
 
 // 色見本は表紙グラデーションの濃色側を使う。
 const swatchColors = HY_COVER_SETS.map(s => s[1]);
@@ -121,6 +135,7 @@ async function submit() {
 				coverColorIndex: colorIndex.value,
 			};
 			const book = await misskeyApi('hata/hatady/books/update', payload);
+			clearDraft();
 			os.success();
 			emit('done', book);
 			dialog.value?.close();
@@ -135,6 +150,7 @@ async function submit() {
 			coverColorIndex: colorIndex.value ?? undefined,
 		};
 		const book = await misskeyApi('hata/hatady/books/create', payload);
+		clearDraft();
 		os.success();
 		emit('done', book);
 		dialog.value?.close();

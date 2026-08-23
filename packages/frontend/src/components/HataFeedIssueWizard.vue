@@ -112,6 +112,7 @@ import { chooseDriveFile } from '@/utility/drive.js';
 import { iAmModerator } from '@/i.js';
 import { categoryLabel, creatableCategoryKeys, staffOnlyCategoryKeys, categoryDesc, categoryIcon } from '@/utility/hatafeed.js';
 import type { HataFeedCategory, HataFeedPriority } from '@/utility/hatafeed.js';
+import { useHataFormDraft } from '@/utility/hata-form-draft.js';
 
 const props = defineProps<{ projectId: string | null; projects: any[] }>();
 const emit = defineEmits<{ (ev: 'done', v: any): void; (ev: 'closed'): void }>();
@@ -135,6 +136,32 @@ const submitting = ref(false);
 // 旗鯖fork: コード提出（任意）
 const codeEnabled = ref(false);
 const code = ref('');
+
+type IssueDraft = {
+	step: number;
+	category: HataFeedCategory;
+	title: string;
+	description: string;
+	priority: HataFeedPriority;
+	files: any[];
+	codeEnabled: boolean;
+	code: string;
+};
+const { clearDraft } = useHataFormDraft<IssueDraft>({
+	id: `hatafeed:issue:${props.projectId ?? 'general'}`,
+	capture: () => ({ step: step.value, category: category.value, title: title.value, description: description.value, priority: priority.value, files: files.value, codeEnabled: codeEnabled.value, code: code.value }),
+	restore: draft => {
+		step.value = Math.min(3, Math.max(1, Number(draft.step) || 1));
+		if (creatableCategoryKeys.includes(draft.category as typeof creatableCategoryKeys[number])) category.value = draft.category;
+		title.value = typeof draft.title === 'string' ? draft.title : '';
+		description.value = typeof draft.description === 'string' ? draft.description : '';
+		if (draft.priority === 'low' || draft.priority === 'normal' || draft.priority === 'high') priority.value = draft.priority;
+		files.value = Array.isArray(draft.files) ? draft.files : [];
+		codeEnabled.value = draft.codeEnabled === true;
+		code.value = typeof draft.code === 'string' ? draft.code : '';
+	},
+	isMeaningful: draft => draft.title.trim().length > 0 || draft.description.trim().length > 0 || draft.files.length > 0 || draft.code.trim().length > 0,
+});
 
 // 旗鯖fork: スタッフ専用カテゴリ(security等)は一般ユーザーに見せない。
 const availableCategoryKeys = computed(() => creatableCategoryKeys.filter(c => iAmModerator || !staffOnlyCategoryKeys.includes(c as 'security')));
@@ -180,6 +207,7 @@ async function submit() {
 			fileIds: files.value.map(f => f.id),
 				code: (codeEnabled.value && code.value.trim().length > 0) ? code.value : null,
 		});
+		clearDraft();
 		os.success();
 		emit('done', issue);
 		dialog.value?.close();
