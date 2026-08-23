@@ -20,7 +20,7 @@
 -->
 
 <template>
-<div :class="[$style.deckWrap, toolbarPos === 'right' ? $style.deckWrapRight : toolbarPos === 'bottom' ? $style.deckWrapBottom : $style.deckWrapTop]" :data-widget-border="prefer.r['simpleUi.widgetBorder']?.value ? 'on' : 'off'">
+<div :class="[$style.deckWrap, toolbarPos === 'right' ? $style.deckWrapRight : toolbarPos === 'bottom' ? $style.deckWrapBottom : $style.deckWrapTop]" :data-widget-border="prefer.r['simpleUi.widgetBorder']?.value ? 'on' : 'off'" :data-animation="prefer.s.animation ? 'true' : 'false'">
 	<!-- 折り畳み式ツールバー (上部メニューモード時は、開いている時だけ表示) -->
 	<div v-if="!topNavMode || toolbarOpen" :class="$style.toolbarBar">
 		<button v-if="!topNavMode" :class="[$style.toolbarToggle, { [$style.toolbarToggleOn]: toolbarOpen }]" v-tooltip="toolbarOpen ? copy.hideToolbar : copy.showToolbar" @click="toolbarOpen = !toolbarOpen">
@@ -70,7 +70,7 @@
 									v-for="tab in frame.tabs" :key="tab.id"
 									:class="[$style.tab, { [$style.tabActive]: activeTabOf(frame).id === tab.id, [$style.tabDragOver]: tabDragOverId === tab.id }]"
 									:style="tabStyle(tab, activeTabOf(frame).id === tab.id)"
-									@click="onTabClick(slot, frame, tab)"
+									@click="onTabClick(slot, frame, tab, $event)"
 									@dblclick="renameTab(slot.id, frame.id, tab.id)"
 									@contextmenu.prevent="openTabMenu(slot, frame, tab, $event)"
 									:data-deck-tab="tab.id" :data-deck-tab-frame="frame.id" :data-deck-tab-slot="slot.id"
@@ -89,7 +89,7 @@
 						<!-- 本体(アクティブタブ) -->
 						<div :class="['frameBody', $style.frameBody]" @touchstart.passive="onFrameTouchStart(frame, $event)" @touchend="onFrameTouchEnd(slot, frame, $event)">
 							<template v-for="tab in frame.tabs" :key="tab.id">
-								<div v-show="activeTabOf(frame).id === tab.id" :class="[$style.tabPane, { [$style.tabPanePostForm]: tab.type === 'postForm', [$style.tabPaneExtNotif]: tab.type === 'externalNotifications', [$style.tabPaneWidgets]: tab.type === 'widgets' }]" :ref="el => setPaneRef(tab.id, el)">
+								<div v-show="activeTabOf(frame).id === tab.id" :class="[$style.tabPane, { [$style.tabPanePostForm]: tab.type === 'postForm', [$style.tabPaneExtNotif]: tab.type === 'externalNotifications', [$style.tabPaneWidgets]: tab.type === 'widgets' }]" :data-active="activeTabOf(frame).id === tab.id ? 'true' : 'false'" :ref="el => setPaneRef(tab.id, el)">
 									<component :is="resolveColumn(tab)" v-bind="columnProps(tab)" :ref="el => setColRef(tab.id, el)"/>
 								</div>
 							</template>
@@ -115,7 +115,7 @@
 					<div :class="['frameRoot', $style.frameRoot, { [$style.frameColored]: !!frame.borderColor, [$style.frameDragOver]: dragOverFrame === frame.id }]" :style="frameStyle(frame, slot)" :data-deck-frame="frame.id" :data-deck-frame-slot="slot.id">
 						<div :class="$style.tabBar">
 							<div :class="$style.tabs" @wheel="onTabsWheel">
-								<button v-for="tab in frame.tabs" :key="tab.id" :class="[$style.tab, { [$style.tabActive]: activeTabOf(frame).id === tab.id, [$style.tabDragOver]: tabDragOverId === tab.id }]" :style="tabStyle(tab, activeTabOf(frame).id === tab.id)" @click="onTabClick(slot, frame, tab)" @dblclick="renameTab(slot.id, frame.id, tab.id)" @contextmenu.prevent="openTabMenu(slot, frame, tab, $event)" :data-deck-tab="tab.id" :data-deck-tab-frame="frame.id" :data-deck-tab-slot="slot.id">
+								<button v-for="tab in frame.tabs" :key="tab.id" :class="[$style.tab, { [$style.tabActive]: activeTabOf(frame).id === tab.id, [$style.tabDragOver]: tabDragOverId === tab.id }]" :style="tabStyle(tab, activeTabOf(frame).id === tab.id)" @click="onTabClick(slot, frame, tab, $event)" @dblclick="renameTab(slot.id, frame.id, tab.id)" @contextmenu.prevent="openTabMenu(slot, frame, tab, $event)" :data-deck-tab="tab.id" :data-deck-tab-frame="frame.id" :data-deck-tab-slot="slot.id">
 									<span v-if="!locked" :class="$style.tabGrip" v-tooltip="copy.dragTab" @pointerdown="onTabPointerDown(slot.id, frame.id, tab.id, $event)" @click.stop><i class="ti ti-grip-vertical"></i></span><i :class="[tabIcon(tab), $style.tabIcon, { [$style.tabIconActiveColored]: tab.tabColor && activeTabOf(frame).id === tab.id }]"></i><span :class="$style.tabLabel">{{ tabTitle(tab) }}</span>
 								</button>
 							</div>
@@ -127,7 +127,7 @@
 						</div>
 						<div :class="['frameBody', $style.frameBody]" @touchstart.passive="onFrameTouchStart(frame, $event)" @touchend="onFrameTouchEnd(slot, frame, $event)">
 							<template v-for="tab in frame.tabs" :key="tab.id">
-								<div v-show="activeTabOf(frame).id === tab.id" :class="[$style.tabPane, { [$style.tabPanePostForm]: tab.type === 'postForm', [$style.tabPaneExtNotif]: tab.type === 'externalNotifications', [$style.tabPaneWidgets]: tab.type === 'widgets' }]" :ref="el => setPaneRef(tab.id, el)"><component :is="resolveColumn(tab)" v-bind="columnProps(tab)" :ref="el => setColRef(tab.id, el)"/></div>
+								<div v-show="activeTabOf(frame).id === tab.id" :class="[$style.tabPane, { [$style.tabPanePostForm]: tab.type === 'postForm', [$style.tabPaneExtNotif]: tab.type === 'externalNotifications', [$style.tabPaneWidgets]: tab.type === 'widgets' }]" :data-active="activeTabOf(frame).id === tab.id ? 'true' : 'false'" :ref="el => setPaneRef(tab.id, el)"><component :is="resolveColumn(tab)" v-bind="columnProps(tab)" :ref="el => setColRef(tab.id, el)"/></div>
 							</template>
 						</div>
 					</div>
@@ -146,7 +146,7 @@
 					<div :class="['frameRoot', $style.frameRoot, { [$style.frameColored]: !!frame.borderColor, [$style.frameDragOver]: dragOverFrame === frame.id }]" :style="frameStyle(frame, slot)" :data-deck-frame="frame.id" :data-deck-frame-slot="slot.id">
 						<div :class="$style.tabBar">
 							<div :class="$style.tabs" @wheel="onTabsWheel">
-								<button v-for="tab in frame.tabs" :key="tab.id" :class="[$style.tab, { [$style.tabActive]: activeTabOf(frame).id === tab.id, [$style.tabDragOver]: tabDragOverId === tab.id }]" :style="tabStyle(tab, activeTabOf(frame).id === tab.id)" @click="onTabClick(slot, frame, tab)" @dblclick="renameTab(slot.id, frame.id, tab.id)" @contextmenu.prevent="openTabMenu(slot, frame, tab, $event)" :data-deck-tab="tab.id" :data-deck-tab-frame="frame.id" :data-deck-tab-slot="slot.id">
+								<button v-for="tab in frame.tabs" :key="tab.id" :class="[$style.tab, { [$style.tabActive]: activeTabOf(frame).id === tab.id, [$style.tabDragOver]: tabDragOverId === tab.id }]" :style="tabStyle(tab, activeTabOf(frame).id === tab.id)" @click="onTabClick(slot, frame, tab, $event)" @dblclick="renameTab(slot.id, frame.id, tab.id)" @contextmenu.prevent="openTabMenu(slot, frame, tab, $event)" :data-deck-tab="tab.id" :data-deck-tab-frame="frame.id" :data-deck-tab-slot="slot.id">
 									<span v-if="!locked" :class="$style.tabGrip" v-tooltip="copy.dragTab" @pointerdown="onTabPointerDown(slot.id, frame.id, tab.id, $event)" @click.stop><i class="ti ti-grip-vertical"></i></span><i :class="[tabIcon(tab), $style.tabIcon, { [$style.tabIconActiveColored]: tab.tabColor && activeTabOf(frame).id === tab.id }]"></i><span :class="$style.tabLabel">{{ tabTitle(tab) }}</span>
 								</button>
 							</div>
@@ -158,7 +158,7 @@
 						</div>
 						<div :class="['frameBody', $style.frameBody]" @touchstart.passive="onFrameTouchStart(frame, $event)" @touchend="onFrameTouchEnd(slot, frame, $event)">
 							<template v-for="tab in frame.tabs" :key="tab.id">
-								<div v-show="activeTabOf(frame).id === tab.id" :class="[$style.tabPane, { [$style.tabPanePostForm]: tab.type === 'postForm', [$style.tabPaneExtNotif]: tab.type === 'externalNotifications', [$style.tabPaneWidgets]: tab.type === 'widgets' }]" :ref="el => setPaneRef(tab.id, el)"><component :is="resolveColumn(tab)" v-bind="columnProps(tab)" :ref="el => setColRef(tab.id, el)"/></div>
+								<div v-show="activeTabOf(frame).id === tab.id" :class="[$style.tabPane, { [$style.tabPanePostForm]: tab.type === 'postForm', [$style.tabPaneExtNotif]: tab.type === 'externalNotifications', [$style.tabPaneWidgets]: tab.type === 'widgets' }]" :data-active="activeTabOf(frame).id === tab.id ? 'true' : 'false'" :ref="el => setPaneRef(tab.id, el)"><component :is="resolveColumn(tab)" v-bind="columnProps(tab)" :ref="el => setColRef(tab.id, el)"/></div>
 							</template>
 						</div>
 					</div>
@@ -184,6 +184,7 @@ import * as os from '@/os.js';
 import { mainRouter } from '@/router.js';
 import { misskeyApi, misskeyApiGet } from '@/utility/misskey-api.js';
 import { prefer } from '@/preferences.js';
+import { playHataIconMotion } from '@/utility/hata-icon-motion.js';
 import { globalEvents } from '@/events.js';
 import MkStreamingNotesTimeline from '@/components/MkStreamingNotesTimeline.vue';
 import MkExternalTimeline from '@/components/MkExternalTimeline.vue';
@@ -751,7 +752,8 @@ function isScrollableTab(tab: DeckTab): boolean {
 }
 // 旗鯖fork(#9): タブクリック。既にアクティブかつタイムライン系なら、そのペインを最上部へスクロール。
 // 非アクティブなら通常どおりタブを切り替える。
-function onTabClick(slot: DeckSlot, frame: DeckFrame, tab: DeckTab) {
+function onTabClick(slot: DeckSlot, frame: DeckFrame, tab: DeckTab, event: MouseEvent) {
+	playHataIconMotion(event, 'press', 420);
 	if (activeTabOf(frame).id === tab.id) {
 		if (isScrollableTab(tab)) paneRefs.get(tab.id)?.scrollTo({ top: 0, behavior: 'smooth' });
 		return;
@@ -1781,7 +1783,7 @@ function openProfileMenu(ev: MouseEvent) {
 .tab {
 	display: flex; align-items: center; gap: 6px; max-width: 180px; min-height: 32px; padding: 7px 12px; border: none; cursor: grab;
 	background: transparent; color: var(--MI_THEME-fg); opacity: .6; font-size: .82em; font-weight: 700;
-	border-radius: 10px 10px 0 0; border: 1px solid transparent; border-bottom: none; transition: background .12s, opacity .12s;
+	border-radius: 10px 10px 0 0; border: 1px solid transparent; border-bottom: none; transition: background .2s, opacity .2s, max-width .3s cubic-bezier(.2,.8,.2,1), flex-grow .3s cubic-bezier(.2,.8,.2,1);
 	user-select: none; -webkit-user-select: none;
 	&:active { cursor: grabbing; }
 	&:hover { opacity: .85; background: color-mix(in srgb, var(--MI_THEME-accent) 10%, transparent); }
@@ -1800,12 +1802,15 @@ function openProfileMenu(ev: MouseEvent) {
 	&:active { cursor: grabbing; }
 }
 .tabActive {
+	flex-grow: 1;
+	max-width: 240px;
 	opacity: 1; background: var(--MI_THEME-panel);
 	border-color: var(--deckColBorder, var(--MI_THEME-divider));
 	box-shadow: 0 -2px 6px rgba(0, 0, 0, .04);
 }
 .tabDragOver { box-shadow: inset 2px 0 0 var(--MI_THEME-accent); }
-.tabIcon { flex-shrink: 0; color: var(--MI_THEME-accent); font-size: 1.05em; }
+.tabIcon { flex-shrink: 0; color: var(--MI_THEME-accent); font-size: 1.05em; transition: transform .28s cubic-bezier(.2,.8,.2,1); }
+.tabActive .tabIcon { transform: translateY(-1px) scale(1.08); }
 .tabIconActiveColored { color: #fff !important; }
 .tabLabel { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .frameHeadBtn, .frameMenuBtn, .frameTabsBtn {
@@ -1816,6 +1821,20 @@ function openProfileMenu(ev: MouseEvent) {
 /* frame本体 */
 .frameBody { flex: 1; min-height: 0; position: relative; z-index: 1; }
 .tabPane { position: absolute; inset: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--MI_THEME-fg) 12%, transparent) transparent; }
+.deckWrap[data-animation='true'] .tabPane[data-active='true'] { animation: deckPaneIn .3s cubic-bezier(.2,.8,.2,1) both; }
+
+@keyframes deckPaneIn {
+	from { opacity: 0; transform: translateX(8px) scale(.995); }
+	to { opacity: 1; transform: translateX(0) scale(1); }
+}
+
+.deckWrap[data-animation='false'] :is(.tab, .tabIcon) { transition: none; }
+
+@media (prefers-reduced-motion: reduce) {
+	.tab,
+	.tabIcon { transition: none; }
+	.tabPane[data-active='true'] { animation: none !important; }
+}
 /* 投稿フォームカラムは、フォーム本体をカラムの高さいっぱいに広げ、
    テキスト入力欄が伸びて下部のボタン類が常にカラム最下部に来るようにする。 */
 .tabPanePostForm {

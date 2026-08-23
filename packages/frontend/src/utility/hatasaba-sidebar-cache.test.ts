@@ -31,7 +31,8 @@ describe('HatasabaUI sidebar cache clear item', () => {
 	test('サイドメニューから既存のキャッシュ削除処理を呼び出す', () => {
 		const ui = source('src/ui/simple.vue');
 		expect(ui).toContain('import { clearCache } from \'@/utility/clear-cache.js\';');
-		expect(ui).toContain('cacheClear: () => { void clearCache(); }');
+		expect(ui).toContain('cacheClear: () => { void clearCacheWithMotion(ev); }');
+		expect(ui).toContain("playHataIconMotion(ev, 'cache-clear', 720)");
 	});
 
 	test('必須項目にはせず表示非表示を選べる', () => {

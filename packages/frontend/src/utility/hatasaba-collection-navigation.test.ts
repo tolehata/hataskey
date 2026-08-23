@@ -46,9 +46,9 @@ describe('HatasabaUIのリスト・アンテナ選択UI', () => {
 		const ui = source('src/ui/simple.vue');
 		expect(ui).toContain('else timelinePickerKind.value = \'list\';');
 		expect(ui).toContain('else timelinePickerKind.value = \'antenna\';');
-		expect(ui).toContain('timelinePickerKind === \'list\' ? \'リストがありません\' : \'アンテナがありません\'');
+		expect(ui).toContain("timelinePickerKind === 'list' ? copy.noLists : copy.noAntennas");
 		expect(ui).toContain('openEmptyCollectionOptions');
-		expect(ui).toContain('<span>オプション</span>');
+		expect(ui).toContain('<span>{{ copy.options }}</span>');
 	});
 
 	test('モバイル上部ナビはアカウントアイコンを中央に揃え、選択ピルを残り幅へ収める', () => {

@@ -135,10 +135,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<!-- 下部: 投稿 + アカウント (固定) -->
 			<div :class="$style.sbBottom">
 				<!-- 旗鯖fork: HatasabaUIデッキUI使用中は、ノートボタンの上にリロードボタンを固定表示 -->
-				<button v-if="deckActive" v-tooltip.right="sidebarFolded ? copy.reload : null" :class="$style.sbReloadBtn" @click="reloadPage">
+				<button v-if="deckActive" v-tooltip.right="sidebarFolded ? copy.reload : null" :class="$style.sbReloadBtn" @click="reloadPage($event)">
 					<i class="ti ti-refresh"></i>
 				</button>
-				<button v-tooltip.right="sidebarFolded ? copy.note : null" :class="$style.sbPostBtn" :style="studioPostButtonStyle" data-cy-open-post-form @click="onPostClick">
+				<button v-tooltip.right="sidebarFolded ? copy.note : null" :class="$style.sbPostBtn" :style="studioPostButtonStyle" data-cy-open-post-form @click="playSimpleNavMotion($event, 'post'); onPostClick()">
 					<i :class="studioPostButtonIcon"></i>
 				</button>
 				<!-- 旗鯖fork: デッキモード切替トグル (アカウント表示の上) -->
@@ -164,11 +164,11 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<div :class="$style.mainColumnInner">
 			<!-- 旗鯖fork: 上部メニューモードのナビバー(横並びピル型/常時固定)。デッキ併用時はこの下にデッキツールバーが来る。 -->
 			<nav v-if="topNavActive" data-htk-weather-footer :class="[$style.topNav, { [$style.topNavSolid]: !glassEffect }]">
-				<button v-tooltip="instance.name ?? copy.instance" :class="$style.topNavLogo" @click="openInstanceMenuMobile">
+				<button v-tooltip="instance.name ?? copy.instance" :class="$style.topNavLogo" @click="playSimpleNavMotion($event, 'layout'); openInstanceMenuMobile($event)">
 					<img v-if="instance.iconUrl" :src="instance.iconUrl" :class="$style.topNavLogoImg"/>
 					<i v-else class="ti ti-server"></i>
 				</button>
-				<button v-tooltip="isRealtimeMode ? copy.realtimeOn : copy.realtimeOff" :class="[$style.topNavItem, { [$style.topNavItemActive]: isRealtimeMode }]" @click="toggleRealtimeMode">
+				<button v-tooltip="isRealtimeMode ? copy.realtimeOn : copy.realtimeOff" :class="[$style.topNavItem, { [$style.topNavItemActive]: isRealtimeMode }]" @click="playSimpleNavMotion($event, 'realtime'); toggleRealtimeMode()">
 					<i :class="isRealtimeMode ? 'ti ti-bolt' : 'ti ti-bolt-off'"></i><span>{{ copy.realtime }}</span>
 				</button>
 				<div :class="$style.topNavDivider"></div>
@@ -184,12 +184,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 					</template>
 					<!-- 旗鯖fork: かつて「もっと」の右にリロードボタンをハードコード表示していたが、
                      sidebar 項目化したため上の v-for に統合済み(reload を非表示にしてれば出ない)。 -->
-					<button v-if="$i && ($i.isAdmin || $i.isModerator)" v-tooltip="copy.controlPanel" :class="[$style.topNavItem, { [$style.topNavItemActive]: isAdminPage }]" @click="goToAdmin"><i class="ti ti-dashboard"></i><span>{{ copy.adminShort }}</span></button>
+					<button v-if="$i && ($i.isAdmin || $i.isModerator)" v-tooltip="copy.controlPanel" :class="[$style.topNavItem, { [$style.topNavItemActive]: isAdminPage }]" @click="playSimpleNavMotion($event, 'admin'); goToAdmin()"><i class="ti ti-dashboard"></i><span>{{ copy.adminShort }}</span></button>
 				</div>
 				<div :class="$style.topNavDivider"></div>
-				<button v-if="deckActive" v-tooltip="copy.deckSettings" :class="$style.topNavItem" @click="globalEvents.emit('toggleDeckToolbar')"><i class="ti ti-layout-board"></i><span>{{ copy.deckShort }}</span></button>
-				<button v-tooltip="copy.settings" :class="$style.topNavItem" @click="goToSettings"><i class="ti ti-settings"></i><span>{{ copy.settings }}</span></button>
-				<button v-tooltip="copy.note" :class="$style.topNavPost" data-cy-open-post-form @click="onPostClick"><i class="ti ti-pencil"></i><span>{{ copy.note }}</span></button>
+				<button v-if="deckActive" v-tooltip="copy.deckSettings" :class="$style.topNavItem" @click="playSimpleNavMotion($event, 'deck'); globalEvents.emit('toggleDeckToolbar')"><i class="ti ti-layout-board"></i><span>{{ copy.deckShort }}</span></button>
+				<button v-tooltip="copy.settings" :class="$style.topNavItem" @click="playSimpleNavMotion($event, 'settings'); goToSettings()"><i class="ti ti-settings"></i><span>{{ copy.settings }}</span></button>
+				<button v-tooltip="copy.note" :class="$style.topNavPost" data-cy-open-post-form @click="playSimpleNavMotion($event, 'post'); onPostClick()"><i class="ti ti-pencil"></i><span>{{ copy.note }}</span></button>
 				<button :class="$style.topNavAvatar" @click="openAccountMenu"><MkAvatar v-if="$i" :user="$i" :class="$style.topNavAvatarImg"/></button>
 			</nav>
 			<!-- Top pill navbar (timeline tabs) - scroll reactive -->
@@ -201,51 +201,51 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<div ref="topNavStackEl" :class="$style.topNavStack">
 					<div :class="$style.topPill">
 						<template v-for="item in visibleTopTabs" :key="item.id">
-							<button :class="[$style.topTabBtn, { [$style.topTabActive]: !isCollectionTimelinePage && tab === item.id }]" @click="switchTab(item.id as TabType)">
+							<button :class="[$style.topTabBtn, { [$style.topTabActive]: !isCollectionTimelinePage && tab === item.id }]" @click="playSimpleNavMotion($event, item.id); switchTab(item.id as TabType)">
 								<i :class="item.icon"></i>
 								<span v-if="!isCollectionTimelinePage && tab === item.id" :class="$style.topTabLabel">{{ simpleMenuDisplayLabel(item.id, item.label) }}</span>
 							</button>
 						</template>
-						<button v-if="showOHTL" :class="[$style.topTabBtn, $style.topTabExt, { [$style.topTabActive]: !isCollectionTimelinePage && tab === 'ohtl' }]" @click="switchTab('ohtl')">
+						<button v-if="showOHTL" :class="[$style.topTabBtn, $style.topTabExt, { [$style.topTabActive]: !isCollectionTimelinePage && tab === 'ohtl' }]" @click="playSimpleNavMotion($event, 'timeline:external-home'); switchTab('ohtl')">
 							<i class="ti ti-home"></i>
 							<span v-if="!isCollectionTimelinePage && tab === 'ohtl'" :class="$style.topTabLabel">{{ copy.externalHome }}</span>
 						</button>
-						<button v-if="showOLTL" :class="[$style.topTabBtn, $style.topTabExt, { [$style.topTabActive]: !isCollectionTimelinePage && tab === 'oltl' }]" @click="switchTab('oltl')">
+						<button v-if="showOLTL" :class="[$style.topTabBtn, $style.topTabExt, { [$style.topTabActive]: !isCollectionTimelinePage && tab === 'oltl' }]" @click="playSimpleNavMotion($event, 'timeline:external-local'); switchTab('oltl')">
 							<i class="ti ti-planet"></i>
 							<span v-if="!isCollectionTimelinePage && tab === 'oltl'" :class="$style.topTabLabel">{{ copy.externalLocal }}</span>
 						</button>
 						<div :class="$style.topTabDivider"></div>
 						<div :class="[$style.listTabPill, { [$style.listTabPillActive]: isListTimelinePage }]">
-							<button :class="[$style.topTabBtn, $style.listTabMain, { [$style.topTabActive]: isListTimelinePage }]" @click="openPreferredList">
+							<button :class="[$style.topTabBtn, $style.listTabMain, { [$style.topTabActive]: isListTimelinePage }]" @click="playSimpleNavMotion($event, 'list'); openPreferredList()">
 								<i class="ti ti-list"></i>
 								<span v-if="isListTimelinePage" :class="$style.topTabCopy"><span :class="$style.topTabLabel">{{ copy.list }}</span><span :class="$style.topTabName">{{ activeListName }}</span></span>
 							</button>
-							<button v-if="isListTimelinePage" v-tooltip="copy.switchList" :class="$style.listSelectBtn" :aria-label="copy.switchList" @click="toggleTimelinePicker('list')">
+							<button v-if="isListTimelinePage" v-tooltip="copy.switchList" :class="$style.listSelectBtn" :aria-label="copy.switchList" @click="playSimpleNavMotion($event, 'list'); toggleTimelinePicker('list')">
 								<i class="ti ti-selector"></i>
 							</button>
-							<button v-if="isListTimelinePage" v-tooltip="copy.configureList" :class="$style.listSelectBtn" :aria-label="copy.configureList" @click="openActiveCollectionSettings('list')"><i class="ti ti-settings"></i></button>
+							<button v-if="isListTimelinePage" v-tooltip="copy.configureList" :class="$style.listSelectBtn" :aria-label="copy.configureList" @click="playSimpleNavMotion($event, 'settings'); openActiveCollectionSettings('list')"><i class="ti ti-settings"></i></button>
 						</div>
-						<button :class="[$style.topTabBtn, { [$style.topTabActive]: isChannelPage }]" @click="goToChannels">
+						<button :class="[$style.topTabBtn, { [$style.topTabActive]: isChannelPage }]" @click="playSimpleNavMotion($event, 'channel'); goToChannels()">
 							<i class="ti ti-device-tv"></i>
 							<span v-if="isChannelPage" :class="$style.topTabLabel">{{ copy.channel }}</span>
 						</button>
 						<div :class="[$style.listTabPill, { [$style.listTabPillActive]: isAntennaTimelinePage }]">
-							<button :class="[$style.topTabBtn, $style.listTabMain, { [$style.topTabActive]: isAntennaTimelinePage }]" @click="openPreferredAntenna">
+							<button :class="[$style.topTabBtn, $style.listTabMain, { [$style.topTabActive]: isAntennaTimelinePage }]" @click="playSimpleNavMotion($event, 'antenna'); openPreferredAntenna()">
 								<i class="ti ti-antenna"></i>
 								<span v-if="isAntennaTimelinePage" :class="$style.topTabCopy"><span :class="$style.topTabLabel">{{ copy.antenna }}</span><span :class="$style.topTabName">{{ activeAntennaName }}</span></span>
 							</button>
-							<button v-if="isAntennaTimelinePage" v-tooltip="copy.switchAntenna" :class="$style.listSelectBtn" :aria-label="copy.switchAntenna" @click="toggleTimelinePicker('antenna')"><i class="ti ti-selector"></i></button>
-							<button v-if="isAntennaTimelinePage" v-tooltip="copy.configureAntenna" :class="$style.listSelectBtn" :aria-label="copy.configureAntenna" @click="openActiveCollectionSettings('antenna')"><i class="ti ti-settings"></i></button>
+							<button v-if="isAntennaTimelinePage" v-tooltip="copy.switchAntenna" :class="$style.listSelectBtn" :aria-label="copy.switchAntenna" @click="playSimpleNavMotion($event, 'antenna'); toggleTimelinePicker('antenna')"><i class="ti ti-selector"></i></button>
+							<button v-if="isAntennaTimelinePage" v-tooltip="copy.configureAntenna" :class="$style.listSelectBtn" :aria-label="copy.configureAntenna" @click="playSimpleNavMotion($event, 'settings'); openActiveCollectionSettings('antenna')"><i class="ti ti-settings"></i></button>
 						</div>
 					</div>
 					<div v-if="timelinePickerKind" :class="$style.timelinePicker" :aria-label="timelinePickerKind === 'list' ? copy.selectList : copy.selectAntenna">
 						<div v-if="timelinePickerItems.length === 0" :class="$style.timelinePickerEmpty">
 							<span>{{ timelinePickerKind === 'list' ? copy.noLists : copy.noAntennas }}</span>
-							<button :class="$style.timelinePickerOptions" @click="openEmptyCollectionOptions">
+							<button :class="$style.timelinePickerOptions" @click="playSimpleNavMotion($event, 'settings'); openEmptyCollectionOptions()">
 								<i class="ti ti-settings"></i><span>{{ copy.options }}</span>
 							</button>
 						</div>
-						<button v-for="item in timelinePickerItems" :key="item.id" :class="[$style.timelinePickerItem, { [$style.timelinePickerItemActive]: item.id === activeCollectionId }]" @click="selectTimelineCollection(item.id)">
+						<button v-for="item in timelinePickerItems" :key="item.id" :class="[$style.timelinePickerItem, { [$style.timelinePickerItemActive]: item.id === activeCollectionId }]" @click="playSimpleNavMotion($event, timelinePickerKind === 'list' ? 'list' : 'antenna'); selectTimelineCollection(item.id)">
 							<i :class="timelinePickerKind === 'list' ? 'ti ti-list' : 'ti ti-antenna'"></i><span>{{ item.name }}</span>
 						</button>
 					</div>
@@ -293,39 +293,39 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 			<!-- 通常TL: ナビバー（モバイルのみ） -->
 			<div v-show="!isDesktop && !isHataskPage && !isExternalTab && !isChannelDetailPage && (!isPageView || bottomNavHasPage) && !userPanelUserId" data-htk-weather-footer :class="[$style.bottomBar, footerIsDark ? $style.bottomBarDark : $style.bottomBarLight, { [$style.bottomBarHidden]: !showBottomBar || widgetsShowing }]">
-				<button v-if="!isDesktop" :class="$style.sideBtn" @click="simpleDrawerShowing = true"><i class="ti ti-menu-2"></i></button>
+				<button v-if="!isDesktop" :class="$style.sideBtn" @click="playSimpleNavMotion($event, 'layout'); simpleDrawerShowing = true"><i class="ti ti-menu-2"></i></button>
 				<div :class="$style.navPill">
 					<template v-for="item in visibleBottomNav" :key="item.id">
-						<button v-if="item.id==='search'" :class="[$style.navBtn, { [$style.navActive]: isSearchPage }]" @click="openSearch"><i class="ti ti-search"></i></button>
-						<button v-else-if="item.id==='home'" :class="[$style.navBtn, { [$style.navActive]: isHomeTL }]" @click="goHome"><i class="ti ti-home"></i></button>
-						<button v-else-if="item.id==='notifications'" :class="[$style.navBtn, { [$style.navActive]: isNotifPage }]" @click="goToNotifications">
+						<button v-if="item.id==='search'" :class="[$style.navBtn, { [$style.navActive]: isSearchPage }]" @click="playSimpleNavMotion($event, 'search'); openSearch()"><i class="ti ti-search"></i></button>
+						<button v-else-if="item.id==='home'" :class="[$style.navBtn, { [$style.navActive]: isHomeTL }]" @click="playSimpleNavMotion($event, 'home'); goHome()"><i class="ti ti-home"></i></button>
+						<button v-else-if="item.id==='notifications'" :class="[$style.navBtn, { [$style.navActive]: isNotifPage }]" @click="playSimpleNavMotion($event, 'notifications'); goToNotifications()">
 							<i class="ti ti-bell"></i>
 							<template v-if="hasUnreadNotif">
 								<span v-if="showUnreadNotifCount && unreadNotifCount > 0" :class="$style.badgeCount">{{ unreadNotifCount > 99 ? '99+' : unreadNotifCount }}</span>
 								<span v-else :class="$style.badge"></span>
 							</template>
 						</button>
-						<button v-else-if="item.id==='hatask'" :class="[$style.navBtn, { [$style.navActive]: isHataskPage }]" @click="goToHatask"><i class="ti ti-eye"></i></button>
-						<button v-else-if="item.id==='hatady'" :class="[$style.navBtn, { [$style.navActive]: isHatadyPage }]" @click="goToHatady"><i class="ti ti-book-2"></i></button>
-						<button v-else-if="item.id==='hatafeed'" :class="[$style.navBtn, { [$style.navActive]: isHataFeedPage }]" @click="goToHataFeed"><i class="ti ti-message-report"></i></button>
-						<button v-else-if="item.id==='widgets'" :class="$style.navBtn" @click="widgetsShowing = true"><i class="ti ti-apps"></i></button>
+						<button v-else-if="item.id==='hatask'" :class="[$style.navBtn, { [$style.navActive]: isHataskPage }]" @click="playSimpleNavMotion($event, 'hatask'); goToHatask()"><i class="ti ti-eye"></i></button>
+						<button v-else-if="item.id==='hatady'" :class="[$style.navBtn, { [$style.navActive]: isHatadyPage }]" @click="playSimpleNavMotion($event, 'hatady'); goToHatady()"><i class="ti ti-book-2"></i></button>
+						<button v-else-if="item.id==='hatafeed'" :class="[$style.navBtn, { [$style.navActive]: isHataFeedPage }]" @click="playSimpleNavMotion($event, 'hatafeed'); goToHataFeed()"><i class="ti ti-message-report"></i></button>
+						<button v-else-if="item.id==='widgets'" :class="$style.navBtn" @click="playSimpleNavMotion($event, 'widgets'); widgetsShowing = true"><i class="ti ti-apps"></i></button>
 					</template>
 				</div>
-				<button v-if="!isPageView || isCollectionTimelinePage" :class="$style.sideBtn" data-cy-open-post-form @click="onPostClick"><i class="ti ti-pencil"></i></button>
+				<button v-if="!isPageView || isCollectionTimelinePage" :class="$style.sideBtn" data-cy-open-post-form @click="playSimpleNavMotion($event, 'post'); onPostClick()"><i class="ti ti-pencil"></i></button>
 				<div v-else style="width:48px;"></div>
 			</div>
 
 			<!-- 外部TL: 投稿 & 通知ボタン（モバイルのみ） -->
 			<div v-show="!isDesktop && isExternalTab && !isPageView && !userPanelUserId" data-htk-weather-footer :class="[$style.bottomBar, footerIsDark ? $style.bottomBarDark : $style.bottomBarLight, { [$style.bottomBarHidden]: !showBottomBar }]">
-				<button v-if="!isDesktop" :class="$style.sideBtn" @click="simpleDrawerShowing = true"><i class="ti ti-menu-2"></i></button>
+				<button v-if="!isDesktop" :class="$style.sideBtn" @click="playSimpleNavMotion($event, 'layout'); simpleDrawerShowing = true"><i class="ti ti-menu-2"></i></button>
 				<div :class="$style.navPill">
 					<!-- 旗鯖fork: 外部通知ボタン (連携ON時のみ)。通知→ノート作成の順で横一列。
                      新着がある場合は青ドット表示。押下で専用ページへ遷移しバッジ強制解除。 -->
-					<button v-if="isExternalLinked" :class="$style.navBtn" @click="goToExternalNotifications">
+					<button v-if="isExternalLinked" :class="$style.navBtn" @click="playSimpleNavMotion($event, 'notifications'); goToExternalNotifications()">
 						<i class="ti ti-bell"></i>
 						<span v-if="extNotifHasUnread" :class="$style.extDot"></span>
 					</button>
-					<button :class="$style.navBtn" @click="onExtPostClick"><i class="ti ti-pencil"></i></button>
+					<button :class="$style.navBtn" @click="playSimpleNavMotion($event, 'post'); onExtPostClick()"><i class="ti ti-pencil"></i></button>
 				</div>
 			</div>
 		</div>
@@ -435,7 +435,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 						</template>
 					</div>
 					<div :class="$style.sbBottom">
-						<button :class="$style.sbPostBtn" :style="studioPostButtonStyle" @click="onPostClick(); simpleDrawerShowing = false">
+						<button :class="$style.sbPostBtn" :style="studioPostButtonStyle" @click="playSimpleNavMotion($event, 'post'); onPostClick(); simpleDrawerShowing = false">
 							<i :class="studioPostButtonIcon"></i><span>{{ copy.note }}</span>
 						</button>
 						<div :class="$style.sbBottomRow">
@@ -496,6 +496,7 @@ import { hatadyTzOffset } from '@/utility/hatady-prefs.js';
 import { prefer } from '@/preferences.js';
 import { cleanupStaleUiElements } from '@/utility/ui-cleanup.js';
 import { clearCache } from '@/utility/clear-cache.js';
+import { playHataIconMotion, playHataNavigationMotion } from '@/utility/hata-icon-motion.js';
 import { getAccountMenu } from '@/accounts.js';
 import { instance } from '@/instance.js';
 import { store } from '@/store.js';
@@ -1132,17 +1133,20 @@ function studioGroupStyle(group: HataSideGroup) {
 
 function studioItemClick(item: HataSideButton, ev: MouseEvent) {
 	if (item.targetId && item.menuId === 'lists') {
+		playHataNavigationMotion(ev, `list:${item.targetId}`, 620);
 		miLocalStorage.setItem('hatasabaLastListId', item.targetId);
 		mainRouter.pushByPath(`/timeline/list/${item.targetId}`);
 		return;
 	}
 	if (item.targetId && item.menuId === 'antennas') {
+		playHataNavigationMotion(ev, `antenna:${item.targetId}`, 620);
 		miLocalStorage.setItem('hatasabaLastAntennaId', item.targetId);
 		mainRouter.pushByPath(`/timeline/antenna/${item.targetId}`);
 		return;
 	}
 	const previewTarget = item.size === 'large' ? studioLargePreviews.value[item.menuId]?.targetPath : null;
 	if (previewTarget) {
+		playHataNavigationMotion(ev, item.menuId, 620);
 		mainRouter.pushByPath(previewTarget as never);
 		return;
 	}
@@ -1700,10 +1704,27 @@ const openUiSetup = async () => {
 const goToSettings = () => { mainRouter.push('/settings'); };
 const goToAdmin = () => { mainRouter.push('/admin'); };
 // 旗鯖fork: ページ全体をリロードする。
-const reloadPage = () => { window.location.reload(); };
+async function reloadPage(ev?: Event) {
+	if (ev) {
+		playHataIconMotion(ev, 'reload-spin', 540);
+		if (prefer.s.animation && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) await new Promise(resolve => window.setTimeout(resolve, 540));
+	}
+	window.location.reload();
+}
+
+async function clearCacheWithMotion(ev?: Event) {
+	if (ev) {
+		playHataIconMotion(ev, 'cache-clear', 720);
+		if (prefer.s.animation && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) await new Promise(resolve => window.setTimeout(resolve, 720));
+	}
+	await clearCache();
+}
 
 // ===== サイドバー項目ヘルパー =====
 function sidebarItemClick(id: string, ev?: MouseEvent) {
+	if (ev && id !== 'reload' && id !== 'cacheClear' && id !== 'more') {
+		playHataNavigationMotion(ev, id, 620);
+	}
 	// モバイルドロワーのボタンを先に消すと、遅延読込中にLaunchPadのアンカーを失う。
 	// LaunchPadが閉じるまでドロワーを残し、狭幅PCのpopup配置も壊さない。
 	if (id === 'more' && ev && simpleDrawerShowing.value) {
@@ -1735,9 +1756,9 @@ function sidebarItemClick(id: string, ev?: MouseEvent) {
 		externalNotifications: () => mainRouter.push('/my/external-notifications'),
 		more: () => { if (ev) openMore(ev); },
 		// 旗鯖fork: reload はクリックでページ全体をリロード (旧来は独立ボタンだったが sidebar 項目化)
-		reload: () => reloadPage(),
+		reload: () => reloadPage(ev),
 		// 既存のクライアントキャッシュ削除処理を使い、取得し直したあと全タブを再読み込みする。
-		cacheClear: () => { void clearCache(); },
+		cacheClear: () => { void clearCacheWithMotion(ev); },
 	};
 	if (map[id]) {
 		map[id]();
@@ -1758,6 +1779,10 @@ function sidebarItemClick(id: string, ev?: MouseEvent) {
 		return;
 	}
 	fallback.action?.(ev);
+}
+
+function playSimpleNavMotion(ev: Event, id: string): void {
+	playHataNavigationMotion(ev, id, 620);
 }
 
 function sidebarItemActive(id: string): boolean {
@@ -1798,6 +1823,7 @@ const isAdminPage = computed(() => mainRouter.currentRoute.value.path.startsWith
 async function openMore(ev: MouseEvent | PointerEvent, closeMobileDrawerAfter = false) {
 	const target = (ev.currentTarget ?? ev.target) as HTMLElement;
 	if (!target) return;
+	playHataIconMotion(ev, 'more-dots', 520);
 	const { dispose } = await os.popupAsyncWithDialog(
 		import('@/components/MkLaunchPad.vue').then(component => component.default),
 		{ anchorElement: target },
