@@ -11,7 +11,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 	:leaveToClass="prefer.s.animation ? $style.transition_popup_leaveTo : ''"
 	appear @afterLeave="emit('closed')"
 >
-	<div v-if="showing" :class="[$style.root, { _popup: !prefer.s.useBlurEffect || !prefer.s.useBlurEffectForModal || !prefer.s.removeModalBgColorForBlur, _popupAcrylic: prefer.s.useBlurEffect && prefer.s.useBlurEffectForModal && prefer.s.removeModalBgColorForBlur }]" class="_shadow" :style="isMobile ? { zIndex } : { zIndex, top: top + 'px', left: left + 'px' }" @mouseover="() => { emit('mouseover'); }" @mouseleave="() => { if (!menuShowing) emit('mouseleave'); }">
+	<div v-if="showing" :class="[$style.root, { _popup: !prefer.s.useBlurEffect || !prefer.s.useBlurEffectForModal || !prefer.s.removeModalBgColorForBlur, _popupAcrylic: prefer.s.useBlurEffect && prefer.s.useBlurEffectForModal && prefer.s.removeModalBgColorForBlur }]" class="_shadow" :style="popupStyle" @pointermove="onPointerMove" @pointerleave="resetTilt" @mouseover="() => { emit('mouseover'); }" @mouseleave="() => { if (!menuShowing) emit('mouseleave'); }">
 		<MkError v-if="error" @retry="fetchUser()"/>
 		<div v-else-if="user != null">
 			<div :class="$style.banner" :style="user.bannerUrl ? { backgroundImage: `url(${prefer.s.disableShowingAnimatedImages ? getStaticImageUrl(user.bannerUrl) : user.bannerUrl})` } : ''">
@@ -59,7 +59,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { onMounted, onUnmounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import * as Misskey from 'cherrypick-js';
 import MkFollowButton from '@/components/MkFollowButton.vue';
 import { userPage } from '@/filters/user.js';
@@ -90,9 +90,41 @@ const user = ref<Misskey.entities.UserDetailed | null>(null);
 const top = ref(0);
 const left = ref(0);
 const error = ref(false);
+const tiltX = ref(0);
+const tiltY = ref(0);
+const lightX = ref(50);
+const lightY = ref(28);
 // モバイル・タブレット判定 (ボトムシート表示用)
 const isMobile = ref(window.innerWidth <= 800);
 function updateIsMobile() { isMobile.value = window.innerWidth <= 800; }
+const popupStyle = computed(() => isMobile.value ? { zIndex } : {
+	zIndex,
+	top: `${top.value}px`,
+	left: `${left.value}px`,
+	'--hata-card-tilt-x': `${tiltX.value}deg`,
+	'--hata-card-tilt-y': `${tiltY.value}deg`,
+	'--hata-card-light-x': `${lightX.value}%`,
+	'--hata-card-light-y': `${lightY.value}%`,
+});
+
+function onPointerMove(event: PointerEvent) {
+	if (isMobile.value || event.pointerType === 'touch' || !prefer.s.animation || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+	const target = event.currentTarget as HTMLElement;
+	const rect = target.getBoundingClientRect();
+	const nx = Math.max(-1, Math.min(1, ((event.clientX - rect.left) / rect.width) * 2 - 1));
+	const ny = Math.max(-1, Math.min(1, ((event.clientY - rect.top) / rect.height) * 2 - 1));
+	tiltX.value = -ny * 1.8;
+	tiltY.value = nx * 2.4;
+	lightX.value = 50 + nx * 32;
+	lightY.value = 32 + ny * 22;
+}
+
+function resetTilt() {
+	tiltX.value = 0;
+	tiltY.value = 0;
+	lightX.value = 50;
+	lightY.value = 28;
+}
 
 // 旗鯖fork: メニュー(...)を開いている間は mouseleave による自動クローズを抑制する。
 // メニューを開くとマウスがポップアップ外へ出て mouseleave が発火し、
@@ -145,7 +177,8 @@ onMounted(() => {
 	fetchUser();
 
 	const rect = props.source.getBoundingClientRect();
-	const x = ((rect.left + (props.source.offsetWidth / 2)) - (300 / 2)) + window.scrollX;
+	const rawX = ((rect.left + (props.source.offsetWidth / 2)) - (368 / 2)) + window.scrollX;
+	const x = Math.max(window.scrollX + 8, Math.min(window.scrollX + window.innerWidth - 376, rawX));
 	const y = rect.top + props.source.offsetHeight + window.scrollY;
 
 	top.value = y;
@@ -172,9 +205,12 @@ onUnmounted(() => {
 
 .root {
 	position: absolute;
-	width: 300px;
+	width: 368px;
 	overflow: clip;
 	transform-origin: center top;
+	transform: perspective(900px) rotateX(var(--hata-card-tilt-x, 0deg)) rotateY(var(--hata-card-tilt-y, 0deg));
+	transition: transform .24s cubic-bezier(.2,.8,.2,1), box-shadow .24s ease;
+	will-change: transform;
 }
 
 /* ===== モバイル・タブレット: ボトムシート表示 ===== */
@@ -197,12 +233,14 @@ onUnmounted(() => {
 		bottom: 0 !important;
 		width: 100% !important;
 		max-width: 100% !important;
-		max-height: 85vh;
+		max-height: 85dvh;
 		overflow-y: auto;
 		border-radius: 20px 20px 0 0;
 		transform-origin: bottom center;
 		padding-bottom: env(safe-area-inset-bottom, 0);
 		box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.25);
+		transform: none;
+		will-change: auto;
 
 		/* ドラッグハンドル風の上部つまみ */
 		&::before {
@@ -228,21 +266,29 @@ onUnmounted(() => {
 }
 
 .banner {
-	height: 78px;
+	position: relative;
+	height: 166px;
+	overflow: hidden;
 	background-color: rgba(0, 0, 0, 0.1);
 	background-size: cover;
 	background-position: center;
 
+	&::before {
+		content: "";
+		position: absolute;
+		inset: 0;
+		background: linear-gradient(180deg, rgba(0, 0, 0, .02), rgba(0, 0, 0, .34));
+		pointer-events: none;
+	}
+
 	&::after {
 		content: "";
-		background-image: var(--MI-blur, inherit);
-		position: fixed;
+		position: absolute;
 		inset: 0;
-		background-size: cover;
-		background-position: center;
+		background: radial-gradient(circle at var(--hata-card-light-x, 50%) var(--hata-card-light-y, 28%), rgba(255, 255, 255, .34), transparent 42%);
 		pointer-events: none;
-		opacity: 0.1;
-		filter: var(--MI-blur, blur(10px));
+		mix-blend-mode: soft-light;
+		transition: background-position .18s ease;
 	}
 
 }
@@ -261,15 +307,17 @@ onUnmounted(() => {
 .avatar {
 	display: block;
 	position: absolute;
-	top: 38px;
+	top: 119px;
 	left: 0;
 	right: 0;
 	margin: 0 auto;
 	z-index: 2;
-	width: 58px;
-	height: 58px;
+	width: 86px;
+	height: 86px;
 	border: solid 4px var(--MI_THEME-popup);
+	border-radius: 30%;
 	background: var(--MI_THEME-popup);
+	box-shadow: 0 12px 32px rgba(0, 0, 0, .24);
 }
 
 .title {
@@ -277,7 +325,7 @@ onUnmounted(() => {
 	z-index: 3;
 	display: block;
 	padding: 8px 26px 16px 26px;
-	margin-top: 16px;
+	margin-top: 34px;
 	text-align: center;
 }
 
@@ -357,5 +405,18 @@ onUnmounted(() => {
 	position: absolute !important;
 	top: 8px;
 	right: 8px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.transition_popup_enterActive,
+	.transition_popup_leaveActive,
+	.root,
+	.banner::after {
+		transition: none !important;
+	}
+
+	.root {
+		transform: none;
+	}
 }
 </style>
