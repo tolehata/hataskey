@@ -49,6 +49,8 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 			// 新着 / 人気: 全体公開ログ。
 			const query = this.hatadyLogsRepository.createQueryBuilder('log')
 				.where('log.isPublic = TRUE');
+			const excludedUserIds = [...await this.hatadyService.getTimelineExcludedUserIds(me.id)];
+			if (excludedUserIds.length > 0) query.andWhere('log.userId NOT IN (:...excludedUserIds)', { excludedUserIds });
 			if (ps.subject != null) query.andWhere('log.subject = :subject', { subject: ps.subject });
 			if (ps.untilId != null) query.andWhere('log.id < :untilId', { untilId: ps.untilId });
 			if (ps.type === 'popular') {
@@ -56,7 +58,9 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 			} else {
 				query.orderBy('log.studiedAt', 'DESC').addOrderBy('log.id', 'DESC');
 			}
-			const logs = await query.limit(ps.limit).getMany();
+			const candidates = await query.limit(ps.limit).getMany();
+			const visible = await Promise.all(candidates.map(log => this.hatadyService.canAppearInTimeline(log.userId, me.id)));
+			const logs = candidates.filter((_, index) => visible[index]);
 			return await this.hatadyEntityService.packLogs(logs, me);
 		});
 	}

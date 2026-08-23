@@ -33,7 +33,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 			// 閲覧権限のないログ(非公開/フォロワー限定で未フォロー)のコメントは返さない。
 			const log = await this.hatadyService.getLog(ps.logId);
 			if (log == null || !(await this.hatadyService.canViewLog(log, me.id))) return [];
-			const comments = await this.hatadyService.getComments(ps.logId);
+			const comments = await this.hatadyService.getComments(ps.logId, me.id);
 			return await this.hatadyEntityService.packComments(comments, me);
 		});
 	}

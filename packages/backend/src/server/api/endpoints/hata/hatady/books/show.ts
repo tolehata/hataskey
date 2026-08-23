@@ -39,7 +39,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 	) {
 		super(meta, paramDef, async (ps, me) => {
 			const book = await this.hatadyService.getBook(ps.bookId);
-			if (book == null) throw new ApiError(meta.errors.noSuchBook);
+			if (book == null || await this.hatadyService.isBlockedEitherDirection(me.id, book.userId)) throw new ApiError(meta.errors.noSuchBook);
 			// 旗鯖fork(セキュリティ): しおり(自由記述メモ付き)と内容メモは本の所有者だけのもの。
 			//   HatadyService の書き込み側(createMemo / createBookmark 等)は所有者チェック済みだが、
 			//   読み出しは bookId だけで引いていたため他人の本の私的メモが見えていた。

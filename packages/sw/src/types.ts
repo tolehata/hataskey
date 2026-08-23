@@ -24,6 +24,12 @@ type PushNotificationDataSourceMap = {
 	};
 	readAllNotifications: undefined;
 	newChatMessage: Misskey.entities.ChatMessage;
+	hatadyNotification: {
+		id: string;
+		notificationType: string;
+		reaction?: string | null;
+		value?: number | null;
+	};
 };
 
 export type PushNotificationData<K extends keyof PushNotificationDataSourceMap> = {

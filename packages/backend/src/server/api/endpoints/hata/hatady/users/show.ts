@@ -51,7 +51,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		super(meta, paramDef, async (ps, me) => {
 			const targetId = ps.userId ?? me.id;
 			const user = await this.usersRepository.findOneBy({ id: targetId });
-			if (user == null) throw new ApiError(meta.errors.noSuchUser);
+			if (user == null || await this.hatadyService.isBlockedEitherDirection(me.id, targetId)) throw new ApiError(meta.errors.noSuchUser);
 
 			const [packedUser, aggregates, books, logs] = await Promise.all([
 				this.userEntityService.pack(user, me, { schema: 'UserDetailed' }),

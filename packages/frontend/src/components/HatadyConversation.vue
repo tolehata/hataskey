@@ -64,6 +64,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<div :class="$style.replyFoot">
 							<HatadyReactions :target="{ commentId: c.id }" :reactions="c.reactions ?? {}" :myReaction="c.myReaction ?? null"/>
 							<button :class="$style.replyBtn" @click="setReplyTo(c)"><i class="ti ti-arrow-back-up"></i> {{ copy.reply }}</button>
+							<button v-if="c.userId === $i?.id" :class="[$style.replyBtn, $style.danger]" @click="deleteComment(c)"><i class="ti ti-trash"></i> {{ i18n.ts.delete }}</button>
+							<button v-else-if="c.user" :class="$style.replyBtn" @click="reportComment(c)"><i class="ti ti-flag"></i> {{ i18n.ts.reportAbuse }}</button>
 						</div>
 					</div>
 				</div>
@@ -88,7 +90,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { computed, ref, useTemplateRef, onMounted } from 'vue';
+import { computed, defineAsyncComponent, ref, useTemplateRef, onMounted } from 'vue';
 import MkWindow from '@/components/MkWindow.vue';
 import HySubjectBadge from '@/components/HySubjectBadge.vue';
 import HyBookCover from '@/components/HyBookCover.vue';
@@ -99,6 +101,7 @@ import { i18n } from '@/i18n.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { hySubjectPalette, hyTag, hyTagLabel } from '@/utility/hatady.js';
 import { hatadyTheme } from '@/utility/hatady-prefs.js';
+import * as os from '@/os.js';
 
 const props = defineProps<{ logId: string; initialLog?: any }>();
 const emit = defineEmits<{ (ev: 'changed'): void; (ev: 'closed'): void }>();
@@ -116,6 +119,7 @@ const sending = ref(false);
 const replyTo = ref<any>(null);
 const currentTag = computed(() => log.value ? hyTag(log.value.tag) : null);
 const currentTagLabel = computed(() => hyTagLabel(log.value?.tag));
+
 function pal(s: string) { return hySubjectPalette(s); }
 
 function fmtDuration(min: number): string {
@@ -123,6 +127,7 @@ function fmtDuration(min: number): string {
 	const h = Math.floor(min / 60); const m = min % 60;
 	return copyx.durationHoursMinutes({ hours: h.toString(), minutes: m.toString() });
 }
+
 function fmtWhen(iso: string): string {
 	const d = new Date(iso);
 	const diffMin = Math.round((Date.now() - d.getTime()) / 60000);
@@ -174,6 +179,21 @@ async function send() {
 	} finally {
 		sending.value = false;
 	}
+}
+
+async function deleteComment(comment: any) {
+	const { canceled } = await os.confirm({ type: 'warning', text: copy.deleteCommentConfirm });
+	if (canceled) return;
+	await misskeyApi('hata/hatady/comments/delete', { commentId: comment.id });
+	await reload();
+	emit('changed');
+}
+
+function reportComment(comment: any) {
+	const { dispose } = os.popup(defineAsyncComponent(() => import('@/components/MkAbuseReportWindow.vue')), {
+		user: comment.user,
+		initialComment: `hatady:comment:${comment.id}\n${comment.text}`,
+	}, { closed: () => dispose() });
 }
 
 onMounted(reload);
@@ -228,6 +248,7 @@ onMounted(reload);
 .replyFoot { display: flex; align-items: center; gap: 12px; margin-top: 9px; }
 .replyBtn { display: inline-flex; align-items: center; gap: 4px; background: none; border: none; color: var(--hy-muted); font-size: 11.5px; cursor: pointer; }
 .replyBtn:hover { color: var(--hy-accent); }
+.danger { color: var(--MI_THEME-error); }
 
 /* コンポーザー */
 .composer { margin-top: auto; padding-top: 14px; }

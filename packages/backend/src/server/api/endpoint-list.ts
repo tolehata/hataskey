@@ -571,6 +571,7 @@ export * as 'hata/hatady/timeline' from './endpoints/hata/hatady/timeline.js';
 export * as 'hata/hatady/logs/show' from './endpoints/hata/hatady/logs/show.js';
 export * as 'hata/hatady/comments' from './endpoints/hata/hatady/comments.js';
 export * as 'hata/hatady/comments/create' from './endpoints/hata/hatady/comments/create.js';
+export * as 'hata/hatady/comments/delete' from './endpoints/hata/hatady/comments/delete.js';
 export * as 'hata/hatady/reactions/create' from './endpoints/hata/hatady/reactions/create.js';
 export * as 'hata/hatady/reactions/delete' from './endpoints/hata/hatady/reactions/delete.js';
 export * as 'hata/hatady/notifications' from './endpoints/hata/hatady/notifications.js';

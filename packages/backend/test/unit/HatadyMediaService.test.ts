@@ -35,7 +35,12 @@ function service(overrides: Record<string, unknown> = {}): HatadyMediaService {
 		roleService: { getUserPolicies: vi.fn().mockResolvedValue({ hatadyGameTitleLimit: 100 }) },
 		userEntityService: {},
 		// 旗鯖fork(Hatady次期: ゲーム/映画記録): createSession は保存後に連続記録の節目通知判定を行う。
-		hatadyService: { notifyMilestoneIfReached: vi.fn().mockResolvedValue(undefined) },
+		hatadyService: {
+			notifyMilestoneIfReached: vi.fn().mockResolvedValue(undefined),
+			isBlockedEitherDirection: vi.fn().mockResolvedValue(false),
+			canAppearInTimeline: vi.fn().mockResolvedValue(true),
+			pushHatadyNotification: vi.fn().mockResolvedValue(undefined),
+		},
 		...overrides,
 	};
 	return new HatadyMediaService(
@@ -97,6 +102,13 @@ describe('Hatady media work status boundaries', () => {
 		const sut = service({ worksRepository });
 		await expect(sut.createWork({ id: 'owner' } as never, 'movie', { title: 'Movie', status: 'mastered' })).rejects.toThrow('invalid status for movie');
 		await expect(sut.createWork({ id: 'owner' } as never, 'movie', { title: 'Movie', status: 'completed' })).resolves.toMatchObject({ status: 'completed' });
+	});
+});
+
+describe('Hatady media Misskey block boundary', () => {
+	test('hides a public work when either side blocks the other', async () => {
+		const sut = service({ hatadyService: { isBlockedEitherDirection: vi.fn().mockResolvedValue(true) } });
+		await expect(sut.canViewWork(work({ visibility: 'public' }), 'viewer')).resolves.toBe(false);
 	});
 });
 

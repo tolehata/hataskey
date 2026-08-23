@@ -523,6 +523,8 @@ import type {
 	HataHatadyCommentsResponse,
 	HataHatadyCommentsCreateRequest,
 	HataHatadyCommentsCreateResponse,
+	HataHatadyCommentsDeleteRequest,
+	HataHatadyCommentsDeleteResponse,
 	HataHatadyFollowersRemoveRequest,
 	HataHatadyFollowingCreateRequest,
 	HataHatadyFollowingDeleteRequest,
@@ -1255,6 +1257,7 @@ export type Endpoints = {
 	'hata/hatady/books/update': { req: HataHatadyBooksUpdateRequest; res: HataHatadyBooksUpdateResponse };
 	'hata/hatady/comments': { req: HataHatadyCommentsRequest; res: HataHatadyCommentsResponse };
 	'hata/hatady/comments/create': { req: HataHatadyCommentsCreateRequest; res: HataHatadyCommentsCreateResponse };
+	'hata/hatady/comments/delete': { req: HataHatadyCommentsDeleteRequest; res: HataHatadyCommentsDeleteResponse };
 	'hata/hatady/followers/remove': { req: HataHatadyFollowersRemoveRequest; res: EmptyResponse };
 	'hata/hatady/following/create': { req: HataHatadyFollowingCreateRequest; res: EmptyResponse };
 	'hata/hatady/following/delete': { req: HataHatadyFollowingDeleteRequest; res: EmptyResponse };

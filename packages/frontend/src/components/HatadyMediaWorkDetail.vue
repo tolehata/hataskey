@@ -100,7 +100,7 @@ Hatady の映画・ゲーム作品詳細。作品本文は一覧へ出さず、�
 				<div v-if="commentsLoading" :class="$style.subtle">{{ label('loading') }}</div>
 				<div v-else-if="commentsLoadFailed" :class="$style.dataNotice"><i class="ti ti-alert-triangle"></i> {{ label('loadFailed') }}</div>
 				<div v-else-if="comments.length === 0" :class="$style.subtle">{{ label('noComments') }}</div>
-				<div v-else :class="$style.commentList"><article v-for="comment in comments" :key="comment.id" :class="[$style.comment, comment.replyId && $style.commentReply]"><MkAvatar v-if="comment.user" :class="$style.commentAvatar" :user="comment.user"/><div :class="$style.commentMain"><div :class="$style.commentHead"><MkUserName v-if="comment.user" :user="comment.user"/><time>{{ fmtWhen(comment.createdAt) }}</time></div><SpoilerText :text="comment.text" :spoiler="Boolean(comment.spoiler)"/><div v-if="comment.reactions?.length" :class="$style.commentReactions"><button v-for="reaction in comment.reactions" :key="reaction.reaction" :class="[$style.reaction, comment.myReaction === reaction.reaction && $style.reactionOn]" @click="toggleCommentReaction(comment, reaction.reaction)"><MkReactionIcon :reaction="reaction.reaction"/><b>{{ reaction.count }}</b></button></div><div :class="$style.commentActions"><button @click="replyTo = comment.id"><i class="ti ti-arrow-back-up"></i> {{ label('reply') }}</button><button @click="openCommentReactionPicker(comment, $event)"><i class="ti ti-mood-plus"></i> {{ label('addReaction') }}</button><button v-if="comment.userId === $i?.id" :class="$style.danger" @click="deleteComment(comment)"><i class="ti ti-trash"></i> {{ copy.delete }}</button></div></div></article><button v-if="commentsHasMore" :class="$style.loadMore" :disabled="commentsLoadingMore" @click="loadMoreComments"><i class="ti ti-chevron-down"></i> {{ label('loadMoreComments') }}</button></div>
+<div v-else :class="$style.commentList"><article v-for="comment in comments" :key="comment.id" :class="[$style.comment, comment.replyId && $style.commentReply]"><MkAvatar v-if="comment.user" :class="$style.commentAvatar" :user="comment.user"/><div :class="$style.commentMain"><div :class="$style.commentHead"><MkUserName v-if="comment.user" :user="comment.user"/><time>{{ fmtWhen(comment.createdAt) }}</time></div><SpoilerText :text="comment.text" :spoiler="Boolean(comment.spoiler)"/><div v-if="comment.reactions?.length" :class="$style.commentReactions"><button v-for="reaction in comment.reactions" :key="reaction.reaction" :class="[$style.reaction, comment.myReaction === reaction.reaction && $style.reactionOn]" @click="toggleCommentReaction(comment, reaction.reaction)"><MkReactionIcon :reaction="reaction.reaction"/><b>{{ reaction.count }}</b></button></div><div :class="$style.commentActions"><button @click="replyTo = comment.id"><i class="ti ti-arrow-back-up"></i> {{ label('reply') }}</button><button @click="openCommentReactionPicker(comment, $event)"><i class="ti ti-mood-plus"></i> {{ label('addReaction') }}</button><button v-if="comment.userId === $i?.id" :class="$style.danger" @click="deleteComment(comment)"><i class="ti ti-trash"></i> {{ copy.delete }}</button><button v-else-if="comment.user" @click="reportComment(comment)"><i class="ti ti-flag"></i> {{ i18n.ts.reportAbuse }}</button></div></div></article><button v-if="commentsHasMore" :class="$style.loadMore" :disabled="commentsLoadingMore" @click="loadMoreComments"><i class="ti ti-chevron-down"></i> {{ label('loadMoreComments') }}</button></div>
 			</section>
 		</template>
 		<div v-else-if="!loading" :class="$style.empty">{{ label('notFound') }}</div>
@@ -109,7 +109,7 @@ Hatady の映画・ゲーム作品詳細。作品本文は一覧へ出さず、�
 </template>
 
 <script lang="ts" setup>
-import { computed, defineComponent, h, onMounted, ref, useCssModule, useTemplateRef } from 'vue';
+import { computed, defineAsyncComponent, defineComponent, h, onMounted, ref, useCssModule, useTemplateRef } from 'vue';
 import type { HatadyMediaComment, HatadyMediaKind, HatadyMediaSession, HatadyMediaSessionKind, HatadyMediaWork } from '@/utility/hatady-media.js';
 import MkWindow from '@/components/MkWindow.vue';
 import MkLink from '@/components/MkLink.vue';
@@ -413,6 +413,14 @@ async function createComment() {
 }
 
 async function deleteComment(comment: HatadyMediaComment) { const { canceled } = await os.confirm({ type: 'warning', text: label('deleteCommentConfirm') }); if (canceled) return; await mediaApi('hata/hatady/media/comments/delete', { commentId: comment.id }); await loadComments(); await reloadWork(); }
+
+function reportComment(comment: HatadyMediaComment) {
+	if (!comment.user) return;
+	const { dispose } = os.popup(defineAsyncComponent(() => import('@/components/MkAbuseReportWindow.vue')), {
+		user: comment.user,
+		initialComment: `hatady:media-comment:${comment.id}\n${comment.text}`,
+	}, { closed: () => dispose() });
+}
 
 async function toggleCommentReaction(comment: HatadyMediaComment, reaction: string) {
 	if (comment.myReaction === reaction) await mediaApi('hata/hatady/media/reactions/delete', { targetType: 'comment', targetId: comment.id });

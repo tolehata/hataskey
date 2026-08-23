@@ -14,6 +14,13 @@ import type { MiMeta, MiSwSubscription, SwSubscriptionsRepository } from '@/mode
 import { bindThis } from '@/decorators.js';
 import { RedisKVCache } from '@/misc/cache.js';
 
+export type HatadyPushNotificationBody = {
+	id: string;
+	notificationType: string;
+	reaction?: string | null;
+	value?: number | null;
+};
+
 // Defined also packages/sw/types.ts#L13
 type PushNotificationsTypes = {
 	'notification': Packed<'Notification'>;
@@ -23,6 +30,7 @@ type PushNotificationsTypes = {
 	};
 	'readAllNotifications': undefined;
 	newChatMessage: Packed<'ChatMessage'>;
+	hatadyNotification: HatadyPushNotificationBody;
 };
 
 // Reduce length because push message servers have character limits

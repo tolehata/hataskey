@@ -18,6 +18,11 @@ export const meta = {
 			code: 'CANNOT_FOLLOW_SELF',
 			id: 'b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e',
 		},
+		noSuchUser: {
+			message: 'No such user or access denied.',
+			code: 'NO_SUCH_USER',
+			id: '063397ba-157f-4f1f-9968-83f0815dc1be',
+		},
 	},
 } as const;
 
@@ -37,8 +42,9 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		super(meta, paramDef, async (ps, me) => {
 			try {
 				await this.hatadyService.follow(me, ps.userId);
-			} catch {
-				throw new ApiError(meta.errors.cannotFollowSelf);
+			} catch (error) {
+				if (error instanceof Error && error.message === 'cannot follow yourself') throw new ApiError(meta.errors.cannotFollowSelf);
+				throw new ApiError(meta.errors.noSuchUser);
 			}
 		});
 	}

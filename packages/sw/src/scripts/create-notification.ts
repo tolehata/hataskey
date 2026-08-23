@@ -364,6 +364,24 @@ async function composeNotification(data: PushNotificationDataMap[keyof PushNotif
 					renotify: true,
 				}];
 			}
+		case 'hatadyNotification': {
+			const copy = i18n.ts._hata._hatady._push;
+			const body = data.body.notificationType === 'follow'
+				? copy.follow
+				: data.body.notificationType === 'comment' || data.body.notificationType === 'mediaComment' || data.body.notificationType === 'mediaReply'
+					? copy.comment
+					: data.body.notificationType === 'reaction' || data.body.notificationType === 'mediaReaction'
+						? (data.body.reaction ? i18n.tsx._hata._hatady._push.reactionWithEmoji({ reaction: data.body.reaction }) : copy.reaction)
+						: data.body.notificationType === 'milestone'
+							? i18n.tsx._hata._hatady._push.milestone({ count: String(data.body.value ?? 0) })
+							: copy.update;
+			return [copy.title, {
+				body,
+				badge: iconUrl('bell'),
+				tag: `hatady:${data.body.id}`,
+				data,
+			}];
+		}
 		default:
 			return null;
 	}

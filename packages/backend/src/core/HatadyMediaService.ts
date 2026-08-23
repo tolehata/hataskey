@@ -41,6 +41,7 @@ import { HatadyService } from '@/core/HatadyService.js';
 import { UserEntityService } from '@/core/entities/UserEntityService.js';
 import { sqlLikeEscape } from '@/misc/sql-like-escape.js';
 import { bindThis } from '@/decorators.js';
+import type { HatadyPushNotificationBody } from '@/core/PushNotificationService.js';
 
 const MOVIE_FIELDS = ['runtimeMinutes', 'genres', 'origin', 'viewingMode', 'primaryLanguage', 'highlights', 'highlightsSpoiler'] as const;
 const GAME_FIELDS = ['platforms', 'developer', 'publisher'] as const;
@@ -347,6 +348,7 @@ export class HatadyMediaService {
 	@bindThis
 	public async canViewWork(work: MiHatadyMediaWork, viewerId: MiUser['id']): Promise<boolean> {
 		if (work.userId === viewerId) return true;
+		if (await this.hatadyService.isBlockedEitherDirection(viewerId, work.userId)) return false;
 		if (work.visibility === 'public') return true;
 		if (work.visibility !== 'followers') return false;
 		return this.hatadyFollowingsRepository.existsBy({ followerId: viewerId, followeeId: work.userId });
@@ -740,7 +742,8 @@ export class HatadyMediaService {
 		// ページ境界は新しい順で切りつつ、同一レスポンス内では親→返信を組みやすい古い順に返す。
 		const comments = await qb.orderBy('comment.id', 'DESC').take(Math.min(100, Math.max(1, limit))).getMany();
 		comments.reverse();
-		return this.packComments(comments, viewerId);
+		const allowed = await Promise.all(comments.map(comment => this.hatadyService.canAppearInTimeline(comment.userId, viewerId)));
+		return this.packComments(comments.filter((_, index) => allowed[index]), viewerId);
 	}
 
 	@bindThis
@@ -749,6 +752,7 @@ export class HatadyMediaService {
 		if (normalized.length === 0 || normalized.length > 2048) throw new Error('invalid comment');
 		const now = new Date();
 		const commentId = this.idService.gen(now.getTime());
+		const pushes: { userId: string; body: HatadyPushNotificationBody }[] = [];
 		const comment = await this.db.transaction(async manager => {
 			const lockedWork = await manager.getRepository(MiHatadyMediaWork).findOne({ where: { id: workId }, lock: { mode: 'pessimistic_read' } });
 			if (lockedWork == null || !(await this.canViewWork(lockedWork, userId))) throw new Error(HatadyMediaService.ERR_NOT_FOUND);
@@ -759,16 +763,20 @@ export class HatadyMediaService {
 			}
 			await manager.getRepository(MiHatadyMediaComment).insert({ id: commentId, createdAt: now, updatedAt: now, workId, userId, replyId, text: normalized, spoiler, reactionsCount: 0 });
 			if (parent != null) {
-				await this.insertMediaNotification(manager, { notifieeId: parent.userId, notifierId: userId, type: 'mediaReply', mediaWorkId: lockedWork.id, mediaCommentId: commentId });
+				const replyPush = await this.insertMediaNotification(manager, { notifieeId: parent.userId, notifierId: userId, type: 'mediaReply', mediaWorkId: lockedWork.id, mediaCommentId: commentId });
+				if (replyPush) pushes.push(replyPush);
 				// 返信先と作品所有者が別人なら、作品所有者にも新規コメントとして一度だけ知らせる。
 				if (parent.userId !== lockedWork.userId) {
-					await this.insertMediaNotification(manager, { notifieeId: lockedWork.userId, notifierId: userId, type: 'mediaComment', mediaWorkId: lockedWork.id, mediaCommentId: commentId });
+					const ownerPush = await this.insertMediaNotification(manager, { notifieeId: lockedWork.userId, notifierId: userId, type: 'mediaComment', mediaWorkId: lockedWork.id, mediaCommentId: commentId });
+					if (ownerPush) pushes.push(ownerPush);
 				}
 			} else {
-				await this.insertMediaNotification(manager, { notifieeId: lockedWork.userId, notifierId: userId, type: 'mediaComment', mediaWorkId: lockedWork.id, mediaCommentId: commentId });
+				const ownerPush = await this.insertMediaNotification(manager, { notifieeId: lockedWork.userId, notifierId: userId, type: 'mediaComment', mediaWorkId: lockedWork.id, mediaCommentId: commentId });
+				if (ownerPush) pushes.push(ownerPush);
 			}
 			return manager.getRepository(MiHatadyMediaComment).findOneByOrFail({ id: commentId });
 		});
+		await Promise.all(pushes.map(push => this.hatadyService.pushHatadyNotification(push.userId, push.body)));
 		return this.packComment(comment, userId);
 	}
 
@@ -852,6 +860,7 @@ export class HatadyMediaService {
 	public async createReaction(userId: string, targetType: 'work' | 'comment', targetId: string, reaction: string): Promise<void> {
 		const normalized = reaction.trim();
 		if (normalized.length === 0 || normalized.length > 260) throw new Error('invalid reaction');
+		const pushes: { userId: string; body: HatadyPushNotificationBody }[] = [];
 		await this.db.transaction(async manager => {
 			await manager.query('SELECT pg_advisory_xact_lock(hashtext($1))', [`hatady-media-reaction:${userId}:${targetType}:${targetId}`]);
 			const target = await this.resolveReactionTarget(manager, userId, targetType, targetId);
@@ -862,7 +871,7 @@ export class HatadyMediaService {
 			if (existing != null) {
 				if (existing.reaction === normalized) return;
 				await repo.update(existing.id, { reaction: normalized, createdAt: new Date() });
-				await this.insertMediaNotification(manager, {
+				const push = await this.insertMediaNotification(manager, {
 					notifieeId: target.comment?.userId ?? target.work.userId,
 					notifierId: userId,
 					type: 'mediaReaction',
@@ -870,12 +879,13 @@ export class HatadyMediaService {
 					mediaCommentId: target.comment?.id ?? null,
 					reaction: normalized,
 				});
+				if (push) pushes.push(push);
 				return;
 			}
 			const now = new Date();
 			await repo.insert({ id: this.idService.gen(now.getTime()), createdAt: now, userId, workId: target.workId, commentId: target.commentId, reaction: normalized });
 			if (target.commentId != null) await manager.increment(MiHatadyMediaComment, { id: target.commentId }, 'reactionsCount', 1);
-			await this.insertMediaNotification(manager, {
+			const push = await this.insertMediaNotification(manager, {
 				notifieeId: target.comment?.userId ?? target.work.userId,
 				notifierId: userId,
 				type: 'mediaReaction',
@@ -883,7 +893,9 @@ export class HatadyMediaService {
 				mediaCommentId: target.comment?.id ?? null,
 				reaction: normalized,
 			});
+			if (push) pushes.push(push);
 		});
+		await Promise.all(pushes.map(push => this.hatadyService.pushHatadyNotification(push.userId, push.body)));
 	}
 
 	@bindThis
@@ -909,11 +921,12 @@ export class HatadyMediaService {
 		mediaWorkId: string;
 		mediaCommentId?: string | null;
 		reaction?: string | null;
-	}): Promise<void> {
-		if (params.notifieeId === params.notifierId) return;
+	}): Promise<{ userId: string; body: HatadyPushNotificationBody } | null> {
+		if (params.notifieeId === params.notifierId) return null;
 		const now = new Date();
+		const notificationId = this.idService.gen(now.getTime());
 		await manager.getRepository(MiHatadyNotification).insert({
-			id: this.idService.gen(now.getTime()),
+			id: notificationId,
 			createdAt: now,
 			notifieeId: params.notifieeId,
 			notifierId: params.notifierId,
@@ -926,5 +939,9 @@ export class HatadyMediaService {
 			value: null,
 			isRead: false,
 		});
+		return {
+			userId: params.notifieeId,
+			body: { id: notificationId, notificationType: params.type, reaction: params.reaction ?? null, value: null },
+		};
 	}
 }

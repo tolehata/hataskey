@@ -83,7 +83,7 @@ describe('Hatady activity visibility and spoiler boundary', () => {
 			{ createQueryBuilder: vi.fn() } as never,
 			{ createQueryBuilder: vi.fn().mockReturnValue(qb) } as never,
 			{ findBy: vi.fn().mockResolvedValue([work]) } as never,
-			{} as never,
+			{ canAppearInTimeline: vi.fn().mockResolvedValue(true), getTimelineExcludedUserIds: vi.fn().mockResolvedValue(new Set(['blocked-user'])) } as never,
 			{
 				canViewSession: vi.fn().mockResolvedValue(true),
 				packWork: vi.fn().mockReturnValue({ ...work, createdAt: work.createdAt.toISOString(), updatedAt: work.updatedAt.toISOString() }),
@@ -96,6 +96,7 @@ describe('Hatady activity visibility and spoiler boundary', () => {
 
 		expect(qb.where).toHaveBeenCalledWith("session.visibility = 'public'");
 		expect(qb.andWhere).toHaveBeenCalledWith("activity_work.visibility = 'public'");
+		expect(qb.andWhere).toHaveBeenCalledWith('session.userId NOT IN (:...activityExcludedUserIds)', { activityExcludedUserIds: ['blocked-user'] });
 		expect(qb.take).toHaveBeenCalledWith(3);
 		expect(result).toMatchObject({ hasMore: true, nextCursor: expect.any(String) });
 		expect(result.items).toHaveLength(2);
@@ -116,7 +117,7 @@ describe('Hatady activity visibility and spoiler boundary', () => {
 			{ createQueryBuilder: vi.fn() } as never,
 			{ createQueryBuilder: vi.fn().mockReturnValue(qb) } as never,
 			{ findBy: vi.fn().mockResolvedValue([work]) } as never,
-			{} as never,
+			{ canAppearInTimeline: vi.fn().mockResolvedValue(true), getTimelineExcludedUserIds: vi.fn().mockResolvedValue(new Set()) } as never,
 			{ canViewSession: vi.fn().mockResolvedValue(true), packWork: vi.fn().mockReturnValue(work), packSession: vi.fn().mockReturnValue(session) } as never,
 			{ packLogs: vi.fn().mockResolvedValue([]) } as never,
 			{ packMany: vi.fn().mockResolvedValue([{ id: 'owner' }]) } as never,
@@ -135,6 +136,13 @@ describe('Hatady learning reaction authorization', () => {
 			//   メディアセッションも合算するようになったため、既定では空の結果を返すスタブを渡す。
 			mediaSessions: { createQueryBuilder: vi.fn().mockReturnValue(queryBuilder([])), findBy: vi.fn().mockResolvedValue([]), countBy: vi.fn().mockResolvedValue(0) },
 			id: { gen: vi.fn().mockReturnValue('generated') }, role: {},
+			cache: {
+				userMutingsCache: { fetch: vi.fn().mockResolvedValue(new Set()) },
+				userBlockingCache: { fetch: vi.fn().mockResolvedValue(new Set()) },
+				userBlockedCache: { fetch: vi.fn().mockResolvedValue(new Set()) },
+			},
+			blocking: { checkBlocked: vi.fn().mockResolvedValue(false) },
+			push: { pushNotification: vi.fn().mockResolvedValue(undefined) },
 			...overrides,
 		};
 		const logs = defaults.logs as { findOneBy: ReturnType<typeof vi.fn>; findOne?: ReturnType<typeof vi.fn>; update?: ReturnType<typeof vi.fn> };
@@ -150,7 +158,8 @@ describe('Hatady learning reaction authorization', () => {
 			}),
 		};
 		reactions.manager = { transaction: vi.fn(async (callback: (tx: typeof manager) => unknown) => callback(manager)) };
-		return { service: new HatadyService(defaults.books as never, defaults.logs as never, defaults.comments as never, defaults.reactions as never, defaults.notifications as never, defaults.followings as never, defaults.profiles as never, defaults.bookmarks as never, defaults.memos as never, defaults.subjects as never, defaults.goals as never, defaults.mediaSessions as never, defaults.id as never, defaults.role as never), defaults };
+		(comments as any).manager = reactions.manager;
+		return { service: new HatadyService(defaults.books as never, defaults.logs as never, defaults.comments as never, defaults.reactions as never, defaults.notifications as never, defaults.followings as never, defaults.profiles as never, defaults.bookmarks as never, defaults.memos as never, defaults.subjects as never, defaults.goals as never, defaults.mediaSessions as never, defaults.id as never, defaults.role as never, defaults.cache as never, defaults.blocking as never, defaults.push as never), defaults };
 	}
 
 	test('rejects a known private log ID before reading or writing a reaction row', async () => {
@@ -166,6 +175,34 @@ describe('Hatady learning reaction authorization', () => {
 		const { service, defaults } = learningService();
 		await expect(service.react({ id: 'viewer' } as never, { logId: 'log' }, '   ')).rejects.toThrow('empty reaction');
 		expect(((defaults.reactions as { manager: { transaction: ReturnType<typeof vi.fn> } }).manager).transaction).not.toHaveBeenCalled();
+	});
+
+	test('applies Misskey blocks in both directions to Hatady reads and follows', async () => {
+		const checkBlocked = vi.fn(async (blockerId: string, blockeeId: string) => blockerId === 'owner' && blockeeId === 'viewer');
+		const { service, defaults } = learningService({ blocking: { checkBlocked } });
+		await expect(service.canViewLog({ userId: 'owner', visibility: 'public' } as never, 'viewer')).resolves.toBe(false);
+		await expect(service.follow({ id: 'viewer' } as never, 'owner')).rejects.toThrow('access denied');
+		expect((defaults.followings as any).insertOne).toBeUndefined();
+		expect(checkBlocked).toHaveBeenCalledWith('owner', 'viewer');
+	});
+
+	test('excludes Misskey-muted users from Hatady timelines without treating mute as a write block', async () => {
+		const { service } = learningService({ cache: {
+			userMutingsCache: { fetch: vi.fn().mockResolvedValue(new Set(['muted'])) },
+			userBlockingCache: { fetch: vi.fn().mockResolvedValue(new Set()) },
+			userBlockedCache: { fetch: vi.fn().mockResolvedValue(new Set()) },
+		} });
+		await expect(service.canAppearInTimeline('muted', 'viewer')).resolves.toBe(false);
+		await expect(service.canAppearInTimeline('visible', 'viewer')).resolves.toBe(true);
+	});
+
+	test('does not let another user delete a Hatady comment', async () => {
+		const findOne = vi.fn().mockResolvedValue(null);
+		const remove = vi.fn();
+		const { service } = learningService({ comments: { findOneBy: vi.fn(), findOne, delete: remove } });
+		await expect(service.deleteComment({ id: 'attacker' } as never, 'comment')).rejects.toThrow('no such comment or access denied');
+		expect(findOne).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 'comment', userId: 'attacker' } }));
+		expect(remove).not.toHaveBeenCalled();
 	});
 
 	test('uses the same followers visibility boundary for profile totals as for visible logs', async () => {

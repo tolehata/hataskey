@@ -17,9 +17,11 @@ import type { MiHatadyBookmark } from '@/models/HatadyBookmark.js';
 import type { MiHatadyBookMemo } from '@/models/HatadyBookMemo.js';
 import type { MiHatadyGoal } from '@/models/HatadyGoal.js';
 import { MiHatadyReaction } from '@/models/HatadyReaction.js';
-import { MiHatadyFollowing } from '@/models/HatadyFollowing.js';
 import { IdService } from '@/core/IdService.js';
 import { RoleService } from '@/core/RoleService.js';
+import { CacheService } from '@/core/CacheService.js';
+import { UserBlockingService } from '@/core/UserBlockingService.js';
+import { PushNotificationService, type HatadyPushNotificationBody } from '@/core/PushNotificationService.js';
 import { sqlLikeEscape } from '@/misc/sql-like-escape.js';
 import { bindThis } from '@/decorators.js';
 
@@ -53,6 +55,9 @@ export class HatadyService {
 
 		private idService: IdService,
 		private roleService: RoleService,
+		private cacheService: CacheService,
+		private userBlockingService: UserBlockingService,
+		private pushNotificationService: PushNotificationService,
 	) {
 	}
 
@@ -276,6 +281,7 @@ export class HatadyService {
 	@bindThis
 	public async follow(follower: MiUser, followeeId: MiUser['id']): Promise<void> {
 		if (follower.id === followeeId) throw new Error('cannot follow yourself');
+		if (await this.isBlockedEitherDirection(follower.id, followeeId)) throw new Error('no such user or access denied');
 		const existing = await this.hatadyFollowingsRepository.findOneBy({ followerId: follower.id, followeeId });
 		if (existing) return;
 		const now = new Date();
@@ -298,6 +304,32 @@ export class HatadyService {
 	@bindThis
 	public async isFollowing(followerId: MiUser['id'], followeeId: MiUser['id']): Promise<boolean> {
 		return (await this.hatadyFollowingsRepository.countBy({ followerId, followeeId })) > 0;
+	}
+
+	@bindThis
+	public async isBlockedEitherDirection(userId: MiUser['id'], otherUserId: MiUser['id']): Promise<boolean> {
+		if (userId === otherUserId) return false;
+		const [iBlockThem, theyBlockMe] = await Promise.all([
+			this.userBlockingService.checkBlocked(userId, otherUserId),
+			this.userBlockingService.checkBlocked(otherUserId, userId),
+		]);
+		return iBlockThem || theyBlockMe;
+	}
+
+	@bindThis
+	public async canAppearInTimeline(ownerId: MiUser['id'], viewerId: MiUser['id']): Promise<boolean> {
+		if (ownerId === viewerId) return true;
+		return !(await this.getTimelineExcludedUserIds(viewerId)).has(ownerId);
+	}
+
+	@bindThis
+	public async getTimelineExcludedUserIds(viewerId: MiUser['id']): Promise<Set<MiUser['id']>> {
+		const [mutings, blocking, blockedBy] = await Promise.all([
+			this.cacheService.userMutingsCache.fetch(viewerId),
+			this.cacheService.userBlockingCache.fetch(viewerId),
+			this.cacheService.userBlockedCache.fetch(viewerId),
+		]);
+		return new Set([...mutings, ...blocking, ...blockedBy]);
 	}
 
 	// フォロワーを外す(相手が自分をフォローしている関係を、通知なしで解除する)。
@@ -497,7 +529,9 @@ export class HatadyService {
 	// フォロー中タイムライン: 自分がフォローしているユーザーのログ(公開 or フォロワー限定)を新しい順に。
 	@bindThis
 	public async getFollowingTimeline(viewerId: MiUser['id'], opts: { limit: number; untilId?: string | null; subject?: string | null }): Promise<MiHatadyLog[]> {
-		const followeeIds = await this.getFollowingUserIds(viewerId, 1000);
+		const rawFolloweeIds = await this.getFollowingUserIds(viewerId, 1000);
+		const visibility = await Promise.all(rawFolloweeIds.map(id => this.canAppearInTimeline(id, viewerId)));
+		const followeeIds = rawFolloweeIds.filter((_, index) => visibility[index]);
 		if (followeeIds.length === 0) return [];
 		const q = this.hatadyLogsRepository.createQueryBuilder('log')
 			.where('log.userId IN (:...ids)', { ids: followeeIds })
@@ -560,7 +594,7 @@ export class HatadyService {
 	}): Promise<void> {
 		if (params.notifierId && params.notifieeId === params.notifierId) return;
 		const now = new Date();
-		await this.hatadyNotificationsRepository.insertOne({
+		const notification = await this.hatadyNotificationsRepository.insertOne({
 			id: this.idService.gen(now.getTime()),
 			createdAt: now,
 			notifieeId: params.notifieeId,
@@ -574,6 +608,17 @@ export class HatadyService {
 			value: params.value ?? null,
 			isRead: false,
 		});
+		await this.pushHatadyNotification(params.notifieeId, {
+			id: notification.id,
+			notificationType: notification.type,
+			reaction: notification.reaction,
+			value: notification.value,
+		});
+	}
+
+	@bindThis
+	public async pushHatadyNotification(userId: MiUser['id'], body: HatadyPushNotificationBody): Promise<void> {
+		await this.pushNotificationService.pushNotification(userId, 'hatadyNotification', body).catch(() => {});
 	}
 
 	// ===== 通知の取得/既読 =====
@@ -583,12 +628,20 @@ export class HatadyService {
 		const q = this.hatadyNotificationsRepository.createQueryBuilder('n')
 			.where('n.notifieeId = :userId', { userId });
 		if (opts.untilId) q.andWhere('n.id < :untilId', { untilId: opts.untilId });
-		return q.orderBy('n.createdAt', 'DESC').limit(opts.limit).getMany();
+		const notifications = await q.orderBy('n.createdAt', 'DESC').limit(opts.limit).getMany();
+		const allowed = await Promise.all(notifications.map(notification => notification.notifierId == null
+			? true
+			: this.canAppearInTimeline(notification.notifierId, userId)));
+		return notifications.filter((_, index) => allowed[index]);
 	}
 
 	@bindThis
 	public async getUnreadNotificationCount(userId: MiUser['id']): Promise<number> {
-		return this.hatadyNotificationsRepository.countBy({ notifieeId: userId, isRead: false });
+		const [notifications, excluded] = await Promise.all([
+			this.hatadyNotificationsRepository.findBy({ notifieeId: userId, isRead: false }),
+			this.getTimelineExcludedUserIds(userId),
+		]);
+		return notifications.filter(notification => notification.notifierId == null || !excluded.has(notification.notifierId)).length;
 	}
 
 	@bindThis
@@ -847,6 +900,7 @@ export class HatadyService {
 	@bindThis
 	public async canViewLog(log: MiHatadyLog, viewerId: MiUser['id']): Promise<boolean> {
 		if (log.userId === viewerId) return true;
+		if (await this.isBlockedEitherDirection(viewerId, log.userId)) return false;
 		if (log.visibility === 'public') return true;
 		if (log.visibility === 'followers') return this.isFollowing(viewerId, log.userId);
 		return false;
@@ -898,12 +952,28 @@ export class HatadyService {
 	}
 
 	@bindThis
-	public async getComments(logId: MiHatadyLog['id']): Promise<MiHatadyComment[]> {
-		return this.hatadyCommentsRepository.createQueryBuilder('c')
+	public async deleteComment(user: MiUser, commentId: MiHatadyComment['id']): Promise<void> {
+		await this.hatadyCommentsRepository.manager.transaction(async manager => {
+			const comments = manager.getRepository(MiHatadyComment);
+			const comment = await comments.findOne({ where: { id: commentId, userId: user.id }, lock: { mode: 'pessimistic_write' } });
+			if (comment == null) throw new Error('no such comment or access denied');
+			// 返信を孤児参照にしない。返信本文は残し、トップレベルへ戻す。
+			await comments.update({ replyId: comment.id }, { replyId: null });
+			await comments.delete({ id: comment.id, userId: user.id });
+			const count = await comments.countBy({ logId: comment.logId });
+			await manager.getRepository(MiHatadyLog).update(comment.logId, { commentsCount: count });
+		});
+	}
+
+	@bindThis
+	public async getComments(logId: MiHatadyLog['id'], viewerId: MiUser['id']): Promise<MiHatadyComment[]> {
+		const comments = await this.hatadyCommentsRepository.createQueryBuilder('c')
 			.where('c.logId = :logId', { logId })
 			.orderBy('c.createdAt', 'ASC')
 			.limit(200)
 			.getMany();
+		const allowed = await Promise.all(comments.map(comment => this.canAppearInTimeline(comment.userId, viewerId)));
+		return comments.filter((_, index) => allowed[index]);
 	}
 
 	// ===== リアクション(hataskey 共通の絵文字ピッカーから来た reaction 文字列を保存) =====
@@ -915,6 +985,7 @@ export class HatadyService {
 		if (reactionStr.length === 0) throw new Error('empty reaction');
 		if (!target.logId && !target.commentId) throw new Error('no such target or access denied');
 
+		const pushes: { userId: string; body: HatadyPushNotificationBody }[] = [];
 		await this.hatadyReactionsRepository.manager.transaction(async manager => {
 			let targetComment: MiHatadyComment | null = null;
 			let logId = target.logId ?? null;
@@ -927,14 +998,7 @@ export class HatadyService {
 				? null
 				: await manager.getRepository(MiHatadyLog).findOne({ where: { id: logId }, lock: { mode: 'pessimistic_write' } });
 			if (targetLog == null) throw new Error('no such target or access denied');
-			if (targetLog.userId !== user.id && targetLog.visibility !== 'public') {
-				const follows = targetLog.visibility === 'followers'
-					&& await manager.getRepository(MiHatadyFollowing).findOne({
-						where: { followerId: user.id, followeeId: targetLog.userId },
-						lock: { mode: 'pessimistic_read' },
-					});
-				if (!follows) throw new Error('no such target or access denied');
-			}
+			if (!(await this.canViewLog(targetLog, user.id))) throw new Error('no such target or access denied');
 			if (target.commentId) {
 				targetComment = await manager.getRepository(MiHatadyComment).findOne({ where: { id: target.commentId, logId: targetLog.id }, lock: { mode: 'pessimistic_write' } });
 				if (targetComment == null) throw new Error('no such target or access denied');
@@ -968,13 +1032,16 @@ export class HatadyService {
 
 			const notifieeId = targetComment?.userId ?? targetLog.userId;
 			if (notifieeId !== user.id) {
+				const notificationId = this.idService.gen(now.getTime());
 				await manager.getRepository(MiHatadyNotification).insert({
-					id: this.idService.gen(now.getTime()), createdAt: now, notifieeId, notifierId: user.id,
+					id: notificationId, createdAt: now, notifieeId, notifierId: user.id,
 					type: 'reaction', logId: targetLog.id, commentId: targetComment?.id ?? null,
 					mediaWorkId: null, mediaCommentId: null, reaction: reactionStr, value: null, isRead: false,
 				});
+				pushes.push({ userId: notifieeId, body: { id: notificationId, notificationType: 'reaction', reaction: reactionStr, value: null } });
 			}
 		});
+		await Promise.all(pushes.map(push => this.pushHatadyNotification(push.userId, push.body)));
 	}
 
 	@bindThis

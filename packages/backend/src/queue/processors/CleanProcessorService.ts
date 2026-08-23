@@ -6,7 +6,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { In, LessThan } from 'typeorm';
 import { DI } from '@/di-symbols.js';
-import type { AntennasRepository, RegistrationApplicationsRepository, RoleAssignmentsRepository, UserIpsRepository } from '@/models/_.js';
+import type { AntennasRepository, HatadyNotificationsRepository, RegistrationApplicationsRepository, RoleAssignmentsRepository, UserIpsRepository } from '@/models/_.js';
 import type Logger from '@/logger.js';
 import { bindThis } from '@/decorators.js';
 import { IdService } from '@/core/IdService.js';
@@ -34,6 +34,9 @@ export class CleanProcessorService {
 
 		@Inject(DI.roleAssignmentsRepository)
 		private roleAssignmentsRepository: RoleAssignmentsRepository,
+
+		@Inject(DI.hatadyNotificationsRepository)
+		private hatadyNotificationsRepository: HatadyNotificationsRepository,
 
 		private queueLoggerService: QueueLoggerService,
 		private reversiService: ReversiService,
@@ -77,6 +80,11 @@ export class CleanProcessorService {
 		this.registrationApplicationsRepository.delete({
 			status: 'pending',
 			createdAt: LessThan(new Date(Date.now() - 1000 * 60 * 60 * 24 * 30)),
+		});
+
+		// Hatady 独自通知は表示用途のみ。90日を過ぎた既読・未読を定期掃除して単調増加を防ぐ。
+		await this.hatadyNotificationsRepository.delete({
+			createdAt: LessThan(new Date(Date.now() - 1000 * 60 * 60 * 24 * 90)),
 		});
 		// rejected: 90日経過で削除
 		this.registrationApplicationsRepository.delete({

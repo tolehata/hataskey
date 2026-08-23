@@ -189,6 +189,7 @@ export class HatadyActivityService {
 
 	private async loadStudyCandidates(viewerId: string, scope: HatadyActivityScope, sinceDate: number | null, untilDate: number | null, cursor: ActivityCursorPayload | null, take: number): Promise<StudyCandidate[]> {
 		const qb = this.hatadyLogsRepository.createQueryBuilder('log');
+		const excludedUserIds = scope === 'mine' ? [] : [...await this.hatadyService.getTimelineExcludedUserIds(viewerId)];
 		if (scope === 'mine') {
 			qb.where('log.userId = :viewerId', { viewerId });
 		} else if (scope === 'following') {
@@ -201,6 +202,7 @@ export class HatadyActivityService {
 		} else {
 			qb.where("log.visibility = 'public'").andWhere('log.isPublic = TRUE');
 		}
+		if (excludedUserIds.length > 0) qb.andWhere('log.userId NOT IN (:...activityExcludedUserIds)', { activityExcludedUserIds: excludedUserIds });
 		if (sinceDate != null) qb.andWhere('log.studiedAt >= :activitySince', { activitySince: new Date(sinceDate) });
 		if (untilDate != null) qb.andWhere('log.studiedAt <= :activityUntil', { activityUntil: new Date(untilDate) });
 		if (cursor != null) {
@@ -219,13 +221,17 @@ export class HatadyActivityService {
 		if (scope === 'popular') qb.orderBy('log.reactionsCount', 'DESC').addOrderBy('log.studiedAt', 'DESC').addOrderBy('log.id', 'DESC');
 		else qb.orderBy('log.studiedAt', 'DESC').addOrderBy('log.id', 'DESC');
 		const rows = await qb.take(take).getMany();
-		const allowed = await Promise.all(rows.map(log => this.hatadyService.canViewLog(log, viewerId)));
+		const allowed = await Promise.all(rows.map(async log => (
+			await this.hatadyService.canAppearInTimeline(log.userId, viewerId)
+			&& await this.hatadyService.canViewLog(log, viewerId)
+		)));
 		return rows.filter((_, index) => allowed[index]).map(log => ({ source: 1, id: log.id, occurredAt: log.studiedAt, score: log.reactionsCount, log }));
 	}
 
 	private async loadMediaCandidates(viewerId: string, scope: Exclude<HatadyActivityScope, 'popular'>, kinds: HatadyActivityKind[], sinceDate: number | null, untilDate: number | null, cursor: ActivityCursorPayload | null, take: number): Promise<MediaCandidate[]> {
 		const qb = this.hatadyMediaSessionsRepository.createQueryBuilder('session')
 			.innerJoin('hatady_media_work', 'activity_work', 'activity_work.id = session.workId');
+		const excludedUserIds = scope === 'mine' ? [] : [...await this.hatadyService.getTimelineExcludedUserIds(viewerId)];
 		if (scope === 'mine') {
 			qb.where('session.userId = :viewerId', { viewerId });
 		} else if (scope === 'following') {
@@ -240,6 +246,7 @@ export class HatadyActivityService {
 			qb.where("session.visibility = 'public'");
 			qb.andWhere("activity_work.visibility = 'public'");
 		}
+		if (excludedUserIds.length > 0) qb.andWhere('session.userId NOT IN (:...activityExcludedUserIds)', { activityExcludedUserIds: excludedUserIds });
 		const workKinds = kinds.filter((kind): kind is 'movie' | 'game' => kind === 'movie' || kind === 'game');
 		qb.andWhere('activity_work.kind IN (:...activityWorkKinds)', { activityWorkKinds: workKinds });
 		if (sinceDate != null) qb.andWhere('session.occurredAt >= :activitySince', { activitySince: new Date(sinceDate) });
@@ -251,7 +258,9 @@ export class HatadyActivityService {
 		const worksMap = new Map(works.map(work => [work.id, work]));
 		const allowed = await Promise.all(sessions.map(async session => {
 			const work = worksMap.get(session.workId);
-			return work != null && await this.hatadyMediaService.canViewSession(session, work, viewerId);
+			return work != null
+				&& await this.hatadyService.canAppearInTimeline(session.userId, viewerId)
+				&& await this.hatadyMediaService.canViewSession(session, work, viewerId);
 		}));
 		return sessions.flatMap((session, index) => {
 			const work = worksMap.get(session.workId);
