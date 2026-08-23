@@ -22,6 +22,7 @@ describe('外部アカウント連携の撤去先', () => {
 		expect(isRetiredExternalHost('O.HATA.BLOG:443')).toBe(true);
 		expect(isRetiredExternalHost('mk.shrimpia.network.')).toBe(true);
 		expect(isRetiredExternalHost('mi.les-requin.net')).toBe(false);
+		expect(isRetiredExternalHost('ddoskey.com')).toBe(false);
 		expect(isRetiredExternalHost('o.hata.blog.example.com')).toBe(false);
 		expect(isRetiredExternalHost('misskey.hatachanoima.net')).toBe(false);
 	});
