@@ -41,6 +41,7 @@ describe('post send delay', () => {
 		await vi.advanceTimersByTimeAsync(2900);
 		expect(await result).toBe(true);
 		expect(controller.active.value).toBe(false);
+		expect(controller.exitMode.value).toBe('complete');
 	});
 
 	test('取り消し・今すぐ投稿・破棄を区別し、二重開始を防ぐ', async () => {
@@ -51,13 +52,16 @@ describe('post send delay', () => {
 		expect(await controller.begin(5)).toBe(false);
 		controller.cancel();
 		expect(await canceled).toBe(false);
+		expect(controller.exitMode.value).toBe('cancel');
 
 		const immediate = controller.begin(5);
 		controller.sendNow();
 		expect(await immediate).toBe(true);
+		expect(controller.exitMode.value).toBe('complete');
 
 		const disposed = controller.begin(5);
 		controller.dispose();
 		expect(await disposed).toBe(false);
+		expect(controller.exitMode.value).toBe('cancel');
 	});
 });

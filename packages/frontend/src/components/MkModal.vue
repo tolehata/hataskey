@@ -32,7 +32,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 	})"
 	:duration="transitionDuration" appear @afterLeave="onClosed" @enter="emit('opening')" @afterEnter="onOpened"
 >
-	<div v-show="manualShowing != null ? manualShowing : showing" ref="modalRootEl" v-hotkey.global="keymap" tabindex="-1" :class="[$style.root, { [$style.drawer]: type === 'drawer', [$style.dialog]: type === 'dialog', [$style.popup]: type === 'popup' }]" :style="{ zIndex, pointerEvents: (manualShowing != null ? manualShowing : showing) ? 'auto' : 'none', '--transformOrigin': transformOrigin }">
+	<div v-show="manualShowing != null ? manualShowing : showing" ref="modalRootEl" v-hotkey.global="keymap" tabindex="-1" :class="[$style.root, { [$style.drawer]: type === 'drawer', [$style.dialog]: type === 'dialog', [$style.popup]: type === 'popup', [$style.postFormMotion]: motionPreset === 'postform' }]" :style="{ zIndex, pointerEvents: (manualShowing != null ? manualShowing : showing) ? 'auto' : 'none', '--transformOrigin': transformOrigin }">
 		<div data-cy-bg :data-cy-transparent="isEnableBgTransparent" class="_modalBg" :class="[$style.bg, { [$style.bgTransparent]: isEnableBgTransparent, [$style.bgWithoutBlur]: disableBgBlur, [$style.removeModalBgColorForBlur]: prefer.s.useBlurEffectForModal && prefer.s.removeModalBgColorForBlur }]" :style="{ zIndex }" @click="onBgClick" @mousedown="onBgClick" @contextmenu.prevent.stop="() => {}"></div>
 		<div ref="content" :class="[$style.content, { [$style.fixed]: fixed }]" :style="{ zIndex }" @click.self="onBgClick">
 			<slot :max-height="maxHeight" :type="type"></slot>
@@ -76,6 +76,7 @@ const props = withDefaults(defineProps<{
 	disableBgBlur?: boolean;
 	hasInteractionWithOtherFocusTrappedEls?: boolean;
 	returnFocusTo?: HTMLElement | null;
+	motionPreset?: 'postform';
 }>(), {
 	manualShowing: null,
 	anchorElement: null,
@@ -87,6 +88,7 @@ const props = withDefaults(defineProps<{
 	disableBgBlur: false,
 	hasInteractionWithOtherFocusTrappedEls: false,
 	returnFocusTo: null,
+	motionPreset: undefined,
 });
 
 const emit = defineEmits<{
@@ -132,7 +134,11 @@ const transitionName = computed((() =>
 		: ''
 ));
 const transitionDuration = computed((() =>
-	transitionName.value === 'send'
+	props.motionPreset === 'postform' && transitionName.value === 'modal-popup'
+		? 260
+		: props.motionPreset === 'postform' && transitionName.value === 'modal-drawer'
+			? 300
+			: transitionName.value === 'send'
 		? 400
 		: transitionName.value === 'modal-popup'
 			? 100
@@ -436,6 +442,35 @@ defineExpose({
 		transform-origin: var(--transformOrigin);
 		transform: scale(0.9);
 	}
+}
+
+.postFormMotion.transition_modalPopup_enterActive > .bg,
+.postFormMotion.transition_modalPopup_leaveActive > .bg {
+	transition: opacity .2s ease !important;
+}
+
+.postFormMotion.transition_modalPopup_enterActive > .content {
+	transition: opacity .22s ease, transform .26s cubic-bezier(.2,.9,.2,1) !important;
+}
+
+.postFormMotion.transition_modalPopup_leaveActive > .content {
+	transition: opacity .16s ease, transform .2s cubic-bezier(.4,0,1,1) !important;
+}
+
+.postFormMotion.transition_modalPopup_enterFrom > .content {
+	transform: translateY(7px) scale(.96);
+}
+
+.postFormMotion.transition_modalPopup_leaveTo > .content {
+	transform: translateY(4px) scale(.975);
+}
+
+.postFormMotion.transition_modalDrawer_enterActive > .content {
+	transition: transform .3s cubic-bezier(.2,.8,.2,1) !important;
+}
+
+.postFormMotion.transition_modalDrawer_leaveActive > .content {
+	transition: transform .22s cubic-bezier(.4,0,1,1) !important;
 }
 
 .transition_modalDrawer_enterActive {

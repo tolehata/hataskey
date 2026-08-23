@@ -13,12 +13,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 	@dragleave="onDragleave"
 	@drop.stop="onDrop"
 >
-	<div v-if="postDelay.active.value" :class="$style.postDelayFrame" :style="postDelay.frameStyle.value" aria-hidden="true"></div>
-	<div v-if="postDelay.active.value" :class="$style.postDelayStatus" role="status" aria-live="polite">
-		<strong>{{ i18n.ts._hata._postDelay.countdown.replace('{seconds}', postDelay.remainingSeconds.value.toString()) }}</strong>
-		<button class="_button" :class="$style.postDelayAction" @click="postDelay.cancel()">{{ i18n.ts._hata._postDelay.cancel }}</button>
-		<button class="_button" :class="$style.postDelayActionPrimary" @click="postDelay.sendNow()">{{ i18n.ts._hata._postDelay.sendNow }}</button>
-	</div>
+	<Transition :name="prefer.s.animation ? `hata-delay-status-${postDelay.exitMode.value}` : ''"><MkHataPostDelayStatus v-if="postDelay.active.value" compact :class="$style.postDelayStatus" :pattern="i18n.ts._hata._postDelay.countdown" :seconds="postDelay.remainingSeconds.value" :progress="postDelay.progress.value" :cancelLabel="i18n.ts._hata._postDelay.cancel" :sendNowLabel="i18n.ts._hata._postDelay.sendNow" @cancel="postDelay.cancel()" @sendNow="postDelay.sendNow()"/></Transition>
+	<Transition :name="prefer.s.animation ? 'hata-visibility-flash' : ''"><div v-if="visibilityFlashIcon" :class="$style.visibilityFlash" aria-hidden="true"><i :class="visibilityFlashIcon"></i></div></Transition>
 	<header :class="$style.header">
 		<div :class="$style.headerLeft">
 			<button v-if="!fixed" :class="$style.cancel" class="_button" @click="cancel"><i class="ti ti-x"></i></button>
@@ -29,7 +25,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		</div>
 		<div :class="$style.headerRight">
 			<template v-if="!(targetChannel != null && fixed)">
-				<button v-if="targetChannel == null" ref="visibilityButton" v-click-anime v-tooltip="i18n.ts.visibility" :class="['_button', $style.headerRightItem, $style.visibility]" @click="setVisibility">
+				<button v-if="targetChannel == null" ref="visibilityButton" v-click-anime v-tooltip="i18n.ts.visibility" :class="['_button', $style.headerRightItem, $style.visibility]" @click="playHataIconMotion($event, visibility === 'public' ? 'globe-spin' : visibility === 'home' ? 'home-rock' : visibility === 'followers' ? 'user-rise' : 'mention-orbit', 620); setVisibility()">
 					<span v-if="visibility === 'public'"><i class="ti ti-world"></i></span>
 					<span v-if="visibility === 'home'"><i class="ti ti-home"></i></span>
 					<span v-if="visibility === 'followers'"><i class="ti ti-lock"></i></span>
@@ -41,18 +37,15 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<span :class="$style.headerRightButtonText">{{ targetChannel.name }}</span>
 				</button>
 			</template>
-			<button v-click-anime v-tooltip="i18n.ts._visibility.disableFederation" class="_button" :class="[$style.headerRightItem, { [$style.danger]: localOnly }]" :disabled="targetChannel != null || visibility === 'specified'" @click="toggleLocalOnly">
+			<button v-click-anime v-tooltip="i18n.ts._visibility.disableFederation" class="_button" :class="[$style.headerRightItem, { [$style.danger]: localOnly }]" :disabled="targetChannel != null || visibility === 'specified'" @click="playHataIconMotion($event, 'rocket-launch', 560); toggleLocalOnly()">
 				<span v-if="!localOnly"><i class="ti ti-rocket"></i></span>
 				<span v-else><i class="ti ti-rocket-off"></i></span>
 			</button>
-			<button ref="otherSettingsButton" v-tooltip="i18n.ts.other" class="_button" :class="$style.headerRightItem" @click="showOtherSettings"><i class="ti ti-dots"></i></button>
+			<button ref="otherSettingsButton" v-tooltip="i18n.ts.other" class="_button" :class="$style.headerRightItem" @click="playHataIconMotion($event, 'more-dots', 540); showOtherSettings()"><i class="ti ti-dots"></i></button>
 			<div :class="$style.submit">
 				<button v-click-anime class="_button" :class="$style.submitButton" :disabled="!canPost" data-cy-open-post-form-submit @click="post">
 					<div :class="$style.submitInner">
-						<template v-if="posted"></template>
-						<template v-else-if="posting"><MkEllipsis/></template>
-						<template v-else>{{ submitText }}</template>
-						<i style="margin-left: 6px;" :class="submitIcon"></i>
+						<MkHataPostSubmitVisual :state="submitMotionState" :idleText="submitText" :idleIcon="submitIcon" :countdownSeconds="postDelay.remainingSeconds.value"/>
 					</div>
 				</button>
 				<button v-click-anime class="_button" style="margin-left: 2px;" :class="$style.submitButton" @click="showPostMenu">
@@ -131,20 +124,20 @@ SPDX-License-Identifier: AGPL-3.0-only
 	</div>
 	<footer :class="$style.footer">
 		<div :class="$style.footerLeft">
-			<button v-tooltip="i18n.ts.attachFile + ' (' + i18n.ts.upload + ')'" class="_button" :class="$style.footerButton" @click="chooseFileFromPc"><i class="ti ti-photo-plus"></i></button>
-			<button v-tooltip="i18n.ts.attachFile + ' (' + i18n.ts.fromDrive + ')'" class="_button" :class="$style.footerButton" @click="chooseFileFromDrive"><i class="ti ti-cloud-download"></i></button>
-			<button v-if="!props.updateMode" v-tooltip="i18n.ts.poll" class="_button" :class="[$style.footerButton, { [$style.footerButtonActive]: poll }]" @click="togglePoll"><i class="ti ti-chart-arrows"></i></button>
-			<button v-tooltip="i18n.ts.useCw" class="_button" :class="[$style.footerButton, { [$style.footerButtonActive]: useCw }]" @click="useCw = !useCw"><i class="ti ti-eye-off"></i></button>
-			<button v-if="prefer.s.showHashtagButtonInPostForm" v-tooltip="i18n.ts.hashtags" class="_button" :class="[$style.footerButton, { [$style.footerButtonActive]: withHashtags }]" @click="withHashtags = !withHashtags"><i class="ti ti-hash"></i></button>
-			<button v-tooltip="i18n.ts.mention" class="_button" :class="$style.footerButton" @click="insertMention"><i class="ti ti-at"></i></button>
-                        <button v-if="prefer.s.showEventButtonInPostForm" v-tooltip="i18n.ts.event" class="_button" :class="$style.footerButton" @click="toggleEvent"><i class="ti ti-calendar"></i></button>
-                        <button v-if="prefer.s.showDrawingButtonInPostForm" v-tooltip="i18n.ts._hata._drawingTool.drawing" class="_button" :class="$style.footerButton" @click="openDrawingTool"><i class="ti ti-palette"></i></button>
-			<button v-if="showAddMfmFunction" v-tooltip="i18n.ts.addMfmFunction" class="_button" :class="$style.footerButton" @click="insertMfmFunction"><i class="ti ti-palette"></i></button>
-			<button v-if="postFormActions.length > 0" v-tooltip="i18n.ts.plugins" class="_button" :class="$style.footerButton" @click="showActions"><i class="ti ti-plug"></i></button>
+			<button v-tooltip="i18n.ts.attachFile + ' (' + i18n.ts.upload + ')'" class="_button" :class="$style.footerButton" @click="playHataIconMotion($event, 'image-rise'); chooseFileFromPc($event)"><i class="ti ti-photo-plus"></i></button>
+			<button v-tooltip="i18n.ts.attachFile + ' (' + i18n.ts.fromDrive + ')'" class="_button" :class="$style.footerButton" @click="playHataIconMotion($event, 'drive-drop'); chooseFileFromDrive($event)"><i class="ti ti-cloud-download"></i></button>
+			<button v-if="!props.updateMode" v-tooltip="i18n.ts.poll" class="_button" :class="[$style.footerButton, { [$style.footerButtonActive]: poll }]" @click="playHataIconMotion($event, 'poll-grow'); togglePoll()"><i class="ti ti-chart-arrows"></i></button>
+			<button v-tooltip="i18n.ts.useCw" class="_button" :class="[$style.footerButton, { [$style.footerButtonActive]: useCw }]" @click="playHataIconMotion($event, 'eye-close'); useCw = !useCw"><i class="ti ti-eye-off"></i></button>
+			<button v-if="prefer.s.showHashtagButtonInPostForm" v-tooltip="i18n.ts.hashtags" class="_button" :class="[$style.footerButton, { [$style.footerButtonActive]: withHashtags }]" @click="playHataIconMotion($event, 'hash-tilt'); withHashtags = !withHashtags"><i class="ti ti-hash"></i></button>
+			<button v-tooltip="i18n.ts.mention" class="_button" :class="$style.footerButton" @click="playHataIconMotion($event, 'mention-orbit'); insertMention()"><i class="ti ti-at"></i></button>
+                        <button v-if="prefer.s.showEventButtonInPostForm" v-tooltip="i18n.ts.event" class="_button" :class="$style.footerButton" @click="playHataIconMotion($event, 'calendar-page'); toggleEvent()"><i class="ti ti-calendar"></i></button>
+                        <button v-if="prefer.s.showDrawingButtonInPostForm" v-tooltip="i18n.ts._hata._drawingTool.drawing" class="_button" :class="$style.footerButton" @click="playHataIconMotion($event, 'palette-tilt'); openDrawingTool()"><i class="ti ti-palette"></i></button>
+			<button v-if="showAddMfmFunction" v-tooltip="i18n.ts.addMfmFunction" class="_button" :class="$style.footerButton" @click="playHataIconMotion($event, 'palette-tilt'); insertMfmFunction($event)"><i class="ti ti-palette"></i></button>
+			<button v-if="postFormActions.length > 0" v-tooltip="i18n.ts.plugins" class="_button" :class="$style.footerButton" @click="playHataIconMotion($event, 'plug-connect'); showActions($event)"><i class="ti ti-plug"></i></button>
 			<!-- 旗鯖fork: 絵文字挿入ボタンを footerRight から footerLeft の末尾に移動。
 			     従来は他ボタンから離れた右端に表示されていたため、他の投稿フォームボタン群と
 			     並べて表示してほしいというユーザー要望に対応。 -->
-			<button v-tooltip="i18n.ts.emoji" class="_button" :class="$style.footerButton" @click="insertEmoji"><i class="ti ti-mood-happy"></i></button>
+			<button v-tooltip="i18n.ts.emoji" class="_button" :class="$style.footerButton" @click="playHataIconMotion($event, 'emoji-pop'); insertEmoji($event)"><i class="ti ti-mood-happy"></i></button>
 		</div>
 	</footer>
 	<datalist id="hashtags">
@@ -181,6 +174,10 @@ const MkExternalReactionPicker = defineAsyncComponent(() => import('@/components
 import MkEventEditor from '@/components/MkEventEditor.vue';
 import MkScheduledNoteDelete from '@/components/MkScheduledNoteDelete.vue';
 import MkNoteSimple from '@/components/MkNoteSimple.vue';
+import MkHataPostDelayStatus from '@/components/MkHataPostDelayStatus.vue';
+import MkHataPostSubmitVisual from '@/components/MkHataPostSubmitVisual.vue';
+import type { HataPostSubmitState } from '@/components/MkHataPostSubmitVisual.vue';
+import { playHataIconMotion } from '@/utility/hata-icon-motion.js';
 import { extractMentions } from '@/utility/extract-mentions.js';
 import { formatTimeString } from '@/utility/format-time-string.js';
 import { Autocomplete } from '@/utility/autocomplete.js';
@@ -244,7 +241,15 @@ const otherSettingsButton = useTemplateRef('otherSettingsButton');
 
 const posting = ref(false);
 const posted = ref(false);
+const submitMotionState = ref<HataPostSubmitState>('idle');
 const postDelay = createPostSendDelayController();
+const visibilityFlashIcon = ref<string | null>(null);
+let visibilityFlashTimer: number | null = null;
+
+function waitForSubmitMotion(duration: number): Promise<void> {
+	if (!prefer.s.animation || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return Promise.resolve();
+	return new Promise(resolve => window.setTimeout(resolve, duration));
+}
 const text = ref(props.initialText ?? '');
 const files = shallowRef(props.initialFiles ?? ([] as Misskey.entities.DriveFile[]));
 const poll = ref<PollEditorModelValue | null>(null);
@@ -321,6 +326,7 @@ const uploader = useUploader({
 onUnmounted(() => {
 	postDelay.dispose();
 	uploader.dispose();
+	if (visibilityFlashTimer != null) window.clearTimeout(visibilityFlashTimer);
 });
 
 uploader.events.on('itemUploaded', ctx => {
@@ -664,17 +670,30 @@ function setVisibility() {
 		currentVisibility: visibility.value,
 		isSilenced: $i.isSilenced,
 		localOnly: localOnly.value,
+		motionPreset: 'postform',
 		anchorElement: visibilityButton.value,
 		...(replyTargetNote.value ? { isReplyVisibilitySpecified: replyTargetNote.value.visibility === 'specified' } : {}),
 	}, {
 		changeVisibility: v => {
+			const changed = visibility.value !== v;
 			visibility.value = v;
 			if (prefer.s.rememberNoteVisibility) {
 				store.set('visibility', visibility.value);
 			}
+			if (changed) showVisibilityFlash(v);
 		},
 		closed: () => dispose(),
 	});
+}
+
+function showVisibilityFlash(value: typeof Misskey.noteVisibilities[number]): void {
+	if (!prefer.s.animation || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+	if (visibilityFlashTimer != null) window.clearTimeout(visibilityFlashTimer);
+	visibilityFlashIcon.value = ({ public: 'ti ti-world', home: 'ti ti-home', followers: 'ti ti-lock', specified: 'ti ti-mail' })[value];
+	visibilityFlashTimer = window.setTimeout(() => {
+		visibilityFlashIcon.value = null;
+		visibilityFlashTimer = null;
+	}, 560);
 }
 
 async function toggleLocalOnly() {
@@ -828,7 +847,7 @@ function showOtherSettings() {
 		},
 	}] satisfies MenuItem[];
 
-	os.popupMenu(menuItems, otherSettingsButton.value);
+	os.popupMenu(menuItems, otherSettingsButton.value, { motionPreset: 'postform' });
 }
 //#endregion
 
@@ -1277,20 +1296,28 @@ async function post(ev?: MouseEvent) {
 	// 旗鯖fork(ベータ): 警告・添付アップロード・プラグイン処理を終えた後、notes/create の直前でだけ待つ。
 	// 編集・予約・下書き・外部アカウント投稿は対象外。待機中はサーバーや連合へ予約状態を送らない。
 	if (postSendDelayEnabled.value && !props.updateMode && !useExternalAccount.value) {
+		submitMotionState.value = 'countdown';
 		const shouldSend = await postDelay.begin(postSendDelaySeconds.value);
-		if (!shouldSend) return;
+		if (!shouldSend) {
+			submitMotionState.value = 'idle';
+			return;
+		}
 	}
 
 	posting.value = true;
+	submitMotionState.value = 'sending';
 
 	// 外部アカウントでの投稿
 	if (useExternalAccount.value) {
 		if (!externalAccount.value) {
+			submitMotionState.value = 'failure';
+			await waitForSubmitMotion(980);
 			await os.alert({
 				type: 'error',
 				text: i18n.ts._hata._postFormCustom.externalAccountNotLinked,
 			});
 			posting.value = false;
+			submitMotionState.value = 'idle';
 			return;
 		}
 
@@ -1308,6 +1335,7 @@ async function post(ev?: MouseEvent) {
 					});
 					if (canceled) {
 						posting.value = false;
+						submitMotionState.value = 'idle';
 						return;
 					}
 				}
@@ -1325,10 +1353,13 @@ async function post(ev?: MouseEvent) {
 
 			await callExternalApi('notes/create', externalPostData);
 
-			if (props.freezeAfterPosted) {
-				posted.value = true;
-			} else {
+			posted.value = true;
+			submitMotionState.value = 'success';
+			await waitForSubmitMotion(720);
+			if (!props.freezeAfterPosted) {
 				clear();
+				posted.value = false;
+				submitMotionState.value = 'idle';
 			}
 
 			nextTick(() => {
@@ -1344,11 +1375,14 @@ async function post(ev?: MouseEvent) {
 			});
 		} catch (err) {
 			console.error('External post error:', err);
+			submitMotionState.value = 'failure';
+			await waitForSubmitMotion(980);
 			await os.alert({
 				type: 'error',
 				text: i18n.ts._hata._postFormCustom.externalPostFailed,
 			});
 			posting.value = false;
+			submitMotionState.value = 'idle';
 		}
 
 		return;
@@ -1356,16 +1390,20 @@ async function post(ev?: MouseEvent) {
 
 	if (props.updateMode && postData.noteId == null) {
 		posting.value = false;
+		submitMotionState.value = 'idle';
 		throw new Error('Cannot update a note without a note ID');
 	}
 	const request: Promise<Misskey.entities.Note | null> = props.updateMode
 		? misskeyApi('notes/update', { ...postData, noteId: postData.noteId!, text: postData.text ?? '' }, token).then(() => null)
 		: misskeyApi('notes/create', postData, token).then(res => res.createdNote);
-	request.then((createdNote) => {
-		if (props.freezeAfterPosted) {
-			posted.value = true;
-		} else {
+	request.then(async (createdNote) => {
+		posted.value = true;
+		submitMotionState.value = 'success';
+		await waitForSubmitMotion(720);
+		if (!props.freezeAfterPosted) {
 			clear();
+			posted.value = false;
+			submitMotionState.value = 'idle';
 		}
 
 		if (createdNote) {
@@ -1437,8 +1475,11 @@ async function post(ev?: MouseEvent) {
 				misskeyApi('notes/drafts/delete', { draftId: serverDraftId.value });
 			}
 		});
-	}).catch(err => {
+	}).catch(async err => {
+		submitMotionState.value = 'failure';
+		await waitForSubmitMotion(980);
 		posting.value = false;
+		submitMotionState.value = 'idle';
 		os.alert({
 			type: 'error',
 			text: `${err.message}\n${(err as any).id}`,
@@ -1543,7 +1584,7 @@ function showActions(ev: MouseEvent) {
 				if (key === 'cw') { useCw.value = value !== null; cw.value = value; }
 			});
 		},
-	})), ev.currentTarget ?? ev.target);
+	})), ev.currentTarget ?? ev.target, { motionPreset: 'postform' });
 }
 
 async function openMfmCheatSheet() {
@@ -1704,12 +1745,12 @@ async function openAccountMenu(ev: MouseEvent) {
 		action: () => {
 			showDraftsDialog(true);
 		},
-	}, { type: 'divider' }, ...items, ...externalItems], (ev.currentTarget ?? ev.target ?? undefined) as HTMLElement | undefined);
+	}, { type: 'divider' }, ...items, ...externalItems], (ev.currentTarget ?? ev.target ?? undefined) as HTMLElement | undefined, { motionPreset: 'postform' });
 }
 
 function showPerUploadItemMenu(item: UploaderItem, ev: MouseEvent) {
 	const menu = uploader.getMenu(item);
-	os.popupMenu(menu, ev.currentTarget ?? ev.target);
+	os.popupMenu(menu, ev.currentTarget ?? ev.target, { motionPreset: 'postform' });
 }
 
 function showPerUploadItemMenuViaContextmenu(item: UploaderItem, ev: MouseEvent) {
@@ -1766,7 +1807,7 @@ function showPostMenu(ev: MouseEvent) {
 		disabled: files.value.length < 1,
 	});
 
-	os.popupMenu(menuItems, ev.currentTarget ?? ev.target);
+	os.popupMenu(menuItems, ev.currentTarget ?? ev.target, { motionPreset: 'postform' });
 }
 
 function toggleDeliveryTargets() {
@@ -1914,21 +1955,8 @@ defineExpose({
 	}
 }
 
-.postDelayActive > :not(.postDelayFrame):not(.postDelayStatus) {
+.postDelayActive > :not(.postDelayStatus) {
 	pointer-events: none;
-}
-
-.postDelayFrame {
-	position: absolute;
-	inset: 0;
-	z-index: 1090;
-	padding: 3px;
-	border-radius: 12px;
-	background: conic-gradient(from -90deg, var(--MI_THEME-accent) 0deg var(--hata-post-delay-progress), color-mix(in srgb, var(--MI_THEME-accent) 18%, transparent) 0deg 360deg);
-	pointer-events: none;
-	-webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-	-webkit-mask-composite: xor;
-	mask-composite: exclude;
 }
 
 .postDelayStatus {
@@ -1939,16 +1967,24 @@ defineExpose({
 	display: flex;
 	align-items: center;
 	gap: 8px;
+	width: min(330px, calc(100% - 20px));
 	max-width: calc(100% - 20px);
+	min-width: 0;
 	padding: 7px 8px 7px 12px;
 	border: 1px solid color-mix(in srgb, var(--MI_THEME-accent) 45%, var(--MI_THEME-divider));
 	border-radius: 999px;
 	background: color-mix(in srgb, var(--MI_THEME-panel) 94%, transparent);
 	box-shadow: 0 6px 24px color-mix(in srgb, var(--MI_THEME-shadow) 32%, transparent);
+	box-sizing: border-box;
+	overflow: hidden;
 	white-space: nowrap;
-	transform: translateX(-50%);
 	backdrop-filter: blur(10px);
+	--hata-delay-base-transform: translateX(-50%);
+	transform: var(--hata-delay-base-transform);
 }
+
+.visibilityFlash{display:grid;position:absolute;left:50%;top:50%;z-index:1110;width:58px;height:58px;place-items:center;border:1px solid color-mix(in srgb,var(--MI_THEME-accent) 42%,var(--MI_THEME-divider));border-radius:18px;background:color-mix(in srgb,var(--MI_THEME-panel) 88%,transparent);color:var(--MI_THEME-accent);box-shadow:0 14px 38px color-mix(in srgb,var(--MI_THEME-shadow) 24%,transparent);backdrop-filter:blur(12px);pointer-events:none;transform:translate(-50%,-50%);font-size:30px}
+:global(.hata-visibility-flash-enter-active){transition:opacity .18s ease-out,transform .24s cubic-bezier(.16,1,.3,1)}:global(.hata-visibility-flash-leave-active){transition:opacity .22s ease-in,transform .24s cubic-bezier(.4,0,1,1)}:global(.hata-visibility-flash-enter-from){opacity:0;transform:translate(-50%,-44%) scale(.82)}:global(.hata-visibility-flash-leave-to){opacity:0;transform:translate(-50%,-56%) scale(.96)}
 
 .postDelayAction,
 .postDelayActionPrimary {
@@ -2067,8 +2103,12 @@ defineExpose({
 }
 
 .submitInner, .submitInnerMenu {
-	padding: 0 12px;
-	line-height: 34px;
+	display: flex;
+	height: 34px;
+	align-items: center;
+	justify-content: center;
+	padding: 0 8px;
+	line-height: 1;
 	font-weight: bold;
 	border-radius: 6px 0 0 6px;
 	min-width: 90px;
@@ -2078,8 +2118,13 @@ defineExpose({
 	background: var(--MI_THEME-accent);
 }
 
+.submitInner {
+	width: 90px;
+	min-width: 90px;
+}
+
 .submitInnerMenu {
-	padding: initial;
+	padding: 0 5px;
 	border-radius: 0 6px 6px 0;
 	min-width: 0;
 }

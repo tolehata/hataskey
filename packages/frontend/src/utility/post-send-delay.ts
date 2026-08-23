@@ -33,6 +33,7 @@ export function setPostSendDelaySeconds(value: unknown): void {
 }
 
 export type PostSendDelayController = ReturnType<typeof createPostSendDelayController>;
+export type PostSendDelayExitMode = 'complete' | 'cancel';
 
 // 旗鯖fork(ベータ): notes/create を呼ぶ直前だけ待機させる端末内タイマー。
 // バックエンドや連合処理には予約状態を渡さず、待機終了後に既存の投稿処理へ戻す。
@@ -40,24 +41,24 @@ export function createPostSendDelayController() {
 	const active = ref(false);
 	const remainingMs = ref(0);
 	const durationMs = ref(0);
+	const exitMode = ref<PostSendDelayExitMode>('cancel');
 	let intervalId: number | null = null;
 	let resolvePending: ((shouldSend: boolean) => void) | null = null;
 	let deadline = 0;
 
 	const remainingSeconds = computed(() => Math.max(1, Math.ceil(remainingMs.value / 1000)));
 	const progress = computed(() => durationMs.value > 0 ? Math.max(0, Math.min(1, remainingMs.value / durationMs.value)) : 0);
-	const frameStyle = computed(() => ({ '--hata-post-delay-progress': `${progress.value * 360}deg` }));
 
 	function clearTimer(): void {
 		if (intervalId != null) window.clearInterval(intervalId);
 		intervalId = null;
 	}
 
-	function finish(shouldSend: boolean): void {
+	function finish(shouldSend: boolean, mode: PostSendDelayExitMode): void {
 		if (!active.value) return;
 		clearTimer();
+		exitMode.value = mode;
 		active.value = false;
-		remainingMs.value = 0;
 		const resolve = resolvePending;
 		resolvePending = null;
 		resolve?.(shouldSend);
@@ -65,7 +66,7 @@ export function createPostSendDelayController() {
 
 	function update(): void {
 		remainingMs.value = Math.max(0, deadline - Date.now());
-		if (remainingMs.value === 0) finish(true);
+		if (remainingMs.value === 0) finish(true, 'complete');
 	}
 
 	function begin(seconds: unknown): Promise<boolean> {
@@ -73,6 +74,7 @@ export function createPostSendDelayController() {
 		const normalized = normalizeSeconds(seconds);
 		durationMs.value = normalized * 1000;
 		remainingMs.value = durationMs.value;
+		exitMode.value = 'cancel';
 		deadline = Date.now() + durationMs.value;
 		active.value = true;
 		return new Promise<boolean>((resolve) => {
@@ -82,17 +84,17 @@ export function createPostSendDelayController() {
 	}
 
 	function cancel(): void {
-		finish(false);
+		finish(false, 'cancel');
 	}
 
 	function sendNow(): void {
-		finish(true);
+		finish(true, 'complete');
 	}
 
 	function dispose(): void {
-		finish(false);
+		finish(false, 'cancel');
 		clearTimer();
 	}
 
-	return { active, remainingSeconds, progress, frameStyle, begin, cancel, sendNow, dispose };
+	return { active, remainingSeconds, progress, exitMode, begin, cancel, sendNow, dispose };
 }

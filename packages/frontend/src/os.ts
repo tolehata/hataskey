@@ -671,6 +671,7 @@ export function popupMenu(items: (MenuItem | null)[], anchorElement?: HTMLElemen
 	align?: string;
 	width?: number;
 	onClosing?: () => void;
+	motionPreset?: 'postform';
 }): Promise<void> {
 	if (!(anchorElement instanceof HTMLElement)) {
 		anchorElement = null;
@@ -684,6 +685,7 @@ export function popupMenu(items: (MenuItem | null)[], anchorElement?: HTMLElemen
 			width: options?.width,
 			align: options?.align,
 			returnFocusTo,
+			motionPreset: options?.motionPreset,
 		}, {
 			closed: () => {
 				resolve();
