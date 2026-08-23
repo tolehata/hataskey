@@ -16,7 +16,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 >
 	<template #header><i class="ti ti-chart-histogram"></i> {{ copy.title }}</template>
 
-	<div class="hatady-scope" :data-hatady-theme="theme" :class="$style.body">
+	<div class="hatady-scope" :data-hatady-theme="theme" :data-animation="prefer.s.animation ? 'true' : 'false'" :class="$style.body">
 		<!-- 期間セレクタ -->
 		<div :class="$style.rangeRow">
 			<button
@@ -40,10 +40,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<div :class="$style.secHead"><i class="ti ti-chart-bar"></i> {{ copy.monthly }}</div>
 				<div v-if="monthlyMax === 0" :class="$style.noData">{{ copy.noData }}</div>
 				<div v-else :class="$style.barChart">
-					<div v-for="mo in data.monthlyTotals" :key="mo.month" :class="$style.barCol">
+					<div v-for="(mo, i) in data.monthlyTotals" :key="mo.month" :class="$style.barCol">
 						<span :class="$style.barVal">{{ mo.minutes > 0 ? fmtDurShort(mo.minutes) : '' }}</span>
 						<span :class="$style.barTrack">
-							<span :class="$style.barFill" :style="{ height: pct(mo.minutes, monthlyMax) + '%' }"></span>
+							<span :class="$style.barFill" :style="{ height: pct(mo.minutes, monthlyMax) + '%', animationDelay: `${i * 55}ms` }"></span>
 						</span>
 						<span :class="$style.barLbl">{{ moLabel(mo.month) }}</span>
 					</div>
@@ -55,7 +55,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<div :class="$style.secHead"><i class="ti ti-calendar-week"></i> {{ copy.weekday }}</div>
 				<div :class="$style.wdRow">
 					<div v-for="(min, i) in data.weekdayMinutes" :key="i" :class="$style.wdCol">
-						<span :class="$style.wdTrack"><span :class="$style.wdFill" :style="{ height: pct(min, weekdayMax) + '%', background: i === 0 || i === 6 ? '#d98a5a' : 'var(--hy-accent)' }"></span></span>
+						<span :class="$style.wdTrack"><span :class="$style.wdFill" :style="{ height: pct(min, weekdayMax) + '%', background: i === 0 || i === 6 ? '#d98a5a' : 'var(--hy-accent)', animationDelay: `${i * 48}ms` }"></span></span>
 						<span :class="$style.wdLbl">{{ weekdayLabels[i] }}</span>
 					</div>
 				</div>
@@ -68,7 +68,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<span
 						v-for="(min, h) in data.hourlyMinutes" :key="h"
 						:class="$style.hourCell"
-						:style="{ background: heatColor(min, hourlyMax) }"
+						:style="{ background: heatColor(min, hourlyMax), animationDelay: `${h * 22}ms` }"
 						:title="`${h}:00 — ${fmtDur(min)}`"
 					>{{ h % 6 === 0 ? h : '' }}</span>
 				</div>
@@ -88,7 +88,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<span
 							v-for="(mm, mi) in s.monthly" :key="mi"
 							:class="$style.sparkBar"
-							:style="{ height: pct(mm.minutes, subjectMax) + '%', background: subjColor(si), opacity: mm.minutes > 0 ? 1 : 0.15 }"
+							:style="{ height: pct(mm.minutes, subjectMax) + '%', background: subjColor(si), opacity: mm.minutes > 0 ? 1 : 0.15, animationDelay: `${si * 60 + mi * 35}ms` }"
 							:title="`${moLabel(mm.month)} — ${fmtDur(mm.minutes)}`"
 						></span>
 					</div>
@@ -100,9 +100,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<div :class="$style.secHead"><i class="ti ti-book-upload"></i> {{ copy.finished }}</div>
 				<div v-if="finishedMax === 0 && pagesMax === 0" :class="$style.noData">{{ copy.noData }}</div>
 				<div v-else :class="$style.finRow">
-					<div v-for="mo in data.monthlyFinished" :key="mo.month" :class="$style.finCol">
+					<div v-for="(mo, i) in data.monthlyFinished" :key="mo.month" :class="$style.finCol">
 						<span :class="$style.finBooks">{{ mo.books > 0 ? mo.books : '' }}</span>
-						<span :class="$style.finTrack"><span :class="$style.finFill" :style="{ height: pct(mo.books, Math.max(1, finishedMax)) + '%' }"></span></span>
+						<span :class="$style.finTrack"><span :class="$style.finFill" :style="{ height: pct(mo.books, Math.max(1, finishedMax)) + '%', animationDelay: `${i * 55}ms` }"></span></span>
 						<span :class="$style.finLbl">{{ moLabel(mo.month) }}</span>
 					</div>
 				</div>
@@ -121,6 +121,7 @@ import { i18n } from '@/i18n.js';
 import { hatadyTheme, hatadyTzOffset } from '@/utility/hatady-prefs.js';
 import { versatileLang } from '@/utility/intl-const.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
+import { prefer } from '@/preferences.js';
 
 const emit = defineEmits<{ (ev: 'closed'): void }>();
 const dialog = ref<any>(null);
@@ -214,6 +215,9 @@ function fmtDurShort(min: number): string {
 /* 自己ベスト */
 .bests { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
 .bestCard { text-align: center; background: var(--hy-surface); border: 1px solid var(--hy-border); border-radius: 13px; padding: 14px 8px; }
+.body[data-animation='true'] .bestCard { animation: cardIn .42s cubic-bezier(.2,.8,.2,1) both; }
+.body[data-animation='true'] .bestCard:nth-child(2) { animation-delay: 70ms; }
+.body[data-animation='true'] .bestCard:nth-child(3) { animation-delay: 140ms; }
 .bestNum { font-family: var(--hy-heading); font-weight: 900; font-size: 22px; color: var(--hy-accent-ink); }
 .bestUnit { font-size: 13px; margin-left: 2px; }
 .bestLbl { display: flex; align-items: center; justify-content: center; gap: 4px; font-size: 10.5px; color: var(--hy-muted); margin-top: 3px; }
@@ -230,6 +234,7 @@ function fmtDurShort(min: number): string {
 .barVal { font-size: 9.5px; color: var(--hy-muted); height: 14px; }
 .barTrack { width: 100%; max-width: 34px; flex: 1; display: flex; align-items: flex-end; background: linear-gradient(var(--hy-surface), var(--hy-surface)); border-radius: 6px 6px 0 0; }
 .barFill { width: 100%; background: linear-gradient(180deg, #f0b46a, #d9824a); border-radius: 6px 6px 0 0; transition: height .4s cubic-bezier(.34,1.2,.64,1); min-height: 0; }
+.body[data-animation='true'] .barFill { transform-origin: center bottom; animation: barRise .54s cubic-bezier(.2,.9,.2,1) both; }
 .barLbl { font-size: 10px; color: var(--hy-muted); margin-top: 5px; white-space: nowrap; }
 
 /* 曜日 */
@@ -237,11 +242,13 @@ function fmtDurShort(min: number): string {
 .wdCol { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; }
 .wdTrack { width: 60%; max-width: 26px; flex: 1; display: flex; align-items: flex-end; }
 .wdFill { width: 100%; border-radius: 5px 5px 0 0; transition: height .4s; }
+.body[data-animation='true'] .wdFill { transform-origin: center bottom; animation: barRise .5s cubic-bezier(.2,.9,.2,1) both; }
 .wdLbl { font-size: 11px; color: var(--hy-muted); margin-top: 5px; }
 
 /* 時間帯 */
 .hourRow { display: grid; grid-template-columns: repeat(24, 1fr); gap: 3px; }
 .hourCell { aspect-ratio: 1; border-radius: 3px; display: flex; align-items: center; justify-content: center; font-size: 8px; color: var(--hy-muted); }
+.body[data-animation='true'] .hourCell { animation: heatReveal .34s cubic-bezier(.2,.9,.2,1) both; }
 .hourLegend { display: flex; justify-content: space-between; font-size: 9px; color: var(--hy-muted); margin-top: 4px; padding: 0 2px; }
 
 /* 分野推移 */
@@ -252,6 +259,7 @@ function fmtDurShort(min: number): string {
 .trendTotal { font-size: 11px; color: var(--hy-muted); }
 .spark { display: flex; align-items: flex-end; gap: 3px; height: 34px; }
 .sparkBar { flex: 1; border-radius: 3px 3px 0 0; min-height: 2px; transition: height .4s; }
+.body[data-animation='true'] .sparkBar { transform-origin: center bottom; animation: barRise .46s cubic-bezier(.2,.9,.2,1) both; }
 
 /* 読了 */
 .finRow { display: flex; align-items: flex-end; gap: 6px; height: 96px; }
@@ -259,7 +267,30 @@ function fmtDurShort(min: number): string {
 .finBooks { font-size: 11px; font-weight: 800; color: var(--hy-accent-ink); height: 15px; }
 .finTrack { width: 100%; max-width: 30px; flex: 1; display: flex; align-items: flex-end; }
 .finFill { width: 100%; background: linear-gradient(180deg, #8ab38a, #5a9a5a); border-radius: 5px 5px 0 0; transition: height .4s; }
+.body[data-animation='true'] .finFill { transform-origin: center bottom; animation: barRise .5s cubic-bezier(.2,.9,.2,1) both; }
 .finLbl { font-size: 10px; color: var(--hy-muted); margin-top: 5px; }
 .pagesNote { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--hy-muted); margin-top: 10px; }
 .pagesNote i { color: var(--hy-accent); }
+
+@keyframes barRise {
+	from { opacity: .18; transform: scaleY(.08); }
+	to { opacity: 1; transform: scaleY(1); }
+}
+
+@keyframes heatReveal {
+	from { opacity: 0; transform: translateY(5px) scale(.65); }
+	to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes cardIn {
+	from { opacity: 0; transform: translateY(8px) scale(.98); }
+	to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.body :is(.bestCard, .barFill, .wdFill, .hourCell, .sparkBar, .finFill) {
+		animation: none !important;
+		transition: none !important;
+	}
+}
 </style>
