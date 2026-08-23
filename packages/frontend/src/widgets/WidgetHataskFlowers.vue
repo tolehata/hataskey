@@ -22,7 +22,7 @@ Hataskの育成中の花と直近のギャラリーを、通常UI・HatasabaUI�
 				aria-valuemin="0"
 				aria-valuemax="100"
 			>
-				<span :class="$style.progressInner">{{ flower.emoji }}</span>
+				<span :class="$style.progressInner"><HataskEmoji :emoji="flower.emoji"/></span>
 			</span>
 			<span :class="$style.growingText">
 				<span :class="$style.kicker">{{ copy.nowGrowing }}</span>
@@ -38,7 +38,7 @@ Hataskの育成中の花と直近のギャラリーを、通常UI・HatasabaUI�
 		</div>
 		<div v-if="flowers.length" :class="$style.flowerList">
 			<button v-for="item in flowers" :key="item.id" type="button" :class="$style.flowerChip" :title="localizeFloraName(item.name)" @click="goHatask">
-				<span :class="$style.flowerEmoji">{{ item.emoji }}</span>
+				<span :class="$style.flowerEmoji"><HataskEmoji :emoji="item.emoji"/></span>
 				<span :class="$style.chipName">{{ localizeFloraName(item.name) }}</span>
 			</button>
 		</div>
@@ -55,6 +55,7 @@ import type { FormWithDefault, GetFormResultType } from '@/utility/form.js';
 import type { HataskFlower } from '@/utility/hatask-flower-widget.js';
 import type { HataskGrowingFlower } from '@/utility/hatask-flower-growth.js';
 import MkContainer from '@/components/MkContainer.vue';
+import HataskEmoji from '@/components/HataskEmoji.vue';
 import { i18n } from '@/i18n.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { useRouter } from '@/router.js';

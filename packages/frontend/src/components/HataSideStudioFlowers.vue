@@ -6,7 +6,7 @@ HataSideStudio のサイドメニュー専用。元の Hatask お花ウィジェ
 <template>
 <button type="button" :class="$style.root" :data-size="props.size" @click="router.push('/hatask')">
 	<span :class="$style.ring" :style="{ '--progress': `${flower.progress * 3.6}deg` }" role="progressbar" :aria-valuenow="flower.progress" aria-valuemin="0" aria-valuemax="100">
-		<span>{{ flower.emoji }}</span>
+		<span><HataskEmoji :emoji="flower.emoji"/></span>
 	</span>
 	<span :class="$style.copy">
 		<small>{{ copy.growing }}</small>
@@ -27,6 +27,7 @@ import { localizeFloraName } from '@/utility/hatask-flora.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { useRouter } from '@/router.js';
 import { i18n } from '@/i18n.js';
+import HataskEmoji from '@/components/HataskEmoji.vue';
 
 const props = defineProps<{ size: 'small' | 'normal' | 'large' }>();
 const router = useRouter();

@@ -37,7 +37,7 @@
     <div v-else class="hk-empty" @click="activeTab='cal'">{{copy.noEvents}}</div>
     <div class="two">
       <div><div class="dept" :data-n="copy.sectionFour">MOOD<i></i></div><div class="mood" @click="activeTab='mood'" style="cursor:pointer"><div v-for="(m,i) in weekMoods" :key="i" :class="['md',!m.icon&&'off']"><i :class="m.icon||'ti ti-minus'"></i><small>{{m.day}}</small></div></div></div>
-      <div><div class="dept" :data-n="copy.sectionFive">GARDEN<i></i></div><div class="flow" @click="activeTab='garden'" style="cursor:pointer"><div class="fring"><svg viewBox="0 0 88 88"><circle cx="44" cy="44" r="38" fill="none" stroke="#e0dccf" stroke-width="7"/><circle cx="44" cy="44" r="38" fill="none" stroke="#a8552f" stroke-width="7" stroke-linecap="round" stroke-dasharray="239" :stroke-dashoffset="239-239*(flower.progress/100)"/></svg><div class="femo">{{flower.emoji}}</div></div><div class="fname">{{currentFlowerDisplayName}}・{{flower.progress}}%</div></div></div>
+      <div><div class="dept" :data-n="copy.sectionFive">GARDEN<i></i></div><div class="flow" @click="activeTab='garden'" style="cursor:pointer"><div class="fring"><svg viewBox="0 0 88 88"><circle cx="44" cy="44" r="38" fill="none" stroke="#e0dccf" stroke-width="7"/><circle cx="44" cy="44" r="38" fill="none" stroke="#a8552f" stroke-width="7" stroke-linecap="round" stroke-dasharray="239" :stroke-dashoffset="239-239*(flower.progress/100)"/></svg><div class="femo"><HataskEmoji :emoji="flower.emoji"/></div></div><div class="fname">{{currentFlowerDisplayName}}・{{flower.progress}}%</div></div></div>
     </div>
     <div class="dept" :data-n="copy.sectionSix">HATASK EYE<i></i></div>
     <div class="eye" @click="activeTab='eye'" style="cursor:pointer"><div class="eyel">EYE</div><div class="eyep">{{eyePhrase}}</div></div>
@@ -45,7 +45,7 @@
       <div v-if="x==='feedbackNotif'&&canAccessHataFeed" class="dept" :data-n="copy.sectionSeven">FEEDBACK<i></i></div>
       <div v-if="x==='feedbackNotif'&&canAccessHataFeed" class="hk-fork">
         <div v-if="hfNotifs.length===0" class="hk-empty">{{copy.noNotifications}}</div>
-        <button v-for="n in hfNotifs" :key="n.id" class="ev" :class="{'hk-unread':!n.isRead}" @click="onHfNotifClick(n)" style="width:100%;text-align:left;background:none;border:none;cursor:pointer;font-family:inherit"><i :class="['ti',hfIcon(n.type)]" style="color:var(--accent);min-width:20px"></i><span class="evt">{{notificationDisplayMessage(n)}}</span></button>
+		<button v-for="n in hfNotifs" :key="n.id" class="ev" :class="{'hk-unread':!n.isRead}" @click="onHfNotifClick(n)" style="width:100%;text-align:left;background:none;border:none;cursor:pointer;font-family:inherit"><i :class="['ti',hfIcon(n.type)]" style="color:var(--accent);min-width:20px"></i><HataFeedNotificationBody class="evt" :text="notificationDisplayMessage(n)"/></button>
       </div>
       <div v-if="x==='earthquake'" class="dept" :data-n="copy.sectionEight">EARTHQUAKE<i></i></div>
       <div v-if="x==='earthquake'" class="hk-fork">
@@ -67,12 +67,12 @@
       </div>
       <div class="cell c-clock span2"><div class="ctime">{{currentTime}}</div><div class="cdate">{{currentDate}}</div></div>
       <div class="cell c-streak"><div class="clabel"><i class="ti ti-flame"></i> {{copy.continuity}}</div><div class="snum">{{loginDays}}</div><div class="slab">{{copy.dayNumber}}</div><div v-if="loginRanking>0" class="srank"><i class="ti ti-trophy"></i>{{copyx.rank({rank:loginRanking.toString()})}} / {{loginTotal}}</div></div>
-      <div class="cell c-flow" @click="activeTab='garden'" style="cursor:pointer"><div class="clabel"><i class="ti ti-flower"></i> {{copy.tabGarden}}</div><div class="fring"><svg viewBox="0 0 76 76"><circle cx="38" cy="38" r="32" fill="none" stroke="#f0e4d2" stroke-width="7"/><circle cx="38" cy="38" r="32" fill="none" stroke="#12a89c" stroke-width="7" stroke-linecap="round" stroke-dasharray="201" :stroke-dashoffset="201-201*(flower.progress/100)"/></svg><div class="femo">{{flower.emoji}}</div></div><div class="fname">{{currentFlowerDisplayName}} {{flower.progress}}%</div></div>
+      <div class="cell c-flow" @click="activeTab='garden'" style="cursor:pointer"><div class="clabel"><i class="ti ti-flower"></i> {{copy.tabGarden}}</div><div class="fring"><svg viewBox="0 0 76 76"><circle cx="38" cy="38" r="32" fill="none" stroke="#f0e4d2" stroke-width="7"/><circle cx="38" cy="38" r="32" fill="none" stroke="#12a89c" stroke-width="7" stroke-linecap="round" stroke-dasharray="201" :stroke-dashoffset="201-201*(flower.progress/100)"/></svg><div class="femo"><HataskEmoji :emoji="flower.emoji"/></div></div><div class="fname">{{currentFlowerDisplayName}} {{flower.progress}}%</div></div>
       <div class="cell c-apps span2"><div class="clabel"><i class="ti ti-apps"></i> {{copy.hataApps}}</div><div class="apps"><button v-for="a in homeApps" :key="a.label" class="app" @click="a.fn"><span class="ai" :style="{background:a.color}"><i :class="a.icon"></i></span><small>{{a.short}}</small></button></div></div>
       <div class="cell c-ev span2" @click="activeTab='cal'" style="cursor:pointer"><div class="clabel"><i class="ti ti-calendar"></i> {{copy.upcomingSchedule}}</div><template v-if="upcomingEvents.length"><div v-for="ev in upcomingEvents.slice(0,3)" :key="ev.id" class="ev" @click.stop="goToEvent(ev)"><span class="evd">{{evMD(ev.date)}}</span><span class="evt">{{ev.title}}</span><span class="evtime">{{eventTimeLabel(ev)}}</span></div></template><div v-else style="font-size:.8rem;opacity:.9;padding:6px 0">{{copy.noEvents}}</div></div>
       <div class="cell c-mood" @click="activeTab='mood'" style="cursor:pointer"><div class="clabel"><i class="ti ti-mood-smile"></i> {{copy.tabMood}}</div><div class="mood"><div v-for="(m,i) in weekMoods" :key="i" :class="['md',!m.icon&&'off']"><i :class="m.icon||'ti ti-minus'"></i><small>{{m.day}}</small></div></div></div>
       <div class="cell c-eye" @click="activeTab='eye'" style="cursor:pointer"><div class="clabel"><i class="ti ti-eye"></i> Hatask Eye</div><div class="eyep">{{eyePhrase}}</div></div>
-      <div v-if="canAccessHataFeed" class="cell c-fork span2"><div class="clabel"><i class="ti ti-message-report"></i> {{copy.hataFeedNotifications}}</div><div v-if="hfNotifs.length===0" style="font-size:.8rem;opacity:.7;padding:4px 0">{{copy.noNotifications}}</div><button v-for="n in hfNotifs" :key="n.id" class="ev" @click="onHfNotifClick(n)" style="width:100%;text-align:left;background:none;border:none;cursor:pointer;font-family:inherit;color:inherit"><i :class="['ti',hfIcon(n.type)]" style="min-width:20px"></i><span class="evt">{{notificationDisplayMessage(n)}}</span></button></div>
+      <div v-if="canAccessHataFeed" class="cell c-fork span2"><div class="clabel"><i class="ti ti-message-report"></i> {{copy.hataFeedNotifications}}</div><div v-if="hfNotifs.length===0" style="font-size:.8rem;opacity:.7;padding:4px 0">{{copy.noNotifications}}</div><button v-for="n in hfNotifs" :key="n.id" class="ev" @click="onHfNotifClick(n)" style="width:100%;text-align:left;background:none;border:none;cursor:pointer;font-family:inherit;color:inherit"><i :class="['ti',hfIcon(n.type)]" style="min-width:20px"></i><HataFeedNotificationBody class="evt" :text="notificationDisplayMessage(n)"/></button></div>
       <div class="cell c-fork2 span2"><div class="clabel"><i class="ti ti-activity"></i> 地震・津波情報 <span style="font-weight:400;font-size:.6rem;opacity:.7">（気象庁発表）</span></div><MkEarthquakeTicker v-if="rawQuakes.length" :quakes="rawQuakes" :tsunami="tsunami" mode="compact" :showEmpty="false" @click="openEarthquake" style="cursor:pointer"/><div v-else style="font-size:.8rem;opacity:.7;padding:4px 0">最近の地震情報はありません</div></div>
     </div>
   </template>
@@ -95,14 +95,14 @@
       <div v-else class="su-empty" @click="activeTab='cal'">{{copy.noEvents}}</div>
       <div class="two">
         <div class="box"><div class="head">MOOD<b>{{copy.mood}}</b></div><div class="mood" @click="activeTab='mood'" style="cursor:pointer"><div v-for="(m,i) in weekMoods" :key="i" :class="['md',!m.icon&&'off']"><i :class="m.icon||'ti ti-minus'"></i><small>{{m.day}}</small></div></div></div>
-        <div class="box" @click="activeTab='garden'" style="cursor:pointer"><div class="head">GARDEN<b>{{copy.garden}}</b></div><div class="flow"><div class="fring"><svg viewBox="0 0 74 74"><circle cx="37" cy="37" r="31" fill="none" stroke="#ded7c4" stroke-width="7"/><circle cx="37" cy="37" r="31" fill="none" stroke="#ff4f9a" stroke-width="7" stroke-dasharray="195" :stroke-dashoffset="195-195*(flower.progress/100)"/></svg><div class="femo">{{flower.emoji}}</div></div><div class="fname">{{currentFlowerDisplayName}} {{flower.progress}}%</div></div></div>
+        <div class="box" @click="activeTab='garden'" style="cursor:pointer"><div class="head">GARDEN<b>{{copy.garden}}</b></div><div class="flow"><div class="fring"><svg viewBox="0 0 74 74"><circle cx="37" cy="37" r="31" fill="none" stroke="#ded7c4" stroke-width="7"/><circle cx="37" cy="37" r="31" fill="none" stroke="#ff4f9a" stroke-width="7" stroke-dasharray="195" :stroke-dashoffset="195-195*(flower.progress/100)"/></svg><div class="femo"><HataskEmoji :emoji="flower.emoji"/></div></div><div class="fname">{{currentFlowerDisplayName}} {{flower.progress}}%</div></div></div>
       </div>
       <div class="head">HATASK EYE<b>{{copy.eye}}</b><i></i></div>
       <div class="eye" @click="activeTab='eye'" style="cursor:pointer"><div class="eyel">EYE <i></i></div><div class="eyep">{{eyePhrase}}</div></div>
       <template v-if="canAccessHataFeed">
         <div class="head">FEEDBACK<b>{{copy.notifications}}</b><i></i></div>
         <div v-if="hfNotifs.length===0" class="su-empty">{{copy.noNotifications}}</div>
-        <button v-for="n in hfNotifs" :key="n.id" class="ev" @click="onHfNotifClick(n)" style="width:100%;text-align:left;background:none;border:none;cursor:pointer;font-family:inherit;color:inherit"><i :class="['ti',hfIcon(n.type)]" style="color:#2a52c0;min-width:20px"></i><span class="evt">{{notificationDisplayMessage(n)}}</span></button>
+        <button v-for="n in hfNotifs" :key="n.id" class="ev" @click="onHfNotifClick(n)" style="width:100%;text-align:left;background:none;border:none;cursor:pointer;font-family:inherit;color:inherit"><i :class="['ti',hfIcon(n.type)]" style="color:#2a52c0;min-width:20px"></i><HataFeedNotificationBody class="evt" :text="notificationDisplayMessage(n)"/></button>
       </template>
       <div class="head">EARTHQUAKE<b>地震</b><i></i></div>
       <div style="font-size:.68rem;color:#5a5a6a;margin-bottom:6px">気象庁発表の情報を表示します</div>
@@ -137,7 +137,7 @@
       <div v-for="ev in pagedCalList" :key="ev.id" :class="['htk-dayev-row',viewingEvent?.id===ev.id&&'active']" @click="openEventDetail(ev)">
         <div class="htk-dayev-dot" :style="{background:ev.color}"></div>
         <div class="htk-dayev-body">
-          <div class="htk-dayev-title">{{ev.emoji}} {{ev.title}}<span v-if="ev.isShared" style="opacity:.4;font-size:.78em;margin-left:6px">@{{ev.username}}</span></div>
+          <div class="htk-dayev-title"><HataskEmoji :emoji="ev.emoji"/> {{ev.title}}<span v-if="ev.isShared" style="opacity:.4;font-size:.78em;margin-left:6px">@{{ev.username}}</span></div>
           <div class="htk-dayev-time">{{eventDateTimeLabel(ev)}}</div>
         </div>
       </div>
@@ -153,7 +153,7 @@
       <div :class="['htk-dayev-row',viewingEvent?.id===ev.id&&'active']" @click="openEventDetail(ev)">
         <div class="htk-dayev-dot" :style="{background:ev.color}"></div>
         <div class="htk-dayev-body">
-          <div class="htk-dayev-title">{{ev.emoji}} {{ev.title}}<span v-if="ev.isShared" style="opacity:.4;font-size:.78em;margin-left:6px">@{{ev.username}}</span></div>
+          <div class="htk-dayev-title"><HataskEmoji :emoji="ev.emoji"/> {{ev.title}}<span v-if="ev.isShared" style="opacity:.4;font-size:.78em;margin-left:6px">@{{ev.username}}</span></div>
           <div class="htk-dayev-time">{{eventTimeLabel(ev)}}</div>
         </div>
         <div class="htk-dayev-chevron"><i class="ti" :class="viewingEvent?.id===ev.id?'ti-chevron-up':'ti-chevron-down'"></i></div>
@@ -245,7 +245,7 @@
   <div class="htk-lg htk-anim"><div class="htk-gc">
     <h3 class="htk-sec-title">{{editingEvent?copy.editEvent:copy.newEvent}}</h3>
     <div class="htk-fg"><span class="htk-fl">{{copy.title}}</span><input class="htk-inp" v-model="newEvent.title" :placeholder="copy.eventTitlePlaceholder"></div>
-    <div class="htk-fg"><span class="htk-fl">{{copy.emoji}}</span><div class="htk-emp-row"><span v-for="e in eventEmojis" :key="e" :class="['htk-emp-i',newEvent.emoji===e&&'on']" @click="newEvent.emoji=e">{{e}}</span></div></div>
+    <div class="htk-fg"><span class="htk-fl">{{copy.emoji}}</span><div class="htk-emp-row"><span v-for="e in eventEmojis" :key="e" :class="['htk-emp-i',newEvent.emoji===e&&'on']" @click="newEvent.emoji=e"><HataskEmoji :emoji="e"/></span></div></div>
     <div class="htk-fg"><span class="htk-fl">{{copy.dateAndTime}}</span>
       <div class="htk-tg-row" style="margin-bottom:8px"><span class="htk-tg-lab">{{copy.allDayFull}}</span><button :class="['htk-tg-sw',newEvent.allDay&&'on']" @click="newEvent.allDay=!newEvent.allDay"></button></div>
       <div class="htk-fr"><input class="htk-inp" type="date" v-model="newEvent.date"><input v-if="!newEvent.allDay" class="htk-inp" type="time" v-model="newEvent.timeStart"></div>
@@ -303,17 +303,17 @@
   <div :class="['htk-todo-xf',showTodoExtra&&'open']">
     <div class="htk-todo-xf-i"><label>{{copy.dueDate}}</label><input class="htk-inp" type="date" v-model="newTodoDue"></div>
     <div class="htk-todo-xf-i"><label>{{copy.time}}</label><input class="htk-inp" type="time" v-model="newTodoTime"></div>
-    <div class="htk-todo-xf-i"><label>{{copy.folder}}</label><select class="htk-inp" v-model="newTodoFolder"><option value="">{{copy.noFolder}}</option><option v-for="fo in folders" :key="fo.id" :value="fo.id">{{fo.emoji}} {{fo.name}}</option></select></div>
+    <div class="htk-todo-xf-i"><label>{{copy.folder}}</label><select class="htk-inp" v-model="newTodoFolder"><option value="">{{copy.noFolder}}</option><option v-for="fo in folders" :key="fo.id" :value="fo.id">{{fo.name}}</option></select></div>
     <div class="htk-todo-xf-i" style="flex:2;min-width:170px"><label>{{copy.comment}}</label><input class="htk-inp" v-model="newTodoComment" :placeholder="copy.memoPlaceholder"></div>
   </div>
   <div class="htk-fbar">
     <button :class="['htk-ftab',activeFolder==='all'&&'on']" @click="activeFolder='all'">{{copy.all}}<span class="htk-fc">{{pendingCount}}</span></button>
-    <button v-for="fo in folders" :key="fo.id" :class="['htk-ftab',activeFolder===fo.id&&'on']" :style="fo.color?{borderLeft:'3px solid '+fo.color}:{}" @click="activeFolder=fo.id"><span v-if="fo.color" class="htk-fm-dot" :style="{background:fo.color}"></span>{{fo.emoji}} {{fo.name}}<span class="htk-fc">{{folderCount(fo.id)}}</span></button>
+    <button v-for="fo in folders" :key="fo.id" :class="['htk-ftab',activeFolder===fo.id&&'on']" :style="fo.color?{borderLeft:'3px solid '+fo.color}:{}" @click="activeFolder=fo.id"><span v-if="fo.color" class="htk-fm-dot" :style="{background:fo.color}"></span><HataskEmoji :emoji="fo.emoji"/> {{fo.name}}<span class="htk-fc">{{folderCount(fo.id)}}</span></button>
     <button class="htk-fm-btn" @click="showFolderMgr=!showFolderMgr">+ {{copy.manageFolders}}</button>
   </div>
   <div v-if="showFolderMgr" class="htk-fm-panel htk-lg-in">
     <div style="font-size:.78rem;color:var(--text-2);margin-bottom:8px;font-weight:600">{{copy.manageFolders}}</div>
-    <div v-for="(fo,i) in folders" :key="fo.id" class="htk-fm-row"><span v-if="fo.color" class="htk-fm-dot" :style="{background:fo.color}"></span><span class="htk-fm-emoji">{{fo.emoji}}</span><span class="htk-fm-name">{{fo.name}}</span><div class="htk-fm-acts"><button class="htk-btn htk-xs" @click="changeFolderColor(i)" :title="copy.changeColor"><i class="ti ti-palette"></i></button><button class="htk-btn htk-xs" @click="renameFolder(i)"><i class="ti ti-pencil"></i></button><button class="htk-btn htk-xs" @click="moveFolder(i,-1)" :disabled="i===0"><i class="ti ti-chevron-up"></i></button><button class="htk-btn htk-xs" @click="moveFolder(i,1)" :disabled="i===folders.length-1"><i class="ti ti-chevron-down"></i></button><button class="htk-btn htk-xs htk-danger" @click="deleteFolder(i)"><i class="ti ti-x"></i></button></div></div>
+    <div v-for="(fo,i) in folders" :key="fo.id" class="htk-fm-row"><span v-if="fo.color" class="htk-fm-dot" :style="{background:fo.color}"></span><span class="htk-fm-emoji"><HataskEmoji :emoji="fo.emoji"/></span><span class="htk-fm-name">{{fo.name}}</span><div class="htk-fm-acts"><button class="htk-btn htk-xs" @click="changeFolderColor(i)" :title="copy.changeColor"><i class="ti ti-palette"></i></button><button class="htk-btn htk-xs" @click="renameFolder(i)"><i class="ti ti-pencil"></i></button><button class="htk-btn htk-xs" @click="moveFolder(i,-1)" :disabled="i===0"><i class="ti ti-chevron-up"></i></button><button class="htk-btn htk-xs" @click="moveFolder(i,1)" :disabled="i===folders.length-1"><i class="ti ti-chevron-down"></i></button><button class="htk-btn htk-xs htk-danger" @click="deleteFolder(i)"><i class="ti ti-x"></i></button></div></div>
     <div v-if="!folders.length" style="font-size:.78rem;color:var(--text-3);padding:6px">{{copy.noFolder}}</div>
     <div style="margin-top:6px">
       <div style="display:flex;gap:5px;align-items:center"><input class="htk-inp" v-model="newFolderName" :placeholder="copy.folderNamePlaceholder" style="flex:1;font-size:.78rem;padding:7px 12px"><button class="htk-btn htk-xs htk-primary" @click="addFolder">{{copy.add}}</button></div>
@@ -325,7 +325,7 @@
     <div :class="['htk-todo-cb',todo.done&&'ck']" @click="toggleTodo(todo.id)"></div>
     <div class="htk-todo-ct" @click="expandedTodo=expandedTodo===todo.id?null:todo.id">
       <div class="htk-todo-tx">{{todo.text}}</div>
-      <div class="htk-todo-mt"><span v-if="todo.due" :class="['htk-todo-db',isOverdue(todo.due)&&!todo.done&&'od',isDueToday(todo.due)&&'tdy']">{{formatDue(todo.due,todo.time)}}</span><span v-if="getFolderLabel(todo.folder)&&activeFolder==='all'" class="htk-todo-fb">{{getFolderLabel(todo.folder)}}</span></div>
+      <div class="htk-todo-mt"><span v-if="todo.due" :class="['htk-todo-db',isOverdue(todo.due)&&!todo.done&&'od',isDueToday(todo.due)&&'tdy']">{{formatDue(todo.due,todo.time)}}</span><span v-if="getFolder(todo.folder)&&activeFolder==='all'" class="htk-todo-fb"><HataskEmoji :emoji="getFolder(todo.folder)?.emoji ?? '📁'"/> {{getFolder(todo.folder)?.name}}</span></div>
       <div v-if="todo.comment" class="htk-todo-cp">{{todo.comment.split('\n')[0]}}</div>
       <div v-if="expandedTodo===todo.id" class="htk-todo-dx open"><div v-if="todo.comment" style="font-size:.78rem;color:var(--text-2);line-height:1.5;white-space:pre-wrap">{{todo.comment}}</div><div v-else style="font-size:.73rem;color:var(--text-3)">{{copy.noComment}}</div></div>
     </div>
@@ -347,7 +347,7 @@
     <div class="htk-coll-h" @click="showMoodNote=!showMoodNote"><span class="htk-fl" style="margin:0">{{copy.note}}</span><span class="htk-ci">{{showMoodNote?'▲':'▼'}}</span></div>
     <div v-if="showMoodNote">
       <div class="htk-fg" style="margin-top:5px"><textarea class="htk-inp" v-model="moodNote" :placeholder="copy.moodNotePlaceholder"></textarea></div>
-      <div class="htk-fg"><span class="htk-fl">{{copy.emoji}}</span><div class="htk-emp-row"><span v-for="e in moodEmojisExtra" :key="e" :class="['htk-emp-i',moodSelectedEmoji===e&&'on']" @click="moodSelectedEmoji=moodSelectedEmoji===e?'':e">{{e}}</span></div></div>
+      <div class="htk-fg"><span class="htk-fl">{{copy.emoji}}</span><div class="htk-emp-row"><span v-for="e in moodEmojisExtra" :key="e" :class="['htk-emp-i',moodSelectedEmoji===e&&'on']" @click="moodSelectedEmoji=moodSelectedEmoji===e?'':e"><HataskEmoji :emoji="e"/></span></div></div>
     </div>
     <div class="htk-coll-h" @click="showMoodRemind=!showMoodRemind"><span class="htk-fl" style="margin:0">{{copy.reminderNotification}}</span><span class="htk-ci">{{showMoodRemind?'▲':'▼'}}</span></div>
     <div v-if="showMoodRemind" style="padding-top:5px">
@@ -363,7 +363,7 @@
     <div class="htk-ma-grid">
       <div class="htk-ma-card">
         <div class="htk-ma-label">{{copy.recentTrend}}</div>
-        <div class="htk-ma-big" :style="{color: moodAnalysis.trendColor}">{{moodAnalysis.trendEmoji}}</div>
+        <div class="htk-ma-big" :style="{color: moodAnalysis.trendColor}"><HataskEmoji :emoji="moodAnalysis.trendEmoji"/></div>
         <div class="htk-ma-desc">{{moodAnalysis.trendLabel}}</div>
       </div>
       <div class="htk-ma-card">
@@ -376,7 +376,7 @@
       <div class="htk-ma-label" style="margin-bottom:8px">{{copy.trendByTime}}</div>
       <div class="htk-ma-times">
         <div v-for="t in moodAnalysis.timeSlots" :key="t.label" class="htk-ma-time">
-          <div class="htk-ma-time-emo">{{t.emoji}}</div>
+          <div class="htk-ma-time-emo"><HataskEmoji v-if="t.emoji" :emoji="t.emoji"/><span v-else>—</span></div>
           <div class="htk-ma-time-info">
             <div class="htk-ma-time-label">{{t.label}}</div>
             <div class="htk-ma-time-bar"><div class="htk-ma-time-fill" :style="{width: (t.avg/5*100)+'%', background: t.color}"></div></div>
@@ -391,7 +391,7 @@
   </div></div>
 
   <div class="htk-lg htk-anim"><div class="htk-gc"><h3 class="htk-sec-title">{{copy.moodRecords}}</h3>
-    <template v-if="moods.length"><div v-for="date in pagedMoodDates" :key="date" class="htk-mood-dg"><div class="htk-mood-dg-h">{{formatMoodDate(String(date))}}<span v-if="moodsByDate[date].length>1" class="htk-mood-dg-c">{{copyx.count({count:moodsByDate[date].length.toString()})}}</span></div><div v-for="m in moodsByDate[date]" :key="m.id" class="htk-mood-en"><div class="htk-mood-en-t">{{m.time}}</div><span class="htk-mood-en-e"><i :class="moodIcons[m.level]"></i></span><div class="htk-mood-en-ct"><div class="htk-mood-en-n">{{moodNoteLabel(m.note)}}</div><div v-if="m.emoji" class="htk-mood-en-ce">{{m.emoji}}</div></div><div class="htk-mood-en-acts"><button class="htk-mood-en-a" @click="startEditMood(m)"><i class="ti ti-pencil"></i></button><button class="htk-mood-en-a del" @click="deleteMood(m.id)"><i class="ti ti-x"></i></button></div></div></div>
+    <template v-if="moods.length"><div v-for="date in pagedMoodDates" :key="date" class="htk-mood-dg"><div class="htk-mood-dg-h">{{formatMoodDate(String(date))}}<span v-if="moodsByDate[date].length>1" class="htk-mood-dg-c">{{copyx.count({count:moodsByDate[date].length.toString()})}}</span></div><div v-for="m in moodsByDate[date]" :key="m.id" class="htk-mood-en"><div class="htk-mood-en-t">{{m.time}}</div><span class="htk-mood-en-e"><i :class="moodIcons[m.level]"></i></span><div class="htk-mood-en-ct"><div class="htk-mood-en-n">{{moodNoteLabel(m.note)}}</div><div v-if="m.emoji" class="htk-mood-en-ce"><HataskEmoji :emoji="m.emoji"/></div></div><div class="htk-mood-en-acts"><button class="htk-mood-en-a" @click="startEditMood(m)"><i class="ti ti-pencil"></i></button><button class="htk-mood-en-a del" @click="deleteMood(m.id)"><i class="ti ti-x"></i></button></div></div></div>
     <div v-if="moodTotalPages>1" class="htk-pager"><button class="htk-btn htk-xs" :disabled="moodPage<=1" @click="moodPage--">&lt;</button><span class="htk-pager-t">{{moodPage}} / {{moodTotalPages}}</span><button class="htk-btn htk-xs" :disabled="moodPage>=moodTotalPages" @click="moodPage++">&gt;</button></div>
     </template>
     <div v-else class="htk-empty"><div class="htk-empI"><i class="ti ti-circle-off"></i></div><div>{{copy.noRecordsYet}}</div></div>
@@ -428,7 +428,7 @@
 <div v-if="activeTab==='garden'" class="htk-panels htk-tabpage" :class="tabDir==='fwd'?'htk-tab-fwd':'htk-tab-back'">
   <div class="htk-lg htk-anim"><div class="htk-gc" style="text-align:center;min-height:240px">
     <h3 class="htk-sec-title">{{copy.currentFlower}} <button class="htk-info-btn" @click="showFlowerInfo=true">?</button></h3>
-    <div class="htk-fl-ring" style="width:140px;height:140px"><svg viewBox="0 0 160 160"><circle class="htk-fl-track" cx="80" cy="80" r="70"/><circle class="htk-fl-bar" cx="80" cy="80" r="70" :style="{strokeDasharray:'440',strokeDashoffset:440-440*(flower.progress/100)}"/></svg><div class="htk-fl-emo" style="font-size:3rem">{{flower.emoji}}</div></div>
+    <div class="htk-fl-ring" style="width:140px;height:140px"><svg viewBox="0 0 160 160"><circle class="htk-fl-track" cx="80" cy="80" r="70"/><circle class="htk-fl-bar" cx="80" cy="80" r="70" :style="{strokeDasharray:'440',strokeDashoffset:440-440*(flower.progress/100)}"/></svg><div class="htk-fl-emo" style="font-size:3rem"><HataskEmoji :emoji="flower.emoji"/></div></div>
     <div style="font-weight:600;font-size:1rem">{{currentFlowerDisplayName}}</div>
     <div v-if="currentFlowerHanakotoba" style="font-size:.72rem;color:var(--text-3);margin-top:2px;opacity:.7">{{copy.flowerMeaning}}: {{currentFlowerHanakotoba}}</div>
     <div style="font-size:.75rem;color:var(--text-3);margin-top:4px">{{copyx.flowerProgressTotal({progress:flower.progress.toString(),total:formatMinutes(flower.totalMinutes)})}}</div>
@@ -436,7 +436,7 @@
     <button v-else class="htk-btn htk-primary htk-sm" style="margin-top:10px" @click="harvestFlower">{{copy.harvestAndName}}</button>
   </div></div>
   <div class="htk-lg htk-anim"><div class="htk-gc"><h3 class="htk-sec-title">{{copy.flowerGallery}}</h3>
-    <div v-if="gallery.length" class="htk-gal-g"><div v-for="fl in gallery" :key="fl.id" class="htk-gal-i" @click="renameFlower(fl)"><span class="htk-gal-e">{{fl.emoji}}</span><div class="htk-gal-n">{{localizeFloraName(fl.name)}}</div><div v-if="fl.hanakotoba" class="htk-gal-hk">{{localizeHanakotoba(fl.hanakotoba)}}</div><div class="htk-gal-d">{{fl.date}}</div></div></div>
+    <div v-if="gallery.length" class="htk-gal-g"><div v-for="fl in gallery" :key="fl.id" class="htk-gal-i" @click="renameFlower(fl)"><span class="htk-gal-e"><HataskEmoji :emoji="fl.emoji"/></span><div class="htk-gal-n">{{localizeFloraName(fl.name)}}</div><div v-if="fl.hanakotoba" class="htk-gal-hk">{{localizeHanakotoba(fl.hanakotoba)}}</div><div class="htk-gal-d">{{fl.date}}</div></div></div>
     <div v-else class="htk-empty"><div class="htk-empI"><i class="ti ti-circle-off"></i></div><div>{{copy.noFlowersYet}}</div></div>
   </div></div>
 </div>
@@ -493,7 +493,7 @@
     <h3 class="htk-sec-title">{{copy.flowerMeaningCollection}}</h3>
     <div v-if="galleryWithHanakotoba.length" class="htk-eye-hk-list">
       <div v-for="fl in galleryWithHanakotoba" :key="fl.id" class="htk-eye-hk-row">
-        <span class="htk-eye-hk-emoji">{{fl.emoji}}</span>
+        <span class="htk-eye-hk-emoji"><HataskEmoji :emoji="fl.emoji"/></span>
         <div class="htk-eye-hk-info">
           <div class="htk-eye-hk-name">{{localizeFloraName(fl.name)}}</div>
           <div class="htk-eye-hk-word">{{localizeHanakotoba(fl.hanakotoba)}}</div>
@@ -506,7 +506,7 @@
   <!-- 現在育てている花 -->
   <div class="htk-lg htk-anim"><div class="htk-gc" style="text-align:center">
     <h3 class="htk-sec-title">{{copy.currentFlower}}</h3>
-    <div class="htk-fl-ring" style="width:100px;height:100px"><svg viewBox="0 0 120 120"><circle class="htk-fl-track" cx="60" cy="60" r="50"/><circle class="htk-fl-bar" cx="60" cy="60" r="50" :style="{strokeDasharray:'314',strokeDashoffset:314-314*(flower.progress/100)}"/></svg><div class="htk-fl-emo" style="font-size:2rem">{{flower.emoji}}</div></div>
+    <div class="htk-fl-ring" style="width:100px;height:100px"><svg viewBox="0 0 120 120"><circle class="htk-fl-track" cx="60" cy="60" r="50"/><circle class="htk-fl-bar" cx="60" cy="60" r="50" :style="{strokeDasharray:'314',strokeDashoffset:314-314*(flower.progress/100)}"/></svg><div class="htk-fl-emo" style="font-size:2rem"><HataskEmoji :emoji="flower.emoji"/></div></div>
     <div style="font-weight:600;font-size:.9rem">{{currentFlowerDisplayName}}</div>
     <div v-if="currentFlowerHanakotoba" style="font-size:.7rem;color:var(--text-3);opacity:.7">{{copy.flowerMeaning}}: {{currentFlowerHanakotoba}}</div>
     <div v-if="flower.progress>=100" style="margin-top:8px"><button class="htk-btn htk-primary htk-sm" @click="harvestFlower">{{copy.harvestFlower}}</button></div>
@@ -648,6 +648,8 @@ import { useStream } from '@/stream.js';
 import { i18n } from '@/i18n.js';
 import { versatileLang } from '@/utility/intl-const.js';
 import MkEarthquakeTicker from '@/components/MkEarthquakeTicker.vue';
+import HataFeedNotificationBody from '@/components/HataFeedNotificationBody.vue';
+import HataskEmoji from '@/components/HataskEmoji.vue';
 import { getDefaultPhrase, getPhrase } from '@/utility/hatask-phrases.js';
 import { floraData, pickRandomFlora, generateFlowerName, localizeFloraName, localizeHanakotoba } from '@/utility/hatask-flora.js';
 import { HATASK_FLOWER_GROWTH_EVENT, seedHataskFlowerGrowth } from '@/utility/hatask-flower-growth.js';
@@ -1132,7 +1134,7 @@ else if(timing==='1日前')msAhead=24*60*60*1000;
 const fireAt=eventTime-msAhead;
 const delay=fireAt-now;
 if(delay>0&&delay<24*60*60*1000){// only schedule within next 24h
-const tid=window.setTimeout(()=>{sendNotification(`${ev.emoji} ${ev.title}`,copyx.eventReminderBody({ timing: notifyTimingLabel(timing), start: ev.timeStart, end: ev.timeEnd }), undefined, '/hatask?notice=calendar')},delay);
+const tid=window.setTimeout(()=>{sendNotification(ev.title,copyx.eventReminderBody({ timing: notifyTimingLabel(timing), start: ev.timeStart, end: ev.timeEnd }), undefined, '/hatask?notice=calendar')},delay);
 notifTimerIds.push(tid)
 }})
 })
@@ -1314,7 +1316,7 @@ const todos=ref<any[]>([]);const folders=ref<any[]>([]);
 const pendingCount=computed(()=>todos.value.filter(t=>!t.done).length);
 function folderCount(fid:string){return todos.value.filter(t=>!t.done&&t.folder===fid).length}
 const sortedTodos=computed(()=>{let list=activeFolder.value==='all'?[...todos.value]:todos.value.filter(t=>t.folder===activeFolder.value);if(sortMode.value==='dueAsc')list.sort((a,b)=>{if(!a.due)return 1;if(!b.due)return-1;return a.due.localeCompare(b.due)});else if(sortMode.value==='dueDesc')list.sort((a,b)=>{if(!a.due)return 1;if(!b.due)return-1;return b.due.localeCompare(a.due)});else if(sortMode.value==='new')list.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));return list});
-function getFolderLabel(fid:string){const fo=folders.value.find(f=>f.id===fid);return fo?fo.emoji+' '+fo.name:''}
+function getFolder(fid:string){return folders.value.find(f=>f.id===fid)}
 
 // Mood
 const selectedMoodLevel=ref(4);const moodNote=ref('');const editingMood=ref<any>(null);
@@ -1406,7 +1408,7 @@ const moodAnalysis=computed(()=>{
   const timeSlots=slots.map(s=>{
     const inSlot=moods.value.filter((m:any)=>{if(!m.time)return false;const h=parseInt(m.time.split(':')[0]);const hNorm=h<6?h+24:h;return hNorm>=s.min&&hNorm<s.max});
     const a=inSlot.length?inSlot.reduce((sum:number,m:any)=>sum+m.level,0)/inSlot.length:0;
-    const emoji=a>=4?'😊':a>=3?'😐':a>=2?'😞':a>0?'😢':'—';
+    const emoji=a>=4?'😊':a>=3?'😐':a>=2?'😞':a>0?'😢':'';
     const color=a>=4?'#6bbd67':a>=3?'#85cdca':a>=2?'#e08760':a>0?'#c03050':'#666';
     return{label:s.label,avg:a,emoji,color,count:inSlot.length}
   }).filter(t=>t.count>0);
