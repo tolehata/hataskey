@@ -17312,6 +17312,10 @@ export interface Locale extends ILocale {
                  */
                 "resetAround": ParameterizedString<"time">;
                 /**
+                 * {time}にリセットされます
+                 */
+                "bannerResetAt": ParameterizedString<"time">;
+                /**
                  * 最初のAPI操作を待っています
                  */
                 "waitingTitle": string;
@@ -18589,6 +18593,10 @@ export interface Locale extends ILocale {
                  * フォロワー限定
                  */
                 "followersOnly": string;
+                /**
+                 * 投稿を見られる人
+                 */
+                "visibilityAudience": string;
                 /**
                  * 連合する
                  */
@@ -21528,6 +21536,36 @@ export interface Locale extends ILocale {
                  */
                 "defaultSubjectHistory": string;
             };
+            "_push": {
+                /**
+                 * Hatadyの通知
+                 */
+                "title": string;
+                /**
+                 * 新しくフォローされました。
+                 */
+                "follow": string;
+                /**
+                 * 記録に新しいコメントが届きました。
+                 */
+                "comment": string;
+                /**
+                 * 記録にリアクションが届きました。
+                 */
+                "reaction": string;
+                /**
+                 * 記録に{reaction}のリアクションが届きました。
+                 */
+                "reactionWithEmoji": ParameterizedString<"reaction">;
+                /**
+                 * 連続記録が{count}日になりました。
+                 */
+                "milestone": ParameterizedString<"count">;
+                /**
+                 * Hatadyに新しいお知らせがあります。
+                 */
+                "update": string;
+            };
             "_conversation": {
                 /**
                  * 学びの投稿
@@ -21565,6 +21603,10 @@ export interface Locale extends ILocale {
                  * 送信
                  */
                 "send": string;
+                /**
+                 * このコメントを削除しますか？返信は残ります。
+                 */
+                "deleteCommentConfirm": string;
                 /**
                  * {minutes}分
                  */
@@ -24300,6 +24342,9 @@ export interface Locale extends ILocale {
                  * リジェクト
                  */
                 "emojiRejected": string;
+                /**
+                 * 保留中
+                 */
                 "emojiHeld": string;
                 /**
                  * コメント
@@ -24345,6 +24390,9 @@ export interface Locale extends ILocale {
                  * 絵文字却下
                  */
                 "notificationEmojiRejected": string;
+                /**
+                 * 絵文字保留
+                 */
                 "notificationEmojiHeld": string;
                 /**
                  * 新しいコメントがあります。
@@ -24558,6 +24606,10 @@ export interface Locale extends ILocale {
                  * 確認
                  */
                 "review": string;
+                /**
+                 * 処理理由:
+                 */
+                "resolutionReason": string;
                 /**
                  * 前へ
                  */
@@ -25036,7 +25088,13 @@ export interface Locale extends ILocale {
                  * 保留して次へ
                  */
                 "holdAndNext": string;
+                /**
+                 * 保留の理由（任意）
+                 */
                 "holdReason": string;
+                /**
+                 * 保留
+                 */
                 "hold": string;
                 /**
                  * リジェクト
@@ -25059,9 +25117,9 @@ export interface Locale extends ILocale {
                  */
                 "completeTitle": string;
                 /**
-                 * この画面で {count}件を処理しました。
+                 * 保留 {held}件・申請許可 {approved}件・リジェクト {rejected}件として処理しました。
                  */
-                "completeText": ParameterizedString<"count">;
+                "completeText": ParameterizedString<"held" | "approved" | "rejected">;
                 /**
                  * 閉じる
                  */
@@ -25200,6 +25258,10 @@ export interface Locale extends ILocale {
                  * 申請する
                  */
                 "submit": string;
+                /**
+                 * 申請して次を追加
+                 */
+                "submitAndContinue": string;
                 /**
                  * プレビュー
                  */
@@ -25805,6 +25867,9 @@ export interface Locale extends ILocale {
                  * 絵文字の申請がリジェクトされました。
                  */
                 "emojiRejected": string;
+                /**
+                 * 絵文字の申請が保留になりました。
+                 */
                 "emojiHeld": string;
                 /**
                  * 新しいコメントが来ています。
@@ -27360,9 +27425,6 @@ export interface Locale extends ILocale {
                  */
                 "title": string;
                 /**
-                 * マイログ
-                 */
-                /**
                  * 見つける
                  */
                 "discover": string;
@@ -27371,34 +27433,13 @@ export interface Locale extends ILocale {
                  */
                 "record": string;
                 /**
-                 * 連続日数
-                 */
-                /**
-                 * 4時間20分
-                 */
-                /**
-                 * 今週
-                 */
-                /**
-                 * 学習記録
-                 */
-                /**
                  * 学習の記録
                  */
                 "studyHistory": string;
                 /**
-                 * 45分 · 今日
-                 */
-                /**
-                 * AUGUST
-                 */
-                /**
                  * GARDEN
                  */
                 "garden": string;
-                /**
-                 * ひなぎく・78%
-                 */
                 /**
                  * ホーム
                  */
@@ -27424,27 +27465,6 @@ export interface Locale extends ILocale {
                  */
                 "onlineUsers": string;
                 /**
-                 * 今日はよく晴れましたね
-                 */
-                /**
-                 * 散歩日和でした
-                 */
-                /**
-                 * いまどうしてる？
-                 */
-                /**
-                 * 投稿詳細
-                 */
-                /**
-                 * 投稿の情報
-                 */
-                /**
-                 * 通知・検索・ウィジェットも表示
-                 */
-                /**
-                 * イシュー・会話を検索
-                 */
-                /**
                  * イシュー
                  */
                 "issues": string;
@@ -27452,9 +27472,6 @@ export interface Locale extends ILocale {
                  * ロードマップ
                  */
                 "roadmap": string;
-                /**
-                 * 申請管理
-                 */
                 /**
                  * 絵文字申請
                  */
@@ -27464,18 +27481,6 @@ export interface Locale extends ILocale {
                  */
                 "newIssue": string;
                 /**
-                 * スマホ表示を改善
-                 */
-                /**
-                 * 絵文字を追加
-                 */
-                /**
-                 * 通知を見やすく
-                 */
-                /**
-                 * 受付中 · 2件の会話
-                 */
-                /**
                  * ベータ機能を試す
                  */
                 "tryBeta": string;
@@ -27484,34 +27489,13 @@ export interface Locale extends ILocale {
                  */
                 "cppPlayground": string;
                 /**
-                 * ブラウザ内で実行
-                 */
-                /**
                  * 投稿前カウントダウン
                  */
                 "postCountdown": string;
                 /**
-                 * 3 · 5 · 10 秒
-                 */
-                /**
                  * プライベートチャンネル
                  */
                 "privateChannel": string;
-                /**
-                 * 新規作成
-                 */
-                /**
-                 * 読書会の部屋
-                 */
-                /**
-                 * 許可されたメンバーだけが閲覧できます
-                 */
-                /**
-                 * 招待中 2人
-                 */
-                /**
-                 * 参加中 5人
-                 */
                 /**
                  * 招待拒否 1人
                  */
@@ -27521,25 +27505,13 @@ export interface Locale extends ILocale {
                  */
                 "defaultProfile": string;
                 /**
-                 * Hataskeyツール
-                 */
-                /**
-                 * 申請状況を確認
-                 */
-                /**
                  * スタジオ設定
                  */
                 "studioSettings": string;
                 /**
-                 * 選択中：HataFeed
-                 */
-                /**
                  * 配置
                  */
                 "placement": string;
-                /**
-                 * 色と形
-                 */
                 /**
                  * 例えば、アザラシ
                  */
@@ -27549,65 +27521,17 @@ export interface Locale extends ILocale {
                  */
                 "feastSuccess": string;
                 /**
-                 * 宴の阻止
-                 */
-                /**
                  * 育てたお花
                  */
                 "flowersGrown": string;
-                /**
-                 * 12回
-                 */
-                /**
-                 * 4回
-                 */
-                /**
-                 * 36輪
-                 */
-                /**
-                 * はたさばさん
-                 */
-                /**
-                 * 今日もおつかれさまでした。
-                 */
-                /**
-                 * 外部アカウント連携
-                 */
-                /**
-                 * さめすきーとチョリソリング
-                 */
-                /**
-                 * 接続済み
-                 */
                 /**
                  * 管理
                  */
                 "manage": string;
                 /**
-                 * サーバーを追加
-                 */
-                /**
-                 * 対応サーバーから選択
-                 */
-                /**
-                 * セキュリティ
-                 */
-                /**
                  * 二要素認証
                  */
                 "twoFactorAuthentication": string;
-                /**
-                 * 設定済み
-                 */
-                /**
-                 * パスキー
-                 */
-                /**
-                 * 1件
-                 */
-                /**
-                 * ログイン履歴
-                 */
                 /**
                  * 開く
                  */
@@ -27645,167 +27569,119 @@ export interface Locale extends ILocale {
                  */
                 "languageSettings": string;
                 /**
-                 * Hataskey独自機能も同じ言語で表示
-                 */
-                /**
-                 * 日本語
-                 */
-                /**
-                 * English
-                 */
-                /**
-                 * 简体中文
-                 */
-                /**
-                 * 選択中
-                 */
-                /**
                  * 対応
                  */
                 "languageSupported": string;
             };
             "_content": {
                 /**
-                 * 大きな新機能を5つ、ゲームを1つ追加、ベースをMisskey2026.7.0へ更新しました
+                 * ブランディングを刷新し、Hatadyの記録機能とHataSNSCordUIの表示を改善しました
                  */
                 "headline": string;
                 /**
-                 * Hatady（ハタディ）— 学習と読書の記録
+                 * オリジナルアイコンブランディング
                  */
                 "brandingTitle": string;
+                /**
+                 * 設定メニュー、各設定ページ、エラー表示、ダイアログ、ログイン画面などのアイコンを、Hataskeyオリジナルのイラストに置き換えました。旗鯖独自機能のUIタブから、いつでも通常のアイコンへ戻せます。サーバーの管理画面でブランディング画像が設定されている場合は、そちらが優先されます。
+                 */
                 "brandingText": string;
-                "brandingLink": string;
-                "mobileFixText": string;
-                "mobileFixTitle": string;
-                "sideStudioFixLink": string;
-                "sideStudioFixText": string;
-                "sideStudioFixTitle": string;
-                "hatasabaHomeText": string;
-                "hatasabaHomeTitle": string;
-                "cardMakerLink": string;
-                "cardMakerText": string;
-                "cardMakerTitle": string;
-                "muteReactionLink": string;
-                "muteReactionText": string;
-                "muteReactionTitle": string;
-                "utageBadgeText": string;
-                "utageBadgeTitle": string;
-                "hatacordingFixLink": string;
-                "hatacordingFixText": string;
-                "hatacordingFixTitle": string;
-                "hatadyVisibilityText": string;
-                "hatadyVisibilityTitle": string;
-                "hatadyRecordLink": string;
-                "hatadyRecordText": string;
-                "hatadyRecordTitle": string;
-                /**
-                 * 読んだ本や勉強したことを記録して、続けた日数や積み上げを振り返れる新しいツールです。本ごとのしおりと内容メモ、目標の設定、連続記録、横断検索、テキストでの書き出しに対応しています。記録の公開範囲は自分で選べ、通常表示では左上のボタンから前の画面へ戻れます。
-                 */
-                /**
-                 * Hatadyへ
-                 */
-                /**
-                 * Hatask を全面リデザイン
-                 */
-                /**
-                 * ホーム画面を「季」「花信」「刷」の3つのテーマから選べるようになりました。表示切替、HataFeed の通知タイル、地震・津波情報タイルにも対応しています。育てている花は画面を閉じている間やバックグラウンドでも経過時間に応じて育ち、進み具合と咲いた花をウィジェットで確認できます。ログイン中のプロフィールからデジタル通行証を作るカードメーカーもHatask内に追加しました。カードの二次元コードはサーバーアイコン付きのデザインになり、対応するiPhoneでは許可後に端末の動きでカード本体を傾けられます。
-                 */
-                /**
-                 * Hataskへ
-                 */
-                /**
-                 * HataSNSCordUI — 会話型の高機能UI
-                 */
-                /**
-                 * タイムラインを会話のように読みながら、左ペインで表示先を選び、右ペインで投稿詳細・検索・通知・ウィジェットを同時に扱える新しいUIです。設定やHataskeyツールを開いても左右のペインを保ち、このUIの中で操作を続けられます。リアクションやノートの変更もその場で反映され、スマートフォンでは左右の端から各ペインを呼び出せます。初回チュートリアル、端末ごとの並び替え、UI専用レートリミット表示にも対応しています。返信先のアバター表示、ダークテーマのサイズ選択、ポップアップ表示も安定化しました。
-                 */
-                /**
-                 * HataSNSCordUIへ
-                 */
-                /**
-                 * HataFeedを全面リデザイン
-                 */
-                /**
-                 * HataFeedを、イシューの検索・絞り込み・ロードマップ・通知をひと目で確認できる画面へ刷新しました。トップから絵文字を申請でき、スタッフは複数の申請を1件ずつ続けて確認できます。イシューは範囲と含める内容を選んで書き出せます。同じHataFeedの通知をまとめ、複数のHataFeedから届いた場合もひとまとまりで確認できるようになりました。Hatask、HataFeed、地震・津波、プライベートチャンネルのOS通知にも、内容と移動先を表示します。通知ウィジェットのフィルタを安定化し、今後追加される通知種別は設定中のフィルタへ自動で加えず、必要なものを選んで有効にできるようにしました。Botからの通知は通常の通知画面・ウィジェット・HatasabaUIデッキ・HataSNSCordUIで非表示にでき、HataSNSCordUIでは人間からの通知と分けてまとめます。
-                 */
-                /**
-                 * HataSideStudio — サイドメニューを自分の形に
-                 */
-                /**
-                 * 実際のサイドメニューを見ながら、ボタン・グループ・ウィジェットの並び、形、色、表示内容を端末ごとに編集できる新しいツールです。拡大時と縮小時を分けて作れ、複数のプロファイル、ドラッグ操作、元に戻す・やり直し、設定の書き出しと読み込みにも対応しています。ノートボタンも鉛筆・猫の肉球アイコン、色、グラデーションから設定できます。スマートフォンでも簡易タイムラインへ指で移動でき、上部の各操作を省略せず使えます。設定は端末内で処理され、サーバーや連合へ送信されません。
-                 */
-                /**
-                 * HataSideStudioへ
-                 */
-                /**
-                 * Hataskey独自機能が3言語に対応
-                 */
-                /**
-                 * Hataskey独自機能を、日本語・英語・中国語（簡体字）で利用できるようになりました。Hatadyを含む対応機能と「Hataskeyについて」・サーバー情報ページはHataskey本体の言語設定に従い、自分で入力した投稿・記録・名前は変わりません。表示言語が未設定だった既存のローカルアカウントは日本語を既定にし、既に選んだ言語は変更しません。花常と地震・津波情報は引き続き日本語のみです。
-                 */
-                /**
-                 * 言語設定を開く
-                 */
-                /**
-                 * プライベートチャンネルを作れます
-                 */
-                /**
-                 * 管理者から許可された利用者は、メンバーだけが閲覧できるチャンネルを作れます。招待した相手は通知から参加するかを選び、承認して初めて参加します。管理画面では招待中・参加中・招待拒否を確認できます。
-                 */
-                /**
-                 * チャンネルを作る
-                 */
-                /**
-                 * HatasabaUI 2（すりガラス調）
-                 */
-                /**
-                 * ノートやカラムをすりガラス調にする新しい見た目を選べるようになりました。透過の強さはその場で確かめながら調整できます。デッキにはクリップ・お気に入りのカラム、カラムごとの再読み込みが増えています。時計の秒表示で通知などのカラムが点滅しないよう更新処理も安定化しました。タブを左右スワイプで切り替えない設定と、Bot投稿を隠す設定にも対応しました。iPhoneでは返信・リノート・リアクションなどのノート操作をタッチ補助表示が妨げないようにし、リアクション選択メニューが開かない場合がある問題も修正しました。
-                 */
                 /**
                  * 設定を開く
                  */
+                "brandingLink": string;
                 /**
-                 * ベータ機能を試せます
+                 * Hatady — ゲームと映画の記録を追加
                  */
+                "hatadyRecordTitle": string;
                 /**
-                 * ブラウザ内だけでC/C++を書いて実行できるプレイグラウンドと、投稿前に3・5・10秒の猶予を作れるカウントダウンを用意しました。どちらも端末内で動き、投稿前カウントダウンは取り消しや今すぐ投稿も選べます。
+                 * 学習と読書に加えて、ゲームと映画も記録できるようにしました。対人戦・協力プレイ・PvEの人数や敵の種類、武器ごとのキル・デス・スペシャル・救助・サポートを、必要な項目だけチェックして残せます。一度使った武器名やステージ名は次回から候補として呼び出せ、マイログではゲーム・映画・勉強の表示を切り替えられます。コレクションを開いたときの演出も種類ごとに変わります。
                  */
+                "hatadyRecordText": string;
                 /**
-                 * ベータ機能を見る
+                 * Hatadyへ
                  */
+                "hatadyRecordLink": string;
                 /**
-                 * プロフィールにHataskeyの記録を表示
+                 * Hatady — 公開範囲を変えると保存できない問題を修正
                  */
+                "hatadyVisibilityTitle": string;
                 /**
-                 * 自サーバーのプロフィールに、宴の成功回数・宴の阻止回数・育てた花の数を表示できるようになりました。自分のプロフィール設定から、項目ごとに表示を切り替えられます。
+                 * 記録の公開範囲を「自分のみ」以外にすると保存に失敗する問題を修正しました。映画の記録が保存できなかった問題も同じ原因によるもので、あわせて解消しています。
                  */
+                "hatadyVisibilityText": string;
                 /**
-                 * 画像ビューワーを刷新（Misskey本家由来）
+                 * HataSNSCordUI — 表示の修正
                  */
+                "hatacordingFixTitle": string;
                 /**
-                 * Misskey本家の更新を取り込み、ホイールでの拡大縮小、動画をそのまま開いての再生、投稿する前のプレビューに対応しました。
+                 * 宴の枠がノートの内側に描かれて本文に重なる問題を修正し、このUIでは外枠に沿って表示するようにしました。公開範囲を選ぶポップアップは範囲ごとのアイコンを表示するようにし、使用量のサークルが下から減っていくように見える表示も直しています。
                  */
+                "hatacordingFixText": string;
                 /**
-                 * ミュートしたユーザーのリアクションを隠せます
+                 * HataSNSCordUIへ
                  */
+                "hatacordingFixLink": string;
                 /**
-                 * ミュートした人が付けたリアクションを、ノートから隠せるようになりました。他のユーザーの投稿に付いたものも対象です。隠したものがあるノートは、詳細画面に ⓘ が出ます。（管理者からのリアクションは隠せません。設定はこの端末にだけ保存されます）
+                 * プロフィールの宴バッジ — 数え方を修正
                  */
+                "utageBadgeTitle": string;
                 /**
-                 * 外部アカウント連携の接続先を整理
+                 * 宴はローカルタイムライン上のやり取りなので、ホーム公開の投稿を成功・阻止の回数へ数えないようにしました。表示されるのは公開範囲が「公開」の分だけになります。
                  */
+                "utageBadgeText": string;
                 /**
-                 * 旗池3丁目とシュリンピアへの連携を終了しました。以前この2サーバーを利用していた場合は、更新時にログイン情報と絵文字キャッシュを削除します。対象サーバーの投稿は、更新後はこのサーバーから閲覧できません。「les-requin」の表示名は「さめすきーとチョリソリング」に変更しました。
+                 * ミュートした人のリアクション非表示を改良
                  */
+                "muteReactionTitle": string;
                 /**
-                 * 外部アカウント連携を確認
+                 * ミュートした人が付けたリアクションを隠す機能を改良しました。設定は旗鯖独自設定からいつでも切り替えられます。
                  */
+                "muteReactionText": string;
                 /**
-                 * 安全性と土台の更新
+                 * 設定を開く
                  */
+                "muteReactionLink": string;
                 /**
-                 * 土台を Misskey 2026.7.0 相当へ上げ、二要素認証・URLプレビュー・OAuth まわりの修正を取り込みました。Hataskey独自の機能についても点検し、他の人の記録が見えてしまう不具合などを修正しています。また、見られなくなったHataFeedの内容が通知へ残らないようにしました。
+                 * カードメーカー — 操作と表示の修正
                  */
+                "cardMakerTitle": string;
+                /**
+                 * カードを触って動かすときにページのスクロールと競合する問題を修正しました。カード画像のアイコン装飾の位置もずれないように直しています。
+                 */
+                "cardMakerText": string;
+                /**
+                 * Hataskへ
+                 */
+                "cardMakerLink": string;
+                /**
+                 * HatasabaUI — ホームボタンの不具合を修正
+                 */
+                "hatasabaHomeTitle": string;
+                /**
+                 * スマートフォンでホームボタンを押すと、選んでいたタイムラインのタブが強制的にホームタイムラインへ切り替わる不具合を修正しました。
+                 */
+                "hatasabaHomeText": string;
+                /**
+                 * HataSideStudio — 配置の修正
+                 */
+                "sideStudioFixTitle": string;
+                /**
+                 * 部品を置く位置の判定を直し、移動できないときの案内も分かりやすくしました。
+                 */
+                "sideStudioFixText": string;
+                /**
+                 * HataSideStudioへ
+                 */
+                "sideStudioFixLink": string;
+                /**
+                 * iPhone・スマートフォンの操作を安定化
+                 */
+                "mobileFixTitle": string;
+                /**
+                 * リアクションの長押し操作を改善し、iPhoneでリアクション選択メニューが開かないことがある問題と、カードの傾き表示が安定しない問題を修正しました。
+                 */
+                "mobileFixText": string;
                 /**
                  * ここに載せたのは主な変更だけです。細かな修正を含むすべての変更点は、リリースノートをご確認ください。
                  */
@@ -28457,6 +28333,24 @@ export interface Locale extends ILocale {
              * 今すぐ投稿
              */
             "sendNow": string;
+        };
+        "_postFormMotion": {
+            /**
+             * 待機中
+             */
+            "waiting": string;
+            /**
+             * 送信中
+             */
+            "sending": string;
+            /**
+             * 送信完了
+             */
+            "success": string;
+            /**
+             * 送信失敗
+             */
+            "failure": string;
         };
         "_postFormCustom": {
             /**
@@ -32964,15 +32858,45 @@ export interface Locale extends ILocale {
                  * します。
                  */
                 "hataSnsCordUiDescriptionSuffix": string;
+                /**
+                 * オリジナルアイコンブランディング
+                 */
                 "brandingSection": string;
+                /**
+                 * Hataskeyオリジナルのアイコンを使う
+                 */
                 "useHatakyu": string;
+                /**
+                 * 設定メニュー・各設定ページ・エラー表示・ダイアログなどのアイコンを、Hataskeyオリジナルのイラストにします。オフにすると通常のアイコンに戻ります。サーバーの管理画面でブランディング画像が設定されている場合は、この設定に関わらずそちらが優先されます。
+                 */
                 "useHatakyuDescription": string;
+                /**
+                 * 折りたたみ端末向けレイアウト
+                 */
                 "foldableSection": string;
+                /**
+                 * 横開きの折りたたみスマホ（Galaxy Z Fold・Pixel Fold など）の大きい方の画面で、表示はスマホのままにしつつ、右側にウィジェットを常に出します。HatasabaUI と HataSNSCordUI が対象です。
+                 */
                 "foldableDescription": string;
+                /**
+                 * 自動
+                 */
                 "foldableModeAuto": string;
+                /**
+                 * 常に使う
+                 */
                 "foldableModeOn": string;
+                /**
+                 * 使わない
+                 */
                 "foldableModeOff": string;
+                /**
+                 * 「自動」は画面の広さと指で操作する端末かどうかで判定します。機種名では判定しません。縦折り（Flip 系）は画面の幅が足りないため対象外です。
+                 */
                 "foldableAutoCaption": string;
+                /**
+                 * この設定はこの端末にのみ保存され、ほかの端末には同期されません。
+                 */
                 "foldableDeviceOnly": string;
             };
             "_visual": {
