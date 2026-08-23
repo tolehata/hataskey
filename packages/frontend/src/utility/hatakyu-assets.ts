@@ -10,6 +10,7 @@
  *   実体は packages/frontend/assets/hatakyu/ に置き、/client-assets/hatakyu/ で配信される。
  * ⚠️このファイルは対応表(Hataskey_ハタキュアセット対応表.csv)から生成した内容と一致させること。
  *   canonical 名を変えるときは、実ファイル・この表・利用箇所を同時に直す。
+ *   アセットの権利・ライセンス条件は assets/hatakyu/NOTICE.md を正本とする。
  *
  * status は対応表の区分をそのまま持つ:
  *   'active'   … 今回の統合で実際に使う
