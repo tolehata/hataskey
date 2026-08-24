@@ -2,21 +2,41 @@
 <PageWithHeader>
 <svg width="0" height="0" style="position:absolute"><defs><filter id="htk-gfx" x="0%" y="0%" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency="0.025 0.025" numOctaves="2" seed="92" result="n"/><feGaussianBlur in="n" stdDeviation="2" result="bl"/><feDisplacementMap in="SourceGraphic" in2="bl" scale="65" xChannelSelector="R" yChannelSelector="G"/></filter></defs></svg>
 
-<div class="htk-root" :data-mode="themeMode" :data-theme="settings.theme || 'kisetsu'" :data-anim="(settings.animations===false)?'off':'on'" ref="rootEl">
+<div class="htk-root" :data-mode="themeMode" :data-theme="settings.theme || 'kisetsu'" :data-anim="(settings.animations===false)?'off':'on'" :data-hk-wind="hkWind?'on':'off'" :data-hk-boot="showBoot?'on':'off'" ref="rootEl">
 
 <!-- 旗鯖fork(v2 §16①): 起動ブートスプラッシュ(テーマ別演出: 季=罫線ドロー / 花信=三点 / 刷=トンボ) -->
-<div v-if="showBoot" :key="bootKey" class="htk-boot" aria-hidden="true"><div class="htk-boot-inner"><div class="htk-boot-tombo"><span></span><span></span><span></span><span></span></div><div class="htk-boot-rule"></div><div class="htk-boot-logo">Hatask</div><div class="htk-boot-rule"></div><div class="htk-boot-dots"><i></i><i></i><i></i></div></div></div>
+<div v-if="showBoot" :key="bootKey" class="htk-boot" aria-hidden="true"><div class="htk-boot-inner"><div class="htk-boot-tombo"><span></span><span></span><span></span><span></span></div><div class="htk-boot-rule"></div><div class="htk-boot-logo">Hatask</div><div class="htk-boot-rule"></div><div class="htk-boot-dots"><i></i><i></i><i></i></div><!-- 旗鯖fork(ハタキュ): 画鋲で紙を留める演出 --><span class="htk-boot-tack"></span></div></div>
 
 <div class="htk-app" @touchstart.passive="htkTouchStart" @touchmove.passive="htkTouchMove" @touchend="htkTouchEnd">
+<!-- 旗鯖fork(ハタキュ): ヘッダー・ナビ・各タブをまとめて「コルク板」に載せるための入れ物。
+     ⚠️ハタキュ以外では display:contents にしてあるので、他テーマのレイアウトには一切影響しない。
+     ⚠️このラッパーを外す/クラス名を変えるときは、CSS の .htk-shell 側も同時に直すこと。 -->
+<div class="htk-shell">
+<!-- 旗鯖fork(ハタキュ): 突風で舞う落ち葉。⚠️key を変えて作り直さないと2回目以降が再生されない。 -->
+<div v-if="isHatakyu" :key="'hkleaf'+hkLeafKey" class="hk-leaves" aria-hidden="true"><span class="hk-leaf"></span><span class="hk-leaf"></span><span class="hk-leaf"></span><span class="hk-leaf"></span><span class="hk-leaf"></span></div>
+
+<!-- 旗鯖fork(ハタキュ): 画鋲で留めたタイトル紙 + 紙の操作ボタン -->
+<div v-if="isHatakyu" class="hk-bhead">
+  <div class="hk-titlecard"><span class="hk-tape hk-tl"></span><span class="hk-tape hk-tr"></span><div class="hk-lg-name">Hatask</div><div class="hk-sb">HATAKYU BOARD</div></div>
+  <div class="hk-hbtns">
+    <button class="hk-hbtn" @click="handleBack" :title="copy.back" :aria-label="copy.back"><i class="ti ti-arrow-left"></i><span>{{copy.back}}</span></button>
+    <button class="hk-hbtn" @click="showSearch=true" :title="copy.search"><i class="ti ti-search"></i><span>{{copy.search}}</span></button>
+    <button class="hk-hbtn" @click="openHataskSettings()" :title="copy.hataskSettings"><i class="ti ti-settings"></i><span>{{copy.hataskSettings}}</span></button>
+  </div>
+</div>
+
 <!-- HEADER: search left, title center, settings right -->
-<header class="htk-lg htk-header htk-anim"><div class="htk-gc" style="display:flex;align-items:center;justify-content:space-between;padding:14px 22px;position:relative"><div style="display:flex;align-items:center;gap:8px;position:relative;z-index:1"><button class="htk-btn htk-icon-sq htk-header-back" @click="handleBack" :title="copy.back" :aria-label="copy.back"><i class="ti ti-arrow-left" style="font-size:1.1rem"></i></button><button class="htk-btn htk-icon-sq" @click="showSearch=true" :title="copy.search" :aria-label="copy.search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></button></div><h1 style="position:absolute;left:0;right:0;margin:0;text-align:center;pointer-events:none;font-size:1.5rem;font-weight:400;letter-spacing:.5px;font-family:'Righteous',system-ui,sans-serif">Hatask</h1><button class="htk-btn htk-icon-sq" @click="openHataskSettings()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button></div></header>
+<header v-if="!isHatakyu" class="htk-lg htk-header htk-anim"><div class="htk-gc" style="display:flex;align-items:center;justify-content:space-between;padding:14px 22px;position:relative"><div style="display:flex;align-items:center;gap:8px;position:relative;z-index:1"><button class="htk-btn htk-icon-sq htk-header-back" @click="handleBack" :title="copy.back" :aria-label="copy.back"><i class="ti ti-arrow-left" style="font-size:1.1rem"></i></button><button class="htk-btn htk-icon-sq" @click="showSearch=true" :title="copy.search" :aria-label="copy.search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></button></div><h1 style="position:absolute;left:0;right:0;margin:0;text-align:center;pointer-events:none;font-size:1.5rem;font-weight:400;letter-spacing:.5px;font-family:'Righteous',system-ui,sans-serif">Hatask</h1><button class="htk-btn htk-icon-sq" @click="openHataskSettings()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button></div></header>
 
 <!-- NAV (旗鯖fork v2: 上部ナビに一本化。モバイルでも上部・横スクロール。下部固定ナビは廃止し、
-     戻るは左上ヘッダーへ。HatasabaUI下部ナビの非表示は body.hataskActive + data-htask-hidden で継続) -->
-<nav class="htk-nav htk-nav-top htk-anim"><button v-for="tab in tabs" :key="tab.id" :class="['htk-nav-t',activeTab===tab.id&&'on']" @click="activeTab=tab.id"><span class="htk-ico"><i :class="tab.icon"></i></span>{{tab.label}}</button></nav>
+     戻るは左上ヘッダーへ。Hataskey UI下部ナビの非表示は body.hataskActive + data-htask-hidden で継続) -->
+<nav v-if="!isHatakyu" class="htk-nav htk-nav-top htk-anim"><button v-for="tab in tabs" :key="tab.id" :class="['htk-nav-t',activeTab===tab.id&&'on']" @click="activeTab=tab.id"><span class="htk-ico"><i :class="tab.icon"></i></span>{{tab.label}}</button></nav>
+<!-- 旗鯖fork(ハタキュ): タブは画鋲で留めた付箋。
+     ⚠️チュートリアルのスポットライトは .htk-nav-top も探すので、セレクタ側に .hk-tabs を足してある。 -->
+<nav v-else class="hk-tabs"><button v-for="tab in tabs" :key="tab.id" :class="['hk-tag',activeTab===tab.id&&'on']" @click="activeTab=tab.id"><i :class="tab.icon"></i>{{tab.label}}</button></nav>
 
 <!-- ========== HOME (v2 デザイン最終形: 季/花信/刷 固定レイアウト) ========== -->
-<div v-if="activeTab==='home'" class="htk-tabpage htk-home" :class="[tabDir==='fwd'?'htk-tab-fwd':'htk-tab-back','o1'+((settings.theme||'kisetsu')==='kisetsu'?'a':(settings.theme||'kisetsu')==='kashin'?'b':'d')]">
+<div v-if="activeTab==='home'" class="htk-tabpage htk-home" :class="[tabDir==='fwd'?'htk-tab-fwd':'htk-tab-back',homeThemeClass]">
 
   <!-- ===================== 季 KISETSU (Editorial Mincho) ===================== -->
   <template v-if="(settings.theme||'kisetsu')==='kisetsu'">
@@ -77,6 +97,85 @@
     </div>
   </template>
 
+  <!-- ===================== ハタキュ HATAKYU (Cork Board) ===================== -->
+  <template v-else-if="isHatakyu">
+    <!-- 麻ひもに吊るした写真。タップで各タブへ飛ぶ。 -->
+    <div class="hk-twine">
+      <div class="hk-hangrow">
+        <button class="hk-hang" style="--i:0;--r:-2deg" @click="activeTab='mood'"><span class="hk-peg"></span><span class="hk-photo"><img :src="hkAsset('waving')" alt="" draggable="false"><span class="hk-cap">{{copy.hkCapWelcome}}</span></span></button>
+        <button class="hk-hang" style="--i:1;--r:1.6deg" @click="activeTab='cal'"><span class="hk-peg"></span><span class="hk-photo"><img :src="hkAsset('checkingTime')" alt="" draggable="false"><span class="hk-cap">{{copy.hkCapSchedule}}</span></span></button>
+        <button class="hk-hang" style="--i:2;--r:-1.2deg" @click="activeTab='garden'"><span class="hk-peg"></span><span class="hk-photo"><img :src="hkAsset('wateringFlower')" alt="" draggable="false"><span class="hk-cap">{{copy.hkCapGarden}}</span></span></button>
+        <button class="hk-hang" style="--i:3;--r:2.2deg" @click="activeTab='meal'"><span class="hk-peg"></span><span class="hk-photo"><img :src="hkAsset('chefCooking')" alt="" draggable="false"><span class="hk-cap">{{copy.hkCapMeal}}</span></span></button>
+      </div>
+    </div>
+
+    <div class="hk-masonry">
+      <div v-if="pendingRsvps.length" class="hk-pin" style="--i:0;--r:-1.5deg"><span class="hk-tack hk-y"></span>
+        <div class="hk-card hk-cream"><div class="hk-jl"><i class="ti ti-mail"></i>{{copy.rsvp}}</div>
+          <div v-for="r in pendingRsvps" :key="r.eventId" class="hk-rsvp-row">
+            <div class="hk-rsvp-ttl"><b>{{r.title}}</b><span>{{r.dateLabel}}</span></div>
+            <div class="hk-rsvp-btns"><button :class="[r.myStatus==='going'&&'on']" @click="setRsvp(r.eventId,'going')">{{copy.rsvpGoing}}</button><button :class="[r.myStatus==='maybe'&&'on']" @click="setRsvp(r.eventId,'maybe')">{{copy.rsvpMaybeShort}}</button><button :class="[r.myStatus==='declined'&&'on']" @click="setRsvp(r.eventId,'declined')">{{copy.rsvpDeclined}}</button></div>
+          </div>
+        </div>
+      </div>
+      <div class="hk-pin" style="--i:1;--r:-1.1deg"><span class="hk-tack"></span>
+        <div class="hk-card"><div class="hk-k"><i class="ti ti-clock"></i>NOW</div><div class="hk-clock">{{currentTime}}</div><div class="hk-dt">{{currentDate}}</div></div>
+      </div>
+      <div class="hk-pin" style="--i:2;--r:1.4deg"><span class="hk-tack hk-y"></span>
+        <div class="hk-card hk-cream"><div class="hk-jl"><i class="ti ti-flame"></i>{{copy.consecutiveDays}}</div><div class="hk-big">{{loginDays}}<small>&nbsp;{{copy.dayNumber}}</small></div><div v-if="loginRanking>0" class="hk-sub"><i class="ti ti-trophy"></i>{{copy.serverRanking}} {{copyx.rank({rank:loginRanking.toString()})}} / {{copyx.people({count:loginTotal.toString()})}}</div></div>
+      </div>
+      <div class="hk-pin" style="--i:3;--r:-.7deg"><span class="hk-tack hk-b"></span>
+        <div class="hk-card"><div class="hk-jl"><i class="ti ti-apps"></i>{{copy.hataApps}}</div>
+          <div class="hk-apps"><button v-for="a in homeApps" :key="a.label" class="hk-appb" @click="a.fn"><span class="hk-ai" :style="{background:a.color}"><i :class="a.icon"></i></span><small>{{a.short}}</small></button></div>
+        </div>
+      </div>
+      <div class="hk-pin" style="--i:4;--r:.9deg"><span class="hk-tack hk-g"></span>
+        <div class="hk-card"><div class="hk-jl"><i class="ti ti-calendar-event"></i>{{copy.upcomingSchedule}}</div>
+          <template v-if="upcomingEvents.length"><button v-for="ev in upcomingEvents.slice(0,3)" :key="ev.id" class="hk-row" @click="goToEvent(ev)"><span class="hk-dot" :style="{background:ev.color}"></span><span class="hk-row-t">{{ev.title}}</span><b>{{evMD(ev.date)}} {{eventTimeLabel(ev)}}</b></button></template>
+          <div v-else class="hk-note">{{copy.noEvents}}</div>
+        </div>
+      </div>
+      <div class="hk-pin" style="--i:5;--r:-1.6deg"><span class="hk-tack hk-p"></span>
+        <button class="hk-card hk-blue hk-cardbtn" @click="activeTab='mood'"><div class="hk-jl"><i class="ti ti-mood-smile"></i>{{copy.tabMood}}</div>
+          <div class="hk-moods"><span v-for="(m,i) in weekMoods" :key="i"><i :class="[m.icon||'ti ti-point',!m.icon&&'off']"></i><small>{{m.day}}</small></span></div>
+        </button>
+      </div>
+      <div class="hk-pin" style="--i:6;--r:1.1deg"><span class="hk-tack"></span>
+        <button class="hk-card hk-mint hk-cardbtn" @click="activeTab='garden'"><div class="hk-jl"><i class="ti ti-flower"></i>{{copy.tabGarden}}</div>
+          <span class="hk-ring"><svg viewBox="0 0 104 104"><circle cx="52" cy="52" r="45" fill="none" stroke="rgba(120,90,50,.22)" stroke-width="6"/><circle cx="52" cy="52" r="45" fill="none" stroke="#43976a" stroke-width="6" stroke-linecap="round" stroke-dasharray="283" :stroke-dashoffset="283-283*(flower.progress/100)"/></svg><span class="hk-ring-mid"><img :src="hkAsset('wateringFlower')" alt="" draggable="false"></span></span>
+          <div class="hk-sub hk-center"><i class="ti ti-plant-2"></i>{{currentFlowerDisplayName}}・{{flower.progress}}%</div>
+        </button>
+      </div>
+      <div class="hk-pin" style="--i:7;--r:-.5deg"><span class="hk-tack hk-b"></span>
+        <button class="hk-card hk-cardbtn" @click="activeTab='meal'"><div class="hk-jl"><i class="ti ti-bowl"></i>{{copy.tabMeal}}</div>
+          <span v-for="m in hkTodayMeals" :key="m.id" class="hk-row"><i :class="mealSlotInfo(m.slot).emoji"></i><span class="hk-row-t">{{mealSlotInfo(m.slot).label}} · {{mealLevelInfo(m.level).label}}</span><b>{{m.time}}</b></span>
+          <div class="hk-note">{{mealSummaryMessage}}</div>
+        </button>
+      </div>
+      <div v-if="canAccessHataFeed" class="hk-pin" style="--i:8;--r:1.7deg"><span class="hk-tack hk-y"></span>
+        <div class="hk-card"><div class="hk-jl"><i class="ti ti-message-report"></i>{{copy.hataFeedNotifications}}</div>
+          <button v-for="n in hfNotifs" :key="n.id" class="hk-row" @click="onHfNotifClick(n)"><i :class="['ti',hfIcon(n.type)]"></i><HataFeedNotificationBody class="hk-row-t" :text="notificationDisplayMessage(n)"/></button>
+          <div v-if="hfNotifs.length===0" class="hk-note">{{copy.noNotifications}}</div>
+        </div>
+      </div>
+      <div class="hk-pin" style="--i:9;--r:-1.3deg"><span class="hk-tack"></span>
+        <div class="hk-card"><div class="hk-jl"><i class="ti ti-activity"></i>{{copy.earthquakeAndTsunami}}</div>
+          <MkEarthquakeTicker v-if="rawQuakes.length" :quakes="rawQuakes" :tsunami="tsunami" mode="compact" :showEmpty="false" @click="openEarthquake" style="cursor:pointer"/>
+          <div v-else class="hk-note">{{copy.noRecentEarthquakes}}</div>
+          <div class="hk-note">{{copy.jmaSourceNote}}</div>
+        </div>
+      </div>
+      <div class="hk-pin" style="--i:10;--r:.6deg"><span class="hk-tack hk-p"></span>
+        <button class="hk-card hk-cream hk-cardbtn" @click="activeTab='eye'"><div class="hk-k"><i class="ti ti-eye"></i>HATASK EYE</div><div class="hk-quote">{{eyePhrase}}</div></button>
+      </div>
+      <div v-if="canUseMascot&&mascotCardUrl" class="hk-pin" style="--i:11;--r:-2deg"><span class="hk-tack hk-g"></span>
+        <div class="hk-card"><div class="hk-jl"><i class="ti ti-mood-happy"></i>{{copy.mascot}}</div>
+          <div class="hk-mascot"><img :src="mascotCardUrl" alt="" draggable="false"><div><div class="hk-mascot-n">{{mascotCardName}}</div><div class="hk-note">{{mascotCardPhrase}}</div></div></div>
+        </div>
+      </div>
+    </div>
+  </template>
+
   <!-- ===================== 刷 SURI (Riso Zine) ===================== -->
   <template v-else>
     <div class="in">
@@ -116,7 +215,16 @@
 </div>
 
 <!-- ========== CALENDAR ========== -->
-<div v-if="activeTab==='cal'" class="htk-panels htk-tabpage" :class="tabDir==='fwd'?'htk-tab-fwd':'htk-tab-back'">
+<div v-if="activeTab==='cal'" class="htk-tabpage" :class="[isHatakyu?'hk-panels':'htk-panels',tabDir==='fwd'?'htk-tab-fwd':'htk-tab-back']">
+  <!-- 旗鯖fork(ハタキュ): つぎの予定までを写真付きの紙で貼る。⚠️予定が無いときは紙ごと出さない。 -->
+  <div v-if="isHatakyu&&hkNextEvent" class="hk-pin" style="--i:0;--r:-1.1deg"><span class="hk-tack hk-b"></span>
+    <div class="hk-card hk-blue hk-center">
+      <img class="hk-hero" :src="hkAsset('checkingTime')" alt="" draggable="false">
+      <div class="hk-jl hk-center"><i class="ti ti-clock-hour-4"></i>{{copy.hkUntilNextEvent}}</div>
+      <div class="hk-big">{{hkNextEventDays}}<small>&nbsp;{{copy.hkDaysUnit}}</small></div>
+      <div class="hk-note">{{evMD(hkNextEvent.date)}} {{eventTimeLabel(hkNextEvent)}}「{{hkNextEvent.title}}」</div>
+    </div>
+  </div>
   <div class="htk-lg htk-anim"><div class="htk-gc">
     <div class="htk-cal-seg" style="margin-bottom:8px"><button :class="['htk-btn htk-xs',calViewMode==='calendar'&&'htk-sb-on']" @click="calViewMode='calendar'"><i class="ti ti-calendar"></i> {{copy.tabCalendar}}</button><button :class="['htk-btn htk-xs',calViewMode==='list'&&'htk-sb-on']" @click="calViewMode='list'"><i class="ti ti-list"></i> {{copy.list}}</button></div>
     <template v-if="calViewMode==='calendar'">
@@ -297,9 +405,21 @@
 </div>
 
 <!-- ========== TODO ========== -->
-<div v-if="activeTab==='todo'" class="htk-tabpage" :class="tabDir==='fwd'?'htk-tab-fwd':'htk-tab-back'"><div class="htk-lg htk-anim"><div class="htk-gc">
+<div v-if="activeTab==='todo'" class="htk-tabpage" :class="[isHatakyu&&'hk-panels',tabDir==='fwd'?'htk-tab-fwd':'htk-tab-back']">
+<!-- 旗鯖fork(ハタキュ): 今日片付いた分をほめる紙。 -->
+<div v-if="isHatakyu" class="hk-pin" style="--i:0;--r:1.4deg"><span class="hk-tack hk-p"></span>
+  <div class="hk-card hk-mint hk-center">
+    <img class="hk-hero" :src="hkAsset('treasureFound')" alt="" draggable="false">
+    <div class="hk-jl hk-center"><i class="ti ti-confetti"></i>{{copy.hkDoneToday}}</div>
+    <div class="hk-big">{{hkTodayDoneCount}}<small>&nbsp;{{copy.hkItemsUnit}}</small></div>
+    <div class="hk-note">{{copyx.hkRemainingToday({count:pendingCount.toString()})}}</div>
+  </div>
+</div>
+<div class="htk-lg htk-anim"><div class="htk-gc">
   <h3 class="htk-sec-title">{{editingTodoId?copy.editTask:copy.todoList}}</h3>
-  <div class="htk-todo-inp-r"><input class="htk-inp" v-model="newTodo" :placeholder="editingTodoId?copy.editTaskPlaceholder:copy.newTaskPlaceholder" @keypress.enter="addTodo" style="flex:1"><button class="htk-btn htk-sm" @click="showTodoExtra=!showTodoExtra">{{copy.details}}</button><button class="htk-btn htk-primary htk-sm" @click="addTodo">{{editingTodoId?copy.update:copy.add}}</button><button v-if="editingTodoId" class="htk-btn htk-sm" @click="cancelEditTodo">{{copy.cancelEdit}}</button></div>
+  <!-- 旗鯖fork(ハタキュ): 入力欄の上でハタキュが一声かける。 -->
+  <div v-if="isHatakyu" class="hk-inlinefig"><img :src="hkAsset('reviewingDocuments')" alt="" draggable="false"><div class="hk-note">{{copyx.hkRemainingToday({count:pendingCount.toString()})}}</div></div>
+  <div class="htk-todo-inp-r hk-todo-inp"><input class="htk-inp" v-model="newTodo" :placeholder="editingTodoId?copy.editTaskPlaceholder:copy.newTaskPlaceholder" @keypress.enter="addTodo" style="flex:1"><button class="htk-btn htk-sm" @click="showTodoExtra=!showTodoExtra">{{copy.details}}</button><button class="htk-btn htk-primary htk-sm" @click="addTodo">{{editingTodoId?copy.update:copy.add}}</button><button v-if="editingTodoId" class="htk-btn htk-sm" @click="cancelEditTodo">{{copy.cancelEdit}}</button></div>
   <div :class="['htk-todo-xf',showTodoExtra&&'open']">
     <div class="htk-todo-xf-i"><label>{{copy.dueDate}}</label><input class="htk-inp" type="date" v-model="newTodoDue"></div>
     <div class="htk-todo-xf-i"><label>{{copy.time}}</label><input class="htk-inp" type="time" v-model="newTodoTime"></div>
@@ -339,11 +459,13 @@
 
 
 <!-- ========== MOOD ========== -->
-<div v-if="activeTab==='mood'" class="htk-panels htk-tabpage" :class="tabDir==='fwd'?'htk-tab-fwd':'htk-tab-back'">
+<div v-if="activeTab==='mood'" class="htk-tabpage" :class="[isHatakyu?'hk-panels':'htk-panels',tabDir==='fwd'?'htk-tab-fwd':'htk-tab-back']">
   <div class="htk-lg htk-anim"><div class="htk-gc">
+    <!-- 旗鯖fork(ハタキュ): 記録の前にハタキュが寄り添う絵を置く。 -->
+    <img v-if="isHatakyu" class="hk-hero" :src="hkAsset('heartHug')" alt="" draggable="false">
     <h3 class="htk-sec-title">{{editingMood?copy.editMood:copy.recordMood}} <button class="htk-info-btn" @click="showMoodDisclaimer=true">?</button></h3>
     <div style="font-size:.72rem;opacity:.4;margin-bottom:10px">{{copy.moodShortDisclaimer}}</div>
-    <div class="htk-mood-sc"><div v-for="m in moodOptions" :key="m.level" :class="['htk-mood-o',selectedMoodLevel===m.level&&'on']" @click="selectedMoodLevel=m.level"><span class="htk-mood-e"><i :class="m.icon"></i></span><span class="htk-mood-l">{{m.label}}</span></div></div>
+    <div class="htk-mood-sc hk-mscale"><div v-for="m in moodOptions" :key="m.level" :class="['htk-mood-o',selectedMoodLevel===m.level&&'on']" @click="selectedMoodLevel=m.level"><span class="htk-mood-e"><i :class="m.icon"></i></span><span class="htk-mood-l">{{m.label}}</span></div></div>
     <div class="htk-coll-h" @click="showMoodNote=!showMoodNote"><span class="htk-fl" style="margin:0">{{copy.note}}</span><span class="htk-ci">{{showMoodNote?'▲':'▼'}}</span></div>
     <div v-if="showMoodNote">
       <div class="htk-fg" style="margin-top:5px"><textarea class="htk-inp" v-model="moodNote" :placeholder="copy.moodNotePlaceholder"></textarea></div>
@@ -351,7 +473,7 @@
     </div>
     <div class="htk-coll-h" @click="showMoodRemind=!showMoodRemind"><span class="htk-fl" style="margin:0">{{copy.reminderNotification}}</span><span class="htk-ci">{{showMoodRemind?'▲':'▼'}}</span></div>
     <div v-if="showMoodRemind" style="padding-top:5px">
-      <div class="htk-tg-row"><span class="htk-tg-lab">{{copy.reminder}}</span><button :class="['htk-tg-sw',settings.moodRemind&&'on']" @click="settings.moodRemind=!settings.moodRemind;saveSettings()"></button></div>
+      <div class="htk-tg-row"><span class="htk-tg-lab">{{copy.reminder}}</span><button :class="['htk-tg-sw',settings.moodRemind&&'on']" @click="settings.moodRemind=!settings.moodRemind;saveSettings();scheduleMoodReminders()"></button></div>
       <div class="htk-nt-chips" style="margin-top:5px"><span v-for="t in moodRemindTimes" :key="t" :class="['htk-nt-chip',settings.moodRemindTimes?.includes(t)&&'on']" @click="toggleMoodRemindTime(t)">{{moodRemindTimeLabel(t)}}</span></div>
     </div>
     <div style="display:flex;gap:8px;margin-top:12px"><button class="htk-btn htk-primary" style="flex:1" @click="saveMood" :disabled="isSaving">{{isSaving?copy.saving:(editingMood?copy.update:copy.saveMood)}}</button><button v-if="editingMood" class="htk-btn" @click="cancelEditMood">{{copy.cancel}}</button></div>
@@ -399,8 +521,9 @@
 </div>
 
 <!-- ========== MEAL(食事記録) ========== -->
-<div v-if="activeTab==='meal'" class="htk-panels htk-tabpage" :class="tabDir==='fwd'?'htk-tab-fwd':'htk-tab-back'">
+<div v-if="activeTab==='meal'" class="htk-tabpage" :class="[isHatakyu?'hk-panels':'htk-panels',tabDir==='fwd'?'htk-tab-fwd':'htk-tab-back']">
   <div class="htk-lg htk-anim"><div class="htk-gc">
+    <img v-if="isHatakyu" class="hk-hero" :src="hkAsset('chefCooking')" alt="" draggable="false">
     <h3 class="htk-sec-title">{{editingMeal?copy.editRecord:copy.recordMeal}} <button class="htk-info-btn" @click="showMealDisclaimerDialog">!</button></h3>
     <div style="font-size:.72rem;opacity:.4;margin-bottom:10px">{{copy.mealShortDisclaimer}}</div>
     <div class="htk-fg"><span class="htk-fl">{{copy.whichMeal}}</span><div class="htk-meal-slots"><div v-for="s in mealSlots" :key="s.id" :class="['htk-meal-slot',selectedMealSlot===s.id&&'on']" @click="selectedMealSlot=s.id"><span class="htk-meal-slot-e"><i :class="s.emoji"></i></span><span class="htk-meal-slot-l">{{s.label}}</span></div></div></div>
@@ -425,10 +548,14 @@
 </div>
 
 <!-- ========== GARDEN ========== -->
-<div v-if="activeTab==='garden'" class="htk-panels htk-tabpage" :class="tabDir==='fwd'?'htk-tab-fwd':'htk-tab-back'">
+<div v-if="activeTab==='garden'" class="htk-tabpage" :class="[isHatakyu?'hk-panels':'htk-panels',tabDir==='fwd'?'htk-tab-fwd':'htk-tab-back']">
+  <!-- 旗鯖fork(ハタキュ): 育ち具合をひとこと添える紙。 -->
+  <div v-if="isHatakyu" class="hk-pin" style="--i:0;--r:1.5deg"><span class="hk-tack hk-y"></span>
+    <div class="hk-card hk-cream"><div class="hk-quote hk-center">{{flower.progress>=100?copy.hkGardenBloomed:copy.hkGardenAlmost}}</div></div>
+  </div>
   <div class="htk-lg htk-anim"><div class="htk-gc" style="text-align:center;min-height:240px">
     <h3 class="htk-sec-title">{{copy.currentFlower}} <button class="htk-info-btn" @click="showFlowerInfo=true">?</button></h3>
-    <div class="htk-fl-ring" style="width:140px;height:140px"><svg viewBox="0 0 160 160"><circle class="htk-fl-track" cx="80" cy="80" r="70"/><circle class="htk-fl-bar" cx="80" cy="80" r="70" :style="{strokeDasharray:'440',strokeDashoffset:440-440*(flower.progress/100)}"/></svg><div class="htk-fl-emo" style="font-size:3rem"><HataskEmoji :emoji="flower.emoji"/></div></div>
+    <div class="htk-fl-ring hk-ring-lg" style="width:140px;height:140px"><svg viewBox="0 0 160 160"><circle class="htk-fl-track" cx="80" cy="80" r="70"/><circle class="htk-fl-bar" cx="80" cy="80" r="70" :style="{strokeDasharray:'440',strokeDashoffset:440-440*(flower.progress/100)}"/></svg><div class="htk-fl-emo" style="font-size:3rem"><HataskEmoji :emoji="flower.emoji"/></div></div>
     <div style="font-weight:600;font-size:1rem">{{currentFlowerDisplayName}}</div>
     <div v-if="currentFlowerHanakotoba" style="font-size:.72rem;color:var(--text-3);margin-top:2px;opacity:.7">{{copy.flowerMeaning}}: {{currentFlowerHanakotoba}}</div>
     <div style="font-size:.75rem;color:var(--text-3);margin-top:4px">{{copyx.flowerProgressTotal({progress:flower.progress.toString(),total:formatMinutes(flower.totalMinutes)})}}</div>
@@ -440,15 +567,16 @@
     <div v-else class="htk-empty"><div class="htk-empI"><i class="ti ti-circle-off"></i></div><div>{{copy.noFlowersYet}}</div></div>
   </div></div>
 </div>
-</div>
+<!-- 旗鯖fork(ハタキュ): Eye も他タブと同じ板の上に載せるため、.htk-app の閉じは EYE の後ろへ移した。 -->
 
 <!-- ========== EYE PAGE ========== -->
-<div v-if="activeTab==='eye'" class="htk-panels htk-tabpage" :class="tabDir==='fwd'?'htk-tab-fwd':'htk-tab-back'" style="padding-bottom:40px">
+<div v-if="activeTab==='eye'" class="htk-tabpage" :class="[isHatakyu?'hk-panels':'htk-panels',tabDir==='fwd'?'htk-tab-fwd':'htk-tab-back']" style="padding-bottom:40px">
   <!-- Eye phrase (big) -->
-  <div class="htk-lg htk-anim"><div class="htk-gc htk-eye-page-top" style="position:relative">
+  <div class="htk-lg htk-anim"><div class="htk-gc htk-eye-page-top hk-eye-top" style="position:relative">
     <!-- 旗鯖fork: AI生成文の注意事項を表示するiマーク (いつでも確認可能) -->
     <button class="htk-eye-info-btn" @click="showEyeDisclaimer=true" :title="copy.aboutHataskEye" style="position:absolute;top:12px;right:12px;background:rgba(255,255,255,.15);border:none;border-radius:50%;width:30px;height:30px;cursor:pointer;color:inherit;display:flex;align-items:center;justify-content:center"><i class="ti ti-info-circle" style="font-size:1rem"></i></button>
-    <div class="htk-eye-logo">◎</div>
+    <img v-if="isHatakyu" class="hk-hero" :src="hkAsset('treasureFound')" alt="" draggable="false">
+    <div v-if="!isHatakyu" class="htk-eye-logo">◎</div>
     <div class="htk-eye-page-label">Hatask Eye</div>
     <div class="htk-eye-page-phrase-wrap">
       <Transition name="htk-eye-fade">
@@ -512,6 +640,8 @@
     <div v-if="flower.progress>=100" style="margin-top:8px"><button class="htk-btn htk-primary htk-sm" @click="harvestFlower">{{copy.harvestFlower}}</button></div>
   </div></div>
 </div>
+</div><!-- /htk-shell -->
+</div><!-- /htk-app -->
 
 <!-- SEARCH MODAL -->
 <Teleport to="body"><div v-if="showSearch" class="htk-modal-ov" :data-theme="settings.theme||'kisetsu'" :data-mode="themeMode" @click.self="showSearch=false"><div class="htk-lg htk-modal-c htk-sch-modal"><div class="htk-gc">
@@ -555,6 +685,24 @@
 <Teleport to="body"><div v-if="showFlowerInfo" class="htk-modal-ov" :data-theme="settings.theme||'kisetsu'" :data-mode="themeMode" @click.self="showFlowerInfo=false"><div class="htk-lg htk-modal-c"><div class="htk-gc" style="padding:28px"><div style="text-align:center;font-size:2rem;margin-bottom:8px;text-shadow:none;color:var(--accent)"><i class="ti ti-plant-2"></i></div><div style="text-align:center;font-size:.92rem;font-weight:700;margin-bottom:10px">{{copy.howToGrowFlowers}}</div><div class="htk-popup-b">{{copy.flowerInfoGrowth}}<br><br>{{copy.flowerInfoTime}}<br><br>{{copy.flowerInfoNaming}}<br><br>{{copy.flowerInfoVariety}}</div><div style="text-align:center;margin-top:14px"><button class="htk-btn htk-primary" @click="showFlowerInfo=false">{{copy.understoodExcited}}</button></div></div></div></div></Teleport>
 
 <!-- 旗鯖fork(v2 §14): チュートリアル テーマ選択ステップ -->
+<!-- 旗鯖fork(ハタキュ): 新テーマの案内。⚠️アカウントごとに1回だけ出す(settings.hatakyuNoticeShown)。
+     ⚠️overlay に data-theme="hatakyu" を固定で付ける。いまのテーマが何であっても、
+       案内そのものは「これから見せたい紙の見た目」で出したいため。 -->
+<Teleport to="body"><div v-if="showHatakyuNotice" class="htk-modal-ov hk-ovl" data-theme="hatakyu" :data-mode="themeMode" @click.self="dismissHatakyuNotice">
+  <div class="hk-modal">
+    <span class="hk-tape hk-tl"></span><span class="hk-tape hk-tr"></span>
+    <img class="hk-hero" :src="hkAsset('waving')" alt="" draggable="false">
+    <div class="hk-mnew"><i class="ti ti-sparkles"></i>NEW THEME</div>
+    <div class="hk-mttl">{{copy.hatakyuNoticeTitlePrefix}}<span>{{copy.themeHatakyu}}</span>{{copy.hatakyuNoticeTitleSuffix}}</div>
+    <div class="hk-mtxt">{{copy.hatakyuNoticeBody1}}<br>{{copy.hatakyuNoticeBody2Prefix}}<b>{{copy.hatakyuNoticeBody2Strong}}</b>{{copy.hatakyuNoticeBody2Suffix}}<br>{{copy.hatakyuNoticeBody3}}</div>
+    <div class="hk-mbtns">
+      <button class="hk-btnp" @click="applyHatakyuFromNotice"><i class="ti ti-check"></i> {{copy.hatakyuNoticeApply}}</button>
+      <button class="hk-btno" @click="dismissHatakyuNotice">{{copy.hatakyuNoticeLater}}</button>
+    </div>
+    <div class="hk-mnote">{{copy.hatakyuNoticeNote}}</div>
+  </div>
+</div></Teleport>
+
 <!-- 旗鯖fork(v2 §14): テーマ選択(設計 .tpickwrap を忠実移植)。picker自身の light/dark トグルを持つ。 -->
 <Teleport to="body"><div v-if="showTutTheme" class="htk-tut-ov htk-tpick-ov">
   <div class="tpickwrap" :data-mode="themeMode">
@@ -650,6 +798,8 @@ import { versatileLang } from '@/utility/intl-const.js';
 import MkEarthquakeTicker from '@/components/MkEarthquakeTicker.vue';
 import HataFeedNotificationBody from '@/components/HataFeedNotificationBody.vue';
 import HataskEmoji from '@/components/HataskEmoji.vue';
+import { hatakyuAssetUrl } from '@/utility/hatakyu-assets.js';
+import type { HatakyuAssetKey } from '@/utility/hatakyu-assets.js';
 import { getDefaultPhrase, getPhrase } from '@/utility/hatask-phrases.js';
 import { floraData, pickRandomFlora, generateFlowerName, localizeFloraName, localizeHanakotoba } from '@/utility/hatask-flora.js';
 import { HATASK_FLOWER_GROWTH_EVENT, seedHataskFlowerGrowth } from '@/utility/hatask-flower-growth.js';
@@ -657,6 +807,7 @@ import { notificationDisplayMessage, type HataFeedNotif } from '@/utility/hatafe
 import { activeCharacter as mascotActiveCharacter, expressionDisplayUrl, loadMascot, hatakMascotActive, currentExpression as mascotCurrentExpression, currentPhrase as mascotCurrentPhrase, pickRandomPhrase as mascotPickRandomPhrase, displaySettings as mascotDisplaySettings, loadDisplaySettings as loadMascotDisplaySettings, nextIdleDelayMs as mascotNextIdleDelayMs, escapeText as mascotEscapeText } from '@/utility/mascot-store.js';
 const copy = i18n.ts._hata._hatask._main;
 const copyx = i18n.tsx._hata._hatask._main;
+const emotionCopy = (i18n.ts._hata as unknown as { _emotionAnalysis: { title: string } })._emotionAnalysis;
 const _getPhrase = (ctx?: any): string => { try { return getPhrase(ctx); } catch { return getDefaultPhrase(); } };
 definePage(()=>({title:'Hatask',icon:'ti ti-checklist'}));
 const SCOPE=['client','hatask'];
@@ -803,9 +954,81 @@ function playBoot(){
     bootTimer=setTimeout(()=>{showBoot.value=false;bootTimer=null;},1300);
   });
 }
-// 旗鯖fork(v2 §16①): ブート表示中にテーマが確定/変更されたら要素を作り直し、現テーマで最初から再生
-//   (設定の非同期ロードや切替でブートが2テーマ混ざるのを防ぐ)。
-watch(() => settings.value.theme, () => { if(showBoot.value) bootKey.value++; });
+// ===================== 旗鯖fork: ハタキュ(コルクボード)テーマ =====================
+// 紙をコルク板にピンで留めた見立て。常時はゆっくり揺れ、ときどき突風が吹いて紙が大きく揺れる。
+// ⚠️このテーマ専用の状態はここに固めておく。他テーマの挙動には一切触らない。
+const isHatakyu=computed(()=>(settings.value.theme||'kisetsu')==='hatakyu');
+/**
+ * ハタキュ画像のURL。
+ * ⚠️ここでファイル名を直書きしない。必ずレジストリ(hatakyu-assets.ts)の key を経由する。
+ * ⚠️このテーマは絵柄そのものが見た目の中身なので、ブランディング設定(useHatakyuBranding)では
+ *   出し分けない。テーマを選んだこと自体が「絵を出す」という意思表示になる。
+ */
+function hkAsset(key:HatakyuAssetKey):string{return hatakyuAssetUrl(key)}
+// ホームは設計HTMLごとにマークアップが違うので、テーマ別のスコープクラスを付ける。
+//   o1a=季 / o1b=花信 / o1d=刷 / o1k=ハタキュ
+const homeThemeClass=computed(()=>{
+  const t=settings.value.theme||'kisetsu';
+  return t==='kisetsu'?'o1a':t==='kashin'?'o1b':t==='hatakyu'?'o1k':'o1d';
+});
+// 風を吹かせるか。⚠️ハタキュテーマ限定の設定で、既定はON(=吹く)。
+//   落ち葉が舞うのが苦手な人・電池を使いたくない人のために切れるようにしてある。
+const hkWindEnabled=computed(()=>isHatakyu.value && settings.value.hatakyuWind!==false);
+const hkWind=ref(false);
+// 落ち葉は突風のたびに作り直す(前の再生が残っていると2回目以降が出ないため)。
+const hkLeafKey=ref(0);
+let hkWindTimer:ReturnType<typeof setTimeout>|null=null;
+let hkWindNextTimer:ReturnType<typeof setTimeout>|null=null;
+function hkReduced():boolean{
+  return typeof window!=='undefined' && window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)').matches : false;
+}
+/**
+ * 突風を1回吹かせる。
+ * ⚠️保持時間は「一番遅い要素が振り切るまで」に合わせてある(gustH 2.1s + ずらし最大 0.55s)。
+ *   短く切ると紙が振り戻る途中で固まって見える。
+ */
+function hkBlowWind():void{
+  if(!hkWindEnabled.value) return;
+  if(settings.value.animations===false||hkReduced()) return;
+  if(hkWindTimer){clearTimeout(hkWindTimer);hkWindTimer=null;}
+  hkWind.value=false;
+  hkLeafKey.value++;
+  requestAnimationFrame(()=>{
+    hkWind.value=true;
+    hkWindTimer=setTimeout(()=>{hkWind.value=false;hkWindTimer=null;},2750);
+  });
+}
+/** 滞在中はときどき勝手に吹く。⚠️等間隔だと機械的なので 40〜90 秒でばらす。 */
+function hkScheduleWind():void{
+  if(hkWindNextTimer){clearTimeout(hkWindNextTimer);hkWindNextTimer=null;}
+  if(!hkWindEnabled.value) return;
+  if(settings.value.animations===false||hkReduced()) return;
+  hkWindNextTimer=setTimeout(()=>{hkBlowWind();hkScheduleWind();},40000+Math.random()*50000);
+}
+function hkStopWind():void{
+  if(hkWindTimer){clearTimeout(hkWindTimer);hkWindTimer=null;}
+  if(hkWindNextTimer){clearTimeout(hkWindNextTimer);hkWindNextTimer=null;}
+  hkWind.value=false;
+}
+// ⚠️風まわりの watch は settings の宣言より後(hkInstallWindWatchers)で張る。
+//   ここで watch を張ると初回評価が settings の初期化前に走る。
+
+// 旗鯖fork: 新テーマ「ハタキュ」の案内。⚠️アカウントごとに1回だけ。
+//   registry(プロファイル)に持つので、端末を変えても二度は出ない。
+const showHatakyuNotice=ref(false);
+function applyHatakyuFromNotice():void{
+  settings.value.theme='hatakyu';
+  settings.value.hatakyuNoticeShown=true;
+  saveSettings();
+  showHatakyuNotice.value=false;
+  playBoot();
+  os.toast(copy.hatakyuNoticeApplied);
+}
+function dismissHatakyuNotice():void{
+  settings.value.hatakyuNoticeShown=true;
+  saveSettings();
+  showHatakyuNotice.value=false;
+}
 const showTutorial=ref(false);const tutStep=ref(0);const tutTotalSteps=10;
 const isMobile=ref(window.innerWidth<=1024);
 // ===== Spotlight tutorial system =====
@@ -815,11 +1038,11 @@ const tipSide=ref<'bottom'|'top'>('bottom');
 const tipPosition=ref<Record<string,string>>({});
 const tutSteps=computed(()=>[
   {emoji:'ti ti-sparkles',title:copy.welcome,body:'',tab:'home',selector:'',tips:[]},
-  {emoji:'ti ti-layout-navbar',title:copy.tutorialNavigationTitle,body:copy.tutorialNavigationBody,tab:'home',selector:'.htk-nav-top',tips:[
+  {emoji:'ti ti-layout-navbar',title:copy.tutorialNavigationTitle,body:copy.tutorialNavigationBody,tab:'home',selector:'.htk-nav-top,.hk-tabs',tips:[
     {icon:'ti ti-device-mobile',text:copy.tutorialNavigationScreens},
     {icon:'ti ti-arrow-left',text:copy.tutorialNavigationBack},
   ]},
-  {emoji:'ti ti-search',title:copy.tutorialHeaderTitle,body:copy.tutorialHeaderBody,tab:'home',selector:'.htk-header',tips:[
+  {emoji:'ti ti-search',title:copy.tutorialHeaderTitle,body:copy.tutorialHeaderBody,tab:'home',selector:'.htk-header,.hk-bhead',tips:[
     {icon:'ti ti-circle-plus',text:copy.tutorialHeaderSearch},
     {icon:'ti ti-settings',text:copy.tutorialHeaderSettings},
   ]},
@@ -828,27 +1051,27 @@ const tutSteps=computed(()=>[
     {icon:'ti ti-flower',text:copy.tutorialHomeFlower},
     {icon:'ti ti-calendar-event',text:copy.tutorialHomeCards},
   ]},
-  {emoji:'ti ti-calendar-event',title:copy.tabCalendar,body:copy.tutorialCalendarBody,tab:'cal',selector:'.htk-panels',tips:[
+  {emoji:'ti ti-calendar-event',title:copy.tabCalendar,body:copy.tutorialCalendarBody,tab:'cal',selector:'.htk-panels,.hk-panels',tips:[
     {icon:'ti ti-palette',text:copy.tutorialCalendarOptions},
     {icon:'ti ti-users',text:copy.tutorialCalendarPublic},
     {icon:'ti ti-clipboard-check',text:copy.tutorialCalendarRsvp},
   ]},
-  {emoji:'ti ti-checkbox',title:copy.tutorialTodoTitle,body:copy.tutorialTodoBody,tab:'todo',selector:'.htk-todo-inp-r',tips:[
+  {emoji:'ti ti-checkbox',title:copy.tutorialTodoTitle,body:copy.tutorialTodoBody,tab:'todo',selector:'.htk-todo-inp-r,.hk-todo-inp',tips:[
     {icon:'ti ti-folder',text:copy.tutorialTodoFolders},
     {icon:'ti ti-note',text:copy.tutorialTodoDetails},
     {icon:'ti ti-check',text:copy.tutorialTodoComplete},
   ]},
-  {emoji:'ti ti-mood-smile',title:copy.tutorialMoodTitle,body:copy.tutorialMoodBody,tab:'mood',selector:'.htk-mood-sc',tips:[
+  {emoji:'ti ti-mood-smile',title:copy.tutorialMoodTitle,body:copy.tutorialMoodBody,tab:'mood',selector:'.htk-mood-sc,.hk-mscale',tips:[
     {icon:'ti ti-chart-bar',text:copy.tutorialMoodAnalysis},
     {icon:'ti ti-bell',text:copy.tutorialMoodReminder},
     {icon:'ti ti-info-circle',text:copy.tutorialMoodDisclaimer},
   ]},
-  {emoji:'ti ti-flower',title:copy.tabGarden,body:copy.tutorialGardenBody,tab:'garden',selector:'.htk-fl-ring',tips:[
+  {emoji:'ti ti-flower',title:copy.tabGarden,body:copy.tutorialGardenBody,tab:'garden',selector:'.htk-fl-ring,.hk-ring-lg',tips:[
     {icon:'ti ti-alarm',text:copy.tutorialGardenBloom},
     {icon:'ti ti-pencil',text:copy.tutorialGardenHarvest},
     {icon:'ti ti-target',text:copy.tutorialGardenCollection},
   ]},
-  {emoji:'ti ti-eye',title:'Hatask Eye',body:copy.tutorialEyeBody,tab:'eye',selector:'.htk-eye-page-top',tips:[
+  {emoji:'ti ti-eye',title:'Hatask Eye',body:copy.tutorialEyeBody,tab:'eye',selector:'.htk-eye-page-top,.hk-eye-top',tips:[
     {icon:'ti ti-chart-line',text:copy.tutorialEyeAnalysis},
     {icon:'ti ti-bulb',text:copy.tutorialEyeLearning},
     {icon:'ti ti-sparkles',text:copy.tutorialEyeFuture},
@@ -908,17 +1131,21 @@ const tutThemes=computed(() => [
   {id:'kisetsu',jp:copy.themeKisetsu,desc:copy.themeKisetsuDescription,bg:'#f4f1ea',fg:'#211d18',accent:'#8a3d1f'},
   {id:'kashin',jp:copy.themeKashin,desc:copy.themeKashinDescription,bg:'#fff5e6',fg:'#25201c',accent:'#ff6b4a'},
   {id:'suri',jp:copy.themeSuri,desc:copy.themeSuriDescription,bg:'#efe7d4',fg:'#1a1a2e',accent:'#2a52c0'},
+  // 旗鯖fork(ハタキュ): コルク板の地色と、紙に載る青。
+  {id:'hatakyu',jp:copy.themeHatakyu,desc:copy.themeHatakyuDescription,bg:'#c9975f',fg:'#3b2a1c',accent:'#1272ec'},
 ]);
 function pickTutTheme(id:string){settings.value.theme=id;saveSettings()}
 function setTutMode(dark:boolean){settings.value.darkMode=dark;settings.value.autoTheme=false;saveSettings()}
 function startTutFromTheme(){
-  settings.value.v2Onboarded=true;saveSettings();
+  // ⚠️このテーマ選択の一覧にはハタキュも並ぶ。ここを通った人へ後から新テーマ案内を出すと
+  //   「さっき選んだのに」と二度手間になるので、案内済みとして扱う。
+  settings.value.v2Onboarded=true;settings.value.hatakyuNoticeShown=true;saveSettings();
   showTutTheme.value=false;
   // 既存ユーザー(単独告知)は本編に進まず閉じるだけ。新規は本編ウェルカムへ。
   if(tutThemeStandalone.value){tutThemeStandalone.value=false;os.toast(copy.themeSet);return;}
   tutStep.value=0;showTutorial.value=true;
 }
-function skipTutTheme(){showTutTheme.value=false;settings.value.v2Onboarded=true;settings.value.tutorialDone=true;tutThemeStandalone.value=false;saveSettings()}
+function skipTutTheme(){showTutTheme.value=false;settings.value.v2Onboarded=true;settings.value.hatakyuNoticeShown=true;settings.value.tutorialDone=true;tutThemeStandalone.value=false;saveSettings()}
 function openDrawingTool(){
   showMobileNav.value=false;
 	  os.popup(defineAsyncComponent(()=>import('@/components/MkDrawingTool.vue')),{},{closed:()=>{showMobileNav.value=true}});
@@ -962,6 +1189,8 @@ function cleanupHataskState(){
   hatakMascotActive.value=false;
   // 旗鯖fork(タスク2): カードの文言ローテタイマーを停止(残留防止)
   stopMascotCardRotation();
+  // 旗鯖fork(ハタキュ): 離脱中に裏で突風のタイマーを回し続けない
+  hkStopWind();
   // 旗鯖fork(#36): 通知・地震ポーリング/購読を停止
   if(hfTimer){clearInterval(hfTimer);hfTimer=null}
   if(eqPollTimer){clearInterval(eqPollTimer);eqPollTimer=null}
@@ -978,7 +1207,7 @@ function openHataSideStudio(){cleanupHataskState();routeRouter.push('/hata-side-
 function openHataWhatsNew(){
   const {dispose}=os.popup(defineAsyncComponent(()=>import('@/components/MkHataWhatsNew.vue')),{}, {closed:()=>dispose()});
 }
-function openHatalyze(){window.open('https://kanjo-bunseki.tolehata.net','_blank')}
+function openHatalyze(){cleanupHataskState();routeRouter.push('/hatask/emotion-analysis')}
 // 旗鯖fork: HataFeed / 地震・津波情報ビューアを旗鯖独自アプリから開く
 	const canAccessHataFeed=computed(()=>($i?.policies as Record<string, unknown> | undefined)?.canAccessHataFeed===true||$i?.isModerator===true||$i?.isAdmin===true);
 // 旗鯖fork(v2): ホームのアプリ一覧(3テーマ共通データ)。short=短縮ラベル。color=季/花信のアイコン地色。
@@ -991,7 +1220,7 @@ const homeApps=computed(()=>{
     {label:copy.appPortal,short:copy.appPortalShort,icon:'ti ti-door-enter',color:'#a78bfa',fn:openPortal},
     {label:copy.appHataSettings,short:copy.appHataSettingsShort,icon:'ti ti-flag',color:'#f472b6',fn:openHataSettings},
     {label:copy.appGuide,short:copy.appGuideShort,icon:'ti ti-book',color:'#60a5fa',fn:openHataDocs},
-    {label:'HATAlyze',short:'HATAlyze',icon:'ti ti-mood-search',color:'#f59e0b',fn:openHatalyze},
+    {label:emotionCopy.title,short:emotionCopy.title,icon:'ti ti-mood-search',color:'#f59e0b',fn:openHatalyze},
   ];
   if(canAccessHataFeed.value)a.push({label:'HataFeed',short:'HataFeed',icon:'ti ti-message-report',color:'#34d399',fn:openHataFeed});
   a.push({label:'Hatady',short:'Hatady',icon:'ti ti-book-2',color:'#e79b5e',fn:openHatady});
@@ -1110,7 +1339,11 @@ routeRouter.push('/');
 }
 
 // ========== NOTIFICATION SYSTEM (Misskey API) ==========
-const notifTimerIds:number[]=[];
+// 旗鯖fork: 予定通知と気持ちリマインドでタイマーの入れ物を分ける。
+// ⚠️1つの配列を共有すると、予定を1件追加しただけで気持ちリマインドのタイマーまで消える
+//   (scheduleEventNotifications が「全消ししてから張り直す」ため)。
+const eventTimerIds:number[]=[];
+const moodTimerIds:number[]=[];
 // 旗鯖fork: 第4引数 link でクリック先パスを指定可能(デフォルト '/hatask' = 全hatask通知をhataskページに飛ばす)。
 // 呼び出し側で別のパスに飛ばしたい場合のみ link を明示すればよい。
 async function sendNotification(header:string,body:string,icon?:string,link:string='/hatask'){
@@ -1119,7 +1352,7 @@ try{await misskeyApi('notifications/create',{body,header:header||null,icon:icon|
 
 function scheduleEventNotifications(){
 // Clear existing timers
-notifTimerIds.forEach(id=>clearTimeout(id));notifTimerIds.length=0;
+eventTimerIds.forEach(id=>clearTimeout(id));eventTimerIds.length=0;
 const now=Date.now();
 events.value.forEach(ev=>{
 if(!ev.notify||!ev.notifyTimings||!ev.notifyTimings.length)return;
@@ -1135,11 +1368,14 @@ const fireAt=eventTime-msAhead;
 const delay=fireAt-now;
 if(delay>0&&delay<24*60*60*1000){// only schedule within next 24h
 const tid=window.setTimeout(()=>{sendNotification(ev.title,copyx.eventReminderBody({ timing: notifyTimingLabel(timing), start: ev.timeStart, end: ev.timeEnd }), undefined, '/hatask?notice=calendar')},delay);
-notifTimerIds.push(tid)
+eventTimerIds.push(tid)
 }})
 })
 }
 function scheduleMoodReminders(){
+// ⚠️まず消す。ここを省くと呼ばれるたびにタイマーが積み上がり、同じ時刻に何通も届く。
+// ⚠️早期returnより前で消すこと。後ろに置くと、リマインドをOFFにしても既存の分が鳴る。
+moodTimerIds.forEach(id=>clearTimeout(id));moodTimerIds.length=0;
 if(!settings.value.moodRemind||!settings.value.moodRemindTimes?.length)return;
 const now=new Date();const today=now.toISOString().slice(0,10);
 const timeMap:Record<string,string>={'朝 8:00':'08:00','昼 12:00':'12:00','夜 20:00':'20:00','寝る前 23:00':'23:00'};
@@ -1152,7 +1388,7 @@ const tid=window.setTimeout(()=>{
 const todaysMoods=moods.value.filter((m:any)=>m.date===today);
 if(todaysMoods.length===0){sendNotification(copy.moodReminderTitle, copy.moodReminderBody, undefined,'/hatask?notice=mood')}
 },delay);
-notifTimerIds.push(tid)
+moodTimerIds.push(tid)
 }})
 }
 const currentTime=ref('');const currentDate=ref('');const eyePhrase=ref(getDefaultPhrase());const editingEvent=ref<any>(null);let eyeTimer:ReturnType<typeof setInterval>|null=null;
@@ -1222,6 +1458,10 @@ const loginNextReward=computed(()=>{const d=loginDays.value;for(const m of login
 const loginMessage=computed(()=>{const d=loginDays.value;if(d<=1)return copy.loginFirst;if(d<7)return copy.loginGettingUsed;if(d<30)return copy.loginRegular;if(d<100)return copy.loginThankYou;if(d<365)return copy.loginAmazing;return copy.loginLegend});
 async function fetchLoginRanking(){try{const res=await misskeyApi('hata/login-ranking',{});if(res&&typeof res.rank==='number'){loginRanking.value=res.rank;loginTotal.value=res.totalUsers??0}}catch(e){console.warn('Login ranking unavailable:',e)}}
 const settings=ref<any>({darkMode:false,autoTheme:true,weekStart:'mon',showClock:true,showEvents:true,showFlower:true,showMoodSummary:true,showFeedbackNotif:true,showEarthquake:true,moodRemind:false,moodRemindTimes:['昼 12:00','寝る前 23:00'],openOnStart:false,theme:'kisetsu',animations:true});
+// 旗鯖fork(v2 §16①): ブート表示中にテーマが確定/変更されたら要素を作り直し、現テーマで最初から再生
+//   (設定の非同期ロードや切替でブートが2テーマ混ざるのを防ぐ)。
+//   watch は登録時に監視元を評価するため、settings の宣言後に置く。
+watch(() => settings.value.theme, () => { if(showBoot.value) bootKey.value++; });
 const prefersDark=ref(window.matchMedia('(prefers-color-scheme:dark)').matches);
 let mediaQuery:MediaQueryList|null=null;
 function detectMisskeyTheme():'dark'|'light'{
@@ -1252,6 +1492,11 @@ function toggleAutoTheme(){settings.value.autoTheme=!settings.value.autoTheme;sa
 // 旗鯖fork: Hatask Eye 注意事項を閉じる (初回表示フラグを保存して二度目以降は自動表示しない)
 function dismissEyeDisclaimer(){showEyeDisclaimer.value=false;settings.value.eyeDisclaimerShown=true;saveSettings()}
 async function saveSettings(){await registrySet('settings',settings.value)}
+// 旗鯖fork(ハタキュ): 風まわりの watch はここで張る。
+//   ⚠️settings の宣言より前に張ると、watch の初回評価が settings の初期化前に走ってしまう。
+watch(hkWindEnabled,(on)=>{ if(on) hkScheduleWind(); else hkStopWind(); });
+// タブを切り替えた瞬間にも1回吹かせる(紙が入れ替わったことが伝わる)。
+watch(activeTab,()=>{ if(hkWindEnabled.value){hkBlowWind();hkScheduleWind();} });
 function toggleMoodRemindTime(t:string){if(!settings.value.moodRemindTimes)settings.value.moodRemindTimes=[];const i=settings.value.moodRemindTimes.indexOf(t);if(i>=0)settings.value.moodRemindTimes.splice(i,1);else settings.value.moodRemindTimes.push(t);saveSettings();scheduleMoodReminders()}
 function toggleNotifyTiming(t:string){const i=newEvent.value.notifyTimings.indexOf(t);if(i>=0)newEvent.value.notifyTimings.splice(i,1);else newEvent.value.notifyTimings.push(t)}
 
@@ -1330,6 +1575,23 @@ const showMealDisclaimer=ref(false);
 const mealsByDate=computed(()=>{const g:Record<string,any[]>={};[...meals.value].sort((a,b)=>b.date.localeCompare(a.date)||b.time.localeCompare(a.time)).forEach(m=>{if(!g[m.date])g[m.date]=[];g[m.date].push(m)});return g});
 // サマリーは数値評価を出さない。記録した行為そのものを中立に肯定する労いのみ
 const mealTodayCount=computed(()=>{const today=new Date().toISOString().slice(0,10);return meals.value.filter(m=>m.date===today).length});
+// 旗鯖fork(ハタキュ): コルク板の「ごはん記録」紙に貼る今日の分。⚠️多すぎると紙が伸びるので3件まで。
+const hkTodayMeals=computed(()=>{const today=new Date().toISOString().slice(0,10);return meals.value.filter(m=>m.date===today).slice(0,3)});
+// 旗鯖fork(ハタキュ): カレンダーの「つぎの予定まで」紙。予定が無ければ紙自体を出さない。
+const hkNextEvent=computed(()=>upcomingEvents.value[0]??null);
+const hkNextEventDays=computed(()=>{
+  const ev=hkNextEvent.value;
+  if(!ev)return 0;
+  const today=new Date();today.setHours(0,0,0,0);
+  const d=new Date(ev.date+'T00:00:00');
+  // 端数を切り上げずに日数だけを見る(時刻は別に出しているため)。
+  return Math.max(0,Math.round((d.getTime()-today.getTime())/86400000));
+});
+// 旗鯖fork(ハタキュ): ToDoの「今日終わった分」紙。
+const hkTodayDoneCount=computed(()=>{
+  const today=new Date().toISOString().slice(0,10);
+  return todos.value.filter(t=>t.done&&(t.doneAt??'').slice(0,10)===today).length;
+});
 const mealSummaryMessage=computed(()=>{const c=mealTodayCount.value;if(c===0)return copy.mealSummaryNone;if(c===1)return copy.mealSummaryOne;return copy.mealSummaryMany});
 
 // ===== PAGINATION =====
@@ -1499,9 +1761,11 @@ const editingTodoId=ref<string|null>(null);
 async function addTodo(){if(!newTodo.value.trim()&&!editingTodoId.value)return;
 if(editingTodoId.value){const t=todos.value.find(t=>t.id===editingTodoId.value);if(t){t.text=newTodo.value.trim()||t.text;t.due=newTodoDue.value;t.time=newTodoTime.value;t.folder=newTodoFolder.value;t.comment=newTodoComment.value}editingTodoId.value=null;newTodo.value='';newTodoDue.value='';newTodoTime.value='';newTodoComment.value='';showTodoExtra.value=false;await registrySet('todos',todos.value);os.toast(copy.todoUpdated);return}
 todos.value.unshift({id:generateId(),text:newTodo.value.trim(),done:false,due:newTodoDue.value,time:newTodoTime.value,folder:newTodoFolder.value||(activeFolder.value!=='all'?activeFolder.value:''),comment:newTodoComment.value,createdAt:Date.now()});newTodo.value='';newTodoDue.value='';newTodoTime.value='';newTodoComment.value='';await registrySet('todos',todos.value)}
-async function toggleTodo(id:string){const t=todos.value.find(t=>t.id===id);if(t){t.done=!t.done;await registrySet('todos',todos.value)}}
+// 旗鯖fork(ハタキュ): 「今日終わった分」を数えるために、完了した時刻を残す。
+//   ⚠️過去に完了した分には doneAt が無い(遡って埋められない)。その分は今日の件数に入らない。
+async function toggleTodo(id:string){const t=todos.value.find(t=>t.id===id);if(t){t.done=!t.done;if(t.done)t.doneAt=new Date().toISOString();else delete t.doneAt;await registrySet('todos',todos.value)}}
 async function deleteTodo(id:string){const{canceled}=await os.confirm({type:'warning',text:copy.confirmDeleteTodo});if(canceled)return;todos.value=todos.value.filter(t=>t.id!==id);await registrySet('todos',todos.value)}
-async function editTodo(id:string){const t=todos.value.find(t=>t.id===id);if(!t)return;editingTodoId.value=id;newTodo.value=t.text;newTodoDue.value=t.due||'';newTodoTime.value=t.time||'';newTodoFolder.value=t.folder||'';newTodoComment.value=t.comment||'';showTodoExtra.value=true;const el=document.querySelector('.htk-todo-inp-r');if(el)el.scrollIntoView({behavior:'smooth',block:'center'})}
+async function editTodo(id:string){const t=todos.value.find(t=>t.id===id);if(!t)return;editingTodoId.value=id;newTodo.value=t.text;newTodoDue.value=t.due||'';newTodoTime.value=t.time||'';newTodoFolder.value=t.folder||'';newTodoComment.value=t.comment||'';showTodoExtra.value=true;const el=document.querySelector('.htk-todo-inp-r,.hk-todo-inp');if(el)el.scrollIntoView({behavior:'smooth',block:'center'})}
 function cancelEditTodo(){editingTodoId.value=null;newTodo.value='';newTodoDue.value='';newTodoTime.value='';newTodoComment.value='';showTodoExtra.value=false}
 async function addFolder(){if(!newFolderName.value.trim())return;folders.value.push({id:generateId(),name:newFolderName.value.trim(),emoji:newFolderEmoji.value||'📁',color:newFolderColor.value||''});newFolderName.value='';newFolderEmoji.value='📁';newFolderColor.value='';await registrySet('folders',folders.value)}
 async function deleteFolder(i:number){const{canceled}=await os.confirm({type:'warning',text:copyx.confirmDeleteFolder({ name:folders.value[i].name })});if(canceled)return;const fid=folders.value[i].id;todos.value.forEach(t=>{if(t.folder===fid)t.folder=''});if(activeFolder.value===fid)activeFolder.value='all';folders.value.splice(i,1);await registrySet('folders',folders.value);await registrySet('todos',todos.value)}
@@ -1691,7 +1955,9 @@ nextTick(() => {
 const initFlower = pickRandomFlora();
 	const defaultFlowerStartedAt = Date.now();
 	const defaultFlower = { emoji: initFlower.emoji, name: generateFlowerName(initFlower), progress: 0, startedAt: defaultFlowerStartedAt, totalMinutes: 0, lastGrowthAt: defaultFlowerStartedAt };
-const defaultSettings = { darkMode: false, autoTheme: true, weekStart: 'mon', showClock: true, showEvents: true, showFlower: true, showMoodSummary: true, showMealSection: true, showFeedbackNotif: true, showEarthquake: true, moodRemind: false, moodRemindTimes: ['昼 12:00', '寝る前 23:00'], openOnStart: false, showMealSummary: true, mealDisclaimerShown: false, eyeDisclaimerShown: false, theme: 'kisetsu', animations: true, v2Onboarded: false };
+const defaultSettings = { darkMode: false, autoTheme: true, weekStart: 'mon', showClock: true, showEvents: true, showFlower: true, showMoodSummary: true, showMealSection: true, showFeedbackNotif: true, showEarthquake: true, moodRemind: false, moodRemindTimes: ['昼 12:00', '寝る前 23:00'], openOnStart: false, showMealSummary: true, mealDisclaimerShown: false, eyeDisclaimerShown: false, theme: 'kisetsu', animations: true, v2Onboarded: false,
+	// 旗鯖fork(ハタキュ): 風を吹かせるか(このテーマ限定・既定ON) / 新テーマ案内を出したか(アカウントごと1回)
+	hatakyuWind: true, hatakyuNoticeShown: false };
 
 // 各データを個別に取得（1つの失敗が他に影響しないようにする）
 const loadResults = await Promise.allSettled([
@@ -1730,6 +1996,12 @@ if (!settings.value.tutorialDone) { tutThemeStandalone.value = false; showTutThe
 // 旗鯖fork(v2): 既存ユーザー(チュートリアル済み)がリデザイン後に初めて開いたら、テーマ選択(告知)を一度だけ。
 //   確定/スキップで v2Onboarded を立て、以後は出さない。本編スポットライトは出さない(単独モード)。
 else if (!settings.value.v2Onboarded) { tutThemeStandalone.value = true; showTutTheme.value = true; }
+// 旗鯖fork(ハタキュ): 新テーマの案内はアカウントごとに1回だけ。
+//   ⚠️v2 のテーマ選択(告知)がまだ出ていない人には出さない。同時に2枚出すと何を選んだのか分からなくなる。
+//     その人はテーマ選択の一覧でハタキュを見ることになるので、そこで案内済みとして扱う。
+else if (!settings.value.hatakyuNoticeShown) { showHatakyuNotice.value = true; }
+// 旗鯖fork(ハタキュ): 設定を読み終えた時点でテーマが確定するので、ここから風を回し始める。
+if (hkWindEnabled.value) { hkBlowWind(); hkScheduleWind(); }
 // Schedule notifications
 scheduleEventNotifications();
 scheduleMoodReminders();
@@ -1748,6 +2020,8 @@ onActivated(() => {
 // 旗鯖fork(v2 §16①): hatask が表示されるたび(初回mount含む)ブートを再生。遷移復帰でも出るように。
 bootUsedActivated = true;
 playBoot();
+// 旗鯖fork(ハタキュ): 復帰のたびに1回吹かせ、滞在中の自動突風を張り直す。
+if (hkWindEnabled.value) { hkBlowWind(); hkScheduleWind(); }
 // 旗鯖fork(タスク8): keep-alive復帰時もフローティング連動フラグを立て直す
 hatakMascotActive.value = true;
 // 旗鯖fork(タスク2): keep-alive復帰時にカードの文言ローテを再開(onMountedが走らないため。利用許可時のみ)
@@ -1800,7 +2074,8 @@ if (eyeTimer) clearInterval(eyeTimer);
 	window.removeEventListener(HATASK_FLOWER_GROWTH_EVENT, onHataskFlowerGrowth);
 if (mediaQuery) mediaQuery.removeEventListener('change', onMediaChange);
 stopHtkThemeWatch();
-notifTimerIds.forEach(id => clearTimeout(id));
+eventTimerIds.forEach(id => clearTimeout(id));
+moodTimerIds.forEach(id => clearTimeout(id));
 });
 </script>
 
@@ -1895,6 +2170,27 @@ notifTimerIds.forEach(id => clearTimeout(id));
   --bg:#14141f; --surface:#1e1e2c; --fg:#ece7dc; --fg-2:#b3aec6; --fg-3:#8f8aa3;
   --ink-line:#ece7dc; --blue:#7f97ff; --pink:#ff6fae; --sun:#ffe14f;
   --rule:rgba(236,231,220,.18); --card-shadow:3px 3px 0 var(--pink);
+}
+/* --- ハタキュ Hatakyu (light): コルク板に紙をピンで留めた見立て --- */
+/* ⚠️--bg は「板の外側の地」。紙は --surface、コルク面は --cork で別に持つ。 */
+.htk-root[data-theme="hatakyu"],.htk-modal-ov[data-theme="hatakyu"]{
+  --cork:#c9975f; --wood:#6b4a2f; --wood-l:#8a6440;
+  --bg:#4a3627; --surface:#fdf6e6; --fg:#3b2a1c; --fg-2:#6f5b3f; --fg-3:#7a5c34;
+  --paper2:#fff9ef; --cream-c:#fdeec4; --blue-c:#e3f0ff; --mint-c:#e4f6ee; --dash:#ddcba6;
+  --blue:#1272ec; --cream:#f7dc9a; --orange:#b9791f;
+  --field:#fffdf6; --field-bd:#cdb98f;
+  --accent:var(--blue); --rule:var(--field-bd);
+  --on-blue:#ffffff; --on-blue-2:#f7dc9a; --on-accent:var(--on-blue);
+  --card:var(--surface); --card-border:none; --card-shadow:0 12px 22px -10px rgba(40,24,8,.7); --card-radius:0;
+  --htk-font-body:"Zen Kaku Gothic New",var(--htk-fallback);
+  --htk-font-head:"Zen Maru Gothic",var(--htk-fallback);
+}
+.htk-root[data-theme="hatakyu"][data-mode="dark"],.htk-modal-ov[data-theme="hatakyu"][data-mode="dark"]{
+  --cork:#4a3a2b; --wood:#2c221a; --wood-l:#463628;
+  --bg:#241c15; --surface:#332b22; --fg:#f4ece0; --fg-2:#d3c5ab; --fg-3:#e8b96b;
+  --paper2:#3a3128; --cream-c:#3d3324; --blue-c:#2c3340; --mint-c:#2b3830; --dash:#5c4c38;
+  --blue:#6fa8ff; --orange:#e8b96b; --field:#2b241c; --field-bd:#5c4c38;
+  --on-blue:#0e1c2b; --on-blue-2:#123055; --rule:var(--field-bd);
 }
 
 /* --- モーション: キーフレーム(テーマ別) --- */
@@ -2761,7 +3057,9 @@ select.htk-inp{appearance:none;cursor:pointer;padding-right:36px}
 .tpick-seg button{border:none;background:none;font-family:inherit;font-size:.78rem;font-weight:700;padding:6px 16px;border-radius:999px;cursor:pointer;color:inherit;display:flex;align-items:center;gap:5px}
 .tpick-seg button.on{background:#211d18;color:#faf8f3}
 .tpickwrap[data-mode="dark"] .tpick-seg button.on{background:#ece7dc;color:#16151b}
-.tpick-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px}
+/* 旗鯖fork(ハタキュ): テーマが4つになったので2列2段にする。
+   ⚠️520px幅に4列を詰めるとプレビューが潰れて選べる見た目でなくなる。 */
+.tpick-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:18px}
 .tp-card{border:2px solid transparent;border-radius:16px;padding:10px;cursor:pointer;background:rgba(0,0,0,.035);transition:transform .15s,border-color .15s,background .3s;font-family:inherit;color:inherit;text-align:left}
 .tpickwrap[data-mode="dark"] .tp-card{background:rgba(255,255,255,.06)}
 .tp-card:hover{transform:translateY(-3px)}
@@ -2787,6 +3085,14 @@ select.htk-inp{appearance:none;cursor:pointer;padding-right:36px}
 .pv-suri{background:#efe7d4;color:#1a1a2e}
 .tpickwrap[data-mode="dark"] .pv-suri{background:#14141f;color:#ece7dc}
 .pv-suri .pb{background:#2a52c0}.pv-suri .pt i{background:#ff4f9a}
+/* 旗鯖fork(ハタキュ): 地色はコルク、紙のロゴは青。⚠️他の3つと同じ3点セット(pl/pb/pt)を必ず揃える。 */
+.pv-hatakyu{background:#c9975f;color:#3b2a1c}
+.tpickwrap[data-mode="dark"] .pv-hatakyu{background:#4a3a2b;color:#f4ece0}
+.pv-hatakyu .pl{color:#1272ec}
+.tpickwrap[data-mode="dark"] .pv-hatakyu .pl{color:#6fa8ff}
+.pv-hatakyu .pb{background:#fdf6e6}.pv-hatakyu .pt i{background:#f7dc9a}
+.tpickwrap[data-mode="dark"] .pv-hatakyu .pb{background:#332b22}
+.tpickwrap[data-mode="dark"] .pv-hatakyu .pt i{background:#5c4c38}
 
 /* ============================================================
    旗鯖fork(v2): ホーム 季/刷 のダークモード可読性
@@ -2994,6 +3300,289 @@ select.htk-inp{appearance:none;cursor:pointer;padding-right:36px}
 .htk-eq-dot.off{background:#ef4444}
 @keyframes htkPulse{0%,100%{opacity:1}50%{opacity:.35}}
 .htk-eq-meta{font-size:.72rem;opacity:.55;margin-top:6px;text-align:right;font-variant-numeric:tabular-nums}
+
+/* =====================================================================
+   旗鯖fork(ハタキュ): コルクボードテーマ
+   設計: Hatask v2 コルク.dc.html (.ckroot / .board / .cork / .pinned / .hang)
+   ⚠️ここのセレクタは必ず .htk-root[data-theme="hatakyu"] 配下に閉じる。
+     素の .hk-* だけで書くと、他テーマのCSSと衝突したときに気付けない。
+   ⚠️板の見た目は .htk-shell の擬似要素で作っている(::before=コルク面 / ::after=内枠)。
+     .htk-shell を消す/名前を変えるときはテンプレート側と同時に直すこと。
+   ===================================================================== */
+
+/* ⚠️⚠️ここが抜けると機能タブが「空白」になる。⚠️⚠️
+   `.htk-root[data-theme] .htk-anim{opacity:0}` が全テーマ共通で要素を透明にし、
+   そこから戻すのは **テーマ別の出現アニメ(fill-mode:both)** だけ、という作りになっている。
+   ハタキュの行を足さないと `.htk-anim` が付いた要素は永久に opacity:0 のまま消える。
+   機能タブ(カレンダー/ToDo/きもち/ごはん/お庭/Eye)のカードは全部 `.htk-lg .htk-anim` なので全滅する。
+   ホームだけ無事に見えるのは、ハタキュのホームが .hk-pin/.hk-card で `.htk-anim` を使っていないため。
+   ⚠️アニメOFF・prefers-reduced-motion の人は `opacity:1 !important` で救われるので再現しない。
+     「自分の環境では出ない」を理由に無いことにしないこと。
+
+   ⚠️ここで出現アニメを足して解決してはいけない。カード自体に揺れ(hkSway)を当てており、
+     animation は後勝ちで潰れる → opacity:0 が残って同じ症状に戻る。opacity を直接戻す。
+   ⚠️[data-anim] を挟んで詳細度を1つ上げてある(記述順に依存させないため)。data-anim は常に付く。 */
+.htk-root[data-theme="hatakyu"][data-anim] .htk-anim{ opacity:1; }
+
+/* ハタキュ以外では箱として存在しない。⚠️これを消すと全テーマのレイアウトが1段深くなる。 */
+.htk-shell{ display:contents; }
+
+.htk-root[data-theme="hatakyu"] .htk-shell{
+  display:block; position:relative; border-radius:20px;
+  /* 板14px + コルク面の内余白(20 18 26) */
+  padding:34px 32px 40px;
+  background:linear-gradient(160deg,var(--wood-l),var(--wood));
+  box-shadow:0 34px 70px -26px rgba(0,0,0,.65),inset 0 2px 0 rgba(255,255,255,.18);
+}
+/* コルク面。粒は放射グラデを重ねて作る(画像を持たない)。 */
+.htk-root[data-theme="hatakyu"] .htk-shell::before{
+  content:''; position:absolute; inset:14px; border-radius:12px; z-index:0; pointer-events:none;
+  background-color:var(--cork);
+  background-image:
+    radial-gradient(rgba(120,80,40,.42) 1.4px,transparent 1.5px),
+    radial-gradient(rgba(90,58,28,.3) 1.1px,transparent 1.2px),
+    radial-gradient(rgba(255,225,180,.28) 1px,transparent 1.1px),
+    radial-gradient(circle at 22% 18%,rgba(255,220,170,.14),transparent 45%),
+    radial-gradient(circle at 78% 82%,rgba(80,50,20,.16),transparent 50%);
+  background-size:11px 11px,17px 17px,23px 23px,100% 100%,100% 100%;
+  background-position:0 0,6px 9px,13px 4px,0 0,0 0;
+  box-shadow:inset 0 0 44px rgba(60,40,20,.45);
+}
+/* 板の内枠(木口の落ち影) */
+.htk-root[data-theme="hatakyu"] .htk-shell::after{
+  content:''; position:absolute; inset:7px; border-radius:14px;
+  border:2px solid rgba(0,0,0,.22); pointer-events:none; z-index:3;
+}
+/* 中身はコルク面より前に出す */
+.htk-root[data-theme="hatakyu"] .htk-shell > *{ position:relative; z-index:2; }
+
+/* --- 突風で舞う落ち葉 --- */
+.hk-leaves{ position:absolute; inset:14px; border-radius:12px; overflow:hidden; pointer-events:none; z-index:5; }
+.hk-leaf{ position:absolute; left:-24px; width:11px; height:11px; border-radius:60% 10% 60% 10%; background:var(--lc,#e3b768); opacity:0; }
+.hk-leaf:nth-child(1){ top:14%; --lc:#e8c07a; animation-delay:.02s }
+.hk-leaf:nth-child(2){ top:34%; --lc:#cf9a58; animation-delay:.18s; width:9px; height:9px }
+.hk-leaf:nth-child(3){ top:56%; --lc:#f0d59a; animation-delay:.32s }
+.hk-leaf:nth-child(4){ top:72%; --lc:#d9a765; animation-delay:.46s; width:8px; height:8px }
+.hk-leaf:nth-child(5){ top:24%; --lc:#f3e2b5; animation-delay:.6s; width:7px; height:7px }
+
+/* --- ヘッダー(タイトル紙 + 紙のボタン) --- */
+.hk-bhead{ display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:14px; flex-wrap:wrap; }
+.hk-titlecard{ position:relative; background:var(--surface); padding:11px 20px 12px; transform:rotate(-1.4deg); box-shadow:0 10px 18px -8px rgba(45,28,10,.6); }
+.hk-lg-name{ font-family:'Righteous',system-ui,sans-serif; font-size:2rem; line-height:1; color:var(--blue); }
+.hk-sb{ font-size:.64rem; font-weight:700; color:var(--fg-2); letter-spacing:.14em; margin-top:2px; }
+.hk-tape{ position:absolute; width:70px; height:22px; background:rgba(247,220,154,.82); border-left:1px dashed rgba(255,255,255,.5); border-right:1px dashed rgba(255,255,255,.5); box-shadow:0 1px 4px rgba(0,0,0,.18); }
+.hk-tl{ top:-10px; left:-15px; transform:rotate(-28deg) }
+.hk-tr{ top:-10px; right:-15px; transform:rotate(26deg) }
+.hk-hbtns{ display:flex; gap:7px; flex-wrap:wrap }
+.hk-hbtn{ display:inline-flex; align-items:center; gap:6px; min-height:44px; padding:9px 13px; border:none; cursor:pointer; font-family:var(--htk-font-head); font-weight:700; font-size:.76rem; color:var(--fg); background:var(--paper2); box-shadow:0 6px 12px -6px rgba(40,24,8,.6); transform:rotate(.8deg); }
+.hk-hbtn:nth-child(2){ transform:rotate(-1.2deg) }
+.hk-hbtn:nth-child(3){ transform:rotate(1.6deg) }
+.hk-hbtn .ti{ font-size:1rem; color:var(--blue) }
+
+/* --- タブ(画鋲つきの付箋) --- */
+/* ⚠️タブを横スクロール(overflow-x:auto)にしてはいけない。
+     Hatask は .htk-app に「横スワイプでタブ切替」のハンドラを持っている。
+     横スクロール領域を作ると、指で払ったときにタブが切り替わってしまい
+     スクロールできず、画面外のタブに永久に触れなくなる(モバイルで再現)。
+   ⚠️既存3テーマも同じ理由で .htk-nav-top を flex-wrap:wrap にしている。ここも折り返しに揃える。
+     設計HTMLは横スクロールだが、あちらはスワイプ操作を持たないプロトタイプなのでそのまま持ち込めない。 */
+.hk-tabs{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:18px; padding-bottom:4px; overflow:visible; }
+.hk-tag{ position:relative; display:inline-flex; align-items:center; gap:6px; min-height:44px; padding:9px 14px 10px; border:none; cursor:pointer; font-family:var(--htk-font-head); font-weight:700; font-size:.8rem; color:var(--fg); background:var(--surface); box-shadow:0 7px 14px -7px rgba(40,24,8,.65); clip-path:polygon(0 0,100% 0,100% 100%,7px 100%,0 calc(100% - 7px)); flex:0 0 auto; white-space:nowrap; }
+.hk-tag .ti{ font-size:1.05rem; color:var(--fg-3) }
+.hk-tag.on{ background:var(--blue); color:var(--on-blue) }
+.hk-tag.on .ti{ color:var(--on-blue-2) }
+.hk-tag::before{ content:''; position:absolute; top:5px; left:9px; width:9px; height:9px; border-radius:50%; background:radial-gradient(circle at 32% 30%,#fff,#c0392b 55%,#7d2018); box-shadow:0 1px 2px rgba(0,0,0,.45); }
+
+/* --- 石垣(masonry) と 機能タブの列 --- */
+/* ホーム専用。短い紙だけを並べるので段組み(石垣)でよい。 */
+.hk-masonry{ columns:3; column-gap:16px; }
+/* ⚠️機能タブ(カレンダー/ToDo/きもち/ごはん/お庭/Eye)に段組みを使ってはいけない。
+     段組みは中身を「分断」するので、ToDoリストや予定フォームのような背の高いカードが
+     途中で切られて次の段へ飛び、画鋲(position:absolute)は分断境界で消える。
+     break-inside:avoid は保証ではなく希望なので防げない。⚠️列はグリッドで固定する。
+   ⚠️列数はベースの .htk-panels と同じ2列に揃える。設計HTMLは3列だが、あちらの紙は
+     どれも短い。実際のフォームを3列に詰めると1列あたりが狭すぎて崩れる。 */
+.hk-panels{ display:grid; grid-template-columns:1fr 1fr; gap:22px 16px; align-items:start; }
+.hk-pin{ position:relative; transform-origin:50% 4px; transform:rotate(var(--r,0deg)); }
+/* 段組み(ホーム)側だけ、縦の隔たりをマージンで取る。グリッド側は gap が担う。 */
+.hk-masonry > .hk-pin{ break-inside:avoid; margin:0 0 20px; }
+/* 共有マークアップのカード(.htk-lg)も、この板の上では同じ「紙」として振る舞わせる。 */
+.htk-root[data-theme="hatakyu"] .hk-masonry > .htk-lg,
+.htk-root[data-theme="hatakyu"] .hk-panels > .htk-lg{
+  transform-origin:50% 4px; transform:rotate(var(--r,0deg));
+  background:var(--surface); box-shadow:var(--card-shadow); border-radius:0;
+}
+.htk-root[data-theme="hatakyu"] .hk-masonry > .htk-lg{ break-inside:avoid; margin:0 0 20px; }
+/* ⚠️ベースの .htk-lg は margin-bottom:16px を持つ。gap と二重になるので消す。 */
+.htk-root[data-theme="hatakyu"] .hk-panels > .htk-lg{ margin:0; }
+.htk-root[data-theme="hatakyu"] .hk-masonry > .htk-lg:nth-child(odd),
+.htk-root[data-theme="hatakyu"] .hk-panels > .htk-lg:nth-child(odd){ --r:-1deg }
+.htk-root[data-theme="hatakyu"] .hk-masonry > .htk-lg:nth-child(even),
+.htk-root[data-theme="hatakyu"] .hk-panels > .htk-lg:nth-child(even){ --r:1.2deg }
+/* ⚠️ベースの .htk-lg:hover は translateY で transform を奪う。紙は傾きを保つ。 */
+.htk-root[data-theme="hatakyu"] .hk-masonry > .htk-lg:hover,
+.htk-root[data-theme="hatakyu"] .hk-panels > .htk-lg:hover{ transform:rotate(var(--r,0deg)); }
+/* ベースの ::after は backdrop-filter 用。この板では画鋲として作り替える。 */
+.htk-root[data-theme="hatakyu"] .hk-masonry > .htk-lg::after,
+.htk-root[data-theme="hatakyu"] .hk-panels > .htk-lg::after{
+  content:''; inset:auto; position:absolute; top:-9px; left:50%; margin-left:-9px;
+  width:18px; height:18px; border-radius:50%; backdrop-filter:none; -webkit-backdrop-filter:none;
+  background:radial-gradient(circle at 32% 28%,#fff 8%,#e0483c 46%,#8c2118);
+  box-shadow:0 3px 5px rgba(0,0,0,.45); z-index:4;
+}
+
+/* --- 紙(カード) --- */
+.hk-card{ position:relative; display:block; width:100%; box-sizing:border-box; text-align:left; border:none; font-family:inherit; background:var(--surface); color:var(--fg); padding:15px 16px 16px; box-shadow:0 12px 22px -10px rgba(40,24,8,.7); }
+.hk-cardbtn{ cursor:pointer }
+.hk-cream{ background:var(--cream-c) }
+.hk-blue{ background:var(--blue-c) }
+.hk-mint{ background:var(--mint-c) }
+.hk-center{ text-align:center }
+.hk-tack{ position:absolute; top:-9px; left:50%; margin-left:-9px; width:18px; height:18px; border-radius:50%; background:radial-gradient(circle at 32% 28%,#fff 8%,var(--pc,#e0483c) 46%,#8c2118); box-shadow:0 3px 5px rgba(0,0,0,.45); z-index:4; }
+.hk-tack::after{ content:''; position:absolute; left:50%; top:14px; width:2px; height:7px; margin-left:-1px; background:linear-gradient(#b8b3aa,#7d786f); border-radius:1px; }
+.hk-tack.hk-b{ --pc:#2f7de0 } .hk-tack.hk-y{ --pc:#e8b52e } .hk-tack.hk-g{ --pc:#43976a } .hk-tack.hk-p{ --pc:#a660c8 }
+
+.hk-k{ font-family:'Bebas Neue',sans-serif; letter-spacing:.2em; font-size:.62rem; font-weight:700; color:var(--fg-3); margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+.hk-k .ti{ font-size:.95rem; color:var(--blue) }
+.hk-jl{ font-family:var(--htk-font-head); font-weight:900; font-size:.86rem; color:var(--fg); margin-bottom:8px; display:flex; align-items:center; gap:6px; }
+.hk-jl.hk-center{ justify-content:center }
+.hk-jl .ti{ font-size:1.05rem; color:var(--blue) }
+.hk-clock{ font-family:var(--htk-font-head); font-weight:900; font-size:2.6rem; line-height:.86; color:var(--fg); }
+.hk-dt{ font-size:.76rem; font-weight:700; color:var(--fg-2); margin-top:5px }
+.hk-big{ font-family:var(--htk-font-head); font-weight:900; font-size:2.3rem; line-height:.9; color:var(--blue) }
+.hk-big small{ font-size:.8rem; color:var(--fg-2); font-weight:700 }
+.hk-sub{ font-size:.74rem; color:var(--fg-2); font-weight:700; display:flex; align-items:center; gap:5px; margin-top:5px }
+.hk-sub.hk-center{ justify-content:center }
+.hk-sub .ti{ color:var(--orange) }
+.hk-note{ font-size:.66rem; color:var(--fg-2); font-weight:700; margin-top:5px; line-height:1.6 }
+.hk-quote{ font-family:var(--htk-font-head); font-weight:700; font-size:.94rem; line-height:1.75; color:var(--fg) }
+
+.hk-row{ display:flex; align-items:center; gap:8px; width:100%; box-sizing:border-box; padding:7px 0; border:none; border-bottom:1px dashed var(--dash); background:none; font:inherit; font-size:.82rem; font-weight:700; color:var(--fg); text-align:left; }
+.hk-row:last-child{ border-bottom:none }
+button.hk-row{ cursor:pointer }
+.hk-row .hk-dot{ width:9px; height:9px; border-radius:50%; flex-shrink:0 }
+.hk-row .ti{ color:var(--orange) }
+.hk-row-t{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis }
+.hk-row b{ margin-left:auto; font-size:.7rem; color:var(--fg-2); font-weight:700; white-space:nowrap }
+
+.hk-apps{ display:grid; grid-template-columns:repeat(4,1fr); gap:11px 4px }
+.hk-appb{ display:flex; flex-direction:column; align-items:center; gap:5px; cursor:pointer; background:none; border:none; font:inherit; padding:0 }
+.hk-ai{ width:40px; height:40px; border-radius:11px; display:flex; align-items:center; justify-content:center; font-size:1.2rem; color:#fff; box-shadow:0 3px 6px -2px rgba(0,0,0,.4) }
+.hk-appb small{ font-size:.58rem; font-weight:700; color:var(--fg-2); text-align:center }
+
+.hk-moods{ display:flex; justify-content:space-between }
+.hk-moods > span{ display:flex; flex-direction:column; align-items:center; gap:3px }
+.hk-moods .ti{ font-size:1.3rem; color:var(--blue) }
+.hk-moods .ti.off{ color:var(--fg-2); opacity:.5 }
+.hk-moods small{ font-size:.56rem; font-weight:700; color:var(--fg) }
+
+.hk-ring{ position:relative; display:block; width:104px; height:104px; margin:2px auto 0 }
+.hk-ring svg{ width:100%; height:100%; transform:rotate(-90deg) }
+.hk-ring-mid{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center }
+.hk-ring-mid img{ width:64px; height:64px }
+
+.hk-hero{ display:block; width:120px; height:120px; margin:0 auto 4px; -webkit-user-drag:none }
+.hk-inlinefig{ display:flex; align-items:center; gap:10px; margin-bottom:10px }
+.hk-inlinefig img{ width:62px; height:62px; flex-shrink:0; -webkit-user-drag:none }
+.hk-inlinefig .hk-note{ margin:0 }
+.hk-mascot{ display:flex; align-items:center; gap:10px }
+.hk-mascot img{ width:76px; height:76px; flex-shrink:0; object-fit:contain; -webkit-user-drag:none }
+.hk-mascot-n{ font-family:var(--htk-font-head); font-weight:900; font-size:.9rem; color:var(--fg) }
+
+.hk-rsvp-row{ padding:6px 0; border-bottom:1px dashed var(--dash) }
+.hk-rsvp-row:last-child{ border-bottom:none }
+.hk-rsvp-ttl{ font-size:.82rem; font-weight:700; color:var(--fg); display:flex; gap:6px; align-items:baseline; flex-wrap:wrap }
+.hk-rsvp-ttl span{ font-size:.7rem; color:var(--fg-2) }
+.hk-rsvp-btns{ display:flex; gap:6px; margin-top:6px; flex-wrap:wrap }
+.hk-rsvp-btns button{ flex:1; min-height:38px; padding:7px 10px; border:1.5px solid var(--field-bd); background:var(--field); color:var(--fg); border-radius:9px; font:inherit; font-size:.74rem; font-weight:700; cursor:pointer }
+.hk-rsvp-btns button.on{ background:var(--blue); color:var(--on-blue); border-color:var(--blue) }
+
+/* --- 麻ひもに吊るした写真 --- */
+.hk-twine{ position:relative; margin:2px 0 20px; padding-top:22px }
+.hk-twine::before{ content:''; position:absolute; top:8px; left:-6px; right:-6px; height:3px; border-radius:2px; background:linear-gradient(#e8d4a8,#b99a63); box-shadow:0 2px 3px rgba(0,0,0,.3) }
+.hk-hangrow{ display:flex; gap:16px; justify-content:center; flex-wrap:wrap }
+.hk-hang{ position:relative; width:118px; transform-origin:50% -14px; transform:rotate(var(--r,0deg)); cursor:pointer; background:none; border:none; padding:0; font:inherit }
+.hk-peg{ position:absolute; top:-16px; left:50%; margin-left:-6px; width:12px; height:22px; border-radius:3px; background:linear-gradient(#f3e0b4,#c7a469); box-shadow:0 2px 4px rgba(0,0,0,.4); z-index:4 }
+.hk-photo{ position:relative; display:block; background:var(--paper2); padding:8px 8px 27px; box-shadow:0 13px 24px -10px rgba(40,24,8,.75) }
+.hk-photo img{ display:block; width:100%; user-select:none; -webkit-user-drag:none }
+.hk-cap{ position:absolute; bottom:8px; left:0; right:0; text-align:center; font-family:var(--htk-font-head); font-weight:700; font-size:.68rem; color:var(--fg-2) }
+
+/* --- 新テーマ案内モーダル --- */
+.hk-ovl{ background:rgba(40,26,12,.62); backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); padding:18px; overflow-y:auto }
+.hk-modal{ position:relative; width:min(460px,100%); box-sizing:border-box; background:var(--surface); color:var(--fg); border-radius:20px; padding:24px 22px; box-shadow:0 34px 70px -18px rgba(0,0,0,.7); text-align:center; font-family:var(--htk-font-body) }
+.hk-modal .hk-tape{ width:96px; height:26px }
+.hk-modal .hk-tl{ top:-13px; left:22px; transform:rotate(-9deg) }
+.hk-modal .hk-tr{ top:-13px; right:22px; transform:rotate(8deg) }
+.hk-mnew{ display:inline-flex; align-items:center; gap:5px; font-family:'Bebas Neue',sans-serif; letter-spacing:.18em; font-size:.68rem; background:var(--blue); color:var(--on-blue); padding:4px 11px; border-radius:999px }
+.hk-mttl{ font-family:var(--htk-font-head); font-weight:900; font-size:1.35rem; color:var(--fg); margin:9px 0 4px }
+.hk-mttl span{ color:var(--blue) }
+.hk-mtxt{ font-size:.82rem; line-height:1.75; color:var(--fg-2); font-weight:500; margin-bottom:14px }
+.hk-mbtns{ display:flex; gap:8px; margin-top:14px }
+.hk-btnp{ flex:1; background:var(--blue); color:var(--on-blue); border:none; border-radius:9px; padding:12px 16px; font-family:var(--htk-font-head); font-weight:900; font-size:.84rem; cursor:pointer; min-height:44px; box-shadow:0 5px 12px -5px rgba(18,114,236,.7) }
+.hk-btno{ background:var(--paper2); color:var(--fg); border:1.5px solid var(--field-bd); border-radius:9px; padding:12px 14px; font-family:inherit; font-weight:700; font-size:.82rem; cursor:pointer; min-height:44px }
+.hk-mnote{ font-size:.66rem; color:var(--fg-2); margin-top:9px; font-weight:700; line-height:1.7 }
+
+/* --- モーション --- */
+@keyframes hkSway{0%,100%{transform:rotate(var(--r,0deg))}50%{transform:rotate(calc(var(--r,0deg) + .55deg))}}
+@keyframes hkSwayH{0%,100%{transform:rotate(var(--r,0deg))}50%{transform:rotate(calc(var(--r,0deg) - 1.1deg))}}
+@keyframes hkGust{0%{transform:rotate(var(--r,0deg))}14%{transform:rotate(calc(var(--r,0deg) + 2.4deg))}34%{transform:rotate(calc(var(--r,0deg) - 1.5deg))}54%{transform:rotate(calc(var(--r,0deg) + .8deg))}72%{transform:rotate(calc(var(--r,0deg) - .34deg))}88%{transform:rotate(calc(var(--r,0deg) + .12deg))}100%{transform:rotate(var(--r,0deg))}}
+@keyframes hkGustH{0%{transform:rotate(var(--r,0deg))}13%{transform:rotate(calc(var(--r,0deg) + 6.4deg))}33%{transform:rotate(calc(var(--r,0deg) - 4.2deg))}52%{transform:rotate(calc(var(--r,0deg) + 2.4deg))}70%{transform:rotate(calc(var(--r,0deg) - 1.1deg))}86%{transform:rotate(calc(var(--r,0deg) + .4deg))}100%{transform:rotate(var(--r,0deg))}}
+@keyframes hkDrift{0%{opacity:0;transform:translate(0,0) rotate(0)}12%{opacity:.85}100%{opacity:0;transform:translate(78vw,42px) rotate(220deg)}}
+@keyframes hkSettle{from{opacity:0;transform:translateY(-14px) rotate(calc(var(--r,0deg) - 4deg))}to{opacity:1;transform:rotate(var(--r,0deg))}}
+@keyframes hkPopIn{from{opacity:0;transform:translateY(14px) scale(.96)}to{opacity:1;transform:none}}
+
+.htk-root[data-theme="hatakyu"][data-anim="on"] .hk-pin,
+.htk-root[data-theme="hatakyu"][data-anim="on"] .hk-panels > .htk-lg,
+.htk-root[data-theme="hatakyu"][data-anim="on"] .hk-masonry > .htk-lg{ animation:hkSway 6.5s ease-in-out infinite; animation-delay:calc(var(--i,0)*.42s) }
+.htk-root[data-theme="hatakyu"][data-anim="on"] .hk-hang{ animation:hkSwayH 4.6s ease-in-out infinite; animation-delay:calc(var(--i,0)*.35s) }
+.htk-root[data-theme="hatakyu"][data-anim="on"][data-hk-boot="on"] .hk-pin,
+.htk-root[data-theme="hatakyu"][data-anim="on"][data-hk-boot="on"] .hk-panels > .htk-lg,
+.htk-root[data-theme="hatakyu"][data-anim="on"][data-hk-boot="on"] .hk-masonry > .htk-lg{ animation:hkSettle .55s cubic-bezier(.34,1.4,.64,1) both; animation-delay:calc(var(--i,0)*55ms) }
+.htk-root[data-theme="hatakyu"][data-anim="on"][data-hk-wind="on"] .hk-pin,
+.htk-root[data-theme="hatakyu"][data-anim="on"][data-hk-wind="on"] .hk-panels > .htk-lg,
+.htk-root[data-theme="hatakyu"][data-anim="on"][data-hk-wind="on"] .hk-masonry > .htk-lg{ animation:hkGust 1.9s cubic-bezier(.33,.1,.24,.98) both; animation-delay:calc(var(--i,0)*45ms) }
+.htk-root[data-theme="hatakyu"][data-anim="on"][data-hk-wind="on"] .hk-hang{ animation:hkGustH 2.1s cubic-bezier(.33,.1,.24,.98) both; animation-delay:calc(var(--i,0)*55ms) }
+.htk-root[data-theme="hatakyu"][data-anim="on"][data-hk-wind="on"] .hk-leaf{ animation:hkDrift 1.9s ease-out both }
+.htk-root[data-theme="hatakyu"][data-anim="on"] .hk-modal{ animation:hkPopIn .34s cubic-bezier(.34,1.4,.64,1) both }
+/* アニメOFFでは傾きだけ残して完全に止める */
+.htk-root[data-theme="hatakyu"][data-anim="off"] .hk-pin,
+.htk-root[data-theme="hatakyu"][data-anim="off"] .hk-panels > .htk-lg,
+.htk-root[data-theme="hatakyu"][data-anim="off"] .hk-masonry > .htk-lg,
+.htk-root[data-theme="hatakyu"][data-anim="off"] .hk-hang{ animation:none !important; transform:rotate(var(--r,0deg)) !important }
+.htk-root[data-theme="hatakyu"][data-anim="off"] .hk-leaf{ animation:none !important; opacity:0 !important }
+
+/* ブート: 紙が画鋲で留まる */
+.htk-boot-tack{ display:none; position:absolute; top:-14px; left:50%; margin-left:-9px; width:18px; height:18px; border-radius:50%; background:radial-gradient(circle at 32% 28%,#fff 8%,#e0483c 46%,#8c2118); box-shadow:0 3px 5px rgba(0,0,0,.45) }
+.htk-root[data-theme="hatakyu"] .htk-boot-tack{ display:block }
+.htk-root[data-theme="hatakyu"] .htk-boot-inner{ position:relative; background:var(--surface); padding:18px 30px 20px; transform:rotate(-1.4deg); box-shadow:0 14px 26px -10px rgba(40,24,8,.75) }
+.htk-root[data-theme="hatakyu"] .htk-boot-logo{ color:var(--blue); text-shadow:none }
+.htk-root[data-theme="hatakyu"][data-anim="on"] .htk-boot .htk-boot-inner{ animation:hkSettle .5s cubic-bezier(.34,1.4,.64,1) both }
+
+@media (prefers-reduced-motion: reduce){
+  .hk-pin,.hk-hang,.htk-root[data-theme="hatakyu"] .hk-masonry > .htk-lg,.htk-root[data-theme="hatakyu"] .hk-panels > .htk-lg{ animation:none !important; transform:rotate(var(--r,0deg)) !important }
+  .hk-leaf{ animation:none !important; opacity:0 !important }
+  .hk-modal{ animation:none !important }
+}
+
+@media(max-width:900px){ .hk-masonry{ columns:2 } .hk-panels{ grid-template-columns:1fr } }
+@media(max-width:640px){
+  .htk-root[data-theme="hatakyu"] .htk-shell{ padding:23px 21px 30px; border-radius:16px }
+  .htk-root[data-theme="hatakyu"] .htk-shell::before{ inset:9px; border-radius:9px }
+  .htk-root[data-theme="hatakyu"] .htk-shell::after{ inset:5px; border-radius:11px }
+  .hk-leaves{ inset:9px; border-radius:9px }
+  .hk-masonry{ columns:1; column-gap:0 }
+  .hk-panels{ grid-template-columns:1fr; gap:20px 0 }
+  .hk-bhead{ margin-bottom:12px }
+  .hk-titlecard{ padding:9px 15px 10px }
+  .hk-lg-name{ font-size:1.6rem }
+  .hk-hbtn{ padding:9px 11px; font-size:.72rem }
+  .hk-hbtn span{ display:none }
+  .hk-hangrow{ flex-wrap:wrap; justify-content:center; gap:12px; padding:0 2px 6px }
+  .hk-hang{ width:104px; flex:0 0 auto }
+  .hk-clock{ font-size:2.2rem }
+  .hk-mbtns{ flex-direction:column }
+}
+
 </style>
 
 <!-- グローバルスタイル: Hatask起動時にMisskeyの標準ナビバーを非表示にする -->
@@ -3058,4 +3647,5 @@ body[data-hatask-active="1"] [swipable][popup="false"] { display: none !importan
   .htk-fl-emo{animation:none !important}
   .htk-tut-particles{display:none !important}
 }
+
 </style>

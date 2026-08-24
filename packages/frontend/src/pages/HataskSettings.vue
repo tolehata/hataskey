@@ -63,6 +63,13 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<div :class="$style.row"><span>{{ copy.animationMotion }}</span><button :class="[$style.sw, settings.animations!==false && $style.swOn]" @click="toggle('animations')"></button></div>
 					<div :class="$style.desc">{{ copy.animationDescription }}</div>
 				</div>
+				<!-- 旗鯖fork(ハタキュ): このテーマ限定のオプション。
+				     ⚠️ハタキュを選んでいないときは出さない(他テーマでは効かない設定なので) -->
+				<div v-if="settings.theme==='hatakyu'" :class="$style.card">
+					<div :class="$style.label">{{ copy.hatakyuOptions }}</div>
+					<div :class="$style.row"><span>{{ copy.hatakyuWind }}</span><button :class="[$style.sw, settings.hatakyuWind!==false && $style.swOn]" @click="toggle('hatakyuWind')"></button></div>
+					<div :class="$style.desc">{{ copy.hatakyuWindDescription }}</div>
+				</div>
 			</div>
 
 			<!-- 通常設定リスト -->
@@ -178,6 +185,9 @@ const defaultSettings: any = {
 	openOnStart: false,
 	theme: 'kisetsu',
 	animations: true,
+	// 旗鯖fork(ハタキュ): 風を吹かせるか(このテーマ限定・既定ON)。
+	//   ⚠️既定を true にしておかないと、初回のトグルが「ONのままON」になって効かなく見える。
+	hatakyuWind: true,
 };
 
 // 旗鯖fork(v2): デザインテーマ(季/花信/刷)。プレビュー用にライト配色・見出しフォントを持つ。
@@ -185,6 +195,8 @@ const v2Themes = computed(() => [
 	{ id:'kisetsu', name:copy.themeKisetsu, description:copy.themeKisetsuDescription, bg:'#f4f1ea', fg:'#211d18', accent:'#a8552f', card:'#ffffff', border:'1px solid #ddd7cb', radius:'5px', shadow:'none', head:"'Shippori Mincho B1','Zen Kaku Gothic New',serif" },
 	{ id:'kashin', name:copy.themeKashin, description:copy.themeKashinDescription, bg:'#fff5e6', fg:'#25201c', accent:'#ff6b4a', card:'#ffffff', border:'2.5px solid #25201c', radius:'14px', shadow:'3px 3px 0 rgba(37,32,28,.15)', head:"'Zen Maru Gothic',sans-serif" },
 	{ id:'suri', name:copy.themeSuri, description:copy.themeSuriDescription, bg:'#efe7d4', fg:'#1a1a2e', accent:'#2a52c0', card:'#ffffff', border:'2.5px solid #1a1a2e', radius:'0', shadow:'3px 3px 0 #ff4f9a', head:"'Zen Kaku Gothic Antique',sans-serif" },
+	// 旗鯖fork(ハタキュ): プレビューの地色はコルク、紙はクリーム、アクセントは紙に載る青。
+	{ id:'hatakyu', name:copy.themeHatakyu, description:copy.themeHatakyuDescription, bg:'#c9975f', fg:'#3b2a1c', accent:'#1272ec', card:'#fdf6e6', border:'none', radius:'0', shadow:'0 8px 14px -7px rgba(40,24,8,.7)', head:"'Zen Maru Gothic',sans-serif" },
 ]);
 const syncItems = computed(() => [
 	{ id: 'schedule', label: copy.syncSchedule },
