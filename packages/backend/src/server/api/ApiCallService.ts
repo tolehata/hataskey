@@ -182,13 +182,19 @@ export class ApiCallService implements OnApplicationShutdown {
 			reply.code(400);
 			return Promise.resolve();
 		}
+		// `i` は認証専用であり、エンドポイントの業務パラメータではない。
+		// 認証後も本文に残すと additionalProperties: false のエンドポイントが
+		// 正しいリクエストを INVALID_PARAM にし、失敗ログにも秘密値を持ち回る。
+		// request.body/query そのものは変更せず、実行用の複製からだけ分離する。
+		const params = body == null ? body : { ...body };
+		if (params != null) delete params['i'];
 
 		// spanをhandleRequest側で開始し、認証・レート制限・パラメータ検証・#onExecErrorの構造化ログまでを
 		// カバーする(上流2026.7.0の変更)。また内側のPromiseチェーンを`return call;`で必ず外側へつなぎ、
 		// handleRequestの戻り値を待てば#onExecErrorのlogger.write()まで完了していることを保証する
 		// (以前はcall().then().catch()の結果を捨てており、呼び出し側からは完了を待てなかった)。
 		return this.telemetryService.startSpan('API: ' + endpoint.name, () => this.authenticateService.authenticate(token).then(([user, app, flashToken]) => {
-			const call = this.call(endpoint, user, app, flashToken, body, null, request, reply).then((res) => {
+			const call = this.call(endpoint, user, app, flashToken, params, null, request, reply).then((res) => {
 				if (request.method === 'GET' && endpoint.meta.cacheSec && !token && !user) {
 					reply.header('Cache-Control', `public, max-age=${endpoint.meta.cacheSec}`);
 				}
@@ -247,6 +253,7 @@ export class ApiCallService implements OnApplicationShutdown {
 				reply.code(400);
 				return;
 			}
+			delete fields['i'];
 
 			// handleRequestと同じ理由で、spanをここで開始しつつ内側のPromiseチェーンを`return call;`で
 			// 外側へつなぐ。特にこのメソッドはfinallyでcleanup()し一時ファイルを削除するため、

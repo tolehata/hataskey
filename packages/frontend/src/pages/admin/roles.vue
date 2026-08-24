@@ -186,6 +186,16 @@ SPDX-License-Identifier: AGPL-3.0-only
 						</MkSwitch>
 					</MkFolder>
 
+					<!-- 旗鯖fork: 感情分析の利用可否 -->
+					<MkFolder v-if="matchQuery([roleCopy.emotionAnalysisAccessName, 'canUseHatalyze'])">
+						<template #label>{{ roleCopy.emotionAnalysisAccessName }}</template>
+						<template #suffix>{{ policies.canUseHatalyze ? i18n.ts.yes : i18n.ts.no }}</template>
+						<MkSwitch v-model="policies.canUseHatalyze">
+							<template #label>{{ roleCopy.emotionAnalysisAccessToggle }}</template>
+							<template #caption>{{ roleCopy.emotionAnalysisAccessBaseCaption }}</template>
+						</MkSwitch>
+					</MkFolder>
+
 					<!-- 旗鯖fork: HataSNSCordUIの利用可否とサブペイン上限 -->
 					<MkFolder v-if="matchQuery([roleCopy.hatacordingAccessName, 'canUseHatacordingUi'])">
 						<template #label>{{ roleCopy.hatacordingAccessName }}</template>

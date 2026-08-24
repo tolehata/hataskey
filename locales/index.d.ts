@@ -15699,6 +15699,18 @@ export interface Locale extends ILocale {
              */
             "hatafeedAccessToggle": string;
             /**
+             * この項目を有効にした利用者は、選んだ範囲の自分の投稿を集計してHATAlyzeを利用できます。結果には投稿本文を保存しません。
+             */
+            "emotionAnalysisAccessBaseCaption": string;
+            /**
+             * HATAlyzeを利用できる
+             */
+            "emotionAnalysisAccessName": string;
+            /**
+             * HATAlyzeの利用を許可
+             */
+            "emotionAnalysisAccessToggle": string;
+            /**
              * オフのロールに属するユーザーはマスコット機能を利用できません。デフォルトは不許可です。
              */
             "mascotAccessBaseCaption": string;
@@ -16444,7 +16456,7 @@ export interface Locale extends ILocale {
                  */
                 "externalPostsTitle": string;
                 /**
-                 * 連携先でフォローしている人の投稿と、連携先全体の公開投稿を別々に表示できます。HatasabaUIでは「＋H」「＋L」から切り替えられます。
+                 * 連携先でフォローしている人の投稿と、連携先全体の公開投稿を別々に表示できます。Hataskey UIでは「＋H」「＋L」から切り替えられます。
                  */
                 "externalPostsBody": string;
                 /**
@@ -16504,7 +16516,7 @@ export interface Locale extends ILocale {
                  */
                 "chooseUiTitle": string;
                 /**
-                 * 標準の画面、Hataskey独自のHatasabaUI、複数の列を並べるデッキ画面から選べます。HatasabaUIはスマートフォンでも操作しやすい構成です。
+                 * 標準の画面、Hataskey UI、複数の列を並べるデッキ画面から選べます。Hataskey UIはスマートフォンでも操作しやすい構成です。
                  */
                 "chooseUiBody": string;
                 /**
@@ -16512,15 +16524,15 @@ export interface Locale extends ILocale {
                  */
                 "chooseUiLink": string;
                 /**
-                 * HatasabaUI
+                 * Hataskey UI
                  */
                 "hatasabaUiTitle": string;
                 /**
-                 * 投稿を見ることを中心にしたHataskey独自の画面です。上部の項目や左右スワイプで、ホーム・ローカル・グローバルなどを切り替えられます。スワイプで切り替えたくない場合は設定で止められます。<br><br>HatasabaUI 2の見た目もこの画面に統合されており、カードをすりガラス風にするか、透け具合をどの程度にするかを選べます。通常表示とデッキ表示の両方に反映されます。
+                 * Hataskey UIは、投稿を見ることを中心にした画面です。上部の項目や左右スワイプで、ホーム・ローカル・グローバルなどを切り替えられます。スワイプで切り替えたくない場合は設定で止められます。<br><br>Hataskey UI 2の見た目もこの画面に統合されており、カードをすりガラス風にするか、透け具合をどの程度にするかを選べます。通常表示とデッキ表示の両方に反映されます。
                  */
                 "hatasabaUiBody": string;
                 /**
-                 * HatasabaUIの設定を開く
+                 * Hataskey UIの設定を開く
                  */
                 "hatasabaUiLink": string;
                 /**
@@ -16532,7 +16544,7 @@ export interface Locale extends ILocale {
                  */
                 "hatasabaUiTip2": string;
                 /**
-                 * HatasabaUIのデッキ表示
+                 * Hataskey UIのデッキ表示
                  */
                 "deckTitle": string;
                 /**
@@ -16632,11 +16644,11 @@ export interface Locale extends ILocale {
                  */
                 "hataCardMakerTip1": string;
                 /**
-                 * HATAlyze（ハタライズ）
+                 * HATAlyze
                  */
                 "hatalyzeTitle": string;
                 /**
-                 * 自分の公開投稿から、よく使う言葉、投稿する時間帯、文章の長さ、気分の傾向などを振り返る外部ツールです。結果は娯楽としてお楽しみください。医療的な判断には使えません。
+                 * Hataskey内で、選んだ範囲の自分の投稿を端末内で集計し、言葉や利用傾向を振り返る機能です。履歴には集計結果・条件・分析版だけを保存し、投稿本文は保存しません。医療・診断目的ではありません。
                  */
                 "hatalyzeBody": string;
                 /**
@@ -16644,7 +16656,7 @@ export interface Locale extends ILocale {
                  */
                 "hatalyzeLink": string;
                 /**
-                 * 結果は共有用の画像として保存できます
+                 * 履歴から2つの集計結果を比較できます
                  */
                 "hatalyzeTip1": string;
                 /**
@@ -18042,7 +18054,7 @@ export interface Locale extends ILocale {
                  */
                 "editWidgets": string;
                 /**
-                 * HatasabaUIのウィジェットを取り込む
+                 * Hataskey UIのウィジェットを取り込む
                  */
                 "importHatasabaWidgets": string;
                 /**
@@ -18086,7 +18098,7 @@ export interface Locale extends ILocale {
                  */
                 "studioUnavailable": string;
                 /**
-                 * HatasabaUIへ切り替えてから起動してください。
+                 * Hataskey UIへ切り替えてから起動してください。
                  */
                 "studioUnavailableDescription": string;
                 /**
@@ -18342,7 +18354,7 @@ export interface Locale extends ILocale {
                  */
                 "resetMenuDescription": string;
                 /**
-                 * HatasabaUIの縮小順を取り込みました
+                 * Hataskey UIの縮小順を取り込みました
                  */
                 "importedCollapsedOrder": string;
                 /**
@@ -18722,7 +18734,7 @@ export interface Locale extends ILocale {
                  */
                 "openInRightPane": ParameterizedString<"item">;
                 /**
-                 * 取り込めるHatasabaUIウィジェットがありません
+                 * 取り込めるHataskey UIウィジェットがありません
                  */
                 "noHatasabaWidgetsToImport": string;
                 /**
@@ -18785,7 +18797,7 @@ export interface Locale extends ILocale {
              */
             "advancedDeckDescription": string;
             /**
-             * HatasabaUI で続行
+             * Hataskey UI で続行
              */
             "continueHatasaba": string;
             /**
@@ -18873,7 +18885,7 @@ export interface Locale extends ILocale {
              */
             "legacyDeck": string;
             /**
-             * MisskeyデッキUI。HatasabaUI の高機能デッキの使用をおすすめします
+             * MisskeyデッキUI。Hataskey UI の高機能デッキの使用をおすすめします
              */
             "legacyDeckDescription": string;
             /**
@@ -18885,7 +18897,7 @@ export interface Locale extends ILocale {
              */
             "switchConfirm": ParameterizedString<"ui">;
             /**
-             * このUIは非推奨です。Hataskeyの独自カスタマイズと競合し、意図しない動作が発生する場合があります。あとで「HatasabaUI」に戻すこともできます。
+             * このUIは非推奨です。Hataskeyの独自カスタマイズと競合し、意図しない動作が発生する場合があります。あとで「Hataskey UI」に戻すこともできます。
              */
             "deprecatedWarning": string;
             /**
@@ -22641,6 +22653,26 @@ export interface Locale extends ILocale {
                  * リソグラフ2色
                  */
                 "themeSuriDescription": string;
+                /**
+                 * ハタキュ
+                 */
+                "themeHatakyu": string;
+                /**
+                 * コルクボード
+                 */
+                "themeHatakyuDescription": string;
+                /**
+                 * ハタキュテーマのオプション
+                 */
+                "hatakyuOptions": string;
+                /**
+                 * 紙を風で揺らす
+                 */
+                "hatakyuWind": string;
+                /**
+                 * コルク板に留めた紙が、ときどき突風で大きく揺れます。オフにすると突風は起きません(常時のわずかな揺れは残ります)。この項目はハタキュテーマのときだけ使われます。
+                 */
+                "hatakyuWindDescription": string;
             };
             "_cardMaker": {
                 /**
@@ -22898,15 +22930,15 @@ export interface Locale extends ILocale {
                  */
                 "sectionNine": string;
                 /**
-                 * 日連続
+                 * ログイン日数
                  */
                 "consecutiveDays": string;
                 /**
-                 * 日目
+                 * 日
                  */
                 "dayNumber": string;
                 /**
-                 * 連続
+                 * ログイン日数
                  */
                 "continuity": string;
                 /**
@@ -23790,9 +23822,125 @@ export interface Locale extends ILocale {
                  */
                 "tutorialUsesTheme": string;
                 /**
+                 * ハタキュ
+                 */
+                "themeHatakyu": string;
+                /**
+                 * コルクに留める日々。
+                 */
+                "themeHatakyuDescription": string;
+                /**
                  * テーマを設定しました
                  */
                 "themeSet": string;
+                /**
+                 * Hatask設定
+                 */
+                "hataskSettings": string;
+                /**
+                 * マスコット
+                 */
+                "mascot": string;
+                /**
+                 * 地震・津波
+                 */
+                "earthquakeAndTsunami": string;
+                /**
+                 * 最近の地震情報はありません
+                 */
+                "noRecentEarthquakes": string;
+                /**
+                 * 気象庁発表の情報を表示します
+                 */
+                "jmaSourceNote": string;
+                /**
+                 * おかえり！
+                 */
+                "hkCapWelcome": string;
+                /**
+                 * 予定の確認
+                 */
+                "hkCapSchedule": string;
+                /**
+                 * お庭のお世話
+                 */
+                "hkCapGarden": string;
+                /**
+                 * ごはんの記録
+                 */
+                "hkCapMeal": string;
+                /**
+                 * つぎの予定まで
+                 */
+                "hkUntilNextEvent": string;
+                /**
+                 * 日
+                 */
+                "hkDaysUnit": string;
+                /**
+                 * 件
+                 */
+                "hkItemsUnit": string;
+                /**
+                 * 今日終わった分
+                 */
+                "hkDoneToday": string;
+                /**
+                 * 今日のやることは、あと{count}件。
+                 */
+                "hkRemainingToday": ParameterizedString<"count">;
+                /**
+                 * 記録を続けると、もう少しで花が咲きそう。あと少し！
+                 */
+                "hkGardenAlmost": string;
+                /**
+                 * 花が咲きました。摘みとって名前をつけてあげましょう。
+                 */
+                "hkGardenBloomed": string;
+                /**
+                 * 新テーマ「
+                 */
+                "hatakyuNoticeTitlePrefix": string;
+                /**
+                 * 」
+                 */
+                "hatakyuNoticeTitleSuffix": string;
+                /**
+                 * コルクボードに毎日を留めていく、あたらしい見た目です。
+                 */
+                "hatakyuNoticeBody1": string;
+                /**
+                 * 紙は
+                 */
+                "hatakyuNoticeBody2Prefix": string;
+                /**
+                 * 風で揺れ
+                 */
+                "hatakyuNoticeBody2Strong": string;
+                /**
+                 * 、ハタキュがあちこちで見守ります。
+                 */
+                "hatakyuNoticeBody2Suffix": string;
+                /**
+                 * いま切り替えますか？
+                 */
+                "hatakyuNoticeBody3": string;
+                /**
+                 * このデザインに切り替える
+                 */
+                "hatakyuNoticeApply": string;
+                /**
+                 * あとで
+                 */
+                "hatakyuNoticeLater": string;
+                /**
+                 * あとから「Hatask設定 › デザイン」でも切り替えできます。ダークモードは設定の明暗切替に追従します。表示設定はそのまま引き継がれます。
+                 */
+                "hatakyuNoticeNote": string;
+                /**
+                 * テーマを「ハタキュ」にしました
+                 */
+                "hatakyuNoticeApplied": string;
                 /**
                  * SNSに一工夫を
                  */
@@ -26037,7 +26185,7 @@ export interface Locale extends ILocale {
         };
         "_hatasabaDeckTutorial": {
             /**
-             * HatasabaUI デッキ設定
+             * Hataskey UI デッキ設定
              */
             "header": string;
             /**
@@ -27655,7 +27803,7 @@ export interface Locale extends ILocale {
                  */
                 "cardMakerLink": string;
                 /**
-                 * HatasabaUI — ホームボタンの不具合を修正
+                 * Hataskey UI — ホームボタンの不具合を修正
                  */
                 "hatasabaHomeTitle": string;
                 /**
@@ -29009,7 +29157,7 @@ export interface Locale extends ILocale {
                  */
                 "options": string;
                 /**
-                 * HatasabaUIにデッキ表示が追加されました！
+                 * Hataskey UIにデッキ表示が追加されました！
                  */
                 "deckAddedAnnouncement": string;
                 /**
@@ -30067,7 +30215,7 @@ export interface Locale extends ILocale {
             };
             "_editWindow": {
                 /**
-                 * HatasabaUI 2 の設定
+                 * Hataskey UI 2 の設定
                  */
                 "windowTitle": string;
                 /**
@@ -30075,7 +30223,7 @@ export interface Locale extends ILocale {
                  */
                 "hintBeforeCompare": string;
                 /**
-                 * 開いたまま HatasabaUI 全体を見比べられる
+                 * 開いたまま Hataskey UI 全体を見比べられる
                  */
                 "hintCompare": string;
                 /**
@@ -30111,7 +30259,7 @@ export interface Locale extends ILocale {
                  */
                 "showMenuAtTopCaption": string;
                 /**
-                 * ※ この設定は HatasabaUI のデッキUIでのみ有効です。
+                 * ※ この設定は Hataskey UI のデッキUIでのみ有効です。
                  */
                 "deckOnlyNote": string;
                 /**
@@ -30151,7 +30299,7 @@ export interface Locale extends ILocale {
                  */
                 "replayHintBefore": string;
                 /**
-                 * HatasabaUI のデッキ表示中
+                 * Hataskey UI のデッキ表示中
                  */
                 "replayHintDeck": string;
                 /**
@@ -30163,7 +30311,7 @@ export interface Locale extends ILocale {
                  */
                 "glassOpacity": string;
                 /**
-                 * HatasabaUI 2 が有効なときのみ機能します。
+                 * Hataskey UI 2 が有効なときのみ機能します。
                  */
                 "onlyWhenUi2Enabled": string;
                 /**
@@ -30183,11 +30331,11 @@ export interface Locale extends ILocale {
                  */
                 "restoreOpacity": string;
                 /**
-                 * HatasabaUI 2
+                 * Hataskey UI 2
                  */
                 "ui2Name": string;
                 /**
-                 *  は、HatasabaUI 全体のデザインの統一をしつつ、使いやすく目に優しい UI デザインを目指して実装されています。
+                 *  は、Hataskey UI 全体のデザインの統一をしつつ、使いやすく目に優しい UI デザインを目指して実装されています。
                  */
                 "ui2DescriptionBefore": string;
                 /**
@@ -30203,7 +30351,7 @@ export interface Locale extends ILocale {
                  */
                 "showBubbleDesign": string;
                 /**
-                 * HatasabaUI 2 のノートを、吹き出し（本文の枠＋＜の口）付きの表示にします。既定オフ（吹き出しなし・角丸カードのみ）です。
+                 * Hataskey UI 2 のノートを、吹き出し（本文の枠＋＜の口）付きの表示にします。既定オフ（吹き出しなし・角丸カードのみ）です。
                  */
                 "showBubbleDesignCaption": string;
                 /**
@@ -30235,11 +30383,11 @@ export interface Locale extends ILocale {
                  */
                 "noteDisplayDeck": string;
                 /**
-                 * HatasabaUIデッキでノートの簡易表示を有効にする
+                 * Hataskey UIデッキでノートの簡易表示を有効にする
                  */
                 "enableSimpleNotesInDeck": string;
                 /**
-                 * ON（既定）にすると、HatasabaUIのデッキ表示モードでノートを簡易表示（標準のカード）で表示します。OFFにすると吹き出しデザインで表示されます。
+                 * ON（既定）にすると、Hataskey UIのデッキ表示モードでノートを簡易表示（標準のカード）で表示します。OFFにすると吹き出しデザインで表示されます。
                  */
                 "enableSimpleNotesInDeckCaption": string;
                 /**
@@ -30323,7 +30471,7 @@ export interface Locale extends ILocale {
                  */
                 "save": string;
                 /**
-                 * HatasabaUI 2 のすべての設定を初期値に戻します (この操作は保存前です — 「保存」を押さない限り永続化されません)
+                 * Hataskey UI 2 のすべての設定を初期値に戻します (この操作は保存前です — 「保存」を押さない限り永続化されません)
                  */
                 "resetAllConfirm": string;
                 /**
@@ -30335,7 +30483,7 @@ export interface Locale extends ILocale {
                  */
                 "resetBottomNavConfirm": string;
                 /**
-                 * HatasabaUI 2 の設定を保存しました。ページを再読み込みします...
+                 * Hataskey UI 2 の設定を保存しました。ページを再読み込みします...
                  */
                 "savedReloading": string;
                 /**
@@ -32096,7 +32244,7 @@ export interface Locale extends ILocale {
                      */
                     "generalDescription": string;
                     /**
-                     * HatasabaUI 2
+                     * Hataskey UI 2
                      */
                     "hatasabaUiLabel": string;
                     /**
@@ -32615,7 +32763,7 @@ export interface Locale extends ILocale {
                  */
                 "directProfile": string;
                 /**
-                 * ONにするとユーザーパネルを経由せず、直接プロフィールページに遷移します。Hatasaba UIでは上部の戻るボタンでタイムラインに戻れます。
+                 * ONにするとユーザーパネルを経由せず、直接プロフィールページに遷移します。Hataskey UIでは上部の戻るボタンでタイムラインに戻れます。
                  */
                 "directProfileCaption": string;
                 /**
@@ -32803,11 +32951,11 @@ export interface Locale extends ILocale {
             };
             "_ui": {
                 /**
-                 * HatasabaUI 2 の設定
+                 * Hataskey UI 2 の設定
                  */
                 "hatasabaUi2Settings": string;
                 /**
-                 * HatasabaUI 2（常に有効）の吹き出しデザイン・背景ヘッダー画像のぼかし・
+                 * Hataskey UI 2（常に有効）の吹き出しデザイン・背景ヘッダー画像のぼかし・
                  */
                 "hatasabaUi2DescriptionPrefix": string;
                 /**
@@ -32823,7 +32971,7 @@ export interface Locale extends ILocale {
                  */
                 "windowPrefix": string;
                 /**
-                 * 開いたまま裏の HatasabaUI をリアルタイムに確認
+                 * 開いたまま裏の Hataskey UI をリアルタイムに確認
                  */
                 "livePreview": string;
                 /**
@@ -32839,7 +32987,7 @@ export interface Locale extends ILocale {
                  */
                 "windowSuffix": string;
                 /**
-                 * HatasabaUI 2 の設定を開く
+                 * Hataskey UI 2 の設定を開く
                  */
                 "openHatasabaUi2Settings": string;
                 /**
@@ -32875,7 +33023,7 @@ export interface Locale extends ILocale {
                  */
                 "foldableSection": string;
                 /**
-                 * 横開きの折りたたみスマホ（Galaxy Z Fold・Pixel Fold など）の大きい方の画面で、表示はスマホのままにしつつ、右側にウィジェットを常に出します。HatasabaUI と HataSNSCordUI が対象です。
+                 * 横開きの折りたたみスマホ（Galaxy Z Fold・Pixel Fold など）の大きい方の画面で、表示はスマホのままにしつつ、右側にウィジェットを常に出します。Hataskey UI と HataSNSCordUI が対象です。
                  */
                 "foldableDescription": string;
                 /**
@@ -32929,7 +33077,7 @@ export interface Locale extends ILocale {
                  */
                 "useClassicSpacingCaption": string;
                 /**
-                 * ※HatasabaUIでは常にON（従来Misskey風の投稿間隔：隙間0＋グレーのスペーサーで区切る表示）が適用されるため、変更できません。
+                 * ※Hataskey UIでは常にON（従来Misskey風の投稿間隔：隙間0＋グレーのスペーサーで区切る表示）が適用されるため、変更できません。
                  */
                 "hatasabaSpacingLocked": string;
                 /**
@@ -32945,7 +33093,7 @@ export interface Locale extends ILocale {
                  */
                 "showMobileDate": string;
                 /**
-                 * HatasabaUIをスマホサイズ（狭い画面）で使用しているとき、タイムラインの日付を従来どおりの位置（中央）に表示します。OFFのときは表示スペースの都合で日付を表示しません。広い画面では日付は左側におしゃれに表示されます。
+                 * Hataskey UIをスマホサイズ（狭い画面）で使用しているとき、タイムラインの日付を従来どおりの位置（中央）に表示します。OFFのときは表示スペースの都合で日付を表示しません。広い画面では日付は左側におしゃれに表示されます。
                  */
                 "showMobileDateCaption": string;
                 /**
@@ -32965,15 +33113,15 @@ export interface Locale extends ILocale {
                  */
                 "disableDeckBannerBlur": string;
                 /**
-                 * ONにすると、HatasabaUIのデッキ表示の背景にプロフィールのヘッダー画像のぼかしを使わず、単色背景になります。描画負荷が軽減され、視認性が上がります。
+                 * ONにすると、Hataskey UIのデッキ表示の背景にプロフィールのヘッダー画像のぼかしを使わず、単色背景になります。描画負荷が軽減され、視認性が上がります。
                  */
                 "disableDeckBannerBlurCaption": string;
                 /**
-                 * HatasabaUIの追加ページヘッダーを表示する
+                 * Hataskey UIの追加ページヘッダーを表示する
                  */
                 "showExtraPageHeader": string;
                 /**
-                 * ONにすると、ページ上部にHatasabaUI独自のシンプルなヘッダー（ページタイトル＋戻るボタン）が追加で表示されます。OFFにするとページ自身のヘッダー（MkPageHeader）のみになり、タイトルの二重表示が解消されます。
+                 * ONにすると、ページ上部にHataskey UI独自のシンプルなヘッダー（ページタイトル＋戻るボタン）が追加で表示されます。OFFにするとページ自身のヘッダー（MkPageHeader）のみになり、タイトルの二重表示が解消されます。
                  */
                 "showExtraPageHeaderCaption": string;
                 /**
@@ -32997,7 +33145,7 @@ export interface Locale extends ILocale {
                  */
                 "showLegacyChannelPostButton": string;
                 /**
-                 * OFF（既定）: HatasabaUI デッキのチャンネルカラムでは、ノートリスト最上部に固定表示された投稿ボタン（チャンネル×ペンアイコン）から投稿します。
+                 * OFF（既定）: Hataskey UI デッキのチャンネルカラムでは、ノートリスト最上部に固定表示された投稿ボタン（チャンネル×ペンアイコン）から投稿します。
                  */
                 "legacyChannelPostOff": string;
                 /**
@@ -33121,6 +33269,523 @@ export interface Locale extends ILocale {
                  */
                 "safetyNote": string;
             };
+        };
+        "_emotionAnalysis": {
+            "historyLimitNote": ParameterizedString<"count">;
+            "emotionBreakdown": string;
+            "emotionBreakdownNote": string;
+            "axisJoy": string;
+            "axisFun": string;
+            "axisAffection": string;
+            "axisGratitude": string;
+            "axisAnger": string;
+            "axisSadness": string;
+            "axisAnxiety": string;
+            "axisFatigue": string;
+            "topicBreakdown": string;
+            "topTopicByReactions": string;
+            "weekdayBreakdown": string;
+            "hourBreakdown": string;
+            "activityTitle": string;
+            "activeDays": string;
+            "longestStreak": string;
+            "postsPerDay": string;
+            "medianInterval": string;
+            "busiestHour": string;
+            "busiestWeekday": string;
+            "nightPostRate": string;
+            "morningPostRate": string;
+            "vocabularyTitle": string;
+            "averageSentenceLength": string;
+            "uniqueTokenRatio": string;
+            "hashtagPostRate": string;
+            "mentionPostRate": string;
+            "urlPostRate": string;
+            "emojiPostRate": string;
+            "questionPostRate": string;
+            "exclamationPostRate": string;
+            "frequentWordsTitle": string;
+            "frequentWordsNote": string;
+            /**
+             * HATAlyze
+             */
+            "title": string;
+            /**
+             * 投稿に含まれる言葉や利用傾向を、あとから振り返るためのHataskeyツール「HATAlyze」です。
+             */
+            "intro": string;
+            /**
+             * この分析は医療・診断目的ではありません。投稿中のキーワードと利用傾向から算出した参考値です。
+             */
+            "nonMedical": string;
+            /**
+             * はじめにご確認ください
+             */
+            "beforeStartTitle": string;
+            /**
+             * 選んだ範囲の自分の投稿を端末内で集計し、集計結果だけをHataskeyに保存します。投稿本文や投稿ごとの判定は保存しません。
+             */
+            "beforeStartBody": string;
+            /**
+             * 結果は、病気・心身の状態・性格を診断するものではありません。結果だけを根拠に健康上の判断を行わないでください。
+             */
+            "medicalBody": string;
+            /**
+             * 分析する情報
+             */
+            "infoAnalyze": string;
+            /**
+             * 自分の投稿本文、日時、文字数、内容警告・添付・反応の集計情報を使います。
+             */
+            "infoAnalyzeBody": string;
+            /**
+             * 保存する情報
+             */
+            "infoSave": string;
+            /**
+             * 履歴には集計結果・条件・分析版だけを保存し、投稿本文は保存しません。
+             */
+            "infoSaveBody": string;
+            /**
+             * 本人専用
+             */
+            "infoPersonal": string;
+            /**
+             * ログイン中の自分の投稿だけを分析し、結果も本人だけが見られます。
+             */
+            "infoPersonalBody": string;
+            /**
+             * ライセンス
+             */
+            "license": string;
+            /**
+             * この機能はAGPL-3.0-onlyで提供されます。
+             */
+            "licenseBody": string;
+            /**
+             * 説明を読み、内容を理解しました
+             */
+            "consent": string;
+            /**
+             * 内容を確認して進む
+             */
+            "continue": string;
+            /**
+             * 最初の注意書きを確認する
+             */
+            "showNotice": string;
+            /**
+             * 戻る
+             */
+            "back": string;
+            /**
+             * 新しい分析
+             */
+            "newTab": string;
+            /**
+             * 今回の結果
+             */
+            "resultTab": string;
+            /**
+             * 履歴・比較
+             */
+            "historyTab": string;
+            /**
+             * 分析する範囲
+             */
+            "conditionTitle": string;
+            /**
+             * 期間
+             */
+            "period": string;
+            /**
+             * 直近1,000件
+             */
+            "latest1000": string;
+            /**
+             * 期間を指定
+             */
+            "periodSpecified": string;
+            /**
+             * 公開範囲
+             */
+            "visibility": string;
+            /**
+             * 公開・ホームのみ
+             */
+            "visibilityPublicHome": string;
+            /**
+             * フォロワー限定を含める
+             */
+            "visibilityFollowers": string;
+            /**
+             * 自分のすべての投稿
+             */
+            "visibilityAll": string;
+            /**
+             * 比較対象
+             */
+            "comparisonTarget": string;
+            /**
+             * 比較しない
+             */
+            "compareNone": string;
+            /**
+             * 前回との差分
+             */
+            "compareDelta": string;
+            /**
+             * 日ごとの感情推移
+             */
+            "dailyTrend": string;
+            /**
+             * 分析版が異なるため、差分は参考としてご覧ください。
+             */
+            "versionWarning": string;
+            /**
+             * 直近7日
+             */
+            "period7": string;
+            /**
+             * 直近30日
+             */
+            "period30": string;
+            /**
+             * 直近90日
+             */
+            "period90": string;
+            /**
+             * 投稿数の上限
+             */
+            "noteCount": string;
+            /**
+             * 自分から送った返信も含める
+             */
+            "includeReplies": string;
+            /**
+             * 内容警告と本文の両方を確認する
+             */
+            "includeCw": string;
+            /**
+             * 結果を履歴に保存する
+             */
+            "saveHistory": string;
+            /**
+             * なぜこの結果になったか
+             */
+            "reasonTitle": string;
+            /**
+             * 一致した語句や絵文字、強調表現を集計し、否定表現や別の意味になりやすい文脈を補正します。単語ひとつだけで全体を決めません。
+             */
+            "reasonText": string;
+            /**
+             * 分析を開始
+             */
+            "start": string;
+            /**
+             * 投稿を確認しています…
+             */
+            "checkingNotes": string;
+            /**
+             * 端末内で集計しています…
+             */
+            "processingAnalysis": string;
+            /**
+             * 結果を保存しています…
+             */
+            "savingAnalysis": string;
+            /**
+             * HATAlyzeには、実際に分析できる投稿が最低{minimum}件必要です。
+             */
+            "minimumNotesHint": ParameterizedString<"minimum">;
+            /**
+             * 分析できる投稿は{count}件でした。最低{minimum}件必要なため、HATAlyzeは開始していません。期間や公開範囲を広げてください。
+             */
+            "insufficientNotes": ParameterizedString<"count" | "minimum">;
+            /**
+             * 分析画面を確認しています…
+             */
+            "loading": string;
+            /**
+             * この機能は利用できません
+             */
+            "unavailableTitle": string;
+            /**
+             * 現在のアカウントではHATAlyzeを利用できません。設定を変更できるのはサーバーの管理者です。
+             */
+            "unavailableBody": string;
+            /**
+             * 利用できるはずなのにこの画面が表示された場合は、サーバーの管理者へご相談ください。
+             */
+            "unavailableHint": string;
+            /**
+             * サーバーの管理者へご相談ください
+             */
+            "serverAdmin": string;
+            /**
+             * 利用できない場合、投稿の取得・分析・履歴の作成は行いません。
+             */
+            "deniedFooter": string;
+            /**
+             * 次の分析まで待機中
+             */
+            "statusWaiting": string;
+            /**
+             * 分析は1つのアカウントにつき10分に1回までです。続けて分析できるまで、しばらくお待ちください。
+             */
+            "waitingBody": string;
+            /**
+             * あと{minutes}分{seconds}秒
+             */
+            "waitingRemaining": ParameterizedString<"minutes" | "seconds">;
+            /**
+             * 分析の利用間隔
+             */
+            "analysisInterval": string;
+            /**
+             * 現在分析できます
+             */
+            "availableNow": string;
+            /**
+             * 現在は分析を開始できません
+             */
+            "serviceUnavailable": string;
+            /**
+             * 接続を再確認
+             */
+            "retryConnection": string;
+            /**
+             * Hataskey APIの利用上限に達しているため、投稿の確認を開始できません。しばらく待ってから接続を再確認してください。HATAlyzeの10分待機は開始していません。
+             */
+            "sourceRateLimited": string;
+            /**
+             * 投稿を取得できなかったため、分析は開始していません。通信状態を確認してから接続を再確認してください。
+             */
+            "notesFailed": string;
+            /**
+             * 保存済みの結果を読み込めませんでした。通信状態を確認して、もう一度お試しください。
+             */
+            "historyFailed": string;
+            /**
+             * 続けて分析できるまで、しばらくお待ちください。
+             */
+            "rateLimited": string;
+            /**
+             * 分析を完了できませんでした。通信状態を確認して、もう一度お試しください。
+             */
+            "analysisFailed": string;
+            /**
+             * 更新
+             */
+            "refresh": string;
+            /**
+             * 保存済みの結果
+             */
+            "history": string;
+            /**
+             * 保存済みの結果はありません。
+             */
+            "emptyHistory": string;
+            /**
+             * 保存した結果を選び、今回の結果と比べられます。
+             */
+            "comparePrompt": string;
+            /**
+             * 今回の結果と比べる
+             */
+            "compare": string;
+            /**
+             * 前回と比べる
+             */
+            "comparePrevious": string;
+            /**
+             * この結果を削除
+             */
+            "delete": string;
+            /**
+             * この分析結果を履歴から削除します。元に戻せません。
+             */
+            "deleteConfirm": string;
+            /**
+             * 分析結果を削除できませんでした。通信状態を確認して、もう一度お試しください。
+             */
+            "deleteFailed": string;
+            /**
+             * 分析済み
+             */
+            "completed": string;
+            /**
+             * 分析できませんでした
+             */
+            "failed": string;
+            /**
+             * 今回の結果
+             */
+            "resultSummary": string;
+            /**
+             * なぜこの判定になったか
+             */
+            "resultReason": string;
+            /**
+             * 集計できる内容がありませんでした。
+             */
+            "resultNoData": string;
+            /**
+             * 保存日時
+             */
+            "createdAt": string;
+            /**
+             * 完了日時
+             */
+            "completedAt": string;
+            /**
+             * 分析版
+             */
+            "analysisVersion": string;
+            /**
+             * 日
+             */
+            "days": string;
+            /**
+             * 件
+             */
+            "posts": string;
+            /**
+             * 基準にする結果
+             */
+            "compareBase": string;
+            /**
+             * 比べる結果
+             */
+            "compareWith": string;
+            /**
+             * 感情バランス
+             */
+            "emotionBalance": string;
+            /**
+             * ポジティブ率
+             */
+            "positiveRate": string;
+            /**
+             * ニュートラル率
+             */
+            "neutralRate": string;
+            /**
+             * ネガティブ率
+             */
+            "negativeRate": string;
+            /**
+             * 感情表現を検出しなかった投稿を含みます
+             */
+            "neutralDescription": string;
+            /**
+             * 感情表現の検出率
+             */
+            "emotionalPostRate": string;
+            /**
+             * 分析投稿数
+             */
+            "analyzedPosts": string;
+            /**
+             * かなりポジティブ傾向
+             */
+            "strongPositive": string;
+            /**
+             * ややポジティブ傾向
+             */
+            "positive": string;
+            /**
+             * ニュートラル
+             */
+            "neutral": string;
+            /**
+             * ややネガティブ傾向
+             */
+            "negative": string;
+            /**
+             * かなりネガティブ傾向
+             */
+            "strongNegative": string;
+            /**
+             * かなりポジティブ
+             */
+            "strongPositiveShort": string;
+            /**
+             * ポジティブ
+             */
+            "positiveShort": string;
+            /**
+             * ネガティブ
+             */
+            "negativeShort": string;
+            /**
+             * かなりネガティブ
+             */
+            "strongNegativeShort": string;
+            /**
+             * 重み
+             */
+            "weight": string;
+            /**
+             * 最も穏やかな時間帯
+             */
+            "calmestHour": string;
+            /**
+             * {start}:00〜{end}:00
+             */
+            "hourRange": ParameterizedString<"start" | "end">;
+            /**
+             * 比較できるデータなし
+             */
+            "noComparableData": string;
+            /**
+             * 比較から分かったこと
+             */
+            "comparisonInsights": string;
+            /**
+             * 時間帯の変化
+             */
+            "hourlyInsightTitle": string;
+            /**
+             * {hour}の平均スコアが基準から{delta}ポイント変化しました。
+             */
+            "hourlyInsightBody": ParameterizedString<"hour" | "delta">;
+            /**
+             * {topic}の話題比率
+             */
+            "topicInsightTitle": ParameterizedString<"topic">;
+            /**
+             * 基準の{before}%から{after}%へ変化しました。
+             */
+            "topicInsightBody": ParameterizedString<"before" | "after">;
+            /**
+             * 比較条件は一致
+             */
+            "conditionMatchTitle": string;
+            /**
+             * 対象範囲と分析条件が一致しています。
+             */
+            "conditionMatchBody": string;
+            /**
+             * 比較条件に違いがあります
+             */
+            "conditionDifferenceTitle": string;
+            /**
+             * 対象範囲または分析条件が異なるため、差分は参考としてご覧ください。
+             */
+            "conditionDifferenceBody": string;
+            /**
+             * ポジティブ側の主な根拠
+             */
+            "evidencePositive": string;
+            /**
+             * ネガティブ側の主な根拠
+             */
+            "evidenceNegative": string;
+            /**
+             * 文脈による補正
+             */
+            "contextCorrection": string;
         };
     };
 }

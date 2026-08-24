@@ -597,6 +597,14 @@ import type {
 	HataHatadyTimelineResponse,
 	HataHatadyUsersShowRequest,
 	HataHatadyUsersShowResponse,
+	HataHataskEmotionAnalysisCreateRequest,
+	HataHataskEmotionAnalysisCreateResponse,
+	HataHataskEmotionAnalysisDeleteRequest,
+	HataHataskEmotionAnalysisDeleteResponse,
+	HataHataskEmotionAnalysisListRequest,
+	HataHataskEmotionAnalysisListResponse,
+	HataHataskEmotionAnalysisShowRequest,
+	HataHataskEmotionAnalysisShowResponse,
 	HataLoginRankingResponse,
 	HataMascotGetResponse,
 	HataMascotUpdateRequest,
@@ -1304,6 +1312,10 @@ export type Endpoints = {
 	'hata/hatady/subjects/save': { req: HataHatadySubjectsSaveRequest; res: HataHatadySubjectsSaveResponse };
 	'hata/hatady/timeline': { req: HataHatadyTimelineRequest; res: HataHatadyTimelineResponse };
 	'hata/hatady/users/show': { req: HataHatadyUsersShowRequest; res: HataHatadyUsersShowResponse };
+	'hata/hatask/emotion-analysis/create': { req: HataHataskEmotionAnalysisCreateRequest; res: HataHataskEmotionAnalysisCreateResponse };
+	'hata/hatask/emotion-analysis/delete': { req: HataHataskEmotionAnalysisDeleteRequest; res: HataHataskEmotionAnalysisDeleteResponse };
+	'hata/hatask/emotion-analysis/list': { req: HataHataskEmotionAnalysisListRequest; res: HataHataskEmotionAnalysisListResponse };
+	'hata/hatask/emotion-analysis/show': { req: HataHataskEmotionAnalysisShowRequest; res: HataHataskEmotionAnalysisShowResponse };
 	'hata/login-ranking': { req: EmptyRequest; res: HataLoginRankingResponse };
 	'hata/mascot/get': { req: EmptyRequest; res: HataMascotGetResponse };
 	'hata/mascot/update': { req: HataMascotUpdateRequest; res: HataMascotUpdateResponse };

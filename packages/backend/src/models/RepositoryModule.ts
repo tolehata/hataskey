@@ -121,6 +121,7 @@ import { MiHatadyMediaWork } from './HatadyMediaWork.js';
 import { MiHatadyMediaSession } from './HatadyMediaSession.js';
 import { MiHatadyMediaComment } from './HatadyMediaComment.js';
 import { MiHatadyMediaReaction } from './HatadyMediaReaction.js';
+import { MiHataskEmotionAnalysis } from './HataskEmotionAnalysis.js';
 import { MiFeedbackIssueModerator } from './FeedbackIssueModerator.js';
 import { MiFeedbackEmojiRequest } from './FeedbackEmojiRequest.js';
 import { MiFeedbackNotification } from './FeedbackNotification.js';
@@ -614,7 +615,6 @@ const $reversiGamesRepository: Provider = {
 	inject: [DI.db],
 };
 
-
 const $stackingGameRecordsRepository: Provider = { provide: DI.stackingGameRecordsRepository, useFactory: (db: DataSource) => db.getRepository(MiStackingGameRecord).extend(miRepository as MiRepository<MiStackingGameRecord>), inject: [DI.db] };
 const $whackEmojiRecordsRepository: Provider = { provide: DI.whackEmojiRecordsRepository, useFactory: (db: DataSource) => db.getRepository(MiWhackEmojiRecord).extend(miRepository as MiRepository<MiWhackEmojiRecord>), inject: [DI.db] };
 const $stackingGameRoomsRepository: Provider = { provide: DI.stackingGameRoomsRepository, useFactory: (db: DataSource) => db.getRepository(MiStackingGameRoom).extend(miRepository as MiRepository<MiStackingGameRoom>), inject: [DI.db] };
@@ -762,6 +762,12 @@ const $hatadyMediaCommentsRepository: Provider = {
 const $hatadyMediaReactionsRepository: Provider = {
 	provide: DI.hatadyMediaReactionsRepository,
 	useFactory: (db: DataSource) => db.getRepository(MiHatadyMediaReaction).extend(miRepository as MiRepository<MiHatadyMediaReaction>),
+	inject: [DI.db],
+};
+
+const $hataskEmotionAnalysesRepository: Provider = {
+	provide: DI.hataskEmotionAnalysesRepository,
+	useFactory: (db: DataSource) => db.getRepository(MiHataskEmotionAnalysis).extend(miRepository as MiRepository<MiHataskEmotionAnalysis>),
 	inject: [DI.db],
 };
 
@@ -914,6 +920,7 @@ const $feedbackProjectsRepository: Provider = {
 		$hatadyMediaSessionsRepository,
 		$hatadyMediaCommentsRepository,
 		$hatadyMediaReactionsRepository,
+		$hataskEmotionAnalysesRepository,
 		$feedbackCommentsRepository,
 		$feedbackCommentReactionsRepository,
 		$feedbackIssueModeratorsRepository,
@@ -1032,6 +1039,7 @@ const $feedbackProjectsRepository: Provider = {
 		$hatadyMediaSessionsRepository,
 		$hatadyMediaCommentsRepository,
 		$hatadyMediaReactionsRepository,
+		$hataskEmotionAnalysesRepository,
 		$feedbackCommentsRepository,
 		$feedbackCommentReactionsRepository,
 		$feedbackIssueModeratorsRepository,

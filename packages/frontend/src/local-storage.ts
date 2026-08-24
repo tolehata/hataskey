@@ -55,15 +55,15 @@ export type Keys = (
 	'emojiShootHighScore_debuff' |
 	'stackingGameHighScore' |
 	`whackEmojiHighScore_${string}` |
-	'hatasabaUiLastTab' | // 旗鯖fork: HatasabaUI で最後に開いていたタブ (再読み込み時の復元用)
-	'hatasabaLastListId' | // 旗鯖fork: HatasabaUIで最後に開いたリスト(端末ごと)
-	'hatasabaLastAntennaId' | // 旗鯖fork: HatasabaUIで最後に開いたアンテナ(端末ごと)
+	'hatasabaUiLastTab' | // 旗鯖fork: Hataskey UI で最後に開いていたタブ (再読み込み時の復元用)
+	'hatasabaLastListId' | // 旗鯖fork: Hataskey UIで最後に開いたリスト(端末ごと)
+	'hatasabaLastAntennaId' | // 旗鯖fork: Hataskey UIで最後に開いたアンテナ(端末ごと)
 	'hatasabaDeckIgnoreWidth' | // 旗鯖fork(#6): 画面幅に関係なくデッキ表示を強制する端末ローカル設定(プロファイル非同期)
-	'hatasabaTabSwipeEnabled' | // 旗鯖fork: HatasabaUIの左右スワイプによるタブ移動(端末ローカル・既定ON)
+	'hatasabaTabSwipeEnabled' | // 旗鯖fork: Hataskey UIの左右スワイプによるタブ移動(端末ローカル・既定ON)
 	'hataFoldableLayout' | // 旗鯖fork: 横開き折りたたみ端末向けレイアウト(auto/on/off・端末ローカル・プロファイル非同期)
 	'hataHideMutedReactions' | // 旗鯖fork(#31): ミュートユーザーのリアクションをチップから隠す端末ローカル設定
-	'hataGlassUi' | // 旗鯖fork(ベータ): HatasabaUI 2(グラスモーフィズム刷新)を有効化する端末ローカル設定
-	'hataGlassUiBubble' | // 旗鯖fork(ベータ): HatasabaUI 2 でノートの吹き出しデザイン(枠+＜口)を表示する端末ローカル設定
+	'hataGlassUi' | // 旗鯖fork(ベータ): Hataskey UI 2(グラスモーフィズム刷新)を有効化する端末ローカル設定
+	'hataGlassUiBubble' | // 旗鯖fork(ベータ): Hataskey UI 2 でノートの吹き出しデザイン(枠+＜口)を表示する端末ローカル設定
 	'hatadyTheme' | // 旗鯖fork(Hatady): 表示テーマ(paper/espresso/hataskey)。端末ローカル(端末ごとに好みのテーマを持てる)
 	'hatadyLang' | // 旗鯖fork(Hatady): 表示言語(ja/en/auto)。端末ローカル
 	'hataEarthquakePref' | // 旗鯖fork(#34): 地震情報のお住いの都道府県(端末ローカルのみ・サーバー非送信)
@@ -80,6 +80,9 @@ export type Keys = (
 	`hatacordingUi:${string}` | // 旗鯖fork: HataSNSCordUI の有効化・メニュー・サブペイン設定(端末・アカウントごと)
 	`hatacordingActivityCache:${string}` | // 旗鯖fork: HataSNSCordUI の通知・地震津波履歴キャッシュ(端末・アカウントごと、期限・件数制限あり)
 	`hataNotificationFilterPolicyNoticeShown:${string}` | // 旗鯖fork: 通知フィルタ方針変更の案内を表示済みか(端末・アカウントごと)
+	`hatalyzeNoticeAcceptedV1:${string}` | // Hataskey fork: HATAlyzeの初回注意書きを確認済みか(端末・アカウントごと)
+	`hatalyzeNoticeSyncedV1:${string}` | // Hataskey fork: HATAlyze注意書き確認をアカウントのRegistryへ同期済みか
+	`hatalyzeCooldownV1:${string}` | // Hataskey fork: HATAlyzeの次回利用可能時刻(端末・アカウントごと)
 	`miux:${string}` |
 	`ui:folder:${string}` |
 	`themes:${string}` | // DEPRECATED

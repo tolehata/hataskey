@@ -244,6 +244,10 @@ export const packedRolePoliciesSchema = {
 			type: 'boolean',
 			optional: false, nullable: false,
 		},
+		canUseHatalyze: {
+			type: 'boolean',
+			optional: false, nullable: false,
+		},
 		canAccessHataFeed: {
 			type: 'boolean',
 			optional: false, nullable: false,

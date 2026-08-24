@@ -10,6 +10,7 @@ import { ServerStatsService } from '@/daemons/ServerStatsService.js';
 import * as endpointsObject from './endpoint-list.js';
 import { GetterService } from './GetterService.js';
 import { ApiLoggerService } from './ApiLoggerService.js';
+import { RateLimiterService } from './RateLimiterService.js';
 import type { Provider } from '@nestjs/common';
 
 const endpoints = Object.entries(endpointsObject);
@@ -22,6 +23,7 @@ const endpointProviders = endpoints.map(([path, endpoint]): Provider => ({ provi
 	providers: [
 		GetterService,
 		ApiLoggerService,
+		RateLimiterService,
 		ServerStatsService,
 		...endpointProviders,
 	],

@@ -3490,6 +3490,46 @@ export type paths = {
          */
         post: operations['hata___hatady___users___show'];
     };
+    '/hata/hatask/emotion-analysis/create': {
+        /**
+         * hata/hatask/emotion-analysis/create
+         * @description No description provided.
+         *
+         *     **Internal Endpoint**: This endpoint is an API for the cherrypick mainframe and is not intended for use by third parties.
+         *     **Credential required**: *Yes* / **Permission**: *write:account*
+         */
+        post: operations['hata___hatask___emotion-analysis___create'];
+    };
+    '/hata/hatask/emotion-analysis/delete': {
+        /**
+         * hata/hatask/emotion-analysis/delete
+         * @description No description provided.
+         *
+         *     **Internal Endpoint**: This endpoint is an API for the cherrypick mainframe and is not intended for use by third parties.
+         *     **Credential required**: *Yes* / **Permission**: *write:account*
+         */
+        post: operations['hata___hatask___emotion-analysis___delete'];
+    };
+    '/hata/hatask/emotion-analysis/list': {
+        /**
+         * hata/hatask/emotion-analysis/list
+         * @description No description provided.
+         *
+         *     **Internal Endpoint**: This endpoint is an API for the cherrypick mainframe and is not intended for use by third parties.
+         *     **Credential required**: *Yes* / **Permission**: *read:account*
+         */
+        post: operations['hata___hatask___emotion-analysis___list'];
+    };
+    '/hata/hatask/emotion-analysis/show': {
+        /**
+         * hata/hatask/emotion-analysis/show
+         * @description No description provided.
+         *
+         *     **Internal Endpoint**: This endpoint is an API for the cherrypick mainframe and is not intended for use by third parties.
+         *     **Credential required**: *Yes* / **Permission**: *read:account*
+         */
+        post: operations['hata___hatask___emotion-analysis___show'];
+    };
     '/hata/login-ranking': {
         /**
          * hata/login-ranking
@@ -7029,6 +7069,7 @@ export type components = {
             mascotMaxCharacters: number;
             hataSideStudioProfileLimit: number;
             canUseMascot: boolean;
+            canUseHatalyze: boolean;
             canAccessHataFeed: boolean;
             canUseHatacordingUi: boolean;
             hatacordingUiSubpaneMaxTabs: number;
@@ -36055,6 +36096,394 @@ export interface operations {
             };
             /** @description Too many requests */
             429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+        };
+    };
+    'hata___hatask___emotion-analysis___create': {
+        requestBody: {
+            content: {
+                'application/json': {
+                    /** @default true */
+                    saveToHistory?: boolean;
+                    analysisVersion: string;
+                    lexiconVersion: string;
+                    scope: {
+                        /** @enum {string} */
+                        mode: 'latest' | 'period';
+                        periodDays?: number;
+                        noteLimit: number;
+                        /** @enum {string} */
+                        visibility: 'publicHome' | 'followers' | 'all';
+                        includeReplies: boolean;
+                        includeCw: boolean;
+                        timezoneOffsetMinutes: number;
+                    };
+                    source: {
+                        /** @enum {string} */
+                        kind: 'localAccountNotes';
+                        fetchedNoteCount: number;
+                        analyzedNoteCount: number;
+                    };
+                    summary: {
+                        averageScore: number;
+                        emotionalPostRate: number;
+                        levels: {
+                            strong_positive: number;
+                            positive: number;
+                            neutral: number;
+                            negative: number;
+                            strong_negative: number;
+                        };
+                    };
+                    result: {
+                        /** @enum {string} */
+                        format: 'hata-emotion-analysis';
+                        formatVersion: number;
+                        timezoneOffsetMinutes: number;
+                        input: {
+                            received: number;
+                            accepted: number;
+                            skippedInvalidTimestamp: number;
+                            skippedNoAnalyzableText: number;
+                        };
+                        overview: {
+                            averageScore: number;
+                            emotionalPostRate: number;
+                            levels: {
+                                strong_positive: number;
+                                positive: number;
+                                neutral: number;
+                                negative: number;
+                                strong_negative: number;
+                            };
+                        };
+                        evidence: {
+                            phrases: {
+                                label: string;
+                                /** @enum {string} */
+                                polarity: 'positive' | 'negative' | 'neutral';
+                                count: number;
+                                weight: number;
+                            }[];
+                            shortcodes: {
+                                label: string;
+                                /** @enum {string} */
+                                polarity: 'positive' | 'negative' | 'neutral';
+                                count: number;
+                                weight: number;
+                            }[];
+                            negations: {
+                                label: string;
+                                /** @enum {string} */
+                                polarity: 'positive' | 'negative' | 'neutral';
+                                count: number;
+                                weight: number;
+                            }[];
+                            excludedContexts: {
+                                label: string;
+                                /** @enum {string} */
+                                polarity: 'positive' | 'negative' | 'neutral';
+                                count: number;
+                                weight: number;
+                            }[];
+                            intensifiers: {
+                                label: string;
+                                /** @enum {string} */
+                                polarity: 'positive' | 'negative' | 'neutral';
+                                count: number;
+                                weight: number;
+                            }[];
+                        };
+                        daily: {
+                            date: string;
+                            count: number;
+                            averageScore: number;
+                        }[];
+                        weekly: {
+                            weekday: number;
+                            count: number;
+                            averageScore: number;
+                        }[];
+                        hourly: {
+                            hour: number;
+                            count: number;
+                            averageScore: number;
+                        }[];
+                        topics: {
+                            topic: string;
+                            count: number;
+                            averageScore: number;
+                        }[];
+                        posting: {
+                            averageTextLength: number;
+                            averageReactions: number;
+                            averageReplies: number;
+                            averageRenotes: number;
+                            mediaPostRate: number;
+                            cwPostRate: number;
+                        };
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': Record<string, never>;
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+        };
+    };
+    'hata___hatask___emotion-analysis___delete': {
+        requestBody: {
+            content: {
+                'application/json': {
+                    /** Format: misskey:id */
+                    analysisId: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': null;
+                };
+            };
+            /** @description OK (without any results) */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+        };
+    };
+    'hata___hatask___emotion-analysis___list': {
+        requestBody: {
+            content: {
+                'application/json': {
+                    /** @default 20 */
+                    limit?: number;
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': Record<string, never>[];
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+        };
+    };
+    'hata___hatask___emotion-analysis___show': {
+        requestBody: {
+            content: {
+                'application/json': {
+                    /** Format: misskey:id */
+                    analysisId: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': Record<string, never>;
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
                 headers: {
                     [name: string]: unknown;
                 };

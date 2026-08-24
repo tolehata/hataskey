@@ -585,6 +585,10 @@ export * as 'hata/hatady/followers/remove' from './endpoints/hata/hatady/followe
 export * as 'hata/hatady/profile/update' from './endpoints/hata/hatady/profile/update.js';
 export * as 'hata/hatady/logs/update' from './endpoints/hata/hatady/logs/update.js';
 export * as 'hata/hatady/logs/delete' from './endpoints/hata/hatady/logs/delete.js';
+export * as 'hata/hatask/emotion-analysis/create' from './endpoints/hata/hatask/emotion-analysis/create.js';
+export * as 'hata/hatask/emotion-analysis/list' from './endpoints/hata/hatask/emotion-analysis/list.js';
+export * as 'hata/hatask/emotion-analysis/show' from './endpoints/hata/hatask/emotion-analysis/show.js';
+export * as 'hata/hatask/emotion-analysis/delete' from './endpoints/hata/hatask/emotion-analysis/delete.js';
 export * as 'hata/hatady/subjects' from './endpoints/hata/hatady/subjects.js';
 export * as 'hata/hatady/subjects/save' from './endpoints/hata/hatady/subjects/save.js';
 export * as 'hata/hatady/subjects/delete' from './endpoints/hata/hatady/subjects/delete.js';

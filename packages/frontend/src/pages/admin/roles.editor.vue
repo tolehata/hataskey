@@ -470,6 +470,28 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</div>
 			</MkFolder>
 
+			<!-- 旗鯖fork: 感情分析の利用可否ポリシー -->
+			<MkFolder v-if="role.policies.canUseHatalyze && matchQuery([roleCopy.emotionAnalysisAccessName, 'canUseHatalyze'])">
+				<template #label>{{ roleCopy.emotionAnalysisAccessName }}</template>
+				<template #suffix>
+					<span v-if="role.policies.canUseHatalyze.useDefault" :class="$style.useDefaultLabel">{{ i18n.ts._role.useBaseValue }}</span>
+					<span v-else>{{ role.policies.canUseHatalyze.value ? i18n.ts.yes : i18n.ts.no }}</span>
+					<span :class="$style.priorityIndicator"><i :class="getPriorityIcon(role.policies.canUseHatalyze)"></i></span>
+				</template>
+				<div class="_gaps">
+					<MkSwitch v-model="role.policies.canUseHatalyze.useDefault" :readonly="readonly">
+						<template #label>{{ i18n.ts._role.useBaseValue }}</template>
+					</MkSwitch>
+					<MkSwitch v-model="role.policies.canUseHatalyze.value" :disabled="role.policies.canUseHatalyze.useDefault" :readonly="readonly">
+						<template #label>{{ roleCopy.emotionAnalysisAccessToggle }}</template>
+						<template #caption>{{ roleCopy.emotionAnalysisAccessBaseCaption }}</template>
+					</MkSwitch>
+					<MkRange v-model="role.policies.canUseHatalyze.priority" :min="0" :max="2" :step="1" easing :textConverter="(v) => v === 0 ? i18n.ts._role._priority.low : v === 1 ? i18n.ts._role._priority.middle : v === 2 ? i18n.ts._role._priority.high : ''">
+						<template #label>{{ i18n.ts._role.priority }}</template>
+					</MkRange>
+				</div>
+			</MkFolder>
+
 			<!-- 旗鯖fork: HataSNSCordUIの利用可否ポリシー -->
 			<MkFolder v-if="role.policies.canUseHatacordingUi && matchQuery([roleCopy.hatacordingAccessName, 'canUseHatacordingUi'])">
 				<template #label>{{ roleCopy.hatacordingAccessName }}</template>
@@ -1256,6 +1278,7 @@ for (const ROLE_POLICY of Misskey.rolePolicies) {
 //   (SDK未再ビルドでも設定項目が出るようにするための保険。value は instance.policies 優先・無ければ既定値)
 const HATA_FORK_POLICY_DEFAULTS: Record<string, boolean | number> = {
 	canAccessHataFeed: false,
+	canUseHatalyze: false,
 	canUseHatacordingUi: true,
 	hatacordingUiSubpaneMaxTabs: 3,
 	hatacordingUiRateLimit: 500,

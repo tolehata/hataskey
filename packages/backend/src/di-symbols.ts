@@ -132,5 +132,6 @@ export const DI = {
 	hatadyMediaSessionsRepository: Symbol('hatadyMediaSessionsRepository'),
 	hatadyMediaCommentsRepository: Symbol('hatadyMediaCommentsRepository'),
 	hatadyMediaReactionsRepository: Symbol('hatadyMediaReactionsRepository'),
+	hataskEmotionAnalysesRepository: Symbol('hataskEmotionAnalysesRepository'),
 	//#endregion
 };

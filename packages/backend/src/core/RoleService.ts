@@ -57,6 +57,8 @@ export type RolePolicies = {
 	hataSideStudioProfileLimit: number;
 	// 旗鯖fork: マスコット機能そのものの利用可否(デフォルト不許可。許可ロールでのみ利用可)
 	canUseMascot: boolean;
+	// 旗鯖fork: Hatask感情分析の利用可否(デフォルト不許可。許可ロールでのみ利用可)
+	canUseHatalyze: boolean;
 	// 旗鯖fork: HataFeed(フィードバックセンター)へのアクセス可否(デフォルト不許可。許可ロールでのみ利用可)
 	canAccessHataFeed: boolean;
 	// 旗鯖fork: HataSNSCordUI の利用可否(デフォルト許可。ロールで無効化可能)
@@ -125,6 +127,7 @@ export const DEFAULT_POLICIES: RolePolicies = {
 	mascotMaxCharacters: 3,
 	hataSideStudioProfileLimit: 3,
 	canUseMascot: false,
+	canUseHatalyze: false,
 	canAccessHataFeed: false,
 	canUseHatacordingUi: true,
 	hatacordingUiSubpaneMaxTabs: 3,
@@ -490,6 +493,7 @@ export class RoleService implements OnApplicationShutdown, OnModuleInit {
 			mascotMaxCharacters: calc('mascotMaxCharacters', vs => Math.max(...vs)),
 			hataSideStudioProfileLimit: calc('hataSideStudioProfileLimit', vs => Math.max(...vs)),
 			canUseMascot: calc('canUseMascot', vs => vs.some(v => v === true)),
+			canUseHatalyze: calc('canUseHatalyze', vs => vs.some(v => v === true)),
 			canAccessHataFeed: calc('canAccessHataFeed', vs => vs.some(v => v === true)),
 			canUseHatacordingUi: calc('canUseHatacordingUi', vs => vs.some(v => v === true)),
 			hatacordingUiSubpaneMaxTabs: calc('hatacordingUiSubpaneMaxTabs', normalizeHatacordingUiSubpaneMaxTabs),

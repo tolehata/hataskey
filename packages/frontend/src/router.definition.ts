@@ -739,6 +739,10 @@ export const ROUTE_DEF = [{
 	component: page(() => import('@/pages/hata-card-maker.vue')),
 	loginRequired: true,
 }, {
+	path: '/hatask/emotion-analysis',
+	component: page(() => import('@/pages/hata-emotion-analysis.vue')),
+	loginRequired: true,
+}, {
 	path: '/mascot',
 	component: page(() => import('@/pages/mascot.vue')),
 	loginRequired: true,

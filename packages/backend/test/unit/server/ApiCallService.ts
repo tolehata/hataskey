@@ -46,7 +46,7 @@ function createService() {
 }
 
 describe('ApiCallService structured error logging', () => {
-	test('redacts API credentials and serializes the endpoint error', async () => {
+	test('removes API credentials and serializes the endpoint error', async () => {
 		const write = vi.fn<LogBackend['write']>();
 		logManager.setBackend({ write });
 		const previousQuiet = envOption.quiet;
@@ -80,19 +80,48 @@ describe('ApiCallService structured error logging', () => {
 				attributes: {
 					'api.endpoint': 'notes/show',
 					'api.params': {
-						i: '[REDACTED]',
 						password: '[REDACTED]',
 						options: { visible: true },
 					},
 				},
 				error: { type: 'TypeError', message: 'broken endpoint' },
 			});
+			expect(record.attributes?.['api.params']).not.toHaveProperty('i');
 			expect(record.attributes?.['error.id']).toEqual(expect.any(String));
 			expect(telemetryService.captureMessage.mock.calls[0][1].extra).not.toHaveProperty('ps');
 		} finally {
 			service.dispose();
 			envOption.quiet = previousQuiet;
 			logManager.setBackend(new PrettyConsoleBackend({ output: () => undefined }));
+		}
+	});
+
+	test('uses i only for authentication and excludes it from endpoint params', async () => {
+		const { service } = createService();
+		try {
+			const endpoint = {
+				name: 'hata/hatask/emotion-analysis/create',
+				meta: {},
+				params: {},
+				exec: vi.fn().mockResolvedValue({ ok: true }),
+			};
+			const body = { i: 'native-token', analysisVersion: '1.1.0' };
+			const request = { method: 'POST', body, query: {}, headers: {}, ip: '127.0.0.1' };
+
+			await service.handleRequest(endpoint as never, request as never, createReply() as never);
+
+			expect(endpoint.exec).toHaveBeenCalledWith(
+				{ analysisVersion: '1.1.0' },
+				null,
+				null,
+				undefined,
+				null,
+				'127.0.0.1',
+				{},
+			);
+			expect(body).toEqual({ i: 'native-token', analysisVersion: '1.1.0' });
+		} finally {
+			service.dispose();
 		}
 	});
 });

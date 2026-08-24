@@ -132,6 +132,7 @@ import { MiHatadyMediaWork } from '@/models/HatadyMediaWork.js';
 import { MiHatadyMediaSession } from '@/models/HatadyMediaSession.js';
 import { MiHatadyMediaComment } from '@/models/HatadyMediaComment.js';
 import { MiHatadyMediaReaction } from '@/models/HatadyMediaReaction.js';
+import { MiHataskEmotionAnalysis } from '@/models/HataskEmotionAnalysis.js';
 import type { QueryDeepPartialEntity } from 'typeorm';
 
 export interface MiRepository<T extends ObjectLiteral> {
@@ -316,6 +317,7 @@ export {
 	MiHatadyMediaSession,
 	MiHatadyMediaComment,
 	MiHatadyMediaReaction,
+	MiHataskEmotionAnalysis,
 };
 
 export type AbuseReportResolversRepository = Repository<MiAbuseReportResolver> & MiRepository<MiAbuseReportResolver>;
@@ -436,3 +438,4 @@ export type HatadyMediaWorksRepository = Repository<MiHatadyMediaWork> & MiRepos
 export type HatadyMediaSessionsRepository = Repository<MiHatadyMediaSession> & MiRepository<MiHatadyMediaSession>;
 export type HatadyMediaCommentsRepository = Repository<MiHatadyMediaComment> & MiRepository<MiHatadyMediaComment>;
 export type HatadyMediaReactionsRepository = Repository<MiHatadyMediaReaction> & MiRepository<MiHatadyMediaReaction>;
+export type HataskEmotionAnalysesRepository = Repository<MiHataskEmotionAnalysis> & MiRepository<MiHataskEmotionAnalysis>;
