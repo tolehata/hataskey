@@ -1,9 +1,9 @@
 <!--
 SPDX-FileCopyrightText: Tolehata and hatasaba-project
 SPDX-License-Identifier: AGPL-3.0-only
-旗鯖fork: HatasabaUI 2 の設定ウィンドウ。
+旗鯖fork: Hataskey UI 2 の設定ウィンドウ。
 
-- MkWindow ベースのフローティングウィンドウ (裏で HatasabaUI を見ながらリアルタイムに調整可)
+- MkWindow ベースのフローティングウィンドウ (裏で Hataskey UI を見ながらリアルタイムに調整可)
 - 上部/下部/プロフィール ぼかしや吹き出し、透過率スライダーをまとめて表示
 - **バッファ + 明示保存** モデル。編集中の値はローカル ref に貯め、閉じても勝手に永続化しない
 - 保存ボタンで一括 commit + localStorage 反映
@@ -30,7 +30,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</div>
 		</div>
 
-		<!-- ===== 基本 (旧 HatasabaUI 設定から移設) ===== -->
+		<!-- ===== 基本 (旧 Hataskey UI 設定から移設) ===== -->
 		<FormSection first>
 			<template #label>{{ copy.basic }}</template>
 			<MkSwitch v-model="editedShowTrendingTab">
@@ -84,13 +84,13 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</div>
 		</FormSection>
 
-		<!-- ===== HatasabaUI 2 / 吹き出し ===== -->
+		<!-- ===== Hataskey UI 2 / 吹き出し ===== -->
 		<FormSection>
 			<template #label>{{ copy.ui2Name }}</template>
 			<div :class="$style.hataUi2Desc">
 				<b>{{ copy.ui2Name }}</b>{{ copy.ui2DescriptionBefore }}<b>{{ copy.alwaysEnabled }}</b>{{ copy.ui2DescriptionAfter }}
 			</div>
-			<!-- 旗鯖fork: HatasabaUI 2 は強制ON化したため「有効にする」トグルは廃止。 -->
+			<!-- 旗鯖fork: Hataskey UI 2 は強制ON化したため「有効にする」トグルは廃止。 -->
 			<MkSwitch v-model="editedGlassUiBubble" @update:modelValue="v => setGlassUiBubble(v)">
 				<template #label>{{ copy.showBubbleDesign }}</template>
 				<template #caption>{{ copy.showBubbleDesignCaption }}<b>{{ copy.thisDeviceOnly }}</b>{{ copy.savedSuffix }}</template>
@@ -119,7 +119,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</MkSwitch>
 		</FormSection>
 
-		<!-- ===== 上部ナビバー (旧 HatasabaUI 設定から移設・バッファ保存) ===== -->
+		<!-- ===== 上部ナビバー (旧 Hataskey UI 設定から移設・バッファ保存) ===== -->
 		<FormSection>
 			<template #label>{{ copy.topNavSection }}</template>
 			<div :class="$style.reorderHead">
@@ -232,9 +232,9 @@ const snapshot = {
 	normalNoBannerBg: prefer.r['simpleUi.normalNoBannerBg'].value,
 	profileNoBannerBg: prefer.r['simpleUi.profileNoBannerBg'].value,
 	opacity: prefer.r['simpleUi.glassUiCardOpacity'].value as number,
-	// 旗鯖fork: HatasabaUIデッキの「ノートの簡易表示を無効にする」(ON=吹き出しOFF=標準カード)。
+	// 旗鯖fork: Hataskey UIデッキの「ノートの簡易表示を無効にする」(ON=吹き出しOFF=標準カード)。
 	disableBubbleInHatasabaDeck: prefer.r['simpleUi.disableBubbleInHatasabaDeck'].value,
-	// 旗鯖fork: 基本セクション(旧 HatasabaUI 設定から移設)。
+	// 旗鯖fork: 基本セクション(旧 Hataskey UI 設定から移設)。
 	showTrendingTab: prefer.r['simpleUi.showTrendingTab'].value,
 	topNavMode: prefer.r['simpleUi.topNavMode'].value,
 	deckIgnoreWidth: deckIgnoreWidth.value,
@@ -324,7 +324,7 @@ async function resetToDefault() {
 
 // 旗鯖fork: デッキUIチュートリアルを「今すぐ」再表示する。
 //   従来はフラグを消すだけで、simple.vue の watch(deckActive) 頼みだったため、
-//   HatasabaUI のデッキ表示がアクティブでない状況ではフラグが消えるだけで何も表示されなかった。
+//   Hataskey UI のデッキ表示がアクティブでない状況ではフラグが消えるだけで何も表示されなかった。
 //   ここではデッキUIがアクティブなときのみ押下可能にし(下の :disabled)、押下時は
 //   チュートリアルウィザードを直接ポップアップして確実に表示する。
 //   (永続フラグ simpleUi.deckTutorialDone は「初回自動表示」用途なので、再表示ではあえて触らない)
@@ -337,7 +337,7 @@ function onReplayDeckTutorial() {
 	);
 }
 
-// ===== ナビ (旧 HatasabaUI 設定から移設・バッファ保存) =====
+// ===== ナビ (旧 Hataskey UI 設定から移設・バッファ保存) =====
 //   現在値を deep clone してバッファに置き、明示保存(下部の「保存」ボタン)まで prefer.commit しない。
 const editedTopNav = ref<any[]>(JSON.parse(JSON.stringify(prefer.s['simpleUi.topNav'] ?? [])));
 const editedBottomNav = ref<any[]>(mergeMissingNavItems(
@@ -377,7 +377,7 @@ const isHatasabaUi = computed(() => miLocalStorage.getItem('ui') === 'simple');
 const isDeckModeOn = computed(() => (prefer.r['simpleUi.deckMode']?.value as boolean | undefined) === true);
 const isDesktop = computed(() => (deckIgnoreWidth.value && isDeckModeOn.value) ? true : windowWidth.value >= DESKTOP_THRESHOLD);
 const isBottomNavVisible = computed(() => isHatasabaUi.value && !isDesktop.value);
-// 旗鯖fork: HatasabaUI のデッキUIが「今まさにアクティブ」か。
+// 旗鯖fork: Hataskey UI のデッキUIが「今まさにアクティブ」か。
 //   simple.vue の deckActive と同条件 (ui=simple かつ deckMode かつ デスクトップ相当)。
 //   デッキUIチュートリアルの再表示ボタンは、この状態のときのみ押下できる。
 const isHatasabaDeckActive = computed(() => isHatasabaUi.value && isDeckModeOn.value && isDesktop.value);
@@ -613,7 +613,7 @@ function restoreLivePreviewToSnapshot() {
 	> i { margin-right: 2px; }
 }
 
-/* ===== ナビ編集 (旧 HatasabaUI 設定から移設) ===== */
+/* ===== ナビ編集 (旧 Hataskey UI 設定から移設) ===== */
 .reorderHead {
 	display: flex;
 	align-items: center;

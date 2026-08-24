@@ -4,7 +4,7 @@
 -->
 
 <!--
-	旗鯖fork: HatasabaUI デッキモード (D2: 3階層モデル)。
+	旗鯖fork: Hataskey UI デッキモード (D2: 3階層モデル)。
 	データ構造: profile → slots[] → frames[] → tabs[](=カラム)
 	  - slot  : レイアウトの1マス(row:列 / grid:セル / stack:段)。frames を縦積みできる
 	  - frame : スロット内の箱。tabs が複数ならブラウザ風タブで切替表示(=「カラムの中で複数カラムをタブ切替」)

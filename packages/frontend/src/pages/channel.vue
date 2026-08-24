@@ -5,7 +5,7 @@ SPDX-License-Identifier: AGPL-3.0-only  Created                             0.1s
 
 <template>
 <PageWithHeader v-model:tab="tab" :actions="headerActions" :tabs="[]" :swipable="true">
-	<!-- 旗鯖fork: 画面中央上部のピル型タブ (Hatasaba UI 統一デザイン、channels.vue と同形)。
+	<!-- 旗鯖fork: 画面中央上部のピル型タブ (Hataskey UI 統一デザイン、channels.vue と同形)。
 	     ウィンドウモード等の狭幅でタブが収まらない時、マウスホイールの縦回転を横スクロールに
 	     変換 + タブバー上のドラッグでも横スクロールできるようにする (@wheel / pointer ドラッグ)。 -->
 	<div :class="$style.htkPillTabs">
@@ -86,7 +86,7 @@ SPDX-License-Identifier: AGPL-3.0-only  Created                             0.1s
 		</div>
 		<div v-else-if="tab === 'search'">
 			<div v-if="notesSearchAvailable" class="_gaps">
-				<!-- 旗鯖fork: HatasabaUI 検索ページと同様の一体型カプセル検索バー -->
+				<!-- 旗鯖fork: Hataskey UI 検索ページと同様の一体型カプセル検索バー -->
 				<div :class="$style.htkCapsule">
 					<i :class="$style.htkCapsuleIcon" class="ti ti-search"/>
 					<input
@@ -463,7 +463,7 @@ definePage(() => ({
 </script>
 
 <style lang="scss" module>
-/* 旗鯖fork: HatasabaUI 統一ピル型タブ (channels.vue と同一デザイン) */
+/* 旗鯖fork: Hataskey UI 統一ピル型タブ (channels.vue と同一デザイン) */
 .htkPillTabs {
 	position: sticky;
 	top: 0;
@@ -515,7 +515,7 @@ definePage(() => ({
 	i { font-size: 1em; line-height: 1; }
 }
 
-/* 旗鯖fork: HatasabaUI 検索ページと同様の一体型カプセル検索バー (channels.vue と同一) */
+/* 旗鯖fork: Hataskey UI 検索ページと同様の一体型カプセル検索バー (channels.vue と同一) */
 .htkCapsule {
 	display: flex;
 	align-items: center;
@@ -612,7 +612,7 @@ definePage(() => ({
 	background: color(from var(--MI_THEME-bg) srgb r g b / 0.5);
 	border-top: solid 0.5px var(--MI_THEME-divider);
 	/* 旗鯖fork: friendly.vue前提の +70px はボトムナビと被らないための余白だが、
-	   HatasabaUIではボトムナビ構成が異なり過剰な空白になる。safe-area + 控えめな余白に。 */
+	   Hataskey UIではボトムナビ構成が異なり過剰な空白になる。safe-area + 控えめな余白に。 */
 	padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
 }
 

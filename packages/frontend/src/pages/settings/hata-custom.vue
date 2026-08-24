@@ -202,13 +202,13 @@ SPDX-License-Identifier: AGPL-3.0-only
         </FormSection>
         </template>
 
-        <!-- ===== Hatasaba UI ===== -->
-        <!-- 旗鯖fork: 旧「Hatasaba UI」タブの全設定 (基本/上部・下部ナビバー/サイドメニュー/デッキチュートリアル)
-             は HatasabaUI 2 の設定モーダル (MkHatasabaUi2EditWindow) へ統合した。タブ自体を廃止し、
-             設定入口は HatasabaUI 2 タブに一本化する。preferences のキーは変更していないため既存設定は保持される。 -->
+        <!-- ===== Hataskey UI ===== -->
+        <!-- 旗鯖fork: 旧「Hataskey UI」タブの全設定 (基本/上部・下部ナビバー/サイドメニュー/デッキチュートリアル)
+             は Hataskey UI 2 の設定モーダル (MkHatasabaUi2EditWindow) へ統合した。タブ自体を廃止し、
+             設定入口は Hataskey UI 2 タブに一本化する。preferences のキーは変更していないため既存設定は保持される。 -->
 
         <!-- ===== UI =====
-             旗鯖fork: HatasabaUI 2 と HataSNSCordUI の端末設定を一つのタブに集約。 -->
+             旗鯖fork: Hataskey UI 2 と HataSNSCordUI の端末設定を一つのタブに集約。 -->
         <template v-if="activeCat === 'glassUi'">
         <FormSection first>
             <template #label>{{ uiCopy.hatasabaUi2Settings }}</template>
@@ -374,7 +374,7 @@ SPDX-License-Identifier: AGPL-3.0-only
         </template>
 
         <!-- ===== その他 (旧アクセシビリティ) ===== -->
-        <!-- 旗鯖fork: タブ再編で、旧アクセシビリティタブの項目はほぼ全て ビジュアル / HatasabaUI 2 /
+        <!-- 旗鯖fork: タブ再編で、旧アクセシビリティタブの項目はほぼ全て ビジュアル / Hataskey UI 2 /
              旗鯖全体 タブに分散移動した。ここには「他タブに分類しづらい」ものだけを残す。
              現状は天気エフェクトのみ。preferences のキー自体は変更していないので、
              既存ユーザーの設定値は移動後もそのまま保持される (マイグレ不要)。 -->
@@ -424,11 +424,11 @@ import { useRouter } from '@/router.js';
 import { miLocalStorage } from '@/local-storage.js';
 import { prefer } from '@/preferences.js';
 // 旗鯖fork: getInitialPrefValue は simpleUi タブのナビ初期化ロジックで使っていたが、
-//   HatasabaUI 2 設定モーダル (MkHatasabaUi2EditWindow) に移設したためこのファイルからは不要になった。
+//   Hataskey UI 2 設定モーダル (MkHatasabaUi2EditWindow) に移設したためこのファイルからは不要になった。
 import { definePage } from '@/page.js';
 import { getHiddenReactions, hiddenReactionsVersion } from '@/utility/hidden-reactions.js';
-// 旗鯖fork: deckIgnoreWidth / setDeckIgnoreWidth は HatasabaUI 設定モーダル側で消費するのみ。
-// 旗鯖fork(HatasabaUI 2): 端末ローカルの glassUi 系を hata-custom.vue から使うため import。
+// 旗鯖fork: deckIgnoreWidth / setDeckIgnoreWidth は Hataskey UI 設定モーダル側で消費するのみ。
+// 旗鯖fork(Hataskey UI 2): 端末ローカルの glassUi 系を hata-custom.vue から使うため import。
 import { glassUiLocal, setGlassUiLocal, glassUiBubbleLocal, setGlassUiBubbleLocal, hideMutedReactionsLocal, setHideMutedReactionsLocal, foldableLayoutMode, setFoldableLayoutMode } from '@/utility/hatasaba-device-prefs.js';
 import type { HataFoldableMode } from '@/utility/hatasaba-device-prefs.js';
 import { HATA_FONT_PRESETS, applyHataFont, type HataFontId } from '@/scripts/hata-font-manager.js';
@@ -451,7 +451,7 @@ const mascotCopy = copy._mascot;
 const otherCopy = copy._other;
 
 // 旗鯖fork: タブ再編。
-//   - HatasabaUI 2 タブ新設 (グラス系設定を集約)
+//   - Hataskey UI 2 タブ新設 (グラス系設定を集約)
 //   - ビジュアルタブ新設 (見た目系を集約)
 //   - accessibility タブは「その他」にリネームし、天気エフェクトなど余ったものだけ残す
 //   - 見た目に関わらない設定 (directProfile / postFormVisibilityBorder 等) は general に移動
@@ -620,9 +620,9 @@ const openMascotSettings = async () => {
     const { defineAsyncComponent: dac } = await import('vue');
     const { dispose } = os.popup(dac(() => import('@/pages/MkMascotSettings.vue')), {}, { closed: () => dispose() });
 };
-// 旗鯖fork: HatasabaUI 2 の設定を独立ウィンドウ (MkHatasabaUi2EditWindow) で開く。
+// 旗鯖fork: Hataskey UI 2 の設定を独立ウィンドウ (MkHatasabaUi2EditWindow) で開く。
 //   有効化トグル・吹き出し・背景ぼかし・透過率スライダーを 1 ウィンドウに集約。
-//   MkWindow ベースなので開いたまま裏の HatasabaUI をリアルタイム確認可能。
+//   MkWindow ベースなので開いたまま裏の Hataskey UI をリアルタイム確認可能。
 const openHatasabaUi2EditWindow = async () => {
     const { defineAsyncComponent: dac } = await import('vue');
     const { dispose } = os.popup(
@@ -635,7 +635,7 @@ const isExternalLinked = computed(() => prefer.s['external.enabled'] && prefer.s
 const hiddenReactionCount = computed(() => { hiddenReactionsVersion.value; return getHiddenReactions().length; });
 // 旗鯖fork: simpleUi タブに直接あった topNav/bottomNav の ref / saveTopNav / saveBottomNav /
 //   resetTopNav / resetBottomNav / showTrendingTab / topNavMode / deckIgnoreWidthModel /
-//   openSidebarEditDialog / replayDeckTutorial は、HatasabaUI 2 設定モーダル
+//   openSidebarEditDialog / replayDeckTutorial は、Hataskey UI 2 設定モーダル
 //   (MkHatasabaUi2EditWindow) に完全移設した。モーダル側でバッファ + 明示保存 + 初期化ボタンで
 //   完結するため、このファイルからは削除済み。
 
@@ -684,19 +684,19 @@ function removeBotAllowlistUser(id: string) {
     const cur = ((botAllowlist.value as string[]) ?? []).filter(x => x !== id);
     botAllowlist.value = cur;
 }
-// 旗鯖fork: HatasabaUI 追加ページヘッダー表示
+// 旗鯖fork: Hataskey UI 追加ページヘッダー表示
 const showPageHeader = prefer.model('simpleUi.showPageHeader');
 const noteSpacing = prefer.model('simpleUi.noteSpacing');
 // 旗鯖fork(#15): スマホ/狭幅で日付を従来位置(中央インライン)で表示するか。
 const showTimelineDateOnMobile = prefer.model('simpleUi.showTimelineDateOnMobile');
 // 旗鯖fork: 旧 disableBubbleInDeck / disableBubbleInDefault / disableBubbleInHatasabaNormal トグルは廃止。
-//   HatasabaUIデッキの「ノートの簡易表示を無効にする」は HatasabaUI2 の設定モーダルへ移動。
+//   Hataskey UIデッキの「ノートの簡易表示を無効にする」は Hataskey UI 2 の設定モーダルへ移動。
 const classicNoteSpacing = prefer.model('simpleUi.classicNoteSpacing');
 // 旗鯖fork: デッキタイムライン最上部インジケータをテキストに戻すオプトイン
 const deckLatestNoteText = prefer.model('simpleUi.deckLatestNoteText');
-// 旗鯖fork(HatasabaUI 2): プロフィールぼかしOFF
+// 旗鯖fork(Hataskey UI 2): プロフィールぼかしOFF
 const profileNoBannerBg = prefer.model('simpleUi.profileNoBannerBg');
-// 旗鯖fork(HatasabaUI 2): ノートカード/ナビの透過率 (0-100 %)。
+// 旗鯖fork(Hataskey UI 2): ノートカード/ナビの透過率 (0-100 %)。
 //   ローカル ref で v-model 表示、prefer.commit は `@change` (release) だけで発火させる。
 //   `@input` 経由や、mount 時の任意タイミングで setter が誤呼び出しされて既定値 55 へ
 //   リセットされる事象が発生していたため、コミット元を release 一箇所に絞る。
@@ -722,7 +722,7 @@ watch(glassUiCardOpacity, v => {
 });
 // 旗鯖fork: 従来のチャンネル投稿ボタン (カラムヘッダ右のペン+ボタン + 三点メニュー項目) を表示するか
 const showLegacyChannelPostButton = prefer.model('simpleUi.showLegacyChannelPostButton');
-// 旗鯖fork(HatasabaUI 2): 端末ローカルのグラス系設定 (ref + setter を computed 経由で v-model 化)
+// 旗鯖fork(Hataskey UI 2): 端末ローカルのグラス系設定 (ref + setter を computed 経由で v-model 化)
 const glassUi = computed({
     get: () => glassUiLocal.value,
     set: (v: boolean) => setGlassUiLocal(v),
@@ -757,15 +757,15 @@ const weatherEffectDuration = prefer.model('weatherEffect.duration');
 
 // 旗鯖fork: デッキ表示時はノート間隔を 'compact' に強制ON+UI操作不能化する。
 // - 従来デッキ UI (ui=deck) は localStorage で判定、ページ表示中の切替は無いためページマウント時に固定。
-// - HatasabaUI デッキ (ui=simple かつ simpleUi.deckMode=ON) は deckMode の切替に追随する。
+// - Hataskey UI デッキ (ui=simple かつ simpleUi.deckMode=ON) は deckMode の切替に追随する。
 const currentUi = miLocalStorage.getItem('ui');
 const isLegacyDeckUi = currentUi === 'deck';
-// 旗鯖fork(#7): HatasabaUI(ui:simple, 通常表示・デッキ表示の両方)では従来Misskey風の投稿間隔を強制するため、
+// 旗鯖fork(#7): Hataskey UI(ui:simple, 通常表示・デッキ表示の両方)では従来Misskey風の投稿間隔を強制するため、
 // 「従来のMisskey風の投稿間隔」トグルを操作不可にする。
 const isHatasabaUi = currentUi === 'simple';
 // 旗鯖fork: Misskey(デフォルト・従来のデッキUIではない)UI。ここでも従来Misskey風の投稿間隔を強制ONにする。
 const isMisskeyDefaultUi = currentUi === 'default';
-// 旗鯖fork(#7): HatasabaUI(通常表示・デッキ表示の両方) と Misskey(デフォルト)UI では従来Misskey風の
+// 旗鯖fork(#7): Hataskey UI(通常表示・デッキ表示の両方) と Misskey(デフォルト)UI では従来Misskey風の
 // 投稿間隔を常に適用するため、トグルは常にON表示＋操作不可にする(実際の適用状態と一致させる)。
 const classicNoteSpacingDisplay = computed<boolean>({
     get: () => (isHatasabaUi || isMisskeyDefaultUi) ? true : classicNoteSpacing.value,
@@ -881,7 +881,7 @@ definePage({ title: copy.title, icon: 'ti ti-flag' });
     &:hover:not(:disabled) { background:var(--MI_THEME-accentedBg); }
     &:disabled { opacity:.2; cursor:default; }
 }
-/* 旗鯖fork(HatasabaUI 2): 透過率スライダー行 */
+/* 旗鯖fork(Hataskey UI 2): 透過率スライダー行 */
 .opacityRow {
     display: flex; align-items: center; gap: 12px; padding: 4px 2px;
 }

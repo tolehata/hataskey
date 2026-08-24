@@ -1225,7 +1225,7 @@ definePage(() => ({
 	container-type:inline-size;
 }
 .teleportTheme {
-	/* HatasabaUIデッキやHataskの全画面層より上、通知トーストより下。
+	/* Hataskey UIデッキやHataskの全画面層より上、通知トーストより下。
 	   全Teleportをビューポート基準にし、デッキ内のoverflowとスタッキングから切り離す。 */
 	position:fixed;
 	z-index:3500000;

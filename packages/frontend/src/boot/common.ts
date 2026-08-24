@@ -566,7 +566,7 @@ export async function common(createVue: () => Promise<App<Element>>) {
 		window.document.documentElement.classList.add('forceSelectableAll');
 	}
 
-	// 旗鯖fork(HatasabaUI 2): `simpleUi.profileNoBannerBg` を <html> のクラス
+	// 旗鯖fork(Hataskey UI 2): `simpleUi.profileNoBannerBg` を <html> のクラス
 	// (`hataProfileNoBannerBg`) にブリッジする。プロフィールページの CSS が
 	// `html.hataGlassUi.hataProfileNoBannerBg` セレクタで機能を切替する。
 	// preferences reactive を watch して即時反映 (別端末での変更もこの端末に伝播する)。
@@ -579,7 +579,7 @@ export async function common(createVue: () => Promise<App<Element>>) {
 		watch(prefer.r['simpleUi.profileNoBannerBg'], v => applyProfileNoBannerBg(!!v), { immediate: false });
 	}
 
-	// 旗鯖fork(HatasabaUI 2): `simpleUi.glassUiCardOpacity` (0-100) を CSS 変数
+	// 旗鯖fork(Hataskey UI 2): `simpleUi.glassUiCardOpacity` (0-100) を CSS 変数
 	// `--htk-glass-card-opacity` (パーセント値) として <html> に注入する。
 	// MkStreamingNotesTimeline のノートカード面が `color-mix` の中でこの変数を消費する。
 	{

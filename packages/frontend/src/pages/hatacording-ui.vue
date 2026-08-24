@@ -24,7 +24,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<div v-if="menuEditing && !sidebarCollapsed" :class="$style.editNotice">
 			<div><strong>{{ copy.editMenuTitle }}</strong><span>{{ copy.editMenuDescription }}</span></div>
 			<div :class="$style.editActions">
-				<button type="button" :class="[$style.textButton, $style.copyOrderButton]" @click="copyCollapsedOrder"><Copy :size="14"/><span>HatasabaUI<br/>{{ copy.importCollapsedOrder }}</span></button>
+				<button type="button" :class="[$style.textButton, $style.copyOrderButton]" @click="copyCollapsedOrder"><Copy :size="14"/><span>Hataskey UI<br/>{{ copy.importCollapsedOrder }}</span></button>
 				<button type="button" :class="$style.textButton" @click="resetMenu"><RefreshCw :size="14"/>{{ copy.reset }}</button>
 				<button type="button" :class="$style.saveMenuButton" @click="saveMenuEditing"><Save :size="14"/>{{ copy.saveAndFinish }}</button>
 			</div>

@@ -57,14 +57,14 @@ const menu = prefer.s.menu;
 
 /*
 旗鯖fork: 「もっと」からは、サイドバーに出ている項目を省く（同じものを二度出さないため）。
-⚠️本家は `prefer.s.menu`（＝本家UIのサイドバー）だけで判断するが、HatasabaUI が読むのは
+⚠️本家は `prefer.s.menu`（＝本家UIのサイドバー）だけで判断するが、Hataskey UI が読むのは
   `simpleUi.sidebar` の方で、`menu` は画面のどこにも描かれない。
   そのため `menu` にだけ入っている項目（実測でマスコットの1件）は、
   **サイドバーにも「もっと」にも出ない＝UIから辿れない**状態になっていた（利用者報告）。
-⚠️HatasabaUI のときは「両方に入っているもの」だけを省く。こうすると:
+⚠️Hataskey UI のときは「両方に入っているもの」だけを省く。こうすると:
   - マスコットは「もっと」に出る（今回の修正点）
   - 両方にある項目（通知・チャット等）は従来どおり省かれる
-  - HatasabaUI 側にしか無い項目（ドライブ・Hatady 等）も従来どおり「もっと」に残る
+  - Hataskey UI 側にしか無い項目（ドライブ・Hatady 等）も従来どおり「もっと」に残る
 ⚠️サイドバーで非表示にした項目（visible === false）は「辿れない」ので省かない。
 
 HataSideStudio導入後は、Studioから追加できるnavbarItemDef項目に限ってactive profileを正本にする。

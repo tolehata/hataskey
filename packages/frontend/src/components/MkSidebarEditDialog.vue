@@ -1,7 +1,7 @@
 <!--
 SPDX-FileCopyrightText: Tolehata and hatasaba-project
 SPDX-License-Identifier: AGPL-3.0-only
-旗鯖fork: HatasabaUI サイドバーの編集モーダル。設定画面内のインライン編集 (自動保存) で
+旗鯖fork: Hataskey UI サイドバーの編集モーダル。設定画面内のインライン編集 (自動保存) で
 発生していた「保存されたか分からない」「サーバー間で同期されてるか不明」というユーザー声に
 対応し、明示的な保存ボタン + 「保存しました」トースト + ドラッグ並び替えに対応する。
 -->

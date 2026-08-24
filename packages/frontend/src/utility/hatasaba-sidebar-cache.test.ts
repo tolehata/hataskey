@@ -9,7 +9,7 @@ import { describe, expect, test } from 'vitest';
 
 const source = (path: string) => readFileSync(resolve(process.cwd(), path), 'utf8');
 
-describe('HatasabaUI sidebar cache clear item', () => {
+describe('Hataskey UI sidebar cache clear item', () => {
 	test('新規設定ではリロードの直後に表示可能な通常項目として置く', () => {
 		const def = source('src/preferences/def.ts');
 		const reloadIndex = def.indexOf('{ id: \'reload\'');

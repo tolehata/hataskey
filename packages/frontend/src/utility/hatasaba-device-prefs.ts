@@ -6,7 +6,7 @@
 import { ref } from 'vue';
 import { miLocalStorage } from '@/local-storage.js';
 
-// 旗鯖fork: 端末ローカル(プロファイル非同期)の HatasabaUI 設定。
+// 旗鯖fork: 端末ローカル(プロファイル非同期)の Hataskey UI 設定。
 // prefer(プロファイル)に入れると複数端末で共有されてしまう設定を、端末ごとに保持するためのもの。
 // 共有 reactive ref としてエクスポートし、設定ページと UI(simple.vue)の双方が同じ状態を参照する。
 
@@ -35,7 +35,7 @@ export function setFoldableLayoutMode(v: HataFoldableMode): void {
 	miLocalStorage.setItem('hataFoldableLayout', v);
 }
 
-// HatasabaUI のタイムライン・デッキで、左右スワイプをタブ移動に使うか。
+// Hataskey UI のタイムライン・デッキで、左右スワイプをタブ移動に使うか。
 // タッチやトラックパッドの操作感は端末ごとに異なるため、プロファイル同期しない。
 // 未設定は true。従来どおりスワイプで移動できる。
 export const tabSwipeEnabled = ref(miLocalStorage.getItem('hatasabaTabSwipeEnabled') !== 'false');
@@ -61,14 +61,14 @@ function applyGlassUiClass(v: boolean): void {
 		document.documentElement.classList.toggle('hataGlassUi', v);
 	}
 }
-// 旗鯖fork(HatasabaUI 2 デフォルトON化): 新規ユーザー・未設定端末では自動的に ON にする。
+// 旗鯖fork(Hataskey UI 2 デフォルトON化): 新規ユーザー・未設定端末では自動的に ON にする。
 //   判定: getItem('hataGlassUi') が 'false' の時のみ OFF (=ユーザーが明示的に OFF にした)。
 //   'true' または null (未設定) は ON。
 //   既存で 'true' 保存済み → true 維持 (=これまで通り ON)。
 //   既存で 'false' 保存済み → false 維持 (=明示OFF のユーザーの意思を尊重)。
 //   未設定 (null) → true (自動ON)。同時に localStorage にも 'true' を書き込むことで、
 //   次回起動以降 (=もし将来この判定を変えたとしても) 動作が変わらない安定した状態にする。
-// 旗鯖fork: HatasabaUI 2 は強制ON(有効化トグルは廃止)。過去に明示OFF('false')にした端末も含め、
+// 旗鯖fork: Hataskey UI 2 は強制ON(有効化トグルは廃止)。過去に明示OFF('false')にした端末も含め、
 //   常に ON に固定する。localStorage も 'true' に揃えて状態を安定させる。
 const _initialGlassUi = true;
 export const glassUiLocal = ref(_initialGlassUi);
@@ -84,9 +84,9 @@ export function setGlassUiLocal(v: boolean): void {
 // モジュール読み込み時(=アプリ起動時)に現在値をクラスへ反映。
 applyGlassUiClass(glassUiLocal.value);
 
-// 旗鯖fork(ベータ): HatasabaUI 2 でノートの吹き出しデザイン(本文枠 + ＜口)を表示するか。端末ローカル。
+// 旗鯖fork(ベータ): Hataskey UI 2 でノートの吹き出しデザイン(本文枠 + ＜口)を表示するか。端末ローカル。
 //   既定は false(=吹き出しを非表示 = 外側の角丸カードだけのすっきり表示)。
-//   HatasabaUI 2(glassUiLocal) が有効なときのみ設定 UI に表示される。
+//   Hataskey UI 2(glassUiLocal) が有効なときのみ設定 UI に表示される。
 //   有効時は <html> に 'hataGlassUiBubble' クラスを付与し、タイムライン側 SCSS が
 //   glass 表示のノートに吹き出し枠(＜口付き)を描画する。
 function applyGlassUiBubbleClass(v: boolean): void {

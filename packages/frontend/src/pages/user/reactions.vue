@@ -6,7 +6,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 <template>
 <div style="--MI_SPACER-w: 700px;">
 	<MkPagination v-slot="{items}" :paginator="paginator" withControl>
-		<!-- 旗鯖fork: `_panel _margin` に加え htkReactionItem クラスを付けて、HatasabaUI 2 モードで
+		<!-- 旗鯖fork: `_panel _margin` に加え htkReactionItem クラスを付けて、Hataskey UI 2 モードで
 		     ノート下に余分な panel 塗りが残る「ゴミ」を透過化するためのフックにする。 -->
 		<div v-for="item in items" :key="item.id" :to="`/clips/${item.id}`" class="_panel _margin htkReactionItem">
 			<div :class="$style.header">
@@ -65,8 +65,8 @@ const paginator = markRaw(new Paginator('users/reactions', {
 }
 </style>
 
-<!-- 旗鯖fork(HatasabaUI 2): 各リアクションアイテムは `_panel _margin` (パネル塗り + 下マージン)
-     で囲まれているが、HatasabaUI 2 で内包する MkNote が半透明化するため、ノートより下の
+<!-- 旗鯖fork(Hataskey UI 2): 各リアクションアイテムは `_panel _margin` (パネル塗り + 下マージン)
+     で囲まれているが、Hataskey UI 2 で内包する MkNote が半透明化するため、ノートより下の
      パネル塗り部分が「余白のゴミ」として目立つ。glass モードでは wrapper のパネル塗り/角丸を
      透明化し、ボーダーだけ残して「ノート単体」に見えるようにする。 -->
 <style lang="scss">

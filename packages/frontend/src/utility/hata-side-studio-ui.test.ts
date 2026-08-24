@@ -21,7 +21,7 @@ describe('HataSideStudio UI integration', () => {
 		expect(simple).toContain("studioProfile.value.postButton.icon === 'paw' ? 'ti ti-paw' : 'ti ti-pencil'");
 	});
 
-	test('モバイルのHatasabaUIドロワーにも固定のもっとメニューを表示する', () => {
+	test('モバイルのHataskey UIドロワーにも固定のもっとメニューを表示する', () => {
 		const simple = read('ui/simple.vue');
 		expect(simple).toContain('data-hatasaba-mobile-more');
 		expect(simple).toContain('@click="openMore($event, true)"');
@@ -159,7 +159,7 @@ describe('HataSideStudio UI integration', () => {
 		expect(studio).not.toContain('modalBackdrop');
 	});
 
-	test('HatasabaUIデッキで内側の戻るボタンを隠し、Studioの窓と保存操作を前面で保つ', () => {
+	test('Hataskey UIデッキで内側の戻るボタンを隠し、Studioの窓と保存操作を前面で保つ', () => {
 		const studio = read('pages/hata-side-studio.vue');
 		const hatady = read('pages/hatady.vue');
 		for (const source of [studio, hatady]) {

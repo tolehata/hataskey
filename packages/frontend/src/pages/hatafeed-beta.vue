@@ -52,7 +52,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<!-- 旗鯖fork(#31): ミュートユーザーのリアクション非表示は正式機能へ昇格し、
 			     旗鯖独自設定 → 旗鯖全体 → リアクション に移動した。
 			     ⚠️ここに案内を残す（前の場所を覚えている人が迷子になるため）。
-			     HatasabaUI 2 と吹き出しデザインのトグルも同様に HatasabaUI 2 タブへ移動済み。 -->
+			     Hataskey UI 2 と吹き出しデザインのトグルも同様に Hataskey UI 2 タブへ移動済み。 -->
 			<div :class="$style.toggleSection">
 				<div :class="$style.toggleHead"><ArrowRightCircle :size="18" /> {{ copy.graduated }}</div>
 				<button :class="$style.featureCard" @click="router.push('/settings/hata-custom')">
@@ -99,7 +99,7 @@ const postDelaySecondsModel = computed({
 	set: setPostSendDelaySeconds,
 });
 
-// 旗鯖fork: HatasabaUI 2 / 吹き出し / ミュートリアクション非表示 はいずれも正式機能へ昇格し、
+// 旗鯖fork: Hataskey UI 2 / 吹き出し / ミュートリアクション非表示 はいずれも正式機能へ昇格し、
 // 旗鯖独自設定へ移動した。ここには移動先への案内だけを残している。
 
 // 旗鯖fork: 左上の戻るボタン(MkPageHeader 標準)があるので、右上に重複する

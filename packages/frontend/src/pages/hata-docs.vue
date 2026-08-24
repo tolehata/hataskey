@@ -130,7 +130,7 @@ const categories = [
 		docs: [
 			{ iconClass: 'ti ti-brush', title: entries.drawingToolTitle, body: entries.drawingToolBody, tips: [entries.drawingToolTip1] },
 			{ iconClass: 'ti ti-id', title: entries.hataCardMakerTitle, body: entries.hataCardMakerBody, tips: [entries.hataCardMakerTip1], link: '/hatask/card-maker', linkLabel: entries.hataCardMakerLink },
-			{ iconClass: 'ti ti-mood-search', title: entries.hatalyzeTitle, body: entries.hatalyzeBody, tips: [entries.hatalyzeTip1, entries.hatalyzeTip2], link: 'https://kanjo-bunseki.tolehata.net/', linkLabel: entries.hatalyzeLink },
+			{ iconClass: 'ti ti-mood-search', title: entries.hatalyzeTitle, body: entries.hatalyzeBody, tips: [entries.hatalyzeTip1, entries.hatalyzeTip2], link: '/hatask/emotion-analysis', linkLabel: entries.hatalyzeLink },
 			{ iconClass: 'ti ti-door', title: entries.portalTitle, body: entries.portalBody },
 		],
 	},
@@ -184,7 +184,7 @@ const categories = [
 	{
 		id: 'bousai', iconClass: 'ti ti-activity', label: '地震・津波情報',
 		docs: [
-			{ iconClass: 'ti ti-activity', title: '地震・津波情報を見る', body: '気象庁が発表した地震情報と津波情報を、地図と一覧で確認できます。震源、最大震度、市区町村ごとの震度、発表中の津波警報・注意報、お住まいの都道府県で観測された地震を表示します。<br><br>地震が起きる前の緊急地震速報は扱いません。発表済みの情報だけを表示します。', tips: ['情報提供は気象庁とP2P地震情報です', 'ウィジェットやHatasabaUIのデッキにも置けます'], link: '/earthquake', linkLabel: '地震・津波情報を開く' },
+			{ iconClass: 'ti ti-activity', title: '地震・津波情報を見る', body: '気象庁が発表した地震情報と津波情報を、地図と一覧で確認できます。震源、最大震度、市区町村ごとの震度、発表中の津波警報・注意報、お住まいの都道府県で観測された地震を表示します。<br><br>地震が起きる前の緊急地震速報は扱いません。発表済みの情報だけを表示します。', tips: ['情報提供は気象庁とP2P地震情報です', 'ウィジェットやHataskey UIのデッキにも置けます'], link: '/earthquake', linkLabel: '地震・津波情報を開く' },
 			{ iconClass: 'ti ti-bell', title: '地震・津波の通知', body: '選んだ震度以上の地震、またはお住まいの都道府県で揺れが観測された地震を端末へ通知できます。津波警報・注意報の発表と解除も通知します。<br><br>都道府県名は通常この端末だけに保存します。地域だけの通知を有効にしたときに限り、通知の判定に必要な都道府県名を旗鯖へ保存します。市区町村や現在地は送りません。', link: '/earthquake', linkLabel: '通知を設定する' },
 		],
 	},

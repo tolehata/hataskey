@@ -21,7 +21,7 @@ describe('notification bot filter integration', () => {
 		expect(widgetNotificationsSource).toContain('widgetProps.excludeBots = excludeBots');
 	});
 
-	test('通常デッキとHatasabaUIデッキがBot除外を保存する', () => {
+	test('通常デッキとHataskey UIデッキがBot除外を保存する', () => {
 		expect(notificationsColumnSource).toContain(':excludeBots="props.column.excludeBots"');
 		expect(notificationsColumnSource).toContain('excludeBots: excludeBots');
 		expect(hatasabaDeckSource).toContain('excludeBots: tab.excludeBots === true');

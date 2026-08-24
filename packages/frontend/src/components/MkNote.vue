@@ -80,7 +80,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		     colorBar の位置基準は bubbleBody (常に position: relative) なので、ここでは position は
 		     いじらず (以前 position:relative を付けたら、noteContent が短い時に colorBar が
 		     avatar+main のみに縮んで「アイコンに密着した小さなタブ」に見える副作用が出た)。
-		     HatasabaUI 2 のリアクション貫通問題は、colorBar 自体に mask-image (下部フェード) を
+		     Hataskey UI 2 のリアクション貫通問題は、colorBar 自体に mask-image (下部フェード) を
 		     かけて対応する (下の .colorBar CSS 参照)。 -->
 		<div :style="[prefer.s.showGapBodyOfTheNote ? {} : { paddingBottom: '10px' }, appearNote.channel ? { paddingLeft: '7px' } : {}]" style="display: flex;">
 			<div v-if="appearNote.channel" :class="$style.colorBar" :style="{ borderLeftColor: appearNote.channel.color }"></div>
@@ -807,7 +807,7 @@ const displayedReactions = computed(() => {
 });
 
 function openUserPanel(userId: string) {
-	// HatasabaUIのデッキ表示中は、横幅の限られたカラム内でオリジナルユーザーパネルを出すと
+	// Hataskey UIのデッキ表示中は、横幅の限られたカラム内でオリジナルユーザーパネルを出すと
 	// レイアウトと相性が悪いため、directProfile 設定に関わらず直接プロフィールを開く
 	const isDeckUi = prefer.s['simpleUi.deckMode'] === true;
 	if (isDeckUi || prefer.s['simpleUi.directProfile']) {
@@ -1524,11 +1524,11 @@ function emitUpdReaction(emoji: string, delta: number) {
 	pointer-events: none;
 	box-sizing: border-box;
 }
-/* 旗鯖fork(HatasabaUI 2): article が半透明ガラス面のとき、colorBar は 2 点調整する:
+/* 旗鯖fork(Hataskey UI 2): article が半透明ガラス面のとき、colorBar は 2 点調整する:
    ① 左オフセット (left: -10px): colorBar の containing block は bubbleBody (article の padding
       10px 内側)。base の `left: 0` だとアバターの左辺と近すぎて重なって見える。article の外側
       左端に揃えるため、article padding-left 相当 (10px) を負の左オフセットで打ち消す。
-   ② border-radius を 20px: article の HatasabaUI 2 モードの border-radius と揃え、
+   ② border-radius を 20px: article の Hataskey UI 2 モードの border-radius と揃え、
       角の丸みが自然に見えるようにする。
    ③ mask-image で下部フェード: リアクション/フッター領域を colorBar が貫通しないよう、
       下部を自然にフェードアウト (DOM 変更なしで視覚的解決)。 */
@@ -1871,7 +1871,7 @@ function emitUpdReaction(emoji: string, delta: number) {
    ・バブル表示のガラス化は MkStreamingNotesTimeline 側 ([data-bubble] のグローバル)で行う。
    ・ぼかしは --MI-blur (useBlurEffect=false で none にフォールバック)を尊重。
    ======================================================================= */
-/* 旗鯖fork(HatasabaUI 2): 従来 `.article` は panel 60% ハードコードだった。
+/* 旗鯖fork(Hataskey UI 2): 従来 `.article` は panel 60% ハードコードだった。
    透過率 CSS 変数の適用先は module CSS の hashed class より、下部の非module `<style>` ブロックで
    tag 要素 `article` を直接ターゲットする方が確実 (module CSS の :global() + module class の
    組合せは Vue SFC の CSS 変換で意図せず動作しないケースがあるため)。詳細は下部 style を参照。 */
@@ -1898,7 +1898,7 @@ function emitUpdReaction(emoji: string, delta: number) {
 }
 </style>
 
-<!-- 旗鯖fork(HatasabaUI 2): 透過率 CSS 変数の適用は非module のグローバル CSS で tag 要素
+<!-- 旗鯖fork(Hataskey UI 2): 透過率 CSS 変数の適用は非module のグローバル CSS で tag 要素
      `article` を直接ターゲットする。これで MkNote / MkExternalNote / トレンド / クリップ /
      お気に入り / 通知 (reply/quote/mention) など、あらゆる `<article>` 要素を含むノート表示に
      一律で `--htk-glass-card-opacity` が反映される。

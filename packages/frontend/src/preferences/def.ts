@@ -810,7 +810,7 @@ export const PREF_DEF = definePreferences({
 		default: false,
 	},
 	// ======== シンプルUI設定 ========
-	// 旗鯖fork: HatasabaUI でのトレンドタイムライン (TTL) タブの表示/非表示
+	// 旗鯖fork: Hataskey UI でのトレンドタイムライン (TTL) タブの表示/非表示
 	// デフォルト true (最左に表示)。topNav 設定とは独立して管理することで、
 	// 既存ユーザーの保存済み topNav 設定を変更せずにトレンドタブを出せる。
 	'simpleUi.showTrendingTab': {
@@ -885,17 +885,17 @@ export const PREF_DEF = definePreferences({
 	'hataBranding.useHatakyu': {
 		default: true,
 	},
-	// 旗鯖fork: HatasabaUI のページヘッダー(ページタイトル+戻るボタン)を表示するか。
+	// 旗鯖fork: Hataskey UI のページヘッダー(ページタイトル+戻るボタン)を表示するか。
 	// ページ自身が MkPageHeader を持っているため、デフォルトでは非表示にしてタイトル二重表示を回避する。
-	// ONにすると HatasabaUI 独自のシンプルなヘッダーがページの上に追加で出る。
+	// ONにすると Hataskey UI 独自のシンプルなヘッダーがページの上に追加で出る。
 	'simpleUi.showPageHeader': {
 		default: false,
 	},
-	// 旗鯖fork: HatasabaUI デッキモード
+	// 旗鯖fork: Hataskey UI デッキモード
 	'simpleUi.deckMode': {
 		default: false,
 	},
-	// 旗鯖fork: 通常HatasabaUI(左サイドメニュー)を手動で縮小(折りたたみ)するか。
+	// 旗鯖fork: 通常Hataskey UI(左サイドメニュー)を手動で縮小(折りたたみ)するか。
 	// true = アイコンのみの細い表示。デスクトップのみ。
 	'simpleUi.sidebarCollapsed': {
 		default: false,
@@ -919,7 +919,7 @@ export const PREF_DEF = definePreferences({
 		default: false,
 	},
 	// 旗鯖fork: 上部メニューモード。ONでサイドバーの代わりに画面上部へ
-	// 横並びピル型のナビバー(HatasabaUIナビバー)を出す。デスクトップのみ。
+	// 横並びピル型のナビバー(Hataskey UIナビバー)を出す。デスクトップのみ。
 	'simpleUi.topNavMode': {
 		default: false,
 	},
@@ -928,31 +928,31 @@ export const PREF_DEF = definePreferences({
 	'simpleUi.deckNoBannerBg': {
 		default: false,
 	},
-	// 旗鯖fork: HatasabaUI 通常表示(デッキUIではないタイムライン)の背景にヘッダー画像の
-	// ぼかしを使うか(HatasabaUI 2 有効時のみ効く)。deckNoBannerBg の通常モード版。
+	// 旗鯖fork: Hataskey UI 通常表示(デッキUIではないタイムライン)の背景にヘッダー画像の
+	// ぼかしを使うか(Hataskey UI 2 有効時のみ効く)。deckNoBannerBg の通常モード版。
 	// default false = ぼかし背景を使う。true = 使わない(無地背景)。
 	'simpleUi.normalNoBannerBg': {
 		default: false,
 	},
-	// 旗鯖fork(HatasabaUI 2): プロフィールページのヘッダー画像のぼかしレイヤを使うか。
-	// HatasabaUI 2 有効時にのみ効く (通常時はぼかしレイヤ自体が無効)。
+	// 旗鯖fork(Hataskey UI 2): プロフィールページのヘッダー画像のぼかしレイヤを使うか。
+	// Hataskey UI 2 有効時にのみ効く (通常時はぼかしレイヤ自体が無効)。
 	// default false = ぼかしを使う。true = 使わない (プロフィールカードを不透明パネルに)。
 	'simpleUi.profileNoBannerBg': {
 		default: false,
 	},
-	// 旗鯖fork: HatasabaUI デッキで、カラム最上部に到達したときの表示を「最新のノートです」
+	// 旗鯖fork: Hataskey UI デッキで、カラム最上部に到達したときの表示を「最新のノートです」
 	// テキストに戻すか。default false = テーマカラーの横線でシンプル表示 (新既定)。
 	// true = 従来通り「(↑) 最新のノートです」テキスト表示。
 	'simpleUi.deckLatestNoteText': {
 		default: false,
 	},
-	// 旗鯖fork(HatasabaUI 2): タイムラインノートカード面 (bubbleBody) の不透明度 (%)。
+	// 旗鯖fork(Hataskey UI 2): タイムラインノートカード面 (bubbleBody) の不透明度 (%)。
 	// 0-100 の整数。既定 55 (=これまで固定で使っていた panel 55%)。
 	// 小さいほど透け感が強く、大きいほど不透明パネルに近づく。
 	'simpleUi.glassUiCardOpacity': {
 		default: 55,
 	},
-	// 旗鯖fork: デッキUI/HatasabaUI で、チャンネルカラムの従来の投稿ボタン
+	// 旗鯖fork: デッキUI/Hataskey UI で、チャンネルカラムの従来の投稿ボタン
 	// (カラムヘッダ右のペン+ボタン + 三点メニュー「このチャンネルへ投稿」項目) を表示するか。
 	// default false = 非表示 (=新設のノートリスト最上部固定ボタンを主とする)。
 	// true = 従来通り表示。
@@ -1059,7 +1059,7 @@ export const PREF_DEF = definePreferences({
 	'simpleUi.noteSpacing': {
 		default: 'moderate' as 'compact' | 'moderate' | 'wide',
 	},
-	// 旗鯖fork(#15): スマホ/狭幅でHatasabaUIを使う際、日付セパレータを従来位置(中央インライン)で表示するか。
+	// 旗鯖fork(#15): スマホ/狭幅でHataskey UIを使う際、日付セパレータを従来位置(中央インライン)で表示するか。
 	// 既定OFF(非表示)。ONにすると狭幅でも日付を表示する。
 	'simpleUi.showTimelineDateOnMobile': {
 		default: false,
@@ -1070,12 +1070,12 @@ export const PREF_DEF = definePreferences({
 	'simpleUi.disableBubbleInDefault': {
 		default: false,
 	},
-	// 旗鯖fork: HatasabaUI のデッキ表示モード (simpleUi.deckMode=ON) 時の吹き出し無効化トグル。
+	// 旗鯖fork: Hataskey UI のデッキ表示モード (simpleUi.deckMode=ON) 時の吹き出し無効化トグル。
 	// 従来 Misskey デッキ UI (ui=deck) とは別 UI のため、別キーで管理する。
 	'simpleUi.disableBubbleInHatasabaDeck': {
 		default: true,
 	},
-	// 旗鯖fork: HatasabaUI の通常モード (ui=simple かつ deckMode=OFF) 時の吹き出し無効化トグル。
+	// 旗鯖fork: Hataskey UI の通常モード (ui=simple かつ deckMode=OFF) 時の吹き出し無効化トグル。
 	// 従来は通常モードには無効化手段が無く常に吹き出しONだったが、標準カード表示を望む
 	// ユーザー向けにトグルを追加。デフォルトは吹き出しON(=false)で従来の見た目を維持。
 	'simpleUi.disableBubbleInHatasabaNormal': {

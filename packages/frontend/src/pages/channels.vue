@@ -5,7 +5,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <template>
 <PageWithHeader v-model:tab="tab" :actions="$i ? headerActions : null" :tabs="[]" :swipable="true" displayMyAvatar>
-	<!-- 旗鯖fork: 画面中央上部のピル型タブ (Hatasaba UI 統一デザイン、ログイン状態で表示切替)。
+	<!-- 旗鯖fork: 画面中央上部のピル型タブ (Hataskey UI 統一デザイン、ログイン状態で表示切替)。
 	     ウィンドウモード (デッキUIのウィンドウ表示) 等の狭幅でタブが収まらない時、マウスホイールの
 	     縦回転を横スクロールに変換 + タブバー上のドラッグでも横スクロールできるようにする。 -->
 	<div :class="$style.htkPillTabs">
@@ -356,7 +356,7 @@ definePage(() => ({
 	-webkit-tap-highlight-color: transparent;
 }
 
-/* 旗鯖fork: ピル型タブ (中央上部配置、Hatasaba UI 統一デザイン) */
+/* 旗鯖fork: ピル型タブ (中央上部配置、Hataskey UI 統一デザイン) */
 .htkPillTabs {
 	position: sticky;
 	top: 0;

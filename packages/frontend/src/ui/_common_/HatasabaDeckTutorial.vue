@@ -1,7 +1,7 @@
 <!--
 SPDX-FileCopyrightText: Tolehata and hatasaba-project
 SPDX-License-Identifier: AGPL-3.0-only
-旗鯖fork: HatasabaUI デッキの初回チュートリアル(3ステップ ウィザード)。
+旗鯖fork: Hataskey UI デッキの初回チュートリアル(3ステップ ウィザード)。
   1) ナビバーの位置(左サイドバー / 上部)
   2) ツールバーの位置(上 / 右 / 下)
   3) レイアウト(横並び / 田の字 / 3列 / 縦一列)

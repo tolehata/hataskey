@@ -7,7 +7,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 旗鯖fork: 外部通知トーストのグローバル表示コンテナ。
 window の 'external-notification' イベントを listen して、右下にトーストをスタック表示する。
 
-配置: position: fixed で右下固定 (bottom: 80px, right: 16px) - HatasabaUI のモバイル下部ナビバー、
+配置: position: fixed で右下固定 (bottom: 80px, right: 16px) - Hataskey UI のモバイル下部ナビバー、
 投稿FAB等にかぶらないよう底部に余白あり。
 モバイルではより小さめサイズで表示。
 -->
@@ -68,7 +68,7 @@ onUnmounted(() => {
 <style lang="scss" module>
 .root {
 	position: fixed;
-	bottom: 80px; /* HatasabaUI モバイル下部ナビバー / 投稿FAB を避ける */
+	bottom: 80px; /* Hataskey UI モバイル下部ナビバー / 投稿FAB を避ける */
 	right: 16px;
 	z-index: 10000;
 	display: flex;

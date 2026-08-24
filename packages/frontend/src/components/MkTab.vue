@@ -4,7 +4,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 
 <template>
-<!-- 旗鯖fork: pill=true の時だけ HatasabaUI ピルケースデザイン(channels.vue の htkPillTabs 相当)を
+<!-- 旗鯖fork: pill=true の時だけ Hataskey UI ピルケースデザイン(channels.vue の htkPillTabs 相当)を
      適用する。デフォルト(false)は本家のタブデザインのままなので、他の使用箇所には影響しない。 -->
 <div :class="[$style.tabsRoot, { [$style.pill]: pill }]">
 	<button
@@ -33,7 +33,7 @@ import { defineProps, defineEmits } from 'vue';
 
 defineProps<{
 	tabs: T[];
-	// 旗鯖fork: HatasabaUI ピルケースデザインを適用するか(デフォルト false)。
+	// 旗鯖fork: Hataskey UI ピルケースデザインを適用するか(デフォルト false)。
 	pill?: boolean;
 }>();
 
@@ -90,7 +90,7 @@ function update(key: T['key']) {
 }
 
 /* =======================================================================
-   旗鯖fork: pill=true 時の HatasabaUI ピルケースデザイン。
+   旗鯖fork: pill=true 時の Hataskey UI ピルケースデザイン。
    channels.vue の htkPillTabs と同じミニマルな見た目に揃える:
    - トラックは panel + divider 枠線、丸トラック(999px)、中央寄せ
    - 選択タブは accent 塗りピル + #fff 文字(テーマ次第の潰れ回避)

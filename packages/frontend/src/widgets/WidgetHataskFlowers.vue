@@ -1,7 +1,7 @@
 <!--
 SPDX-FileCopyrightText: Tolehata and hatasaba-project
 SPDX-License-Identifier: AGPL-3.0-only
-Hataskの育成中の花と直近のギャラリーを、通常UI・HatasabaUIデッキ共通で表示する。
+Hataskの育成中の花と直近のギャラリーを、通常UI・Hataskey UIデッキ共通で表示する。
 -->
 <template>
 <MkContainer :naked="widgetProps.transparent" :showHeader="widgetProps.showHeader">
@@ -115,7 +115,7 @@ async function loadFlowers(): Promise<void> {
 }
 
 function goHatask(): void {
-	router.push('/hatask');
+	router.push('/hatask', { query: { tab: 'garden' } });
 }
 
 function onVisibilityChange(): void {

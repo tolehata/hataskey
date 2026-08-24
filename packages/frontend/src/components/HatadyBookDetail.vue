@@ -160,7 +160,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<div v-else :class="$style.loading">{{ t('notFound') }}</div>
 
 		<!-- 旗鯖fork: 下にさらに内容(しおり・内容メモ・操作メニュー等)があることを示すボトムフェード。
-		     HatasabaUI のサイドメニューと同じ発想で、最下部までスクロールすると消える。
+		     Hataskey UI のサイドメニューと同じ発想で、最下部までスクロールすると消える。
 		     モバイルで「下にメニューがある」と気付きにくい問題への対処。 -->
 		<div :class="[$style.scrollFade, { [$style.scrollFadeHidden]: fadeHidden }]" aria-hidden="true"></div>
 	</div>

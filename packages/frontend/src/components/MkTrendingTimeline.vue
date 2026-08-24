@@ -78,7 +78,7 @@ const props = withDefaults(defineProps<{
 
 const POLL_INTERVAL_MS = 30 * 1000; // 30 秒ごとに新規ランクインをチェック
 
-// 旗鯖fork: MkStreamingNotesTimeline と同じロジックで、HatasabaUI (ui='simple') / デッキ判定と
+// 旗鯖fork: MkStreamingNotesTimeline と同じロジックで、Hataskey UI (ui='simple') / デッキ判定と
 // 派生 computed (bubbleEnabled / classicSpacingEnabled / noteSpacingValue / isHatasabaNormal) を出す。
 const currentUi = miLocalStorage.getItem('ui');
 const isDeckUi = currentUi === 'deck';
@@ -89,9 +89,9 @@ const bubbleEnabled = computed(() => {
 	// 旗鯖fork: 従来デッキUI / Misskey(デフォルト)UI は常にクラシック表示(吹き出しなし)に固定。
 	if (isDeckUi) return false;
 	if (isDefaultUi) return false;
-	// HatasabaUI デッキの「ノートの簡易表示を無効にする」(ON=吹き出しOFF)。キー・挙動は従来どおり。
+	// Hataskey UI デッキの「ノートの簡易表示を無効にする」(ON=吹き出しOFF)。キー・挙動は従来どおり。
 	if (isHatasabaDeck.value && prefer.r['simpleUi.disableBubbleInHatasabaDeck']?.value) return false;
-	// HatasabaUI 通常モードは常に吹き出し表示。
+	// Hataskey UI 通常モードは常に吹き出し表示。
 	return true;
 });
 const isHatasaba = currentUi === 'simple';

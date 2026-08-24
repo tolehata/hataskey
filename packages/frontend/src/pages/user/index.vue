@@ -6,7 +6,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 <template>
 <PageWithHeader v-model:tab="tab" :actions="[]" :tabs="[]" :user="user" :swipable="true">
 	<div v-if="user">
-		<!-- 旗鯖fork: プロフィールタブをピルケース型に (Hatasaba UI 統一デザイン) -->
+		<!-- 旗鯖fork: プロフィールタブをピルケース型に (Hataskey UI 統一デザイン) -->
 		<div :class="$style.htkPillTabs">
 			<div :class="$style.htkPillTabsInner" @wheel="onPillWheel">
 				<button v-for="t in headerTabs" :key="t.key" :class="[$style.htkPillTab, { [$style.htkPillTabActive]: tab === t.key }]" @click="tab = t.key">
@@ -205,7 +205,7 @@ definePage(() => ({
 </script>
 
 <style lang="scss" module>
-/* 旗鯖fork: ピル型タブ (Hatasaba UI 統一デザイン) */
+/* 旗鯖fork: ピル型タブ (Hataskey UI 統一デザイン) */
 .htkPillTabs {
 	position: sticky;
 	top: 0;

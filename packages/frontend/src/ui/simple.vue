@@ -134,7 +134,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 			<!-- 下部: 投稿 + アカウント (固定) -->
 			<div :class="$style.sbBottom">
-				<!-- 旗鯖fork: HatasabaUIデッキUI使用中は、ノートボタンの上にリロードボタンを固定表示 -->
+				<!-- 旗鯖fork: Hataskey UIデッキUI使用中は、ノートボタンの上にリロードボタンを固定表示 -->
 				<button v-if="deckActive" v-tooltip.right="sidebarFolded ? copy.reload : null" :class="$style.sbReloadBtn" @click="reloadPage($event)">
 					<i class="ti ti-refresh"></i>
 				</button>
@@ -610,8 +610,8 @@ const deckNoBannerBg = computed(() => prefer.r['simpleUi.deckNoBannerBg'].value)
 const normalNoBannerBg = computed(() => prefer.r['simpleUi.normalNoBannerBg'].value);
 // 旗鯖fork: .timelineBanner(背景ぼかし)が実際に表示されているかどうか。
 // 表示されている時だけノートカードを半透明化するため、同じ条件を MkStreamingNotesTimeline へ渡す。
-// 旗鯖fork(ベータ): 通常表示タイムラインの背景ぼかしは HatasabaUI 2(glassUiLocal)有効時のみ適用する。
-// HatasabaUI 2 は「背景ぼかし + ノート透過」のセット機能で、それ以外の状況(単なる glassEffect ON
+// 旗鯖fork(ベータ): 通常表示タイムラインの背景ぼかしは Hataskey UI 2(glassUiLocal)有効時のみ適用する。
+// Hataskey UI 2 は「背景ぼかし + ノート透過」のセット機能で、それ以外の状況(単なる glassEffect ON
 // 等)では通常表示のタイムライン背景にぼかしを敷かない = 従来のノート表示を維持する。
 const timelineGlassBg = computed(() => !isPageView.value && !deckActive.value && glassUiLocal.value && !normalNoBannerBg.value && !!$i?.bannerUrl);
 
@@ -1028,7 +1028,7 @@ const showWidgetBorder = computed(() => prefer.r['simpleUi.widgetBorder'].value)
 
 // ===== prefer連動: すりガラス効果 =====
 const glassEffect = computed(() => prefer.r['simpleUi.glassEffect'].value);
-// 旗鯖fork: HatasabaUI のページヘッダー(タイトル+戻るボタン)の表示制御。
+// 旗鯖fork: Hataskey UI のページヘッダー(タイトル+戻るボタン)の表示制御。
 // デフォルト false: ページ自身の MkPageHeader と二重表示になるため非表示。
 // アクセシビリティ設定からON切替可能。
 const showPageHeader = computed(() => prefer.r['simpleUi.showPageHeader'].value);
@@ -1524,7 +1524,7 @@ const sidebarGroupLabels: Record<string, string> = {
 // (timeline / notifications / announcements / followRequests / more) は強制表示。
 const REQUIRED_SIDEBAR_IDS = ['timeline', 'notifications', 'announcements', 'followRequests', 'more'];
 // 旗鯖fork: 過去に削除された(=コード側に対応する遷移処理が無い)サイドバー項目ID。
-// 既存ユーザーの simpleUi.sidebar 保存値に残っている場合、サイドメニュー/HatasabaUI上部ナビバー
+// 既存ユーザーの simpleUi.sidebar 保存値に残っている場合、サイドメニュー/Hataskey UI上部ナビバー
 // の両方で描画されないよう除外する。将来別の項目が削除された場合はここに追記する。
 const DEAD_SIDEBAR_IDS = ['whatsNew'];
 // 旗鯖fork: アイコン override は utility/sidebar-icon-overrides.ts に集約。
@@ -2050,7 +2050,7 @@ onMounted(() => {
 	if (isListTimelinePage.value) userListsCache.fetch().catch(() => []);
 	if (isAntennaTimelinePage.value) antennasCache.fetch().catch(() => []);
 	// 旗鯖fork: ログインボーナス(ログイン日数)ポップアップは universal.vue でしか呼ばれておらず、
-	//   HatasabaUI(simple)では表示されなかった(他UIに切替えると出る)。ここでも呼んで設定を尊重する。
+	//   Hataskey UI(simple)では表示されなかった(他UIに切替えると出る)。ここでも呼んで設定を尊重する。
 	showLoginBonusIfNeeded();
 	// 旗鯖fork(タスク3): デスクトップで未表示なら、デッキ表示追加のお知らせ吹き出しを出す
 	if (isDesktop.value && !prefer.s['simpleUi.deckAnnounceShown']) {
@@ -3402,7 +3402,7 @@ onUnmounted(() => {
     max-width:800px; margin:0 auto; min-height:100%;
     /* 旗鯖fork: 従来はタイムライン列の左右に divider の縦線を出していたが、
        ノートを一体化した太い帯として見せる方針 (連なるノート群が途切れない見た目) と
-       ヘッダー画像ぼかし背景 (HatasabaUI 2) の上で縦線が浮く問題の両方に対処するため撤去。 */
+       ヘッダー画像ぼかし背景 (Hataskey UI 2) の上で縦線が浮く問題の両方に対処するため撤去。 */
     padding-top:calc(56px + env(safe-area-inset-top,0px));
     padding-bottom:calc(80px + env(safe-area-inset-bottom,0px));
     touch-action:pan-y;
@@ -3499,7 +3499,7 @@ onUnmounted(() => {
 }
 .sideBtn:active { transform:scale(.9); }
 
-/* 旗鯖fork(HatasabaUI 2): 上部/下部ナビバーもノートと同じガラス面デザインで統一する。
+/* 旗鯖fork(Hataskey UI 2): 上部/下部ナビバーもノートと同じガラス面デザインで統一する。
    透過率は `--htk-glass-card-opacity` (simpleUi.glassUiCardOpacity から boot 経由で注入、
    default 55%) で連動。ダーク/ライトはテーマ変数 (--MI_THEME-panel/accent) 経由。
    デザインの骨格 (ピル/ボタンの形状・レイアウト) は保持し、色/背景のみ差し替える。 */

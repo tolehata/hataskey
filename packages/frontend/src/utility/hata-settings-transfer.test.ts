@@ -12,7 +12,7 @@ const settingsTransferLocale = vi.hoisted(() => ({
 	ts: {
 		categories: {
 			generalLabel: '旗鯖全体', generalDescription: '投稿フォーム、演出、フォント、プロフィールの表示設定',
-			hatasabaUiLabel: 'HatasabaUI 2', hatasabaUiDescription: 'ナビ、デッキ、見た目と端末ごとの操作設定',
+			hatasabaUiLabel: 'Hataskey UI 2', hatasabaUiDescription: 'ナビ、デッキ、見た目と端末ごとの操作設定',
 			hataSideStudioLabel: 'HataSideStudio', hataSideStudioDescription: 'プロファイル、拡大・縮小の配置、色、グループとウィジェット設定',
 			hatacordingUiLabel: 'HataSNSCordUI', hatacordingUiDescription: 'メニュー、右ペイン、ウィジェットと端末ごとの表示設定',
 			hataskLabel: 'Hatask', hataskDescription: 'テーマやホーム表示などの設定（ToDo・記録は含みません）',

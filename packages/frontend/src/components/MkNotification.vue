@@ -395,7 +395,7 @@ async function rejectPrivateChannelInvitation(invitationId: string) {
 	--eventOther: #88a6b7;
 }
 
-/* 旗鯖fork(HatasabaUI 2): 通知カラム内の XNotification (reply/quote/mention 以外) にも
+/* 旗鯖fork(Hataskey UI 2): 通知カラム内の XNotification (reply/quote/mention 以外) にも
    --htk-glass-card-opacity を反映してカード面をガラス化。MkNote と同じ計算式。
    ダーク/ライトで accent tint 濃度を出し分け。 */
 :global(html.hataGlassUi) .root {

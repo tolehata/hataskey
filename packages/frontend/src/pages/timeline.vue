@@ -597,7 +597,7 @@ const headerActions = computed(() => {
 });
 
 const headerTabs = computed(() => [
-	// 旗鯖fork: トレンドタブは通常タブ群の右端、外部TLの左に配置 (HatasabaUIと一貫)
+	// 旗鯖fork: トレンドタブは通常タブ群の右端、外部TLの左に配置 (Hataskey UIと一貫)
 	...(prefer.r.pinnedUserLists.value.map(l => ({
 	key: 'list:' + l.id,
 	title: l.name,

@@ -9,7 +9,7 @@ import { describe, expect, test } from 'vitest';
 
 const source = (path: string) => readFileSync(resolve(process.cwd(), path), 'utf8');
 
-describe('HatasabaUIのリスト・アンテナ選択UI', () => {
+describe('Hataskey UIのリスト・アンテナ選択UI', () => {
 	test('通常タイムラインはコレクション表示中にアクティブにならない', () => {
 		const ui = source('src/ui/simple.vue');
 		expect(ui).toContain('!isCollectionTimelinePage && tab === item.id');
@@ -75,7 +75,7 @@ describe('HatasabaUIのリスト・アンテナ選択UI', () => {
 		expect(ui).toContain('v-if="!isPageView || isCollectionTimelinePage" :class="$style.sideBtn" data-cy-open-post-form');
 	});
 
-	test('HatasabaUIではページ側の重複ヘッダーを隠す', () => {
+	test('Hataskey UIではページ側の重複ヘッダーを隠す', () => {
 		for (const path of ['src/pages/user-list-timeline.vue', 'src/pages/antenna-timeline.vue']) {
 			const page = source(path);
 			expect(page).toContain(':popup="isHatasabaUi"');

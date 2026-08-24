@@ -1,7 +1,7 @@
 <!--
 SPDX-FileCopyrightText: Tolehata and hatasaba-project
 SPDX-License-Identifier: AGPL-3.0-only
-旗鯖fork(#34): HatasabaUIデッキ用の地震・津波カラム(地図なし版)。
+旗鯖fork(#34): Hataskey UIデッキ用の地震・津波カラム(地図なし版)。
   津波情報(発表されていなければ非表示) → 付近の地震 → 直近の地震 の順で表示。
   設定(歯車)・リロードボタンを上部に持つ。
 -->

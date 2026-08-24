@@ -44,7 +44,7 @@ export const HATA_SIDE_STUDIO_BROADCAST_CHANNEL = 'hata-side-studio';
 export const HATA_SIDE_STUDIO_FIXED_IDS = new Set(['more', 'settings', 'realtime', 'admin']);
 export const HATA_SIDE_STUDIO_DEAD_IDS = new Set(['whatsNew']);
 export const HATA_SIDE_STUDIO_MENU_ID_ALIASES: Readonly<Record<string, string>> = {
-	// 「もっと！」では ui、従来のHatasabaUIサイドバーでは uiSetup という
+	// 「もっと！」では ui、従来のHataskey UIサイドバーでは uiSetup という
 	// 異なるIDだが、どちらも同じUI切り替えを開く。別ボタンとして重複させない。
 	ui: 'uiSetup',
 };

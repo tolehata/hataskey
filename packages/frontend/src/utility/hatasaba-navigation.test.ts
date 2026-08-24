@@ -15,7 +15,7 @@ import {
 	mergeMissingNavItems,
 } from './hatasaba-navigation.js';
 
-describe('HatasabaUI navigation helpers', () => {
+describe('Hataskey UI navigation helpers', () => {
 	test('既存の並びと表示状態を保ち、新しい下部ナビ候補だけを末尾へ補う', () => {
 		const saved = [
 			{ id: 'home', icon: 'ti ti-home', label: 'ホーム', visible: true },

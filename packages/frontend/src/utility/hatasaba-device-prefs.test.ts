@@ -17,7 +17,7 @@ vi.mock('@/local-storage.js', () => ({
 
 import { setTabSwipeEnabled, tabSwipeEnabled } from './hatasaba-device-prefs.js';
 
-describe('HatasabaUIの左右スワイプ設定', () => {
+describe('Hataskey UIの左右スワイプ設定', () => {
 	test('未設定では有効で、無効化は端末ローカルに保存する', () => {
 		expect(tabSwipeEnabled.value).toBe(true);
 

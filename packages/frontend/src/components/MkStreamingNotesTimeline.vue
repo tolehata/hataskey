@@ -14,7 +14,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 	</div>
 
 	<div v-else ref="rootEl">
-		<!-- 旗鯖fork(#7): HatasabaUIデッキUIでは、タイムライン最上部に「最新のノート」インジケータを表示し、
+		<!-- 旗鯖fork(#7): Hataskey UIデッキUIでは、タイムライン最上部に「最新のノート」インジケータを表示し、
 		     先頭ノートがタブバーに密着しないよう余白も兼ねる。既定はテーマカラーの横線 (シンプル)、
 		     アクセシビリティ設定 `simpleUi.deckLatestNoteText` を ON にすると従来の
 		     「(↑) 最新のノートです」テキスト表示に戻せる (オプトイン)。 -->
@@ -143,7 +143,7 @@ import { detectWeather, buildWeatherDetectText, isGreetingText } from '@/utility
 import { hasSeenWeather, markSeenWeather } from '@/utility/weather-effect-seen.js';
 import type { WeatherKind } from '@/utility/weather-effect-detector.js';
 import { haptic, hapticConfirm } from '@/utility/haptic.js';
-// 旗鯖fork(HatasabaUI 2): bot 非表示のフィルタで appearNote を参照するため。
+// 旗鯖fork(Hataskey UI 2): bot 非表示のフィルタで appearNote を参照するため。
 import { getAppearNote } from '@/utility/get-appear-note.js';
 
 const timelineCopy = i18n.ts._hata._timelineCustom;
@@ -234,8 +234,8 @@ const noteSpacingValue = computed(() => {
     const ui = miLocalStorage.getItem('ui');
     if (ui === 'deck') return 'wide';
     const v = prefer.r['simpleUi.noteSpacing']?.value ?? 'moderate';
-    // 旗鯖fork(#15): HatasabaUI通常表示では「詰める(compact)」を廃止し moderate に丸める。
-    // (HatasabaUIデッキ表示=ui:simple かつ deckMode は情報密度のため compact のまま許可)
+    // 旗鯖fork(#15): Hataskey UI通常表示では「詰める(compact)」を廃止し moderate に丸める。
+    // (Hataskey UIデッキ表示=ui:simple かつ deckMode は情報密度のため compact のまま許可)
     const deckMode = prefer.r['simpleUi.deckMode']?.value ?? false;
     if (ui === 'simple' && !deckMode && v === 'compact') return 'moderate';
     return v;
@@ -244,12 +244,12 @@ const noteSpacingValue = computed(() => {
 // 旗鯖独自: 吹き出し有効判定（デッキUIで無効化設定時はoff）
 const isDeckUi = miLocalStorage.getItem('ui') === 'deck';
 const isDefaultUi = miLocalStorage.getItem('ui') === 'default';
-// 旗鯖fork(#4): HatasabaUI(simple) のデッキモード判定。
+// 旗鯖fork(#4): Hataskey UI(simple) のデッキモード判定。
 // deckMode はランタイムで切り替わる(デッキ⇔通常)ため computed にしてリアクティブにする。
 // const で固定すると、デッキ表示中にマウントされた(v-showで隠れている)通常TLが
 // 通常表示へ戻った後もデッキ時の吹き出し/間隔のままになる(タブ切替/リロードまで直らない)バグになる。
 const isHatasabaDeck = computed(() => miLocalStorage.getItem('ui') === 'simple' && (prefer.r['simpleUi.deckMode']?.value ?? false));
-// 旗鯖fork: HatasabaUI 通常モード(ui=simple かつ deckMode=OFF)。
+// 旗鯖fork: Hataskey UI 通常モード(ui=simple かつ deckMode=OFF)。
 const isHatasabaNormal = computed(() => miLocalStorage.getItem('ui') === 'simple' && !(prefer.r['simpleUi.deckMode']?.value ?? false));
 const bubbleEnabled = computed(() => {
     // 旗鯖fork: チャンネル TL の吹き出し強制ONは、デッキ (旧/新デッキ) 表示では抑止する。
@@ -262,9 +262,9 @@ const bubbleEnabled = computed(() => {
     //   旧トグル(disableBubbleInDeck / disableBubbleInDefault)は廃止し、挙動をコード側で確定させた。
     if (isDeckUi) return false;
     if (isDefaultUi) return false;
-    // HatasabaUI デッキの「ノートの簡易表示を無効にする」(ON=吹き出しOFF=標準カード)。キー・挙動は従来どおり。
+    // Hataskey UI デッキの「ノートの簡易表示を無効にする」(ON=吹き出しOFF=標準カード)。キー・挙動は従来どおり。
     if (isHatasabaDeck.value && prefer.r['simpleUi.disableBubbleInHatasabaDeck']?.value) return false;
-    // HatasabaUI 通常モードは常に吹き出し表示(旧「通常で無効にする」トグルは廃止)。
+    // Hataskey UI 通常モードは常に吹き出し表示(旧「通常で無効にする」トグルは廃止)。
     return true;
 });
 
@@ -283,11 +283,11 @@ provide('utageFrameExternal', ref(false));
 provide('noteTimelineGlassBg', computed(() => props.glassBg));
 
 // 旗鯖独自: クラシック投稿間隔
-// 旗鯖fork(#7): HatasabaUI(通常表示・デッキ表示の両方=ui:simple)では、従来Misskey風の投稿間隔
+// 旗鯖fork(#7): Hataskey UI(通常表示・デッキ表示の両方=ui:simple)では、従来Misskey風の投稿間隔
 // (隙間0＋グレーのスペーサーで区切る)を強制ONにする。設定トグルでは変更不可(hata-custom側で無効化)。
 const isHatasaba = miLocalStorage.getItem('ui') === 'simple';
 const classicSpacingEnabled = computed(() => {
-    // 旗鯖fork: HatasabaUI と Misskey(デフォルト)UI では従来Misskey風の投稿間隔を強制ON。
+    // 旗鯖fork: Hataskey UI と Misskey(デフォルト)UI では従来Misskey風の投稿間隔を強制ON。
     if (isHatasaba || isDefaultUi) return true;
     return prefer.r['simpleUi.classicNoteSpacing']?.value ?? false;
 });
@@ -300,10 +300,10 @@ const deckLatestNoteText = computed(() => prefer.r['simpleUi.deckLatestNoteText'
 // 旗鯖fork: デッキ (旧/新デッキ両方) のチャンネルカラムに、ノートリスト最上部固定の
 //   「このチャンネルへ投稿」ボタンを出す。従来の三点メニュー/ヘッダ右のペンボタンは
 //   `simpleUi.showLegacyChannelPostButton` (default false) が true のときのみ出るため、
-//   ここが HatasabaUI デッキでの主要導線となる。
+//   ここが Hataskey UI デッキでの主要導線となる。
 //   チャンネルページ本体には別途の投稿フォームがあるため、こちらのボタンはデッキ描画時のみ表示。
 //   従来デッキUI (ui=deck) には元から独自のチャンネル投稿導線があり、二重表示になってしまうため
-//   HatasabaUI デッキ (ui=simple かつ deckMode=true) のみに限定する。
+//   Hataskey UI デッキ (ui=simple かつ deckMode=true) のみに限定する。
 const showChannelPostFixedButton = computed(() =>
 	props.src === 'channel'
 	&& !!props.channel
@@ -469,7 +469,7 @@ if (props.visitorMode) {
 	});
 }
 
-// ===== 旗鯖fork(HatasabaUI 2): bot ノートを親側で事前除外 =====
+// ===== 旗鯖fork(Hataskey UI 2): bot ノートを親側で事前除外 =====
 // MkNote 内部の v-if だけで bot を消すと、セパレータ/広告 wrapper や _gaps gap が残って
 // バラバラな空白として見えてしまう。v-for に渡す配列レベルで除外することで隙間なくつめる。
 // (MkNote 側の hideAsBot 判定は通知/引用/埋め込み等、この経路を通らない場所の防御として残す)
@@ -1107,7 +1107,7 @@ defineExpose({
 		border-bottom: solid 0.5px var(--MI_THEME-divider);
 	}
 
-	/* 旗鯖fork(#15): HatasabaUIデッキ表示では日付セパレータの上下幅が空きすぎるため、
+	/* 旗鯖fork(#15): Hataskey UIデッキ表示では日付セパレータの上下幅が空きすぎるため、
 	   「最新のノートです」程度の高さに詰める。 */
 	&.dateDeck {
 		padding: 2px 8px 3px;
@@ -1365,7 +1365,7 @@ html.hataGlassUi [data-bubble="on"] [data-reactions-footer] > div {
 html.hataGlassUi [data-bubble="on"] > div > div {
 	background: transparent !important;
 }
-/* 旗鯖fork(ベータ): HatasabaUI 2 の吹き出しデザイン。
+/* 旗鯖fork(ベータ): Hataskey UI 2 の吹き出しデザイン。
    既定では「吹き出し」= 本文エリア(data-note-content)の枠線 + 口(三角) を消し、
    外側の角丸カード(article > div, radius 20px, ガラス面)だけのすっきり表示にする(角丸は維持)。
    hatafeed ベータ設定の「吹き出しデザインを表示する」トグル(hataGlassUiBubble)が ON のときだけ、
@@ -1484,7 +1484,7 @@ html.hataGlassUiBubble.hataGlassUi [data-bubble="on"] [data-note-content]::befor
 }
 
 /* ===== 吹き出し無効化時 =====
-   旗鯖fork: HatasabaUI 2 (`html.hataGlassUi`) 時は透過ガラス面 (`html.hataGlassUi article` in
+   旗鯖fork: Hataskey UI 2 (`html.hataGlassUi`) 時は透過ガラス面 (`html.hataGlassUi article` in
    MkNote の非module <style>) を尊重するため、この !important パネル塗りを除外する。
    これがないと `:not([data-bubble=on])` が `html.hataGlassUi article` (specificity 12) より
    `!important` で勝ち、クリップ/お気に入り/トレンド等の非 bubble ノートが不透明パネルのまま
@@ -1514,7 +1514,7 @@ html:not(.hataGlassUi) :not([data-bubble="on"]) article {
 	border-bottom: none !important;
 }
 
-/* ===== 旗鯖fork(#7): HatasabaUIデッキUIのみ、ノート間を灰色のスペーサー(バー)で区切る ===== */
+/* ===== 旗鯖fork(#7): Hataskey UIデッキUIのみ、ノート間を灰色のスペーサー(バー)で区切る ===== */
 /* クラシック投稿間隔の細い区切り線(1px)を、デッキでは太い灰色バーに上書きする(後勝ち)。
    従来 5px でノート同士が密着して見えていたので、少し余裕をもたせて 12px に広げる。 */
 [data-hatasaba-spacer="on"] > div {
@@ -1524,8 +1524,8 @@ html:not(.hataGlassUi) :not([data-bubble="on"]) article {
 	border-bottom: none !important;
 }
 
-/* ===== 旗鯖fork(HatasabaUI 2): HatasabaUI デッキUIのノートに透過率を反映 =====
-   HatasabaUI デッキは default で bubble OFF (disableBubbleInHatasabaDeck=true) のため、
+/* ===== 旗鯖fork(Hataskey UI 2): Hataskey UI デッキUIのノートに透過率を反映 =====
+   Hataskey UI デッキは default で bubble OFF (disableBubbleInHatasabaDeck=true) のため、
    通常タイムラインの `html.hataGlassUi [data-bubble="on"] article > div` セレクタに
    引っかからず glass 透明度が効かなかった。
    MkNote 側の `.article` のグラス背景 (panel 60% ハードコード) を上書きして、
@@ -1597,14 +1597,14 @@ html[data-color-scheme=light].hataGlassUi [data-hatasaba-spacer="on"] article {
 	}
 }
 
-/* ===== 旗鯖fork: HatasabaUI 通常表示 (デッキ/HatasabaUI 2 以外) の一体化スタイル =====
+/* ===== 旗鯖fork: Hataskey UI 通常表示 (デッキ/Hataskey UI 2 以外) の一体化スタイル =====
    従来はノートが各々 panel 色の角丸カードで、間の隙間から notes コンテナの bg 色が透け、
    タイムラインが「青鼠色の背景に白い長方形が並ぶ」見た目になっていた。
-   HatasabaUI としては「連なるノート群が途切れない一本の太い帯」に見せたいので、
+   Hataskey UI としては「連なるノート群が途切れない一本の太い帯」に見せたいので、
    - notes コンテナ全体を panel 色で塗る (隙間から bg が透けない)
    - 各ノート (.note) の border-radius を 0 に (四角形の枠が見えなくなる)
    - classic spacing 由来のノート間 divider (1px) を透明化 (連続した panel 面を分断しない)
-   にする。glass (HatasabaUI 2) 表示中は上のガラスルールが上書きするので、
+   にする。glass (Hataskey UI 2) 表示中は上のガラスルールが上書きするので、
    :not([data-glass-bg="on"]) で glass 側と競合しないようにする。 */
 [data-hatasaba-normal="on"]:not([data-glass-bg="on"]) {
 	background: var(--MI_THEME-panel) !important;
@@ -1617,9 +1617,9 @@ html[data-color-scheme=light].hataGlassUi [data-hatasaba-spacer="on"] article {
 	border-bottom-color: transparent !important;
 }
 
-/* ===== 旗鯖fork(ベータ): HatasabaUI 2 で「ほどよく(moderate)」間隔のとき、ノート同士を少し詰める =====
+/* ===== 旗鯖fork(ベータ): Hataskey UI 2 で「ほどよく(moderate)」間隔のとき、ノート同士を少し詰める =====
    moderate は [data-spacing] の上書きがなく .article の既定 padding(10px 10px 6px)がそのまま効くため、
-   隣接カード間が広め(≒16px)になる。glass(HatasabaUI 2)時のみ上下 padding を圧縮して間隔を詰める
+   隣接カード間が広め(≒16px)になる。glass(Hataskey UI 2)時のみ上下 padding を圧縮して間隔を詰める
    (compact ほど詰めず、ほどよい間隔を保つ)。左右 padding は据え置き。 */
 html.hataGlassUi [data-bubble="on"][data-spacing="moderate"] article,
 [data-glass-bg="on"][data-spacing="moderate"] article {

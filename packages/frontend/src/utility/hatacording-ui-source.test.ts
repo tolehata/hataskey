@@ -468,7 +468,7 @@ describe('HataSNSCordUIの結線', () => {
 	});
 
 	test('縮小順取込ボタンは狭い左ペインでもUI名の後で改行する', () => {
-		expect(page).toContain('<span>HatasabaUI<br/>{{ copy.importCollapsedOrder }}</span>');
+		expect(page).toContain('<span>Hataskey UI<br/>{{ copy.importCollapsedOrder }}</span>');
 		expect(page).toMatch(/\.editActions\s*\{[^}]*flex-wrap:\s*wrap;/s);
 	});
 
@@ -714,7 +714,7 @@ describe('HataSNSCordUIの結線', () => {
 		expect(page).toMatch(/@media \(hover: none\)[\s\S]*?\.noteRow\s*\{\s*grid-template-columns:\s*var\(--cord-note-avatar-size\) minmax\(0, 1fr\);[\s\S]*?\.ownNote\s*\{\s*grid-template-columns:\s*minmax\(0, 1fr\) var\(--cord-note-avatar-size\);/);
 	});
 
-	test('UIセットアップはHatasabaUIの直後にHataSNSCordUIを通常候補として表示する', () => {
+	test('UIセットアップはHataskey UIの直後にHataSNSCordUIを通常候補として表示する', () => {
 		const setup = readFrontendFile('src/components/MkUISetup.vue');
 		const hatasabaIndex = setup.indexOf('{{ copy.continueHatasaba }}');
 		const cordIndex = setup.indexOf('通常候補: HataSNSCordUI');

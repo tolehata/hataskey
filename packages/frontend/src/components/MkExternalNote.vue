@@ -753,7 +753,7 @@ defineExpose({
 	gap: 0;
 }
 
-/* 旗鯖fork(HatasabaUI 2): 外部TL (ohtl/oltl) のノートにも --htk-glass-card-opacity を反映。
+/* 旗鯖fork(Hataskey UI 2): 外部TL (ohtl/oltl) のノートにも --htk-glass-card-opacity を反映。
    MkNote と同じ計算式 (accent tint + panel を変数で透明化) でカード面をガラス化する。
    ダーク/ライトで accent tint 濃度を出し分け。 */
 :global(html.hataGlassUi) .root {

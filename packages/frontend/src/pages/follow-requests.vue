@@ -5,7 +5,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <template>
 <PageWithHeader v-model:tab="tab" :actions="headerActions" :tabs="[]" :swipable="true">
-	<!-- 旗鯖fork: 画面中央上部のピル型タブ (Hatasaba UI 統一デザイン) -->
+	<!-- 旗鯖fork: 画面中央上部のピル型タブ (Hataskey UI 統一デザイン) -->
 	<div class="htk-pill-tabs">
 		<div class="htk-pill-tabs-inner">
 			<button v-for="t in headerTabs" :key="t.key" class="htk-pill-tab" :class="{ active: tab === t.key }" @click="tab = t.key">
@@ -109,7 +109,7 @@ definePage(() => ({
 </script>
 
 <style lang="scss" scoped>
-/* 旗鯖fork: ピル型タブ (中央上部配置、Hatasaba UI 統一デザイン) */
+/* 旗鯖fork: ピル型タブ (中央上部配置、Hataskey UI 統一デザイン) */
 .htk-pill-tabs {
 	position: sticky;
 	top: 0;

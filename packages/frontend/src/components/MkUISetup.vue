@@ -3,13 +3,13 @@ SPDX-FileCopyrightText: Tolehata and hatasaba-project
 SPDX-License-Identifier: AGPL-3.0-only
 
 旗鯖fork: UI 選択ダイアログ (リデザイン案 1a「コマンドセンター / ダークガラス」)。
-	- HatasabaUI (ui='simple') を唯一の推奨=デフォルトとしてヒーローで大きく提示し、
+	- Hataskey UI (ui='simple') を唯一の推奨=デフォルトとしてヒーローで大きく提示し、
 	  「通常表示」と「高機能デッキ」を1つのUIで両立できることを2機能プレビューで訴求する。
 	- Misskey UI (ui='default') / 従来のデッキUI (ui='deck') は「非推奨」として
 	  折りたたみ (disclosure) の中に退避する。
 	- 配色はユーザー設定のテーマカラー (--MI_THEME-accent) を起点に color-mix で派生。
 	  緑等のハードコードは持たない。
-	- ワードマーク「HatasabaUI」のみ Righteous (同梱・OFL)。日本語は継承フォント。
+	- ワードマーク「Hataskey UI」のみ Righteous (同梱・OFL)。日本語は継承フォント。
 	- 選択・保存・リロードの既存ロジック (miLocalStorage + location.reload) は変更しない。
 -->
 <template>
@@ -23,12 +23,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</div>
 		</header>
 
-		<!-- ===== ヒーロー: HatasabaUI ===== -->
+		<!-- ===== ヒーロー: Hataskey UI ===== -->
 		<div :class="$style.hero">
 			<div :class="$style.heroBadge">{{ copy.default }}</div>
 
 			<div :class="$style.heroTop">
-				<h2 :class="$style.wordmark">HatasabaUI</h2>
+				<h2 :class="$style.wordmark">Hataskey UI</h2>
 			</div>
 			<p :class="$style.heroLead"><b :class="$style.heroLeadStrong">{{ copy.heroLead }}</b>{{ copy.heroLeadSuffix }}</p>
 
@@ -117,7 +117,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</button>
 		</div>
 
-		<!-- ===== 通常候補: HataSNSCordUI（HatasabaUIの次に常時表示） ===== -->
+		<!-- ===== 通常候補: HataSNSCordUI（Hataskey UIの次に常時表示） ===== -->
 		<section :class="$style.cordChoice" aria-labelledby="hata-sns-cord-ui-title">
 			<div :class="$style.cordChoiceInner">
 				<div :class="$style.cordChoiceIntro">

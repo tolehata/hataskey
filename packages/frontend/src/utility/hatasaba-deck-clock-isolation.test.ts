@@ -8,7 +8,7 @@ import { describe, expect, test } from 'vitest';
 
 const read = (path: string) => readFileSync(`${process.cwd()}/src/${path}`, 'utf8');
 
-describe('HatasabaUI deck clock isolation', () => {
+describe('Hataskey UI deck clock isolation', () => {
 	test('秒更新をデッキ本体から隔離し、カラム群を毎秒再描画しない', () => {
 		const deck = read('ui/_common_/hatasaba-deck.vue');
 		const clock = read('ui/_common_/hatasaba-deck-clock.vue');

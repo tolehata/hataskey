@@ -447,7 +447,7 @@ export function parseHataSettingsTransfer(text: string): { file: HataSettingsTra
 	if (typeof parsed.formatVersion !== 'number' || !Number.isInteger(parsed.formatVersion) || parsed.formatVersion < 1) {
 		throw new Error('VERSION');
 	}
-	// v1ではHataSideStudioがHatasabaUI 2内に入っていた。古い書き出しもそのまま
+	// v1ではHataSideStudioがHataskey UI 2内に入っていた。古い書き出しもそのまま
 	// 読めるよう、新しい独立カテゴリへコピーしてから検査・選択へ渡す。
 	const normalized = cloneJson(parsed) as Record<string, unknown>;
 	const categories = normalized.categories as Record<string, unknown>;

@@ -1176,9 +1176,9 @@ html.hataGlassUi .ftskorzw > .main > .profile > .main > .profileBgBlur {
 	transform: scale(1.2);
 	pointer-events: none;
 }
-/* 旗鯖fork(HatasabaUI 2): プロフィールぼかしOFF オプション。<html> に
+/* 旗鯖fork(Hataskey UI 2): プロフィールぼかしOFF オプション。<html> に
    'hataProfileNoBannerBg' クラスが付いている時 (simpleUi.profileNoBannerBg = true)、
-   HatasabaUI 2 有効中でもプロフィールカードのぼかしレイヤを非表示にする。
+   Hataskey UI 2 有効中でもプロフィールカードのぼかしレイヤを非表示にする。
    同時にプロフィールカード面 (.main の背景) を不透明パネルに戻すことで、背景が透けない
    従来カードの見た目を維持する。 */
 html.hataGlassUi.hataProfileNoBannerBg .ftskorzw > .main > .profile > .main > .profileBgBlur {
