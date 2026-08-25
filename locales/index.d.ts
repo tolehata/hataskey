@@ -27874,6 +27874,25 @@ export interface Locale extends ILocale {
                  * リアクションの長押し操作を改善し、iPhoneでリアクション選択メニューが開かないことがある問題と、カードの傾き表示が安定しない問題を修正しました。
                  */
                 "mobileFixText": string;
+                "hatalyzeTitle": string;
+                "hatalyzeText": string;
+                "hatalyzeLink": string;
+                "hatakyuThemeTitle": string;
+                "hatakyuThemeText": string;
+                "hatakyuThemeLink": string;
+                "hatadyExportTitle": string;
+                "hatadyExportText": string;
+                "hatadyExportLink": string;
+                "foldableTitle": string;
+                "foldableText": string;
+                "foldableLink": string;
+                "uiMotionTitle": string;
+                "uiMotionText": string;
+                "langFixTitle": string;
+                "langFixText": string;
+                "externalDdoskeyTitle": string;
+                "externalDdoskeyText": string;
+                "externalDdoskeyLink": string;
                 /**
                  * ここに載せたのは主な変更だけです。細かな修正を含むすべての変更点は、リリースノートをご確認ください。
                  */

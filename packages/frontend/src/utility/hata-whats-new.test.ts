@@ -18,8 +18,8 @@ vi.mock('@/i18n.js', async () => {
 
 describe('HATA_WHATS_NEW', () => {
 	test('機械判定用の完全な版から旗鯖の表示版を生成する', () => {
-		expect(HATA_WHATS_NEW.version).toBe('2026.7.0-hata.12.2');
-		expect(getHataWhatsNewDisplayVersion(HATA_WHATS_NEW.version)).toBe('hata-12.2');
+		expect(HATA_WHATS_NEW.version).toBe('2026.7.0-hata.12.3');
+		expect(getHataWhatsNewDisplayVersion(HATA_WHATS_NEW.version)).toBe('hata-12.3');
 		expect(getHataWhatsNewDisplayVersion('2026.7.0-hata.12.1')).toBe('hata-12.1');
 		expect(getHataWhatsNewDisplayVersion('development')).toBe('development');
 	});
@@ -45,7 +45,7 @@ describe('HATA_WHATS_NEW', () => {
 			'C/C++',
 			'プライベートチャンネル',
 			'画像ビューワー',
-			'外部アカウント連携',
+			'外部アカウント連携を追加',
 			'HataFeedを全面リデザイン',
 			'中国語（簡体字）',
 		]) {
@@ -90,8 +90,30 @@ describe('HATA_WHATS_NEW', () => {
 	});
 
 	test('すべての更新項目に内容別のプレビューを重複なく割り当てる', () => {
-		expect(HATA_WHATS_NEW.items).toHaveLength(10);
-		expect(new Set(HATA_WHATS_NEW.items.map(item => item.preview)).size).toBe(10);
+		// ⚠️hata-12.2 の案内を書いたあとに入った変更を7件足したので17件。
+		//   ⚠️プレビューは1項目につき1種類。使い回すと「何が変わったか」が図から読めなくなる。
+		expect(HATA_WHATS_NEW.items).toHaveLength(17);
+		expect(new Set(HATA_WHATS_NEW.items.map(item => item.preview)).size).toBe(17);
+	});
+
+	test('あとから足した主要な変更を案内する', () => {
+		const previews = HATA_WHATS_NEW.items.map(item => item.preview);
+		for (const preview of ['hatalyze', 'hatakyuTheme', 'hatadyExport', 'foldable', 'uiMotion', 'langFix', 'externalDdoskey']) {
+			expect(previews).toContain(preview);
+		}
+		// ⚠️先頭はブランディングのまま。あとから足した分は必ず末尾へ。
+		expect(HATA_WHATS_NEW.items[0].preview).toBe('branding');
+		expect(HATA_WHATS_NEW.items.find(item => item.preview === 'hatalyze')).toMatchObject({ to: '/hatask/emotion-analysis' });
+	});
+
+	test('外部アカウント連携は接続先の追加としてのみ案内する', () => {
+		// ⚠️機能そのものは 12.1.3 で案内済み。今回言うべきなのは接続先が増えたことだけ。
+		const item = HATA_WHATS_NEW.items.find(x => x.preview === 'externalDdoskey');
+		expect(item).toMatchObject({ to: '/settings/external-account' });
+		expect(item?.title).toContain('㐂五亭');
+		expect(item?.text).toContain('ddoskey.com');
+		// ⚠️つないだ先の規約が適用される外部サーバーなので、それを伏せない。
+		expect(item?.text).toContain('規約');
 	});
 
 	test('見出しと本文がロケール未定義で空欄にならない', () => {

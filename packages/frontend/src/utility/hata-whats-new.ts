@@ -25,7 +25,9 @@ export type HataWhatsNewItem = {
 	icon: string;
 	/** 更新案内に表示する、実画面を抽象化した小型プレビュー。 */
 	preview: 'branding' | 'hatadyRecord' | 'hatadyVisibility' | 'hatacordingFix' | 'utageBadge'
-		| 'muteReaction' | 'cardMaker' | 'hatasabaHome' | 'sideStudioFix' | 'mobileFix';
+		| 'muteReaction' | 'cardMaker' | 'hatasabaHome' | 'sideStudioFix' | 'mobileFix'
+		| 'hatalyze' | 'hatakyuTheme' | 'hatadyExport' | 'foldable' | 'uiMotion' | 'langFix'
+		| 'externalDdoskey';
 	title: string;
 	text: string;
 	/**
@@ -33,7 +35,7 @@ export type HataWhatsNewItem = {
 	 * ⚠️`mainRouter.push()` は登録済みパスのリテラル型しか受けないため、
 	 *   ここも文字列ではなくリテラル型のままにしておく（`string` にすると型検査で落ちる）。
 	 */
-	to?: '/settings/hata-custom' | '/settings/preferences' | '/settings/external-account' | '/games' | '/hanaawase' | '/hatady' | '/hatask' | '/hata-side-studio' | '/hatafeed/hatacording-ui' | '/hatafeed/beta' | '/channels/new';
+	to?: '/settings/hata-custom' | '/settings/preferences' | '/settings/external-account' | '/games' | '/hanaawase' | '/hatady' | '/hatask' | '/hatask/emotion-analysis' | '/hata-side-studio' | '/hatafeed/hatacording-ui' | '/hatafeed/beta' | '/channels/new';
 	/** URL遷移ではなく、選択中のUIそのものを切り替える誘導。 */
 	activateUi?: 'hatacording';
 	/** 誘導ボタンの文言。遷移先が違うのに一律「設定を開く」と表示しない。 */
@@ -66,7 +68,7 @@ export function getHataWhatsNewDisplayVersion(version: string): string {
 }
 
 export const HATA_WHATS_NEW: HataWhatsNew = {
-	version: '2026.7.0-hata.12.2',
+	version: '2026.7.0-hata.12.3',
 	headline: copy.headline,
 	items: [
 		// ⚠️ここに載せるのは hata-12.1.3 のタグに含まれていない変更だけ。
@@ -142,6 +144,60 @@ export const HATA_WHATS_NEW: HataWhatsNew = {
 			preview: 'mobileFix',
 			title: copy.mobileFixTitle,
 			text: copy.mobileFixText,
+		},
+		// ⚠️ここから下は hata-12.2 の案内を書いたあとに入った変更。
+		//   ⚠️先頭はブランディングで固定なので、必ず末尾へ足すこと(テストが items[0] を見ている)。
+		{
+			icon: 'ti ti-mood-search',
+			preview: 'hatalyze',
+			title: copy.hatalyzeTitle,
+			text: copy.hatalyzeText,
+			to: '/hatask/emotion-analysis',
+			linkLabel: copy.hatalyzeLink,
+		},
+		{
+			icon: 'ti ti-layout-board',
+			preview: 'hatakyuTheme',
+			title: copy.hatakyuThemeTitle,
+			text: copy.hatakyuThemeText,
+			to: '/hatask',
+			linkLabel: copy.hatakyuThemeLink,
+		},
+		{
+			icon: 'ti ti-file-export',
+			preview: 'hatadyExport',
+			title: copy.hatadyExportTitle,
+			text: copy.hatadyExportText,
+			to: '/hatady',
+			linkLabel: copy.hatadyExportLink,
+		},
+		{
+			icon: 'ti ti-device-mobile-rotated',
+			preview: 'foldable',
+			title: copy.foldableTitle,
+			text: copy.foldableText,
+			to: '/settings/hata-custom',
+			linkLabel: copy.foldableLink,
+		},
+		{
+			icon: 'ti ti-wand',
+			preview: 'uiMotion',
+			title: copy.uiMotionTitle,
+			text: copy.uiMotionText,
+		},
+		{
+			icon: 'ti ti-language-hiragana',
+			preview: 'langFix',
+			title: copy.langFixTitle,
+			text: copy.langFixText,
+		},
+		{
+			icon: 'ti ti-plug-connected',
+			preview: 'externalDdoskey',
+			title: copy.externalDdoskeyTitle,
+			text: copy.externalDdoskeyText,
+			to: '/settings/external-account',
+			linkLabel: copy.externalDdoskeyLink,
 		},
 	],
 	footer: {
