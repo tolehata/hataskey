@@ -46,6 +46,82 @@ export function buildHatadyMediaExportArchive(
 	};
 }
 
+export type HatadyMediaExportKind = 'movie' | 'game';
+export type HatadyMediaExportFormat = 'json' | 'txt';
+
+/**
+ * 書き出す範囲。
+ * ⚠️期間は記録(occurredAt)に効かせる。作品そのものは日付を持たないため、
+ *   期間を指定したときは「その期間に記録があった作品」だけを残す。
+ *   指定しないときは、記録のない作品も含めて全部残す(作品一覧として使えるように)。
+ * ⚠️kinds が空配列なら「すべての種別」を意味する。
+ */
+export type HatadyMediaExportFilter = {
+	since: number | null;
+	/** 日の始まり(ms)。この関数の中で日末まで含める。 */
+	until: number | null;
+	kinds: readonly HatadyMediaExportKind[];
+};
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+type AnyRecord = Record<string, unknown>;
+
+function asRecord(value: unknown): AnyRecord | null {
+	return value != null && typeof value === 'object' ? value as AnyRecord : null;
+}
+
+/**
+ * 作品と記録を、種別と期間で絞る。
+ * ⚠️絞ったあとも作品と記録の対応が壊れないようにする(記録だけ残って作品が無い状態を作らない)。
+ */
+export function filterHatadyMediaForExport(
+	works: readonly unknown[],
+	sessions: readonly unknown[],
+	filter: HatadyMediaExportFilter,
+): { works: unknown[]; sessions: unknown[] } {
+	const kinds = filter.kinds.length > 0 ? new Set<string>(filter.kinds) : null;
+	const until = filter.until != null ? filter.until + DAY_MS - 1 : null;
+	const hasPeriod = filter.since != null || filter.until != null;
+
+	const workById = new Map<string, AnyRecord>();
+	for (const raw of works) {
+		const work = asRecord(raw);
+		if (work && typeof work.id === 'string') workById.set(work.id, work);
+	}
+
+	const keptSessions = sessions.filter(raw => {
+		const session = asRecord(raw);
+		if (!session) return false;
+		const work = typeof session.workId === 'string' ? workById.get(session.workId) : undefined;
+		if (kinds && !(work && typeof work.kind === 'string' && kinds.has(work.kind))) return false;
+		if (!hasPeriod) return true;
+		// ⚠️期間を指定したときだけ、日時が壊れている記録を落とす。
+		//   指定していないなら落とさない(書き出しから黙って消えるのを避ける)。
+		const at = Date.parse(String(session.occurredAt ?? ''));
+		if (!Number.isFinite(at)) return false;
+		if (filter.since != null && at < filter.since) return false;
+		if (until != null && at > until) return false;
+		return true;
+	});
+
+	const referenced = new Set<string>();
+	for (const raw of keptSessions) {
+		const session = asRecord(raw);
+		if (session && typeof session.workId === 'string') referenced.add(session.workId);
+	}
+
+	const keptWorks = works.filter(raw => {
+		const work = asRecord(raw);
+		if (!work) return false;
+		if (kinds && !(typeof work.kind === 'string' && kinds.has(work.kind))) return false;
+		if (!hasPeriod) return true;
+		return typeof work.id === 'string' && referenced.has(work.id);
+	});
+
+	return { works: keptWorks, sessions: keptSessions };
+}
+
 function pad(n: number): string { return n.toString().padStart(2, '0'); }
 
 function ymdKey(d: Date): string { return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; }
@@ -224,18 +300,145 @@ export async function fetchMediaPages(endpoint: 'hata/hatady/media/works/list' |
 	return all;
 }
 
+function mediaCopy() { return i18n.ts._hata._hatady._mediaExportText; }
+
+function mediaTx() { return i18n.tsx._hata._hatady._mediaExportText; }
+
+function kindLabel(kind: unknown): string {
+	const copy = mediaCopy();
+	return kind === 'movie' ? copy.kindMovie : kind === 'game' ? copy.kindGame : copy.kindUnknown;
+}
+
+/** 状態・視聴方法などは保存済みの言語非依存 enum。⚠️表示のときだけ訳す(保存値は触らない)。 */
+function enumLabel(group: 'status' | 'sessionKind', value: unknown): string {
+	const copy = mediaCopy() as unknown as Record<string, string>;
+	const key = `${group}_${String(value)}`;
+	return copy[key] ?? String(value ?? '');
+}
+
 /**
- * 映画・ゲーム作品と、その視聴/プレイ記録を版付き JSON へ書き出す。
- * 将来の読込実装が部分データを黙って受理しないよう、format/versionを必ず含める。
+ * 映画・ゲームの記録を人が読めるテキストへ整形する。
+ * ⚠️ネタバレ扱いの本文には印を付ける。書き出したファイルを他人へ渡したときに不意に見せないため。
  */
-export async function exportHatadyMediaArchive(): Promise<{ works: number; sessions: number }> {
-	const [works, sessions] = await Promise.all([
+export function buildHatadyMediaExportText(
+	works: readonly unknown[],
+	sessions: readonly unknown[],
+	opts?: { now?: Date; periodLabel?: string; kindLabel?: string },
+): string {
+	const now = opts?.now ?? new Date();
+	const copy = mediaCopy();
+	const tx = mediaTx();
+	const workById = new Map<string, AnyRecord>();
+	for (const raw of works) {
+		const work = asRecord(raw);
+		if (work && typeof work.id === 'string') workById.set(work.id, work);
+	}
+
+	const rows = sessions
+		.map(raw => asRecord(raw))
+		.filter((session): session is AnyRecord => session != null)
+		.map(session => ({ session, at: Date.parse(String(session.occurredAt ?? '')) }))
+		.sort((a, b) => (Number.isFinite(a.at) ? a.at : 0) - (Number.isFinite(b.at) ? b.at : 0));
+
+	const totalMinutes = rows.reduce((sum, r) => sum + (typeof r.session.durationMinutes === 'number' ? r.session.durationMinutes : 0), 0);
+
+	const lines: string[] = [];
+	lines.push(copy.title);
+	lines.push(tx.periodLine({ period: opts?.periodLabel ?? copy.all }));
+	lines.push(tx.kindLine({ kind: opts?.kindLabel ?? copy.kindAll }));
+	lines.push(tx.exportedLine({ date: dateFormatter.format(now), time: `${pad(now.getHours())}:${pad(now.getMinutes())}` }));
+	lines.push(tx.summaryLine({ works: works.length, sessions: rows.length, duration: fmtDuration(totalMinutes) }));
+	lines.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+	lines.push('');
+
+	if (rows.length === 0) {
+		lines.push(copy.emptySessions);
+	} else {
+		const byDay = new Map<string, Array<{ session: AnyRecord; at: number }>>();
+		for (const row of rows) {
+			const key = Number.isFinite(row.at) ? ymdKey(new Date(row.at)) : copy.unknownDate;
+			if (!byDay.has(key)) byDay.set(key, []);
+			byDay.get(key)!.push(row);
+		}
+		for (const [key, items] of byDay) {
+			const first = items[0];
+			const dayMinutes = items.reduce((sum, r) => sum + (typeof r.session.durationMinutes === 'number' ? r.session.durationMinutes : 0), 0);
+			const header = Number.isFinite(first.at)
+				? tx.dayLine({ date: dateFormatter.format(new Date(first.at)), weekday: weekdayFormatter.format(new Date(first.at)), count: items.length, duration: fmtDuration(dayMinutes) })
+				: tx.dayLineUnknown({ label: key, count: items.length });
+			lines.push(header);
+			for (const { session, at } of items) {
+				const work = typeof session.workId === 'string' ? workById.get(session.workId) : undefined;
+				const time = Number.isFinite(at) ? `${pad(new Date(at).getHours())}:${pad(new Date(at).getMinutes())}` : '--:--';
+				lines.push(tx.sessionLine({
+					time,
+					kind: kindLabel(work?.kind),
+					title: String(work?.title ?? copy.unknownWork),
+					type: enumLabel('sessionKind', session.kind),
+					duration: fmtDuration(typeof session.durationMinutes === 'number' ? session.durationMinutes : 0),
+				}));
+				if (typeof session.note === 'string' && session.note.length > 0) {
+					const mark = session.noteSpoiler === true ? `${copy.spoilerMark} ` : '';
+					for (const line of session.note.split('\n')) lines.push(`\u3000${mark}${line}`);
+				}
+			}
+			lines.push('');
+		}
+	}
+
+	lines.push('── ' + copy.workListHeading + ' ──');
+	if (works.length === 0) {
+		lines.push(copy.emptyWorks);
+	} else {
+		for (const raw of works) {
+			const work = asRecord(raw);
+			if (!work) continue;
+			const creator = typeof work.creator === 'string' && work.creator.length > 0 ? ` / ${work.creator}` : '';
+			const rating = typeof work.recommendationRating === 'number' ? tx.ratingLabel({ rating: work.recommendationRating }) : '';
+			lines.push(tx.workLine({
+				kind: kindLabel(work.kind),
+				title: String(work.title ?? ''),
+				creator,
+				status: enumLabel('status', work.status),
+				rating,
+			}));
+			if (typeof work.review === 'string' && work.review.length > 0) {
+				const mark = work.reviewSpoiler === true ? `${copy.spoilerMark} ` : '';
+				for (const line of work.review.split('\n')) lines.push(`\u3000${mark}${line}`);
+			}
+		}
+	}
+
+	return lines.join('\r\n');
+}
+
+/**
+ * 映画・ゲーム作品と、その視聴/プレイ記録を書き出す。
+ * JSON は版付きで、将来の読込実装が部分データを黙って受理しないよう format/version を必ず含める。
+ * ⚠️絞り込みは取得後に行う(APIに期間・種別の引数が無いため)。取得件数の上限は従来どおり。
+ */
+export async function exportHatadyMediaArchive(opts?: {
+	filter?: HatadyMediaExportFilter;
+	format?: HatadyMediaExportFormat;
+	periodLabel?: string;
+	kindLabel?: string;
+}): Promise<{ works: number; sessions: number }> {
+	const [allWorks, allSessions] = await Promise.all([
 		fetchMediaPages('hata/hatady/media/works/list'),
 		fetchMediaPages('hata/hatady/media/sessions/list'),
 	]);
+	const filter = opts?.filter ?? { since: null, until: null, kinds: [] };
+	const { works, sessions } = filterHatadyMediaForExport(allWorks, allSessions, filter);
 	const now = new Date();
-	const archive = buildHatadyMediaExportArchive(works, sessions, { now });
-	const blob = new Blob([JSON.stringify(archive, null, 2)], { type: 'application/json;charset=utf-8' });
-	downloadBlob(blob, `hatady_media_${fileStamp(now)}.json`);
+	const stamp = filter.since != null ? fileStamp(new Date(filter.since)) : 'all';
+	const endStamp = filter.until != null ? fileStamp(new Date(filter.until)) : fileStamp(now);
+
+	if (opts?.format === 'txt') {
+		const text = buildHatadyMediaExportText(works, sessions, { now, periodLabel: opts.periodLabel, kindLabel: opts.kindLabel });
+		downloadBlob(new Blob([text], { type: 'text/plain;charset=utf-8' }), `hatady_media_${stamp}-${endStamp}.txt`);
+	} else {
+		const archive = buildHatadyMediaExportArchive(works, sessions, { now });
+		downloadBlob(new Blob([JSON.stringify(archive, null, 2)], { type: 'application/json;charset=utf-8' }), `hatady_media_${stamp}-${endStamp}.json`);
+	}
 	return { works: works.length, sessions: sessions.length };
 }

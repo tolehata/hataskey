@@ -25,9 +25,11 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<button :class="[$style.target, target === 'media' && $style.targetOn]" @click="target = 'media'">
 				<i class="ti ti-library"></i><span><b>{{ copy.mediaRecords }}</b><small>{{ copy.mediaRecordsFormat }}</small></span>
 			</button>
+			<button :class="[$style.target, target === 'both' && $style.targetOn]" @click="target = 'both'">
+				<i class="ti ti-package"></i><span><b>{{ copy.bothRecords }}</b><small>{{ copy.bothRecordsFormat }}</small></span>
+			</button>
 		</div>
 
-		<template v-if="target === 'learning'">
 		<div :class="$style.label"><i class="ti ti-calendar-search"></i> {{ copy.period }}</div>
 		<div :class="$style.presets">
 			<button
@@ -50,8 +52,20 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<span>{{ summaryText }}</span>
 		</div>
 		<div :class="$style.hint">{{ copy.hint }}</div>
-		</template>
-		<template v-else>
+
+		<!-- 旗鯖fork: 映画・ゲームを含むときだけ、形式と種別を選べるようにする。 -->
+		<template v-if="target !== 'learning'">
+			<div :class="$style.label"><i class="ti ti-file-text"></i> {{ copy.mediaFormat }}</div>
+			<div :class="$style.presets" role="group" :aria-label="copy.mediaFormat">
+				<button :class="[$style.chip, mediaFormat === 'json' && $style.chipOn]" @click="mediaFormat = 'json'">{{ copy.mediaFormatJson }}</button>
+				<button :class="[$style.chip, mediaFormat === 'txt' && $style.chipOn]" @click="mediaFormat = 'txt'">{{ copy.mediaFormatTxt }}</button>
+			</div>
+
+			<div :class="$style.label"><i class="ti ti-filter"></i> {{ copy.mediaKind }}</div>
+			<div :class="$style.presets" role="group" :aria-label="copy.mediaKind">
+				<button v-for="k in KIND_CHOICES" :key="k.key" :class="[$style.chip, mediaKind === k.key && $style.chipOn]" @click="mediaKind = k.key">{{ k.label }}</button>
+			</div>
+
 			<div :class="$style.summary">
 				<i class="ti ti-shield-check"></i>
 				<span>{{ copy.mediaSummary }}</span>
@@ -85,7 +99,8 @@ const theme = hatadyTheme;
 const copy = i18n.ts._hata._hatady._exportDialog;
 
 type Mode = 'all' | 'thisMonth' | 'lastMonth' | 'last30' | 'custom';
-type ExportTarget = 'learning' | 'media';
+type ExportTarget = 'learning' | 'media' | 'both';
+type MediaKindChoice = 'all' | 'movie' | 'game';
 const PRESETS = [
 	{ key: 'all' as const, label: copy.all },
 	{ key: 'thisMonth' as const, label: copy.thisMonth },
@@ -94,8 +109,16 @@ const PRESETS = [
 	{ key: 'custom' as const, label: copy.custom },
 ];
 
+const KIND_CHOICES = [
+	{ key: 'all' as const, label: copy.mediaKindAll },
+	{ key: 'movie' as const, label: copy.mediaKindMovie },
+	{ key: 'game' as const, label: copy.mediaKindGame },
+];
+
 const mode = ref<Mode>('all');
 const target = ref<ExportTarget>('learning');
+const mediaFormat = ref<'json' | 'txt'>('json');
+const mediaKind = ref<MediaKindChoice>('all');
 const sinceInput = ref('');
 const untilInput = ref('');
 const exporting = ref(false);
@@ -136,8 +159,8 @@ const range = computed<{ since: number | null; until: number | null }>(() => {
 	return { since: dayStartMs(sinceInput.value), until: dayStartMs(untilInput.value) };
 });
 // 「期間を指定」は少なくとも片方の日付が要る。開始>終了は不可。
+// ⚠️期間の規則は対象によらず同じにする(映画・ゲームでも期間を選べるようになったため)。
 const valid = computed(() => {
-	if (target.value === 'media') return true;
 	if (mode.value === 'all') return true;
 	const { since, until } = range.value;
 	if (since == null && until == null) return false;
@@ -162,12 +185,24 @@ async function run() {
 	if (exporting.value || !valid.value) return;
 	exporting.value = true;
 	try {
-		if (target.value === 'media') {
-			const result = await exportHatadyMediaArchive();
-			os.toast(i18n.tsx._hata._hatady._exportDialog.exportedMediaCount({ works: result.works, sessions: result.sessions }));
-		} else {
+		const tx = i18n.tsx._hata._hatady._exportDialog;
+		const mediaFilter = {
+			since: range.value.since,
+			until: range.value.until,
+			kinds: mediaKind.value === 'all' ? [] : [mediaKind.value],
+		};
+		const mediaLabels = { periodLabel: summaryText.value, kindLabel: KIND_CHOICES.find(k => k.key === mediaKind.value)?.label };
+		if (target.value === 'learning') {
 			const { count } = await exportHatadyLogs({ sinceDate: range.value.since, untilDate: range.value.until });
-			os.toast(i18n.tsx._hata._hatady._exportDialog.exportedCount({ count }));
+			os.toast(tx.exportedCount({ count }));
+		} else if (target.value === 'media') {
+			const result = await exportHatadyMediaArchive({ filter: mediaFilter, format: mediaFormat.value, ...mediaLabels });
+			os.toast(tx.exportedMediaCount({ works: result.works, sessions: result.sessions }));
+		} else {
+			// ⚠️まとめて出すときもファイルは別々にする。学習は .txt 固定で、映画・ゲームは形式を選べるため。
+			const { count } = await exportHatadyLogs({ sinceDate: range.value.since, untilDate: range.value.until });
+			const result = await exportHatadyMediaArchive({ filter: mediaFilter, format: mediaFormat.value, ...mediaLabels });
+			os.toast(tx.exportedBothCount({ count, works: result.works, sessions: result.sessions }));
 		}
 		dialog.value?.close();
 	} catch {

@@ -20035,6 +20035,16 @@ export interface Locale extends ILocale {
                 };
             };
             "_exportDialog": {
+                "bothRecords": string;
+                "bothRecordsFormat": string;
+                "mediaFormat": string;
+                "mediaFormatJson": string;
+                "mediaFormatTxt": string;
+                "mediaKind": string;
+                "mediaKindAll": string;
+                "mediaKindMovie": string;
+                "mediaKindGame": string;
+                "exportedBothCount": ParameterizedString<"count" | "works" | "sessions">;
                 /**
                  * 記録の書き出し
                  */
@@ -20147,6 +20157,40 @@ export interface Locale extends ILocale {
                  * 書き出しに失敗しました。
                  */
                 "exportFailed": string;
+            };
+            "_mediaExportText": {
+                "title": string;
+                "all": string;
+                "kindAll": string;
+                "kindMovie": string;
+                "kindGame": string;
+                "kindUnknown": string;
+                "workListHeading": string;
+                "emptySessions": string;
+                "emptyWorks": string;
+                "unknownWork": string;
+                "unknownDate": string;
+                "spoilerMark": string;
+                "status_planned": string;
+                "status_in_progress": string;
+                "status_completed": string;
+                "status_mastered": string;
+                "status_on_hold": string;
+                "status_dropped": string;
+                "sessionKind_movie_viewing": string;
+                "sessionKind_game_play": string;
+                "sessionKind_game_match": string;
+                "sessionKind_game_roguelike": string;
+                "sessionKind_game_pve": string;
+                "periodLine": ParameterizedString<"period">;
+                "kindLine": ParameterizedString<"kind">;
+                "exportedLine": ParameterizedString<"date" | "time">;
+                "summaryLine": ParameterizedString<"works" | "sessions" | "duration">;
+                "dayLine": ParameterizedString<"date" | "weekday" | "count" | "duration">;
+                "dayLineUnknown": ParameterizedString<"label" | "count">;
+                "sessionLine": ParameterizedString<"time" | "kind" | "title" | "type" | "duration">;
+                "workLine": ParameterizedString<"kind" | "title" | "creator" | "status" | "rating">;
+                "ratingLabel": ParameterizedString<"rating">;
             };
             "_exportText": {
                 /**

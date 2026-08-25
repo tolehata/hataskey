@@ -18,6 +18,7 @@ import {
 	HATADY_MEDIA_EXPORT_INVALID_RESPONSE,
 	HATADY_MEDIA_EXPORT_LIMIT_ERROR,
 	HATADY_MEDIA_EXPORT_VERSION,
+	filterHatadyMediaForExport,
 } from './hatady-export.js';
 
 describe('Hatady映画・ゲーム記録の書き出し', () => {
@@ -108,5 +109,63 @@ describe('Hatady映画・ゲーム記録の書き出し', () => {
 
 		await expect(fetchMediaPages('hata/hatady/media/works/list')).rejects.toThrow(HATADY_MEDIA_EXPORT_CURSOR_STALLED);
 		expect(misskeyApi).toHaveBeenCalledTimes(2);
+	});
+	describe('種別と期間で絞る', () => {
+		const works = [
+			{ id: 'm1', kind: 'movie', title: '映画A' },
+			{ id: 'g1', kind: 'game', title: 'ゲームB' },
+			{ id: 'm2', kind: 'movie', title: '記録のない映画' },
+		];
+		const sessions = [
+			{ id: 's1', workId: 'm1', kind: 'movie_viewing', occurredAt: '2026-08-10T10:00:00.000Z' },
+			{ id: 's2', workId: 'g1', kind: 'game_play', occurredAt: '2026-08-20T10:00:00.000Z' },
+			{ id: 's3', workId: 'm1', kind: 'movie_viewing', occurredAt: '2026-09-01T10:00:00.000Z' },
+		];
+		const day = (iso: string) => new Date(iso).getTime();
+
+		test('種別だけの指定では記録のない作品も残す', () => {
+			const out = filterHatadyMediaForExport(works, sessions, { since: null, until: null, kinds: ['movie'] });
+			expect(out.works.map(w => (w as { id: string }).id)).toEqual(['m1', 'm2']);
+			expect(out.sessions.map(x => (x as { id: string }).id)).toEqual(['s1', 's3']);
+		});
+
+		test('期間を指定したら、その期間に記録がある作品だけを残す', () => {
+			const out = filterHatadyMediaForExport(works, sessions, {
+				since: day('2026-08-01T00:00:00.000Z'),
+				until: day('2026-08-31T00:00:00.000Z'),
+				kinds: [],
+			});
+			// ⚠️記録だけ残って作品が無い状態を作らない
+			expect(out.works.map(w => (w as { id: string }).id)).toEqual(['m1', 'g1']);
+			expect(out.sessions.map(x => (x as { id: string }).id)).toEqual(['s1', 's2']);
+		});
+
+		test('終端の日は日末まで含める', () => {
+			const out = filterHatadyMediaForExport(works, sessions, {
+				since: day('2026-08-20T00:00:00.000Z'),
+				until: day('2026-08-20T00:00:00.000Z'),
+				kinds: [],
+			});
+			expect(out.sessions.map(x => (x as { id: string }).id)).toEqual(['s2']);
+		});
+
+		test('種別と期間は同時に効く', () => {
+			const out = filterHatadyMediaForExport(works, sessions, {
+				since: day('2026-08-01T00:00:00.000Z'),
+				until: day('2026-08-31T00:00:00.000Z'),
+				kinds: ['game'],
+			});
+			expect(out.works.map(w => (w as { id: string }).id)).toEqual(['g1']);
+			expect(out.sessions.map(x => (x as { id: string }).id)).toEqual(['s2']);
+		});
+
+		test('期間なしなら日時が壊れた記録も落とさない', () => {
+			const broken = [...sessions, { id: 'bad', workId: 'm1', kind: 'movie_viewing', occurredAt: 'not-a-date' }];
+			const all = filterHatadyMediaForExport(works, broken, { since: null, until: null, kinds: [] });
+			expect(all.sessions.map(x => (x as { id: string }).id)).toContain('bad');
+			// ⚠️期間を指定したときだけ落とす(範囲判定ができないため)
+			const ranged = filterHatadyMediaForExport(works, broken, { since: day('2026-08-01T00:00:00.000Z'), until: null, kinds: [] });
+			expect(ranged.sessions.map(x => (x as { id: string }).id)).not.toContain('bad');
+		});
 	});
 });
