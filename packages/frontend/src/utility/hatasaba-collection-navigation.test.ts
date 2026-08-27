@@ -16,6 +16,12 @@ describe('Hataskey UIのリスト・アンテナ選択UI', () => {
 		expect(ui).toContain('if (isCollectionTimelinePage.value) mainRouter.push(\'/\');');
 	});
 
+	test('設定ページからホームへはforcePage遷移を使う', () => {
+		const ui = source('src/ui/simple.vue');
+		expect(ui).toContain("if (isPageView.value) { mainRouter.pushByPath('/', 'forcePage'); }");
+		expect(ui).toContain("if (isPageView.value) { mainRouter.pushByPath('/', 'forcePage'); } else { scrollToTop(); }");
+	});
+
 	test('リストとアンテナは名前・切替・設定を同じピルに持つ', () => {
 		const ui = source('src/ui/simple.vue');
 		expect(ui).toContain('{{ activeListName }}');
