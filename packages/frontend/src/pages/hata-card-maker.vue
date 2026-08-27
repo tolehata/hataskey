@@ -6,120 +6,138 @@ SPDX-License-Identifier: AGPL-3.0-only
 <template>
 <PageWithHeader>
 	<div :class="$style.root" :style="rootVars">
-		<div :class="[$style.ambient, $style.ambientA]"></div>
-		<div :class="[$style.ambient, $style.ambientB]"></div>
-
-		<main :class="$style.content">
-			<header :class="$style.hero">
-				<div :class="$style.heroIdentity">
-					<div :class="$style.heroIcon"><i class="ti ti-id-badge-2"></i></div>
-					<div>
-						<h1>{{ copy.title }}</h1>
-						<p>{{ copy.subtitle }}</p>
-					</div>
+		<main :class="$style.shell">
+			<header :class="$style.productBar">
+				<div :class="$style.productIdentity">
+					<span :class="$style.productMark" aria-hidden="true">H</span>
+					<strong :class="$style.wordmark">HataCardMaker</strong>
+				</div>
+				<div :class="$style.productMeta">
+					<i class="ti ti-shield-lock" aria-hidden="true"></i>
+					<span>{{ copy.privacyTitle }}</span>
 				</div>
 			</header>
 
-			<section :class="$style.controls" :aria-label="copy.appearanceSettings">
-				<div :class="$style.segmented">
-					<button class="_button" :class="{ [$style.active]: cardStyle === 'standard' }" type="button" @click="cardStyle = 'standard'">
-						<i class="ti ti-sparkles"></i>{{ copy.standardDesign }}
-					</button>
-					<button class="_button" :class="[$style.goldChoice, { [$style.active]: cardStyle === 'gold' }]" type="button" :disabled="!goldUnlocked" @click="selectGold">
-						<i :class="goldUnlocked ? 'ti ti-crown' : 'ti ti-lock'"></i>{{ copy.goldDesign }}
-					</button>
-				</div>
+			<div :class="$style.workspace">
+				<section :class="$style.editor" :aria-label="copy.appearanceSettings">
+					<header :class="$style.panelHeading">
+						<span>DESIGN</span>
+						<h1>{{ copy.appearanceSettings }}</h1>
+						<p>{{ copy.subtitle }}</p>
+					</header>
 
-				<div :class="$style.tweaks">
-					<div :class="$style.colorField" role="group" :aria-label="copy.accentColor">
-						<span>{{ copy.accentColor }}</span>
-						<span :class="$style.swatches">
-							<button
-								v-for="color in accentChoices"
-								:key="color"
-								class="_button"
-								:class="{ [$style.selectedSwatch]: accentColor === color }"
-								type="button"
-								:style="{ backgroundColor: color }"
-								:aria-label="copyx.selectColor({ color })"
-								@click="accentColor = color"
-							></button>
-						</span>
+					<div :class="$style.settingBlock">
+						<span :class="$style.settingLabel">{{ copy.standardDesign }}</span>
+						<div :class="$style.segmented" role="group" :aria-label="copy.appearanceSettings">
+							<button class="_button" :class="{ [$style.active]: cardStyle === 'standard' }" type="button" :aria-pressed="cardStyle === 'standard'" @click="cardStyle = 'standard'">
+								<i class="ti ti-snowflake" aria-hidden="true"></i>{{ copy.standardDesign }}
+							</button>
+							<button class="_button" :class="[$style.goldChoice, { [$style.active]: cardStyle === 'gold' }]" type="button" :aria-pressed="cardStyle === 'gold'" :disabled="!goldUnlocked" @click="selectGold">
+								<i :class="goldUnlocked ? 'ti ti-crown' : 'ti ti-lock'" aria-hidden="true"></i>{{ copy.goldDesign }}
+							</button>
+						</div>
+						<p v-if="!goldUnlocked" :class="$style.lockHint"><i class="ti ti-lock" aria-hidden="true"></i>{{ copy.goldUnlockHint }}</p>
 					</div>
-					<label :class="$style.opacityField">
-						<span>{{ copy.glassOpacity }}</span>
+
+					<div :class="$style.settingBlock">
+						<div :class="$style.colorField" role="group" :aria-label="copy.accentColor">
+							<span :class="$style.settingLabel">{{ copy.accentColor }}</span>
+							<span :class="$style.swatches">
+								<button
+									v-for="color in accentChoices"
+									:key="color"
+									class="_button"
+									:class="{ [$style.selectedSwatch]: accentColor === color }"
+									type="button"
+									:style="{ backgroundColor: color }"
+									:aria-label="copyx.selectColor({ color })"
+									:aria-pressed="accentColor === color"
+									@click="accentColor = color"
+								></button>
+							</span>
+						</div>
+					</div>
+
+					<label :class="[$style.settingBlock, $style.opacityField]">
+						<span :class="$style.opacityHeading"><span :class="$style.settingLabel">{{ copy.glassOpacity }}</span><output>{{ glassOpacity }}%</output></span>
 						<input v-model.number="glassOpacity" type="range" min="20" max="90" step="5">
-						<output>{{ glassOpacity }}%</output>
 					</label>
-				</div>
-			</section>
 
-			<p v-if="!goldUnlocked" :class="$style.lockHint"><i class="ti ti-lock"></i>{{ copy.goldUnlockHint }}</p>
+					<div v-if="deviceTiltSupported" :class="$style.settingBlock">
+						<button class="_button" :class="[$style.deviceTiltButton, { [$style.active]: deviceTiltEnabled }]" type="button" :aria-pressed="deviceTiltEnabled" @click="toggleDeviceTilt">
+							<span><i :class="deviceTiltEnabled ? 'ti ti-device-mobile-check' : 'ti ti-device-mobile-rotated'" aria-hidden="true"></i>{{ deviceTiltEnabled ? copy.disableDeviceTilt : copy.enableDeviceTilt }}</span>
+							<i class="ti ti-chevron-right" aria-hidden="true"></i>
+						</button>
+					</div>
 
-			<section :class="$style.stage" :aria-label="copy.cardPreview">
-				<div
-					ref="tiltEl"
-					:class="$style.tilt"
-					@pointerdown="startTilt"
-					@pointermove="moveTilt"
-					@pointerup="stopTilt"
-					@pointercancel="stopTilt"
-					@pointerleave="leaveTilt"
-				>
-					<article :class="[$style.card, { [$style.gold]: cardStyle === 'gold' }]" :style="[cardSurfaceStyle, tiltStyle]">
-						<img v-if="bannerSrc && !bannerFailed" :src="bannerSrc" :class="$style.cardBanner" alt="" @error="bannerFailed = true">
-						<div :class="$style.brushed"></div>
-						<div :class="$style.shine" :style="shineStyle"></div>
-						<div :class="$style.cardLogo">{{ copy.passLabel }}</div>
+					<div :class="$style.privacyNote">
+						<i class="ti ti-shield-lock" aria-hidden="true"></i>
+						<div><strong>{{ copy.privacyTitle }}</strong><span>{{ copy.privacyDescription }}</span></div>
+					</div>
+				</section>
 
-						<div :class="$style.cardInner">
-							<div :class="$style.avatarFrame">
-								<img v-if="!avatarFailed" :src="avatarSrc" :class="$style.avatar" alt="" @error="avatarFailed = true">
-								<span v-else :class="$style.avatarFallback">{{ avatarFallback }}</span>
-								<img
-									v-for="decoration in avatarDecorations"
-									:key="decoration.id"
-									:src="getDecorationSrc(decoration.url)"
-									:class="$style.avatarDecoration"
-									:style="getDecorationStyle(decoration)"
-									alt=""
-								>
-							</div>
-							<div :class="$style.cardInfo">
-								<strong>{{ profileName }}</strong>
-								<span>{{ profileHandle }}</span>
-								<small>{{ joinedDateLabel }}</small>
-								<em>{{ memberLabel }}</em>
-							</div>
+				<section :class="$style.preview" :aria-label="copy.cardPreview">
+					<header :class="$style.previewHeading">
+						<div><span>LIVE PREVIEW</span><h2>{{ copy.cardPreview }}</h2></div>
+						<p><i class="ti ti-axis-x" aria-hidden="true"></i>{{ copy.tiltHint }}</p>
+					</header>
+
+					<div :class="$style.stage">
+						<div
+							ref="tiltEl"
+							:class="$style.tilt"
+							@pointerdown="startTilt"
+							@pointermove="moveTilt"
+							@pointerup="stopTilt"
+							@pointercancel="stopTilt"
+							@pointerleave="leaveTilt"
+						>
+							<article :class="[$style.card, { [$style.gold]: cardStyle === 'gold' }]" :style="[cardSurfaceStyle, tiltStyle]">
+								<img v-if="bannerSrc && !bannerFailed" :src="bannerSrc" :class="$style.cardBanner" alt="" @error="bannerFailed = true">
+								<div :class="$style.brushed"></div>
+								<div :class="$style.shine" :style="shineStyle"></div>
+								<div :class="$style.cardLogo">{{ copy.passLabel }}</div>
+
+								<div :class="$style.cardInner">
+									<div :class="$style.avatarFrame">
+										<img v-if="!avatarFailed" :src="avatarSrc" :class="$style.avatar" alt="" @error="avatarFailed = true">
+										<span v-else :class="$style.avatarFallback">{{ avatarFallback }}</span>
+										<img
+											v-for="decoration in avatarDecorations"
+											:key="decoration.id"
+											:src="getDecorationSrc(decoration.url)"
+											:class="$style.avatarDecoration"
+											:style="getDecorationStyle(decoration)"
+											alt=""
+										>
+									</div>
+									<div :class="$style.cardInfo">
+										<strong>{{ profileName }}</strong>
+										<span>{{ profileHandle }}</span>
+										<small>{{ joinedDateLabel }}</small>
+										<em>{{ memberLabel }}</em>
+									</div>
+								</div>
+
+								<div :class="$style.qrBox">
+									<img v-if="profileCode" :src="profileCode" :alt="copy.profileQrCode">
+									<i v-else :class="['ti', 'ti-loader-2', $style.qrLoader]"></i>
+								</div>
+								<div :class="$style.dots"><i></i><i></i><i></i></div>
+							</article>
 						</div>
+					</div>
 
-						<div :class="$style.qrBox">
-							<img v-if="profileCode" :src="profileCode" :alt="copy.profileQrCode">
-							<i v-else :class="['ti', 'ti-loader-2', $style.qrLoader]"></i>
-						</div>
-						<div :class="$style.dots"><i></i><i></i><i></i></div>
-					</article>
-				</div>
-			</section>
-
-			<div :class="$style.tiltControls">
-				<p :class="$style.tiltHint"><i class="ti ti-hand-move"></i>{{ copy.tiltHint }}</p>
-				<button v-if="deviceTiltSupported" class="_button" :class="[$style.deviceTiltButton, { [$style.active]: deviceTiltEnabled }]" type="button" @click="toggleDeviceTilt">
-					<i :class="deviceTiltEnabled ? 'ti ti-device-mobile-check' : 'ti ti-device-mobile-rotated'"></i>
-					{{ deviceTiltEnabled ? copy.disableDeviceTilt : copy.enableDeviceTilt }}
-				</button>
-			</div>
-
-			<div :class="$style.actions">
-				<button class="_button" :class="$style.saveButton" type="button" :disabled="saving || !profileCode" @click="saveCard">
-					<i :class="saving ? 'ti ti-loader-2' : 'ti ti-download'"></i>
-					{{ saving ? copy.saving : copy.saveImage }}
-				</button>
-			</div>
-
-			<div :class="$style.privacyNote">
-				<i class="ti ti-lock"></i>
-				<div><strong>{{ copy.privacyTitle }}</strong><span>{{ copy.privacyDescription }}</span></div>
+					<div :class="$style.previewActions">
+						<button class="_button" :class="$style.resetButton" type="button" @click="resetTilt">
+							<i class="ti ti-rotate-2" aria-hidden="true"></i>{{ copy.resetTilt }}
+						</button>
+						<button class="_button" :class="$style.saveButton" type="button" :disabled="saving || !profileCode" @click="saveCard">
+							<i :class="saving ? 'ti ti-loader-2' : 'ti ti-download'" aria-hidden="true"></i>
+							{{ saving ? copy.saving : copy.saveImage }}
+						</button>
+					</div>
+				</section>
 			</div>
 		</main>
 	</div>
@@ -789,5 +807,496 @@ onUnmounted(() => {
 @media (prefers-reduced-motion: reduce) {
 	.ambient, .qrLoader, .saveButton i { animation: none !important; }
 	.tilt { transition: none !important; transform: none !important; }
+}
+
+/* ===== HataCardMaker modern workspace ===== */
+@font-face {
+	font-family: 'HataRighteous';
+	font-style: normal;
+	font-weight: 400;
+	font-display: swap;
+	src: url('/client-assets/Righteous-Regular.woff2') format('woff2');
+}
+
+.root {
+	min-height: 100dvh;
+	padding: 16px 0 56px;
+	overflow: clip;
+	background:
+		linear-gradient(color-mix(in srgb, var(--MI_THEME-bg) 95%, transparent), color-mix(in srgb, var(--MI_THEME-bg) 95%, transparent)),
+		radial-gradient(circle at 12% 0, color-mix(in srgb, var(--maker-accent) 14%, transparent), transparent 38%),
+		var(--MI_THEME-bg);
+}
+
+.root,
+.root p,
+.root span,
+.root small {
+	line-break: strict;
+	overflow-wrap: break-word;
+	text-wrap: pretty;
+	word-break: normal;
+}
+
+.root button:focus-visible,
+.root input:focus-visible {
+	outline: 2px solid var(--maker-accent);
+	outline-offset: 3px;
+}
+
+.shell {
+	width: min(calc(100% - 24px), 1120px);
+	margin: 0 auto;
+	overflow: hidden;
+	border: 1px solid var(--MI_THEME-divider);
+	border-radius: 22px;
+	background: var(--MI_THEME-panel);
+	box-shadow: 0 24px 64px color-mix(in srgb, #000 13%, transparent);
+}
+
+.productBar {
+	min-height: 62px;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 18px;
+	padding: 10px 16px;
+	border-bottom: 1px solid var(--MI_THEME-divider);
+	background: color-mix(in srgb, var(--MI_THEME-panel) 94%, var(--MI_THEME-accent) 6%);
+}
+
+.productIdentity {
+	min-width: 0;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.productMark {
+	width: 34px;
+	height: 34px;
+	display: grid;
+	place-items: center;
+	flex: none;
+	border-radius: 11px;
+	color: var(--MI_THEME-fgOnAccent);
+	background: linear-gradient(145deg, var(--maker-accent), color-mix(in srgb, var(--maker-accent) 68%, #7559da));
+	font-family: 'HataRighteous', system-ui, sans-serif;
+	font-size: 17px;
+}
+
+.wordmark {
+	min-width: 0;
+	overflow: hidden;
+	font-family: 'HataRighteous', system-ui, sans-serif;
+	font-size: 19px;
+	font-weight: 400;
+	letter-spacing: .015em;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.productMeta {
+	min-width: 0;
+	display: flex;
+	align-items: center;
+	gap: 7px;
+	color: var(--MI_THEME-fgTransparent);
+	font-size: 11px;
+}
+
+.productMeta i {
+	flex: none;
+	color: var(--maker-accent);
+}
+
+.workspace {
+	display: grid;
+	grid-template-columns: minmax(280px, .72fr) minmax(0, 1.45fr);
+	min-height: 620px;
+}
+
+.editor,
+.preview {
+	min-width: 0;
+	padding: clamp(22px, 3vw, 34px);
+	box-sizing: border-box;
+}
+
+.editor {
+	border-right: 1px solid var(--MI_THEME-divider);
+	background: color-mix(in srgb, var(--MI_THEME-panel) 97%, var(--MI_THEME-bg) 3%);
+}
+
+.preview {
+	display: flex;
+	flex-direction: column;
+	background:
+		radial-gradient(circle at 70% 40%, color-mix(in srgb, var(--maker-accent) 8%, transparent), transparent 48%),
+		color-mix(in srgb, var(--MI_THEME-bg) 88%, var(--MI_THEME-panel) 12%);
+}
+
+.panelHeading > span,
+.previewHeading span {
+	color: var(--MI_THEME-fgTransparent);
+	font-size: 10px;
+	font-weight: 700;
+	letter-spacing: .14em;
+}
+
+.panelHeading h1,
+.previewHeading h2 {
+	margin: 5px 0 0;
+	font-size: 18px;
+	line-height: 1.35;
+}
+
+.panelHeading p {
+	margin: 8px 0 0;
+	color: var(--MI_THEME-fgTransparent);
+	font-size: 12px;
+	line-height: 1.65;
+}
+
+.settingBlock {
+	margin-top: 24px;
+}
+
+.settingLabel {
+	display: block;
+	margin-bottom: 9px;
+	font-size: 12px;
+	font-weight: 750;
+}
+
+.segmented {
+	width: 100%;
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 3px;
+	padding: 3px;
+	box-sizing: border-box;
+	border: 0;
+	border-radius: 13px;
+	background: color-mix(in srgb, var(--MI_THEME-fg) 7%, var(--MI_THEME-bg));
+}
+
+.segmented button {
+	min-height: 44px;
+	justify-content: center;
+	padding: 0 10px;
+	border-radius: 10px;
+	opacity: 1;
+	font-size: 12px;
+	font-weight: 700;
+	transition: color .18s ease, background-color .18s ease, box-shadow .18s ease, transform .16s ease;
+}
+
+.segmented button:hover:not(:disabled) {
+	background: color-mix(in srgb, var(--MI_THEME-panel) 72%, transparent);
+}
+
+.segmented button:active:not(:disabled) {
+	transform: scale(.98);
+}
+
+.segmented button.active {
+	color: var(--MI_THEME-fg);
+	background: var(--MI_THEME-panel);
+	box-shadow: 0 4px 14px color-mix(in srgb, #000 10%, transparent);
+}
+
+.segmented button.goldChoice.active {
+	color: color-mix(in srgb, #2b2108 88%, var(--MI_THEME-fg) 12%);
+	background: linear-gradient(135deg, #f2df9f, #d6b552);
+}
+
+.lockHint {
+	display: flex;
+	align-items: flex-start;
+	gap: 6px;
+	margin: 8px 2px 0;
+	color: var(--MI_THEME-fgTransparent);
+	font-size: 10.5px;
+	line-height: 1.55;
+}
+
+.lockHint i {
+	margin-top: 2px;
+	flex: none;
+}
+
+.colorField {
+	display: block;
+	font-size: inherit;
+}
+
+.swatches {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 7px;
+}
+
+.swatches button {
+	width: 44px;
+	height: 44px;
+	border: 5px solid var(--MI_THEME-panel);
+	border-radius: 50%;
+	box-shadow: 0 0 0 1px var(--MI_THEME-divider);
+	transition: box-shadow .18s ease, transform .16s ease;
+}
+
+.swatches button:hover {
+	transform: scale(1.05);
+}
+
+.swatches button.selectedSwatch {
+	border-color: var(--MI_THEME-panel);
+	box-shadow: 0 0 0 2px var(--MI_THEME-fg);
+	transform: none;
+}
+
+.opacityField {
+	display: grid;
+	gap: 9px;
+	font-size: inherit;
+}
+
+.opacityHeading {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+}
+
+.opacityHeading .settingLabel {
+	margin: 0;
+}
+
+.opacityHeading output {
+	color: var(--maker-accent);
+	font-size: 11px;
+	font-variant-numeric: tabular-nums;
+}
+
+.opacityField input {
+	width: 100%;
+	accent-color: var(--maker-accent);
+}
+
+.deviceTiltButton {
+	width: 100%;
+	min-height: 48px;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	padding: 0 13px;
+	border: 1px solid var(--MI_THEME-divider);
+	border-radius: 13px;
+	color: var(--MI_THEME-fg);
+	background: var(--MI_THEME-bg);
+	font-size: 11.5px;
+}
+
+.deviceTiltButton > span {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.deviceTiltButton.active {
+	border-color: color-mix(in srgb, var(--maker-accent) 58%, var(--MI_THEME-divider));
+	color: var(--maker-accent);
+	background: color-mix(in srgb, var(--maker-accent) 9%, var(--MI_THEME-bg));
+}
+
+.privacyNote {
+	width: 100%;
+	margin-top: 26px;
+	padding: 14px;
+	border: 0;
+	border-radius: 14px;
+	background: color-mix(in srgb, var(--maker-accent) 7%, var(--MI_THEME-bg));
+}
+
+.privacyNote strong {
+	font-size: 11.5px;
+}
+
+.privacyNote span {
+	font-size: 10.5px;
+	line-height: 1.65;
+}
+
+.previewHeading {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 18px;
+}
+
+.previewHeading p {
+	display: flex;
+	align-items: flex-start;
+	gap: 6px;
+	margin: 2px 0 0;
+	color: var(--MI_THEME-fgTransparent);
+	font-size: 10.5px;
+	line-height: 1.5;
+	text-align: right;
+}
+
+.previewHeading p i {
+	margin-top: 2px;
+	flex: none;
+}
+
+.stage {
+	flex: 1;
+	min-height: 390px;
+	margin: 8px 0;
+}
+
+.tilt {
+	width: min(560px, 100%);
+	touch-action: none;
+}
+
+.card {
+	border-radius: 24px;
+}
+
+.previewActions {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 10px;
+	margin-top: 4px;
+}
+
+.resetButton,
+.saveButton {
+	min-height: 46px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	padding: 0 17px;
+	border-radius: 13px;
+	font-size: 12px;
+	font-weight: 750;
+	transition: transform .16s ease, background-color .18s ease, box-shadow .18s ease;
+}
+
+.resetButton {
+	border: 1px solid var(--MI_THEME-divider);
+	color: var(--MI_THEME-fg);
+	background: var(--MI_THEME-panel);
+}
+
+.resetButton:hover {
+	background: color-mix(in srgb, var(--MI_THEME-fg) 6%, var(--MI_THEME-panel));
+}
+
+.saveButton {
+	padding-inline: 20px;
+	color: var(--MI_THEME-fgOnAccent);
+	background: var(--maker-accent);
+	box-shadow: 0 9px 24px color-mix(in srgb, var(--maker-accent) 28%, transparent);
+}
+
+.resetButton:active,
+.saveButton:active:not(:disabled) {
+	transform: scale(.98);
+}
+
+@container (max-width: 760px) {
+	.shell {
+		width: min(calc(100% - 16px), 620px);
+	}
+
+	.productMeta {
+		display: none;
+	}
+
+	.workspace {
+		grid-template-columns: 1fr;
+	}
+
+	.editor {
+		border-right: 0;
+		border-bottom: 1px solid var(--MI_THEME-divider);
+	}
+
+	.previewHeading {
+		align-items: stretch;
+		flex-direction: column;
+	}
+
+	.previewHeading p {
+		text-align: left;
+	}
+
+	.stage {
+		min-height: 62cqw;
+	}
+}
+
+@container (max-width: 430px) {
+	.root {
+		padding-top: 8px;
+	}
+
+	.shell {
+		width: min(calc(100% - 10px), 620px);
+		border-radius: 18px;
+	}
+
+	.productBar {
+		min-height: 58px;
+		padding: 8px 10px;
+	}
+
+	.productMark {
+		width: 32px;
+		height: 32px;
+		border-radius: 10px;
+	}
+
+	.wordmark {
+		font-size: 18px;
+	}
+
+	.editor,
+	.preview {
+		padding: 18px 14px;
+	}
+
+	.stage {
+		min-height: 64cqw;
+		margin-block: 14px;
+	}
+
+	.previewActions {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+	}
+
+	.resetButton,
+	.saveButton {
+		width: 100%;
+		padding-inline: 8px;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.segmented button,
+	.swatches button,
+	.deviceTiltButton,
+	.resetButton,
+	.saveButton {
+		transition: none !important;
+	}
 }
 </style>

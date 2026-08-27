@@ -88,4 +88,18 @@ describe('カードメーカー', () => {
 		expect(page).toMatch(/function startTilt[\s\S]*?event\.preventDefault\(\);[\s\S]*?function moveTilt/);
 		expect(page).toMatch(/function moveTilt[\s\S]*?event\.preventDefault\(\);[\s\S]*?function resetTilt/);
 	});
+
+	test('モックの製品バーと編集・プレビュー構成を本体へ結線する', () => {
+		const page = readFrontendFile('src/pages/hata-card-maker.vue');
+		expect(page).toContain('<strong :class="$style.wordmark">HataCardMaker</strong>');
+		expect(page).not.toContain('$style.hataskeyLabel');
+		expect(page).not.toContain('>Hataskey</span>');
+		expect(page).toContain('font-family: \'HataRighteous\'');
+		expect(page).toContain('url(\'/client-assets/Righteous-Regular.woff2\')');
+		expect(page).toContain('<div :class="$style.workspace">');
+		expect(page).toContain(':class="$style.editor"');
+		expect(page).toContain(':class="$style.preview"');
+		expect(page).toContain('@click="resetTilt"');
+		expect(page).toContain('{{ copy.resetTilt }}');
+	});
 });
