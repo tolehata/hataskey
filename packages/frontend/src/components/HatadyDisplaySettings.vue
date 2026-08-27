@@ -15,7 +15,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 	:beforeClose="confirmClose"
 	@closed="emit('closed')"
 >
-	<template #header><i class="ti ti-palette"></i> {{ copy.title }}</template>
+	<template #header><span class="settingsBrandText"><i class="ti ti-palette"></i> {{ copy.title }}</span></template>
 
 	<div class="hatady-scope" :data-hatady-theme="editTheme" :class="$style.body">
 		<!-- テーマ -->

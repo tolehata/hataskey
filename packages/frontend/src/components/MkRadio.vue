@@ -4,34 +4,43 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 
 <template>
-<div
+<label
 	v-adaptive-border
-	:class="[$style.root, { [$style.disabled]: disabled, [$style.checked]: checked }]"
-	:aria-checked="checked"
-	:aria-disabled="disabled"
-	role="checkbox"
-	@click="toggle"
+	:class="[$style.root, { [$style.disabled]: disabled, [$style.checked]: checked, [$style.redesigned]: isSettingsRedesign }]"
 >
 	<input
+		ref="inputEl"
 		type="radio"
+		:name="resolvedName"
+		:checked="checked"
 		:disabled="disabled"
+		:tabindex="disabled ? -1 : tabindex"
 		:class="$style.input"
+		@change="onChange"
 	>
 	<span :class="$style.button">
 		<span></span>
 	</span>
 	<span :class="$style.label"><slot></slot></span>
-</div>
+</label>
 </template>
 
+<script lang="ts">
+const standaloneGroupNames = new WeakMap<HTMLElement, string>();
+</script>
+
 <script lang="ts" setup generic="T extends unknown">
-import { computed } from 'vue';
+import { computed, inject, onMounted, ref, useTemplateRef, watch } from 'vue';
 import { haptic } from '@/utility/haptic.js';
+import { genId } from '@/utility/id.js';
+import { settingsSearchV2ContextKey } from '@/utility/settings-search-v2-context.js';
 
 const props = defineProps<{
 	modelValue: T;
 	value: T;
 	disabled?: boolean;
+	tabindex?: number;
+	name?: string;
 }>();
 
 const emit = defineEmits<{
@@ -39,11 +48,37 @@ const emit = defineEmits<{
 }>();
 
 const checked = computed(() => props.modelValue === props.value);
+const isSettingsRedesign = inject(settingsSearchV2ContextKey, null) != null;
+const inputEl = useTemplateRef<HTMLInputElement>('inputEl');
+const resolvedName = ref(props.name);
 
-function toggle(): void {
+onMounted(() => {
+	if (props.name != null) return;
+
+	const groupHost = inputEl.value?.parentElement?.parentElement;
+	if (groupHost == null) return;
+
+	// Direct MkRadio siblings (MkPreviewなど) still need native radio grouping.
+	// Only infer a name for a real sibling set so isolated radios keep their
+	// existing standalone behavior.
+	const siblingRadios = groupHost.querySelectorAll(':scope > label > input[type="radio"]');
+	if (siblingRadios.length < 2) return;
+
+	let groupName = standaloneGroupNames.get(groupHost);
+	if (groupName == null) {
+		groupName = `mk-radio-standalone-${genId()}`;
+		standaloneGroupNames.set(groupHost, groupName);
+	}
+	resolvedName.value = groupName;
+});
+
+watch(() => props.name, name => {
+	resolvedName.value = name;
+});
+
+function onChange(event: Event): void {
+	if (props.disabled || !(event.currentTarget instanceof HTMLInputElement) || !event.currentTarget.checked) return;
 	haptic();
-
-	if (props.disabled) return;
 	emit('update:modelValue', props.value);
 }
 </script>
@@ -79,6 +114,11 @@ function toggle(): void {
 		box-shadow: 0 0 0 2px var(--MI_THEME-focus);
 	}
 
+	&:focus-visible {
+		outline: 2px solid var(--MI_THEME-focus);
+		outline-offset: 2px;
+	}
+
 	&.checked {
 		background-color: var(--MI_THEME-accentedBg) !important;
 		border-color: var(--MI_THEME-accentedBg) !important;
@@ -99,10 +139,16 @@ function toggle(): void {
 
 .input {
 	position: absolute;
-	width: 0;
-	height: 0;
-	opacity: 0;
+	inline-size: 1px;
+	block-size: 1px;
 	margin: 0;
+	opacity: 0;
+	pointer-events: none;
+
+	&:focus-visible + .button {
+		outline: 2px solid var(--MI_THEME-focus);
+		outline-offset: 3px;
+	}
 }
 
 .button {
@@ -135,5 +181,18 @@ function toggle(): void {
 	display: block;
 	line-height: 20px;
 	cursor: pointer;
+}
+
+.redesigned {
+	min-height: 44px;
+	box-sizing: border-box;
+	padding: 10px 14px;
+	border-color: transparent;
+	border-radius: 999px;
+	background: color-mix(in srgb, var(--MI_THEME-panel) 94%, var(--MI_THEME-bg));
+
+	&:hover {
+		border-color: transparent !important;
+	}
 }
 </style>

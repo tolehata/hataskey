@@ -10,13 +10,14 @@ SPDX-License-Identifier: AGPL-3.0-only
 		$style.root,
 		{
 			[$style.inline]: inline,
+			[$style.redesigned]: isSettingsRedesign,
 			'_button': !to,
 		},
 	]"
 >
 	<component
 		:is="to ? (external ? 'a' : 'MkA') : 'div'"
-		:class="[$style.main, { [$style.active]: active }]"
+		:class="[$style.main, { [$style.active]: active, [$style.redesigned]: isSettingsRedesign }]"
 		class="_button"
 		v-bind="to ? (external ? { href: to, target: '_blank' } : { to, behavior }) : {}"
 	>
@@ -35,6 +36,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
+import { inject } from 'vue';
+import { settingsSearchV2ContextKey } from '@/utility/settings-search-v2-context.js';
+
 defineProps<{
 	to?: string;
 	active?: boolean;
@@ -42,6 +46,8 @@ defineProps<{
 	behavior?: null | 'window' | 'browser';
 	inline?: boolean;
 }>();
+
+const isSettingsRedesign = inject(settingsSearchV2ContextKey, null) != null;
 </script>
 
 <style lang="scss" module>
@@ -76,6 +82,31 @@ defineProps<{
 	}
 }
 
+.main.redesigned {
+	min-height: 44px;
+	padding: 10px 18px;
+	background: var(--MI_THEME-panel);
+	border: 0;
+	border-radius: 999px;
+	box-shadow: 0 1px 3px color-mix(in srgb, var(--MI_THEME-fg) 5%, transparent);
+	line-break: strict;
+	word-break: normal;
+	text-wrap: pretty;
+	transition: background 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+
+	&:hover {
+		background: color-mix(in srgb, var(--MI_THEME-accent) 8%, transparent);
+		border-color: color-mix(in srgb, var(--MI_THEME-accent) 38%, transparent);
+		box-shadow: 0 2px 7px color-mix(in srgb, var(--MI_THEME-fg) 8%, transparent);
+	}
+
+	&.active {
+		color: var(--MI_THEME-fgOnAccent);
+		background: var(--MI_THEME-accent);
+		border-color: var(--MI_THEME-accent);
+	}
+}
+
 .icon {
 	margin-right: 0.75em;
 	flex-shrink: 0;
@@ -97,6 +128,11 @@ defineProps<{
 	text-align: start;
 	overflow: hidden;
 	padding-right: 12px;
+}
+
+.main.redesigned .headerText {
+	white-space: normal;
+	line-height: 1.45;
 }
 
 .suffix {

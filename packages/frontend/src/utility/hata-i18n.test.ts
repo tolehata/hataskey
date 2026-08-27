@@ -325,7 +325,10 @@ function missingAliasedReferencesInSource(tree: LocaleTree, source: string, file
 		for (const [alias, paths] of templateAliases) {
 			if (paths.size !== 1) continue;
 			const [basePath] = paths;
-			const reference = new RegExp(`\\b${alias}((?:\\.[A-Za-z_$][\\w$]*)+)`, 'g');
+			// ⚠️`\b` は `.` の直後でも成立するため、
+			//   `editor.copy.x` の `copy` を局所別名 `copy` と取り違える。
+			//   別名は「単独の識別子として現れたとき」だけ拾う。
+			const reference = new RegExp(`(?<![\\w$.])${alias}((?:\\.[A-Za-z_$][\\w$]*)+)`, 'g');
 			for (const match of template.matchAll(reference)) {
 				const localePath = `${basePath}.${match[1].slice(1)}`;
 				if (!localeReferenceExists(tree, localePath)) {
@@ -409,9 +412,12 @@ describe('旗鯖独自機能の翻訳', () => {
 		expect(missingSourceReferences(readHataLocale('ja-JP'))).toEqual([]);
 	});
 
+	// ⚠️TypeScript の型検査器を起こして全ソースを辿るため、単体でも約5秒かかる。
+	//   既定の5秒だと全体実行（並列）で必ず時間切れになり、
+	//   ⚠️「翻訳が欠けている」という誤った読み方をされる。実測に合わせて広げる。
 	test('ソースから別名と静的翻訳関数で参照する独自翻訳パスが日本語正本に存在する', () => {
 		expect(missingAliasedSourceReferences(readHataLocale('ja-JP'))).toEqual([]);
-	});
+	}, 60000);
 
 	test('共通名前空間に置く独自機能の表示文も3言語で揃っている', () => {
 		const ja = readLocale('ja-JP');

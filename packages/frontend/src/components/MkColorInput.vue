@@ -4,10 +4,11 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 
 <template>
-<div>
-	<div :class="$style.label"><slot name="label"></slot></div>
+<div :class="[$style.root, { [$style.redesigned]: isSettingsRedesign }]">
+	<label :id="labelId" :for="inputId" :class="$style.label"><slot name="label"></slot></label>
 	<div :class="[$style.input, { disabled }]">
 		<input
+			:id="inputId"
 			ref="inputEl"
 			v-model="v"
 			v-adaptive-border
@@ -16,15 +17,21 @@ SPDX-License-Identifier: AGPL-3.0-only
 			:disabled="disabled"
 			:required="required"
 			:readonly="readonly"
+			:aria-labelledby="labelId"
+			:aria-describedby="captionId"
 			@input="onInput"
 		>
 	</div>
-	<div :class="$style.caption"><slot name="caption"></slot></div>
+	<div :id="captionId" :class="$style.caption"><slot name="caption"></slot></div>
+	<SettingsControlRelated v-if="isSettingsRedesign" :data-settings-search-id="$attrs['data-settings-search-id']"/>
 </div>
 </template>
 
 <script lang="ts" setup>
-import { ref, useTemplateRef, toRefs } from 'vue';
+import { inject, ref, useTemplateRef, toRefs } from 'vue';
+import { settingsSearchV2ContextKey } from '@/utility/settings-search-v2-context.js';
+import SettingsControlRelated from '@/components/settings-redesign/SettingsControlRelated.vue';
+import { genId } from '@/utility/id.js';
 
 const props = defineProps<{
 	modelValue: string | null;
@@ -40,6 +47,10 @@ const emit = defineEmits<{
 const { modelValue } = toRefs(props);
 const v = ref(modelValue.value);
 const inputEl = useTemplateRef('inputEl');
+const inputId = `mk-color-input-${genId()}`;
+const labelId = `${inputId}-label`;
+const captionId = `${inputId}-caption`;
+const isSettingsRedesign = inject(settingsSearchV2ContextKey, null) != null;
 
 const onInput = () => {
 	emit('update:modelValue', v.value ?? '');
@@ -47,7 +58,31 @@ const onInput = () => {
 </script>
 
 <style lang="scss" module>
+.root.redesigned {
+	> .label {
+		padding-bottom: 7px;
+	}
+
+	> .input > .inputCore {
+		height: 44px;
+		border-color: var(--settings-input-border, color-mix(in srgb, var(--MI_THEME-fg) 30%, var(--MI_THEME-divider))) !important;
+		border-radius: 999px;
+		background: color-mix(in srgb, var(--MI_THEME-panel) 94%, var(--MI_THEME-bg));
+	}
+
+	> .input > .inputCore:focus-visible {
+		outline: 2px solid var(--MI_THEME-focus);
+		outline-offset: 2px;
+	}
+
+	> .caption {
+		padding-top: 7px;
+		line-height: 1.55;
+	}
+}
+
 .label {
+	display: block;
 	font-size: 0.85em;
 	padding: 0 0 8px 0;
 	user-select: none;

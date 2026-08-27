@@ -15,6 +15,7 @@ import pluginUnwindCssModuleClassName from './lib/rollup-plugin-unwind-css-modul
 import pluginJson5 from './vite.json5.js';
 import pluginCreateSearchIndex from './lib/vite-plugin-create-search-index.js';
 import type { Options as SearchIndexOptions } from './lib/vite-plugin-create-search-index.js';
+import pluginCreateSettingsSearchIndexV2, { type SettingsSearchIndexV2Options } from './lib/vite-plugin-create-settings-search-index-v2.js';
 import pluginWatchLocales from './lib/vite-plugin-watch-locales.js';
 import { pluginRemoveUnrefI18n } from '../frontend-builder/rollup-plugin-remove-unref-i18n.js';
 import { Features } from 'lightningcss';
@@ -51,6 +52,136 @@ export const searchIndexes = [{
 	modulesToHmrOnUpdate: ['src/pages/admin/index.vue'],
 	verbose: process.env.FRONTEND_SEARCH_INDEX_VERBOSE === 'true',
 }] satisfies SearchIndexOptions[];
+
+/** Source-level settings-control inventory for the redesigned settings search. */
+export const settingsControlSearchIndexV2 = {
+	targetFilePaths: [
+		'src/pages/settings/*.vue',
+		{
+			// The root settings notice owns the existing auto-backup enable action.
+			// Its exact target overrides the page glob so the descriptor can retain
+			// the device Pizzax evidence without inventing a child route.
+			filePath: 'src/pages/settings/index.vue',
+			routeOverride: '/settings',
+			persistence: 'device',
+			saveMode: 'immediate',
+			owner: 'core',
+			applicableUi: 'all',
+		},
+		{
+			filePath: 'src/components/HatacordingUiSettings.vue',
+			routeOverride: '/settings/hatasnscord-ui',
+			persistence: 'device',
+			owner: 'hatasaba',
+			applicableUi: 'hatacording',
+		},
+		{
+			filePath: 'src/pages/settings-redesign/HataSNSCordSettingsSurface.vue',
+			routeOverride: '/settings/hatasnscord-ui',
+			persistence: 'device',
+			saveMode: 'immediate',
+			availability: 'all',
+			owner: 'hatasaba',
+			applicableUi: 'hatacording',
+		},
+		{
+			// The window is only a launcher; all searchable settings live in the
+			// shared body used by both the popup and the permanent settings surface.
+			filePath: 'src/components/HatasabaUi2SettingsBody.vue',
+			routeOverride: '/settings/hata-custom',
+			activation: { kind: 'popup', category: 'glassUi', popup: 'hatasaba-ui2' },
+			owner: 'hatasaba',
+			applicableUi: 'simple',
+		},
+		{
+			// Permanent glassUi surface. Persistence is intentionally derived per
+			// control because this source mixes device-local foldable layout and a
+			// profile-synchronised branding choice.
+			filePath: 'src/components/HatasabaUi2ImmediateSettings.vue',
+			routeOverride: '/settings/hata-custom',
+			activation: { kind: 'hata-custom-category', category: 'glassUi' },
+			saveMode: 'immediate',
+			owner: 'hatasaba',
+			applicableUi: 'simple',
+		},
+		{
+			filePath: 'src/components/MkEarthquakeSettings.vue',
+			routeOverride: '/settings/hata-custom',
+			activation: { kind: 'popup', category: 'earthquake', popup: 'earthquake' },
+			persistence: 'device',
+			owner: 'hatasaba',
+			applicableUi: 'all',
+		},
+		{
+			// Imported by notifications.vue. Search only focuses this existing
+			// control; it must never invoke the browser permission or subscription
+			// handler while navigating to the result.
+			filePath: 'src/components/MkPushNotificationAllowButton.vue',
+			routeOverride: '/settings/notifications',
+			persistence: 'account',
+			saveMode: 'immediate',
+			availability: 'all',
+			owner: 'core',
+			applicableUi: 'all',
+		},
+		{
+			filePath: 'src/components/MkUISetup.vue',
+			routeOverride: '/settings/hata-custom',
+			activation: { kind: 'popup', category: 'general', popup: 'ui-setup' },
+			persistence: 'device',
+			saveMode: 'reload',
+			owner: 'hatasaba',
+			applicableUi: 'all',
+		},
+		{
+			filePath: 'src/components/MkHataSettingsTransfer.vue',
+			routeOverride: '/settings/hata-custom',
+			activation: { kind: 'popup', category: 'general', popup: 'settings-transfer' },
+			persistence: 'account',
+			saveMode: 'buffered',
+			owner: 'hatasaba',
+			applicableUi: 'all',
+		},
+		{
+			filePath: 'src/pages/HataskSettings.vue',
+			routeOverride: '/settings/hata-custom',
+			activation: { kind: 'popup', category: 'hatask', popup: 'hatask' },
+			persistence: 'account',
+			owner: 'hatasaba',
+			applicableUi: 'all',
+		},
+		{
+			filePath: 'src/components/HatadyDisplaySettings.vue',
+			routeOverride: '/settings/hata-custom',
+			activation: { kind: 'popup', category: 'hatady', popup: 'hatady' },
+			persistence: 'device',
+			owner: 'hatasaba',
+			applicableUi: 'all',
+		},
+		{
+			filePath: 'src/pages/MkMascotSettings.vue',
+			routeOverride: '/settings/hata-custom',
+			activation: { kind: 'popup', category: 'mascot', popup: 'mascot' },
+			persistence: 'device',
+			owner: 'hatasaba',
+			applicableUi: 'all',
+		},
+	],
+	mainVirtualModule: 'search-index-v2:settings',
+	routerDefinitionPath: 'src/router.definition.ts',
+	// The shared UI2 body and immediate companion are independently inventoried:
+	// 523 source descriptors plus three explicit shell actions. The permanent
+	// UI2 root is a real focusable group for the former broad "UI" tab aliases;
+	// eight static popup controls resolve through the audited `editor.copy`
+	// proxy, while dynamic values/runtime collections use semantic groups.
+	expectedControlCount: 526,
+	manualDescriptors: [
+		{ stableId: 'settings.shell.clear-cache', route: '/settings', sourceFile: 'settings-shell', sourceLine: 0, component: 'SettingsShellAction', label: '', labelExpression: '${i18n.ts.clearCache}', labelI18nKeys: ['i18n.ts.clearCache'], preferenceKeys: [], legacyMarkerAncestorIds: [], conditions: [], searchable: true, destructive: true, persistence: 'device', saveMode: 'immediate', availability: 'all', owner: 'hatasaba', applicableUi: 'all', metadataEvidence: { persistence: '端末キャッシュを消去する既存shell操作', saveMode: '既存確認後に即時実行', availability: 'shell操作は端末幅を問わない', owner: 'settings shell', applicableUi: '全UIで表示するshell操作' }, relatedHostId: 'settings.shell.clear-cache' },
+		{ stableId: 'settings.shell.logout', route: '/settings', sourceFile: 'settings-shell', sourceLine: 0, component: 'SettingsShellAction', label: '', labelExpression: '${i18n.ts.logout}', labelI18nKeys: ['i18n.ts.logout'], preferenceKeys: [], legacyMarkerAncestorIds: [], conditions: [], searchable: true, destructive: true, persistence: 'account', saveMode: 'immediate', availability: 'all', owner: 'hatasaba', applicableUi: 'all', metadataEvidence: { persistence: '現在のアカウントsessionを終了する既存shell操作', saveMode: '既存確認後に即時実行', availability: 'shell操作は端末幅を問わない', owner: 'settings shell', applicableUi: '全UIで表示するshell操作' }, relatedHostId: 'settings.shell.logout' },
+		{ stableId: 'settings.shell.logout-all', route: '/settings', sourceFile: 'settings-shell', sourceLine: 0, component: 'SettingsShellAction', label: '', labelExpression: '${i18n.ts._hata._settingsRedesign.actions.logoutAll}', labelI18nKeys: ['i18n.ts._hata._settingsRedesign.actions.logoutAll'], preferenceKeys: [], legacyMarkerAncestorIds: [], conditions: [], searchable: true, destructive: true, persistence: 'account', saveMode: 'immediate', availability: 'all', owner: 'hatasaba', applicableUi: 'all', metadataEvidence: { persistence: '全端末sessionを終了する既存shell操作', saveMode: '既存確認後に即時実行', availability: 'shell操作は端末幅を問わない', owner: 'settings shell', applicableUi: '全UIで表示するshell操作' }, relatedHostId: 'settings.shell.logout-all' },
+	],
+	modulesToHmrOnUpdate: ['src/pages/settings-redesign/index.vue'],
+} satisfies SettingsSearchIndexV2Options;
 
 /**
  * Misskeyのフロントエンドにバンドルせず、CDNなどから別途読み込むリソースを記述する。
@@ -138,6 +269,7 @@ export function getConfig(): UserConfig {
 		plugins: [
 			pluginWatchLocales(),
 			...searchIndexes.map(options => pluginCreateSearchIndex(options)),
+			pluginCreateSettingsSearchIndexV2(settingsControlSearchIndexV2),
 			pluginVue(),
 			pluginRemoveUnrefI18n(),
 			pluginUnwindCssModuleClassName(),

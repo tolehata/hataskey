@@ -33,12 +33,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<div :class="[$style.sbScrollWrap, { [$style.fadeTop]: sbFadeTop, [$style.fadeBottom]: sbFadeBottom }]">
 				<div ref="sbScrollEl" :class="$style.sbScroll" @scroll="onSbScroll">
 					<!-- ナビ項目（prefer同期の並び順） -->
-            <div :class="[$style.sbNav, $style.hssRoot]" :data-hss-mode="sidebarFolded ? 'collapsed' : 'expanded'" :style="{ '--hss-normal-columns': String(studioProfile.expanded.columns) }">
+					<div :class="[$style.sbNav, $style.hssRoot]" :data-hss-mode="sidebarFolded ? 'collapsed' : 'expanded'" :style="{ '--hss-normal-columns': String(studioProfile.expanded.columns) }">
 						<!-- HataSideStudio: 縮小表示は専用順序のボタンだけを必ず縦一列で描画する。
                      グループ/ウィジェットは縮小側の型に存在しないため、CSS崩れではなく構造上表示されない。 -->
 						<template v-if="sidebarFolded">
 							<button v-if="isExternalLinked && !studioCollapsedButtons.some(item => item.menuId === 'externalNotifications')" v-tooltip.right="copy.externalNotifications" :class="[$style.sbItem, $style.hssCollapsedItem]" @click="sidebarItemClick('externalNotifications', $event)"><i class="ti ti-bell" :class="$style.sbIcon"></i><span v-if="extNotifHasUnread" :class="$style.sbExtDot"></span></button>
-								<button v-for="item in studioCollapsedButtons" v-show="studioMenuItemAvailable(item.menuId)" :key="item.id" v-tooltip.right="studioButtonLabel(item)" :class="[$style.sbItem, $style.hssCollapsedItem, { [$style.sbActive]: sidebarItemActive(item.menuId) }]" :data-hss-shape="item.shape" :style="studioItemStyle(item)" @click="studioItemClick(item, $event)">
+							<button v-for="item in studioCollapsedButtons" v-show="studioMenuItemAvailable(item.menuId)" :key="item.id" v-tooltip.right="studioButtonLabel(item)" :class="[$style.sbItem, $style.hssCollapsedItem, { [$style.sbActive]: sidebarItemActive(item.menuId) }]" :data-hss-shape="item.shape" :style="studioItemStyle(item)" @click="studioItemClick(item, $event)">
 								<i :class="[studioIcon(item), $style.sbIcon]"></i>
 								<template v-if="item.menuId==='notifications' && hasUnreadNotif">
 									<span v-if="showUnreadNotifCount && unreadNotifCount > 0" :class="$style.sbBadge">{{ unreadNotifCount > 99 ? '99+' : unreadNotifCount }}</span>
@@ -61,21 +61,21 @@ SPDX-License-Identifier: AGPL-3.0-only
 													<input name="query" type="search" :placeholder="copy.searchPlaceholder" :aria-label="copy.searchQuery" @click.stop>
 													<button type="submit" :aria-label="copy.searchSubmit" @click.stop><i class="ti ti-arrow-right"></i></button>
 												</form>
-								<button v-else v-tooltip.right="!child.showLabel ? studioButtonLabel(child) : null" :class="[$style.sbItem, $style.hssButton, { [$style.sbActive]: sidebarItemActive(child.menuId) }]" :data-hss-shape="child.shape" :data-hss-size="child.size" type="button" @click="studioItemClick(child, $event)">
-									<i :class="[studioIcon(child), $style.sbIcon]"></i><span v-if="child.showLabel" :class="$style.sbLabel">{{ studioButtonLabel(child) }}</span><span v-if="child.size === 'large'" :class="$style.hssButtonLines"><span v-for="line in studioButtonLines(child.menuId)" :key="line">{{ line }}</span></span>
-											<template v-if="child.menuId==='notifications' && hasUnreadNotif"><span v-if="showUnreadNotifCount && unreadNotifCount > 0" :class="$style.sbBadge">{{ unreadNotifCount > 99 ? '99+' : unreadNotifCount }}</span><span v-else :class="$style.sbNotifDot"></span></template>
-											<span v-if="child.menuId==='announcements' && hasUnreadAnnouncements" :class="$style.sbDot"></span><span v-if="child.menuId==='chat' && hasUnreadChat" :class="$style.sbNotifDot"></span>
-										</button>
-										<div v-if="child.size === 'large' && studioButtonSignals(child.menuId).length" :class="$style.hssButtonSignals"><button v-for="signal in studioButtonSignals(child.menuId)" :key="signal.label" type="button" @click.stop="openStudioButtonSignal(signal)">{{ signal.label }}</button></div>
+												<button v-else v-tooltip.right="!child.showLabel ? studioButtonLabel(child) : null" :class="[$style.sbItem, $style.hssButton, { [$style.sbActive]: sidebarItemActive(child.menuId) }]" :data-hss-shape="child.shape" :data-hss-size="child.size" type="button" @click="studioItemClick(child, $event)">
+													<i :class="[studioIcon(child), $style.sbIcon]"></i><span v-if="child.showLabel" :class="$style.sbLabel">{{ studioButtonLabel(child) }}</span><span v-if="child.size === 'large'" :class="$style.hssButtonLines"><span v-for="line in studioButtonLines(child.menuId)" :key="line">{{ line }}</span></span>
+													<template v-if="child.menuId==='notifications' && hasUnreadNotif"><span v-if="showUnreadNotifCount && unreadNotifCount > 0" :class="$style.sbBadge">{{ unreadNotifCount > 99 ? '99+' : unreadNotifCount }}</span><span v-else :class="$style.sbNotifDot"></span></template>
+													<span v-if="child.menuId==='announcements' && hasUnreadAnnouncements" :class="$style.sbDot"></span><span v-if="child.menuId==='chat' && hasUnreadChat" :class="$style.sbNotifDot"></span>
+												</button>
+												<div v-if="child.size === 'large' && studioButtonSignals(child.menuId).length" :class="$style.hssButtonSignals"><button v-for="signal in studioButtonSignals(child.menuId)" :key="signal.label" type="button" @click.stop="openStudioButtonSignal(signal)">{{ signal.label }}</button></div>
 											</div>
-							<div v-else :class="$style.hssWidget" :data-hss-kind="child.kind" :data-hss-content="studioWidgetContent(child)" :data-hss-shape="child.shape" :data-hss-size="child.size" :style="studioItemStyle(child)">
-								<div :class="$style.hssWidgetFrame" @wheel="onStudioWidgetWheel(child.kind, $event)">
-									<HataSideStudioFlowers v-if="child.kind === 'hataskFlowers' || child.kind === 'flowers'" :size="child.size"/>
-									<HataSideStudioEarthquake v-else-if="child.kind === 'earthquake'" :size="child.size"/>
-									<component :is="studioWidgetComponent(child)" v-else-if="studioWidgetComponent(child)" :key="studioWidgetRenderKey(child)" :widget="studioWidgetModel(child)" @updateProps="updateStudioWidgetProps(child.id, $event)"/>
-								<button v-else type="button" :class="$style.hssWidgetFallback" @click="studioWidgetClick(child.kind)"><i :class="studioWidgetIcon(child.kind)"></i><span><b>{{ studioWidgetValue(child.kind) }}</b><small v-if="studioWidgetContent(child) !== 'compact'">{{ studioWidgetLabel(child) }}</small><small v-if="studioWidgetContent(child) === 'detail'">{{ studioWidgetDetail(child.kind) }}</small></span></button>
-								</div>
-							</div>
+											<div v-else :class="$style.hssWidget" :data-hss-kind="child.kind" :data-hss-content="studioWidgetContent(child)" :data-hss-shape="child.shape" :data-hss-size="child.size" :style="studioItemStyle(child)">
+												<div :class="$style.hssWidgetFrame" @wheel="onStudioWidgetWheel(child.kind, $event)">
+													<HataSideStudioFlowers v-if="child.kind === 'hataskFlowers' || child.kind === 'flowers'" :size="child.size"/>
+													<HataSideStudioEarthquake v-else-if="child.kind === 'earthquake'" :size="child.size"/>
+													<component :is="studioWidgetComponent(child)" v-else-if="studioWidgetComponent(child)" :key="studioWidgetRenderKey(child)" :widget="studioWidgetModel(child)" @updateProps="updateStudioWidgetProps(child.id, $event)"/>
+													<button v-else type="button" :class="$style.hssWidgetFallback" @click="studioWidgetClick(child.kind)"><i :class="studioWidgetIcon(child.kind)"></i><span><b>{{ studioWidgetValue(child.kind) }}</b><small v-if="studioWidgetContent(child) !== 'compact'">{{ studioWidgetLabel(child) }}</small><small v-if="studioWidgetContent(child) === 'detail'">{{ studioWidgetDetail(child.kind) }}</small></span></button>
+												</div>
+											</div>
 										</template>
 									</div>
 								</div>
@@ -83,17 +83,17 @@ SPDX-License-Identifier: AGPL-3.0-only
 									<form v-if="isStudioSearchButton(node)" :class="[$style.sbItem, $style.hssButton, $style.hssSearchButton]" :data-hss-shape="node.shape" :data-hss-size="node.size" role="search" @submit.prevent="submitStudioSearch">
 										<i :class="[studioIcon(node), $style.sbIcon]"></i><input name="query" type="search" :placeholder="copy.searchPlaceholder" :aria-label="copy.searchQuery" @click.stop><button type="submit" :aria-label="copy.searchSubmit" @click.stop><i class="ti ti-arrow-right"></i></button>
 									</form>
-								<template v-else>
-									<button v-tooltip.right="!node.showLabel ? studioButtonLabel(node) : null" :class="[$style.sbItem, $style.hssButton, { [$style.sbActive]: sidebarItemActive(node.menuId) }]" :data-hss-shape="node.shape" :data-hss-size="node.size" type="button" @click="studioItemClick(node, $event)"><i :class="[studioIcon(node), $style.sbIcon]"></i><span v-if="node.showLabel" :class="$style.sbLabel">{{ studioButtonLabel(node) }}</span><span v-if="node.size === 'large'" :class="$style.hssButtonLines"><span v-for="line in studioButtonLines(node.menuId)" :key="line">{{ line }}</span></span></button>
-									<div v-if="node.size === 'large' && studioButtonSignals(node.menuId).length" :class="$style.hssButtonSignals"><button v-for="signal in studioButtonSignals(node.menuId)" :key="signal.label" type="button" @click.stop="openStudioButtonSignal(signal)">{{ signal.label }}</button></div>
-								</template>
+									<template v-else>
+										<button v-tooltip.right="!node.showLabel ? studioButtonLabel(node) : null" :class="[$style.sbItem, $style.hssButton, { [$style.sbActive]: sidebarItemActive(node.menuId) }]" :data-hss-shape="node.shape" :data-hss-size="node.size" type="button" @click="studioItemClick(node, $event)"><i :class="[studioIcon(node), $style.sbIcon]"></i><span v-if="node.showLabel" :class="$style.sbLabel">{{ studioButtonLabel(node) }}</span><span v-if="node.size === 'large'" :class="$style.hssButtonLines"><span v-for="line in studioButtonLines(node.menuId)" :key="line">{{ line }}</span></span></button>
+										<div v-if="node.size === 'large' && studioButtonSignals(node.menuId).length" :class="$style.hssButtonSignals"><button v-for="signal in studioButtonSignals(node.menuId)" :key="signal.label" type="button" @click.stop="openStudioButtonSignal(signal)">{{ signal.label }}</button></div>
+									</template>
 								</div>
 								<div v-else :class="$style.hssWidget" :data-hss-kind="node.kind" :data-hss-content="studioWidgetContent(node)" :data-hss-shape="node.shape" :data-hss-size="node.size" :style="studioItemStyle(node)">
 									<div :class="$style.hssWidgetFrame" @wheel="onStudioWidgetWheel(node.kind, $event)">
-									<HataSideStudioFlowers v-if="node.kind === 'hataskFlowers' || node.kind === 'flowers'" :size="node.size"/>
-									<HataSideStudioEarthquake v-else-if="node.kind === 'earthquake'" :size="node.size"/>
-									<component :is="studioWidgetComponent(node)" v-else-if="studioWidgetComponent(node)" :key="studioWidgetRenderKey(node)" :widget="studioWidgetModel(node)" @updateProps="updateStudioWidgetProps(node.id, $event)"/>
-									<button v-else type="button" :class="$style.hssWidgetFallback" @click="studioWidgetClick(node.kind)"><i :class="studioWidgetIcon(node.kind)"></i><span><b>{{ studioWidgetValue(node.kind) }}</b><small v-if="studioWidgetContent(node) !== 'compact'">{{ studioWidgetLabel(node) }}</small><small v-if="studioWidgetContent(node) === 'detail'">{{ studioWidgetDetail(node.kind) }}</small></span></button>
+										<HataSideStudioFlowers v-if="node.kind === 'hataskFlowers' || node.kind === 'flowers'" :size="node.size"/>
+										<HataSideStudioEarthquake v-else-if="node.kind === 'earthquake'" :size="node.size"/>
+										<component :is="studioWidgetComponent(node)" v-else-if="studioWidgetComponent(node)" :key="studioWidgetRenderKey(node)" :widget="studioWidgetModel(node)" @updateProps="updateStudioWidgetProps(node.id, $event)"/>
+										<button v-else type="button" :class="$style.hssWidgetFallback" @click="studioWidgetClick(node.kind)"><i :class="studioWidgetIcon(node.kind)"></i><span><b>{{ studioWidgetValue(node.kind) }}</b><small v-if="studioWidgetContent(node) !== 'compact'">{{ studioWidgetLabel(node) }}</small><small v-if="studioWidgetContent(node) === 'detail'">{{ studioWidgetDetail(node.kind) }}</small></span></button>
 									</div>
 								</div>
 							</template>
@@ -252,7 +252,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</div>
 			</div>
 			<!-- Page view header -->
-			<header v-show="isPageView && showPageHeader && !isCollectionTimelinePage" :class="$style.pageHeader">
+			<header v-show="isPageView && showPageHeader && !isCollectionTimelinePage && !isSettingsPage" :class="$style.pageHeader">
 				<button :class="$style.pageBackBtn" @click="goBack"><i class="ti ti-chevron-left"></i></button>
 				<div :class="$style.pageTitle">{{ pageMetadata?.title ?? '' }}</div>
 				<div style="width: 38px;"></div>
@@ -261,8 +261,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<!-- 旗鯖fork: 通常表示(デッキUIではない)タイムラインの背景にヘッダー画像のぼかしを敷く(無効化可)。
              .content(スクロール領域)の外、.mainColumnInner 直下に置くことで、タイムラインを
              スクロールしても背景が流れず固定表示される(デッキ版の .deckBanner と同じ考え方)。 -->
-				<div v-if="timelineGlassBg && $i?.bannerUrl" :class="$style.timelineBanner">
-					<img :src="$i.bannerUrl" :class="$style.timelineBannerImg"/>
+			<div v-if="timelineGlassBg && $i?.bannerUrl" :class="$style.timelineBanner">
+				<img :src="$i.bannerUrl" :class="$style.timelineBannerImg"/>
 			</div>
 			<div ref="contentEl" :class="$style.content" @scroll="onContentScroll" @wheel="onContentWheel">
 				<Transition :name="$style.tlFade" mode="out-in">
@@ -940,6 +940,21 @@ const isChannelDetailPage = computed(() => {
 const isAntennaTimelinePage = computed(() => isAntennaTimelinePath(mainRouter.currentRoute.value.path));
 const isAntennaPage = computed(() => mainRouter.currentRoute.value.path.startsWith('/my/antennas') || isAntennaTimelinePage.value);
 const isCollectionTimelinePage = computed(() => isListTimelinePage.value || isAntennaTimelinePage.value);
+/**
+ * 旗鯖fork: 設定画面かどうか。
+ * ⚠️再設計の設定画面は自前で見出しと戻る操作を持つので、本体のページヘッダーを
+ *   重ねて出すと帯が2本並んでしまう。設定の下位ページも含めて対象にする。
+ */
+const isSettingsPage = computed(() => {
+	// ⚠️まず currentRoute（ref）を読んで依存を作る。これが無いと computed が
+	//   一度計算したきり更新されず、画面を移っても帯が消えない。
+	//   ⚠️getCurrentFullPath() はただのプロパティでリアクティブではない。
+	const route = mainRouter.currentRoute.value;
+	// ⚠️設定の下位ルートは router.definition.ts で '/profile' のように
+	//   親を含まない形で定義されている。route.path だけでは取りこぼすので実URLを見る。
+	const path = (route == null ? '' : mainRouter.getCurrentFullPath()).split('?')[0].split('#')[0];
+	return path === '/settings' || path.startsWith('/settings/');
+});
 // currentRoute.path は実URLではなく `/timeline/list/:listId` のようなルート定義。
 // ここからIDを切り出すと文字列 `:listId` を管理画面へ渡してしまうため、
 // 解決済みルートの props から実際のIDを読む。
@@ -1611,7 +1626,7 @@ const scrollToTop = () => { if (contentEl.value) contentEl.value.scrollTo({ top:
 // switchTab('following') を呼んでいたため、どのタブを見ていても強制的にHTLへ切り替わってしまい、
 // 元のタブへ戻す手間が発生していた。
 const goHome = () => {
-	if (isPageView.value) { mainRouter.push('/'); } else { scrollToTop(); }
+	if (isPageView.value) { mainRouter.pushByPath('/', 'forcePage'); } else { scrollToTop(); }
 };
 const goBack = () => {
 	if (window.history.length > 1) { window.history.back(); } else { goHome(); }
@@ -1703,6 +1718,7 @@ const openUiSetup = async () => {
 };
 const goToSettings = () => { mainRouter.push('/settings'); };
 const goToAdmin = () => { mainRouter.push('/admin'); };
+
 // 旗鯖fork: ページ全体をリロードする。
 async function reloadPage(ev?: Event) {
 	if (ev) {

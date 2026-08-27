@@ -1,0 +1,23 @@
+/* Hataskey settings brand typography. Keep this class on English wordmarks only. */
+@font-face {
+	font-family: 'HataSettingsRighteous';
+	src: url('/client-assets/Righteous-Regular.woff2') format('woff2');
+	font-display: swap;
+	font-style: normal;
+	font-weight: 400;
+}
+
+.settingsBrand {
+	font-family: 'HataSettingsRighteous', 'Righteous', system-ui, sans-serif;
+	font-weight: 400;
+	letter-spacing: .02em;
+	line-height: 1.1;
+	white-space: nowrap;
+}
+
+.settingsBrandText {
+	font-family: 'HataSettingsRighteous', 'Righteous', system-ui, sans-serif;
+	font-weight: inherit;
+	letter-spacing: .01em;
+	line-height: inherit;
+}

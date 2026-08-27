@@ -4,7 +4,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 
 <template>
-<div :class="[$style.root, { [$style.rootFirst]: first }]">
+<div :class="[$style.root, { [$style.rootFirst]: first, [$style.redesigned]: isSettingsRedesign }]" :data-settings-form-section="isSettingsRedesign ? '' : undefined">
 	<div :class="[$style.label, { [$style.labelFirst]: first }]"><slot name="label"></slot></div>
 	<div :class="[$style.description]"><slot name="description"></slot></div>
 	<div :class="$style.main">
@@ -14,9 +14,14 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
+import { inject } from 'vue';
+import { settingsSearchV2ContextKey } from '@/utility/settings-search-v2-context.js';
+
 defineProps<{
 	first?: boolean;
 }>();
+
+const isSettingsRedesign = inject(settingsSearchV2ContextKey, null) != null;
 </script>
 
 <style lang="scss" module>
@@ -27,6 +32,29 @@ defineProps<{
 
 .rootFirst {
 	border-top: none;
+}
+
+.root.redesigned {
+	margin-block: 0 12px;
+	padding: 0;
+	background: transparent;
+	border: 0;
+	box-shadow: none;
+	line-break: strict;
+	word-break: normal;
+	text-wrap: pretty;
+
+	.label {
+		padding-top: 0;
+		font-size: 0.95em;
+		line-height: 1.55;
+	}
+
+	.description {
+		line-height: 1.7;
+	}
+
+	.main { margin-top: 10px; }
 }
 
 .label {

@@ -4,38 +4,40 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 
 <template>
-<div>
-	<div :class="$style.label" @click="focus"><slot name="label"></slot></div>
-	<div
+<div :class="[$style.root, { [$style.redesigned]: isSettingsRedesign }]">
+	<label :id="labelId" :for="inputId" :class="$style.label"><slot name="label"></slot></label>
+	<button
+		:id="inputId"
 		ref="container"
+		type="button"
 		tabindex="0"
+		aria-haspopup="menu"
+		:aria-expanded="opening"
+		:aria-disabled="disabled || readonly || undefined"
+		:aria-readonly="readonly || undefined"
+		:aria-required="required || undefined"
+		:aria-labelledby="labelId"
+		:aria-describedby="captionId"
+		:disabled="disabled"
 		:class="[$style.input, { [$style.inline]: inline, [$style.disabled]: disabled, [$style.focused]: focused || opening }]"
 		@focus="focused = true"
 		@blur="focused = false"
-		@mousedown.prevent="show"
-		@keydown.space.enter="show"
+		@click="show"
+		@keydown="onKeydown"
 	>
-		<div ref="prefixEl" :class="$style.prefix"><slot name="prefix"></slot></div>
-		<div
+		<span ref="prefixEl" :class="$style.prefix"><slot name="prefix"></slot></span>
+		<span
 			ref="inputEl"
 			v-adaptive-border
-			tabindex="-1"
 			:class="$style.inputCore"
-			:disabled="disabled"
-			:required="required"
-			:readonly="readonly"
-			:placeholder="placeholder"
-			@mousedown.prevent="() => {}"
-			@keydown.prevent="() => {}"
 		>
-			<div style="pointer-events: none;">{{ currentValueText ?? '' }}</div>
-			<div style="display: none;">
-				<slot></slot>
-			</div>
-		</div>
-		<div ref="suffixEl" :class="$style.suffix"><i class="ti ti-chevron-down" :class="[$style.chevron, { [$style.chevronOpening]: opening }]"></i></div>
-	</div>
-	<div :class="$style.caption"><slot name="caption"></slot></div>
+			{{ currentValueText ?? placeholder ?? '' }}
+		</span>
+		<span ref="suffixEl" :class="$style.suffix"><i class="ti ti-chevron-down" :class="[$style.chevron, { [$style.chevronOpening]: opening }]"></i></span>
+	</button>
+	<div style="display: none;"><slot></slot></div>
+	<div :id="captionId" :class="$style.caption"><slot name="caption"></slot></div>
+	<SettingsControlRelated v-if="isSettingsRedesign" :data-settings-search-id="$attrs['data-settings-search-id']"/>
 </div>
 </template>
 
@@ -68,9 +70,12 @@ export type GetMkSelectValueTypesFromDef<T extends MkSelectItem[]> = T[number] e
 </script>
 
 <script lang="ts" setup generic="const ITEMS extends MkSelectItem[], MODELT extends OptionValue">
-import { onMounted, onUnmounted, nextTick, ref, watch, computed, toRefs, useTemplateRef } from 'vue';
+import { inject, onMounted, onUnmounted, nextTick, ref, watch, computed, toRefs, useTemplateRef } from 'vue';
 import type { MenuItem } from '@/types/menu.js';
 import * as os from '@/os.js';
+import { genId } from '@/utility/id.js';
+import { settingsSearchV2ContextKey } from '@/utility/settings-search-v2-context.js';
+import SettingsControlRelated from '@/components/settings-redesign/SettingsControlRelated.vue';
 
 const props = defineProps<{
 	items: ITEMS;
@@ -104,6 +109,10 @@ const height =
 	props.small ? 33 :
 	props.large ? 39 :
 	36;
+const isSettingsRedesign = inject(settingsSearchV2ContextKey, null) != null;
+const inputId = `mk-select-${genId()}`;
+const labelId = `${inputId}-label`;
+const captionId = `${inputId}-caption`;
 
 const focus = () => container.value?.focus();
 
@@ -207,10 +216,45 @@ function show() {
 		},
 	});
 }
+
+function onKeydown(event: KeyboardEvent) {
+	if (event.key !== 'Enter' && event.key !== ' ' && event.key !== 'Spacebar' && event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+	event.preventDefault();
+	show();
+}
 </script>
 
 <style lang="scss" module>
+.root.redesigned {
+	> .label {
+		padding-bottom: 7px;
+	}
+
+	> .input > .inputCore {
+		height: 44px;
+		border-color: var(--settings-input-border, color-mix(in srgb, var(--MI_THEME-fg) 30%, var(--MI_THEME-divider))) !important;
+		border-radius: 999px;
+		background: color-mix(in srgb, var(--MI_THEME-panel) 94%, var(--MI_THEME-bg));
+	}
+
+	> .input:focus-visible {
+		outline: 2px solid var(--MI_THEME-focus);
+		outline-offset: 2px;
+	}
+
+	> .input > .prefix,
+	> .input > .suffix {
+		height: 44px;
+	}
+
+	> .caption {
+		padding-top: 7px;
+		line-height: 1.55;
+	}
+}
+
 .label {
+	display: block;
 	font-size: 0.85em;
 	padding: 0 0 8px 0;
 	user-select: none;
@@ -231,11 +275,34 @@ function show() {
 }
 
 .input {
+	appearance: none;
+	-webkit-appearance: none;
+	-moz-appearance: none;
+	display: block;
+	box-sizing: border-box;
+	min-inline-size: 0;
+	min-block-size: 0;
+	width: 100%;
+	margin: 0;
+	padding: 0;
+	border: 0;
+	border-radius: 0;
+	background: transparent;
+	color: inherit;
+	font: inherit;
+	line-height: inherit;
+	letter-spacing: inherit;
+	text-align: inherit;
+	text-transform: none;
+	text-decoration: none;
+	vertical-align: middle;
+	box-shadow: none;
 	position: relative;
 	cursor: pointer;
 
 	&.inline {
 		display: inline-block;
+		width: auto;
 		margin: 0;
 	}
 
@@ -257,6 +324,11 @@ function show() {
 
 	&:focus {
 		outline: none;
+	}
+
+	&:focus-visible {
+		outline: 2px solid var(--MI_THEME-focus);
+		outline-offset: 2px;
 	}
 
 	&:hover {

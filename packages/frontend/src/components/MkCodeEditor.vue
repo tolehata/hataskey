@@ -4,11 +4,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 
 <template>
-<div>
-	<div :class="$style.label" @click="focus"><slot name="label"></slot></div>
+<div :class="[$style.root, { [$style.redesigned]: isSettingsRedesign }]">
+	<label :id="labelId" :for="inputId" :class="$style.label"><slot name="label"></slot></label>
 	<div :class="[$style.codeEditorRoot, { [$style.focused]: focused }]">
 		<div :class="$style.codeEditorScroller">
 			<textarea
+				:id="inputId"
 				ref="inputEl"
 				v-model="v"
 				:class="[$style.textarea]"
@@ -18,6 +19,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 				autocomplete="off"
 				wrap="off"
 				spellcheck="false"
+				:aria-labelledby="labelId"
+				:aria-describedby="captionId"
 				@focus="focused = true"
 				@blur="focused = false"
 				@keydown="onKeydown($event)"
@@ -26,17 +29,21 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<XCode :class="$style.codeEditorHighlighter" :codeEditor="true" :code="v" :lang="lang"/>
 		</div>
 	</div>
-	<div :class="$style.caption"><slot name="caption"></slot></div>
+	<div :id="captionId" :class="$style.caption"><slot name="caption"></slot></div>
 	<MkButton v-if="manualSave && changed" primary :class="$style.save" @click="updated"><i class="ti ti-device-floppy"></i> {{ i18n.ts.save }}</MkButton>
+	<SettingsControlRelated v-if="isSettingsRedesign" :data-settings-search-id="$attrs['data-settings-search-id']"/>
 </div>
 </template>
 
 <script lang="ts" setup>
-import { ref, watch, toRefs, useTemplateRef, nextTick } from 'vue';
+import { inject, ref, watch, toRefs, useTemplateRef, nextTick } from 'vue';
 import { debounce } from 'throttle-debounce';
 import MkButton from '@/components/MkButton.vue';
 import { i18n } from '@/i18n.js';
 import XCode from '@/components/MkCode.core.vue';
+import { genId } from '@/utility/id.js';
+import { settingsSearchV2ContextKey } from '@/utility/settings-search-v2-context.js';
+import SettingsControlRelated from '@/components/settings-redesign/SettingsControlRelated.vue';
 
 const props = withDefaults(defineProps<{
 	modelValue: string | null;
@@ -62,6 +69,10 @@ const v = ref<string>(modelValue.value ?? '');
 const focused = ref(false);
 const changed = ref(false);
 const inputEl = useTemplateRef('inputEl');
+const inputId = `mk-code-editor-${genId()}`;
+const labelId = `${inputId}-label`;
+const captionId = `${inputId}-caption`;
+const isSettingsRedesign = inject(settingsSearchV2ContextKey, null) != null;
 
 const focus = () => inputEl.value?.focus();
 
@@ -127,7 +138,30 @@ watch(v, newValue => {
 </script>
 
 <style lang="scss" module>
+.root.redesigned {
+	> .label {
+		padding-bottom: 7px;
+	}
+
+	> .codeEditorRoot {
+		border-color: color-mix(in srgb, var(--MI_THEME-divider) 78%, transparent);
+		border-radius: 22px;
+		background: color-mix(in srgb, var(--MI_THEME-panel) 94%, var(--MI_THEME-bg));
+	}
+
+	> .codeEditorRoot:focus-within {
+		outline: 2px solid var(--MI_THEME-focus);
+		outline-offset: 2px;
+	}
+
+	> .caption {
+		padding-top: 7px;
+		line-height: 1.55;
+	}
+}
+
 .label {
+	display: block;
 	font-size: 0.85em;
 	padding: 0 0 8px 0;
 	user-select: none;

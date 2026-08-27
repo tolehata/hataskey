@@ -4,8 +4,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 
 <template>
-<div class="timctyfi" :class="{ disabled, easing }">
-	<div class="label">
+<div class="timctyfi" :class="{ disabled, easing, settingsRedesign: isSettingsRedesign }">
+	<div :id="labelId" class="label">
 		<slot name="label"></slot>
 	</div>
 	<div v-adaptive-border class="body" :class="{ 'disabled': disabled, fontSizeSlider: isFontSizeSlider }">
@@ -25,27 +25,41 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<div
 				ref="thumbEl"
 				class="thumb"
+				role="slider"
+				:tabindex="disabled ? -1 : 0"
+				:aria-disabled="disabled || undefined"
+				:aria-labelledby="labelId"
+				:aria-describedby="captionId"
+				:aria-valuemin="min"
+				:aria-valuemax="max"
+				:aria-valuenow="finalValue"
+				:aria-valuetext="textConverter(finalValue)"
+				aria-orientation="horizontal"
 				:style="{ left: thumbPosition + 'px' }"
 				@mouseenter.passive="onMouseenter"
-				@mousedown="onMousedown"
-				@touchstart="onMousedown"
+				@pointerdown="onPointerdown"
+				@keydown="onKeydown"
 			>
 				<div class="thumbInner"></div>
 			</div>
 		</div>
 		<slot name="suffix"></slot>
 	</div>
-	<div class="caption">
+	<div :id="captionId" class="caption">
 		<slot name="caption"></slot>
 	</div>
+	<SettingsControlRelated v-if="isSettingsRedesign" :data-settings-search-id="$attrs['data-settings-search-id']"/>
 </div>
 </template>
 
 <script lang="ts" setup>
-import { computed, defineAsyncComponent, onMounted, onUnmounted, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue';
+import { computed, defineAsyncComponent, inject, onMounted, onUnmounted, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue';
 import { isTouchUsing } from '@/utility/touch.js';
 import * as os from '@/os.js';
 import { haptic } from '@/utility/haptic.js';
+import { genId } from '@/utility/id.js';
+import { settingsSearchV2ContextKey } from '@/utility/settings-search-v2-context.js';
+import SettingsControlRelated from '@/components/settings-redesign/SettingsControlRelated.vue';
 
 const props = withDefaults(defineProps<{
 	modelValue: number;
@@ -72,6 +86,10 @@ const emit = defineEmits<{
 
 const containerEl = useTemplateRef('containerEl');
 const thumbEl = useTemplateRef('thumbEl');
+const isSettingsRedesign = inject(settingsSearchV2ContextKey, null) != null;
+const inputId = `mk-range-${genId()}`;
+const labelId = `${inputId}-label`;
+const captionId = `${inputId}-caption`;
 
 const maxRatio = computed(() => Math.abs(props.max) / (props.max + Math.abs(Math.min(0, props.min))));
 const minRatio = computed(() => Math.abs(Math.min(0, props.min)) / (props.max + Math.abs(Math.min(0, props.min))));
@@ -152,8 +170,10 @@ const steps = computed(() => {
 
 const tooltipForDragShowing = ref(false);
 const tooltipForHoverShowing = ref(false);
+let activeDragCleanup: (() => void) | null = null;
 
 onBeforeUnmount(() => {
+	activeDragCleanup?.();
 	// 何らかの問題で表示されっぱなしでもコンポーネントを離れたら消えるように
 	tooltipForDragShowing.value = false;
 	tooltipForHoverShowing.value = false;
@@ -181,9 +201,15 @@ function onMouseenter() {
 
 let lastClickTime: number | null = null;
 
-function onMousedown(ev: MouseEvent | TouchEvent) {
+function onPointerdown(ev: PointerEvent) {
 	if (props.disabled) return; // Prevent interaction if disabled
+	if (ev.pointerType === 'mouse' && ev.button !== 0) return;
+	// A second contact must not silently discard a non-continuous first drag
+	// before its dragEnded consumer has persisted the value.
+	if (activeDragCleanup != null) return;
 
+	thumbEl.value?.focus({ preventScroll: true });
+	thumbEl.value?.setPointerCapture?.(ev.pointerId);
 	haptic();
 
 	ev.preventDefault();
@@ -200,46 +226,58 @@ function onMousedown(ev: MouseEvent | TouchEvent) {
 		closed: () => dispose(),
 	});
 
-	const style = window.document.createElement('style');
-	style.appendChild(window.document.createTextNode('* { cursor: grabbing !important; } body * { pointer-events: none !important; }'));
-	window.document.head.appendChild(style);
-
 	const thumbWidth = getThumbWidth();
+	const pointerId = ev.pointerId;
+	let lastEmittedValue = finalValue.value;
 
-	const onDrag = (ev: MouseEvent | TouchEvent) => {
+	const onDrag = (ev: PointerEvent) => {
+		if (ev.pointerId !== pointerId) return;
 		ev.preventDefault();
-		let beforeValue = finalValue.value;
 		const containerRect = containerEl.value!.getBoundingClientRect();
-		const pointerX = 'touches' in ev && ev.touches.length > 0 ? ev.touches[0].clientX : 'clientX' in ev ? ev.clientX : 0;
+		const pointerX = ev.clientX;
 		const pointerPositionOnContainer = pointerX - (containerRect.left + (thumbWidth / 2));
 		rawValue.value = Math.min(1, Math.max(0, pointerPositionOnContainer / (containerEl.value!.offsetWidth - thumbWidth)));
 
-		if (props.continuousUpdate && beforeValue !== finalValue.value) {
+		if (props.continuousUpdate && lastEmittedValue !== finalValue.value) {
 			emit('update:modelValue', finalValue.value);
+			lastEmittedValue = finalValue.value;
 		}
 	};
 
-	let beforeValue = finalValue.value;
+	const beforeValue = finalValue.value;
 
-	const onMouseup = () => {
-		window.document.head.removeChild(style);
+	const onMouseup = (ev: PointerEvent) => {
+		if (ev.pointerId !== pointerId) return;
 		tooltipForDragShowing.value = false;
-		window.removeEventListener('mousemove', onDrag);
-		window.removeEventListener('touchmove', onDrag);
-		window.removeEventListener('mouseup', onMouseup);
-		window.removeEventListener('touchend', onMouseup);
+		cleanupDrag();
 
 		// 値が変わってたら通知
 		if (beforeValue !== finalValue.value) {
-			emit('update:modelValue', finalValue.value);
+			if (!props.continuousUpdate) {
+				emit('update:modelValue', finalValue.value);
+			}
 			emit('dragEnded', finalValue.value);
 		}
 	};
 
-	window.addEventListener('mousemove', onDrag);
-	window.addEventListener('touchmove', onDrag);
-	window.addEventListener('mouseup', onMouseup, { once: true });
-	window.addEventListener('touchend', onMouseup, { once: true });
+	const cleanupDrag = () => {
+		window.removeEventListener('pointermove', onDrag);
+		window.removeEventListener('pointerup', onMouseup);
+		window.removeEventListener('pointercancel', onMouseup);
+		if (thumbEl.value?.hasPointerCapture?.(pointerId)) {
+			thumbEl.value.releasePointerCapture?.(pointerId);
+		}
+		if (activeDragCleanup === cleanupActiveDrag) activeDragCleanup = null;
+	};
+	const cleanupActiveDrag = () => {
+		tooltipForDragShowing.value = false;
+		cleanupDrag();
+	};
+	activeDragCleanup = cleanupActiveDrag;
+
+	window.addEventListener('pointermove', onDrag);
+	window.addEventListener('pointerup', onMouseup);
+	window.addEventListener('pointercancel', onMouseup);
 
 	if (lastClickTime == null) {
 		lastClickTime = Date.now();
@@ -254,6 +292,32 @@ function onMousedown(ev: MouseEvent | TouchEvent) {
 			lastClickTime = now;
 		}
 	}
+}
+
+function onKeydown(event: KeyboardEvent) {
+	if (props.disabled) return;
+
+	const key = event.key;
+	if (!['ArrowLeft', 'ArrowDown', 'ArrowRight', 'ArrowUp', 'Home', 'End'].includes(key)) return;
+	event.preventDefault();
+
+	const step = props.step && props.step > 0 ? props.step : 1;
+	const nextValue = key === 'Home'
+		? props.min
+		: key === 'End'
+			? props.max
+			: key === 'ArrowLeft' || key === 'ArrowDown'
+				? finalValue.value - step
+				: finalValue.value + step;
+	const clampedValue = Math.min(props.max, Math.max(props.min, nextValue));
+	const steppedValue = props.step && props.step > 0
+		? props.min + (Math.round((clampedValue - props.min) / props.step) * props.step)
+		: clampedValue;
+	const next = Math.min(props.max, Math.max(props.min, steppedValue));
+	if (next === finalValue.value) return;
+	rawValue.value = calcRawValue(next);
+	emit('update:modelValue', next);
+	emit('dragEnded', next);
 }
 </script>
 
@@ -283,8 +347,8 @@ function onMousedown(ev: MouseEvent | TouchEvent) {
 		}
 	}
 
-	$thumbHeight: 32px;
-	$thumbWidth: 32px;
+	$thumbHeight: 44px;
+	$thumbWidth: 44px;
 	$thumbInnerHeight: 19px;
 	$thumbInnerWidth: 19px;
 
@@ -304,9 +368,12 @@ function onMousedown(ev: MouseEvent | TouchEvent) {
 		}
 
 		> .container {
+			--mk-range-thumb-width: #{$thumbWidth};
+			--mk-range-thumb-height: #{$thumbHeight};
+
 			flex: 1;
 			position: relative;
-			height: $thumbHeight;
+			height: var(--mk-range-thumb-height);
 
 			> .track {
 				position: absolute;
@@ -315,7 +382,7 @@ function onMousedown(ev: MouseEvent | TouchEvent) {
 				left: 0;
 				right: 0;
 				margin: auto;
-				width: calc(100% - #{$thumbWidth});
+				width: calc(100% - var(--mk-range-thumb-width));
 				height: 3px;
 				background: rgba(0, 0, 0, 0.1);
 				border-radius: 999px;
@@ -360,7 +427,7 @@ function onMousedown(ev: MouseEvent | TouchEvent) {
 				left: 0;
 				right: 0;
 				margin: auto;
-				width: calc(100% - #{$thumbWidth});
+				width: calc(100% - var(--mk-range-thumb-width));
 
 				> .tick {
 					position: absolute;
@@ -375,14 +442,20 @@ function onMousedown(ev: MouseEvent | TouchEvent) {
 
 			> .thumb {
 				position: absolute;
-				width: $thumbWidth;
-				height: $thumbHeight;
+				width: var(--mk-range-thumb-width);
+				height: var(--mk-range-thumb-height);
 				cursor: grab;
+				touch-action: none;
 
 				&:hover {
 					> .thumbInner {
 						background: hsl(from var(--MI_THEME-accent) h s calc(l + 10));
 					}
+				}
+
+				&:focus-visible {
+					outline: 2px solid var(--MI_THEME-focus);
+					outline-offset: 2px;
 				}
 
 				> .thumbInner {
@@ -420,6 +493,30 @@ function onMousedown(ev: MouseEvent | TouchEvent) {
 					transition: left 0.2s cubic-bezier(0, 0, 0, 1);
 				}
 			}
+		}
+	}
+
+	&.settingsRedesign {
+		> .label {
+			padding-bottom: 7px;
+		}
+
+		> .body {
+			min-height: 44px;
+			padding-inline: 10px;
+			border-color: color-mix(in srgb, var(--MI_THEME-divider) 78%, transparent);
+			border-radius: 22px;
+			background: color-mix(in srgb, var(--MI_THEME-panel) 94%, var(--MI_THEME-bg));
+
+			> .container {
+				--mk-range-thumb-width: 44px;
+				--mk-range-thumb-height: 44px;
+			}
+		}
+
+		> .caption {
+			padding-top: 7px;
+			line-height: 1.55;
 		}
 	}
 }

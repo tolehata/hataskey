@@ -4,11 +4,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 
 <template>
-<div class="_selectable">
-	<div :class="$style.label" @click="focus"><slot name="label"></slot></div>
+<div class="_selectable" :class="[$style.root, { [$style.redesigned]: isSettingsRedesign }]">
+	<div :id="labelId" :class="$style.label" @click="onLabelClick"><slot name="label"></slot></div>
 	<div :class="[$style.input, { [$style.inline]: inline, [$style.disabled]: disabled, [$style.focused]: focused }]">
 		<div ref="prefixEl" :class="$style.prefix"><slot name="prefix"></slot></div>
 		<input
+			:id="inputId"
 			ref="inputEl"
 			v-model="v"
 			v-adaptive-border
@@ -23,8 +24,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 			:autocapitalize="autocapitalize"
 			:spellcheck="spellcheck"
 			:inputmode="inputmode"
+			:aria-labelledby="labelId"
 			:step="step"
-			:list="id"
+			:list="listId"
+			:aria-describedby="captionId"
 			:min="min"
 			:max="max"
 			@focus="onFocus"
@@ -32,14 +35,14 @@ SPDX-License-Identifier: AGPL-3.0-only
 			@keydown="onKeydown($event)"
 			@input="onInput"
 		>
-		<datalist v-if="datalist" :id="id">
+		<datalist v-if="datalist" :id="listId">
 			<option v-for="data in datalist" :key="data" :value="data"/>
 		</datalist>
 		<div ref="suffixEl" :class="$style.suffix"><slot name="suffix"></slot></div>
 	</div>
-	<div :class="$style.caption"><slot name="caption"></slot></div>
-
+	<div :id="captionId" :class="$style.caption"><slot name="caption"></slot></div>
 	<MkButton v-if="manualSave && changed" primary :class="$style.save" @click="updated"><i class="ti ti-check"></i> {{ i18n.ts.save }}</MkButton>
+	<SettingsControlRelated v-if="isSettingsRedesign" :data-settings-search-id="$attrs['data-settings-search-id']"/>
 </div>
 </template>
 
@@ -52,7 +55,7 @@ type ModelValueType<T extends SupportedTypes> =
 </script>
 
 <script lang="ts" setup generic="T extends SupportedTypes = 'text'">
-import { onMounted, onUnmounted, nextTick, ref, useTemplateRef, watch, computed, toRefs } from 'vue';
+import { inject, onMounted, onUnmounted, nextTick, ref, useTemplateRef, watch, computed, toRefs } from 'vue';
 import { throttle, debounce } from 'throttle-debounce';
 import type { InputHTMLAttributes } from 'vue';
 import type { SuggestionType } from '@/utility/autocomplete.js';
@@ -60,6 +63,8 @@ import MkButton from '@/components/MkButton.vue';
 import { i18n } from '@/i18n.js';
 import { Autocomplete } from '@/utility/autocomplete.js';
 import { genId } from '@/utility/id.js';
+import { settingsSearchV2ContextKey } from '@/utility/settings-search-v2-context.js';
+import SettingsControlRelated from '@/components/settings-redesign/SettingsControlRelated.vue';
 
 const props = defineProps<{
 	modelValue: ModelValueType<T> | null;
@@ -96,7 +101,10 @@ const emit = defineEmits<{
 
 const { modelValue } = toRefs(props);
 const v = ref<ModelValueType<T> | null>(modelValue.value);
-const id = genId();
+const inputId = `mk-input-${genId()}`;
+const labelId = `${inputId}-label`;
+const listId = `${inputId}-list`;
+const captionId = `${inputId}-caption`;
 const focused = ref(false);
 const changed = ref(false);
 const invalid = ref(false);
@@ -108,9 +116,15 @@ const height =
 	props.small ? 33 :
 	props.large ? 39 :
 	36;
+const isSettingsRedesign = inject(settingsSearchV2ContextKey, null) != null;
 let autocompleteWorker: Autocomplete | null = null;
 
 const focus = () => inputEl.value?.focus();
+const onLabelClick = (event: MouseEvent) => {
+	const target = event.target as Element | null;
+	if (target?.closest('button, a, input, select, textarea, [role="button"], [role="link"], ._button')) return;
+	focus();
+};
 const onInput = (event: Event) => {
 	const ev = event as KeyboardEvent;
 	changed.value = true;
@@ -213,7 +227,36 @@ defineExpose({
 </script>
 
 <style lang="scss" module>
+.root.redesigned {
+	> .label {
+		padding-bottom: 7px;
+	}
+
+	> .input > .inputCore {
+		height: 44px;
+		border-color: var(--settings-input-border, color-mix(in srgb, var(--MI_THEME-fg) 30%, var(--MI_THEME-divider))) !important;
+		border-radius: 999px;
+		background: color-mix(in srgb, var(--MI_THEME-panel) 94%, var(--MI_THEME-bg));
+	}
+
+	> .input > .inputCore:focus-visible {
+		outline: 2px solid var(--MI_THEME-focus);
+		outline-offset: 2px;
+	}
+
+	> .input > .prefix,
+	> .input > .suffix {
+		height: 44px;
+	}
+
+	> .caption {
+		padding-top: 7px;
+		line-height: 1.55;
+	}
+}
+
 .label {
+	display: block;
 	font-size: 0.85em;
 	padding: 0 0 8px 0;
 	user-select: none;

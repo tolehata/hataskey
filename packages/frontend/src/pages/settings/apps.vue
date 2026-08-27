@@ -6,7 +6,13 @@ SPDX-License-Identifier: AGPL-3.0-only
 <template>
 <div class="_gaps_m">
 	<MkPagination :paginator="paginator">
-		<template #empty><MkResult type="empty"/></template>
+		<!-- 旗鯖fork: 「ありません」だけだと、どうすれば増えるのか分からなかった。 -->
+		<template #empty>
+			<div class="_gaps_s">
+				<MkResult type="empty" :text="hataCopy.emptyAppsTitle"/>
+				<p style="margin: 0; opacity: .75; font-size: .9em; line-height: 1.6; text-align: center;">{{ hataCopy.emptyAppsText }}</p>
+			</div>
+		</template>
 		<template #default="{items}">
 			<div class="_gaps">
 				<MkFolder v-for="token in items" :key="token.id" :defaultOpen="true">
@@ -80,6 +86,9 @@ async function revoke(token) {
 		paginator.reload();
 	});
 }
+
+// 旗鯖fork: 空のときの案内文。
+const hataCopy = i18n.ts._hata._settingsRedesign.gateway;
 
 const headerActions = computed(() => []);
 

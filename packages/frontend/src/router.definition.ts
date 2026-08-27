@@ -77,7 +77,7 @@ export const ROUTE_DEF = [{
 }, {
 	name: 'settings',
 	path: '/settings',
-	component: page(() => import('@/pages/settings/index.vue')),
+	component: page(() => import('@/pages/settings-redesign/gateway.vue')),
 	loginRequired: true,
 	children: [{
 		path: '/profile',
@@ -203,6 +203,14 @@ export const ROUTE_DEF = [{
                 path: '/hata-custom',
                 name: 'hata-custom',
                 component: page(() => import('@/pages/settings/hata-custom.vue')),
+	}, {
+		path: '/hatafeed',
+		name: 'hatafeed-settings',
+		component: page(() => import('@/pages/settings-redesign/HataFeedSettingsSurface.vue')),
+	}, {
+		path: '/hatasnscord-ui',
+		name: 'hatasnscord-ui-settings',
+		component: page(() => import('@/pages/settings-redesign/HataSNSCordSettingsSurface.vue')),
 	}, {
 		path: '/external-account',
 		name: 'external-account',

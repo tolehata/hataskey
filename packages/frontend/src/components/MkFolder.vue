@@ -4,10 +4,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 
 <template>
-<div ref="rootEl" :class="$style.root" role="group" :aria-expanded="opened">
+<div ref="rootEl" :class="[$style.root, { [$style.redesigned]: isSettingsRedesign }]" role="group" :aria-expanded="opened">
 	<MkStickyContainer>
 		<template #header>
-			<button :class="[$style.header, { [$style.opened]: opened, [$style.inactive]: inactive || isArchived }]" class="_button" role="button" data-cy-folder-header @click="toggle">
+			<button :class="[$style.header, { [$style.opened]: opened, [$style.inactive]: inactive || isArchived, [$style.redesigned]: isSettingsRedesign }]" class="_button" role="button" data-cy-folder-header @click="toggle">
 				<div :class="$style.headerIcon"><slot name="icon"></slot></div>
 				<div :class="$style.headerText">
 					<div :class="$style.headerTextMain">
@@ -55,7 +55,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</Teleport>
 		</div>
 
-		<div v-else-if="openedAtLeastOnce" :class="[$style.body, { [$style.bgSame]: bgSame }]" :style="{ maxHeight: maxHeight ? `${maxHeight}px` : undefined, overflow: maxHeight ? `auto` : undefined }" :aria-hidden="!opened">
+		<div v-else-if="openedAtLeastOnce" :class="[$style.body, { [$style.bgSame]: bgSame, [$style.redesigned]: isSettingsRedesign }]" :style="{ maxHeight: maxHeight ? `${maxHeight}px` : undefined, overflow: maxHeight ? `auto` : undefined }" :aria-hidden="!opened">
 			<Transition
 				:enterActiveClass="prefer.s.animation ? $style.transition_toggle_enterActive : ''"
 				:leaveActiveClass="prefer.s.animation ? $style.transition_toggle_leaveActive : ''"
@@ -97,13 +97,14 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { inject, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
 import { prefer } from '@/preferences.js';
 import { getBgColor } from '@/utility/get-bg-color.js';
 import { pageFolderTeleportCount, popup } from '@/os.js';
 import MkFolderPage from '@/components/MkFolderPage.vue';
 import { deviceKind } from '@/utility/device-kind.js';
 import { haptic } from '@/utility/haptic.js';
+import { settingsSearchV2ContextKey } from '@/utility/settings-search-v2-context.js';
 
 const props = withDefaults(defineProps<{
 	defaultOpen?: boolean;
@@ -131,6 +132,8 @@ const emit = defineEmits<{
 }>();
 
 const rootEl = useTemplateRef('rootEl');
+const settingsSearchContext = inject(settingsSearchV2ContextKey, null);
+const isSettingsRedesign = settingsSearchContext != null;
 const asPage = props.canPage && deviceKind === 'smartphone' && prefer.s['experimental.enableFolderPageView'];
 const bgSame = ref(false);
 const opened = ref(asPage ? false : props.defaultOpen);
@@ -175,10 +178,9 @@ function afterLeave(el: Element) {
 let pageId = pageFolderTeleportCount.value;
 pageFolderTeleportCount.value += 1000;
 
-async function toggle(ev: MouseEvent) {
-	haptic();
-
-	if (asPage && !opened.value) {
+async function setOpened(nextOpened: boolean) {
+	if (nextOpened === opened.value) return;
+	if (asPage && nextOpened) {
 		pageId++;
 		const { dispose } = await popup(MkFolderPage, {
 			pageId,
@@ -190,13 +192,37 @@ async function toggle(ev: MouseEvent) {
 		});
 	}
 
-	if (!opened.value) {
+	if (nextOpened) {
 		openedAtLeastOnce.value = true;
 	}
 
 	nextTick(() => {
-		opened.value = !opened.value;
+		opened.value = nextOpened;
 	});
+}
+
+async function toggle() {
+	haptic();
+	await setOpened(!opened.value);
+}
+
+function attributeTokens(attributeName: string) {
+	return new Set((rootEl.value?.getAttribute(attributeName) ?? '').split(/\s+/u).filter(Boolean));
+}
+
+function hasCurrentSearchTarget() {
+	const target = settingsSearchContext?.activeNavigationTarget?.value;
+	if (target == null || rootEl.value == null) return false;
+	const controlId = target.controlId ?? target.stableId;
+	const markerId = target.anchor;
+	return (controlId != null && attributeTokens('data-settings-search-descendant-ids').has(controlId))
+		|| (markerId != null && attributeTokens('data-settings-search-descendant-markers').has(markerId));
+}
+
+async function openForCurrentSearchTarget() {
+	if (!hasCurrentSearchTarget() || opened.value) return;
+	// This is local disclosure state only; no preference or form value is written.
+	await setOpened(true);
 }
 
 onMounted(() => {
@@ -204,7 +230,12 @@ onMounted(() => {
 	const parentBg = getBgColor(rootEl.value?.parentElement) ?? 'transparent';
 	const myBg = computedStyle.getPropertyValue('--MI_THEME-panel');
 	bgSame.value = parentBg === myBg;
+	void openForCurrentSearchTarget();
 });
+
+watch(() => settingsSearchContext?.activeNavigationTarget?.value, () => {
+	void openForCurrentSearchTarget();
+}, { flush: 'post' });
 
 watch(opened, (isOpened) => {
 	if (isOpened) {
@@ -242,6 +273,12 @@ watch(opened, (isOpened) => {
 	display: block;
 }
 
+.root.redesigned {
+	line-break: strict;
+	word-break: normal;
+	text-wrap: pretty;
+}
+
 .header {
 	display: flex;
 	align-items: center;
@@ -275,6 +312,27 @@ watch(opened, (isOpened) => {
   &.inactive {
     opacity: 0.6;
   }
+}
+
+.header.redesigned {
+	min-height: 44px;
+	padding: 11px 16px;
+	background: var(--MI_THEME-panel);
+	border: solid 0.5px color-mix(in srgb, var(--MI_THEME-divider) 90%, transparent);
+	border-radius: 18px;
+	box-shadow: 0 1px 3px color-mix(in srgb, var(--MI_THEME-fg) 5%, transparent);
+	transition: background 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+
+	&:hover,
+	&.active {
+		background: color-mix(in srgb, var(--MI_THEME-accent) 8%, transparent);
+		border-color: color-mix(in srgb, var(--MI_THEME-accent) 38%, transparent);
+		box-shadow: 0 2px 7px color-mix(in srgb, var(--MI_THEME-fg) 8%, transparent);
+	}
+
+	&.opened {
+		border-radius: 18px;
+	}
 }
 
 .headerUpper {
@@ -342,6 +400,16 @@ watch(opened, (isOpened) => {
 		.inBodyHeader {
 			background: color(from var(--MI_THEME-bg) srgb r g b / 0.75);
 		}
+	}
+}
+
+.body.redesigned {
+	margin-top: 8px;
+	background: transparent;
+	border-radius: 18px;
+
+	&.bgSame {
+		background: transparent;
 	}
 }
 

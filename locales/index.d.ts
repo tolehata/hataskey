@@ -15635,6 +15635,22 @@ export interface Locale extends ILocale {
              */
             "hatacordingRateLimitName": string;
             /**
+             * 既定ではオフです。オンにすると、すべての利用者がHataSNSCordUI専用の1時間枠を消費しなくなります。API固有の安全制限や権限確認は維持されます。
+             */
+            "hatacordingRateLimitBypassBaseCaption": string;
+            /**
+             * この設定を有効にした個別ロールを利用者へ割り当てると、その利用者はHataSNSCordUI専用の1時間枠を消費しません。API固有の安全制限や権限確認は維持されます。
+             */
+            "hatacordingRateLimitBypassEditorCaption": string;
+            /**
+             * HataSNSCordUIのAPI共通枠を免除
+             */
+            "hatacordingRateLimitBypassName": string;
+            /**
+             * 専用の1時間枠を適用しない
+             */
+            "hatacordingRateLimitBypassToggle": string;
+            /**
              * 右側に作成できるタブ数です。1〜5の範囲で指定します（既定: 3）。
              */
             "hatacordingTabsBaseCaption": string;
@@ -17279,6 +17295,26 @@ export interface Locale extends ILocale {
                  * 残りのレートリミット
                  */
                 "remaining": string;
+                /**
+                 * HataSNSCordUI専用のAPI共通枠は制限なし
+                 */
+                "unlimitedAccessible": string;
+                /**
+                 * このUI専用の1時間枠は適用されません
+                 */
+                "unlimitedHourlyQuota": string;
+                /**
+                 * 制限なしで利用できます
+                 */
+                "unlimitedReady": string;
+                /**
+                 * サーバーの管理者から制限なし利用が割り当てられています
+                 */
+                "unlimitedAssigned": string;
+                /**
+                 * HataSNSCordUI専用の共通枠のみ免除されています。API固有の安全制限、認証、権限確認、通常UIや外部アプリの制御は変更されません。
+                 */
+                "unlimitedDescription": string;
                 /**
                  * 次の操作で残量を再計測
                  */
@@ -22788,6 +22824,10 @@ export interface Locale extends ILocale {
                  */
                 "disableDeviceTilt": string;
                 /**
+                 * 傾きを戻す
+                 */
+                "resetTilt": string;
+                /**
                  * 端末の動きへのアクセスが許可されませんでした
                  */
                 "deviceTiltPermissionDenied": string;
@@ -27893,6 +27933,8 @@ export interface Locale extends ILocale {
                 "externalDdoskeyTitle": string;
                 "externalDdoskeyText": string;
                 "externalDdoskeyLink": string;
+                "fontUploadTitle": string;
+                "fontUploadText": string;
                 /**
                  * ここに載せたのは主な変更だけです。細かな修正を含むすべての変更点は、リリースノートをご確認ください。
                  */
@@ -32940,11 +32982,11 @@ export interface Locale extends ILocale {
                  */
                 "useOsFont": string;
                 /**
-                 * カスタムフォント（ドライブから）
+                 * カスタムフォント
                  */
                 "customFont": string;
                 /**
-                 * ドライブにアップロードしたフォントファイル（.ttf, .otf, .woff2）を使用できます。
+                 * この画面からTrueType（.ttf）・OpenType（.otf）をアップロードできます。ドライブにある.woff2も選択できます。
                  */
                 "customFontDescription": string;
                 /**
@@ -32956,6 +32998,14 @@ export interface Locale extends ILocale {
                  */
                 "currentCustomFont": string;
                 /**
+                 * フォントをアップロード
+                 */
+                "uploadFont": string;
+                /**
+                 * アップロード中
+                 */
+                "uploadingFont": string;
+                /**
                  * ドライブからフォントを選択
                  */
                 "selectFromDrive": string;
@@ -32963,6 +33013,18 @@ export interface Locale extends ILocale {
                  * 既定に戻す
                  */
                 "resetDefault": string;
+                /**
+                 * 対応していないフォントです
+                 */
+                "unsupportedFontTitle": string;
+                /**
+                 * この画面からアップロードできるのはTrueType（.ttf）とOpenType（.otf）です。
+                 */
+                "unsupportedUploadFontText": string;
+                /**
+                 * カスタムフォントには.ttf、.otf、.woff2のいずれかを選んでください。
+                 */
+                "unsupportedDriveFontText": string;
                 /**
                  * フォント免責事項に同意済み
                  */
@@ -33333,6 +33395,235 @@ export interface Locale extends ILocale {
                 "safetyNote": string;
             };
         };
+        "_settingsRedesign": {
+            "skipToContent": string;
+            "searchTrigger": string;
+            "searchShortcut": ParameterizedString<"shortcut">;
+            "uiDeck": string;
+            "legacySettings": string;
+            "settingsCategories": string;
+            "customFeatures": string;
+            "settingsFilter": string;
+            "frequentlyUsedSettings": string;
+            "searchSettingsCount": ParameterizedString<"count">;
+            "sessionAndLogin": string;
+            "actions": {
+                "clearCache": string;
+                "logout": string;
+                "logoutAll": string;
+            };
+            "nav": {
+                "appearance": string;
+                "appearanceDescription": string;
+                "densityAndNotes": string;
+                "font": string;
+                "emojiPalette": string;
+                "manageTheme": string;
+                "installTheme": string;
+                "timelineAndPosts": string;
+                "timelineAndPostsDescription": string;
+                "displayTimeline": string;
+                "noteDisplayAndCollapse": string;
+                "hiddenReactions": string;
+                "accountDescription": string;
+                "avatarDecoration": string;
+                "accountStats": string;
+                "accountSwitch": string;
+                "hataTools": string;
+				"tabletTools": string;
+                "hataToolsDescription": string;
+                "hataskAndHatady": string;
+                "mascotHatakyu": string;
+                "hataFeedHataLyze": string;
+                "weatherViewer": string;
+                "externalAccount": string;
+                "settingsTransfer": string;
+                "cherrypick": string;
+                "cherrypickDescription": string;
+                "data": string;
+                "dataDescription": string;
+                "driveCleaner": string;
+                "serviceConnect": string;
+                "linkedApps": string;
+                "plugins": string;
+                "settingsProfiles": string;
+                "accountDataExport": string;
+                "misskey": string;
+                "misskeyDescription": string;
+                "misskeyGeneral": string;
+                "notificationBehavior": string;
+                "appearanceDetails": string;
+                "timelineOptions": string;
+                "miscLabel": string;
+                "miscDescription": string;
+            };
+            "filters": {
+                "all": string;
+                "frequent": string;
+                "deviceOnly": string;
+            };
+            "values": {
+                "opacity": string;
+                "bubble": string;
+                "noteGap": string;
+                "spread": string;
+                "compact": string;
+                "bottomNavigation": string;
+                "bottomNavigationCount": ParameterizedString<"count" | "max">;
+            };
+            "mobile": {
+                "recommendedInUse": string;
+                "featureDescription": string;
+                "openSettings": string;
+                "changeCurrentValues": string;
+                "allCategories": string;
+                "connectionsAndData": string;
+                "misskeyRelatedSettings": string;
+                "deprecated": string;
+            };
+            "search": {
+                "inputLabel": string;
+                "resultCount": ParameterizedString<"count">;
+                "closeSearch": string;
+                "resultsLabel": string;
+                "loadingIndex": string;
+                "preparationFailed": string;
+                "searchHelp": string;
+                "searching": string;
+                "noResults": ParameterizedString<"query">;
+                "searchSuggestion": string;
+                "matchedSettings": string;
+                "relatedHeading": string;
+                "liveSearching": string;
+                "liveNoMatches": string;
+                "liveCounts": ParameterizedString<"results" | "suggestions">;
+            };
+            "related": {
+                "showMore": ParameterizedString<"count">;
+            };
+            "gateway": {
+                "legacyRegion": string;
+                "redesignedRegion": string;
+                "returnToRedesigned": string;
+                "returnToRedesignedButton": string;
+                "legacyNotice": string;
+                "emptyProfilesTitle": string;
+                "emptyProfilesText": string;
+                "emptyProfilesLink": string;
+                "emptyAppsTitle": string;
+                "emptyAppsText": string;
+            };
+            "ui2": {
+                "recommendedInUse": string;
+                "permanentDescriptionBefore": string;
+                "permanentDescriptionSave": string;
+                "permanentDescriptionAfter": string;
+                "openPreview": string;
+                "livePreview": string;
+                "categoryLabel": string;
+                "chipNavigation": string;
+                "chipGlass": string;
+                "chipGlassAndBlur": string;
+                "chipNote": string;
+                "chipDeck": string;
+                "chipSideMenu": string;
+                "chipFoldable": string;
+                "chipDevice": string;
+                "discard": string;
+                "saveAndReload": string;
+                "noChanges": string;
+                "unsavedChanges": ParameterizedString<"count">;
+                "showNavItem": ParameterizedString<"label">;
+                "reorderKeyboardHint": string;
+                "reorderNavItem": ParameterizedString<"label">;
+                "basicItemCount": ParameterizedString<"count">;
+                "preview": {
+                    "title": string;
+                    "dialogLabel": string;
+                    "liveNotice": string;
+                    "appPreviewLabel": string;
+                    "timelineTabsLabel": string;
+                    "trend": string;
+                    "sideMenuLabel": string;
+                    "home": string;
+                    "notifications": string;
+                    "sideStudio": string;
+                    "notePreviewLabel": string;
+                    "deckMode": string;
+                    "standardMode": string;
+                    "sampleUserName": string;
+                    "sampleNoteOne": string;
+                    "timeline": string;
+                    "sampleNoteTwo": string;
+                    "footerNotice": string;
+                    "close": string;
+                    "local": string;
+                };
+            };
+            "immediate": {
+                "eyebrow": string;
+                "title": string;
+                "description": string;
+                "deviceImmediate": string;
+                "profileImmediate": string;
+            };
+            "catalog": {
+                "categories": {
+                    "hataskeyUi": string;
+                    "displayNotes": string;
+                    "themeFont": string;
+                    "timelinePosting": string;
+                    "reactions": string;
+                    "notificationSound": string;
+                    "account": string;
+                    "hataTools": string;
+                    "cherrypick": string;
+                    "dataConnect": string;
+                    "misskeyUi": string;
+                    "behavior": string;
+                };
+                "fallback": {
+                    "driveCleaner": { "label": string; "description": string; };
+                    "themeInstall": { "label": string; "description": string; };
+                    "themeManage": { "label": string; "description": string; };
+                    "statusbar": { "label": string; "description": string; };
+                    "pluginInstall": { "label": string; "description": string; };
+                    "apps": { "label": string; "description": string; };
+                    "webhookEdit": { "label": string; "description": string; };
+                    "webhookNew": { "label": string; "description": string; };
+                    "customCss": { "label": string; "description": string; };
+                    "accountStats": { "label": string; "description": string; };
+                    "externalAccount": { "label": string; "description": string; };
+                    "hataCustom": { "label": string; "description": string; };
+                    "hiddenReactions": { "label": string; "description": string; };
+                };
+                "relation": {
+                    "sameSection": string;
+                    "sameGroup": string;
+                    "sameNestedGroup": string;
+                    "samePreference": string;
+                    "sameFeature": string;
+                    "sharedVisibleTerm": string;
+                };
+                "noRelated": {
+                    "fallback": string;
+                    "marker": string;
+                    "default": string;
+                };
+                "system": {
+                    "fallbackReason": string;
+                    "activationUnavailable": string;
+                };
+            };
+            "searchPrerequisite": {
+                "policy": ParameterizedString<"label">;
+                "consent": ParameterizedString<"label">;
+                "preference": ParameterizedString<"label">;
+                "runtimeData": ParameterizedString<"label">;
+                "conditional": ParameterizedString<"label">;
+                "dismiss": string;
+            };
+        };
         "_emotionAnalysis": {
             "historyLimitNote": ParameterizedString<"count">;
             "emotionBreakdown": string;
@@ -33373,6 +33664,11 @@ export interface Locale extends ILocale {
              * HATAlyze
              */
             "title": string;
+            "heroTitle": string;
+            "heroDescription": string;
+            "personalOnly": string;
+            "personalOnlyBody": string;
+            "nonMedicalTitle": string;
             /**
              * 投稿に含まれる言葉や利用傾向を、あとから振り返るためのHataskeyツール「HATAlyze」です。
              */
@@ -33457,6 +33753,16 @@ export interface Locale extends ILocale {
              * 分析する範囲
              */
             "conditionTitle": string;
+            "stepPeriodTitle": string;
+            "stepPeriodBody": string;
+            "stepOptionsTitle": string;
+            "stepOptionsBody": string;
+            "stepReviewTitle": string;
+            "stepReviewBody": string;
+            "stepPeriodShort": string;
+            "stepOptionsShort": string;
+            "stepReviewShort": string;
+            "stepCounter": ParameterizedString<"current">;
             /**
              * 期間
              */
@@ -33517,6 +33823,10 @@ export interface Locale extends ILocale {
              * 直近90日
              */
             "period90": string;
+            "latestHint": string;
+            "period7Hint": string;
+            "period30Hint": string;
+            "period90Hint": string;
             /**
              * 投稿数の上限
              */
@@ -33533,6 +33843,15 @@ export interface Locale extends ILocale {
              * 結果を履歴に保存する
              */
             "saveHistory": string;
+            "stepRepliesHint": string;
+            "stepCwHint": string;
+            "stepSaveHint": string;
+            "saveHistoryChoice": string;
+            "saveHistoryChoiceHint": string;
+            "noSaveHistoryChoice": string;
+            "noSaveHistoryChoiceHint": string;
+            "historySaved": string;
+            "historyNotSaved": string;
             /**
              * なぜこの結果になったか
              */
@@ -33669,6 +33988,8 @@ export interface Locale extends ILocale {
              * この分析結果を履歴から削除します。元に戻せません。
              */
             "deleteConfirm": string;
+            "deleteSuccess": string;
+            "deletedFromHistory": string;
             /**
              * 分析結果を削除できませんでした。通信状態を確認して、もう一度お試しください。
              */

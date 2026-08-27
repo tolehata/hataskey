@@ -7,7 +7,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 <button
 	v-if="!link"
 	ref="el" class="_button"
-	:class="[$style.root, { [$style.inline]: inline, [$style.primary]: primary, [$style.gradate]: gradate, [$style.danger]: danger, [$style.rounded]: rounded, [$style.full]: full, [$style.small]: small, [$style.large]: large, [$style.short]: short, [$style.transparent]: transparent, [$style.asLike]: asLike, [$style.iconOnly]: iconOnly, [$style.wait]: wait, [$style.active]: active }]"
+	:class="[$style.root, { [$style.inline]: inline, [$style.primary]: primary, [$style.gradate]: gradate, [$style.danger]: danger, [$style.rounded]: rounded, [$style.full]: full, [$style.small]: small, [$style.large]: large, [$style.short]: short, [$style.transparent]: transparent, [$style.asLike]: asLike, [$style.iconOnly]: iconOnly, [$style.wait]: wait, [$style.active]: active, [$style.redesigned]: isSettingsRedesign }]"
 	:type="type"
 	:name="name"
 	:value="value"
@@ -22,7 +22,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 </button>
 <MkA
 	v-else class="_button"
-	:class="[$style.root, { [$style.inline]: inline, [$style.primary]: primary, [$style.gradate]: gradate, [$style.danger]: danger, [$style.rounded]: rounded, [$style.full]: full, [$style.small]: small, [$style.large]: large, [$style.short]: short, [$style.transparent]: transparent, [$style.asLike]: asLike, [$style.iconOnly]: iconOnly, [$style.wait]: wait, [$style.active]: active }]"
+	:class="[$style.root, { [$style.inline]: inline, [$style.primary]: primary, [$style.gradate]: gradate, [$style.danger]: danger, [$style.rounded]: rounded, [$style.full]: full, [$style.small]: small, [$style.large]: large, [$style.short]: short, [$style.transparent]: transparent, [$style.asLike]: asLike, [$style.iconOnly]: iconOnly, [$style.wait]: wait, [$style.active]: active, [$style.redesigned]: isSettingsRedesign }]"
 	:to="to ?? '#'"
 	:behavior="linkBehavior"
 	@mousedown="onMousedown"
@@ -35,9 +35,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { nextTick, onMounted, useTemplateRef } from 'vue';
+import { inject, nextTick, onMounted, useTemplateRef } from 'vue';
 import type { MkABehavior } from '@/components/global/MkA.vue';
 import { haptic } from '@/utility/haptic.js';
+import { settingsSearchV2ContextKey } from '@/utility/settings-search-v2-context.js';
 
 const props = defineProps<{
 	type?: 'button' | 'submit' | 'reset';
@@ -70,6 +71,7 @@ const emit = defineEmits<{
 
 const el = useTemplateRef('el');
 const ripples = useTemplateRef('ripples');
+const isSettingsRedesign = inject(settingsSearchV2ContextKey, null) != null;
 
 onMounted(() => {
 	if (props.autofocus) {
@@ -286,6 +288,29 @@ function onMousedown(evt: MouseEvent): void {
 
 	&.primary > .ripples > .ripple {
 		background: rgba(0, 0, 0, 0.15);
+	}
+}
+
+.root.redesigned {
+	min-height: 44px;
+	padding: 10px 18px;
+	border: 0;
+	border-radius: 999px;
+	box-shadow: 0 1px 3px color-mix(in srgb, var(--MI_THEME-fg) 5%, transparent);
+	transition: background 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+
+	&:not(:disabled):hover,
+	&:not(:disabled):active {
+		box-shadow: 0 2px 7px color-mix(in srgb, var(--MI_THEME-fg) 8%, transparent);
+	}
+
+	&.iconOnly {
+		min-width: 44px;
+		padding: 10px;
+	}
+
+	&.rounded {
+		border-radius: 999px;
 	}
 }
 

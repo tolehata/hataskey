@@ -15,7 +15,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 	@close="dialog?.close()"
 	@closed="emit('closed')"
 >
-	<template #header>{{ copy.title }}</template>
+	<template #header><span class="settingsBrandText">{{ copy.title }}</span></template>
 
 	<div :class="$style.root">
 		<div v-if="loading" :class="$style.loading">{{ copy.loading }}</div>

@@ -6,13 +6,15 @@ SPDX-License-Identifier: AGPL-3.0-only
 <template>
 <span
 	v-tooltip="checked ? i18n.ts.itsOn : i18n.ts.itsOff"
+	:aria-hidden="decorative || undefined"
 	:class="{
 		[$style.button]: true,
 		[$style.buttonChecked]: checked,
-		[$style.buttonDisabled]: props.disabled
+		[$style.buttonDisabled]: props.disabled,
+		[$style.decorative]: decorative,
 	}"
 	data-testid="switch-toggle"
-	@click.prevent.stop="toggle"
+	@click="onClick"
 >
 	<div :class="{ [$style.knob]: true, [$style.knobChecked]: checked }"></div>
 </span>
@@ -27,8 +29,10 @@ import { haptic } from '@/utility/haptic.js';
 const props = withDefaults(defineProps<{
 	checked: boolean | Ref<boolean>;
 	disabled?: boolean | Ref<boolean>;
+	decorative?: boolean;
 }>(), {
 	disabled: false,
+	decorative: false,
 });
 
 const emit = defineEmits<{
@@ -36,23 +40,28 @@ const emit = defineEmits<{
 }>();
 
 const checked = toRefs(props).checked;
-const toggle = () => {
+const onClick = (event: MouseEvent) => {
+	// In a native <label>, a decorative track must leave the click untouched so
+	// the associated checkbox performs its one, native state transition.
+	if (props.decorative) return;
+	event.preventDefault();
+	event.stopPropagation();
+	if (props.disabled) return;
 	haptic();
-
 	emit('toggle');
 };
 </script>
 
 <style lang="scss" module>
 .button {
-	--height: 21px;
+	--height: var(--mk-switch-height, 21px);
 
 	position: relative;
 	display: inline-flex;
 	flex-shrink: 0;
 	margin: 0;
 	box-sizing: border-box;
-	width: calc(var(--height) * 1.6);
+	width: var(--mk-switch-width, calc(var(--height) * 1.6));
 	height: calc(var(--height) + 2px); // 枠線
 	outline: none;
 	background: var(--MI_THEME-switchOffBg);
@@ -62,6 +71,10 @@ const toggle = () => {
 	cursor: pointer;
 	transition: inherit;
 	user-select: none;
+}
+
+.decorative {
+	pointer-events: none;
 }
 
 .buttonChecked {

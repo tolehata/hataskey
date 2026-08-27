@@ -3,16 +3,31 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+/**
+ * 旗鯖fork: このモジュールは Web Worker からも読み込まれる。
+ *
+ * ⚠️モジュール先頭で `window` を直接触ると、ワーカーでは
+ *   `ReferenceError: window is not defined` になり、
+ *   **そのワーカー全体が起動できなくなる**。
+ *   （設定検索のワーカーが実際にこれで落ちていた。Firefox のコンソールで判明）
+ * ⚠️主スレッドでの値は一切変えないこと。ワーカーでは以下の値は使われないので、
+ *   落ちないための既定値を置くだけにする。
+ */
+const hasWindow = typeof window !== 'undefined';
+const workerFallbackOrigin = typeof self !== 'undefined' && 'location' in self ? self.location.origin : 'http://localhost';
+
 // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-const address = new URL(window.document.querySelector<HTMLMetaElement>('meta[property="instance_url"]')?.content || window.location.href);
-const siteName = window.document.querySelector<HTMLMetaElement>('meta[property="og:site_name"]')?.content;
+const address = new URL(hasWindow
+	? (window.document.querySelector<HTMLMetaElement>('meta[property="instance_url"]')?.content || window.location.href)
+	: workerFallbackOrigin);
+const siteName = hasWindow ? window.document.querySelector<HTMLMetaElement>('meta[property="og:site_name"]')?.content : undefined;
 
 export const host = address.host;
 export const hostname = address.hostname;
 export const url = address.origin;
 export const port = address.port;
-export const apiUrl = window.location.origin + '/api';
-export const wsOrigin = window.location.origin;
+export const apiUrl = (hasWindow ? window.location.origin : workerFallbackOrigin) + '/api';
+export const wsOrigin = hasWindow ? window.location.origin : workerFallbackOrigin;
 /**
  * 旗鯖fork: 起動時に実際に読み込まれた言語を割り出す。
  *
@@ -33,12 +48,17 @@ export function resolveClientLang(stored: string | null, supported: readonly str
 }
 
 export const langs = _LANGS_;
-export const lang = resolveClientLang(localStorage.getItem('lang'), langs.map(([code]) => code), window.navigator.language);
+export const lang = resolveClientLang(
+	hasWindow ? window.localStorage.getItem('lang') : null,
+	langs.map(([code]) => code),
+	// ⚠️ワーカーにも navigator は在る。window だけが無い。
+	typeof navigator !== 'undefined' ? navigator.language : 'en-US',
+);
 export const version = _VERSION_;
 export const basedMisskeyVersion = _BASEDMISSKEYVERSION_;
 export const gitHash = _GIT_HASH_;
 export const instanceName = (siteName === 'CherryPick' || siteName == null) ? host : siteName;
-export const ui = localStorage.getItem('ui');
-export const debug = localStorage.getItem('debug') === 'true';
-export const isSafeMode = localStorage.getItem('isSafeMode') === 'true';
-export const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion)').matches;
+export const ui = hasWindow ? window.localStorage.getItem('ui') : null;
+export const debug = hasWindow && window.localStorage.getItem('debug') === 'true';
+export const isSafeMode = hasWindow && window.localStorage.getItem('isSafeMode') === 'true';
+export const prefersReducedMotion = hasWindow && window.matchMedia('(prefers-reduced-motion)').matches;

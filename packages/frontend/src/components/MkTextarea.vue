@@ -4,10 +4,11 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 
 <template>
-<div class="_selectable">
-	<div :class="$style.label" @click="focus"><slot name="label"></slot></div>
+<div class="_selectable" :class="[$style.root, { [$style.redesigned]: isSettingsRedesign }]">
+	<label :id="labelId" :for="inputId" :class="$style.label"><slot name="label"></slot></label>
 	<div :class="{ [$style.disabled]: disabled, [$style.focused]: focused, [$style.tall]: tall, [$style.pre]: pre }" style="position: relative;">
 		<textarea
+			:id="inputId"
 			ref="inputEl"
 			v-model="v"
 			v-adaptive-border
@@ -19,29 +20,35 @@ SPDX-License-Identifier: AGPL-3.0-only
 			:pattern="pattern"
 			:autocomplete="autocomplete"
 			:spellcheck="spellcheck"
+			:aria-labelledby="labelId"
+			:aria-describedby="captionId"
 			@focus="focused = true"
 			@blur="focused = false"
 			@keydown="onKeydown($event)"
 			@input="onInput"
 		></textarea>
 	</div>
-	<div :class="$style.caption"><slot name="caption"></slot></div>
+	<div :id="captionId" :class="$style.caption"><slot name="caption"></slot></div>
 	<button v-if="mfmPreview" style="font-size: 0.85em;" class="_textButton" type="button" @click="preview = !preview">{{ i18n.ts.preview }}</button>
 	<div v-if="mfmPreview" v-show="preview" v-panel :class="$style.mfmPreview">
 		<Mfm :text="v"/>
 	</div>
 
 	<MkButton v-if="manualSave && changed" primary :class="$style.save" @click="updated"><i class="ti ti-device-floppy"></i> {{ i18n.ts.save }}</MkButton>
+	<SettingsControlRelated v-if="isSettingsRedesign" :data-settings-search-id="$attrs['data-settings-search-id']"/>
 </div>
 </template>
 
 <script lang="ts" setup>
-import { onMounted, onUnmounted, nextTick, ref, watch, computed, toRefs, useTemplateRef } from 'vue';
+import { inject, onMounted, onUnmounted, nextTick, ref, watch, computed, toRefs, useTemplateRef } from 'vue';
 import { debounce } from 'throttle-debounce';
 import type { SuggestionType } from '@/utility/autocomplete.js';
 import MkButton from '@/components/MkButton.vue';
 import { i18n } from '@/i18n.js';
 import { Autocomplete } from '@/utility/autocomplete.js';
+import { genId } from '@/utility/id.js';
+import { settingsSearchV2ContextKey } from '@/utility/settings-search-v2-context.js';
+import SettingsControlRelated from '@/components/settings-redesign/SettingsControlRelated.vue';
 
 const props = defineProps<{
 	modelValue: string | null;
@@ -76,7 +83,11 @@ const changed = ref(false);
 const invalid = ref(false);
 const filled = computed(() => v.value !== '' && v.value != null);
 const inputEl = useTemplateRef('inputEl');
+const inputId = `mk-textarea-${genId()}`;
+const labelId = `${inputId}-label`;
+const captionId = `${inputId}-caption`;
 const preview = ref(false);
+const isSettingsRedesign = inject(settingsSearchV2ContextKey, null) != null;
 let autocompleteWorker: Autocomplete | null = null;
 
 const focus = () => inputEl.value?.focus();
@@ -147,7 +158,30 @@ onUnmounted(() => {
 </script>
 
 <style lang="scss" module>
+.root.redesigned {
+	> .label {
+		padding-bottom: 7px;
+	}
+
+	.textarea {
+		border-color: var(--settings-input-border, color-mix(in srgb, var(--MI_THEME-fg) 30%, var(--MI_THEME-divider))) !important;
+		border-radius: 22px;
+		background: color-mix(in srgb, var(--MI_THEME-panel) 94%, var(--MI_THEME-bg));
+	}
+
+	.textarea:focus-visible {
+		outline: 2px solid var(--MI_THEME-focus);
+		outline-offset: 2px;
+	}
+
+	> .caption {
+		padding-top: 7px;
+		line-height: 1.55;
+	}
+}
+
 .label {
+	display: block;
 	font-size: 0.85em;
 	padding: 0 0 8px 0;
 	user-select: none;

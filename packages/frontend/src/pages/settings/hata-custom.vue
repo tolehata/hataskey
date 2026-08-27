@@ -5,406 +5,422 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <template>
 <SearchMarker path="/settings/hata-custom" :label="copy.title" :keywords="['hata', 'custom', 'simple', 'widget', 'timeline', 'font']" icon="ti ti-flag">
-    <div class="_gaps_m">
-        <MkFeatureBanner :icon="brandedIconUrl('treasureFound', '/client-assets/package_3d.png')" color="#e74040">
-            {{ copy.banner }}
-        </MkFeatureBanner>
+	<div class="_gaps_m">
+		<!-- 旗鯖fork: 再設計の設定画面に埋め込まれているときは出さない。
+             ⚠️左ペインが同じ案内を持つため、二重の見出しになってしまう。 -->
+		<MkFeatureBanner v-if="!embeddedInSettingsShell" :icon="brandedIconUrl('treasureFound', '/client-assets/package_3d.png')" color="#e74040">
+			{{ copy.banner }}
+		</MkFeatureBanner>
 
-        <div :class="$style.catTabs">
-            <button v-for="cat in categories" :key="cat.id" :class="[$style.catTab, activeCat === cat.id && $style.catTabOn]" @click="activeCat = cat.id">
-                <!-- Hataskey fork: 地震ビューアだけは既存の Tabler アイコンを維持する(ゲーム/地震機能へハタキュを持ち込まない方針のため明示除外)。
+		<!-- 旗鯖fork: 同上。再設計では左ペインがカテゴリの正本。 -->
+		<!-- 旗鯖fork: 再設計では左ペインがカテゴリの正本なので、見た目としては出さない。
+		     ⚠️ただしDOMからは消さないこと。再設計シェルはこのボタンを探して .click() する
+		     ことでカテゴリを切り替えている（index.vue の activateHataCustomCategory）。
+		     消すと「フォント」を押しても既定の「旗鯖全体」から動かなくなる。 -->
+		<div :class="[$style.catTabs, embeddedInSettingsShell && $style.catTabsOffscreen]">
+			<button v-for="cat in categories" :key="cat.id" :class="[$style.catTab, activeCat === cat.id && $style.catTabOn]" :tabindex="embeddedInSettingsShell ? -1 : undefined" @click="activeCat = cat.id">
+				<!-- Hataskey fork: 地震ビューアだけは既存の Tabler アイコンを維持する(ゲーム/地震機能へハタキュを持ち込まない方針のため明示除外)。
                      それ以外は hatakyuAsset があればハタキュイラストを優先して出す。 -->
-                <i v-if="cat.id === 'earthquake' || !cat.hatakyuAsset || !useHatakyuBranding()" :class="cat.icon"></i>
-                <MkHatakyuIllustration v-else :asset="cat.hatakyuAsset" :size="24"/>
-                {{ cat.label }}
-            </button>
-        </div>
+				<i v-if="cat.id === 'earthquake' || !cat.hatakyuAsset || !useHatakyuBranding()" :class="cat.icon"></i>
+				<MkHatakyuIllustration v-else :asset="cat.hatakyuAsset" :size="24"/>
+				{{ cat.label }}
+			</button>
+		</div>
 
-        <!-- ===== 旗鯖全体 ===== -->
-        <template v-if="activeCat === 'general'">
-        <FormSection first>
-            <template #label>{{ generalCopy.transferTitle }}</template>
-            <div style="font-size:.85em;opacity:.72;margin-bottom:10px;line-height:1.6;">{{ generalCopy.transferDescription }}</div>
-            <button class="_buttonPrimary" @click="openSettingsTransfer" style="width:100%;padding:12px;font-weight:bold;">
-                <i class="ti ti-arrows-exchange"></i> {{ generalCopy.openTransfer }}
-            </button>
-        </FormSection>
-        <FormSection>
-            <template #label>{{ generalCopy.externalAccount }}</template>
-            <FormLink to="/settings/external-account">
-                <template #icon><i class="ti ti-link"></i></template>
-                {{ generalCopy.externalAccountSettings }}
-                <template #suffix><span v-if="isExternalLinked" :class="$style.linkedBadge"><i class="ti ti-check"></i> {{ generalCopy.linked }}</span></template>
-            </FormLink>
-        </FormSection>
-        <FormSection>
-            <template #label>{{ generalCopy.uiChange }}</template>
-            <button class="_buttonPrimary" @click="openUiSetup" style="width:100%;padding:12px;font-weight:bold;">
-                <i class="ti ti-wand"></i> {{ generalCopy.openUiSetup }}
-            </button>
-        </FormSection>
-        <FormSection>
-            <template #label>{{ generalCopy.reactions }}</template>
-            <FormLink to="/settings/hidden-reactions">
-                <template #icon><i class="ti ti-eye-off"></i></template>
-                {{ generalCopy.hiddenReactionManagement }}
-                <template #suffix><span v-if="hiddenReactionCount > 0" :class="$style.countBadge">{{ copyx.hiddenReactionCount({ count: hiddenReactionCount.toString() }) }}</span></template>
-            </FormLink>
-            <!-- 旗鯖fork(#31): ベータ機能から正式機能へ移動。⚠️端末ローカル設定なので同期されない旨を明記する。 -->
-            <MkSwitch v-model="hideMutedReactions" style="margin-top:12px;">
-                <template #label>{{ generalCopy.hideMutedReactions }}</template>
-                <template #caption>{{ generalCopy.hideMutedReactionsCaptionBeforeIcon }} <i class="ti ti-info-circle"></i> {{ generalCopy.hideMutedReactionsCaptionAfterIcon }}<b>{{ generalCopy.adminReactionsVisible }}</b>{{ generalCopy.deviceOnlyPrefix }}<b>{{ generalCopy.thisDeviceOnly }}</b>{{ generalCopy.deviceOnlySuffix }}</template>
-            </MkSwitch>
-        </FormSection>
-        <FormSection>
-            <template #label>{{ generalCopy.timeline }}</template>
-            <div style="font-weight:bold;margin-bottom:8px;">{{ generalCopy.animationDirection }}</div>
-            <MkRadios v-model="timelineAnimationDirection">
-                <option value="top">{{ generalCopy.slideFromTop }}</option>
-                <option value="left">{{ generalCopy.slideFromLeft }}</option>
-                <option value="right">{{ generalCopy.slideFromRight }}</option>
-                <option value="random">{{ generalCopy.random }}</option>
-            </MkRadios>
-        </FormSection>
-        <FormSection>
-            <template #label>{{ generalCopy.postForm }}</template>
-            <MkSwitch v-model="showHashtagButtonInPostForm"><template #label>{{ generalCopy.showHashtagButton }}</template></MkSwitch>
-            <MkSwitch v-model="showDrawingButtonInPostForm"><template #label>{{ generalCopy.showDrawingButton }}</template></MkSwitch>
-        </FormSection>
-        <FormSection>
-            <template #label>{{ generalCopy.loginDays }}</template>
-            <MkSwitch v-model="showLoginBonusPopup"><template #label>{{ generalCopy.showLoginDaysPopup }}</template></MkSwitch>
-        </FormSection>
-        <!-- 旗鯖fork: 旧アクセシビリティタブから移動 -->
-        <FormSection>
-            <template #label>{{ generalCopy.timelineActions }}</template>
-            <MkSwitch v-model="directProfile">
-                <template #label>{{ generalCopy.directProfile }}</template>
-                <template #caption>{{ generalCopy.directProfileCaption }}</template>
-            </MkSwitch>
-        </FormSection>
-        <!-- 旗鯖fork: bot ユーザーの投稿をタイムラインから非表示にする + 許可アカウント指定 -->
-        <FormSection>
-            <template #label>{{ generalCopy.hideBotPosts }}</template>
-            <MkSwitch v-model="hideBotsInTimeline">
-                <template #label>{{ generalCopy.hideBotPostsLabel }}</template>
-                <template #caption>{{ generalCopy.hideBotPostsCaptionPrefix }}<b>{{ generalCopy.allowedBotException }}</b>{{ generalCopy.hideBotPostsCaptionSuffix }}</template>
-            </MkSwitch>
-            <template v-if="hideBotsInTimeline">
-                <div :class="$style.botAllowlistHead" style="margin-top:12px;">
-                    <div style="font-size:.85em;opacity:.7;flex:1;">
-                        {{ generalCopy.allowedBotAccountsPrefix }} (<b>{{ botAllowlistUsers.length }}</b> {{ generalCopy.itemUnit }})
-                    </div>
-                    <button class="_buttonPrimary" :class="$style.botAllowlistAdd" @click="addBotAllowlistUser">
-                        <i class="ti ti-plus"></i> {{ generalCopy.add }}
-                    </button>
-                </div>
-                <div v-if="botAllowlistUsers.length === 0" :class="$style.botAllowlistEmpty">
-                    <i class="ti ti-user-off" style="margin-right:6px;"></i>{{ generalCopy.noAllowedBots }}
-                </div>
-                <div v-else :class="$style.botAllowlistList">
-                    <div v-for="user in botAllowlistUsers" :key="user.id" :class="$style.botAllowlistItem">
-                        <MkAvatar :class="$style.botAllowlistAvatar" :user="user" link preview />
-                        <div :class="$style.botAllowlistName">
-                            <MkUserName :user="user" />
-                            <div :class="$style.botAllowlistAcct">@{{ user.username }}<span v-if="user.host">@{{ user.host }}</span></div>
-                        </div>
-                        <button :class="$style.botAllowlistRemove" @click="removeBotAllowlistUser(user.id)" v-tooltip="generalCopy.removeFromList">
-                            <i class="ti ti-x"></i>
-                        </button>
-                    </div>
-                </div>
-            </template>
-        </FormSection>
-        <!-- 旗鯖fork: 旧アクセシビリティタブから移動 -->
-        <FormSection>
-            <template #label>{{ generalCopy.postFormBorder }}</template>
-            <MkSwitch v-model="pfvbEnabled">
-                <template #label>{{ generalCopy.colorByVisibility }}</template>
-                <template #caption>{{ generalCopy.colorByVisibilityCaption }}</template>
-            </MkSwitch>
-            <template v-if="pfvbEnabled">
-                <MkInput v-model="pfvbWidth" type="number" :min="1" :max="12" style="margin-top:10px;">
-                    <template #label>{{ generalCopy.borderWidth }}</template>
-                </MkInput>
-                <MkColorInput v-model="pfvbPublic"><template #label>{{ generalCopy.public }}</template></MkColorInput>
-                <MkColorInput v-model="pfvbHome"><template #label>{{ generalCopy.home }}</template></MkColorInput>
-                <MkColorInput v-model="pfvbFollowers"><template #label>{{ generalCopy.followers }}</template></MkColorInput>
-                <MkColorInput v-model="pfvbSpecified"><template #label>{{ generalCopy.direct }}</template></MkColorInput>
-            </template>
-        </FormSection>
-        </template>
+		<!-- ===== 旗鯖全体 ===== -->
+		<template v-if="activeCat === 'general'">
+			<FormSection first>
+				<template #label>{{ generalCopy.transferTitle }}</template>
+				<div style="font-size:.85em;opacity:.72;margin-bottom:10px;line-height:1.6;">{{ generalCopy.transferDescription }}</div>
+				<button class="_buttonPrimary" style="width:100%;padding:12px;font-weight:bold;" @click="openSettingsTransfer">
+					<i class="ti ti-arrows-exchange"></i> {{ generalCopy.openTransfer }}
+				</button>
+			</FormSection>
+			<FormSection>
+				<template #label>{{ generalCopy.externalAccount }}</template>
+				<FormLink to="/settings/external-account">
+					<template #icon><i class="ti ti-link"></i></template>
+					{{ generalCopy.externalAccountSettings }}
+					<template #suffix><span v-if="isExternalLinked" :class="$style.linkedBadge"><i class="ti ti-check"></i> {{ generalCopy.linked }}</span></template>
+				</FormLink>
+			</FormSection>
+			<FormSection>
+				<template #label>{{ generalCopy.uiChange }}</template>
+				<button class="_buttonPrimary" style="width:100%;padding:12px;font-weight:bold;" @click="openUiSetup">
+					<i class="ti ti-wand"></i> {{ generalCopy.openUiSetup }}
+				</button>
+			</FormSection>
+			<FormSection>
+				<template #label>{{ generalCopy.reactions }}</template>
+				<FormLink to="/settings/hidden-reactions">
+					<template #icon><i class="ti ti-eye-off"></i></template>
+					{{ generalCopy.hiddenReactionManagement }}
+					<template #suffix><span v-if="hiddenReactionCount > 0" :class="$style.countBadge">{{ copyx.hiddenReactionCount({ count: hiddenReactionCount.toString() }) }}</span></template>
+				</FormLink>
+				<!-- 旗鯖fork(#31): ベータ機能から正式機能へ移動。⚠️端末ローカル設定なので同期されない旨を明記する。 -->
+				<MkSwitch v-model="hideMutedReactions" style="margin-top:12px;">
+					<template #label>{{ generalCopy.hideMutedReactions }}</template>
+					<template #caption>{{ generalCopy.hideMutedReactionsCaptionBeforeIcon }} <i class="ti ti-info-circle"></i> {{ generalCopy.hideMutedReactionsCaptionAfterIcon }}<b>{{ generalCopy.adminReactionsVisible }}</b>{{ generalCopy.deviceOnlyPrefix }}<b>{{ generalCopy.thisDeviceOnly }}</b>{{ generalCopy.deviceOnlySuffix }}</template>
+				</MkSwitch>
+			</FormSection>
+			<FormSection>
+				<template #label>{{ generalCopy.timeline }}</template>
+				<div style="font-weight:bold;margin-bottom:8px;">{{ generalCopy.animationDirection }}</div>
+				<MkRadios v-model="timelineAnimationDirection">
+					<option value="top">{{ generalCopy.slideFromTop }}</option>
+					<option value="left">{{ generalCopy.slideFromLeft }}</option>
+					<option value="right">{{ generalCopy.slideFromRight }}</option>
+					<option value="random">{{ generalCopy.random }}</option>
+				</MkRadios>
+			</FormSection>
+			<FormSection>
+				<template #label>{{ generalCopy.postForm }}</template>
+				<MkSwitch v-model="showHashtagButtonInPostForm"><template #label>{{ generalCopy.showHashtagButton }}</template></MkSwitch>
+				<MkSwitch v-model="showDrawingButtonInPostForm"><template #label>{{ generalCopy.showDrawingButton }}</template></MkSwitch>
+			</FormSection>
+			<FormSection>
+				<template #label>{{ generalCopy.loginDays }}</template>
+				<MkSwitch v-model="showLoginBonusPopup"><template #label>{{ generalCopy.showLoginDaysPopup }}</template></MkSwitch>
+			</FormSection>
+			<!-- 旗鯖fork: 旧アクセシビリティタブから移動 -->
+			<FormSection>
+				<template #label>{{ generalCopy.timelineActions }}</template>
+				<MkSwitch v-model="directProfile">
+					<template #label>{{ generalCopy.directProfile }}</template>
+					<template #caption>{{ generalCopy.directProfileCaption }}</template>
+				</MkSwitch>
+			</FormSection>
+			<!-- 旗鯖fork: bot ユーザーの投稿をタイムラインから非表示にする + 許可アカウント指定 -->
+			<FormSection>
+				<template #label>{{ generalCopy.hideBotPosts }}</template>
+				<MkSwitch v-model="hideBotsInTimeline">
+					<template #label>{{ generalCopy.hideBotPostsLabel }}</template>
+					<template #caption>{{ generalCopy.hideBotPostsCaptionPrefix }}<b>{{ generalCopy.allowedBotException }}</b>{{ generalCopy.hideBotPostsCaptionSuffix }}</template>
+				</MkSwitch>
+				<template v-if="hideBotsInTimeline">
+					<div :class="$style.botAllowlistHead" style="margin-top:12px;">
+						<div style="font-size:.85em;opacity:.7;flex:1;">
+							{{ generalCopy.allowedBotAccountsPrefix }} (<b>{{ botAllowlistUsers.length }}</b> {{ generalCopy.itemUnit }})
+						</div>
+						<button class="_buttonPrimary" :class="$style.botAllowlistAdd" @click="addBotAllowlistUser">
+							<i class="ti ti-plus"></i> {{ generalCopy.add }}
+						</button>
+					</div>
+					<div v-if="botAllowlistUsers.length === 0" :class="$style.botAllowlistEmpty">
+						<i class="ti ti-user-off" style="margin-right:6px;"></i>{{ generalCopy.noAllowedBots }}
+					</div>
+					<div v-else :class="$style.botAllowlistList">
+						<div v-for="user in botAllowlistUsers" :key="user.id" :class="$style.botAllowlistItem">
+							<MkAvatar :class="$style.botAllowlistAvatar" :user="user" link preview/>
+							<div :class="$style.botAllowlistName">
+								<MkUserName :user="user"/>
+								<div :class="$style.botAllowlistAcct">@{{ user.username }}<span v-if="user.host">@{{ user.host }}</span></div>
+							</div>
+							<button v-tooltip="generalCopy.removeFromList" :class="$style.botAllowlistRemove" @click="removeBotAllowlistUser(user.id)">
+								<i class="ti ti-x"></i>
+							</button>
+						</div>
+					</div>
+				</template>
+			</FormSection>
+			<!-- 旗鯖fork: 旧アクセシビリティタブから移動 -->
+			<FormSection>
+				<template #label>{{ generalCopy.postFormBorder }}</template>
+				<MkSwitch v-model="pfvbEnabled">
+					<template #label>{{ generalCopy.colorByVisibility }}</template>
+					<template #caption>{{ generalCopy.colorByVisibilityCaption }}</template>
+				</MkSwitch>
+				<template v-if="pfvbEnabled">
+					<MkInput v-model="pfvbWidth" type="number" :min="1" :max="12" style="margin-top:10px;">
+						<template #label>{{ generalCopy.borderWidth }}</template>
+					</MkInput>
+					<MkColorInput v-model="pfvbPublic"><template #label>{{ generalCopy.public }}</template></MkColorInput>
+					<MkColorInput v-model="pfvbHome"><template #label>{{ generalCopy.home }}</template></MkColorInput>
+					<MkColorInput v-model="pfvbFollowers"><template #label>{{ generalCopy.followers }}</template></MkColorInput>
+					<MkColorInput v-model="pfvbSpecified"><template #label>{{ generalCopy.direct }}</template></MkColorInput>
+				</template>
+			</FormSection>
+		</template>
 
-        <!-- ===== フォント ===== -->
-        <template v-if="activeCat === 'font'">
-        <FormSection first>
-            <template #label>{{ fontCopy.uiFontSelection }}</template>
-            <div style="font-size:.85em;opacity:.7;margin-bottom:12px;">
-                {{ fontCopy.presetDescriptionLine1 }}
-                {{ fontCopy.presetDescriptionLine2 }}
-            </div>
-            <div :class="$style.fontGrid">
-                <button
-                    v-for="preset in fontPresets"
-                    :key="preset.id"
-                    :class="[$style.fontCard, fontId === preset.id && $style.fontCardOn]"
-                    @click="onFontChange(preset.id)"
-                >
-                    <div :class="$style.fontSample" :style="{ fontFamily: preset.family + ', sans-serif' }">
-                        {{ fontCopy.samplePrimary }}
-                    </div>
-                    <div :class="$style.fontSampleSub" :style="{ fontFamily: preset.family + ', sans-serif' }">
-                        {{ fontCopy.sampleSecondary }}
-                    </div>
-					<div :class="$style.fontName">{{ fontPresetLabel(preset) }}</div>
-                    <div :class="$style.fontMeta">
-                        <span :class="$style.fontLicense"><i class="ti ti-license"></i> {{ preset.license }}</span>
-                        <span :class="$style.fontAuthor">{{ preset.author }}</span>
-                    </div>
-                </button>
+		<!-- ===== フォント ===== -->
+		<template v-if="activeCat === 'font'">
+			<FormSection first>
+				<template #label>{{ fontCopy.uiFontSelection }}</template>
+				<div style="font-size:.85em;opacity:.7;margin-bottom:12px;">
+					{{ fontCopy.presetDescriptionLine1 }}
+					{{ fontCopy.presetDescriptionLine2 }}
+				</div>
+				<div :class="$style.fontGrid">
+					<button
+						v-for="preset in fontPresets"
+						:key="preset.id"
+						:class="[$style.fontCard, fontId === preset.id && $style.fontCardOn]"
+						@click="onFontChange(preset.id)"
+					>
+						<div :class="$style.fontSample" :style="{ fontFamily: preset.family + ', sans-serif' }">
+							{{ fontCopy.samplePrimary }}
+						</div>
+						<div :class="$style.fontSampleSub" :style="{ fontFamily: preset.family + ', sans-serif' }">
+							{{ fontCopy.sampleSecondary }}
+						</div>
+						<div :class="$style.fontName">{{ fontPresetLabel(preset) }}</div>
+						<div :class="$style.fontMeta">
+							<span :class="$style.fontLicense"><i class="ti ti-license"></i> {{ preset.license }}</span>
+							<span :class="$style.fontAuthor">{{ preset.author }}</span>
+						</div>
+					</button>
 
-                <!-- システムフォント -->
-                <button
-                    :class="[$style.fontCard, fontId === 'system' && $style.fontCardOn]"
-                    @click="onFontChange('system')"
-                >
-                    <div :class="$style.fontSample">{{ fontCopy.samplePrimary }}</div>
-                    <div :class="$style.fontSampleSub">{{ fontCopy.sampleSecondary }}</div>
-                    <div :class="$style.fontName">{{ fontCopy.systemFont }}</div>
-                    <div :class="$style.fontMeta">
-                        <span :class="$style.fontLicense">{{ fontCopy.useOsFont }}</span>
-                    </div>
-                </button>
-            </div>
-        </FormSection>
+					<!-- システムフォント -->
+					<button
+						:class="[$style.fontCard, fontId === 'system' && $style.fontCardOn]"
+						@click="onFontChange('system')"
+					>
+						<div :class="$style.fontSample">{{ fontCopy.samplePrimary }}</div>
+						<div :class="$style.fontSampleSub">{{ fontCopy.sampleSecondary }}</div>
+						<div :class="$style.fontName">{{ fontCopy.systemFont }}</div>
+						<div :class="$style.fontMeta">
+							<span :class="$style.fontLicense">{{ fontCopy.useOsFont }}</span>
+						</div>
+					</button>
+				</div>
+			</FormSection>
 
-        <FormSection>
-            <template #label>{{ fontCopy.customFont }}</template>
-            <div style="font-size:.85em;opacity:.7;margin-bottom:12px;">
-                {{ fontCopy.customFontDescription }}<br>
-                {{ fontCopy.consentRequired }}
-            </div>
-            <div v-if="fontId === 'custom' && customFontName" :class="$style.customFontStatus">
-                <i class="ti ti-typography"></i>
-                {{ fontCopy.currentCustomFont }} <strong>{{ customFontName }}</strong>
-            </div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                <button class="_buttonPrimary" @click="openDrivePicker" style="padding:10px 20px;font-weight:bold;">
-                    <i class="ti ti-upload"></i> {{ fontCopy.selectFromDrive }}
-                </button>
-                <button class="_buttonGradate" @click="resetToDefault" style="padding:10px 20px;">
-                    <i class="ti ti-arrow-back"></i> {{ fontCopy.resetDefault }}
-                </button>
-            </div>
-            <div v-if="customFontConsent" :class="$style.consentNote">
-                <i class="ti ti-check"></i> {{ fontCopy.consentAccepted }}
-            </div>
-        </FormSection>
-        </template>
+			<FormSection>
+				<template #label>{{ fontCopy.customFont }}</template>
+				<div style="font-size:.85em;opacity:.7;margin-bottom:12px;">
+					{{ fontCopy.customFontDescription }}<br>
+					{{ fontCopy.consentRequired }}
+				</div>
+				<div v-if="fontId === 'custom' && customFontName" :class="$style.customFontStatus">
+					<i class="ti ti-typography"></i>
+					{{ fontCopy.currentCustomFont }} <strong>{{ customFontName }}</strong>
+				</div>
+				<div style="display:flex;gap:8px;flex-wrap:wrap;">
+					<button class="_buttonPrimary" :disabled="customFontUploading" style="padding:10px 20px;font-weight:bold;" @click="uploadCustomFont">
+						<i :class="customFontUploading ? 'ti ti-loader-2 ti-spin' : 'ti ti-upload'"></i>
+						{{ customFontUploading ? fontCopy.uploadingFont : fontCopy.uploadFont }}
+						<span v-if="customFontUploadProgress != null"> {{ customFontUploadProgress }}%</span>
+					</button>
+					<button class="_button" :disabled="customFontUploading" style="padding:10px 20px;font-weight:bold;" @click="openDrivePicker">
+						<i class="ti ti-cloud-search"></i> {{ fontCopy.selectFromDrive }}
+					</button>
+					<button class="_buttonGradate" :disabled="customFontUploading" style="padding:10px 20px;" @click="resetToDefault">
+						<i class="ti ti-arrow-back"></i> {{ fontCopy.resetDefault }}
+					</button>
+				</div>
+				<div v-if="customFontConsent" :class="$style.consentNote">
+					<i class="ti ti-check"></i> {{ fontCopy.consentAccepted }}
+				</div>
+			</FormSection>
+		</template>
 
-        <!-- ===== Hataskey UI ===== -->
-        <!-- 旗鯖fork: 旧「Hataskey UI」タブの全設定 (基本/上部・下部ナビバー/サイドメニュー/デッキチュートリアル)
+		<!-- ===== Hataskey UI ===== -->
+		<!-- 旗鯖fork: 旧「Hataskey UI」タブの全設定 (基本/上部・下部ナビバー/サイドメニュー/デッキチュートリアル)
              は Hataskey UI 2 の設定モーダル (MkHatasabaUi2EditWindow) へ統合した。タブ自体を廃止し、
              設定入口は Hataskey UI 2 タブに一本化する。preferences のキーは変更していないため既存設定は保持される。 -->
 
-        <!-- ===== UI =====
+		<!-- ===== UI =====
              旗鯖fork: Hataskey UI 2 と HataSNSCordUI の端末設定を一つのタブに集約。 -->
-        <template v-if="activeCat === 'glassUi'">
-        <FormSection first>
-            <template #label>{{ uiCopy.hatasabaUi2Settings }}</template>
-            <div style="font-size:.85em;opacity:.7;margin-bottom:12px;line-height:1.6;">
-                {{ uiCopy.hatasabaUi2DescriptionPrefix }}<b>{{ uiCopy.glassOpacity }}</b>{{ uiCopy.hatasabaUi2DescriptionSuffix }}<br>
-                {{ uiCopy.windowPrefix }}<b>{{ uiCopy.livePreview }}</b>{{ uiCopy.windowMiddle }}<b>{{ uiCopy.notSavedUntilSave }}</b>{{ uiCopy.windowSuffix }}
-            </div>
-            <button class="_buttonPrimary" @click="openHatasabaUi2EditWindow" style="padding:10px 20px;font-weight:bold;">
-                <i class="ti ti-sparkles"></i> {{ uiCopy.openHatasabaUi2Settings }}
-            </button>
-        </FormSection>
-        <FormSection>
-            <template #label>{{ uiCopy.hataSnsCordUiSettings }}</template>
-            <div style="font-size:.85em;opacity:.7;margin-bottom:14px;line-height:1.6;">
-                {{ uiCopy.hataSnsCordUiDescriptionPrefix }}<b>{{ uiCopy.hataSnsCordUiSync }}</b>{{ uiCopy.hataSnsCordUiDescriptionSuffix }}
-            </div>
-            <HatacordingUiSettings :accountId="$i.id"/>
-        </FormSection>
-        <!-- 旗鯖fork: 横開き折りたたみ端末向けレイアウト。
+		<template v-if="activeCat === 'glassUi'">
+			<FormSection first>
+				<template #label>{{ uiCopy.hatasabaUi2Settings }}</template>
+				<div style="font-size:.85em;opacity:.7;margin-bottom:12px;line-height:1.6;">
+					{{ uiCopy.hatasabaUi2DescriptionPrefix }}<b>{{ uiCopy.glassOpacity }}</b>{{ uiCopy.hatasabaUi2DescriptionSuffix }}<br>
+					{{ uiCopy.windowPrefix }}<b>{{ uiCopy.livePreview }}</b>{{ uiCopy.windowMiddle }}<b>{{ uiCopy.notSavedUntilSave }}</b>{{ uiCopy.windowSuffix }}
+				</div>
+				<button class="_buttonPrimary" style="padding:10px 20px;font-weight:bold;" @click="openHatasabaUi2EditWindow">
+					<i class="ti ti-sparkles"></i> {{ uiCopy.openHatasabaUi2Settings }}
+				</button>
+			</FormSection>
+			<FormSection>
+				<template #label>{{ uiCopy.hataSnsCordUiSettings }}</template>
+				<div style="font-size:.85em;opacity:.7;margin-bottom:14px;line-height:1.6;">
+					{{ uiCopy.hataSnsCordUiDescriptionPrefix }}<b>{{ uiCopy.hataSnsCordUiSync }}</b>{{ uiCopy.hataSnsCordUiDescriptionSuffix }}
+				</div>
+				<HatacordingUiSettings :accountId="$i.id"/>
+			</FormSection>
+			<!-- 旗鯖fork: 横開き折りたたみ端末向けレイアウト。
              ⚠️端末ローカル設定(プロファイル非同期)。折りたたみ端末と通常のスマホで
                同じアカウントを使ったときに片方が壊れるため、同期させてはいけない。 -->
-        <FormSection>
-            <template #label>{{ uiCopy.foldableSection }}</template>
-            <div style="font-size:.85em;opacity:.7;margin-bottom:12px;line-height:1.6;">{{ uiCopy.foldableDescription }}</div>
-            <MkRadios v-model="foldableLayout">
-                <option value="auto">{{ uiCopy.foldableModeAuto }}</option>
-                <option value="on">{{ uiCopy.foldableModeOn }}</option>
-                <option value="off">{{ uiCopy.foldableModeOff }}</option>
-            </MkRadios>
-            <div style="font-size:.8em;opacity:.65;margin-top:10px;line-height:1.6;">
-                {{ uiCopy.foldableAutoCaption }}<br>
-                {{ uiCopy.foldableDeviceOnly }}
-            </div>
-        </FormSection>
-        <!-- Hataskey fork: ハタキュ(オリジナルアイコンブランディング)を使うかどうか。
+			<FormSection>
+				<template #label>{{ uiCopy.foldableSection }}</template>
+				<div style="font-size:.85em;opacity:.7;margin-bottom:12px;line-height:1.6;">{{ uiCopy.foldableDescription }}</div>
+				<MkRadios v-model="foldableLayout">
+					<option value="auto">{{ uiCopy.foldableModeAuto }}</option>
+					<option value="on">{{ uiCopy.foldableModeOn }}</option>
+					<option value="off">{{ uiCopy.foldableModeOff }}</option>
+				</MkRadios>
+				<div style="font-size:.8em;opacity:.65;margin-top:10px;line-height:1.6;">
+					{{ uiCopy.foldableAutoCaption }}<br>
+					{{ uiCopy.foldableDeviceOnly }}
+				</div>
+			</FormSection>
+			<!-- Hataskey fork: ハタキュ(オリジナルアイコンブランディング)を使うかどうか。
              ⚠️OFFにすると、変更前と同じ Tabler アイコン / 絵文字 / SVG に戻る。 -->
-        <FormSection>
-            <template #label>{{ uiCopy.brandingSection }}</template>
-            <MkSwitch v-model="useHatakyuIllustrations">
-                <template #label>{{ uiCopy.useHatakyu }}</template>
-                <template #caption>{{ uiCopy.useHatakyuDescription }}</template>
-            </MkSwitch>
-        </FormSection>
-        </template>
+			<FormSection>
+				<template #label>{{ uiCopy.brandingSection }}</template>
+				<MkSwitch v-model="useHatakyuIllustrations">
+					<template #label>{{ uiCopy.useHatakyu }}</template>
+					<template #caption>{{ uiCopy.useHatakyuDescription }}</template>
+				</MkSwitch>
+			</FormSection>
+		</template>
 
-        <!-- ===== ビジュアル (新設) ===== -->
-        <template v-if="activeCat === 'visual'">
-        <FormSection first>
-            <template #label>{{ visualCopy.noteSpacing }}</template>
-            <div style="font-size:.85em;opacity:.7;margin-bottom:12px;">{{ visualCopy.noteSpacingDescription }}</div>
-            <div v-if="isDeckLike" style="font-size:.82em;color:var(--MI_THEME-warn);margin-bottom:10px;padding:8px 10px;border:1px solid var(--MI_THEME-divider);border-radius:8px;background:var(--MI_THEME-panel);">
-                <i class="ti ti-info-circle" style="margin-right:4px;"></i>{{ visualCopy.deckSpacingFixed }}
-            </div>
-            <div :class="$style.spacingOptions">
-                <button v-for="opt in spacingOptions" :key="opt.value" :class="[$style.spacingCard, noteSpacing === opt.value && $style.spacingCardOn, isDeckLike && $style.spacingCardDisabled]" :disabled="isDeckLike" @click="!isDeckLike && (noteSpacing = opt.value)">
-                    <div :class="$style.spacingPreview">
-                        <div :class="$style.spacingBubble" :style="{ margin: opt.previewMargin }"></div>
-                        <div :class="$style.spacingBubble" :style="{ margin: opt.previewMargin }"></div>
-                        <div :class="$style.spacingBubble" :style="{ margin: opt.previewMargin }"></div>
-                    </div>
-                    <div :class="$style.spacingLabel">{{ opt.label }}</div>
-                </button>
-            </div>
-            <MkSwitch v-model="classicNoteSpacingDisplay" :disabled="isHatasabaUi || isMisskeyDefaultUi">
-                <template #label>{{ visualCopy.useClassicSpacing }}</template>
-                <template #caption>{{ visualCopy.useClassicSpacingCaption }}<br><span v-if="isHatasabaUi" style="color: var(--MI_THEME-warn);">{{ visualCopy.hatasabaSpacingLocked }}</span><span v-else-if="isMisskeyDefaultUi" style="color: var(--MI_THEME-warn);">{{ visualCopy.misskeySpacingLocked }}</span></template>
-            </MkSwitch>
-        </FormSection>
-        <FormSection>
-            <template #label>{{ visualCopy.mobileDate }}</template>
-            <MkSwitch v-model="showTimelineDateOnMobile">
-                <template #label>{{ visualCopy.showMobileDate }}</template>
-                <template #caption>{{ visualCopy.showMobileDateCaption }}</template>
-            </MkSwitch>
-        </FormSection>
-        <FormSection>
-            <template #label>{{ visualCopy.displayEffects }}</template>
-            <MkSwitch v-model="glassEffect">
-                <template #label>{{ visualCopy.enableGlassEffect }}</template>
-                <template #caption>{{ visualCopy.enableGlassEffectCaption }}</template>
-            </MkSwitch>
-            <MkSwitch v-model="deckNoBannerBg">
-                <template #label>{{ visualCopy.disableDeckBannerBlur }}</template>
-                <template #caption>{{ visualCopy.disableDeckBannerBlurCaption }}</template>
-            </MkSwitch>
-            <MkSwitch v-model="showPageHeader">
-                <template #label>{{ visualCopy.showExtraPageHeader }}</template>
-                <template #caption>{{ visualCopy.showExtraPageHeaderCaption }}</template>
-            </MkSwitch>
-        </FormSection>
-        <FormSection>
-            <template #label>{{ visualCopy.deckTimeline }}</template>
-            <MkSwitch v-model="deckLatestNoteText">
-                <template #label>{{ visualCopy.showLatestNoteText }}</template>
-                <template #caption>{{ visualCopy.showLatestNoteTextOff }}<br>{{ visualCopy.showLatestNoteTextOn }}</template>
-            </MkSwitch>
-            <MkSwitch v-model="showLegacyChannelPostButton">
-                <template #label>{{ visualCopy.showLegacyChannelPostButton }}</template>
-                <template #caption>{{ visualCopy.legacyChannelPostOff }}<br>{{ visualCopy.legacyChannelPostOn }}</template>
-            </MkSwitch>
-        </FormSection>
-        <FormSection>
-            <template #label>HataFeed</template>
-            <MkSwitch v-model="hatafeedLeaves">
-                <template #label>{{ visualCopy.hatafeedLeaves }}</template>
-                <template #caption>{{ visualCopy.hatafeedLeavesCaption }}</template>
-            </MkSwitch>
-        </FormSection>
-        <FormSection>
-            <template #label>{{ visualCopy.widgets }}</template>
-            <MkSwitch v-model="widgetBorder">
-                <template #label>{{ visualCopy.widgetBorder }}</template>
-                <template #caption>{{ visualCopy.widgetBorderCaption }}</template>
-            </MkSwitch>
-        </FormSection>
-        </template>
+		<!-- ===== ビジュアル (新設) ===== -->
+		<template v-if="activeCat === 'visual'">
+			<FormSection first>
+				<template #label>{{ visualCopy.noteSpacing }}</template>
+				<div style="font-size:.85em;opacity:.7;margin-bottom:12px;">{{ visualCopy.noteSpacingDescription }}</div>
+				<div v-if="isDeckLike" style="font-size:.82em;color:var(--MI_THEME-warn);margin-bottom:10px;padding:8px 10px;border:1px solid var(--MI_THEME-divider);border-radius:8px;background:var(--MI_THEME-panel);">
+					<i class="ti ti-info-circle" style="margin-right:4px;"></i>{{ visualCopy.deckSpacingFixed }}
+				</div>
+				<div :class="$style.spacingOptions">
+					<button v-for="opt in spacingOptions" :key="opt.value" :class="[$style.spacingCard, noteSpacing === opt.value && $style.spacingCardOn, isDeckLike && $style.spacingCardDisabled]" :disabled="isDeckLike" @click="!isDeckLike && (noteSpacing = opt.value)">
+						<div :class="$style.spacingPreview">
+							<div :class="$style.spacingBubble" :style="{ margin: opt.previewMargin }"></div>
+							<div :class="$style.spacingBubble" :style="{ margin: opt.previewMargin }"></div>
+							<div :class="$style.spacingBubble" :style="{ margin: opt.previewMargin }"></div>
+						</div>
+						<div :class="$style.spacingLabel">{{ opt.label }}</div>
+					</button>
+				</div>
+				<MkSwitch v-model="classicNoteSpacingDisplay" :disabled="isHatasabaUi || isMisskeyDefaultUi">
+					<template #label>{{ visualCopy.useClassicSpacing }}</template>
+					<template #caption>{{ visualCopy.useClassicSpacingCaption }}<br><span v-if="isHatasabaUi" style="color: var(--MI_THEME-warn);">{{ visualCopy.hatasabaSpacingLocked }}</span><span v-else-if="isMisskeyDefaultUi" style="color: var(--MI_THEME-warn);">{{ visualCopy.misskeySpacingLocked }}</span></template>
+				</MkSwitch>
+			</FormSection>
+			<FormSection>
+				<template #label>{{ visualCopy.mobileDate }}</template>
+				<MkSwitch v-model="showTimelineDateOnMobile">
+					<template #label>{{ visualCopy.showMobileDate }}</template>
+					<template #caption>{{ visualCopy.showMobileDateCaption }}</template>
+				</MkSwitch>
+			</FormSection>
+			<FormSection>
+				<template #label>{{ visualCopy.displayEffects }}</template>
+				<MkSwitch v-model="glassEffect">
+					<template #label>{{ visualCopy.enableGlassEffect }}</template>
+					<template #caption>{{ visualCopy.enableGlassEffectCaption }}</template>
+				</MkSwitch>
+				<MkSwitch v-model="deckNoBannerBg">
+					<template #label>{{ visualCopy.disableDeckBannerBlur }}</template>
+					<template #caption>{{ visualCopy.disableDeckBannerBlurCaption }}</template>
+				</MkSwitch>
+				<MkSwitch v-model="showPageHeader">
+					<template #label>{{ visualCopy.showExtraPageHeader }}</template>
+					<template #caption>{{ visualCopy.showExtraPageHeaderCaption }}</template>
+				</MkSwitch>
+			</FormSection>
+			<FormSection>
+				<template #label>{{ visualCopy.deckTimeline }}</template>
+				<MkSwitch v-model="deckLatestNoteText">
+					<template #label>{{ visualCopy.showLatestNoteText }}</template>
+					<template #caption>{{ visualCopy.showLatestNoteTextOff }}<br>{{ visualCopy.showLatestNoteTextOn }}</template>
+				</MkSwitch>
+				<MkSwitch v-model="showLegacyChannelPostButton">
+					<template #label>{{ visualCopy.showLegacyChannelPostButton }}</template>
+					<template #caption>{{ visualCopy.legacyChannelPostOff }}<br>{{ visualCopy.legacyChannelPostOn }}</template>
+				</MkSwitch>
+			</FormSection>
+			<FormSection>
+				<template #label>HataFeed</template>
+				<MkSwitch v-model="hatafeedLeaves">
+					<template #label>{{ visualCopy.hatafeedLeaves }}</template>
+					<template #caption>{{ visualCopy.hatafeedLeavesCaption }}</template>
+				</MkSwitch>
+			</FormSection>
+			<FormSection>
+				<template #label>{{ visualCopy.widgets }}</template>
+				<MkSwitch v-model="widgetBorder">
+					<template #label>{{ visualCopy.widgetBorder }}</template>
+					<template #caption>{{ visualCopy.widgetBorderCaption }}</template>
+				</MkSwitch>
+			</FormSection>
+		</template>
 
-        <template v-if="activeCat === 'hatask'">
-        <FormSection first>
-            <template #label>{{ hataskCopy.settings }}</template>
-            <div style="font-size:.85em;opacity:.7;margin-bottom:12px;line-height:1.6;">{{ hataskCopy.settingsDescription }}</div>
-            <button class="_buttonPrimary" @click="openHataskSettings" style="padding:10px 20px;font-weight:bold;"><i class="ti ti-settings"></i> {{ hataskCopy.openSettings }}</button>
-        </FormSection>
-        <FormSection>
-            <template #label>{{ hataskCopy.open }}</template>
-            <div style="font-size:.85em;opacity:.7;margin-bottom:12px;">{{ hataskCopy.openDescription }}</div>
-            <button class="_button" @click="goToHatask" style="padding:10px 20px;"><i class="ti ti-external-link"></i> {{ hataskCopy.open }}</button>
-        </FormSection>
-        </template>
-        <!-- ===== Hatady ===== -->
-        <template v-if="activeCat === 'hatady'">
-        <FormSection first>
-            <template #label>{{ hatadyCopy.settings }}</template>
-            <div style="font-size:.85em;opacity:.7;margin-bottom:12px;line-height:1.6;">{{ hatadyCopy.settingsDescription }}</div>
-            <button class="_buttonPrimary" @click="openHatadySettings" style="padding:10px 20px;font-weight:bold;"><i class="ti ti-palette"></i> {{ hatadyCopy.openSettings }}</button>
-        </FormSection>
-        <FormSection>
-            <template #label>{{ hatadyCopy.open }}</template>
-            <div style="font-size:.85em;opacity:.7;margin-bottom:12px;">{{ hatadyCopy.openDescription }}</div>
-            <button class="_button" @click="goToHatady" style="padding:10px 20px;"><i class="ti ti-external-link"></i> {{ hatadyCopy.open }}</button>
-        </FormSection>
-        </template>
-        <template v-if="activeCat === 'mascot'">
-        <FormSection first>
-            <template #label>{{ mascotCopy.title }}</template>
-            <div style="font-size:.85em;opacity:.7;margin-bottom:12px;line-height:1.6;">{{ mascotCopy.description }}</div>
-            <button class="_buttonPrimary" @click="openMascotSettings" style="padding:10px 20px;font-weight:bold;"><i class="ti ti-mood-smile"></i> {{ mascotCopy.openSettings }}</button>
-        </FormSection>
-        </template>
+		<template v-if="activeCat === 'hatask'">
+			<FormSection first>
+				<template #label>{{ hataskCopy.settings }}</template>
+				<div style="font-size:.85em;opacity:.7;margin-bottom:12px;line-height:1.6;">{{ hataskCopy.settingsDescription }}</div>
+				<button class="_buttonPrimary" style="padding:10px 20px;font-weight:bold;" @click="openHataskSettings"><i class="ti ti-settings"></i> {{ hataskCopy.openSettings }}</button>
+			</FormSection>
+			<FormSection>
+				<template #label>{{ hataskCopy.open }}</template>
+				<div style="font-size:.85em;opacity:.7;margin-bottom:12px;">{{ hataskCopy.openDescription }}</div>
+				<button class="_button" style="padding:10px 20px;" @click="goToHatask"><i class="ti ti-external-link"></i> {{ hataskCopy.open }}</button>
+			</FormSection>
+		</template>
+		<!-- ===== Hatady ===== -->
+		<template v-if="activeCat === 'hatady'">
+			<FormSection first>
+				<template #label>{{ hatadyCopy.settings }}</template>
+				<div style="font-size:.85em;opacity:.7;margin-bottom:12px;line-height:1.6;">{{ hatadyCopy.settingsDescription }}</div>
+				<button class="_buttonPrimary" style="padding:10px 20px;font-weight:bold;" @click="openHatadySettings"><i class="ti ti-palette"></i> {{ hatadyCopy.openSettings }}</button>
+			</FormSection>
+			<FormSection>
+				<template #label>{{ hatadyCopy.open }}</template>
+				<div style="font-size:.85em;opacity:.7;margin-bottom:12px;">{{ hatadyCopy.openDescription }}</div>
+				<button class="_button" style="padding:10px 20px;" @click="goToHatady"><i class="ti ti-external-link"></i> {{ hatadyCopy.open }}</button>
+			</FormSection>
+		</template>
+		<template v-if="activeCat === 'mascot'">
+			<FormSection first>
+				<template #label>{{ mascotCopy.title }}</template>
+				<div style="font-size:.85em;opacity:.7;margin-bottom:12px;line-height:1.6;">{{ mascotCopy.description }}</div>
+				<button class="_buttonPrimary" style="padding:10px 20px;font-weight:bold;" @click="openMascotSettings"><i class="ti ti-mood-smile"></i> {{ mascotCopy.openSettings }}</button>
+			</FormSection>
+		</template>
 
-        <!-- ===== 地震ビューア ===== -->
-        <template v-if="activeCat === 'earthquake'">
-        <FormSection first>
-            <template #label>地震ビューアの設定</template>
-            <div style="font-size:.85em;opacity:.7;margin-bottom:12px;line-height:1.6;">地震・津波情報ビューアの設定です。お住いの都道府県（付近の地震表示用）と取得間隔を変更できます。<b>お住いの都道府県はこの端末にのみ保存され、サーバーには送信されません。</b></div>
-            <button class="_buttonPrimary" @click="openEarthquakeSettings" style="padding:10px 20px;font-weight:bold;"><i class="ti ti-settings"></i> 地震ビューアの設定を開く</button>
-        </FormSection>
-        <FormSection>
-            <template #label>地震ビューアを開く</template>
-            <div style="font-size:.85em;opacity:.7;margin-bottom:12px;">地震・津波情報の画面を開きます。</div>
-            <button class="_button" @click="goToEarthquake" style="padding:10px 20px;"><i class="ti ti-activity"></i> 地震・津波情報を開く</button>
-        </FormSection>
-        </template>
+		<!-- ===== 地震ビューア ===== -->
+		<template v-if="activeCat === 'earthquake'">
+			<FormSection first>
+				<template #label>地震ビューアの設定</template>
+				<div style="font-size:.85em;opacity:.7;margin-bottom:12px;line-height:1.6;">地震・津波情報ビューアの設定です。お住いの都道府県（付近の地震表示用）と取得間隔を変更できます。<b>お住いの都道府県はこの端末にのみ保存され、サーバーには送信されません。</b></div>
+				<button class="_buttonPrimary" style="padding:10px 20px;font-weight:bold;" @click="openEarthquakeSettings"><i class="ti ti-settings"></i> 地震ビューアの設定を開く</button>
+			</FormSection>
+			<FormSection>
+				<template #label>地震ビューアを開く</template>
+				<div style="font-size:.85em;opacity:.7;margin-bottom:12px;">地震・津波情報の画面を開きます。</div>
+				<button class="_button" style="padding:10px 20px;" @click="goToEarthquake"><i class="ti ti-activity"></i> 地震・津波情報を開く</button>
+			</FormSection>
+		</template>
 
-        <!-- ===== その他 (旧アクセシビリティ) ===== -->
-        <!-- 旗鯖fork: タブ再編で、旧アクセシビリティタブの項目はほぼ全て ビジュアル / Hataskey UI 2 /
+		<!-- ===== その他 (旧アクセシビリティ) ===== -->
+		<!-- 旗鯖fork: タブ再編で、旧アクセシビリティタブの項目はほぼ全て ビジュアル / Hataskey UI 2 /
              旗鯖全体 タブに分散移動した。ここには「他タブに分類しづらい」ものだけを残す。
              現状は天気エフェクトのみ。preferences のキー自体は変更していないので、
              既存ユーザーの設定値は移動後もそのまま保持される (マイグレ不要)。 -->
-        <template v-if="activeCat === 'accessibility'">
-        <FormSection first>
-            <template #label>{{ otherCopy.weatherEffects }}</template>
-            <MkSwitch v-model="weatherEffectEnabled">
-                <template #label>{{ otherCopy.enableWeatherEffects }}</template>
-                <template #caption>{{ otherCopy.weatherEffectsCaption }}</template>
-            </MkSwitch>
-            <div v-if="weatherEffectEnabled" class="_gaps_s" style="margin-top:10px;">
-                <div style="font-weight:bold;margin-bottom:8px;">{{ otherCopy.effectDuration }}</div>
-                <MkRadios v-model="weatherEffectDuration">
-                    <option value="long">{{ otherCopy.durationLong }}</option>
-                    <option value="short">{{ otherCopy.durationShort }}</option>
-                </MkRadios>
-                <div style="font-size:.82em;color:var(--MI_THEME-warn);padding:8px 10px;border:1px solid var(--MI_THEME-divider);border-radius:8px;background:var(--MI_THEME-panel);">
-                    {{ otherCopy.weatherWordNote }}<br>
-                    {{ otherCopy.greetingNote }}<br>
-                    {{ otherCopy.safetyNote }}
-                </div>
-            </div>
-        </FormSection>
-        </template>
-    </div>
+		<template v-if="activeCat === 'accessibility'">
+			<FormSection first>
+				<template #label>{{ otherCopy.weatherEffects }}</template>
+				<MkSwitch v-model="weatherEffectEnabled">
+					<template #label>{{ otherCopy.enableWeatherEffects }}</template>
+					<template #caption>{{ otherCopy.weatherEffectsCaption }}</template>
+				</MkSwitch>
+				<div v-if="weatherEffectEnabled" class="_gaps_s" style="margin-top:10px;">
+					<div style="font-weight:bold;margin-bottom:8px;">{{ otherCopy.effectDuration }}</div>
+					<MkRadios v-model="weatherEffectDuration">
+						<option value="long">{{ otherCopy.durationLong }}</option>
+						<option value="short">{{ otherCopy.durationShort }}</option>
+					</MkRadios>
+					<div style="font-size:.82em;color:var(--MI_THEME-warn);padding:8px 10px;border:1px solid var(--MI_THEME-divider);border-radius:8px;background:var(--MI_THEME-panel);">
+						{{ otherCopy.weatherWordNote }}<br>
+						{{ otherCopy.greetingNote }}<br>
+						{{ otherCopy.safetyNote }}
+					</div>
+				</div>
+			</FormSection>
+		</template>
+	</div>
 </SearchMarker>
 </template>
 
 <script lang="ts" setup>
-import { computed, ref, watch } from 'vue';
+import { computed, inject, ref, watch } from 'vue';
+import type { HatakyuAssetKey } from '@/utility/hatakyu-assets.js';
+import type { HataFoldableMode } from '@/utility/hatasaba-device-prefs.js';
+import type { HataFontId } from '@/scripts/hata-font-manager.js';
+import { settingsSearchV2ContextKey } from '@/utility/settings-search-v2-context.js';
 import MkSwitch from '@/components/MkSwitch.vue';
 import MkRadios from '@/components/MkRadios.vue';
 import MkInput from '@/components/MkInput.vue';
@@ -416,7 +432,6 @@ import { brandedIconUrl } from '@/utility/hatakyu-assets.js';
 import HatacordingUiSettings from '@/components/HatacordingUiSettings.vue';
 import MkHatakyuIllustration from '@/components/MkHatakyuIllustration.vue';
 import { useHatakyuBranding } from '@/utility/hatakyu-assets.js';
-import type { HatakyuAssetKey } from '@/utility/hatakyu-assets.js';
 import { i18n } from '@/i18n.js';
 import * as os from '@/os.js';
 import { ensureSignin } from '@/i.js';
@@ -430,13 +445,20 @@ import { getHiddenReactions, hiddenReactionsVersion } from '@/utility/hidden-rea
 // 旗鯖fork: deckIgnoreWidth / setDeckIgnoreWidth は Hataskey UI 設定モーダル側で消費するのみ。
 // 旗鯖fork(Hataskey UI 2): 端末ローカルの glassUi 系を hata-custom.vue から使うため import。
 import { glassUiLocal, setGlassUiLocal, glassUiBubbleLocal, setGlassUiBubbleLocal, hideMutedReactionsLocal, setHideMutedReactionsLocal, foldableLayoutMode, setFoldableLayoutMode } from '@/utility/hatasaba-device-prefs.js';
-import type { HataFoldableMode } from '@/utility/hatasaba-device-prefs.js';
-import { HATA_FONT_PRESETS, applyHataFont, type HataFontId } from '@/scripts/hata-font-manager.js';
-import { chooseDriveFile } from '@/utility/drive.js';
+import { HATA_FONT_PRESETS, applyHataFont } from '@/scripts/hata-font-manager.js';
+import { isDirectUploadCustomFontFile, isSupportedCustomFontFile } from '@/utility/hata-font-file.js';
+import { chooseDriveFile, uploadFile } from '@/utility/drive.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 // 旗鯖fork: applySidebarIconOverride も同上 (サイドバー編集はモーダル側で完結)。
 const router = useRouter();
 const $i = ensureSignin();
+/**
+ * 旗鯖fork: 再設計の設定画面の中に描かれているか。
+ * ⚠️再設計シェルだけが settingsSearchV2ContextKey を provide する。
+ *   単独ページとして開かれたときは null になるので、従来どおり全部出す。
+ */
+const embeddedInSettingsShell = inject(settingsSearchV2ContextKey, null) != null;
+
 const copy = i18n.ts._hata._customSettings;
 const copyx = i18n.tsx._hata._customSettings;
 const generalCopy = copy._general;
@@ -459,21 +481,21 @@ const otherCopy = copy._other;
 // Hataskey fork: 各カテゴリタブにハタキュイラストを割り当てる。
 //   ⚠️地震ビューア(earthquake)は地震・津波情報機能に触れるため対象外(icon のみ・テンプレート側でも明示除外)。
 const categories: { id: string; icon: string; label: string; hatakyuAsset?: HatakyuAssetKey }[] = [
-    { id: 'general', icon: 'ti ti-flag', label: copy.categoryGeneral, hatakyuAsset: 'wrench' },
-    { id: 'font', icon: 'ti ti-typography', label: copy.categoryFont, hatakyuAsset: 'readingBook' },
-    { id: 'glassUi', icon: 'ti ti-layout-dashboard', label: 'UI', hatakyuAsset: 'computerChat' },
-    { id: 'visual', icon: 'ti ti-palette', label: copy.categoryVisual, hatakyuAsset: 'stargazing' },
-    { id: 'hatask', icon: 'ti ti-checklist', label: 'Hatask', hatakyuAsset: 'checkingTime' },
-    { id: 'hatady', icon: 'ti ti-book-2', label: 'Hatady', hatakyuAsset: 'readingBook' },
-    { id: 'mascot', icon: 'ti ti-mood-smile', label: copy.categoryMascot, hatakyuAsset: 'dogPawUp' },
-    { id: 'earthquake', icon: 'ti ti-activity', label: '地震ビューア' },
-    { id: 'accessibility', icon: 'ti ti-dots', label: copy.categoryOther, hatakyuAsset: 'umbrellaRain' },
+	{ id: 'general', icon: 'ti ti-flag', label: copy.categoryGeneral, hatakyuAsset: 'wrench' },
+	{ id: 'font', icon: 'ti ti-typography', label: copy.categoryFont, hatakyuAsset: 'readingBook' },
+	{ id: 'glassUi', icon: 'ti ti-layout-dashboard', label: 'UI', hatakyuAsset: 'computerChat' },
+	{ id: 'visual', icon: 'ti ti-palette', label: copy.categoryVisual, hatakyuAsset: 'stargazing' },
+	{ id: 'hatask', icon: 'ti ti-checklist', label: 'Hatask', hatakyuAsset: 'checkingTime' },
+	{ id: 'hatady', icon: 'ti ti-book-2', label: 'Hatady', hatakyuAsset: 'readingBook' },
+	{ id: 'mascot', icon: 'ti ti-mood-smile', label: copy.categoryMascot, hatakyuAsset: 'dogPawUp' },
+	{ id: 'earthquake', icon: 'ti ti-activity', label: '地震ビューア' },
+	{ id: 'accessibility', icon: 'ti ti-dots', label: copy.categoryOther, hatakyuAsset: 'umbrellaRain' },
 ];
 const activeCat = ref('general');
 
 // フォントタブに切り替えたらプリロード開始
 watch(activeCat, (v) => {
-    if (v === 'font') preloadAllFonts();
+	if (v === 'font') preloadAllFonts();
 });
 
 // ===== フォント設定 =====
@@ -481,6 +503,8 @@ const fontId = prefer.model('hataFont.id');
 const customFontUrl = prefer.model('hataFont.customUrl');
 const customFontName = prefer.model('hataFont.customName');
 const customFontConsent = prefer.model('hataFont.customFontConsent');
+const customFontUploading = ref(false);
+const customFontUploadProgress = ref<number | null>(null);
 
 const fontPresets = HATA_FONT_PRESETS;
 const fontsPreloaded = ref(false);
@@ -499,64 +523,117 @@ function fontPresetLabel(preset: (typeof HATA_FONT_PRESETS)[number]): string {
 
 // フォントタブを開いた時にすべてのプリセットフォントをプリロード
 function preloadAllFonts() {
-    if (fontsPreloaded.value) return;
-    for (const preset of HATA_FONT_PRESETS) {
-        if (preset.googleFontsQuery) {
-            const link = document.createElement('link');
-            link.rel = 'stylesheet';
-            link.href = `https://fonts.googleapis.com/css2?family=${preset.googleFontsQuery}&display=swap`;
-            link.dataset.hataPreview = preset.id;
-            document.head.appendChild(link);
-        }
-    }
-    fontsPreloaded.value = true;
+	if (fontsPreloaded.value) return;
+	for (const preset of HATA_FONT_PRESETS) {
+		if (preset.googleFontsQuery) {
+			const link = window.document.createElement('link');
+			link.rel = 'stylesheet';
+			link.href = `https://fonts.googleapis.com/css2?family=${preset.googleFontsQuery}&display=swap`;
+			link.dataset.hataPreview = preset.id;
+			window.document.head.appendChild(link);
+		}
+	}
+	fontsPreloaded.value = true;
 }
 
 function onFontChange(id: HataFontId) {
-    fontId.value = id;
-    applyHataFont();
+	fontId.value = id;
+	applyHataFont();
+}
+
+async function ensureCustomFontConsent(): Promise<boolean> {
+	// 免責事項の同意確認
+	if (!customFontConsent.value) {
+		const { canceled } = await os.confirm({
+			type: 'warning',
+			title: fontCopy.disclaimerTitle,
+			text: [
+				fontCopy.disclaimerIntro,
+				'',
+				fontCopy.disclaimerLicense,
+				fontCopy.disclaimerLiability,
+				fontCopy.disclaimerQuality,
+				'',
+				fontCopy.disclaimerConfirm,
+			].join('\n'),
+		});
+		if (canceled) return false;
+		customFontConsent.value = true;
+		prefer.commit('hataConsent.customFont', true);
+		prefer.commit('hataConsent.customFontDate', new Date().toISOString());
+		// サーバーに同意を記録
+		misskeyApi('hata/consent/update', { type: 'customFont', agree: true }).catch(console.error);
+	}
+	return true;
+}
+
+function showUnsupportedCustomFont(text: string) {
+	os.alert({
+		type: 'error',
+		title: fontCopy.unsupportedFontTitle,
+		text,
+	});
+}
+
+function applyCustomFontFile(file: { name: string; type: string; url: string }): boolean {
+	if (!isSupportedCustomFontFile(file)) {
+		showUnsupportedCustomFont(fontCopy.unsupportedDriveFontText);
+		return false;
+	}
+	customFontUrl.value = file.url;
+	customFontName.value = file.name.replace(/\.(ttf|otf|woff2)$/i, '');
+	fontId.value = 'custom';
+	applyHataFont();
+	return true;
+}
+
+async function uploadCustomFont() {
+	if (customFontUploading.value || !(await ensureCustomFontConsent())) return;
+	const files = await os.chooseFileFromPc({
+		multiple: false,
+		accept: '.ttf,.otf,font/ttf,font/otf',
+	});
+	const file = files[0];
+	if (file == null) return;
+	if (!isDirectUploadCustomFontFile(file)) {
+		showUnsupportedCustomFont(fontCopy.unsupportedUploadFontText);
+		return;
+	}
+
+	customFontUploading.value = true;
+	customFontUploadProgress.value = 0;
+	try {
+		const { filePromise } = uploadFile(file, {
+			name: file.name,
+			onProgress: ({ total, loaded }) => {
+				customFontUploadProgress.value = total > 0 ? Math.min(100, Math.round((loaded / total) * 100)) : null;
+			},
+		});
+		const driveFile = await filePromise;
+		applyCustomFontFile(driveFile);
+	} catch {
+		// uploadFile側で、容量・許可形式・通信エラーに対応する案内を表示する。
+	} finally {
+		customFontUploading.value = false;
+		customFontUploadProgress.value = null;
+	}
 }
 
 async function openDrivePicker() {
-    // 免責事項の同意確認
-    if (!customFontConsent.value) {
-        const { canceled } = await os.confirm({
-            type: 'warning',
-            title: fontCopy.disclaimerTitle,
-            text: [
-                fontCopy.disclaimerIntro,
-                '',
-                fontCopy.disclaimerLicense,
-                fontCopy.disclaimerLiability,
-                fontCopy.disclaimerQuality,
-                '',
-                fontCopy.disclaimerConfirm,
-            ].join('\n'),
-        });
-        if (canceled) return;
-        customFontConsent.value = true;
-        prefer.commit('hataConsent.customFont', true);
-        prefer.commit('hataConsent.customFontDate', new Date().toISOString());
-        // サーバーに同意を記録
-        misskeyApi('hata/consent/update', { type: 'customFont', agree: true }).catch(console.error);
-    }
+	if (!(await ensureCustomFontConsent())) return;
 
-    // ドライブファイルピッカーを開く
-    const files = await chooseDriveFile({ multiple: false }).catch(() => []);
-    if (files.length > 0) {
-        const file = files[0];
-        customFontUrl.value = file.url;
-        customFontName.value = file.name.replace(/\.(ttf|otf|woff2?|eot)$/i, '');
-        fontId.value = 'custom';
-        applyHataFont();
-    }
+	// ドライブファイルピッカーを開く
+	const files = await chooseDriveFile({ multiple: false }).catch(() => []);
+	if (files.length > 0) {
+		applyCustomFontFile(files[0]);
+	}
 }
 
 function resetToDefault() {
-    fontId.value = 'zen-kaku';
-    customFontUrl.value = '';
-    customFontName.value = '';
-    applyHataFont();
+	fontId.value = 'zen-kaku';
+	customFontUrl.value = '';
+	customFontName.value = '';
+	applyHataFont();
 }
 
 // ===== 旗鯖全体 =====
@@ -584,52 +661,52 @@ watch(hideMutedReactions, async (newVal) => {
 });
 const timelineAnimationDirection = prefer.model('timelineAnimationDirection');
 const timelineAnimationOptions = [
-    { value: 'top', label: generalCopy.slideFromTop }, { value: 'left', label: generalCopy.slideFromLeft },
-    { value: 'right', label: generalCopy.slideFromRight }, { value: 'random', label: generalCopy.random },
+	{ value: 'top', label: generalCopy.slideFromTop }, { value: 'left', label: generalCopy.slideFromLeft },
+	{ value: 'right', label: generalCopy.slideFromRight }, { value: 'random', label: generalCopy.random },
 ];
 const openUiSetup = async () => {
-    const { defineAsyncComponent: dac } = await import('vue');
-    const { dispose } = os.popup(dac(() => import('@/components/MkUISetup.vue')), {}, { closed: () => dispose() });
+	const { defineAsyncComponent: dac } = await import('vue');
+	const { dispose } = os.popup(dac(() => import('@/components/MkUISetup.vue')), {}, { closed: () => dispose() });
 };
 const openSettingsTransfer = async () => {
-    const { defineAsyncComponent: dac } = await import('vue');
-    const { dispose } = os.popup(dac(() => import('@/components/MkHataSettingsTransfer.vue')), {}, { closed: () => dispose() });
+	const { defineAsyncComponent: dac } = await import('vue');
+	const { dispose } = os.popup(dac(() => import('@/components/MkHataSettingsTransfer.vue')), {}, { closed: () => dispose() });
 };
 // 旗鯖fork: Hataskの設定を共有コンポーネントで開く(本体とregistry同期)
 const openHataskSettings = async () => {
-    const { defineAsyncComponent: dac } = await import('vue');
-    const { dispose } = os.popup(dac(() => import('@/pages/HataskSettings.vue')), {}, { closed: () => dispose() });
+	const { defineAsyncComponent: dac } = await import('vue');
+	const { dispose } = os.popup(dac(() => import('@/pages/HataskSettings.vue')), {}, { closed: () => dispose() });
 };
 const goToHatask = () => { router.push('/hatask'); };
 
 // 旗鯖fork(Hatady): 表示設定(テーマ・言語・同期・チュートリアル再実行)を共有ダイアログで開く。
 const openHatadySettings = async () => {
-    const { defineAsyncComponent: dac } = await import('vue');
-    const { dispose } = os.popup(dac(() => import('@/components/HatadyDisplaySettings.vue')), {}, { closed: () => dispose() });
+	const { defineAsyncComponent: dac } = await import('vue');
+	const { dispose } = os.popup(dac(() => import('@/components/HatadyDisplaySettings.vue')), {}, { closed: () => dispose() });
 };
 const goToHatady = () => { router.push('/hatady'); };
 
 // 旗鯖fork(#34): 地震ビューア設定を共有ダイアログで開く
 const openEarthquakeSettings = async () => {
-    const { defineAsyncComponent: dac } = await import('vue');
-    const { dispose } = os.popup(dac(() => import('@/components/MkEarthquakeSettings.vue')), {}, { closed: () => dispose() });
+	const { defineAsyncComponent: dac } = await import('vue');
+	const { dispose } = os.popup(dac(() => import('@/components/MkEarthquakeSettings.vue')), {}, { closed: () => dispose() });
 };
 const goToEarthquake = () => { router.push('/earthquake'); };
 // 旗鯖fork: マスコット設定を開く
 const openMascotSettings = async () => {
-    const { defineAsyncComponent: dac } = await import('vue');
-    const { dispose } = os.popup(dac(() => import('@/pages/MkMascotSettings.vue')), {}, { closed: () => dispose() });
+	const { defineAsyncComponent: dac } = await import('vue');
+	const { dispose } = os.popup(dac(() => import('@/pages/MkMascotSettings.vue')), {}, { closed: () => dispose() });
 };
 // 旗鯖fork: Hataskey UI 2 の設定を独立ウィンドウ (MkHatasabaUi2EditWindow) で開く。
 //   有効化トグル・吹き出し・背景ぼかし・透過率スライダーを 1 ウィンドウに集約。
 //   MkWindow ベースなので開いたまま裏の Hataskey UI をリアルタイム確認可能。
 const openHatasabaUi2EditWindow = async () => {
-    const { defineAsyncComponent: dac } = await import('vue');
-    const { dispose } = os.popup(
-        dac(() => import('@/components/MkHatasabaUi2EditWindow.vue')),
-        {},
-        { closed: () => dispose() },
-    );
+	const { defineAsyncComponent: dac } = await import('vue');
+	const { dispose } = os.popup(
+		dac(() => import('@/components/MkHatasabaUi2EditWindow.vue')),
+		{},
+		{ closed: () => dispose() },
+	);
 };
 const isExternalLinked = computed(() => prefer.s['external.enabled'] && prefer.s['external.token'] != null);
 const hiddenReactionCount = computed(() => { hiddenReactionsVersion.value; return getHiddenReactions().length; });
@@ -650,21 +727,24 @@ const hideBotsInTimeline = prefer.model('simpleUi.hideBotsInTimeline');
 const botAllowlist = prefer.model('simpleUi.botAllowlist');
 // 表示用: allowlist の userId に対応する user object を並べる (キャッシュを持つ)
 const botAllowlistUsers = ref<any[]>([]);
+
 async function refreshBotAllowlistUsers() {
-    const ids = (botAllowlist.value as string[]) ?? [];
-    if (ids.length === 0) { botAllowlistUsers.value = []; return; }
-    try {
-        const users = await misskeyApi('users/show', { userIds: ids });
+	const ids = (botAllowlist.value as string[]) ?? [];
+	if (ids.length === 0) { botAllowlistUsers.value = []; return; }
+	try {
+		const users = await misskeyApi('users/show', { userIds: ids });
 		const botUsersById = new Map(users.filter(user => user.isBot).map(user => [user.id, user]));
 		const validBotIds = ids.filter(id => botUsersById.has(id));
 		botAllowlistUsers.value = validBotIds.map(id => botUsersById.get(id)!);
 		// 旧保存値に通常アカウントや削除済みアカウントがあれば、表示だけでなく保存値からも除く。
 		if (validBotIds.length !== ids.length) botAllowlist.value = validBotIds;
-    } catch {
-        botAllowlistUsers.value = [];
-    }
+	} catch {
+		botAllowlistUsers.value = [];
+	}
 }
+
 watch(botAllowlist, refreshBotAllowlistUsers, { immediate: true });
+
 async function addBotAllowlistUser() {
 	// 選択画面と保存直前の両方で、BOTアカウントだけに限定する。
 	const result = await os.selectUser({ botOnly: true });
@@ -672,18 +752,20 @@ async function addBotAllowlistUser() {
 		os.alert({ type: 'warning', text: generalCopy.botOnlyWarning });
 		return;
 	}
-    const cur = ((botAllowlist.value as string[]) ?? []).slice();
-    if (cur.includes(result.id)) {
-        os.alert({ type: 'info', text: generalCopy.alreadyAllowed });
-        return;
-    }
-    cur.push(result.id);
-    botAllowlist.value = cur;
+	const cur = ((botAllowlist.value as string[]) ?? []).slice();
+	if (cur.includes(result.id)) {
+		os.alert({ type: 'info', text: generalCopy.alreadyAllowed });
+		return;
+	}
+	cur.push(result.id);
+	botAllowlist.value = cur;
 }
+
 function removeBotAllowlistUser(id: string) {
-    const cur = ((botAllowlist.value as string[]) ?? []).filter(x => x !== id);
-    botAllowlist.value = cur;
+	const cur = ((botAllowlist.value as string[]) ?? []).filter(x => x !== id);
+	botAllowlist.value = cur;
 }
+
 // 旗鯖fork: Hataskey UI 追加ページヘッダー表示
 const showPageHeader = prefer.model('simpleUi.showPageHeader');
 const noteSpacing = prefer.model('simpleUi.noteSpacing');
@@ -703,38 +785,40 @@ const profileNoBannerBg = prefer.model('simpleUi.profileNoBannerBg');
 //   prefer 側から値が変わった時 (別セッション同期・ロード直後 等) はローカル ref を追随させる。
 const glassUiCardOpacity = ref<number>((prefer.r['simpleUi.glassUiCardOpacity'].value as number) ?? 55);
 watch(() => prefer.r['simpleUi.glassUiCardOpacity'].value, v => {
-    if (typeof v === 'number' && Number.isFinite(v)) glassUiCardOpacity.value = v;
+	if (typeof v === 'number' && Number.isFinite(v)) glassUiCardOpacity.value = v;
 });
+
 function commitOpacity(v: number) {
-    if (!Number.isFinite(v)) return; // 無効値 (NaN 等) は無視 (55 に戻す等の副作用を出さない)
-    const n = Math.max(0, Math.min(100, Math.round(v)));
-    if (prefer.r['simpleUi.glassUiCardOpacity'].value === n) return; // 変化なしなら skip
-    prefer.commit('simpleUi.glassUiCardOpacity', n);
+	if (!Number.isFinite(v)) return; // 無効値 (NaN 等) は無視 (55 に戻す等の副作用を出さない)
+	const n = Math.max(0, Math.min(100, Math.round(v)));
+	if (prefer.r['simpleUi.glassUiCardOpacity'].value === n) return; // 変化なしなら skip
+	prefer.commit('simpleUi.glassUiCardOpacity', n);
 }
+
 // ドラッグ中も視覚フィードバックがほしいので、ローカル ref が変わったら即 CSS 変数を書き換える。
 // commit しないので永続化されないが、release 時に @change → commitOpacity → boot の watch で
 // 同じ値が改めて書き込まれるだけなので二重更新のコストは無視できる。
 watch(glassUiCardOpacity, v => {
-    if (typeof v === 'number' && Number.isFinite(v)) {
-        const n = Math.max(0, Math.min(100, Math.round(v)));
-        document.documentElement.style.setProperty('--htk-glass-card-opacity', n + '%');
-    }
+	if (typeof v === 'number' && Number.isFinite(v)) {
+		const n = Math.max(0, Math.min(100, Math.round(v)));
+		window.document.documentElement.style.setProperty('--htk-glass-card-opacity', n + '%');
+	}
 });
 // 旗鯖fork: 従来のチャンネル投稿ボタン (カラムヘッダ右のペン+ボタン + 三点メニュー項目) を表示するか
 const showLegacyChannelPostButton = prefer.model('simpleUi.showLegacyChannelPostButton');
 // 旗鯖fork(Hataskey UI 2): 端末ローカルのグラス系設定 (ref + setter を computed 経由で v-model 化)
 const glassUi = computed({
-    get: () => glassUiLocal.value,
-    set: (v: boolean) => setGlassUiLocal(v),
+	get: () => glassUiLocal.value,
+	set: (v: boolean) => setGlassUiLocal(v),
 });
 const glassUiBubble = computed({
-    get: () => glassUiBubbleLocal.value,
-    set: (v: boolean) => setGlassUiBubbleLocal(v),
+	get: () => glassUiBubbleLocal.value,
+	set: (v: boolean) => setGlassUiBubbleLocal(v),
 });
 // 旗鯖fork: 横開き折りたたみ端末向けレイアウト(端末ローカル・auto/on/off)
 const foldableLayout = computed({
-    get: () => foldableLayoutMode.value,
-    set: (v: HataFoldableMode) => setFoldableLayoutMode(v),
+	get: () => foldableLayoutMode.value,
+	set: (v: HataFoldableMode) => setFoldableLayoutMode(v),
 });
 
 // 旗鯖fork: 天気エフェクト(weatherEffect)
@@ -768,27 +852,29 @@ const isMisskeyDefaultUi = currentUi === 'default';
 // 旗鯖fork(#7): Hataskey UI(通常表示・デッキ表示の両方) と Misskey(デフォルト)UI では従来Misskey風の
 // 投稿間隔を常に適用するため、トグルは常にON表示＋操作不可にする(実際の適用状態と一致させる)。
 const classicNoteSpacingDisplay = computed<boolean>({
-    get: () => (isHatasabaUi || isMisskeyDefaultUi) ? true : classicNoteSpacing.value,
-    set: (v: boolean) => { if (!isHatasabaUi && !isMisskeyDefaultUi) classicNoteSpacing.value = v; },
+	get: () => (isHatasabaUi || isMisskeyDefaultUi) ? true : classicNoteSpacing.value,
+	set: (v: boolean) => { if (!isHatasabaUi && !isMisskeyDefaultUi) classicNoteSpacing.value = v; },
 });
 const hatasabaDeckMode = computed(() => prefer.r['simpleUi.deckMode']?.value ?? false);
 const isDeckLike = computed(() => isLegacyDeckUi || (currentUi === 'simple' && hatasabaDeckMode.value));
 // デッキ時に noteSpacing が変えられても 'compact' に戻す。元の値を保存し、解除時に復元。
 const savedNoteSpacing = ref<'compact' | 'moderate' | 'wide' | null>(null);
+
 function enforceDeckSpacing() {
-    if (isDeckLike.value) {
-        if (noteSpacing.value !== 'compact') {
-            savedNoteSpacing.value = noteSpacing.value as 'compact' | 'moderate' | 'wide';
-            noteSpacing.value = 'compact';
-        }
-    } else {
-        // デッキ解除時に復元(保存値がある場合のみ)
-        if (savedNoteSpacing.value !== null) {
-            noteSpacing.value = savedNoteSpacing.value;
-            savedNoteSpacing.value = null;
-        }
-    }
+	if (isDeckLike.value) {
+		if (noteSpacing.value !== 'compact') {
+			savedNoteSpacing.value = noteSpacing.value as 'compact' | 'moderate' | 'wide';
+			noteSpacing.value = 'compact';
+		}
+	} else {
+		// デッキ解除時に復元(保存値がある場合のみ)
+		if (savedNoteSpacing.value !== null) {
+			noteSpacing.value = savedNoteSpacing.value;
+			savedNoteSpacing.value = null;
+		}
+	}
 }
+
 // 起動時と deckMode の切替時に適用
 enforceDeckSpacing();
 watch(isDeckLike, () => { enforceDeckSpacing(); });
@@ -798,8 +884,8 @@ if (!isDeckLike.value && noteSpacing.value === 'compact') noteSpacing.value = 'm
 
 // 旗鯖fork(#15): 「詰める」は選択肢から除外(ほどよく / 広め の2択)。
 const spacingOptions = [
-    { value: 'moderate', label: visualCopy.spacingModerate, previewMargin: '5px 0' },
-    { value: 'wide', label: visualCopy.spacingWide, previewMargin: '10px 0' },
+	{ value: 'moderate', label: visualCopy.spacingModerate, previewMargin: '5px 0' },
+	{ value: 'wide', label: visualCopy.spacingWide, previewMargin: '10px 0' },
 ] as const;
 
 definePage({ title: copy.title, icon: 'ti ti-flag' });
@@ -836,6 +922,10 @@ definePage({ title: copy.title, icon: 'ti ti-flag' });
     &:hover { opacity: 1; background: var(--MI_THEME-accentedBg); }
 }
 .countBadge { opacity: 0.7; font-size: 0.9em; }
+/* 旗鯖fork: 再設計に埋め込まれたときの見せ方。
+   ⚠️display:none にしない。シェルからの .click() を効かせるため、画面の外へ追い出すだけにする。 */
+.catTabsOffscreen { position:absolute; width:1px; height:1px; margin:-1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; pointer-events:none; }
+
 .catTabs { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px; }
 .catTab {
     padding:8px 16px; border-radius:20px; border:1px solid var(--MI_THEME-divider);
