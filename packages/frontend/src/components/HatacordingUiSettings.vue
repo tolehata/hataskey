@@ -61,7 +61,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		</MkSwitch>
 	</div>
 
-	<p v-if="!compact" :class="$style.note">{{ copy.savedLocally }}</p>
+	<p v-if="!compact" :class="[$style.note, 'settingsBrandText']">{{ copy.savedLocally }}</p>
 </div>
 </template>
 

@@ -222,6 +222,15 @@ SPDX-License-Identifier: AGPL-3.0-only
 						</MkInput>
 					</MkFolder>
 
+					<MkFolder v-if="matchQuery([roleCopy.hatacordingRateLimitBypassName, 'canBypassHatacordingUiRateLimit'])">
+						<template #label>{{ roleCopy.hatacordingRateLimitBypassName }}</template>
+						<template #suffix>{{ policies.canBypassHatacordingUiRateLimit ? i18n.ts.yes : i18n.ts.no }}</template>
+						<MkSwitch v-model="policies.canBypassHatacordingUiRateLimit">
+							<template #label>{{ roleCopy.hatacordingRateLimitBypassToggle }}</template>
+							<template #caption>{{ roleCopy.hatacordingRateLimitBypassBaseCaption }}</template>
+						</MkSwitch>
+					</MkFolder>
+
 					<!-- 旗鯖fork(Hatady): 端末間データ共有(同期)の可否。既定は有効。 -->
 					<MkFolder v-if="matchQuery([roleCopy.hatadySyncName, 'canUseHatadySync'])">
 						<template #label>{{ roleCopy.hatadySyncName }}</template>
@@ -547,7 +556,11 @@ const baseRoleQEl = useTemplateRef('baseRoleQEl');
 
 const roles = await misskeyApi('admin/roles/list');
 
-const policies = reactive(deepClone(instance.policies));
+const policies = reactive({
+	...deepClone(instance.policies),
+	// cherrypick-js の生成物を更新する前の開発コンテナでも、既定値を保って管理画面を表示する。
+	canBypassHatacordingUiRateLimit: (instance.policies as { canBypassHatacordingUiRateLimit?: boolean }).canBypassHatacordingUiRateLimit ?? false,
+});
 
 const avatarDecorationLimit = computed({
 	get: () => Math.min(16, Math.max(0, policies.avatarDecorationLimit)),

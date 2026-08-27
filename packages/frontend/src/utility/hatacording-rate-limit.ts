@@ -11,9 +11,11 @@ export const HATACORDING_RATE_LIMIT_HEADERS = {
 	limit: 'X-Hatacording-RateLimit-Limit',
 	remaining: 'X-Hatacording-RateLimit-Remaining',
 	reset: 'X-Hatacording-RateLimit-Reset',
+	unlimited: 'X-Hatacording-RateLimit-Unlimited',
 } as const;
 
 export type HatacordingRateLimitSnapshot = {
+	unlimited: boolean;
 	limit: number;
 	remaining: number;
 	resetAt: number;
@@ -39,12 +41,23 @@ export function isHatacordingRateLimitTrackingActive(): boolean {
 }
 
 export function readHatacordingRateLimitHeaders(headers: HeaderReader, observedAt = Date.now()): HatacordingRateLimitSnapshot | null {
+	if (headers.get(HATACORDING_RATE_LIMIT_HEADERS.unlimited) === '1') {
+		return {
+			unlimited: true,
+			limit: 0,
+			remaining: 0,
+			resetAt: 0,
+			observedAt,
+		};
+	}
+
 	const limit = Number(headers.get(HATACORDING_RATE_LIMIT_HEADERS.limit));
 	const remaining = Number(headers.get(HATACORDING_RATE_LIMIT_HEADERS.remaining));
 	const resetAt = Number(headers.get(HATACORDING_RATE_LIMIT_HEADERS.reset));
 	if (!Number.isFinite(limit) || !Number.isFinite(remaining) || !Number.isFinite(resetAt) || limit <= 0 || resetAt <= 0) return null;
 
 	return {
+		unlimited: false,
 		limit: Math.max(1, Math.floor(limit)),
 		remaining: Math.max(0, Math.min(Math.floor(remaining), Math.floor(limit))),
 		resetAt: Math.floor(resetAt),
@@ -59,6 +72,7 @@ export function updateHatacordingRateLimit(headers: HeaderReader): void {
 
 export function getEffectiveHatacordingRateLimit(snapshot: HatacordingRateLimitSnapshot | null, now = Date.now()): HatacordingRateLimitSnapshot | null {
 	if (snapshot == null) return null;
+	if (snapshot.unlimited) return snapshot;
 	if (now < snapshot.resetAt) return snapshot;
 	return {
 		...snapshot,

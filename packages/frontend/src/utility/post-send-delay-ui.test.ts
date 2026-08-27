@@ -64,7 +64,8 @@ describe('post send delay UI wiring', () => {
 		const page = source('src/pages/hatacording-ui.vue');
 		expect(page).toContain("v-if=\"draftText.trim().length > 0 && submitMotionState === 'idle'\"");
 		expect(page).toContain(":name=\"prefer.s.animation ? 'hatacording-composer-preview' : ''\"");
-		expect(page).toContain(':class="$style.postFormPill" :style="visibilityBorderStyle"');
+		// ⚠️公開範囲の色枠は廃止した（hatacording-ui-source.test.ts が正本）。
+		expect(page).toContain('<div :class="$style.postFormPill">');
 		expect(page).not.toContain('$style.delayActive');
 		expect(page).not.toContain('postDelay.frameStyle.value');
 		expect(page).not.toContain('.delayActive::before');

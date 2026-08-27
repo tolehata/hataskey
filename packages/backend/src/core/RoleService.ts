@@ -67,6 +67,8 @@ export type RolePolicies = {
 	hatacordingUiSubpaneMaxTabs: number;
 	// 旗鯖fork: HataSNSCordUI 内の全API操作に共通で適用する1時間あたりの上限(デフォルト500、クランプ1-1000)
 	hatacordingUiRateLimit: number;
+	// 旗鯖fork: HataSNSCordUI 専用の共通API枠を免除するか(デフォルト不許可。個別ロールでのみ許可)
+	canBypassHatacordingUiRateLimit: boolean;
 	// 旗鯖fork(Hatady): 端末間同期の可否(デフォルト許可。特定ロールで無効化できる)。
 	//   無効の場合、Hatady の表示設定などは端末ローカル扱いになり、設定画面で「無効」と表示される。
 	canUseHatadySync: boolean;
@@ -132,6 +134,7 @@ export const DEFAULT_POLICIES: RolePolicies = {
 	canUseHatacordingUi: true,
 	hatacordingUiSubpaneMaxTabs: 3,
 	hatacordingUiRateLimit: 500,
+	canBypassHatacordingUiRateLimit: false,
 	canUseHatadySync: true,
 	hatadyBookLimit: 100,
 	hatadyBookmarkLimit: 20,
@@ -165,6 +168,9 @@ export const DEFAULT_POLICIES: RolePolicies = {
 		'image/*',
 		'video/*',
 		'audio/*',
+		// file-type は TrueType/OpenType をそれぞれこの MIME タイプで識別する。
+		'font/ttf',
+		'font/otf',
 	],
 	noteDraftLimit: 10,
 	scheduledNoteLimit: 3,
@@ -498,6 +504,7 @@ export class RoleService implements OnApplicationShutdown, OnModuleInit {
 			canUseHatacordingUi: calc('canUseHatacordingUi', vs => vs.some(v => v === true)),
 			hatacordingUiSubpaneMaxTabs: calc('hatacordingUiSubpaneMaxTabs', normalizeHatacordingUiSubpaneMaxTabs),
 			hatacordingUiRateLimit: calc('hatacordingUiRateLimit', normalizeHatacordingUiRateLimit),
+			canBypassHatacordingUiRateLimit: calc('canBypassHatacordingUiRateLimit', vs => vs.some(v => v === true)),
 			// 既定 true。いずれかのロールで false にされたら無効(every)。
 			canUseHatadySync: calc('canUseHatadySync', vs => vs.every(v => v === true)),
 			hatadyBookLimit: calc('hatadyBookLimit', vs => Math.max(...vs)),

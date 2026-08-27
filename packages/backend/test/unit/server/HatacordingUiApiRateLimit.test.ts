@@ -14,11 +14,12 @@ function createService(
 	consumption: { exceeded: boolean; info: { total: number; remaining: number; reset: number; resetMs: number } },
 	roleLimit = 500,
 	accessToken: Record<string, unknown> | null = null,
+	canBypass = false,
 ) {
 	const user = { id: 'user-a', isSuspended: false };
 	const authenticateService = { authenticate: vi.fn().mockResolvedValue([user, accessToken, null]) };
 	const rateLimiterService = { consume: vi.fn().mockResolvedValue(consumption), limit: vi.fn() };
-	const roleService = { getUserPolicies: vi.fn().mockResolvedValue({ hatacordingUiRateLimit: roleLimit }), getUserRoles: vi.fn() };
+	const roleService = { getUserPolicies: vi.fn().mockResolvedValue({ hatacordingUiRateLimit: roleLimit, canBypassHatacordingUiRateLimit: canBypass }), getUserRoles: vi.fn() };
 	const telemetryService = { startSpan: vi.fn((_name: string, callback: () => unknown) => callback()), captureMessage: vi.fn() };
 	const apiLoggerService = { logger: { warn: vi.fn(), write: vi.fn() } };
 	const service = new ApiCallService(
@@ -34,12 +35,15 @@ function createService(
 	return { service, rateLimiterService };
 }
 
-function createRequest(withMarker = true) {
+function createRequest(withMarker = true, extraHeaders: Record<string, string> = {}) {
 	return {
 		method: 'POST',
 		body: { i: 'native-token' },
 		query: {},
-		headers: withMarker ? { [HATACORDING_UI_RATE_LIMIT_HEADERS.request]: '1' } : {},
+		headers: {
+			...(withMarker ? { [HATACORDING_UI_RATE_LIMIT_HEADERS.request]: '1' } : {}),
+			...extraHeaders,
+		},
 		ip: '127.0.0.1',
 	};
 }
@@ -73,6 +77,37 @@ describe('HataSNSCordUI API共通枠の適用範囲', () => {
 		try {
 			await service.handleRequest(createEndpoint() as never, createRequest() as never, createReply() as never);
 			expect(rateLimiterService.consume).toHaveBeenCalledWith({ ...HATACORDING_UI_RATE_LIMIT, max: 750 }, 'user-a');
+		} finally {
+			service.dispose();
+		}
+	});
+
+	test('管理者が免除を割り当てた利用者は共通枠を消費せず、制限なしヘッダーを返す', async () => {
+		const { service, rateLimiterService } = createService(
+			{ exceeded: false, info: { total: 500, remaining: 0, reset: 200, resetMs: 200000 } },
+			500,
+			null,
+			true,
+		);
+		try {
+			const reply = createReply();
+			await service.handleRequest(createEndpoint() as never, createRequest() as never, reply as never);
+
+			expect(rateLimiterService.consume).not.toHaveBeenCalled();
+			expect(reply.header).toHaveBeenCalledWith(HATACORDING_UI_RATE_LIMIT_HEADERS.unlimited, '1');
+		} finally {
+			service.dispose();
+		}
+	});
+
+	test('クライアントが制限なし応答ヘッダーを偽装しても共通枠を消費する', async () => {
+		const { service, rateLimiterService } = createService({ exceeded: false, info: { total: 500, remaining: 499, reset: 200, resetMs: 200000 } });
+		try {
+			await service.handleRequest(createEndpoint() as never, createRequest(true, {
+				[HATACORDING_UI_RATE_LIMIT_HEADERS.unlimited]: '1',
+			}) as never, createReply() as never);
+
+			expect(rateLimiterService.consume).toHaveBeenCalledWith({ ...HATACORDING_UI_RATE_LIMIT, max: 500 }, 'user-a');
 		} finally {
 			service.dispose();
 		}

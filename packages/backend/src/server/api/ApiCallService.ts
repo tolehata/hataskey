@@ -45,6 +45,7 @@ export const HATACORDING_UI_RATE_LIMIT_HEADERS = {
 	limit: 'X-Hatacording-RateLimit-Limit',
 	remaining: 'X-Hatacording-RateLimit-Remaining',
 	reset: 'X-Hatacording-RateLimit-Reset',
+	unlimited: 'X-Hatacording-RateLimit-Unlimited',
 } as const;
 
 @Injectable()
@@ -362,22 +363,28 @@ export class ApiCallService implements OnApplicationShutdown {
 		// 通常UI・外部アプリ・ActivityPub/連合処理にはこのヘッダーが無いため波及しない。
 		if (isSecure && request.headers[HATACORDING_UI_RATE_LIMIT_HEADERS.request] === '1') {
 			const policies = await this.roleService.getUserPolicies(user.id);
-			const roleLimit = Math.max(1, Math.min(1000, Math.floor(Number(policies.hatacordingUiRateLimit) || HATACORDING_UI_RATE_LIMIT.max)));
-			const consumption = await this.rateLimiterService.consume({
-				...HATACORDING_UI_RATE_LIMIT,
-				max: roleLimit,
-			}, user.id);
-			if (consumption != null) {
-				reply.header(HATACORDING_UI_RATE_LIMIT_HEADERS.limit, String(consumption.info.total));
-				reply.header(HATACORDING_UI_RATE_LIMIT_HEADERS.remaining, String(consumption.info.remaining));
-				reply.header(HATACORDING_UI_RATE_LIMIT_HEADERS.reset, String(consumption.info.resetMs));
-				if (consumption.exceeded) {
-					throw new ApiError({
-						message: 'Rate limit exceeded. Please try again later.',
-						code: 'RATE_LIMIT_EXCEEDED',
-						id: '6f0e1e73-a2cc-4ac8-a35f-c3ce65f25edf',
-						httpStatusCode: 429,
-					}, consumption.info);
+			if (policies.canBypassHatacordingUiRateLimit === true) {
+				// 免除可否は認証済みユーザーの実効ポリシーだけで決める。
+				// クライアントが任意のヘッダーを追加して免除を要求する経路は設けない。
+				reply.header(HATACORDING_UI_RATE_LIMIT_HEADERS.unlimited, '1');
+			} else {
+				const roleLimit = Math.max(1, Math.min(1000, Math.floor(Number(policies.hatacordingUiRateLimit) || HATACORDING_UI_RATE_LIMIT.max)));
+				const consumption = await this.rateLimiterService.consume({
+					...HATACORDING_UI_RATE_LIMIT,
+					max: roleLimit,
+				}, user.id);
+				if (consumption != null) {
+					reply.header(HATACORDING_UI_RATE_LIMIT_HEADERS.limit, String(consumption.info.total));
+					reply.header(HATACORDING_UI_RATE_LIMIT_HEADERS.remaining, String(consumption.info.remaining));
+					reply.header(HATACORDING_UI_RATE_LIMIT_HEADERS.reset, String(consumption.info.resetMs));
+					if (consumption.exceeded) {
+						throw new ApiError({
+							message: 'Rate limit exceeded. Please try again later.',
+							code: 'RATE_LIMIT_EXCEEDED',
+							id: '6f0e1e73-a2cc-4ac8-a35f-c3ce65f25edf',
+							httpStatusCode: 429,
+						}, consumption.info);
+					}
 				}
 			}
 		}

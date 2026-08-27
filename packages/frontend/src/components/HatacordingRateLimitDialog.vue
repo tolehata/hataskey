@@ -10,26 +10,27 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<template v-if="effectiveStatus">
 			<div :class="$style.hero">
 				<div :class="$style.ring" :data-level="level" :style="ringStyle" role="img" :aria-label="remainingAccessibleLabel">
-					<div :class="$style.ringInner"><strong>{{ percentage }}</strong><span>%</span></div>
+					<div :class="$style.ringInner"><strong>{{ effectiveStatus.unlimited ? '∞' : percentage }}</strong><span v-if="!effectiveStatus.unlimited">%</span></div>
 				</div>
 				<div :class="$style.heroCopy"><strong>{{ availabilityMessage }}</strong><span>{{ hourlyQuotaLabel }}</span></div>
 			</div>
 
-			<section :class="$style.meterSection">
+			<section v-if="!effectiveStatus.unlimited" :class="$style.meterSection">
 				<div :class="$style.meterLabel"><span>{{ copy.remaining }}</span><b>{{ effectiveStatus.remaining }} / {{ effectiveStatus.limit }}</b></div>
 				<div :class="$style.progress" role="progressbar" :aria-label="copy.remaining" aria-valuemin="0" :aria-valuemax="effectiveStatus.limit" :aria-valuenow="effectiveStatus.remaining"><span :style="{ width: `${percentage}%` }"></span></div>
 			</section>
 
-			<div :class="$style.resetCard">
+			<div v-if="!effectiveStatus.unlimited" :class="$style.resetCard">
 				<TimerReset :size="20"/>
 				<div><strong>{{ resetMessage }}</strong><span>{{ resetClock }}</span></div>
 			</div>
+			<div v-else :class="$style.unlimitedCard"><Gauge :size="20"/><strong>{{ copy.unlimitedAssigned }}</strong></div>
 		</template>
 		<div v-else :class="$style.waiting">
 			<Gauge :size="34"/><strong>{{ copy.waitingTitle }}</strong><span>{{ copy.waitingDescription }}</span>
 		</div>
 
-		<p :class="$style.note"><Info :size="16"/><span>{{ copy.description }}</span></p>
+		<p :class="$style.note"><Info :size="16"/><span>{{ effectiveStatus?.unlimited ? copy.unlimitedDescription : copy.description }}</span></p>
 	</div>
 </MkModalWindow>
 </template>
@@ -53,18 +54,19 @@ const now = ref(Date.now());
 let clockTimer: number | null = null;
 
 const effectiveStatus = computed(() => getEffectiveHatacordingRateLimit(hatacordingRateLimitSnapshot.value, now.value));
-const percentage = computed(() => effectiveStatus.value == null ? 0 : Math.round(effectiveStatus.value.remaining / effectiveStatus.value.limit * 100));
-const level = computed(() => percentage.value <= 20 ? 'low' : percentage.value <= 45 ? 'medium' : 'normal');
+const percentage = computed(() => effectiveStatus.value == null ? 0 : effectiveStatus.value.unlimited ? 100 : Math.round(effectiveStatus.value.remaining / effectiveStatus.value.limit * 100));
+const level = computed(() => effectiveStatus.value?.unlimited ? 'unlimited' : percentage.value <= 20 ? 'low' : percentage.value <= 45 ? 'medium' : 'normal');
 const ringStyle = computed(() => ({ '--rate-progress': `${percentage.value * 3.6}deg` }));
 const secondsUntilReset = computed(() => effectiveStatus.value == null ? 0 : Math.max(0, Math.ceil((effectiveStatus.value.resetAt - now.value) / 1000)));
 const resetReached = computed(() => effectiveStatus.value != null && effectiveStatus.value.resetAt <= now.value);
-const remainingAccessibleLabel = computed(() => effectiveStatus.value == null ? '' : i18n.tsx._hata._hatacordingUi._rateLimit.remainingAccessible({
+const remainingAccessibleLabel = computed(() => effectiveStatus.value == null ? '' : effectiveStatus.value.unlimited ? copy.unlimitedAccessible : i18n.tsx._hata._hatacordingUi._rateLimit.remainingAccessible({
 	remaining: effectiveStatus.value.remaining.toString(),
 	limit: effectiveStatus.value.limit.toString(),
 }));
-const hourlyQuotaLabel = computed(() => effectiveStatus.value == null ? '' : i18n.tsx._hata._hatacordingUi._rateLimit.hourlyQuota({ limit: effectiveStatus.value.limit.toString() }));
+const hourlyQuotaLabel = computed(() => effectiveStatus.value == null ? '' : effectiveStatus.value.unlimited ? copy.unlimitedHourlyQuota : i18n.tsx._hata._hatacordingUi._rateLimit.hourlyQuota({ limit: effectiveStatus.value.limit.toString() }));
 const availabilityMessage = computed(() => {
 	if (effectiveStatus.value == null) return '';
+	if (effectiveStatus.value.unlimited) return copy.unlimitedReady;
 	if (resetReached.value) return copy.remeasureNext;
 	if (effectiveStatus.value.remaining >= effectiveStatus.value.limit) return copy.ready;
 	return i18n.tsx._hata._hatacordingUi._rateLimit.availableCount({ remaining: effectiveStatus.value.remaining.toString() });
@@ -103,6 +105,7 @@ onBeforeUnmount(() => {
 .ring::before { content:"";position:absolute;inset:8px;border-radius:50%;background:var(--MI_THEME-panel) }
 .ring[data-level='medium'] { --ring-color:#d79621 }
 .ring[data-level='low'] { --ring-color:#e45c64 }
+.ring[data-level='unlimited'] { --ring-color:#28a974 }
 .ringInner { display:flex;position:relative;align-items:baseline;z-index:1 }
 .ringInner strong { font-size:1.65rem;font-variant-numeric:tabular-nums;line-height:1 }
 .ringInner span { margin-left:2px;font-size:.7rem;opacity:.62 }
@@ -118,6 +121,7 @@ onBeforeUnmount(() => {
 .resetCard>div { display:flex;min-width:0;flex-direction:column;gap:3px }
 .resetCard strong { font-size:.84rem }
 .resetCard span { font-size:.72rem;opacity:.62 }
+.unlimitedCard { display:flex;align-items:center;gap:10px;padding:12px 13px;border:1px solid color-mix(in srgb,#28a974 38%,var(--MI_THEME-divider));border-radius:13px;background:color-mix(in srgb,#28a974 10%,var(--MI_THEME-panel));color:color-mix(in srgb,#28a974 76%,var(--MI_THEME-fg));font-size:.84rem }
 .waiting { display:flex;min-height:180px;align-items:center;justify-content:center;flex-direction:column;gap:8px;text-align:center }
 .waiting strong { font-size:.95rem }
 .waiting span { max-width:290px;font-size:.78rem;line-height:1.65;opacity:.66 }

@@ -242,8 +242,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<button v-if="postFormActions.length > 0" type="button" role="menuitem" :class="$style.composerTool" :title="copy.plugins" :aria-label="copy.plugins" @click="openComposerPluginMenu"><component :is="pluginIcon" :size="17"/><span>{{ copy.plugins }}</span></button>
 				</div>
 			</Transition>
-			<div :class="$style.postFormPill" :style="visibilityBorderStyle">
-				<textarea ref="composerInput" v-model="draftText" :class="$style.pillInput" rows="1" :placeholder="composerPlaceholder" @focus="composerInputFocused = true" @blur="composerInputFocused = false" @input="resizeComposerInput" @keydown.ctrl.enter.prevent="submitPost" @keydown.meta.enter.prevent="submitPost"></textarea>
+			<div :class="$style.postFormPill">
+				<textarea ref="composerInput" v-model="draftText" :class="$style.pillInput" rows="1" :placeholder="composerPlaceholder" @input="resizeComposerInput" @keydown.ctrl.enter.prevent="submitPost" @keydown.meta.enter.prevent="submitPost"></textarea>
 				<div :class="$style.composerActionRow">
 					<button type="button" :class="[$style.pillButton, composerToolsOpen && $style.pillActive]" :title="copy.postFeatures" aria-haspopup="menu" :aria-expanded="composerToolsOpen" @click="openComposerToolsMenu($event)"><component :is="postToolsIcon" :size="18"/></button>
 					<button type="button" :class="$style.pillButton" :title="copy.attachmentMenu" @click="openAttachmentMenu"><component :is="attachmentIcon" :size="18"/></button>
@@ -521,7 +521,6 @@ const antennas = ref<Misskey.entities.Antenna[]>([]);
 const channels = ref<Misskey.entities.Channel[]>([]);
 const externalUnread = ref(false);
 const draftText = ref('');
-const composerInputFocused = ref(false);
 const draftFiles = ref<Misskey.entities.DriveFile[]>([]);
 const submitting = ref(false);
 const submitMotionState = ref<HataPostSubmitState>('idle');
@@ -744,16 +743,16 @@ function timelineRevealOrder(index: number): number {
 }
 
 const effectiveRateLimit = computed(() => getEffectiveHatacordingRateLimit(hatacordingRateLimitSnapshot.value, rateLimitNow.value));
-const rateLimitPercentage = computed(() => effectiveRateLimit.value == null ? null : Math.round(effectiveRateLimit.value.remaining / effectiveRateLimit.value.limit * 100));
-const rateLimitMeterLabel = computed(() => rateLimitPercentage.value == null ? '—' : String(rateLimitPercentage.value));
-const rateLimitLevel = computed(() => rateLimitPercentage.value == null ? 'waiting' : rateLimitPercentage.value <= 20 ? 'low' : rateLimitPercentage.value <= 45 ? 'medium' : 'normal');
+const rateLimitPercentage = computed(() => effectiveRateLimit.value == null ? null : effectiveRateLimit.value.unlimited ? 100 : Math.round(effectiveRateLimit.value.remaining / effectiveRateLimit.value.limit * 100));
+const rateLimitMeterLabel = computed(() => effectiveRateLimit.value?.unlimited ? '∞' : rateLimitPercentage.value == null ? '—' : String(rateLimitPercentage.value));
+const rateLimitLevel = computed(() => effectiveRateLimit.value?.unlimited ? 'unlimited' : rateLimitPercentage.value == null ? 'waiting' : rateLimitPercentage.value <= 20 ? 'low' : rateLimitPercentage.value <= 45 ? 'medium' : 'normal');
 const rateLimitMeterStyle = computed(() => ({ '--rate-limit-offset': String(100 - (rateLimitPercentage.value ?? 0)) }));
-const rateLimitTitle = computed(() => effectiveRateLimit.value == null ? copy.measuringRateLimit : copyx.rateLimitRemaining({ remaining: effectiveRateLimit.value.remaining.toString(), limit: effectiveRateLimit.value.limit.toString() }));
-const timelineRetryBlocked = computed(() => timelineErrorKind.value === 'rateLimit' && effectiveRateLimit.value?.remaining === 0);
+const rateLimitTitle = computed(() => effectiveRateLimit.value == null ? copy.measuringRateLimit : effectiveRateLimit.value.unlimited ? i18n.ts._hata._hatacordingUi._rateLimit.unlimitedAccessible : copyx.rateLimitRemaining({ remaining: effectiveRateLimit.value.remaining.toString(), limit: effectiveRateLimit.value.limit.toString() }));
+const timelineRetryBlocked = computed(() => timelineErrorKind.value === 'rateLimit' && effectiveRateLimit.value?.unlimited !== true && effectiveRateLimit.value?.remaining === 0);
 const rateLimitResetClockFormatter = new Intl.DateTimeFormat(versatileLang, { hour: '2-digit', minute: '2-digit' });
 const rateLimitResetText = computed(() => {
 	const snapshot = hatacordingRateLimitSnapshot.value;
-	if (snapshot == null) return null;
+	if (snapshot == null || snapshot.unlimited) return null;
 	if (snapshot.resetAt <= rateLimitNow.value) return i18n.ts._hata._hatacordingUi._rateLimit.newWindowNow;
 	return i18n.tsx._hata._hatacordingUi._rateLimit.bannerResetAt({
 		time: rateLimitResetClockFormatter.format(new Date(snapshot.resetAt)),
@@ -871,24 +870,6 @@ const moreNavigationIcon = MoreHorizontal;
 const visibilityLabel = computed(() => composerChannel.value ? copy.channelPostServerOnly : ({ public: copy.public, home: copy.home, followers: copy.followers, specified: copy.direct })[visibility.value]);
 const visibilityShortLabel = computed(() => composerChannel.value ? copy.channelServerShort : `${({ public: copy.publicShort, home: copy.home, followers: copy.followersShort, specified: copy.recipientsShort })[visibility.value]}${localOnly.value && visibility.value !== 'specified' ? copy.serverOnlySuffix : ''}`);
 const visibilityIcon = computed(() => composerChannel.value ? (composerChannel.value.isPrivate ? privateChannelIcon : publicChannelIcon) : ({ public: publicVisibilityIcon, home: homeVisibilityIcon, followers: followersIcon, specified: directIcon })[visibility.value]);
-const visibilityBorderEnabled = prefer.r['postFormVisibilityBorder.enabled'];
-const visibilityBorderWidth = prefer.r['postFormVisibilityBorder.width'];
-const visibilityBorderColors = {
-	public: prefer.r['postFormVisibilityBorder.color.public'],
-	home: prefer.r['postFormVisibilityBorder.color.home'],
-	followers: prefer.r['postFormVisibilityBorder.color.followers'],
-	specified: prefer.r['postFormVisibilityBorder.color.specified'],
-} as const;
-const visibilityBorderStyle = computed(() => {
-	// カウントダウン中は同じ外周を進捗リングへ譲り、二重表示を避ける。
-	// 非入力時は浮遊フォーム本来の中立色に戻し、入力へ意識を向けた時だけ公開範囲色を示す。
-	if (!composerInputFocused.value || postDelay.active.value || !visibilityBorderEnabled.value) return undefined;
-	const color = visibilityBorderColors[effectiveVisibility.value].value;
-	// インライン指定で色枠を付けても、浮遊フォーム本来の外側の影を失わせない。
-	return {
-		boxShadow: `inset 0 0 0 ${visibilityBorderWidth.value}px ${color}, 0 14px 34px var(--cordShadow), 0 2px 8px color-mix(in srgb, #000 8%, transparent)`,
-	};
-});
 const composerPlaceholder = computed(() => composerContext.value?.kind === 'reply' ? copy.writeReply : composerContext.value?.kind === 'quote' ? copy.commentOnQuote : composerChannel.value ? copyx.postTo({ name: composerChannel.value.name }) : copy.whatsHappening);
 const composerContextLabel = computed(() => composerContext.value?.label ?? (composerChannel.value ? copyx.postToChannel({ privacy: composerChannel.value.isPrivate ? copy.privatePrefix : '', name: composerChannel.value.name }) : ''));
 const composerContextExcerpt = computed(() => {
@@ -3623,6 +3604,10 @@ definePage(() => ({ title: 'HataSNSCordUI', hideHeader: true }));
 
 .rateLimitButton[data-level='waiting'] {
 	--rate-limit-color: var(--cordMuted);
+}
+
+.rateLimitButton[data-level='unlimited'] {
+	--rate-limit-color: #28a974;
 }
 
 .timelineViewport {

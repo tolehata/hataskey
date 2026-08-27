@@ -8,6 +8,7 @@ describe('HataSNSCordUI role policy', () => {
 		expect(DEFAULT_POLICIES.canUseHatacordingUi).toBe(true);
 		expect(DEFAULT_POLICIES.hatacordingUiSubpaneMaxTabs).toBe(3);
 		expect(DEFAULT_POLICIES.hatacordingUiRateLimit).toBe(500);
+		expect(DEFAULT_POLICIES.canBypassHatacordingUiRateLimit).toBe(false);
 	});
 
 	test('clamps the aggregated UI-wide rate limit to 1-1000', () => {
@@ -29,5 +30,6 @@ describe('HataSNSCordUI role policy', () => {
 		expect(packedRolePoliciesSchema.properties).toHaveProperty('canUseHatacordingUi');
 		expect(packedRolePoliciesSchema.properties).toHaveProperty('hatacordingUiSubpaneMaxTabs');
 		expect(packedRolePoliciesSchema.properties).toHaveProperty('hatacordingUiRateLimit');
+		expect(packedRolePoliciesSchema.properties).toHaveProperty('canBypassHatacordingUiRateLimit');
 	});
 });

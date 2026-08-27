@@ -7074,6 +7074,7 @@ export type components = {
             canUseHatacordingUi: boolean;
             hatacordingUiSubpaneMaxTabs: number;
             hatacordingUiRateLimit: number;
+            canBypassHatacordingUiRateLimit: boolean;
             canUseHatadySync: boolean;
             hatadyBookLimit: number;
             hatadyBookmarkLimit: number;
@@ -52624,4 +52625,3 @@ export interface operations {
         };
     };
 }
-

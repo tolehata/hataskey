@@ -81,6 +81,8 @@ describe('HataSNSCordUIの結線', () => {
 		const api = readFrontendFile('src/utility/misskey-api.ts');
 		const drive = readFrontendFile('src/utility/drive.ts');
 		const dialog = readFrontendFile('src/components/HatacordingRateLimitDialog.vue');
+		const baseRoles = readFrontendFile('src/pages/admin/roles.vue');
+		const roleEditor = readFrontendFile('src/pages/admin/roles.editor.vue');
 		expect(page).toContain(':class="$style.rateLimitButton"');
 		expect(page).toContain('openRateLimitDetails');
 		expect(api).toContain('HATACORDING_RATE_LIMIT_REQUEST_HEADER');
@@ -90,6 +92,9 @@ describe('HataSNSCordUIの結線', () => {
 		expect(dialog).toContain('_rateLimit.resetInHoursMinutes');
 		expect(dialog).toContain('_rateLimit.resetInMinutesSeconds');
 		expect(dialog).toContain('_rateLimit.resetInSeconds');
+		expect(dialog).toContain('effectiveStatus.unlimited');
+		expect(baseRoles).toContain('policies.canBypassHatacordingUiRateLimit');
+		expect(roleEditor).toContain('role.policies.canBypassHatacordingUiRateLimit');
 	});
 
 	test('レート制限通知は投稿フォーム直上に置き、リセット時刻を表示する', () => {
@@ -103,6 +108,12 @@ describe('HataSNSCordUIの結線', () => {
 		expect(readFrontendFile('../../locales/ja-JP.yml')).toContain('bannerResetAt: "{time}にリセットされます"');
 		expect(readFrontendFile('../../locales/en-US.yml')).toContain('bannerResetAt: "Resets at {time}"');
 		expect(readFrontendFile('../../locales/zh-CN.yml')).toContain('bannerResetAt: "将在 {time} 重置"');
+	});
+
+	test('投稿欄へフォーカスしてもフォーム外枠を公開範囲色で強調しない', () => {
+		expect(page).toContain('<div :class="$style.postFormPill">');
+		expect(page).not.toContain('visibilityBorderStyle');
+		expect(page).not.toContain('composerInputFocused');
 	});
 
 	test('独立UI・下が最新の会話表示・右ペイン遷移タブを結線する', () => {
@@ -278,16 +289,6 @@ describe('HataSNSCordUIの結線', () => {
 		expect(page).toContain("visibility: effectiveVisibility.value");
 		expect(page).toContain("localOnly: effectiveLocalOnly.value");
 		expect(page).toContain("composerChannel.value ? 'public' : visibility.value");
-		expect(page).toContain("prefer.r['postFormVisibilityBorder.enabled']");
-		expect(page).toContain("prefer.r['postFormVisibilityBorder.width']");
-		expect(page).toContain("public: prefer.r['postFormVisibilityBorder.color.public']");
-		expect(page).toContain("home: prefer.r['postFormVisibilityBorder.color.home']");
-		expect(page).toContain("followers: prefer.r['postFormVisibilityBorder.color.followers']");
-		expect(page).toContain("specified: prefer.r['postFormVisibilityBorder.color.specified']");
-		expect(page).toContain(':class="$style.postFormPill" :style="visibilityBorderStyle"');
-		expect(page).toContain('@focus="composerInputFocused = true"');
-		expect(page).toContain('@blur="composerInputFocused = false"');
-		expect(page).toContain('if (!composerInputFocused.value || postDelay.active.value || !visibilityBorderEnabled.value) return undefined;');
 		expect(page).toContain('0 14px 34px var(--cordShadow)');
 		expect(page).toContain('copy.channelVisibilityFixed');
 		expect(page).toContain(':aria-pressed="cwEnabled"');
@@ -363,7 +364,7 @@ describe('HataSNSCordUIの結線', () => {
 	test('レート制限は操作を塞がない小型表示にし、復活前の再試行を止める', () => {
 		expect(page).toContain('v-if="timelineErrorKind === \'generic\'" :class="$style.timelineError"');
 		expect(page).toContain('v-if="timelineErrorKind === \'rateLimit\'" :class="$style.composerRateLimit"');
-		expect(page).toContain("const timelineRetryBlocked = computed(() => timelineErrorKind.value === 'rateLimit' && effectiveRateLimit.value?.remaining === 0)");
+		expect(page).toContain("const timelineRetryBlocked = computed(() => timelineErrorKind.value === 'rateLimit' && effectiveRateLimit.value?.unlimited !== true && effectiveRateLimit.value?.remaining === 0)");
 		expect(page).toContain('if (timelineRetryBlocked.value) return;');
 		expect(page).toContain("timelineErrorKind.value = 'rateLimit';");
 		expect(page).toContain("window.addEventListener('unhandledrejection', onHatacordingUnhandledRejection, { capture: true })");

@@ -28,7 +28,21 @@ describe('HataSNSCordUIの共通レートリミット表示', () => {
 			'X-Hatacording-RateLimit-Reset': '200000',
 		}), 100000);
 
-		expect(snapshot).toEqual({ limit: 180, remaining: 137, resetAt: 200000, observedAt: 100000 });
+		expect(snapshot).toEqual({ unlimited: false, limit: 180, remaining: 137, resetAt: 200000, observedAt: 100000 });
+	});
+
+	test('管理者が免除した利用者の応答は古い残量を制限なし状態へ置き換える', () => {
+		updateHatacordingRateLimit(headers({
+			'X-Hatacording-RateLimit-Limit': '180',
+			'X-Hatacording-RateLimit-Remaining': '2',
+			'X-Hatacording-RateLimit-Reset': '200000',
+		}));
+		updateHatacordingRateLimit(headers({
+			'X-Hatacording-RateLimit-Unlimited': '1',
+		}));
+
+		expect(hatacordingRateLimitSnapshot.value).toMatchObject({ unlimited: true, limit: 0, remaining: 0, resetAt: 0 });
+		expect(getEffectiveHatacordingRateLimit(hatacordingRateLimitSnapshot.value)?.unlimited).toBe(true);
 	});
 
 	test('壊れた応答は無視し、残量は0から上限の範囲へ収める', () => {

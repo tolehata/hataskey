@@ -264,6 +264,10 @@ export const packedRolePoliciesSchema = {
 			type: 'integer',
 			optional: false, nullable: false,
 		},
+		canBypassHatacordingUiRateLimit: {
+			type: 'boolean',
+			optional: false, nullable: false,
+		},
 		canUseHatadySync: {
 			type: 'boolean',
 			optional: false, nullable: false,

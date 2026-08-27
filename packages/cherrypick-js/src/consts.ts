@@ -226,6 +226,7 @@ export const rolePolicies = [
 	'canUseHatacordingUi',
 	'hatacordingUiSubpaneMaxTabs',
 	'hatacordingUiRateLimit',
+	'canBypassHatacordingUiRateLimit',
 	'canUseHatadySync',
 	'hatadyBookLimit',
 	'hatadyBookmarkLimit',
