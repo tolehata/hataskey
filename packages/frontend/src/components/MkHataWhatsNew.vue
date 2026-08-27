@@ -716,6 +716,18 @@ function openReleaseNotes() {
 .studioSide > span[data-dragging="true"] { animation: hwnDragMove 3.2s cubic-bezier(.2,.9,.2,1) infinite; }
 .studioSide > span[data-drop="true"] { animation: hwnSoftPulse 3.2s ease-in-out infinite; }
 
+/* ===== スマホ操作の安定化: 端末の中でリアクション選択が指の下に収まる ===== */
+/* ⚠️この受け皿は v-else なので、preview の分岐に載らない項目もここへ落ちる。
+     土台（高さ・中央寄せ・端末の寸法）を欠かすと、中身が左上へ潰れて出る。 */
+.mobileMock { position: relative; height: 100%; display: grid; place-content: center; background: #eaf2ef; }
+.mobilePhone { box-sizing: border-box; position: relative; width: 98px; height: 118px; display: flex; flex-direction: column; gap: 9px; padding: 11px 10px; border-radius: 15px; background: #fff; box-shadow: 0 6px 16px rgba(46, 88, 74, .18); }
+.mobilePicker { display: flex; justify-content: center; gap: 8px; padding: 7px 0; border-radius: 9px; background: #e6f0ec; }
+.mobilePicker > i { font-size: 13px; color: #3c8b72; }
+.mobileNote { display: flex; flex-direction: column; gap: 6px; }
+.mobileNote > u { display: block; height: 6px; border-radius: 999px; background: #dfe7e4; text-decoration: none; }
+.mobileNote > u:last-child { width: 62%; }
+.mobileTouch { position: absolute; bottom: 13px; left: 50%; width: 20px; height: 20px; margin-left: -10px; border-radius: 50%; background: rgba(60, 139, 114, .38); }
+
 .mobilePicker > i { animation: hwnPopIn 3.2s cubic-bezier(.2,.9,.2,1) infinite; }
 .mobilePicker > i:nth-child(2) { animation-delay: .16s; }
 .mobilePicker > i:nth-child(3) { animation-delay: .32s; }

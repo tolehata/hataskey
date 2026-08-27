@@ -23,6 +23,31 @@ describe('Hata update presentation', () => {
 		}
 	});
 
+	// ⚠️`$style.foo` は、`<style module>` に `.foo` が無いと**空文字**になる。
+	//   クラスが一つも付かないので、寸法も中央寄せも当たらず、中身が左上へ潰れて出る。
+	//   ⚠️実際に mobileMock / mobilePhone / mobileNote がこれで崩れていた。
+	//   ⚠️見た目の検査ではなく「定義の有無」で捕まえる。
+	function moduleClassNames(source: string): Set<string> {
+		const start = source.indexOf('<style lang="scss" module>');
+		const block = start < 0 ? source.slice(source.indexOf('<style module>')) : source.slice(start);
+		return new Set([...block.matchAll(/^\s*\.([A-Za-z_][\w-]*)/gmu)].map(match => match[1]));
+	}
+	function usedModuleClassNames(source: string): Set<string> {
+		return new Set([...source.matchAll(/\$style\.([A-Za-z_][\w$]*)/gu)].map(match => match[1]));
+	}
+
+	test('テンプレートが参照するCSSモジュールのクラスは、すべて定義されている', () => {
+		// ⚠️陽性対照。検出器が実際に読めていて、欠落を欠落と言えること。
+		const defined = moduleClassNames(whatsNewSource);
+		const used = usedModuleClassNames(whatsNewSource);
+		expect(defined.size).toBeGreaterThan(60);
+		expect(used.size).toBeGreaterThan(60);
+		expect(defined.has('zzNoSuchClass')).toBe(false);
+
+		const missing = [...used].filter(name => !defined.has(name)).sort();
+		expect(missing).toEqual([]);
+	});
+
 	test('スマホではスワイプ・左右ボタン・現在位置ドットで一件ずつ確認できる', () => {
 		expect(whatsNewSource).toContain('@scroll.passive="syncCarouselPosition"');
 		expect(whatsNewSource).toContain('@click="moveCarousel(-1)"');
