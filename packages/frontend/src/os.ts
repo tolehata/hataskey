@@ -803,12 +803,14 @@ export function checkExistence(fileData: ArrayBuffer): Promise<any> {
 export function chooseFileFromPc(
 	options: {
 		multiple?: boolean;
+		accept?: string;
 	} = {},
 ): Promise<File[]> {
 	return new Promise((res, rej) => {
 		const input = window.document.createElement('input');
 		input.type = 'file';
 		input.multiple = options.multiple ?? false;
+		if (options.accept != null) input.accept = options.accept;
 		input.onchange = () => {
 			if (!input.files) return res([]);
 
