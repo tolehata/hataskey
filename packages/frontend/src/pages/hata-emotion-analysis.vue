@@ -6,12 +6,34 @@ SPDX-License-Identifier: AGPL-3.0-only
 <template>
 <PageWithHeader>
 	<div :class="$style.root">
-		<header v-if="!initializing && (!allowed || consentAccepted)" :class="$style.hero">
-			<div :class="$style.heroIcon"><i class="ti ti-mood-search"></i></div>
-			<div><h1>{{ copy.title }}</h1><p>{{ copy.intro }}</p></div><div :class="$style.user"><button v-if="allowed && consentAccepted" type="button" :class="[$style.actionButton, $style.iconButton]" :title="copy.showNotice" :aria-label="copy.showNotice" @click="openIntroduction"><i class="ti ti-info-circle"></i></button><span v-if="$i">@{{ $i.username }}</span><MkAvatar v-if="$i" :user="$i" :class="$style.avatar"/></div>
+		<header v-if="!initializing && (!allowed || consentAccepted)" :class="$style.productBar">
+			<div :class="$style.productIdentity">
+				<span :class="$style.productMark" aria-hidden="true">H</span>
+				<strong :class="$style.wordmark">HATAlyze</strong>
+			</div>
+			<div :class="$style.user">
+				<button v-if="allowed && consentAccepted" type="button" :class="[$style.actionButton, $style.iconButton]" :title="copy.showNotice" :aria-label="copy.showNotice" @click="openIntroduction"><i class="ti ti-info-circle" aria-hidden="true"></i></button>
+				<span v-if="$i">@{{ $i.username }}</span>
+				<MkAvatar v-if="$i" :user="$i" :class="$style.avatar"/>
+			</div>
 		</header>
 
-		<div v-if="consentAccepted && allowed" :class="$style.notice"><i class="ti ti-info-circle"></i><span>{{ copy.nonMedical }}</span></div>
+		<section v-if="consentAccepted && allowed" :class="$style.analysisIntro">
+			<div :class="$style.analysisIntroCopy">
+				<span>PERSONAL NOTE INSIGHT</span>
+				<h1>{{ copy.heroTitle }}</h1>
+				<p>{{ copy.heroDescription }}</p>
+			</div>
+			<div :class="$style.personalStatus">
+				<i class="ti ti-shield-lock" aria-hidden="true"></i>
+				<span><strong>{{ copy.personalOnly }}</strong><small>{{ copy.personalOnlyBody }}</small></span>
+			</div>
+		</section>
+
+		<div v-if="consentAccepted && allowed" :class="$style.notice">
+			<div :class="$style.noticeCopy"><i class="ti ti-info-circle" aria-hidden="true"></i><span><strong>{{ copy.nonMedicalTitle }}</strong><small>{{ copy.nonMedical }}</small></span></div>
+			<div :class="$style.noticeAction"><button type="button" :class="[$style.actionButton, $style.secondaryButton]" @click="openIntroduction">{{ copy.showNotice }}</button></div>
+		</div>
 
 		<nav v-if="consentAccepted && allowed" :class="$style.tabs" :aria-label="copy.title">
 			<button v-for="item in tabs" :key="item.key" type="button" :class="$style.tab" :data-active="activeTab === item.key" :aria-current="activeTab === item.key ? 'page' : undefined" @click="activeTab = item.key">
@@ -23,150 +45,263 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<main>
 			<section v-if="initializing" :class="$style.card"><div :class="$style.empty"><i class="ti ti-loader-2"></i><p>{{ copy.loading }}</p></div></section>
 			<section v-else-if="!allowed" :class="$style.card"><div :class="$style.unavailable"><i class="ti ti-lock"></i><h2>{{ copy.unavailableTitle }}</h2><p>{{ copy.unavailableBody }}</p><p :class="$style.unavailableHint">{{ copy.unavailableHint }}</p><strong>{{ copy.serverAdmin }}</strong><button type="button" :class="[$style.actionButton, $style.secondaryButton, $style.backButton]" @click="goBack"><i class="ti ti-arrow-left"></i>{{ copy.back }}</button><footer :class="$style.deniedFooter">{{ copy.deniedFooter }}</footer></div></section>
-			<section v-else-if="!consentAccepted" :class="$style.introCard"><div :class="$style.introBody"><div :class="$style.introIcon"><i class="ti ti-mood-search"></i></div><h2>{{ copy.beforeStartTitle }}</h2><p :class="$style.introLead">{{ copy.intro }}</p><div :class="$style.medical"><h3><i class="ti ti-alert-triangle"></i>{{ copy.nonMedical }}</h3><p>{{ copy.medicalBody }}</p></div><div :class="$style.infoGrid"><div><b>{{ copy.infoAnalyze }}</b><span>{{ copy.infoAnalyzeBody }}</span></div><div><b>{{ copy.infoSave }}</b><span>{{ copy.infoSaveBody }}</span></div><div><b>{{ copy.infoPersonal }}</b><span>{{ copy.infoPersonalBody }}</span></div><div><b>{{ copy.license }}</b><span>{{ copy.licenseBody }}</span></div></div><button type="button" :class="[$style.actionButton, $style.primaryButton]" @click="acceptConsent">{{ copy.continue }}</button><small :class="$style.introFootnote">{{ copy.beforeStartBody }}</small></div></section>
+			<section v-else-if="!consentAccepted" :class="$style.introCard"><div :class="$style.introBody"><div :class="$style.introIcon"><i class="ti ti-mood-search"></i></div><strong :class="$style.introWordmark">HATAlyze</strong><h2>{{ copy.beforeStartTitle }}</h2><p :class="$style.introLead">{{ copy.intro }}</p><div :class="$style.medical"><h3><i class="ti ti-alert-triangle"></i>{{ copy.nonMedicalTitle }}</h3><p>{{ copy.medicalBody }}</p></div><div :class="$style.infoGrid"><div><b>{{ copy.infoAnalyze }}</b><span>{{ copy.infoAnalyzeBody }}</span></div><div><b>{{ copy.infoSave }}</b><span>{{ copy.infoSaveBody }}</span></div><div><b>{{ copy.infoPersonal }}</b><span>{{ copy.infoPersonalBody }}</span></div><div><b>{{ copy.license }}</b><span>{{ copy.licenseBody }}</span></div></div><button type="button" :class="[$style.actionButton, $style.primaryButton]" @click="acceptConsent">{{ copy.continue }}</button><small :class="$style.introFootnote">{{ copy.beforeStartBody }}</small></div></section>
 			<template v-else>
-				<section v-if="activeTab === 'new'" :class="$style.card">
-					<div v-if="waiting" :class="$style.waiting" aria-live="polite">
-						<div :class="$style.waitingIcon"><i class="ti ti-hourglass"></i></div>
-						<div><h2>{{ copy.statusWaiting }}</h2><p>{{ copy.waitingBody }}</p><strong>{{ waitingLabel }}</strong></div>
-						<button type="button" :class="[$style.actionButton, $style.secondaryButton, $style.subtleButton]" @click="refreshHistory"><i class="ti ti-refresh"></i>{{ copy.refresh }}</button>
-					</div>
-					<form v-else :class="$style.form" @submit.prevent="createAnalysis">
-						<h2>{{ copy.conditionTitle }}</h2>
-						<label :class="$style.field"><span>{{ copy.period }}</span><select v-model="conditions.mode"><option value="latest">{{ copy.latest1000 }}</option><option value="period">{{ copy.periodSpecified }}</option></select></label>
-						<label v-if="conditions.mode === 'period'" :class="$style.field"><span>{{ copy.period }}</span><select v-model.number="conditions.periodDays"><option value="7">{{ copy.period7 }}</option><option value="30">{{ copy.period30 }}</option><option value="90">{{ copy.period90 }}</option></select></label>
-						<label :class="$style.field"><span>{{ copy.visibility }}</span><select v-model="conditions.visibility"><option value="publicHome">{{ copy.visibilityPublicHome }}</option><option value="followers">{{ copy.visibilityFollowers }}</option><option value="all">{{ copy.visibilityAll }}</option></select></label>
-						<label v-if="history.length" :class="$style.field"><span>{{ copy.comparisonTarget }}</span><select v-model="newBaseId"><option value="">{{ copy.compareNone }}</option><option v-for="item in history" :key="`new-base-${item.id}`" :value="item.id">{{ formatDate(item.createdAt) }} · {{ conditionLabel(item) }}</option></select></label>
-						<label :class="$style.check"><input v-model="conditions.includeReplies" type="checkbox"><span>{{ copy.includeReplies }}</span></label>
-						<label :class="$style.check"><input v-model="conditions.includeCw" type="checkbox"><span>{{ copy.includeCw }}</span></label>
-						<label :class="$style.check"><input v-model="conditions.saveToHistory" type="checkbox"><span>{{ copy.saveHistory }}</span></label>
-						<!-- ⚠️上限を超えると一番古い履歴が消える。保存する前に見える位置へ出す。 -->
-						<p v-if="conditions.saveToHistory" :class="$style.limitHint"><i class="ti ti-archive"></i><span>{{ historyLimitNote }}</span></p>
-						<div :class="$style.reason"><h3><i class="ti ti-help-circle"></i>{{ copy.reasonTitle }}</h3><p>{{ copy.reasonText }}</p></div>
-						<div :class="$style.ratebox"><div><b>{{ copy.analysisInterval }}</b><small>{{ copy.waitingBody }}</small></div><span>{{ serviceReady ? copy.availableNow : copy.serviceUnavailable }}</span></div>
-						<p :class="$style.minimumHint"><i class="ti ti-database"></i>{{ copy.minimumNotesHint.replace('{minimum}', String(HATA_EMOTION_ANALYSIS_MIN_NOTES)) }}</p>
-						<p v-if="noteCountWarning" :class="$style.warningBanner" role="alert"><i class="ti ti-alert-triangle"></i><span>{{ noteCountWarning }}</span></p>
-						<div v-if="!serviceReady" :class="$style.connectionBlock" role="alert"><i class="ti ti-plug-connected-x"></i><span>{{ errorMessage || copy.serviceUnavailable }}</span><button type="button" :class="[$style.actionButton, $style.secondaryButton]" :disabled="checking" @click="refreshHistory"><i class="ti ti-refresh"></i>{{ copy.retryConnection }}</button></div>
-						<button type="submit" :class="[$style.actionButton, $style.primaryButton]" :disabled="!canStartAnalysis"><i :class="submitting ? 'ti ti-loader-2' : 'ti ti-sparkles'"></i>{{ submitLabel }}</button>
-						<p v-if="errorMessage && serviceReady" :class="$style.error" role="alert">{{ errorMessage }}</p>
-					</form>
-				</section>
-
-				<section v-else-if="activeTab === 'result'" :class="$style.card">
-					<div v-if="selected" :class="$style.result">
-						<div :class="$style.resultHeader"><div><span :class="$style.eyebrow">{{ copy.resultSummary }}</span><h2>{{ formatDate(selected.createdAt) }}</h2><p>{{ conditionLabel(selected) }} · {{ copy.analysisVersion }} {{ selected.analysisVersion }}</p></div><div :class="$style.resultActions"><span :class="[$style.status, $style.statusDone]">{{ copy.completed }}</span><button v-if="selected.id && history.length > 1" type="button" :class="[$style.actionButton, $style.secondaryButton, $style.subtleButton]" @click="openComparison(selected)"><i class="ti ti-chart-arrows"></i>{{ copy.comparePrevious }}</button></div></div>
-						<div v-if="acceptedCount(selected) === 0" :class="$style.emptyInline">{{ copy.resultNoData }}</div>
-						<div v-else :class="$style.resultOverview">
-							<section :class="$style.scoreCard"><strong>{{ emotionScore(selected) }}</strong><b>{{ emotionLabel(selected) }}</b><small>{{ copy.nonMedical }}</small></section>
-							<div :class="$style.resultGrid"><div :class="$style.resultItem"><span>{{ copy.positiveRate }}</span><strong>{{ positiveRate(selected) }}</strong><small>{{ levelDetail(selected, 'positive') }}</small></div><div :class="$style.resultItem"><span>{{ copy.neutralRate }}</span><strong>{{ neutralRate(selected) }}</strong><small>{{ copy.neutralDescription }}</small></div><div :class="$style.resultItem"><span>{{ copy.negativeRate }}</span><strong>{{ negativeRate(selected) }}</strong><small>{{ levelDetail(selected, 'negative') }}</small></div><div :class="$style.resultItem"><span>{{ copy.emotionalPostRate }}</span><strong>{{ metricValue(selected, 'emotionalPostRate', true) }}</strong></div><div :class="$style.resultItem"><span>{{ copy.calmestHour }}</span><strong>{{ calmestHour(selected) }}</strong></div><div :class="$style.resultItem"><span>{{ copy.analyzedPosts }}</span><strong>{{ metricValue(selected, 'accepted', false, 'input') }}</strong></div></div>
+				<Transition
+					:enterActiveClass="$style.panelEnterActive"
+					:enterFromClass="$style.panelEnterFrom"
+					:leaveActiveClass="$style.panelLeaveActive"
+					:leaveToClass="$style.panelLeaveTo"
+					mode="out-in"
+				>
+					<section v-if="activeTab === 'new'" :class="$style.card">
+						<div v-if="waiting" :class="$style.waiting" aria-live="polite">
+							<div :class="$style.waitingIcon"><i class="ti ti-hourglass"></i></div>
+							<div><h2>{{ copy.statusWaiting }}</h2><p>{{ copy.waitingBody }}</p><strong>{{ waitingLabel }}</strong></div>
+							<button type="button" :class="[$style.actionButton, $style.secondaryButton, $style.subtleButton]" @click="refreshHistory"><i class="ti ti-refresh"></i>{{ copy.refresh }}</button>
 						</div>
-						<section v-if="selectedDaily.length" :class="$style.trendSection"><h3>{{ copy.dailyTrend }}</h3><svg :class="$style.resultChart" viewBox="0 0 700 180" preserveAspectRatio="none" :aria-label="copy.dailyTrend"><line x1="0" y1="90" x2="700" y2="90" stroke="currentColor" opacity=".2"/><polyline :points="chartPoints(selected)" fill="none" stroke="var(--MI_THEME-accent)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg></section>
-						<section v-if="selectedEvidence.length" :class="$style.evidence"><h3>{{ copy.resultReason }}</h3><p>{{ copy.reasonText }}</p><div :class="$style.evidenceGrid"><div v-for="group in selectedEvidence" :key="group.label" :class="$style.evidenceGroup"><b>{{ group.label }}</b><ul><li v-for="item in group.items.slice(0, 8)" :key="`${group.label}-${item.label}`"><span>{{ item.label }}</span><span>{{ evidenceValue(item) }}</span></li></ul></div></div></section>
-						<!-- 旗鯖fork(HATAlyze 2.0.0): 感情の8軸。⚠️棒はその分析内での相対値(絶対量ではない)。 -->
-						<section v-if="selectedEmotions.length" :class="$style.breakdown">
-							<h3>{{ copy.emotionBreakdown }}</h3>
-							<p :class="$style.breakdownNote">{{ copy.emotionBreakdownNote }}</p>
-							<div :class="$style.statList">
-								<div v-for="axis in selectedEmotions" :key="axis.axis" :class="$style.statRow" :data-polarity="axis.polarity">
-									<span :class="$style.statLabel">{{ axisLabel(axis.axis) }}</span>
-									<span :class="$style.statBar"><i :style="{ width: barWidth(axis.weight, emotionMax) }"></i></span>
-									<b :class="$style.statValue">{{ axis.count }}</b>
+						<form v-else :class="$style.form" @submit.prevent="createAnalysis">
+							<header :class="$style.analysisPanelHeading">
+								<div><span>NEW ANALYSIS</span><h2>{{ copy.conditionTitle }}</h2></div>
+								<strong :data-ready="serviceReady"><i class="ti ti-clock-3" aria-hidden="true"></i>{{ serviceReady ? copy.availableNow : copy.serviceUnavailable }}</strong>
+							</header>
+
+							<div :class="$style.stepOverview">
+								<div :class="$style.stepOverviewCopy"><span>{{ analysisStepCounter }}</span><strong>{{ analysisStepTitle }}</strong></div>
+								<div :class="$style.stepTrack" role="progressbar" aria-valuemin="1" aria-valuemax="3" :aria-valuenow="analysisStep"><span :style="{ width: (analysisStep / 3 * 100) + '%' }"></span></div>
+								<ol :class="$style.stepProgress" :aria-label="copy.conditionTitle">
+									<li v-for="step in 3" :key="step" :data-state="step < analysisStep ? 'done' : step === analysisStep ? 'active' : 'waiting'">
+										<button type="button" :aria-current="step === analysisStep ? 'step' : undefined" :aria-label="[copy.stepPeriodShort, copy.stepOptionsShort, copy.stepReviewShort][step - 1]" @click="goToAnalysisStep(step)">
+											<i v-if="step < analysisStep" class="ti ti-check" aria-hidden="true"></i>
+											<span v-else>{{ step }}</span>
+										</button>
+										<small>{{ [copy.stepPeriodShort, copy.stepOptionsShort, copy.stepReviewShort][step - 1] }}</small>
+									</li>
+								</ol>
+							</div>
+
+							<Transition
+								:enterActiveClass="$style.stepEnterActive"
+								:enterFromClass="$style.stepEnterFrom"
+								:leaveActiveClass="$style.stepLeaveActive"
+								:leaveToClass="$style.stepLeaveTo"
+								mode="out-in"
+							>
+								<section v-if="analysisStep === 1" key="period" :class="$style.stepPanel">
+									<header :class="$style.conversationHeader">
+										<span :class="$style.conversationIcon" aria-hidden="true"><i :class="analysisStepIcon"></i></span>
+										<div><h3>{{ analysisStepTitle }}</h3><p>{{ analysisStepBody }}</p></div>
+									</header>
+									<fieldset :class="$style.choiceFieldset">
+										<legend>{{ copy.period }}</legend>
+										<label :class="$style.choiceOption"><input v-model="periodChoice" type="radio" value="latest"><span><strong>{{ copy.latest1000 }}</strong><small>{{ copy.latestHint }}</small></span></label>
+										<label :class="$style.choiceOption"><input v-model="periodChoice" type="radio" value="7"><span><strong>{{ copy.period7 }}</strong><small>{{ copy.period7Hint }}</small></span></label>
+										<label :class="$style.choiceOption"><input v-model="periodChoice" type="radio" value="30"><span><strong>{{ copy.period30 }}</strong><small>{{ copy.period30Hint }}</small></span></label>
+										<label :class="$style.choiceOption"><input v-model="periodChoice" type="radio" value="90"><span><strong>{{ copy.period90 }}</strong><small>{{ copy.period90Hint }}</small></span></label>
+									</fieldset>
+									<label :class="$style.field"><span>{{ copy.visibility }}</span><select v-model="conditions.visibility"><option value="publicHome">{{ copy.visibilityPublicHome }}</option><option value="followers">{{ copy.visibilityFollowers }}</option><option value="all">{{ copy.visibilityAll }}</option></select></label>
+									<p :class="$style.minimumHint"><i class="ti ti-notebook" aria-hidden="true"></i>{{ copy.minimumNotesHint.replace('{minimum}', String(HATA_EMOTION_ANALYSIS_MIN_NOTES)) }}</p>
+									<div :class="$style.stepActions">
+										<button type="button" :class="[$style.actionButton, $style.primaryButton]" @click="goToAnalysisStep(2)">{{ i18n.ts.next }}<i class="ti ti-arrow-right" aria-hidden="true"></i></button>
+									</div>
+								</section>
+
+								<section v-else-if="analysisStep === 2" key="options" :class="$style.stepPanel">
+									<header :class="$style.conversationHeader">
+										<span :class="$style.conversationIcon" aria-hidden="true"><i :class="analysisStepIcon"></i></span>
+										<div><h3>{{ analysisStepTitle }}</h3><p>{{ analysisStepBody }}</p></div>
+									</header>
+									<fieldset :class="[$style.choiceFieldset, $style.historyChoiceFieldset]">
+										<legend>{{ copy.saveHistory }}</legend>
+										<label :class="$style.choiceOption"><input v-model="conditions.saveToHistory" type="radio" :value="true"><span><strong>{{ copy.saveHistoryChoice }}</strong><small>{{ copy.saveHistoryChoiceHint }}</small></span></label>
+										<label :class="$style.choiceOption"><input v-model="conditions.saveToHistory" type="radio" :value="false"><span><strong>{{ copy.noSaveHistoryChoice }}</strong><small>{{ copy.noSaveHistoryChoiceHint }}</small></span></label>
+									</fieldset>
+									<div :class="$style.optionToggleGrid">
+										<label :class="$style.choiceCard">
+											<input v-model="conditions.includeReplies" type="checkbox">
+											<i class="ti ti-message-reply" aria-hidden="true"></i>
+											<span><strong>{{ copy.includeReplies }}</strong><small>{{ copy.stepRepliesHint }}</small></span>
+											<em aria-hidden="true"><i class="ti ti-check"></i></em>
+										</label>
+										<label :class="$style.choiceCard">
+											<input v-model="conditions.includeCw" type="checkbox">
+											<i class="ti ti-file-description" aria-hidden="true"></i>
+											<span><strong>{{ copy.includeCw }}</strong><small>{{ copy.stepCwHint }}</small></span>
+											<em aria-hidden="true"><i class="ti ti-check"></i></em>
+										</label>
+									</div>
+									<label v-if="history.length" :class="$style.field"><span>{{ copy.comparisonTarget }}</span><select v-model="newBaseId"><option value="">{{ copy.compareNone }}</option><option v-for="item in history" :key="'new-base-' + item.id" :value="item.id">{{ formatDate(item.createdAt) }} · {{ conditionLabel(item) }}</option></select></label>
+									<p v-if="conditions.saveToHistory" :class="$style.limitHint"><i class="ti ti-archive" aria-hidden="true"></i><span>{{ historyLimitNote }}</span></p>
+									<div :class="$style.stepActions">
+										<button type="button" :class="[$style.actionButton, $style.secondaryButton]" @click="goToAnalysisStep(1)"><i class="ti ti-arrow-left" aria-hidden="true"></i>{{ copy.back }}</button>
+										<button type="button" :class="[$style.actionButton, $style.primaryButton]" @click="goToAnalysisStep(3)">{{ i18n.ts.next }}<i class="ti ti-arrow-right" aria-hidden="true"></i></button>
+									</div>
+								</section>
+
+								<section v-else key="review" :class="$style.stepPanel">
+									<header :class="$style.conversationHeader">
+										<span :class="$style.conversationIcon" aria-hidden="true"><i :class="analysisStepIcon"></i></span>
+										<div><h3>{{ analysisStepTitle }}</h3><p>{{ analysisStepBody }}</p></div>
+									</header>
+									<dl :class="$style.reviewSummary">
+										<div><dt>{{ copy.period }}</dt><dd>{{ analysisConditionSummary.period }}</dd></div>
+										<div><dt>{{ copy.visibility }}</dt><dd>{{ analysisConditionSummary.visibility }}</dd></div>
+										<div><dt>{{ copy.saveHistory }}</dt><dd>{{ analysisConditionSummary.history }}</dd></div>
+									</dl>
+									<div :class="$style.reason"><h3><i class="ti ti-help-circle" aria-hidden="true"></i>{{ copy.reasonTitle }}</h3><p>{{ copy.reasonText }}</p></div>
+									<div :class="$style.ratebox"><div><b>{{ copy.analysisInterval }}</b><small>{{ copy.waitingBody }}</small></div><span>{{ serviceReady ? copy.availableNow : copy.serviceUnavailable }}</span></div>
+									<p :class="$style.minimumHint"><i class="ti ti-database" aria-hidden="true"></i>{{ copy.minimumNotesHint.replace('{minimum}', String(HATA_EMOTION_ANALYSIS_MIN_NOTES)) }}</p>
+									<p v-if="noteCountWarning" :class="$style.warningBanner" role="alert"><i class="ti ti-alert-triangle" aria-hidden="true"></i><span>{{ noteCountWarning }}</span></p>
+									<div v-if="!serviceReady" :class="$style.connectionBlock" role="alert"><i class="ti ti-plug-connected-x" aria-hidden="true"></i><span>{{ errorMessage || copy.serviceUnavailable }}</span><button type="button" :class="[$style.actionButton, $style.secondaryButton]" :disabled="checking" @click="refreshHistory"><i class="ti ti-refresh" aria-hidden="true"></i>{{ copy.retryConnection }}</button></div>
+									<p v-if="errorMessage && serviceReady" :class="$style.error" role="alert">{{ errorMessage }}</p>
+									<div :class="$style.stepActions">
+										<button type="button" :class="[$style.actionButton, $style.secondaryButton]" @click="goToAnalysisStep(2)"><i class="ti ti-arrow-left" aria-hidden="true"></i>{{ copy.back }}</button>
+										<button type="submit" :class="[$style.actionButton, $style.primaryButton]" :disabled="!canStartAnalysis"><i :class="submitting ? 'ti ti-loader-2' : 'ti ti-sparkles'" aria-hidden="true"></i>{{ submitLabel }}</button>
+									</div>
+								</section>
+							</Transition>
+						</form>
+					</section>
+
+					<section v-else-if="activeTab === 'result'" :class="$style.card">
+						<div v-if="selected" :class="$style.result">
+							<div :class="$style.resultHeader">
+								<div>
+									<span :class="$style.eyebrow">{{ copy.resultSummary }}</span>
+									<h2>{{ emotionLabel(selected) }}</h2>
+									<p>{{ formatDate(selected.createdAt) }} · {{ conditionLabel(selected) }} · {{ copy.analysisVersion }} {{ selected.analysisVersion }}</p>
+								</div>
+								<div :class="$style.resultActions">
+									<span :class="[$style.status, selected.id ? $style.statusDone : deletedResultCreatedAt === selected.createdAt ? $style.statusRemoved : $style.statusNotSaved]">{{ selected.id ? copy.completed : deletedResultCreatedAt === selected.createdAt ? copy.deletedFromHistory : copy.historyNotSaved }}</span>
+									<button v-if="selected.id && history.length > 1" type="button" :class="[$style.actionButton, $style.secondaryButton, $style.subtleButton]" @click="openComparison(selected)"><i class="ti ti-chart-arrows" aria-hidden="true"></i>{{ copy.comparePrevious }}</button>
+									<button v-if="selected.id" type="button" :class="[$style.actionButton, $style.iconButton, $style.resultMenuButton]" :title="copy.delete" :aria-label="copy.delete" @click="openResultMenu(selected, $event)"><i class="ti ti-dots" aria-hidden="true"></i></button>
 								</div>
 							</div>
-						</section>
-
-						<section v-if="selectedTopics.length" :class="$style.breakdown">
-							<h3>{{ copy.topicBreakdown }}</h3>
-							<div :class="$style.statList">
-								<div v-for="topic in selectedTopics" :key="topic.topic" :class="$style.statRow" :data-polarity="topic.averageScore >= 0 ? 'positive' : 'negative'">
-									<span :class="$style.statLabel">{{ topic.topic }}</span>
-									<span :class="$style.statBar"><i :style="{ width: barWidth(topic.count, topicMax) }"></i></span>
-									<b :class="$style.statValue">{{ topic.count }}</b>
+							<div v-if="acceptedCount(selected) === 0" :class="$style.emptyInline">{{ copy.resultNoData }}</div>
+							<div v-else :class="$style.resultOverview">
+								<section :class="$style.scoreCard"><strong>{{ emotionScore(selected) }}</strong><b>{{ emotionLabel(selected) }}</b><small>{{ copy.nonMedical }}</small></section>
+								<div :class="$style.resultGrid"><div :class="$style.resultItem"><span>{{ copy.positiveRate }}</span><strong>{{ positiveRate(selected) }}</strong><small>{{ levelDetail(selected, 'positive') }}</small></div><div :class="$style.resultItem"><span>{{ copy.neutralRate }}</span><strong>{{ neutralRate(selected) }}</strong><small>{{ copy.neutralDescription }}</small></div><div :class="$style.resultItem"><span>{{ copy.negativeRate }}</span><strong>{{ negativeRate(selected) }}</strong><small>{{ levelDetail(selected, 'negative') }}</small></div><div :class="$style.resultItem"><span>{{ copy.emotionalPostRate }}</span><strong>{{ metricValue(selected, 'emotionalPostRate', true) }}</strong></div><div :class="$style.resultItem"><span>{{ copy.calmestHour }}</span><strong>{{ calmestHour(selected) }}</strong></div><div :class="$style.resultItem"><span>{{ copy.analyzedPosts }}</span><strong>{{ metricValue(selected, 'accepted', false, 'input') }}</strong></div></div>
+							</div>
+							<section v-if="selectedDaily.length" :class="$style.trendSection"><h3>{{ copy.dailyTrend }}</h3><svg :class="$style.resultChart" viewBox="0 0 700 180" preserveAspectRatio="none" :aria-label="copy.dailyTrend"><line x1="0" y1="90" x2="700" y2="90" stroke="currentColor" opacity=".2"/><polyline :points="chartPoints(selected)" fill="none" stroke="var(--MI_THEME-accent)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg></section>
+							<section v-if="selectedEvidence.length" :class="$style.evidence"><h3>{{ copy.resultReason }}</h3><p>{{ copy.reasonText }}</p><div :class="$style.evidenceGrid"><div v-for="group in selectedEvidence" :key="group.label" :class="$style.evidenceGroup"><b>{{ group.label }}</b><ul><li v-for="item in group.items.slice(0, 8)" :key="`${group.label}-${item.label}`"><span>{{ item.label }}</span><span>{{ evidenceValue(item) }}</span></li></ul></div></div></section>
+							<!-- 旗鯖fork(HATAlyze 2.0.0): 感情の8軸。⚠️棒はその分析内での相対値(絶対量ではない)。 -->
+							<section v-if="selectedEmotions.length" :class="$style.breakdown">
+								<h3>{{ copy.emotionBreakdown }}</h3>
+								<p :class="$style.breakdownNote">{{ copy.emotionBreakdownNote }}</p>
+								<div :class="$style.statList">
+									<div v-for="axis in selectedEmotions" :key="axis.axis" :class="$style.statRow" :data-polarity="axis.polarity">
+										<span :class="$style.statLabel">{{ axisLabel(axis.axis) }}</span>
+										<span :class="$style.statBar"><i :style="{ width: barWidth(axis.weight, emotionMax) }"></i></span>
+										<b :class="$style.statValue">{{ axis.count }}</b>
+									</div>
 								</div>
-							</div>
-							<p v-if="selectedEngagement?.topTopicByReactions" :class="$style.breakdownNote">
-								{{ copy.topTopicByReactions }}: <b>{{ selectedEngagement.topTopicByReactions }}</b>
-							</p>
-						</section>
+							</section>
 
-						<section v-if="selectedWeekly.length" :class="$style.breakdown">
-							<h3>{{ copy.weekdayBreakdown }}</h3>
-							<div :class="$style.statList">
-								<div v-for="day in selectedWeekly" :key="day.weekday" :class="$style.statRow" :data-polarity="day.averageScore >= 0 ? 'positive' : 'negative'">
-									<span :class="$style.statLabel">{{ weekdayLabel(day.weekday) }}</span>
-									<span :class="$style.statBar"><i :style="{ width: barWidth(day.count, weekdayMax) }"></i></span>
-									<b :class="$style.statValue">{{ day.count }}</b>
+							<section v-if="selectedTopics.length" :class="$style.breakdown">
+								<h3>{{ copy.topicBreakdown }}</h3>
+								<div :class="$style.statList">
+									<div v-for="topic in selectedTopics" :key="topic.topic" :class="$style.statRow" :data-polarity="topic.averageScore >= 0 ? 'positive' : 'negative'">
+										<span :class="$style.statLabel">{{ topic.topic }}</span>
+										<span :class="$style.statBar"><i :style="{ width: barWidth(topic.count, topicMax) }"></i></span>
+										<b :class="$style.statValue">{{ topic.count }}</b>
+									</div>
 								</div>
-							</div>
-						</section>
+								<p v-if="selectedEngagement?.topTopicByReactions" :class="$style.breakdownNote">
+									{{ copy.topTopicByReactions }}: <b>{{ selectedEngagement.topTopicByReactions }}</b>
+								</p>
+							</section>
 
-						<section v-if="selectedHourly.length" :class="$style.breakdown">
-							<h3>{{ copy.hourBreakdown }}</h3>
-							<div :class="$style.hourGrid">
-								<div v-for="slot in selectedHourly" :key="slot.hour" :class="$style.hourCell" :title="`${slot.hour}: ${slot.count}`">
-									<span :class="$style.hourBar" :style="{ height: barWidth(slot.count, hourMax) }" :data-polarity="slot.averageScore >= 0 ? 'positive' : 'negative'"></span>
-									<small>{{ hourLabel(slot.hour) }}</small>
+							<section v-if="selectedWeekly.length" :class="$style.breakdown">
+								<h3>{{ copy.weekdayBreakdown }}</h3>
+								<div :class="$style.statList">
+									<div v-for="day in selectedWeekly" :key="day.weekday" :class="$style.statRow" :data-polarity="day.averageScore >= 0 ? 'positive' : 'negative'">
+										<span :class="$style.statLabel">{{ weekdayLabel(day.weekday) }}</span>
+										<span :class="$style.statBar"><i :style="{ width: barWidth(day.count, weekdayMax) }"></i></span>
+										<b :class="$style.statValue">{{ day.count }}</b>
+									</div>
 								</div>
-							</div>
-						</section>
+							</section>
 
-						<section v-if="selectedActivity" :class="$style.breakdown">
-							<h3>{{ copy.activityTitle }}</h3>
-							<div :class="$style.resultGrid">
-								<div :class="$style.resultItem"><span>{{ copy.activeDays }}</span><strong>{{ selectedActivity.activeDays }}</strong></div>
-								<div :class="$style.resultItem"><span>{{ copy.longestStreak }}</span><strong>{{ selectedActivity.longestStreakDays }}</strong></div>
-								<div :class="$style.resultItem"><span>{{ copy.postsPerDay }}</span><strong>{{ decimal(selectedActivity.averagePostsPerActiveDay) }}</strong></div>
-								<div :class="$style.resultItem"><span>{{ copy.medianInterval }}</span><strong>{{ decimal(selectedActivity.medianIntervalMinutes, 0) }}</strong></div>
-								<div :class="$style.resultItem"><span>{{ copy.busiestHour }}</span><strong>{{ selectedActivity.busiestHour }}</strong></div>
-								<div :class="$style.resultItem"><span>{{ copy.busiestWeekday }}</span><strong>{{ weekdayLabel(selectedActivity.busiestWeekday) }}</strong></div>
-								<div :class="$style.resultItem"><span>{{ copy.nightPostRate }}</span><strong>{{ percent(selectedActivity.nightPostRate) }}</strong></div>
-								<div :class="$style.resultItem"><span>{{ copy.morningPostRate }}</span><strong>{{ percent(selectedActivity.morningPostRate) }}</strong></div>
-							</div>
-						</section>
-
-						<section v-if="selectedVocabulary" :class="$style.breakdown">
-							<h3>{{ copy.vocabularyTitle }}</h3>
-							<div :class="$style.resultGrid">
-								<div :class="$style.resultItem"><span>{{ copy.averageSentenceLength }}</span><strong>{{ decimal(selectedVocabulary.averageSentenceLength) }}</strong></div>
-								<div :class="$style.resultItem"><span>{{ copy.uniqueTokenRatio }}</span><strong>{{ percent(selectedVocabulary.uniqueTokenRatio) }}</strong></div>
-								<div :class="$style.resultItem"><span>{{ copy.hashtagPostRate }}</span><strong>{{ percent(selectedVocabulary.hashtagPostRate) }}</strong></div>
-								<div :class="$style.resultItem"><span>{{ copy.mentionPostRate }}</span><strong>{{ percent(selectedVocabulary.mentionPostRate) }}</strong></div>
-								<div :class="$style.resultItem"><span>{{ copy.urlPostRate }}</span><strong>{{ percent(selectedVocabulary.urlPostRate) }}</strong></div>
-								<div :class="$style.resultItem"><span>{{ copy.emojiPostRate }}</span><strong>{{ percent(selectedVocabulary.emojiPostRate) }}</strong></div>
-								<div :class="$style.resultItem"><span>{{ copy.questionPostRate }}</span><strong>{{ percent(selectedVocabulary.questionPostRate) }}</strong></div>
-								<div :class="$style.resultItem"><span>{{ copy.exclamationPostRate }}</span><strong>{{ percent(selectedVocabulary.exclamationPostRate) }}</strong></div>
-							</div>
-						</section>
-
-						<!-- ⚠️頻出語は本文由来なので保存していない。いま出した分析のときだけ表示できる。 -->
-						<section v-if="showFrequentWords" :class="$style.breakdown">
-							<h3>{{ copy.frequentWordsTitle }}</h3>
-							<p :class="$style.breakdownNote">{{ copy.frequentWordsNote }}</p>
-							<div :class="$style.statList">
-								<div v-for="word in localFrequentWords" :key="word.word" :class="$style.statRow">
-									<span :class="$style.statLabel">{{ word.word }}</span>
-									<span :class="$style.statBar"><i :style="{ width: barWidth(word.count, frequentWordMax) }"></i></span>
-									<b :class="$style.statValue">{{ word.count }}</b>
+							<section v-if="selectedHourly.length" :class="$style.breakdown">
+								<h3>{{ copy.hourBreakdown }}</h3>
+								<div :class="$style.hourGrid">
+									<div v-for="slot in selectedHourly" :key="slot.hour" :class="$style.hourCell" :title="`${slot.hour}: ${slot.count}`">
+										<span :class="$style.hourBar" :style="{ height: barWidth(slot.count, hourMax) }" :data-polarity="slot.averageScore >= 0 ? 'positive' : 'negative'"></span>
+										<small>{{ hourLabel(slot.hour) }}</small>
+									</div>
 								</div>
-							</div>
-						</section>
+							</section>
 
-						<div :class="$style.meta"><span>{{ copy.createdAt }}: {{ formatDate(selected.createdAt) }}</span></div>
-					</div>
-					<div v-else :class="$style.empty"><i class="ti ti-chart-dots"></i><p>{{ copy.emptyHistory }}</p><button type="button" :class="[$style.actionButton, $style.primaryButton]" @click="activeTab = 'new'">{{ copy.start }}</button></div>
-				</section>
+							<section v-if="selectedActivity" :class="$style.breakdown">
+								<h3>{{ copy.activityTitle }}</h3>
+								<div :class="$style.resultGrid">
+									<div :class="$style.resultItem"><span>{{ copy.activeDays }}</span><strong>{{ selectedActivity.activeDays }}</strong></div>
+									<div :class="$style.resultItem"><span>{{ copy.longestStreak }}</span><strong>{{ selectedActivity.longestStreakDays }}</strong></div>
+									<div :class="$style.resultItem"><span>{{ copy.postsPerDay }}</span><strong>{{ decimal(selectedActivity.averagePostsPerActiveDay) }}</strong></div>
+									<div :class="$style.resultItem"><span>{{ copy.medianInterval }}</span><strong>{{ decimal(selectedActivity.medianIntervalMinutes, 0) }}</strong></div>
+									<div :class="$style.resultItem"><span>{{ copy.busiestHour }}</span><strong>{{ selectedActivity.busiestHour }}</strong></div>
+									<div :class="$style.resultItem"><span>{{ copy.busiestWeekday }}</span><strong>{{ weekdayLabel(selectedActivity.busiestWeekday) }}</strong></div>
+									<div :class="$style.resultItem"><span>{{ copy.nightPostRate }}</span><strong>{{ percent(selectedActivity.nightPostRate) }}</strong></div>
+									<div :class="$style.resultItem"><span>{{ copy.morningPostRate }}</span><strong>{{ percent(selectedActivity.morningPostRate) }}</strong></div>
+								</div>
+							</section>
 
-				<section v-else :class="$style.card">
-					<div :class="$style.historyHeader"><div><h2>{{ copy.history }}</h2><p>{{ copy.comparePrompt }}</p><p :class="$style.limitHint"><i class="ti ti-archive"></i><span>{{ historyLimitNote }}</span></p></div><button type="button" :class="[$style.actionButton, $style.secondaryButton, $style.subtleButton]" @click="refreshHistory"><i class="ti ti-refresh"></i>{{ copy.refresh }}</button></div>
-					<div v-if="history.length > 1" :class="$style.compareBar"><label>{{ copy.compareBase }}<select v-model="baseId"><option v-for="item in history" :key="`base-${item.id}`" :value="item.id">{{ formatDate(item.createdAt) }} · {{ conditionLabel(item) }}</option></select></label><span aria-hidden="true"><i class="ti ti-arrows-left-right"></i></span><label>{{ copy.compareWith }}<select v-model="compareId"><option v-for="item in history" :key="`compare-${item.id}`" :value="item.id">{{ formatDate(item.createdAt) }} · {{ conditionLabel(item) }}</option></select></label></div>
-					<div v-if="comparePair" :class="$style.metrics"><div :class="$style.metric"><span>{{ copy.emotionBalance }}</span><strong>{{ emotionScore(comparePair.current) }}</strong><small>{{ copy.compareDelta }} {{ emotionDelta(comparePair.current, comparePair.baseline) }}</small></div><div :class="$style.metric"><span>{{ copy.positiveRate }}</span><strong>{{ positiveRate(comparePair.current) }}</strong><small>{{ copy.compareDelta }} {{ rateDelta(comparePair.current, comparePair.baseline, 'positive') }}</small></div><div :class="$style.metric"><span>{{ copy.neutralRate }}</span><strong>{{ neutralRate(comparePair.current) }}</strong><small>{{ copy.compareDelta }} {{ rateDelta(comparePair.current, comparePair.baseline, 'neutral') }}</small></div><div :class="$style.metric"><span>{{ copy.analyzedPosts }}</span><strong>{{ metricValue(comparePair.current, 'accepted', false, 'input') }}</strong><small>{{ copy.compareDelta }} {{ acceptedDelta(comparePair.current, comparePair.baseline) }}</small></div></div>
-					<div v-if="comparePair && !versionsCompatible(comparePair.current, comparePair.baseline)" :class="$style.versionWarning">{{ copy.versionWarning }}</div>
-					<section v-if="comparePair && versionsCompatible(comparePair.current, comparePair.baseline)" :class="$style.trendSection"><h3>{{ copy.dailyTrend }}</h3><div :class="$style.legend"><span><i :class="$style.currentLine"></i>{{ copy.compareWith }}</span><span><i :class="$style.baseLine"></i>{{ copy.compareBase }}</span></div><svg :class="$style.compareChart" viewBox="0 0 700 180" preserveAspectRatio="none" :aria-label="copy.dailyTrend"><line x1="0" y1="90" x2="700" y2="90" stroke="currentColor" opacity=".2"/><polyline :points="chartPoints(comparePair.current)" fill="none" stroke="var(--MI_THEME-accent)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><polyline :points="chartPoints(comparePair.baseline)" fill="none" stroke="var(--MI_THEME-success)" stroke-width="3" stroke-dasharray="7 6" stroke-linecap="round" stroke-linejoin="round"/></svg></section>
-					<section v-if="comparePair" :class="$style.insightSection"><h3>{{ copy.comparisonInsights }}</h3><div :class="$style.insightGrid"><article v-for="insight in comparisonInsights" :key="insight.title"><b>{{ insight.title }}</b><span>{{ insight.body }}</span></article></div></section>
-					<div v-if="history.length" :class="$style.historyList"><article v-for="item in history" :key="item.id ?? item.createdAt" :class="[$style.historyItem, selected?.id === item.id && $style.historySelected]"><button type="button" :class="$style.historySelectButton" @click="select(item)"><strong>{{ formatDate(item.createdAt) }}</strong><span>{{ conditionLabel(item) }}</span></button><div :class="$style.historySummary"><span>{{ copy.emotionBalance }} <b>{{ emotionScore(item) }}</b></span><span>{{ copy.positiveRate }} <b>{{ positiveRate(item) }}</b></span></div><span :class="[$style.status, $style.statusDone]">{{ copy.completed }}</span><button type="button" :class="[$style.actionButton, $style.iconButton, $style.dangerButton]" :title="copy.delete" :aria-label="copy.delete" @click="remove(item)"><i class="ti ti-trash"></i></button></article></div>
-					<div v-else :class="$style.empty"><i class="ti ti-history"></i><p>{{ copy.emptyHistory }}</p></div>
-					<button v-if="history.length" type="button" :class="[$style.actionButton, $style.primaryButton, $style.compareButton]" :disabled="!selected" @click="activeTab = 'result'"><i class="ti ti-chart-arrows"></i>{{ copy.compare }}</button>
-				</section>
+							<section v-if="selectedVocabulary" :class="$style.breakdown">
+								<h3>{{ copy.vocabularyTitle }}</h3>
+								<div :class="$style.resultGrid">
+									<div :class="$style.resultItem"><span>{{ copy.averageSentenceLength }}</span><strong>{{ decimal(selectedVocabulary.averageSentenceLength) }}</strong></div>
+									<div :class="$style.resultItem"><span>{{ copy.uniqueTokenRatio }}</span><strong>{{ percent(selectedVocabulary.uniqueTokenRatio) }}</strong></div>
+									<div :class="$style.resultItem"><span>{{ copy.hashtagPostRate }}</span><strong>{{ percent(selectedVocabulary.hashtagPostRate) }}</strong></div>
+									<div :class="$style.resultItem"><span>{{ copy.mentionPostRate }}</span><strong>{{ percent(selectedVocabulary.mentionPostRate) }}</strong></div>
+									<div :class="$style.resultItem"><span>{{ copy.urlPostRate }}</span><strong>{{ percent(selectedVocabulary.urlPostRate) }}</strong></div>
+									<div :class="$style.resultItem"><span>{{ copy.emojiPostRate }}</span><strong>{{ percent(selectedVocabulary.emojiPostRate) }}</strong></div>
+									<div :class="$style.resultItem"><span>{{ copy.questionPostRate }}</span><strong>{{ percent(selectedVocabulary.questionPostRate) }}</strong></div>
+									<div :class="$style.resultItem"><span>{{ copy.exclamationPostRate }}</span><strong>{{ percent(selectedVocabulary.exclamationPostRate) }}</strong></div>
+								</div>
+							</section>
+
+							<!-- ⚠️頻出語は本文由来なので保存していない。いま出した分析のときだけ表示できる。 -->
+							<section v-if="showFrequentWords" :class="$style.breakdown">
+								<h3>{{ copy.frequentWordsTitle }}</h3>
+								<p :class="$style.breakdownNote">{{ copy.frequentWordsNote }}</p>
+								<div :class="$style.statList">
+									<div v-for="word in localFrequentWords" :key="word.word" :class="$style.statRow">
+										<span :class="$style.statLabel">{{ word.word }}</span>
+										<span :class="$style.statBar"><i :style="{ width: barWidth(word.count, frequentWordMax) }"></i></span>
+										<b :class="$style.statValue">{{ word.count }}</b>
+									</div>
+								</div>
+							</section>
+
+							<div :class="$style.meta"><span>{{ copy.createdAt }}: {{ formatDate(selected.createdAt) }}</span></div>
+						</div>
+						<div v-else :class="$style.empty"><i class="ti ti-chart-dots"></i><p>{{ copy.emptyHistory }}</p><button type="button" :class="[$style.actionButton, $style.primaryButton]" @click="activeTab = 'new'">{{ copy.start }}</button></div>
+					</section>
+
+					<section v-else :class="$style.card">
+						<div :class="$style.historyHeader"><div><h2>{{ copy.history }}</h2><p>{{ copy.comparePrompt }}</p><p :class="$style.limitHint"><i class="ti ti-archive"></i><span>{{ historyLimitNote }}</span></p></div><button type="button" :class="[$style.actionButton, $style.secondaryButton, $style.subtleButton]" @click="refreshHistory"><i class="ti ti-refresh"></i>{{ copy.refresh }}</button></div>
+						<div v-if="history.length > 1" :class="$style.compareBar"><label>{{ copy.compareBase }}<select v-model="baseId"><option v-for="item in history" :key="`base-${item.id}`" :value="item.id">{{ formatDate(item.createdAt) }} · {{ conditionLabel(item) }}</option></select></label><span aria-hidden="true"><i class="ti ti-arrows-left-right"></i></span><label>{{ copy.compareWith }}<select v-model="compareId"><option v-for="item in history" :key="`compare-${item.id}`" :value="item.id">{{ formatDate(item.createdAt) }} · {{ conditionLabel(item) }}</option></select></label></div>
+						<div v-if="comparePair" :class="$style.metrics"><div :class="$style.metric"><span>{{ copy.emotionBalance }}</span><strong>{{ emotionScore(comparePair.current) }}</strong><small>{{ copy.compareDelta }} {{ emotionDelta(comparePair.current, comparePair.baseline) }}</small></div><div :class="$style.metric"><span>{{ copy.positiveRate }}</span><strong>{{ positiveRate(comparePair.current) }}</strong><small>{{ copy.compareDelta }} {{ rateDelta(comparePair.current, comparePair.baseline, 'positive') }}</small></div><div :class="$style.metric"><span>{{ copy.neutralRate }}</span><strong>{{ neutralRate(comparePair.current) }}</strong><small>{{ copy.compareDelta }} {{ rateDelta(comparePair.current, comparePair.baseline, 'neutral') }}</small></div><div :class="$style.metric"><span>{{ copy.analyzedPosts }}</span><strong>{{ metricValue(comparePair.current, 'accepted', false, 'input') }}</strong><small>{{ copy.compareDelta }} {{ acceptedDelta(comparePair.current, comparePair.baseline) }}</small></div></div>
+						<div v-if="comparePair && !versionsCompatible(comparePair.current, comparePair.baseline)" :class="$style.versionWarning">{{ copy.versionWarning }}</div>
+						<section v-if="comparePair && versionsCompatible(comparePair.current, comparePair.baseline)" :class="$style.trendSection"><h3>{{ copy.dailyTrend }}</h3><div :class="$style.legend"><span><i :class="$style.currentLine"></i>{{ copy.compareWith }}</span><span><i :class="$style.baseLine"></i>{{ copy.compareBase }}</span></div><svg :class="$style.compareChart" viewBox="0 0 700 180" preserveAspectRatio="none" :aria-label="copy.dailyTrend"><line x1="0" y1="90" x2="700" y2="90" stroke="currentColor" opacity=".2"/><polyline :points="chartPoints(comparePair.current)" fill="none" stroke="var(--MI_THEME-accent)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><polyline :points="chartPoints(comparePair.baseline)" fill="none" stroke="var(--MI_THEME-success)" stroke-width="3" stroke-dasharray="7 6" stroke-linecap="round" stroke-linejoin="round"/></svg></section>
+						<section v-if="comparePair" :class="$style.insightSection"><h3>{{ copy.comparisonInsights }}</h3><div :class="$style.insightGrid"><article v-for="insight in comparisonInsights" :key="insight.title"><b>{{ insight.title }}</b><span>{{ insight.body }}</span></article></div></section>
+						<div v-if="history.length" :class="$style.historyList">
+							<article v-for="item in history" :key="item.id ?? item.createdAt" :class="[$style.historyItem, selected?.id === item.id && $style.historySelected]">
+								<button type="button" :class="$style.historySelectButton" @click="select(item)">
+									<strong>{{ emotionLabel(item) }}</strong>
+									<span>{{ formatDate(item.createdAt) }} · {{ conditionLabel(item) }}</span>
+								</button>
+								<div :class="$style.historySummary">
+									<span>{{ copy.emotionBalance }} <b>{{ emotionScore(item) }}</b></span>
+									<span>{{ copy.positiveRate }} <b>{{ positiveRate(item) }}</b></span>
+								</div>
+								<button type="button" :class="[$style.actionButton, $style.iconButton, $style.resultMenuButton]" :title="copy.delete" :aria-label="copy.delete" @click.stop="openResultMenu(item, $event)"><i class="ti ti-dots" aria-hidden="true"></i></button>
+							</article>
+						</div>
+						<div v-else :class="$style.empty"><i class="ti ti-history"></i><p>{{ copy.emptyHistory }}</p></div>
+						<button v-if="history.length" type="button" :class="[$style.actionButton, $style.primaryButton, $style.compareButton]" :disabled="!selected" @click="activeTab = 'result'"><i class="ti ti-chart-arrows"></i>{{ copy.compare }}</button>
+					</section>
+				</Transition>
 			</template>
 		</main>
 	</div>
@@ -191,8 +326,10 @@ const copy = i18n.ts._hata._emotionAnalysis;
 const copyx = i18n.tsx._hata._emotionAnalysis;
 const router = useRouter();
 const activeTab = ref<'new' | 'result' | 'history'>('new');
+const analysisStep = ref<1 | 2 | 3>(1);
 const history = ref<AnalysisRecord[]>([]);
 const selected = ref<AnalysisRecord | null>(null);
+const deletedResultCreatedAt = ref<string | null>(null);
 const submitting = ref(false);
 const checking = ref(true);
 const consentChecking = ref(true);
@@ -217,6 +354,26 @@ const tabs = computed(() => [
 	{ key: 'result' as const, label: copy.resultTab, icon: 'ti ti-chart-dots' },
 	{ key: 'history' as const, label: copy.historyTab, icon: 'ti ti-history' },
 ]);
+const periodChoice = computed<string>({
+	get: () => conditions.value.mode === 'latest' ? 'latest' : String(conditions.value.periodDays),
+	set: (value) => {
+		if (value === 'latest') {
+			conditions.value.mode = 'latest';
+			return;
+		}
+		conditions.value.mode = 'period';
+		conditions.value.periodDays = Number(value);
+	},
+});
+const analysisStepTitle = computed(() => [copy.stepPeriodTitle, copy.stepOptionsTitle, copy.stepReviewTitle][analysisStep.value - 1]);
+const analysisStepBody = computed(() => [copy.stepPeriodBody, copy.stepOptionsBody, copy.stepReviewBody][analysisStep.value - 1]);
+const analysisStepIcon = computed(() => ['ti ti-calendar-stats', 'ti ti-adjustments-horizontal', 'ti ti-clipboard-check'][analysisStep.value - 1]);
+const analysisStepCounter = computed(() => copy.stepCounter.replace('{current}', String(analysisStep.value)));
+const analysisConditionSummary = computed(() => ({
+	period: conditions.value.mode === 'latest' ? copy.latest1000 : [conditions.value.periodDays, copy.days].join(''),
+	visibility: visibilityLabel(conditions.value.visibility),
+	history: conditions.value.saveToHistory ? copy.historySaved : copy.historyNotSaved,
+}));
 const waiting = computed(() => waitingUntil.value !== null && waitingUntil.value > now.value);
 const initializing = computed(() => checking.value || consentChecking.value);
 const canStartAnalysis = computed(() => canStartHatalyzeAnalysis({ accountId: $i?.id ?? null, serviceReady: serviceReady.value, submitting: submitting.value, waiting: waiting.value }));
@@ -271,7 +428,7 @@ const selectedDaily = computed(() => (selected.value?.result?.daily as Array<{ a
 // ===== 旗鯖fork(HATAlyze 2.0.0): 集計済みなのに出していなかった内訳を表示する =====
 type AxisSummary = { axis: string; polarity: 'positive' | 'negative'; count: number; weight: number; averageScore: number };
 type GroupedScore = { count: number; averageScore: number };
-const resultBlock = <T,>(key: string): T | null => (selected.value?.result?.[key] as T | undefined) ?? null;
+const resultBlock = <T>(key: string): T | null => (selected.value?.result?.[key] as T | undefined) ?? null;
 
 const selectedEmotions = computed<AxisSummary[]>(() => (resultBlock<AxisSummary[]>('emotions') ?? []).filter(item => item.count > 0));
 const selectedTopics = computed(() => (resultBlock<Array<GroupedScore & { topic: string }>>('topics') ?? []).filter(item => item.count > 0).sort((a, b) => b.count - a.count));
@@ -319,6 +476,10 @@ const frequentWordMax = computed(() => maxOf(localFrequentWords.value.map(item =
 // ⚠️件数は backend の HATALYZE_HISTORY_LIMIT と揃っている必要がある(定数側にも注記あり)。
 const historyLimitNote = computed(() => copyx.historyLimitNote({ count: String(HATA_EMOTION_HISTORY_LIMIT) }));
 const canUseHint = computed(() => $i?.policies.canUseHatalyze === true || $i?.isModerator === true || $i?.isAdmin === true);
+
+function goToAnalysisStep(step: number) {
+	analysisStep.value = Math.max(1, Math.min(3, step)) as 1 | 2 | 3;
+}
 
 async function refreshHistory() {
 	checking.value = true;
@@ -375,6 +536,7 @@ async function createAnalysis() {
 		submissionPhase.value = 'create';
 		const record = await misskeyApi('hata/hatask/emotion-analysis/create', { ...payload, saveToHistory: conditions.value.saveToHistory }) as unknown as AnalysisRecord;
 		selected.value = record;
+		deletedResultCreatedAt.value = null;
 		// ⚠️頻出語は保存対象外なので、この場でだけ画面に渡す(履歴には残らない)。
 		localFrequentWords.value = analysis.frequentWords;
 		localAnalysisKey.value = record.createdAt;
@@ -385,6 +547,7 @@ async function createAnalysis() {
 			newBaseId.value = record.id;
 		}
 		setCooldown(Date.now() + 10 * 60 * 1000);
+		analysisStep.value = 1;
 		activeTab.value = 'result';
 	} catch (error) {
 		const requestStage = submissionPhase.value === 'create' ? 'create' : 'notes';
@@ -408,15 +571,40 @@ async function createAnalysis() {
 }
 
 async function select(item: AnalysisRecord) {
+	deletedResultCreatedAt.value = null;
 	if (!item.id) { selected.value = item; return; }
 	try { selected.value = await misskeyApi('hata/hatask/emotion-analysis/show', { analysisId: item.id }) as unknown as AnalysisRecord; } catch { selected.value = item; }
+}
+
+function openResultMenu(item: AnalysisRecord, event: MouseEvent) {
+	if (!item.id) return;
+	os.popupMenu([{
+		text: copy.delete,
+		icon: 'ti ti-trash',
+		danger: true,
+		action: () => void remove(item),
+	}], (event.currentTarget ?? event.target) as HTMLElement);
 }
 
 async function remove(item: AnalysisRecord) {
 	if (!item.id) return;
 	const confirmation = await os.confirm({ type: 'warning', title: copy.delete, text: copy.deleteConfirm });
 	if (confirmation.canceled) return;
-	try { await misskeyApi('hata/hatask/emotion-analysis/delete', { analysisId: item.id }); history.value = history.value.filter(candidate => candidate.id !== item.id); if (selected.value?.id === item.id) selected.value = null; } catch { errorMessage.value = copy.deleteFailed; }
+	const deletedId = item.id;
+	try {
+		await misskeyApi('hata/hatask/emotion-analysis/delete', { analysisId: deletedId });
+		history.value = history.value.filter(candidate => candidate.id !== deletedId);
+		if (selected.value?.id === deletedId) {
+			deletedResultCreatedAt.value = selected.value.createdAt;
+			selected.value = { ...selected.value, id: null };
+		}
+		if (baseId.value === deletedId) baseId.value = history.value[1]?.id ?? history.value[0]?.id ?? null;
+		if (compareId.value === deletedId) compareId.value = history.value[0]?.id ?? null;
+		if (newBaseId.value === deletedId) newBaseId.value = history.value[0]?.id ?? null;
+		os.toast(copy.deleteSuccess);
+	} catch {
+		errorMessage.value = copy.deleteFailed;
+	}
 }
 
 function formatDate(value?: string) { return value ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : '—'; }
@@ -807,4 +995,884 @@ onBeforeUnmount(() => { if (timer) window.clearInterval(timer); });
 
 .limitHint { display: flex; align-items: center; gap: 6px; margin: 6px 0 0; font-size: .78rem; opacity: .72; line-height: 1.6; }
 .limitHint i { flex-shrink: 0; }
+
+/* ===== HATAlyze modern interface ===== */
+@font-face {
+	font-family: 'HataRighteous';
+	font-style: normal;
+	font-weight: 400;
+	font-display: swap;
+	src: url('/client-assets/Righteous-Regular.woff2') format('woff2');
+}
+
+.root {
+	container-type: inline-size;
+	width: min(calc(100% - 24px), 1120px);
+	max-width: none;
+	min-height: 100dvh;
+	box-sizing: border-box;
+	margin: 0 auto;
+	padding: 16px 0 60px;
+	color: var(--MI_THEME-fg);
+	caret-color: transparent;
+}
+
+.root p,
+.root span,
+.root small,
+.root b,
+.root strong,
+.root label,
+.root button {
+	line-break: strict;
+	overflow-wrap: break-word;
+	text-wrap: pretty;
+	word-break: normal;
+}
+
+.root > main {
+	padding: 0 18px;
+}
+
+.productBar {
+	min-height: 62px;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 18px;
+	padding: 10px 16px;
+	box-sizing: border-box;
+	border: 1px solid var(--MI_THEME-divider);
+	border-radius: 20px 20px 0 0;
+	background: color-mix(in srgb, var(--MI_THEME-panel) 94%, var(--MI_THEME-accent) 6%);
+}
+
+.productIdentity {
+	min-width: 0;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.productMark {
+	width: 34px;
+	height: 34px;
+	display: grid;
+	place-items: center;
+	flex: none;
+	border-radius: 11px;
+	color: var(--MI_THEME-fgOnAccent);
+	background: linear-gradient(145deg, var(--MI_THEME-accent), color-mix(in srgb, var(--MI_THEME-accent) 65%, #7559da));
+	font-family: 'HataRighteous', system-ui, sans-serif;
+	font-size: 17px;
+}
+
+.wordmark {
+	min-width: 0;
+	overflow: hidden;
+	font-family: 'HataRighteous', system-ui, sans-serif;
+	font-size: 20px;
+	font-weight: 400;
+	letter-spacing: .015em;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.introWordmark {
+	display: block;
+	margin: 0 0 5px;
+	font-family: 'HataRighteous', system-ui, sans-serif;
+	font-size: 22px;
+	font-weight: 400;
+	letter-spacing: .015em;
+}
+
+.analysisIntro {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 24px;
+	padding: clamp(24px, 4vw, 38px) clamp(20px, 4vw, 40px);
+	border-inline: 1px solid var(--MI_THEME-divider);
+	background:
+		radial-gradient(circle at 90% 20%, color-mix(in srgb, var(--MI_THEME-accent) 13%, transparent), transparent 35%),
+		var(--MI_THEME-panel);
+}
+
+.analysisIntroCopy > span {
+	color: var(--MI_THEME-accent);
+	font-size: 10px;
+	font-weight: 800;
+	letter-spacing: .15em;
+}
+
+.analysisIntroCopy h1 {
+	margin: 5px 0 0;
+	font-size: clamp(20px, 3vw, 30px);
+	line-height: 1.3;
+}
+
+.analysisIntroCopy p {
+	max-width: 630px;
+	margin: 8px 0 0;
+	color: var(--MI_THEME-fgTransparent);
+	font-size: 12px;
+	line-height: 1.75;
+}
+
+.personalStatus {
+	min-width: 220px;
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 12px 14px;
+	box-sizing: border-box;
+	border: 1px solid color-mix(in srgb, var(--MI_THEME-accent) 25%, var(--MI_THEME-divider));
+	border-radius: 15px;
+	background: color-mix(in srgb, var(--MI_THEME-accent) 7%, var(--MI_THEME-bg));
+}
+
+.personalStatus > i {
+	color: var(--MI_THEME-accent);
+	font-size: 20px;
+}
+
+.personalStatus span,
+.personalStatus strong,
+.personalStatus small {
+	display: block;
+}
+
+.personalStatus strong {
+	font-size: 11.5px;
+}
+
+.personalStatus small {
+	margin-top: 2px;
+	color: var(--MI_THEME-fgTransparent);
+	font-size: 9.5px;
+	line-height: 1.5;
+}
+
+.notice {
+	display: grid;
+	gap: 10px;
+	margin: 0;
+	padding: 12px clamp(20px, 4vw, 40px);
+	border: 1px solid var(--MI_THEME-divider);
+	border-radius: 0;
+	background: color-mix(in srgb, var(--MI_THEME-warn) 7%, var(--MI_THEME-panel));
+	font-size: 11px;
+}
+
+.noticeCopy {
+	display: grid;
+	grid-template-columns: auto minmax(0, 1fr);
+	align-items: start;
+	gap: 10px;
+}
+
+.noticeCopy > i {
+	margin-top: 2px;
+	color: var(--MI_THEME-warn);
+}
+
+.noticeCopy span,
+.noticeCopy strong,
+.noticeCopy small {
+	display: block;
+}
+
+.noticeCopy small {
+	margin-top: 2px;
+	color: var(--MI_THEME-fgTransparent);
+	font-size: 10px;
+	line-height: 1.55;
+}
+
+.noticeAction {
+	display: flex;
+	justify-content: center;
+}
+
+.noticeAction .actionButton {
+	min-height: 36px;
+	padding: 7px 13px;
+	box-shadow: none;
+	font-size: 10.5px;
+}
+
+.tabs {
+	width: fit-content;
+	margin: 16px 18px 12px;
+	padding: 4px;
+	border: 1px solid var(--MI_THEME-divider);
+	background: color-mix(in srgb, var(--MI_THEME-fg) 5%, var(--MI_THEME-bg));
+	box-shadow: none;
+}
+
+.tab {
+	min-height: 40px;
+	padding-inline: 16px;
+	border: 0;
+	color: var(--MI_THEME-fgTransparent);
+	background: transparent;
+	box-shadow: none;
+}
+
+.tab:hover {
+	color: var(--MI_THEME-fg);
+	background: color-mix(in srgb, var(--MI_THEME-panel) 76%, transparent);
+}
+
+.tab[data-active='true'],
+.tab[data-active='true']:hover {
+	border: 0;
+	color: var(--MI_THEME-accent);
+	background: var(--MI_THEME-panel);
+	box-shadow: 0 4px 14px color-mix(in srgb, #000 10%, transparent);
+}
+
+.card,
+.introCard {
+	padding: clamp(22px, 4vw, 34px);
+	border: 1px solid var(--MI_THEME-divider);
+	border-radius: 20px;
+	background: var(--MI_THEME-panel);
+	box-shadow: 0 16px 42px color-mix(in srgb, #000 8%, transparent);
+}
+
+.analysisPanelHeading {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 18px;
+}
+
+.analysisPanelHeading span {
+	color: var(--MI_THEME-accent);
+	font-size: 9.5px;
+	font-weight: 800;
+	letter-spacing: .14em;
+}
+
+.analysisPanelHeading h2 {
+	margin: 5px 0 0;
+	font-size: 18px;
+}
+
+.analysisPanelHeading > strong {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	min-height: 34px;
+	padding: 0 11px;
+	border-radius: 999px;
+	color: var(--MI_THEME-fgTransparent);
+	background: color-mix(in srgb, var(--MI_THEME-fg) 6%, transparent);
+	font-size: 10px;
+	font-weight: 700;
+	white-space: nowrap;
+}
+
+.analysisPanelHeading > strong[data-ready='true'] {
+	color: var(--MI_THEME-success);
+	background: color-mix(in srgb, var(--MI_THEME-success) 10%, transparent);
+}
+
+.stepOverview {
+	padding: 16px;
+	border-radius: 17px;
+	background: color-mix(in srgb, var(--MI_THEME-bg) 78%, var(--MI_THEME-panel));
+}
+
+.stepOverviewCopy {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16px;
+	margin-bottom: 11px;
+}
+
+.stepOverviewCopy span {
+	color: var(--MI_THEME-fgTransparent);
+	font-size: 10px;
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+}
+
+.stepOverviewCopy strong {
+	font-size: 11px;
+}
+
+.conversationHeader {
+	display: flex;
+	align-items: flex-start;
+	gap: 13px;
+}
+
+.conversationIcon {
+	width: 42px;
+	height: 42px;
+	display: grid;
+	place-items: center;
+	flex: none;
+	border-radius: 14px;
+	color: var(--MI_THEME-accent);
+	background: color-mix(in srgb, var(--MI_THEME-accent) 11%, var(--MI_THEME-bg));
+	font-size: 19px;
+}
+
+.conversationHeader h2,
+.conversationHeader h3 {
+	margin: 0;
+	font-size: 17px;
+}
+
+.conversationHeader p {
+	margin: 5px 0 0;
+	color: var(--MI_THEME-fgTransparent);
+	font-size: 11px;
+	line-height: 1.65;
+}
+
+.stepProgress {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 8px;
+	margin: 13px 0 0;
+	padding: 0;
+	list-style: none;
+}
+
+.stepProgress li {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 7px;
+	min-width: 0;
+	color: var(--MI_THEME-fgTransparent);
+}
+
+.stepProgress button {
+	width: 30px;
+	height: 30px;
+	display: grid;
+	place-items: center;
+	flex: none;
+	padding: 0;
+	border: 1px solid var(--MI_THEME-divider);
+	border-radius: 50%;
+	color: inherit;
+	background: var(--MI_THEME-bg);
+	font: inherit;
+	font-size: 11px;
+	font-weight: 800;
+	cursor: pointer;
+	transition: color .18s ease, background-color .18s ease, border-color .18s ease, transform .16s ease;
+}
+
+.stepProgress button:hover {
+	transform: scale(1.05);
+}
+
+.stepProgress small {
+	min-width: 0;
+	overflow: hidden;
+	font-size: 10px;
+	font-weight: 700;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.stepProgress li[data-state='active'],
+.stepProgress li[data-state='done'] {
+	color: var(--MI_THEME-accent);
+}
+
+.stepProgress li[data-state='active'] button,
+.stepProgress li[data-state='done'] button {
+	border-color: var(--MI_THEME-accent);
+	color: var(--MI_THEME-fgOnAccent);
+	background: var(--MI_THEME-accent);
+}
+
+.stepTrack {
+	height: 3px;
+	overflow: hidden;
+	border-radius: 999px;
+	background: color-mix(in srgb, var(--MI_THEME-fg) 8%, transparent);
+}
+
+.stepTrack span {
+	display: block;
+	height: 100%;
+	border-radius: inherit;
+	background: var(--MI_THEME-accent);
+	transition: width .3s cubic-bezier(.22, 1, .36, 1);
+}
+
+.stepPanel {
+	display: grid;
+	gap: 18px;
+	padding-top: 24px;
+}
+
+.choiceFieldset {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 9px;
+	margin: 0;
+	padding: 0;
+	border: 0;
+}
+
+.choiceFieldset legend {
+	width: 100%;
+	margin-bottom: 8px;
+	font-size: 11px;
+	font-weight: 750;
+}
+
+.choiceOption {
+	min-height: 72px;
+	display: grid;
+	grid-template-columns: auto minmax(0, 1fr);
+	align-items: center;
+	gap: 11px;
+	padding: 12px 13px;
+	box-sizing: border-box;
+	border: 1px solid var(--MI_THEME-divider);
+	border-radius: 14px;
+	background: color-mix(in srgb, var(--MI_THEME-bg) 74%, var(--MI_THEME-panel));
+	cursor: pointer;
+	transition: border-color .18s ease, background-color .18s ease, transform .16s ease;
+}
+
+.choiceOption:hover {
+	transform: translateY(-1px);
+	border-color: color-mix(in srgb, var(--MI_THEME-accent) 42%, var(--MI_THEME-divider));
+}
+
+.choiceOption:has(input:focus-visible) {
+	outline: 2px solid var(--MI_THEME-accent);
+	outline-offset: 3px;
+}
+
+.choiceOption:has(input:checked) {
+	border-color: color-mix(in srgb, var(--MI_THEME-accent) 66%, var(--MI_THEME-divider));
+	background: color-mix(in srgb, var(--MI_THEME-accent) 8%, var(--MI_THEME-panel));
+}
+
+.choiceOption input {
+	width: 17px;
+	height: 17px;
+	margin: 0;
+	accent-color: var(--MI_THEME-accent);
+}
+
+.choiceOption span,
+.choiceOption strong,
+.choiceOption small {
+	display: block;
+}
+
+.choiceOption strong {
+	font-size: 11.5px;
+}
+
+.choiceOption small {
+	margin-top: 4px;
+	color: var(--MI_THEME-fgTransparent);
+	font-size: 9.5px;
+	line-height: 1.5;
+}
+
+.historyChoiceFieldset {
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.optionToggleGrid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 10px;
+}
+
+.fieldGrid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 14px;
+}
+
+.field {
+	font-size: 11.5px;
+}
+
+.field select {
+	min-height: 46px;
+	padding: 0 13px;
+	border-color: var(--MI_THEME-divider);
+	border-radius: 13px;
+	background: color-mix(in srgb, var(--MI_THEME-bg) 86%, var(--MI_THEME-panel));
+	font: inherit;
+	cursor: pointer;
+}
+
+.choiceGrid {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 10px;
+}
+
+.choiceCard {
+	position: relative;
+	min-height: 118px;
+	display: grid;
+	grid-template-columns: auto minmax(0, 1fr) auto;
+	align-items: flex-start;
+	gap: 10px;
+	padding: 15px;
+	box-sizing: border-box;
+	border: 1px solid var(--MI_THEME-divider);
+	border-radius: 15px;
+	background: color-mix(in srgb, var(--MI_THEME-bg) 74%, var(--MI_THEME-panel));
+	cursor: pointer;
+	transition: border-color .18s ease, background-color .18s ease, transform .16s ease;
+}
+
+.choiceCard:hover {
+	transform: translateY(-1px);
+	border-color: color-mix(in srgb, var(--MI_THEME-accent) 42%, var(--MI_THEME-divider));
+}
+
+.choiceCard:has(input:focus-visible) {
+	outline: 2px solid var(--MI_THEME-accent);
+	outline-offset: 3px;
+}
+
+.choiceCard:has(input:checked) {
+	border-color: color-mix(in srgb, var(--MI_THEME-accent) 66%, var(--MI_THEME-divider));
+	background: color-mix(in srgb, var(--MI_THEME-accent) 8%, var(--MI_THEME-panel));
+}
+
+.choiceCard > input {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	opacity: 0;
+	pointer-events: none;
+}
+
+.choiceCard > i {
+	color: var(--MI_THEME-accent);
+	font-size: 20px;
+}
+
+.choiceCard span,
+.choiceCard strong,
+.choiceCard small {
+	display: block;
+}
+
+.choiceCard strong {
+	font-size: 11.5px;
+	line-height: 1.5;
+}
+
+.choiceCard small {
+	margin-top: 5px;
+	color: var(--MI_THEME-fgTransparent);
+	font-size: 9.5px;
+	line-height: 1.55;
+}
+
+.choiceCard em {
+	width: 20px;
+	height: 20px;
+	display: grid;
+	place-items: center;
+	border: 1px solid var(--MI_THEME-divider);
+	border-radius: 50%;
+	color: transparent;
+	background: var(--MI_THEME-panel);
+	font-size: 12px;
+	font-style: normal;
+}
+
+.choiceCard input:checked ~ em {
+	border-color: var(--MI_THEME-accent);
+	color: var(--MI_THEME-fgOnAccent);
+	background: var(--MI_THEME-accent);
+}
+
+.reviewSummary {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 8px;
+	margin: 0;
+}
+
+.reviewSummary > div {
+	padding: 12px;
+	border: 1px solid var(--MI_THEME-divider);
+	border-radius: 13px;
+	background: color-mix(in srgb, var(--MI_THEME-bg) 72%, var(--MI_THEME-panel));
+}
+
+.reviewSummary dt {
+	color: var(--MI_THEME-fgTransparent);
+	font-size: 9.5px;
+}
+
+.reviewSummary dd {
+	margin: 5px 0 0;
+	font-size: 11.5px;
+	font-weight: 750;
+}
+
+.stepActions {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
+	margin-top: 2px;
+}
+
+.stepActions:has(> :only-child) {
+	justify-content: center;
+}
+
+.stepActions .actionButton {
+	min-width: 128px;
+	min-height: 46px;
+}
+
+.reason,
+.ratebox,
+.warningBanner,
+.connectionBlock {
+	border-radius: 14px;
+}
+
+.resultHeader h2 {
+	margin-top: 4px;
+	font-size: clamp(20px, 3vw, 27px);
+}
+
+.resultActions {
+	justify-content: flex-end;
+	flex-wrap: wrap;
+}
+
+.resultMenuButton {
+	color: var(--MI_THEME-fg);
+}
+
+.statusRemoved {
+	color: var(--MI_THEME-fgTransparent);
+	background: color-mix(in srgb, var(--MI_THEME-fg) 8%, transparent);
+}
+
+.statusNotSaved {
+	color: var(--MI_THEME-accent);
+	background: color-mix(in srgb, var(--MI_THEME-accent) 10%, transparent);
+}
+
+.historyItem {
+	padding: 12px;
+	border-color: var(--MI_THEME-divider);
+	background: color-mix(in srgb, var(--MI_THEME-bg) 68%, var(--MI_THEME-panel));
+	transition: border-color .18s ease, background-color .18s ease, transform .16s ease;
+}
+
+.historyItem:hover {
+	transform: translateY(-1px);
+	border-color: color-mix(in srgb, var(--MI_THEME-accent) 34%, var(--MI_THEME-divider));
+}
+
+.historySelected {
+	border-color: var(--MI_THEME-accent);
+	background: color-mix(in srgb, var(--MI_THEME-accent) 6%, var(--MI_THEME-panel));
+}
+
+.panelEnterActive,
+.panelLeaveActive,
+.stepEnterActive,
+.stepLeaveActive {
+	transition: opacity .22s ease, transform .28s cubic-bezier(.22, 1, .36, 1);
+}
+
+.panelEnterFrom {
+	opacity: 0;
+	transform: translateY(8px);
+}
+
+.panelLeaveTo {
+	opacity: 0;
+	transform: translateY(-5px);
+}
+
+.stepEnterFrom {
+	opacity: 0;
+	transform: translateX(10px);
+}
+
+.stepLeaveTo {
+	opacity: 0;
+	transform: translateX(-7px);
+}
+
+@container (max-width: 760px) {
+	.root {
+		width: min(calc(100% - 16px), 620px);
+		padding-top: 8px;
+	}
+
+	.productBar {
+		border-radius: 16px 16px 0 0;
+	}
+
+	.user > span {
+		display: none;
+	}
+
+	.analysisIntro {
+		align-items: flex-start;
+		flex-direction: column;
+		gap: 16px;
+	}
+
+	.personalStatus {
+		width: 100%;
+		min-width: 0;
+	}
+
+	.root > main {
+		padding: 0 8px;
+	}
+
+	.tabs {
+		width: calc(100% - 16px);
+		margin-inline: 8px;
+		box-sizing: border-box;
+	}
+
+	.tab {
+		flex: 1 0 auto;
+	}
+
+	.choiceGrid,
+	.choiceFieldset,
+	.historyChoiceFieldset,
+	.optionToggleGrid,
+	.reviewSummary,
+	.fieldGrid {
+		grid-template-columns: 1fr;
+	}
+
+	.choiceCard {
+		min-height: 0;
+	}
+
+	.resultHeader,
+	.historyHeader {
+		display: grid;
+	}
+
+	.resultActions {
+		justify-content: flex-start;
+	}
+
+	.historyItem {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) auto;
+	}
+
+	.historySummary {
+		width: auto;
+		min-width: 0;
+		padding-left: 5px;
+		grid-column: 1 / -1;
+		grid-row: 2;
+	}
+
+	.historyItem .resultMenuButton {
+		grid-column: 2;
+		grid-row: 1;
+	}
+}
+
+@container (max-width: 430px) {
+	.productBar {
+		padding-inline: 11px;
+	}
+
+	.productMark {
+		width: 32px;
+		height: 32px;
+	}
+
+	.wordmark {
+		font-size: 18px;
+	}
+
+	.analysisIntro,
+	.notice {
+		padding-inline: 16px;
+	}
+
+	.tabs {
+		gap: 2px;
+		padding: 3px;
+	}
+
+	.tab {
+		min-height: 38px;
+		padding-inline: 10px;
+		font-size: 11px;
+	}
+
+	.tab i {
+		margin-right: 4px;
+	}
+
+	.card,
+	.introCard {
+		padding: 18px 15px;
+		border-radius: 16px;
+	}
+
+	.stepProgress small {
+		display: none;
+	}
+
+	.stepProgress li {
+		gap: 0;
+	}
+
+	.stepActions {
+		flex-wrap: wrap;
+	}
+
+	.stepActions .actionButton {
+		min-width: min(100%, 124px);
+		flex: 1;
+	}
+
+	.ratebox {
+		flex-direction: column;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.panelEnterActive,
+	.panelLeaveActive,
+	.stepEnterActive,
+	.stepLeaveActive,
+	.stepTrack span,
+	.choiceCard,
+	.historyItem {
+		transition: none !important;
+	}
+}
 </style>

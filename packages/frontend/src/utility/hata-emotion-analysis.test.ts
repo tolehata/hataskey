@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, test } from 'vitest';
 import {
 	analyzeHataEmotion,
@@ -24,7 +26,31 @@ import {
 } from './hata-emotion-analysis.js';
 import { HATA_EMOTION_LEXICON } from './hata-emotion-lexicon.js';
 
+const frontendRoot = resolve(process.cwd());
+const readFrontendFile = (path: string) => readFileSync(resolve(frontendRoot, path), 'utf8');
+
 describe('Hataskey の説明可能な感情分析', () => {
+	test('モックの対話型UIと削除メニューを本体機能へ結線する', () => {
+		const page = readFrontendFile('src/pages/hata-emotion-analysis.vue');
+		expect(page).toContain('<strong :class="$style.wordmark">HATAlyze</strong>');
+		expect(page).not.toContain('$style.hataskeyLabel');
+		expect(page).not.toContain('>Hataskey</span>');
+		expect(page).toContain('font-family: \'HataRighteous\'');
+		expect(page).toContain('url(\'/client-assets/Righteous-Regular.woff2\')');
+		expect(page).toContain('const analysisStep = ref<1 | 2 | 3>(1)');
+		expect(page).toContain('v-if="analysisStep === 1"');
+		expect(page).toContain('v-else-if="analysisStep === 2"');
+		expect(page).toContain('key="review"');
+		expect(page).toContain('function openResultMenu(item: AnalysisRecord, event: MouseEvent)');
+		expect(page).toContain('danger: true');
+		expect(page).toContain('misskeyApi(\'hata/hatask/emotion-analysis/delete\'');
+		expect(page).toContain('selected.value = { ...selected.value, id: null }');
+		expect(page).toContain('deletedResultCreatedAt.value = selected.value.createdAt');
+		expect(page).toContain('copy.deletedFromHistory');
+		expect(page).toContain('copy.historyNotSaved');
+		expect(page).toContain('@media (prefers-reduced-motion: reduce)');
+	});
+
 	test('HATAlyzeの必要件数は有効な日時と分析対象テキストを持つ10件で判定する', () => {
 		const notes = Array.from({ length: HATA_EMOTION_ANALYSIS_MIN_NOTES }, (_, index) => ({ id: String(index), createdAt: `2026-08-24T00:00:${String(index).padStart(2, '0')}.000Z`, text: '記録' }));
 		expect(countHataEmotionAnalyzableNotes(notes.slice(0, 9))).toBe(9);
