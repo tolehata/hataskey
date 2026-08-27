@@ -90,20 +90,39 @@ describe('HATA_WHATS_NEW', () => {
 	});
 
 	test('すべての更新項目に内容別のプレビューを重複なく割り当てる', () => {
-		// ⚠️hata-12.2 の案内を書いたあとに入った変更を7件足したので17件。
+		// ⚠️hata-12.2 の案内を書いたあとに入った変更を8件足したので18件。
 		//   ⚠️プレビューは1項目につき1種類。使い回すと「何が変わったか」が図から読めなくなる。
-		expect(HATA_WHATS_NEW.items).toHaveLength(17);
-		expect(new Set(HATA_WHATS_NEW.items.map(item => item.preview)).size).toBe(17);
+		expect(HATA_WHATS_NEW.items).toHaveLength(18);
+		expect(new Set(HATA_WHATS_NEW.items.map(item => item.preview)).size).toBe(18);
 	});
 
 	test('あとから足した主要な変更を案内する', () => {
 		const previews = HATA_WHATS_NEW.items.map(item => item.preview);
-		for (const preview of ['hatalyze', 'hatakyuTheme', 'hatadyExport', 'foldable', 'uiMotion', 'langFix', 'externalDdoskey']) {
+		for (const preview of ['hatalyze', 'hatakyuTheme', 'hatadyExport', 'foldable', 'uiMotion', 'langFix', 'externalDdoskey', 'fontUpload']) {
 			expect(previews).toContain(preview);
 		}
 		// ⚠️先頭はブランディングのまま。あとから足した分は必ず末尾へ。
 		expect(HATA_WHATS_NEW.items[0].preview).toBe('branding');
 		expect(HATA_WHATS_NEW.items.find(item => item.preview === 'hatalyze')).toMatchObject({ to: '/hatask/emotion-analysis' });
+	});
+
+	test('フォントファイルの追加形式を利用者向けに案内する', () => {
+		const item = HATA_WHATS_NEW.items.find(x => x.preview === 'fontUpload');
+		expect(item).toMatchObject({ to: '/settings/hata-custom' });
+		expect(item?.text).toContain('.ttf');
+		expect(item?.text).toContain('.otf');
+		expect(item?.text).toContain('直接アップロード');
+		expect(item?.text).toContain('変更しません');
+	});
+
+	test('折りたたみ端末のプレビューは閉じた状態から開く', async () => {
+		const fs = await import('node:fs');
+		const path = await import('node:path');
+		const source = fs.readFileSync(path.resolve(process.cwd(), 'src/components/MkHataWhatsNew.vue'), 'utf8');
+		expect(source).toContain('@keyframes hwnFoldOpen');
+		expect(source).toContain('rotateY(-178deg)');
+		expect(source).toContain('rotateY(0deg)');
+		expect(source).toContain('transform-origin: left center');
 	});
 
 	test('外部アカウント連携は接続先の追加としてのみ案内する', () => {

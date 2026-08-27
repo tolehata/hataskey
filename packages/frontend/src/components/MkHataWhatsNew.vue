@@ -191,6 +191,16 @@ SPDX-License-Identifier: AGPL-3.0-only
 						</div>
 					</div>
 
+					<div v-else-if="item.preview === 'fontUpload'" :class="$style.fontUploadMock">
+						<div :class="$style.fontUploadPanel">
+							<i class="ti ti-typography"></i>
+							<div :class="$style.fontUploadFiles">
+								<span>.TTF<i class="ti ti-circle-check-filled"></i></span>
+								<span>.OTF<i class="ti ti-circle-check-filled"></i></span>
+							</div>
+						</div>
+					</div>
+
 					<div v-else :class="$style.mobileMock">
 						<div :class="$style.mobilePhone">
 							<div :class="$style.mobilePicker"><i class="ti ti-mood-smile"></i><i class="ti ti-heart"></i><i class="ti ti-thumb-up"></i></div>
@@ -770,16 +780,19 @@ function openReleaseNotes() {
 .exportFile > u { display: block; width: 70%; height: 3px; border-radius: 999px; background: #d5e7dd; }
 .exportRow > span[data-on="true"] { animation: hwnSoftPulse 3.2s ease-in-out infinite; }
 
-/* ===== 折りたたみ: 開いた本体の中で右カラムが立ち上がる ===== */
-.foldMock { height: 100%; display: grid; place-content: center; background: #eef2f7; }
-.foldDevice { position: relative; width: 150px; height: 96px; display: flex; gap: 6px; padding: 8px; border-radius: 10px; background: #fff; box-shadow: 0 6px 16px rgba(60, 80, 130, .18); }
-.foldHinge { position: absolute; top: 8px; bottom: 8px; left: 50%; width: 1px; background: repeating-linear-gradient(#c9d5e6 0 3px, transparent 3px 6px); }
-.foldMain { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+/* ===== 折りたたみ: 閉じた右半分を蝶番から開き、サブペインが現れる ===== */
+.foldMock { height: 100%; display: grid; place-content: center; overflow: hidden; perspective: 560px; background: #eef2f7; }
+.foldDevice { position: relative; width: 150px; height: 96px; display: grid; grid-template-columns: 1fr 1fr; gap: 3px; transform-style: preserve-3d; animation: hwnFoldFrame 4.8s cubic-bezier(.2,.78,.2,1) infinite; }
+.foldHinge { position: absolute; z-index: 4; top: 7px; bottom: 7px; left: 50%; width: 2px; border-radius: 999px; background: repeating-linear-gradient(#9fb0c8 0 4px, #e6edf6 4px 7px); box-shadow: 0 0 0 1px rgba(255,255,255,.7); transform: translateX(-1px); }
+.foldMain { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 6px; padding: 10px 8px; border-radius: 10px 4px 4px 10px; background: #fff; box-shadow: 0 6px 16px rgba(60, 80, 130, .18); }
 .foldMain > u { display: block; height: 7px; border-radius: 999px; background: #dbe3ee; }
 .foldMain > u:last-child { width: 62%; }
-.foldSide { width: 42px; display: flex; flex-direction: column; gap: 6px; padding: 5px; border-radius: 6px; background: #eaf0f8; animation: hwnEnter 4s cubic-bezier(.2,.9,.2,1) infinite; }
+.foldSide { position: relative; z-index: 2; display: flex; flex-direction: column; gap: 7px; padding: 10px 8px; border-radius: 4px 10px 10px 4px; background: #eaf0f8; box-shadow: 4px 6px 16px rgba(60, 80, 130, .16); transform-origin: left center; transform-style: preserve-3d; backface-visibility: hidden; animation: hwnFoldOpen 4.8s cubic-bezier(.2,.78,.2,1) infinite; }
+.foldSide::after { content: ''; position: absolute; inset: 0; border-radius: 10px 4px 4px 10px; background: linear-gradient(145deg, #7388a8, #506887); box-shadow: 0 6px 16px rgba(45, 60, 90, .24); transform: rotateY(180deg); backface-visibility: hidden; }
 .foldSide > em { display: block; height: 14px; border-radius: 4px; background: #c2d1e5; }
 .foldSide > em:last-child { height: 22px; }
+@keyframes hwnFoldFrame { 0%, 18% { transform: translateX(37px); } 46%, 84% { transform: none; } 100% { transform: translateX(37px); } }
+@keyframes hwnFoldOpen { 0%, 18% { transform: rotateY(-178deg); } 46%, 84% { transform: rotateY(0deg); } 100% { transform: rotateY(-178deg); } }
 
 /* ===== UIの動き: 実物のポップアップの構成 + 読込中の弧 ===== */
 .popupMock { position: relative; height: 100%; display: grid; place-content: center; background: #f6eef4; }
@@ -825,6 +838,15 @@ function openReleaseNotes() {
 .ddoskeyHost { font-size: 10px; font-weight: 700; color: #22705a; }
 .ddoskeyCheck { margin-left: auto; font-size: 12px; color: #2f8f74; animation: hwnPopIn 3.8s cubic-bezier(.2,.9,.2,1) infinite; animation-delay: .38s; }
 @keyframes hwnRowIn { 0%, 20% { opacity: 0; transform: translateX(12px); } 38%, 100% { opacity: 1; transform: none; } }
+
+/* ===== フォントアップロード: 追加された2形式をファイルとして示す ===== */
+.fontUploadMock { height: 100%; display: grid; place-content: center; background: #f1eef9; }
+.fontUploadPanel { width: 150px; display: flex; align-items: center; gap: 12px; padding: 14px; border-radius: 12px; background: #fff; box-shadow: 0 6px 16px rgba(86, 65, 130, .16); }
+.fontUploadPanel > i { font-size: 30px; color: #7655ac; animation: hwnSoftPulse 3.4s ease-in-out infinite; }
+.fontUploadFiles { flex: 1; display: flex; flex-direction: column; gap: 7px; }
+.fontUploadFiles > span { display: flex; align-items: center; justify-content: space-between; padding: 5px 7px; border-radius: 7px; color: #5e447f; background: #f2ebfb; font: 700 10px/1 monospace; animation: hwnRowIn 3.8s cubic-bezier(.2,.9,.2,1) infinite; }
+.fontUploadFiles > span:last-child { animation-delay: .18s; }
+.fontUploadFiles i { color: #4a9b73; font-size: 12px; }
 
 /* ⚠️動きを減らす設定では全部止める。装飾なので、止めても意味は伝わる。
      ⚠️langAfter は既定で opacity:0 のため、止めるときは見えるように戻す。 */

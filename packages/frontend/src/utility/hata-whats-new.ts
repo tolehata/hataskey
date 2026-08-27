@@ -27,7 +27,7 @@ export type HataWhatsNewItem = {
 	preview: 'branding' | 'hatadyRecord' | 'hatadyVisibility' | 'hatacordingFix' | 'utageBadge'
 		| 'muteReaction' | 'cardMaker' | 'hatasabaHome' | 'sideStudioFix' | 'mobileFix'
 		| 'hatalyze' | 'hatakyuTheme' | 'hatadyExport' | 'foldable' | 'uiMotion' | 'langFix'
-		| 'externalDdoskey';
+		| 'externalDdoskey' | 'fontUpload';
 	title: string;
 	text: string;
 	/**
@@ -198,6 +198,14 @@ export const HATA_WHATS_NEW: HataWhatsNew = {
 			text: copy.externalDdoskeyText,
 			to: '/settings/external-account',
 			linkLabel: copy.externalDdoskeyLink,
+		},
+		{
+			icon: 'ti ti-typography',
+			preview: 'fontUpload',
+			title: copy.fontUploadTitle,
+			text: copy.fontUploadText,
+			to: '/settings/hata-custom',
+			linkLabel: copy.brandingLink,
 		},
 	],
 	footer: {
