@@ -20,7 +20,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<button type="button" :class="$style.compactBack" :aria-label="i18n.ts.goBack" @click="goCompactBack"><i class="ti ti-chevron-left" aria-hidden="true"></i></button>
 					<!-- 旗鯖fork: しばらく何も変えていないときだけ、検索の在り処をそっと出す。
 					     ⚠️出しっぱなしにしないこと。題として読めなくなる。8秒で戻す。 -->
-					<h1 :class="$style.compactTitle"><Transition name="settings-title" :css="motionEnabled" mode="out-in"><span v-if="showSearchHint" key="settings-search-hint" :class="$style.compactHint" @click="openSearch">{{ copy.searchHint }}</span><span v-else :key="mobilePageTitle" :class="{ settingsBrand: hasSettingsBrand(mobilePageTitle) }">{{ mobilePageTitle }}</span></Transition></h1>
+					<h1 :class="$style.compactTitle"><Transition name="settings-title" :css="motionEnabled" mode="out-in"><span v-if="showSearchHint" key="settings-search-hint" :class="$style.compactHint" @click="openSearch">{{ copy.searchHint }}<span :class="$style.compactHintArrow" aria-hidden="true">＞</span></span><span v-else :key="mobilePageTitle" :class="{ settingsBrand: hasSettingsBrand(mobilePageTitle) }">{{ mobilePageTitle }}</span></Transition></h1>
 						<!-- 旗鯖fork: ⚠️右側のボタンは1つの箱にまとめること。
 						     ⚠️列を足すたびに題の軸がずれる（虫眼鏡を足したときに実際にずれた）。
 						     ⚠️左右の列を同じ幅にして、真ん中の題を器の中央へ固定する。 -->
@@ -57,7 +57,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 					:quickItems="quickItems"
 					:sections="mobileOverviewSections"
 					:deprecatedSections="mobileDeprecatedSections"
-					:valueItems="quickValueItems"
 					:featureItem="hataCustomGlassUiItem"
 					:profileItem="profileNavigationItem"
 					:profileName="$i?.name ?? null"
@@ -268,7 +267,7 @@ import type { SettingsCatalogPresentationV2 } from '@/utility/settings-search-v2
 import type { SettingsSearchNavigationTargetV2, SettingsSearchV2Context } from '@/utility/settings-search-v2-context.js';
 import type { HatasabaNavItem } from '@/utility/hatasaba-navigation.js';
 import type { SettingsRelatedLink } from './SettingsRelatedLinks.vue';
-import type { SettingsOverviewDestructiveItem, SettingsOverviewItem, SettingsOverviewSection, SettingsOverviewValue } from './SettingsMobileOverview.vue';
+import type { SettingsOverviewDestructiveItem, SettingsOverviewItem, SettingsOverviewSection } from './SettingsMobileOverview.vue';
 import type { SettingsShellActionId } from './settings-shell-actions.js';
 import { genSearchIndexes } from '@/utility/inapp-search.js';
 import { initIntlString } from '@/utility/intl-string.js';
@@ -680,19 +679,6 @@ const visibleNavSections = computed<NavSection[]>(() => navSections.flatMap(sect
 
 const headerActions = computed(() => []);
 const headerTabs = computed(() => []);
-const quickValueItems = computed<SettingsOverviewValue[]>(() => {
-	const opacity = prefer.r['simpleUi.glassUiCardOpacity']?.value;
-	const noteGap = prefer.r.showGapBetweenNotesInTimeline?.value;
-	const visibleBottomNavigationCount = getVisibleBottomNav(prefer.r['simpleUi.bottomNav'].value as HatasabaNavItem[]).length;
-	const hataskeyUiPopup = { kind: 'popup', category: 'glassUi', popup: 'hatasaba-ui2' } as const;
-	return [
-		...(typeof opacity === 'number' && Number.isFinite(opacity) ? [{ id: 'glass-opacity', label: copy.values.opacity, value: `${Math.round(opacity)}%`, route: '/settings/hata-custom', activation: hataskeyUiPopup }] : []),
-		{ id: 'glass-ui-bubble', label: copy.values.bubble, value: glassUiBubbleLocal.value ? i18n.ts.on : i18n.ts.off, route: '/settings/hata-custom', activation: hataskeyUiPopup },
-		...(typeof noteGap === 'boolean' ? [{ id: 'note-gap', label: copy.values.noteGap, value: noteGap ? copy.values.spread : copy.values.compact, route: '/settings/preferences', controlId: preferenceNavigationTargets.density }] : []),
-		{ id: 'bottom-navigation', label: copy.values.bottomNavigation, value: copyx.values.bottomNavigationCount({ count: visibleBottomNavigationCount, max: HATASABA_BOTTOM_NAV_MAX }), route: '/settings/hata-custom', activation: hataskeyUiPopup },
-	];
-});
-
 const settingsShellActions = createSettingsShellActions({
 	clearCache,
 	signout,
@@ -788,6 +774,8 @@ const showSearchHint = ref(false);
 const searchHintController = createSearchHintController({
 	idleMs: 15000,
 	visibleMs: 8000,
+	extensionMs: 20000,
+	maxExtensions: 3,
 	// ⚠️狭い幅の詳細画面だけ。広い幅では検索窓が常に見えている。
 	eligible: () => compact.value && currentPage.value?.route.name != null,
 	onChange: (visible) => { showSearchHint.value = visible; },
@@ -1771,6 +1759,9 @@ async function openHatasabaUi2Preview() {
 }
 
 function openSearch() {
+	// ⚠️案内を見たあとに検索へ手が伸びたなら、用は足りている。
+	//   この滞在のあいだ、もう同じ案内は出さない（controller 側で判断する）。
+	searchHintController.noteSearchUsed();
 	searchOriginEl.value = window.document.activeElement instanceof HTMLElement ? window.document.activeElement : searchAnchorEl.value;
 	searchOpen.value = true;
 }
@@ -2039,7 +2030,11 @@ watch([compact, currentPage], () => searchHintController.restart(), { immediate:
 
 watch(router.currentRef, () => {
 	const fullPath = router.getCurrentFullPath();
-	if (!isSettingsFullPath(fullPath)) lastNonSettingsRoute = fullPath;
+	if (!isSettingsFullPath(fullPath)) {
+		lastNonSettingsRoute = fullPath;
+		// ⚠️設定から出た。入り直せばまた出すが、待ち時間は20秒ずつ延びる。
+		searchHintController.noteLeftSettings();
+	}
 	playPageEnter();
 	if (currentPage.value?.route.name != null) compactNavigationSection.value = null;
 	if (!activeNavigationTargetMatchesCurrentPath()) activeNavigationTarget.value = null;
@@ -2179,8 +2174,23 @@ definePage(() => indexInfo);
    ⚠️右にボタンを足すたびに軸がずれる作りにしないこと。 */
 .compactTop { display: grid; grid-template-columns: minmax(44px, 1fr) auto minmax(44px, 1fr); align-items: center; gap: 10px; }
 .compactActions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
-/* ⚠️案内は題より控えめに。太字のままだと題と見分けがつかない。 */
-.compactHint { display: inline-block; overflow: hidden; max-inline-size: 100%; color: var(--MI_THEME-accent); cursor: pointer; font-size: .82rem; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+/* ⚠️案内は題より控えめに。ただし小さすぎると読まれない。
+   ⚠️上限は幅で決まる。中央の枠は左右44pxのボタンと隙間・余白に挟まれ、
+     幅375pxの端末で残りはおよそ235px。「こちらから設定を検索できます ＞」は
+     全角15文字＋空白なので、1remだと約240px。字間をわずかに詰めて収める。
+     これ以上大きくすると末尾が「…」で切れる。 */
+/* ⚠️矢印だけを動かすので、文言からは外して印として持たせている。
+   ⚠️動きを減らす設定のときは .scope[data-motion-enabled='false'] が
+     子孫の animation を止めるので、ここで個別に書く必要はない。
+   ⚠️大きく動かさないこと。題の場所で跳ねると、読む前に目が逃げる。 */
+.compactHintArrow { display: inline-block; margin-inline-start: .25em; animation: settingsHintArrow 1.6s ease-in-out infinite; will-change: transform; }
+
+@keyframes settingsHintArrow {
+	0%, 100% { transform: translateX(0); }
+	50% { transform: translateX(.22em); }
+}
+
+.compactHint { display: inline-block; overflow: hidden; max-inline-size: 100%; color: var(--MI_THEME-accent); cursor: pointer; font-size: 1rem; font-weight: 700; letter-spacing: -.02em; text-overflow: ellipsis; white-space: nowrap; }
 .compactBack, .compactPreview { display: grid; width: 44px; height: 44px; place-items: center; border: 0; border-radius: 50%; background: transparent; color: var(--MI_THEME-fg); cursor: pointer; font: inherit; font-size: 1.15rem; touch-action: manipulation; &:hover { background: var(--MI_THEME-buttonHoverBg); } &:focus-visible { outline: 3px solid color-mix(in srgb, var(--MI_THEME-accent) 50%, transparent); outline-offset: 2px; } }
 .compactPreview { background: color-mix(in srgb, var(--MI_THEME-accent) 12%, var(--settings-surface, var(--MI_THEME-panel))); color: var(--MI_THEME-accent); }
 .compactTitle { overflow: hidden; margin: 0; color: var(--MI_THEME-fg); font-size: 1.375rem; font-weight: 800; letter-spacing: -.02em; line-height: 1.2; text-align: center; text-overflow: ellipsis; white-space: nowrap; }

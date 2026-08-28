@@ -33490,7 +33490,6 @@ export interface Locale extends ILocale {
                 "recommendedInUse": string;
                 "featureDescription": string;
                 "openSettings": string;
-                "changeCurrentValues": string;
                 "allCategories": string;
                 "connectionsAndData": string;
                 "misskeyRelatedSettings": string;

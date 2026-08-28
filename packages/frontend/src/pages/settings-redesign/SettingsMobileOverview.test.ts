@@ -28,7 +28,7 @@ afterEach(() => {
 });
 
 describe('settings mobile overview', () => {
-	test('compact rootは専用overviewにし、主要導線と安全な値要約だけを表示する', () => {
+	test('compact rootは専用overviewにし、主要導線だけを表示する', () => {
 		expect(shellSource).toContain('<SettingsMobileOverview');
 		expect(shellSource).toContain(':sections="mobileOverviewSections"');
 		expect(shellSource).toContain(':deprecatedSections="mobileDeprecatedSections"');
@@ -40,19 +40,16 @@ describe('settings mobile overview', () => {
 		expect(shellSource).toContain('border-radius: 26px;');
 		expect(shellSource).toContain('border: 1px solid var(--settings-border, color-mix(in srgb, var(--MI_THEME-divider) 78%, transparent));');
 		expect(shellSource).not.toContain('.scope { border-radius: 0; border-inline: 0; }');
-		expect(shellSource).toContain('prefer.r[\'simpleUi.glassUiCardOpacity\']?.value');
-		expect(shellSource).toContain('prefer.r.showGapBetweenNotesInTimeline?.value');
-		expect(shellSource).toContain('getVisibleBottomNav(prefer.r[\'simpleUi.bottomNav\'].value');
-		expect(shellSource).toContain('HATASABA_BOTTOM_NAV_MAX');
-		expect(shellSource).toContain('glassUiBubbleLocal.value ? i18n.ts.on : i18n.ts.off');
-		expect(shellSource).toContain('noteGap ? copy.values.spread : copy.values.compact');
 		expect(shellSource).not.toContain('showPageTabBarBottom?.value');
 		expect(overviewSource).toContain('i18n.ts._hata._settingsRedesign');
 		expect(overviewSource).toContain('copy.frequentlyUsedSettings');
 		expect(overviewSource).toContain('copy.mobile.recommendedInUse');
 		expect(overviewSource).toContain('Hataskey UI');
-		expect(overviewSource).toContain('copy.mobile.changeCurrentValues');
 		expect(overviewSource).toContain('copy.mobile.allCategories');
+		// 旗鯖fork: ⚠️「いまの値をすぐ変える」の節は外した。分類一覧より先に出る割に
+		//   読まれず、モバイルの上下幅だけを食っていた。戻すときは節ごと戻すこと。
+		expect(overviewSource).not.toContain('valueItems');
+		expect(overviewSource).not.toContain('changeCurrentValues');
 		expect(overviewSource).not.toContain('<details v-for');
 		expect(overviewSource).toContain('openCategory(section.id)');
 		expect(overviewSource).toContain('openCategory(null)');
@@ -148,7 +145,7 @@ describe('settings mobile overview', () => {
 			setup() {
 				const activeCategoryId = ref<string | null>(null);
 				return () => h(SettingsMobileOverview, {
-					quickItems: [], featureItem: target, valueItems: [], sections: [category], activeCategoryId: activeCategoryId.value, onSelect: select,
+					quickItems: [], featureItem: target, sections: [category], activeCategoryId: activeCategoryId.value, onSelect: select,
 					onOpenCategory: (id: string | null) => {
 						openCategory(id);
 						activeCategoryId.value = id;
@@ -196,7 +193,7 @@ describe('settings mobile overview', () => {
 		expect(shellSource).toContain(':deep(*)');
 	});
 
-	test('mobileのquick・feature・現在値・カテゴリはactivationを落とさずselectする', async () => {
+	test('mobileのquick・feature・カテゴリはactivationを落とさずselectする', async () => {
 		const select = vi.fn();
 		const glassTarget = {
 			id: 'glass',
@@ -210,7 +207,6 @@ describe('settings mobile overview', () => {
 				return () => h(SettingsMobileOverview, {
 					quickItems: [glassTarget],
 					featureItem: glassTarget,
-					valueItems: [{ ...glassTarget, id: 'opacity', label: '透過率', value: '55%' }],
 					sections: [{ id: 'appearance', label: '見た目', description: '説明', icon: 'ti ti-palette', items: [glassTarget] }],
 					onSelect: select,
 				});
@@ -241,7 +237,7 @@ describe('settings mobile overview', () => {
 		const app = createApp(defineComponent({
 			setup() {
 				return () => h(SettingsMobileOverview, {
-					quickItems: [], featureItem: glassTarget, valueItems: [], sections: [], onSelect: select, onPreview: preview,
+					quickItems: [], featureItem: glassTarget, sections: [], onSelect: select, onPreview: preview,
 				});
 			},
 		}));
@@ -267,7 +263,7 @@ describe('settings mobile overview', () => {
 		const app = createApp(defineComponent({
 			setup() {
 				return () => h(SettingsMobileOverview, {
-					quickItems: [], featureItem: glassTarget, valueItems: [], sections: [],
+					quickItems: [], featureItem: glassTarget, sections: [],
 					destructiveItems: [{ id: 'logout', searchId: 'settings.shell.logout', label: 'ログアウト', icon: 'ti ti-logout' }],
 					onSelect: select, onAction: action,
 				});
@@ -295,7 +291,7 @@ describe('settings mobile overview', () => {
 		const app = createApp(defineComponent({
 			setup() {
 				return () => h(SettingsMobileOverview, {
-					quickItems: [], featureItem: glassTarget, valueItems: [], sections: [], legacyLabel: '旧設定', onLegacy: legacy,
+					quickItems: [], featureItem: glassTarget, sections: [], legacyLabel: '旧設定', onLegacy: legacy,
 				});
 			},
 		}));

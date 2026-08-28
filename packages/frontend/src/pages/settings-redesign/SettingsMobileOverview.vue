@@ -36,15 +36,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 		</div>
 	</section>
 
-	<section v-if="activeCategory == null && props.valueItems.length > 0" :class="$style.section" aria-labelledby="settings-mobile-current">
-		<h2 id="settings-mobile-current" :class="$style.sectionTitle">{{ copy.mobile.changeCurrentValues }}</h2>
-		<div :class="$style.valueGrid">
-			<button v-for="item in props.valueItems" :key="item.id" type="button" :class="[$style.valueItem, { [$style.itemActive]: activeItemId === item.id }]" :aria-current="activeItemId === item.id ? 'page' : undefined" @click="emit('select', item)">
-				<span :class="{ settingsBrand: item.brand != null || hasSettingsBrand(item.label) }">{{ item.label }}</span><strong>{{ item.value }}</strong><small>{{ copy.mobile.openSettings }}</small>
-			</button>
-		</div>
-	</section>
-
 	<template v-if="activeCategory == null">
 		<section :class="$style.section" aria-labelledby="settings-mobile-categories">
 			<h2 id="settings-mobile-categories" :class="$style.sectionTitle">{{ copy.mobile.allCategories }}</h2>
@@ -108,7 +99,6 @@ import { i18n } from '@/i18n.js';
 // 旗鯖fork: iconImage は Tabler の代わりに出す絵。⚠️あるときは icon を描かない。
 export type SettingsOverviewItem = SettingsSearchNavigationTargetV2 & { id: string; label: string; icon: string; iconImage?: string; brand?: string };
 export type SettingsOverviewSection = { id: string; label: string; description: string; icon: string; iconImage?: string; brand?: string; items: SettingsOverviewItem[] };
-export type SettingsOverviewValue = SettingsSearchNavigationTargetV2 & { id: string; label: string; value: string; brand?: string };
 export type SettingsOverviewDestructiveItem = { id: string; searchId: string; label: string; icon: string; brand?: string };
 
 const props = withDefaults(defineProps<{
@@ -116,7 +106,6 @@ const props = withDefaults(defineProps<{
 	sections: SettingsOverviewSection[];
 	activeItemId?: string | null;
 	deprecatedSections?: SettingsOverviewSection[];
-	valueItems: SettingsOverviewValue[];
 	featureItem: SettingsOverviewItem;
 	/**
 	 * 旗鯖fork: 自分のアイコン行。⚠️ここで MkAvatar を使わないこと。
@@ -245,8 +234,6 @@ watch(activeCategory, async (nextCategory, previousCategory) => {
 .featureLink, .featurePreview { border: 0; background: var(--MI_THEME-panel); color: var(--MI_THEME-accent); cursor: pointer; font: inherit; font-weight: 700; &:hover { background: color-mix(in srgb, var(--MI_THEME-panel) 88%, var(--MI_THEME-accent)); } &:focus-visible { outline: 3px solid color-mix(in srgb, var(--MI_THEME-fgOnAccent) 60%, transparent); outline-offset: 2px; } }
 .featureLink { display: flex; min-width: 0; flex: 1; min-height: 48px; align-items: center; justify-content: center; gap: 8px; border-radius: 999px; padding: 8px 14px; font-size: .9rem; }
 .featurePreview { display: grid; flex: 0 0 48px; width: 48px; height: 48px; place-items: center; border-radius: 50%; font-size: 1.15rem; }
-.valueGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-.valueItem { display: grid; box-sizing: border-box; width: 100%; min-height: 124px; align-content: start; gap: 8px; border: 1px solid var(--settings-border, color-mix(in srgb, var(--MI_THEME-divider) 78%, transparent)); border-radius: 20px; padding: 16px; background: var(--settings-surface, var(--MI_THEME-panel)); color: var(--MI_THEME-fg); cursor: pointer; font: inherit; text-align: start; line-break: strict; text-wrap: pretty; &:hover { background: var(--MI_THEME-buttonHoverBg); } &:focus-visible { outline: 3px solid color-mix(in srgb, var(--MI_THEME-accent) 50%, transparent); outline-offset: 2px; } > span { color: var(--settings-muted, color-mix(in srgb, var(--MI_THEME-fg) 60%, transparent)); font-size: .78rem; } > strong { color: var(--MI_THEME-accent); font-size: 1.2rem; line-height: 1.2; } > small { margin-top: auto; color: var(--MI_THEME-accent); font-size: .72rem; font-weight: 700; } }
 .categories { overflow: clip; border: 1px solid var(--settings-border, color-mix(in srgb, var(--MI_THEME-divider) 78%, transparent)); border-radius: 22px; background: var(--settings-surface, var(--MI_THEME-panel)); }
 .category { display: grid; box-sizing: border-box; width: 100%; min-height: 76px; grid-template-columns: 42px minmax(0, 1fr) auto; align-items: center; gap: 14px; border: 0; padding: 12px 16px; background: transparent; color: var(--MI_THEME-fg); cursor: pointer; font: inherit; text-align: start; &:focus-visible { outline: 3px solid color-mix(in srgb, var(--MI_THEME-accent) 50%, transparent); outline-offset: -3px; } > i:first-child { display: grid; width: 42px; height: 42px; place-items: center; border-radius: 14px; background: var(--settings-bg, var(--MI_THEME-bg)); color: var(--MI_THEME-accent); font-size: 1.2rem; } > span { min-width: 0; } strong, small { display: block; line-break: strict; text-wrap: pretty; } strong { font-size: .92rem; } small { margin-top: 3px; color: var(--settings-muted, color-mix(in srgb, var(--MI_THEME-fg) 60%, transparent)); font-size: .74rem; line-height: 1.5; } > i:last-child { color: var(--settings-muted, color-mix(in srgb, var(--MI_THEME-fg) 60%, transparent)); } }
 .category + .category { border-top: 1px solid var(--settings-border, color-mix(in srgb, var(--MI_THEME-divider) 78%, transparent)); }

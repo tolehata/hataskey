@@ -8619,7 +8619,7 @@ _hata:
     frequentlyUsedSettings: "Frequently used settings"
     searchSettingsCount: "{count} searchable settings on this page"
     sessionAndLogin: "Device and sign-in"
-    searchHint: "You can search settings from here >"
+    searchHint: "You can search settings from here"
     actions:
       clearCache: "Clear cache"
       logout: "Log out"
@@ -8695,7 +8695,6 @@ _hata:
       recommendedInUse: "In use / Recommended"
       featureDescription: "Adjust navigation, opacity, bubbles, and Deck display together"
       openSettings: "Open settings"
-      changeCurrentValues: "Change current values quickly"
       allCategories: "All categories"
       connectionsAndData: "Connections and data"
       misskeyRelatedSettings: "Misskey UI related settings"

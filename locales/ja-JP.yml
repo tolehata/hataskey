@@ -8755,7 +8755,7 @@ _hata:
     frequentlyUsedSettings: "よく使う設定"
     searchSettingsCount: "この画面の検索設定 {count} 件"
     sessionAndLogin: "端末とログイン"
-    searchHint: "こちらから設定を検索できます ＞"
+    searchHint: "こちらから設定を検索できます"
     actions:
       clearCache: "キャッシュを削除"
       logout: "ログアウト"
@@ -8831,7 +8831,6 @@ _hata:
       recommendedInUse: "使用中・推奨"
       featureDescription: "ナビ・透過率・吹き出し・デッキの表示をまとめて調整します"
       openSettings: "設定を開く"
-      changeCurrentValues: "いまの値をすぐ変える"
       allCategories: "すべてのカテゴリ"
       connectionsAndData: "連携とデータ"
       misskeyRelatedSettings: "Misskey UIに関連する設定"

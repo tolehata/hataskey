@@ -8197,7 +8197,7 @@ _hata:
     frequentlyUsedSettings: "常用设置"
     searchSettingsCount: "此页面有 {count} 项可搜索设置"
     sessionAndLogin: "设备与登录"
-    searchHint: "可以从这里搜索设置 ＞"
+    searchHint: "可以从这里搜索设置"
     actions:
       clearCache: "清除缓存"
       logout: "退出登录"
@@ -8273,7 +8273,6 @@ _hata:
       recommendedInUse: "正在使用／推荐"
       featureDescription: "可集中调整导航、透明度、气泡和卡片式显示"
       openSettings: "打开设置"
-      changeCurrentValues: "快速更改当前值"
       allCategories: "所有分类"
       connectionsAndData: "连接与数据"
       misskeyRelatedSettings: "与 Misskey 界面相关的设置"

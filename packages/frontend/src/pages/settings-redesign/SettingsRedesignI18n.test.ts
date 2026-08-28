@@ -71,7 +71,8 @@ describe('settings redesign translations', () => {
 		// ⚠️プレビューの下部ナビに専用の読み上げ文言を足したので216へ。
 		// ⚠️旧設定から一覧へ戻る導線の文言を足したので217へ。
 		// ⚠️無操作のときに出す検索の案内文を足したので218へ。
-		expect(ja.size).toBe(218);
+		// ⚠️「いまの値をすぐ変える」の節ごと mobile.changeCurrentValues を外したので217へ。
+		expect(ja.size).toBe(217);
 		assertSameLocaleShape(ja, en);
 		assertSameLocaleShape(ja, zh);
 		expect(ja.get('search.relatedHeading')).toBe('こちらをお探しですか？');

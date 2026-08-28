@@ -43,6 +43,8 @@ function setup(eligible: () => boolean = () => true) {
 	const controller = createSearchHintController({
 		idleMs: 15000,
 		visibleMs: 8000,
+		extensionMs: 20000,
+		maxExtensions: 3,
 		eligible,
 		onChange: (v) => seen.push(v),
 		setTimer: clock.setTimer,
@@ -148,6 +150,104 @@ describe('設定の検索案内', () => {
 	});
 });
 
+describe('しつこくしないための決まり', () => {
+	test('案内を見たあとに検索を使ったら、その滞在のあいだはもう出さない', () => {
+		// ⚠️「その瞬間に出ていないこと」で見てはいけない。長く進めると
+		//   出す→戻すを繰り返すので、最後の値はたまたま false になりうる。
+		//   出した**回数**で見ること（この取り違えで陽性対照が素通りした）。
+		const { clock, seen, controller } = setup();
+		controller.restart();
+		clock.advance(15000);
+		expect(seen.filter(v => v).length).toBe(1);
+
+		controller.noteSearchUsed(); // 検索ボタンへ手が伸びた
+		expect(controller.visible()).toBe(false);
+
+		// 項目へ移った／検索をやめて一覧へ戻った、どちらも滞在は続いている
+		controller.restart();
+		clock.advance(600000);
+		expect(seen.filter(v => v).length).toBe(1); // 増えていない
+	});
+
+	test('案内を見ていない人の検索では黙らせない', () => {
+		// ⚠️ここを取り違えると、案内が一度も届かない人が出る。
+		const { clock, controller } = setup();
+		controller.restart();
+		clock.advance(5000);
+		controller.noteSearchUsed(); // まだ案内は出ていない
+		controller.restart();
+		clock.advance(15000);
+		expect(controller.visible()).toBe(true);
+	});
+
+	test('設定から出て入り直すと、20秒長く待ってから出す', () => {
+		const { clock, controller } = setup();
+		controller.restart();
+		clock.advance(15000);
+		controller.noteSearchUsed();
+
+		controller.noteLeftSettings(); // 設定から離脱
+		expect(controller.idleMs()).toBe(35000);
+
+		controller.restart(); // 入り直して詳細画面へ
+		clock.advance(34999);
+		expect(controller.visible()).toBe(false);
+		clock.advance(1);
+		expect(controller.visible()).toBe(true);
+	});
+
+	test('検索を使っていなければ、出入りしても待ち時間は延びない', () => {
+		const { controller } = setup();
+		controller.restart();
+		controller.noteLeftSettings();
+		controller.noteLeftSettings();
+		expect(controller.idleMs()).toBe(15000);
+	});
+
+	test('延ばせるのは読み込み直すまでに3回まで（15→35→55→75秒で頭打ち）', () => {
+		const { clock, controller } = setup();
+		const seenDelays: number[] = [controller.idleMs()];
+		for (let i = 0; i < 5; i++) {
+			controller.restart();
+			clock.advance(controller.idleMs()); // 案内が出るまで待つ
+			expect(controller.visible()).toBe(true);
+			controller.noteSearchUsed();
+			controller.noteLeftSettings();
+			seenDelays.push(controller.idleMs());
+		}
+		expect(seenDelays).toEqual([15000, 35000, 55000, 75000, 75000, 75000]);
+	});
+
+	test('注文どおりの一連の流れ', () => {
+		const { clock, seen, controller } = setup();
+
+		// 設定 → 詳細 → 15秒待って案内が出る
+		controller.restart();
+		clock.advance(15000);
+		expect(controller.visible()).toBe(true);
+		expect(seen.filter(v => v).length).toBe(1);
+
+		// 検索ボタンで検索し、項目へ移る（または中断して一覧へ戻る）
+		controller.noteSearchUsed();
+		controller.restart();
+
+		// また詳細へ。ここでは出さない（出した回数が増えないことで見る）
+		controller.restart();
+		clock.advance(600000);
+		expect(seen.filter(v => v).length).toBe(1);
+
+		// 設定から離脱 → また設定へ → 詳細へ
+		controller.noteLeftSettings();
+		controller.restart();
+
+		// 今度は20秒長く待ってから出る
+		clock.advance(34999);
+		expect(controller.visible()).toBe(false);
+		clock.advance(1);
+		expect(controller.visible()).toBe(true);
+	});
+});
+
 describe('画面への繋ぎ込み', () => {
 	// ⚠️時計が正しくても、画面から呼ばなければ何も起きない。
 	//   実際に一度、起動時に数え始めておらず「いつまでも変わらない」状態になった。
@@ -160,7 +260,44 @@ describe('画面への繋ぎ込み', () => {
 		expect(shellSource).not.toContain('JSON.stringify(prefer.r)');
 	});
 
+	test('検索を使ったことと、設定から出たことを controller へ伝える', () => {
+		// ⚠️伝え忘れると、抑止も延長も一切効かない（時計だけ正しくても意味がない）。
+		expect(shellSource).toContain('searchHintController.noteSearchUsed();');
+		expect(shellSource).toContain('searchHintController.noteLeftSettings();');
+		expect(shellSource).toContain('extensionMs: 20000,');
+		expect(shellSource).toContain('maxExtensions: 3,');
+	});
+
 	test('画面を離れるときに片付ける', () => {
 		expect(shellSource).toContain('searchHintController.stop();');
+	});
+
+	// ⚠️小さすぎると読まれない。逆に大きくしすぎると、左右44pxのボタンに
+	//   挟まれた中央の枠（幅375pxの端末でおよそ235px）に収まらず末尾が切れる。
+	test('案内の字は1remで、字間を詰めて中央の枠に収める', () => {
+		const rule = shellSource.split('\n').find(line => line.startsWith('.compactHint {'));
+		expect(rule).toBeDefined();
+		expect(rule).toContain('font-size: 1rem;');
+		expect(rule).toContain('letter-spacing: -.02em;');
+		expect(rule).toContain('text-overflow: ellipsis;');
+		// ⚠️同じ宣言を2つ書くと後ろが黙って勝つ。1つだけであることを見る。
+		expect(rule!.match(/font-size:/gu)).toHaveLength(1);
+	});
+
+	// ⚠️矢印は文言から外して別要素にしてある。文言側へ戻すと動かせなくなる。
+	test('矢印は別要素として持ち、控えめに動く', () => {
+		expect(shellSource).toContain('<span :class="$style.compactHintArrow" aria-hidden="true">＞</span>');
+		const rule = shellSource.split('\n').find(line => line.startsWith('.compactHintArrow {'));
+		expect(rule).toBeDefined();
+		expect(rule).toContain('animation: settingsHintArrow');
+		expect(rule).toContain('infinite');
+		expect(shellSource).toContain('@keyframes settingsHintArrow {');
+	});
+
+	test('動きを減らす設定では止まる', () => {
+		// ⚠️個別に書かず、この囲みが子孫の animation ごと止めている。
+		//   ここを消すと矢印だけが動き続ける。
+		const scoped = shellSource.slice(shellSource.indexOf(".scope[data-motion-enabled='false'] {"));
+		expect(scoped.slice(0, 260)).toContain('animation: none !important;');
 	});
 });

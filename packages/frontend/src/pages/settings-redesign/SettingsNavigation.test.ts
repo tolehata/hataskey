@@ -157,14 +157,13 @@ describe('settings redesign navigation contract', () => {
 		expect(shellSource).toContain('if (event.isTrusted) {\n			cancelPendingNavigation();\n			activeNavigationTarget.value = null;');
 	});
 
-	test('Hataskey category navとcurrent valueは実在category/popupへ向ける', () => {
+	test('Hataskey category navは実在category/popupへ向ける', () => {
 		for (const category of ['glassUi', 'font', 'hatask', 'hatady', 'mascot', 'earthquake', 'general']) {
 			expect(destinationsSource).toContain('category: \'' + category + '\'');
 		}
-		expect(shellSource).toContain('popup: \'hatasaba-ui2\'');
-		expect(shellSource).toContain('glassUiBubbleLocal.value ? i18n.ts.on : i18n.ts.off');
-		expect(shellSource).toContain('noteGap ? copy.values.spread : copy.values.compact');
-		expect(shellSource).toContain('copyx.values.bottomNavigationCount({ count: visibleBottomNavigationCount, max: HATASABA_BOTTOM_NAV_MAX })');
+		// ⚠️popup を指す記述は「いまの値をすぐ変える」節にしかなく、節ごと外した。
+		//   受け口そのものは残っているので、そちらを見る。
+		expect(shellSource).toContain("value === 'hatasaba-ui2'");
 		expect(shellSource).toContain('await initIntlString(true)');
 		expect(shellSource).toContain('controlId: preferenceNavigationTargets.density');
 		expect(shellSource).toContain('controlId: preferenceNavigationTargets.postForm');
