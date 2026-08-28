@@ -21,7 +21,7 @@ describe('settings redesign navigation contract', () => {
 		expect(shellSource).toContain('if (event.reason === \'select\') return;');
 		expect(shellSource).toContain('if (event.reason === \'tab\')');
 		expect(shellSource).toContain('focusAdjacentTo(origin, event.direction ?? \'next\')');
-		expect(shellSource).toContain('if (!focusElement(origin)) focusElement(searchButtonEl.value);');
+		expect(shellSource).toContain('if (!focusElement(origin)) focusElement(searchAnchorEl.value);');
 	});
 
 	test('検索結果はdiscard拒否またはactivation失敗ならpanelを閉じず、承認後だけselect closeする', () => {
@@ -227,35 +227,45 @@ describe('settings redesign navigation contract', () => {
 		expect(quickIds).toEqual(['notifications-page', 'notifications-sounds', 'display-theme', 'account-mute', 'account-drive', 'account-security']);
 	});
 
-	test('tablet navは専用Hataskey UI行を除く現行8カテゴリとicon-only quick gridを保ち、各カテゴリをdrill-inできる', () => {
-		expect(shellSource).toContain('@container (max-width: 900px)');
-		expect(shellSource).toContain('.quickGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }');
-		expect(shellSource).toContain('.quickItem > span { display: none; }');
-		expect(shellSource).toContain(':aria-label="item.label"');
-		expect(shellSource).toContain('const tabletNavSections = computed<NavSection[]>');
-		for (const label of ['copy.nav.appearance', 'copy.nav.timelineAndPosts', 'copy.catalog.categories.notificationSound', 'copy.nav.hataTools', 'copy.nav.cherrypick', 'copy.nav.data', 'copy.nav.misskey', 'label: \'HataSNSCordUI\'']) {
-			expect(destinationsSource).toContain(label);
-		}
-		expect(shellSource).toContain('<button v-for="section in tabletNavSections"');
-		expect(shellSource).toContain('openTabletNavigationSection(section.id)');
-		expect(shellSource).toContain('tabletActiveNavigationSection.items');
-		expect(shellSource).toContain('min-height: 48px');
+	test('幅で作りを変えず、左ペインは大分類・詳細・帯の3つの姿を持つ', () => {
+		// 旗鯖fork: ⚠️タブレット専用の下位一覧は廃止した。PC と同じ姿に揃える。
+		//   ⚠️戻すと「左に項目一覧・右上に同じ項目のタブ」の二重表示に逆戻りする。
+		expect(shellSource).not.toContain('tabletNavSections');
+		expect(shellSource).not.toContain('openTabletNavigationSection');
+		expect(shellSource).not.toContain('tabletActiveNavigationSection');
+		expect(shellSource).not.toContain('data-settings-tablet-category-id');
+
+		expect(shellSource).toContain("type SettingsNavPaneMode = 'categories' | 'detail' | 'rail';");
+		expect(shellSource).toContain("const navPaneMode = ref<SettingsNavPaneMode>('categories');");
+		expect(shellSource).toContain("<div v-if=\"navPaneMode === 'rail'\" :class=\"$style.rail\" data-settings-nav-rail>");
+		expect(shellSource).toContain("<nav v-if=\"navPaneMode === 'categories'\" key=\"categories\"");
+		expect(shellSource).toContain('key="detail"');
 	});
 
-	test('tablet drill-in restores keyboard focus to the exact opening category and moves it to the detail back button', () => {
-		expect(shellSource).toContain(':data-settings-tablet-category-id="section.id"');
-		expect(shellSource).toContain('ref="tabletSectionBackEl"');
-		expect(shellSource).toContain('function tabletCategoryButton(id: string)');
-		expect(shellSource).toContain('async function openTabletNavigationSection(id: string | null)');
-		const drillIn = shellSource.indexOf('async function openTabletNavigationSection(id: string | null)');
-		const state = shellSource.indexOf('tabletNavigationSection.value = id;', drillIn);
-		const tick = shellSource.indexOf('await nextTick();', state);
-		const detailFocus = shellSource.indexOf('focusElement(tabletSectionBackEl.value);', tick);
-		const returnFocus = shellSource.indexOf('focusElement(tabletCategoryButton(previousId));', detailFocus);
-		expect(state).toBeGreaterThan(drillIn);
-		expect(tick).toBeGreaterThan(state);
-		expect(detailFocus).toBeGreaterThan(tick);
-		expect(returnFocus).toBeGreaterThan(detailFocus);
+	test('分類を選んだら帯へ畳み、帯から2つの入口で取り戻せる', () => {
+		// 旗鯖fork: ⚠️分類を選んでも自動では畳まないこと。隣の分類へ移りたいだけなのに
+		//   毎回開き直すことになり、かえって手数が増える。畳むのは利用者の操作で。
+		const open = shellSource.indexOf('async function openNavigationSection(section: NavSection): Promise<void> {');
+		expect(open).toBeGreaterThan(-1);
+		expect(shellSource.slice(open, open + 600)).not.toContain("navPaneMode.value = 'rail';");
+		expect(shellSource).toContain('data-settings-nav-collapse');
+		// ⚠️開いた直後に左ペインを動かさないこと。プロフィール行が画面外へ隠れる。
+		expect(shellSource).toContain('let sectionRevealArmed = false;');
+
+		// ⚠️帯には「大分類へ戻る」と「この分類の項目を開く」の2つ。
+		expect(shellSource).toContain('data-settings-nav-rail-action="categories"');
+		expect(shellSource).toContain('data-settings-nav-rail-action="detail"');
+		// ⚠️項目が1つだけの分類では詳細の入口を出さない。同じ画面しか並ばない。
+		expect(shellSource).toContain('data-settings-nav-rail-action="detail"');
+		// ⚠️押せない飾りを帯に置かないこと。光っているのに反応せず戸惑わせる。
+		expect(shellSource).not.toContain('$style.railMark');
+		// ⚠️畳んだときは器ごと細くすること。
+		expect(shellSource).toContain(".layout[data-nav-mode='rail'] { grid-template-columns: 64px minmax(0, 1fr); }");
+		// ⚠️grid-template-columns に transition を掛けないこと。トラックの形が違って
+		//   補間できず、値が古いまま張り付いて畳めなくなる（実測で確認）。
+		expect(shellSource).not.toContain('transition: grid-template-columns');
+		// ⚠️詳細を開いたら見出しへ焦点を移す。
+		expect(shellSource).toContain('void nextTick(() => focusElement(navDetailBackEl.value));');
 	});
 
 	test('破壊的shell actionはUI2ドラフトのdiscard承認後だけ既存confirmationへ渡す', () => {
@@ -268,7 +278,17 @@ describe('settings redesign navigation contract', () => {
 	});
 
 	test('compact and tablet surface hierarchy follows the mock instead of retaining desktop cards', () => {
-		expect(shellSource).toContain('v-if="!isHatasabaUi2SurfaceActive" ref="searchButtonEl"');
+		// 旗鯖fork: ⚠️狭い幅の詳細ページでは検索窓を虫眼鏡へ畳む。
+		// 旗鯖fork: ⚠️狭い幅の詳細ページでは検索窓を虫眼鏡へ畳む。
+		expect(shellSource).toContain('const compactSearchCollapsed = computed(() => compact.value && currentPage.value?.route.name != null);');
+		// ⚠️v-if で出し入れしないこと。Transition の leave が終わらず、窓が
+		//   `leave-from` のまま画面に残り続けた（実測: 3秒待っても消えない）。
+		//   ⚠️常に置いて、CSSだけで畳む。
+		expect(shellSource).toContain(':data-collapsed="compactSearchCollapsed ? \'true\' : \'false\'"');
+		expect(shellSource).toContain(".compactHeader .searchTrigger[data-collapsed='true'] { min-height: 0; height: 0;");
+		expect(shellSource).toContain(".compactSearchIcon[data-collapsed='false'] { width: 0;");
+		expect(shellSource).not.toContain('settings-search-expand');
+		expect(shellSource).not.toContain('settings-search-shrink');
 		expect(shellSource).toContain('[$style.contentCard, { [$style.contentCardSurfaceActive]: isHatasabaUi2SurfaceActive }]');
 		expect(shellSource).toContain('.contentCard.contentCardSurfaceActive { min-height: 0; border: 0; border-radius: 0; padding: 0; background: transparent; box-shadow: none; }');
 		expect(shellSource).toContain('.nav { border: 0; border-radius: 0; padding: 0; background: transparent; box-shadow: none; }');
@@ -276,35 +296,142 @@ describe('settings redesign navigation contract', () => {
 		expect(shellSource).toContain('.compactHeader .searchTrigger { width: 100%; margin-top: 10px; background: var(--settings-bg, var(--MI_THEME-bg)); box-shadow: none; }');
 		// 旗鯖fork: ⚠️選択中は塗りつぶさない。Hataskey UI の上部タブと同じく
 		//   アクセント色の文字＋淡い下地で示す。
-		expect(shellSource).toContain('.tabletPrimaryLink.navLinkActive { border-color: var(--MI_THEME-accent); background: color-mix(in srgb, var(--MI_THEME-accent) 12%, transparent); color: var(--MI_THEME-accent); font-weight: 750; }');
-		expect(shellSource).toContain('.tabletCategoryLink, .tabletSectionBack, .navLink { background: var(--settings-surface, var(--MI_THEME-panel)); }');
+		expect(shellSource).toContain('.detailBack, .navLink { background: var(--settings-surface, var(--MI_THEME-panel)); }');
 	});
 
-	test('desktop二ペインは独立scrollで、現在カテゴリだけをaccordion展開できる', () => {
+	test('desktop二ペインは独立scrollで、左は大分類の錠剤リスト・右は兄弟タブを持つ', () => {
 		expect(shellSource).toContain('ref="navEl"');
 		expect(shellSource).toContain('grid-template-rows: auto minmax(0, 1fr)');
 		expect(shellSource).toContain('box-sizing: border-box');
 		expect(shellSource).toContain('block-size: calc(100cqh - (var(--MI-stickyTop, 0px) + var(--MI-stickyBottom, 0px)))');
 		expect(shellSource).toContain('.layout { min-block-size: 0; display: grid; grid-template-columns: minmax(226px, 272px) minmax(0, 1fr); align-items: stretch; gap: 22px; overflow: clip; padding: 0 22px 24px; }');
-		expect(shellSource).toContain('.nav { min-block-size: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; padding: 14px; padding-inline-end: 20px; }');
-		expect(shellSource).toContain('.main { min-width: 0; min-block-size: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; padding-inline-end: 8px; outline: 0; }');
-		expect(shellSource).toContain('const expandedDesktopNavigationSectionIds = ref<Set<string>>(new Set(activeNavigationSectionIds.value));');
-		expect(shellSource).toContain('watch(activeNavigationSectionIds, activeIds => {');
-		expect(shellSource).toContain('expandedDesktopNavigationSectionIds.value = new Set(activeIds);');
-		expect(shellSource).toContain(':open="expandedDesktopNavigationSectionIds.has(section.id)"');
-		expect(shellSource).toContain('@toggle="onDesktopNavigationSectionToggle(section.id, $event)"');
-		expect(shellSource).toContain('function onDesktopNavigationSectionToggle(id: string, event: Event)');
-		expect(shellSource).toContain('const isExpanded = expandedDesktopNavigationSectionIds.value.has(id);');
-		expect(shellSource).toContain('if (details.open === isExpanded) return;');
-		expect(shellSource).toContain('const next = details.open');
-		expect(shellSource).toContain('? new Set([id])');
-		expect(shellSource).toContain(': new Set(expandedDesktopNavigationSectionIds.value);');
-		expect(shellSource).toContain('if (!details.open) next.delete(id);');
-		expect(shellSource).toContain('const nav = navEl.value;');
+		// 旗鯖fork: ⚠️左右の余白は同じ幅にすること。非対称だと中身の中央が
+		//   器の中央から3pxずれ、見出しが左寄せに見える（実測: ずれ -3px）。
+		expect(shellSource).toContain('.nav { min-block-size: 0; overflow-y: auto; overscroll-behavior: contain; padding: 14px 20px; }');
+		expect(shellSource).toContain('.main { min-width: 0; min-block-size: 0; overflow-y: auto; overscroll-behavior: contain; padding-inline-end: 8px; outline: 0; }');
+		// 旗鯖fork: ⚠️スクロールバーは出さない（手本は Hataskey UI のサイドメニュー）。
+		//   ⚠️2つの仕組みを両方書くこと。片方だけだと片方のブラウザで出たままになる。
+		expect(shellSource).toContain('.nav, .main {\n\tscrollbar-width: none;\n}');
+		expect(shellSource).toContain('.nav::-webkit-scrollbar, .main::-webkit-scrollbar {');
+		// 旗鯖fork: ⚠️左ペインは大分類だけを持つ。折りたたみ(details)は廃止した。
+		//   ⚠️分類の中の項目を左にも出すと、同じ項目が2階層へ重複する。
+		expect(shellSource).not.toContain('<details');
+		expect(shellSource).not.toContain('expandedDesktopNavigationSectionIds');
+		expect(shellSource).not.toContain('onDesktopNavigationSectionToggle');
+		expect(shellSource).toContain(':class="$style.sectionPills"');
+		expect(shellSource).toContain('@click="openNavigationSection(section)"');
+		expect(shellSource).toContain('async function openNavigationSection(section: NavSection): Promise<void> {');
+		expect(shellSource).toContain('requestedSectionId.value = section.id;');
+		expect(shellSource).toContain('if (item != null) await goToSetting(item);');
+
+		// ⚠️選んでいる分類は、経路と選択要求の両方から決める。
+		//   経路だけだとポップアップ項目で分類が動かず、選択要求だけだと
+		//   検索から直接飛んだときに左が追従しない。
+		expect(shellSource).toContain('const activeSectionId = computed<string | null>(() => {');
+		expect(shellSource).toContain('const [activeId] = activeNavigationSectionIds.value;');
+		expect(shellSource).toContain('if (activeId != null) return activeId;');
+		expect(shellSource).toContain('if (requestedSectionId.value != null) return requestedSectionId.value;');
+
+		// ⚠️右ペインの兄弟タブは、選んでいる分類の項目そのもの。
+		expect(shellSource).toContain('const siblingTabs = computed<NavItem[]>(() => activeNavSection.value?.items ?? []);');
+		expect(shellSource).toContain('v-if="siblingTabs.length > 1"');
+		expect(shellSource).toContain(':data-stuck="siblingTabsStuck ? \'true\' : \'false\'"');
+
+		// ⚠️目印は .main の直下。カードの中だと sticky が抜けた時点で消える。
+		expect(shellSource).toContain('ref="siblingTabsSentinel"');
+		expect(shellSource).toContain('}, { root: mainEl.value ?? null, threshold: 0 });');
+
+		// ⚠️選択中は塗りつぶさない。アクセント色の文字＋淡い下地で示す。
+		expect(shellSource).toContain('.sectionPill[data-active=\'true\'], .sectionPill[data-active=\'true\']:hover { background: color-mix(in srgb, var(--MI_THEME-accent) 12%, transparent); color: var(--MI_THEME-accent); font-weight: 800; box-shadow: inset 3px 0 0 var(--MI_THEME-accent); }');
+		// 旗鯖fork: ⚠️兄弟タブはアクセントの補色。本文の操作と同じ色にしないこと。
+		//   ⚠️相対色構文が効かない環境ではアクセント色へ落ちる（落ちても壊れない）。
+		expect(shellSource).toContain('.siblingTabs { --hata-tab-accent: var(--MI_THEME-accent); }');
+		expect(shellSource).toContain('@supports (color: hsl(from red h s l))');
+		expect(shellSource).toContain('--hata-tab-accent: hsl(from var(--MI_THEME-accent) calc(h + 180) s l);');
+		expect(shellSource).toContain('color: var(--hata-tab-accent); font-weight: 750;');
+
+		// ⚠️選んだ分類が左ペインの外に居るときだけ寄せる。毎回動かさない。
+		expect(shellSource).toContain('function revealActiveSectionPill(id: string) {');
+		expect(shellSource).toContain('} else {');
 		expect(shellSource).toContain('nav.scrollTo({ top: Math.max(0, top), behavior: motionEnabled.value ? \'smooth\' : \'auto\' });');
-		expect(shellSource).toContain('ti ti-chevron-right');
-		expect(shellSource).toContain('.navSection[open] > .sectionTitle > i:last-child { transform: rotate(90deg); }');
-		expect(shellSource).not.toContain(':open="true"');
+	});
+
+	test('右ペインの中身は差し替えず、常に置いたままにする', () => {
+		// 旗鯖fork: ⚠️Transition で右ペインごと差し替えないこと。
+		//   ⚠️ウィンドウの最大化を切り替えると幅の判定(compact)が反転し、鍵が変わって
+		//   出入りの遷移が走る。その遷移が終わらないと**右ペインが白いまま二度と
+		//   描かれなくなり、左から何を選んでも白いまま**になる（実際に起きた）。
+		expect(shellSource).not.toContain('settings-page-forward');
+		expect(shellSource).not.toContain("compact ? currentPath : 'settings-pane'");
+		// ⚠️動きは使い捨てのアニメーションで出す。途中で止まっても中身は残る。
+		expect(shellSource).toContain(':data-page-enter="pageEnterDirection ?? undefined"');
+		expect(shellSource).toContain("@keyframes settingsPageForward");
+		expect(shellSource).toContain(".contentCard[data-page-enter='forward'] { animation: settingsPageForward 240ms");
+	});
+
+	test('絞り込みは1つの錠剤ケースで、畳むボタンは独立した丸にする', () => {
+		// 旗鯖fork: ⚠️並のボタンを横に並べただけだと、幅が足りない環境で2段に折り返す。
+		expect(shellSource).toContain('data-settings-filter-case');
+		expect(shellSource).toContain('.filterPills { display: flex; min-width: 0; max-width: 100%; align-items: center; gap: 2px; flex-wrap: nowrap;');
+		// ⚠️選択中は塗りつぶさない。
+		expect(shellSource).toContain(".filter[data-active='true'], .filter[data-active='true']:hover { background: color-mix(in srgb, var(--MI_THEME-accent) 12%, transparent); color: var(--MI_THEME-accent); font-weight: 800; }");
+		// ⚠️畳むボタンはケースの外。
+		expect(shellSource).toContain('<div :class="$style.filterRow">');
+		expect(shellSource).toContain('data-settings-nav-collapse');
+	});
+
+	test('1つの宣言の中で同じ指定を二度書かない', () => {
+		// 旗鯖fork: ⚠️1行に詰めた宣言へ後から足すと、同じ指定が二重に入りやすい。
+		//   ⚠️CSSは後勝ちなので、前に書いた指定が黙って打ち消される。
+		//   実際に .quickItem で `text-align: center` の後ろに `text-align: start` が
+		//   残り、⚠️札の文字が中央にならなかった。
+		const styleStart = shellSource.indexOf('<style lang="scss" module>');
+		expect(styleStart).toBeGreaterThan(-1);
+		const style = shellSource.slice(styleStart);
+
+		// ⚠️陽性対照。検出器が実際に二重を見つけられること。
+		const duplicatesIn = (declaration: string): string[] => {
+			const seen = new Map<string, number>();
+			for (const part of declaration.split(';')) {
+				const name = part.split(':')[0]?.trim();
+				// ⚠️入れ子(&:hover や > i)の中身は別の宣言なので数えない。
+				if (name == null || name === '' || name.includes('{') || name.includes('}') || name.startsWith('&') || name.startsWith('>')) continue;
+				seen.set(name, (seen.get(name) ?? 0) + 1);
+			}
+			return [...seen].filter(([, count]) => count > 1).map(([name]) => name);
+		};
+		expect(duplicatesIn('color: red; color: blue')).toEqual(['color']);
+		expect(duplicatesIn('color: red; background: blue')).toEqual([]);
+
+		const offenders: string[] = [];
+		for (const line of style.split('\n')) {
+			const open = line.indexOf('{');
+			if (open < 0 || !line.trimStart().startsWith('.')) continue;
+			const selector = line.slice(0, open).trim();
+			// ⚠️入れ子より手前、最初の & や > が現れるまでを見る。
+			const body = line.slice(open + 1).split('&')[0].split('> ')[0];
+			for (const name of duplicatesIn(body)) offenders.push(`${selector}: ${name}`);
+		}
+		expect(offenders).toEqual([]);
+	});
+
+	test('シェルのどこでホイールを回しても、近い方のペインが動く', () => {
+		// 旗鯖fork: ⚠️器が低いとき（窓を最大化から通常サイズへ戻したときなど）、
+		//   ヘッダー帯にはスクロールできる祖先が1つも無く、ホイールが完全に無反応になる。
+		//   ⚠️スクロールバーは動くのにホイールだけ死ぬ、という状態がこれだった
+		//   （実測: 窓450px / シェル415px / ヘッダー63px の上では祖先なし）。
+		expect(shellSource).toContain('@wheel="onShellWheel"');
+		expect(shellSource).toContain('function onShellWheel(ev: WheelEvent) {');
+
+		// ⚠️すでにスクロールできる場所の上では何もしないこと（二重に動いて飛ぶ）。
+		const handler = shellSource.slice(shellSource.indexOf('function onShellWheel(ev: WheelEvent) {'));
+		expect(handler).toContain("if ((overflowY === 'auto' || overflowY === 'scroll') && node.scrollHeight > node.clientHeight + 1) return;");
+		// ⚠️端まで来ているときは外側へ渡す。
+		expect(handler).toContain('if (next === pane.scrollTop) return;');
+		// ⚠️横ホイールには手を出さない。
+		expect(handler).toContain('if (ev.deltaY === 0 || Math.abs(ev.deltaX) > Math.abs(ev.deltaY)) return;');
+		// ⚠️横位置だけで選ばないこと。狭い幅では左右ペインが縦に積まれる。
+		expect(handler).toContain('const dy = Math.max(box.top - ev.clientY, 0, ev.clientY - box.bottom);');
 	});
 
 	test('通常の左nav遷移だけは右pane先頭へ戻し、検索controlとanchorの中心focusを保つ', () => {
@@ -326,7 +453,8 @@ describe('settings redesign navigation contract', () => {
 
 	test('desktop profile横のHataskey導線は廃止し、tablet導線と操作buttonの高さは保つ', () => {
 		expect(shellSource).not.toContain('$style.hataEntry');
-		expect(shellSource).toContain('<MkA :to="hataCustomGlassUiItem.route" :class="[$style.navLink, $style.tabletPrimaryLink, { [$style.navLinkActive]: isActive(hataCustomGlassUiItem) }]"');
+		// ⚠️タブレット専用の Hataskey UI 行は廃止。大分類の錠剤へ一本化した。
+		expect(shellSource).not.toContain('tabletPrimaryLink');
 		expect(shellSource).toContain('.uiPill { min-height: 36px; padding: 6px 10px;');
 		expect(shellSource).toContain('.legacyTop { min-height: 44px; padding: 8px 14px; }');
 	});

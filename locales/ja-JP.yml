@@ -7360,6 +7360,9 @@ _hata:
       fontUploadText: "Hataskey独自設定のフォント画面から、TrueType（.ttf）とOpenType（.otf）を直接アップロードしてUIへ適用できます。サーバーの管理者が独自に許可する種類を設定している場合、その設定は変更しません。"
       footerText: "ここに載せたのは主な変更だけです。細かな修正を含むすべての変更点は、リリースノートをご確認ください。"
       footerLink: "リリースノートを見る"
+      settingsRenewalTitle: "設定画面を作り直しました"
+      settingsRenewalText: "左に大分類、右にその中の項目をタブで並べる2枚組みに作り直しました。分類を選ぶと最初の項目がすぐ開き、Hataskey独自の設定も別窓ではなく右側にそのまま出ます。上部の検索からは、画面をまたいで設定を探せます。"
+      settingsRenewalLink: "設定を開く"
   _common:
     customFeatures: "Hataskey独自機能"
     externalNotifications: "外部通知"
@@ -8752,6 +8755,7 @@ _hata:
     frequentlyUsedSettings: "よく使う設定"
     searchSettingsCount: "この画面の検索設定 {count} 件"
     sessionAndLogin: "端末とログイン"
+    searchHint: "こちらから設定を検索できます ＞"
     actions:
       clearCache: "キャッシュを削除"
       logout: "ログアウト"
@@ -8800,6 +8804,17 @@ _hata:
       timelineOptions: "タイムラインの動作"
       miscLabel: "その他"
       miscDescription: "上のどれにも当てはまらない設定です。"
+      appearanceAndTheme: "見た目とテーマ"
+      appearanceAndThemeDescription: "テーマ・フォント・絵文字パレット"
+      profileDescription: "名前・アイコン・自己紹介"
+      accountAndLogin: "アカウントとログイン"
+      accountAndLoginDescription: "プライバシー・メール・セキュリティ"
+      muteAndBlockDescription: "見せないユーザーと言葉"
+      driveDescription: "ファイルの保管と整理"
+      dataAndMigration: "データと引っ越し"
+      dataAndMigrationDescription: "書き出し・設定プロフィール"
+      externalServices: "外部サービス連携"
+      externalServicesDescription: "外部アカウント・アプリ・プラグイン"
     filters:
       all: "すべて"
       frequent: "よく使う"
@@ -8850,6 +8865,7 @@ _hata:
       emptyProfilesLink: "自動バックアップの設定へ"
       emptyAppsTitle: "連携中のアプリはありません"
       emptyAppsText: "外部のアプリからこのアカウントへの接続を許可すると、そのアプリがここに並びます。許可はアプリ側の画面から行います。"
+      legacyBackToList: "設定の一覧へ"
     ui2:
       recommendedInUse: "推奨・使用中"
       permanentDescriptionBefore: "通常表示とデッキ表示を1つで兼ねる、Hataskeyの標準UIです。ここでの変更は"
@@ -8895,6 +8911,7 @@ _hata:
         footerNotice: "設定値は保存するまで変更されません"
         close: "閉じる"
         local: "ローカル"
+        bottomNavLabel: "下部ナビゲーションのプレビュー"
     immediate:
       eyebrow: "関連する既存設定"
       title: "すぐ反映される設定"

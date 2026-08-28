@@ -20,10 +20,14 @@ describe('Hataskey UI permanent surface shell integration', () => {
 		expect(shellSource).toContain('v-if="isHatasabaUi2SurfaceActive"');
 		expect(shellSource).toContain('<div v-else :class="$style.legacyContent" @click.capture="onLegacyContentClickCapture"><NestedRouterView/></div>');
 		expect(shellSource).toContain('currentPath.value === \'/settings/hata-custom\' && activeHataCustomCategory.value === \'glassUi\'');
-		const replace = shellSource.indexOf('router.replace(\'/settings/hata-custom\')');
-		const activate = shellSource.indexOf('await activateHataCustomCategory(\'glassUi\', revision)', replace);
-		expect(replace).toBeGreaterThan(-1);
-		expect(activate).toBeGreaterThan(replace);
+		// 旗鯖fork: ⚠️設定を開いた既定はプロフィールへ変わった。
+		//   Hataskey UI は経路 /settings/hata-custom を直接開いたときの画面として残る。
+		expect(shellSource).toContain("const SETTINGS_DEFAULT_ROUTE = '/settings/profile';");
+		expect(shellSource).toContain('router.replace(SETTINGS_DEFAULT_ROUTE);');
+		expect(shellSource).not.toContain("router.replace('/settings/hata-custom')");
+		// ⚠️既定の行き先はポップアップを開くものにしないこと。経路が変わらず、
+		//   この処理は「子ルートが無いとき」に走るので開いた直後に呼び続ける。
+		expect(shellSource).toContain("const initiallyOpenHatasabaUi2Surface = isHataCustomPath(router.getCurrentFullPath())");
 		expect(surfaceSource).toContain('mode="permanent"');
 		expect(bodySource).toContain('<h2 id="hatasaba-ui2-title"><span class="settingsBrand">Hataskey UI</span></h2>');
 		expect(bodySource).toContain('copy.ui2.permanentDescriptionSave');

@@ -92,8 +92,24 @@ describe('MkHatasabaUi2PreviewWindow', () => {
 		}
 		expect(previewSource).toContain('copy.ui2.preview.liveNotice');
 		expect(previewSource).toContain('const previewTitle = computed');
-		expect(previewSource).toContain('<span class="settingsBrand">Hataskey</span>');
-		expect(previewSource).toContain('backdrop-filter: var(--MI-blur, blur(18px));');
+		expect(previewSource).toContain('<span v-if="previewTitle.brand" class="settingsBrand">');
+		// 旗鯖fork: ⚠️プレビューは実物(ui/simple.vue)の骨格を縮めて写したもの。
+		//   ⚠️どれか1つでも欠けると「何の設定を見ているのか」が伝わらなくなる。
+		// 旗鯖fork: ⚠️手本は MkUISetup.vue の Hataskey UI モック（.phone / .deckWrap）。
+		//   ⚠️部品を落とすと手本と食い違い、「どちらが本当の Hataskey UI か」が分からなくなる。
+		for (const part of ['$style.phone', '$style.phonePill', '$style.phonePillActive', '$style.phoneNote', '$style.phoneAvatar', '$style.noteActions', '$style.phoneNav', '$style.phoneFab', '$style.deckWrap', '$style.deckCol']) {
+			expect(previewSource).toContain(part);
+		}
+		// ⚠️寸法は手本の値をそのまま使う。
+		expect(previewSource).toContain('width: 152px;');
+		expect(previewSource).toContain('height: 238px;');
+		expect(previewSource).toContain('.deckWrap { display: flex; width: 220px; height: 196px; gap: 6px; }');
+		// ⚠️吹き出しは本文の棒だけを包む。ノート全体を包むと実物と形が違う。
+		expect(previewSource).toContain(".appPreview[data-bubble='on'] .noteLines {");
+		// 旗鯖fork: ⚠️透過率は百分率(例 55%)で渡る。100 で割らないこと。
+		//   割ると 0.55% になり、面がほぼ透明のまま変化が見えなくなる（実測: alpha 0.004）。
+		expect(previewSource).toContain('calc(var(--preview-opacity) * .85)');
+		expect(previewSource).not.toContain('var(--preview-opacity) / 100');
 	});
 
 	test('renders the supplied live editor state and closes without a write', async () => {
@@ -111,7 +127,10 @@ describe('MkHatasabaUi2PreviewWindow', () => {
 		// ⚠️Teleport で body 直下へ出るため、mount 先ではなく body を見る。
 		//   ここが container のままだと、正しく動いていても空に見えて落ちる。
 		expect(window.document.body.textContent).toContain('Hataskey UI プレビュー');
+		// 旗鯖fork: ⚠️手本は MkUISetup の Hataskey UI モック。
+		//   スマホの器に「上部の錠剤ナビ」と「下部ナビ」が両方入る形。
 		expect(window.document.body.querySelector('[aria-label="タイムラインタブのプレビュー"]')).toBeTruthy();
+		expect(window.document.body.querySelector('[aria-label="下部ナビゲーションのプレビュー"]')).toBeTruthy();
 		expect(window.document.body.querySelector('[data-glass]')?.getAttribute('data-glass')).toBe('on');
 		editor.draft.editedOpacity = 31;
 		editor.draft.editedGlassUiBubble = true;
@@ -121,6 +140,9 @@ describe('MkHatasabaUi2PreviewWindow', () => {
 		expect(preview.style.getPropertyValue('--preview-opacity')).toBe('31%');
 		expect(preview.getAttribute('data-bubble')).toBe('on');
 		expect(preview.getAttribute('data-deck')).toBe('on');
+
+		// ⚠️デッキにすると、スマホの器ではなく列が並ぶ姿に変わる。
+		expect(window.document.body.querySelector('[aria-label="ノート表示のプレビュー"]')).toBeTruthy();
 
 		const close = [...window.document.body.querySelectorAll('button')].find(button => button.textContent?.includes('閉じる'))!;
 		close.click();

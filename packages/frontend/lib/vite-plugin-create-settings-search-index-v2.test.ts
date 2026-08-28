@@ -1078,20 +1078,20 @@ describe('settings control search index V2', () => {
 			{ sourceFile: 'src/pages/settings/hata-custom.vue', sourceLine: 248, labelI18nKey: 'i18n.ts._hata._customSettings._ui.foldableSection' },
 			{ sourceFile: 'src/pages/settings/emoji-palette.vue', sourceLine: 25, labelI18nKey: 'i18n.ts._emojiPalette.palettes' },
 			{ sourceFile: 'src/pages/settings/drive.vue', sourceLine: 105, labelI18nKey: 'i18n.ts.watermark' },
-			{ sourceFile: 'src/pages/MkMascotSettings.vue', sourceLine: 236, labelI18nKey: 'i18n.ts._hata._mascotSettings.minimum' },
-			{ sourceFile: 'src/pages/MkMascotSettings.vue', sourceLine: 237, labelI18nKey: 'i18n.ts._hata._mascotSettings.maximum' },
-			{ sourceFile: 'src/pages/MkMascotSettings.vue', sourceLine: 377, labelI18nKey: 'i18n.ts._hata._mascotSettings.notificationExpression' },
-			{ sourceFile: 'src/pages/MkMascotSettings.vue', sourceLine: 379, labelI18nKey: 'i18n.ts._hata._mascotSettings.optionalLabelPlaceholder' },
-			{ sourceFile: 'src/pages/MkMascotSettings.vue', sourceLine: 436, labelI18nKey: 'i18n.ts._hata._mascotSettings.notificationExpressionSecond' },
-			{ sourceFile: 'src/pages/MkMascotSettings.vue', sourceLine: 438, labelI18nKey: 'i18n.ts._hata._mascotSettings.optionalLabelPlaceholder' },
-			{ sourceFile: 'src/pages/MkMascotSettings.vue', sourceLine: 495, labelI18nKey: 'i18n.ts._hata._mascotSettings.birthdayExpression' },
-			{ sourceFile: 'src/pages/MkMascotSettings.vue', sourceLine: 497, labelI18nKey: 'i18n.ts._hata._mascotSettings.optionalLabelPlaceholder' },
-			{ sourceFile: 'src/pages/MkMascotSettings.vue', sourceLine: 498, labelI18nKey: 'i18n.ts._hata._mascotSettings.birthdayPhrasePlaceholder' },
-			{ sourceFile: 'src/pages/MkMascotSettings.vue', sourceLine: 534, labelI18nKey: 'i18n.ts._hata._mascotSettings.month' },
-			{ sourceFile: 'src/pages/MkMascotSettings.vue', sourceLine: 535, labelI18nKey: 'i18n.ts._hata._mascotSettings.day' },
-			{ sourceFile: 'src/pages/MkMascotSettings.vue', sourceLine: 542, labelI18nKey: 'i18n.ts._hata._mascotSettings.characterBirthday' },
-			{ sourceFile: 'src/pages/MkMascotSettings.vue', sourceLine: 544, labelI18nKey: 'i18n.ts._hata._mascotSettings.optionalLabelPlaceholder' },
-			{ sourceFile: 'src/pages/MkMascotSettings.vue', sourceLine: 545, labelI18nKey: 'i18n.ts._hata._mascotSettings.characterBirthdayPhraseExample' },
+			{ sourceFile: 'src/pages/MkMascotSettings.vue', sourceLine: 239, labelI18nKey: 'i18n.ts._hata._mascotSettings.minimum' },
+			{ sourceFile: 'src/pages/MkMascotSettings.vue', sourceLine: 240, labelI18nKey: 'i18n.ts._hata._mascotSettings.maximum' },
+			{ sourceFile: 'src/pages/MkMascotSettings.vue', sourceLine: 380, labelI18nKey: 'i18n.ts._hata._mascotSettings.notificationExpression' },
+			{ sourceFile: 'src/pages/MkMascotSettings.vue', sourceLine: 382, labelI18nKey: 'i18n.ts._hata._mascotSettings.optionalLabelPlaceholder' },
+			{ sourceFile: 'src/pages/MkMascotSettings.vue', sourceLine: 439, labelI18nKey: 'i18n.ts._hata._mascotSettings.notificationExpressionSecond' },
+			{ sourceFile: 'src/pages/MkMascotSettings.vue', sourceLine: 441, labelI18nKey: 'i18n.ts._hata._mascotSettings.optionalLabelPlaceholder' },
+			{ sourceFile: 'src/pages/MkMascotSettings.vue', sourceLine: 498, labelI18nKey: 'i18n.ts._hata._mascotSettings.birthdayExpression' },
+			{ sourceFile: 'src/pages/MkMascotSettings.vue', sourceLine: 500, labelI18nKey: 'i18n.ts._hata._mascotSettings.optionalLabelPlaceholder' },
+			{ sourceFile: 'src/pages/MkMascotSettings.vue', sourceLine: 501, labelI18nKey: 'i18n.ts._hata._mascotSettings.birthdayPhrasePlaceholder' },
+			{ sourceFile: 'src/pages/MkMascotSettings.vue', sourceLine: 537, labelI18nKey: 'i18n.ts._hata._mascotSettings.month' },
+			{ sourceFile: 'src/pages/MkMascotSettings.vue', sourceLine: 538, labelI18nKey: 'i18n.ts._hata._mascotSettings.day' },
+			{ sourceFile: 'src/pages/MkMascotSettings.vue', sourceLine: 545, labelI18nKey: 'i18n.ts._hata._mascotSettings.characterBirthday' },
+			{ sourceFile: 'src/pages/MkMascotSettings.vue', sourceLine: 547, labelI18nKey: 'i18n.ts._hata._mascotSettings.optionalLabelPlaceholder' },
+			{ sourceFile: 'src/pages/MkMascotSettings.vue', sourceLine: 548, labelI18nKey: 'i18n.ts._hata._mascotSettings.characterBirthdayPhraseExample' },
 		] as const;
 		const controlByStableId = new Map(controls.map(control => [control.stableId, control]));
 		const labelAuditIssues = [
@@ -1118,7 +1118,9 @@ describe('settings control search index V2', () => {
 		expect(compressionControls.some(source => source.related.some(relation => compressionControls.some(target => target.stableId === relation.stableId)))).toBe(true);
 		const orphanFixture = { ...catalog.descriptors.find(descriptor => descriptor.source === 'control')!, stableId: 'settings.fixture.orphan-control', related: [], relatedIds: [], noRelatedReason: undefined };
 		expect([orphanFixture].filter(descriptor => descriptor.source === 'control' && !descriptor.isGroup && descriptor.searchable && !descriptor.destructive && descriptor.related.length === 0)).toHaveLength(1);
-		for (const line of [68, 342]) {
+		// ⚠️行番号で釘付けにしている。埋め込み対応で窓を差し替えた際に3行ずれた。
+		//   ずれたら実測して直すこと（当て推量で書き換えない）。
+		for (const line of [71, 345]) {
 			const mascotName = catalog.descriptors.find(descriptor => descriptor.sourceFile === 'src/pages/MkMascotSettings.vue' && descriptor.sourceLine === line);
 			expect(mascotName?.label, `Mascot:${line}`).toBe('名前');
 		}

@@ -37,6 +37,7 @@ describe('settings brand coverage', () => {
 		expect(hataskSource).toContain('<span class="settingsBrandText">{{ copy.title }}</span>');
 		expect(hatadySource).toContain('<span class="settingsBrandText"><i class="ti ti-palette"></i> {{ copy.title }}</span>');
 		expect(previewSource).toContain('<span v-if="previewTitle.brand" class="settingsBrand">{{ previewTitle.brand }}</span>');
-		expect(previewSource).toContain('<span class="settingsBrand">Hataskey</span>');
+		// 旗鯖fork: ⚠️モックの中には文言を置かない（訳の無い言語で空欄になるため）。
+		//   ブランド表記は窓の見出しが受け持つ。
 	});
 });

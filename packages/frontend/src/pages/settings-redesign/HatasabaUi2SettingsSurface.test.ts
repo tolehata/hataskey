@@ -225,7 +225,8 @@ describe('Hataskey UI editor shared draft contract', () => {
 	test('permanent surface owns the new shared body while the legacy popup retains its original FormSection DOM', () => {
 		expect(popupSource).not.toContain('HatasabaUi2SettingsBody');
 		expect(popupSource).toContain('<FormSection first>');
-		expect(popupSource).toContain('<MkWindow');
+		// ⚠️同上。窓の道が消えていないことを差し替え式のまま見張る。
+		expect(popupSource).toContain('<component :is="embedded ? SettingsEmbeddedWindow : MkWindow"');
 		expect(popupSource.match(/<FormSection/g)).toHaveLength(8);
 		expect(surfaceSource).toContain('<HatasabaUi2SettingsBody :editor="editor"');
 		expect(bodySource).toContain('mode === \'permanent\'');

@@ -5,22 +5,30 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <template>
 <section v-if="isLegacyMode" ref="legacyRegion" :class="$style.settingsRegion" role="region" :aria-label="copy.gateway.legacyRegion" tabindex="-1">
+	<!-- 旗鯖fork: 旧設定にいる間の帯。
+	     ⚠️body へ逃がした position: fixed の全幅帯にしないこと。
+	     デッキUIでは設定が列や窓の中に入るため、画面いっぱいの帯は器の外へ
+	     はみ出し、⚠️上部のウィンドウに負けて埋もれるうえ、場所も合わない。
+	     ⚠️器の中に置いて上端へ貼り付ける。これならどの表示でも収まる。 -->
+	<div :class="$style.legacyReturn" data-settings-legacy-banner>
+		<p :class="$style.legacyNotice"><i class="ti ti-alert-triangle" aria-hidden="true"></i>{{ copy.gateway.legacyNotice }}</p>
+		<!-- 旗鯖fork: ⚠️狭い器（デッキの窓など）では、旧設定は子ページだけを出し、
+		     ⚠️一覧へ戻る導線を**1つも持たない**（実測: ヘッダーも戻るボタンも無い）。
+		     ⚠️帯から戻れるようにしておくこと。ここが唯一の出口になる。
+		     ⚠️forcePage を付けること。付けないとデッキでは新しい窓が開いてしまう。 -->
+		<button type="button" :class="$style.legacyReturnButton" :aria-label="copy.gateway.legacyBackToList" @click="openLegacyList">
+			<i class="ti ti-chevron-left" aria-hidden="true"></i>{{ copy.gateway.legacyBackToList }}
+		</button>
+		<button type="button" :class="$style.legacyReturnButton" :aria-label="copy.gateway.returnToRedesigned" @click="openRedesignedSettings">
+			{{ copy.gateway.returnToRedesignedButton }}
+		</button>
+	</div>
 	<LegacySettings/>
 </section>
 <section v-else ref="redesignedRegion" :class="$style.settingsRegion" role="region" :aria-label="copy.gateway.redesignedRegion" tabindex="-1">
 	<SettingsRedesign @openLegacy="openLegacy"/>
 </section>
 
-<Teleport v-if="isLegacyMode" to="body">
-	<!-- 旗鯖fork: 旧設定にいる間は上部に固定で出す。
-	     ⚠️元は右下に浮くボタンだけで、戻れること自体に気づけなかった。 -->
-	<div :class="$style.legacyReturn" role="region" :aria-label="copy.gateway.legacyRegion">
-		<p :class="$style.legacyNotice"><i class="ti ti-alert-triangle" aria-hidden="true"></i>{{ copy.gateway.legacyNotice }}</p>
-		<button type="button" :class="$style.legacyReturnButton" :aria-label="copy.gateway.returnToRedesigned" @click="openRedesignedSettings">
-			{{ copy.gateway.returnToRedesignedButton }}
-		</button>
-	</div>
-</Teleport>
 </template>
 
 <script lang="ts" setup>
@@ -44,6 +52,23 @@ function focusSettingsContext(mode: 'legacy' | 'redesigned') {
 	}));
 }
 
+/**
+ * 旗鯖fork: 旧設定の一覧へ戻す。
+ *
+ * ⚠️`@/router.js` をこのファイルの先頭で取り込まないこと。
+ *   ルータ定義が画面と部品を芋づるで引き込み、その中に読み込み時点で
+ *   端末設定を読む処理があるため、⚠️この画面の単体検査が丸ごと起動しなくなる
+ *   （実測: use-note-capture.ts で Cannot read properties of undefined）。
+ *   ⚠️押された瞬間にだけ読み込む。
+ * ⚠️`forcePage` を付けること。デッキUIでは navHook が働き、付けないと
+ *   同じ画面で戻る代わりに**新しい窓が開く**。
+ */
+async function openLegacyList() {
+	const { mainRouter } = await import('@/router.js');
+	mainRouter.pushByPath('/settings', 'forcePage');
+	focusSettingsContext('legacy');
+}
+
 function openLegacy() {
 	isLegacyMode.value = true;
 	focusSettingsContext('legacy');
@@ -61,10 +86,11 @@ onDeactivated(() => {
 
 <style lang="scss" module>
 .legacyReturn {
-	position: fixed;
+	/* ⚠️fixed にしないこと。器(列・窓・ページ)の外へ出て場所が合わなくなる。
+	   ⚠️sticky なら、旧設定がどこに入っていてもその上端へ貼り付く。 */
+	position: sticky;
 	inset-block-start: 0;
-	inset-inline: 0;
-	z-index: 3000;
+	z-index: 2;
 	display: flex;
 	box-sizing: border-box;
 	align-items: center;
@@ -93,6 +119,17 @@ onDeactivated(() => {
 
 .settingsRegion {
 	outline: 0;
+}
+
+/* 旗鯖fork: ⚠️旧設定の中でホイールを堰き止めないこと。
+   ⚠️狭い器（デッキの窓など）では `._pageScrollable` の高さが器を超え、
+   **自分では1pxも動けないスクロール器**になる。そこに
+   `overscroll-behavior: contain` が付いているため、ホイールが外側へ渡らず
+   **画面のほぼ全域で無反応**になる（実測: 490x1309 / 中身は溢れていない）。
+   ⚠️スクロールバーの近くだけ効いていたのは、そこがこの要素の外だったから。
+   ⚠️外へ渡せるようにするだけ。自分が動けるときの挙動は変えない。 */
+.settingsRegion :global(._pageScrollable) {
+	overscroll-behavior-y: auto;
 }
 
 .legacyReturnButton {

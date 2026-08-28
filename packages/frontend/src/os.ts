@@ -245,10 +245,20 @@ export async function popupAsyncWithDialog<T extends Component>(
 	};
 }
 
+/**
+ * 旗鯖fork: 設定は窓で開くときも最大化で開く。
+ * ⚠️既定の窓(370x500)だと二ペインが入らず、左ペインと右ペインが潰れて
+ *   まともに読めない。デッキ表示中はここを通るので、必ず最大化にする。
+ * ⚠️呼び出し側が明示していればそちらを優先する（勝手に上書きしない）。
+ */
+function opensMaximizedInWindow(path: string): boolean {
+	return /^\/settings(\/|\?|#|$)/u.test(path);
+}
+
 export function pageWindow(path: string, options?: { fullscreen?: boolean }) {
 	const { dispose } = popup(MkPageWindow, {
 		initialPath: path,
-		fullscreen: options?.fullscreen ?? false,
+		fullscreen: options?.fullscreen ?? opensMaximizedInWindow(path),
 	}, {
 		closed: () => dispose(),
 	});

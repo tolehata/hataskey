@@ -7,7 +7,10 @@ SPDX-License-Identifier: AGPL-3.0-only
   保存され、Hatask本体と完全に同期する(同じキーを読み書きするため)。
 -->
 <template>
-<MkModalWindow
+<!-- 旗鯖fork: 設定画面の右ペインへ埋め込むときは、窓そのものを枠なしへ差し替える。
+     ⚠️窓は position: fixed の重ね表示なので、CSSでペインの中へは収められない。
+     ⚠️受け口(#header / 本体 / close())は同じ形なので、中身には手を触れない。 -->
+<component :is="embedded ? SettingsEmbeddedWindow : MkModalWindow"
 	ref="dialog"
 	:width="560"
 	:height="720"
@@ -157,11 +160,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</template>
 		</template>
 	</div>
-</MkModalWindow>
+</component>
 </template>
 
 <script lang="ts" setup>
 import { ref, shallowRef, computed, onMounted } from 'vue';
+import SettingsEmbeddedWindow from '@/components/SettingsEmbeddedWindow.vue';
 import MkModalWindow from '@/components/MkModalWindow.vue';
 import MkButton from '@/components/MkButton.vue';
 import { i18n } from '@/i18n.js';
@@ -170,7 +174,13 @@ import { useRouter } from '@/router.js';
 import * as os from '@/os.js';
 
 const emit = defineEmits<{ (ev:'closed'):void; (ev:'reopenTutorial'):void; (ev:'changed', settings:any):void }>();
-const dialog = shallowRef<InstanceType<typeof MkModalWindow>>();
+/**
+ * 旗鯖fork: 窓と埋め込みのどちらでも通る参照の型。
+ * ⚠️片方の窓の型に固定すると、埋め込みへ差し替えたときに型が合わなくなる。
+ *   実際に使うのは close() だけなので、そこだけを約束する。
+ */
+type SettingsWindowHandle = { close: () => void };
+const dialog = shallowRef<SettingsWindowHandle>();
 const router = useRouter();
 const copy = i18n.ts._hata._hatask._settings;
 const tx = i18n.tsx._hata._hatask._settings;
@@ -272,6 +282,9 @@ async function sendTestNotification() {
 	try { await misskeyApi('notifications/test-notification', {}); os.toast(copy.testNotificationSent); }
 	catch { os.toast(copy.testNotificationFailed); }
 }
+
+/** 旗鯖fork: true なら窓の枠を持たず、設定画面の右ペインの中身として描く。 */
+defineProps<{ embedded?: boolean }>();
 </script>
 
 <style lang="scss" module>

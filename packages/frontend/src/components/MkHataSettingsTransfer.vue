@@ -4,7 +4,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 
 <template>
-<MkWindow
+<!-- 旗鯖fork: 設定画面の右ペインへ埋め込むときは、窓そのものを枠なしへ差し替える。
+     ⚠️窓は position: fixed の重ね表示なので、CSSでペインの中へは収められない。
+     ⚠️受け口(#header / 本体 / close())は同じ形なので、中身には手を触れない。 -->
+<component :is="embedded ? SettingsEmbeddedWindow : MkWindow"
 	ref="transferWindow"
 	:initialWidth="560"
 	:initialHeight="680"
@@ -106,11 +109,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</div>
 		</footer>
 	</section>
-</MkWindow>
+</component>
 </template>
 
 <script lang="ts" setup>
 import { computed, ref, useTemplateRef } from 'vue';
+import SettingsEmbeddedWindow from '@/components/SettingsEmbeddedWindow.vue';
 import type { HataSettingsCategoryId, HataSettingsTransferFile } from '@/utility/hata-settings-transfer.js';
 import MkWindow from '@/components/MkWindow.vue';
 import * as os from '@/os.js';
@@ -131,7 +135,13 @@ const copy = i18n.ts._hata._settingsTransfer._window;
 const copyx = i18n.tsx._hata._settingsTransfer._window;
 
 const emit = defineEmits<{ (ev: 'closed'): void }>();
-const transferWindow = useTemplateRef<InstanceType<typeof MkWindow>>('transferWindow');
+/**
+ * 旗鯖fork: 窓と埋め込みのどちらでも通る参照の型。
+ * ⚠️片方の窓の型に固定すると、埋め込みへ差し替えたときに型が合わなくなる。
+ *   実際に使うのは close() だけなので、そこだけを約束する。
+ */
+type SettingsWindowHandle = { close: () => void };
+const transferWindow = useTemplateRef<SettingsWindowHandle>('transferWindow');
 const categories = HATA_SETTINGS_CATEGORIES;
 const mode = ref<'export' | 'import'>('export');
 const busy = ref(false);
@@ -329,6 +339,9 @@ async function doImport() {
 		busy.value = false;
 	}
 }
+
+/** 旗鯖fork: true なら窓の枠を持たず、設定画面の右ペインの中身として描く。 */
+defineProps<{ embedded?: boolean }>();
 </script>
 
 <style lang="scss" module>

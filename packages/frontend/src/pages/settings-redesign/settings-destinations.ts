@@ -15,11 +15,18 @@ export type SettingsDestination = SettingsSearchNavigationTargetV2 & {
 	categoryId?: string;
 	legacyGroup?: string;
 	brand?: 'Hataskey' | 'Hatask' | 'Hatady' | 'HataFeed' | 'HataSNSCordUI';
+	/**
+	 * 旗鯖fork: Tabler の代わりに出す絵。⚠️これがあるときは icon を描かない。
+	 *   ⚠️icon は空にしないこと。検索索引が icon を持つ前提で並べている。
+	 */
+	iconImage?: string;
 };
-export type SettingsDestinationSection = { id: string; label: string; description: string; icon: string; brand?: SettingsDestination['brand']; items: SettingsDestination[] };
+export type SettingsDestinationSection = { id: string; label: string; description: string; icon: string; iconImage?: string; brand?: SettingsDestination['brand']; items: SettingsDestination[] };
 
 const copy = i18n.ts._hata._settingsRedesign;
 const pref = '/settings/preferences';
+/** 旗鯖fork: HataSNSCordUI の柴犬。⚠️出典は MkUISetup.vue の選択画面。 */
+const HATASNSCORD_MASCOT = '/client-assets/hatacording/mascot-shiba-v1.webp';
 const destination = (id: string, label: string, route: string, icon: string, extra: Partial<SettingsDestination> = {}): SettingsDestination => ({
 	id, stableId: 'settings.destination.' + id, label, route, icon, ...extra,
 });
@@ -38,8 +45,8 @@ export const settingsDestinationSections: SettingsDestinationSection[] = [{
 	],
 }, {
 	// 旗鯖fork: HataSNSCordUI は Hataskey UI と対になる「UIそのもの」の設定なので直下に置く。
-	id: 'hatasnscord-ui', label: 'HataSNSCordUI', description: `${i18n.ts._hata._customSettings._ui.hataSnsCordUiDescriptionPrefix}${i18n.ts._hata._customSettings._ui.hataSnsCordUiSync}${i18n.ts._hata._customSettings._ui.hataSnsCordUiDescriptionSuffix}`, icon: 'ti ti-layout-sidebar-right', brand: 'HataSNSCordUI', items: [
-		destination('hatasnscord-settings', 'HataSNSCordUI', '/settings/hatasnscord-ui', 'ti ti-layout-sidebar-right', { brand: 'HataSNSCordUI', primary: true, showCount: true }),
+	id: 'hatasnscord-ui', label: 'HataSNSCordUI', description: `${i18n.ts._hata._customSettings._ui.hataSnsCordUiDescriptionPrefix}${i18n.ts._hata._customSettings._ui.hataSnsCordUiSync}${i18n.ts._hata._customSettings._ui.hataSnsCordUiDescriptionSuffix}`, icon: 'ti ti-layout-sidebar-right', iconImage: HATASNSCORD_MASCOT, brand: 'HataSNSCordUI', items: [
+		destination('hatasnscord-settings', 'HataSNSCordUI', '/settings/hatasnscord-ui', 'ti ti-layout-sidebar-right', { iconImage: HATASNSCORD_MASCOT, brand: 'HataSNSCordUI', primary: true, showCount: true }),
 	],
 }, {
 	id: 'hataskey-tools', label: copy.nav.hataTools, description: copy.nav.hataToolsDescription, icon: 'ti ti-flag', brand: 'Hataskey', items: [
@@ -52,7 +59,7 @@ export const settingsDestinationSections: SettingsDestinationSection[] = [{
 		destination('hata-settings-transfer', copy.nav.settingsTransfer, '/settings/hata-custom', 'ti ti-package', { activation: { kind: 'popup', category: 'general', popup: 'settings-transfer' } }),
 	],
 }, {
-	id: 'display-appearance', label: copy.nav.appearance, description: copy.nav.appearanceDescription, icon: 'ti ti-palette', items: [
+	id: 'display-appearance', label: copy.nav.appearanceAndTheme, description: copy.nav.appearanceAndThemeDescription, icon: 'ti ti-palette', items: [
 		// 旗鯖fork: テーマは1項目にまとめる。管理とインストールは /settings/theme の
 		// 中から辿れる(FormLinkが置いてある)ので、左ペインを3つに割らない。
 		destination('display-theme', i18n.ts.theme, '/settings/theme', 'ti ti-palette', { primary: true, showCount: true, categoryId: 'theme-font' }),
@@ -66,7 +73,6 @@ export const settingsDestinationSections: SettingsDestinationSection[] = [{
 	id: 'timeline-posting', label: copy.nav.timelineAndPosts, description: copy.nav.timelineAndPostsDescription, icon: 'ti ti-list', items: [
 		destination('timeline-note-display', copy.nav.noteDisplayAndCollapse, pref, 'ti ti-note', { controlId: 'settings.control.showreplytargetnote-1kw238d', legacyGroup: 'timelineAndNote', categoryId: 'timeline-posting' }),
 		destination('timeline-post-form', i18n.ts.postForm, pref, 'ti ti-pencil', { controlId: 'settings.control.showfixedpostform-h9wq8p', legacyGroup: 'postForm', categoryId: 'timeline-posting' }),
-		destination('timeline-hidden-reactions', copy.nav.hiddenReactions, '/settings/hidden-reactions', 'ti ti-mood-off', { primary: true, showCount: true }),
 		destination('timeline-group', copy.nav.timelineOptions, pref, 'ti ti-list-details', { legacyGroup: 'timelineAndNote', categoryId: 'timeline-posting' }),
 	],
 }, {
@@ -77,28 +83,46 @@ export const settingsDestinationSections: SettingsDestinationSection[] = [{
 		destination('timeline-chat', i18n.ts.chat, pref, 'ti ti-message', { controlId: 'settings.control.chatsendonenter-1d3fj7q', legacyGroup: 'directMessage', categoryId: 'notification-sound' }),
 	],
 }, {
-	id: 'account-data', label: copy.nav.data, description: copy.nav.dataDescription, icon: 'ti ti-user-shield', items: [
+	// 旗鯖fork: ⚠️プロフィールだけの節は作らない。左ペインの最上部に
+	//   プロフィールへ飛ぶ行が常に出ているので、同じ入口が2つ並んでしまう。
+	//   ⚠️ただし項目そのものは消さないこと。消すと検索の関連付けが行き先を
+	//   失い、索引の構築が例外で止まる（実際に止まった）。ここの兄弟タブへ移す。
+	id: 'account-login', label: copy.nav.accountAndLogin, description: copy.nav.accountAndLoginDescription, icon: 'ti ti-lock', items: [
 		destination('account-profile', i18n.ts.profile, '/settings/profile', 'ti ti-user', { primary: true, showCount: true }),
 		destination('account-avatar', copy.nav.avatarDecoration, '/settings/avatar-decoration', 'ti ti-sparkles', { primary: true, showCount: true }),
+		destination('account-stats', copy.nav.accountStats, '/settings/account-stats', 'ti ti-chart-bar', { primary: true, showCount: true }),
 		destination('account-privacy', i18n.ts.privacy, '/settings/privacy', 'ti ti-lock-open', { primary: true, showCount: true }),
 		destination('account-email', i18n.ts.email, '/settings/email', 'ti ti-mail', { primary: true, showCount: true }),
 		destination('account-security', i18n.ts.security, '/settings/security', 'ti ti-lock', { primary: true, showCount: true }),
 		destination('account-switch', copy.nav.accountSwitch, '/settings/accounts', 'ti ti-users', { primary: true, showCount: true }),
 		destination('account-migration', i18n.ts.accountMigration, '/settings/other', 'ti ti-truck', { primary: true, showCount: true, legacyGroup: 'other' }),
-		destination('account-stats', copy.nav.accountStats, '/settings/account-stats', 'ti ti-chart-bar', { primary: true, showCount: true }),
+	],
+}, {
+	// 旗鯖fork: 「見せないもの」をまとめる。⚠️非表示リアクションもここが探し場所。
+	id: 'mute-block', label: i18n.ts.muteAndBlock, description: copy.nav.muteAndBlockDescription, icon: 'ti ti-ban', items: [
 		destination('account-mute', i18n.ts.muteAndBlock, '/settings/mute-block', 'ti ti-ban', { primary: true, showCount: true }),
+		destination('timeline-hidden-reactions', copy.nav.hiddenReactions, '/settings/hidden-reactions', 'ti ti-mood-off', { primary: true, showCount: true }),
+	],
+}, {
+	id: 'drive', label: i18n.ts.drive, description: copy.nav.driveDescription, icon: 'ti ti-cloud', items: [
 		destination('account-drive', i18n.ts.drive, '/settings/drive', 'ti ti-cloud', { primary: true, showCount: true }),
-		destination('account-drive-cleaner', copy.nav.driveCleaner, '/settings/drive/cleaner', 'ti ti-broom', { primary: true, showCount: true }),
+		destination('account-drive-cleaner', copy.nav.driveCleaner, '/settings/drive/cleaner', 'ti ti-brush', { primary: true, showCount: true }),
+	],
+}, {
+	id: 'data-migration', label: copy.nav.dataAndMigration, description: copy.nav.dataAndMigrationDescription, icon: 'ti ti-package', items: [
+		destination('account-export', copy.nav.accountDataExport, '/settings/account-data', 'ti ti-file-export', { primary: true, showCount: true }),
+		destination('account-profiles', copy.nav.settingsProfiles, '/settings/profiles', 'ti ti-adjustments', { primary: true, showCount: true }),
+	],
+}, {
+	id: 'connections', label: copy.nav.externalServices, description: copy.nav.externalServicesDescription, icon: 'ti ti-link', items: [
 		destination('account-external', copy.nav.externalAccount, '/settings/external-account', 'ti ti-user-share', { primary: true, showCount: true }),
 		destination('account-connect', copy.nav.serviceConnect, '/settings/connect', 'ti ti-link', { primary: true, showCount: true }),
 		destination('account-apps', copy.nav.linkedApps, '/settings/apps', 'ti ti-apps', { primary: true, showCount: true }),
 		destination('account-plugins', copy.nav.plugins, '/settings/plugin', 'ti ti-plug', { primary: true, showCount: true }),
-		destination('account-profiles', copy.nav.settingsProfiles, '/settings/profiles', 'ti ti-adjustments', { primary: true, showCount: true }),
-		destination('account-export', copy.nav.accountDataExport, '/settings/account-data', 'ti ti-file-export', { primary: true, showCount: true }),
 	],
 }, {
 	id: 'misskey-ui', label: copy.nav.misskey, description: copy.nav.misskeyDescription, icon: 'ti ti-archive', items: [
-		// 旗鯖fork: 「表示するタイムライン」は Misskey 由来の画面なのでこの節に置く。
+		// 旗鯖fork: ⚠️「表示するタイムライン」は Misskey 由来の画面なのでこの節に置く。
 		destination('timeline-display', copy.nav.displayTimeline, '/settings/timeline', 'ti ti-list', { primary: true, showCount: true }),
 		destination('misskey-navbar', i18n.ts.navbar, '/settings/navbar', 'ti ti-layout-navbar', { primary: true, showCount: true }),
 		destination('misskey-statusbar', i18n.ts.statusbar, '/settings/statusbar', 'ti ti-layout-bottombar', { primary: true, showCount: true }),

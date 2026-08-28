@@ -6,13 +6,13 @@ SPDX-License-Identifier: AGPL-3.0-only
 <template>
 <!-- `display: contents` deliberately keeps MkWindow/MkModalWindow's layout unchanged. -->
 <div :class="$style.scope" :data-motion-enabled="isMotionEnabled ? 'true' : 'false'">
-	<MkHatasabaUi2EditWindow v-if="popup === 'hatasaba-ui2'" @closed="emit('closed')"/>
-	<MkEarthquakeSettings v-else-if="popup === 'earthquake'" @closed="emit('closed')"/>
-	<MkUISetup v-else-if="popup === 'ui-setup'" @closed="emit('closed')"/>
-	<MkHataSettingsTransfer v-else-if="popup === 'settings-transfer'" @closed="emit('closed')"/>
-	<HataskSettings v-else-if="popup === 'hatask'" @closed="emit('closed')"/>
-	<HatadyDisplaySettings v-else-if="popup === 'hatady'" @closed="emit('closed')"/>
-	<MkMascotSettings v-else @closed="emit('closed')"/>
+	<MkHatasabaUi2EditWindow v-if="popup === 'hatasaba-ui2'" :embedded="embedded === true" @closed="emit('closed')"/>
+	<MkEarthquakeSettings v-else-if="popup === 'earthquake'" :embedded="embedded === true" @closed="emit('closed')"/>
+	<MkUISetup v-else-if="popup === 'ui-setup'" :embedded="embedded === true" @closed="emit('closed')"/>
+	<MkHataSettingsTransfer v-else-if="popup === 'settings-transfer'" :embedded="embedded === true" @closed="emit('closed')"/>
+	<HataskSettings v-else-if="popup === 'hatask'" :embedded="embedded === true" @closed="emit('closed')"/>
+	<HatadyDisplaySettings v-else-if="popup === 'hatady'" :embedded="embedded === true" @closed="emit('closed')"/>
+	<MkMascotSettings v-else :embedded="embedded === true" @closed="emit('closed')"/>
 </div>
 </template>
 
@@ -32,6 +32,8 @@ import {
 
 const props = defineProps<{
 	popup: 'hatasaba-ui2' | 'earthquake' | 'ui-setup' | 'settings-transfer' | 'hatask' | 'hatady' | 'mascot';
+	/** 旗鯖fork: true なら窓を出さず、設定画面の右ペインの中身として描く。 */
+	embedded?: boolean;
 	settingsContext: SettingsSearchV2Context;
 	/** Lets the opener freeze motion immediately while the context stays reactive. */
 	motionEnabled?: boolean;

@@ -30,7 +30,10 @@ function navigationPathKey(item: (typeof settingsDestinations)[number]): string 
 describe('settings redesign destination contract', () => {
 	test('categories are complete, non-empty, and uniquely identified', () => {
 		// ⚠️Misskey UI から画面と関係ない設定を「その他」節へ切り出したので9->10。
-		expect(settingsDestinationSections).toHaveLength(10);
+		// 旗鯖fork: ⚠️用途ごとに節を割り直した（10 → 15）。
+		//   「データと連携」に17項目が積まれていて、どこに何があるか読めなかった。
+		// 旗鯖fork: ⚠️プロフィールだけの節は畳んだ（左上に常設の入口があるため）。
+		expect(settingsDestinationSections).toHaveLength(14);
 		expect(settingsDestinationSections.every(section => section.items.length > 0)).toBe(true);
 		expect(new Set(settingsDestinations.map(item => item.id)).size).toBe(settingsDestinations.length);
 		expect(settingsDestinations.length).toBeGreaterThan(0);

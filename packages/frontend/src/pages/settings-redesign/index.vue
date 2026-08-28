@@ -7,17 +7,35 @@ SPDX-License-Identifier: AGPL-3.0-only
 <!-- 旗鯖fork: 自前で見出し・戻る・検索を持つので、本体の帯は出さない。
      ⚠️出すと帯が2本並ぶ。 -->
 <PageWithHeader :actions="headerActions" :tabs="headerTabs" hideHeader>
-	<div ref="rootEl" :class="$style.scope" :data-motion-enabled="motionEnabled ? 'true' : 'false'">
+	<!-- 旗鯖fork: ⚠️シェルのどこでホイールを回しても効くようにする。
+	     ⚠️器が低いとき（窓を最大化から通常サイズへ戻したときなど）、ヘッダー帯には
+	     スクロールできる祖先が1つも無く、ホイールが完全に無反応になる
+	     （実測: 窓450px / シェル415px / ヘッダー63px の上では祖先なし）。
+	     ⚠️スクロールバーは動くのにホイールだけ死ぬ、という状態がこれ。 -->
+	<div ref="rootEl" :class="$style.scope" :data-motion-enabled="motionEnabled ? 'true' : 'false'" @wheel="onShellWheel">
 		<a :class="$style.skip" href="#settings-redesign-main">{{ copy.skipToContent }}</a>
 		<header :class="[$style.header, { [$style.compactHeader]: compact }]">
 			<template v-if="compact">
 				<div :class="$style.compactTop">
 					<button type="button" :class="$style.compactBack" :aria-label="i18n.ts.goBack" @click="goCompactBack"><i class="ti ti-chevron-left" aria-hidden="true"></i></button>
-					<h1 :class="$style.compactTitle"><Transition name="settings-title" :css="motionEnabled" mode="out-in"><span :key="mobilePageTitle" :class="{ settingsBrand: hasSettingsBrand(mobilePageTitle) }">{{ mobilePageTitle }}</span></Transition></h1>
-					<button v-if="isHatasabaUi2SurfaceActive" type="button" :class="$style.compactPreview" :aria-label="copy.ui2.openPreview" @click="openHatasabaUi2Preview"><i class="ti ti-eye" aria-hidden="true"></i></button>
-					<MkAvatar v-else-if="$i" :user="$i" :link="false" :class="$style.headerAvatar"/>
+					<!-- 旗鯖fork: しばらく何も変えていないときだけ、検索の在り処をそっと出す。
+					     ⚠️出しっぱなしにしないこと。題として読めなくなる。8秒で戻す。 -->
+					<h1 :class="$style.compactTitle"><Transition name="settings-title" :css="motionEnabled" mode="out-in"><span v-if="showSearchHint" key="settings-search-hint" :class="$style.compactHint" @click="openSearch">{{ copy.searchHint }}</span><span v-else :key="mobilePageTitle" :class="{ settingsBrand: hasSettingsBrand(mobilePageTitle) }">{{ mobilePageTitle }}</span></Transition></h1>
+						<!-- 旗鯖fork: ⚠️右側のボタンは1つの箱にまとめること。
+						     ⚠️列を足すたびに題の軸がずれる（虫眼鏡を足したときに実際にずれた）。
+						     ⚠️左右の列を同じ幅にして、真ん中の題を器の中央へ固定する。 -->
+						<div :class="$style.compactActions">
+						<!-- 旗鯖fork: 詳細ページでは検索窓を虫眼鏡へ畳み、右上のアイコンの左へ寄せる。
+						     ⚠️狭い画面では検索窓が縦を1行分まるごと食い、本文が読める量を削っていた。
+						     ⚠️v-if で出し入れしないこと。Transition の leave が終わらず
+						     `leave-from` のまま画面に残り続けた（実測: 3秒待っても消えない）。
+						     ⚠️常に置いて、CSSだけで畳む。これなら止まりようがない。 -->
+						<button ref="searchIconEl" type="button" :class="$style.compactSearchIcon" :data-collapsed="compactSearchCollapsed ? 'true' : 'false'" :aria-label="copy.searchTrigger" :title="copy.searchTrigger" :aria-hidden="compactSearchCollapsed ? undefined : 'true'" :tabindex="compactSearchCollapsed ? undefined : -1" @click="openSearch"><i class="ti ti-search" aria-hidden="true"></i></button>
+						<button v-if="isHatasabaUi2SurfaceActive" type="button" :class="$style.compactPreview" :aria-label="copy.ui2.openPreview" @click="openHatasabaUi2Preview"><i class="ti ti-eye" aria-hidden="true"></i></button>
+						<MkAvatar v-else-if="$i" :user="$i" :link="false" :class="$style.headerAvatar"/>
+						</div>
 				</div>
-				<button v-if="!isHatasabaUi2SurfaceActive" ref="searchButtonEl" type="button" :class="$style.searchTrigger" @click="openSearch">
+				<button v-if="!isHatasabaUi2SurfaceActive" ref="searchButtonEl" type="button" :class="$style.searchTrigger" :data-collapsed="compactSearchCollapsed ? 'true' : 'false'" :aria-hidden="compactSearchCollapsed ? 'true' : undefined" :tabindex="compactSearchCollapsed ? -1 : undefined" @click="openSearch">
 					<i class="ti ti-search" aria-hidden="true"></i>
 					<span :class="$style.searchLabel">{{ copy.searchTrigger }}</span>
 				</button>
@@ -32,7 +50,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</template>
 		</header>
 
-		<div :class="$style.layout">
+		<div :class="$style.layout" :data-nav-mode="navPaneMode">
 			<aside v-show="!compact || currentPage?.route.name == null" ref="navEl" :class="$style.nav" :aria-label="copy.settingsCategories">
 				<SettingsMobileOverview
 					v-if="compact && currentPage?.route.name == null"
@@ -41,6 +59,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 					:deprecatedSections="mobileDeprecatedSections"
 					:valueItems="quickValueItems"
 					:featureItem="hataCustomGlassUiItem"
+					:profileItem="profileNavigationItem"
+					:profileName="$i?.name ?? null"
+					:profileUsername="$i?.username ?? null"
+					:profileAvatarUrl="$i?.avatarUrl ?? null"
 					:destructiveItems="destructiveItems"
 					:legacyLabel="copy.legacySettings"
 					:activeCategoryId="compactNavigationSection"
@@ -51,82 +73,130 @@ SPDX-License-Identifier: AGPL-3.0-only
 					@action="runShellAction"
 					@legacy="requestOpenLegacy"
 				/>
+				<!-- 旗鯖fork: 左ペインは3つの姿を持つ。
+				     ⚠️大分類・詳細・帯(最小化)。分類を選んだ時点で帯へ畳む。
+				     ⚠️左に項目一覧、右上に同じ項目のタブ、という二重表示をやめるため。
+				     ⚠️幅で作りを変えないこと。タブレットや折りたたみでも同じ形に揃える。 -->
 				<template v-else>
-					<div v-if="$i && !tablet" :class="$style.profileRow">
-						<MkA :to="profileNavigationItem.route" :class="$style.profile" @click.prevent="goToSetting(profileNavigationItem)">
-							<MkAvatar :user="$i" :link="false" :class="$style.avatar"/>
-							<span :class="$style.profileText"><strong><Mfm :text="$i.name || $i.username" :plain="true" :nyaize="false"/></strong><small>@{{ $i.username }}</small></span>
-						</MkA>
-					</div>
-
-					<div v-if="!tablet" :class="$style.filterPills" role="group" :aria-label="copy.settingsFilter">
-						<button
-							v-for="filter in settingsFilters"
-							:key="filter.id"
-							type="button"
-							:class="[$style.filter, { [$style.filterActive]: activeSettingsFilter === filter.id }]"
-							:aria-pressed="activeSettingsFilter === filter.id"
-							@click="activeSettingsFilter = filter.id"
-						>
-							{{ filter.label }}
+					<div v-if="navPaneMode === 'rail'" :class="$style.rail" data-settings-nav-rail>
+						<button v-if="$i" type="button" :class="$style.railButton" :title="i18n.ts.profile" :aria-label="i18n.ts.profile" @click="goToSetting(profileNavigationItem)">
+							<MkAvatar :user="$i" :link="false" :class="$style.railAvatar"/>
+						</button>
+						<!-- ⚠️向きは実物(ui/simple.vue)と同じ約束に。畳んでいるときは開く向き(右)。 -->
+						<button type="button" :class="$style.railButton" :title="copy.settingsCategories" :aria-label="copy.settingsCategories" data-settings-nav-rail-action="categories" @click="setNavPaneMode('categories')">
+							<i class="ti ti-chevron-right" aria-hidden="true"></i>
+						</button>
+						<!-- ⚠️押せない飾りを置かないこと。以前はここに「いまの分類」の印だけが
+						     光っていて、反応しないので何なのか分からなかった。
+						     ⚠️分類の絵そのものを「詳細を開く」ボタンにする。 -->
+						<button v-if="activeNavSection != null && siblingTabs.length > 1" type="button" :class="[$style.railButton, $style.railCurrent]" :title="activeNavSection.label" :aria-label="activeNavSection.label" data-settings-nav-rail-action="detail" @click="setNavPaneMode('detail')">
+							<img v-if="activeNavSection.iconImage != null" :src="activeNavSection.iconImage" :class="$style.pillImage" alt="" aria-hidden="true"/><i v-else :class="activeNavSection.icon" aria-hidden="true"></i>
 						</button>
 					</div>
-
-					<h2 :class="[$style.sectionTitle, $style.quickSectionTitle]">{{ copy.frequentlyUsedSettings }}</h2>
-					<div :class="$style.quickGrid">
-						<component :is="opensSettingsPopup(item) ? 'button' : 'MkA'" v-for="item in visibleQuickItems" :key="item.id" v-bind="navBindings(item)" :class="[$style.quickItem, { [$style.navLinkActive]: isActive(item) }]" :aria-label="item.label" :aria-current="isActive(item) ? 'page' : undefined" @click.prevent="goToSetting(item)"><i :class="item.icon" aria-hidden="true"></i><span><span v-if="item.brand" class="settingsBrand">{{ item.label }}</span><span v-else>{{ item.label }}</span></span></component>
-					</div>
-
-					<template v-if="tablet">
-						<template v-if="tabletNavigationSection == null">
-							<MkA :to="hataCustomGlassUiItem.route" :class="[$style.navLink, $style.tabletPrimaryLink, { [$style.navLinkActive]: isActive(hataCustomGlassUiItem) }]" :aria-current="isActive(hataCustomGlassUiItem) ? 'page' : undefined" @click.prevent="goToSetting(hataCustomGlassUiItem)">
-								<i :class="hataCustomGlassUiItem.icon" aria-hidden="true"></i><span :class="{ settingsBrand: hataCustomGlassUiItem.brand }">{{ hataCustomGlassUiItem.label }}</span><i class="ti ti-chevron-right" aria-hidden="true"></i>
-							</MkA>
-							<button v-for="section in tabletNavSections" :key="section.id" type="button" :class="[$style.tabletCategoryLink, { [$style.tabletCherrypickLink]: section.id === 'cherrypick', [$style.tabletDeprecatedLink]: section.id === 'misskey-ui', [$style.tabletCategoryActive]: sectionHasActiveItem(section) }]" :aria-current="sectionHasActiveItem(section) ? 'page' : undefined" :data-active="sectionHasActiveItem(section) ? 'true' : 'false'" :data-settings-tablet-category-id="section.id" :data-settings-nav-section="section.id" @click="openTabletNavigationSection(section.id)">
-								<i :class="section.icon" aria-hidden="true"></i><span :class="{ settingsBrand: section.brand != null || hasSettingsBrand(section.label) }">{{ section.label }}</span><small v-if="section.id === 'misskey-ui'" :class="$style.deprecatedBadge">{{ copy.mobile.deprecated }}</small><i class="ti ti-chevron-right" aria-hidden="true"></i>
-							</button>
-						</template>
-						<template v-else-if="tabletActiveNavigationSection != null">
-							<button ref="tabletSectionBackEl" type="button" :class="$style.tabletSectionBack" @click="openTabletNavigationSection(null)"><i class="ti ti-chevron-left" aria-hidden="true"></i><span :class="{ settingsBrand: tabletActiveNavigationSection.brand != null || hasSettingsBrand(tabletActiveNavigationSection.label) }">{{ tabletActiveNavigationSection.label }}</span></button>
-							<nav :class="$style.links" :aria-label="tabletActiveNavigationSection.label">
-								<component :is="opensSettingsPopup(item) ? 'button' : 'MkA'" v-for="item in tabletActiveNavigationSection.items" :key="item.id" v-bind="navBindings(item)" :class="[$style.navLink, { [$style.navLinkActive]: isActive(item) }]" :aria-current="isActive(item) ? 'page' : undefined" @click.prevent="goToSetting(item)"><i :class="item.icon" aria-hidden="true"></i><span><span v-if="item.brand" class="settingsBrand">{{ item.label }}</span><span v-else>{{ item.label }}</span></span><span v-if="item.showCount && settingCountForItem(item) != null" :class="$style.countBadge">{{ settingCountForItem(item) }}</span></component>
-							</nav>
-						</template>
-					</template>
 					<template v-else>
-						<details v-for="section in visibleNavSections" :key="section.id" :open="expandedDesktopNavigationSectionIds.has(section.id)" :class="[$style.navSection, { [$style.cherrypickSection]: section.id === 'cherrypick', [$style.deprecatedNavSection]: section.id === 'misskey-ui', [$style.navSectionActive]: sectionHasActiveItem(section) }]" :data-active="sectionHasActiveItem(section) ? 'true' : 'false'" :data-settings-nav-section="section.id" @toggle="onDesktopNavigationSectionToggle(section.id, $event)">
-							<summary :class="$style.sectionTitle"><i :class="section.icon" aria-hidden="true"></i><span :class="{ settingsBrand: section.brand != null || hasSettingsBrand(section.label) }" :title="section.label">{{ section.label }}</span><small v-if="section.id === 'misskey-ui'" :class="$style.deprecatedBadge">{{ copy.mobile.deprecated }}</small><i class="ti ti-chevron-right" aria-hidden="true"></i></summary>
-							<nav :class="$style.links" :aria-label="section.label">
-								<component :is="opensSettingsPopup(item) ? 'button' : 'MkA'" v-for="item in section.items" :key="item.id" v-bind="navBindings(item)" :class="[$style.navLink, { [$style.navLinkActive]: isActive(item), [$style.cherrypickNavLink]: section.id === 'cherrypick' }]" :aria-current="isActive(item) ? 'page' : undefined" @click.prevent="goToSetting(item)">
-									<i :class="item.icon" aria-hidden="true"></i><span><span v-if="item.brand" class="settingsBrand">{{ item.label }}</span><span v-else>{{ item.label }}</span></span><span v-if="item.showCount && settingCountForItem(item) != null" :class="$style.countBadge" :aria-label="copyx.searchSettingsCount({ count: settingCountForItem(item) ?? 0 })" :title="copyx.searchSettingsCount({ count: settingCountForItem(item) ?? 0 })">{{ settingCountForItem(item) }}</span>
-								</component>
+						<div v-if="$i" :class="$style.profileRow">
+							<MkA :to="profileNavigationItem.route" :class="$style.profile" @click.prevent="goToSetting(profileNavigationItem)">
+								<MkAvatar :user="$i" :link="false" :class="$style.avatar"/>
+								<span :class="$style.profileText"><strong><Mfm :text="$i.name || $i.username" :plain="true" :nyaize="false"/></strong><small>@{{ $i.username }}</small></span>
+							</MkA>
+						</div>
+
+						<!-- 旗鯖fork: 絞り込みは1つの錠剤ケースにまとめ、畳むボタンは別の丸として独立させる。
+						     ⚠️並のボタンを横に並べただけだと、幅が足りない環境(Chrome)で2段に折り返して
+						     見た目が崩れた。ケースなら中で詰まり、折り返さない。
+						     ⚠️選択中は塗りつぶさない（右ペインのタブと同じ考え方）。 -->
+						<div :class="$style.filterRow">
+							<div :class="$style.filterPills" role="group" :aria-label="copy.settingsFilter" data-settings-filter-case>
+								<!-- ⚠️絵だけにするので、読み上げと吹き出しには必ず文言を残すこと。
+								     残さないと、何を選んでいるのか画面からも読み上げからも分からなくなる。 -->
+								<button v-for="filter in settingsFilters" :key="filter.id" type="button" :class="$style.filter" :data-active="activeSettingsFilter === filter.id ? 'true' : 'false'" :aria-pressed="activeSettingsFilter === filter.id" :aria-label="filter.label" :title="filter.label" @click="activeSettingsFilter = filter.id"><span v-if="filter.mark != null" :class="$style.filterMark">{{ filter.mark }}</span><i v-else :class="filter.icon" aria-hidden="true"></i></button>
+							</div>
+							<button v-if="!compact" type="button" :class="$style.collapseButton" :title="copy.settingsCategories" :aria-label="copy.settingsCategories" data-settings-nav-collapse @click="setNavPaneMode('rail')">
+								<i class="ti ti-chevron-left" aria-hidden="true"></i>
+							</button>
+						</div>
+
+						<h2 :class="[$style.sectionTitle, $style.quickSectionTitle]">{{ copy.frequentlyUsedSettings }}</h2>
+						<div :class="$style.quickGrid">
+							<component :is="opensSettingsPopup(item) ? 'button' : 'MkA'" v-for="item in visibleQuickItems" :key="item.id" v-bind="navBindings(item)" :class="[$style.quickItem, { [$style.navLinkActive]: isActive(item) }]" :aria-label="item.label" :title="item.label" :aria-current="isActive(item) ? 'page' : undefined" @click.prevent="goToSetting(item)"><i :class="item.icon" aria-hidden="true"></i><span><span v-if="item.brand" class="settingsBrand">{{ item.label }}</span><span v-else>{{ item.label }}</span></span></component>
+						</div>
+
+						<!-- ⚠️Transition は子を1つしか取れない。それぞれを包むこと。 -->
+						<Transition :name="motionEnabled ? (navPaneMode === 'detail' ? 'settings-drill-forward' : 'settings-drill-back') : ''" :css="motionEnabled" mode="out-in">
+							<nav v-if="navPaneMode === 'categories'" key="categories" :class="$style.sectionPills" :aria-label="copy.settingsCategories">
+								<button
+									v-for="section in visibleNavSections"
+									:key="section.id"
+									type="button"
+									:class="[$style.sectionPill, { [$style.sectionPillCherrypick]: section.id === 'cherrypick', [$style.sectionPillDeprecated]: section.id === 'misskey-ui' }]"
+									:data-active="sectionHasActiveItem(section) ? 'true' : 'false'"
+									:data-settings-nav-section="section.id"
+									:aria-current="sectionHasActiveItem(section) ? 'page' : undefined"
+									@click="openNavigationSection(section)"
+								>
+									<img v-if="section.iconImage != null" :src="section.iconImage" :class="$style.pillImage" alt="" aria-hidden="true"/><i v-else :class="section.icon" aria-hidden="true"></i><span :class="{ settingsBrand: section.brand != null || hasSettingsBrand(section.label) }" :title="section.label">{{ section.label }}</span><small v-if="section.id === 'misskey-ui'" :class="$style.deprecatedBadge">{{ copy.mobile.deprecated }}</small><span v-else-if="sectionCount(section) != null" :class="$style.countBadge">{{ sectionCount(section) }}</span>
+								</button>
 							</nav>
-						</details>
+							<div v-else-if="activeNavSection != null" key="detail" :class="$style.detailPane">
+								<!-- 旗鯖fork: ⚠️ここにも分類の絵を出すこと。左ペインの一覧と詳細で見た目が
+								     食い違うと、同じ分類を見ているのか分からなくなる。
+								     ⚠️絵を持つ分類(HataSNSCordUIのマスコット)は絵を優先する。 -->
+								<button ref="navDetailBackEl" type="button" :class="$style.detailBack" data-settings-nav-detail-back @click="setNavPaneMode('categories')"><i class="ti ti-chevron-left" aria-hidden="true"></i><img v-if="activeNavSection.iconImage != null" :src="activeNavSection.iconImage" :class="$style.pillImage" alt="" aria-hidden="true"/><i v-else :class="activeNavSection.icon" aria-hidden="true"></i><span :class="{ settingsBrand: activeNavSection.brand != null || hasSettingsBrand(activeNavSection.label) }">{{ activeNavSection.label }}</span></button>
+								<nav :class="$style.links" :aria-label="activeNavSection.label">
+									<component :is="opensSettingsPopup(item) ? 'button' : 'MkA'" v-for="item in activeNavSection.items" :key="item.id" v-bind="navBindings(item)" :class="[$style.navLink, { [$style.navLinkActive]: isActive(item) }]" :aria-current="isActive(item) ? 'page' : undefined" @click.prevent="goToSetting(item)"><img v-if="item.iconImage != null" :src="item.iconImage" :class="$style.pillImage" alt="" aria-hidden="true"/><i v-else :class="item.icon" aria-hidden="true"></i><span><span v-if="item.brand" class="settingsBrand">{{ item.label }}</span><span v-else>{{ item.label }}</span></span><span v-if="item.showCount && settingCountForItem(item) != null" :class="$style.countBadge">{{ settingCountForItem(item) }}</span></component>
+								</nav>
+							</div>
+						</Transition>
+
+						<section :class="$style.sessionActions" aria-labelledby="settings-shell-session-actions">
+							<h2 id="settings-shell-session-actions" :class="$style.sectionTitle">{{ copy.sessionAndLogin }}</h2>
+							<button v-for="item in destructiveItems" :key="item.id" type="button" :class="$style.destructiveAction" :data-settings-search-id="item.searchId" data-settings-search-destructive="true" @click="runShellAction(item.id)">
+								<i :class="item.icon" aria-hidden="true"></i><span><span v-if="item.brand" class="settingsBrand">{{ item.label }}</span><span v-else>{{ item.label }}</span></span>
+							</button>
+						</section>
+
+						<button type="button" :class="$style.legacyMenu" @click="requestOpenLegacy"><i class="ti ti-history" aria-hidden="true"></i>{{ copy.legacySettings }}</button>
 					</template>
-
-					<section :class="$style.sessionActions" aria-labelledby="settings-shell-session-actions">
-						<h2 id="settings-shell-session-actions" :class="$style.sectionTitle">{{ copy.sessionAndLogin }}</h2>
-						<button
-							v-for="item in destructiveItems"
-							:key="item.id"
-							type="button"
-							:class="$style.destructiveAction"
-							:data-settings-search-id="item.searchId"
-							data-settings-search-destructive="true"
-							@click="runShellAction(item.id)"
-						>
-							<i :class="item.icon" aria-hidden="true"></i><span><span v-if="item.brand" class="settingsBrand">{{ item.label }}</span><span v-else>{{ item.label }}</span></span>
-						</button>
-					</section>
-
-					<button type="button" :class="$style.legacyMenu" @click="requestOpenLegacy"><i class="ti ti-history" aria-hidden="true"></i>{{ copy.legacySettings }}</button>
 				</template>
 			</aside>
 
 			<main v-show="!compact || currentPage?.route.name != null" id="settings-redesign-main" ref="mainEl" :class="$style.main" tabindex="-1">
-				<div :class="[$style.contentCard, { [$style.contentCardSurfaceActive]: isHatasabaUi2SurfaceActive }]">
+				<!-- 旗鯖fork: 右ペイン上部の兄弟タブ。いま選んでいる大分類の中の項目を並べる。
+				     ⚠️手本は Hataskey UI 設定の錠剤型ケース。非選択はアイコンのみ、
+				     選択中だけアクセント色の文字を添える。
+				     ⚠️目印は必ずタブより前・.main の直下に置くこと。position: sticky は
+				     直近の親の中でしか貼り付かないため、カードの中だと抜けた時点で消える。 -->
+				<div v-if="siblingTabs.length > 1" ref="siblingTabsSentinel" :class="$style.siblingTabsSentinel" aria-hidden="true"></div>
+				<nav
+					v-if="siblingTabs.length > 1"
+					:class="$style.siblingTabs"
+					:data-stuck="siblingTabsStuck ? 'true' : 'false'"
+					:aria-label="activeNavSection?.label ?? copy.settingsCategories"
+					data-settings-horizontal-scroll
+					@wheel="onSiblingTabWheel"
+				>
+					<button v-for="item in siblingTabs" :key="item.id" type="button" :aria-label="item.label" :title="item.label" :data-active="isActive(item) ? 'true' : 'false'" :aria-current="isActive(item) ? 'page' : undefined" @click="goToSetting(item)">
+						<img v-if="item.iconImage != null" :src="item.iconImage" :class="$style.pillImage" alt="" aria-hidden="true"/><i v-else :class="item.icon" aria-hidden="true"></i><span v-if="isActive(item)" :class="$style.siblingTabLabel"><span v-if="item.brand" class="settingsBrand">{{ item.label }}</span><span v-else>{{ item.label }}</span></span>
+					</button>
+				</nav>
+				<!-- 旗鯖fork: 狭い幅の画面遷移を左右へ滑らせる。
+				     ⚠️広い幅では包まないこと。右ペインだけが独立して動くと、
+				     左ペインとの対応が読めず、かえって落ち着かない。
+				     ⚠️鍵は経路。同じ画面のまま再生成させない。 -->
+				<div :class="[$style.contentCard, { [$style.contentCardSurfaceActive]: isHatasabaUi2SurfaceActive }]" :data-page-enter="pageEnterDirection ?? undefined">
+					<!-- 旗鯖fork: Hataskey系の設定は、窓ではなく右ペインの中身として出す。
+					     ⚠️必ず最初に見ること。ポップアップの行き先は経路が /settings/hata-custom の
+					     ままなので、後ろに置くと経路で決まる別の画面に負けて出てこない。 -->
+					<SettingsPopupBridge
+						v-if="embeddedPopup != null"
+						:popup="embeddedPopup"
+						:settingsContext="settingsSearchContext"
+						:motionEnabled="motionEnabled"
+						embedded
+						@closed="embeddedPopup = null"
+					/>
 					<HatasabaUi2SettingsSurface
-						v-if="isHatasabaUi2SurfaceActive"
+						v-else-if="isHatasabaUi2SurfaceActive"
 						ref="hatasabaSurface"
 						:motionEnabled="motionEnabled"
 						@close="onSurfaceClose"
@@ -294,7 +364,9 @@ const rootEl = useTemplateRef('rootEl');
 const navEl = useTemplateRef<HTMLElement>('navEl');
 const mainEl = useTemplateRef('mainEl');
 const searchButtonEl = useTemplateRef('searchButtonEl');
-const tabletSectionBackEl = useTemplateRef<HTMLButtonElement>('tabletSectionBackEl');
+const searchIconEl = useTemplateRef('searchIconEl');
+/** ⚠️畳んでいるときは虫眼鏡が入口。焦点はそちらへ戻す。 */
+const searchAnchorEl = computed(() => (compactSearchCollapsed.value ? searchIconEl.value : searchButtonEl.value));
 type HatasabaUi2SurfaceHandle = { requestDiscard: () => Promise<boolean>; rollback: () => void; hasChanges: boolean; openPreview: () => void };
 const hatasabaSurface = useTemplateRef<HatasabaUi2SurfaceHandle>('hatasabaSurface');
 const searchOpen = ref(false);
@@ -305,7 +377,6 @@ const catalogState = ref<'pending' | 'ready' | 'error'>('pending');
 const compact = ref(false);
 const tablet = ref(false);
 const compactNavigationSection = ref<string | null>(null);
-const tabletNavigationSection = ref<string | null>(null);
 const prefersReducedMotion = ref(false);
 const navigationNoticeMessage = ref<string | null>(null);
 const navigationNoticeKey = ref('');
@@ -479,57 +550,69 @@ function navigationSection(id: string): NavSection {
 // but is visually and semantically separated as a compatibility area.
 const mobileOverviewSections = computed<SettingsOverviewSection[]>(() => navSections.filter(section => section.id !== 'hataskey-ui' && section.id !== 'misskey-ui'));
 const mobileDeprecatedSections = computed<SettingsOverviewSection[]>(() => navSections.filter(section => section.id === 'misskey-ui'));
-const tabletNavSections = computed<NavSection[]>(() => navSections.filter(section => section.id !== 'hataskey-ui'));
-const tabletActiveNavigationSection = computed(() => tabletNavSections.value.find(section => section.id === tabletNavigationSection.value) ?? null);
 
-function openCompactNavigationSection(id: string | null) {
-	compactNavigationSection.value = id;
+/**
+ * 旗鯖fork: 左ペインの姿。
+ *
+ * - `categories` … 大分類の一覧
+ * - `detail` … いま選んでいる分類の項目一覧
+ * - `rail` … 細い帯（最小化）
+ *
+ * ⚠️分類を選んだら帯へ畳むこと。左に項目一覧・右上に同じ項目のタブ、という
+ *   二重表示が視覚的に混乱のもとになる。⚠️畳んだままにはしない。帯から
+ *   「大分類へ戻る」「この分類の項目を開く」の2つで、いつでも取り戻せること。
+ * ⚠️幅で作りを変えない。タブレットや折りたたみでも同じ姿を使う。
+ */
+type SettingsNavPaneMode = 'categories' | 'detail' | 'rail';
+const navPaneMode = ref<SettingsNavPaneMode>('categories');
+const navDetailBackEl = useTemplateRef<HTMLElement>('navDetailBackEl');
+
+function setNavPaneMode(mode: SettingsNavPaneMode) {
+	navPaneMode.value = mode;
+	if (mode !== 'detail') return;
+	// ⚠️詳細を開いたら見出しへ焦点を移すこと。キーボードだけの利用者が
+	//   どこへ移ったのか分からなくなる。
+	void nextTick(() => focusElement(navDetailBackEl.value));
 }
 
-function tabletCategoryButton(id: string) {
-	const matches = Array.from(rootEl.value?.querySelectorAll<HTMLButtonElement>('[data-settings-tablet-category-id]') ?? [])
-		.filter(button => button.dataset.settingsTabletCategoryId === id);
-	return matches.length === 1 ? matches[0] : null;
-}
-
-async function openTabletNavigationSection(id: string | null) {
-	const previousId = tabletNavigationSection.value;
-	tabletNavigationSection.value = id;
-	await nextTick();
-	if (id != null) {
-		focusElement(tabletSectionBackEl.value);
+/**
+ * 旗鯖fork: 狭い幅でも「分類を選んだら、その中の最初の設定へ直接移る」。
+ * ⚠️下位一覧を挟まないこと。PC と操作の数が食い違ううえ、右ペインの
+ *   兄弟タブと同じ並びを左にもう一度出すことになる。
+ */
+async function openCompactNavigationSection(id: string | null) {
+	if (id == null) {
+		compactNavigationSection.value = null;
 		return;
 	}
-	if (previousId != null) focusElement(tabletCategoryButton(previousId));
+	const section = navSections.find(candidate => candidate.id === id);
+	if (section == null) {
+		// ⚠️知らない分類は、これまで通り下位一覧へ落とす（黙って無反応にしない）。
+		compactNavigationSection.value = id;
+		return;
+	}
+	await openNavigationSection(section);
 }
 
-function onDesktopNavigationSectionToggle(id: string, event: Event) {
-	const details = event.currentTarget;
-	if (!(details instanceof HTMLDetailsElement)) return;
-
-	const isExpanded = expandedDesktopNavigationSectionIds.value.has(id);
-	if (details.open === isExpanded) return;
-
-	const next = details.open
-		? new Set([id])
-		: new Set(expandedDesktopNavigationSectionIds.value);
-	if (!details.open) next.delete(id);
-	expandedDesktopNavigationSectionIds.value = next;
-	if (!details.open) return;
-
+/**
+ * 旗鯖fork: 選択中の大分類が左ペインの外に出ていたら、見える位置まで寄せる。
+ * ⚠️毎回 scrollIntoView を呼ばないこと。すでに見えているのに呼ぶと、
+ *   関係のない場面で左ペインが勝手に動いて驚かせる。
+ */
+function revealActiveSectionPill(id: string) {
 	void nextTick(() => {
 		const nav = navEl.value;
-		const summary = details.querySelector('summary');
-		if (nav == null || summary == null) return;
+		const pill = nav?.querySelector(`[data-settings-nav-section="${CSS.escape(id)}"]`);
+		if (nav == null || !(pill instanceof HTMLElement)) return;
 
 		const inset = 8;
 		const navRect = nav.getBoundingClientRect();
-		const summaryRect = summary.getBoundingClientRect();
+		const pillRect = pill.getBoundingClientRect();
 		let top = nav.scrollTop;
-		if (summaryRect.top < navRect.top + inset) {
-			top += summaryRect.top - navRect.top - inset;
-		} else if (summaryRect.bottom > navRect.bottom - inset) {
-			top += summaryRect.bottom - navRect.bottom + inset;
+		if (pillRect.top < navRect.top + inset) {
+			top += pillRect.top - navRect.top - inset;
+		} else if (pillRect.bottom > navRect.bottom - inset) {
+			top += pillRect.bottom - navRect.bottom + inset;
 		} else {
 			return;
 		}
@@ -538,10 +621,16 @@ function onDesktopNavigationSectionToggle(id: string, event: Event) {
 }
 
 type SettingsFilterId = 'all' | 'frequent' | 'device';
-const settingsFilters: Array<{ id: SettingsFilterId; label: string }> = [
-	{ id: 'all', label: copy.filters.all },
-	{ id: 'frequent', label: copy.filters.frequent },
-	{ id: 'device', label: copy.filters.deviceOnly },
+/**
+ * 旗鯖fork: 絞り込みは絵で示す。
+ * ⚠️`mark` は文字そのもの、`icon` は Tabler。⚠️どちらか片方だけを持たせる。
+ * ⚠️Tabler に無い名前を書いても何も起きず、黙って空白になる。
+ *   （SettingsDestinationIcons.test.ts と同じ理由で、実在するものだけを使う）
+ */
+const settingsFilters: Array<{ id: SettingsFilterId; label: string; mark?: string; icon?: string }> = [
+	{ id: 'all', label: copy.filters.all, mark: 'ALL' },
+	{ id: 'frequent', label: copy.filters.frequent, icon: 'ti ti-star' },
+	{ id: 'device', label: copy.filters.deviceOnly, icon: 'ti ti-device-mobile-check' },
 ];
 const activeSettingsFilter = ref<SettingsFilterId>('all');
 
@@ -671,6 +760,87 @@ const activePreferenceDestinationId = computed(() => {
 	return parsePreferenceDestination(requested ?? '')?.id ?? 'display-general';
 });
 
+/**
+ * 旗鯖fork: 狭い幅で検索窓を虫眼鏡へ畳むかどうか。
+ * ⚠️一覧(子ルートなし)では畳まないこと。設定を探す入口が消える。
+ */
+/**
+ * 旗鯖fork: 狭い幅での画面の入れ替わりの向き。
+ * ⚠️戻るときに左から入ってこないと、進んだのか戻ったのか分からない。
+ */
+/**
+ * 旗鯖fork: 設定へ入る直前に居た場所。戻るときの行き先に使う。
+ * ⚠️設定の中の経路で上書きしないこと。上書きすると戻る操作が設定へ戻る。
+ */
+let lastNonSettingsRoute: string | null = null;
+
+/**
+ * 旗鯖fork: 詳細画面で15秒なにも変えていないとき、題の場所に検索の案内を出す。
+ *
+ * ⚠️「操作が無い」ではなく「**設定が変わっていない**」で数えること。
+ *   読んでいるだけ・スクロールしているだけの人にこそ出したい案内なので、
+ *   スクロールや指の動きで消してしまうと、いつまでも出ない。
+ * ⚠️一覧の画面では出さない。そこには検索窓そのものが見えている。
+ * ⚠️8秒で必ず題へ戻す。出しっぱなしだと、いま何の画面かが読めなくなる。
+ */
+const SEARCH_HINT_IDLE_MS = 15000;
+const SEARCH_HINT_VISIBLE_MS = 8000;
+const showSearchHint = ref(false);
+let searchHintIdleTimer: number | null = null;
+let searchHintVisibleTimer: number | null = null;
+
+function clearSearchHintTimers() {
+	if (searchHintIdleTimer != null) window.clearTimeout(searchHintIdleTimer);
+	if (searchHintVisibleTimer != null) window.clearTimeout(searchHintVisibleTimer);
+	searchHintIdleTimer = null;
+	searchHintVisibleTimer = null;
+}
+
+function restartSearchHintCountdown() {
+	clearSearchHintTimers();
+	showSearchHint.value = false;
+	// ⚠️狭い幅の詳細画面だけ。広い幅では検索窓が常に見えている。
+	if (!compact.value || currentPage.value?.route.name == null) return;
+	searchHintIdleTimer = window.setTimeout(() => {
+		showSearchHint.value = true;
+		searchHintVisibleTimer = window.setTimeout(() => {
+			showSearchHint.value = false;
+			// ⚠️一度出したら、また15秒待ってから出す。続けて何度も出さない。
+			restartSearchHintCountdown();
+		}, SEARCH_HINT_VISIBLE_MS);
+	}, SEARCH_HINT_IDLE_MS);
+}
+
+const compactPageDirection = ref<'forward' | 'back'>('forward');
+
+/**
+ * 旗鯖fork: 画面が入れ替わったときだけ立てる印。CSSのアニメーションを1回流す。
+ *
+ * ⚠️Transition で要素ごと差し替えないこと。
+ *   ⚠️ウィンドウの最大化を切り替えると幅の判定(compact)が反転し、鍵が変わって
+ *   出入りの遷移が走る。その遷移が終わらないと**右ペインが白いまま二度と
+ *   描かれなくなる**（左から何を選んでも白いまま）。
+ *   ⚠️中身を常に置いたままにすれば、この壊れ方は起こり得ない。
+ */
+const pageEnterDirection = ref<'forward' | 'back' | null>(null);
+let pageEnterTimer: number | null = null;
+
+function playPageEnter() {
+	if (!compact.value || !motionEnabled.value) return;
+	if (pageEnterTimer != null) window.clearTimeout(pageEnterTimer);
+	pageEnterDirection.value = null;
+	// ⚠️同じ値のままだとアニメーションが再生されない。いったん外してから付ける。
+	void nextTick(() => {
+		pageEnterDirection.value = compactPageDirection.value;
+		pageEnterTimer = window.setTimeout(() => {
+			pageEnterDirection.value = null;
+			pageEnterTimer = null;
+		}, 280);
+	});
+}
+
+const compactSearchCollapsed = computed(() => compact.value && currentPage.value?.route.name != null);
+
 const hasSettingsBrand = (value: string) => /Hataskey|Hatask|Hatady|HataFeed|HataSNSCordUI/u.test(value);
 
 const mobilePageTitle = computed(() => {
@@ -679,35 +849,57 @@ const mobilePageTitle = computed(() => {
 	}
 	if (currentPage.value?.route.name == null) return i18n.ts.settings;
 	if (isHatasabaUi2SurfaceActive.value) return 'Hataskey UI';
-	const item = navSections.flatMap(section => section.items).find(candidate => candidate.route === currentPath.value);
+	// 旗鯖fork: ⚠️見出しは「分類名」で固定すること。項目名にすると、右ペインの
+	//   兄弟タブを移るたびに上の題が書き換わり、いまどこに居るのか読めなくなる。
+	//   ⚠️分類が決まらないときだけ、開いている項目名へ落とす。
+	const section = activeNavSection.value;
+	if (section != null) return section.label;
+	const item = navSections.flatMap(candidate => candidate.items).find(candidate => candidate.route === currentPath.value);
 	return item?.label ?? i18n.ts.settings;
 });
 
+/**
+ * 旗鯖fork: いま開いている項目。
+ *
+ * ⚠️「経路だけの一致」と「はっきりした一致」を混ぜないこと。
+ *   Hataskey独自ツールの項目はポップアップを開くだけで**経路が変わらない**ため、
+ *   両方を素朴に OR で足すと、開いた項目とその経路の持ち主が**同時に**点いた。
+ *   （実測: Hatady を開くと Hatady=true と HataFeed=true が並んだ）
+ * ⚠️はっきりした一致が1つでもあれば、経路だけの一致は捨てる。
+ *   これで兄弟タブの点灯は常に1つに保たれる。
+ */
 const activeNavigationItemIds = computed(() => {
-	const activeIds = new Set<string>();
+	const explicitIds = new Set<string>();
+	const routeOnlyIds = new Set<string>();
 	const activeTarget = activeNavigationTarget.value;
 	const destinationId = currentDestinationId.value;
 	const preferenceDestinationId = activePreferenceDestinationId.value;
 	const path = currentPath.value;
 
 	for (const item of navSections.flatMap(section => section.items)) {
+		const activation = item.activation;
+		const activated = (activation?.kind === 'hata-custom-category' || activation?.kind === 'popup')
+			&& path === item.route
+			&& activeHataCustomCategory.value === activation.category;
+
 		if (activeTarget?.stableId === item.stableId
 			|| destinationId === item.id
 			|| destinationId === item.stableId
 			|| (item.route === '/settings/preferences' && preferenceDestinationId === item.id)
-			|| (
-				path === item.route
-				&& (
-					(item.activation?.kind === 'hata-custom-category' || item.activation?.kind === 'popup')
-						? activeHataCustomCategory.value === item.activation.category
-						: item.primary === true && primaryDestinationCountByRoute.value.get(item.route) === 1
-				)
-			)) {
-			activeIds.add(item.id);
+			|| activated) {
+			explicitIds.add(item.id);
+			continue;
+		}
+
+		if (activation == null
+			&& path === item.route
+			&& item.primary === true
+			&& primaryDestinationCountByRoute.value.get(item.route) === 1) {
+			routeOnlyIds.add(item.id);
 		}
 	}
 
-	return activeIds;
+	return explicitIds.size > 0 ? explicitIds : routeOnlyIds;
 });
 
 const activeNavigationSectionIds = computed(() => {
@@ -728,11 +920,103 @@ function sectionHasActiveItem(section: NavSection): boolean {
 	return activeNavigationSectionIds.value.has(section.id);
 }
 
-const expandedDesktopNavigationSectionIds = ref<Set<string>>(new Set(activeNavigationSectionIds.value));
-
-watch(activeNavigationSectionIds, activeIds => {
-	expandedDesktopNavigationSectionIds.value = new Set(activeIds);
+/**
+ * 旗鯖fork: 左ペインで選んでいる大分類。右ペインの兄弟タブはここから引く。
+ * ⚠️URLだけを正本にしないこと。ポップアップを開く項目は経路が変わらないので、
+ *   経路から引くと分類が「Hataskeyツール」から動かなくなる。
+ *   ⚠️逆に選択状態だけを正本にすると、検索から直接飛んだときに左が追従しない。
+ *   両方見て、いま活きている項目があればそれを優先する。
+ */
+const requestedSectionId = ref<string | null>(null);
+const activeSectionId = computed<string | null>(() => {
+	const [activeId] = activeNavigationSectionIds.value;
+	if (activeId != null) return activeId;
+	if (requestedSectionId.value != null) return requestedSectionId.value;
+	return visibleNavSections.value[0]?.id ?? null;
 });
+const activeNavSection = computed<NavSection | null>(() => visibleNavSections.value.find(section => section.id === activeSectionId.value) ?? null);
+const siblingTabs = computed<NavItem[]>(() => activeNavSection.value?.items ?? []);
+
+// ⚠️開いた直後に動かさないこと。最初の1回で下へスクロールしてしまい、
+//   左上のプロフィール行が画面外へ隠れていた。分類が「変わったとき」だけ寄せる。
+let sectionRevealArmed = false;
+watch(activeSectionId, id => {
+	if (!sectionRevealArmed) {
+		sectionRevealArmed = true;
+		return;
+	}
+	if (id != null) revealActiveSectionPill(id);
+});
+
+/**
+ * 旗鯖fork: 分類を選んだときに開く項目。
+ * ⚠️並びの先頭をそのまま使うこと。以前は primary を優先していたが、
+ *   「データと引っ越し」を選んだのに2番目が開くなど、左の並びと開く画面が
+ *   食い違って読めなかった。⚠️並び順そのものが利用者への約束。
+ */
+function sectionLandingItem(section: NavSection): NavItem | undefined {
+	const items: NavItem[] = section.items;
+	return items[0];
+}
+
+async function openNavigationSection(section: NavSection): Promise<void> {
+	requestedSectionId.value = section.id;
+	const item = sectionLandingItem(section);
+	if (item != null) await goToSetting(item);
+	// ⚠️自動では畳まないこと。分類を選ぶたびに左が消えると、隣の分類へ
+	//   移りたいだけなのに毎回開き直すことになり、かえって手数が増える。
+	//   ⚠️畳むかどうかは利用者が決める（プロフィール行の畳むボタン）。
+}
+
+/** 左ペインの分類に添える件数。⚠️中身が読めていないときは出さない。 */
+function sectionCount(section: NavSection): number | null {
+	if (catalogState.value !== 'ready') return null;
+	const total = section.items.reduce((sum, item) => sum + (settingCountForItem(item) ?? 0), 0);
+	return total > 0 ? total : null;
+}
+
+/**
+ * 旗鯖fork: 兄弟タブの追従。
+ * ⚠️scroll を毎回聞かないこと。重いうえ取りこぼす。高さ0の目印が
+ *   画面から外れた＝タブが本来の位置を離れた、と見なす。
+ */
+const siblingTabsSentinel = useTemplateRef<HTMLElement>('siblingTabsSentinel');
+const siblingTabsStuck = ref(false);
+let siblingTabsObserver: IntersectionObserver | null = null;
+
+function observeSiblingTabs() {
+	siblingTabsObserver?.disconnect();
+	siblingTabsObserver = null;
+	const target = siblingTabsSentinel.value;
+	if (target == null || typeof IntersectionObserver === 'undefined') return;
+	// ⚠️根は .main（ここが縦にスクロールする器）。既定の viewport にすると、
+	//   ペインの中でいくらスクロールしても外れたと判定されない。
+	siblingTabsObserver = new IntersectionObserver(entries => {
+		for (const entry of entries) siblingTabsStuck.value = !entry.isIntersecting;
+	}, { root: mainEl.value ?? null, threshold: 0 });
+	siblingTabsObserver.observe(target);
+}
+
+// ⚠️タブは分類によって出たり消えたりする。目印が付け替わるたびに観測し直す。
+watch(siblingTabsSentinel, () => { void nextTick(observeSiblingTabs); }, { flush: 'post' });
+
+/** 横に溢れたタブを、縦ホイールでも送れるようにする。 */
+function onSiblingTabWheel(event: WheelEvent): void {
+	const element = event.currentTarget;
+	if (!(element instanceof HTMLElement)) return;
+
+	const maxScrollLeft = element.scrollWidth - element.clientWidth;
+	if (maxScrollLeft <= 0) return;
+
+	const delta = event.deltaX !== 0 ? event.deltaX : event.deltaY;
+	if (delta === 0) return;
+
+	const nextScrollLeft = Math.max(0, Math.min(maxScrollLeft, element.scrollLeft + delta));
+	if (nextScrollLeft === element.scrollLeft) return;
+
+	event.preventDefault();
+	element.scrollLeft = nextScrollLeft;
+}
 
 const activeNavItemId = computed(() => {
 	for (const section of navSections) {
@@ -799,19 +1083,19 @@ function focusAdjacentTo(origin: HTMLElement | null, direction: 'next' | 'previo
 	const index = origin == null ? -1 : focusables.indexOf(origin);
 	const offset = direction === 'next' ? 1 : -1;
 	const target = focusables[(index + offset + focusables.length) % focusables.length] ?? null;
-	if (!focusElement(target)) focusElement(searchButtonEl.value);
+	if (!focusElement(target)) focusElement(searchAnchorEl.value);
 }
 
 function closeSearch(event: SettingsSearchCloseEvent) {
 	searchOpen.value = false;
 	if (event.reason === 'select') return;
-	const origin = searchOriginEl.value ?? searchButtonEl.value;
+	const origin = searchOriginEl.value ?? searchAnchorEl.value;
 	void nextTick(() => window.requestAnimationFrame(() => {
 		if (event.reason === 'tab') {
 			focusAdjacentTo(origin, event.direction ?? 'next');
 			return;
 		}
-		if (!focusElement(origin)) focusElement(searchButtonEl.value);
+		if (!focusElement(origin)) focusElement(searchAnchorEl.value);
 	}));
 }
 
@@ -986,7 +1270,22 @@ function closeSettingsPopup(state: ActiveSettingsPopup, restoreOpener = true) {
 	if (restoreOpener) restorePopupOpener(state.opener);
 }
 
+/**
+ * 旗鯖fork: 二ペインのときは、窓ではなく右ペインの中身として出す。
+ * ⚠️窓のまま出すと、左で選んだ分類と右の中身が食い違ううえ、
+ *   画面全体を覆ってしまい兄弟タブへ移れない。
+ * ⚠️compact(スマホ幅)は右ペインが1枚しかなく、埋め込むと戻り道が消えるので窓のまま。
+ */
+const embeddedPopup = ref<SettingsPopupBridgeKind | null>(null);
+
 function openSettingsPopup(popup: SettingsPopupBridgeKind, opener: HTMLElement | null) {
+	if (!compact.value) {
+		if (embeddedPopup.value === popup) return true;
+		// ⚠️窓が残っていると二重に出る。先に畳んでから埋め込みへ移す。
+		if (activeSettingsPopup != null) closeSettingsPopup(activeSettingsPopup, false);
+		embeddedPopup.value = popup;
+		return true;
+	}
 	if (activeSettingsPopup != null) return activeSettingsPopup.popup === popup;
 	const state: ActiveSettingsPopup = { popup, opener, dispose: () => {} };
 	activeSettingsPopup = state;
@@ -1043,6 +1342,11 @@ function popupForNavigationTarget(target: SettingsSearchNavigationTargetV2): Set
 }
 
 function closeIrrelevantSettingsPopup(target: SettingsSearchNavigationTargetV2) {
+	// ⚠️埋め込みも同じ規則で畳む。残すと、別の項目を選んだのに
+	//   右ペインが前のポップアップのままになる。
+	if (embeddedPopup.value != null && popupForNavigationTarget(target) !== embeddedPopup.value) {
+		embeddedPopup.value = null;
+	}
 	const active = activeSettingsPopup;
 	if (active == null || popupForNavigationTarget(target) === active.popup) return;
 	// A related link may originate inside the existing bridge. Dispose it before
@@ -1280,6 +1584,7 @@ function clearNavigationNotice(): void {
 }
 
 async function goToSetting(request: SettingsSearchNavigationTargetV2): Promise<boolean> {
+	compactPageDirection.value = 'forward';
 	const target = resolveNavigationTarget(request);
 	if (!await requestSurfaceDiscardBeforeNavigation(target)) return false;
 	clearNavigationNotice();
@@ -1484,7 +1789,7 @@ async function openHatasabaUi2Preview() {
 }
 
 function openSearch() {
-	searchOriginEl.value = window.document.activeElement instanceof HTMLElement ? window.document.activeElement : searchButtonEl.value;
+	searchOriginEl.value = window.document.activeElement instanceof HTMLElement ? window.document.activeElement : searchAnchorEl.value;
 	searchOpen.value = true;
 }
 
@@ -1588,26 +1893,70 @@ function syncHataCustomRoutePresentation() {
 	void scheduleNavigationTargetActivation(target, revision, null);
 }
 
+/** 旗鯖fork: 設定を開いたときに最初に出す画面。 */
+const SETTINGS_DEFAULT_ROUTE = '/settings/profile';
+
 function redirectDefaultPage() {
 	// ⚠️設定の外にいるときは絶対に動かないこと。ResizeObserver から呼ばれるため、
 	//   設定を離れたあとの幅変更でも走ってしまい、利用者を設定へ引き戻していた。
 	if (!isSettingsFullPath(router.getCurrentFullPath())) return;
 	if (compact.value || router.currentRef.value.child?.route.name != null) return;
-	const revision = cancelPendingNavigation();
+	cancelPendingNavigation();
 	activeNavigationTarget.value = null;
-	router.replace('/settings/hata-custom');
-	void nextTick(async () => {
-		if (revision !== navigationRevision) return;
-		await activateHataCustomCategory('glassUi', revision);
-	});
+	// 旗鯖fork: ⚠️既定はプロフィール。以前は Hataskey UI を開いていたが、
+	//   設定を開いて最初に見たいのは自分の見え方であって UI の細かな調整ではない。
+	//   ⚠️ここを popup 系の行き先にしないこと。経路が変わらず、この関数は
+	//   「子ルートが無いとき」に走るので、開いた直後に無限に呼ばれる。
+	router.replace(SETTINGS_DEFAULT_ROUTE);
+}
+
+/**
+ * 旗鯖fork: シェル上のホイールを、近い方のペインへ渡す。
+ *
+ * ⚠️すでにスクロールできる場所の上なら何もしないこと。二重に動いて飛ぶ。
+ * ⚠️端まで来ているときも何もしない。外側へ伝播させる（親の器が動けるように）。
+ * ⚠️横方向のホイールには手を出さない。
+ */
+function onShellWheel(ev: WheelEvent) {
+	if (ev.deltaY === 0 || Math.abs(ev.deltaX) > Math.abs(ev.deltaY)) return;
+
+	const root = rootEl.value;
+	let node = ev.target instanceof HTMLElement ? ev.target : null;
+	while (node != null && node !== root) {
+		const overflowY = window.getComputedStyle(node).overflowY;
+		if ((overflowY === 'auto' || overflowY === 'scroll') && node.scrollHeight > node.clientHeight + 1) return;
+		node = node.parentElement;
+	}
+
+	// ⚠️どちらのペインを動かすかは「指している位置に近い方」で決める。
+	//   ⚠️横位置だけで決めないこと。狭い幅では左右ペインが縦に積まれ、
+	//   横の範囲が重なるので、いつも片方だけが動いてしまう。
+	const candidates = [navEl.value, mainEl.value].filter((pane): pane is HTMLElement => (
+		pane != null && pane.scrollHeight > pane.clientHeight + 1 && pane.getBoundingClientRect().height > 0
+	));
+	if (candidates.length === 0) return;
+	const distance = (pane: HTMLElement) => {
+		const box = pane.getBoundingClientRect();
+		const dx = Math.max(box.left - ev.clientX, 0, ev.clientX - box.right);
+		const dy = Math.max(box.top - ev.clientY, 0, ev.clientY - box.bottom);
+		return Math.hypot(dx, dy);
+	};
+	const pane = candidates.reduce((nearest, candidate) => (distance(candidate) < distance(nearest) ? candidate : nearest));
+
+	const next = Math.max(0, Math.min(pane.scrollHeight - pane.clientHeight, pane.scrollTop + ev.deltaY));
+	if (next === pane.scrollTop) return;
+	ev.preventDefault();
+	pane.scrollTop = next;
 }
 
 function updateCompact() {
 	const width = rootEl.value?.offsetWidth ?? 0;
 	compact.value = width <= 680;
+	// 旗鯖fork: ⚠️タブレット専用の作りは廃止した。PC と同じ姿に揃える。
+	//   ⚠️`tablet` は狭い幅向けの余白調整に残っているだけで、作りは変えない。
 	tablet.value = width > 680 && width <= 900;
+	if (compact.value) navPaneMode.value = 'categories';
 	if (!compact.value) compactNavigationSection.value = null;
-	if (!tablet.value) tabletNavigationSection.value = null;
 	redirectDefaultPage();
 }
 
@@ -1626,6 +1975,7 @@ function isSettingsFullPath(fullPath: string) {
 }
 
 async function goCompactBack() {
+	compactPageDirection.value = 'back';
 	if (compactNavigationSection.value != null) {
 		compactNavigationSection.value = null;
 		return;
@@ -1635,11 +1985,21 @@ async function goCompactBack() {
 		return;
 	}
 	if (!await requestSurfaceDiscard()) return;
-	if (window.history.length > 1) {
-		window.history.back();
-		return;
-	}
-	pushShellRoute('/');
+	// 旗鯖fork: ⚠️ここで history.back() を使わないこと。
+	//   設定の中で分類や項目を選ぶたびに履歴を積んでいるので、1つ前もたいてい
+	//   設定の中にある。⚠️結果、戻る→子カテゴリ→設定の先頭→戻る…と
+	//   設定から永久に抜けられなくなる（実際にそうなっていた）。
+	//   ⚠️設定へ入る前の場所は追えないので、確実に外へ出られる行き先を選ぶ。
+	pushShellRoute(settingsExitRoute());
+}
+
+/**
+ * 旗鯖fork: 設定から出るときの行き先。
+ * ⚠️設定の中の経路を返さないこと。戻る操作が設定へ戻ってしまう。
+ */
+function settingsExitRoute(): string {
+	const previous = lastNonSettingsRoute;
+	return previous != null && !isSettingsFullPath(previous) ? previous : '/';
 }
 
 const resizeObserver = new ResizeObserver(updateCompact);
@@ -1663,6 +2023,9 @@ function activateShell() {
 }
 
 function deactivateShell() {
+	clearSearchHintTimers();
+	siblingTabsObserver?.disconnect();
+	siblingTabsObserver = null;
 	settingsSurfaceLeaveGuard.dispose();
 	cancelPendingNavigation();
 	activeNavigationTarget.value = null;
@@ -1683,9 +2046,16 @@ onMounted(() => {
 onActivated(activateShell);
 onDeactivated(deactivateShell);
 
+// ⚠️設定が変わったら数え直す。prefer は画面をまたいで共有されるので、
+//   ここを見ておけば「値をいじった」ことを取りこぼさない。
+watch(() => JSON.stringify(prefer.r), restartSearchHintCountdown, { deep: false });
+
 watch(router.currentRef, () => {
+	const fullPath = router.getCurrentFullPath();
+	restartSearchHintCountdown();
+	if (!isSettingsFullPath(fullPath)) lastNonSettingsRoute = fullPath;
+	playPageEnter();
 	if (currentPage.value?.route.name != null) compactNavigationSection.value = null;
-	if (!tablet.value) tabletNavigationSection.value = null;
 	if (!activeNavigationTargetMatchesCurrentPath()) activeNavigationTarget.value = null;
 	if (currentPath.value !== '/settings/hata-custom') activeHataCustomCategory.value = null;
 	syncHataCustomRoutePresentation();
@@ -1786,13 +2156,45 @@ definePage(() => indexInfo);
 .compactHeader { display: block; padding: 12px 14px 14px; }
 /* 旗鯖fork: 画面を移ると見出しが左右に滑って入れ替わる。
    ⚠️:global を付けないと、CSS Modules がハッシュ化して Transition の名前と噛み合わない。 */
+/* 旗鯖fork: 狭い幅の画面遷移。進むときは右から、戻るときは左から。
+   ⚠️出入りの遷移(Transition)にしないこと。要素を差し替える作りは、
+   途中で止まると中身が消えたまま戻らない。⚠️使い捨てのアニメーションなら
+   途中で止まっても中身は残る。 */
+@keyframes settingsPageForward { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: none; } }
+@keyframes settingsPageBack { from { opacity: 0; transform: translateX(-24px); } to { opacity: 1; transform: none; } }
+.contentCard[data-page-enter='forward'] { animation: settingsPageForward 240ms cubic-bezier(.2, .9, .2, 1); }
+.contentCard[data-page-enter='back'] { animation: settingsPageBack 240ms cubic-bezier(.2, .9, .2, 1); }
+@media (prefers-reduced-motion: reduce) {
+	.contentCard[data-page-enter='forward'], .contentCard[data-page-enter='back'] { animation: none; }
+}
+/* 旗鯖fork: 左ペインの下位一覧への出入り。進むときは左へ、戻るときは右へ滑らせる。
+   ⚠️位置だけを動かすこと。高さを動かすと下の項目まで一緒に跳ねる。 */
+:global(.settings-drill-forward-enter-active), :global(.settings-drill-forward-leave-active),
+:global(.settings-drill-back-enter-active), :global(.settings-drill-back-leave-active) {
+	transition: opacity 180ms ease, transform 240ms cubic-bezier(.2, .9, .2, 1);
+}
+:global(.settings-drill-forward-enter-from) { opacity: 0; transform: translateX(18px); }
+:global(.settings-drill-forward-leave-to) { opacity: 0; transform: translateX(-18px); }
+:global(.settings-drill-back-enter-from) { opacity: 0; transform: translateX(-18px); }
+:global(.settings-drill-back-leave-to) { opacity: 0; transform: translateX(18px); }
+@media (prefers-reduced-motion: reduce) {
+	:global(.settings-drill-forward-enter-active), :global(.settings-drill-forward-leave-active),
+	:global(.settings-drill-back-enter-active), :global(.settings-drill-back-leave-active) { transition: none; }
+}
 :global(.settings-title-enter-active), :global(.settings-title-leave-active) { transition: opacity .2s ease, transform .24s cubic-bezier(.2, .9, .2, 1); display: inline-block; }
 :global(.settings-title-enter-from) { opacity: 0; transform: translateX(12px); }
 :global(.settings-title-leave-to) { opacity: 0; transform: translateX(-12px); }
 @media (prefers-reduced-motion: reduce) {
 	:global(.settings-title-enter-active), :global(.settings-title-leave-active) { transition: none; }
 }
-.compactTop { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: center; gap: 10px; }
+/* 旗鯖fork: ⚠️列を固定したまま子を足さないこと。虫眼鏡が暗黙の4列目へ落ち、
+   幅が中身なり(実測12px)になって潰れていた。虫眼鏡の列を明示する。 */
+/* 旗鯖fork: ⚠️左右の列を同じ幅にして、真ん中の題を器の中央へ固定する。
+   ⚠️右にボタンを足すたびに軸がずれる作りにしないこと。 */
+.compactTop { display: grid; grid-template-columns: minmax(44px, 1fr) auto minmax(44px, 1fr); align-items: center; gap: 10px; }
+.compactActions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+/* ⚠️案内は題より控えめに。太字のままだと題と見分けがつかない。 */
+.compactHint { display: inline-block; overflow: hidden; max-inline-size: 100%; color: var(--MI_THEME-accent); cursor: pointer; font-size: .82rem; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
 .compactBack, .compactPreview { display: grid; width: 44px; height: 44px; place-items: center; border: 0; border-radius: 50%; background: transparent; color: var(--MI_THEME-fg); cursor: pointer; font: inherit; font-size: 1.15rem; touch-action: manipulation; &:hover { background: var(--MI_THEME-buttonHoverBg); } &:focus-visible { outline: 3px solid color-mix(in srgb, var(--MI_THEME-accent) 50%, transparent); outline-offset: 2px; } }
 .compactPreview { background: color-mix(in srgb, var(--MI_THEME-accent) 12%, var(--settings-surface, var(--MI_THEME-panel))); color: var(--MI_THEME-accent); }
 .compactTitle { overflow: hidden; margin: 0; color: var(--MI_THEME-fg); font-size: 1.375rem; font-weight: 800; letter-spacing: -.02em; line-height: 1.2; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
@@ -1811,51 +2213,139 @@ definePage(() => indexInfo);
 .nav, .contentCard { border: 1px solid var(--settings-border, color-mix(in srgb, var(--MI_THEME-divider) 78%, transparent)); border-radius: 22px; background: var(--settings-surface, var(--MI_THEME-panel)); box-shadow: 0 2px 10px color-mix(in srgb, var(--MI_THEME-fg) 5%, transparent); }
 /* 旗鯖fork: ⚠️scrollbar-gutter は重ね描き方式のスクロールバーでは効かない。
    端に余白を持たせて、件数バッジや枠がバーの下へ潜らないようにする。 */
-.nav { min-block-size: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; padding: 14px; padding-inline-end: 20px; }
+.nav { min-block-size: 0; overflow-y: auto; overscroll-behavior: contain; padding: 14px 20px; }
 .profileRow { display: flex; gap: 10px; align-items: stretch; margin-bottom: 14px; }
 .profile { min-height: 64px; color: var(--MI_THEME-fg); text-decoration: none; &:hover { text-decoration: none; } &:focus-visible { outline: 3px solid color-mix(in srgb, var(--MI_THEME-accent) 50%, transparent); outline-offset: 2px; } }
 .profile { display: flex; min-width: 0; flex: 1; align-items: center; gap: 11px; border: 1px solid color-mix(in srgb, var(--MI_THEME-accent) 36%, var(--settings-border, color-mix(in srgb, var(--MI_THEME-divider) 78%, transparent))); border-radius: 18px; padding: 10px 12px; background: light-dark(color-mix(in srgb, var(--MI_THEME-accent) 10%, var(--settings-surface, var(--MI_THEME-panel))), color-mix(in srgb, var(--MI_THEME-accent) 18%, var(--settings-surface, var(--MI_THEME-panel)))); }
 .avatar { width: 40px; height: 40px; flex: none; }
 .profileText { display: grid; min-width: 0; gap: 2px; strong, small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } strong { font-size: .82rem; } small { color: var(--settings-muted, color-mix(in srgb, var(--MI_THEME-fg) 60%, transparent)); font-size: .68rem; } }
-.filterPills { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
-.filter { display: inline-flex; min-height: 44px; align-items: center; border: 0; border-radius: 999px; padding: 6px 13px; background: var(--MI_THEME-buttonBg); color: var(--MI_THEME-fg); cursor: pointer; font: inherit; font-size: .7rem; font-weight: 700; &:hover { background: var(--MI_THEME-buttonHoverBg); } &:focus-visible { outline: 3px solid color-mix(in srgb, var(--MI_THEME-accent) 50%, transparent); outline-offset: 2px; } }
-.filterActive { background: var(--MI_THEME-fg); color: var(--MI_THEME-bg); }
-.sectionTitle { margin: 14px 0 8px; padding: 0 10px; color: var(--MI_THEME-accent); font-size: .74rem; font-weight: 700; letter-spacing: .03em; line-height: 1.45; }
-.navSection > .sectionTitle { display: flex; min-height: 44px; align-items: center; gap: 8px; margin: 14px 0 8px; padding: 0 10px; color: color-mix(in srgb, var(--MI_THEME-fg) 88%, transparent); font-weight: 700; cursor: pointer; list-style: none; &:focus-visible { outline: 3px solid color-mix(in srgb, var(--MI_THEME-accent) 50%, transparent); outline-offset: 2px; } &::-webkit-details-marker { display: none; } > i:first-child { color: var(--MI_THEME-accent); font-size: 1rem; } > span { min-width: 0; overflow: hidden; flex: 1; text-overflow: ellipsis; white-space: nowrap; } > i:last-child { display: inline-block; flex: none; transition: transform 150ms ease; } }
-.navSection[open] > .sectionTitle > i:last-child { transform: rotate(90deg); }
-.navSectionActive > .sectionTitle { color: var(--MI_THEME-accent); font-weight: 800; }
-.navSectionActive > .sectionTitle::after { content: ''; flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--MI_THEME-accent); }
-.cherrypickSection > .sectionTitle { border-block-end: 1px dashed color-mix(in srgb, var(--MI_THEME-accent) 60%, var(--settings-border, color-mix(in srgb, var(--MI_THEME-divider) 78%, transparent))); color: var(--MI_THEME-accent); }
-.cherrypickSection > .sectionTitle > i:first-child { color: inherit; }
-.cherrypickNavLink { margin-block: 3px; border: 1px dashed color-mix(in srgb, var(--MI_THEME-accent) 60%, var(--settings-border, color-mix(in srgb, var(--MI_THEME-divider) 78%, transparent))); color: var(--MI_THEME-accent); &:hover { border-color: var(--MI_THEME-accent); } }
-.deprecatedNavSection { opacity: .68; }
-.deprecatedNavSection > .sectionTitle, .deprecatedNavSection .navLink { color: var(--settings-muted, color-mix(in srgb, var(--MI_THEME-fg) 60%, transparent)); }
+/* 旗鯖fork: 絞り込みの錠剤ケース。⚠️寸法と表現は右ペインの兄弟タブに揃える。 */
+.filterRow { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 14px; }
+/* ⚠️「ALL」だけは文字。絵の並びの中で浮かないよう、字面を小さく詰める。 */
+.filterMark { font-size: .68rem; font-weight: 800; letter-spacing: .04em; line-height: 1; }
+.filterPills { display: flex; min-width: 0; max-width: 100%; align-items: center; gap: 2px; flex-wrap: nowrap; overflow-x: auto; box-sizing: border-box; padding: 4px; border-radius: 9999px; background: color-mix(in srgb, var(--MI_THEME-bg) 74%, var(--MI_THEME-panel)); box-shadow: 0 0 0 1px color-mix(in srgb, var(--MI_THEME-divider) 60%, transparent) inset; scrollbar-width: none; }
+.filterPills::-webkit-scrollbar { display: none; }
+.filter { display: inline-flex; flex: 0 0 auto; min-width: 40px; min-height: 36px; align-items: center; justify-content: center; border: 0; border-radius: 9999px; padding: 6px 10px; background: transparent; color: color-mix(in srgb, var(--MI_THEME-fg) 55%, transparent); cursor: pointer; font: inherit; font-size: .7rem; font-weight: 700; white-space: nowrap; transition: color 200ms ease, background-color 200ms ease; &:hover { color: var(--MI_THEME-fg); background: color-mix(in srgb, var(--MI_THEME-fg) 6%, transparent); } &:focus-visible { outline: 3px solid color-mix(in srgb, var(--MI_THEME-accent) 50%, transparent); outline-offset: -3px; } > i { font-size: 1rem; } }
+/* ⚠️選択中は塗りつぶさない。アクセント色の文字＋淡い下地で示す。 */
+.filter[data-active='true'], .filter[data-active='true']:hover { background: color-mix(in srgb, var(--MI_THEME-accent) 12%, transparent); color: var(--MI_THEME-accent); font-weight: 800; }
+/* ⚠️見出しも中央へ。上の絞り込みケースと下のグリッドが中央寄せなので、
+   ここだけ左詰めだと軸が食い違って見える。 */
+.sectionTitle { margin: 14px 0 8px; padding: 0 10px; color: var(--MI_THEME-accent); font-size: .74rem; font-weight: 700; letter-spacing: .03em; line-height: 1.45; text-align: center; }
+/* 旗鯖fork: よく使う設定は札を並べたグリッドにする。
+   ⚠️横並び(アイコン→文字)で2列にすると1つ約100pxしかなく、日本語の
+   ラベルが丸ごと隠れてアイコンだけの謎のタイルになった（実測: 文字の幅0）。
+   ⚠️縦積み(アイコンの下に文字)にすれば、2列でも文字が読める。 */
 .quickGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
-.quickItem { display: flex; box-sizing: border-box; width: 100%; min-width: 0; min-height: 44px; align-items: center; gap: 8px; appearance: none; cursor: pointer; font: inherit; text-align: start; border: 1px solid var(--settings-border, color-mix(in srgb, var(--MI_THEME-divider) 78%, transparent)); border-radius: 16px; padding: 8px 11px; background: var(--settings-bg, var(--MI_THEME-bg)); color: var(--MI_THEME-fg); font-size: .75rem; text-decoration: none; &:hover { border-color: color-mix(in srgb, var(--MI_THEME-accent) 45%, var(--settings-border, color-mix(in srgb, var(--MI_THEME-divider) 78%, transparent))); text-decoration: none; } > i { color: var(--MI_THEME-accent); font-size: 1rem; } > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } }
+.quickItem { display: flex; box-sizing: border-box; width: 100%; min-width: 0; min-height: 68px; flex-direction: column; align-items: center; justify-content: center; gap: 4px; overflow: hidden; text-align: center; appearance: none; cursor: pointer; font: inherit; border: 1px solid var(--settings-border, color-mix(in srgb, var(--MI_THEME-divider) 78%, transparent)); border-radius: 16px; padding: 8px 11px; background: var(--settings-bg, var(--MI_THEME-bg)); color: var(--MI_THEME-fg); font-size: .75rem; text-decoration: none; &:hover { border-color: color-mix(in srgb, var(--MI_THEME-accent) 45%, var(--settings-border, color-mix(in srgb, var(--MI_THEME-divider) 78%, transparent))); text-decoration: none; } > i { flex: none; color: var(--MI_THEME-accent); font-size: 1.15rem; } > span { display: block; box-sizing: border-box; width: 100%; min-width: 0; padding-inline: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } }
+/* 旗鯖fork: 左ペインの大分類。⚠️Hataskey UI の上部タブと同じ考え方で、
+   選択中は塗りつぶさずアクセント色の文字＋淡い下地で示す。 */
+/* 旗鯖fork: 最小化した左ペイン（帯）。
+   ⚠️並ぶものは全部「同じ形の押せるボタン」に揃えること。
+   以前は押せない飾りが1つ混ざっていて、光っているのに反応せず戸惑わせた。
+   ⚠️中央へ揃えること。器に padding が残っていると左へ寄って見える。 */
+/* 旗鯖fork: ⚠️畳んだときは器ごと細くすること。左を空けたまま幅だけ残すと、
+   右ペインが広がらず畳んだ意味がない。
+
+   ⚠️`grid-template-columns` に transition を掛けないこと。
+   `minmax(226px,272px)` と `64px` はトラックの形が違って補間できず、
+   ⚠️**値が古いまま張り付いて畳めなくなる**（実測: transition を切ると
+   即 64px、付けると 272px のまま動かない）。
+   ⚠️器は即座に切り替え、動きは「左ペインの中身の幅」で見せる。 */
+.layout[data-nav-mode='rail'] { grid-template-columns: 64px minmax(0, 1fr); }
+.layout[data-nav-mode='rail'] > .nav { padding-inline: 6px; }
+.nav { transition: width 260ms cubic-bezier(.2, .9, .2, 1); }
+
+/* 旗鯖fork: 畳んだときの虫眼鏡。⚠️右上のアイコンの左に並ぶ。 */
+.compactSearchIcon { display: grid; box-sizing: border-box; width: 38px; height: 38px; flex: none; place-items: center; border: 0; border-radius: 999px; padding: 0; background: var(--settings-bg, var(--MI_THEME-bg)); color: var(--MI_THEME-fg); cursor: pointer; font: inherit; font-size: 1.05rem; transition: width 220ms cubic-bezier(.2, .9, .2, 1), opacity 160ms ease; }
+/* ⚠️開いているときは幅0へ畳む。display:none にしないこと。動きが消える。 */
+.compactSearchIcon[data-collapsed='false'] { width: 0; margin: 0; opacity: 0; overflow: hidden; pointer-events: none; }
+.compactSearchIcon:hover { background: var(--MI_THEME-buttonHoverBg); }
+.compactSearchIcon:focus-visible { outline: 3px solid color-mix(in srgb, var(--MI_THEME-accent) 50%, transparent); outline-offset: -3px; }
+/* ⚠️`.compactHeader .searchTrigger` と同じ詳細度だと、後ろに書かれている
+   器の指定に負けて畳めない（実測: 高さ18pxが残った）。親を含めて上書きする。 */
+.compactHeader .searchTrigger[data-collapsed='true'] { min-height: 0; height: 0; margin: 0; padding-block: 0; border-width: 0; opacity: 0; overflow: hidden; pointer-events: none; }
+.compactHeader .searchTrigger { transition: height 220ms cubic-bezier(.2, .9, .2, 1), margin-top 220ms cubic-bezier(.2, .9, .2, 1), opacity 160ms ease, padding-block 220ms cubic-bezier(.2, .9, .2, 1); }
+@media (prefers-reduced-motion: reduce) { .nav, .compactSearchIcon, .compactHeader .searchTrigger { transition: none; } }
+
+.rail { display: grid; justify-items: center; align-content: start; gap: 8px; padding: 6px 0; }
+.railButton { display: grid; box-sizing: border-box; width: 44px; height: 44px; place-items: center; border: 0; border-radius: 999px; padding: 0; background: transparent; color: var(--MI_THEME-fg); cursor: pointer; font: inherit; font-size: 1.15rem; transition: background-color 200ms ease, color 200ms ease; }
+.railButton:hover { background: color-mix(in srgb, var(--MI_THEME-fg) 8%, transparent); }
+.railButton:focus-visible { outline: 3px solid color-mix(in srgb, var(--MI_THEME-accent) 50%, transparent); outline-offset: -3px; }
+/* ⚠️いま開いている分類。押すと項目一覧が開く（飾りではない）。 */
+.railCurrent { background: color-mix(in srgb, var(--MI_THEME-accent) 12%, transparent); color: var(--MI_THEME-accent); }
+.railCurrent:hover { background: color-mix(in srgb, var(--MI_THEME-accent) 20%, transparent); }
+.railAvatar { width: 32px; height: 32px; }
+.detailPane { display: block; margin-top: 14px; }
+.sectionPills { display: grid; gap: 4px; margin-top: 14px; }
+.sectionPill { display: flex; box-sizing: border-box; width: 100%; min-height: 46px; align-items: center; gap: 10px; appearance: none; border: 0; border-radius: 999px; padding: 8px 14px; background: transparent; color: var(--MI_THEME-fg); cursor: pointer; font: inherit; font-size: .84rem; font-weight: 700; text-align: start; transition: color 200ms ease, background-color 200ms ease; touch-action: manipulation; &:hover { background: color-mix(in srgb, var(--MI_THEME-fg) 6%, transparent); } &:focus-visible { outline: 3px solid color-mix(in srgb, var(--MI_THEME-accent) 50%, transparent); outline-offset: -3px; } > i:first-child { flex: none; opacity: .8; font-size: 1.05rem; } /* ⚠️件数バッジにも当たらないようにすること。素の `> span` だとバッジが
+     flex:1 を受け取り、ラベルと幅を山分けして文字が「…」で切れた
+     （実測: ラベル77px / バッジ77px）。 */
+	> span:not(.countBadge) { min-width: 0; overflow: hidden; flex: 1; text-overflow: ellipsis; white-space: nowrap; }
+	> .countBadge { flex: none; }
+}
+.sectionPill[data-active='true'], .sectionPill[data-active='true']:hover { background: color-mix(in srgb, var(--MI_THEME-accent) 12%, transparent); color: var(--MI_THEME-accent); font-weight: 800; box-shadow: inset 3px 0 0 var(--MI_THEME-accent); }
+.sectionPill[data-active='true'] > i:first-child { color: var(--MI_THEME-accent); opacity: 1; }
+/* 旗鯖fork: Tabler の代わりに絵を出すときの寸法。⚠️文字と同じ高さに揃える。 */
+.pillImage { flex: none; width: 1.25em; height: 1.25em; border-radius: 4px; object-fit: contain; }
+/* ⚠️畳むボタンは絞り込みのケースから独立させる（〇○○ 〇 の形）。
+   ⚠️ケースの中に入れると「絞り込みの一種」に見えてしまう。 */
+.collapseButton { display: grid; box-sizing: border-box; width: 44px; height: 44px; flex: none; place-items: center; align-self: center; border: 0; border-radius: 9999px; padding: 0; background: color-mix(in srgb, var(--MI_THEME-bg) 74%, var(--MI_THEME-panel)); box-shadow: 0 0 0 1px color-mix(in srgb, var(--MI_THEME-divider) 60%, transparent) inset; color: var(--MI_THEME-fg); cursor: pointer; font: inherit; font-size: 1.05rem; transition: background-color 200ms ease; }
+.collapseButton:hover { background: color-mix(in srgb, var(--MI_THEME-fg) 8%, transparent); }
+.collapseButton:focus-visible { outline: 3px solid color-mix(in srgb, var(--MI_THEME-accent) 50%, transparent); outline-offset: -3px; }
+.sectionPillCherrypick { color: var(--MI_THEME-accent); }
+.sectionPillDeprecated { opacity: .68; }
+/* 旗鯖fork: 兄弟タブはアクセントの「補色」で示す。
+   ⚠️本文の操作(アクセント色)と同じ色にしないこと。どれが画面を切り替える帯で
+   どれが設定そのものかが、色から読み取れなくなる。
+   ⚠️相対色構文が効かない環境ではアクセント色へ落ちる。⚠️落ちても壊れないこと。 */
+.siblingTabs { --hata-tab-accent: var(--MI_THEME-accent); }
+@supports (color: hsl(from red h s l)) {
+	.siblingTabs { --hata-tab-accent: hsl(from var(--MI_THEME-accent) calc(h + 180) s l); }
+}
+/* 旗鯖fork: 右ペインの兄弟タブ。⚠️寸法と表現は Hataskey UI 設定の錠剤ケースに揃える。 */
+.siblingTabsSentinel { height: 0; margin: 0; padding: 0; }
+.siblingTabs { display: flex; box-sizing: border-box; width: fit-content; max-width: 100%; min-width: 0; gap: 2px; flex-wrap: nowrap; overflow-x: auto; margin: 0 auto 12px; position: sticky; inset-block-start: 8px; z-index: 4; transition: box-shadow 220ms cubic-bezier(.2, .9, .2, 1), background-color 220ms ease; padding: 4px; border-radius: 9999px; background: color-mix(in srgb, var(--MI_THEME-bg) 74%, var(--MI_THEME-panel)); backdrop-filter: blur(24px) saturate(1.4); -webkit-backdrop-filter: blur(24px) saturate(1.4); box-shadow: 0 0 0 1px color-mix(in srgb, var(--MI_THEME-divider) 60%, transparent) inset; scrollbar-width: none; }
+.siblingTabs::-webkit-scrollbar { display: none; }
+.siblingTabs > button { box-sizing: border-box; display: inline-flex; flex: 0 0 auto; min-width: 0; min-height: 40px; max-width: min(100%, 16rem); align-items: center; justify-content: center; gap: 6px; padding: 6px 10px; border: 0; border-radius: 9999px; background: transparent; color: color-mix(in srgb, var(--MI_THEME-fg) 55%, transparent); cursor: pointer; font: inherit; font-size: .75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: color 200ms ease, background-color 200ms ease, padding 200ms ease; &:focus-visible { outline: 3px solid color-mix(in srgb, var(--hata-tab-accent) 55%, transparent); outline-offset: -3px; } }
+.siblingTabs > button[data-active='true'], .siblingTabs > button[data-active='true']:hover { background: color-mix(in srgb, var(--hata-tab-accent) 16%, transparent); color: var(--hata-tab-accent); font-weight: 750; padding-inline: 12px 14px; }
+.siblingTabs > button[data-active='true'] > i { color: var(--hata-tab-accent); opacity: 1; }
+.siblingTabs > button:hover:not([data-active='true']) { color: var(--hata-tab-accent); background: color-mix(in srgb, var(--hata-tab-accent) 8%, transparent); }
+.siblingTabLabel { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 貼り付いている間だけ浮いて見せる。 */
+.siblingTabs[data-stuck='true'] { background: color-mix(in srgb, var(--MI_THEME-panel) 92%, var(--MI_THEME-bg)); box-shadow: 0 6px 20px color-mix(in srgb, var(--MI_THEME-fg) 14%, transparent), 0 0 0 1px color-mix(in srgb, var(--hata-tab-accent) 34%, transparent) inset; }
+@media (prefers-reduced-motion: reduce) { .siblingTabs, .sectionPill { transition: none; } }
 .links { display: grid; gap: 3px; }
 .navLink { display: flex; box-sizing: border-box; width: 100%; min-height: 44px; align-items: center; gap: 10px; appearance: none; border: 0; background: transparent; cursor: pointer; font: inherit; text-align: start; border-radius: 999px; padding: 7px 14px; color: var(--MI_THEME-fg); font-size: .84rem; text-decoration: none; touch-action: manipulation; &:hover { background: var(--MI_THEME-buttonHoverBg); text-decoration: none; } &:focus-visible { outline: 3px solid color-mix(in srgb, var(--MI_THEME-accent) 50%, transparent); outline-offset: 2px; } > i { opacity: .8; font-size: 1rem; } > span:not(.countBadge) { min-width: 0; flex: 1; line-break: strict; text-wrap: pretty; } }
 /* 旗鯖fork: ⚠️塗りつぶさないこと。アイコンと文字をアクセント色にし、
    下地はごく淡く敷くだけにする（Hataskey UI の上部タブと同じ考え方）。 */
 .navLinkActive, .navLinkActive:hover { background: color-mix(in srgb, var(--MI_THEME-accent) 12%, transparent); color: var(--MI_THEME-accent); font-weight: 750; box-shadow: inset 3px 0 0 var(--MI_THEME-accent); > i { color: var(--MI_THEME-accent); opacity: 1; } }
-.tabletPrimaryLink { margin-top: 14px; border: 1px solid var(--settings-border, color-mix(in srgb, var(--MI_THEME-divider) 78%, transparent)); background: var(--settings-surface, var(--MI_THEME-panel)); > i:last-child { margin-left: auto; } }
-/* 旗鯖fork: ⚠️ここは .tabletPrimaryLink と .navLinkActive の2クラスで
-   詳細度が高く、.navLinkActive 単独の指定に勝ってしまう。
-   ⚠️塗りつぶしをやめ、他と同じ「アクセント色の文字＋淡い下地」に揃える。 */
-.tabletPrimaryLink.navLinkActive { border-color: var(--MI_THEME-accent); background: color-mix(in srgb, var(--MI_THEME-accent) 12%, transparent); color: var(--MI_THEME-accent); font-weight: 750; }
-.tabletCategoryLink, .tabletSectionBack { display: flex; box-sizing: border-box; width: 100%; min-height: 48px; align-items: center; gap: 10px; border: 1px solid var(--settings-border, color-mix(in srgb, var(--MI_THEME-divider) 78%, transparent)); border-radius: 999px; padding: 8px 13px; background: var(--settings-bg, var(--MI_THEME-bg)); color: var(--MI_THEME-fg); cursor: pointer; font: inherit; font-size: .8rem; font-weight: 700; text-align: start; &:hover { background: var(--MI_THEME-buttonHoverBg); } &:focus-visible { outline: 3px solid color-mix(in srgb, var(--MI_THEME-accent) 50%, transparent); outline-offset: 2px; } > i:first-child { color: var(--MI_THEME-accent); font-size: 1rem; } > i:last-child { margin-left: auto; } }
-.tabletCategoryLink + .tabletCategoryLink { margin-top: 8px; }
-.tabletCategoryActive, .tabletCategoryActive:hover { border-color: var(--MI_THEME-accent); background: color-mix(in srgb, var(--MI_THEME-accent) 14%, var(--settings-surface, var(--MI_THEME-panel))); color: var(--MI_THEME-accent); box-shadow: inset 3px 0 0 var(--MI_THEME-accent); }
-.tabletCherrypickLink { border-style: dashed; border-color: color-mix(in srgb, var(--MI_THEME-accent) 60%, var(--settings-border, color-mix(in srgb, var(--MI_THEME-divider) 78%, transparent))); color: var(--MI_THEME-accent); }
-.tabletCherrypickLink > i:first-child { color: inherit; }
-.tabletDeprecatedLink { opacity: .68; }
-.tabletSectionBack { margin-top: 14px; margin-bottom: 8px; border-style: dashed; }
+.detailBack { margin-top: 14px; margin-bottom: 8px; border-style: dashed; }
+/* ⚠️1つ目は戻る矢印、2つ目が分類の絵。絵だけアクセント色にする。 */
+.detailBack > i:first-child { color: var(--MI_THEME-fgTransparentWeak); }
+.detailBack > i:nth-child(2) { color: var(--MI_THEME-accent); }
 .deprecatedBadge { flex: none; margin-left: auto; border-radius: 999px; padding: 3px 7px; background: color-mix(in srgb, var(--MI_THEME-warn) 14%, var(--settings-bg, var(--MI_THEME-bg))); color: var(--MI_THEME-warn); font-size: .62rem; font-weight: 800; letter-spacing: 0; }
 .countBadge { flex: none; border-radius: 999px; color: color-mix(in srgb, var(--MI_THEME-fg) 72%, transparent); font-size: .72rem; font-variant-numeric: tabular-nums; line-height: 1; }
 .sessionActions { margin-top: 14px; border-top: 1px solid var(--settings-border, color-mix(in srgb, var(--MI_THEME-divider) 78%, transparent)); padding-top: 2px; }
 .destructiveAction { display: flex; box-sizing: border-box; width: 100%; min-height: 44px; align-items: center; gap: 10px; border: 0; border-radius: 14px; padding: 8px 12px; background: transparent; color: var(--MI_THEME-error); cursor: pointer; font: inherit; font-size: .78rem; font-weight: 700; text-align: start; &:hover { background: color-mix(in srgb, var(--MI_THEME-error) 10%, transparent); } &:focus-visible { outline: 3px solid color-mix(in srgb, var(--MI_THEME-error) 55%, transparent); outline-offset: 2px; } > i { font-size: 1rem; } }
 .navLinkActive .countBadge { color: var(--MI_THEME-accent); opacity: .85; }
 .legacyMenu { display: flex; width: 100%; min-height: 44px; align-items: center; justify-content: center; gap: 7px; margin-top: 16px; border: 1px solid var(--settings-border, color-mix(in srgb, var(--MI_THEME-divider) 78%, transparent)); border-radius: 999px; background: var(--settings-surface, var(--MI_THEME-panel)); color: var(--MI_THEME-fg); cursor: pointer; font: inherit; font-size: .76rem; &:hover { background: var(--MI_THEME-buttonHoverBg); } &:focus-visible { outline: 3px solid color-mix(in srgb, var(--MI_THEME-accent) 50%, transparent); outline-offset: 2px; } }
-.main { min-width: 0; min-block-size: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; padding-inline-end: 8px; outline: 0; }
+.main { min-width: 0; min-block-size: 0; overflow-y: auto; overscroll-behavior: contain; padding-inline-end: 8px; outline: 0; }
+/* 旗鯖fork: スクロールバーは出さない。
+   ⚠️手本は Hataskey UI のサイドメニュー（ui/simple.vue の .sbScroll）。
+   ⚠️Firefox は `scrollbar-width`、Chromium/Safari は `::-webkit-scrollbar` と
+   別々の仕組みなので、両方書くこと。片方だけだと片方のブラウザで出たままになる。
+   ⚠️`scrollbar-gutter` も外すこと。バーが出ないのに場所だけ空くと、
+   右端に説明のつかない余白が残る。 */
+.nav, .main {
+	scrollbar-width: none;
+}
+
+.nav::-webkit-scrollbar, .main::-webkit-scrollbar {
+	width: 0;
+	height: 0;
+	display: none;
+}
+
 .main :deep([data-settings-search-id]) { scroll-margin-block: 96px; }
 .backToTop { display: none; }
 .contentCard { min-height: 0; min-block-size: 100%; padding: 20px; }
@@ -1871,15 +2361,20 @@ definePage(() => indexInfo);
 	.searchTrigger { max-width: none; flex: 1 1 0; }
 	.layout { grid-template-columns: 224px minmax(0, 1fr); gap: 14px; padding: 0 14px 16px; }
 	.nav { border: 0; border-radius: 0; padding: 0; background: transparent; box-shadow: none; }
-	.profileRow, .filterPills { display: none; }
+	/* 旗鯖fork: ⚠️プロフィール行をここで消さないこと。タブレット幅で
+	   左上から自分のアイコンが丸ごと無くなり、どのアカウントの設定を
+	   触っているのか画面から読めなかった（実測: display:none で 0×0）。
+	   ⚠️絞り込みピルは縦を食うので、この幅では引き続き畳む。 */
+	.filterPills { display: none; }
+	.profileRow { margin-bottom: 10px; }
+	.profile { min-height: 56px; border-radius: 16px; padding: 8px 10px; }
 	.quickSectionTitle { display: none; }
 	.quickGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 	.quickItem { min-height: 48px; justify-content: center; padding: 6px; background: var(--settings-surface, var(--MI_THEME-panel)); text-align: center; }
 	.quickItem > i { font-size: 1.15rem; }
 	.quickItem > span { display: none; }
 	.navSection > .sectionTitle { min-height: 48px; border: 1px solid var(--settings-border, color-mix(in srgb, var(--MI_THEME-divider) 78%, transparent)); border-radius: 999px; padding: 8px 13px; background: var(--settings-bg, var(--MI_THEME-bg)); font-size: .8rem; letter-spacing: .01em; }
-	.tabletPrimaryLink { min-height: 48px; margin-top: 14px; border-radius: 999px; padding-inline: 13px; font-size: .72rem; font-weight: 700; }
-	.tabletCategoryLink, .tabletSectionBack, .navLink { background: var(--settings-surface, var(--MI_THEME-panel)); }
+	.detailBack, .navLink { background: var(--settings-surface, var(--MI_THEME-panel)); }
 	.navSection > .sectionTitle > i:last-child { display: inline-block; }
 	.navSection .links { gap: 5px; padding-top: 4px; }
 	.navLink { min-height: 44px; border-radius: 14px; background: var(--settings-bg, var(--MI_THEME-bg)); }

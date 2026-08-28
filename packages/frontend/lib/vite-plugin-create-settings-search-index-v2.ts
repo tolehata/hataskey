@@ -1689,6 +1689,23 @@ function directiveExpression(node: ElementNode, name: string): string | undefine
 	return directive?.type === NodeTypes.DIRECTIVE ? directive.exp?.content : undefined;
 }
 
+/**
+ * 旗鯖fork: 設定画面の右ペインへ埋め込めるよう、窓は
+ * `<component :is="embedded ? SettingsEmbeddedWindow : MkWindow">` へ置き換えた。
+ * ⚠️タグ名だけで節を見分けると、この付け替えで節ごと索引から消える。
+ *   （実際に settings.group.hatady-display-settings が1件消えた）
+ */
+function isSettingsWindowRoot(node: ElementNode, tag: string): boolean {
+	if (node.tag === tag) return true;
+	if (node.tag !== 'component') return false;
+	const is = node.props.find(prop => prop.type === NodeTypes.DIRECTIVE
+		&& prop.name === 'bind'
+		&& prop.arg?.type === NodeTypes.SIMPLE_EXPRESSION
+		&& prop.arg.content === 'is');
+	const expression = is?.type === NodeTypes.DIRECTIVE ? is.exp?.content ?? '' : '';
+	return new RegExp(`\\b${tag}\\b`, 'u').test(expression);
+}
+
 function eventHandlerExpression(node: ElementNode, eventName: string): string | undefined {
 	const handlers = node.props.filter((prop): prop is DirectiveNode => prop.type === NodeTypes.DIRECTIVE
 		&& prop.name === 'on' && prop.arg?.type === NodeTypes.SIMPLE_EXPRESSION && prop.arg.content === eventName);
@@ -2958,7 +2975,7 @@ const STATIC_REACHABILITY_GROUP_SPECS_V2: readonly StaticReachabilityGroupSpecV2
 		labelExpression: 'Hatady表示設定',
 		aliases: ['Hatady', 'テーマ', '表示設定'],
 		sourceSemanticGroupId: 'settings.semantic.feature.hatady-display-settings',
-		matches: node => node.tag === 'MkWindow',
+		matches: node => isSettingsWindowRoot(node, 'MkWindow'),
 	},
 ];
 

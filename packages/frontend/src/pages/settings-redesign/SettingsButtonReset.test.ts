@@ -63,6 +63,9 @@ describe('settings redesign button reset', () => {
 		expect(hasAppearanceNone('color: red;')).toBe(false);
 		// ⚠️存在しないクラスなら空になること（読めていないのを見逃さない）。
 		expect(declarationFor(shellSource, 'zzThisClassDoesNotExist')).toBe('');
+		// ⚠️text-align が無い宣言は違反と判定すること。
+		expect(/text-align\s*:\s*(start|center)/u.test('color: red;')).toBe(false);
+		expect(/text-align\s*:\s*(start|center)/u.test('text-align: center;')).toBe(true);
 	});
 
 	test('リンクとボタンを兼ねるクラスは、既定の枠・背景・字面を打ち消している', () => {
@@ -73,7 +76,11 @@ describe('settings redesign button reset', () => {
 			expect(hasBackground(declaration), `${name}: background`).toBe(true);
 			expect(hasFontInherit(declaration), `${name}: font`).toBe(true);
 			expect(/cursor\s*:\s*pointer/u.test(declaration), `${name}: cursor`).toBe(true);
-			expect(/text-align\s*:\s*start/u.test(declaration), `${name}: text-align`).toBe(true);
+			// ⚠️狙いは「揃える側」ではなく**明示すること**。
+			//   <button> の既定は center、<a> は start。同じクラスを両方で使うので、
+			//   どちらかに決めて書いていないと、要素によって字面がずれる。
+			//   ⚠️中央寄せの札(.quickItem)では center が正しい明示値。
+			expect(/text-align\s*:\s*(start|center)/u.test(declaration), `${name}: text-align`).toBe(true);
 		}
 	});
 

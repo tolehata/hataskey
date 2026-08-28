@@ -7224,6 +7224,9 @@ _hata:
       fontUploadText: "Upload a TrueType (.ttf) or OpenType (.otf) font directly from the font page in Hataskey settings and apply it to the UI. A custom allowlist set by the server administrator is left unchanged."
       footerText: "These are only the main changes. See the release notes for every change, including smaller fixes."
       footerLink: "View release notes"
+      settingsRenewalTitle: "The settings screen has been rebuilt"
+      settingsRenewalText: "Categories now sit on the left and the items inside them appear as tabs on the right. Picking a category opens its first item straight away, and the Hataskey-specific settings open in the right pane instead of a separate window. The search at the top finds settings across every screen."
+      settingsRenewalLink: "Open settings"
   _common:
     customFeatures: "Hataskey features"
     externalNotifications: "External notifications"
@@ -8616,6 +8619,7 @@ _hata:
     frequentlyUsedSettings: "Frequently used settings"
     searchSettingsCount: "{count} searchable settings on this page"
     sessionAndLogin: "Device and sign-in"
+    searchHint: "You can search settings from here >"
     actions:
       clearCache: "Clear cache"
       logout: "Log out"
@@ -8664,6 +8668,17 @@ _hata:
       timelineOptions: "Timeline behaviour"
       miscLabel: "Other"
       miscDescription: "Settings that do not fit any category above."
+      appearanceAndTheme: "Appearance and themes"
+      appearanceAndThemeDescription: "Themes, fonts and emoji palettes"
+      profileDescription: "Name, icon and bio"
+      accountAndLogin: "Account and sign-in"
+      accountAndLoginDescription: "Privacy, email and security"
+      muteAndBlockDescription: "People and words to hide"
+      driveDescription: "File storage and cleanup"
+      dataAndMigration: "Data and migration"
+      dataAndMigrationDescription: "Exports and settings profiles"
+      externalServices: "External services"
+      externalServicesDescription: "External accounts, apps and plugins"
     filters:
       all: "All"
       frequent: "Frequently used"
@@ -8714,6 +8729,7 @@ _hata:
       emptyProfilesLink: "Go to automatic backup"
       emptyAppsTitle: "No connected apps"
       emptyAppsText: "Apps you authorise to use this account will be listed here. You authorise them from the app itself."
+      legacyBackToList: "Back to the settings list"
     ui2:
       recommendedInUse: "Recommended / In use"
       permanentDescriptionBefore: "The standard UI for Hataike 2-chome combines the regular and Deck layouts. Changes here "
@@ -8759,6 +8775,7 @@ _hata:
         footerNotice: "Settings do not change until you save"
         close: "Close"
         local: "Local"
+        bottomNavLabel: "Bottom navigation preview"
     immediate:
       eyebrow: "Related existing settings"
       title: "Settings applied immediately"

@@ -7,7 +7,10 @@ SPDX-License-Identifier: AGPL-3.0-only
   - 取得間隔 / 出典の明記
 -->
 <template>
-<MkModalWindow
+<!-- 旗鯖fork: 設定画面の右ペインへ埋め込むときは、窓そのものを枠なしへ差し替える。
+     ⚠️窓は position: fixed の重ね表示なので、CSSでペインの中へは収められない。
+     ⚠️受け口(#header / 本体 / close())は同じ形なので、中身には手を触れない。 -->
+<component :is="embedded ? SettingsEmbeddedWindow : MkModalWindow"
 	ref="windowEl"
 	:width="440"
 	:height="560"
@@ -83,11 +86,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</div>
 		</div>
 	</div>
-</MkModalWindow>
+</component>
 </template>
 
 <script lang="ts" setup>
 import { computed, ref, useTemplateRef, watch, onMounted } from 'vue';
+import SettingsEmbeddedWindow from '@/components/SettingsEmbeddedWindow.vue';
 import MkModalWindow from '@/components/MkModalWindow.vue';
 import MkSelect from '@/components/MkSelect.vue';
 import MkSwitch from '@/components/MkSwitch.vue';
@@ -164,6 +168,9 @@ async function saveNotif() {
 	} catch { /* 保存失敗は致命的でない */ }
 }
 watch([notifEnabled, notifMode, notifThreshold, earthquakePref], saveNotif);
+
+/** 旗鯖fork: true なら窓の枠を持たず、設定画面の右ペインの中身として描く。 */
+defineProps<{ embedded?: boolean }>();
 </script>
 
 <style lang="scss" module>

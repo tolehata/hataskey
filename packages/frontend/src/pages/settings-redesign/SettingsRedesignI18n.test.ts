@@ -65,7 +65,13 @@ describe('settings redesign translations', () => {
 		//   nav.miscLabel / nav.miscDescription を足したので191から198へ。
 		// ⚠️旧設定の帯に出す gateway.legacyNotice を足したので199へ。
 		// ⚠️空のときの案内文5件(gateway.empty*)を足したので204へ。
-		expect(ja.size).toBe(204);
+		// ⚠️節を用途ごとに割り直した際の nav 11件（見た目とテーマ／プロフィール説明／
+		//   アカウントとログイン／ミュートとブロック説明／ドライブ説明／
+		//   データと引っ越し／外部サービス連携 とその説明）を足したので215へ。
+		// ⚠️プレビューの下部ナビに専用の読み上げ文言を足したので216へ。
+		// ⚠️旧設定から一覧へ戻る導線の文言を足したので217へ。
+		// ⚠️無操作のときに出す検索の案内文を足したので218へ。
+		expect(ja.size).toBe(218);
 		assertSameLocaleShape(ja, en);
 		assertSameLocaleShape(ja, zh);
 		expect(ja.get('search.relatedHeading')).toBe('こちらをお探しですか？');

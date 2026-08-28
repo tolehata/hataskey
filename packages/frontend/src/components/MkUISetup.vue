@@ -13,7 +13,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 	- 選択・保存・リロードの既存ロジック (miLocalStorage + location.reload) は変更しない。
 -->
 <template>
-<MkModal ref="modal" :preferType="'dialog'" :disableBgBlur="true" @click="close" @closed="emit('closed')">
+<!-- 旗鯖fork: 設定画面の右ペインへ埋め込むときは、窓そのものを枠なしへ差し替える。
+     ⚠️窓は position: fixed の重ね表示なので、CSSでペインの中へは収められない。
+     ⚠️受け口(#header / 本体 / close())は同じ形なので、中身には手を触れない。 -->
+<component :is="embedded ? SettingsEmbeddedWindow : MkModal" ref="modal" :preferType="'dialog'" :disableBgBlur="true" @click="close" @closed="emit('closed')">
 	<div :class="$style.root" role="dialog" aria-modal="true" aria-labelledby="mkuisetup-title">
 		<!-- ===== ヘッダー ===== -->
 		<header :class="$style.header">
@@ -204,11 +207,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<button class="_button" :class="$style.cancelButton" @click="close">{{ copy.cancel }}</button>
 		</div>
 	</div>
-</MkModal>
+</component>
 </template>
 
 <script lang="ts" setup>
 import { ref } from 'vue';
+import SettingsEmbeddedWindow from '@/components/SettingsEmbeddedWindow.vue';
 import { ArrowUp, Bell, ChevronRight, CloudUpload, Globe2, Home, List, MessageSquareText, Plus, Radio, Search, SlidersHorizontal, Star, UserRound } from '@lucide/vue';
 import { instanceName } from '@@/js/config.js';
 import MkModal from '@/components/MkModal.vue';
@@ -264,6 +268,9 @@ const selectHatacording = async () => {
 	miLocalStorage.setItem('ui_setup_completed', 'true');
 	window.location.assign('/');
 };
+
+/** 旗鯖fork: true なら窓の枠を持たず、設定画面の右ペインの中身として描く。 */
+defineProps<{ embedded?: boolean }>();
 </script>
 
 <style lang="scss" module>

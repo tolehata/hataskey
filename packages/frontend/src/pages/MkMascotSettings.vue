@@ -7,7 +7,10 @@ SPDX-License-Identifier: AGPL-3.0-only
   - 画像はドライブのURL参照のみ保持。保存は hata/mascot/update でサーバー検証
 -->
 <template>
-<MkModalWindow
+<!-- 旗鯖fork: 設定画面の右ペインへ埋め込むときは、窓そのものを枠なしへ差し替える。
+     ⚠️窓は position: fixed の重ね表示なので、CSSでペインの中へは収められない。
+     ⚠️受け口(#header / 本体 / close())は同じ形なので、中身には手を触れない。 -->
+<component :is="embedded ? SettingsEmbeddedWindow : MkModalWindow"
 	ref="dialog"
 	:width="1240"
 	:height="800"
@@ -572,11 +575,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</div><!-- /layout -->
 		</template>
 	</div>
-</MkModalWindow>
+</component>
 </template>
 
 <script lang="ts" setup>
 import { ref, shallowRef, computed, watch, onMounted, onUnmounted } from 'vue';
+import SettingsEmbeddedWindow from '@/components/SettingsEmbeddedWindow.vue';
 import MkModalWindow from '@/components/MkModalWindow.vue';
 import MkButton from '@/components/MkButton.vue';
 import MkMascotImportSelectDialog from '@/components/MkMascotImportSelectDialog.vue';
@@ -588,7 +592,13 @@ import { i18n } from '@/i18n.js';
 import { displaySettings, loadDisplaySettings, saveDisplaySettings, type MascotDisplaySettings } from '@/utility/mascot-store.js';
 
 const emit = defineEmits<{ (ev:'closed'):void }>();
-const dialog = shallowRef<InstanceType<typeof MkModalWindow>>();
+/**
+ * 旗鯖fork: 窓と埋め込みのどちらでも通る参照の型。
+ * ⚠️片方の窓の型に固定すると、埋め込みへ差し替えたときに型が合わなくなる。
+ *   実際に使うのは close() だけなので、そこだけを約束する。
+ */
+type SettingsWindowHandle = { close: () => void };
+const dialog = shallowRef<SettingsWindowHandle>();
 const copy = i18n.ts._hata._mascotSettings;
 const copyx = i18n.tsx._hata._mascotSettings;
 
@@ -1521,6 +1531,9 @@ async function importCharacterFromFile() {
 	};
 	input.click();
 }
+
+/** 旗鯖fork: true なら窓の枠を持たず、設定画面の右ペインの中身として描く。 */
+defineProps<{ embedded?: boolean }>();
 </script>
 
 <style lang="scss" module>

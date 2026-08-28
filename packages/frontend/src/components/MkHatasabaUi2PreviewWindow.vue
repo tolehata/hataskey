@@ -25,31 +25,57 @@ draft or writes a setting while it is open.
 			</header>
 		<main :class="$style.preview" :aria-label="copy.ui2.preview.dialogLabel">
 			<p :class="$style.liveNotice" role="status"><i class="ti ti-sparkles" aria-hidden="true"></i>{{ copy.ui2.preview.liveNotice }}</p>
-			<section :class="$style.appPreview" :data-glass="editor.draft.editedGlassUi ? 'on' : 'off'" :data-bubble="editor.draft.editedGlassUiBubble ? 'on' : 'off'" :data-deck="deckPreview ? 'on' : 'off'" :style="{ '--preview-opacity': `${editor.draft.editedOpacity}%` }" :aria-label="copy.ui2.preview.appPreviewLabel">
-				<header :class="$style.appHeader">
-					<strong><i class="ti ti-sparkles" aria-hidden="true"></i><span class="settingsBrand">Hataskey</span></strong>
-					<nav :class="$style.topNav" :aria-label="copy.ui2.preview.timelineTabsLabel">
-						<span v-for="item in previewTopNav" :key="item.id"><i :class="item.icon" aria-hidden="true"></i>{{ editor.navDisplayLabel(item) }}</span>
-						<span v-if="editor.draft.editedShowTrendingTab"><i class="ti ti-flame" aria-hidden="true"></i>{{ copy.ui2.preview.trend }}</span>
-					</nav>
-				</header>
-				<div :class="$style.previewBody">
-					<aside :class="$style.sideNav" :aria-label="copy.ui2.preview.sideMenuLabel">
-						<span><i class="ti ti-home" aria-hidden="true"></i>{{ copy.ui2.preview.home }}</span>
-						<span><i class="ti ti-bell" aria-hidden="true"></i>{{ copy.ui2.preview.notifications }}</span>
-						<span><i class="ti ti-layout-dashboard" aria-hidden="true"></i>{{ copy.ui2.preview.sideStudio }}</span>
-					</aside>
-					<section :class="$style.timeline" :aria-label="copy.ui2.preview.notePreviewLabel">
-						<header :class="$style.timelineHeader"><span>{{ copy.ui2.preview.home }}</span><span :class="$style.modeBadge"><i :class="deckPreview ? 'ti ti-columns' : 'ti ti-layout-navbar'" aria-hidden="true"></i>{{ deckPreview ? copy.ui2.preview.deckMode : copy.ui2.preview.standardMode }}</span></header>
-						<article :class="$style.note">
-							<div :class="$style.noteAvatar" aria-hidden="true"><i class="ti ti-flag-3"></i></div>
-						<div :class="$style.noteContent"><strong>{{ copy.ui2.preview.sampleUserName }}</strong><span>@hataike</span><p>{{ copy.ui2.preview.sampleNoteOne }}</p><small><i class="ti ti-message-circle" aria-hidden="true"></i> 2 <i class="ti ti-repeat" aria-hidden="true"></i> 1 <i class="ti ti-heart" aria-hidden="true"></i> 7</small></div>
-						</article>
-						<article :class="[$style.note, $style.secondaryNote]">
-							<div :class="$style.noteAvatar" aria-hidden="true"><i class="ti ti-cloud"></i></div>
-							<div :class="$style.noteContent"><strong><span class="settingsBrand">Hataskey</span></strong><span>{{ copy.ui2.preview.timeline }}</span><p>{{ copy.ui2.preview.sampleNoteTwo }}</p></div>
-						</article>
-					</section>
+			<!-- 旗鯖fork: ⚠️手本は MkUISetup.vue の Hataskey UI モック（.phone / .deckWrap）。
+			     ⚠️寸法・角丸・色・影をそのまま写すこと。独自の見た目を足さない。 -->
+			<section
+				:class="$style.appPreview"
+				:data-glass="editor.draft.editedGlassUi ? 'on' : 'off'"
+				:data-bubble="bubblePreview ? 'on' : 'off'"
+				:data-deck="deckPreview ? 'on' : 'off'"
+				:style="{ '--preview-opacity': `${editor.draft.editedOpacity}%` }"
+				:aria-label="copy.ui2.preview.appPreviewLabel"
+			>
+				<!-- 列を並べる姿 -->
+				<div v-if="deckPreview" :class="$style.deckWrap" :aria-label="copy.ui2.preview.notePreviewLabel">
+					<div v-for="column in deckColumns" :key="column.id" :class="$style.deckCol">
+						<div :class="$style.deckColHead"><i :class="[column.icon, $style.deckColHeadIcon]"></i><span :class="$style.bar" style="width:26px;opacity:.28"></span></div>
+						<span v-for="(width, index) in column.bars" :key="index" :class="$style.bar" :style="{ width, opacity: .16 - index * .015 }"></span>
+					</div>
+				</div>
+
+				<!-- ふだんの姿 -->
+				<div v-else :class="$style.phone" :aria-label="copy.ui2.preview.notePreviewLabel">
+					<!-- 上部ピルナビ -->
+					<div :class="$style.phonePill" :aria-label="copy.ui2.preview.timelineTabsLabel">
+						<template v-for="(item, index) in previewTopNav" :key="item.id">
+							<div v-if="index === 0" :class="$style.phonePillActive"><i :class="item.icon"></i></div>
+							<i v-else :class="[item.icon, $style.phonePillIcon]"></i>
+						</template>
+						<i v-if="editor.draft.editedShowTrendingTab" :class="['ti ti-flame', $style.phonePillIcon]"></i>
+					</div>
+
+					<!-- ノート -->
+					<div v-for="note in previewNotes" :key="note.id" :class="$style.phoneNote">
+						<div :class="[$style.phoneAvatar, note.id === 'a' ? $style.phoneAvatarA : $style.phoneAvatarB]"></div>
+						<div :class="$style.noteBody">
+							<div :class="$style.noteHead"><span :class="$style.bar" style="width:32px;opacity:.5"></span><span :class="$style.bar" style="width:20px;opacity:.22"></span><span :class="[$style.bar, $style.barPush]" style="width:15px;opacity:.15"></span></div>
+							<div :class="$style.noteLines">
+								<span v-for="(width, index) in note.lines" :key="index" :class="$style.bar" :style="{ width, opacity: .2 - index * .04 }"></span>
+							</div>
+							<div :class="$style.noteActions"><i class="ti ti-arrow-back-up"></i><i class="ti ti-repeat"></i><i class="ti ti-mood-smile"></i><i class="ti ti-quote"></i><i class="ti ti-dots"></i></div>
+						</div>
+					</div>
+
+					<!-- 下部ナビ + 投稿ボタン -->
+					<div :class="$style.phoneBottom">
+						<div :class="$style.phoneNav" :aria-label="copy.ui2.preview.bottomNavLabel">
+							<template v-for="(item, index) in previewBottomNav" :key="item.id">
+								<div v-if="index === 2" :class="$style.phoneNavActive"><i :class="item.icon"></i></div>
+								<i v-else :class="item.icon"></i>
+							</template>
+						</div>
+						<div :class="$style.phoneFab"><i class="ti ti-pencil"></i></div>
+					</div>
 				</div>
 			</section>
 			<footer :class="$style.footer"><span>{{ copy.ui2.preview.footerNotice }}</span><button type="button" @click="close"><i class="ti ti-x" aria-hidden="true"></i>{{ copy.ui2.preview.close }}</button></footer>
@@ -85,7 +111,11 @@ const previewTitle = computed(() => {
 		after: title.slice(index + previewBrand.length),
 	};
 });
-const deckPreview = computed(() => props.editor.draft.editedTopNavMode || props.editor.draft.editedDeckIgnoreWidth);
+// ⚠️デッキは「画面幅に関係なく出す」設定のときだけ。上部メニューは別の姿なので混ぜない。
+const deckPreview = computed(() => props.editor.draft.editedDeckIgnoreWidth);
+// ⚠️デッキで吹き出しを切る設定があるので、ここで最終形を決める。
+const bubblePreview = computed(() => props.editor.draft.editedGlassUiBubble
+	&& !(deckPreview.value && props.editor.draft.editedDisableBubbleInHatasabaDeck));
 const previewTopNav = computed(() => {
 	const visible = props.editor.draft.editedTopNav.filter(item => item.visible !== false).slice(0, 4);
 	return visible.length > 0 ? visible : [
@@ -93,6 +123,27 @@ const previewTopNav = computed(() => {
 		{ id: 'local', icon: 'ti ti-planet', label: copy.ui2.preview.local },
 	];
 });
+/** ⚠️下部ナビは5つまで。手本のモックが5つ並びなので合わせる。 */
+const previewBottomNav = computed(() => {
+	const visible = props.editor.draft.editedBottomNav.filter(item => item.visible !== false).slice(0, 5);
+	return visible.length >= 3 ? visible : [
+		{ id: 'menu', icon: 'ti ti-menu-2' },
+		{ id: 'search', icon: 'ti ti-search' },
+		{ id: 'home', icon: 'ti ti-home' },
+		{ id: 'notifications', icon: 'ti ti-bell' },
+		{ id: 'widgets', icon: 'ti ti-eye' },
+	];
+});
+/** ⚠️中身は骨組みの棒だけ。文字を置かない（訳の無い言語で空欄になるため）。 */
+const previewNotes = [
+	{ id: 'a', lines: ['100%', '64%'] },
+	{ id: 'b', lines: ['90%'] },
+] as const;
+const deckColumns = [
+	{ id: 'home', icon: 'ti ti-home', bars: ['100%', '70%', '90%', '55%'] },
+	{ id: 'local', icon: 'ti ti-world', bars: ['80%', '100%', '60%', '85%'] },
+	{ id: 'notifications', icon: 'ti ti-bell', bars: ['70%', '90%', '50%'] },
+] as const;
 
 function close(): void {
 	dialog.value?.close();
@@ -162,37 +213,173 @@ function close(): void {
 .preview { display: grid; align-content: start; gap: 12px; padding: 16px 16px 14px; background: var(--MI_THEME-panel); color: var(--MI_THEME-fg); }
 .liveNotice { display: flex; align-items: flex-start; gap: 7px; margin: 0; padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--MI_THEME-accent) 30%, var(--MI_THEME-divider)); border-radius: 14px; background: color-mix(in srgb, var(--MI_THEME-accentedBg) 62%, var(--MI_THEME-panel)); font-size: .8rem; line-height: 1.55; }
 .liveNotice > i { color: var(--MI_THEME-accent); font-size: 1rem; }
-.appPreview { overflow: hidden; border: 1px solid color-mix(in srgb, var(--MI_THEME-divider) 72%, transparent); border-radius: 20px; background: var(--MI_THEME-panel); box-shadow: 0 10px 28px color-mix(in srgb, var(--MI_THEME-shadow) 16%, transparent); }
-.appPreview[data-glass='on'] { background: color-mix(in srgb, var(--MI_THEME-panel) var(--preview-opacity), var(--MI_THEME-bg)); backdrop-filter: var(--MI-blur, blur(18px)); }
-.appHeader { display: flex; min-height: 52px; align-items: center; gap: 14px; border-bottom: 1px solid color-mix(in srgb, var(--MI_THEME-divider) 72%, transparent); padding: 8px 14px; background: color-mix(in srgb, var(--MI_THEME-panel) 86%, transparent); }
-.appHeader strong { display: inline-flex; align-items: center; gap: 6px; color: var(--MI_THEME-accent); font-size: .88rem; }
-.topNav { display: flex; min-width: 0; flex: 1; align-items: center; gap: 5px; overflow: hidden; }
-.topNav span, .modeBadge { display: inline-flex; min-height: 30px; align-items: center; gap: 4px; overflow: hidden; border-radius: 999px; padding: 5px 9px; background: color-mix(in srgb, var(--MI_THEME-bg) 58%, var(--MI_THEME-panel)); color: var(--MI_THEME-fg); font-size: .68rem; line-height: 1; text-overflow: ellipsis; white-space: nowrap; }
-.topNav span:first-child { background: var(--MI_THEME-accent); color: var(--MI_THEME-fgOnAccent); }
-.previewBody { display: grid; grid-template-columns: 132px minmax(0, 1fr); min-height: 310px; }
-.sideNav { display: grid; align-content: start; gap: 5px; border-right: 1px solid color-mix(in srgb, var(--MI_THEME-divider) 72%, transparent); padding: 12px 9px; background: color-mix(in srgb, var(--MI_THEME-bg) 52%, transparent); }
-.sideNav span { display: flex; min-height: 38px; align-items: center; gap: 7px; border-radius: 12px; padding: 7px 9px; font-size: .72rem; line-height: 1.35; }
-.sideNav span:first-child { background: color-mix(in srgb, var(--MI_THEME-accent) 16%, transparent); color: var(--MI_THEME-accent); font-weight: 800; }
-.timeline { min-width: 0; padding: 12px; }
-.timelineHeader { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; font-size: .84rem; font-weight: 800; }
-.modeBadge { background: color-mix(in srgb, var(--MI_THEME-accentedBg) 84%, var(--MI_THEME-panel)); color: var(--MI_THEME-accent); font-weight: 700; }
-.note { display: flex; gap: 10px; margin-top: 8px; border: 1px solid color-mix(in srgb, var(--MI_THEME-divider) 68%, transparent); border-radius: 16px; padding: 12px; background: color-mix(in srgb, var(--MI_THEME-panel) 90%, transparent); }
-.appPreview[data-bubble='on'] .noteContent { border-radius: 14px; padding: 8px 10px; background: color-mix(in srgb, var(--MI_THEME-accentedBg) 40%, var(--MI_THEME-panel)); }
-.appPreview[data-deck='on'] .previewBody { grid-template-columns: 92px minmax(0, 1fr); }
-.appPreview[data-deck='on'] .sideNav span { justify-content: center; padding-inline: 5px; font-size: 0; }
-.appPreview[data-deck='on'] .sideNav i { font-size: 1rem; }
-.noteAvatar { display: grid; width: 32px; height: 32px; flex: none; place-items: center; border-radius: 50%; background: var(--MI_THEME-accent); color: var(--MI_THEME-fgOnAccent); }
-.secondaryNote .noteAvatar { background: color-mix(in srgb, var(--MI_THEME-fg) 24%, var(--MI_THEME-panel)); color: var(--MI_THEME-fg); }
-.noteContent { min-width: 0; flex: 1; }
-.noteContent strong, .noteContent span { display: inline-block; }
-.noteContent strong { margin-right: 6px; font-size: .76rem; }
-.noteContent span, .noteContent small { color: var(--MI_THEME-fgTransparentWeak); font-size: .66rem; }
-.noteContent p { margin: 6px 0 8px; font-size: .75rem; line-height: 1.6; }
-.noteContent small { display: flex; align-items: center; gap: 3px; }
+/* 旗鯖fork: ここから下は MkUISetup.vue の Hataskey UI モックを写したもの。
+   ⚠️寸法・角丸・色・影は手本の値をそのまま使うこと。
+   ⚠️独自の見た目を足すと、設定選択画面のモックと食い違って
+   「どちらが本当の Hataskey UI か」が分からなくなる。 */
+.appPreview {
+	display: grid;
+	place-items: center;
+	padding: 18px 12px;
+	border: 1px solid color-mix(in srgb, var(--MI_THEME-divider) 72%, transparent);
+	border-radius: 20px;
+	/* ⚠️手本と同じ濃色の下地。ここが明るいとモックの白い面が沈む。 */
+	background: linear-gradient(160deg, #1b2338, #131a2b);
+}
+
+/* ===== スマホ風モック（手本: .phone） ===== */
+.phone {
+	box-sizing: border-box;
+	display: flex;
+	width: 152px;
+	height: 238px;
+	flex-direction: column;
+	gap: 7px;
+	overflow: hidden;
+	padding: 10px 9px;
+	border: 1px solid rgba(255, 255, 255, .6);
+	border-radius: 26px;
+	background: linear-gradient(180deg, #eef2fa, #e2e8f4);
+	box-shadow: 0 14px 30px rgba(15, 22, 45, .4), inset 0 1px 0 rgba(255, 255, 255, .8);
+}
+.phonePill {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 5px;
+	padding: 5px 7px;
+	border: 1px solid rgba(255, 255, 255, .85);
+	border-radius: 999px;
+	background: rgba(255, 255, 255, .75);
+	box-shadow: 0 3px 8px rgba(20, 30, 60, .1);
+}
+.phonePillIcon { font-size: 10px; color: #9aa3b8; }
+.phonePillActive {
+	display: flex;
+	align-items: center;
+	gap: 3px;
+	padding: 3px 6px;
+	border-radius: 999px;
+	background: color-mix(in srgb, var(--MI_THEME-accent) 15%, #fff);
+
+	> i { font-size: 10px; color: var(--MI_THEME-accent); }
+}
+.phoneNote {
+	display: flex;
+	gap: 7px;
+	padding: 8px;
+	border: 1px solid rgba(255, 255, 255, .73);
+	border-radius: 15px;
+	background: rgba(255, 255, 255, .63);
+	box-shadow: 0 2px 6px rgba(20, 30, 60, .06);
+}
+.phoneAvatar { width: 22px; height: 22px; flex: none; border-radius: 7px; }
+.phoneAvatarA { background: linear-gradient(150deg, var(--MI_THEME-accent), color-mix(in srgb, var(--MI_THEME-accent) 30%, #2fb8a6)); }
+.phoneAvatarB { background: linear-gradient(150deg, color-mix(in srgb, var(--MI_THEME-accent) 70%, #7a5ad0), #2fb8a6); }
+.noteBody { display: flex; min-width: 0; flex: 1; flex-direction: column; gap: 4px; }
+.noteHead { display: flex; align-items: center; gap: 4px; }
+.noteLines { display: flex; flex-direction: column; gap: 4px; }
+.noteActions {
+	display: flex;
+	align-items: center;
+	gap: 9px;
+	margin-top: 2px;
+	color: rgba(38, 52, 86, .38);
+
+	> i { font-size: 9px; }
+}
+/* 骨組みの棒。⚠️濃色＝ノート本文、白＝デッキ側。手本と同じ使い分け。 */
+.bar { display: block; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, 1); }
+.phone .bar { background: rgba(38, 52, 86, 1); }
+.noteHead .bar { height: 5px; border-radius: 3px; }
+.barPush { margin-left: auto; }
+.phoneBottom { display: flex; align-items: center; gap: 6px; margin-top: auto; }
+.phoneNav {
+	display: flex;
+	flex: 1;
+	align-items: center;
+	justify-content: space-around;
+	padding: 6px 5px;
+	border: 1px solid rgba(255, 255, 255, .85);
+	border-radius: 999px;
+	background: rgba(255, 255, 255, .75);
+	box-shadow: 0 4px 10px rgba(20, 30, 60, .12);
+
+	> i { font-size: 12px; color: #9aa3b8; }
+}
+.phoneNavActive {
+	display: flex;
+	width: 22px;
+	height: 22px;
+	align-items: center;
+	justify-content: center;
+	border-radius: 50%;
+	background: color-mix(in srgb, var(--MI_THEME-accent) 17%, #fff);
+
+	> i { font-size: 12px; color: var(--MI_THEME-accent); }
+}
+.phoneFab {
+	display: flex;
+	width: 33px;
+	height: 33px;
+	flex: none;
+	align-items: center;
+	justify-content: center;
+	border-radius: 50%;
+	background: var(--MI_THEME-accent);
+	box-shadow: 0 4px 12px color-mix(in srgb, var(--MI_THEME-accent) 50%, transparent);
+
+	> i { font-size: 14px; color: #fff; }
+}
+
+/* ===== デッキ風モック（手本: .deckWrap） ===== */
+.deckWrap { display: flex; width: 220px; height: 196px; gap: 6px; }
+.deckCol {
+	box-sizing: border-box;
+	display: flex;
+	min-width: 0;
+	flex: 1;
+	flex-direction: column;
+	gap: 5px;
+	overflow: hidden;
+	padding: 6px;
+	border: 1px solid rgba(255, 255, 255, .1);
+	border-radius: 11px;
+	background: rgba(20, 26, 16, .9);
+}
+.deckColHead {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	padding-bottom: 4px;
+	border-bottom: 1px solid rgba(255, 255, 255, .09);
+}
+.deckColHeadIcon { font-size: 9px; color: color-mix(in srgb, var(--MI_THEME-accent) 70%, #fff); }
+
+/* ===== 設定の反映 ===== */
+/* ⚠️すりガラスの透過率は、面の下地の濃さで示す（手本の白い面を薄くする）。
+   ⚠️`--preview-opacity` は `55%` のような**百分率**が入る。
+   ⚠️`/ 100` で割らないこと。百分率をさらに100で割ると 0.55% になり、
+   面がほぼ透明になって**透過率の変更が見た目に出ない**（実測: alpha 0.004）。
+   ⚠️百分率のまま掛けること。 */
+.appPreview[data-glass='on'] .phonePill,
+.appPreview[data-glass='on'] .phoneNote,
+.appPreview[data-glass='on'] .phoneNav { background: rgb(255 255 255 / calc(var(--preview-opacity) * .85)); }
+/* ⚠️すりガラスを切ったときは、手本どおりの不透明な面に戻す。 */
+.appPreview[data-glass='off'] .phonePill,
+.appPreview[data-glass='off'] .phoneNav { background: rgba(255, 255, 255, .95); }
+.appPreview[data-glass='off'] .phoneNote { background: rgba(255, 255, 255, .9); }
+/* ⚠️吹き出しは本文の棒だけを包む。ノート全体を包むと実物と形が違う。 */
+.appPreview[data-bubble='on'] .noteLines {
+	padding: 5px 7px;
+	border-radius: 11px;
+	background: color-mix(in srgb, var(--MI_THEME-accent) 16%, transparent);
+}
+
 .footer { display: flex; min-height: 44px; align-items: center; justify-content: space-between; gap: 10px; color: var(--MI_THEME-fgTransparentWeak); font-size: .75rem; }
 .footer button { display: inline-flex; min-block-size: 44px; align-items: center; gap: 6px; border: 1px solid var(--MI_THEME-divider); border-radius: 999px; padding: 8px 14px; background: var(--MI_THEME-panel); color: var(--MI_THEME-fg); cursor: pointer; font: inherit; font-size: .8rem; font-weight: 700; }
 .footer button:hover { border-color: var(--MI_THEME-accent); background: var(--MI_THEME-accentedBg); }
 .footer button:focus-visible { outline: 3px solid color-mix(in srgb, var(--MI_THEME-accent) 54%, transparent); outline-offset: 3px; }
-@container (max-width: 500px) { .preview { padding: 12px; } .appHeader { align-items: flex-start; flex-direction: column; } .topNav { width: 100%; } .previewBody, .appPreview[data-deck='on'] .previewBody { grid-template-columns: 1fr; } .sideNav, .appPreview[data-deck='on'] .sideNav { display: flex; border-right: 0; border-bottom: 1px solid color-mix(in srgb, var(--MI_THEME-divider) 72%, transparent); overflow: hidden; } .sideNav span, .appPreview[data-deck='on'] .sideNav span { flex: 1; justify-content: center; font-size: .66rem; } .footer { align-items: stretch; flex-direction: column; } .footer button { justify-content: center; } }
+@container (max-width: 500px) { .preview { padding: 12px; } .appPreview { padding: 14px 8px; } .footer { align-items: stretch; flex-direction: column; } .footer button { justify-content: center; } }
 @media (prefers-reduced-motion: reduce) { .sheet :deep(*) { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
 </style>

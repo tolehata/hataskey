@@ -5,6 +5,18 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <template>
 <div :class="$style.root">
+	<!-- 旗鯖fork: ⚠️自分のアイコンを必ず出すこと。狭い幅では左ペインの
+	     プロフィール行が出ず、どのアカウントの設定を触っているのか
+	     画面から読み取れなかった。 -->
+	<button v-if="activeCategory == null && props.profileItem != null && props.profileUsername != null" type="button" :class="[$style.profileRow, { [$style.itemActive]: activeItemId === props.profileItem.id }]" :aria-current="activeItemId === props.profileItem.id ? 'page' : undefined" @click="emit('select', props.profileItem)">
+		<img v-if="props.profileAvatarUrl != null" :src="props.profileAvatarUrl" :class="$style.profileAvatar" alt=""/>
+		<span :class="$style.profileText">
+			<strong>{{ props.profileName ?? props.profileUsername }}</strong>
+			<small>@{{ props.profileUsername }}</small>
+		</span>
+		<i class="ti ti-chevron-right" aria-hidden="true"></i>
+	</button>
+
 	<section v-if="activeCategory == null" :class="$style.section" aria-labelledby="settings-mobile-quick">
 		<h2 id="settings-mobile-quick" :class="$style.sectionTitle">{{ copy.frequentlyUsedSettings }}</h2>
 		<div :class="$style.quickGrid">
@@ -93,8 +105,9 @@ import type { ComponentPublicInstance } from 'vue';
 import type { SettingsSearchNavigationTargetV2 } from '@/utility/settings-search-v2-context.js';
 import { i18n } from '@/i18n.js';
 
-export type SettingsOverviewItem = SettingsSearchNavigationTargetV2 & { id: string; label: string; icon: string; brand?: string };
-export type SettingsOverviewSection = { id: string; label: string; description: string; icon: string; brand?: string; items: SettingsOverviewItem[] };
+// 旗鯖fork: iconImage は Tabler の代わりに出す絵。⚠️あるときは icon を描かない。
+export type SettingsOverviewItem = SettingsSearchNavigationTargetV2 & { id: string; label: string; icon: string; iconImage?: string; brand?: string };
+export type SettingsOverviewSection = { id: string; label: string; description: string; icon: string; iconImage?: string; brand?: string; items: SettingsOverviewItem[] };
 export type SettingsOverviewValue = SettingsSearchNavigationTargetV2 & { id: string; label: string; value: string; brand?: string };
 export type SettingsOverviewDestructiveItem = { id: string; searchId: string; label: string; icon: string; brand?: string };
 
@@ -105,6 +118,16 @@ const props = withDefaults(defineProps<{
 	deprecatedSections?: SettingsOverviewSection[];
 	valueItems: SettingsOverviewValue[];
 	featureItem: SettingsOverviewItem;
+	/**
+	 * 旗鯖fork: 自分のアイコン行。⚠️ここで MkAvatar を使わないこと。
+	 *   端末設定の読み出しを引き連れてくるため、この画面の単体検査が
+	 *   丸ごと起動しなくなる（実測: Cannot read properties of undefined）。
+	 *   値はシェルから受け取り、この画面は素の画像として描くだけにする。
+	 */
+	profileItem?: SettingsOverviewItem;
+	profileName?: string | null;
+	profileUsername?: string | null;
+	profileAvatarUrl?: string | null;
 	destructiveItems?: SettingsOverviewDestructiveItem[];
 	legacyLabel?: string;
 	activeCategoryId?: string | null;
@@ -114,6 +137,10 @@ const props = withDefaults(defineProps<{
 	legacyLabel: undefined,
 	activeCategoryId: null,
 	activeItemId: null,
+	profileItem: undefined,
+	profileName: null,
+	profileUsername: null,
+	profileAvatarUrl: null,
 });
 
 const emit = defineEmits<{
@@ -154,10 +181,58 @@ watch(activeCategory, async (nextCategory, previousCategory) => {
 </script>
 
 <style lang="scss" module>
+/* 旗鯖fork: 非推奨バッジは見出しの行に揃える。
+   ⚠️行の中央へ置かないこと。説明が2行に折り返す行では、バッジの上下に
+   空きができて宙に浮いて見えた（実測: 上32px / 下12px）。 */
+.deprecatedPill {
+	align-self: flex-start;
+	margin-block-start: 2px;
+}
+
+/* 旗鯖fork: 自分のアイコン行。左ペインのプロフィール行と同じ役割を狭い幅で担う。 */
+.profileRow {
+	display: flex;
+	box-sizing: border-box;
+	width: 100%;
+	min-height: 64px;
+	align-items: center;
+	gap: 11px;
+	margin-bottom: 14px;
+	border: 1px solid color-mix(in srgb, var(--MI_THEME-accent) 36%, var(--settings-border, color-mix(in srgb, var(--MI_THEME-divider) 78%, transparent)));
+	border-radius: 18px;
+	padding: 10px 12px;
+	background: light-dark(color-mix(in srgb, var(--MI_THEME-accent) 10%, var(--settings-surface, var(--MI_THEME-panel))), color-mix(in srgb, var(--MI_THEME-accent) 18%, var(--settings-surface, var(--MI_THEME-panel))));
+	color: var(--MI_THEME-fg);
+	cursor: pointer;
+	font: inherit;
+	text-align: start;
+
+	&:focus-visible {
+		outline: 3px solid color-mix(in srgb, var(--MI_THEME-accent) 50%, transparent);
+		outline-offset: -3px;
+	}
+
+	> i:last-child { flex: none; margin-left: auto; opacity: .6; }
+}
+
+.profileAvatar { width: 40px; height: 40px; flex: none; border-radius: 50%; object-fit: cover; }
+
+.profileText {
+	display: grid;
+	min-width: 0;
+	gap: 2px;
+
+	strong, small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+	strong { font-size: .9rem; }
+	small { color: var(--settings-muted, color-mix(in srgb, var(--MI_THEME-fg) 60%, transparent)); font-size: .72rem; }
+}
+
 .root { padding: 4px 0 12px; }
 .srOnly { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
 .section + .section { margin-top: 20px; }
-.sectionTitle { margin: 0 0 12px; color: var(--settings-muted, color-mix(in srgb, var(--MI_THEME-fg) 60%, transparent)); font-size: .78rem; font-weight: 700; line-height: 1.5; }
+/* ⚠️見出しも中央へ。下のグリッドが中央寄せの札なので、
+   ここだけ左詰めだと軸が食い違って見える。 */
+.sectionTitle { margin: 0 0 12px; color: var(--settings-muted, color-mix(in srgb, var(--MI_THEME-fg) 60%, transparent)); font-size: .78rem; font-weight: 700; line-height: 1.5; text-align: center; }
 .quickGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 .quickItem { display: grid; box-sizing: border-box; width: 100%; min-height: 104px; place-content: center; gap: 8px; border: 1px solid var(--settings-border, color-mix(in srgb, var(--MI_THEME-divider) 78%, transparent)); border-radius: 20px; padding: 12px 6px; background: var(--settings-surface, var(--MI_THEME-panel)); color: var(--MI_THEME-fg); cursor: pointer; font: inherit; font-size: .8rem; font-weight: 700; text-align: center; line-break: strict; text-wrap: pretty; &:hover { background: var(--MI_THEME-buttonHoverBg); } &:focus-visible { outline: 3px solid color-mix(in srgb, var(--MI_THEME-accent) 50%, transparent); outline-offset: 2px; } > i { display: grid; width: 44px; height: 44px; place-items: center; margin: auto; border-radius: 50%; background: light-dark(color-mix(in srgb, var(--MI_THEME-accent) 13%, var(--settings-surface, var(--MI_THEME-panel))), color-mix(in srgb, var(--MI_THEME-accent) 22%, var(--settings-surface, var(--MI_THEME-panel)))); color: var(--MI_THEME-accent); font-size: 1.25rem; } }
 .feature { border-radius: 24px; padding: 20px; background: var(--MI_THEME-accent); color: var(--MI_THEME-fgOnAccent); }

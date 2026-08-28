@@ -27813,6 +27813,9 @@ export interface Locale extends ILocale {
                 /**
                  * オリジナルアイコンブランディング
                  */
+                "settingsRenewalTitle": string;
+                "settingsRenewalText": string;
+                "settingsRenewalLink": string;
                 "brandingTitle": string;
                 /**
                  * 設定メニュー、各設定ページ、エラー表示、ダイアログ、ログイン画面などのアイコンを、Hataskeyオリジナルのイラストに置き換えました。旗鯖独自機能のUIタブから、いつでも通常のアイコンへ戻せます。サーバーの管理画面でブランディング画像が設定されている場合は、そちらが優先されます。
@@ -33399,6 +33402,7 @@ export interface Locale extends ILocale {
             "skipToContent": string;
             "searchTrigger": string;
             "searchShortcut": ParameterizedString<"shortcut">;
+            "searchHint": string;
             "uiDeck": string;
             "legacySettings": string;
             "settingsCategories": string;
@@ -33456,6 +33460,17 @@ export interface Locale extends ILocale {
                 "timelineOptions": string;
                 "miscLabel": string;
                 "miscDescription": string;
+                "appearanceAndTheme": string;
+                "appearanceAndThemeDescription": string;
+                "profileDescription": string;
+                "accountAndLogin": string;
+                "accountAndLoginDescription": string;
+                "muteAndBlockDescription": string;
+                "driveDescription": string;
+                "dataAndMigration": string;
+                "dataAndMigrationDescription": string;
+                "externalServices": string;
+                "externalServicesDescription": string;
             };
             "filters": {
                 "all": string;
@@ -33507,6 +33522,7 @@ export interface Locale extends ILocale {
                 "returnToRedesigned": string;
                 "returnToRedesignedButton": string;
                 "legacyNotice": string;
+                "legacyBackToList": string;
                 "emptyProfilesTitle": string;
                 "emptyProfilesText": string;
                 "emptyProfilesLink": string;
@@ -33542,6 +33558,7 @@ export interface Locale extends ILocale {
                     "dialogLabel": string;
                     "liveNotice": string;
                     "appPreviewLabel": string;
+                    "bottomNavLabel": string;
                     "timelineTabsLabel": string;
                     "trend": string;
                     "sideMenuLabel": string;

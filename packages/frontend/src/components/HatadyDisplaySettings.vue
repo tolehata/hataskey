@@ -7,7 +7,10 @@ SPDX-License-Identifier: AGPL-3.0-only
   全端末で同期する(要件③)。1k の端末間同期の状態(ロールポリシー)も併せて表示する。
 -->
 <template>
-<MkWindow
+<!-- 旗鯖fork: 設定画面の右ペインへ埋め込むときは、窓そのものを枠なしへ差し替える。
+     ⚠️窓は position: fixed の重ね表示なので、CSSでペインの中へは収められない。
+     ⚠️受け口(#header / 本体 / close())は同じ形なので、中身には手を触れない。 -->
+<component :is="embedded ? SettingsEmbeddedWindow : MkWindow"
 	ref="dialog"
 	:initialWidth="440"
 	:initialHeight="640"
@@ -92,11 +95,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<button :class="[$style.btn, $style.btnPrimary]" :disabled="saving || !dirty" @click="save"><i class="ti ti-device-floppy"></i> {{ copy.save }}</button>
 		</div>
 	</div>
-</MkWindow>
+</component>
 </template>
 
 <script lang="ts" setup>
 import { computed, ref, useTemplateRef } from 'vue';
+import SettingsEmbeddedWindow from '@/components/SettingsEmbeddedWindow.vue';
 import MkWindow from '@/components/MkWindow.vue';
 import { i18n } from '@/i18n.js';
 import * as os from '@/os.js';
@@ -182,6 +186,9 @@ async function save() {
 		saving.value = false;
 	}
 }
+
+/** 旗鯖fork: true なら窓の枠を持たず、設定画面の右ペインの中身として描く。 */
+defineProps<{ embedded?: boolean }>();
 </script>
 
 <style lang="scss" module>

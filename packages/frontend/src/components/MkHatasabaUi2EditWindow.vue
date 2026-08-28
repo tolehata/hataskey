@@ -12,7 +12,10 @@ SPDX-License-Identifier: AGPL-3.0-only
   (prefer.commit は保存ボタン押下時のみ)
 -->
 <template>
-<MkWindow
+<!-- 旗鯖fork: 設定画面の右ペインへ埋め込むときは、窓そのものを枠なしへ差し替える。
+     ⚠️窓は position: fixed の重ね表示なので、CSSでペインの中へは収められない。
+     ⚠️受け口(#header / 本体 / close())は同じ形なので、中身には手を触れない。 -->
+<component :is="embedded ? SettingsEmbeddedWindow : MkWindow"
 	ref="dialog"
 	:initialWidth="560"
 	:initialHeight="720"
@@ -186,11 +189,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<MkButton primary :disabled="!hasChanges" @click="save"><i class="ti ti-device-floppy"></i> {{ copy.save }}</MkButton>
 		</div>
 	</div>
-</MkWindow>
+</component>
 </template>
 
 <script lang="ts" setup>
 import { ref, computed, watch, onMounted, onBeforeUnmount, useTemplateRef, defineAsyncComponent } from 'vue';
+import SettingsEmbeddedWindow from '@/components/SettingsEmbeddedWindow.vue';
 import draggable from 'vuedraggable';
 import MkWindow from '@/components/MkWindow.vue';
 import MkButton from '@/components/MkButton.vue';
@@ -484,6 +488,9 @@ function restoreLivePreviewToSnapshot() {
 	document.documentElement.classList.toggle('hataProfileNoBannerBg', snapshot.profileNoBannerBg);
 	document.documentElement.style.setProperty('--htk-glass-card-opacity', snapshot.opacity + '%');
 }
+
+/** 旗鯖fork: true なら窓の枠を持たず、設定画面の右ペインの中身として描く。 */
+defineProps<{ embedded?: boolean }>();
 </script>
 
 <style lang="scss" module>

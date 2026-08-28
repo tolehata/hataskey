@@ -63,27 +63,31 @@ describe('settings mobile overview', () => {
 		expect(overviewSource).toMatch(/\.quickItem\s*\{[^}]*background:\s*var\(--settings-surface,/);
 	});
 
-	test('desktop rootはHataskey UIを既定表示にし、tabletは常時行から下位一覧へdrill-inする', () => {
-		expect(shellSource).toContain('router.replace(\'/settings/hata-custom\')');
-		expect(shellSource).toContain('<details v-for="section in visibleNavSections"');
-		expect(shellSource).toContain('const tabletNavSections = computed<NavSection[]>');
-		expect(shellSource).toContain('<button v-for="section in tabletNavSections"');
-		expect(shellSource).not.toContain('<details v-for="section in tabletNavSections"');
-		expect(shellSource).toContain('openTabletNavigationSection(section.id)');
+	test('desktop rootはプロフィールを既定表示にし、tabletは常時行から下位一覧へdrill-inする', () => {
+		// 旗鯖fork: ⚠️設定を開いた既定はプロフィール。Hataskey UI は
+		//   /settings/hata-custom を直接開いたときの画面として残る。
+		expect(shellSource).toContain("const SETTINGS_DEFAULT_ROUTE = '/settings/profile';");
+		expect(shellSource).toContain('router.replace(SETTINGS_DEFAULT_ROUTE);');
+		// ⚠️左ペインは大分類だけを持つ縦の錠剤リスト。折りたたみへ戻さない。
+		expect(shellSource).toContain(':class="$style.sectionPills"');
+		expect(shellSource).toContain('v-for="section in visibleNavSections"');
+		expect(shellSource).not.toContain('<details v-for="section in visibleNavSections"');
+		// 旗鯖fork: ⚠️タブレット専用の作りは廃止した。PC と同じ姿に揃える。
+		expect(shellSource).not.toContain('tabletNavSections');
+		expect(shellSource).not.toContain('openTabletNavigationSection');
 		expect(shellSource).toContain('@container (max-width: 900px)');
 		expect(shellSource).toContain('grid-template-columns: repeat(3, minmax(0, 1fr))');
-		expect(shellSource).toContain('await activateHataCustomCategory(\'glassUi\', revision)');
-		const tabletStart = shellSource.indexOf('<template v-if="tablet">');
-		const tabletEnd = shellSource.indexOf('<template v-else>', tabletStart);
-		expect(tabletStart).toBeGreaterThan(-1);
-		expect(tabletEnd).toBeGreaterThan(tabletStart);
-		expect(shellSource.slice(tabletStart, tabletEnd)).not.toContain('<details');
+		// 旗鯖fork: ⚠️既定の行き先を変えても、/settings/hata-custom を直接開いたときは
+		//   これまで通り Hataskey UI が出ること。判定は経路の同期側が持つ。
+		expect(shellSource).toContain("if (activeNavigationTarget.value?.route !== currentPath.value) activeHataCustomCategory.value = 'glassUi';");
+		// 旗鯖fork: ⚠️幅で作りを分けないこと。タブレット専用の枝は廃止した。
+		expect(shellSource).not.toContain('<template v-if="tablet">');
+		expect(shellSource).not.toContain('<details');
 	});
 
 	test('mobileカテゴリはmanifestのHataskey UIを重複させず、Misskey UIを互換行へ分ける', () => {
 		expect(shellSource).toContain('const mobileOverviewSections = computed<SettingsOverviewSection[]>(() => navSections.filter(section => section.id !== \'hataskey-ui\' && section.id !== \'misskey-ui\'));');
 		expect(shellSource).toContain('const mobileDeprecatedSections = computed<SettingsOverviewSection[]>(() => navSections.filter(section => section.id === \'misskey-ui\'));');
-		expect(shellSource).toContain('const tabletNavSections = computed<NavSection[]>(() => navSections.filter(section => section.id !== \'hataskey-ui\'));');
 		expect(overviewSource).toContain('<h2 id="settings-mobile-feature"><span class=\"settingsBrand\">Hataskey UI</span></h2>');
 		expect(overviewSource).toContain('settingsBrand');
 		expect(overviewSource).toContain('.deprecated .categories');
@@ -125,15 +129,11 @@ describe('settings mobile overview', () => {
 
 	test('desktop/tabletのCherryPickとMisskey UI関連はモックどおりaccent/deprecatedで区別する', () => {
 		expect(shellSource).toContain(':data-settings-nav-section="section.id"');
-		expect(shellSource).toContain('[$style.cherrypickSection]: section.id === \'cherrypick\'');
-		expect(shellSource).toContain('[$style.deprecatedNavSection]: section.id === \'misskey-ui\'');
-		expect(shellSource).toContain('[$style.cherrypickNavLink]: section.id === \'cherrypick\'');
-		expect(shellSource).toContain('[$style.tabletCherrypickLink]: section.id === \'cherrypick\'');
-		expect(shellSource).toContain('[$style.tabletDeprecatedLink]: section.id === \'misskey-ui\'');
-		expect(shellSource).toContain('.cherrypickSection > .sectionTitle { border-block-end: 1px dashed');
-		expect(shellSource).toContain('.cherrypickNavLink { margin-block: 3px; border: 1px dashed');
-		expect(shellSource).toContain('.tabletCherrypickLink { border-style: dashed;');
-		expect(shellSource).toContain('.deprecatedNavSection { opacity: .68; }');
+		// ⚠️CherryPick と Misskey UI の区別は錠剤リストでも保つ。
+		expect(shellSource).toContain('[$style.sectionPillCherrypick]: section.id === \'cherrypick\'');
+		expect(shellSource).toContain('[$style.sectionPillDeprecated]: section.id === \'misskey-ui\'');
+		expect(shellSource).toContain('.sectionPillCherrypick { color: var(--MI_THEME-accent); }');
+		expect(shellSource).toContain('.sectionPillDeprecated { opacity: .68; }');
 	});
 
 	test('mobile category rows use right chevrons, preserve sub-items, and repair keyboard focus across the drill-in swap', async () => {

@@ -10,7 +10,11 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<div>
 				<span :class="$style.recommended">{{ copy.ui2.recommendedInUse }}</span>
 				<h2 id="hatasaba-ui2-title"><span class="settingsBrand">Hataskey UI</span></h2>
-				<p>{{ copy.ui2.permanentDescriptionBefore }}<b>{{ copy.ui2.permanentDescriptionSave }}</b>{{ copy.ui2.permanentDescriptionAfter }}</p>
+				<!-- 旗鯖fork: ⚠️2つの文を1行に流さないこと。「どんなUIか」と「いつ反映されるか」は
+					     別の話なので、文の切れ目で改行して読み分けられるようにする。
+					     ⚠️翻訳を書き換えて改行を埋め込まないこと。訳ごとに切れ目が違う。
+					     ⚠️句点で切り出す。句点が無い訳では1行のまま出る（壊れない）。 -->
+					<p>{{ permanentDescriptionLead }}<template v-if="permanentDescriptionRest"><br/>{{ permanentDescriptionRest }}</template><b>{{ copy.ui2.permanentDescriptionSave }}</b>{{ copy.ui2.permanentDescriptionAfter }}</p>
 			</div>
 			<div :class="$style.headerActions">
 				<button type="button" :class="$style.previewAction" @click="emit('preview')"><i class="ti ti-eye" aria-hidden="true"></i>{{ copy.ui2.openPreview }}</button>
@@ -137,6 +141,19 @@ const props = withDefaults(defineProps<{
 const emit = defineEmits<{ close: []; saved: []; sideStudio: []; preview: [] }>();
 const copy = i18n.ts._hata._settingsRedesign;
 const copyx = i18n.tsx._hata._settingsRedesign;
+/**
+ * 旗鯖fork: 説明文を最初の句点で切り、2行に分けて出す。
+ * ⚠️句点が無い言語では切らずにそのまま出す（改行が消えるだけで壊れない）。
+ */
+const permanentDescriptionParts = computed(() => {
+	const text = copy.ui2.permanentDescriptionBefore;
+	const end = text.indexOf('。');
+	if (end < 0 || end === text.length - 1) return { lead: text, rest: '' };
+	return { lead: text.slice(0, end + 1), rest: text.slice(end + 1) };
+});
+const permanentDescriptionLead = computed(() => permanentDescriptionParts.value.lead);
+const permanentDescriptionRest = computed(() => permanentDescriptionParts.value.rest);
+
 const mode = computed(() => props.mode);
 const draggableAnimation = computed(() => props.motionEnabled === false ? 0 : 150);
 const unsavedMessage = computed(() => copyx.ui2.unsavedChanges({ count: props.editor.changeCount }));

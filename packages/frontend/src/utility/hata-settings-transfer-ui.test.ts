@@ -48,7 +48,9 @@ describe('旗鯖独自設定の入出力UI', () => {
 
 	test('操作後も上下を維持するリサイズ可能な専用ウィンドウを使う', () => {
 		const modal = source('src/components/MkHataSettingsTransfer.vue');
-		expect(modal).toContain('<MkWindow');
+		// ⚠️設定画面の右ペインへ埋め込めるよう、窓は差し替え式になった。
+		//   窓として出す道が残っていることを、差し替え式のまま見張る。
+		expect(modal).toContain('<component :is="embedded ? SettingsEmbeddedWindow : MkWindow"');
 		expect(modal).toContain('ref="transferWindow"');
 		expect(modal).toContain(':canResize="true"');
 		expect(modal).toContain(':closeButton="true"');

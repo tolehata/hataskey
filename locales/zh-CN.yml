@@ -6802,6 +6802,9 @@ _hata:
       fontUploadText: "可在 Hataskey 独有设置的字体页面直接上传 TrueType（.ttf）或 OpenType（.otf）字体并应用到界面。服务器管理员设置的自定义允许列表不会被更改。"
       footerText: "这里只列出了主要更改。包括细小修正在内的全部变化请查看发行说明。"
       footerLink: "查看发行说明"
+      settingsRenewalTitle: "设置界面已重新设计"
+      settingsRenewalText: "左侧为大分类，右侧以标签页排列该分类中的项目。选择分类后会直接打开第一个项目，Hataskey 独有的设置也不再另开窗口，而是直接显示在右侧。通过顶部的搜索可以跨界面查找设置。"
+      settingsRenewalLink: "打开设置"
   _common:
     customFeatures: "Hataskey特色功能"
     externalNotifications: "外部通知"
@@ -8194,6 +8197,7 @@ _hata:
     frequentlyUsedSettings: "常用设置"
     searchSettingsCount: "此页面有 {count} 项可搜索设置"
     sessionAndLogin: "设备与登录"
+    searchHint: "可以从这里搜索设置 ＞"
     actions:
       clearCache: "清除缓存"
       logout: "退出登录"
@@ -8242,6 +8246,17 @@ _hata:
       timelineOptions: "时间线行为"
       miscLabel: "其他"
       miscDescription: "不属于以上任何分类的设置。"
+      appearanceAndTheme: "外观与主题"
+      appearanceAndThemeDescription: "主题、字体与表情面板"
+      profileDescription: "名称、头像与简介"
+      accountAndLogin: "账户与登录"
+      accountAndLoginDescription: "隐私、邮箱与安全"
+      muteAndBlockDescription: "要隐藏的用户与词语"
+      driveDescription: "文件的保存与整理"
+      dataAndMigration: "数据与迁移"
+      dataAndMigrationDescription: "导出与设置配置"
+      externalServices: "外部服务关联"
+      externalServicesDescription: "外部账户、应用与插件"
     filters:
       all: "全部"
       frequent: "常用"
@@ -8292,6 +8307,7 @@ _hata:
       emptyProfilesLink: "前往自动备份设置"
       emptyAppsTitle: "没有已连接的应用"
       emptyAppsText: "在应用一侧授权后，允许使用此账号的应用会显示在这里。"
+      legacyBackToList: "返回设置列表"
     ui2:
       recommendedInUse: "推荐・正在使用"
       permanentDescriptionBefore: "这是兼顾常规界面与卡片式界面的 Hataskey 标准界面。此处的更改"
@@ -8337,6 +8353,7 @@ _hata:
         footerNotice: "选择保存前，设置不会改变"
         close: "关闭"
         local: "本地"
+        bottomNavLabel: "底部导航栏预览"
     immediate:
       eyebrow: "相关的现有设置"
       title: "立即应用的设置"

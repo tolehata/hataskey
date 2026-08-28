@@ -33,13 +33,30 @@ describe('settings redesign popup navigation', () => {
 	});
 
 	test('ポップアップを開く項目は左ペインでbutton、それ以外はMkAで描く', () => {
-		// 描画箇所は3つ（常時表示のクイック項目 / タブレット幅 / 通常幅）。
+		// 描画箇所は2つ（常時表示のクイック項目 / タブレット幅）。
+		// ⚠️通常幅の左ペインは大分類だけを持つようになり、項目を描かない。
 		const rendered = shellSource.match(/:is="opensSettingsPopup\(item\) \? 'button' : 'MkA'"/gu) ?? [];
-		expect(rendered).toHaveLength(3);
+		expect(rendered).toHaveLength(2);
 
 		// ⚠️ボタンには to を渡さない。属性として出てしまうため。
 		expect(shellSource).toContain('return opensSettingsPopup(item) ? { type: \'button\' as const } : { to: item.route };');
 		expect(shellSource).toContain('return item.activation?.kind === \'popup\';');
+	});
+
+	test('右ペインの兄弟タブは常にbuttonで、MkAを混ぜない', () => {
+		// ⚠️兄弟タブにはポップアップを開くだけの項目も並ぶ。MkA で描くと
+		//   同じ不具合（ポップアップが開くのに右ペインも遷移する）が戻る。
+		const start = shellSource.indexOf('<nav');
+		const tabsStart = shellSource.indexOf(':class="$style.siblingTabs"');
+		const tabsEnd = shellSource.indexOf('</nav>', tabsStart);
+		expect(start).toBeGreaterThan(-1);
+		expect(tabsStart).toBeGreaterThan(-1);
+		const tabs = shellSource.slice(tabsStart, tabsEnd);
+		expect(tabs).toContain('v-for="item in siblingTabs"');
+		expect(tabs).toContain('type="button"');
+		expect(tabs).not.toContain('MkA');
+		expect(tabs).not.toContain(':to=');
+		expect(tabs).toContain('@click="goToSetting(item)"');
 	});
 
 	test('左ペインの項目描画に、to付きの素のMkAが残っていない', () => {
