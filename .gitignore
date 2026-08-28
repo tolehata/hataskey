@@ -58,6 +58,7 @@ api-docs.json
 /redis
 *.code-workspace
 .DS_Store
+._*
 /files
 ormconfig.json
 temp
@@ -89,6 +90,7 @@ claude.md
 
 # Codex 等のエージェント向け指示ファイル (上と同じ扱い)
 AGENTS.md
+AGENTS.macOS.md
 HATA-PITFALLS.md
 .codex/
 /.agents/
