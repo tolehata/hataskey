@@ -254,6 +254,7 @@ import { assertUniqueNavigationIds } from './settings-navigation-ids.js';
 import { createSettingsSurfaceLeaveGuard } from './settings-surface-leave-guard.js';
 import { waitForSettingsNavigationFocus } from './settings-navigation-focus.js';
 import { settingsDestinationSections, settingsDestinations, destinationForId } from './settings-destinations.js';
+import { createSearchHintController } from '@/pages/settings-redesign/settings-search-hint.js';
 import { canonicalSearchIdForDescriptor, destinationForSearchDescriptor, generatedPreferenceSearchId, parsePreferenceDestination } from './settings-preferences-catalog.js';
 import { mergeRedesignedPreferenceSearchItems, redesignedPreferenceStableIdAliases, settingsDestinationCatalogItemsV2, suppressLegacyPreferenceSearchMarkers } from './settings-preferences-search-index.js';
 import HatasabaUi2SettingsSurface from './HatasabaUi2SettingsSurface.vue';
@@ -775,41 +776,22 @@ const activePreferenceDestinationId = computed(() => {
 let lastNonSettingsRoute: string | null = null;
 
 /**
- * 旗鯖fork: 詳細画面で15秒なにも変えていないとき、題の場所に検索の案内を出す。
+ * 旗鯖fork: 詳細画面でしばらく何も変えていないとき、見出しの場所に
+ * 検索の在り処をそっと出す。理屈は settings-search-hint.ts にある。
  *
  * ⚠️「操作が無い」ではなく「**設定が変わっていない**」で数えること。
- *   読んでいるだけ・スクロールしているだけの人にこそ出したい案内なので、
- *   スクロールや指の動きで消してしまうと、いつまでも出ない。
- * ⚠️一覧の画面では出さない。そこには検索窓そのものが見えている。
- * ⚠️8秒で必ず題へ戻す。出しっぱなしだと、いま何の画面かが読めなくなる。
+ *   読んでいるだけの人にこそ出したい案内なので、スクロールで消してはいけない。
+ * ⚠️繋ぎ込みを忘れると、時計が正しくても一生出ない（一度そうなった）。
+ *   下の watch を消すときは SettingsSearchHint.test.ts も一緒に見直すこと。
  */
-const SEARCH_HINT_IDLE_MS = 15000;
-const SEARCH_HINT_VISIBLE_MS = 8000;
 const showSearchHint = ref(false);
-let searchHintIdleTimer: number | null = null;
-let searchHintVisibleTimer: number | null = null;
-
-function clearSearchHintTimers() {
-	if (searchHintIdleTimer != null) window.clearTimeout(searchHintIdleTimer);
-	if (searchHintVisibleTimer != null) window.clearTimeout(searchHintVisibleTimer);
-	searchHintIdleTimer = null;
-	searchHintVisibleTimer = null;
-}
-
-function restartSearchHintCountdown() {
-	clearSearchHintTimers();
-	showSearchHint.value = false;
+const searchHintController = createSearchHintController({
+	idleMs: 15000,
+	visibleMs: 8000,
 	// ⚠️狭い幅の詳細画面だけ。広い幅では検索窓が常に見えている。
-	if (!compact.value || currentPage.value?.route.name == null) return;
-	searchHintIdleTimer = window.setTimeout(() => {
-		showSearchHint.value = true;
-		searchHintVisibleTimer = window.setTimeout(() => {
-			showSearchHint.value = false;
-			// ⚠️一度出したら、また15秒待ってから出す。続けて何度も出さない。
-			restartSearchHintCountdown();
-		}, SEARCH_HINT_VISIBLE_MS);
-	}, SEARCH_HINT_IDLE_MS);
-}
+	eligible: () => compact.value && currentPage.value?.route.name != null,
+	onChange: (visible) => { showSearchHint.value = visible; },
+});
 
 const compactPageDirection = ref<'forward' | 'back'>('forward');
 
@@ -2023,7 +2005,7 @@ function activateShell() {
 }
 
 function deactivateShell() {
-	clearSearchHintTimers();
+	searchHintController.stop();
 	siblingTabsObserver?.disconnect();
 	siblingTabsObserver = null;
 	settingsSurfaceLeaveGuard.dispose();
@@ -2046,13 +2028,17 @@ onMounted(() => {
 onActivated(activateShell);
 onDeactivated(deactivateShell);
 
-// ⚠️設定が変わったら数え直す。prefer は画面をまたいで共有されるので、
-//   ここを見ておけば「値をいじった」ことを取りこぼさない。
-watch(() => JSON.stringify(prefer.r), restartSearchHintCountdown, { deep: false });
+// ⚠️prefer.r は「素のオブジェクト＋ref」。JSON.stringify では .value ゲッターを
+//   踏まないので依存が一切登録されず、watch は一生発火しない（実測で確認済み）。
+//   各 ref の .value を実際に読むこと。
+watch(() => Object.values(prefer.r).map(entry => entry.value), () => searchHintController.restart());
+
+// ⚠️起動直後も含めて数え始める。狭さの判定は onMounted の後に決まるので、
+//   compact を見張っていないと「PCで開いて狭くした」場合に永遠に出ない。
+watch([compact, currentPage], () => searchHintController.restart(), { immediate: true });
 
 watch(router.currentRef, () => {
 	const fullPath = router.getCurrentFullPath();
-	restartSearchHintCountdown();
 	if (!isSettingsFullPath(fullPath)) lastNonSettingsRoute = fullPath;
 	playPageEnter();
 	if (currentPage.value?.route.name != null) compactNavigationSection.value = null;
