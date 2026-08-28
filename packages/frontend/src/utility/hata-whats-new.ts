@@ -27,7 +27,7 @@ export type HataWhatsNewItem = {
 	preview: 'branding' | 'hatadyRecord' | 'hatadyVisibility' | 'hatacordingFix' | 'utageBadge'
 		| 'muteReaction' | 'cardMaker' | 'hatasabaHome' | 'sideStudioFix' | 'mobileFix'
 		| 'hatalyze' | 'hatakyuTheme' | 'hatadyExport' | 'foldable' | 'uiMotion' | 'langFix'
-		| 'externalDdoskey' | 'fontUpload';
+		| 'externalDdoskey' | 'fontUpload' | 'settingsRenewal';
 	title: string;
 	text: string;
 	/**
@@ -68,7 +68,7 @@ export function getHataWhatsNewDisplayVersion(version: string): string {
 }
 
 export const HATA_WHATS_NEW: HataWhatsNew = {
-	version: '2026.7.0-hata.12.3',
+	version: '2026.7.0-hata.12.4',
 	headline: copy.headline,
 	items: [
 		// ⚠️ここに載せるのは hata-12.1.3 のタグに含まれていない変更だけ。
@@ -80,6 +80,16 @@ export const HATA_WHATS_NEW: HataWhatsNew = {
 			text: copy.brandingText,
 			to: '/settings/hata-custom',
 			linkLabel: copy.brandingLink,
+		},
+		// ⚠️2番目に置く。今回いちばん手触りが変わったのがここなので、
+		//   ブランディングの次に読ませる。
+		{
+			icon: 'ti ti-settings',
+			preview: 'settingsRenewal',
+			title: copy.settingsRenewalTitle,
+			text: copy.settingsRenewalText,
+			to: '/settings/hata-custom',
+			linkLabel: copy.settingsRenewalLink,
 		},
 		{
 			icon: 'ti ti-device-gamepad-2',

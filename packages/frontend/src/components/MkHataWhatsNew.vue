@@ -191,6 +191,26 @@ SPDX-License-Identifier: AGPL-3.0-only
 						</div>
 					</div>
 
+					<div v-else-if="item.preview === 'settingsRenewal'" :class="$style.settingsMock">
+						<div :class="$style.settingsPane">
+							<div :class="$style.settingsNav">
+								<span :class="$style.settingsNavItem"></span>
+								<span :class="[$style.settingsNavItem, $style.settingsNavOn]"></span>
+								<span :class="$style.settingsNavItem"></span>
+								<span :class="$style.settingsNavItem"></span>
+							</div>
+							<div :class="$style.settingsBody">
+								<div :class="$style.settingsTabs">
+									<span :class="$style.settingsTabOn"></span>
+									<span :class="$style.settingsTab"></span>
+									<span :class="$style.settingsTab"></span>
+								</div>
+								<div :class="$style.settingsRow"><u></u><i></i></div>
+								<div :class="$style.settingsRow"><u></u><i></i></div>
+							</div>
+						</div>
+					</div>
+
 					<div v-else-if="item.preview === 'fontUpload'" :class="$style.fontUploadMock">
 						<div :class="$style.fontUploadPanel">
 							<i class="ti ti-typography"></i>
@@ -850,6 +870,22 @@ function openReleaseNotes() {
 .ddoskeyHost { font-size: 10px; font-weight: 700; color: #22705a; }
 .ddoskeyCheck { margin-left: auto; font-size: 12px; color: #2f8f74; animation: hwnPopIn 3.8s cubic-bezier(.2,.9,.2,1) infinite; animation-delay: .38s; }
 @keyframes hwnRowIn { 0%, 20% { opacity: 0; transform: translateX(12px); } 38%, 100% { opacity: 1; transform: none; } }
+
+/* ===== 設定のリニューアル: 左に大分類、右にタブと項目という2枚組み ===== */
+/* ⚠️$style.* は定義が無いと空文字になり、寸法も配置も当たらず左上へ潰れる。
+     （実際に mobileMock でそうなった）。必ず土台まで書くこと。 */
+.settingsMock { height: 100%; display: grid; place-content: center; background: #eef1f8; }
+.settingsPane { display: flex; width: 160px; height: 104px; gap: 6px; padding: 8px; border-radius: 12px; background: #fff; box-shadow: 0 6px 16px rgba(60, 70, 110, .18); }
+.settingsNav { display: flex; width: 42px; flex: none; flex-direction: column; gap: 5px; }
+.settingsNavItem { display: block; height: 12px; border-radius: 999px; background: #e3e8f4; }
+.settingsNavOn { background: #4a63c8; }
+.settingsBody { display: flex; min-width: 0; flex: 1; flex-direction: column; gap: 6px; }
+.settingsTabs { display: flex; justify-content: center; gap: 3px; padding: 3px; border-radius: 999px; background: #f2f5fb; }
+.settingsTab, .settingsTabOn { display: block; width: 14px; height: 8px; border-radius: 999px; background: #dbe1f0; }
+.settingsTabOn { width: 26px; background: #4a63c8; }
+.settingsRow { display: flex; align-items: center; gap: 6px; padding: 6px 7px; border-radius: 8px; background: #f6f8fd; }
+.settingsRow > u { display: block; flex: 1; height: 5px; border-radius: 999px; background: #dfe4f2; text-decoration: none; }
+.settingsRow > i { display: block; width: 16px; height: 9px; flex: none; border-radius: 999px; background: #4a63c8; }
 
 /* ===== フォントアップロード: 追加された2形式をファイルとして示す ===== */
 .fontUploadMock { height: 100%; display: grid; place-content: center; background: #f1eef9; }

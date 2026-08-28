@@ -18,8 +18,8 @@ vi.mock('@/i18n.js', async () => {
 
 describe('HATA_WHATS_NEW', () => {
 	test('機械判定用の完全な版から旗鯖の表示版を生成する', () => {
-		expect(HATA_WHATS_NEW.version).toBe('2026.7.0-hata.12.3');
-		expect(getHataWhatsNewDisplayVersion(HATA_WHATS_NEW.version)).toBe('hata-12.3');
+		expect(HATA_WHATS_NEW.version).toBe('2026.7.0-hata.12.4');
+		expect(getHataWhatsNewDisplayVersion(HATA_WHATS_NEW.version)).toBe('hata-12.4');
 		expect(getHataWhatsNewDisplayVersion('2026.7.0-hata.12.1')).toBe('hata-12.1');
 		expect(getHataWhatsNewDisplayVersion('development')).toBe('development');
 	});
@@ -92,8 +92,9 @@ describe('HATA_WHATS_NEW', () => {
 	test('すべての更新項目に内容別のプレビューを重複なく割り当てる', () => {
 		// ⚠️hata-12.2 の案内を書いたあとに入った変更を8件足したので18件。
 		//   ⚠️プレビューは1項目につき1種類。使い回すと「何が変わったか」が図から読めなくなる。
-		expect(HATA_WHATS_NEW.items).toHaveLength(18);
-		expect(new Set(HATA_WHATS_NEW.items.map(item => item.preview)).size).toBe(18);
+		// 旗鯖fork: ⚠️設定のリニューアルを2番目に足したので19へ。
+		expect(HATA_WHATS_NEW.items).toHaveLength(19);
+		expect(new Set(HATA_WHATS_NEW.items.map(item => item.preview)).size).toBe(19);
 	});
 
 	test('あとから足した主要な変更を案内する', () => {
