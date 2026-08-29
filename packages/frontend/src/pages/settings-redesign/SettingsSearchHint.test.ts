@@ -278,6 +278,8 @@ describe('画面への繋ぎ込み', () => {
 		const rule = shellSource.split('\n').find(line => line.startsWith('.compactHint {'));
 		expect(rule).toBeDefined();
 		expect(rule).toContain('font-size: 1rem;');
+		// ⚠️色は見出しと同じ。差し色だと題の場所に別物が割り込んだように見える。
+		expect(rule).toContain('color: var(--MI_THEME-fg);');
 		expect(rule).toContain('letter-spacing: -.02em;');
 		expect(rule).toContain('text-overflow: ellipsis;');
 		// ⚠️同じ宣言を2つ書くと後ろが黙って勝つ。1つだけであることを見る。

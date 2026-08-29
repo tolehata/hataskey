@@ -2174,7 +2174,9 @@ definePage(() => indexInfo);
    ⚠️右にボタンを足すたびに軸がずれる作りにしないこと。 */
 .compactTop { display: grid; grid-template-columns: minmax(44px, 1fr) auto minmax(44px, 1fr); align-items: center; gap: 10px; }
 .compactActions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
-/* ⚠️案内は題より控えめに。ただし小さすぎると読まれない。
+/* ⚠️色は見出しと同じ（--MI_THEME-fg）。差し色にすると、題の場所に別物が
+     割り込んだように見える。矢印は色を持たず、ここから受け継ぐ。
+   ⚠️案内は題より控えめに。ただし小さすぎると読まれない。
    ⚠️上限は幅で決まる。中央の枠は左右44pxのボタンと隙間・余白に挟まれ、
      幅375pxの端末で残りはおよそ235px。「こちらから設定を検索できます ＞」は
      全角15文字＋空白なので、1remだと約240px。字間をわずかに詰めて収める。
@@ -2190,7 +2192,7 @@ definePage(() => indexInfo);
 	50% { transform: translateX(.22em); }
 }
 
-.compactHint { display: inline-block; overflow: hidden; max-inline-size: 100%; color: var(--MI_THEME-accent); cursor: pointer; font-size: 1rem; font-weight: 700; letter-spacing: -.02em; text-overflow: ellipsis; white-space: nowrap; }
+.compactHint { display: inline-block; overflow: hidden; max-inline-size: 100%; color: var(--MI_THEME-fg); cursor: pointer; font-size: 1rem; font-weight: 700; letter-spacing: -.02em; text-overflow: ellipsis; white-space: nowrap; }
 .compactBack, .compactPreview { display: grid; width: 44px; height: 44px; place-items: center; border: 0; border-radius: 50%; background: transparent; color: var(--MI_THEME-fg); cursor: pointer; font: inherit; font-size: 1.15rem; touch-action: manipulation; &:hover { background: var(--MI_THEME-buttonHoverBg); } &:focus-visible { outline: 3px solid color-mix(in srgb, var(--MI_THEME-accent) 50%, transparent); outline-offset: 2px; } }
 .compactPreview { background: color-mix(in srgb, var(--MI_THEME-accent) 12%, var(--settings-surface, var(--MI_THEME-panel))); color: var(--MI_THEME-accent); }
 .compactTitle { overflow: hidden; margin: 0; color: var(--MI_THEME-fg); font-size: 1.375rem; font-weight: 800; letter-spacing: -.02em; line-height: 1.2; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
