@@ -616,6 +616,12 @@ import type {
 	HataskEventsListRequest,
 	HataskEventsListResponse,
 	HataskEventsRsvpRequest,
+	HataskFlowersListRequest,
+	HataskFlowersListResponse,
+	HataskFlowersSyncRequest,
+	HataskFlowersSyncResponse,
+	HataskFlowersVisibilityUpdateRequest,
+	HataskFlowersVisibilityUpdateResponse,
 	IResponse,
 	I2faDoneRequest,
 	I2faDoneResponse,
@@ -1324,6 +1330,9 @@ export type Endpoints = {
 	'hatask/events/delete': { req: HataskEventsDeleteRequest; res: EmptyResponse };
 	'hatask/events/list': { req: HataskEventsListRequest; res: HataskEventsListResponse };
 	'hatask/events/rsvp': { req: HataskEventsRsvpRequest; res: EmptyResponse };
+	'hatask/flowers/list': { req: HataskFlowersListRequest; res: HataskFlowersListResponse };
+	'hatask/flowers/sync': { req: HataskFlowersSyncRequest; res: HataskFlowersSyncResponse };
+	'hatask/flowers/visibility/update': { req: HataskFlowersVisibilityUpdateRequest; res: HataskFlowersVisibilityUpdateResponse };
 	'i': { req: EmptyRequest; res: IResponse };
 	'i/2fa/done': { req: I2faDoneRequest; res: I2faDoneResponse };
 	'i/2fa/key-done': { req: I2faKeyDoneRequest; res: I2faKeyDoneResponse };

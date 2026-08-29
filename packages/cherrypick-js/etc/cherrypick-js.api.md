@@ -2217,6 +2217,7 @@ declare namespace entities {
         HataFeedbackEmojiRequestsApproveRequest,
         HataFeedbackEmojiRequestsCreateRequest,
         HataFeedbackEmojiRequestsCreateResponse,
+        HataFeedbackEmojiRequestsHoldRequest,
         HataFeedbackEmojiRequestsRejectRequest,
         HataFeedbackIssuesRequest,
         HataFeedbackIssuesResponse,
@@ -2267,6 +2268,8 @@ declare namespace entities {
         HataHatadyCommentsResponse,
         HataHatadyCommentsCreateRequest,
         HataHatadyCommentsCreateResponse,
+        HataHatadyCommentsDeleteRequest,
+        HataHatadyCommentsDeleteResponse,
         HataHatadyFollowersRemoveRequest,
         HataHatadyFollowingCreateRequest,
         HataHatadyFollowingDeleteRequest,
@@ -2339,6 +2342,14 @@ declare namespace entities {
         HataHatadyTimelineResponse,
         HataHatadyUsersShowRequest,
         HataHatadyUsersShowResponse,
+        HataHataskEmotionAnalysisCreateRequest,
+        HataHataskEmotionAnalysisCreateResponse,
+        HataHataskEmotionAnalysisDeleteRequest,
+        HataHataskEmotionAnalysisDeleteResponse,
+        HataHataskEmotionAnalysisListRequest,
+        HataHataskEmotionAnalysisListResponse,
+        HataHataskEmotionAnalysisShowRequest,
+        HataHataskEmotionAnalysisShowResponse,
         HataLoginRankingResponse,
         HataMascotGetResponse,
         HataMascotUpdateRequest,
@@ -2350,6 +2361,12 @@ declare namespace entities {
         HataskEventsListRequest,
         HataskEventsListResponse,
         HataskEventsRsvpRequest,
+        HataskFlowersListRequest,
+        HataskFlowersListResponse,
+        HataskFlowersSyncRequest,
+        HataskFlowersSyncResponse,
+        HataskFlowersVisibilityUpdateRequest,
+        HataskFlowersVisibilityUpdateResponse,
         IResponse,
         I2faDoneRequest,
         I2faDoneResponse,
@@ -3083,7 +3100,7 @@ export type HatadyMediaSessionInput = {
 };
 
 // @public (undocumented)
-export type HatadyMediaSessionKind = 'movie_viewing' | 'game_play' | 'game_match' | 'game_roguelike';
+export type HatadyMediaSessionKind = 'movie_viewing' | 'game_play' | 'game_match' | 'game_roguelike' | 'game_pve';
 
 // @public (undocumented)
 export type HatadyMediaVisibility = 'private' | 'followers' | 'public';
@@ -3266,6 +3283,9 @@ type HataFeedbackEmojiRequestsCreateRequest = operations['hata___feedback___emoj
 type HataFeedbackEmojiRequestsCreateResponse = operations['hata___feedback___emoji-requests___create']['responses']['200']['content']['application/json'];
 
 // @public (undocumented)
+type HataFeedbackEmojiRequestsHoldRequest = operations['hata___feedback___emoji-requests___hold']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
 type HataFeedbackEmojiRequestsRejectRequest = operations['hata___feedback___emoji-requests___reject']['requestBody']['content']['application/json'];
 
 // @public (undocumented)
@@ -3414,6 +3434,12 @@ type HataHatadyCommentsCreateRequest = operations['hata___hatady___comments___cr
 
 // @public (undocumented)
 type HataHatadyCommentsCreateResponse = operations['hata___hatady___comments___create']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyCommentsDeleteRequest = operations['hata___hatady___comments___delete']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHatadyCommentsDeleteResponse = operations['hata___hatady___comments___delete']['responses']['200']['content']['application/json'];
 
 // @public (undocumented)
 type HataHatadyCommentsRequest = operations['hata___hatady___comments']['requestBody']['content']['application/json'];
@@ -3638,6 +3664,30 @@ type HataHatadyUsersShowRequest = operations['hata___hatady___users___show']['re
 type HataHatadyUsersShowResponse = operations['hata___hatady___users___show']['responses']['200']['content']['application/json'];
 
 // @public (undocumented)
+type HataHataskEmotionAnalysisCreateRequest = operations['hata___hatask___emotion-analysis___create']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHataskEmotionAnalysisCreateResponse = operations['hata___hatask___emotion-analysis___create']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataHataskEmotionAnalysisDeleteRequest = operations['hata___hatask___emotion-analysis___delete']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHataskEmotionAnalysisDeleteResponse = operations['hata___hatask___emotion-analysis___delete']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataHataskEmotionAnalysisListRequest = operations['hata___hatask___emotion-analysis___list']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHataskEmotionAnalysisListResponse = operations['hata___hatask___emotion-analysis___list']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataHataskEmotionAnalysisShowRequest = operations['hata___hatask___emotion-analysis___show']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataHataskEmotionAnalysisShowResponse = operations['hata___hatask___emotion-analysis___show']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
 type HataLoginRankingResponse = operations['hata___login-ranking']['responses']['200']['content']['application/json'];
 
 // @public (undocumented)
@@ -3669,6 +3719,24 @@ type HataskEventsListResponse = operations['hatask___events___list']['responses'
 
 // @public (undocumented)
 type HataskEventsRsvpRequest = operations['hatask___events___rsvp']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataskFlowersListRequest = operations['hatask___flowers___list']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataskFlowersListResponse = operations['hatask___flowers___list']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataskFlowersSyncRequest = operations['hatask___flowers___sync']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataskFlowersSyncResponse = operations['hatask___flowers___sync']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataskFlowersVisibilityUpdateRequest = operations['hatask___flowers___visibility___update']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataskFlowersVisibilityUpdateResponse = operations['hatask___flowers___visibility___update']['responses']['200']['content']['application/json'];
 
 // @public (undocumented)
 type I2faDoneRequest = operations['i___2fa___done']['requestBody']['content']['application/json'];

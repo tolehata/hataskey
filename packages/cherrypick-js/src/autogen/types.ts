@@ -3602,6 +3602,33 @@ export type paths = {
          */
         post: operations['hatask___events___rsvp'];
     };
+    '/hatask/flowers/list': {
+        /**
+         * hatask/flowers/list
+         * @description No description provided.
+         *
+         *     **Credential required**: *Yes* / **Permission**: *read:account*
+         */
+        post: operations['hatask___flowers___list'];
+    };
+    '/hatask/flowers/sync': {
+        /**
+         * hatask/flowers/sync
+         * @description No description provided.
+         *
+         *     **Credential required**: *Yes* / **Permission**: *write:account*
+         */
+        post: operations['hatask___flowers___sync'];
+    };
+    '/hatask/flowers/visibility/update': {
+        /**
+         * hatask/flowers/visibility/update
+         * @description No description provided.
+         *
+         *     **Credential required**: *Yes* / **Permission**: *write:account*
+         */
+        post: operations['hatask___flowers___visibility___update'];
+    };
     '/i': {
         /**
          * i
@@ -36230,6 +36257,46 @@ export interface operations {
                             count: number;
                             averageScore: number;
                         }[];
+                        emotions: {
+                            /** @enum {string} */
+                            axis: 'joy' | 'fun' | 'affection' | 'gratitude' | 'anger' | 'sadness' | 'anxiety' | 'fatigue';
+                            /** @enum {string} */
+                            polarity: 'positive' | 'negative';
+                            count: number;
+                            weight: number;
+                            averageScore: number;
+                        }[];
+                        activity: {
+                            activeDays: number;
+                            longestStreakDays: number;
+                            averagePostsPerActiveDay: number;
+                            medianIntervalMinutes: number;
+                            busiestHour: number;
+                            busiestWeekday: number;
+                            nightPostRate: number;
+                            morningPostRate: number;
+                        };
+                        vocabulary: {
+                            averageSentenceLength: number;
+                            uniqueTokenRatio: number;
+                            hashtagPostRate: number;
+                            mentionPostRate: number;
+                            urlPostRate: number;
+                            emojiPostRate: number;
+                            questionPostRate: number;
+                            exclamationPostRate: number;
+                        };
+                        engagement: {
+                            byLevel: {
+                                /** @enum {string} */
+                                level: 'strong_positive' | 'positive' | 'neutral' | 'negative' | 'strong_negative';
+                                count: number;
+                                averageReactions: number;
+                                averageReplies: number;
+                                averageRenotes: number;
+                            }[];
+                            topTopicByReactions: string | null;
+                        };
                         posting: {
                             averageTextLength: number;
                             averageReactions: number;
@@ -37152,6 +37219,268 @@ export interface operations {
             204: {
                 headers: {
                     [name: string]: unknown;
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+        };
+    };
+    hatask___flowers___list: {
+        requestBody: {
+            content: {
+                'application/json': {
+                    /** @default 1 */
+                    page?: number;
+                    /** @default 12 */
+                    limit?: number;
+                    /**
+                     * @default newest
+                     * @enum {string}
+                     */
+                    order?: 'newest' | 'oldest';
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        items: {
+                            /** Format: misskey:id */
+                            id: string;
+                            clientFlowerId: string;
+                            emoji: string;
+                            name: string;
+                            hanakotoba: string;
+                            /** Format: date-time */
+                            harvestedAt: string;
+                            isOwner: boolean;
+                            user: components['schemas']['UserLite'];
+                        }[];
+                        total: number;
+                        page: number;
+                        totalPages: number;
+                        /** @enum {string} */
+                        myVisibility: 'public' | 'followers' | 'private';
+                    };
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+        };
+    };
+    hatask___flowers___sync: {
+        requestBody: {
+            content: {
+                'application/json': {
+                    flowers: {
+                        clientFlowerId: string;
+                        emoji: string;
+                        name: string;
+                        /** @default  */
+                        hanakotoba?: string;
+                        /** Format: date-time */
+                        harvestedAt: string;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        synced: number;
+                    };
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+        };
+    };
+    hatask___flowers___visibility___update: {
+        requestBody: {
+            content: {
+                'application/json': {
+                    /** @enum {string} */
+                    visibility: 'public' | 'followers' | 'private';
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        /** @enum {string} */
+                        visibility: 'public' | 'followers' | 'private';
+                    };
                 };
             };
             /** @description Client error */
