@@ -79,6 +79,7 @@ import { MiUserPublickey } from '@/models/UserPublickey.js';
 import { MiRegistrationApplication } from '@/models/RegistrationApplication.js';
 import { MiHataskEvent } from '@/models/HataskEvent.js';
 import { MiHataskRsvp } from '@/models/HataskRsvp.js';
+import { MiHataskFlower } from '@/models/HataskFlower.js';
 import { MiUtageSession } from '@/models/UtageSession.js';
 import { MiFeedbackIssue } from '@/models/FeedbackIssue.js';
 import { MiFeedbackAgree } from '@/models/FeedbackAgree.js';
@@ -242,6 +243,7 @@ export const entities = [
 	MiRegistrationApplication,
 	MiHataskEvent,
 	MiHataskRsvp,
+	MiHataskFlower,
 	MiUtageSession,
 	MiFeedbackIssue,
 	MiFeedbackAgree,

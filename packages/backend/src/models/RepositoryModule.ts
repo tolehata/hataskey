@@ -100,6 +100,7 @@ import { NoteHistory } from './NoteHistory.js';
 import { MiRegistrationApplication } from './RegistrationApplication.js';
 import { MiHataskEvent } from './HataskEvent.js';
 import { MiHataskRsvp } from './HataskRsvp.js';
+import { MiHataskFlower } from './HataskFlower.js';
 import { MiUtageSession } from './UtageSession.js';
 import { MiFeedbackIssue } from './FeedbackIssue.js';
 import { MiFeedbackAgree } from './FeedbackAgree.js';
@@ -651,6 +652,12 @@ const $hataskRsvpsRepository: Provider = {
 	inject: [DI.db],
 };
 
+const $hataskFlowersRepository: Provider = {
+	provide: DI.hataskFlowersRepository,
+	useFactory: (db: DataSource) => db.getRepository(MiHataskFlower).extend(miRepository as MiRepository<MiHataskFlower>),
+	inject: [DI.db],
+};
+
 const $utageSessionsRepository: Provider = {
 	provide: DI.utageSessionsRepository,
 	useFactory: (db: DataSource) => db.getRepository(MiUtageSession).extend(miRepository as MiRepository<MiUtageSession>),
@@ -901,6 +908,7 @@ const $feedbackProjectsRepository: Provider = {
 		$registrationApplicationsRepository,
 		$hataskEventsRepository,
 		$hataskRsvpsRepository,
+		$hataskFlowersRepository,
 		$utageSessionsRepository,
 		$feedbackIssuesRepository,
 		$feedbackAgreesRepository,
@@ -1020,6 +1028,7 @@ const $feedbackProjectsRepository: Provider = {
 		$registrationApplicationsRepository,
 		$hataskEventsRepository,
 		$hataskRsvpsRepository,
+		$hataskFlowersRepository,
 		$utageSessionsRepository,
 		$feedbackIssuesRepository,
 		$feedbackAgreesRepository,

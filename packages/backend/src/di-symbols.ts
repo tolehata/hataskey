@@ -107,6 +107,7 @@ export const DI = {
 	registrationApplicationsRepository: Symbol('registrationApplicationsRepository'),
 	hataskEventsRepository: Symbol('hataskEventsRepository'),
 	hataskRsvpsRepository: Symbol('hataskRsvpsRepository'),
+	hataskFlowersRepository: Symbol('hataskFlowersRepository'),
 	utageSessionsRepository: Symbol('utageSessionsRepository'),
 	feedbackIssuesRepository: Symbol('feedbackIssuesRepository'),
 	feedbackAgreesRepository: Symbol('feedbackAgreesRepository'),

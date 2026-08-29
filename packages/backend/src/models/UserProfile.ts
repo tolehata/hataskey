@@ -123,6 +123,13 @@ export class MiUserProfile {
 	})
 	public hataskFlowerCount: number;
 
+	// Hatask 花ギャラリーの公開範囲。通常のプロフィール設定 API では扱わず、専用 API だけで更新する。
+	@Column('varchar', {
+		length: 16,
+		default: 'public',
+	})
+	public hataskFlowerVisibility: 'public' | 'followers' | 'private';
+
 	@Column('enum', {
 		enum: followingVisibilities,
 		default: 'public',

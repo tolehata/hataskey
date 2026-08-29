@@ -107,6 +107,7 @@ import { NoteHistory } from '@/models/NoteHistory.js';
 import { MiRegistrationApplication } from '@/models/RegistrationApplication.js';
 import { MiHataskEvent } from '@/models/HataskEvent.js';
 import { MiHataskRsvp } from '@/models/HataskRsvp.js';
+import { MiHataskFlower } from '@/models/HataskFlower.js';
 import { MiUtageSession } from '@/models/UtageSession.js';
 import { MiFeedbackIssue } from '@/models/FeedbackIssue.js';
 import { MiFeedbackAgree } from '@/models/FeedbackAgree.js';
@@ -292,6 +293,7 @@ export {
 	MiRegistrationApplication,
 	MiHataskEvent,
 	MiHataskRsvp,
+	MiHataskFlower,
 	MiUtageSession,
 	MiFeedbackIssue,
 	MiFeedbackAgree,
@@ -413,6 +415,7 @@ export type NoteHistoryRepository = Repository<NoteHistory> & MiRepository<NoteH
 export type RegistrationApplicationsRepository = Repository<MiRegistrationApplication> & MiRepository<MiRegistrationApplication>;
 export type HataskEventsRepository = Repository<MiHataskEvent> & MiRepository<MiHataskEvent>;
 export type HataskRsvpsRepository = Repository<MiHataskRsvp> & MiRepository<MiHataskRsvp>;
+export type HataskFlowersRepository = Repository<MiHataskFlower> & MiRepository<MiHataskFlower>;
 export type UtageSessionsRepository = Repository<MiUtageSession> & MiRepository<MiUtageSession>;
 export type FeedbackIssuesRepository = Repository<MiFeedbackIssue> & MiRepository<MiFeedbackIssue>;
 export type FeedbackAgreesRepository = Repository<MiFeedbackAgree> & MiRepository<MiFeedbackAgree>;

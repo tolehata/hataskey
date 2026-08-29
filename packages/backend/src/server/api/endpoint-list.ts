@@ -626,3 +626,6 @@ export * as 'hatask/events/list' from './endpoints/hatask/events/list.js';
 export * as 'hatask/events/rsvp' from './endpoints/hatask/events/rsvp.js';
 export * as 'hatask/events/delete' from './endpoints/hatask/events/delete.js';
 export * as 'hatask/events/close' from './endpoints/hatask/events/close.js';
+export * as 'hatask/flowers/sync' from './endpoints/hatask/flowers/sync.js';
+export * as 'hatask/flowers/list' from './endpoints/hatask/flowers/list.js';
+export * as 'hatask/flowers/visibility/update' from './endpoints/hatask/flowers/visibility/update.js';
