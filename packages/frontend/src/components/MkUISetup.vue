@@ -121,7 +121,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		</div>
 
 		<!-- ===== 通常候補: HataSNSCordUI（Hataskey UIの次に常時表示） ===== -->
-		<section :class="$style.cordChoice" aria-labelledby="hata-sns-cord-ui-title">
+		<section :class="$style.cordChoice" :data-animation="prefer.r.animation.value ? 'true' : 'false'" aria-labelledby="hata-sns-cord-ui-title">
 			<div :class="$style.cordChoiceInner">
 				<div :class="$style.cordChoiceIntro">
 					<img
@@ -213,10 +213,11 @@ SPDX-License-Identifier: AGPL-3.0-only
 <script lang="ts" setup>
 import { ref } from 'vue';
 import SettingsEmbeddedWindow from '@/components/SettingsEmbeddedWindow.vue';
-import { ArrowUp, Bell, ChevronRight, CloudUpload, Globe2, Home, List, MessageSquareText, Plus, Radio, Search, SlidersHorizontal, Star, UserRound } from '@lucide/vue';
+import { ArrowUp, Bell, ChevronRight, CloudUpload, Globe2, Home, List, MessageSquareText, Plus, Radio, Search, SlidersHorizontal, Star, UserRound } from '@/components/hatacording-icons/index.js';
 import { instanceName } from '@@/js/config.js';
 import MkModal from '@/components/MkModal.vue';
 import { miLocalStorage } from '@/local-storage.js';
+import { prefer } from '@/preferences.js';
 import { ensureSignin } from '@/i.js';
 import { i18n } from '@/i18n.js';
 import { setHatacordingUiEnabled } from '@/utility/hatacording-ui.js';
@@ -1019,7 +1020,7 @@ defineProps<{ embedded?: boolean }>();
 	color: var(--htkAccentLt);
 }
 
-.cordMockTabs svg {
+.cordMockTabs > :is(svg, [data-hatacording-animated-icon]) {
 	margin-left: auto;
 }
 
@@ -1091,7 +1092,7 @@ defineProps<{ embedded?: boolean }>();
 	outline-offset: 3px;
 }
 
-.cordChoiceCta svg {
+.cordChoiceCta > :is(svg, [data-hatacording-animated-icon]) {
 	justify-self: center;
 }
 

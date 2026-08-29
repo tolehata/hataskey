@@ -4,7 +4,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 旗鯖fork: UI選択画面から利用する「HataSNSCordUI」。独立3ペインUIと端末ローカル設定。
 -->
 <template>
-<div ref="rootEl" :class="$style.root" :data-hata-foldable="isFoldableWide ? 'true' : undefined" :data-compact="isCompact ? 'true' : 'false'" :data-sidebar-collapsed="sidebarCollapsed ? 'true' : 'false'" :data-right-collapsed="prefs.rightPaneCollapsed ? 'true' : 'false'" :data-color-mode="prefs.colorMode" :data-ui-scale="prefs.uiScale" :data-animation="prefer.s.animation ? 'true' : 'false'" :data-theme-changing="colorModeTransitioning ? 'true' : 'false'" @touchstart.passive="onMobileEdgeTouchStart" @touchend.passive="onMobileEdgeTouchEnd" @touchcancel.passive="onMobileEdgeTouchCancel">
+<div ref="rootEl" :class="$style.root" :data-hata-foldable="isFoldableWide ? 'true' : undefined" :data-compact="isCompact ? 'true' : 'false'" :data-sidebar-collapsed="sidebarCollapsed ? 'true' : 'false'" :data-right-collapsed="prefs.rightPaneCollapsed ? 'true' : 'false'" :data-color-mode="prefs.colorMode" :data-ui-scale="prefs.uiScale" :data-animation="animationEnabled ? 'true' : 'false'" :data-theme-changing="colorModeTransitioning ? 'true' : 'false'" @touchstart.passive="onMobileEdgeTouchStart" @touchend.passive="onMobileEdgeTouchEnd" @touchcancel.passive="onMobileEdgeTouchCancel">
 	<button v-if="(isCompact && drawerOpen) || (rightPaneOverlay && rightPaneOpen)" type="button" :class="$style.scrim" :aria-label="copy.closePanels" @click="closeOverlays"></button>
 
 	<aside :class="[$style.leftPane, drawerOpen && $style.drawerOpen]">
@@ -48,7 +48,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<button type="button" :class="$style.collectionHeader" :title="sidebarCollapsed ? group.label : undefined" :aria-label="sidebarCollapsed ? group.label : undefined" @click="openCollection(group, $event)">
 						<component :is="group.icon" :size="17"/><span v-if="!sidebarCollapsed">{{ group.label }}</span>
 						<span v-if="!sidebarCollapsed" :class="$style.collectionCount">{{ group.items.length }}</span>
-						<ChevronDown v-if="!sidebarCollapsed" :size="16" :class="prefs.collectionExpanded[group.id] && $style.rotated"/>
+						<component :is="prefs.collectionExpanded[group.id] ? ChevronUp : ChevronDown" v-if="!sidebarCollapsed" :size="16"/>
 					</button>
 					<button v-if="menuEditing && !sidebarCollapsed" type="button" :class="$style.collectionIconButton" :title="copyx.changeCategoryIcon({ category: group.label })" @click="openCollectionIconMenu(group, $event)"><SwatchBook :size="14"/></button>
 				</div>
@@ -85,7 +85,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<header :class="$style.timelineHeader">
 			<button v-if="isCompact" type="button" :class="$style.iconButton" :title="copy.menu" @click="openLeftPane"><component :is="sidebarMenuIcon" :size="18"/></button>
 			<button v-if="centerPageOpen" type="button" :class="$style.iconButton" :title="centerPageHistory.length > 1 ? copy.backOnePage : copy.backToTimeline" @click="backCenterPage"><component :is="backIcon" :size="18"/></button>
-			<div :class="$style.timelineTitle"><component :is="centerPageOpen ? layersNavigationIcon : (activeMenuItem?.icon || Activity)" :size="18"/><div><strong>{{ centerPageOpen ? centerPageTitle : (activeMenuItem?.label || copy.timelines) }}</strong><small v-if="centerPageOpen">{{ copy.shownInsideUi }}</small><small v-else><Circle :size="7" fill="currentColor"/> {{ copyx.onlineUsers({ count: onlineUsersCount.toString() }) }}</small></div></div>
+			<div :class="$style.timelineTitle"><component :is="centerPageOpen ? layersNavigationIcon : (activeMenuItem?.icon || Activity)" :size="18"/><div><strong>{{ centerPageOpen ? centerPageTitle : (activeMenuItem?.label || copy.timelines) }}</strong><small v-if="centerPageOpen">{{ copy.shownInsideUi }}</small><small v-else><span :class="$style.onlineDot" aria-hidden="true"></span> {{ copyx.onlineUsers({ count: onlineUsersCount.toString() }) }}</small></div></div>
 			<div :class="$style.headerActions">
 				<button type="button" :class="$style.rateLimitButton" :data-level="rateLimitLevel" :title="rateLimitTitle" :aria-label="rateLimitTitle" @click="openRateLimitDetails">
 					<svg :class="$style.rateLimitRing" viewBox="0 0 26 26" aria-hidden="true">
@@ -95,7 +95,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<span v-if="prefs.showRateLimitNumber">{{ rateLimitMeterLabel }}</span>
 				</button>
 				<button v-if="!centerPageOpen && activeCollectionSettings" type="button" :class="$style.iconButton" :title="activeCollectionSettings.label" @click="openActiveCollectionSettings"><component :is="settingsIcon" :size="16"/></button>
-				<button v-if="!centerPageOpen" type="button" :class="$style.iconButton" :title="copy.refresh" :disabled="fetching" @click="playHataNavigationMotion($event, 'reload'); reloadTimeline()"><RefreshCw :size="16" :class="fetching && $style.spinning"/></button>
+				<button v-if="!centerPageOpen" type="button" :class="$style.iconButton" :title="copy.refresh" :disabled="fetching" @click="reloadTimeline()"><LoaderCircle v-if="fetching" :size="16"/><RefreshCw v-else :size="16"/></button>
 				<button v-if="prefs.rightPaneCollapsed || rightPaneOverlay" type="button" :class="$style.iconButton" :title="copy.openSubpane" @click="openRightPane"><component :is="panelOpenIcon" :size="18"/></button>
 			</div>
 		</header>
@@ -115,11 +115,11 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<strong>{{ copy.timelineLoadFailed }}</strong>
 					<button type="button" :disabled="fetching" @click="reloadTimeline()">{{ copy.retry }}</button>
 				</div>
-				<div v-if="fetching && feedEntries.length === 0" :class="$style.state"><LoaderCircle :size="24" :class="$style.spinning"/><span>{{ copy.loadingTimeline }}</span></div>
+				<div v-if="fetching && feedEntries.length === 0" :class="$style.state"><LoaderCircle :size="24"/><span>{{ copy.loadingTimeline }}</span></div>
 				<div v-else-if="feedEntries.length === 0 && timelineErrorKind == null" :class="$style.state"><Inbox :size="26"/><span>{{ copy.noNotes }}</span></div>
 				<template v-else>
-					<button v-if="notes.length > 0 && hasMore" type="button" :class="$style.historyLoader" :disabled="loadingMore" @click="loadMore"><span :class="$style.historyLine"></span><span :class="$style.historyLabel"><LoaderCircle v-if="loadingMore" :size="15" :class="$style.spinning"/><History v-else :size="15"/>{{ loadingMore ? copy.loadingPastConversations : copy.browsePastConversations }}</span><span :class="$style.historyLine"></span></button>
-					<TransitionGroup :name="prefer.s.animation ? 'hatacording-feed' : ''" tag="div" :class="[$style.feedList, timelineSwitchRevealing && $style.timelineSwitchRevealing]">
+					<button v-if="notes.length > 0 && hasMore" type="button" :class="$style.historyLoader" :disabled="loadingMore" @click="loadMore"><span :class="$style.historyLine"></span><span :class="$style.historyLabel"><LoaderCircle v-if="loadingMore" :size="15"/><History v-else :size="15"/>{{ loadingMore ? copy.loadingPastConversations : copy.browsePastConversations }}</span><span :class="$style.historyLine"></span></button>
+					<TransitionGroup :name="animationEnabled ? 'hatacording-feed' : ''" tag="div" :class="[$style.feedList, timelineSwitchRevealing && $style.timelineSwitchRevealing]">
 						<template v-for="(entry, entryIndex) in feedEntries" :key="entry.id">
 			<section v-if="entry.type === 'activity'" :class="$style.activityBlock" :style="{ '--cord-reveal-order': timelineRevealOrder(entryIndex) }">
 								<article :class="[$style.activityEvent, entry.activity!.phase === 'revealing' && $style.activityRevealing, entry.activity!.phase === 'highlighting' && prefs.showFoilAnimation && !entry.activity!.notificationItems?.length && $style.activityShimmering, entry.activity!.emergency && $style.activityEmergency]" :data-phase="entry.activity!.phase">
@@ -142,7 +142,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 										<time :class="$style.activityTime" :datetime="entry.activity!.createdAt" :title="activityAbsoluteTime(entry.activity!.createdAt)">{{ activityTimeLabel(entry.activity!.createdAt) }}</time>
 									</button>
 									<button v-if="entry.activity!.kind === 'connection' && entry.activity!.id === activeDisconnectActivityId" type="button" :class="$style.activityReconnect" :title="copy.reloadAndReconnect" @click.stop="reconnectServer"><RefreshCw :size="14"/><span>{{ copy.reconnect }}</span></button>
-									<button v-if="entry.activity!.phase === 'settled' && (entry.activity!.notificationItems?.length || (entry.activity!.detail && !isNotificationActivity(entry.activity!)))" type="button" :class="$style.activityExpand" :title="entry.activity!.expanded ? copy.collapseDetails : copy.showDetails" :aria-expanded="entry.activity!.expanded" @click.stop="entry.activity!.expanded = !entry.activity!.expanded"><ChevronRight :size="15" :class="entry.activity!.expanded && $style.activityExpandOpen"/></button>
+									<button v-if="entry.activity!.phase === 'settled' && (entry.activity!.notificationItems?.length || (entry.activity!.detail && !isNotificationActivity(entry.activity!)))" type="button" :class="$style.activityExpand" :title="entry.activity!.expanded ? copy.collapseDetails : copy.showDetails" :aria-expanded="entry.activity!.expanded" @click.stop="entry.activity!.expanded = !entry.activity!.expanded"><component :is="entry.activity!.expanded ? ChevronDown : ChevronRight" :size="15"/></button>
 								</article>
 								<TransitionGroup v-if="entry.activity!.notificationItems?.length && entry.activity!.expanded" name="hatacording-notification-group" tag="div" :class="$style.activityGroupList">
 									<button v-for="item in entry.activity!.notificationItems" :key="item.id" type="button" :class="$style.activityGroupItem" @click.stop="activateActivity(item)">
@@ -192,9 +192,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</span>
 				<button type="button" @click="openRateLimitDetails">{{ copy.showDetails }}</button>
 			</div>
-			<Transition :name="prefer.s.animation ? 'hatacording-visibility-flash' : ''">
-				<div v-if="visibilityFlashIcon" :class="$style.visibilityFlash" aria-hidden="true"><component :is="visibilityFlashIcon" :size="30"/></div>
-			</Transition>
 			<div v-if="composerContext || composerChannel" :class="[$style.composerContext, (composerContext?.kind === 'channel' || composerChannel?.isPrivate) && $style.privateComposerContext]" :data-context-kind="composerContext?.kind ?? 'channel'">
 				<component :is="composerContextIcon" :size="15"/>
 				<span v-if="composerContext?.note" data-hatacording-reply-target-avatar :class="$style.composerContextAvatarFrame" aria-hidden="true">
@@ -227,25 +224,17 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</div>
 			<MkEventEditor v-if="event" v-model="event" :class="$style.eventEditor" @destroyed="event = null"/>
 			<XPostFormAttaches v-model="draftFiles" :class="$style.composerAttachments" @detach="removeDraftFile" @changeSensitive="updateDraftFileSensitive" @changeName="updateDraftFileName"/>
-			<Transition :name="prefer.s.animation ? `hata-delay-status-${postDelay.exitMode.value}` : ''"><MkHataPostDelayStatus v-if="postDelay.active.value" :class="$style.delayStatus" :pattern="i18n.ts._hata._postDelay.countdown" :seconds="postDelay.remainingSeconds.value" :progress="postDelay.progress.value" :cancelLabel="i18n.ts._hata._postDelay.cancel" :sendNowLabel="i18n.ts._hata._postDelay.sendNow" @cancel="postDelay.cancel()" @sendNow="postDelay.sendNow()"/></Transition>
-			<Transition :name="prefer.s.animation ? 'hatacording-composer-preview' : ''">
+			<Transition :name="animationEnabled ? `hata-delay-status-${postDelay.exitMode.value}` : ''"><MkHataPostDelayStatus v-if="postDelay.active.value" :class="$style.delayStatus" :pattern="i18n.ts._hata._postDelay.countdown" :seconds="postDelay.remainingSeconds.value" :progress="postDelay.progress.value" :cancelLabel="i18n.ts._hata._postDelay.cancel" :sendNowLabel="i18n.ts._hata._postDelay.sendNow" @cancel="postDelay.cancel()" @sendNow="postDelay.sendNow()"/></Transition>
+			<Transition :name="animationEnabled ? 'hatacording-composer-preview' : ''">
 				<section v-if="draftText.trim().length > 0 && submitMotionState === 'idle'" :class="$style.composerPreview" :aria-label="copy.postPreview">
 					<header :class="$style.composerPreviewHeader"><component :is="postToolsIcon" :size="13"/><span>{{ copy.preview }}</span></header>
 					<div :class="$style.composerPreviewBody"><Mfm :text="draftText" :author="$i" :nyaize="'respect'"/></div>
 				</section>
 			</Transition>
-			<Transition :name="prefer.s.animation ? 'hatacording-tools' : ''">
-				<div v-if="composerToolsOpen" :class="$style.composerTools" role="menu" :aria-label="copy.postFeatures">
-					<button v-for="tool in composerShortcutDefinitions" :key="tool.id" type="button" role="menuitem" :class="[$style.composerTool, isComposerShortcutActive(tool.id) && $style.toolActive]" :data-expanded="selectedComposerToolId === tool.id" :title="tool.label" :aria-label="tool.label" @click="selectComposerTool(tool.id, $event)">
-						<component :is="tool.icon" :size="17"/><span>{{ tool.label }}</span>
-					</button>
-					<button v-if="postFormActions.length > 0" type="button" role="menuitem" :class="$style.composerTool" :title="copy.plugins" :aria-label="copy.plugins" @click="openComposerPluginMenu"><component :is="pluginIcon" :size="17"/><span>{{ copy.plugins }}</span></button>
-				</div>
-			</Transition>
 			<div :class="$style.postFormPill">
 				<textarea ref="composerInput" v-model="draftText" :class="$style.pillInput" rows="1" :placeholder="composerPlaceholder" @input="resizeComposerInput" @keydown.ctrl.enter.prevent="submitPost" @keydown.meta.enter.prevent="submitPost"></textarea>
 				<div :class="$style.composerActionRow">
-					<button type="button" :class="[$style.pillButton, composerToolsOpen && $style.pillActive]" :title="copy.postFeatures" aria-haspopup="menu" :aria-expanded="composerToolsOpen" @click="openComposerToolsMenu($event)"><component :is="postToolsIcon" :size="18"/></button>
+					<button type="button" :class="[$style.pillButton, composerToolsOpen && $style.pillActive]" :title="copy.postFeatures" aria-haspopup="menu" aria-controls="hatacording-composer-tools-menu" :aria-expanded="composerToolsOpen" @click="openComposerToolsMenu"><component :is="postToolsIcon" :size="18"/></button>
 					<button type="button" :class="$style.pillButton" :title="copy.attachmentMenu" @click="openAttachmentMenu"><component :is="attachmentIcon" :size="18"/></button>
 					<button type="button" :class="[$style.pillButton, cwEnabled && $style.pillActive]" :title="cwEnabled ? copy.disableCw : copy.enableCw" :aria-pressed="cwEnabled" @click="cwEnabled = !cwEnabled"><component :is="contentWarningIcon" :size="18"/></button>
 					<div v-if="activeComposerShortcuts.length" :class="$style.composerShortcutInline" :aria-label="copy.frequentPostFeatures">
@@ -253,16 +242,14 @@ SPDX-License-Identifier: AGPL-3.0-only
 					</div>
 					<span :class="$style.composerActionSpacer"></span>
 					<button type="button" :class="$style.pillButton" :title="copy.insertCustomEmoji" :aria-label="copy.insertCustomEmoji" @click="openComposerEmojiPicker"><component :is="emojiIcon" :size="18"/></button>
-					<button type="button" :class="[$style.visibilityButton, localOnly && $style.localOnly]" :title="visibilityLabel" @click="openVisibilityMenu"><component :is="visibilityIcon" :size="17"/><span>{{ visibilityShortLabel }}</span></button>
+					<button type="button" :class="[$style.visibilityButton, localOnly && $style.localOnly]" :title="visibilityLabel" @click="openVisibilityMenu"><component :is="visibilityIcon" :size="17"/><span :class="$style.visibilityLabel">{{ visibilityShortLabel }}</span></button>
 					<div v-if="prefs.showCharacterCounter" :class="[$style.charCounter, characterCount > maxNoteLength && $style.counterOver]" :style="characterCounterStyle"><span>{{ maxNoteLength - characterCount }}</span></div>
 					<button type="button" :class="$style.sendButton" :data-state="submitMotionState" :title="postDelay.active.value ? copy.cancelWait : copy.post" :disabled="!postDelay.active.value && !canSubmit" @click="postDelay.active.value ? cancelPostDelay() : submitPost()">
-						<Transition :name="prefer.s.animation ? 'hatacording-submit-state' : ''" mode="out-in">
-							<component :is="cancelIcon" v-if="submitMotionState === 'countdown'" key="countdown" :size="15"/>
-							<component :is="sendingIcon" v-else-if="submitMotionState === 'sending'" key="sending" :size="16" :class="$style.submitArc"/>
-							<component :is="successIcon" v-else-if="submitMotionState === 'success'" key="success" :size="17"/>
-							<component :is="failureIcon" v-else-if="submitMotionState === 'failure'" key="failure" :size="17"/>
-							<component :is="sendIcon" v-else key="idle" :size="17"/>
-						</Transition>
+						<component :is="cancelIcon" v-if="submitMotionState === 'countdown'" :size="15"/>
+						<component :is="sendingIcon" v-else-if="submitMotionState === 'sending'" :size="16"/>
+						<component :is="successIcon" v-else-if="submitMotionState === 'success'" :size="17"/>
+						<component :is="failureIcon" v-else-if="submitMotionState === 'failure'" :size="17"/>
+						<component :is="sendIcon" v-else :size="17"/>
 					</button>
 				</div>
 			</div>
@@ -292,7 +279,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<div ref="subpaneContent" :class="$style.subpaneContent">
 			<Suspense :timeout="0">
 				<template #default>
-					<Transition :name="prefer.s.animation ? 'hatacording-subpane' : ''" mode="out-in">
+					<Transition :name="animationEnabled ? 'hatacording-subpane' : ''" mode="out-in">
 					<div :key="activeRightTab?.id ?? 'empty'" :class="$style.subpaneView">
 					<div v-if="!activeRightTab" :class="$style.welcomePane"><div :class="$style.welcomeWordmark">HataSNSCordUI</div><strong>{{ copy.subpaneHere }}</strong><span>{{ copy.subpaneHereDescription }}</span></div>
 					<div v-else-if="activeRightTab.kind === 'welcome'" :class="$style.welcomePane"><div :class="$style.welcomeWordmark">HataSNSCordUI</div><strong>{{ copy.welcomeSubpaneTitle }}</strong><span>{{ copy.welcomeSubpaneDescription }}</span></div>
@@ -326,7 +313,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					</div>
 					</Transition>
 				</template>
-			<template #fallback><div :class="$style.subpaneLoading"><LoaderCircle :size="22" :class="$style.spinning"/><span>{{ copy.loadingSubpane }}</span></div></template>
+			<template #fallback><div :class="$style.subpaneLoading"><LoaderCircle :size="22"/><span>{{ copy.loadingSubpane }}</span></div></template>
 			</Suspense>
 		</div>
 	</aside>
@@ -335,16 +322,17 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { computed, defineAsyncComponent, defineComponent, h, nextTick, onBeforeUnmount, onMounted, provide, reactive, ref, useCssModule, useTemplateRef, watch } from 'vue';
+import { computed, defineAsyncComponent, defineComponent, h, markRaw, nextTick, onBeforeUnmount, onMounted, provide, reactive, ref, useCssModule, useTemplateRef, watch } from 'vue';
 import {
-	Activity, ArrowDownToLine, ArrowLeft, ArrowUp, AtSign, Bell, BookOpen, CalendarPlus, Check, ChevronDown, ChevronRight, ChevronUp, Circle, CircleAlert, CloudUpload, Compass, Copy, Earth, ExternalLink, EyeOff, Flame, Folder, Gamepad2, Globe2, Hash, History, Home, Import, Inbox, Layers, LayoutDashboard, List, LoaderCircle, Lock, Maximize2, Megaphone, Menu as MenuIcon, MessageCircle, MessageSquareWarning, MoreHorizontal, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Paperclip, Pencil, Pin, PinOff, Plug, Plus, Quote, Radio, RefreshCw, Reply, Rocket, Save, Search, Settings, Shield, SlidersHorizontal, SmilePlus, Sparkles, Square, Star, SwatchBook, Tv, Unplug, UserRound, WandSparkles, X,
-} from '@lucide/vue';
+	Activity, ArrowDownToLine, ArrowLeft, ArrowUp, AtSign, Bell, BookOpen, CalendarPlus, Check, ChevronDown, ChevronRight, ChevronUp, CircleAlert, CloudUpload, Compass, Copy, Earth, ExternalLink, EyeOff, Flame, Folder, Gamepad2, Globe2, Hash, History, Home, Import, Inbox, Layers, LayoutDashboard, List, LoaderCircle, Lock, Maximize2, Megaphone, Menu as MenuIcon, MessageCircle, MessageSquareWarning, MoreHorizontal, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Paperclip, Pencil, Pin, PinOff, Plug, Plus, Quote, Radio, RefreshCw, Reply, Rocket, Save, Search, Settings, Shield, SlidersHorizontal, SmilePlus, Sparkles, Square, Star, SwatchBook, Tv, Unplug, UserRound, WandSparkles, X,
+} from '@/components/hatacording-icons/index.js';
 import type { Component, PropType } from 'vue';
 import type * as Misskey from 'cherrypick-js';
 import type { MenuItem } from '@/types/menu.js';
 import type { PostFormProps } from '@/types/post-form.js';
 import '@fontsource-variable/noto-sans-jp/wght.css';
 import type { HatacordingUiCollectionIcon, HatacordingUiComposerShortcut, HatacordingUiMenuPreference, HatacordingUiPreferencesChangeDetail, HatacordingUiWidget } from '@/utility/hatacording-ui.js';
+import HatacordingComposerToolsMenu from '@/components/HatacordingComposerToolsMenu.vue';
 import type { Widget } from '@/components/MkWidgets.vue';
 import { ensureSignin, incNotesCount, notesCount } from '@/i.js';
 import { i18n } from '@/i18n.js';
@@ -366,7 +354,6 @@ import { widgets as availableWidgets } from '@/widgets/index.js';
 import { useStream } from '@/stream.js';
 import { callExternalApi, getExternalAccount } from '@/utility/external-api.js';
 import { createPostSendDelayController, postSendDelayEnabled, postSendDelaySeconds } from '@/utility/post-send-delay.js';
-import { playHataIconMotion, playHataNavigationMotion } from '@/utility/hata-icon-motion.js';
 import { getActiveHataSideProfile, hataSideStudioStore } from '@/utility/hata-side-studio.js';
 import { HATACORDING_UI_PREFERENCES_CHANGE_EVENT, readHatacordingUiPreferences, writeHatacordingUiPreferences } from '@/utility/hatacording-ui.js';
 import { deepClone } from '@/utility/clone.js';
@@ -480,6 +467,7 @@ const FOLDABLE_RIGHT_PANE_MAX_RATIO = 0.42;
 const isFoldableWide = useFoldableWide(HATACORDING_RIGHT_PANE_DOCK_WIDTH);
 // 折りたたむ/開くでレイアウトが切り替わっても、読んでいた位置を保つ。
 useFoldableScrollAnchor(isFoldableWide, () => scrollEl.value);
+const animationEnabled = computed(() => prefer.r.animation.value);
 // ResizeObserver が最後に観測した .root の幅。折りたたみ設定の切り替えでも
 // 同じ判定を再実行できるよう、幅を保持して一箇所で計算する。
 const rootWidth = ref(0);
@@ -554,7 +542,6 @@ const activeRightTabId = ref('detail');
 const dragTabIndex = ref<number | null>(null);
 const colorModeTransitioning = ref(false);
 const timelineSwitchRevealing = ref(false);
-const visibilityFlashIcon = ref<Component | null>(null);
 const rateLimitNow = ref(Date.now());
 const postFormActions = getPluginHandlers('post_form_action');
 
@@ -602,7 +589,7 @@ const homeVisibilityIcon = Home;
 const publicChannelIcon = Tv;
 const privateChannelIcon = Lock;
 
-const composerShortcutDefinitions: { id: HatacordingUiComposerShortcut; label: string; icon: Component }[] = [
+const composerShortcutDefinitions: { id: HatacordingUiComposerShortcut; label: string; icon: Component }[] = markRaw([
 	{ id: 'poll', label: copy.poll, icon: pollIcon },
 	{ id: 'mention', label: copy.mention, icon: mentionIcon },
 	{ id: 'mfm', label: 'MFM', icon: mfmIcon },
@@ -613,14 +600,15 @@ const composerShortcutDefinitions: { id: HatacordingUiComposerShortcut; label: s
 	{ id: 'reaction', label: copy.reactionRestrictions, icon: reactionIcon },
 	{ id: 'delivery', label: copy.deliveryDestination, icon: deliveryIcon },
 	{ id: 'full', label: copy.fullPostForm, icon: fullFormIcon },
-];
+]);
+const composerPluginDefinition: { label: string; icon: Component } = markRaw({ label: copy.plugins, icon: pluginIcon });
 let resizeObserver: ResizeObserver | null = null;
 let onlineTimer: number | null = null;
 let rateLimitTimer: number | null = null;
 let activityArchiveTimer: number | null = null;
 let colorTransitionTimer: number | null = null;
 let timelineRevealTimer: number | null = null;
-let visibilityFlashTimer: number | null = null;
+let disposeComposerToolsPopup: (() => void) | null = null;
 let mainConnection: any = null;
 let timelineConnection: any = null;
 let externalTimelineSocket: WebSocket | null = null;
@@ -854,6 +842,7 @@ const timelineOnlyFiles = computed({
 });
 const timelineShowFixedPostForm = prefer.model('showFixedPostForm');
 const activeComposerShortcuts = computed(() => prefs.value.composerShortcuts.map(id => composerShortcutDefinitions.find(item => item.id === id)).filter((item): item is typeof composerShortcutDefinitions[number] => item != null));
+const activeComposerToolIds = computed(() => composerShortcutDefinitions.filter(item => isComposerShortcutActive(item.id)).map(item => item.id));
 
 function collectionIcon(icon: HatacordingUiCollectionIcon): Component {
 	return ({
@@ -895,14 +884,24 @@ function startColorModeTransition() {
 
 function applyDocumentColorMode() {
 	window.document.documentElement.setAttribute('data-hatacording-color-mode', prefs.value.colorMode);
+	applyDocumentAnimationPreference();
 	if (colorModeTransitioning.value) window.document.documentElement.setAttribute('data-hatacording-theme-changing', 'true');
 	else window.document.documentElement.removeAttribute('data-hatacording-theme-changing');
 }
 
+function applyDocumentAnimationPreference() {
+	window.document.documentElement.setAttribute('data-hatacording-animation', animationEnabled.value ? 'true' : 'false');
+}
+
 function clearDocumentColorMode() {
 	window.document.documentElement.removeAttribute('data-hatacording-color-mode');
+	window.document.documentElement.removeAttribute('data-hatacording-animation');
 	window.document.documentElement.removeAttribute('data-hatacording-theme-changing');
 }
+
+watch(animationEnabled, () => {
+	if (rootEl.value != null) applyDocumentAnimationPreference();
+});
 
 function menuPreference(item: HatacordingMenuItem): HatacordingUiMenuPreference { return prefs.value.menu[item.id] ?? { pinned: false, hidden: item.defaultVisible !== true, order: staticMenuItems.value.findIndex(candidate => candidate.id === item.id) }; }
 
@@ -956,10 +955,7 @@ const MenuRow = defineComponent({
 				class: [styles.menuItem, activeMenuId.value === props.item.id && styles.activeMenuItem, props.compact && styles.compactMenuItem],
 				'data-hatacording-menu-active': activeMenuId.value === props.item.id ? 'true' : undefined,
 				title: sidebarCollapsed.value ? props.item.label : undefined,
-				onClick: (event: MouseEvent) => {
-					playHataNavigationMotion(event, props.item.id, 620);
-					void activateMenuItem(props.item);
-				},
+				onClick: () => void activateMenuItem(props.item),
 			}, [
 				h(props.item.icon, { size: 18 }),
 				!sidebarCollapsed.value ? h('span', { class: styles.menuLabel }, props.item.label) : null,
@@ -1082,7 +1078,6 @@ function openCollectionIconMenu(group: { id: CollectionId; label: string }, even
 }
 
 async function openMoreMenu(event: MouseEvent) {
-	playHataIconMotion(event, 'more-dots', 520);
 	// 編集中だけは「もっと」へ退避した項目を戻す専用パネルを使う。
 	// 通常時は他UIと同じ MkLaunchPad を正本にし、独自の不完全な複製を持たない。
 	if (menuEditing.value && !sidebarCollapsed.value) {
@@ -2255,7 +2250,6 @@ function openEmojiPicker(anchor: HTMLElement) {
 }
 
 function openComposerEmojiPicker(event: MouseEvent) {
-	playHataIconMotion(event, 'emoji-pop', 520);
 	openEmojiPicker(event.currentTarget as HTMLElement);
 }
 
@@ -2276,7 +2270,7 @@ function openMfmPicker(anchor: HTMLElement) { if (!composerInput.value) return; 
 function insertHashtag() { draftText.value += draftText.value && !draftText.value.endsWith(' ') ? ' #' : '#'; nextTick(() => composerInput.value?.focus()); }
 
 function openFullComposer() {
-	composerToolsOpen.value = false;
+	closeComposerToolsMenu();
 	void os.postDirect({
 		initialText: draftText.value,
 		initialCw: cwEnabled.value ? cwText.value : undefined,
@@ -2290,14 +2284,46 @@ function openFullComposer() {
 	});
 }
 
-function openComposerToolsMenu(event?: MouseEvent) {
-	if (event) playHataIconMotion(event, 'star-turn', 560);
-	composerToolsOpen.value = !composerToolsOpen.value;
-	if (!composerToolsOpen.value) selectedComposerToolId.value = null;
+function closeComposerToolsMenu(): void {
+	composerToolsOpen.value = false;
+	selectedComposerToolId.value = null;
+}
+
+function openComposerToolsMenu(event: MouseEvent): void {
+	if (composerToolsOpen.value) {
+		closeComposerToolsMenu();
+		return;
+	}
+	// 閉じアニメーション中に同じポップアップを二重生成しない。
+	if (disposeComposerToolsPopup != null) return;
+
+	const anchor = event.currentTarget;
+	if (!(anchor instanceof HTMLElement)) return;
+	composerToolsOpen.value = true;
+	const { dispose } = os.popup(HatacordingComposerToolsMenu, {
+		anchorElement: anchor,
+		tools: composerShortcutDefinitions,
+		plugin: postFormActions.length > 0 ? composerPluginDefinition : null,
+		activeToolIds: activeComposerToolIds,
+		selectedToolId: selectedComposerToolId,
+		showing: composerToolsOpen,
+		compact: isCompact,
+		animationEnabled,
+		colorMode: computed(() => prefs.value.colorMode),
+		label: copy.postFeatures,
+	}, {
+		select: selectComposerTool,
+		plugins: openComposerPluginMenu,
+		closed: () => {
+			closeComposerToolsMenu();
+			if (disposeComposerToolsPopup === dispose) disposeComposerToolsPopup = null;
+			dispose();
+		},
+	});
+	disposeComposerToolsPopup = dispose;
 }
 
 function openComposerPluginMenu(event: MouseEvent) {
-	playHataIconMotion(event, 'plug-connect', 520);
 	void os.popupMenu(postFormActions.map(action => ({
 		type: 'button' as const,
 		text: action.title,
@@ -2358,8 +2384,6 @@ function runComposerShortcut(id: HatacordingUiComposerShortcut, event: MouseEven
 }
 
 function selectComposerTool(id: HatacordingUiComposerShortcut, event: MouseEvent) {
-	const motion = ({ poll: 'poll-grow', mention: 'mention-orbit', mfm: 'palette-tilt', hashtag: 'hash-tilt', event: 'calendar-page', drawing: 'pencil-write', schedule: 'reload-spin', reaction: 'emoji-pop', delivery: 'globe-spin', full: 'settings-turn' } as const)[id];
-	playHataIconMotion(event, motion, 560);
 	if (selectedComposerToolId.value === id) {
 		selectedComposerToolId.value = null;
 		return;
@@ -2426,7 +2450,6 @@ function updateDraftFileName(file: Misskey.entities.DriveFile, name: string) {
 }
 
 function openAttachmentMenu(event: MouseEvent) {
-	playHataIconMotion(event, 'image-rise', 520);
 	const anchor = event.currentTarget as HTMLElement;
 	const addFiles = async (loader: () => Promise<Misskey.entities.DriveFile[]>) => { try { draftFiles.value.push(...await loader()); } catch { /* 選択・アップロードの取り消し */ } };
 	os.popupMenu([
@@ -2440,7 +2463,6 @@ function openAttachmentMenu(event: MouseEvent) {
 function openCamera() { const input = window.document.createElement('input'); input.type = 'file'; input.accept = 'image/*'; input.setAttribute('capture', 'environment'); input.onchange = async () => { const files = input.files ? [...input.files] : []; if (files.length) draftFiles.value.push(...await os.launchUploader(files, { multiple: false })); }; input.click(); }
 
 function openVisibilityMenu(event: MouseEvent) {
-	playHataIconMotion(event, visibility.value === 'public' ? 'globe-spin' : visibility.value === 'home' ? 'home-rock' : visibility.value === 'followers' ? 'user-rise' : 'mention-orbit', 620);
 	const anchor = event.currentTarget as HTMLElement;
 	if (composerChannel.value) {
 		os.popupMenu([
@@ -2461,11 +2483,9 @@ function openVisibilityMenu(event: MouseEvent) {
 		labels: { public: copy.public, home: copy.home, followers: copy.followersOnly, specified: copy.direct },
 	}, {
 		changeVisibility: (value: Visibility) => {
-			const changed = visibility.value !== value;
 			visibility.value = value;
 			if (value === 'specified') localOnly.value = true;
 			persistRememberedVisibility();
-			if (changed) showVisibilityFlash(value);
 		},
 		changeLocalOnly: (value: boolean) => {
 			if (visibility.value === 'specified') return;
@@ -2478,16 +2498,6 @@ function openVisibilityMenu(event: MouseEvent) {
 		},
 		closed: () => dispose(),
 	});
-}
-
-function showVisibilityFlash(value: Visibility): void {
-	if (!prefer.s.animation || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-	if (visibilityFlashTimer != null) window.clearTimeout(visibilityFlashTimer);
-	visibilityFlashIcon.value = ({ public: Globe2, home: Home, followers: Lock, specified: AtSign })[value];
-	visibilityFlashTimer = window.setTimeout(() => {
-		visibilityFlashIcon.value = null;
-		visibilityFlashTimer = null;
-	}, 560);
 }
 
 function persistRememberedVisibility() {
@@ -2622,8 +2632,7 @@ async function submitPost() {
 		os.toast(composerContext.value?.kind === 'reply' ? copy.replied : composerContext.value?.kind === 'quote' ? copy.quoted : copy.posted, composerContext.value?.kind === 'reply' ? 'reply' : composerContext.value?.kind === 'quote' ? 'quote' : 'posted');
 		clearComposer();
 		submitMotionState.value = 'idle';
-		composerToolsOpen.value = false;
-		selectedComposerToolId.value = null;
+		closeComposerToolsMenu();
 		await nextTick();
 		scrollToBottom();
 	} catch (error) {
@@ -2990,6 +2999,9 @@ onMounted(async () => {
 	stream.on('earthquakeEvent', onEarthquakeEvent);
 });
 onBeforeUnmount(() => {
+	closeComposerToolsMenu();
+	disposeComposerToolsPopup?.();
+	disposeComposerToolsPopup = null;
 	window.removeEventListener('unhandledrejection', onHatacordingUnhandledRejection, { capture: true });
 	resizeObserver?.disconnect();
 	if (onlineTimer != null) window.clearInterval(onlineTimer);
@@ -2998,7 +3010,6 @@ onBeforeUnmount(() => {
 	if (timelineScrollInteractionTimer != null) window.clearTimeout(timelineScrollInteractionTimer);
 	if (colorTransitionTimer != null) window.clearTimeout(colorTransitionTimer);
 	if (timelineRevealTimer != null) window.clearTimeout(timelineRevealTimer);
-	if (visibilityFlashTimer != null) window.clearTimeout(visibilityFlashTimer);
 	activityDisposed = true;
 	activityQueue.length = 0;
 	for (const timer of activityTimers) window.clearTimeout(timer);
@@ -3063,14 +3074,14 @@ definePage(() => ({ title: 'HataSNSCordUI', hideHeader: true }));
 .leftPane{display:flex;flex:0 0 272px;flex-direction:column;min-width:0;border-right:1px solid color-mix(in srgb,var(--MI_THEME-divider) 78%,transparent);background:linear-gradient(165deg,color-mix(in srgb,var(--MI_THEME-panel) 97%,var(--MI_THEME-accent) 3%),color-mix(in srgb,var(--MI_THEME-bg) 96%,var(--MI_THEME-accent) 4%));transition:flex-basis .24s cubic-bezier(.2,.8,.2,1),transform .24s cubic-bezier(.2,.8,.2,1);z-index:90}.root[data-sidebar-collapsed=true] .leftPane{flex-basis:68px}
 .serverHeader,.accountFooter,.timelineHeader,.subpaneHeader{display:flex;align-items:center;gap:7px;min-height:58px;padding:8px 10px;border-bottom:1px solid var(--MI_THEME-divider);box-sizing:border-box}.serverButton,.accountButton{display:flex;align-items:center;gap:10px;min-width:0;flex:1;padding:4px;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}.serverIcon{width:36px;height:36px;flex:0 0 36px;border-radius:10px;object-fit:cover}.serverName{overflow:hidden;flex:1;font-weight:800;text-overflow:ellipsis;white-space:nowrap}.serverActions,.headerActions,.editActions{display:flex;align-items:center;gap:3px}.iconButton,.expandButton{display:grid;width:36px;height:36px;flex:0 0 36px;place-items:center;border:0;border-radius:10px;background:transparent;color:inherit;cursor:pointer}.iconButton:hover,.expandButton:hover{background:var(--MI_THEME-hover)}.expandButton{align-self:center;margin:3px 0 0}
 .editNotice{display:flex;flex-direction:column;gap:8px;margin:8px;padding:10px;border:1px solid color-mix(in srgb,var(--MI_THEME-accent) 35%,var(--MI_THEME-divider));border-radius:12px;background:color-mix(in srgb,var(--MI_THEME-accent) 8%,var(--MI_THEME-panel));font-size:.78em}.editNotice>div:first-child{display:flex;flex-direction:column}.editNotice span{opacity:.7}.textButton{display:flex;align-items:center;gap:4px;padding:5px 7px;border:1px solid var(--MI_THEME-divider);border-radius:8px;background:var(--MI_THEME-panel);color:var(--MI_THEME-accent);font:inherit;font-weight:700;cursor:pointer}
-.menuList{flex:1;min-height:0;overflow:auto;padding:8px}.menuSection+.menuSection,.collectionSection,.moreSection{margin-top:9px;padding-top:9px;border-top:1px solid color-mix(in srgb,var(--MI_THEME-divider) 75%,transparent)}.sectionTitle{margin:0 8px 4px;color:var(--MI_THEME-fg);font-size:.68em;font-weight:700;letter-spacing:.07em;opacity:.52}.menuItemRow{display:flex;width:100%;align-items:center;border-radius:11px}.menuItem,.moreButton,.collectionHeader{display:flex;position:relative;min-width:0;flex:1;align-items:center;gap:10px;min-height:40px;padding:6px 9px;border:0;border-radius:11px;background:transparent;color:inherit;font:inherit;font-weight:500;text-align:left;cursor:pointer}.menuItem:hover,.moreButton:hover,.collectionHeader:hover{background:var(--MI_THEME-hover)}.activeMenuItem{background:color-mix(in srgb,var(--MI_THEME-accent) 13%,transparent);color:var(--MI_THEME-accent);font-weight:700}.compactMenuItem{min-height:36px;padding-left:14px;font-size:.88em}.menuLabel{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.badge,.collectionCount{min-width:18px;padding:2px 5px;border-radius:999px;background:var(--MI_THEME-accent);color:var(--MI_THEME-fgOnAccent);font-size:.68em;font-weight:800;text-align:center}.collectionCount{margin-left:auto;background:var(--MI_THEME-bg);color:inherit}.collectionHeader span:first-of-type{flex:1}.rotated{transform:rotate(180deg)}.collectionItems{margin-left:10px;padding-left:6px;border-left:2px solid color-mix(in srgb,var(--MI_THEME-accent) 30%,var(--MI_THEME-divider))}.collectionEmpty{padding:8px 12px;font-size:.75em;opacity:.55}.rowActions{display:flex}.rowAction{display:grid;width:24px;height:24px;place-items:center;border:0;border-radius:6px;background:transparent;color:inherit;cursor:pointer}.rowAction:hover{background:var(--MI_THEME-hover)}.moreButton{width:100%}.moreButton span:first-of-type{flex:1}.morePanel{display:flex;flex-direction:column;gap:3px;margin:4px 1px;padding:6px;border:1px solid var(--MI_THEME-divider);border-radius:12px;background:var(--MI_THEME-panel)}.moreItem{display:flex;align-items:center;gap:8px;padding:8px;border:0;border-radius:8px;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}.moreItem span{flex:1}.moreItem:hover{background:var(--MI_THEME-hover)}
+.menuList{flex:1;min-height:0;overflow:auto;padding:8px}.menuSection+.menuSection,.collectionSection,.moreSection{margin-top:9px;padding-top:9px;border-top:1px solid color-mix(in srgb,var(--MI_THEME-divider) 75%,transparent)}.sectionTitle{margin:0 8px 4px;color:var(--MI_THEME-fg);font-size:.68em;font-weight:700;letter-spacing:.07em;opacity:.52}.menuItemRow{display:flex;width:100%;align-items:center;border-radius:11px}.menuItem,.moreButton,.collectionHeader{display:flex;position:relative;min-width:0;flex:1;align-items:center;gap:10px;min-height:40px;padding:6px 9px;border:0;border-radius:11px;background:transparent;color:inherit;font:inherit;font-weight:500;text-align:left;cursor:pointer}.menuItem:hover,.moreButton:hover,.collectionHeader:hover{background:var(--MI_THEME-hover)}.activeMenuItem{background:color-mix(in srgb,var(--MI_THEME-accent) 13%,transparent);color:var(--MI_THEME-accent);font-weight:700}.compactMenuItem{min-height:36px;padding-left:14px;font-size:.88em}.menuLabel{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.badge,.collectionCount{min-width:18px;padding:2px 5px;border-radius:999px;background:var(--MI_THEME-accent);color:var(--MI_THEME-fgOnAccent);font-size:.68em;font-weight:800;text-align:center}.collectionCount{margin-left:auto;background:var(--MI_THEME-bg);color:inherit}.collectionHeader span:first-of-type{flex:1}.collectionItems{margin-left:10px;padding-left:6px;border-left:2px solid color-mix(in srgb,var(--MI_THEME-accent) 30%,var(--MI_THEME-divider))}.collectionEmpty{padding:8px 12px;font-size:.75em;opacity:.55}.rowActions{display:flex}.rowAction{display:grid;width:24px;height:24px;place-items:center;border:0;border-radius:6px;background:transparent;color:inherit;cursor:pointer}.rowAction:hover{background:var(--MI_THEME-hover)}.moreButton{width:100%}.moreButton span:first-of-type{flex:1}.morePanel{display:flex;flex-direction:column;gap:3px;margin:4px 1px;padding:6px;border:1px solid var(--MI_THEME-divider);border-radius:12px;background:var(--MI_THEME-panel)}.moreItem{display:flex;align-items:center;gap:8px;padding:8px;border:0;border-radius:8px;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}.moreItem span{flex:1}.moreItem:hover{background:var(--MI_THEME-hover)}
 .accountFooter{margin-top:auto;border-top:1px solid var(--MI_THEME-divider);border-bottom:0}.avatar{width:36px;height:36px;flex:0 0 36px}.accountText{display:flex;min-width:0;flex:1;flex-direction:column;overflow:hidden}.accountText>*{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.accountText small{opacity:.65}.root[data-sidebar-collapsed=true] .serverHeader{flex-direction:column;min-height:auto}.root[data-sidebar-collapsed=true] .serverButton,.root[data-sidebar-collapsed=true] .accountButton{flex:0 0 auto;justify-content:center}.root[data-sidebar-collapsed=true] .serverName{display:none}.root[data-sidebar-collapsed=true] .menuList{padding-inline:7px}.root[data-sidebar-collapsed=true] .menuSection,.root[data-sidebar-collapsed=true] .collectionSection,.root[data-sidebar-collapsed=true] .moreSection{margin-top:4px;padding-top:4px}.root[data-sidebar-collapsed=true] .menuItem,.root[data-sidebar-collapsed=true] .collectionHeader,.root[data-sidebar-collapsed=true] .moreButton{width:100%;justify-content:center;padding-inline:6px}.root[data-sidebar-collapsed=true] .menuItemRow{justify-content:center}.root[data-sidebar-collapsed=true] .badge{position:absolute;top:1px;right:1px;min-width:15px;padding:1px 4px;font-size:.58em;line-height:14px}.root[data-sidebar-collapsed=true] .accountFooter{justify-content:center;padding-inline:6px}
 .centerPane{display:flex;position:relative;min-width:0;flex:1;flex-direction:column;background:color-mix(in srgb,var(--MI_THEME-bg) 97%,var(--MI_THEME-accent) 3%)}.timelineHeader{justify-content:space-between;flex:0 0 auto;background:color-mix(in srgb,var(--MI_THEME-panel) 91%,transparent);backdrop-filter:blur(18px);z-index:5}.timelineTitle{display:flex;min-width:0;flex:1;align-items:center;gap:10px}.timelineTitle>div{display:flex;min-width:0;flex-direction:column}.timelineTitle strong{overflow:hidden;font-weight:700;text-overflow:ellipsis;white-space:nowrap}.timelineTitle small{display:flex;align-items:center;gap:4px;color:#41b781;font-size:.72em}.timelineScroll{min-height:0;flex:1;overflow-y:auto;padding:14px max(12px,3cqw) 132px;overscroll-behavior:contain}.feedList{display:flex;width:min(100%,780px);margin:0 auto;flex-direction:column;gap:8px}.noteRow{display:flex;width:min(92%,700px);align-self:flex-start;align-items:flex-start;cursor:pointer}.ownNote{align-self:flex-end}.noteBubble{width:100%;max-width:100%;border-inline-start:2px solid color-mix(in srgb,var(--MI_THEME-divider) 72%,transparent);background:transparent;overflow:visible;overflow-wrap:anywhere}.ownNote .noteBubble{border-inline-start-color:var(--MI_THEME-accent);background:linear-gradient(90deg,color-mix(in srgb,var(--MI_THEME-accent) 8%,transparent),transparent 72%);color:inherit}.embeddedNote{margin:0!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;overflow:visible!important}.embeddedNote::after{display:none!important}.embeddedNote>article{border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important}.activityEvent{display:flex;width:fit-content;max-width:min(92%,640px);align-self:center;align-items:center;gap:7px;padding:3px 2px;border:0;border-radius:0;background:transparent;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none;color:inherit;font:inherit;font-size:.82em;cursor:pointer}.activityEvent span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.historyLoader{display:flex;width:min(100%,780px);align-items:center;gap:10px;margin:0 auto 18px;border:0;background:transparent;color:inherit;font:inherit;cursor:pointer}.historyLine{height:1px;flex:1;background:linear-gradient(90deg,transparent,var(--MI_THEME-divider))}.historyLine:last-child{background:linear-gradient(90deg,var(--MI_THEME-divider),transparent)}.historyLabel{display:flex;align-items:center;gap:6px;padding:7px 11px;border:1px solid var(--MI_THEME-divider);border-radius:999px;background:var(--MI_THEME-panel);font-size:.76em}.state{display:flex;min-height:240px;align-items:center;justify-content:center;flex-direction:column;gap:10px;text-align:center;opacity:.72}.primaryButton{padding:9px 14px;border:0;border-radius:10px;background:var(--MI_THEME-accent);color:var(--MI_THEME-fgOnAccent);font:inherit;font-weight:700;cursor:pointer}.jumpControl{display:flex;position:absolute;left:50%;bottom:106px;z-index:30;align-items:center;gap:7px;padding:9px 12px;border:1px solid var(--MI_THEME-divider);border-radius:999px;background:color-mix(in srgb,var(--MI_THEME-panel) 92%,transparent);color:inherit;font:inherit;font-weight:700;box-shadow:0 8px 24px color-mix(in srgb,#000 18%,transparent);backdrop-filter:blur(16px);cursor:pointer;transform:translateX(-50%)}.jumpHasNew{border-color:var(--MI_THEME-accent);background:var(--MI_THEME-accent);color:var(--MI_THEME-fgOnAccent)}
-.postFormPill{display:flex;position:relative;width:min(100%,720px);margin:0 auto;align-items:center;gap:6px;padding:8px 10px;border:1px solid color-mix(in srgb,var(--MI_THEME-accent) 25%,var(--MI_THEME-divider));border-radius:999px;background:color-mix(in srgb,var(--MI_THEME-panel) 94%,transparent);box-shadow:0 10px 35px color-mix(in srgb,#000 18%,transparent);backdrop-filter:blur(18px);box-sizing:border-box}.pillButton,.sendButton,.federationButton{display:grid;width:38px;height:38px;flex:0 0 38px;place-items:center;border:0;border-radius:50%;background:transparent;color:inherit;cursor:pointer}.pillButton:hover,.federationButton:hover,.pillActive{background:var(--MI_THEME-hover)}.sendButton{background:var(--MI_THEME-accent);color:var(--MI_THEME-fgOnAccent)}.sendButton:disabled{opacity:.42;cursor:default}.pillInput{min-width:0;min-height:32px;flex:1;max-height:120px;padding:8px 4px;border:0;outline:0;resize:none;overflow-y:hidden;box-sizing:border-box;background:transparent;color:inherit;font:inherit;line-height:1.4}.visibilityButton{display:flex;height:34px;align-items:center;gap:4px;padding:0 8px;border:0;border-radius:999px;background:var(--MI_THEME-bg);color:inherit;font:inherit;font-size:.7em;cursor:pointer}.localOnly{color:#e6a23c}.charCounter{display:grid;position:relative;width:34px;height:34px;flex:0 0 34px;place-items:center;border-radius:50%;background:conic-gradient(var(--MI_THEME-accent) var(--char-progress),color-mix(in srgb,var(--MI_THEME-divider) 70%,transparent) 0);font-size:.58em;font-variant-numeric:tabular-nums}.charCounter::after{content:"";position:absolute;inset:3px;border-radius:50%;background:var(--MI_THEME-panel)}.charCounter span{position:relative;z-index:1}.counterOver{color:#f45;background:#f45}.composerTools,.inlineEditor,.pollEditor,.attachedFiles,.composerContext,.delayStatus{width:min(100%,700px);margin:0 auto 7px;border:1px solid var(--MI_THEME-divider);border-radius:14px;background:color-mix(in srgb,var(--MI_THEME-panel) 96%,transparent);box-shadow:0 7px 24px color-mix(in srgb,#000 12%,transparent);backdrop-filter:blur(14px)}.composerTools{display:flex;gap:5px;padding:7px;overflow-x:auto}.composerTools button{display:flex;flex:0 0 auto;align-items:center;gap:5px;padding:7px 9px;border:0;border-radius:9px;background:transparent;color:inherit;font:inherit;cursor:pointer}.composerTools button:hover,.composerTools .toolActive{background:color-mix(in srgb,var(--MI_THEME-accent) 14%,transparent);color:var(--MI_THEME-accent)}.inlineEditor{display:flex;align-items:center;gap:8px;padding:8px 11px}.inlineEditor input,.pollEditor input{min-width:0;flex:1;border:0;outline:0;background:transparent;color:inherit;font:inherit}.pollEditor{display:flex;flex-direction:column;gap:5px;padding:9px}.pollEditor>div{display:flex;gap:5px;padding:6px 8px;border-radius:8px;background:var(--MI_THEME-bg)}.pollEditor button,.pollEditor label{display:flex;width:fit-content;align-items:center;gap:5px;border:0;background:transparent;color:inherit;font:inherit;font-size:.78em;cursor:pointer}.attachedFiles{display:flex;gap:5px;padding:7px;overflow-x:auto}.attachedFiles span{display:flex;flex:0 0 auto;align-items:center;gap:4px;padding:5px 8px;border-radius:999px;background:var(--MI_THEME-bg);font-size:.72em}.attachedFiles button,.composerContext button{display:grid;padding:0;border:0;background:transparent;color:inherit;cursor:pointer}.composerContext{display:flex;align-items:center;gap:6px;padding:7px 11px;font-size:.76em}.composerContext span{flex:1}.privateComposerContext{border-color:#d59a31;background:color-mix(in srgb,#d59a31 12%,var(--MI_THEME-panel))}.delayStatus{display:flex;justify-content:space-between;padding:5px 12px;font-size:.72em;--hata-delay-base-transform:translateY(0);transform:var(--hata-delay-base-transform)}.delayStatus button{border:0;background:transparent;color:var(--MI_THEME-accent);font:inherit;font-weight:800;cursor:pointer}
-.rightResizer{width:6px;flex:0 0 6px;cursor:col-resize;background:transparent;z-index:72}.rightResizer:hover{background:color-mix(in srgb,var(--MI_THEME-accent) 28%,transparent)}.rightPane{display:flex;min-width:300px;max-width:620px;flex-direction:column;border-left:1px solid var(--MI_THEME-divider);background:var(--MI_THEME-panel);opacity:1;transition:flex-basis .24s cubic-bezier(.2,.8,.2,1),min-width .24s cubic-bezier(.2,.8,.2,1),opacity .18s ease,transform .24s cubic-bezier(.2,.8,.2,1);z-index:70}.rightPaneCollapsed{min-width:0!important;flex-basis:0!important;border-left-width:0;opacity:0;overflow:hidden;pointer-events:none}.subpaneHeader{padding-inline:7px}.tabs{display:flex;min-width:0;flex:1;overflow-x:auto;scrollbar-width:none}.tabWrap{display:flex;flex:0 0 auto;align-items:center;border-bottom:2px solid transparent;opacity:.67}.activeTab{border-bottom-color:var(--MI_THEME-accent);color:var(--MI_THEME-accent);font-weight:700;opacity:1}.tab{max-width:135px;overflow:hidden;padding:8px 4px 8px 10px;border:0;background:transparent;color:inherit;font:inherit;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}.tabClose{display:grid;width:25px;height:25px;place-items:center;border:0;border-radius:7px;background:transparent;color:inherit;cursor:pointer}.tabClose:hover{background:var(--MI_THEME-hover)}.subpaneContent{min-height:0;flex:1;overflow:hidden;padding:0}.subpaneContent>:global(._pageScrollable){height:100%;overflow-y:auto}.subpaneContent>:not(:global(._pageScrollable)){box-sizing:border-box}.welcomePane{display:flex;min-height:75%;align-items:center;justify-content:center;flex-direction:column;gap:10px;padding:20px;text-align:center}.welcomePane span{max-width:290px;font-size:.84em;line-height:1.65;opacity:.65}.welcomeWordmark{color:var(--MI_THEME-accent);font-family:'HataSNSCordRighteous',system-ui,sans-serif;font-size:2em}.detailPane{height:100%;overflow:auto}.spinning{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
+.postFormPill{display:flex;position:relative;width:min(100%,720px);margin:0 auto;align-items:center;gap:6px;padding:8px 10px;border:1px solid color-mix(in srgb,var(--MI_THEME-accent) 25%,var(--MI_THEME-divider));border-radius:999px;background:color-mix(in srgb,var(--MI_THEME-panel) 94%,transparent);box-shadow:0 10px 35px color-mix(in srgb,#000 18%,transparent);backdrop-filter:blur(18px);box-sizing:border-box}.pillButton,.sendButton,.federationButton{display:grid;width:38px;height:38px;flex:0 0 38px;place-items:center;border:0;border-radius:50%;background:transparent;color:inherit;cursor:pointer}.pillButton:hover,.federationButton:hover,.pillActive{background:var(--MI_THEME-hover)}.sendButton{background:var(--MI_THEME-accent);color:var(--MI_THEME-fgOnAccent)}.sendButton:disabled{opacity:.42;cursor:default}.pillInput{min-width:0;min-height:32px;flex:1;max-height:120px;padding:8px 4px;border:0;outline:0;resize:none;overflow-y:hidden;box-sizing:border-box;background:transparent;color:inherit;font:inherit;line-height:1.4}.visibilityButton{display:flex;height:34px;align-items:center;gap:4px;padding:0 8px;border:0;border-radius:999px;background:var(--MI_THEME-bg);color:inherit;font:inherit;font-size:.7em;cursor:pointer}.localOnly{color:#e6a23c}.charCounter{display:grid;position:relative;width:34px;height:34px;flex:0 0 34px;place-items:center;border-radius:50%;background:conic-gradient(var(--MI_THEME-accent) var(--char-progress),color-mix(in srgb,var(--MI_THEME-divider) 70%,transparent) 0);font-size:.58em;font-variant-numeric:tabular-nums}.charCounter::after{content:"";position:absolute;inset:3px;border-radius:50%;background:var(--MI_THEME-panel)}.charCounter span{position:relative;z-index:1}.counterOver{color:#f45;background:#f45}.inlineEditor,.pollEditor,.attachedFiles,.composerContext,.delayStatus{width:min(100%,700px);margin:0 auto 7px;border:1px solid var(--MI_THEME-divider);border-radius:14px;background:color-mix(in srgb,var(--MI_THEME-panel) 96%,transparent);box-shadow:0 7px 24px color-mix(in srgb,#000 12%,transparent);backdrop-filter:blur(14px)}.inlineEditor{display:flex;align-items:center;gap:8px;padding:8px 11px}.inlineEditor input,.pollEditor input{min-width:0;flex:1;border:0;outline:0;background:transparent;color:inherit;font:inherit}.pollEditor{display:flex;flex-direction:column;gap:5px;padding:9px}.pollEditor>div{display:flex;gap:5px;padding:6px 8px;border-radius:8px;background:var(--MI_THEME-bg)}.pollEditor button,.pollEditor label{display:flex;width:fit-content;align-items:center;gap:5px;border:0;background:transparent;color:inherit;font:inherit;font-size:.78em;cursor:pointer}.attachedFiles{display:flex;gap:5px;padding:7px;overflow-x:auto}.attachedFiles span{display:flex;flex:0 0 auto;align-items:center;gap:4px;padding:5px 8px;border-radius:999px;background:var(--MI_THEME-bg);font-size:.72em}.attachedFiles button,.composerContext button{display:grid;padding:0;border:0;background:transparent;color:inherit;cursor:pointer}.composerContext{display:flex;align-items:center;gap:6px;padding:7px 11px;font-size:.76em}.composerContext span{flex:1}.privateComposerContext{border-color:#d59a31;background:color-mix(in srgb,#d59a31 12%,var(--MI_THEME-panel))}.delayStatus{display:flex;justify-content:space-between;padding:5px 12px;font-size:.72em;--hata-delay-base-transform:translateY(0);transform:var(--hata-delay-base-transform)}.delayStatus button{border:0;background:transparent;color:var(--MI_THEME-accent);font:inherit;font-weight:800;cursor:pointer}
+.rightResizer{width:6px;flex:0 0 6px;cursor:col-resize;background:transparent;z-index:72}.rightResizer:hover{background:color-mix(in srgb,var(--MI_THEME-accent) 28%,transparent)}.rightPane{display:flex;min-width:300px;max-width:620px;flex-direction:column;border-left:1px solid var(--MI_THEME-divider);background:var(--MI_THEME-panel);opacity:1;transition:flex-basis .24s cubic-bezier(.2,.8,.2,1),min-width .24s cubic-bezier(.2,.8,.2,1),opacity .18s ease,transform .24s cubic-bezier(.2,.8,.2,1);z-index:70}.rightPaneCollapsed{min-width:0!important;flex-basis:0!important;border-left-width:0;opacity:0;overflow:hidden;pointer-events:none}.subpaneHeader{padding-inline:7px}.tabs{display:flex;min-width:0;flex:1;overflow-x:auto;scrollbar-width:none}.tabWrap{display:flex;flex:0 0 auto;align-items:center;border-bottom:2px solid transparent;opacity:.67}.activeTab{border-bottom-color:var(--MI_THEME-accent);color:var(--MI_THEME-accent);font-weight:700;opacity:1}.tab{max-width:135px;overflow:hidden;padding:8px 4px 8px 10px;border:0;background:transparent;color:inherit;font:inherit;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}.tabClose{display:grid;width:25px;height:25px;place-items:center;border:0;border-radius:7px;background:transparent;color:inherit;cursor:pointer}.tabClose:hover{background:var(--MI_THEME-hover)}.subpaneContent{min-height:0;flex:1;overflow:hidden;padding:0}.subpaneContent>:global(._pageScrollable){height:100%;overflow-y:auto}.subpaneContent>:not(:global(._pageScrollable)){box-sizing:border-box}.welcomePane{display:flex;min-height:75%;align-items:center;justify-content:center;flex-direction:column;gap:10px;padding:20px;text-align:center}.welcomePane span{max-width:290px;font-size:.84em;line-height:1.65;opacity:.65}.welcomeWordmark{color:var(--MI_THEME-accent);font-family:'HataSNSCordRighteous',system-ui,sans-serif;font-size:2em}.detailPane{height:100%;overflow:auto}
 :global(.hatacording-jump-enter-active),:global(.hatacording-jump-leave-active){transition:opacity .18s ease,transform .18s ease}:global(.hatacording-jump-enter-from),:global(.hatacording-jump-leave-to){opacity:0;transform:translate(-50%,10px)}
 @container(max-width:1120px){.rightPane{position:absolute;top:0;right:0;bottom:0;width:min(410px,92cqw);max-width:none;transform:translateX(105%);box-shadow:-12px 0 35px color-mix(in srgb,#000 20%,transparent);transition:transform .2s ease}.rightPaneOpen{transform:translateX(0)}}
-@container(max-width:760px){.leftPane{position:absolute;top:0;bottom:0;left:0;width:min(310px,88cqw);transform:translateX(-105%);box-shadow:12px 0 35px color-mix(in srgb,#000 20%,transparent)}.drawerOpen{transform:translateX(0)}.timelineScroll{padding-inline:8px}.feedList{gap:7px}.noteRow{width:98%}.postFormPill{gap:3px;padding-inline:7px;border-radius:22px}.pillButton,.sendButton{width:34px;height:34px;flex-basis:34px}.visibilityButton span{display:none}.visibilityButton{width:34px;padding:0;justify-content:center}.charCounter{width:31px;height:31px;flex-basis:31px}.jumpControl{bottom:102px}.composerTools,.inlineEditor,.pollEditor,.attachedFiles,.composerContext,.delayStatus{border-radius:11px}.accountFooter{padding-bottom:max(8px,env(safe-area-inset-bottom))}}
+@container(max-width:760px){.leftPane{position:absolute;top:0;bottom:0;left:0;width:min(310px,88cqw);transform:translateX(-105%);box-shadow:12px 0 35px color-mix(in srgb,#000 20%,transparent)}.drawerOpen{transform:translateX(0)}.timelineScroll{padding-inline:8px}.feedList{gap:7px}.noteRow{width:98%}.postFormPill{gap:3px;padding-inline:7px;border-radius:22px}.pillButton,.sendButton{width:34px;height:34px;flex-basis:34px}.visibilityButton .visibilityLabel{display:none}.visibilityButton{width:34px;padding:0;justify-content:center}.charCounter{width:31px;height:31px;flex-basis:31px}.jumpControl{bottom:102px}.inlineEditor,.pollEditor,.attachedFiles,.composerContext,.delayStatus{border-radius:11px}.accountFooter{padding-bottom:max(8px,env(safe-area-inset-bottom))}}
 /* HataSNSCordUI compact native-app surface overrides. Keep every layer inside
    this isolated page so application popups always render above it. */
 .root {
@@ -3179,6 +3190,15 @@ definePage(() => ({ title: 'HataSNSCordUI', hideHeader: true }));
 
 .root :global(svg) {
 	stroke-width: 1.8;
+}
+
+.onlineDot {
+	display: inline-block;
+	width: 7px;
+	height: 7px;
+	flex: 0 0 7px;
+	border-radius: 50%;
+	background: currentColor;
 }
 
 .scrim {
@@ -3931,7 +3951,7 @@ definePage(() => ({ title: 'HataSNSCordUI', hideHeader: true }));
 	cursor: pointer;
 }
 
-.activityMain > svg {
+.activityMain > :is(svg, [data-hatacording-animated-icon]) {
 	flex: 0 0 auto;
 }
 
@@ -4048,14 +4068,6 @@ definePage(() => ({ title: 'HataSNSCordUI', hideHeader: true }));
 	color: var(--cordFg);
 }
 
-.activityExpand > svg {
-	transition: transform .18s ease;
-}
-
-.activityExpandOpen {
-	transform: rotate(90deg);
-}
-
 .activityRevealing .activityTitle,
 .activityRevealing .activityDetail {
 	will-change: clip-path, opacity, transform;
@@ -4154,7 +4166,7 @@ definePage(() => ({ title: 'HataSNSCordUI', hideHeader: true }));
 	color: var(--MI_THEME-accent);
 }
 
-.activityGroupItem > svg:last-child {
+.activityGroupItem > :is(svg, [data-hatacording-animated-icon]):last-child {
 	flex: 0 0 auto;
 	color: var(--cordMuted);
 }
@@ -4245,12 +4257,12 @@ definePage(() => ({ title: 'HataSNSCordUI', hideHeader: true }));
 	background: color-mix(in srgb, #d79621 10%, var(--cordSurface));
 }
 
-.timelineError > svg {
+.timelineError > :is(svg, [data-hatacording-animated-icon]) {
 	flex: 0 0 auto;
 	color: #e45c64;
 }
 
-.timelineError[data-kind='rateLimit'] > svg {
+.timelineError[data-kind='rateLimit'] > :is(svg, [data-hatacording-animated-icon]) {
 	color: #d79621;
 }
 
@@ -4300,7 +4312,7 @@ definePage(() => ({ title: 'HataSNSCordUI', hideHeader: true }));
 	font-size: .72rem;
 }
 
-.composerRateLimit > svg {
+.composerRateLimit > :is(svg, [data-hatacording-animated-icon]) {
 	flex: 0 0 auto;
 	color: #d79621;
 }
@@ -4366,7 +4378,7 @@ definePage(() => ({ title: 'HataSNSCordUI', hideHeader: true }));
 	color: var(--cordFg);
 }
 
-.jumpHasNew > svg:first-child {
+.jumpHasNew > :is(svg, [data-hatacording-animated-icon]):first-child {
 	color: var(--MI_THEME-accent);
 }
 
@@ -4379,43 +4391,6 @@ definePage(() => ({ title: 'HataSNSCordUI', hideHeader: true }));
 	background: transparent;
 	box-shadow: none;
 	backdrop-filter: none;
-}
-
-.visibilityFlash {
-	display: grid;
-	position: absolute;
-	left: 50%;
-	top: 50%;
-	z-index: 8;
-	width: 58px;
-	height: 58px;
-	place-items: center;
-	border: 1px solid color-mix(in srgb, var(--MI_THEME-accent) 42%, var(--cordDivider));
-	border-radius: 18px;
-	background: color-mix(in srgb, var(--cordPanel) 88%, transparent);
-	color: var(--MI_THEME-accent);
-	box-shadow: 0 14px 38px color-mix(in srgb, #000 18%, transparent);
-	backdrop-filter: blur(12px);
-	pointer-events: none;
-	transform: translate(-50%, -50%);
-}
-
-:global(.hatacording-visibility-flash-enter-active) {
-	transition: opacity .18s ease-out, transform .24s cubic-bezier(.16,1,.3,1);
-}
-
-:global(.hatacording-visibility-flash-leave-active) {
-	transition: opacity .22s ease-in, transform .24s cubic-bezier(.4,0,1,1);
-}
-
-:global(.hatacording-visibility-flash-enter-from) {
-	opacity: 0;
-	transform: translate(-50%, -44%) scale(.82);
-}
-
-:global(.hatacording-visibility-flash-leave-to) {
-	opacity: 0;
-	transform: translate(-50%, -56%) scale(.96);
 }
 
 .composerPreview {
@@ -5145,7 +5120,7 @@ definePage(() => ({ title: 'HataSNSCordUI', hideHeader: true }));
 		height: 29px;
 	}
 
-	.visibilityButton span {
+	.visibilityButton .visibilityLabel {
 		display: none;
 	}
 
@@ -5248,75 +5223,6 @@ definePage(() => ({ title: 'HataSNSCordUI', hideHeader: true }));
 	flex: 1;
 }
 
-.composerTools {
-	display: flex;
-	width: min(100%, 720px);
-	margin: 0 auto 7px;
-	flex-wrap: wrap;
-	gap: 6px;
-	padding: 8px;
-	overflow: visible;
-}
-
-.composerTool {
-	display: inline-flex;
-	width: 35px;
-	height: 35px;
-	min-width: 35px;
-	max-width: 35px;
-	align-items: center;
-	gap: 7px;
-	padding: 0 9px;
-	border: 0;
-	border-radius: 10px;
-	overflow: hidden;
-	background: transparent;
-	color: inherit;
-	font: inherit;
-	white-space: nowrap;
-	cursor: pointer;
-	transition: max-width .38s cubic-bezier(.2,.8,.2,1), width .38s cubic-bezier(.2,.8,.2,1), background-color .18s ease, color .18s ease;
-}
-
-.composerTool > svg {
-	flex: 0 0 auto;
-	transition: transform .32s cubic-bezier(.2,.8,.2,1);
-}
-
-.composerTool > span {
-	overflow: hidden;
-	opacity: 0;
-	transform: translateX(-5px);
-	transition: opacity .2s ease .05s, transform .28s cubic-bezier(.2,.8,.2,1) .04s;
-}
-
-.composerTool[data-expanded='true'],
-.composerTool:hover,
-.composerTool:focus-visible {
-	width: max-content;
-	max-width: min(240px, 72cqw);
-	background: color-mix(in srgb, var(--MI_THEME-accent) 14%, transparent);
-	color: var(--MI_THEME-accent);
-}
-
-.composerTool[data-expanded='true'] > svg,
-.composerTool:hover > svg,
-.composerTool:focus-visible > svg {
-	transform: scale(1.08);
-}
-
-.composerTool[data-expanded='true'] > span,
-.composerTool:hover > span,
-.composerTool:focus-visible > span {
-	opacity: 1;
-	transform: translateX(0);
-}
-
-.composerTool:hover {
-	background: color-mix(in srgb, var(--MI_THEME-accent) 10%, transparent);
-	color: var(--MI_THEME-accent);
-}
-
 .timelineSwitchRevealing > * {
 	animation: hatacordingTimelineLineIn .46s cubic-bezier(.16,1,.3,1) both;
 	animation-delay: calc(var(--cord-reveal-order, 0) * 48ms);
@@ -5335,12 +5241,8 @@ definePage(() => ({ title: 'HataSNSCordUI', hideHeader: true }));
 	}
 }
 
-.root[data-animation='false'] :is(.composerTool, .composerTool > svg, .composerTool > span, .sendButton) {
+.root[data-animation='false'] .sendButton {
 	transition: none;
-}
-
-.root[data-animation='false'] .submitArc {
-	animation: none;
 }
 
 .sendButton {
@@ -5354,41 +5256,6 @@ definePage(() => ({ title: 'HataSNSCordUI', hideHeader: true }));
 
 .sendButton[data-state='failure'] {
 	background: #d84a5b;
-}
-
-.submitArc {
-	animation: spin .72s linear infinite;
-}
-
-:global(.hatacording-submit-state-enter-active) {
-	transition: opacity .22s ease, transform .26s cubic-bezier(.2,1.35,.35,1);
-}
-
-:global(.hatacording-submit-state-leave-active) {
-	position: absolute;
-	transition: opacity .14s ease, transform .14s ease;
-}
-
-:global(.hatacording-submit-state-enter-from) {
-	opacity: 0;
-	transform: translateY(6px) scale(.72);
-}
-
-:global(.hatacording-submit-state-leave-to) {
-	opacity: 0;
-	transform: translateY(-5px) scale(.78);
-}
-
-:global(.hatacording-tools-enter-active),
-:global(.hatacording-tools-leave-active) {
-	transform-origin: 24px 100%;
-	transition: opacity .22s ease, transform .3s cubic-bezier(.2,.8,.2,1);
-}
-
-:global(.hatacording-tools-enter-from),
-:global(.hatacording-tools-leave-to) {
-	opacity: 0;
-	transform: translateY(8px) scale(.97);
 }
 
 .tabWrap {
@@ -5423,10 +5290,6 @@ definePage(() => ({ title: 'HataSNSCordUI', hideHeader: true }));
 	.composerActionRow {
 		gap: 2px;
 	}
-
-	.composerTools {
-		gap: 4px;
-	}
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -5439,22 +5302,11 @@ definePage(() => ({ title: 'HataSNSCordUI', hideHeader: true }));
 	.rateLimitButton,
 	:global(.hatacording-feed-enter-active),
 	:global(.hatacording-feed-leave-active),
-	:global(.hatacording-submit-state-enter-active),
-	:global(.hatacording-submit-state-leave-active),
-	:global(.hatacording-tools-enter-active),
-	:global(.hatacording-tools-leave-active),
 	:global(.hatacording-subpane-enter-active),
 	:global(.hatacording-subpane-leave-active),
 	.tabWrap,
-	.composerTool,
-	.composerTool > svg,
-	.composerTool > span,
 	.timelineSwitchRevealing > * {
 		transition: none;
-		animation: none;
-	}
-
-	.submitArc {
 		animation: none;
 	}
 }

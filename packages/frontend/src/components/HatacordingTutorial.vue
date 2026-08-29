@@ -35,7 +35,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
-import { Activity, ArrowLeft, ArrowRight, Check, LayoutList, MessageCircle, PanelRight, SlidersHorizontal } from '@lucide/vue';
+import { Activity, ArrowLeft, ArrowRight, Check, LayoutList, MessageCircle, PanelRight, SlidersHorizontal } from '@/components/hatacording-icons/index.js';
 import { HATACORDING_TUTORIAL_COPY } from '@/utility/hatacording-copy.js';
 
 const emit = defineEmits<{ (ev: 'done'): void }>();

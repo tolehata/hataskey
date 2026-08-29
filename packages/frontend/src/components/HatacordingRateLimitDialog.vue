@@ -37,7 +37,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <script lang="ts" setup>
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue';
-import { Gauge, Info, TimerReset } from '@lucide/vue';
+import { Gauge, Info, TimerReset } from '@/components/hatacording-icons/index.js';
 import MkModalWindow from '@/components/MkModalWindow.vue';
 import { getEffectiveHatacordingRateLimit, hatacordingRateLimitSnapshot } from '@/utility/hatacording-rate-limit.js';
 import { i18n } from '@/i18n.js';
@@ -126,6 +126,6 @@ onBeforeUnmount(() => {
 .waiting strong { font-size:.95rem }
 .waiting span { max-width:290px;font-size:.78rem;line-height:1.65;opacity:.66 }
 .note { display:flex;align-items:flex-start;gap:8px;margin:auto 0 0;padding:11px;border-radius:12px;background:color-mix(in srgb,var(--MI_THEME-accent) 9%,var(--MI_THEME-panel));font-size:.7rem;line-height:1.6 }
-.note svg { flex:0 0 auto;margin-top:2px;color:var(--MI_THEME-accent) }
+.note > :is(svg, [data-hatacording-animated-icon]) { flex:0 0 auto;margin-top:2px;color:var(--MI_THEME-accent) }
 @media (prefers-reduced-motion:reduce) { .progress span { transition:none } }
 </style>

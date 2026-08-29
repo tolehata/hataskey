@@ -69,6 +69,7 @@
 		"mfc-js": "0.1.0",
 		"misskey-bubble-game": "workspace:*",
 		"misskey-reversi": "workspace:*",
+		"motion-v": "2.3.0",
 		"openmeteo": "1.1.4",
 		"prismjs": "1.30.0",
 		"punycode.js": "2.3.1",

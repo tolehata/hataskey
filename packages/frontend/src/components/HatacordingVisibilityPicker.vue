@@ -27,7 +27,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <script lang="ts" setup>
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
-import { AtSign, Globe2, History, Home, Lock, RadioTower } from '@lucide/vue';
+import { AtSign, Globe2, History, Home, Lock, RadioTower } from '@/components/hatacording-icons/index.js';
 import MkModal from '@/components/MkModal.vue';
 import { i18n } from '@/i18n.js';
 

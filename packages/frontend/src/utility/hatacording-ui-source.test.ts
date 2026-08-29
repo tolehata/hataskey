@@ -45,20 +45,46 @@ describe('HataSNSCordUIの結線', () => {
 		expect(page).not.toContain('$i.policies.canAccessHataFeed || !$i.policies.canUseHatacordingUi');
 	});
 
-	test('HataSNSCordUI本体の直接指定アイコンはLucideに統一する', () => {
-		const lucideSources = [
+	test('HataSNSCordUI所有画面だけをLucide Animatedへ統一する', () => {
+		const composerToolsMenuPath = path.join(process.cwd(), 'src/components/HatacordingComposerToolsMenu.vue');
+		const composerToolsMenu = fs.existsSync(composerToolsMenuPath) ? fs.readFileSync(composerToolsMenuPath, 'utf8') : '';
+		const animatedIconSources = [
 			'src/components/HatacordingRateLimitDialog.vue',
 			'src/components/HatacordingTutorial.vue',
+			'src/components/HatacordingVisibilityPicker.vue',
 			'src/components/MkUISetup.vue',
-			'src/pages/hatafeed-beta.vue',
 			'src/pages/hatacording-ui.vue',
 		].map(readFrontendFile);
-		expect(page).toContain('from \'@lucide/vue\'');
+		expect(page).toContain("from '@/components/hatacording-icons/index.js'");
 		expect(page).not.toMatch(/class=["'][^"']*\bti\s+ti-/);
-		for (const source of lucideSources) {
+		for (const source of animatedIconSources) {
 			expect(source).not.toContain('lucide-vue-next');
-			expect(source).toContain("from '@lucide/vue'");
+			expect(source).not.toContain("from '@lucide/vue'");
+			expect(source).toContain("from '@/components/hatacording-icons/index.js'");
 		}
+		expect(composerToolsMenu).not.toContain('lucide-vue-next');
+		expect(composerToolsMenu).not.toContain("from '@lucide/vue'");
+		expect(composerToolsMenu).toContain('<component :is="tool.icon"');
+		// pqoqubbw/icons に同義の絵がない操作だけは、意味を壊さず Lucide へ戻す。
+		const iconRegistry = readFrontendFile('src/components/hatacording-icons/index.ts');
+		expect(iconRegistry).toContain("} from '@lucide/vue';");
+		expect(iconRegistry).toContain('\tGamepad2,');
+		expect(iconRegistry).toContain('\tMegaphone,');
+		expect(iconRegistry).toContain('export const Star = animated(SparklesIcon);');
+		expect(iconRegistry).not.toContain("Gamepad2 } from './ChessKnightIcon.vue'");
+		expect(iconRegistry).not.toContain("Megaphone } from './BellElectricIcon.vue'");
+		expect(composerToolsMenu).toContain(':class="$style.label"');
+		expect(page).toContain(':class="$style.visibilityLabel"');
+		expect(composerToolsMenu).toContain('.tool > .label');
+		expect(page).toContain('.visibilityButton .visibilityLabel');
+		expect(composerToolsMenu).not.toContain('.tool > span');
+		expect(page).not.toContain('.visibilityButton span');
+		expect(page).toContain(":data-animation=\"animationEnabled ? 'true' : 'false'\"");
+		expect(page).toContain('const animationEnabled = computed(() => prefer.r.animation.value);');
+		// HataFeed と Hataskey UI の共有領域は今回の差し替え対象外。
+		expect(beta).toContain("from '@lucide/vue'");
+		expect(readFrontendFile('src/components/MkUISetup.vue')).toMatch(/<section :class="\$style\.cordChoice" :data-animation=/);
+		expect(readFrontendFile('src/components/MkUISetup.vue')).not.toMatch(/<div :class="\$style\.root" :data-animation=/);
 	});
 
 	test('HataSNSCordUIのワードマークはHataskeyと同じRighteousを使う', () => {
@@ -129,7 +155,7 @@ describe('HataSNSCordUIの結線', () => {
 		expect(page).toContain('notes.value = [...result].reverse()');
 		expect(page).toContain('notes.value.push(note)');
 		expect(page).toContain('new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()');
-		expect(page).toContain('<TransitionGroup :name="prefer.s.animation ? \'hatacording-feed\' : \'\'"');
+		expect(page).toContain('<TransitionGroup :name="animationEnabled ? \'hatacording-feed\' : \'\'"');
 		expect(page).not.toContain('.hatacording-feed-move');
 		expect(page).not.toMatch(/hatacording-feed-(?:enter-from|leave-to)[^}]*transform:/s);
 		expect(page).toContain('reuseSubpaneTab');
@@ -253,10 +279,11 @@ describe('HataSNSCordUIの結線', () => {
 		expect(page).not.toContain('$style.postFormOverlay');
 		expect(page).not.toContain('.postFormOverlay');
 		expect(page).toContain("getPluginHandlers('post_form_action')");
-		expect(page).toContain('@click="openComposerToolsMenu($event)"');
-		expect(page).toContain('v-if="composerToolsOpen" :class="$style.composerTools"');
-		expect(page).toContain(':data-expanded="selectedComposerToolId === tool.id"');
-		expect(page).toContain('@click="selectComposerTool(tool.id, $event)"');
+		expect(page).toContain('@click="openComposerToolsMenu"');
+		expect(page).toContain("import HatacordingComposerToolsMenu from '@/components/HatacordingComposerToolsMenu.vue'");
+		expect(page).toContain('os.popup(HatacordingComposerToolsMenu');
+		expect(page).toContain('aria-controls="hatacording-composer-tools-menu"');
+		expect(page).not.toContain('v-if="composerToolsOpen" :class="$style.composerTools"');
 		expect(page).toContain(':class="$style.composerActionRow"');
 		expect(page).toContain("submitMotionState.value = 'sending'");
 		expect(page).toContain("submitMotionState.value = 'success'");
@@ -275,8 +302,8 @@ describe('HataSNSCordUIの結線', () => {
 		expect(page).toContain('pollExpiration');
 		expect(page).toContain('expiredAfter: pollExpiredAfterValue');
 		expect(page).toContain("globalEvents.emit('notePosted', created)");
-		expect(page).toContain('<component :is="sendIcon" v-else key="idle" :size="17"/>');
-		expect(page).toContain('<component :is="cancelIcon" v-if="submitMotionState === \'countdown\'" key="countdown" :size="15"/>');
+		expect(page).toContain('<component :is="sendIcon" v-else :size="17"/>');
+		expect(page).toContain('<component :is="cancelIcon" v-if="submitMotionState === \'countdown\'" :size="15"/>');
 		expect(page).toContain('<component :is="sendingIcon" v-else-if="submitMotionState === \'sending\'"');
 		expect(page).toContain('<component :is="successIcon" v-else-if="submitMotionState === \'success\'"');
 		expect(page).toContain('<component :is="failureIcon" v-else-if="submitMotionState === \'failure\'"');
@@ -330,6 +357,45 @@ describe('HataSNSCordUIの結線', () => {
 		expect(page).toMatch(/\.composerContext > \.composerContextAvatarFrame\s*\{[^}]*width:\s*24px;[^}]*min-width:\s*24px;[^}]*max-width:\s*24px;[^}]*height:\s*24px;[^}]*min-height:\s*24px;[^}]*max-height:\s*24px;[^}]*flex:\s*0 0 24px;[^}]*aspect-ratio:\s*1;/s);
 		expect(page).toMatch(/\.composerContext > \.composerContextAvatarFrame > \.composerContextAvatar\s*\{[^}]*max-width:\s*100%;[^}]*max-height:\s*100%;[^}]*aspect-ratio:\s*1;/s);
 		expect(page).toMatch(/\.composerContextCopy\s*\{[^}]*max-width:\s*100%;[^}]*font-size:\s*\.68rem;[^}]*line-height:\s*1\.25;/s);
+	});
+
+	test('星メニューを標準ポップアップ層の縦スワイプピッカーにし、PCは5項目・スマホは4項目を表示する', () => {
+		const menuPath = path.join(process.cwd(), 'src/components/HatacordingComposerToolsMenu.vue');
+		const composerToolsMenu = fs.existsSync(menuPath) ? fs.readFileSync(menuPath, 'utf8') : '';
+		const rootRule = composerToolsMenu.match(/\.root\s*\{[^}]*\}/s)?.[0] ?? '';
+		const compactRule = composerToolsMenu.match(/\.root\[data-compact='true'\]\s*\{[^}]*\}/s)?.[0] ?? '';
+		const scrollRule = composerToolsMenu.match(/\.scroll\s*\{[^}]*\}/s)?.[0] ?? '';
+		const toolRule = composerToolsMenu.match(/\.tool\s*\{[^}]*\}/s)?.[0] ?? '';
+		const interactiveRule = composerToolsMenu.match(/\.tool:is\(:hover, :focus-visible\),[\s\S]*?\.tool\[data-expanded='true'\]\s*\{[^}]*\}/s)?.[0] ?? '';
+
+		expect(composerToolsMenu).not.toBe('');
+		expect(composerToolsMenu).toContain(':anchorElement="anchorElement"');
+		expect(composerToolsMenu).toContain(':preferType="\'popup\'"');
+		expect(composerToolsMenu).toContain(':transparentBg="true"');
+		expect(composerToolsMenu).toContain('@click="closeMenu"');
+		expect(composerToolsMenu).toContain('@esc="closeMenu"');
+		expect(composerToolsMenu).toContain('id="hatacording-composer-tools-menu"');
+		expect(composerToolsMenu).toContain('role="menu"');
+		expect(composerToolsMenu).toContain('v-slot="{ maxHeight }"');
+		expect(composerToolsMenu).toContain('v-for="tool in tools"');
+		expect(composerToolsMenu).toContain('@click="emit(\'select\', tool.id, $event)"');
+		expect(page).toContain('compact: isCompact');
+		expect(page).toContain('showing: composerToolsOpen');
+		expect(rootRule).toMatch(/--visible-items:\s*5;/);
+		expect(rootRule).toMatch(/--tool-row-height:\s*48px;/);
+		expect(rootRule).toMatch(/width:\s*min\(220px,\s*calc\(100dvw - 24px\)\);/);
+		expect(compactRule).toMatch(/--visible-items:\s*4;/);
+		expect(scrollRule).toMatch(/height:\s*calc\(var\(--visible-items\) \* var\(--tool-row-height\) \+ \(var\(--visible-items\) - 1\) \* var\(--tool-gap\)\);/);
+		expect(scrollRule).toMatch(/overflow-y:\s*auto;/);
+		expect(scrollRule).toMatch(/scroll-snap-type:\s*y mandatory;/);
+		expect(scrollRule).toMatch(/overscroll-behavior:\s*contain;/);
+		expect(scrollRule).toMatch(/touch-action:\s*pan-y;/);
+		expect(toolRule).toMatch(/height:\s*var\(--tool-row-height\);/);
+		expect(toolRule).toMatch(/min-height:\s*44px;/);
+		expect(toolRule).toMatch(/scroll-snap-align:\s*start;/);
+		expect(interactiveRule).not.toMatch(/\b(?:width|max-width|min-width|height|max-height|min-height|opacity|transform|position|left|right|top|bottom)\s*:/);
+		expect(composerToolsMenu).toMatch(/@media\s*\(prefers-reduced-motion:\s*reduce\)[\s\S]*?\.tool\s*\{[^}]*transition:\s*none;/s);
+		expect(page).toContain('disposeComposerToolsPopup?.();');
 	});
 
 	test('テーマ・UI倍率・リアルタイム切替を共通設定へ集約し、設定タブと同期する', () => {
@@ -533,7 +599,7 @@ describe('HataSNSCordUIの結線', () => {
 
 	test('新着ノート案内は後段の色指定でも文字と背景のコントラストを失わない', () => {
 		expect(page).toMatch(/\.jumpHasNew\s*\{[^}]*background:\s*color-mix\([^}]*var\(--cordPanel\)\);[^}]*color:\s*var\(--cordFg\);/s);
-		expect(page).toMatch(/\.jumpHasNew\s*>\s*svg:first-child\s*\{[^}]*color:\s*var\(--MI_THEME-accent\);/s);
+		expect(page).toMatch(/\.jumpHasNew\s*>\s*:is\(svg, \[data-hatacording-animated-icon\]\):first-child\s*\{[^}]*color:\s*var\(--MI_THEME-accent\);/s);
 	});
 
 	test('テーマ切替はページ内とテレポート先を同期し、ローカルな描画順に閉じる', () => {
@@ -759,7 +825,7 @@ describe('HataSNSCordUIの結線', () => {
 		expect(page).toMatch(/html\[data-hatacording-color-mode\] :is\(\._modalBg, \._popup, \._popupAcrylic\)\s*\{[\s\S]*?-webkit-backdrop-filter:\s*none !important;[\s\S]*?backdrop-filter:\s*none !important;/);
 	});
 
-	test('意味別アイコン動作と公開範囲の新パネルを本実装へ接続する', () => {
+	test('HataSNSCord独自モーションだけを撤去し、共有UIと公開範囲パネルを保つ', () => {
 		const motion = readFrontendFile('src/utility/hata-icon-motion.ts');
 		const picker = readFrontendFile('src/components/HatacordingVisibilityPicker.vue');
 		const simple = readFrontendFile('src/ui/simple.vue');
@@ -770,7 +836,9 @@ describe('HataSNSCordUIの結線', () => {
 		expect(motion).toContain("motion === 'more-dots'");
 		expect(simple).toContain("playSimpleNavMotion($event, 'home'); goHome()");
 		expect(simple).toContain("playSimpleNavMotion($event, 'notifications'); goToNotifications()");
-		expect(page).toContain('playHataNavigationMotion(event, props.item.id, 620)');
+		expect(page).not.toContain('playHataIconMotion');
+		expect(page).not.toContain('playHataNavigationMotion');
+		expect(page).not.toContain("from '@/utility/hata-icon-motion.js'");
 		expect(page).toContain('os.popup(HatacordingVisibilityPicker');
 		expect(page).toContain('colorMode: prefs.value.colorMode');
 		expect(picker).toContain('grid-template-columns:repeat(2,minmax(0,1fr))');
@@ -780,10 +848,18 @@ describe('HataSNSCordUIの結線', () => {
 		expect(picker).toContain(".root[data-color-mode='dark']");
 	});
 
-	test('公開範囲フラッシュ・星メニューのホバー展開・TL縦リビールを残す', () => {
-		expect(page).toContain('visibilityFlashIcon');
-		expect(page).toContain("'hatacording-visibility-flash'");
-		expect(page).toContain('.composerTool:hover > span');
+	test('旧アイコン演出を撤去し、星メニューの常時ラベルとTL縦リビールを保つ', () => {
+		const composerToolsMenu = readFrontendFile('src/components/HatacordingComposerToolsMenu.vue');
+		expect(page).not.toContain('visibilityFlashIcon');
+		expect(page).not.toContain('hatacording-visibility-flash');
+		expect(page).not.toContain('$style.spinning');
+		expect(page).not.toContain('$style.submitArc');
+		expect(page).not.toContain('activityExpandOpen');
+		expect(page).not.toContain('.rotated');
+		expect(page).not.toContain('hatacording-submit-state');
+		expect(composerToolsMenu).toContain('.tool > .label');
+		expect(composerToolsMenu).not.toContain('.tool:hover > .label');
+		expect(composerToolsMenu).not.toContain('.tool:hover > svg');
 		expect(page).toContain('timelineSwitchRevealing');
 		expect(page).toContain('@keyframes hatacordingTimelineLineIn');
 		expect(page).toContain(':style="{ \'--cord-reveal-order\': timelineRevealOrder(entryIndex) }"');

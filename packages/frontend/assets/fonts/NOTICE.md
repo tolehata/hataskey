@@ -17,6 +17,6 @@
 
 Tabler Icons（`ti ti-*`, MIT License）はリポジトリ既存の `@tabler/icons-webfont` を流用しており、新規追加はしていない。
 
-HataSNSCordUI で使用する Lucide Icons は公式 Vue パッケージ `@lucide/vue` を通じて同梱する。ライセンスは ISC（Feather 由来部分は MIT）で、著作権表示とライセンス本文は `../licenses/LUCIDE.txt` に収録している。
+HataSNSCordUI 所有画面では、対応するアイコンを `pqoqubbw/icons` の Lucide Animated から Vue へ移植して同梱する。上流に同義の絵がない操作は意味を変えず、既存の静的 `@lucide/vue` を継続する。アニメーションは MIT、Lucide の図形は ISC（Feather 由来部分は MIT）で、著作権表示とライセンス本文は `../licenses/LUCIDE_ANIMATED.txt` と `../licenses/LUCIDE.txt` に収録している。Vue の描画には MIT の `motion-v` を使用し、本文は `../licenses/MOTION_V.txt` に収録している。HataSNSCordUI の対象外で使用する既存 `@lucide/vue` と Tabler Icons は変更していない。
 
 > 注: 予約フォント名（Reserved Font Name）の改変再配布に注意。ここではサブセット woff2 をそのまま同梱しているのみで改変はしていない。公開前に各フォントの原本 LICENSE / 権利表記の最終確認を推奨。
