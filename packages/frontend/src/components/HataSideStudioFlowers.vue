@@ -38,7 +38,7 @@ let refreshTimer: number | null = null;
 
 const remainingText = computed(() => {
 	if (flower.value.progress >= 100) return copy.bloomed;
-	const minutes = Math.max(0, 1200 - flower.value.totalMinutes);
+	const minutes = Math.max(0, flower.value.targetMinutes - flower.value.totalMinutes);
 	if (minutes < 60) return copy.soon;
 	return copy.hoursRemaining.replace('{hours}', Math.ceil(minutes / 60).toString());
 });

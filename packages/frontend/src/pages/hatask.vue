@@ -562,9 +562,52 @@
     <div v-if="flower.progress<100" style="font-size:.75rem;color:var(--text-3);margin-top:6px">{{copyx.flowerBloomsIn({duration:estimateRemaining})}}</div>
     <button v-else class="htk-btn htk-primary htk-sm" style="margin-top:10px" @click="harvestFlower">{{copy.harvestAndName}}</button>
   </div></div>
-  <div class="htk-lg htk-anim"><div class="htk-gc"><h3 class="htk-sec-title">{{copy.flowerGallery}}</h3>
-    <div v-if="gallery.length" class="htk-gal-g"><div v-for="fl in gallery" :key="fl.id" class="htk-gal-i" @click="renameFlower(fl)"><span class="htk-gal-e"><HataskEmoji :emoji="fl.emoji"/></span><div class="htk-gal-n">{{localizeFloraName(fl.name)}}</div><div v-if="fl.hanakotoba" class="htk-gal-hk">{{localizeHanakotoba(fl.hanakotoba)}}</div><div class="htk-gal-d">{{fl.date}}</div></div></div>
+  <div class="htk-lg htk-anim"><div class="htk-gc">
+    <h3 class="htk-sec-title">{{copy.flowerGallery}}</h3>
+    <p class="htk-gal-note">{{copy.flowerGalleryDescription}}</p>
+    <div class="htk-gal-vis-box" role="group" :aria-label="copy.flowerGalleryVisibility">
+      <div class="htk-vis-row htk-gal-vis">
+        <button v-for="option in flowerVisibilityOptions" :key="option.value" type="button" :class="['htk-vis-o', flowerVisibility === option.value && 'on']" :aria-pressed="flowerVisibility === option.value" @click="updateFlowerVisibility(option.value)"><i :class="['ti', option.icon]" aria-hidden="true"></i><span>{{option.label}}</span></button>
+      </div>
+    </div>
+    <p class="htk-gal-visibility-help">{{copy.flowerGalleryVisibilityHelp}}</p>
+    <div class="htk-gal-sort" role="group" :aria-label="copy.sort"><div class="htk-gal-sort-inner"><span class="htk-gal-sort-label"><i class="ti ti-arrows-sort" aria-hidden="true"></i><span>{{copy.sort}}</span></span><button type="button" :class="['htk-gal-sort-btn', galleryOrder === 'newest' && 'on']" :aria-pressed="galleryOrder === 'newest'" @click="setGalleryOrder('newest')"><i class="ti ti-sort-descending" aria-hidden="true"></i><span>{{copy.newestFirst}}</span></button><button type="button" :class="['htk-gal-sort-btn', galleryOrder === 'oldest' && 'on']" :aria-pressed="galleryOrder === 'oldest'" @click="setGalleryOrder('oldest')"><i class="ti ti-sort-ascending" aria-hidden="true"></i><span>{{copy.oldestFirst}}</span></button></div></div>
+    <div v-if="gallery.length" class="htk-gal-g"><button v-for="fl in pagedGallery" :key="fl.id" type="button" class="htk-gal-i" @click="renameFlower(fl)"><span class="htk-gal-e"><HataskEmoji :emoji="fl.emoji"/></span><span class="htk-gal-n">{{localizeFloraName(fl.name)}}</span><span v-if="fl.hanakotoba" class="htk-gal-hk">{{localizeHanakotoba(fl.hanakotoba)}}</span><span class="htk-gal-d">{{formatFlowerDate(fl)}}</span></button></div>
     <div v-else class="htk-empty"><div class="htk-empI"><i class="ti ti-circle-off"></i></div><div>{{copy.noFlowersYet}}</div></div>
+    <div v-if="gallery.length" class="htk-pager htk-gal-pager"><button type="button" class="htk-btn htk-xs" :aria-label="copy.previousPage" :disabled="galleryPage <= 1" @click="galleryPage--">‹</button><span class="htk-pager-t" aria-live="polite">{{galleryPage}}</span><button type="button" class="htk-btn htk-xs" :aria-label="copy.nextPage" :disabled="galleryPage >= galleryTotalPages" @click="galleryPage++">›</button></div>
+  </div></div>
+
+  <div class="htk-lg htk-anim"><div class="htk-gc">
+    <h3 class="htk-sec-title">{{copy.communityFlowerGallery}}</h3>
+    <div class="htk-gal-sort" role="group" :aria-label="copy.sort"><div class="htk-gal-sort-inner"><span class="htk-gal-sort-label"><i class="ti ti-arrows-sort" aria-hidden="true"></i><span>{{copy.sort}}</span></span><button type="button" :class="['htk-gal-sort-btn', communityFlowerOrder === 'newest' && 'on']" :aria-pressed="communityFlowerOrder === 'newest'" @click="setCommunityFlowerOrder('newest')"><i class="ti ti-sort-descending" aria-hidden="true"></i><span>{{copy.newestFirst}}</span></button><button type="button" :class="['htk-gal-sort-btn', communityFlowerOrder === 'oldest' && 'on']" :aria-pressed="communityFlowerOrder === 'oldest'" @click="setCommunityFlowerOrder('oldest')"><i class="ti ti-sort-ascending" aria-hidden="true"></i><span>{{copy.oldestFirst}}</span></button></div></div>
+    <div v-if="communityFlowersLoading" class="htk-gal-state" role="status"><i class="ti ti-loader-2" aria-hidden="true"></i> {{copy.flowerGalleryLoading}}</div>
+    <div v-else-if="communityFlowersError" class="htk-gal-state htk-gal-error" role="alert"><i class="ti ti-alert-circle" aria-hidden="true"></i> {{copy.flowerGalleryLoadFailed}} <button type="button" class="htk-btn htk-xs" @click="loadCommunityFlowers">{{copy.retry}}</button></div>
+    <div v-else-if="communityFlowers.length" class="htk-gal-g htk-gal-community-gallery">
+      <div v-for="item in communityFlowers" :key="item.id" class="htk-gal-i htk-gal-card">
+        <span class="htk-gal-e"><HataskEmoji :emoji="item.emoji"/></span>
+        <span class="htk-gal-n">{{localizeFloraName(item.name)}}</span>
+        <span v-if="item.hanakotoba" class="htk-gal-hk">{{localizeHanakotoba(item.hanakotoba)}}</span>
+        <span class="htk-gal-d"><time :datetime="item.harvestedAt">{{formatFlowerDate(item)}}</time></span>
+        <span v-if="item.user" class="htk-gal-owner"><MkAvatar :user="item.user" class="htk-gal-avatar" :forceShowDecoration="true"/><MkUserName :user="item.user"/></span>
+        <button v-if="item.user && !item.isOwner && item.user.id !== $i?.id" type="button" class="htk-gal-report" :aria-label="copy.reportFlowerName" :title="copy.reportFlowerName" @click="reportCommunityFlower(item)"><i class="ti ti-flag-3" aria-hidden="true"></i></button>
+      </div>
+    </div>
+    <div v-else class="htk-gal-state"><i class="ti ti-flower-off" aria-hidden="true"></i> {{copy.flowerGalleryEmpty}}</div>
+    <div v-if="communityFlowers.length" class="htk-pager htk-gal-pager"><button type="button" class="htk-btn htk-xs" :aria-label="copy.previousPage" :disabled="communityFlowerPage <= 1" @click="communityFlowerPage--">‹</button><span class="htk-pager-t" aria-live="polite">{{communityFlowerPage}}</span><button type="button" class="htk-btn htk-xs" :aria-label="copy.nextPage" :disabled="communityFlowerPage >= communityFlowerTotalPages" @click="communityFlowerPage++">›</button></div>
+  </div></div>
+
+  <div class="htk-lg htk-anim"><div class="htk-gc">
+    <h3 class="htk-sec-title">{{copy.communityFlowerActivity}}</h3>
+    <div v-if="communityFlowersLoading" class="htk-gal-state" role="status"><i class="ti ti-loader-2" aria-hidden="true"></i> {{copy.flowerGalleryLoading}}</div>
+    <div v-else-if="communityFlowersError" class="htk-gal-state htk-gal-error" role="alert"><i class="ti ti-alert-circle" aria-hidden="true"></i> {{copy.flowerGalleryLoadFailed}} <button type="button" class="htk-btn htk-xs" @click="loadCommunityFlowers">{{copy.retry}}</button></div>
+    <div v-else-if="communityFlowers.length" class="htk-gal-community">
+      <div v-for="item in communityFlowers" :key="item.id" class="htk-gal-community-row">
+        <MkAvatar v-if="item.user" :user="item.user" class="htk-gal-avatar" :forceShowDecoration="true"/>
+        <div class="htk-gal-community-body"><div class="htk-gal-community-text"><MkUserName v-if="item.user" :user="item.user"/><span>{{copy.flowerHarvestedBy}}</span><b>『{{localizeFloraName(item.name)}}』</b><span>{{copy.flowerHarvestedSuffix}}</span></div><div class="htk-gal-community-meta"><HataskEmoji :emoji="item.emoji"/> <time :datetime="item.harvestedAt">{{formatFlowerDate(item)}}</time></div></div>
+        <button v-if="item.user && !item.isOwner && item.user.id !== $i?.id" type="button" class="htk-gal-report" :aria-label="copy.reportFlowerName" :title="copy.reportFlowerName" @click="reportCommunityFlower(item)"><i class="ti ti-flag-3" aria-hidden="true"></i></button>
+      </div>
+    </div>
+    <div v-else class="htk-gal-state"><i class="ti ti-flower-off" aria-hidden="true"></i> {{copy.flowerGalleryEmpty}}</div>
   </div></div>
 </div>
 <!-- 旗鯖fork(ハタキュ): Eye も他タブと同じ板の上に載せるため、.htk-app の閉じは EYE の後ろへ移した。 -->
@@ -785,6 +828,7 @@
 
 <script lang="ts" setup>
 import { ref, computed, onMounted, onUnmounted, onBeforeUnmount, onActivated, onDeactivated, nextTick, watch, defineAsyncComponent } from 'vue';
+import type * as Misskey from 'cherrypick-js';
 import type { HataskGrowingFlower } from '@/utility/hatask-flower-growth.js';
 import { definePage } from '@/page.js';
 import * as os from '@/os.js';
@@ -798,11 +842,13 @@ import { versatileLang } from '@/utility/intl-const.js';
 import MkEarthquakeTicker from '@/components/MkEarthquakeTicker.vue';
 import HataFeedNotificationBody from '@/components/HataFeedNotificationBody.vue';
 import HataskEmoji from '@/components/HataskEmoji.vue';
+import MkAvatar from '@/components/global/MkAvatar.vue';
+import MkUserName from '@/components/global/MkUserName.vue';
 import { hatakyuAssetUrl } from '@/utility/hatakyu-assets.js';
 import type { HatakyuAssetKey } from '@/utility/hatakyu-assets.js';
 import { getDefaultPhrase, getPhrase } from '@/utility/hatask-phrases.js';
 import { floraData, pickRandomFlora, generateFlowerName, localizeFloraName, localizeHanakotoba } from '@/utility/hatask-flora.js';
-import { HATASK_FLOWER_GROWTH_EVENT, seedHataskFlowerGrowth } from '@/utility/hatask-flower-growth.js';
+import { HATASK_FLOWER_GROWTH_EVENT, createHataskGrowingFlower, normalizeHataskGrowingFlower, seedHataskFlowerGrowth } from '@/utility/hatask-flower-growth.js';
 import { notificationDisplayMessage, type HataFeedNotif } from '@/utility/hatafeed.js';
 import { activeCharacter as mascotActiveCharacter, expressionDisplayUrl, loadMascot, hatakMascotActive, currentExpression as mascotCurrentExpression, currentPhrase as mascotCurrentPhrase, pickRandomPhrase as mascotPickRandomPhrase, displaySettings as mascotDisplaySettings, loadDisplaySettings as loadMascotDisplaySettings, nextIdleDelayMs as mascotNextIdleDelayMs, escapeText as mascotEscapeText } from '@/utility/mascot-store.js';
 const copy = i18n.ts._hata._hatask._main;
@@ -1687,16 +1733,93 @@ const moodAnalysis=computed(()=>{
 const weekMoods=computed(()=>{const now=new Date();const mon=new Date(now);mon.setDate(now.getDate()-((now.getDay()+6)%7));mon.setHours(0,0,0,0);return Array.from({ length: 7 },(_,i)=>{const d=new Date(mon);d.setDate(mon.getDate()+i);const ds=d.toISOString().slice(0,10);const last=moods.value.filter(m=>m.date===ds).pop();return{day: weekdayShortFormatter.format(d),icon:last?moodIcons[last.level]:''};})});
 
 // Garden
-const flower = ref({ emoji: '🌱', name: 'わかば', progress: 0, startedAt: 0, totalMinutes: 0, lastGrowthAt: 0 });
+type FlowerVisibility = 'public' | 'followers' | 'private';
+type CommunityFlower = { id: string; clientFlowerId?: string; emoji: string; name: string; hanakotoba?: string; harvestedAt: string; isOwner?: boolean; user?: Misskey.entities.UserLite };
+const flower = ref<HataskGrowingFlower>(createHataskGrowingFlower({ emoji: '🌱', name: 'わかば' }));
 const gallery=ref<any[]>([]);
+const flowerVisibility = ref<FlowerVisibility>('public');
+const flowerVisibilityOptions = computed(() => [
+	{ value: 'public' as const, icon: 'ti-world', label: copy.flowerVisibilityPublic },
+	{ value: 'followers' as const, icon: 'ti-users', label: copy.flowerVisibilityFollowers },
+	{ value: 'private' as const, icon: 'ti-lock', label: copy.flowerVisibilityPrivate },
+]);
+const galleryPage = ref(1);
+const galleryOrder = ref<'newest' | 'oldest'>('newest');
+const GALLERY_PAGE_SIZE = 12;
+const galleryTotalPages = computed(() => Math.max(1, Math.ceil(gallery.value.length / GALLERY_PAGE_SIZE)));
+const sortedGallery = computed(() => [...gallery.value].sort((a, b) => {
+	const aTime = Date.parse(stableHarvestedAt(a));
+	const bTime = Date.parse(stableHarvestedAt(b));
+	return galleryOrder.value === 'newest' ? bTime - aTime : aTime - bTime;
+}));
+const pagedGallery = computed(() => sortedGallery.value.slice((galleryPage.value - 1) * GALLERY_PAGE_SIZE, galleryPage.value * GALLERY_PAGE_SIZE));
+const communityFlowers = ref<CommunityFlower[]>([]);
+const communityFlowerPage = ref(1);
+const communityFlowerOrder = ref<'newest' | 'oldest'>('newest');
+const communityFlowerTotalPages = ref(1);
+const communityFlowersLoading = ref(false);
+const communityFlowersError = ref(false);
+
+watch([activeTab, communityFlowerPage, communityFlowerOrder], ([tab]) => {
+	if (tab === 'garden' && dataLoaded.value) {
+		if (skipNextCommunityFlowerWatch) {
+			skipNextCommunityFlowerWatch = false;
+			return;
+		}
+		void loadCommunityFlowers();
+	}
+});
+
+function normalizeFlowerDate(value: unknown): string | null {
+	if (typeof value !== 'string') return null;
+	const text = value.trim();
+	if (!text) return null;
+	if (/^\d{4}-\d{2}-\d{2}T/.test(text)) {
+		const date = new Date(text);
+		return Number.isFinite(date.getTime()) ? date.toISOString() : null;
+	}
+	const match = /^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})$/.exec(text);
+	if (!match) return null;
+	const year = Number(match[1]);
+	const month = Number(match[2]);
+	const day = Number(match[3]);
+	const timestamp = Date.UTC(year, month - 1, day);
+	const date = new Date(timestamp);
+	if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return null;
+	return date.toISOString();
+}
+function stableHarvestedAt(item: { harvestedAt?: unknown; date?: unknown }): string {
+	const harvestedAt = normalizeFlowerDate(item.harvestedAt);
+	if (harvestedAt) return harvestedAt;
+	const legacyDate = normalizeFlowerDate(item.date);
+	if (legacyDate) return legacyDate;
+	return new Date().toISOString();
+}
+function normalizeLocalFlowerGallery(value: unknown): { items: any[]; changed: boolean } {
+	if (!Array.isArray(value)) return { items: [], changed: value != null };
+	let changed = false;
+	const items = value.filter((item): item is Record<string, unknown> => item != null && typeof item === 'object').map((item, index) => {
+		const harvestedAt = stableHarvestedAt(item);
+		if (item.harvestedAt !== harvestedAt) changed = true;
+		return { ...item, id: typeof item.id === 'string' && item.id ? item.id : `flower-${index}`, harvestedAt, date: typeof item.date === 'string' ? item.date : harvestedAt };
+	});
+	return { items, changed: changed || items.length !== value.length };
+}
 
 function onHataskFlowerGrowth(event: Event): void {
 	const next = (event as CustomEvent<HataskGrowingFlower>).detail;
-	flower.value = { ...flower.value, ...next };
+	const normalized = normalizeHataskGrowingFlower(next);
+	if (normalized) flower.value = normalized;
 }
 const currentFlowerDisplayName=computed(() => localizeFloraName(flower.value.name));
 function formatMinutes(m:number){const h=Math.floor(m/60);const mm=m%60;return h>0?copyx.hoursMinutes({ hours: h.toString(), minutes: mm.toString() }) : copyx.minutes({ minutes: mm.toString() })}
-const estimateRemaining=computed(()=>{const rem=Math.max(0,1200-flower.value.totalMinutes);const h=Math.floor(rem/60);return h>0?copyx.hours({ hours: h.toString() }):copy.soon});
+const estimateRemaining=computed(()=>{const rem=Math.max(0,flower.value.targetMinutes-flower.value.totalMinutes);const h=Math.floor(rem/60);return h>0?copyx.hours({ hours: h.toString() }):copy.soon});
+function formatFlowerDate(item: { harvestedAt?: string; date?: string }): string {
+	const value = item.harvestedAt ?? item.date;
+	const normalized = normalizeFlowerDate(value);
+	if (!normalized) return copy.unknownDate;
+	return longDateFormatter.format(new Date(normalized));
+}
 
 // Search
 const searchQuery=ref('');const searchInput=ref<HTMLInputElement|null>(null);
@@ -1802,25 +1925,137 @@ async function harvestFlower() {
 		title: copy.flowerBloomedTitle,
 		text: copy.flowerNamingPrompt,
 		default: localizedAutoName,
+		minLength: 1,
+		maxLength: 80,
 	});
-	if (canceled || !result) return;
+	const trimmedResult = typeof result === 'string' ? result.trim() : '';
+	if (canceled || !trimmedResult) return;
 	const flora = floraData.find(f => f.emoji === flower.value.emoji);
+	const flowerId = generateId();
 	gallery.value.unshift({
-		id: generateId(),
+		id: flowerId,
+		clientFlowerId: flowerId,
 		emoji: flower.value.emoji,
-		name: result === localizedAutoName ? autoName : result,
+		name: trimmedResult === localizedAutoName ? autoName : trimmedResult,
 		hanakotoba: flora?.hanakotoba ?? '',
 		date: new Date().toLocaleDateString('ja-JP'),
+		harvestedAt: new Date().toISOString(),
 	});
 	const nf = pickRandomFlora();
-	const startedAt = Date.now();
-	flower.value = { emoji: nf.emoji, name: generateFlowerName(nf), progress: 0, startedAt, totalMinutes: 0, lastGrowthAt: startedAt };
+	flower.value = createHataskGrowingFlower({ emoji: nf.emoji, name: generateFlowerName(nf) });
 	await registrySet('gallery', gallery.value);
 	await registrySet('flower', flower.value);
+	await syncFlowerGallery([gallery.value[0]]);
 	await syncHataskFlowerCount();
 	os.toast(copy.flowerHarvested);
 }
-async function renameFlower(fl:any){const sourceName = fl.name; const localizedName = localizeFloraName(sourceName); const{canceled,result}=await os.inputText({title:copy.renameFlowerTitle,text:copy.newNamePrompt,default:localizedName});if(!canceled&&result){fl.name=result === localizedName ? sourceName : result;await registrySet('gallery',gallery.value)}}
+async function renameFlower(fl: any) {
+	const sourceName = fl.name;
+	const localizedName = localizeFloraName(sourceName);
+	const { canceled, result } = await os.inputText({
+		title: copy.renameFlowerTitle,
+		text: copy.newNamePrompt,
+		default: localizedName,
+		minLength: 1,
+		maxLength: 80,
+	});
+	const trimmedResult = typeof result === 'string' ? result.trim() : '';
+	if (canceled || !trimmedResult) return;
+	fl.name = trimmedResult === localizedName ? sourceName : trimmedResult;
+	await registrySet('gallery', gallery.value);
+	await syncFlowerGallery([fl]);
+}
+
+const FLOWER_SYNC_BATCH_SIZE = 100;
+
+function flowerSyncString(value: unknown, maxLength: number, fallback: string): string {
+	const text = typeof value === 'string' ? value.trim().slice(0, maxLength) : '';
+	return text || fallback;
+}
+
+async function syncFlowerGallery(items: unknown[] = gallery.value): Promise<void> {
+	const flowers = items
+		.filter((item): item is Record<string, unknown> => item != null && typeof item === 'object')
+		.map((item, index) => ({
+			clientFlowerId: flowerSyncString(item.clientFlowerId ?? item.id, 64, `flower-${index}`),
+			emoji: flowerSyncString(item.emoji, 32, '🌼'),
+			name: flowerSyncString(item.name, 80, copy.noFlowersYet),
+			hanakotoba: flowerSyncString(item.hanakotoba, 256, ''),
+			harvestedAt: stableHarvestedAt(item),
+		}));
+	for (let index = 0; index < flowers.length; index += FLOWER_SYNC_BATCH_SIZE) {
+		try {
+			await misskeyApi('hatask/flowers/sync', { flowers: flowers.slice(index, index + FLOWER_SYNC_BATCH_SIZE) });
+		} catch (error) {
+			console.warn('Failed to sync Hatask flower gallery:', error);
+			return;
+		}
+	}
+}
+
+let communityFlowerRequestSequence = 0;
+let skipNextCommunityFlowerWatch = false;
+
+async function loadCommunityFlowers(): Promise<void> {
+	const requestSequence = ++communityFlowerRequestSequence;
+	communityFlowersLoading.value = true;
+	communityFlowersError.value = false;
+	try {
+		const response = await misskeyApi('hatask/flowers/list', { page: communityFlowerPage.value, limit: 12, order: communityFlowerOrder.value });
+		if (requestSequence !== communityFlowerRequestSequence) return;
+		const totalPages = Math.max(1, response.totalPages || Math.ceil(response.total / 12));
+		if (communityFlowerPage.value > totalPages) {
+			communityFlowerTotalPages.value = totalPages;
+			skipNextCommunityFlowerWatch = true;
+			communityFlowerPage.value = totalPages;
+			await loadCommunityFlowers();
+			return;
+		}
+		communityFlowers.value = response.items.map(item => ({ ...item, harvestedAt: stableHarvestedAt(item) }));
+		communityFlowerTotalPages.value = totalPages;
+		if (response.myVisibility === 'public' || response.myVisibility === 'followers' || response.myVisibility === 'private') flowerVisibility.value = response.myVisibility;
+	} catch (error) {
+		if (requestSequence !== communityFlowerRequestSequence) return;
+		communityFlowersError.value = true;
+		console.warn('Failed to load Hatask flower gallery:', error);
+	} finally {
+		if (requestSequence === communityFlowerRequestSequence) communityFlowersLoading.value = false;
+	}
+}
+
+async function updateFlowerVisibility(next: FlowerVisibility): Promise<void> {
+	if (flowerVisibility.value === next) return;
+	try {
+		const response = await misskeyApi('hatask/flowers/visibility/update', { visibility: next });
+		flowerVisibility.value = response.visibility;
+		communityFlowerPage.value = 1;
+		await loadCommunityFlowers();
+	} catch (error) {
+		console.warn('Failed to update Hatask flower visibility:', error);
+		os.toast(copy.flowerVisibilityUpdateFailed);
+	}
+}
+
+function setCommunityFlowerOrder(order: 'newest' | 'oldest'): void {
+	if (communityFlowerOrder.value === order) return;
+	communityFlowerOrder.value = order;
+	communityFlowerPage.value = 1;
+}
+
+function setGalleryOrder(order: 'newest' | 'oldest'): void {
+	if (galleryOrder.value !== order) {
+		galleryOrder.value = order;
+		galleryPage.value = 1;
+	}
+}
+
+async function reportCommunityFlower(item: CommunityFlower): Promise<void> {
+	if (!item.user) return;
+	const { dispose } = await os.popupAsyncWithDialog(import('@/components/MkAbuseReportWindow.vue').then(module => module.default), {
+		user: item.user,
+		initialComment: copyx.flowerReportComment({ name: localizeFloraName(item.name), date: formatFlowerDate(item) }),
+	}, { closed: () => dispose() });
+}
 
 let navProtectionObserver:MutationObserver|null=null;
 let navVisibilityTimer:ReturnType<typeof setInterval>|null=null;
@@ -1953,8 +2188,7 @@ nextTick(() => {
   } catch {}
 });
 const initFlower = pickRandomFlora();
-	const defaultFlowerStartedAt = Date.now();
-	const defaultFlower = { emoji: initFlower.emoji, name: generateFlowerName(initFlower), progress: 0, startedAt: defaultFlowerStartedAt, totalMinutes: 0, lastGrowthAt: defaultFlowerStartedAt };
+	const defaultFlower = createHataskGrowingFlower({ emoji: initFlower.emoji, name: generateFlowerName(initFlower) });
 const defaultSettings = { darkMode: false, autoTheme: true, weekStart: 'mon', showClock: true, showEvents: true, showFlower: true, showMoodSummary: true, showMealSection: true, showFeedbackNotif: true, showEarthquake: true, moodRemind: false, moodRemindTimes: ['昼 12:00', '寝る前 23:00'], openOnStart: false, showMealSummary: true, mealDisclaimerShown: false, eyeDisclaimerShown: false, theme: 'kisetsu', animations: true, v2Onboarded: false,
 	// 旗鯖fork(ハタキュ): 風を吹かせるか(このテーマ限定・既定ON) / 新テーマ案内を出したか(アカウントごと1回)
 	hatakyuWind: true, hatakyuNoticeShown: false };
@@ -1976,14 +2210,23 @@ if (loadResults[1].status === 'fulfilled' && loadedKeys.has('folders')) folders.
 if (loadResults[2].status === 'fulfilled' && loadedKeys.has('moods')) moods.value = loadResults[2].value as any;
 	// 花が未作成でもregistryGetが返した既定値は画面へ反映する。
 	// 永続化は成長トラッカーがNO_SUCH_KEYを再確認してから行うため、通信失敗時に既存値を上書きしない。
-	if (loadResults[3].status === 'fulfilled') flower.value = loadResults[3].value as typeof flower.value;
-if (loadResults[4].status === 'fulfilled' && loadedKeys.has('gallery')) gallery.value = loadResults[4].value as any;
+	if (loadResults[3].status === 'fulfilled') {
+		const normalizedFlower = normalizeHataskGrowingFlower(loadResults[3].value);
+		if (normalizedFlower) flower.value = normalizedFlower;
+	}
+if (loadResults[4].status === 'fulfilled' && loadedKeys.has('gallery')) {
+	const normalizedGallery = normalizeLocalFlowerGallery(loadResults[4].value);
+	gallery.value = normalizedGallery.items;
+	if (normalizedGallery.changed) await registrySet('gallery', gallery.value);
+}
 if (loadResults[5].status === 'fulfilled' && loadedKeys.has('settings')) settings.value = loadResults[5].value as any;
 if (loadResults[6].status === 'fulfilled' && loadedKeys.has('events')) events.value = loadResults[6].value as any;
 if (loadResults[7].status === 'fulfilled' && loadedKeys.has('meals')) meals.value = loadResults[7].value as any;
 dataLoaded.value = true;
 	seedHataskFlowerGrowth(flower.value);
 await syncHataskFlowerCount();
+await syncFlowerGallery(gallery.value);
+if (activeTab.value === 'garden') await loadCommunityFlowers();
 // 旗鯖fork(v2): 未設定キーを既定で補完(後方互換)。theme/animations 未設定の既存ユーザーには
 //   既定テーマ(季 kisetsu)・アニメON を割り当てる。保存済みの値は保持される。
 settings.value = { ...defaultSettings, ...settings.value };
@@ -2784,6 +3027,23 @@ select.htk-inp{appearance:none;cursor:pointer;padding-right:36px}
 .htk-root[data-theme="kisetsu"] .htk-gal-i{border:1px solid var(--rule);border-radius:0;background:none}
 .htk-root[data-theme="kashin"] .htk-gal-i{border:2px solid var(--ink-line);border-radius:14px;background:var(--surface)}
 .htk-root[data-theme="suri"] .htk-gal-i{border:2.5px solid var(--ink-line);border-radius:0;background:var(--surface)}
+.htk-root[data-theme="hatakyu"] .htk-gal-i{border:1.5px solid var(--field-bd);border-radius:9px;background:var(--paper2)}
+.htk-root[data-theme="kisetsu"] .htk-gal-vis-box,.htk-root[data-theme="kisetsu"] .htk-gal-sort-inner{border:1px solid var(--rule);border-radius:999px;background:var(--surface)}
+.htk-root[data-theme="kashin"] .htk-gal-vis-box,.htk-root[data-theme="kashin"] .htk-gal-sort-inner{border:2px solid var(--ink-line);border-radius:999px;background:var(--surface)}
+.htk-root[data-theme="suri"] .htk-gal-vis-box,.htk-root[data-theme="suri"] .htk-gal-sort-inner{border:2.5px solid var(--ink-line);border-radius:999px;background:var(--surface)}
+.htk-root[data-theme="hatakyu"] .htk-gal-vis-box,.htk-root[data-theme="hatakyu"] .htk-gal-sort-inner{border:1.5px solid var(--field-bd);border-radius:999px;background:var(--paper2)}
+.htk-root[data-theme="kisetsu"] .htk-gal-vis-box .htk-vis-o.on,.htk-root[data-theme="kisetsu"] .htk-gal-vis-box .htk-vis-o.on:hover,.htk-root[data-theme="kisetsu"] .htk-gal-sort-btn.on,.htk-root[data-theme="kisetsu"] .htk-gal-sort-btn.on:hover{background:color-mix(in srgb,var(--accent) 12%,transparent);border-color:var(--accent);color:var(--fg)}
+.htk-root[data-theme="kashin"] .htk-gal-vis-box .htk-vis-o.on,.htk-root[data-theme="kashin"] .htk-gal-vis-box .htk-vis-o.on:hover,.htk-root[data-theme="kashin"] .htk-gal-sort-btn.on,.htk-root[data-theme="kashin"] .htk-gal-sort-btn.on:hover{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.htk-root[data-theme="suri"] .htk-gal-vis-box .htk-vis-o.on,.htk-root[data-theme="suri"] .htk-gal-vis-box .htk-vis-o.on:hover,.htk-root[data-theme="suri"] .htk-gal-sort-btn.on,.htk-root[data-theme="suri"] .htk-gal-sort-btn.on:hover{background:var(--blue);border-color:var(--blue);color:var(--on-blue)}
+.htk-root[data-theme="hatakyu"] .htk-gal-vis-box .htk-vis-o.on,.htk-root[data-theme="hatakyu"] .htk-gal-vis-box .htk-vis-o.on:hover,.htk-root[data-theme="hatakyu"] .htk-gal-sort-btn.on,.htk-root[data-theme="hatakyu"] .htk-gal-sort-btn.on:hover{background:var(--blue);border-color:var(--blue);color:var(--on-blue)}
+.htk-root[data-theme="kisetsu"] .htk-gal-community-row{border-bottom-color:var(--rule)}
+.htk-root[data-theme="kashin"] .htk-gal-community-row{border-bottom-color:var(--rule)}
+.htk-root[data-theme="suri"] .htk-gal-community-row{border-bottom:2px solid var(--ink-line)}
+.htk-root[data-theme="hatakyu"] .htk-gal-community-row{border-bottom-color:var(--field-bd)}
+.htk-root[data-theme="kisetsu"] .htk-gal-report{color:var(--accent)}
+.htk-root[data-theme="kashin"] .htk-gal-report{color:var(--accent)}
+.htk-root[data-theme="suri"] .htk-gal-report{color:var(--blue)}
+.htk-root[data-theme="hatakyu"] .htk-gal-report{color:var(--blue)}
 .htk-root[data-theme="kisetsu"] .htk-gal-e{color:var(--accent)}
 .htk-root[data-theme="kashin"] .htk-gal-e{color:#12a89c}
 .htk-root[data-theme="suri"] .htk-gal-e{color:#ff4f9a}
@@ -2874,7 +3134,19 @@ select.htk-inp{appearance:none;cursor:pointer;padding-right:36px}
 .htk-gal-g{display:grid;grid-template-columns:repeat(auto-fill,minmax(125px,1fr));gap:10px}
 .htk-gal-i{text-align:center;padding:13px 8px;border-radius:var(--radius-sm);background:var(--btn-bg);border:1px solid var(--btn-border);cursor:pointer;transition:all .3s var(--ease-spring);backdrop-filter:blur(4px)}
 .htk-gal-i:hover{transform:translateY(-3px);box-shadow:0 6px 20px rgba(0,0,0,.1)}
+.htk-gal-i.htk-gal-card{display:flex;flex-direction:column;align-items:center;gap:2px;cursor:default}
+.htk-gal-card:hover{transform:none;box-shadow:none}
 .htk-gal-e{font-size:2.2rem;display:block;margin-bottom:5px;text-shadow:none}.htk-gal-n{font-size:.76rem;font-weight:600}.htk-gal-d{font-size:.66rem;color:var(--text-3);margin-top:2px}
+.htk-gal-i{display:block;width:100%;font:inherit;color:inherit;text-align:center;appearance:none}
+.htk-gal-hk{display:block;margin-top:3px;font-size:.66rem;color:var(--text-2)}
+.htk-gal-note,.htk-gal-visibility-help{margin:0 0 10px;color:var(--text-3);font-size:.74rem;line-height:1.5}
+.htk-gal-visibility-help{margin:7px 0 12px;font-size:.68rem}
+.htk-gal-vis-box{display:flex;width:100%;padding:4px;border:1px solid var(--rule);border-radius:999px;background:var(--surface)}
+.htk-gal-vis{display:flex;gap:4px;width:100%;min-width:0}.htk-gal-vis .htk-vis-o{display:flex;flex:1;min-width:0;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:44px;padding:4px;border:1px solid transparent;border-radius:999px;background:transparent;color:var(--fg-2);font-family:inherit;font-size:.66rem;line-height:1.2;cursor:pointer;word-break:keep-all;backdrop-filter:none}.htk-gal-vis .htk-vis-o:hover:not(.on){color:var(--fg)}.htk-gal-vis .htk-vis-o i{font-size:1rem;line-height:1}.htk-gal-vis .htk-vis-o:focus-visible,.htk-gal-sort-btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.htk-gal-pager{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:12px}.htk-gal-pager .htk-btn{min-width:44px;min-height:44px;padding:8px;font-size:1.2rem;line-height:1}.htk-pager-t{min-width:2.5em;text-align:center;font-variant-numeric:tabular-nums}
+.htk-gal-sort{display:flex;justify-content:center;margin-top:12px}.htk-gal-sort-inner{display:flex;gap:4px;width:fit-content;max-width:100%;padding:4px;border:1px solid var(--rule);border-radius:999px;background:var(--surface)}.htk-gal-sort-label{display:inline-flex;align-items:center;gap:4px;padding:0 8px;color:var(--fg-2);font-size:.68rem;white-space:nowrap}.htk-gal-sort-label i{font-size:1rem;line-height:1}.htk-gal-sort-btn{display:inline-flex;flex:1 1 auto;align-items:center;justify-content:center;gap:5px;min-width:44px;min-height:44px;padding:6px 14px;border:1px solid transparent;border-radius:999px;background:transparent;color:var(--fg-2);font:inherit;white-space:nowrap;cursor:pointer;transition:background .15s,color .15s,border-color .15s}.htk-gal-sort-btn:hover:not(.on){background:var(--hover-bg);color:var(--fg)}.htk-gal-sort-btn.on{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}.htk-gal-sort-btn i{font-size:1rem;line-height:1}.htk-gal-state{display:flex;align-items:center;justify-content:center;gap:7px;min-height:74px;color:var(--text-3);font-size:.8rem;text-align:center}.htk-gal-state i{font-size:1.1rem}.htk-gal-error{flex-wrap:wrap;color:var(--danger, var(--text-2))}
+.htk-gal-community{display:grid;gap:6px}.htk-gal-community-row{display:flex;align-items:center;gap:9px;min-width:0;padding:9px 0;border-bottom:1px solid var(--divider)}.htk-gal-community-row:last-child{border-bottom:0}.htk-gal-avatar{width:36px;height:36px;flex:0 0 36px}.htk-gal-community-body{min-width:0;flex:1}.htk-gal-community-text{font-size:.78rem;line-height:1.45;overflow-wrap:anywhere}.htk-gal-community-text b{font-weight:700}.htk-gal-community-meta{display:flex;align-items:center;gap:5px;margin-top:3px;color:var(--text-3);font-size:.68rem}.htk-gal-community-meta .mk-emoji{font-size:1rem}.htk-gal-report{display:grid;place-items:center;flex:0 0 44px;min-width:44px;min-height:44px;border:0;border-radius:var(--radius-xs);color:var(--text-3);background:transparent;cursor:pointer}.htk-gal-report:hover,.htk-gal-report:focus-visible{color:var(--accent);background:var(--hover-bg)}
+.htk-gal-owner{display:flex;align-items:center;justify-content:center;gap:5px;max-width:100%;min-width:0;color:var(--text-2);font-size:.7rem;overflow-wrap:anywhere}.htk-gal-card .htk-gal-avatar{width:28px;height:28px;flex-basis:28px}.htk-gal-card .htk-gal-report{align-self:center}
 .htk-sch-sec{font-size:.73rem;font-weight:600;color:var(--text-3);margin:14px 0 6px;padding-bottom:4px;border-bottom:1px solid var(--divider)}
 .htk-sch-it{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:var(--radius-xs);transition:background .2s;cursor:pointer;margin-bottom:2px}.htk-sch-it:hover{background:var(--hover-bg)}
 .htk-sch-it-emo{font-size:1.3rem;flex-shrink:0;text-shadow:none}
@@ -3500,8 +3772,8 @@ button.hk-row{ cursor:pointer }
 /* --- 麻ひもに吊るした写真 --- */
 .hk-twine{ position:relative; margin:2px 0 20px; padding-top:22px }
 .hk-twine::before{ content:''; position:absolute; top:8px; left:-6px; right:-6px; height:3px; border-radius:2px; background:linear-gradient(#e8d4a8,#b99a63); box-shadow:0 2px 3px rgba(0,0,0,.3) }
-.hk-hangrow{ display:flex; gap:16px; justify-content:center; flex-wrap:wrap }
-.hk-hang{ position:relative; width:118px; transform-origin:50% -14px; transform:rotate(var(--r,0deg)); cursor:pointer; background:none; border:none; padding:0; font:inherit }
+.hk-hangrow{ display:grid; grid-template-columns:repeat(4,minmax(0,118px)); gap:16px; justify-content:center }
+.hk-hang{ position:relative; width:100%; min-width:0; transform-origin:50% -14px; transform:rotate(var(--r,0deg)); cursor:pointer; background:none; border:none; padding:0; font:inherit }
 .hk-peg{ position:absolute; top:-16px; left:50%; margin-left:-6px; width:12px; height:22px; border-radius:3px; background:linear-gradient(#f3e0b4,#c7a469); box-shadow:0 2px 4px rgba(0,0,0,.4); z-index:4 }
 .hk-photo{ position:relative; display:block; background:var(--paper2); padding:8px 8px 27px; box-shadow:0 13px 24px -10px rgba(40,24,8,.75) }
 .hk-photo img{ display:block; width:100%; user-select:none; -webkit-user-drag:none }
@@ -3577,8 +3849,10 @@ button.hk-row{ cursor:pointer }
   .hk-lg-name{ font-size:1.6rem }
   .hk-hbtn{ padding:9px 11px; font-size:.72rem }
   .hk-hbtn span{ display:none }
-  .hk-hangrow{ flex-wrap:wrap; justify-content:center; gap:12px; padding:0 2px 6px }
-  .hk-hang{ width:104px; flex:0 0 auto }
+  .hk-hangrow{ grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; padding:0 2px 6px }
+  .hk-hang{ width:100%; min-width:0 }
+  .htk-gal-sort-label{ padding:0 4px }
+  .htk-gal-sort-label span{ display:none }
   .hk-clock{ font-size:2.2rem }
   .hk-mbtns{ flex-direction:column }
 }

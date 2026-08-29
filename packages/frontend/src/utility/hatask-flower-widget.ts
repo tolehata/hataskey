@@ -9,7 +9,10 @@ export type HataskFlower = {
 	name: string;
 	progress: number;
 	totalMinutes: number;
+	targetMinutes: number;
 	date?: string;
+	harvestedAt?: string;
+	hanakotoba?: string;
 };
 
 const FALLBACK_FLOWER: HataskFlower = {
@@ -18,25 +21,29 @@ const FALLBACK_FLOWER: HataskFlower = {
 	name: 'わかば',
 	progress: 0,
 	totalMinutes: 0,
+	targetMinutes: 1200,
 };
 
 function safeText(value: unknown, fallback: string): string {
 	return typeof value === 'string' && value.trim() ? value.trim().slice(0, 80) : fallback;
 }
 
-function safeNumber(value: unknown): number {
-	return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+function safeNumber(value: unknown, fallback = 0): number {
+	return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
 }
 
 export function normalizeGrowingFlower(value: unknown): HataskFlower {
 	if (value == null || typeof value !== 'object') return { ...FALLBACK_FLOWER };
 	const flower = value as Record<string, unknown>;
+	const targetMinutes = Math.max(480, Math.min(1920, Math.round(safeNumber(flower.targetMinutes, 1200))));
+	const totalMinutes = Math.max(0, Math.min(targetMinutes, Math.round(safeNumber(flower.totalMinutes))));
 	return {
 		id: 'growing',
 		emoji: safeText(flower.emoji, FALLBACK_FLOWER.emoji),
 		name: safeText(flower.name, FALLBACK_FLOWER.name),
-		progress: Math.max(0, Math.min(100, Math.round(safeNumber(flower.progress)))),
-		totalMinutes: Math.max(0, Math.round(safeNumber(flower.totalMinutes))),
+		progress: Math.max(0, Math.min(100, Math.round((totalMinutes / targetMinutes) * 100))),
+		totalMinutes,
+		targetMinutes,
 	};
 }
 
@@ -51,10 +58,13 @@ export function normalizeFlowerGallery(value: unknown, limit: number, unnamedFlo
 		.map((item, index) => ({
 			id: safeText(item.id, `flower-${index}`),
 			emoji: safeText(item.emoji, '🌼'),
-			name: safeText(item.name, safeUnnamedFlowerName),
-			progress: 100,
+		name: safeText(item.name, safeUnnamedFlowerName),
+		progress: 100,
 			totalMinutes: 0,
+			targetMinutes: 1200,
 			date: typeof item.date === 'string' ? item.date.slice(0, 40) : undefined,
+			harvestedAt: typeof item.harvestedAt === 'string' ? item.harvestedAt.slice(0, 40) : undefined,
+			hanakotoba: typeof item.hanakotoba === 'string' ? item.hanakotoba.slice(0, 80) : undefined,
 		}));
 }
 

@@ -16159,7 +16159,7 @@ export interface Locale extends ILocale {
              */
             "pageTitle": string;
             /**
-             * 旗池2丁目 機能解説
+             * Hataskey 機能解説
              */
             "pageHeading": string;
             /**
@@ -16179,7 +16179,7 @@ export interface Locale extends ILocale {
              */
             "openSettings": string;
             /**
-             * ※ここでは旗池2丁目独自の機能のみを記載しています。CherryPick / Misskey 本体の機能については公式ドキュメントをご参照ください。
+             * ※ここではHataskey独自の機能のみを記載しています。CherryPick / Misskey 本体の機能については公式ドキュメントをご参照ください。
              */
             "footer": string;
             /**
@@ -20071,16 +20071,6 @@ export interface Locale extends ILocale {
                 };
             };
             "_exportDialog": {
-                "bothRecords": string;
-                "bothRecordsFormat": string;
-                "mediaFormat": string;
-                "mediaFormatJson": string;
-                "mediaFormatTxt": string;
-                "mediaKind": string;
-                "mediaKindAll": string;
-                "mediaKindMovie": string;
-                "mediaKindGame": string;
-                "exportedBothCount": ParameterizedString<"count" | "works" | "sessions">;
                 /**
                  * 記録の書き出し
                  */
@@ -20105,6 +20095,46 @@ export interface Locale extends ILocale {
                  * 構造化バックアップ (.json)
                  */
                 "mediaRecordsFormat": string;
+                /**
+                 * まとめて
+                 */
+                "bothRecords": string;
+                /**
+                 * 学習と映画・ゲームを同時に
+                 */
+                "bothRecordsFormat": string;
+                /**
+                 * 映画・ゲームの形式
+                 */
+                "mediaFormat": string;
+                /**
+                 * 構造化 (.json)
+                 */
+                "mediaFormatJson": string;
+                /**
+                 * 読みやすい (.txt)
+                 */
+                "mediaFormatTxt": string;
+                /**
+                 * 映画・ゲームの種別
+                 */
+                "mediaKind": string;
+                /**
+                 * すべて
+                 */
+                "mediaKindAll": string;
+                /**
+                 * 映画だけ
+                 */
+                "mediaKindMovie": string;
+                /**
+                 * ゲームだけ
+                 */
+                "mediaKindGame": string;
+                /**
+                 * 学習{count}件、作品{works}件・記録{sessions}件を書き出しました
+                 */
+                "exportedBothCount": ParameterizedString<"count" | "works" | "sessions">;
                 /**
                  * 対象の期間
                  */
@@ -20195,38 +20225,134 @@ export interface Locale extends ILocale {
                 "exportFailed": string;
             };
             "_mediaExportText": {
+                /**
+                 * Hatady 映画・ゲームの記録
+                 */
                 "title": string;
+                /**
+                 * すべての期間
+                 */
                 "all": string;
+                /**
+                 * 映画・ゲーム
+                 */
                 "kindAll": string;
+                /**
+                 * 映画
+                 */
                 "kindMovie": string;
+                /**
+                 * ゲーム
+                 */
                 "kindGame": string;
+                /**
+                 * その他
+                 */
                 "kindUnknown": string;
-                "workListHeading": string;
-                "emptySessions": string;
-                "emptyWorks": string;
-                "unknownWork": string;
-                "unknownDate": string;
-                "spoilerMark": string;
-                "status_planned": string;
-                "status_in_progress": string;
-                "status_completed": string;
-                "status_mastered": string;
-                "status_on_hold": string;
-                "status_dropped": string;
-                "sessionKind_movie_viewing": string;
-                "sessionKind_game_play": string;
-                "sessionKind_game_match": string;
-                "sessionKind_game_roguelike": string;
-                "sessionKind_game_pve": string;
+                /**
+                 * 期間: {period}
+                 */
                 "periodLine": ParameterizedString<"period">;
+                /**
+                 * 種別: {kind}
+                 */
                 "kindLine": ParameterizedString<"kind">;
+                /**
+                 * 書き出し: {date} {time}
+                 */
                 "exportedLine": ParameterizedString<"date" | "time">;
+                /**
+                 * 作品 {works}件 / 記録 {sessions}件 / 合計 {duration}
+                 */
                 "summaryLine": ParameterizedString<"works" | "sessions" | "duration">;
+                /**
+                 * ■ {date}({weekday})  {count}件  {duration}
+                 */
                 "dayLine": ParameterizedString<"date" | "weekday" | "count" | "duration">;
+                /**
+                 * ■ {label}  {count}件
+                 */
                 "dayLineUnknown": ParameterizedString<"label" | "count">;
+                /**
+                 *   {time}  [{kind}] {title}  {type}  {duration}
+                 */
                 "sessionLine": ParameterizedString<"time" | "kind" | "title" | "type" | "duration">;
+                /**
+                 * [{kind}] {title}{creator}  {status}{rating}
+                 */
                 "workLine": ParameterizedString<"kind" | "title" | "creator" | "status" | "rating">;
+                /**
+                 *   ★{rating}
+                 */
                 "ratingLabel": ParameterizedString<"rating">;
+                /**
+                 * 作品一覧
+                 */
+                "workListHeading": string;
+                /**
+                 * この条件に一致する記録はありませんでした。
+                 */
+                "emptySessions": string;
+                /**
+                 * この条件に一致する作品はありませんでした。
+                 */
+                "emptyWorks": string;
+                /**
+                 * (作品不明)
+                 */
+                "unknownWork": string;
+                /**
+                 * 日時不明
+                 */
+                "unknownDate": string;
+                /**
+                 * [ネタバレ]
+                 */
+                "spoilerMark": string;
+                /**
+                 * 予定
+                 */
+                "status_planned": string;
+                /**
+                 * 進行中
+                 */
+                "status_in_progress": string;
+                /**
+                 * 完了
+                 */
+                "status_completed": string;
+                /**
+                 * やりこみ
+                 */
+                "status_mastered": string;
+                /**
+                 * 保留
+                 */
+                "status_on_hold": string;
+                /**
+                 * 中断
+                 */
+                "status_dropped": string;
+                /**
+                 * 視聴
+                 */
+                "sessionKind_movie_viewing": string;
+                /**
+                 * プレイ
+                 */
+                "sessionKind_game_play": string;
+                /**
+                 * 対戦
+                 */
+                "sessionKind_game_match": string;
+                /**
+                 * ローグライク
+                 */
+                "sessionKind_game_roguelike": string;
+                /**
+                 * PvE
+                 */
+                "sessionKind_game_pve": string;
             };
             "_exportText": {
                 /**
@@ -23637,6 +23763,90 @@ export interface Locale extends ILocale {
                  * いま育てているお花
                  */
                 "currentFlower": string;
+                /**
+                 * 収穫したお花をサーバーのギャラリーに公開できます
+                 */
+                "flowerGalleryDescription": string;
+                /**
+                 * ギャラリー全体の公開範囲
+                 */
+                "flowerGalleryVisibility": string;
+                /**
+                 * 設定はギャラリー全体に適用され、過去とこれからのお花に反映されます
+                 */
+                "flowerGalleryVisibilityHelp": string;
+                /**
+                 * 全員に公開
+                 */
+                "flowerVisibilityPublic": string;
+                /**
+                 * フォロワーのみに公開
+                 */
+                "flowerVisibilityFollowers": string;
+                /**
+                 * 自分だけ
+                 */
+                "flowerVisibilityPrivate": string;
+                /**
+                 * みんなのお花
+                 */
+                "communityFlowerGallery": string;
+                /**
+                 * みんなのお花情報
+                 */
+                "communityFlowerActivity": string;
+                /**
+                 * みんなのお花を読み込み中
+                 */
+                "flowerGalleryLoading": string;
+                /**
+                 * みんなのお花を読み込めませんでした
+                 */
+                "flowerGalleryLoadFailed": string;
+                /**
+                 * まだ公開されたお花はありません
+                 */
+                "flowerGalleryEmpty": string;
+                /**
+                 * が
+                 */
+                "flowerHarvestedBy": string;
+                /**
+                 * を収穫しました！
+                 */
+                "flowerHarvestedSuffix": string;
+                /**
+                 * このお花の名前を通報
+                 */
+                "reportFlowerName": string;
+                /**
+                 * 公開範囲の更新に失敗しました
+                 */
+                "flowerVisibilityUpdateFailed": string;
+                /**
+                 * 前のページ
+                 */
+                "previousPage": string;
+                /**
+                 * 次のページ
+                 */
+                "nextPage": string;
+                /**
+                 * 日時不明
+                 */
+                "unknownDate": string;
+                /**
+                 * 再試行
+                 */
+                "retry": string;
+                /**
+                 * [Hatask公開お花名] {name}
+                 * 収穫日時: {date}
+                 * Hataskの公開お花名についての報告
+                 * -----
+                 *
+                 */
+                "flowerReportComment": ParameterizedString<"name" | "date">;
                 /**
                  * 花言葉
                  */
@@ -27813,9 +28023,6 @@ export interface Locale extends ILocale {
                 /**
                  * オリジナルアイコンブランディング
                  */
-                "settingsRenewalTitle": string;
-                "settingsRenewalText": string;
-                "settingsRenewalLink": string;
                 "brandingTitle": string;
                 /**
                  * 設定メニュー、各設定ページ、エラー表示、ダイアログ、ログイン画面などのアイコンを、Hataskeyオリジナルのイラストに置き換えました。旗鯖独自機能のUIタブから、いつでも通常のアイコンへ戻せます。サーバーの管理画面でブランディング画像が設定されている場合は、そちらが優先されます。
@@ -27917,26 +28124,89 @@ export interface Locale extends ILocale {
                  * リアクションの長押し操作を改善し、iPhoneでリアクション選択メニューが開かないことがある問題と、カードの傾き表示が安定しない問題を修正しました。
                  */
                 "mobileFixText": string;
+                /**
+                 * HATAlyze — 投稿の分析を一新しました
+                 */
                 "hatalyzeTitle": string;
+                /**
+                 * 分析はこの端末の中だけで行い、投稿の本文をサーバーに残しません。喜び・楽しさ・親愛・感謝・怒り・悲しみ・不安・疲れの8つの軸で傾向を出し、言葉の辞書を501語まで増やしました。同じ言葉が何度も出るほど強く出ます。曜日・時間帯・話題・投稿の習慣も見られます。
+                 */
                 "hatalyzeText": string;
+                /**
+                 * HATAlyzeを開く
+                 */
                 "hatalyzeLink": string;
+                /**
+                 * Hataskに新しいテーマ「ハタキュ」が増えました
+                 */
                 "hatakyuThemeTitle": string;
+                /**
+                 * コルクボードに紙をピンで留めた見た目です。紙はゆっくり揺れ、ときどき風で大きく動きます。風は設定で止められます。初回のテーマ選択でも選べます。
+                 */
                 "hatakyuThemeText": string;
+                /**
+                 * Hataskを開く
+                 */
                 "hatakyuThemeLink": string;
+                /**
+                 * Hatadyの書き出しが映画・ゲームにも対応しました
+                 */
                 "hatadyExportTitle": string;
+                /**
+                 * 作品と記録を、人が読めるテキストか、そのまま取っておける構造化ファイルのどちらでも書き出せます。期間や、映画だけ・ゲームだけの絞り込みもできます。学習の記録とまとめて書き出すこともできます。
+                 */
                 "hatadyExportText": string;
+                /**
+                 * Hatadyを開く
+                 */
                 "hatadyExportLink": string;
+                /**
+                 * 横に開く折りたたみ端末の広い画面に対応しました（ベータ）
+                 */
                 "foldableTitle": string;
+                /**
+                 * 画面を開いたときだけ、表示はスマホのままで右側にウィジェットやサブペインを出します。機種名ではなく画面の広さと操作方法で判定します。設定で常に使う・使わないも選べます。まだベータのため、端末によっては表示が整わないことがあります。
+                 */
                 "foldableText": string;
+                /**
+                 * 設定を開く
+                 */
                 "foldableLink": string;
+                /**
+                 * Hataskey UIの動きを表情豊かにしました
+                 */
                 "uiMotionTitle": string;
+                /**
+                 * 名前をタップしたときに出るカードを作り直し、投稿の送信中の見せ方、モーダルやメニューの出方、Hatadyの統計の出かた、ナビゲーションやデッキの操作感を、それぞれ動きのある形に整えました。
+                 */
                 "uiMotionText": string;
+                /**
+                 * 日付やお花の名前が英語で出る問題を直しました
+                 */
                 "langFixTitle": string;
+                /**
+                 * 言語を一度も選んでいない場合に、画面の文言は日本語なのに日付・曜日・お花の名前・Hatask Eyeの文章だけ英語で出ることがありました。起動時に選ばれた言語へ揃うようにしました。
+                 */
                 "langFixText": string;
+                /**
+                 * 外部アカウント連携の接続先に㐂五亭を追加しました
+                 */
                 "externalDdoskeyTitle": string;
+                /**
+                 * 㐂五亭 (ddoskey.com) につなげるようになりました。設定の外部アカウント連携から接続先として選べます。つないだ先の規約が適用されます。
+                 */
                 "externalDdoskeyText": string;
+                /**
+                 * 接続先を見る
+                 */
                 "externalDdoskeyLink": string;
+                /**
+                 * カスタムフォントを直接アップロードできるようになりました
+                 */
                 "fontUploadTitle": string;
+                /**
+                 * Hataskey独自設定のフォント画面から、TrueType（.ttf）とOpenType（.otf）を直接アップロードしてUIへ適用できます。サーバーの管理者が独自に許可する種類を設定している場合、その設定は変更しません。
+                 */
                 "fontUploadText": string;
                 /**
                  * ここに載せたのは主な変更だけです。細かな修正を含むすべての変更点は、リリースノートをご確認ください。
@@ -27946,6 +28216,18 @@ export interface Locale extends ILocale {
                  * リリースノートを見る
                  */
                 "footerLink": string;
+                /**
+                 * 設定画面を作り直しました
+                 */
+                "settingsRenewalTitle": string;
+                /**
+                 * 左に大分類、右にその中の項目をタブで並べる2枚組みに作り直しました。分類を選ぶと最初の項目がすぐ開き、Hataskey独自の設定も別窓ではなく右側にそのまま出ます。上部の検索からは、画面をまたいで設定を探せます。
+                 */
+                "settingsRenewalText": string;
+                /**
+                 * 設定を開く
+                 */
+                "settingsRenewalLink": string;
             };
         };
         "_common": {
@@ -33151,7 +33433,7 @@ export interface Locale extends ILocale {
                  */
                 "foldableSection": string;
                 /**
-                 * 横開きの折りたたみスマホ（Galaxy Z Fold・Pixel Fold など）の大きい方の画面で、表示はスマホのままにしつつ、右側にウィジェットを常に出します。Hataskey UI と HataSNSCordUI が対象です。
+                 * 横開きの折りたたみスマホの、開いたときの大きい方の画面で、表示はスマホのままにしつつ、右側にウィジェットを常に出します。Hataskey UI と HataSNSCordUI が対象です。
                  */
                 "foldableDescription": string;
                 /**
@@ -33399,292 +33681,1102 @@ export interface Locale extends ILocale {
             };
         };
         "_settingsRedesign": {
+            /**
+             * 設定の内容へ移動
+             */
             "skipToContent": string;
+            /**
+             * 設定を検索（透過率・ノートの間隔・bot…）
+             */
             "searchTrigger": string;
+            /**
+             * {shortcut}で設定を検索
+             */
             "searchShortcut": ParameterizedString<"shortcut">;
-            "searchHint": string;
+            /**
+             * Hataskey UI／デッキ
+             */
             "uiDeck": string;
+            /**
+             * 旧設定
+             */
             "legacySettings": string;
+            /**
+             * 設定カテゴリ
+             */
             "settingsCategories": string;
+            /**
+             * 独自機能
+             */
             "customFeatures": string;
+            /**
+             * 設定の表示範囲
+             */
             "settingsFilter": string;
+            /**
+             * よく使う設定
+             */
             "frequentlyUsedSettings": string;
+            /**
+             * この画面の検索設定 {count} 件
+             */
             "searchSettingsCount": ParameterizedString<"count">;
+            /**
+             * 端末とログイン
+             */
             "sessionAndLogin": string;
+            /**
+             * こちらから設定を検索できます
+             */
+            "searchHint": string;
             "actions": {
+                /**
+                 * キャッシュを削除
+                 */
                 "clearCache": string;
+                /**
+                 * ログアウト
+                 */
                 "logout": string;
+                /**
+                 * すべての端末からログアウト
+                 */
                 "logoutAll": string;
             };
             "nav": {
+                /**
+                 * 見た目とUI
+                 */
                 "appearance": string;
+                /**
+                 * 表示密度・フォント・テーマ
+                 */
                 "appearanceDescription": string;
+                /**
+                 * 表示密度とノート
+                 */
                 "densityAndNotes": string;
+                /**
+                 * フォント
+                 */
                 "font": string;
+                /**
+                 * 絵文字パレット
+                 */
                 "emojiPalette": string;
+                /**
+                 * テーマを管理
+                 */
                 "manageTheme": string;
+                /**
+                 * テーマをインストール
+                 */
                 "installTheme": string;
+                /**
+                 * タイムラインと投稿
+                 */
                 "timelineAndPosts": string;
+                /**
+                 * タイムライン・投稿フォーム・リアクション
+                 */
                 "timelineAndPostsDescription": string;
+                /**
+                 * 表示するタイムライン
+                 */
                 "displayTimeline": string;
+                /**
+                 * ノートの表示と折りたたみ
+                 */
                 "noteDisplayAndCollapse": string;
+                /**
+                 * 非表示リアクション
+                 */
                 "hiddenReactions": string;
+                /**
+                 * プロフィール・プライバシー・移行
+                 */
                 "accountDescription": string;
+                /**
+                 * アバターデコレーション
+                 */
                 "avatarDecoration": string;
+                /**
+                 * アカウント統計
+                 */
                 "accountStats": string;
+                /**
+                 * アカウントの切り替え
+                 */
                 "accountSwitch": string;
+                /**
+                 * Hataskey独自ツール
+                 */
                 "hataTools": string;
-				"tabletTools": string;
+                /**
+                 * 独自ツール
+                 */
+                "tabletTools": string;
+                /**
+                 * Hatask・Hatady
+                 */
                 "hataToolsDescription": string;
+                /**
+                 * HataskとHatady
+                 */
                 "hataskAndHatady": string;
+                /**
+                 * マスコット・ハタキュ
+                 */
                 "mascotHatakyu": string;
+                /**
+                 * HataFeed
+                 */
                 "hataFeedHataLyze": string;
+                /**
+                 * 地震ビューア・天気
+                 */
                 "weatherViewer": string;
+                /**
+                 * 外部アカウント連携
+                 */
                 "externalAccount": string;
+                /**
+                 * 設定の書き出し・読み込み
+                 */
                 "settingsTransfer": string;
+                /**
+                 * CherryPick独自設定
+                 */
                 "cherrypick": string;
+                /**
+                 * CherryPickの機能
+                 */
                 "cherrypickDescription": string;
+                /**
+                 * データと連携
+                 */
                 "data": string;
+                /**
+                 * サービス連携・アプリ・書き出し
+                 */
                 "dataDescription": string;
+                /**
+                 * ドライブの整理
+                 */
                 "driveCleaner": string;
+                /**
+                 * サービス連携
+                 */
                 "serviceConnect": string;
+                /**
+                 * 連携アプリ
+                 */
                 "linkedApps": string;
+                /**
+                 * プラグイン
+                 */
                 "plugins": string;
+                /**
+                 * 設定プロフィール
+                 */
                 "settingsProfiles": string;
+                /**
+                 * アカウント情報の書き出し
+                 */
                 "accountDataExport": string;
+                /**
+                 * Misskey UI関連
+                 */
                 "misskey": string;
+                /**
+                 * デッキ・ナビゲーションバー・ステータスバー
+                 */
                 "misskeyDescription": string;
+                /**
+                 * Misskeyの環境設定
+                 */
                 "misskeyGeneral": string;
+                /**
+                 * 通知の挙動
+                 */
                 "notificationBehavior": string;
+                /**
+                 * 表示の細かな設定
+                 */
                 "appearanceDetails": string;
+                /**
+                 * タイムラインの動作
+                 */
                 "timelineOptions": string;
+                /**
+                 * その他
+                 */
                 "miscLabel": string;
+                /**
+                 * 上のどれにも当てはまらない設定です。
+                 */
                 "miscDescription": string;
+                /**
+                 * 見た目とテーマ
+                 */
                 "appearanceAndTheme": string;
+                /**
+                 * テーマ・フォント・絵文字パレット
+                 */
                 "appearanceAndThemeDescription": string;
+                /**
+                 * 名前・アイコン・自己紹介
+                 */
                 "profileDescription": string;
+                /**
+                 * アカウントとログイン
+                 */
                 "accountAndLogin": string;
+                /**
+                 * プライバシー・メール・セキュリティ
+                 */
                 "accountAndLoginDescription": string;
+                /**
+                 * 見せないユーザーと言葉
+                 */
                 "muteAndBlockDescription": string;
+                /**
+                 * ファイルの保管と整理
+                 */
                 "driveDescription": string;
+                /**
+                 * データと引っ越し
+                 */
                 "dataAndMigration": string;
+                /**
+                 * 書き出し・設定プロフィール
+                 */
                 "dataAndMigrationDescription": string;
+                /**
+                 * 外部サービス連携
+                 */
                 "externalServices": string;
+                /**
+                 * 外部アカウント・アプリ・プラグイン
+                 */
                 "externalServicesDescription": string;
             };
             "filters": {
+                /**
+                 * すべて
+                 */
                 "all": string;
+                /**
+                 * よく使う
+                 */
                 "frequent": string;
+                /**
+                 * この端末のみ
+                 */
                 "deviceOnly": string;
             };
             "values": {
+                /**
+                 * 透過率
+                 */
                 "opacity": string;
+                /**
+                 * 吹き出し
+                 */
                 "bubble": string;
+                /**
+                 * ノートの間隔
+                 */
                 "noteGap": string;
+                /**
+                 * 空ける
+                 */
                 "spread": string;
+                /**
+                 * 詰める
+                 */
                 "compact": string;
+                /**
+                 * 下部ナビ
+                 */
                 "bottomNavigation": string;
+                /**
+                 * {count}／{max}項目
+                 */
                 "bottomNavigationCount": ParameterizedString<"count" | "max">;
             };
             "mobile": {
+                /**
+                 * 使用中・推奨
+                 */
                 "recommendedInUse": string;
+                /**
+                 * ナビ・透過率・吹き出し・デッキの表示をまとめて調整します
+                 */
                 "featureDescription": string;
+                /**
+                 * 設定を開く
+                 */
                 "openSettings": string;
+                /**
+                 * すべてのカテゴリ
+                 */
                 "allCategories": string;
+                /**
+                 * 連携とデータ
+                 */
                 "connectionsAndData": string;
+                /**
+                 * Misskey UIに関連する設定
+                 */
                 "misskeyRelatedSettings": string;
+                /**
+                 * 非推奨
+                 */
                 "deprecated": string;
             };
             "search": {
+                /**
+                 * 設定を検索
+                 */
                 "inputLabel": string;
+                /**
+                 * {count}件
+                 */
                 "resultCount": ParameterizedString<"count">;
+                /**
+                 * 検索を閉じる
+                 */
                 "closeSearch": string;
+                /**
+                 * 設定の検索結果
+                 */
                 "resultsLabel": string;
+                /**
+                 * 検索インデックスを読み込んでいます
+                 */
                 "loadingIndex": string;
+                /**
+                 * 検索の準備に失敗しました
+                 */
                 "preparationFailed": string;
+                /**
+                 * 設定名、以前の名前、機能名で検索できます
+                 */
                 "searchHelp": string;
+                /**
+                 * 検索中
+                 */
                 "searching": string;
+                /**
+                 * 「{query}」に一致する設定は見つかりませんでした
+                 */
                 "noResults": ParameterizedString<"query">;
+                /**
+                 * 別の言い方や、短い語で検索してみてください
+                 */
                 "searchSuggestion": string;
+                /**
+                 * 一致した設定
+                 */
                 "matchedSettings": string;
+                /**
+                 * こちらをお探しですか？
+                 */
                 "relatedHeading": string;
+                /**
+                 * 設定を検索中
+                 */
                 "liveSearching": string;
+                /**
+                 * 一致する設定はありません
+                 */
                 "liveNoMatches": string;
+                /**
+                 * {results}件の設定と{suggestions}件の候補
+                 */
                 "liveCounts": ParameterizedString<"results" | "suggestions">;
             };
             "related": {
+                /**
+                 * ほか{count}件を見る
+                 */
                 "showMore": ParameterizedString<"count">;
             };
             "gateway": {
+                /**
+                 * 旧設定
+                 */
                 "legacyRegion": string;
+                /**
+                 * 新しい設定
+                 */
                 "redesignedRegion": string;
+                /**
+                 * 新しい設定画面に戻る
+                 */
                 "returnToRedesigned": string;
+                /**
+                 * 新しい設定に戻る
+                 */
                 "returnToRedesignedButton": string;
+                /**
+                 * これは旧設定です。旧設定で変更を行っても適用が行われないことがあります。
+                 */
                 "legacyNotice": string;
-                "legacyBackToList": string;
+                /**
+                 * 保存された設定プロファイルはありません
+                 */
                 "emptyProfilesTitle": string;
+                /**
+                 * 設定の自動バックアップを有効にすると、この端末の設定がプロファイルとして保存され、ここに並びます。
+                 */
                 "emptyProfilesText": string;
+                /**
+                 * 自動バックアップの設定へ
+                 */
                 "emptyProfilesLink": string;
+                /**
+                 * 連携中のアプリはありません
+                 */
                 "emptyAppsTitle": string;
+                /**
+                 * 外部のアプリからこのアカウントへの接続を許可すると、そのアプリがここに並びます。許可はアプリ側の画面から行います。
+                 */
                 "emptyAppsText": string;
+                /**
+                 * 設定の一覧へ
+                 */
+                "legacyBackToList": string;
             };
             "ui2": {
+                /**
+                 * 推奨・使用中
+                 */
                 "recommendedInUse": string;
+                /**
+                 * 通常表示とデッキ表示を1つで兼ねる、Hataskeyの標準UIです。ここでの変更は
+                 */
                 "permanentDescriptionBefore": string;
+                /**
+                 * 保存を押すまで反映されません
+                 */
                 "permanentDescriptionSave": string;
+                /**
+                 * 。
+                 */
                 "permanentDescriptionAfter": string;
+                /**
+                 * プレビューを開く
+                 */
                 "openPreview": string;
+                /**
+                 * ライブプレビュー
+                 */
                 "livePreview": string;
+                /**
+                 * Hataskey UI の設定カテゴリ
+                 */
                 "categoryLabel": string;
+                /**
+                 * ナビ
+                 */
                 "chipNavigation": string;
+                /**
+                 * ガラス
+                 */
                 "chipGlass": string;
+                /**
+                 * ガラスとぼかし
+                 */
                 "chipGlassAndBlur": string;
+                /**
+                 * ノート
+                 */
                 "chipNote": string;
+                /**
+                 * デッキ
+                 */
                 "chipDeck": string;
+                /**
+                 * サイドメニュー
+                 */
                 "chipSideMenu": string;
+                /**
+                 * 折りたたみ端末
+                 */
                 "chipFoldable": string;
+                /**
+                 * 端末
+                 */
                 "chipDevice": string;
+                /**
+                 * 破棄
+                 */
                 "discard": string;
+                /**
+                 * 保存して再読み込み
+                 */
                 "saveAndReload": string;
+                /**
+                 * 変更はありません
+                 */
                 "noChanges": string;
+                /**
+                 * 未保存の変更が{count}件あります
+                 */
                 "unsavedChanges": ParameterizedString<"count">;
+                /**
+                 * {label}を表示
+                 */
                 "showNavItem": ParameterizedString<"label">;
+                /**
+                 * 上・下矢印キーで並べ替えできます
+                 */
                 "reorderKeyboardHint": string;
+                /**
+                 * {label}を上または下へ移動
+                 */
                 "reorderNavItem": ParameterizedString<"label">;
+                /**
+                 * {count}項目
+                 */
                 "basicItemCount": ParameterizedString<"count">;
                 "preview": {
+                    /**
+                     * Hataskey UI プレビュー
+                     */
                     "title": string;
+                    /**
+                     * Hataskey UI の編集中プレビュー
+                     */
                     "dialogLabel": string;
+                    /**
+                     * 編集中の設定を表示しています。ここでの操作は保存されません
+                     */
                     "liveNotice": string;
+                    /**
+                     * Hataskey UI の画面見本
+                     */
                     "appPreviewLabel": string;
-                    "bottomNavLabel": string;
+                    /**
+                     * タイムラインタブのプレビュー
+                     */
                     "timelineTabsLabel": string;
+                    /**
+                     * トレンド
+                     */
                     "trend": string;
+                    /**
+                     * サイドメニューのプレビュー
+                     */
                     "sideMenuLabel": string;
+                    /**
+                     * ホーム
+                     */
                     "home": string;
+                    /**
+                     * 通知
+                     */
                     "notifications": string;
+                    /**
+                     * HataSideStudio
+                     */
                     "sideStudio": string;
+                    /**
+                     * ノート表示のプレビュー
+                     */
                     "notePreviewLabel": string;
+                    /**
+                     * デッキ表示
+                     */
                     "deckMode": string;
+                    /**
+                     * 通常表示
+                     */
                     "standardMode": string;
+                    /**
+                     * Hataskey
+                     */
                     "sampleUserName": string;
+                    /**
+                     * ガラス面とノート表示を、いま編集中の状態で確かめられます
+                     */
                     "sampleNoteOne": string;
+                    /**
+                     * タイムライン
+                     */
                     "timeline": string;
+                    /**
+                     * 吹き出しデザイン、ぼかし、デッキの見え方をここで比較できます
+                     */
                     "sampleNoteTwo": string;
+                    /**
+                     * 設定値は保存するまで変更されません
+                     */
                     "footerNotice": string;
+                    /**
+                     * 閉じる
+                     */
                     "close": string;
+                    /**
+                     * ローカル
+                     */
                     "local": string;
+                    /**
+                     * 下部ナビゲーションのプレビュー
+                     */
+                    "bottomNavLabel": string;
                 };
             };
             "immediate": {
+                /**
+                 * 関連する既存設定
+                 */
                 "eyebrow": string;
+                /**
+                 * すぐ反映される設定
+                 */
                 "title": string;
+                /**
+                 * 下の項目は上の保存バーと連動しません。選ぶとすぐに保存・反映されます
+                 */
                 "description": string;
+                /**
+                 * この端末のみ・すぐ反映
+                 */
                 "deviceImmediate": string;
+                /**
+                 * プロフィール同期・すぐ反映
+                 */
                 "profileImmediate": string;
             };
             "catalog": {
                 "categories": {
+                    /**
+                     * Hataskey UI
+                     */
                     "hataskeyUi": string;
+                    /**
+                     * 表示密度とノート
+                     */
                     "displayNotes": string;
+                    /**
+                     * テーマ・フォント
+                     */
                     "themeFont": string;
+                    /**
+                     * タイムライン・投稿
+                     */
                     "timelinePosting": string;
+                    /**
+                     * リアクション
+                     */
                     "reactions": string;
+                    /**
+                     * 通知・サウンド
+                     */
                     "notificationSound": string;
+                    /**
+                     * アカウント
+                     */
                     "account": string;
+                    /**
+                     * Hataskeyツール
+                     */
                     "hataTools": string;
+                    /**
+                     * CherryPick
+                     */
                     "cherrypick": string;
+                    /**
+                     * データ・連携
+                     */
                     "dataConnect": string;
+                    /**
+                     * Misskey UI
+                     */
                     "misskeyUi": string;
+                    /**
+                     * 操作
+                     */
                     "behavior": string;
                 };
                 "fallback": {
-                    "driveCleaner": { "label": string; "description": string; };
-                    "themeInstall": { "label": string; "description": string; };
-                    "themeManage": { "label": string; "description": string; };
-                    "statusbar": { "label": string; "description": string; };
-                    "pluginInstall": { "label": string; "description": string; };
-                    "apps": { "label": string; "description": string; };
-                    "webhookEdit": { "label": string; "description": string; };
-                    "webhookNew": { "label": string; "description": string; };
-                    "customCss": { "label": string; "description": string; };
-                    "accountStats": { "label": string; "description": string; };
-                    "externalAccount": { "label": string; "description": string; };
-                    "hataCustom": { "label": string; "description": string; };
-                    "hiddenReactions": { "label": string; "description": string; };
+                    "driveCleaner": {
+                        /**
+                         * ドライブの整理
+                         */
+                        "label": string;
+                        /**
+                         * ドライブ内のファイルを整理する設定
+                         */
+                        "description": string;
+                    };
+                    "themeInstall": {
+                        /**
+                         * テーマをインストール
+                         */
+                        "label": string;
+                        /**
+                         * テーマを追加する画面
+                         */
+                        "description": string;
+                    };
+                    "themeManage": {
+                        /**
+                         * テーマを管理
+                         */
+                        "label": string;
+                        /**
+                         * インストール済みテーマの管理
+                         */
+                        "description": string;
+                    };
+                    "statusbar": {
+                        /**
+                         * ステータスバー
+                         */
+                        "label": string;
+                        /**
+                         * ステータスバーの表示設定
+                         */
+                        "description": string;
+                    };
+                    "pluginInstall": {
+                        /**
+                         * プラグインをインストール
+                         */
+                        "label": string;
+                        /**
+                         * プラグインを追加する画面
+                         */
+                        "description": string;
+                    };
+                    "apps": {
+                        /**
+                         * 連携アプリ
+                         */
+                        "label": string;
+                        /**
+                         * 連携しているアプリの管理
+                         */
+                        "description": string;
+                    };
+                    "webhookEdit": {
+                        /**
+                         * Webhookを編集
+                         */
+                        "label": string;
+                        /**
+                         * 連携画面で編集するWebhookを選ぶ
+                         */
+                        "description": string;
+                    };
+                    "webhookNew": {
+                        /**
+                         * Webhookを追加
+                         */
+                        "label": string;
+                        /**
+                         * Webhookを追加する画面
+                         */
+                        "description": string;
+                    };
+                    "customCss": {
+                        /**
+                         * カスタムCSS
+                         */
+                        "label": string;
+                        /**
+                         * カスタムCSSの設定
+                         */
+                        "description": string;
+                    };
+                    "accountStats": {
+                        /**
+                         * アカウント統計
+                         */
+                        "label": string;
+                        /**
+                         * アカウントの統計情報
+                         */
+                        "description": string;
+                    };
+                    "externalAccount": {
+                        /**
+                         * 外部アカウント
+                         */
+                        "label": string;
+                        /**
+                         * 外部アカウントの連携設定
+                         */
+                        "description": string;
+                    };
+                    "hataCustom": {
+                        /**
+                         * 旗鯖独自機能
+                         */
+                        "label": string;
+                        /**
+                         * 旗鯖独自機能の設定
+                         */
+                        "description": string;
+                    };
+                    "hiddenReactions": {
+                        /**
+                         * 非表示リアクション
+                         */
+                        "label": string;
+                        /**
+                         * 非表示にするリアクションの管理
+                         */
+                        "description": string;
+                    };
                 };
                 "relation": {
+                    /**
+                     * 同じ設定セクションの項目
+                     */
                     "sameSection": string;
+                    /**
+                     * 同じ設定グループ
+                     */
                     "sameGroup": string;
+                    /**
+                     * 同じ項目グループの設定
+                     */
                     "sameNestedGroup": string;
+                    /**
+                     * 共通する設定内容
+                     */
                     "samePreference": string;
+                    /**
+                     * 同じ機能の設定
+                     */
                     "sameFeature": string;
+                    /**
+                     * 表示内容が近い設定
+                     */
                     "sharedVisibleTerm": string;
                 };
                 "noRelated": {
+                    /**
+                     * この画面は個別の設定項目を生成できず、意味が重なる到達先を確認できないため
+                     */
                     "fallback": string;
+                    /**
+                     * 同じ設定グループ内に、意味が重なる別の設定を確認できないため
+                     */
                     "marker": string;
+                    /**
+                     * 同じ意味を示す別の設定を実カタログ内に確認できないため
+                     */
                     "default": string;
                 };
                 "system": {
+                    /**
+                     * 旧設定生成器がこの到達先を生成できなかったため登録
+                     */
                     "fallbackReason": string;
+                    /**
+                     * この設定を有効化する到達先を確認できないため
+                     */
                     "activationUnavailable": string;
                 };
             };
             "searchPrerequisite": {
+                /**
+                 * 「{label}」は、このサーバーで機能が利用できる場合に表示されます。関連する親設定を開きました
+                 */
                 "policy": ParameterizedString<"label">;
+                /**
+                 * 「{label}」は、必要な利用条件へ同意したあとに表示されます。検索から同意は変更していません
+                 */
                 "consent": ParameterizedString<"label">;
+                /**
+                 * 「{label}」は、関連する設定を有効化または選択すると表示されます。検索から設定値は変更していません
+                 */
                 "preference": ParameterizedString<"label">;
+                /**
+                 * 「{label}」は、編集する対象を選ぶと表示されます。対象を勝手に選ばず、親設定を開きました
+                 */
                 "runtimeData": ParameterizedString<"label">;
+                /**
+                 * 「{label}」は、現在の端末・UI・アカウント条件を満たす場合に表示されます。検索から条件は変更していません
+                 */
                 "conditional": ParameterizedString<"label">;
+                /**
+                 * 閉じる
+                 */
                 "dismiss": string;
             };
         };
         "_emotionAnalysis": {
-            "historyLimitNote": ParameterizedString<"count">;
-            "emotionBreakdown": string;
-            "emotionBreakdownNote": string;
-            "axisJoy": string;
-            "axisFun": string;
-            "axisAffection": string;
-            "axisGratitude": string;
-            "axisAnger": string;
-            "axisSadness": string;
-            "axisAnxiety": string;
-            "axisFatigue": string;
-            "topicBreakdown": string;
-            "topTopicByReactions": string;
-            "weekdayBreakdown": string;
-            "hourBreakdown": string;
-            "activityTitle": string;
-            "activeDays": string;
-            "longestStreak": string;
-            "postsPerDay": string;
-            "medianInterval": string;
-            "busiestHour": string;
-            "busiestWeekday": string;
-            "nightPostRate": string;
-            "morningPostRate": string;
-            "vocabularyTitle": string;
-            "averageSentenceLength": string;
-            "uniqueTokenRatio": string;
-            "hashtagPostRate": string;
-            "mentionPostRate": string;
-            "urlPostRate": string;
-            "emojiPostRate": string;
-            "questionPostRate": string;
-            "exclamationPostRate": string;
-            "frequentWordsTitle": string;
-            "frequentWordsNote": string;
             /**
              * HATAlyze
              */
             "title": string;
+            /**
+             * 言葉の流れを、落ち着いて振り返る
+             */
             "heroTitle": string;
+            /**
+             * 自分のノートから感情の傾向と、その判断につながった言葉を確認できます
+             */
             "heroDescription": string;
+            /**
+             * 本人だけに表示
+             */
             "personalOnly": string;
+            /**
+             * 分析履歴はいつでも削除できます
+             */
             "personalOnlyBody": string;
+            /**
+             * これは医療目的の機能ではありません
+             */
             "nonMedicalTitle": string;
+            /**
+             * 履歴は最新{count}件まで保存されます。{count}件を超えて保存すると、一番古い履歴が自動で削除されます。
+             */
+            "historyLimitNote": ParameterizedString<"count" | "count">;
+            /**
+             * 感情の内訳
+             */
+            "emotionBreakdown": string;
+            /**
+             * 投稿に出てきた言葉を8つの軸へ振り分けた結果です。棒の長さはこの分析の中での相対的な量で、良し悪しではありません。
+             */
+            "emotionBreakdownNote": string;
+            /**
+             * 喜び
+             */
+            "axisJoy": string;
+            /**
+             * 楽しさ
+             */
+            "axisFun": string;
+            /**
+             * 親愛
+             */
+            "axisAffection": string;
+            /**
+             * 感謝
+             */
+            "axisGratitude": string;
+            /**
+             * 怒り
+             */
+            "axisAnger": string;
+            /**
+             * 悲しみ
+             */
+            "axisSadness": string;
+            /**
+             * 不安
+             */
+            "axisAnxiety": string;
+            /**
+             * 疲れ
+             */
+            "axisFatigue": string;
+            /**
+             * 話題の内訳
+             */
+            "topicBreakdown": string;
+            /**
+             * 反応が多かった話題
+             */
+            "topTopicByReactions": string;
+            /**
+             * 曜日ごとの投稿数
+             */
+            "weekdayBreakdown": string;
+            /**
+             * 時間帯ごとの投稿数
+             */
+            "hourBreakdown": string;
+            /**
+             * 投稿の習慣
+             */
+            "activityTitle": string;
+            /**
+             * 投稿した日数
+             */
+            "activeDays": string;
+            /**
+             * 最長の連続日数
+             */
+            "longestStreak": string;
+            /**
+             * 1日あたりの投稿数
+             */
+            "postsPerDay": string;
+            /**
+             * 投稿間隔の中央値（分）
+             */
+            "medianInterval": string;
+            /**
+             * 最も多い時間帯
+             */
+            "busiestHour": string;
+            /**
+             * 最も多い曜日
+             */
+            "busiestWeekday": string;
+            /**
+             * 深夜（0〜5時）の割合
+             */
+            "nightPostRate": string;
+            /**
+             * 朝（6〜11時）の割合
+             */
+            "morningPostRate": string;
+            /**
+             * 言葉づかいの傾向
+             */
+            "vocabularyTitle": string;
+            /**
+             * 1文の平均文字数
+             */
+            "averageSentenceLength": string;
+            /**
+             * 語彙の散らばり
+             */
+            "uniqueTokenRatio": string;
+            /**
+             * ハッシュタグを使った割合
+             */
+            "hashtagPostRate": string;
+            /**
+             * メンションを使った割合
+             */
+            "mentionPostRate": string;
+            /**
+             * リンクを含む割合
+             */
+            "urlPostRate": string;
+            /**
+             * 絵文字を含む割合
+             */
+            "emojiPostRate": string;
+            /**
+             * 疑問文の割合
+             */
+            "questionPostRate": string;
+            /**
+             * 感嘆符の割合
+             */
+            "exclamationPostRate": string;
+            /**
+             * よく使った言葉
+             */
+            "frequentWordsTitle": string;
+            /**
+             * この一覧は端末内でだけ表示され、履歴には保存されません。あとから履歴を開いても表示されません。
+             */
+            "frequentWordsNote": string;
             /**
              * 投稿に含まれる言葉や利用傾向を、あとから振り返るためのHataskeyツール「HATAlyze」です。
              */
@@ -33769,15 +34861,45 @@ export interface Locale extends ILocale {
              * 分析する範囲
              */
             "conditionTitle": string;
+            /**
+             * どの投稿を振り返りますか
+             */
             "stepPeriodTitle": string;
+            /**
+             * はじめに、分析する期間と公開範囲を選びます
+             */
             "stepPeriodBody": string;
+            /**
+             * 分析に含める内容を選びます
+             */
             "stepOptionsTitle": string;
+            /**
+             * 返信や内容警告、履歴への保存方法を決めます
+             */
             "stepOptionsBody": string;
+            /**
+             * この条件で分析します
+             */
             "stepReviewTitle": string;
+            /**
+             * 内容を確認してからHATAlyzeを開始します
+             */
             "stepReviewBody": string;
+            /**
+             * 範囲
+             */
             "stepPeriodShort": string;
+            /**
+             * 内容
+             */
             "stepOptionsShort": string;
+            /**
+             * 確認
+             */
             "stepReviewShort": string;
+            /**
+             * ステップ {current} / 3
+             */
             "stepCounter": ParameterizedString<"current">;
             /**
              * 期間
@@ -33839,9 +34961,21 @@ export interface Locale extends ILocale {
              * 直近90日
              */
             "period90": string;
+            /**
+             * 件数を優先して最近の投稿を振り返ります
+             */
             "latestHint": string;
+            /**
+             * 直近の変化を細かく振り返ります
+             */
             "period7Hint": string;
+            /**
+             * 日々の流れをほどよく捉えます
+             */
             "period30Hint": string;
+            /**
+             * より長い期間の傾向を振り返ります
+             */
             "period90Hint": string;
             /**
              * 投稿数の上限
@@ -33859,14 +34993,41 @@ export interface Locale extends ILocale {
              * 結果を履歴に保存する
              */
             "saveHistory": string;
+            /**
+             * 会話の中で書いた自分の返信も対象にします
+             */
             "stepRepliesHint": string;
+            /**
+             * 内容警告がある投稿は警告文と本文を確認します
+             */
             "stepCwHint": string;
+            /**
+             * あとから結果を開き、過去の結果と比較できます
+             */
             "stepSaveHint": string;
+            /**
+             * 保存する
+             */
             "saveHistoryChoice": string;
+            /**
+             * 今回の結果を履歴・比較へ追加します
+             */
             "saveHistoryChoiceHint": string;
+            /**
+             * 今回は保存しない
+             */
             "noSaveHistoryChoice": string;
+            /**
+             * 今回の結果を表示するだけにします
+             */
             "noSaveHistoryChoiceHint": string;
+            /**
+             * 履歴に保存する
+             */
             "historySaved": string;
+            /**
+             * 今回だけ表示する
+             */
             "historyNotSaved": string;
             /**
              * なぜこの結果になったか
@@ -33997,14 +35158,20 @@ export interface Locale extends ILocale {
              */
             "comparePrevious": string;
             /**
-             * この結果を削除
+             * 調査結果を削除
              */
             "delete": string;
             /**
              * この分析結果を履歴から削除します。元に戻せません。
              */
             "deleteConfirm": string;
+            /**
+             * 調査結果を履歴から削除しました
+             */
             "deleteSuccess": string;
+            /**
+             * 履歴から削除済み
+             */
             "deletedFromHistory": string;
             /**
              * 分析結果を削除できませんでした。通信状態を確認して、もう一度お試しください。

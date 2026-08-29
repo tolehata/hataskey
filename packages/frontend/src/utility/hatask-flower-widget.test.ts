@@ -8,11 +8,11 @@ import { countFlowerGallery, normalizeFlowerGallery, normalizeGrowingFlower } fr
 
 describe('Hataskお花ウィジェットの保存データ正規化', () => {
 	test('成長度を0〜100の範囲に収める', () => {
-		expect(normalizeGrowingFlower({ emoji: '🌷', name: 'チューリップ', progress: 140, totalMinutes: -3 })).toMatchObject({
+		expect(normalizeGrowingFlower({ emoji: '🌷', name: 'チューリップ', progress: 140, totalMinutes: 1200, targetMinutes: 1200 })).toMatchObject({
 			emoji: '🌷',
 			name: 'チューリップ',
 			progress: 100,
-			totalMinutes: 0,
+		totalMinutes: 1200,
 		});
 	});
 

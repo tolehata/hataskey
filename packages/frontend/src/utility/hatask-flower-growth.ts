@@ -8,6 +8,9 @@
 import { misskeyApi } from '@/utility/misskey-api.js';
 
 export const HATASK_FLOWER_GROWTH_EVENT = 'hatask-flower:growth';
+export const HATASK_FLOWER_MINUTES_MIN = 480;
+export const HATASK_FLOWER_MINUTES_MAX = 1920;
+/** 既存の花に targetMinutes がない場合に使う互換値。 */
 export const HATASK_FLOWER_TOTAL_MINUTES = 1200;
 
 const SCOPE = ['client', 'hatask'];
@@ -20,6 +23,7 @@ export type HataskGrowingFlower = {
 	progress: number;
 	startedAt: number;
 	totalMinutes: number;
+	targetMinutes: number;
 	lastGrowthAt: number;
 };
 
@@ -35,6 +39,41 @@ function safeNumber(value: unknown, fallback = 0): number {
 	return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
 }
 
+function clampTargetMinutes(value: unknown, fallback = HATASK_FLOWER_TOTAL_MINUTES): number {
+	const candidate = Math.floor(safeNumber(value, fallback));
+	return Math.max(HATASK_FLOWER_MINUTES_MIN, Math.min(HATASK_FLOWER_MINUTES_MAX, candidate));
+}
+
+/** 新しい花に一度だけ割り当てる成長時間を選ぶ。乱数はテストから注入できる。 */
+export function randomHataskFlowerTargetMinutes(rng: () => number = Math.random): number {
+	let sample = 0;
+	try {
+		sample = Number(rng());
+	} catch {
+		sample = 0;
+	}
+	if (!Number.isFinite(sample)) sample = 0;
+	// 壊れた rng が 0〜1 の外を返しても、抽選結果は安全な範囲に留める。
+	sample = Math.max(0, Math.min(1, sample));
+	return Math.min(HATASK_FLOWER_MINUTES_MAX, HATASK_FLOWER_MINUTES_MIN + Math.floor(sample * (HATASK_FLOWER_MINUTES_MAX - HATASK_FLOWER_MINUTES_MIN + 1)));
+}
+
+export function createHataskGrowingFlower(
+	input: { emoji: string; name: string; now?: number; rng?: () => number; targetMinutes?: number },
+): HataskGrowingFlower {
+	const now = Math.max(1, Math.floor(safeNumber(input.now, Date.now())));
+	const targetMinutes = input.targetMinutes == null ? randomHataskFlowerTargetMinutes(input.rng) : clampTargetMinutes(input.targetMinutes);
+	return {
+		emoji: safeText(input.emoji, '🌱'),
+		name: safeText(input.name, 'わかば'),
+		progress: 0,
+		startedAt: now,
+		totalMinutes: 0,
+		targetMinutes,
+		lastGrowthAt: now,
+	};
+}
+
 function isNoSuchRegistryKey(error: unknown): boolean {
 	return error != null && typeof error === 'object' && 'code' in error && error.code === 'NO_SUCH_KEY';
 }
@@ -43,7 +82,8 @@ export function normalizeHataskGrowingFlower(value: unknown, now = Date.now()): 
 	if (value == null || typeof value !== 'object' || Array.isArray(value)) return null;
 	const raw = value as Record<string, unknown>;
 	const startedAt = Math.max(1, Math.min(now, Math.floor(safeNumber(raw.startedAt, now))));
-	const totalMinutes = Math.max(0, Math.min(HATASK_FLOWER_TOTAL_MINUTES, Math.floor(safeNumber(raw.totalMinutes))));
+	const targetMinutes = clampTargetMinutes(raw.targetMinutes);
+	const totalMinutes = Math.max(0, Math.min(targetMinutes, Math.floor(safeNumber(raw.totalMinutes))));
 	// 旧データには最終計算時刻が無い。開始時刻＋既に加算済みの分数を基準にすれば、
 	// 既存の成長分を二重加算せず、これまで停止していた背景時間だけを追いつかせられる。
 	const legacyLastGrowthAt = startedAt + totalMinutes * MINUTE_MS;
@@ -52,9 +92,10 @@ export function normalizeHataskGrowingFlower(value: unknown, now = Date.now()): 
 	return {
 		emoji: safeText(raw.emoji, '🌱'),
 		name: safeText(raw.name, 'わかば'),
-		progress: Math.min(100, Math.floor((totalMinutes / HATASK_FLOWER_TOTAL_MINUTES) * 100)),
+		progress: Math.min(100, Math.floor((totalMinutes / targetMinutes) * 100)),
 		startedAt,
 		totalMinutes,
+		targetMinutes,
 		lastGrowthAt,
 	};
 }
@@ -63,28 +104,29 @@ export function addHataskFlowerGrowth(value: unknown, minutes: number, now = Dat
 	const flower = normalizeHataskGrowingFlower(value, now);
 	if (flower == null) return null;
 	const safeMinutes = Math.max(0, Math.floor(Number.isFinite(minutes) ? minutes : 0));
-	const minutesUntilBloom = HATASK_FLOWER_TOTAL_MINUTES - flower.totalMinutes;
+	const minutesUntilBloom = flower.targetMinutes - flower.totalMinutes;
 	const addedMinutes = Math.min(minutesUntilBloom, safeMinutes);
 	flower.totalMinutes += addedMinutes;
 	flower.lastGrowthAt = Math.min(now, flower.lastGrowthAt + addedMinutes * MINUTE_MS);
-	flower.progress = Math.min(100, Math.floor((flower.totalMinutes / HATASK_FLOWER_TOTAL_MINUTES) * 100));
+	flower.progress = Math.min(100, Math.floor((flower.totalMinutes / flower.targetMinutes) * 100));
 	return flower;
 }
 
 /** 最後に計算した時刻から、前面・背景・終了中を区別せず経過分を反映する。 */
 export function advanceHataskFlowerGrowth(value: unknown, now = Date.now()): HataskGrowingFlower | null {
 	const flower = normalizeHataskGrowingFlower(value, now);
-	if (flower == null || flower.totalMinutes >= HATASK_FLOWER_TOTAL_MINUTES) return flower;
+	if (flower == null || flower.totalMinutes >= flower.targetMinutes) return flower;
 	const elapsedMinutes = Math.floor(Math.max(0, now - flower.lastGrowthAt) / MINUTE_MS);
 	return elapsedMinutes > 0 ? addHataskFlowerGrowth(flower, elapsedMinutes, now) : flower;
 }
 
-function sameFlower(a: HataskGrowingFlower, b: HataskGrowingFlower): boolean {
+export function sameFlower(a: HataskGrowingFlower, b: HataskGrowingFlower): boolean {
 	return a.emoji === b.emoji &&
 		a.name === b.name &&
 		a.progress === b.progress &&
 		a.startedAt === b.startedAt &&
 		a.totalMinutes === b.totalMinutes &&
+		a.targetMinutes === b.targetMinutes &&
 		a.lastGrowthAt === b.lastGrowthAt;
 }
 

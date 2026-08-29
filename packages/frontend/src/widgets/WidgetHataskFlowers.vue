@@ -98,7 +98,7 @@ let refreshTimer: number | null = null;
 
 const remainingText = computed(() => {
 	if (flower.value.progress >= 100) return copy.flowerBloomed;
-	const minutes = Math.max(0, 1200 - flower.value.totalMinutes);
+	const minutes = Math.max(0, flower.value.targetMinutes - flower.value.totalMinutes);
 	if (minutes < 60) return copy.bloomingSoon;
 	return i18n.tsx._hata._hatask._flowerWidget.hoursRemaining({ hours: Math.ceil(minutes / 60) });
 });
