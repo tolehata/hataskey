@@ -29,6 +29,12 @@ describe('HataSideStudio UI integration', () => {
 		expect(simple).toContain('if (closeMobileDrawerAfter) simpleDrawerShowing.value = false;');
 	});
 
+	test('Hataskプレビューはローカル日付を使い、アーカイブ済みTodoを保留数から除外する', () => {
+		const simple = read('ui/simple.vue');
+		expect(simple).toContain("return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;");
+		expect(simple).toContain('todos.filter(todo => todo.done !== true && todo.archivedAt == null)');
+	});
+
 	test('縮小サイドバーは専用ボタン配列だけを描画し、縦一列を固定する', () => {
 		const simple = read('ui/simple.vue');
 		const studio = read('pages/hata-side-studio.vue');

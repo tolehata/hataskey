@@ -255,10 +255,19 @@ function opensMaximizedInWindow(path: string): boolean {
 	return /^\/settings(\/|\?|#|$)/u.test(path);
 }
 
-export function pageWindow(path: string, options?: { fullscreen?: boolean }) {
+function pageWindowInitialSize(path: string): { width: number; height: number } {
+	return /^\/hatask(\/|\?|#|$)/u.test(path)
+		? { width: 760, height: 720 }
+		: { width: 500, height: 500 };
+}
+
+export function pageWindow(path: string, options?: { fullscreen?: boolean; initialWidth?: number; initialHeight?: number }) {
+	const initialSize = pageWindowInitialSize(path);
 	const { dispose } = popup(MkPageWindow, {
 		initialPath: path,
 		fullscreen: options?.fullscreen ?? opensMaximizedInWindow(path),
+		initialWidth: options?.initialWidth ?? initialSize.width,
+		initialHeight: options?.initialHeight ?? initialSize.height,
 	}, {
 		closed: () => dispose(),
 	});

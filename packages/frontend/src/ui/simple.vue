@@ -1301,7 +1301,7 @@ async function loadStudioLargePreview(menuId: string, force = false): Promise<vo
 					.map(event => ({ event, at: new Date(`${event.date}T${event.timeStart || '23:59'}`).getTime() }))
 					.filter(entry => Number.isFinite(entry.at) && entry.at >= now)
 					.toSorted((a, b) => a.at - b.at)[0]?.event;
-				const pending = todos.filter(todo => todo.done !== true);
+				const pending = todos.filter(todo => todo.done !== true && todo.archivedAt == null);
 				const mealToday = meals.filter(meal => meal.date === today).length;
 				const moodToday = moods.filter(mood => mood.date === today).length;
 				setStudioLargePreview(menuId, {
@@ -3582,6 +3582,12 @@ onUnmounted(() => {
     display: block;
     // PCの350pxは折りたたみ端末には広すぎるので詰める。⚠️実測後に見直すこと。
     width: 300px;
+}
+
+// モバイル用の上部ナビは画面全幅へ固定されるため、右ウィジェット列も
+// 左のノート列と同じ高さから始めて、先頭の操作をナビの下へ退避する。
+.root[data-hata-foldable='true'] .desktopWidgetsInner {
+    padding-top: calc(56px + env(safe-area-inset-top, 0px));
 }
 
 .bottomBarDark {}

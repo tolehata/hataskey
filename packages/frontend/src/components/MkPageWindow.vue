@@ -6,8 +6,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 <template>
 <MkWindow
 	ref="windowEl"
-	:initialWidth="500"
-	:initialHeight="500"
+	:initialWidth="initialWidth ?? 500"
+	:initialHeight="initialHeight ?? 500"
 	:canResize="true"
 	:closeButton="true"
 	:initialMaximized="fullscreen"
@@ -51,6 +51,8 @@ import * as os from '@/os.js';
 const props = defineProps<{
 	initialPath: string;
 	fullscreen?: boolean;
+	initialWidth?: number;
+	initialHeight?: number;
 }>();
 
 const emit = defineEmits<{
