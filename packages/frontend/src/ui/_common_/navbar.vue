@@ -194,9 +194,10 @@ onUnmounted(() => {
 
 function toggleIconOnly() {
 	if (window.document.startViewTransition && prefer.s.animation) {
-		window.document.startViewTransition(() => {
+		const transition = window.document.startViewTransition(() => {
 			store.set('menuDisplay', iconOnly.value ? 'sideFull' : 'sideIcon');
 		});
+		void transition.ready.catch(() => undefined);
 	} else {
 		store.set('menuDisplay', iconOnly.value ? 'sideFull' : 'sideIcon');
 	}

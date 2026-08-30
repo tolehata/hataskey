@@ -4,6 +4,7 @@
  */
 
 import { afterEach, assert, beforeEach, describe, test, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
 import type { Theme } from '@/theme.js';
 import lightTheme from '@@/themes/_light.json5';
 import darkTheme from '@@/themes/_dark.json5';
@@ -149,5 +150,40 @@ describe('ThemeManager', () => {
 		assert.strictEqual(window.localStorage.getItem('themeId'), null);
 		assert.strictEqual(window.localStorage.getItem('themeCachedVersion'), null);
 		assert.strictEqual(window.localStorage.getItem('colorScheme'), 'light');
+	});
+
+	test('ViewTransitionのready拒否を未処理にせずテーマ変更を完了する', async () => {
+		let rejectReady: (reason: DOMException) => void = () => undefined;
+		const ready = new Promise<void>((_resolve, reject) => {
+			rejectReady = reject;
+		});
+		const transition = {
+			ready,
+			finished: Promise.resolve(),
+		};
+		Object.defineProperty(document, 'startViewTransition', {
+			configurable: true,
+			value: vi.fn((update: () => Promise<void>) => {
+				void update();
+				return transition;
+			}),
+		});
+
+		const { applyTheme, compile } = await loadThemeModule();
+		applyTheme(primaryTheme);
+		rejectReady(new DOMException('transition aborted', 'AbortError'));
+		await new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+		assert.strictEqual(document.documentElement.style.getPropertyValue('--MI_THEME-accent'), compile(primaryTheme).accent);
+		assert.strictEqual(window.localStorage.getItem('themeId'), primaryTheme.id);
+		assert.isFalse(document.documentElement.classList.contains('_themeChanging_'));
+	});
+
+	test('RouterViewとnavbarもready拒否を消費する', () => {
+		for (const relativePath of ['src/components/global/RouterView.vue', 'src/ui/_common_/navbar.vue']) {
+			const source = readFileSync(`${process.cwd()}/${relativePath}`, 'utf8');
+			assert.match(source, /const transition = window\.document\.startViewTransition/);
+			assert.match(source, /void transition\.ready\.catch\(\(\) => undefined\);/);
+		}
 	});
 });

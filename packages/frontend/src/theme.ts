@@ -162,10 +162,12 @@ export function applyTheme(theme: Theme, persist = true) {
 
 	if (window.document.startViewTransition != null) {
 		window.document.documentElement.classList.add('_themeChanging_');
-		window.document.startViewTransition(async () => {
+		const transition = window.document.startViewTransition(async () => {
 			applyThemeInternal(theme, persist);
 			await nextTick();
-		}).finished.then(() => {
+		});
+		void transition.ready.catch(() => undefined);
+		transition.finished.then(() => {
 			window.document.documentElement.classList.remove('_themeChanging_');
 			// 色計算など再度行えるようにクライアント全体に通知
 			globalEvents.emit('themeChanged');

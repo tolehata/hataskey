@@ -97,13 +97,14 @@ router.useListener('change', ({ resolved }) => {
 
 	// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
 	if (prefer.s.animation && prefer.s.smoothTransitionAnimations && window.document.startViewTransition) {
-		window.document.startViewTransition(() => new Promise<void>((res) => {
+		const transition = window.document.startViewTransition(() => new Promise<void>((res) => {
 			_();
 			nextTick(() => {
 				res();
 				//setTimeout(res, 100);
 			});
 		}));
+		void transition.ready.catch(() => undefined);
 	} else {
 		_();
 	}
