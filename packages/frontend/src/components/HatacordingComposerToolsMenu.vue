@@ -10,7 +10,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 	:preferType="'popup'"
 	:zPriority="'high'"
 	:transparentBg="true"
-	:returnFocusTo="anchorElement"
+	:returnFocusTo="returnFocusTo"
 	motionPreset="postform"
 	@click="closeMenu"
 	@opened="focusFirstTool"
@@ -72,6 +72,7 @@ type HatacordingComposerPluginDefinition = {
 
 const props = defineProps<{
 	anchorElement: HTMLElement;
+	returnFocusTo: HTMLElement;
 	tools: readonly HatacordingComposerToolDefinition[];
 	plugin: HatacordingComposerPluginDefinition | null;
 	activeToolIds: HatacordingUiComposerShortcut[];
@@ -111,7 +112,7 @@ function focusFirstTool(): void {
 	--tool-row-height: 48px;
 	--tool-gap: 6px;
 
-	width: min(220px, calc(100dvw - 24px));
+	width: min(240px, calc(100dvw - 24px));
 	max-height: min(var(--available-height), calc(100dvh - 24px));
 	padding: 8px;
 	box-sizing: border-box;
@@ -185,7 +186,9 @@ function focusFirstTool(): void {
 	background: color-mix(in srgb, var(--MI_THEME-fg) 3%, transparent);
 	color: inherit;
 	font: inherit;
+	font-size: .75rem;
 	font-weight: 650;
+	line-height: 1.25;
 	text-align: left;
 	white-space: nowrap;
 	cursor: pointer;
@@ -201,9 +204,9 @@ function focusFirstTool(): void {
 .tool > .label {
 	min-width: 0;
 	flex: 1;
-	overflow: hidden;
+	overflow: visible;
 	opacity: 1;
-	text-overflow: ellipsis;
+	text-overflow: clip;
 	transform: none;
 	transition: none;
 }

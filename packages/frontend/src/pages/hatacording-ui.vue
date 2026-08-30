@@ -184,6 +184,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		</div>
 
 		<div :class="$style.composerDock">
+			<span ref="composerToolsMenuAnchor" :class="$style.composerToolsMenuAnchor" aria-hidden="true"></span>
 			<div v-if="timelineErrorKind === 'rateLimit'" :class="$style.composerRateLimit" role="status" aria-live="polite">
 				<CircleAlert :size="18"/>
 				<span :class="$style.composerRateLimitCopy">
@@ -449,6 +450,7 @@ paneRouter.init();
 const rootEl = useTemplateRef('rootEl');
 const scrollEl = useTemplateRef('scrollEl');
 const composerInput = useTemplateRef('composerInput');
+const composerToolsMenuAnchor = useTemplateRef('composerToolsMenuAnchor');
 const subpaneContent = useTemplateRef('subpaneContent');
 const subpaneTimelineEl = useTemplateRef('subpaneTimelineEl');
 const prefs = ref(readHatacordingUiPreferences($i.id));
@@ -2297,11 +2299,24 @@ function openComposerToolsMenu(event: MouseEvent): void {
 	// 閉じアニメーション中に同じポップアップを二重生成しない。
 	if (disposeComposerToolsPopup != null) return;
 
-	const anchor = event.currentTarget;
-	if (!(anchor instanceof HTMLElement)) return;
+	const trigger = event.currentTarget;
+	if (!(trigger instanceof HTMLElement)) return;
+
+	let popupAnchor = trigger;
+	const menuAnchor = composerToolsMenuAnchor.value;
+	if (menuAnchor != null) {
+		const dock = menuAnchor.offsetParent;
+		if (dock instanceof HTMLElement) {
+			const triggerRect = trigger.getBoundingClientRect();
+			const dockRect = dock.getBoundingClientRect();
+			menuAnchor.style.left = `${triggerRect.left + (triggerRect.width / 2) - dockRect.left}px`;
+			popupAnchor = menuAnchor;
+		}
+	}
 	composerToolsOpen.value = true;
 	const { dispose } = os.popup(HatacordingComposerToolsMenu, {
-		anchorElement: anchor,
+		anchorElement: popupAnchor,
+		returnFocusTo: trigger,
 		tools: composerShortcutDefinitions,
 		plugin: postFormActions.length > 0 ? composerPluginDefinition : null,
 		activeToolIds: activeComposerToolIds,
@@ -4391,6 +4406,14 @@ definePage(() => ({ title: 'HataSNSCordUI', hideHeader: true }));
 	background: transparent;
 	box-shadow: none;
 	backdrop-filter: none;
+}
+
+.composerToolsMenuAnchor {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	width: 0;
+	pointer-events: none;
 }
 
 .composerPreview {

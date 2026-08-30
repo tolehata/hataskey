@@ -366,12 +366,15 @@ describe('HataSNSCordUIの結線', () => {
 		const compactRule = composerToolsMenu.match(/\.root\[data-compact='true'\]\s*\{[^}]*\}/s)?.[0] ?? '';
 		const scrollRule = composerToolsMenu.match(/\.scroll\s*\{[^}]*\}/s)?.[0] ?? '';
 		const toolRule = composerToolsMenu.match(/\.tool\s*\{[^}]*\}/s)?.[0] ?? '';
+		const labelRule = composerToolsMenu.match(/\.tool > \.label\s*\{[^}]*\}/s)?.[0] ?? '';
+		const anchorRule = page.match(/\.composerToolsMenuAnchor\s*\{[^}]*\}/s)?.[0] ?? '';
 		const interactiveRule = composerToolsMenu.match(/\.tool:is\(:hover, :focus-visible\),[\s\S]*?\.tool\[data-expanded='true'\]\s*\{[^}]*\}/s)?.[0] ?? '';
 
 		expect(composerToolsMenu).not.toBe('');
 		expect(composerToolsMenu).toContain(':anchorElement="anchorElement"');
 		expect(composerToolsMenu).toContain(':preferType="\'popup\'"');
 		expect(composerToolsMenu).toContain(':transparentBg="true"');
+		expect(composerToolsMenu).toContain(':returnFocusTo="returnFocusTo"');
 		expect(composerToolsMenu).toContain('@click="closeMenu"');
 		expect(composerToolsMenu).toContain('@esc="closeMenu"');
 		expect(composerToolsMenu).toContain('id="hatacording-composer-tools-menu"');
@@ -383,7 +386,7 @@ describe('HataSNSCordUIの結線', () => {
 		expect(page).toContain('showing: composerToolsOpen');
 		expect(rootRule).toMatch(/--visible-items:\s*5;/);
 		expect(rootRule).toMatch(/--tool-row-height:\s*48px;/);
-		expect(rootRule).toMatch(/width:\s*min\(220px,\s*calc\(100dvw - 24px\)\);/);
+		expect(rootRule).toMatch(/width:\s*min\(240px,\s*calc\(100dvw - 24px\)\);/);
 		expect(compactRule).toMatch(/--visible-items:\s*4;/);
 		expect(scrollRule).toMatch(/height:\s*calc\(var\(--visible-items\) \* var\(--tool-row-height\) \+ \(var\(--visible-items\) - 1\) \* var\(--tool-gap\)\);/);
 		expect(scrollRule).toMatch(/overflow-y:\s*auto;/);
@@ -392,7 +395,21 @@ describe('HataSNSCordUIの結線', () => {
 		expect(scrollRule).toMatch(/touch-action:\s*pan-y;/);
 		expect(toolRule).toMatch(/height:\s*var\(--tool-row-height\);/);
 		expect(toolRule).toMatch(/min-height:\s*44px;/);
+		expect(toolRule).toMatch(/font-size:\s*\.75rem;/);
 		expect(toolRule).toMatch(/scroll-snap-align:\s*start;/);
+		expect(labelRule).toMatch(/text-overflow:\s*clip;/);
+		expect(labelRule).not.toMatch(/text-overflow:\s*ellipsis;/);
+		expect(page).toContain('ref="composerToolsMenuAnchor"');
+		expect(page).toContain('const composerToolsMenuAnchor = useTemplateRef(\'composerToolsMenuAnchor\');');
+		expect(page).toContain('const dock = menuAnchor.offsetParent;');
+		expect(page).toContain('menuAnchor.style.left = `${triggerRect.left + (triggerRect.width / 2) - dockRect.left}px`;');
+		expect(page).toContain('anchorElement: popupAnchor');
+		expect(page).toContain('returnFocusTo: trigger');
+		expect(anchorRule).toMatch(/position:\s*absolute;/);
+		expect(anchorRule).toMatch(/top:\s*0;/);
+		expect(anchorRule).toMatch(/bottom:\s*0;/);
+		expect(anchorRule).toMatch(/width:\s*0;/);
+		expect(anchorRule).toMatch(/pointer-events:\s*none;/);
 		expect(interactiveRule).not.toMatch(/\b(?:width|max-width|min-width|height|max-height|min-height|opacity|transform|position|left|right|top|bottom)\s*:/);
 		expect(composerToolsMenu).toMatch(/@media\s*\(prefers-reduced-motion:\s*reduce\)[\s\S]*?\.tool\s*\{[^}]*transition:\s*none;/s);
 		expect(page).toContain('disposeComposerToolsPopup?.();');
