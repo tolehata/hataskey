@@ -212,7 +212,7 @@ async function buildRealCatalogFromVirtualModule() {
 		targetFilePaths: ['src/pages/settings/*.vue', ...extensionTargets],
 		mainVirtualModule: 'search-index-v2:settings-real-catalog',
 		routerDefinitionPath: 'src/router.definition.ts',
-		expectedControlCount: 523,
+		expectedControlCount: 524,
 	});
 	const load = typeof plugin.load === 'function' ? plugin.load : undefined;
 	if (load == null) throw new Error('settings V2 plugin did not expose virtual loader');
@@ -541,12 +541,12 @@ describe('settings control search index V2', () => {
 		// Keep the raw population separate from the smaller catalog-descriptor
 		// count so new visible buttons cannot disappear behind an old total.
 		expect(inventory.files).toHaveLength(60);
-		expect(inventory.items).toHaveLength(674);
+		expect(inventory.items).toHaveLength(676);
 		expect(Object.fromEntries(classifications.map(classification => [classification, inventory.items.filter(item => item.classification === classification).length]))).toEqual({
-			'user-facing-setting': 450,
-			'navigation-action': 139,
+			'user-facing-setting': 451,
+			'navigation-action': 141,
 			'save-cancel': 23,
-			'disabled-display-only': 17,
+			'disabled-display-only': 16,
 			'runtime-collection': 44,
 			destructive: 1,
 		});
@@ -555,7 +555,7 @@ describe('settings control search index V2', () => {
 			'src/components/HatasabaUi2ImmediateSettings.vue': { 'user-facing-setting': 2, 'navigation-action': 0, 'save-cancel': 0, 'disabled-display-only': 0, 'runtime-collection': 0, destructive: 0 },
 			'src/components/HatadyDisplaySettings.vue': { 'user-facing-setting': 1, 'navigation-action': 3, 'save-cancel': 2, 'disabled-display-only': 0, 'runtime-collection': 0, destructive: 0 },
 			'src/components/MkUISetup.vue': { 'user-facing-setting': 4, 'navigation-action': 2, 'save-cancel': 1, 'disabled-display-only': 0, 'runtime-collection': 0, destructive: 0 },
-			'src/pages/HataskSettings.vue': { 'user-facing-setting': 11, 'navigation-action': 5, 'save-cancel': 0, 'disabled-display-only': 1, 'runtime-collection': 0, destructive: 0 },
+			'src/pages/HataskSettings.vue': { 'user-facing-setting': 12, 'navigation-action': 7, 'save-cancel': 0, 'disabled-display-only': 0, 'runtime-collection': 0, destructive: 0 },
 			'src/pages/MkMascotSettings.vue': { 'user-facing-setting': 77, 'navigation-action': 16, 'save-cancel': 0, 'disabled-display-only': 0, 'runtime-collection': 12, destructive: 0 },
 			'src/pages/settings/hata-custom.vue': { 'user-facing-setting': 30, 'navigation-action': 13, 'save-cancel': 1, 'disabled-display-only': 0, 'runtime-collection': 1, destructive: 0 },
 		});
@@ -563,7 +563,7 @@ describe('settings control search index V2', () => {
 		expect(inventory.items.every(item => item.reason.length > 0)).toBe(true);
 		expect(inventory.items.filter(item => item.searchableControl).every(item => item.classification === 'user-facing-setting' || item.classification === 'destructive')).toBe(true);
 		expect(inventory.items.every(item => (item.descriptorStableId == null) !== (item.exclusionReason == null))).toBe(true);
-		expect(resolved).toHaveLength(674);
+		expect(resolved).toHaveLength(676);
 		expect(resolved.every(item => (item.descriptorStableId == null) !== (item.exclusionReason == null))).toBe(true);
 		const descriptorIds = new Set(controls.descriptors.filter(descriptor => descriptor.searchable).map(descriptor => descriptor.stableId));
 		expect(resolved.filter(item => item.descriptorStableId != null).every(item => descriptorIds.has(item.descriptorStableId!))).toBe(true);
@@ -965,7 +965,7 @@ describe('settings control search index V2', () => {
 		expect(settingsFiles).toHaveLength(49);
 		expect(inventory.files).toHaveLength(60);
 		expect(legacy).toHaveLength(278);
-		validateSettingsControlDescriptorsV2(inventory.descriptors, 523);
+		validateSettingsControlDescriptorsV2(inventory.descriptors, 524);
 		expect(inventory.descriptors.filter(entry => entry.activation?.kind === 'popup' && entry.route === '/settings/hata-custom').length).toBeGreaterThan(15);
 		expect(inventory.results.reduce((count, result) => count + (result.injected.code.match(/data-settings-search-id=/gu)?.length ?? 0), 0)).toBeGreaterThan(0);
 		expect(inventory.results.flatMap(result => parseSfc(result.injected.code).errors)).toHaveLength(0);
@@ -1001,12 +1001,12 @@ describe('settings control search index V2', () => {
 		await expect(load!.call({}, '\0search-index-v2:missing')).rejects.toThrow('target matched no SFC');
 	});
 
-	test('新しい仮想モジュールは60 source SFC・523項目とactivationを配信する', async () => {
+	test('新しい仮想モジュールは60 source SFC・524項目とactivationを配信する', async () => {
 		const plugin = pluginCreateSettingsSearchIndexV2({
 			targetFilePaths: ['src/pages/settings/*.vue', ...extensionTargets],
 			mainVirtualModule: 'search-index-v2:settings',
 			routerDefinitionPath: 'src/router.definition.ts',
-			expectedControlCount: 523,
+			expectedControlCount: 524,
 			modulesToHmrOnUpdate: ['src/pages/settings-redesign/index.vue'],
 		});
 		const load = typeof plugin.load === 'function' ? plugin.load : undefined;
@@ -1017,7 +1017,7 @@ describe('settings control search index V2', () => {
 		const inventoryJson = (generated as string).match(/^export const settingsControlSearchIndexV2 = ([\s\S]+);\n$/u)?.[1];
 		expect(inventoryJson).toBeDefined();
 		const inventory = JSON.parse(inventoryJson!) as Array<{ sourceFile: string; route: string; activation?: { kind: string; popup?: string } }>;
-			expect(inventory).toHaveLength(523);
+			expect(inventory).toHaveLength(524);
 		expect(inventory.filter(entry => entry.sourceFile === 'src/components/HatacordingUiSettings.vue' && entry.route === '/settings/hatasnscord-ui' && entry.activation == null)).toHaveLength(7);
 		// Safe `editor.copy` controls stay individual; only the three dynamic
 		// runtime/value areas become semantic groups.
@@ -1235,7 +1235,7 @@ describe('settings control search index V2', () => {
 		}
 		expect(relationSuspects).toHaveLength(0);
 		expect(labelAuditIssues).toHaveLength(0);
-		expect(descriptors).toHaveLength(523);
+		expect(descriptors).toHaveLength(524);
 		const hataSnsCordGroup = productionCatalog.byStableId.get('settings.group.hatasnscord-settings');
 		expect(hataSnsCordGroup).toMatchObject({
 			stableId: 'settings.group.hatasnscord-settings',

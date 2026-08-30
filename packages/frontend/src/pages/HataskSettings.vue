@@ -57,20 +57,20 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<!-- 外観(ライト/ダーク) -->
 				<div :class="$style.card">
 					<div :class="$style.label">{{ copy.appearance }}</div>
-					<div :class="$style.row"><span>{{ copy.autoAppearance }}</span><button :class="[$style.sw, settings.autoTheme && $style.swOn]" @click="toggle('autoTheme')"></button></div>
-					<div :class="$style.row" v-if="!settings.autoTheme"><span>{{ copy.darkMode }}</span><button :class="[$style.sw, settings.darkMode && $style.swOn]" @click="toggle('darkMode')"></button></div>
+					<div :class="$style.row"><span>{{ copy.autoAppearance }}</span><button type="button" :class="[$style.sw, settings.autoTheme && $style.swOn]" role="switch" :aria-label="copy.autoAppearance" :aria-checked="settings.autoTheme" @click="toggle('autoTheme')"></button></div>
+					<div v-if="!settings.autoTheme" :class="$style.row"><span>{{ copy.darkMode }}</span><button type="button" :class="[$style.sw, settings.darkMode && $style.swOn]" role="switch" :aria-label="copy.darkMode" :aria-checked="settings.darkMode" @click="toggle('darkMode')"></button></div>
 				</div>
 				<!-- アニメーション -->
 				<div :class="$style.card">
 					<div :class="$style.label">{{ copy.animation }}</div>
-					<div :class="$style.row"><span>{{ copy.animationMotion }}</span><button :class="[$style.sw, settings.animations!==false && $style.swOn]" @click="toggle('animations')"></button></div>
+					<div :class="$style.row"><span>{{ copy.animationMotion }}</span><button type="button" :class="[$style.sw, settings.animations!==false && $style.swOn]" role="switch" :aria-label="copy.animationMotion" :aria-checked="settings.animations!==false" @click="toggle('animations')"></button></div>
 					<div :class="$style.desc">{{ copy.animationDescription }}</div>
 				</div>
 				<!-- 旗鯖fork(ハタキュ): このテーマ限定のオプション。
 				     ⚠️ハタキュを選んでいないときは出さない(他テーマでは効かない設定なので) -->
 				<div v-if="settings.theme==='hatakyu'" :class="$style.card">
 					<div :class="$style.label">{{ copy.hatakyuOptions }}</div>
-					<div :class="$style.row"><span>{{ copy.hatakyuWind }}</span><button :class="[$style.sw, settings.hatakyuWind!==false && $style.swOn]" @click="toggle('hatakyuWind')"></button></div>
+					<div :class="$style.row"><span>{{ copy.hatakyuWind }}</span><button type="button" :class="[$style.sw, settings.hatakyuWind!==false && $style.swOn]" role="switch" :aria-label="copy.hatakyuWind" :aria-checked="settings.hatakyuWind!==false" @click="toggle('hatakyuWind')"></button></div>
 					<div :class="$style.desc">{{ copy.hatakyuWindDescription }}</div>
 				</div>
 			</div>
@@ -101,7 +101,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<!-- きもち記録 -->
 			<div :class="$style.card">
 				<div :class="$style.label">{{ copy.moodLog }}</div>
-				<div :class="$style.row"><span>{{ copy.reminderNotification }}</span><button :class="[$style.sw, settings.moodRemind && $style.swOn]" @click="toggle('moodRemind')"></button></div>
+					<div :class="$style.row"><span>{{ copy.reminderNotification }}</span><button type="button" :class="[$style.sw, settings.moodRemind && $style.swOn]" role="switch" :aria-label="copy.reminderNotification" :aria-checked="settings.moodRemind" @click="toggle('moodRemind')"></button></div>
 				<div :class="$style.desc">{{ copy.moodReminderDescription }}</div>
 			</div>
 
@@ -109,13 +109,26 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<div :class="$style.card">
 				<div :class="$style.label">{{ copy.dataSync }}</div>
 				<div :class="$style.desc">{{ copy.dataSyncDescription }}</div>
-				<div :class="$style.row" v-for="s in syncItems" :key="s.id"><span>{{ s.label }}</span><button :class="[$style.sw, $style.swOn]"></button></div>
+					<div v-for="s in syncItems" :key="s.id" :class="$style.row"><span>{{ s.label }}</span><span :class="[$style.sw, $style.swOn]" aria-hidden="true"></span></div>
+			</div>
+
+			<!-- 予定 / Todo 専用。既存IDを上書きしないJSON退避と追加統合。 -->
+			<div :class="$style.card">
+				<div :class="$style.label">{{ plannerCopy.dataSafety }}</div>
+				<div :class="$style.desc">{{ plannerCopy.mergeOnlyWarning }}</div>
+				<div :class="$style.safetyActions">
+					<MkButton rounded small :disabled="plannerSafetyBusy" @click="exportPlannerData"><i class="ti ti-download" aria-hidden="true"></i> {{ plannerCopy.export }}</MkButton>
+					<MkButton rounded small :disabled="plannerSafetyBusy" @click="plannerImportInput?.click()"><i class="ti ti-file-upload" aria-hidden="true"></i> {{ plannerCopy.import }}</MkButton>
+					<input ref="plannerImportInput" :class="$style.hiddenInput" type="file" accept="application/json,.json" @change="importPlannerData">
+				</div>
+				<div v-if="plannerLastBackup" :class="$style.backupMeta"><i class="ti ti-shield-check" aria-hidden="true"></i>{{ plannerTx.lastBackup({ date: plannerLastBackup }) }}</div>
+				<div v-if="plannerSafetyMessage" :class="$style.backupMeta" role="status" aria-live="polite">{{ plannerSafetyMessage }}</div>
 			</div>
 
 			<!-- 起動時 -->
 			<div :class="$style.card">
 				<div :class="$style.label">{{ copy.startup }}</div>
-				<div :class="$style.row"><span>{{ copy.openOnStartup }}</span><button :class="[$style.sw, settings.openOnStart && $style.swOn]" @click="toggle('openOnStart')"></button></div>
+					<div :class="$style.row"><span>{{ copy.openOnStartup }}</span><button type="button" :class="[$style.sw, settings.openOnStart && $style.swOn]" role="switch" :aria-label="copy.openOnStartup" :aria-checked="settings.openOnStart" @click="toggle('openOnStart')"></button></div>
 			</div>
 
 			<!-- 通知 -->
@@ -172,6 +185,10 @@ import { i18n } from '@/i18n.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { useRouter } from '@/router.js';
 import * as os from '@/os.js';
+import { createHataskPlannerApiStoragePort } from '@/utility/hatask-planner-api.js';
+import { createHataskPlannerIntegrity, HATASK_PLANNER_SCOPE, migrateHataskPlannerStorage, normalizeHataskPlannerData, stablePlannerJson, verifyHataskPlannerIntegrity } from '@/utility/hatask-planner-storage.js';
+import type { HataskPlannerCollectionKey, HataskPlannerEvent, HataskPlannerRawData, HataskPlannerTemplate } from '@/utility/hatask-planner-storage.js';
+import { normalizeHataskPlannerTemplates } from '@/utility/hatask-planner-templates.js';
 
 const emit = defineEmits<{ (ev:'closed'):void; (ev:'reopenTutorial'):void; (ev:'changed', settings:any):void }>();
 /**
@@ -184,6 +201,8 @@ const dialog = shallowRef<SettingsWindowHandle>();
 const router = useRouter();
 const copy = i18n.ts._hata._hatask._settings;
 const tx = i18n.tsx._hata._hatask._settings;
+const plannerCopy = i18n.ts._hata._hatask._planner;
+const plannerTx = i18n.tsx._hata._hatask._planner;
 
 // Hatask本体と同じ registry スコープ/キーを使うことでデータを共有・同期する
 const SCOPE = ['client', 'hatask'];
@@ -218,6 +237,10 @@ const syncItems = computed(() => [
 
 const loading = ref(true);
 const settings = ref<any>({ ...defaultSettings });
+const plannerImportInput = ref<HTMLInputElement|null>(null);
+const plannerSafetyBusy = ref(false);
+const plannerSafetyMessage = ref('');
+const plannerLastBackup = ref('');
 // 旗鯖fork(v2): 設定モーダル内のビュー('main'=通常設定 / 'theme'=デザインテーマ選択)。
 const view = ref<'main'|'theme'>('main');
 function setV2Theme(id:string) { settings.value.theme = id; saveSettings(); }
@@ -249,10 +272,151 @@ async function registrySet(key:string, value:unknown):Promise<void> {
 }
 
 onMounted(async () => {
-	const s = await registryGet<any>('settings', { ...defaultSettings });
+	const [s, plannerSnapshot] = await Promise.all([
+		registryGet<any>('settings', { ...defaultSettings }),
+		loadPlannerSnapshot().catch(() => null),
+	]);
 	settings.value = { ...defaultSettings, ...s };
+	if(plannerSnapshot){
+		const dates=plannerCollectionEntries(plannerSnapshot).map(([,collection])=>collection.latestBackupAt).filter((date):date is string=>typeof date==='string').sort();
+		plannerLastBackup.value=dates.length?new Intl.DateTimeFormat(undefined,{dateStyle:'medium',timeStyle:'short'}).format(new Date(dates[dates.length-1])):'';
+	}
 	loading.value = false;
 });
+
+type PlannerCollectionSnapshot={exists:boolean;updatedAt:string|null;revision:string|null;value:unknown;hash?:string;backupCount?:number;latestBackupAt?:string|null};
+type PlannerApiSnapshot={
+	version:number;
+	collections:Record<HataskPlannerCollectionKey,PlannerCollectionSnapshot>&{templates?:PlannerCollectionSnapshot};
+};
+
+function plannerCollectionEntries(snapshot:PlannerApiSnapshot):Array<[string,PlannerCollectionSnapshot]>{
+	return Object.entries(snapshot.collections).filter((entry):entry is [string,PlannerCollectionSnapshot]=>entry[1]!=null);
+}
+
+const plannerStoragePort=createHataskPlannerApiStoragePort((endpoint,params)=>misskeyApi(endpoint as never,params as never));
+
+async function loadPlannerSnapshot():Promise<PlannerApiSnapshot>{
+	return await misskeyApi('hatask/planner/get' as never,{} as never) as PlannerApiSnapshot;
+}
+
+async function preparePlannerImportStorage():Promise<PlannerApiSnapshot>{
+	// 取り込みより先に必ず既存3コレクションを再読込し、移行前原本のshadow作成と
+	// 正規化後の完全性検証を完了させる。blocked/failed時は一切取り込まない。
+	await plannerStoragePort.refresh();
+	const migration=await migrateHataskPlannerStorage(plannerStoragePort,{scope:HATASK_PLANNER_SCOPE});
+	if(migration.status!=='noop'&&migration.status!=='migrated'){
+		const detail=migration.issues[0]?.detail??migration.stage??'planner migration failed';
+		throw new Error(detail);
+	}
+	return await plannerStoragePort.refresh() as PlannerApiSnapshot;
+}
+
+function plannerRawData(snapshot:PlannerApiSnapshot):HataskPlannerRawData{
+	return{todos:snapshot.collections.todos.value,folders:snapshot.collections.folders.value,events:snapshot.collections.events.value};
+}
+
+function downloadJson(filename:string,value:unknown):void{
+	const blob=new Blob([JSON.stringify(value,null,2)],{type:'application/json'});
+	const url=URL.createObjectURL(blob);
+	const link=window.document.createElement('a');
+	link.href=url;link.download=filename;link.click();
+	window.setTimeout(()=>URL.revokeObjectURL(url),0);
+}
+
+async function exportPlannerData():Promise<void>{
+	plannerSafetyBusy.value=true;plannerSafetyMessage.value='';
+	try{
+		const snapshot=await loadPlannerSnapshot();
+		const raw=plannerRawData(snapshot);
+		const normalized=normalizeHataskPlannerData(raw);
+		const normalizedTemplates=normalizeHataskPlannerTemplates(snapshot.collections.templates?.value??[]);
+		if(normalizedTemplates.invalidCount>0)throw new TypeError('Invalid Hatask planner templates');
+		const exportedAt=new Date();
+		downloadJson(`hatask-planner-${exportedAt.toISOString().slice(0,10)}.json`,{
+			format:'hatask-planner-export',version:1,exportedAt:exportedAt.toISOString(),
+			data:{...raw,templates:normalizedTemplates.templates},
+			integrity:normalized.issues.length===0?createHataskPlannerIntegrity(normalized.data):null,
+			issues:normalized.issues,
+			server: { version:snapshot.version, collections:Object.fromEntries(plannerCollectionEntries(snapshot).map(([key,value])=>[key,{updatedAt:value.updatedAt,hash:value.hash,backupCount:value.backupCount,latestBackupAt:value.latestBackupAt}])) },
+		});
+		plannerSafetyMessage.value=plannerCopy.dataExported;
+	}catch(error){
+		console.error('Hatask planner export failed:',error);
+		plannerSafetyMessage.value=plannerCopy.dataExportFailed;
+	}finally{plannerSafetyBusy.value=false}
+}
+
+function mergePlannerCollection<T extends {id:string}>(current:T[],incoming:T[]):{value:T[];added:number;collisions:number}{
+	const currentById=new Map(current.map(item=>[item.id,item]));
+	const value=[...current];let added=0;let collisions=0;
+	for(const item of incoming){
+		const existing=currentById.get(item.id);
+		if(existing){if(stablePlannerJson(existing)!==stablePlannerJson(item))collisions++;continue}
+		value.push(item);currentById.set(item.id,item);added++;
+	}
+	return{value,added,collisions};
+}
+
+async function importPlannerData(event:Event):Promise<void>{
+	const input=event.target as HTMLInputElement;
+	const file=input.files?.[0];
+	input.value='';
+	if(!file)return;
+	plannerSafetyBusy.value=true;plannerSafetyMessage.value='';
+	try{
+		const parsed=JSON.parse(await file.text()) as {data?:unknown};
+		const source=(parsed&&typeof parsed==='object'&&parsed.data!=null?parsed.data:parsed) as HataskPlannerRawData&{templates?:unknown};
+		const incoming=normalizeHataskPlannerData(source);
+		if(incoming.issues.length)throw new TypeError(incoming.issues[0].message);
+		const incomingTemplates=normalizeHataskPlannerTemplates(source.templates??[]);if(incomingTemplates.invalidCount>0)throw new TypeError('Invalid Hatask planner templates');
+		const {canceled}=await os.confirm({type:'warning',text:plannerCopy.mergeOnlyWarning});
+		if(canceled)return;
+
+		const before=await preparePlannerImportStorage();
+		const current=normalizeHataskPlannerData(plannerRawData(before));
+		if(current.issues.length)throw new TypeError(current.issues[0].message);
+		const currentTemplates=normalizeHataskPlannerTemplates(before.collections.templates?.value??[]);if(currentTemplates.invalidCount>0)throw new TypeError('Invalid stored Hatask planner templates');
+		// インポートした公開予定のserverEventIdは所有確認前に操作へ使わない。原値は別名で保持する。
+		const safeIncomingEvents:HataskPlannerEvent[]=incoming.data.events.map((eventItem):HataskPlannerEvent=>{
+			if(eventItem.visibility!=='public'&&!eventItem.publicSyncState)return eventItem;
+			const item={
+				...eventItem,
+				...(eventItem.serverEventId?{importedServerEventId:eventItem.serverEventId}:{}),
+				...(eventItem.publicSyncState?{importedPublicSyncState:eventItem.publicSyncState}:{}),
+				publicSyncState:'unlinked' as const,
+			};
+			delete item.serverEventId;delete item.serverEventRevision;delete item.pendingVisibility;
+			return item;
+		});
+			const merges={
+				todos:mergePlannerCollection(current.data.todos,incoming.data.todos),
+				folders:mergePlannerCollection(current.data.folders,incoming.data.folders),
+				events:mergePlannerCollection(current.data.events,safeIncomingEvents),
+				templates:mergePlannerCollection<HataskPlannerTemplate>(currentTemplates.templates,incomingTemplates.templates),
+			};
+			let added=0;let collisions=0;
+			const changes=(['todos','folders','events','templates'] as const).flatMap(key=>{
+				added+=merges[key].added;collisions+=merges[key].collisions;
+				const expectedRevision=key==='templates'
+					? before.collections.templates?.revision??null
+					: before.collections[key].revision;
+				return merges[key].added===0?[]:[{collection:key,expectedRevision,value:merges[key].value}];
+			});
+			if(added===0){plannerSafetyMessage.value=plannerCopy.dataNoChanges;return}
+			// 全revisionの照合後に1 transactionで反映し、途中適用を作らない。
+			await misskeyApi('hatask/planner/commit-batch' as never,{changes} as never);
+			const after=await loadPlannerSnapshot();
+			const expectedData={todos:merges.todos.value,folders:merges.folders.value,events:merges.events.value};
+			const verification=verifyHataskPlannerIntegrity(createHataskPlannerIntegrity(expectedData),plannerRawData(after));
+			if(!verification.ok)throw new Error(verification.issues[0]?.detail??'planner import verification failed');
+			const afterTemplates=normalizeHataskPlannerTemplates(after.collections.templates?.value??[]);if(afterTemplates.invalidCount>0||stablePlannerJson(afterTemplates.templates)!==stablePlannerJson(merges.templates.value))throw new Error('planner template import verification failed');
+		plannerSafetyMessage.value=plannerTx.dataImported({count:String(added),collisions:String(collisions)});
+	}catch(error){
+		console.error('Hatask planner import failed:',error);
+		plannerSafetyMessage.value=plannerCopy.dataImportFailed;
+	}finally{plannerSafetyBusy.value=false}
+}
 
 async function saveSettings() {
 	// 旗鯖fork(v2): 変更を親(hatask.vue)へ即時通知して裏の画面にライブ反映させる。
@@ -294,6 +458,9 @@ defineProps<{ embedded?: boolean }>();
 .label { font-size:.95rem; font-weight:700; margin-bottom:10px; }
 .desc { font-size:.8rem; opacity:.65; line-height:1.6; margin-top:4px; }
 .note { font-size:.8rem; opacity:.6; text-align:center; padding:4px 0 2px; }
+.safetyActions { display:flex; flex-wrap:wrap; justify-content:center; gap:10px; margin-top:12px; }
+.hiddenInput { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+.backupMeta { display:flex; align-items:flex-start; justify-content:center; gap:6px; margin-top:10px; color:var(--MI_THEME-fg); font-size:.78rem; line-height:1.55; text-align:center; overflow-wrap:anywhere; }
 .row { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:7px 0; font-size:.9rem; }
 .sel { background: var(--MI_THEME-bg); color: var(--MI_THEME-fg); border:1px solid var(--MI_THEME-divider); border-radius:8px; padding:6px 10px; font-family:inherit; }
 .bgPicker { display:flex; gap:14px; flex-wrap:wrap; }
@@ -301,11 +468,14 @@ defineProps<{ embedded?: boolean }>();
 .bgOpt:hover { transform:translateY(-2px); }
 .bgOptOn { border-color: var(--MI_THEME-accent); }
 .bgLabel { font-size:.72rem; opacity:.7; margin-top:4px; }
-/* トグルスイッチ */
-.sw { width:44px; height:24px; background: var(--MI_THEME-divider); border-radius:12px; cursor:pointer; position:relative; transition:background .3s; border:1px solid var(--MI_THEME-divider); flex-shrink:0; }
-.sw::after { content:''; position:absolute; width:18px; height:18px; background:#fff; border-radius:50%; top:2px; left:2px; transition:left .25s cubic-bezier(0.34,1.56,0.64,1); box-shadow:0 1px 3px rgba(0,0,0,.2); }
-.swOn { background: var(--MI_THEME-accent); border-color: var(--MI_THEME-accent); }
-.swOn::after { left:22px; }
+/* トグルスイッチ。見た目は24px、操作領域は44pxを確保する。 */
+.sw { width:48px; height:44px; padding:0; background:transparent; border:0; border-radius:22px; cursor:pointer; position:relative; flex-shrink:0; }
+.sw::before { content:''; position:absolute; width:44px; height:24px; top:10px; left:2px; box-sizing:border-box; background:var(--MI_THEME-divider); border:1px solid var(--MI_THEME-divider); border-radius:12px; transition:background .2s,border-color .2s; }
+.sw::after { content:''; position:absolute; width:18px; height:18px; background:#fff; border-radius:50%; top:13px; left:5px; transition:left .2s cubic-bezier(0.34,1.56,0.64,1); box-shadow:0 1px 3px rgba(0,0,0,.2); }
+.swOn::before { background:var(--MI_THEME-accent); border-color:var(--MI_THEME-accent); }
+.swOn::after { left:25px; }
+.sw:not(button) { cursor:default; }
+.sw:focus-visible { outline:3px solid var(--MI_THEME-accent); outline-offset:2px; }
 /* 旗鯖fork(#37): レートリミット表 */
 .rlBox { background: var(--MI_THEME-bg); border:1px solid var(--MI_THEME-divider); border-radius:10px; padding:10px 14px; }
 .rlTitle { font-size:.82rem; font-weight:700; margin-bottom:6px; opacity:.8; }

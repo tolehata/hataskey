@@ -108,6 +108,8 @@ describe('Hatask flower growth', () => {
 		expect(page).toMatch(/htk-gal-vis \.htk-vis-o:hover:not\(.on\)\{[^}]*color:var\(--fg\)/);
 		expect(page).toMatch(/htk-gal-vis \.htk-vis-o:focus-visible/);
 		expect(page).not.toMatch(/htk-gal-sort \.htk-btn/);
+		expect(page).toMatch(/\.htk-root\[data-theme="kisetsu"\] \.htk-gal-sort,\.htk-root\[data-theme="kashin"\] \.htk-gal-sort,\.htk-root\[data-theme="suri"\] \.htk-gal-sort,\.htk-root\[data-theme="hatakyu"\] \.htk-gal-sort\{margin-bottom:12px\}/);
+		expect(page).toMatch(/\.htk-gal-sort\{[^}]*margin-top:12px/);
 	});
 
 	test('ハタキュの写真列は狭幅でも4列を維持する', () => {

@@ -1,8 +1,8 @@
 <template>
-<PageWithHeader>
+<PageWithHeader :hideHeader="inPageWindow">
 <svg width="0" height="0" style="position:absolute"><defs><filter id="htk-gfx" x="0%" y="0%" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency="0.025 0.025" numOctaves="2" seed="92" result="n"/><feGaussianBlur in="n" stdDeviation="2" result="bl"/><feDisplacementMap in="SourceGraphic" in2="bl" scale="65" xChannelSelector="R" yChannelSelector="G"/></filter></defs></svg>
 
-<div class="htk-root" :data-mode="themeMode" :data-theme="settings.theme || 'kisetsu'" :data-anim="(settings.animations===false)?'off':'on'" :data-hk-wind="hkWind?'on':'off'" :data-hk-boot="showBoot?'on':'off'" ref="rootEl">
+<div class="htk-root" :data-mode="themeMode" :data-theme="settings.theme || 'kisetsu'" :data-window="inPageWindow?'true':'false'" :data-anim="(settings.animations===false)?'off':'on'" :data-hk-wind="hkWind?'on':'off'" :data-hk-boot="showBoot?'on':'off'" ref="rootEl">
 
 <!-- 旗鯖fork(v2 §16①): 起動ブートスプラッシュ(テーマ別演出: 季=罫線ドロー / 花信=三点 / 刷=トンボ) -->
 <div v-if="showBoot" :key="bootKey" class="htk-boot" aria-hidden="true"><div class="htk-boot-inner"><div class="htk-boot-tombo"><span></span><span></span><span></span><span></span></div><div class="htk-boot-rule"></div><div class="htk-boot-logo">Hatask</div><div class="htk-boot-rule"></div><div class="htk-boot-dots"><i></i><i></i><i></i></div><!-- 旗鯖fork(ハタキュ): 画鋲で紙を留める演出 --><span class="htk-boot-tack"></span></div></div>
@@ -215,7 +215,7 @@
 </div>
 
 <!-- ========== CALENDAR ========== -->
-<div v-if="activeTab==='cal'" class="htk-tabpage" :class="[isHatakyu?'hk-panels':'htk-panels',tabDir==='fwd'?'htk-tab-fwd':'htk-tab-back']">
+<div v-if="activeTab==='cal'" class="htk-tabpage htk-calendar-page" :class="[isHatakyu?'hk-panels':'htk-panels',tabDir==='fwd'?'htk-tab-fwd':'htk-tab-back']">
   <!-- 旗鯖fork(ハタキュ): つぎの予定までを写真付きの紙で貼る。⚠️予定が無いときは紙ごと出さない。 -->
   <div v-if="isHatakyu&&hkNextEvent" class="hk-pin" style="--i:0;--r:-1.1deg"><span class="hk-tack hk-b"></span>
     <div class="hk-card hk-blue hk-center">
@@ -225,7 +225,102 @@
       <div class="hk-note">{{evMD(hkNextEvent.date)}} {{eventTimeLabel(hkNextEvent)}}「{{hkNextEvent.title}}」</div>
     </div>
   </div>
-  <div class="htk-lg htk-anim"><div class="htk-gc">
+  <div class="htk-planner-shell htk-anim">
+    <div v-if="plannerStorageState==='loading'||plannerStorageState==='saving'||plannerStorageState==='blocked'||plannerStorageState==='conflict'" class="htk-planner-status" :data-state="plannerStorageState" role="status" aria-live="polite">
+      <i :class="plannerStorageState==='loading'||plannerStorageState==='saving'?'ti ti-loader-2':'ti ti-shield-exclamation'" aria-hidden="true"></i>
+      <span>{{plannerStorageState==='loading'?plannerCopy.loading:plannerStorageState==='saving'?plannerCopy.saving:plannerStorageDetail||plannerCopy.readOnly}}</span>
+      <button v-if="plannerReadOnly" type="button" class="htk-btn htk-xs" @click="retryPlannerStorage">{{plannerCopy.retry}}</button>
+    </div>
+    <HataskQuickCapture
+      ref="eventCaptureRef"
+      mode="event"
+      :modelValue="newEvent.title"
+      :label="editingEvent?copy.editEvent:copy.newEvent"
+      :placeholder="editingEvent?copy.editEvent:copy.eventTitlePlaceholder"
+      :submitLabel="editingEvent?copy.update:copy.add"
+      :chips="eventCaptureChips"
+      :tools="eventCaptureTools"
+      :detailOpen="showEventDetails||showEventTemplates||eventCaptureEditor!=null"
+      :disabled="plannerReadOnly"
+	      :state="eventCaptureState"
+	      :chipLabel="plannerCopy.captureChips"
+	      :toolLabel="plannerCopy.captureTools"
+	      :removeChipLabel="label=>plannerCopyx.removeCaptureChip({label})"
+	      :hint="plannerCopy.eventCaptureHint"
+      @update:modelValue="updateEventCapture"
+      @submit="submitEventCapture"
+      @tool="handleEventCaptureTool"
+	      @chip="handleEventCaptureChip"
+      @remove-chip="removeEventCaptureChip"
+	      @collapse="showEventDetails=false;showEventTemplates=false;eventCaptureEditor=null"
+    />
+	    <Transition name="htk-capture-detail">
+	      <fieldset v-if="eventCaptureEditor==='date'" class="htk-capture-detail htk-pill-editor" :disabled="plannerReadOnly">
+	        <legend class="htk-sr-only">{{copy.dateAndTime}}</legend>
+	        <header class="htk-pill-editor-head"><strong><i class="ti ti-calendar-event" aria-hidden="true"></i>{{copy.dateAndTime}}</strong><button type="button" class="htk-icon-btn" :aria-label="copy.cancel" @click="eventCaptureEditor=null"><i class="ti ti-x" aria-hidden="true"></i></button></header>
+	        <div class="htk-capture-grid">
+	          <label><span>{{plannerCopy.eventStartDate}}</span><input :value="newEvent.date" class="htk-inp" type="date" @change="setEventStartDate(($event.target as HTMLInputElement).value)"></label>
+	          <label><span>{{plannerCopy.eventEndDate}}</span><input :value="newEvent.dateEnd" :min="newEvent.date" class="htk-inp" type="date" @change="setEventEndDate(($event.target as HTMLInputElement).value)"></label>
+	        </div>
+	      </fieldset>
+	      <fieldset v-else-if="eventCaptureEditor==='time'" class="htk-capture-detail htk-pill-editor" :disabled="plannerReadOnly">
+	        <legend class="htk-sr-only">{{copy.time}}</legend>
+	        <header class="htk-pill-editor-head"><strong><i class="ti ti-clock" aria-hidden="true"></i>{{copy.time}}</strong><button type="button" class="htk-icon-btn" :aria-label="copy.cancel" @click="eventCaptureEditor=null"><i class="ti ti-x" aria-hidden="true"></i></button></header>
+	        <div class="htk-tg-row"><span id="hatask-capture-all-day-label" class="htk-tg-lab">{{copy.allDayFull}}</span><button type="button" :class="['htk-tg-sw',newEvent.allDay&&'on']" role="switch" aria-labelledby="hatask-capture-all-day-label" :aria-checked="newEvent.allDay" @click="newEvent.allDay=!newEvent.allDay"></button></div>
+	        <div v-if="!newEvent.allDay" class="htk-capture-grid htk-pill-time-grid">
+	          <label><span>{{plannerCopy.eventStartTime}}</span><input :value="newEvent.timeStart" class="htk-inp" type="time" @change="setEventStartTime(($event.target as HTMLInputElement).value)"></label>
+	          <label><span>{{plannerCopy.eventEndTime}}</span><input :value="newEvent.timeEnd" class="htk-inp" type="time" @change="setEventEndTime(($event.target as HTMLInputElement).value)"></label>
+	        </div>
+	      </fieldset>
+	    </Transition>
+    <Transition name="htk-capture-detail">
+      <div v-if="showEventTemplates" class="htk-capture-detail">
+        <HataskTemplateLibrary
+          :templates="plannerTemplates"
+          kind="event"
+          :showKindFilter="false"
+          :labels="plannerTemplateLabels"
+          :readOnly="plannerReadOnly"
+          @use="usePlannerTemplate"
+          @duplicate="duplicatePlannerTemplate"
+          @archive="archivePlannerTemplate"
+          @move="movePlannerTemplate"
+        />
+      </div>
+    </Transition>
+    <HataskCalendarPlanner
+      :theme="plannerTheme"
+      :view="plannerCalendarView"
+      :title="plannerCalendarTitle"
+      :weekdays="plannerWeekdays"
+      :days="plannerCalendarDays"
+      :filters="plannerCalendarFilters"
+      :labels="plannerCalendarLabels"
+      :loading="plannerStorageState==='loading'"
+      :readOnly="plannerReadOnly"
+      @update:view="plannerCalendarView=$event"
+      @navigate="navigatePlannerCalendar"
+      @select-date="selectPlannerDate"
+      @toggle-filter="togglePlannerCalendarFilter"
+      @activate-event="activatePlannerEvent"
+      @edit-event="editPlannerEvent"
+      @move-request="handleCalendarMoveRequest"
+      @show-more="showPlannerDay"
+      @drop-event="handleCalendarEventDrop"
+      @trash-event="handleCalendarEventTrash"
+    />
+    <HataskEventMoveDialog
+      :isOpen="pendingCalendarAction!=null"
+	  :theme="plannerTheme"
+      :mode="pendingCalendarAction?.mode||'reschedule'"
+      :eventTitle="pendingCalendarAction?.event.title||''"
+      :sourceLabel="pendingCalendarActionSourceLabel"
+      :targetLabel="pendingCalendarActionTargetLabel"
+      :labels="calendarMoveDialogLabels"
+      @choose="resolveCalendarAction"
+    />
+  </div>
+  <div v-if="false" class="htk-lg htk-anim"><div class="htk-gc">
     <div class="htk-cal-seg" style="margin-bottom:8px"><button :class="['htk-btn htk-xs',calViewMode==='calendar'&&'htk-sb-on']" @click="calViewMode='calendar'"><i class="ti ti-calendar"></i> {{copy.tabCalendar}}</button><button :class="['htk-btn htk-xs',calViewMode==='list'&&'htk-sb-on']" @click="calViewMode='list'"><i class="ti ti-list"></i> {{copy.list}}</button></div>
     <template v-if="calViewMode==='calendar'">
     <div class="htk-cal-hd"><div class="htk-cal-nav"><button class="htk-cal-nb" @click="chMo(-1)">&lt;</button></div><div class="htk-cal-ttl">{{calendarTitle}}</div><div class="htk-cal-nav"><button class="htk-cal-nb" @click="chMo(1)">&gt;</button><button class="htk-cal-nb" @click="goToday">●</button></div></div>
@@ -254,7 +349,7 @@
     </template>
   </div></div>
 
-  <template v-if="calViewMode==='calendar'">
+  <template v-if="viewingEvent">
   <div v-if="selectedDay&&eventsForDay.length" class="htk-lg htk-anim"><div class="htk-gc">
     <h3 class="htk-sec-title">{{copyx.eventsOnDate({date:selectedDateLabel})}}</h3>
     <div v-for="ev in pagedEvents" :key="ev.id">
@@ -350,18 +445,19 @@
   </div></div>
   </template>
 
-  <div class="htk-lg htk-anim"><div class="htk-gc">
-    <h3 class="htk-sec-title">{{editingEvent?copy.editEvent:copy.newEvent}}</h3>
-    <div class="htk-fg"><span class="htk-fl">{{copy.title}}</span><input class="htk-inp" v-model="newEvent.title" :placeholder="copy.eventTitlePlaceholder"></div>
-    <div class="htk-fg"><span class="htk-fl">{{copy.emoji}}</span><div class="htk-emp-row"><span v-for="e in eventEmojis" :key="e" :class="['htk-emp-i',newEvent.emoji===e&&'on']" @click="newEvent.emoji=e"><HataskEmoji :emoji="e"/></span></div></div>
-    <div class="htk-fg"><span class="htk-fl">{{copy.dateAndTime}}</span>
-      <div class="htk-tg-row" style="margin-bottom:8px"><span class="htk-tg-lab">{{copy.allDayFull}}</span><button :class="['htk-tg-sw',newEvent.allDay&&'on']" @click="newEvent.allDay=!newEvent.allDay"></button></div>
-      <div class="htk-fr"><input class="htk-inp" type="date" v-model="newEvent.date"><input v-if="!newEvent.allDay" class="htk-inp" type="time" v-model="newEvent.timeStart"></div>
-      <div class="htk-fr" style="margin-top:5px"><input class="htk-inp" type="date" v-model="newEvent.dateEnd"><input v-if="!newEvent.allDay" class="htk-inp" type="time" v-model="newEvent.timeEnd"></div>
-    </div>
-    <div class="htk-fg"><span class="htk-fl">{{copy.color}}</span><div class="htk-clr-row"><div v-for="c in eventColors" :key="c" :class="['htk-clr-o',newEvent.color===c&&'on']" :style="{background:c}" @click="newEvent.color=c"></div></div></div>
-    <div class="htk-fg"><span class="htk-fl">{{copy.visibility}}</span><div class="htk-vis-row"><div :class="['htk-vis-o',newEvent.visibility==='public'&&'on']" @click="newEvent.visibility='public'"><span class="htk-vi"><i class="ti ti-world"></i></span>{{copy.public}}</div><div :class="['htk-vis-o',newEvent.visibility==='private'&&'on']" @click="newEvent.visibility='private';newEvent.rsvp=false"><span class="htk-vi"><i class="ti ti-lock"></i></span>{{copy.private}}</div></div></div>
-    <div class="htk-fg"><span class="htk-fl">{{copy.options}}</span><div class="htk-tg-row"><span class="htk-tg-lab">{{copy.rsvp}}</span><button :class="['htk-tg-sw',newEvent.rsvp&&'on']" :disabled="newEvent.visibility==='private'" :style="newEvent.visibility==='private'?'opacity:.35;cursor:not-allowed':''" @click="newEvent.visibility!=='private'&&(newEvent.rsvp=!newEvent.rsvp)"></button><span v-if="newEvent.visibility==='private'" style="font-size:.7rem;color:var(--text-3);margin-left:6px">{{copy.rsvpUnavailablePrivate}}</span></div>
+	  <div v-if="showEventDetails||editingEvent" class="htk-lg htk-anim htk-event-editor"><div class="htk-gc">
+	    <h3 class="htk-sec-title">{{plannerCopy.moreDetails}}</h3>
+	    <fieldset :disabled="plannerReadOnly" class="htk-editor-fieldset">
+	    <div class="htk-fg"><span id="hatask-event-emoji-label" class="htk-fl">{{copy.emoji}}</span><div class="htk-emp-row" role="group" aria-labelledby="hatask-event-emoji-label"><button v-for="e in eventEmojis" :key="e" type="button" :class="['htk-emp-i',newEvent.emoji===e&&'on']" :aria-label="`${plannerCopy.chooseEmoji}: ${e}`" :aria-pressed="newEvent.emoji===e" @click="newEvent.emoji=e"><HataskEmoji :emoji="e"/></button></div></div>
+	    <div class="htk-fg"><span class="htk-fl">{{copy.dateAndTime}}</span>
+	      <div class="htk-tg-row" style="margin-bottom:8px"><span id="hatask-event-all-day-label" class="htk-tg-lab">{{copy.allDayFull}}</span><button type="button" :class="['htk-tg-sw',newEvent.allDay&&'on']" role="switch" aria-labelledby="hatask-event-all-day-label" :aria-checked="newEvent.allDay" @click="newEvent.allDay=!newEvent.allDay"></button></div>
+	      <div class="htk-fr htk-date-time-row"><span class="htk-field-sub-label">{{plannerCopy.eventStart}}</span><label class="htk-sr-only" for="hatask-event-start-date">{{plannerCopy.eventStartDate}}</label><input id="hatask-event-start-date" v-model="newEvent.date" class="htk-inp" type="date"><label v-if="!newEvent.allDay" class="htk-sr-only" for="hatask-event-start-time">{{plannerCopy.eventStartTime}}</label><input v-if="!newEvent.allDay" id="hatask-event-start-time" v-model="newEvent.timeStart" class="htk-inp" type="time"></div>
+	      <div class="htk-fr htk-date-time-row" style="margin-top:5px"><span class="htk-field-sub-label">{{plannerCopy.eventEnd}}</span><label class="htk-sr-only" for="hatask-event-end-date">{{plannerCopy.eventEndDate}}</label><input id="hatask-event-end-date" v-model="newEvent.dateEnd" class="htk-inp" type="date"><label v-if="!newEvent.allDay" class="htk-sr-only" for="hatask-event-end-time">{{plannerCopy.eventEndTime}}</label><input v-if="!newEvent.allDay" id="hatask-event-end-time" v-model="newEvent.timeEnd" class="htk-inp" type="time"></div>
+	    </div>
+	    <div class="htk-fg"><span id="hatask-event-color-label" class="htk-fl">{{copy.color}}</span><div class="htk-clr-row" role="group" aria-labelledby="hatask-event-color-label"><button v-for="c in eventColors" :key="c" type="button" :class="['htk-clr-o',newEvent.color===c&&'on']" :style="{background:c}" :aria-label="`${plannerCopy.chooseColor}: ${c}`" :aria-pressed="newEvent.color===c" @click="newEvent.color=c"></button></div></div>
+    <div class="htk-fg"><span class="htk-fl">{{copy.visibility}}</span><div class="htk-vis-row" role="group" :aria-label="copy.visibility"><button type="button" :class="['htk-vis-o',newEvent.visibility==='public'&&'on']" :aria-pressed="newEvent.visibility==='public'" @click="newEvent.visibility='public';newEvent.recurrence.frequency='none'"><span class="htk-vi"><i class="ti ti-world"></i></span>{{copy.public}}</button><button type="button" :class="['htk-vis-o',newEvent.visibility==='private'&&'on']" :aria-pressed="newEvent.visibility==='private'" @click="newEvent.visibility='private';newEvent.rsvp=false"><span class="htk-vi"><i class="ti ti-lock"></i></span>{{copy.private}}</button></div></div>
+    <div class="htk-fg"><label class="htk-fl" for="hatask-event-recurrence">{{plannerCopy.recurrence}}</label><select id="hatask-event-recurrence" v-model="newEvent.recurrence.frequency" class="htk-inp" :disabled="newEvent.visibility==='public'"><option value="none">{{plannerCopy.recurrenceNone}}</option><option value="daily">{{plannerCopy.recurrenceDaily}}</option><option value="weekly">{{plannerCopy.recurrenceWeekly}}</option><option value="monthly">{{plannerCopy.recurrenceMonthly}}</option><option value="yearly">{{plannerCopy.recurrenceYearly}}</option></select></div>
+	    <div class="htk-fg"><span class="htk-fl">{{copy.options}}</span><div class="htk-tg-row"><span id="hatask-event-rsvp-label" class="htk-tg-lab">{{copy.rsvp}}</span><button type="button" :class="['htk-tg-sw',newEvent.rsvp&&'on']" role="switch" aria-labelledby="hatask-event-rsvp-label" :aria-checked="newEvent.rsvp" :disabled="newEvent.visibility==='private'" :style="newEvent.visibility==='private'?'opacity:.35;cursor:not-allowed':''" @click="newEvent.visibility!=='private'&&(newEvent.rsvp=!newEvent.rsvp)"></button><span v-if="newEvent.visibility==='private'" style="font-size:.7rem;color:var(--text-3);margin-left:6px">{{copy.rsvpUnavailablePrivate}}</span></div>
     <div v-if="editingEvent && editingEvent.rsvp" class="htk-rsvp-summary">
       <div class="htk-rsvp-sum-header"><span class="htk-rsvp-sum-title">{{copy.rsvpDashboard}}</span></div>
       <div v-if="sharedEventData(editingEvent.id)?.rsvpClosed" class="htk-rsvp-closed-badge"><i class="ti ti-check"></i> {{copy.closed}}</div>
@@ -398,62 +494,140 @@
       </template>
       <div v-else class="htk-rsvp-sum-empty">{{copy.noResponses}}</div>
       <button v-if="!sharedEventData(editingEvent.id)?.rsvpClosed" class="htk-btn htk-sm htk-danger" style="margin-top:12px;width:100%" @click="closeRsvp(editingEvent.id)">{{copy.closeRsvp}}</button>
-    </div><div class="htk-tg-row"><span class="htk-tg-lab">{{copy.notifications}}</span><button :class="['htk-tg-sw',newEvent.notify&&'on']" @click="newEvent.notify=!newEvent.notify"></button></div></div>
-    <div v-if="newEvent.notify" class="htk-fg"><span class="htk-fl">{{copy.notificationTiming}}</span><div class="htk-nt-chips"><span v-for="nt in notifyTimings" :key="nt" :class="['htk-nt-chip',newEvent.notifyTimings.includes(nt)&&'on']" @click="toggleNotifyTiming(nt)">{{notifyTimingLabel(nt)}}</span></div></div>
-    <div style="margin-top:14px;display:flex;gap:8px"><button class="htk-btn htk-primary" style="flex:1" @click="addEvent">{{editingEvent?copy.update:copy.save}}</button><button v-if="editingEvent" class="htk-btn" @click="editingEvent=null;newEvent.title=''">{{copy.cancel}}</button><button v-if="editingEvent" class="htk-btn htk-danger" @click="deleteEventById(editingEvent.id)">{{copy.delete}}</button></div>
+	    </div><div class="htk-tg-row"><span id="hatask-event-notify-label" class="htk-tg-lab">{{copy.notifications}}</span><button type="button" :class="['htk-tg-sw',newEvent.notify&&'on']" role="switch" aria-labelledby="hatask-event-notify-label" :aria-checked="newEvent.notify" @click="newEvent.notify=!newEvent.notify"></button></div></div>
+	    <div v-if="newEvent.notify" class="htk-fg"><span id="hatask-event-notify-timing-label" class="htk-fl">{{copy.notificationTiming}}</span><div class="htk-nt-chips" role="group" aria-labelledby="hatask-event-notify-timing-label"><button v-for="nt in notifyTimings" :key="nt" type="button" :class="['htk-nt-chip',newEvent.notifyTimings.includes(nt)&&'on']" :aria-label="plannerCopyx.notificationTimingLabel({timing:notifyTimingLabel(nt)})" :aria-pressed="newEvent.notifyTimings.includes(nt)" @click="toggleNotifyTiming(nt)">{{notifyTimingLabel(nt)}}</button></div></div>
+	    </fieldset>
+    <div class="htk-editor-icon-actions"><button type="button" class="htk-icon-submit" :disabled="plannerReadOnly||!newEvent.title.trim()" :aria-label="editingEvent?copy.update:copy.save" :title="editingEvent?copy.update:copy.save" @click="submitEventCapture"><i :class="editingEvent?'ti ti-check':'ti ti-plus'" aria-hidden="true"></i></button><button v-if="editingEvent" type="button" class="htk-icon-btn" :aria-label="copy.cancel" :title="copy.cancel" @click="resetEventEditor"><i class="ti ti-x" aria-hidden="true"></i></button><button v-if="editingEvent" type="button" class="htk-icon-btn htk-danger" :disabled="plannerReadOnly" :aria-label="copy.delete" :title="copy.delete" @click="deleteEventById(editingEvent.id)"><i class="ti ti-trash" aria-hidden="true"></i></button></div>
   </div></div>
 </div>
 
 <!-- ========== TODO ========== -->
 <div v-if="activeTab==='todo'" class="htk-tabpage" :class="[isHatakyu&&'hk-panels',tabDir==='fwd'?'htk-tab-fwd':'htk-tab-back']">
-<!-- 旗鯖fork(ハタキュ): 今日片付いた分をほめる紙。 -->
-<div v-if="isHatakyu" class="hk-pin" style="--i:0;--r:1.4deg"><span class="hk-tack hk-p"></span>
-  <div class="hk-card hk-mint hk-center">
-    <img class="hk-hero" :src="hkAsset('treasureFound')" alt="" draggable="false">
-    <div class="hk-jl hk-center"><i class="ti ti-confetti"></i>{{copy.hkDoneToday}}</div>
-    <div class="hk-big">{{hkTodayDoneCount}}<small>&nbsp;{{copy.hkItemsUnit}}</small></div>
-    <div class="hk-note">{{copyx.hkRemainingToday({count:pendingCount.toString()})}}</div>
-  </div>
+	<div class="htk-planner-shell htk-anim">
+	  <div v-if="plannerStorageState==='loading'||plannerStorageState==='saving'||plannerStorageState==='blocked'||plannerStorageState==='conflict'" class="htk-planner-status" :data-state="plannerStorageState" role="status" aria-live="polite"><i :class="plannerStorageState==='loading'||plannerStorageState==='saving'?'ti ti-loader-2':'ti ti-shield-exclamation'" aria-hidden="true"></i><span>{{plannerStorageState==='loading'?plannerCopy.loading:plannerStorageState==='saving'?plannerCopy.saving:plannerStorageDetail||plannerCopy.readOnly}}</span><button v-if="plannerReadOnly" type="button" class="htk-btn htk-xs" @click="retryPlannerStorage">{{plannerCopy.retry}}</button></div>
+	  <HataskQuickCapture
+	    ref="todoCaptureRef"
+	    mode="todo"
+	    :modelValue="newTodo"
+	    :label="editingTodoId?copy.editTask:copy.newTaskPlaceholder"
+	    :placeholder="editingTodoId?copy.editTaskPlaceholder:copy.newTaskPlaceholder"
+	    :submitLabel="editingTodoId?copy.update:copy.add"
+	    :chips="todoCaptureChips"
+	    :tools="todoCaptureTools"
+	    :detailOpen="showTodoExtra||todoCaptureEditor!=null"
+	    :disabled="plannerReadOnly"
+	    :state="todoCaptureState"
+	    :chipLabel="plannerCopy.captureChips"
+	    :toolLabel="plannerCopy.captureTools"
+	    :removeChipLabel="label=>plannerCopyx.removeCaptureChip({label})"
+	    :hint="plannerCopy.todoCaptureHint"
+	    @update:modelValue="updateTodoCapture"
+	    @submit="submitTodoCapture"
+	    @tool="handleTodoCaptureTool"
+	    @chip="handleTodoCaptureChip"
+	    @remove-chip="removeTodoCaptureChip"
+	    @collapse="showTodoExtra=false;todoCaptureEditor=null"
+	  />
+	  <Transition name="htk-capture-detail">
+	    <fieldset v-if="todoCaptureEditor==='schedule'" class="htk-capture-detail htk-pill-editor" :disabled="plannerReadOnly">
+	      <legend class="htk-sr-only">{{copy.dateAndTime}}</legend>
+	      <header class="htk-pill-editor-head"><strong><i class="ti ti-calendar-time" aria-hidden="true"></i>{{copy.dateAndTime}}</strong><button type="button" class="htk-icon-btn" :aria-label="copy.cancel" @click="todoCaptureEditor=null"><i class="ti ti-x" aria-hidden="true"></i></button></header>
+	      <div class="htk-capture-grid">
+	        <label><span>{{copy.dueDate}}</span><input v-model="newTodoDue" class="htk-inp" type="date"></label>
+	        <label><span>{{copy.time}}</span><input v-model="newTodoTime" class="htk-inp" type="time"></label>
+	      </div>
+	      <button v-if="newTodoDue||newTodoTime" type="button" class="htk-pill-clear" @click="newTodoDue='';newTodoTime=''">{{copy.none}}</button>
+	    </fieldset>
+	  </Transition>
+	  <Transition name="htk-capture-detail">
+	    <fieldset v-if="showTodoExtra" id="hatask-todo-details" :disabled="plannerReadOnly" class="htk-capture-detail">
+	      <div class="htk-capture-grid">
+	        <label><span>{{copy.dueDate}}</span><input v-model="newTodoDue" class="htk-inp" type="date"></label>
+	        <label><span>{{copy.time}}</span><input v-model="newTodoTime" class="htk-inp" type="time"></label>
+	        <label><span>{{copy.folder}}</span><select v-model="newTodoFolder" class="htk-inp"><option value="">{{copy.noFolder}}</option><option v-for="fo in activeFolders" :key="fo.id" :value="fo.id">{{fo.name}}</option></select></label>
+	        <label><span>{{plannerCopy.priority}}</span><select v-model="newTodoPriority" class="htk-inp"><option value="none">{{plannerCopy.priorityNone}}</option><option value="low">{{plannerCopy.priorityLow}}</option><option value="medium">{{plannerCopy.priorityMedium}}</option><option value="high">{{plannerCopy.priorityHigh}}</option></select></label>
+	        <label><span>{{plannerCopy.recurrence}}</span><select v-model="newTodoRecurrence" class="htk-inp"><option value="none">{{plannerCopy.recurrenceNone}}</option><option value="daily">{{plannerCopy.recurrenceDaily}}</option><option value="weekly">{{plannerCopy.recurrenceWeekly}}</option><option value="monthly">{{plannerCopy.recurrenceMonthly}}</option><option value="yearly">{{plannerCopy.recurrenceYearly}}</option></select></label>
+	        <label class="htk-capture-wide"><span>{{copy.comment}}</span><input v-model="newTodoComment" class="htk-inp" :placeholder="copy.memoPlaceholder"></label>
+	      </div>
+	      <div class="htk-todo-subtask-editor htk-capture-wide"><label>{{plannerCopy.subtasks}}</label><div v-for="subtask in newTodoSubtasks" :key="subtask.id" class="htk-todo-subtask-row"><input v-model="subtask.done" type="checkbox" :aria-label="plannerCopyx.subtaskLabel({title:subtask.text||plannerCopy.subtasks})"><input v-model="subtask.text" class="htk-inp"><button type="button" class="htk-btn htk-xs" :aria-label="plannerCopyx.deleteSubtaskLabel({title:subtask.text||plannerCopy.subtasks})" @click="removeTodoSubtask(subtask.id)"><i class="ti ti-x" aria-hidden="true"></i></button></div><div class="htk-todo-subtask-row"><input v-model="newSubtaskText" class="htk-inp" :placeholder="plannerCopy.subtasks" @keypress.enter.prevent="addTodoSubtask"><button type="button" class="htk-btn htk-xs" @click="addTodoSubtask"><i class="ti ti-plus" aria-hidden="true"></i></button></div></div>
+	      <button v-if="editingTodoId" type="button" class="htk-btn htk-sm" @click="cancelEditTodo">{{copy.cancelEdit}}</button>
+	    </fieldset>
+	  </Transition>
+	  <Transition name="htk-capture-detail">
+	    <section v-if="showFolderMgr" class="htk-capture-detail htk-folder-manager" :aria-label="copy.manageFolders">
+	      <header class="htk-folder-manager-head">
+	        <div><strong>{{copy.manageFolders}}</strong></div>
+	        <div class="htk-folder-manager-head-actions">
+	          <button type="button" class="htk-icon-btn" :aria-label="plannerCopy.addFolder" :aria-expanded="showFolderCreate" @click="showFolderCreate=!showFolderCreate"><i :class="showFolderCreate?'ti ti-minus':'ti ti-plus'" aria-hidden="true"></i></button>
+	          <button type="button" class="htk-icon-btn" :aria-label="copy.cancel" @click="closeFolderManager"><i class="ti ti-x" aria-hidden="true"></i></button>
+	        </div>
+	      </header>
+	      <div class="htk-folder-manager-list">
+	        <article v-for="(fo,i) in activeFolders" :key="fo.id" class="htk-fm-row" :style="{'--folder-color':fo.color||'var(--accent)'}">
+	          <span class="htk-folder-colored-icon" aria-hidden="true"><i class="ti ti-folder-filled"></i></span>
+	          <div class="htk-fm-copy"><strong>{{fo.name}}</strong><span>{{folderCount(fo.id)}}</span></div>
+	          <button type="button" class="htk-folder-row-more" :aria-label="plannerCopyx.manageFolderLabel({name:fo.name})" @click="openFolderActions(fo.id,i)"><i class="ti ti-dots" aria-hidden="true"></i></button>
+	        </article>
+	        <div v-if="activeFolders.length===0" class="htk-folder-manager-empty"><i class="ti ti-folder-off" aria-hidden="true"></i><span>{{plannerCopy.noFolders}}</span></div>
+	      </div>
+	      <Transition name="htk-folder-create">
+	        <div v-if="showFolderCreate" class="htk-folder-create-panel">
+	          <label><span>{{copy.folder}}</span><input v-model="newFolderName" class="htk-inp" :placeholder="copy.folderNamePlaceholder" @keypress.enter.prevent="addFolder"></label>
+	          <div class="htk-folder-clr-row" role="group" :aria-label="copy.color"><button v-for="c in folderColors" :key="c.value" type="button" :class="['htk-folder-clr-o',newFolderColor===c.value&&'on']" :style="{background:c.value}" :aria-label="c.label" :aria-pressed="newFolderColor===c.value" @click="newFolderColor=c.value"></button></div>
+	          <button type="button" class="htk-icon-submit htk-folder-create-submit" :disabled="plannerReadOnly||!newFolderName.trim()" :aria-label="plannerCopy.addFolder" @click="addFolder"><i class="ti ti-plus" aria-hidden="true"></i></button>
+	        </div>
+	      </Transition>
+	    </section>
+	  </Transition>
+	  <div v-if="isHatakyu" class="hk-inlinefig htk-capture-companion"><img :src="hkAsset('reviewingDocuments')" alt="" draggable="false"><div class="hk-note">{{copyx.hkRemainingToday({count:pendingCount.toString()})}}</div></div>
+	  <div v-if="completedUndoItems.length" class="htk-planner-undo htk-complete-undo" role="status"><i class="ti ti-circle-check-filled" aria-hidden="true"></i><span>{{plannerCopyx.completedCount({count:completedUndoItems.length.toString()})}}</span><button type="button" class="htk-btn htk-xs" :disabled="plannerReadOnly" @click="undoCompletedTodos">{{plannerCopy.restore}}</button></div>
+		  <div v-if="lastArchivedTodoId" class="htk-planner-undo" role="status"><span>{{plannerCopy.archivedNotice}}</span><button type="button" class="htk-btn htk-xs" :disabled="plannerReadOnly" @click="restoreTodo(lastArchivedTodoId)">{{plannerCopy.restore}}</button></div>
+	  <HataskTodoPlanner
+	    :theme="plannerTheme"
+	    :view="plannerTodoView"
+	    :items="plannerTodoItems"
+	    :labels="plannerTodoLabels"
+	    :filters="plannerTodoFilters"
+	    :searchQuery="plannerTodoSearch"
+	    :viewCounts="plannerTodoViewCounts"
+	    :mobileTabOrder="plannerTodoMobileTabOrder"
+	    :sort="currentTodoSort"
+	    :completionIds="todoCompletionIds"
+	    :loading="plannerStorageState==='loading'"
+	    :readOnly="plannerReadOnly"
+	    @update:view="plannerTodoView=$event"
+	    @update:searchQuery="plannerTodoSearch=$event"
+	    @update:sort="setPlannerTodoSort"
+	    @update:mobileTabOrder="setPlannerTodoMobileTabOrder"
+	    @toggle-filter="togglePlannerTodoFilter"
+	    @complete="completePlannerTodo"
+	    @move-up="movePlannerTodo($event,-1)"
+	    @move-down="movePlannerTodo($event,1)"
+	    @edit="editPlannerTodo"
+	    @archive="archivePlannerTodo"
+	    @restore="restorePlannerTodo"
+	    @delete="deletePlannerTodo"
+	    @add-folder="openFolderManager"
+	    @manage-folder="managePlannerFolder"
+	    @drop-target="handleTodoDropTarget"
+	    @bulk-action="handleTodoBulkAction"
+	  >
+	    <template #templates>
+	      <HataskTemplateLibrary
+	        :templates="plannerTemplates"
+	        :kind="templateKindFilter"
+	        :labels="plannerTemplateLabels"
+	        :readOnly="plannerReadOnly"
+	        @update:kind="templateKindFilter=$event"
+	        @use="usePlannerTemplate"
+	        @duplicate="duplicatePlannerTemplate"
+	        @archive="archivePlannerTemplate"
+	        @move="movePlannerTemplate"
+	      />
+	    </template>
+	  </HataskTodoPlanner>
+	</div>
 </div>
-<div class="htk-lg htk-anim"><div class="htk-gc">
-  <h3 class="htk-sec-title">{{editingTodoId?copy.editTask:copy.todoList}}</h3>
-  <!-- 旗鯖fork(ハタキュ): 入力欄の上でハタキュが一声かける。 -->
-  <div v-if="isHatakyu" class="hk-inlinefig"><img :src="hkAsset('reviewingDocuments')" alt="" draggable="false"><div class="hk-note">{{copyx.hkRemainingToday({count:pendingCount.toString()})}}</div></div>
-  <div class="htk-todo-inp-r hk-todo-inp"><input class="htk-inp" v-model="newTodo" :placeholder="editingTodoId?copy.editTaskPlaceholder:copy.newTaskPlaceholder" @keypress.enter="addTodo" style="flex:1"><button class="htk-btn htk-sm" @click="showTodoExtra=!showTodoExtra">{{copy.details}}</button><button class="htk-btn htk-primary htk-sm" @click="addTodo">{{editingTodoId?copy.update:copy.add}}</button><button v-if="editingTodoId" class="htk-btn htk-sm" @click="cancelEditTodo">{{copy.cancelEdit}}</button></div>
-  <div :class="['htk-todo-xf',showTodoExtra&&'open']">
-    <div class="htk-todo-xf-i"><label>{{copy.dueDate}}</label><input class="htk-inp" type="date" v-model="newTodoDue"></div>
-    <div class="htk-todo-xf-i"><label>{{copy.time}}</label><input class="htk-inp" type="time" v-model="newTodoTime"></div>
-    <div class="htk-todo-xf-i"><label>{{copy.folder}}</label><select class="htk-inp" v-model="newTodoFolder"><option value="">{{copy.noFolder}}</option><option v-for="fo in folders" :key="fo.id" :value="fo.id">{{fo.name}}</option></select></div>
-    <div class="htk-todo-xf-i" style="flex:2;min-width:170px"><label>{{copy.comment}}</label><input class="htk-inp" v-model="newTodoComment" :placeholder="copy.memoPlaceholder"></div>
-  </div>
-  <div class="htk-fbar">
-    <button :class="['htk-ftab',activeFolder==='all'&&'on']" @click="activeFolder='all'">{{copy.all}}<span class="htk-fc">{{pendingCount}}</span></button>
-    <button v-for="fo in folders" :key="fo.id" :class="['htk-ftab',activeFolder===fo.id&&'on']" :style="fo.color?{borderLeft:'3px solid '+fo.color}:{}" @click="activeFolder=fo.id"><span v-if="fo.color" class="htk-fm-dot" :style="{background:fo.color}"></span><HataskEmoji :emoji="fo.emoji"/> {{fo.name}}<span class="htk-fc">{{folderCount(fo.id)}}</span></button>
-    <button class="htk-fm-btn" @click="showFolderMgr=!showFolderMgr">+ {{copy.manageFolders}}</button>
-  </div>
-  <div v-if="showFolderMgr" class="htk-fm-panel htk-lg-in">
-    <div style="font-size:.78rem;color:var(--text-2);margin-bottom:8px;font-weight:600">{{copy.manageFolders}}</div>
-    <div v-for="(fo,i) in folders" :key="fo.id" class="htk-fm-row"><span v-if="fo.color" class="htk-fm-dot" :style="{background:fo.color}"></span><span class="htk-fm-emoji"><HataskEmoji :emoji="fo.emoji"/></span><span class="htk-fm-name">{{fo.name}}</span><div class="htk-fm-acts"><button class="htk-btn htk-xs" @click="changeFolderColor(i)" :title="copy.changeColor"><i class="ti ti-palette"></i></button><button class="htk-btn htk-xs" @click="renameFolder(i)"><i class="ti ti-pencil"></i></button><button class="htk-btn htk-xs" @click="moveFolder(i,-1)" :disabled="i===0"><i class="ti ti-chevron-up"></i></button><button class="htk-btn htk-xs" @click="moveFolder(i,1)" :disabled="i===folders.length-1"><i class="ti ti-chevron-down"></i></button><button class="htk-btn htk-xs htk-danger" @click="deleteFolder(i)"><i class="ti ti-x"></i></button></div></div>
-    <div v-if="!folders.length" style="font-size:.78rem;color:var(--text-3);padding:6px">{{copy.noFolder}}</div>
-    <div style="margin-top:6px">
-      <div style="display:flex;gap:5px;align-items:center"><input class="htk-inp" v-model="newFolderName" :placeholder="copy.folderNamePlaceholder" style="flex:1;font-size:.78rem;padding:7px 12px"><button class="htk-btn htk-xs htk-primary" @click="addFolder">{{copy.add}}</button></div>
-      <div class="htk-folder-clr-row"><span style="font-size:.7rem;color:var(--text-3)">{{copy.color}}:</span><div v-for="c in folderColors" :key="c.value" :class="['htk-folder-clr-o',newFolderColor===c.value&&'on']" :style="{background:c.value}" :title="c.label" @click="newFolderColor=c.value"></div><div :class="['htk-folder-clr-o htk-folder-clr-none',newFolderColor===''&&'on']" :title="copy.none" @click="newFolderColor=''">×</div></div>
-    </div>
-  </div>
-  <div class="htk-sbar"><span class="htk-sbar-l">{{copy.sort}}:</span><button v-for="s in sortOptions" :key="s.id" :class="['htk-btn htk-xs',sortMode===s.id&&'htk-sb-on']" @click="sortMode=s.id">{{s.label}}</button></div>
-  <div v-for="todo in pagedTodos" :key="todo.id" :class="['htk-todo-i',todo.done&&'done']">
-    <div :class="['htk-todo-cb',todo.done&&'ck']" @click="toggleTodo(todo.id)"></div>
-    <div class="htk-todo-ct" @click="expandedTodo=expandedTodo===todo.id?null:todo.id">
-      <div class="htk-todo-tx">{{todo.text}}</div>
-      <div class="htk-todo-mt"><span v-if="todo.due" :class="['htk-todo-db',isOverdue(todo.due)&&!todo.done&&'od',isDueToday(todo.due)&&'tdy']">{{formatDue(todo.due,todo.time)}}</span><span v-if="getFolder(todo.folder)&&activeFolder==='all'" class="htk-todo-fb"><HataskEmoji :emoji="getFolder(todo.folder)?.emoji ?? '📁'"/> {{getFolder(todo.folder)?.name}}</span></div>
-      <div v-if="todo.comment" class="htk-todo-cp">{{todo.comment.split('\n')[0]}}</div>
-      <div v-if="expandedTodo===todo.id" class="htk-todo-dx open"><div v-if="todo.comment" style="font-size:.78rem;color:var(--text-2);line-height:1.5;white-space:pre-wrap">{{todo.comment}}</div><div v-else style="font-size:.73rem;color:var(--text-3)">{{copy.noComment}}</div></div>
-    </div>
-    <div class="htk-todo-acts"><button class="htk-todo-ab" @click="editTodo(todo.id)"><i class="ti ti-pencil"></i></button><button class="htk-todo-ab del" @click="deleteTodo(todo.id)"><i class="ti ti-x"></i></button></div>
-  </div>
-  <div v-if="todoTotalPages>1" class="htk-pager"><button class="htk-btn htk-xs" :disabled="todoPage<=1" @click="todoPage--">&lt;</button><span class="htk-pager-t">{{todoPage}} / {{todoTotalPages}}</span><button class="htk-btn htk-xs" :disabled="todoPage>=todoTotalPages" @click="todoPage++">&gt;</button></div>
-  <div v-if="!sortedTodos.length" class="htk-empty"><div class="htk-empI"><i class="ti ti-circle-off"></i></div><div>{{copy.noTasks}}</div></div>
-</div></div></div>
 
 <!-- ========== NOTIFICATIONS ========== -->
 
@@ -827,7 +1001,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, computed, onMounted, onUnmounted, onBeforeUnmount, onActivated, onDeactivated, nextTick, watch, defineAsyncComponent } from 'vue';
+import { ref, computed, inject, onMounted, onUnmounted, onBeforeUnmount, onActivated, onDeactivated, nextTick, watch, defineAsyncComponent } from 'vue';
 import type * as Misskey from 'cherrypick-js';
 import type { HataskGrowingFlower } from '@/utility/hatask-flower-growth.js';
 import { definePage } from '@/page.js';
@@ -842,6 +1016,15 @@ import { versatileLang } from '@/utility/intl-const.js';
 import MkEarthquakeTicker from '@/components/MkEarthquakeTicker.vue';
 import HataFeedNotificationBody from '@/components/HataFeedNotificationBody.vue';
 import HataskEmoji from '@/components/HataskEmoji.vue';
+import HataskCalendarPlanner from '@/components/hatask/HataskCalendarPlanner.vue';
+import HataskEventMoveDialog from '@/components/hatask/HataskEventMoveDialog.vue';
+import type { HataskEventMoveDialogLabels } from '@/components/hatask/HataskEventMoveDialog.vue';
+import HataskTodoPlanner from '@/components/hatask/HataskTodoPlanner.vue';
+import HataskQuickCapture from '@/components/hatask/HataskQuickCapture.vue';
+import type { HataskCaptureChip, HataskCaptureTool } from '@/components/hatask/HataskQuickCapture.vue';
+import HataskTemplateLibrary from '@/components/hatask/HataskTemplateLibrary.vue';
+import type { HataskTemplateKindFilter, HataskTemplateLabels } from '@/components/hatask/HataskTemplateLibrary.vue';
+import type { HataskCalendarDay, HataskCalendarEvent, HataskCalendarLabels, HataskCalendarView, HataskCalendarWeekday, HataskPlannerFilter, HataskPlannerTheme, HataskTodoItem, HataskTodoLabels, HataskTodoMobileTab, HataskTodoSort, HataskTodoView } from '@/components/hatask/hatask-planner-types.js';
 import MkAvatar from '@/components/global/MkAvatar.vue';
 import MkUserName from '@/components/global/MkUserName.vue';
 import { hatakyuAssetUrl } from '@/utility/hatakyu-assets.js';
@@ -850,9 +1033,18 @@ import { getDefaultPhrase, getPhrase } from '@/utility/hatask-phrases.js';
 import { floraData, pickRandomFlora, generateFlowerName, localizeFloraName, localizeHanakotoba } from '@/utility/hatask-flora.js';
 import { HATASK_FLOWER_GROWTH_EVENT, createHataskGrowingFlower, normalizeHataskGrowingFlower, seedHataskFlowerGrowth } from '@/utility/hatask-flower-growth.js';
 import { notificationDisplayMessage, type HataFeedNotif } from '@/utility/hatafeed.js';
+import { createHataskPlannerApiStoragePort } from '@/utility/hatask-planner-api.js';
+import { HATASK_PLANNER_COLLECTION_KEYS, HATASK_PLANNER_SCOPE, migrateHataskPlannerStorage } from '@/utility/hatask-planner-storage.js';
+import type { HataskPlannerCollectionKey, HataskPlannerEvent, HataskPlannerFolder, HataskPlannerRevision, HataskPlannerTemplate, HataskPlannerTodo, HataskRecurrenceFrequency } from '@/utility/hatask-planner-storage.js';
+import { normalizeHataskPlannerTemplates } from '@/utility/hatask-planner-templates.js';
+import { parseHataskCapture } from '@/utility/hatask-capture-parser.js';
+import { createNextRecurringTodo, expandHataskEventOccurrences } from '@/utility/hatask-planner-recurrence.js';
 import { activeCharacter as mascotActiveCharacter, expressionDisplayUrl, loadMascot, hatakMascotActive, currentExpression as mascotCurrentExpression, currentPhrase as mascotCurrentPhrase, pickRandomPhrase as mascotPickRandomPhrase, displaySettings as mascotDisplaySettings, loadDisplaySettings as loadMascotDisplaySettings, nextIdleDelayMs as mascotNextIdleDelayMs, escapeText as mascotEscapeText } from '@/utility/mascot-store.js';
 const copy = i18n.ts._hata._hatask._main;
 const copyx = i18n.tsx._hata._hatask._main;
+const plannerCopy = i18n.ts._hata._hatask._planner;
+const plannerCopyx = i18n.tsx._hata._hatask._planner;
+const inPageWindow = inject<boolean>('inWindow', false);
 const emotionCopy = (i18n.ts._hata as unknown as { _emotionAnalysis: { title: string } })._emotionAnalysis;
 const _getPhrase = (ctx?: any): string => { try { return getPhrase(ctx); } catch { return getDefaultPhrase(); } };
 definePage(()=>({title:'Hatask',icon:'ti ti-checklist'}));
@@ -876,7 +1068,6 @@ const mealDisclaimerText=computed(() => copy.mealDisclaimerFull);
 const eventColors=['#e27d60','#85cdca','#e8a87c','#c38d9e','#7bc67e','#f0c75e','#6cb4ee'];
 const eventEmojis=['⭐','💼','🎮','🔧','📚','🎂','✈️','🎨','🏃','🎤'];
 const notifyTimings=['15分前','30分前','1時間前','1日前'];
-const sortOptions=computed(() => [{id:'manual',label:copy.sortManual},{id:'dueAsc',label:copy.sortDueAsc},{id:'dueDesc',label:copy.sortDueDesc},{id:'new',label:copy.sortNewest}]);
 // Flora data now in hatask-flora.ts
 
 const notifyTimingLabels: Record<string, () => string> = {
@@ -913,6 +1104,10 @@ function parseIsoDate(value: string): Date {
 	return match ? new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3])) : new Date(value);
 }
 
+function localDateKey(date = new Date()): string {
+	return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
 const yearMonthFormatter = new Intl.DateTimeFormat(versatileLang, { year: 'numeric', month: 'long' });
 const longDateFormatter = new Intl.DateTimeFormat(versatileLang, { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
 const monthDayFormatter = new Intl.DateTimeFormat(versatileLang, { month: 'short', day: 'numeric' });
@@ -924,8 +1119,150 @@ const calendarWeekdays = Array.from({ length: 7 }, (_, index) => weekdayShortFor
 
 const dataLoaded = ref(false);
 const loadedKeys = new Set<string>();
-async function registryGet<T>(key:string,fb:T):Promise<T>{try{const v=await misskeyApi('i/registry/get',{key,scope:SCOPE});loadedKeys.add(key);return(v!=null?v:fb)as T}catch{return fb}}
-async function registrySet(key:string,value:unknown):Promise<void>{if(!dataLoaded.value&&!loadedKeys.has(key))return;await misskeyApi('i/registry/set',{key,value,scope:SCOPE})}
+const plannerRevisions: Record<HataskPlannerCollectionKey, HataskPlannerRevision> = { todos: null, folders: null, events: null };
+const plannerStoragePort = createHataskPlannerApiStoragePort((endpoint, params) => misskeyApi(endpoint as never, params as never));
+const plannerTemplates = ref<HataskPlannerTemplate[]>([]);
+const plannerTemplateRevision = ref<HataskPlannerRevision>(null);
+const templateKindFilter = ref<HataskTemplateKindFilter>('all');
+let plannerTemplatesLoaded = false;
+const plannerStorageState = ref<'loading'|'ready'|'saving'|'saved'|'blocked'|'conflict'>('loading');
+const plannerStorageDetail = ref('');
+let plannerMigrationReady = false;
+
+function isPlannerCollectionKey(key: string): key is HataskPlannerCollectionKey {
+	return (HATASK_PLANNER_COLLECTION_KEYS as readonly string[]).includes(key);
+}
+
+function storePlannerRecoveryCopy(key: HataskPlannerCollectionKey, value: unknown): void {
+	try {
+		window.localStorage.setItem('hatask_planner_unsaved_v1', JSON.stringify({ version: 1, savedAt: new Date().toISOString(), key, value }));
+	} catch {
+		// The server and Registry shadow backups remain the primary recovery path.
+	}
+}
+
+async function registryGet<T>(key:string,fb:T):Promise<T>{
+	try {
+		if (isPlannerCollectionKey(key)) {
+			const result = await plannerStoragePort.read({ key, scope: HATASK_PLANNER_SCOPE });
+			plannerRevisions[key] = result.revision ?? null;
+			loadedKeys.add(key);
+			return (result.value != null ? result.value : fb) as T;
+		}
+		const v=await misskeyApi('i/registry/get',{key,scope:SCOPE});
+		loadedKeys.add(key);
+		return(v!=null?v:fb)as T;
+	} catch (error) {
+		// A missing key is a valid empty state. Network/auth/server failures are not:
+		// keep the key locked so a later interaction cannot overwrite unseen data.
+		if ((error as { code?: string } | null)?.code === 'NO_SUCH_KEY') loadedKeys.add(key);
+		return fb;
+	}
+}
+async function registrySet(key:string,value:unknown):Promise<void>{
+	if(!loadedKeys.has(key))throw new Error(`Hatask registry write blocked before a successful read: ${key}`);
+	if (isPlannerCollectionKey(key)) {
+		if (!plannerMigrationReady) throw new Error(`Hatask planner write blocked until migration verification succeeds: ${key}`);
+		plannerStorageState.value = 'saving';
+		try {
+			const result = await plannerStoragePort.write({
+				key,
+				scope: HATASK_PLANNER_SCOPE,
+				value,
+				expectedRevision: plannerRevisions[key],
+			});
+			plannerRevisions[key] = result?.revision ?? plannerRevisions[key];
+			plannerStorageState.value = 'saved';
+			plannerStorageDetail.value = '';
+			return;
+		} catch (error) {
+			storePlannerRecoveryCopy(key, value);
+			if ((error as { code?: string } | null)?.code === 'HATASK_PLANNER_CONFLICT') {
+				plannerStorageState.value = 'conflict';
+				plannerStorageDetail.value = plannerCopy.conflict;
+			} else {
+				plannerStorageState.value = 'blocked';
+				plannerStorageDetail.value = plannerCopy.readFailure;
+			}
+			throw error;
+		}
+	}
+	await misskeyApi('i/registry/set',{key,value,scope:SCOPE});
+}
+
+async function loadPlannerTemplates(): Promise<void> {
+	const snapshot = await plannerStoragePort.readTemplates();
+	const normalized = normalizeHataskPlannerTemplates(snapshot.value);
+	if (normalized.invalidCount > 0) {
+		plannerTemplatesLoaded = false;
+		plannerStorageState.value = 'blocked';
+		plannerStorageDetail.value = plannerCopy.templateReadFailure;
+		throw new Error(plannerStorageDetail.value);
+	}
+	plannerTemplates.value = normalized.templates;
+	plannerTemplateRevision.value = snapshot.revision;
+	plannerTemplatesLoaded = true;
+}
+
+async function savePlannerTemplates(next: HataskPlannerTemplate[]): Promise<void> {
+	if (!plannerMigrationReady || !plannerTemplatesLoaded) throw new Error('Hatask template write blocked before verified read');
+	plannerStorageState.value = 'saving';
+	try {
+		const result = await plannerStoragePort.writeTemplates(next, plannerTemplateRevision.value);
+		plannerTemplateRevision.value = result.revision;
+		plannerTemplates.value = next;
+		plannerStorageState.value = 'saved';
+		plannerStorageDetail.value = '';
+	} catch (error) {
+		try { window.localStorage.setItem('hatask_planner_unsaved_templates_v1', JSON.stringify({ version: 1, savedAt: new Date().toISOString(), value: next })); } catch {}
+		if ((error as { code?: string } | null)?.code === 'HATASK_PLANNER_CONFLICT') {
+			plannerStorageState.value = 'conflict';
+			plannerStorageDetail.value = plannerCopy.conflict;
+		} else {
+			plannerStorageState.value = 'blocked';
+			plannerStorageDetail.value = plannerCopy.readFailure;
+		}
+		throw error;
+	}
+}
+
+async function preparePlannerStorage(): Promise<boolean> {
+	plannerStorageState.value = 'loading';
+	plannerStorageDetail.value = '';
+	// 競合後の再試行では、前回キャッシュではなくサーバーの最新revisionを基準にする。
+	await plannerStoragePort.refresh();
+	const result = await migrateHataskPlannerStorage(plannerStoragePort);
+	if (result.status === 'noop' || result.status === 'migrated') {
+		plannerMigrationReady = true;
+		plannerStorageState.value = 'ready';
+		return true;
+	}
+	plannerMigrationReady = false;
+	plannerStorageState.value = 'blocked';
+	plannerStorageDetail.value = result.issues[0]?.detail ?? plannerCopy.readFailure;
+	return false;
+}
+
+async function retryPlannerStorage(): Promise<void> {
+	try {
+		if (!await preparePlannerStorage()) return;
+		const [nextTodos, nextFolders, nextEvents] = await Promise.all([
+			registryGet<HataskPlannerTodo[]>('todos', []),
+			registryGet<HataskPlannerFolder[]>('folders', []),
+			registryGet<HataskPlannerEvent[]>('events', []),
+		]);
+		await loadPlannerTemplates();
+		todos.value = nextTodos;
+		folders.value = nextFolders;
+		events.value = nextEvents;
+		scheduleEventNotifications();
+		await loadSharedEvents();
+	} catch (error) {
+		plannerMigrationReady = false;
+		plannerStorageState.value = 'blocked';
+		plannerStorageDetail.value = (error as Error)?.message || plannerCopy.readFailure;
+	}
+}
 
 // 旗鯖fork: プロフィールに出すのは花の内容ではなく件数だけ。
 // レジストリの実数と異なるときだけ更新し、i/update のレート制限を消費しない。
@@ -1397,33 +1734,40 @@ try{await misskeyApi('notifications/create',{body,header:header||null,icon:icon|
 }
 
 function scheduleEventNotifications(){
-// Clear existing timers
-eventTimerIds.forEach(id=>clearTimeout(id));eventTimerIds.length=0;
-const now=Date.now();
-events.value.forEach(ev=>{
-if(!ev.notify||!ev.notifyTimings||!ev.notifyTimings.length)return;
-const eventTime=new Date(ev.date+'T'+ev.timeStart).getTime();
-if(eventTime<now)return;// past event
-ev.notifyTimings.forEach((timing:string)=>{
-let msAhead=0;
-if(timing==='15分前')msAhead=15*60*1000;
-else if(timing==='30分前')msAhead=30*60*1000;
-else if(timing==='1時間前')msAhead=60*60*1000;
-else if(timing==='1日前')msAhead=24*60*60*1000;
-const fireAt=eventTime-msAhead;
-const delay=fireAt-now;
-if(delay>0&&delay<24*60*60*1000){// only schedule within next 24h
-const tid=window.setTimeout(()=>{sendNotification(ev.title,copyx.eventReminderBody({ timing: notifyTimingLabel(timing), start: ev.timeStart, end: ev.timeEnd }), undefined, '/hatask?notice=calendar')},delay);
-eventTimerIds.push(tid)
-}})
-})
+	// ブラウザの setTimeout 上限より手前までを張り、12時間ごとに次の窓を補充する。
+	// 旧実装の24時間制限では、Hataskを毎日開かない利用者の通知が欠落していた。
+	eventTimerIds.forEach(id=>window.clearTimeout(id));eventTimerIds.length=0;
+	const now=Date.now();
+	const timerWindowMs=21*24*60*60*1000;
+	const rangeEnd=new Date(now+timerWindowMs+2*24*60*60*1000);
+	const occurrences=expandHataskEventOccurrences(events.value,localDateKey(),localDateKey(rangeEnd),2000);
+	for(const ev of occurrences){
+		if(!ev.notify||!ev.notifyTimings?.length)continue;
+		const eventTime=new Date(`${ev.date}T${ev.allDay?'09:00':ev.timeStart||'09:00'}`).getTime();
+		if(!Number.isFinite(eventTime)||eventTime<now)continue;
+		for(const timing of ev.notifyTimings){
+			let msAhead=0;
+			if(timing==='15分前')msAhead=15*60*1000;
+			else if(timing==='30分前')msAhead=30*60*1000;
+			else if(timing==='1時間前')msAhead=60*60*1000;
+			else if(timing==='1日前')msAhead=24*60*60*1000;
+			const delay=eventTime-msAhead-now;
+			if(delay<=0||delay>timerWindowMs)continue;
+			const tid=window.setTimeout(()=>{
+				sendNotification(ev.title,copyx.eventReminderBody({ timing: notifyTimingLabel(timing), start: ev.timeStart||copy.allDay, end: ev.timeEnd||copy.allDay }),undefined,'/hatask?notice=calendar');
+			},delay);
+			eventTimerIds.push(tid);
+		}
+	}
+	const refreshTimer=window.setTimeout(scheduleEventNotifications,12*60*60*1000);
+	eventTimerIds.push(refreshTimer);
 }
 function scheduleMoodReminders(){
 // ⚠️まず消す。ここを省くと呼ばれるたびにタイマーが積み上がり、同じ時刻に何通も届く。
 // ⚠️早期returnより前で消すこと。後ろに置くと、リマインドをOFFにしても既存の分が鳴る。
 moodTimerIds.forEach(id=>clearTimeout(id));moodTimerIds.length=0;
 if(!settings.value.moodRemind||!settings.value.moodRemindTimes?.length)return;
-const now=new Date();const today=now.toISOString().slice(0,10);
+const now=new Date();const today=localDateKey(now);
 const timeMap:Record<string,string>={'朝 8:00':'08:00','昼 12:00':'12:00','夜 20:00':'20:00','寝る前 23:00':'23:00'};
 settings.value.moodRemindTimes.forEach((t:string)=>{
 const hm=timeMap[t];if(!hm)return;
@@ -1486,10 +1830,180 @@ function stopMascotCardRotation(){if(mascotCardRotateTimer){clearTimeout(mascotC
 const closedRsvpNotifs=ref<{eventId:string,emoji:string,title:string,goCount:number}[]>([]);
 const dismissedRsvpNotifs=ref<string[]>([]);
 const sharedEvents=ref<any[]>([]);
-async function loadSharedEvents(){try{const list=await misskeyApi('hatask/events/list',{limit:50,includeExpired:true});sharedEvents.value=list as any[]}catch(e){console.warn('Failed to load shared events:',e);sharedEvents.value=[]}}
-function sharedEventData(eventId:string){return sharedEvents.value.find(e=>e.id===eventId)||null}
+async function loadSharedEvents(){
+	try {
+		const loadOwned=async():Promise<any[]>=>{
+			const owned:any[]=[];
+			let untilId:string|undefined;
+			for(let page=0;page<100;page++){
+				const batch=await misskeyApi('hatask/events/owned',{limit:100,...(untilId?{untilId}:{})}) as any[];
+				owned.push(...batch);
+				if(batch.length<100)break;
+				untilId=batch[batch.length-1]?.id;
+				if(!untilId)break;
+			}
+			return owned;
+		};
+		const [publicEvents,owned]=await Promise.all([
+			// 通常表示では未来分を日付順に取得する。includeExpired=true は全履歴の
+			// 最古50件を返し、現在の共有予定を隠してしまうため使わない。
+			misskeyApi('hatask/events/list',{limit:50,includeExpired:false}) as Promise<any[]>,
+			loadOwned(),
+		]);
+		const merged=new Map<string,any>();
+		for(const event of [...publicEvents,...owned])merged.set(event.id,event);
+		sharedEvents.value=[...merged.values()];
+		await reconcileOwnedEventIds();
+		await processPublicEventOutbox();
+	} catch(e) {
+		console.warn('Failed to load shared events:',e);
+		// Keep the last successful snapshot visible instead of flashing an empty list.
+	}
+}
+function plannerEventServerId(eventId:string):string{
+	const local=events.value.find(event=>event.id===eventId||event.serverEventId===eventId);
+	return local?.serverEventId||eventId;
+}
+function sharedEventData(eventId:string){const serverId=plannerEventServerId(eventId);return sharedEvents.value.find(e=>e.id===serverId)||null}
 function sharedRsvpResponses(eventId:string){return sharedEventData(eventId)?.rsvpResponses||[]}
 function sharedRsvpMyStatus(eventId:string){const r=sharedRsvpResponses(eventId).find((r:any)=>r.userId===$i?.id);return r?.status||null}
+
+function publicEventSignature(event:any):string{
+	return JSON.stringify([
+		String(event.title??'').trim(),String(event.emoji??'📅'),String(event.date??''),String(event.dateEnd??''),
+		event.allDay?'':String(event.timeStart??''),event.allDay?'':String(event.timeEnd??''),
+		Boolean(event.allDay),String(event.color??'#e27d60').toLowerCase(),Boolean(event.rsvp),
+	]);
+}
+
+function findUniqueOwnedServerId(event:any,claimed=new Set<string>()):string|null{
+	const matches=sharedEvents.value.filter(candidate=>candidate.userId===$i?.id&&!claimed.has(candidate.id)&&publicEventSignature(candidate)===publicEventSignature(event));
+	return matches.length===1?matches[0].id:null;
+}
+
+/**
+ * 旧クライアントは公開予定のサーバーIDを保存していなかった。
+ * 全項目が一致する自分の予定が一意な場合だけ対応づけ、曖昧なら絶対に推測しない。
+ */
+async function reconcileOwnedEventIds():Promise<void>{
+	if(!plannerMigrationReady||!loadedKeys.has('events')||events.value.length===0)return;
+	const claimed=new Set(events.value.flatMap(event=>event.serverEventId?[event.serverEventId]:[]));
+	let changed=false;
+	const next:HataskPlannerEvent[]=events.value.map((event):HataskPlannerEvent=>{
+		if(event.visibility!=='public')return event;
+		if(event.serverEventId){
+			const server=sharedEvents.value.find(candidate=>candidate.id===event.serverEventId&&candidate.userId===$i?.id);
+			if(!server||server.revision===event.serverEventRevision)return event;
+			if(publicEventSignature(server)===publicEventSignature(event)){
+				changed=true;
+				return{...event,serverEventRevision:server.revision};
+			}
+			if(!event.publicSyncState){changed=true;return{...event,publicSyncState:'conflict' as const}}
+			return event;
+		}
+		const serverEventId=findUniqueOwnedServerId(event,claimed);
+		if(serverEventId){
+			claimed.add(serverEventId);
+			changed=true;
+			const serverEvent=sharedEvents.value.find(candidate=>candidate.id===serverEventId);
+			const matched:HataskPlannerEvent={...event,clientEventId:event.clientEventId||event.id,serverEventId,serverEventRevision:serverEvent?.revision};
+			delete matched.publicSyncState;
+			return matched;
+		}
+		if(['pending','creating','updating','deleting','deleting-local','unlinked'].includes(String(event.publicSyncState||'')))return event;
+		changed=true;
+		return{...event,publicSyncState:'unlinked' as const};
+	});
+	if(!changed)return;
+	try{
+		await registrySet('events',next);
+		events.value=next;
+	}catch(error){
+		console.warn('Hatask public event ID reconciliation was not saved:',error);
+	}
+}
+
+let publicOutboxProcessing=false;
+async function persistPlannerEvent(eventId:string,replacement:HataskPlannerEvent|null):Promise<void>{
+	const next=[...events.value];
+	const index=next.findIndex(event=>event.id===eventId);
+	if(index>=0){if(replacement)next.splice(index,1,replacement);else next.splice(index,1)}
+	else if(replacement)next.unshift(replacement);
+	await registrySet('events',next);
+	events.value=next;
+}
+
+/** サーバー操作の前にRegistryへ残したintentを冪等に再開する。 */
+async function processPublicEventOutbox():Promise<void>{
+	if(publicOutboxProcessing||plannerReadOnly.value)return;
+	publicOutboxProcessing=true;
+	try{
+		for(const queued of [...events.value]){
+			const current=events.value.find(event=>event.id===queued.id);
+			if(!current)continue;
+			const state=String(current.publicSyncState||'');
+			if(!['creating','pending','updating','deleting','deleting-local'].includes(state))continue;
+			try{
+				if(state==='creating'||state==='pending'){
+					const matchedId=findUniqueOwnedServerId(current);
+					const matched=matchedId?sharedEvents.value.find(event=>event.id===matchedId):null;
+					const created=matched??await misskeyApi('hatask/events/create',eventApiPayload(current)) as any;
+					const saved={...current,serverEventId:created.id,serverEventRevision:created.revision,publicSyncState:undefined};
+					delete saved.publicSyncState;
+					await persistPlannerEvent(current.id,saved);
+					continue;
+				}
+				if(state==='updating'){
+					const server=sharedEventData(current.id);
+					const serverEventId=current.serverEventId||server?.id;
+					if(server&&publicEventSignature(server)===publicEventSignature(current)){
+						const saved={...current,serverEventId:server.id,serverEventRevision:server.revision,publicSyncState:undefined};
+						delete saved.publicSyncState;
+						await persistPlannerEvent(current.id,saved);
+						continue;
+					}
+					if(server?.revision&&current.serverEventRevision&&server.revision!==current.serverEventRevision){
+						await persistPlannerEvent(current.id,{...current,publicSyncState:'conflict'});
+						continue;
+					}
+					const expectedRevision=current.serverEventRevision||server?.revision;
+					if(!serverEventId||!expectedRevision){
+						await persistPlannerEvent(current.id,{...current,publicSyncState:'unlinked'});
+						continue;
+					}
+					const updated=await misskeyApi('hatask/events/update',{eventId:serverEventId,expectedRevision,...eventApiPayload(current)}) as any;
+					const saved={...current,serverEventId,serverEventRevision:updated.revision,publicSyncState:undefined};
+					delete saved.publicSyncState;
+					await persistPlannerEvent(current.id,saved);
+					continue;
+				}
+
+				const server=sharedEventData(current.id);
+				const serverEventId=current.serverEventId||server?.id;
+				const expectedRevision=current.serverEventRevision||server?.revision;
+				if(serverEventId){
+					if(!expectedRevision)throw new Error('Missing public event revision');
+					try{await misskeyApi('hatask/events/delete',{eventId:serverEventId,expectedRevision})}catch(error){if((error as {code?:string}|null)?.code!=='NO_SUCH_EVENT')throw error}
+				}
+				if(state==='deleting-local'){
+					await persistPlannerEvent(current.id,null);
+				}else{
+					const saved={...current,visibility:'private' as const,rsvp:false,serverEventId:undefined,serverEventRevision:undefined,publicSyncState:undefined,pendingVisibility:undefined};
+					delete saved.serverEventId;delete saved.serverEventRevision;delete saved.publicSyncState;delete saved.pendingVisibility;
+					await persistPlannerEvent(current.id,saved);
+				}
+				}catch(error){
+					const code=(error as {code?:string}|null)?.code;
+					try{
+						if(code==='HATASK_EVENT_CONFLICT')await persistPlannerEvent(current.id,{...current,publicSyncState:'conflict'});
+						else if(code==='NOT_OWNER'||code==='NO_SUCH_EVENT')await persistPlannerEvent(current.id,{...current,publicSyncState:'unlinked'});
+						else if((state==='creating'||state==='pending'||state==='updating')&&(code==='INVALID_HATASK_EVENT_SCHEDULE'||code==='INVALID_PARAM'))await persistPlannerEvent(current.id,{...current,publicSyncState:'sync-error'});
+					}catch{}
+					console.warn(`Hatask public event outbox remains pending (${state}):`,error);
+			}
+		}
+	}finally{publicOutboxProcessing=false}
+}
 const viewingEvent=ref<any>(null);
 function openEventDetail(ev:any){viewingEvent.value=(viewingEvent.value?.id===ev.id)?null:ev}
 function closeEventDetail(){viewingEvent.value=null}
@@ -1503,7 +2017,7 @@ const loginMilestones=[3,7,15,30,60,100,200,300,400,500,600,700,800,900,1000];
 const loginNextReward=computed(()=>{const d=loginDays.value;for(const m of loginMilestones){if(d<m)return m-d}return 0});
 const loginMessage=computed(()=>{const d=loginDays.value;if(d<=1)return copy.loginFirst;if(d<7)return copy.loginGettingUsed;if(d<30)return copy.loginRegular;if(d<100)return copy.loginThankYou;if(d<365)return copy.loginAmazing;return copy.loginLegend});
 async function fetchLoginRanking(){try{const res=await misskeyApi('hata/login-ranking',{});if(res&&typeof res.rank==='number'){loginRanking.value=res.rank;loginTotal.value=res.totalUsers??0}}catch(e){console.warn('Login ranking unavailable:',e)}}
-const settings=ref<any>({darkMode:false,autoTheme:true,weekStart:'mon',showClock:true,showEvents:true,showFlower:true,showMoodSummary:true,showFeedbackNotif:true,showEarthquake:true,moodRemind:false,moodRemindTimes:['昼 12:00','寝る前 23:00'],openOnStart:false,theme:'kisetsu',animations:true});
+const settings=ref<any>({darkMode:false,autoTheme:true,weekStart:'mon',showClock:true,showEvents:true,showFlower:true,showMoodSummary:true,showFeedbackNotif:true,showEarthquake:true,moodRemind:false,moodRemindTimes:['昼 12:00','寝る前 23:00'],openOnStart:false,theme:'kisetsu',animations:true,todoSortModes:{},todoMobileTabOrder:['today','upcoming','all','completed','more']});
 // 旗鯖fork(v2 §16①): ブート表示中にテーマが確定/変更されたら要素を作り直し、現テーマで最初から再生
 //   (設定の非同期ロードや切替でブートが2テーマ混ざるのを防ぐ)。
 //   watch は登録時に監視元を評価するため、settings の宣言後に置く。
@@ -1554,60 +2068,731 @@ function chMo(d:number){calMonth.value+=d;if(calMonth.value>11){calMonth.value=0
 function goToday(){const n=new Date();calYear.value=n.getFullYear();calMonth.value=n.getMonth();selectedDay.value=n.getDate()}
 function selectDay(d:number){selectedDay.value=d;viewingEvent.value=null;const ds=`${calYear.value}-${String(calMonth.value+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;newEvent.value.date=ds;newEvent.value.dateEnd=ds;editingEvent.value=null}
 const selectedDateStr=computed(()=>{if(!selectedDay.value)return'';return`${calYear.value}-${String(calMonth.value+1).padStart(2,'0')}-${String(selectedDay.value).padStart(2,'0')}`});
-// allCalendarEvents: ローカル + 共有（公開）イベントをマージ（重複除去）
-const allCalendarEvents=computed(()=>{const local=[...events.value];const localIds=new Set(local.map(e=>e.id));const shared=sharedEvents.value.filter(e=>!localIds.has(e.id)).map(e=>({...e,isShared:true,visibility:'public'}));return[...local,...shared]});
+// ローカル + 共有予定を serverEventId で照合し、繰り返し予定を表示期間へ展開する。
+const allCalendarEvents=computed(()=>{
+	const now=new Date();
+	const anchor=new Date(calYear.value,calMonth.value,selectedDay.value??1,12);
+	const oneTimeEvents=events.value.filter(event=>event.archivedAt==null&&(event.recurrence?.frequency??'none')==='none').map(event=>({...event,sourceEventId:event.id,occurrenceDate:event.date,isRecurrenceOccurrence:false}));
+	const recurringEvents=events.value.filter(event=>(event.recurrence?.frequency??'none')!=='none');
+	const expanded=new Map<string,any>();
+	for(const event of expandHataskEventOccurrences(recurringEvents,localDateKey(new Date(now.getFullYear()-1,0,1)),localDateKey(new Date(now.getFullYear()+4,11,31)),5000))expanded.set(event.id,event);
+	for(const event of expandHataskEventOccurrences(recurringEvents,localDateKey(new Date(anchor.getFullYear()-1,0,1)),localDateKey(new Date(anchor.getFullYear()+1,11,31)),3000))expanded.set(event.id,event);
+	const localOccurrences=[...oneTimeEvents,...expanded.values()].map(event=>({
+		...event,
+		userId:$i?.id,
+		isShared:event.visibility==='public',
+	}));
+	const localServerIds=new Set(events.value.flatMap(event=>event.serverEventId?[event.serverEventId]:[]));
+	const shared=sharedEvents.value.filter(event=>!localServerIds.has(event.id)).map(event=>({
+		...event,
+		isShared:true,
+		visibility:'public',
+		readOnly:event.userId!==$i?.id,
+		sourceEventId:event.id,
+		occurrenceDate:event.date,
+		isRecurrenceOccurrence:false,
+	}));
+	return[...localOccurrences,...shared];
+});
 const eventsForDay=computed(()=>{if(!selectedDateStr.value)return[];return allCalendarEvents.value.filter(e=>{if(e.date===selectedDateStr.value)return true;if(e.dateEnd&&e.date<=selectedDateStr.value&&e.dateEnd>=selectedDateStr.value)return true;return false}).sort((a,b)=>{if(a.allDay&&!b.allDay)return-1;if(!a.allDay&&b.allDay)return 1;return(a.timeStart||'').localeCompare(b.timeStart||'')})});
 function hasEventsOn(ds:string){return allCalendarEvents.value.some(e=>e.date===ds||(e.dateEnd&&e.date<=ds&&e.dateEnd>=ds))}
 function eventDotsFor(ds:string){return allCalendarEvents.value.filter(e=>e.date===ds||(e.dateEnd&&e.date<=ds&&e.dateEnd>=ds)).slice(0,3)}
-function startEditEvent(ev:any){editingEvent.value=ev;newEvent.value={title:ev.title,emoji:ev.emoji||'⭐',date:ev.date,timeStart:ev.timeStart||'14:00',dateEnd:ev.dateEnd||ev.date,timeEnd:ev.timeEnd||'15:00',color:ev.color||'#e27d60',visibility:ev.visibility||'private',rsvp:ev.rsvp||false,notify:ev.notify||false,notifyTimings:ev.notifyTimings?[...ev.notifyTimings]:['15分前'],allDay:ev.allDay||false}}
-async function deleteEventById(id:string){
-// 共有イベントの場合は自分のイベントのみ削除可
-const shared=sharedEventData(id);
-if(shared && shared.userId!==$i?.id){os.toast(copy.cannotDeleteOthersEvent);return}
-try{await misskeyApi('hatask/events/delete',{eventId:id})}catch{}
-events.value=events.value.filter(e=>e.id!==id);if(editingEvent.value?.id===id)editingEvent.value=null;viewingEvent.value=null;await registrySet('events',events.value);await loadSharedEvents();os.toast(copy.eventDeleted)}
+function startEditEvent(ev:any){
+	const sourceId=ev.sourceEventId||ev.id;
+	const localSource=events.value.find(event=>event.id===sourceId||event.serverEventId===sourceId);
+	if(!localSource&&ev.userId!==$i?.id){os.toast(copy.cannotDeleteOthersEvent);return}
+	// owner API からだけ見つかった旧予定は、参加者やプロフィールをRegistryへ複製せず
+	// plannerの必要フィールドだけを保存候補へ取り込む。
+	const importedId=generateId();
+	const source:HataskPlannerEvent=localSource?{...localSource,clientEventId:localSource.clientEventId||localSource.id}:{
+		id:importedId,clientEventId:importedId,serverEventId:ev.id,serverEventRevision:ev.revision,
+		title:ev.title,emoji:ev.emoji||'⭐',date:ev.date,dateEnd:ev.dateEnd||ev.date,
+		timeStart:ev.timeStart||'',timeEnd:ev.timeEnd||'',allDay:Boolean(ev.allDay),color:ev.color||'#e27d60',
+		visibility:'public',rsvp:Boolean(ev.rsvp),notify:false,notifyTimings:[],recurrence:{frequency:'none',interval:1},archivedAt:null,
+	};
+	editingEvent.value=source;
+	newEvent.value={title:source.title,emoji:source.emoji||'⭐',date:source.date,timeStart:source.timeStart||'14:00',dateEnd:source.dateEnd||source.date,timeEnd:source.timeEnd||'15:00',color:source.color||'#e27d60',visibility:source.visibility||'private',rsvp:source.rsvp||false,notify:source.notify||false,notifyTimings:source.notifyTimings?[...source.notifyTimings]:['15分前'],allDay:source.allDay||false,recurrence:{...(source.recurrence||{frequency:'none',interval:1})}}
+	showEventDetails.value=true;showEventTemplates.value=false;nextTick(()=>eventCaptureRef.value?.focus());
+}
+async function deleteEventById(id:string,options:{skipConfirm?:boolean}={}){
+	if(plannerReadOnly.value)return;
+	const occurrence=allCalendarEvents.value.find(event=>event.id===id);
+	const sourceId=occurrence?.sourceEventId||id;
+	const local=events.value.find(event=>event.id===sourceId||event.serverEventId===sourceId);
+	const shared=sharedEventData(local?.id||sourceId);
+	if(shared&&shared.userId!==$i?.id){os.toast(copy.cannotDeleteOthersEvent);return}
+	if(!options.skipConfirm){const {canceled}=await os.confirm({type:'warning',text:plannerCopy.confirmDeleteEvent});if(canceled)return}
+
+	let serverEventId=local?.serverEventId||(!local&&shared?.userId===$i?.id?shared.id:null);
+	let serverEventRevision=String(local?.serverEventRevision||shared?.revision||'')||undefined;
+	if(local?.visibility==='public'&&!serverEventId){
+		serverEventId=findUniqueOwnedServerId(local);
+		const matched=serverEventId?sharedEvents.value.find(event=>event.id===serverEventId):null;
+		serverEventRevision=matched?.revision;
+		if(!serverEventId||!serverEventRevision){os.toast(plannerCopy.publicSyncUnlinked);return}
+	}
+	try{
+		if(local?.visibility==='public'){
+			// 削除intentを先に保存し、API成功後のCAS失敗でも次回確実に再開する。
+			await persistPlannerEvent(local.id,{...local,serverEventId,serverEventRevision,publicSyncState:'deleting-local'});
+			await processPublicEventOutbox();
+		}else if(local){
+			const next=events.value.filter(event=>event.id!==local.id);
+			await registrySet('events',next);
+			events.value=next;
+		}else if(serverEventId&&serverEventRevision){
+			await misskeyApi('hatask/events/delete',{eventId:serverEventId,expectedRevision:serverEventRevision});
+		}
+		if(editingEvent.value?.id===local?.id)editingEvent.value=null;
+		viewingEvent.value=null;
+		await loadSharedEvents();
+		scheduleEventNotifications();
+			const remainingState=local?String(events.value.find(event=>event.id===local.id)?.publicSyncState||''):'';
+			os.toast(remainingState==='conflict'?plannerCopy.publicSyncConflict:remainingState==='unlinked'?plannerCopy.publicSyncUnlinked:remainingState?plannerCopy.publicSyncPending:copy.eventDeleted);
+	}catch(error){
+		console.error('Hatask event delete failed:',error);
+		os.toast(plannerCopy.publicSyncFailed);
+	}
+}
 const calCells=computed(()=>{const fd=new Date(calYear.value,calMonth.value,1).getDay();const dim=new Date(calYear.value,calMonth.value+1,0).getDate();const dip=new Date(calYear.value,calMonth.value,0).getDate();const so=fd===0?6:fd-1;const td=new Date();const cells:any[]=[];for(let i=so-1;i>=0;i--)cells.push({day:dip-i,om:true});for(let d=1;d<=dim;d++){const ds=`${calYear.value}-${String(calMonth.value+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;cells.push({day:d,om:false,today:d===td.getDate()&&calMonth.value===td.getMonth()&&calYear.value===td.getFullYear(),selected:d===selectedDay.value,hasEvents:hasEventsOn(ds),dots:eventDotsFor(ds)})}const rem=(7-cells.length%7)%7;for(let d=1;d<=rem;d++)cells.push({day:d,om:true});return cells});
 
 // Events
-const events=ref<any[]>([]);
-const td=()=>new Date().toISOString().slice(0,10);
-const newEvent=ref({title:'',emoji:'⭐',date:td(),timeStart:'14:00',dateEnd:td(),timeEnd:'15:00',color:'#e27d60',visibility:'private',rsvp:false,notify:true,notifyTimings:['15分前','30分前'],allDay:false});
-const upcomingEvents=computed(()=>allCalendarEvents.value.filter(e=>e.date>=td()).sort((a,b)=>a.date.localeCompare(b.date)));
-const publicEvents=computed(()=>{const now=td();const localPublic=events.value.filter(e=>e.visibility==='public'&&e.date>=now);const localIds=new Set(localPublic.map(e=>e.id));const shared=sharedEvents.value.filter(e=>e.date>=now&&!localIds.has(e.id)).map(e=>({...e,isShared:true}));return[...localPublic,...shared]});
-function goToEvent(ev:any){activeTab.value='cal';const d=new Date(ev.date);calYear.value=d.getFullYear();calMonth.value=d.getMonth();selectedDay.value=d.getDate();viewingEvent.value=ev}
-async function addEvent(){if(!newEvent.value.title.trim())return;
-const isEditing=!!editingEvent.value;
-const ne:any={id:editingEvent.value?.id||generateId(),title:newEvent.value.title.trim(),emoji:newEvent.value.emoji,date:newEvent.value.date,dateEnd:newEvent.value.dateEnd,color:newEvent.value.color,visibility:newEvent.value.visibility,rsvp:newEvent.value.rsvp,notify:newEvent.value.notify,notifyTimings:[...newEvent.value.notifyTimings],allDay:newEvent.value.allDay};
-if(newEvent.value.allDay){ne.timeStart='';ne.timeEnd='';ne.timeLabel=newEvent.value.date+(newEvent.value.dateEnd!==newEvent.value.date?' ~ '+newEvent.value.dateEnd:'')+' 終日'}else{ne.timeStart=newEvent.value.timeStart;ne.timeEnd=newEvent.value.timeEnd;ne.timeLabel=newEvent.value.date+' '+newEvent.value.timeStart+' - '+newEvent.value.timeEnd}
-if(editingEvent.value){const idx=events.value.findIndex(e=>e.id===editingEvent.value.id);if(idx>=0)events.value.splice(idx,1,ne);else events.value.unshift(ne);editingEvent.value=null}else{events.value.unshift(ne)}
-newEvent.value.title='';newEvent.value.allDay=false;await registrySet('events',events.value);scheduleEventNotifications();os.toast(isEditing?copy.eventUpdated:copy.eventSaved);
-// 公開イベントを新規作成した場合、APIに共有イベントを登録
-if(!isEditing && ne.visibility==='public'){
-  try{
-    await misskeyApi('hatask/events/create',{title:ne.title,emoji:ne.emoji,date:ne.date,dateEnd:ne.dateEnd||'',timeStart:ne.timeStart||'',timeEnd:ne.timeEnd||'',allDay:ne.allDay||false,color:ne.color||'#e27d60',rsvp:!!ne.rsvp});
-    await loadSharedEvents();
-    // RSVP付きならノートで告知
-    if(ne.rsvp){
-      const timeInfo = ne.allDay ? `${ne.date} ${copy.allDay}` : `${ne.date} ${ne.timeStart}〜${ne.timeEnd}`;
-      await misskeyApi('notes/create',{
-        text:copyx.rsvpAnnouncement({ emoji: ne.emoji, title: ne.title, time: timeInfo }),
-        visibility:'home',
-      });
-    }
-  }catch(e){console.warn('Shared event create failed:',e)}
+const events=ref<HataskPlannerEvent[]>([]);
+const td=()=>localDateKey();
+const newEvent=ref({title:'',emoji:'⭐',date:td(),timeStart:'14:00',dateEnd:td(),timeEnd:'15:00',color:'#e27d60',visibility:'private',rsvp:false,notify:true,notifyTimings:['15分前','30分前'],allDay:false,recurrence:{frequency:'none' as HataskRecurrenceFrequency,interval:1}});
+const eventCaptureRef=ref<{focus:()=>void}|null>(null);
+const eventCaptureState=ref<'idle'|'saving'|'success'|'error'>('idle');
+const showEventDetails=ref(false);
+const showEventTemplates=ref(false);
+const eventCaptureEditor=ref<'date'|'time'|null>(null);
+function clockPlusMinutes(value:string,minutes:number):string{const match=/^(\d{2}):(\d{2})$/.exec(value);if(!match)return'15:00';const total=(Number(match[1])*60+Number(match[2])+minutes+1440)%1440;return`${String(Math.floor(total/60)).padStart(2,'0')}:${String(total%60).padStart(2,'0')}`}
+function applyEventCaptureSyntax(value:string,force=false):void{
+	newEvent.value.title=value;if(!force&&!/\s$/.test(value))return;
+	const parsed=parseHataskCapture(value,{allowFolder:false,allowPriority:false});if(parsed.recognized.length===0)return;
+	newEvent.value.title=parsed.title;
+	if(parsed.date){newEvent.value.date=parsed.date;newEvent.value.dateEnd=parsed.date}
+	if(parsed.time){newEvent.value.allDay=false;newEvent.value.timeStart=parsed.time;newEvent.value.timeEnd=clockPlusMinutes(parsed.time,60)}
 }
+function updateEventCapture(value:string):void{applyEventCaptureSyntax(value)}
+const eventCaptureChips=computed<HataskCaptureChip[]>(()=>{
+	const dateLabel=eventDateRangeLabel(newEvent.value);
+	const timeLabel=newEvent.value.allDay?copy.allDay:`${newEvent.value.timeStart}–${newEvent.value.timeEnd}`;
+	const visibilityLabel=newEvent.value.visibility==='public'?copy.public:copy.private;
+	const chips:HataskCaptureChip[]=[{id:'date',label:dateLabel,icon:'ti ti-calendar-event',actionLabel:`${copy.dateAndTime}: ${dateLabel}`,actionIcon:'ti ti-pencil'}];
+	chips.push({id:newEvent.value.allDay?'allDay':'time',label:timeLabel,icon:newEvent.value.allDay?'ti ti-sun':'ti ti-clock',actionLabel:`${copy.time}: ${timeLabel}`,actionIcon:'ti ti-pencil'});
+	chips.push({id:'visibility',label:visibilityLabel,icon:newEvent.value.visibility==='public'?'ti ti-world':'ti ti-lock',actionLabel:`${copy.visibility}: ${visibilityLabel}`,actionIcon:'ti ti-arrows-exchange'});
+	if(newEvent.value.recurrence.frequency!=='none'){const label=recurrenceLabel(newEvent.value.recurrence.frequency);chips.push({id:'recurrence',label,icon:'ti ti-repeat',actionLabel:`${plannerCopy.recurrence}: ${label}`,actionIcon:'ti ti-arrows-exchange'})}
+	return chips;
+});
+const eventCaptureTools=computed<HataskCaptureTool[]>(()=>[
+	{id:'templates',label:plannerCopy.useTemplates,icon:'ti ti-template',active:showEventTemplates.value,showLabel:true,tone:'accent'},
+	{id:'save-template',label:plannerCopy.saveTemplate,icon:'ti ti-bookmark-plus',showLabel:true,tone:'neutral'},
+	{id:'date',label:copy.dateAndTime,icon:'ti ti-calendar-event'},
+	{id:'all-day',label:copy.allDayFull,icon:'ti ti-sun',active:newEvent.value.allDay},
+	{id:'visibility',label:copy.visibility,icon:newEvent.value.visibility==='public'?'ti ti-world':'ti ti-lock',active:newEvent.value.visibility==='public'},
+	{id:'repeat',label:plannerCopy.recurrence,icon:'ti ti-repeat',active:newEvent.value.recurrence.frequency!=='none',disabled:newEvent.value.visibility==='public'},
+	{id:'details',label:plannerCopy.moreDetails,icon:'ti ti-adjustments-horizontal',active:showEventDetails.value},
+]);
+function removeEventCaptureChip(id:string):void{
+	if(id==='date'){newEvent.value.date=selectedDateStr.value||localDateKey();newEvent.value.dateEnd=newEvent.value.date}
+	else if(id==='time'||id==='allDay')newEvent.value.allDay=!newEvent.value.allDay;
+	else if(id==='visibility'){newEvent.value.visibility='private';newEvent.value.rsvp=false}
+	else if(id==='recurrence')newEvent.value.recurrence.frequency='none';
+}
+function eventDurationDays():number{
+	const start=parseIsoDate(newEvent.value.date);const end=parseIsoDate(newEvent.value.dateEnd||newEvent.value.date);
+	return Math.max(0,Math.round((end.getTime()-start.getTime())/86400000));
+}
+function setEventStartDate(value:string):void{
+	if(!/^\d{4}-\d{2}-\d{2}$/.test(value))return;
+	const duration=eventDurationDays();newEvent.value.date=value;newEvent.value.dateEnd=localDateKey(addCalendarDays(parseIsoDate(value),duration));
+}
+function setEventEndDate(value:string):void{
+	if(!/^\d{4}-\d{2}-\d{2}$/.test(value))return;newEvent.value.dateEnd=value<newEvent.value.date?newEvent.value.date:value;
+}
+function setEventStartTime(value:string):void{
+	if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(value))return;newEvent.value.allDay=false;newEvent.value.timeStart=value;
+	if(newEvent.value.date===newEvent.value.dateEnd&&newEvent.value.timeEnd<=value){const next=clockPlusMinutes(value,60);newEvent.value.timeEnd=next;if(next<=value)newEvent.value.dateEnd=localDateKey(addCalendarDays(parseIsoDate(newEvent.value.date),1))}
+}
+function setEventEndTime(value:string):void{
+	if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(value))return;newEvent.value.allDay=false;newEvent.value.timeEnd=value;
+	if(newEvent.value.date===newEvent.value.dateEnd&&value<newEvent.value.timeStart)newEvent.value.dateEnd=localDateKey(addCalendarDays(parseIsoDate(newEvent.value.date),1));
+}
+function toggleEventCaptureVisibility():void{
+	newEvent.value.visibility=newEvent.value.visibility==='private'?'public':'private';
+	if(newEvent.value.visibility==='private')newEvent.value.rsvp=false;else newEvent.value.recurrence.frequency='none';
+}
+async function handleEventCaptureChip(id:string):Promise<void>{
+	if(id==='date'){eventCaptureEditor.value=eventCaptureEditor.value==='date'?null:'date';showEventDetails.value=false;showEventTemplates.value=false;return}
+	if(id==='time'||id==='allDay'){eventCaptureEditor.value=eventCaptureEditor.value==='time'?null:'time';showEventDetails.value=false;showEventTemplates.value=false;return}
+	if(id==='visibility'){toggleEventCaptureVisibility();return}
+	if(id==='recurrence')await handleEventCaptureTool('repeat');
+}
+async function handleEventCaptureTool(id:string):Promise<void>{
+	if(id==='templates'){showEventTemplates.value=!showEventTemplates.value;if(showEventTemplates.value){showEventDetails.value=false;eventCaptureEditor.value=null}return}
+	if(id==='save-template'){await saveEventCaptureAsTemplate();return}
+	if(id==='details'){showEventDetails.value=!showEventDetails.value;if(showEventDetails.value){showEventTemplates.value=false;eventCaptureEditor.value=null}return}
+	if(id==='date'){eventCaptureEditor.value=eventCaptureEditor.value==='date'?null:'date';showEventDetails.value=false;showEventTemplates.value=false;return}
+	if(id==='all-day'){eventCaptureEditor.value=eventCaptureEditor.value==='time'?null:'time';showEventDetails.value=false;showEventTemplates.value=false;return}
+	if(id==='visibility'){toggleEventCaptureVisibility();return}
+	if(id==='repeat'&&newEvent.value.visibility==='private'){const frequencies:HataskRecurrenceFrequency[]=['none','daily','weekly','monthly','yearly'];newEvent.value.recurrence.frequency=frequencies[(frequencies.indexOf(newEvent.value.recurrence.frequency)+1)%frequencies.length]}
+}
+async function saveEventCaptureAsTemplate():Promise<void>{
+	applyEventCaptureSyntax(newEvent.value.title,true);const title=newEvent.value.title.trim();if(!title){eventCaptureRef.value?.focus();return}
+	const {canceled,result}=await os.inputText({title:plannerCopy.saveTemplate,text:plannerCopy.templateNamePrompt,default:title,minLength:1,maxLength:80});const name=typeof result==='string'?result.trim():'';if(canceled||!name)return;
+	const start=parseIsoDate(newEvent.value.date);const end=parseIsoDate(newEvent.value.dateEnd||newEvent.value.date);const durationDays=Math.max(0,Math.round((end.getTime()-start.getTime())/86400000));
+	const template:HataskPlannerTemplate={id:generateId(),kind:'event',name,position:plannerTemplatePosition(),archivedAt:null,createdAt:new Date().toISOString(),payload:{title,emoji:newEvent.value.emoji,timeStart:newEvent.value.timeStart,timeEnd:newEvent.value.timeEnd,durationDays,allDay:newEvent.value.allDay,color:newEvent.value.color,notify:newEvent.value.notify,notifyTimings:[...newEvent.value.notifyTimings],recurrence:{...newEvent.value.recurrence}}};
+	await savePlannerTemplates([...plannerTemplates.value,template]);os.toast(plannerCopy.templateSaved);
+}
+async function submitEventCapture():Promise<void>{
+	applyEventCaptureSyntax(newEvent.value.title,true);if(!newEvent.value.title.trim()){eventCaptureRef.value?.focus();return}
+	eventCaptureState.value='saving';const saved=await addEvent();eventCaptureState.value=saved?'success':'error';if(saved)window.setTimeout(()=>{if(eventCaptureState.value==='success')eventCaptureState.value='idle'},900);
+}
+function eDateTimeKey(event:{date:string;timeStart?:string;allDay?:boolean}):string{return`${event.date}T${event.allDay?'00:00':event.timeStart||'23:59'}`}
+const upcomingEvents=computed(()=>allCalendarEvents.value.filter(e=>e.date>=td()).sort((a,b)=>eDateTimeKey(a).localeCompare(eDateTimeKey(b))));
+const publicEvents=computed(()=>allCalendarEvents.value.filter(e=>e.visibility==='public'&&e.date>=td()));
+function goToEvent(ev:any){activeTab.value='cal';const d=new Date(ev.date);calYear.value=d.getFullYear();calMonth.value=d.getMonth();selectedDay.value=d.getDate();viewingEvent.value=ev}
+function eventApiPayload(event:any){
+	return{title:event.title,emoji:event.emoji||'📅',date:event.date,dateEnd:event.dateEnd||'',timeStart:event.allDay?'':event.timeStart||'',timeEnd:event.allDay?'':event.timeEnd||'',allDay:Boolean(event.allDay),color:event.color||'#e27d60',rsvp:Boolean(event.rsvp)};
+}
+function isValidPlannerEventInput(event:any):boolean{
+	const datePattern=/^\d{4}-\d{2}-\d{2}$/;
+	if(!datePattern.test(event.date)||!datePattern.test(event.dateEnd||event.date))return false;
+	const start=parseIsoDate(event.date);const end=parseIsoDate(event.dateEnd||event.date);
+	if(!Number.isFinite(start.getTime())||!Number.isFinite(end.getTime())||event.dateEnd<event.date)return false;
+	if(!event.allDay&&(!/^([01]\d|2[0-3]):[0-5]\d$/.test(event.timeStart)||!/^([01]\d|2[0-3]):[0-5]\d$/.test(event.timeEnd)))return false;
+	if(!event.allDay&&event.date===event.dateEnd&&event.timeEnd<event.timeStart)return false;
+	return true;
+}
+function resetEventEditor():void{
+	editingEvent.value=null;
+	newEvent.value={title:'',emoji:'⭐',date:selectedDateStr.value||td(),timeStart:'14:00',dateEnd:selectedDateStr.value||td(),timeEnd:'15:00',color:'#e27d60',visibility:'private',rsvp:false,notify:true,notifyTimings:['15分前','30分前'],allDay:false,recurrence:{frequency:'none',interval:1}};
+	showEventDetails.value=false;showEventTemplates.value=false;eventCaptureEditor.value=null;
+}
+async function addEvent():Promise<boolean>{
+	if(plannerReadOnly.value||!newEvent.value.title.trim())return false;
+	const isEditing=editingEvent.value!=null;
+	const previous=editingEvent.value as HataskPlannerEvent|null;
+	const now=new Date().toISOString();
+	const visibility:'private'|'public'=newEvent.value.visibility==='public'?'public':'private';
+	const recurrence=visibility==='public'?{frequency:'none' as const,interval:1}:{...newEvent.value.recurrence};
+	let nextEvent:HataskPlannerEvent={
+		...(previous??{}),
+		id:previous?.id||generateId(),
+		clientEventId:previous?.clientEventId||previous?.id,
+		title:newEvent.value.title.trim(),emoji:newEvent.value.emoji,date:newEvent.value.date,dateEnd:newEvent.value.dateEnd,
+		color:newEvent.value.color,visibility,rsvp:newEvent.value.rsvp,notify:newEvent.value.notify,
+		notifyTimings:[...newEvent.value.notifyTimings],allDay:newEvent.value.allDay,recurrence,
+		archivedAt:previous?.archivedAt??null,createdAt:previous?.createdAt??now,updatedAt:now,
+	};
+	nextEvent.clientEventId=nextEvent.clientEventId||nextEvent.id;
+	if(nextEvent.allDay){
+		nextEvent.timeStart='';nextEvent.timeEnd='';
+		nextEvent.timeLabel=nextEvent.date+(nextEvent.dateEnd!==nextEvent.date?` ~ ${nextEvent.dateEnd}`:'')+` ${copy.allDay}`;
+	}else{
+		nextEvent.timeStart=newEvent.value.timeStart;nextEvent.timeEnd=newEvent.value.timeEnd;
+		nextEvent.timeLabel=`${nextEvent.date} ${nextEvent.timeStart} - ${nextEvent.timeEnd}`;
+	}
+	if(!isValidPlannerEventInput(nextEvent)){os.toast(plannerCopy.invalidEventSchedule);return false}
+
+	const wasPublic=previous?.visibility==='public';
+	let serverEventId=previous?.serverEventId;
+	let serverEventRevision=String(previous?.serverEventRevision||'')||undefined;
+	if(wasPublic&&!serverEventId){
+		serverEventId=findUniqueOwnedServerId(previous)??undefined;
+		const server=serverEventId?sharedEvents.value.find(event=>event.id===serverEventId):null;
+		serverEventRevision=server?.revision;
+	}
+	try{
+		if(wasPublic&&visibility==='private'){
+		if(!serverEventId){os.toast(plannerCopy.publicSyncUnlinked);return false}
+			nextEvent={...nextEvent,visibility:'public',serverEventId,serverEventRevision,publicSyncState:'deleting',pendingVisibility:'private'};
+		}else if(wasPublic&&visibility==='public'){
+			if(!serverEventId||!serverEventRevision){os.toast(plannerCopy.publicSyncUnlinked);return false}
+			nextEvent={...nextEvent,serverEventId,serverEventRevision,publicSyncState:'updating'};
+		}else if(!wasPublic&&visibility==='public'){
+			nextEvent={...nextEvent,publicSyncState:'creating'};
+		}
+
+		const existingIndex=events.value.findIndex(event=>event.id===nextEvent.id);
+		const nextEvents=[...events.value];
+		if(existingIndex>=0)nextEvents.splice(existingIndex,1,nextEvent);else nextEvents.unshift(nextEvent);
+		// 必ず先にintentを永続化する。外部API成功後のローカルCAS失敗でも次回再開できる。
+		await registrySet('events',nextEvents);
+		events.value=nextEvents;
+		resetEventEditor();
+		scheduleEventNotifications();
+		await processPublicEventOutbox();
+		const saved=events.value.find(event=>event.id===nextEvent.id);
+		const publicSyncState=String(saved?.publicSyncState||'');
+		const publicSyncPending=Boolean(publicSyncState);
+		await loadSharedEvents();
+		os.toast(publicSyncState==='conflict'?plannerCopy.publicSyncConflict:publicSyncState==='unlinked'?plannerCopy.publicSyncUnlinked:publicSyncState==='sync-error'?plannerCopy.publicSyncFailed:publicSyncPending?plannerCopy.publicSyncPending:isEditing?copy.eventUpdated:copy.eventSaved);
+
+		if(!isEditing&&visibility==='public'&&nextEvent.rsvp&&!publicSyncPending){
+			const timeInfo=nextEvent.allDay?`${nextEvent.date} ${copy.allDay}`:`${nextEvent.date} ${nextEvent.timeStart}〜${nextEvent.timeEnd}`;
+			try{await misskeyApi('notes/create',{text:copyx.rsvpAnnouncement({emoji:nextEvent.emoji||'📅',title:nextEvent.title,time:timeInfo}),visibility:'home'})}catch(error){console.warn('RSVP announcement note failed:',error)}
+		}
+		return true;
+	}catch(error){
+		console.error('Hatask event save failed:',error);
+		os.toast(plannerCopy.publicSyncFailed);
+		return false;
+	}
 }
 
 // Todo
 const newTodo=ref('');const newTodoDue=ref('');const newTodoTime=ref('');const newTodoFolder=ref('');const newTodoComment=ref('');
-const showTodoExtra=ref(false);const activeFolder=ref('all');const showFolderMgr=ref(false);
-const newFolderName=ref('');const newFolderEmoji=ref('📁');const newFolderColor=ref('');const expandedTodo=ref<string|null>(null);const sortMode=ref('manual');
+const newTodoPriority=ref<'none'|'low'|'medium'|'high'>('none');
+const newTodoRecurrence=ref<HataskRecurrenceFrequency>('none');
+const newTodoSubtasks=ref<Array<{id:string;text:string;done:boolean}>>([]);
+const newSubtaskText=ref('');
+const todoCaptureRef=ref<{focus:()=>void}|null>(null);
+const todoCaptureState=ref<'idle'|'saving'|'success'|'error'>('idle');
+const todoCaptureEditor=ref<'schedule'|null>(null);
+const showTodoExtra=ref(false);const activeFolder=ref('all');const showFolderMgr=ref(false);const showFolderCreate=ref(false);
+const newFolderName=ref('');const newFolderEmoji=ref('📁');const newFolderColor=ref('');
 const folderColors=computed(() => [{value:'#e57373',label:copy.colorRed},{value:'#ffb74d',label:copy.colorOrange},{value:'#fff176',label:copy.colorYellow},{value:'#81c784',label:copy.colorGreen},{value:'#64b5f6',label:copy.colorBlue},{value:'#ba68c8',label:copy.colorPurple}]);
-const todos=ref<any[]>([]);const folders=ref<any[]>([]);
-const pendingCount=computed(()=>todos.value.filter(t=>!t.done).length);
-function folderCount(fid:string){return todos.value.filter(t=>!t.done&&t.folder===fid).length}
-const sortedTodos=computed(()=>{let list=activeFolder.value==='all'?[...todos.value]:todos.value.filter(t=>t.folder===activeFolder.value);if(sortMode.value==='dueAsc')list.sort((a,b)=>{if(!a.due)return 1;if(!b.due)return-1;return a.due.localeCompare(b.due)});else if(sortMode.value==='dueDesc')list.sort((a,b)=>{if(!a.due)return 1;if(!b.due)return-1;return b.due.localeCompare(a.due)});else if(sortMode.value==='new')list.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));return list});
+const todos=ref<HataskPlannerTodo[]>([]);const folders=ref<HataskPlannerFolder[]>([]);
+const activeFolders=computed(()=>folders.value.filter(folder=>folder.archivedAt==null).sort((a,b)=>(a.position??0)-(b.position??0)));
+const pendingCount=computed(()=>todos.value.filter(t=>!t.done&&t.archivedAt==null).length);
+function folderCount(fid:string){return todos.value.filter(t=>!t.done&&t.archivedAt==null&&t.folder===fid).length}
 function getFolder(fid:string){return folders.value.find(f=>f.id===fid)}
+
+function applyTodoCaptureSyntax(value:string,force=false):void{
+	newTodo.value=value;
+	if(!force&&!/\s$/.test(value))return;
+	const parsed=parseHataskCapture(value,{folders:activeFolders.value,allowFolder:true,allowPriority:true});
+	if(parsed.recognized.length===0)return;
+	newTodo.value=parsed.title;
+	if(parsed.date)newTodoDue.value=parsed.date;
+	if(parsed.time)newTodoTime.value=parsed.time;
+	if(parsed.folderId)newTodoFolder.value=parsed.folderId;
+	if(parsed.priority)newTodoPriority.value=parsed.priority;
+}
+function updateTodoCapture(value:string):void{applyTodoCaptureSyntax(value)}
+const todoCaptureChips=computed<HataskCaptureChip[]>(()=>{
+	const chips:HataskCaptureChip[]=[];
+	if(newTodoDue.value){const label=formatDue(newTodoDue.value);chips.push({id:'date',label,icon:'ti ti-calendar-event',actionLabel:`${copy.dueDate}: ${label}`,actionIcon:'ti ti-pencil'})}
+	if(newTodoTime.value)chips.push({id:'time',label:newTodoTime.value,icon:'ti ti-clock',actionLabel:`${copy.time}: ${newTodoTime.value}`,actionIcon:'ti ti-pencil'});
+	const folder=getFolder(newTodoFolder.value);if(folder)chips.push({id:'folder',label:folder.name,icon:'ti ti-folder-filled',color:folder.color,actionLabel:`${copy.folder}: ${folder.name}`,actionIcon:'ti ti-chevron-down'});
+	if(newTodoPriority.value!=='none'){const label=plannerTodoPriorityLabel(newTodoPriority.value);chips.push({id:'priority',label,icon:'ti ti-flag-filled',actionLabel:`${plannerCopy.priority}: ${label}`,actionIcon:'ti ti-chevron-down'})}
+	if(newTodoRecurrence.value!=='none'){const label=recurrenceLabel(newTodoRecurrence.value);chips.push({id:'recurrence',label,icon:'ti ti-repeat',actionLabel:`${plannerCopy.recurrence}: ${label}`,actionIcon:'ti ti-chevron-down'})}
+	return chips;
+});
+const todoCaptureTools=computed<HataskCaptureTool[]>(()=>[
+	{id:'template',label:plannerCopy.saveTemplate,icon:'ti ti-bookmark-plus',showLabel:true,tone:'neutral'},
+	{id:'date',label:copy.dueDate,icon:'ti ti-calendar-event',active:Boolean(newTodoDue.value)},
+	{id:'folder',label:copy.folder,icon:'ti ti-folder',active:Boolean(newTodoFolder.value)},
+	{id:'priority',label:plannerCopy.priority,icon:'ti ti-flag',active:newTodoPriority.value!=='none'},
+	{id:'repeat',label:plannerCopy.recurrence,icon:'ti ti-repeat',active:newTodoRecurrence.value!=='none'},
+	{id:'details',label:plannerCopy.moreDetails,icon:'ti ti-adjustments-horizontal',active:showTodoExtra.value},
+]);
+function plannerTodoPriorityLabel(priority:'none'|'low'|'medium'|'high'):string{return priority==='high'?plannerCopy.priorityHigh:priority==='medium'?plannerCopy.priorityMedium:priority==='low'?plannerCopy.priorityLow:plannerCopy.priorityNone}
+function removeTodoCaptureChip(id:string):void{
+	if(id==='date')newTodoDue.value='';
+	else if(id==='time')newTodoTime.value='';
+	else if(id==='folder')newTodoFolder.value='';
+	else if(id==='priority')newTodoPriority.value='none';
+	else if(id==='recurrence')newTodoRecurrence.value='none';
+}
+async function chooseTodoFolder():Promise<void>{
+	const {canceled,result}=await os.actions({type:'question',title:copy.folder,actions:[{value:'',text:copy.noFolder},...activeFolders.value.map(folder=>({value:folder.id,text:`${folder.emoji||'📁'} ${folder.name}`}))]});
+	if(!canceled&&typeof result==='string')newTodoFolder.value=result;
+}
+async function chooseTodoPriority():Promise<void>{
+	const priorities=['none','low','medium','high'] as const;
+	const {canceled,result}=await os.actions({type:'question',title:plannerCopy.priority,actions:priorities.map(value=>({value,text:plannerTodoPriorityLabel(value)}))});
+	if(!canceled&&priorities.includes(result as typeof priorities[number]))newTodoPriority.value=result as typeof priorities[number];
+}
+async function chooseTodoRecurrence():Promise<void>{
+	const frequencies:HataskRecurrenceFrequency[]=['none','daily','weekly','monthly','yearly'];
+	const {canceled,result}=await os.actions({type:'question',title:plannerCopy.recurrence,actions:frequencies.map(value=>({value,text:recurrenceLabel(value)}))});
+	if(!canceled&&frequencies.includes(result as HataskRecurrenceFrequency))newTodoRecurrence.value=result as HataskRecurrenceFrequency;
+}
+async function handleTodoCaptureChip(id:string):Promise<void>{
+	if(id==='date'||id==='time'){todoCaptureEditor.value=todoCaptureEditor.value==='schedule'?null:'schedule';showTodoExtra.value=false;return}
+	if(id==='folder'){await chooseTodoFolder();return}
+	if(id==='priority'){await chooseTodoPriority();return}
+	if(id==='recurrence')await chooseTodoRecurrence();
+}
+async function handleTodoCaptureTool(id:string):Promise<void>{
+	if(id==='details'){showTodoExtra.value=!showTodoExtra.value;if(showTodoExtra.value)todoCaptureEditor.value=null;return}
+	if(id==='date'){if(!newTodoDue.value)newTodoDue.value=localDateKey();todoCaptureEditor.value=todoCaptureEditor.value==='schedule'?null:'schedule';showTodoExtra.value=false;return}
+	if(id==='folder'){await chooseTodoFolder();return}
+	if(id==='priority'){await chooseTodoPriority();return}
+	if(id==='repeat'){await chooseTodoRecurrence();return}
+	if(id==='template')await saveTodoCaptureAsTemplate();
+}
+const plannerTemplateLabels=computed<HataskTemplateLabels>(()=>({
+	library:plannerCopy.templateLibrary,reusable:plannerCopy.reusableTemplates,filter:plannerCopy.filter,all:copy.all,todo:plannerCopy.todo,event:plannerCopy.calendar,
+	empty:plannerCopy.noTemplates,emptyHint:plannerCopy.templateEmptyHint,useAction:plannerCopy.useTemplateAction,
+	use:name=>plannerCopyx.useTemplateLabel({name}),duplicate:name=>plannerCopyx.duplicateTemplateLabel({name}),archive:name=>plannerCopyx.archiveTemplateLabel({name}),
+	moveUp:name=>plannerCopyx.moveTemplateUpLabel({name}),moveDown:name=>plannerCopyx.moveTemplateDownLabel({name}),
+}));
+function plannerTemplatePosition():number{return plannerTemplates.value.reduce((maximum,template)=>Math.max(maximum,template.position??-1),-1)+1}
+function todoTemplateDuePreset(date:string):'none'|'today'|'tomorrow'|'absolute'{
+	if(!date)return'none';if(date===localDateKey())return'today';if(date===localDateKey(addCalendarDays(new Date(),1)))return'tomorrow';return'absolute';
+}
+function resolvedTodoTemplateDue(payload:Record<string,unknown>):string{
+	if(payload.duePreset==='today')return localDateKey();
+	if(payload.duePreset==='tomorrow')return localDateKey(addCalendarDays(new Date(),1));
+	return payload.duePreset==='absolute'&&typeof payload.due==='string'?payload.due:'';
+}
+async function saveTodoCaptureAsTemplate():Promise<void>{
+	applyTodoCaptureSyntax(newTodo.value,true);
+	const text=newTodo.value.trim();if(!text){todoCaptureRef.value?.focus();return}
+	const {canceled,result}=await os.inputText({title:plannerCopy.saveTemplate,text:plannerCopy.templateNamePrompt,default:text,minLength:1,maxLength:80});
+	const name=typeof result==='string'?result.trim():'';if(canceled||!name)return;
+	const duePreset=todoTemplateDuePreset(newTodoDue.value);
+	const template:HataskPlannerTemplate={
+		id:generateId(),kind:'todo',name,position:plannerTemplatePosition(),archivedAt:null,createdAt:new Date().toISOString(),
+		payload:{text,duePreset,due:newTodoDue.value,dueLabel:newTodoDue.value?formatDue(newTodoDue.value):'',time:newTodoTime.value,folder:newTodoFolder.value,comment:newTodoComment.value,priority:newTodoPriority.value,subtasks:newTodoSubtasks.value.map(subtask=>({...subtask,id:generateId(),done:false})),recurrence:{frequency:newTodoRecurrence.value,interval:1}},
+	};
+	await savePlannerTemplates([...plannerTemplates.value,template]);os.toast(plannerCopy.templateSaved);
+}
+function loadTodoTemplate(template:HataskPlannerTemplate):void{
+	const payload=template.payload;
+	resetTodoEditor();
+	newTodo.value=typeof payload.text==='string'?payload.text:template.name;
+	newTodoDue.value=resolvedTodoTemplateDue(payload);
+	newTodoTime.value=typeof payload.time==='string'?payload.time:'';
+	newTodoFolder.value=typeof payload.folder==='string'&&activeFolders.value.some(folder=>folder.id===payload.folder)?payload.folder:'';
+	newTodoComment.value=typeof payload.comment==='string'?payload.comment:'';
+	newTodoPriority.value=payload.priority==='low'||payload.priority==='medium'||payload.priority==='high'?payload.priority:'none';
+	const recurrence=payload.recurrence as {frequency?:unknown}|undefined;
+	newTodoRecurrence.value=recurrence?.frequency==='daily'||recurrence?.frequency==='weekly'||recurrence?.frequency==='monthly'||recurrence?.frequency==='yearly'?recurrence.frequency:'none';
+	newTodoSubtasks.value=Array.isArray(payload.subtasks)?payload.subtasks.flatMap(raw=>raw!=null&&typeof raw==='object'&&typeof (raw as {text?:unknown}).text==='string'?[{id:generateId(),text:(raw as {text:string}).text,done:false}]:[]):[];
+	showTodoExtra.value=Boolean(newTodoDue.value||newTodoTime.value||newTodoFolder.value||newTodoComment.value||newTodoPriority.value!=='none'||newTodoRecurrence.value!=='none'||newTodoSubtasks.value.length);
+	nextTick(()=>todoCaptureRef.value?.focus());
+}
+function loadEventTemplate(template:HataskPlannerTemplate):void{
+	const payload=template.payload;activeTab.value='cal';resetEventEditor();
+	const anchor=selectedDateStr.value||localDateKey();const durationDays=typeof payload.durationDays==='number'&&Number.isFinite(payload.durationDays)?Math.max(0,Math.floor(payload.durationDays)):0;
+	const recurrence=payload.recurrence as {frequency?:unknown;interval?:unknown}|undefined;
+	const frequency:HataskRecurrenceFrequency=recurrence?.frequency==='daily'||recurrence?.frequency==='weekly'||recurrence?.frequency==='monthly'||recurrence?.frequency==='yearly'?recurrence.frequency:'none';
+	newEvent.value={
+		...newEvent.value,title:typeof payload.title==='string'?payload.title:template.name,emoji:typeof payload.emoji==='string'?payload.emoji:'⭐',
+		date:anchor,dateEnd:localDateKey(addCalendarDays(parseIsoDate(anchor),durationDays)),timeStart:typeof payload.timeStart==='string'?payload.timeStart:'14:00',timeEnd:typeof payload.timeEnd==='string'?payload.timeEnd:'15:00',
+		color:typeof payload.color==='string'?payload.color:'#e27d60',visibility:'private',rsvp:false,notify:payload.notify!==false,notifyTimings:Array.isArray(payload.notifyTimings)?payload.notifyTimings.filter((item):item is string=>typeof item==='string'):['15分前'],allDay:payload.allDay===true,
+		recurrence:{frequency,interval:typeof recurrence?.interval==='number'&&recurrence.interval>0?Math.floor(recurrence.interval):1},
+	};
+	showEventTemplates.value=false;
+	nextTick(()=>eventCaptureRef.value?.focus());
+}
+function usePlannerTemplate(template:HataskPlannerTemplate):void{if(template.kind==='todo')loadTodoTemplate(template);else loadEventTemplate(template)}
+async function duplicatePlannerTemplate(template:HataskPlannerTemplate):Promise<void>{
+	const duplicate:HataskPlannerTemplate={...template,id:generateId(),name:plannerCopyx.templateCopyName({name:template.name}),position:plannerTemplatePosition(),createdAt:new Date().toISOString(),updatedAt:undefined,archivedAt:null,payload:{...template.payload}};
+	await savePlannerTemplates([...plannerTemplates.value,duplicate]);
+}
+async function archivePlannerTemplate(template:HataskPlannerTemplate):Promise<void>{
+	const {canceled}=await os.confirm({type:'warning',text:plannerCopyx.confirmArchiveTemplate({name:template.name})});if(canceled)return;
+	const next=plannerTemplates.value.map(item=>item.id===template.id?{...item,archivedAt:new Date().toISOString(),updatedAt:new Date().toISOString()}:item);await savePlannerTemplates(next);
+}
+async function movePlannerTemplate(template:HataskPlannerTemplate,direction:-1|1):Promise<void>{
+	const visible=plannerTemplates.value.filter(item=>item.archivedAt==null&&(templateKindFilter.value==='all'||item.kind===templateKindFilter.value)).sort((a,b)=>a.position-b.position);
+	const index=visible.findIndex(item=>item.id===template.id);const other=visible[index+direction];if(!other)return;
+	const next=plannerTemplates.value.map(item=>item.id===template.id?{...item,position:other.position}:item.id===other.id?{...item,position:template.position}:item);await savePlannerTemplates(next);
+}
+
+// ===== Calendar / Todo redesign controlled models =====
+const plannerTheme=computed<HataskPlannerTheme>(()=>{
+	const theme=settings.value.theme;
+	return theme==='kashin'||theme==='suri'||theme==='hatakyu'?theme:'kisetsu';
+});
+const plannerReadOnly=computed(()=>plannerStorageState.value!=='ready'&&plannerStorageState.value!=='saved');
+const plannerCalendarView=ref<HataskCalendarView>('month');
+const plannerCalendarFilterIds=ref<Array<'private'|'public'|'shared'>>(['private','public','shared']);
+
+function addCalendarDays(date:Date,amount:number):Date{const next=new Date(date);next.setDate(next.getDate()+amount);return next}
+function plannerAnchorDate():Date{return new Date(calYear.value,calMonth.value,selectedDay.value??1,12)}
+function setPlannerAnchor(date:Date):void{calYear.value=date.getFullYear();calMonth.value=date.getMonth();selectedDay.value=date.getDate();viewingEvent.value=null}
+function startOfPlannerWeek(date:Date):Date{
+	const start=settings.value.weekStart==='sun'?0:1;
+	return addCalendarDays(date,-((date.getDay()-start+7)%7));
+}
+const plannerWeekdays=computed<HataskCalendarWeekday[]>(()=>{
+	const start=settings.value.weekStart==='sun'?new Date(2024,0,7):new Date(2024,0,1);
+	return Array.from({length:7},(_,index)=>{const date=addCalendarDays(start,index);return{id:String(date.getDay()),label:weekdayShortFormatter.format(date),isWeekend:date.getDay()===0||date.getDay()===6}});
+});
+const plannerCalendarDates=computed<Date[]>(()=>{
+	const anchor=plannerAnchorDate();
+	if(plannerCalendarView.value==='month'){
+		const first=new Date(calYear.value,calMonth.value,1,12);
+		const start=startOfPlannerWeek(first);
+		return Array.from({length:42},(_,index)=>addCalendarDays(start,index));
+	}
+	if(plannerCalendarView.value==='week'){
+		const start=startOfPlannerWeek(anchor);
+		return Array.from({length:7},(_,index)=>addCalendarDays(start,index));
+	}
+	if(plannerCalendarView.value==='day')return[anchor];
+	return Array.from({length:30},(_,index)=>addCalendarDays(anchor,index));
+});
+function plannerEventSource(event:any):'private'|'public'|'shared'{
+	const sourceId=event.sourceEventId||event.id;
+	const local=events.value.find(item=>item.id===sourceId);
+	return local?(local.visibility==='public'?'public':'private'):'shared';
+}
+function plannerEventForDate(date:string):any[]{
+	return allCalendarEvents.value.filter(event=>{
+		if(!plannerCalendarFilterIds.value.includes(plannerEventSource(event)))return false;
+		return event.date===date||(event.dateEnd&&event.date<=date&&event.dateEnd>=date);
+	}).sort((a,b)=>Number(b.allDay)-Number(a.allDay)||eDateTimeKey(a).localeCompare(eDateTimeKey(b)));
+}
+function plannerCalendarEvent(event:any):HataskCalendarEvent{
+	const syncState=String(event.publicSyncState||'');
+	const syncStatus=syncState==='conflict'?plannerCopy.conflict:syncState==='sync-error'?plannerCopy.syncFailed:syncState==='unlinked'?plannerCopy.syncUnlinked:['pending','creating','updating','deleting','deleting-local'].includes(syncState)?plannerCopy.syncPending:undefined;
+	const sourceId=event.sourceEventId||event.id;
+	const hasLocalSource=events.value.some(item=>item.id===sourceId||item.serverEventId===sourceId);
+	return{
+		id:event.id,
+		title:event.title,
+		emoji:event.emoji,
+		color:event.color,
+		timeLabel:eventTimeLabel(event),
+		metaLabel:eventDateRangeLabel(event),
+		ownerLabel:event.username?`@${event.username}`:undefined,
+		statusLabel:syncStatus||(event.rsvpClosed?copy.closed:undefined),
+		isAllDay:event.allDay,
+		isShared:plannerEventSource(event)!=='private',
+		readOnly:event.readOnly===true,
+		draggable:hasLocalSource&&event.isRecurrenceOccurrence!==true,
+		date:event.date,
+		dateEnd:event.dateEnd||event.date,
+		timeStart:event.timeStart||'',
+		timeEnd:event.timeEnd||'',
+	};
+}
+const plannerCalendarDays=computed<HataskCalendarDay[]>(()=>plannerCalendarDates.value.map(date=>{
+	const key=localDateKey(date);
+	const eventList=plannerEventForDate(key);
+	return{
+		key,
+		date:key,
+		label:longDateFormatter.format(date),
+		dayNumber:date.getDate(),
+		weekdayLabel:weekdayShortFormatter.format(date),
+		isOutsideRange:plannerCalendarView.value==='month'&&date.getMonth()!==calMonth.value,
+		isToday:key===localDateKey(),
+		isSelected:key===selectedDateStr.value,
+		events:eventList.map(plannerCalendarEvent),
+		hiddenEventCount:Math.max(0,eventList.length-3),
+	};
+}));
+const plannerCalendarTitle=computed(()=>{
+	const dates=plannerCalendarDates.value;
+	if(plannerCalendarView.value==='month')return calendarTitle.value;
+	if(plannerCalendarView.value==='day')return dates[0]?longDateFormatter.format(dates[0]):calendarTitle.value;
+	if(!dates.length)return calendarTitle.value;
+	return`${monthDayFormatter.format(dates[0])} – ${monthDayFormatter.format(dates[dates.length-1])}`;
+});
+const plannerCalendarFilters=computed<HataskPlannerFilter[]>(()=>[
+	{id:'private',label:copy.private,active:plannerCalendarFilterIds.value.includes('private'),count:allCalendarEvents.value.filter(event=>plannerEventSource(event)==='private').length},
+	{id:'public',label:copy.public,active:plannerCalendarFilterIds.value.includes('public'),count:allCalendarEvents.value.filter(event=>plannerEventSource(event)==='public').length},
+	{id:'shared',label:copy.organizer,active:plannerCalendarFilterIds.value.includes('shared'),count:allCalendarEvents.value.filter(event=>plannerEventSource(event)==='shared').length},
+]);
+const plannerCalendarLabels=computed<HataskCalendarLabels>(()=>({
+	calendar:plannerCopy.calendar,
+	viewSelector:plannerCopy.calendar,
+	views:{month:plannerCopy.month,week:plannerCopy.week,day:plannerCopy.day,agenda:plannerCopy.agenda},
+	previousPeriod:plannerCopy.previous,
+	nextPeriod:plannerCopy.next,
+	today:plannerCopy.today,
+	filters:plannerCopy.filters,
+	allDay:copy.allDay,
+	loading:plannerCopy.loading,
+	empty:plannerCopy.empty,
+	readOnly:plannerStorageDetail.value||plannerCopy.readOnly,
+	selectedDay:plannerCopy.selectedDay,
+	dragHint:plannerCopy.dragHint,
+	trashHint:plannerCopy.trashHint,
+		selectDate:dateLabel=>plannerCopyx.selectDateLabel({date:dateLabel}),
+		openEvent:eventTitle=>plannerCopyx.openEventLabel({title:eventTitle}),
+		editEvent:eventTitle=>plannerCopyx.editEventLabel({title:eventTitle}),
+	moveEvent:eventTitle=>plannerCopyx.moveEventLabel({title:eventTitle}),
+	showMore:count=>plannerCopyx.showMore({count:count.toString()}),
+}));
+function navigatePlannerCalendar(direction:'previous'|'next'|'today'):void{
+	if(direction==='today'){goToday();return}
+	const amount=direction==='previous'?-1:1;
+	if(plannerCalendarView.value==='month'){chMo(amount);selectedDay.value=1;return}
+	const days=plannerCalendarView.value==='week'?7:plannerCalendarView.value==='agenda'?30:1;
+	setPlannerAnchor(addCalendarDays(plannerAnchorDate(),amount*days));
+}
+function selectPlannerDate(day:HataskCalendarDay):void{const date=parseIsoDate(day.date);setPlannerAnchor(date);newEvent.value.date=day.date;newEvent.value.dateEnd=day.date}
+function showPlannerDay(day:HataskCalendarDay):void{selectPlannerDate(day);plannerCalendarView.value='day'}
+function findPlannerCalendarSource(event:HataskCalendarEvent):any{return allCalendarEvents.value.find(item=>item.id===event.id)}
+function activatePlannerEvent(event:HataskCalendarEvent,day:HataskCalendarDay):void{selectPlannerDate(day);const source=findPlannerCalendarSource(event);if(source)openEventDetail(source)}
+	function plannerScrollBehavior():ScrollBehavior{return settings.value.animations===false||hkReduced()?'auto':'smooth'}
+function editPlannerEvent(event:HataskCalendarEvent,day:HataskCalendarDay):void{if(plannerReadOnly.value)return;selectPlannerDate(day);const source=findPlannerCalendarSource(event);if(source)startEditEvent(source);nextTick(()=>window.document.querySelector('.htk-event-editor')?.scrollIntoView({behavior:plannerScrollBehavior(),block:'start'}))}
+function togglePlannerCalendarFilter(filterId:string):void{if(filterId!=='private'&&filterId!=='public'&&filterId!=='shared')return;const index=plannerCalendarFilterIds.value.indexOf(filterId);if(index>=0){if(plannerCalendarFilterIds.value.length>1)plannerCalendarFilterIds.value.splice(index,1)}else plannerCalendarFilterIds.value.push(filterId)}
+
+type PendingCalendarAction={mode:'reschedule'|'trash';event:HataskCalendarEvent;targetDate?:string;targetTime?:string};
+const pendingCalendarAction=ref<PendingCalendarAction|null>(null);
+const calendarMoveDialogLabels=computed<HataskEventMoveDialogLabels>(()=>({
+	moveEyebrow:plannerCopy.reschedule,moveTitle:plannerCopy.moveOrCopy,moveDescription:plannerCopy.moveOrCopyDescription,move:plannerCopy.moveEvent,moveHint:plannerCopy.moveEventHint,copy:plannerCopy.copyEvent,copyHint:plannerCopy.copyEventHint,
+	trashEyebrow:plannerCopy.trash,trashTitle:plannerCopy.trashEventTitle,trashDescription:plannerCopy.trashEventDescription,trash:plannerCopy.trash,cancel:copy.cancel,
+}));
+function calendarActionLabel(date:string|undefined,time:string|undefined):string{return date?`${formatSearchDate(date)}${time?` ${time}`:''}`:''}
+const pendingCalendarActionSourceLabel=computed(()=>calendarActionLabel(pendingCalendarAction.value?.event.date,pendingCalendarAction.value?.event.isAllDay?undefined:pendingCalendarAction.value?.event.timeStart));
+const pendingCalendarActionTargetLabel=computed(()=>calendarActionLabel(pendingCalendarAction.value?.targetDate,pendingCalendarAction.value?.event.isAllDay?undefined:pendingCalendarAction.value?.targetTime||pendingCalendarAction.value?.event.timeStart));
+function handleCalendarEventDrop(event:HataskCalendarEvent,day:HataskCalendarDay,time?:string):void{
+	if(plannerReadOnly.value||event.draggable===false)return;
+	const targetTime=event.isAllDay?undefined:time;
+	if(event.date===day.date&&(targetTime==null||targetTime===event.timeStart))return;
+	pendingCalendarAction.value={mode:'reschedule',event,targetDate:day.date,...(targetTime?{targetTime}:{})};
+}
+async function handleCalendarMoveRequest(event:HataskCalendarEvent):Promise<void>{
+	if(plannerReadOnly.value||event.draggable===false)return;
+	const {canceled,result}=await os.inputText({title:plannerCopy.reschedule,text:plannerCopy.dateInputHint,default:event.date||localDateKey(),maxLength:10});
+	const date=typeof result==='string'?result.trim():'';if(canceled)return;if(!/^\d{4}-\d{2}-\d{2}$/.test(date)){os.toast(plannerCopy.invalidDate);return}
+	let targetTime:string|undefined;
+	if(!event.isAllDay){const timeResult=await os.inputText({title:copy.time,text:plannerCopy.timeInputHint,default:event.timeStart||'09:00',maxLength:5});if(timeResult.canceled)return;const value=typeof timeResult.result==='string'?timeResult.result.trim():'';if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(value)){os.toast(plannerCopy.invalidTime);return}targetTime=value}
+	pendingCalendarAction.value={mode:'reschedule',event,targetDate:date,...(targetTime?{targetTime}:{})};
+}
+function handleCalendarEventTrash(event:HataskCalendarEvent):void{if(!plannerReadOnly.value&&event.draggable!==false)pendingCalendarAction.value={mode:'trash',event}}
+function calendarLocalSource(event:HataskCalendarEvent):HataskPlannerEvent|undefined{
+	const occurrence=findPlannerCalendarSource(event);const sourceId=occurrence?.sourceEventId||event.id;
+	return events.value.find(item=>item.id===sourceId||item.serverEventId===sourceId);
+}
+function calendarDayDistance(from:string,to:string):number{return Math.round((parseIsoDate(to).getTime()-parseIsoDate(from).getTime())/86400000)}
+function eventScheduleAt(source:HataskPlannerEvent,targetDate:string,targetTime?:string):Pick<HataskPlannerEvent,'date'|'dateEnd'|'timeStart'|'timeEnd'>{
+	const endDate=source.dateEnd||source.date;const daySpan=Math.max(0,calendarDayDistance(source.date,endDate));
+	if(source.allDay)return{date:targetDate,dateEnd:localDateKey(addCalendarDays(parseIsoDate(targetDate),daySpan)),timeStart:'',timeEnd:''};
+	const startMinutes=Number(source.timeStart?.slice(0,2)||9)*60+Number(source.timeStart?.slice(3,5)||0);
+	const endMinutes=Number(source.timeEnd?.slice(0,2)||10)*60+Number(source.timeEnd?.slice(3,5)||0);
+	const duration=Math.max(15,daySpan*1440+endMinutes-startMinutes);
+	const nextStart=targetTime&&/^\d{2}:\d{2}$/.test(targetTime)?Number(targetTime.slice(0,2))*60+Number(targetTime.slice(3,5)):startMinutes;
+	const totalEnd=nextStart+duration;const endOffset=Math.floor(totalEnd/1440);const nextEnd=totalEnd%1440;
+	return{date:targetDate,dateEnd:localDateKey(addCalendarDays(parseIsoDate(targetDate),endOffset)),timeStart:`${String(Math.floor(nextStart/60)).padStart(2,'0')}:${String(nextStart%60).padStart(2,'0')}`,timeEnd:`${String(Math.floor(nextEnd/60)).padStart(2,'0')}:${String(nextEnd%60).padStart(2,'0')}`};
+}
+async function applyCalendarReschedule(action:PendingCalendarAction,choice:'move'|'copy'):Promise<void>{
+	const source=calendarLocalSource(action.event);if(!source||!action.targetDate){os.toast(plannerCopy.publicSyncUnlinked);return}
+	const schedule=eventScheduleAt(source,action.targetDate,action.targetTime);const now=new Date().toISOString();
+	if(choice==='copy'){
+		const duplicate:HataskPlannerEvent={...source,...schedule,id:generateId(),clientEventId:undefined,serverEventId:undefined,serverEventRevision:undefined,publicSyncState:undefined,pendingVisibility:undefined,visibility:'private',rsvp:false,recurrence:{frequency:'none',interval:1},createdAt:now,updatedAt:now,archivedAt:null};
+		duplicate.clientEventId=duplicate.id;
+		const next=[duplicate,...events.value];await registrySet('events',next);events.value=next;scheduleEventNotifications();setPlannerAnchor(parseIsoDate(action.targetDate));os.toast(plannerCopy.eventCopied);return;
+	}
+	let moved:HataskPlannerEvent={...source,...schedule,updatedAt:now};
+	if(source.visibility==='public'){
+		let serverEventId=source.serverEventId;let serverEventRevision=source.serverEventRevision;
+		if(!serverEventId){serverEventId=findUniqueOwnedServerId(source)??undefined;const server=serverEventId?sharedEvents.value.find(event=>event.id===serverEventId):null;serverEventRevision=server?.revision}
+		if(!serverEventId||!serverEventRevision){os.toast(plannerCopy.publicSyncUnlinked);return}
+		moved={...moved,serverEventId,serverEventRevision,publicSyncState:'updating'};
+	}
+	const next=events.value.map(event=>event.id===source.id?moved:event);await registrySet('events',next);events.value=next;scheduleEventNotifications();setPlannerAnchor(parseIsoDate(action.targetDate));
+	if(source.visibility==='public'){
+		await processPublicEventOutbox();await loadSharedEvents();
+		const syncState=events.value.find(event=>event.id===source.id)?.publicSyncState;
+		os.toast(syncState==='conflict'?plannerCopy.publicSyncConflict:syncState==='unlinked'?plannerCopy.publicSyncUnlinked:syncState==='sync-error'?plannerCopy.publicSyncFailed:syncState?plannerCopy.publicSyncPending:plannerCopy.eventMoved);
+		return;
+	}
+	os.toast(plannerCopy.eventMoved);
+}
+async function resolveCalendarAction(choice:'move'|'copy'|'trash'|'cancel'):Promise<void>{
+	const action=pendingCalendarAction.value;pendingCalendarAction.value=null;if(!action||choice==='cancel')return;
+	if(choice==='trash'){await deleteEventById(action.event.id,{skipConfirm:true});return}
+	if(action.mode==='reschedule')await applyCalendarReschedule(action,choice);
+}
+
+// 期限なしを含む既存Todoは「すべて」で必ず辿れる。スマートビューは表示だけを切り替え、
+// 配列そのものや手動順を並べ替えて保存しない。
+const plannerTodoView=ref<HataskTodoView>('all');
+const plannerTodoSearch=ref('');
+const defaultPlannerTodoMobileTabs:HataskTodoMobileTab[]=['today','upcoming','all','completed','more'];
+function normalizePlannerTodoMobileTabs(value:unknown):HataskTodoMobileTab[]{
+	const source=Array.isArray(value)?value:[];const valid=new Set<HataskTodoMobileTab>(defaultPlannerTodoMobileTabs);
+	const unique=source.filter((tab,index):tab is HataskTodoMobileTab=>typeof tab==='string'&&valid.has(tab as HataskTodoMobileTab)&&source.indexOf(tab)===index);
+	return[...unique,...defaultPlannerTodoMobileTabs.filter(tab=>!unique.includes(tab))];
+}
+const plannerTodoMobileTabOrder=computed(()=>normalizePlannerTodoMobileTabs(settings.value.todoMobileTabOrder));
+async function setPlannerTodoMobileTabOrder(next:HataskTodoMobileTab[]):Promise<void>{settings.value.todoMobileTabOrder=normalizePlannerTodoMobileTabs(next);await saveSettings()}
+const lastArchivedTodoId=ref<string|null>(null);
+let archiveUndoTimer:number|null=null;
+function isTodoArchived(todo:HataskPlannerTodo):boolean{return todo.archivedAt!=null}
+function todoMatchesView(todo:HataskPlannerTodo,view:HataskTodoView):boolean{
+	const today=localDateKey();
+	if(view==='templates')return false;
+	if(view==='completed')return todo.done||isTodoArchived(todo);
+	if(isTodoArchived(todo)||todo.done)return false;
+	if(view==='today')return todo.due===today;
+	if(view==='upcoming')return Boolean(todo.due&&todo.due>today);
+	if(view==='overdue')return Boolean(todo.due&&todo.due<today);
+	if(view==='priority')return todo.priority!=='none';
+	return true;
+}
+const plannerTodoViewCounts=computed<Record<HataskTodoView,number>>(()=>({
+	today:todos.value.filter(todo=>todoMatchesView(todo,'today')).length,
+	upcoming:todos.value.filter(todo=>todoMatchesView(todo,'upcoming')).length,
+	overdue:todos.value.filter(todo=>todoMatchesView(todo,'overdue')).length,
+	priority:todos.value.filter(todo=>todoMatchesView(todo,'priority')).length,
+	all:todos.value.filter(todo=>todoMatchesView(todo,'all')).length,
+	completed:todos.value.filter(todo=>todoMatchesView(todo,'completed')).length,
+	templates:plannerTemplates.value.filter(template=>template.kind==='todo'&&template.archivedAt==null).length,
+}));
+const plannerTodoSortContext=computed(()=>`${plannerTodoView.value}:${activeFolder.value}`);
+const currentTodoSort=computed<HataskTodoSort>(()=>{
+	const candidate=settings.value.todoSortModes?.[plannerTodoSortContext.value];
+	return candidate==='dueAsc'||candidate==='priority'||candidate==='createdDesc'?candidate:'manual';
+});
+function todoTimestamp(value:unknown):number{
+	if(typeof value==='number'&&Number.isFinite(value))return value;
+	if(typeof value==='string'){const parsed=Date.parse(value);return Number.isFinite(parsed)?parsed:0}
+	return 0;
+}
+function comparePlannerTodos(a:HataskPlannerTodo,b:HataskPlannerTodo):number{
+	if(currentTodoSort.value==='dueAsc')return String(a.due||'9999-99-99').localeCompare(String(b.due||'9999-99-99'))||String(a.time||'99:99').localeCompare(String(b.time||'99:99'))||(a.position??0)-(b.position??0);
+	if(currentTodoSort.value==='priority'){
+		const rank={high:0,medium:1,low:2,none:3} as const;
+		return rank[a.priority]-rank[b.priority]||String(a.due||'9999-99-99').localeCompare(String(b.due||'9999-99-99'))||(a.position??0)-(b.position??0);
+	}
+	if(currentTodoSort.value==='createdDesc')return todoTimestamp(b.createdAt)-todoTimestamp(a.createdAt)||(a.position??0)-(b.position??0);
+	return(a.position??0)-(b.position??0)||String(a.due||'9999-99-99').localeCompare(String(b.due||'9999-99-99'));
+}
+async function setPlannerTodoSort(next:HataskTodoSort):Promise<void>{
+	settings.value.todoSortModes={...(settings.value.todoSortModes||{}),[plannerTodoSortContext.value]:next};
+	await saveSettings();
+}
+const plannerFilteredTodos=computed(()=>{
+	const query=plannerTodoSearch.value.trim().toLocaleLowerCase(versatileLang);
+	return todos.value.filter(todo=>{
+		if(!todoMatchesView(todo,plannerTodoView.value))return false;
+		if(activeFolder.value!=='all'&&todo.folder!==activeFolder.value)return false;
+		return!query||`${todo.text}\n${todo.comment||''}`.toLocaleLowerCase(versatileLang).includes(query);
+	}).sort(comparePlannerTodos);
+});
+const plannerTodoItems=computed<HataskTodoItem[]>(()=>plannerFilteredTodos.value.map((todo,index)=>{
+	const folder=getFolder(todo.folder||'');
+	return{
+		id:todo.id,text:todo.text,done:todo.done,due:todo.due,time:todo.time,dueLabel:todo.due?formatDue(todo.due,todo.time):undefined,
+		folder:todo.folder,folderLabel:folder?.name,folderEmoji:folder?.emoji,comment:todo.comment,commentPreview:todo.comment?.split('\n')[0],
+		priority:todo.priority||'none',recurrenceLabel:recurrenceLabel(todo.recurrence?.frequency||'none'),subtasks:todo.subtasks||[],archivedAt:todo.archivedAt,
+		archivedLabel:todo.archivedAt?formatSearchDate(localDateKey(new Date(todo.archivedAt))):undefined,canMoveUp:index>0,canMoveDown:index<plannerFilteredTodos.value.length-1,
+	};
+}));
+const plannerTodoFilters=computed<HataskPlannerFilter[]>(()=>[
+	...activeFolders.value.map(folder=>({id:`folder:${folder.id}`,kind:'folder' as const,label:folder.name,emoji:folder.emoji,active:activeFolder.value===folder.id,color:folder.color,count:folderCount(folder.id)})),
+]);
+const plannerTodoLabels=computed<HataskTodoLabels>(()=>({
+		todo:plannerCopy.todo,viewSelector:plannerCopy.organizeTodo,views:{today:plannerCopy.todoToday,upcoming:plannerCopy.todoUpcoming,overdue:plannerCopy.todoOverdue,priority:plannerCopy.todoPriority,all:plannerCopy.todoAll,completed:plannerCopy.todoCompleted,templates:plannerCopy.todoTemplates},
+	search:plannerCopy.search,searchPlaceholder:copy.newTaskPlaceholder,addTask:plannerCopy.add,filters:plannerCopy.filter,loading:plannerCopy.loading,empty:copy.noTasks,readOnly:plannerStorageDetail.value||plannerCopy.readOnly,
+	priorities:{none:plannerCopy.priorityNone,low:plannerCopy.priorityLow,medium:plannerCopy.priorityMedium,high:plannerCopy.priorityHigh},
+		completeTask:title=>plannerCopyx.completeTaskLabel({title}),reopenTask:title=>plannerCopyx.reopenTaskLabel({title}),editTask:title=>plannerCopyx.editTaskLabel({title}),
+		archiveTask:title=>plannerCopyx.archiveTaskLabel({title}),restoreTask:title=>plannerCopyx.restoreTaskLabel({title}),deleteTask:title=>plannerCopyx.deleteTaskLabel({title}),
+		moveUp:title=>plannerCopyx.moveTaskUpLabel({title}),moveDown:title=>plannerCopyx.moveTaskDownLabel({title}),
+	subtaskProgress:(completed,total)=>plannerCopyx.subtaskProgress({completed:completed.toString(),total:total.toString()}),
+	sort:plannerCopy.sort,sortOptions:{manual:plannerCopy.sortManual,dueAsc:plannerCopy.sortDueAsc,priority:plannerCopy.sortPriority,createdDesc:plannerCopy.sortCreatedDesc},folders:plannerCopy.folders,
+		selectedCount:count=>plannerCopyx.selectedCount({count:count.toString()}),bulkComplete:plannerCopy.bulkComplete,bulkMove:plannerCopy.bulkMove,bulkDue:plannerCopy.bulkDue,bulkPriority:plannerCopy.bulkPriority,bulkArchive:plannerCopy.bulkArchive,clearSelection:plannerCopy.clearSelection,
+			addFolder:plannerCopy.addFolder,manageFolder:name=>plannerCopyx.manageFolderLabel({name}),moreActions:title=>plannerCopyx.moreTaskActionsLabel({title}),moreViews:plannerCopy.todoMore,reorderViews:plannerCopy.reorderTodoTabs,reorderView:viewName=>plannerCopyx.reorderTodoTabLabel({name:viewName}),
+	}));
+function recurrenceLabel(frequency:HataskRecurrenceFrequency):string{return frequency==='daily'?plannerCopy.recurrenceDaily:frequency==='weekly'?plannerCopy.recurrenceWeekly:frequency==='monthly'?plannerCopy.recurrenceMonthly:frequency==='yearly'?plannerCopy.recurrenceYearly:plannerCopy.recurrenceNone}
+function plannerTodoSource(item:HataskTodoItem):HataskPlannerTodo|undefined{return todos.value.find(todo=>todo.id===item.id)}
+function focusTodoEditor():void{if(plannerReadOnly.value)return;todoCaptureRef.value?.focus()}
+function togglePlannerTodoFilter(filterId:string):void{
+	if(filterId.startsWith('folder:')){const folderId=filterId.slice(7);activeFolder.value=activeFolder.value===folderId?'all':folderId;return}
+}
 
 // Mood
 const selectedMoodLevel=ref(4);const moodNote=ref('');const editingMood=ref<any>(null);
@@ -1620,9 +2805,9 @@ const meals=ref<any[]>([]);
 const showMealDisclaimer=ref(false);
 const mealsByDate=computed(()=>{const g:Record<string,any[]>={};[...meals.value].sort((a,b)=>b.date.localeCompare(a.date)||b.time.localeCompare(a.time)).forEach(m=>{if(!g[m.date])g[m.date]=[];g[m.date].push(m)});return g});
 // サマリーは数値評価を出さない。記録した行為そのものを中立に肯定する労いのみ
-const mealTodayCount=computed(()=>{const today=new Date().toISOString().slice(0,10);return meals.value.filter(m=>m.date===today).length});
+const mealTodayCount=computed(()=>{const today=localDateKey();return meals.value.filter(m=>m.date===today).length});
 // 旗鯖fork(ハタキュ): コルク板の「ごはん記録」紙に貼る今日の分。⚠️多すぎると紙が伸びるので3件まで。
-const hkTodayMeals=computed(()=>{const today=new Date().toISOString().slice(0,10);return meals.value.filter(m=>m.date===today).slice(0,3)});
+const hkTodayMeals=computed(()=>{const today=localDateKey();return meals.value.filter(m=>m.date===today).slice(0,3)});
 // 旗鯖fork(ハタキュ): カレンダーの「つぎの予定まで」紙。予定が無ければ紙自体を出さない。
 const hkNextEvent=computed(()=>upcomingEvents.value[0]??null);
 const hkNextEventDays=computed(()=>{
@@ -1635,15 +2820,14 @@ const hkNextEventDays=computed(()=>{
 });
 // 旗鯖fork(ハタキュ): ToDoの「今日終わった分」紙。
 const hkTodayDoneCount=computed(()=>{
-  const today=new Date().toISOString().slice(0,10);
-  return todos.value.filter(t=>t.done&&(t.doneAt??'').slice(0,10)===today).length;
+  const today=localDateKey();
+  return todos.value.filter(t=>t.done&&t.doneAt&&localDateKey(new Date(t.doneAt))===today).length;
 });
 const mealSummaryMessage=computed(()=>{const c=mealTodayCount.value;if(c===0)return copy.mealSummaryNone;if(c===1)return copy.mealSummaryOne;return copy.mealSummaryMany});
 
 // ===== PAGINATION =====
 const ITEMS_PER_PAGE = 10;
 const moodPage = ref(1);
-const todoPage = ref(1);
 const eventPage = ref(1);
 const calListPage = ref(1);
 
@@ -1657,10 +2841,6 @@ const mealPage = ref(1);
 const mealDateKeys = computed(()=>Object.keys(mealsByDate.value));
 const mealTotalPages = computed(()=>Math.max(1,Math.ceil(mealDateKeys.value.length/ITEMS_PER_PAGE)));
 const pagedMealDates = computed(()=>{const start=(mealPage.value-1)*ITEMS_PER_PAGE;return mealDateKeys.value.slice(start,start+ITEMS_PER_PAGE)});
-
-// Paginated todos
-const todoTotalPages = computed(()=>Math.max(1,Math.ceil(sortedTodos.value.length/ITEMS_PER_PAGE)));
-const pagedTodos = computed(()=>{const start=(todoPage.value-1)*ITEMS_PER_PAGE;return sortedTodos.value.slice(start,start+ITEMS_PER_PAGE)});
 
 // Paginated events for selected day
 const eventTotalPages = computed(()=>Math.max(1,Math.ceil(eventsForDay.value.length/ITEMS_PER_PAGE)));
@@ -1831,14 +3011,14 @@ watch(showSearch,v=>{if(v)nextTick(()=>searchInput.value?.focus())});
 // Helpers
 function generateId():string{return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
 function formatDue(d:string,t?:string):string{const todayDate=new Date();todayDate.setHours(0,0,0,0);const x=parseIsoDate(d);x.setHours(0,0,0,0);let l='';if(x.getTime()===todayDate.getTime())l=copy.today;else{const tomorrow=new Date(todayDate);tomorrow.setDate(tomorrow.getDate()+1);if(x.getTime()===tomorrow.getTime())l=copy.tomorrow;else l=monthDayFormatter.format(x)}if(t)l+=' '+t;return l}
-function isDueToday(d:string):boolean{return new Date(d).toDateString()===new Date().toDateString()}
-function isOverdue(d:string):boolean{return new Date(d)<new Date(new Date().toDateString())}
+function isDueToday(d:string):boolean{return d===localDateKey()}
+function isOverdue(d:string):boolean{return /^\d{4}-\d{2}-\d{2}$/.test(d)&&d<localDateKey()}
 function formatMoodDate(d:string):string{return monthDayWeekdayFormatter.format(parseIsoDate(d))}
 
 // ========== GREETING SYSTEM (500+ variations) ==========
 // Eye page computed stats
 const todoCompletionRate=computed(()=>{if(todos.value.length===0)return 0;return Math.round(todos.value.filter(t=>t.done).length/todos.value.length*100)});
-const weeklyTaskProgress=computed(()=>{const now=new Date();const weekAgo=new Date(now.getTime()-7*86400000);const weekStr=weekAgo.toISOString().slice(0,10);const weekTodos=todos.value.filter(t=>t.createdAt&&new Date(t.createdAt)>=weekAgo);if(weekTodos.length===0)return 0;return Math.round(weekTodos.filter(t=>t.done).length/weekTodos.length*100)});
+const weeklyTaskProgress=computed(()=>{const now=new Date();const weekAgo=new Date(now.getTime()-7*86400000);const weekTodos=todos.value.filter(t=>t.createdAt&&new Date(t.createdAt)>=weekAgo);if(weekTodos.length===0)return 0;return Math.round(weekTodos.filter(t=>t.done).length/weekTodos.length*100)});
 const monthlyMoodCount=computed(()=>{const now=new Date();const ym=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;return moods.value.filter(m=>{const d=new Date(m.date||m.createdAt);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`===ym}).length});
 const monthlyMoodProgress=computed(()=>{const now=new Date();const daysInMonth=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();return Math.min(100,Math.round(monthlyMoodCount.value/daysInMonth*100))});
 const currentFlowerHanakotoba=computed(()=>{const flora=floraData.find(f=>f.emoji===flower.value.emoji);return flora?.hanakotoba?localizeHanakotoba(flora.hanakotoba) : ''});
@@ -1848,7 +3028,7 @@ const galleryWithHanakotoba=computed(()=>gallery.value.filter(fl=>fl.hanakotoba)
 function updateEyePhrase(){
 try {
 const pc=todos.value.filter(t=>!t.done).length;
-const todayStr=new Date().toISOString().slice(0,10);
+const todayStr=localDateKey();
 const todayEvents=events.value.filter(e=>e.date===todayStr);
 const recent=moods.value.slice(0,7);
 const avg=recent.length>0?recent.reduce((s,m)=>s+m.level,0)/recent.length:0;
@@ -1867,10 +3047,10 @@ return{eventId:e.id,emoji:e.emoji||'📅',title:e.title,dateLabel:eventDateTimeL
 });
 });
 async function setRsvp(eventId:string,status:'going'|'maybe'|'declined'){
-try{await misskeyApi('hatask/events/rsvp',{eventId,status});await loadSharedEvents();os.toast(status==='going'?copy.rsvpGoingSaved:status==='maybe'?copy.rsvpMaybeSaved:copy.rsvpDeclinedSaved)}catch(e){console.error('RSVP failed:',e);os.toast(copy.rsvpSendFailed)}
+try{await misskeyApi('hatask/events/rsvp',{eventId:plannerEventServerId(eventId),status});await loadSharedEvents();os.toast(status==='going'?copy.rsvpGoingSaved:status==='maybe'?copy.rsvpMaybeSaved:copy.rsvpDeclinedSaved)}catch(e){console.error('RSVP failed:',e);os.toast(copy.rsvpSendFailed)}
 }
 async function closeRsvp(eventId:string){
-try{await misskeyApi('hatask/events/close',{eventId,closed:true});await loadSharedEvents();os.toast(copy.rsvpClosed)}catch(e){console.error('Close RSVP failed:',e);os.toast(copy.rsvpCloseFailed)}
+try{const server=sharedEventData(eventId);if(!server?.revision)throw new Error('Missing public event revision');await misskeyApi('hatask/events/close',{eventId:plannerEventServerId(eventId),expectedRevision:server.revision,closed:true});await loadSharedEvents();os.toast(copy.rsvpClosed)}catch(e){console.error('Close RSVP failed:',e);os.toast(copy.rsvpCloseFailed)}
 }
 
 // CRUD
@@ -1881,20 +3061,166 @@ const myId=$i?.id;if(!myId)return;
 closedRsvpNotifs.value=sharedEvents.value.filter(e=>e.rsvpClosed&&e.rsvpResponses&&e.rsvpResponses.some((r:any)=>r.userId===myId)&&!dismissedRsvpNotifs.value.includes(e.id)).map(e=>({eventId:e.id,emoji:e.emoji||'📅',title:e.title,goCount:e.rsvpResponses.filter((r:any)=>r.status==='going').length}));
 }
 const editingTodoId=ref<string|null>(null);
-async function addTodo(){if(!newTodo.value.trim()&&!editingTodoId.value)return;
-if(editingTodoId.value){const t=todos.value.find(t=>t.id===editingTodoId.value);if(t){t.text=newTodo.value.trim()||t.text;t.due=newTodoDue.value;t.time=newTodoTime.value;t.folder=newTodoFolder.value;t.comment=newTodoComment.value}editingTodoId.value=null;newTodo.value='';newTodoDue.value='';newTodoTime.value='';newTodoComment.value='';showTodoExtra.value=false;await registrySet('todos',todos.value);os.toast(copy.todoUpdated);return}
-todos.value.unshift({id:generateId(),text:newTodo.value.trim(),done:false,due:newTodoDue.value,time:newTodoTime.value,folder:newTodoFolder.value||(activeFolder.value!=='all'?activeFolder.value:''),comment:newTodoComment.value,createdAt:Date.now()});newTodo.value='';newTodoDue.value='';newTodoTime.value='';newTodoComment.value='';await registrySet('todos',todos.value)}
+type CompletedTodoUndoItem={before:HataskPlannerTodo;after:HataskPlannerTodo;generated?:HataskPlannerTodo};
+const todoCompletionIds=ref<string[]>([]);
+const completedUndoItems=ref<CompletedTodoUndoItem[]>([]);
+let completedUndoTimer:number|null=null;
+function clonePlannerTodo(todo:HataskPlannerTodo):HataskPlannerTodo{return{...todo,subtasks:(todo.subtasks||[]).map(subtask=>({...subtask})),recurrence:{...(todo.recurrence||{frequency:'none',interval:1})}}}
+function resetTodoEditor():void{editingTodoId.value=null;newTodo.value='';newTodoDue.value='';newTodoTime.value='';newTodoFolder.value='';newTodoComment.value='';newTodoPriority.value='none';newTodoRecurrence.value='none';newTodoSubtasks.value=[];newSubtaskText.value='';showTodoExtra.value=false;todoCaptureEditor.value=null}
+function addTodoSubtask():void{const text=newSubtaskText.value.trim();if(!text)return;newTodoSubtasks.value.push({id:generateId(),text,done:false});newSubtaskText.value=''}
+function removeTodoSubtask(id:string):void{newTodoSubtasks.value=newTodoSubtasks.value.filter(subtask=>subtask.id!==id)}
+async function submitTodoCapture():Promise<void>{
+	applyTodoCaptureSyntax(newTodo.value,true);
+	if(!newTodo.value.trim()&&!editingTodoId.value){todoCaptureRef.value?.focus();return}
+	todoCaptureState.value='saving';
+	try{await addTodo();todoCaptureState.value='success';window.setTimeout(()=>{if(todoCaptureState.value==='success')todoCaptureState.value='idle'},900)}
+	catch(error){console.error('Hatask todo save failed:',error);todoCaptureState.value='error'}
+}
+async function addTodo(){
+	if(plannerReadOnly.value||(!newTodo.value.trim()&&!editingTodoId.value))return;
+	if(editingTodoId.value){
+		const index=todos.value.findIndex(todo=>todo.id===editingTodoId.value);
+		if(index>=0){
+			const current=todos.value[index];
+			const next=[...todos.value];
+			next.splice(index,1,{...current,text:newTodo.value.trim()||current.text,due:newTodoDue.value,time:newTodoTime.value,folder:newTodoFolder.value,comment:newTodoComment.value,priority:newTodoPriority.value,subtasks:newTodoSubtasks.value.map(subtask=>({...subtask})),recurrence:{...(current.recurrence||{}),frequency:newTodoRecurrence.value,interval:current.recurrence?.interval||1,...(newTodoDue.value?{anchorDate:newTodoDue.value}:{})}});
+			await registrySet('todos',next);
+			todos.value=next;
+		}
+		resetTodoEditor();
+		os.toast(copy.todoUpdated);
+		return;
+	}
+	const minPosition=todos.value.reduce((minimum,todo)=>Math.min(minimum,todo.position??0),0);
+	const next=[{id:generateId(),text:newTodo.value.trim(),done:false,due:newTodoDue.value,time:newTodoTime.value,folder:newTodoFolder.value||(activeFolder.value!=='all'?activeFolder.value:''),comment:newTodoComment.value,createdAt:Date.now(),priority:newTodoPriority.value,subtasks:newTodoSubtasks.value.map(subtask=>({...subtask})),recurrence:{frequency:newTodoRecurrence.value,interval:1,...(newTodoDue.value?{anchorDate:newTodoDue.value}:{})},position:minPosition-1,archivedAt:null},...todos.value] satisfies HataskPlannerTodo[];
+	await registrySet('todos',next);
+	todos.value=next;
+	resetTodoEditor();
+}
 // 旗鯖fork(ハタキュ): 「今日終わった分」を数えるために、完了した時刻を残す。
 //   ⚠️過去に完了した分には doneAt が無い(遡って埋められない)。その分は今日の件数に入らない。
-async function toggleTodo(id:string){const t=todos.value.find(t=>t.id===id);if(t){t.done=!t.done;if(t.done)t.doneAt=new Date().toISOString();else delete t.doneAt;await registrySet('todos',todos.value)}}
-async function deleteTodo(id:string){const{canceled}=await os.confirm({type:'warning',text:copy.confirmDeleteTodo});if(canceled)return;todos.value=todos.value.filter(t=>t.id!==id);await registrySet('todos',todos.value)}
-async function editTodo(id:string){const t=todos.value.find(t=>t.id===id);if(!t)return;editingTodoId.value=id;newTodo.value=t.text;newTodoDue.value=t.due||'';newTodoTime.value=t.time||'';newTodoFolder.value=t.folder||'';newTodoComment.value=t.comment||'';showTodoExtra.value=true;const el=document.querySelector('.htk-todo-inp-r,.hk-todo-inp');if(el)el.scrollIntoView({behavior:'smooth',block:'center'})}
-function cancelEditTodo(){editingTodoId.value=null;newTodo.value='';newTodoDue.value='';newTodoTime.value='';newTodoComment.value='';showTodoExtra.value=false}
-async function addFolder(){if(!newFolderName.value.trim())return;folders.value.push({id:generateId(),name:newFolderName.value.trim(),emoji:newFolderEmoji.value||'📁',color:newFolderColor.value||''});newFolderName.value='';newFolderEmoji.value='📁';newFolderColor.value='';await registrySet('folders',folders.value)}
-async function deleteFolder(i:number){const{canceled}=await os.confirm({type:'warning',text:copyx.confirmDeleteFolder({ name:folders.value[i].name })});if(canceled)return;const fid=folders.value[i].id;todos.value.forEach(t=>{if(t.folder===fid)t.folder=''});if(activeFolder.value===fid)activeFolder.value='all';folders.value.splice(i,1);await registrySet('folders',folders.value);await registrySet('todos',todos.value)}
-async function renameFolder(i:number){const{canceled,result}=await os.inputText({title:copy.renameFolderTitle,text: copy.newNamePrompt,default:folders.value[i].name});if(!canceled&&result){folders.value[i].name=result;await registrySet('folders',folders.value)}}
-async function moveFolder(i:number,d:number){const ni=i+d;if(ni<0||ni>=folders.value.length)return;[folders.value[i],folders.value[ni]]=[folders.value[ni],folders.value[i]];await registrySet('folders',folders.value)}
-async function changeFolderColor(i:number){const {canceled,result}=await os.actions({type:'question',title:copy.folderColorTitle,actions:[...folderColors.value.map(c=>({value:c.value,text:c.label})),{value:'',text:copy.none}]});if(canceled)return;folders.value[i].color=result;await registrySet('folders',folders.value)}
+function completeTodoDrafts(source:HataskPlannerTodo[],ids:readonly string[]):{next:HataskPlannerTodo[];undo:CompletedTodoUndoItem[]}{
+	const next=source.map(clonePlannerTodo);const undo:CompletedTodoUndoItem[]=[];const completedAt=new Date();
+	for(const id of ids){
+		const index=next.findIndex(item=>item.id===id);if(index<0||next[index].done||isTodoArchived(next[index]))continue;
+		const before=clonePlannerTodo(next[index]);const after=clonePlannerTodo(next[index]);after.done=true;after.doneAt=completedAt.toISOString();let generated:HataskPlannerTodo|undefined;
+		if(after.recurrence?.frequency!=='none'&&!next.some(item=>item.recurrenceParentId===after.id)){
+			const recurrence=createNextRecurringTodo(after,generateId(),completedAt);if(recurrence){generated=recurrence;next.unshift(generated);}
+		}
+		const completedIndex=next.findIndex(item=>item.id===id);next.splice(completedIndex,1,after);undo.push({before,after:clonePlannerTodo(after),...(generated?{generated:clonePlannerTodo(generated)}:{})});
+	}
+	return{next,undo};
+}
+function registerCompletedUndo(entries:CompletedTodoUndoItem[]):void{
+	if(entries.length===0)return;completedUndoItems.value=[...completedUndoItems.value,...entries];
+	if(completedUndoTimer)window.clearTimeout(completedUndoTimer);completedUndoTimer=window.setTimeout(()=>{completedUndoItems.value=[];completedUndoTimer=null},8000);
+}
+async function toggleTodo(id:string,done?:boolean):Promise<CompletedTodoUndoItem[]>{
+	if(plannerReadOnly.value)return[];
+	const index=todos.value.findIndex(item=>item.id===id);if(index<0)return[];
+	const todo=clonePlannerTodo(todos.value[index]);
+	const nextDone=done??!todo.done;todo.done=nextDone;
+	if(nextDone&&!todos.value[index].done){const completed=completeTodoDrafts(todos.value,[id]);await registrySet('todos',completed.next);todos.value=completed.next;return completed.undo}
+	const nextTodos=[...todos.value];
+	if(nextDone)todo.doneAt=new Date().toISOString();else delete todo.doneAt;
+	const completedIndex=nextTodos.findIndex(item=>item.id===id);
+	if(completedIndex>=0)nextTodos.splice(completedIndex,1,todo);
+	await registrySet('todos',nextTodos);
+	todos.value=nextTodos;
+	return[];
+}
+async function deleteTodo(id:string){if(plannerReadOnly.value)return;const{canceled}=await os.confirm({type:'warning',text:copy.confirmDeleteTodo});if(canceled)return;const next=todos.value.filter(t=>t.id!==id);await registrySet('todos',next);todos.value=next}
+async function editTodo(id:string){const t=todos.value.find(t=>t.id===id);if(!t)return;editingTodoId.value=id;newTodo.value=t.text;newTodoDue.value=t.due||'';newTodoTime.value=t.time||'';newTodoFolder.value=t.folder||'';newTodoComment.value=t.comment||'';newTodoPriority.value=t.priority||'none';newTodoRecurrence.value=t.recurrence?.frequency||'none';newTodoSubtasks.value=(t.subtasks||[]).map(subtask=>({...subtask}));showTodoExtra.value=true;focusTodoEditor()}
+function cancelEditTodo(){resetTodoEditor()}
+async function archiveTodo(id:string):Promise<void>{if(plannerReadOnly.value)return;const index=todos.value.findIndex(item=>item.id===id);if(index<0)return;const next=[...todos.value];next.splice(index,1,{...todos.value[index],archivedAt:new Date().toISOString()});await registrySet('todos',next);todos.value=next;lastArchivedTodoId.value=id;if(archiveUndoTimer)window.clearTimeout(archiveUndoTimer);archiveUndoTimer=window.setTimeout(()=>{lastArchivedTodoId.value=null;archiveUndoTimer=null},8000)}
+async function restoreTodo(id:string):Promise<void>{if(plannerReadOnly.value)return;const index=todos.value.findIndex(item=>item.id===id);if(index<0)return;const next=[...todos.value];next.splice(index,1,{...todos.value[index],archivedAt:null});await registrySet('todos',next);todos.value=next;lastArchivedTodoId.value=null}
+async function movePlannerTodo(item:HataskTodoItem,direction:-1|1):Promise<void>{if(plannerReadOnly.value)return;const list=plannerFilteredTodos.value;const index=list.findIndex(todo=>todo.id===item.id);const other=list[index+direction];const current=list[index];if(!current||!other)return;const next=todos.value.map(todo=>todo.id===current.id?{...todo,position:other.position}:todo.id===other.id?{...todo,position:current.position}:todo);await registrySet('todos',next);todos.value=next}
+async function completePlannerTodo(item:HataskTodoItem,done:boolean):Promise<void>{
+	if(done)todoCompletionIds.value=[...new Set([...todoCompletionIds.value,item.id])];
+	try{const entries=await toggleTodo(item.id,done);if(done&&entries)registerCompletedUndo(entries)}
+	finally{window.setTimeout(()=>{todoCompletionIds.value=todoCompletionIds.value.filter(id=>id!==item.id)},520)}
+}
+async function undoCompletedTodos():Promise<void>{
+	if(plannerReadOnly.value||completedUndoItems.value.length===0)return;
+	let next=todos.value.map(clonePlannerTodo);let restored=0;
+	for(const entry of [...completedUndoItems.value].reverse()){
+		const currentIndex=next.findIndex(item=>item.id===entry.after.id);
+		if(currentIndex>=0&&JSON.stringify(next[currentIndex])===JSON.stringify(entry.after)){next.splice(currentIndex,1,clonePlannerTodo(entry.before));restored++}
+		if(entry.generated){const generatedIndex=next.findIndex(item=>item.id===entry.generated?.id);if(generatedIndex>=0&&JSON.stringify(next[generatedIndex])===JSON.stringify(entry.generated))next.splice(generatedIndex,1)}
+	}
+	if(restored>0){await registrySet('todos',next);todos.value=next}
+	completedUndoItems.value=[];if(completedUndoTimer)window.clearTimeout(completedUndoTimer);completedUndoTimer=null;
+}
+function editPlannerTodo(item:HataskTodoItem):void{void editTodo(item.id)}
+async function archivePlannerTodo(item:HataskTodoItem):Promise<void>{await archiveTodo(item.id)}
+async function restorePlannerTodo(item:HataskTodoItem):Promise<void>{await restoreTodo(item.id)}
+async function deletePlannerTodo(item:HataskTodoItem):Promise<void>{await deleteTodo(item.id)}
+function openFolderManager(startCreate=true):void{showFolderMgr.value=true;showFolderCreate.value=startCreate;nextTick(()=>window.document.querySelector('.htk-folder-manager')?.scrollIntoView({behavior:plannerScrollBehavior(),block:'nearest'}))}
+function closeFolderManager():void{showFolderMgr.value=false;showFolderCreate.value=false}
+function managePlannerFolder(filterId:string):void{if(filterId.startsWith('folder:'))activeFolder.value=filterId.slice(7);openFolderManager(false)}
+async function openFolderActions(folderId:string,index:number):Promise<void>{
+	if(plannerReadOnly.value)return;const folder=activeFolders.value.find(item=>item.id===folderId);if(!folder)return;
+	const actions:Array<{value:'rename'|'color'|'up'|'down'|'archive';text:string}>=[{value:'rename',text:copy.renameFolderTitle},{value:'color',text:copy.changeColor}];
+	if(index>0)actions.push({value:'up',text:plannerCopy.moveUp});if(index<activeFolders.value.length-1)actions.push({value:'down',text:plannerCopy.moveDown});actions.push({value:'archive',text:plannerCopy.archive});
+	const{canceled,result}=await os.actions({type:'question',title:folder.name,actions});if(canceled)return;
+	if(result==='rename')await renameFolder(folder.id);else if(result==='color')await changeFolderColor(folder.id);else if(result==='up')await moveFolder(folder.id,-1);else if(result==='down')await moveFolder(folder.id,1);else if(result==='archive')await deleteFolder(folder.id);
+}
+async function saveTodosAsTemplates(ids:readonly string[]):Promise<void>{
+	const selected=todos.value.filter(todo=>ids.includes(todo.id));if(selected.length===0)return;
+	const start=plannerTemplatePosition();
+	const additions=selected.map((todo,index):HataskPlannerTemplate=>({
+		id:generateId(),kind:'todo',name:todo.text,position:start+index,archivedAt:null,createdAt:new Date().toISOString(),
+		payload:{text:todo.text,duePreset:todoTemplateDuePreset(todo.due||''),due:todo.due||'',dueLabel:todo.due?formatDue(todo.due):'',time:todo.time||'',folder:todo.folder||'',comment:todo.comment||'',priority:todo.priority,subtasks:(todo.subtasks||[]).map(subtask=>({id:generateId(),text:subtask.text,done:false})),recurrence:{...(todo.recurrence||{frequency:'none',interval:1})}},
+	}));
+	await savePlannerTemplates([...plannerTemplates.value,...additions]);os.toast(plannerCopyx.templatesSaved({count:additions.length.toString()}));
+}
+async function completePlannerTodos(ids:readonly string[]):Promise<void>{
+	const completed=completeTodoDrafts(todos.value,ids);if(completed.undo.length===0)return;
+	todoCompletionIds.value=[...new Set([...todoCompletionIds.value,...completed.undo.map(entry=>entry.before.id)])];
+	try{await registrySet('todos',completed.next);todos.value=completed.next;registerCompletedUndo(completed.undo)}
+	finally{window.setTimeout(()=>{const completedIds=new Set(completed.undo.map(entry=>entry.before.id));todoCompletionIds.value=todoCompletionIds.value.filter(id=>!completedIds.has(id))},520)}
+}
+async function promptPlannerDue(defaultValue:string):Promise<string|null>{
+	const {canceled,result}=await os.inputText({title:copy.dueDate,text:plannerCopy.dateInputHint,default:defaultValue,maxLength:10});if(canceled)return null;
+	const value=typeof result==='string'?result.trim():'';if(value&&!/^\d{4}-\d{2}-\d{2}$/.test(value)){os.toast(plannerCopy.invalidDate);return null}return value;
+}
+async function updatePlannerTodos(ids:readonly string[],update:(todo:HataskPlannerTodo)=>HataskPlannerTodo):Promise<void>{
+	const idSet=new Set(ids);const next=todos.value.map(todo=>idSet.has(todo.id)?update(clonePlannerTodo(todo)):todo);await registrySet('todos',next);todos.value=next;
+}
+async function handleTodoDropTarget(ids:string[],targetId:string):Promise<void>{
+	if(plannerReadOnly.value||ids.length===0)return;
+	if(targetId.startsWith('folder:')){const folderId=targetId.slice(7);if(!activeFolders.value.some(folder=>folder.id===folderId))return;await updatePlannerTodos(ids,todo=>({...todo,folder:folderId}));return}
+	if(targetId==='today'){await updatePlannerTodos(ids,todo=>({...todo,done:false,doneAt:undefined,due:localDateKey(),archivedAt:null}));return}
+	if(targetId==='upcoming'){
+		const due=await promptPlannerDue(localDateKey(addCalendarDays(new Date(),1)));if(due==null)return;
+		await updatePlannerTodos(ids,todo=>({...todo,done:false,doneAt:undefined,due,archivedAt:null}));return;
+	}
+	if(targetId==='priority'){await updatePlannerTodos(ids,todo=>({...todo,priority:'high'}));return}
+	if(targetId==='completed'){await completePlannerTodos(ids);return}
+	if(targetId==='templates'){await saveTodosAsTemplates(ids)}
+}
+async function handleTodoBulkAction(action:'complete'|'move'|'due'|'priority'|'archive',ids:string[]):Promise<void>{
+	if(plannerReadOnly.value||ids.length===0)return;
+	if(action==='complete'){await completePlannerTodos(ids);return}
+	if(action==='move'){
+		const {canceled,result}=await os.actions({type:'question',title:plannerCopy.bulkMove,actions:[{value:'',text:copy.noFolder},...activeFolders.value.map(folder=>({value:folder.id,text:`${folder.emoji||'📁'} ${folder.name}`}))]});
+		if(!canceled&&typeof result==='string')await updatePlannerTodos(ids,todo=>({...todo,folder:result}));return;
+	}
+	if(action==='due'){
+		const due=await promptPlannerDue(localDateKey());if(due!=null)await updatePlannerTodos(ids,todo=>({...todo,due}));return;
+	}
+	if(action==='priority'){
+		const {canceled,result}=await os.actions({type:'question',title:plannerCopy.priority,actions:[{value:'none',text:plannerCopy.priorityNone},{value:'low',text:plannerCopy.priorityLow},{value:'medium',text:plannerCopy.priorityMedium},{value:'high',text:plannerCopy.priorityHigh}]});
+		if(!canceled&&(result==='none'||result==='low'||result==='medium'||result==='high'))await updatePlannerTodos(ids,todo=>({...todo,priority:result}));return;
+	}
+	const {canceled}=await os.confirm({type:'warning',text:plannerCopyx.confirmBulkArchive({count:ids.length.toString()})});if(canceled)return;
+	await updatePlannerTodos(ids,todo=>({...todo,archivedAt:new Date().toISOString()}));
+}
+async function addFolder(){if(plannerReadOnly.value||!newFolderName.value.trim())return;const maxPosition=folders.value.reduce((maximum,folder)=>Math.max(maximum,folder.position??-1),-1);const next=[...folders.value,{id:generateId(),name:newFolderName.value.trim(),emoji:newFolderEmoji.value||'📁',color:newFolderColor.value||'',position:maxPosition+1,archivedAt:null}];await registrySet('folders',next);folders.value=next;newFolderName.value='';newFolderEmoji.value='📁';newFolderColor.value='';showFolderCreate.value=false}
+async function deleteFolder(folderId:string){if(plannerReadOnly.value)return;const folder=folders.value.find(item=>item.id===folderId&&item.archivedAt==null);if(!folder)return;const{canceled}=await os.confirm({type:'warning',text:copyx.confirmDeleteFolder({name:folder.name})});if(canceled)return;const next=folders.value.map(item=>item.id===folder.id?{...item,archivedAt:new Date().toISOString()}:item);await registrySet('folders',next);folders.value=next;if(activeFolder.value===folder.id)activeFolder.value='all'}
+async function renameFolder(folderId:string){if(plannerReadOnly.value)return;const folder=folders.value.find(item=>item.id===folderId&&item.archivedAt==null);if(!folder)return;const{canceled,result}=await os.inputText({title:copy.renameFolderTitle,text:copy.newNamePrompt,default:folder.name});if(!canceled&&result){const next=folders.value.map(item=>item.id===folder.id?{...item,name:result}:item);await registrySet('folders',next);folders.value=next}}
+async function moveFolder(folderId:string,direction:number){if(plannerReadOnly.value)return;const ordered=activeFolders.value;const index=ordered.findIndex(folder=>folder.id===folderId);const other=ordered[index+direction];const current=ordered[index];if(!current||!other)return;const next=folders.value.map(folder=>folder.id===current.id?{...folder,position:other.position}:folder.id===other.id?{...folder,position:current.position}:folder);await registrySet('folders',next);folders.value=next}
+async function changeFolderColor(folderId:string){if(plannerReadOnly.value)return;const folder=folders.value.find(item=>item.id===folderId&&item.archivedAt==null);if(!folder)return;const{canceled,result}=await os.actions({type:'question',title:copy.folderColorTitle,actions:[...folderColors.value.map(c=>({value:c.value,text:c.label})),{value:'',text:copy.none}]});if(canceled)return;const next=folders.value.map(item=>item.id===folder.id?{...item,color:result}:item);await registrySet('folders',next);folders.value=next}
 async function saveMood(){isSaving.value=true;try{if(editingMood.value){const idx=moods.value.findIndex(m=>m.id===editingMood.value.id);if(idx>=0){moods.value[idx]={...moods.value[idx],level:selectedMoodLevel.value,note:moodNote.value.trim()||'（ひとことなし）',emoji:moodSelectedEmoji.value}}editingMood.value=null;moodNote.value='';moodSelectedEmoji.value='';await registrySet('moods',moods.value);os.toast(copy.moodUpdated)}else{const now=new Date();moods.value.unshift({id:generateId(),level:selectedMoodLevel.value,note:moodNote.value.trim()||'（ひとことなし）',emoji:moodSelectedEmoji.value,date:now.toISOString().slice(0,10),time:`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`});moodNote.value='';moodSelectedEmoji.value='';await registrySet('moods',moods.value);os.toast(copy.moodSaved)}}finally{isSaving.value=false}}
 function startEditMood(m:any){editingMood.value=m;selectedMoodLevel.value=m.level;moodNote.value=m.note==='（ひとことなし）'?'':m.note;moodSelectedEmoji.value=m.emoji||'';showMoodNote.value=true;window.scrollTo({top:0,behavior:'smooth'})}
 function cancelEditMood(){editingMood.value=null;selectedMoodLevel.value=4;moodNote.value='';moodSelectedEmoji.value=''}
@@ -2187,9 +3513,17 @@ nextTick(() => {
     }
   } catch {}
 });
+try {
+	await preparePlannerStorage();
+} catch (error) {
+	plannerMigrationReady = false;
+	plannerStorageState.value = 'blocked';
+	plannerStorageDetail.value = (error as Error)?.message || plannerCopy.readFailure;
+}
+
 const initFlower = pickRandomFlora();
 	const defaultFlower = createHataskGrowingFlower({ emoji: initFlower.emoji, name: generateFlowerName(initFlower) });
-const defaultSettings = { darkMode: false, autoTheme: true, weekStart: 'mon', showClock: true, showEvents: true, showFlower: true, showMoodSummary: true, showMealSection: true, showFeedbackNotif: true, showEarthquake: true, moodRemind: false, moodRemindTimes: ['昼 12:00', '寝る前 23:00'], openOnStart: false, showMealSummary: true, mealDisclaimerShown: false, eyeDisclaimerShown: false, theme: 'kisetsu', animations: true, v2Onboarded: false,
+const defaultSettings = { darkMode: false, autoTheme: true, weekStart: 'mon', showClock: true, showEvents: true, showFlower: true, showMoodSummary: true, showMealSection: true, showFeedbackNotif: true, showEarthquake: true, moodRemind: false, moodRemindTimes: ['昼 12:00', '寝る前 23:00'], openOnStart: false, showMealSummary: true, mealDisclaimerShown: false, eyeDisclaimerShown: false, theme: 'kisetsu', animations: true, v2Onboarded: false, todoSortModes: {}, todoMobileTabOrder: ['today', 'upcoming', 'all', 'completed', 'more'],
 	// 旗鯖fork(ハタキュ): 風を吹かせるか(このテーマ限定・既定ON) / 新テーマ案内を出したか(アカウントごと1回)
 	hatakyuWind: true, hatakyuNoticeShown: false };
 
@@ -2205,8 +3539,10 @@ const loadResults = await Promise.allSettled([
   registryGet('meals', []),
 ]);
 // 取得成功したデータのみ代入（失敗したキーは初期値のまま → registrySetガードで保護）
-if (loadResults[0].status === 'fulfilled' && loadedKeys.has('todos')) todos.value = loadResults[0].value as any;
-if (loadResults[1].status === 'fulfilled' && loadedKeys.has('folders')) folders.value = loadResults[1].value as any;
+// 移行検証に失敗した配列はサーバー上へそのまま保全し、型の崩れた値を
+// UIへ流して二次障害を起こさない。再試行に成功するまで空の読取専用表示にする。
+if (plannerMigrationReady && loadResults[0].status === 'fulfilled' && loadedKeys.has('todos')) todos.value = loadResults[0].value as HataskPlannerTodo[];
+if (plannerMigrationReady && loadResults[1].status === 'fulfilled' && loadedKeys.has('folders')) folders.value = loadResults[1].value as HataskPlannerFolder[];
 if (loadResults[2].status === 'fulfilled' && loadedKeys.has('moods')) moods.value = loadResults[2].value as any;
 	// 花が未作成でもregistryGetが返した既定値は画面へ反映する。
 	// 永続化は成長トラッカーがNO_SUCH_KEYを再確認してから行うため、通信失敗時に既存値を上書きしない。
@@ -2220,8 +3556,11 @@ if (loadResults[4].status === 'fulfilled' && loadedKeys.has('gallery')) {
 	if (normalizedGallery.changed) await registrySet('gallery', gallery.value);
 }
 if (loadResults[5].status === 'fulfilled' && loadedKeys.has('settings')) settings.value = loadResults[5].value as any;
-if (loadResults[6].status === 'fulfilled' && loadedKeys.has('events')) events.value = loadResults[6].value as any;
+if (plannerMigrationReady && loadResults[6].status === 'fulfilled' && loadedKeys.has('events')) events.value = loadResults[6].value as HataskPlannerEvent[];
 if (loadResults[7].status === 'fulfilled' && loadedKeys.has('meals')) meals.value = loadResults[7].value as any;
+if (plannerMigrationReady) {
+	try { await loadPlannerTemplates(); } catch (error) { console.warn('Hatask templates remain read-only:', error); }
+}
 dataLoaded.value = true;
 	seedHataskFlowerGrowth(flower.value);
 await syncHataskFlowerCount();
@@ -2272,6 +3611,7 @@ if(canUseMascot.value)startMascotCardRotation();
 // 旗鯖fork: keep-alive復帰やウィンドウ遷移で onMounted が走らない場合に備え、
 // onActivated でも実績を解除する(claimAchievementは冪等)。
 claimAchievement('welcomeToHatask');
+scheduleEventNotifications();
 showMobileNav.value = true;
 document.body.dataset.hataskActive = '1';
 // KeepAlive復帰時にMisskeyフッターを再非表示
@@ -2314,6 +3654,8 @@ cleanupHataskState();
 if (bootTimer) { clearTimeout(bootTimer); bootTimer=null; }
 if (clockInterval) clearInterval(clockInterval);
 if (eyeTimer) clearInterval(eyeTimer);
+	if (archiveUndoTimer) window.clearTimeout(archiveUndoTimer);
+	if (completedUndoTimer) window.clearTimeout(completedUndoTimer);
 	window.removeEventListener(HATASK_FLOWER_GROWTH_EVENT, onHataskFlowerGrowth);
 if (mediaQuery) mediaQuery.removeEventListener('change', onMediaChange);
 stopHtkThemeWatch();
@@ -2383,26 +3725,26 @@ moodTimerIds.forEach(id => clearTimeout(id));
   --htk-font-head:"Shippori Mincho B1","Zen Kaku Gothic New",var(--htk-fallback);
 }
 .htk-root[data-theme="kisetsu"][data-mode="dark"],.htk-modal-ov[data-theme="kisetsu"][data-mode="dark"]{
-  --bg:#17140f; --surface:#211c15; --fg:#f1ece1; --fg-2:#c3b9a8; --fg-3:#8c8375;
-  --rule:#39332a; --accent:#e0966a;
+	  --bg:#17140f; --surface:#211c15; --fg:#f1ece1; --fg-2:#c3b9a8; --fg-3:#a79c8b;
+	  --rule:#39332a; --accent:#e0966a; --on-accent:#21170f;
 }
 /* --- 花信 Kashin (light) --- */
 .htk-root[data-theme="kashin"],.htk-modal-ov[data-theme="kashin"]{
-  --bg:#fff5e6; --surface:#ffffff; --fg:#25201c; --fg-2:#5f574c; --fg-3:#8a8175;
+	  --bg:#fff5e6; --surface:#ffffff; --fg:#25201c; --fg-2:#5f574c; --fg-3:#6e655a;
   --ink-line:#25201c; --coral:#ff6b4a; --teal:#0f978c; --sun:#ffc23c; --grape:#7a5cff;
-  --accent:var(--coral); --rule:rgba(37,32,28,.16); --on-sun:#25201c; --on-teal:#25201c;
+	  --accent:var(--coral); --rule:rgba(37,32,28,.16); --on-accent:#25201c; --on-coral:#25201c; --on-sun:#25201c; --on-teal:#25201c;
   --card:var(--surface); --card-border:2.5px solid var(--ink-line); --card-shadow:3px 3px 0 rgba(37,32,28,.15); --card-radius:16px;
   --htk-font-body:"Zen Maru Gothic",var(--htk-fallback);
   --htk-font-head:"Zen Maru Gothic",var(--htk-fallback);
 }
 .htk-root[data-theme="kashin"][data-mode="dark"],.htk-modal-ov[data-theme="kashin"][data-mode="dark"]{
-  --bg:#1b1726; --surface:#26202f; --fg:#fbf3e6; --fg-2:#c7bcd2; --fg-3:#9a90ab;
-  --ink-line:#f3ead6; --coral:#ff7d5e; --teal:#23c3b6; --sun:#ffcf5c; --grape:#9a80ff;
-  --rule:rgba(243,234,214,.18); --card-shadow:3px 3px 0 rgba(0,0,0,.35);
+	  --bg:#1b1726; --surface:#26202f; --fg:#fbf3e6; --fg-2:#c7bcd2; --fg-3:#9a90ab;
+	  --ink-line:#f3ead6; --coral:#ff7d5e; --teal:#23c3b6; --sun:#ffcf5c; --grape:#9a80ff;
+	  --rule:rgba(243,234,214,.18); --on-accent:#1b1726; --on-coral:#1b1726; --card-shadow:3px 3px 0 rgba(0,0,0,.35);
 }
 /* --- 刷 Suri (light) --- */
 .htk-root[data-theme="suri"],.htk-modal-ov[data-theme="suri"]{
-  --bg:#efe7d4; --surface:#ffffff; --fg:#1a1a2e; --fg-2:#4a4a5a; --fg-3:#7a7a8a;
+	  --bg:#efe7d4; --surface:#ffffff; --fg:#1a1a2e; --fg-2:#4a4a5a; --fg-3:#666678;
   --ink-line:#1a1a2e; --blue:#2a52c0; --pink:#ff4f9a; --sun:#ffe14f;
   --accent:var(--blue); --rule:rgba(26,26,46,.18); --on-sun:#1a1a2e;
   --card:var(--surface); --card-border:2.5px solid var(--ink-line); --card-shadow:3px 3px 0 var(--pink); --card-radius:0;
@@ -2410,9 +3752,9 @@ moodTimerIds.forEach(id => clearTimeout(id));
   --htk-font-head:"Zen Kaku Gothic Antique",var(--htk-fallback);
 }
 .htk-root[data-theme="suri"][data-mode="dark"],.htk-modal-ov[data-theme="suri"][data-mode="dark"]{
-  --bg:#14141f; --surface:#1e1e2c; --fg:#ece7dc; --fg-2:#b3aec6; --fg-3:#8f8aa3;
-  --ink-line:#ece7dc; --blue:#7f97ff; --pink:#ff6fae; --sun:#ffe14f;
-  --rule:rgba(236,231,220,.18); --card-shadow:3px 3px 0 var(--pink);
+	  --bg:#14141f; --surface:#1e1e2c; --fg:#ece7dc; --fg-2:#b3aec6; --fg-3:#8f8aa3;
+	  --ink-line:#ece7dc; --blue:#7f97ff; --pink:#ff6fae; --sun:#ffe14f;
+	  --rule:rgba(236,231,220,.18); --on-accent:#14141f; --on-blue:#14141f; --card-shadow:3px 3px 0 var(--pink);
 }
 /* --- ハタキュ Hatakyu (light): コルク板に紙をピンで留めた見立て --- */
 /* ⚠️--bg は「板の外側の地」。紙は --surface、コルク面は --cork で別に持つ。 */
@@ -2650,8 +3992,10 @@ moodTimerIds.forEach(id => clearTimeout(id));
 .o1d .su-meal{display:flex;align-items:center;justify-content:space-between;border:3px solid #1a1a2e;padding:12px 14px;font-weight:900;font-size:.9rem;cursor:pointer}
 
 /* 旗鯖fork(v2): 構造トークンのみ。色/背景は .htk-root[data-theme] (v2) が供給する。 */
-.htk-root{--radius-lg:28px;--radius-sm:14px;--radius-xs:10px;--success:#6ec072;--ease-spring:cubic-bezier(0.34,1.56,0.64,1);--ease-smooth:cubic-bezier(0.4,0,0.2,1);position:relative;min-height:100dvh;overflow-x:hidden;overflow-y:visible}
+.htk-root{--radius-lg:28px;--radius-sm:14px;--radius-xs:10px;--success:#6ec072;--ease-spring:cubic-bezier(0.34,1.56,0.64,1);--ease-smooth:cubic-bezier(0.4,0,0.2,1);position:relative;min-height:100dvh;overflow-x:hidden;overflow-y:visible;container-type:inline-size;container-name:hatask-root}
+.htk-root[data-window="true"]{min-height:100%}
 .htk-app{max-width:1280px;margin:0 auto;padding:20px;position:relative;z-index:1;overflow-x:clip}
+.htk-tabpage{container-type:inline-size}
 
 /* ===== 旗鯖fork(v2 Phase3): テーマ別コンポーネント意匠 ===== */
 /* カード: テーマ別の枠線(季=細罫 / 花信・刷=極太罫)。面色は ::before(--tint-bg=surface)。 */
@@ -2713,12 +4057,12 @@ moodTimerIds.forEach(id => clearTimeout(id));
 .htk-root[data-theme="kashin"] .htk-nav.htk-nav-top{padding:0;margin-bottom:18px;gap:7px}
 .htk-root[data-theme="kashin"] .htk-nav-t{padding:7px 13px;border-radius:999px;font-size:.76rem;font-weight:700;background:var(--surface);color:var(--fg-3);border:2px solid var(--rule);display:inline-flex;align-items:center;gap:5px}
 .htk-root[data-theme="kashin"] .htk-nav-t .htk-ico{display:inline;font-size:.95rem;margin:0}
-.htk-root[data-theme="kashin"] .htk-nav-t.on{background:var(--accent);color:#fff;border-color:var(--accent);box-shadow:2px 2px 0 rgba(37,32,28,.2);font-weight:700}
+.htk-root[data-theme="kashin"] .htk-nav-t.on{background:var(--accent);color:var(--on-accent);border-color:var(--accent);box-shadow:2px 2px 0 rgba(37,32,28,.2);font-weight:700}
 /* 刷: 太罫の上下線に挟まれた極太ゴシックタブ(選択=青ベタ反転) */
 .htk-root[data-theme="suri"] .htk-nav.htk-nav-top{border-top:3px solid var(--ink-line);border-bottom:3px solid var(--ink-line);padding:9px 0;margin:0 0 20px;gap:5px}
 .htk-root[data-theme="suri"] .htk-nav-t{padding:3px 9px;border-radius:0;font-family:'Zen Kaku Gothic Antique',var(--htk-fallback);font-weight:900;font-size:.74rem;background:none;color:var(--fg-3);display:inline-flex;align-items:center;gap:4px}
 .htk-root[data-theme="suri"] .htk-nav-t .htk-ico{display:inline;font-size:.9rem;margin:0}
-.htk-root[data-theme="suri"] .htk-nav-t.on{background:var(--blue);color:#fff;font-weight:900;box-shadow:none}
+.htk-root[data-theme="suri"] .htk-nav-t.on{background:var(--blue);color:var(--on-blue);font-weight:900;box-shadow:none}
 .htk-sec-title{font-size:.92rem;font-weight:700;margin-bottom:12px}
 .htk-empty{text-align:center;color:var(--text-3);padding:24px 16px;font-size:.85rem}
 .htk-pager{display:flex;align-items:center;justify-content:center;gap:12px;padding:12px 0;font-size:.82rem;color:var(--text-2)}
@@ -2755,6 +4099,7 @@ select.htk-inp{appearance:none;cursor:pointer;padding-right:36px}
 .htk-dash .htk-lg{margin-bottom:0;height:100%;min-width:0;max-width:100%;overflow:hidden}
 .htk-dash .htk-lg>.htk-gc{height:100%;box-sizing:border-box;min-width:0;max-width:100%;overflow-wrap:anywhere;word-break:break-word}
 .htk-panels{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.htk-calendar-page{align-items:start}
 @media(max-width:900px){.htk-panels{grid-template-columns:1fr}}
 .htk-dt-time{font-size:3rem;font-weight:700;letter-spacing:-1px;line-height:1.1}
 .htk-dt-date{font-size:.92rem;color:var(--text-2);margin-top:8px}
@@ -2920,7 +4265,7 @@ select.htk-inp{appearance:none;cursor:pointer;padding-right:36px}
 /* --- 花信 --- */
 .htk-root[data-theme="kashin"] .htk-cal-seg{gap:6px;border:none}
 .htk-root[data-theme="kashin"] .htk-cal-seg button{font-weight:700;font-size:.76rem;padding:7px 14px;border-radius:999px;border:2px solid var(--ink-line);background:var(--surface);color:var(--fg-3);backdrop-filter:none}
-.htk-root[data-theme="kashin"] .htk-cal-seg button.htk-sb-on{background:var(--accent)!important;color:#fff;box-shadow:2px 2px 0 rgba(37,32,28,.2);border-color:var(--accent)}
+.htk-root[data-theme="kashin"] .htk-cal-seg button.htk-sb-on{background:var(--accent)!important;color:var(--on-accent);box-shadow:2px 2px 0 rgba(37,32,28,.2);border-color:var(--accent)}
 .htk-root[data-theme="kashin"] .htk-cal-ttl{font-family:var(--htk-font-head);font-weight:900;font-size:1.15rem;color:var(--fg)}
 .htk-root[data-theme="kashin"] .htk-cal-nb{width:32px;height:32px;border:2px solid var(--ink-line);background:var(--surface);border-radius:10px;color:var(--fg);backdrop-filter:none}
 .htk-root[data-theme="kashin"] .htk-cal-days,.htk-root[data-theme="suri"] .htk-cal-days{gap:3px}
@@ -2934,7 +4279,7 @@ select.htk-inp{appearance:none;cursor:pointer;padding-right:36px}
 /* --- 刷 --- */
 .htk-root[data-theme="suri"] .htk-cal-seg{border:3px solid var(--ink-line);border-radius:0;gap:0}
 .htk-root[data-theme="suri"] .htk-cal-seg button{font-weight:900;font-size:.74rem;padding:7px 14px;border:none;border-radius:0;background:var(--surface);color:var(--fg-3);backdrop-filter:none}
-.htk-root[data-theme="suri"] .htk-cal-seg button.htk-sb-on{background:var(--blue)!important;color:#fff}
+.htk-root[data-theme="suri"] .htk-cal-seg button.htk-sb-on{background:var(--blue)!important;color:var(--on-blue)}
 .htk-root[data-theme="suri"] .htk-cal-ttl{font-family:var(--htk-font-head);font-weight:900;font-size:1.15rem;color:var(--fg)}
 .htk-root[data-theme="suri"] .htk-cal-nb{width:32px;height:32px;border:2.5px solid var(--ink-line);background:var(--surface);border-radius:0;color:var(--fg);backdrop-filter:none}
 .htk-root[data-theme="suri"] .htk-cal-wk-d{font-size:.64rem;font-weight:900}
@@ -2966,11 +4311,11 @@ select.htk-inp{appearance:none;cursor:pointer;padding-right:36px}
 .htk-root[data-theme="kashin"] .htk-todo-cb.ck{background:#12a89c;border-color:#12a89c}
 .htk-root[data-theme="kashin"] .htk-todo-tx{font-size:.88rem;font-weight:700}
 .htk-root[data-theme="kashin"] .htk-todo-db{font-size:.66rem;font-weight:700;padding:2px 8px;background:#ffc23c;color:#25201c;border-radius:999px}
-.htk-root[data-theme="kashin"] .htk-todo-db.od{background:#ff6b4a;color:#fff}
-.htk-root[data-theme="kashin"] .htk-todo-db.tdy{background:#12a89c;color:#fff}
+.htk-root[data-theme="kashin"] .htk-todo-db.od{background:var(--coral);color:var(--on-coral)}
+.htk-root[data-theme="kashin"] .htk-todo-db.tdy{background:var(--teal);color:var(--on-teal)}
 .htk-root[data-theme="kashin"] .htk-todo-fb{font-size:.63rem;font-weight:700;padding:2px 8px;background:color-mix(in srgb,var(--fg) 10%,transparent);border-radius:999px;color:var(--fg-2)}
 .htk-root[data-theme="kashin"] .htk-ftab{font-weight:700;font-size:.73rem;padding:6px 12px;border:2px solid var(--ink-line);background:var(--surface);color:var(--fg-3);border-radius:999px}
-.htk-root[data-theme="kashin"] .htk-ftab.on{background:var(--accent)!important;color:#fff!important;border-color:var(--accent)!important}
+.htk-root[data-theme="kashin"] .htk-ftab.on{background:var(--accent)!important;color:var(--on-accent)!important;border-color:var(--accent)!important}
 .htk-root[data-theme="kashin"] .htk-fm-row{border:2px solid var(--ink-line);border-radius:12px;background:var(--surface)}
 /* --- 刷 --- */
 .htk-root[data-theme="suri"] .htk-todo-i{border:2.5px solid var(--ink-line);border-radius:0;background:var(--surface);padding:12px;margin-bottom:8px;box-shadow:none}
@@ -2982,7 +4327,7 @@ select.htk-inp{appearance:none;cursor:pointer;padding-right:36px}
 .htk-root[data-theme="suri"] .htk-todo-db.tdy{background:#2a52c0;color:#fff}
 .htk-root[data-theme="suri"] .htk-todo-fb{font-size:.63rem;font-weight:900;padding:2px 8px;background:var(--surface);border:2px solid var(--ink-line);border-radius:0;color:var(--fg)}
 .htk-root[data-theme="suri"] .htk-ftab{font-weight:900;font-size:.73rem;padding:6px 12px;border:2.5px solid var(--ink-line);background:var(--surface);color:var(--fg-3);border-radius:0}
-.htk-root[data-theme="suri"] .htk-ftab.on{background:var(--blue)!important;color:#fff!important;border-radius:0}
+.htk-root[data-theme="suri"] .htk-ftab.on{background:var(--blue)!important;color:var(--on-blue)!important;border-radius:0}
 .htk-root[data-theme="suri"] .htk-fm-row{border:2.5px solid var(--ink-line);border-radius:0;background:var(--surface)}
 
 /* ============================================================
@@ -3032,6 +4377,7 @@ select.htk-inp{appearance:none;cursor:pointer;padding-right:36px}
 .htk-root[data-theme="kashin"] .htk-gal-vis-box,.htk-root[data-theme="kashin"] .htk-gal-sort-inner{border:2px solid var(--ink-line);border-radius:999px;background:var(--surface)}
 .htk-root[data-theme="suri"] .htk-gal-vis-box,.htk-root[data-theme="suri"] .htk-gal-sort-inner{border:2.5px solid var(--ink-line);border-radius:999px;background:var(--surface)}
 .htk-root[data-theme="hatakyu"] .htk-gal-vis-box,.htk-root[data-theme="hatakyu"] .htk-gal-sort-inner{border:1.5px solid var(--field-bd);border-radius:999px;background:var(--paper2)}
+.htk-root[data-theme="kisetsu"] .htk-gal-sort,.htk-root[data-theme="kashin"] .htk-gal-sort,.htk-root[data-theme="suri"] .htk-gal-sort,.htk-root[data-theme="hatakyu"] .htk-gal-sort{margin-bottom:12px}
 .htk-root[data-theme="kisetsu"] .htk-gal-vis-box .htk-vis-o.on,.htk-root[data-theme="kisetsu"] .htk-gal-vis-box .htk-vis-o.on:hover,.htk-root[data-theme="kisetsu"] .htk-gal-sort-btn.on,.htk-root[data-theme="kisetsu"] .htk-gal-sort-btn.on:hover{background:color-mix(in srgb,var(--accent) 12%,transparent);border-color:var(--accent);color:var(--fg)}
 .htk-root[data-theme="kashin"] .htk-gal-vis-box .htk-vis-o.on,.htk-root[data-theme="kashin"] .htk-gal-vis-box .htk-vis-o.on:hover,.htk-root[data-theme="kashin"] .htk-gal-sort-btn.on,.htk-root[data-theme="kashin"] .htk-gal-sort-btn.on:hover{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
 .htk-root[data-theme="suri"] .htk-gal-vis-box .htk-vis-o.on,.htk-root[data-theme="suri"] .htk-gal-vis-box .htk-vis-o.on:hover,.htk-root[data-theme="suri"] .htk-gal-sort-btn.on,.htk-root[data-theme="suri"] .htk-gal-sort-btn.on:hover{background:var(--blue);border-color:var(--blue);color:var(--on-blue)}
@@ -3059,10 +4405,15 @@ select.htk-inp{appearance:none;cursor:pointer;padding-right:36px}
 .htk-root[data-theme="suri"] .htk-eye-prog-bar{border-radius:0;border:1.5px solid var(--ink-line)}
 .htk-root[data-theme="kashin"] .htk-eye-prog-bar{border:1.5px solid var(--ink-line)}
 .htk-root[data-theme] .htk-eye-prog-fill{background:var(--accent)}
+.htk-sr-only{position:absolute !important;width:1px !important;height:1px !important;padding:0 !important;margin:-1px !important;overflow:hidden !important;clip:rect(0,0,0,0) !important;white-space:nowrap !important;border:0 !important}
+.htk-editor-fieldset{min-width:0;margin:0;padding:0;border:0}
+.htk-editor-fieldset:disabled{opacity:.72}
 .htk-fg{margin-bottom:13px}.htk-fl{display:block;font-size:.76rem;font-weight:600;color:var(--text-2);margin-bottom:4px}
-.htk-fr{display:flex;gap:8px}.htk-fr > *{flex:1}
+.htk-fr{display:flex;gap:8px}.htk-fr > *{flex:1;min-width:0}
+.htk-date-time-row{display:grid;grid-template-columns:minmax(3.5rem,auto) minmax(8rem,1fr) minmax(6.5rem,.7fr);align-items:center}
+.htk-field-sub-label{font-size:.72rem;font-weight:700;color:var(--fg-2);white-space:nowrap;word-break:keep-all}
 .htk-clr-row{display:flex;gap:6px;flex-wrap:wrap}
-.htk-clr-o{width:24px;height:24px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:all .2s}
+.htk-clr-o{width:44px;height:44px;border-radius:50%;cursor:pointer;border:8px solid var(--surface);outline:2px solid transparent;transition:transform .2s,outline-color .2s;box-shadow:0 0 0 1px var(--rule)}
 .htk-clr-o:hover{transform:scale(1.15)}.htk-clr-o.on{border-color:var(--text-1);box-shadow:0 0 8px rgba(128,128,128,.3)}
 .htk-vis-row{display:flex;gap:6px}
 .htk-vis-o{flex:1;padding:10px;text-align:center;border-radius:var(--radius-xs);cursor:pointer;border:1px solid var(--btn-border);background:var(--btn-bg);transition:all .2s;font-size:.78rem;backdrop-filter:blur(4px)}
@@ -3070,32 +4421,66 @@ select.htk-inp{appearance:none;cursor:pointer;padding-right:36px}
 .htk-vi{font-size:1.1rem;display:block;margin-bottom:2px;text-shadow:none}
 .htk-tg-row{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--divider)}
 .htk-tg-row:last-child{border:none}.htk-tg-lab{font-size:.82rem}
-.htk-tg-sw{width:44px;height:24px;background:rgba(128,128,128,.2);border-radius:12px;cursor:pointer;position:relative;transition:background .3s;border:1px solid rgba(128,128,128,.25)}
-.htk-tg-sw::after{content:'';position:absolute;width:18px;height:18px;background:rgba(128,128,128,.5);border-radius:50%;top:2px;left:2px;transition:all .3s var(--ease-spring);box-shadow:0 1px 3px rgba(0,0,0,.2)}
-.htk-tg-sw.on{background:rgba(76,175,80,.55);border-color:rgba(76,175,80,.4)}.htk-tg-sw.on::after{left:22px;background:#fff;box-shadow:0 1px 4px rgba(76,175,80,.4)}
+.htk-tg-sw{flex:0 0 52px;width:52px;height:44px;padding:0;background:transparent;border:0;border-radius:22px;cursor:pointer;position:relative}
+.htk-tg-sw::before{content:'';position:absolute;width:44px;height:24px;top:10px;left:4px;background:rgba(128,128,128,.22);border:1px solid rgba(128,128,128,.35);border-radius:12px;transition:background .2s,border-color .2s}
+.htk-tg-sw::after{content:'';position:absolute;width:18px;height:18px;background:rgba(128,128,128,.62);border-radius:50%;top:13px;left:7px;transition:left .3s var(--ease-spring),background .2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.htk-tg-sw.on::before{background:color-mix(in srgb,var(--success) 72%,var(--surface));border-color:var(--success)}.htk-tg-sw.on::after{left:27px;background:var(--surface);box-shadow:0 1px 4px rgba(76,175,80,.4)}
 .htk-nt-chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:4px}
-.htk-nt-chip{padding:4px 10px;border-radius:16px;font-size:.7rem;background:var(--btn-bg);border:1px solid var(--btn-border);cursor:pointer;transition:all .2s}
+.htk-nt-chip{min-height:44px;padding:7px 12px;border-radius:999px;font:inherit;font-size:.72rem;background:var(--btn-bg);color:var(--fg);border:1px solid var(--btn-border);cursor:pointer;transition:background .2s,border-color .2s}
 .htk-nt-chip:hover{background:var(--btn-hover)}.htk-nt-chip.on{background:rgba(232,168,124,.18);border-color:rgba(232,168,124,.3)}
 .htk-emp-row{display:flex;gap:5px;flex-wrap:wrap;padding:6px}
-.htk-emp-i{font-size:1.15rem;cursor:pointer;padding:4px;border-radius:6px;transition:all .2s;text-shadow:none}
+.htk-emp-i{display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;padding:6px;border:1px solid transparent;background:transparent;color:inherit;font:inherit;font-size:1.15rem;cursor:pointer;border-radius:6px;transition:background .2s,transform .2s,border-color .2s;text-shadow:none}
 .htk-emp-i:hover{background:var(--hover-bg);transform:scale(1.12)}.htk-emp-i.on{background:var(--active-bg)}
+.htk-planner-shell{position:relative;min-width:0;margin-bottom:16px}
+.htk-planner-status,.htk-planner-undo{display:flex;align-items:center;justify-content:center;gap:10px;min-height:52px;margin-bottom:10px;padding:8px 12px;border:1px solid var(--rule);border-radius:var(--card-radius);background:var(--surface);color:var(--fg-2);font-size:.78rem;line-height:1.5;text-align:center}
+.htk-planner-status[data-state="blocked"],.htk-planner-status[data-state="conflict"]{border-color:color-mix(in srgb,var(--danger,#c43d4f) 55%,var(--rule));background:color-mix(in srgb,var(--danger,#c43d4f) 8%,var(--surface));color:var(--fg)}
+.htk-planner-status .ti-loader-2{animation:htkPlannerSpin .9s linear infinite}
+.htk-planner-undo{justify-content:space-between;border-color:color-mix(in srgb,var(--success) 55%,var(--rule));background:color-mix(in srgb,var(--success) 9%,var(--surface));color:var(--fg)}
+.htk-planner-shell > :deep([data-mode="event"]),.htk-planner-shell > :deep([data-mode="todo"]){margin-bottom:14px}
+.htk-capture-detail{box-sizing:border-box;width:min(100%,760px);min-width:0;margin:0 auto 14px;padding:14px;border:1px solid var(--rule);border-radius:20px;background:color-mix(in srgb,var(--surface) 94%,transparent);box-shadow:0 14px 34px -28px rgba(0,0,0,.65)}
+.htk-capture-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}.htk-capture-grid label{min-width:0;display:grid;gap:4px}.htk-capture-grid label>span{color:var(--fg-3);font-size:.68rem;font-weight:750}.htk-capture-wide{grid-column:1/-1}.htk-folder-manager{display:grid;gap:7px}.htk-folder-manager>header{display:flex;align-items:center;justify-content:space-between;gap:10px}.htk-folder-manager .htk-fm-row{display:grid;grid-template-columns:32px minmax(0,1fr) auto auto;align-items:center;gap:7px;min-height:48px}.htk-folder-colored-icon{position:relative;width:30px;height:30px;display:grid;place-items:center;color:var(--folder-color);font-size:1.25rem}.htk-folder-colored-icon::after{content:'';position:absolute;inset:9px 7px 5px;border-radius:2px;background:color-mix(in srgb,var(--folder-color) 20%,var(--surface));border:1px solid color-mix(in srgb,var(--folder-color) 55%,var(--rule))}.htk-folder-colored-icon i{position:relative;z-index:1}.htk-fm-count{min-width:28px;padding:3px 7px;border-radius:999px;background:var(--fill-2);color:var(--fg-3);font-size:.65rem;text-align:center}.htk-folder-create{display:grid;grid-template-columns:minmax(0,1fr) 44px;gap:7px;margin-top:4px}.htk-icon-btn,.htk-icon-submit{width:44px;height:44px;display:grid;place-items:center;border:1px solid var(--btn-border,var(--rule));border-radius:50%;background:var(--btn-bg,var(--surface));color:var(--fg);font:inherit;cursor:pointer}.htk-icon-submit{background:var(--accent);border-color:var(--accent);color:var(--on-accent,#fff);font-size:1.05rem;box-shadow:0 9px 20px -12px var(--accent)}.htk-icon-btn:hover,.htk-icon-btn:focus-visible{background:var(--btn-hover,var(--fill-2));color:var(--accent)}.htk-icon-btn.htk-danger{color:var(--danger,#c43d4f)}.htk-editor-icon-actions{display:flex;align-items:center;justify-content:flex-end;gap:7px;margin-top:14px}.htk-complete-undo{position:sticky;z-index:12;bottom:calc(12px + env(safe-area-inset-bottom));width:min(100%,460px);margin:0 auto 12px;box-shadow:0 16px 38px -25px rgba(0,0,0,.7);backdrop-filter:blur(16px)}.htk-capture-companion{margin-block:4px 12px}
+.htk-pill-editor{display:grid;gap:10px}.htk-pill-editor-head{display:flex;align-items:center;justify-content:space-between;gap:10px}.htk-pill-editor-head strong{display:flex;align-items:center;gap:7px;color:var(--fg);font-size:.82rem}.htk-pill-editor-head strong i{color:var(--accent);font-size:1rem}.htk-pill-time-grid{margin-top:2px}.htk-pill-clear{justify-self:start;min-height:44px;padding:7px 14px;border:1px solid var(--rule);border-radius:999px;background:var(--surface);color:var(--fg-2);font:inherit;font-size:.72rem;font-weight:750;cursor:pointer}.htk-pill-clear:hover,.htk-pill-clear:focus-visible{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,var(--surface));color:var(--fg)}
+.htk-folder-manager{gap:12px}.htk-folder-manager-head>div:first-child{min-width:0;display:grid;gap:2px}.htk-folder-manager-head>div:first-child strong{font-size:.9rem}.htk-folder-manager-head>div:first-child span{color:var(--fg-3);font-size:.66rem}.htk-folder-manager-head-actions{display:flex;align-items:center;gap:6px}.htk-folder-manager-list{display:grid;gap:6px}.htk-folder-manager .htk-fm-row{min-height:58px;display:grid;grid-template-columns:38px minmax(0,1fr) 44px;align-items:center;gap:9px;margin:0;padding:6px 7px 6px 10px;border:1px solid var(--rule);border-radius:15px;background:color-mix(in srgb,var(--surface) 96%,var(--fill));transition:border-color .18s ease,background .18s ease,transform .2s var(--ease-smooth,ease)}.htk-folder-manager .htk-fm-row:hover{border-color:color-mix(in srgb,var(--folder-color,var(--accent)) 38%,var(--rule));background:color-mix(in srgb,var(--folder-color,var(--accent)) 6%,var(--surface))}.htk-fm-copy{min-width:0;display:flex;align-items:center;justify-content:space-between;gap:10px}.htk-fm-copy strong{overflow:hidden;color:var(--fg);font-size:.8rem;text-overflow:ellipsis;white-space:nowrap}.htk-fm-copy span{flex:none;min-width:28px;padding:3px 7px;border-radius:999px;background:var(--fill-2);color:var(--fg-3);font-size:.65rem;font-weight:760;text-align:center}.htk-folder-row-more{width:44px;height:44px;display:grid;place-items:center;border:0;border-radius:50%;background:transparent;color:var(--fg-2);font:inherit;cursor:pointer}.htk-folder-row-more:hover,.htk-folder-row-more:focus-visible{background:var(--fill-2);color:var(--accent)}.htk-folder-manager-empty{min-height:110px;display:grid;place-items:center;align-content:center;gap:7px;border:1px dashed var(--rule);border-radius:15px;color:var(--fg-3);font-size:.72rem}.htk-folder-manager-empty i{font-size:1.35rem}.htk-folder-create-panel{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;padding-top:12px;border-top:1px solid var(--rule)}.htk-folder-create-panel>label{min-width:0;display:grid;gap:4px}.htk-folder-create-panel>label>span{color:var(--fg-3);font-size:.68rem;font-weight:750}.htk-folder-create-panel .htk-folder-clr-row{grid-column:1/-1;margin:0}.htk-folder-create-submit{align-self:end}:deep(.htk-folder-create-enter-active),:deep(.htk-folder-create-leave-active){transition:opacity .18s ease,transform .24s var(--ease-smooth,ease)}:deep(.htk-folder-create-enter-from),:deep(.htk-folder-create-leave-to){opacity:0;transform:translateY(-7px)}
+:deep(.htk-capture-detail-enter-active),:deep(.htk-capture-detail-leave-active){transition:opacity .16s ease}:deep(.htk-capture-detail-enter-from),:deep(.htk-capture-detail-leave-to){opacity:0}
+@keyframes htkPlannerSpin{to{transform:rotate(1turn)}}
+.htk-root[data-theme="kisetsu"] .htk-planner-shell{padding-block:8px;border-block:1px solid var(--rule)}
+.htk-root[data-theme="kashin"] .htk-planner-shell{padding:10px;border:2.5px solid var(--ink-line);border-radius:20px;background:color-mix(in srgb,var(--surface) 94%,var(--coral));box-shadow:4px 4px 0 color-mix(in srgb,var(--ink-line) 18%,transparent)}
+.htk-root[data-theme="suri"] .htk-planner-shell{padding:10px;border:3px solid var(--ink-line);border-radius:0;background:var(--surface);box-shadow:5px 5px 0 var(--pink)}
+.htk-root[data-theme="hatakyu"] .htk-planner-shell{padding:16px 12px 12px;border:1.5px solid var(--field-bd);border-radius:2px;background:var(--paper2);box-shadow:0 12px 22px -12px rgba(40,24,8,.72)}
+.htk-root[data-theme="hatakyu"] .htk-planner-shell::before{content:'';position:absolute;z-index:3;top:5px;left:50%;width:13px;height:13px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#dbeafe 0 18%,var(--blue) 22% 62%,#0c438f 68% 100%);box-shadow:0 2px 3px rgba(40,24,8,.45);transform:translateX(-50%);pointer-events:none}
 .htk-coll-h{display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:7px 0;user-select:none}
 .htk-ci{font-size:.72rem;color:var(--text-3);text-shadow:none}
 .htk-todo-inp-r{display:flex;gap:8px;margin-bottom:8px}
 .htk-todo-xf{display:none;gap:7px;flex-wrap:wrap;padding:10px;margin-bottom:10px;animation:htkFiU .3s var(--ease-spring);position:relative;z-index:1}.htk-todo-xf.open{display:flex}
 .htk-todo-xf-i{flex:1;min-width:120px}.htk-todo-xf-i label{display:block;font-size:.68rem;color:var(--text-3);margin-bottom:2px;font-weight:600}
+.htk-todo-subtask-editor{flex:1 1 100%;min-width:100%;display:grid;gap:6px}
+.htk-todo-subtask-editor > label{font-size:.68rem;color:var(--text-3);font-weight:700}
+.htk-todo-subtask-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:7px}
+.htk-todo-subtask-row > input[type="checkbox"]{width:24px;height:24px;margin:10px;accent-color:var(--accent)}
+.htk-todo-subtask-row > .htk-inp{width:100%;min-width:0}
+.htk-todo-subtask-row > #hatask-new-subtask{grid-column:1 / 3}
+@container (max-width:620px){
+	.htk-capture-grid{grid-template-columns:1fr}
+	.htk-capture-wide{grid-column:auto}
+	.htk-folder-manager .htk-fm-row{grid-template-columns:30px minmax(0,1fr) auto}.htk-fm-acts{grid-column:1/-1;justify-content:flex-end;border-top:1px solid var(--rule);padding-top:5px}
+	.htk-date-time-row{grid-template-columns:minmax(0,1fr) minmax(0,.72fr)}
+	.htk-date-time-row .htk-field-sub-label{grid-column:1 / -1}
+	.htk-todo-inp-r{flex-wrap:wrap}
+	.htk-todo-inp-r > .htk-inp{flex:1 1 100% !important}
+	.htk-todo-subtask-row{grid-template-columns:auto minmax(0,1fr) auto}
+}
 .htk-fbar{display:flex;gap:5px;margin-bottom:10px;overflow-x:auto;align-items:center}
 .htk-ftab{padding:5px 12px;border-radius:16px;font-size:.73rem;font-weight:500;background:var(--btn-bg);border:1px solid var(--btn-border);cursor:pointer;transition:all .2s;white-space:nowrap;font-family:inherit;color:var(--text-2);backdrop-filter:blur(4px)}
 .htk-ftab:hover{background:var(--btn-hover);color:var(--text-1)}.htk-ftab.on{background:rgba(232,168,124,.18);border-color:rgba(232,168,124,.3);color:var(--text-1);font-weight:600}
 .htk-fc{font-size:.6rem;margin-left:3px;opacity:.6}
-.htk-fm-btn{padding:5px 10px;border-radius:16px;font-size:.73rem;background:var(--btn-bg);border:1px solid var(--btn-border);cursor:pointer;color:var(--text-3);transition:all .2s;font-family:inherit;backdrop-filter:blur(4px)}
+.htk-fm-btn{min-height:44px;padding:7px 12px;border-radius:16px;font-size:.73rem;background:var(--btn-bg);border:1px solid var(--btn-border);cursor:pointer;color:var(--text-3);transition:all .2s;font-family:inherit;backdrop-filter:blur(4px)}
 .htk-fm-btn:hover{background:var(--btn-hover);color:var(--text-1)}
 .htk-fm-panel{animation:htkFiU .3s var(--ease-spring)}
 .htk-fm-row{display:flex;align-items:center;gap:5px;padding:6px 10px;border-radius:var(--radius-xs);background:var(--btn-bg);border:1px solid var(--btn-border);margin-bottom:4px;backdrop-filter:blur(4px)}
 .htk-fm-emoji{font-size:1rem;text-shadow:none}.htk-fm-name{flex:1;font-size:.8rem}.htk-fm-acts{display:flex;gap:3px}
 .htk-fm-dot{display:inline-block;width:10px;height:10px;border-radius:50%;flex-shrink:0}
 .htk-folder-clr-row{display:flex;align-items:center;gap:6px;margin-top:6px;flex-wrap:wrap}
-.htk-folder-clr-o{width:24px;height:24px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:all .2s;flex-shrink:0}
+.htk-folder-clr-o{width:44px;height:44px;border-radius:50%;cursor:pointer;border:8px solid var(--surface);outline:2px solid transparent;transition:transform .2s,outline-color .2s;flex-shrink:0;box-shadow:0 0 0 1px var(--rule)}
 .htk-folder-clr-o:hover{transform:scale(1.15)}
 .htk-folder-clr-o.on{border-color:var(--text-1);box-shadow:0 0 0 2px var(--card-bg,rgba(0,0,0,.2)),0 0 6px rgba(0,0,0,.2)}
 .htk-folder-clr-none{background:var(--btn-bg);display:flex;align-items:center;justify-content:center;font-size:.65rem;color:var(--text-3)}
@@ -3674,7 +5059,7 @@ select.htk-inp{appearance:none;cursor:pointer;padding-right:36px}
      break-inside:avoid は保証ではなく希望なので防げない。⚠️列はグリッドで固定する。
    ⚠️列数はベースの .htk-panels と同じ2列に揃える。設計HTMLは3列だが、あちらの紙は
      どれも短い。実際のフォームを3列に詰めると1列あたりが狭すぎて崩れる。 */
-.hk-panels{ display:grid; grid-template-columns:1fr 1fr; gap:22px 16px; align-items:start; }
+.hk-panels{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:22px 16px; align-items:start; }
 .hk-pin{ position:relative; transform-origin:50% 4px; transform:rotate(var(--r,0deg)); }
 /* 段組み(ホーム)側だけ、縦の隔たりをマージンで取る。グリッド側は gap が担う。 */
 .hk-masonry > .hk-pin{ break-inside:avoid; margin:0 0 20px; }
@@ -3844,6 +5229,46 @@ button.hk-row{ cursor:pointer }
   .hk-leaves{ inset:9px; border-radius:9px }
   .hk-masonry{ columns:1; column-gap:0 }
   .hk-panels{ grid-template-columns:1fr; gap:20px 0 }
+  .hk-bhead{ margin-bottom:12px }
+  .hk-titlecard{ padding:9px 15px 10px }
+  .hk-lg-name{ font-size:1.6rem }
+  .hk-hbtn{ padding:9px 11px; font-size:.72rem }
+  .hk-hbtn span{ display:none }
+  .hk-hangrow{ grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; padding:0 2px 6px }
+  .hk-hang{ width:100%; min-width:0 }
+  .htk-gal-sort-label{ padding:0 4px }
+  .htk-gal-sort-label span{ display:none }
+  .hk-clock{ font-size:2.2rem }
+  .hk-mbtns{ flex-direction:column }
+}
+
+/* Hatasaba UIのウィンドウ表示では、ブラウザ全体が広くてもHataskの表示領域だけが狭くなる。
+   端末判定ではなく実際のHatask幅で、既存のモバイル相当レイアウトへ切り替える。 */
+@container hatask-root (max-width:900px){
+  .htk-app{padding-bottom:28px}
+  .htk-panels{grid-template-columns:minmax(0,1fr)}
+  .hk-masonry{ columns:2 }
+  .hk-panels{ grid-template-columns:minmax(0,1fr) }
+}
+@container hatask-root (max-width:640px){
+  .htk-app{padding:12px;padding-bottom:24px}
+  .htk-dt-time{font-size:2.2rem}
+  .htk-panels{grid-template-columns:minmax(0,1fr)}
+  .htk-mood-sc{gap:3px;flex-wrap:wrap}
+  .htk-mood-e{font-size:1.4rem}
+  .htk-mood-o{padding:6px}
+  .htk-dash{grid-template-columns:minmax(0,1fr)}
+  .htk-root[data-theme] .htk-nav.htk-nav-top{overflow-x:auto;overflow-y:hidden;flex-wrap:nowrap;overscroll-behavior-inline:contain;scroll-snap-type:x proximity}
+  .htk-root[data-theme] .htk-nav-t{flex:0 0 auto;scroll-snap-align:start}
+  .htk-planner-status,.htk-planner-undo{flex-wrap:wrap}
+  .htk-capture-detail{padding:10px}
+  .htk-root[data-theme="hatakyu"] .htk-app{ padding:12px; padding-bottom:24px }
+  .htk-root[data-theme="hatakyu"] .htk-shell{ padding:23px 21px 30px; border-radius:16px }
+  .htk-root[data-theme="hatakyu"] .htk-shell::before{ inset:9px; border-radius:9px }
+  .htk-root[data-theme="hatakyu"] .htk-shell::after{ inset:5px; border-radius:11px }
+  .hk-leaves{ inset:9px; border-radius:9px }
+  .hk-masonry{ columns:1; column-gap:0 }
+  .hk-panels{ grid-template-columns:minmax(0,1fr); gap:20px 0 }
   .hk-bhead{ margin-bottom:12px }
   .hk-titlecard{ padding:9px 15px 10px }
   .hk-lg-name{ font-size:1.6rem }

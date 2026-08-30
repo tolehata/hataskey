@@ -16360,7 +16360,7 @@ export interface Locale extends ILocale {
                  */
                 "hataskAppearanceTitle": string;
                 /**
-                 * 落ち着いた「季」、明るいカード調の「花信」、紙もの風の「刷」から見た目を選べます。見た目を変えても、予定や記録はそのまま残ります。
+                 * 落ち着いた「季」、明るいカード調の「花信」、紙もの風の「刷」、コルクボード調の「ハタキュ」から見た目を選べます。見た目を変えても、予定や記録はそのまま残ります。
                  */
                 "hataskAppearanceBody": string;
                 /**
@@ -22602,6 +22602,672 @@ export interface Locale extends ILocale {
             };
         };
         "_hatask": {
+            "_planner": {
+                /**
+                 * カレンダー
+                 */
+                "calendar": string;
+                /**
+                 * 月
+                 */
+                "month": string;
+                /**
+                 * 週
+                 */
+                "week": string;
+                /**
+                 * 日
+                 */
+                "day": string;
+                /**
+                 * 予定一覧
+                 */
+                "agenda": string;
+                /**
+                 * 前へ
+                 */
+                "previous": string;
+                /**
+                 * 次へ
+                 */
+                "next": string;
+                /**
+                 * 今日
+                 */
+                "today": string;
+                /**
+                 * クイック追加
+                 */
+                "quickAdd": string;
+                /**
+                 * 絞り込み
+                 */
+                "filters": string;
+                /**
+                 * 読み込み中…
+                 */
+                "loading": string;
+                /**
+                 * 読み取り専用
+                 */
+                "readOnly": string;
+                /**
+                 * 予定はありません
+                 */
+                "empty": string;
+                /**
+                 * 予定を選択
+                 */
+                "selectEvent": string;
+                /**
+                 * 予定を開く
+                 */
+                "openEvent": string;
+                /**
+                 * 予定を編集
+                 */
+                "editEvent": string;
+                /**
+                 * {date}の予定を選択
+                 */
+                "selectDateLabel": ParameterizedString<"date">;
+                /**
+                 * 「{title}」を開く
+                 */
+                "openEventLabel": ParameterizedString<"title">;
+                /**
+                 * 「{title}」を編集
+                 */
+                "editEventLabel": ParameterizedString<"title">;
+                /**
+                 * ほか{count}件を表示
+                 */
+                "showMore": ParameterizedString<"count">;
+                /**
+                 * 選択した日の予定
+                 */
+                "selectedDay": string;
+                /**
+                 * 日付や時刻へ移動
+                 */
+                "dragHint": string;
+                /**
+                 * ここへ運んで削除
+                 */
+                "trashHint": string;
+                /**
+                 * 「{title}」を移動または複製
+                 */
+                "moveEventLabel": ParameterizedString<"title">;
+                /**
+                 * 予定の置き場所
+                 */
+                "reschedule": string;
+                /**
+                 * 移動しますか、複製しますか？
+                 */
+                "moveOrCopy": string;
+                /**
+                 * 移動は元の予定を新しい日時へ移します。複製は元を残し、非公開の予定として追加します
+                 */
+                "moveOrCopyDescription": string;
+                /**
+                 * 移動
+                 */
+                "moveEvent": string;
+                /**
+                 * 元の予定を新しい日時へ
+                 */
+                "moveEventHint": string;
+                /**
+                 * 複製
+                 */
+                "copyEvent": string;
+                /**
+                 * 元を残して非公開で追加
+                 */
+                "copyEventHint": string;
+                /**
+                 * ゴミ箱
+                 */
+                "trash": string;
+                /**
+                 * この予定を捨てますか？
+                 */
+                "trashEventTitle": string;
+                /**
+                 * 削除するとカレンダーから取り除かれます。公開予定は共有カレンダーからも削除されます
+                 */
+                "trashEventDescription": string;
+                /**
+                 * 予定を移動しました
+                 */
+                "eventMoved": string;
+                /**
+                 * 非公開の予定として複製しました
+                 */
+                "eventCopied": string;
+                /**
+                 * Todo
+                 */
+                "todo": string;
+                /**
+                 * Todoを整理
+                 */
+                "organizeTodo": string;
+                /**
+                 * 今日
+                 */
+                "todoToday": string;
+                /**
+                 * これから
+                 */
+                "todoUpcoming": string;
+                /**
+                 * 期限切れ
+                 */
+                "todoOverdue": string;
+                /**
+                 * 優先
+                 */
+                "todoPriority": string;
+                /**
+                 * すべて
+                 */
+                "todoAll": string;
+                /**
+                 * 完了済み
+                 */
+                "todoCompleted": string;
+                /**
+                 * テンプレート
+                 */
+                "todoTemplates": string;
+                /**
+                 * その他
+                 */
+                "todoMore": string;
+                /**
+                 * タブを並び替え
+                 */
+                "reorderTodoTabs": string;
+                /**
+                 * {name}を並び替え
+                 */
+                "reorderTodoTabLabel": ParameterizedString<"name">;
+                /**
+                 * アーカイブ済み
+                 */
+                "todoArchived": string;
+                /**
+                 * 検索
+                 */
+                "search": string;
+                /**
+                 * 追加
+                 */
+                "add": string;
+                /**
+                 * フィルター
+                 */
+                "filter": string;
+                /**
+                 * 優先度
+                 */
+                "priority": string;
+                /**
+                 * 優先度なし
+                 */
+                "priorityNone": string;
+                /**
+                 * 低
+                 */
+                "priorityLow": string;
+                /**
+                 * 中
+                 */
+                "priorityMedium": string;
+                /**
+                 * 高
+                 */
+                "priorityHigh": string;
+                /**
+                 * 完了
+                 */
+                "complete": string;
+                /**
+                 * 再開
+                 */
+                "reopen": string;
+                /**
+                 * 編集
+                 */
+                "edit": string;
+                /**
+                 * アーカイブ
+                 */
+                "archive": string;
+                /**
+                 * 復元
+                 */
+                "restore": string;
+                /**
+                 * 削除
+                 */
+                "delete": string;
+                /**
+                 * 上へ移動
+                 */
+                "moveUp": string;
+                /**
+                 * 下へ移動
+                 */
+                "moveDown": string;
+                /**
+                 * 並び順
+                 */
+                "sort": string;
+                /**
+                 * 手動順
+                 */
+                "sortManual": string;
+                /**
+                 * 期限が近い順
+                 */
+                "sortDueAsc": string;
+                /**
+                 * 優先度順
+                 */
+                "sortPriority": string;
+                /**
+                 * 新しく作った順
+                 */
+                "sortCreatedDesc": string;
+                /**
+                 * フォルダ
+                 */
+                "folders": string;
+                /**
+                 * {count}件を選択中
+                 */
+                "selectedCount": ParameterizedString<"count">;
+                /**
+                 * 完了
+                 */
+                "bulkComplete": string;
+                /**
+                 * 移動
+                 */
+                "bulkMove": string;
+                /**
+                 * 期限
+                 */
+                "bulkDue": string;
+                /**
+                 * 優先度
+                 */
+                "bulkPriority": string;
+                /**
+                 * アーカイブ
+                 */
+                "bulkArchive": string;
+                /**
+                 * 選択を解除
+                 */
+                "clearSelection": string;
+                /**
+                 * フォルダを追加
+                 */
+                "addFolder": string;
+                /**
+                 * フォルダはまだありません
+                 */
+                "noFolders": string;
+                /**
+                 * 「{name}」を管理
+                 */
+                "manageFolderLabel": ParameterizedString<"name">;
+                /**
+                 * 「{title}」のその他の操作
+                 */
+                "moreTaskActionsLabel": ParameterizedString<"title">;
+                /**
+                 * サブタスク {completed}/{total}
+                 */
+                "subtaskProgress": ParameterizedString<"completed" | "total">;
+                /**
+                 * サブタスク
+                 */
+                "subtasks": string;
+                /**
+                 * 繰り返し
+                 */
+                "recurrence": string;
+                /**
+                 * 繰り返さない
+                 */
+                "recurrenceNone": string;
+                /**
+                 * 毎日
+                 */
+                "recurrenceDaily": string;
+                /**
+                 * 毎週
+                 */
+                "recurrenceWeekly": string;
+                /**
+                 * 毎月
+                 */
+                "recurrenceMonthly": string;
+                /**
+                 * 毎年
+                 */
+                "recurrenceYearly": string;
+                /**
+                 * 詳細設定
+                 */
+                "moreDetails": string;
+                /**
+                 * 設定済みの項目
+                 */
+                "captureChips": string;
+                /**
+                 * 入力オプション
+                 */
+                "captureTools": string;
+                /**
+                 * 「{label}」を外す
+                 */
+                "removeCaptureChip": ParameterizedString<"label">;
+                /**
+                 * 例：明日14時 ミーティング
+                 */
+                "eventCaptureHint": string;
+                /**
+                 * 例：明日14時 #フォルダ !高
+                 */
+                "todoCaptureHint": string;
+                /**
+                 * {count}件完了
+                 */
+                "completedCount": ParameterizedString<"count">;
+                /**
+                 * テンプレートデータを安全に読み込めませんでした
+                 */
+                "templateReadFailure": string;
+                /**
+                 * テンプレートに保存
+                 */
+                "saveTemplate": string;
+                /**
+                 * テンプレートを使う
+                 */
+                "useTemplates": string;
+                /**
+                 * テンプレート
+                 */
+                "templateLibrary": string;
+                /**
+                 * すぐ使えるテンプレート
+                 */
+                "reusableTemplates": string;
+                /**
+                 * テンプレートはまだありません
+                 */
+                "noTemplates": string;
+                /**
+                 * 上の入力欄で内容を作り、「テンプレートに保存」から追加できます
+                 */
+                "templateEmptyHint": string;
+                /**
+                 * あとで見つけやすい名前を付けてください
+                 */
+                "templateNamePrompt": string;
+                /**
+                 * テンプレートに保存しました
+                 */
+                "templateSaved": string;
+                /**
+                 * この内容を使う
+                 */
+                "useTemplateAction": string;
+                /**
+                 * 「{name}」を入力欄へ読み込む
+                 */
+                "useTemplateLabel": ParameterizedString<"name">;
+                /**
+                 * 「{name}」を複製
+                 */
+                "duplicateTemplateLabel": ParameterizedString<"name">;
+                /**
+                 * 「{name}」をアーカイブ
+                 */
+                "archiveTemplateLabel": ParameterizedString<"name">;
+                /**
+                 * 「{name}」を上へ移動
+                 */
+                "moveTemplateUpLabel": ParameterizedString<"name">;
+                /**
+                 * 「{name}」を下へ移動
+                 */
+                "moveTemplateDownLabel": ParameterizedString<"name">;
+                /**
+                 * {name} のコピー
+                 */
+                "templateCopyName": ParameterizedString<"name">;
+                /**
+                 * テンプレート「{name}」をアーカイブしますか？
+                 */
+                "confirmArchiveTemplate": ParameterizedString<"name">;
+                /**
+                 * {count}件をテンプレートに保存しました
+                 */
+                "templatesSaved": ParameterizedString<"count">;
+                /**
+                 * YYYY-MM-DD で入力。空欄にすると期限を外します
+                 */
+                "dateInputHint": string;
+                /**
+                 * 日付は YYYY-MM-DD で入力してください
+                 */
+                "invalidDate": string;
+                /**
+                 * 24時間表記の HH:MM で入力してください
+                 */
+                "timeInputHint": string;
+                /**
+                 * 時刻は HH:MM で入力してください
+                 */
+                "invalidTime": string;
+                /**
+                 * 選択した{count}件をアーカイブしますか？
+                 */
+                "confirmBulkArchive": ParameterizedString<"count">;
+                /**
+                 * 保存済み
+                 */
+                "saved": string;
+                /**
+                 * 保存中…
+                 */
+                "saving": string;
+                /**
+                 * 競合しています
+                 */
+                "conflict": string;
+                /**
+                 * 読み込みに失敗しました
+                 */
+                "readFailure": string;
+                /**
+                 * 再試行
+                 */
+                "retry": string;
+                /**
+                 * アーカイブしました。元に戻す
+                 */
+                "archiveUndo": string;
+                /**
+                 * アーカイブしました
+                 */
+                "archivedNotice": string;
+                /**
+                 * 「{title}」を完了にする
+                 */
+                "completeTaskLabel": ParameterizedString<"title">;
+                /**
+                 * 「{title}」を未完了に戻す
+                 */
+                "reopenTaskLabel": ParameterizedString<"title">;
+                /**
+                 * 「{title}」を編集
+                 */
+                "editTaskLabel": ParameterizedString<"title">;
+                /**
+                 * 「{title}」をアーカイブ
+                 */
+                "archiveTaskLabel": ParameterizedString<"title">;
+                /**
+                 * 「{title}」を復元
+                 */
+                "restoreTaskLabel": ParameterizedString<"title">;
+                /**
+                 * 「{title}」を削除
+                 */
+                "deleteTaskLabel": ParameterizedString<"title">;
+                /**
+                 * 「{title}」を上へ移動
+                 */
+                "moveTaskUpLabel": ParameterizedString<"title">;
+                /**
+                 * 「{title}」を下へ移動
+                 */
+                "moveTaskDownLabel": ParameterizedString<"title">;
+                /**
+                 * サブタスク「{title}」
+                 */
+                "subtaskLabel": ParameterizedString<"title">;
+                /**
+                 * サブタスク「{title}」を削除
+                 */
+                "deleteSubtaskLabel": ParameterizedString<"title">;
+                /**
+                 * 開始
+                 */
+                "eventStart": string;
+                /**
+                 * 終了
+                 */
+                "eventEnd": string;
+                /**
+                 * 開始日
+                 */
+                "eventStartDate": string;
+                /**
+                 * 開始時刻
+                 */
+                "eventStartTime": string;
+                /**
+                 * 終了日
+                 */
+                "eventEndDate": string;
+                /**
+                 * 終了時刻
+                 */
+                "eventEndTime": string;
+                /**
+                 * 絵文字を選択
+                 */
+                "chooseEmoji": string;
+                /**
+                 * 色を選択
+                 */
+                "chooseColor": string;
+                /**
+                 * 通知タイミング「{timing}」
+                 */
+                "notificationTimingLabel": ParameterizedString<"timing">;
+                /**
+                 * データの安全
+                 */
+                "dataSafety": string;
+                /**
+                 * エクスポート
+                 */
+                "export": string;
+                /**
+                 * インポート
+                 */
+                "import": string;
+                /**
+                 * バックアップ
+                 */
+                "backup": string;
+                /**
+                 * 最終バックアップ: {date}
+                 */
+                "lastBackup": ParameterizedString<"date">;
+                /**
+                 * インポートは既存データに追加する形で統合されます。上書きは行いません
+                 */
+                "mergeOnlyWarning": string;
+                /**
+                 * この予定を削除しますか？ 公開予定の場合は共有先からも削除されます
+                 */
+                "confirmDeleteEvent": string;
+                /**
+                 * 予定は端末に保存しました。公開先との同期は次回もう一度確認します
+                 */
+                "publicSyncPending": string;
+                /**
+                 * 公開予定との対応を安全に確認できないため、変更を停止しました
+                 */
+                "publicSyncUnlinked": string;
+                /**
+                 * 変更を保存できませんでした。入力内容は画面と復旧用コピーに残しています
+                 */
+                "publicSyncFailed": string;
+                /**
+                 * 別の画面で公開予定が更新されています。再読み込みして内容を確認してください
+                 */
+                "publicSyncConflict": string;
+                /**
+                 * 公開先と同期中
+                 */
+                "syncPending": string;
+                /**
+                 * 公開先との対応未確認
+                 */
+                "syncUnlinked": string;
+                /**
+                 * 公開先との同期に失敗
+                 */
+                "syncFailed": string;
+                /**
+                 * 日付または時刻の範囲を確認してください
+                 */
+                "invalidEventSchedule": string;
+                /**
+                 * 予定とTodoの退避ファイルを作成しました
+                 */
+                "dataExported": string;
+                /**
+                 * 退避ファイルを作成できませんでした。既存データは変更していません
+                 */
+                "dataExportFailed": string;
+                /**
+                 * {count}件を追加しました（IDが重なる{collisions}件は既存データを保持）
+                 */
+                "dataImported": ParameterizedString<"count" | "collisions">;
+                /**
+                 * データを確認できなかったため、追加を中止しました。既存データは変更していません
+                 */
+                "dataImportFailed": string;
+                /**
+                 * 追加できる新しいデータはありませんでした
+                 */
+                "dataNoChanges": string;
+            };
             "_settings": {
                 /**
                  * Hatask の設定
@@ -22672,7 +23338,7 @@ export interface Locale extends ILocale {
                  */
                 "theme": string;
                 /**
-                 * Hatask 全体の配色・書体・カードの意匠（季 / 花信 / 刷）とライト / ダーク、アニメーションを設定します。
+                 * Hatask 全体の配色・書体・カードの意匠（季 / 花信 / 刷 / ハタキュ）とライト / ダーク、アニメーションを設定します。
                  */
                 "themeDescription": string;
                 /**
@@ -28053,11 +28719,11 @@ export interface Locale extends ILocale {
                  */
                 "hatadyVisibilityText": string;
                 /**
-                 * HataSNSCordUI — 表示の修正
+                 * HataSNSCordUI — アイコンと投稿メニュー
                  */
                 "hatacordingFixTitle": string;
                 /**
-                 * 宴の枠がノートの内側に描かれて本文に重なる問題を修正し、このUIでは外枠に沿って表示するようにしました。公開範囲を選ぶポップアップは範囲ごとのアイコンを表示するようにし、使用量のサークルが下から減っていくように見える表示も直しています。
+                 * ノートの枠・公開範囲・使用量の表示を直し、UIのアイコンを新しいアニメーションへ揃えました。投稿欄の星メニューはボタンの真上に開く縦スワイプ式へ変更し、PCでは5項目、スマートフォンでは4項目を一度に表示します。メニュー外の操作やEscでも閉じられます。
                  */
                 "hatacordingFixText": string;
                 /**
