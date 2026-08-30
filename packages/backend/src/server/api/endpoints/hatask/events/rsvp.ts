@@ -1,7 +1,9 @@
 import { Inject, Injectable } from '@nestjs/common';
+import type { DataSource } from 'typeorm';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import { DI } from '@/di-symbols.js';
-import type { HataskEventsRepository, HataskRsvpsRepository } from '@/models/_.js';
+import { MiHataskEvent } from '@/models/HataskEvent.js';
+import { MiHataskRsvp } from '@/models/HataskRsvp.js';
 import { IdService } from '@/core/IdService.js';
 import { ApiError } from '../../../error.js';
 
@@ -21,6 +23,11 @@ export const meta = {
 			code: 'EVENT_CLOSED',
 			id: 'h8b2c3d4-e5f6-a7b8-c9d0-e1f2a3b4c5d6',
 		},
+		rsvpDisabled: {
+			message: 'RSVP is not enabled for this event.',
+			code: 'RSVP_DISABLED',
+			id: '535d8d8b-70f4-40dd-9f8e-1231ac9b06ca',
+		},
 	},
 } as const;
 
@@ -36,42 +43,27 @@ export const paramDef = {
 @Injectable()
 export default class extends Endpoint<typeof meta, typeof paramDef> {
 	constructor(
-		@Inject(DI.hataskEventsRepository) private hataskEventsRepository: HataskEventsRepository,
-		@Inject(DI.hataskRsvpsRepository) private hataskRsvpsRepository: HataskRsvpsRepository,
+		@Inject(DI.db) private db: DataSource,
 		private idService: IdService,
 	) {
 		super(meta, paramDef, async (ps, me) => {
-			const event = await this.hataskEventsRepository.findOneBy({ id: ps.eventId });
-			if (!event) {
-				throw new ApiError(meta.errors.noSuchEvent);
-			}
-			if (event.rsvpClosed) {
-				throw new ApiError(meta.errors.eventClosed);
-			}
+			return await this.db.transaction(async manager => {
+				const eventRepository = manager.getRepository(MiHataskEvent);
+				const rsvpRepository = manager.getRepository(MiHataskRsvp);
+				const event = await eventRepository.findOne({ where: { id: ps.eventId }, lock: { mode: 'pessimistic_write' } });
+				if (!event) throw new ApiError(meta.errors.noSuchEvent);
+				if (!event.rsvp) throw new ApiError(meta.errors.rsvpDisabled);
+				if (event.rsvpClosed) throw new ApiError(meta.errors.eventClosed);
 
-			// upsert: ユーザーの回答を上書き
-			const existing = await this.hataskRsvpsRepository.findOneBy({
-				eventId: ps.eventId,
-				userId: me.id,
-			});
-
-			if (existing) {
-				await this.hataskRsvpsRepository.update(existing.id, {
-					status: ps.status,
-					respondedAt: new Date(),
-				});
-				return { id: existing.id, status: ps.status };
-			} else {
-				const rsvp = {
-					id: this.idService.gen(),
-					eventId: ps.eventId,
-					userId: me.id,
-					status: ps.status,
-					respondedAt: new Date(),
-				};
-				await this.hataskRsvpsRepository.insert(rsvp);
+				const existing = await rsvpRepository.findOneBy({ eventId: ps.eventId, userId: me.id });
+				if (existing) {
+					await rsvpRepository.update(existing.id, { status: ps.status, respondedAt: new Date() });
+					return { id: existing.id, status: ps.status };
+				}
+				const rsvp = { id: this.idService.gen(), eventId: ps.eventId, userId: me.id, status: ps.status, respondedAt: new Date() };
+				await rsvpRepository.insert(rsvp);
 				return { id: rsvp.id, status: ps.status };
-			}
+			});
 		});
 	}
 }

@@ -1,8 +1,8 @@
 import ms from 'ms';
 import { Inject, Injectable } from '@nestjs/common';
+import { LessThan } from 'typeorm';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import { DI } from '@/di-symbols.js';
-import { MoreThanOrEqual } from 'typeorm';
 import type { HataskEventsRepository, HataskRsvpsRepository, UsersRepository } from '@/models/_.js';
 import { packHataskEvent } from './_shared.js';
 
@@ -17,10 +17,11 @@ export const meta = {
 export const paramDef = {
 	type: 'object',
 	properties: {
-		limit: { type: 'integer', minimum: 1, maximum: 50, default: 30 },
-		includeExpired: { type: 'boolean', default: false },
+		limit: { type: 'integer', minimum: 1, maximum: 100, default: 100 },
+		untilId: { type: 'string', format: 'misskey:id' },
 	},
 	required: [],
+	additionalProperties: false,
 } as const;
 
 @Injectable()
@@ -31,17 +32,13 @@ export default class extends Endpoint<typeof meta, typeof paramDef> {
 		@Inject(DI.usersRepository) private usersRepository: UsersRepository,
 	) {
 		super(meta, paramDef, async (ps, me) => {
-			const today = new Date().toISOString().slice(0, 10);
-			// 開始日が過去でも、終了日が今日以降なら開催中として残す。
-			const where = ps.includeExpired ? {} : [
-				{ date: MoreThanOrEqual(today) },
-				{ dateEnd: MoreThanOrEqual(today) },
-			];
-
 			const events = await this.hataskEventsRepository.find({
-				where,
-				order: { date: 'ASC', createdAt: 'DESC' },
-				take: ps.limit ?? 30,
+				where: {
+					userId: me.id,
+					...(ps.untilId == null ? {} : { id: LessThan(ps.untilId) }),
+				},
+				order: { id: 'DESC' },
+				take: ps.limit,
 			});
 
 			return await Promise.all(events.map(event => packHataskEvent(

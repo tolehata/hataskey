@@ -623,9 +623,15 @@ export * as 'admin/approve-registration' from './endpoints/admin/approve-registr
 export * as 'admin/reject-registration' from './endpoints/admin/reject-registration.js';
 export * as 'hatask/events/create' from './endpoints/hatask/events/create.js';
 export * as 'hatask/events/list' from './endpoints/hatask/events/list.js';
+export * as 'hatask/events/owned' from './endpoints/hatask/events/owned.js';
+export * as 'hatask/events/update' from './endpoints/hatask/events/update.js';
 export * as 'hatask/events/rsvp' from './endpoints/hatask/events/rsvp.js';
 export * as 'hatask/events/delete' from './endpoints/hatask/events/delete.js';
 export * as 'hatask/events/close' from './endpoints/hatask/events/close.js';
+export * as 'hatask/planner/get' from './endpoints/hatask/planner/get.js';
+export * as 'hatask/planner/create-shadow' from './endpoints/hatask/planner/create-shadow.js';
+export * as 'hatask/planner/commit' from './endpoints/hatask/planner/commit.js';
+export * as 'hatask/planner/commit-batch' from './endpoints/hatask/planner/commit-batch.js';
 export * as 'hatask/flowers/sync' from './endpoints/hatask/flowers/sync.js';
 export * as 'hatask/flowers/list' from './endpoints/hatask/flowers/list.js';
 export * as 'hatask/flowers/visibility/update' from './endpoints/hatask/flowers/visibility/update.js';

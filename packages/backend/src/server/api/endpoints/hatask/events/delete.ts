@@ -1,9 +1,11 @@
 import ms from 'ms';
 import { Inject, Injectable } from '@nestjs/common';
+import type { DataSource } from 'typeorm';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import { DI } from '@/di-symbols.js';
-import type { HataskEventsRepository } from '@/models/_.js';
+import { MiHataskEvent } from '@/models/HataskEvent.js';
 import { ApiError } from '../../../error.js';
+import { hashHataskEvent } from './_shared.js';
 
 export const meta = {
 	tags: ['hatask'],
@@ -20,6 +22,11 @@ export const meta = {
 			code: 'NOT_OWNER',
 			id: 'ha4d5e6f-7a8b-9c0d-1e2f-3a4b5c6d7e8f',
 		},
+		conflict: {
+			message: 'The event changed on another client.',
+			code: 'HATASK_EVENT_CONFLICT',
+			id: '7aa11cb4-da50-43bc-8807-9148f74fd39e',
+		},
 	},
 	// 旗鯖fork(セキュリティ): イベント削除は CASCADE で関連 RSVP も消す破壊的操作。1時間30回。
 	limit: { duration: ms('1hour'), max: 30 },
@@ -29,26 +36,27 @@ export const paramDef = {
 	type: 'object',
 	properties: {
 		eventId: { type: 'string', minLength: 1 },
+		expectedRevision: { type: 'string', minLength: 64, maxLength: 64 },
 	},
-	required: ['eventId'],
+	required: ['eventId', 'expectedRevision'],
+	additionalProperties: false,
 } as const;
 
 @Injectable()
 export default class extends Endpoint<typeof meta, typeof paramDef> {
 	constructor(
-		@Inject(DI.hataskEventsRepository) private hataskEventsRepository: HataskEventsRepository,
+		@Inject(DI.db) private db: DataSource,
 	) {
 		super(meta, paramDef, async (ps, me) => {
-			const event = await this.hataskEventsRepository.findOneBy({ id: ps.eventId });
-			if (!event) {
-				throw new ApiError(meta.errors.noSuchEvent);
-			}
-			if (event.userId !== me.id) {
-				throw new ApiError(meta.errors.notOwner);
-			}
-
-			// CASCADE で hatask_rsvp も自動削除
-			await this.hataskEventsRepository.delete(event.id);
+			await this.db.transaction(async manager => {
+				const repository = manager.getRepository(MiHataskEvent);
+				const event = await repository.findOne({ where: { id: ps.eventId }, lock: { mode: 'pessimistic_write' } });
+				if (!event) throw new ApiError(meta.errors.noSuchEvent);
+				if (event.userId !== me.id) throw new ApiError(meta.errors.notOwner);
+				if (hashHataskEvent(event) !== ps.expectedRevision) throw new ApiError(meta.errors.conflict);
+				// CASCADE で hatask_rsvp も自動削除
+				await repository.delete(event.id);
+			});
 		});
 	}
 }

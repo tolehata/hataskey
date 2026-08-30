@@ -97,6 +97,12 @@ interface IEndpointMetaBase {
 	readonly description?: string;
 
 	/**
+	 * JSON request body size in bytes. Omit to keep the API-wide 1 MiB limit.
+	 * Larger limits must be paired with endpoint-level validation and rate limiting.
+	 */
+	readonly bodyLimit?: number;
+
+	/**
 	 * GETでのリクエストを許容するか否か
 	 */
 	readonly allowGet?: boolean;
