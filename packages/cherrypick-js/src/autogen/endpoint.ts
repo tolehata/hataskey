@@ -615,13 +615,24 @@ import type {
 	HataskEventsDeleteRequest,
 	HataskEventsListRequest,
 	HataskEventsListResponse,
+	HataskEventsOwnedRequest,
+	HataskEventsOwnedResponse,
 	HataskEventsRsvpRequest,
+	HataskEventsUpdateRequest,
+	HataskEventsUpdateResponse,
 	HataskFlowersListRequest,
 	HataskFlowersListResponse,
 	HataskFlowersSyncRequest,
 	HataskFlowersSyncResponse,
 	HataskFlowersVisibilityUpdateRequest,
 	HataskFlowersVisibilityUpdateResponse,
+	HataskPlannerCommitRequest,
+	HataskPlannerCommitResponse,
+	HataskPlannerCommitBatchRequest,
+	HataskPlannerCommitBatchResponse,
+	HataskPlannerCreateShadowRequest,
+	HataskPlannerCreateShadowResponse,
+	HataskPlannerGetResponse,
 	IResponse,
 	I2faDoneRequest,
 	I2faDoneResponse,
@@ -1329,10 +1340,16 @@ export type Endpoints = {
 	'hatask/events/create': { req: HataskEventsCreateRequest; res: HataskEventsCreateResponse };
 	'hatask/events/delete': { req: HataskEventsDeleteRequest; res: EmptyResponse };
 	'hatask/events/list': { req: HataskEventsListRequest; res: HataskEventsListResponse };
+	'hatask/events/owned': { req: HataskEventsOwnedRequest; res: HataskEventsOwnedResponse };
 	'hatask/events/rsvp': { req: HataskEventsRsvpRequest; res: EmptyResponse };
+	'hatask/events/update': { req: HataskEventsUpdateRequest; res: HataskEventsUpdateResponse };
 	'hatask/flowers/list': { req: HataskFlowersListRequest; res: HataskFlowersListResponse };
 	'hatask/flowers/sync': { req: HataskFlowersSyncRequest; res: HataskFlowersSyncResponse };
 	'hatask/flowers/visibility/update': { req: HataskFlowersVisibilityUpdateRequest; res: HataskFlowersVisibilityUpdateResponse };
+	'hatask/planner/commit': { req: HataskPlannerCommitRequest; res: HataskPlannerCommitResponse };
+	'hatask/planner/commit-batch': { req: HataskPlannerCommitBatchRequest; res: HataskPlannerCommitBatchResponse };
+	'hatask/planner/create-shadow': { req: HataskPlannerCreateShadowRequest; res: HataskPlannerCreateShadowResponse };
+	'hatask/planner/get': { req: EmptyRequest; res: HataskPlannerGetResponse };
 	'i': { req: EmptyRequest; res: IResponse };
 	'i/2fa/done': { req: I2faDoneRequest; res: I2faDoneResponse };
 	'i/2fa/key-done': { req: I2faKeyDoneRequest; res: I2faKeyDoneResponse };
