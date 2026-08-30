@@ -41,6 +41,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</button>
 			</template>
 			<template v-else>
+				<button v-if="tablet" type="button" :class="$style.compactBack" :aria-label="i18n.ts.goBack" @click="goSettingsBack"><i class="ti ti-chevron-left" aria-hidden="true"></i></button>
 				<h1 :class="$style.title">{{ i18n.ts.settings }}</h1>
 				<button ref="searchButtonEl" type="button" :class="$style.searchTrigger" @click="openSearch">
 					<i class="ti ti-search" aria-hidden="true"></i>
@@ -575,23 +576,9 @@ function setNavPaneMode(mode: SettingsNavPaneMode) {
 	void nextTick(() => focusElement(navDetailBackEl.value));
 }
 
-/**
- * 旗鯖fork: 狭い幅でも「分類を選んだら、その中の最初の設定へ直接移る」。
- * ⚠️下位一覧を挟まないこと。PC と操作の数が食い違ううえ、右ペインの
- *   兄弟タブと同じ並びを左にもう一度出すことになる。
- */
-async function openCompactNavigationSection(id: string | null) {
-	if (id == null) {
-		compactNavigationSection.value = null;
-		return;
-	}
-	const section = navSections.find(candidate => candidate.id === id);
-	if (section == null) {
-		// ⚠️知らない分類は、これまで通り下位一覧へ落とす（黙って無反応にしない）。
-		compactNavigationSection.value = id;
-		return;
-	}
-	await openNavigationSection(section);
+/** 旗鯖fork: 狭い幅では分類を選ぶだけにし、詳細一覧へ drill-in する。 */
+function openCompactNavigationSection(id: string | null) {
+	compactNavigationSection.value = id;
 }
 
 /**
@@ -1925,8 +1912,8 @@ function onShellWheel(ev: WheelEvent) {
 function updateCompact() {
 	const width = rootEl.value?.offsetWidth ?? 0;
 	compact.value = width <= 680;
-	// 旗鯖fork: ⚠️タブレット専用の作りは廃止した。PC と同じ姿に揃える。
-	//   ⚠️`tablet` は狭い幅向けの余白調整に残っているだけで、作りは変えない。
+	// 旗鯖fork: ⚠️2ペイン構造はPCと同じ。タブレット専用なのは余白と
+	//   設定外へ戻る導線だけ。
 	tablet.value = width > 680 && width <= 900;
 	if (compact.value) navPaneMode.value = 'categories';
 	if (!compact.value) compactNavigationSection.value = null;
@@ -1947,6 +1934,16 @@ function isSettingsFullPath(fullPath: string) {
 	return path === '/settings' || path.startsWith('/settings/');
 }
 
+async function goSettingsBack() {
+	if (!await requestSurfaceDiscard()) return;
+	// 旗鯖fork: ⚠️ここで history.back() を使わないこと。設定の中で分類や項目を
+	//   選ぶたびに履歴を積むため、戻る操作が設定内を巡回する事故が起きる。
+	//   設定へ入る前の場所は追えないので、確実に外へ出られる行き先を選ぶ。
+	// ⚠️確認を待つ間に設定外へ移動済みなら、設定へ引き戻さない。
+	if (!isSettingsFullPath(router.getCurrentFullPath())) return;
+	pushShellRoute(settingsExitRoute());
+}
+
 async function goCompactBack() {
 	compactPageDirection.value = 'back';
 	if (compactNavigationSection.value != null) {
@@ -1957,13 +1954,7 @@ async function goCompactBack() {
 		await goSettingsTop();
 		return;
 	}
-	if (!await requestSurfaceDiscard()) return;
-	// 旗鯖fork: ⚠️ここで history.back() を使わないこと。
-	//   設定の中で分類や項目を選ぶたびに履歴を積んでいるので、1つ前もたいてい
-	//   設定の中にある。⚠️結果、戻る→子カテゴリ→設定の先頭→戻る…と
-	//   設定から永久に抜けられなくなる（実際にそうなっていた）。
-	//   ⚠️設定へ入る前の場所は追えないので、確実に外へ出られる行き先を選ぶ。
-	pushShellRoute(settingsExitRoute());
+	await goSettingsBack();
 }
 
 /**

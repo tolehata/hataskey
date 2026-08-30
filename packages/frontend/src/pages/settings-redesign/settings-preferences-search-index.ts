@@ -60,7 +60,7 @@ const RELATION_DESTINATION_BY_SOURCE_FILE: Readonly<Record<string, string>> = {
 	'src/pages/settings/profile.vue': 'account-avatar',
 	'src/pages/settings/drive.vue': 'account-drive-cleaner',
 	'src/pages/settings/deck.vue': 'misskey-navbar',
-	'src/pages/settings/hata-custom.vue': 'hata-ui-setup',
+	'src/pages/settings/hata-custom.vue': 'hata-settings-transfer',
 	'src/pages/settings/hidden-reactions-manage.vue': 'timeline-display',
 	'src/pages/settings/notifications.vue': 'notifications-sounds',
 	'src/pages/settings/timeline.vue': 'timeline-note-display',

@@ -458,6 +458,20 @@ describe('settings redesign navigation contract', () => {
 		expect(shellSource).toContain('.legacyTop { min-height: 44px; padding: 8px 14px; }');
 	});
 
+	test('tabletの戻るbuttonはdiscard後に設定外へ出し、mobile rootも同じguardを使う', () => {
+		expect(shellSource).toMatch(/<button v-if="tablet"[^>]*:class="\$style\.compactBack"[^>]*:aria-label="i18n\.ts\.goBack"[^>]*@click="goSettingsBack">/);
+		expect(shellSource).toContain('<i class="ti ti-chevron-left" aria-hidden="true"></i>');
+		const backStart = shellSource.indexOf('async function goSettingsBack() {');
+		const compactStart = shellSource.indexOf('async function goCompactBack() {');
+		const exitRoute = shellSource.indexOf('pushShellRoute(settingsExitRoute());', backStart);
+		expect(backStart).toBeGreaterThan(-1);
+		expect(compactStart).toBeGreaterThan(backStart);
+		expect(shellSource.slice(backStart, compactStart)).toContain('if (!await requestSurfaceDiscard()) return;');
+		expect(shellSource.slice(backStart, compactStart)).toContain('if (!isSettingsFullPath(router.getCurrentFullPath())) return;');
+		expect(exitRoute).toBeGreaterThan(backStart);
+		expect(shellSource.slice(compactStart)).toContain('await goSettingsBack();');
+	});
+
 	test('サービス連携は専用surfaceを開き、関連導線はページ末尾だけに集約する', () => {
 		expect(shellSource).toContain('import SettingsServiceConnectionSurface from \'./SettingsServiceConnectionSurface.vue\';');
 		expect(shellSource).toContain('const isServiceConnectionSurfaceActive = computed(() => currentPath.value === \'/settings/connect\');');

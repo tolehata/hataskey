@@ -60,6 +60,19 @@ describe('settings mobile overview', () => {
 		expect(overviewSource).toMatch(/\.quickItem\s*\{[^}]*background:\s*var\(--settings-surface,/);
 	});
 
+	test('mobileカテゴリ選択は先頭項目をactivateせず詳細一覧へdrill-inする', () => {
+		const handlerStart = shellSource.indexOf('function openCompactNavigationSection(id: string | null) {');
+		const handlerEnd = shellSource.indexOf('\n}', handlerStart);
+		const handler = shellSource.slice(handlerStart, handlerEnd);
+		expect(handlerStart).toBeGreaterThan(-1);
+		expect(handler).toContain('compactNavigationSection.value = id;');
+		expect(handler).not.toContain('openNavigationSection(');
+		expect(handler).not.toContain('goToSetting(');
+		expect(shellSource).toContain('@select="goToSetting"');
+		expect(shellSource).toContain('async function openNavigationSection(section: NavSection): Promise<void> {');
+		expect(shellSource).toContain('if (item != null) await goToSetting(item);');
+	});
+
 	test('desktop rootはプロフィールを既定表示にし、tabletは常時行から下位一覧へdrill-inする', () => {
 		// 旗鯖fork: ⚠️設定を開いた既定はプロフィール。Hataskey UI は
 		//   /settings/hata-custom を直接開いたときの画面として残る。

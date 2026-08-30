@@ -55,7 +55,6 @@ export const settingsDestinationSections: SettingsDestinationSection[] = [{
 		destination('hata-hatafeed', 'HataFeed', '/settings/hatafeed', 'ti ti-message-heart', { brand: 'HataFeed', primary: true, showCount: true }),
 		destination('hata-earthquake', copy.nav.weatherViewer, '/settings/hata-custom', 'ti ti-activity', { activation: { kind: 'popup', category: 'earthquake', popup: 'earthquake' } }),
 		destination('hata-mascot', copy.nav.mascotHatakyu, '/settings/hata-custom', 'ti ti-mood-smile-beam', { activation: { kind: 'popup', category: 'mascot', popup: 'mascot' } }),
-		destination('hata-ui-setup', i18n.ts._hata._hataSideStudio._utility.menuLabels.uiSetup, '/settings/hata-custom', 'ti ti-wand', { activation: { kind: 'popup', category: 'general', popup: 'ui-setup' } }),
 		destination('hata-settings-transfer', copy.nav.settingsTransfer, '/settings/hata-custom', 'ti ti-package', { activation: { kind: 'popup', category: 'general', popup: 'settings-transfer' } }),
 	],
 }, {

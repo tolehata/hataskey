@@ -66,9 +66,10 @@ describe('settings redesign popup navigation', () => {
 	});
 
 	test('ポップアップで開く行き先が実際に存在する', () => {
+		expect(settingsDestinations.some(item => item.id === 'hata-ui-setup')).toBe(false);
 		const popups = settingsDestinations.filter(item => item.activation?.kind === 'popup');
-		// 現状: Hatask / Hatady / 天気・地震 / マスコット / UIセットアップ / 設定の引っ越し
-		expect(popups.length).toBeGreaterThanOrEqual(6);
+		// 現状: Hatask / Hatady / 天気・地震 / マスコット / 設定の引っ越し
+		expect(popups.length).toBeGreaterThanOrEqual(5);
 		// ⚠️ポップアップ項目の route は共有の /settings/hata-custom なので、
 		//   route だけで遷移先を決めてはいけない。
 		expect(popups.every(item => item.route === '/settings/hata-custom')).toBe(true);
