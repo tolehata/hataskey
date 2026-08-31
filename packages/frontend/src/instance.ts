@@ -53,7 +53,6 @@ export async function fetchInstance(force = false): Promise<Misskey.entities.Met
 }
 
 export type ClientOptions = {
-	entrancePageStyle: 'classic' | 'simple';
 	showTimelineForVisitor: boolean;
 	showActivitiesForVisitor: boolean;
 };

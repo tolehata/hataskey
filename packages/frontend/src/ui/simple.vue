@@ -540,7 +540,6 @@ const SIMPLE_MENU_STORAGE_LABELS: Readonly<Record<string, string>> = {
 	hatafeed: 'HataFeed',
 	hatady: 'Hatady',
 	earthquake: '地震・津波情報',
-	portal: 'Hataskeyポータル',
 	uiSetup: 'UI切り替え',
 	explore: 'みつける',
 	followRequests: 'フォロー申請',
@@ -1541,7 +1540,7 @@ const REQUIRED_SIDEBAR_IDS = ['timeline', 'notifications', 'announcements', 'fol
 // 旗鯖fork: 過去に削除された(=コード側に対応する遷移処理が無い)サイドバー項目ID。
 // 既存ユーザーの simpleUi.sidebar 保存値に残っている場合、サイドメニュー/Hataskey UI上部ナビバー
 // の両方で描画されないよう除外する。将来別の項目が削除された場合はここに追記する。
-const DEAD_SIDEBAR_IDS = ['whatsNew'];
+const DEAD_SIDEBAR_IDS = ['whatsNew', 'portal'];
 // 旗鯖fork: アイコン override は utility/sidebar-icon-overrides.ts に集約。
 // サイドバー本体と設定UI(settings/hata-custom.vue)で同じマップを参照することで、
 // 「サイドバー側だけ新アイコン・設定UI側は旧アイコンのまま」という不整合を防ぐ。
@@ -1748,7 +1747,7 @@ function sidebarItemClick(id: string, ev?: MouseEvent) {
 		return;
 	}
 	simpleDrawerShowing.value = false;
-	// 旗鯖fork: 外部リンク項目 (旗鯖ポータル等) は新しいタブで開く
+	// 旗鯖fork: 外部リンク項目は新しいタブで開く
 	const item = sidebarOrder.value.find((x: any) => x.id === id);
 	if (item?.external && item.url) {
 		window.open(item.url, '_blank', 'noopener');

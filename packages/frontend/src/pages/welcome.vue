@@ -6,8 +6,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 <template>
 <div v-if="instance">
 	<XSetup v-if="instance.requireSetup"/>
-	<XEntranceClassic v-else-if="(instance.clientOptions.entrancePageStyle ?? 'classic') === 'classic'"/>
-	<XEntranceSimple v-else/>
+	<XEntranceHataskey v-else/>
 </div>
 </template>
 
@@ -16,8 +15,7 @@ import { computed, ref } from 'vue';
 import * as Misskey from 'cherrypick-js';
 import { instanceName } from '@@/js/config.js';
 import XSetup from './welcome.setup.vue';
-import XEntranceClassic from './welcome.entrance.classic.vue';
-import XEntranceSimple from './welcome.entrance.simple.vue';
+import XEntranceHataskey from './welcome.entrance.hataskey.vue';
 import { definePage } from '@/page.js';
 import { fetchInstance, instance as cachedInstance } from '@/instance.js';
 
