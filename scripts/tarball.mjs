@@ -17,6 +17,7 @@ const ignore = [
 	'**/.git/**/*',
 	'**/*ignore',
 	'**/.gitmodules',
+	'archive/hanaawase/**',
 	// Exclude files you don't want to include in the tarball here
 ];
 

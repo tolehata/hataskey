@@ -767,7 +767,6 @@ const staticMenuItems = computed<HatacordingMenuItem[]>(() => {
 		{ id: 'tool:hatask', label: 'Hatask', icon: LayoutDashboard, to: '/hatask' },
 		{ id: 'tool:hatafeed', label: 'HataFeed', icon: MessageSquareWarning, to: '/hatafeed' },
 		{ id: 'tool:hatady', label: 'Hatady', icon: BookOpen, to: '/hatady' },
-		{ id: 'tool:hanaawase', label: '花常', icon: Sparkles, to: '/hanaawase' },
 		{ id: 'tool:games', label: 'Hataskey Games', icon: Gamepad2, to: '/games' },
 		{ id: 'tool:earthquake', label: '地震・津波情報', icon: Activity, to: '/earthquake' },
 		{ id: 'tool:explore', label: copy.explore, icon: Compass, to: '/explore' },

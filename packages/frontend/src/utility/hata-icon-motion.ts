@@ -66,7 +66,7 @@ const navigationMotion: Record<string, HataIconMotion> = {
 	channels: 'simple-lift', channel: 'simple-lift', lists: 'simple-lift', list: 'simple-lift',
 	antennas: 'antenna-pulse', antenna: 'antenna-pulse',
 	favorites: 'star-turn', 'tool:favorites': 'star-turn', explore: 'activity-pulse', 'tool:explore': 'activity-pulse',
-	followRequests: 'follow-emphasis', uiSetup: 'palette-tilt', 'tool:ui': 'palette-tilt', 'tool:hanaawase': 'palette-tilt',
+	followRequests: 'follow-emphasis', uiSetup: 'palette-tilt', 'tool:ui': 'palette-tilt',
 	games: 'gamepad-tap', 'tool:games': 'gamepad-tap', clips: 'simple-lift', 'tool:clips': 'simple-lift',
 	studio: 'layout-slide', 'tool:studio': 'layout-slide', admin: 'layout-slide', deck: 'layout-slide', widgets: 'layout-slide', layout: 'layout-slide',
 	realtime: 'activity-pulse',

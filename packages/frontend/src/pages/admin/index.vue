@@ -47,7 +47,6 @@ import { lookupUser, lookupUserByEmail, lookupFile } from '@/utility/admin-looku
 import { definePage, provideMetadataReceiver, provideReactiveMetadata } from '@/page.js';
 import { useRouter } from '@/router.js';
 import { genSearchIndexes } from '@/utility/inapp-search.js';
-import { iAmAdmin } from '@/i.js';
 
 const searchIndex = await import('search-index:admin').then(({ searchIndexes }) => genSearchIndexes(searchIndexes));
 
@@ -118,12 +117,7 @@ const menuDef = computed<SuperMenuDef[]>(() => [{
 		text: i18n.ts.dashboard,
 		to: '/admin/overview',
 		active: currentPage.value?.route.name === 'overview',
-	}, ...(iAmAdmin ? [{
-		icon: 'ti ti-device-gamepad-2',
-		text: i18n.ts._hata._adminCommon.gameManagement,
-		to: '/admin/games',
-		active: currentPage.value?.route.name === 'games',
-	}] : []), {
+	}, {
 		icon: 'ti ti-users',
 		text: i18n.ts.users,
 		to: '/admin/users',

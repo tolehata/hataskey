@@ -97,19 +97,41 @@ describe('旗鯖独自設定の入出力', () => {
 		api.mockRejectedValue(new Error('未設定'));
 	});
 
-	test('カテゴリ表示は共通localeを使い、花常と地震津波だけ日本語固定を維持する', () => {
+	test('カテゴリ表示は共通localeを使い、地震津波は日本語固定を維持する', () => {
 		expect(HATA_SETTINGS_CATEGORIES.find(category => category.id === 'general')).toMatchObject({
 			label: '旗鯖全体',
 			description: '投稿フォーム、演出、フォント、プロフィールの表示設定',
-		});
-		expect(HATA_SETTINGS_CATEGORIES.find(category => category.id === 'hanaawase')).toMatchObject({
-			label: '花常',
-			description: '音・環境音・動きなどのゲーム設定（進行は含みません）',
 		});
 		expect(HATA_SETTINGS_CATEGORIES.find(category => category.id === 'earthquake')).toMatchObject({
 			label: '地震・津波情報',
 			description: '地域、更新間隔、通知条件',
 		});
+	});
+
+	test('保管した花常は未知カテゴリとして扱い、既存の端末キャッシュやRegistryを変更しない', async () => {
+		const existingProgress = '{"v":1,"storySeen":["chapter-1"]}';
+		local.set('miux:hanaawase:progress', existingProgress);
+		const parsed = parseHataSettingsTransfer(JSON.stringify({
+			format: HATA_SETTINGS_TRANSFER_FORMAT,
+			formatVersion: HATA_SETTINGS_TRANSFER_VERSION,
+			categories: {
+				hatady: { device: { hatadyTheme: 'espresso' } },
+				hanaawase: { registry: { settings: { se: false, motion: 'reduced' } } },
+			},
+		}));
+		expect(parsed.unknownCategories).toEqual(['hanaawase']);
+		const result = await applyHataSettingsTransfer(parsed.file, HATA_SETTINGS_CATEGORIES.map(category => category.id));
+		expect(result.applied).toBe(1);
+		expect(local.get('hatadyTheme')).toBe('espresso');
+		expect(local.get('miux:hanaawase:progress')).toBe(existingProgress);
+		expect(api).not.toHaveBeenCalled();
+	});
+
+	test('全カテゴリの書き出しでも花常の保存領域を取得しない', async () => {
+		const file = await createHataSettingsTransfer(HATA_SETTINGS_CATEGORIES.map(category => category.id));
+		expect(file.categories).not.toHaveProperty('hanaawase');
+		expect(api.mock.calls.some(([, data]) => data?.scope?.includes('hanaawase'))).toBe(false);
+		expect(api.mock.calls.some(([endpoint]) => endpoint === 'i/registry/get')).toBe(true);
 	});
 
 	test('未知カテゴリを残した新しい版のファイルも解析し、警告対象にする', () => {

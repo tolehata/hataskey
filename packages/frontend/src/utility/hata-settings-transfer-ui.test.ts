@@ -5,14 +5,25 @@
 
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { load } from 'js-yaml';
 import { describe, expect, test } from 'vitest';
 
 const source = (path: string) => readFileSync(resolve(process.cwd(), path), 'utf8');
+const japanese = load(source('../../locales/ja-JP.yml')) as {
+	_hata: {
+		_customSettings: { _general: Record<string, string> };
+		_settingsTransfer: { _window: Record<string, string>; _utility: { categories: Record<string, string> } };
+	};
+};
+const transferCopy = japanese._hata._settingsTransfer._window;
 
 describe('旗鯖独自設定の入出力UI', () => {
 	test('旗鯖全体タブから入出力モーダルを開ける', () => {
 		const page = source('src/pages/settings/hata-custom.vue');
-		expect(page).toContain('旗鯖独自設定の一括入出力');
+		expect(page).toContain('const copy = i18n.ts._hata._customSettings;');
+		expect(page).toContain('const generalCopy = copy._general;');
+		expect(page).toContain('{{ generalCopy.transferTitle }}');
+		expect(japanese._hata._customSettings._general.transferTitle).toBe('Hataskey独自設定の一括入出力');
 		expect(page).toContain('import(\'@/components/MkHataSettingsTransfer.vue\')');
 	});
 
@@ -20,26 +31,34 @@ describe('旗鯖独自設定の入出力UI', () => {
 		const modal = source('src/components/MkHataSettingsTransfer.vue');
 		const transfer = source('src/utility/hata-settings-transfer.ts');
 		expect(modal).toContain('type="checkbox"');
-		expect(modal).toContain('異なるバージョンの設定ファイル');
-		expect(modal).toContain('合わない設定は個別にスキップ');
-		expect(modal).toContain('アカウントのログイン情報や利用記録は設定ファイルに含みません');
-		expect(modal).toContain('カスタムフォントURL');
-		expect(modal).toContain('非公開RSSや署名付きURL');
-		expect(modal).toContain('保存先と共有先を確認してから書き出してください');
-		expect(transfer).toContain("id: 'hataSideStudio', label: 'HataSideStudio'");
+		expect(modal).toContain('const copy = i18n.ts._hata._settingsTransfer._window;');
+		expect(modal).toContain('title: copy.differentVersionTitle');
+		expect(modal).toContain('{{ copy.importLead }}');
+		expect(modal).toContain('{{ copy.privacyTitle }}');
+		expect(modal).toContain('{{ copy.urlWarningDescription }}');
+		expect(transferCopy.differentVersionTitle).toBe('異なるバージョンの設定ファイル');
+		expect(transferCopy.importLead).toContain('合わない設定は個別にスキップ');
+		expect(transferCopy.privacyTitle).toBe('アカウントのログイン情報や利用記録は設定ファイルに含みません');
+		expect(transferCopy.urlWarningDescription).toContain('カスタムフォントURL');
+		expect(transferCopy.urlWarningDescription).toContain('非公開RSSや署名付きURL');
+		expect(transferCopy.urlWarningDescription).toContain('保存先と共有先を確認してから書き出してください');
+		expect(transfer).toContain("id: 'hataSideStudio', label: copy.categories.hataSideStudioLabel");
+		expect(japanese._hata._settingsTransfer._utility.categories.hataSideStudioLabel).toBe('HataSideStudio');
 		expect(transfer).toContain('categories.hataSideStudio =');
 	});
 
 	test('HatadyとHataFeedの利用データは設定ファイルへ混ぜず専用画面から書き出す', () => {
 		const modal = source('src/components/MkHataSettingsTransfer.vue');
 		const hatadyExport = source('src/components/HatadyExportDialog.vue');
-		expect(modal).toContain('利用データを個別に書き出す');
+		expect(modal).toContain('{{ copy.dedicatedExportTitle }}');
+		expect(transferCopy.dedicatedExportTitle).toBe('利用データを個別に書き出す');
 		expect(modal).toContain("import('@/components/HatadyExportDialog.vue')");
 		expect(modal).toContain("import('@/components/HataFeedExportWindow.vue')");
 		expect(modal).toContain("misskeyApi('hata/feedback/available', {})");
 		expect(modal).toContain('mine: !availability.isStaff');
 		expect(modal).toContain("const projectId = selection.result === '__official__' ? null : (project?.id ?? null)");
-		expect(modal).toContain('Hatadyの学習記録とHataFeedのイシューは、下の専用ボタンから個別に保存できます');
+		expect(modal).toContain('{{ copy.privacyDescription }}');
+		expect(transferCopy.privacyDescription).toContain('Hatadyの学習記録とHataFeedのイシューは、下の専用ボタンから個別に保存できます');
 		expect(hatadyExport).toContain('.body[data-hatady-theme="paper"]');
 		expect(hatadyExport).toContain('.body[data-hatady-theme="espresso"]');
 		expect(hatadyExport).toContain('.body[data-hatady-theme="hataskey"]');

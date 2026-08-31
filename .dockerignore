@@ -39,6 +39,12 @@ fluent-emojis/
 packages/*/.vscode/
 packages/backend/test/compose.yml
 
+# 花常の保管ソース・素材とローカル開発書類は実行イメージへ含めない
+archive/hanaawase/
+packages/frontend/hanaawase/
+# ローカルモックとソースコピーは本番の実行に不要
+temp/
+
 .pnpm-store/
 
 # HataSNSCord アイコンパイロット（完成版イメージには含めないローカル設計資産）

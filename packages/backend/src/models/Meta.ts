@@ -4,10 +4,6 @@
  */
 
 import { Entity, Column, PrimaryColumn, ManyToOne } from 'typeorm';
-import {
-	DEFAULT_HANAAWASE_EVENT_INDEX,
-	type HanaawaseEventIndex,
-} from '@/misc/hanaawase-event-index.js';
 import { id } from './util/id.js';
 import { MiUser } from './User.js';
 
@@ -830,11 +826,6 @@ export class MiMeta {
 		default: { },
 	})
 	public clientOptions: Record<string, any>;
-
-	@Column('jsonb', {
-		default: DEFAULT_HANAAWASE_EVENT_INDEX,
-	})
-	public hanaawaseEventIndex: HanaawaseEventIndex;
 
 	@Column('boolean', {
 		default: false,

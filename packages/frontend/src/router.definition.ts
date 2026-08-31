@@ -433,10 +433,6 @@ export const ROUTE_DEF = [{
 		name: 'overview',
 		component: page(() => import('@/pages/admin/overview.vue')),
 	}, {
-		path: '/games',
-		name: 'games',
-		component: iAmAdmin ? page(() => import('@/pages/admin/games.vue')) : page(() => import('@/pages/not-found.vue')),
-	}, {
 		path: '/users',
 		name: 'users',
 		component: page(() => import('@/pages/admin/users.vue')),
@@ -652,10 +648,6 @@ export const ROUTE_DEF = [{
 	path: '/games',
 	component: page(() => import('@/pages/games.vue')),
 	loginRequired: false,
-}, {
-	path: '/hanaawase',
-	component: page(() => import('@/pages/hanaawase/index.vue')),
-	loginRequired: true,
 }, {
 	path: '/bubble-game',
 	component: page(() => import('@/pages/drop-and-fusion.vue')),

@@ -10,9 +10,6 @@ import { meta as resetPasswordMeta } from '@/server/api/endpoints/admin/reset-pa
 import { meta as unsetMfaMeta } from '@/server/api/endpoints/admin/unset-mfa.js';
 import { meta as hatadyAdminBooksMeta } from '@/server/api/endpoints/hata/hatady/admin/books.js';
 import { meta as hatadyAdminDeleteBookMeta } from '@/server/api/endpoints/hata/hatady/admin/delete-book.js';
-import { meta as hanaawaseEventIndexMeta } from '@/server/api/endpoints/admin/games/hanaawase/event-index.js';
-import { meta as hanaawaseUpdateEventIndexMeta } from '@/server/api/endpoints/admin/games/hanaawase/update-event-index.js';
-import { meta as hanaawaseStatsMeta } from '@/server/api/endpoints/admin/games/hanaawase/stats.js';
 
 describe('機密性の高い管理API', () => {
 	test.each([
@@ -22,9 +19,6 @@ describe('機密性の高い管理API', () => {
 		['二要素認証解除', unsetMfaMeta],
 		['Hatady管理一覧', hatadyAdminBooksMeta],
 		['Hatady管理削除', hatadyAdminDeleteBookMeta],
-		['花常イベント索引の取得', hanaawaseEventIndexMeta],
-		['花常イベント索引の更新', hanaawaseUpdateEventIndexMeta],
-		['花常の管理統計', hanaawaseStatsMeta],
 	])('%s は外部アプリ用トークンから呼べない', (_name, meta) => {
 		expect(meta.requireCredential).toBe(true);
 		expect(meta.secure).toBe(true);

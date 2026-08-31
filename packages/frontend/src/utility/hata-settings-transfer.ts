@@ -23,7 +23,7 @@ const copy = i18n.ts._hata._settingsTransfer._utility;
 const copyx = i18n.tsx._hata._settingsTransfer._utility;
 
 type PreferenceKey = keyof typeof PREF_DEF;
-export type HataSettingsCategoryId = 'general' | 'hatasabaUi' | 'hataSideStudio' | 'hatacordingUi' | 'hatask' | 'hatady' | 'hatafeed' | 'hanaawase' | 'mascot' | 'earthquake';
+export type HataSettingsCategoryId = 'general' | 'hatasabaUi' | 'hataSideStudio' | 'hatacordingUi' | 'hatask' | 'hatady' | 'hatafeed' | 'mascot' | 'earthquake';
 
 type RegistryTarget = {
 	id: string;
@@ -165,13 +165,6 @@ export const HATA_SETTINGS_CATEGORIES: readonly CategoryDefinition[] = [
 		id: 'hatafeed', label: copy.categories.hatafeedLabel, description: copy.categories.hatafeedDescription,
 		preferenceKeys: ['hatafeed.leaves'],
 		localKeys: ['hataPostDelayEnabled', 'hataPostDelaySeconds'],
-	},
-	{
-		id: 'hanaawase', label: '花常', description: '音・環境音・動きなどのゲーム設定（進行は含みません）',
-		registry: [{
-			id: 'settings', scope: ['client', 'hanaawase'], key: 'settings', validate: isRecord,
-			fields: { se: isBoolean, amb: isBoolean, motion: value => value === 'normal' || value === 'reduced', barks: isBoolean },
-		}],
 	},
 	{
 		id: 'mascot', label: copy.categories.mascotLabel, description: copy.categories.mascotDescription,

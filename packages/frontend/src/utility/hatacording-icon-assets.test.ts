@@ -47,11 +47,17 @@ function webpCanvasSize(buffer: Buffer): { width: number; height: number } {
 }
 
 describe('HataSNSCordUIの保管アイコンとLucide Animatedライセンス', () => {
-	test('生成済みWebPは67枚を保管し、実行UIからは参照しない', () => {
+	test('生成済みWebPは現行の66枚と花常の保管1枚を維持し、実行UIからは参照しない', () => {
 		const files = readdirSync(iconAssetsRoot).filter(file => file.endsWith('.webp')).sort();
-		expect(files).toHaveLength(67);
-		for (const file of files) {
-			const buffer = readFileSync(resolve(iconAssetsRoot, file));
+		expect(files).toHaveLength(66);
+		expect(files).not.toContain('hanaawase.webp');
+		const preservedFiles = [
+			...files.map(file => resolve(iconAssetsRoot, file)),
+			resolve(repositoryRoot, 'archive/hanaawase/packages/frontend/assets/hatacording/icons/hanaawase.webp'),
+		];
+		expect(preservedFiles).toHaveLength(67);
+		for (const file of preservedFiles) {
+			const buffer = readFileSync(file);
 			expect(buffer.subarray(0, 4).toString('ascii')).toBe('RIFF');
 			expect(buffer.subarray(8, 12).toString('ascii')).toBe('WEBP');
 			expect(buffer.includes(Buffer.from('ALPH'))).toBe(true);

@@ -147,7 +147,6 @@ const categories = [
 		id: 'games', iconClass: 'ti ti-device-gamepad-2', label: copy.categoryGames,
 		docs: [
 			{ iconClass: 'ti ti-device-gamepad-2', title: entries.gamesOverviewTitle, body: entries.gamesOverviewBody, link: '/games', linkLabel: entries.gamesOverviewLink },
-			{ iconClass: 'ti ti-flower', title: '花常（はなつね）', body: '花を並べて消すパズルと、花屋を舞台にした物語を楽しむゲームです。12か月の物語、町の人の投稿、たのみごと、花手帖、期間限定イベントがあります。', tips: ['音量や環境音はゲーム内で調整できます', '使用素材のクレジットもゲーム内で確認できます'], link: '/hanaawase', linkLabel: '花常へ' },
 			{ iconClass: 'ti ti-building', title: entries.stackingGameTitle, body: entries.stackingGameBody, link: '/stacking-game', linkLabel: entries.stackingGameLink },
 			{ iconClass: 'ti ti-hammer', title: entries.whackEmojiTitle, body: entries.whackEmojiBody, link: '/whack-emoji', linkLabel: entries.whackEmojiLink },
 			{ iconClass: 'ti ti-rocket', title: entries.emojiShootTitle, body: entries.emojiShootBody, link: '/emoji-shoot', linkLabel: entries.emojiShootLink },
