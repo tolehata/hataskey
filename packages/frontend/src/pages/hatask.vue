@@ -240,6 +240,8 @@
       :submitLabel="editingEvent?copy.update:copy.add"
       :chips="eventCaptureChips"
       :tools="eventCaptureTools"
+      :templateLabel="plannerCopy.templateLibrary"
+      :templateDisabled="!plannerTemplatesLoaded"
       :detailOpen="showEventDetails||showEventTemplates||eventCaptureEditor!=null"
       :disabled="plannerReadOnly"
 	      :state="eventCaptureState"
@@ -250,6 +252,7 @@
       @update:modelValue="updateEventCapture"
       @submit="submitEventCapture"
       @tool="handleEventCaptureTool"
+      @template="openPlannerCaptureTemplates('event', $event)"
 	      @chip="handleEventCaptureChip"
       @remove-chip="removeEventCaptureChip"
 	      @collapse="showEventDetails=false;showEventTemplates=false;eventCaptureEditor=null"
@@ -514,6 +517,8 @@
 	    :submitLabel="editingTodoId?copy.update:copy.add"
 	    :chips="todoCaptureChips"
 	    :tools="todoCaptureTools"
+	    :templateLabel="plannerCopy.templateLibrary"
+	    :templateDisabled="!plannerTemplatesLoaded"
 	    :detailOpen="showTodoExtra||todoCaptureEditor!=null"
 	    :disabled="plannerReadOnly"
 	    :state="todoCaptureState"
@@ -524,6 +529,7 @@
 	    @update:modelValue="updateTodoCapture"
 	    @submit="submitTodoCapture"
 	    @tool="handleTodoCaptureTool"
+	    @template="openPlannerCaptureTemplates('todo', $event)"
 	    @chip="handleTodoCaptureChip"
 	    @remove-chip="removeTodoCaptureChip"
 	    @collapse="showTodoExtra=false;todoCaptureEditor=null"
@@ -632,93 +638,48 @@
 <!-- ========== NOTIFICATIONS ========== -->
 
 
-<!-- ========== MOOD ========== -->
-<div v-if="activeTab==='mood'" class="htk-tabpage" :class="[isHatakyu?'hk-panels':'htk-panels',tabDir==='fwd'?'htk-tab-fwd':'htk-tab-back']">
-  <div class="htk-lg htk-anim"><div class="htk-gc">
-    <!-- 旗鯖fork(ハタキュ): 記録の前にハタキュが寄り添う絵を置く。 -->
-    <img v-if="isHatakyu" class="hk-hero" :src="hkAsset('heartHug')" alt="" draggable="false">
-    <h3 class="htk-sec-title">{{editingMood?copy.editMood:copy.recordMood}} <button class="htk-info-btn" @click="showMoodDisclaimer=true">?</button></h3>
-    <div style="font-size:.72rem;opacity:.4;margin-bottom:10px">{{copy.moodShortDisclaimer}}</div>
-    <div class="htk-mood-sc hk-mscale"><div v-for="m in moodOptions" :key="m.level" :class="['htk-mood-o',selectedMoodLevel===m.level&&'on']" @click="selectedMoodLevel=m.level"><span class="htk-mood-e"><i :class="m.icon"></i></span><span class="htk-mood-l">{{m.label}}</span></div></div>
-    <div class="htk-coll-h" @click="showMoodNote=!showMoodNote"><span class="htk-fl" style="margin:0">{{copy.note}}</span><span class="htk-ci">{{showMoodNote?'▲':'▼'}}</span></div>
-    <div v-if="showMoodNote">
-      <div class="htk-fg" style="margin-top:5px"><textarea class="htk-inp" v-model="moodNote" :placeholder="copy.moodNotePlaceholder"></textarea></div>
-      <div class="htk-fg"><span class="htk-fl">{{copy.emoji}}</span><div class="htk-emp-row"><span v-for="e in moodEmojisExtra" :key="e" :class="['htk-emp-i',moodSelectedEmoji===e&&'on']" @click="moodSelectedEmoji=moodSelectedEmoji===e?'':e"><HataskEmoji :emoji="e"/></span></div></div>
-    </div>
-    <div class="htk-coll-h" @click="showMoodRemind=!showMoodRemind"><span class="htk-fl" style="margin:0">{{copy.reminderNotification}}</span><span class="htk-ci">{{showMoodRemind?'▲':'▼'}}</span></div>
-    <div v-if="showMoodRemind" style="padding-top:5px">
-      <div class="htk-tg-row"><span class="htk-tg-lab">{{copy.reminder}}</span><button :class="['htk-tg-sw',settings.moodRemind&&'on']" @click="settings.moodRemind=!settings.moodRemind;saveSettings();scheduleMoodReminders()"></button></div>
-      <div class="htk-nt-chips" style="margin-top:5px"><span v-for="t in moodRemindTimes" :key="t" :class="['htk-nt-chip',settings.moodRemindTimes?.includes(t)&&'on']" @click="toggleMoodRemindTime(t)">{{moodRemindTimeLabel(t)}}</span></div>
-    </div>
-    <div style="display:flex;gap:8px;margin-top:12px"><button class="htk-btn htk-primary" style="flex:1" @click="saveMood" :disabled="isSaving">{{isSaving?copy.saving:(editingMood?copy.update:copy.saveMood)}}</button><button v-if="editingMood" class="htk-btn" @click="cancelEditMood">{{copy.cancel}}</button></div>
-  </div></div>
-
-  <!-- MOOD ANALYSIS -->
-  <div v-if="moods.length>=3" class="htk-lg htk-anim"><div class="htk-gc">
-    <h3 class="htk-sec-title">{{copy.moodAnalysis}}</h3>
-    <div class="htk-ma-grid">
-      <div class="htk-ma-card">
-        <div class="htk-ma-label">{{copy.recentTrend}}</div>
-        <div class="htk-ma-big" :style="{color: moodAnalysis.trendColor}"><HataskEmoji :emoji="moodAnalysis.trendEmoji"/></div>
-        <div class="htk-ma-desc">{{moodAnalysis.trendLabel}}</div>
+<!-- ========== MOOD / MEAL: 切替でも入力中の記録を保持する ========== -->
+<div v-show="activeTab==='mood'" class="htk-tabpage htk-journal-page" :class="tabDir==='fwd'?'htk-tab-fwd':'htk-tab-back'">
+  <HataskJournal
+    kind="mood"
+    :entries="moodJournalRows"
+    :writable="journalWritable('moods')"
+    :loading="!dataLoaded"
+    :active="activeTab==='mood'"
+    :motion="settings.animations!==false && prefer.r.animation.value"
+    :illustration="isHatakyu?hkAsset('heartHug'):undefined"
+    :save="saveMoodEntry"
+    :remove="deleteMoodEntry"
+    @info="showMoodDisclaimer=true"
+  >
+    <template #reminders>
+      <div class="htk-journal-reminders">
+        <button type="button" role="switch" :aria-checked="!!settings.moodRemind" :disabled="journalReminderSaving || !loadedKeys.has('settings')" @click="setJournalReminder(!settings.moodRemind)"><i class="ti ti-bell"></i>{{copy.reminder}}<i :class="settings.moodRemind?'ti ti-toggle-right':'ti ti-toggle-left'" aria-hidden="true"></i></button>
+        <div role="group" :aria-label="copy.reminderNotification"><button v-for="t in moodRemindTimes" :key="t" type="button" :aria-pressed="settings.moodRemindTimes?.includes(t)" :data-selected="settings.moodRemindTimes?.includes(t)" :disabled="journalReminderSaving || !loadedKeys.has('settings')" @click="toggleMoodRemindTime(t)">{{moodRemindTimeLabel(t)}}</button></div>
       </div>
-      <div class="htk-ma-card">
-        <div class="htk-ma-label">{{copy.averageScore7Days}}</div>
-        <div class="htk-ma-big">{{moodAnalysis.avgScore}}</div>
-        <div class="htk-ma-bar"><div class="htk-ma-bar-fill" :style="{width: (moodAnalysis.avgScoreRaw/5*100)+'%', background: moodAnalysis.trendColor}"></div></div>
-      </div>
-    </div>
-    <div class="htk-ma-section">
-      <div class="htk-ma-label" style="margin-bottom:8px">{{copy.trendByTime}}</div>
-      <div class="htk-ma-times">
-        <div v-for="t in moodAnalysis.timeSlots" :key="t.label" class="htk-ma-time">
-          <div class="htk-ma-time-emo"><HataskEmoji v-if="t.emoji" :emoji="t.emoji"/><span v-else>—</span></div>
-          <div class="htk-ma-time-info">
-            <div class="htk-ma-time-label">{{t.label}}</div>
-            <div class="htk-ma-time-bar"><div class="htk-ma-time-fill" :style="{width: (t.avg/5*100)+'%', background: t.color}"></div></div>
-          </div>
-          <div class="htk-ma-time-score">{{t.avg.toFixed(1)}}</div>
-        </div>
-      </div>
-    </div>
-    <div v-if="moodAnalysis.insight" class="htk-ma-insight">
-      <i class="ti ti-bulb" style="margin-right:5px;color:var(--accent)"></i>{{moodAnalysis.insight}}
-    </div>
-  </div></div>
-
-  <div class="htk-lg htk-anim"><div class="htk-gc"><h3 class="htk-sec-title">{{copy.moodRecords}}</h3>
-    <template v-if="moods.length"><div v-for="date in pagedMoodDates" :key="date" class="htk-mood-dg"><div class="htk-mood-dg-h">{{formatMoodDate(String(date))}}<span v-if="moodsByDate[date].length>1" class="htk-mood-dg-c">{{copyx.count({count:moodsByDate[date].length.toString()})}}</span></div><div v-for="m in moodsByDate[date]" :key="m.id" class="htk-mood-en"><div class="htk-mood-en-t">{{m.time}}</div><span class="htk-mood-en-e"><i :class="moodIcons[m.level]"></i></span><div class="htk-mood-en-ct"><div class="htk-mood-en-n">{{moodNoteLabel(m.note)}}</div><div v-if="m.emoji" class="htk-mood-en-ce"><HataskEmoji :emoji="m.emoji"/></div></div><div class="htk-mood-en-acts"><button class="htk-mood-en-a" @click="startEditMood(m)"><i class="ti ti-pencil"></i></button><button class="htk-mood-en-a del" @click="deleteMood(m.id)"><i class="ti ti-x"></i></button></div></div></div>
-    <div v-if="moodTotalPages>1" class="htk-pager"><button class="htk-btn htk-xs" :disabled="moodPage<=1" @click="moodPage--">&lt;</button><span class="htk-pager-t">{{moodPage}} / {{moodTotalPages}}</span><button class="htk-btn htk-xs" :disabled="moodPage>=moodTotalPages" @click="moodPage++">&gt;</button></div>
     </template>
-    <div v-else class="htk-empty"><div class="htk-empI"><i class="ti ti-circle-off"></i></div><div>{{copy.noRecordsYet}}</div></div>
-  </div></div>
+  </HataskJournal>
 </div>
 
-<!-- ========== MEAL(食事記録) ========== -->
-<div v-if="activeTab==='meal'" class="htk-tabpage" :class="[isHatakyu?'hk-panels':'htk-panels',tabDir==='fwd'?'htk-tab-fwd':'htk-tab-back']">
-  <div class="htk-lg htk-anim"><div class="htk-gc">
-    <img v-if="isHatakyu" class="hk-hero" :src="hkAsset('chefCooking')" alt="" draggable="false">
-    <h3 class="htk-sec-title">{{editingMeal?copy.editRecord:copy.recordMeal}} <button class="htk-info-btn" @click="showMealDisclaimerDialog">!</button></h3>
-    <div style="font-size:.72rem;opacity:.4;margin-bottom:10px">{{copy.mealShortDisclaimer}}</div>
-    <div class="htk-fg"><span class="htk-fl">{{copy.whichMeal}}</span><div class="htk-meal-slots"><div v-for="s in mealSlots" :key="s.id" :class="['htk-meal-slot',selectedMealSlot===s.id&&'on']" @click="selectedMealSlot=s.id"><span class="htk-meal-slot-e"><i :class="s.emoji"></i></span><span class="htk-meal-slot-l">{{s.label}}</span></div></div></div>
-    <div class="htk-fg"><span class="htk-fl">{{copy.howWasMeal}}</span><div class="htk-meal-levels"><div v-for="l in mealLevels" :key="l.id" :class="['htk-meal-level',selectedMealLevel===l.id&&'on']" :style="selectedMealLevel===l.id?{borderColor:l.color,background:l.color+'22'}:{}" @click="selectedMealLevel=l.id"><span class="htk-meal-level-e"><i :class="l.emoji"></i></span><span class="htk-meal-level-l">{{l.label}}</span></div></div></div>
-    <!-- 理由は「少しだけ」「食べれなかった」のときだけ任意で。複数選択可。スキップしてもOK -->
-    <div v-if="selectedMealLevel!=='ate'" class="htk-fg"><span class="htk-fl">{{copy.optionalMealReasons}}</span><div class="htk-meal-reasons"><span v-for="r in mealReasons" :key="r" :class="['htk-meal-reason',selectedMealReasons.includes(r)&&'on']" @click="toggleMealReason(r)">{{mealReasonLabel(r)}}</span></div></div>
-    <div class="htk-fg"><span class="htk-fl">{{copy.optionalNote}}</span><textarea class="htk-inp" v-model="mealNote" :placeholder="copy.mealNotePlaceholder"></textarea></div>
-    <div style="display:flex;gap:8px;margin-top:12px"><button class="htk-btn htk-primary" style="flex:1" @click="saveMeal" :disabled="isSaving">{{isSaving?copy.saving:(editingMeal?copy.update:copy.record)}}</button><button v-if="editingMeal" class="htk-btn" @click="cancelEditMeal">{{copy.cancel}}</button></div>
-  </div></div>
-
-  <!-- MEAL SUMMARY: 数値評価はしない。記録した行為を中立に労うのみ -->
-  <div v-if="settings.showMealSummary!==false" class="htk-lg htk-anim"><div class="htk-gc" style="text-align:center">
-    <div class="htk-meal-summary">{{mealSummaryMessage}}</div>
-  </div></div>
-
-  <div class="htk-lg htk-anim"><div class="htk-gc"><h3 class="htk-sec-title">{{copy.mealRecords}}</h3>
-    <template v-if="meals.length"><div v-for="date in pagedMealDates" :key="date" class="htk-mood-dg"><div class="htk-mood-dg-h">{{formatMoodDate(String(date))}}<span v-if="mealsByDate[date].length>1" class="htk-mood-dg-c">{{copyx.count({count:mealsByDate[date].length.toString()})}}</span></div><div v-for="m in mealsByDate[date]" :key="m.id" class="htk-mood-en"><div class="htk-mood-en-t">{{m.time}}</div><span class="htk-mood-en-e"><i :class="mealSlotInfo(m.slot).emoji"></i></span><div class="htk-mood-en-ct"><div class="htk-meal-en-head"><span class="htk-meal-en-slot">{{mealSlotInfo(m.slot).label}}</span><span class="htk-meal-en-level" :style="{color:mealLevelInfo(m.level).color}"><i :class="mealLevelInfo(m.level).emoji"></i> {{mealLevelInfo(m.level).label}}</span></div><div v-if="m.reasons&&m.reasons.length" class="htk-meal-en-reasons"><span v-for="r in m.reasons" :key="r" class="htk-meal-en-reason">{{mealReasonLabel(r)}}</span></div><div v-if="m.note" class="htk-mood-en-n">{{m.note}}</div></div><div class="htk-mood-en-acts"><button class="htk-mood-en-a" @click="startEditMeal(m)"><i class="ti ti-pencil"></i></button><button class="htk-mood-en-a del" @click="deleteMeal(m.id)"><i class="ti ti-x"></i></button></div></div></div>
-    <div v-if="mealTotalPages>1" class="htk-pager"><button class="htk-btn htk-xs" :disabled="mealPage<=1" @click="mealPage--">&lt;</button><span class="htk-pager-t">{{mealPage}} / {{mealTotalPages}}</span><button class="htk-btn htk-xs" :disabled="mealPage>=mealTotalPages" @click="mealPage++">&gt;</button></div>
-    </template>
-    <div v-else class="htk-empty"><div class="htk-empI"><i class="ti ti-circle-off"></i></div><div>{{copy.noRecordsYet}}</div></div>
-  </div></div>
+<div v-show="activeTab==='meal'" class="htk-tabpage htk-journal-page" :class="tabDir==='fwd'?'htk-tab-fwd':'htk-tab-back'">
+  <HataskJournal
+    kind="meal"
+    :entries="mealJournalRows"
+    :writable="journalWritable('meals')"
+    :loading="!dataLoaded"
+    :active="activeTab==='meal'"
+    :motion="settings.animations!==false && prefer.r.animation.value"
+    :illustration="isHatakyu?hkAsset('chefCooking'):undefined"
+    :templates="mealTemplates"
+    :templatesWritable="journalWritable(HATASK_MEAL_TEMPLATE_KEY)"
+    :summary="mealSummaryMessage"
+    :showSummary="settings.showMealSummary!==false"
+    :save="saveMealEntry"
+    :remove="deleteMealEntry"
+    :storeTemplate="saveMealTemplate"
+    :removeTemplate="deleteMealTemplate"
+    @info="showMealDisclaimer=true"
+  />
 </div>
 
 <!-- ========== GARDEN ========== -->
@@ -1012,6 +973,7 @@ import { $i } from '@/i.js';
 import { useRouter } from '@/router.js';
 import { useStream } from '@/stream.js';
 import { i18n } from '@/i18n.js';
+import { prefer } from '@/preferences.js';
 import { versatileLang } from '@/utility/intl-const.js';
 import MkEarthquakeTicker from '@/components/MkEarthquakeTicker.vue';
 import HataFeedNotificationBody from '@/components/HataFeedNotificationBody.vue';
@@ -1021,6 +983,9 @@ import HataskEventMoveDialog from '@/components/hatask/HataskEventMoveDialog.vue
 import type { HataskEventMoveDialogLabels } from '@/components/hatask/HataskEventMoveDialog.vue';
 import HataskTodoPlanner from '@/components/hatask/HataskTodoPlanner.vue';
 import HataskQuickCapture from '@/components/hatask/HataskQuickCapture.vue';
+import HataskJournal from '@/components/hatask/HataskJournal.vue';
+import { HATASK_MEAL_TEMPLATE_KEY, isJournalEntry, persistJournalChange } from '@/utility/hatask-journal.js';
+import type { HataskJournalChange, HataskJournalEntry, HataskMealTemplate } from '@/utility/hatask-journal.js';
 import type { HataskCaptureChip, HataskCaptureTool } from '@/components/hatask/HataskQuickCapture.vue';
 import HataskTemplateLibrary from '@/components/hatask/HataskTemplateLibrary.vue';
 import type { HataskTemplateKindFilter, HataskTemplateLabels } from '@/components/hatask/HataskTemplateLibrary.vue';
@@ -1055,15 +1020,11 @@ const tabDir=ref<'fwd'|'back'>('fwd');
 const showMobileNav=ref(true);
 // 旗鯖fork(v2): きもち5段階は Tabler アイコンに統一(§05)。
 const moodIcons:Record<number,string>={1:'ti ti-mood-cry',2:'ti ti-mood-sad',3:'ti ti-mood-neutral',4:'ti ti-mood-smile',5:'ti ti-mood-heart'};
-const moodOptions=computed(() => [{level:1,icon:'ti ti-mood-cry',label:copy.moodLevelHard},{level:2,icon:'ti ti-mood-sad',label:copy.moodLevelUneasy},{level:3,icon:'ti ti-mood-neutral',label:copy.moodLevelNeutral},{level:4,icon:'ti ti-mood-smile',label:copy.moodLevelGood},{level:5,icon:'ti ti-mood-heart',label:copy.moodLevelGreat}]);
-const moodEmojisExtra=['☀️','🌧️','⚡','🌈','🍵','🎵','💪','😴'];
 const moodRemindTimes=['朝 8:00','昼 12:00','夜 20:00','寝る前 23:00'];
 // ===== 食事記録(meal) 定数。医療目的ではない自己記録メモ。数値評価・カロリー計算はしない =====
 const mealSlots=computed(() => [{id:'breakfast',emoji:'ti ti-sunrise',label:copy.mealSlotBreakfast},{id:'lunch',emoji:'ti ti-sun',label:copy.mealSlotLunch},{id:'dinner',emoji:'ti ti-moon',label:copy.mealSlotDinner},{id:'snack',emoji:'ti ti-cookie',label:copy.mealSlotSnack}]);
 // 3段階はすべて中立・等価に扱う。「食べれなかった」を否定的に強調しない
 const mealLevels=computed(() => [{id:'ate',emoji:'ti ti-bowl-chopsticks',label:copy.mealLevelAte,color:'#85cdca'},{id:'little',emoji:'ti ti-bowl-spoon',label:copy.mealLevelLittle,color:'#e8a87c'},{id:'none',emoji:'ti ti-cup',label:copy.mealLevelNone,color:'#c38d9e'}]);
-// 「少しだけ」「食べれなかった」のときだけ任意で表示。複数選択可。体型・体重・カロリーに触れる選択肢は置かない
-const mealReasons=['食欲がなかった','体調がよくなかった','忙しくて時間がなかった','気分がのらなかった','用意できなかった','なんとなく'];
 const mealDisclaimerText=computed(() => copy.mealDisclaimerFull);
 const eventColors=['#e27d60','#85cdca','#e8a87c','#c38d9e','#7bc67e','#f0c75e','#6cb4ee'];
 const eventEmojis=['⭐','💼','🎮','🔧','📚','🎂','✈️','🎨','🏃','🎤'];
@@ -1082,20 +1043,10 @@ const moodRemindTimeLabels: Record<string, () => string> = {
 	'夜 20:00': () => copy.moodReminderEvening,
 	'寝る前 23:00': () => copy.moodReminderBedtime,
 };
-const mealReasonLabels: Record<string, () => string> = {
-	'食欲がなかった': () => copy.mealReasonNoAppetite,
-	'体調がよくなかった': () => copy.mealReasonUnwell,
-	'忙しくて時間がなかった': () => copy.mealReasonBusy,
-	'気分がのらなかった': () => copy.mealReasonNotInMood,
-	'用意できなかった': () => copy.mealReasonCouldNotPrepare,
-	'なんとなく': () => copy.mealReasonJustBecause,
-};
 
 function notifyTimingLabel(value: string): string { return notifyTimingLabels[value]?.() ?? value; }
 
 function moodRemindTimeLabel(value: string): string { return moodRemindTimeLabels[value]?.() ?? value; }
-
-function mealReasonLabel(value: string): string { return mealReasonLabels[value]?.() ?? value; }
 
 function moodNoteLabel(value: string): string { return value === '（ひとことなし）' ? copy.noMoodNote : value; }
 
@@ -1124,7 +1075,7 @@ const plannerStoragePort = createHataskPlannerApiStoragePort((endpoint, params) 
 const plannerTemplates = ref<HataskPlannerTemplate[]>([]);
 const plannerTemplateRevision = ref<HataskPlannerRevision>(null);
 const templateKindFilter = ref<HataskTemplateKindFilter>('all');
-let plannerTemplatesLoaded = false;
+const plannerTemplatesLoaded = ref(false);
 const plannerStorageState = ref<'loading'|'ready'|'saving'|'saved'|'blocked'|'conflict'>('loading');
 const plannerStorageDetail = ref('');
 let plannerMigrationReady = false;
@@ -1194,18 +1145,18 @@ async function loadPlannerTemplates(): Promise<void> {
 	const snapshot = await plannerStoragePort.readTemplates();
 	const normalized = normalizeHataskPlannerTemplates(snapshot.value);
 	if (normalized.invalidCount > 0) {
-		plannerTemplatesLoaded = false;
+		plannerTemplatesLoaded.value = false;
 		plannerStorageState.value = 'blocked';
 		plannerStorageDetail.value = plannerCopy.templateReadFailure;
 		throw new Error(plannerStorageDetail.value);
 	}
 	plannerTemplates.value = normalized.templates;
 	plannerTemplateRevision.value = snapshot.revision;
-	plannerTemplatesLoaded = true;
+	plannerTemplatesLoaded.value = true;
 }
 
 async function savePlannerTemplates(next: HataskPlannerTemplate[]): Promise<void> {
-	if (!plannerMigrationReady || !plannerTemplatesLoaded) throw new Error('Hatask template write blocked before verified read');
+	if (!plannerMigrationReady || !plannerTemplatesLoaded.value) throw new Error('Hatask template write blocked before verified read');
 	plannerStorageState.value = 'saving';
 	try {
 		const result = await plannerStoragePort.writeTemplates(next, plannerTemplateRevision.value);
@@ -1317,8 +1268,9 @@ watch(activeTab, (t) => {
     showEyeDisclaimer.value = true;
   }
 });
-const showMoodDisclaimer=ref(false);const showFlowerInfo=ref(false);const showMoodNote=ref(true);const showMoodRemind=ref(false);
-const moodSelectedEmoji=ref('');const rootEl=ref<HTMLElement|null>(null);
+const showMoodDisclaimer = ref(false);
+const showFlowerInfo = ref(false);
+const rootEl = ref<HTMLElement | null>(null);
 // 旗鯖fork(v2 §16①): 起動ブートスプラッシュ。アニメON かつ reduced-motion でないときのみ、
 //   hatask がアクティブになるたび約1.2s表示してフェードアウト。
 // bootKey で毎回ブート要素を作り直す(前のブートと重なって「混ざる」のを防ぐ)。
@@ -2055,7 +2007,28 @@ async function saveSettings(){await registrySet('settings',settings.value)}
 watch(hkWindEnabled,(on)=>{ if(on) hkScheduleWind(); else hkStopWind(); });
 // タブを切り替えた瞬間にも1回吹かせる(紙が入れ替わったことが伝わる)。
 watch(activeTab,()=>{ if(hkWindEnabled.value){hkBlowWind();hkScheduleWind();} });
-function toggleMoodRemindTime(t:string){if(!settings.value.moodRemindTimes)settings.value.moodRemindTimes=[];const i=settings.value.moodRemindTimes.indexOf(t);if(i>=0)settings.value.moodRemindTimes.splice(i,1);else settings.value.moodRemindTimes.push(t);saveSettings();scheduleMoodReminders()}
+const journalReminderSaving = ref(false);
+
+async function saveJournalReminder(patch: { moodRemind?: boolean; moodRemindTimes?: string[] }): Promise<void> {
+	if (journalReminderSaving.value || !loadedKeys.has('settings')) return;
+	journalReminderSaving.value = true;
+	try {
+		await registrySet('settings', { ...settings.value, ...patch });
+		settings.value = { ...settings.value, ...patch };
+		scheduleMoodReminders();
+	} catch {
+		os.alert({ type: 'error', text: i18n.ts._hata._hatask._journal.saveFailure });
+	} finally {
+		journalReminderSaving.value = false;
+	}
+}
+
+async function setJournalReminder(enabled: boolean): Promise<void> { await saveJournalReminder({ moodRemind: enabled }); }
+
+async function toggleMoodRemindTime(t: string): Promise<void> {
+	const times: string[] = Array.isArray(settings.value.moodRemindTimes) ? settings.value.moodRemindTimes : [];
+	await saveJournalReminder({ moodRemindTimes: times.includes(t) ? times.filter(time => time !== t) : [...times, t] });
+}
 function toggleNotifyTiming(t:string){const i=newEvent.value.notifyTimings.indexOf(t);if(i>=0)newEvent.value.notifyTimings.splice(i,1);else newEvent.value.notifyTimings.push(t)}
 
 // Calendar
@@ -2183,8 +2156,6 @@ const eventCaptureChips=computed<HataskCaptureChip[]>(()=>{
 	return chips;
 });
 const eventCaptureTools=computed<HataskCaptureTool[]>(()=>[
-	{id:'templates',label:plannerCopy.useTemplates,icon:'ti ti-template',active:showEventTemplates.value,showLabel:true,tone:'accent'},
-	{id:'save-template',label:plannerCopy.saveTemplate,icon:'ti ti-bookmark-plus',showLabel:true,tone:'neutral'},
 	{id:'date',label:copy.dateAndTime,icon:'ti ti-calendar-event'},
 	{id:'all-day',label:copy.allDayFull,icon:'ti ti-sun',active:newEvent.value.allDay},
 	{id:'visibility',label:copy.visibility,icon:newEvent.value.visibility==='public'?'ti ti-world':'ti ti-lock',active:newEvent.value.visibility==='public'},
@@ -2227,8 +2198,6 @@ async function handleEventCaptureChip(id:string):Promise<void>{
 	if(id==='recurrence')await handleEventCaptureTool('repeat');
 }
 async function handleEventCaptureTool(id:string):Promise<void>{
-	if(id==='templates'){showEventTemplates.value=!showEventTemplates.value;if(showEventTemplates.value){showEventDetails.value=false;eventCaptureEditor.value=null}return}
-	if(id==='save-template'){await saveEventCaptureAsTemplate();return}
 	if(id==='details'){showEventDetails.value=!showEventDetails.value;if(showEventDetails.value){showEventTemplates.value=false;eventCaptureEditor.value=null}return}
 	if(id==='date'){eventCaptureEditor.value=eventCaptureEditor.value==='date'?null:'date';showEventDetails.value=false;showEventTemplates.value=false;return}
 	if(id==='all-day'){eventCaptureEditor.value=eventCaptureEditor.value==='time'?null:'time';showEventDetails.value=false;showEventTemplates.value=false;return}
@@ -2379,7 +2348,6 @@ const todoCaptureChips=computed<HataskCaptureChip[]>(()=>{
 	return chips;
 });
 const todoCaptureTools=computed<HataskCaptureTool[]>(()=>[
-	{id:'template',label:plannerCopy.saveTemplate,icon:'ti ti-bookmark-plus',showLabel:true,tone:'neutral'},
 	{id:'date',label:copy.dueDate,icon:'ti ti-calendar-event',active:Boolean(newTodoDue.value)},
 	{id:'folder',label:copy.folder,icon:'ti ti-folder',active:Boolean(newTodoFolder.value)},
 	{id:'priority',label:plannerCopy.priority,icon:'ti ti-flag',active:newTodoPriority.value!=='none'},
@@ -2420,8 +2388,27 @@ async function handleTodoCaptureTool(id:string):Promise<void>{
 	if(id==='folder'){await chooseTodoFolder();return}
 	if(id==='priority'){await chooseTodoPriority();return}
 	if(id==='repeat'){await chooseTodoRecurrence();return}
-	if(id==='template')await saveTodoCaptureAsTemplate();
 }
+
+function openPlannerCaptureTemplates(kind: 'todo' | 'event', event: MouseEvent): void {
+	if (plannerReadOnly.value || !plannerTemplatesLoaded.value) return;
+	os.popupMenu([
+		{ text: plannerCopy.useTemplates, icon: 'ti ti-template', action: () => {
+			if (kind === 'todo') {
+				templateKindFilter.value = 'todo';
+				plannerTodoView.value = 'templates';
+				showTodoExtra.value = false;
+				todoCaptureEditor.value = null;
+			} else {
+				showEventTemplates.value = true;
+				showEventDetails.value = false;
+				eventCaptureEditor.value = null;
+			}
+		} },
+		{ text: plannerCopy.saveTemplate, icon: 'ti ti-bookmark-plus', disabled: !(kind === 'todo' ? newTodo.value : newEvent.value.title).trim(), action: () => kind === 'todo' ? saveTodoCaptureAsTemplate() : saveEventCaptureAsTemplate() },
+	], event.currentTarget as HTMLElement, { motionPreset: 'postform' });
+}
+
 const plannerTemplateLabels=computed<HataskTemplateLabels>(()=>({
 	library:plannerCopy.templateLibrary,reusable:plannerCopy.reusableTemplates,filter:plannerCopy.filter,all:copy.all,todo:plannerCopy.todo,event:plannerCopy.calendar,
 	empty:plannerCopy.noTemplates,emptyHint:plannerCopy.templateEmptyHint,useAction:plannerCopy.useTemplateAction,
@@ -2793,15 +2780,15 @@ function togglePlannerTodoFilter(filterId:string):void{
 }
 
 // Mood
-const selectedMoodLevel=ref(4);const moodNote=ref('');const editingMood=ref<any>(null);
-const moods=ref<any[]>([]);
-const moodsByDate=computed(()=>{const g:Record<string,any[]>={};[...moods.value].sort((a,b)=>b.date.localeCompare(a.date)||b.time.localeCompare(a.time)).forEach(m=>{if(!g[m.date])g[m.date]=[];g[m.date].push(m)});return g});
+const moodJournalRows = ref<unknown[]>([]);
+const moods = computed<any[]>(() => moodJournalRows.value.filter(row => isJournalEntry(row, 'mood')));
 
 // Meal(食事記録) - mood と並列。医療目的ではない自己記録メモ。集計の数値化・スコア化はしない
-const selectedMealSlot=ref('breakfast');const selectedMealLevel=ref('ate');const selectedMealReasons=ref<string[]>([]);const mealNote=ref('');const editingMeal=ref<any>(null);
-const meals=ref<any[]>([]);
+const mealJournalRows = ref<unknown[]>([]);
+const meals = computed<any[]>(() => mealJournalRows.value.filter(row => isJournalEntry(row, 'meal')));
+const mealTemplates = ref<unknown[]>([]);
+const journalValidKeys = ref<string[]>([]);
 const showMealDisclaimer=ref(false);
-const mealsByDate=computed(()=>{const g:Record<string,any[]>={};[...meals.value].sort((a,b)=>b.date.localeCompare(a.date)||b.time.localeCompare(a.time)).forEach(m=>{if(!g[m.date])g[m.date]=[];g[m.date].push(m)});return g});
 // サマリーは数値評価を出さない。記録した行為そのものを中立に肯定する労いのみ
 const mealTodayCount=computed(()=>{const today=localDateKey();return meals.value.filter(m=>m.date===today).length});
 // 旗鯖fork(ハタキュ): コルク板の「ごはん記録」紙に貼る今日の分。⚠️多すぎると紙が伸びるので3件まで。
@@ -2825,20 +2812,8 @@ const mealSummaryMessage=computed(()=>{const c=mealTodayCount.value;if(c===0)ret
 
 // ===== PAGINATION =====
 const ITEMS_PER_PAGE = 10;
-const moodPage = ref(1);
 const eventPage = ref(1);
 const calListPage = ref(1);
-
-// Paginated mood dates
-const moodDateKeys = computed(()=>Object.keys(moodsByDate.value));
-const moodTotalPages = computed(()=>Math.max(1,Math.ceil(moodDateKeys.value.length/ITEMS_PER_PAGE)));
-const pagedMoodDates = computed(()=>{const start=(moodPage.value-1)*ITEMS_PER_PAGE;return moodDateKeys.value.slice(start,start+ITEMS_PER_PAGE)});
-
-// Paginated meal dates
-const mealPage = ref(1);
-const mealDateKeys = computed(()=>Object.keys(mealsByDate.value));
-const mealTotalPages = computed(()=>Math.max(1,Math.ceil(mealDateKeys.value.length/ITEMS_PER_PAGE)));
-const pagedMealDates = computed(()=>{const start=(mealPage.value-1)*ITEMS_PER_PAGE;return mealDateKeys.value.slice(start,start+ITEMS_PER_PAGE)});
 
 // Paginated events for selected day
 const eventTotalPages = computed(()=>Math.max(1,Math.ceil(eventsForDay.value.length/ITEMS_PER_PAGE)));
@@ -2881,33 +2856,6 @@ const calListEvents = computed(()=>{
 const calListTotalPages = computed(()=>Math.max(1,Math.ceil(calListEvents.value.length/ITEMS_PER_PAGE)));
 const pagedCalList = computed(()=>{const start=(calListPage.value-1)*ITEMS_PER_PAGE;return calListEvents.value.slice(start,start+ITEMS_PER_PAGE)});
 
-const moodAnalysis=computed(()=>{
-  const now=new Date();const weekAgo=new Date(now);weekAgo.setDate(weekAgo.getDate()-7);
-  const recent=moods.value.filter((m:any)=>{const d=new Date(m.date);return d>=weekAgo});
-  const allRecent=recent.length?recent:moods.value.slice(-10);
-  const avg=allRecent.reduce((s:number,m:any)=>s+m.level,0)/Math.max(allRecent.length,1);
-  const trendEmoji=avg>=4.2?'🥰':avg>=3.5?'😊':avg>=2.8?'😐':avg>=2?'😞':'😢';
-  const trendLabel=avg>=4.2?copy.moodTrendVeryPositive:avg>=3.5?copy.moodTrendPositive:avg>=2.8?copy.moodTrendNeutral:avg>=2?copy.moodTrendNegative:copy.moodTrendHard;
-  const trendColor=avg>=4.2?'#6bbd67':avg>=3.5?'#85cdca':avg>=2.8?'#d4a574':avg>=2?'#e08760':'#c03050';
-  // Time slots
-  const slots=[{label:copy.moodTimeMorning,min:6,max:11},{label:copy.moodTimeDay,min:11,max:17},{label:copy.moodTimeEvening,min:17,max:22},{label:copy.moodTimeLateNight,min:22,max:30}];
-  const timeSlots=slots.map(s=>{
-    const inSlot=moods.value.filter((m:any)=>{if(!m.time)return false;const h=parseInt(m.time.split(':')[0]);const hNorm=h<6?h+24:h;return hNorm>=s.min&&hNorm<s.max});
-    const a=inSlot.length?inSlot.reduce((sum:number,m:any)=>sum+m.level,0)/inSlot.length:0;
-    const emoji=a>=4?'😊':a>=3?'😐':a>=2?'😞':a>0?'😢':'';
-    const color=a>=4?'#6bbd67':a>=3?'#85cdca':a>=2?'#e08760':a>0?'#c03050':'#666';
-    return{label:s.label,avg:a,emoji,color,count:inSlot.length}
-  }).filter(t=>t.count>0);
-  // Insight
-  let insight='';
-  const best=timeSlots.length?timeSlots.reduce((a,b)=>a.avg>b.avg?a:b):null;
-  const worst=timeSlots.length?timeSlots.reduce((a,b)=>a.avg<b.avg?a:b):null;
-  if(best&&worst&&best.label!==worst.label&&timeSlots.length>=2){
-    insight=copyx.moodInsightComparison({ best: best.label, bestScore: best.avg.toFixed(1), worst: worst.label, worstScore: worst.avg.toFixed(1) })
-  }else if(avg>=4){insight=copy.moodInsightPositive}
-  else if(avg<=2.5){insight=copy.moodInsightGentle}
-  return{avgScore:avg.toFixed(1),avgScoreRaw:avg,trendEmoji,trendLabel,trendColor,timeSlots,insight}
-});
 const weekMoods=computed(()=>{const now=new Date();const mon=new Date(now);mon.setDate(now.getDate()-((now.getDay()+6)%7));mon.setHours(0,0,0,0);return Array.from({ length: 7 },(_,i)=>{const d=new Date(mon);d.setDate(mon.getDate()+i);const ds=d.toISOString().slice(0,10);const last=moods.value.filter(m=>m.date===ds).pop();return{day: weekdayShortFormatter.format(d),icon:last?moodIcons[last.level]:''};})});
 
 // Garden
@@ -3001,7 +2949,14 @@ function formatFlowerDate(item: { harvestedAt?: string; date?: string }): string
 
 // Search
 const searchQuery=ref('');const searchInput=ref<HTMLInputElement|null>(null);
-const searchResults=computed(()=>{const q=searchQuery.value.toLowerCase();return{todos:todos.value.filter(t=>t.text.toLowerCase().includes(q)||(t.comment&&t.comment.toLowerCase().includes(q))).slice(0,5),moods:moods.value.filter(m=>m.note.toLowerCase().includes(q)).slice(0,5),events:events.value.filter(e=>e.title.toLowerCase().includes(q)).slice(0,5)}});
+const searchResults = computed(() => {
+	const q = searchQuery.value.toLowerCase();
+	return {
+		todos: todos.value.filter(t => t.text.toLowerCase().includes(q) || (t.comment && t.comment.toLowerCase().includes(q))).slice(0, 5),
+		moods: moods.value.filter(m => (m.note ?? '').toLowerCase().includes(q)).slice(0, 5),
+		events: events.value.filter(event => event.title.toLowerCase().includes(q)).slice(0, 5),
+	};
+});
 const recentMoodsForSearch=computed(()=>moods.value.slice(0,3));
 function formatSearchDate(d:string):string{const dd=parseIsoDate(d);const now=new Date();now.setHours(0,0,0,0);const day=new Date(dd); day.setHours(0, 0, 0, 0); const diff=Math.floor((now.getTime()-day.getTime())/(86400000));if(diff===0)return copy.today;if(diff===1)return copy.yesterday;return monthDayFormatter.format(dd)}
 watch(showSearch,v=>{if(v)nextTick(()=>searchInput.value?.focus())});
@@ -3011,7 +2966,6 @@ function generateId():string{return Date.now().toString(36)+Math.random().toStri
 function formatDue(d:string,t?:string):string{const todayDate=new Date();todayDate.setHours(0,0,0,0);const x=parseIsoDate(d);x.setHours(0,0,0,0);let l='';if(x.getTime()===todayDate.getTime())l=copy.today;else{const tomorrow=new Date(todayDate);tomorrow.setDate(tomorrow.getDate()+1);if(x.getTime()===tomorrow.getTime())l=copy.tomorrow;else l=monthDayFormatter.format(x)}if(t)l+=' '+t;return l}
 function isDueToday(d:string):boolean{return d===localDateKey()}
 function isOverdue(d:string):boolean{return /^\d{4}-\d{2}-\d{2}$/.test(d)&&d<localDateKey()}
-function formatMoodDate(d:string):string{return monthDayWeekdayFormatter.format(parseIsoDate(d))}
 
 // ========== GREETING SYSTEM (500+ variations) ==========
 // Eye page computed stats
@@ -3219,27 +3173,45 @@ async function deleteFolder(folderId:string){if(plannerReadOnly.value)return;con
 async function renameFolder(folderId:string){if(plannerReadOnly.value)return;const folder=folders.value.find(item=>item.id===folderId&&item.archivedAt==null);if(!folder)return;const{canceled,result}=await os.inputText({title:copy.renameFolderTitle,text:copy.newNamePrompt,default:folder.name});if(!canceled&&result){const next=folders.value.map(item=>item.id===folder.id?{...item,name:result}:item);await registrySet('folders',next);folders.value=next}}
 async function moveFolder(folderId:string,direction:number){if(plannerReadOnly.value)return;const ordered=activeFolders.value;const index=ordered.findIndex(folder=>folder.id===folderId);const other=ordered[index+direction];const current=ordered[index];if(!current||!other)return;const next=folders.value.map(folder=>folder.id===current.id?{...folder,position:other.position}:folder.id===other.id?{...folder,position:current.position}:folder);await registrySet('folders',next);folders.value=next}
 async function changeFolderColor(folderId:string){if(plannerReadOnly.value)return;const folder=folders.value.find(item=>item.id===folderId&&item.archivedAt==null);if(!folder)return;const{canceled,result}=await os.actions({type:'question',title:copy.folderColorTitle,actions:[...folderColors.value.map(c=>({value:c.value,text:c.label})),{value:'',text:copy.none}]});if(canceled)return;const next=folders.value.map(item=>item.id===folder.id?{...item,color:result}:item);await registrySet('folders',next);folders.value=next}
-async function saveMood(){isSaving.value=true;try{if(editingMood.value){const idx=moods.value.findIndex(m=>m.id===editingMood.value.id);if(idx>=0){moods.value[idx]={...moods.value[idx],level:selectedMoodLevel.value,note:moodNote.value.trim()||'（ひとことなし）',emoji:moodSelectedEmoji.value}}editingMood.value=null;moodNote.value='';moodSelectedEmoji.value='';await registrySet('moods',moods.value);os.toast(copy.moodUpdated)}else{const now=new Date();moods.value.unshift({id:generateId(),level:selectedMoodLevel.value,note:moodNote.value.trim()||'（ひとことなし）',emoji:moodSelectedEmoji.value,date:now.toISOString().slice(0,10),time:`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`});moodNote.value='';moodSelectedEmoji.value='';await registrySet('moods',moods.value);os.toast(copy.moodSaved)}}finally{isSaving.value=false}}
-function startEditMood(m:any){editingMood.value=m;selectedMoodLevel.value=m.level;moodNote.value=m.note==='（ひとことなし）'?'':m.note;moodSelectedEmoji.value=m.emoji||'';showMoodNote.value=true;window.scrollTo({top:0,behavior:'smooth'})}
-function cancelEditMood(){editingMood.value=null;selectedMoodLevel.value=4;moodNote.value='';moodSelectedEmoji.value=''}
-async function deleteMood(id:string){const{canceled}=await os.confirm({type:'warning',text:copy.confirmDeleteRecord});if(canceled)return;moods.value=moods.value.filter(m=>m.id!==id);await registrySet('moods',moods.value)}
 
-// ===== 食事記録(meal) ロジック。3段階は等価に扱い、数値評価・スコア化はしない =====
-function toggleMealReason(r:string){const i=selectedMealReasons.value.indexOf(r);if(i>=0)selectedMealReasons.value.splice(i,1);else selectedMealReasons.value.push(r)}
-function resetMealForm(){selectedMealSlot.value='breakfast';selectedMealLevel.value='ate';selectedMealReasons.value=[];mealNote.value='';editingMeal.value=null}
-async function saveMeal(){isSaving.value=true;try{
-  // 「食べれた」のときは理由を保存しない(尋問感を出さないため)
-  const reasons=selectedMealLevel.value==='ate'?[]:[...selectedMealReasons.value];
-  if(editingMeal.value){const idx=meals.value.findIndex(m=>m.id===editingMeal.value.id);if(idx>=0){meals.value[idx]={...meals.value[idx],slot:selectedMealSlot.value,level:selectedMealLevel.value,reasons,note:mealNote.value.trim()};}resetMealForm();await registrySet('meals',meals.value);os.toast(copy.recordUpdated)}
-  else{const now=new Date();meals.value.unshift({id:generateId(),slot:selectedMealSlot.value,level:selectedMealLevel.value,reasons,note:mealNote.value.trim(),date:now.toISOString().slice(0,10),time:`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`});resetMealForm();await registrySet('meals',meals.value);os.toast(copy.mealRecorded)}
-}finally{isSaving.value=false}}
-function startEditMeal(m:any){editingMeal.value=m;selectedMealSlot.value=m.slot;selectedMealLevel.value=m.level;selectedMealReasons.value=Array.isArray(m.reasons)?[...m.reasons]:[];mealNote.value=m.note||'';window.scrollTo({top:0,behavior:'smooth'})}
-function cancelEditMeal(){resetMealForm()}
-async function deleteMeal(id:string){const{canceled}=await os.confirm({type:'warning',text:copy.confirmDeleteRecord});if(canceled)return;meals.value=meals.value.filter(m=>m.id!==id);await registrySet('meals',meals.value)}
+type HataskJournalKey = 'moods' | 'meals' | typeof HATASK_MEAL_TEMPLATE_KEY;
+const journalWrites = new Set<HataskJournalKey>();
+
+function journalWritable(key: string): boolean {
+	return dataLoaded.value && loadedKeys.has(key) && journalValidKeys.value.includes(key);
+}
+
+async function commitJournalChange(key: HataskJournalKey, change: HataskJournalChange): Promise<void> {
+	if (!journalWritable(key) || journalWrites.has(key)) throw new Error('Hatask journal write is not ready');
+	const target = key === 'moods' ? moodJournalRows : key === 'meals' ? mealJournalRows : mealTemplates;
+	journalWrites.add(key);
+	try {
+		// Keep the original arrays and drafts until the server acknowledges the write.
+		target.value = await persistJournalChange(target.value, change, next => registrySet(key, next));
+	} finally { journalWrites.delete(key); }
+}
+
+async function saveMoodEntry(entry: HataskJournalEntry, existingId?: string): Promise<void> {
+	await commitJournalChange('moods', { type: 'save', value: entry, existingId });
+}
+
+async function deleteMoodEntry(id: string): Promise<void> { await commitJournalChange('moods', { type: 'delete', id }); }
+
+async function saveMealEntry(entry: HataskJournalEntry, existingId?: string): Promise<void> {
+	await commitJournalChange('meals', { type: 'save', value: entry, existingId });
+}
+
+async function deleteMealEntry(id: string): Promise<void> { await commitJournalChange('meals', { type: 'delete', id }); }
+
+async function saveMealTemplate(template: HataskMealTemplate, existingId?: string): Promise<void> {
+	await commitJournalChange(HATASK_MEAL_TEMPLATE_KEY, { type: 'save', value: template, existingId });
+}
+
+async function deleteMealTemplate(id: string): Promise<void> { await commitJournalChange(HATASK_MEAL_TEMPLATE_KEY, { type: 'delete', id }); }
+
 function mealSlotInfo(id:string){return mealSlots.value.find(s=>s.id===id)||{emoji:'ti ti-tools-kitchen-2',label:''}}
 function mealLevelInfo(id:string){return mealLevels.value.find(l=>l.id===id)||{emoji:'ti ti-tools-kitchen-2',label:'',color:'var(--MI_THEME-fg)'}}
 // 免責ダイアログ: 初回必ず表示、以降は!マークから手動表示
-async function showMealDisclaimerDialog(){showMealDisclaimer.value=true}
 async function ackMealDisclaimer(){showMealDisclaimer.value=false;if(!settings.value.mealDisclaimerShown){settings.value.mealDisclaimerShown=true;await registrySet('settings',settings.value)}}
 
 async function harvestFlower() {
@@ -3535,13 +3507,17 @@ const loadResults = await Promise.allSettled([
   registryGet('settings', defaultSettings),
   registryGet('events', []),
   registryGet('meals', []),
+  registryGet(HATASK_MEAL_TEMPLATE_KEY, []),
 ]);
 // 取得成功したデータのみ代入（失敗したキーは初期値のまま → registrySetガードで保護）
 // 移行検証に失敗した配列はサーバー上へそのまま保全し、型の崩れた値を
 // UIへ流して二次障害を起こさない。再試行に成功するまで空の読取専用表示にする。
 if (plannerMigrationReady && loadResults[0].status === 'fulfilled' && loadedKeys.has('todos')) todos.value = loadResults[0].value as HataskPlannerTodo[];
 if (plannerMigrationReady && loadResults[1].status === 'fulfilled' && loadedKeys.has('folders')) folders.value = loadResults[1].value as HataskPlannerFolder[];
-if (loadResults[2].status === 'fulfilled' && loadedKeys.has('moods')) moods.value = loadResults[2].value as any;
+if (loadResults[2].status === 'fulfilled' && loadedKeys.has('moods') && Array.isArray(loadResults[2].value)) {
+	moodJournalRows.value = loadResults[2].value;
+	journalValidKeys.value.push('moods');
+}
 	// 花が未作成でもregistryGetが返した既定値は画面へ反映する。
 	// 永続化は成長トラッカーがNO_SUCH_KEYを再確認してから行うため、通信失敗時に既存値を上書きしない。
 	if (loadResults[3].status === 'fulfilled') {
@@ -3555,7 +3531,14 @@ if (loadResults[4].status === 'fulfilled' && loadedKeys.has('gallery')) {
 }
 if (loadResults[5].status === 'fulfilled' && loadedKeys.has('settings')) settings.value = loadResults[5].value as any;
 if (plannerMigrationReady && loadResults[6].status === 'fulfilled' && loadedKeys.has('events')) events.value = loadResults[6].value as HataskPlannerEvent[];
-if (loadResults[7].status === 'fulfilled' && loadedKeys.has('meals')) meals.value = loadResults[7].value as any;
+if (loadResults[7].status === 'fulfilled' && loadedKeys.has('meals') && Array.isArray(loadResults[7].value)) {
+	mealJournalRows.value = loadResults[7].value;
+	journalValidKeys.value.push('meals');
+}
+if (loadResults[8].status === 'fulfilled' && loadedKeys.has(HATASK_MEAL_TEMPLATE_KEY) && Array.isArray(loadResults[8].value)) {
+	mealTemplates.value = loadResults[8].value;
+	journalValidKeys.value.push(HATASK_MEAL_TEMPLATE_KEY);
+}
 if (plannerMigrationReady) {
 	try { await loadPlannerTemplates(); } catch (error) { console.warn('Hatask templates remain read-only:', error); }
 }
@@ -4098,6 +4081,14 @@ select.htk-inp{appearance:none;cursor:pointer;padding-right:36px}
 .htk-dash .htk-lg>.htk-gc{height:100%;box-sizing:border-box;min-width:0;max-width:100%;overflow-wrap:anywhere;word-break:break-word}
 .htk-panels{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 .htk-calendar-page{align-items:start}
+.htk-journal-page{display:block;min-width:0}
+.htk-journal-reminders{display:grid;gap:12px}
+.htk-journal-reminders>div{display:flex;flex-wrap:wrap;gap:8px}
+.htk-journal-reminders button{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:8px 14px;border:1px solid var(--rule);border-radius:999px;background:var(--fill);color:var(--fg-2);font:inherit;font-size:.82rem;cursor:pointer}
+.htk-journal-reminders button[data-selected="true"]{background:var(--accent);color:var(--on-accent)}
+.htk-journal-reminders button:hover:not(:disabled){background:var(--fill-3);color:var(--fg)}
+.htk-journal-reminders button:disabled{opacity:.45;cursor:default}
+.htk-journal-reminders button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 @media(max-width:900px){.htk-panels{grid-template-columns:1fr}}
 .htk-dt-time{font-size:3rem;font-weight:700;letter-spacing:-1px;line-height:1.1}
 .htk-dt-date{font-size:.92rem;color:var(--text-2);margin-top:8px}

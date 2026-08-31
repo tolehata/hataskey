@@ -12,26 +12,41 @@ SPDX-License-Identifier: AGPL-3.0-only
 	@focusin="expand"
 >
 	<div :class="$style.pill">
-		<div :class="$style.inputRow">
-			<span :class="$style.leading" aria-hidden="true"><i :class="mode === 'event' ? 'ti ti-calendar-plus' : 'ti ti-square-rounded-plus'"></i></span>
+		<div :class="$style.inputRow" :data-has-template="templateLabel != null">
+			<span :class="$style.leading" aria-hidden="true"><i :class="leadingIcon ?? (mode === 'event' ? 'ti ti-calendar-plus' : 'ti ti-square-rounded-plus')"></i></span>
 			<label :class="$style.srOnly" :for="inputId">{{ label }}</label>
-			<input
+			<component
+				:is="multiline ? 'textarea' : 'input'"
 				:id="inputId"
 				ref="inputEl"
 				:value="modelValue"
 				:class="$style.input"
-				type="text"
+				:type="multiline ? undefined : 'text'"
+				:rows="multiline ? 1 : undefined"
 				:placeholder="placeholder"
-				:disabled="disabled"
+				:disabled="disabled || state === 'saving'"
 				:aria-describedby="hint ? `${inputId}-hint` : undefined"
 				@input="emit('update:modelValue', ($event.target as HTMLInputElement).value)"
-				@keydown.enter.exact.prevent="emit('submit')"
+				@keydown="onInputKeydown"
 				@keydown.esc="collapse"
+			/>
+			<button
+				v-if="templateLabel"
+				type="button"
+				:class="[$style.tool, $style.templateTrigger]"
+				:disabled="disabled || templateDisabled || state === 'saving'"
+				:aria-label="templateLabel"
+				:title="templateLabel"
+				aria-haspopup="menu"
+				data-template-trigger
+				@click="emit('template', $event)"
 			>
+				<i class="ti ti-template" aria-hidden="true"></i>
+			</button>
 			<button
 				type="button"
 				:class="$style.submit"
-				:disabled="disabled || state === 'saving' || modelValue.trim().length === 0"
+				:disabled="!canSubmit"
 				:aria-label="submitLabel"
 				:title="submitLabel"
 				@click="emit('submit')"
@@ -39,15 +54,17 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<i :class="submitIcon" aria-hidden="true"></i>
 			</button>
 		</div>
+		<slot name="primary"></slot>
 
 		<Transition name="capture-tools">
-			<div v-if="isOpen" :class="$style.expanded">
+			<div v-if="isOpen || persistentChips" :class="$style.expanded">
 				<div v-if="chips.length" :class="$style.chips" :aria-label="chipLabel">
 					<button
 						v-for="chip in chips"
 						:key="chip.id"
 						type="button"
 						:class="$style.chip"
+						:disabled="disabled || state === 'saving'"
 						:data-action="chip.actionLabel != null"
 						:style="chip.color ? { '--capture-chip-color': chip.color } : undefined"
 						:aria-label="chip.actionLabel ?? chipRemoveLabel(chip.label)"
@@ -60,7 +77,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					</button>
 				</div>
 
-				<div :class="$style.toolRow">
+				<div v-if="isOpen" :class="$style.toolRow">
 					<div :class="$style.tools" role="toolbar" :aria-label="toolLabel">
 						<button
 							v-for="tool in tools"
@@ -70,7 +87,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 							:data-active="tool.active"
 							:data-labeled="tool.showLabel"
 							:data-tone="tool.tone"
-							:disabled="disabled || tool.disabled"
+							:disabled="disabled || state === 'saving' || tool.disabled"
 							:aria-label="tool.label"
 							:title="tool.label"
 							:aria-pressed="tool.active == null ? undefined : tool.active"
@@ -89,7 +106,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { computed, nextTick, ref } from 'vue';
+import { computed, nextTick, ref, useId } from 'vue';
 
 export type HataskCaptureChip = {
 	id: string;
@@ -111,13 +128,19 @@ export type HataskCaptureTool = {
 };
 
 const props = withDefaults(defineProps<{
-	mode: 'todo' | 'event';
+	mode: 'todo' | 'event' | 'mood' | 'meal';
+	leadingIcon?: string;
+	multiline?: boolean;
+	allowEmpty?: boolean;
+	persistentChips?: boolean;
 	modelValue: string;
 	label: string;
 	placeholder: string;
 	submitLabel: string;
 	chipLabel?: string;
 	toolLabel?: string;
+	templateLabel?: string;
+	templateDisabled?: boolean;
 	removeChipLabel?: (chipLabel: string) => string;
 	hint?: string;
 	chips?: HataskCaptureChip[];
@@ -126,8 +149,14 @@ const props = withDefaults(defineProps<{
 	detailOpen?: boolean;
 	state?: 'idle' | 'saving' | 'success' | 'error';
 }>(), {
+	leadingIcon: undefined,
+	multiline: false,
+	allowEmpty: false,
+	persistentChips: false,
 	chipLabel: 'Selected options',
 	toolLabel: 'Input options',
+	templateLabel: undefined,
+	templateDisabled: false,
 	removeChipLabel: undefined,
 	hint: '',
 	chips: () => [],
@@ -141,15 +170,18 @@ const emit = defineEmits<{
 	(ev: 'update:modelValue', value: string): void;
 	(ev: 'submit'): void;
 	(ev: 'tool', toolId: string): void;
+	(ev: 'template', event: MouseEvent): void;
 	(ev: 'chip', chipId: string): void;
 	(ev: 'remove-chip', chipId: string): void;
 	(ev: 'collapse'): void;
 }>();
 
-const inputEl = ref<HTMLInputElement | null>(null);
+const inputEl = ref<HTMLInputElement | HTMLTextAreaElement | null>(null);
 const expanded = ref(false);
-const inputId = computed(() => `hatask-${props.mode}-capture`);
+const captureId = useId();
+const inputId = computed(() => `hatask-${props.mode}-capture-${captureId}`);
 const isOpen = computed(() => expanded.value || props.detailOpen || props.modelValue.trim().length > 0);
+const canSubmit = computed(() => !props.disabled && props.state !== 'saving' && (props.allowEmpty || props.modelValue.trim().length > 0));
 const submitIcon = computed(() => props.state === 'saving'
 	? 'ti ti-loader-2'
 	: props.state === 'success'
@@ -159,6 +191,13 @@ const submitIcon = computed(() => props.state === 'saving'
 			: 'ti ti-plus');
 
 function chipRemoveLabel(label: string): string { return props.removeChipLabel?.(label) ?? `Remove ${label}`; }
+
+function onInputKeydown(event: KeyboardEvent): void {
+	if (event.isComposing || event.key !== 'Enter' || event.shiftKey || event.altKey) return;
+	if (props.multiline && !event.ctrlKey && !event.metaKey) return;
+	event.preventDefault();
+	if (canSubmit.value) emit('submit');
+}
 
 function activateChip(chip: HataskCaptureChip): void {
 	if (chip.actionLabel != null) emit('chip', chip.id);
@@ -173,9 +212,9 @@ function collapse(): void {
 	emit('collapse');
 }
 
-function focus(): void {
+function focus(options?: FocusOptions): void {
 	expand();
-	nextTick(() => inputEl.value?.focus());
+	nextTick(() => inputEl.value?.focus(options));
 }
 
 defineExpose({ focus });
@@ -215,6 +254,9 @@ defineExpose({ focus });
 	gap: 5px;
 }
 
+.inputRow[data-has-template="true"] { grid-template-columns: 42px minmax(0, 1fr) 44px 44px; }
+.templateTrigger:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
 .leading {
 	width: 42px;
 	height: 42px;
@@ -241,6 +283,9 @@ defineExpose({ focus });
 }
 
 .input::placeholder { color: var(--fg-3); font-weight: 560; }
+textarea.input { box-sizing: border-box; height: auto; min-height: 44px; max-height: 180px; field-sizing: content; padding-block: 12px; resize: vertical; line-height: 1.5; }
+.input:focus-visible { border-radius: 12px; outline: 2px solid var(--accent); outline-offset: -2px; }
+.chip:disabled { cursor: default; opacity: .42; }
 
 .submit,
 .tool {
@@ -399,6 +444,7 @@ defineExpose({ focus });
 @container (max-width: 520px) {
 	.pill { padding: 5px; }
 	.inputRow { grid-template-columns: 38px minmax(0, 1fr) 44px; }
+	.inputRow[data-has-template="true"] { grid-template-columns: 38px minmax(0, 1fr) 44px 44px; }
 	.leading { width: 38px; height: 38px; }
 	.toolRow { align-items: flex-start; flex-direction: column; }
 	.tools { width: 100%; }
