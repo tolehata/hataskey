@@ -11,7 +11,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<MkHatakyuIllustration v-if="useHatakyuBranding()" asset="showingId" :size="64" style="margin: 0 auto;"/><i v-else class="ti ti-file-description"></i>
 	</div>
 	<div class="_spacer" style="--MI_SPACER-min: 20px; --MI_SPACER-max: 32px;">
-		<form class="_gaps_m" @submit.prevent="onSubmit">
+		<MkInfo v-if="!applicationsEnabled" warn>{{ i18n.ts._hata._registrationApplications.registrationModeChanged }}</MkInfo>
+		<form v-else class="_gaps_m" @submit.prevent="onSubmit">
 
 			<!-- 戻るリンク -->
 			<button type="button" :class="$style.backLink" @click="emit('back')">
@@ -29,6 +30,24 @@ SPDX-License-Identifier: AGPL-3.0-only
 					:placeholder="copy.reasonPlaceholder"
 				></textarea>
 				<div :class="$style.charCount">{{ reason.length }} / 1024</div>
+			</div>
+
+			<div class="_gaps_s">
+				<label :for="contactsId" :class="$style.label">{{ copy.contactsLabel }} <span :class="$style.optional">({{ i18n.ts.optional }})</span></label>
+				<textarea
+					:id="contactsId"
+					v-model="additionalContacts"
+					:class="$style.textarea"
+					rows="3"
+					maxlength="1024"
+					:disabled="submitting"
+					:spellcheck="false"
+					autocomplete="off"
+					:placeholder="copy.contactsPlaceholder"
+					:aria-describedby="`${contactsId}-hint ${contactsId}-purpose`"
+				></textarea>
+				<div :id="`${contactsId}-hint`" :class="$style.fieldHint">{{ copy.contactsHint }}</div>
+				<div :id="`${contactsId}-purpose`" :class="$style.fieldHint">{{ copy.contactsPurpose }}</div>
 			</div>
 
 			<!-- 2. ユーザーID -->
@@ -90,29 +109,29 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<MkCaptcha v-if="instance.enableTestcaptcha" ref="testcaptcha" v-model="testcaptchaResponse" :class="$style.captcha" provider="testcaptcha" :sitekey="null"/>
 
 			<!-- 6. 同意事項 -->
-			<div class="_gaps_s">
+			<div v-if="serverRules.length > 0 || tosUrl || privacyPolicyUrl" class="_gaps_s">
 				<div :class="$style.label">{{ copy.agreements }}</div>
 
-				<div :class="$style.rulesBox">
+				<div v-if="serverRules.length > 0" :class="$style.rulesBox">
 					<div :class="$style.rulesTitle">{{ copy.serverRules }}</div>
 					<ol :class="$style.rulesList">
-						<li>{{ copy.ruleAge }}</li>
-						<li>{{ copy.ruleGdpr }}</li>
-						<li>{{ copy.ruleModeration }}</li>
+						<!-- Server rules use the same administrator-authored markup as MkSignupDialog.rules. -->
+						<!-- eslint-disable-next-line vue/no-v-html -->
+						<li v-for="(rule, index) in serverRules" :key="index" v-html="rule"></li>
 					</ol>
 				</div>
 
-				<label :class="$style.checkboxLabel">
+				<label v-if="serverRules.length > 0" :class="$style.checkboxLabel">
 					<input v-model="agreeRules" type="checkbox" :class="$style.checkbox"/>
 					{{ copy.agreeRules }}
 				</label>
-				<label :class="$style.checkboxLabel">
+				<label v-if="tosUrl" :class="$style.checkboxLabel">
 					<input v-model="agreeTos" type="checkbox" :class="$style.checkbox"/>
-					<a href="https://misskey.hatachanoima.net/@Hatacha/pages/terms" target="_blank">{{ copy.terms }}</a>{{ copy.agreeDocumentSuffix }}
+					<a :href="tosUrl" target="_blank" rel="noopener noreferrer">{{ copy.terms }}</a>{{ copy.agreeDocumentSuffix }}
 				</label>
-				<label :class="$style.checkboxLabel">
+				<label v-if="privacyPolicyUrl" :class="$style.checkboxLabel">
 					<input v-model="agreePrivacy" type="checkbox" :class="$style.checkbox"/>
-					<a href="https://misskey.hatachanoima.net/@Hatacha/pages/privacy" target="_blank">{{ copy.privacyPolicy }}</a>{{ copy.agreeDocumentSuffix }}
+					<a :href="privacyPolicyUrl" target="_blank" rel="noopener noreferrer">{{ copy.privacyPolicy }}</a>{{ copy.agreeDocumentSuffix }}
 				</label>
 			</div>
 
@@ -123,6 +142,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<span>{{ copy.privacyHandling }}</span>
 				</div>
 				<div :class="$style.privacyNoticeBody">
+					<div :class="$style.privacyNoticeSection">
+						<div :class="$style.privacyNoticeSectionTitle"><i class="ti ti-shield-lock"></i><span>{{ copy.contactsHandling }}</span></div>
+						<p>{{ copy.contactsDeletion }}</p>
+						<p>{{ copy.contactsSeparation }}</p>
+						<p>{{ copy.contactsBackupNotice }}</p>
+					</div>
 					<div :class="$style.privacyNoticeSection">
 						<div :class="$style.privacyNoticeSectionTitle">
 							<i class="ti ti-check" :class="$style.privacyIconApproved"></i>
@@ -163,19 +188,36 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onBeforeUnmount, useId, watch } from 'vue';
 import MkButton from '@/components/MkButton.vue';
 import MkInput from '@/components/MkInput.vue';
+import MkInfo from '@/components/MkInfo.vue';
 import type { Captcha } from '@/components/MkCaptcha.vue';
 import MkCaptcha from '@/components/MkCaptcha.vue';
 import * as os from '@/os.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
-import { instance } from '@/instance.js';
+import { fetchInstance, instance } from '@/instance.js';
 import MkHatakyuIllustration from '@/components/MkHatakyuIllustration.vue';
 import { useHatakyuBranding } from '@/utility/hatakyu-assets.js';
 import { i18n } from '@/i18n.js';
 
 const copy = i18n.ts._hata._registrationApplications._application;
+const modeUnavailable = ref(false);
+const applicationsEnabled = computed(() => instance.disableRegistration === true && !modeUnavailable.value);
+const serverRules = computed(() => instance.serverRules ?? []);
+
+function policyUrl(value: string | null | undefined): string | undefined {
+	if (!value?.trim()) return undefined;
+	try {
+		const url = new URL(value, window.location.origin);
+		return ['http:', 'https:'].includes(url.protocol) ? url.href : undefined;
+	} catch { return undefined; }
+}
+
+const tosUrl = computed(() => policyUrl(instance.tosUrl));
+const privacyPolicyUrl = computed(() => policyUrl(instance.privacyPolicyUrl));
+let disposed = false;
+let modeVersion = 0;
 
 const emit = defineEmits<{
 	(ev: 'complete'): void;
@@ -191,6 +233,8 @@ const testcaptcha = ref<Captcha | undefined>();
 
 // --- フォーム値 ---
 const reason = ref('');
+const additionalContacts = ref('');
+const contactsId = useId();
 const username = ref('');
 const password = ref('');
 const retypedPassword = ref('');
@@ -211,6 +255,17 @@ const testcaptchaResponse = ref<string | null>(null);
 const usernameState = ref<null | 'wait' | 'ok' | 'unavailable' | 'error' | 'invalid-format'>(null);
 const usernameAbortController = ref<null | AbortController>(null);
 
+watch(() => instance.disableRegistration, () => { modeUnavailable.value = false; });
+watch(applicationsEnabled, () => {
+	modeVersion++;
+	usernameAbortController.value?.abort();
+	if (!applicationsEnabled.value) additionalContacts.value = '';
+}, { flush: 'sync' });
+watch(() => JSON.stringify(serverRules.value), () => { agreeRules.value = false; }, { flush: 'sync' });
+watch(tosUrl, () => { agreeTos.value = false; }, { flush: 'sync' });
+watch(privacyPolicyUrl, () => { agreePrivacy.value = false; }, { flush: 'sync' });
+onBeforeUnmount(() => { disposed = true; usernameAbortController.value?.abort(); additionalContacts.value = ''; });
+
 // 旗鯖fork: メアド重複検出フラグ (送信時にサーバーから EMAIL_ALREADY_EXISTS が返った時に true)
 // メアドが変更されたら false にリセットする
 const emailUnavailable = ref(false);
@@ -227,15 +282,16 @@ const passwordRetypeState = ref<null | 'match' | 'not-match'>(null);
 
 // --- 送信可否 ---
 const shouldDisableSubmitting = computed((): boolean => {
-	return submitting.value ||
+	return !applicationsEnabled.value || submitting.value ||
 		reason.value.trim().length === 0 ||
+		additionalContacts.value.length > 1024 ||
 		usernameState.value !== 'ok' ||
 		passwordRetypeState.value !== 'match' ||
 		password.value.length < 8 ||
 		!email.value.includes('@') ||
-		!agreeRules.value ||
-		!agreeTos.value ||
-		!agreePrivacy.value ||
+		(serverRules.value.length > 0 && !agreeRules.value) ||
+		(Boolean(tosUrl.value) && !agreeTos.value) ||
+		(Boolean(privacyPolicyUrl.value) && !agreePrivacy.value) ||
 		(instance.enableHcaptcha && !hCaptchaResponse.value) ||
 		(instance.enableMcaptcha && !mCaptchaResponse.value) ||
 		(instance.enableRecaptcha && !reCaptchaResponse.value) ||
@@ -254,28 +310,31 @@ function getPasswordStrength(source: string): number {
 }
 
 function onChangeUsername(): void {
+	usernameAbortController.value?.abort();
+	usernameAbortController.value = null;
+	if (!applicationsEnabled.value) return;
 	if (username.value === '') {
 		usernameState.value = null;
 		return;
 	}
 
-	if (!username.value.match(/^[a-zA-Z0-9_]+$/)) {
+	if (!username.value.match(/^[a-zA-Z0-9_]{1,20}$/)) {
 		usernameState.value = 'invalid-format';
 		return;
 	}
 
-	if (usernameAbortController.value != null) {
-		usernameAbortController.value.abort();
-	}
 	usernameState.value = 'wait';
-	usernameAbortController.value = new AbortController();
+	const controller = new AbortController();
+	const checkedUsername = username.value;
+	usernameAbortController.value = controller;
+	const isCurrent = () => !disposed && applicationsEnabled.value && !controller.signal.aborted && usernameAbortController.value === controller && username.value === checkedUsername;
 
 	misskeyApi('username/available', {
-		username: username.value,
-	}, undefined, usernameAbortController.value.signal).then(result => {
-		usernameState.value = result.available ? 'ok' : 'unavailable';
+		username: checkedUsername,
+	}, undefined, controller.signal).then(result => {
+		if (isCurrent()) usernameState.value = result.available ? 'ok' : 'unavailable';
 	}).catch((err) => {
-		if (err.name !== 'AbortError') {
+		if (isCurrent() && err.name !== 'AbortError') {
 			usernameState.value = 'error';
 		}
 	});
@@ -316,29 +375,39 @@ function resetCaptcha() {
 async function onSubmit(): Promise<void> {
 	if (submitting.value || shouldDisableSubmitting.value) return;
 	submitting.value = true;
+	const version = modeVersion;
 
 	try {
 		await (misskeyApi as any)('registration/apply', {
 			username: username.value,
 			password: password.value,
 			reason: reason.value.trim(),
+			additionalContacts: additionalContacts.value.trim() || undefined,
 			email: email.value.trim(),
 			'hcaptcha-response': hCaptchaResponse.value,
 			'm-captcha-response': mCaptchaResponse.value,
 			'g-recaptcha-response': reCaptchaResponse.value,
 			'turnstile-response': turnstileResponse.value,
 			'testcaptcha-response': testcaptchaResponse.value,
-		});
+		}, null);
 
-		emit('complete');
+		additionalContacts.value = '';
+		if (!disposed && applicationsEnabled.value && version === modeVersion) emit('complete');
 	} catch (err: any) {
+		if (disposed) return;
 		submitting.value = false;
 		resetCaptcha();
 
-		console.error('[registration/apply] Error:', err);
-
 		const code = err?.code;
-		if (code === 'USERNAME_ALREADY_EXISTS') {
+		if (code === 'REGISTRATION_APPLICATIONS_DISABLED') {
+			modeUnavailable.value = true;
+			let refreshed = false;
+			await fetchInstance(true).then(() => { refreshed = true; }).catch(() => { /* Keep the stale form blocked if the refresh fails. */ });
+			if (!disposed) {
+				os.alert({ type: 'info', text: i18n.ts._hata._registrationApplications.registrationModeChanged });
+				if (refreshed) emit('back');
+			}
+		} else if (code === 'USERNAME_ALREADY_EXISTS') {
 			usernameState.value = 'unavailable';
 			os.alert({ type: 'error', text: copy.usernameUnavailableAlert });
 		} else if (code === 'EMAIL_ALREADY_EXISTS') {
@@ -401,6 +470,17 @@ async function onSubmit(): Promise<void> {
 	font-size: 0.8em;
 }
 
+.optional {
+	font-size: 0.85em;
+	font-weight: normal;
+}
+
+.fieldHint {
+	font-size: 0.9em;
+	line-height: 1.7;
+	overflow-wrap: anywhere;
+}
+
 .textarea {
 	width: 100%;
 	padding: 10px 12px;
@@ -415,7 +495,8 @@ async function onSubmit(): Promise<void> {
 
 	&:focus {
 		border-color: var(--MI_THEME-accent);
-		outline: none;
+		outline: 2px solid var(--MI_THEME-accent);
+		outline-offset: 2px;
 	}
 }
 

@@ -6,10 +6,13 @@
  */
 
 import { Inject, Injectable } from '@nestjs/common';
+import { DataSource } from 'typeorm';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import { DI } from '@/di-symbols.js';
-import type { RegistrationApplicationsRepository } from '@/models/_.js';
+import type { MiMeta } from '@/models/_.js';
+import { MiRegistrationApplication } from '@/models/RegistrationApplication.js';
 import { ApiError } from '@/server/api/error.js';
+import { assertRegistrationApplicationsEnabled, registrationApplicationsDisabledError } from '@/core/registration-application-policy.js';
 
 export const meta = {
 	tags: ['admin'],
@@ -20,6 +23,7 @@ export const meta = {
 	kind: 'write:admin:reject-registration',
 
 	errors: {
+		registrationApplicationsDisabled: registrationApplicationsDisabledError,
 		noSuchApplication: {
 			message: 'No such application.',
 			code: 'NO_SUCH_APPLICATION',
@@ -44,35 +48,42 @@ export const paramDef = {
 @Injectable()
 export default class extends Endpoint<typeof meta, typeof paramDef> {
 	constructor(
-		@Inject(DI.registrationApplicationsRepository)
-		private registrationApplicationsRepository: RegistrationApplicationsRepository,
+		@Inject(DI.meta)
+		private serverMeta: MiMeta,
+
+		@Inject(DI.db)
+		private db: DataSource,
 	) {
 		super(meta, paramDef, async (ps, me) => {
-			const application = await this.registrationApplicationsRepository.findOneBy({
-				id: ps.applicationId,
-			});
+			assertRegistrationApplicationsEnabled(this.serverMeta);
+			await this.db.transaction(async transactionalEntityManager => {
+				const application = await transactionalEntityManager.findOne(MiRegistrationApplication, {
+					where: { id: ps.applicationId },
+					lock: { mode: 'pessimistic_write' },
+					select: { id: true, status: true },
+				});
+				assertRegistrationApplicationsEnabled(this.serverMeta);
 
-			if (!application) {
-				throw new ApiError(meta.errors.noSuchApplication);
-			}
+				if (!application) {
+					throw new ApiError(meta.errors.noSuchApplication);
+				}
 
-			if (application.status !== 'pending') {
-				throw new ApiError(meta.errors.alreadyProcessed);
-			}
+				if (application.status !== 'pending') {
+					throw new ApiError(meta.errors.alreadyProcessed);
+				}
 
-			// 却下処理 (旗鯖fork: プライバシー強化)
-			// - ステータスを rejected に
-			// - username / hashedPassword は即時削除 (null セット)
-			// - email は重複申請拒否のため 90日 (CleanProcessorService の保持期間) は維持
-			// - personalDataDeletedAt に削除実行日時を記録
-			// - メール通知は送信しない
-			const now = new Date();
-			await this.registrationApplicationsRepository.update(application.id, {
-				status: 'rejected',
-				rejectedAt: now,
-				username: null,
-				hashedPassword: null,
-				personalDataDeletedAt: now,
+				// Keep email for the existing 90-day duplicate-application protection.
+				// Delete credentials and review-only contacts in the same decision write.
+				const now = new Date();
+				await transactionalEntityManager.update(MiRegistrationApplication, application.id, {
+					status: 'rejected',
+					rejectedAt: now,
+					username: null,
+					hashedPassword: null,
+					additionalContacts: null,
+					personalDataDeletedAt: now,
+				});
+				assertRegistrationApplicationsEnabled(this.serverMeta);
 			});
 
 			return { success: true };

@@ -50,6 +50,7 @@ import { NoteDeleteService } from './NoteDeleteService.js';
 import { NotePiningService } from './NotePiningService.js';
 import { NoteDraftService } from './NoteDraftService.js';
 import { NotificationService } from './NotificationService.js';
+import { RegistrationApplicationNotificationService } from './RegistrationApplicationNotificationService.js';
 import { PollService } from './PollService.js';
 import { UtageService } from './UtageService.js';
 import { FeedbackService } from './FeedbackService.js';
@@ -217,6 +218,7 @@ const $NoteDeleteService: Provider = { provide: 'NoteDeleteService', useExisting
 const $NotePiningService: Provider = { provide: 'NotePiningService', useExisting: NotePiningService };
 const $NoteDraftService: Provider = { provide: 'NoteDraftService', useExisting: NoteDraftService };
 const $NotificationService: Provider = { provide: 'NotificationService', useExisting: NotificationService };
+const $RegistrationApplicationNotificationService: Provider = { provide: 'RegistrationApplicationNotificationService', useExisting: RegistrationApplicationNotificationService };
 const $PollService: Provider = { provide: 'PollService', useExisting: PollService };
 const $UtageService: Provider = { provide: 'UtageService', useExisting: UtageService };
 const $FeedbackService: Provider = { provide: 'FeedbackService', useExisting: FeedbackService };
@@ -390,6 +392,7 @@ const $ApEventService: Provider = { provide: 'ApEventService', useExisting: ApEv
 		NotePiningService,
 		NoteDraftService,
 		NotificationService,
+		RegistrationApplicationNotificationService,
 		PollService,
 		UtageService,
 		FeedbackService,
@@ -560,6 +563,7 @@ const $ApEventService: Provider = { provide: 'ApEventService', useExisting: ApEv
 		$NotePiningService,
 		$NoteDraftService,
 		$NotificationService,
+		$RegistrationApplicationNotificationService,
 		$PollService,
 		$UtageService,
 		$FeedbackService,
@@ -730,6 +734,7 @@ const $ApEventService: Provider = { provide: 'ApEventService', useExisting: ApEv
 		NotePiningService,
 		NoteDraftService,
 		NotificationService,
+		RegistrationApplicationNotificationService,
 		PollService,
 		UtageService,
 		FeedbackService,
@@ -899,6 +904,7 @@ const $ApEventService: Provider = { provide: 'ApEventService', useExisting: ApEv
 		$NotePiningService,
 		$NoteDraftService,
 		$NotificationService,
+		$RegistrationApplicationNotificationService,
 		$PollService,
 		$UtageService,
 		$FeedbackService,

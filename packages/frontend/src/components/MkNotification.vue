@@ -16,6 +16,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<div v-else-if="notification.type === 'note:grouped'" :class="[$style.icon, $style.icon_noteGroup]"><i class="ti ti-pencil" style="line-height: 1;"></i></div>
 		<MkAvatar v-else-if="'user' in notification" :class="$style.icon" :user="notification.user" link preview/>
 		<div v-else-if="notification.type === 'app' && notification.id === NOTIFICATION_FILTER_POLICY_NOTICE_ID" :class="[$style.icon, $style.icon_filterPolicy]"><i class="ti ti-filter-cog"></i></div>
+		<div v-else-if="notification.type === 'app' && notification.link === '/admin/registration-applications' && notification.icon == null" :class="[$style.icon, $style.icon_registrationApplication]"><i class="ti ti-user-plus" aria-hidden="true"></i></div>
 		<!-- 旗鯖fork: Hatask 通知は言語非依存の link subtype で判別。旧通知向けに日本語 header 判定も残す。 -->
 		<div v-else-if="notification.type === 'app' && !notification.icon && ((notification.link?.includes('notice=calendar') ?? false) || (notification.header != null && /カレンダー|イベント|スケジュール|予定/.test(notification.header)))" :class="[$style.icon, $style.icon_hataskCalendar]"><i class="ti ti-calendar-event"></i></div>
 		<div v-else-if="notification.type === 'app' && !notification.icon && ((notification.link?.includes('notice=mood') ?? false) || (notification.header != null && /きもち|感情|気分|ムード|記録/.test(notification.header)))" :class="[$style.icon, $style.icon_hataskHeart]"><i class="ti ti-mood-smile"></i></div>
@@ -455,6 +456,18 @@ async function rejectPrivateChannelInvitation(invitationId: string) {
 	background: var(--MI_THEME-accent);
 	color: var(--MI_THEME-fgOnAccent);
 	font-size: 20px;
+}
+
+.icon_registrationApplication {
+	display: grid;
+	place-items: center;
+	width: 100%;
+	height: 100%;
+	border-radius: 100%;
+	background: var(--MI_THEME-accent);
+	color: var(--MI_THEME-fgOnAccent);
+	font-size: 22px;
+	line-height: 1;
 }
 
 .icon_reactionGroup {

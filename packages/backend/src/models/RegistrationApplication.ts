@@ -5,11 +5,12 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { Entity, PrimaryColumn, Column, Index, JoinColumn, ManyToOne } from 'typeorm';
+import { Entity, PrimaryColumn, Column, Index, JoinColumn, ManyToOne, Check } from 'typeorm';
 import { id } from './util/id.js';
 import { MiUser } from './User.js';
 
 @Entity('registration_application')
+@Check('CHK_registration_application_pending_contacts', `"status" = 'pending' OR "additionalContacts" IS NULL`)
 export class MiRegistrationApplication {
 	@PrimaryColumn(id())
 	public id: string;
@@ -48,6 +49,14 @@ export class MiRegistrationApplication {
 		nullable: true,
 	})
 	public email: string | null;
+
+	/** Optional review-only contacts; cleared atomically when a decision is made. */
+	@Column('varchar', {
+		length: 1024,
+		nullable: true,
+		select: false,
+	})
+	public additionalContacts: string | null;
 
 	@Index()
 	@Column('varchar', {

@@ -39,9 +39,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</div>
 			</div>
 
-			<!-- ステップ2a: 従来の招待コード登録 -->
+			<!-- ステップ2a: 通常登録（申請制のときは招待コード登録） -->
 			<div v-else-if="step === 'invite'" key="invite">
-				<XServerRules v-if="!isAcceptedServerRule" @done="isAcceptedServerRule = true" @cancel="step = 'branch'; isAcceptedServerRule = false"/>
+				<XServerRules v-if="!isAcceptedServerRule" @done="acceptRules" @cancel="backFromRules"/>
 				<XSignup v-else :autoSet="autoSet" @signup="onSignup" @signupEmailPending="onSignupEmailPending"/>
 			</div>
 
@@ -49,7 +49,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<div v-else-if="step === 'application'" key="application">
 				<MkRegistrationApplication
 					@complete="onApplicationComplete"
-					@back="step = 'branch'"
+					@back="backFromApplication"
 				/>
 			</div>
 
@@ -77,7 +77,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { onMounted, onUnmounted, useTemplateRef, ref } from 'vue';
+import { computed, onMounted, onUnmounted, useTemplateRef, ref, watch } from 'vue';
 import * as Misskey from 'cherrypick-js';
 import XSignup from '@/components/MkSignupDialog.form.vue';
 import XServerRules from '@/components/MkSignupDialog.rules.vue';
@@ -87,6 +87,7 @@ import MkRegistrationApplication from '@/components/MkRegistrationApplication.vu
 import MkHatakyuIllustration from '@/components/MkHatakyuIllustration.vue';
 import { useHatakyuBranding } from '@/utility/hatakyu-assets.js';
 import { i18n } from '@/i18n.js';
+import { instance } from '@/instance.js';
 
 const props = withDefaults(defineProps<{
 	autoSet?: boolean;
@@ -101,9 +102,18 @@ const emit = defineEmits<{
 }>();
 
 const dialog = useTemplateRef('dialog');
-const step = ref<'branch' | 'invite' | 'application' | 'applicationComplete'>('branch');
+const applicationMode = computed(() => instance.disableRegistration === true);
+const step = ref<'branch' | 'invite' | 'application' | 'applicationComplete'>(applicationMode.value ? 'branch' : 'invite');
 const isAcceptedServerRule = ref(false);
 const copy = i18n.ts._hata._common;
+
+// A settings refresh can change the registration mode while this dialog is open.
+// Re-enter the matching rules flow rather than keeping a stale application form.
+watch(applicationMode, enabled => {
+	if (step.value === 'applicationComplete') return;
+	isAcceptedServerRule.value = false;
+	step.value = enabled ? 'branch' : 'invite';
+}, { flush: 'sync' });
 
 onMounted(() => {
 	window.document.documentElement.setAttribute('data-hata-signup-modal-open', 'true');
@@ -118,7 +128,23 @@ function goInviteCode() {
 }
 
 function goApplication() {
+	if (!applicationMode.value) return;
 	step.value = 'application';
+}
+
+function acceptRules() {
+	if (step.value === 'invite') isAcceptedServerRule.value = true;
+}
+
+function backFromRules() {
+	isAcceptedServerRule.value = false;
+	if (applicationMode.value) step.value = 'branch';
+	else onClose();
+}
+
+function backFromApplication() {
+	isAcceptedServerRule.value = false;
+	step.value = applicationMode.value ? 'branch' : 'invite';
 }
 
 function onClose() {
@@ -136,7 +162,7 @@ function onSignupEmailPending() {
 }
 
 function onApplicationComplete() {
-	step.value = 'applicationComplete';
+	if (applicationMode.value && step.value === 'application') step.value = 'applicationComplete';
 }
 </script>
 

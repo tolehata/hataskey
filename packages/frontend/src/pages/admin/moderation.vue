@@ -8,14 +8,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 	<div class="_spacer" style="--MI_SPACER-w: 700px; --MI_SPACER-min: 16px; --MI_SPACER-max: 32px;">
 		<SearchMarker path="/admin/moderation" :label="i18n.ts.moderation" :keywords="['moderation']" icon="ti ti-shield" :inlining="['serverRules']">
 			<div class="_gaps_m">
-				<SearchMarker :keywords="['open', 'registration']">
-					<MkSwitch :modelValue="enableRegistration" :disabled="true" @update:modelValue="onChange_enableRegistration">
-						<template #label><SearchLabel>{{ i18n.ts._serverSettings.openRegistration }}</SearchLabel></template>
+				<SearchMarker :keywords="['open', 'registration', 'application']">
+					<MkSwitch :modelValue="acceptApplications" :disabled="savingRegistrationMode" @update:modelValue="onChange_acceptApplications">
+						<template #label><SearchLabel>{{ i18n.ts._hata._registrationApplications.acceptApplications }}</SearchLabel></template>
 						<template #caption>
-							<div style="color: var(--MI_THEME-warn);"><i class="ti ti-flag"></i> <b>{{ i18n.ts._hata._adminCommon.openRegistrationDisabled }}</b>{{ i18n.ts._hata._adminCommon.openRegistrationRisk }}</div>
-							<div><SearchText>{{ i18n.ts._serverSettings.thisSettingWillAutomaticallyOffWhenModeratorsInactive }}</SearchText></div>
-							<div><i class="ti ti-alert-triangle" style="color: var(--MI_THEME-warn);"></i> <SearchText>{{ i18n.ts._serverSettings.openRegistrationWarning }}</SearchText></div>
-							<div v-if="(enableRegistration && disableRegistrationWhenInactive) || disableRegistrationWhenInactive" style="margin-top: 8px;">{{ i18n.ts._serverSettings.thisSettingWillAutomaticallyOffWhenModeratorsInactive }}</div>
+							<div><SearchText>{{ i18n.ts._hata._registrationApplications.acceptApplicationsDescription }}</SearchText></div>
+							<div v-if="enableRegistration"><i class="ti ti-alert-triangle" aria-hidden="true" style="color: var(--MI_THEME-warn);"></i> <SearchText>{{ i18n.ts._serverSettings.openRegistrationWarning }}</SearchText></div>
 						</template>
 					</MkSwitch>
 				</SearchMarker>
@@ -225,7 +223,9 @@ import MkSelect from '@/components/MkSelect.vue';
 
 const meta = await misskeyApi('admin/meta');
 
-const enableRegistration = ref(!meta.disableRegistration);
+const acceptApplications = ref(meta.disableRegistration === true);
+const enableRegistration = computed(() => !acceptApplications.value);
+const savingRegistrationMode = ref(false);
 const emailRequiredForSignup = ref(meta.emailRequiredForSignup);
 const {
 	model: ugcVisibilityForVisitor,
@@ -252,22 +252,24 @@ const mediaSilencedHosts = ref(meta.mediaSilencedHosts.join('\n'));
 const trustedLinkUrlPatterns = ref(meta.trustedLinkUrlPatterns.join('\n'));
 const bubbleTimeline = ref(meta.bubbleInstances.join('\n'));
 
-async function onChange_enableRegistration(value: boolean) {
-	if (value) {
-		const { canceled } = await os.confirm({
-			type: 'warning',
-			text: i18n.ts.acknowledgeNotesAndEnable,
-		});
-		if (canceled) return;
+async function onChange_acceptApplications(value: boolean) {
+	if (savingRegistrationMode.value || value === acceptApplications.value) return;
+	savingRegistrationMode.value = true;
+	try {
+		if (!value) {
+			const { canceled } = await os.confirm({
+				type: 'warning',
+				text: i18n.ts._hata._registrationApplications.openRegistrationConfirm,
+			});
+			if (canceled) return;
+		}
+		await os.apiWithDialog('admin/update-meta', { disableRegistration: value });
+		acceptApplications.value = value;
+		const updated = await fetchInstance(true);
+		acceptApplications.value = updated.disableRegistration === true;
+	} finally {
+		savingRegistrationMode.value = false;
 	}
-
-	enableRegistration.value = value;
-
-	os.apiWithDialog('admin/update-meta', {
-		disableRegistration: !value,
-	}).then(() => {
-		fetchInstance(true);
-	});
 }
 
 function onChange_disableRegistrationWhenInactive(value: boolean) {

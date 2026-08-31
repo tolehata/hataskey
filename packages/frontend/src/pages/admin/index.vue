@@ -15,7 +15,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<div class="_gaps_s">
 					<MkInfo v-if="thereIsUnresolvedAbuseReport" warn>{{ i18n.ts.thereIsUnresolvedAbuseReportWarning }} <MkA to="/admin/abuses" class="_link">{{ i18n.ts.check }}</MkA></MkInfo>
 					<!-- 旗鯖fork(タスク7): 未処理の登録申請がある時の警告 -->
-					<MkInfo v-if="thereIsPendingRegistration" warn>{{ i18n.ts._hata._adminCommon.pendingRegistration }} <MkA to="/admin/registration-applications" class="_link">{{ i18n.ts.check }}</MkA></MkInfo>
+					<MkInfo v-if="instance.disableRegistration === true && thereIsPendingRegistration" warn>{{ i18n.ts._hata._adminCommon.pendingRegistration }} <MkA to="/admin/registration-applications" class="_link">{{ i18n.ts.check }}</MkA></MkInfo>
 					<MkInfo v-if="noMaintainerInformation" warn>{{ i18n.ts.noMaintainerInformationWarning }} <MkA to="/admin/settings" class="_link">{{ i18n.ts.configure }}</MkA></MkInfo>
 					<MkInfo v-if="noInquiryUrl" warn>{{ i18n.ts.noInquiryUrlWarning }} <MkA to="/admin/settings" class="_link">{{ i18n.ts.configure }}</MkA></MkInfo>
 					<MkInfo v-if="noBotProtection" warn>{{ i18n.ts.noBotProtectionWarning }} <MkA to="/admin/security" class="_link">{{ i18n.ts.configure }}</MkA></MkInfo>
@@ -84,12 +84,18 @@ misskeyApi('admin/abuse-user-reports', {
 
 // 旗鯖fork(タスク7): 未処理(pending)の登録申請があればコンパネにインジケーターを出す
 const thereIsPendingRegistration = ref(false);
-misskeyApi('admin/registration-applications', {
-	status: 'pending',
-	limit: 1,
-}).then(apps => {
-	if (apps.length > 0) thereIsPendingRegistration.value = true;
-}).catch(() => {});
+watch(() => instance.disableRegistration === true, (registrationClosed, _previous, onCleanup) => {
+	let active = true;
+	onCleanup(() => { active = false; });
+	thereIsPendingRegistration.value = false;
+	if (!registrationClosed) return;
+	misskeyApi('admin/registration-applications', {
+		status: 'pending',
+		limit: 1,
+	}).then(apps => {
+		if (active && instance.disableRegistration === true) thereIsPendingRegistration.value = apps.length > 0;
+	}).catch(() => {});
+}, { immediate: true, flush: 'sync' });
 
 const NARROW_THRESHOLD = 600;
 const ro = new ResizeObserver((entries, observer) => {
@@ -259,7 +265,7 @@ const menuDef = computed<SuperMenuDef[]>(() => [{
 		text: i18n.ts._hata._adminCommon.registrationManagement,
 		to: '/admin/registration-applications',
 		active: currentPage.value?.route.name === 'registration-applications',
-		indicated: thereIsPendingRegistration.value,
+		indicated: instance.disableRegistration === true && thereIsPendingRegistration.value,
 	}, {
 		icon: 'ti ti-shield-check',
 		text: i18n.ts._hata._adminCommon.consentManagement,

@@ -73,10 +73,15 @@ function normalizeKey(key: string): string {
 	return key.toLowerCase().replace(/[-_.\s]/g, '');
 }
 
+/** 申請専用の任意連絡先は、独自の秘匿設定でもログへ残さない。 */
+function isRegistrationContactKey(key: string): boolean {
+	return normalizeKey(key).includes('additionalcontacts');
+}
+
 /** 既定の秘匿対象を判定します。Misskey APIの`i`も認証情報として扱います。 */
 export function defaultLogRedactor(_path: readonly string[], key: string): boolean {
 	const normalized = normalizeKey(key);
-	return normalized === 'i' || sensitiveKeyParts.some(part => normalized.includes(part));
+	return isRegistrationContactKey(key) || normalized === 'i' || sensitiveKeyParts.some(part => normalized.includes(part));
 }
 
 /** 選択した方式と個別指定を合わせて、実際の上限値を決めます。 */
@@ -222,7 +227,7 @@ function normalizeValue(
 		for (let i = 0; i < entries; i++) {
 			const key = keys[i];
 			// 秘匿対象は値を読み出す前に置き換え、読み出し処理や巨大な値にも触れません。
-			result[key] = redactor(path, key)
+			result[key] = isRegistrationContactKey(key) || redactor(path, key)
 				? REDACTED
 				: normalizeValue(readProperty(value as Record<string, unknown>, key), [...path, key], depth + 1, seen, limits, redactor);
 		}

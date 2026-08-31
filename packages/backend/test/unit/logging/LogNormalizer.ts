@@ -74,6 +74,36 @@ describe('LogNormalizer', () => {
 		});
 	});
 
+	test.each(['standard', 'detailed'] as const)('always redacts optional application contacts in the %s profile', profile => {
+		const sentinel = 'sns-private-sentinel-7d1a@contacts.invalid';
+		const options = { profile };
+		// 陽性対照: 入力全体の省略・切り詰めで検査が空振りしていないことを確認する。
+		expect(JSON.stringify(normalizeLogValue({ visible: sentinel }, options))).toContain(sentinel);
+		expect(JSON.stringify(normalizeLogAttributes({ visible: sentinel }, options))).toContain(sentinel);
+
+		const keys = ['additionalContacts', 'ADDITIONAL_CONTACTS', 'Additional-Contacts', 'additional.contacts', 'additional contacts'];
+		for (const key of keys) {
+			const payload = { request: { [key]: sentinel }, response: [{ id: 'application', [key]: { sns: sentinel } }] };
+			for (const normalize of [normalizeLogAttributes, normalizeLogValue]) {
+				const normalized = normalize(payload, options);
+				expect(normalized).toEqual({ request: { [key]: '[REDACTED]' }, response: [{ id: 'application', [key]: '[REDACTED]' }] });
+				expect(JSON.stringify(normalized)).not.toContain(sentinel);
+				// カスタム秘匿条件でもこの申請専用欄は解除できない。
+				expect(normalize(payload, { ...options, redactor: () => false })).toEqual(normalized);
+			}
+		}
+		const error = new Error('fixed failure', { cause: { additionalContacts: sentinel } });
+		expect(serializeLogError(error, options)).toMatchObject({ cause: { additionalContacts: '[REDACTED]' } });
+		expect(JSON.stringify(serializeLogError(error, options))).not.toContain(sentinel);
+	});
+
+	test('redacts optional contacts before reading their value', () => {
+		let reads = 0;
+		const payload = { get additionalContacts() { reads++; return 'must-not-be-read'; } };
+		expect(normalizeLogValue(payload, { redactor: () => false })).toEqual({ additionalContacts: '[REDACTED]' });
+		expect(reads).toBe(0);
+	});
+
 	test('keeps cycles finite and marks depth and entry truncation', () => {
 		const cycle: Record<string, unknown> = { value: 'ok' };
 		cycle.self = cycle;

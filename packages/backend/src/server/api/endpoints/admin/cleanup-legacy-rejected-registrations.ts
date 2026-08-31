@@ -15,7 +15,8 @@ import { IsNull, Not } from 'typeorm';
 import { Inject, Injectable } from '@nestjs/common';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import { DI } from '@/di-symbols.js';
-import type { RegistrationApplicationsRepository } from '@/models/_.js';
+import type { MiMeta, RegistrationApplicationsRepository } from '@/models/_.js';
+import { assertRegistrationApplicationsEnabled, registrationApplicationsDisabledError } from '@/core/registration-application-policy.js';
 
 export const meta = {
 	tags: ['admin'],
@@ -24,11 +25,12 @@ export const meta = {
 	requireAdmin: true,
 	secure: true,
 	kind: 'write:admin:cleanup-rejected-registrations',
+	errors: { registrationApplicationsDisabled: registrationApplicationsDisabledError },
 
 	res: {
 		type: 'object',
 		properties: {
-			// 今回のクリーンアップで個人情報を削除したレコード数
+			// dry-runでは削除予定数、実行時は実際に個人情報を削除したレコード数
 			cleanedCount: { type: 'integer' },
 			// クリーンアップ対象だが、すでに個人情報削除済みでスキップしたレコード数
 			alreadyCleanedCount: { type: 'integer' },
@@ -52,10 +54,14 @@ export const paramDef = {
 @Injectable()
 export default class extends Endpoint<typeof meta, typeof paramDef> {
 	constructor(
+		@Inject(DI.meta)
+		private serverMeta: MiMeta,
+
 		@Inject(DI.registrationApplicationsRepository)
 		private registrationApplicationsRepository: RegistrationApplicationsRepository,
 	) {
 		super(meta, paramDef, async (ps, me) => {
+			assertRegistrationApplicationsEnabled(this.serverMeta);
 			const now = new Date();
 
 			// rejected ステータスかつ、username または hashedPassword がまだ残ってる (旧仕様で処理された) レコード
@@ -76,10 +82,12 @@ export default class extends Endpoint<typeof meta, typeof paramDef> {
 				where: { status: 'rejected', email: Not(IsNull()) },
 			});
 
+			assertRegistrationApplicationsEnabled(this.serverMeta);
+			let cleanedCount = ps.execute ? 0 : targets.length;
 			if (ps.execute && targets.length > 0) {
 				// 実削除実行
 				const targetIds = targets.map(t => t.id);
-				await this.registrationApplicationsRepository
+				const result = await this.registrationApplicationsRepository
 					.createQueryBuilder()
 					.update()
 					.set({
@@ -89,10 +97,11 @@ export default class extends Endpoint<typeof meta, typeof paramDef> {
 					})
 					.whereInIds(targetIds)
 					.execute();
+				cleanedCount = result.affected ?? 0;
 			}
 
 			return {
-				cleanedCount: ps.execute ? targets.length : 0,
+				cleanedCount,
 				alreadyCleanedCount,
 				emailRetainedCount,
 				executedAt: now.toISOString(),

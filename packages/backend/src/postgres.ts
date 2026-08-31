@@ -11,6 +11,7 @@ import { entities as charts } from '@/core/chart/entities.js';
 import { Config } from '@/config.js';
 import MisskeyLogger from '@/logger.js';
 import { bindThis } from '@/decorators.js';
+import { redactRegistrationApplicationSql } from '@/logging/registration-sql-redaction.js';
 
 import { MiAbuseReportResolver } from '@/models/AbuseReportResolver.js';
 import { MiAbuseUserReport } from '@/models/AbuseUserReport.js';
@@ -186,28 +187,28 @@ class MyCustomLogger implements Logger {
 		return undefined;
 	}
 
-	@bindThis
-	public logQuery(query: string, parameters?: any[], queryRunner?: QueryRunner) {
+	private prepareQueryLog(query: string, parameters?: any[], queryRunner?: QueryRunner): [string, any[] | undefined] {
+		// 全レベルで共通に秘匿する。SQLパラメーター出力の設定でも解除しない。
+		const safe = redactRegistrationApplicationSql(query, parameters);
 		const prefix = (this.props.printReplicationMode && queryRunner)
 			? `[${queryRunner.getReplicationMode()}] `
 			: undefined;
-		sqlLogger.info(this.transformQueryLog(query, { prefix }), this.transformParameters(parameters));
+		return [this.transformQueryLog(safe.query, { prefix }), this.transformParameters(safe.parameters)];
+	}
+
+	@bindThis
+	public logQuery(query: string, parameters?: any[], queryRunner?: QueryRunner) {
+		sqlLogger.info(...this.prepareQueryLog(query, parameters, queryRunner));
 	}
 
 	@bindThis
 	public logQueryError(error: string, query: string, parameters?: any[], queryRunner?: QueryRunner) {
-		const prefix = (this.props.printReplicationMode && queryRunner)
-			? `[${queryRunner.getReplicationMode()}] `
-			: undefined;
-		sqlLogger.error(this.transformQueryLog(query, { prefix }), this.transformParameters(parameters));
+		sqlLogger.error(...this.prepareQueryLog(query, parameters, queryRunner));
 	}
 
 	@bindThis
 	public logQuerySlow(time: number, query: string, parameters?: any[], queryRunner?: QueryRunner) {
-		const prefix = (this.props.printReplicationMode && queryRunner)
-			? `[${queryRunner.getReplicationMode()}] `
-			: undefined;
-		sqlLogger.warn(this.transformQueryLog(query, { prefix }), this.transformParameters(parameters));
+		sqlLogger.warn(...this.prepareQueryLog(query, parameters, queryRunner));
 	}
 
 	@bindThis

@@ -6,11 +6,11 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import { DI } from '@/di-symbols.js';
-import type { MiMeta, RegistrationApplicationsRepository, UserProfilesRepository } from '@/models/_.js';
+import type { MiMeta } from '@/models/_.js';
 import type { Config } from '@/config.js';
-import { ApiError } from '@/server/api/error.js';
 import { SignupService } from '@/core/SignupService.js';
 import { EmailService } from '@/core/EmailService.js';
+import { assertRegistrationApplicationsEnabled, registrationApplicationApprovalErrors, registrationApplicationsDisabledError } from '@/core/registration-application-policy.js';
 
 export const meta = {
 	tags: ['admin'],
@@ -21,21 +21,8 @@ export const meta = {
 	kind: 'write:admin:approve-registration',
 
 	errors: {
-		noSuchApplication: {
-			message: 'No such application.',
-			code: 'NO_SUCH_APPLICATION',
-			id: 'b0000001-0001-0001-0001-000000000001',
-		},
-		alreadyProcessed: {
-			message: 'This application has already been processed.',
-			code: 'ALREADY_PROCESSED',
-			id: 'b0000001-0001-0001-0001-000000000002',
-		},
-		missingApplicantData: {
-			message: 'Applicant data (username or email) is missing on the application.',
-			code: 'MISSING_APPLICANT_DATA',
-			id: 'b0000001-0001-0001-0001-000000000003',
-		},
+		registrationApplicationsDisabled: registrationApplicationsDisabledError,
+		...registrationApplicationApprovalErrors,
 	},
 } as const;
 
@@ -56,56 +43,16 @@ export default class extends Endpoint<typeof meta, typeof paramDef> {
 		@Inject(DI.meta)
 		private serverMeta: MiMeta,
 
-		@Inject(DI.registrationApplicationsRepository)
-		private registrationApplicationsRepository: RegistrationApplicationsRepository,
-
-		@Inject(DI.userProfilesRepository)
-		private userProfilesRepository: UserProfilesRepository,
-
 		private signupService: SignupService,
 		private emailService: EmailService,
 	) {
 		super(meta, paramDef, async (ps, me) => {
-			const application = await this.registrationApplicationsRepository.findOneBy({
-				id: ps.applicationId,
-			});
-
-			if (!application) {
-				throw new ApiError(meta.errors.noSuchApplication);
-			}
-
-			if (application.status !== 'pending') {
-				throw new ApiError(meta.errors.alreadyProcessed);
-			}
-
-			// 旗鯖fork: reject 時に username/hashedPassword は null にされる仕様のため
-			// 承認時は型上 null になり得ない (status === 'pending' なら必ず値がある) が
-			// 型システムで保証できないので明示的に検証する。email も同様。
-			if (application.username == null || application.hashedPassword == null || application.email == null) {
-				throw new ApiError(meta.errors.missingApplicantData);
-			}
-			const username = application.username;
-			const email = application.email;
-
-			// SignupService.signup() に passwordHash を渡してユーザー作成
-			// （SignupService は既に passwordHash パラメータをサポート済み）
-			const { account } = await this.signupService.signup({
-				username,
-				passwordHash: application.hashedPassword,
-			});
-
-			// メールアドレスをプロフィールに設定
-			await this.userProfilesRepository.update({ userId: account.id }, {
-				email,
-				emailVerified: true,
-			});
-
-			// 申請を承認済みに更新
-			await this.registrationApplicationsRepository.update(application.id, {
-				status: 'approved',
-				approvedAt: new Date(),
-				userId: account.id,
-			});
+			assertRegistrationApplicationsEnabled(this.serverMeta);
+			// Account, verified email and decision/contact deletion commit together.
+			const { account, applicationEmail } = await this.signupService.signup({ registrationApplicationId: ps.applicationId });
+			if (applicationEmail == null) throw new Error('Missing approved application email');
+			const username = account.username;
+			const email = applicationEmail;
 
 			// ★ 承認時のみメール送信
 			const serverName = this.serverMeta.name ?? 'Misskey';

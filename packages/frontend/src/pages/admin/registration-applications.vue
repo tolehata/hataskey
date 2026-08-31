@@ -8,7 +8,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 <template>
 <PageWithHeader :actions="headerActions" :tabs="headerTabs">
 	<div class="_spacer" style="--MI_SPACER-w: 800px;">
-		<div class="_gaps_m">
+		<MkInfo v-if="!applicationsEnabled"><strong>{{ modeCopy.openRegistrationActive }}</strong><br>{{ modeCopy.managementPaused }}</MkInfo>
+		<div v-else class="_gaps_m">
 			<!-- 旗鯖fork: プライバシー保護サマリパネル (rejected ステータス時に表示) -->
 			<div v-if="status === 'rejected' && summary" :class="$style.summaryPanel">
 				<div :class="$style.summaryHeader">
@@ -33,16 +34,16 @@ SPDX-License-Identifier: AGPL-3.0-only
 					</div>
 				</div>
 				<div v-if="summary.legacyCount > 0" :class="$style.summaryActions">
-					<MkButton danger rounded @click="runLegacyCleanup">
+					<MkButton danger rounded :disabled="loading || actionBusy" @click="runLegacyCleanup">
 						<i class="ti ti-trash"></i> {{ copyx.cleanupExisting({ count: summary.legacyCount.toString() }) }}
 					</MkButton>
-					<MkButton rounded @click="runLegacyCleanupDryRun">
+					<MkButton rounded :disabled="loading || actionBusy" @click="runLegacyCleanupDryRun">
 						<i class="ti ti-eye"></i> {{ copy.dryRunOnly }}
 					</MkButton>
 				</div>
 			</div>
 
-			<MkSelect v-model="status" :items="statusItems">
+			<MkSelect v-model="status" :items="statusItems" :disabled="loading || actionBusy">
 				<template #label>{{ copy.status }}</template>
 			</MkSelect>
 
@@ -85,6 +86,11 @@ SPDX-License-Identifier: AGPL-3.0-only
 					</div>
 
 					<div :class="$style.cardBody">
+						<div v-if="item.status === 'pending' && item.additionalContacts" :class="$style.contactsField">
+							<div :class="$style.cardFieldLabel">{{ copy.contactsLabel }}</div>
+							<div :class="$style.cardFieldValue">{{ item.additionalContacts }}</div>
+							<p :class="$style.contactsHint">{{ copy.contactsHandling }}</p>
+						</div>
 						<div v-if="item.email" :class="$style.cardField">
 							<div :class="$style.cardFieldLabel">{{ copy.emailAddress }}</div>
 							<div :class="$style.cardFieldValue">{{ item.email }}</div>
@@ -100,10 +106,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 					</div>
 
 					<div v-if="status === 'pending'" :class="$style.cardActions">
-						<MkButton primary rounded @click="approve(item)">
+						<MkButton primary rounded :disabled="actionBusy" @click="approve(item)">
 							<i class="ti ti-check"></i> {{ copy.approve }}
 						</MkButton>
-						<MkButton danger rounded @click="reject(item)">
+						<MkButton danger rounded :disabled="actionBusy" @click="reject(item)">
 							<i class="ti ti-x"></i> {{ copy.reject }}
 						</MkButton>
 					</div>
@@ -115,7 +121,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</div>
 
 			<div v-if="hasMore" :class="$style.more">
-				<MkButton rounded @click="loadMore">{{ copy.loadMore }}</MkButton>
+				<MkButton rounded :disabled="loading || actionBusy" @click="loadMore">{{ copy.loadMore }}</MkButton>
 			</div>
 		</div>
 	</div>
@@ -123,17 +129,22 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { ref, watch, computed } from 'vue';
+import { ref, watch, computed, onBeforeUnmount } from 'vue';
 import * as os from '@/os.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import MkButton from '@/components/MkButton.vue';
 import MkSelect from '@/components/MkSelect.vue';
+import MkInfo from '@/components/MkInfo.vue';
+import { fetchInstance, instance } from '@/instance.js';
 import { definePage } from '@/page.js';
 import { i18n } from '@/i18n.js';
 
 const LIMIT = 20;
 const copy = i18n.ts._hata._registrationApplications._admin;
 const copyx = i18n.tsx._hata._registrationApplications._admin;
+const modeCopy = i18n.ts._hata._registrationApplications;
+const modeUnavailable = ref(false);
+const applicationsEnabled = computed(() => instance.disableRegistration === true && !modeUnavailable.value);
 
 const statusItems = [
 	{ value: 'pending', label: copy.pending },
@@ -145,67 +156,113 @@ const status = ref<'pending' | 'approved' | 'rejected'>('pending');
 const items = ref<any[]>([]);
 const loading = ref(false);
 const hasMore = ref(false);
+const actionBusy = ref(false);
+let revision = 0;
+let disposed = false;
+let readRequest: AbortController | undefined;
 
 // 旗鯖fork: rejected サマリ統計
 const summary = ref<{ cleanedCount: number; emailRetainedCount: number; legacyCount: number } | null>(null);
 
+function isCurrent(version: number) {
+	return !disposed && applicationsEnabled.value && version === revision;
+}
+
+function clearContacts() {
+	for (const item of items.value) item.additionalContacts = null;
+}
+
+async function handleError(err: any) {
+	if (disposed || err?.name === 'AbortError') return;
+	if (err?.code === 'REGISTRATION_APPLICATIONS_DISABLED') {
+		modeUnavailable.value = true;
+		try {
+			const meta = await fetchInstance(true);
+			if (!disposed && meta.disableRegistration === true) modeUnavailable.value = false;
+		} catch { /* Keep operations blocked until the registration mode is known. */ }
+		return;
+	}
+	os.alert({ type: 'error', text: err?.message || copy.errorOccurred });
+}
+
 async function load() {
-	loading.value = true;
+	const version = ++revision;
+	readRequest?.abort();
+	clearContacts();
 	items.value = [];
+	summary.value = null;
+	hasMore.value = false;
+	loading.value = false;
+	if (!isCurrent(version)) return;
+	readRequest = new AbortController();
+	loading.value = true;
 	try {
 		const res = await (misskeyApi as any)('admin/registration-applications', {
 			status: status.value,
 			limit: LIMIT,
 			offset: 0,
-		});
+		}, undefined, readRequest.signal);
+		if (!isCurrent(version)) return;
 		items.value = res;
 		hasMore.value = res.length >= LIMIT;
 
 		// rejected の場合、サマリも取得
 		if (status.value === 'rejected') {
-			await loadSummary();
+			await loadSummary(version);
 		} else {
 			summary.value = null;
 		}
 	} catch (err) {
-		console.error('[registration-applications] load error:', err);
+		if (isCurrent(version)) await handleError(err);
 	} finally {
-		loading.value = false;
+		if (version === revision) loading.value = false;
 	}
 }
 
-async function loadSummary() {
+async function loadSummary(version = revision) {
+	if (!isCurrent(version)) return;
 	try {
 		// dry-run でサマリ統計だけ取得
 		const res = await (misskeyApi as any)('admin/cleanup-legacy-rejected-registrations', {
 			execute: false,
-		});
+		}, undefined, readRequest?.signal);
+		if (!isCurrent(version)) return;
 		summary.value = {
 			cleanedCount: res.alreadyCleanedCount,
 			emailRetainedCount: res.emailRetainedCount,
 			legacyCount: res.cleanedCount, // dry-run なので「クリーンアップ予定数」= 旧仕様未処理数
 		};
 	} catch (err) {
-		console.error('[registration-applications] summary error:', err);
-		summary.value = null;
+		if (isCurrent(version)) {
+			summary.value = null;
+			await handleError(err);
+		}
 	}
 }
 
 async function loadMore() {
+	const version = revision;
+	if (!isCurrent(version) || loading.value || actionBusy.value || !hasMore.value) return;
+	loading.value = true;
 	try {
 		const res = await (misskeyApi as any)('admin/registration-applications', {
 			status: status.value,
 			limit: LIMIT,
 			offset: items.value.length,
-		});
+		}, undefined, readRequest?.signal);
+		if (!isCurrent(version)) return;
 		items.value = [...items.value, ...res];
 		hasMore.value = res.length >= LIMIT;
 	} catch (err) {
-		console.error('[registration-applications] loadMore error:', err);
+		if (isCurrent(version)) await handleError(err);
+	} finally {
+		if (version === revision) loading.value = false;
 	}
 }
 
-watch(status, () => load(), { immediate: true });
+watch(() => instance.disableRegistration, () => { modeUnavailable.value = false; });
+watch([status, applicationsEnabled], () => load(), { immediate: true, flush: 'sync' });
+onBeforeUnmount(() => { disposed = true; revision++; readRequest?.abort(); clearContacts(); });
 
 function formatDate(dateStr: string): string {
 	const d = new Date(dateStr);
@@ -221,75 +278,100 @@ function daysSinceRejection(rejectedAt: string): number {
 }
 
 async function approve(item: any) {
-	const { canceled } = await os.confirm({
-		type: 'info',
-		title: copy.approveApplication,
-		text: copyx.approveConfirm({ username: item.username }),
-	});
-	if (canceled) return;
-
+	const version = revision;
+	if (!isCurrent(version) || actionBusy.value || loading.value) return;
+	actionBusy.value = true;
 	try {
+		const { canceled } = await os.confirm({
+			type: 'info',
+			title: copy.approveApplication,
+			text: copyx.approveConfirm({ username: item.username }),
+		});
+		if (canceled || !isCurrent(version)) return;
 		await (misskeyApi as any)('admin/approve-registration', {
 			applicationId: item.id,
 		});
+		item.additionalContacts = null;
+		if (!isCurrent(version)) return;
 		os.alert({ type: 'success', text: copyx.approvedSuccess({ username: item.username }) });
 		items.value = items.value.filter(x => x.id !== item.id);
 	} catch (err: any) {
-		console.error('[registration-applications] approve error:', err);
-		os.alert({ type: 'error', text: err?.message || copy.errorOccurred });
+		if (isCurrent(version)) {
+			await handleError(err);
+			// The decision may have committed even if its email or response failed.
+			if (isCurrent(version)) await load();
+		}
+	} finally {
+		actionBusy.value = false;
 	}
 }
 
 async function reject(item: any) {
-	const { canceled } = await os.confirm({
-		type: 'warning',
-		title: copy.rejectApplication,
-		text: copyx.rejectConfirm({ username: item.username }),
-	});
-	if (canceled) return;
-
+	const version = revision;
+	if (!isCurrent(version) || actionBusy.value || loading.value) return;
+	actionBusy.value = true;
 	try {
+		const { canceled } = await os.confirm({
+			type: 'warning',
+			title: copy.rejectApplication,
+			text: copyx.rejectConfirm({ username: item.username }),
+		});
+		if (canceled || !isCurrent(version)) return;
 		await (misskeyApi as any)('admin/reject-registration', {
 			applicationId: item.id,
 		});
+		item.additionalContacts = null;
+		if (!isCurrent(version)) return;
 		os.alert({ type: 'success', text: copyx.rejectedSuccess({ username: item.username }) });
 		items.value = items.value.filter(x => x.id !== item.id);
 	} catch (err: any) {
-		console.error('[registration-applications] reject error:', err);
-		os.alert({ type: 'error', text: err?.message || copy.errorOccurred });
+		if (isCurrent(version)) {
+			await handleError(err);
+			if (isCurrent(version)) await load();
+		}
+	} finally {
+		actionBusy.value = false;
 	}
 }
 
 // 旗鯖fork: 既存データのクリーンアップ (Dry-run)
 async function runLegacyCleanupDryRun() {
+	const version = revision;
+	if (!isCurrent(version) || actionBusy.value || loading.value) return;
+	actionBusy.value = true;
 	try {
 		const res = await (misskeyApi as any)('admin/cleanup-legacy-rejected-registrations', {
 			execute: false,
 		});
+		if (!isCurrent(version)) return;
 		os.alert({
 			type: 'info',
 			title: copy.cleanupDryRunTitle,
 			text: copyx.cleanupDryRunResult({ target: res.cleanedCount.toString(), cleaned: res.alreadyCleanedCount.toString(), retained: res.emailRetainedCount.toString() }),
 		});
 	} catch (err: any) {
-		console.error('[cleanup-legacy] dry-run error:', err);
-		os.alert({ type: 'error', text: err?.message || copy.errorOccurred });
+		if (isCurrent(version)) await handleError(err);
+	} finally {
+		actionBusy.value = false;
 	}
 }
 
 // 旗鯖fork: 既存データのクリーンアップ (実削除)
 async function runLegacyCleanup() {
-	const { canceled } = await os.confirm({
-		type: 'warning',
-		title: copy.cleanupExistingTitle,
-		text: copyx.cleanupConfirm({ count: (summary.value?.legacyCount || 0).toString() }),
-	});
-	if (canceled) return;
-
+	const version = revision;
+	if (!isCurrent(version) || actionBusy.value || loading.value) return;
+	actionBusy.value = true;
 	try {
+		const { canceled } = await os.confirm({
+			type: 'warning',
+			title: copy.cleanupExistingTitle,
+			text: copyx.cleanupConfirm({ count: (summary.value?.legacyCount || 0).toString() }),
+		});
+		if (canceled || !isCurrent(version)) return;
 		const res = await (misskeyApi as any)('admin/cleanup-legacy-rejected-registrations', {
 			execute: true,
 		});
+		if (!isCurrent(version)) return;
 		os.alert({
 			type: 'success',
 			title: copy.cleanupComplete,
@@ -298,16 +380,17 @@ async function runLegacyCleanup() {
 		// リロード
 		await load();
 	} catch (err: any) {
-		console.error('[cleanup-legacy] execute error:', err);
-		os.alert({ type: 'error', text: err?.message || copy.errorOccurred });
+		if (isCurrent(version)) await handleError(err);
+	} finally {
+		actionBusy.value = false;
 	}
 }
 
-const headerActions = computed(() => [{
+const headerActions = computed(() => applicationsEnabled.value && !loading.value && !actionBusy.value ? [{
 	icon: 'ti ti-refresh',
 	text: copy.reload,
 	handler: () => load(),
-}]);
+}] : []);
 const headerTabs = computed(() => []);
 
 definePage(() => ({
@@ -317,6 +400,19 @@ definePage(() => ({
 </script>
 
 <style lang="scss" module>
+.contactsField {
+	display: grid;
+	gap: 8px;
+	min-width: 0;
+}
+
+.contactsHint {
+	margin: 8px 0 0;
+	font-size: 0.85em;
+	line-height: 1.7;
+	overflow-wrap: anywhere;
+}
+
 .empty {
 	text-align: center;
 	padding: 64px 16px;
@@ -431,7 +527,9 @@ definePage(() => ({
 
 .cardFieldValue {
 	flex: 1;
-	word-break: break-all;
+	min-width: 0;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
 }
 
 .cardFieldValueDeleted {

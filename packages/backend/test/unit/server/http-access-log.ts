@@ -152,6 +152,42 @@ describe('registerHttpAccessLog', () => {
 		expect(server.writeAccess.mock.calls[2][0]).not.toHaveProperty('responseBody');
 	});
 
+	test.each(['standard', 'detailed'] as const)('redacts application contacts in request and admin response bodies with the %s profile', async profile => {
+		const sentinel = 'sns-private-sentinel-http-89ab@contacts.invalid';
+		const { manager, writeAccess } = createManager({ requestBody: true, responseBody: true });
+		manager.setNormalizationProfile(profile);
+		const fastify = Fastify({ logger: false });
+		servers.push(fastify);
+		registerHttpAccessLog(fastify, manager);
+		fastify.post('/control', async request => request.body);
+		fastify.post('/registration/apply', async (_request, reply) => reply.code(400).send({ error: { code: 'FIXED_ERROR' } }));
+		const applications = [{ id: 'pending-id', additionalContacts: [{ service: 'SNS', handle: sentinel }], nested: { 'ADDITIONAL-CONTACTS': sentinel } }];
+		fastify.post('/admin/registration-applications', async () => applications);
+		await fastify.ready();
+
+		// 陽性対照: 本文取得と文字列の検出が、リクエスト・レスポンス両方で実際に動く。
+		await fastify.inject({ method: 'POST', url: '/control', payload: { visible: sentinel } });
+		expect(writeAccess).toHaveBeenCalledOnce();
+		expect(JSON.stringify(writeAccess.mock.calls[0][0].requestBody)).toContain(sentinel);
+		expect(JSON.stringify(writeAccess.mock.calls[0][0].responseBody)).toContain(sentinel);
+		writeAccess.mockClear();
+
+		await fastify.inject({ method: 'POST', url: '/registration/apply', payload: { username: 'applicant', additionalContacts: sentinel } });
+		const response = await fastify.inject({ method: 'POST', url: '/admin/registration-applications', payload: { status: 'pending' } });
+		expect(response.json()).toEqual(applications); // API本来の応答は変更しない。
+		expect(writeAccess).toHaveBeenCalledTimes(2);
+		expect(writeAccess.mock.calls[0][0]).toMatchObject({
+			statusCode: 400,
+			requestBody: { username: 'applicant', additionalContacts: '[REDACTED]' },
+			responseBody: { error: { code: 'FIXED_ERROR' } },
+		});
+		expect(writeAccess.mock.calls[1][0]).toMatchObject({
+			statusCode: 200,
+			responseBody: [{ id: 'pending-id', additionalContacts: '[REDACTED]', nested: { 'ADDITIONAL-CONTACTS': '[REDACTED]' } }],
+		});
+		expect(JSON.stringify(writeAccess.mock.calls)).not.toContain(sentinel);
+	});
+
 	test('parses form bodies before redaction', async () => {
 		const server = await createServer({ statusClasses: ['2xx'], responseBody: true });
 		servers.push(server.fastify);

@@ -96,6 +96,17 @@ export class NotificationService implements OnApplicationShutdown {
 		);
 	}
 
+	/** Callers that must contain delivery failures can await the standard notification path. */
+	@bindThis
+	public async createNotificationAsync<T extends MiNotification['type']>(
+		notifieeId: MiUser['id'],
+		type: T,
+		data: Omit<FilterUnionByProperty<MiNotification, 'type', T>, 'type' | 'id' | 'createdAt' | 'notifierId'>,
+		notifierId?: MiUser['id'] | null,
+	): Promise<MiNotification | null> {
+		return this.#createNotificationInternal(notifieeId, type, data, notifierId);
+	}
+
 	async #createNotificationInternal<T extends MiNotification['type']>(
 		notifieeId: MiUser['id'],
 		type: T,

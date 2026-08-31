@@ -15,6 +15,7 @@ import { MiUserProfile } from '@/models/UserProfile.js';
 import { IdService } from '@/core/IdService.js';
 import { MiUserKeypair } from '@/models/UserKeypair.js';
 import { MiUsedUsername } from '@/models/UsedUsername.js';
+import { MiRegistrationApplication } from '@/models/RegistrationApplication.js';
 import { generateNativeUserToken } from '@/misc/token.js';
 import { UserEntityService } from '@/core/entities/UserEntityService.js';
 import { bindThis } from '@/decorators.js';
@@ -23,6 +24,16 @@ import { UtilityService } from '@/core/UtilityService.js';
 import { UserService } from '@/core/UserService.js';
 import { SystemAccountService } from '@/core/SystemAccountService.js';
 import { MetaService } from '@/core/MetaService.js';
+import { assertRegistrationApplicationsEnabled, registrationApplicationApprovalErrors } from '@/core/registration-application-policy.js';
+import { ApiError } from '@/server/api/error.js';
+
+type SignupOptions = {
+	username: MiUser['username'];
+	password?: string | null;
+	passwordHash?: MiUserProfile['password'] | null;
+	host?: string | null;
+	ignorePreservedUsernames?: boolean;
+};
 
 @Injectable()
 export class SignupService {
@@ -50,13 +61,101 @@ export class SignupService {
 	}
 
 	@bindThis
-	public async signup(opts: {
-		username: MiUser['username'];
-		password?: string | null;
-		passwordHash?: MiUserProfile['password'] | null;
-		host?: string | null;
-		ignorePreservedUsernames?: boolean;
-	}) {
+	public async signup(opts: SignupOptions | { registrationApplicationId: string }): Promise<{ account: MiUser; secret: string; applicationEmail: string | null }> {
+		const applicationId = 'registrationApplicationId' in opts ? opts.registrationApplicationId : null;
+		if (applicationId !== null) assertRegistrationApplicationsEnabled(this.meta);
+		// Normal signup retains its preparation-before-transaction behavior.
+		const prepared = 'username' in opts ? await this.prepareSignup(opts) : null;
+		let account!: MiUser;
+		let secret!: string;
+		let applicationEmail: string | null = null;
+
+		if (applicationId !== null) assertRegistrationApplicationsEnabled(this.meta);
+		await this.db.transaction(async transactionalEntityManager => {
+			let details = prepared;
+			if (applicationId !== null) {
+				const application = await transactionalEntityManager.findOne(MiRegistrationApplication, {
+					where: { id: applicationId },
+					lock: { mode: 'pessimistic_write' },
+					select: { id: true, status: true, username: true, hashedPassword: true, email: true },
+				});
+				assertRegistrationApplicationsEnabled(this.meta);
+				if (!application) throw new ApiError(registrationApplicationApprovalErrors.noSuchApplication);
+				if (application.status !== 'pending') throw new ApiError(registrationApplicationApprovalErrors.alreadyProcessed);
+				if (application.username == null || application.hashedPassword == null || application.email == null) {
+					throw new ApiError(registrationApplicationApprovalErrors.missingApplicantData);
+				}
+				// Stay on the locked transaction's connection, including duplicate checks.
+				details = await this.prepareSignup(
+					{ username: application.username, passwordHash: application.hashedPassword },
+					transactionalEntityManager.getRepository(MiUser),
+					transactionalEntityManager.getRepository(MiUsedUsername),
+				);
+				applicationEmail = application.email;
+			}
+			if (details == null) throw new Error('Missing signup data');
+			const { username, hash, host, keyPair } = details;
+			secret = details.secret;
+			const exist = await transactionalEntityManager.findOneBy(MiUser, {
+				usernameLower: username.toLowerCase(),
+				host: IsNull(),
+			});
+
+			if (exist) throw new Error(' the username is already used');
+			if (applicationId !== null) assertRegistrationApplicationsEnabled(this.meta);
+
+			account = await transactionalEntityManager.save(new MiUser({
+				id: this.idService.gen(),
+				username: username,
+				usernameLower: username.toLowerCase(),
+				host: this.utilityService.toPunyNullable(host),
+				token: secret,
+			}));
+
+			await transactionalEntityManager.save(new MiUserKeypair({
+				publicKey: keyPair[0],
+				privateKey: keyPair[1],
+				userId: account.id,
+			}));
+
+			await transactionalEntityManager.save(new MiUserProfile({
+				userId: account.id,
+				autoAcceptFollowed: true,
+				// 旗鯖の既定表示言語。リモートユーザーのプロフィールには設定しない。
+				lang: 'ja-JP',
+				password: hash,
+				...(applicationId !== null ? { email: applicationEmail, emailVerified: true } : {}),
+			}));
+
+			await transactionalEntityManager.save(new MiUsedUsername({
+				createdAt: new Date(),
+				username: username.toLowerCase(),
+			}));
+			if (applicationId !== null) {
+				// Never save the whole application: stale review contacts must not revive.
+				await transactionalEntityManager.update(MiRegistrationApplication, applicationId, {
+					status: 'approved', approvedAt: new Date(), userId: account.id, additionalContacts: null,
+				});
+				// Any mode switch while awaiting a write rolls back account and decision.
+				assertRegistrationApplicationsEnabled(this.meta);
+			}
+		});
+
+		this.usersChart.update(account, true);
+		this.userService.notifySystemWebhook(account, 'userCreated');
+
+		if (this.meta.rootUserId == null) {
+			await this.metaService.update({ rootUserId: account.id });
+		}
+
+		return { account, secret, applicationEmail };
+	}
+
+	private async prepareSignup(
+		opts: SignupOptions,
+		usersRepository: Pick<UsersRepository, 'exists'> = this.usersRepository,
+		usedUsernamesRepository: Pick<UsedUsernamesRepository, 'exists'> = this.usedUsernamesRepository,
+	) {
 		const { username, password, passwordHash, host } = opts;
 		let hash = passwordHash;
 
@@ -80,12 +179,12 @@ export class SignupService {
 		const secret = generateNativeUserToken();
 
 		// Check username duplication
-		if (await this.usersRepository.exists({ where: { usernameLower: username.toLowerCase(), host: IsNull() } })) {
+		if (await usersRepository.exists({ where: { usernameLower: username.toLowerCase(), host: IsNull() } })) {
 			throw new Error('DUPLICATED_USERNAME');
 		}
 
 		// Check deleted username duplication
-		if (await this.usedUsernamesRepository.exists({ where: { username: username.toLowerCase() } })) {
+		if (await usedUsernamesRepository.exists({ where: { username: username.toLowerCase() } })) {
 			throw new Error('USED_USERNAME');
 		}
 
@@ -118,52 +217,6 @@ export class SignupService {
 				err ? rej(err) : res([publicKey, privateKey]),
 			));
 
-		let account!: MiUser;
-
-		// Start transaction
-		await this.db.transaction(async transactionalEntityManager => {
-			const exist = await transactionalEntityManager.findOneBy(MiUser, {
-				usernameLower: username.toLowerCase(),
-				host: IsNull(),
-			});
-
-			if (exist) throw new Error(' the username is already used');
-
-			account = await transactionalEntityManager.save(new MiUser({
-				id: this.idService.gen(),
-				username: username,
-				usernameLower: username.toLowerCase(),
-				host: this.utilityService.toPunyNullable(host),
-				token: secret,
-			}));
-
-			await transactionalEntityManager.save(new MiUserKeypair({
-				publicKey: keyPair[0],
-				privateKey: keyPair[1],
-				userId: account.id,
-			}));
-
-			await transactionalEntityManager.save(new MiUserProfile({
-				userId: account.id,
-				autoAcceptFollowed: true,
-				// 旗鯖の既定表示言語。リモートユーザーのプロフィールには設定しない。
-				lang: 'ja-JP',
-				password: hash,
-			}));
-
-			await transactionalEntityManager.save(new MiUsedUsername({
-				createdAt: new Date(),
-				username: username.toLowerCase(),
-			}));
-		});
-
-		this.usersChart.update(account, true);
-		this.userService.notifySystemWebhook(account, 'userCreated');
-
-		if (this.meta.rootUserId == null) {
-			await this.metaService.update({ rootUserId: account.id });
-		}
-
-		return { account, secret };
+		return { username, hash, host, keyPair, secret };
 	}
 }

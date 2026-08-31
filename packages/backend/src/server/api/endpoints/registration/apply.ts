@@ -11,6 +11,8 @@ import { IsNull } from 'typeorm';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import { IdService } from '@/core/IdService.js';
 import { CaptchaService } from '@/core/CaptchaService.js';
+import { RegistrationApplicationNotificationService } from '@/core/RegistrationApplicationNotificationService.js';
+import { assertRegistrationApplicationsEnabled, registrationApplicationsDisabledError } from '@/core/registration-application-policy.js';
 import { DI } from '@/di-symbols.js';
 import type {
 	MiMeta,
@@ -19,6 +21,7 @@ import type {
 	UsersRepository,
 } from '@/models/_.js';
 import { ApiError } from '@/server/api/error.js';
+import { trackPromise } from '@/misc/promise-tracker.js';
 
 export const meta = {
 	tags: ['registration'],
@@ -31,6 +34,14 @@ export const meta = {
 	},
 
 	errors: {
+		registrationApplicationsDisabled: registrationApplicationsDisabledError,
+		applicationSaveFailed: {
+			message: 'The registration application could not be saved.',
+			code: 'REGISTRATION_APPLICATION_SAVE_FAILED',
+			id: '11dc4c4a-0c6e-4c37-9b4d-93b4772f0b2d',
+			kind: 'server',
+			httpStatusCode: 500,
+		},
 		usernameAlreadyExists: {
 			message: 'This username is already taken or has a pending application.',
 			code: 'USERNAME_ALREADY_EXISTS',
@@ -87,6 +98,7 @@ export const paramDef = {
 		password: { type: 'string', minLength: 8, maxLength: 64 },
 		reason: { type: 'string', minLength: 1, maxLength: 1024 },
 		email: { type: 'string', minLength: 5, maxLength: 256 },
+		additionalContacts: { type: 'string', maxLength: 1024, nullable: true },
 		'hcaptcha-response': { type: 'string', nullable: true },
 		'g-recaptcha-response': { type: 'string', nullable: true },
 		'turnstile-response': { type: 'string', nullable: true },
@@ -113,8 +125,10 @@ export default class extends Endpoint<typeof meta, typeof paramDef> {
 
 		private idService: IdService,
 		private captchaService: CaptchaService,
+		private registrationApplicationNotificationService: RegistrationApplicationNotificationService,
 	) {
 		super(meta, paramDef, async (ps, me) => {
+			assertRegistrationApplicationsEnabled(this.serverMeta);
 			// ========================================
 			// CAPTCHA検証（SignupApiService.ts と同じパターン）
 			// ========================================
@@ -166,6 +180,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> {
 				}
 			}
 
+			assertRegistrationApplicationsEnabled(this.serverMeta);
 			// ========================================
 			// バリデーション
 			// ========================================
@@ -244,19 +259,32 @@ export default class extends Endpoint<typeof meta, typeof paramDef> {
 			}
 
 			// パスワードハッシュ化
+			assertRegistrationApplicationsEnabled(this.serverMeta);
 			const salt = await bcrypt.genSalt(8);
+			assertRegistrationApplicationsEnabled(this.serverMeta);
 			const hashedPassword = await bcrypt.hash(ps.password, salt);
 
 			// 申請作成
-			await this.registrationApplicationsRepository.insert({
-				id: this.idService.gen(),
-				username: ps.username.toLowerCase(),
-				hashedPassword,
-				reason: ps.reason.trim(),
-				email: emailTrimmed,
-				status: 'pending',
-				createdAt: new Date(),
-			});
+			assertRegistrationApplicationsEnabled(this.serverMeta);
+			try {
+				await this.registrationApplicationsRepository.insert({
+					id: this.idService.gen(),
+					username: ps.username.toLowerCase(),
+					hashedPassword,
+					reason: ps.reason.trim(),
+					email: emailTrimmed,
+					additionalContacts: ps.additionalContacts?.trim() || null,
+					status: 'pending',
+					createdAt: new Date(),
+				});
+			} catch {
+				// Database errors can embed the complete row, including private contacts.
+				// Never attach their message, detail, parameters or cause to the API error.
+				throw new ApiError(meta.errors.applicationSaveFailed);
+			}
+			// Standard notifications are best-effort; recipient discovery must not delay signup responses.
+			// The service handles its own delivery errors without carrying applicant data.
+			trackPromise(this.registrationApplicationNotificationService.notifyNewApplication());
 
 			return { success: true };
 		});
