@@ -253,6 +253,7 @@ import { createSettingsShellActions } from './settings-shell-actions.js';
 import { assertUniqueNavigationIds } from './settings-navigation-ids.js';
 import { createSettingsSurfaceLeaveGuard } from './settings-surface-leave-guard.js';
 import { waitForSettingsNavigationFocus } from './settings-navigation-focus.js';
+import { createSettingsNavMotion } from './settings-nav-motion.js';
 import { settingsDestinationSections, settingsDestinations, destinationForId } from './settings-destinations.js';
 import { createSearchHintController } from '@/pages/settings-redesign/settings-search-hint.js';
 import { canonicalSearchIdForDescriptor, destinationForSearchDescriptor, generatedPreferenceSearchId, parsePreferenceDestination } from './settings-preferences-catalog.js';
@@ -567,14 +568,26 @@ const mobileDeprecatedSections = computed<SettingsOverviewSection[]>(() => navSe
 type SettingsNavPaneMode = 'categories' | 'detail' | 'rail';
 const navPaneMode = ref<SettingsNavPaneMode>('categories');
 const navDetailBackEl = useTemplateRef<HTMLElement>('navDetailBackEl');
+const navMotion = createSettingsNavMotion({
+	nav: () => navEl.value,
+	main: () => mainEl.value,
+	enabled: () => motionEnabled.value && !compact.value,
+	nextTick,
+});
 
 function setNavPaneMode(mode: SettingsNavPaneMode) {
-	navPaneMode.value = mode;
-	if (mode !== 'detail') return;
-	// ⚠️詳細を開いたら見出しへ焦点を移すこと。キーボードだけの利用者が
-	//   どこへ移ったのか分からなくなる。
-	void nextTick(() => focusElement(navDetailBackEl.value));
+	if (navPaneMode.value === mode) return;
+	const restoreFocus = navEl.value?.contains(window.document.activeElement) === true;
+	void navMotion.transition(() => { navPaneMode.value = mode; });
+	// 消えた操作ボタンにフォーカスを置き去りにしない。画面本体は再生成しない。
+	void nextTick(() => {
+		if (navPaneMode.value !== mode || (!restoreFocus && mode !== 'detail')) return;
+		const target = mode === 'detail' ? navDetailBackEl.value : navEl.value?.querySelector<HTMLElement>(mode === 'rail' ? '[data-settings-nav-rail-action="categories"]' : '[data-settings-nav-collapse]');
+		focusElement(target ?? null);
+	});
 }
+
+watch(motionEnabled, enabled => { if (!enabled) navMotion.cancel(); });
 
 /** 旗鯖fork: 狭い幅では分類を選ぶだけにし、詳細一覧へ drill-in する。 */
 function openCompactNavigationSection(id: string | null) {
@@ -1909,8 +1922,12 @@ function onShellWheel(ev: WheelEvent) {
 	pane.scrollTop = next;
 }
 
+let previousShellWidth: number | null = null;
+
 function updateCompact() {
 	const width = rootEl.value?.offsetWidth ?? 0;
+	if (width !== previousShellWidth) navMotion.cancel();
+	previousShellWidth = width;
 	compact.value = width <= 680;
 	// 旗鯖fork: ⚠️2ペイン構造はPCと同じ。タブレット専用なのは余白と
 	//   設定外へ戻る導線だけ。
@@ -1987,6 +2004,7 @@ function activateShell() {
 }
 
 function deactivateShell() {
+	navMotion.cancel();
 	searchHintController.stop();
 	siblingTabsObserver?.disconnect();
 	siblingTabsObserver = null;
@@ -2239,10 +2257,11 @@ definePage(() => indexInfo);
    `minmax(226px,272px)` と `64px` はトラックの形が違って補間できず、
    ⚠️**値が古いまま張り付いて畳めなくなる**（実測: transition を切ると
    即 64px、付けると 272px のまま動かない）。
-   ⚠️器は即座に切り替え、動きは「左ペインの中身の幅」で見せる。 */
+   ⚠️gridの最終値を先に確定し、settings-nav-motionで実測した両ペインの幅を
+   同時に補間する。終了イベントが来なくても最終レイアウトは確定済み。 */
 .layout[data-nav-mode='rail'] { grid-template-columns: 64px minmax(0, 1fr); }
 .layout[data-nav-mode='rail'] > .nav { padding-inline: 6px; }
-.nav { transition: width 260ms cubic-bezier(.2, .9, .2, 1); }
+.nav, .main { box-sizing: border-box; min-inline-size: 0; }
 
 /* 旗鯖fork: 畳んだときの虫眼鏡。⚠️右上のアイコンの左に並ぶ。 */
 .compactSearchIcon { display: grid; box-sizing: border-box; width: 38px; height: 38px; flex: none; place-items: center; border: 0; border-radius: 999px; padding: 0; background: var(--settings-bg, var(--MI_THEME-bg)); color: var(--MI_THEME-fg); cursor: pointer; font: inherit; font-size: 1.05rem; transition: width 220ms cubic-bezier(.2, .9, .2, 1), opacity 160ms ease; }

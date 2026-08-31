@@ -264,7 +264,11 @@ describe('settings redesign navigation contract', () => {
 		//   補間できず、値が古いまま張り付いて畳めなくなる（実測で確認）。
 		expect(shellSource).not.toContain('transition: grid-template-columns');
 		// ⚠️詳細を開いたら見出しへ焦点を移す。
-		expect(shellSource).toContain('void nextTick(() => focusElement(navDetailBackEl.value));');
+		expect(shellSource).toContain('void navMotion.transition(() => { navPaneMode.value = mode; });');
+		expect(shellSource).toContain('void nextTick(() => {');
+		expect(shellSource).toContain("navPaneMode.value !== mode || (!restoreFocus && mode !== 'detail')");
+		expect(shellSource).toContain("mode === 'detail' ? navDetailBackEl.value");
+		expect(shellSource).toContain('focusElement(target ?? null);');
 	});
 
 	test('破壊的shell actionはUI2ドラフトのdiscard承認後だけ既存confirmationへ渡す', () => {
