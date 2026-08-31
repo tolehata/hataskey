@@ -110,11 +110,13 @@ onMounted(async () => {
 
 <style lang="scss" module>
 .root {
+    margin: auto;
+    box-sizing: border-box;
     background: var(--MI_THEME-panel);
     border-radius: 20px;
     padding: 24px;
     width: 380px;
-    max-width: 90vw;
+    max-width: 100%;
     text-align: center;
 }
 
