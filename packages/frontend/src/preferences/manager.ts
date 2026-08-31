@@ -233,7 +233,7 @@ export class PreferencesManager {
 	}
 
 	// TODO: desync対策 cloudの値のfetchが正常に完了していない状態でcommitすると多分値が上書きされる
-	public commit<K extends keyof PREF>(key: K, value: ValueOf<K>) {
+	public commit<K extends keyof PREF>(key: K, value: ValueOf<K>): void | Promise<void> {
 		const currentAccount = this.currentAccount; // TSを黙らせるため
 		const v = JSON.parse(JSON.stringify(value)); // deep copy 兼 vueのプロキシ解除
 
@@ -269,9 +269,9 @@ export class PreferencesManager {
 		this.save();
 
 		if (record[2].sync) {
-			// awaitの必要なし
+			// 通常の設定操作は待たなくてもよいが、移行処理は保存完了を待てるようにする。
 			// TODO: リクエストを間引く
-			this.io.cloudSet({ key, scope: record[0], value: record[1] });
+			return this.io.cloudSet({ key, scope: record[0], value: record[1] });
 		}
 	}
 

@@ -56,14 +56,6 @@ export const navbarItemDef = reactive({
 		indicated: computed(() => $i != null && $i.hasPendingReceivedFollowRequest),
 		to: '/my/follow-requests',
 	},
-	portal: {
-		title: i18n.ts._hata._common.portal,
-		icon: 'ti ti-icons',
-		show: computed(() => true),
-		action: () => {
-			window.open('https://home.tolehata.net', '_blank');
-		},
-	},
 	hatask: {
 		title: 'Hatask',
 		icon: 'ti ti-layout-dashboard',

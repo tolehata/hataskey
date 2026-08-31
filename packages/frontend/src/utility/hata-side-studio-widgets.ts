@@ -307,7 +307,7 @@ const HATA_SIDE_WIDGET_DEFAULT_LABEL_ALIASES: Partial<Record<HataSideWidgetKind,
  * ウィジェット名を表示時だけ共通localeへ解決する。
  *
  * `storedLabel` は既存プロファイルとの互換用であり、利用者が変更した名前はそのまま返す。
- * 花常と同じく翻訳対象外の地震・津波情報は、localeに関係なく保存済み表示を維持する。
+ * 翻訳対象外の地震・津波情報は、localeに関係なく保存済み表示を維持する。
  */
 export function getHataSideWidgetDisplayLabel(value: unknown, storedLabel?: string): string {
 	const kind = normalizeHataSideWidgetKind(value);

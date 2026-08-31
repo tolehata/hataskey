@@ -131,7 +131,6 @@ const categories = [
 			{ iconClass: 'ti ti-brush', title: entries.drawingToolTitle, body: entries.drawingToolBody, tips: [entries.drawingToolTip1] },
 			{ iconClass: 'ti ti-id', title: entries.hataCardMakerTitle, body: entries.hataCardMakerBody, tips: [entries.hataCardMakerTip1], link: '/hatask/card-maker', linkLabel: entries.hataCardMakerLink },
 			{ iconClass: 'ti ti-mood-search', title: entries.hatalyzeTitle, body: entries.hatalyzeBody, tips: [entries.hatalyzeTip1, entries.hatalyzeTip2], link: '/hatask/emotion-analysis', linkLabel: entries.hatalyzeLink },
-			{ iconClass: 'ti ti-door', title: entries.portalTitle, body: entries.portalBody },
 		],
 	},
 	{

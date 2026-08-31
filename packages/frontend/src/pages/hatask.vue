@@ -1566,7 +1566,6 @@ function htkTouchEnd(e:TouchEvent){
   if(dx>0&&idx>0)activeTab.value=tabIds[idx-1];
   else if(dx<0&&idx<tabIds.length-1)activeTab.value=tabIds[idx+1];
 }
-function openPortal(){window.open('https://home.tolehata.net','_blank')}
 function cleanupHataskState(){
   // 旗鯖fork(タスク8): Hataskを離れたらフローティング連動フラグを下げる(フローティング復活)
   hatakMascotActive.value=false;
@@ -1600,7 +1599,6 @@ const homeApps=computed(()=>{
 		{ label: copy.appCardMaker, short: copy.appCardMakerShort, icon: 'ti ti-cards', color: '#e8a87c', fn: openHataCard },
 	{label:'HataSideStudio',short:'SideStudio',icon:'ti ti-layout-sidebar-left-expand',color:'#8b7cf6',fn:openHataSideStudio},
 	{label:copy.appWhatsNew,short:copy.appWhatsNewShort,icon:'ti ti-news',color:'#5b8fd6',fn:openHataWhatsNew},
-    {label:copy.appPortal,short:copy.appPortalShort,icon:'ti ti-door-enter',color:'#a78bfa',fn:openPortal},
     {label:copy.appHataSettings,short:copy.appHataSettingsShort,icon:'ti ti-flag',color:'#f472b6',fn:openHataSettings},
     {label:copy.appGuide,short:copy.appGuideShort,icon:'ti ti-book',color:'#60a5fa',fn:openHataDocs},
     {label:emotionCopy.title,short:emotionCopy.title,icon:'ti ti-mood-search',color:'#f59e0b',fn:openHatalyze},

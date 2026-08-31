@@ -366,6 +366,12 @@ export async function common(createVue: () => Promise<App<Element>>) {
 		miLocalStorage.setItem('hata_support_cleanup_migrated', '1');
 	}
 
+	// 初期同期を待つ清掃は起動を止めずに行う。取得・保存失敗時には完了印を付けない。
+	const { migrateRetiredPortalMenu } = await import('@/utility/retired-portal-migration.js');
+	void migrateRetiredPortalMenu(prefer, miLocalStorage, $i?.id ?? 'guest').catch(() => {
+		console.warn('[portal-migration] 設定の取得・保存に失敗したため、次回起動時に再試行します');
+	});
+
 	if (instance.swPublickey && ('PushManager' in window) && $i && $i.token && showPushNotificationDialog == null) {
 		const { dispose } = popup(defineAsyncComponent(() => import('@/components/MkPushNotification.vue')), {}, {
 			closed: () => dispose(),

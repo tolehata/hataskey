@@ -107,7 +107,6 @@ const ITEM_LABELS: Record<string, string> = {
 	hatask: copy.itemHatask,
 	hatafeed: copy.itemHataFeed,
 	hatady: copy.itemHatady,
-	portal: copy.itemPortal,
 	uiSetup: copy.itemUiSetup,
 	explore: copy.itemExplore,
 	followRequests: copy.itemFollowRequests,
@@ -117,6 +116,8 @@ const ITEM_LABELS: Record<string, string> = {
 	cacheClear: copy.itemClearCache,
 };
 
+const REMOVED_SIDEBAR_IDS = new Set(['portal']);
+
 const emit = defineEmits<{
 	(ev: 'closed'): void;
 	(ev: 'done', value: { saved: boolean }): void;
@@ -125,7 +126,7 @@ const emit = defineEmits<{
 const dialog = useTemplateRef('dialog');
 
 // 編集前の値を deep clone (キャンセル時の比較・破棄用)
-const initialSnapshot = JSON.stringify(prefer.s['simpleUi.sidebar'] ?? []);
+const initialSnapshot = JSON.stringify((prefer.s['simpleUi.sidebar'] ?? []).filter(item => !REMOVED_SIDEBAR_IDS.has(item?.id)));
 const editedItems = ref<any[]>(JSON.parse(initialSnapshot));
 
 const hasChanges = computed(() => JSON.stringify(editedItems.value) !== initialSnapshot);

@@ -50,6 +50,7 @@ export type Keys = (
 	'hata_sidebar_v6_migrated' |
 	'hata_docs_cleanup_migrated' |
 	'hata_support_cleanup_migrated' |
+	`hata_portal_cleanup_migrated:${string}` | // アカウント・プロファイルごと。旧端末共通の完了印は引き継がない
 	'loginBonusLastShown' |
 	'emojiShootHighScore' |
 	'emojiShootHighScore_debuff' |

@@ -190,7 +190,6 @@ export const PREF_DEF = definePreferences({
 			'notifications',
 			'chat',
 			'favorites',
-                        'portal',
 			'hatask',
 			'mascot',
 			'explore',
@@ -854,7 +853,6 @@ export const PREF_DEF = definePreferences({
 			// 旗鯖fork(Hatady): 学習・読書記録ツール (v6 マイグレで既存ユーザーにも insertAfter で追加)
 			{ id: 'hatady', icon: 'ti ti-book-2', label: 'Hatady', group: 'hata' },
 			{ id: 'earthquake', icon: 'ti ti-activity', label: '地震・津波情報', group: 'hata' },
-			{ id: 'portal', icon: 'ti ti-icons', label: '旗鯖ポータル', group: 'hata', external: true, url: 'https://home.tolehata.net/' },
 			// グループ3: 発見・交流
 			{ id: 'uiSetup', icon: 'ti ti-wand', label: 'UI切り替え', group: 'discover' },
 			{ id: 'explore', icon: 'ti ti-hash', label: 'みつける', group: 'discover' },
