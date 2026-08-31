@@ -892,6 +892,8 @@ function explicitStorageDispositionsV2(): ReadonlyMap<string, ExplicitStorageKey
 	const dynamicKey = '$' + '{string}';
 	add('local', keys('v basedMisskeyVersion lastVersion lastBasedMisskeyVersion hata_ui_migrated hata_gap_body_migrated hata_classic_spacing_migrated hata_misskeyui_wide_spacing_migrated hata_weather_default_off_migrated hata_sidebar_v2_migrated hata_sidebar_v3_migrated hata_sidebar_v4_migrated hata_sidebar_v5_migrated hata_sidebar_v6_migrated hata_sidebar_v7_migrated hata_docs_cleanup_migrated hata_support_cleanup_migrated hata_muted_reactions_local_migrated hata_hask_tiles_v1_migrated'), 'migration',
 		'端末保存形式・UI移行の一度だけ使うversion/marker', ['src/local-storage.ts', 'src/boot/common.ts']);
+	add('local', ['hata_portal_cleanup_migrated:' + dynamicKey], 'migration',
+		'廃止ポータルの保存メニュー移行をアカウント・プロファイルごとに記録する完了印', ['src/utility/retired-portal-migration.ts']);
 	add('local', ['fontSize', 'hatadyLang', 'miux:' + dynamicKey, 'themes:' + dynamicKey, 'lastEmojisFetchedAt', 'emojis'], 'deprecated',
 		'旧端末UI保存値。現行の正本または互換経路へ置換済み', ['src/local-storage.ts', 'src/pages/settings/preferences.vue']);
 	add('local', keys('hataPostDelayEnabled hataPostDelaySeconds hataSideStudio'), 'runtime',
