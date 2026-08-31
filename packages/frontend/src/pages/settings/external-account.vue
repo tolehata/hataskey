@@ -213,6 +213,7 @@ const HATACHI_2 = 'misskey.hatachanoima.net';
 // 旗鯖fork: 外部サーバー(旗鯖以外。接続先の規約が適用される)
 const LES_REQUIN = 'mi.les-requin.net';
 const KIGOTEI = 'ddoskey.com';
+const BEARBEAR = 'xiapopisland.top';
 
 const hostOptions = computed(() => {
 	const options: { value: string; label: string }[] = [];
@@ -231,6 +232,10 @@ const hostOptions = computed(() => {
 	// 旗鯖fork: 㐂五亭（Sharkey。Misskey互換APIとMiAuthを利用）
 	if (currentHost !== KIGOTEI) {
 		options.push({ value: KIGOTEI, label: `㐂五亭 (${KIGOTEI})` });
+	}
+
+	if (currentHost !== BEARBEAR) {
+		options.push({ value: BEARBEAR, label: `BearBear (${BEARBEAR})` });
 	}
 
 	return options;
@@ -405,7 +410,7 @@ async function handleMiAuthCallback() {
 	window.history.replaceState({}, '', url.toString());
 
 	try {
-		const res = await fetch(`https://${savedHost}/api/miauth/${savedSession}/check`, {
+		const res = await window.fetch(`https://${savedHost}/api/miauth/${savedSession}/check`, {
 			method: 'POST',
 		});
 
