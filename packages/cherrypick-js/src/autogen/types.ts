@@ -517,36 +517,6 @@ export type paths = {
          */
         post: operations['admin___forward-abuse-user-report'];
     };
-    '/admin/games/hanaawase/event-index': {
-        /**
-         * admin/games/hanaawase/event-index
-         * @description No description provided.
-         *
-         *     **Internal Endpoint**: This endpoint is an API for the cherrypick mainframe and is not intended for use by third parties.
-         *     **Credential required**: *Yes* / **Permission**: *read:admin:meta*
-         */
-        post: operations['admin___games___hanaawase___event-index'];
-    };
-    '/admin/games/hanaawase/stats': {
-        /**
-         * admin/games/hanaawase/stats
-         * @description No description provided.
-         *
-         *     **Internal Endpoint**: This endpoint is an API for the cherrypick mainframe and is not intended for use by third parties.
-         *     **Credential required**: *Yes* / **Permission**: *read:admin:meta*
-         */
-        post: operations['admin___games___hanaawase___stats'];
-    };
-    '/admin/games/hanaawase/update-event-index': {
-        /**
-         * admin/games/hanaawase/update-event-index
-         * @description No description provided.
-         *
-         *     **Internal Endpoint**: This endpoint is an API for the cherrypick mainframe and is not intended for use by third parties.
-         *     **Credential required**: *Yes* / **Permission**: *write:admin:meta*
-         */
-        post: operations['admin___games___hanaawase___update-event-index'];
-    };
     '/admin/get-index-stats': {
         /**
          * admin/get-index-stats
@@ -2553,15 +2523,6 @@ export type paths = {
          *     **Credential required**: *Yes* / **Permission**: *write:gallery*
          */
         post: operations['gallery___posts___update'];
-    };
-    '/games/hanaawase/event-index': {
-        /**
-         * games/hanaawase/event-index
-         * @description No description provided.
-         *
-         *     **Credential required**: *No*
-         */
-        post: operations['games___hanaawase___event-index'];
     };
     '/get-avatar-decorations': {
         /**
@@ -11604,235 +11565,6 @@ export interface operations {
             };
         };
     };
-    'admin___games___hanaawase___event-index': {
-        responses: {
-            /** @description OK (with results) */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    'application/json': {
-                        v: number;
-                        events: {
-                            id: string;
-                            title: string;
-                            rev: number;
-                            runs: {
-                                start: string;
-                                end: string;
-                                label: string;
-                            }[];
-                            archiveFrom: string;
-                        }[];
-                    };
-                };
-            };
-            /** @description Client error */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    'application/json': components['schemas']['Error'];
-                };
-            };
-            /** @description Authentication error */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    'application/json': components['schemas']['Error'];
-                };
-            };
-            /** @description Forbidden error */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    'application/json': components['schemas']['Error'];
-                };
-            };
-            /** @description I'm Ai */
-            418: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    'application/json': components['schemas']['Error'];
-                };
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    'application/json': components['schemas']['Error'];
-                };
-            };
-        };
-    };
-    admin___games___hanaawase___stats: {
-        responses: {
-            /** @description OK (with results) */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    'application/json': {
-                        players: number;
-                        dailyPlayers: number;
-                        eventPlayers: number;
-                        monthReach: number[];
-                        starTotals: number[];
-                        storyBuckets: number[];
-                        dailyPlays: number;
-                        dailyLongest: number;
-                    };
-                };
-            };
-            /** @description Client error */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    'application/json': components['schemas']['Error'];
-                };
-            };
-            /** @description Authentication error */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    'application/json': components['schemas']['Error'];
-                };
-            };
-            /** @description Forbidden error */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    'application/json': components['schemas']['Error'];
-                };
-            };
-            /** @description I'm Ai */
-            418: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    'application/json': components['schemas']['Error'];
-                };
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    'application/json': components['schemas']['Error'];
-                };
-            };
-        };
-    };
-    'admin___games___hanaawase___update-event-index': {
-        requestBody: {
-            content: {
-                'application/json': {
-                    eventIndex: {
-                        v: number;
-                        events: {
-                            id: string;
-                            title: string;
-                            rev: number;
-                            runs: {
-                                start: string;
-                                end: string;
-                                label: string;
-                            }[];
-                            archiveFrom: string;
-                        }[];
-                    };
-                };
-            };
-        };
-        responses: {
-            /** @description OK (with results) */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    'application/json': {
-                        v: number;
-                        events: {
-                            id: string;
-                            title: string;
-                            rev: number;
-                            runs: {
-                                start: string;
-                                end: string;
-                                label: string;
-                            }[];
-                            archiveFrom: string;
-                        }[];
-                    };
-                };
-            };
-            /** @description Client error */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    'application/json': components['schemas']['Error'];
-                };
-            };
-            /** @description Authentication error */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    'application/json': components['schemas']['Error'];
-                };
-            };
-            /** @description Forbidden error */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    'application/json': components['schemas']['Error'];
-                };
-            };
-            /** @description I'm Ai */
-            418: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    'application/json': components['schemas']['Error'];
-                };
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    'application/json': components['schemas']['Error'];
-                };
-            };
-        };
-    };
     'admin___get-index-stats': {
         responses: {
             /** @description OK (with results) */
@@ -13574,6 +13306,7 @@ export interface operations {
                         username: string | null;
                         reason: string;
                         email: string | null;
+                        additionalContacts: string | null;
                         status: string;
                         createdAt: string;
                         personalDataDeletedAt: string | null;
@@ -27862,77 +27595,6 @@ export interface operations {
             };
             /** @description Too many requests */
             429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    'application/json': components['schemas']['Error'];
-                };
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    'application/json': components['schemas']['Error'];
-                };
-            };
-        };
-    };
-    'games___hanaawase___event-index': {
-        responses: {
-            /** @description OK (with results) */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    'application/json': {
-                        v: number;
-                        events: {
-                            id: string;
-                            title: string;
-                            rev: number;
-                            runs: {
-                                start: string;
-                                end: string;
-                                label: string;
-                            }[];
-                            archiveFrom: string;
-                        }[];
-                    };
-                };
-            };
-            /** @description Client error */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    'application/json': components['schemas']['Error'];
-                };
-            };
-            /** @description Authentication error */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    'application/json': components['schemas']['Error'];
-                };
-            };
-            /** @description Forbidden error */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    'application/json': components['schemas']['Error'];
-                };
-            };
-            /** @description I'm Ai */
-            418: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -47456,6 +47118,7 @@ export interface operations {
                     password: string;
                     reason: string;
                     email: string;
+                    additionalContacts?: string | null;
                     'hcaptcha-response'?: string | null;
                     'g-recaptcha-response'?: string | null;
                     'turnstile-response'?: string | null;

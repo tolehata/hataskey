@@ -7966,10 +7966,6 @@ export interface Locale extends ILocale {
          */
         "restartServerSetupWizardConfirm_text": string;
         /**
-         * エントランスページのスタイル
-         */
-        "entrancePageStyle": string;
-        /**
          * タイムラインを表示する
          */
         "showTimelineForVisitor": string;
@@ -16512,7 +16508,7 @@ export interface Locale extends ILocale {
                  */
                 "languageSupportTitle": string;
                 /**
-                 * Hataskey独自機能は、日本語に加えて英語と中国語（簡体字）で表示できます。Hatadyを含む対応機能は、Hataskey本体の表示言語に従ってまとめて切り替わります。<br><br>自分で入力した投稿・記録・名前は自動翻訳されません。花常と地震・津波情報は、引き続き日本語のみです。
+                 * Hataskey独自機能は、日本語に加えて英語と中国語（簡体字）で表示できます。Hatadyを含む対応機能は、Hataskey本体の表示言語に従ってまとめて切り替わります。<br><br>自分で入力した投稿・記録・名前は自動翻訳されません。地震・津波情報は、引き続き日本語のみです。
                  */
                 "languageSupportBody": string;
                 /**
@@ -16679,14 +16675,6 @@ export interface Locale extends ILocale {
                  * 取得した投稿を分析結果以外の目的で保存しません
                  */
                 "hatalyzeTip2": string;
-                /**
-                 * Hataskeyポータル
-                 */
-                "portalTitle": string;
-                /**
-                 * Hataskeyの各種ツール、絵文字申請、ガイドラインなどへの入口をまとめたページです。
-                 */
-                "portalBody": string;
                 /**
                  * 投稿フォームのお絵かきボタン
                  */
@@ -22602,6 +22590,180 @@ export interface Locale extends ILocale {
             };
         };
         "_hatask": {
+            "_journal": {
+                /**
+                 * いまのきもちを、ひと息で残そう
+                 */
+                "moodIntro": string;
+                /**
+                 * きょうのごはんを、あなたのペースで
+                 */
+                "mealIntro": string;
+                /**
+                 * 改行は Enter · 記録は Ctrl / ⌘ + Enter
+                 */
+                "submitHint": string;
+                /**
+                 * 記録する日
+                 */
+                "recordDate": string;
+                /**
+                 * 記録する時刻
+                 */
+                "recordTime": string;
+                /**
+                 * いまに戻す
+                 */
+                "useNow": string;
+                /**
+                 * 残しておきたいことだけ選べます。選ばなくても大丈夫
+                 */
+                "reasonsHint": string;
+                /**
+                 * 記録の表示
+                 */
+                "views": string;
+                /**
+                 * 履歴
+                 */
+                "history": string;
+                /**
+                 * 振り返り
+                 */
+                "review": string;
+                /**
+                 * ひとこと・きもち・理由を検索
+                 */
+                "searchRecords": string;
+                /**
+                 * 日付で絞り込み
+                 */
+                "filterDate": string;
+                /**
+                 * 絞り込みを解除
+                 */
+                "clearFilters": string;
+                /**
+                 * 新しい順
+                 */
+                "newestFirst": string;
+                /**
+                 * 古い順
+                 */
+                "oldestFirst": string;
+                /**
+                 * 前の週
+                 */
+                "previousWeek": string;
+                /**
+                 * 次の週
+                 */
+                "nextWeek": string;
+                /**
+                 * 1週間の記録
+                 */
+                "weekOverview": string;
+                /**
+                 * {count}件の記録
+                 */
+                "recordCount": ParameterizedString<"count">;
+                /**
+                 * 記録の操作
+                 */
+                "recordActions": string;
+                /**
+                 * 記録のページ
+                 */
+                "recordPages": string;
+                /**
+                 * 記録を削除しました
+                 */
+                "recordDeleted": string;
+                /**
+                 * 元に戻す
+                 */
+                "undo": string;
+                /**
+                 * 記録を元に戻しました
+                 */
+                "recordRestored": string;
+                /**
+                 * 記録を安全に読み込めませんでした。再読み込みしてからお試しください
+                 */
+                "readFailure": string;
+                /**
+                 * 表示できない形式の記録があります。保存データは変更せず残しています
+                 */
+                "unreadableRecords": string;
+                /**
+                 * 変更を保存できませんでした。入力内容は残っています。接続を確認してもう一度お試しください
+                 */
+                "saveFailure": string;
+                /**
+                 * 記録する日付と時刻を確認してください
+                 */
+                "invalidDateTime": string;
+                /**
+                 * 一致する記録はありません
+                 */
+                "noMatches": string;
+                /**
+                 * 上の入力欄から、ひとことなしでも記録できます
+                 */
+                "emptyHint": string;
+                /**
+                 * 変化に気づくためのメモとして、気軽に見返せます
+                 */
+                "reviewHint": string;
+                /**
+                 * 直近7日間に記録したきもちだけを表示しています
+                 */
+                "reviewPeriod": string;
+                /**
+                 * 直近7日間の記録はまだありません
+                 */
+                "noRecentRecords": string;
+                /**
+                 * 最近のごはん
+                 */
+                "mealReview": string;
+                /**
+                 * 比べたり評価したりせず、残したことを振り返れます
+                 */
+                "mealReviewHint": string;
+                /**
+                 * この内容でもう一度
+                 */
+                "reuseRecord": string;
+                /**
+                 * ごはんの定番テンプレート
+                 */
+                "mealTemplates": string;
+                /**
+                 * 朝ごはんやいつものひとことを保存。使うと入力欄に入り、確認してから記録できます
+                 */
+                "templateHint": string;
+                /**
+                 * この内容を定番に保存
+                 */
+                "saveMealTemplate": string;
+                /**
+                 * 入力欄に読み込みました。確認してから記録できます
+                 */
+                "templateLoaded": string;
+                /**
+                 * テンプレートの名前を変更
+                 */
+                "renameTemplate": string;
+                /**
+                 * このテンプレートを削除しますか？ 保存済みのごはん記録は消えません
+                 */
+                "deleteTemplate": string;
+                /**
+                 * 入力中の内容を別の記録で置き換えますか？
+                 */
+                "replaceDraft": string;
+            };
             "_planner": {
                 /**
                  * カレンダー
@@ -25125,14 +25287,6 @@ export interface Locale extends ILocale {
                  * 更新内容
                  */
                 "appWhatsNewShort": string;
-                /**
-                 * Hataskeyポータル
-                 */
-                "appPortal": string;
-                /**
-                 * ポータル
-                 */
-                "appPortalShort": string;
                 /**
                  * Hataskey設定
                  */
@@ -28533,114 +28687,6 @@ export interface Locale extends ILocale {
                  */
                 "title": string;
                 /**
-                 * 見つける
-                 */
-                "discover": string;
-                /**
-                 * 記録する
-                 */
-                "record": string;
-                /**
-                 * 学習の記録
-                 */
-                "studyHistory": string;
-                /**
-                 * GARDEN
-                 */
-                "garden": string;
-                /**
-                 * ホーム
-                 */
-                "home": string;
-                /**
-                 * ローカル
-                 */
-                "local": string;
-                /**
-                 * ソーシャル
-                 */
-                "social": string;
-                /**
-                 * 検索
-                 */
-                "search": string;
-                /**
-                 * 通知
-                 */
-                "notifications": string;
-                /**
-                 * 128人がオンライン
-                 */
-                "onlineUsers": string;
-                /**
-                 * イシュー
-                 */
-                "issues": string;
-                /**
-                 * ロードマップ
-                 */
-                "roadmap": string;
-                /**
-                 * 絵文字申請
-                 */
-                "emojiRequest": string;
-                /**
-                 * 新規イシュー
-                 */
-                "newIssue": string;
-                /**
-                 * ベータ機能を試す
-                 */
-                "tryBeta": string;
-                /**
-                 * C/C++ プレイグラウンド
-                 */
-                "cppPlayground": string;
-                /**
-                 * 投稿前カウントダウン
-                 */
-                "postCountdown": string;
-                /**
-                 * プライベートチャンネル
-                 */
-                "privateChannel": string;
-                /**
-                 * 招待拒否 1人
-                 */
-                "declinedOne": string;
-                /**
-                 * デフォルト
-                 */
-                "defaultProfile": string;
-                /**
-                 * スタジオ設定
-                 */
-                "studioSettings": string;
-                /**
-                 * 配置
-                 */
-                "placement": string;
-                /**
-                 * 例えば、アザラシ
-                 */
-                "exampleSeal": string;
-                /**
-                 * 宴の成功
-                 */
-                "feastSuccess": string;
-                /**
-                 * 育てたお花
-                 */
-                "flowersGrown": string;
-                /**
-                 * 管理
-                 */
-                "manage": string;
-                /**
-                 * 二要素認証
-                 */
-                "twoFactorAuthentication": string;
-                /**
                  * 開く
                  */
                 "open": string;
@@ -28668,232 +28714,84 @@ export interface Locale extends ILocale {
                  * わかった
                  */
                 "gotIt": string;
-                /**
-                 * このUIは現在未開放です。
-                 */
-                "uiUnavailable": string;
-                /**
-                 * UIの表示言語
-                 */
-                "languageSettings": string;
-                /**
-                 * 対応
-                 */
-                "languageSupported": string;
             };
             "_content": {
                 /**
-                 * ブランディングを刷新し、Hatadyの記録機能とHataSNSCordUIの表示を改善しました
+                 * いつものホームを、もっと使いやすく。つながる場所も広がります
                  */
                 "headline": string;
                 /**
-                 * オリジナルアイコンブランディング
+                 * Hataskを大幅に改良 — 予定もToDoも、さっと整理
                  */
-                "brandingTitle": string;
+                "hataskPlannerTitle": string;
                 /**
-                 * 設定メニュー、各設定ページ、エラー表示、ダイアログ、ログイン画面などのアイコンを、Hataskeyオリジナルのイラストに置き換えました。旗鯖独自機能のUIタブから、いつでも通常のアイコンへ戻せます。サーバーの管理画面でブランディング画像が設定されている場合は、そちらが優先されます。
+                 * カレンダーを月・週・日・予定一覧で切り替え、予定を別の日や時間へ移動。ToDoは今日・これから・優先度やフォルダで整理し、まとめて変更できます。きもち・ごはんの記録も書きやすく。予定・ToDo・ごはんのテンプレートはひとつのアイコンから呼び出せます。
                  */
-                "brandingText": string;
-                /**
-                 * 設定を開く
-                 */
-                "brandingLink": string;
-                /**
-                 * Hatady — ゲームと映画の記録を追加
-                 */
-                "hatadyRecordTitle": string;
-                /**
-                 * 学習と読書に加えて、ゲームと映画も記録できるようにしました。対人戦・協力プレイ・PvEの人数や敵の種類、武器ごとのキル・デス・スペシャル・救助・サポートを、必要な項目だけチェックして残せます。一度使った武器名やステージ名は次回から候補として呼び出せ、マイログではゲーム・映画・勉強の表示を切り替えられます。コレクションを開いたときの演出も種類ごとに変わります。
-                 */
-                "hatadyRecordText": string;
-                /**
-                 * Hatadyへ
-                 */
-                "hatadyRecordLink": string;
-                /**
-                 * Hatady — 公開範囲を変えると保存できない問題を修正
-                 */
-                "hatadyVisibilityTitle": string;
-                /**
-                 * 記録の公開範囲を「自分のみ」以外にすると保存に失敗する問題を修正しました。映画の記録が保存できなかった問題も同じ原因によるもので、あわせて解消しています。
-                 */
-                "hatadyVisibilityText": string;
-                /**
-                 * HataSNSCordUI — アイコンと投稿メニュー
-                 */
-                "hatacordingFixTitle": string;
-                /**
-                 * ノートの枠・公開範囲・使用量の表示を直し、UIのアイコンを新しいアニメーションへ揃えました。投稿欄の星メニューはボタンの真上に開く縦スワイプ式へ変更し、PCでは5項目、スマートフォンでは4項目を一度に表示します。メニュー外の操作やEscでも閉じられます。
-                 */
-                "hatacordingFixText": string;
-                /**
-                 * HataSNSCordUIへ
-                 */
-                "hatacordingFixLink": string;
-                /**
-                 * プロフィールの宴バッジ — 数え方を修正
-                 */
-                "utageBadgeTitle": string;
-                /**
-                 * 宴はローカルタイムライン上のやり取りなので、ホーム公開の投稿を成功・阻止の回数へ数えないようにしました。表示されるのは公開範囲が「公開」の分だけになります。
-                 */
-                "utageBadgeText": string;
-                /**
-                 * ミュートした人のリアクション非表示を改良
-                 */
-                "muteReactionTitle": string;
-                /**
-                 * ミュートした人が付けたリアクションを隠す機能を改良しました。設定は旗鯖独自設定からいつでも切り替えられます。
-                 */
-                "muteReactionText": string;
-                /**
-                 * 設定を開く
-                 */
-                "muteReactionLink": string;
-                /**
-                 * カードメーカー — 操作と表示の修正
-                 */
-                "cardMakerTitle": string;
-                /**
-                 * カードを触って動かすときにページのスクロールと競合する問題を修正しました。カード画像のアイコン装飾の位置もずれないように直しています。
-                 */
-                "cardMakerText": string;
-                /**
-                 * Hataskへ
-                 */
-                "cardMakerLink": string;
-                /**
-                 * Hataskey UI — ホームボタンの不具合を修正
-                 */
-                "hatasabaHomeTitle": string;
-                /**
-                 * スマートフォンでホームボタンを押すと、選んでいたタイムラインのタブが強制的にホームタイムラインへ切り替わる不具合を修正しました。
-                 */
-                "hatasabaHomeText": string;
-                /**
-                 * HataSideStudio — 配置の修正
-                 */
-                "sideStudioFixTitle": string;
-                /**
-                 * 部品を置く位置の判定を直し、移動できないときの案内も分かりやすくしました。
-                 */
-                "sideStudioFixText": string;
-                /**
-                 * HataSideStudioへ
-                 */
-                "sideStudioFixLink": string;
-                /**
-                 * iPhone・スマートフォンの操作を安定化
-                 */
-                "mobileFixTitle": string;
-                /**
-                 * リアクションの長押し操作を改善し、iPhoneでリアクション選択メニューが開かないことがある問題と、カードの傾き表示が安定しない問題を修正しました。
-                 */
-                "mobileFixText": string;
-                /**
-                 * HATAlyze — 投稿の分析を一新しました
-                 */
-                "hatalyzeTitle": string;
-                /**
-                 * 分析はこの端末の中だけで行い、投稿の本文をサーバーに残しません。喜び・楽しさ・親愛・感謝・怒り・悲しみ・不安・疲れの8つの軸で傾向を出し、言葉の辞書を501語まで増やしました。同じ言葉が何度も出るほど強く出ます。曜日・時間帯・話題・投稿の習慣も見られます。
-                 */
-                "hatalyzeText": string;
-                /**
-                 * HATAlyzeを開く
-                 */
-                "hatalyzeLink": string;
-                /**
-                 * Hataskに新しいテーマ「ハタキュ」が増えました
-                 */
-                "hatakyuThemeTitle": string;
-                /**
-                 * コルクボードに紙をピンで留めた見た目です。紙はゆっくり揺れ、ときどき風で大きく動きます。風は設定で止められます。初回のテーマ選択でも選べます。
-                 */
-                "hatakyuThemeText": string;
+                "hataskPlannerText": string;
                 /**
                  * Hataskを開く
                  */
-                "hatakyuThemeLink": string;
+                "hataskLink": string;
                 /**
-                 * Hatadyの書き出しが映画・ゲームにも対応しました
+                 * Hatask — みんなが育てたお花を眺めよう
                  */
-                "hatadyExportTitle": string;
+                "hataskGardenTitle": string;
                 /**
-                 * 作品と記録を、人が読めるテキストか、そのまま取っておける構造化ファイルのどちらでも書き出せます。期間や、映画だけ・ゲームだけの絞り込みもできます。学習の記録とまとめて書き出すこともできます。
+                 * お庭に「みんなのお花」が加わりました。花の名前や花言葉、育てた人を見ながら、新しい順・古い順で眺められます。自分のお花を見せる相手は、公開・フォロワー・自分のみから選べます。
                  */
-                "hatadyExportText": string;
+                "hataskGardenText": string;
                 /**
-                 * Hatadyを開く
+                 * 外部アカウント連携にBearBearを追加
                  */
-                "hatadyExportLink": string;
+                "externalBearBearTitle": string;
                 /**
-                 * 横に開く折りたたみ端末の広い画面に対応しました（ベータ）
+                 * 接続先にBearBear（xiapopisland.top）が増えました。外部アカウント連携の設定から選べます。つないだ先では、そのサーバーの規約が適用されます。
                  */
-                "foldableTitle": string;
-                /**
-                 * 画面を開いたときだけ、表示はスマホのままで右側にウィジェットやサブペインを出します。機種名ではなく画面の広さと操作方法で判定します。設定で常に使う・使わないも選べます。まだベータのため、端末によっては表示が整わないことがあります。
-                 */
-                "foldableText": string;
-                /**
-                 * 設定を開く
-                 */
-                "foldableLink": string;
-                /**
-                 * Hataskey UIの動きを表情豊かにしました
-                 */
-                "uiMotionTitle": string;
-                /**
-                 * 名前をタップしたときに出るカードを作り直し、投稿の送信中の見せ方、モーダルやメニューの出方、Hatadyの統計の出かた、ナビゲーションやデッキの操作感を、それぞれ動きのある形に整えました。
-                 */
-                "uiMotionText": string;
-                /**
-                 * 日付やお花の名前が英語で出る問題を直しました
-                 */
-                "langFixTitle": string;
-                /**
-                 * 言語を一度も選んでいない場合に、画面の文言は日本語なのに日付・曜日・お花の名前・Hatask Eyeの文章だけ英語で出ることがありました。起動時に選ばれた言語へ揃うようにしました。
-                 */
-                "langFixText": string;
-                /**
-                 * 外部アカウント連携の接続先に㐂五亭を追加しました
-                 */
-                "externalDdoskeyTitle": string;
-                /**
-                 * 㐂五亭 (ddoskey.com) につなげるようになりました。設定の外部アカウント連携から接続先として選べます。つないだ先の規約が適用されます。
-                 */
-                "externalDdoskeyText": string;
+                "externalBearBearText": string;
                 /**
                  * 接続先を見る
                  */
-                "externalDdoskeyLink": string;
+                "externalLink": string;
                 /**
-                 * カスタムフォントを直接アップロードできるようになりました
+                 * ログイン画面が新しくなりました
                  */
-                "fontUploadTitle": string;
+                "welcomeRenewalTitle": string;
                 /**
-                 * Hataskey独自設定のフォント画面から、TrueType（.ttf）とOpenType（.otf）を直接アップロードしてUIへ適用できます。サーバーの管理者が独自に許可する種類を設定している場合、その設定は変更しません。
+                 * 動く見本でHataskeyの機能を知る入口に。公開されている投稿や人数も見られ、スマートフォンでは矢印ボタンで切り替えられます。参加申請にはSNSなどの連絡先を任意で記入でき、承認・拒否のどちらでも自動削除。新しい申請は管理者の通知欄へ届きます。
                  */
-                "fontUploadText": string;
+                "welcomeRenewalText": string;
                 /**
-                 * ここに載せたのは主な変更だけです。細かな修正を含むすべての変更点は、リリースノートをご確認ください。
+                 * Hataskeyを別サーバーでご利用いただけるようになりました
+                 */
+                "serverChoiceTitle": string;
+                /**
+                 * Hataskeyを導入したサーバーでは、そのサーバーの名前や背景、紹介文を表示します。登録方法や案内も、サーバーごとの設定に合わせています。
+                 */
+                "serverChoiceText": string;
+                /**
+                 * 花常の提供を終了します
+                 */
+                "gameFarewellTitle": string;
+                /**
+                 * 今回の更新で花常は遊べなくなります。ゲームの一覧や関連する案内からも外れます。これまで遊んでくださった皆さん、ありがとうございました。
+                 */
+                "gameFarewellText": string;
+                /**
+                 * 毎日の使いやすさを、こつこつ改善
+                 */
+                "dailyPolishTitle": string;
+                /**
+                 * 画面の表示や設定の引き継ぎなど、細かな不具合の修正と使いやすさの改善を重ねました。廃止したポータルは、保存済みのメニュー設定からも取り除きます。
+                 */
+                "dailyPolishText": string;
+                /**
+                 * ここでは主な変更をご紹介しています。詳しくはリリースノートをご覧ください。
                  */
                 "footerText": string;
                 /**
                  * リリースノートを見る
                  */
                 "footerLink": string;
-                /**
-                 * 設定画面を作り直しました
-                 */
-                "settingsRenewalTitle": string;
-                /**
-                 * 左に大分類、右にその中の項目をタブで並べる2枚組みに作り直しました。分類を選ぶと最初の項目がすぐ開き、Hataskey独自の設定も別窓ではなく右側にそのまま出ます。上部の検索からは、画面をまたいで設定を探せます。
-                 */
-                "settingsRenewalText": string;
-                /**
-                 * 設定を開く
-                 */
-                "settingsRenewalLink": string;
             };
         };
         "_common": {
@@ -28905,10 +28803,6 @@ export interface Locale extends ILocale {
              * 外部通知
              */
             "externalNotifications": string;
-            /**
-             * Hataskeyポータル
-             */
-            "portal": string;
             /**
              * マスコット
              */
@@ -28946,7 +28840,7 @@ export interface Locale extends ILocale {
              */
             "applicationCompleteDescription": string;
             /**
-             * 申請の承認には2〜3日ほどかかる場合があります。
+             * 審査にかかる時間は、このサーバーの運営状況によって異なります。
              */
             "reviewTime": string;
             /**
@@ -28954,7 +28848,7 @@ export interface Locale extends ILocale {
              */
             "noRejectionEmail": string;
             /**
-             * なお、申請の承認基準は公開していません。
+             * 申請は、このサーバーのルールと運営方針に沿って審査されます。
              */
             "criteriaNotPublic": string;
             /**
@@ -29055,10 +28949,6 @@ export interface Locale extends ILocale {
              * Hatady
              */
             "itemHatady": string;
-            /**
-             * Hataskeyポータル
-             */
-            "itemPortal": string;
             /**
              * UI切り替え
              */
@@ -29400,10 +29290,6 @@ export interface Locale extends ILocale {
              */
             "pendingRegistration": string;
             /**
-             * ゲーム運営
-             */
-            "gameManagement": string;
-            /**
              * 登録申請管理
              */
             "registrationManagement": string;
@@ -29411,14 +29297,6 @@ export interface Locale extends ILocale {
              * 同意管理
              */
             "consentManagement": string;
-            /**
-             * このフォークでは独自の登録システムを用意しているため、この設定は無効化されています。
-             */
-            "openRegistrationDisabled": string;
-            /**
-             * このトグルを有効にすると、思わぬ誤作動を引き起こす可能性があります。
-             */
-            "openRegistrationRisk": string;
         };
         "_announcementCustom": {
             /**
@@ -29736,7 +29614,71 @@ export interface Locale extends ILocale {
             "backToBeta": string;
         };
         "_registrationApplications": {
+            /**
+             * 申請による登録を受け付ける
+             */
+            "acceptApplications": string;
+            /**
+             * オンにすると申請制になります。招待コードでも登録できます。オフにすると申請なしで誰でも登録できる一般開放になります
+             */
+            "acceptApplicationsDescription": string;
+            /**
+             * 登録を一般開放しますか？申請なしで誰でも登録できるようになります。受付済みの申請は保管され、申請制へ戻すまで一覧の表示・操作はできません
+             */
+            "openRegistrationConfirm": string;
+            /**
+             * 現在は登録を一般開放中です
+             */
+            "openRegistrationActive": string;
+            /**
+             * 申請一覧の表示・操作は停止しています。受付済みの申請は保管され、申請制へ戻すと再開できます
+             */
+            "managementPaused": string;
+            /**
+             * 登録方法が変更されました。現在の登録画面からもう一度お進みください
+             */
+            "registrationModeChanged": string;
+            /**
+             * 新しい参加申請
+             */
+            "notificationTitle": string;
+            /**
+             * 新しい参加申請が届きました。コンパネの申請管理で確認してください。
+             */
+            "notificationBody": string;
             "_application": {
+                /**
+                 * すでにお使いのSNSなどの連絡先
+                 */
+                "contactsLabel": string;
+                /**
+                 * 例：@name@example.social、SNSのプロフィールURL
+                 */
+                "contactsPlaceholder": string;
+                /**
+                 * すでにお使いのSNSなどがありましたら、アカウント名やプロフィールのURLをご入力ください。空欄のままでも申請できます
+                 */
+                "contactsHint": string;
+                /**
+                 * この欄の連絡先は参加申請の確認と、そのために必要な連絡のみに使用します。審査中はこのサーバーの管理者だけが確認できます
+                 */
+                "contactsPurpose": string;
+                /**
+                 * 任意の連絡先は、承認・拒否のどちらでも削除します
+                 */
+                "contactsHandling": string;
+                /**
+                 * 承認または拒否が確定したときに、この欄の連絡先を申請データから自動的に削除します。プロフィールや通知には保存しません。処理が完了せず申請が審査中のままの場合は、引き続き審査のために保管します
+                 */
+                "contactsDeletion": string;
+                /**
+                 * この取り扱いは任意の連絡先欄が対象です。SNSなどの連絡先は理由欄ではなくこちらへご入力ください。登録用メールアドレスは、下に記載した別の取り扱いになります
+                 */
+                "contactsSeparation": string;
+                /**
+                 * 運用者が別途保管するバックアップや、すでに控えた情報まで同時に消去する仕組みではありません。詳しい保管方針はこのサーバーの案内をご確認ください
+                 */
+                "contactsBackupNotice": string;
                 /**
                  * 戻る
                  */
@@ -29766,7 +29708,7 @@ export interface Locale extends ILocale {
                  */
                 "emailLabel": string;
                 /**
-                 * このメールアドレスは過去90日以内に申請に使用されています。別のメールアドレスを使用してください。
+                 * このメールアドレスの申請が審査中か、却下済みの申請情報が保管されています。別のメールアドレスを使用してください。
                  */
                 "emailUnavailable": string;
                 /**
@@ -29781,18 +29723,6 @@ export interface Locale extends ILocale {
                  * サーバールール
                  */
                 "serverRules": string;
-                /**
-                 * 18歳未満は登録できません
-                 */
-                "ruleAge": string;
-                /**
-                 * GDPR（EU一般データ保護規則）に対応していないため、いかなる場合もEU圏内からの登録は受け付けておりません。
-                 */
-                "ruleGdpr": string;
-                /**
-                 * 利用規約をよくご確認ください。当サーバーは利用者の意見を反映しつつ、管理者の独断でモデレーションを行います。
-                 */
-                "ruleModeration": string;
                 /**
                  * 上記のサーバールールに同意します
                  */
@@ -29838,7 +29768,7 @@ export interface Locale extends ILocale {
                  */
                 "rejectedCredentialsDeletedAfter": string;
                 /**
-                 * は同一メールアドレスからの連続申請を拒否するため一定期間 (90日) 保持された後、削除されます。
+                 * は連続申請を防ぐため、申請日から90日経過後の定期削除まで保管されます。
                  */
                 "rejectedEmailRetention": string;
                 /**
@@ -29846,7 +29776,7 @@ export interface Locale extends ILocale {
                  */
                 "noRejectionEmail": string;
                 /**
-                 * 一度申請に使用したメールアドレスは、90日間は再申請に使えません。
+                 * 審査中、または却下済みの申請情報が残っている間は、同じメールアドレスで再申請できません。
                  */
                 "emailReuseWarning": string;
                 /**
@@ -29876,6 +29806,14 @@ export interface Locale extends ILocale {
             };
             "_admin": {
                 /**
+                 * 任意の連絡先（SNSなど）
+                 */
+                "contactsLabel": string;
+                /**
+                 * 参加申請の確認と、そのために必要な連絡のみに使用してください。承認・拒否の確定時に申請データから自動削除されます。別の場所への転記や保存はお控えください
+                 */
+                "contactsHandling": string;
+                /**
                  * 登録申請管理
                  */
                 "title": string;
@@ -29896,7 +29834,7 @@ export interface Locale extends ILocale {
                  */
                 "emailRetained": string;
                 /**
-                 * 同一メールからの連続申請拒否のため一定期間保持 (90日経過で自動削除)
+                 * 連続申請を防ぐため保管（申請日から90日経過後の定期処理で自動削除）
                  */
                 "emailRetainedDescription": string;
                 /**
@@ -29952,7 +29890,7 @@ export interface Locale extends ILocale {
                  */
                 "credentialsNotDeleted": string;
                 /**
-                 * 却下後{count}日経過 / 90日で自動削除
+                 * 却下後{count}日経過
                  */
                 "rejectedDays": ParameterizedString<"count">;
                 /**
@@ -29986,6 +29924,7 @@ export interface Locale extends ILocale {
                 /**
                  * @{username} の登録申請を承認しますか？
                  * アカウントが作成され、承認メールが送信されます。
+                 * 任意の連絡先（SNSなど）は申請データから削除されます。
                  */
                 "approveConfirm": ParameterizedString<"username">;
                 /**
@@ -29999,8 +29938,8 @@ export interface Locale extends ILocale {
                 /**
                  * @{username} の登録申請を却下しますか？
                  *
-                 * 却下されると、ID・パスワード情報は即時削除されます。
-                 * メールアドレスは同一メールからの連続申請を拒否するため、90日間保持されます。
+                 * ID・パスワード情報と任意の連絡先（SNSなど）は申請データから削除されます。
+                 * メールアドレスは連続申請を防ぐため、申請日から90日経過後の定期削除まで保管されます。
                  * 却下メールは送信されません。
                  */
                 "rejectConfirm": ParameterizedString<"username">;
@@ -30669,10 +30608,6 @@ export interface Locale extends ILocale {
                      * Hatady
                      */
                     "hatady": string;
-                    /**
-                     * Hataskeyポータル
-                     */
-                    "portal": string;
                     /**
                      * UI切り替え
                      */
@@ -33458,7 +33393,7 @@ export interface Locale extends ILocale {
                  */
                 "privacyTitle": string;
                 /**
-                 * 外部アカウントのログイン情報、投稿、ToDo、学習記録、花常の進行、マスコット素材は対象外です。Hatadyの学習記録とHataFeedのイシューは、下の専用ボタンから個別に保存できます。
+                 * 外部アカウントのログイン情報、投稿、ToDo、学習記録、マスコット素材は対象外です。Hatadyの学習記録とHataFeedのイシューは、下の専用ボタンから個別に保存できます。
                  */
                 "privacyDescription": string;
                 /**

@@ -80,10 +80,6 @@ import type {
 	AdminFederationRemoveAllFollowingRequest,
 	AdminFederationUpdateInstanceRequest,
 	AdminForwardAbuseUserReportRequest,
-	AdminGamesHanaawaseEventIndexResponse,
-	AdminGamesHanaawaseStatsResponse,
-	AdminGamesHanaawaseUpdateEventIndexRequest,
-	AdminGamesHanaawaseUpdateEventIndexResponse,
 	AdminGetIndexStatsResponse,
 	AdminGetTableStatsResponse,
 	AdminGetUserIpsRequest,
@@ -432,7 +428,6 @@ import type {
 	GalleryPostsUnlikeRequest,
 	GalleryPostsUpdateRequest,
 	GalleryPostsUpdateResponse,
-	GamesHanaawaseEventIndexResponse,
 	GetAvatarDecorationsResponse,
 	GetOnlineUsersCountResponse,
 	HashtagsListRequest,
@@ -1002,9 +997,6 @@ export type Endpoints = {
 	'admin/federation/remove-all-following': { req: AdminFederationRemoveAllFollowingRequest; res: EmptyResponse };
 	'admin/federation/update-instance': { req: AdminFederationUpdateInstanceRequest; res: EmptyResponse };
 	'admin/forward-abuse-user-report': { req: AdminForwardAbuseUserReportRequest; res: EmptyResponse };
-	'admin/games/hanaawase/event-index': { req: EmptyRequest; res: AdminGamesHanaawaseEventIndexResponse };
-	'admin/games/hanaawase/stats': { req: EmptyRequest; res: AdminGamesHanaawaseStatsResponse };
-	'admin/games/hanaawase/update-event-index': { req: AdminGamesHanaawaseUpdateEventIndexRequest; res: AdminGamesHanaawaseUpdateEventIndexResponse };
 	'admin/get-index-stats': { req: EmptyRequest; res: AdminGetIndexStatsResponse };
 	'admin/get-table-stats': { req: EmptyRequest; res: AdminGetTableStatsResponse };
 	'admin/get-user-ips': { req: AdminGetUserIpsRequest; res: AdminGetUserIpsResponse };
@@ -1226,7 +1218,6 @@ export type Endpoints = {
 	'gallery/posts/show': { req: GalleryPostsShowRequest; res: GalleryPostsShowResponse };
 	'gallery/posts/unlike': { req: GalleryPostsUnlikeRequest; res: EmptyResponse };
 	'gallery/posts/update': { req: GalleryPostsUpdateRequest; res: GalleryPostsUpdateResponse };
-	'games/hanaawase/event-index': { req: EmptyRequest; res: GamesHanaawaseEventIndexResponse };
 	'get-avatar-decorations': { req: EmptyRequest; res: GetAvatarDecorationsResponse };
 	'get-online-users-count': { req: EmptyRequest; res: GetOnlineUsersCountResponse };
 	'hashtags/list': { req: HashtagsListRequest; res: HashtagsListResponse };

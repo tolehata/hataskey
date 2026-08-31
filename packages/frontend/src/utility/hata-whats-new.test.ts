@@ -3,6 +3,9 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import * as yaml from 'js-yaml';
 import { describe, expect, test, vi } from 'vitest';
 import { getHataWhatsNewDisplayVersion, HATA_WHATS_NEW } from './hata-whats-new.js';
 import type { Locale } from '../../../../locales/index.js';
@@ -16,133 +19,116 @@ vi.mock('@/i18n.js', async () => {
 	return { i18n: new I18n<Locale>(locale as Locale) };
 });
 
+const root = path.resolve(process.cwd(), '../..');
+const previews = ['hataskPlanner', 'hataskGarden', 'externalBearBear', 'welcomeRenewal', 'serverChoice', 'gameFarewell', 'dailyPolish'];
+const oldPreviews = new Set([
+	'branding', 'settingsRenewal', 'hatadyRecord', 'hatadyVisibility', 'hatacordingFix',
+	'utageBadge', 'muteReaction', 'cardMaker', 'hatasabaHome', 'sideStudioFix', 'mobileFix',
+	'hatalyze', 'hatakyuTheme', 'hatadyExport', 'foldable', 'uiMotion', 'langFix', 'externalDdoskey', 'fontUpload',
+]);
+const locales = ['ja-JP', 'en-US', 'zh-CN'].map(lang => {
+	const locale = yaml.load(fs.readFileSync(path.join(root, 'locales', `${lang}.yml`), 'utf8')) as Locale;
+	return { lang, copy: locale._hata._whatsNew._content };
+});
+
 describe('HATA_WHATS_NEW', () => {
-	test('機械判定用の完全な版から旗鯖の表示版を生成する', () => {
-		expect(HATA_WHATS_NEW.version).toBe('2026.7.0-hata.12.4');
-		expect(getHataWhatsNewDisplayVersion(HATA_WHATS_NEW.version)).toBe('hata-12.4');
+	test('表示済み判定の版をpackage.jsonと一致させる', () => {
+		const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+		expect(HATA_WHATS_NEW.version).toBe(pkg.version);
+		expect(getHataWhatsNewDisplayVersion('2026.7.0-hata.12.5')).toBe('hata-12.5');
 		expect(getHataWhatsNewDisplayVersion('2026.7.0-hata.12.1')).toBe('hata-12.1');
 		expect(getHataWhatsNewDisplayVersion('development')).toBe('development');
 	});
 
-	test('ブランディング刷新を必ず先頭で案内する', () => {
-		expect(HATA_WHATS_NEW.items[0]).toMatchObject({
-			preview: 'branding',
-			to: '/settings/hata-custom',
-		});
-		expect(HATA_WHATS_NEW.items[0].title).toContain('ブランディング');
+	test('新しい7項目それぞれに異なる見本を割り当てる', () => {
+		expect(HATA_WHATS_NEW.items.map(item => item.preview)).toEqual(previews);
+		expect(new Set(HATA_WHATS_NEW.items.map(item => item.preview)).size).toBe(previews.length);
 	});
 
-	test('ブランディング刷新は1項目にまとめ、差し替えた個々の画面を項目にしない', () => {
-		// ⚠️利用者から見て「1つの変更」なので、実装単位で項目を増やさない。
-		const brandingItems = HATA_WHATS_NEW.items.filter(item => item.preview === 'branding');
-		expect(brandingItems).toHaveLength(1);
+	test('旧19項目の再掲を陽性対照付きで検出する', () => {
+		const findOld = (items: string[]) => items.filter(item => oldPreviews.has(item));
+		expect(findOld([...previews, 'branding', 'externalDdoskey'])).toEqual(['branding', 'externalDdoskey']);
+		expect(findOld(HATA_WHATS_NEW.items.map(item => item.preview))).toEqual([]);
 	});
 
-	test('12.1.3のタグに含まれる過去の案内を再掲しない', () => {
-		const copy = JSON.stringify(HATA_WHATS_NEW);
-		for (const removed of [
-			'花常',
-			'C/C++',
-			'プライベートチャンネル',
-			'画像ビューワー',
-			'外部アカウント連携を追加',
-			'HataFeedを全面リデザイン',
-			'中国語（簡体字）',
-		]) {
-			expect(copy).not.toContain(removed);
-		}
+	test('Hataskの予定・ToDo・みんなのお花を案内する', () => {
+		const planner = HATA_WHATS_NEW.items[0];
+		expect(planner).toMatchObject({ preview: 'hataskPlanner', to: '/hatask' });
+		expect(planner.title).toContain('大幅に改良');
+		for (const word of ['月・週・日・予定一覧', 'ToDo', 'まとめて変更']) expect(planner.text).toContain(word);
+		const garden = HATA_WHATS_NEW.items[1];
+		expect(garden).toMatchObject({ preview: 'hataskGarden', to: '/hatask' });
+		for (const word of ['みんなのお花', '花言葉', 'フォロワー', '自分のみ']) expect(garden.text).toContain(word);
 	});
 
-	test('Hatadyの記録追加と保存不具合の修正をどちらも案内する', () => {
-		const record = HATA_WHATS_NEW.items.find(item => item.preview === 'hatadyRecord');
-		expect(record).toMatchObject({ to: '/hatady', linkLabel: 'Hatadyへ' });
-		expect(record?.text).toContain('ゲーム');
-		expect(record?.text).toContain('映画');
-
-		const visibility = HATA_WHATS_NEW.items.find(item => item.preview === 'hatadyVisibility');
-		expect(visibility?.text).toContain('公開範囲');
-	});
-
-	test('HataSNSCordUIの修正はUIそのものへ切り替えて案内する', () => {
-		expect(HATA_WHATS_NEW.items.find(item => item.preview === 'hatacordingFix')).toMatchObject({
-			activateUi: 'hatacording',
-			linkLabel: 'HataSNSCordUIへ',
-		});
-	});
-
-	test('宴バッジはプロフィールの表示として案内する', () => {
-		const badge = HATA_WHATS_NEW.items.find(item => item.preview === 'utageBadge');
-		expect(badge?.title).toContain('プロフィール');
-		expect(badge?.title).toContain('宴');
-	});
-
-	test('正式名称を使い、略称で案内しない', () => {
-		const studio = HATA_WHATS_NEW.items.find(item => item.preview === 'sideStudioFix');
-		expect(studio?.title).toContain('HataSideStudio');
-		expect(studio).toMatchObject({ to: '/hata-side-studio' });
-		expect(JSON.stringify(HATA_WHATS_NEW)).not.toContain('サイドスタジオ');
-	});
-
-	test('ミュートの件は機能改良として書き、ベータからの移行と書かない', () => {
-		const mute = HATA_WHATS_NEW.items.find(item => item.preview === 'muteReaction');
-		expect(`${mute?.title}\n${mute?.text}`).toContain('改良');
-		expect(`${mute?.title}\n${mute?.text}`).not.toContain('ベータ');
-	});
-
-	test('すべての更新項目に内容別のプレビューを重複なく割り当てる', () => {
-		// ⚠️hata-12.2 の案内を書いたあとに入った変更を8件足したので18件。
-		//   ⚠️プレビューは1項目につき1種類。使い回すと「何が変わったか」が図から読めなくなる。
-		// 旗鯖fork: ⚠️設定のリニューアルを2番目に足したので19へ。
-		expect(HATA_WHATS_NEW.items).toHaveLength(19);
-		expect(new Set(HATA_WHATS_NEW.items.map(item => item.preview)).size).toBe(19);
-	});
-
-	test('あとから足した主要な変更を案内する', () => {
-		const previews = HATA_WHATS_NEW.items.map(item => item.preview);
-		for (const preview of ['hatalyze', 'hatakyuTheme', 'hatadyExport', 'foldable', 'uiMotion', 'langFix', 'externalDdoskey', 'fontUpload']) {
-			expect(previews).toContain(preview);
-		}
-		// ⚠️先頭はブランディングのまま。あとから足した分は必ず末尾へ。
-		expect(HATA_WHATS_NEW.items[0].preview).toBe('branding');
-		expect(HATA_WHATS_NEW.items.find(item => item.preview === 'hatalyze')).toMatchObject({ to: '/hatask/emotion-analysis' });
-	});
-
-	test('フォントファイルの追加形式を利用者向けに案内する', () => {
-		const item = HATA_WHATS_NEW.items.find(x => x.preview === 'fontUpload');
-		expect(item).toMatchObject({ to: '/settings/hata-custom' });
-		expect(item?.text).toContain('.ttf');
-		expect(item?.text).toContain('.otf');
-		expect(item?.text).toContain('直接アップロード');
-		expect(item?.text).toContain('変更しません');
-	});
-
-	test('折りたたみ端末のプレビューは閉じた状態から開く', async () => {
-		const fs = await import('node:fs');
-		const path = await import('node:path');
-		const source = fs.readFileSync(path.resolve(process.cwd(), 'src/components/MkHataWhatsNew.vue'), 'utf8');
-		expect(source).toContain('@keyframes hwnFoldOpen');
-		expect(source).toContain('rotateY(-178deg)');
-		expect(source).toContain('rotateY(0deg)');
-		expect(source).toContain('transform-origin: left center');
-	});
-
-	test('外部アカウント連携は接続先の追加としてのみ案内する', () => {
-		// ⚠️機能そのものは 12.1.3 で案内済み。今回言うべきなのは接続先が増えたことだけ。
-		const item = HATA_WHATS_NEW.items.find(x => x.preview === 'externalDdoskey');
+	test('BearBearは既存の連携機能の接続先追加として規約とともに案内する', () => {
+		const item = HATA_WHATS_NEW.items.find(item => item.preview === 'externalBearBear');
 		expect(item).toMatchObject({ to: '/settings/external-account' });
-		expect(item?.title).toContain('㐂五亭');
-		expect(item?.text).toContain('ddoskey.com');
-		// ⚠️つないだ先の規約が適用される外部サーバーなので、それを伏せない。
+		expect(item?.title).toContain('BearBear');
+		expect(item?.text).toContain('xiapopisland.top');
 		expect(item?.text).toContain('規約');
+		expect(item?.text).not.toContain('ddoskey.com');
 	});
 
-	test('見出しと本文がロケール未定義で空欄にならない', () => {
-		expect(HATA_WHATS_NEW.headline).not.toBe('');
+	test('別サーバーでの利用を独立した項目で案内し無条件の互換性を保証しない', () => {
+		const item = HATA_WHATS_NEW.items.find(item => item.preview === 'serverChoice');
+		expect(item?.title).toBe('Hataskeyを別サーバーでご利用いただけるようになりました');
+		expect(item?.text).toContain('Hataskeyを導入したサーバー');
+		expect(item?.text).toContain('サーバーごとの設定');
+		expect(item?.text).not.toMatch(/どのサーバーでも|完全互換|検証済み/);
+	});
+
+	test('新しいログイン画面の案内にはモバイルでの切り替えも含める', () => {
+		const item = HATA_WHATS_NEW.items.find(item => item.preview === 'welcomeRenewal');
+		for (const word of ['投稿', '人数', '矢印ボタン']) expect(item?.text).toContain(word);
+	});
+
+	test('花常は提供終了としてだけ案内し遊ぶリンクを作らない', () => {
+		const item = HATA_WHATS_NEW.items.find(item => item.preview === 'gameFarewell');
+		expect(item?.title).toBe('花常の提供を終了します');
+		expect(item?.text).toContain('遊べなくなります');
+		expect(item?.text).toContain('ありがとうございました');
+		expect(item?.to).toBeUndefined();
+		expect(item?.linkLabel).toBeUndefined();
+	});
+
+	test('保存済みのポータル除去を利用者の言葉で説明する', () => {
+		expect(HATA_WHATS_NEW.items.find(item => item.preview === 'dailyPolish')?.text).toContain('廃止したポータル');
+		const internalTerms = /Registry|API|DB|MiAuth|localStorage|fail.closed|リファクタ|フォールバック|マイグレーション/i;
+		expect(internalTerms.test('Registry APIのマイグレーション')).toBe(true);
+		const userCopy = [HATA_WHATS_NEW.headline, ...HATA_WHATS_NEW.items.flatMap(item => [item.title, item.text])].join('\n');
+		expect(internalTerms.test(userCopy)).toBe(false);
+	});
+
+	test('案内からの移動先は現在の画面に限定し表示UIを勝手に切り替えない', () => {
 		for (const item of HATA_WHATS_NEW.items) {
-			expect(item.title).not.toBe('');
-			expect(item.text).not.toBe('');
-			expect(item.title.startsWith('_hata')).toBe(false);
-			expect(item.text.startsWith('_hata')).toBe(false);
+			if (item.to) {
+				expect(['/hatask', '/settings/external-account']).toContain(item.to);
+				expect(item.linkLabel).toBeTruthy();
+			}
+			expect(item).not.toHaveProperty('activateUi');
+		}
+	});
+
+	test.each(locales)('$langの新しい見出し・本文・リンクがすべて揃う', ({ copy }) => {
+		const expectedKeys = [
+			'headline', 'hataskLink', 'externalLink', 'footerText', 'footerLink',
+			...previews.flatMap(preview => [`${preview}Title`, `${preview}Text`]),
+		].sort();
+		expect(Object.keys(copy).sort()).toEqual(expectedKeys);
+		for (const value of Object.values(copy)) {
+			expect(typeof value).toBe('string');
+			expect(value.trim().length).toBeGreaterThan(0);
+			expect(value).not.toMatch(/^_hata\./);
+		}
+	});
+
+	test('見出しと本文が翻訳キーのまま表示されない', () => {
+		for (const item of HATA_WHATS_NEW.items) {
+			expect(item.title).toBeTruthy();
+			expect(item.text).toBeTruthy();
+			expect(item.title).not.toMatch(/^_hata\./);
+			expect(item.text).not.toMatch(/^_hata\./);
 		}
 	});
 });

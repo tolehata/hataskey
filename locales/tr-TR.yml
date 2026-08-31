@@ -2,7 +2,7 @@
 _lang_: "Türkçe"
 headlineMisskey: "Notlarla birbirine bağlı bir ağ"
 introMisskey: "Hoş geldiniz! CherryPick, merkezi olmayan bir açık kaynaklı mikroblog platformudur.\n“Notlar” yazarak şu anda neler olduğunu anlatabilir veya olayları başkalarıyla paylaşabilirsiniz. 📡\n“Tepkiler” ile diğer kullanıcıların notları hakkındaki duygularınızı hızlı bir şekilde ifade edebilirsiniz. 👍\nYeni bir dünya sizi bekliyor! 🚀"
-poweredByMisskeyDescription: "{name}, açık kaynak platformu <b>CherryPick</b> (kısaca “CherryPick örneği” olarak anılır) tarafından desteklenen hizmetlerden biridir."
+poweredByMisskeyDescription: "{name}, açık kaynak platformu <b>Hataskey</b> (kısaca “Hataskey örneği” olarak anılır) tarafından desteklenen hizmetlerden biridir."
 monthAndDay: "{day}.{month}."
 search: "Ara"
 reset: "Sıfırla"
@@ -1668,7 +1668,6 @@ _serverSettings:
   userGeneratedContentsVisibilityForVisitor_description2: "Sunucu tarafından alınan uzak içerik dahil olmak üzere sunucudaki tüm içeriği koşulsuz olarak İnternet'e yayınlamak risklidir. Bu, içeriğin dağıtılmış yapısından haberdar olmayan misafirler için özellikle önemlidir, çünkü onlar yanlışlıkla uzak içeriğin bile sunucudaki kullanıcılar tarafından oluşturulan içerik olduğunu düşünebilirler."
   restartServerSetupWizardConfirm_title: "Sunucu kurulum sihirbazını yeniden başlatmak ister misin?"
   restartServerSetupWizardConfirm_text: "Bazı mevcut ayarlar sıfırlanacaktır."
-  entrancePageStyle: "Giriş sayfası stili"
   showTimelineForVisitor: "Panoyu göster"
   showActivitiesForVisitor: "Aktiviteleri göster"
   _userGeneratedContentsVisibilityForVisitor:

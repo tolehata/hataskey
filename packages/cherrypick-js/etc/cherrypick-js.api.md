@@ -279,18 +279,6 @@ type AdminFederationUpdateInstanceRequest = operations['admin___federation___upd
 type AdminForwardAbuseUserReportRequest = operations['admin___forward-abuse-user-report']['requestBody']['content']['application/json'];
 
 // @public (undocumented)
-type AdminGamesHanaawaseEventIndexResponse = operations['admin___games___hanaawase___event-index']['responses']['200']['content']['application/json'];
-
-// @public (undocumented)
-type AdminGamesHanaawaseStatsResponse = operations['admin___games___hanaawase___stats']['responses']['200']['content']['application/json'];
-
-// @public (undocumented)
-type AdminGamesHanaawaseUpdateEventIndexRequest = operations['admin___games___hanaawase___update-event-index']['requestBody']['content']['application/json'];
-
-// @public (undocumented)
-type AdminGamesHanaawaseUpdateEventIndexResponse = operations['admin___games___hanaawase___update-event-index']['responses']['200']['content']['application/json'];
-
-// @public (undocumented)
 type AdminGetIndexStatsResponse = operations['admin___get-index-stats']['responses']['200']['content']['application/json'];
 
 // @public (undocumented)
@@ -1825,10 +1813,6 @@ declare namespace entities {
         AdminFederationRemoveAllFollowingRequest,
         AdminFederationUpdateInstanceRequest,
         AdminForwardAbuseUserReportRequest,
-        AdminGamesHanaawaseEventIndexResponse,
-        AdminGamesHanaawaseStatsResponse,
-        AdminGamesHanaawaseUpdateEventIndexRequest,
-        AdminGamesHanaawaseUpdateEventIndexResponse,
         AdminGetIndexStatsResponse,
         AdminGetTableStatsResponse,
         AdminGetUserIpsRequest,
@@ -2177,7 +2161,6 @@ declare namespace entities {
         GalleryPostsUnlikeRequest,
         GalleryPostsUpdateRequest,
         GalleryPostsUpdateResponse,
-        GamesHanaawaseEventIndexResponse,
         GetAvatarDecorationsResponse,
         GetOnlineUsersCountResponse,
         HashtagsListRequest,
@@ -2360,13 +2343,24 @@ declare namespace entities {
         HataskEventsDeleteRequest,
         HataskEventsListRequest,
         HataskEventsListResponse,
+        HataskEventsOwnedRequest,
+        HataskEventsOwnedResponse,
         HataskEventsRsvpRequest,
+        HataskEventsUpdateRequest,
+        HataskEventsUpdateResponse,
         HataskFlowersListRequest,
         HataskFlowersListResponse,
         HataskFlowersSyncRequest,
         HataskFlowersSyncResponse,
         HataskFlowersVisibilityUpdateRequest,
         HataskFlowersVisibilityUpdateResponse,
+        HataskPlannerCommitRequest,
+        HataskPlannerCommitResponse,
+        HataskPlannerCommitBatchRequest,
+        HataskPlannerCommitBatchResponse,
+        HataskPlannerCreateShadowRequest,
+        HataskPlannerCreateShadowResponse,
+        HataskPlannerGetResponse,
         IResponse,
         I2faDoneRequest,
         I2faDoneResponse,
@@ -3005,9 +2999,6 @@ type GalleryPostsUpdateRequest = operations['gallery___posts___update']['request
 
 // @public (undocumented)
 type GalleryPostsUpdateResponse = operations['gallery___posts___update']['responses']['200']['content']['application/json'];
-
-// @public (undocumented)
-type GamesHanaawaseEventIndexResponse = operations['games___hanaawase___event-index']['responses']['200']['content']['application/json'];
 
 // @public (undocumented)
 type GetAvatarDecorationsResponse = operations['get-avatar-decorations']['responses']['200']['content']['application/json'];
@@ -3718,7 +3709,19 @@ type HataskEventsListRequest = operations['hatask___events___list']['requestBody
 type HataskEventsListResponse = operations['hatask___events___list']['responses']['200']['content']['application/json'];
 
 // @public (undocumented)
+type HataskEventsOwnedRequest = operations['hatask___events___owned']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataskEventsOwnedResponse = operations['hatask___events___owned']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
 type HataskEventsRsvpRequest = operations['hatask___events___rsvp']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataskEventsUpdateRequest = operations['hatask___events___update']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataskEventsUpdateResponse = operations['hatask___events___update']['responses']['200']['content']['application/json'];
 
 // @public (undocumented)
 type HataskFlowersListRequest = operations['hatask___flowers___list']['requestBody']['content']['application/json'];
@@ -3737,6 +3740,27 @@ type HataskFlowersVisibilityUpdateRequest = operations['hatask___flowers___visib
 
 // @public (undocumented)
 type HataskFlowersVisibilityUpdateResponse = operations['hatask___flowers___visibility___update']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataskPlannerCommitBatchRequest = operations['hatask___planner___commit-batch']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataskPlannerCommitBatchResponse = operations['hatask___planner___commit-batch']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataskPlannerCommitRequest = operations['hatask___planner___commit']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataskPlannerCommitResponse = operations['hatask___planner___commit']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataskPlannerCreateShadowRequest = operations['hatask___planner___create-shadow']['requestBody']['content']['application/json'];
+
+// @public (undocumented)
+type HataskPlannerCreateShadowResponse = operations['hatask___planner___create-shadow']['responses']['200']['content']['application/json'];
+
+// @public (undocumented)
+type HataskPlannerGetResponse = operations['hatask___planner___get']['responses']['200']['content']['application/json'];
 
 // @public (undocumented)
 type I2faDoneRequest = operations['i___2fa___done']['requestBody']['content']['application/json'];

@@ -2,7 +2,7 @@
 _lang_: "Italiano"
 headlineMisskey: "Rete collegata tramite Note"
 introMisskey: "Eccoci! CherryPick è un servizio di microblogging decentralizzato, libero e aperto. \n\n📡 Puoi pubblicare «Note» per condividere ciò che sta succedendo o per dire a tutti qualcosa su di te. \n\n👍 Puoi reagire inviando emoji rapidi alle «Note» provenienti da altri profili nel Fediverso.\n\n🚀 Esplora un nuovo mondo insieme a noi!"
-poweredByMisskeyDescription: "{name} è uno dei servizi (chiamati istanze) che utilizzano la piattaforma open source <b>CherryPick</b>."
+poweredByMisskeyDescription: "{name} è uno dei servizi (chiamati istanze) che utilizzano la piattaforma open source <b>Hataskey</b>."
 monthAndDay: "{day}/{month}"
 search: "Cerca"
 reset: "Ripristinare"
@@ -1710,7 +1710,6 @@ _serverSettings:
   userGeneratedContentsVisibilityForVisitor_description2: "Esistono dei rischi nell'esporre incondizionatamente su internet tutto il contenuto del tuo server, incluso il contenuto remoto ricevuto da altri server. In particolare, occorre prestare attenzione, perché le persone non consapevoli della federazione potrebbero erroneamente credere che il contenuto remoto sia stato invece creato all'interno del proprio server."
   restartServerSetupWizardConfirm_title: "Vuoi ripetere la procedura guidata di configurazione iniziale del server?"
   restartServerSetupWizardConfirm_text: "Verranno ripristinate alcune tue impostazioni personalizzate."
-  entrancePageStyle: "Stile della pagina di ingresso"
   showTimelineForVisitor: "Mostra la Timeline a visitatori non autenticati"
   showActivitiesForVisitor: "Mostrare la propria attività"
   _userGeneratedContentsVisibilityForVisitor:

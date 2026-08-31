@@ -2,7 +2,7 @@
 _lang_: "Português"
 headlineMisskey: "Uma rede ligada por notas"
 introMisskey: "Bem-vindo! O CherryPick é um serviço de microblog descentralizado de código aberto.\nCrie \"notas\" para compartilhar o que está acontecendo agora ou para se expressar com todos à sua volta 📡\nVocê também pode adicionar rapidamente reações às notas de outras pessoas usando a função \"Reações\" 👍\nVamos explorar um novo mundo 🚀"
-poweredByMisskeyDescription: "{name} é uma instância da plataforma de código aberto <b>CherryPick</b>."
+poweredByMisskeyDescription: "{name} é uma instância da plataforma de código aberto <b>Hataskey</b>."
 monthAndDay: "{day}/{month}"
 search: "Pesquisar"
 reset: "Redefinir"
@@ -1690,7 +1690,6 @@ _serverSettings:
   userGeneratedContentsVisibilityForVisitor_description2: "Publicar todo o conteúdo do servidor para a internet pode ser arriscado. Isso é especialmente importante para visitantes que desconhecem a natureza distribuída do conteúdo na internet, pois eles podem acreditar que o conteúdo remoto é criado por usuários desse servidor."
   restartServerSetupWizardConfirm_title: "Reiniciar o assistente de configuração?"
   restartServerSetupWizardConfirm_text: "Algumas configurações atuais serão reiniciadas."
-  entrancePageStyle: "Estilo da página de entrada"
   showTimelineForVisitor: "Mostrar linha do tempo"
   showActivitiesForVisitor: "Mostrar atividades"
   _userGeneratedContentsVisibilityForVisitor:

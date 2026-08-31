@@ -2,7 +2,7 @@
 _lang_: "Català"
 headlineMisskey: "Una xarxa connectada per notes"
 introMisskey: "Benvingut! CherryPick és un servei de microblogging descentralitzat de codi obert.\nCrea \"notes\" per compartir els teus pensaments amb tots els que t'envolten. 📡\nAmb \"reaccions\", també pots expressar ràpidament els teus sentiments sobre les notes de tothom. 👍\nExplorem un món nou! 🚀"
-poweredByMisskeyDescription: "{name} És un dels serveis (anomenats instàncies de CherryPick) que utilitzen la plataforma de codi obert <b>CherryPick</b>."
+poweredByMisskeyDescription: "{name} És un dels serveis (anomenats instàncies de Hataskey) que utilitzen la plataforma de codi obert <b>Hataskey</b>."
 monthAndDay: "{day}/{month}"
 search: "Cercar"
 reset: "Reiniciar"
@@ -1698,7 +1698,6 @@ _serverSettings:
   userGeneratedContentsVisibilityForVisitor_description2: "La publicació incondicional de tots els continguts del servidor a internet, incloent-hi els continguts remots rebuts pel servidor, comporta riscos. Això és extremadament important per els espectadors que desconeixen el caràcter descentralitzat dels continguts, ja que poden percebre erroneament els continguts remots com contingut generat per el propi servidor."
   restartServerSetupWizardConfirm_title: "Vols tornar a executar l'assistent de configuració inicial del servidor?"
   restartServerSetupWizardConfirm_text: "Algunes configuracions actuals seran restablertes."
-  entrancePageStyle: "Estil de la pàgina d'inici"
   showTimelineForVisitor: "Mostrar la línia de temps"
   showActivitiesForVisitor: "Mostrar activitat"
   _userGeneratedContentsVisibilityForVisitor:

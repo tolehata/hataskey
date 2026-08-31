@@ -2,7 +2,7 @@
 _lang_: "ภาษาไทย"
 headlineMisskey: "เชื่อมต่อเครือข่ายโดยโน้ต"
 introMisskey: "ยินดีต้อนรับทุกคนจ้า! CherryPick คือ ซอฟต์แวร์โอเพนซอร์สสำหรับบริการไมโครบล็อกกิ้ง (MicroBlogging) แบบกระจายศูนย์อำนาจ (Decentralized) \n\nเขียน “โน้ต (Note)” เพื่อส่งต่อเรื่องราวของคุณให้ทั้งโลกได้รับรู้📡\nและอย่าลืมที่จะ “รีแอคชั่น” กับเรื่องราวของคนอื่น ๆ ด้วยนะ! 👍\n\nท่องสำรวจโลกใบใหม่กันเถอะ🚀"
-poweredByMisskeyDescription: "{name} เป็นหนึ่งในเซิร์ฟเวอร์ของแพลตฟอร์มโอเพ่นซอร์ส <b>CherryPick</b>"
+poweredByMisskeyDescription: "{name} เป็นหนึ่งในเซิร์ฟเวอร์ของแพลตฟอร์มโอเพ่นซอร์ส <b>Hataskey</b>"
 monthAndDay: "{month}/{day}"
 search: "ค้นหา"
 reset: "รีเซ็ต"
@@ -1702,7 +1702,6 @@ _serverSettings:
   userGeneratedContentsVisibilityForVisitor_description2: "การเปิดเผยเนื้อหาทั้งหมดในเซิร์ฟเวอร์รวมทั้งเนื้อหาที่รับมาจากระยะไกลสู่สาธารณะบนอินเทอร์เน็ตโดยไม่มีข้อจำกัดใดๆ มีความเสี่ยงโดยเฉพาะอย่างยิ่งสำหรับผู้ชมที่ไม่เข้าใจลักษณะของระบบแบบกระจาย อาจทำให้เกิดความเข้าใจผิดคิดว่าเนื้อหาที่มาจากระยะไกลนั้นเป็นเนื้อหาที่สร้างขึ้นภายในเซิร์ฟเวอร์นี้ จึงควรใช้ความระมัดระวังอย่างมาก"
   restartServerSetupWizardConfirm_title: "ต้องการเริ่มวิซาร์ดการตั้งค่าเซิร์ฟเวอร์ใหม่หรือไม่?"
   restartServerSetupWizardConfirm_text: "การตั้งค่าบางส่วนในปัจจุบันจะถูกรีเซ็ต"
-  entrancePageStyle: "สไตล์ของหน้าเพจทางเข้า"
   showTimelineForVisitor: "แสดงไทม์ไลน์"
   showActivitiesForVisitor: "แสดงกิจกรรม"
   _userGeneratedContentsVisibilityForVisitor:

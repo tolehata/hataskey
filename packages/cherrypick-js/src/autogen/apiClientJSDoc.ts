@@ -633,42 +633,6 @@ declare module '../api.js' {
     /**
      * No description provided.
      *
-     * **Internal Endpoint**: This endpoint is an API for the cherrypick mainframe and is not intended for use by third parties.
-     * **Credential required**: *Yes* / **Permission**: *read:admin:meta*
-     */
-    request<E extends 'admin/games/hanaawase/event-index', P extends Endpoints[E]['req']>(
-      endpoint: E,
-      params: P,
-      credential?: string | null,
-    ): Promise<SwitchCaseResponseType<E, P>>;
-
-    /**
-     * No description provided.
-     *
-     * **Internal Endpoint**: This endpoint is an API for the cherrypick mainframe and is not intended for use by third parties.
-     * **Credential required**: *Yes* / **Permission**: *read:admin:meta*
-     */
-    request<E extends 'admin/games/hanaawase/stats', P extends Endpoints[E]['req']>(
-      endpoint: E,
-      params: P,
-      credential?: string | null,
-    ): Promise<SwitchCaseResponseType<E, P>>;
-
-    /**
-     * No description provided.
-     *
-     * **Internal Endpoint**: This endpoint is an API for the cherrypick mainframe and is not intended for use by third parties.
-     * **Credential required**: *Yes* / **Permission**: *write:admin:meta*
-     */
-    request<E extends 'admin/games/hanaawase/update-event-index', P extends Endpoints[E]['req']>(
-      endpoint: E,
-      params: P,
-      credential?: string | null,
-    ): Promise<SwitchCaseResponseType<E, P>>;
-
-    /**
-     * No description provided.
-     *
      * **Credential required**: *Yes* / **Permission**: *read:admin:index-stats*
      */
     request<E extends 'admin/get-index-stats', P extends Endpoints[E]['req']>(
@@ -3110,17 +3074,6 @@ declare module '../api.js' {
      * **Credential required**: *Yes* / **Permission**: *write:gallery*
      */
     request<E extends 'gallery/posts/update', P extends Endpoints[E]['req']>(
-      endpoint: E,
-      params: P,
-      credential?: string | null,
-    ): Promise<SwitchCaseResponseType<E, P>>;
-
-    /**
-     * No description provided.
-     *
-     * **Credential required**: *No*
-     */
-    request<E extends 'games/hanaawase/event-index', P extends Endpoints[E]['req']>(
       endpoint: E,
       params: P,
       credential?: string | null,
