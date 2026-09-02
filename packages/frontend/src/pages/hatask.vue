@@ -4608,7 +4608,7 @@ select.htk-inp{appearance:none;cursor:pointer;padding-right:36px}
 .htk-sch-note{border-radius:14px}
 .htk-modal-ov{position:fixed;inset:0;background:rgba(0,0,0,.3);backdrop-filter:blur(12px);display:flex;align-items:center;justify-content:center;z-index:3200000}
 .htk-modal-c{max-width:500px;width:92%;max-height:85vh;overflow-y:auto;animation:htkScIn .4s var(--ease-spring) both;border-radius:28px !important}
-.htk-event-editor-modal{width:min(92%,760px);max-width:760px;max-height:min(88dvh,780px);overscroll-behavior:contain}
+.htk-event-editor-modal{width:min(92%,760px);max-width:760px;max-height:min(88dvh,780px);background:var(--surface);overscroll-behavior:contain}
 .htk-event-editor-head{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:10px}
 .htk-event-editor-head .htk-sec-title{min-width:0;margin:0}
 .htk-popup-b{font-size:.82rem;color:var(--text-2);line-height:1.7}

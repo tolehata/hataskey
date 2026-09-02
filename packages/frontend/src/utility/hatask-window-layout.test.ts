@@ -114,6 +114,7 @@ describe('Hatask deck window layout contract', () => {
 		expect(closeHandler).not.toContain('editingEvent.value=');
 		expect(closeHandler).not.toContain('resetEventEditor');
 		expect(source).toContain('max-height:min(88dvh,780px)');
+		expect(source).toContain('.htk-event-editor-modal{width:min(92%,760px);max-width:760px;max-height:min(88dvh,780px);background:var(--surface);overscroll-behavior:contain}');
 	});
 
 	test('PCのハタキュToDoだけ入力と残件表示を横に並べる', () => {
