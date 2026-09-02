@@ -51,6 +51,7 @@ import { AnnouncementEntityService } from '@/core/entities/AnnouncementEntitySer
 import { FeedService } from './FeedService.js';
 import { UrlPreviewService } from './UrlPreviewService.js';
 import { ClientLoggerService } from './ClientLoggerService.js';
+import { legacyAppIconRoutes, resolveAppIconUrl } from './app-icon.js';
 import type { FastifyError, FastifyInstance, FastifyPluginOptions, FastifyReply } from 'fastify';
 
 const _filename = fileURLToPath(import.meta.url);
@@ -150,6 +151,8 @@ export class ClientServerService {
 
 	@bindThis
 	private async manifestHandler(reply: FastifyReply) {
+		const icon192 = resolveAppIconUrl(this.meta, 192, this.config.url);
+		const icon512 = resolveAppIconUrl(this.meta, 512, this.config.url);
 		let manifest = {
 			// 空文字列の場合右辺を使いたいため
 			// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
@@ -164,26 +167,17 @@ export class ClientServerService {
 			// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
 			'theme_color': this.meta.themeColor || '#ffa9c3',
 			'icons': [{
-				// 優先順位: app192IconUrl → iconUrl → プレーン単色SVG
-				// 空文字列の場合右辺を使いたいため
-				// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-				'src': this.meta.app192IconUrl || this.meta.iconUrl || this.generatePlainIconDataUri(192),
+				'src': icon192 ?? this.generatePlainIconDataUri(192),
 				'sizes': '192x192',
-				'type': 'image/png',
-				'purpose': 'maskable',
+				// 設定URLの形式は断定しない。生成したSVGだけ正しいMIMEを指定する。
+				'type': icon192 ? undefined : 'image/svg+xml',
+				// Windows等の通常表示でも、モバイルの切り抜き表示でも設定画像を使う。
+				'purpose': 'any maskable',
 			}, {
-				// 優先順位: app512IconUrl → iconUrl → プレーン単色SVG
-				// 空文字列の場合右辺を使いたいため
-				// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-				'src': this.meta.app512IconUrl || this.meta.iconUrl || this.generatePlainIconDataUri(512),
+				'src': icon512 ?? this.generatePlainIconDataUri(512),
 				'sizes': '512x512',
-				'type': 'image/png',
-				'purpose': 'maskable',
-			}, {
-				'src': '/static-assets/splash.png',
-				'sizes': '300x300',
-				'type': 'image/png',
-				'purpose': 'any',
+				'type': icon512 ? undefined : 'image/svg+xml',
+				'purpose': 'any maskable',
 			}],
 			'share_target': {
 				'action': '/share/',
@@ -211,6 +205,16 @@ export class ClientServerService {
 	}
 
 	@bindThis
+	private async appIconHandler(size: 192 | 512, reply: FastifyReply, legacy = false) {
+		// 旧PWAのURLも再検証させる。静的画像用の7日キャッシュは使わない。
+		reply.header('Cache-Control', legacy ? 'no-cache' : 'max-age=300');
+		const url = resolveAppIconUrl(this.meta, size, this.config.url);
+		if (url) return reply.redirect(url);
+		reply.type('image/svg+xml');
+		return reply.send(this.generatePlainIconSvg(size));
+	}
+
+	@bindThis
 	private async generateCommonPugData(meta: MiMeta) {
 		// 旗鯖fork: 本家 2026.6 系で base layout に var LANGS が必須化された(フロントの
 		// boot.js が LANGS をグローバル参照する)。旗鯖は pug 経路で SSR しているため、
@@ -227,8 +231,8 @@ export class ClientServerService {
 
 		return {
 			instanceName: meta.name ?? 'CherryPick',
-			icon: meta.iconUrl,
-			appleTouchIcon: meta.app512IconUrl,
+			icon: resolveAppIconUrl(meta, 192, this.config.url),
+			appleTouchIcon: resolveAppIconUrl(meta, 512, this.config.url),
 			themeColor: meta.themeColor,
 			serverErrorImageUrl: meta.serverErrorImageUrl ?? 'https://xn--931a.moe/assets/error.jpg',
 			infoImageUrl: meta.infoImageUrl ?? 'https://xn--931a.moe/assets/info.jpg',
@@ -339,32 +343,12 @@ export class ClientServerService {
 			done();
 		});
 
-		fastify.get('/favicon.ico', async (request, reply) => {
-			// 旗鯖fork: PWA manifest と挙動を揃える。iconUrl が設定されていればそこへ、
-			// 未設定ならインスタンス固有の動的生成アイコン(SVG)を返す。静的な CherryPick の
-			// favicon.ico は使わない(サーバーアイコンとファビコンの不整合を防ぐ)。
-			// 優先順位: app192IconUrl → iconUrl → 動的生成SVG
-			// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-			const url = this.meta.app192IconUrl || this.meta.iconUrl;
-			if (url) {
-				return reply.redirect(url);
-			}
-			reply.header('Cache-Control', 'max-age=300');
-			reply.type('image/svg+xml');
-			return reply.send(this.generatePlainIconSvg(192));
-		});
-
-		fastify.get('/apple-touch-icon.png', async (request, reply) => {
-			// 旗鯖fork: 同上。優先順位: app512IconUrl → iconUrl → 動的生成SVG
-			// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-			const url = this.meta.app512IconUrl || this.meta.iconUrl;
-			if (url) {
-				return reply.redirect(url);
-			}
-			reply.header('Cache-Control', 'max-age=300');
-			reply.type('image/svg+xml');
-			return reply.send(this.generatePlainIconSvg(512));
-		});
+		fastify.get('/favicon.ico', async (request, reply) => await this.appIconHandler(192, reply));
+		fastify.get('/apple-touch-icon.png', async (request, reply) => await this.appIconHandler(512, reply));
+		// 旧インストール済みPWA向け。既知の同梱画像だけを現在の設定へ引き継ぐ。
+		for (const [path, size] of legacyAppIconRoutes) {
+			fastify.get(path, async (request, reply) => await this.appIconHandler(size, reply, true));
+		}
 
 		fastify.get<{ Params: { path: string } }>('/fluent-emoji/:path(.*)', async (request, reply) => {
 			const path = request.params.path;

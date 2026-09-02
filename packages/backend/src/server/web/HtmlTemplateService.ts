@@ -15,11 +15,12 @@ import { DI } from '@/di-symbols.js';
 import { bindThis } from '@/decorators.js';
 import { htmlSafeJsonStringify } from '@/misc/json-stringify-html-safe.js';
 import { MetaEntityService } from '@/core/entities/MetaEntityService.js';
-import type { FastifyReply } from 'fastify';
-import type { Manifest } from 'vite';
 import type { Config } from '@/config.js';
 import type { MiMeta } from '@/models/Meta.js';
+import { resolveAppIconUrl } from './app-icon.js';
 import type { CommonData, ViteFiles } from './views/_.js';
+import type { FastifyReply } from 'fastify';
+import type { Manifest } from 'vite';
 
 // 旗鯖fork: 本家は this.config.rootDir / i18n/const に依存するが、旗鯖 Config には
 // rootDir が無く、locales も named export していないため、ファイル位置基準で解決する。
@@ -182,8 +183,8 @@ export class HtmlTemplateService {
 			config: this.config,
 			langs: loadLanguages(),
 			instanceName: this.meta.name ?? 'Misskey',
-			icon: this.meta.iconUrl,
-			appleTouchIcon: this.meta.app512IconUrl,
+			icon: resolveAppIconUrl(this.meta, 192, this.config.url),
+			appleTouchIcon: resolveAppIconUrl(this.meta, 512, this.config.url),
 			themeColor: this.meta.themeColor,
 			serverErrorImageUrl: this.meta.serverErrorImageUrl ?? 'https://xn--931a.moe/assets/error.jpg',
 			infoImageUrl: this.meta.infoImageUrl ?? 'https://xn--931a.moe/assets/info.jpg',

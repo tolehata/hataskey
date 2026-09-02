@@ -100,7 +100,7 @@ export function Layout(props: PropsWithChildren<CommonProps<{
 							Please turn on your JavaScript
 						</p>
 					</noscript>
-					<Splash icon={props.icon} />
+					<Splash icon={props.appleTouchIcon || props.icon} />
 					{props.children}
 				</body>
 			</html>
