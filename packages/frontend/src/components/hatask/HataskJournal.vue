@@ -615,7 +615,7 @@ onUnmounted(() => { if (clockTimer) window.clearInterval(clockTimer); });
 .root[data-motion='false'] *, .root[data-motion='false'] *::before, .root[data-motion='false'] *::after { animation: none !important; transition: none !important; }
 @container (min-width: 760px) {
 	.captureArea { grid-template-columns: minmax(260px, .38fr) minmax(0, 1fr); align-items: start; gap: 12px; padding: 10px; border: var(--card-border); border-radius: max(var(--card-radius), 24px); background: var(--surface); box-shadow: var(--card-shadow); }
-	.heading { align-self: start; min-width: 0; padding: 10px 8px 10px 12px; border: 0; border-radius: 0; background: var(--surface); box-shadow: none; }
+	.heading { align-self: center; min-width: 0; padding: 10px 8px 10px 12px; border: 0; border-radius: 0; background: var(--surface); box-shadow: none; }
 	.heading h2 { font-size: 1.08rem; }
 	.heading p { font-size: .76rem; line-height: 1.55; }
 	.heading img { width: 52px; height: 52px; }

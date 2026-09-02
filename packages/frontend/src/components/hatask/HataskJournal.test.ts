@@ -103,7 +103,7 @@ describe('Hatask mood and meal journals', () => {
 		expect(stylesheet).toMatch(/\.tabs button \{[^}]*padding: 8px 16px;/u);
 		const desktopRules = stylesheet.match(/@container \(min-width: 760px\) \{([\s\S]*?)\n\}/u)?.[1] ?? '';
 		expect(desktopRules).toMatch(/\.captureArea \{ grid-template-columns: minmax\(260px, \.38fr\) minmax\(0, 1fr\);[^}]*background: var\(--surface\);/u);
-		expect(desktopRules).toMatch(/\.heading \{[^}]*border: 0;[^}]*background: var\(--surface\);[^}]*box-shadow: none;/u);
+		expect(desktopRules).toMatch(/\.heading \{ align-self: center;[^}]*border: 0;[^}]*background: var\(--surface\);[^}]*box-shadow: none;/u);
 		expect(desktopRules).toMatch(/\.toolbar \{ display: grid; grid-template-columns: minmax\(96px, 1fr\) auto minmax\(96px, 1fr\); \}/u);
 		expect(desktopRules).toMatch(/\.tabs \{[^}]*grid-column: 2;[^}]*justify-self: center;[^}]*overflow-x: visible;/u);
 		expect(desktopRules).toMatch(/\.tabs button:not\(\[data-selected='true'\]\) span \{ display: none; \}/u);
