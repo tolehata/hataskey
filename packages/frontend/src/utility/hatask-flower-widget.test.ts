@@ -16,6 +16,19 @@ describe('Hataskお花ウィジェットの保存データ正規化', () => {
 		});
 	});
 
+	test('満開の手前は100%に丸めずHatask本体と同じ未開花扱いにする', () => {
+		const flower = normalizeGrowingFlower({
+			emoji: '🌼',
+			name: 'ヒナギク',
+			progress: 99,
+			totalMinutes: 1199,
+			targetMinutes: 1200,
+		});
+
+		expect(flower.progress).toBe(99);
+		expect(flower.totalMinutes).toBeLessThan(flower.targetMinutes);
+	});
+
 	test('壊れたデータを表示に混ぜず、指定数以上は表示しない', () => {
 		const gallery = normalizeFlowerGallery([
 			{ id: 'a', emoji: '🌸', name: 'さくら' },

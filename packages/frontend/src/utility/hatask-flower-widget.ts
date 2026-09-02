@@ -35,13 +35,13 @@ function safeNumber(value: unknown, fallback = 0): number {
 export function normalizeGrowingFlower(value: unknown): HataskFlower {
 	if (value == null || typeof value !== 'object') return { ...FALLBACK_FLOWER };
 	const flower = value as Record<string, unknown>;
-	const targetMinutes = Math.max(480, Math.min(1920, Math.round(safeNumber(flower.targetMinutes, 1200))));
-	const totalMinutes = Math.max(0, Math.min(targetMinutes, Math.round(safeNumber(flower.totalMinutes))));
+	const targetMinutes = Math.max(480, Math.min(1920, Math.floor(safeNumber(flower.targetMinutes, 1200))));
+	const totalMinutes = Math.max(0, Math.min(targetMinutes, Math.floor(safeNumber(flower.totalMinutes))));
 	return {
 		id: 'growing',
 		emoji: safeText(flower.emoji, FALLBACK_FLOWER.emoji),
 		name: safeText(flower.name, FALLBACK_FLOWER.name),
-		progress: Math.max(0, Math.min(100, Math.round((totalMinutes / targetMinutes) * 100))),
+		progress: Math.max(0, Math.min(100, Math.floor((totalMinutes / targetMinutes) * 100))),
 		totalMinutes,
 		targetMinutes,
 	};
