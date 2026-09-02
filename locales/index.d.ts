@@ -22962,7 +22962,7 @@ export interface Locale extends ILocale {
                  */
                 "customizeTodoTabs": string;
                 /**
-                 * 表示したいタブを選べます。外したタブは「その他」から開けます
+                 * 表示するタブは「その他」を含めて5個までです。外したタブは「その他」から開けます
                  */
                 "customizeTodoTabsHint": string;
                 /**
@@ -22973,14 +22973,6 @@ export interface Locale extends ILocale {
                  * {name}をタブから外す
                  */
                 "hideTodoTabLabel": ParameterizedString<"name">;
-                /**
-                 * {name}を前へ
-                 */
-                "moveTodoTabEarlierLabel": ParameterizedString<"name">;
-                /**
-                 * {name}を後ろへ
-                 */
-                "moveTodoTabLaterLabel": ParameterizedString<"name">;
                 /**
                  * アーカイブ済み
                  */

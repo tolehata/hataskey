@@ -158,6 +158,4 @@ export interface HataskTodoLabels {
 	customizeViewsHint: string;
 	showView: (viewName: string) => string;
 	hideView: (viewName: string) => string;
-	moveViewEarlier: (viewName: string) => string;
-	moveViewLater: (viewName: string) => string;
 }

@@ -20,7 +20,7 @@ import HataskTodoPlanner from './HataskTodoPlanner.vue';
 import type { App } from 'vue';
 import type { HataskTodoItem, HataskTodoLabels } from './hatask-planner-types.js';
 import * as os from '@/os.js';
-import { HATASK_TODO_DEFAULT_MOBILE_TABS, normalizeHataskTodoMobileTabs } from '@/utility/hatask-todo-tabs.js';
+import { HATASK_TODO_DEFAULT_MOBILE_TABS, HATASK_TODO_MAX_MOBILE_TABS, normalizeHataskTodoMobileTabs } from '@/utility/hatask-todo-tabs.js';
 
 type Mounted = { app: App<Element>; container: HTMLDivElement };
 const mounted: Mounted[] = [];
@@ -63,11 +63,9 @@ const labels: HataskTodoLabels = {
 	reorderViews: 'タブを並び替え',
 	reorderView: name => `${name}を並び替え`,
 	customizeViews: '表示するタブ',
-	customizeViewsHint: '表示したいタブを選べます。外したタブは「その他」から開けます',
+	customizeViewsHint: '表示するタブは「その他」を含めて5個までです。外したタブは「その他」から開けます',
 	showView: name => `${name}をタブに追加`,
 	hideView: name => `${name}をタブから外す`,
-	moveViewEarlier: name => `${name}を前へ`,
-	moveViewLater: name => `${name}を後ろへ`,
 };
 
 const items: HataskTodoItem[] = [
@@ -216,6 +214,12 @@ describe('normalizeHataskTodoMobileTabs', () => {
 		expect(normalizeHataskTodoMobileTabs(['inbox', 42])).toEqual(HATASK_TODO_DEFAULT_MOBILE_TABS);
 		expect(normalizeHataskTodoMobileTabs({ today: true })).toEqual(HATASK_TODO_DEFAULT_MOBILE_TABS);
 	});
+
+	test('その他を含む表示タブを最大5個に収め、既存の順序を優先する', () => {
+		expect(HATASK_TODO_MAX_MOBILE_TABS).toBe(5);
+		expect(normalizeHataskTodoMobileTabs(['priority', 'templates', 'today', 'upcoming', 'all', 'completed', 'more'])).toEqual(['priority', 'templates', 'today', 'upcoming', 'more']);
+		expect(normalizeHataskTodoMobileTabs(['more', 'priority', 'templates', 'today', 'upcoming', 'all'])).toEqual(['more', 'priority', 'templates', 'today', 'upcoming']);
+	});
 });
 
 describe('HataskTodoPlanner', () => {
@@ -286,7 +290,16 @@ describe('HataskTodoPlanner', () => {
 		const tabs = [...container.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
 		expect(tabs.map(tab => tab.getAttribute('aria-label'))).toEqual(['今日', 'これから', 'すべて', '完了済み', 'その他']);
 		expect(tabs.map(tab => tab.textContent.trim())).toEqual(['今日', '', '', '', '']);
-		for (const tab of tabs) expect(tab.querySelector('i[aria-hidden="true"]')).not.toBeNull();
+		const tablerIconCss = readFileSync(resolve(process.cwd(), 'node_modules/@tabler/icons-webfont/dist/tabler-icons.css'), 'utf8');
+		const productionIconCss = readFileSync(resolve(process.cwd(), 'node_modules/icons-subsetter/built/tabler-icons-frontend.css'), 'utf8');
+		for (const tab of tabs) {
+			const icon = tab.querySelector<HTMLElement>('i[aria-hidden="true"]');
+			expect(icon).not.toBeNull();
+			const iconClass = [...(icon?.classList ?? [])].find(className => className.startsWith('ti-'));
+			expect(iconClass).toBeDefined();
+			expect(tablerIconCss).toContain(`.${iconClass}:before`);
+			expect(productionIconCss).toContain(`.${iconClass}::before`);
+		}
 		expect(container.textContent).not.toContain('受信箱');
 
 		(container.querySelector('[aria-label="タブを並び替え"]') as HTMLButtonElement).click();
@@ -308,19 +321,24 @@ describe('HataskTodoPlanner', () => {
 		expect(active?.textContent.trim()).toBe(active?.getAttribute('aria-label'));
 	});
 
-	test.each(['priority', 'overdue', 'templates'] as const)('%sも並び替え中に追加・削除し、再読込後も選択した順序だけを復元する', async view => {
+	test.each(['priority', 'overdue', 'templates'] as const)('%sも5個の上限内で追加・削除し、再読込後も選択した順序だけを復元する', async view => {
 		const { container, handlers, setProps } = mountTodo();
 		expect(container.querySelector('[data-mobile-tab-editor]')).toBeNull();
 		await openTabEditor(container);
 		expect(container.querySelectorAll('[data-tab-choice]')).toHaveLength(7);
+		expect(container.querySelectorAll('[data-tab-earlier], [data-tab-later]')).toHaveLength(0);
+		expect(container.querySelector<HTMLButtonElement>(`[data-tab-choice="${view}"]`)?.disabled).toBe(true);
+		clickRequired(container, '[data-tab-choice="completed"]');
+		await waitForTabOrder(container, ['today', 'upcoming', 'all', 'more']);
+		expect(container.querySelector<HTMLButtonElement>(`[data-tab-choice="${view}"]`)?.disabled).toBe(false);
 		clickRequired(container, `[data-tab-choice="${view}"]`);
-		await nextTick();
-		const added = ['today', 'upcoming', 'all', 'completed', view, 'more'];
+		const added = ['today', 'upcoming', 'all', view, 'more'];
+		await waitForTabOrder(container, added);
 		expect(tabOrder(container)).toEqual(added);
 		expect(handlers.mobileOrder).toHaveBeenLastCalledWith(added);
-		clickRequired(container, `[data-tab-earlier="${view}"]`);
+		container.querySelector(`[data-mobile-tab="${view}"]`)?.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
 		await nextTick();
-		const reordered = ['today', 'upcoming', 'all', view, 'completed', 'more'];
+		const reordered = ['today', 'upcoming', view, 'all', 'more'];
 		expect(tabOrder(container)).toEqual(reordered);
 		expect(handlers.mobileOrder).toHaveBeenLastCalledWith(reordered);
 		setProps({ mobileTabOrder: [...reordered], view });
@@ -333,7 +351,7 @@ describe('HataskTodoPlanner', () => {
 		await openTabEditor(container);
 		clickRequired(container, `[data-tab-choice="${view}"]`);
 		await nextTick();
-		expect(handlers.mobileOrder).toHaveBeenLastCalledWith(['today', 'upcoming', 'all', 'completed', 'more']);
+		expect(handlers.mobileOrder).toHaveBeenLastCalledWith(['today', 'upcoming', 'all', 'more']);
 	});
 
 	test('表示中のタブを外してもToDoや開いているビューを変えず、その他から再選択できる', async () => {

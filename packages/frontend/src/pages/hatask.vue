@@ -2836,8 +2836,6 @@ const plannerTodoLabels=computed<HataskTodoLabels>(()=>({
 	customizeViewsHint: plannerCopy.customizeTodoTabsHint,
 	showView: name => plannerCopyx.showTodoTabLabel({ name }),
 	hideView: name => plannerCopyx.hideTodoTabLabel({ name }),
-	moveViewEarlier: name => plannerCopyx.moveTodoTabEarlierLabel({ name }),
-	moveViewLater: name => plannerCopyx.moveTodoTabLaterLabel({ name }),
 	}));
 function recurrenceLabel(frequency:HataskRecurrenceFrequency):string{return frequency==='daily'?plannerCopy.recurrenceDaily:frequency==='weekly'?plannerCopy.recurrenceWeekly:frequency==='monthly'?plannerCopy.recurrenceMonthly:frequency==='yearly'?plannerCopy.recurrenceYearly:plannerCopy.recurrenceNone}
 function plannerTodoSource(item:HataskTodoItem):HataskPlannerTodo|undefined{return todos.value.find(todo=>todo.id===item.id)}
