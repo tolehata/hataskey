@@ -132,6 +132,18 @@ describe('Hatask mood and meal journals', () => {
 		expect(f.save).toHaveBeenCalledOnce();
 		expect(f.save.mock.calls[0][0]).toMatchObject({ date: '2026-08-31', time: '12:00', note: '（ひとことなし）', level: 4 });
 	});
+	test.each(['mood', 'meal'] as const)('%sの作成完了チェックを表示後に追加アイコンへ戻す', async kind => {
+		const f = mountJournal({ kind });
+		const submit = byLabel(f.container, '記録する');
+		expect(submit.querySelector('i')?.classList.contains('ti-plus')).toBe(true);
+		submit.click(); await flush();
+		expect(f.save).toHaveBeenCalledOnce();
+		expect(submit.querySelector('i')?.classList.contains('ti-check')).toBe(true);
+		await vi.advanceTimersByTimeAsync(899); await flush();
+		expect(submit.querySelector('i')?.classList.contains('ti-check')).toBe(true);
+		await vi.advanceTimersByTimeAsync(1); await flush();
+		expect(submit.querySelector('i')?.classList.contains('ti-plus')).toBe(true);
+	});
 	test('日付・時刻のピルから変更でき、外へフォーカスしても入力が閉じない', async () => {
 		const f = mountJournal();
 		const note = await inputNote(f.container, '昨日のメモ');

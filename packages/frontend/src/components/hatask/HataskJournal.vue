@@ -206,6 +206,8 @@ const searchEl = ref<HTMLInputElement | null>(null);
 const detail = ref<Detail | null>(null);
 const state = ref<'idle' | 'saving' | 'success' | 'error'>('idle');
 const busy = computed(() => state.value === 'saving');
+const SUCCESS_FEEDBACK_MS = 900;
+let successTimer: number | undefined;
 const error = ref('');
 const notice = ref('');
 const undoEntry = ref<HataskJournalEntry | null>(null);
@@ -392,6 +394,16 @@ function makeEntry(id: string = crypto.randomUUID()): HataskJournalEntry {
 		: { ...base, level: String(draft.value.level), slot: draft.value.slot, reasons: draft.value.level === 'ate' ? [] : [...draft.value.reasons] };
 }
 
+function showSuccess(message: string): void {
+	if (successTimer !== undefined) window.clearTimeout(successTimer);
+	state.value = 'success';
+	notice.value = message;
+	successTimer = window.setTimeout(() => {
+		successTimer = undefined;
+		if (state.value === 'success') state.value = 'idle';
+	}, SUCCESS_FEEDBACK_MS);
+}
+
 async function submit(): Promise<void> {
 	if (busy.value || !props.writable) return;
 	clock.value = new Date();
@@ -402,8 +414,7 @@ async function submit(): Promise<void> {
 		await props.save(makeEntry(id ?? undefined), id ?? undefined);
 		// Never clear the draft or announce success until persistence resolves.
 		if (id) cancelEdit(); else draft.value = emptyDraft();
-		state.value = 'success';
-		notice.value = id ? main.recordUpdated : props.kind === 'mood' ? main.moodSaved : main.mealRecorded;
+		showSuccess(id ? main.recordUpdated : props.kind === 'mood' ? main.moodSaved : main.mealRecorded);
 		page.value = 1;
 	} catch { state.value = 'error'; error.value = copy.saveFailure; }
 }
@@ -438,7 +449,7 @@ async function deleteEntry(entry: HataskJournalEntry): Promise<void> {
 async function undoDelete(): Promise<void> {
 	if (busy.value || !props.writable || !undoEntry.value) return;
 	state.value = 'saving'; error.value = '';
-	try { await props.save(undoEntry.value); undoEntry.value = null; state.value = 'success'; notice.value = copy.recordRestored; } catch { state.value = 'error'; error.value = copy.saveFailure; }
+	try { await props.save(undoEntry.value); undoEntry.value = null; showSuccess(copy.recordRestored); } catch { state.value = 'error'; error.value = copy.saveFailure; }
 }
 
 function openRecordMenu(entry: HataskJournalEntry, event: MouseEvent): void {
@@ -475,7 +486,7 @@ async function saveTemplate(entry?: HataskJournalEntry): Promise<void> {
 	const { canceled, result } = await os.inputText({ title: copy.saveMealTemplate, text: planner.templateNamePrompt, default: source.note || slotLabel(source.slot ?? ''), maxLength: 80 });
 	if (canceled || !result?.trim() || busy.value) return;
 	state.value = 'saving'; error.value = '';
-	try { await props.storeTemplate(mealTemplateFromEntry(source, crypto.randomUUID(), result)); state.value = 'success'; notice.value = planner.templateSaved; } catch { state.value = 'error'; error.value = copy.saveFailure; }
+	try { await props.storeTemplate(mealTemplateFromEntry(source, crypto.randomUUID(), result)); showSuccess(planner.templateSaved); } catch { state.value = 'error'; error.value = copy.saveFailure; }
 }
 
 function openTemplateMenu(template: HataskMealTemplate, event: MouseEvent): void {
@@ -497,7 +508,10 @@ function openTemplateMenu(template: HataskMealTemplate, event: MouseEvent): void
 watch(() => props.active, active => { if (active) clock.value = new Date(); });
 let clockTimer: number | undefined;
 onMounted(() => { clockTimer = window.setInterval(() => { if (props.active) clock.value = new Date(); }, 30000); });
-onUnmounted(() => { if (clockTimer) window.clearInterval(clockTimer); });
+onUnmounted(() => {
+	if (clockTimer) window.clearInterval(clockTimer);
+	if (successTimer !== undefined) window.clearTimeout(successTimer);
+});
 </script>
 
 <style lang="scss" module>
