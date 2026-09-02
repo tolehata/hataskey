@@ -680,6 +680,14 @@ describe('サーバー情報の登場CSS契約', () => {
 		assertInterruptibleMotion(activityStyles());
 	});
 
+	test('モバイルの前後ボタンは外枠と面を持たない', () => {
+		const styles = activityStyles();
+		const mobile = { name: 'container', params: 'hataskey-entrance (max-width: 820px)' };
+		expect(declaration(styles, '.pageButton', 'border', mobile)).toBe('0');
+		expect(declaration(styles, '.pageButton', 'background', mobile)).toBe('transparent');
+		expect(declaration(styles, '.pageButton', 'box-shadow', mobile)).toBe('none');
+	});
+
 	test.each([
 		['panelへのtransform混入', `${activityScss}\n.panel[data-activity-visible="true"] { transform: translateX(20px); }`],
 		['surfaceキーフレームへのtransform混入', activityScss.replace('from { opacity: .35; }', 'from { opacity: .35; transform: translateY(20px); }')],

@@ -30,7 +30,7 @@ const emit = defineEmits<{
 }>();
 
 const instances = ref<Misskey.entities.FederationInstance[]>([]);
-const enabled = computed(() => instance.federation != null && instance.federation !== 'none');
+const enabled = computed(() => instance.federation === 'all');
 const rows = computed(() => {
 	const midpoint = Math.ceil(instances.value.length / 2);
 	const first = instances.value.slice(0, midpoint);

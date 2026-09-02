@@ -28,11 +28,14 @@ type MockMeta = {
 const instance = productionInstance as unknown as MockMeta;
 
 const mocks = vi.hoisted(() => ({
-	api: vi.fn<(endpoint: string, params: Record<string, unknown>, token: string | null, signal: AbortSignal) => Promise<entities.Note[]>>(),
+	api: vi.fn<(endpoint: string, params: Record<string, unknown>, token: string | null, signal: AbortSignal) => Promise<entities.Note[] | { pong: number }>>(),
 	get: vi.fn<(endpoint: string, params: Record<string, unknown>) => Promise<entities.FederationInstance[]>>(),
 	measure: vi.fn(),
 	mount: vi.fn(),
 	destroy: vi.fn(),
+	clockUpdate: vi.fn(),
+	federationModeUpdate: vi.fn(),
+	controllerOptions: undefined as Record<string, unknown> | undefined,
 	eventOn: vi.fn(),
 	eventOff: vi.fn(),
 }));
@@ -68,9 +71,13 @@ vi.mock('@/components/MkSignupBranchDialog.vue', () => ({ default: { render: () 
 vi.mock('./welcome.entrance.hataskey.js', () => ({
 	HataskeyWelcomeController: class {
 		root = null;
+		destroyed = false;
+		constructor(options: Record<string, unknown>) { mocks.controllerOptions = options; }
 		mount = mocks.mount;
-		destroy = mocks.destroy;
+		destroy = () => { this.destroyed = true; mocks.destroy(); };
 		requestMeasure = mocks.measure;
+		updateHataskClock = mocks.clockUpdate;
+		setFederationMode = mocks.federationModeUpdate;
 		setLanguage = vi.fn();
 		applyColorMode = vi.fn();
 	},
@@ -168,6 +175,7 @@ async function flush() {
 
 beforeEach(() => {
 	vi.clearAllMocks();
+	mocks.controllerOptions = undefined;
 	mocks.api.mockReset().mockResolvedValue([]);
 	mocks.get.mockReset().mockResolvedValue([]);
 	instance.name = '実サーバー';
@@ -314,8 +322,8 @@ describe('ログイン前の実投稿プレビュー', () => {
 });
 
 describe('ログイン前の連合帯', () => {
-	test('連合無効時は取得も表示もしない', async () => {
-		instance.federation = 'none';
+	test.each(['none', 'specified'] as const)('連合モード%sでは取得も表示もしない', async federation => {
+		instance.federation = federation;
 		const item = mount(WelcomeFederation);
 		await flush();
 		expect(mocks.get).not.toHaveBeenCalled();
@@ -356,14 +364,16 @@ describe('ログイン前の連合帯', () => {
 		expect(empty.container.querySelector('.federation-belt')).toBeNull();
 	});
 
-	test('無効化前の後着応答は再有効化後の一覧へ混ぜない', async () => {
+	test('all以外へ切り替える前の後着応答はallへ戻した後の一覧へ混ぜない', async () => {
 		const stale = deferred<entities.FederationInstance[]>();
 		const fresh = deferred<entities.FederationInstance[]>();
 		mocks.get.mockReturnValueOnce(stale.promise).mockReturnValueOnce(fresh.promise);
 		const item = mount(WelcomeFederation);
-		instance.federation = 'none';
-		await flush();
 		instance.federation = 'specified';
+		await flush();
+		expect(mocks.get).toHaveBeenCalledOnce();
+		expect(item.container.querySelector('.federation-belt')).toBeNull();
+		instance.federation = 'all';
 		await flush();
 		expect(mocks.get).toHaveBeenCalledTimes(2);
 		fresh.resolve([serverFixture('fresh')]);
@@ -411,6 +421,44 @@ function mountMetadata() {
 }
 
 describe('実入口SFCのサーバーメタ連携', () => {
+	test('公開pingを一度だけ使って時計を同期し、連合設定をコントローラーへ渡す', async () => {
+		instance.federation = 'specified';
+		mocks.api.mockResolvedValueOnce({ pong: Date.now() });
+		const item = mountMetadata();
+		await flush();
+		expect(mocks.api).toHaveBeenCalledOnce();
+		expect(mocks.api).toHaveBeenCalledWith('ping', {}, null, expect.any(AbortSignal));
+		expect(mocks.controllerOptions?.federationMode).toBe('specified');
+		expect(mocks.controllerOptions?.now).toBeTypeOf('function');
+		expect(mocks.clockUpdate).toHaveBeenCalledOnce();
+		item.unmount();
+	});
+
+	test('後着したサーバーメタの連合設定をコントローラーへ反映する', async () => {
+		const item = mountMetadata();
+		await flush();
+		instance.federation = 'specified';
+		await flush();
+		expect(mocks.federationModeUpdate).toHaveBeenLastCalledWith('specified');
+		instance.federation = 'none';
+		await flush();
+		expect(mocks.federationModeUpdate).toHaveBeenLastCalledWith('none');
+		item.unmount();
+	});
+
+	test('アンマウント時に未完了の時計同期をabortし、後着応答を反映しない', async () => {
+		const pending = deferred<{ pong: number }>();
+		mocks.api.mockReturnValueOnce(pending.promise);
+		const item = mountMetadata();
+		await flush();
+		const signal = mocks.api.mock.calls[0][3];
+		item.unmount();
+		expect(signal.aborted).toBe(true);
+		pending.resolve({ pong: Date.now() });
+		await flush();
+		expect(mocks.clockUpdate).not.toHaveBeenCalled();
+	});
+
 	test('実サーバー名・アイコン・背景・規約を表示し、メタ更新へ追従する', async () => {
 		instance.name = '旗池テスト';
 		instance.iconUrl = 'https://server.test/instance.png';

@@ -59,6 +59,11 @@ SPDX-License-Identifier: AGPL-3.0-only
 	<!-- Added for the login mock: two quiet, counter-moving federation rows. -->
 	<WelcomeFederation @resize="controller.requestMeasure()"></WelcomeFederation>
 
+	<aside class="federation-status-notice" hidden="" aria-live="polite" aria-atomic="true">
+		<i class="ti ti-world" aria-hidden="true"></i>
+		<p data-federation-status-copy=""><span data-federation-status-copy-wide=""></span><span data-federation-status-copy-compact=""></span></p>
+	</aside>
+
 	<!-- ══ HERO ══ -->
 	<section id="top" style="position:relative;min-height:100dvh;display:flex;flex-direction:column;justify-content:center;padding:104px 24px 0;overflow:clip">
 		<div class="hero-server-backdrop" aria-hidden="true"></div>
@@ -126,6 +131,49 @@ SPDX-License-Identifier: AGPL-3.0-only
 		</div>
 	</div>
 
+	<!-- ══ FEDIVERSE ══ -->
+	<section id="fediverse" class="fediverse-intro" data-fediverse-stage="complete" data-fediverse-moving="false" data-federation-mode="all" aria-labelledby="fediverse-heading">
+		<div class="fediverse-inner">
+			<header class="fediverse-heading-row">
+				<div>
+					<div class="fediverse-kicker"><span aria-hidden="true"></span>HELLO, FEDIVERSE</div>
+					<h2 id="fediverse-heading" class="fediverse-heading" data-symbol-heading="" data-no-split="" aria-label="Hataskeyから、サーバーの向こうへ。" data-aria-en="Hataskey brings other servers closer."><span class="symbol-copy" data-symbol-lang="ja" aria-hidden="true"><span class="symbol-swap symbol-fediverse" style="--symbol-delay:.12s"><span class="symbol-icon" aria-hidden="true"><i class="ti ti-world" aria-hidden="true"></i></span><span class="symbol-text" data-symbol-last="">Hataskey</span></span>から、<br>サーバーの向こうへ。</span><span class="symbol-copy" data-symbol-lang="en" aria-hidden="true"><span class="symbol-swap symbol-fediverse" style="--symbol-delay:.12s"><span class="symbol-icon" aria-hidden="true"><i class="ti ti-world" aria-hidden="true"></i></span><span class="symbol-text" data-symbol-last="">Hataskey</span></span> brings<br>other servers closer.</span></h2>
+				</div>
+				<div class="fediverse-intro-copy">
+					<p><span data-en="Hataskey builds on CherryPick, a fork of Misskey, with its own thoughtful touches.">Hataskeyは、Misskeyから生まれたCherryPickをベースに、使いやすさを重ねたSNSソフトウェアです。</span><a class="fediverse-footnote-ref" href="#fediverse-rights" role="doc-noteref" aria-label="注釈：ロゴ・名称について" data-aria-en="Note: about logos and names">※</a><span data-en=" It supports ActivityPub, a shared way for social servers to communicate.">サーバー同士でやり取りする共通の仕組み「ActivityPub」に対応しています。</span></p>
+				</div>
+			</header>
+
+			<figure class="fediverse-map" aria-label="連合のしくみ" data-aria-en="How federation connects servers">
+				<div class="fediverse-map-plane">
+					<div class="fediverse-server fediverse-origin">
+						<div class="fediverse-brand-mark"><img class="fediverse-misskey-logo" src="/client-assets/hataskey/welcome/misskey.svg" alt="Misskey" width="515" height="136" loading="lazy" decoding="async"></div>
+						<span data-en="Another server">別のサーバー</span>
+					</div>
+					<div class="fediverse-transfer" aria-hidden="true"><i class="ti ti-arrows-left-right"></i></div>
+					<div class="fediverse-server fediverse-home">
+						<div class="fediverse-brand-mark"><strong class="fediverse-wordmark">Hataskey</strong></div>
+						<span data-en="Your server">あなたのサーバー</span>
+					</div>
+				</div>
+				<p class="fediverse-compatible" data-en="Of course, servers that support ActivityPub can connect with one another.">もちろん、ActivityPubに対応したサーバーであれば相互につながりあえます。</p>
+			</figure>
+
+			<div class="fediverse-primer-disclosure" data-fediverse-primer-state="closed">
+				<button id="fediverse-primer-toggle" class="fediverse-primer-toggle" type="button" data-fediverse-primer-toggle="" aria-expanded="false" aria-controls="fediverse-primer-panel"><span data-en="What is federation?">連合って？</span><i class="ti ti-chevron-down" aria-hidden="true"></i></button>
+				<div id="fediverse-primer-panel" class="fediverse-primer-collapse" data-fediverse-primer-panel="" role="region" aria-labelledby="fediverse-primer-toggle" aria-hidden="true">
+					<div class="fediverse-primer-collapse-inner">
+						<div class="fediverse-primer">
+							<div class="fediverse-primer-lead"><h3 data-no-split="" data-symbol-heading="" aria-label="例えると、連合はメールに似ています。" data-aria-en="Think of federation like email."><span class="symbol-copy" data-symbol-lang="ja" aria-hidden="true">例えると、連合は<br><span class="symbol-swap symbol-mail" style="--symbol-delay:0s"><span class="symbol-icon" aria-hidden="true"><i class="ti ti-mail fediverse-mail-envelope" aria-hidden="true"></i></span><span class="symbol-text" data-symbol-last="">メール</span></span>に似ています。</span><span class="symbol-copy" data-symbol-lang="en" aria-hidden="true">Think of federation<br>like <span class="symbol-swap symbol-mail" style="--symbol-delay:0s"><span class="symbol-icon" aria-hidden="true"><i class="ti ti-mail fediverse-mail-envelope" aria-hidden="true"></i></span><span class="symbol-text" data-symbol-last="">email</span></span>.</span></h3></div>
+							<p class="fediverse-primer-copy"><span data-en="People can exchange email even when they use different services.">メールは、使うサービスが違っても送り合えますよね。</span><br><span data-en="On social networks too, we can talk without everyone joining the same server.">SNSでも、みんなが同じサーバーに集まらなくても会話できる。</span><br><span data-en="That way of connecting is called federation.">そんなつながり方が「連合」です。</span></p>
+							<p class="fediverse-primer-detail"><span data-en="Each server is a community with its own people and rules. ActivityPub is the shared way these communities deliver posts and replies.">サーバーは、集まる人やルールがそれぞれ違う居場所。ActivityPubは、その間で投稿や返信を届け合うための共通の仕組みです。</span><br><span data-en="Together, these connected communities">こうしてつながる世界全体を</span><br><span data-en="are called the Fediverse.">「Fediverse（フェディバース）」と呼びます。</span></p>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</section>
+
 	<!-- ══ 01 UI ══ -->
 	<section id="ui" data-ui-section="" data-device="pc" style="padding:96px 24px 0">
 		<div style="max-width:1240px;margin:0 auto">
@@ -158,7 +206,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 							</div>
 							<button style="width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;background:transparent;border:none;color:var(--fg);opacity:.5;cursor:pointer;font-size:17px;transition:all .2s" class="hWelcome-state-4"><i class="ti ti-adjustments"></i></button>
 						</div>
-						<div style="flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;scrollbar-width:none;display:flex;flex-direction:column;gap:2px;mask-image:linear-gradient(to bottom,transparent 0,#000 10px,#000 calc(100% - 12px),transparent 100%);-webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 10px,#000 calc(100% - 12px),transparent 100%)">
+						<div :ref="controller.sideScrollRef" style="flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;scrollbar-width:none;display:flex;flex-direction:column;gap:2px;mask-image:linear-gradient(to bottom,transparent 0,#000 10px,#000 calc(100% - 12px),transparent 100%);-webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 10px,#000 calc(100% - 12px),transparent 100%)">
 							<button data-sb="timeline" style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;border:none;background:var(--accentedBg);color:var(--accent);font-weight:600;cursor:pointer;font-size:14.4px;text-align:left;transition:all .2s" @click="controller.onSidebar"><i class="ti ti-home" style="font-size:18.4px;width:22px;text-align:center;flex-shrink:0"></i><span data-en="Timeline">タイムライン</span></button>
 							<button data-sb="search" style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;border:none;background:transparent;color:var(--fg);opacity:.7;cursor:pointer;font-size:14.4px;text-align:left;transition:all .2s" class="hWelcome-state-5" @click="controller.onSidebar"><i class="ti ti-search" style="font-size:18.4px;width:22px;text-align:center;flex-shrink:0"></i><span data-en="Search">検索</span></button>
 							<button data-sb="notifications" style="position:relative;display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;border:none;background:transparent;color:var(--fg);opacity:.7;cursor:pointer;font-size:14.4px;text-align:left;transition:all .2s" class="hWelcome-state-6" @click="controller.onSidebar"><i class="ti ti-bell" style="font-size:18.4px;width:22px;text-align:center;flex-shrink:0"></i><span data-en="Notifications">通知</span><span data-notifbadge="" style="position:absolute;top:6px;right:10px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#f44;color:#fff;font-size:10px;font-weight:700;line-height:18px;text-align:center">3</span></button>
@@ -461,7 +509,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<div style="display:flex;align-items:center;gap:10px;font-size:11.5px;font-weight:700;letter-spacing:.14em;color:var(--accentText)"><span style="width:26px;height:2px;background:var(--accent)"></span>03&nbsp;&nbsp;<span style="font-family:Righteous,cursive;font-size:13px;letter-spacing:.04em">Hatask</span></div>
 					<h2 data-no-split="" data-symbol-heading="" aria-label="ホームが、四つある。同じ一日を、四通りに。" data-aria-en="Four homes. Same day, four ways of looking at it." style="font-size:clamp(28px,4.2vw,50px);line-height:1.18;margin:14px 0 0"><span class="symbol-copy" data-symbol-lang="ja" aria-hidden="true"><span class="symbol-swap symbol-home" style="--symbol-delay:.14s"><span class="symbol-icon" aria-hidden="true"><i class="ti ti-home"></i></span><span class="symbol-text" data-symbol-last="">ホーム</span></span>が、四つある。<br>同じ一日を、四通りに。</span><span class="symbol-copy" data-symbol-lang="en" aria-hidden="true"><span class="symbol-swap symbol-home" style="--symbol-delay:.14s"><span class="symbol-icon" aria-hidden="true"><i class="ti ti-home"></i></span><span class="symbol-text" data-symbol-last="">Four homes</span></span>.<br>Same day, four ways of looking at it.</span></h2>
 				</div>
-				<p style="flex:1 1 540px;max-width:700px;margin:0;font-size:14.5px;line-height:1.9;color:var(--fgSoft)"><span class="copy-line" data-en="Kisetsu, Kashin, Suri and Hatakyu each have their own type, palette, card shape and entrance motion.">季・花信・刷・ハタキュ。書体も色も、紙の形も、出てくる動きまで別物です。</span><br><span data-en="Switch below and the whole home enters again.">下で切り替えると、ホームごと入り直します。</span></p>
+				<p style="flex:1 1 540px;max-width:700px;margin:0;font-size:14.5px;line-height:1.9;color:var(--fgSoft)"><span class="copy-line"><span data-en="Kisetsu, Kashin, Suri and Hatakyu.">季・花信・刷・ハタキュ。</span><br class="mobile-copy-break"><span data-en=" Each has its own type, palette, card shape and entrance motion.">書体も色も、紙の形も、出てくる動きまで別物です。</span></span><br><span data-en="Hatask brings Hataskey’s many original features together.">Hataskeyの豊富な独自機能はHataskにまとめられています。</span></p>
 			</div>
 
 			<div class="hatask-theme-switch" role="group" aria-label="Hataskのホームテーマ" data-aria-en="Hatask Home themes" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:26px">
@@ -472,30 +520,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</div>
 
 			<div :ref="controller.hataskRef" class="hatask-mock" style="margin-top:20px;border-radius:20px;overflow:hidden;border:1px solid var(--dividerStrong);box-shadow:0 30px 70px rgba(34,66,69,.14);min-height:520px;transition:background .5s;animation:hWelcome-fromBelow 1s cubic-bezier(.2,.8,.2,1) both;animation-timeline:view();animation-range:entry 0% cover 18%">
-				<section class="hatask-guide" data-hatask-guide="" data-hatask-guide-phase="ready" data-hatask-guide-visible="false" data-hatask-guide-manual="false" data-motion-ready="false" aria-labelledby="hatask-guide-title">
-					<header class="hatask-guide-head">
-						<div>
-							<span class="hatask-guide-kicker">HATASK LIVE TOUR</span>
-							<h3 id="hatask-guide-title" data-en="Calendar, ToDo and the garden — all on Home.">カレンダーも、ToDoも、お庭も。ホームの中でひとつに。</h3>
-						</div>
-						<button class="hatask-guide-replay" type="button" aria-label="Hataskの機能紹介をもう一度見る" data-aria-en="Replay the Hatask feature tour" @click="controller.replayHataskGuide"><i class="ti ti-refresh" aria-hidden="true"></i><span data-en="Replay">もう一度見る</span></button>
-					</header>
-					<div class="hatask-guide-stage-shell">
-						<div class="hatask-guide-stage-meta"><span data-en="Showing the live Home mock">実際のホームを紹介中</span><strong data-hatask-guide-current="">カレンダー</strong></div>
-						<div class="hatask-guide-stage" data-hatask-guide-stage="" aria-hidden="true" :inert="true"></div>
-					</div>
-					<ol class="hatask-guide-steps">
-						<li class="hatask-guide-step" data-hatask-guide-step="calendar" aria-current="false">
-							<button class="hatask-guide-select" type="button" data-hatask-guide-select="calendar" aria-pressed="false" @click="controller.onHataskGuideSelect"><strong><i class="ti ti-calendar" aria-hidden="true"></i><span data-en="Calendar">カレンダー</span></strong><p data-en="Switch between month, week, day and agenda views. Drag plans straight to a date or time.">月・週・日・予定一覧を切り替え。予定は日付や時刻へそのまま動かせます。</p></button>
-						</li>
-						<li class="hatask-guide-step" data-hatask-guide-step="todo" aria-current="false">
-							<button class="hatask-guide-select" type="button" data-hatask-guide-select="todo" aria-pressed="false" @click="controller.onHataskGuideSelect"><strong><i class="ti ti-checkbox" aria-hidden="true"></i><span>ToDo</span></strong><p data-en="Organize by today, upcoming, priority or folder, with due dates, repeats and subtasks.">今日・これから・優先度・フォルダで整理。期限や繰り返し、サブタスクも一緒に。</p></button>
-						</li>
-						<li class="hatask-guide-step" data-hatask-guide-step="garden" aria-current="false">
-							<button class="hatask-guide-select" type="button" data-hatask-guide-select="garden" aria-pressed="false" @click="controller.onHataskGuideSelect"><strong><i class="ti ti-flower" aria-hidden="true"></i><span data-en="Garden">お庭</span></strong><p data-en="Flowers grow over time. Name each bloom and keep it in your gallery.">時間とともにお花が育ちます。咲いた花は名前を付けてギャラリーへ。</p></button>
-						</li>
-					</ol>
-				</section>
 				<div class="hatask-body-viewport" data-hatask-body-viewport="" data-hatask-body-state="collapsed"><div id="hatask-home-mock" :ref="controller.hataskBodyRef" class="hatask-body" tabindex="-1" style="padding:26px 26px 34px"></div><div class="hatask-body-fade" aria-hidden="true"></div><button class="hatask-body-toggle" type="button" aria-controls="hatask-home-mock" aria-expanded="false" aria-label="Hataskのホームをすべて見る" @click="controller.toggleHataskBody"><i class="ti ti-chevron-down" aria-hidden="true"></i><span data-hatask-body-toggle-label="">すべて見る</span></button></div>
 			</div>
 		</div>
@@ -520,11 +544,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<div style="display:flex;align-items:center;gap:2px">
 						<button data-hy="0" data-active="true" style="background:none;border:none;cursor:pointer;padding:7px 13px;font-size:13.5px;font-weight:700;color:var(--hyFg);border-bottom:2px solid var(--hyAccent)" @click="controller.onHatadyTab">マイログ</button>
 						<button data-hy="1" data-active="false" style="background:none;border:none;cursor:pointer;padding:7px 13px;font-size:13.5px;font-weight:500;color:var(--hyMuted);border-bottom:2px solid transparent;transition:color .15s" data-en="Collection" class="hWelcome-state-65" @click="controller.onHatadyTab">コレクション</button>
-						<button data-hy="2" data-active="false" style="background:none;border:none;cursor:pointer;padding:7px 13px;font-size:13.5px;font-weight:500;color:var(--hyMuted);border-bottom:2px solid transparent;transition:color .15s" class="hWelcome-state-66" @click="controller.onHatadyTab">HATAlyze</button>
 					</div>
 					<div style="margin-left:auto;display:flex;align-items:center;gap:10px">
-						<button style="position:relative;display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:999px;border:1px solid var(--hyDivider);background:none;color:var(--hySoft);cursor:pointer;transition:all .15s" class="hWelcome-state-67"><i class="ti ti-bell"></i><span style="position:absolute;top:-2px;right:-2px;min-width:16px;height:16px;padding:0 4px;border-radius:999px;background:var(--hyAccent);color:#fff;font-size:10px;line-height:16px;text-align:center;border:2px solid var(--hySurface)">2</span></button>
-						<button style="display:inline-flex;align-items:center;gap:6px;background:linear-gradient(90deg,color-mix(in srgb,var(--hyAccent) 78%,white),var(--hyAccent));color:#fff;border:none;border-radius:999px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;transition:filter .15s" class="hWelcome-state-68"><i class="ti ti-plus"></i><span data-en="Record">記録する</span></button>
+						<button style="position:relative;display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:999px;border:1px solid var(--hyDivider);background:none;color:var(--hySoft);cursor:pointer;transition:all .15s" class="hWelcome-state-66"><i class="ti ti-bell"></i><span style="position:absolute;top:-2px;right:-2px;min-width:16px;height:16px;padding:0 4px;border-radius:999px;background:var(--hyAccent);color:#fff;font-size:10px;line-height:16px;text-align:center;border:2px solid var(--hySurface)">2</span></button>
+						<button style="display:inline-flex;align-items:center;gap:6px;background:linear-gradient(90deg,color-mix(in srgb,var(--hyAccent) 78%,white),var(--hyAccent));color:#fff;border:none;border-radius:999px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;transition:filter .15s" class="hWelcome-state-67"><i class="ti ti-plus"></i><span data-en="Record">記録する</span></button>
 					</div>
 				</header>
 				<div :ref="controller.hatadyBodyRef" class="hatady-body" style="padding:22px"></div>
@@ -547,15 +570,15 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
 						<button style="display:inline-flex;align-items:center;gap:6px;background:none;border:none;color:var(--accent);font-size:13px;font-weight:700;cursor:pointer"><i class="ti ti-filter"></i><span data-en="Filter">絞り込み</span></button>
 						<div style="margin-left:auto;display:flex;gap:2px;flex-wrap:wrap">
-							<button style="display:inline-flex;align-items:center;gap:4px;padding:5px 11px;border-radius:8px;border:1px solid var(--divider);background:var(--panel);color:var(--fg);font-size:12px;cursor:pointer;transition:all .15s" data-en="Category" class="hWelcome-state-69">カテゴリ<i class="ti ti-chevron-down"></i></button>
-							<button style="display:inline-flex;align-items:center;gap:4px;padding:5px 11px;border-radius:8px;border:1px solid var(--divider);background:var(--panel);color:var(--fg);font-size:12px;cursor:pointer;transition:all .15s" data-en="Status" class="hWelcome-state-70">ステータス<i class="ti ti-chevron-down"></i></button>
+							<button style="display:inline-flex;align-items:center;gap:4px;padding:5px 11px;border-radius:8px;border:1px solid var(--divider);background:var(--panel);color:var(--fg);font-size:12px;cursor:pointer;transition:all .15s" data-en="Category" class="hWelcome-state-68">カテゴリ<i class="ti ti-chevron-down"></i></button>
+							<button style="display:inline-flex;align-items:center;gap:4px;padding:5px 11px;border-radius:8px;border:1px solid var(--divider);background:var(--panel);color:var(--fg);font-size:12px;cursor:pointer;transition:all .15s" data-en="Status" class="hWelcome-state-69">ステータス<i class="ti ti-chevron-down"></i></button>
 						</div>
 					</div>
 					<div style="background:var(--panel);border:1px solid var(--divider);border-radius:12px;overflow:hidden">
-						<button style="display:flex;gap:11px;align-items:flex-start;width:100%;text-align:left;color:inherit;border:none;cursor:pointer;padding:14px 16px;background:color-mix(in srgb,var(--accent) 6%,transparent);transition:background .15s" class="hWelcome-state-71"><i class="ti ti-pin" style="color:var(--accent);font-size:16px;margin-top:2px;flex-shrink:0"></i><span style="flex:1;min-width:0"><span style="display:block;font-size:14px;font-weight:700;overflow-wrap:anywhere">投稿前カウントダウンを5秒より細かく選びたい</span><span style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;align-items:center"><span style="padding:2px 9px;border-radius:999px;background:color-mix(in srgb,#b6791f 14%,transparent);color:#b6791f;font-size:10.5px;font-weight:700">対応中</span><span style="padding:2px 9px;border-radius:999px;background:var(--btnBg);font-size:10.5px;font-weight:700" data-en="Request">要望</span><span style="font-size:11px;color:var(--fgMuted)">#142 ・ 賛同 18</span></span></span></button>
-						<button style="display:flex;gap:11px;align-items:flex-start;width:100%;text-align:left;color:inherit;border:none;border-top:1px solid var(--divider);cursor:pointer;padding:14px 16px;background:none;transition:background .15s" class="hWelcome-state-72"><i class="ti ti-circle-dot" style="color:#1f8a5b;font-size:16px;margin-top:2px;flex-shrink:0"></i><span style="flex:1;min-width:0"><span style="display:block;font-size:14px;font-weight:700;overflow-wrap:anywhere">デッキで最大化を切り替えると右ペインが白いままになる</span><span style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;align-items:center"><span style="padding:2px 9px;border-radius:999px;background:color-mix(in srgb,#1f8a5b 14%,transparent);color:#1f8a5b;font-size:10.5px;font-weight:700" data-en="Resolved">解決済み</span><span style="padding:2px 9px;border-radius:999px;background:var(--btnBg);font-size:10.5px;font-weight:700" data-en="Bug">不具合</span><span style="font-size:11px;color:var(--fgMuted)">#128 ・ コメント 6</span></span></span></button>
-						<button style="display:flex;gap:11px;align-items:flex-start;width:100%;text-align:left;color:inherit;border:none;border-top:1px solid var(--divider);cursor:pointer;padding:14px 16px;background:none;transition:background .15s" class="hWelcome-state-73"><i class="ti ti-mood-smile" style="color:#c9971f;font-size:16px;margin-top:2px;flex-shrink:0"></i><span style="flex:1;min-width:0"><span style="display:block;font-size:14px;font-weight:700;overflow-wrap:anywhere">絵文字申請：:hatakyu_wave:</span><span style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;align-items:center"><span style="padding:2px 9px;border-radius:999px;background:color-mix(in srgb,#c9971f 16%,transparent);color:#a37b12;font-size:10.5px;font-weight:700" data-en="On hold">保留中</span><span style="font-size:11px;color:var(--fgMuted)">#151</span></span></span></button>
-						<button style="display:flex;gap:11px;align-items:flex-start;width:100%;text-align:left;color:inherit;border:none;border-top:1px solid var(--divider);cursor:pointer;padding:14px 16px;background:none;opacity:.72;transition:background .15s" class="hWelcome-state-74"><i class="ti ti-circle-check" style="color:var(--fgMuted);font-size:16px;margin-top:2px;flex-shrink:0"></i><span style="flex:1;min-width:0"><span style="display:block;font-size:14px;font-weight:700;overflow-wrap:anywhere">サイドメニューの並びが別端末でリセットされる</span><span style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;align-items:center"><span style="padding:2px 9px;border-radius:999px;background:var(--btnBg);font-size:10.5px;font-weight:700" data-en="Closed">受付終了</span><span style="font-size:11px;color:var(--fgMuted)">#097</span></span></span></button>
+						<button style="display:flex;gap:11px;align-items:flex-start;width:100%;text-align:left;color:inherit;border:none;cursor:pointer;padding:14px 16px;background:color-mix(in srgb,var(--accent) 6%,transparent);transition:background .15s" class="hWelcome-state-70"><i class="ti ti-pin" style="color:var(--accent);font-size:16px;margin-top:2px;flex-shrink:0"></i><span style="flex:1;min-width:0"><span style="display:block;font-size:14px;font-weight:700;overflow-wrap:anywhere">投稿前カウントダウンを5秒より細かく選びたい</span><span style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;align-items:center"><span style="padding:2px 9px;border-radius:999px;background:color-mix(in srgb,#b6791f 14%,transparent);color:#b6791f;font-size:10.5px;font-weight:700">対応中</span><span style="padding:2px 9px;border-radius:999px;background:var(--btnBg);font-size:10.5px;font-weight:700" data-en="Request">要望</span><span style="font-size:11px;color:var(--fgMuted)">#142 ・ 賛同 18</span></span></span></button>
+						<button style="display:flex;gap:11px;align-items:flex-start;width:100%;text-align:left;color:inherit;border:none;border-top:1px solid var(--divider);cursor:pointer;padding:14px 16px;background:none;transition:background .15s" class="hWelcome-state-71"><i class="ti ti-circle-dot" style="color:#1f8a5b;font-size:16px;margin-top:2px;flex-shrink:0"></i><span style="flex:1;min-width:0"><span style="display:block;font-size:14px;font-weight:700;overflow-wrap:anywhere">デッキで最大化を切り替えると右ペインが白いままになる</span><span style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;align-items:center"><span style="padding:2px 9px;border-radius:999px;background:color-mix(in srgb,#1f8a5b 14%,transparent);color:#1f8a5b;font-size:10.5px;font-weight:700" data-en="Resolved">解決済み</span><span style="padding:2px 9px;border-radius:999px;background:var(--btnBg);font-size:10.5px;font-weight:700" data-en="Bug">不具合</span><span style="font-size:11px;color:var(--fgMuted)">#128 ・ コメント 6</span></span></span></button>
+						<button style="display:flex;gap:11px;align-items:flex-start;width:100%;text-align:left;color:inherit;border:none;border-top:1px solid var(--divider);cursor:pointer;padding:14px 16px;background:none;transition:background .15s" class="hWelcome-state-72"><i class="ti ti-mood-smile" style="color:#c9971f;font-size:16px;margin-top:2px;flex-shrink:0"></i><span style="flex:1;min-width:0"><span style="display:block;font-size:14px;font-weight:700;overflow-wrap:anywhere">絵文字申請：:hatakyu_wave:</span><span style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;align-items:center"><span style="padding:2px 9px;border-radius:999px;background:color-mix(in srgb,#c9971f 16%,transparent);color:#a37b12;font-size:10.5px;font-weight:700" data-en="On hold">保留中</span><span style="font-size:11px;color:var(--fgMuted)">#151</span></span></span></button>
+						<button style="display:flex;gap:11px;align-items:flex-start;width:100%;text-align:left;color:inherit;border:none;border-top:1px solid var(--divider);cursor:pointer;padding:14px 16px;background:none;opacity:.72;transition:background .15s" class="hWelcome-state-73"><i class="ti ti-circle-check" style="color:var(--fgMuted);font-size:16px;margin-top:2px;flex-shrink:0"></i><span style="flex:1;min-width:0"><span style="display:block;font-size:14px;font-weight:700;overflow-wrap:anywhere">サイドメニューの並びが別端末でリセットされる</span><span style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;align-items:center"><span style="padding:2px 9px;border-radius:999px;background:var(--btnBg);font-size:10.5px;font-weight:700" data-en="Closed">受付終了</span><span style="font-size:11px;color:var(--fgMuted)">#097</span></span></span></button>
 					</div>
 				</div>
 				<div style="display:flex;flex-direction:column;gap:12px;animation:hWelcome-fromRight .9s cubic-bezier(.2,.8,.2,1) both;animation-timeline:view();animation-range:entry 2% cover 20%">
@@ -636,7 +659,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		</div>
 		<div class="feature-window" tabindex="0" aria-label="Hataskeyのその他の機能。フォーカス中は流れを停止します" data-aria-en="More Hataskey features. The moving rows pause while focused.">
 			<div class="feature-track"><div class="feature-group"><article class="feature-item"><span class="feature-item-icon"><i class="ti ti-brush" aria-hidden="true"></i></span><span><strong data-en="Drawing tool">お絵かきツール</strong><span data-en="Draw, then attach it straight to a note">描いた絵を、そのまま投稿へ添付</span></span></article><article class="feature-item"><span class="feature-item-icon"><i class="ti ti-cards" aria-hidden="true"></i></span><span><strong class="feature-wordmark" data-en="HataCardMaker">HataCardMaker</strong><span data-en="Turn your profile into a card of your own">プロフィールから自分だけのカードを作成</span></span></article><article class="feature-item"><span class="feature-item-icon"><i class="ti ti-mood-search" aria-hidden="true"></i></span><span><strong class="feature-wordmark" data-en="HATAlyze">HATAlyze</strong><span data-en="Look back at patterns in your own notes">自分の投稿から、言葉や利用傾向を振り返る</span></span></article><article class="feature-item"><span class="feature-item-icon"><i class="ti ti-layout-sidebar-right" aria-hidden="true"></i></span><span><strong class="feature-wordmark" data-en="HataSNSCordUI">HataSNSCordUI</strong><span data-en="A conversation-style three-pane view">会話アプリ風の3ペイン表示</span></span></article></div><div class="feature-group" aria-hidden="true"><article class="feature-item"><span class="feature-item-icon"><i class="ti ti-brush" aria-hidden="true"></i></span><span><strong data-en="Drawing tool">お絵かきツール</strong><span data-en="Draw, then attach it straight to a note">描いた絵を、そのまま投稿へ添付</span></span></article><article class="feature-item"><span class="feature-item-icon"><i class="ti ti-cards" aria-hidden="true"></i></span><span><strong class="feature-wordmark" data-en="HataCardMaker">HataCardMaker</strong><span data-en="Turn your profile into a card of your own">プロフィールから自分だけのカードを作成</span></span></article><article class="feature-item"><span class="feature-item-icon"><i class="ti ti-mood-search" aria-hidden="true"></i></span><span><strong class="feature-wordmark" data-en="HATAlyze">HATAlyze</strong><span data-en="Look back at patterns in your own notes">自分の投稿から、言葉や利用傾向を振り返る</span></span></article><article class="feature-item"><span class="feature-item-icon"><i class="ti ti-layout-sidebar-right" aria-hidden="true"></i></span><span><strong class="feature-wordmark" data-en="HataSNSCordUI">HataSNSCordUI</strong><span data-en="A conversation-style three-pane view">会話アプリ風の3ペイン表示</span></span></article></div></div>
-			<div class="feature-track is-reverse"><div class="feature-group"><article class="feature-item"><span class="feature-item-icon"><i class="ti ti-cloud-rain" aria-hidden="true"></i></span><span><strong data-en="Weather backgrounds">天気の背景演出</strong><span data-en="Subtle backgrounds follow the weather in notes">投稿の言葉に合わせて背景がそっと変化</span></span></article><article class="feature-item"><span class="feature-item-icon"><i class="ti ti-eye-off" aria-hidden="true"></i></span><span><strong data-en="Hide reaction emoji">リアクション絵文字の非表示</strong><span data-en="Hide emoji you would rather not see">見たくない絵文字を自分の画面から隠す</span></span></article><article class="feature-item"><span class="feature-item-icon"><i class="ti ti-robot" aria-hidden="true"></i></span><span><strong data-en="Hide bot notes">Bot投稿の非表示</strong><span data-en="Keep bot notes and renotes out of the way">Botの投稿やリノートをタイムラインから整理</span></span></article><article class="feature-item"><span class="feature-item-icon"><i class="ti ti-arrows-exchange" aria-hidden="true"></i></span><span><strong data-en="Import and export Hataskey settings">Hataskey独自設定の入出力</strong><span data-en="Save and restore selected Hataskey settings">独自設定を選んで保存・復元</span></span></article></div><div class="feature-group" aria-hidden="true"><article class="feature-item"><span class="feature-item-icon"><i class="ti ti-cloud-rain" aria-hidden="true"></i></span><span><strong data-en="Weather backgrounds">天気の背景演出</strong><span data-en="Subtle backgrounds follow the weather in notes">投稿の言葉に合わせて背景がそっと変化</span></span></article><article class="feature-item"><span class="feature-item-icon"><i class="ti ti-eye-off" aria-hidden="true"></i></span><span><strong data-en="Hide reaction emoji">リアクション絵文字の非表示</strong><span data-en="Hide emoji you would rather not see">見たくない絵文字を自分の画面から隠す</span></span></article><article class="feature-item"><span class="feature-item-icon"><i class="ti ti-robot" aria-hidden="true"></i></span><span><strong data-en="Hide bot notes">Bot投稿の非表示</strong><span data-en="Keep bot notes and renotes out of the way">Botの投稿やリノートをタイムラインから整理</span></span></article><article class="feature-item"><span class="feature-item-icon"><i class="ti ti-arrows-exchange" aria-hidden="true"></i></span><span><strong data-en="Import and export Hataskey settings">Hataskey独自設定の入出力</strong><span data-en="Save and restore selected Hataskey settings">独自設定を選んで保存・復元</span></span></article></div></div>
+			<div class="feature-track is-reverse"><div class="feature-group" aria-hidden="true"><article class="feature-item"><span class="feature-item-icon"><i class="ti ti-cloud-rain" aria-hidden="true"></i></span><span><strong data-en="Weather backgrounds">天気の背景演出</strong><span data-en="Subtle backgrounds follow the weather in notes">投稿の言葉に合わせて背景がそっと変化</span></span></article><article class="feature-item"><span class="feature-item-icon"><i class="ti ti-eye-off" aria-hidden="true"></i></span><span><strong data-en="Hide reaction emoji">リアクション絵文字の非表示</strong><span data-en="Hide emoji you would rather not see">見たくない絵文字を自分の画面から隠す</span></span></article><article class="feature-item"><span class="feature-item-icon"><i class="ti ti-robot" aria-hidden="true"></i></span><span><strong data-en="Hide bot notes">Bot投稿の非表示</strong><span data-en="Keep bot notes and renotes out of the way">Botの投稿やリノートをタイムラインから整理</span></span></article><article class="feature-item"><span class="feature-item-icon"><i class="ti ti-arrows-exchange" aria-hidden="true"></i></span><span><strong data-en="Import and export Hataskey settings">Hataskey独自設定の入出力</strong><span data-en="Save and restore selected Hataskey settings">独自設定を選んで保存・復元</span></span></article></div><div class="feature-group"><article class="feature-item"><span class="feature-item-icon"><i class="ti ti-cloud-rain" aria-hidden="true"></i></span><span><strong data-en="Weather backgrounds">天気の背景演出</strong><span data-en="Subtle backgrounds follow the weather in notes">投稿の言葉に合わせて背景がそっと変化</span></span></article><article class="feature-item"><span class="feature-item-icon"><i class="ti ti-eye-off" aria-hidden="true"></i></span><span><strong data-en="Hide reaction emoji">リアクション絵文字の非表示</strong><span data-en="Hide emoji you would rather not see">見たくない絵文字を自分の画面から隠す</span></span></article><article class="feature-item"><span class="feature-item-icon"><i class="ti ti-robot" aria-hidden="true"></i></span><span><strong data-en="Hide bot notes">Bot投稿の非表示</strong><span data-en="Keep bot notes and renotes out of the way">Botの投稿やリノートをタイムラインから整理</span></span></article><article class="feature-item"><span class="feature-item-icon"><i class="ti ti-arrows-exchange" aria-hidden="true"></i></span><span><strong data-en="Import and export Hataskey settings">Hataskey独自設定の入出力</strong><span data-en="Save and restore selected Hataskey settings">独自設定を選んで保存・復元</span></span></article></div></div>
 		</div>
 	</section>
 
@@ -698,13 +721,22 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<span data-plane="" style="position:absolute;left:0;top:0;margin:-15px 0 0 -15px;font-size:30px;color:#8fd0e4;transform:translate(-40px,124px) rotate(0deg);will-change:transform"><i class="ti ti-plane" style="display:block"></i></span>
 			</div>
 			<div class="join-actions" style="display:flex;flex-wrap:wrap;justify-content:center;gap:12px;width:100%;margin-top:10px;animation:hWelcome-fadeUp .9s cubic-bezier(.2,.8,.2,1) both;animation-timeline:view();animation-range:entry 0% entry 45%">
-				<button class="signup-cta hWelcome-state-75" type="button" style="border:1px solid rgba(234,243,244,.36);display:inline-flex;align-items:center;gap:10px;height:56px;padding:0 28px;border-radius:999px;background:transparent;color:#eaf3f4;font-weight:700;font-size:16px;cursor:pointer;transition:transform .22s,background .22s,border-color .22s" @click="signup"><i class="ti ti-user-plus" style="font-size:20px"></i><span data-en="Register on this server">サーバーに登録する</span></button>
-				<button class="login-cta hWelcome-state-76" type="button" style="border:0;display:inline-flex;align-items:center;gap:10px;height:56px;padding:0 30px;border-radius:999px;background:#8fd0e4;color:#173035;font-weight:700;font-size:16px;cursor:pointer;transition:transform .22s,box-shadow .22s" @click="signin"><i class="ti ti-login-2" style="font-size:20px"></i><span data-server-login="">{{ serverLoginLabel }}</span></button>
+				<button class="signup-cta hWelcome-state-74" type="button" style="border:1px solid rgba(234,243,244,.36);display:inline-flex;align-items:center;gap:10px;height:56px;padding:0 28px;border-radius:999px;background:transparent;color:#eaf3f4;font-weight:700;font-size:16px;cursor:pointer;transition:transform .22s,background .22s,border-color .22s" @click="signup"><i class="ti ti-user-plus" style="font-size:20px"></i><span data-en="Register on this server">サーバーに登録する</span></button>
+				<button class="login-cta hWelcome-state-75" type="button" style="border:0;display:inline-flex;align-items:center;gap:10px;height:56px;padding:0 30px;border-radius:999px;background:#8fd0e4;color:#173035;font-weight:700;font-size:16px;cursor:pointer;transition:transform .22s,box-shadow .22s" @click="signin"><i class="ti ti-login-2" style="font-size:20px"></i><span data-server-login="">{{ serverLoginLabel }}</span></button>
 			</div>
 			<div class="join-acknowledgement">
 				<div class="join-ack-brand"><span style="font-family:Righteous,cursive;font-size:19px">Hataskey</span></div>
 				<p class="join-ack-copy"><span data-en="Hataskey is a CherryPick fork, which is itself a Misskey fork.">HataskeyはCherryPickのフォークで、CherryPickはMisskeyのフォークです。</span><br class="mobile-copy-break"><span data-en=" Thank you to both projects.">両プロジェクトへ深く感謝します。</span><br><span data-en="This implementation stands on their work.">この実装はそのうえに立っています。</span></p>
 				<div class="join-ack-version">Hataskey {{ version }} / based on Misskey {{ basedMisskeyVersion }}</div>
+				<!-- FEDIVERSE RIGHTS START -->
+				<details id="fediverse-rights" class="fediverse-rights">
+					<summary><span data-en="※ About logos and names">※ ロゴ・名称について</span><i class="ti ti-chevron-down" aria-hidden="true"></i></summary>
+					<div>
+						<p><span data-en="Misskey logo: © syuilo and Misskey Project · ">Misskeyロゴ: © syuilo and Misskey Project · </span><a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a> · <a href="https://misskey-hub.net/ja/brand-assets/" target="_blank" rel="noopener noreferrer" data-en="Source">出典</a><br><span data-en="The original SVG is unchanged; its display color follows the theme.">SVG原本は変更せず、表示色だけテーマに合わせています。</span></p>
+						<p data-en="Hataskey is not an official project of Misskey Project or CherryPick Project and is not affiliated with or endorsed by either project.">HataskeyはMisskey ProjectおよびCherryPick Projectの公式プロジェクトではなく、両プロジェクトとの提携・推薦を示すものではありません。</p>
+					</div>
+				</details>
+				<!-- FEDIVERSE RIGHTS END -->
 			</div>
 		</div>
 	</section>
@@ -729,6 +761,7 @@ import { miLocalStorage } from '@/local-storage.js';
 import { prefer } from '@/preferences.js';
 import { mainRouter } from '@/router.js';
 import { store } from '@/store.js';
+import { misskeyApi } from '@/utility/misskey-api.js';
 import * as os from '@/os.js';
 
 const language = ref<'ja' | 'en'>(clientLang.startsWith('ja') ? 'ja' : 'en');
@@ -747,8 +780,27 @@ const legalLinks = computed(() => [
 	{ href: instance.tosUrl, label: i18n.ts.termsOfService, icon: 'ti ti-notebook' },
 	{ href: instance.privacyPolicyUrl, label: i18n.ts.privacyPolicy, icon: 'ti ti-shield-lock' },
 ].map(link => ({ ...link, href: safeWebUrl(link.href) })).filter((link): link is { href: string; label: string; icon: string } => Boolean(link.href)));
-const controller = markRaw(new HataskeyWelcomeController({ colorMode: store.r.darkMode.value ? 'dark' : 'light' }));
+let serverClockOffsetMs = 0;
+const serverClockAbortController = new AbortController();
+const controller = markRaw(new HataskeyWelcomeController({
+	colorMode: store.r.darkMode.value ? 'dark' : 'light',
+	federationMode: instance.federation,
+	now: () => new Date(Date.now() + serverClockOffsetMs),
+}));
 let dialogOpen = false;
+
+async function syncServerClock() {
+	const startedAt = Date.now();
+	try {
+		const response = await misskeyApi('ping', {}, null, serverClockAbortController.signal);
+		const receivedAt = Date.now();
+		if (!Number.isFinite(response.pong) || controller.destroyed) return;
+		serverClockOffsetMs = response.pong - ((startedAt + receivedAt) / 2);
+		controller.updateHataskClock();
+	} catch {
+		// Keep the device clock as the offline/error fallback.
+	}
+}
 
 function signin() {
 	if (dialogOpen) return;
@@ -788,6 +840,7 @@ function selectLanguage(event: MouseEvent) {
 function syncTheme() { controller.applyColorMode(store.r.darkMode.value ? 'dark' : 'light'); }
 
 watch(serverName, () => controller.requestMeasure());
-onMounted(() => { controller.mount(); controller.setLanguage(language.value); globalEvents.on('themeChanging', syncTheme); });
-onBeforeUnmount(() => { globalEvents.off('themeChanging', syncTheme); controller.destroy(); });
+watch(() => instance.federation, mode => controller.setFederationMode(mode));
+onMounted(() => { controller.mount(); controller.setLanguage(language.value); globalEvents.on('themeChanging', syncTheme); void syncServerClock(); });
+onBeforeUnmount(() => { serverClockAbortController.abort(); globalEvents.off('themeChanging', syncTheme); controller.destroy(); });
 </script>

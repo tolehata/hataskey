@@ -155,6 +155,21 @@ function hatadyFixture(language = 'ja'): HTMLElement {
 	return root;
 }
 
+function recordHoverSelector(): string {
+	const parsed = parseSfc(source);
+	assert.deepEqual(parsed.errors, []);
+	assert.ok(parsed.descriptor.template);
+	const root = window.document.createElement('div');
+	root.innerHTML = parsed.descriptor.template.content;
+	const candidates = [...root.querySelectorAll<HTMLElement>('#hatady .hatady-header button')]
+		.filter(button => button.querySelector('[data-en="Record"]'));
+	assert.equal(candidates.length, 1, 'the Hatady header must have exactly one semantic record button');
+	assert.ok(candidates[0].matches('.hatady-section button[style*="background:linear-gradient"][style*="color:#fff"]'), 'the semantic record button must retain the contrasted treatment');
+	const stateClasses = [...candidates[0].classList].filter(className => /^hWelcome-state-\d+$/.test(className));
+	assert.equal(stateClasses.length, 1, 'the Hatady record button must have exactly one generated hover-state class');
+	return `${scope} .${stateClasses[0]}:hover`;
+}
+
 function assertButtonOnlySelector(selector: string, root: HTMLElement): void {
 	const matches = [...root.querySelectorAll(selector)];
 	assert.ok(matches.every(element => element.tagName === 'BUTTON'), 'white record text must not recolor a badge or header icon');
@@ -313,7 +328,7 @@ describe('Hatady record button source contrast and scope', () => {
 	test.each([
 		['light', false, false], ['dark', true, false], ['system-light', false, true], ['system-dark', true, true],
 	] as const)('既存テーマ変数で白字と背景の対比を通常時・hover時とも保つ: %s', (_mode, dark, system) => {
-		const hover = styleFor(parseCss(css), `${scope} .hWelcome-state-68:hover`).filter;
+		const hover = styleFor(parseCss(css), recordHoverSelector()).filter;
 		expect(hover).toBe('brightness(1.05)');
 		assertReadableRecordText(css, dark, system, 1);
 		assertReadableRecordText(css, dark, system, 1.05);

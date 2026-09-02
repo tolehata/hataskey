@@ -12,8 +12,9 @@ import { HataskeyWelcomeController } from './welcome.entrance.hataskey.js';
 import type { Rule } from 'postcss';
 
 // Exercise the actual controller without mounting unrelated welcome features.
-// DOM/source contracts cover both the home mock and its live-tour clone. They
-// do not measure browser layout, font rendering or CSS animation smoothness.
+// DOM/source contracts cover the garden rendered by each of the four Hatask
+// themes. They do not measure browser layout, font rendering or CSS animation
+// smoothness.
 const css = readFileSync(resolve(process.cwd(), 'src/pages/welcome.entrance.hataskey.css'), 'utf8');
 const nativeCss = readFileSync(resolve(process.cwd(), 'src/style.scss'), 'utf8');
 const scope = '[data-hataskey-entrance]';
@@ -38,11 +39,6 @@ function fixture(theme: typeof themes[number], mode: typeof modes[number], reduc
 	controller.colorMode = mode;
 	controller.deckMotionQuery = { matches: reduced } as MediaQueryList;
 	controller.renderHatask();
-	const guide = window.document.createElement('section');
-	guide.innerHTML = '<button data-hatask-guide-select="garden"><strong><span>お庭</span></strong></button><span data-hatask-guide-current></span><div class="hatask-guide-stage"></div>';
-	mock.append(guide);
-	controller.hataskGuide = guide;
-	controller.hataskGuideStage = guide.querySelector('.hatask-guide-stage');
 	fixtures.push({ controller, root });
 	const garden = body.querySelector<HTMLElement>('[data-hatask-feature="garden"]');
 	assert.ok(garden);
@@ -63,32 +59,6 @@ function actualGardenInvariant(garden: Element, iconName: 'ti-seeding' | 'ti-flo
 	assert.match(layer.style.getPropertyValue('inset'), /^0(?:px)?$/, 'growth layer fills and centers in the progress ring');
 	assert.equal(visual.style.position, 'relative');
 	return layer;
-}
-
-function guideGardenInvariant(screen: HTMLElement, bloomed: boolean): void {
-	const visual = screen.querySelector('[data-hatask-flower-visual]');
-	assert.ok(visual);
-	assert.equal(visual.children.length, 2, 'guide has one ring and one growth layer');
-	assert.equal(visual.querySelectorAll('svg').length, 1);
-	assert.equal(visual.querySelector('img,[data-floweremoji]'), null, 'source decorations must not leak into the guide');
-	const center = visual.querySelector('[data-hatask-flower-center]');
-	assert.ok(center);
-	assert.equal(center.getAttribute('aria-hidden'), 'true');
-	assert.equal(center.children.length, 2, 'guide keeps stable seed/flower nodes during their handover');
-	const seed = center.querySelector<HTMLElement>('.hatask-reel-seed');
-	const flower = center.querySelector<HTMLElement>('.hatask-reel-flower');
-	assert.ok(seed && flower);
-	assert.equal(seed.hidden, bloomed, 'completed guide must explicitly hide the seed');
-	assert.equal(screen.dataset.hataskGardenGrowth, bloomed ? 'bloomed' : 'growing');
-	assert.equal(screen.getAttribute('aria-hidden'), 'true');
-	assert.equal(screen.inert, true);
-}
-
-function currentScreen(controller: HataskeyWelcomeController): HTMLElement {
-	const stage = controller.hataskGuideStage as HTMLElement;
-	const screen = [...stage.querySelectorAll<HTMLElement>('[data-hatask-guide-screen]')].at(-1);
-	assert.ok(screen);
-	return screen;
 }
 
 function ruleDeclarations(styles: string, selector: string): Record<string, string> {
@@ -121,7 +91,6 @@ beforeEach(() => {
 afterEach(() => {
 	for (const { controller, root } of fixtures.splice(0)) {
 		controller.cancelHataskFlower();
-		controller.cancelHataskGuideScreenSwap();
 		root.remove();
 	}
 	vi.useRealTimers();
@@ -140,30 +109,25 @@ describe('Hatask garden growth layers', () => {
 		expect(actualGardenInvariant(garden, 'ti-seeding')).toBe(layer);
 	});
 
-	test.each(variants)('$theme/$mode: 通常再生の本体とツアーが一度だけ開花して残る', ({ theme, mode }) => {
+	test.each(variants)('$theme/$mode: 通常再生は一度だけ開花し、同じ花ノードで安定する', ({ theme, mode }) => {
 		const { controller, garden } = fixture(theme, mode);
-		controller.animateFlower();
-		controller.renderHataskGuideScreen('garden');
-		const screen = currentScreen(controller);
-		const flower = screen.querySelector('.hatask-reel-flower');
-		actualGardenInvariant(garden, 'ti-seeding');
-		guideGardenInvariant(screen, false);
+		const layer = actualGardenInvariant(garden, 'ti-seeding');
 		expect(controller.timeouts.size).toBeGreaterThan(0);
 		vi.advanceTimersByTime(1600);
-		actualGardenInvariant(garden, 'ti-flower');
-		guideGardenInvariant(screen, true);
-		expect(currentScreen(controller)).toBe(screen);
-		expect(screen.querySelector('.hatask-reel-flower')).toBe(flower);
+		expect(actualGardenInvariant(garden, 'ti-flower')).toBe(layer);
+		const flower = layer.querySelector('.ti-flower');
+		assert.ok(flower);
+		expect(controller.timeouts.size + controller.frames.size).toBe(0);
+		vi.advanceTimersByTime(5000);
+		expect(actualGardenInvariant(garden, 'ti-flower')).toBe(layer);
+		expect(layer.querySelector('.ti-flower')).toBe(flower);
 		expect(controller.timeouts.size + controller.frames.size).toBe(0);
 	});
 
-	test.each(variants)('$theme/$mode: reduced-motionでは両方とも即時開花しアニメーションを残さない', ({ theme, mode }) => {
+	test.each(variants)('$theme/$mode: reduced-motionでは即時開花しアニメーションを残さない', ({ theme, mode }) => {
 		const { controller, garden } = fixture(theme, mode, true);
-		controller.animateFlower();
-		controller.renderHataskGuideScreen('garden');
 		const layer = actualGardenInvariant(garden, 'ti-flower');
 		expect(layer.style.animation).toBe('none');
-		guideGardenInvariant(currentScreen(controller), true);
 		expect(controller.timeouts.size + controller.frames.size).toBe(0);
 	});
 
@@ -185,20 +149,12 @@ describe('Hatask garden growth layers', () => {
 		expect(() => actualGardenInvariant(garden, 'ti-seeding')).toThrow(/one ring and one icon layer/);
 	});
 
-	test('陽性対照: ツアーの庭への旧画像の再挿入を検出する', () => {
-		const { controller } = fixture('hatakyu', 'dark', true);
-		controller.renderHataskGuideScreen('garden');
-		const screen = currentScreen(controller);
-		guideGardenInvariant(screen, true);
-		screen.querySelector('[data-hatask-flower-visual]')?.append(window.document.createElement('img'));
-		expect(() => guideGardenInvariant(screen, true)).toThrow(/one ring and one growth layer/);
+	test('現存する庭グリフは本体の128%拡大を持ち込まない', () => {
+		normalizedGlyphInvariant(css, `${scope} [data-floweremoji]>.ti`);
 	});
 
-	test.each([`${scope} [data-floweremoji]>.ti`, `${scope} .hatask-reel-growth>.ti`])('%s: 本体の128%%グリフ拡大を庭に持ち込まない', selector => {
-		normalizedGlyphInvariant(css, selector);
-	});
-
-	test.each([`${scope} [data-floweremoji]>.ti`, `${scope} .hatask-reel-growth>.ti`])('陽性対照: %s の局所グリフ補正欠落を検出する', selector => {
+	test('陽性対照: 現存する庭グリフの局所補正欠落を検出する', () => {
+		const selector = `${scope} [data-floweremoji]>.ti`;
 		const styles = parseCss(css);
 		let removed = false;
 		styles.walkRules(rule => {

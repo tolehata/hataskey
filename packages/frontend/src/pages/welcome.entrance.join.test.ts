@@ -88,6 +88,20 @@ function assertFooterWordmark(templateSource: string, stylesSource: string): voi
 	assert.equal(declarations(layoutRule(styles, 'join-acknowledgement'))['text-align'].value, 'center');
 }
 
+function assertProjectDisclaimer(templateSource: string): void {
+	const parsed = parseSfc(templateSource, { filename: sourcePath });
+	assert.deepEqual(parsed.errors, []);
+	assert.ok(parsed.descriptor.template);
+	const template = window.document.createElement('template');
+	template.innerHTML = parsed.descriptor.template.content;
+	const rights = template.content.querySelectorAll('#join #fediverse-rights');
+	assert.equal(rights.length, 1, 'footer must contain one project-rights disclosure');
+	const notice = rights[0].querySelector(':scope > div > p:last-child');
+	assert.ok(notice, 'project-rights disclosure copy must exist');
+	assert.equal(notice.textContent, 'HataskeyはMisskey ProjectおよびCherryPick Projectの公式プロジェクトではなく、両プロジェクトとの提携・推薦を示すものではありません。');
+	assert.equal(notice.getAttribute('data-en'), 'Hataskey is not an official project of Misskey Project or CherryPick Project and is not affiliated with or endorsed by either project.');
+}
+
 type Point = { x: number; y: number };
 
 function planeFixture(initialHeight: number) {
@@ -149,6 +163,18 @@ function assertTrajectoryFits(points: Point[], height: number): void {
 describe('welcome entrance JOIN mobile source contracts', () => {
 	test('最下部のロゴは装飾のないHataskey文字だけを中央揃えにする', () => {
 		assertFooterWordmark(source, css);
+	});
+
+	test('最下部でMisskey ProjectとCherryPick Projectの両方との非提携を明示する', () => {
+		assertProjectDisclaimer(source);
+	});
+
+	test('陽性対照：CherryPick Projectの非提携表記を外すと検出する', () => {
+		const mutated = source
+			.replace('Misskey ProjectおよびCherryPick Project', 'Misskey Project')
+			.replace('Misskey Project or CherryPick Project', 'Misskey Project');
+		expect(mutated).not.toBe(source);
+		expect(() => assertProjectDisclaimer(mutated)).toThrow();
 	});
 
 	test('陽性対照：最下部の図形アイコンを復活させると検出する', () => {
