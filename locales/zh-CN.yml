@@ -7193,12 +7193,9 @@ _hata:
     _application:
       contactsLabel: "您已在使用的社交账号等联系方式"
       contactsPlaceholder: "例如：@name@example.social、社交账号主页链接"
-      contactsHint: "如果您已在使用社交平台，可以填写账号名称或主页链接。也可以留空后提交申请"
-      contactsPurpose: "此栏信息仅用于审核加入申请及与审核有关的联系。申请待处理期间，只有本服务器的管理员可以查看"
+      contactsHint: "请将社交账号名称或主页链接填写在此联系方式栏，不要写入申请理由。也可以留空"
       contactsHandling: "无论批准还是拒绝，都会删除选填的联系方式"
-      contactsDeletion: "批准或拒绝处理完成时，此栏信息会自动从申请数据中删除，不会保存到个人资料或通知中。如果处理失败而申请仍待处理，则继续保留以供审核"
-      contactsSeparation: "此规则仅适用于选填的联系方式栏。请在此栏填写社交账号等联系方式，不要填在申请理由中。注册邮箱按下方的说明另行处理"
-      contactsBackupNotice: "此操作不会同时删除运营者另行保管的备份或已经留存的副本。具体保管政策请参阅本服务器的说明"
+      contactsDeletion: "仅在审核期间保管，并在批准或拒绝确定时自动从申请数据中删除"
       back: "返回"
       reasonLabel: "希望注册此服务器的理由"
       required: "*必填"
@@ -7232,7 +7229,7 @@ _hata:
       unknownApiEndpoint: "未找到API端点。需要重新构建后端。"
     _admin:
       contactsLabel: "选填的联系方式（社交账号等）"
-      contactsHandling: "仅用于审核申请及与审核有关的联系。批准或拒绝处理完成时，会自动从申请数据中删除。请勿抄录或另行保存"
+      contactsHandling: "批准或拒绝确定后，选填的联系方式会自动从申请数据中删除"
       title: "注册申请管理"
       rejectedPrivacySummary: "已拒绝申请的个人信息管理状态"
       personalDataDeleted: "个人信息已删除"

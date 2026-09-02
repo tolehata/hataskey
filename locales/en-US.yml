@@ -7615,12 +7615,9 @@ _hata:
     _application:
       contactsLabel: "Contact details for social accounts you already use"
       contactsPlaceholder: "For example: @name@example.social or a social profile URL"
-      contactsHint: "If you already use social media, you may provide an account name or profile URL. You can also leave this blank"
-      contactsPurpose: "These details are used only to review your application and contact you about it. Only this server's administrators can view them while your application is pending"
+      contactsHint: "Enter a social account name or profile URL in this contact field, not in the application reason. You can leave it blank"
       contactsHandling: "Optional contact details are deleted on both approval and rejection"
-      contactsDeletion: "When approval or rejection is completed, this field is automatically removed from the application data. It is not saved to your profile or notifications. If processing fails and the application remains pending, the details are kept for its review"
-      contactsSeparation: "This applies to the optional contact field only. Please enter social contact details here, not in your application reason. Your registration email address is handled separately as described below"
-      contactsBackupNotice: "This does not simultaneously erase separate backups or copies already kept by the server operator. Please see this server's information for its retention policy"
+      contactsDeletion: "They are kept only while your application is pending and are automatically removed from the application data when approval or rejection is finalized"
       back: "Back"
       reasonLabel: "Why you want to register on this server"
       required: "*Required"
@@ -7654,7 +7651,7 @@ _hata:
       unknownApiEndpoint: "The API endpoint was not found. The backend needs to be rebuilt."
     _admin:
       contactsLabel: "Optional contact details (social accounts, etc.)"
-      contactsHandling: "Use these details only to review the application and contact the applicant about it. They are automatically deleted from the application data when approval or rejection is completed. Please do not copy or save them elsewhere"
+      contactsHandling: "Optional contact details are automatically removed from the application data when approval or rejection is finalized"
       title: "Registration applications"
       rejectedPrivacySummary: "Personal information status for rejected applications"
       personalDataDeleted: "Personal information deleted"

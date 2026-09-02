@@ -58,7 +58,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<div :class="$style.completeMessage">
 					<MkHatakyuIllustration v-if="useHatakyuBranding()" asset="treasureFound" :size="72" style="margin: 0 auto;"/><i v-else class="ti ti-circle-check" :class="$style.completeIcon"></i>
 					<h3>{{ copy.applicationComplete }}</h3>
-					<p>{{ copy.applicationCompleteDescription }}</p>
+					<p :class="$style.completionDescription">{{ copy.applicationCompleteDescription }}</p>
 					<div :class="$style.notice">
 						<ul>
 							<li>{{ copy.reviewTime }}</li>
@@ -167,6 +167,10 @@ function onApplicationComplete() {
 </script>
 
 <style lang="scss" module>
+.completionDescription {
+	white-space: pre-line;
+}
+
 .container {
 	padding: 24px;
 }

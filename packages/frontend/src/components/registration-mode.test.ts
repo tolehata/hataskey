@@ -5,6 +5,7 @@
 
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { load } from 'js-yaml';
 import { createApp, h, nextTick, Suspense } from 'vue';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { instance as productionInstance } from '@/instance.js';
@@ -555,15 +556,61 @@ describe('モデレーション設定の登録モード', () => {
 });
 
 describe('登録設定のテンプレート契約', () => {
+	test('任意連絡先の案内は審査中の保管と確定時の削除だけを簡潔に示す', () => {
+		const locale = load(readFileSync(resolve(process.cwd(), '../../locales/ja-JP.yml'), 'utf8')) as {
+			_hata: { _registrationApplications: { _application: Record<string, string>; _admin: Record<string, string> } };
+		};
+		const copy = locale._hata._registrationApplications._application;
+		expect(copy.contactsDeletion).toContain('審査中のみ保管');
+		expect(copy.contactsDeletion).toContain('承認・拒否の確定時');
+		expect(copy).not.toHaveProperty('contactsPurpose');
+		expect(copy).not.toHaveProperty('contactsSeparation');
+		expect(copy).not.toHaveProperty('contactsBackupNotice');
+		const notice = [copy.contactsHandling, copy.contactsDeletion].join('');
+		for (const removed of ['プロフィールや通知には保存しません', '登録用メールアドレスは別の取り扱いです', 'バックアップや控えは削除対象外', '管理者だけが審査と必要な連絡に使用します']) {
+			expect(notice).not.toContain(removed);
+		}
+		const misplacedReference = /この欄|こちら|下に記載/u;
+		expect(misplacedReference.test('この欄をご確認ください')).toBe(true);
+		expect(misplacedReference.test(notice)).toBe(false);
+		expect(notice.length).toBeLessThan(80);
+		expect(locale._hata._registrationApplications._admin.contactsHandling).toBe('承認・拒否が確定すると、任意の連絡先は申請データから自動削除されます');
+	});
+
+	test.each([
+		{ locale: 'en-US', reason: 'application reason', adminRemoved: ['only to review', 'do not copy or save'] },
+		{ locale: 'zh-CN', reason: '申请理由', adminRemoved: ['仅用于审核', '请勿抄录或另行保存'] },
+	])('$localeでも連絡先欄への入力と確定時の削除だけを案内する', ({ locale, reason, adminRemoved }) => {
+		const messages = load(readFileSync(resolve(process.cwd(), `../../locales/${locale}.yml`), 'utf8')) as {
+			_hata: { _registrationApplications: { _application: Record<string, string>; _admin: Record<string, string> } };
+		};
+		const application = messages._hata._registrationApplications._application;
+		expect(application.contactsHint).toContain(reason);
+		expect(application.contactsDeletion).toMatch(/application data|申请数据/u);
+		const admin = messages._hata._registrationApplications._admin.contactsHandling;
+		for (const removed of adminRemoved) expect(admin).not.toContain(removed);
+	});
+
+	test('申請完了の承認メール案内の直後で改行し、画面でも改行を保つ', () => {
+		const locale = load(readFileSync(resolve(process.cwd(), '../../locales/ja-JP.yml'), 'utf8')) as {
+			_hata: { _common: { applicationCompleteDescription: string } };
+		};
+		expect(locale._hata._common.applicationCompleteDescription).toBe('申請が承認された場合、承認のメールが届き、\n記入されたID名でログインできるようになります。');
+		const source = readFileSync(resolve(process.cwd(), 'src/components/MkSignupBranchDialog.vue'), 'utf8');
+		expect(source).toContain('<p :class="$style.completionDescription">{{ copy.applicationCompleteDescription }}</p>');
+		expect(source).toMatch(/\.completionDescription\s*\{\s*white-space: pre-line;/u);
+	});
+
 	test('任意連絡先は関連付けたラベル・説明を持ち、管理側もプレーンテキストで表示する', () => {
 		const root = resolve(process.cwd(), 'src');
 		const admin = readFileSync(resolve(root, 'pages/admin/registration-applications.vue'), 'utf8');
 		const application = readFileSync(resolve(root, 'components/MkRegistrationApplication.vue'), 'utf8');
 		expect(application).toContain('<label :for="contactsId"');
-		expect(application).toContain(':aria-describedby="`${contactsId}-hint ${contactsId}-purpose`"');
+		expect(application).toContain(':aria-describedby="`${contactsId}-hint`"');
 		expect(application).toContain('copy.contactsDeletion');
-		expect(application).toContain('copy.contactsSeparation');
-		expect(application).toContain('copy.contactsBackupNotice');
+		expect(application).not.toContain('copy.contactsPurpose');
+		expect(application).not.toContain('copy.contactsSeparation');
+		expect(application).not.toContain('copy.contactsBackupNotice');
 		expect(admin).toContain('v-if="item.status === \'pending\' && item.additionalContacts"');
 		expect(admin).toContain('{{ item.additionalContacts }}');
 		const unsafeRendering = /v-html="[^"]*additionalContacts|<Mfm[^>]*additionalContacts/;

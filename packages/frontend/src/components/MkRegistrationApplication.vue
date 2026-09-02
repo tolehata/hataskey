@@ -44,10 +44,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 					:spellcheck="false"
 					autocomplete="off"
 					:placeholder="copy.contactsPlaceholder"
-					:aria-describedby="`${contactsId}-hint ${contactsId}-purpose`"
+					:aria-describedby="`${contactsId}-hint`"
 				></textarea>
 				<div :id="`${contactsId}-hint`" :class="$style.fieldHint">{{ copy.contactsHint }}</div>
-				<div :id="`${contactsId}-purpose`" :class="$style.fieldHint">{{ copy.contactsPurpose }}</div>
 			</div>
 
 			<!-- 2. ユーザーID -->
@@ -145,8 +144,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<div :class="$style.privacyNoticeSection">
 						<div :class="$style.privacyNoticeSectionTitle"><i class="ti ti-shield-lock"></i><span>{{ copy.contactsHandling }}</span></div>
 						<p>{{ copy.contactsDeletion }}</p>
-						<p>{{ copy.contactsSeparation }}</p>
-						<p>{{ copy.contactsBackupNotice }}</p>
 					</div>
 					<div :class="$style.privacyNoticeSection">
 						<div :class="$style.privacyNoticeSectionTitle">

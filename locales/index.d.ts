@@ -28836,7 +28836,8 @@ export interface Locale extends ILocale {
              */
             "applicationComplete": string;
             /**
-             * 申請が承認された場合、承認のメールが届き、記入されたID名でログインできるようになります。
+             * 申請が承認された場合、承認のメールが届き、
+             * 記入されたID名でログインできるようになります。
              */
             "applicationCompleteDescription": string;
             /**
@@ -29656,29 +29657,17 @@ export interface Locale extends ILocale {
                  */
                 "contactsPlaceholder": string;
                 /**
-                 * すでにお使いのSNSなどがありましたら、アカウント名やプロフィールのURLをご入力ください。空欄のままでも申請できます
+                 * SNSのアカウント名やURLは、理由欄ではなく連絡先欄へご入力ください。空欄でも申請できます
                  */
                 "contactsHint": string;
                 /**
-                 * この欄の連絡先は参加申請の確認と、そのために必要な連絡のみに使用します。審査中はこのサーバーの管理者だけが確認できます
-                 */
-                "contactsPurpose": string;
-                /**
-                 * 任意の連絡先は、承認・拒否のどちらでも削除します
+                 * 任意の連絡先の取り扱い
                  */
                 "contactsHandling": string;
                 /**
-                 * 承認または拒否が確定したときに、この欄の連絡先を申請データから自動的に削除します。プロフィールや通知には保存しません。処理が完了せず申請が審査中のままの場合は、引き続き審査のために保管します
+                 * 審査中のみ保管し、承認・拒否の確定時に申請データから自動削除します
                  */
                 "contactsDeletion": string;
-                /**
-                 * この取り扱いは任意の連絡先欄が対象です。SNSなどの連絡先は理由欄ではなくこちらへご入力ください。登録用メールアドレスは、下に記載した別の取り扱いになります
-                 */
-                "contactsSeparation": string;
-                /**
-                 * 運用者が別途保管するバックアップや、すでに控えた情報まで同時に消去する仕組みではありません。詳しい保管方針はこのサーバーの案内をご確認ください
-                 */
-                "contactsBackupNotice": string;
                 /**
                  * 戻る
                  */
@@ -29810,7 +29799,7 @@ export interface Locale extends ILocale {
                  */
                 "contactsLabel": string;
                 /**
-                 * 参加申請の確認と、そのために必要な連絡のみに使用してください。承認・拒否の確定時に申請データから自動削除されます。別の場所への転記や保存はお控えください
+                 * 承認・拒否が確定すると、任意の連絡先は申請データから自動削除されます
                  */
                 "contactsHandling": string;
                 /**
