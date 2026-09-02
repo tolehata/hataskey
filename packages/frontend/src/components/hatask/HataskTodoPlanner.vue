@@ -38,13 +38,21 @@ SPDX-License-Identifier: AGPL-3.0-only
 				@keydown.right.prevent="moveMobileTabWithKeyboard(tab, 1)"
 			>
 				<i :class="mobileTabIcon(tab)" aria-hidden="true"></i>
-				<span>{{ mobileTabLabel(tab) }}</span>
-				<i v-if="reorderMode" class="ti ti-grip-vertical" :class="$style.mobileTabGrip" aria-hidden="true"></i>
+				<span v-if="reorderMode || isMobileTabActive(tab)">{{ mobileTabLabel(tab) }}</span>
 			</button>
 		</TransitionGroup>
-		<button type="button" :class="$style.reorderTabsButton" :data-active="reorderMode" :aria-pressed="reorderMode" :aria-label="labels.reorderViews" :title="labels.reorderViews" @click="toggleReorderMode">
-			<i :class="reorderMode ? 'ti ti-check' : 'ti ti-arrows-move-horizontal'" aria-hidden="true"></i>
-		</button>
+		<div v-if="reorderMode" :class="$style.mobileTabEditor" data-mobile-tab-editor role="group" :aria-label="labels.customizeViews">
+			<p :class="$style.mobileTabHint">{{ labels.customizeViewsHint }}</p>
+			<div v-for="option in viewOptions" :key="option.id" :class="$style.mobileTabEditorRow" :data-tab-visible="directMobileViews.has(option.id)">
+				<button type="button" :class="$style.mobileTabChoice" :data-tab-choice="option.id" :aria-pressed="directMobileViews.has(option.id)" :aria-label="directMobileViews.has(option.id) ? labels.hideView(labels.views[option.id]) : labels.showView(labels.views[option.id])" @click="toggleMobileView(option.id)">
+					<i :class="option.icon" aria-hidden="true"></i><span>{{ labels.views[option.id] }}</span><i :class="directMobileViews.has(option.id) ? 'ti ti-check' : 'ti ti-plus'" aria-hidden="true"></i>
+				</button>
+				<template v-if="directMobileViews.has(option.id)">
+					<button type="button" :class="$style.mobileTabMove" :data-tab-earlier="option.id" :disabled="mobileOrderDraft.indexOf(option.id) === 0" :aria-label="labels.moveViewEarlier(labels.views[option.id])" @click="moveMobileTabWithKeyboard(option.id, -1)"><i class="ti ti-chevron-left" aria-hidden="true"></i></button>
+					<button type="button" :class="$style.mobileTabMove" :data-tab-later="option.id" :disabled="mobileOrderDraft.indexOf(option.id) === mobileOrderDraft.length - 1" :aria-label="labels.moveViewLater(labels.views[option.id])" @click="moveMobileTabWithKeyboard(option.id, 1)"><i class="ti ti-chevron-right" aria-hidden="true"></i></button>
+				</template>
+			</div>
+		</div>
 	</div>
 
 	<header :class="$style.commandBar">
@@ -54,17 +62,13 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<input type="search" :value="searchQuery" :placeholder="labels.searchPlaceholder" :aria-label="labels.search" @input="emit('update:searchQuery', ($event.target as HTMLInputElement).value)">
 		</label>
 
+		<button type="button" :class="$style.reorderTabsButton" :data-active="reorderMode" :aria-pressed="reorderMode" :aria-label="labels.reorderViews" :title="labels.reorderViews" @click="toggleReorderMode">
+			<i :class="reorderMode ? 'ti ti-check' : 'ti ti-arrows-move-horizontal'" aria-hidden="true"></i>
+		</button>
 		<div :class="$style.sortControl">
-			<button type="button" :class="$style.iconButton" :data-active="sortOpen" :aria-label="`${labels.sort}: ${labels.sortOptions[sort]}`" :title="`${labels.sort}: ${labels.sortOptions[sort]}`" :aria-expanded="sortOpen" aria-haspopup="menu" @click="sortOpen = !sortOpen">
+			<button type="button" :class="$style.iconButton" :data-active="sortOpen" :aria-label="`${labels.sort}: ${labels.sortOptions[sort]}`" :title="`${labels.sort}: ${labels.sortOptions[sort]}`" :aria-expanded="sortOpen" aria-haspopup="menu" @click="openSortMenu">
 				<i :class="sortIcon" aria-hidden="true"></i><span :class="$style.sortBadge"><i class="ti ti-chevron-down" aria-hidden="true"></i></span>
 			</button>
-			<Transition name="planner-popover">
-				<div v-if="sortOpen" :class="$style.sortMenu" role="menu" :aria-label="labels.sort">
-					<button v-for="option in sortOptions" :key="option.id" type="button" role="menuitemradio" :aria-checked="sort === option.id" :data-active="sort === option.id" @click="selectSort(option.id)">
-						<i :class="option.icon" aria-hidden="true"></i><span>{{ labels.sortOptions[option.id] }}</span><i v-if="sort === option.id" class="ti ti-check" aria-hidden="true"></i>
-					</button>
-				</div>
-			</Transition>
 		</div>
 	</header>
 
@@ -178,6 +182,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 <script lang="ts" setup>
 import { computed, defineComponent, h, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import type { HataskPlannerFilter, HataskPlannerTheme, HataskTodoItem, HataskTodoLabels, HataskTodoMobileTab, HataskTodoSort, HataskTodoView } from './hatask-planner-types.js';
+import * as os from '@/os.js';
+import { HATASK_TODO_DEFAULT_MOBILE_TABS, normalizeHataskTodoMobileTabs } from '@/utility/hatask-todo-tabs.js';
 
 const props = withDefaults(defineProps<{
 	theme?: HataskPlannerTheme;
@@ -192,7 +198,7 @@ const props = withDefaults(defineProps<{
 	completionIds?: string[];
 	loading?: boolean;
 	readOnly?: boolean;
-}>(), { theme: undefined, filters: () => [], searchQuery: '', viewCounts: undefined, mobileTabOrder: () => [], sort: 'manual', completionIds: () => [], loading: false, readOnly: false });
+}>(), { theme: undefined, filters: () => [], searchQuery: '', viewCounts: undefined, mobileTabOrder: () => [...HATASK_TODO_DEFAULT_MOBILE_TABS], sort: 'manual', completionIds: () => [], loading: false, readOnly: false });
 
 const emit = defineEmits<{
 	(ev: 'update:view', view: HataskTodoView): void;
@@ -219,8 +225,6 @@ const viewOptions: Array<{ id: HataskTodoView; icon: string; acceptsDrop: boolea
 	{ id: 'priority', icon: 'ti ti-flag', acceptsDrop: true }, { id: 'all', icon: 'ti ti-list-check', acceptsDrop: false },
 	{ id: 'completed', icon: 'ti ti-circle-check', acceptsDrop: true }, { id: 'templates', icon: 'ti ti-template', acceptsDrop: true },
 ];
-const defaultMobileTabOrder: HataskTodoMobileTab[] = ['today', 'upcoming', 'all', 'completed', 'more'];
-const directMobileViews = new Set<HataskTodoView>(['today', 'upcoming', 'all', 'completed']);
 const sortOptions: Array<{ id: HataskTodoSort; icon: string }> = [
 	{ id: 'manual', icon: 'ti ti-grip-vertical' }, { id: 'dueAsc', icon: 'ti ti-calendar-event' },
 	{ id: 'priority', icon: 'ti ti-flag' }, { id: 'createdDesc', icon: 'ti ti-clock' },
@@ -231,7 +235,8 @@ const currentViewOption = computed(() => viewOptions.find(option => option.id ==
 const sortIcon = computed(() => sortOptions.find(option => option.id === props.sort)?.icon ?? 'ti ti-arrows-sort');
 const folderFilters = computed(() => props.filters.filter(filter => filter.kind === 'folder' || filter.id.startsWith('folder:')));
 const railOpen = ref(false); const sortOpen = ref(false); const itemMenuId = ref<string | null>(null);
-const mobileOrderDraft = ref<HataskTodoMobileTab[]>([...defaultMobileTabOrder]);
+const mobileOrderDraft = ref<HataskTodoMobileTab[]>([...HATASK_TODO_DEFAULT_MOBILE_TABS]);
+const directMobileViews = computed(() => new Set<HataskTodoView>(mobileOrderDraft.value.filter((tab): tab is HataskTodoView => tab !== 'more')));
 const reorderMode = ref(false); const draggedMobileTab = ref<HataskTodoMobileTab | null>(null);
 const viewDirection = ref<'forward' | 'back'>('forward');
 const viewTransitionName = computed(() => viewDirection.value === 'forward' ? 'todo-view-forward' : 'todo-view-back');
@@ -240,21 +245,19 @@ const rootEl = ref<HTMLElement | null>(null); const compactLayout = ref(false);
 let layoutObserver: ResizeObserver | null = null;
 let longPressTimer: number | null = null; let suppressClickTimer: number | null = null; let suppressClickId: string | null = null; let pointerOrigin: { x: number; y: number } | null = null; let selectionAnchor = -1;
 let mobileTabDragMoved = false; let suppressMobileTabActivation = false;
+let mobileTabDragStartOrder: HataskTodoMobileTab[] | null = null;
 
-function normalizeMobileTabOrder(candidate: readonly HataskTodoMobileTab[]): HataskTodoMobileTab[] {
-	const valid = new Set<HataskTodoMobileTab>(defaultMobileTabOrder);
-	const unique = candidate.filter((tab, index) => valid.has(tab) && candidate.indexOf(tab) === index);
-	return [...unique, ...defaultMobileTabOrder.filter(tab => !unique.includes(tab))];
-}
-
-watch(() => props.mobileTabOrder, order => { mobileOrderDraft.value = normalizeMobileTabOrder(order); }, { deep: true, immediate: true });
+watch(() => props.mobileTabOrder, order => {
+	cancelMobileTabDrag();
+	mobileOrderDraft.value = normalizeHataskTodoMobileTabs(order);
+}, { deep: true, immediate: true });
 
 const OrganizerContents = defineComponent({
 	name: 'OrganizerContents',
 	props: { compact: { type: Boolean, default: false } },
 	setup(componentProps) {
 		return () => h('div', { class: 'hatask-organizer-contents' }, [
-			h('nav', { class: 'hatask-smart-views', 'aria-label': props.labels.viewSelector }, viewOptions.filter(option => !componentProps.compact || !directMobileViews.has(option.id)).map(option => h('button', {
+			h('nav', { class: 'hatask-smart-views', 'aria-label': props.labels.viewSelector }, viewOptions.filter(option => !componentProps.compact || !directMobileViews.value.has(option.id)).map(option => h('button', {
 				type: 'button', class: 'hatask-organizer-row', 'data-active': props.view === option.id,
 				'data-drop-active': option.acceptsDrop && draggingIds.value.length > 0, 'aria-current': props.view === option.id ? 'page' : undefined,
 				'aria-label': props.labels.views[option.id],
@@ -292,11 +295,26 @@ function selectView(next: HataskTodoView): void {
 
 function selectSort(next: HataskTodoSort): void { emit('update:sort', next); sortOpen.value = false; }
 
+async function openSortMenu(event: MouseEvent): Promise<void> {
+	if (sortOpen.value) return;
+	sortOpen.value = true;
+	try {
+		await os.popupMenu(sortOptions.map(option => ({
+			type: 'radioOption' as const,
+			text: props.labels.sortOptions[option.id],
+			active: props.sort === option.id,
+			action: () => selectSort(option.id),
+		})), event.currentTarget, { motionPreset: 'postform', onClosing: () => { sortOpen.value = false; } });
+	} finally {
+		sortOpen.value = false;
+	}
+}
+
 function mobileTabLabel(tab: HataskTodoMobileTab): string { return tab === 'more' ? props.labels.moreViews : props.labels.views[tab]; }
 
 function mobileTabIcon(tab: HataskTodoMobileTab): string { return tab === 'more' ? 'ti ti-dots' : viewOptions.find(option => option.id === tab)?.icon ?? 'ti ti-circle'; }
 
-function isMobileTabActive(tab: HataskTodoMobileTab): boolean { return tab === 'more' ? !directMobileViews.has(props.view) : props.view === tab; }
+function isMobileTabActive(tab: HataskTodoMobileTab): boolean { return tab === 'more' ? !directMobileViews.value.has(props.view) : props.view === tab; }
 
 function activateMobileTab(tab: HataskTodoMobileTab): void {
 	if (suppressMobileTabActivation) { suppressMobileTabActivation = false; return; }
@@ -308,6 +326,19 @@ function activateMobileTab(tab: HataskTodoMobileTab): void {
 function toggleReorderMode(): void {
 	reorderMode.value = !reorderMode.value;
 	if (!reorderMode.value) cancelMobileTabDrag();
+}
+
+function toggleMobileView(view: HataskTodoView): void {
+	if (!reorderMode.value) return;
+	cancelMobileTabDrag();
+	const next = [...mobileOrderDraft.value];
+	const index = next.indexOf(view);
+	if (index >= 0) next.splice(index, 1);
+	else next.splice(next.indexOf('more'), 0, view);
+	mobileOrderDraft.value = normalizeHataskTodoMobileTabs(next);
+	// Hiding a selected shortcut does not change the open view or task data;
+	// the More tab becomes active and still gives access to that view.
+	emit('update:mobileTabOrder', [...mobileOrderDraft.value]);
 }
 
 function moveMobileTab(tab: HataskTodoMobileTab, target: HataskTodoMobileTab): boolean {
@@ -322,6 +353,7 @@ function moveMobileTab(tab: HataskTodoMobileTab, target: HataskTodoMobileTab): b
 function startMobileTabDrag(tab: HataskTodoMobileTab, event: PointerEvent): void {
 	if (!reorderMode.value) return;
 	event.preventDefault();
+	mobileTabDragStartOrder = [...mobileOrderDraft.value];
 	draggedMobileTab.value = tab; mobileTabDragMoved = false;
 	(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
 }
@@ -329,17 +361,22 @@ function startMobileTabDrag(tab: HataskTodoMobileTab, event: PointerEvent): void
 function moveMobileTabDrag(event: PointerEvent): void {
 	if (!reorderMode.value || draggedMobileTab.value == null) return;
 	event.preventDefault();
-	const target = window.document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>('[data-mobile-tab]')?.dataset.mobileTab as HataskTodoMobileTab | undefined;
+	const targetElement = window.document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>('[data-mobile-tab]');
+	if (!targetElement || !rootEl.value?.contains(targetElement)) return;
+	const target = targetElement.dataset.mobileTab as HataskTodoMobileTab | undefined;
 	if (target != null && moveMobileTab(draggedMobileTab.value, target)) mobileTabDragMoved = true;
 }
 
 function finishMobileTabDrag(): void {
 	if (draggedMobileTab.value == null) return;
 	if (mobileTabDragMoved) { emit('update:mobileTabOrder', [...mobileOrderDraft.value]); suppressMobileTabActivation = true; }
-	draggedMobileTab.value = null; mobileTabDragMoved = false;
+	draggedMobileTab.value = null; mobileTabDragMoved = false; mobileTabDragStartOrder = null;
 }
 
-function cancelMobileTabDrag(): void { draggedMobileTab.value = null; mobileTabDragMoved = false; }
+function cancelMobileTabDrag(): void {
+	if (mobileTabDragStartOrder) mobileOrderDraft.value = mobileTabDragStartOrder;
+	draggedMobileTab.value = null; mobileTabDragMoved = false; mobileTabDragStartOrder = null;
+}
 
 function moveMobileTabWithKeyboard(tab: HataskTodoMobileTab, direction: -1 | 1): void {
 	if (!reorderMode.value) return;
@@ -415,7 +452,10 @@ function dropOnTarget(targetId: string, event: DragEvent): void {
 function closeTransientUi(): void { railOpen.value = false; sortOpen.value = false; itemMenuId.value = null; reorderMode.value = false; cancelMobileTabDrag(); if (selectionMode.value) clearSelection(); }
 
 onMounted(() => {
-	const updateLayout = (width: number) => { compactLayout.value = width <= 760; };
+	const updateLayout = (width: number) => {
+		compactLayout.value = width <= 760;
+		if (!compactLayout.value && reorderMode.value) { reorderMode.value = false; cancelMobileTabDrag(); }
+	};
 	if (rootEl.value != null && typeof ResizeObserver !== 'undefined') {
 		layoutObserver = new ResizeObserver(entries => updateLayout(entries[0].contentRect.width));
 		layoutObserver.observe(rootEl.value);
@@ -432,15 +472,18 @@ onBeforeUnmount(() => {
 </script>
 
 <style lang="scss" module>
-.root{container-type:inline-size;color:var(--fg);font-family:var(--htk-font-body,inherit);line-break:strict;overflow-wrap:anywhere}.commandBar{position:relative;z-index:5;display:flex;align-items:center;gap:10px;margin-bottom:14px}.search{min-width:180px;flex:1;min-height:46px;display:flex;align-items:center;gap:8px;padding:0 14px;border:1px solid var(--rule);border-radius:999px;background:color-mix(in srgb,var(--surface) 88%,transparent);color:var(--fg-3)}.search input{min-width:0;flex:1;border:0;outline:0;background:transparent;color:var(--fg);font:inherit;font-size:max(16px,.8rem)}.iconButton,.mobileViewButton{min-height:44px;border:1px solid var(--rule);background:var(--surface);color:var(--fg);cursor:pointer}.iconButton{position:relative;width:44px;border-radius:50%;font-size:1rem}.iconButton[data-active=true]{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 40%,var(--rule))}.sortBadge{position:absolute;right:-1px;bottom:-1px;width:17px;height:17px;display:grid;place-items:center;border:2px solid var(--surface);border-radius:50%;background:var(--accent);color:var(--on-accent,#fff);font-size:.48rem}.sortControl{position:relative}.sortMenu,.itemMenu{position:absolute;z-index:20;padding:6px;border:1px solid var(--rule);border-radius:16px;background:var(--surface);box-shadow:0 18px 48px -22px rgba(0,0,0,.5)}.sortMenu{inset-inline-end:0;top:calc(100% + 7px);min-width:220px}.sortMenu button,.itemMenu button{width:100%;min-height:42px;display:grid;grid-template-columns:24px minmax(0,1fr) 20px;align-items:center;gap:8px;padding:7px 10px;border:0;border-radius:10px;background:transparent;color:var(--fg);font:inherit;font-size:.76rem;text-align:start;cursor:pointer}.sortMenu button[data-active=true]{background:color-mix(in srgb,var(--accent) 12%,transparent);color:var(--accent);font-weight:800}.workspace{display:grid;grid-template-columns:minmax(190px,230px) minmax(0,1fr);gap:16px;align-items:start}.desktopRail,.content{border:var(--card-border,1px solid var(--rule));background:var(--surface);box-shadow:var(--card-shadow,none)}.desktopRail{position:sticky;top:12px;padding:10px;border-radius:var(--card-radius,20px)}.content{min-width:0;padding:16px;border-radius:var(--card-radius,20px)}.contentHeader{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 3px 12px;border-bottom:1px solid var(--rule)}.contentHeader h2{display:flex;align-items:center;gap:8px;margin:2px 0 0;font-family:var(--htk-font-head,inherit);font-size:1.05rem}.contentHeader h2 i{color:var(--accent)}.eyebrow{color:var(--fg-3);font-size:.62rem;font-weight:850;letter-spacing:.08em;text-transform:uppercase}.totalCount,.commandCount{display:grid;place-items:center;min-width:28px;min-height:24px;padding:2px 7px;border-radius:999px;background:var(--fill-2);color:var(--fg-2);font-size:.7rem;font-weight:850}.mobileViewButton{display:none;align-items:center;gap:8px;padding:0 12px;border-radius:999px;font:inherit;font-weight:800;white-space:nowrap}.list{display:grid;gap:8px;margin:12px 0 0;padding:0;list-style:none}.item{position:relative;min-width:0;display:grid;grid-template-columns:46px minmax(0,1fr) auto;align-items:center;gap:8px;padding:8px 8px 8px 5px;border:1px solid var(--rule);border-radius:15px;background:color-mix(in srgb,var(--surface) 96%,var(--fill));box-shadow:0 5px 18px -18px rgba(0,0,0,.7);transition:transform .24s var(--ease-smooth,ease),opacity .2s ease,border-color .18s ease,box-shadow .2s ease}.item:hover{border-color:color-mix(in srgb,var(--accent) 24%,var(--rule));box-shadow:0 10px 22px -20px color-mix(in srgb,var(--accent) 55%,#000)}.item[data-selected=true]{grid-template-columns:36px 46px minmax(0,1fr) auto;border-color:color-mix(in srgb,var(--accent) 48%,var(--rule));background:color-mix(in srgb,var(--accent) 7%,var(--surface))}.selectionCell{display:grid;place-items:center;color:var(--accent);font-size:1.15rem}.completeCell,.checkLabel{width:44px;height:44px;display:grid;place-items:center}.checkLabel{position:relative;cursor:pointer}.checkLabel input{position:absolute;opacity:0;pointer-events:none}.checkVisual{width:25px;height:25px;display:grid;place-items:center;border:2px solid color-mix(in srgb,var(--fg-3) 65%,transparent);border-radius:50%;color:transparent;transition:transform .2s var(--ease-spring,ease),background .2s ease,border-color .2s ease,color .18s ease}.checkLabel:active .checkVisual{transform:scale(.82)}.checkLabel input:checked+.checkVisual,.item[data-completing=true] .checkVisual{border-color:var(--accent);background:var(--accent);color:var(--on-accent,#fff)}.checkLabel input:focus-visible+.checkVisual{outline:2px solid var(--accent);outline-offset:3px}.itemContent{min-width:0;display:grid;gap:6px;padding:4px 0}.titleRow,.meta,.subtasks,.actions{display:flex;align-items:center}.titleRow{min-width:0;gap:7px}.itemTitle{min-width:0;font-size:.83rem;font-weight:780;transition:color .18s ease}.item[data-done=true] .itemTitle,.item[data-completing=true] .itemTitle{color:var(--fg-3);text-decoration:line-through;text-decoration-thickness:2px}.priority{flex:none;color:var(--accent)}.priority[data-priority=high]{color:var(--error,#d9485f)}.priority[data-priority=medium]{color:#d28a22}.meta{min-width:0;gap:5px;flex-wrap:wrap}.metaChip{max-width:100%;display:inline-flex;align-items:center;gap:4px;padding:3px 7px;border-radius:999px;background:var(--fill-2);color:var(--fg-3);font-size:.66rem;font-weight:700}.metaChip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.comment{margin:0;color:var(--fg-3);font-size:.7rem;line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.subtasks{gap:8px;color:var(--fg-3);font-size:.64rem;font-weight:700}.subtasks progress{width:min(160px,38%);height:5px;accent-color:var(--accent)}.actions{position:relative;gap:2px}.actions>button,.mobileOrganizer header button,.selectionDock button{width:44px;height:44px;display:grid;place-items:center;border:0;border-radius:50%;background:transparent;color:var(--fg-2);cursor:pointer}.actions>button:hover,.actions>button:focus-visible{background:var(--fill-2);color:var(--accent)}.itemMenu{inset-inline-end:0;top:calc(100% + 4px);min-width:220px}.itemMenu .danger{color:var(--error,#d9485f)}.state,.notice{display:flex;align-items:center;justify-content:center;gap:8px}.state{min-height:180px;flex-direction:column;color:var(--fg-3);font-size:.76rem}.state>i{font-size:1.8rem;color:var(--accent)}.notice{margin:0 0 10px;padding:10px 12px;border-radius:12px;background:color-mix(in srgb,var(--warn,#d28a22) 10%,transparent);color:var(--fg-2);font-size:.72rem}.loadingIcon{animation:plannerSpin .9s linear infinite}.templateLibrary{padding-top:12px}.selectionDock{position:sticky;z-index:15;bottom:calc(12px + env(safe-area-inset-bottom));width:fit-content;max-width:calc(100% - 24px);display:flex;align-items:center;gap:4px;margin:14px auto 0;padding:6px 8px 6px 14px;border:1px solid color-mix(in srgb,var(--accent) 28%,var(--rule));border-radius:999px;background:color-mix(in srgb,var(--surface) 92%,transparent);box-shadow:0 18px 45px -20px rgba(0,0,0,.6);backdrop-filter:blur(18px)}.selectionDock strong{margin-inline-end:4px;font-size:.72rem;white-space:nowrap}.selectionDock button{width:auto;min-width:44px;padding:0 10px;gap:5px;display:inline-flex}.selectionDock button span{font-size:.67rem;font-weight:750}.mobileOrganizerOverlay{display:none}.srOnly{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}@keyframes plannerSpin{to{transform:rotate(1turn)}}
+.root{container-type:inline-size;color:var(--fg);font-family:var(--htk-font-body,inherit);line-break:strict;overflow-wrap:anywhere}.commandBar{position:relative;z-index:5;display:flex;align-items:center;gap:10px;margin-bottom:14px}.search{min-width:0;flex:1;min-height:46px;display:flex;align-items:center;gap:8px;padding:0 14px;border:1px solid var(--rule);border-radius:999px;background:color-mix(in srgb,var(--surface) 88%,transparent);color:var(--fg-3)}.search input{min-width:0;flex:1;border:0;outline:0;background:transparent;color:var(--fg);font:inherit;font-size:max(16px,.8rem)}.iconButton,.mobileViewButton{min-height:44px;border:1px solid var(--rule);background:var(--surface);color:var(--fg);cursor:pointer}.iconButton{position:relative;width:44px;border-radius:50%;font-size:1rem}.iconButton[data-active=true]{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 40%,var(--rule))}.sortBadge{position:absolute;right:-1px;bottom:-1px;width:17px;height:17px;display:grid;place-items:center;border:2px solid var(--surface);border-radius:50%;background:var(--accent);color:var(--on-accent,#fff);font-size:.48rem}.sortControl{position:relative;flex:none}.itemMenu{position:absolute;z-index:20;padding:6px;border:1px solid var(--rule);border-radius:16px;background:var(--surface);box-shadow:0 18px 48px -22px rgba(0,0,0,.5)}.itemMenu button{width:100%;min-height:42px;display:grid;grid-template-columns:24px minmax(0,1fr) 20px;align-items:center;gap:8px;padding:7px 10px;border:0;border-radius:10px;background:transparent;color:var(--fg);font:inherit;font-size:.76rem;text-align:start;cursor:pointer}.workspace{display:grid;grid-template-columns:minmax(190px,230px) minmax(0,1fr);gap:16px;align-items:start}.desktopRail,.content{border:var(--card-border,1px solid var(--rule));background:var(--surface);box-shadow:var(--card-shadow,none)}.desktopRail{position:sticky;top:12px;padding:10px;border-radius:var(--card-radius,20px)}.content{min-width:0;padding:16px;border-radius:var(--card-radius,20px)}.contentHeader{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 3px 12px;border-bottom:1px solid var(--rule)}.contentHeader h2{display:flex;align-items:center;gap:8px;margin:2px 0 0;font-family:var(--htk-font-head,inherit);font-size:1.05rem}.contentHeader h2 i{color:var(--accent)}.eyebrow{color:var(--fg-3);font-size:.62rem;font-weight:850;letter-spacing:.08em;text-transform:uppercase}.totalCount,.commandCount{display:grid;place-items:center;min-width:28px;min-height:24px;padding:2px 7px;border-radius:999px;background:var(--fill-2);color:var(--fg-2);font-size:.7rem;font-weight:850}.mobileViewButton{display:none;align-items:center;gap:8px;padding:0 12px;border-radius:999px;font:inherit;font-weight:800;white-space:nowrap}.list{display:grid;gap:8px;margin:12px 0 0;padding:0;list-style:none}.item{position:relative;min-width:0;display:grid;grid-template-columns:46px minmax(0,1fr) auto;align-items:center;gap:8px;padding:8px 8px 8px 5px;border:1px solid var(--rule);border-radius:15px;background:color-mix(in srgb,var(--surface) 96%,var(--fill));box-shadow:0 5px 18px -18px rgba(0,0,0,.7);transition:transform .24s var(--ease-smooth,ease),opacity .2s ease,border-color .18s ease,box-shadow .2s ease}.item:hover{border-color:color-mix(in srgb,var(--accent) 24%,var(--rule));box-shadow:0 10px 22px -20px color-mix(in srgb,var(--accent) 55%,#000)}.item[data-selected=true]{grid-template-columns:36px 46px minmax(0,1fr) auto;border-color:color-mix(in srgb,var(--accent) 48%,var(--rule));background:color-mix(in srgb,var(--accent) 7%,var(--surface))}.selectionCell{display:grid;place-items:center;color:var(--accent);font-size:1.15rem}.completeCell,.checkLabel{width:44px;height:44px;display:grid;place-items:center}.checkLabel{position:relative;cursor:pointer}.checkLabel input{position:absolute;opacity:0;pointer-events:none}.checkVisual{width:25px;height:25px;display:grid;place-items:center;border:2px solid color-mix(in srgb,var(--fg-3) 65%,transparent);border-radius:50%;color:transparent;transition:transform .2s var(--ease-spring,ease),background .2s ease,border-color .2s ease,color .18s ease}.checkLabel:active .checkVisual{transform:scale(.82)}.checkLabel input:checked+.checkVisual,.item[data-completing=true] .checkVisual{border-color:var(--accent);background:var(--accent);color:var(--on-accent,#fff)}.checkLabel input:focus-visible+.checkVisual{outline:2px solid var(--accent);outline-offset:3px}.itemContent{min-width:0;display:grid;gap:6px;padding:4px 0}.titleRow,.meta,.subtasks,.actions{display:flex;align-items:center}.titleRow{min-width:0;gap:7px}.itemTitle{min-width:0;font-size:.83rem;font-weight:780;transition:color .18s ease}.item[data-done=true] .itemTitle,.item[data-completing=true] .itemTitle{color:var(--fg-3);text-decoration:line-through;text-decoration-thickness:2px}.priority{flex:none;color:var(--accent)}.priority[data-priority=high]{color:var(--error,#d9485f)}.priority[data-priority=medium]{color:#d28a22}.meta{min-width:0;gap:5px;flex-wrap:wrap}.metaChip{max-width:100%;display:inline-flex;align-items:center;gap:4px;padding:3px 7px;border-radius:999px;background:var(--fill-2);color:var(--fg-3);font-size:.66rem;font-weight:700}.metaChip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.comment{margin:0;color:var(--fg-3);font-size:.7rem;line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.subtasks{gap:8px;color:var(--fg-3);font-size:.64rem;font-weight:700}.subtasks progress{width:min(160px,38%);height:5px;accent-color:var(--accent)}.actions{position:relative;gap:2px}.actions>button,.mobileOrganizer header button,.selectionDock button{width:44px;height:44px;display:grid;place-items:center;border:0;border-radius:50%;background:transparent;color:var(--fg-2);cursor:pointer}.actions>button:hover,.actions>button:focus-visible{background:var(--fill-2);color:var(--accent)}.itemMenu{inset-inline-end:0;top:calc(100% + 4px);min-width:220px}.itemMenu .danger{color:var(--error,#d9485f)}.state,.notice{display:flex;align-items:center;justify-content:center;gap:8px}.state{min-height:180px;flex-direction:column;color:var(--fg-3);font-size:.76rem}.state>i{font-size:1.8rem;color:var(--accent)}.notice{margin:0 0 10px;padding:10px 12px;border-radius:12px;background:color-mix(in srgb,var(--warn,#d28a22) 10%,transparent);color:var(--fg-2);font-size:.72rem}.loadingIcon{animation:plannerSpin .9s linear infinite}.templateLibrary{padding-top:12px}.selectionDock{position:sticky;z-index:15;bottom:calc(12px + env(safe-area-inset-bottom));width:fit-content;max-width:calc(100% - 24px);display:flex;align-items:center;gap:4px;margin:14px auto 0;padding:6px 8px 6px 14px;border:1px solid color-mix(in srgb,var(--accent) 28%,var(--rule));border-radius:999px;background:color-mix(in srgb,var(--surface) 92%,transparent);box-shadow:0 18px 45px -20px rgba(0,0,0,.6);backdrop-filter:blur(18px)}.selectionDock strong{margin-inline-end:4px;font-size:.72rem;white-space:nowrap}.selectionDock button{width:auto;min-width:44px;padding:0 10px;gap:5px;display:inline-flex}.selectionDock button span{font-size:.67rem;font-weight:750}.mobileOrganizerOverlay{display:none}.srOnly{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}@keyframes plannerSpin{to{transform:rotate(1turn)}}
 :global(.hatask-organizer-contents){display:grid;gap:8px}:global(.hatask-smart-views),:global(.hatask-folder-list){display:grid;gap:3px}:global(.hatask-organizer-row),:global(.hatask-add-folder){width:100%;min-height:44px;display:grid;grid-template-columns:25px minmax(0,1fr) auto;align-items:center;gap:9px;padding:6px 9px;border:0;border-radius:12px;background:transparent;color:var(--fg-2);font:inherit;font-size:.75rem;font-weight:740;text-align:start;cursor:pointer}:global(.hatask-organizer-row[data-active=true]){background:color-mix(in srgb,var(--accent) 12%,transparent);color:var(--accent);box-shadow:inset 3px 0 0 var(--accent)}:global(.hatask-organizer-row[data-drop-active=true]){outline:1px dashed color-mix(in srgb,var(--accent) 45%,transparent);outline-offset:-3px}:global(.hatask-organizer-count){min-width:23px;padding:2px 5px;border-radius:999px;background:var(--fill-2);color:var(--fg-3);font-size:.62rem;text-align:center}:global(.hatask-folder-heading){display:flex;align-items:center;justify-content:space-between;margin:7px 9px 1px;color:var(--fg-3);font-size:.64rem;font-weight:850;letter-spacing:.04em}:global(.hatask-folder-row-wrap){display:grid;grid-template-columns:minmax(0,1fr) 38px;align-items:center;border-radius:12px;transition:background .18s ease}:global(.hatask-folder-row-wrap:has(.hatask-folder-row[data-active=true])){background:color-mix(in srgb,var(--hatask-folder-color) 8%,transparent)}:global(.hatask-folder-glyph){position:relative;width:24px;height:24px;display:grid;place-items:center;color:var(--hatask-folder-color);font-size:1.25rem}:global(.hatask-folder-paper){position:absolute;left:6px;bottom:7px;width:12px;height:8px;border-radius:2px 2px 0 0;background:color-mix(in srgb,var(--hatask-folder-color) 25%,var(--surface));border:1px solid color-mix(in srgb,var(--hatask-folder-color) 60%,var(--rule));transition:transform .22s var(--ease-spring,ease),opacity .18s ease}:global(.hatask-folder-paper.p2){transform:translateY(-3px) scale(.92)}:global(.hatask-folder-paper.p3){transform:translateY(-6px) scale(.84)}:global(.hatask-folder-row[data-fullness=empty] .hatask-folder-paper),:global(.hatask-folder-row[data-fullness=light] .p2),:global(.hatask-folder-row[data-fullness=light] .p3),:global(.hatask-folder-row[data-fullness=busy] .p3){opacity:0}:global(.hatask-folder-more){width:38px;height:38px;border:0;border-radius:50%;background:transparent;color:var(--fg-3);cursor:pointer}:global(.hatask-add-folder){margin-top:2px;color:var(--accent)}
 .mobileOrganizerOverlay{position:fixed;inset:0;z-index:1000000;display:none;align-items:flex-end;justify-content:center;padding:14px 14px max(14px,env(safe-area-inset-bottom));background:rgba(0,0,0,.38);backdrop-filter:blur(5px)}.mobileOrganizerOverlay[data-compact=true]{display:flex}.mobileOrganizer{--surface:var(--MI_THEME-panel);--fg:var(--MI_THEME-fg);--fg-2:color-mix(in srgb,var(--MI_THEME-fg) 82%,transparent);--fg-3:color-mix(in srgb,var(--MI_THEME-fg) 62%,transparent);--rule:color-mix(in srgb,var(--MI_THEME-fg) 15%,transparent);--fill-2:color-mix(in srgb,var(--MI_THEME-fg) 8%,transparent);--accent:var(--MI_THEME-accent);width:min(100%,540px);max-height:min(82dvh,700px);overflow:auto;padding:8px 12px 16px;border:1px solid var(--rule);border-radius:24px;background:var(--surface);color:var(--fg);box-shadow:0 28px 70px -25px rgba(0,0,0,.75);font-family:var(--htk-font-body,inherit)}.mobileOrganizer header{display:flex;align-items:center;justify-content:space-between;min-height:46px;padding:0 4px 4px}.sheetHandle{width:42px;height:4px;margin:2px auto 4px;border-radius:99px;background:var(--rule)}.mobileOrganizerOverlay[data-hatask-theme=kisetsu] .mobileOrganizer{border-radius:12px}.mobileOrganizerOverlay[data-hatask-theme=kashin] .mobileOrganizer{border-width:2px;border-radius:22px;box-shadow:4px 4px 0 color-mix(in srgb,var(--accent) 42%,transparent),0 28px 70px -25px rgba(0,0,0,.75)}.mobileOrganizerOverlay[data-hatask-theme=suri] .mobileOrganizer{border-width:3px;border-radius:0;box-shadow:5px 5px 0 var(--accent)}.mobileOrganizerOverlay[data-hatask-theme=hatakyu] .mobileOrganizer{border-radius:3px;box-shadow:0 20px 38px -24px rgba(40,24,8,.9)}
-.mobileTabShell{display:none;min-width:0;align-items:center;gap:7px;margin-bottom:10px}.mobileTabs{min-width:0;display:flex;flex:1;gap:6px;overflow-x:auto;padding:2px;scrollbar-width:none;overscroll-behavior-inline:contain;scroll-snap-type:x proximity}.mobileTabs::-webkit-scrollbar{display:none}.mobileTab,.reorderTabsButton{min-height:44px;border:1px solid var(--rule);background:var(--surface);color:var(--fg-2);font:inherit;cursor:pointer}.mobileTab{flex:none;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:7px 12px;border-radius:999px;font-size:.72rem;font-weight:780;white-space:nowrap;scroll-snap-align:start;transition:color .18s ease,background .18s ease,border-color .18s ease,box-shadow .2s ease,transform .22s var(--ease-smooth,ease)}.mobileTab[data-active=true]{border-color:var(--accent);background:var(--accent);color:var(--on-accent,#fff);box-shadow:0 8px 18px -12px var(--accent)}.mobileTab[data-dragging=true]{z-index:2;border-color:var(--accent);box-shadow:0 12px 24px -14px rgba(0,0,0,.75);transform:scale(1.04);touch-action:none}.mobileTabGrip{margin-inline-end:-5px;opacity:.58}.reorderTabsButton{flex:0 0 44px;width:44px;display:grid;place-items:center;border-radius:50%;font-size:1rem}.reorderTabsButton[data-active=true]{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,var(--surface));color:var(--accent)}.mobileTabShell[data-reordering=true] .mobileTab{border-style:dashed;cursor:grab}.viewPanel{min-width:0}
-@container (max-width:760px){.mobileTabShell{display:flex}.workspace{grid-template-columns:1fr}.desktopRail{display:none}.content{padding:12px}.mobileOrganizerOverlay{position:fixed;inset:0;z-index:1000000;display:flex;align-items:flex-end;justify-content:center;padding:14px 14px max(14px,env(safe-area-inset-bottom));background:rgba(0,0,0,.38);backdrop-filter:blur(5px)}.mobileOrganizer{width:min(100%,540px);max-height:min(82dvh,700px);overflow:auto;padding:8px 12px 16px;border:1px solid var(--rule);border-radius:24px;background:var(--surface);color:var(--fg);box-shadow:0 28px 70px -25px rgba(0,0,0,.75);font-family:var(--htk-font-body,inherit)}.mobileOrganizer header{display:flex;align-items:center;justify-content:space-between;min-height:46px;padding:0 4px 4px}.sheetHandle{width:42px;height:4px;margin:2px auto 4px;border-radius:99px;background:var(--rule)}}
-@container (max-width:520px){.commandBar{flex-wrap:wrap}.search{order:3;flex-basis:100%}.item{grid-template-columns:44px minmax(0,1fr) 44px;padding-inline:3px}.item[data-selected=true]{grid-template-columns:32px 44px minmax(0,1fr) 44px}.actions>button:not(.moreAction){display:none}.selectionDock{overflow-x:auto;justify-content:flex-start;width:calc(100% - 24px);border-radius:20px}.selectionDock button span{display:none}}
+.mobileTabShell{display:none;min-width:0;align-items:center;gap:7px;margin-bottom:10px}.mobileTabs{box-sizing:border-box;min-width:0;width:100%;display:flex;flex-wrap:wrap;justify-content:center;gap:2px;padding:4px;border:1px solid var(--rule);border-radius:999px;background:var(--fill-2)}.mobileTab,.reorderTabsButton{min-height:44px;border:1px solid var(--rule);background:var(--surface);color:var(--fg-2);font:inherit;cursor:pointer}.mobileTab{flex:1 0 44px;box-sizing:border-box;min-width:44px;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:7px 10px;border-radius:999px;font-size:.72rem;font-weight:780;white-space:nowrap;scroll-snap-align:start;transition:color .18s ease,background .18s ease,border-color .18s ease,box-shadow .2s ease,transform .22s var(--ease-smooth,ease)}.mobileTab[data-active=false]{border-color:transparent;background:transparent}.mobileTab[data-active=true]{flex-grow:2;border-color:var(--accent);background:var(--accent);color:var(--on-accent,#fff);box-shadow:0 8px 18px -12px var(--accent)}.mobileTab[data-dragging=true]{z-index:2;border-color:var(--accent);box-shadow:0 12px 24px -14px rgba(0,0,0,.75);transform:scale(1.04);touch-action:none}.reorderTabsButton{flex:0 0 44px;width:44px;display:none;place-items:center;border-radius:50%;font-size:1rem}.reorderTabsButton[data-active=true]{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,var(--surface));color:var(--accent)}.mobileTabShell[data-reordering=true] .mobileTab{border-style:dashed;cursor:grab}.viewPanel{min-width:0}
+.mobileTabShell[data-reordering=true] .mobileTab{touch-action:none}
+.mobileTabShell[data-reordering=true]{flex-direction:column;align-items:stretch}.mobileTabEditor{display:grid;gap:5px;min-width:0;padding:10px;border:1px solid var(--rule);border-radius:var(--card-radius,20px);background:var(--surface)}.mobileTabHint{margin:0 4px 5px;color:var(--fg-3);font-size:.72rem;line-height:1.65}.mobileTabEditorRow{display:grid;grid-template-columns:minmax(0,1fr) 44px 44px;gap:5px;min-width:0}.mobileTabChoice,.mobileTabMove{box-sizing:border-box;min-height:44px;border:1px solid var(--rule);border-radius:12px;background:transparent;color:var(--fg-2);font:inherit;font-size:.74rem;cursor:pointer;touch-action:manipulation;transition:background .18s ease,color .18s ease,border-color .18s ease}.mobileTabChoice{min-width:0;display:grid;grid-template-columns:24px minmax(0,1fr) 20px;align-items:center;gap:7px;padding:6px 10px;text-align:start;font-weight:750}.mobileTabEditorRow[data-tab-visible=false] .mobileTabChoice{grid-column:1/-1}.mobileTabChoice[aria-pressed=true]{border-color:color-mix(in srgb,var(--accent) 40%,var(--rule));background:color-mix(in srgb,var(--accent) 8%,var(--surface));color:var(--accent)}.mobileTabMove{display:grid;place-items:center;width:44px;padding:0}.mobileTabMove:disabled{opacity:.35;cursor:default}.mobileTabChoice:hover,.mobileTabMove:not(:disabled):hover{background:var(--fill-2)}.mobileTabChoice:focus-visible,.mobileTabMove:focus-visible,.mobileTab:focus-visible,.reorderTabsButton:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@container (max-width:760px){.mobileTabShell{display:flex}.reorderTabsButton{display:grid}.workspace{grid-template-columns:1fr}.desktopRail{display:none}.content{padding:12px}.mobileOrganizerOverlay{position:fixed;inset:0;z-index:1000000;display:flex;align-items:flex-end;justify-content:center;padding:14px 14px max(14px,env(safe-area-inset-bottom));background:rgba(0,0,0,.38);backdrop-filter:blur(5px)}.mobileOrganizer{width:min(100%,540px);max-height:min(82dvh,700px);overflow:auto;padding:8px 12px 16px;border:1px solid var(--rule);border-radius:24px;background:var(--surface);color:var(--fg);box-shadow:0 28px 70px -25px rgba(0,0,0,.75);font-family:var(--htk-font-body,inherit)}.mobileOrganizer header{display:flex;align-items:center;justify-content:space-between;min-height:46px;padding:0 4px 4px}.sheetHandle{width:42px;height:4px;margin:2px auto 4px;border-radius:99px;background:var(--rule)}}
+@container (max-width:520px){.commandBar{gap:6px}.item{grid-template-columns:44px minmax(0,1fr) 44px;padding-inline:3px}.item[data-selected=true]{grid-template-columns:32px 44px minmax(0,1fr) 44px}.actions>button:not(.moreAction){display:none}.selectionDock{overflow-x:auto;justify-content:flex-start;width:calc(100% - 24px);border-radius:20px}.selectionDock button span{display:none}}
 @media (max-width:760px){.mobileOrganizerOverlay{position:fixed;inset:0;z-index:1000000;display:flex;align-items:flex-end;justify-content:center;padding:14px 14px max(14px,env(safe-area-inset-bottom));background:rgba(0,0,0,.38);backdrop-filter:blur(5px)}.mobileOrganizer{--surface:var(--MI_THEME-panel);--fg:var(--MI_THEME-fg);--fg-2:color-mix(in srgb,var(--MI_THEME-fg) 82%,transparent);--fg-3:color-mix(in srgb,var(--MI_THEME-fg) 62%,transparent);--rule:color-mix(in srgb,var(--MI_THEME-fg) 15%,transparent);--fill-2:color-mix(in srgb,var(--MI_THEME-fg) 8%,transparent);--accent:var(--MI_THEME-accent);width:min(100%,540px);max-height:min(82dvh,700px);overflow:auto;padding:8px 12px 16px;border:1px solid var(--rule);border-radius:24px;background:var(--surface);color:var(--fg);box-shadow:0 28px 70px -25px rgba(0,0,0,.75);font-family:var(--htk-font-body,inherit)}.mobileOrganizer header{display:flex;align-items:center;justify-content:space-between;min-height:46px;padding:0 4px 4px}.sheetHandle{width:42px;height:4px;margin:2px auto 4px;border-radius:99px;background:var(--rule)}}
 :global(.mobile-tab-order-move),:global(.mobile-tab-order-enter-active),:global(.mobile-tab-order-leave-active){transition:transform .3s var(--ease-spring,ease),opacity .18s ease}:global(.mobile-tab-order-enter-from),:global(.mobile-tab-order-leave-to){opacity:0;transform:scale(.88)}
 :global(.todo-view-forward-enter-active),:global(.todo-view-forward-leave-active),:global(.todo-view-back-enter-active),:global(.todo-view-back-leave-active){transition:opacity .18s ease,transform .28s var(--ease-smooth,ease)}:global(.todo-view-forward-enter-from){opacity:0;transform:translateX(18px)}:global(.todo-view-forward-leave-to){opacity:0;transform:translateX(-12px)}:global(.todo-view-back-enter-from){opacity:0;transform:translateX(-18px)}:global(.todo-view-back-leave-to){opacity:0;transform:translateX(12px)}
 :global(.todo-row-move),:global(.todo-row-enter-active),:global(.todo-row-leave-active){transition:transform .3s var(--ease-smooth,ease),opacity .22s ease}:global(.todo-row-enter-from){opacity:0;transform:translateY(-8px) scale(.985)}:global(.todo-row-leave-to){opacity:0;transform:translateX(18px) scale(.96)}:global(.todo-row-leave-active){position:absolute;width:calc(100% - 24px)}:global(.selection-dock-enter-active),:global(.selection-dock-leave-active),:global(.organizer-sheet-enter-active),:global(.organizer-sheet-leave-active),:global(.planner-popover-enter-active),:global(.planner-popover-leave-active){transition:opacity .2s ease,transform .25s var(--ease-smooth,ease)}:global(.selection-dock-enter-from),:global(.selection-dock-leave-to){opacity:0;transform:translateY(12px) scale(.97)}:global(.organizer-sheet-enter-from),:global(.organizer-sheet-leave-to){opacity:0}:global(.organizer-sheet-enter-from) .mobileOrganizer,:global(.organizer-sheet-leave-to) .mobileOrganizer{transform:translateY(24px) scale(.985)}:global(.planner-popover-enter-from),:global(.planner-popover-leave-to){opacity:0;transform:translateY(-5px) scale(.98)}
 @media (prefers-reduced-motion:reduce){.item,.checkVisual,.mobileTab,:global(.mobile-tab-order-move),:global(.mobile-tab-order-enter-active),:global(.mobile-tab-order-leave-active),:global(.todo-view-forward-enter-active),:global(.todo-view-forward-leave-active),:global(.todo-view-back-enter-active),:global(.todo-view-back-leave-active),:global(.todo-row-move),:global(.todo-row-enter-active),:global(.todo-row-leave-active),:global(.selection-dock-enter-active),:global(.selection-dock-leave-active),:global(.organizer-sheet-enter-active),:global(.organizer-sheet-leave-active),:global(.planner-popover-enter-active),:global(.planner-popover-leave-active){transition:none!important;animation:none!important}}
+@media (prefers-reduced-motion:reduce){.mobileTabChoice,.mobileTabMove{transition:none!important}}
 </style>

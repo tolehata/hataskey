@@ -3,8 +3,13 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { createApp, defineComponent, h, nextTick } from 'vue';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { parse } from '@vue/compiler-sfc';
+import { createApp, defineComponent, h, nextTick, reactive } from 'vue';
 import { afterEach, describe, expect, test, vi } from 'vitest';
+
+vi.mock('@/os.js', () => ({ popupMenu: vi.fn(async () => {}) }));
 
 vi.mock('@/components/HataskEmoji.vue', async () => {
 	const { defineComponent: defineMockComponent, h: renderNode } = await import('vue');
@@ -14,6 +19,8 @@ vi.mock('@/components/HataskEmoji.vue', async () => {
 import HataskTodoPlanner from './HataskTodoPlanner.vue';
 import type { App } from 'vue';
 import type { HataskTodoItem, HataskTodoLabels } from './hatask-planner-types.js';
+import * as os from '@/os.js';
+import { HATASK_TODO_DEFAULT_MOBILE_TABS, normalizeHataskTodoMobileTabs } from '@/utility/hatask-todo-tabs.js';
 
 type Mounted = { app: App<Element>; container: HTMLDivElement };
 const mounted: Mounted[] = [];
@@ -55,6 +62,12 @@ const labels: HataskTodoLabels = {
 	moreViews: 'その他',
 	reorderViews: 'タブを並び替え',
 	reorderView: name => `${name}を並び替え`,
+	customizeViews: '表示するタブ',
+	customizeViewsHint: '表示したいタブを選べます。外したタブは「その他」から開けます',
+	showView: name => `${name}をタブに追加`,
+	hideView: name => `${name}をタブから外す`,
+	moveViewEarlier: name => `${name}を前へ`,
+	moveViewLater: name => `${name}を後ろへ`,
 };
 
 const items: HataskTodoItem[] = [
@@ -78,6 +91,7 @@ const items: HataskTodoItem[] = [
 ];
 
 function mountTodo(options: Record<string, unknown> = {}) {
+	const liveOptions = reactive(options);
 	const handlers = {
 		view: vi.fn(),
 		search: vi.fn(),
@@ -122,7 +136,7 @@ function mountTodo(options: Record<string, unknown> = {}) {
 				'onUpdate:mobileTabOrder': handlers.mobileOrder,
 				onDropTarget: handlers.dropTarget,
 				onBulkAction: handlers.bulk,
-				...options,
+				...liveOptions,
 			});
 		},
 	}));
@@ -130,14 +144,78 @@ function mountTodo(options: Record<string, unknown> = {}) {
 	window.document.body.append(container);
 	app.mount(container);
 	mounted.push({ app, container });
-	return { container, handlers };
+	return { container, handlers, setProps: (next: Record<string, unknown>) => Object.assign(liveOptions, next) };
 }
 
-afterEach(() => {
+async function openTabEditor(container: HTMLElement): Promise<void> {
+	await nextTick();
+	const button = container.querySelector<HTMLButtonElement>('[aria-label="タブを並び替え"]');
+	if (!button) throw new Error('mobile tab editor trigger must exist');
+	button.click();
+	await nextTick();
+	expect(container.querySelector('[data-mobile-tab-editor]')).not.toBeNull();
+}
+
+function tabOrder(container: HTMLElement): string[] {
+	return [...container.querySelectorAll<HTMLElement>('[data-mobile-tab]')].map(tab => tab.dataset.mobileTab ?? '');
+}
+
+async function waitForTabOrder(container: HTMLElement, expected: string[]): Promise<void> {
+	await nextTick();
+	// Keep the real Vue leave transition; only inspect the final order after it ends.
+	await vi.waitFor(() => expect(tabOrder(container)).toEqual(expected));
+}
+
+function clickRequired(container: ParentNode, selector: string): void {
+	const button = container.querySelector<HTMLButtonElement>(selector);
+	if (!button) throw new Error(`required control not found: ${selector}`);
+	button.click();
+}
+
+function dispatchTouchPointer(target: EventTarget, type: string): void {
+	const event = new Event(type, { bubbles: true, cancelable: true });
+	Object.defineProperties(event, {
+		pointerType: { value: 'touch' }, pointerId: { value: 1 },
+		clientX: { value: 10 }, clientY: { value: 10 },
+	});
+	target.dispatchEvent(event);
+}
+
+afterEach(async () => {
+	vi.clearAllMocks();
 	for (const item of mounted.splice(0)) {
 		item.app.unmount();
 		item.container.remove();
 	}
+	await vi.waitFor(() => expect(window.document.querySelector('#hatask-todo-mobile-organizer')).toBeNull());
+	vi.restoreAllMocks();
+	vi.unstubAllGlobals();
+});
+
+describe('normalizeHataskTodoMobileTabs', () => {
+	test('保存キーがない時だけ従来のタブへ戻し、旧形式の順序は保つ', () => {
+		expect(normalizeHataskTodoMobileTabs(undefined)).toEqual(HATASK_TODO_DEFAULT_MOBILE_TABS);
+		const oldOrder = ['completed', 'today', 'more', 'all', 'upcoming'];
+		expect(normalizeHataskTodoMobileTabs(oldOrder)).toEqual(oldOrder);
+	});
+
+	test('非表示のタブを復活させず、追加したビューと順序を保つ', () => {
+		const saved = ['templates', 'priority', 'more', 'overdue'];
+		expect(normalizeHataskTodoMobileTabs(saved)).toEqual(saved);
+		expect(saved).toEqual(['templates', 'priority', 'more', 'overdue']);
+	});
+
+	test('空の表示一覧でもその他から全ビューへ辿れる', () => {
+		expect(normalizeHataskTodoMobileTabs([])).toEqual(['more']);
+		expect(normalizeHataskTodoMobileTabs(['more'])).toEqual(['more']);
+		expect(normalizeHataskTodoMobileTabs(['priority'])).toEqual(['priority', 'more']);
+	});
+
+	test('重複と未知のビューを除外し、完全に壊れた値は初期表示へ戻す', () => {
+		expect(normalizeHataskTodoMobileTabs(['priority', 'priority', 'inbox', 42, 'more'])).toEqual(['priority', 'more']);
+		expect(normalizeHataskTodoMobileTabs(['inbox', 42])).toEqual(HATASK_TODO_DEFAULT_MOBILE_TABS);
+		expect(normalizeHataskTodoMobileTabs({ today: true })).toEqual(HATASK_TODO_DEFAULT_MOBILE_TABS);
+	});
 });
 
 describe('HataskTodoPlanner', () => {
@@ -192,9 +270,13 @@ describe('HataskTodoPlanner', () => {
 		await nextTick();
 		(container.querySelector('[aria-label="並び順: 手動順"]') as HTMLButtonElement).click();
 		await nextTick();
-		const option = [...container.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]')].find(button => button.textContent.includes('期限が近い順'));
-		if (option == null) throw new Error('due date sort option was not rendered');
-		option.click();
+		const [menu, anchor, options] = vi.mocked(os.popupMenu).mock.calls[0];
+		expect(anchor).toBe(container.querySelector('[aria-label="並び順: 手動順"]'));
+		expect(options?.motionPreset).toBe('postform');
+		expect(menu).toHaveLength(4);
+		const option = menu.find(item => item != null && 'type' in item && item.type === 'radioOption' && item.text === '期限が近い順');
+		if (option == null || !('action' in option)) throw new Error('due date sort option was not passed to the viewport-aware menu');
+		option.action(new MouseEvent('click'));
 		expect(handlers.sort).toHaveBeenCalledWith('dueAsc');
 	});
 
@@ -202,7 +284,9 @@ describe('HataskTodoPlanner', () => {
 		const { container, handlers } = mountTodo();
 		await nextTick();
 		const tabs = [...container.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
-		expect(tabs.map(tab => tab.textContent.trim())).toEqual(['今日', 'これから', 'すべて', '完了済み', 'その他']);
+		expect(tabs.map(tab => tab.getAttribute('aria-label'))).toEqual(['今日', 'これから', 'すべて', '完了済み', 'その他']);
+		expect(tabs.map(tab => tab.textContent.trim())).toEqual(['今日', '', '', '', '']);
+		for (const tab of tabs) expect(tab.querySelector('i[aria-hidden="true"]')).not.toBeNull();
 		expect(container.textContent).not.toContain('受信箱');
 
 		(container.querySelector('[aria-label="タブを並び替え"]') as HTMLButtonElement).click();
@@ -212,7 +296,182 @@ describe('HataskTodoPlanner', () => {
 		today.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
 		await nextTick();
 		expect(handlers.mobileOrder).toHaveBeenCalledWith(['upcoming', 'today', 'all', 'completed', 'more']);
-		expect([...container.querySelectorAll<HTMLButtonElement>('[role="tab"]')].map(tab => tab.textContent.trim())).toEqual(['これから', '今日', 'すべて', '完了済み', 'その他']);
+		expect([...container.querySelectorAll<HTMLButtonElement>('[role="tab"]')].map(tab => tab.dataset.mobileTab)).toEqual(['upcoming', 'today', 'all', 'completed', 'more']);
+	});
+
+	test.each(['today', 'upcoming', 'all', 'completed', 'priority', 'overdue', 'templates'] as const)('%sでも選択中のモバイルタブだけラベルを表示する', async view => {
+		const { container } = mountTodo({ view });
+		await nextTick();
+		const tabs = [...container.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
+		expect(tabs.filter(tab => tab.textContent.trim())).toHaveLength(1);
+		const active = tabs.find(tab => tab.getAttribute('aria-selected') === 'true');
+		expect(active?.textContent.trim()).toBe(active?.getAttribute('aria-label'));
+	});
+
+	test.each(['priority', 'overdue', 'templates'] as const)('%sも並び替え中に追加・削除し、再読込後も選択した順序だけを復元する', async view => {
+		const { container, handlers, setProps } = mountTodo();
+		expect(container.querySelector('[data-mobile-tab-editor]')).toBeNull();
+		await openTabEditor(container);
+		expect(container.querySelectorAll('[data-tab-choice]')).toHaveLength(7);
+		clickRequired(container, `[data-tab-choice="${view}"]`);
+		await nextTick();
+		const added = ['today', 'upcoming', 'all', 'completed', view, 'more'];
+		expect(tabOrder(container)).toEqual(added);
+		expect(handlers.mobileOrder).toHaveBeenLastCalledWith(added);
+		clickRequired(container, `[data-tab-earlier="${view}"]`);
+		await nextTick();
+		const reordered = ['today', 'upcoming', 'all', view, 'completed', 'more'];
+		expect(tabOrder(container)).toEqual(reordered);
+		expect(handlers.mobileOrder).toHaveBeenLastCalledWith(reordered);
+		setProps({ mobileTabOrder: [...reordered], view });
+		await nextTick();
+		clickRequired(container, '[aria-label="タブを並び替え"]');
+		await nextTick();
+		expect(container.querySelectorAll('[role="tab"][aria-selected="true"]')).toHaveLength(1);
+		expect(container.querySelector(`[data-mobile-tab="${view}"]`)?.getAttribute('aria-selected')).toBe('true');
+		expect(container.querySelector('[data-mobile-tab="more"]')?.getAttribute('aria-selected')).toBe('false');
+		await openTabEditor(container);
+		clickRequired(container, `[data-tab-choice="${view}"]`);
+		await nextTick();
+		expect(handlers.mobileOrder).toHaveBeenLastCalledWith(['today', 'upcoming', 'all', 'completed', 'more']);
+	});
+
+	test('表示中のタブを外してもToDoや開いているビューを変えず、その他から再選択できる', async () => {
+		const { container, handlers } = mountTodo({ view: 'today' });
+		await openTabEditor(container);
+		clickRequired(container, '[data-tab-choice="today"]');
+		await waitForTabOrder(container, ['upcoming', 'all', 'completed', 'more']);
+		expect(container.querySelector('[data-mobile-tab="today"]')).toBeNull();
+		expect(container.querySelector('[data-mobile-tab="more"]')?.getAttribute('aria-selected')).toBe('true');
+		expect(container.querySelector('[data-hatask-component="todo"]')?.getAttribute('data-view')).toBe('today');
+		expect(handlers.view).not.toHaveBeenCalled();
+		expect(handlers.remove).not.toHaveBeenCalled();
+		expect(handlers.complete).not.toHaveBeenCalled();
+		clickRequired(container, '[aria-label="タブを並び替え"]');
+		await nextTick();
+		clickRequired(container, '[data-mobile-tab="more"]');
+		await nextTick();
+		const organizer = window.document.querySelector('#hatask-todo-mobile-organizer');
+		if (!organizer) throw new Error('Mobile ToDo organizer was not found');
+		expect(organizer.querySelectorAll('.hatask-smart-views button')).toHaveLength(4);
+		clickRequired(organizer, '[aria-label="今日"]');
+		expect(handlers.view).toHaveBeenLastCalledWith('today');
+	});
+
+	test('直接表示を全部外してもその他を残し、PC側には全7ビューを維持する', async () => {
+		const { container, handlers } = mountTodo();
+		await openTabEditor(container);
+		for (const view of ['today', 'upcoming', 'all', 'completed']) {
+			clickRequired(container, `[data-tab-choice="${view}"]`);
+			await nextTick();
+		}
+		await waitForTabOrder(container, ['more']);
+		expect(handlers.mobileOrder).toHaveBeenLastCalledWith(['more']);
+		expect(container.querySelectorAll('.hatask-smart-views button')).toHaveLength(7);
+		clickRequired(container, '[aria-label="タブを並び替え"]');
+		await nextTick();
+		clickRequired(container, '[data-mobile-tab="more"]');
+		await nextTick();
+		expect(window.document.querySelectorAll('#hatask-todo-mobile-organizer .hatask-smart-views button')).toHaveLength(7);
+	});
+
+	test('追加ビューのタブもキーボードで並び替えられ、保存値の更新は非表示設定を保つ', async () => {
+		const { container, handlers, setProps } = mountTodo({ mobileTabOrder: ['priority', 'templates', 'more'], view: 'priority' });
+		await openTabEditor(container);
+		const priority = container.querySelector('[data-mobile-tab="priority"]');
+		if (!priority) throw new Error('added priority tab was not rendered');
+		priority.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+		await nextTick();
+		expect(handlers.mobileOrder).toHaveBeenLastCalledWith(['templates', 'priority', 'more']);
+		setProps({ mobileTabOrder: ['overdue', 'more'] });
+		await waitForTabOrder(container, ['overdue', 'more']);
+		expect(container.querySelector('[data-tab-choice="priority"]')?.getAttribute('aria-pressed')).toBe('false');
+	});
+
+	test('タブのドラッグ中断は元の順序へ戻し、保存せず次のドラッグへ進める', async () => {
+		const originalItems = JSON.stringify(items);
+		const { container, handlers } = mountTodo({ mobileTabOrder: ['priority', 'today', 'more'], view: 'priority' });
+		await openTabEditor(container);
+		const source = container.querySelector<HTMLElement>('[data-mobile-tab="priority"]');
+		const target = container.querySelector<HTMLElement>('[data-mobile-tab="today"]');
+		if (!source || !target) throw new Error('reorderable tabs were not rendered');
+		Object.defineProperty(source, 'setPointerCapture', { configurable: true, value: vi.fn() });
+		vi.spyOn(window.document, 'elementFromPoint').mockReturnValue(target);
+
+		dispatchTouchPointer(source, 'pointerdown');
+		dispatchTouchPointer(source, 'pointermove');
+		await nextTick();
+		expect(tabOrder(container)).toEqual(['today', 'priority', 'more']);
+		dispatchTouchPointer(source, 'pointercancel');
+		dispatchTouchPointer(source, 'pointerup');
+		await nextTick();
+		expect(tabOrder(container)).toEqual(['priority', 'today', 'more']);
+		expect(handlers.mobileOrder).not.toHaveBeenCalled();
+		expect(source.dataset.dragging).toBe('false');
+
+		// Positive control after cancellation: normal completion still saves.
+		dispatchTouchPointer(source, 'pointerdown');
+		dispatchTouchPointer(source, 'pointermove');
+		dispatchTouchPointer(source, 'pointerup');
+		await nextTick();
+		expect(handlers.mobileOrder).toHaveBeenCalledTimes(1);
+		expect(handlers.mobileOrder).toHaveBeenCalledWith(['today', 'priority', 'more']);
+		expect(handlers.view).not.toHaveBeenCalled();
+		expect(JSON.stringify(items)).toBe(originalItems);
+	});
+
+	test('別のToDo画面のタブへ重ねても並び替えず、自分のタブ上だけで移動する', async () => {
+		const first = mountTodo({ mobileTabOrder: ['priority', 'today', 'more'] });
+		const second = mountTodo({ mobileTabOrder: ['today', 'more'] });
+		await openTabEditor(first.container);
+		const source = first.container.querySelector<HTMLElement>('[data-mobile-tab="priority"]');
+		const ownTarget = first.container.querySelector<HTMLElement>('[data-mobile-tab="today"]');
+		const otherTarget = second.container.querySelector<HTMLElement>('[data-mobile-tab="today"]');
+		if (!source || !ownTarget || !otherTarget) throw new Error('two instances of tab controls were not rendered');
+		Object.defineProperty(source, 'setPointerCapture', { configurable: true, value: vi.fn() });
+		const hitTest = vi.spyOn(window.document, 'elementFromPoint').mockReturnValue(otherTarget);
+		dispatchTouchPointer(source, 'pointerdown');
+		dispatchTouchPointer(source, 'pointermove');
+		await nextTick();
+		expect(tabOrder(first.container)).toEqual(['priority', 'today', 'more']);
+		expect(tabOrder(second.container)).toEqual(['today', 'more']);
+		expect(first.handlers.mobileOrder).not.toHaveBeenCalled();
+		expect(second.handlers.mobileOrder).not.toHaveBeenCalled();
+
+		hitTest.mockReturnValue(ownTarget);
+		dispatchTouchPointer(source, 'pointermove');
+		dispatchTouchPointer(source, 'pointerup');
+		await nextTick();
+		expect(tabOrder(first.container)).toEqual(['today', 'priority', 'more']);
+		expect(first.handlers.mobileOrder).toHaveBeenCalledTimes(1);
+		expect(first.handlers.mobileOrder).toHaveBeenCalledWith(['today', 'priority', 'more']);
+		expect(second.handlers.mobileOrder).not.toHaveBeenCalled();
+	});
+
+	test('ドラッグ開始後でなく並び替えモードの開始時からタッチ操作を確保する', () => {
+		// Source contract only; actual touch scrolling needs a browser/device check.
+		const filename = resolve(process.cwd(), 'src/components/hatask/HataskTodoPlanner.vue');
+		const parsed = parse(readFileSync(filename, 'utf8'), { filename });
+		expect(parsed.errors).toEqual([]);
+		expect(parsed.descriptor.styles[0].content).toMatch(/\.mobileTabShell\[data-reordering=true\]\s+\.mobileTab\s*\{\s*touch-action:\s*none\s*\}/);
+	});
+
+	test('PC幅に変わったらモバイル専用の編集UIを閉じる', async () => {
+		let notifyResize: ResizeObserverCallback | undefined;
+		class TestResizeObserver {
+			constructor(callback: ResizeObserverCallback) { notifyResize = callback; }
+			observe() {}
+			disconnect() {}
+		}
+		vi.stubGlobal('ResizeObserver', TestResizeObserver);
+		const { container } = mountTodo();
+		await openTabEditor(container);
+		if (!notifyResize) throw new Error('layout observer was not registered');
+		notifyResize([{ contentRect: { width: 1100 } } as ResizeObserverEntry], {} as ResizeObserver);
+		await nextTick();
+		expect(container.querySelector('[data-mobile-tab-editor]')).toBeNull();
+		expect(container.querySelector('[aria-label="タブを並び替え"]')?.getAttribute('aria-pressed')).toBe('false');
+		expect(container.querySelectorAll('.hatask-smart-views button')).toHaveLength(7);
 	});
 
 	test('タッチ長押し後のclickで選択が解除されず、アイコン一括操作にも名前がある', async () => {

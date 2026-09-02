@@ -10,6 +10,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 	:data-hatask-theme="theme"
 	:data-compact="compactLayout"
 	:data-view="view"
+	:data-layout="wideLayout ? 'split' : 'single'"
 	:data-state="componentState"
 	:aria-label="labels.calendar"
 	:aria-busy="loading"
@@ -56,10 +57,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 				:data-active="filter.active"
 				:aria-pressed="filter.active"
 				:aria-label="filter.label"
+				:title="filter.label"
 				:disabled="filter.disabled"
 				:style="filter.color ? { '--hatask-filter-color': filter.color } : undefined"
 				@click="emit('toggle-filter', filter.id)"
 			>
+				<i :class="filter.icon ?? 'ti ti-calendar'" aria-hidden="true"></i>
 				<span v-if="filter.color" :class="$style.filterDot" aria-hidden="true"></span>
 				<span :class="$style.filterText">{{ filter.label }}</span>
 				<span v-if="filter.count != null" :class="$style.filterCount">{{ filter.count }}</span>
@@ -77,7 +80,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<span>{{ labels.loading }}</span>
 	</div>
 
-	<template v-else-if="days.length > 0">
+	<div v-else-if="days.length > 0" :class="$style.workspace" :data-layout="wideLayout ? 'split' : 'single'" :data-view="view">
 		<div v-if="view === 'month'" :class="$style.month" role="grid" :aria-label="title">
 			<div :class="$style.weekdays" role="row">
 				<div
@@ -131,7 +134,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 						</button>
 						<div v-if="day.events.length > 0" :class="$style.monthEvents">
 							<button
-								v-for="calendarEvent in day.events.slice(0, maxEventsPerDay)"
+								v-for="calendarEvent in day.events.slice(0, monthEventLimit)"
 								:key="calendarEvent.id"
 								type="button"
 								:class="$style.monthEvent"
@@ -163,26 +166,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</div>
 			</div>
 		</div>
-		<section v-if="view === 'month' && selectedDay" :class="$style.mobileSelectedAgenda" :aria-label="selectedDay.label">
-			<header><div><span>{{ labels.selectedDay }}</span><strong>{{ selectedDay.label }}</strong></div><b>{{ selectedDay.events.length }}</b></header>
-			<div v-if="selectedDay.events.length" :class="$style.eventList">
-				<div
-					v-for="calendarEvent in selectedDay.events"
-					:key="calendarEvent.id"
-					:class="$style.draggableRow"
-					:draggable="canDrag(calendarEvent)"
-					@dragstart="startNativeDrag(calendarEvent, $event)"
-					@dragend="finishDrag"
-					@pointerdown="startPointerDrag(calendarEvent, $event)"
-				>
-					<CalendarEventRow :event="calendarEvent" :labels="labels" :readOnly="readOnly" @activate="activateEvent(calendarEvent, selectedDay)" @edit="emit('edit-event', calendarEvent, selectedDay)" @move="emit('move-request', calendarEvent, selectedDay)"/>
-				</div>
-			</div>
-			<div v-else :class="$style.dayEmpty">{{ labels.empty }}</div>
-		</section>
-
 		<div v-if="view === 'week' || view === 'day'" :class="$style.timeline" :data-columns="view === 'day' ? 1 : days.length">
-			<article v-for="day in days" :key="day.key" :class="$style.timelineDay" :data-date="day.date" :data-today="day.isToday" :data-drop-active="dragOverDate === day.date" :data-calendar-drop-date="day.date" @dragover.prevent="dragOverDate = day.date" @dragleave="clearDragOver(day.date)" @drop="dropOnDay(day, $event)">
+			<article v-for="day in days" :key="day.key" :class="$style.timelineDay" :data-date="day.date" :data-today="day.isToday" :data-selected="day.isSelected" :data-drop-active="dragOverDate === day.date" :data-calendar-drop-date="day.date" @dragover.prevent="dragOverDate = day.date" @dragleave="clearDragOver(day.date)" @drop="dropOnDay(day, $event)">
 				<header :class="$style.timelineHeading">
 					<button
 						type="button"
@@ -226,7 +211,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		</div>
 
 		<div v-if="view === 'agenda'" :class="$style.agenda">
-			<section v-for="day in days" :key="day.key" :class="$style.agendaDay" :data-date="day.date" :data-today="day.isToday" :data-drop-active="dragOverDate === day.date" :data-calendar-drop-date="day.date" @dragover.prevent="dragOverDate = day.date" @dragleave="clearDragOver(day.date)" @drop="dropOnDay(day, $event)">
+			<section v-for="day in days" :key="day.key" :class="$style.agendaDay" :data-date="day.date" :data-today="day.isToday" :data-selected="day.isSelected" :data-drop-active="dragOverDate === day.date" :data-calendar-drop-date="day.date" @dragover.prevent="dragOverDate = day.date" @dragleave="clearDragOver(day.date)" @drop="dropOnDay(day, $event)">
 				<header :class="$style.agendaHeading">
 					<button
 						type="button"
@@ -246,7 +231,59 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</div>
 			</section>
 		</div>
-	</template>
+
+		<section
+			v-if="(view === 'month' || wideLayout) && agendaDay"
+			:class="$style.selectedAgenda"
+			data-calendar-day-pane
+			:data-date="agendaDay.date"
+			:data-desktop-pane="wideLayout"
+			:aria-label="`${labels.selectedDay}: ${agendaDay.label}`"
+		>
+			<header><div><span>{{ labels.selectedDay }}</span><strong>{{ agendaDay.label }}</strong></div><b>{{ agendaDay.events.length }}</b></header>
+			<div v-if="wideLayout" :class="$style.dayPaneNavigation">
+				<button
+					type="button"
+					:class="$style.iconButton"
+					data-calendar-pane-previous
+					:disabled="!previousAgendaDay"
+					:aria-label="previousAgendaDay ? labels.selectDate(previousAgendaDay.label) : labels.previousPeriod"
+					:title="previousAgendaDay ? labels.selectDate(previousAgendaDay.label) : labels.previousPeriod"
+					@click="previousAgendaDay && selectDay(previousAgendaDay)"
+				>
+					<i class="ti ti-chevron-left" aria-hidden="true"></i>
+				</button>
+				<button type="button" :class="$style.dayPaneView" data-calendar-pane-open-day :disabled="view === 'day'" @click="emit('show-more', agendaDay)">
+					<i class="ti ti-calendar-event" aria-hidden="true"></i><span>{{ labels.views.day }}</span>
+				</button>
+				<button
+					type="button"
+					:class="$style.iconButton"
+					data-calendar-pane-next
+					:disabled="!nextAgendaDay"
+					:aria-label="nextAgendaDay ? labels.selectDate(nextAgendaDay.label) : labels.nextPeriod"
+					:title="nextAgendaDay ? labels.selectDate(nextAgendaDay.label) : labels.nextPeriod"
+					@click="nextAgendaDay && selectDay(nextAgendaDay)"
+				>
+					<i class="ti ti-chevron-right" aria-hidden="true"></i>
+				</button>
+			</div>
+			<div v-if="agendaDay.events.length" :class="$style.eventList">
+				<div
+					v-for="calendarEvent in agendaDay.events"
+					:key="calendarEvent.id"
+					:class="$style.draggableRow"
+					:draggable="canDrag(calendarEvent)"
+					@dragstart="startNativeDrag(calendarEvent, $event)"
+					@dragend="finishDrag"
+					@pointerdown="startPointerDrag(calendarEvent, $event)"
+				>
+					<CalendarEventRow :event="calendarEvent" :labels="labels" :readOnly="readOnly" @activate="activateEvent(calendarEvent, agendaDay)" @edit="emit('edit-event', calendarEvent, agendaDay)" @move="emit('move-request', calendarEvent, agendaDay)"/>
+				</div>
+			</div>
+			<div v-else :class="$style.dayEmpty">{{ labels.empty }}</div>
+		</section>
+	</div>
 
 	<div v-else :class="$style.state" role="status">
 		<i class="ti ti-calendar-off" aria-hidden="true"></i>
@@ -314,6 +351,17 @@ const calendarWeeks = computed(() => {
 const focusedDayKey = ref<string | null>(null);
 const rootEl = ref<HTMLElement | null>(null);
 const compactLayout = ref(false);
+const availableWidth = ref(0);
+const monthEventLimit = computed(() => availableWidth.value >= 900 ? Math.min(props.maxEventsPerDay, 1) : props.maxEventsPerDay);
+const wideLayout = computed(() => (props.view === 'month' && availableWidth.value >= 960)
+	|| (props.view === 'week' && availableWidth.value >= 1120));
+const agendaDay = computed(() => selectedDay.value ?? (wideLayout.value
+	? props.days.find(day => day.isToday && !day.isDisabled)
+		?? props.days.find(day => !day.isOutsideRange && !day.isDisabled)
+		?? props.days.find(day => !day.isDisabled)
+	: undefined));
+const previousAgendaDay = computed(() => adjacentAgendaDay(-1));
+const nextAgendaDay = computed(() => adjacentAgendaDay(1));
 const draggingEvent = ref<HataskCalendarEvent | null>(null);
 const dragOverDate = ref<string | null>(null);
 const trashActive = ref(false);
@@ -331,6 +379,15 @@ type TimedEventLayout = { event: HataskCalendarEvent; start: number; end: number
 
 function viewIcon(view: HataskCalendarView): string {
 	return view === 'month' ? 'ti ti-calendar-month' : view === 'week' ? 'ti ti-calendar-week' : view === 'day' ? 'ti ti-calendar-event' : 'ti ti-list-details';
+}
+
+function adjacentAgendaDay(direction: -1 | 1): HataskCalendarDay | undefined {
+	const index = props.days.findIndex(day => day.key === agendaDay.value?.key);
+	if (index < 0) return undefined;
+	for (let candidate = index + direction; candidate >= 0 && candidate < props.days.length; candidate += direction) {
+		if (!props.days[candidate].isDisabled) return props.days[candidate];
+	}
+	return undefined;
 }
 
 function canDrag(event: HataskCalendarEvent): boolean {
@@ -435,6 +492,13 @@ function onGlobalPointerUp(): void {
 	finishDrag();
 }
 
+function onGlobalPointerCancel(): void {
+	// A browser gesture interruption is not a drop, even over a date or trash.
+	pointerDragActive = false;
+	cancelPointerCandidate();
+	finishDrag();
+}
+
 function activateEvent(event: HataskCalendarEvent, day: HataskCalendarDay): void {
 	if (suppressedClickEventId === event.id) return;
 	emit('activate-event', event, day);
@@ -492,7 +556,10 @@ function layoutEventStyle(layout: TimedEventLayout): Record<string, string> {
 }
 
 onMounted(() => {
-	const updateLayout = (width: number) => { compactLayout.value = width <= 720; };
+	const updateLayout = (width: number) => {
+		availableWidth.value = width;
+		compactLayout.value = width <= 720;
+	};
 	if (rootEl.value != null && typeof ResizeObserver !== 'undefined') {
 		const element = rootEl.value;
 		const initialWidth = element.getBoundingClientRect().width;
@@ -505,7 +572,7 @@ onMounted(() => {
 	}
 	window.addEventListener('pointermove', onGlobalPointerMove, { passive: false });
 	window.addEventListener('pointerup', onGlobalPointerUp);
-	window.addEventListener('pointercancel', onGlobalPointerUp);
+	window.addEventListener('pointercancel', onGlobalPointerCancel);
 });
 onBeforeUnmount(() => {
 	cancelPointerCandidate();
@@ -513,7 +580,7 @@ onBeforeUnmount(() => {
 	layoutObserver = null;
 	window.removeEventListener('pointermove', onGlobalPointerMove);
 	window.removeEventListener('pointerup', onGlobalPointerUp);
-	window.removeEventListener('pointercancel', onGlobalPointerUp);
+	window.removeEventListener('pointercancel', onGlobalPointerCancel);
 });
 
 watch(
@@ -534,7 +601,7 @@ function eventStyle(event: HataskCalendarEvent): Record<string, string> {
 }
 
 function remainingEventCount(day: HataskCalendarDay): number {
-	return day.hiddenEventCount ?? Math.max(0, day.events.length - props.maxEventsPerDay);
+	return day.hiddenEventCount ?? Math.max(0, day.events.length - monthEventLimit.value);
 }
 
 function dayTabindex(day: HataskCalendarDay): 0 | -1 {
@@ -641,6 +708,7 @@ const CalendarEventRow = defineComponent({
 
 <style lang="scss" module>
 .root {
+	container-name: hatask-calendar;
 	container-type: inline-size;
 	color: var(--fg);
 	font-family: var(--htk-font-body, inherit);
@@ -815,6 +883,32 @@ const CalendarEventRow = defineComponent({
 	text-align: center;
 }
 
+@container (max-width: 720px) {
+	.filters {
+		width: fit-content;
+		max-width: 100%;
+		box-sizing: border-box;
+		margin-inline: auto;
+		justify-content: center;
+		gap: 3px;
+		padding: 4px;
+		border: 1px solid var(--rule);
+		border-radius: 999px;
+		background: var(--fill-2);
+	}
+
+	.filterLabel, .filterCount, .filterDot,
+	.filters button[data-active="false"] .filterText { display: none; }
+
+	.filters button { justify-content: center; min-width: 44px; border-color: transparent; }
+	.filters button i { font-size: 1rem; }
+	.filters button[data-active="true"] {
+		background: var(--surface);
+		border-color: var(--rule);
+		box-shadow: 0 2px 6px var(--hair);
+	}
+}
+
 .notice,
 .state {
 	display: flex;
@@ -855,6 +949,10 @@ const CalendarEventRow = defineComponent({
 .timeline,
 .agenda {
 	margin-top: 14px;
+}
+
+.workspace {
+	min-width: 0;
 }
 
 .month {
@@ -1190,7 +1288,10 @@ const CalendarEventRow = defineComponent({
 .draggableRow:active,
 .allDayEvent:active,
 .timelineEvent:active { cursor: grabbing; }
-.mobileSelectedAgenda { display: none; }
+.selectedAgenda { display: none; }
+.dayPaneNavigation { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.dayPaneView { min-width: 0; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; flex: 1; padding: 8px; border: 1px solid var(--rule); border-radius: max(8px, calc(var(--card-radius, 16px) * .55)); background: var(--fill); color: var(--fg); font: inherit; font-size: .78rem; font-weight: 700; cursor: pointer; transition: background-color 160ms ease; }
+.dayPaneView:hover:not(:disabled) { background: var(--btn-hover, var(--fill-2)); }
 .eventRow { grid-template-columns: minmax(0, 1fr) 88px; }
 .eventActions { display: grid; grid-template-columns: repeat(2, 44px); min-width: 88px; }
 .eventActions .eventAction { width: 44px; }
@@ -1244,6 +1345,127 @@ button:active:not(:disabled) {
 	transform: translateY(1px);
 }
 
+@container hatask-calendar (min-width: 900px) {
+	.header {
+		gap: 10px 14px;
+		padding: 12px;
+	}
+
+	.month,
+	.timeline,
+	.agenda {
+		margin-top: 10px;
+	}
+
+	.month {
+		padding: 8px;
+	}
+
+	.monthDay {
+		min-height: 96px;
+		padding: 4px;
+	}
+
+	.dayButton {
+		margin-bottom: 0;
+	}
+
+	.monthEvents {
+		gap: 2px;
+	}
+
+	.monthEvent,
+	.moreButton {
+		min-height: 22px;
+	}
+
+	.timeCanvas {
+		height: 600px;
+	}
+}
+
+@container hatask-calendar (min-width: 960px) {
+	.header {
+		grid-template-columns: minmax(0, 1fr) auto;
+		align-items: center;
+		gap: 12px 18px;
+	}
+
+	.filters { grid-column: 1 / -1; }
+	.viewSwitch { width: auto; min-width: 0; }
+
+	.workspace[data-layout="split"] {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) minmax(280px, .43fr);
+		align-items: start;
+		gap: 16px;
+		margin-top: 14px;
+	}
+
+	.workspace[data-layout="split"] > .month,
+	.workspace[data-layout="split"] > .timeline,
+	.workspace[data-layout="split"] > .agenda {
+		min-width: 0;
+		margin-top: 0;
+	}
+
+	.workspace[data-layout="split"] .timelineDay[data-selected="true"],
+	.workspace[data-layout="split"] .agendaDay[data-selected="true"] {
+		outline: 2px solid var(--accent);
+		outline-offset: -2px;
+	}
+
+	.selectedAgenda[data-desktop-pane="true"] {
+		min-width: 0;
+		display: grid;
+		gap: 14px;
+		padding: 16px;
+		border: var(--card-border, 1px solid var(--rule));
+		border-radius: var(--card-radius, 16px);
+		background: var(--surface);
+		box-shadow: var(--card-shadow, none);
+	}
+
+	.selectedAgenda > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+	.selectedAgenda > header div { min-width: 0; display: grid; gap: 5px; }
+	.selectedAgenda > header span { color: var(--fg-2); font-size: .72rem; font-weight: 700; }
+	.selectedAgenda > header strong { font-family: var(--htk-font-head, inherit); font-size: 1rem; line-height: 1.5; }
+	.selectedAgenda > header b { min-width: 30px; flex: none; padding: 4px 8px; border-radius: 999px; background: var(--fill-2); color: var(--fg-2); font-size: .74rem; font-variant-numeric: tabular-nums; text-align: center; }
+	.selectedAgenda .eventMain { min-height: 76px; }
+	.selectedAgenda .eventTitle { font-size: .86rem; }
+	.selectedAgenda .eventMeta { color: var(--fg-2); font-size: .72rem; }
+	.selectedAgenda .eventStatus { white-space: normal; }
+
+	.workspace[data-layout="split"] .agendaDay { grid-template-columns: minmax(100px, .25fr) minmax(0, 1fr); }
+}
+
+@container hatask-calendar (min-width: 1120px) {
+	.header {
+		grid-template-columns: minmax(240px, 1fr) auto minmax(320px, auto);
+	}
+	.filters {
+		grid-column: auto;
+		justify-self: end;
+		flex-wrap: nowrap;
+	}
+	.filterLabel {
+		display: none;
+	}
+
+	// Keep the seven time columns together; detailed actions remain in the day pane.
+	.workspace[data-layout="split"][data-view="week"] { grid-template-columns: minmax(0, 1fr) 280px; }
+	.workspace[data-layout="split"] .timeline { gap: 6px; }
+	.workspace[data-layout="split"] .timeline:not([data-columns="1"]) { grid-template-columns: minmax(0, 1.35fr) repeat(6, minmax(0, 1fr)); }
+	.workspace[data-layout="split"] .timelineDay { padding: 8px 6px; }
+	.workspace[data-layout="split"] .timelineDay:not(:first-child) .timeCanvas { margin-inline-start: 4px; }
+	.workspace[data-layout="split"] .timelineDay:not(:first-child) .hourLine { inset-inline-start: 0; }
+	.workspace[data-layout="split"] .timelineDay:not(:first-child) .hourLine span { display: none; }
+	.workspace[data-layout="split"] .timeline:not([data-columns="1"]) .timelineEvent,
+	.workspace[data-layout="split"] .timeline:not([data-columns="1"]) .allDayEvent { grid-template-columns: minmax(0, 1fr); }
+	.workspace[data-layout="split"] .timeline:not([data-columns="1"]) .timelineEvent > button:not(:first-child),
+	.workspace[data-layout="split"] .timeline:not([data-columns="1"]) .allDayEvent > button:not(:first-child) { display: none; }
+}
+
 @container (max-width: 720px) {
 	.header,
 	.month {
@@ -1295,12 +1517,12 @@ button:active:not(:disabled) {
 		display: none;
 	}
 
-	.mobileSelectedAgenda { display: grid; gap: 9px; margin-top: 10px; padding: 12px; border: var(--card-border, 1px solid var(--rule)); border-radius: var(--card-radius, 16px); background: var(--surface); box-shadow: var(--card-shadow, none); }
-	.mobileSelectedAgenda > header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-	.mobileSelectedAgenda > header div { min-width: 0; display: grid; gap: 2px; }
-	.mobileSelectedAgenda > header span { color: var(--fg-3); font-size: .61rem; font-weight: 800; }
-	.mobileSelectedAgenda > header strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .82rem; }
-	.mobileSelectedAgenda > header b { min-width: 28px; padding: 3px 7px; border-radius: 999px; background: var(--fill-2); color: var(--fg-2); font-size: .68rem; text-align: center; }
+	.selectedAgenda { display: grid; gap: 9px; margin-top: 10px; padding: 12px; border: var(--card-border, 1px solid var(--rule)); border-radius: var(--card-radius, 16px); background: var(--surface); box-shadow: var(--card-shadow, none); }
+	.selectedAgenda > header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+	.selectedAgenda > header div { min-width: 0; display: grid; gap: 2px; }
+	.selectedAgenda > header span { color: var(--fg-3); font-size: .61rem; font-weight: 800; }
+	.selectedAgenda > header strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .82rem; }
+	.selectedAgenda > header b { min-width: 28px; padding: 3px 7px; border-radius: 999px; background: var(--fill-2); color: var(--fg-2); font-size: .68rem; text-align: center; }
 
 	.moreButton {
 		font-size: .62rem;

@@ -84,7 +84,7 @@ export interface HataskCalendarLabels {
 
 export type HataskTodoView = 'today' | 'upcoming' | 'overdue' | 'priority' | 'all' | 'completed' | 'templates';
 
-export type HataskTodoMobileTab = 'today' | 'upcoming' | 'all' | 'completed' | 'more';
+export type HataskTodoMobileTab = HataskTodoView | 'more';
 
 export type HataskTodoSort = 'manual' | 'dueAsc' | 'priority' | 'createdDesc';
 
@@ -154,4 +154,10 @@ export interface HataskTodoLabels {
 	moreViews: string;
 	reorderViews: string;
 	reorderView: (viewName: string) => string;
+	customizeViews: string;
+	customizeViewsHint: string;
+	showView: (viewName: string) => string;
+	hideView: (viewName: string) => string;
+	moveViewEarlier: (viewName: string) => string;
+	moveViewLater: (viewName: string) => string;
 }

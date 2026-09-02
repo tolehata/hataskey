@@ -448,8 +448,26 @@
   </div></div>
   </template>
 
-	  <div v-if="showEventDetails||editingEvent" class="htk-lg htk-anim htk-event-editor"><div class="htk-gc">
-	    <h3 class="htk-sec-title">{{plannerCopy.moreDetails}}</h3>
+					<Teleport to="body">
+						<div
+							v-if="showEventDetails"
+							class="htk-modal-ov"
+							:data-theme="settings.theme||'kisetsu'"
+							:data-mode="themeMode"
+							@click.self="closeEventDetailsModal"
+							@keydown.esc.stop.prevent="closeEventDetailsModal"
+						>
+							<div
+								class="htk-lg htk-modal-c htk-event-editor htk-event-editor-modal"
+								role="dialog"
+								aria-modal="true"
+								aria-labelledby="hatask-event-details-title"
+							>
+								<div class="htk-gc">
+									<header class="htk-event-editor-head">
+										<h3 id="hatask-event-details-title" class="htk-sec-title">{{ plannerCopy.moreDetails }}</h3>
+										<button ref="eventDetailsCloseRef" type="button" class="htk-icon-btn" :aria-label="copy.close" :title="copy.close" @click="closeEventDetailsModal"><i class="ti ti-x" aria-hidden="true"></i></button>
+									</header>
 	    <fieldset :disabled="plannerReadOnly" class="htk-editor-fieldset">
 	    <div class="htk-fg"><span id="hatask-event-emoji-label" class="htk-fl">{{copy.emoji}}</span><div class="htk-emp-row" role="group" aria-labelledby="hatask-event-emoji-label"><button v-for="e in eventEmojis" :key="e" type="button" :class="['htk-emp-i',newEvent.emoji===e&&'on']" :aria-label="`${plannerCopy.chooseEmoji}: ${e}`" :aria-pressed="newEvent.emoji===e" @click="newEvent.emoji=e"><HataskEmoji :emoji="e"/></button></div></div>
 	    <div class="htk-fg"><span class="htk-fl">{{copy.dateAndTime}}</span>
@@ -500,40 +518,46 @@
 	    </div><div class="htk-tg-row"><span id="hatask-event-notify-label" class="htk-tg-lab">{{copy.notifications}}</span><button type="button" :class="['htk-tg-sw',newEvent.notify&&'on']" role="switch" aria-labelledby="hatask-event-notify-label" :aria-checked="newEvent.notify" @click="newEvent.notify=!newEvent.notify"></button></div></div>
 	    <div v-if="newEvent.notify" class="htk-fg"><span id="hatask-event-notify-timing-label" class="htk-fl">{{copy.notificationTiming}}</span><div class="htk-nt-chips" role="group" aria-labelledby="hatask-event-notify-timing-label"><button v-for="nt in notifyTimings" :key="nt" type="button" :class="['htk-nt-chip',newEvent.notifyTimings.includes(nt)&&'on']" :aria-label="plannerCopyx.notificationTimingLabel({timing:notifyTimingLabel(nt)})" :aria-pressed="newEvent.notifyTimings.includes(nt)" @click="toggleNotifyTiming(nt)">{{notifyTimingLabel(nt)}}</button></div></div>
 	    </fieldset>
-    <div class="htk-editor-icon-actions"><button type="button" class="htk-icon-submit" :disabled="plannerReadOnly||!newEvent.title.trim()" :aria-label="editingEvent?copy.update:copy.save" :title="editingEvent?copy.update:copy.save" @click="submitEventCapture"><i :class="editingEvent?'ti ti-check':'ti ti-plus'" aria-hidden="true"></i></button><button v-if="editingEvent" type="button" class="htk-icon-btn" :aria-label="copy.cancel" :title="copy.cancel" @click="resetEventEditor"><i class="ti ti-x" aria-hidden="true"></i></button><button v-if="editingEvent" type="button" class="htk-icon-btn htk-danger" :disabled="plannerReadOnly" :aria-label="copy.delete" :title="copy.delete" @click="deleteEventById(editingEvent.id)"><i class="ti ti-trash" aria-hidden="true"></i></button></div>
-  </div></div>
+									<div class="htk-editor-icon-actions"><button type="button" class="htk-icon-submit" :disabled="plannerReadOnly||!newEvent.title.trim()" :aria-label="editingEvent?copy.update:copy.save" :title="editingEvent?copy.update:copy.save" @click="submitEventCapture"><i :class="editingEvent?'ti ti-check':'ti ti-plus'" aria-hidden="true"></i></button><button v-if="editingEvent" type="button" class="htk-icon-btn" :aria-label="copy.cancel" :title="copy.cancel" @click="resetEventEditor"><i class="ti ti-x" aria-hidden="true"></i></button><button v-if="editingEvent" type="button" class="htk-icon-btn htk-danger" :disabled="plannerReadOnly" :aria-label="copy.delete" :title="copy.delete" @click="deleteEventById(editingEvent.id)"><i class="ti ti-trash" aria-hidden="true"></i></button></div>
+								</div>
+							</div>
+						</div>
+					</Teleport>
 </div>
 
 <!-- ========== TODO ========== -->
-<div v-if="activeTab==='todo'" class="htk-tabpage" :class="[isHatakyu&&'hk-panels',tabDir==='fwd'?'htk-tab-fwd':'htk-tab-back']">
+				<div v-if="activeTab==='todo'" class="htk-tabpage htk-todo-page" :class="tabDir==='fwd'?'htk-tab-fwd':'htk-tab-back'">
 	<div class="htk-planner-shell htk-anim">
 	  <div v-if="plannerStorageState==='loading'||plannerStorageState==='saving'||plannerStorageState==='blocked'||plannerStorageState==='conflict'" class="htk-planner-status" :data-state="plannerStorageState" role="status" aria-live="polite"><i :class="plannerStorageState==='loading'||plannerStorageState==='saving'?'ti ti-loader-2':'ti ti-shield-exclamation'" aria-hidden="true"></i><span>{{plannerStorageState==='loading'?plannerCopy.loading:plannerStorageState==='saving'?plannerCopy.saving:plannerStorageDetail||plannerCopy.readOnly}}</span><button v-if="plannerReadOnly" type="button" class="htk-btn htk-xs" @click="retryPlannerStorage">{{plannerCopy.retry}}</button></div>
-	  <HataskQuickCapture
-	    ref="todoCaptureRef"
-	    mode="todo"
-	    :modelValue="newTodo"
-	    :label="editingTodoId?copy.editTask:copy.newTaskPlaceholder"
-	    :placeholder="editingTodoId?copy.editTaskPlaceholder:copy.newTaskPlaceholder"
-	    :submitLabel="editingTodoId?copy.update:copy.add"
-	    :chips="todoCaptureChips"
-	    :tools="todoCaptureTools"
-	    :templateLabel="plannerCopy.templateLibrary"
-	    :templateDisabled="!plannerTemplatesLoaded"
-	    :detailOpen="showTodoExtra||todoCaptureEditor!=null"
-	    :disabled="plannerReadOnly"
-	    :state="todoCaptureState"
-	    :chipLabel="plannerCopy.captureChips"
-	    :toolLabel="plannerCopy.captureTools"
-	    :removeChipLabel="label=>plannerCopyx.removeCaptureChip({label})"
-	    :hint="plannerCopy.todoCaptureHint"
-	    @update:modelValue="updateTodoCapture"
-	    @submit="submitTodoCapture"
-	    @tool="handleTodoCaptureTool"
-	    @template="openPlannerCaptureTemplates('todo', $event)"
-	    @chip="handleTodoCaptureChip"
-	    @remove-chip="removeTodoCaptureChip"
-	    @collapse="showTodoExtra=false;todoCaptureEditor=null"
-	  />
+						<div class="htk-todo-capture-row">
+							<HataskQuickCapture
+								ref="todoCaptureRef"
+								mode="todo"
+								:modelValue="newTodo"
+								:label="editingTodoId?copy.editTask:copy.newTaskPlaceholder"
+								:placeholder="editingTodoId?copy.editTaskPlaceholder:copy.newTaskPlaceholder"
+								:submitLabel="editingTodoId?copy.update:copy.add"
+								:chips="todoCaptureChips"
+								:tools="todoCaptureTools"
+								:templateLabel="plannerCopy.templateLibrary"
+								:templateDisabled="!plannerTemplatesLoaded"
+								:detailOpen="showTodoExtra||todoCaptureEditor!=null"
+								:disabled="plannerReadOnly"
+								:state="todoCaptureState"
+								:chipLabel="plannerCopy.captureChips"
+								:toolLabel="plannerCopy.captureTools"
+								:removeChipLabel="label=>plannerCopyx.removeCaptureChip({label})"
+								:hint="plannerCopy.todoCaptureHint"
+								@update:modelValue="updateTodoCapture"
+								@submit="submitTodoCapture"
+								@tool="handleTodoCaptureTool"
+								@template="openPlannerCaptureTemplates('todo', $event)"
+								@chip="handleTodoCaptureChip"
+								@remove-chip="removeTodoCaptureChip"
+								@collapse="showTodoExtra=false;todoCaptureEditor=null"
+							/>
+							<div v-if="isHatakyu" class="hk-inlinefig htk-capture-companion htk-capture-companion-desktop"><img :src="hkAsset('reviewingDocuments')" alt="" draggable="false"><div class="hk-note">{{ copyx.hkRemainingToday({count: pendingCount.toString()}) }}</div></div>
+						</div>
 	  <Transition name="htk-capture-detail">
 	    <fieldset v-if="todoCaptureEditor==='schedule'" class="htk-capture-detail htk-pill-editor" :disabled="plannerReadOnly">
 	      <legend class="htk-sr-only">{{copy.dateAndTime}}</legend>
@@ -585,7 +609,7 @@
 	      </Transition>
 	    </section>
 	  </Transition>
-	  <div v-if="isHatakyu" class="hk-inlinefig htk-capture-companion"><img :src="hkAsset('reviewingDocuments')" alt="" draggable="false"><div class="hk-note">{{copyx.hkRemainingToday({count:pendingCount.toString()})}}</div></div>
+						<div v-if="isHatakyu" class="hk-inlinefig htk-capture-companion htk-capture-companion-mobile"><img :src="hkAsset('reviewingDocuments')" alt="" draggable="false"><div class="hk-note">{{ copyx.hkRemainingToday({count: pendingCount.toString()}) }}</div></div>
 	  <div v-if="completedUndoItems.length" class="htk-planner-undo htk-complete-undo" role="status"><i class="ti ti-circle-check-filled" aria-hidden="true"></i><span>{{plannerCopyx.completedCount({count:completedUndoItems.length.toString()})}}</span><button type="button" class="htk-btn htk-xs" :disabled="plannerReadOnly" @click="undoCompletedTodos">{{plannerCopy.restore}}</button></div>
 		  <div v-if="lastArchivedTodoId" class="htk-planner-undo" role="status"><span>{{plannerCopy.archivedNotice}}</span><button type="button" class="htk-btn htk-xs" :disabled="plannerReadOnly" @click="restoreTodo(lastArchivedTodoId)">{{plannerCopy.restore}}</button></div>
 	  <HataskTodoPlanner
@@ -683,7 +707,8 @@
 </div>
 
 <!-- ========== GARDEN ========== -->
-<div v-if="activeTab==='garden'" class="htk-tabpage" :class="[isHatakyu?'hk-panels':'htk-panels',tabDir==='fwd'?'htk-tab-fwd':'htk-tab-back']">
+<div v-if="activeTab==='garden'" class="htk-tabpage htk-garden-page" :class="[isHatakyu?'hk-panels':'htk-panels',tabDir==='fwd'?'htk-tab-fwd':'htk-tab-back']">
+					<div class="htk-garden-stack" :class="isHatakyu?'hk-panels':undefined" data-garden-group="personal">
   <!-- 旗鯖fork(ハタキュ): 育ち具合をひとこと添える紙。 -->
   <div v-if="isHatakyu" class="hk-pin" style="--i:0;--r:1.5deg"><span class="hk-tack hk-y"></span>
     <div class="hk-card hk-cream"><div class="hk-quote hk-center">{{flower.progress>=100?copy.hkGardenBloomed:copy.hkGardenAlmost}}</div></div>
@@ -711,7 +736,8 @@
     <div v-else class="htk-empty"><div class="htk-empI"><i class="ti ti-circle-off"></i></div><div>{{copy.noFlowersYet}}</div></div>
     <div v-if="gallery.length" class="htk-pager htk-gal-pager"><button type="button" class="htk-btn htk-xs" :aria-label="copy.previousPage" :disabled="galleryPage <= 1" @click="galleryPage--">‹</button><span class="htk-pager-t" aria-live="polite">{{galleryPage}}</span><button type="button" class="htk-btn htk-xs" :aria-label="copy.nextPage" :disabled="galleryPage >= galleryTotalPages" @click="galleryPage++">›</button></div>
   </div></div>
-
+					</div>
+					<div class="htk-garden-stack" :class="isHatakyu?'hk-panels':undefined" data-garden-group="community">
   <div class="htk-lg htk-anim"><div class="htk-gc">
     <h3 class="htk-sec-title">{{copy.communityFlowerGallery}}</h3>
     <div class="htk-gal-sort" role="group" :aria-label="copy.sort"><div class="htk-gal-sort-inner"><span class="htk-gal-sort-label"><i class="ti ti-arrows-sort" aria-hidden="true"></i><span>{{copy.sort}}</span></span><button type="button" :class="['htk-gal-sort-btn', communityFlowerOrder === 'newest' && 'on']" :aria-pressed="communityFlowerOrder === 'newest'" @click="setCommunityFlowerOrder('newest')"><i class="ti ti-sort-descending" aria-hidden="true"></i><span>{{copy.newestFirst}}</span></button><button type="button" :class="['htk-gal-sort-btn', communityFlowerOrder === 'oldest' && 'on']" :aria-pressed="communityFlowerOrder === 'oldest'" @click="setCommunityFlowerOrder('oldest')"><i class="ti ti-sort-ascending" aria-hidden="true"></i><span>{{copy.oldestFirst}}</span></button></div></div>
@@ -744,6 +770,7 @@
     </div>
     <div v-else class="htk-gal-state"><i class="ti ti-flower-off" aria-hidden="true"></i> {{copy.flowerGalleryEmpty}}</div>
   </div></div>
+					</div>
 </div>
 <!-- 旗鯖fork(ハタキュ): Eye も他タブと同じ板の上に載せるため、.htk-app の閉じは EYE の後ろへ移した。 -->
 
@@ -979,6 +1006,7 @@ import MkEarthquakeTicker from '@/components/MkEarthquakeTicker.vue';
 import HataFeedNotificationBody from '@/components/HataFeedNotificationBody.vue';
 import HataskEmoji from '@/components/HataskEmoji.vue';
 import HataskCalendarPlanner from '@/components/hatask/HataskCalendarPlanner.vue';
+import { normalizeHataskTodoMobileTabs } from '@/utility/hatask-todo-tabs.js';
 import HataskEventMoveDialog from '@/components/hatask/HataskEventMoveDialog.vue';
 import type { HataskEventMoveDialogLabels } from '@/components/hatask/HataskEventMoveDialog.vue';
 import HataskTodoPlanner from '@/components/hatask/HataskTodoPlanner.vue';
@@ -2083,7 +2111,7 @@ function startEditEvent(ev:any){
 	};
 	editingEvent.value=source;
 	newEvent.value={title:source.title,emoji:source.emoji||'⭐',date:source.date,timeStart:source.timeStart||'14:00',dateEnd:source.dateEnd||source.date,timeEnd:source.timeEnd||'15:00',color:source.color||'#e27d60',visibility:source.visibility||'private',rsvp:source.rsvp||false,notify:source.notify||false,notifyTimings:source.notifyTimings?[...source.notifyTimings]:['15分前'],allDay:source.allDay||false,recurrence:{...(source.recurrence||{frequency:'none',interval:1})}}
-	showEventDetails.value=true;showEventTemplates.value=false;nextTick(()=>eventCaptureRef.value?.focus());
+	openEventDetailsModal();
 }
 async function deleteEventById(id:string,options:{skipConfirm?:boolean}={}){
 	if(plannerReadOnly.value)return;
@@ -2136,6 +2164,27 @@ const eventCaptureState=ref<'idle'|'saving'|'success'|'error'>('idle');
 const showEventDetails=ref(false);
 const showEventTemplates=ref(false);
 const eventCaptureEditor=ref<'date'|'time'|null>(null);
+const eventDetailsCloseRef = ref<HTMLButtonElement | null>(null);
+let eventDetailsReturnFocus: HTMLElement | null = null;
+
+function openEventDetailsModal(): void {
+	eventDetailsReturnFocus = window.document.activeElement instanceof HTMLElement ? window.document.activeElement : null;
+	showEventDetails.value = true;
+	showEventTemplates.value = false;
+	eventCaptureEditor.value = null;
+	nextTick(() => eventDetailsCloseRef.value?.focus());
+}
+
+function closeEventDetailsModal(): void {
+	showEventDetails.value = false;
+	const returnFocus = eventDetailsReturnFocus;
+	eventDetailsReturnFocus = null;
+	nextTick(() => {
+		if (returnFocus?.isConnected) returnFocus.focus({ preventScroll: true });
+		else eventCaptureRef.value?.focus();
+	});
+}
+
 function clockPlusMinutes(value:string,minutes:number):string{const match=/^(\d{2}):(\d{2})$/.exec(value);if(!match)return'15:00';const total=(Number(match[1])*60+Number(match[2])+minutes+1440)%1440;return`${String(Math.floor(total/60)).padStart(2,'0')}:${String(total%60).padStart(2,'0')}`}
 function applyEventCaptureSyntax(value:string,force=false):void{
 	newEvent.value.title=value;if(!force&&!/\s$/.test(value))return;
@@ -2198,7 +2247,11 @@ async function handleEventCaptureChip(id:string):Promise<void>{
 	if(id==='recurrence')await handleEventCaptureTool('repeat');
 }
 async function handleEventCaptureTool(id:string):Promise<void>{
-	if(id==='details'){showEventDetails.value=!showEventDetails.value;if(showEventDetails.value){showEventTemplates.value=false;eventCaptureEditor.value=null}return}
+	if (id === 'details') {
+		if (showEventDetails.value) closeEventDetailsModal();
+		else openEventDetailsModal();
+		return;
+	}
 	if(id==='date'){eventCaptureEditor.value=eventCaptureEditor.value==='date'?null:'date';showEventDetails.value=false;showEventTemplates.value=false;return}
 	if(id==='all-day'){eventCaptureEditor.value=eventCaptureEditor.value==='time'?null:'time';showEventDetails.value=false;showEventTemplates.value=false;return}
 	if(id==='visibility'){toggleEventCaptureVisibility();return}
@@ -2573,9 +2626,9 @@ const plannerCalendarTitle=computed(()=>{
 	return`${monthDayFormatter.format(dates[0])} – ${monthDayFormatter.format(dates[dates.length-1])}`;
 });
 const plannerCalendarFilters=computed<HataskPlannerFilter[]>(()=>[
-	{id:'private',label:copy.private,active:plannerCalendarFilterIds.value.includes('private'),count:allCalendarEvents.value.filter(event=>plannerEventSource(event)==='private').length},
-	{id:'public',label:copy.public,active:plannerCalendarFilterIds.value.includes('public'),count:allCalendarEvents.value.filter(event=>plannerEventSource(event)==='public').length},
-	{id:'shared',label:copy.organizer,active:plannerCalendarFilterIds.value.includes('shared'),count:allCalendarEvents.value.filter(event=>plannerEventSource(event)==='shared').length},
+	{ id: 'private', icon: 'ti ti-lock', label: copy.private, active: plannerCalendarFilterIds.value.includes('private'), count: allCalendarEvents.value.filter(event => plannerEventSource(event) === 'private').length },
+	{ id: 'public', icon: 'ti ti-world', label: copy.public, active: plannerCalendarFilterIds.value.includes('public'), count: allCalendarEvents.value.filter(event => plannerEventSource(event) === 'public').length },
+	{ id: 'shared', icon: 'ti ti-users', label: copy.organizer, active: plannerCalendarFilterIds.value.includes('shared'), count: allCalendarEvents.value.filter(event => plannerEventSource(event) === 'shared').length },
 ]);
 const plannerCalendarLabels=computed<HataskCalendarLabels>(()=>({
 	calendar:plannerCopy.calendar,
@@ -2610,7 +2663,14 @@ function showPlannerDay(day:HataskCalendarDay):void{selectPlannerDate(day);plann
 function findPlannerCalendarSource(event:HataskCalendarEvent):any{return allCalendarEvents.value.find(item=>item.id===event.id)}
 function activatePlannerEvent(event:HataskCalendarEvent,day:HataskCalendarDay):void{selectPlannerDate(day);const source=findPlannerCalendarSource(event);if(source)openEventDetail(source)}
 	function plannerScrollBehavior():ScrollBehavior{return settings.value.animations===false||hkReduced()?'auto':'smooth'}
-function editPlannerEvent(event:HataskCalendarEvent,day:HataskCalendarDay):void{if(plannerReadOnly.value)return;selectPlannerDate(day);const source=findPlannerCalendarSource(event);if(source)startEditEvent(source);nextTick(()=>window.document.querySelector('.htk-event-editor')?.scrollIntoView({behavior:plannerScrollBehavior(),block:'start'}))}
+
+function editPlannerEvent(event: HataskCalendarEvent, day: HataskCalendarDay): void {
+	if (plannerReadOnly.value) return;
+	selectPlannerDate(day);
+	const source = findPlannerCalendarSource(event);
+	if (source) startEditEvent(source);
+}
+
 function togglePlannerCalendarFilter(filterId:string):void{if(filterId!=='private'&&filterId!=='public'&&filterId!=='shared')return;const index=plannerCalendarFilterIds.value.indexOf(filterId);if(index>=0){if(plannerCalendarFilterIds.value.length>1)plannerCalendarFilterIds.value.splice(index,1)}else plannerCalendarFilterIds.value.push(filterId)}
 
 type PendingCalendarAction={mode:'reschedule'|'trash';event:HataskCalendarEvent;targetDate?:string;targetTime?:string};
@@ -2686,14 +2746,15 @@ async function resolveCalendarAction(choice:'move'|'copy'|'trash'|'cancel'):Prom
 // 配列そのものや手動順を並べ替えて保存しない。
 const plannerTodoView=ref<HataskTodoView>('all');
 const plannerTodoSearch=ref('');
-const defaultPlannerTodoMobileTabs:HataskTodoMobileTab[]=['today','upcoming','all','completed','more'];
-function normalizePlannerTodoMobileTabs(value:unknown):HataskTodoMobileTab[]{
-	const source=Array.isArray(value)?value:[];const valid=new Set<HataskTodoMobileTab>(defaultPlannerTodoMobileTabs);
-	const unique=source.filter((tab,index):tab is HataskTodoMobileTab=>typeof tab==='string'&&valid.has(tab as HataskTodoMobileTab)&&source.indexOf(tab)===index);
-	return[...unique,...defaultPlannerTodoMobileTabs.filter(tab=>!unique.includes(tab))];
+
+const plannerTodoMobileTabOrder = computed(() => normalizeHataskTodoMobileTabs(settings.value.todoMobileTabOrder));
+
+async function setPlannerTodoMobileTabOrder(next: HataskTodoMobileTab[]): Promise<void> {
+	if (!loadedKeys.has('settings')) return;
+	settings.value.todoMobileTabOrder = normalizeHataskTodoMobileTabs(next);
+	await saveSettings();
 }
-const plannerTodoMobileTabOrder=computed(()=>normalizePlannerTodoMobileTabs(settings.value.todoMobileTabOrder));
-async function setPlannerTodoMobileTabOrder(next:HataskTodoMobileTab[]):Promise<void>{settings.value.todoMobileTabOrder=normalizePlannerTodoMobileTabs(next);await saveSettings()}
+
 const lastArchivedTodoId=ref<string|null>(null);
 let archiveUndoTimer:number|null=null;
 function isTodoArchived(todo:HataskPlannerTodo):boolean{return todo.archivedAt!=null}
@@ -2771,6 +2832,12 @@ const plannerTodoLabels=computed<HataskTodoLabels>(()=>({
 	sort:plannerCopy.sort,sortOptions:{manual:plannerCopy.sortManual,dueAsc:plannerCopy.sortDueAsc,priority:plannerCopy.sortPriority,createdDesc:plannerCopy.sortCreatedDesc},folders:plannerCopy.folders,
 		selectedCount:count=>plannerCopyx.selectedCount({count:count.toString()}),bulkComplete:plannerCopy.bulkComplete,bulkMove:plannerCopy.bulkMove,bulkDue:plannerCopy.bulkDue,bulkPriority:plannerCopy.bulkPriority,bulkArchive:plannerCopy.bulkArchive,clearSelection:plannerCopy.clearSelection,
 			addFolder:plannerCopy.addFolder,manageFolder:name=>plannerCopyx.manageFolderLabel({name}),moreActions:title=>plannerCopyx.moreTaskActionsLabel({title}),moreViews:plannerCopy.todoMore,reorderViews:plannerCopy.reorderTodoTabs,reorderView:viewName=>plannerCopyx.reorderTodoTabLabel({name:viewName}),
+	customizeViews: plannerCopy.customizeTodoTabs,
+	customizeViewsHint: plannerCopy.customizeTodoTabsHint,
+	showView: name => plannerCopyx.showTodoTabLabel({ name }),
+	hideView: name => plannerCopyx.hideTodoTabLabel({ name }),
+	moveViewEarlier: name => plannerCopyx.moveTodoTabEarlierLabel({ name }),
+	moveViewLater: name => plannerCopyx.moveTodoTabLaterLabel({ name }),
 	}));
 function recurrenceLabel(frequency:HataskRecurrenceFrequency):string{return frequency==='daily'?plannerCopy.recurrenceDaily:frequency==='weekly'?plannerCopy.recurrenceWeekly:frequency==='monthly'?plannerCopy.recurrenceMonthly:frequency==='yearly'?plannerCopy.recurrenceYearly:plannerCopy.recurrenceNone}
 function plannerTodoSource(item:HataskTodoItem):HataskPlannerTodo|undefined{return todos.value.find(todo=>todo.id===item.id)}
@@ -4081,6 +4148,7 @@ select.htk-inp{appearance:none;cursor:pointer;padding-right:36px}
 .htk-dash .htk-lg>.htk-gc{height:100%;box-sizing:border-box;min-width:0;max-width:100%;overflow-wrap:anywhere;word-break:break-word}
 .htk-panels{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 .htk-calendar-page{align-items:start}
+.htk-calendar-page > .htk-planner-shell{grid-column:1/-1;grid-row:1}
 .htk-journal-page{display:block;min-width:0}
 .htk-journal-reminders{display:grid;gap:12px}
 .htk-journal-reminders>div{display:flex;flex-wrap:wrap;gap:8px}
@@ -4426,6 +4494,9 @@ select.htk-inp{appearance:none;cursor:pointer;padding-right:36px}
 .htk-planner-status .ti-loader-2{animation:htkPlannerSpin .9s linear infinite}
 .htk-planner-undo{justify-content:space-between;border-color:color-mix(in srgb,var(--success) 55%,var(--rule));background:color-mix(in srgb,var(--success) 9%,var(--surface));color:var(--fg)}
 .htk-planner-shell > :deep([data-mode="event"]),.htk-planner-shell > :deep([data-mode="todo"]){margin-bottom:14px}
+.htk-todo-capture-row{display:contents}
+.htk-todo-capture-row > :deep([data-mode="todo"]){margin-bottom:14px}
+.htk-capture-companion-desktop{display:none}
 .htk-capture-detail{box-sizing:border-box;width:min(100%,760px);min-width:0;margin:0 auto 14px;padding:14px;border:1px solid var(--rule);border-radius:20px;background:color-mix(in srgb,var(--surface) 94%,transparent);box-shadow:0 14px 34px -28px rgba(0,0,0,.65)}
 .htk-capture-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}.htk-capture-grid label{min-width:0;display:grid;gap:4px}.htk-capture-grid label>span{color:var(--fg-3);font-size:.68rem;font-weight:750}.htk-capture-wide{grid-column:1/-1}.htk-folder-manager{display:grid;gap:7px}.htk-folder-manager>header{display:flex;align-items:center;justify-content:space-between;gap:10px}.htk-folder-manager .htk-fm-row{display:grid;grid-template-columns:32px minmax(0,1fr) auto auto;align-items:center;gap:7px;min-height:48px}.htk-folder-colored-icon{position:relative;width:30px;height:30px;display:grid;place-items:center;color:var(--folder-color);font-size:1.25rem}.htk-folder-colored-icon::after{content:'';position:absolute;inset:9px 7px 5px;border-radius:2px;background:color-mix(in srgb,var(--folder-color) 20%,var(--surface));border:1px solid color-mix(in srgb,var(--folder-color) 55%,var(--rule))}.htk-folder-colored-icon i{position:relative;z-index:1}.htk-fm-count{min-width:28px;padding:3px 7px;border-radius:999px;background:var(--fill-2);color:var(--fg-3);font-size:.65rem;text-align:center}.htk-folder-create{display:grid;grid-template-columns:minmax(0,1fr) 44px;gap:7px;margin-top:4px}.htk-icon-btn,.htk-icon-submit{width:44px;height:44px;display:grid;place-items:center;border:1px solid var(--btn-border,var(--rule));border-radius:50%;background:var(--btn-bg,var(--surface));color:var(--fg);font:inherit;cursor:pointer}.htk-icon-submit{background:var(--accent);border-color:var(--accent);color:var(--on-accent,#fff);font-size:1.05rem;box-shadow:0 9px 20px -12px var(--accent)}.htk-icon-btn:hover,.htk-icon-btn:focus-visible{background:var(--btn-hover,var(--fill-2));color:var(--accent)}.htk-icon-btn.htk-danger{color:var(--danger,#c43d4f)}.htk-editor-icon-actions{display:flex;align-items:center;justify-content:flex-end;gap:7px;margin-top:14px}.htk-complete-undo{position:sticky;z-index:12;bottom:calc(12px + env(safe-area-inset-bottom));width:min(100%,460px);margin:0 auto 12px;box-shadow:0 16px 38px -25px rgba(0,0,0,.7);backdrop-filter:blur(16px)}.htk-capture-companion{margin-block:4px 12px}
 .htk-pill-editor{display:grid;gap:10px}.htk-pill-editor-head{display:flex;align-items:center;justify-content:space-between;gap:10px}.htk-pill-editor-head strong{display:flex;align-items:center;gap:7px;color:var(--fg);font-size:.82rem}.htk-pill-editor-head strong i{color:var(--accent);font-size:1rem}.htk-pill-time-grid{margin-top:2px}.htk-pill-clear{justify-self:start;min-height:44px;padding:7px 14px;border:1px solid var(--rule);border-radius:999px;background:var(--surface);color:var(--fg-2);font:inherit;font-size:.72rem;font-weight:750;cursor:pointer}.htk-pill-clear:hover,.htk-pill-clear:focus-visible{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,var(--surface));color:var(--fg)}
@@ -4537,6 +4608,9 @@ select.htk-inp{appearance:none;cursor:pointer;padding-right:36px}
 .htk-sch-note{border-radius:14px}
 .htk-modal-ov{position:fixed;inset:0;background:rgba(0,0,0,.3);backdrop-filter:blur(12px);display:flex;align-items:center;justify-content:center;z-index:3200000}
 .htk-modal-c{max-width:500px;width:92%;max-height:85vh;overflow-y:auto;animation:htkScIn .4s var(--ease-spring) both;border-radius:28px !important}
+.htk-event-editor-modal{width:min(92%,760px);max-width:760px;max-height:min(88dvh,780px);overscroll-behavior:contain}
+.htk-event-editor-head{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:10px}
+.htk-event-editor-head .htk-sec-title{min-width:0;margin:0}
 .htk-popup-b{font-size:.82rem;color:var(--text-2);line-height:1.7}
 /* Mood Analysis */
 .htk-ma-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
@@ -5049,6 +5123,12 @@ select.htk-inp{appearance:none;cursor:pointer;padding-right:36px}
    ⚠️列数はベースの .htk-panels と同じ2列に揃える。設計HTMLは3列だが、あちらの紙は
      どれも短い。実際のフォームを3列に詰めると1列あたりが狭すぎて崩れる。 */
 .hk-panels{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:22px 16px; align-items:start; }
+/* お庭だけ左右を独立して積む。ひとことの高さを右側の花カードと揃えず、情報はギャラリーの直下へ。
+   他のテーマでは箱を作らず、従来どおり4枚を親のグリッドへ並べる。 */
+.htk-garden-page{min-width:0}
+.htk-garden-stack{display:contents}
+.htk-root[data-theme="hatakyu"] .htk-garden-page > .htk-garden-stack{display:grid;grid-template-columns:minmax(0,1fr);align-content:start;align-items:start;min-width:0}
+.htk-garden-page .htk-garden-stack > .htk-lg{min-width:0}
 .hk-pin{ position:relative; transform-origin:50% 4px; transform:rotate(var(--r,0deg)); }
 /* 段組み(ホーム)側だけ、縦の隔たりをマージンで取る。グリッド側は gap が担う。 */
 .hk-masonry > .hk-pin{ break-inside:avoid; margin:0 0 20px; }
@@ -5238,6 +5318,13 @@ button.hk-row{ cursor:pointer }
   .htk-panels{grid-template-columns:minmax(0,1fr)}
   .hk-masonry{ columns:2 }
   .hk-panels{ grid-template-columns:minmax(0,1fr) }
+}
+@container hatask-root (min-width:901px){
+  .htk-root[data-theme="hatakyu"] .htk-todo-capture-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(190px,260px);align-items:center;gap:18px;margin-bottom:14px}
+  .htk-root[data-theme="hatakyu"] .htk-todo-capture-row > :deep([data-mode="todo"]){min-width:0;max-width:none;margin:0}
+  .htk-root[data-theme="hatakyu"] .htk-capture-companion-desktop{display:flex;min-width:0;margin:0}
+  .htk-root[data-theme="hatakyu"] .htk-capture-companion-desktop .hk-note{min-width:0;overflow-wrap:anywhere}
+  .htk-root[data-theme="hatakyu"] .htk-capture-companion-mobile{display:none}
 }
 @container hatask-root (max-width:640px){
   .htk-app{padding:12px;padding-bottom:24px}

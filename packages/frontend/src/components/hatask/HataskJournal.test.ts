@@ -2,16 +2,19 @@
  * SPDX-FileCopyrightText: Tolehata and hatasaba-project
  * SPDX-License-Identifier: AGPL-3.0-only
  */
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { parse } from '@vue/compiler-sfc';
 import { createApp, defineComponent, h, nextTick, ref } from 'vue';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import type { App } from 'vue';
 import type { HataskJournalEntry, HataskMealTemplate } from '@/utility/hatask-journal.js';
 
 vi.mock('@/i18n.js', async () => {
-	const { readFileSync } = await import('node:fs');
-	const { resolve } = await import('node:path');
+	const { readFileSync: readLocaleFile } = await import('node:fs');
+	const { resolve: resolveLocalePath } = await import('node:path');
 	const { load } = await import('js-yaml');
-	const locale = load(readFileSync(resolve(process.cwd(), '../../locales/ja-JP.yml'), 'utf8')) as { _hata: { _hatask: Record<string, Record<string, string>> } };
+	const locale = load(readLocaleFile(resolveLocalePath(process.cwd(), '../../locales/ja-JP.yml'), 'utf8')) as { _hata: { _hatask: Record<string, Record<string, string>> } };
 	const format = (strings: Record<string, string>) => new Proxy({}, { get: (_target, key) => (params: Record<string, string>) => strings[String(key)].replace(/\{(\w+)\}/gu, (_match, name: string) => params[name]) });
 	return { i18n: { ts: locale, tsx: { _hata: { _hatask: { _journal: format(locale._hata._hatask._journal), _main: format(locale._hata._hatask._main) } } } } };
 });
@@ -52,7 +55,7 @@ function byLabel(container: HTMLElement, label: string): HTMLButtonElement {
 }
 
 function tab(container: HTMLElement, text: string): HTMLButtonElement {
-	const button = Array.from(container.querySelectorAll<HTMLButtonElement>('[role="tab"]')).find(candidate => candidate.textContent?.includes(text));
+	const button = Array.from(container.querySelectorAll<HTMLButtonElement>('[role="tab"]')).find(candidate => candidate.getAttribute('aria-label') === text);
 	if (!button) throw new Error(`Missing tab: ${text}`);
 	return button;
 }
@@ -75,6 +78,51 @@ beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(new Date(2026, 7, 31, 12
 afterEach(() => { for (const item of mounted.splice(0)) { item.app.unmount(); item.container.remove(); } vi.useRealTimers(); vi.restoreAllMocks(); });
 
 describe('Hatask mood and meal journals', () => {
+	test.each([
+		{ kind: 'mood', title: 'きもち', intro: 'いまのきもちを、ひと息で残そう', info: 'きもち記録について' },
+		{ kind: 'meal', title: 'ごはん', intro: 'きょうのごはんを、あなたのペースで', info: 'ごはん記録について' },
+	])('$kindの見出しと入力を同じキャプチャ領域に保つ', ({ kind, title, intro, info }) => {
+		const f = mountJournal({ kind });
+		const captureArea = f.container.querySelector('[data-journal-capture]');
+		expect(captureArea?.querySelector('h2')?.textContent).toBe(title);
+		expect(captureArea?.textContent).toContain(intro);
+		expect(captureArea?.querySelector('textarea')).not.toBeNull();
+		expect(captureArea?.querySelector(`button[aria-label="${info}"]`)).not.toBeNull();
+	});
+
+	test('PCだけ見出しと入力を横に融合し、狭い幅では従来の縦積みを保つ', () => {
+		// Source contract only; Happy DOM does not calculate CSS container queries.
+		const filename = resolve(process.cwd(), 'src/components/hatask/HataskJournal.vue');
+		const parsed = parse(readFileSync(filename, 'utf8'), { filename });
+		expect(parsed.errors).toEqual([]);
+		const stylesheet = parsed.descriptor.styles[0].content;
+		expect(stylesheet).toMatch(/\.captureArea \{ display: grid; gap: 20px; min-width: 0; \}/u);
+		expect(stylesheet).toMatch(/\.heading \{ display: flex;[^}]*padding: 4px 4px 0; \}/u);
+		expect(stylesheet).toMatch(/\.toolbar \{ display: flex;[^}]*justify-content: space-between;[^}]*flex-wrap: wrap;/u);
+		expect(stylesheet).toMatch(/\.tabs \{ display: flex;[^}]*overflow-x: auto;[^}]*scrollbar-width: none;/u);
+		expect(stylesheet).toMatch(/\.tabs button \{[^}]*padding: 8px 16px;/u);
+		const desktopRules = stylesheet.match(/@container \(min-width: 760px\) \{([\s\S]*?)\n\}/u)?.[1] ?? '';
+		expect(desktopRules).toMatch(/\.captureArea \{ grid-template-columns: minmax\(260px, \.38fr\) minmax\(0, 1fr\);[^}]*background: var\(--surface\);/u);
+		expect(desktopRules).toMatch(/\.heading \{[^}]*border: 0;[^}]*background: var\(--surface\);[^}]*box-shadow: none;/u);
+		expect(desktopRules).toMatch(/\.toolbar \{ display: grid; grid-template-columns: minmax\(96px, 1fr\) auto minmax\(96px, 1fr\); \}/u);
+		expect(desktopRules).toMatch(/\.tabs \{[^}]*grid-column: 2;[^}]*justify-self: center;[^}]*overflow-x: visible;/u);
+		expect(desktopRules).toMatch(/\.tabs button:not\(\[data-selected='true'\]\) span \{ display: none; \}/u);
+		const mobileRules = stylesheet.match(/@container \(max-width: 560px\) \{([\s\S]*?)\n\}/u)?.[1] ?? '';
+		expect(mobileRules).toMatch(/\.tabs \{ width: 100%; \}/u);
+		expect(mobileRules).toMatch(/\.tabs button \{ flex: 1 0 auto; padding-inline: 12px; \}/u);
+	});
+
+	test.each(['mood', 'meal'])('%sのモバイルタブは全ラベルを保ち、切り替えても名前とアイコンを失わない', async kind => {
+		const f = mountJournal({ kind });
+		const tabs = [...f.container.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
+		expect(tabs.every(button => button.textContent.trim() === button.getAttribute('aria-label'))).toBe(true);
+		for (const tabButton of tabs) {
+			tabButton.click(); await flush();
+			expect(tabButton.textContent.trim()).toBe(tabButton.getAttribute('aria-label'));
+			expect(tabButton.getAttribute('aria-selected')).toBe('true');
+			expect(tabButton.querySelector('i[aria-hidden="true"]')).not.toBeNull();
+		}
+	});
 	test('きもちにはテンプレートを置かず、メモなしでも選んで記録できる', async () => {
 		const f = mountJournal();
 		expect(f.container.textContent).not.toContain('テンプレート');

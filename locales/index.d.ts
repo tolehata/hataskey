@@ -22950,13 +22950,37 @@ export interface Locale extends ILocale {
                  */
                 "todoMore": string;
                 /**
-                 * タブを並び替え
+                 * タブを編集
                  */
                 "reorderTodoTabs": string;
                 /**
                  * {name}を並び替え
                  */
                 "reorderTodoTabLabel": ParameterizedString<"name">;
+                /**
+                 * 表示するタブ
+                 */
+                "customizeTodoTabs": string;
+                /**
+                 * 表示したいタブを選べます。外したタブは「その他」から開けます
+                 */
+                "customizeTodoTabsHint": string;
+                /**
+                 * {name}をタブに追加
+                 */
+                "showTodoTabLabel": ParameterizedString<"name">;
+                /**
+                 * {name}をタブから外す
+                 */
+                "hideTodoTabLabel": ParameterizedString<"name">;
+                /**
+                 * {name}を前へ
+                 */
+                "moveTodoTabEarlierLabel": ParameterizedString<"name">;
+                /**
+                 * {name}を後ろへ
+                 */
+                "moveTodoTabLaterLabel": ParameterizedString<"name">;
                 /**
                  * アーカイブ済み
                  */

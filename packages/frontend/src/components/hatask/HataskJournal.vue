@@ -4,79 +4,81 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 <template>
 <section :class="$style.root" :data-kind="kind" :data-motion="motion" :aria-label="kind === 'mood' ? main.tabMood : main.tabMeal">
-	<header :class="$style.heading">
-		<div><h2>{{ kind === 'mood' ? main.tabMood : main.tabMeal }}</h2><p>{{ kind === 'mood' ? copy.moodIntro : copy.mealIntro }}</p></div>
-		<img v-if="illustration" :src="illustration" width="72" height="72" alt="" draggable="false">
-		<button type="button" :class="$style.iconButton" :aria-label="kind === 'mood' ? main.aboutMoodRecords : main.aboutMealRecords" :title="kind === 'mood' ? main.aboutMoodRecords : main.aboutMealRecords" @click="emit('info')"><i class="ti ti-info-circle" aria-hidden="true"></i></button>
-	</header>
+	<div :class="$style.captureArea" data-journal-capture>
+		<header :class="$style.heading">
+			<div><h2>{{ kind === 'mood' ? main.tabMood : main.tabMeal }}</h2><p>{{ kind === 'mood' ? copy.moodIntro : copy.mealIntro }}</p></div>
+			<img v-if="illustration" :src="illustration" width="72" height="72" alt="" draggable="false">
+			<button type="button" :class="$style.iconButton" :aria-label="kind === 'mood' ? main.aboutMoodRecords : main.aboutMealRecords" :title="kind === 'mood' ? main.aboutMoodRecords : main.aboutMealRecords" @click="emit('info')"><i class="ti ti-info-circle" aria-hidden="true"></i></button>
+		</header>
 
-	<div ref="composerEl" :class="$style.composer">
-		<div v-if="editingId" :class="$style.editing"><span><i class="ti ti-pencil" aria-hidden="true"></i>{{ main.editRecord }}</span><button type="button" :disabled="busy" @click="cancelEdit">{{ main.cancel }}</button></div>
-		<HataskQuickCapture
-			ref="capture"
-			v-model="draft.note"
-			:mode="kind"
-			:leadingIcon="kind === 'mood' ? 'ti ti-mood-smile' : 'ti ti-bowl'"
-			:label="main.optionalNote"
-			:placeholder="kind === 'mood' ? main.moodNotePlaceholder : main.mealNotePlaceholder"
-			:submitLabel="editingId ? main.update : main.record"
-			:chipLabel="planner.captureChips"
-			:toolLabel="planner.captureTools"
-			:templateLabel="kind === 'meal' ? planner.templateLibrary : undefined"
-			:templateDisabled="!templatesWritable"
-			:hint="copy.submitHint"
-			:chips="captureChips"
-			:tools="captureTools"
-			:disabled="!writable || busy"
-			:detailOpen="detail !== null || editingId !== null"
-			:state="state"
-			multiline
-			allowEmpty
-			persistentChips
-			@submit="submit"
-			@chip="toggleDetail"
-			@tool="onTool"
-			@template="openCaptureTemplates"
-			@collapse="detail = null"
-		>
-			<template #primary>
-				<div :class="$style.choices" :data-kind="kind" role="group" :aria-label="kind === 'mood' ? main.recordMood : main.howWasMeal">
-					<button v-for="option in levelOptions" :key="option.value" type="button" :aria-pressed="draft.level === option.value" :data-selected="draft.level === option.value" :disabled="!writable || busy" @click="draft.level = option.value">
-						<i :class="option.icon" aria-hidden="true"></i><span>{{ option.label }}</span>
-					</button>
-				</div>
-			</template>
-		</HataskQuickCapture>
-		<Transition name="journal-detail">
-			<div v-if="detail" ref="detailEl" :class="$style.detail">
-				<div :class="$style.detailHeader"><strong>{{ detailLabel }}</strong><button type="button" :class="$style.iconButton" :aria-label="main.close" @click="detail = null"><i class="ti ti-x" aria-hidden="true"></i></button></div>
-				<div v-if="detail === 'date' || detail === 'time'" :class="$style.dateFields">
-					<label v-if="detail === 'date'"><span>{{ copy.recordDate }}</span><input type="date" :value="entryDate" :disabled="busy" @change="setDate(($event.target as HTMLInputElement).value)"></label>
-					<label v-else><span>{{ copy.recordTime }}</span><input type="time" :value="entryTime" :disabled="busy" @change="setTime(($event.target as HTMLInputElement).value)"></label>
-					<button type="button" :class="$style.textButton" :disabled="busy" @click="useNow">{{ copy.useNow }}</button>
-				</div>
-				<div v-else-if="detail === 'slot'" :class="$style.optionPills" role="group" :aria-label="main.whichMeal">
-					<button v-for="slot in slots" :key="slot.value" type="button" :data-selected="draft.slot === slot.value" :aria-pressed="draft.slot === slot.value" :disabled="busy" @click="draft.slot = slot.value"><i :class="slot.icon" aria-hidden="true"></i>{{ slot.label }}</button>
-				</div>
-				<div v-else-if="detail === 'emoji'" :class="$style.optionPills" role="group" :aria-label="main.emoji">
-					<button v-for="emoji in emojis" :key="emoji" type="button" :data-selected="draft.emoji === emoji" :aria-pressed="draft.emoji === emoji" :aria-label="emoji" :disabled="busy" @click="draft.emoji = draft.emoji === emoji ? '' : emoji"><HataskEmoji :emoji="emoji"/></button>
-				</div>
-				<template v-else-if="detail === 'reasons'">
-					<p :class="$style.helper">{{ copy.reasonsHint }}</p>
-					<div :class="$style.optionPills" role="group" :aria-label="main.optionalMealReasons"><button v-for="reason in reasons" :key="reason.value" type="button" :data-selected="draft.reasons.includes(reason.value)" :aria-pressed="draft.reasons.includes(reason.value)" :disabled="busy" @click="toggleReason(reason.value)">{{ reason.label }}</button></div>
+		<div ref="composerEl" :class="$style.composer">
+			<div v-if="editingId" :class="$style.editing"><span><i class="ti ti-pencil" aria-hidden="true"></i>{{ main.editRecord }}</span><button type="button" :disabled="busy" @click="cancelEdit">{{ main.cancel }}</button></div>
+			<HataskQuickCapture
+				ref="capture"
+				v-model="draft.note"
+				:mode="kind"
+				:leadingIcon="kind === 'mood' ? 'ti ti-mood-smile' : 'ti ti-bowl'"
+				:label="main.optionalNote"
+				:placeholder="kind === 'mood' ? main.moodNotePlaceholder : main.mealNotePlaceholder"
+				:submitLabel="editingId ? main.update : main.record"
+				:chipLabel="planner.captureChips"
+				:toolLabel="planner.captureTools"
+				:templateLabel="kind === 'meal' ? planner.templateLibrary : undefined"
+				:templateDisabled="!templatesWritable"
+				:hint="copy.submitHint"
+				:chips="captureChips"
+				:tools="captureTools"
+				:disabled="!writable || busy"
+				:detailOpen="detail !== null || editingId !== null"
+				:state="state"
+				multiline
+				allowEmpty
+				persistentChips
+				@submit="submit"
+				@chip="toggleDetail"
+				@tool="onTool"
+				@template="openCaptureTemplates"
+				@collapse="detail = null"
+			>
+				<template #primary>
+					<div :class="$style.choices" :data-kind="kind" role="group" :aria-label="kind === 'mood' ? main.recordMood : main.howWasMeal">
+						<button v-for="option in levelOptions" :key="option.value" type="button" :aria-pressed="draft.level === option.value" :data-selected="draft.level === option.value" :disabled="!writable || busy" @click="draft.level = option.value">
+							<i :class="option.icon" aria-hidden="true"></i><span>{{ option.label }}</span>
+						</button>
+					</div>
 				</template>
-				<slot v-else-if="detail === 'reminders'" name="reminders"></slot>
-			</div>
-		</Transition>
-		<p v-if="!writable" :class="$style.status" role="status">{{ loading ? planner.loading : copy.readFailure }}</p>
-		<p v-if="error" :class="$style.error" role="alert">{{ error }}</p>
-		<p v-if="notice" :class="$style.status" role="status">{{ notice }}</p>
+			</HataskQuickCapture>
+			<Transition name="journal-detail">
+				<div v-if="detail" ref="detailEl" :class="$style.detail">
+					<div :class="$style.detailHeader"><strong>{{ detailLabel }}</strong><button type="button" :class="$style.iconButton" :aria-label="main.close" @click="detail = null"><i class="ti ti-x" aria-hidden="true"></i></button></div>
+					<div v-if="detail === 'date' || detail === 'time'" :class="$style.dateFields">
+						<label v-if="detail === 'date'"><span>{{ copy.recordDate }}</span><input type="date" :value="entryDate" :disabled="busy" @change="setDate(($event.target as HTMLInputElement).value)"></label>
+						<label v-else><span>{{ copy.recordTime }}</span><input type="time" :value="entryTime" :disabled="busy" @change="setTime(($event.target as HTMLInputElement).value)"></label>
+						<button type="button" :class="$style.textButton" :disabled="busy" @click="useNow">{{ copy.useNow }}</button>
+					</div>
+					<div v-else-if="detail === 'slot'" :class="$style.optionPills" role="group" :aria-label="main.whichMeal">
+						<button v-for="slot in slots" :key="slot.value" type="button" :data-selected="draft.slot === slot.value" :aria-pressed="draft.slot === slot.value" :disabled="busy" @click="draft.slot = slot.value"><i :class="slot.icon" aria-hidden="true"></i>{{ slot.label }}</button>
+					</div>
+					<div v-else-if="detail === 'emoji'" :class="$style.optionPills" role="group" :aria-label="main.emoji">
+						<button v-for="emoji in emojis" :key="emoji" type="button" :data-selected="draft.emoji === emoji" :aria-pressed="draft.emoji === emoji" :aria-label="emoji" :disabled="busy" @click="draft.emoji = draft.emoji === emoji ? '' : emoji"><HataskEmoji :emoji="emoji"/></button>
+					</div>
+					<template v-else-if="detail === 'reasons'">
+						<p :class="$style.helper">{{ copy.reasonsHint }}</p>
+						<div :class="$style.optionPills" role="group" :aria-label="main.optionalMealReasons"><button v-for="reason in reasons" :key="reason.value" type="button" :data-selected="draft.reasons.includes(reason.value)" :aria-pressed="draft.reasons.includes(reason.value)" :disabled="busy" @click="toggleReason(reason.value)">{{ reason.label }}</button></div>
+					</template>
+					<slot v-else-if="detail === 'reminders'" name="reminders"></slot>
+				</div>
+			</Transition>
+			<p v-if="!writable" :class="$style.status" role="status">{{ loading ? planner.loading : copy.readFailure }}</p>
+			<p v-if="error" :class="$style.error" role="alert">{{ error }}</p>
+			<p v-if="notice" :class="$style.status" role="status">{{ notice }}</p>
+		</div>
 	</div>
 
 	<section :class="$style.board">
 		<div :class="$style.toolbar">
 			<div :class="$style.tabs" role="tablist" :aria-label="copy.views" @keydown="onTabKeydown">
-				<button v-for="tab in tabs" :id="`${uid}-${tab.id}`" :key="tab.id" type="button" role="tab" :aria-selected="view === tab.id" :aria-controls="`${uid}-panel`" :tabindex="view === tab.id ? 0 : -1" :data-selected="view === tab.id" @click="selectView(tab.id)"><i :class="tab.icon" aria-hidden="true"></i><span>{{ tab.label }}</span></button>
+				<button v-for="tab in tabs" :id="`${uid}-${tab.id}`" :key="tab.id" type="button" role="tab" :aria-label="tab.label" :title="tab.label" :aria-selected="view === tab.id" :aria-controls="`${uid}-panel`" :tabindex="view === tab.id ? 0 : -1" :data-selected="view === tab.id" @click="selectView(tab.id)"><i :class="tab.icon" aria-hidden="true"></i><span>{{ tab.label }}</span></button>
 			</div>
 			<div v-if="view === 'today' || view === 'history'" :class="$style.toolbarActions">
 				<button type="button" :class="$style.iconButton" :data-selected="searchOpen" :aria-label="main.search" :title="main.search" :aria-expanded="searchOpen" @click="toggleSearch"><i class="ti ti-search" aria-hidden="true"></i></button>
@@ -500,6 +502,7 @@ onUnmounted(() => { if (clockTimer) window.clearInterval(clockTimer); });
 
 <style lang="scss" module>
 .root { container-type: inline-size; display: grid; gap: 20px; min-width: 0; color: var(--fg); font-family: var(--htk-font-body, inherit); }
+.captureArea { display: grid; gap: 20px; min-width: 0; }
 .heading { display: flex; align-items: center; gap: 12px; padding: 4px 4px 0; }
 .heading > div { flex: 1; min-width: 0; }
 .heading h2 { margin: 0; font: 800 1.3rem/1.4 var(--htk-font-head, inherit); }
@@ -610,11 +613,24 @@ onUnmounted(() => { if (clockTimer) window.clearInterval(clockTimer); });
 :global(.journal-record-enter-from), :global(.journal-record-leave-to) { opacity: 0; transform: translateX(6px); }
 :global(.journal-record-leave-active) { position: absolute; inset-inline: 0; pointer-events: none; }
 .root[data-motion='false'] *, .root[data-motion='false'] *::before, .root[data-motion='false'] *::after { animation: none !important; transition: none !important; }
+@container (min-width: 760px) {
+	.captureArea { grid-template-columns: minmax(260px, .38fr) minmax(0, 1fr); align-items: start; gap: 12px; padding: 10px; border: var(--card-border); border-radius: max(var(--card-radius), 24px); background: var(--surface); box-shadow: var(--card-shadow); }
+	.heading { align-self: start; min-width: 0; padding: 10px 8px 10px 12px; border: 0; border-radius: 0; background: var(--surface); box-shadow: none; }
+	.heading h2 { font-size: 1.08rem; }
+	.heading p { font-size: .76rem; line-height: 1.55; }
+	.heading img { width: 52px; height: 52px; }
+	.composer { max-width: none; margin-inline: 0; }
+	.toolbar { display: grid; grid-template-columns: minmax(96px, 1fr) auto minmax(96px, 1fr); }
+	.tabs { grid-column: 2; justify-self: center; flex-wrap: wrap; justify-content: center; box-sizing: border-box; overflow-x: visible; }
+	.tabs button { min-width: 44px; padding: 8px 12px; }
+	.toolbarActions { grid-column: 3; justify-self: end; margin-inline-start: 0; }
+	.tabs button:not([data-selected='true']) span { display: none; }
+}
 @container (max-width: 560px) {
-	.heading img { width: 56px; height: 56px; }
-	.board { padding: 12px; }
 	.tabs { width: 100%; }
 	.tabs button { flex: 1 0 auto; padding-inline: 12px; }
+	.heading img { width: 56px; height: 56px; }
+	.board { padding: 12px; }
 	.choices { gap: 4px; }
 	.choices button { min-height: 76px; border-radius: 16px; font-size: .7rem; }
 	.choices span { overflow-wrap: anywhere; }

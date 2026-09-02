@@ -3,7 +3,10 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { createApp, defineComponent, h, nextTick } from 'vue';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { parse } from '@vue/compiler-sfc';
+import { createApp, defineComponent, h, nextTick, reactive } from 'vue';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 
 vi.mock('@/components/HataskEmoji.vue', async () => {
@@ -70,6 +73,7 @@ function mountCalendar(options: Record<string, unknown> = {}) {
 		activate: vi.fn(),
 		edit: vi.fn(),
 		move: vi.fn(),
+		showMore: vi.fn(),
 		drop: vi.fn(),
 		trash: vi.fn(),
 	};
@@ -81,7 +85,7 @@ function mountCalendar(options: Record<string, unknown> = {}) {
 				title: '2026年8月',
 				weekdays,
 				days,
-				filters: [{ id: 'mine', label: '自分の予定', active: true }],
+				filters: [{ id: 'mine', icon: 'ti ti-lock', label: '自分の予定', active: true }, { id: 'public', icon: 'ti ti-world', label: '公開', active: false }],
 				labels,
 				'onUpdate:view': handlers.view,
 				onNavigate: handlers.navigate,
@@ -90,6 +94,7 @@ function mountCalendar(options: Record<string, unknown> = {}) {
 				onActivateEvent: handlers.activate,
 				onEditEvent: handlers.edit,
 				onMoveRequest: handlers.move,
+				onShowMore: handlers.showMore,
 				onDropEvent: handlers.drop,
 				onTrashEvent: handlers.trash,
 				...options,
@@ -103,11 +108,47 @@ function mountCalendar(options: Record<string, unknown> = {}) {
 	return { container, handlers };
 }
 
-afterEach(() => {
+function mockCalendarWidth(initialWidth: number) {
+	const observers = new Set<{ callback: ResizeObserverCallback; observer: ResizeObserver }>();
+	let width = initialWidth;
+	class CalendarResizeObserver {
+		private readonly entry: { callback: ResizeObserverCallback; observer: ResizeObserver };
+
+		constructor(callback: ResizeObserverCallback) {
+			this.entry = { callback, observer: this as unknown as ResizeObserver };
+		}
+
+		observe(): void {
+			observers.add(this.entry);
+			this.entry.callback([{ contentRect: { width } } as ResizeObserverEntry], this.entry.observer);
+		}
+
+		disconnect(): void { observers.delete(this.entry); }
+	}
+	vi.stubGlobal('ResizeObserver', CalendarResizeObserver);
+	return (nextWidth: number) => {
+		width = nextWidth;
+		for (const entry of observers) entry.callback([{ contentRect: { width } } as ResizeObserverEntry], entry.observer);
+	};
+}
+
+function dispatchTouchPointer(target: EventTarget, type: string): void {
+	const event = new Event(type, { bubbles: true, cancelable: true });
+	Object.defineProperties(event, {
+		pointerType: { value: 'touch' }, pointerId: { value: 1 },
+		clientX: { value: 10 }, clientY: { value: 10 },
+	});
+	target.dispatchEvent(event);
+}
+
+afterEach(async () => {
 	for (const item of mounted.splice(0)) {
 		item.app.unmount();
 		item.container.remove();
 	}
+	// Teleported leave transitions must finish before the next fixture starts.
+	await vi.waitFor(() => expect(window.document.querySelector('[data-calendar-trash]')).toBeNull());
+	vi.restoreAllMocks();
 	vi.unstubAllGlobals();
 });
 
@@ -137,6 +178,12 @@ describe('HataskCalendarPlanner', () => {
 		expect(handlers.view).toHaveBeenCalledWith('week');
 		expect(handlers.selectDate).toHaveBeenCalledWith(days[2]);
 		expect(handlers.filter).toHaveBeenCalledWith('mine');
+		expect(container.querySelector('[aria-label="自分の予定"] i')?.className).toContain('ti-lock');
+		const publicFilter = container.querySelector<HTMLButtonElement>('[aria-label="公開"]');
+		expect(publicFilter?.querySelector('i')?.className).toContain('ti-world');
+		expect(publicFilter?.getAttribute('aria-pressed')).toBe('false');
+		publicFilter?.click();
+		expect(handlers.filter).toHaveBeenCalledWith('public');
 		expect(handlers.activate).toHaveBeenCalledWith(days[2].events[0], days[2]);
 	});
 
@@ -186,6 +233,86 @@ describe('HataskCalendarPlanner', () => {
 		expect(first?.style.width).toContain('50%');
 	});
 
+	test.each(['day', 'trash'] as const)('予定を%sへドラッグしてもpointercancelでは確定せず、次のドラッグは使える', async targetKind => {
+		vi.useFakeTimers();
+		try {
+			mockCalendarWidth(1100);
+			const original = JSON.stringify(days);
+			const { container, handlers } = mountCalendar();
+			await nextTick();
+			const source = container.querySelector<HTMLButtonElement>('[data-calendar-day-pane] [aria-label="打ち合わせを開く"]');
+			if (!source) throw new Error('day pane event drag source was not rendered');
+			const hitTest = vi.spyOn(window.document, 'elementFromPoint');
+			const beginDrag = async () => {
+				dispatchTouchPointer(source, 'pointerdown');
+				vi.advanceTimersByTime(380);
+				await nextTick();
+				const target = targetKind === 'trash'
+					? window.document.querySelector('[data-calendar-trash]')
+					: container.querySelector(`[data-calendar-drop-date="${days[3].date}"]`);
+				if (!target) throw new Error(`required ${targetKind} drop target was not rendered`);
+				hitTest.mockReturnValue(target);
+				dispatchTouchPointer(window, 'pointermove');
+			};
+			const expectNormalDrop = () => {
+				if (targetKind === 'trash') expect(handlers.trash).toHaveBeenCalledWith(days[2].events[0]);
+				else expect(handlers.drop).toHaveBeenCalledWith(days[2].events[0], days[3], undefined);
+			};
+
+			// Positive control: the same source and target can produce a normal drop.
+			await beginDrag();
+			dispatchTouchPointer(window, 'pointerup');
+			expectNormalDrop();
+			handlers.drop.mockClear();
+			handlers.trash.mockClear();
+
+			await beginDrag();
+			dispatchTouchPointer(window, 'pointercancel');
+			dispatchTouchPointer(window, 'pointerup');
+			expect(handlers.drop).not.toHaveBeenCalled();
+			expect(handlers.trash).not.toHaveBeenCalled();
+
+			await beginDrag();
+			dispatchTouchPointer(window, 'pointerup');
+			expectNormalDrop();
+			expect(JSON.stringify(days)).toBe(original);
+		} finally {
+			await nextTick();
+			await vi.advanceTimersByTimeAsync(500);
+			vi.useRealTimers();
+		}
+	});
+
+	test('長押し成立前のpointercancelでも開始待ちを解除する', async () => {
+		vi.useFakeTimers();
+		try {
+			const { container, handlers } = mountCalendar();
+			await nextTick();
+			const source = container.querySelector('[aria-label="打ち合わせを開く"]');
+			if (!source) throw new Error('calendar event drag source was not rendered');
+			expect(window.document.querySelector('[data-calendar-trash]')).toBeNull();
+			dispatchTouchPointer(source, 'pointerdown');
+			vi.advanceTimersByTime(100);
+			dispatchTouchPointer(window, 'pointercancel');
+			vi.advanceTimersByTime(1000);
+			await nextTick();
+			expect(window.document.querySelector('[data-calendar-trash]')).toBeNull();
+			dispatchTouchPointer(window, 'pointerup');
+			expect(handlers.drop).not.toHaveBeenCalled();
+			expect(handlers.trash).not.toHaveBeenCalled();
+			// Positive control: without cancellation the same long press starts.
+			dispatchTouchPointer(source, 'pointerdown');
+			vi.advanceTimersByTime(380);
+			await nextTick();
+			expect(window.document.querySelector('[data-calendar-trash]')).not.toBeNull();
+			dispatchTouchPointer(window, 'pointercancel');
+		} finally {
+			await nextTick();
+			await vi.advanceTimersByTimeAsync(500);
+			vi.useRealTimers();
+		}
+	});
+
 	test('読み込み表示は親のライブリージョンと重複せず、busy状態だけを公開する', async () => {
 		const { container } = mountCalendar({ loading: true });
 		await nextTick();
@@ -214,5 +341,177 @@ describe('HataskCalendarPlanner', () => {
 		const { container } = mountCalendar();
 		await nextTick();
 		expect(container.querySelector<HTMLElement>('[data-hatask-component="calendar"]')?.dataset.compact).toBe('true');
+	});
+
+	test.each(['kisetsu', 'kashin', 'suri', 'hatakyu'])('PCの%sテーマは選択日の全予定を右ペインへ併置する', async theme => {
+		mockCalendarWidth(1100);
+		const selected = {
+			...days[2],
+			events: Array.from({ length: 5 }, (_, index) => ({ ...days[2].events[0], id: `event-${index + 1}`, title: `予定${index + 1}` })),
+		};
+		const calendarDays = days.map(day => day.isSelected ? selected : day);
+		const original = JSON.stringify(calendarDays);
+		const { container, handlers } = mountCalendar({ theme, days: calendarDays });
+		await nextTick();
+		expect(container.querySelector<HTMLElement>('[data-hatask-component="calendar"]')?.dataset.layout).toBe('split');
+		expect(container.querySelector<HTMLElement>('[data-hatask-component="calendar"]')?.dataset.hataskTheme).toBe(theme);
+		expect(container.querySelectorAll('[role="gridcell"]')).toHaveLength(7);
+		const pane = container.querySelector<HTMLElement>('[data-calendar-day-pane]');
+		expect(pane?.dataset.desktopPane).toBe('true');
+		expect(pane?.dataset.date).toBe(selected.date);
+		expect(pane?.getAttribute('aria-label')).toBe(`${labels.selectedDay}: ${selected.label}`);
+		expect(pane?.querySelectorAll('[data-calendar-event]')).toHaveLength(5);
+		expect(pane?.textContent).toContain('予定5');
+		expect(JSON.stringify(calendarDays)).toBe(original);
+		expect(handlers.selectDate).not.toHaveBeenCalled();
+	});
+
+	test('右ペインの詳細・編集・移動・日表示は既存の親イベントへ通知する', async () => {
+		mockCalendarWidth(1100);
+		const { container, handlers } = mountCalendar();
+		await nextTick();
+		const pane = container.querySelector('[data-calendar-day-pane]');
+		pane?.querySelector<HTMLButtonElement>('[aria-label="打ち合わせを開く"]')?.click();
+		pane?.querySelector<HTMLButtonElement>('[aria-label="打ち合わせを編集"]')?.click();
+		pane?.querySelector<HTMLButtonElement>('[aria-label="打ち合わせを移動または複製"]')?.click();
+		pane?.querySelector<HTMLButtonElement>('[data-calendar-pane-open-day]')?.click();
+		expect(handlers.activate).toHaveBeenCalledWith(days[2].events[0], days[2]);
+		expect(handlers.edit).toHaveBeenCalledWith(days[2].events[0], days[2]);
+		expect(handlers.move).toHaveBeenCalledWith(days[2].events[0], days[2]);
+		expect(handlers.showMore).toHaveBeenCalledWith(days[2]);
+		expect(handlers.view).not.toHaveBeenCalled();
+	});
+
+	test('右ペインの日付送りは無効日を飛ばし、親の選択更新へ追従する', async () => {
+		mockCalendarWidth(1100);
+		const state = reactive({ days: days.map((day, index) => ({ ...day, isDisabled: index === 3 })) });
+		const { container, handlers } = mountCalendar(state);
+		await nextTick();
+		container.querySelector<HTMLButtonElement>('[data-calendar-pane-previous]')?.click();
+		expect(handlers.selectDate).toHaveBeenLastCalledWith(state.days[1]);
+		container.querySelector<HTMLButtonElement>('[data-calendar-pane-next]')?.click();
+		expect(handlers.selectDate).toHaveBeenLastCalledWith(state.days[4]);
+		state.days = state.days.map((day, index) => ({ ...day, isSelected: index === 4 }));
+		await nextTick();
+		expect(container.querySelector<HTMLElement>('[data-calendar-day-pane]')?.dataset.date).toBe(state.days[4].date);
+		expect(container.querySelector('[data-calendar-day-pane]')?.textContent).toContain(labels.empty);
+		state.days = state.days.map((day, index) => ({ ...day, isSelected: index === 0 }));
+		await nextTick();
+		expect(container.querySelector<HTMLButtonElement>('[data-calendar-pane-previous]')?.disabled).toBe(true);
+	});
+
+	test('ウィンドウ幅の往復では月の選択日と予定を保持し、モバイルへPC操作を持ち込まない', async () => {
+		const resize = mockCalendarWidth(1100);
+		const original = JSON.stringify(days);
+		const { container, handlers } = mountCalendar();
+		await nextTick();
+		const pane = container.querySelector('[data-calendar-day-pane]');
+		resize(480);
+		await nextTick();
+		expect(container.querySelector<HTMLElement>('[data-hatask-component="calendar"]')?.dataset.layout).toBe('single');
+		expect(container.querySelector<HTMLElement>('[data-hatask-component="calendar"]')?.dataset.compact).toBe('true');
+		expect(container.querySelector('[data-calendar-day-pane]')).toBe(pane);
+		expect(container.querySelector<HTMLElement>('[data-calendar-day-pane]')?.dataset.desktopPane).toBe('false');
+		expect(container.querySelector('[data-calendar-pane-open-day]')).toBeNull();
+		resize(1100);
+		await nextTick();
+		expect(container.querySelector('[data-calendar-day-pane]')).toBe(pane);
+		expect(container.querySelector<HTMLElement>('[data-calendar-day-pane]')?.dataset.date).toBe(days[2].date);
+		expect(JSON.stringify(days)).toBe(original);
+		expect(handlers.selectDate).not.toHaveBeenCalled();
+	});
+
+	test('週表示は充分な幅があるときだけ右ペインを開いて七日分の時間軸を保つ', async () => {
+		const resize = mockCalendarWidth(1100);
+		const { container } = mountCalendar({ view: 'week' });
+		await nextTick();
+		expect(container.querySelector<HTMLElement>('[data-hatask-component="calendar"]')?.dataset.layout).toBe('single');
+		expect(container.querySelector('[data-calendar-day-pane]')).toBeNull();
+		resize(1140);
+		await nextTick();
+		expect(container.querySelector<HTMLElement>('[data-hatask-component="calendar"]')?.dataset.layout).toBe('split');
+		expect(container.querySelectorAll('[data-calendar-time-canvas]')).toHaveLength(7);
+		expect(container.querySelector('[data-calendar-day-pane]')).not.toBeNull();
+		resize(640);
+		await nextTick();
+		expect(container.querySelector('[data-calendar-day-pane]')).toBeNull();
+		expect(container.querySelectorAll('[data-calendar-time-canvas]')).toHaveLength(7);
+	});
+
+	test.each([
+		{ view: 'month', layout: 'split', pane: true, eventCopies: 2 },
+		{ view: 'week', layout: 'split', pane: true, eventCopies: 2 },
+		{ view: 'day', layout: 'single', pane: false, eventCopies: 1 },
+		{ view: 'agenda', layout: 'single', pane: false, eventCopies: 1 },
+	] as const)('PC幅の$view表示は$layoutレイアウトとなり右ペイン=$paneで予定を描画する', async ({ view, layout, pane, eventCopies }) => {
+		mockCalendarWidth(1200);
+		const { container } = mountCalendar({ view });
+		await nextTick();
+		expect(container.querySelector<HTMLElement>('[data-hatask-component="calendar"]')?.dataset.layout).toBe(layout);
+		expect(container.querySelector('[data-calendar-day-pane]') != null).toBe(pane);
+		expect(container.querySelectorAll('[data-calendar-event="event-1"]')).toHaveLength(eventCopies);
+	});
+
+	test('PCで選択が未指定なら今日の予定を参照し、選択や元データを書き換えない', async () => {
+		mockCalendarWidth(1100);
+		const calendarDays = days.map(day => ({ ...day, isSelected: false }));
+		const original = JSON.stringify(calendarDays);
+		const { container, handlers } = mountCalendar({ days: calendarDays });
+		await nextTick();
+		expect(container.querySelector<HTMLElement>('[data-calendar-day-pane]')?.dataset.date).toBe(days[1].date);
+		expect(JSON.stringify(calendarDays)).toBe(original);
+		expect(handlers.selectDate).not.toHaveBeenCalled();
+	});
+
+	test('読み取り専用でも右ペインは読めるが、編集や移動は無効のままにする', async () => {
+		mockCalendarWidth(1100);
+		const { container, handlers } = mountCalendar({ readOnly: true });
+		await nextTick();
+		const pane = container.querySelector('[data-calendar-day-pane]');
+		const edit = pane?.querySelector<HTMLButtonElement>('[aria-label="打ち合わせを編集"]');
+		const move = pane?.querySelector<HTMLButtonElement>('[aria-label="打ち合わせを移動または複製"]');
+		expect(pane?.textContent).toContain('打ち合わせ');
+		expect(edit?.disabled).toBe(true);
+		expect(move?.disabled).toBe(true);
+		edit?.click();
+		move?.click();
+		expect(handlers.edit).not.toHaveBeenCalled();
+		expect(handlers.move).not.toHaveBeenCalled();
+	});
+
+	test('PC月表示は日付セルを一件と続きの導線へ圧縮し、小窓では従来の件数を保つ', async () => {
+		const resize = mockCalendarWidth(1100);
+		const selected = {
+			...days[2],
+			events: Array.from({ length: 4 }, (_, index) => ({ ...days[2].events[0], id: `dense-event-${index + 1}`, title: `予定${index + 1}` })),
+		};
+		const calendarDays = days.map(day => day.isSelected ? selected : day);
+		const { container } = mountCalendar({ days: calendarDays });
+		await nextTick();
+		const selectedCell = container.querySelector('[role="gridcell"][aria-selected="true"]');
+		expect(selectedCell?.querySelectorAll('[data-calendar-event]')).toHaveLength(1);
+		expect(selectedCell?.textContent).toContain('ほか3件');
+		resize(480);
+		await nextTick();
+		expect(selectedCell?.querySelectorAll('[data-calendar-event]')).toHaveLength(3);
+		expect(selectedCell?.textContent).toContain('ほか1件');
+	});
+
+	test('二ペインは名前付きコンテナと縮められる列を使い、小窓と縮小モーションを保持する', () => {
+		// Source contract only; Happy DOM does not verify rendered container layout.
+		const filename = resolve(process.cwd(), 'src/components/hatask/HataskCalendarPlanner.vue');
+		const parsed = parse(readFileSync(filename, 'utf8'), { filename });
+		expect(parsed.errors).toEqual([]);
+		const stylesheet = parsed.descriptor.styles[0].content;
+		expect(stylesheet).toContain('container-name: hatask-calendar;');
+		expect(stylesheet).toContain('@container hatask-calendar (min-width: 960px)');
+		expect(stylesheet).toContain('@container hatask-calendar (min-width: 900px)');
+		expect(stylesheet).toContain('@container hatask-calendar (min-width: 1120px)');
+		expect(stylesheet).toContain('height: 600px;');
+		expect(stylesheet).toContain('grid-template-columns: minmax(0, 1fr) minmax(280px, .43fr)');
+		expect(stylesheet).toContain('grid-template-columns: minmax(0, 1fr) 280px');
+		expect(stylesheet).toContain('grid-template-columns: minmax(0, 1.35fr) repeat(6, minmax(0, 1fr))');
+		expect(stylesheet).toContain('@container (max-width: 720px)');
+		expect(stylesheet).toContain('@media (prefers-reduced-motion: reduce)');
 	});
 });
