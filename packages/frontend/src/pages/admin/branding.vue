@@ -169,6 +169,7 @@ import { definePage } from '@/page.js';
 import MkButton from '@/components/MkButton.vue';
 import MkColorInput from '@/components/MkColorInput.vue';
 import MkSwitch from '@/components/MkSwitch.vue';
+import { resolveFeedbackUrl } from '@/utility/feedback-url.js';
 
 const meta = await misskeyApi('admin/meta');
 
@@ -190,7 +191,7 @@ const infoImageUrl = ref(meta.infoImageUrl);
 const notFoundImageUrl = ref(meta.notFoundImageUrl);
 const youBlockedImageUrl = ref(meta.youBlockedImageUrl);
 const repositoryUrl = ref(meta.repositoryUrl);
-const feedbackUrl = ref(meta.feedbackUrl);
+const feedbackUrl = ref(resolveFeedbackUrl(meta.feedbackUrl));
 const manifestJsonOverride = ref(meta.manifestJsonOverride === '' ? '{}' : JSON.stringify(JSON.parse(meta.manifestJsonOverride), null, '\t'));
 const customSplashText = ref(meta.customSplashText.join('\n'));
 

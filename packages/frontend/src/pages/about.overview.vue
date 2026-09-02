@@ -88,7 +88,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<template #icon><i class="ti ti-shield-lock"></i></template>
 					<template #default>{{ i18n.ts.privacyPolicy }}</template>
 				</FormLink>
-				<FormLink v-if="instance.feedbackUrl" :to="instance.feedbackUrl" external>
+				<FormLink v-if="feedbackUrl" :to="feedbackUrl" external>
 					<template #icon><i class="ti ti-message"></i></template>
 					<template #default>{{ i18n.ts.feedback }}</template>
 				</FormLink>
@@ -134,6 +134,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
+import { computed } from 'vue';
 import { host, version, gitHash } from '@@/js/config.js';
 import { i18n } from '@/i18n.js';
 import { instance } from '@/instance.js';
@@ -147,9 +148,11 @@ import MkKeyValue from '@/components/MkKeyValue.vue';
 import MkLink from '@/components/MkLink.vue';
 import MkInfo from '@/components/MkInfo.vue';
 import { donateCherryPick } from '@/utility/donate-cherrypick.js';
+import { resolveFeedbackUrl } from '@/utility/feedback-url.js';
 
 const initStats = () => misskeyApi('stats', {});
 const serverInfoCopy = i18n.ts._hata._serverInfo;
+const feedbackUrl = computed(() => resolveFeedbackUrl(instance.feedbackUrl));
 </script>
 
 <style lang="scss" module>

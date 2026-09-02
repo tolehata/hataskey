@@ -15,6 +15,7 @@ import { SystemAccountService } from '@/core/SystemAccountService.js';
 import type { Config } from '@/config.js';
 import { DI } from '@/di-symbols.js';
 import { DEFAULT_POLICIES } from '@/core/RoleService.js';
+import { resolveFeedbackUrl } from '@/misc/feedback-url.js';
 
 @Injectable()
 export class MetaEntityService {
@@ -80,7 +81,7 @@ export class MetaEntityService {
 			langs: instance.langs,
 			tosUrl: instance.termsOfServiceUrl,
 			repositoryUrl: instance.repositoryUrl,
-			feedbackUrl: instance.feedbackUrl,
+			feedbackUrl: resolveFeedbackUrl(instance.feedbackUrl),
 			impressumUrl: instance.impressumUrl,
 			privacyPolicyUrl: instance.privacyPolicyUrl,
 			inquiryUrl: instance.inquiryUrl,

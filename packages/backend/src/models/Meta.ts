@@ -389,7 +389,7 @@ export class MiMeta {
 
 	@Column('varchar', {
 		length: 1024,
-		default: 'https://github.com/tolehata/hataskey/issues',
+		default: 'https://github.com/tolehata/hataskey/issues/new',
 		nullable: true,
 	})
 	public feedbackUrl: string | null;

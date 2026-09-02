@@ -14,6 +14,7 @@ import NotesChart from '@/core/chart/charts/notes.js';
 import UsersChart from '@/core/chart/charts/users.js';
 import { DEFAULT_POLICIES } from '@/core/RoleService.js';
 import { SystemAccountService } from '@/core/SystemAccountService.js';
+import { resolveFeedbackUrl } from '@/misc/feedback-url.js';
 import type { FastifyInstance, FastifyPluginOptions } from 'fastify';
 
 const nodeinfo2_1path = '/nodeinfo/2.1';
@@ -123,7 +124,7 @@ export class NodeinfoServerService {
 					inquiryUrl: meta.inquiryUrl,
 					impressumUrl: meta.impressumUrl,
 					repositoryUrl: meta.repositoryUrl,
-					feedbackUrl: meta.feedbackUrl,
+					feedbackUrl: resolveFeedbackUrl(meta.feedbackUrl),
 					disableRegistration: meta.disableRegistration,
 					disableLocalTimeline: !basePolicies.ltlAvailable,
 					disableGlobalTimeline: !basePolicies.gtlAvailable,

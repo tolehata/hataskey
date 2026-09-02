@@ -65,7 +65,7 @@ export const packedMetaLiteSchema = {
 		feedbackUrl: {
 			type: 'string',
 			optional: false, nullable: true,
-			default: 'https://github.com/tolehata/hataskey/issues',
+			default: 'https://github.com/tolehata/hataskey/issues/new',
 		},
 		defaultDarkTheme: {
 			type: 'string',

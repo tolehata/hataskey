@@ -10,6 +10,7 @@ import type { Config } from '@/config.js';
 import { DI } from '@/di-symbols.js';
 import { DEFAULT_POLICIES } from '@/core/RoleService.js';
 import { SystemAccountService } from '@/core/SystemAccountService.js';
+import { resolveFeedbackUrl } from '@/misc/feedback-url.js';
 
 export const meta = {
 	tags: ['meta'],
@@ -761,7 +762,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				langs: instance.langs,
 				tosUrl: instance.termsOfServiceUrl,
 				repositoryUrl: instance.repositoryUrl,
-				feedbackUrl: instance.feedbackUrl,
+				feedbackUrl: resolveFeedbackUrl(instance.feedbackUrl),
 				impressumUrl: instance.impressumUrl,
 				privacyPolicyUrl: instance.privacyPolicyUrl,
 				inquiryUrl: instance.inquiryUrl,
