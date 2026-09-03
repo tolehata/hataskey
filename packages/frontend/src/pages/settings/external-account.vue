@@ -214,6 +214,7 @@ const HATACHI_2 = 'misskey.hatachanoima.net';
 const LES_REQUIN = 'mi.les-requin.net';
 const KIGOTEI = 'ddoskey.com';
 const BEARBEAR = 'xiapopisland.top';
+const JUICE_SERVER = 'mk-juice.dev';
 
 const hostOptions = computed(() => {
 	const options: { value: string; label: string }[] = [];
@@ -236,6 +237,10 @@ const hostOptions = computed(() => {
 
 	if (currentHost !== BEARBEAR) {
 		options.push({ value: BEARBEAR, label: `BearBear (${BEARBEAR})` });
+	}
+
+	if (currentHost !== JUICE_SERVER) {
+		options.push({ value: JUICE_SERVER, label: `Juice Server (${JUICE_SERVER})` });
 	}
 
 	return options;
