@@ -486,7 +486,7 @@ describe('HataSNSCordUIの結線', () => {
 		expect(page).toContain("if (data.type === 'noteUpdated') handleExternalNoteUpdated");
 		expect(page).toContain('streamGeneration !== externalTimelineStreamGeneration || !prefs.value.timelineRealtime');
 		expect(page).toContain('@reactionChanged="onExternalReactionChanged"');
-		expect(externalNote).toContain('watch(() => props.note.reactions');
+		expect(externalNote).toContain('watch(() => appearNote.value.reactions');
 	});
 
 	test('リスト・アンテナ・チャンネル表示中は関連設定への動線をヘッダーに出す', () => {

@@ -4,7 +4,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 
 <template>
-<MkCustomEmoji v-if="reaction[0] === ':'" ref="elRef" :name="reaction" :normal="true" :noStyle="noStyle" :url="emojiUrl" :fallbackToImage="true"/>
+<MkCustomEmoji v-if="reaction[0] === ':'" ref="elRef" :name="reaction" :normal="true" :noStyle="noStyle" :url="emojiUrl" :fallbackToImage="fallbackToImage"/>
 <MkEmoji v-else ref="elRef" :emoji="reaction" :normal="true" :noStyle="noStyle"/>
 </template>
 
@@ -13,12 +13,16 @@ import { defineAsyncComponent, useTemplateRef } from 'vue';
 import { useTooltip } from '@/composables/use-tooltip.js';
 import * as os from '@/os.js';
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
 	reaction: string;
 	noStyle?: boolean;
 	emojiUrl?: string;
 	withTooltip?: boolean;
-}>();
+	fallbackToImage?: boolean;
+}>(), {
+	emojiUrl: undefined,
+	fallbackToImage: true,
+});
 
 const elRef = useTemplateRef('elRef');
 

@@ -273,8 +273,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 							<MkStreamingNotesTimeline v-else-if="tab === 'local'" key="local" src="local" :withRenotes="withRenotes" :withSensitive="withSensitive" :onlyFiles="onlyFiles" :glassBg="timelineGlassBg"/>
 							<MkStreamingNotesTimeline v-else-if="tab === 'social'" key="social" src="social" :withRenotes="withRenotes" :withSensitive="withSensitive" :onlyFiles="onlyFiles" :glassBg="timelineGlassBg"/>
 							<MkStreamingNotesTimeline v-else-if="tab === 'following'" key="following" src="home" :withRenotes="withRenotes" :withSensitive="withSensitive" :onlyFiles="onlyFiles" :glassBg="timelineGlassBg"/>
-							<MkExternalTimeline v-else-if="tab === 'ohtl' && externalHost && externalToken" key="ohtl" src="ohtl" :host="externalHost" :token="externalToken" :sound="true" :simpleUi="true"/>
-							<MkExternalTimeline v-else-if="tab === 'oltl' && externalHost && externalToken" key="oltl" src="oltl" :host="externalHost" :token="externalToken" :sound="true" :simpleUi="true"/>
+							<MkExternalTimeline v-else-if="tab === 'ohtl' && externalHost && externalToken" key="ohtl" src="ohtl" :host="externalHost" :token="externalToken" :sound="true" :simpleUi="true" :hataskeyUi="true" :glassBg="timelineGlassBg"/>
+							<MkExternalTimeline v-else-if="tab === 'oltl' && externalHost && externalToken" key="oltl" src="oltl" :host="externalHost" :token="externalToken" :sound="true" :simpleUi="true" :hataskeyUi="true" :glassBg="timelineGlassBg"/>
 							<!-- 旗鯖fork: トレンドタイムライン (TTL) -->
 							<MkTrendingTimeline v-else-if="tab === 'trending'" key="trending" :glassBg="timelineGlassBg"/>
 						</KeepAlive>

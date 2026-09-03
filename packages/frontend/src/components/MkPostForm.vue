@@ -57,17 +57,21 @@ SPDX-License-Identifier: AGPL-3.0-only
 		</div>
 	</header>
 	<MkNoteSimple v-if="replyTargetNote" :class="$style.targetNote" :note="replyTargetNote" :enableNoteClick="false"/>
-	<div v-else-if="externalReplyTarget" :class="$style.targetNote">
-	  <div :class="$style.externalTargetNote">
-            <span :class="$style.externalBadgeInline"><i class="ti ti-external-link"></i></span>
-		<I18n :src="i18n.ts._hata._postFormCustom.externalReplyTo" tag="span">
-			<template #account>
-				<b>@{{ externalReplyTarget.user.username }}@{{ externalReplyTarget.user.host || externalHost }}</b>
-			</template>
-		</I18n>
-	  </div>
-	  <div v-if="externalReplyTarget.text" :class="$style.externalTargetText">{{ externalReplyTarget.text }}</div>
-        </div>
+	<div v-else-if="externalReplyTarget" :class="[$style.targetNote, $style.externalReplyTarget]">
+		<img v-if="externalReplyTarget.user.avatarUrl" :class="$style.externalTargetAvatar" :src="externalReplyTarget.user.avatarUrl" :alt="externalReplyTarget.user.username"/>
+		<span v-else :class="[$style.externalTargetAvatar, $style.externalTargetAvatarFallback]" aria-hidden="true"><i class="ti ti-user"></i></span>
+		<div :class="$style.externalTargetBody">
+			<div :class="$style.externalTargetNote">
+				<span :class="$style.externalBadgeInline"><i class="ti ti-external-link"></i></span>
+				<I18n :src="i18n.ts._hata._postFormCustom.externalReplyTo" tag="span">
+					<template #account>
+						<b>@{{ externalReplyTarget.user.username }}@{{ externalReplyTarget.user.host || externalHost }}</b>
+					</template>
+				</I18n>
+			</div>
+			<div v-if="externalReplyTarget.text" :class="$style.externalTargetText">{{ externalReplyTarget.text }}</div>
+		</div>
+	</div>
 	<MkNoteSimple v-if="renoteTargetNote" :class="$style.targetNote" :note="renoteTargetNote" :enableNoteClick="false"/>
 	<div v-if="quoteId" :class="$style.withQuote"><i class="ti ti-quote"></i> {{ i18n.ts.quoteAttached }}<button class="_button" @click="quoteId = null; renoteTargetNote = null;"><i class="ti ti-x"></i></button></div>
 	<MkEventEditor v-if="event" v-model="event" @destroyed="event = null"/>
@@ -2487,10 +2491,33 @@ html[data-color-scheme=light] .preview {
 	margin-right: 4px;
 }
 
+.externalReplyTarget {
+	display: flex;
+	align-items: flex-start;
+	gap: 10px;
+}
+
+.externalTargetAvatar {
+	width: 38px;
+	height: 38px;
+	flex: 0 0 auto;
+	border-radius: 50%;
+	object-fit: cover;
+}
+
+.externalTargetAvatarFallback {
+	display: grid;
+	place-items: center;
+	background: var(--MI_THEME-buttonBg);
+	color: var(--MI_THEME-fg);
+}
+
+.externalTargetBody {
+	min-width: 0;
+	flex: 1;
+}
+
 .externalTargetNote {
-	padding: 8px 12px;
-	background: var(--MI_THEME-panel);
-	border-radius: 8px;
 	font-size: 0.9em;
 }
 

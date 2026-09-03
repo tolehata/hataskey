@@ -231,7 +231,7 @@ const props = withDefaults(defineProps<{
 });
 
 const emit = defineEmits<{
-	(ev: 'done', reaction: string): void;
+	(ev: 'done', reaction: string, emojiUrl?: string): void;
 	(ev: 'closed'): void;
 }>();
 
@@ -328,6 +328,10 @@ const categorizedEmojis = computed(() => {
 //
 // host/url を付与して保存することで、別の外部サーバー使用時にも復元可能にする(API不要)。
 // Unicode絵文字や URL 不明のものは host=null, url=null で保存(従来挙動と同じ)。
+function normalizeExternalEmojiHost(host: string | null | undefined, currentHost: string | null): string | null {
+	return host === '.' ? currentHost : (host ?? null);
+}
+
 function addFavorite(emoji: string) {
 	const meta = resolveEmojiMeta(emoji);
 	addExternalFavoriteEmoji(emoji, meta.host, meta.url);
@@ -344,6 +348,7 @@ function removeFavorite(emoji: string) {
 /**
  * リアクション文字列から host と url を推測する補助関数
  * - :name: 形式 → 現在の外部サーバーのhost + customEmojis[name].url
+ * - :name@.: 形式 → 現在の外部サーバーのhostへ正規化
  * - :name@host: 形式 → host + 既知マップ参照
  * - Unicode → host=null, url=null
  */
@@ -355,16 +360,17 @@ function resolveEmojiMeta(reaction: string): { host: string | null; url: string 
 	const explicitHost = match[2] ?? null;
 	const acc = getExternalAccount();
 	const currentHost = acc?.host ?? null;
+	const targetHost = normalizeExternalEmojiHost(explicitHost, currentHost) ?? currentHost;
 
 	// 探索順: explicitHost指定 → 現サーバー
-	if (explicitHost) {
-		return { host: explicitHost, url: lookupExternalEmojiUrl(explicitHost, name) };
+	if (targetHost) {
+		const emoji = customEmojis.value.find(e => e.name === name);
+		return {
+			host: targetHost,
+			url: lookupExternalEmojiUrl(targetHost, name) ?? (targetHost === currentHost ? emoji?.url ?? null : null),
+		};
 	}
-	const emoji = customEmojis.value.find(e => e.name === name);
-	return {
-		host: currentHost,
-		url: emoji?.url ?? null,
-	};
+	return { host: null, url: null };
 }
 
 // ===== 履歴/お気に入りエントリの索引(URL高速ルックアップ用) =====
@@ -406,7 +412,8 @@ function getCustomEmojiUrl(reaction: string): string {
 
 	// レイヤー2: ホストごとの絵文字URLマップから引く(API呼ばずに別ホストの絵文字を解決)
 	// ホストの優先順: explicitHost(:name@host: 形式) → 履歴/お気に入りに保存されたhost
-	const candidateHost = explicitHost ?? favEntry?.host ?? recEntry?.host ?? null;
+	const currentHost = getExternalAccount()?.host ?? null;
+	const candidateHost = normalizeExternalEmojiHost(explicitHost ?? favEntry?.host ?? recEntry?.host, currentHost);
 	if (candidateHost) {
 		const fromMap = lookupExternalEmojiUrl(candidateHost, name);
 		if (fromMap) return fromMap;
@@ -419,7 +426,7 @@ function getCustomEmojiUrl(reaction: string): string {
 
 // ===== アクション =====
 function selectEmoji(reaction: string) {
-	emit('done', reaction);
+	emit('done', reaction, getCustomEmojiUrl(reaction) || undefined);
 	modal.value?.close();
 }
 

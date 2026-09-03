@@ -4,126 +4,155 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 
 <template>
-<article :class="$style.root">
-	<!-- アバター（吹き出しの外） -->
-	<button v-if="note.user" :class="$style.avatar" class="_button" @click="openUserPopup">
-		<img :class="$style.avatarImg" :src="note.user.avatarUrl" :alt="note.user.username"/>
-	</button>
-	<div :class="$style.main">
-		<div>
-			<div :class="$style.header">
-				<div :class="$style.headerBody">
-					<div :class="$style.headerTop">
-						<button :class="$style.name" class="_button" @click="openUserPopup">
-							<Mfm :text="note.user?.name || note.user?.username" :plain="true" :nyaize="false" :author="mfmAuthor" :emojiUrls="mergedEmojiUrls"/>
-						</button>
-						<span :class="$style.username">
-							@{{ note.user?.username }}@{{ note.user?.host || host }}
-						</span>
-						<MkA v-if="safeNoteUrl" :to="safeNoteUrl" target="_blank" :class="$style.time">
-							<MkTime :time="note.createdAt"/>
-						</MkA>
-						<span v-else :class="$style.time">
-							<MkTime :time="note.createdAt"/>
-						</span>
-						<span v-if="visibilityInfo" :class="$style.visibilityBadge" :title="visibilityInfo.label">
-							<i :class="visibilityInfo.icon"></i>
-						</span>
-						<span v-if="localOnlyBadge" :class="$style.visibilityBadge" :title="localOnlyBadge.label">
-							<i :class="localOnlyBadge.icon"></i>
-						</span>
+<article
+	:class="$style.root"
+	:data-external-note-ui="visualMode !== 'legacy' ? 'hataskey' : undefined"
+	:data-external-note-mode="visualMode !== 'legacy' ? visualMode : undefined"
+	:data-external-note-glass="visualMode !== 'legacy' && glassBg ? 'on' : undefined"
+	:data-external-note-embedded="embedded ? 'on' : undefined"
+	:data-external-note-pure-renote="isPureRenote ? 'on' : undefined"
+>
+	<div v-if="isPureRenote" :class="$style.renoteAttribution">
+		<i class="ti ti-repeat"></i>
+		<span :class="$style.renoteAttributionName">{{ note.user?.name || note.user?.username }}</span>
+		<span>{{ copy.renote }}</span>
+		<span v-if="renoteChannelInfo" :class="$style.renoteChannel" :title="renoteChannelInfo.name">
+			<i class="ti ti-device-tv" aria-hidden="true"></i>
+			<span :class="$style.channelName">{{ renoteChannelInfo.name }}</span>
+		</span>
+		<MkTime :time="note.createdAt"/>
+	</div>
+	<div :class="$style.bubbleBody">
+		<button v-if="appearNote.user" :class="$style.avatar" class="_button" @click="openUserPopup">
+			<img :class="$style.avatarImg" :src="appearNote.user.avatarUrl" :alt="appearNote.user.username"/>
+		</button>
+		<div :class="$style.main">
+			<div>
+				<div :class="$style.header">
+					<div :class="$style.headerBody">
+						<div :class="$style.headerTop">
+							<button :class="$style.name" class="_button" @click="openUserPopup">
+								<Mfm :text="appearNote.user?.name || appearNote.user?.username" :plain="true" :nyaize="false" :author="mfmAuthor" :emojiUrls="mergedEmojiUrls"/>
+							</button>
+							<span :class="$style.username">
+								@{{ appearNote.user?.username }}@{{ appearNote.user?.host || host }}
+							</span>
+							<MkA v-if="safeNoteUrl" :to="safeNoteUrl" target="_blank" :class="$style.time">
+								<MkTime :time="appearNote.createdAt"/>
+							</MkA>
+							<span v-else :class="$style.time">
+								<MkTime :time="appearNote.createdAt"/>
+							</span>
+							<span v-if="visibilityInfo" :class="$style.visibilityBadge" :title="visibilityInfo.label">
+								<i :class="visibilityInfo.icon"></i>
+							</span>
+							<span v-if="localOnlyBadge" :class="$style.visibilityBadge" :title="localOnlyBadge.label">
+								<i :class="localOnlyBadge.icon"></i>
+							</span>
+						</div>
 					</div>
 				</div>
-			</div>
 
-		<div v-if="note.cw != null" :class="$style.cw">
-			<span>{{ note.cw }}</span>
-			<button :class="$style.cwButton" @click="showContent = !showContent">
-				{{ showContent ? copy.hideContent : copy.showContent }}
-			</button>
-		</div>
-
-		<div v-show="note.cw == null || showContent" :class="$style.content">
-			<div v-if="note.text" :class="$style.text">
-				<Mfm
-					:key="`mfm-${emojiMapReady}`"
-					:text="note.text"
-					:author="mfmAuthor"
-					:nyaize="false"
-					:emojiUrls="mergedEmojiUrls"
-				/>
-			</div>
-
-			<!-- ファイル表示（Misskeyメディアプレーヤー使用） -->
-			<MkMediaList v-if="note.files && note.files.length > 0" :mediaList="normalizedFiles"/>
-
-			<div v-if="note.renote" :class="$style.renote">
-				<div :class="$style.renoteHeader">
-					<i class="ti ti-repeat"></i> {{ copy.renote }}
+				<div v-if="appearNote.replyId && appearNote.reply?.user" :class="$style.replyContext">
+					<i class="ti ti-arrow-back-up"></i>
+					<span>{{ replyToText }}</span>
 				</div>
-				<MkExternalNote :note="note.renote" :host="host" :token="token" :class="$style.renoteNote"/>
-			</div>
-		</div>
 
-		<!-- リアクション表示 -->
-		<div v-if="reactionsEntries.length > 0" :class="$style.reactions">
-			<button
-				v-for="[reaction, count] in reactionsEntries"
-				:key="reaction"
-				:class="[$style.reaction, { [$style.myReaction]: myReaction === reaction }]"
-				@click="toggleReaction(reaction)"
-				@mouseenter="onReactionMouseEnter($event, reaction, count)"
-				@mouseleave="onReactionMouseLeave()"
-				@touchstart.passive="onReactionTouchStart($event, reaction, count)"
-				@touchend.passive="onReactionTouchEnd()"
-				@touchcancel.passive="onReactionTouchEnd()"
-				@contextmenu.prevent
-			>
-				<MkReactionIcon :reaction="reaction" :emojiUrl="getEmojiUrl(reaction)" style="pointer-events: none;"/>
-				<span :class="$style.reactionCount">{{ formatCount(count) }}</span>
-			</button>
-			<button ref="reactionAddBtnEl" :class="$style.reactionAdd" @click="openReactionPicker">
-				<i class="ti ti-plus"></i>
-			</button>
-		</div>
-		<!-- リアクションユーザーツールチップ (独自実装: 外部絵文字対応) -->
-		<Teleport to="body">
-			<div v-if="reactionTipVisible" class="ext-reaction-tip" data-ext-tl="reaction-tip" :style="reactionTipStyle" @click="hideReactionTip" @touchstart.passive="hideReactionTip">
-				<div class="ext-reaction-tip-emoji">
-					<img v-if="reactionTipEmojiUrl" :src="reactionTipEmojiUrl" class="ext-reaction-tip-emoji-img"/>
-					<span v-else class="ext-reaction-tip-emoji-text">{{ reactionTipReaction }}</span>
-					<div v-if="reactionTipShortcode" class="ext-reaction-tip-shortcode">{{ reactionTipShortcode }}</div>
+				<div v-if="appearNote.cw != null" :class="$style.cw">
+					<span>{{ appearNote.cw }}</span>
+					<button :class="$style.cwButton" @click="showContent = !showContent">
+						{{ showContent ? copy.hideContent : copy.showContent }}
+					</button>
 				</div>
-				<div class="ext-reaction-tip-users">
-					<div v-if="reactionTipUsers.length === 0" class="ext-reaction-tip-loading">{{ copy.loading }}</div>
-					<div v-for="u in reactionTipUsers" :key="u.id" class="ext-reaction-tip-user">
-						<img :src="u.avatarUrl" class="ext-reaction-tip-avatar"/>
-						<span class="ext-reaction-tip-name">{{ u.name || u.username }}</span>
+
+				<div v-show="appearNote.cw == null || showContent" :class="$style.content">
+					<div v-if="appearNote.text" :class="$style.text">
+						<Mfm
+							:key="`mfm-${emojiMapReady}`"
+							:text="appearNote.text"
+							:author="mfmAuthor"
+							:nyaize="false"
+							:emojiUrls="mergedEmojiUrls"
+						/>
 					</div>
-					<div v-if="reactionTipCount > 10" class="ext-reaction-tip-more">+{{ formatCount(reactionTipCount - 10) }}</div>
+
+					<!-- ファイル表示（Misskeyメディアプレーヤー使用） -->
+					<MkMediaList v-if="appearNote.files && appearNote.files.length > 0" :mediaList="normalizedFiles"/>
+
+					<div v-if="appearNote.renote" :class="$style.renote">
+						<div :class="$style.renoteHeader">
+							<i class="ti ti-repeat"></i> {{ copy.renote }}
+						</div>
+						<MkExternalNote :note="appearNote.renote" :host="host" :token="token" :visualMode="visualMode" :glassBg="glassBg" :embedded="visualMode !== 'legacy'" :class="$style.renoteNote"/>
+					</div>
+				</div>
+				<div v-if="channelInfo" :class="$style.channel" :title="channelInfo.name">
+					<i class="ti ti-device-tv" aria-hidden="true"></i>
+					<span :class="$style.channelName">{{ channelInfo.name }}</span>
+				</div>
+
+				<!-- リアクション表示 -->
+				<div v-if="!embedded && reactionsEntries.length > 0" :class="$style.reactions">
+					<button
+						v-for="[reaction, count] in reactionsEntries"
+						:key="reaction"
+						:class="[$style.reaction, { [$style.myReaction]: myReaction === reaction }]"
+						@click="toggleReaction(reaction)"
+						@mouseenter="onReactionMouseEnter($event, reaction, count)"
+						@mouseleave="onReactionMouseLeave()"
+						@touchstart.passive="onReactionTouchStart($event, reaction, count)"
+						@touchend.passive="onReactionTouchEnd()"
+						@touchcancel.passive="onReactionTouchEnd()"
+						@contextmenu.prevent
+					>
+						<MkReactionIcon :key="`${reaction}:${getEmojiUrl(reaction) ?? ''}`" :reaction="reaction" :emojiUrl="getEmojiUrl(reaction)" :fallbackToImage="false" style="pointer-events: none;"/>
+						<span :class="$style.reactionCount">{{ formatCount(count) }}</span>
+					</button>
+					<button ref="reactionAddBtnEl" :class="$style.reactionAdd" @click="openReactionPicker">
+						<i class="ti ti-plus"></i>
+					</button>
+				</div>
+				<!-- リアクションユーザーツールチップ (独自実装: 外部絵文字対応) -->
+				<Teleport to="body">
+					<div v-if="reactionTipVisible" class="ext-reaction-tip" data-ext-tl="reaction-tip" :style="reactionTipStyle" @click="hideReactionTip" @touchstart.passive="hideReactionTip">
+						<div class="ext-reaction-tip-emoji">
+							<img v-if="reactionTipEmojiUrl && !reactionTipEmojiErrored" :src="reactionTipEmojiUrl" class="ext-reaction-tip-emoji-img" alt="" @error="reactionTipEmojiErrored = true"/>
+							<span v-else class="ext-reaction-tip-emoji-text">{{ reactionTipReaction }}</span>
+							<div v-if="reactionTipShortcode" class="ext-reaction-tip-shortcode">{{ reactionTipShortcode }}</div>
+						</div>
+						<div class="ext-reaction-tip-users">
+							<div v-if="reactionTipUsers.length === 0" class="ext-reaction-tip-loading">{{ copy.loading }}</div>
+							<div v-for="u in reactionTipUsers" :key="u.id" class="ext-reaction-tip-user">
+								<img :src="u.avatarUrl" class="ext-reaction-tip-avatar"/>
+								<span class="ext-reaction-tip-name">
+									<Mfm :text="u.name || u.username" :plain="true" :nowrap="true" :nyaize="false" :emojiUrls="u.emojis" :author="u"/>
+								</span>
+							</div>
+							<div v-if="reactionTipCount > 10" class="ext-reaction-tip-more">+{{ formatCount(reactionTipCount - 10) }}</div>
+						</div>
+					</div>
+				</Teleport>
+
+				<div v-if="!embedded" :class="$style.footer">
+					<button :class="$style.footerButton" :title="i18n.ts.reply" @click="reply">
+						<i class="ti ti-arrow-back-up"></i>
+						<span v-if="appearNote.repliesCount > 0" :class="$style.footerCount">{{ formatCount(appearNote.repliesCount) }}</span>
+					</button>
+					<button :class="$style.footerButton" :title="i18n.ts.renote" @click="showRenoteMenu">
+						<i class="ti ti-repeat"></i>
+						<span v-if="appearNote.renoteCount > 0" :class="$style.footerCount">{{ formatCount(appearNote.renoteCount) }}</span>
+					</button>
+					<button ref="reactionBtnEl" :class="[$style.footerButton, { [$style.reacted]: myReaction }]" :title="i18n.ts.reaction" @click="openReactionPicker">
+						<i class="ti ti-mood-plus"></i>
+						<span v-if="totalReactionCount > 0" :class="$style.footerCount">
+							{{ formatCount(totalReactionCount) }}
+						</span>
+					</button>
+					<button :class="$style.footerButton" :title="copy.menu" @click="showNoteMenu">
+						<i class="ti ti-dots"></i>
+					</button>
 				</div>
 			</div>
-		</Teleport>
-
-		<div :class="$style.footer">
-			<button :class="$style.footerButton" :title="i18n.ts.reply" @click="reply">
-				<i class="ti ti-arrow-back-up"></i>
-				<span v-if="note.repliesCount > 0" :class="$style.footerCount">{{ formatCount(note.repliesCount) }}</span>
-			</button>
-			<button :class="$style.footerButton" :title="i18n.ts.renote" @click="showRenoteMenu">
-				<i class="ti ti-repeat"></i>
-				<span v-if="note.renoteCount > 0" :class="$style.footerCount">{{ formatCount(note.renoteCount) }}</span>
-			</button>
-			<button ref="reactionBtnEl" :class="[$style.footerButton, { [$style.reacted]: myReaction }]" :title="i18n.ts.reaction" @click="openReactionPicker">
-				<i class="ti ti-mood-plus"></i>
-				<span v-if="totalReactionCount > 0" :class="$style.footerCount">
-					{{ formatCount(totalReactionCount) }}
-				</span>
-			</button>
-			<button :class="$style.footerButton" :title="copy.menu" @click="showNoteMenu">
-				<i class="ti ti-dots"></i>
-			</button>
-		</div>
 		</div>
 	</div>
 </article>
@@ -131,6 +160,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <script lang="ts" setup>
 import { ref, computed, defineAsyncComponent, reactive, onMounted, useTemplateRef, watch } from 'vue';
+import * as Misskey from 'cherrypick-js';
 import MkReactionIcon from '@/components/MkReactionIcon.vue';
 import MkMediaList from '@/components/MkMediaList.vue';
 import * as os from '@/os.js';
@@ -141,14 +171,23 @@ import { getExternalEmojiUrlMap, getExternalAccount, addExternalRecentReaction, 
 const MkExternalReactionPicker = defineAsyncComponent(() => import('@/components/MkExternalReactionPicker.vue'));
 const MkExternalUserPopup = defineAsyncComponent(() => import('@/components/MkExternalUserPopup.vue'));
 
-const props = defineProps<{
+type ExternalTimelineVisualMode = 'legacy' | 'hataskey-normal' | 'hataskey-deck';
+
+const props = withDefaults(defineProps<{
 	note: any;
 	host: string;
 	token: string;
-}>();
+	visualMode?: ExternalTimelineVisualMode;
+	glassBg?: boolean;
+	embedded?: boolean;
+}>(), {
+	visualMode: 'legacy',
+	glassBg: false,
+	embedded: false,
+});
 
 const emit = defineEmits<{
-	(ev: 'reactionChanged', noteId: string, reaction: string | null, oldReaction: string | null): void;
+	(ev: 'reactionChanged', noteId: string, reaction: string | null, oldReaction: string | null, emojiUrl?: string): void;
 	(ev: 'noteDeleted', noteId: string): void;
 }>();
 
@@ -157,21 +196,35 @@ const copy = i18n.ts._hata._externalTimeline._note;
 const copyx = i18n.tsx._hata._externalTimeline._note;
 const numberFormatter = new Intl.NumberFormat(versatileLang);
 const formatCount = (value: number): string => numberFormatter.format(value);
-const myReaction = ref<string | null>(props.note.myReaction || null);
+const isPureRenote = computed(() => props.visualMode !== 'legacy'
+	&& props.note.renote != null
+	&& Misskey.note.isPureRenote(props.note)
+	&& (!Array.isArray(props.note.files) || props.note.files.length === 0));
+const appearNote = computed<any>(() => isPureRenote.value ? (props.note.renote ?? props.note) : props.note);
+const myReaction = ref<string | null>(appearNote.value.myReaction || null);
 const reactionBtnEl = useTemplateRef('reactionBtnEl');
 const reactionAddBtnEl = useTemplateRef('reactionAddBtnEl');
 
 // SECURITY: 外部サーバー由来の note.id / host を URL に組み立てる際は厳格に検証。
 // note.id が想定外の文字 (改行、引用符、 javascript: スキームの種となる文字等) を
 // 含む場合はリンクを生成しない。
+function isSafeExternalHost(h: unknown): h is string {
+	if (typeof h !== 'string' || h.length === 0 || h.length > 253) return false;
+	if (!/^[a-z0-9.\-]+(?::[1-9][0-9]{0,4})?$/i.test(h)) return false;
+	return true;
+}
+
 const safeHost = computed<string | null>(() => {
-	const h = props.host;
-	if (typeof h !== 'string' || h.length === 0 || h.length > 253) return null;
-	if (!/^[a-z0-9.\-]+(?::[1-9][0-9]{0,4})?$/i.test(h)) return null;
-	return h;
+	return isSafeExternalHost(props.host) ? props.host : null;
 });
+
+function normalizeExternalEmojiHost(host: string | null | undefined): string | null {
+	const normalized = host == null || host === '.' ? safeHost.value : host;
+	return isSafeExternalHost(normalized) ? normalized : null;
+}
+
 const safeNoteId = computed<string | null>(() => {
-	const id = props.note?.id;
+	const id = appearNote.value?.id;
 	if (typeof id !== 'string' || id.length === 0 || id.length > 64) return null;
 	// Misskey/CherryPick の note id は基本的に [a-z0-9] のみ
 	if (!/^[A-Za-z0-9]+$/.test(id)) return null;
@@ -182,6 +235,19 @@ const safeNoteUrl = computed<string | null>(() => {
 	return `https://${safeHost.value}/notes/${safeNoteId.value}`;
 });
 
+type ExternalChannelInfo = { name: string };
+
+function getExternalChannelInfo(target: any): ExternalChannelInfo | null {
+	if (!target?.channel && !target?.channelId) return null;
+	const name = typeof target.channel?.name === 'string' && target.channel.name.trim().length > 0
+		? target.channel.name
+		: i18n.ts.channel;
+	return { name };
+}
+
+const channelInfo = computed(() => getExternalChannelInfo(appearNote.value));
+const renoteChannelInfo = computed(() => isPureRenote.value ? getExternalChannelInfo(props.note) : null);
+
 // 自分のノートかどうか判定
 const isMine = computed(() => {
 	const ext = getExternalAccount();
@@ -190,16 +256,31 @@ const isMine = computed(() => {
 
 // リアクションをリアクティブに管理（元のnote.reactionsをコピー）
 const reactions = reactive<Record<string, number>>(
-	{ ...(props.note.reactions || {}) },
+	{ ...(appearNote.value.reactions || {}) },
 );
+
+const reactionEmojiUrls = reactive<Record<string, string>>({});
+
+function syncReactionEmojiUrls(next: Record<string, string> | null | undefined) {
+	if (!next) return;
+	for (const [key, url] of Object.entries(next)) {
+		if (typeof url !== 'string' || url.length === 0) continue;
+		const pureKey = key.split('@')[0];
+		reactionEmojiUrls[key] = url;
+		reactionEmojiUrls[`:${key}:`] = url;
+		reactionEmojiUrls[pureKey] = url;
+		reactionEmojiUrls[`:${pureKey}:`] = url;
+	}
+}
 
 // 親タイムラインが外部サーバーの noteUpdated を受け取った場合も、
 // コンポーネント内の操作用状態へ同期する。既存の外部TLとHataSNSCordUIで共用する。
-watch(() => props.note.reactions, (next) => {
+watch(() => appearNote.value.reactions, (next) => {
 	for (const key of Object.keys(reactions)) delete reactions[key];
 	Object.assign(reactions, next ?? {});
 }, { deep: true });
-watch(() => props.note.myReaction, (next) => { myReaction.value = next ?? null; });
+watch(() => appearNote.value.myReaction, (next) => { myReaction.value = next ?? null; });
+watch(() => appearNote.value.reactionEmojis, syncReactionEmojiUrls, { deep: true, immediate: true });
 
 // ===== 外部サーバーの絵文字URLマップ（非同期で取得） =====
 const externalEmojiUrlMap = ref<Record<string, string>>({});
@@ -222,7 +303,7 @@ onMounted(async () => {
 // host を明示的に設定する
 // ===== 投稿種別（visibility）バッジ =====
 const visibilityInfo = computed(() => {
-	const v = props.note.visibility;
+	const v = appearNote.value.visibility;
 	if (!v || v === 'public') return null; // public は表示不要
 	const map: Record<string, { icon: string; label: string }> = {
 		home: { icon: 'ti ti-home', label: copy.visibilityHome },
@@ -232,7 +313,7 @@ const visibilityInfo = computed(() => {
 	const info = map[v];
 	if (!info) return null;
 	// localOnly の場合はアイコンを追加表示
-	if (props.note.localOnly) {
+	if (appearNote.value.localOnly) {
 		return { icon: info.icon, label: copyx.visibilityLocalOnly({ visibility: info.label }) };
 	}
 	return info;
@@ -240,16 +321,23 @@ const visibilityInfo = computed(() => {
 
 // localOnly のみ（public + localOnly）の場合も表示
 const localOnlyBadge = computed(() => {
-	if (props.note.localOnly && (!props.note.visibility || props.note.visibility === 'public')) {
+	if (appearNote.value.localOnly && (!appearNote.value.visibility || appearNote.value.visibility === 'public')) {
 		return { icon: 'ti ti-rocket-off', label: copy.localOnly };
 	}
 	return null;
 });
 
 const mfmAuthor = computed(() => ({
-	...props.note.user,
-	host: props.note.user?.host || props.host,
+	...appearNote.value.user,
+	host: appearNote.value.user?.host || props.host,
 }));
+
+const replyToText = computed(() => {
+	const user = appearNote.value.reply?.user;
+	if (!user) return '';
+	const account = `@${user.username}@${user.host || props.host}`;
+	return i18n.tsx.replyTo({ user: account });
+});
 
 // ===== 絵文字URL マッピング =====
 // Proxy を使用: マップに無い絵文字でも外部サーバーの直URLをフォールバック返却。
@@ -262,39 +350,40 @@ const mergedEmojiUrls = computed(() => {
 	Object.assign(map, externalEmojiUrlMap.value);
 
 	// note付属 emojis
-	if (props.note.emojis) {
-		if (Array.isArray(props.note.emojis)) {
-			for (const emoji of props.note.emojis) {
+	if (appearNote.value.emojis) {
+		if (Array.isArray(appearNote.value.emojis)) {
+			for (const emoji of appearNote.value.emojis) {
 				if (emoji.name && emoji.url) {
 					map[emoji.name] = emoji.url;
 				}
 			}
 		} else {
-			Object.assign(map, props.note.emojis);
+			Object.assign(map, appearNote.value.emojis);
 		}
 	}
 
 	// note.user の絵文字（ユーザー名やプロフィールのカスタム絵文字）
 	// 連合先ユーザーの場合は特に重要
-	if (props.note.user?.emojis) {
-		if (Array.isArray(props.note.user.emojis)) {
-			for (const emoji of props.note.user.emojis) {
+	if (appearNote.value.user?.emojis) {
+		if (Array.isArray(appearNote.value.user.emojis)) {
+			for (const emoji of appearNote.value.user.emojis) {
 				if (emoji.name && emoji.url) {
 					map[emoji.name] = emoji.url;
 				}
 			}
 		} else {
-			Object.assign(map, props.note.user.emojis);
+			Object.assign(map, appearNote.value.user.emojis);
 		}
 	}
 
 	// reactionEmojis
-	if (props.note.reactionEmojis) {
-		Object.assign(map, props.note.reactionEmojis);
+	if (appearNote.value.reactionEmojis) {
+		Object.assign(map, appearNote.value.reactionEmojis);
 	}
+	Object.assign(map, reactionEmojiUrls);
 
 	// ユーザーの連合先ホスト（存在すればそちらを優先）
-	const userHost = props.note.user?.host as string | null | undefined;
+	const userHost = appearNote.value.user?.host as string | null | undefined;
 
 	// Proxy: マップに無い絵文字名でも外部サーバーの直URLを返す
 	return new Proxy(map, {
@@ -328,10 +417,10 @@ const totalReactionCount = computed(() => {
 
 // ===== 外部ファイルをMkMediaList用に正規化 =====
 const normalizedFiles = computed(() => {
-	if (!props.note.files || !Array.isArray(props.note.files)) return [];
-	return props.note.files.map((file: any) => ({
+	if (!appearNote.value.files || !Array.isArray(appearNote.value.files)) return [];
+	return appearNote.value.files.map((file: any) => ({
 		id: file.id ?? file.url,
-		createdAt: file.createdAt ?? props.note.createdAt,
+		createdAt: file.createdAt ?? appearNote.value.createdAt,
 		name: file.name ?? 'unknown',
 		type: file.type ?? 'application/octet-stream',
 		size: file.size ?? 0,
@@ -361,19 +450,20 @@ async function callExternalApi(endpoint: string, params: Record<string, any> = {
 
 // ===== リプライ =====
 async function reply() {
+	const target = appearNote.value;
 	os.post({
 		externalReply: {
-			id: props.note.id,
-			text: props.note.text,
-			cw: props.note.cw,
+			id: target.id,
+			text: target.text,
+			cw: target.cw,
 			user: {
-				id: props.note.user.id,
-				username: props.note.user.username,
-				host: props.note.user.host ?? props.host,
-				name: props.note.user.name,
-				avatarUrl: props.note.user.avatarUrl,
+				id: target.user.id,
+				username: target.user.username,
+				host: target.user.host ?? props.host,
+				name: target.user.name,
+				avatarUrl: target.user.avatarUrl,
 			},
-			createdAt: props.note.createdAt,
+			createdAt: target.createdAt,
 		},
 		initialUseExternalAccount: true,
 	});
@@ -388,7 +478,7 @@ async function renote() {
 	if (canceled) return;
 
 	try {
-		await callExternalApi('notes/create', { renoteId: props.note.id });
+		await callExternalApi('notes/create', { renoteId: appearNote.value.id });
 		os.success();
 	} catch (err) {
 		console.error('Renote error:', err);
@@ -397,19 +487,20 @@ async function renote() {
 }
 
 async function quote() {
+	const target = appearNote.value;
 	os.post({
 		externalRenote: {
-			id: props.note.id,
-			text: props.note.text,
-			cw: props.note.cw,
+			id: target.id,
+			text: target.text,
+			cw: target.cw,
 			user: {
-				id: props.note.user.id,
-				username: props.note.user.username,
-				host: props.note.user.host ?? props.host,
-				name: props.note.user.name,
-				avatarUrl: props.note.user.avatarUrl,
+				id: target.user.id,
+				username: target.user.username,
+				host: target.user.host ?? props.host,
+				name: target.user.name,
+				avatarUrl: target.user.avatarUrl,
 			},
-			createdAt: props.note.createdAt,
+			createdAt: target.createdAt,
 		},
 		initialUseExternalAccount: true,
 	});
@@ -433,9 +524,9 @@ function openReactionPicker(ev?: MouseEvent) {
 	const { dispose } = os.popup(MkExternalReactionPicker, {
 		anchorElement: anchorEl,
 	}, {
-		done: async (reaction: string) => {
+		done: async (reaction: string, emojiUrl?: string) => {
 			if (!reaction) return;
-			await applyReaction(reaction);
+			await applyReaction(reaction, emojiUrl);
 		},
 		closed: () => dispose(),
 	});
@@ -444,18 +535,15 @@ function openReactionPicker(ev?: MouseEvent) {
 /**
  * リアクションを適用（既存リアクションがあれば先に削除）
  */
-/**
- * リアクションを適用（既存リアクションがあれば先に削除）
- */
 let reactionProcessing = false;
 
-async function applyReaction(reaction: string) {
+async function applyReaction(reaction: string, emojiUrl?: string) {
 	if (reactionProcessing) return;
 	reactionProcessing = true;
 	try {
 		// 既にリアクション済みなら先に削除
 		if (myReaction.value) {
-			await callExternalApi('notes/reactions/delete', { noteId: props.note.id });
+			await callExternalApi('notes/reactions/delete', { noteId: appearNote.value.id });
 			// ローカルカウント更新
 			if (reactions[myReaction.value] != null) {
 				reactions[myReaction.value]--;
@@ -466,7 +554,7 @@ async function applyReaction(reaction: string) {
 		}
 
 		await callExternalApi('notes/reactions/create', {
-			noteId: props.note.id,
+			noteId: appearNote.value.id,
 			reaction: reaction,
 		});
 
@@ -474,8 +562,9 @@ async function applyReaction(reaction: string) {
 		const oldReaction = myReaction.value;
 		myReaction.value = reaction;
 		reactions[reaction] = (reactions[reaction] || 0) + 1;
+		if (emojiUrl) reactionEmojiUrls[reaction] = emojiUrl;
 
-		emit('reactionChanged', props.note.id, reaction, oldReaction);
+		emit('reactionChanged', appearNote.value.id, reaction, oldReaction, emojiUrl);
 
 		// 履歴に保存(host/url 付き):
 		//   - :name@host: 形式 → host 抽出、URL は既知マップから引く
@@ -485,9 +574,8 @@ async function applyReaction(reaction: string) {
 		if (m) {
 			const name = m[1];
 			const explicitHost = m[2] ?? null;
-			const acc = getExternalAccount();
-			const targetHost = explicitHost ?? acc?.host ?? null;
-			const url = targetHost ? lookupExternalEmojiUrl(targetHost, name) : null;
+			const targetHost = normalizeExternalEmojiHost(explicitHost);
+			const url = emojiUrl ?? (targetHost ? lookupExternalEmojiUrl(targetHost, name) : null);
 			addExternalRecentReaction(reaction, targetHost, url);
 		} else {
 			addExternalRecentReaction(reaction);
@@ -514,7 +602,7 @@ async function toggleReaction(reaction: string) {
 		if (canceled) return;
 		reactionProcessing = true;
 		try {
-			await callExternalApi('notes/reactions/delete', { noteId: props.note.id });
+			await callExternalApi('notes/reactions/delete', { noteId: appearNote.value.id });
 			if (reactions[reaction] != null) {
 				reactions[reaction]--;
 				if (reactions[reaction] <= 0) {
@@ -523,7 +611,7 @@ async function toggleReaction(reaction: string) {
 			}
 			const old = myReaction.value;
 			myReaction.value = null;
-			emit('reactionChanged', props.note.id, null, old);
+			emit('reactionChanged', appearNote.value.id, null, old);
 		} catch (err) {
 			console.error('Unreaction error:', err);
 		} finally {
@@ -541,7 +629,8 @@ const reactionTipVisible = ref(false);
 const reactionTipStyle = ref<Record<string, string>>({});
 const reactionTipReaction = ref('');
 const reactionTipEmojiUrl = ref<string | undefined>(undefined);
-const reactionTipUsers = ref<any[]>([]);
+const reactionTipEmojiErrored = ref(false);
+const reactionTipUsers = ref<Misskey.entities.UserLite[]>([]);
 const reactionTipCount = ref(0);
 const reactionTipShortcode = ref('');
 let reactionTipHideTimer: number | null = null;
@@ -589,6 +678,7 @@ function hideReactionTip() {
 	reactionTipVisible.value = false;
 	reactionTipUsers.value = [];
 	reactionTipShortcode.value = '';
+	reactionTipEmojiErrored.value = false;
 	if (reactionTipHideTimer) { window.clearTimeout(reactionTipHideTimer); reactionTipHideTimer = null; }
 }
 
@@ -605,18 +695,26 @@ async function showReactionUsers(anchorEl: HTMLElement, reaction: string, count:
 		};
 		reactionTipReaction.value = reaction;
 		reactionTipEmojiUrl.value = getEmojiUrl(reaction);
+		reactionTipEmojiErrored.value = false;
 		reactionTipCount.value = count;
 		reactionTipShortcode.value = reaction.startsWith(':') ? reaction : '';
 		reactionTipVisible.value = true;
 		reactionTipUsers.value = []; // ロード中
 
 		const res = await callExternalApi('notes/reactions', {
-			noteId: props.note.id,
+			noteId: appearNote.value.id,
 			type: reaction,
 			limit: 10,
 		});
 		if (!reactionTipVisible.value) return; // 既に閉じてたら中断
-		const users = (Array.isArray(res) ? res : []).map((x: any) => x.user).filter(Boolean);
+		const users = (Array.isArray(res) ? res : [])
+			.map((x: { user?: Misskey.entities.UserLite }) => x.user)
+			.filter((user): user is Misskey.entities.UserLite => user != null)
+			.map(user => ({
+				...user,
+				host: user.host ?? props.host,
+				emojis: user.emojis ?? {},
+			}));
 		if (users.length < 1) {
 			hideReactionTip();
 			return;
@@ -628,32 +726,22 @@ async function showReactionUsers(anchorEl: HTMLElement, reaction: string, count:
 	}
 }
 
-// ===== 外部からのリアクション更新 =====
-function updateReaction(newReaction: string, delta: number) {
-	if (delta > 0) {
-		reactions[newReaction] = (reactions[newReaction] || 0) + delta;
-	} else {
-		if (reactions[newReaction] != null) {
-			reactions[newReaction] += delta;
-			if (reactions[newReaction] <= 0) {
-				delete reactions[newReaction];
-			}
-		}
-	}
-}
-
 // ===== 絵文字URL取得（リアクション表示用） =====
 function getEmojiUrl(reaction: string): string | undefined {
-	// カスタム絵文字 :name: 形式
-	const match = reaction.match(/^:([^:]+):$/);
+	const match = reaction.match(/^:([^:]+?)(?:@([^:]+))?:$/);
 	if (!match) return undefined;
 
-	const emojiName = match[1];
-	// @ 以降を除去（:name@host: → name）
-	const pureName = emojiName.includes('@') ? emojiName.split('@')[0] : emojiName;
+	const pureName = match[1];
+	const explicitHost = match[2] ?? null;
+	const targetHost = normalizeExternalEmojiHost(explicitHost);
+	const emojiName = explicitHost ? `${pureName}@${explicitHost}` : pureName;
+	const immediate = reactionEmojiUrls[reaction]
+		|| reactionEmojiUrls[emojiName]
+		|| reactionEmojiUrls[pureName];
+	if (immediate) return immediate;
 
 	// 1. note付属の reactionEmojis から検索（複数パターン）
-	const emojis = props.note.reactionEmojis;
+	const emojis = appearNote.value.reactionEmojis;
 	if (emojis) {
 		const found = emojis[emojiName]
 			|| emojis[pureName]
@@ -664,22 +752,25 @@ function getEmojiUrl(reaction: string): string | undefined {
 	}
 
 	// 2. note付属の emojis からも検索
-	if (props.note.emojis) {
-		if (Array.isArray(props.note.emojis)) {
-			const found = props.note.emojis.find((e: any) => e.name === pureName || e.name === emojiName);
+	if (appearNote.value.emojis) {
+		if (Array.isArray(appearNote.value.emojis)) {
+			const found = appearNote.value.emojis.find((e: any) => e.name === pureName || e.name === emojiName);
 			if (found?.url) return found.url;
 		} else {
-			const found = props.note.emojis[pureName] || props.note.emojis[emojiName];
+			const found = appearNote.value.emojis[pureName] || appearNote.value.emojis[emojiName];
 			if (found) return found;
 		}
 	}
 
 	// 3. 外部サーバーの絵文字キャッシュから検索
-	const cached = externalEmojiUrlMap.value[pureName] || externalEmojiUrlMap.value[emojiName];
+	const cached = explicitHost == null || explicitHost === '.'
+		? externalEmojiUrlMap.value[pureName] || externalEmojiUrlMap.value[emojiName] || (targetHost ? lookupExternalEmojiUrl(targetHost, pureName) : null)
+		: (targetHost ? lookupExternalEmojiUrl(targetHost, pureName) : null);
 	if (cached) return cached;
 
-	// 4. フォールバック: 外部サーバーのプロキシURL
-	return `https://${props.host}/emoji/${pureName}.webp`;
+	// 4. URLがストリームで後着したときは key が変わり、失敗済み画像を再マウントする。
+	if (!targetHost) return undefined;
+	return `https://${targetHost}/emoji/${encodeURIComponent(pureName)}.webp`;
 }
 
 function openInExternal() {
@@ -687,11 +778,12 @@ function openInExternal() {
 }
 
 function openUserPopup() {
+	const user = appearNote.value.user;
 	const { dispose } = os.popup(MkExternalUserPopup, {
-		userId: props.note.user?.id ?? props.note.userId,
+		userId: user?.id ?? appearNote.value.userId,
 		host: props.host,
 		token: props.token,
-		initialUser: props.note.user,
+		initialUser: user,
 	}, {
 		closed: () => dispose(),
 	});
@@ -738,19 +830,13 @@ function showNoteMenu(ev: MouseEvent) {
 	os.popupMenu(items, ev.currentTarget ?? ev.target);
 }
 
-// expose for parent (MkExternalTimeline) to call
-defineExpose({
-	updateReaction,
-});
 </script>
 
 <style lang="scss" module>
 .root {
 	padding: 10px 10px 6px;
 	font-size: 0.95em;
-	display: flex;
-	align-items: flex-start;
-	gap: 0;
+	display: block;
 }
 
 /* 旗鯖fork(Hataskey UI 2): 外部TL (ohtl/oltl) のノートにも --htk-glass-card-opacity を反映。
@@ -770,6 +856,142 @@ defineExpose({
 		color-mix(in srgb, var(--MI_THEME-accent) 8%, var(--MI_THEME-panel))
 		var(--htk-glass-card-opacity, 55%),
 		transparent);
+}
+
+/* hataskeyUi prop から明示された時だけ、外部ノートを Hataskey UI のカード契約へ寄せる。
+   visualMode の既定値は legacy のため、default UI と HataSNSCordUI の直置き表示には影響しない。 */
+.root[data-external-note-ui='hataskey'][data-external-note-mode] {
+	box-sizing: border-box;
+	width: auto;
+	min-width: 0;
+	max-width: 100%;
+	padding: 10px 10px 6px;
+	border: none !important;
+	border-radius: 0;
+	background: transparent !important;
+	box-shadow: none;
+	-webkit-backdrop-filter: none;
+	backdrop-filter: none;
+}
+
+:global(html.hataGlassUi) .root[data-external-note-ui='hataskey'] {
+	border-radius: 0;
+	-webkit-backdrop-filter: none;
+	backdrop-filter: none;
+}
+
+.root[data-external-note-mode='hataskey-normal'] .bubbleBody {
+	width: 100%;
+	padding: 12px;
+	border: 2px solid color-mix(in srgb, var(--MI_THEME-divider) 60%, transparent);
+	border-radius: 20px;
+	background: var(--MI_THEME-panel);
+	box-shadow: 0 2px 16px color-mix(in srgb, var(--MI_THEME-fg) 6%, transparent);
+}
+
+.root[data-external-note-mode='hataskey-deck'] {
+	background: var(--MI_THEME-panel) !important;
+}
+
+.root[data-external-note-mode='hataskey-normal'][data-external-note-glass='on']:not([data-external-note-embedded='on']) .bubbleBody,
+.root[data-external-note-mode='hataskey-deck'][data-external-note-glass='on']:not([data-external-note-embedded='on']),
+:global(html.hataGlassUi) .root[data-external-note-mode='hataskey-normal']:not([data-external-note-embedded='on']) .bubbleBody,
+:global(html.hataGlassUi) .root[data-external-note-mode='hataskey-deck']:not([data-external-note-embedded='on']) {
+	background: color-mix(in srgb,
+		color-mix(in srgb, var(--MI_THEME-accent) 18%, var(--MI_THEME-panel))
+		var(--htk-glass-card-opacity, 55%),
+		transparent) !important;
+	-webkit-backdrop-filter: none;
+	backdrop-filter: none;
+}
+
+:global(html[data-color-scheme=light]) .root[data-external-note-mode='hataskey-normal'][data-external-note-glass='on']:not([data-external-note-embedded='on']) .bubbleBody,
+:global(html[data-color-scheme=light]) .root[data-external-note-mode='hataskey-deck'][data-external-note-glass='on']:not([data-external-note-embedded='on']),
+:global(html[data-color-scheme=light].hataGlassUi) .root[data-external-note-mode='hataskey-normal']:not([data-external-note-embedded='on']) .bubbleBody,
+:global(html[data-color-scheme=light].hataGlassUi) .root[data-external-note-mode='hataskey-deck']:not([data-external-note-embedded='on']) {
+	background: color-mix(in srgb,
+		color-mix(in srgb, var(--MI_THEME-accent) 8%, var(--MI_THEME-panel))
+		var(--htk-glass-card-opacity, 55%),
+		transparent) !important;
+}
+
+.root[data-external-note-ui='hataskey'] {
+	.bubbleBody,
+	.main,
+	.main > div,
+	.header,
+	.headerBody,
+	.headerTop,
+	.content,
+	.renote {
+		box-sizing: border-box;
+		min-width: 0;
+		max-width: 100%;
+	}
+
+	.renote {
+		container-type: inline-size;
+	}
+
+	.bubbleBody {
+		gap: 14px;
+	}
+
+	.avatarImg {
+		width: 58px;
+		height: 58px;
+	}
+
+	.name,
+	.username {
+		max-width: 100%;
+	}
+
+	.footer {
+		width: 100%;
+		min-width: 0;
+		flex-wrap: wrap;
+		gap: 4px 10px;
+	}
+
+	.footerButton {
+		box-sizing: border-box;
+		flex: 1 1 40px;
+		justify-content: center;
+		min-width: 0;
+		padding: 8px;
+	}
+}
+
+.root[data-external-note-embedded='on'] {
+	padding: 0;
+	border: none !important;
+	border-radius: 0 !important;
+	background: transparent !important;
+	box-shadow: none !important;
+	-webkit-backdrop-filter: none !important;
+	backdrop-filter: none !important;
+
+	.bubbleBody {
+		padding: 0;
+		border: none;
+		border-radius: 0;
+		background: transparent !important;
+		box-shadow: none;
+	}
+
+	.avatarImg {
+		width: 36px;
+		height: 36px;
+	}
+}
+
+.root[data-external-note-ui='hataskey'][data-external-note-mode='hataskey-deck'][data-external-note-glass='on'] {
+	border-radius: 20px;
+}
+
+:global(html.hataGlassUi) .root[data-external-note-ui='hataskey'][data-external-note-mode='hataskey-deck'] {
+	border-radius: 20px;
 }
 
 .avatar {
@@ -799,8 +1021,30 @@ defineExpose({
 
 .bubbleBody {
 	display: flex;
-	flex-direction: column;
-	gap: 8px;
+	align-items: flex-start;
+	gap: 0;
+	min-width: 0;
+}
+
+.renoteAttribution {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	min-width: 0;
+	padding: 0 10px 8px;
+	font-size: 0.85em;
+	opacity: 0.75;
+
+	> :last-child {
+		margin-left: auto;
+	}
+}
+
+.renoteAttributionName {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-weight: 700;
 }
 
 .header {
@@ -889,6 +1133,40 @@ defineExpose({
 	line-height: 1.6;
 	word-wrap: break-word;
 	overflow-wrap: break-word;
+}
+
+.replyContext {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	margin: 2px 0 6px;
+	font-size: 0.9em;
+	color: var(--MI_THEME-accent);
+}
+
+.channel,
+.renoteChannel {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	min-width: 0;
+	max-width: 100%;
+	font-size: 0.8em;
+	opacity: 0.7;
+}
+
+.channel {
+	margin-top: 6px;
+}
+
+.renoteChannel {
+	max-width: min(40%, 16em);
+}
+
+.channelName {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 // ===== リノート =====
@@ -1018,6 +1296,63 @@ defineExpose({
 
 .footerCount {
 	font-size: 0.85em;
+}
+
+@container (max-width: 580px) {
+	.root[data-external-note-ui='hataskey'] {
+		font-size: 0.95em;
+
+		.avatarImg {
+			width: 50px;
+			height: 50px;
+		}
+	}
+}
+
+@container (max-width: 450px) {
+	.root[data-external-note-ui='hataskey'] {
+		.bubbleBody {
+			gap: 10px;
+		}
+
+		.avatarImg {
+			width: 46px;
+			height: 46px;
+		}
+	}
+}
+
+@container (max-width: 400px) {
+	.root[data-external-note-ui='hataskey'] {
+		.footer {
+			gap: 2px;
+		}
+
+		.footerButton {
+			padding: 8px 4px;
+		}
+	}
+}
+
+@container (max-width: 300px) {
+	.root[data-external-note-ui='hataskey'] {
+		padding-right: 6px;
+		padding-left: 6px;
+
+		.bubbleBody {
+			gap: 8px;
+		}
+
+		.avatarImg {
+			width: 44px;
+			height: 44px;
+		}
+	}
+}
+
+.root[data-external-note-embedded='on'] .avatarImg {
+	width: 36px;
+	height: 36px;
 }
 </style>
 

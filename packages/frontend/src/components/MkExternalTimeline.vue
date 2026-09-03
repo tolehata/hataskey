@@ -35,6 +35,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<component
 			:is="prefer.s.animation ? TransitionGroup : 'div'"
 			:class="[$style.notes, { [$style.noGap]: noGap, '_gaps': !noGap }]"
+			:data-external-timeline-ui="props.hataskeyUi ? 'hataskey' : undefined"
+			:data-external-timeline-mode="props.hataskeyUi ? visualMode : undefined"
+			:data-external-timeline-glass="props.hataskeyUi && props.glassBg ? 'on' : undefined"
+			:data-external-timeline-spacing="props.hataskeyUi ? noteSpacingValue : undefined"
 			:enterActiveClass="$style.transition_x_enterActive"
 			:leaveActiveClass="$style.transition_x_leaveActive"
 			:enterFromClass="$style.transition_x_enterFrom"
@@ -44,12 +48,13 @@ SPDX-License-Identifier: AGPL-3.0-only
 		>
 			<MkExternalNote
 				v-for="note in displayedNotes"
-				:ref="el => setNoteRef(note.id, el)"
 				:key="note.id"
 				:class="$style.note"
 				:note="note"
 				:host="host"
 				:token="token"
+				:visualMode="visualMode"
+				:glassBg="props.hataskeyUi && props.glassBg"
 				:data-scroll-anchor="note.id"
 				@reactionChanged="onNoteReactionChanged"
 				@noteDeleted="onNoteDeleted"
@@ -79,18 +84,33 @@ import { preloadExternalEmojiMap, callExternalApi, getExternalAccount } from '@/
 import { cleanupStaleUiElements } from '@/utility/ui-cleanup.js';
 import { versatileLang } from '@/utility/intl-const.js';
 
+type ExternalTimelineVisualMode = 'legacy' | 'hataskey-normal' | 'hataskey-deck';
+type ExternalTimelineNoteSpacing = 'compact' | 'moderate' | 'wide';
+
 const props = withDefaults(defineProps<{
 	src: 'ohtl' | 'oltl';
 	host: string;
 	token: string;
 	sound?: boolean;
 	simpleUi?: boolean;
+	hataskeyUi?: boolean;
+	glassBg?: boolean;
 }>(), {
 	sound: false,
 	simpleUi: false,
+	hataskeyUi: false,
+	glassBg: false,
 });
 
 const noGap = !prefer.s.showGapBetweenNotesInTimeline;
+const visualMode = computed<ExternalTimelineVisualMode>(() => {
+	if (!props.hataskeyUi) return 'legacy';
+	return (prefer.r['simpleUi.deckMode']?.value ?? false) ? 'hataskey-deck' : 'hataskey-normal';
+});
+const noteSpacingValue = computed<ExternalTimelineNoteSpacing>(() => {
+	const spacing = prefer.r['simpleUi.noteSpacing']?.value ?? 'moderate';
+	return visualMode.value === 'hataskey-normal' && spacing === 'compact' ? 'moderate' : spacing;
+});
 const copy = i18n.ts._hata._externalTimeline._timeline;
 const copyx = i18n.tsx._hata._externalTimeline._timeline;
 const numberFormatter = new Intl.NumberFormat(versatileLang);
@@ -111,17 +131,6 @@ const SCROLL_TOP_THRESHOLD = 50; // px以内なら「最上部」とみなす
 
 const queuedCount = computed(() => queuedNotes.value.length);
 const displayedNotes = computed(() => notes.value);
-
-// ===== ノートコンポーネントのref管理（リアクション更新用） =====
-const noteRefs = new Map<string, InstanceType<typeof MkExternalNote>>();
-
-function setNoteRef(noteId: string, el: any) {
-	if (el) {
-		noteRefs.set(noteId, el);
-	} else {
-		noteRefs.delete(noteId);
-	}
-}
 
 let streamConnection: WebSocket | null = null;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
@@ -193,8 +202,48 @@ function getMyExternalUserId(): string | null {
 	return ext?.userId ?? null;
 }
 
-/** MkExternalNoteからのリアクション変更通知 → ペンディングキーを登録 */
-function onNoteReactionChanged(noteId: string, reaction: string | null, oldReaction: string | null) {
+function findExternalTimelineNote(noteId: string): { outer: any; target: any } | null {
+	for (const outer of notes.value) {
+		if (outer.id === noteId) return { outer, target: outer };
+		if (outer.renote?.id === noteId) return { outer, target: outer.renote };
+	}
+	return null;
+}
+
+function refreshExternalTimelineNote(found: { outer: any; target: any }) {
+	notes.value = notes.value.map((outer) => {
+		if (outer.id !== found.outer.id) return outer;
+		const target = {
+			...found.target,
+			reactions: { ...(found.target.reactions ?? {}) },
+			reactionEmojis: { ...(found.target.reactionEmojis ?? {}) },
+		};
+		return found.outer === found.target ? target : { ...outer, renote: target };
+	});
+}
+
+/** MkExternalNoteからのリアクション変更通知 → 元データ更新とペンディングキー登録 */
+function onNoteReactionChanged(noteId: string, reaction: string | null, oldReaction: string | null, emojiUrl?: string) {
+	const found = findExternalTimelineNote(noteId);
+	if (found) {
+		const target = found.target;
+		target.reactions ??= {};
+		if (oldReaction) {
+			const next = Math.max(0, (target.reactions[oldReaction] ?? 0) - 1);
+			if (next === 0) delete target.reactions[oldReaction];
+			else target.reactions[oldReaction] = next;
+		}
+		if (reaction) target.reactions[reaction] = (target.reactions[reaction] ?? 0) + 1;
+		if (reaction && emojiUrl) {
+			target.reactionEmojis ??= {};
+			const emojiKey = reaction.replace(/^:|:$/g, '');
+			target.reactionEmojis[emojiKey] = emojiUrl;
+			target.reactionEmojis[emojiKey.split('@')[0]] = emojiUrl;
+		}
+		target.reactionCount = Object.values(target.reactions as Record<string, number>).reduce((total, count) => total + count, 0);
+		target.myReaction = reaction;
+		refreshExternalTimelineNote(found);
+	}
 	if (reaction) addPendingReaction(noteId, reaction, 1);
 	if (oldReaction) addPendingReaction(noteId, oldReaction, -1);
 }
@@ -202,7 +251,6 @@ function onNoteReactionChanged(noteId: string, reaction: string | null, oldReact
 function onNoteDeleted(noteId: string) {
 	notes.value = notes.value.filter(n => n.id !== noteId);
 	uncaptureNote(noteId);
-	noteRefs.delete(noteId);
 }
 
 function handleNoteEvent(noteId: string, type: string, body: any) {
@@ -210,42 +258,39 @@ function handleNoteEvent(noteId: string, type: string, body: any) {
 		case 'reacted': {
 			const { reaction, emoji, userId } = body;
 			const myUserId = getMyExternalUserId();
+			const found = findExternalTimelineNote(noteId);
+			if (!found) break;
 			// 自分が行ったリアクションのストリームイベントはスキップ（既にローカル更新済み）
 			// pendingReactionキー照合 または userId照合（フォールバック）
 			const isPending = consumePendingReaction(noteId, reaction, 1);
 			const isMyReaction = myUserId != null && userId === myUserId;
 			if (isPending || isMyReaction) {
 				// ただしemoji URLの登録だけは行う
-				const note = notes.value.find(n => n.id === noteId || (n.renote && !n.text && n.renote.id === noteId));
-				if (note && emoji?.url) {
-					const targetNote = (note.renote && !note.text && note.renote.id === noteId) ? note.renote : note;
-					if (!targetNote.reactionEmojis) targetNote.reactionEmojis = {};
-					targetNote.reactionEmojis[reaction.replace(/^:|:$/g, '')] = emoji.url;
+				if (emoji?.url) {
+					found.target.reactionEmojis ??= {};
+					const emojiKey = reaction.replace(/^:|:$/g, '');
+					found.target.reactionEmojis[emojiKey] = emoji.url;
+					found.target.reactionEmojis[emojiKey.split('@')[0]] = emoji.url;
+					refreshExternalTimelineNote(found);
 				}
 				break;
 			}
 			// 他人のリアクション → 通常通りカウント更新
-			const note = notes.value.find(n => n.id === noteId || (n.renote && !n.text && n.renote.id === noteId));
-			if (note) {
-				const targetNote = (note.renote && !note.text && note.renote.id === noteId) ? note.renote : note;
+			{
+				const targetNote = found.target;
 				if (!targetNote.reactions) targetNote.reactions = {};
 				targetNote.reactions[reaction] = (targetNote.reactions[reaction] || 0) + 1;
+				targetNote.reactionCount = Object.values(targetNote.reactions as Record<string, number>).reduce((total, count) => total + count, 0);
 
 				// reactionEmojisにURLを追加（カスタム絵文字の場合）
 				if (emoji && emoji.url) {
 					if (!targetNote.reactionEmojis) targetNote.reactionEmojis = {};
 					const emojiName = reaction.replace(/^:|:$/g, '');
 					targetNote.reactionEmojis[emojiName] = emoji.url;
+					targetNote.reactionEmojis[emojiName.split('@')[0]] = emoji.url;
 				}
 
-				// コンポーネント側にも反映
-				const noteRef = noteRefs.get(note.id);
-				if (noteRef && typeof noteRef.updateReaction === 'function') {
-					noteRef.updateReaction(reaction, 1);
-				}
-
-				// shallowRefなので参照更新をトリガー
-				notes.value = [...notes.value];
+				refreshExternalTimelineNote(found);
 			}
 			break;
 		}
@@ -256,22 +301,18 @@ function handleNoteEvent(noteId: string, type: string, body: any) {
 			const isPending = consumePendingReaction(noteId, reaction, -1);
 			const isMyReaction = myUserId != null && userId === myUserId;
 			if (isPending || isMyReaction) break;
-			const note = notes.value.find(n => n.id === noteId || (n.renote && !n.text && n.renote.id === noteId));
-			if (note) {
-				const targetNote = (note.renote && !note.text && note.renote.id === noteId) ? note.renote : note;
+			const found = findExternalTimelineNote(noteId);
+			if (found) {
+				const targetNote = found.target;
+				targetNote.reactions ??= {};
 				if (targetNote.reactions && targetNote.reactions[reaction]) {
 					targetNote.reactions[reaction]--;
 					if (targetNote.reactions[reaction] <= 0) {
 						delete targetNote.reactions[reaction];
 					}
 				}
-
-				const noteRef = noteRefs.get(note.id);
-				if (noteRef && typeof noteRef.updateReaction === 'function') {
-					noteRef.updateReaction(reaction, -1);
-				}
-
-				notes.value = [...notes.value];
+				targetNote.reactionCount = Object.values(targetNote.reactions as Record<string, number>).reduce((total, count) => total + count, 0);
+				refreshExternalTimelineNote(found);
 			}
 			break;
 		}
@@ -398,7 +439,6 @@ async function reload() {
 		uncaptureNote(id);
 	}
 	capturedNoteIds.clear();
-	noteRefs.clear();
 	await init();
 }
 
@@ -584,7 +624,6 @@ onUnmounted(() => {
 	disconnectStream();
 	stopPolling();
 	capturedNoteIds.clear();
-	noteRefs.clear();
 	if (extNotifPollTimer) { clearInterval(extNotifPollTimer); extNotifPollTimer = null; }
 	isActive.value = false;
 	// 通知パネル除去
@@ -910,6 +949,70 @@ defineExpose({
 			border-radius: var(--MI-radius);
 		}
 	}
+}
+
+/* Hataskey UI の外部TL専用契約。
+   通常ノート向けの広い data-bubble/data-glass-bg セレクタは外部ノートのDOMと合わないため共有しない。 */
+.notes[data-external-timeline-ui='hataskey'] {
+	box-sizing: border-box;
+	min-width: 0;
+	max-width: 100%;
+	gap: 0 !important;
+	background: transparent;
+
+	> .note {
+		box-sizing: border-box;
+		width: auto;
+		min-width: 0;
+		max-width: 100%;
+		border: none !important;
+	}
+}
+
+.notes[data-external-timeline-mode='hataskey-normal'] {
+	&[data-external-timeline-glass='on'][data-external-timeline-spacing='moderate'] > .note {
+		padding-top: 6px;
+		padding-bottom: 4px;
+	}
+
+	&[data-external-timeline-spacing='wide'] > .note {
+		padding-top: 14px;
+		padding-bottom: 10px;
+	}
+}
+
+.notes[data-external-timeline-mode='hataskey-deck'] {
+	> .note {
+		margin: 0;
+		border-bottom: 12px solid var(--MI_THEME-bg) !important;
+	}
+
+	> .note:last-child {
+		border-bottom: none !important;
+	}
+
+	&[data-external-timeline-glass='on'] > .note {
+		border-bottom-color: color-mix(in srgb, var(--MI_THEME-divider) 30%, transparent) !important;
+	}
+
+	&[data-external-timeline-spacing='compact'] > .note {
+		padding-top: 4px;
+		padding-bottom: 2px;
+	}
+
+	&[data-external-timeline-spacing='wide'] > .note {
+		padding-top: 14px;
+		padding-bottom: 10px;
+	}
+}
+
+:global(html.hataGlassUi) .notes[data-external-timeline-mode='hataskey-normal'][data-external-timeline-spacing='moderate'] > .note {
+	padding-top: 6px;
+	padding-bottom: 4px;
+}
+
+:global(html.hataGlassUi) .notes[data-external-timeline-mode='hataskey-deck'] > .note {
+	border-bottom-color: color-mix(in srgb, var(--MI_THEME-divider) 30%, transparent) !important;
 }
 
 .new2 {

@@ -687,7 +687,7 @@ function buildColumnProps(tab: DeckTab): Record<string, unknown> {
 	if (tab.type === 'list' && tab.sourceId) return { src: 'list', list: tab.sourceId, withRenotes: wr };
 	if (tab.type === 'antenna' && tab.sourceId) return { src: 'antenna', antenna: tab.sourceId, withRenotes: wr };
 	if (tab.type === 'channel' && tab.sourceId) return { src: 'channel', channel: tab.sourceId, withRenotes: wr };
-	if ((tab.type === 'ohtl' || tab.type === 'oltl') && externalReady.value) return { src: tab.type, host: externalHost.value, token: externalToken.value, sound: false, simpleUi: true };
+	if ((tab.type === 'ohtl' || tab.type === 'oltl') && externalReady.value) return { src: tab.type, host: externalHost.value, token: externalToken.value, sound: false, simpleUi: true, hataskeyUi: true };
 	if (tab.type === 'externalNotifications' && externalReady.value) return { widget: { id: `deck-extnotif-${tab.id}`, name: 'externalNotifications', data: {} }, showHeader: false };
 	if (tab.type === 'trending') return {};
 	if (tab.type === 'notifications') return {
