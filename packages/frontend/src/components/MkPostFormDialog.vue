@@ -11,16 +11,20 @@ SPDX-License-Identifier: AGPL-3.0-only
 	@closed="onModalClosed()"
 	@esc="onEsc"
 >
-	<MkPostForm
-		ref="form"
-		:class="$style.form"
-		v-bind="props"
-		autofocus
-		freezeAfterPosted
-		@posted="onPosted"
-		@cancel="_close()"
-		@esc="_close()"
-	/>
+	<div :class="$style.shell">
+		<MkPostForm
+			ref="form"
+			:class="$style.form"
+			v-bind="props"
+			:postDelayStatusTarget="postDelayStatusTarget"
+			autofocus
+			freezeAfterPosted
+			@posted="onPosted"
+			@cancel="_close()"
+			@esc="_close()"
+		/>
+		<div ref="postDelayStatusTarget" :class="$style.postDelayStatusTarget"></div>
+	</div>
 </MkModal>
 </template>
 
@@ -45,6 +49,7 @@ const emit = defineEmits<{
 
 const modal = useTemplateRef('modal');
 const form = useTemplateRef('form');
+const postDelayStatusTarget = useTemplateRef<HTMLDivElement>('postDelayStatusTarget');
 
 function onPosted() {
 	modal.value?.close({
@@ -73,13 +78,31 @@ function onModalClosed() {
 </script>
 
 <style lang="scss" module>
-.form {
+.shell {
+	display: flex;
+	flex-direction: column;
+	width: 100%;
+	max-width: 640px;
 	max-height: calc(100% - env(safe-area-inset-bottom));
+	min-height: 0;
 	margin: 0 auto auto auto;
-	overflow: scroll;
+}
+
+.form {
+	flex: 1 1 auto;
+	min-height: 0;
+	margin: 0;
+	overflow: auto;
 
   &::-webkit-scrollbar {
     display: none;
   }
+}
+
+.postDelayStatusTarget:not(:empty) {
+	display: flex;
+	flex: none;
+	justify-content: center;
+	padding-top: 8px;
 }
 </style>

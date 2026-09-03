@@ -13,7 +13,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 	@dragleave="onDragleave"
 	@drop.stop="onDrop"
 >
-	<Transition :name="prefer.s.animation ? `hata-delay-status-${postDelay.exitMode.value}` : ''"><MkHataPostDelayStatus v-if="postDelay.active.value" compact :class="$style.postDelayStatus" :pattern="i18n.ts._hata._postDelay.countdown" :seconds="postDelay.remainingSeconds.value" :progress="postDelay.progress.value" :cancelLabel="i18n.ts._hata._postDelay.cancel" :sendNowLabel="i18n.ts._hata._postDelay.sendNow" @cancel="postDelay.cancel()" @sendNow="postDelay.sendNow()"/></Transition>
+	<Teleport :to="props.postDelayStatusTarget ?? 'body'" :disabled="props.postDelayStatusTarget == null"><Transition :name="prefer.s.animation ? `hata-delay-status-${postDelay.exitMode.value}` : ''"><MkHataPostDelayStatus v-if="postDelay.active.value" compact :class="[$style.postDelayStatus, { [$style.postDelayStatusExternal]: props.postDelayStatusTarget != null }]" :pattern="i18n.ts._hata._postDelay.countdown" :seconds="postDelay.remainingSeconds.value" :progress="postDelay.progress.value" :cancelLabel="i18n.ts._hata._postDelay.cancel" :sendNowLabel="i18n.ts._hata._postDelay.sendNow" @cancel="postDelay.cancel()" @sendNow="postDelay.sendNow()"/></Transition></Teleport>
 	<Transition :name="prefer.s.animation ? 'hata-visibility-flash' : ''"><div v-if="visibilityFlashIcon" :class="$style.visibilityFlash" aria-hidden="true"><i :class="visibilityFlashIcon"></i></div></Transition>
 	<header :class="$style.header">
 		<div :class="$style.headerLeft">
@@ -215,11 +215,13 @@ const props = withDefaults(defineProps<PostFormProps & {
 	autofocus?: boolean;
 	freezeAfterPosted?: boolean;
 	mock?: boolean;
+	postDelayStatusTarget?: HTMLElement | null;
 }>(), {
 	initialVisibleUsers: () => [],
 	autofocus: true,
 	mock: false,
 	initialLocalOnly: undefined,
+	postDelayStatusTarget: null,
 });
 
 provide(DI.mock, props.mock);
@@ -1417,7 +1419,6 @@ async function post(ev?: MouseEvent) {
 			if (replyTargetNote.value) os.toast(i18n.ts.replied, 'reply');
 			else if (renoteTargetNote.value) os.toast(i18n.ts.quoted, 'quote');
 			else if (props.updateMode) os.toast(i18n.ts.noteEdited, 'edited');
-			else os.toast(i18n.ts.posted, 'posted');
 
 			if (postData.text && postData.text !== '') {
 				const hashtags_ = parseMfmCached(postData.text).map(x => x.type === 'hashtag' && x.props.hashtag).filter(x => x) as string[];
@@ -1981,6 +1982,16 @@ defineExpose({
 	backdrop-filter: blur(10px);
 	--hata-delay-base-transform: translateX(-50%);
 	transform: var(--hata-delay-base-transform);
+}
+
+.postDelayStatusExternal {
+	position: relative;
+	left: auto;
+	bottom: auto;
+	z-index: 1;
+	width: min(330px, 100%);
+	max-width: 100%;
+	--hata-delay-base-transform: none;
 }
 
 .visibilityFlash{display:grid;position:absolute;left:50%;top:50%;z-index:1110;width:58px;height:58px;place-items:center;border:1px solid color-mix(in srgb,var(--MI_THEME-accent) 42%,var(--MI_THEME-divider));border-radius:18px;background:color-mix(in srgb,var(--MI_THEME-panel) 88%,transparent);color:var(--MI_THEME-accent);box-shadow:0 14px 38px color-mix(in srgb,var(--MI_THEME-shadow) 24%,transparent);backdrop-filter:blur(12px);pointer-events:none;transform:translate(-50%,-50%);font-size:30px}

@@ -2643,7 +2643,8 @@ async function submitPost() {
 		if (now.getMinutes() === 0 && now.getSeconds() === 0) claimAchievement('postedAt0min0sec');
 		submitMotionState.value = 'success';
 		await waitForSubmitMotion(720);
-		os.toast(composerContext.value?.kind === 'reply' ? copy.replied : composerContext.value?.kind === 'quote' ? copy.quoted : copy.posted, composerContext.value?.kind === 'reply' ? 'reply' : composerContext.value?.kind === 'quote' ? 'quote' : 'posted');
+		if (composerContext.value?.kind === 'reply') os.toast(copy.replied, 'reply');
+		else if (composerContext.value?.kind === 'quote') os.toast(copy.quoted, 'quote');
 		clearComposer();
 		submitMotionState.value = 'idle';
 		closeComposerToolsMenu();

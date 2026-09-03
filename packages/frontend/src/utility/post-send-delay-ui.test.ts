@@ -60,10 +60,35 @@ describe('post send delay UI wiring', () => {
 		expect(status).toContain('.hata-delay-status-cancel-leave-to');
 	});
 
+	test('通常投稿ダイアログだけ待機カプセルをフォーム直下へ出す', () => {
+		const dialog = source('src/components/MkPostFormDialog.vue');
+		const form = source('src/components/MkPostForm.vue');
+		expect(dialog).toContain(':postDelayStatusTarget="postDelayStatusTarget"');
+		expect(dialog).toMatch(/<MkPostForm[\s\S]*?\/>\s*<div ref="postDelayStatusTarget"/u);
+		expect(form).toContain('<Teleport :to="props.postDelayStatusTarget ?? \'body\'" :disabled="props.postDelayStatusTarget == null">');
+		expect(form).toMatch(/\.postDelayStatusExternal\s*\{[^}]*position:\s*relative;[^}]*left:\s*auto;[^}]*bottom:\s*auto;[^}]*--hata-delay-base-transform:\s*none;/su);
+	});
+
+	test('各投稿UIは通常投稿の上部トーストだけを省き、文脈付き通知と成功表示を保つ', () => {
+		for (const component of ['src/components/MkPostForm.vue', 'src/components/MkPostFormSimple.vue']) {
+			const vue = source(component);
+			expect(vue).not.toContain('os.toast(i18n.ts.posted, \'posted\')');
+			expect(vue).toContain('if (replyTargetNote.value) os.toast(i18n.ts.replied, \'reply\');');
+			expect(vue).toContain('else if (renoteTargetNote.value) os.toast(i18n.ts.quoted, \'quote\');');
+			expect(vue).toContain('else if (props.updateMode) os.toast(i18n.ts.noteEdited, \'edited\');');
+			expect(vue).toContain('submitMotionState.value = \'success\';');
+		}
+		const cord = source('src/pages/hatacording-ui.vue');
+		expect(cord).not.toContain('copy.posted, \'posted\'');
+		expect(cord).toContain('if (composerContext.value?.kind === \'reply\') os.toast(copy.replied, \'reply\');');
+		expect(cord).toContain('else if (composerContext.value?.kind === \'quote\') os.toast(copy.quoted, \'quote\');');
+		expect(cord).toContain('submitMotionState.value = \'success\';');
+	});
+
 	test('HataSNSCordUIは待機中にプレビューを畳み、周回枠を描画しない', () => {
 		const page = source('src/pages/hatacording-ui.vue');
 		expect(page).toContain("v-if=\"draftText.trim().length > 0 && submitMotionState === 'idle'\"");
-		expect(page).toContain(":name=\"prefer.s.animation ? 'hatacording-composer-preview' : ''\"");
+		expect(page).toContain(':name="animationEnabled ? \'hatacording-composer-preview\' : \'\'"');
 		// ⚠️公開範囲の色枠は廃止した（hatacording-ui-source.test.ts が正本）。
 		expect(page).toContain('<div :class="$style.postFormPill">');
 		expect(page).not.toContain('$style.delayActive');
