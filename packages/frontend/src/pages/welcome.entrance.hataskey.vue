@@ -6,7 +6,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 <template>
 <div :ref="controller.rootRef" data-color-mode="system" data-hero-passed="false" style="background:var(--bg);color:var(--fg);font-family:'Zen Kaku Gothic New','Hiragino Kaku Gothic ProN',Meiryo,system-ui,sans-serif;overflow-x:clip;position:relative" data-hataskey-entrance="" :lang="language" :style="{ '--welcome-server-background': serverBackground }">
 	<header class="site-header">
-		<a class="site-brand" data-header-identity="" href="#top" aria-label="Hataskey トップへ" data-aria-en="Back to the Hataskey top" aria-hidden="true" tabindex="-1">
+		<a class="site-brand" data-header-identity="" :data-server-name-japanese="serverNameHasJapanese ? 'true' : 'false'" href="#top" aria-label="Hataskey トップへ" data-aria-en="Back to the Hataskey top" aria-hidden="true" tabindex="-1">
 			<span class="header-identity-face header-identity-server" aria-hidden="true"><img class="header-server-icon" alt="" :src="serverIcon"><span class="header-identity-word" data-server="">{{ serverName }}</span></span>
 			<span class="header-identity-face header-identity-platform" aria-hidden="true"><span class="site-brand-word">Hataskey</span></span>
 		</a>
@@ -772,6 +772,7 @@ function safeWebUrl(value: string | null | undefined) {
 }
 
 const serverName = computed(() => instance.name || instanceName);
+const serverNameHasJapanese = computed(() => /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/u.test(serverName.value));
 const serverIcon = computed(() => safeWebUrl(instance.iconUrl) || '/favicon.ico');
 const serverLoginLabel = computed(() => language.value === 'ja' ? serverName.value + 'にログイン' : 'Log in to ' + serverName.value);
 const serverBackground = computed(() => { const url = safeWebUrl(instance.backgroundImageUrl); return url ? 'url(' + JSON.stringify(url) + ')' : 'none'; });

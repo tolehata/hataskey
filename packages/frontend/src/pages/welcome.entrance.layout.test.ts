@@ -157,6 +157,25 @@ function assertServerNameFontFallback(stylesSource: string): void {
 	}
 }
 
+function assertJapaneseHeaderIdentityStaysOnTextLayer(templateSource: string, stylesSource: string): void {
+	assert.match(templateSource, /:data-server-name-japanese="serverNameHasJapanese \? 'true' : 'false'"/u);
+	assert.match(templateSource, /const serverNameHasJapanese = computed\(\(\) => \/\[\\p\{Script=Han\}\\p\{Script=Hiragana\}\\p\{Script=Katakana\}\]\/u\.test\(serverName\.value\)\);/u);
+	const styles = parseCss(stylesSource);
+	const japaneseFace = declarations(exactRule(styles, `${scope} .site-brand[data-server-name-japanese="true"] .header-identity-face`));
+	assert.equal(japaneseFace['will-change'], 'auto');
+	const japaneseServer = declarations(exactRule(styles, `${scope} .site-brand[data-server-name-japanese="true"] .header-identity-server`));
+	assert.equal(japaneseServer.display, 'flex');
+	assert.equal(japaneseServer.animation, 'none');
+	assert.equal(japaneseServer.opacity, '1');
+	assert.equal(japaneseServer.transform, 'none');
+	const japanesePlatform = declarations(exactRule(styles, `${scope} .site-brand[data-server-name-japanese="true"] .header-identity-platform`));
+	assert.equal(japanesePlatform.display, 'none');
+	assert.equal(japanesePlatform.animation, 'none');
+	const japaneseWord = declarations(exactRule(styles, `${scope} .site-brand[data-server-name-japanese="true"] .header-identity-word`));
+	assert.equal(japaneseWord['-webkit-font-smoothing'], 'auto');
+	assert.equal(japaneseWord['text-rendering'], 'optimizeLegibility');
+}
+
 function assertDesktopSectionSpacing(stylesSource: string): void {
 	const styles = parseCss(stylesSource);
 	const desktop = [{ name: 'container', params: 'hataskey-entrance (min-width:821px)' }];
@@ -445,6 +464,10 @@ describe('welcome entrance source layout contracts', () => {
 		['ヒーローサーバー名の明朝フォールバック復活', 'server-name'],
 	] as const)('陽性対照：%sを検出する', (_name, className) => {
 		expect(() => assertServerNameFontFallback(changeBaseDeclaration(className, 'font-family', 'Righteous,cursive'))).toThrow();
+	});
+
+	test('日本語を含む左上サーバー名は常時transform合成から外す', () => {
+		assertJapaneseHeaderIdentityStaysOnTextLayer(source, css);
 	});
 
 	test('PCだけMORE HATASKEY・HATAKYU・JOINの上下余白を広げ、モバイル値を保つ', () => {

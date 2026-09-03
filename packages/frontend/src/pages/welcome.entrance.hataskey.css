@@ -113,6 +113,10 @@ html:has([data-hataskey-entrance])::view-transition-new(hataskey-welcome){animat
 [data-hataskey-entrance] .header-identity-platform{animation:hWelcome-identityPlatformCycle 16s cubic-bezier(.22,.8,.22,1) infinite}
 [data-hataskey-entrance] .header-server-icon{flex:0 0 30px;width:30px;height:30px;object-fit:cover;border-radius:9px;box-shadow:0 4px 12px rgba(34,66,69,.18)}
 [data-hataskey-entrance] .header-identity-word{min-width:0;white-space:nowrap;font-family:Righteous,'Zen Kaku Gothic New','Hiragino Kaku Gothic ProN',Meiryo,system-ui,sans-serif;font-size:16px}
+[data-hataskey-entrance] .site-brand[data-server-name-japanese="true"] .header-identity-face{will-change:auto}
+[data-hataskey-entrance] .site-brand[data-server-name-japanese="true"] .header-identity-server{display:flex;opacity:1;transform:none;animation:none}
+[data-hataskey-entrance] .site-brand[data-server-name-japanese="true"] .header-identity-platform{display:none;animation:none}
+[data-hataskey-entrance] .site-brand[data-server-name-japanese="true"] .header-identity-word{-webkit-font-smoothing:auto;text-rendering:optimizeLegibility}
 [data-hataskey-entrance] .site-brand-word{font-family:Righteous,cursive;font-size:19px}
 [data-hataskey-entrance] .visitor-actions{flex:0 0 auto;display:flex;align-items:center;gap:8px;margin-left:auto}
 [data-hataskey-entrance] .visitor-menu{position:relative}
