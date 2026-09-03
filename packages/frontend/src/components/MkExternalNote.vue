@@ -79,11 +79,11 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<!-- ファイル表示（Misskeyメディアプレーヤー使用） -->
 					<MkMediaList v-if="appearNote.files && appearNote.files.length > 0" :mediaList="normalizedFiles"/>
 
-					<div v-if="appearNote.renote" :class="$style.renote">
+					<div v-if="quotedNote && (visualMode === 'legacy' || !embedded)" :class="$style.renote">
 						<div :class="$style.renoteHeader">
 							<i class="ti ti-repeat"></i> {{ copy.renote }}
 						</div>
-						<MkExternalNote :note="appearNote.renote" :host="host" :token="token" :visualMode="visualMode" :glassBg="glassBg" :embedded="visualMode !== 'legacy'" :class="$style.renoteNote"/>
+						<MkExternalNote :note="quotedNote" :host="host" :token="token" :visualMode="visualMode" :glassBg="glassBg" :embedded="visualMode !== 'legacy'" :class="$style.renoteNote"/>
 					</div>
 				</div>
 				<div v-if="channelInfo" :class="$style.channel" :title="channelInfo.name">
@@ -92,7 +92,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</div>
 
 				<!-- リアクション表示 -->
-				<div v-if="!embedded && reactionsEntries.length > 0" :class="$style.reactions">
+				<div v-if="!embedded && canInteract && reactionsEntries.length > 0" :class="$style.reactions">
 					<button
 						v-for="[reaction, count] in reactionsEntries"
 						:key="reaction"
@@ -133,7 +133,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					</div>
 				</Teleport>
 
-				<div v-if="!embedded" :class="$style.footer">
+				<div v-if="!embedded && canInteract" :class="$style.footer">
 					<button :class="$style.footerButton" :title="i18n.ts.reply" @click="reply">
 						<i class="ti ti-arrow-back-up"></i>
 						<span v-if="appearNote.repliesCount > 0" :class="$style.footerCount">{{ formatCount(appearNote.repliesCount) }}</span>
@@ -167,6 +167,7 @@ import * as os from '@/os.js';
 import { i18n } from '@/i18n.js';
 import { versatileLang } from '@/utility/intl-const.js';
 import { getExternalEmojiUrlMap, getExternalAccount, addExternalRecentReaction, lookupExternalEmojiUrl } from '@/utility/external-api.js';
+import { resolveExternalNotePresentation } from '@/utility/external-note-presentation.js';
 
 const MkExternalReactionPicker = defineAsyncComponent(() => import('@/components/MkExternalReactionPicker.vue'));
 const MkExternalUserPopup = defineAsyncComponent(() => import('@/components/MkExternalUserPopup.vue'));
@@ -196,11 +197,19 @@ const copy = i18n.ts._hata._externalTimeline._note;
 const copyx = i18n.tsx._hata._externalTimeline._note;
 const numberFormatter = new Intl.NumberFormat(versatileLang);
 const formatCount = (value: number): string => numberFormatter.format(value);
-const isPureRenote = computed(() => props.visualMode !== 'legacy'
-	&& props.note.renote != null
-	&& Misskey.note.isPureRenote(props.note)
-	&& (!Array.isArray(props.note.files) || props.note.files.length === 0));
-const appearNote = computed<any>(() => isPureRenote.value ? (props.note.renote ?? props.note) : props.note);
+const notePresentation = computed(() => props.visualMode === 'legacy'
+	? {
+		isPureRenote: false,
+		appearNote: props.note,
+		quotedNote: props.note?.renote ?? null,
+		resolution: 'resolved' as const,
+		path: [props.note],
+	}
+	: resolveExternalNotePresentation(props.note));
+const isPureRenote = computed(() => notePresentation.value.isPureRenote);
+const appearNote = computed<any>(() => notePresentation.value.appearNote);
+const quotedNote = computed<any | null>(() => notePresentation.value.quotedNote);
+const canInteract = computed(() => notePresentation.value.resolution === 'resolved');
 const myReaction = ref<string | null>(appearNote.value.myReaction || null);
 const reactionBtnEl = useTemplateRef('reactionBtnEl');
 const reactionAddBtnEl = useTemplateRef('reactionAddBtnEl');

@@ -81,6 +81,7 @@ import { misskeyApi } from '@/utility/misskey-api.js';
 import * as sound from '@/utility/sound.js';
 import * as os from '@/os.js';
 import { preloadExternalEmojiMap, callExternalApi, getExternalAccount } from '@/utility/external-api.js';
+import { rebuildExternalNotePath, resolveExternalNotePresentation } from '@/utility/external-note-presentation.js';
 import { cleanupStaleUiElements } from '@/utility/ui-cleanup.js';
 import { versatileLang } from '@/utility/intl-const.js';
 
@@ -161,13 +162,24 @@ function uncaptureNote(noteId: string) {
 	}));
 }
 
+function getExternalTimelineNotePath(note: any): any[] {
+	if (!props.hataskeyUi) {
+		return note.renote && !note.text ? [note, note.renote] : [note];
+	}
+	const presentation = resolveExternalNotePresentation(note);
+	return presentation.isPureRenote ? presentation.path : [note];
+}
+
+function captureTimelineNote(note: any) {
+	const path = getExternalTimelineNotePath(note);
+	const target = path[path.length - 1];
+	captureNote(note.id);
+	if (target !== note) captureNote(target.id);
+}
+
 function captureDisplayedNotes() {
 	for (const note of notes.value) {
-		captureNote(note.id);
-		// リノートの場合は元ノートもキャプチャ
-		if (note.renote && !note.text) {
-			captureNote(note.renote.id);
-		}
+		captureTimelineNote(note);
 	}
 }
 
@@ -202,23 +214,27 @@ function getMyExternalUserId(): string | null {
 	return ext?.userId ?? null;
 }
 
-function findExternalTimelineNote(noteId: string): { outer: any; target: any } | null {
+type ExternalTimelineNoteMatch = { outer: any; target: any; path: any[] };
+
+function findExternalTimelineNote(noteId: string): ExternalTimelineNoteMatch | null {
 	for (const outer of notes.value) {
-		if (outer.id === noteId) return { outer, target: outer };
-		if (outer.renote?.id === noteId) return { outer, target: outer.renote };
+		if (outer.id === noteId) return { outer, target: outer, path: [outer] };
+		const path = getExternalTimelineNotePath(outer);
+		const target = path[path.length - 1];
+		if (target !== outer && target.id === noteId) return { outer, target, path };
 	}
 	return null;
 }
 
-function refreshExternalTimelineNote(found: { outer: any; target: any }) {
+function refreshExternalTimelineNote(found: ExternalTimelineNoteMatch) {
 	notes.value = notes.value.map((outer) => {
 		if (outer.id !== found.outer.id) return outer;
-		const target = {
+		const refreshed = {
 			...found.target,
 			reactions: { ...(found.target.reactions ?? {}) },
 			reactionEmojis: { ...(found.target.reactionEmojis ?? {}) },
 		};
-		return found.outer === found.target ? target : { ...outer, renote: target };
+		return rebuildExternalNotePath(found.path, refreshed);
 	});
 }
 
@@ -375,7 +391,7 @@ async function fetchOlder() {
 
 		// 新しく読み込んだノートもキャプチャ
 		for (const note of res) {
-			captureNote(note.id);
+			captureTimelineNote(note);
 		}
 	} catch (err) {
 		console.error('External timeline fetch older error:', err);
@@ -449,7 +465,7 @@ function releaseQueue() {
 
 	// 新しいノートもキャプチャ
 	for (const note of released) {
-		captureNote(note.id);
+		captureTimelineNote(note);
 	}
 }
 
@@ -515,10 +531,7 @@ function connectStream() {
 						// スクロール最上部にいる場合はリアルタイムでTLに追加
 						if (isAtTop.value) {
 							notes.value = [note, ...notes.value];
-							captureNote(note.id);
-							if (note.renote && !note.text) {
-								captureNote(note.renote.id);
-							}
+							captureTimelineNote(note);
 						} else {
 							queuedNotes.value = [note, ...queuedNotes.value];
 						}

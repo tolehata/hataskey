@@ -63,19 +63,29 @@ describe('external timeline Hataskey UI contract', () => {
 		expect(directlyPlacedNote).not.toContain('glassBg');
 	});
 
-	test('外部ノートへvisual modeを渡し、純リノートと引用をHataskeyの階層へ揃える', () => {
+	test('外部ノートへvisual modeを渡し、純リノート連鎖だけを展開して引用を残す', () => {
 		expect(timelineSource).toContain(':visualMode="visualMode"');
 		expect(timelineSource).toContain(':glassBg="props.hataskeyUi && props.glassBg"');
 		expect(noteSource).toContain("type ExternalTimelineVisualMode = 'legacy' | 'hataskey-normal' | 'hataskey-deck';");
 		expect(noteSource).toMatch(/visualMode:\s*'legacy',\s*\n\s*glassBg:\s*false,\s*\n\s*embedded:\s*false,/u);
 		expect(noteSource).toContain(':data-external-note-ui="visualMode !== \'legacy\' ? \'hataskey\' : undefined"');
-		expect(noteSource).toContain("const isPureRenote = computed(() => props.visualMode !== 'legacy'");
-		expect(noteSource).toContain('&& Misskey.note.isPureRenote(props.note)');
-		expect(noteSource).toContain('const appearNote = computed<any>(() => isPureRenote.value ? (props.note.renote ?? props.note) : props.note);');
+		expect(noteSource).toContain("const notePresentation = computed(() => props.visualMode === 'legacy'");
+		expect(noteSource).toContain(': resolveExternalNotePresentation(props.note));');
+		expect(noteSource).toContain('const appearNote = computed<any>(() => notePresentation.value.appearNote);');
+		expect(noteSource).toContain('const quotedNote = computed<any | null>(() => notePresentation.value.quotedNote);');
+		expect(noteSource).toContain("const canInteract = computed(() => notePresentation.value.resolution === 'resolved');");
 		expect(noteSource).toContain('v-if="isPureRenote" :class="$style.renoteAttribution"');
 		expect(noteSource).toMatch(/<div :class="\$style\.bubbleBody">\s*<button v-if="appearNote\.user"[\s\S]*?<div :class="\$style\.main">/u);
-		expect(noteSource).toContain('<MkExternalNote :note="appearNote.renote" :host="host" :token="token" :visualMode="visualMode" :glassBg="glassBg" :embedded="visualMode !== \'legacy\'"');
+		expect(noteSource).toContain('v-if="quotedNote && (visualMode === \'legacy\' || !embedded)" :class="$style.renote"');
+		expect(noteSource).toContain('<MkExternalNote :note="quotedNote" :host="host" :token="token" :visualMode="visualMode" :glassBg="glassBg" :embedded="visualMode !== \'legacy\'"');
+		expect(noteSource).not.toContain('<MkExternalNote :note="appearNote.renote"');
 		expect(noteSource).not.toContain('<MkExternalNote :note="appearNote.reply"');
+		expect(noteSource).toContain('v-if="!embedded && canInteract && reactionsEntries.length > 0"');
+		expect(noteSource).toContain('v-if="!embedded && canInteract" :class="$style.footer"');
+		expect(timelineSource).toContain('const presentation = resolveExternalNotePresentation(note);');
+		expect(timelineSource).toContain('return presentation.isPureRenote ? presentation.path : [note];');
+		expect(timelineSource).toContain('return note.renote && !note.text ? [note, note.renote] : [note];');
+		expect(timelineSource).not.toContain('flattenExternalPureRenoteChain');
 		expect(noteSource).toContain(".root[data-external-note-mode='hataskey-normal'] .bubbleBody {");
 		expect(noteSource).not.toContain(".root[data-external-note-mode='hataskey-normal'] .main {");
 	});
@@ -145,7 +155,9 @@ describe('external timeline Hataskey UI contract', () => {
 		expect(changed).toContain('target.myReaction = reaction;');
 		expect(changed).toContain('target.reactionCount = Object.values(target.reactions');
 		expect(changed).toContain('refreshExternalTimelineNote(found);');
-		expect(timelineSource).toContain('if (outer.renote?.id === noteId) return { outer, target: outer.renote };');
+		expect(timelineSource).toContain('if (outer.id === noteId) return { outer, target: outer, path: [outer] };');
+		expect(timelineSource).toContain('if (target !== outer && target.id === noteId) return { outer, target, path };');
+		expect(timelineSource).toContain('return rebuildExternalNotePath(found.path, refreshed);');
 		const ownStreamStart = timelineSource.indexOf('if (isPending || isMyReaction) {');
 		const ownStreamEnd = timelineSource.indexOf('\n\t\t\t// 他人のリアクション', ownStreamStart);
 		const ownStream = timelineSource.slice(ownStreamStart, ownStreamEnd);
