@@ -2429,8 +2429,9 @@ onUnmounted(() => {
 }
 .sbDot {
     position:absolute;
-    top:10px;
+    top:50%;
     right:14px;
+    transform:translateY(-50%);
     width:8px;
     height:8px;
     border-radius:50%;
