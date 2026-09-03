@@ -85,7 +85,7 @@ import { i18n } from '@/i18n.js';
 const copy = i18n.ts._hata._sidebarEditor;
 
 // 旗鯖fork: 常時表示 (ON/OFF 不可) な項目。並び替えは可能。
-const REQUIRED_IDS = new Set(['timeline', 'notifications', 'announcements', 'followRequests', 'more']);
+const REQUIRED_IDS = new Set(['timeline', 'notifications', 'externalNotifications', 'announcements', 'followRequests', 'more']);
 
 // 旗鯖fork: グループラベル (バッジ表示用)。group 越えドラッグで自動更新するため、idx に依らず item.group ベースで参照。
 const GROUP_LABELS: Record<string, string> = {
@@ -100,6 +100,7 @@ const ITEM_LABELS: Record<string, string> = {
 	timeline: copy.itemTimeline,
 	search: copy.itemSearch,
 	notifications: copy.itemNotifications,
+	externalNotifications: copy.itemExternalNotifications,
 	chat: copy.itemMessages,
 	announcements: copy.itemAnnouncements,
 	drive: copy.itemDrive,

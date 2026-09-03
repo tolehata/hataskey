@@ -74,6 +74,7 @@ export type Keys = (
 	'hataWhatsNewShownVersion' | // 旗鯖fork: 「今回の更新内容」を出した旗鯖の版(端末ごと。版が上がると再表示)
 	'hata_hask_tiles_v1_migrated' | // 旗鯖fork(#36): Haskホームの新タイル(feedbackNotif/earthquake)を既存ユーザーに追加済みか
 	'hata_sidebar_v7_migrated' | // 旗鯖fork: サイドバーへ「キャッシュをクリア」を追加済みか
+	`hata_external_notifications_sidebar_migrated:${string}` | // 旗鯖fork: 外部通知を並び替え可能な保存項目へ移行済みか（アカウント・プロファイルごと）
 	'hataPostDelayEnabled' | // 旗鯖fork(ベータ): 投稿前カウントダウンを使うか(端末ローカル)
 	'hataPostDelaySeconds' | // 旗鯖fork(ベータ): 投稿前カウントダウンの秒数(3・5・10秒)
 	'hataSideStudio' | // 旗鯖fork: HataSideStudio の端末ローカルなプロファイルと拡大/縮小レイアウト

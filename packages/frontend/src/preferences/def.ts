@@ -841,6 +841,8 @@ export const PREF_DEF = definePreferences({
 			{ id: 'timeline', icon: 'ti ti-home', label: 'タイムライン', group: 'basic' },
 			{ id: 'search', icon: 'ti ti-search', label: '検索', group: 'basic' },
 			{ id: 'notifications', icon: 'ti ti-bell', label: '通知', group: 'basic' },
+			// 旗鯖fork: 外部通知は未連携時も並び順を保存し、表示時だけ連携状態で隠す。
+			{ id: 'externalNotifications', icon: 'ti ti-bell', label: '外部通知', group: 'basic' },
 			// 旗鯖fork: chat はかつて ui/simple.vue で動的注入していたが、ユーザーが非表示/並び替えできるよう
 			// 通常項目として扱う (v5 マイグレで既存ユーザーにも insertAfter で追加)
 			{ id: 'chat', icon: 'ti ti-messages', label: 'メッセージ', group: 'basic' },
@@ -865,7 +867,7 @@ export const PREF_DEF = definePreferences({
 			// (v5 マイグレで既存ユーザーにも insertAfter で追加)
 			{ id: 'reload', icon: 'ti ti-refresh', label: 'リロード', group: 'more' },
 			{ id: 'cacheClear', icon: 'ti ti-trash', label: 'キャッシュをクリア', group: 'more' },
-		] as { id: string; icon: string; label: string; group?: string; external?: boolean; url?: string }[],
+		] as { id: string; icon: string; label: string; group?: string; visible?: boolean; external?: boolean; url?: string }[],
 	},
 	'simpleUi.widgetBorder': {
 		default: true,

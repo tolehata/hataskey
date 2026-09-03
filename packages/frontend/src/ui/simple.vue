@@ -35,9 +35,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<!-- ナビ項目（prefer同期の並び順） -->
 					<div :class="[$style.sbNav, $style.hssRoot]" :data-hss-mode="sidebarFolded ? 'collapsed' : 'expanded'" :style="{ '--hss-normal-columns': String(studioProfile.expanded.columns) }">
 						<!-- HataSideStudio: 縮小表示は専用順序のボタンだけを必ず縦一列で描画する。
-                     グループ/ウィジェットは縮小側の型に存在しないため、CSS崩れではなく構造上表示されない。 -->
+						     グループ/ウィジェットは縮小側の型に存在しないため、CSS崩れではなく構造上表示されない。 -->
 						<template v-if="sidebarFolded">
-							<button v-if="isExternalLinked && !studioCollapsedButtons.some(item => item.menuId === 'externalNotifications')" v-tooltip.right="copy.externalNotifications" :class="[$style.sbItem, $style.hssCollapsedItem]" @click="sidebarItemClick('externalNotifications', $event)"><i class="ti ti-bell" :class="$style.sbIcon"></i><span v-if="extNotifHasUnread" :class="$style.sbExtDot"></span></button>
 							<button v-for="item in studioCollapsedButtons" v-show="studioMenuItemAvailable(item.menuId)" :key="item.id" v-tooltip.right="studioButtonLabel(item)" :class="[$style.sbItem, $style.hssCollapsedItem, { [$style.sbActive]: sidebarItemActive(item.menuId) }]" :data-hss-shape="item.shape" :style="studioItemStyle(item)" @click="studioItemClick(item, $event)">
 								<i :class="[studioIcon(item), $style.sbIcon]"></i>
 								<template v-if="item.menuId==='notifications' && hasUnreadNotif">
@@ -46,10 +45,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 								</template>
 								<span v-if="item.menuId==='announcements' && hasUnreadAnnouncements" :class="$style.sbDot"></span>
 								<span v-if="item.menuId==='chat' && hasUnreadChat" :class="$style.sbNotifDot"></span>
+								<span v-if="item.menuId==='externalNotifications' && extNotifHasUnread" :class="$style.sbExtDot"></span>
 							</button>
 						</template>
 						<template v-else>
-							<button v-if="isExternalLinked && !studioExpandedMenuIds.has('externalNotifications')" :class="[$style.sbItem, { [$style.sbActive]: sidebarItemActive('externalNotifications') }]" @click="sidebarItemClick('externalNotifications', $event)"><i class="ti ti-bell" :class="$style.sbIcon"></i><span :class="$style.sbLabel">{{ copy.externalNotifications }}</span><span v-if="extNotifHasUnread" :class="$style.sbExtDot"></span></button>
 							<template v-for="node in studioExpandedNodes" :key="node.id">
 								<div v-if="node.type === 'group'" :class="$style.hssGroup" :data-hss-masonry="node.masonry ? 'on' : 'off'" :style="studioGroupStyle(node)">
 									<div v-if="node.showName" :class="$style.hssGroupTitle">{{ getHataSideStudioGroupDisplayName(node.name) }}</div>
@@ -64,7 +63,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 												<button v-else v-tooltip.right="!child.showLabel ? studioButtonLabel(child) : null" :class="[$style.sbItem, $style.hssButton, { [$style.sbActive]: sidebarItemActive(child.menuId) }]" :data-hss-shape="child.shape" :data-hss-size="child.size" type="button" @click="studioItemClick(child, $event)">
 													<i :class="[studioIcon(child), $style.sbIcon]"></i><span v-if="child.showLabel" :class="$style.sbLabel">{{ studioButtonLabel(child) }}</span><span v-if="child.size === 'large'" :class="$style.hssButtonLines"><span v-for="line in studioButtonLines(child.menuId)" :key="line">{{ line }}</span></span>
 													<template v-if="child.menuId==='notifications' && hasUnreadNotif"><span v-if="showUnreadNotifCount && unreadNotifCount > 0" :class="$style.sbBadge">{{ unreadNotifCount > 99 ? '99+' : unreadNotifCount }}</span><span v-else :class="$style.sbNotifDot"></span></template>
-													<span v-if="child.menuId==='announcements' && hasUnreadAnnouncements" :class="$style.sbDot"></span><span v-if="child.menuId==='chat' && hasUnreadChat" :class="$style.sbNotifDot"></span>
+													<span v-if="child.menuId==='announcements' && hasUnreadAnnouncements" :class="$style.sbDot"></span><span v-if="child.menuId==='chat' && hasUnreadChat" :class="$style.sbNotifDot"></span><span v-if="child.menuId==='externalNotifications' && extNotifHasUnread" :class="$style.sbExtDot"></span>
 												</button>
 												<div v-if="child.size === 'large' && studioButtonSignals(child.menuId).length" :class="$style.hssButtonSignals"><button v-for="signal in studioButtonSignals(child.menuId)" :key="signal.label" type="button" @click.stop="openStudioButtonSignal(signal)">{{ signal.label }}</button></div>
 											</div>
@@ -84,7 +83,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 										<i :class="[studioIcon(node), $style.sbIcon]"></i><input name="query" type="search" :placeholder="copy.searchPlaceholder" :aria-label="copy.searchQuery" @click.stop><button type="submit" :aria-label="copy.searchSubmit" @click.stop><i class="ti ti-arrow-right"></i></button>
 									</form>
 									<template v-else>
-										<button v-tooltip.right="!node.showLabel ? studioButtonLabel(node) : null" :class="[$style.sbItem, $style.hssButton, { [$style.sbActive]: sidebarItemActive(node.menuId) }]" :data-hss-shape="node.shape" :data-hss-size="node.size" type="button" @click="studioItemClick(node, $event)"><i :class="[studioIcon(node), $style.sbIcon]"></i><span v-if="node.showLabel" :class="$style.sbLabel">{{ studioButtonLabel(node) }}</span><span v-if="node.size === 'large'" :class="$style.hssButtonLines"><span v-for="line in studioButtonLines(node.menuId)" :key="line">{{ line }}</span></span></button>
+										<button v-tooltip.right="!node.showLabel ? studioButtonLabel(node) : null" :class="[$style.sbItem, $style.hssButton, { [$style.sbActive]: sidebarItemActive(node.menuId) }]" :data-hss-shape="node.shape" :data-hss-size="node.size" type="button" @click="studioItemClick(node, $event)"><i :class="[studioIcon(node), $style.sbIcon]"></i><span v-if="node.showLabel" :class="$style.sbLabel">{{ studioButtonLabel(node) }}</span><span v-if="node.size === 'large'" :class="$style.hssButtonLines"><span v-for="line in studioButtonLines(node.menuId)" :key="line">{{ line }}</span></span><span v-if="node.menuId==='externalNotifications' && extNotifHasUnread" :class="$style.sbExtDot"></span></button>
 										<div v-if="node.size === 'large' && studioButtonSignals(node.menuId).length" :class="$style.hssButtonSignals"><button v-for="signal in studioButtonSignals(node.menuId)" :key="signal.label" type="button" @click.stop="openStudioButtonSignal(signal)">{{ signal.label }}</button></div>
 									</template>
 								</div>
@@ -390,7 +389,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<div :class="$style.sbScroll">
 						<!-- モバイルもHataSideStudioの拡大プロファイルを正本として描画する。 -->
 						<div :class="[$style.sbNav, $style.hssRoot, $style.hssMobileRoot]" data-hss-mode="expanded" :style="{ '--hss-normal-columns': String(studioProfile.expanded.columns) }">
-							<button v-if="isExternalLinked && !studioExpandedMenuIds.has('externalNotifications')" :class="[$style.sbItem, { [$style.sbActive]: sidebarItemActive('externalNotifications') }]" @click="sidebarItemClick('externalNotifications', $event)"><i class="ti ti-bell" :class="$style.sbIcon"></i><span :class="$style.sbLabel">{{ copy.externalNotifications }}</span><span v-if="extNotifHasUnread" :class="$style.sbExtDot"></span></button>
 							<template v-for="node in studioExpandedNodes" :key="node.id">
 								<div v-if="node.type === 'group'" :class="$style.hssGroup" :data-hss-masonry="node.masonry ? 'on' : 'off'" :style="studioGroupStyle(node)">
 									<div v-if="node.showName" :class="$style.hssGroupTitle">{{ getHataSideStudioGroupDisplayName(node.name) }}</div>
@@ -398,7 +396,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 										<template v-for="child in node.children" :key="child.id">
 											<div v-if="child.type === 'button'" v-show="studioMenuItemAvailable(child.menuId)" :class="$style.hssItemSlot" :data-hss-shape="child.shape" :data-hss-size="child.size" :style="studioItemStyle(child)">
 												<form v-if="isStudioSearchButton(child)" :class="[$style.sbItem, $style.hssButton, $style.hssSearchButton]" :data-hss-shape="child.shape" :data-hss-size="child.size" role="search" @submit.prevent="submitStudioMobileSearch"><i :class="[studioIcon(child), $style.sbIcon]"></i><input name="query" type="search" :placeholder="copy.searchPlaceholder" :aria-label="copy.searchQuery" @click.stop><button type="submit" :aria-label="copy.searchSubmit" @click.stop><i class="ti ti-arrow-right"></i></button></form>
-												<button v-else v-tooltip.right="!child.showLabel ? studioButtonLabel(child) : null" :class="[$style.sbItem, $style.hssButton, { [$style.sbActive]: sidebarItemActive(child.menuId) }]" :data-hss-shape="child.shape" :data-hss-size="child.size" type="button" @click="studioItemClick(child, $event)"><i :class="[studioIcon(child), $style.sbIcon]"></i><span v-if="child.showLabel" :class="$style.sbLabel">{{ studioButtonLabel(child) }}</span><span v-if="child.size === 'large'" :class="$style.hssButtonLines"><span v-for="line in studioButtonLines(child.menuId)" :key="line">{{ line }}</span></span><template v-if="child.menuId==='notifications' && hasUnreadNotif"><span v-if="showUnreadNotifCount && unreadNotifCount > 0" :class="$style.sbBadge">{{ unreadNotifCount > 99 ? '99+' : unreadNotifCount }}</span><span v-else :class="$style.sbNotifDot"></span></template><span v-if="child.menuId==='announcements' && hasUnreadAnnouncements" :class="$style.sbDot"></span><span v-if="child.menuId==='chat' && hasUnreadChat" :class="$style.sbNotifDot"></span></button>
+												<button v-else v-tooltip.right="!child.showLabel ? studioButtonLabel(child) : null" :class="[$style.sbItem, $style.hssButton, { [$style.sbActive]: sidebarItemActive(child.menuId) }]" :data-hss-shape="child.shape" :data-hss-size="child.size" type="button" @click="studioItemClick(child, $event)"><i :class="[studioIcon(child), $style.sbIcon]"></i><span v-if="child.showLabel" :class="$style.sbLabel">{{ studioButtonLabel(child) }}</span><span v-if="child.size === 'large'" :class="$style.hssButtonLines"><span v-for="line in studioButtonLines(child.menuId)" :key="line">{{ line }}</span></span><template v-if="child.menuId==='notifications' && hasUnreadNotif"><span v-if="showUnreadNotifCount && unreadNotifCount > 0" :class="$style.sbBadge">{{ unreadNotifCount > 99 ? '99+' : unreadNotifCount }}</span><span v-else :class="$style.sbNotifDot"></span></template><span v-if="child.menuId==='announcements' && hasUnreadAnnouncements" :class="$style.sbDot"></span><span v-if="child.menuId==='chat' && hasUnreadChat" :class="$style.sbNotifDot"></span><span v-if="child.menuId==='externalNotifications' && extNotifHasUnread" :class="$style.sbExtDot"></span></button>
 											</div>
 											<div v-else :class="$style.hssWidget" :data-hss-kind="child.kind" :data-hss-content="studioWidgetContent(child)" :data-hss-shape="child.shape" :data-hss-size="child.size" :style="studioItemStyle(child)"><div :class="$style.hssWidgetFrame" @wheel="onStudioWidgetWheel(child.kind, $event)"><HataSideStudioFlowers v-if="child.kind === 'hataskFlowers' || child.kind === 'flowers'" :size="child.size"/><HataSideStudioEarthquake v-else-if="child.kind === 'earthquake'" :size="child.size"/><component :is="studioWidgetComponent(child)" v-else-if="studioWidgetComponent(child)" :key="studioWidgetRenderKey(child)" :widget="studioWidgetModel(child)" @updateProps="updateStudioWidgetProps(child.id, $event)"/><button v-else type="button" :class="$style.hssWidgetFallback" @click="studioWidgetClick(child.kind)"><i :class="studioWidgetIcon(child.kind)"></i><span><b>{{ studioWidgetValue(child.kind) }}</b><small>{{ studioWidgetLabel(child) }}</small></span></button></div></div>
 										</template>
@@ -406,7 +404,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 								</div>
 								<div v-else-if="node.type === 'button'" v-show="studioMenuItemAvailable(node.menuId)" :class="$style.hssItemSlot" :data-hss-shape="node.shape" :data-hss-size="node.size" :style="studioItemStyle(node)">
 									<form v-if="isStudioSearchButton(node)" :class="[$style.sbItem, $style.hssButton, $style.hssSearchButton]" :data-hss-shape="node.shape" :data-hss-size="node.size" role="search" @submit.prevent="submitStudioMobileSearch"><i :class="[studioIcon(node), $style.sbIcon]"></i><input name="query" type="search" :placeholder="copy.searchPlaceholder" :aria-label="copy.searchQuery" @click.stop><button type="submit" :aria-label="copy.searchSubmit" @click.stop><i class="ti ti-arrow-right"></i></button></form>
-									<button v-else v-tooltip.right="!node.showLabel ? studioButtonLabel(node) : null" :class="[$style.sbItem, $style.hssButton, { [$style.sbActive]: sidebarItemActive(node.menuId) }]" :data-hss-shape="node.shape" :data-hss-size="node.size" type="button" @click="studioItemClick(node, $event)"><i :class="[studioIcon(node), $style.sbIcon]"></i><span v-if="node.showLabel" :class="$style.sbLabel">{{ studioButtonLabel(node) }}</span><span v-if="node.size === 'large'" :class="$style.hssButtonLines"><span v-for="line in studioButtonLines(node.menuId)" :key="line">{{ line }}</span></span></button>
+									<button v-else v-tooltip.right="!node.showLabel ? studioButtonLabel(node) : null" :class="[$style.sbItem, $style.hssButton, { [$style.sbActive]: sidebarItemActive(node.menuId) }]" :data-hss-shape="node.shape" :data-hss-size="node.size" type="button" @click="studioItemClick(node, $event)"><i :class="[studioIcon(node), $style.sbIcon]"></i><span v-if="node.showLabel" :class="$style.sbLabel">{{ studioButtonLabel(node) }}</span><span v-if="node.size === 'large'" :class="$style.hssButtonLines"><span v-for="line in studioButtonLines(node.menuId)" :key="line">{{ line }}</span></span><span v-if="node.menuId==='externalNotifications' && extNotifHasUnread" :class="$style.sbExtDot"></span></button>
 								</div>
 								<div v-else :class="$style.hssWidget" :data-hss-kind="node.kind" :data-hss-content="studioWidgetContent(node)" :data-hss-shape="node.shape" :data-hss-size="node.size" :style="studioItemStyle(node)"><div :class="$style.hssWidgetFrame" @wheel="onStudioWidgetWheel(node.kind, $event)"><HataSideStudioFlowers v-if="node.kind === 'hataskFlowers' || node.kind === 'flowers'" :size="node.size"/><HataSideStudioEarthquake v-else-if="node.kind === 'earthquake'" :size="node.size"/><component :is="studioWidgetComponent(node)" v-else-if="studioWidgetComponent(node)" :key="studioWidgetRenderKey(node)" :widget="studioWidgetModel(node)" @updateProps="updateStudioWidgetProps(node.id, $event)"/><button v-else type="button" :class="$style.hssWidgetFallback" @click="studioWidgetClick(node.kind)"><i :class="studioWidgetIcon(node.kind)"></i><span><b>{{ studioWidgetValue(node.kind) }}</b><small>{{ studioWidgetLabel(node) }}</small></span></button></div></div>
 							</template>
@@ -882,7 +880,7 @@ function onContentScroll() {
 }
 
 // ===== 外部アカウント =====
-const isExternalLinked = computed(() => prefer.s['external.enabled'] && prefer.s['external.token'] != null);
+const isExternalLinked = computed(() => prefer.r['external.enabled'].value && prefer.r['external.token'].value != null);
 const externalHost = computed(() => prefer.s['external.host'] || '');
 const externalToken = computed(() => prefer.s['external.token'] || '');
 const showOHTL = computed(() => isExternalLinked.value && prefer.s['external.enableOHTL']);
@@ -1060,14 +1058,6 @@ const studioPostButtonStyle = computed(() => ({
 }));
 const studioExpandedNodes = computed(() => studioProfile.value.expanded.nodes);
 const studioCollapsedButtons = computed(() => studioProfile.value.collapsed.buttons);
-const studioExpandedMenuIds = computed(() => {
-	const ids = new Set<string>();
-	for (const node of studioExpandedNodes.value) {
-		if (node.type === 'button') ids.add(node.menuId);
-		if (node.type === 'group') for (const child of node.children) if (child.type === 'button') ids.add(child.menuId);
-	}
-	return ids;
-});
 const studioLargeMenuKey = computed(() => {
 	const ids = new Set<string>();
 	for (const node of studioExpandedNodes.value) {
@@ -1106,6 +1096,7 @@ function studioIcon(item: HataSideButton): string {
 }
 
 function studioMenuItemAvailable(menuId: string): boolean {
+	if (menuId === 'externalNotifications') return isExternalLinked.value;
 	const definition = (navbarItemDef as unknown as Record<string, { show?: boolean } | undefined>)[menuId];
 	return definition?.show !== false;
 }
@@ -1535,8 +1526,8 @@ const sidebarGroupLabels: Record<string, string> = {
 };
 // 旗鯖fork: サイドバー項目をグループ単位にまとめる (group未指定の項目は 'basic' 扱いで後方互換)
 // 旗鯖fork: visible === false の項目はサイドバーに表示しない。ただし必須項目
-// (timeline / notifications / announcements / followRequests / more) は強制表示。
-const REQUIRED_SIDEBAR_IDS = ['timeline', 'notifications', 'announcements', 'followRequests', 'more'];
+// (timeline / notifications / externalNotifications / announcements / followRequests / more) は強制表示。
+const REQUIRED_SIDEBAR_IDS = ['timeline', 'notifications', 'externalNotifications', 'announcements', 'followRequests', 'more'];
 // 旗鯖fork: 過去に削除された(=コード側に対応する遷移処理が無い)サイドバー項目ID。
 // 既存ユーザーの simpleUi.sidebar 保存値に残っている場合、サイドメニュー/Hataskey UI上部ナビバー
 // の両方で描画されないよう除外する。将来別の項目が削除された場合はここに追記する。
@@ -1551,6 +1542,8 @@ const sidebarGroups = computed(() => {
 	for (const item of sidebarOrder.value) {
 		// 旗鯖fork: 削除済み項目(whatsNew等)は保存値に残っていても無視する
 		if (DEAD_SIDEBAR_IDS.includes(item.id)) continue;
+		// 連携を外しても保存位置は変えず、描画だけ隠す。
+		if (item.id === 'externalNotifications' && !isExternalLinked.value) continue;
 		// 旗鯖fork: visible:false は除外、ただし必須項目は強制的に表示
 		if (item.visible === false && !REQUIRED_SIDEBAR_IDS.includes(item.id)) continue;
 		const g = item.group ?? 'basic';
@@ -1561,22 +1554,6 @@ const sidebarGroups = computed(() => {
 	// 旗鯖fork: chat (メッセージ) は v5 マイグレ (boot/common.ts) で既存ユーザーの sidebar に
 	// insertAfter で追加するため、動的注入は不要 (撤去)。これによりユーザーが設定 UI から
 	// メッセージ項目の非表示・並び替えを通常の sidebar 項目として行えるようになる。
-	// 旗鯖fork: 外部通知を連携ON時のみ動的注入する。通知の直後に配置。
-	// 連携状態はリアクティブな isExternalLinked に依存するため、連携ON/OFFで即座に
-	// 出現/消滅する (リロード不要)。必須項目扱いでトグル不可 (並び替え対象にも出すが外せない)。
-	// 注入方式のため simpleUi.sidebar には保存されず、連携状態だけで表示が決まる。
-	if (isExternalLinked.value) {
-		let basic = groups.find(x => x.key === 'basic');
-		if (!basic) { basic = { key: 'basic', label: sidebarGroupLabels['basic'] ?? '', items: [] }; groups.push(basic); }
-		const notifIdx2 = basic.items.findIndex((x: any) => x.id === 'notifications');
-		const extNotifItem = { id: 'externalNotifications', icon: 'ti ti-bell', label: '外部通知', group: 'basic' };
-		// 通知の直後に置く (チャットより前)
-		if (notifIdx2 >= 0) {
-			basic.items.splice(notifIdx2 + 1, 0, extNotifItem);
-		} else {
-			basic.items.push(extNotifItem);
-		}
-	}
 	// グループの表示順を固定 (定義順に依存しないように)
 	return groups.sort((a, b) => order.indexOf(a.key) - order.indexOf(b.key));
 });
@@ -1768,7 +1745,7 @@ function sidebarItemClick(id: string, ev?: MouseEvent) {
 		hatady: () => mainRouter.push('/hatady'),
 		earthquake: () => mainRouter.push('/earthquake'),
 		// 旗鯖fork: 外部通知専用ページへ
-		externalNotifications: () => mainRouter.push('/my/external-notifications'),
+		externalNotifications: () => goToExternalNotifications(),
 		more: () => { if (ev) openMore(ev); },
 		// 旗鯖fork: reload はクリックでページ全体をリロード (旧来は独立ボタンだったが sidebar 項目化)
 		reload: () => reloadPage(ev),
@@ -2385,8 +2362,9 @@ onUnmounted(() => {
 }
 .sbBadge {
     position:absolute;
-    top:6px;
+    top:50%;
     right:10px;
+    transform:translateY(-50%);
     min-width:18px;
     height:18px;
     padding:0 5px;
@@ -2402,8 +2380,9 @@ onUnmounted(() => {
 /* 旗鯖fork: 外部通知の未読青ドット (サイドメニュー用) */
 .sbExtDot {
     position:absolute;
-    top:10px;
+    top:50%;
     right:14px;
+    transform:translateY(-50%);
     width:8px;
     height:8px;
     border-radius:50%;
@@ -2421,8 +2400,9 @@ onUnmounted(() => {
 }
 .sbNotifDot {
     position:absolute;
-    top:10px;
+    top:50%;
     right:14px;
+    transform:translateY(-50%);
     width:8px;
     height:8px;
     border-radius:50%;

@@ -894,6 +894,8 @@ function explicitStorageDispositionsV2(): ReadonlyMap<string, ExplicitStorageKey
 		'端末保存形式・UI移行の一度だけ使うversion/marker', ['src/local-storage.ts', 'src/boot/common.ts']);
 	add('local', ['hata_portal_cleanup_migrated:' + dynamicKey], 'migration',
 		'廃止ポータルの保存メニュー移行をアカウント・プロファイルごとに記録する完了印', ['src/utility/retired-portal-migration.ts']);
+	add('local', ['hata_external_notifications_sidebar_migrated:' + dynamicKey], 'migration',
+		'外部通知を保存サイドバー項目へ移行したことをアカウント・プロファイルごとに記録する完了印', ['src/utility/external-notifications-sidebar-migration.ts']);
 	add('local', ['fontSize', 'hatadyLang', 'miux:' + dynamicKey, 'themes:' + dynamicKey, 'lastEmojisFetchedAt', 'emojis'], 'deprecated',
 		'旧端末UI保存値。現行の正本または互換経路へ置換済み', ['src/local-storage.ts', 'src/pages/settings/preferences.vue']);
 	add('local', keys('hataPostDelayEnabled hataPostDelaySeconds hataSideStudio'), 'runtime',

@@ -292,7 +292,7 @@ import {
 	HATA_SIDE_STUDIO_DEFAULT_PROFILE_LIMIT, applyHataSideStudioStore, cloneHataSideStudioStore,
 	copyCollapsedToExpanded, copyExpandedToCollapsed, createButton, createDefaultProfile, createGroup, createHataSideStudioSourceCatalog, createWidget,
 	ensureHataSideStudioInitialized, findHataSideNodeParentGroup, getActiveHataSideProfile, getHataSideNodeContainerColumns, getHataSideStudioGroupDisplayName, getHataSideStudioMenuDisplayLabel, getHataSideStudioProfileDisplayName,
-	getHataSideWidgetDisplayLabel, gradientCss, hataSideStudioStore, mergeHataSideGroups,
+	getHataSideWidgetDisplayLabel, gradientCss, hataSideStudioNodeContainsRequiredMenu, hataSideStudioStore, mergeHataSideGroups,
 } from '@/utility/hata-side-studio.js';
 import { SIDEBAR_ICON_OVERRIDES } from '@/utility/sidebar-icon-overrides.js';
 import HataSideStudioEarthquake from '@/components/HataSideStudioEarthquake.vue';
@@ -880,6 +880,10 @@ function removeNode(id: string) { if (editMode.value === 'collapsed') activeProf
 async function requestRemoveNode(id: string) {
 	const node = findNode(id);
 	if (!node) return;
+	if (hataSideStudioNodeContainsRequiredMenu(node)) {
+		os.toast(i18n.ts._hata._sidebarEditor.alwaysVisible, 'ti ti-lock');
+		return;
+	}
 	const label = node.type === 'group' ? copyx.groupQuoted({ name: getHataSideStudioGroupDisplayName(node.name) }) : copyx.itemQuoted({ name: node.type === 'widget' ? widgetDisplayLabel(node.kind, node.label) : getHataSideStudioMenuDisplayLabel(node.menuId, node.label) });
 	const detail = node.type === 'group' && node.children.length > 0 ? copyx.deleteChildrenTogether({ count: node.children.length.toString() }) : copy.notFinalUntilSaved;
 	if (await askStudioConfirm(copyx.deleteNamed({ name: label }), detail, copy.deleteAction, 'ti ti-trash')) removeNode(id);

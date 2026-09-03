@@ -50,6 +50,41 @@ describe('HataSideStudio UI integration', () => {
 		expect(studio).toContain('copy.collapsedBorderHiddenDescription');
 	});
 
+	test('外部通知はStudioプロファイルの保存位置で描画し、未連携時だけ隠して未読を表示する', () => {
+		const simple = read('ui/simple.vue');
+		expect(simple).toContain("const isExternalLinked = computed(() => prefer.r['external.enabled'].value && prefer.r['external.token'].value != null);");
+		expect(simple).toContain("if (menuId === 'externalNotifications') return isExternalLinked.value;");
+		expect(simple).toContain("if (item.id === 'externalNotifications' && !isExternalLinked.value) continue;");
+		expect(simple).toContain('externalNotifications: () => goToExternalNotifications()');
+		expect(simple.match(/item\.menuId==='externalNotifications' && extNotifHasUnread/g)).toHaveLength(1);
+		expect(simple.match(/child\.menuId==='externalNotifications' && extNotifHasUnread/g)).toHaveLength(2);
+		expect(simple.match(/node\.menuId==='externalNotifications' && extNotifHasUnread/g)).toHaveLength(2);
+		expect(simple).not.toContain("!studioCollapsedButtons.some(item => item.menuId === 'externalNotifications')");
+		expect(simple).not.toContain("!studioExpandedMenuIds.has('externalNotifications')");
+		expect(simple).not.toContain('const studioExpandedMenuIds');
+		expect(simple).not.toContain('const extNotifItem');
+		expect(simple).not.toContain('basic.items.splice(notifIdx2 + 1');
+	});
+
+	test('Hataskey UIの通常通知と外部通知のバッジをメニューボタンの縦中央へ揃える', () => {
+		const simple = read('ui/simple.vue');
+		for (const selector of ['.sbBadge', '.sbExtDot', '.sbNotifDot']) {
+			const block = simple.slice(simple.indexOf(`${selector} {`), simple.indexOf('}', simple.indexOf(`${selector} {`)));
+			expect(block).toContain('top:50%');
+			expect(block).toContain('transform:translateY(-50%)');
+		}
+	});
+
+	test('外部通知とそれを含むグループは、確認ダイアログより前に削除を拒否する', () => {
+		const studio = read('pages/hata-side-studio.vue');
+		const requestRemove = studio.slice(studio.indexOf('async function requestRemoveNode'), studio.indexOf('function activateProfile'));
+		expect(studio).toContain('hataSideStudioNodeContainsRequiredMenu');
+		expect(requestRemove).toContain('if (hataSideStudioNodeContainsRequiredMenu(node))');
+		expect(requestRemove).toContain("os.toast(i18n.ts._hata._sidebarEditor.alwaysVisible, 'ti ti-lock')");
+		expect(requestRemove.indexOf('hataSideStudioNodeContainsRequiredMenu(node)')).toBeLessThan(requestRemove.indexOf('askStudioConfirm'));
+		expect(requestRemove.indexOf('return;')).toBeLessThan(requestRemove.indexOf('askStudioConfirm'));
+	});
+
 	test('編集画面は拡大と縮小の相互コピー、PC二ペイン、削除モードを備える', () => {
 		const studio = read('pages/hata-side-studio.vue');
 		expect(studio).toContain('copyLayout(\'expandedToCollapsed\')');

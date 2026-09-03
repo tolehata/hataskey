@@ -29197,6 +29197,10 @@ export interface Locale extends ILocale {
              */
             "itemNotifications": string;
             /**
+             * 外部通知
+             */
+            "itemExternalNotifications": string;
+            /**
              * メッセージ
              */
             "itemMessages": string;
@@ -32107,6 +32111,10 @@ export interface Locale extends ILocale {
                      * 通知
                      */
                     "notifications": string;
+                    /**
+                     * 外部通知
+                     */
+                    "externalNotifications": string;
                     /**
                      * メッセージ
                      */

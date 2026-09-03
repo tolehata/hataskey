@@ -35,7 +35,7 @@ export type {
 
 export { getHataSideWidgetDisplayLabel };
 
-export const HATA_SIDE_STUDIO_FORMAT_VERSION = 8;
+export const HATA_SIDE_STUDIO_FORMAT_VERSION = 9;
 export const HATA_SIDE_STUDIO_DEFAULT_PROFILE_LIMIT = 3;
 export const HATA_SIDE_STUDIO_STORAGE_KEY = 'hataSideStudio';
 export const HATA_SIDE_STUDIO_CHANGE_EVENT = 'hata-side-studio:change';
@@ -43,6 +43,7 @@ export const HATA_SIDE_STUDIO_BROADCAST_CHANNEL = 'hata-side-studio';
 
 export const HATA_SIDE_STUDIO_FIXED_IDS = new Set(['more', 'settings', 'realtime', 'admin']);
 export const HATA_SIDE_STUDIO_DEAD_IDS = new Set(['whatsNew', 'portal']);
+export const HATA_SIDE_STUDIO_REQUIRED_MENU_IDS = new Set(['externalNotifications']);
 export const HATA_SIDE_STUDIO_MENU_ID_ALIASES: Readonly<Record<string, string>> = {
 	// 「もっと！」では ui、従来のHataskey UIサイドバーでは uiSetup という
 	// 異なるIDだが、どちらも同じUI切り替えを開く。別ボタンとして重複させない。
@@ -131,6 +132,11 @@ export type HataSideGroup = {
 
 export type HataSideNode = HataSideButton | HataSideWidget | HataSideGroup;
 
+export function hataSideStudioNodeContainsRequiredMenu(node: HataSideNode): boolean {
+	if (node.type === 'button') return HATA_SIDE_STUDIO_REQUIRED_MENU_IDS.has(node.menuId);
+	return node.type === 'group' && node.children.some(child => child.type === 'button' && HATA_SIDE_STUDIO_REQUIRED_MENU_IDS.has(child.menuId));
+}
+
 export type HataSideStudioProfile = {
 	id: string;
 	name: string;
@@ -190,6 +196,7 @@ const HATA_SIDE_STUDIO_MENU_STORAGE_LABELS: Readonly<Record<string, string>> = {
 	timeline: 'タイムライン',
 	search: '検索',
 	notifications: '通知',
+	externalNotifications: '外部通知',
 	chat: 'メッセージ',
 	announcements: 'お知らせ',
 	drive: 'ドライブ',
@@ -210,6 +217,7 @@ const fallbackSidebar: SidebarSourceItem[] = [
 	{ id: 'timeline', icon: 'ti ti-home', label: HATA_SIDE_STUDIO_MENU_STORAGE_LABELS.timeline, group: 'basic' },
 	{ id: 'search', icon: 'ti ti-search', label: HATA_SIDE_STUDIO_MENU_STORAGE_LABELS.search, group: 'basic' },
 	{ id: 'notifications', icon: 'ti ti-bell', label: HATA_SIDE_STUDIO_MENU_STORAGE_LABELS.notifications, group: 'basic' },
+	{ id: 'externalNotifications', icon: 'ti ti-bell', label: HATA_SIDE_STUDIO_MENU_STORAGE_LABELS.externalNotifications, group: 'basic' },
 	{ id: 'chat', icon: 'ti ti-messages', label: HATA_SIDE_STUDIO_MENU_STORAGE_LABELS.chat, group: 'basic' },
 	{ id: 'announcements', icon: 'ti ti-speakerphone', label: HATA_SIDE_STUDIO_MENU_STORAGE_LABELS.announcements, group: 'basic' },
 	{ id: 'drive', icon: 'ti ti-cloud', label: HATA_SIDE_STUDIO_MENU_STORAGE_LABELS.drive, group: 'basic' },
@@ -443,7 +451,17 @@ export function createHataSideStudioSourceCatalog(
 }
 
 function visibleSource(source: readonly SidebarSourceItem[]): SidebarSourceItem[] {
-	return sanitizeSourceList(source).filter(item => item.visible !== false);
+	const visible = sanitizeSourceList(source).filter(item => item.visible !== false || HATA_SIDE_STUDIO_REQUIRED_MENU_IDS.has(item.id));
+	if (visible.some(item => item.id === 'externalNotifications')) return visible;
+	const externalNotifications: SidebarSourceItem = {
+		id: 'externalNotifications',
+		icon: 'ti ti-bell',
+		label: HATA_SIDE_STUDIO_MENU_STORAGE_LABELS.externalNotifications,
+		group: 'basic',
+	};
+	const notificationsIndex = visible.findIndex(item => item.id === 'notifications');
+	visible.splice(notificationsIndex >= 0 ? notificationsIndex + 1 : 0, 0, externalNotifications);
+	return visible;
 }
 
 export function createDefaultProfile(source: readonly SidebarSourceItem[] = fallbackSidebar, name: string = HATA_SIDE_STUDIO_DEFAULT_STORAGE_NAMES.defaultProfile): HataSideStudioProfile {
@@ -623,6 +641,91 @@ function sanitizeGroup(value: unknown, refreshLayoutDefaults = false): HataSideG
 	};
 }
 
+function isExternalNotificationsButton(value: HataSideButton | HataSideNode): value is HataSideButton {
+	return value.type === 'button' && value.menuId === 'externalNotifications';
+}
+
+/**
+ * v8以前は画面側が外部通知を固定注入していたため、全プロファイルの保存配列へ一度だけ補う。
+ * 既存の外部通知は位置も装飾も変えず、重複した場合は最初の1件だけを残す。
+ */
+function ensureExternalNotificationsExpanded(nodes: HataSideNode[]): HataSideNode[] {
+	let found = false;
+	const deduplicated: HataSideNode[] = [];
+	for (const node of nodes) {
+		if (isExternalNotificationsButton(node)) {
+			if (found) continue;
+			found = true;
+			deduplicated.push(node);
+			continue;
+		}
+		if (node.type !== 'group') {
+			deduplicated.push(node);
+			continue;
+		}
+		const children: Array<HataSideButton | HataSideWidget> = [];
+		for (const child of node.children) {
+			if (isExternalNotificationsButton(child)) {
+				if (found) continue;
+				found = true;
+			}
+			children.push(child);
+		}
+		deduplicated.push(children.length === node.children.length ? node : { ...node, children });
+	}
+	if (found) return deduplicated;
+
+	const button = createButton({
+		id: 'externalNotifications',
+		icon: 'ti ti-bell',
+		label: HATA_SIDE_STUDIO_MENU_STORAGE_LABELS.externalNotifications,
+		group: 'basic',
+	});
+	for (let index = 0; index < deduplicated.length; index++) {
+		const node = deduplicated[index];
+		if (node.type === 'button' && node.menuId === 'notifications') {
+			deduplicated.splice(index + 1, 0, button);
+			return deduplicated;
+		}
+		if (node.type !== 'group') continue;
+		const notificationsIndex = node.children.findIndex(child => child.type === 'button' && child.menuId === 'notifications');
+		if (notificationsIndex < 0) continue;
+		const children = [...node.children];
+		children.splice(notificationsIndex + 1, 0, button);
+		deduplicated[index] = { ...node, children };
+		return deduplicated;
+	}
+	deduplicated.unshift(button);
+	return deduplicated;
+}
+
+function ensureExternalNotificationsCollapsed(buttons: HataSideButton[]): HataSideButton[] {
+	let found = false;
+	const deduplicated = buttons.filter(button => {
+		if (!isExternalNotificationsButton(button)) return true;
+		if (found) return false;
+		found = true;
+		return true;
+	});
+	if (found) return deduplicated;
+
+	const button = createButton({
+		id: 'externalNotifications',
+		icon: 'ti ti-bell',
+		label: HATA_SIDE_STUDIO_MENU_STORAGE_LABELS.externalNotifications,
+		group: 'basic',
+	}, {
+		shape: 'circle',
+		showLabel: false,
+		size: 'small',
+		border: 'var(--MI_THEME-divider)',
+		borderVisible: false,
+	});
+	const notificationsIndex = deduplicated.findIndex(item => item.menuId === 'notifications');
+	deduplicated.splice(notificationsIndex >= 0 ? notificationsIndex + 1 : 0, 0, button);
+	return deduplicated;
+}
+
 export function sanitizeHataSideStudioStore(value: unknown, source: readonly SidebarSourceItem[] = fallbackSidebar): HataSideStudioStore {
 	if (!isRecord(value) || !Array.isArray(value.profiles)) return createDefaultStore(source);
 	const storedVersion = Number(value.version);
@@ -635,11 +738,11 @@ export function sanitizeHataSideStudioStore(value: unknown, source: readonly Sid
 		const expandedRaw = isRecord(raw.expanded) ? raw.expanded : {};
 		const collapsedRaw = isRecord(raw.collapsed) ? raw.collapsed : {};
 		const columns = expandedRaw.columns === 2 || expandedRaw.columns === 3 ? expandedRaw.columns : 1;
-		const nodes = (Array.isArray(expandedRaw.nodes) ? expandedRaw.nodes.map(node => isRecord(node) && node.type === 'group' ? sanitizeGroup(node, refreshLayoutDefaults) : isRecord(node) && node.type === 'widget' ? sanitizeWidget(node, refreshLayoutDefaults) : sanitizeButton(node)).filter((node): node is HataSideNode => node != null) : [])
-			.map(node => columns > 1 && node.type !== 'group' && node.size === 'large' ? { ...node, size: 'normal' as const } : node);
-		const buttons = Array.isArray(collapsedRaw.buttons) ? collapsedRaw.buttons
+		const nodes = ensureExternalNotificationsExpanded((Array.isArray(expandedRaw.nodes) ? expandedRaw.nodes.map(node => isRecord(node) && node.type === 'group' ? sanitizeGroup(node, refreshLayoutDefaults) : isRecord(node) && node.type === 'widget' ? sanitizeWidget(node, refreshLayoutDefaults) : sanitizeButton(node)).filter((node): node is HataSideNode => node != null) : [])
+			.map(node => columns > 1 && node.type !== 'group' && node.size === 'large' ? { ...node, size: 'normal' as const } : node));
+		const buttons = ensureExternalNotificationsCollapsed(Array.isArray(collapsedRaw.buttons) ? collapsedRaw.buttons
 			.map(button => sanitizeButton(button, true))
-			.filter((button): button is HataSideButton => button != null) : [];
+			.filter((button): button is HataSideButton => button != null) : []);
 		profiles.push({
 			id: typeof raw.id === 'string' ? raw.id : uid('profile'), name: typeof raw.name === 'string' ? raw.name.slice(0, 80) : HATA_SIDE_STUDIO_DEFAULT_STORAGE_NAMES.profileFallback,
 			postButton: sanitizePostButtonAppearance(raw.postButton),
