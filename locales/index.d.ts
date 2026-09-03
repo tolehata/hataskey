@@ -28917,6 +28917,10 @@ export interface Locale extends ILocale {
                  */
                 "releaseScope": string;
                 /**
+                 * 最新のリリース
+                 */
+                "latestRelease": string;
+                /**
                  * このリリース
                  */
                 "currentRelease": string;
@@ -28954,6 +28958,42 @@ export interface Locale extends ILocale {
                 "gotIt": string;
             };
             "_content": {
+                /**
+                 * 宴に新しい実績を加え、外部タイムラインとHataskey UIをさらに楽しめるようにしました
+                 */
+                "latestHeadline": string;
+                /**
+                 * 宴に21個の新しい実績を追加
+                 */
+                "utageAchievementsTitle": string;
+                /**
+                 * 宴の成功・阻止が10回増えるごとに、100回まで新しい実績を獲得できます。ほかの人の宴を開始から5秒以内に阻止する特別な実績も加わりました。これまでに記録された公開の宴は回数実績へ反映し、5秒以内の実績はこの更新後から記録します。
+                 */
+                "utageAchievementsText": string;
+                /**
+                 * 外部通知を好きな位置へ
+                 */
+                "externalSidebarTitle": string;
+                /**
+                 * 外部通知を、通常のサイドバー編集とHataSideStudioでほかの項目と一緒にドラッグして並び替えられるようになりました。連携を外している間も保存位置を保ちます。通知・外部通知・お知らせのバッジも縦中央へ揃えました。
+                 */
+                "externalSidebarText": string;
+                /**
+                 * 外部タイムラインをHataskey UIらしく
+                 */
+                "externalTimelineTitle": string;
+                /**
+                 * 外部ノートのカードや操作をHataskey UIの表示へ揃えました。返信・引用・多段リノートを何重にも埋め込まず表示し、チャンネル名やカスタム絵文字も見分けやすくしました。リアクションに成功すると、リロードせずその場で表示します。
+                 */
+                "externalTimelineText": string;
+                /**
+                 * タイムラインに新しい隠し演出
+                 */
+                "timelineCollapseTitle": string;
+                /**
+                 * ある言葉を公開ノートとして投稿すると、このサーバーのHataskey UIが上から崩れ、10秒後に元へ戻ります。1人につき1日2回まで。アニメーションを無効にしている場合や、端末で動きを減らしている場合は再生しません。
+                 */
+                "timelineCollapseText": string;
                 /**
                  * 投稿まわりとスマートフォン表示を、より使いやすく整えました
                  */

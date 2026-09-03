@@ -4,9 +4,9 @@
  *
  * 更新後に一度表示する、利用者向けの変更案内。
  * 実装用語や開発中だけの不具合は載せない。
- * 修正版では「このリリース」と「このメインリリース」を分け、同じメイン版の案内も残す。
+ * 「最新のリリース」「このリリース」「このメインリリース」を分け、同じ系列の案内も残す。
  * 文言は共通localeの _hata._whatsNew を使う。
- * hata-12.5.1の案内。versionはpackage.jsonと同時に更新する。
+ * hata-12.5.2の案内。versionはpackage.jsonと同時に更新する。
  * 本番への公開済み判定には使わない。表示済みの記録は窓を閉じたときに行う。
  */
 
@@ -17,7 +17,8 @@ const copy = i18n.ts._hata._whatsNew._content;
 export type HataWhatsNewItem = {
 	icon: string;
 	/** 内容ごとに異なる、短い動く見本。 */
-	preview: 'hataskPlanner' | 'hataskGarden' | 'externalAccount' | 'gameFarewell'
+	preview: 'utageAchievements' | 'externalSidebar' | 'externalTimeline' | 'timelineCollapse'
+		| 'hataskPlanner' | 'hataskGarden' | 'externalAccount' | 'gameFarewell'
 		| 'welcomeRenewal' | 'serverChoice' | 'dailyPolish';
 	/** 外部接続先など、見本の中に表示する短い固有名。 */
 	previewLabel?: string;
@@ -28,7 +29,7 @@ export type HataWhatsNewItem = {
 	linkLabel?: string;
 };
 
-export type HataWhatsNewReleaseId = 'currentRelease' | 'mainRelease';
+export type HataWhatsNewReleaseId = 'latestRelease' | 'currentRelease' | 'mainRelease';
 
 export type HataWhatsNewRelease = {
 	id: HataWhatsNewReleaseId;
@@ -40,8 +41,8 @@ export type HataWhatsNewRelease = {
 export type HataWhatsNew = {
 	/** package.jsonと同じ完全な版を表示済み判定に使う。 */
 	version: string;
-	/** 修正版を先頭、同じ系列のメイン版を次に置く。 */
-	releases: [HataWhatsNewRelease, HataWhatsNewRelease];
+	/** 最新版を先頭、直前の修正版、同じ系列のメイン版の順に置く。 */
+	releases: [HataWhatsNewRelease, HataWhatsNewRelease, HataWhatsNewRelease];
 	footer: {
 		text: string;
 		linkLabel?: string;
@@ -55,8 +56,39 @@ export function getHataWhatsNewDisplayVersion(version: string): string {
 }
 
 export const HATA_WHATS_NEW: HataWhatsNew = {
-	version: '2026.7.0-hata.12.5.1',
+	version: '2026.7.0-hata.12.5.2',
 	releases: [
+		{
+			id: 'latestRelease',
+			version: '2026.7.0-hata.12.5.2',
+			headline: copy.latestHeadline,
+			items: [
+				{
+					icon: 'ti ti-trophy',
+					preview: 'utageAchievements',
+					title: copy.utageAchievementsTitle,
+					text: copy.utageAchievementsText,
+				},
+				{
+					icon: 'ti ti-arrows-sort',
+					preview: 'externalSidebar',
+					title: copy.externalSidebarTitle,
+					text: copy.externalSidebarText,
+				},
+				{
+					icon: 'ti ti-messages',
+					preview: 'externalTimeline',
+					title: copy.externalTimelineTitle,
+					text: copy.externalTimelineText,
+				},
+				{
+					icon: 'ti ti-layout-dashboard',
+					preview: 'timelineCollapse',
+					title: copy.timelineCollapseTitle,
+					text: copy.timelineCollapseText,
+				},
+			],
+		},
 		{
 			id: 'currentRelease',
 			version: '2026.7.0-hata.12.5.1',

@@ -34,7 +34,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				:aria-pressed="activeRelease.id === release.id"
 				@click="selectRelease(release.id)"
 			>
-				<span>{{ release.id === 'currentRelease' ? copy.currentRelease : copy.mainRelease }}</span>
+				<span>{{ releaseLabels[release.id] }}</span>
 				<small>{{ getHataWhatsNewDisplayVersion(release.version) }}</small>
 			</button>
 		</div>
@@ -52,7 +52,41 @@ SPDX-License-Identifier: AGPL-3.0-only
 					@animationend="finishPreview($event, previewKey(activeRelease.id, item.preview))"
 				>
 					<!-- Decorative miniatures; the translated title and explanation below stay visible. -->
-					<div v-if="item.preview === 'hataskPlanner'" :class="$style.plannerMock">
+					<div v-if="item.preview === 'utageAchievements'" :class="$style.utageMock">
+						<div :class="$style.utageMedals">
+							<span data-kind="success"><i class="ti ti-confetti"></i><u></u></span>
+							<span data-kind="guard"><i class="ti ti-shield-check"></i><u></u></span>
+						</div>
+						<div :class="$style.utageSteps"><i v-for="n in 10" :key="n" :data-step="n"></i></div>
+					</div>
+
+					<div v-else-if="item.preview === 'externalSidebar'" :class="$style.externalSidebarMock">
+						<div :class="$style.externalSidebarRail">
+							<span><i class="ti ti-home"></i><u></u></span>
+							<span data-external><i class="ti ti-bell"></i><u></u><em></em><b class="ti ti-grip-vertical"></b></span>
+							<span><i class="ti ti-speakerphone"></i><u></u></span>
+						</div>
+					</div>
+
+					<div v-else-if="item.preview === 'externalTimeline'" :class="$style.externalTimelineMock">
+						<div :class="$style.externalNoteGhost"><i class="ti ti-repeat"></i></div>
+						<article :class="$style.externalNoteCard">
+							<span :class="$style.externalNoteAvatar"><i class="ti ti-user"></i></span>
+							<div :class="$style.externalNoteBody">
+								<div :class="$style.externalNoteHeader"><u></u><i class="ti ti-repeat"></i></div>
+								<span :class="$style.externalNoteLine"></span>
+								<div :class="$style.externalNoteMeta"><span><i class="ti ti-hash"></i></span><span><i class="ti ti-mood-smile"></i><em></em></span></div>
+							</div>
+						</article>
+					</div>
+
+					<div v-else-if="item.preview === 'timelineCollapse'" :class="$style.collapseMock">
+						<div :class="[$style.collapsePiece, $style.collapseToolbar]"><span></span><span></span><span></span></div>
+						<div :class="$style.collapseNotes"><span v-for="n in 3" :key="n" :class="$style.collapsePiece" :data-row="n"><i></i><u></u></span></div>
+						<div :class="[$style.collapsePiece, $style.collapseNav]"><i class="ti ti-home"></i><i class="ti ti-bell"></i><i class="ti ti-settings"></i></div>
+					</div>
+
+					<div v-else-if="item.preview === 'hataskPlanner'" :class="$style.plannerMock">
 						<div :class="$style.plannerTabs"><i class="ti ti-calendar-event"></i><i class="ti ti-arrow-right"></i><i class="ti ti-checkbox"></i></div>
 						<div :class="$style.plannerStage">
 							<div :class="$style.plannerCalendar"><span v-for="n in 21" :key="n" :data-selected="n === 10"></span></div>
@@ -147,10 +181,15 @@ import { i18n } from '@/i18n.js';
 
 const copy = i18n.ts._hata._whatsNew._window;
 const copyx = i18n.tsx._hata._whatsNew._window;
+const releaseLabels: Record<HataWhatsNewReleaseId, string> = {
+	latestRelease: copy.latestRelease,
+	currentRelease: copy.currentRelease,
+	mainRelease: copy.mainRelease,
+};
 const modal = useTemplateRef('modal');
 const releaseRoot = useTemplateRef('releaseRoot');
 const itemsViewport = useTemplateRef('itemsViewport');
-const activeReleaseId = ref<HataWhatsNewReleaseId>('currentRelease');
+const activeReleaseId = ref<HataWhatsNewReleaseId>('latestRelease');
 const activeRelease = computed(() => whatsNew.releases.find(release => release.id === activeReleaseId.value) ?? whatsNew.releases[0]);
 const carouselIndex = ref(0);
 const carouselTarget = ref<number | null>(null);
@@ -252,6 +291,12 @@ function dismiss() {
 async function selectRelease(releaseId: HataWhatsNewReleaseId) {
 	if (activeReleaseId.value === releaseId) return;
 	previewObserver?.disconnect();
+	// A running preview is removed with its release panel. Settle it before the
+	// switch so returning to the release cannot restart a one-shot animation.
+	for (const item of activeRelease.value.items) {
+		const key = previewKey(activeRelease.value.id, item.preview);
+		if (previewStates.value[key] === 'running') previewStates.value[key] = 'complete';
+	}
 	activeReleaseId.value = releaseId;
 	carouselIndex.value = 0;
 	carouselTarget.value = null;
@@ -362,7 +407,7 @@ function openReleaseNotes() {
 
 .releaseScope {
 	display: grid;
-	grid-template-columns: repeat(2, minmax(0, 1fr));
+	grid-template-columns: repeat(3, minmax(0, 1fr));
 	gap: 6px;
 	margin: 18px 18px 0;
 	padding: 4px;
@@ -395,7 +440,11 @@ function openReleaseNotes() {
 
 .releaseScope button:focus-visible { outline: 2px solid var(--MI_THEME-accent); outline-offset: 2px; }
 .releaseScope span { min-width: 0; font-size: 0.87em; font-weight: 750; line-height: 1.35; }
-.releaseScope small { flex: none; font: 650 0.7em/1 ui-monospace, monospace; opacity: 0.64; }
+.releaseScope small { flex: none; min-width: 0; max-width: 100%; overflow-wrap: anywhere; text-align: center; font: 650 0.7em/1.25 ui-monospace, monospace; opacity: 0.64; }
+
+@container (max-width: 700px) {
+	.releaseScope button { flex-direction: column; gap: 3px; padding-inline: 8px; }
+}
 
 .headline {
 	margin: 13px 24px 0;
@@ -486,7 +535,6 @@ function openReleaseNotes() {
 @container (max-width: 520px) {
 	.header { padding: 19px 18px 16px; }
 	.releaseScope { margin: 12px 12px 0; }
-	.releaseScope button { flex-direction: column; gap: 3px; padding-inline: 8px; }
 	.headline { margin: 10px 16px 0; }
 	.items {
 		display: flex;
@@ -542,7 +590,7 @@ function openReleaseNotes() {
 	.footer { align-items: stretch; flex-direction: column; gap: 9px; }
 	.gotIt { width: 100%; }
 }
-/* ===== Seven finite, viewport-triggered previews ===== */
+/* ===== Eleven finite, viewport-triggered previews ===== */
 .preview {
 	--preview-ease: cubic-bezier(.2,.8,.25,1);
 	color: var(--MI_THEME-fg);
@@ -553,6 +601,71 @@ function openReleaseNotes() {
 .root[data-motion="enabled"] .preview[data-preview-state="ready"] > * { visibility: hidden; }
 .preview[data-preview-state="running"] { animation: hwnPreviewClock 1.6s linear 1 both; }
 @keyframes hwnPreviewClock { from, to { opacity: 1; } }
+
+/* Two achievement tracks settle above a ten-step milestone rail. */
+.utageMock { height: 100%; display: grid; align-content: center; justify-items: center; gap: 12px; }
+.utageMedals { display: flex; align-items: center; justify-content: center; gap: 18px; }
+.utageMedals > span { --utage-x: -18px; display: flex; width: 64px; height: 70px; flex-direction: column; align-items: center; justify-content: center; gap: 7px; border: 1px solid var(--MI_THEME-divider); border-radius: 16px; background: var(--MI_THEME-panel); color: var(--MI_THEME-accent); }
+.utageMedals > span[data-kind="guard"] { --utage-x: 18px; color: var(--MI_THEME-success); }
+.utageMedals i { font-size: 27px; }
+.utageMedals u { width: 30px; height: 4px; border-radius: 999px; background: currentColor; opacity: .48; }
+.utageSteps { display: grid; width: 178px; grid-template-columns: repeat(10, 1fr); gap: 5px; transform-origin: left center; }
+.utageSteps > i { height: 7px; border-radius: 999px; background: color-mix(in srgb, var(--MI_THEME-accent) 72%, var(--MI_THEME-panel)); }
+.preview[data-preview-state="running"] .utageMedals > span { animation: hwnUtageMedal .72s var(--preview-ease) 1 both; }
+.preview[data-preview-state="running"] .utageMedals > span[data-kind="guard"] { animation-delay: .16s; }
+.preview[data-preview-state="running"] .utageSteps { animation: hwnUtageSteps .72s var(--preview-ease) .54s 1 both; }
+@keyframes hwnUtageMedal { from { opacity: 0; transform: translateX(var(--utage-x)) scale(.82); } to { opacity: 1; transform: none; } }
+@keyframes hwnUtageSteps { from { opacity: .25; transform: scaleX(.08); } to { opacity: 1; transform: scaleX(1); } }
+
+/* External notifications take their saved place in the ordinary sidebar. */
+.externalSidebarMock { height: 100%; display: grid; place-items: center; }
+.externalSidebarRail { width: 196px; display: flex; flex-direction: column; gap: 7px; padding: 11px; border: 1px solid var(--MI_THEME-divider); border-radius: 12px; background: var(--MI_THEME-panel); }
+.externalSidebarRail > span { position: relative; display: flex; min-height: 30px; align-items: center; gap: 9px; padding: 6px 10px; border-radius: 8px; background: var(--MI_THEME-bg); }
+.externalSidebarRail > span[data-external] { border: 1px solid color-mix(in srgb, var(--MI_THEME-accent) 55%, var(--MI_THEME-divider)); background: var(--MI_THEME-accentedBg); }
+.externalSidebarRail i { flex: none; color: var(--MI_THEME-accent); font-size: 15px; }
+.externalSidebarRail u { width: 86px; height: 5px; border-radius: 999px; background: color-mix(in srgb, var(--MI_THEME-fg) 18%, var(--MI_THEME-panel)); }
+.externalSidebarRail em { position: absolute; top: 50%; right: 27px; width: 8px; height: 8px; border-radius: 50%; background: var(--MI_THEME-accent); transform: translateY(-50%); }
+.externalSidebarRail b { margin-left: auto; color: var(--MI_THEME-fg); font-size: 15px; opacity: .5; }
+.preview[data-preview-state="running"] .externalSidebarRail > span[data-external] { animation: hwnExternalSidebar .82s var(--preview-ease) .12s 1 both; }
+.preview[data-preview-state="running"] .externalSidebarRail > span[data-external] b { animation: hwnExternalGrip .38s var(--preview-ease) .72s 1 both; }
+@keyframes hwnExternalSidebar { from { opacity: .25; transform: translateY(34px) scale(.96); } to { opacity: 1; transform: none; } }
+@keyframes hwnExternalGrip { from { opacity: 0; transform: translateX(8px); } to { opacity: .5; transform: none; } }
+
+/* A nested renote resolves into one Hataskey-style note with immediate metadata. */
+.externalTimelineMock { position: relative; height: 100%; display: grid; place-items: center; }
+.externalNoteGhost { position: absolute; width: 182px; height: 88px; display: grid; place-items: center; border: 1px solid var(--MI_THEME-divider); border-radius: 11px; background: var(--MI_THEME-panel); color: var(--MI_THEME-accent); opacity: 0; }
+.externalNoteCard { position: relative; z-index: 1; display: flex; width: 214px; min-height: 104px; gap: 10px; padding: 12px; border: 1px solid var(--MI_THEME-divider); border-radius: 12px; background: var(--MI_THEME-panel); }
+.externalNoteAvatar { display: grid; width: 34px; height: 34px; flex: 0 0 34px; place-items: center; border-radius: 50%; background: var(--MI_THEME-accentedBg); color: var(--MI_THEME-accent); }
+.externalNoteBody { display: flex; min-width: 0; flex: 1; flex-direction: column; gap: 9px; }
+.externalNoteHeader { display: flex; align-items: center; gap: 8px; }
+.externalNoteHeader u { width: 86px; height: 5px; border-radius: 999px; background: color-mix(in srgb, var(--MI_THEME-fg) 23%, var(--MI_THEME-panel)); }
+.externalNoteHeader i { margin-left: auto; color: var(--MI_THEME-accent); font-size: 13px; }
+.externalNoteLine { width: 92%; height: 6px; border-radius: 999px; background: color-mix(in srgb, var(--MI_THEME-fg) 14%, var(--MI_THEME-panel)); }
+.externalNoteMeta { display: flex; align-items: center; gap: 7px; }
+.externalNoteMeta > span { display: inline-flex; min-width: 31px; height: 23px; align-items: center; justify-content: center; gap: 4px; padding-inline: 7px; border: 1px solid var(--MI_THEME-divider); border-radius: 999px; color: var(--MI_THEME-accent); }
+.externalNoteMeta em { width: 5px; height: 5px; border-radius: 50%; background: var(--MI_THEME-accent); }
+.preview[data-preview-state="running"] .externalNoteGhost { animation: hwnExternalGhost .82s var(--preview-ease) 1 both; }
+.preview[data-preview-state="running"] .externalNoteCard { animation: hwnExternalNote .86s var(--preview-ease) .36s 1 both; }
+.preview[data-preview-state="running"] .externalNoteMeta > span:last-child { animation: hwnExternalReaction .42s var(--preview-ease) .94s 1 both; }
+@keyframes hwnExternalGhost { 0%, 35% { opacity: .62; transform: translate(12px, 12px) scale(.9); } 100% { opacity: 0; transform: none; } }
+@keyframes hwnExternalNote { from { transform: translate(-7px, -5px) scale(.96); } to { transform: none; } }
+@keyframes hwnExternalReaction { from { opacity: 0; transform: scale(.55); } to { opacity: 1; transform: none; } }
+
+/* The UI briefly falls apart, then returns to its exact completed composition. */
+.collapseMock { height: 100%; display: grid; align-content: center; justify-items: center; gap: 8px; }
+.collapsePiece { transform-origin: center; }
+.collapseToolbar { --collapse-x: -36px; --collapse-y: 45px; --collapse-r: -9deg; display: flex; width: 210px; height: 24px; align-items: center; gap: 7px; padding: 6px 9px; border: 1px solid var(--MI_THEME-divider); border-radius: 999px; background: var(--MI_THEME-panel); }
+.collapseToolbar > span { width: 35px; height: 5px; border-radius: 999px; background: color-mix(in srgb, var(--MI_THEME-fg) 18%, var(--MI_THEME-panel)); }
+.collapseToolbar > span:first-child { width: 58px; background: color-mix(in srgb, var(--MI_THEME-accent) 48%, var(--MI_THEME-panel)); }
+.collapseNotes { display: flex; width: 210px; flex-direction: column; gap: 5px; }
+.collapseNotes > span { --collapse-x: 42px; --collapse-y: 31px; --collapse-r: 7deg; display: flex; height: 22px; align-items: center; gap: 8px; padding: 5px 8px; border: 1px solid var(--MI_THEME-divider); border-radius: 7px; background: var(--MI_THEME-panel); }
+.collapseNotes > span[data-row="2"] { --collapse-x: -48px; --collapse-y: 25px; --collapse-r: -6deg; }
+.collapseNotes > span[data-row="3"] { --collapse-x: 27px; --collapse-y: 15px; --collapse-r: 11deg; }
+.collapseNotes i { width: 9px; height: 9px; flex: none; border-radius: 50%; background: var(--MI_THEME-accentedBg); }
+.collapseNotes u { width: 72%; height: 4px; border-radius: 999px; background: color-mix(in srgb, var(--MI_THEME-fg) 16%, var(--MI_THEME-panel)); }
+.collapseNav { --collapse-x: -24px; --collapse-y: 8px; --collapse-r: -8deg; display: flex; min-width: 122px; height: 27px; align-items: center; justify-content: space-around; border: 1px solid var(--MI_THEME-divider); border-radius: 999px; background: var(--MI_THEME-panel); color: var(--MI_THEME-accent); }
+.preview[data-preview-state="running"] .collapsePiece { animation: hwnCollapsePreview 1.45s var(--preview-ease) 1 both; }
+@keyframes hwnCollapsePreview { 0%, 22% { transform: none; } 52%, 72% { transform: translate(var(--collapse-x), var(--collapse-y)) rotate(var(--collapse-r)); } 100% { transform: none; } }
 
 /* Calendar changes to ToDo in the same fixed-size frame. */
 .plannerMock { height: 100%; display: grid; align-content: center; justify-items: center; gap: 9px; }

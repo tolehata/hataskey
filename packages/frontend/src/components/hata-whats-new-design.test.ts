@@ -10,18 +10,18 @@ import whatsNewSource from './MkHataWhatsNew.vue?raw';
 import uiSetupSource from './MkUISetup.vue?raw';
 
 describe('Hata update presentation', () => {
-	const previews = ['hataskPlanner', 'hataskGarden', 'externalAccount', 'gameFarewell', 'welcomeRenewal', 'serverChoice', 'dailyPolish'];
+	const previews = ['utageAchievements', 'externalSidebar', 'externalTimeline', 'timelineCollapse', 'hataskPlanner', 'hataskGarden', 'externalAccount', 'gameFarewell', 'welcomeRenewal', 'serverChoice', 'dailyPolish'];
 	const previewMarkup = whatsNewSource.slice(whatsNewSource.indexOf(':class="$style.preview"'), whatsNewSource.indexOf(':class="$style.itemBody"'));
-	const newPreviewStyles = whatsNewSource.slice(whatsNewSource.indexOf('/* ===== Seven finite, viewport-triggered previews ===== */'));
+	const newPreviewStyles = whatsNewSource.slice(whatsNewSource.indexOf('/* ===== Eleven finite, viewport-triggered previews ===== */'));
 
-	test('更新内容を7種類の専用プレビューに置き換え、PCでは3列にする', () => {
+	test('更新内容を11種類の専用プレビューに揃え、PCでは3列にする', () => {
 		expect(whatsNewSource).toContain(':data-preview="item.preview"');
 		expect(whatsNewSource).toContain('@container (min-width: 940px)');
 		expect(whatsNewSource).toContain('grid-template-columns: repeat(3, minmax(0, 1fr))');
 		expect([...previewMarkup.matchAll(/item\.preview === '([^']+)'/gu)].map(match => match[1])).toEqual(previews);
 		expect(previewMarkup).not.toContain('<button');
 		expect(previewMarkup).toContain('aria-hidden="true"');
-		for (const mock of ['plannerMock', 'gardenMock', 'bearMock', 'farewellMock', 'welcomeMock', 'serverChoiceMock', 'polishMock']) {
+		for (const mock of ['utageMock', 'externalSidebarMock', 'externalTimelineMock', 'collapseMock', 'plannerMock', 'gardenMock', 'bearMock', 'farewellMock', 'welcomeMock', 'serverChoiceMock', 'polishMock']) {
 			expect(previewMarkup).toContain(`$style.${mock}`);
 		}
 	});
@@ -56,6 +56,7 @@ describe('Hata update presentation', () => {
 		});
 		expect(style.errors).toEqual([]);
 		expect(style.modules?.preview).toBeTruthy();
+		expect(style.modules?.utageMock).toBeTruthy();
 		expect(style.modules?.gardenCard).toBeTruthy();
 		const missingCompiledClasses = (template: string) => [...usedModuleClassNames(template)].filter(name => !style.modules?.[name]).sort();
 		const template = parsed.descriptor.template!.content;
@@ -119,7 +120,7 @@ describe('Hata update presentation', () => {
 			expect(style, name).toBeDefined();
 			expect(style, name).not.toMatch(/animation:|opacity:\s*0(?:[;\s])|visibility:\s*hidden/u);
 		}
-		for (const animation of ['hwnPlannerCalendar', 'hwnGardenBloom', 'hwnBearJoin', 'hwnFarewellClose', 'hwnWelcomeLogo', 'hwnServerFan', 'hwnPolishAlign']) {
+		for (const animation of ['hwnUtageMedal', 'hwnExternalSidebar', 'hwnExternalGhost', 'hwnCollapsePreview', 'hwnPlannerCalendar', 'hwnGardenBloom', 'hwnBearJoin', 'hwnFarewellClose', 'hwnWelcomeLogo', 'hwnServerFan', 'hwnPolishAlign']) {
 			expect(newPreviewStyles).toContain(`@keyframes ${animation}`);
 			expect(newPreviewStyles).toContain(`animation: ${animation} `);
 		}
@@ -151,21 +152,30 @@ describe('Hata update presentation', () => {
 		expect(whatsNewSource).toContain('@wheel.passive="carouselTarget = null"');
 	});
 
-	test('項目一覧の前でこのリリースとメインリリースを切り替えられる', () => {
+	test('項目一覧の前で最新・このリリース・メインリリースを切り替えられる', () => {
 		const scopeIndex = whatsNewSource.indexOf(':class="$style.releaseScope"');
 		const itemsIndex = whatsNewSource.indexOf('ref="itemsViewport"');
 		expect(scopeIndex).toBeGreaterThan(0);
 		expect(scopeIndex).toBeLessThan(itemsIndex);
 		expect(whatsNewSource).toContain('role="group" :aria-label="copy.releaseScope"');
 		expect(whatsNewSource).toContain(':aria-pressed="activeRelease.id === release.id"');
-		expect(whatsNewSource).toContain('const activeReleaseId = ref<HataWhatsNewReleaseId>(\'currentRelease\')');
+		expect(whatsNewSource).toContain('{{ releaseLabels[release.id] }}');
+		expect(whatsNewSource).toContain('latestRelease: copy.latestRelease');
+		expect(whatsNewSource).toContain('const activeReleaseId = ref<HataWhatsNewReleaseId>(\'latestRelease\')');
 		expect(whatsNewSource).toContain('v-for="item in activeRelease.items"');
+		expect(whatsNewSource).toMatch(/\.releaseScope \{[^}]*grid-template-columns: repeat\(3, minmax\(0, 1fr\)\);/u);
 		expect(whatsNewSource).toMatch(/\.releaseScope button \{[^}]*min-height: 44px;/u);
 		expect(whatsNewSource).toContain('.releaseScope button:focus-visible { outline: 2px solid var(--MI_THEME-accent);');
+		expect(whatsNewSource).toMatch(/\.releaseScope small \{[^}]*max-width: 100%;[^}]*overflow-wrap: anywhere;[^}]*text-align: center;/u);
 	});
 
 	test('リリース切替時にカルーセルと見本監視を先頭から結び直す', () => {
-		expect(whatsNewSource).toContain('async function selectRelease(releaseId: HataWhatsNewReleaseId)');
+		const selectIndex = whatsNewSource.indexOf('async function selectRelease(releaseId: HataWhatsNewReleaseId)');
+		const settleIndex = whatsNewSource.indexOf('if (previewStates.value[key] === \'running\') previewStates.value[key] = \'complete\'', selectIndex);
+		const activateIndex = whatsNewSource.indexOf('activeReleaseId.value = releaseId', selectIndex);
+		expect(selectIndex).toBeGreaterThan(0);
+		expect(settleIndex).toBeGreaterThan(selectIndex);
+		expect(settleIndex).toBeLessThan(activateIndex);
 		expect(whatsNewSource).toContain('carouselIndex.value = 0');
 		expect(whatsNewSource).toContain('carouselTarget.value = null');
 		expect(whatsNewSource).toContain('itemsViewport.value?.scrollTo({ left: 0, behavior: \'auto\' })');
