@@ -124,7 +124,13 @@ describe('Hatask deck window layout contract', () => {
 		expect(source).toContain('htk-capture-companion-mobile');
 		expect(source).toMatch(/@container hatask-root \(min-width:901px\)\{[\s\S]*?\.htk-root\[data-theme="hatakyu"\] \.htk-todo-capture-row\{display:grid;grid-template-columns:minmax\(0,1fr\) minmax\(190px,260px\)/u);
 		expect(source).toContain('.htk-root[data-theme="hatakyu"] .htk-capture-companion-mobile{display:none}');
-		expect(source).toContain('.htk-capture-companion-desktop{display:none}');
+		expect(source).toContain('.hk-inlinefig.htk-capture-companion-desktop{display:none}');
+		expect(source).not.toMatch(/(?:^|[}\n])\.htk-capture-companion-desktop\{display:none\}/u);
+	});
+
+	test('ハタキュの狭幅きもち・ごはん見出しだけを紙面色に載せる', () => {
+		const source = frontendSource('src/pages/hatask.vue');
+		expect(source).toMatch(/@container hatask-root \(max-width:759px\)\{[\s\S]*?\.htk-root\[data-theme="hatakyu"\] \.htk-journal-page :deep\(\[data-journal-capture\] > header\)\{[^}]*background:var\(--surface\);[^}]*color:var\(--fg\);[^}]*box-shadow:var\(--card-shadow\)/u);
 	});
 
 	test('ハタキュのお庭でも並び替えと花カードの間隔を保つ', () => {
