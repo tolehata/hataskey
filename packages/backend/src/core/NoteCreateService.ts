@@ -43,6 +43,7 @@ import { HashtagService } from '@/core/HashtagService.js';
 import { AntennaService } from '@/core/AntennaService.js';
 import { QueueService } from '@/core/QueueService.js';
 import { UtageService } from '@/core/UtageService.js';
+import { TimelineCollapseService } from '@/core/TimelineCollapseService.js';
 import { NoteEntityService } from '@/core/entities/NoteEntityService.js';
 import { UserEntityService } from '@/core/entities/UserEntityService.js';
 import { ApRendererService } from '@/core/activitypub/ApRendererService.js';
@@ -257,6 +258,7 @@ export class NoteCreateService implements OnApplicationShutdown {
 		private globalEventService: GlobalEventService,
 		private queueService: QueueService,
 		private utageService: UtageService,
+		private timelineCollapseService: TimelineCollapseService,
 		private fanoutTimelineService: FanoutTimelineService,
 		private notificationService: NotificationService,
 		private relayService: RelayService,
@@ -932,6 +934,10 @@ export class NoteCreateService implements OnApplicationShutdown {
 			const noteObj = await this.noteEntityService.pack(note, null, { skipHide: true, withReactionAndUserPairCache: true });
 
 			this.globalEventService.publishNotesStream(noteObj);
+
+			// 旗鯖fork: 完全一致の公開ローカル投稿だけで、Hataskey UIの隠し演出を起動する。
+			// 判定失敗やRedis障害で、成立済みの投稿処理を失敗させない。
+			this.timelineCollapseService.onNoteCreated(note, user).catch(() => { /* 演出判定は投稿処理を妨げない */ });
 
 			this.roleService.addNoteToRoleTimeline(noteObj);
 

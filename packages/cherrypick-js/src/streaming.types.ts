@@ -376,4 +376,6 @@ export type BroadcastEvents = {
 	announcementCreated: (payload: AnnouncementCreated) => void;
 	// 旗鯖fork: 地震・津波情報のリアルタイム配信。
 	earthquakeEvent: (payload: { code: number; item: Record<string, any> }) => void;
+	// 旗鯖fork: Hataskey UIの隠しタイムライン崩壊演出。
+	hataTimelineCollapse: (payload: Record<string, never>) => void;
 };

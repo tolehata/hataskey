@@ -45,6 +45,7 @@ import { MetaService } from './MetaService.js';
 import { MfmService } from './MfmService.js';
 import { ModerationLogService } from './ModerationLogService.js';
 import { NoteCreateService } from './NoteCreateService.js';
+import { TimelineCollapseService } from './TimelineCollapseService.js';
 import { NoteUpdateService } from './NoteUpdateService.js';
 import { NoteDeleteService } from './NoteDeleteService.js';
 import { NotePiningService } from './NotePiningService.js';
@@ -387,6 +388,7 @@ const $ApEventService: Provider = { provide: 'ApEventService', useExisting: ApEv
 		MfmService,
 		ModerationLogService,
 		NoteCreateService,
+		TimelineCollapseService,
 		NoteUpdateService,
 		NoteDeleteService,
 		NotePiningService,

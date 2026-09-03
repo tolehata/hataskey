@@ -53,6 +53,8 @@ export interface BroadcastTypes {
 		code: number; // 551=地震情報 / 552=津波予報
 		item: Record<string, any>;
 	};
+	// 旗鯖fork: Hataskey UIの隠しタイムライン崩壊演出。投稿情報は配信しない。
+	hataTimelineCollapse: Record<string, never>;
 }
 
 export interface MainEventTypes {
