@@ -4,7 +4,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 
 <template>
-<div :class="[$style.root, { [$style.desktopLayout]: isDesktop }]" :data-hata-foldable="isFoldableWide ? 'true' : undefined">
+<div ref="timelineCollapseRoot" :class="[$style.root, { [$style.desktopLayout]: isDesktop }]" :data-hata-foldable="isFoldableWide ? 'true' : undefined">
 	<!-- PC/タブレット: オリジナル左サイドバー (上部メニューモード時は隠す) -->
 	<nav v-if="isDesktop && !topNavActive" :class="[$style.sidebar, { [$style.sidebarSolid]: !glassEffect, [$style.sidebarWide]: !sidebarFolded && studioProfile.expanded.width === 'wide', [$style.sidebarDeckFolded]: deckActive || sidebarCollapsed }]">
 		<!-- バナーすりガラス背景 -->
@@ -13,7 +13,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		</div>
 		<div :class="$style.sidebarInner">
 			<!-- ロゴ & インスタンス名 & TL設定 (上部固定) -->
-			<div :class="$style.sbLogoRow">
+			<div data-hata-collapse-part :class="$style.sbLogoRow">
 				<div :class="$style.sbLogo" @click="openInstanceMenuMobile">
 					<img v-if="instanceIconUrl" :src="instanceIconUrl" :class="$style.sbLogoImg"/>
 					<div :class="$style.sbLogoWrap">
@@ -26,12 +26,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<button v-if="!sidebarCollapsed && !deckActive" ref="collapseAnchorEl" v-tooltip="copy.collapseMenu" :class="$style.sbLogoAction" @click.stop="toggleSidebarCollapse"><i class="ti ti-chevron-left"></i></button>
 			</div>
 			<!-- 旗鯖fork(タスク6): 縮小表示時、サーバーアイコンの下に拡大ボタン[＞]を表示。デッキ時は出さない。 -->
-			<button v-if="sidebarCollapsed && !deckActive" v-tooltip="copy.expandMenu" :class="$style.sbExpandBtn" @click.stop="toggleSidebarCollapse"><i class="ti ti-chevron-right"></i></button>
+			<button v-if="sidebarCollapsed && !deckActive" v-tooltip="copy.expandMenu" data-hata-collapse-part :class="$style.sbExpandBtn" @click.stop="toggleSidebarCollapse"><i class="ti ti-chevron-right"></i></button>
 
 			<!-- 旗鯖fork: メニュー群はこのスクロール領域に閉じ込め、下部の投稿/アカウントは
                  固定する。メニューが増えてもノート/アカウントがスクロールで隠れない。 -->
 			<div :class="[$style.sbScrollWrap, { [$style.fadeTop]: sbFadeTop, [$style.fadeBottom]: sbFadeBottom }]">
-				<div ref="sbScrollEl" :class="$style.sbScroll" @scroll="onSbScroll">
+				<div ref="sbScrollEl" data-hata-collapse-group :class="$style.sbScroll" @scroll="onSbScroll">
 					<!-- ナビ項目（prefer同期の並び順） -->
 					<div :class="[$style.sbNav, $style.hssRoot]" :data-hss-mode="sidebarFolded ? 'collapsed' : 'expanded'" :style="{ '--hss-normal-columns': String(studioProfile.expanded.columns) }">
 						<!-- HataSideStudio: 縮小表示は専用順序のボタンだけを必ず縦一列で描画する。
@@ -132,7 +132,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</div>
 
 			<!-- 下部: 投稿 + アカウント (固定) -->
-			<div :class="$style.sbBottom">
+			<div data-hata-collapse-group :class="$style.sbBottom">
 				<!-- 旗鯖fork: Hataskey UIデッキUI使用中は、ノートボタンの上にリロードボタンを固定表示 -->
 				<button v-if="deckActive" v-tooltip.right="sidebarFolded ? copy.reload : null" :class="$style.sbReloadBtn" @click="reloadPage($event)">
 					<i class="ti ti-refresh"></i>
@@ -162,7 +162,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 	<div :class="[$style.mainColumn, { [$style.mainColumnShifted]: isDesktop && userPanelUserId }]">
 		<div :class="$style.mainColumnInner">
 			<!-- 旗鯖fork: 上部メニューモードのナビバー(横並びピル型/常時固定)。デッキ併用時はこの下にデッキツールバーが来る。 -->
-			<nav v-if="topNavActive" data-htk-weather-footer :class="[$style.topNav, { [$style.topNavSolid]: !glassEffect }]">
+			<nav v-if="topNavActive" data-htk-weather-footer data-hata-collapse-group :class="[$style.topNav, { [$style.topNavSolid]: !glassEffect }]">
 				<button v-tooltip="instance.name ?? copy.instance" :class="$style.topNavLogo" @click="playSimpleNavMotion($event, 'layout'); openInstanceMenuMobile($event)">
 					<img v-if="instance.iconUrl" :src="instance.iconUrl" :class="$style.topNavLogoImg"/>
 					<i v-else class="ti ti-server"></i>
@@ -192,7 +192,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<button :class="$style.topNavAvatar" @click="openAccountMenu"><MkAvatar v-if="$i" :user="$i" :class="$style.topNavAvatarImg"/></button>
 			</nav>
 			<!-- Top pill navbar (timeline tabs) - scroll reactive -->
-			<div v-show="(!isPageView || isCollectionTimelinePage) && !deckActive" :class="[$style.topBar, footerIsDark ? $style.topBarDark : $style.topBarLight, { [$style.topBarHidden]: !showTopBar }]">
+			<div v-show="(!isPageView || isCollectionTimelinePage) && !deckActive" data-hata-collapse-group :class="[$style.topBar, footerIsDark ? $style.topBarDark : $style.topBarLight, { [$style.topBarHidden]: !showTopBar }]">
 				<button v-if="!isDesktop" :class="$style.avatarBtn" @click="openAccountMenu">
 					<img v-if="$i?.avatarUrl" :src="$i.avatarUrl" :class="$style.avatarImg"/>
 					<i v-else class="ti ti-user"></i>
@@ -251,7 +251,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</div>
 			</div>
 			<!-- Page view header -->
-			<header v-show="isPageView && showPageHeader && !isCollectionTimelinePage && !isSettingsPage" :class="$style.pageHeader">
+			<header v-show="isPageView && showPageHeader && !isCollectionTimelinePage && !isSettingsPage" data-hata-collapse-group :class="$style.pageHeader">
 				<button :class="$style.pageBackBtn" @click="goBack"><i class="ti ti-chevron-left"></i></button>
 				<div :class="$style.pageTitle">{{ pageMetadata?.title ?? '' }}</div>
 				<div style="width: 38px;"></div>
@@ -265,7 +265,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</div>
 			<div ref="contentEl" :class="$style.content" @scroll="onContentScroll" @wheel="onContentWheel">
 				<Transition :name="$style.tlFade" mode="out-in">
-					<div v-show="!isPageView && !deckActive" :key="tab + String(withRenotes) + String(withSensitive) + String(onlyFiles)" :class="$style.timelineContainer" :data-glass-bg="timelineGlassBg ? 'on' : undefined" @touchstart="onTouchStart" @touchend="onTouchEnd">
+					<div v-show="!isPageView && !deckActive" :key="tab + String(withRenotes) + String(withSensitive) + String(onlyFiles)" data-hata-collapse-items :class="$style.timelineContainer" :data-glass-bg="timelineGlassBg ? 'on' : undefined" @touchstart="onTouchStart" @touchend="onTouchEnd">
 						<!-- 旗鯖fork: 「タイムライン上部に投稿フォームを表示する」設定がONのとき、外部TL以外でMkPostFormを表示 -->
 						<MkPostForm v-if="showFixedPostForm && !isExternalTab" :class="$style.fixedPostForm" class="_panel" fixed/>
 						<KeepAlive>
@@ -281,17 +281,17 @@ SPDX-License-Identifier: AGPL-3.0-only
 					</div>
 				</Transition>
 				<!-- 旗鯖fork: デッキモード (デスクトップのみ)。背景にヘッダー画像のぼかしを敷く(無効化可) -->
-				<div v-if="deckActive" :class="$style.deckArea">
+				<div v-if="deckActive" data-hata-collapse-items :class="$style.deckArea">
 					<div v-if="glassEffect && !deckNoBannerBg && $i?.bannerUrl" :class="$style.deckBanner">
 						<img :src="$i.bannerUrl" :class="$style.deckBannerImg"/>
 					</div>
 					<HatasabaDeck :class="$style.deckAreaInner"/>
 				</div>
-				<div v-show="isPageView" :class="[$style.pageContainer, { [$style.collectionPageContainer]: isCollectionTimelinePage }]"><RouterView/></div>
+				<div v-show="isPageView" data-hata-collapse-part :class="[$style.pageContainer, { [$style.collectionPageContainer]: isCollectionTimelinePage }]"><RouterView/></div>
 			</div>
 
 			<!-- 通常TL: ナビバー（モバイルのみ） -->
-			<div v-show="!isDesktop && !isHataskPage && !isExternalTab && !isChannelDetailPage && (!isPageView || bottomNavHasPage) && !userPanelUserId" data-htk-weather-footer :class="[$style.bottomBar, footerIsDark ? $style.bottomBarDark : $style.bottomBarLight, { [$style.bottomBarHidden]: !showBottomBar || widgetsShowing }]">
+			<div v-show="!isDesktop && !isHataskPage && !isExternalTab && !isChannelDetailPage && (!isPageView || bottomNavHasPage) && !userPanelUserId" data-htk-weather-footer data-hata-collapse-group :class="[$style.bottomBar, footerIsDark ? $style.bottomBarDark : $style.bottomBarLight, { [$style.bottomBarHidden]: !showBottomBar || widgetsShowing }]">
 				<button v-if="!isDesktop" :class="$style.sideBtn" @click="playSimpleNavMotion($event, 'layout'); simpleDrawerShowing = true"><i class="ti ti-menu-2"></i></button>
 				<div :class="$style.navPill">
 					<template v-for="item in visibleBottomNav" :key="item.id">
@@ -315,7 +315,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</div>
 
 			<!-- 外部TL: 投稿 & 通知ボタン（モバイルのみ） -->
-			<div v-show="!isDesktop && isExternalTab && !isPageView && !userPanelUserId" data-htk-weather-footer :class="[$style.bottomBar, footerIsDark ? $style.bottomBarDark : $style.bottomBarLight, { [$style.bottomBarHidden]: !showBottomBar }]">
+			<div v-show="!isDesktop && isExternalTab && !isPageView && !userPanelUserId" data-htk-weather-footer data-hata-collapse-group :class="[$style.bottomBar, footerIsDark ? $style.bottomBarDark : $style.bottomBarLight, { [$style.bottomBarHidden]: !showBottomBar }]">
 				<button v-if="!isDesktop" :class="$style.sideBtn" @click="playSimpleNavMotion($event, 'layout'); simpleDrawerShowing = true"><i class="ti ti-menu-2"></i></button>
 				<div :class="$style.navPill">
 					<!-- 旗鯖fork: 外部通知ボタン (連携ON時のみ)。通知→ノート作成の順で横一列。
@@ -330,7 +330,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		</div>
 
 		<!-- デスクトップ: ユーザーパネル（TL横に表示） -->
-		<div v-if="isDesktop && userPanelUserId" :class="$style.userPanelDesktop">
+		<div v-if="isDesktop && userPanelUserId" data-hata-collapse-part :class="$style.userPanelDesktop">
 			<MkSimpleUserPanel :userId="userPanelUserId" :isMobile="false" :inline="true" @close="userPanelUserId = null"/>
 		</div>
 	</div>
@@ -369,7 +369,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<div v-if="simpleDrawerShowing" :class="$style.drawerBg" @click="simpleDrawerShowing = false"></div>
 		</Transition>
 		<Transition name="simple-drawer">
-			<nav v-if="simpleDrawerShowing" :class="[$style.drawerNav, { [$style.drawerNavSolid]: !glassEffect }]">
+			<nav v-if="simpleDrawerShowing" data-hata-collapse-teleport :class="[$style.drawerNav, { [$style.drawerNavSolid]: !glassEffect }]">
 				<!-- ヘッダー背景（すりガラス） -->
 				<div v-if="glassEffect" :class="$style.drawerBanner">
 					<img v-if="$i?.bannerUrl" :src="$i.bannerUrl" :class="$style.drawerBannerImg"/>
@@ -451,7 +451,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 	<!-- PC/タブレット: 右ウィジェットバー -->
 	<!-- 旗鯖fork: 折りたたみ端末の広い面でも、このバーだけPCと同じ構成・同じ表示で常時出す。
 	     ⚠️isDesktop は広げない(下部ナビ等までPC化して「モバイル表示のまま」が崩れるため)。 -->
-	<div v-if="(isDesktop || isFoldableWide) && !deckActive" :class="[$style.desktopWidgets, { [$style.desktopWidgetsSolid]: !glassEffect }]" :data-widget-border="showWidgetBorder ? 'on' : 'off'">
+	<div v-if="(isDesktop || isFoldableWide) && !deckActive" data-hata-collapse-part :class="[$style.desktopWidgets, { [$style.desktopWidgetsSolid]: !glassEffect }]" :data-widget-border="showWidgetBorder ? 'on' : 'off'">
 		<div v-if="glassEffect" :class="$style.desktopWidgetsBanner">
 			<img v-if="$i?.bannerUrl" :src="$i.bannerUrl" :class="$style.desktopWidgetsBannerImg"/>
 		</div>
@@ -495,6 +495,7 @@ import { prefer } from '@/preferences.js';
 import { cleanupStaleUiElements } from '@/utility/ui-cleanup.js';
 import { clearCache } from '@/utility/clear-cache.js';
 import { playHataIconMotion, playHataNavigationMotion } from '@/utility/hata-icon-motion.js';
+import { createHataTimelineCollapseEffect } from '@/utility/hata-timeline-collapse-effect.js';
 import { getAccountMenu } from '@/accounts.js';
 import { instance } from '@/instance.js';
 import { store } from '@/store.js';
@@ -794,6 +795,16 @@ function stopThemeWatch() {
 
 // ===== スクロール検知 =====
 const contentEl = ref<HTMLElement | null>(null);
+const timelineCollapseRoot = ref<HTMLElement | null>(null);
+const timelineCollapseEffect = createHataTimelineCollapseEffect({
+	root: () => timelineCollapseRoot.value,
+	animationEnabled: () => prefer.r.animation.value,
+});
+
+// 設定同期などで演出が途中から無効になった場合も、その場で元の表示へ戻す。
+watch(prefer.r.animation, (enabled) => {
+	if (!enabled) timelineCollapseEffect.cancel();
+});
 
 // 旗鯖fork: お知らせ吹き出しはサイドメニューの overflow:hidden / スタッキングコンテキストに
 // 囚われてタイムラインに隠れるため、Teleport で body 直下に出し、アンカー要素の座標に fixed 配置する。
@@ -1908,7 +1919,14 @@ const hasUnreadChat = computed(() => $i != null && $i.hasUnreadChatMessages === 
 // true: 件数バッジ表示 / false: ドットのみ表示
 const showUnreadNotifCount = computed(() => prefer.s.showUnreadNotificationsCount === true);
 let mainCh:any = null;
+let broadcastStream: ReturnType<typeof useStream> | null = null;
 let unreadPollTimer: number | null = null;
+let streamRetryTimer: number | null = null;
+let streamUnmounted = false;
+
+function onHataTimelineCollapse() {
+	timelineCollapseEffect.play();
+}
 
 // 通知の現在値を $i から同期（reactivity 補強）
 const syncUnreadFromI = () => {
@@ -1949,15 +1967,17 @@ const checkUnread = async() => {
 // useStream() でストリームのシングルトンを取得し、main チャンネルを購読
 // 接続未完了でも先にリスナーを登録しておけば、接続成立後に正しく発火する
 const initStream = () => {
-	if (mainCh) return; // 二重初期化防止
+	if (streamUnmounted || mainCh) return; // 破棄後の再試行と二重初期化を防止
 	try {
 		const stream = useStream();
 		if (!stream) {
 			console.warn('[hatasaba] useStream() returned null, scheduling retry');
-			window.setTimeout(initStream, 2000);
+			scheduleStreamRetry();
 			return;
 		}
 		mainCh = stream.useChannel('main');
+		broadcastStream = stream;
+		stream.on('hataTimelineCollapse', onHataTimelineCollapse);
 
 		// 新規通知
 		mainCh.on('notification', () => {
@@ -1994,10 +2014,21 @@ const initStream = () => {
 		syncUnreadFromI();
 	} catch (e) {
 		console.warn('[hatasaba] Stream init failed, retrying:', e);
+		broadcastStream?.off('hataTimelineCollapse', onHataTimelineCollapse);
+		broadcastStream = null;
+		mainCh?.dispose();
 		mainCh = null;
-		window.setTimeout(initStream, 2000);
+		scheduleStreamRetry();
 	}
 };
+
+function scheduleStreamRetry() {
+	if (streamUnmounted || streamRetryTimer !== null) return;
+	streamRetryTimer = window.setTimeout(() => {
+		streamRetryTimer = null;
+		initStream();
+	}, 2000);
+}
 
 // $i.unreadNotificationsCount を定期的にポーリング（ストリーム不調時の保険）
 const startUnreadPoll = () => {
@@ -2094,8 +2125,16 @@ onMounted(() => {
 	}
 });
 onUnmounted(() => {
+	streamUnmounted = true;
+	if (streamRetryTimer !== null) {
+		window.clearTimeout(streamRetryTimer);
+		streamRetryTimer = null;
+	}
 	mainCh?.dispose();
 	mainCh = null;
+	broadcastStream?.off('hataTimelineCollapse', onHataTimelineCollapse);
+	broadcastStream = null;
+	timelineCollapseEffect.destroy();
 	stopUnreadPoll();
 	stopThemeWatch();
 	if (scrollTimer) window.clearTimeout(scrollTimer);
