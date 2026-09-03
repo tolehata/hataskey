@@ -23,19 +23,33 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<MkHatakyuIllustration v-if="useHatakyuBranding()" asset="treasureFound" :size="96" :class="$style.headerIllustration"/>
 			<div :class="$style.headerText">
 				<h1 id="hata-whats-new-title" :class="$style.title">{{ copy.title }}</h1>
-				<p :class="$style.headline">{{ whatsNew.headline }}</p>
 			</div>
 		</header>
 
+		<div :class="$style.releaseScope" role="group" :aria-label="copy.releaseScope">
+			<button
+				v-for="release in whatsNew.releases"
+				:key="release.id"
+				type="button"
+				:aria-pressed="activeRelease.id === release.id"
+				@click="selectRelease(release.id)"
+			>
+				<span>{{ release.id === 'currentRelease' ? copy.currentRelease : copy.mainRelease }}</span>
+				<small>{{ getHataWhatsNewDisplayVersion(release.version) }}</small>
+			</button>
+		</div>
+		<p :class="$style.headline">{{ activeRelease.headline }}</p>
+
 		<div ref="itemsViewport" :class="$style.items" @scroll.passive="syncCarouselPosition" @pointerdown="carouselTarget = null" @wheel.passive="carouselTarget = null">
-			<article v-for="(item, i) in whatsNew.items" :key="i" :class="$style.item">
+			<article v-for="item in activeRelease.items" :key="`${activeRelease.id}:${item.preview}`" :class="$style.item">
 				<div
 					:class="$style.preview"
 					:data-preview="item.preview"
-					:data-preview-state="previewStates[item.preview] ?? 'ready'"
-					:data-preview-visible="previewVisibility[item.preview] ?? false"
+					:data-preview-key="previewKey(activeRelease.id, item.preview)"
+					:data-preview-state="previewStates[previewKey(activeRelease.id, item.preview)] ?? 'ready'"
+					:data-preview-visible="previewVisibility[previewKey(activeRelease.id, item.preview)] ?? false"
 					aria-hidden="true"
-					@animationend="finishPreview($event, item.preview)"
+					@animationend="finishPreview($event, previewKey(activeRelease.id, item.preview))"
 				>
 					<!-- Decorative miniatures; the translated title and explanation below stay visible. -->
 					<div v-if="item.preview === 'hataskPlanner'" :class="$style.plannerMock">
@@ -51,13 +65,13 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<div :class="$style.gardenCards"><span v-for="n in 3" :key="n" :class="$style.gardenCard" :data-flower="n"><i class="ti ti-flower"></i><u></u><u></u></span></div>
 					</div>
 
-					<div v-else-if="item.preview === 'externalBearBear'" :class="$style.bearMock">
+					<div v-else-if="item.preview === 'externalAccount'" :class="$style.bearMock">
 						<div :class="$style.bearPanel">
 							<div :class="$style.bearHeader"><i class="ti ti-link"></i><u></u></div>
 							<div :class="$style.bearList">
 								<span :class="$style.bearRow"><em></em><u></u></span>
 								<span :class="$style.bearRow"><em></em><u></u></span>
-								<span :class="$style.bearNew"><em></em><b :class="$style.bearHost">xiapopisland.top</b><i class="ti ti-check"></i></span>
+								<span :class="$style.bearNew"><em></em><b :class="$style.bearHost">{{ item.previewLabel }}</b><i class="ti ti-check"></i></span>
 							</div>
 						</div>
 					</div>
@@ -100,10 +114,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<nav :class="$style.carouselControls" :aria-label="copy.carouselLabel">
 			<button type="button" :disabled="carouselIndex === 0" :aria-label="copy.previousItem" @click="moveCarousel(-1)">&lt;</button>
 			<div :class="$style.carouselDots" :aria-label="copy.currentPosition">
-				<button v-for="(_, i) in whatsNew.items" :key="i" type="button" :aria-label="copyx.showItem({ number: (i + 1).toString() })" :aria-current="carouselIndex === i ? 'true' : undefined" @click="showCarouselItem(i)"></button>
+				<button v-for="(_, i) in activeRelease.items" :key="i" type="button" :aria-label="copyx.showItem({ number: (i + 1).toString() })" :aria-current="carouselIndex === i ? 'true' : undefined" @click="showCarouselItem(i)"></button>
 			</div>
-			<span :class="$style.carouselCount">{{ carouselIndex + 1 }} / {{ whatsNew.items.length }}</span>
-			<button type="button" :disabled="carouselIndex === whatsNew.items.length - 1" :aria-label="copy.nextItem" @click="moveCarousel(1)">&gt;</button>
+			<span :class="$style.carouselCount">{{ carouselIndex + 1 }} / {{ activeRelease.items.length }}</span>
+			<button type="button" :disabled="carouselIndex === activeRelease.items.length - 1" :aria-label="copy.nextItem" @click="moveCarousel(1)">&gt;</button>
 		</nav>
 
 		<footer :class="$style.footer">
@@ -120,8 +134,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
-import type { HataWhatsNewItem } from '@/utility/hata-whats-new.js';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
+import type { HataWhatsNewItem, HataWhatsNewReleaseId } from '@/utility/hata-whats-new.js';
 import MkModal from '@/components/MkModal.vue';
 import MkButton from '@/components/MkButton.vue';
 import MkHatakyuIllustration from '@/components/MkHatakyuIllustration.vue';
@@ -136,6 +150,8 @@ const copyx = i18n.tsx._hata._whatsNew._window;
 const modal = useTemplateRef('modal');
 const releaseRoot = useTemplateRef('releaseRoot');
 const itemsViewport = useTemplateRef('itemsViewport');
+const activeReleaseId = ref<HataWhatsNewReleaseId>('currentRelease');
+const activeRelease = computed(() => whatsNew.releases.find(release => release.id === activeReleaseId.value) ?? whatsNew.releases[0]);
 const carouselIndex = ref(0);
 const carouselTarget = ref<number | null>(null);
 const closing = ref(false);
@@ -154,21 +170,28 @@ const emit = defineEmits<{
 }>();
 
 function completePreviews() {
-	for (const item of whatsNew.items) previewStates.value[item.preview] = 'complete';
+	for (const release of whatsNew.releases) {
+		for (const item of release.items) previewStates.value[previewKey(release.id, item.preview)] = 'complete';
+	}
 }
 
 function startVisiblePreviews() {
 	if (!motionAllowed.value || !pageVisible.value || closing.value) return;
-	for (const item of whatsNew.items) {
-		if (previewVisibility.value[item.preview] && (previewStates.value[item.preview] ?? 'ready') === 'ready') {
-			previewStates.value[item.preview] = 'running';
+	for (const item of activeRelease.value.items) {
+		const key = previewKey(activeRelease.value.id, item.preview);
+		if (previewVisibility.value[key] && (previewStates.value[key] ?? 'ready') === 'ready') {
+			previewStates.value[key] = 'running';
 		}
 	}
 }
 
-function finishPreview(event: AnimationEvent, preview: HataWhatsNewItem['preview']) {
+function previewKey(releaseId: HataWhatsNewReleaseId, preview: HataWhatsNewItem['preview']): string {
+	return `${releaseId}:${preview}`;
+}
+
+function finishPreview(event: AnimationEvent, key: string) {
 	// Only the preview clock itself completes the sequence, never a bubbling child animation.
-	if (event.target === event.currentTarget) previewStates.value[preview] = 'complete';
+	if (event.target === event.currentTarget) previewStates.value[key] = 'complete';
 }
 
 function syncDocumentVisibility() {
@@ -184,21 +207,26 @@ watch([motionAllowed, pageVisible, closing], () => {
 	else startVisiblePreviews();
 }, { immediate: true, flush: 'sync' });
 
-onMounted(() => {
-	motionQuery?.addEventListener('change', syncReducedMotion);
-	window.document.addEventListener('visibilitychange', syncDocumentVisibility);
+function observeActivePreviews() {
+	previewObserver?.disconnect();
 	if (typeof IntersectionObserver === 'undefined' || !releaseRoot.value) {
 		completePreviews();
 		return;
 	}
 	previewObserver = new IntersectionObserver(entries => {
 		for (const entry of entries) {
-			const preview = (entry.target as HTMLElement).dataset.preview;
-			if (preview) previewVisibility.value[preview] = entry.isIntersecting && entry.intersectionRatio >= 0.6;
+			const key = (entry.target as HTMLElement).dataset.previewKey;
+			if (key) previewVisibility.value[key] = entry.isIntersecting && entry.intersectionRatio >= 0.6;
 		}
 		startVisiblePreviews();
 	}, { root: releaseRoot.value, threshold: [0, 0.6] });
 	for (const preview of itemsViewport.value?.querySelectorAll('[data-preview]') ?? []) previewObserver.observe(preview);
+}
+
+onMounted(() => {
+	motionQuery?.addEventListener('change', syncReducedMotion);
+	window.document.addEventListener('visibilitychange', syncDocumentVisibility);
+	observeActivePreviews();
 });
 
 onBeforeUnmount(() => {
@@ -221,6 +249,17 @@ function dismiss() {
 	dismissTimer = window.setTimeout(() => modal.value?.close(), motionAllowed.value ? 260 : 0);
 }
 
+async function selectRelease(releaseId: HataWhatsNewReleaseId) {
+	if (activeReleaseId.value === releaseId) return;
+	previewObserver?.disconnect();
+	activeReleaseId.value = releaseId;
+	carouselIndex.value = 0;
+	carouselTarget.value = null;
+	await nextTick();
+	itemsViewport.value?.scrollTo({ left: 0, behavior: 'auto' });
+	observeActivePreviews();
+}
+
 function showCarouselItem(index: number) {
 	const viewport = itemsViewport.value;
 	const item = viewport?.children.item(index) as HTMLElement | null;
@@ -233,7 +272,7 @@ function showCarouselItem(index: number) {
 
 function moveCarousel(direction: -1 | 1) {
 	// Keep the requested destination while smooth scrolling reports intermediate cards.
-	showCarouselItem(Math.max(0, Math.min(whatsNew.items.length - 1, (carouselTarget.value ?? carouselIndex.value) + direction)));
+	showCarouselItem(Math.max(0, Math.min(activeRelease.value.items.length - 1, (carouselTarget.value ?? carouselIndex.value) + direction)));
 }
 
 function syncCarouselPosition() {
@@ -321,8 +360,45 @@ function openReleaseNotes() {
 .headerText { grid-column: 2 / 4; min-width: 0; }
 .title { margin: 0; font-size: clamp(1.45em, 4cqw, 2em); line-height: 1.15; font-weight: 800; letter-spacing: -.025em; }
 
+.releaseScope {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 6px;
+	margin: 18px 18px 0;
+	padding: 4px;
+	border: 1px solid var(--MI_THEME-divider);
+	border-radius: 14px;
+	background: var(--MI_THEME-bg);
+}
+
+.releaseScope button {
+	display: flex;
+	min-width: 0;
+	min-height: 44px;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	padding: 8px 12px;
+	border: 1px solid transparent;
+	border-radius: 10px;
+	color: var(--MI_THEME-fg);
+	background: transparent;
+	font: inherit;
+	cursor: pointer;
+}
+
+.releaseScope button[aria-pressed="true"] {
+	border-color: var(--MI_THEME-accent);
+	background: color-mix(in srgb, var(--MI_THEME-accent) 13%, var(--MI_THEME-panel));
+	box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--MI_THEME-accent) 32%, transparent);
+}
+
+.releaseScope button:focus-visible { outline: 2px solid var(--MI_THEME-accent); outline-offset: 2px; }
+.releaseScope span { min-width: 0; font-size: 0.87em; font-weight: 750; line-height: 1.35; }
+.releaseScope small { flex: none; font: 650 0.7em/1 ui-monospace, monospace; opacity: 0.64; }
+
 .headline {
-	margin: 7px 0 0;
+	margin: 13px 24px 0;
 	font-size: 0.92em;
 	line-height: 1.55;
 	opacity: 0.72;
@@ -409,6 +485,9 @@ function openReleaseNotes() {
 
 @container (max-width: 520px) {
 	.header { padding: 19px 18px 16px; }
+	.releaseScope { margin: 12px 12px 0; }
+	.releaseScope button { flex-direction: column; gap: 3px; padding-inline: 8px; }
+	.headline { margin: 10px 16px 0; }
 	.items {
 		display: flex;
 		gap: 10px;

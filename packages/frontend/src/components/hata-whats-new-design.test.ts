@@ -10,7 +10,7 @@ import whatsNewSource from './MkHataWhatsNew.vue?raw';
 import uiSetupSource from './MkUISetup.vue?raw';
 
 describe('Hata update presentation', () => {
-	const previews = ['hataskPlanner', 'hataskGarden', 'externalBearBear', 'gameFarewell', 'welcomeRenewal', 'serverChoice', 'dailyPolish'];
+	const previews = ['hataskPlanner', 'hataskGarden', 'externalAccount', 'gameFarewell', 'welcomeRenewal', 'serverChoice', 'dailyPolish'];
 	const previewMarkup = whatsNewSource.slice(whatsNewSource.indexOf(':class="$style.preview"'), whatsNewSource.indexOf(':class="$style.itemBody"'));
 	const newPreviewStyles = whatsNewSource.slice(whatsNewSource.indexOf('/* ===== Seven finite, viewport-triggered previews ===== */'));
 
@@ -89,9 +89,9 @@ describe('Hata update presentation', () => {
 		expect(whatsNewSource).toContain('new IntersectionObserver');
 		expect(whatsNewSource).toContain('root: releaseRoot.value');
 		expect(whatsNewSource).toContain('entry.isIntersecting && entry.intersectionRatio >= 0.6');
-		expect(whatsNewSource).toContain("(previewStates.value[item.preview] ?? 'ready') === 'ready'");
-		expect(whatsNewSource).toContain("previewStates.value[item.preview] = 'running'");
-		expect(whatsNewSource).toContain("if (event.target === event.currentTarget) previewStates.value[preview] = 'complete'");
+		expect(whatsNewSource).toContain('(previewStates.value[key] ?? \'ready\') === \'ready\'');
+		expect(whatsNewSource).toContain('previewStates.value[key] = \'running\'');
+		expect(whatsNewSource).toContain('if (event.target === event.currentTarget) previewStates.value[key] = \'complete\'');
 		expect(whatsNewSource).toContain('previewObserver?.disconnect()');
 		const repeatedMotion = /\binfinite\b|\bsetInterval\s*\(/u;
 		expect(repeatedMotion.test('animation: test 1s infinite')).toBe(true);
@@ -130,7 +130,9 @@ describe('Hata update presentation', () => {
 		expect(newPreviewStyles).toContain('.gardenCard > i { display: grid; place-items: center; width: 32px; height: 36px;');
 		expect(previewMarkup).toContain('$style.farewellBook');
 		expect(previewMarkup).toContain('$style.farewellBookmark');
-		expect(previewMarkup).toContain('xiapopisland.top');
+		expect(previewMarkup).toContain('{{ item.previewLabel }}');
+		expect(previewMarkup).not.toContain('xiapopisland.top');
+		expect(previewMarkup).not.toContain('mk-juice.dev');
 		expect(previewMarkup.match(/>Hataskey</gu)).toHaveLength(2);
 		expect(whatsNewSource).not.toMatch(/(?:from|import)\s*\(?['"][^'"]*hanaawase/u);
 		expect(previewMarkup).not.toMatch(/○[×✕△□]|ti-shapes/u);
@@ -147,6 +149,28 @@ describe('Hata update presentation', () => {
 		expect(whatsNewSource).toContain('(carouselTarget.value ?? carouselIndex.value) + direction');
 		expect(whatsNewSource).toContain('@pointerdown="carouselTarget = null"');
 		expect(whatsNewSource).toContain('@wheel.passive="carouselTarget = null"');
+	});
+
+	test('項目一覧の前でこのリリースとメインリリースを切り替えられる', () => {
+		const scopeIndex = whatsNewSource.indexOf(':class="$style.releaseScope"');
+		const itemsIndex = whatsNewSource.indexOf('ref="itemsViewport"');
+		expect(scopeIndex).toBeGreaterThan(0);
+		expect(scopeIndex).toBeLessThan(itemsIndex);
+		expect(whatsNewSource).toContain('role="group" :aria-label="copy.releaseScope"');
+		expect(whatsNewSource).toContain(':aria-pressed="activeRelease.id === release.id"');
+		expect(whatsNewSource).toContain('const activeReleaseId = ref<HataWhatsNewReleaseId>(\'currentRelease\')');
+		expect(whatsNewSource).toContain('v-for="item in activeRelease.items"');
+		expect(whatsNewSource).toMatch(/\.releaseScope button \{[^}]*min-height: 44px;/u);
+		expect(whatsNewSource).toContain('.releaseScope button:focus-visible { outline: 2px solid var(--MI_THEME-accent);');
+	});
+
+	test('リリース切替時にカルーセルと見本監視を先頭から結び直す', () => {
+		expect(whatsNewSource).toContain('async function selectRelease(releaseId: HataWhatsNewReleaseId)');
+		expect(whatsNewSource).toContain('carouselIndex.value = 0');
+		expect(whatsNewSource).toContain('carouselTarget.value = null');
+		expect(whatsNewSource).toContain('itemsViewport.value?.scrollTo({ left: 0, behavior: \'auto\' })');
+		expect(whatsNewSource).toContain('observeActivePreviews()');
+		expect(whatsNewSource).toContain(':data-preview-key="previewKey(activeRelease.id, item.preview)"');
 	});
 
 	test('モバイルの矢印とdotの押下領域は固定し、dot列を下段へ分ける', () => {

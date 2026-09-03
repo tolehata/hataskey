@@ -28703,6 +28703,18 @@ export interface Locale extends ILocale {
                  */
                 "title": string;
                 /**
+                 * 表示する更新範囲
+                 */
+                "releaseScope": string;
+                /**
+                 * このリリース
+                 */
+                "currentRelease": string;
+                /**
+                 * このメインリリース
+                 */
+                "mainRelease": string;
+                /**
                  * 開く
                  */
                 "open": string;
@@ -28733,9 +28745,45 @@ export interface Locale extends ILocale {
             };
             "_content": {
                 /**
+                 * 投稿まわりとスマートフォン表示を、より使いやすく整えました
+                 */
+                "currentHeadline": string;
+                /**
                  * いつものホームを、もっと使いやすく。つながる場所も広がります
                  */
-                "headline": string;
+                "mainHeadline": string;
+                /**
+                 * Hatask — ハタキュのスマートフォン表示を修正
+                 */
+                "hataskMobileTitle": string;
+                /**
+                 * ToDoの残件案内が二重に表示される問題を直し、きもち・ごはんの見出しを背景から読み取りやすい配色に整えました。
+                 */
+                "hataskMobileText": string;
+                /**
+                 * 投稿後の案内と待機表示を整理
+                 */
+                "postComposerTitle": string;
+                /**
+                 * 通常の投稿後に出ていた上部の完了通知を省きました。投稿待機中のカプセルは、通常の投稿フォームのすぐ下に表示します。返信・引用・編集の完了案内はこれまでどおりです。
+                 */
+                "postComposerText": string;
+                /**
+                 * 日本語を含むサーバー名を読みやすく
+                 */
+                "serverNameTitle": string;
+                /**
+                 * ログイン画面の左上で、漢字やひらがな、カタカナを含むサーバー名の文字が粗く見える問題を修正しました。
+                 */
+                "serverNameText": string;
+                /**
+                 * 外部アカウント連携にJuice Serverを追加
+                 */
+                "externalJuiceTitle": string;
+                /**
+                 * 接続先にJuice Server（mk-juice.dev）が増えました。外部アカウント連携の設定から選べます。つないだ先では、そのサーバーの規約が適用されます。
+                 */
+                "externalJuiceText": string;
                 /**
                  * Hataskを大幅に改良 — 予定もToDoも、さっと整理
                  */
