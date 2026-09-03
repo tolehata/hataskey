@@ -18,6 +18,9 @@ const localStorageKeys = read('packages/frontend/src/local-storage.ts');
 const studioPage = read('packages/frontend/src/pages/hata-side-studio.vue');
 const jaLocale = read('locales/ja-JP.yml');
 const enLocale = read('locales/en-US.yml');
+const zhLocale = read('locales/zh-CN.yml');
+const localeTypes = read('locales/index.d.ts');
+const sdkTypes = read('packages/cherrypick-js/src/autogen/types.ts');
 
 describe('HataSideStudio tutorial achievement propagation', () => {
 	test('registers the achievement in both allowlists and its badge catalog', () => {
@@ -59,5 +62,90 @@ describe('HataSNSCordUI tutorial achievement propagation', () => {
 	test('provides the requested Japanese copy and an English translation', () => {
 		expect(jaLocale).toContain(`    _${hatacordingAchievementId}:\n      title: "HataSNSCordUI、名前長いね"\n      description: "玄人仕様のUIです"`);
 		expect(enLocale).toContain(`    _${hatacordingAchievementId}:\n      title: "HataSNSCordUI is quite a mouthful"\n      description: "A UI for experienced users"`);
+	});
+});
+
+describe('Utage achievement propagation', () => {
+	const successTitles = [
+		'いい感じ',
+		'板についてきたね',
+		'宴ブロンズ',
+		'宴シルバー',
+		'宴ゴールド',
+		'宴ダイヤモンド',
+		'宴プラチナ',
+		'宴マイスター',
+		'あと少し',
+		'前代未聞',
+	];
+	const interruptionTitles = [
+		'慣れてきた？',
+		'もうこんなにも？',
+		'隙がない',
+		'どこに隙が？',
+		'強すぎないか？',
+		'TLの番人',
+		'いつ寝てるの？',
+		'たまには見過ごしてみよう',
+		'長い道のり',
+		'宴ブロッカー',
+	];
+
+	test('registers all milestone and quick-interruption achievements in both allowlists and the badge catalog', () => {
+		for (let count = 10; count <= 100; count += 10) {
+			for (const id of [`utageSuccess${count}`, `utageInterruption${count}`]) {
+				expect(frontendAchievements.match(new RegExp(`'${id}'`, 'g')), id).toHaveLength(2);
+				expect(backendUserProfile.match(new RegExp(`'${id}'`, 'g')), id).toHaveLength(1);
+			}
+		}
+		const quickId = 'utageInterruptionWithin5Seconds';
+		expect(frontendAchievements.match(new RegExp(`'${quickId}'`, 'g'))).toHaveLength(2);
+		expect(backendUserProfile.match(new RegExp(`'${quickId}'`, 'g'))).toHaveLength(1);
+		expect(existsSync(resolve(repositoryRoot, 'fluent-emojis/dist/1f389.png'))).toBe(true);
+		expect(existsSync(resolve(repositoryRoot, 'fluent-emojis/dist/1f6e1.png'))).toBe(true);
+		expect(existsSync(resolve(repositoryRoot, 'fluent-emojis/dist/1f6d1.png'))).toBe(true);
+	});
+
+	test('keeps the requested Japanese titles and count descriptions', () => {
+		for (let index = 0; index < 10; index++) {
+			const count = (index + 1) * 10;
+			expect(jaLocale).toContain(`    _utageSuccess${count}:\n      title: "${successTitles[index]}"\n      description: "宴を${count}回成功させた"`);
+			expect(jaLocale).toContain(`    _utageInterruption${count}:\n      title: "${interruptionTitles[index]}"\n      description: "宴を${count}回阻止した"`);
+		}
+		expect(jaLocale).toContain('    _utageInterruptionWithin5Seconds:\n      title: "早すぎる宴の終わり"\n      description: "ほかの人の宴を開始から5秒以内に阻止した"');
+	});
+
+	test('provides fallback translations for every new achievement', () => {
+		for (let count = 10; count <= 100; count += 10) {
+			for (const id of [`utageSuccess${count}`, `utageInterruption${count}`]) {
+				expect(enLocale).toContain(`    _${id}:`);
+				expect(zhLocale).toContain(`    _${id}:`);
+			}
+		}
+		expect(enLocale).toContain('    _utageInterruptionWithin5Seconds:');
+		expect(zhLocale).toContain('    _utageInterruptionWithin5Seconds:');
+	});
+
+	test('keeps generated locale and SDK types synchronized while excluding server-only IDs from claim requests', () => {
+		const achievementNameStart = sdkTypes.indexOf('AchievementName:');
+		const achievementNameEnd = sdkTypes.indexOf(';', achievementNameStart);
+		const achievementNameSchema = sdkTypes.slice(achievementNameStart, achievementNameEnd);
+		const claimStart = sdkTypes.indexOf('    \'i___claim-achievement\': {');
+		const claimEnd = sdkTypes.indexOf('    \'i___delete-account\': {', claimStart);
+		const claimSchema = sdkTypes.slice(claimStart, claimEnd);
+		const serverOnlyIds = [
+			...Array.from({ length: 10 }, (_, index) => `utageSuccess${(index + 1) * 10}`),
+			...Array.from({ length: 10 }, (_, index) => `utageInterruption${(index + 1) * 10}`),
+			'utageInterruptionWithin5Seconds',
+		];
+
+		expect(achievementNameStart).toBeGreaterThan(-1);
+		expect(claimStart).toBeGreaterThan(-1);
+		expect(claimSchema).toContain('name: \'notes1\''); // 陽性対照: client claimable ID は生成済み
+		for (const id of serverOnlyIds) {
+			expect(achievementNameSchema, id).toContain(`'${id}'`);
+			expect(claimSchema, id).not.toContain(`'${id}'`);
+			expect(localeTypes, id).toContain(`"_${id}": {`);
+		}
 	});
 });

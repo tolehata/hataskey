@@ -2302,6 +2302,69 @@ _achievements:
     _hatacordingUiTutorial:
       title: "HataSNSCordUI is quite a mouthful"
       description: "A UI for experienced users"
+    _utageSuccess10:
+      title: "Looking good"
+      description: "Complete 10 Utage challenges"
+    _utageSuccess20:
+      title: "Getting the hang of it"
+      description: "Complete 20 Utage challenges"
+    _utageSuccess30:
+      title: "Utage Bronze"
+      description: "Complete 30 Utage challenges"
+    _utageSuccess40:
+      title: "Utage Silver"
+      description: "Complete 40 Utage challenges"
+    _utageSuccess50:
+      title: "Utage Gold"
+      description: "Complete 50 Utage challenges"
+    _utageSuccess60:
+      title: "Utage Diamond"
+      description: "Complete 60 Utage challenges"
+    _utageSuccess70:
+      title: "Utage Platinum"
+      description: "Complete 70 Utage challenges"
+    _utageSuccess80:
+      title: "Utage Meister"
+      description: "Complete 80 Utage challenges"
+    _utageSuccess90:
+      title: "Almost there"
+      description: "Complete 90 Utage challenges"
+    _utageSuccess100:
+      title: "Unprecedented"
+      description: "Complete 100 Utage challenges"
+    _utageInterruption10:
+      title: "Getting used to it?"
+      description: "Interrupt 10 Utage challenges"
+    _utageInterruption20:
+      title: "Already this many?"
+      description: "Interrupt 20 Utage challenges"
+    _utageInterruption30:
+      title: "No openings"
+      description: "Interrupt 30 Utage challenges"
+    _utageInterruption40:
+      title: "Where are the openings?"
+      description: "Interrupt 40 Utage challenges"
+    _utageInterruption50:
+      title: "Aren't you too strong?"
+      description: "Interrupt 50 Utage challenges"
+    _utageInterruption60:
+      title: "Guardian of the timeline"
+      description: "Interrupt 60 Utage challenges"
+    _utageInterruption70:
+      title: "When do you sleep?"
+      description: "Interrupt 70 Utage challenges"
+    _utageInterruption80:
+      title: "Let one slide sometime"
+      description: "Interrupt 80 Utage challenges"
+    _utageInterruption90:
+      title: "A long road"
+      description: "Interrupt 90 Utage challenges"
+    _utageInterruption100:
+      title: "Utage Blocker"
+      description: "Interrupt 100 Utage challenges"
+    _utageInterruptionWithin5Seconds:
+      title: "An Utage Ended Too Soon"
+      description: "Interrupt someone else's Utage within 5 seconds of its start"
     _setNameToHatacha:
       title: "God Complex (Hataskey)"
       description: "Set your name to hatacha"

@@ -8980,6 +8980,216 @@ export interface Locale extends ILocale {
                  */
                 "description": string;
             };
+            "_utageSuccess10": {
+                /**
+                 * いい感じ
+                 */
+                "title": string;
+                /**
+                 * 宴を10回成功させた
+                 */
+                "description": string;
+            };
+            "_utageSuccess20": {
+                /**
+                 * 板についてきたね
+                 */
+                "title": string;
+                /**
+                 * 宴を20回成功させた
+                 */
+                "description": string;
+            };
+            "_utageSuccess30": {
+                /**
+                 * 宴ブロンズ
+                 */
+                "title": string;
+                /**
+                 * 宴を30回成功させた
+                 */
+                "description": string;
+            };
+            "_utageSuccess40": {
+                /**
+                 * 宴シルバー
+                 */
+                "title": string;
+                /**
+                 * 宴を40回成功させた
+                 */
+                "description": string;
+            };
+            "_utageSuccess50": {
+                /**
+                 * 宴ゴールド
+                 */
+                "title": string;
+                /**
+                 * 宴を50回成功させた
+                 */
+                "description": string;
+            };
+            "_utageSuccess60": {
+                /**
+                 * 宴ダイヤモンド
+                 */
+                "title": string;
+                /**
+                 * 宴を60回成功させた
+                 */
+                "description": string;
+            };
+            "_utageSuccess70": {
+                /**
+                 * 宴プラチナ
+                 */
+                "title": string;
+                /**
+                 * 宴を70回成功させた
+                 */
+                "description": string;
+            };
+            "_utageSuccess80": {
+                /**
+                 * 宴マイスター
+                 */
+                "title": string;
+                /**
+                 * 宴を80回成功させた
+                 */
+                "description": string;
+            };
+            "_utageSuccess90": {
+                /**
+                 * あと少し
+                 */
+                "title": string;
+                /**
+                 * 宴を90回成功させた
+                 */
+                "description": string;
+            };
+            "_utageSuccess100": {
+                /**
+                 * 前代未聞
+                 */
+                "title": string;
+                /**
+                 * 宴を100回成功させた
+                 */
+                "description": string;
+            };
+            "_utageInterruption10": {
+                /**
+                 * 慣れてきた？
+                 */
+                "title": string;
+                /**
+                 * 宴を10回阻止した
+                 */
+                "description": string;
+            };
+            "_utageInterruption20": {
+                /**
+                 * もうこんなにも？
+                 */
+                "title": string;
+                /**
+                 * 宴を20回阻止した
+                 */
+                "description": string;
+            };
+            "_utageInterruption30": {
+                /**
+                 * 隙がない
+                 */
+                "title": string;
+                /**
+                 * 宴を30回阻止した
+                 */
+                "description": string;
+            };
+            "_utageInterruption40": {
+                /**
+                 * どこに隙が？
+                 */
+                "title": string;
+                /**
+                 * 宴を40回阻止した
+                 */
+                "description": string;
+            };
+            "_utageInterruption50": {
+                /**
+                 * 強すぎないか？
+                 */
+                "title": string;
+                /**
+                 * 宴を50回阻止した
+                 */
+                "description": string;
+            };
+            "_utageInterruption60": {
+                /**
+                 * TLの番人
+                 */
+                "title": string;
+                /**
+                 * 宴を60回阻止した
+                 */
+                "description": string;
+            };
+            "_utageInterruption70": {
+                /**
+                 * いつ寝てるの？
+                 */
+                "title": string;
+                /**
+                 * 宴を70回阻止した
+                 */
+                "description": string;
+            };
+            "_utageInterruption80": {
+                /**
+                 * たまには見過ごしてみよう
+                 */
+                "title": string;
+                /**
+                 * 宴を80回阻止した
+                 */
+                "description": string;
+            };
+            "_utageInterruption90": {
+                /**
+                 * 長い道のり
+                 */
+                "title": string;
+                /**
+                 * 宴を90回阻止した
+                 */
+                "description": string;
+            };
+            "_utageInterruption100": {
+                /**
+                 * 宴ブロッカー
+                 */
+                "title": string;
+                /**
+                 * 宴を100回阻止した
+                 */
+                "description": string;
+            };
+            "_utageInterruptionWithin5Seconds": {
+                /**
+                 * 早すぎる宴の終わり
+                 */
+                "title": string;
+                /**
+                 * ほかの人の宴を開始から5秒以内に阻止した
+                 */
+                "description": string;
+            };
         };
     };
     "_role": {

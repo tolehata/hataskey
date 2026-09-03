@@ -269,7 +269,7 @@ export class ReactionService {
 			cw: note.cw,
 			userId: note.userId,
 			userHost: note.userHost,
-		}, user.id).catch(() => { /* 宴判定の失敗はリアクション処理を妨げない */ });
+		}, user).catch(() => { /* 宴判定の失敗はリアクション処理を妨げない */ });
 
 		// リアクションされたユーザーがローカルユーザーなら通知を作成
 		if (note.userHost === null) {

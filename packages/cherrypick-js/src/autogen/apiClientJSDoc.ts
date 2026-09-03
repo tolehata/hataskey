@@ -6272,7 +6272,7 @@ declare module '../api.js' {
     /**
      * No description provided.
      *
-     * **Credential required**: *No*
+     * **Credential required**: *No* / **Permission**: *read:account*
      */
     request<E extends 'users/achievements', P extends Endpoints[E]['req']>(
       endpoint: E,

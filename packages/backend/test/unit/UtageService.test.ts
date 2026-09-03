@@ -5,7 +5,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { describe, expect, test, vi } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import { UtageService } from '@/core/UtageService.js';
 
 const srcDir = join(dirname(fileURLToPath(import.meta.url)), '../../src');
@@ -19,6 +19,10 @@ function service(overrides: Record<string, unknown> = {}) {
 		},
 		queueService: { createUtageResolveJob: vi.fn().mockResolvedValue(undefined) },
 		globalEventService: { publishNoteStream: vi.fn() },
+		achievementService: {
+			reconcileUtageAchievements: vi.fn().mockResolvedValue(undefined),
+			create: vi.fn().mockResolvedValue(undefined),
+		},
 		...overrides,
 	};
 	const sut = new UtageService(
@@ -26,6 +30,7 @@ function service(overrides: Record<string, unknown> = {}) {
 		defaults.idService as never,
 		defaults.queueService as never,
 		defaults.globalEventService as never,
+		defaults.achievementService as never,
 	);
 	return { sut, ...defaults };
 }
@@ -35,6 +40,10 @@ function note(overrides: Record<string, unknown> = {}) {
 }
 
 const localUser = { id: 'user-a', host: null };
+
+afterEach(() => {
+	vi.useRealTimers();
+});
 
 /*
  * 旗鯖fork: 宴はLTL(ローカルタイムライン)の上で成立するゲーム。
@@ -82,18 +91,104 @@ describe('宴のセッションはLTLに載る投稿だけで作られる', () =
 	 */
 	test('成功数・阻止数の集計が元ノートの可視性で絞られている', () => {
 		const source = readFileSync(join(srcDir, 'core/entities/UserEntityService.ts'), 'utf8');
-		expect(source).toContain("innerJoin('session.note', 'note')");
-		expect(source).toContain("andWhere('note.visibility = :visibility', { visibility: 'public' })");
+		expect(source).toContain('innerJoin(\'session.note\', \'note\')');
+		expect(source).toContain('andWhere(\'note.visibility = :visibility\', { visibility: \'public\' })');
 		// 可視性を見ない素の件数取得へ戻っていないこと。
 		expect(source).not.toMatch(/utageSessionsRepository\.countBy/);
+
+		const achievementSource = readFileSync(join(srcDir, 'core/AchievementService.ts'), 'utf8');
+		expect(achievementSource).toContain('innerJoin(\'session.note\', \'note\')');
+		expect(achievementSource).toContain('andWhere(\'note.visibility = :visibility\', { visibility: \'public\' })');
 	});
 
 	// ⚠️「LTL は public だけ」という前提が崩れたらこのゲームの対象範囲を見直す必要がある。
 	// 前提そのものを本体のコードに対して固定しておく。
 	test('LTLが public 以外を流し始めていないこと(前提の固定)', () => {
 		const rest = readFileSync(join(srcDir, 'server/api/endpoints/notes/local-timeline.ts'), 'utf8');
-		expect(rest).toContain("note.visibility = \\'public\\'");
+		expect(rest).toContain('note.visibility = \\\'public\\\'');
 		const stream = readFileSync(join(srcDir, 'server/api/stream/channels/local-timeline.ts'), 'utf8');
-		expect(stream).toContain("if (note.visibility !== 'public') return;");
+		expect(stream).toContain('if (note.visibility !== \'public\') return;');
+	});
+});
+
+describe('宴の確定時にサーバー側で実績を解除する', () => {
+	const now = new Date('2026-09-03T12:00:00.000Z');
+	const runningSession = (startedAt: Date) => ({
+		noteId: 'note-a',
+		userId: 'user-a',
+		status: 'running',
+		startedAt,
+		expiresAt: new Date(now.getTime() + 60_000),
+	});
+
+	test('ローカル利用者が他人の宴を5秒以内に阻止すると阻止回数と早期阻止の実績を解除する', async () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(now);
+		const { sut, utageSessionsRepository, achievementService } = service();
+		utageSessionsRepository.findOneBy.mockResolvedValue(runningSession(new Date(now.getTime() - 5000)));
+		utageSessionsRepository.update.mockResolvedValue({ affected: 1 });
+
+		await sut.onReaction(note({ userId: 'user-a', userHost: null }), { id: 'user-b', host: null });
+
+		expect(utageSessionsRepository.update).toHaveBeenCalledWith(
+			{ noteId: 'note-a', status: 'running' },
+			expect.objectContaining({ status: 'failed', interruptedByUserId: 'user-b', interruptedWithin5Seconds: true }),
+		);
+		expect(achievementService.reconcileUtageAchievements).toHaveBeenCalledWith('user-b', 'interruption');
+	});
+
+	test('5秒超・自己阻止・リモート阻止者には早期阻止実績を付与しない', async () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(now);
+
+		const afterFiveSeconds = service();
+		afterFiveSeconds.utageSessionsRepository.findOneBy.mockResolvedValue(runningSession(new Date(now.getTime() - 5001)));
+		afterFiveSeconds.utageSessionsRepository.update.mockResolvedValue({ affected: 1 });
+		await afterFiveSeconds.sut.onReaction(note({ userId: 'user-a', userHost: null }), { id: 'user-b', host: null });
+		expect(afterFiveSeconds.utageSessionsRepository.update).toHaveBeenCalledWith(
+			{ noteId: 'note-a', status: 'running' },
+			expect.objectContaining({ interruptedWithin5Seconds: false }),
+		);
+
+		const self = service();
+		self.utageSessionsRepository.findOneBy.mockResolvedValue(runningSession(new Date(now.getTime() - 1000)));
+		self.utageSessionsRepository.update.mockResolvedValue({ affected: 1 });
+		await self.sut.onReaction(note({ userId: 'user-a', userHost: null }), { id: 'user-a', host: null });
+		expect(self.utageSessionsRepository.update).toHaveBeenCalledWith(
+			{ noteId: 'note-a', status: 'running' },
+			expect.objectContaining({ interruptedWithin5Seconds: false }),
+		);
+
+		const remote = service();
+		remote.utageSessionsRepository.findOneBy.mockResolvedValue(runningSession(new Date(now.getTime() - 1000)));
+		remote.utageSessionsRepository.update.mockResolvedValue({ affected: 1 });
+		await remote.sut.onReaction(note({ userId: 'user-a', userHost: null }), { id: 'user-c', host: 'remote.example' });
+		expect(remote.achievementService.reconcileUtageAchievements).not.toHaveBeenCalled();
+		expect(remote.utageSessionsRepository.update).toHaveBeenCalledWith(
+			{ noteId: 'note-a', status: 'running' },
+			expect.objectContaining({ interruptedWithin5Seconds: true }),
+		);
+	});
+
+	test('楽観更新に負けた処理は実績を二重解除しない', async () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(now);
+		const { sut, utageSessionsRepository, achievementService } = service();
+		utageSessionsRepository.findOneBy.mockResolvedValue(runningSession(new Date(now.getTime() - 1000)));
+		utageSessionsRepository.update.mockResolvedValue({ affected: 0 });
+
+		await sut.onReaction(note({ userId: 'user-a', userHost: null }), { id: 'user-b', host: null });
+
+		expect(achievementService.reconcileUtageAchievements).not.toHaveBeenCalled();
+	});
+
+	test('宴の成功確定時は投稿者の成功回数実績を照合する', async () => {
+		const { sut, utageSessionsRepository, achievementService } = service();
+		utageSessionsRepository.findOneBy.mockResolvedValue(runningSession(new Date(now.getTime() - 60_000)));
+		utageSessionsRepository.update.mockResolvedValue({ affected: 1 });
+
+		await sut.resolveExpired('note-a');
+
+		expect(achievementService.reconcileUtageAchievements).toHaveBeenCalledWith('user-a', 'success');
 	});
 });

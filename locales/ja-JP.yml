@@ -2335,6 +2335,69 @@ _achievements:
     _hatacordingUiTutorial:
       title: "HataSNSCordUI、名前長いね"
       description: "玄人仕様のUIです"
+    _utageSuccess10:
+      title: "いい感じ"
+      description: "宴を10回成功させた"
+    _utageSuccess20:
+      title: "板についてきたね"
+      description: "宴を20回成功させた"
+    _utageSuccess30:
+      title: "宴ブロンズ"
+      description: "宴を30回成功させた"
+    _utageSuccess40:
+      title: "宴シルバー"
+      description: "宴を40回成功させた"
+    _utageSuccess50:
+      title: "宴ゴールド"
+      description: "宴を50回成功させた"
+    _utageSuccess60:
+      title: "宴ダイヤモンド"
+      description: "宴を60回成功させた"
+    _utageSuccess70:
+      title: "宴プラチナ"
+      description: "宴を70回成功させた"
+    _utageSuccess80:
+      title: "宴マイスター"
+      description: "宴を80回成功させた"
+    _utageSuccess90:
+      title: "あと少し"
+      description: "宴を90回成功させた"
+    _utageSuccess100:
+      title: "前代未聞"
+      description: "宴を100回成功させた"
+    _utageInterruption10:
+      title: "慣れてきた？"
+      description: "宴を10回阻止した"
+    _utageInterruption20:
+      title: "もうこんなにも？"
+      description: "宴を20回阻止した"
+    _utageInterruption30:
+      title: "隙がない"
+      description: "宴を30回阻止した"
+    _utageInterruption40:
+      title: "どこに隙が？"
+      description: "宴を40回阻止した"
+    _utageInterruption50:
+      title: "強すぎないか？"
+      description: "宴を50回阻止した"
+    _utageInterruption60:
+      title: "TLの番人"
+      description: "宴を60回阻止した"
+    _utageInterruption70:
+      title: "いつ寝てるの？"
+      description: "宴を70回阻止した"
+    _utageInterruption80:
+      title: "たまには見過ごしてみよう"
+      description: "宴を80回阻止した"
+    _utageInterruption90:
+      title: "長い道のり"
+      description: "宴を90回阻止した"
+    _utageInterruption100:
+      title: "宴ブロッカー"
+      description: "宴を100回阻止した"
+    _utageInterruptionWithin5Seconds:
+      title: "早すぎる宴の終わり"
+      description: "ほかの人の宴を開始から5秒以内に阻止した"
 
 _role:
   new: "ロールの作成"

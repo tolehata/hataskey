@@ -21,6 +21,7 @@ import type { MiUser } from '@/models/User.js';
 import { IdService } from '@/core/IdService.js';
 import { QueueService } from '@/core/QueueService.js';
 import { GlobalEventService } from '@/core/GlobalEventService.js';
+import { AchievementService } from '@/core/AchievementService.js';
 import { MemoryKVCache } from '@/misc/cache.js';
 import { bindThis } from '@/decorators.js';
 
@@ -45,6 +46,7 @@ export class UtageService {
 		private idService: IdService,
 		private queueService: QueueService,
 		private globalEventService: GlobalEventService,
+		private achievementService: AchievementService,
 	) {
 	}
 
@@ -103,7 +105,10 @@ export class UtageService {
 	// 反応(リアクション/リプライ/リノート)着弾時。expiresAt 前 かつ running なら failed に確定。
 	// 高頻度イベントから呼ばれるため、まず宴ワードの有無で安価に足切りしてから DB を引く。
 	@bindThis
-	public async onReaction(note: { id: MiNote['id']; text?: string | null; cw?: string | null; userId: MiNote['userId']; userHost: MiUser['host'] }, interruptedByUserId: MiUser['id']): Promise<void> {
+	public async onReaction(
+		note: { id: MiNote['id']; text?: string | null; cw?: string | null; userId: MiNote['userId']; userHost: MiUser['host'] },
+		interruptedByUser: Pick<MiUser, 'id' | 'host'>,
+	): Promise<void> {
 		if (note.userHost != null) return; // ローカルノートのみが宴対象
 		if (!this.isUtageText(note)) return; // 宴ノートでなければ DB を引かない
 
@@ -123,12 +128,20 @@ export class UtageService {
 		if (session.status !== 'running') return; // 確定済みは不可逆
 		if (Date.now() >= session.expiresAt.getTime()) return; // 15分超の反応は成功を覆さない
 
+		const resolvedAt = new Date();
+		const elapsedMs = resolvedAt.getTime() - session.startedAt.getTime();
+		const interruptedWithin5Seconds = interruptedByUser.id !== session.userId && elapsedMs >= 0 && elapsedMs <= 5000;
 		const result = await this.utageSessionsRepository.update(
 			{ noteId: note.id, status: 'running' }, // 楽観ロック: running の時だけ更新
-			{ status: 'failed', resolvedAt: new Date(), interruptedByUserId },
+			{ status: 'failed', resolvedAt, interruptedByUserId: interruptedByUser.id, interruptedWithin5Seconds },
 		);
 		if (result.affected && result.affected > 0) {
 			this.publishStatus(session.noteId, session.userId, 'failed');
+			if (interruptedByUser.host == null) {
+				await this.achievementService.reconcileUtageAchievements(interruptedByUser.id, 'interruption').catch(err => {
+					console.error('[utage] interruption achievement reconciliation failed:', err);
+				});
+			}
 		}
 	}
 
@@ -145,6 +158,9 @@ export class UtageService {
 		);
 		if (result.affected && result.affected > 0) {
 			this.publishStatus(session.noteId, session.userId, 'succeeded');
+			await this.achievementService.reconcileUtageAchievements(session.userId, 'success').catch(err => {
+				console.error('[utage] success achievement reconciliation failed:', err);
+			});
 		}
 	}
 

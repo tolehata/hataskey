@@ -475,4 +475,33 @@ export const ACHIEVEMENT_TYPES = [
 	'welcomeToHatady',
 	'hataSideStudioPioneer',
 	'hatacordingUiTutorial',
+	'utageSuccess10',
+	'utageSuccess20',
+	'utageSuccess30',
+	'utageSuccess40',
+	'utageSuccess50',
+	'utageSuccess60',
+	'utageSuccess70',
+	'utageSuccess80',
+	'utageSuccess90',
+	'utageSuccess100',
+	'utageInterruption10',
+	'utageInterruption20',
+	'utageInterruption30',
+	'utageInterruption40',
+	'utageInterruption50',
+	'utageInterruption60',
+	'utageInterruption70',
+	'utageInterruption80',
+	'utageInterruption90',
+	'utageInterruption100',
+	'utageInterruptionWithin5Seconds',
 ] as const;
+
+export type AchievementType = typeof ACHIEVEMENT_TYPES[number];
+export type ServerOnlyAchievementType = Extract<AchievementType, `utage${string}`>;
+export type ClientClaimableAchievementType = Exclude<AchievementType, ServerOnlyAchievementType>;
+
+export const CLIENT_CLAIMABLE_ACHIEVEMENT_TYPES = ACHIEVEMENT_TYPES.filter(
+	(type): type is ClientClaimableAchievementType => !type.startsWith('utage'),
+);

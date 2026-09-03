@@ -913,7 +913,7 @@ export class NoteCreateService implements OnApplicationShutdown {
 				cw: data.reply.cw,
 				userId: data.reply.userId,
 				userHost: data.reply.userHost,
-			}, user.id).catch(() => { /* noop */ });
+			}, user).catch(() => { /* noop */ });
 		}
 		if (data.renote != null) {
 			this.utageService.onReaction({
@@ -922,7 +922,7 @@ export class NoteCreateService implements OnApplicationShutdown {
 				cw: data.renote.cw,
 				userId: data.renote.userId,
 				userHost: data.renote.userHost,
-			}, user.id).catch(() => { /* noop */ });
+			}, user).catch(() => { /* noop */ });
 		}
 
 		if (!silent) {

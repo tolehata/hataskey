@@ -68,6 +68,12 @@ export class MiUtageSession {
 	})
 	public resolvedAt: Date | null;
 
+	@Column('boolean', {
+		default: false,
+		comment: 'Whether another user interrupted this Utage within five seconds. Only events recorded after this column was introduced are eligible.',
+	})
+	public interruptedWithin5Seconds: boolean;
+
 	@Index()
 	@Column({
 		...id(),

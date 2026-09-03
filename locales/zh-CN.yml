@@ -2025,6 +2025,69 @@ _achievements:
     _hatacordingUiTutorial:
       title: "HataSNSCordUI，这名字真长"
       description: "面向熟练用户的界面"
+    _utageSuccess10:
+      title: "感觉不错"
+      description: "成功完成 10 次宴会挑战"
+    _utageSuccess20:
+      title: "渐入佳境"
+      description: "成功完成 20 次宴会挑战"
+    _utageSuccess30:
+      title: "宴会青铜"
+      description: "成功完成 30 次宴会挑战"
+    _utageSuccess40:
+      title: "宴会白银"
+      description: "成功完成 40 次宴会挑战"
+    _utageSuccess50:
+      title: "宴会黄金"
+      description: "成功完成 50 次宴会挑战"
+    _utageSuccess60:
+      title: "宴会钻石"
+      description: "成功完成 60 次宴会挑战"
+    _utageSuccess70:
+      title: "宴会铂金"
+      description: "成功完成 70 次宴会挑战"
+    _utageSuccess80:
+      title: "宴会大师"
+      description: "成功完成 80 次宴会挑战"
+    _utageSuccess90:
+      title: "还差一点"
+      description: "成功完成 90 次宴会挑战"
+    _utageSuccess100:
+      title: "前所未闻"
+      description: "成功完成 100 次宴会挑战"
+    _utageInterruption10:
+      title: "开始习惯了？"
+      description: "阻止 10 次宴会挑战"
+    _utageInterruption20:
+      title: "已经这么多了？"
+      description: "阻止 20 次宴会挑战"
+    _utageInterruption30:
+      title: "毫无破绽"
+      description: "阻止 30 次宴会挑战"
+    _utageInterruption40:
+      title: "破绽在哪里？"
+      description: "阻止 40 次宴会挑战"
+    _utageInterruption50:
+      title: "是不是太强了？"
+      description: "阻止 50 次宴会挑战"
+    _utageInterruption60:
+      title: "时间线守门人"
+      description: "阻止 60 次宴会挑战"
+    _utageInterruption70:
+      title: "你什么时候睡觉？"
+      description: "阻止 70 次宴会挑战"
+    _utageInterruption80:
+      title: "偶尔放过一次吧"
+      description: "阻止 80 次宴会挑战"
+    _utageInterruption90:
+      title: "漫漫长路"
+      description: "阻止 90 次宴会挑战"
+    _utageInterruption100:
+      title: "宴会阻击者"
+      description: "阻止 100 次宴会挑战"
+    _utageInterruptionWithin5Seconds:
+      title: "结束得太早的宴会"
+      description: "在别人的宴会开始后 5 秒内将其阻止"
     _setNameToHatacha:
       title: "神明情结（Hataskey）"
       description: "将名字设置为 hatacha"
