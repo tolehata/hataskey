@@ -7458,9 +7458,9 @@ _hata:
       nextItem: "Next update item"
       gotIt: "Got it"
     _content:
-      latestHeadline: "Updated to Misskey 2026.9.0 with better media viewing and security"
-      upstreamUpdateTitle: "Better media viewing and everyday controls"
-      upstreamUpdateText: "Play audio in the same viewer as images and videos, with a visualization that follows the sound. Images gain a pixel-art zoom mode, and media you have unblurred stays revealed when you open the viewer. We have also fixed notification positioning, reaction ordering, and list member counts. Authentication and protection for private posts have been strengthened. Bulk emoji imports now require administrator access."
+      latestHeadline: "Misskey 2026.9.0 improvements, adapted for Hataskey"
+      upstreamUpdateTitle: "Upstream improvements and Hataskey adjustments"
+      upstreamUpdateText: "From upstream Misskey: improvements to the audio and image viewer, fixes for notification positioning and reaction ordering, and security fixes. Pixel-art zoom and preserving the unblurred state of media also come from Misskey. Under an upstream change, bulk emoji imports now require administrator access. In Hataskey, we adapted these changes to the existing colors, reduced-motion settings, and reaction muting."
       previousHeadline: "New Utage achievements, a clearer external timeline, and a playful Hataskey UI surprise"
       hataskAkatsukiTitle: "Akatsuki, Hatask's new default design"
       hataskAkatsukiText: "A three-pane desktop layout brings plans and records together. The background changes gently with your theme colors and the time of day. On phones, drag the bottom tabs into your preferred order in settings. An introduction with a doorway-style title animation lets you switch to Akatsuki or keep your current theme. Previous themes and saved events and to-dos remain available."

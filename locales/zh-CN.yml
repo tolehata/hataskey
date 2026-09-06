@@ -7033,9 +7033,9 @@ _hata:
       nextItem: "下一个更新项目"
       gotIt: "知道了"
     _content:
-      latestHeadline: "更新至 Misskey 2026.9.0，改进媒体查看体验并加强安全保护"
-      upstreamUpdateTitle: "改进音频、图片查看器和日常操作"
-      upstreamUpdateText: "音频现在可以在图片、视频共用的查看器中播放，并显示随声音变化的可视化效果。图片新增像素画放大模式，在列表中解除模糊后，打开查看器也会保留该状态。我们还修复了通知位置、回应排序和列表成员数量显示，加强了身份验证和非公开帖子的保护。表情符号批量导入现在仅限管理员执行。"
+      latestHeadline: "引入 Misskey 2026.9.0 的改进，并适配 Hataskey"
+      upstreamUpdateTitle: "Misskey 上游改进与 Hataskey 适配"
+      upstreamUpdateText: "来自 Misskey 上游的改进包括音频、图片查看器的优化，通知位置和回应排序的修正，以及安全修复。像素画放大模式和保留媒体解除模糊状态也来自上游。根据上游的规则变更，表情符号批量导入现在仅限管理员执行。Hataskey 则针对现有配色、减少动态效果的设置和回应屏蔽功能，对这些改进进行了适配。"
       previousHeadline: "新增“宴”成就，优化外部时间线，并为 Hataskey UI 加入隐藏彩蛋"
       hataskAkatsukiTitle: "Hatask 全新默认设计“暁”"
       hataskAkatsukiText: "桌面端采用三栏布局，方便查看日程和记录。背景会随着主题配色和一天中的时段平缓变化。手机底部标签可在设置中拖动排序。带有穿门文字动画的介绍弹窗可让你切换到“暁”或继续使用当前主题。原有主题、已保存的日程和待办事项均可继续使用。"

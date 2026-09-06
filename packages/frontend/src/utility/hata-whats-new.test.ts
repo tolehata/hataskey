@@ -84,7 +84,7 @@ describe('HATA_WHATS_NEW', () => {
 		expect(latestRelease.items).toHaveLength(1);
 		expect(latestRelease.headline).toContain('Misskey 2026.9.0');
 		const item = latestRelease.items[0];
-		for (const word of ['音声', 'ピクセルアート', 'ぼかし', '通知', 'リアクション', '認証', '管理者']) expect(item.text).toContain(word);
+		for (const word of ['本家Misskeyから', '音声', 'ピクセルアート', 'ぼかし', '通知', 'リアクション', 'セキュリティ修正', '管理者', 'Hataskeyでは']) expect(item.text).toContain(word);
 		expect(item.to).toBeUndefined();
 	});
 
