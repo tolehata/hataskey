@@ -1,17 +1,79 @@
 <template>
-<PageWithHeader :hideHeader="inPageWindow">
+<PageWithHeader :hideHeader="inPageWindow || isAkatsuki">
 <svg width="0" height="0" style="position:absolute"><defs><filter id="htk-gfx" x="0%" y="0%" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency="0.025 0.025" numOctaves="2" seed="92" result="n"/><feGaussianBlur in="n" stdDeviation="2" result="bl"/><feDisplacementMap in="SourceGraphic" in2="bl" scale="65" xChannelSelector="R" yChannelSelector="G"/></filter></defs></svg>
 
-<div class="htk-root" :data-mode="themeMode" :data-theme="settings.theme || 'kisetsu'" :data-window="inPageWindow?'true':'false'" :data-anim="(settings.animations===false)?'off':'on'" :data-hk-wind="hkWind?'on':'off'" :data-hk-boot="showBoot?'on':'off'" ref="rootEl">
+<div class="htk-root" :data-mode="themeMode" :data-theme="settings.theme || 'akatsuki'" :data-window="inPageWindow?'true':'false'" :data-anim="(settings.animations===false)?'off':'on'" :data-hk-wind="hkWind?'on':'off'" :data-hk-boot="showBoot?'on':'off'" ref="rootEl">
 
 <!-- 旗鯖fork(v2 §16①): 起動ブートスプラッシュ(テーマ別演出: 季=罫線ドロー / 花信=三点 / 刷=トンボ) -->
-<div v-if="showBoot" :key="bootKey" class="htk-boot" aria-hidden="true"><div class="htk-boot-inner"><div class="htk-boot-tombo"><span></span><span></span><span></span><span></span></div><div class="htk-boot-rule"></div><div class="htk-boot-logo">Hatask</div><div class="htk-boot-rule"></div><div class="htk-boot-dots"><i></i><i></i><i></i></div><!-- 旗鯖fork(ハタキュ): 画鋲で紙を留める演出 --><span class="htk-boot-tack"></span></div></div>
+<div v-if="showBoot" :key="bootKey" class="htk-boot" :style="isAkatsuki ? getHataskDaylightStyle(akatsukiNow, themeMode) : undefined" aria-hidden="true"><div class="htk-boot-inner"><div class="htk-boot-tombo"><span></span><span></span><span></span><span></span></div><div class="htk-boot-rule"></div><div class="htk-boot-logo">Hatask</div><div class="htk-boot-rule"></div><div class="htk-boot-dots"><i></i><i></i><i></i></div><!-- 旗鯖fork(ハタキュ): 画鋲で紙を留める演出 --><span class="htk-boot-tack"></span></div></div>
 
 <div class="htk-app" @touchstart.passive="htkTouchStart" @touchmove.passive="htkTouchMove" @touchend="htkTouchEnd">
 <!-- 旗鯖fork(ハタキュ): ヘッダー・ナビ・各タブをまとめて「コルク板」に載せるための入れ物。
      ⚠️ハタキュ以外では display:contents にしてあるので、他テーマのレイアウトには一切影響しない。
      ⚠️このラッパーを外す/クラス名を変えるときは、CSS の .htk-shell 側も同時に直すこと。 -->
 <div class="htk-shell">
+<HataskAkatsukiLayout
+  v-model:searchQuery="searchQuery"
+  :enabled="isAkatsuki"
+  :activeTab="activeTab as HataskAkatsukiTab"
+  :mode="themeMode"
+  :animations="settings.animations!==false"
+  :model="akatsukiModel"
+  :now="akatsukiNow"
+  :searchOpen="showSearch"
+  @navigate="navigateAkatsuki"
+  @settings="openHataskSettings"
+  @search="searchAkatsuki"
+  @closeSearch="showSearch=false"
+  @action="handleAkatsukiAction"
+>
+<template #search-results>
+  <HataskSearchResults :groups="hataskSearchGroups" :emptyLabel="copy.notFound" @select="selectHataskSearchResult"/>
+  <div class="htk-sch-note">{{copy.searchScopeNote}}</div>
+</template>
+<template #home-extra>
+  <div class="htk-akatsuki-extras">
+    <div v-if="completedUndoItems.length" class="htk-planner-undo htk-complete-undo" role="status">
+      <i class="ti ti-circle-check-filled" aria-hidden="true"></i><span>{{plannerCopyx.completedCount({count:completedUndoItems.length.toString()})}}</span>
+      <button type="button" class="htk-btn htk-xs" :disabled="plannerReadOnly" @click="undoCompletedTodos">{{plannerCopy.restore}}</button>
+    </div>
+    <section v-if="pendingRsvps.length" class="htk-akatsuki-extra">
+      <h3>{{copy.rsvp}}</h3>
+      <div v-for="r in pendingRsvps" :key="r.eventId" class="htk-akatsuki-rsvp">
+        <strong>{{r.title}}</strong><span>{{r.dateLabel}}</span>
+        <div><button class="htk-btn htk-sm" :aria-pressed="r.myStatus==='going'" @click="setRsvp(r.eventId,'going')">{{copy.rsvpGoing}}</button><button class="htk-btn htk-sm" :aria-pressed="r.myStatus==='maybe'" @click="setRsvp(r.eventId,'maybe')">{{copy.rsvpMaybeShort}}</button><button class="htk-btn htk-sm" :aria-pressed="r.myStatus==='declined'" @click="setRsvp(r.eventId,'declined')">{{copy.rsvpDeclined}}</button></div>
+      </div>
+    </section>
+    <section v-if="canAccessHataFeed && settings.showFeedbackNotif!==false && hfNotifs.length" class="htk-akatsuki-extra">
+      <h3>{{copy.hataFeedNotifications}}</h3>
+      <button v-for="n in hfNotifs" :key="n.id" class="htk-akatsuki-notification" :data-unread="!n.isRead" @click="onHfNotifClick(n)">
+        <i :class="['ti',hfIcon(n.type)]" aria-hidden="true"></i><HataFeedNotificationBody :text="notificationDisplayMessage(n)"/>
+      </button>
+    </section>
+    <section v-if="settings.showEarthquake!==false && rawQuakes.length" class="htk-akatsuki-extra">
+      <h3>{{copy.earthquakeAndTsunami}}</h3>
+      <MkEarthquakeTicker :quakes="rawQuakes" :tsunami="tsunami" mode="compact" :showEmpty="false" @click="openEarthquake"/>
+      <small>{{copy.jmaSourceNote}}</small>
+    </section>
+    <section v-if="canUseMascot && mascotCardUrl" class="htk-akatsuki-extra">
+      <h3>{{copy.mascot}}</h3>
+      <button class="htk-akatsuki-mascot" @click="onMascotCardClick">
+        <img :src="mascotCardUrl" :alt="mascotCardName" draggable="false" width="96" height="96">
+        <span><strong>{{mascotCardName}}</strong><span>{{mascotCardPhrase}}</span></span>
+      </button>
+    </section>
+  </div>
+</template>
+<HataskAkatsukiApps
+  v-if="isAkatsuki && (activeTab==='hataskapps' || activeTab==='apps')"
+  :kind="activeTab==='hataskapps'?'hatask':'tools'"
+  :animations="settings.animations!==false"
+  :counts="akatsukiAppCounts"
+  :canAccessHataFeed="canAccessHataFeed"
+  :canUseMascot="canUseMascot"
+  :countsKnown="dataLoaded && plannerMigrationReady && loadedKeys.has('events') && loadedKeys.has('todos') && journalValidKeys.includes('meals')"
+  @open="openAkatsukiApp"
+/>
 <!-- 旗鯖fork(ハタキュ): 突風で舞う落ち葉。⚠️key を変えて作り直さないと2回目以降が再生されない。 -->
 <div v-if="isHatakyu" :key="'hkleaf'+hkLeafKey" class="hk-leaves" aria-hidden="true"><span class="hk-leaf"></span><span class="hk-leaf"></span><span class="hk-leaf"></span><span class="hk-leaf"></span><span class="hk-leaf"></span></div>
 
@@ -26,20 +88,20 @@
 </div>
 
 <!-- HEADER: search left, title center, settings right -->
-<header v-if="!isHatakyu" class="htk-lg htk-header htk-anim"><div class="htk-gc" style="display:flex;align-items:center;justify-content:space-between;padding:14px 22px;position:relative"><div style="display:flex;align-items:center;gap:8px;position:relative;z-index:1"><button class="htk-btn htk-icon-sq htk-header-back" @click="handleBack" :title="copy.back" :aria-label="copy.back"><i class="ti ti-arrow-left" style="font-size:1.1rem"></i></button><button class="htk-btn htk-icon-sq" @click="showSearch=true" :title="copy.search" :aria-label="copy.search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></button></div><h1 style="position:absolute;left:0;right:0;margin:0;text-align:center;pointer-events:none;font-size:1.5rem;font-weight:400;letter-spacing:.5px;font-family:'Righteous',system-ui,sans-serif">Hatask</h1><button class="htk-btn htk-icon-sq" @click="openHataskSettings()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button></div></header>
+<header v-if="!isHatakyu && !isAkatsuki" class="htk-lg htk-header htk-anim"><div class="htk-gc" style="display:flex;align-items:center;justify-content:space-between;padding:14px 22px;position:relative"><div style="display:flex;align-items:center;gap:8px;position:relative;z-index:1"><button class="htk-btn htk-icon-sq htk-header-back" @click="handleBack" :title="copy.back" :aria-label="copy.back"><i class="ti ti-arrow-left" style="font-size:1.1rem"></i></button><button class="htk-btn htk-icon-sq" @click="showSearch=true" :title="copy.search" :aria-label="copy.search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></button></div><h1 style="position:absolute;left:0;right:0;margin:0;text-align:center;pointer-events:none;font-size:1.5rem;font-weight:400;letter-spacing:.5px;font-family:'Righteous',system-ui,sans-serif">Hatask</h1><button class="htk-btn htk-icon-sq" @click="openHataskSettings()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button></div></header>
 
 <!-- NAV (旗鯖fork v2: 上部ナビに一本化。モバイルでも上部・横スクロール。下部固定ナビは廃止し、
      戻るは左上ヘッダーへ。Hataskey UI下部ナビの非表示は body.hataskActive + data-htask-hidden で継続) -->
-<nav v-if="!isHatakyu" class="htk-nav htk-nav-top htk-anim"><button v-for="tab in tabs" :key="tab.id" :class="['htk-nav-t',activeTab===tab.id&&'on']" @click="activeTab=tab.id"><span class="htk-ico"><i :class="tab.icon"></i></span>{{tab.label}}</button></nav>
+<nav v-if="!isHatakyu && !isAkatsuki" class="htk-nav htk-nav-top htk-anim"><button v-for="tab in tabs" :key="tab.id" :class="['htk-nav-t',activeTab===tab.id&&'on']" @click="activeTab=tab.id"><span class="htk-ico"><i :class="tab.icon"></i></span>{{tab.label}}</button></nav>
 <!-- 旗鯖fork(ハタキュ): タブは画鋲で留めた付箋。
      ⚠️チュートリアルのスポットライトは .htk-nav-top も探すので、セレクタ側に .hk-tabs を足してある。 -->
-<nav v-else class="hk-tabs"><button v-for="tab in tabs" :key="tab.id" :class="['hk-tag',activeTab===tab.id&&'on']" @click="activeTab=tab.id"><i :class="tab.icon"></i>{{tab.label}}</button></nav>
+<nav v-else-if="isHatakyu" class="hk-tabs"><button v-for="tab in tabs" :key="tab.id" :class="['hk-tag',activeTab===tab.id&&'on']" @click="activeTab=tab.id"><i :class="tab.icon"></i>{{tab.label}}</button></nav>
 
 <!-- ========== HOME (v2 デザイン最終形: 季/花信/刷 固定レイアウト) ========== -->
-<div v-if="activeTab==='home'" class="htk-tabpage htk-home" :class="[tabDir==='fwd'?'htk-tab-fwd':'htk-tab-back',homeThemeClass]">
+<div v-if="activeTab==='home' && !isAkatsuki" class="htk-tabpage htk-home" :class="[tabDir==='fwd'?'htk-tab-fwd':'htk-tab-back',homeThemeClass]">
 
   <!-- ===================== 季 KISETSU (Editorial Mincho) ===================== -->
-  <template v-if="(settings.theme||'kisetsu')==='kisetsu'">
+  <template v-if="(settings.theme||'akatsuki')==='kisetsu'">
     <div v-if="pendingRsvps.length" class="hk-rsvp">
       <div class="dept" :data-n="copy.rsvp">RSVP<i></i></div>
       <div v-for="r in pendingRsvps" :key="r.eventId" class="hk-rsvprow">
@@ -79,7 +141,7 @@
   </template>
 
   <!-- ===================== 花信 KASHIN (Vivid Pop Bento) ===================== -->
-  <template v-else-if="(settings.theme||'kisetsu')==='kashin'">
+  <template v-else-if="(settings.theme||'akatsuki')==='kashin'">
     <div class="bento">
       <div v-if="pendingRsvps.length" class="cell c-rsvp span2">
         <div class="clabel"><i class="ti ti-mail"></i> {{copy.rsvp}}</div>
@@ -232,6 +294,7 @@
       <button v-if="plannerReadOnly" type="button" class="htk-btn htk-xs" @click="retryPlannerStorage">{{plannerCopy.retry}}</button>
     </div>
     <HataskQuickCapture
+    :theme="plannerTheme"
       ref="eventCaptureRef"
       mode="event"
       :modelValue="newEvent.title"
@@ -279,6 +342,7 @@
     <Transition name="htk-capture-detail">
       <div v-if="showEventTemplates" class="htk-capture-detail">
         <HataskTemplateLibrary
+    :theme="plannerTheme"
           :templates="plannerTemplates"
           kind="event"
           :showKindFilter="false"
@@ -292,6 +356,7 @@
       </div>
     </Transition>
     <HataskCalendarPlanner
+      :colorMode="themeMode"
       :theme="plannerTheme"
       :view="plannerCalendarView"
       :title="plannerCalendarTitle"
@@ -306,6 +371,7 @@
       @select-date="selectPlannerDate"
       @toggle-filter="togglePlannerCalendarFilter"
       @activate-event="activatePlannerEvent"
+      @activateBlank="openBlankCalendarActions"
       @edit-event="editPlannerEvent"
       @move-request="handleCalendarMoveRequest"
       @show-more="showPlannerDay"
@@ -313,6 +379,7 @@
       @trash-event="handleCalendarEventTrash"
     />
     <HataskEventMoveDialog
+      :colorMode="themeMode"
       :isOpen="pendingCalendarAction!=null"
 	  :theme="plannerTheme"
       :mode="pendingCalendarAction?.mode||'reschedule'"
@@ -352,107 +419,12 @@
     </template>
   </div></div>
 
-  <template v-if="viewingEvent">
-  <div v-if="selectedDay&&eventsForDay.length" class="htk-lg htk-anim"><div class="htk-gc">
-    <h3 class="htk-sec-title">{{copyx.eventsOnDate({date:selectedDateLabel})}}</h3>
-    <div v-for="ev in pagedEvents" :key="ev.id">
-      <div :class="['htk-dayev-row',viewingEvent?.id===ev.id&&'active']" @click="openEventDetail(ev)">
-        <div class="htk-dayev-dot" :style="{background:ev.color}"></div>
-        <div class="htk-dayev-body">
-          <div class="htk-dayev-title"><HataskEmoji :emoji="ev.emoji"/> {{ev.title}}<span v-if="ev.isShared" style="opacity:.4;font-size:.78em;margin-left:6px">@{{ev.username}}</span></div>
-          <div class="htk-dayev-time">{{eventTimeLabel(ev)}}</div>
-        </div>
-        <div class="htk-dayev-chevron"><i class="ti" :class="viewingEvent?.id===ev.id?'ti-chevron-up':'ti-chevron-down'"></i></div>
-      </div>
-      <!-- ===== EVENT DETAIL PANEL ===== -->
-      <div v-if="viewingEvent?.id===ev.id" class="htk-evdet">
-        <div class="htk-evdet-hdr">
-          <div class="htk-evdet-meta">
-            <div class="htk-evdet-sub">
-              <i class="ti ti-calendar-event"></i> {{eventDateRangeLabel(ev)}}
-              <span v-if="!ev.allDay && ev.timeStart"> · <i class="ti ti-clock"></i> {{ev.timeStart}}{{ev.timeEnd?' - '+ev.timeEnd:''}}</span>
-              <span v-else-if="ev.allDay"> · {{copy.allDay}}</span>
-            </div>
-            <div v-if="ev.isShared" class="htk-evdet-sub" style="margin-top:2px">{{copy.organizer}}: @{{ev.username}}</div>
-          </div>
-        </div>
-
-        <!-- RSVP section: shared event with rsvp enabled -->
-        <template v-if="sharedEventData(ev.id)?.rsvp">
-          <!-- 主催者 view -->
-          <template v-if="ev.userId===$i?.id">
-            <div class="htk-evdet-sec-label">{{copy.rsvpDashboard}}</div>
-            <div v-if="sharedEventData(ev.id)?.rsvpClosed" class="htk-rsvp-closed-badge" style="margin:4px 0 8px"><i class="ti ti-check"></i> {{copy.closed}}</div>
-            <div v-else class="htk-rsvp-open-badge" style="margin:4px 0 8px"><i class="ti ti-circle-filled" style="color:#5a9a5a;font-size:.7em;vertical-align:middle;margin-right:3px"></i>{{copy.accepting}}</div>
-            <div class="htk-rsvp-stats">
-              <div class="htk-rsvp-stat-card going"><div class="htk-rsvp-stat-n">{{sharedRsvpResponses(ev.id).filter(r=>r.status==='going').length}}</div><div class="htk-rsvp-stat-l">{{copy.rsvpParticipation}}</div></div>
-              <div class="htk-rsvp-stat-card maybe"><div class="htk-rsvp-stat-n">{{sharedRsvpResponses(ev.id).filter(r=>r.status==='maybe').length}}</div><div class="htk-rsvp-stat-l">{{copy.rsvpMaybe}}</div></div>
-              <div class="htk-rsvp-stat-card declined"><div class="htk-rsvp-stat-n">{{sharedRsvpResponses(ev.id).filter(r=>r.status==='declined').length}}</div><div class="htk-rsvp-stat-l">{{copy.rsvpDeclined}}</div></div>
-              <div class="htk-rsvp-stat-card total"><div class="htk-rsvp-stat-n">{{sharedRsvpResponses(ev.id).length}}</div><div class="htk-rsvp-stat-l">{{copy.total}}</div></div>
-            </div>
-            <div v-if="sharedRsvpResponses(ev.id).length" class="htk-rsvp-bar-wrap"><div class="htk-rsvp-bar">
-              <div class="htk-rsvp-bar-seg going" :style="{width:(sharedRsvpResponses(ev.id).filter(r=>r.status==='going').length/sharedRsvpResponses(ev.id).length*100)+'%'}"></div>
-              <div class="htk-rsvp-bar-seg maybe" :style="{width:(sharedRsvpResponses(ev.id).filter(r=>r.status==='maybe').length/sharedRsvpResponses(ev.id).length*100)+'%'}"></div>
-              <div class="htk-rsvp-bar-seg declined" :style="{width:(sharedRsvpResponses(ev.id).filter(r=>r.status==='declined').length/sharedRsvpResponses(ev.id).length*100)+'%'}"></div>
-            </div></div>
-            <template v-if="sharedRsvpResponses(ev.id).length">
-              <div v-if="sharedRsvpResponses(ev.id).filter(r=>r.status==='going').length" class="htk-rsvp-grp">
-                <div class="htk-rsvp-grp-h"><span class="htk-rsvp-grp-dot going"></span>{{copy.rsvpParticipation}} ({{sharedRsvpResponses(ev.id).filter(r=>r.status==='going').length}})</div>
-                <div class="htk-rsvp-grp-names"><span v-for="r in sharedRsvpResponses(ev.id).filter(r=>r.status==='going')" :key="r.userId" class="htk-rsvp-name">@{{r.username}}</span></div>
-              </div>
-              <div v-if="sharedRsvpResponses(ev.id).filter(r=>r.status==='maybe').length" class="htk-rsvp-grp">
-                <div class="htk-rsvp-grp-h"><span class="htk-rsvp-grp-dot maybe"></span>{{copy.rsvpMaybe}} ({{sharedRsvpResponses(ev.id).filter(r=>r.status==='maybe').length}})</div>
-                <div class="htk-rsvp-grp-names"><span v-for="r in sharedRsvpResponses(ev.id).filter(r=>r.status==='maybe')" :key="r.userId" class="htk-rsvp-name">@{{r.username}}</span></div>
-              </div>
-              <div v-if="sharedRsvpResponses(ev.id).filter(r=>r.status==='declined').length" class="htk-rsvp-grp">
-                <div class="htk-rsvp-grp-h"><span class="htk-rsvp-grp-dot declined"></span>{{copy.rsvpDeclined}} ({{sharedRsvpResponses(ev.id).filter(r=>r.status==='declined').length}})</div>
-                <div class="htk-rsvp-grp-names"><span v-for="r in sharedRsvpResponses(ev.id).filter(r=>r.status==='declined')" :key="r.userId" class="htk-rsvp-name">@{{r.username}}</span></div>
-              </div>
-            </template>
-            <div v-else class="htk-rsvp-sum-empty">{{copy.noResponses}}</div>
-            <button v-if="!sharedEventData(ev.id)?.rsvpClosed" class="htk-btn htk-sm htk-danger" style="margin-top:10px;width:100%" @click="closeRsvp(ev.id)">{{copy.closeRsvp}}</button>
-          </template>
-          <!-- 参加者 view -->
-          <template v-else>
-            <div class="htk-evdet-sec-label"><i class="ti ti-mail"></i> {{copy.rsvp}}</div>
-            <div v-if="sharedEventData(ev.id)?.rsvpClosed" class="htk-rsvp-closed-badge" style="margin:4px 0 8px">{{copy.closed}}</div>
-            <template v-else>
-              <div class="htk-evdet-rsvp-btns">
-                <button :class="['htk-rsvp-b','htk-rsvp-go',sharedRsvpMyStatus(ev.id)==='going'&&'on']" @click="setRsvp(ev.id,'going')"><i class="ti ti-check"></i> {{copy.rsvpGoing}}</button>
-                <button :class="['htk-rsvp-b','htk-rsvp-maybe',sharedRsvpMyStatus(ev.id)==='maybe'&&'on']" @click="setRsvp(ev.id,'maybe')"><i class="ti ti-help-circle"></i> {{copy.rsvpMaybe}}</button>
-                <button :class="['htk-rsvp-b','htk-rsvp-no',sharedRsvpMyStatus(ev.id)==='declined'&&'on']" @click="setRsvp(ev.id,'declined')"><i class="ti ti-x"></i> {{copy.rsvpDeclined}}</button>
-              </div>
-            </template>
-            <div v-if="sharedRsvpResponses(ev.id).length" class="htk-evdet-resp-summary">
-              <span style="opacity:.55;font-size:.78rem">{{copyx.rsvpSummary({going:sharedRsvpResponses(ev.id).filter(r=>r.status==='going').length.toString(),maybe:sharedRsvpResponses(ev.id).filter(r=>r.status==='maybe').length.toString(),declined:sharedRsvpResponses(ev.id).filter(r=>r.status==='declined').length.toString()})}}</span>
-            </div>
-          </template>
-        </template>
-
-        <!-- RSVP無し公開イベント（詳細のみ） -->
-        <div v-else-if="ev.isShared" class="htk-evdet-note" style="opacity:.5;font-size:.8rem">{{copy.publicEventWithoutRsvp}}</div>
-
-        <!-- Action buttons -->
-        <div class="htk-evdet-acts">
-          <template v-if="!ev.isShared || ev.userId===$i?.id">
-            <button class="htk-btn htk-sm" @click="startEditEvent(ev);closeEventDetail()"><i class="ti ti-pencil"></i> {{copy.edit}}</button>
-            <button class="htk-btn htk-sm htk-danger" @click="deleteEventById(ev.id);closeEventDetail()"><i class="ti ti-x"></i> {{copy.delete}}</button>
-          </template>
-        </div>
-      </div>
-    </div>
-  </div></div>
-  <div v-if="eventTotalPages>1" class="htk-pager"><button class="htk-btn htk-xs" :disabled="eventPage<=1" @click="eventPage--">&lt;</button><span class="htk-pager-t">{{eventPage}} / {{eventTotalPages}}</span><button class="htk-btn htk-xs" :disabled="eventPage>=eventTotalPages" @click="eventPage++">&gt;</button></div>
-  <div v-else-if="selectedDay" class="htk-lg htk-anim"><div class="htk-gc" style="text-align:center;padding:16px">
-    <div style="font-size:.85rem;color:var(--fg-3)">{{copyx.noEventsOnDate({date:selectedDateLabel})}}</div>
-  </div></div>
-  </template>
 
 					<Teleport to="body">
 						<div
 							v-if="showEventDetails"
 							class="htk-modal-ov"
-							:data-theme="settings.theme||'kisetsu'"
+							:data-theme="settings.theme||'akatsuki'"
 							:data-mode="themeMode"
 							@click.self="closeEventDetailsModal"
 							@keydown.esc.stop.prevent="closeEventDetailsModal"
@@ -469,6 +441,10 @@
 										<button ref="eventDetailsCloseRef" type="button" class="htk-icon-btn" :aria-label="copy.close" :title="copy.close" @click="closeEventDetailsModal"><i class="ti ti-x" aria-hidden="true"></i></button>
 									</header>
 	    <fieldset :disabled="plannerReadOnly" class="htk-editor-fieldset">
+											<div class="htk-fg">
+												<label class="htk-fl" for="hatask-event-title-input">{{ i18n.ts.title }}</label>
+												<input id="hatask-event-title-input" ref="eventDetailsTitleRef" v-model="newEvent.title" class="htk-inp" type="text" :placeholder="copy.eventTitlePlaceholder" :disabled="eventCaptureState === 'saving'">
+											</div>
 	    <div class="htk-fg"><span id="hatask-event-emoji-label" class="htk-fl">{{copy.emoji}}</span><div class="htk-emp-row" role="group" aria-labelledby="hatask-event-emoji-label"><button v-for="e in eventEmojis" :key="e" type="button" :class="['htk-emp-i',newEvent.emoji===e&&'on']" :aria-label="`${plannerCopy.chooseEmoji}: ${e}`" :aria-pressed="newEvent.emoji===e" @click="newEvent.emoji=e"><HataskEmoji :emoji="e"/></button></div></div>
 	    <div class="htk-fg"><span class="htk-fl">{{copy.dateAndTime}}</span>
 	      <div class="htk-tg-row" style="margin-bottom:8px"><span id="hatask-event-all-day-label" class="htk-tg-lab">{{copy.allDayFull}}</span><button type="button" :class="['htk-tg-sw',newEvent.allDay&&'on']" role="switch" aria-labelledby="hatask-event-all-day-label" :aria-checked="newEvent.allDay" @click="newEvent.allDay=!newEvent.allDay"></button></div>
@@ -531,6 +507,7 @@
 	  <div v-if="plannerStorageState==='loading'||plannerStorageState==='saving'||plannerStorageState==='blocked'||plannerStorageState==='conflict'" class="htk-planner-status" :data-state="plannerStorageState" role="status" aria-live="polite"><i :class="plannerStorageState==='loading'||plannerStorageState==='saving'?'ti ti-loader-2':'ti ti-shield-exclamation'" aria-hidden="true"></i><span>{{plannerStorageState==='loading'?plannerCopy.loading:plannerStorageState==='saving'?plannerCopy.saving:plannerStorageDetail||plannerCopy.readOnly}}</span><button v-if="plannerReadOnly" type="button" class="htk-btn htk-xs" @click="retryPlannerStorage">{{plannerCopy.retry}}</button></div>
 						<div class="htk-todo-capture-row">
 							<HataskQuickCapture
+    :theme="plannerTheme"
 								ref="todoCaptureRef"
 								mode="todo"
 								:modelValue="newTodo"
@@ -613,6 +590,7 @@
 	  <div v-if="completedUndoItems.length" class="htk-planner-undo htk-complete-undo" role="status"><i class="ti ti-circle-check-filled" aria-hidden="true"></i><span>{{plannerCopyx.completedCount({count:completedUndoItems.length.toString()})}}</span><button type="button" class="htk-btn htk-xs" :disabled="plannerReadOnly" @click="undoCompletedTodos">{{plannerCopy.restore}}</button></div>
 		  <div v-if="lastArchivedTodoId" class="htk-planner-undo" role="status"><span>{{plannerCopy.archivedNotice}}</span><button type="button" class="htk-btn htk-xs" :disabled="plannerReadOnly" @click="restoreTodo(lastArchivedTodoId)">{{plannerCopy.restore}}</button></div>
 	  <HataskTodoPlanner
+	    :colorMode="themeMode"
 	    :theme="plannerTheme"
 	    :view="plannerTodoView"
 	    :items="plannerTodoItems"
@@ -644,6 +622,7 @@
 	  >
 	    <template #templates>
 	      <HataskTemplateLibrary
+    :theme="plannerTheme"
 	        :templates="plannerTemplates"
 	        :kind="templateKindFilter"
 	        :labels="plannerTemplateLabels"
@@ -665,6 +644,8 @@
 <!-- ========== MOOD / MEAL: 切替でも入力中の記録を保持する ========== -->
 <div v-show="activeTab==='mood'" class="htk-tabpage htk-journal-page" :class="tabDir==='fwd'?'htk-tab-fwd':'htk-tab-back'">
   <HataskJournal
+    ref="akatsukiMoodJournal"
+    :theme="plannerTheme"
     kind="mood"
     :entries="moodJournalRows"
     :writable="journalWritable('moods')"
@@ -687,7 +668,9 @@
 
 <div v-show="activeTab==='meal'" class="htk-tabpage htk-journal-page" :class="tabDir==='fwd'?'htk-tab-fwd':'htk-tab-back'">
   <HataskJournal
+    ref="akatsukiMealJournal"
     kind="meal"
+    :theme="plannerTheme"
     :entries="mealJournalRows"
     :writable="journalWritable('meals')"
     :loading="!dataLoaded"
@@ -731,7 +714,7 @@
       </div>
     </div>
     <p class="htk-gal-visibility-help">{{copy.flowerGalleryVisibilityHelp}}</p>
-    <div class="htk-gal-sort" role="group" :aria-label="copy.sort"><div class="htk-gal-sort-inner"><span class="htk-gal-sort-label"><i class="ti ti-arrows-sort" aria-hidden="true"></i><span>{{copy.sort}}</span></span><button type="button" :class="['htk-gal-sort-btn', galleryOrder === 'newest' && 'on']" :aria-pressed="galleryOrder === 'newest'" @click="setGalleryOrder('newest')"><i class="ti ti-sort-descending" aria-hidden="true"></i><span>{{copy.newestFirst}}</span></button><button type="button" :class="['htk-gal-sort-btn', galleryOrder === 'oldest' && 'on']" :aria-pressed="galleryOrder === 'oldest'" @click="setGalleryOrder('oldest')"><i class="ti ti-sort-ascending" aria-hidden="true"></i><span>{{copy.oldestFirst}}</span></button></div></div>
+    <div class="htk-gal-sort" role="group" :aria-label="copy.sort"><div class="htk-gal-sort-inner"><span class="htk-gal-sort-label"><i class="ti ti-arrows-sort" aria-hidden="true"></i><span>{{copy.sort}}</span></span><button type="button" :class="['htk-gal-sort-btn', galleryOrder === 'newest' && 'on']" :aria-pressed="galleryOrder === 'newest'" :aria-label="copy.newestFirst" :title="copy.newestFirst" @click="setGalleryOrder('newest')"><i class="ti ti-sort-descending" aria-hidden="true"></i><span>{{copy.newestFirst}}</span></button><button type="button" :class="['htk-gal-sort-btn', galleryOrder === 'oldest' && 'on']" :aria-pressed="galleryOrder === 'oldest'" :aria-label="copy.oldestFirst" :title="copy.oldestFirst" @click="setGalleryOrder('oldest')"><i class="ti ti-sort-ascending" aria-hidden="true"></i><span>{{copy.oldestFirst}}</span></button></div></div>
     <div v-if="gallery.length" class="htk-gal-g"><button v-for="fl in pagedGallery" :key="fl.id" type="button" class="htk-gal-i" @click="renameFlower(fl)"><span class="htk-gal-e"><HataskEmoji :emoji="fl.emoji"/></span><span class="htk-gal-n">{{localizeFloraName(fl.name)}}</span><span v-if="fl.hanakotoba" class="htk-gal-hk">{{localizeHanakotoba(fl.hanakotoba)}}</span><span class="htk-gal-d">{{formatFlowerDate(fl)}}</span></button></div>
     <div v-else class="htk-empty"><div class="htk-empI"><i class="ti ti-circle-off"></i></div><div>{{copy.noFlowersYet}}</div></div>
     <div v-if="gallery.length" class="htk-pager htk-gal-pager"><button type="button" class="htk-btn htk-xs" :aria-label="copy.previousPage" :disabled="galleryPage <= 1" @click="galleryPage--">‹</button><span class="htk-pager-t" aria-live="polite">{{galleryPage}}</span><button type="button" class="htk-btn htk-xs" :aria-label="copy.nextPage" :disabled="galleryPage >= galleryTotalPages" @click="galleryPage++">›</button></div>
@@ -740,7 +723,11 @@
 					<div class="htk-garden-stack" :class="isHatakyu?'hk-panels':undefined" data-garden-group="community">
   <div class="htk-lg htk-anim"><div class="htk-gc">
     <h3 class="htk-sec-title">{{copy.communityFlowerGallery}}</h3>
-    <div class="htk-gal-sort" role="group" :aria-label="copy.sort"><div class="htk-gal-sort-inner"><span class="htk-gal-sort-label"><i class="ti ti-arrows-sort" aria-hidden="true"></i><span>{{copy.sort}}</span></span><button type="button" :class="['htk-gal-sort-btn', communityFlowerOrder === 'newest' && 'on']" :aria-pressed="communityFlowerOrder === 'newest'" @click="setCommunityFlowerOrder('newest')"><i class="ti ti-sort-descending" aria-hidden="true"></i><span>{{copy.newestFirst}}</span></button><button type="button" :class="['htk-gal-sort-btn', communityFlowerOrder === 'oldest' && 'on']" :aria-pressed="communityFlowerOrder === 'oldest'" @click="setCommunityFlowerOrder('oldest')"><i class="ti ti-sort-ascending" aria-hidden="true"></i><span>{{copy.oldestFirst}}</span></button></div></div>
+								<div class="htk-gal-sort" role="group" :aria-label="copy.sort"><div class="htk-gal-sort-inner">
+									<span class="htk-gal-sort-label"><i class="ti ti-arrows-sort" aria-hidden="true"></i><span>{{copy.sort}}</span></span>
+									<button type="button" :class="['htk-gal-sort-btn', communityFlowerOrder === 'newest' && 'on']" :aria-pressed="communityFlowerOrder === 'newest'" :aria-label="isAkatsuki ? `N (New)・${copy.newestFirst}` : copy.newestFirst" :title="isAkatsuki ? `N (New)・${copy.newestFirst}` : copy.newestFirst" @click="setCommunityFlowerOrder('newest')"><i v-if="!isAkatsuki" class="ti ti-sort-descending" aria-hidden="true"></i><span>{{isAkatsuki ? 'N' : copy.newestFirst}}</span></button>
+									<button type="button" :class="['htk-gal-sort-btn', communityFlowerOrder === 'oldest' && 'on']" :aria-pressed="communityFlowerOrder === 'oldest'" :aria-label="isAkatsuki ? `O (Old)・${copy.oldestFirst}` : copy.oldestFirst" :title="isAkatsuki ? `O (Old)・${copy.oldestFirst}` : copy.oldestFirst" @click="setCommunityFlowerOrder('oldest')"><i v-if="!isAkatsuki" class="ti ti-sort-ascending" aria-hidden="true"></i><span>{{isAkatsuki ? 'O' : copy.oldestFirst}}</span></button>
+								</div></div>
     <div v-if="communityFlowersLoading" class="htk-gal-state" role="status"><i class="ti ti-loader-2" aria-hidden="true"></i> {{copy.flowerGalleryLoading}}</div>
     <div v-else-if="communityFlowersError" class="htk-gal-state htk-gal-error" role="alert"><i class="ti ti-alert-circle" aria-hidden="true"></i> {{copy.flowerGalleryLoadFailed}} <button type="button" class="htk-btn htk-xs" @click="loadCommunityFlowers">{{copy.retry}}</button></div>
     <div v-else-if="communityFlowers.length" class="htk-gal-g htk-gal-community-gallery">
@@ -845,32 +832,21 @@
     <div v-if="flower.progress>=100" style="margin-top:8px"><button class="htk-btn htk-primary htk-sm" @click="harvestFlower">{{copy.harvestFlower}}</button></div>
   </div></div>
 </div>
+</HataskAkatsukiLayout>
 </div><!-- /htk-shell -->
 </div><!-- /htk-app -->
 
 <!-- SEARCH MODAL -->
-<Teleport to="body"><div v-if="showSearch" class="htk-modal-ov" :data-theme="settings.theme||'kisetsu'" :data-mode="themeMode" @click.self="showSearch=false"><div class="htk-lg htk-modal-c htk-sch-modal"><div class="htk-gc">
-  <h3 class="htk-sec-title">{{copy.search}}</h3>
+<Teleport to="body"><div v-if="showSearch && !isAkatsuki" class="htk-modal-ov" :data-theme="settings.theme||'akatsuki'" :data-mode="themeMode" @click.self="showSearch=false"><div class="htk-lg htk-modal-c htk-sch-modal"><div class="htk-gc">
+  <h2 class="htk-sec-title">{{copy.search}}</h2>
   <input class="htk-inp htk-sch-inp" v-model="searchQuery" :placeholder="copy.searchPlaceholder" ref="searchInput">
-  <div class="htk-sch-body">
-  <div v-if="!searchQuery">
-    <template v-if="upcomingEvents.length"><div class="htk-sch-sec">{{copy.upcomingEvents}}</div><div v-for="ev in upcomingEvents.slice(0,3)" :key="'se'+ev.id" class="htk-sch-it" @click="showSearch=false;goToEvent(ev)"><div class="htk-ev-dot" :style="{background:ev.color}"></div><div class="htk-sch-it-body"><div class="htk-sch-it-title">{{ev.title}}</div><div class="htk-sch-it-sub">{{formatSearchDate(ev.date)}} {{ev.timeStart}}</div></div></div></template>
-    <template v-if="recentMoodsForSearch.length"><div class="htk-sch-sec">{{copy.recentMoods}}</div><div v-for="m in recentMoodsForSearch" :key="'sm'+m.id" class="htk-sch-it" @click="showSearch=false;activeTab='mood'"><span class="htk-sch-it-emo"><i :class="moodIcons[m.level]"></i></span><div class="htk-sch-it-body"><div class="htk-sch-it-title">{{moodNoteLabel(m.note)}}</div><div class="htk-sch-it-sub">{{formatSearchDate(m.date)}} {{m.time}}</div></div></div></template>
-    <template v-if="todos.filter(t=>!t.done).length"><div class="htk-sch-sec">{{copy.recentTodos}}</div><div v-for="t in todos.filter(t=>!t.done).slice(0,3)" :key="'st'+t.id" class="htk-sch-it" @click="showSearch=false;activeTab='todo'"><div class="htk-ev-dot" style="background:var(--primary)"></div><div class="htk-sch-it-body"><div class="htk-sch-it-title">{{t.text}}</div><div class="htk-sch-it-sub">{{t.due?copyx.dueDateLabel({date:formatSearchDate(t.due)}):copy.noDueDate}}</div></div></div></template>
-  </div>
-  <div v-else>
-    <template v-if="searchResults.events.length"><div class="htk-sch-sec">{{copy.schedule}}</div><div v-for="ev in searchResults.events" :key="'re'+ev.id" class="htk-sch-it" @click="showSearch=false;goToEvent(ev)"><div class="htk-ev-dot" :style="{background:ev.color}"></div><div class="htk-sch-it-body"><div class="htk-sch-it-title">{{ev.title}}</div><div class="htk-sch-it-sub">{{formatSearchDate(ev.date)}} {{ev.timeStart}}</div></div></div></template>
-    <template v-if="searchResults.moods.length"><div class="htk-sch-sec">{{copy.tabMood}}</div><div v-for="m in searchResults.moods" :key="'rm'+m.id" class="htk-sch-it"><span class="htk-sch-it-emo"><i :class="moodIcons[m.level]"></i></span><div class="htk-sch-it-body"><div class="htk-sch-it-title">{{moodNoteLabel(m.note)}}</div><div class="htk-sch-it-sub">{{formatSearchDate(m.date)}} {{m.time}}</div></div></div></template>
-    <template v-if="searchResults.todos.length"><div class="htk-sch-sec">ToDo</div><div v-for="t in searchResults.todos" :key="'rt'+t.id" class="htk-sch-it"><div class="htk-ev-dot" style="background:var(--primary)"></div><div class="htk-sch-it-body"><div class="htk-sch-it-title">{{t.text}}</div><div class="htk-sch-it-sub">{{t.due?copyx.dueDateLabel({date:formatSearchDate(t.due)}):copy.noDueDate}}</div></div></div></template>
-    <div v-if="!searchResults.todos.length&&!searchResults.moods.length&&!searchResults.events.length" class="htk-empty"><i class="ti ti-circle-off"></i> {{copy.notFound}}</div>
-  </div>
-  </div>
+  <div class="htk-sch-body"><HataskSearchResults :groups="hataskSearchGroups" :emptyLabel="searchQuery ? copy.notFound : ''" @select="selectHataskSearchResult"/></div>
   <div class="htk-sch-note">{{copy.searchScopeNote}}</div>
   <div style="text-align:center;margin-top:12px"><button class="htk-btn htk-primary htk-sch-close" @click="showSearch=false">{{copy.close}}</button></div>
 </div></div></div></Teleport>
 
 <!-- 旗鯖fork: Hatask Eye 注意事項モーダル (初回表示 + iマードからいつでも) -->
-<Teleport to="body"><div v-if="showEyeDisclaimer" class="htk-modal-ov" :data-theme="settings.theme||'kisetsu'" :data-mode="themeMode" @click.self="dismissEyeDisclaimer"><div class="htk-lg htk-modal-c" style="max-width:420px"><div class="htk-gc" style="padding:22px">
+<Teleport to="body"><div v-if="showEyeDisclaimer" class="htk-modal-ov" :data-theme="settings.theme||'akatsuki'" :data-mode="themeMode" @click.self="dismissEyeDisclaimer"><div class="htk-lg htk-modal-c" style="max-width:420px"><div class="htk-gc" style="padding:22px">
   <h3 class="htk-sec-title" style="display:flex;align-items:center;gap:8px"><i class="ti ti-info-circle"></i> {{copy.aboutHataskEye}}</h3>
   <p style="line-height:1.7;font-size:.92rem;opacity:.9;margin:14px 0">
     {{copy.eyeDisclaimerPrefix}}<b>{{copy.eyeDisclaimerAiText}}</b>{{copy.eyeDisclaimerSuffix}}<br>
@@ -883,11 +859,11 @@
 <!-- 旗鯖fork(#37): 設定モーダルは HataskSettings.vue に統合(openHataskSettings()でpopup) -->
 
 <!-- MOOD DISCLAIMER MODAL -->
-<Teleport to="body"><div v-if="showMoodDisclaimer" class="htk-modal-ov" :data-theme="settings.theme||'kisetsu'" :data-mode="themeMode" @click.self="showMoodDisclaimer=false"><div class="htk-lg htk-modal-c"><div class="htk-gc" style="padding:28px"><div style="text-align:center;font-size:2rem;margin-bottom:8px;text-shadow:none">ⓘ</div><div style="text-align:center;font-size:.92rem;font-weight:700;margin-bottom:10px">{{copy.aboutMoodRecords}}</div><div class="htk-popup-b">{{copy.moodDisclaimerIntro}}<br><br>{{copy.moodDisclaimerMedicalPrefix}}<strong>{{copy.moodDisclaimerMedicalStrong}}</strong><br><br>{{copy.moodDisclaimerConsult}}</div><div style="text-align:center;margin-top:14px"><button class="htk-btn htk-primary" @click="showMoodDisclaimer=false">{{copy.accept}}</button></div></div></div></div></Teleport>
-<Teleport to="body"><div v-if="showMealDisclaimer" class="htk-modal-ov" :data-theme="settings.theme||'kisetsu'" :data-mode="themeMode" @click.self="ackMealDisclaimer"><div class="htk-lg htk-modal-c"><div class="htk-gc" style="padding:28px"><div style="text-align:center;font-size:2rem;margin-bottom:8px;text-shadow:none">ⓘ</div><div style="text-align:center;font-size:.92rem;font-weight:700;margin-bottom:10px">{{copy.aboutMealRecords}}</div><div class="htk-popup-b">{{mealDisclaimerText}}</div><div style="text-align:center;margin-top:14px"><button class="htk-btn htk-primary" @click="ackMealDisclaimer">{{copy.accept}}</button></div></div></div></div></Teleport>
+<Teleport to="body"><div v-if="showMoodDisclaimer" class="htk-modal-ov" :data-theme="settings.theme||'akatsuki'" :data-mode="themeMode" @click.self="showMoodDisclaimer=false"><div class="htk-lg htk-modal-c"><div class="htk-gc" style="padding:28px"><div style="text-align:center;font-size:2rem;margin-bottom:8px;text-shadow:none">ⓘ</div><div style="text-align:center;font-size:.92rem;font-weight:700;margin-bottom:10px">{{copy.aboutMoodRecords}}</div><div class="htk-popup-b">{{copy.moodDisclaimerIntro}}<br><br>{{copy.moodDisclaimerMedicalPrefix}}<strong>{{copy.moodDisclaimerMedicalStrong}}</strong><br><br>{{copy.moodDisclaimerConsult}}</div><div style="text-align:center;margin-top:14px"><button class="htk-btn htk-primary" @click="showMoodDisclaimer=false">{{copy.accept}}</button></div></div></div></div></Teleport>
+<Teleport to="body"><div v-if="showMealDisclaimer" class="htk-modal-ov" :data-theme="settings.theme||'akatsuki'" :data-mode="themeMode" @click.self="ackMealDisclaimer"><div class="htk-lg htk-modal-c"><div class="htk-gc" style="padding:28px"><div style="text-align:center;font-size:2rem;margin-bottom:8px;text-shadow:none">ⓘ</div><div style="text-align:center;font-size:.92rem;font-weight:700;margin-bottom:10px">{{copy.aboutMealRecords}}</div><div class="htk-popup-b">{{mealDisclaimerText}}</div><div style="text-align:center;margin-top:14px"><button class="htk-btn htk-primary" @click="ackMealDisclaimer">{{copy.accept}}</button></div></div></div></div></Teleport>
 
 <!-- FLOWER INFO MODAL -->
-<Teleport to="body"><div v-if="showFlowerInfo" class="htk-modal-ov" :data-theme="settings.theme||'kisetsu'" :data-mode="themeMode" @click.self="showFlowerInfo=false"><div class="htk-lg htk-modal-c"><div class="htk-gc" style="padding:28px"><div style="text-align:center;font-size:2rem;margin-bottom:8px;text-shadow:none;color:var(--accent)"><i class="ti ti-plant-2"></i></div><div style="text-align:center;font-size:.92rem;font-weight:700;margin-bottom:10px">{{copy.howToGrowFlowers}}</div><div class="htk-popup-b">{{copy.flowerInfoGrowth}}<br><br>{{copy.flowerInfoTime}}<br><br>{{copy.flowerInfoNaming}}<br><br>{{copy.flowerInfoVariety}}</div><div style="text-align:center;margin-top:14px"><button class="htk-btn htk-primary" @click="showFlowerInfo=false">{{copy.understoodExcited}}</button></div></div></div></div></Teleport>
+<Teleport to="body"><div v-if="showFlowerInfo" class="htk-modal-ov" :data-theme="settings.theme||'akatsuki'" :data-mode="themeMode" @click.self="showFlowerInfo=false"><div class="htk-lg htk-modal-c"><div class="htk-gc" style="padding:28px"><div style="text-align:center;font-size:2rem;margin-bottom:8px;text-shadow:none;color:var(--accent)"><i class="ti ti-plant-2"></i></div><div style="text-align:center;font-size:.92rem;font-weight:700;margin-bottom:10px">{{copy.howToGrowFlowers}}</div><div class="htk-popup-b">{{copy.flowerInfoGrowth}}<br><br>{{copy.flowerInfoTime}}<br><br>{{copy.flowerInfoNaming}}<br><br>{{copy.flowerInfoVariety}}</div><div style="text-align:center;margin-top:14px"><button class="htk-btn htk-primary" @click="showFlowerInfo=false">{{copy.understoodExcited}}</button></div></div></div></div></Teleport>
 
 <!-- 旗鯖fork(v2 §14): チュートリアル テーマ選択ステップ -->
 <!-- 旗鯖fork(ハタキュ): 新テーマの案内。⚠️アカウントごとに1回だけ出す(settings.hatakyuNoticeShown)。
@@ -912,14 +888,14 @@
 <Teleport to="body"><div v-if="showTutTheme" class="htk-tut-ov htk-tpick-ov">
   <div class="tpickwrap" :data-mode="themeMode">
     <div class="tpick-cap">{{copy.welcomeTo}}</div>
-    <div class="tpick-logo">Hatask v2</div>
+    <div class="tpick-logo">Hatask</div>
     <div class="tpick-sub">{{copy.chooseAppearance}}<br><span class="tpick-sub2">{{copy.changeAppearanceLater}}</span></div>
     <div class="tpick-seg">
       <button :class="[themeMode!=='dark'&&'on']" @click="setTutMode(false)"><i class="ti ti-sun"></i>{{copy.light}}</button>
       <button :class="[themeMode==='dark'&&'on']" @click="setTutMode(true)"><i class="ti ti-moon"></i>{{copy.dark}}</button>
     </div>
     <div class="tpick-grid">
-      <button v-for="t in tutThemes" :key="t.id" :class="['tp-card',(settings.theme||'kisetsu')===t.id&&'sel']" @click="pickTutTheme(t.id)">
+      <button v-for="t in tutThemes" :key="t.id" :class="['tp-card',(settings.theme||'akatsuki')===t.id&&'sel']" @click="pickTutTheme(t.id)">
         <div :class="['tp-prev','pv-'+t.id]">
           <div class="pl">Hatask</div>
           <div class="pb"></div>
@@ -929,13 +905,13 @@
         <div class="tp-desc">{{t.desc}}</div>
       </button>
     </div>
-    <button class="tpick-go" :style="{background:(tutThemes.find(t=>t.id===(settings.theme||'kisetsu'))||tutThemes[0]).accent}" @click="startTutFromTheme"><i class="ti ti-arrow-right"></i> {{copy.startWithTheme}}</button>
+    <button class="tpick-go" :style="{background:isAkatsuki?(themeMode==='dark'?'#ff7fa3':'#b02e56'):(tutThemes.find(t=>t.id===settings.theme)||tutThemes[0]).accent,color:isAkatsuki&&themeMode==='dark'?'#26101c':'#fff'}" @click="startTutFromTheme"><i class="ti ti-arrow-right"></i> {{copy.startWithTheme}}</button>
     <div class="tpick-note">{{tutThemeStandalone?copy.themeSelectionSaved:copy.tutorialUsesTheme}}</div>
   </div>
 </div></Teleport>
 
 <!-- TUTORIAL OVERLAY -->
-<Teleport to="body"><div v-if="showTutorial" class="htk-tut-ov" :data-theme="settings.theme||'kisetsu'" :data-mode="themeMode">
+<Teleport to="body"><div v-if="showTutorial" class="htk-tut-ov" :data-theme="settings.theme||'akatsuki'" :data-mode="themeMode">
   <!-- Step 0: Welcome (full-screen) -->
   <div v-if="tutStep===0" class="htk-tut-center" @click.self="skipTutorial">
     <div class="htk-tut-welcome">
@@ -986,18 +962,64 @@
 
 </div>
 </PageWithHeader>
+<Teleport to="body">
+	<HataskEventDetailsDialog
+		class="htk-event-details-theme"
+		:data-theme="plannerTheme"
+		:data-mode="themeMode"
+		:isOpen="viewingEvent !== null"
+		:event="viewingEventDetails"
+		:labels="eventViewLabels"
+		:readOnly="plannerReadOnly"
+		:busy="eventViewBusy"
+		:returnFocusTo="eventViewReturnFocus"
+		:getAnchor="getEventDetailAnchor"
+		:animations="settings.animations !== false"
+		@close="closeEventDetail"
+		@edit="editViewedEvent"
+		@delete="deleteViewedEvent"
+		@rsvp="respondToViewedEvent"
+		@closeRsvp="closeViewedEventRsvp"
+		@focusFallback="focusEventCalendar"
+	/>
+	<HataskCalendarBlankDialog
+		class="htk-event-details-theme"
+		:data-theme="plannerTheme"
+		:data-mode="themeMode"
+		:isOpen="blankCalendarTarget !== null"
+		:targetLabel="blankCalendarTargetLabel"
+		:events="blankCalendarEvents"
+		:labels="blankCalendarLabels"
+		:detailLabels="eventViewLabels"
+		:readOnly="plannerReadOnly"
+		:busy="blankCalendarBusy"
+		:error="blankCalendarError"
+		:returnFocusTo="blankCalendarReturnFocus"
+		:getAnchor="getBlankCalendarAnchor"
+		:getAnchorRect="getBlankCalendarAnchorRect"
+		:animations="settings.animations !== false"
+		@create="createBlankCalendarEvent"
+		@confirm="confirmBlankCalendarReschedule"
+		@close="closeBlankCalendarActions"
+		@focusFallback="focusEventCalendar"
+	/>
+</Teleport>
 </template>
 
 <script lang="ts" setup>
 import { ref, computed, inject, onMounted, onUnmounted, onBeforeUnmount, onActivated, onDeactivated, nextTick, watch, defineAsyncComponent } from 'vue';
 import type * as Misskey from 'cherrypick-js';
 import type { HataskGrowingFlower } from '@/utility/hatask-flower-growth.js';
+import type { HataskEventDetails, HataskEventDetailsLabels } from '@/components/hatask/hatask-event-details-types.js';
+import type { HataskCalendarBlankEvent, HataskCalendarBlankLabels } from '@/components/hatask/HataskCalendarBlankDialog.vue';
+import type { HataskSearchGroup } from '@/components/hatask/HataskSearchResults.vue';
 import { definePage } from '@/page.js';
 import * as os from '@/os.js';
 import { claimAchievement } from '@/utility/achievements.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { $i } from '@/i.js';
 import { useRouter } from '@/router.js';
+import { DI } from '@/di.js';
 import { useStream } from '@/stream.js';
 import { i18n } from '@/i18n.js';
 import { prefer } from '@/preferences.js';
@@ -1008,16 +1030,24 @@ import HataskEmoji from '@/components/HataskEmoji.vue';
 import HataskCalendarPlanner from '@/components/hatask/HataskCalendarPlanner.vue';
 import { normalizeHataskTodoMobileTabs } from '@/utility/hatask-todo-tabs.js';
 import HataskEventMoveDialog from '@/components/hatask/HataskEventMoveDialog.vue';
+import HataskEventDetailsDialog from '@/components/hatask/HataskEventDetailsDialog.vue';
+import HataskCalendarBlankDialog from '@/components/hatask/HataskCalendarBlankDialog.vue';
+import { getHataskDaylightStyle } from '@/utility/hatask-daylight.js';
 import type { HataskEventMoveDialogLabels } from '@/components/hatask/HataskEventMoveDialog.vue';
 import HataskTodoPlanner from '@/components/hatask/HataskTodoPlanner.vue';
+import HataskAkatsukiLayout from '@/components/hatask/HataskAkatsukiLayout.vue';
+import HataskAkatsukiApps from '@/components/hatask/HataskAkatsukiApps.vue';
+import type { HataskAkatsukiAction, HataskAkatsukiTab } from '@/components/hatask/hatask-akatsuki-types.js';
+import { buildHataskAkatsukiModel } from '@/utility/hatask-akatsuki.js';
 import HataskQuickCapture from '@/components/hatask/HataskQuickCapture.vue';
 import HataskJournal from '@/components/hatask/HataskJournal.vue';
 import { HATASK_MEAL_TEMPLATE_KEY, isJournalEntry, persistJournalChange } from '@/utility/hatask-journal.js';
 import type { HataskJournalChange, HataskJournalEntry, HataskMealTemplate } from '@/utility/hatask-journal.js';
 import type { HataskCaptureChip, HataskCaptureTool } from '@/components/hatask/HataskQuickCapture.vue';
 import HataskTemplateLibrary from '@/components/hatask/HataskTemplateLibrary.vue';
+import HataskSearchResults from '@/components/hatask/HataskSearchResults.vue';
 import type { HataskTemplateKindFilter, HataskTemplateLabels } from '@/components/hatask/HataskTemplateLibrary.vue';
-import type { HataskCalendarDay, HataskCalendarEvent, HataskCalendarLabels, HataskCalendarView, HataskCalendarWeekday, HataskPlannerFilter, HataskPlannerTheme, HataskTodoItem, HataskTodoLabels, HataskTodoMobileTab, HataskTodoSort, HataskTodoView } from '@/components/hatask/hatask-planner-types.js';
+import type { HataskCalendarBlankTarget, HataskCalendarDay, HataskCalendarEvent, HataskCalendarLabels, HataskCalendarView, HataskCalendarWeekday, HataskPlannerFilter, HataskPlannerTheme, HataskTodoItem, HataskTodoLabels, HataskTodoMobileTab, HataskTodoSort, HataskTodoView } from '@/components/hatask/hatask-planner-types.js';
 import MkAvatar from '@/components/global/MkAvatar.vue';
 import MkUserName from '@/components/global/MkUserName.vue';
 import { hatakyuAssetUrl } from '@/utility/hatakyu-assets.js';
@@ -1038,6 +1068,7 @@ const copyx = i18n.tsx._hata._hatask._main;
 const plannerCopy = i18n.ts._hata._hatask._planner;
 const plannerCopyx = i18n.tsx._hata._hatask._planner;
 const inPageWindow = inject<boolean>('inWindow', false);
+const closePageWindow = inject(DI.pageWindowClose, null);
 const emotionCopy = (i18n.ts._hata as unknown as { _emotionAnalysis: { title: string } })._emotionAnalysis;
 const _getPhrase = (ctx?: any): string => { try { return getPhrase(ctx); } catch { return getDefaultPhrase(); } };
 definePage(()=>({title:'Hatask',icon:'ti ti-checklist'}));
@@ -1094,7 +1125,6 @@ const monthDayWeekdayFormatter = new Intl.DateTimeFormat(versatileLang, { month:
 const weekdayLongFormatter = new Intl.DateTimeFormat(versatileLang, { weekday: 'long' });
 const weekdayShortFormatter = new Intl.DateTimeFormat(versatileLang, { weekday: 'short' });
 const calendarWeekdays = Array.from({ length: 7 }, (_, index) => weekdayShortFormatter.format(new Date(2024, 0, 1 + index)));
-
 
 const dataLoaded = ref(false);
 const loadedKeys = new Set<string>();
@@ -1258,11 +1288,15 @@ async function syncHataskFlowerCount(): Promise<void> {
 }
 
 const activeTab=ref('home');const isSaving=ref(false);const showSearch=ref(false);
-// 旗鯖fork: HataSideStudio の大ボタンから、予定・ToDo・ごはん・きもちへ
-// 直接移動できるようにする。許可したタブ名以外はホームへ戻し、同じHatask画面内で
-// queryだけが変わった場合も追従する。
+// 旗鯖fork: HataSideStudio の大ボタンと Hatask 通知から、各タブへ直接移動する。
+// 明示的な tab を優先し、保存済み通知の notice は対応するタブへ読み替える。
+// 許可したタブ名以外はホームへ戻し、同じHatask画面内でqueryだけが変わった場合も追従する。
 const routeRouter = useRouter();
-watch(() => routeRouter.currentRef.value.props.get('tab'), (requestedTab) => {
+watch([
+	() => routeRouter.currentRef.value.props.get('tab'),
+	() => routeRouter.currentRef.value.props.get('notice'),
+], ([explicitTab, notice]) => {
+	const requestedTab = explicitTab ?? (notice === 'mood' ? 'mood' : notice === 'calendar' ? 'cal' : undefined);
 	activeTab.value = typeof requestedTab === 'string' && tabs.value.some(tab => tab.id === requestedTab) ? requestedTab : 'home';
 }, { immediate: true });
 // 旗鯖fork(v2 §16②): タブ切替方向を判定(activeTab宣言後に登録してTDZを回避)。
@@ -1321,6 +1355,7 @@ function playBoot(){
 // 紙をコルク板にピンで留めた見立て。常時はゆっくり揺れ、ときどき突風が吹いて紙が大きく揺れる。
 // ⚠️このテーマ専用の状態はここに固めておく。他テーマの挙動には一切触らない。
 const isHatakyu=computed(()=>(settings.value.theme||'kisetsu')==='hatakyu');
+const isAkatsuki = computed(() => (settings.value.theme || 'akatsuki') === 'akatsuki');
 /**
  * ハタキュ画像のURL。
  * ⚠️ここでファイル名を直書きしない。必ずレジストリ(hatakyu-assets.ts)の key を経由する。
@@ -1401,30 +1436,30 @@ const tipSide=ref<'bottom'|'top'>('bottom');
 const tipPosition=ref<Record<string,string>>({});
 const tutSteps=computed(()=>[
   {emoji:'ti ti-sparkles',title:copy.welcome,body:'',tab:'home',selector:'',tips:[]},
-  {emoji:'ti ti-layout-navbar',title:copy.tutorialNavigationTitle,body:copy.tutorialNavigationBody,tab:'home',selector:'.htk-nav-top,.hk-tabs',tips:[
-    {icon:'ti ti-device-mobile',text:copy.tutorialNavigationScreens},
-    {icon:'ti ti-arrow-left',text:copy.tutorialNavigationBack},
+  { emoji: 'ti ti-layout-navbar', title: copy.tutorialNavigationTitle, body: isAkatsuki.value ? 'PCでは左のメニュー、スマホでは下のタブから移動できます' : copy.tutorialNavigationBody, tab: 'home', selector: isAkatsuki.value ? '.hak-rail,.hak-bottom' : '.htk-nav-top,.hk-tabs', tips: [
+    { icon: 'ti ti-device-mobile', text: isAkatsuki.value ? 'Hatask Appに、カレンダー・ToDo・きもち・ごはんなどをまとめています' : copy.tutorialNavigationScreens },
+    { icon: 'ti ti-settings', text: isAkatsuki.value ? 'スマホの下部タブはHatask設定から入れ替えられます' : copy.tutorialNavigationBack },
   ]},
-  {emoji:'ti ti-search',title:copy.tutorialHeaderTitle,body:copy.tutorialHeaderBody,tab:'home',selector:'.htk-header,.hk-bhead',tips:[
-    {icon:'ti ti-circle-plus',text:copy.tutorialHeaderSearch},
+  { emoji: 'ti ti-search', title: copy.tutorialHeaderTitle, body: copy.tutorialHeaderBody, tab: 'home', selector: isAkatsuki.value ? '.hak-desktop-top,.hak-mobile-head' : '.htk-header,.hk-bhead', tips: [
+    { icon: 'ti ti-search', text: isAkatsuki.value ? '検索欄に入力すると、ToDo・きもち・予定をまとめて検索できます' : copy.tutorialHeaderSearch },
     {icon:'ti ti-settings',text:copy.tutorialHeaderSettings},
   ]},
-  {emoji:'ti ti-clock',title:copy.tutorialHomeTitle,body:copy.tutorialHomeBody,tab:'home',selector:'.htk-home',tips:[
-    {icon:'ti ti-message-circle',text:copy.tutorialHomeGreeting},
+  { emoji: 'ti ti-clock', title: copy.tutorialHomeTitle, body: isAkatsuki.value ? 'つぎの予定と今日の時間帯、ToDoや記録の状況を見渡せます' : copy.tutorialHomeBody, tab: 'home', selector: isAkatsuki.value ? '.hak-home' : '.htk-home', tips: [
+    { icon: 'ti ti-clock', text: isAkatsuki.value ? '「つぎの一件」から予定を開いて、内容を確認できます' : copy.tutorialHomeGreeting },
     {icon:'ti ti-flower',text:copy.tutorialHomeFlower},
     {icon:'ti ti-calendar-event',text:copy.tutorialHomeCards},
   ]},
-  {emoji:'ti ti-calendar-event',title:copy.tabCalendar,body:copy.tutorialCalendarBody,tab:'cal',selector:'.htk-panels,.hk-panels',tips:[
+  { emoji: 'ti ti-calendar-event', title: copy.tabCalendar, body: copy.tutorialCalendarBody, tab: 'cal', selector: isAkatsuki.value ? '[data-hatask-component="calendar"]' : '.htk-panels,.hk-panels', tips: [
     {icon:'ti ti-palette',text:copy.tutorialCalendarOptions},
     {icon:'ti ti-users',text:copy.tutorialCalendarPublic},
     {icon:'ti ti-clipboard-check',text:copy.tutorialCalendarRsvp},
   ]},
-  {emoji:'ti ti-checkbox',title:copy.tutorialTodoTitle,body:copy.tutorialTodoBody,tab:'todo',selector:'.htk-todo-inp-r,.hk-todo-inp',tips:[
+  { emoji: 'ti ti-checkbox', title: copy.tutorialTodoTitle, body: copy.tutorialTodoBody, tab: 'todo', selector: isAkatsuki.value ? '[data-mode="todo"][data-hatask-theme]' : '.htk-todo-inp-r,.hk-todo-inp', tips: [
     {icon:'ti ti-folder',text:copy.tutorialTodoFolders},
     {icon:'ti ti-note',text:copy.tutorialTodoDetails},
     {icon:'ti ti-check',text:copy.tutorialTodoComplete},
   ]},
-  {emoji:'ti ti-mood-smile',title:copy.tutorialMoodTitle,body:copy.tutorialMoodBody,tab:'mood',selector:'.htk-mood-sc,.hk-mscale',tips:[
+  { emoji: 'ti ti-mood-smile', title: copy.tutorialMoodTitle, body: copy.tutorialMoodBody, tab: 'mood', selector: isAkatsuki.value ? '[data-kind="mood"] [data-journal-capture]' : '.htk-mood-sc,.hk-mscale', tips: [
     {icon:'ti ti-chart-bar',text:copy.tutorialMoodAnalysis},
     {icon:'ti ti-bell',text:copy.tutorialMoodReminder},
     {icon:'ti ti-info-circle',text:copy.tutorialMoodDisclaimer},
@@ -1447,7 +1482,9 @@ const tutSteps=computed(()=>[
 ]);
 function measureTarget(){
   const step=tutSteps.value[tutStep.value];if(!step?.selector)return;
-  const el=document.querySelector(step.selector) as HTMLElement|null;
+  const el = isAkatsuki.value
+    ? Array.from(rootEl.value?.querySelectorAll<HTMLElement>(step.selector) ?? []).find(target => target.getClientRects().length > 0) ?? null
+    :document.querySelector(step.selector) as HTMLElement|null;
   if(!el||(el.offsetParent===null&&getComputedStyle(el).position!=='fixed')){spotRect.value={x:40,y:window.innerHeight/3,w:window.innerWidth-80,h:200};calcTip();return}
   // 旗鯖fork: smoothスクロールは非同期で、直後に getBoundingClientRect すると「スクロール前」の座標を
   //   測ってしまい、その後スクロールが動く分ハイライトがずれる。instant(auto)で同期スクロールし、
@@ -1491,6 +1528,7 @@ const showTutTheme=ref(false);
 //   true のときは確定してもスポットライト本編に進まず閉じるだけ。
 const tutThemeStandalone=ref(false);
 const tutThemes=computed(() => [
+  { id: 'akatsuki', jp: i18n.ts._hata._hatask._settings.themeAkatsuki, desc: i18n.ts._hata._hatask._settings.themeAkatsukiDescription, bg: '#fff3ec', fg: '#2b1f2c', accent: '#e0567a' },
   {id:'kisetsu',jp:copy.themeKisetsu,desc:copy.themeKisetsuDescription,bg:'#f4f1ea',fg:'#211d18',accent:'#8a3d1f'},
   {id:'kashin',jp:copy.themeKashin,desc:copy.themeKashinDescription,bg:'#fff5e6',fg:'#25201c',accent:'#ff6b4a'},
   {id:'suri',jp:copy.themeSuri,desc:copy.themeSuriDescription,bg:'#efe7d4',fg:'#1a1a2e',accent:'#2a52c0'},
@@ -1523,6 +1561,8 @@ const htkTouchStartPos=ref<{x:number;y:number}|null>(null);
 const htkTouchLastPos=ref<{x:number;y:number}|null>(null);
 let htkSwipeLocked=false;
 function htkTouchStart(e:TouchEvent){
+  // 暁の特集・時間帯・各ツールの横操作を、ページ全体のタブ送りに奪わせない。
+  if (isAkatsuki.value) return;
   htkTouchStartPos.value={x:e.touches[0].clientX,y:e.touches[0].clientY};
   htkTouchLastPos.value={x:e.touches[0].clientX,y:e.touches[0].clientY};
   htkSwipeLocked=false;
@@ -1547,6 +1587,8 @@ function htkTouchEnd(e:TouchEvent){
   else if(dx<0&&idx<tabIds.length-1)activeTab.value=tabIds[idx+1];
 }
 function cleanupHataskState(){
+  closeEventDetail();
+  closeBlankCalendarActions();
   // 旗鯖fork(タスク8): Hataskを離れたらフローティング連動フラグを下げる(フローティング復活)
   hatakMascotActive.value=false;
   // 旗鯖fork(タスク2): カードの文言ローテタイマーを停止(残留防止)
@@ -1690,6 +1732,15 @@ function startEqPoll(){if(!eqPollTimer)eqPollTimer=setInterval(loadEq,60000)}
 function stopEqPoll(){if(eqPollTimer){clearInterval(eqPollTimer);eqPollTimer=null}}
 function onEqStreamConn(){streamConnected.value=true;stopEqPoll()}
 function onEqStreamDisc(){streamConnected.value=false;startEqPoll()}
+
+function exitHatask(): void {
+	if (closePageWindow) {
+		closePageWindow();
+		return;
+	}
+	handleBack();
+}
+
 function handleBack(){
 if(activeTab.value!=='home'){activeTab.value='home';return}
 goBackToTimeline();
@@ -1982,9 +2033,113 @@ async function processPublicEventOutbox():Promise<void>{
 		}
 	}finally{publicOutboxProcessing=false}
 }
-const viewingEvent=ref<any>(null);
-function openEventDetail(ev:any){viewingEvent.value=(viewingEvent.value?.id===ev.id)?null:ev}
-function closeEventDetail(){viewingEvent.value=null}
+const viewingEvent = ref<any>(null);
+const eventViewReturnFocus = ref<HTMLElement | null>(null);
+const eventViewBusy = ref(false);
+
+function openEventDetail(event: any, trigger: HTMLElement | null = null): void {
+	eventViewReturnFocus.value = trigger ?? (window.document.activeElement instanceof HTMLElement ? window.document.activeElement : null);
+	viewingEvent.value = event;
+}
+
+function closeEventDetail(): void {
+	viewingEvent.value = null;
+}
+
+function getEventDetailAnchor(): HTMLElement | null {
+	const calendar = rootEl.value?.querySelector<HTMLElement>('[data-hatask-component="calendar"]');
+	if (!calendar?.isConnected || activeTab.value !== 'cal' || !viewingEvent.value) return null;
+	const viewport = window.visualViewport;
+	const viewportLeft = viewport?.offsetLeft ?? 0;
+	const viewportTop = viewport?.offsetTop ?? 0;
+	const viewportRight = viewportLeft + (viewport?.width ?? (window.document.documentElement.clientWidth || window.innerWidth));
+	const viewportBottom = viewportTop + (viewport?.height ?? (window.document.documentElement.clientHeight || window.innerHeight));
+	const visible = (element: HTMLElement | null): element is HTMLElement => {
+		if (!element?.isConnected || !calendar.contains(element) || !element.getClientRects().length) return false;
+		const rect = element.getBoundingClientRect();
+		let left = Math.max(rect.left, viewportLeft);
+		let top = Math.max(rect.top, viewportTop);
+		let right = Math.min(rect.right, viewportRight);
+		let bottom = Math.min(rect.bottom, viewportBottom);
+		// The dialog deliberately makes the calendar inert; geometry still anchors to it.
+		for (let ancestor: HTMLElement | null = element; ancestor; ancestor = ancestor.parentElement) {
+			const style = window.getComputedStyle(ancestor);
+			if (style.display === 'none' || style.visibility === 'hidden' || style.visibility === 'collapse') return false;
+			if (ancestor === element) continue;
+			const clipsX = /^(auto|scroll|hidden|clip|overlay)$/.test(style.overflowX || style.overflow);
+			const clipsY = /^(auto|scroll|hidden|clip|overlay)$/.test(style.overflowY || style.overflow);
+			if (!clipsX && !clipsY) continue;
+			const clip = ancestor.getBoundingClientRect();
+			if (clipsX) { left = Math.max(left, clip.left); right = Math.min(right, clip.right); }
+			if (clipsY) { top = Math.max(top, clip.top); bottom = Math.min(bottom, clip.bottom); }
+		}
+		return right > left && bottom > top;
+	};
+	const date = selectedDateStr.value;
+	const heading = (day: HTMLElement | null): HTMLElement | null => day?.querySelector<HTMLElement>(':scope > [data-calendar-day-button]')
+		?? day?.querySelector<HTMLElement>(':scope > header > button')
+		?? day?.querySelector<HTMLElement>(':scope > header') ?? null;
+	const original = eventViewReturnFocus.value;
+	const trigger = original && calendar.contains(original) ? original : null;
+	const triggerDay = trigger?.closest<HTMLElement>('[data-date]') ?? null;
+	const clickedDay = triggerDay?.dataset.date === date ? triggerDay : null;
+	const clickedHeading = heading(clickedDay);
+	if (visible(clickedHeading)) return clickedHeading;
+	if (clickedDay && visible(trigger)) return trigger;
+	const days = [...calendar.querySelectorAll<HTMLElement>('[data-date]')].filter(day => day.dataset.date === date);
+	for (const day of days) {
+		for (const row of day.querySelectorAll<HTMLElement>('[data-calendar-event]')) {
+			if (row.dataset.calendarEvent !== viewingEvent.value.id) continue;
+			const target = row instanceof HTMLButtonElement ? row : row.querySelector<HTMLElement>(':scope > button');
+			if (visible(target)) return target;
+		}
+	}
+	for (const day of days) {
+		const target = heading(day);
+		if (visible(target)) return target;
+	}
+	return null;
+}
+
+function focusEventCalendar(): void {
+	const calendar = rootEl.value?.querySelector<HTMLElement>('[data-hatask-component="calendar"]');
+	if (!calendar?.isConnected || activeTab.value !== 'cal') return;
+	const target = calendar.querySelector<HTMLButtonElement>('[data-calendar-day-button][tabindex="0"]')
+		?? calendar.querySelector<HTMLButtonElement>('button:not(:disabled)');
+	target?.focus({ preventScroll: true });
+}
+
+async function editViewedEvent(): Promise<void> {
+	const event = viewingEvent.value;
+	if (!event || !viewingEventDetails.value?.canEdit || plannerReadOnly.value || eventViewBusy.value) return;
+	closeEventDetail();
+	// Release the detail dialog's focus trap before opening the existing editor.
+	await nextTick();
+	startEditEvent(event);
+}
+
+async function deleteViewedEvent(): Promise<void> {
+	const event = viewingEvent.value;
+	if (!event || !viewingEventDetails.value?.canEdit || plannerReadOnly.value || eventViewBusy.value) return;
+	// The existing confirmation remains responsible for cancellation and deletion.
+	closeEventDetail();
+	await nextTick();
+	await deleteEventById(event.id);
+}
+
+async function respondToViewedEvent(status: 'going' | 'maybe' | 'declined'): Promise<void> {
+	const detail = viewingEventDetails.value;
+	if (!detail?.rsvp || detail.isOwner || detail.rsvp.closed || plannerReadOnly.value || eventViewBusy.value) return;
+	eventViewBusy.value = true;
+	try { await setRsvp(detail.id, status); } finally { eventViewBusy.value = false; }
+}
+
+async function closeViewedEventRsvp(): Promise<void> {
+	const detail = viewingEventDetails.value;
+	if (!detail?.rsvp || !detail.isOwner || detail.rsvp.closed || plannerReadOnly.value || eventViewBusy.value) return;
+	eventViewBusy.value = true;
+	try { await closeRsvp(detail.id); } finally { eventViewBusy.value = false; }
+}
 
 let clockInterval:ReturnType<typeof setInterval>|null=null;
 
@@ -1995,11 +2150,14 @@ const loginMilestones=[3,7,15,30,60,100,200,300,400,500,600,700,800,900,1000];
 const loginNextReward=computed(()=>{const d=loginDays.value;for(const m of loginMilestones){if(d<m)return m-d}return 0});
 const loginMessage=computed(()=>{const d=loginDays.value;if(d<=1)return copy.loginFirst;if(d<7)return copy.loginGettingUsed;if(d<30)return copy.loginRegular;if(d<100)return copy.loginThankYou;if(d<365)return copy.loginAmazing;return copy.loginLegend});
 async function fetchLoginRanking(){try{const res=await misskeyApi('hata/login-ranking',{});if(res&&typeof res.rank==='number'){loginRanking.value=res.rank;loginTotal.value=res.totalUsers??0}}catch(e){console.warn('Login ranking unavailable:',e)}}
-const settings=ref<any>({darkMode:false,autoTheme:true,weekStart:'mon',showClock:true,showEvents:true,showFlower:true,showMoodSummary:true,showFeedbackNotif:true,showEarthquake:true,moodRemind:false,moodRemindTimes:['昼 12:00','寝る前 23:00'],openOnStart:false,theme:'kisetsu',animations:true,todoSortModes:{},todoMobileTabOrder:['today','upcoming','all','completed','more']});
+const settings=ref<any>({darkMode:false,autoTheme:true,weekStart:'mon',showClock:true,showEvents:true,showFlower:true,showMoodSummary:true,showFeedbackNotif:true,showEarthquake:true,moodRemind:false,moodRemindTimes:['昼 12:00','寝る前 23:00'],openOnStart:false,theme:'akatsuki',animations:true,todoSortModes:{},todoMobileTabOrder:['today','upcoming','all','completed','more']});
 // 旗鯖fork(v2 §16①): ブート表示中にテーマが確定/変更されたら要素を作り直し、現テーマで最初から再生
 //   (設定の非同期ロードや切替でブートが2テーマ混ざるのを防ぐ)。
 //   watch は登録時に監視元を評価するため、settings の宣言後に置く。
-watch(() => settings.value.theme, () => { if(showBoot.value) bootKey.value++; });
+watch(() => settings.value.theme, theme => {
+  if(showBoot.value) bootKey.value++;
+  if (theme && theme !== 'akatsuki' && (activeTab.value === 'apps' || activeTab.value === 'hataskapps')) activeTab.value = 'home';
+});
 const prefersDark=ref(window.matchMedia('(prefers-color-scheme:dark)').matches);
 let mediaQuery:MediaQueryList|null=null;
 function detectMisskeyTheme():'dark'|'light'{
@@ -2062,7 +2220,6 @@ function toggleNotifyTiming(t:string){const i=newEvent.value.notifyTimings.index
 // Calendar
 const calYear=ref(new Date().getFullYear());const calMonth=ref(new Date().getMonth());const selectedDay=ref<number|null>(new Date().getDate());
 const calendarTitle = computed(() => yearMonthFormatter.format(new Date(calYear.value, calMonth.value, 1)));
-const selectedDateLabel = computed(() => selectedDay.value == null ? '' : longDateFormatter.format(new Date(calYear.value, calMonth.value, selectedDay.value)));
 function chMo(d:number){calMonth.value+=d;if(calMonth.value>11){calMonth.value=0;calYear.value++}if(calMonth.value<0){calMonth.value=11;calYear.value--}selectedDay.value=null;viewingEvent.value=null}
 function goToday(){const n=new Date();calYear.value=n.getFullYear();calMonth.value=n.getMonth();selectedDay.value=n.getDate()}
 function selectDay(d:number){selectedDay.value=d;viewingEvent.value=null;const ds=`${calYear.value}-${String(calMonth.value+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;newEvent.value.date=ds;newEvent.value.dateEnd=ds;editingEvent.value=null}
@@ -2093,7 +2250,6 @@ const allCalendarEvents=computed(()=>{
 	}));
 	return[...localOccurrences,...shared];
 });
-const eventsForDay=computed(()=>{if(!selectedDateStr.value)return[];return allCalendarEvents.value.filter(e=>{if(e.date===selectedDateStr.value)return true;if(e.dateEnd&&e.date<=selectedDateStr.value&&e.dateEnd>=selectedDateStr.value)return true;return false}).sort((a,b)=>{if(a.allDay&&!b.allDay)return-1;if(!a.allDay&&b.allDay)return 1;return(a.timeStart||'').localeCompare(b.timeStart||'')})});
 function hasEventsOn(ds:string){return allCalendarEvents.value.some(e=>e.date===ds||(e.dateEnd&&e.date<=ds&&e.dateEnd>=ds))}
 function eventDotsFor(ds:string){return allCalendarEvents.value.filter(e=>e.date===ds||(e.dateEnd&&e.date<=ds&&e.dateEnd>=ds)).slice(0,3)}
 function startEditEvent(ev:any){
@@ -2165,14 +2321,15 @@ const showEventDetails=ref(false);
 const showEventTemplates=ref(false);
 const eventCaptureEditor=ref<'date'|'time'|null>(null);
 const eventDetailsCloseRef = ref<HTMLButtonElement | null>(null);
+const eventDetailsTitleRef = ref<HTMLInputElement | null>(null);
 let eventDetailsReturnFocus: HTMLElement | null = null;
 
-function openEventDetailsModal(): void {
+function openEventDetailsModal(focusTitle = false): void {
 	eventDetailsReturnFocus = window.document.activeElement instanceof HTMLElement ? window.document.activeElement : null;
 	showEventDetails.value = true;
 	showEventTemplates.value = false;
 	eventCaptureEditor.value = null;
-	nextTick(() => eventDetailsCloseRef.value?.focus());
+	nextTick(() => (focusTitle ? eventDetailsTitleRef.value : eventDetailsCloseRef.value)?.focus());
 }
 
 function closeEventDetailsModal(): void {
@@ -2271,7 +2428,15 @@ async function submitEventCapture():Promise<void>{
 function eDateTimeKey(event:{date:string;timeStart?:string;allDay?:boolean}):string{return`${event.date}T${event.allDay?'00:00':event.timeStart||'23:59'}`}
 const upcomingEvents=computed(()=>allCalendarEvents.value.filter(e=>e.date>=td()).sort((a,b)=>eDateTimeKey(a).localeCompare(eDateTimeKey(b))));
 const publicEvents=computed(()=>allCalendarEvents.value.filter(e=>e.visibility==='public'&&e.date>=td()));
-function goToEvent(ev:any){activeTab.value='cal';const d=new Date(ev.date);calYear.value=d.getFullYear();calMonth.value=d.getMonth();selectedDay.value=d.getDate();viewingEvent.value=ev}
+function goToEvent(event: any, openDetails = true): void {
+	activeTab.value = 'cal';
+	const date = parseIsoDate(event.date);
+	calYear.value = date.getFullYear();
+	calMonth.value = date.getMonth();
+	selectedDay.value = date.getDate();
+	if (openDetails) openEventDetail(event);
+	else closeEventDetail();
+}
 function eventApiPayload(event:any){
 	return{title:event.title,emoji:event.emoji||'📅',date:event.date,dateEnd:event.dateEnd||'',timeStart:event.allDay?'':event.timeStart||'',timeEnd:event.allDay?'':event.timeEnd||'',allDay:Boolean(event.allDay),color:event.color||'#e27d60',rsvp:Boolean(event.rsvp)};
 }
@@ -2535,8 +2700,8 @@ async function movePlannerTemplate(template:HataskPlannerTemplate,direction:-1|1
 
 // ===== Calendar / Todo redesign controlled models =====
 const plannerTheme=computed<HataskPlannerTheme>(()=>{
-	const theme=settings.value.theme;
-	return theme==='kashin'||theme==='suri'||theme==='hatakyu'?theme:'kisetsu';
+	const theme = settings.value.theme || 'akatsuki';
+	return theme === 'akatsuki' ? theme : theme === 'kashin' || theme === 'suri' || theme === 'hatakyu' ? theme : 'kisetsu';
 });
 const plannerReadOnly=computed(()=>plannerStorageState.value!=='ready'&&plannerStorageState.value!=='saved');
 const plannerCalendarView=ref<HataskCalendarView>('month');
@@ -2602,6 +2767,66 @@ function plannerCalendarEvent(event:any):HataskCalendarEvent{
 		timeEnd:event.timeEnd||'',
 	};
 }
+const eventViewLabels: HataskEventDetailsLabels = {
+	details: i18n.ts.details, 'close': copy.close, dateAndTime: copy.dateAndTime,
+	visibility: copy.visibility, organizer: copy.organizer, recurrence: plannerCopy.recurrence,
+	notificationTiming: copy.notificationTiming, readOnly: plannerCopy.readOnly,
+	rsvpDashboard: copy.rsvpDashboard, rsvp: copy.rsvp, closed: copy.closed,
+	accepting: copy.accepting, rsvpParticipation: copy.rsvpParticipation, rsvpGoing: copy.rsvpGoing,
+	rsvpMaybe: copy.rsvpMaybe, rsvpDeclined: copy.rsvpDeclined, total: copy.total,
+	noResponses: copy.noResponses, closeRsvp: copy.closeRsvp,
+	publicEventWithoutRsvp: copy.publicEventWithoutRsvp, edit: copy.edit, delete: copy.delete,
+};
+
+function eventViewRecurrenceLabel(recurrence: HataskPlannerEvent['recurrence'] | undefined): string | undefined {
+	if (!recurrence || recurrence.frequency === 'none') return undefined;
+	const interval = Math.max(1, recurrence.interval || 1).toString();
+	const label = interval === '1' ? recurrenceLabel(recurrence.frequency)
+		: recurrence.frequency === 'daily' ? plannerCopyx.recurrenceDailyInterval({ interval })
+		: recurrence.frequency === 'weekly' ? plannerCopyx.recurrenceWeeklyInterval({ interval })
+		: recurrence.frequency === 'monthly' ? plannerCopyx.recurrenceMonthlyInterval({ interval })
+		: plannerCopyx.recurrenceYearlyInterval({ interval });
+	const parts = [label];
+	if (recurrence.frequency === 'weekly' && recurrence.weekdays?.length) {
+		parts.push([...new Set(recurrence.weekdays)].sort((a, b) => a - b).map(day => weekdayShortFormatter.format(new Date(2024, 0, 7 + day))).join(' / '));
+	}
+	if (recurrence.until) parts.push(plannerCopyx.recurrenceUntil({ date: longDateFormatter.format(parseIsoDate(recurrence.until.slice(0, 10))) }));
+	if (recurrence.count) parts.push(plannerCopyx.recurrenceCount({ count: recurrence.count.toString() }));
+	return parts.join(' · ');
+}
+
+const viewingEventDetails = computed<HataskEventDetails | null>(() => {
+	const selected = viewingEvent.value;
+	if (!selected) return null;
+	// Keep the clicked occurrence date; resolve ownership and RSVP against their sources.
+	const event = allCalendarEvents.value.find(item => item.id === selected.id) ?? selected;
+	const sourceId = event.sourceEventId || event.id;
+	const local = events.value.find(item => item.id === sourceId || item.serverEventId === sourceId);
+	const shared = sharedEventData(sourceId);
+	const isOwner = Boolean($i && (shared?.userId ?? event.userId ?? (local ? $i.id : null)) === $i.id);
+	const canEdit = Boolean((local || isOwner) && event.readOnly !== true && (!shared || shared.userId === $i?.id));
+	const responses: NonNullable<HataskEventDetails['rsvp']>['responses'] = shared?.rsvpResponses ?? [];
+	const recurrence = local?.recurrence ?? event.recurrence;
+	const username = shared?.username || event.username || (isOwner ? $i?.username : undefined);
+	return {
+		id: event.id, title: event.title, emoji: event.emoji, color: event.color,
+		dateLabel: eventDateRangeLabel(event), timeLabel: eventTimeLabel(event),
+		visibilityLabel: event.visibility === 'public' || event.isShared ? copy.public : copy.private,
+		isPublic: event.visibility === 'public' || Boolean(event.isShared),
+		ownerLabel: username ? `@${username}` : undefined,
+		recurrenceLabel: eventViewRecurrenceLabel(recurrence),
+		recurrenceHint: recurrence && recurrence.frequency !== 'none' ? plannerCopy.recurrenceActionsHint : undefined,
+		notificationLabel: local ? local.notify ? local.notifyTimings.map(notifyTimingLabel).join(' / ') || i18n.ts.enabled : i18n.ts.disabled : undefined,
+		syncLabel: event.publicSyncState ? plannerCalendarEvent(event).statusLabel : undefined,
+		canEdit, isOwner,
+		rsvp: shared?.rsvp ? {
+			closed: Boolean(shared.rsvpClosed),
+			myStatus: responses.find(response => response.userId === $i?.id)?.status ?? null,
+			responses: responses.map(response => ({ userId: response.userId, username: response.username, status: response.status })),
+		} : null,
+	};
+});
+
 const plannerCalendarDays=computed<HataskCalendarDay[]>(()=>plannerCalendarDates.value.map(date=>{
 	const key=localDateKey(date);
 	const eventList=plannerEventForDate(key);
@@ -2646,6 +2871,7 @@ const plannerCalendarLabels=computed<HataskCalendarLabels>(()=>({
 	dragHint:plannerCopy.dragHint,
 	trashHint:plannerCopy.trashHint,
 		selectDate:dateLabel=>plannerCopyx.selectDateLabel({date:dateLabel}),
+	openDayActions: dateLabel => plannerCopyx.openDayActionsLabel({ date: dateLabel }),
 		openEvent:eventTitle=>plannerCopyx.openEventLabel({title:eventTitle}),
 		editEvent:eventTitle=>plannerCopyx.editEventLabel({title:eventTitle}),
 	moveEvent:eventTitle=>plannerCopyx.moveEventLabel({title:eventTitle}),
@@ -2661,7 +2887,12 @@ function navigatePlannerCalendar(direction:'previous'|'next'|'today'):void{
 function selectPlannerDate(day:HataskCalendarDay):void{const date=parseIsoDate(day.date);setPlannerAnchor(date);newEvent.value.date=day.date;newEvent.value.dateEnd=day.date}
 function showPlannerDay(day:HataskCalendarDay):void{selectPlannerDate(day);plannerCalendarView.value='day'}
 function findPlannerCalendarSource(event:HataskCalendarEvent):any{return allCalendarEvents.value.find(item=>item.id===event.id)}
-function activatePlannerEvent(event:HataskCalendarEvent,day:HataskCalendarDay):void{selectPlannerDate(day);const source=findPlannerCalendarSource(event);if(source)openEventDetail(source)}
+function activatePlannerEvent(event: HataskCalendarEvent, day: HataskCalendarDay, trigger: HTMLElement | null = null): void {
+	// Viewing another event must not overwrite an unsaved event's dates.
+	setPlannerAnchor(parseIsoDate(day.date));
+	const source = findPlannerCalendarSource(event);
+	if (source) openEventDetail(source, trigger);
+}
 	function plannerScrollBehavior():ScrollBehavior{return settings.value.animations===false||hkReduced()?'auto':'smooth'}
 
 function editPlannerEvent(event: HataskCalendarEvent, day: HataskCalendarDay): void {
@@ -2712,19 +2943,152 @@ function eventScheduleAt(source:HataskPlannerEvent,targetDate:string,targetTime?
 	const totalEnd=nextStart+duration;const endOffset=Math.floor(totalEnd/1440);const nextEnd=totalEnd%1440;
 	return{date:targetDate,dateEnd:localDateKey(addCalendarDays(parseIsoDate(targetDate),endOffset)),timeStart:`${String(Math.floor(nextStart/60)).padStart(2,'0')}:${String(nextStart%60).padStart(2,'0')}`,timeEnd:`${String(Math.floor(nextEnd/60)).padStart(2,'0')}:${String(nextEnd%60).padStart(2,'0')}`};
 }
-async function applyCalendarReschedule(action:PendingCalendarAction,choice:'move'|'copy'):Promise<void>{
-	const source=calendarLocalSource(action.event);if(!source||!action.targetDate){os.toast(plannerCopy.publicSyncUnlinked);return}
+
+const blankCalendarTarget = ref<HataskCalendarBlankTarget | null>(null);
+const blankCalendarReturnFocus = ref<HTMLElement | null>(null);
+const blankCalendarBusy = ref(false);
+const blankCalendarError = ref('');
+let blankCalendarGeneration = 0;
+watch(activeTab, tab => { if (tab !== 'cal') closeBlankCalendarActions(); });
+const blankCalendarLabels: HataskCalendarBlankLabels = {
+	...plannerCopy._blankCalendar, cancel: copy.cancel, back: copy.back,
+};
+const blankCalendarTargetLabel = computed(() => {
+	const target = blankCalendarTarget.value;
+	return target ? `${target.day.label}${target.time ? ` ${target.time}` : ''}` : '';
+});
+
+function openBlankCalendarActions(target: HataskCalendarBlankTarget): void {
+	if (plannerReadOnly.value || blankCalendarBusy.value || target.day.isDisabled || activeTab.value !== 'cal') return;
+	const calendar = rootEl.value?.querySelector('[data-hatask-component="calendar"]');
+	if (!target.anchor.isConnected || !calendar?.contains(target.anchor)) return;
+	closeEventDetail();
+	blankCalendarGeneration++;
+	blankCalendarError.value = '';
+	blankCalendarTarget.value = target;
+	const day = target.anchor.closest('[data-date]');
+	blankCalendarReturnFocus.value = target.anchor instanceof HTMLButtonElement ? target.anchor
+		: day?.querySelector<HTMLButtonElement>('[data-calendar-day-button], :scope > header > button, button:not(:disabled)') ?? null;
+}
+
+function closeBlankCalendarActions(): void {
+	blankCalendarGeneration++;
+	blankCalendarTarget.value = null;
+}
+
+function getBlankCalendarAnchor(): HTMLElement | null {
+	const anchor = blankCalendarTarget.value?.anchor;
+	return activeTab.value === 'cal' && anchor?.isConnected && rootEl.value?.contains(anchor) ? anchor : null;
+}
+
+function getBlankCalendarAnchorRect(anchor: HTMLElement): { left: number; right: number; top: number; bottom: number } {
+	const rect = anchor.getBoundingClientRect();
+	const point = blankCalendarTarget.value?.point;
+	if (!point) return rect;
+	const x = rect.left + point.x * rect.width;
+	const y = rect.top + point.y * rect.height;
+	return { left: x - 1, right: x + 1, top: y - 1, bottom: y + 1 };
+}
+
+function blankCalendarScheduleLabel(event: Pick<HataskPlannerEvent, 'date' | 'dateEnd' | 'timeStart' | 'timeEnd' | 'allDay'>): string {
+	return `${eventDateRangeLabel(event)} · ${eventTimeLabel(event)}`;
+}
+
+function blankCalendarSource(id: string): HataskPlannerEvent | undefined {
+	// Match the existing drag rules: only this account's local, non-recurring events.
+	return events.value.find(event => event.id === id && event.archivedAt == null && event.recurrence.frequency === 'none');
+}
+
+const blankCalendarEvents = computed<HataskCalendarBlankEvent[]>(() => {
+	const target = blankCalendarTarget.value;
+	if (!target) return [];
+	return events.value.filter(event => event.archivedAt == null && event.recurrence.frequency === 'none').map(event => {
+		const schedule = eventScheduleAt(event, target.day.date, target.time);
+		return {
+			id: event.id, title: event.title, emoji: event.emoji,
+			dateLabel: blankCalendarScheduleLabel(event),
+			targetLabel: blankCalendarScheduleLabel({ ...event, ...schedule }),
+			canCopy: true,
+			canMove: !event.publicSyncState && (event.date !== schedule.date || event.timeStart !== schedule.timeStart),
+		};
+	});
+});
+
+function hasBlankCalendarDraft(): boolean {
+	const draft = newEvent.value;
+	return Boolean(editingEvent.value || draft.title.trim() || draft.emoji !== '⭐' || draft.color !== '#e27d60'
+		|| draft.date !== selectedDateStr.value || draft.dateEnd !== draft.date || draft.timeStart !== '14:00' || draft.timeEnd !== '15:00'
+		|| draft.visibility !== 'private' || draft.rsvp || !draft.notify || draft.allDay
+		|| draft.recurrence.frequency !== 'none' || draft.notifyTimings.join(',') !== '15分前,30分前');
+}
+
+async function createBlankCalendarEvent(): Promise<void> {
+	const target = blankCalendarTarget.value;
+	if (!target || plannerReadOnly.value || blankCalendarBusy.value) return;
+	const discardDraft = hasBlankCalendarDraft();
+	closeBlankCalendarActions();
+	const generation = blankCalendarGeneration;
+	blankCalendarBusy.value = true;
+	try {
+		// Unmount the chooser/focus trap before opening another dialog.
+		await nextTick();
+		if (discardDraft) {
+			const { canceled } = await os.confirm({ type: 'warning', text: plannerCopy._blankCalendar.replaceDraft });
+			if (canceled) return;
+		}
+		if (generation !== blankCalendarGeneration || plannerReadOnly.value || activeTab.value !== 'cal') return;
+		setPlannerAnchor(parseIsoDate(target.day.date));
+		resetEventEditor();
+		if (target.time) {
+			newEvent.value.timeStart = target.time;
+			newEvent.value.timeEnd = clockPlusMinutes(target.time, 60);
+			if (newEvent.value.timeEnd <= target.time) newEvent.value.dateEnd = localDateKey(addCalendarDays(parseIsoDate(target.day.date), 1));
+		}
+		openEventDetailsModal(true);
+	} finally {
+		blankCalendarBusy.value = false;
+	}
+}
+
+async function confirmBlankCalendarReschedule(id: string, mode: 'copy' | 'move'): Promise<void> {
+	const target = blankCalendarTarget.value;
+	if (!target || plannerReadOnly.value || blankCalendarBusy.value) return;
+	if (activeTab.value !== 'cal') return;
+	const source = blankCalendarSource(id);
+	const candidate = blankCalendarEvents.value.find(event => event.id === id);
+	if (!source || !candidate || !(mode === 'copy' ? candidate.canCopy : candidate.canMove)) {
+		blankCalendarError.value = plannerCopy._blankCalendar.unavailable;
+		return;
+	}
+	const generation = blankCalendarGeneration;
+	blankCalendarBusy.value = true;
+	blankCalendarError.value = '';
+	try {
+		const saved = await applyCalendarReschedule({ mode: 'reschedule', event: plannerCalendarEvent(source), targetDate: target.day.date, targetTime: target.time }, mode);
+		if (generation !== blankCalendarGeneration) return;
+		if (saved) closeBlankCalendarActions();
+		else blankCalendarError.value = plannerCopy.publicSyncUnlinked;
+	} catch (error) {
+		console.error('Hatask calendar reschedule failed:', error);
+		if (generation === blankCalendarGeneration) blankCalendarError.value = plannerCopy.publicSyncFailed;
+	} finally {
+		blankCalendarBusy.value = false;
+	}
+}
+
+async function applyCalendarReschedule(action:PendingCalendarAction,choice:'move'|'copy'):Promise<boolean>{
+	const source=calendarLocalSource(action.event);if(!source||!action.targetDate){os.toast(plannerCopy.publicSyncUnlinked);return false}
 	const schedule=eventScheduleAt(source,action.targetDate,action.targetTime);const now=new Date().toISOString();
 	if(choice==='copy'){
 		const duplicate:HataskPlannerEvent={...source,...schedule,id:generateId(),clientEventId:undefined,serverEventId:undefined,serverEventRevision:undefined,publicSyncState:undefined,pendingVisibility:undefined,visibility:'private',rsvp:false,recurrence:{frequency:'none',interval:1},createdAt:now,updatedAt:now,archivedAt:null};
 		duplicate.clientEventId=duplicate.id;
-		const next=[duplicate,...events.value];await registrySet('events',next);events.value=next;scheduleEventNotifications();setPlannerAnchor(parseIsoDate(action.targetDate));os.toast(plannerCopy.eventCopied);return;
+		const next=[duplicate,...events.value];await registrySet('events',next);events.value=next;scheduleEventNotifications();setPlannerAnchor(parseIsoDate(action.targetDate));os.toast(plannerCopy.eventCopied);return true;
 	}
 	let moved:HataskPlannerEvent={...source,...schedule,updatedAt:now};
 	if(source.visibility==='public'){
 		let serverEventId=source.serverEventId;let serverEventRevision=source.serverEventRevision;
 		if(!serverEventId){serverEventId=findUniqueOwnedServerId(source)??undefined;const server=serverEventId?sharedEvents.value.find(event=>event.id===serverEventId):null;serverEventRevision=server?.revision}
-		if(!serverEventId||!serverEventRevision){os.toast(plannerCopy.publicSyncUnlinked);return}
+		if(!serverEventId||!serverEventRevision){os.toast(plannerCopy.publicSyncUnlinked);return false}
 		moved={...moved,serverEventId,serverEventRevision,publicSyncState:'updating'};
 	}
 	const next=events.value.map(event=>event.id===source.id?moved:event);await registrySet('events',next);events.value=next;scheduleEventNotifications();setPlannerAnchor(parseIsoDate(action.targetDate));
@@ -2732,9 +3096,10 @@ async function applyCalendarReschedule(action:PendingCalendarAction,choice:'move
 		await processPublicEventOutbox();await loadSharedEvents();
 		const syncState=events.value.find(event=>event.id===source.id)?.publicSyncState;
 		os.toast(syncState==='conflict'?plannerCopy.publicSyncConflict:syncState==='unlinked'?plannerCopy.publicSyncUnlinked:syncState==='sync-error'?plannerCopy.publicSyncFailed:syncState?plannerCopy.publicSyncPending:plannerCopy.eventMoved);
-		return;
+		return true;
 	}
 	os.toast(plannerCopy.eventMoved);
+	return true;
 }
 async function resolveCalendarAction(choice:'move'|'copy'|'trash'|'cancel'):Promise<void>{
 	const action=pendingCalendarAction.value;pendingCalendarAction.value=null;if(!action||choice==='cancel')return;
@@ -2877,12 +3242,9 @@ const mealSummaryMessage=computed(()=>{const c=mealTodayCount.value;if(c===0)ret
 
 // ===== PAGINATION =====
 const ITEMS_PER_PAGE = 10;
-const eventPage = ref(1);
 const calListPage = ref(1);
 
 // Paginated events for selected day
-const eventTotalPages = computed(()=>Math.max(1,Math.ceil(eventsForDay.value.length/ITEMS_PER_PAGE)));
-const pagedEvents = computed(()=>{const start=(eventPage.value-1)*ITEMS_PER_PAGE;return eventsForDay.value.slice(start,start+ITEMS_PER_PAGE)});
 
 // Calendar list view
 const calListMode = ref<'day'|'week'|'month'>('day');
@@ -3023,8 +3385,31 @@ const searchResults = computed(() => {
 	};
 });
 const recentMoodsForSearch=computed(()=>moods.value.slice(0,3));
+const hataskSearchGroups = computed<HataskSearchGroup[]>(() => {
+	const hasQuery = !!searchQuery.value;
+	const foundEvents = hasQuery ? searchResults.value.events : upcomingEvents.value.slice(0, 3);
+	const foundMoods = hasQuery ? searchResults.value.moods : recentMoodsForSearch.value;
+	const foundTodos = hasQuery ? searchResults.value.todos : todos.value.filter(todo => !todo.done).slice(0, 3);
+	return [
+		{ id: 'events', label: hasQuery ? copy.schedule : copy.upcomingEvents, items: foundEvents.map(event => ({ id: event.id, title: event.title, description: `${formatSearchDate(event.date)} ${event.timeStart ?? ''}`, color: event.color, selectable: true })) },
+		{ id: 'moods', label: hasQuery ? copy.tabMood : copy.recentMoods, items: foundMoods.map(mood => ({ id: mood.id, title: moodNoteLabel(mood.note), description: `${formatSearchDate(mood.date)} ${mood.time ?? ''}`, icon: moodIcons[mood.level], selectable: !hasQuery })) },
+		{ id: 'todos', label: hasQuery ? 'ToDo' : copy.recentTodos, items: foundTodos.map(todo => ({ id: todo.id, title: todo.text, description: todo.due ? copyx.dueDateLabel({ date: formatSearchDate(todo.due) }) : copy.noDueDate, color: 'var(--primary)', selectable: !hasQuery })) },
+	];
+});
+
+function selectHataskSearchResult(kind: HataskSearchGroup['id'], id: string): void {
+	const item = hataskSearchGroups.value.find(group => group.id === kind)?.items.find(result => result.id === id);
+	if (!item?.selectable) return;
+	showSearch.value = false;
+	if (kind === 'events') {
+		const event = [...upcomingEvents.value, ...searchResults.value.events].find(candidate => candidate.id === id);
+		if (event) goToEvent(event);
+	} else activeTab.value = kind === 'moods' ? 'mood' : 'todo';
+}
+
 function formatSearchDate(d:string):string{const dd=parseIsoDate(d);const now=new Date();now.setHours(0,0,0,0);const day=new Date(dd); day.setHours(0, 0, 0, 0); const diff=Math.floor((now.getTime()-day.getTime())/(86400000));if(diff===0)return copy.today;if(diff===1)return copy.yesterday;return monthDayFormatter.format(dd)}
-watch(showSearch,v=>{if(v)nextTick(()=>searchInput.value?.focus())});
+watch(showSearch,v=>{if(v && !isAkatsuki.value)nextTick(()=>searchInput.value?.focus())});
+watch([isAkatsuki, activeTab], () => { showSearch.value = false; });
 
 // Helpers
 function generateId():string{return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
@@ -3053,7 +3438,7 @@ const phrase=_getPhrase({pendingTaskCount:pc,totalTaskCount:todos.value.length,t
 if(phrase)eyePhrase.value=phrase;
 } catch(e) { /* fallback: keep current phrase */ }
 }
-function updateClock(){const now=new Date();currentTime.value=new Intl.DateTimeFormat(versatileLang,{ hour: '2-digit',minute: '2-digit',hour12: false }).format(now);currentDate.value=longDateFormatter.format(now);clockMD.value=monthDayFormatter.format(now);clockDow.value=weekdayLongFormatter.format(now);const M=now.getMonth()+1,D=now.getDate();clockDot.value=`${now.getFullYear()}.${String(M).padStart(2,'0')}.${String(D).padStart(2,'0')}`;clockEn.value=weekdayLongFormatter.format(now).toLocaleUpperCase(versatileLang)}
+function updateClock(){const now=new Date();akatsukiNow.value=now;currentTime.value=new Intl.DateTimeFormat(versatileLang,{ hour: '2-digit',minute: '2-digit',hour12: false }).format(now);currentDate.value=longDateFormatter.format(now);clockMD.value=monthDayFormatter.format(now);clockDow.value=weekdayLongFormatter.format(now);const M=now.getMonth()+1,D=now.getDate();clockDot.value=`${now.getFullYear()}.${String(M).padStart(2,'0')}.${String(D).padStart(2,'0')}`;clockEn.value=weekdayLongFormatter.format(now).toLocaleUpperCase(versatileLang)}
 
 // RSVP logic - uses shared API events (rsvp有効なもののみ)
 const pendingRsvps=computed(()=>{
@@ -3420,6 +3805,106 @@ async function reportCommunityFlower(item: CommunityFlower): Promise<void> {
 
 let navProtectionObserver:MutationObserver|null=null;
 let navVisibilityTimer:ReturnType<typeof setInterval>|null=null;
+const akatsukiNow = ref(new Date());
+const akatsukiMoodJournal = ref<InstanceType<typeof HataskJournal> | null>(null);
+const akatsukiMealJournal = ref<InstanceType<typeof HataskJournal> | null>(null);
+const akatsukiSnapshot = computed(() => buildHataskAkatsukiModel({
+  now: akatsukiNow.value,
+  locale: versatileLang,
+  loading: !dataLoaded.value,
+  known: {
+    planner: dataLoaded.value && plannerMigrationReady && loadedKeys.has('todos') && loadedKeys.has('events'),
+    moods: dataLoaded.value && journalValidKeys.value.includes('moods'),
+    meals: dataLoaded.value && journalValidKeys.value.includes('meals'),
+    flower: dataLoaded.value && loadedKeys.has('flower'),
+  },
+  readOnly: plannerReadOnly.value,
+  events: allCalendarEvents.value,
+  todos: todos.value,
+  moods: moods.value,
+  meals: meals.value,
+  flower: { name: currentFlowerDisplayName.value, emoji: flower.value.emoji, progress: flower.value.progress, remaining: estimateRemaining.value },
+  loginDays: loginDays.value,
+  loginRanking: loginRanking.value,
+  eyePhrase: eyePhrase.value,
+  feedbackUnread: hfUnread.value,
+  settings: settings.value,
+}));
+const akatsukiModel = computed(() => akatsukiSnapshot.value.model);
+const akatsukiAppCounts = computed(() => akatsukiSnapshot.value.counts);
+
+function navigateAkatsuki(tab: HataskAkatsukiTab): void {
+  activeTab.value = tab;
+}
+
+function searchAkatsuki(query = ''): void {
+  searchQuery.value = query;
+  showSearch.value = true;
+}
+
+function openAkatsukiApp(id: string): void {
+  if (tabs.value.some(tab => tab.id === id)) { activeTab.value = id; return; }
+  const actions: Record<string, () => void> = {
+    settings: openHataskSettings,
+    drawing: openDrawingTool,
+    card: openHataCard,
+    studio: openHataSideStudio,
+    whatsnew: openHataWhatsNew,
+    hatasettings: openHataSettings,
+    guide: openHataDocs,
+    analyze: openHatalyze,
+    feed: () => { if (canAccessHataFeed.value) openHataFeed(); },
+    hatady: openHatady,
+    earthquake: openEarthquake,
+    mascot: () => { if (canUseMascot.value) goToMascotSettings(); },
+    games: () => { cleanupHataskState(); routeRouter.push('/games'); },
+  };
+  actions[id]?.();
+}
+
+async function handleAkatsukiAction(action: HataskAkatsukiAction): Promise<void> {
+  switch (action.type) {
+    case 'exit': exitHatask(); break;
+    case 'open-event': {
+      const event = allCalendarEvents.value.find(item => item.id === action.id);
+      if (event) goToEvent(event);
+      break;
+    }
+    case 'create-event':
+      activeTab.value = 'cal';
+      await nextTick();
+      if (!plannerReadOnly.value) eventCaptureRef.value?.focus();
+      break;
+    case 'create-todo':
+      activeTab.value = 'todo';
+      await nextTick();
+      focusTodoEditor();
+      break;
+    case 'record-mood':
+      activeTab.value = 'mood';
+      await nextTick();
+      akatsukiMoodJournal.value?.focusFromHome();
+      break;
+    case 'record-meal':
+      activeTab.value = 'meal';
+      await nextTick();
+      akatsukiMealJournal.value?.focusFromHome(action.id);
+      break;
+    case 'water-flower': activeTab.value = 'garden'; break;
+    case 'open-eye': activeTab.value = 'eye'; break;
+    case 'open-app': if (action.id) openAkatsukiApp(action.id); break;
+    case 'toggle-todo':
+      if (!action.id || plannerReadOnly.value) break;
+      try { registerCompletedUndo(await toggleTodo(action.id, true)); } catch { os.alert({ type: 'error', text: i18n.ts._hata._hatask._journal.saveFailure }); }
+      break;
+    case 'snooze-event': {
+      const event = allCalendarEvents.value.find(item => item.id === action.id);
+      if (event) { goToEvent(event, false); await handleCalendarMoveRequest(plannerCalendarEvent(event)); }
+      break;
+    }
+  }
+}
+
 onMounted(async () => {
 	window.addEventListener(HATASK_FLOWER_GROWTH_EVENT, onHataskFlowerGrowth);
 // 旗鯖fork(v2 §16①): ブートは onActivated(表示されるたび)で再生する。
@@ -3558,7 +4043,7 @@ try {
 
 const initFlower = pickRandomFlora();
 	const defaultFlower = createHataskGrowingFlower({ emoji: initFlower.emoji, name: generateFlowerName(initFlower) });
-const defaultSettings = { darkMode: false, autoTheme: true, weekStart: 'mon', showClock: true, showEvents: true, showFlower: true, showMoodSummary: true, showMealSection: true, showFeedbackNotif: true, showEarthquake: true, moodRemind: false, moodRemindTimes: ['昼 12:00', '寝る前 23:00'], openOnStart: false, showMealSummary: true, mealDisclaimerShown: false, eyeDisclaimerShown: false, theme: 'kisetsu', animations: true, v2Onboarded: false, todoSortModes: {}, todoMobileTabOrder: ['today', 'upcoming', 'all', 'completed', 'more'],
+const defaultSettings = { darkMode: false, autoTheme: true, weekStart: 'mon', showClock: true, showEvents: true, showFlower: true, showMoodSummary: true, showMealSection: true, showFeedbackNotif: true, showEarthquake: true, moodRemind: false, moodRemindTimes: ['昼 12:00', '寝る前 23:00'], openOnStart: false, showMealSummary: true, mealDisclaimerShown: false, eyeDisclaimerShown: false, theme: 'akatsuki', animations: true, v2Onboarded: false, todoSortModes: {}, todoMobileTabOrder: ['today', 'upcoming', 'all', 'completed', 'more'],
 	// 旗鯖fork(ハタキュ): 風を吹かせるか(このテーマ限定・既定ON) / 新テーマ案内を出したか(アカウントごと1回)
 	hatakyuWind: true, hatakyuNoticeShown: false };
 
@@ -3613,7 +4098,7 @@ await syncHataskFlowerCount();
 await syncFlowerGallery(gallery.value);
 if (activeTab.value === 'garden') await loadCommunityFlowers();
 // 旗鯖fork(v2): 未設定キーを既定で補完(後方互換)。theme/animations 未設定の既存ユーザーには
-//   既定テーマ(季 kisetsu)・アニメON を割り当てる。保存済みの値は保持される。
+//   既定テーマ(暁 akatsuki)・アニメON を割り当てる。保存済みの旧4テーマも保持する。
 settings.value = { ...defaultSettings, ...settings.value };
 // Check for closed RSVP notifications
 await loadSharedEvents();
@@ -3728,7 +4213,9 @@ moodTimerIds.forEach(id => clearTimeout(id));
 .htk-root[data-theme="suri"]{ background-image:radial-gradient(rgba(26,26,46,.055) 1px,transparent 1px); background-size:4px 4px; }
 .htk-root[data-theme="kashin"][data-mode="dark"]{ background-image:radial-gradient(rgba(255,125,94,.10) 1.4px,transparent 1.4px); }
 .htk-root[data-theme="suri"][data-mode="dark"]{ background-image:radial-gradient(rgba(236,231,220,.05) 1px,transparent 1px); }
-.htk-root[data-theme],.htk-modal-ov[data-theme]{
+.htk-root[data-theme],.htk-modal-ov[data-theme],.htk-event-details-theme[data-theme]{
+  --success:#6ec072;
+  --ease-spring:cubic-bezier(0.34,1.56,0.64,1);
   --htk-fallback: system-ui,-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif;
   --on-accent:#fff; --on-coral:#fff; --on-grape:#fff; --on-blue:#fff; --on-pink:#fff;
   color: var(--fg);
@@ -3763,19 +4250,37 @@ moodTimerIds.forEach(id => clearTimeout(id));
   text-shadow: none;
 }
 /* --- 季 Kisetsu (light) --- */
-.htk-root[data-theme="kisetsu"],.htk-modal-ov[data-theme="kisetsu"]{
+/* 暁: 原本と同じ色を使い、旧タブとbodyへTeleportした編集画面にも渡す。 */
+.htk-root[data-theme="akatsuki"],.htk-modal-ov[data-theme="akatsuki"],.htk-event-details-theme[data-theme="akatsuki"]{
+  --bg:#fff3ec; --surface:rgba(255,255,255,.82); --fg:#2b1f2c; --fg-2:#6a5566; --fg-3:#6a5566;
+  --rule:rgba(80,50,70,.18); --accent:#e0567a; --accent-ink:#b02e56; --accent2:#f2a04b;
+  --on-accent:#fff; --on-sun:#3a1e05; --on-teal:#2b1f2c;
+  --card:var(--surface); --card-border:1px solid rgba(255,255,255,.7); --card-radius:24px;
+  --card-shadow:0 20px 40px -28px rgba(90,50,70,.55);
+  --htk-font-body:"Zen Kaku Gothic New",var(--htk-fallback);
+  --htk-font-head:"Zen Maru Gothic",var(--htk-fallback);
+  color-scheme:light;
+}
+.htk-root[data-theme="akatsuki"][data-mode="dark"],.htk-modal-ov[data-theme="akatsuki"][data-mode="dark"],.htk-event-details-theme[data-theme="akatsuki"][data-mode="dark"]{
+  --bg:#150f1b; --surface:#302539; --fg:#f6ecf3; --fg-2:#c8b5c6; --fg-3:#c8b5c6;
+  --rule:rgba(255,255,255,.18); --accent:#ff7fa3; --accent-ink:#ff7fa3; --accent2:#ffb36b;
+  --on-accent:#26101c; --on-sun:#33200a; --on-teal:#f6ecf3;
+  --card-border:1px solid rgba(255,255,255,.16); --card-shadow:0 20px 40px -28px rgba(0,0,0,.8);
+  color-scheme:dark;
+}
+.htk-root[data-theme="kisetsu"],.htk-modal-ov[data-theme="kisetsu"],.htk-event-details-theme[data-theme="kisetsu"]{
   --bg:#f4f1ea; --surface:#ffffff; --fg:#211d18; --fg-2:#5f574c; --fg-3:#7c7367;
   --rule:#cdc7bb; --accent:#8a3d1f; --on-sun:#211d18; --on-teal:#211d18;
   --card:var(--surface); --card-border:1px solid var(--rule); --card-shadow:none; --card-radius:6px;
   --htk-font-body:"Zen Kaku Gothic New",var(--htk-fallback);
   --htk-font-head:"Shippori Mincho B1","Zen Kaku Gothic New",var(--htk-fallback);
 }
-.htk-root[data-theme="kisetsu"][data-mode="dark"],.htk-modal-ov[data-theme="kisetsu"][data-mode="dark"]{
+.htk-root[data-theme="kisetsu"][data-mode="dark"],.htk-modal-ov[data-theme="kisetsu"][data-mode="dark"],.htk-event-details-theme[data-theme="kisetsu"][data-mode="dark"]{
 	  --bg:#17140f; --surface:#211c15; --fg:#f1ece1; --fg-2:#c3b9a8; --fg-3:#a79c8b;
 	  --rule:#39332a; --accent:#e0966a; --on-accent:#21170f;
 }
 /* --- 花信 Kashin (light) --- */
-.htk-root[data-theme="kashin"],.htk-modal-ov[data-theme="kashin"]{
+.htk-root[data-theme="kashin"],.htk-modal-ov[data-theme="kashin"],.htk-event-details-theme[data-theme="kashin"]{
 	  --bg:#fff5e6; --surface:#ffffff; --fg:#25201c; --fg-2:#5f574c; --fg-3:#6e655a;
   --ink-line:#25201c; --coral:#ff6b4a; --teal:#0f978c; --sun:#ffc23c; --grape:#7a5cff;
 	  --accent:var(--coral); --rule:rgba(37,32,28,.16); --on-accent:#25201c; --on-coral:#25201c; --on-sun:#25201c; --on-teal:#25201c;
@@ -3783,13 +4288,13 @@ moodTimerIds.forEach(id => clearTimeout(id));
   --htk-font-body:"Zen Maru Gothic",var(--htk-fallback);
   --htk-font-head:"Zen Maru Gothic",var(--htk-fallback);
 }
-.htk-root[data-theme="kashin"][data-mode="dark"],.htk-modal-ov[data-theme="kashin"][data-mode="dark"]{
+.htk-root[data-theme="kashin"][data-mode="dark"],.htk-modal-ov[data-theme="kashin"][data-mode="dark"],.htk-event-details-theme[data-theme="kashin"][data-mode="dark"]{
 	  --bg:#1b1726; --surface:#26202f; --fg:#fbf3e6; --fg-2:#c7bcd2; --fg-3:#9a90ab;
 	  --ink-line:#f3ead6; --coral:#ff7d5e; --teal:#23c3b6; --sun:#ffcf5c; --grape:#9a80ff;
 	  --rule:rgba(243,234,214,.18); --on-accent:#1b1726; --on-coral:#1b1726; --card-shadow:3px 3px 0 rgba(0,0,0,.35);
 }
 /* --- 刷 Suri (light) --- */
-.htk-root[data-theme="suri"],.htk-modal-ov[data-theme="suri"]{
+.htk-root[data-theme="suri"],.htk-modal-ov[data-theme="suri"],.htk-event-details-theme[data-theme="suri"]{
 	  --bg:#efe7d4; --surface:#ffffff; --fg:#1a1a2e; --fg-2:#4a4a5a; --fg-3:#666678;
   --ink-line:#1a1a2e; --blue:#2a52c0; --pink:#ff4f9a; --sun:#ffe14f;
   --accent:var(--blue); --rule:rgba(26,26,46,.18); --on-sun:#1a1a2e;
@@ -3797,14 +4302,14 @@ moodTimerIds.forEach(id => clearTimeout(id));
   --htk-font-body:"Zen Kaku Gothic Antique",var(--htk-fallback);
   --htk-font-head:"Zen Kaku Gothic Antique",var(--htk-fallback);
 }
-.htk-root[data-theme="suri"][data-mode="dark"],.htk-modal-ov[data-theme="suri"][data-mode="dark"]{
+.htk-root[data-theme="suri"][data-mode="dark"],.htk-modal-ov[data-theme="suri"][data-mode="dark"],.htk-event-details-theme[data-theme="suri"][data-mode="dark"]{
 	  --bg:#14141f; --surface:#1e1e2c; --fg:#ece7dc; --fg-2:#b3aec6; --fg-3:#8f8aa3;
 	  --ink-line:#ece7dc; --blue:#7f97ff; --pink:#ff6fae; --sun:#ffe14f;
 	  --rule:rgba(236,231,220,.18); --on-accent:#14141f; --on-blue:#14141f; --card-shadow:3px 3px 0 var(--pink);
 }
 /* --- ハタキュ Hatakyu (light): コルク板に紙をピンで留めた見立て --- */
 /* ⚠️--bg は「板の外側の地」。紙は --surface、コルク面は --cork で別に持つ。 */
-.htk-root[data-theme="hatakyu"],.htk-modal-ov[data-theme="hatakyu"]{
+.htk-root[data-theme="hatakyu"],.htk-modal-ov[data-theme="hatakyu"],.htk-event-details-theme[data-theme="hatakyu"]{
   --cork:#c9975f; --wood:#6b4a2f; --wood-l:#8a6440;
   --bg:#4a3627; --surface:#fdf6e6; --fg:#3b2a1c; --fg-2:#6f5b3f; --fg-3:#7a5c34;
   --paper2:#fff9ef; --cream-c:#fdeec4; --blue-c:#e3f0ff; --mint-c:#e4f6ee; --dash:#ddcba6;
@@ -3816,7 +4321,7 @@ moodTimerIds.forEach(id => clearTimeout(id));
   --htk-font-body:"Zen Kaku Gothic New",var(--htk-fallback);
   --htk-font-head:"Zen Maru Gothic",var(--htk-fallback);
 }
-.htk-root[data-theme="hatakyu"][data-mode="dark"],.htk-modal-ov[data-theme="hatakyu"][data-mode="dark"]{
+.htk-root[data-theme="hatakyu"][data-mode="dark"],.htk-modal-ov[data-theme="hatakyu"][data-mode="dark"],.htk-event-details-theme[data-theme="hatakyu"][data-mode="dark"]{
   --cork:#4a3a2b; --wood:#2c221a; --wood-l:#463628;
   --bg:#241c15; --surface:#332b22; --fg:#f4ece0; --fg-2:#d3c5ab; --fg-3:#e8b96b;
   --paper2:#3a3128; --cream-c:#3d3324; --blue-c:#2c3340; --mint-c:#2b3830; --dash:#5c4c38;
@@ -4038,8 +4543,34 @@ moodTimerIds.forEach(id => clearTimeout(id));
 .o1d .su-meal{display:flex;align-items:center;justify-content:space-between;border:3px solid #1a1a2e;padding:12px 14px;font-weight:900;font-size:.9rem;cursor:pointer}
 
 /* 旗鯖fork(v2): 構造トークンのみ。色/背景は .htk-root[data-theme] (v2) が供給する。 */
-.htk-root{--radius-lg:28px;--radius-sm:14px;--radius-xs:10px;--success:#6ec072;--ease-spring:cubic-bezier(0.34,1.56,0.64,1);--ease-smooth:cubic-bezier(0.4,0,0.2,1);position:relative;min-height:100dvh;overflow-x:hidden;overflow-y:visible;container-type:inline-size;container-name:hatask-root}
+.htk-root{--radius-lg:28px;--radius-sm:14px;--radius-xs:10px;--ease-smooth:cubic-bezier(0.4,0,0.2,1);position:relative;min-height:100dvh;overflow-x:hidden;overflow-y:visible;container-type:inline-size;container-name:hatask-root}
 .htk-root[data-window="true"]{min-height:100%}
+.htk-root[data-theme="akatsuki"]{
+  --hatask-akatsuki-height:calc(100cqh - var(--MI-stickyTop,0px) - var(--MI-stickyBottom,0px));
+  min-height:0;
+  overflow:hidden;
+}
+.htk-root[data-theme="akatsuki"] .htk-app{max-width:none;padding:0;margin:0;overflow:visible}
+.htk-root[data-theme="akatsuki"] .htk-shell{display:block}
+.htk-root[data-theme="hatakyu"] :deep(.htk-akatsuki-layout[data-enabled="false"] .hak-tab-content > *){position:relative;z-index:2}
+.htk-root[data-theme="akatsuki"] .htk-boot{background:linear-gradient(168deg,var(--hak-daylight-start) 0%,var(--hak-daylight-middle) 46%,var(--hak-daylight-end) 100%),var(--hak-daylight-bg)}
+.htk-root[data-theme="akatsuki"][data-mode="dark"] .htk-boot{background:linear-gradient(168deg,var(--hak-daylight-start) 0%,var(--hak-daylight-middle) 52%,var(--hak-daylight-end) 100%),var(--hak-daylight-bg)}
+.htk-root[data-theme="akatsuki"] .htk-calendar-page,.htk-root[data-theme="akatsuki"] .htk-eye-page{grid-template-columns:minmax(0,1fr)}
+.htk-root[data-theme="akatsuki"] .htk-primary,.htk-modal-ov[data-theme="akatsuki"] .htk-primary{background:var(--accent-ink);color:var(--on-accent)}
+.htk-root[data-theme="akatsuki"] .htk-journal-page{min-width:0}
+.htk-akatsuki-extras{display:grid;gap:20px;margin-top:28px}
+.htk-akatsuki-extra{min-width:0;padding:20px;border:var(--card-border);border-radius:24px;background:var(--surface)}
+.htk-akatsuki-extra h3{margin:0 0 14px;font:700 17px/1.5 var(--htk-font-head);color:var(--fg)}
+.htk-akatsuki-rsvp{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 0}
+.htk-akatsuki-rsvp>div{display:flex;flex-wrap:wrap;gap:8px;width:100%}
+.htk-akatsuki-rsvp button[aria-pressed=true]{background:var(--accent-ink);color:var(--on-accent)}
+.htk-akatsuki-notification{display:flex;align-items:center;gap:12px;width:100%;padding:12px 0;color:var(--fg-2);font:inherit;text-align:left;border:0;background:none;cursor:pointer}
+.htk-akatsuki-notification[data-unread=true]{color:var(--fg);font-weight:700}
+.htk-akatsuki-notification .ti{color:var(--accent-ink)}
+.htk-akatsuki-extra small{color:var(--fg-2)}
+.htk-akatsuki-mascot{display:flex;align-items:center;gap:16px;width:100%;border:0;background:none;color:var(--fg);text-align:left;font:inherit;cursor:pointer}
+.htk-akatsuki-mascot img{object-fit:contain;flex:none}
+.htk-akatsuki-mascot>span{display:grid;gap:6px;min-width:0;overflow-wrap:anywhere}
 .htk-app{max-width:1280px;margin:0 auto;padding:20px;position:relative;z-index:1;overflow-x:clip}
 .htk-tabpage{container-type:inline-size}
 
@@ -4590,12 +5121,6 @@ select.htk-inp{appearance:none;cursor:pointer;padding-right:36px}
 .htk-gal-sort{display:flex;justify-content:center;margin-top:12px}.htk-gal-sort-inner{display:flex;gap:4px;width:fit-content;max-width:100%;padding:4px;border:1px solid var(--rule);border-radius:999px;background:var(--surface)}.htk-gal-sort-label{display:inline-flex;align-items:center;gap:4px;padding:0 8px;color:var(--fg-2);font-size:.68rem;white-space:nowrap}.htk-gal-sort-label i{font-size:1rem;line-height:1}.htk-gal-sort-btn{display:inline-flex;flex:1 1 auto;align-items:center;justify-content:center;gap:5px;min-width:44px;min-height:44px;padding:6px 14px;border:1px solid transparent;border-radius:999px;background:transparent;color:var(--fg-2);font:inherit;white-space:nowrap;cursor:pointer;transition:background .15s,color .15s,border-color .15s}.htk-gal-sort-btn:hover:not(.on){background:var(--hover-bg);color:var(--fg)}.htk-gal-sort-btn.on{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}.htk-gal-sort-btn i{font-size:1rem;line-height:1}.htk-gal-state{display:flex;align-items:center;justify-content:center;gap:7px;min-height:74px;color:var(--text-3);font-size:.8rem;text-align:center}.htk-gal-state i{font-size:1.1rem}.htk-gal-error{flex-wrap:wrap;color:var(--danger, var(--text-2))}
 .htk-gal-community{display:grid;gap:6px}.htk-gal-community-row{display:flex;align-items:center;gap:9px;min-width:0;padding:9px 0;border-bottom:1px solid var(--divider)}.htk-gal-community-row:last-child{border-bottom:0}.htk-gal-avatar{width:36px;height:36px;flex:0 0 36px}.htk-gal-community-body{min-width:0;flex:1}.htk-gal-community-text{font-size:.78rem;line-height:1.45;overflow-wrap:anywhere}.htk-gal-community-text b{font-weight:700}.htk-gal-community-meta{display:flex;align-items:center;gap:5px;margin-top:3px;color:var(--text-3);font-size:.68rem}.htk-gal-community-meta .mk-emoji{font-size:1rem}.htk-gal-report{display:grid;place-items:center;flex:0 0 44px;min-width:44px;min-height:44px;border:0;border-radius:var(--radius-xs);color:var(--text-3);background:transparent;cursor:pointer}.htk-gal-report:hover,.htk-gal-report:focus-visible{color:var(--accent);background:var(--hover-bg)}
 .htk-gal-owner{display:flex;align-items:center;justify-content:center;gap:5px;max-width:100%;min-width:0;color:var(--text-2);font-size:.7rem;overflow-wrap:anywhere}.htk-gal-card .htk-gal-avatar{width:28px;height:28px;flex-basis:28px}.htk-gal-card .htk-gal-report{align-self:center}
-.htk-sch-sec{font-size:.73rem;font-weight:600;color:var(--text-3);margin:14px 0 6px;padding-bottom:4px;border-bottom:1px solid var(--divider)}
-.htk-sch-it{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:var(--radius-xs);transition:background .2s;cursor:pointer;margin-bottom:2px}.htk-sch-it:hover{background:var(--hover-bg)}
-.htk-sch-it-emo{font-size:1.3rem;flex-shrink:0;text-shadow:none}
-.htk-sch-it-body{flex:1;min-width:0}
-.htk-sch-it-title{font-size:.88rem;font-weight:600;color:var(--text-1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.htk-sch-it-sub{font-size:.72rem;color:var(--text-3);margin-top:1px}
 .htk-sch-note{font-size:.68rem;color:var(--text-3);padding:8px 12px;background:rgba(128,128,128,.06);border:1px solid rgba(128,128,128,.1);border-radius:var(--radius-sm);margin-top:12px;line-height:1.4}
 .htk-sch-modal .htk-gc{padding:24px 20px}
 .htk-sch-modal{border-radius:28px !important;overflow:hidden}
@@ -4667,7 +5192,8 @@ select.htk-inp{appearance:none;cursor:pointer;padding-right:36px}
 .htk-rl-tbl{width:100%;margin-top:5px;border-collapse:collapse}
 .htk-rl-tbl th,.htk-rl-tbl td{padding:5px 8px;font-size:.72rem;text-align:left;border-bottom:1px solid rgba(255,255,255,.06);color:rgba(255,255,255,.65)}.htk-rl-tbl th{color:rgba(255,255,255,.4);font-weight:600}
 /* 旗鯖fork(v2 §16③): 敷き詰め(スタガー)はテーマ別。data-anim=off / reduced-motion で無効化(別ルール)。 */
-.htk-root[data-theme] .htk-anim{opacity:0}
+/* 表示は常に成立させ、出現アニメの開始時だけ透明にする。新テーマでカードを消さない。 */
+.htk-root[data-theme] .htk-anim{opacity:1}
 .htk-root[data-theme="kisetsu"] .htk-anim{animation:htkItemKi .5s var(--ease-smooth) both}
 .htk-root[data-theme="kashin"] .htk-anim{animation:htkItemKa .55s cubic-bezier(.34,1.56,.64,1) both}
 .htk-root[data-theme="suri"] .htk-anim{animation:htkItemSu .42s cubic-bezier(.5,0,.3,1) both}
@@ -4741,24 +5267,12 @@ select.htk-inp{appearance:none;cursor:pointer;padding-right:36px}
 /* --- 季: 明朝＋罫線＋下線入力 --- */
 .htk-modal-ov[data-theme="kisetsu"] .htk-sch-modal .htk-sec-title{border-bottom:2px solid var(--fg);padding-bottom:12px;font-family:var(--htk-font-head);font-weight:800}
 .htk-modal-ov[data-theme="kisetsu"] .htk-sch-inp{border:none!important;border-bottom:1.5px solid var(--fg)!important;border-radius:0!important;background:none!important;padding:10px 2px!important}
-.htk-modal-ov[data-theme="kisetsu"] .htk-sch-sec{font-family:'Bebas Neue',sans-serif;letter-spacing:.24em;font-size:.7rem;color:var(--accent);font-weight:400;border-bottom:none;display:flex;align-items:center;gap:8px}
-.htk-modal-ov[data-theme="kisetsu"] .htk-sch-sec::after{content:'';flex:1;height:1px;background:var(--rule)}
-.htk-modal-ov[data-theme="kisetsu"] .htk-sch-it{border-bottom:1px solid var(--rule);border-radius:0}
-.htk-modal-ov[data-theme="kisetsu"] .htk-sch-it-emo{color:var(--accent)}
 /* --- 花信: 丸ゴ＋太枠ピル入力＋ミニカード候補 --- */
 .htk-modal-ov[data-theme="kashin"] .htk-sch-modal .htk-sec-title{font-family:var(--htk-font-head);font-weight:900}
 .htk-modal-ov[data-theme="kashin"] .htk-sch-inp{background:var(--surface)!important;border:2.5px solid var(--ink-line)!important;border-radius:16px!important;box-shadow:3px 3px 0 rgba(37,32,28,.16);font-weight:700;padding:12px 14px!important}
-.htk-modal-ov[data-theme="kashin"] .htk-sch-sec{font-weight:900;font-size:.7rem;color:var(--fg);border-bottom:none;display:flex;align-items:center;gap:8px}
-.htk-modal-ov[data-theme="kashin"] .htk-sch-sec::after{content:'';flex:1;height:1px;background:var(--rule)}
-.htk-modal-ov[data-theme="kashin"] .htk-sch-it{background:var(--surface);border:2px solid var(--rule);border-radius:14px;margin-bottom:8px}
-.htk-modal-ov[data-theme="kashin"] .htk-sch-it-emo{color:#ff6b4a}
 /* --- 刷: 太罫入力＋ドット罫セクション＋青アイコン --- */
 .htk-modal-ov[data-theme="suri"] .htk-sch-modal .htk-sec-title{border-bottom:3px solid var(--ink-line);padding-bottom:10px;font-family:var(--htk-font-head);font-weight:900}
 .htk-modal-ov[data-theme="suri"] .htk-sch-inp{background:var(--surface)!important;border:3px solid var(--ink-line)!important;border-radius:0!important;font-weight:700;padding:12px 14px!important}
-.htk-modal-ov[data-theme="suri"] .htk-sch-sec{font-family:'Bebas Neue',sans-serif;letter-spacing:.14em;font-size:.72rem;color:var(--blue);font-weight:400;border-bottom:none;display:flex;align-items:center;gap:8px}
-.htk-modal-ov[data-theme="suri"] .htk-sch-sec::after{content:'';flex:1;border-top:2px dotted var(--blue);height:0}
-.htk-modal-ov[data-theme="suri"] .htk-sch-it{border-bottom:2px dotted var(--fg-3);border-radius:0}
-.htk-modal-ov[data-theme="suri"] .htk-sch-it-emo{color:var(--blue)}
 
 /* ============================================================
    旗鯖fork(v2 §14): テーマ選択(設計 .tpickwrap を忠実移植)
@@ -4794,6 +5308,12 @@ select.htk-inp{appearance:none;cursor:pointer;padding-right:36px}
 .tpick-go{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;padding:14px;border:none;border-radius:14px;background:#a8552f;color:#fff;font-family:inherit;font-weight:700;font-size:.92rem;cursor:pointer}
 .tpick-note{text-align:center;font-size:.7rem;opacity:.5;margin-top:10px}
 .tpick-skip{display:block;margin:8px auto 0;background:none;border:none;color:inherit;opacity:.45;font-size:.72rem;cursor:pointer;font-family:inherit}
+.pv-akatsuki{background:radial-gradient(ellipse at 10% 0%,#ffdac5,transparent 70%),linear-gradient(135deg,#fff3ec,#f6e5ef);color:#2b1f2c}
+.tpickwrap[data-mode="dark"] .pv-akatsuki{background:radial-gradient(ellipse at 10% 0%,#4e2836,transparent 70%),linear-gradient(135deg,#1b1424,#291c33);color:#f6ecf3}
+.pv-akatsuki .pb{height:24px;width:88%;border-radius:9px;background:#fff7f2;border:1px solid #e9d4d8}
+.pv-akatsuki .pt i{height:9px;width:22px;border-radius:999px;background:#e0567a}
+.tpickwrap[data-mode="dark"] .pv-akatsuki .pb{background:#302035;border-color:#654052}
+.tpickwrap[data-mode="dark"] .pv-akatsuki .pt i{background:#ff7fa3}
 .pv-kisetsu{background:#f4f1ea;color:#211d18}
 .tpickwrap[data-mode="dark"] .pv-kisetsu{background:#17140f;color:#f1ece1}
 .pv-kisetsu .pb{background:#a8552f}.pv-kisetsu .pt i{background:#cdc7bb}
@@ -5028,18 +5548,8 @@ select.htk-inp{appearance:none;cursor:pointer;padding-right:36px}
      .htk-shell を消す/名前を変えるときはテンプレート側と同時に直すこと。
    ===================================================================== */
 
-/* ⚠️⚠️ここが抜けると機能タブが「空白」になる。⚠️⚠️
-   `.htk-root[data-theme] .htk-anim{opacity:0}` が全テーマ共通で要素を透明にし、
-   そこから戻すのは **テーマ別の出現アニメ(fill-mode:both)** だけ、という作りになっている。
-   ハタキュの行を足さないと `.htk-anim` が付いた要素は永久に opacity:0 のまま消える。
-   機能タブ(カレンダー/ToDo/きもち/ごはん/お庭/Eye)のカードは全部 `.htk-lg .htk-anim` なので全滅する。
-   ホームだけ無事に見えるのは、ハタキュのホームが .hk-pin/.hk-card で `.htk-anim` を使っていないため。
-   ⚠️アニメOFF・prefers-reduced-motion の人は `opacity:1 !important` で救われるので再現しない。
-     「自分の環境では出ない」を理由に無いことにしないこと。
-
-   ⚠️ここで出現アニメを足して解決してはいけない。カード自体に揺れ(hkSway)を当てており、
-     animation は後勝ちで潰れる → opacity:0 が残って同じ症状に戻る。opacity を直接戻す。
-   ⚠️[data-anim] を挟んで詳細度を1つ上げてある(記述順に依存させないため)。data-anim は常に付く。 */
+/* 以前の共通 opacity:0 は、テーマ別アニメがない機能タブを空白にしていた。
+   共通値を可視にしたうえで、ハタキュはカードの揺れ(hkSway)と独立した可視性も維持する。 */
 .htk-root[data-theme="hatakyu"][data-anim] .htk-anim{ opacity:1; }
 
 /* ハタキュ以外では箱として存在しない。⚠️これを消すと全テーマのレイアウトが1段深くなる。 */
@@ -5311,6 +5821,13 @@ button.hk-row{ cursor:pointer }
 
 /* Hatasaba UIのウィンドウ表示では、ブラウザ全体が広くてもHataskの表示領域だけが狭くなる。
    端末判定ではなく実際のHatask幅で、既存のモバイル相当レイアウトへ切り替える。 */
+@container hatask-root (min-width:600px){
+  .htk-root[data-theme="akatsuki"] .htk-gal-sort-inner{box-sizing:border-box;min-width:0;flex-wrap:wrap;justify-content:center}
+  .htk-root[data-theme="akatsuki"] .htk-gal-sort-btn{box-sizing:border-box;flex:0 0 auto;max-width:100%}
+  .htk-root[data-theme="akatsuki"] .htk-gal-sort-btn > span{min-width:0;white-space:normal;overflow-wrap:anywhere}
+  .htk-root[data-theme="akatsuki"] .htk-gal-sort-btn[aria-pressed="false"]{width:44px;padding-inline:0}
+  .htk-root[data-theme="akatsuki"] .htk-garden-stack:not([data-garden-group="community"]) .htk-gal-sort-btn[aria-pressed="false"] > span{display:none}
+}
 @container hatask-root (max-width:900px){
   .htk-app{padding-bottom:28px}
   .htk-panels{grid-template-columns:minmax(0,1fr)}
@@ -5371,6 +5888,36 @@ button.hk-row{ cursor:pointer }
   font-weight: 400;
   font-display: swap;
   src: url('/client-assets/Righteous-Regular.woff2') format('woff2');
+}
+
+/* Archivo — 暁の数値。Google Fonts配信のWOFF2を未加工で自己ホストする。
+   フォントはSIL OFL 1.1のまま配布。著作権・全文: /client-assets/fonts/Archivo-OFL.txt */
+@font-face {
+  font-family: 'Archivo';
+  font-style: normal;
+  font-weight: 100 900;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url('/client-assets/fonts/archivo-vietnamese-wght.woff2') format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+@font-face {
+  font-family: 'Archivo';
+  font-style: normal;
+  font-weight: 100 900;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url('/client-assets/fonts/archivo-latin-ext-wght.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Archivo';
+  font-style: normal;
+  font-weight: 100 900;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url('/client-assets/fonts/archivo-latin-wght.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
 /* 旗鯖fork(v2 リデザイン): テーマ用フォント。すべて自己ホスト(SIL OFL・LICENSES/ に原文同梱)。

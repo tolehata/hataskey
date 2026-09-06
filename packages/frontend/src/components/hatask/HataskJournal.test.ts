@@ -5,9 +5,10 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { parse } from '@vue/compiler-sfc';
-import { createApp, defineComponent, h, nextTick, ref } from 'vue';
+import { createApp, defineComponent, h, nextTick, reactive, ref } from 'vue';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import type { App } from 'vue';
+import type { HataskPlannerTheme } from './hatask-planner-types.js';
 import type { HataskJournalEntry, HataskMealTemplate } from '@/utility/hatask-journal.js';
 
 vi.mock('@/i18n.js', async () => {
@@ -34,16 +35,17 @@ const mood: HataskJournalEntry = { id: 'mood-1', date: '2026-08-31', time: '08:0
 const meal: HataskJournalEntry = { id: 'meal-1', date: '2026-08-31', time: '12:00', level: 'ate', slot: 'lunch', note: 'パンとスープ', reasons: [] };
 
 function mountJournal(options: Record<string, unknown> = {}) {
+	const journal = ref<InstanceType<typeof HataskJournal> | null>(null);
 	const entries = ref<unknown[]>(options.entries as unknown[] | undefined ?? []);
 	const templates = ref<unknown[]>(options.templates as unknown[] | undefined ?? []);
 	const save = vi.fn(async (entry: HataskJournalEntry, existingId?: string) => { entries.value = changeJournalRows(entries.value, { type: 'save', value: entry, existingId }); });
 	const remove = vi.fn(async (id: string) => { entries.value = changeJournalRows(entries.value, { type: 'delete', id }); });
 	const storeTemplate = vi.fn(async (template: HataskMealTemplate, existingId?: string) => { templates.value = changeJournalRows(templates.value, { type: 'save', value: template, existingId }); });
-	const props = { kind: 'mood' as const, writable: true, templatesWritable: true, save, remove, storeTemplate, ...options };
-	const app = createApp(defineComponent({ setup: () => () => h(HataskJournal, { ...props, entries: entries.value, templates: templates.value }) }));
+	const props = reactive({ kind: 'mood' as const, theme: undefined as HataskPlannerTheme | undefined, writable: true, templatesWritable: true, save, remove, storeTemplate, ...options });
+	const app = createApp(defineComponent({ setup: () => () => h(HataskJournal, { ...props, ref: journal, entries: entries.value, templates: templates.value }) }));
 	const container = window.document.createElement('div'); window.document.body.append(container); app.mount(container);
 	mounted.push({ app, container });
-	return { container, save, remove, storeTemplate, entries, templates };
+	return { container, save, remove, storeTemplate, entries, templates, journal, props };
 }
 
 async function flush(): Promise<void> { await Promise.resolve(); await nextTick(); await Promise.resolve(); await nextTick(); }
@@ -110,6 +112,54 @@ describe('Hatask mood and meal journals', () => {
 		const mobileRules = stylesheet.match(/@container \(max-width: 560px\) \{([\s\S]*?)\n\}/u)?.[1] ?? '';
 		expect(mobileRules).toMatch(/\.tabs \{ width: 100%; \}/u);
 		expect(mobileRules).toMatch(/\.tabs button \{ flex: 1 0 auto; padding-inline: 12px; \}/u);
+	});
+
+	test('暁の説明カードは親テーマの色・外枠を継承し、見出しに半透明背景を重ねない', () => {
+		// Source contract only; Happy DOM does not composite translucent CSS surfaces.
+		const filename = resolve(process.cwd(), 'src/components/hatask/HataskJournal.vue');
+		const parsed = parse(readFileSync(filename, 'utf8'), { filename });
+		expect(parsed.errors).toEqual([]);
+		const stylesheet = parsed.descriptor.styles[0].content;
+		const themeRules = stylesheet.match(/\.root\[data-hatask-theme='akatsuki'\] \{([^}]+)\}/u)?.[1] ?? '';
+		const replacedThemeTokens = /--(?:surface|fg|fg-2|card-radius|card-border|card-shadow)\s*:/u;
+		// Positive control: catch a locally fixed surface before checking the real rules.
+		expect(replacedThemeTokens.test(`${themeRules}\n--surface: #fff;`)).toBe(true);
+		expect(replacedThemeTokens.test(themeRules)).toBe(false);
+		const captureRules = stylesheet.match(/\.root\[data-hatask-theme='akatsuki'\] \.captureArea \{([^}]+)\}/u)?.[1] ?? '';
+		for (const declaration of ['border: var(--card-border)', 'border-radius: var(--card-radius)', 'background: var(--surface)', 'color: var(--fg)', 'box-shadow: var(--card-shadow)']) {
+			expect(captureRules).toContain(declaration);
+		}
+		expect(stylesheet).toMatch(/\.heading \{[^}]*color: var\(--fg\);/u);
+		expect(stylesheet).toMatch(/\.heading p, \.reviewHeading p \{[^}]*color: var\(--fg-2\);/u);
+		expect(stylesheet).toMatch(/\.root\[data-hatask-theme='akatsuki'\] \.heading \{[^}]*background: transparent;/u);
+	});
+
+	test.each(['akatsuki', 'kisetsu', 'kashin', 'suri', 'hatakyu'])('%sのテーマ識別子を見出し・入力へ渡し、説明と書きかけを保つ', async theme => {
+		for (const kind of ['mood', 'meal']) {
+			const f = mountJournal({ kind, theme });
+			await inputNote(f.container, '残しておく記録');
+			const root = f.container.querySelector<HTMLElement>(`section[data-kind="${kind}"]`)!;
+			expect(root.getAttribute('data-hatask-theme')).toBe(theme);
+			expect(root.querySelector('[data-journal-capture] > header h2')?.textContent).toBe(kind === 'mood' ? 'きもち' : 'ごはん');
+			expect(root.querySelector('section[data-hatask-theme]')?.getAttribute('data-hatask-theme')).toBe(theme);
+			expect(root.querySelector('textarea')?.value).toBe('残しておく記録');
+			expect(f.save).not.toHaveBeenCalled();
+		}
+	});
+
+	test.each(['mood', 'meal'])('%sのテーマを切り替えても同じ入力と未保存の記録を保つ', async kind => {
+		const f = mountJournal({ kind });
+		const note = await inputNote(f.container, 'テーマを変えても残すメモ');
+		const instance = f.journal.value;
+		for (const theme of ['kisetsu', 'kashin', 'suri', 'hatakyu', 'akatsuki'] as const) {
+			f.props.theme = theme;
+			await flush();
+			expect(f.journal.value).toBe(instance);
+			expect(f.container.querySelector('textarea')).toBe(note);
+			expect(note.value).toBe('テーマを変えても残すメモ');
+			expect(f.container.querySelector(`section[data-kind="${kind}"]`)?.getAttribute('data-hatask-theme')).toBe(theme);
+			expect(f.save).not.toHaveBeenCalled();
+		}
 	});
 
 	test.each(['mood', 'meal'])('%sのモバイルタブは全ラベルを保ち、切り替えても名前とアイコンを失わない', async kind => {
@@ -244,6 +294,20 @@ describe('Hatask mood and meal journals', () => {
 		expect(f.storeTemplate.mock.calls[0][0]).not.toHaveProperty('date');
 		expect(f.storeTemplate.mock.calls[0][0]).not.toHaveProperty('time');
 		expect(f.entries.value).toEqual([meal]);
+	});
+	test('ホームの夜ごはんから空の入力を開くと、夜を選ぶ', async () => {
+		const f = mountJournal({ kind: 'meal' });
+		f.journal.value!.focusFromHome('dinner'); await flush();
+		byLabel(f.container, '記録する').click(); await flush();
+		expect(f.save.mock.calls[0][0]).toMatchObject({ slot: 'dinner' });
+	});
+	test('ホームから開き直しても、書きかけのごはんと食事枠を変更しない', async () => {
+		const f = mountJournal({ kind: 'meal' });
+		await inputNote(f.container, '書きかけの昼ごはん');
+		f.journal.value!.focusFromHome('dinner'); await flush();
+		expect(f.container.querySelector('textarea')?.value).toBe('書きかけの昼ごはん');
+		byLabel(f.container, '記録する').click(); await flush();
+		expect(f.save.mock.calls[0][0]).toMatchObject({ note: '書きかけの昼ごはん', slot: 'lunch' });
 	});
 	test('読み込み失敗時は追加を無効にし、空の記録と誤表示しない', async () => {
 		const f = mountJournal({ writable: false });

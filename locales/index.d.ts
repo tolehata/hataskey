@@ -23044,6 +23044,100 @@ export interface Locale extends ILocale {
                  */
                 "selectDateLabel": ParameterizedString<"date">;
                 /**
+                 * {date}の予定操作を開く
+                 */
+                "openDayActionsLabel": ParameterizedString<"date">;
+                "_blankCalendar": {
+                    /**
+                     * ここに予定を入れる
+                     */
+                    "title": string;
+                    /**
+                     * この日時に、何をしますか？
+                     */
+                    "question": string;
+                    /**
+                     * 予定を作る
+                     */
+                    "create": string;
+                    /**
+                     * 新しい予定の内容を入力する
+                     */
+                    "createHint": string;
+                    /**
+                     * 既存の予定をコピー
+                     */
+                    "copy": string;
+                    /**
+                     * 元を残して非公開で追加する（出欠確認なし）
+                     */
+                    "copyHint": string;
+                    /**
+                     * 既存の予定を移動
+                     */
+                    "move": string;
+                    /**
+                     * 元の予定をこの日時へ移す
+                     */
+                    "moveHint": string;
+                    /**
+                     * コピーする予定を選ぶ
+                     */
+                    "chooseCopy": string;
+                    /**
+                     * 移動する予定を選ぶ
+                     */
+                    "chooseMove": string;
+                    /**
+                     * 予定を検索
+                     */
+                    "search": string;
+                    /**
+                     * 予定名や日付で検索
+                     */
+                    "searchPlaceholder": string;
+                    /**
+                     * 選べる予定はありません
+                     */
+                    "noEvents": string;
+                    /**
+                     * 検索に合う予定がありません
+                     */
+                    "noMatches": string;
+                    /**
+                     * 元の日時
+                     */
+                    "source": string;
+                    /**
+                     * 変更先の日時
+                     */
+                    "target": string;
+                    /**
+                     * この日時にコピーする
+                     */
+                    "confirmCopy": string;
+                    /**
+                     * この日時へ移動する
+                     */
+                    "confirmMove": string;
+                    /**
+                     * 続きを表示
+                     */
+                    "more": string;
+                    /**
+                     * 自分の予定のうち、繰り返しのないものが対象です。終日予定は終日のまま、予定の長さも引き継ぎます
+                     */
+                    "scopeHint": string;
+                    /**
+                     * 入力中の予定を破棄して、選んだ日時で新しい予定を作りますか？
+                     */
+                    "replaceDraft": string;
+                    /**
+                     * この予定は操作できなくなりました。予定を選び直してください
+                     */
+                    "unavailable": string;
+                };
+                /**
                  * 「{title}」を開く
                  */
                 "openEventLabel": ParameterizedString<"title">;
@@ -23351,6 +23445,34 @@ export interface Locale extends ILocale {
                  * 毎年
                  */
                 "recurrenceYearly": string;
+                /**
+                 * {interval}日ごと
+                 */
+                "recurrenceDailyInterval": ParameterizedString<"interval">;
+                /**
+                 * {interval}週ごと
+                 */
+                "recurrenceWeeklyInterval": ParameterizedString<"interval">;
+                /**
+                 * {interval}か月ごと
+                 */
+                "recurrenceMonthlyInterval": ParameterizedString<"interval">;
+                /**
+                 * {interval}年ごと
+                 */
+                "recurrenceYearlyInterval": ParameterizedString<"interval">;
+                /**
+                 * {date}まで
+                 */
+                "recurrenceUntil": ParameterizedString<"date">;
+                /**
+                 * 全{count}回
+                 */
+                "recurrenceCount": ParameterizedString<"count">;
+                /**
+                 * 編集・削除は繰り返し予定全体に適用されます
+                 */
+                "recurrenceActionsHint": string;
                 /**
                  * 詳細設定
                  */
@@ -23889,6 +24011,18 @@ export interface Locale extends ILocale {
                  * 通知の送信に失敗しました
                  */
                 "testNotificationFailed": string;
+                /**
+                 * 暁
+                 */
+                "themeAkatsuki": string;
+                /**
+                 * 朝焼けのグラデーションと、軽やかな3ペイン
+                 */
+                "themeAkatsukiDescription": string;
+                /**
+                 * 設定を保存できませんでした。接続を確認してもう一度選択してください
+                 */
+                "saveFailure": string;
                 /**
                  * 季
                  */

@@ -727,13 +727,14 @@ export const ROUTE_DEF = [{
 	path: '/redirect-test',
 	redirect: $i ? `@${$i.username}` : '/',
 	loginRequired: true,
-	}, {
-		path: '/hatask',
-		query: {
-			tab: 'tab',
-		},
-		component: page(() => import('@/pages/hatask.vue')),
-		loginRequired: true,
+}, {
+	path: '/hatask',
+	query: {
+		tab: 'tab',
+		notice: 'notice',
+	},
+	component: page(() => import('@/pages/hatask.vue')),
+	loginRequired: true,
 }, {
 	path: '/hatask/card-maker',
 	component: page(() => import('@/pages/hata-card-maker.vue')),

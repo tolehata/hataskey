@@ -3,7 +3,7 @@ SPDX-FileCopyrightText: Tolehata and hatasaba-project
 SPDX-License-Identifier: AGPL-3.0-only
 -->
 <template>
-<section :class="$style.root" :aria-label="labels.library">
+<section :class="$style.root" :data-hatask-theme="theme" :aria-label="labels.library">
 	<header :class="$style.header">
 		<div>
 			<span :class="$style.eyebrow">{{ labels.reusable }}</span>
@@ -41,6 +41,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <script lang="ts" setup>
 import { computed } from 'vue';
+import type { HataskPlannerTheme } from './hatask-planner-types.js';
 import type { HataskPlannerTemplate, HataskPlannerTemplateKind } from '@/utility/hatask-planner-storage.js';
 
 export type HataskTemplateKindFilter = 'all' | HataskPlannerTemplateKind;
@@ -62,12 +63,13 @@ export type HataskTemplateLabels = {
 };
 
 const props = withDefaults(defineProps<{
+	theme?: HataskPlannerTheme;
 	templates: HataskPlannerTemplate[];
 	kind?: HataskTemplateKindFilter;
 	labels: HataskTemplateLabels;
 	readOnly?: boolean;
 	showKindFilter?: boolean;
-}>(), { kind: 'all', readOnly: false, showKindFilter: true });
+}>(), { theme: undefined, kind: 'all', readOnly: false, showKindFilter: true });
 
 const emit = defineEmits<{
 	(ev: 'update:kind', value: HataskTemplateKindFilter): void;
@@ -97,4 +99,16 @@ function templateSummary(template: HataskPlannerTemplate): string {
 
 <style lang="scss" module>
 .root{container-type:inline-size;display:grid;gap:13px}.header{display:flex;align-items:center;justify-content:space-between;gap:12px}.header h3{margin:2px 0 0;font:850 1rem/1.25 var(--htk-font-head,inherit)}.eyebrow{color:var(--fg-3);font-size:.62rem;font-weight:850;letter-spacing:.08em;text-transform:uppercase}.kindFilter{display:flex;gap:3px;padding:4px;border:1px solid var(--rule);border-radius:999px;background:var(--fill-2)}.kindFilter button{min-height:38px;display:flex;align-items:center;gap:6px;padding:0 11px;border:0;border-radius:999px;background:transparent;color:var(--fg-2);font:750 .7rem/1 var(--htk-font-body,inherit);cursor:pointer}.kindFilter button[data-active=true]{background:var(--surface);color:var(--accent);box-shadow:0 4px 14px -10px rgba(0,0,0,.55)}.grid{display:grid;gap:8px;margin:0;padding:0;list-style:none}.card{display:grid;grid-template-columns:44px minmax(0,1fr) auto;align-items:center;gap:9px;min-height:68px;padding:8px;border:1px solid var(--rule);border-radius:16px;background:color-mix(in srgb,var(--surface) 96%,var(--fill));transition:transform .24s var(--ease-smooth,ease),border-color .18s ease,opacity .2s ease}.card:hover{border-color:color-mix(in srgb,var(--accent) 28%,var(--rule));transform:translateY(-1px)}.kindIcon{width:40px;height:40px;display:grid;place-items:center;border-radius:13px;background:color-mix(in srgb,var(--accent) 11%,transparent);color:var(--accent);font-size:1.05rem}.body{min-width:0;display:grid;gap:4px}.titleRow{min-width:0;display:flex;align-items:center;gap:7px}.titleRow strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.79rem}.titleRow span{flex:none;padding:3px 6px;border-radius:999px;background:var(--fill-2);color:var(--fg-3);font-size:.57rem;font-weight:800}.body p{margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--fg-3);font-size:.68rem}.actions{display:flex;align-items:center;gap:5px}.useAction{min-width:max-content;height:40px;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:0 12px;border:0;border-radius:999px;background:var(--accent);color:var(--on-accent,#fff);font:800 .68rem/1 var(--htk-font-body,inherit);cursor:pointer;box-shadow:0 8px 18px -12px var(--accent);transition:transform .16s var(--ease-spring,ease),filter .16s ease,opacity .16s ease}.useAction:hover:not(:disabled),.useAction:focus-visible:not(:disabled){filter:brightness(1.06)}.useAction:active:not(:disabled){transform:scale(.96)}.secondaryActions{display:flex;align-items:center;gap:2px;padding-inline-start:4px;border-inline-start:1px solid var(--rule)}.secondaryActions button{width:40px;height:40px;display:grid;place-items:center;border:0;border-radius:50%;background:transparent;color:var(--fg-2);cursor:pointer;transition:transform .16s var(--ease-spring,ease),background .16s ease,color .16s ease}.secondaryActions button:hover:not(:disabled),.secondaryActions button:focus-visible:not(:disabled){background:var(--fill-2);color:var(--accent)}.secondaryActions button:active:not(:disabled){transform:scale(.92)}.actions button:disabled{opacity:.3;cursor:default}.secondaryActions .danger:hover:not(:disabled){color:var(--error,#d9485f)}.empty{min-height:180px;display:grid;place-items:center;align-content:center;gap:7px;color:var(--fg-3);text-align:center}.empty>i{font-size:2rem;color:var(--accent)}.empty strong{color:var(--fg-2);font-size:.8rem}.empty span{font-size:.69rem}@container (max-width:720px){.card{grid-template-columns:40px minmax(0,1fr)}.actions{grid-column:1/-1;justify-content:space-between;border-top:1px solid var(--rule);padding-top:6px}.secondaryActions{gap:4px}.secondaryActions button{width:44px;height:44px}}@container (max-width:430px){.actions{align-items:stretch;flex-direction:column}.useAction{width:100%;height:44px}.secondaryActions{justify-content:space-between;padding:0;border-inline-start:0}.secondaryActions button{flex:1}}:global(.template-card-move),:global(.template-card-enter-active),:global(.template-card-leave-active){transition:transform .28s var(--ease-smooth,ease),opacity .2s ease}:global(.template-card-enter-from),:global(.template-card-leave-to){opacity:0;transform:translateY(-7px) scale(.98)}@media (prefers-reduced-motion:reduce){.card,.useAction,.secondaryActions button,:global(.template-card-move),:global(.template-card-enter-active),:global(.template-card-leave-active){transition:none!important}}
+.root[data-hatask-theme='akatsuki'] { --accent: var(--accent-ink); --fg-3: var(--fg-2); min-width: 0; }
+.root[data-hatask-theme='akatsuki'] .card { border-radius: 18px; background: var(--fill); box-shadow: none; }
+.root[data-hatask-theme='akatsuki'] .eyebrow,
+.root[data-hatask-theme='akatsuki'] .titleRow span { font-size: max(11px, .7rem); }
+.root[data-hatask-theme='akatsuki'] .body p,
+.root[data-hatask-theme='akatsuki'] .useAction { font-size: max(12px, .75rem); }
+.root[data-hatask-theme='akatsuki'] .titleRow strong,
+.root[data-hatask-theme='akatsuki'] .card p { white-space: normal; overflow-wrap: anywhere; }
+@container (max-width:520px) {
+	.root[data-hatask-theme='akatsuki'] .header { align-items: stretch; flex-direction: column; }
+	.root[data-hatask-theme='akatsuki'] .kindFilter { flex-wrap: wrap; justify-content: center; }
+}
 </style>

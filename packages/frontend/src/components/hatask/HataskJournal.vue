@@ -3,7 +3,7 @@ SPDX-FileCopyrightText: Tolehata and hatasaba-project
 SPDX-License-Identifier: AGPL-3.0-only
 -->
 <template>
-<section :class="$style.root" :data-kind="kind" :data-motion="motion" :aria-label="kind === 'mood' ? main.tabMood : main.tabMeal">
+<section :class="$style.root" :data-kind="kind" :data-motion="motion" :data-hatask-theme="theme" :aria-label="kind === 'mood' ? main.tabMood : main.tabMeal">
 	<div :class="$style.captureArea" data-journal-capture>
 		<header :class="$style.heading">
 			<div><h2>{{ kind === 'mood' ? main.tabMood : main.tabMeal }}</h2><p>{{ kind === 'mood' ? copy.moodIntro : copy.mealIntro }}</p></div>
@@ -17,6 +17,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				ref="capture"
 				v-model="draft.note"
 				:mode="kind"
+				:theme="theme"
 				:leadingIcon="kind === 'mood' ? 'ti ti-mood-smile' : 'ti ti-bowl'"
 				:label="main.optionalNote"
 				:placeholder="kind === 'mood' ? main.moodNotePlaceholder : main.mealNotePlaceholder"
@@ -155,6 +156,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 import { computed, nextTick, onMounted, onUnmounted, ref, useId, watch } from 'vue';
 import HataskQuickCapture from './HataskQuickCapture.vue';
 import type { HataskCaptureChip, HataskCaptureTool } from './HataskQuickCapture.vue';
+import type { HataskPlannerTheme } from './hatask-planner-types.js';
 import type { HataskJournalEntry, HataskJournalKind, HataskMealTemplate } from '@/utility/hatask-journal.js';
 import HataskEmoji from '@/components/HataskEmoji.vue';
 import { isJournalDate, isJournalTime, isMealTemplate, journalLocalDateTime, mealTemplateFromEntry, selectJournalEntries } from '@/utility/hatask-journal.js';
@@ -163,6 +165,7 @@ import { versatileLang } from '@/utility/intl-const.js';
 import * as os from '@/os.js';
 
 const props = withDefaults(defineProps<{
+	theme?: HataskPlannerTheme;
 	kind: HataskJournalKind;
 	entries: unknown[];
 	writable: boolean;
@@ -178,7 +181,7 @@ const props = withDefaults(defineProps<{
 	remove: (id: string) => Promise<void>;
 	storeTemplate?: (template: HataskMealTemplate, existingId?: string) => Promise<void>;
 	removeTemplate?: (id: string) => Promise<void>;
-}>(), { loading: false, active: true, motion: true, illustration: undefined, templates: () => [], templatesWritable: false, summary: '', showSummary: true, storeTemplate: undefined, removeTemplate: undefined });
+}>(), { theme: undefined, loading: false, active: true, motion: true, illustration: undefined, templates: () => [], templatesWritable: false, summary: '', showSummary: true, storeTemplate: undefined, removeTemplate: undefined });
 const emit = defineEmits<{ info: [] }>();
 const main = i18n.ts._hata._hatask._main;
 const planner = i18n.ts._hata._hatask._planner;
@@ -505,6 +508,19 @@ function openTemplateMenu(template: HataskMealTemplate, event: MouseEvent): void
 	], event.currentTarget as HTMLElement);
 }
 
+function focusFromHome(slot?: string): void {
+	if (busy.value) return;
+	// Empty capture may follow the selected meal; an existing or failed draft is never replaced.
+	if (props.kind === 'meal' && slot && ['breakfast', 'lunch', 'dinner', 'snack'].includes(slot)
+		&& !editingId.value && !draft.value.note && !draft.value.reasons.length && !draft.value.date
+		&& !draft.value.time && !draft.value.emoji && draft.value.level === 'ate' && state.value === 'idle') {
+		draft.value.slot = slot;
+	}
+	focusComposer();
+}
+
+defineExpose({ focusFromHome });
+
 watch(() => props.active, active => { if (active) clock.value = new Date(); });
 let clockTimer: number | undefined;
 onMounted(() => { clockTimer = window.setInterval(() => { if (props.active) clock.value = new Date(); }, 30000); });
@@ -517,7 +533,7 @@ onUnmounted(() => {
 <style lang="scss" module>
 .root { container-type: inline-size; display: grid; gap: 20px; min-width: 0; color: var(--fg); font-family: var(--htk-font-body, inherit); }
 .captureArea { display: grid; gap: 20px; min-width: 0; }
-.heading { display: flex; align-items: center; gap: 12px; padding: 4px 4px 0; }
+.heading { display: flex; align-items: center; gap: 12px; color: var(--fg); padding: 4px 4px 0; }
 .heading > div { flex: 1; min-width: 0; }
 .heading h2 { margin: 0; font: 800 1.3rem/1.4 var(--htk-font-head, inherit); }
 .heading p, .reviewHeading p { margin: 4px 0 0; color: var(--fg-2); font-size: .85rem; line-height: 1.65; text-wrap: pretty; }
@@ -652,4 +668,29 @@ onUnmounted(() => {
 	.insights, .mealReview, .templateGrid { grid-template-columns: minmax(0, 1fr); }
 }
 @media (prefers-reduced-motion: reduce) { .root *, .root *::before, .root *::after { animation: none !important; transition: none !important; } }
+.root[data-hatask-theme='akatsuki'] {
+	--accent: var(--accent-ink);
+	--fg-3: var(--fg-2);
+}
+.root[data-hatask-theme='akatsuki'] .captureArea {
+	min-width: 0;
+	padding: 20px;
+	border: var(--card-border);
+	border-radius: var(--card-radius);
+	background: var(--surface);
+	color: var(--fg);
+	box-shadow: var(--card-shadow);
+}
+/* Keep the translucent surface on the outer card only, including the wide layout. */
+.root[data-hatask-theme='akatsuki'] .heading { padding: 0; background: transparent; }
+.root[data-hatask-theme='akatsuki'] .board { padding: 20px; }
+.root[data-hatask-theme='akatsuki'] .record { border-radius: 18px; background: var(--fill); }
+.root[data-hatask-theme='akatsuki'] .choices button { border-radius: 16px; }
+@container (max-width:520px) {
+	.root[data-hatask-theme='akatsuki'] .captureArea,
+	.root[data-hatask-theme='akatsuki'] .board { padding: 12px; }
+	.root[data-hatask-theme='akatsuki'] .tabs { border-radius: 20px; flex-wrap: wrap; }
+	.root[data-hatask-theme='akatsuki'] .tabs button { padding-inline: 12px; }
+	.root[data-hatask-theme='akatsuki'] .tabs button:not([data-selected='true']) span { display: inline; }
+}
 </style>

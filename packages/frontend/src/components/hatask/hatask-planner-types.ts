@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-export type HataskPlannerTheme = 'kisetsu' | 'kashin' | 'suri' | 'hatakyu';
+export type HataskPlannerTheme = 'akatsuki' | 'kisetsu' | 'kashin' | 'suri' | 'hatakyu';
 
 export type HataskCalendarView = 'month' | 'week' | 'day' | 'agenda';
 
@@ -42,6 +42,13 @@ export interface HataskCalendarDay {
 	hiddenEventCount?: number;
 }
 
+export type HataskCalendarBlankTarget = {
+	day: HataskCalendarDay;
+	anchor: HTMLElement;
+	time?: string;
+	point?: { x: number; y: number };
+};
+
 export interface HataskCalendarWeekday {
 	id: string;
 	label: string;
@@ -76,6 +83,7 @@ export interface HataskCalendarLabels {
 	dragHint: string;
 	trashHint: string;
 	selectDate: (dateLabel: string) => string;
+	openDayActions?: (dateLabel: string) => string;
 	openEvent: (eventTitle: string) => string;
 	editEvent: (eventTitle: string) => string;
 	moveEvent: (eventTitle: string) => string;

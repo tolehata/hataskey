@@ -6,6 +6,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 <section
 	:class="$style.root"
 	:data-mode="mode"
+	:data-hatask-theme="theme"
 	:data-open="isOpen"
 	:data-state="state"
 	:aria-label="label"
@@ -107,6 +108,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <script lang="ts" setup>
 import { computed, nextTick, ref, useId } from 'vue';
+import type { HataskPlannerTheme } from './hatask-planner-types.js';
 
 export type HataskCaptureChip = {
 	id: string;
@@ -128,6 +130,7 @@ export type HataskCaptureTool = {
 };
 
 const props = withDefaults(defineProps<{
+	theme?: HataskPlannerTheme;
 	mode: 'todo' | 'event' | 'mood' | 'meal';
 	leadingIcon?: string;
 	multiline?: boolean;
@@ -149,6 +152,7 @@ const props = withDefaults(defineProps<{
 	detailOpen?: boolean;
 	state?: 'idle' | 'saving' | 'success' | 'error';
 }>(), {
+	theme: undefined,
 	leadingIcon: undefined,
 	multiline: false,
 	allowEmpty: false,
@@ -467,4 +471,14 @@ textarea.input { box-sizing: border-box; height: auto; min-height: 44px; max-hei
 	:global(.capture-tools-enter-active),
 	:global(.capture-tools-leave-active) { transition: none !important; animation: none !important; }
 }
+.root[data-hatask-theme='akatsuki'] { --accent: var(--accent-ink); --fg-3: var(--fg-2); }
+.root[data-hatask-theme='akatsuki'] .pill {
+	border: 1px solid var(--rule);
+	border-radius: 24px;
+	background: var(--surface);
+	box-shadow: var(--shadow, none);
+	backdrop-filter: none;
+}
+.root[data-hatask-theme='akatsuki'] .pill:focus-within { border-color: var(--accent); }
+.root[data-hatask-theme='akatsuki'] .hint { font-size: max(11px, .7rem); }
 </style>

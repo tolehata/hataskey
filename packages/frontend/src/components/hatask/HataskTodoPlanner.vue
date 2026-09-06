@@ -163,7 +163,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 	<Teleport to="body">
 		<Transition name="organizer-sheet">
-			<div v-if="railOpen" :class="$style.mobileOrganizerOverlay" :data-compact="compactLayout" :data-hatask-theme="theme" @click.self="railOpen = false" @keydown.esc.stop="railOpen = false">
+			<div v-if="railOpen" :class="$style.mobileOrganizerOverlay" :data-compact="compactLayout" :data-hatask-theme="theme" :data-hatask-mode="colorMode" @click.self="railOpen = false" @keydown.esc.stop="railOpen = false">
 				<aside id="hatask-todo-mobile-organizer" :class="$style.mobileOrganizer" role="dialog" aria-modal="true" :aria-label="labels.viewSelector">
 					<div :class="$style.sheetHandle" aria-hidden="true"></div>
 					<header><strong>{{ labels.viewSelector }}</strong><button type="button" :aria-label="labels.clearSelection" @click="railOpen = false"><i class="ti ti-x" aria-hidden="true"></i></button></header>
@@ -183,6 +183,7 @@ import { HATASK_TODO_DEFAULT_MOBILE_TABS, HATASK_TODO_MAX_MOBILE_TABS, normalize
 
 const props = withDefaults(defineProps<{
 	theme?: HataskPlannerTheme;
+	colorMode?: 'light' | 'dark';
 	view: HataskTodoView;
 	items: HataskTodoItem[];
 	labels: HataskTodoLabels;
@@ -194,7 +195,7 @@ const props = withDefaults(defineProps<{
 	completionIds?: string[];
 	loading?: boolean;
 	readOnly?: boolean;
-}>(), { theme: undefined, filters: () => [], searchQuery: '', viewCounts: undefined, mobileTabOrder: () => [...HATASK_TODO_DEFAULT_MOBILE_TABS], sort: 'manual', completionIds: () => [], loading: false, readOnly: false });
+}>(), { theme: undefined, colorMode: undefined, filters: () => [], searchQuery: '', viewCounts: undefined, mobileTabOrder: () => [...HATASK_TODO_DEFAULT_MOBILE_TABS], sort: 'manual', completionIds: () => [], loading: false, readOnly: false });
 
 const emit = defineEmits<{
 	(ev: 'update:view', view: HataskTodoView): void;
@@ -486,4 +487,44 @@ onBeforeUnmount(() => {
 :global(.todo-row-move),:global(.todo-row-enter-active),:global(.todo-row-leave-active){transition:transform .3s var(--ease-smooth,ease),opacity .22s ease}:global(.todo-row-enter-from){opacity:0;transform:translateY(-8px) scale(.985)}:global(.todo-row-leave-to){opacity:0;transform:translateX(18px) scale(.96)}:global(.todo-row-leave-active){position:absolute;width:calc(100% - 24px)}:global(.selection-dock-enter-active),:global(.selection-dock-leave-active),:global(.organizer-sheet-enter-active),:global(.organizer-sheet-leave-active),:global(.planner-popover-enter-active),:global(.planner-popover-leave-active){transition:opacity .2s ease,transform .25s var(--ease-smooth,ease)}:global(.selection-dock-enter-from),:global(.selection-dock-leave-to){opacity:0;transform:translateY(12px) scale(.97)}:global(.organizer-sheet-enter-from),:global(.organizer-sheet-leave-to){opacity:0}:global(.organizer-sheet-enter-from) .mobileOrganizer,:global(.organizer-sheet-leave-to) .mobileOrganizer{transform:translateY(24px) scale(.985)}:global(.planner-popover-enter-from),:global(.planner-popover-leave-to){opacity:0;transform:translateY(-5px) scale(.98)}
 @media (prefers-reduced-motion:reduce){.item,.checkVisual,.mobileTab,:global(.mobile-tab-order-move),:global(.mobile-tab-order-enter-active),:global(.mobile-tab-order-leave-active),:global(.todo-view-forward-enter-active),:global(.todo-view-forward-leave-active),:global(.todo-view-back-enter-active),:global(.todo-view-back-leave-active),:global(.todo-row-move),:global(.todo-row-enter-active),:global(.todo-row-leave-active),:global(.selection-dock-enter-active),:global(.selection-dock-leave-active),:global(.organizer-sheet-enter-active),:global(.organizer-sheet-leave-active),:global(.planner-popover-enter-active),:global(.planner-popover-leave-active){transition:none!important;animation:none!important}}
 @media (prefers-reduced-motion:reduce){.mobileTabChoice{transition:none!important}}
+.root[data-hatask-theme='akatsuki'] {
+	--accent: var(--accent-ink);
+	--fg-3: var(--fg-2);
+	--card-radius: 24px;
+	--card-border: 1px solid var(--rule);
+	--card-shadow: var(--shadow, none);
+}
+.root[data-hatask-theme='akatsuki'] .item { border-radius: 18px; box-shadow: none; }
+.root[data-hatask-theme='akatsuki'] .content { padding: 18px; }
+.root[data-hatask-theme='akatsuki'] .eyebrow,
+.root[data-hatask-theme='akatsuki'] .metaChip,
+.root[data-hatask-theme='akatsuki'] .subtasks,
+.root[data-hatask-theme='akatsuki'] .selectionDock button span { font-size: max(11px, .7rem); }
+.root[data-hatask-theme='akatsuki'] .comment { font-size: max(12px, .75rem); }
+/* 整理シートは body へ移すため、Hatask 自身の明暗を受け取る。 */
+.mobileOrganizerOverlay[data-hatask-theme='akatsuki'] .mobileOrganizer {
+	--surface: #fff7f2;
+	--fg: #2b1f2c;
+	--fg-2: #6a5566;
+	--fg-3: #6a5566;
+	--rule: rgba(80, 50, 70, .18);
+	--fill-2: rgba(224, 86, 122, .08);
+	--accent: #b02e56;
+	color-scheme: light;
+	border-radius: 24px;
+	font-family: 'Zen Kaku Gothic New', sans-serif;
+}
+.mobileOrganizerOverlay[data-hatask-theme='akatsuki'][data-hatask-mode='dark'] .mobileOrganizer {
+	--surface: #1b1424;
+	--fg: #f6ecf3;
+	--fg-2: #c8b5c6;
+	--fg-3: #c8b5c6;
+	--rule: rgba(255, 255, 255, .18);
+	--fill-2: rgba(255, 127, 163, .1);
+	--accent: #ff7fa3;
+	color-scheme: dark;
+}
+@container (max-width:760px) {
+	.root[data-hatask-theme='akatsuki'] .content { padding: 12px; }
+}
 </style>

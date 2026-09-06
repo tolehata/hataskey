@@ -111,22 +111,25 @@ SPDX-License-Identifier: AGPL-3.0-only
 						:data-selected="day.isSelected"
 						:data-drop-active="dragOverDate === day.date"
 						:data-calendar-drop-date="day.date"
+						:data-blank-action="canOpenBlank(day)"
 						role="gridcell"
 						:aria-selected="day.isSelected"
 						@dragover.prevent="dragOverDate = day.date"
 						@dragleave="clearDragOver(day.date)"
 						@drop="dropOnDay(day, $event)"
+						@click="activateBlankSurface(day, $event)"
 					>
 						<button
 							type="button"
 							:class="$style.dayButton"
 							data-calendar-day-button
 							:tabindex="dayTabindex(day)"
-							:aria-label="labels.selectDate(day.label)"
+							:aria-label="dayActionLabel(day)"
+							:aria-haspopup="opensDayActions(day) ? 'dialog' : undefined"
 							:aria-current="day.isToday ? 'date' : undefined"
 							:aria-pressed="day.isSelected"
 							:disabled="day.isDisabled"
-							@click="selectDay(day)"
+							@click="activateDayButton(day, $event)"
 							@focus="setFocusedDay(day)"
 							@keydown="onDayKeydown($event, weekIndex * 7 + dayIndex)"
 						>
@@ -144,7 +147,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 								:style="eventStyle(calendarEvent)"
 								:aria-label="labels.openEvent(calendarEvent.title)"
 								:title="calendarEvent.title"
-								@click="activateEvent(calendarEvent, day)"
+								@click="activateEvent(calendarEvent, day, $event)"
 								@dragstart="startNativeDrag(calendarEvent, $event)"
 								@dragend="finishDrag"
 								@pointerdown="startPointerDrag(calendarEvent, $event)"
@@ -167,14 +170,16 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</div>
 		</div>
 		<div v-if="view === 'week' || view === 'day'" :class="$style.timeline" :data-columns="view === 'day' ? 1 : days.length">
-			<article v-for="day in days" :key="day.key" :class="$style.timelineDay" :data-date="day.date" :data-today="day.isToday" :data-selected="day.isSelected" :data-drop-active="dragOverDate === day.date" :data-calendar-drop-date="day.date" @dragover.prevent="dragOverDate = day.date" @dragleave="clearDragOver(day.date)" @drop="dropOnDay(day, $event)">
+			<article v-for="day in days" :key="day.key" :class="$style.timelineDay" :data-date="day.date" :data-today="day.isToday" :data-selected="day.isSelected" :data-drop-active="dragOverDate === day.date" :data-calendar-drop-date="day.date" :data-blank-action="canOpenBlank(day)" @dragover.prevent="dragOverDate = day.date" @dragleave="clearDragOver(day.date)" @drop="dropOnDay(day, $event)" @click="activateBlankSurface(day, $event)">
 				<header :class="$style.timelineHeading">
 					<button
 						type="button"
+						:aria-label="dayActionLabel(day)"
+						:aria-haspopup="opensDayActions(day) ? 'dialog' : undefined"
 						:aria-current="day.isToday ? 'date' : undefined"
 						:aria-pressed="day.isSelected"
 						:disabled="day.isDisabled"
-						@click="emit('select-date', day)"
+						@click="activateDayButton(day, $event)"
 					>
 						<span v-if="day.weekdayLabel" :class="$style.timelineWeekday">{{ day.weekdayLabel }}</span>
 						<span :class="$style.timelineNumber">{{ day.dayNumber }}</span>
@@ -183,7 +188,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<div v-if="allDayEvents(day).length" :class="$style.allDayLane">
 					<span>{{ labels.allDay }}</span>
 					<div v-for="calendarEvent in allDayEvents(day)" :key="calendarEvent.id" :class="$style.allDayEvent" :style="eventStyle(calendarEvent)" :draggable="canDrag(calendarEvent)" @dragstart="startNativeDrag(calendarEvent, $event)" @dragend="finishDrag" @pointerdown="startPointerDrag(calendarEvent, $event)">
-						<button type="button" @click="activateEvent(calendarEvent, day)"><HataskEmoji v-if="calendarEvent.emoji" :emoji="calendarEvent.emoji"/><span>{{ calendarEvent.title }}</span></button>
+						<button type="button" @click="activateEvent(calendarEvent, day, $event)"><HataskEmoji v-if="calendarEvent.emoji" :emoji="calendarEvent.emoji"/><span>{{ calendarEvent.title }}</span></button>
 						<button type="button" data-calendar-no-drag :disabled="!canDrag(calendarEvent)" :aria-label="labels.moveEvent(calendarEvent.title)" :title="labels.moveEvent(calendarEvent.title)" @click="emit('move-request', calendarEvent, day)"><i class="ti ti-arrows-move" aria-hidden="true"></i></button>
 						<button type="button" data-calendar-no-drag :disabled="readOnly||calendarEvent.readOnly" :aria-label="labels.editEvent(calendarEvent.title)" :title="labels.editEvent(calendarEvent.title)" @click="emit('edit-event', calendarEvent, day)"><i class="ti ti-pencil" aria-hidden="true"></i></button>
 					</div>
@@ -202,7 +207,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 						@dragend="finishDrag"
 						@pointerdown="startPointerDrag(layout.event, $event)"
 					>
-						<button type="button" :aria-label="labels.openEvent(layout.event.title)" @click="activateEvent(layout.event, day)"><strong>{{ layout.event.title }}</strong><span>{{ layout.event.timeLabel }}</span></button>
+						<button type="button" :aria-label="labels.openEvent(layout.event.title)" @click="activateEvent(layout.event, day, $event)"><strong>{{ layout.event.title }}</strong><span>{{ layout.event.timeLabel }}</span></button>
 						<button type="button" data-calendar-no-drag :disabled="!canDrag(layout.event)" :aria-label="labels.moveEvent(layout.event.title)" :title="labels.moveEvent(layout.event.title)" @click.stop="emit('move-request', layout.event, day)"><i class="ti ti-arrows-move" aria-hidden="true"></i></button>
 						<button type="button" data-calendar-no-drag :disabled="readOnly||layout.event.readOnly" :aria-label="labels.editEvent(layout.event.title)" :title="labels.editEvent(layout.event.title)" @click.stop="emit('edit-event', layout.event, day)"><i class="ti ti-pencil" aria-hidden="true"></i></button>
 					</div>
@@ -211,14 +216,16 @@ SPDX-License-Identifier: AGPL-3.0-only
 		</div>
 
 		<div v-if="view === 'agenda'" :class="$style.agenda">
-			<section v-for="day in days" :key="day.key" :class="$style.agendaDay" :data-date="day.date" :data-today="day.isToday" :data-selected="day.isSelected" :data-drop-active="dragOverDate === day.date" :data-calendar-drop-date="day.date" @dragover.prevent="dragOverDate = day.date" @dragleave="clearDragOver(day.date)" @drop="dropOnDay(day, $event)">
+			<section v-for="day in days" :key="day.key" :class="$style.agendaDay" :data-date="day.date" :data-today="day.isToday" :data-selected="day.isSelected" :data-drop-active="dragOverDate === day.date" :data-calendar-drop-date="day.date" :data-blank-action="canOpenBlank(day)" @dragover.prevent="dragOverDate = day.date" @dragleave="clearDragOver(day.date)" @drop="dropOnDay(day, $event)" @click="activateBlankSurface(day, $event)">
 				<header :class="$style.agendaHeading">
 					<button
 						type="button"
+						:aria-label="dayActionLabel(day)"
+						:aria-haspopup="opensDayActions(day) ? 'dialog' : undefined"
 						:aria-current="day.isToday ? 'date' : undefined"
 						:aria-pressed="day.isSelected"
 						:disabled="day.isDisabled"
-						@click="emit('select-date', day)"
+						@click="activateDayButton(day, $event)"
 					>
 						<span>{{ day.label }}</span>
 						<span :class="$style.agendaCount">{{ day.events.length }}</span>
@@ -226,7 +233,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</header>
 				<div v-if="day.events.length > 0" :class="$style.eventList">
 					<div v-for="calendarEvent in day.events" :key="calendarEvent.id" :class="$style.draggableRow" :draggable="canDrag(calendarEvent)" @dragstart="startNativeDrag(calendarEvent, $event)" @dragend="finishDrag" @pointerdown="startPointerDrag(calendarEvent, $event)">
-						<CalendarEventRow :event="calendarEvent" :labels="labels" :readOnly="readOnly" @activate="activateEvent(calendarEvent, day)" @edit="emit('edit-event', calendarEvent, day)" @move="emit('move-request', calendarEvent, day)"/>
+						<CalendarEventRow :event="calendarEvent" :labels="labels" :readOnly="readOnly" @activate="activateEvent(calendarEvent, day, $event)" @edit="emit('edit-event', calendarEvent, day)" @move="emit('move-request', calendarEvent, day)"/>
 					</div>
 				</div>
 			</section>
@@ -238,7 +245,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 			data-calendar-day-pane
 			:data-date="agendaDay.date"
 			:data-desktop-pane="wideLayout"
+			:data-blank-action="canOpenBlank(agendaDay)"
 			:aria-label="`${labels.selectedDay}: ${agendaDay.label}`"
+			@click="activateBlankSurface(agendaDay, $event)"
 		>
 			<header><div><span>{{ labels.selectedDay }}</span><strong>{{ agendaDay.label }}</strong></div><b>{{ agendaDay.events.length }}</b></header>
 			<div v-if="wideLayout" :class="$style.dayPaneNavigation">
@@ -278,9 +287,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 					@dragend="finishDrag"
 					@pointerdown="startPointerDrag(calendarEvent, $event)"
 				>
-					<CalendarEventRow :event="calendarEvent" :labels="labels" :readOnly="readOnly" @activate="activateEvent(calendarEvent, agendaDay)" @edit="emit('edit-event', calendarEvent, agendaDay)" @move="emit('move-request', calendarEvent, agendaDay)"/>
+					<CalendarEventRow :event="calendarEvent" :labels="labels" :readOnly="readOnly" @activate="activateEvent(calendarEvent, agendaDay, $event)" @edit="emit('edit-event', calendarEvent, agendaDay)" @move="emit('move-request', calendarEvent, agendaDay)"/>
 				</div>
 			</div>
+			<button v-else-if="canOpenBlank(agendaDay)" type="button" :class="[$style.dayEmpty, $style.blankButton]" :aria-label="dayActionLabel(agendaDay)" aria-haspopup="dialog" @click="activateDayButton(agendaDay, $event)">{{ labels.empty }}</button>
 			<div v-else :class="$style.dayEmpty">{{ labels.empty }}</div>
 		</section>
 	</div>
@@ -292,7 +302,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 	<Teleport to="body">
 		<Transition name="calendar-trash">
-			<div v-if="draggingEvent" :class="$style.dragDock" :data-hatask-theme="theme" :data-compact="compactLayout" :data-trash-active="trashActive" role="status" aria-live="polite">
+			<div v-if="draggingEvent" :class="$style.dragDock" :data-hatask-theme="theme" :data-hatask-mode="colorMode" :data-compact="compactLayout" :data-trash-active="trashActive" role="status" aria-live="polite">
 				<div :class="$style.dragHint"><i class="ti ti-arrows-move" aria-hidden="true"></i><span>{{ labels.dragHint }}</span></div>
 				<div :class="$style.trashTarget" data-calendar-trash @dragover.prevent="trashActive = true" @dragleave="trashActive = false" @drop="dropOnTrash">
 					<i class="ti ti-trash" aria-hidden="true"></i><span>{{ labels.trashHint }}</span>
@@ -305,11 +315,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <script lang="ts" setup>
 import { computed, defineComponent, h, nextTick, onBeforeUnmount, onMounted, ref, useCssModule, watch } from 'vue';
-import type { HataskCalendarDay, HataskCalendarEvent, HataskCalendarLabels, HataskCalendarNavigation, HataskCalendarView, HataskCalendarWeekday, HataskPlannerFilter, HataskPlannerTheme } from './hatask-planner-types.js';
+import type { HataskCalendarBlankTarget, HataskCalendarDay, HataskCalendarEvent, HataskCalendarLabels, HataskCalendarNavigation, HataskCalendarView, HataskCalendarWeekday, HataskPlannerFilter, HataskPlannerTheme } from './hatask-planner-types.js';
 import HataskEmoji from '@/components/HataskEmoji.vue';
 
 const props = withDefaults(defineProps<{
 	theme?: HataskPlannerTheme;
+	colorMode?: 'light' | 'dark';
 	view: HataskCalendarView;
 	title: string;
 	weekdays: HataskCalendarWeekday[];
@@ -321,6 +332,7 @@ const props = withDefaults(defineProps<{
 	maxEventsPerDay?: number;
 }>(), {
 	theme: undefined,
+	colorMode: undefined,
 	filters: () => [],
 	loading: false,
 	readOnly: false,
@@ -332,7 +344,8 @@ const emit = defineEmits<{
 	(ev: 'navigate', direction: HataskCalendarNavigation): void;
 	(ev: 'select-date', day: HataskCalendarDay): void;
 	(ev: 'toggle-filter', filterId: string): void;
-	(ev: 'activate-event', event: HataskCalendarEvent, day: HataskCalendarDay): void;
+	(ev: 'activate-event', event: HataskCalendarEvent, day: HataskCalendarDay, anchor: HTMLElement | null): void;
+	(ev: 'activate-blank', target: HataskCalendarBlankTarget): void;
 	(ev: 'edit-event', event: HataskCalendarEvent, day: HataskCalendarDay): void;
 	(ev: 'show-more', day: HataskCalendarDay): void;
 	(ev: 'drop-event', event: HataskCalendarEvent, day: HataskCalendarDay, time?: string): void;
@@ -371,6 +384,7 @@ let pointerLongPressTimer: number | null = null;
 let pointerOrigin: { x: number; y: number } | null = null;
 let pointerDragActive = false;
 let suppressedClickEventId: string | null = null;
+let suppressBlankClickUntil = 0;
 let layoutObserver: ResizeObserver | null = null;
 const componentState = computed(() => props.loading ? 'loading' : props.readOnly ? 'read-only' : props.days.length === 0 ? 'empty' : 'ready');
 const timelineHours = Array.from({ length: 25 }, (_, hour) => hour);
@@ -438,7 +452,10 @@ function dropOnTrash(dragEvent: DragEvent): void {
 
 function clearDragOver(date: string): void { if (dragOverDate.value === date) dragOverDate.value = null; }
 
-function finishDrag(): void { draggingEvent.value = null; dragOverDate.value = null; dragOverTime.value = undefined; trashActive.value = false; }
+function finishDrag(): void {
+	if (draggingEvent.value != null || pointerDragActive) suppressBlankClickUntil = performance.now() + 360;
+	draggingEvent.value = null; dragOverDate.value = null; dragOverTime.value = undefined; trashActive.value = false;
+}
 
 function cancelPointerCandidate(): void {
 	if (pointerLongPressTimer != null) window.clearTimeout(pointerLongPressTimer);
@@ -499,9 +516,50 @@ function onGlobalPointerCancel(): void {
 	finishDrag();
 }
 
-function activateEvent(event: HataskCalendarEvent, day: HataskCalendarDay): void {
+function activateEvent(event: HataskCalendarEvent, day: HataskCalendarDay, clickEvent: MouseEvent): void {
 	if (suppressedClickEventId === event.id) return;
-	emit('activate-event', event, day);
+	emit('activate-event', event, day, clickEvent.currentTarget instanceof HTMLElement ? clickEvent.currentTarget : null);
+}
+
+function canOpenBlank(day: HataskCalendarDay): boolean { return !props.readOnly && !props.loading && !day.isDisabled; }
+
+function opensDayActions(day: HataskCalendarDay): boolean { return canOpenBlank(day) && day.events.length === 0; }
+
+function dayActionLabel(day: HataskCalendarDay): string { return opensDayActions(day) ? (props.labels.openDayActions ?? props.labels.selectDate)(day.label) : props.labels.selectDate(day.label); }
+
+function blankClickSuppressed(): boolean { return draggingEvent.value != null || pointerDragActive || performance.now() < suppressBlankClickUntil; }
+
+function activateDayButton(day: HataskCalendarDay, clickEvent: MouseEvent): void {
+	if (day.isDisabled || props.loading || clickEvent.defaultPrevented || blankClickSuppressed()) return;
+	if (!opensDayActions(day)) { selectDay(day); return; }
+	if (!(clickEvent.currentTarget instanceof HTMLElement)) return;
+	setFocusedDay(day);
+	emit('activate-blank', { day, anchor: clickEvent.currentTarget });
+}
+
+function activateBlankSurface(day: HataskCalendarDay, clickEvent: MouseEvent): void {
+	if (!canOpenBlank(day) || clickEvent.defaultPrevented || blankClickSuppressed()) return;
+	const holder = clickEvent.currentTarget;
+	const target = clickEvent.target;
+	if (!(holder instanceof HTMLElement) || !(target instanceof Element)) return;
+	const control = target.closest('button, a, input, select, textarea, [contenteditable], [role="button"], [data-calendar-event], [data-calendar-no-drag], [draggable]');
+	if (control && holder.contains(control)) return;
+	const canvas = target.closest<HTMLElement>('[data-calendar-time-canvas]');
+	const anchor = canvas && holder.contains(canvas) ? canvas : holder;
+	if (canvas) {
+		// Treat the rendered event box (including its padding) as occupied time.
+		const occupied = [...canvas.querySelectorAll<HTMLElement>('[data-calendar-event]')].some(element => {
+			const rect = element.getBoundingClientRect();
+			return rect.width > 0 && rect.height > 0 && clickEvent.clientX >= rect.left && clickEvent.clientX < rect.right && clickEvent.clientY >= rect.top && clickEvent.clientY < rect.bottom;
+		});
+		if (occupied) return;
+	}
+	const rect = anchor.getBoundingClientRect();
+	const ratio = (position: number, start: number, size: number): number => size > 0 ? Math.max(0, Math.min(1, (position - start) / size)) : .5;
+	const point = { x: ratio(clickEvent.clientX, rect.left, rect.width), y: ratio(clickEvent.clientY, rect.top, rect.height) };
+	const time = canvas ? timeAtPoint(clickEvent.clientY, target) : undefined;
+	setFocusedDay(day);
+	emit('activate-blank', { day, anchor, point, ...(time ? { time } : {}) });
 }
 
 function clockMinutes(value: string | undefined, fallback: number): number {
@@ -674,7 +732,7 @@ const CalendarEventRow = defineComponent({
 				type: 'button',
 				class: styles.eventMain,
 				'aria-label': rowProps.labels.openEvent(rowProps.event.title),
-				onClick: () => rowEmit('activate'),
+				onClick: (clickEvent: MouseEvent) => rowEmit('activate', clickEvent),
 			}, [
 				rowProps.event.emoji ? h(HataskEmoji, { emoji: rowProps.event.emoji }) : h('span', { class: styles.eventMarker, 'aria-hidden': 'true' }),
 				h('span', { class: styles.eventBody }, [
@@ -1237,6 +1295,15 @@ const CalendarEventRow = defineComponent({
 	text-align: center;
 }
 
+.monthDay[data-blank-action='true'],
+.timelineDay[data-blank-action='true'],
+.agendaDay[data-blank-action='true'],
+.selectedAgenda[data-blank-action='true'] { cursor: pointer; }
+
+.blankButton { width: 100%; min-height: 44px; border: 1px dashed var(--rule); border-radius: var(--card-radius, 12px); background: transparent; font-family: inherit; cursor: pointer; }
+.blankButton:hover { background: var(--fill); }
+.blankButton:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
 .agenda {
 	display: grid;
 	gap: 12px;
@@ -1565,4 +1632,39 @@ button:active:not(:disabled) {
 		transition-duration: .01ms !important;
 	}
 }
+/* 暁では親の明暗トークンを継承し、操作色には可読性を確保した ink を使う。 */
+.root[data-hatask-theme='akatsuki'] {
+	--accent: var(--accent-ink);
+	--fg-3: var(--fg-2);
+	--card-radius: 24px;
+	--card-border: 1px solid var(--rule);
+	--card-shadow: var(--shadow, none);
+}
+.root[data-hatask-theme='akatsuki'] .header { padding: 20px; }
+.root[data-hatask-theme='akatsuki'] .monthDay { background: color-mix(in srgb, var(--surface) 92%, transparent); }
+.root[data-hatask-theme='akatsuki'] .monthDay[data-selected='true'] { background: color-mix(in srgb, var(--accent) 8%, var(--surface)); }
+.root[data-hatask-theme='akatsuki'] .monthEvent,
+.root[data-hatask-theme='akatsuki'] .moreButton,
+.root[data-hatask-theme='akatsuki'] .allDayLane > span,
+.root[data-hatask-theme='akatsuki'] .hourLine span,
+.root[data-hatask-theme='akatsuki'] .timelineEvent > button strong,
+.root[data-hatask-theme='akatsuki'] .timelineEvent > button span,
+.root[data-hatask-theme='akatsuki'] .selectedAgenda > header span { font-size: max(11px, .7rem); }
+/* Teleport 先は親の CSS 変数を継承できないため、選択中の明暗を明示する。 */
+.dragDock[data-hatask-theme='akatsuki'] {
+	--dock-surface: #fff7f2;
+	--dock-fg: #2b1f2c;
+	--dock-accent: #b02e56;
+	color-scheme: light;
+	border-radius: 24px;
+	background: var(--dock-surface);
+	font-family: 'Zen Kaku Gothic New', sans-serif;
+}
+.dragDock[data-hatask-theme='akatsuki'][data-hatask-mode='dark'] {
+	--dock-surface: #1b1424;
+	--dock-fg: #f6ecf3;
+	--dock-accent: #ff7fa3;
+	color-scheme: dark;
+}
+.dragDock[data-hatask-theme='akatsuki'] .dragHint { color: color-mix(in srgb, var(--dock-fg) 85%, var(--dock-surface)); font-size: max(11px, .72rem); }
 </style>

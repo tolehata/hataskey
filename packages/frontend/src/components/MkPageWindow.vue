@@ -117,6 +117,7 @@ windowRouter.addListener('change', ctx => {
 windowRouter.init();
 
 provide(DI.router, windowRouter);
+provide(DI.pageWindowClose, close);
 provide(DI.inAppSearchMarkerId, searchMarkerId);
 provideMetadataReceiver((metadataGetter) => {
 	const info = metadataGetter();
