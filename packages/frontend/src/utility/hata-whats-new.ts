@@ -6,7 +6,7 @@
  * 実装用語や開発中だけの不具合は載せない。
  * 最新版・直前の修正版・それ以前の修正版・メイン版を分け、同じ系列の案内も残す。
  * 文言は共通localeの _hata._whatsNew を使う。
- * hata-12.5.3の案内。versionはpackage.jsonと同時に更新する。
+ * hata-12.5.4の案内。versionはpackage.jsonと同時に更新する。
  * 本番への公開済み判定には使わない。表示済みの記録は窓を閉じたときに行う。
  */
 
@@ -56,12 +56,25 @@ export function getHataWhatsNewDisplayVersion(version: string): string {
 }
 
 export const HATA_WHATS_NEW: HataWhatsNew = {
-	version: '2026.7.0-hata.12.5.3',
+	version: '2026.9.0-hata.12.5.4',
 	releases: [
 		{
 			id: 'latestRelease',
-			version: '2026.7.0-hata.12.5.3',
+			version: '2026.9.0-hata.12.5.4',
 			headline: copy.latestHeadline,
+			items: [
+				{
+					icon: 'ti ti-photo-video',
+					preview: 'dailyPolish',
+					title: copy.upstreamUpdateTitle,
+					text: copy.upstreamUpdateText,
+				},
+			],
+		},
+		{
+			id: 'currentRelease',
+			version: '2026.7.0-hata.12.5.3',
+			headline: copy.currentHeadline,
 			items: [
 				{
 					icon: 'ti ti-sunrise',
@@ -88,9 +101,9 @@ export const HATA_WHATS_NEW: HataWhatsNew = {
 			],
 		},
 		{
-			id: 'currentRelease',
+			id: 'previousRelease',
 			version: '2026.7.0-hata.12.5.2',
-			headline: copy.currentHeadline,
+			headline: copy.previousHeadline,
 			items: [
 				{
 					icon: 'ti ti-trophy',
@@ -115,42 +128,6 @@ export const HATA_WHATS_NEW: HataWhatsNew = {
 					preview: 'timelineCollapse',
 					title: copy.timelineCollapseTitle,
 					text: copy.timelineCollapseText,
-				},
-			],
-		},
-		{
-			id: 'previousRelease',
-			version: '2026.7.0-hata.12.5.1',
-			headline: copy.previousHeadline,
-			items: [
-				{
-					icon: 'ti ti-device-mobile-check',
-					preview: 'hataskPlanner',
-					title: copy.hataskMobileTitle,
-					text: copy.hataskMobileText,
-					to: '/hatask',
-					linkLabel: copy.hataskLink,
-				},
-				{
-					icon: 'ti ti-send',
-					preview: 'dailyPolish',
-					title: copy.postComposerTitle,
-					text: copy.postComposerText,
-				},
-				{
-					icon: 'ti ti-language-hiragana',
-					preview: 'welcomeRenewal',
-					title: copy.serverNameTitle,
-					text: copy.serverNameText,
-				},
-				{
-					icon: 'ti ti-plug-connected',
-					preview: 'externalAccount',
-					previewLabel: 'mk-juice.dev',
-					title: copy.externalJuiceTitle,
-					text: copy.externalJuiceText,
-					to: '/settings/external-account',
-					linkLabel: copy.externalLink,
 				},
 			],
 		},

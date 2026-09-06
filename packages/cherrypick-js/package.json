@@ -2,7 +2,7 @@
 	"type": "module",
 	"name": "cherrypick-js",
 	"version": "11.4.0",
-	"basedMisskeyVersion": "2026.7.0",
+	"basedMisskeyVersion": "2026.9.0",
 	"description": "Hataskey SDK for JavaScript",
 	"license": "MIT",
 	"main": "./built/index.js",

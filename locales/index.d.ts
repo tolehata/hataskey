@@ -29175,11 +29175,19 @@ export interface Locale extends ILocale {
             };
             "_content": {
                 /**
-                 * Hataskを新デザイン「暁」へ。予定や日々の記録を、見やすく使いやすく整えました
+                 * Misskey 2026.9.0へ更新し、メディア表示と安全性を改善しました
                  */
                 "latestHeadline": string;
                 /**
-                 * 投稿まわりとスマートフォン表示を、より使いやすく整えました
+                 * 音声・画像ビューアーと日々の操作を改善
+                 */
+                "upstreamUpdateTitle": string;
+                /**
+                 * 音声を画像・動画と同じビューアーで再生でき、音に合わせた表示も楽しめます。画像にはピクセルアート向けの拡大を追加し、一覧で解除したぼかしも引き継ぎます。通知の位置やリアクションの並び順、リストの人数表示を修正しました。認証と非公開の投稿を守る処理を強化し、絵文字の一括インポートは管理者だけが実行できるようになりました。
+                 */
+                "upstreamUpdateText": string;
+                /**
+                 * 宴に新しい実績を加え、外部タイムラインとHataskey UIをさらに楽しめるようにしました
                  */
                 "previousHeadline": string;
                 /**
@@ -29239,7 +29247,7 @@ export interface Locale extends ILocale {
                  */
                 "timelineCollapseText": string;
                 /**
-                 * 宴に新しい実績を加え、外部タイムラインとHataskey UIをさらに楽しめるようにしました
+                 * Hataskを新デザイン「暁」へ。予定や日々の記録を、見やすく使いやすく整えました
                  */
                 "currentHeadline": string;
                 /**

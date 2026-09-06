@@ -1,7 +1,7 @@
 {
 	"name": "hataskey-hata",
-	"version": "2026.7.0-hata.12.5.3",
-	"basedMisskeyVersion": "2026.7.0",
+	"version": "2026.9.0-hata.12.5.4",
+	"basedMisskeyVersion": "2026.9.0",
 	"codename": "2026.10",
 	"repository": {
 		"type": "git",

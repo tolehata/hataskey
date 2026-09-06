@@ -334,7 +334,7 @@ describe('更新内容の4リリース切替（実SFC）', () => {
 	test('4タブの版番号・選択状態と各リリースの全項目を切り替えられる', async () => {
 		const { container, buttons, scrollTo } = await mountGuide();
 		expect(buttons).toHaveLength(4);
-		expect(buttons.map(button => button.querySelector('small')?.textContent)).toEqual(['hata-12.5.3', 'hata-12.5.2', 'hata-12.5.1', 'hata-12.5']);
+		expect(buttons.map(button => button.querySelector('small')?.textContent)).toEqual(['hata-12.5.4', 'hata-12.5.3', 'hata-12.5.2', 'hata-12.5']);
 		expect(buttons.map(button => button.getAttribute('aria-pressed'))).toEqual(['true', 'false', 'false', 'false']);
 		for (const button of buttons) expect(button.querySelector('span')?.textContent.trim()).toBeTruthy();
 		for (const index of [2, 1, 3, 0]) {
@@ -360,6 +360,7 @@ describe('更新内容の4リリース切替（実SFC）', () => {
 
 	test('復元したリリースでもカルーセルを先頭へ戻し、同じプレビューを世代別に一度だけ動かす', async () => {
 		const { container, buttons, viewport } = await mountGuide();
+		await select(buttons, 1);
 		for (const [index, item] of [...viewport.children].entries()) Object.defineProperty(item, 'offsetLeft', { configurable: true, value: index * 320 });
 		const next = container.querySelector<HTMLButtonElement>('nav > button:last-child');
 		if (!next) throw new Error('Carousel next button did not mount');
@@ -368,19 +369,19 @@ describe('更新内容の4リリース切替（実SFC）', () => {
 		expect(container.querySelector('nav > span')?.textContent).toBe('2 / 3');
 		showActivePreviews();
 		await nextTick();
-		expect(container.querySelector<HTMLElement>('[data-preview-key="latestRelease:hataskPlanner"]')?.dataset.previewState).toBe('running');
-		await select(buttons, 2);
-		expect(container.querySelector('nav > span')?.textContent).toBe('1 / 4');
-		expect(container.querySelector<HTMLElement>('[data-preview-key="previousRelease:hataskPlanner"]')?.dataset.previewState).toBe('ready');
+		expect(container.querySelector<HTMLElement>('[data-preview-key="currentRelease:hataskPlanner"]')?.dataset.previewState).toBe('running');
+		await select(buttons, 3);
+		expect(container.querySelector('nav > span')?.textContent).toBe('1 / 7');
+		expect(container.querySelector<HTMLElement>('[data-preview-key="mainRelease:hataskPlanner"]')?.dataset.previewState).toBe('ready');
 		showActivePreviews();
 		await nextTick();
-		expect(container.querySelector<HTMLElement>('[data-preview-key="previousRelease:hataskPlanner"]')?.dataset.previewState).toBe('running');
-		await select(buttons, 0);
-		expect(container.querySelector<HTMLElement>('[data-preview-key="latestRelease:hataskPlanner"]')?.dataset.previewState).toBe('complete');
-		await select(buttons, 2);
+		expect(container.querySelector<HTMLElement>('[data-preview-key="mainRelease:hataskPlanner"]')?.dataset.previewState).toBe('running');
+		await select(buttons, 1);
+		expect(container.querySelector<HTMLElement>('[data-preview-key="currentRelease:hataskPlanner"]')?.dataset.previewState).toBe('complete');
+		await select(buttons, 3);
 		showActivePreviews();
 		await nextTick();
-		expect(container.querySelector<HTMLElement>('[data-preview-key="previousRelease:hataskPlanner"]')?.dataset.previewState).toBe('complete');
+		expect(container.querySelector<HTMLElement>('[data-preview-key="mainRelease:hataskPlanner"]')?.dataset.previewState).toBe('complete');
 	});
 
 	test('動きを減らす設定では復元したリリースも最初から完成形で表示する', async () => {

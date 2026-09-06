@@ -20,9 +20,9 @@ vi.mock('@/i18n.js', async () => {
 });
 
 const root = path.resolve(process.cwd(), '../..');
-const latestPreviews = ['hataskPlanner', 'hataskGarden', 'dailyPolish'];
-const currentPreviews = ['utageAchievements', 'externalSidebar', 'externalTimeline', 'timelineCollapse'];
-const previousPreviews = ['hataskPlanner', 'dailyPolish', 'welcomeRenewal', 'externalAccount'];
+const latestPreviews = ['dailyPolish'];
+const currentPreviews = ['hataskPlanner', 'hataskGarden', 'dailyPolish'];
+const previousPreviews = ['utageAchievements', 'externalSidebar', 'externalTimeline', 'timelineCollapse'];
 const mainPreviews = ['hataskPlanner', 'hataskGarden', 'externalAccount', 'welcomeRenewal', 'serverChoice', 'gameFarewell', 'dailyPolish'];
 const oldPreviews = new Set([
 	'branding', 'settingsRenewal', 'hatadyRecord', 'hatadyVisibility', 'hatacordingFix',
@@ -42,6 +42,10 @@ describe('HATA_WHATS_NEW', () => {
 	test('表示済み判定の版をpackage.jsonと一致させる', () => {
 		const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
 		expect(HATA_WHATS_NEW.version).toBe(pkg.version);
+		expect(pkg.basedMisskeyVersion).toBe('2026.9.0');
+		const sdk = JSON.parse(fs.readFileSync(path.join(root, 'packages/cherrypick-js/package.json'), 'utf8'));
+		expect(sdk.basedMisskeyVersion).toBe(pkg.basedMisskeyVersion);
+		expect(getHataWhatsNewDisplayVersion('2026.9.0-hata.12.5.4')).toBe('hata-12.5.4');
 		expect(getHataWhatsNewDisplayVersion('2026.7.0-hata.12.5.3')).toBe('hata-12.5.3');
 		expect(getHataWhatsNewDisplayVersion('2026.7.0-hata.12.5.2')).toBe('hata-12.5.2');
 		expect(getHataWhatsNewDisplayVersion('2026.7.0-hata.12.5.1')).toBe('hata-12.5.1');
@@ -58,14 +62,14 @@ describe('HATA_WHATS_NEW', () => {
 		expect(firstRelease(changelog.replace(`## ${version}`, '## hata-0.0'))).not.toBe(version);
 		expect(firstRelease(changelog)).toBe(version);
 		expect(readme).toContain(`**最新リリース**: [${version}](https://github.com/tolehata/hataskey/releases/tag/${version})`);
-		for (const historical of ['hata-12.5.2', 'hata-12.5.1', 'hata-12.5']) expect(changelog).toContain(`## ${historical}\n`);
+		for (const historical of ['hata-12.5.3', 'hata-12.5.2', 'hata-12.5.1', 'hata-12.5']) expect(changelog).toContain(`## ${historical}\n`);
 	});
 
 	test('最新版から修正版2世代とメイン版まで4リリースを新しい順に残す', () => {
 		expect(HATA_WHATS_NEW.releases.map(release => release.id)).toEqual(['latestRelease', 'currentRelease', 'previousRelease', 'mainRelease']);
-		expect(getHataWhatsNewDisplayVersion(latestRelease.version)).toBe('hata-12.5.3');
-		expect(getHataWhatsNewDisplayVersion(currentRelease.version)).toBe('hata-12.5.2');
-		expect(getHataWhatsNewDisplayVersion(previousRelease.version)).toBe('hata-12.5.1');
+		expect(getHataWhatsNewDisplayVersion(latestRelease.version)).toBe('hata-12.5.4');
+		expect(getHataWhatsNewDisplayVersion(currentRelease.version)).toBe('hata-12.5.3');
+		expect(getHataWhatsNewDisplayVersion(previousRelease.version)).toBe('hata-12.5.2');
 		expect(getHataWhatsNewDisplayVersion(mainRelease.version)).toBe('hata-12.5');
 		expect(latestRelease.items.map(item => item.preview)).toEqual(latestPreviews);
 		expect(currentRelease.items.map(item => item.preview)).toEqual(currentPreviews);
@@ -76,20 +80,17 @@ describe('HATA_WHATS_NEW', () => {
 		}
 	});
 
-	test('hata-12.5.1の4項目は元の文言・プレビュー・リンクで復元する', () => {
-		const copy = locales[0].copy;
-		expect(previousRelease.headline).toBe('投稿まわりとスマートフォン表示を、より使いやすく整えました');
-		expect(previousRelease.items).toEqual([
-			{ icon: 'ti ti-device-mobile-check', preview: 'hataskPlanner', title: copy.hataskMobileTitle, text: copy.hataskMobileText, to: '/hatask', linkLabel: copy.hataskLink },
-			{ icon: 'ti ti-send', preview: 'dailyPolish', title: copy.postComposerTitle, text: copy.postComposerText },
-			{ icon: 'ti ti-language-hiragana', preview: 'welcomeRenewal', title: copy.serverNameTitle, text: copy.serverNameText },
-			{ icon: 'ti ti-plug-connected', preview: 'externalAccount', previewLabel: 'mk-juice.dev', title: copy.externalJuiceTitle, text: copy.externalJuiceText, to: '/settings/external-account', linkLabel: copy.externalLink },
-		]);
+	test('hata-12.5.4ではメディア表示と利用者に関係する安全性の変更を案内する', () => {
+		expect(latestRelease.items).toHaveLength(1);
+		expect(latestRelease.headline).toContain('Misskey 2026.9.0');
+		const item = latestRelease.items[0];
+		for (const word of ['音声', 'ピクセルアート', 'ぼかし', '通知', 'リアクション', '認証', '管理者']) expect(item.text).toContain(word);
+		expect(item.to).toBeUndefined();
 	});
 
-	test('直前のhata-12.5.2の4領域を残す', () => {
-		expect(currentRelease.items).toHaveLength(4);
-		const [utage, sidebar, timeline, collapse] = currentRelease.items;
+	test('2世代前のhata-12.5.2の4領域を残す', () => {
+		expect(previousRelease.items).toHaveLength(4);
+		const [utage, sidebar, timeline, collapse] = previousRelease.items;
 		expect(utage.title).toContain('21個');
 		for (const word of ['10回', '100回', '5秒', 'この更新後']) expect(utage.text).toContain(word);
 		for (const word of ['通常のサイドバー編集', 'HataSideStudio', 'ドラッグ', '保存位置']) expect(sidebar.text).toContain(word);
@@ -115,9 +116,9 @@ describe('HATA_WHATS_NEW', () => {
 		for (const word of ['みんなのお花', '花言葉', 'フォロワー', '自分のみ']) expect(garden.text).toContain(word);
 	});
 
-	test('最新のhata-12.5.3には暁・予定詳細・操作改善を案内する', () => {
-		expect(latestRelease.items).toHaveLength(3);
-		const [akatsuki, details, polish] = latestRelease.items;
+	test('直前のhata-12.5.3には暁・予定詳細・操作改善を案内する', () => {
+		expect(currentRelease.items).toHaveLength(3);
+		const [akatsuki, details, polish] = currentRelease.items;
 		expect(akatsuki.title).toContain('暁');
 		for (const word of ['3ペイン', '時間帯', 'ドラッグ', '扉をくぐる文字アニメーション', '今のテーマ', 'これまでのテーマ', '保存した予定・ToDo']) expect(akatsuki.text).toContain(word);
 		for (const word of ['吹き出し', 'スマートフォン', '作成・コピー・移動', 'N', 'O']) expect(details.text).toContain(word);
@@ -177,7 +178,7 @@ describe('HATA_WHATS_NEW', () => {
 
 	test.each(locales)('$langの新しい見出し・本文・リンクがすべて揃う', ({ copy, windowCopy }) => {
 		const expectedKeys = [
-			'latestHeadline', 'currentHeadline', 'previousHeadline', 'mainHeadline', 'hataskLink', 'externalLink', 'footerText', 'footerLink',
+			'latestHeadline', 'currentHeadline', 'previousHeadline', 'mainHeadline', 'upstreamUpdateTitle', 'upstreamUpdateText', 'hataskLink', 'externalLink', 'footerText', 'footerLink',
 			'hataskAkatsukiTitle', 'hataskAkatsukiText', 'hataskDetailsTitle', 'hataskDetailsText', 'hataskPolishTitle', 'hataskPolishText',
 			'utageAchievementsTitle', 'utageAchievementsText', 'externalSidebarTitle', 'externalSidebarText',
 			'externalTimelineTitle', 'externalTimelineText', 'timelineCollapseTitle', 'timelineCollapseText',
