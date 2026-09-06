@@ -6,6 +6,7 @@
 import { Injectable } from '@nestjs/common';
 import { bindThis } from '@/decorators.js';
 import type { JsonObject } from '@/misc/json-value.js';
+import type { EventTypesToEventPayload, AdminEventTypes } from '@/core/GlobalEventService.js';
 import Channel, { type MiChannelService } from '../channel.js';
 
 class AdminChannel extends Channel {
@@ -17,9 +18,17 @@ class AdminChannel extends Channel {
 	@bindThis
 	public async init(params: JsonObject) {
 		// Subscribe admin stream
-		this.subscriber.on(`adminStream:${this.user!.id}`, data => {
-			this.send(data);
-		});
+		this.subscriber.on(`adminStream:${this.user!.id}`, this.onData);
+	}
+
+	@bindThis
+	private async onData(data: EventTypesToEventPayload<AdminEventTypes>) {
+		this.send(data);
+	}
+
+	@bindThis
+	public dispose() {
+		this.subscriber.off(`adminStream:${this.user?.id}`, this.onData);
 	}
 }
 

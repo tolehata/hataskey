@@ -1,4 +1,6 @@
 ---
+pixelatedZoom: "Pixalated Zoom"
+cannotPreview: "Could not preview"
 _lang_: "English"
 compareContent: "Compare content"
 editHistory: "Edit history"
@@ -3527,6 +3529,9 @@ _urlPreviewSetting:
   summaryProxyDescription: "Not CherryPick itself, but generate previews using Summaly Proxy."
   summaryProxyDescription2: "The following parameters are linked to the proxy as a query string. If the proxy does not support them, the values are ignored."
 _mediaControls:
+  playbackPosition: "Playback position"
+  play: "Play"
+  pause: "Pause"
   pip: "Picture in Picture"
   playbackRate: "Playback Speed"
   loop: "Loop playback"

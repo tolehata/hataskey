@@ -133,7 +133,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 							</div>
 						</div>
 						<div v-if="appearNote.files && appearNote.files.length > 0" style="margin-top: 8px;">
-							<MkMediaList ref="galleryEl" :mediaList="appearNote.files" :disableRightClick="appearNote.disableRightClick" @click.stop @contextmenu="disableRightClickHandler"/>
+							<MkMediaList ref="galleryEl" :mediaList="appearNote.files" :user="appearNote.user" :disableRightClick="appearNote.disableRightClick" @click.stop @contextmenu="disableRightClickHandler"/>
 						</div>
 						<MkPoll
 							v-if="appearNote.poll"
@@ -209,7 +209,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					</div>
 				</div>
 				<div v-if="appearNote.files && appearNote.files.length > 0">
-					<MkMediaList ref="galleryEl" :mediaList="appearNote.files" :disableRightClick="appearNote.disableRightClick" @click.stop @contextmenu="disableRightClickHandler"/>
+					<MkMediaList ref="galleryEl" :mediaList="appearNote.files" :user="appearNote.user" :disableRightClick="appearNote.disableRightClick" @click.stop @contextmenu="disableRightClickHandler"/>
 				</div>
 				<MkPoll
 					v-if="appearNote.poll"
@@ -384,7 +384,7 @@ import { userPage } from '@/filters/user.js';
 import number from '@/filters/number.js';
 import * as os from '@/os.js';
 import * as sound from '@/utility/sound.js';
-import { misskeyApi, misskeyApiGet } from '@/utility/misskey-api.js';
+import { misskeyApi } from '@/utility/misskey-api.js';
 import { reactionPicker } from '@/utility/reaction-picker.js';
 import { extractUrlFromMfm } from '@/utility/extract-url-from-mfm.js';
 import { $i } from '@/i.js';
@@ -478,6 +478,7 @@ if (noteViewInterruptors.length > 0) {
 	for (const interruptor of noteViewInterruptors) {
 		try {
 			result = interruptor.handler(result!) as Misskey.entities.Note | null;
+			if (result == null) break;
 		} catch (err) {
 			console.error(err);
 		}
@@ -769,10 +770,9 @@ if (!props.mock) {
 
 	if (appearNote.reactionAcceptance === 'likeOnly') {
 		useTooltip(reactButton, async (showing) => {
-			const reactions = await misskeyApiGet('notes/reactions', {
+			const reactions = await misskeyApi('notes/reactions', {
 				noteId: appearNote.id,
 				limit: 10,
-				_cacheKey_: $appearNote.reactionCount,
 			});
 
 			const users = reactions.map(x => x.user);
@@ -827,6 +827,7 @@ function openUserPanel(userId: string) {
 		});
 	}
 }
+
 function onAvatarClick() {
 	openUserPanel(appearNote.userId);
 }
@@ -1511,7 +1512,6 @@ function emitUpdReaction(emoji: string, delta: number) {
 	color: var(--MI_THEME-success);
 }
 /* C7 宴明滅機能ここまで */
-
 
 .colorBar {
 	position: absolute;

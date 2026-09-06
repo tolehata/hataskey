@@ -159,7 +159,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<button class="_button" style="padding: 5px 0; color: var(--MI_THEME-accent);" @click="viewTextSource = false"><small>{{ i18n.ts.close }}</small></button>
 				</div>
 				<div v-if="appearNote.files && appearNote.files.length > 0">
-					<MkMediaList ref="galleryEl" :mediaList="appearNote.files" :disableRightClick="appearNote.disableRightClick" @contextmenu="disableRightClickHandler"/>
+					<MkMediaList ref="galleryEl" :mediaList="appearNote.files" :user="appearNote.user" :disableRightClick="appearNote.disableRightClick" @contextmenu="disableRightClickHandler"/>
 				</div>
 				<MkPoll
 					v-if="appearNote.poll"
@@ -359,7 +359,7 @@ import { userPage } from '@/filters/user.js';
 import { notePage } from '@/filters/note.js';
 import number from '@/filters/number.js';
 import * as os from '@/os.js';
-import { misskeyApi, misskeyApiGet } from '@/utility/misskey-api.js';
+import { misskeyApi } from '@/utility/misskey-api.js';
 import * as sound from '@/utility/sound.js';
 import { reactionPicker } from '@/utility/reaction-picker.js';
 import { extractUrlFromMfm } from '@/utility/extract-url-from-mfm.js';
@@ -415,6 +415,7 @@ if (noteViewInterruptors.length > 0) {
 	for (const interruptor of noteViewInterruptors) {
 		try {
 			result = interruptor.handler(result!) as Misskey.entities.Note | null;
+			if (result == null) break;
 		} catch (err) {
 			console.error(err);
 		}
@@ -548,10 +549,9 @@ useTooltip(renoteButton, async (showing) => {
 
 if (appearNote.reactionAcceptance === 'likeOnly') {
 	useTooltip(reactButton, async (showing) => {
-		const reactions = await misskeyApiGet('notes/reactions', {
+		const reactions = await misskeyApi('notes/reactions', {
 			noteId: appearNote.id,
 			limit: 10,
-			_cacheKey_: $appearNote.reactionCount,
 		});
 
 		const users = reactions.map(x => x.user);

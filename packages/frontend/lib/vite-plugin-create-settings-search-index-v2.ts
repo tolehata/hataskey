@@ -803,6 +803,8 @@ function explicitStorageDispositionsV2(): ReadonlyMap<string, ExplicitStorageKey
 
 	// Preference registry. These reviewed lists are the final classification;
 	// source text is not used as a fallback classifier.
+	add('preference', keys('enableCondensedLine'), 'deprecated',
+		'2026.9.0で設定UIを廃止。保存済みプロファイルを読むために残す互換定義', ['src/preferences/def.ts']);
 	add('preference', keys('aiChanMode useSimpleTL simpleTLLastListId'), 'deprecated',
 		'現行UI・runtimeに接続しない旧互換 preference 定義', ['src/preferences/def.ts']);
 	add('preference', keys('hata.mutedReactionsNoticeShown'), 'deprecated',

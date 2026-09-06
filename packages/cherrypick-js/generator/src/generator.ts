@@ -57,7 +57,7 @@ async function generateBaseTypes(
 
 	const filteredAst = removeNeverPropertiesFromAST(generatedTypesAst);
 
-	lines.push(astToString(filteredAst));
+	lines.push(astToString(filteredAst).trimEnd());
 
 	lines.push('');
 

@@ -70,14 +70,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 		:is="prefer.s.animation ? TransitionGroup : 'div'"
 		v-if="!notificationToastsSuppressed"
 	tag="div"
-	:class="[$style.notifications, {
-		[$style.notificationsPosition_leftTop]: prefer.s.notificationPosition === 'leftTop',
-		[$style.notificationsPosition_leftBottom]: prefer.s.notificationPosition === 'leftBottom',
-		[$style.notificationsPosition_rightTop]: prefer.s.notificationPosition === 'rightTop',
-		[$style.notificationsPosition_rightBottom]: prefer.s.notificationPosition === 'rightBottom',
-		[$style.notificationsStackAxis_vertical]: prefer.s.notificationStackAxis === 'vertical',
-		[$style.notificationsStackAxis_horizontal]: prefer.s.notificationStackAxis === 'horizontal',
-	}]"
+	:class="$style.notifications"
+	:data-position="prefer.s.notificationPosition"
+	:data-stack-axis="prefer.s.notificationStackAxis"
 	:moveClass="$style.transition_notification_move"
 	:enterActiveClass="$style.transition_notification_enterActive"
 	:leaveActiveClass="$style.transition_notification_leaveActive"
@@ -259,11 +254,11 @@ if ($i) {
 }
 .transition_notification_enterFrom {
 	opacity: 0;
-	transform: translateX(250px);
+	transform: translateX(var(--notificationSlideOffset, 250px));
 }
 .transition_notification_leaveTo {
 	opacity: 0;
-	transform: translateX(-250px);
+	transform: translateX(calc(-1 * var(--notificationSlideOffset, 250px)));
 }
 
 .menuDrawerBg {
@@ -315,31 +310,41 @@ if ($i) {
 	pointer-events: none;
 	display: flex;
 
-	&.notificationsPosition_leftTop {
+	&[data-position='rightTop'],
+	&[data-position='rightBottom'] {
+		--notificationSlideOffset: 250px;
+	}
+
+	&[data-position='leftTop'],
+	&[data-position='leftBottom'] {
+		--notificationSlideOffset: -250px;
+	}
+
+	&[data-position='leftTop'] {
 		top: var(--MI-margin);
 		left: 0;
 	}
 
-	&.notificationsPosition_rightTop {
+	&[data-position='rightTop'] {
 		top: var(--MI-margin);
 		right: 0;
 	}
 
-	&.notificationsPosition_leftBottom {
+	&[data-position='leftBottom'] {
 		bottom: calc(var(--MI-minBottomSpacing) + var(--MI-margin));
 		left: 0;
 	}
 
-	&.notificationsPosition_rightBottom {
+	&[data-position='rightBottom'] {
 		bottom: calc(var(--MI-minBottomSpacing) + var(--MI-margin));
 		right: 0;
 	}
 
-	&.notificationsStackAxis_vertical {
+	&[data-stack-axis='vertical'] {
 		width: 250px;
 
-		&.notificationsPosition_leftTop,
-		&.notificationsPosition_rightTop {
+		&[data-position='leftTop'],
+		&[data-position='rightTop'] {
 			flex-direction: column;
 
 			.notification {
@@ -349,8 +354,8 @@ if ($i) {
 			}
 		}
 
-		&.notificationsPosition_leftBottom,
-		&.notificationsPosition_rightBottom {
+		&[data-position='leftBottom'],
+		&[data-position='rightBottom'] {
 			flex-direction: column-reverse;
 
 			.notification {
@@ -361,11 +366,11 @@ if ($i) {
 		}
 	}
 
-	&.notificationsStackAxis_horizontal {
+	&[data-stack-axis='horizontal'] {
 		width: 100%;
 
-		&.notificationsPosition_leftTop,
-		&.notificationsPosition_leftBottom {
+		&[data-position='leftTop'],
+		&[data-position='leftBottom'] {
 			flex-direction: row;
 
 			.notification {
@@ -375,8 +380,8 @@ if ($i) {
 			}
 		}
 
-		&.notificationsPosition_rightTop,
-		&.notificationsPosition_rightBottom {
+		&[data-position='rightTop'],
+		&[data-position='rightBottom'] {
 			flex-direction: row-reverse;
 
 			.notification {

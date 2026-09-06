@@ -16,7 +16,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 	@touchcancel.stop="onReactionTouchCancel"
 	@contextmenu.prevent.stop="onReactionContextMenu"
 >
-	<MkReactionIcon style="pointer-events: none;" :class="prefer.s.limitWidthOfReaction ? $style.limitWidth : ''" :reaction="reaction" :emojiUrl="reactionEmojis[reaction.substring(1, reaction.length - 1)]"/>
+	<MkReactionIcon style="pointer-events: none;" :class="prefer.s.limitWidthOfReaction ? $style.limitWidth : ''" :reaction="reaction" :emojiUrl="reactionEmojis[emojiName]"/>
 	<span :class="$style.count">{{ count }}</span>
 </button>
 </template>
@@ -25,6 +25,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 import { computed, inject, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 import * as Misskey from 'cherrypick-js';
 import { getUnicodeEmojiOrNull } from '@@/js/emojilist.js';
+import { getEmojiNameFromReaction, isLocalCustomEmojiReaction } from '@@/js/emoji-name.js';
 import MkCustomEmojiDetailedDialog from './MkCustomEmojiDetailedDialog.vue';
 import type { MenuItem } from '@/types/menu';
 import type { ComputedRef, Ref } from 'vue';
@@ -40,7 +41,6 @@ import { prefer } from '@/preferences.js';
 import MkReactionEffect from '@/components/MkReactionEffect.vue';
 import { i18n } from '@/i18n.js';
 import * as sound from '@/utility/sound.js';
-import { checkReactionPermissions } from '@/utility/check-reaction-permissions.js';
 import { customEmojis, customEmojisMap } from '@/custom-emojis.js';
 import { DI } from '@/di.js';
 import { noteEvents } from '@/composables/use-note-capture.js';
@@ -76,17 +76,16 @@ const emit = defineEmits<{
 
 const buttonEl = useTemplateRef('buttonEl');
 
-const emojiName = computed(() => props.reaction.replace(/:/g, '').replace(/@\./, ''));
+const emojiName = computed(() => getEmojiNameFromReaction(props.reaction));
 
 const canToggle = computed(() => {
-	const emoji = customEmojisMap.get(emojiName.value) ?? getUnicodeEmojiOrNull(props.reaction);
+	const emoji = isLocalCustomEmoji.value ? customEmojisMap.get(emojiName.value) : getUnicodeEmojiOrNull(props.reaction);
 
 	// TODO
 	//return !props.reaction.match(/@\w/) && $i && emoji && checkReactionPermissions($i, props.note, emoji);
-	return props.reaction.match(/@\w/) == null && $i != null && emoji != null;
+	return $i != null && emoji != null;
 });
-const canGetInfo = computed(() => !props.reaction.match(/@\w/) && props.reaction.includes(':'));
-const isLocalCustomEmoji = computed(() => props.reaction[0] === ':' && props.reaction.includes('@.'));
+const isLocalCustomEmoji = computed(() => isLocalCustomEmojiReaction(props.reaction));
 
 const reactionName = computed(() => {
 	const r = props.reaction.replace(':', '');
@@ -279,14 +278,14 @@ function stealReaction(anchorElement: HTMLElement) {
 		});
 	}
 
-	if (canGetInfo.value) {
+	if (isLocalCustomEmoji.value) {
 		menuItems.push({
 			text: i18n.ts.info,
 			icon: 'ti ti-info-circle',
 			action: async () => {
 				const { dispose } = os.popup(MkCustomEmojiDetailedDialog, {
 					emoji: await misskeyApiGet('emoji', {
-						name: props.reaction.replace(/:/g, '').replace(/@\./, ''),
+						name: getEmojiNameFromReaction(props.reaction),
 					}),
 				}, {
 					closed: () => dispose(),
@@ -397,14 +396,14 @@ async function menu(ev) {
 		},
 	});
 
-	if (canGetInfo.value) {
+	if (isLocalCustomEmoji.value) {
 		menuItems.push({
 			text: i18n.ts.info,
 			icon: 'ti ti-info-circle',
 			action: async () => {
 				const { dispose } = os.popup(MkCustomEmojiDetailedDialog, {
 					emoji: await misskeyApiGet('emoji', {
-						name: props.reaction.replace(/:/g, '').replace(/@\./, ''),
+						name: getEmojiNameFromReaction(props.reaction),
 					}),
 				}, {
 					closed: () => dispose(),
@@ -523,11 +522,10 @@ onMounted(() => {
 });
 
 async function showReactionDetails(showing: Ref<boolean>) {
-	const reactions = await misskeyApiGet('notes/reactions', {
+	const reactions = await misskeyApi('notes/reactions', {
 		noteId: props.noteId,
 		type: props.reaction,
 		limit: 10,
-		_cacheKey_: props.count,
 	});
 
 	if (!showing.value || buttonEl.value == null) return;

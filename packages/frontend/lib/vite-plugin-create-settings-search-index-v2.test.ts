@@ -212,7 +212,7 @@ async function buildRealCatalogFromVirtualModule() {
 		targetFilePaths: ['src/pages/settings/*.vue', ...extensionTargets],
 		mainVirtualModule: 'search-index-v2:settings-real-catalog',
 		routerDefinitionPath: 'src/router.definition.ts',
-		expectedControlCount: 525,
+		expectedControlCount: 524,
 	});
 	const load = typeof plugin.load === 'function' ? plugin.load : undefined;
 	if (load == null) throw new Error('settings V2 plugin did not expose virtual loader');
@@ -500,9 +500,9 @@ describe('settings control search index V2', () => {
 		// Current-source measurement. The custom-font direct-upload surface added
 		// controls after the historical 348-item baseline; do not preserve that
 		// stale number merely to make the audit pass.
-		expect(entries).toHaveLength(352);
-		validateSettingsControlDescriptorsV2(entries, 352);
-		expect(entries.filter(entry => entry.searchable || entry.intentionallyExcluded).length).toBe(352);
+		expect(entries).toHaveLength(351);
+		validateSettingsControlDescriptorsV2(entries, 351);
+		expect(entries.filter(entry => entry.searchable || entry.intentionallyExcluded).length).toBe(351);
 		const excluded = entries.filter(entry => entry.intentionallyExcluded);
 		expect(excluded.length).toBeGreaterThan(0);
 		expect(Object.fromEntries([...new Set(excluded.map(entry => entry.exclusionReason))].map(reason => [reason, excluded.filter(entry => entry.exclusionReason === reason).length]))).toEqual({
@@ -541,9 +541,9 @@ describe('settings control search index V2', () => {
 		// Keep the raw population separate from the smaller catalog-descriptor
 		// count so new visible buttons cannot disappear behind an old total.
 		expect(inventory.files).toHaveLength(60);
-		expect(inventory.items).toHaveLength(679);
+		expect(inventory.items).toHaveLength(678);
 		expect(Object.fromEntries(classifications.map(classification => [classification, inventory.items.filter(item => item.classification === classification).length]))).toEqual({
-			'user-facing-setting': 451,
+			'user-facing-setting': 450,
 			'navigation-action': 142,
 			'save-cancel': 23,
 			'disabled-display-only': 17,
@@ -563,7 +563,7 @@ describe('settings control search index V2', () => {
 		expect(inventory.items.every(item => item.reason.length > 0)).toBe(true);
 		expect(inventory.items.filter(item => item.searchableControl).every(item => item.classification === 'user-facing-setting' || item.classification === 'destructive')).toBe(true);
 		expect(inventory.items.every(item => (item.descriptorStableId == null) !== (item.exclusionReason == null))).toBe(true);
-		expect(resolved).toHaveLength(679);
+		expect(resolved).toHaveLength(678);
 		expect(resolved.every(item => (item.descriptorStableId == null) !== (item.exclusionReason == null))).toBe(true);
 		const descriptorIds = new Set(controls.descriptors.filter(descriptor => descriptor.searchable).map(descriptor => descriptor.stableId));
 		expect(resolved.filter(item => item.descriptorStableId != null).every(item => descriptorIds.has(item.descriptorStableId!))).toBe(true);
@@ -684,6 +684,7 @@ describe('settings control search index V2', () => {
 		expect(storageTargets('realtimeMode').map(descriptor => descriptor.stableId)).toHaveLength(1);
 		const audit = collectSettingsStorageKeyAuditV2(input);
 		expect(audit.counts).toEqual({ preference: 275, pizzax: 105, local: 94 });
+		expect(audit.items.find(item => item.kind === 'preference' && item.key === 'enableCondensedLine')).toMatchObject({ disposition: 'deprecated', descriptorStableIds: [] });
 		expect(audit.items).toHaveLength(474);
 		expect(audit.items.every(item => item.reason.length > 0)).toBe(true);
 		expect(audit.items.every(item => item.descriptorStableIds.length > 0
@@ -692,8 +693,8 @@ describe('settings control search index V2', () => {
 		const dispositionCounts = Object.fromEntries([...new Set(audit.items.map(item => `${item.kind}:${item.disposition}`))]
 			.map(identity => [identity, audit.items.filter(item => `${item.kind}:${item.disposition}` === identity).length]));
 		expect(dispositionCounts).toEqual({
-			'preference:catalog-control': 211, 'preference:catalog-group': 5, 'preference:runtime': 24,
-			'preference:migration': 6, 'preference:deprecated': 17, 'preference:internal': 12,
+			'preference:catalog-control': 210, 'preference:catalog-group': 5, 'preference:runtime': 24,
+			'preference:migration': 6, 'preference:deprecated': 18, 'preference:internal': 12,
 			'pizzax:catalog-control': 8, 'pizzax:catalog-group': 1, 'pizzax:runtime': 9,
 			'pizzax:migration': 3, 'pizzax:cache': 2, 'pizzax:deprecated': 78, 'pizzax:internal': 4,
 			'local:catalog-control': 14, 'local:runtime': 3, 'local:migration': 21,
@@ -744,6 +745,7 @@ describe('settings control search index V2', () => {
 		const inventory = await collectRealSettingsInventory();
 		const audit = await collectSettingsStorageKeyAuditFromRepositoryV2(process.cwd(), inventory.files, inventory.descriptors);
 		expect(audit.counts).toEqual({ preference: 275, pizzax: 105, local: 94 });
+		expect(audit.items.find(item => item.kind === 'preference' && item.key === 'enableCondensedLine')).toMatchObject({ disposition: 'deprecated', descriptorStableIds: [] });
 		expect(SETTINGS_STORAGE_KEY_AUDIT_EVIDENCE_FILES_V2).toContain('src/ui/universal.vue');
 		expect(SETTINGS_STORAGE_KEY_AUDIT_EVIDENCE_FILES_V2).toContain('src/preferences/def.ts');
 		expect(SETTINGS_STORAGE_KEY_AUDIT_EVIDENCE_FILES_V2).toContain('src/utility/retired-portal-migration.ts');
@@ -1028,7 +1030,7 @@ describe('settings control search index V2', () => {
 		expect(settingsFiles).toHaveLength(49);
 		expect(inventory.files).toHaveLength(60);
 		expect(legacy).toHaveLength(278);
-		validateSettingsControlDescriptorsV2(inventory.descriptors, 525);
+		validateSettingsControlDescriptorsV2(inventory.descriptors, 524);
 		expect(inventory.descriptors.filter(entry => entry.activation?.kind === 'popup' && entry.route === '/settings/hata-custom').length).toBeGreaterThan(15);
 		expect(inventory.results.reduce((count, result) => count + (result.injected.code.match(/data-settings-search-id=/gu)?.length ?? 0), 0)).toBeGreaterThan(0);
 		expect(inventory.results.flatMap(result => parseSfc(result.injected.code).errors)).toHaveLength(0);
@@ -1069,7 +1071,7 @@ describe('settings control search index V2', () => {
 			targetFilePaths: ['src/pages/settings/*.vue', ...extensionTargets],
 			mainVirtualModule: 'search-index-v2:settings',
 			routerDefinitionPath: 'src/router.definition.ts',
-			expectedControlCount: 525,
+			expectedControlCount: 524,
 			modulesToHmrOnUpdate: ['src/pages/settings-redesign/index.vue'],
 		});
 		const load = typeof plugin.load === 'function' ? plugin.load : undefined;
@@ -1080,7 +1082,7 @@ describe('settings control search index V2', () => {
 		const inventoryJson = (generated as string).match(/^export const settingsControlSearchIndexV2 = ([\s\S]+);\n$/u)?.[1];
 		expect(inventoryJson).toBeDefined();
 		const inventory = JSON.parse(inventoryJson!) as Array<{ sourceFile: string; route: string; activation?: { kind: string; popup?: string } }>;
-			expect(inventory).toHaveLength(525);
+			expect(inventory).toHaveLength(524);
 		expect(inventory.filter(entry => entry.sourceFile === 'src/components/HatacordingUiSettings.vue' && entry.route === '/settings/hatasnscord-ui' && entry.activation == null)).toHaveLength(7);
 		// Safe `editor.copy` controls stay individual; only the three dynamic
 		// runtime/value areas become semantic groups.
@@ -1298,7 +1300,7 @@ describe('settings control search index V2', () => {
 		}
 		expect(relationSuspects).toHaveLength(0);
 		expect(labelAuditIssues).toHaveLength(0);
-		expect(descriptors).toHaveLength(525);
+		expect(descriptors).toHaveLength(524);
 		const hataSnsCordGroup = productionCatalog.byStableId.get('settings.group.hatasnscord-settings');
 		expect(hataSnsCordGroup).toMatchObject({
 			stableId: 'settings.group.hatasnscord-settings',

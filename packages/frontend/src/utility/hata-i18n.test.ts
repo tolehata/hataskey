@@ -399,9 +399,9 @@ describe('旗鯖独自機能の翻訳', () => {
 		expect(excludedFeaturePaths(simplifiedChinese)).toEqual([]);
 	});
 
-	test('build後の全28言語で独自翻訳名前空間と全葉キーを参照できる', () => {
+	test('build後の全29言語で独自翻訳名前空間と全葉キーを参照できる', () => {
 		const builtLocales = Object.entries(locales);
-		expect(builtLocales).toHaveLength(28);
+		expect(builtLocales).toHaveLength(29);
 		for (const [code, locale] of builtLocales) {
 			const hata = asLocaleTree((locale as unknown as Record<string, unknown>)._hata, code);
 			expect(leafEntries(hata).map(([key]) => key).sort(), code).toEqual(expectedKeys);

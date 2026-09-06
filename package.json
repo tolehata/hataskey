@@ -7,7 +7,7 @@
 		"type": "git",
 		"url": "https://home.tolehata.net/changelog"
 	},
-	"packageManager": "pnpm@11.11.0",
+	"packageManager": "pnpm@11.25.0",
 	"workspaces": [
 		"packages/frontend-shared",
 		"packages/frontend",
@@ -57,29 +57,29 @@
 	},
 	"dependencies": {
 		"cssnano": "7.1.1",
-		"esbuild": "0.28.1",
-		"execa": "9.6.1",
+		"esbuild": "0.28.2",
+		"execa": "10.0.1",
 		"fast-glob": "3.3.3",
 		"glob": "13.0.6",
 		"ignore-walk": "9.0.0",
-		"js-yaml": "5.2.2",
+		"js-yaml": "5.4.1",
 		"postcss": "8.5.23",
-		"tar": "7.5.21",
+		"tar": "7.5.22",
 		"terser": "5.44.0",
 		"typescript": "6.0.2"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "2.3.1",
 		"@misskey-dev/eslint-plugin": "2.1.0",
-		"@types/node": "26.1.1",
-		"@typescript-eslint/eslint-plugin": "8.63.0",
-		"@typescript-eslint/parser": "8.63.0",
+		"@types/node": "26.4.0",
+		"@typescript-eslint/eslint-plugin": "8.68.0",
+		"@typescript-eslint/parser": "8.68.0",
 		"cross-env": "10.1.0",
 		"cypress": "15.4.0",
 		"eslint": "9.39.5",
-		"globals": "17.7.0",
+		"globals": "17.11.0",
 		"ncp": "2.0.0",
-		"pnpm": "11.11.0",
-		"start-server-and-test": "3.0.11"
+		"pnpm": "11.25.0",
+		"start-server-and-test": "3.0.12"
 	}
 }

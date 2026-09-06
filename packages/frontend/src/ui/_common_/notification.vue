@@ -5,7 +5,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <template>
 <div :class="$style.root">
-	<XNotification :notification="notification" :class="{ [$style.reduceBlurEffect]: !prefer.s.useBlurEffect }" class="notification _acrylic" :full="false"/>
+	<XNotification :contentVisibilityAuto="false" :notification="notification" :class="{ [$style.reduceBlurEffect]: !prefer.s.useBlurEffect }" class="notification _acrylic" :full="false"/>
 </div>
 </template>
 

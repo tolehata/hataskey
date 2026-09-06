@@ -8,6 +8,7 @@ import { isInstanceMuted, isUserFromMutedInstance } from '@/misc/is-instance-mut
 import { NoteEntityService } from '@/core/entities/NoteEntityService.js';
 import { bindThis } from '@/decorators.js';
 import type { JsonObject } from '@/misc/json-value.js';
+import type { EventTypesToEventPayload, MainEventTypes } from '@/core/GlobalEventService.js';
 import Channel, { type MiChannelService } from '../channel.js';
 
 class MainChannel extends Channel {
@@ -28,37 +29,45 @@ class MainChannel extends Channel {
 	@bindThis
 	public async init(params: JsonObject) {
 		// Subscribe main stream channel
-		this.subscriber.on(`mainStream:${this.user!.id}`, async data => {
-			switch (data.type) {
-				case 'notification': {
-					// Ignore notifications from instances the user has muted
-					if (isUserFromMutedInstance(data.body, new Set<string>(this.userProfile?.mutedInstances ?? []))) return;
-					if (data.body.userId && this.userIdsWhoMeMuting.has(data.body.userId)) return;
+		this.subscriber.on(`mainStream:${this.user!.id}`, this.onData);
+	}
 
-					if (data.body.note && data.body.note.isHidden) {
-						const note = await this.noteEntityService.pack(data.body.note.id, this.user, {
-							detail: true,
-						});
-						data.body.note = note;
-					}
-					break;
-				}
-				case 'mention': {
-					if (isInstanceMuted(data.body, new Set<string>(this.userProfile?.mutedInstances ?? []))) return;
+	@bindThis
+	private async onData(data: EventTypesToEventPayload<MainEventTypes>) {
+		switch (data.type) {
+			case 'notification': {
+				// Ignore notifications from instances the user has muted
+				if (isUserFromMutedInstance(data.body, new Set<string>(this.userProfile?.mutedInstances ?? []))) return;
+				if (data.body.userId && this.userIdsWhoMeMuting.has(data.body.userId)) return;
 
-					if (this.userIdsWhoMeMuting.has(data.body.userId)) return;
-					if (data.body.isHidden) {
-						const note = await this.noteEntityService.pack(data.body.id, this.user, {
-							detail: true,
-						});
-						data.body = note;
-					}
-					break;
+				if (data.body.note && data.body.note.isHidden) {
+					const note = await this.noteEntityService.pack(data.body.note.id, this.user, {
+						detail: true,
+					});
+					data.body.note = note;
 				}
+				break;
 			}
+			case 'mention': {
+				if (isInstanceMuted(data.body, new Set<string>(this.userProfile?.mutedInstances ?? []))) return;
 
-			this.send(data.type, data.body);
-		});
+				if (this.userIdsWhoMeMuting.has(data.body.userId)) return;
+				if (data.body.isHidden) {
+					const note = await this.noteEntityService.pack(data.body.id, this.user, {
+						detail: true,
+					});
+					data.body = note;
+				}
+				break;
+			}
+		}
+
+		this.send(data.type, data.body);
+	}
+
+	@bindThis
+	public dispose() {
+		this.subscriber.off(`mainStream:${this.user?.id}`, this.onData);
 	}
 }
 

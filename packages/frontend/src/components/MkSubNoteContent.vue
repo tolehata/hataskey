@@ -28,7 +28,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		</div>
 		<div v-show="showContent">
 			<div v-if="note.files && note.files.length > 0">
-				<MkMediaList :mediaList="note.files" :disableRightClick="note.disableRightClick" @click.stop @contextmenu="disableRightClickHandler"/>
+				<MkMediaList :mediaList="note.files" :user="note.user" :disableRightClick="note.disableRightClick" @click.stop @contextmenu="disableRightClickHandler"/>
 			</div>
 			<div v-if="note.poll">
 				<MkPoll
@@ -156,7 +156,7 @@ import { reactionPicker } from '@/utility/reaction-picker.js';
 import { claimAchievement } from '@/utility/achievements.js';
 import { noteEvents, useNoteCapture } from '@/composables/use-note-capture.js';
 import { haptic, hapticConfirm } from '@/utility/haptic.js';
-import { misskeyApi, misskeyApiGet } from '@/utility/misskey-api.js';
+import { misskeyApi } from '@/utility/misskey-api.js';
 import { store } from '@/store.js';
 import { DI } from '@/di.js';
 import detectLanguage from '@/utility/detect-language.js';
@@ -258,10 +258,9 @@ if (!props.mock) {
 
 	if (props.note.reactionAcceptance === 'likeOnly') {
 		useTooltip(reactButton, async (showing) => {
-			const reactions = await misskeyApiGet('notes/reactions', {
+			const reactions = await misskeyApi('notes/reactions', {
 				noteId: props.note.id,
 				limit: 10,
-				_cacheKey_: $note.reactionCount,
 			});
 
 			const users = reactions.map(x => x.user);
@@ -528,7 +527,6 @@ async function clip(): Promise<void> {
 
 	os.popupMenu(await getNoteClipMenu({ note: note, currentClip: currentClip?.value }), clipButton.value).then(focus);
 }
-
 
 function focus() {
 	rootEl.value?.focus();

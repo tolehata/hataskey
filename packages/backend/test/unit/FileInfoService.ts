@@ -16,7 +16,7 @@ import type { MockFunctionMetadata } from 'jest-mock';
 import { GlobalModule } from '@/GlobalModule.js';
 import { FileInfo, FileInfoService } from '@/core/FileInfoService.js';
 //import { DI } from '@/di-symbols.js';
-import { AiService } from '@/core/AiService.js';
+import { SensitiveMediaDetectionService } from '@/core/SensitiveMediaDetectionService.js';
 import { LoggerService } from '@/core/LoggerService.js';
 
 const _filename = fileURLToPath(import.meta.url);
@@ -44,13 +44,13 @@ describe('FileInfoService', () => {
 				GlobalModule,
 			],
 			providers: [
-				AiService,
+				SensitiveMediaDetectionService,
 				LoggerService,
 				FileInfoService,
 			],
 		})
 			.useMocker((token) => {
-				//if (token === AiService) {
+				//if (token === SensitiveMediaDetectionService) {
 				//	return {  };
 				//}
 				if (typeof token === 'function') {

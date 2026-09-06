@@ -50,6 +50,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 <script lang="ts" setup>
 import { ref } from 'vue';
 import * as Misskey from 'cherrypick-js';
+import type { MediaComponentExposes } from '@/types/media-component.js';
 import bytes from '@/filters/bytes.js';
 import { i18n } from '@/i18n.js';
 import { prefer } from '@/preferences.js';
@@ -90,6 +91,10 @@ function onContextmenu(ev: MouseEvent) {
 	}
 	os.contextMenu(getFileMenu(props.video, (newHide) => { hide.value = newHide; }), ev);
 }
+
+defineExpose<MediaComponentExposes>({
+	isRevealed: () => !hide.value,
+});
 </script>
 
 <style lang="scss" module>

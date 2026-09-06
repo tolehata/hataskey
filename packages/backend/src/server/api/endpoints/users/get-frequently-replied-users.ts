@@ -3,12 +3,14 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { Not, In, IsNull } from 'typeorm';
 import { Inject, Injectable } from '@nestjs/common';
 import { maximum } from '@/misc/prelude/array.js';
 import type { NotesRepository } from '@/models/_.js';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import { UserEntityService } from '@/core/entities/UserEntityService.js';
+import { QueryService } from '@/core/QueryService.js';
+import { ChannelService } from '@/core/ChannelService.js';
+import type { MiNote } from '@/models/Note.js';
 import { DI } from '@/di-symbols.js';
 import { GetterService } from '@/server/api/GetterService.js';
 import { ApiError } from '../../error.js';
@@ -65,6 +67,8 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		private notesRepository: NotesRepository,
 
 		private userEntityService: UserEntityService,
+		private queryService: QueryService,
+		private channelService: ChannelService,
 		private getterService: GetterService,
 	) {
 		super(meta, paramDef, async (ps, me) => {
@@ -75,17 +79,36 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 			});
 
 			// Fetch recent notes
-			const recentNotes = await this.notesRepository.find({
-				where: {
-					userId: user.id,
-					replyId: Not(IsNull()),
-				},
-				order: {
-					id: -1,
-				},
-				take: 1000,
-				select: { replyId: true },
-			});
+			// 旗鯖のプライベートチャンネル認可も集計元・返信先の双方へ適用する。
+			const channelVisibility = new Map<string, Promise<boolean>>();
+			const canViewChannel = (note: MiNote): Promise<boolean> => {
+				if (note.channel == null) return Promise.resolve(true);
+				let visible = channelVisibility.get(note.channel.id);
+				if (visible == null) {
+					visible = this.channelService.canView(note.channel, me?.id ?? null);
+					channelVisibility.set(note.channel.id, visible);
+				}
+				return visible;
+			};
+			const recentNotesQuery = this.notesRepository.createQueryBuilder('note')
+				.select(['note.id', 'note.replyId', 'note.channelId'])
+				.leftJoinAndSelect('note.channel', 'channel')
+				.where('note.userId = :userId', { userId: user.id })
+				.andWhere('note.replyId IS NOT NULL')
+				.orderBy('note.id', 'DESC')
+				.limit(1000);
+
+			// 対象ユーザー自身がリクエストしている場合、generateVisibilityQuery の
+			// `note.userId = :meId` に必ず一致して常に真になるので、条件ごと省略する
+			const isSelf = me != null && me.id === user.id;
+			if (!isSelf) {
+				this.queryService.generateVisibilityQuery(recentNotesQuery, me);
+			}
+
+			const recentNotes: MiNote[] = [];
+			for (const note of await recentNotesQuery.getMany()) {
+				if (await canViewChannel(note)) recentNotes.push(note);
+			}
 
 			// 投稿が少なかったら中断
 			if (recentNotes.length === 0) {
@@ -93,12 +116,17 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 			}
 
 			// TODO ミュートを考慮
-			const replyTargetNotes = await this.notesRepository.find({
-				where: {
-					id: In(recentNotes.map(p => p.replyId)),
-				},
-				select: { userId: true },
-			});
+			const replyTargetNotesQuery = this.notesRepository.createQueryBuilder('note')
+				.select(['note.id', 'note.userId', 'note.channelId'])
+				.leftJoinAndSelect('note.channel', 'channel')
+				.where('note.id IN (:...replyIds)', { replyIds: recentNotes.map(p => p.replyId) });
+
+			this.queryService.generateVisibilityQuery(replyTargetNotesQuery, me);
+
+			const replyTargetNotes: MiNote[] = [];
+			for (const note of await replyTargetNotesQuery.getMany()) {
+				if (await canViewChannel(note)) replyTargetNotes.push(note);
+			}
 
 			const repliedUsers: any = {};
 

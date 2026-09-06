@@ -75,6 +75,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 <script lang="ts" setup>
 import { onMounted, onUnmounted, watch, ref, computed } from 'vue';
 import * as Misskey from 'cherrypick-js';
+import type { MediaComponentExposes } from '@/types/media-component.js';
 import { getStaticImageUrl } from '@/utility/media-proxy.js';
 import bytes from '@/filters/bytes.js';
 import MkImgWithBlurhash from '@/components/MkImgWithBlurhash.vue';
@@ -196,6 +197,10 @@ onUnmounted(() => {
 		window.removeEventListener('touchstart', resetTimer);
 		window.removeEventListener('touchend', resetTimer);
 	}
+});
+
+defineExpose<MediaComponentExposes>({
+	isRevealed: () => !hide.value,
 });
 </script>
 

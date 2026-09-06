@@ -1,3 +1,5 @@
+pixelatedZoom: "ピクセルアート拡大モード"
+cannotPreview: "プレビューできません"
 _lang_: "日本語"
 
 compareContent: "内容比較"
@@ -3630,6 +3632,9 @@ _urlPreviewSetting:
   summaryProxyDescription2: "プロキシには下記パラメータがクエリ文字列として連携されます。プロキシ側がこれらをサポートしない場合、設定値は無視されます。"
 
 _mediaControls:
+  playbackPosition: "再生位置"
+  play: "再生"
+  pause: "一時停止"
   pip: "ピクチャインピクチャ"
   playbackRate: "再生速度"
   loop: "ループ再生"

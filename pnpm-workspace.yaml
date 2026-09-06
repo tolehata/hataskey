@@ -43,8 +43,12 @@ ignorePatchFailures: false
 minimumReleaseAge: 10080 # delay 7days to mitigate supply-chain attack
 minimumReleaseAgeExclude:
   - happy-dom # セキュリティ修正のため一時的に。そのうち消すこと
+  - undici@6.28.1 || 7.29.1 # 上流2026.9.0のセキュリティ修正
 overrides:
   '@aiscript-dev/aiscript-languageserver': '-'
+  'undici@^7': 7.29.1
+  'undici@^6': 6.28.1
+  '@tabler/icons-webfont>sharp': '-'
   # Misskey 本家で採用済みのセキュリティ修正版を、脆弱な版だけに限定して固定する。
   '@babel/runtime@7.23.4': 7.26.10
   '@isaacs/brace-expansion@5.0.0': 5.0.1

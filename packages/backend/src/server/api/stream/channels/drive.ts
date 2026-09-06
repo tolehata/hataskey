@@ -6,6 +6,7 @@
 import { Injectable } from '@nestjs/common';
 import { bindThis } from '@/decorators.js';
 import type { JsonObject } from '@/misc/json-value.js';
+import type { EventTypesToEventPayload, DriveEventTypes } from '@/core/GlobalEventService.js';
 import Channel, { type MiChannelService } from '../channel.js';
 
 class DriveChannel extends Channel {
@@ -17,9 +18,17 @@ class DriveChannel extends Channel {
 	@bindThis
 	public async init(params: JsonObject) {
 		// Subscribe drive stream
-		this.subscriber.on(`driveStream:${this.user!.id}`, data => {
-			this.send(data);
-		});
+		this.subscriber.on(`driveStream:${this.user!.id}`, this.onData);
+	}
+
+	@bindThis
+	private async onData(data: EventTypesToEventPayload<DriveEventTypes>) {
+		this.send(data);
+	}
+
+	@bindThis
+	public dispose() {
+		this.subscriber.off(`driveStream:${this.user?.id}`, this.onData);
 	}
 }
 

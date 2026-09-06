@@ -10,6 +10,14 @@ export interface ILocale {
 }
 export interface Locale extends ILocale {
     /**
+     * ピクセルアート拡大モード
+     */
+    "pixelatedZoom": string;
+    /**
+     * プレビューできません
+     */
+    "cannotPreview": string;
+    /**
      * 日本語
      */
     "_lang_": string;
@@ -13624,6 +13632,18 @@ export interface Locale extends ILocale {
         "summaryProxyDescription2": string;
     };
     "_mediaControls": {
+        /**
+         * 再生位置
+         */
+        "playbackPosition": string;
+        /**
+         * 再生
+         */
+        "play": string;
+        /**
+         * 一時停止
+         */
+        "pause": string;
         /**
          * ピクチャインピクチャ
          */

@@ -85,6 +85,7 @@ import * as os from '@/os.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { getProxiedImageUrl } from '@/utility/media-proxy.js';
 import { i18n } from '@/i18n.js';
+import { iAmAdmin } from '@/i.js';
 import { definePage } from '@/page.js';
 import { Paginator } from '@/utility/paginator.js';
 
@@ -212,7 +213,7 @@ const menu = (ev: MouseEvent) => {
 					});
 				});
 		},
-	}, {
+	}, ...(iAmAdmin ? [{
 		icon: 'ti ti-upload',
 		text: i18n.ts.import,
 		action: async () => {
@@ -235,7 +236,7 @@ const menu = (ev: MouseEvent) => {
 					});
 				});
 		},
-	}], ev.currentTarget ?? ev.target);
+	}] : [])], ev.currentTarget ?? ev.target);
 };
 
 const setCategoryBulk = async () => {

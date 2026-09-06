@@ -14,7 +14,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@/utility/misskey-api.js', () => ({
-	misskeyApiGet: mocks.api,
+	misskeyApi: mocks.api,
 }));
 
 vi.mock('@/utility/muted-users.js', () => ({
@@ -147,14 +147,13 @@ describe('ミュートユーザーのリアクション表示キャッシュ', (
 
 		subject.requestMutedReactions('note-1', 1);
 		await vi.waitFor(() => expect(subject.getMutedReactions('note-1', 1)?.delta).toEqual({ ':old:': 1 }));
-		const oldCacheNonce = mocks.api.mock.calls[0][1]._cacheKey_;
 
 		subject.notifyMutedReactionSourceChanged('note-1');
 		subject.requestMutedReactions('note-1', 1);
 		await vi.waitFor(() => expect(subject.getMutedReactions('note-1', 1)?.delta).toEqual({ ':new:': 1 }));
 
 		expect(mocks.api).toHaveBeenCalledTimes(2);
-		expect(mocks.api.mock.calls[1][1]._cacheKey_).not.toBe(oldCacheNonce);
+		expect(mocks.api).toHaveBeenNthCalledWith(2, 'notes/reactions', { noteId: 'note-1', limit: 100 });
 	});
 
 	test('polling集計は総数が同じでもリアクション種別の入れ替わりを検出する', async () => {

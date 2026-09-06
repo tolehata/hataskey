@@ -14,8 +14,8 @@
   ⚠️結果、「名前は隠れるがリアクション自体は出るので、誰が押したか察せる」状態だった。
 
 ⚠️取り方
-  `notes/reactions` は **`allowGet: true` ＋ `cacheSec: 60`** なので **GET でキャッシュに乗る**。
-  ⚠️だから素朴に叩いても毎回サーバーまで飛ぶわけではない。それでも:
+  `notes/reactions` はログイン情報を含むPOSTで取得し、ノートの閲覧権限を確認する。
+  通信量はこの共有ストアのキャッシュと同時実行数で抑える。
   - ⚠️**ノート1件につき1リクエストまで**（種別ごとに分けない＝`type` を渡さない）
   - ⚠️**同時実行を絞る**（スクロールで一気に走らせない）
   - ⚠️リアクションのstream更新世代が変わるまで再取得しない
@@ -38,7 +38,7 @@
 
 import { ref } from 'vue';
 import type * as Misskey from 'cherrypick-js';
-import { misskeyApiGet } from '@/utility/misskey-api.js';
+import { misskeyApi } from '@/utility/misskey-api.js';
 import { hasMutedUsers, isMutedUser, isMutedUsersReady, mutedUsersRevision } from '@/utility/muted-users.js';
 
 /** `notes/reactions` の上限。⚠️これを超えるぶんは取りこぼす（endpoint 側の maximum: 100）。 */
@@ -100,7 +100,7 @@ export function reactionCountsChanged(
 
 /**
  * pollingの集計だけでは「同じ絵文字・同じ件数のまま反応者だけ交代」を検出できない。
- * activeなノートだけ、endpointのcacheSecと同じ60秒間隔でリアクター詳細を再確認する。
+ * activeなノートだけ、60秒間隔でリアクター詳細を再確認する。
  */
 export function shouldRevalidateMutedReactionActors(noteId: string, now = Date.now()): boolean {
 	const lastRefreshAt = lastActorRefreshAtByNote.get(noteId) ?? 0;
@@ -182,12 +182,9 @@ export function requestMutedReactions(noteId: string, reactionCount: number): vo
 
 	const task = async () => {
 		try {
-			const cacheNonce = `${reactionCount}:${noteRevisionOf(noteId)}:${mutedUsersRevision.value}`;
-			const rows = await misskeyApiGet('notes/reactions', {
+			const rows = await misskeyApi('notes/reactions', {
 				noteId,
 				limit: FETCH_LIMIT,
-				// GETキャッシュも同数復帰を区別する。endpoint側では未知queryを無視する。
-				_cacheKey_: cacheNonce,
 			}) as Misskey.entities.NoteReaction[];
 
 			const delta: Record<string, number> = {};
