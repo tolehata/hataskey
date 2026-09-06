@@ -39,7 +39,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 	<div :class="$style.desktopList" data-app-layout="desktop">
 		<h2 :class="$style.desktopTitle"><span :class="$style.brand">{{ appTitle }}</span></h2>
-		<div v-if="kind === 'tools'" :class="$style.filterSpacer" aria-hidden="true"></div>
 		<section v-for="group in groups" :key="group.id" :class="$style.appGroup">
 			<h3 v-if="group.label" :class="$style.category"><component :is="group.icon" :strokeWidth="2" aria-hidden="true"/>{{ group.label }}</h3>
 			<article v-for="app in group.apps" :key="app.id" :class="$style.desktopRow" :data-app-id="app.id">
@@ -231,7 +230,6 @@ onBeforeUnmount(() => {
 .desktopTitle { padding-bottom: 16px; border-bottom: 1px solid var(--rule2); font-size: clamp(26px, var(--hak-app-title-size, 34px), 34px); line-height: 1.16; letter-spacing: .01em; }
 .root[data-kind='tools'] .desktopTitle { border-bottom: none; }
 .desktopTitle > span { display: block; }
-.filterSpacer { height: 22px; }
 .category { display: flex; align-items: baseline; gap: 9px; margin-top: 24px !important; padding-bottom: 10px; border-bottom: 1px solid var(--rule2); font-family: 'Zen Maru Gothic', system-ui, sans-serif; font-size: 12px; font-weight: 800; letter-spacing: .08em; }
 .category svg { width: 16px; height: 16px; color: var(--accent-ink); }
 .desktopRow { display: flex; align-items: flex-start; gap: 16px; margin-top: 12px; padding: 18px 20px; border: var(--border); border-radius: 22px; background: var(--masthead); box-shadow: var(--shadow); }

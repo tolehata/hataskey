@@ -158,6 +158,24 @@ describe('HataskAkatsukiApps', () => {
 		}
 	});
 
+	test('Hataskey AppのPC見出しと最初の分類の間に空の余白要素を置かない', () => {
+		const { container } = mountApps({ kind: 'tools' });
+		const list = container.querySelector('[data-app-layout="desktop"]');
+		const heading = list?.querySelector('h2');
+		const firstGroup = list?.querySelector('section');
+		if (!heading || !firstGroup) throw new Error('App heading or first category is missing');
+		expect(heading.textContent).toBe('Hataskey App');
+		expect(firstGroup.querySelector('h3')?.textContent).toBe('ツール');
+		expect(heading.nextElementSibling).toBe(firstGroup);
+		// Restoring the old spacer must break the same adjacency check.
+		const spacer = window.document.createElement('div');
+		spacer.style.height = '22px';
+		heading.after(spacer);
+		expect(heading.nextElementSibling).not.toBe(firstGroup);
+		spacer.remove();
+		expect(heading.nextElementSibling).toBe(firstGroup);
+	});
+
 	test('Hataskey Appの見出し線だけをPC・モバイルで外し、Hataskと分類の線を保つ', async () => {
 		const filename = resolve(process.cwd(), 'src/components/hatask/HataskAkatsukiApps.vue');
 		const parsed = parse(readFileSync(filename, 'utf8'), { filename });
