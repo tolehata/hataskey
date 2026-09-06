@@ -6,6 +6,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 <template>
 <div
 	role="menu"
+	:data-viewport-constrained="maxWidth != null"
 	:class="{
 		[$style.root]: true,
 		[$style.center]: align === 'center',
@@ -26,7 +27,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 		]"
 		:style="{
 			width: (width && !asDrawer) ? `${width}px` : '',
-			maxHeight: maxHeight ? `min(${maxHeight}px, calc(100dvh - 32px))` : 'calc(100dvh - 32px)',
+			maxWidth: maxWidth != null ? `min(${maxWidth}px, ${width ?? 400}px)` : '',
+			minWidth: maxWidth != null ? `min(${maxWidth}px, ${big ? 230 : 200}px)` : '',
+			maxHeight: maxHeight != null ? `min(${maxHeight}px, calc(100dvh - 32px))` : 'calc(100dvh - 32px)',
 		}"
 		@keydown.stop="() => {}"
 		@contextmenu.self.prevent="() => {}"
@@ -247,6 +250,7 @@ const props = defineProps<{
 	asDrawer?: boolean;
 	align?: 'center' | string;
 	width?: number;
+	maxWidth?: number;
 	maxHeight?: number;
 }>();
 
@@ -355,6 +359,8 @@ async function showRadioOptions(item: MenuRadio, ev: Event) {
 
 async function showChildren(item: MenuParent, ev: Event) {
 	ev.stopPropagation();
+	// currentTarget becomes null after dispatch; keep the whole trigger, not its tapped label.
+	const target = (ev.currentTarget ?? ev.target) as HTMLElement;
 
 	const children: MenuItem[] = await (async () => {
 		if (childrenCache.has(item)) {
@@ -369,14 +375,15 @@ async function showChildren(item: MenuParent, ev: Event) {
 	})();
 
 	childrenCache.set(item, children);
+	if (disposed || !target.isConnected) return;
 
 	if (props.asDrawer) {
-		os.popupMenu(children, ev.currentTarget ?? ev.target).finally(() => {
+		os.popupMenu(children, target).finally(() => {
 			close(false);
 		});
 		emit('hide');
 	} else {
-		childTarget.value = (ev.currentTarget ?? ev.target) as HTMLElement;
+		childTarget.value = target;
 		// これでもリアクティビティは保たれる
 		childMenu.value = children;
 		childShowingItem.value = item;
@@ -548,6 +555,28 @@ onBeforeUnmount(() => {
 
 	&:focus-visible {
 		outline: none;
+	}
+}
+
+/* Only viewport-bounded child menus reflow long labels. Top-level menus and
+   the user's drawer preference keep their existing dimensions and appearance. */
+.root[data-viewport-constrained='true'] {
+	.item_content, .item_content_text {
+		min-width: 0;
+		max-width: 100%;
+	}
+
+	.item_content_text {
+		flex: 1;
+	}
+
+	.item_content_text_title, .label {
+		white-space: normal;
+		overflow-wrap: anywhere;
+	}
+
+	.icon, .avatar, .caret {
+		flex-shrink: 0;
 	}
 }
 
