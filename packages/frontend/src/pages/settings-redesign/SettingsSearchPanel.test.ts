@@ -8,6 +8,9 @@ import type { App } from 'vue';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import panelSource from './SettingsSearchPanel.vue?raw';
 
+const layerMocks = vi.hoisted(() => ({ claimZIndex: vi.fn() }));
+vi.mock('@/os.js', () => ({ claimZIndex: layerMocks.claimZIndex }));
+
 const workerMocks = vi.hoisted(() => {
 	type Message = { type: string; catalogRevision: number; queryRevision?: number; query?: string };
 	const instances: MockSearchWorker[] = [];
@@ -148,6 +151,7 @@ function latestQuery() {
 
 beforeEach(() => {
 	vi.useFakeTimers();
+	layerMocks.claimZIndex.mockReset().mockReturnValue(2000100);
 	workerMocks.instances.splice(0);
 	workerMocks.state.throwOnCreate = false;
 	Object.defineProperty(window, 'matchMedia', {
@@ -166,6 +170,26 @@ afterEach(() => {
 });
 
 describe('SettingsSearchPanel', () => {
+	test('検索を開くたびにウィンドウより手前のポップアップ層を取得して適用する', async () => {
+		const panel = mountPanel();
+		await flush();
+		const overlay = () => window.document.querySelector<HTMLElement>('[data-settings-search-overlay]');
+		expect(layerMocks.claimZIndex).toHaveBeenLastCalledWith('middle');
+		expect(overlay()?.style.zIndex).toBe('2000100');
+		expect(overlay()?.parentElement).toBe(window.document.body);
+
+		panel.props.open = false;
+		await flush();
+		expect(layerMocks.claimZIndex).toHaveBeenCalledTimes(1);
+		// A window can acquire a newer layer while the search panel is closed.
+		layerMocks.claimZIndex.mockReturnValueOnce(2000900);
+		panel.props.open = true;
+		await flush();
+		expect(layerMocks.claimZIndex).toHaveBeenCalledTimes(2);
+		expect(layerMocks.claimZIndex).toHaveBeenLastCalledWith('middle');
+		expect(overlay()?.style.zIndex).toBe('2000900');
+	});
+
 	test('Tab focus trap declares its focusable collection exactly once', () => {
 		expect(panelSource.match(/const focusables = Array\.from\(/gu)).toHaveLength(1);
 	});

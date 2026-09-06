@@ -21,6 +21,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 	</template>
 	<section
 		data-hata-settings-transfer-window
+		:data-embedded="embedded ? 'true' : undefined"
 		:class="$style.window"
 		role="dialog"
 		aria-modal="false"
@@ -373,6 +374,19 @@ defineProps<{ embedded?: boolean }>();
 	overscroll-behavior: contain;
 	scrollbar-gutter: stable;
 	background: var(--MI_THEME-bg);
+}
+
+// 埋め込み時は設定の右ペインがスクロールを受け持つ。
+// 内容高まで広がる内側の器に contain を残すと、ホイールが右ペインへ渡らない。
+.window[data-embedded='true'] {
+	height: auto;
+	overflow: visible;
+}
+
+.window[data-embedded='true'] .scrollArea {
+	overflow: visible;
+	overscroll-behavior: auto;
+	scrollbar-gutter: auto;
 }
 
 .body { padding:clamp(14px,3%,20px); display:flex; flex-direction:column; gap:16px; color:var(--MI_THEME-fg); }

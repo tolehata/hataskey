@@ -6,7 +6,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 <template>
 <Teleport to="body">
 	<Transition name="settings-search-panel" :css="isMotionEnabled">
-		<div v-if="open" :class="$style.backdrop" :data-motion-enabled="isMotionEnabled ? 'on' : 'off'" data-settings-search-overlay @mousedown.self="close('backdrop')">
+		<div v-if="open" :class="$style.backdrop" :style="{ zIndex }" :data-motion-enabled="isMotionEnabled ? 'on' : 'off'" data-settings-search-overlay @mousedown.self="close('backdrop')">
 			<section
 				ref="panelEl"
 				:class="$style.panel"
@@ -119,12 +119,13 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch , toRaw } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, toRaw } from 'vue';
 import type { SettingsCatalogDescriptorV2 } from '@/utility/settings-search-v2.js';
 import { i18n } from '@/i18n.js';
 import SettingsSearchWorker from '@/workers/settings-search-v2?worker';
 import { searchSettingsV2 } from '@/utility/settings-search-v2.js';
 import { prefer } from '@/preferences.js';
+import { claimZIndex } from '@/os.js';
 
 export type SettingsSearchDescriptor = {
 	stableId: string;
@@ -166,6 +167,7 @@ const emit = defineEmits<{
 
 const inputEl = ref<HTMLInputElement>();
 const panelEl = ref<HTMLElement>();
+const zIndex = ref<number>();
 const query = ref('');
 const response = ref<SearchResponse | null>(null);
 const activeIndex = ref(-1);
@@ -233,12 +235,15 @@ const liveMessage = computed(() => {
 
 watch(() => props.open, async (open) => {
 	if (!open) return;
+	// Settings can live in an MkWindow. Reclaim the popup layer on every open,
+	// including after another window has been brought to the front.
+	zIndex.value = claimZIndex('middle');
 	await nextTick();
 	inputEl.value?.focus();
 	// Closing invalidates a pending worker revision. Re-submit the visible query
 	// when reopening so an already initialized worker cannot leave an empty list.
 	if (query.value !== '') search();
-});
+}, { immediate: true });
 
 watch(query, () => {
 	if (isComposing.value) return;
@@ -510,7 +515,6 @@ onBeforeUnmount(() => {
 .backdrop {
 	position: fixed;
 	inset: 0;
-	z-index: 3000;
 	display: grid;
 	place-items: start center;
 	padding: max(16px, env(safe-area-inset-top)) 16px 16px;
