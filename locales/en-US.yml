@@ -5887,6 +5887,21 @@ _hata:
       noData: "No streaks yet. Start today!"
       dateRange: "{start} – {end}"
   _hatask:
+    _akatsukiNotice:
+      description: "Plans, moods, and everyday records. Meet your familiar Hatask in the new Akatsuki design"
+      overviewTitle: "Your day at a glance"
+      overviewDescription: "Plans, ToDos, and daily records come together in clear panes and rounded cases"
+      themeTitle: "A space in your colors"
+      themeDescription: "The background shifts gently with your chosen theme colors and the time of day"
+      preserved: "Your saved plans and ToDos stay intact. You can return to a previous theme in settings"
+      apply: "Try Akatsuki"
+      continue: "Continue with Akatsuki"
+      later: "Keep my current theme"
+      close: "Close introduction"
+      saving: "Saving your settings"
+      saveError: "Your settings could not be saved. Please try again"
+      retry: "Try again"
+      applied: "Switched to Akatsuki"
     _journal:
       moodIntro: "A small moment to check in with yourself"
       mealIntro: "Your meals, at your own pace"

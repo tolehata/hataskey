@@ -22800,6 +22800,64 @@ export interface Locale extends ILocale {
             };
         };
         "_hatask": {
+            "_akatsukiNotice": {
+                /**
+                 * 予定も、きもちも、日々の記録も。いつものHataskを、新しい暁のデザインで
+                 */
+                "description": string;
+                /**
+                 * 毎日のことを、ひと目に
+                 */
+                "overviewTitle": string;
+                /**
+                 * 予定やToDo、日々の記録を、見渡しやすいペインと角丸のケースにまとめました
+                 */
+                "overviewDescription": string;
+                /**
+                 * あなたの色で、心地よく
+                 */
+                "themeTitle": string;
+                /**
+                 * 背景は選んだテーマの色と時間帯に合わせて、なめらかに移り変わります
+                 */
+                "themeDescription": string;
+                /**
+                 * 保存済みの予定やToDoはそのまま。設定から以前のテーマにも戻せます
+                 */
+                "preserved": string;
+                /**
+                 * 暁を使ってみる
+                 */
+                "apply": string;
+                /**
+                 * このまま続ける
+                 */
+                "continue": string;
+                /**
+                 * 今のテーマを使う
+                 */
+                "later": string;
+                /**
+                 * 紹介を閉じる
+                 */
+                "close": string;
+                /**
+                 * 設定を保存しています
+                 */
+                "saving": string;
+                /**
+                 * 設定を保存できませんでした。もう一度お試しください
+                 */
+                "saveError": string;
+                /**
+                 * もう一度試す
+                 */
+                "retry": string;
+                /**
+                 * 暁に切り替えました
+                 */
+                "applied": string;
+            };
             "_journal": {
                 /**
                  * いまのきもちを、ひと息で残そう

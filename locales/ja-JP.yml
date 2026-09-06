@@ -6023,6 +6023,21 @@ _hata:
       noData: "まだ連続記録がありません。今日から始めましょう！"
       dateRange: "{start} 〜 {end}"
   _hatask:
+    _akatsukiNotice:
+      description: "予定も、きもちも、日々の記録も。いつものHataskを、新しい暁のデザインで"
+      overviewTitle: "毎日のことを、ひと目に"
+      overviewDescription: "予定やToDo、日々の記録を、見渡しやすいペインと角丸のケースにまとめました"
+      themeTitle: "あなたの色で、心地よく"
+      themeDescription: "背景は選んだテーマの色と時間帯に合わせて、なめらかに移り変わります"
+      preserved: "保存済みの予定やToDoはそのまま。設定から以前のテーマにも戻せます"
+      apply: "暁を使ってみる"
+      continue: "このまま続ける"
+      later: "今のテーマを使う"
+      close: "紹介を閉じる"
+      saving: "設定を保存しています"
+      saveError: "設定を保存できませんでした。もう一度お試しください"
+      retry: "もう一度試す"
+      applied: "暁に切り替えました"
     _journal:
       moodIntro: "いまのきもちを、ひと息で残そう"
       mealIntro: "きょうのごはんを、あなたのペースで"

@@ -1037,6 +1037,7 @@ import type { HataskEventMoveDialogLabels } from '@/components/hatask/HataskEven
 import HataskTodoPlanner from '@/components/hatask/HataskTodoPlanner.vue';
 import HataskAkatsukiLayout from '@/components/hatask/HataskAkatsukiLayout.vue';
 import HataskAkatsukiApps from '@/components/hatask/HataskAkatsukiApps.vue';
+import HataskAkatsukiNotice from '@/components/hatask/HataskAkatsukiNotice.vue';
 import type { HataskAkatsukiAction, HataskAkatsukiTab } from '@/components/hatask/hatask-akatsuki-types.js';
 import { buildHataskAkatsukiModel } from '@/utility/hatask-akatsuki.js';
 import HataskQuickCapture from '@/components/hatask/HataskQuickCapture.vue';
@@ -1160,6 +1161,9 @@ async function registryGet<T>(key:string,fb:T):Promise<T>{
 		}
 		const v=await misskeyApi('i/registry/get',{key,scope:SCOPE});
 		loadedKeys.add(key);
+		// Keep a malformed settings value visible to its read guard; only NO_SUCH_KEY
+		// may supply defaults that the introduction is allowed to save later.
+		if (key === 'settings') return v as T;
 		return(v!=null?v:fb)as T;
 	} catch (error) {
 		// A missing key is a valid empty state. Network/auth/server failures are not:
@@ -1427,6 +1431,87 @@ function dismissHatakyuNotice():void{
   saveSettings();
   showHatakyuNotice.value=false;
 }
+
+// The popup lives in os.popups until its closing transition releases the focus trap,
+// even when a deck window or the Hatask page itself is unmounted.
+let hataskPageActive = true;
+let hataskIntroductionReady = false;
+let akatsukiNoticeHandled = false;
+let akatsukiNoticeSaving = false;
+let akatsukiNoticeOwner: ReturnType<typeof ref<boolean>> | null = null;
+
+function acceptLoadedHataskSettings(value: unknown): boolean {
+	if (!loadedKeys.has('settings')) return false;
+	if (value == null || typeof value !== 'object' || Array.isArray(value)) {
+		loadedKeys.delete('settings');
+		return false;
+	}
+	settings.value = value;
+	return true;
+}
+
+async function chooseAkatsukiNotice(apply: boolean): Promise<boolean> {
+	if (!hataskPageActive || akatsukiNoticeSaving || !loadedKeys.has('settings')) return false;
+	akatsukiNoticeSaving = true;
+	const ownerAtChoice = akatsukiNoticeOwner;
+	// Dismissal stays possible after a save failure, without reopening on this visit.
+	if (!apply) akatsukiNoticeHandled = true;
+	const changedTheme = apply && settings.value.theme !== 'akatsuki';
+	const patch = { akatsukiNoticeShown: true, hatakyuNoticeShown: true, ...(apply ? { theme: 'akatsuki' } : {}) };
+	try {
+		await registrySet('settings', { ...settings.value, ...patch });
+		settings.value = { ...settings.value, ...patch };
+		akatsukiNoticeHandled = true;
+		// eslint-disable-next-line vue/no-ref-as-operand, @typescript-eslint/no-unnecessary-condition -- Compare owner identity and recheck page activity after the awaited save.
+		if (changedTheme && hataskPageActive && ownerAtChoice?.value && akatsukiNoticeOwner === ownerAtChoice) {
+			playBoot();
+			os.toast(i18n.ts._hata._hatask._akatsukiNotice.applied);
+		}
+		return true;
+	} catch {
+		return false;
+	} finally {
+		akatsukiNoticeSaving = false;
+		// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Page lifecycle hooks can change this flag during the awaited save.
+		if (hataskPageActive && !akatsukiNoticeOwner) nextTick(showHataskIntroduction);
+	}
+}
+
+function showHataskIntroduction(): void {
+	if (!hataskPageActive || !hataskIntroductionReady || !loadedKeys.has('settings')) return;
+	if (showTutorial.value || showTutTheme.value || akatsukiNoticeOwner || akatsukiNoticeSaving) return;
+	if (!settings.value.tutorialDone) {
+		tutThemeStandalone.value = false;
+		showTutTheme.value = true;
+	} else if (!settings.value.v2Onboarded) {
+		tutThemeStandalone.value = true;
+		showTutTheme.value = true;
+	} else if (!settings.value.akatsukiNoticeShown && !akatsukiNoticeHandled) {
+		const ownerActive = ref(true);
+		akatsukiNoticeOwner = ownerActive;
+		const { dispose } = os.popup(HataskAkatsukiNotice, {
+			active: isAkatsuki,
+			animation: computed(() => settings.value.animations !== false && prefer.r.animation.value),
+			mode: themeMode,
+			ownerActive,
+			onChoose: chooseAkatsukiNotice,
+		}, {
+			closed: () => {
+				dispose();
+				// eslint-disable-next-line vue/no-ref-as-operand -- Do not clear the owner of a different popup instance.
+				if (akatsukiNoticeOwner === ownerActive) akatsukiNoticeOwner = null;
+				// A quick KeepAlive return can happen before the old popup has finished closing.
+				if (!ownerActive.value && hataskPageActive) nextTick(showHataskIntroduction);
+			},
+		});
+	}
+}
+
+function closeHataskIntroduction(): void {
+	hataskPageActive = false;
+	if (akatsukiNoticeOwner) akatsukiNoticeOwner.value = false;
+}
+
 const showTutorial=ref(false);const tutStep=ref(0);const tutTotalSteps=10;
 const isMobile=ref(window.innerWidth<=1024);
 // ===== Spotlight tutorial system =====
@@ -1540,13 +1625,23 @@ function setTutMode(dark:boolean){settings.value.darkMode=dark;settings.value.au
 function startTutFromTheme(){
   // ⚠️このテーマ選択の一覧にはハタキュも並ぶ。ここを通った人へ後から新テーマ案内を出すと
   //   「さっき選んだのに」と二度手間になるので、案内済みとして扱う。
+	settings.value.akatsukiNoticeShown = true;
   settings.value.v2Onboarded=true;settings.value.hatakyuNoticeShown=true;saveSettings();
   showTutTheme.value=false;
   // 既存ユーザー(単独告知)は本編に進まず閉じるだけ。新規は本編ウェルカムへ。
   if(tutThemeStandalone.value){tutThemeStandalone.value=false;os.toast(copy.themeSet);return;}
   tutStep.value=0;showTutorial.value=true;
 }
-function skipTutTheme(){showTutTheme.value=false;settings.value.v2Onboarded=true;settings.value.hatakyuNoticeShown=true;settings.value.tutorialDone=true;tutThemeStandalone.value=false;saveSettings()}
+function skipTutTheme() {
+	showTutTheme.value = false;
+	settings.value.v2Onboarded = true;
+	settings.value.hatakyuNoticeShown = true;
+	settings.value.akatsukiNoticeShown = true;
+	settings.value.tutorialDone = true;
+	tutThemeStandalone.value = false;
+	saveSettings();
+}
+
 function openDrawingTool(){
   showMobileNav.value=false;
 	  os.popup(defineAsyncComponent(()=>import('@/components/MkDrawingTool.vue')),{},{closed:()=>{showMobileNav.value=true}});
@@ -1587,6 +1682,7 @@ function htkTouchEnd(e:TouchEvent){
   else if(dx<0&&idx<tabIds.length-1)activeTab.value=tabIds[idx+1];
 }
 function cleanupHataskState(){
+	closeHataskIntroduction();
   closeEventDetail();
   closeBlankCalendarActions();
   // 旗鯖fork(タスク8): Hataskを離れたらフローティング連動フラグを下げる(フローティング復活)
@@ -4045,7 +4141,7 @@ const initFlower = pickRandomFlora();
 	const defaultFlower = createHataskGrowingFlower({ emoji: initFlower.emoji, name: generateFlowerName(initFlower) });
 const defaultSettings = { darkMode: false, autoTheme: true, weekStart: 'mon', showClock: true, showEvents: true, showFlower: true, showMoodSummary: true, showMealSection: true, showFeedbackNotif: true, showEarthquake: true, moodRemind: false, moodRemindTimes: ['昼 12:00', '寝る前 23:00'], openOnStart: false, showMealSummary: true, mealDisclaimerShown: false, eyeDisclaimerShown: false, theme: 'akatsuki', animations: true, v2Onboarded: false, todoSortModes: {}, todoMobileTabOrder: ['today', 'upcoming', 'all', 'completed', 'more'],
 	// 旗鯖fork(ハタキュ): 風を吹かせるか(このテーマ限定・既定ON) / 新テーマ案内を出したか(アカウントごと1回)
-	hatakyuWind: true, hatakyuNoticeShown: false };
+	hatakyuWind: true, hatakyuNoticeShown: false, akatsukiNoticeShown: false };
 
 // 各データを個別に取得（1つの失敗が他に影響しないようにする）
 const loadResults = await Promise.allSettled([
@@ -4079,7 +4175,7 @@ if (loadResults[4].status === 'fulfilled' && loadedKeys.has('gallery')) {
 	gallery.value = normalizedGallery.items;
 	if (normalizedGallery.changed) await registrySet('gallery', gallery.value);
 }
-if (loadResults[5].status === 'fulfilled' && loadedKeys.has('settings')) settings.value = loadResults[5].value as any;
+if (loadResults[5].status === 'fulfilled') acceptLoadedHataskSettings(loadResults[5].value);
 if (plannerMigrationReady && loadResults[6].status === 'fulfilled' && loadedKeys.has('events')) events.value = loadResults[6].value as HataskPlannerEvent[];
 if (loadResults[7].status === 'fulfilled' && loadedKeys.has('meals') && Array.isArray(loadResults[7].value)) {
 	mealJournalRows.value = loadResults[7].value;
@@ -4103,16 +4199,9 @@ settings.value = { ...defaultSettings, ...settings.value };
 // Check for closed RSVP notifications
 await loadSharedEvents();
 checkClosedRsvps();
-// Show tutorial on first visit
-// 旗鯖fork(v2 §14): 初回はテーマ選択ステップから開始(確定後に本編ウィザードへ)
-if (!settings.value.tutorialDone) { tutThemeStandalone.value = false; showTutTheme.value = true; }
-// 旗鯖fork(v2): 既存ユーザー(チュートリアル済み)がリデザイン後に初めて開いたら、テーマ選択(告知)を一度だけ。
-//   確定/スキップで v2Onboarded を立て、以後は出さない。本編スポットライトは出さない(単独モード)。
-else if (!settings.value.v2Onboarded) { tutThemeStandalone.value = true; showTutTheme.value = true; }
-// 旗鯖fork(ハタキュ): 新テーマの案内はアカウントごとに1回だけ。
-//   ⚠️v2 のテーマ選択(告知)がまだ出ていない人には出さない。同時に2枚出すと何を選んだのか分からなくなる。
-//     その人はテーマ選択の一覧でハタキュを見ることになるので、そこで案内済みとして扱う。
-else if (!settings.value.hatakyuNoticeShown) { showHatakyuNotice.value = true; }
+// Show only one introduction, after a successful settings read and while still in Hatask.
+hataskIntroductionReady = true;
+showHataskIntroduction();
 // 旗鯖fork(ハタキュ): 設定を読み終えた時点でテーマが確定するので、ここから風を回し始める。
 if (hkWindEnabled.value) { hkBlowWind(); hkScheduleWind(); }
 // Schedule notifications
@@ -4130,6 +4219,8 @@ onDeactivated(() => {
 cleanupHataskState();
 });
 onActivated(() => {
+hataskPageActive = true;
+showHataskIntroduction();
 // 旗鯖fork(v2 §16①): hatask が表示されるたび(初回mount含む)ブートを再生。遷移復帰でも出るように。
 bootUsedActivated = true;
 playBoot();

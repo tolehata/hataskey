@@ -5465,6 +5465,21 @@ _hata:
       noData: "还没有连续记录。从今天开始吧！"
       dateRange: "{start} 至 {end}"
   _hatask:
+    _akatsukiNotice:
+      description: "日程、心情与日常记录。用全新的“暁”设计，开启熟悉的 Hatask"
+      overviewTitle: "每天的事情，一目了然"
+      overviewDescription: "将日程、待办和日常记录整理在清晰的面板与圆角卡片中"
+      themeTitle: "用你的颜色，营造舒适空间"
+      themeDescription: "背景会根据所选主题的颜色和时段，平滑地变换"
+      preserved: "已保存的日程和待办不会改变。你也可以在设置中切回原来的主题"
+      apply: "试试“暁”"
+      continue: "继续使用“暁”"
+      later: "保留当前主题"
+      close: "关闭介绍"
+      saving: "正在保存设置"
+      saveError: "无法保存设置，请重试"
+      retry: "重试"
+      applied: "已切换到“暁”"
     _journal:
       moodIntro: "轻松记下此刻的心情"
       mealIntro: "按自己的节奏记录每一餐"
