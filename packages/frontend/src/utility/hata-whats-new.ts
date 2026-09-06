@@ -4,7 +4,7 @@
  *
  * 更新後に一度表示する、利用者向けの変更案内。
  * 実装用語や開発中だけの不具合は載せない。
- * 「最新のリリース」「このリリース」「このメインリリース」を分け、同じ系列の案内も残す。
+ * 最新版・直前の修正版・それ以前の修正版・メイン版を分け、同じ系列の案内も残す。
  * 文言は共通localeの _hata._whatsNew を使う。
  * hata-12.5.3の案内。versionはpackage.jsonと同時に更新する。
  * 本番への公開済み判定には使わない。表示済みの記録は窓を閉じたときに行う。
@@ -29,7 +29,7 @@ export type HataWhatsNewItem = {
 	linkLabel?: string;
 };
 
-export type HataWhatsNewReleaseId = 'latestRelease' | 'currentRelease' | 'mainRelease';
+export type HataWhatsNewReleaseId = 'latestRelease' | 'currentRelease' | 'previousRelease' | 'mainRelease';
 
 export type HataWhatsNewRelease = {
 	id: HataWhatsNewReleaseId;
@@ -41,8 +41,8 @@ export type HataWhatsNewRelease = {
 export type HataWhatsNew = {
 	/** package.jsonと同じ完全な版を表示済み判定に使う。 */
 	version: string;
-	/** 最新版を先頭、直前の修正版、同じ系列のメイン版の順に置く。 */
-	releases: [HataWhatsNewRelease, HataWhatsNewRelease, HataWhatsNewRelease];
+	/** 最新版から修正版を新しい順に並べ、同じ系列のメイン版も残す。 */
+	releases: [HataWhatsNewRelease, HataWhatsNewRelease, HataWhatsNewRelease, HataWhatsNewRelease];
 	footer: {
 		text: string;
 		linkLabel?: string;
@@ -115,6 +115,42 @@ export const HATA_WHATS_NEW: HataWhatsNew = {
 					preview: 'timelineCollapse',
 					title: copy.timelineCollapseTitle,
 					text: copy.timelineCollapseText,
+				},
+			],
+		},
+		{
+			id: 'previousRelease',
+			version: '2026.7.0-hata.12.5.1',
+			headline: copy.previousHeadline,
+			items: [
+				{
+					icon: 'ti ti-device-mobile-check',
+					preview: 'hataskPlanner',
+					title: copy.hataskMobileTitle,
+					text: copy.hataskMobileText,
+					to: '/hatask',
+					linkLabel: copy.hataskLink,
+				},
+				{
+					icon: 'ti ti-send',
+					preview: 'dailyPolish',
+					title: copy.postComposerTitle,
+					text: copy.postComposerText,
+				},
+				{
+					icon: 'ti ti-language-hiragana',
+					preview: 'welcomeRenewal',
+					title: copy.serverNameTitle,
+					text: copy.serverNameText,
+				},
+				{
+					icon: 'ti ti-plug-connected',
+					preview: 'externalAccount',
+					previewLabel: 'mk-juice.dev',
+					title: copy.externalJuiceTitle,
+					text: copy.externalJuiceText,
+					to: '/settings/external-account',
+					linkLabel: copy.externalLink,
 				},
 			],
 		},

@@ -29117,6 +29117,10 @@ export interface Locale extends ILocale {
                  */
                 "currentRelease": string;
                 /**
+                 * 前のリリース
+                 */
+                "previousRelease": string;
+                /**
                  * このメインリリース
                  */
                 "mainRelease": string;
@@ -29155,11 +29159,15 @@ export interface Locale extends ILocale {
                  */
                 "latestHeadline": string;
                 /**
+                 * 投稿まわりとスマートフォン表示を、より使いやすく整えました
+                 */
+                "previousHeadline": string;
+                /**
                  * Hataskの新しい標準デザイン「暁」
                  */
                 "hataskAkatsukiTitle": string;
                 /**
-                 * PCでは3ペインで予定や記録を見渡せるようになりました。背景は選んだテーマの色と時間帯に合わせて緩やかに変化します。スマートフォンの下部タブは設定からドラッグで並び替えられます。これまでのテーマと、保存した予定・ToDoは引き続き使えます。
+                 * PCでは3ペインで予定や記録を見渡せるようになりました。背景は選んだテーマの色と時間帯に合わせて緩やかに変化します。スマートフォンの下部タブは設定からドラッグで並び替えられます。扉をくぐる文字アニメーションの紹介から、暁へ切り替えるか今のテーマを使い続けるかを選べます。これまでのテーマと、保存した予定・ToDoは引き続き使えます。
                  */
                 "hataskAkatsukiText": string;
                 /**
@@ -29175,7 +29183,7 @@ export interface Locale extends ILocale {
                  */
                 "hataskPolishTitle": string;
                 /**
-                 * Hatask AppとHataskey Appのカードを揃え、特集を小さくしました。検索結果は入力欄の下で滑らかに開閉します。スマートフォンで子メニューが見切れる問題や、デッキ内でHataskを終了しても窓が閉じない問題、設定のスクロールや重なりも修正しました。
+                 * Hatask AppとHataskey Appのカードを揃え、特集を小さくしました。検索結果は入力欄の下で滑らかに開閉します。スマートフォンの子メニュー、デッキ内でのHatask終了、設定のスクロールや重なりも修正しました。Hataskey UIのお知らせバナーを再び表示し、折りたたみ端末のナビをタイムラインの中央上部へ揃えました。縮小メニューの外部通知は未連携時に隠れ、連携すると元の位置に戻ります。
                  */
                 "hataskPolishText": string;
                 /**

@@ -184,6 +184,7 @@ const copyx = i18n.tsx._hata._whatsNew._window;
 const releaseLabels: Record<HataWhatsNewReleaseId, string> = {
 	latestRelease: copy.latestRelease,
 	currentRelease: copy.currentRelease,
+	previousRelease: copy.previousRelease,
 	mainRelease: copy.mainRelease,
 };
 const modal = useTemplateRef('modal');
@@ -407,7 +408,7 @@ function openReleaseNotes() {
 
 .releaseScope {
 	display: grid;
-	grid-template-columns: repeat(3, minmax(0, 1fr));
+	grid-template-columns: repeat(4, minmax(0, 1fr));
 	gap: 6px;
 	margin: 18px 18px 0;
 	padding: 4px;
@@ -439,10 +440,11 @@ function openReleaseNotes() {
 }
 
 .releaseScope button:focus-visible { outline: 2px solid var(--MI_THEME-accent); outline-offset: 2px; }
-.releaseScope span { min-width: 0; font-size: 0.87em; font-weight: 750; line-height: 1.35; }
+.releaseScope span { min-width: 0; max-width: 100%; overflow-wrap: anywhere; white-space: normal; text-align: center; font-size: 0.87em; font-weight: 750; line-height: 1.35; }
 .releaseScope small { flex: none; min-width: 0; max-width: 100%; overflow-wrap: anywhere; text-align: center; font: 650 0.7em/1.25 ui-monospace, monospace; opacity: 0.64; }
 
 @container (max-width: 700px) {
+	.releaseScope { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 	.releaseScope button { flex-direction: column; gap: 3px; padding-inline: 8px; }
 }
 

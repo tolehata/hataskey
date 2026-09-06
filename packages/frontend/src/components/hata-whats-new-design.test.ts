@@ -2,12 +2,47 @@
  * SPDX-FileCopyrightText: Tolehata and hatasaba-project
  * SPDX-License-Identifier: AGPL-3.0-only
  */
+/* eslint-disable vue/one-component-per-file -- Fixtures replace only the surrounding modal, button and branding illustration. */
 
 import { resolve } from 'node:path';
 import { compileScript, compileStyleAsync, parse } from '@vue/compiler-sfc';
-import { describe, expect, test } from 'vitest';
+import { createApp, defineComponent, h, nextTick } from 'vue';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import MkHataWhatsNew from './MkHataWhatsNew.vue';
 import whatsNewSource from './MkHataWhatsNew.vue?raw';
 import uiSetupSource from './MkUISetup.vue?raw';
+import type { App } from 'vue';
+import type { Locale } from '../../../../locales/index.js';
+import { getHataWhatsNewDisplayVersion, HATA_WHATS_NEW } from '@/utility/hata-whats-new.js';
+
+vi.mock('@/i18n.js', async () => {
+	const fs = await import('node:fs');
+	const path = await import('node:path');
+	const yaml = await import('js-yaml');
+	const { I18n } = await import('@@/js/i18n.js');
+	const locale = yaml.load(fs.readFileSync(path.resolve(process.cwd(), '../../locales/ja-JP.yml'), 'utf8'));
+	return { i18n: new I18n<Locale>(locale as Locale) };
+});
+vi.mock('@/preferences.js', () => ({ prefer: { r: { animation: { value: true } } } }));
+vi.mock('@/router.js', () => ({ mainRouter: { push: vi.fn() } }));
+vi.mock('@/utility/hatakyu-assets.js', () => ({ useHatakyuBranding: () => false }));
+vi.mock('@/components/MkModal.vue', async () => {
+	const { defineComponent: component, h: render } = await import('vue');
+	return { default: component({
+		setup: (_props, { slots, expose }) => {
+			expose({ ['close']: vi.fn() });
+			return () => render('div', slots.default?.());
+		},
+	}) };
+});
+vi.mock('@/components/MkButton.vue', async () => {
+	const { defineComponent: component, h: render } = await import('vue');
+	return { default: component({ setup: (_props, { slots }) => () => render('button', { type: 'button' }, slots.default?.()) }) };
+});
+vi.mock('@/components/MkHatakyuIllustration.vue', async () => {
+	const { defineComponent: component, h: render } = await import('vue');
+	return { default: component({ setup: () => () => render('span') }) };
+});
 
 describe('Hata update presentation', () => {
 	const previews = ['utageAchievements', 'externalSidebar', 'externalTimeline', 'timelineCollapse', 'hataskPlanner', 'hataskGarden', 'externalAccount', 'gameFarewell', 'welcomeRenewal', 'serverChoice', 'dailyPolish'];
@@ -152,7 +187,7 @@ describe('Hata update presentation', () => {
 		expect(whatsNewSource).toContain('@wheel.passive="carouselTarget = null"');
 	});
 
-	test('項目一覧の前で最新・このリリース・メインリリースを切り替えられる', () => {
+	test('項目一覧の前に4世代の切替を置き、PC4列・狭い画面2列で省略せず表示する', () => {
 		const scopeIndex = whatsNewSource.indexOf(':class="$style.releaseScope"');
 		const itemsIndex = whatsNewSource.indexOf('ref="itemsViewport"');
 		expect(scopeIndex).toBeGreaterThan(0);
@@ -161,11 +196,16 @@ describe('Hata update presentation', () => {
 		expect(whatsNewSource).toContain(':aria-pressed="activeRelease.id === release.id"');
 		expect(whatsNewSource).toContain('{{ releaseLabels[release.id] }}');
 		expect(whatsNewSource).toContain('latestRelease: copy.latestRelease');
+		expect(whatsNewSource).toContain('previousRelease: copy.previousRelease');
 		expect(whatsNewSource).toContain('const activeReleaseId = ref<HataWhatsNewReleaseId>(\'latestRelease\')');
 		expect(whatsNewSource).toContain('v-for="item in activeRelease.items"');
-		expect(whatsNewSource).toMatch(/\.releaseScope \{[^}]*grid-template-columns: repeat\(3, minmax\(0, 1fr\)\);/u);
+		const hasFourColumns = (source: string) => /\.releaseScope \{[^}]*grid-template-columns: repeat\(4, minmax\(0, 1fr\)\);/u.test(source);
+		expect(hasFourColumns(whatsNewSource.replace('repeat(4, minmax(0, 1fr))', 'repeat(3, minmax(0, 1fr))'))).toBe(false);
+		expect(hasFourColumns(whatsNewSource)).toBe(true);
+		expect(whatsNewSource).toMatch(/@container \(max-width: 700px\) \{\s*\.releaseScope \{ grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/u);
 		expect(whatsNewSource).toMatch(/\.releaseScope button \{[^}]*min-height: 44px;/u);
 		expect(whatsNewSource).toContain('.releaseScope button:focus-visible { outline: 2px solid var(--MI_THEME-accent);');
+		expect(whatsNewSource).toMatch(/\.releaseScope span \{[^}]*max-width: 100%;[^}]*overflow-wrap: anywhere;[^}]*white-space: normal;/u);
 		expect(whatsNewSource).toMatch(/\.releaseScope small \{[^}]*max-width: 100%;[^}]*overflow-wrap: anywhere;[^}]*text-align: center;/u);
 	});
 
@@ -226,5 +266,130 @@ describe('Hata update presentation', () => {
 		expect(whatsNewSource).toContain('animation: hata-whats-new-slide-down .26s');
 		expect(whatsNewSource).toContain('transform: translateY(56px)');
 		expect(whatsNewSource).toContain('motionAllowed.value ? 260 : 0');
+	});
+});
+
+describe('更新内容の4リリース切替（実SFC）', () => {
+	const mounted: Array<{ app: App<Element>; container: HTMLDivElement }> = [];
+	const observers: Array<{ callback: IntersectionObserverCallback; targets: Element[]; disconnect: ReturnType<typeof vi.fn> }> = [];
+	let reducedMotion = false;
+
+	beforeEach(() => {
+		reducedMotion = false;
+		observers.splice(0);
+		vi.spyOn(window.document, 'hidden', 'get').mockReturnValue(false);
+		vi.spyOn(window, 'matchMedia').mockImplementation(query => ({
+			media: query,
+			get matches() { return reducedMotion; },
+			onchange: null,
+			addEventListener: vi.fn(),
+			removeEventListener: vi.fn(),
+			addListener: vi.fn(),
+			removeListener: vi.fn(),
+			dispatchEvent: vi.fn(() => true),
+		}));
+		vi.stubGlobal('IntersectionObserver', class {
+			constructor(callback: IntersectionObserverCallback) { observers.push({ callback, targets: this.targets, disconnect: this.disconnect }); }
+			targets: Element[] = [];
+			observe = (target: Element): void => { this.targets.push(target); };
+			disconnect = vi.fn();
+		});
+	});
+
+	afterEach(() => {
+		for (const { app, container } of mounted.splice(0)) { app.unmount(); container.remove(); }
+		vi.restoreAllMocks();
+		vi.unstubAllGlobals();
+	});
+
+	async function mountGuide() {
+		const container = window.document.createElement('div');
+		window.document.body.append(container);
+		const app = createApp(defineComponent({ setup: () => () => h(MkHataWhatsNew) }));
+		app.mount(container);
+		mounted.push({ app, container });
+		await nextTick();
+		const buttons = [...container.querySelectorAll<HTMLButtonElement>('[role="group"] > button')];
+		const viewport = container.querySelector('[data-preview]')?.parentElement?.parentElement;
+		if (!viewport) throw new Error('Release item viewport did not mount');
+		const scrollTo = vi.fn();
+		Object.defineProperty(viewport, 'scrollTo', { configurable: true, value: scrollTo });
+		return { container, buttons, viewport, scrollTo };
+	}
+
+	async function select(buttons: HTMLButtonElement[], index: number) {
+		const button = buttons.at(index);
+		if (!button) throw new Error(`Missing release button ${index}`);
+		button.click();
+		await nextTick();
+		await nextTick();
+	}
+
+	function showActivePreviews() {
+		const observer = observers.at(-1);
+		if (!observer) throw new Error('Release previews are not observed');
+		observer.callback(observer.targets.map(target => ({ target, isIntersecting: true, intersectionRatio: 1 }) as IntersectionObserverEntry), {} as IntersectionObserver);
+	}
+
+	test('4タブの版番号・選択状態と各リリースの全項目を切り替えられる', async () => {
+		const { container, buttons, scrollTo } = await mountGuide();
+		expect(buttons).toHaveLength(4);
+		expect(buttons.map(button => button.querySelector('small')?.textContent)).toEqual(['hata-12.5.3', 'hata-12.5.2', 'hata-12.5.1', 'hata-12.5']);
+		expect(buttons.map(button => button.getAttribute('aria-pressed'))).toEqual(['true', 'false', 'false', 'false']);
+		for (const button of buttons) expect(button.querySelector('span')?.textContent.trim()).toBeTruthy();
+		for (const index of [2, 1, 3, 0]) {
+			await select(buttons, index);
+			const release = HATA_WHATS_NEW.releases[index];
+			expect(buttons.filter(button => button.getAttribute('aria-pressed') === 'true')).toEqual([buttons[index]]);
+			expect(buttons[index].textContent).toContain(getHataWhatsNewDisplayVersion(release.version));
+			expect(container.textContent).toContain(release.headline);
+			expect([...container.querySelectorAll<HTMLElement>('[data-preview]')].map(preview => preview.dataset.previewKey)).toEqual(release.items.map(item => `${release.id}:${item.preview}`));
+			for (const item of release.items) {
+				expect(container.textContent).toContain(item.title);
+				expect(container.textContent).toContain(item.text);
+			}
+			expect(scrollTo).toHaveBeenLastCalledWith({ left: 0, behavior: 'auto' });
+		}
+		// Selecting the already-open release must not restart the carousel or observer.
+		const count = observers.length;
+		scrollTo.mockClear();
+		await select(buttons, 0);
+		expect(scrollTo).not.toHaveBeenCalled();
+		expect(observers).toHaveLength(count);
+	});
+
+	test('復元したリリースでもカルーセルを先頭へ戻し、同じプレビューを世代別に一度だけ動かす', async () => {
+		const { container, buttons, viewport } = await mountGuide();
+		for (const [index, item] of [...viewport.children].entries()) Object.defineProperty(item, 'offsetLeft', { configurable: true, value: index * 320 });
+		const next = container.querySelector<HTMLButtonElement>('nav > button:last-child');
+		if (!next) throw new Error('Carousel next button did not mount');
+		next.click();
+		await nextTick();
+		expect(container.querySelector('nav > span')?.textContent).toBe('2 / 3');
+		showActivePreviews();
+		await nextTick();
+		expect(container.querySelector<HTMLElement>('[data-preview-key="latestRelease:hataskPlanner"]')?.dataset.previewState).toBe('running');
+		await select(buttons, 2);
+		expect(container.querySelector('nav > span')?.textContent).toBe('1 / 4');
+		expect(container.querySelector<HTMLElement>('[data-preview-key="previousRelease:hataskPlanner"]')?.dataset.previewState).toBe('ready');
+		showActivePreviews();
+		await nextTick();
+		expect(container.querySelector<HTMLElement>('[data-preview-key="previousRelease:hataskPlanner"]')?.dataset.previewState).toBe('running');
+		await select(buttons, 0);
+		expect(container.querySelector<HTMLElement>('[data-preview-key="latestRelease:hataskPlanner"]')?.dataset.previewState).toBe('complete');
+		await select(buttons, 2);
+		showActivePreviews();
+		await nextTick();
+		expect(container.querySelector<HTMLElement>('[data-preview-key="previousRelease:hataskPlanner"]')?.dataset.previewState).toBe('complete');
+	});
+
+	test('動きを減らす設定では復元したリリースも最初から完成形で表示する', async () => {
+		reducedMotion = true;
+		const { container, buttons } = await mountGuide();
+		await select(buttons, 2);
+		showActivePreviews();
+		await nextTick();
+		expect(container.querySelector('[data-motion]')?.getAttribute('data-motion')).toBe('static');
+		expect([...container.querySelectorAll<HTMLElement>('[data-preview]')].map(preview => preview.dataset.previewState)).toEqual(['complete', 'complete', 'complete', 'complete']);
 	});
 });

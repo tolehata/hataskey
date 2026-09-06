@@ -22,6 +22,7 @@ vi.mock('@/i18n.js', async () => {
 const root = path.resolve(process.cwd(), '../..');
 const latestPreviews = ['hataskPlanner', 'hataskGarden', 'dailyPolish'];
 const currentPreviews = ['utageAchievements', 'externalSidebar', 'externalTimeline', 'timelineCollapse'];
+const previousPreviews = ['hataskPlanner', 'dailyPolish', 'welcomeRenewal', 'externalAccount'];
 const mainPreviews = ['hataskPlanner', 'hataskGarden', 'externalAccount', 'welcomeRenewal', 'serverChoice', 'gameFarewell', 'dailyPolish'];
 const oldPreviews = new Set([
 	'branding', 'settingsRenewal', 'hatadyRecord', 'hatadyVisibility', 'hatacordingFix',
@@ -34,7 +35,8 @@ const locales = ['ja-JP', 'en-US', 'zh-CN'].map(lang => {
 });
 const latestRelease = HATA_WHATS_NEW.releases[0];
 const currentRelease = HATA_WHATS_NEW.releases[1];
-const mainRelease = HATA_WHATS_NEW.releases[2];
+const previousRelease = HATA_WHATS_NEW.releases[2];
+const mainRelease = HATA_WHATS_NEW.releases[3];
 
 describe('HATA_WHATS_NEW', () => {
 	test('表示済み判定の版をpackage.jsonと一致させる', () => {
@@ -59,17 +61,30 @@ describe('HATA_WHATS_NEW', () => {
 		for (const historical of ['hata-12.5.2', 'hata-12.5.1', 'hata-12.5']) expect(changelog).toContain(`## ${historical}\n`);
 	});
 
-	test('最新のリリースを先頭に置き、このリリースとメインリリースを残す', () => {
-		expect(HATA_WHATS_NEW.releases.map(release => release.id)).toEqual(['latestRelease', 'currentRelease', 'mainRelease']);
+	test('最新版から修正版2世代とメイン版まで4リリースを新しい順に残す', () => {
+		expect(HATA_WHATS_NEW.releases.map(release => release.id)).toEqual(['latestRelease', 'currentRelease', 'previousRelease', 'mainRelease']);
 		expect(getHataWhatsNewDisplayVersion(latestRelease.version)).toBe('hata-12.5.3');
 		expect(getHataWhatsNewDisplayVersion(currentRelease.version)).toBe('hata-12.5.2');
+		expect(getHataWhatsNewDisplayVersion(previousRelease.version)).toBe('hata-12.5.1');
 		expect(getHataWhatsNewDisplayVersion(mainRelease.version)).toBe('hata-12.5');
 		expect(latestRelease.items.map(item => item.preview)).toEqual(latestPreviews);
 		expect(currentRelease.items.map(item => item.preview)).toEqual(currentPreviews);
+		expect(previousRelease.items.map(item => item.preview)).toEqual(previousPreviews);
 		expect(mainRelease.items.map(item => item.preview)).toEqual(mainPreviews);
 		for (const release of HATA_WHATS_NEW.releases) {
 			expect(new Set(release.items.map(item => item.preview)).size).toBe(release.items.length);
 		}
+	});
+
+	test('hata-12.5.1の4項目は元の文言・プレビュー・リンクで復元する', () => {
+		const copy = locales[0].copy;
+		expect(previousRelease.headline).toBe('投稿まわりとスマートフォン表示を、より使いやすく整えました');
+		expect(previousRelease.items).toEqual([
+			{ icon: 'ti ti-device-mobile-check', preview: 'hataskPlanner', title: copy.hataskMobileTitle, text: copy.hataskMobileText, to: '/hatask', linkLabel: copy.hataskLink },
+			{ icon: 'ti ti-send', preview: 'dailyPolish', title: copy.postComposerTitle, text: copy.postComposerText },
+			{ icon: 'ti ti-language-hiragana', preview: 'welcomeRenewal', title: copy.serverNameTitle, text: copy.serverNameText },
+			{ icon: 'ti ti-plug-connected', preview: 'externalAccount', previewLabel: 'mk-juice.dev', title: copy.externalJuiceTitle, text: copy.externalJuiceText, to: '/settings/external-account', linkLabel: copy.externalLink },
+		]);
 	});
 
 	test('直前のhata-12.5.2の4領域を残す', () => {
@@ -104,9 +119,9 @@ describe('HATA_WHATS_NEW', () => {
 		expect(latestRelease.items).toHaveLength(3);
 		const [akatsuki, details, polish] = latestRelease.items;
 		expect(akatsuki.title).toContain('暁');
-		for (const word of ['3ペイン', '時間帯', 'ドラッグ', 'これまでのテーマ', '保存した予定・ToDo']) expect(akatsuki.text).toContain(word);
+		for (const word of ['3ペイン', '時間帯', 'ドラッグ', '扉をくぐる文字アニメーション', '今のテーマ', 'これまでのテーマ', '保存した予定・ToDo']) expect(akatsuki.text).toContain(word);
 		for (const word of ['吹き出し', 'スマートフォン', '作成・コピー・移動', 'N', 'O']) expect(details.text).toContain(word);
-		for (const word of ['Hatask App', 'Hataskey App', '検索結果', '子メニュー', 'デッキ', '設定']) expect(polish.text).toContain(word);
+		for (const word of ['Hatask App', 'Hataskey App', '検索結果', '子メニュー', 'デッキ', '設定', 'お知らせバナー', 'タイムラインの中央上部', '外部通知', '未連携', '元の位置']) expect(polish.text).toContain(word);
 		expect(akatsuki.to).toBe('/hatask');
 		expect(details.to).toBe('/hatask');
 	});
@@ -162,7 +177,7 @@ describe('HATA_WHATS_NEW', () => {
 
 	test.each(locales)('$langの新しい見出し・本文・リンクがすべて揃う', ({ copy, windowCopy }) => {
 		const expectedKeys = [
-			'latestHeadline', 'currentHeadline', 'mainHeadline', 'hataskLink', 'externalLink', 'footerText', 'footerLink',
+			'latestHeadline', 'currentHeadline', 'previousHeadline', 'mainHeadline', 'hataskLink', 'externalLink', 'footerText', 'footerLink',
 			'hataskAkatsukiTitle', 'hataskAkatsukiText', 'hataskDetailsTitle', 'hataskDetailsText', 'hataskPolishTitle', 'hataskPolishText',
 			'utageAchievementsTitle', 'utageAchievementsText', 'externalSidebarTitle', 'externalSidebarText',
 			'externalTimelineTitle', 'externalTimelineText', 'timelineCollapseTitle', 'timelineCollapseText',
@@ -179,7 +194,10 @@ describe('HATA_WHATS_NEW', () => {
 			expect(value.trim().length).toBeGreaterThan(0);
 			expect(value).not.toMatch(/^_hata\./);
 		}
-		expect(windowCopy.latestRelease.trim().length).toBeGreaterThan(0);
+		for (const release of HATA_WHATS_NEW.releases) {
+			expect(windowCopy[release.id].trim().length).toBeGreaterThan(0);
+			expect(windowCopy[release.id]).not.toMatch(/^_hata\./);
+		}
 	});
 
 	test('見出しと本文が翻訳キーのまま表示されない', () => {
