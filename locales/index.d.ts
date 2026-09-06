@@ -29093,9 +29093,33 @@ export interface Locale extends ILocale {
             };
             "_content": {
                 /**
-                 * 宴に新しい実績を加え、外部タイムラインとHataskey UIをさらに楽しめるようにしました
+                 * Hataskを新デザイン「暁」へ。予定や日々の記録を、見やすく使いやすく整えました
                  */
                 "latestHeadline": string;
+                /**
+                 * Hataskの新しい標準デザイン「暁」
+                 */
+                "hataskAkatsukiTitle": string;
+                /**
+                 * PCでは3ペインで予定や記録を見渡せるようになりました。背景は選んだテーマの色と時間帯に合わせて緩やかに変化します。スマートフォンの下部タブは設定からドラッグで並び替えられます。これまでのテーマと、保存した予定・ToDoは引き続き使えます。
+                 */
+                "hataskAkatsukiText": string;
+                /**
+                 * 予定の詳細と、お花を見やすく
+                 */
+                "hataskDetailsTitle": string;
+                /**
+                 * カレンダーの予定を押すと、PCでは日付の上下に吹き出し、スマートフォンでは専用の画面で詳細を表示します。空いている場所からは予定の作成・コピー・移動を選べます。暁の「みんなのお花」はNで新しい順、Oで古い順に並び替えられます。
+                 */
+                "hataskDetailsText": string;
+                /**
+                 * 特集・検索・設定の操作を改善
+                 */
+                "hataskPolishTitle": string;
+                /**
+                 * Hatask AppとHataskey Appのカードを揃え、特集を小さくしました。検索結果は入力欄の下で滑らかに開閉します。スマートフォンで子メニューが見切れる問題や、デッキ内でHataskを終了しても窓が閉じない問題、設定のスクロールや重なりも修正しました。
+                 */
+                "hataskPolishText": string;
                 /**
                  * 宴に21個の新しい実績を追加
                  */
@@ -29129,7 +29153,7 @@ export interface Locale extends ILocale {
                  */
                 "timelineCollapseText": string;
                 /**
-                 * 投稿まわりとスマートフォン表示を、より使いやすく整えました
+                 * 宴に新しい実績を加え、外部タイムラインとHataskey UIをさらに楽しめるようにしました
                  */
                 "currentHeadline": string;
                 /**
