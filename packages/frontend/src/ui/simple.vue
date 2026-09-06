@@ -4,7 +4,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 
 <template>
-<div ref="timelineCollapseRoot" :class="[$style.root, { [$style.desktopLayout]: isDesktop }]" :data-hata-foldable="isFoldableWide ? 'true' : undefined">
+<div ref="timelineCollapseRoot" :class="[$style.root, { [$style.desktopLayout]: isDesktop }]" :style="{ '--simple-announcements-height': `${announcementsHeight}px` }" :data-hata-foldable="isFoldableWide ? 'true' : undefined">
 	<!-- PC/タブレット: オリジナル左サイドバー (上部メニューモード時は隠す) -->
 	<nav v-if="isDesktop && !topNavActive" :class="[$style.sidebar, { [$style.sidebarSolid]: !glassEffect, [$style.sidebarWide]: !sidebarFolded && studioProfile.expanded.width === 'wide', [$style.sidebarDeckFolded]: deckActive || sidebarCollapsed }]">
 		<!-- バナーすりガラス背景 -->
@@ -161,6 +161,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 	<div :class="[$style.mainColumn, { [$style.mainColumnShifted]: isDesktop && userPanelUserId }]">
 		<div :class="$style.mainColumnInner">
+			<div v-if="$i" ref="announcementsEl" :class="$style.announcementsBanner">
+				<XAnnouncements/>
+			</div>
 			<!-- 旗鯖fork: 上部メニューモードのナビバー(横並びピル型/常時固定)。デッキ併用時はこの下にデッキツールバーが来る。 -->
 			<nav v-if="topNavActive" data-htk-weather-footer data-hata-collapse-group :class="[$style.topNav, { [$style.topNavSolid]: !glassEffect }]">
 				<button v-tooltip="instance.name ?? copy.instance" :class="$style.topNavLogo" @click="playSimpleNavMotion($event, 'layout'); openInstanceMenuMobile($event)">
@@ -511,6 +514,7 @@ import {
 } from '@/utility/hata-side-studio.js';
 
 const XWidgets = defineAsyncComponent(() => import('./_common_/widgets.vue'));
+const XAnnouncements = defineAsyncComponent(() => import('./_common_/announcements.vue'));
 const HatasabaDeck = defineAsyncComponent(() => import('./_common_/hatasaba-deck.vue'));
 const MkSimpleUserPanel = defineAsyncComponent(() => import('@/components/MkSimpleUserPanel.vue'));
 // 旗鯖fork: 「タイムライン上部に投稿フォームを表示する」設定で使用
@@ -794,6 +798,26 @@ function stopThemeWatch() {
 }
 
 // ===== スクロール検知 =====
+const announcementsEl = ref<HTMLElement | null>(null);
+const announcementsHeight = ref(0);
+let announcementsObserver: ResizeObserver | null = null;
+
+function updateAnnouncementsHeight() {
+	announcementsHeight.value = announcementsEl.value?.offsetHeight ?? 0;
+}
+
+function startAnnouncementsObserver() {
+	if (!announcementsEl.value || announcementsObserver) return;
+	updateAnnouncementsHeight();
+	announcementsObserver = new ResizeObserver(updateAnnouncementsHeight);
+	announcementsObserver.observe(announcementsEl.value);
+}
+
+function stopAnnouncementsObserver() {
+	announcementsObserver?.disconnect();
+	announcementsObserver = null;
+}
+
 const contentEl = ref<HTMLElement | null>(null);
 const timelineCollapseRoot = ref<HTMLElement | null>(null);
 const timelineCollapseEffect = createHataTimelineCollapseEffect({
@@ -2067,6 +2091,7 @@ watch([deckAnnounceVisible, collapseAnnounceVisible, moreAnnounceVisible], () =>
 });
 
 onMounted(() => {
+	startAnnouncementsObserver();
 	cleanupStaleUiElements();
 	checkIsPageView();
 	rememberCurrentCollection();
@@ -2125,6 +2150,7 @@ onMounted(() => {
 	}
 });
 onUnmounted(() => {
+	stopAnnouncementsObserver();
 	streamUnmounted = true;
 	if (streamRetryTimer !== null) {
 		window.clearTimeout(streamRetryTimer);
@@ -2804,7 +2830,8 @@ onUnmounted(() => {
 /* 縮小時専用: 内幅48pxへ左右2pxずつ余白を残し、太い枠線も切らずに縦一列へ収める。 */
 .hssCollapsedItem {
     flex:0 0 44px;
-    display:flex !important;
+    // Let v-show's inline display:none hide unavailable items without losing their saved position.
+    display:flex;
     align-items:center;
     justify-content:center;
     width:calc(100% - 4px);
@@ -3178,6 +3205,12 @@ onUnmounted(() => {
     position:relative;
     overflow:hidden;
 }
+.announcementsBanner {
+    flex-shrink:0;
+    min-width:0;
+    position:relative;
+    z-index:201;
+}
 
 // ===== ユーザーパネル（デスクトップ） =====
 .userPanelDesktop {
@@ -3287,7 +3320,7 @@ onUnmounted(() => {
 
 // ===== トップバー（ピル型、スクロール連動） =====
 .topBar {
-    position:fixed; top:0; left:0; right:0; z-index:200;
+    position:fixed; top:var(--simple-announcements-height, 0px); left:0; right:0; z-index:200;
     display:flex; justify-content:center; align-items:flex-start; gap:6px;
     padding:calc(10px + env(safe-area-inset-top,0px)) 16px 8px;
 	box-sizing:border-box; min-width:0;
@@ -3603,10 +3636,14 @@ onUnmounted(() => {
     width: 300px;
 }
 
-// モバイル用の上部ナビは画面全幅へ固定されるため、右ウィジェット列も
-// 左のノート列と同じ高さから始めて、先頭の操作をナビの下へ退避する。
+// 折りたたみ端末では画面全幅ではなく、タイムライン列を基準にピルを中央へ置く。
+.root[data-hata-foldable='true'] .topBar {
+    position: absolute;
+}
+
+// 右ウィジェット列の先頭を、バナー下にある左のノート列と同じ高さへ揃える。
 .root[data-hata-foldable='true'] .desktopWidgetsInner {
-    padding-top: calc(56px + env(safe-area-inset-top, 0px));
+    padding-top: calc(56px + env(safe-area-inset-top, 0px) + var(--simple-announcements-height, 0px));
 }
 
 .bottomBarDark {}
