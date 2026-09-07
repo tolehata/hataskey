@@ -70,8 +70,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<!-- 旗鯖fork: フォロー許可制アカウント (isLocked) の🔒バッジは非表示 (旗茶くんの依頼、タイムラインと統一) -->
 						<span v-if="appearNote.user.isBot" :class="$style.userBadge"><i class="ti ti-robot"></i></span>
 						<span v-if="appearNote.user.isProxy" :class="$style.userBadge"><i class="ti ti-ghost"></i></span>
-						<span v-if="appearNote.user.badgeRoles" :class="$style.badgeRoles">
-							<img v-for="role in appearNote.user.badgeRoles" :key="role.id" v-tooltip="role.name" :class="$style.badgeRole" :src="role.iconUrl"/>
+						<span v-if="badgeRoles.length > 0" :class="$style.badgeRoles">
+							<img v-for="(role, i) in badgeRoles" :key="i" v-tooltip="role.name" :class="$style.badgeRole" :src="role.iconUrl!"/>
 						</span>
 					</div>
 					<div :class="$style.noteHeaderUsername"><MkAcct :user="appearNote.user"/></div>
@@ -425,6 +425,7 @@ if (noteViewInterruptors.length > 0) {
 
 const isRenote = Misskey.note.isPureRenote(note);
 const appearNote = getAppearNote(note) ?? note;
+const badgeRoles = computed(() => appearNote.user.badgeRoles?.filter(role => role.iconUrl) ?? []);
 const { $note: $appearNote, subscribe: subscribeManuallyToNoteCapture } = useNoteCapture({
 	note: appearNote,
 	parentNote: note,

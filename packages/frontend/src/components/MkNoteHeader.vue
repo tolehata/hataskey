@@ -16,8 +16,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<!-- 旗鯖fork: 承認制(フォロー許可制)アカウントを示す鍵アイコンはタイムラインのノートヘッダーでは非表示にする -->
 			<div v-if="note.user.isBot" :class="$style.userBadge"><i class="ti ti-robot"></i></div>
 			<div v-if="note.user.isProxy" :class="$style.userBadge"><i class="ti ti-ghost"></i></div>
-			<div v-if="note.user.badgeRoles && note.user.badgeRoles.length > 0" :class="$style.badgeRoles">
-				<img v-for="(role, i) in note.user.badgeRoles" :key="i" v-tooltip="role.name" :class="$style.badgeRole" :src="role.iconUrl!"/>
+			<div v-if="badgeRoles.length > 0" :class="$style.badgeRoles">
+				<img v-for="(role, i) in badgeRoles" :key="i" v-tooltip="role.name" :class="$style.badgeRole" :src="role.iconUrl!"/>
 			</div>
 			<div :class="[$style.username, $style.nameClickable]" @click.stop="emit('nameClick', note.user.id)"><MkAcct :user="note.user"/></div>
 		</div>
@@ -62,7 +62,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { inject } from 'vue';
+import { computed, inject } from 'vue';
 import * as Misskey from 'cherrypick-js';
 import { i18n } from '@/i18n.js';
 import { notePage } from '@/filters/note.js';
@@ -85,6 +85,7 @@ const emit = defineEmits<{
 }>();
 
 const mock = inject(DI.mock, false);
+const badgeRoles = computed(() => props.note.user.badgeRoles?.filter(role => role.iconUrl) ?? []);
 
 const showTicker = (prefer.s.instanceTicker === 'always') || (prefer.s.instanceTicker === 'remote' && props.note.user.instance);
 const router = useRouter();
