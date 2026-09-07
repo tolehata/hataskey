@@ -225,9 +225,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 						<!-- ページ式ナビ -->
 						<div v-if="visibleIssues.length > 0 || issuePage > 0" :class="$style.pager">
-							<button :class="$style.pagerArrow" :disabled="issuePage === 0" @click="prevIssuePage"><i class="ti ti-chevron-left"></i> {{ copy.previous }}</button>
+								<button :class="$style.pagerArrow" :disabled="issuePageLoading || issuePage === 0" @click="prevIssuePage"><i class="ti ti-chevron-left"></i> {{ copy.previous }}</button>
 							<span :class="$style.pagerPage">{{ issuePage + 1 }}</span>
-							<button :class="$style.pagerArrow" :disabled="!issuesHasNext" @click="nextIssuePage">{{ copy.next }} <i class="ti ti-chevron-right"></i></button>
+								<button :class="$style.pagerArrow" :disabled="issuePageLoading || !issuesHasNext" @click="nextIssuePage">{{ copy.next }} <i class="ti ti-chevron-right"></i></button>
 							<label :class="$style.pagerSize">
 								<select v-model.number="issuePageSize" :class="$style.pagerSelect" @change="reloadIssues">
 									<option :value="10">{{ copyx.itemCount({ count: '10' }) }}</option>
@@ -323,6 +323,7 @@ import HfAvatar from '@/components/HfAvatar.vue';
 import HfQuotaMeter from '@/components/HfQuotaMeter.vue';
 import * as os from '@/os.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
+import { fetchHataFeedIssuePage } from '@/utility/hatafeed-issue-page.js';
 import { definePage } from '@/page.js';
 import { useRouter } from '@/router.js';
 import { prefer } from '@/preferences.js';
@@ -364,6 +365,8 @@ const issuePageSize = ref(10);
 const issuePage = ref(0);
 const issueCursors = ref<(string | undefined)[]>([undefined]); // cursors[i] = page i を取得する untilId
 const issuesHasNext = ref(false);
+const issuePageLoading = ref(false);
+let issuePageRequestId = 0;
 const issueListEl = ref<HTMLElement | null>(null);
 // 旗鯖fork(2a): 通知パネルをアンカーするツールバーのベル要素。
 const bellEl = ref<HTMLElement | null>(null);
@@ -476,40 +479,58 @@ async function loadProjects() {
 
 // 旗鯖fork: 指定カーソル(untilId)から1ページ分取得する。
 async function fetchIssuePage(untilId: string | undefined) {
-	const res = await misskeyApi('hata/feedback/issues', {
-		projectId: currentProjectId.value,
-		category: filterCategory.value,
-		status: filterStatus.value,
-		createdById: authorFilter.value?.id ?? null,
-		query: searchQuery.value.trim() || null,
-		includeClosed: includeClosed.value,
-		limit: issuePageSize.value + 1,
-		untilId,
-	});
-	issuesHasNext.value = res.length > issuePageSize.value;
-	issues.value = res.slice(0, issuePageSize.value);
+	const requestId = ++issuePageRequestId;
+	issuePageLoading.value = true;
+	try {
+		const result = await fetchHataFeedIssuePage(
+			params => misskeyApi('hata/feedback/issues', params) as Promise<{ id: string }[]>,
+			{
+				projectId: currentProjectId.value,
+				category: filterCategory.value,
+				status: filterStatus.value,
+				createdById: authorFilter.value?.id ?? null,
+				query: searchQuery.value.trim() || null,
+				includeClosed: includeClosed.value,
+			},
+			issuePageSize.value,
+			untilId,
+		);
+		if (requestId !== issuePageRequestId) return null;
+		issues.value = result.issues;
+		issuesHasNext.value = result.hasNext;
+		return result;
+	} catch (error) {
+		if (requestId === issuePageRequestId) {
+			console.error(error);
+			os.alert({ type: 'error', text: i18n.ts.somethingHappened });
+		}
+		return null;
+	} finally {
+		if (requestId === issuePageRequestId) issuePageLoading.value = false;
+	}
 }
 
 // フィルタ変更・表示数変更時は1ページ目から取り直す。
 async function reloadIssues() {
+	if (!await fetchIssuePage(undefined)) return;
 	issuePage.value = 0;
 	issueCursors.value = [undefined];
-	await fetchIssuePage(undefined);
 }
 
 async function nextIssuePage() {
-	if (!issuesHasNext.value) return;
+	if (issuePageLoading.value || !issuesHasNext.value) return;
 	const lastId = issues.value[issues.value.length - 1]?.id;
+	if (lastId == null || !await fetchIssuePage(lastId)) return;
 	issuePage.value += 1;
 	issueCursors.value[issuePage.value] = lastId;
-	await fetchIssuePage(lastId);
 	scrollIssueListTop();
 }
 
 async function prevIssuePage() {
-	if (issuePage.value === 0) return;
-	issuePage.value -= 1;
-	await fetchIssuePage(issueCursors.value[issuePage.value]);
+	if (issuePageLoading.value || issuePage.value === 0) return;
+	const previousPage = issuePage.value - 1;
+	if (!await fetchIssuePage(issueCursors.value[previousPage])) return;
+	issuePage.value = previousPage;
 	scrollIssueListTop();
 }
 
