@@ -199,58 +199,59 @@ SPDX-License-Identifier: AGPL-3.0-only
 				v-show="nativeNavbarVisible || mobileToastVisible" data-hata-collapse-group
 				:data-toast-motion="prefer.r.animation.value" :data-hidden="!showTopBar && !mobileToastVisible && !navbarNewNotes"
 				:data-notification-only="mobileNotificationOnly"
-				:style="{ '--hata-toast-height': `${!isDesktop ? notificationToasts.height.value + (navbarNewNotes ? newNotesButtonHeight : 0) : 0}px` }"
 				:class="[$style.topBar, footerIsDark ? $style.topBarDark : $style.topBarLight]"
 			>
-				<button v-if="!isDesktop && !mobileNotificationOnly" :class="$style.avatarBtn" @click="openAccountMenu">
-					<img v-if="$i?.avatarUrl" :src="$i.avatarUrl" :class="$style.avatarImg"/>
-					<i v-else class="ti ti-user"></i>
-				</button>
 				<div ref="topNavStackEl" :class="$style.topNavStack">
 					<div ref="notificationOutlineEl" :class="$style.topPill" :data-notification="notificationToasts.items.value.length > 0 && notificationToasts.integrated.value" :data-new-notes="!!navbarNewNotes">
 						<div ref="notificationTargetEl" :class="$style.notificationViewport" :data-mobile="!isDesktop" :style="{ height: `${notificationToasts.integrated.value ? notificationToasts.height.value : 0}px` }"></div>
-						<div v-show="!mobileNotificationOnly" :class="$style.topPillTabs">
-							<template v-for="item in visibleTopTabs" :key="item.id">
-								<button :class="[$style.topTabBtn, { [$style.topTabActive]: !isCollectionTimelinePage && tab === item.id }]" @click="playSimpleNavMotion($event, item.id); switchTab(item.id as TabType)">
-									<i :class="item.icon"></i>
-									<span v-if="!isCollectionTimelinePage && tab === item.id" :class="$style.topTabLabel">{{ simpleMenuDisplayLabel(item.id, item.label) }}</span>
-								</button>
-							</template>
-							<button v-if="showOHTL" :class="[$style.topTabBtn, $style.topTabExt, { [$style.topTabActive]: !isCollectionTimelinePage && tab === 'ohtl' }]" @click="playSimpleNavMotion($event, 'timeline:external-home'); switchTab('ohtl')">
-								<i class="ti ti-home"></i>
-								<span v-if="!isCollectionTimelinePage && tab === 'ohtl'" :class="$style.topTabLabel">{{ copy.externalHome }}</span>
+						<div v-show="!mobileNotificationOnly" :class="$style.topPillNav">
+							<button v-if="!isDesktop" type="button" :class="$style.avatarBtn" :aria-label="copy.account" @click="openAccountMenu">
+								<img v-if="$i?.avatarUrl" :src="$i.avatarUrl" :class="$style.avatarImg" alt=""/>
+								<i v-else class="ti ti-user" aria-hidden="true"></i>
 							</button>
-							<button v-if="showOLTL" :class="[$style.topTabBtn, $style.topTabExt, { [$style.topTabActive]: !isCollectionTimelinePage && tab === 'oltl' }]" @click="playSimpleNavMotion($event, 'timeline:external-local'); switchTab('oltl')">
-								<i class="ti ti-planet"></i>
-								<span v-if="!isCollectionTimelinePage && tab === 'oltl'" :class="$style.topTabLabel">{{ copy.externalLocal }}</span>
-							</button>
-							<div :class="$style.topTabDivider"></div>
-							<div :class="[$style.listTabPill, { [$style.listTabPillActive]: isListTimelinePage }]">
-								<button :class="[$style.topTabBtn, $style.listTabMain, { [$style.topTabActive]: isListTimelinePage }]" @click="playSimpleNavMotion($event, 'list'); openPreferredList()">
-									<i class="ti ti-list"></i>
-									<span v-if="isListTimelinePage" :class="$style.topTabCopy"><span :class="$style.topTabLabel">{{ copy.list }}</span><span :class="$style.topTabName">{{ activeListName }}</span></span>
+							<div :class="$style.topPillTabs">
+								<template v-for="item in visibleTopTabs" :key="item.id">
+									<button :class="[$style.topTabBtn, { [$style.topTabActive]: !isCollectionTimelinePage && tab === item.id }]" @click="playSimpleNavMotion($event, item.id); switchTab(item.id as TabType)">
+										<i :class="item.icon"></i>
+										<span v-if="!isCollectionTimelinePage && tab === item.id" :class="$style.topTabLabel">{{ simpleMenuDisplayLabel(item.id, item.label) }}</span>
+									</button>
+								</template>
+								<button v-if="showOHTL" :class="[$style.topTabBtn, $style.topTabExt, { [$style.topTabActive]: !isCollectionTimelinePage && tab === 'ohtl' }]" @click="playSimpleNavMotion($event, 'timeline:external-home'); switchTab('ohtl')">
+									<i class="ti ti-home"></i>
+									<span v-if="!isCollectionTimelinePage && tab === 'ohtl'" :class="$style.topTabLabel">{{ copy.externalHome }}</span>
 								</button>
-								<button v-if="isListTimelinePage" v-tooltip="copy.switchList" :class="$style.listSelectBtn" :aria-label="copy.switchList" @click="playSimpleNavMotion($event, 'list'); toggleTimelinePicker('list')">
-									<i class="ti ti-selector"></i>
+								<button v-if="showOLTL" :class="[$style.topTabBtn, $style.topTabExt, { [$style.topTabActive]: !isCollectionTimelinePage && tab === 'oltl' }]" @click="playSimpleNavMotion($event, 'timeline:external-local'); switchTab('oltl')">
+									<i class="ti ti-planet"></i>
+									<span v-if="!isCollectionTimelinePage && tab === 'oltl'" :class="$style.topTabLabel">{{ copy.externalLocal }}</span>
 								</button>
-								<button v-if="isListTimelinePage" v-tooltip="copy.configureList" :class="$style.listSelectBtn" :aria-label="copy.configureList" @click="playSimpleNavMotion($event, 'settings'); openActiveCollectionSettings('list')"><i class="ti ti-settings"></i></button>
-							</div>
-							<button :class="[$style.topTabBtn, { [$style.topTabActive]: isChannelPage }]" @click="playSimpleNavMotion($event, 'channel'); goToChannels()">
-								<i class="ti ti-device-tv"></i>
-								<span v-if="isChannelPage" :class="$style.topTabLabel">{{ copy.channel }}</span>
-							</button>
-							<div :class="[$style.listTabPill, { [$style.listTabPillActive]: isAntennaTimelinePage }]">
-								<button :class="[$style.topTabBtn, $style.listTabMain, { [$style.topTabActive]: isAntennaTimelinePage }]" @click="playSimpleNavMotion($event, 'antenna'); openPreferredAntenna()">
-									<i class="ti ti-antenna"></i>
-									<span v-if="isAntennaTimelinePage" :class="$style.topTabCopy"><span :class="$style.topTabLabel">{{ copy.antenna }}</span><span :class="$style.topTabName">{{ activeAntennaName }}</span></span>
+								<div :class="$style.topTabDivider"></div>
+								<div :class="[$style.listTabPill, { [$style.listTabPillActive]: isListTimelinePage }]">
+									<button :class="[$style.topTabBtn, $style.listTabMain, { [$style.topTabActive]: isListTimelinePage }]" @click="playSimpleNavMotion($event, 'list'); openPreferredList()">
+										<i class="ti ti-list"></i>
+										<span v-if="isListTimelinePage" :class="$style.topTabCopy"><span :class="$style.topTabLabel">{{ copy.list }}</span><span :class="$style.topTabName">{{ activeListName }}</span></span>
+									</button>
+									<button v-if="isListTimelinePage" v-tooltip="copy.switchList" :class="$style.listSelectBtn" :aria-label="copy.switchList" @click="playSimpleNavMotion($event, 'list'); toggleTimelinePicker('list')">
+										<i class="ti ti-selector"></i>
+									</button>
+									<button v-if="isListTimelinePage" v-tooltip="copy.configureList" :class="$style.listSelectBtn" :aria-label="copy.configureList" @click="playSimpleNavMotion($event, 'settings'); openActiveCollectionSettings('list')"><i class="ti ti-settings"></i></button>
+								</div>
+								<button :class="[$style.topTabBtn, { [$style.topTabActive]: isChannelPage }]" @click="playSimpleNavMotion($event, 'channel'); goToChannels()">
+									<i class="ti ti-device-tv"></i>
+									<span v-if="isChannelPage" :class="$style.topTabLabel">{{ copy.channel }}</span>
 								</button>
-								<button v-if="isAntennaTimelinePage" v-tooltip="copy.switchAntenna" :class="$style.listSelectBtn" :aria-label="copy.switchAntenna" @click="playSimpleNavMotion($event, 'antenna'); toggleTimelinePicker('antenna')"><i class="ti ti-selector"></i></button>
-								<button v-if="isAntennaTimelinePage" v-tooltip="copy.configureAntenna" :class="$style.listSelectBtn" :aria-label="copy.configureAntenna" @click="playSimpleNavMotion($event, 'settings'); openActiveCollectionSettings('antenna')"><i class="ti ti-settings"></i></button>
+								<div :class="[$style.listTabPill, { [$style.listTabPillActive]: isAntennaTimelinePage }]">
+									<button :class="[$style.topTabBtn, $style.listTabMain, { [$style.topTabActive]: isAntennaTimelinePage }]" @click="playSimpleNavMotion($event, 'antenna'); openPreferredAntenna()">
+										<i class="ti ti-antenna"></i>
+										<span v-if="isAntennaTimelinePage" :class="$style.topTabCopy"><span :class="$style.topTabLabel">{{ copy.antenna }}</span><span :class="$style.topTabName">{{ activeAntennaName }}</span></span>
+									</button>
+									<button v-if="isAntennaTimelinePage" v-tooltip="copy.switchAntenna" :class="$style.listSelectBtn" :aria-label="copy.switchAntenna" @click="playSimpleNavMotion($event, 'antenna'); toggleTimelinePicker('antenna')"><i class="ti ti-selector"></i></button>
+									<button v-if="isAntennaTimelinePage" v-tooltip="copy.configureAntenna" :class="$style.listSelectBtn" :aria-label="copy.configureAntenna" @click="playSimpleNavMotion($event, 'settings'); openActiveCollectionSettings('antenna')"><i class="ti ti-settings"></i></button>
+								</div>
 							</div>
 						</div>
-						<div :class="$style.newNotesViewport" :data-active="!!navbarNewNotes" :data-mobile="!isDesktop" :aria-hidden="!navbarNewNotes">
+						<div :class="$style.newNotesViewport" :data-active="!!navbarNewNotes" :aria-hidden="!navbarNewNotes">
 							<div :class="$style.newNotesContent">
-								<button ref="newNotesButtonEl" class="_button" :class="$style.newNotesButton" type="button" :disabled="!navbarNewNotes" @click="showNavbarNewNotes">
+								<button class="_button" :class="$style.newNotesButton" type="button" :disabled="!navbarNewNotes" @click="showNavbarNewNotes">
 									<i :class="navbarNewNotes?.icon ?? 'ti ti-arrow-up'" aria-hidden="true"></i>
 									<span role="status" aria-atomic="true">{{ navbarNewNotes?.text }}</span>
 								</button>
@@ -1741,16 +1742,6 @@ function showNavbarNewNotes() {
 	return navbarNewNotes.value?.show();
 }
 
-const newNotesButtonEl = ref<HTMLButtonElement | null>(null);
-const newNotesButtonHeight = ref(0);
-watch(newNotesButtonEl, (el, _, onCleanup) => {
-	if (!el) return;
-	const updateHeight = () => { newNotesButtonHeight.value = el.offsetHeight; };
-	const observer = new ResizeObserver(updateHeight);
-	observer.observe(el);
-	updateHeight();
-	onCleanup(() => observer.disconnect());
-});
 const notificationToasts = createHataskeyNotificationToasts(
 	computed(() => !isDesktop.value),
 	computed(() => nativeNavbarVisible.value && (showTopBar.value || navbarNewNotes.value != null)),
@@ -3399,24 +3390,16 @@ onUnmounted(() => {
 }
 .topNavStack {
     position:relative; display:flex; flex-direction:column; align-items:center; gap:7px;
-	width:max-content; min-width:0; max-width:min(680px,calc(100% - 42px)); flex:0 1 auto; pointer-events:none;
+	width:max-content; min-width:0; max-width:min(680px,100%); flex:0 1 auto; pointer-events:none;
 }
-.desktopLayout .topNavStack { max-width:min(680px,100%); }
-// アカウントアイコン（タブピル左隣）
+// アカウントアイコン（カプセル内の左端、タブのスクロール領域外）
 .avatarBtn {
-    width:36px; height:36px; border-radius:9999px; border:none; cursor:pointer;
+    width:40px; height:40px; border-radius:9999px; border:none; cursor:pointer;
     display:flex; align-items:center; justify-content:center;
-    position:relative; z-index:1; margin-top:6px;
-    pointer-events:auto; overflow:hidden; flex-shrink:0; padding:0;
-    transition:all .25s cubic-bezier(.34,1.56,.64,1);
-}
-.topBarDark .avatarBtn {
-    background:rgba(30,30,30,.78); backdrop-filter:blur(24px) saturate(1.4); -webkit-backdrop-filter:blur(24px) saturate(1.4);
-    box-shadow:0 4px 24px rgba(0,0,0,.15),0 0 0 .5px rgba(255,255,255,.08) inset; color:rgba(255,255,255,.55);
-}
-.topBarLight .avatarBtn {
-    background:rgba(245,245,245,.78); backdrop-filter:blur(24px) saturate(1.4); -webkit-backdrop-filter:blur(24px) saturate(1.4);
-    box-shadow:0 4px 24px rgba(0,0,0,.06),0 0 0 .5px rgba(0,0,0,.06) inset; color:rgba(0,0,0,.45);
+    background:transparent; color:var(--hata-toast-muted);
+    overflow:hidden; flex-shrink:0; padding:0;
+    transition:transform .25s cubic-bezier(.34,1.56,.64,1);
+    &:focus-visible { outline:2px solid var(--MI_THEME-accent); outline-offset:-2px; }
 }
 .avatarBtn:active { transform:scale(.9); }
 .avatarImg { width:100%; height:100%; max-width:36px; max-height:36px; object-fit:cover; border-radius:9999px; }
@@ -3427,8 +3410,12 @@ onUnmounted(() => {
     pointer-events:auto; transition:background .3s,box-shadow .3s; overflow:hidden;
 }
 .topPill[data-notification='true'], .topPill[data-new-notes='true'] { min-width:min(360px,100%); }
-.topPillTabs {
+.topPillNav {
     order:1; display:flex; align-items:center; gap:2px; padding:4px 6px;
+    width:max-content; max-width:100%; min-width:0; box-sizing:border-box;
+}
+.topPillTabs {
+    display:flex; align-items:center; gap:2px;
     width:max-content; max-width:100%; min-width:0; box-sizing:border-box;
     overflow-x:auto; scrollbar-width:none; -ms-overflow-style:none;
     &::-webkit-scrollbar { display:none; }
@@ -3443,7 +3430,6 @@ onUnmounted(() => {
     transition:grid-template-rows .35s cubic-bezier(.22,1,.36,1),opacity .2s ease;
 }
 .newNotesViewport[data-active='true'] { grid-template-rows:1fr; opacity:1; }
-.newNotesViewport[data-mobile='true'] { order:0; }
 .newNotesContent { min-height:0; overflow:hidden; }
 .newNotesButton {
     display:flex; align-items:center; justify-content:center; gap:8px;
@@ -3457,7 +3443,6 @@ onUnmounted(() => {
     &:active:not(:disabled) { background:color-mix(in srgb,var(--MI_THEME-accent) 20%,transparent); }
     &:focus-visible { outline:2px solid var(--MI_THEME-accent); outline-offset:-3px; border-radius:20px; }
 }
-.topBar .avatarBtn { translate:0 var(--hata-toast-height,0px); transition:translate .35s cubic-bezier(.22,1,.36,1); }
 .topBar[data-toast-motion='false'] .notificationViewport,
 .topBar[data-toast-motion='false'] .newNotesViewport,
 .topBar[data-toast-motion='false'] .newNotesButton,
