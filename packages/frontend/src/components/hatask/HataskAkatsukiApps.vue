@@ -246,7 +246,8 @@ onBeforeUnmount(() => {
 .root .appOpen { width: 36px; height: 36px; display: grid; place-items: center; flex: 0 0 auto; border: var(--button-border); border-radius: 999px; }
 .appOpen svg { width: 18px; height: 18px; }
 .root[data-motion='false'] .track, .root[data-motion='false'] .dot { transition: none; }
-:global(.htk-akatsuki-layout[data-mode='dark']) .featureApp { background: var(--masthead); }
+:global(.htk-akatsuki-layout[data-mode='dark']) .featureApp,
+:global(.htk-akatsuki-layout[data-mode='dark']) .mobileCard { background: var(--masthead); }
 :global(.htk-akatsuki-layout[data-mode='dark']) .root { --feature-accent-small: var(--on-accent); }
 @container ak-feature (max-width: 500px) {
 	.featureBody { grid-template-columns: minmax(56px, 1fr) minmax(0, max-content); grid-template-areas: 'kicker app' 'title title'; gap: 6px 12px; align-content: start; min-height: 166px; padding: 12px 16px 54px; }
