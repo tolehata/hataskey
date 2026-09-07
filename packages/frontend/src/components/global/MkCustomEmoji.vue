@@ -35,7 +35,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 	@click.stop="onClick"
 	@mouseover="prefer.s.showingAnimatedImages === 'interaction' ? playAnimation = true : ''"
 	@mouseout="prefer.s.showingAnimatedImages === 'interaction' ? playAnimation = false : ''"
-	@touchstart="prefer.s.showingAnimatedImages === 'interaction' ? playAnimation = true : ''"
+	@touchstart.passive="prefer.s.showingAnimatedImages === 'interaction' ? playAnimation = true : ''"
 	@touchend="prefer.s.showingAnimatedImages === 'interaction' ? playAnimation = false : ''"
 />
 </template>
@@ -264,7 +264,7 @@ function resetTimer() {
 onMounted(() => {
 	if (prefer.s.showingAnimatedImages === 'inactive') {
 		window.addEventListener('mousemove', resetTimer);
-		window.addEventListener('touchstart', resetTimer);
+		window.addEventListener('touchstart', resetTimer, { passive: true });
 		window.addEventListener('touchend', resetTimer);
 	}
 });

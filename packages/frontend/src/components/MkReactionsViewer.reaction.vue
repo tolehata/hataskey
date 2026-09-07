@@ -10,7 +10,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 	class="_button"
 	:class="[$style.root, { [$style.reacted]: myReaction == reaction, [$style.canToggle]: (canToggle || alternative), [$style.small]: prefer.s.reactionsDisplaySize === 'small', [$style.large]: prefer.s.reactionsDisplaySize === 'large' }]"
 	@click.stop="onReactionClick"
-	@touchstart.stop="onReactionTouchStart"
+	@touchstart.stop.passive="onReactionTouchStart"
 	@touchmove.passive="onReactionTouchMove"
 	@touchend.stop="onReactionTouchEnd"
 	@touchcancel.stop="onReactionTouchCancel"

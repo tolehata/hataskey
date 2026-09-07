@@ -14,7 +14,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		:onlyAvgColor="true"
 		@mouseover="prefer.s.showingAnimatedImages === 'interaction' ? playAnimation = true : ''"
 		@mouseout="prefer.s.showingAnimatedImages === 'interaction' ? playAnimation = false : ''"
-		@touchstart="prefer.s.showingAnimatedImages === 'interaction' ? playAnimation = true : ''"
+		@touchstart.passive="prefer.s.showingAnimatedImages === 'interaction' ? playAnimation = true : ''"
 		@touchend="prefer.s.showingAnimatedImages === 'interaction' ? playAnimation = false : ''"
 	/>
 	<img
@@ -26,7 +26,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		style="pointer-events: none;"
 		@mouseover="prefer.s.showingAnimatedImages === 'interaction' ? playAnimation = true : ''"
 		@mouseout="prefer.s.showingAnimatedImages === 'interaction' ? playAnimation = false : ''"
-		@touchstart="prefer.s.showingAnimatedImages === 'interaction' ? playAnimation = true : ''"
+		@touchstart.passive="prefer.s.showingAnimatedImages === 'interaction' ? playAnimation = true : ''"
 		@touchend="prefer.s.showingAnimatedImages === 'interaction' ? playAnimation = false : ''"
 	/>
 	<MkUserOnlineIndicator v-if="indicator && !isToastAvatar" :class="$style.indicator" :user="user"/>
@@ -181,7 +181,7 @@ watch(() => props.user.avatarBlurhash, () => {
 onMounted(() => {
 	if (prefer.s.showingAnimatedImages === 'inactive') {
 		window.addEventListener('mousemove', resetTimer);
-		window.addEventListener('touchstart', resetTimer);
+		window.addEventListener('touchstart', resetTimer, { passive: true });
 		window.addEventListener('touchend', resetTimer);
 	}
 });

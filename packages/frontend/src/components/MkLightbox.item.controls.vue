@@ -327,10 +327,10 @@ function init() {
 
 	// 音声トラックを持たない動画はGIFのように扱う
 	if (isVideo.value) {
-		hasAudio(el).then(had => {
+		hasAudio(el, signal).then(had => {
 			// 判定を待っている間に teardown / 再 init されている可能性があるので、世代が変わっていたら何もしない
 			if (signal.aborted) return;
-			if (!had) {
+			if (had === false) {
 				el.loop = el.muted = true;
 				el.play().catch(err => {
 					if (_DEV_) console.warn('Failed to play media:', err);
