@@ -461,7 +461,7 @@ async function rejectPrivateChannelInvitation(invitationId: string) {
 	box-sizing:border-box; min-width:36px; max-width:min(108px,100%); min-height:32px; padding:4px 6px;
 	border:1px solid color-mix(in srgb,var(--MI_THEME-accent) 22%,transparent); border-radius:8px;
 	background:var(--MI_THEME-accentedBg); color:var(--MI_THEME-fg); font-size:22px; line-height:1;
-	:deep(img) { display:block; width:auto; height:24px; max-width:100%; object-fit:contain; }
+	img { display:block; width:auto; height:24px; max-width:100%; object-fit:contain; }
 }
 .head {
 	position: sticky;

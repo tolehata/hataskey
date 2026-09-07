@@ -1,4 +1,7 @@
 /* SPDX-License-Identifier: AGPL-3.0-only */
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { compileStyleAsync, parse } from '@vue/compiler-sfc';
 import { createApp, h, nextTick } from 'vue';
 import type { App, Component } from 'vue';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -85,6 +88,39 @@ async function mount(component: Component, notification: unknown, popup = true) 
 }
 
 describe('notification custom emoji and avatar decorations', () => {
+	it.each(['MkNotification.vue', 'MkExternalNotificationToast.vue'])('%s: compiles the reaction image size rule to a browser selector', async (name) => {
+		const filename = resolve(process.cwd(), 'src/components', name);
+		const source = readFileSync(filename, 'utf8');
+		const style = parse(source, { filename }).descriptor.styles.find(block => block.module);
+		if (!style) throw new Error(`Missing notification CSS module: ${name}`);
+		const compile = (content: string) => compileStyleAsync({
+			source: content,
+			filename,
+			id: 'notification-rich-content',
+			preprocessLang: 'scss',
+			scoped: style.scoped,
+			modules: true,
+			modulesOptions: { generateScopedName: local => `notification-${local}` },
+		});
+		const imageRule = (css: string) => css.match(/\.notification-toastReaction img\s*\{([^}]*)\}/u)?.[1];
+		// Positive control: module-only styles leave :deep untouched in emitted CSS.
+		const brokenSource = style.content.replace(/(\.toastReaction\s*\{[^}]*?)\bimg\s*\{/u, '$1:deep(img) {');
+		expect(brokenSource).not.toBe(style.content);
+		const broken = await compile(brokenSource);
+		expect(broken.errors).toEqual([]);
+		expect(broken.code).toContain('.notification-toastReaction :deep(img)');
+		expect(imageRule(broken.code)).toBeUndefined();
+
+		const compiled = await compile(style.content);
+		expect(compiled.errors).toEqual([]);
+		expect(compiled.modules?.toastReaction).toBe('notification-toastReaction');
+		const declarations = imageRule(compiled.code);
+		expect(declarations).toBeDefined();
+		for (const declaration of ['display: block', 'width: auto', 'height: 24px', 'max-width: 100%', 'object-fit: contain']) {
+			expect(declarations).toContain(declaration);
+		}
+	});
+
 	for (const [name, component] of [['standard', MkNotification], ['external', MkExternalNotificationToast]] as const) {
 		it.each(['🌸', ':wide:', ':wide@remote.test:'])(`${name}: separates %s from the decorated avatar and keeps the note`, async (reaction) => {
 			const reactionUrl = 'https://connected.test/wide-reaction.webp';
