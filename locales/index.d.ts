@@ -29257,183 +29257,47 @@ export interface Locale extends ILocale {
             };
             "_content": {
                 /**
-                 * Misskey 2026.9.0の改善を取り込み、Hataskey向けに調整しました
+                 * hata-12.6 — お花と通知を見やすく、暁ホームを使いやすくしました
                  */
                 "latestHeadline": string;
                 /**
-                 * 本家の改善とHataskeyでの調整
+                 * お花の画面を刷新、満開を通知でお知らせ
                  */
-                "upstreamUpdateTitle": string;
+                "flowerTitle": string;
                 /**
-                 * 本家Misskeyから、音声・画像ビューアーの改善、通知位置やリアクションの並び順の修正、セキュリティ修正を取り込みました。画像のピクセルアート向け拡大と、ぼかしの解除状態の引き継ぎも本家の改善です。絵文字の一括インポートは、本家の仕様変更により管理者だけが実行できます。Hataskeyでは、これらを既存の配色、動きを減らす設定、リアクションミュートに合わせて調整しました。
+                 * 自分のお花とみんなのお花を流れる一覧で眺め、選んだ花の名前・花言葉・育てた人を確認できます。「みんなの花壇」と季節の花16品種も加わりました。季節に合う花が出やすくなり、これから育てるレア花は約48〜96時間で開花します。育成中のお花の残り時間は変わりません。満開になると通知が届き、通知設定から受け取り方を選べます。
                  */
-                "upstreamUpdateText": string;
+                "flowerText": string;
                 /**
-                 * 宴に新しい実績を加え、外部タイムラインとHataskey UIをさらに楽しめるようにしました
+                 * 暁ホームに、いま使いたいものを
                  */
-                "previousHeadline": string;
+                "hataskHomeTitle": string;
                 /**
-                 * Hataskの新しい標準デザイン「暁」
+                 * 予定・ToDo・ごはん・HataFeedの通知から、今の状況に合うものをホームで案内します。表示したい内容は自分でも選べ、スマートフォンではよく使うツールも並びます。既存のテーマと保存した予定・ToDoはそのまま使え、Hataskey Appの見出し下の余白も整えました。
                  */
-                "hataskAkatsukiTitle": string;
+                "hataskHomeText": string;
                 /**
-                 * PCでは3ペインで予定や記録を見渡せるようになりました。背景は選んだテーマの色と時間帯に合わせて緩やかに変化します。スマートフォンの下部タブは設定からドラッグで並び替えられます。扉をくぐる文字アニメーションの紹介から、暁へ切り替えるか今のテーマを使い続けるかを選べます。これまでのテーマと、保存した予定・ToDoは引き続き使えます。
+                 * 通知と新着ノートを見やすい位置へ
                  */
-                "hataskAkatsukiText": string;
+                "notificationsTitle": string;
                 /**
-                 * 予定の詳細と、お花を見やすく
+                 * Hataskey UIでは、通常通知と外部通知を上部ナビの周囲へ自動配置します。PCで上部ナビを隠したときや、PCのデッキ表示では右下へ表示します。通知は残り時間をリングで示し、5秒で閉じます。本文や絵文字・リアクションを読みやすく整え、新着ノートの案内も上部ナビから開けるようにしました。
                  */
-                "hataskDetailsTitle": string;
+                "notificationsText": string;
                 /**
-                 * カレンダーの予定を押すと、PCでは日付の上下に吹き出し、スマートフォンでは専用の画面で詳細を表示します。空いている場所からは予定の作成・コピー・移動を選べます。暁の「みんなのお花」はNで新しい順、Oで古い順に並び替えられます。
+                 * ノート・動画・登録時の不具合を修正
                  */
-                "hataskDetailsText": string;
+                "dailyPolishTitle": string;
                 /**
-                 * 特集・検索・設定の操作を改善
+                 * 画像のないロールによって、ノートの名前と@IDの間に余分な空白ができる問題を修正しました。リモート動画の部分読み込みと無音動画の判定、HataFeedの100件表示とページ切り替えも改善しています。登録申請したIDの大文字・小文字を保持し、リアルタイムモードは設定を保存してから切り替えます。
                  */
-                "hataskPolishTitle": string;
-                /**
-                 * Hatask AppとHataskey Appのカードを揃え、特集を小さくしました。検索結果は入力欄の下で滑らかに開閉します。スマートフォンの子メニュー、デッキ内でのHatask終了、設定のスクロールや重なりも修正しました。Hataskey UIのお知らせバナーを再び表示し、折りたたみ端末のナビをタイムラインの中央上部へ揃えました。縮小メニューの外部通知は未連携時に隠れ、連携すると元の位置に戻ります。
-                 */
-                "hataskPolishText": string;
-                /**
-                 * 宴に21個の新しい実績を追加
-                 */
-                "utageAchievementsTitle": string;
-                /**
-                 * 宴の成功・阻止が10回増えるごとに、100回まで新しい実績を獲得できます。ほかの人の宴を開始から5秒以内に阻止する特別な実績も加わりました。これまでに記録された公開の宴は回数実績へ反映し、5秒以内の実績はこの更新後から記録します。
-                 */
-                "utageAchievementsText": string;
-                /**
-                 * 外部通知を好きな位置へ
-                 */
-                "externalSidebarTitle": string;
-                /**
-                 * 外部通知を、通常のサイドバー編集とHataSideStudioでほかの項目と一緒にドラッグして並び替えられるようになりました。連携を外している間も保存位置を保ちます。通知・外部通知・お知らせのバッジも縦中央へ揃えました。
-                 */
-                "externalSidebarText": string;
-                /**
-                 * 外部タイムラインをHataskey UIらしく
-                 */
-                "externalTimelineTitle": string;
-                /**
-                 * 外部ノートのカードや操作をHataskey UIの表示へ揃えました。返信・引用・多段リノートを何重にも埋め込まず表示し、チャンネル名やカスタム絵文字も見分けやすくしました。リアクションに成功すると、リロードせずその場で表示します。
-                 */
-                "externalTimelineText": string;
-                /**
-                 * タイムラインに新しい隠し演出
-                 */
-                "timelineCollapseTitle": string;
-                /**
-                 * ある言葉を公開ノートとして投稿すると、このサーバーのHataskey UIが上から崩れ、10秒後に元へ戻ります。1人につき1日2回まで。アニメーションを無効にしている場合や、端末で動きを減らしている場合は再生しません。
-                 */
-                "timelineCollapseText": string;
-                /**
-                 * Hataskを新デザイン「暁」へ。予定や日々の記録を、見やすく使いやすく整えました
-                 */
-                "currentHeadline": string;
-                /**
-                 * いつものホームを、もっと使いやすく。つながる場所も広がります
-                 */
-                "mainHeadline": string;
-                /**
-                 * Hatask — ハタキュのスマートフォン表示を修正
-                 */
-                "hataskMobileTitle": string;
-                /**
-                 * ToDoの残件案内が二重に表示される問題を直し、きもち・ごはんの見出しを背景から読み取りやすい配色に整えました。
-                 */
-                "hataskMobileText": string;
-                /**
-                 * 投稿後の案内と待機表示を整理
-                 */
-                "postComposerTitle": string;
-                /**
-                 * 通常の投稿後に出ていた上部の完了通知を省きました。投稿待機中のカプセルは、通常の投稿フォームのすぐ下に表示します。返信・引用・編集の完了案内はこれまでどおりです。
-                 */
-                "postComposerText": string;
-                /**
-                 * 日本語を含むサーバー名を読みやすく
-                 */
-                "serverNameTitle": string;
-                /**
-                 * ログイン画面の左上で、漢字やひらがな、カタカナを含むサーバー名の文字が粗く見える問題を修正しました。
-                 */
-                "serverNameText": string;
-                /**
-                 * 外部アカウント連携にJuice Serverを追加
-                 */
-                "externalJuiceTitle": string;
-                /**
-                 * 接続先にJuice Server（mk-juice.dev）が増えました。外部アカウント連携の設定から選べます。つないだ先では、そのサーバーの規約が適用されます。
-                 */
-                "externalJuiceText": string;
-                /**
-                 * Hataskを大幅に改良 — 予定もToDoも、さっと整理
-                 */
-                "hataskPlannerTitle": string;
-                /**
-                 * カレンダーを月・週・日・予定一覧で切り替え、予定を別の日や時間へ移動。ToDoは今日・これから・優先度やフォルダで整理し、まとめて変更できます。きもち・ごはんの記録も書きやすく。予定・ToDo・ごはんのテンプレートはひとつのアイコンから呼び出せます。
-                 */
-                "hataskPlannerText": string;
+                "dailyPolishText": string;
                 /**
                  * Hataskを開く
                  */
                 "hataskLink": string;
                 /**
-                 * Hatask — みんなが育てたお花を眺めよう
-                 */
-                "hataskGardenTitle": string;
-                /**
-                 * お庭に「みんなのお花」が加わりました。花の名前や花言葉、育てた人を見ながら、新しい順・古い順で眺められます。自分のお花を見せる相手は、公開・フォロワー・自分のみから選べます。
-                 */
-                "hataskGardenText": string;
-                /**
-                 * 外部アカウント連携にBearBearを追加
-                 */
-                "externalBearBearTitle": string;
-                /**
-                 * 接続先にBearBear（xiapopisland.top）が増えました。外部アカウント連携の設定から選べます。つないだ先では、そのサーバーの規約が適用されます。
-                 */
-                "externalBearBearText": string;
-                /**
-                 * 接続先を見る
-                 */
-                "externalLink": string;
-                /**
-                 * ログイン画面が新しくなりました
-                 */
-                "welcomeRenewalTitle": string;
-                /**
-                 * 動く見本でHataskeyの機能を知る入口に。公開されている投稿や人数も見られ、スマートフォンでは矢印ボタンで切り替えられます。参加申請にはSNSなどの連絡先を任意で記入でき、承認・拒否のどちらでも自動削除。新しい申請は管理者の通知欄へ届きます。
-                 */
-                "welcomeRenewalText": string;
-                /**
-                 * Hataskeyを別サーバーでご利用いただけるようになりました
-                 */
-                "serverChoiceTitle": string;
-                /**
-                 * Hataskeyを導入したサーバーでは、そのサーバーの名前や背景、紹介文を表示します。登録方法や案内も、サーバーごとの設定に合わせています。
-                 */
-                "serverChoiceText": string;
-                /**
-                 * 花常の提供を終了します
-                 */
-                "gameFarewellTitle": string;
-                /**
-                 * 今回の更新で花常は遊べなくなります。ゲームの一覧や関連する案内からも外れます。これまで遊んでくださった皆さん、ありがとうございました。
-                 */
-                "gameFarewellText": string;
-                /**
-                 * 毎日の使いやすさを、こつこつ改善
-                 */
-                "dailyPolishTitle": string;
-                /**
-                 * 画面の表示や設定の引き継ぎなど、細かな不具合の修正と使いやすさの改善を重ねました。廃止したポータルは、保存済みのメニュー設定からも取り除きます。
-                 */
-                "dailyPolishText": string;
-                /**
-                 * ここでは主な変更をご紹介しています。詳しくはリリースノートをご覧ください。
+                 * hata-12.6の主な変更をご紹介しました。詳しい変更点と過去の履歴はリリースノートをご覧ください。
                  */
                 "footerText": string;
                 /**

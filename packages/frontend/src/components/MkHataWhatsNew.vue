@@ -26,7 +26,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</div>
 		</header>
 
-		<div :class="$style.releaseScope" role="group" :aria-label="copy.releaseScope">
+		<div v-if="whatsNew.releases.length > 1" :class="$style.releaseScope" role="group" :aria-label="copy.releaseScope">
 			<button
 				v-for="release in whatsNew.releases"
 				:key="release.id"

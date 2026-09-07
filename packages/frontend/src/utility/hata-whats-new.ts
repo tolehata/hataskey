@@ -4,9 +4,9 @@
  *
  * 更新後に一度表示する、利用者向けの変更案内。
  * 実装用語や開発中だけの不具合は載せない。
- * 最新版・直前の修正版・それ以前の修正版・メイン版を分け、同じ系列の案内も残す。
+ * hata-12.6だけを特集する。過去の案内はHATA-CHANGELOG.mdで参照できる。
  * 文言は共通localeの _hata._whatsNew を使う。
- * hata-12.5.4の案内。versionはpackage.jsonと同時に更新する。
+ * hata-12.6の案内。versionはpackage.jsonと同時に更新する。
  * 本番への公開済み判定には使わない。表示済みの記録は窓を閉じたときに行う。
  */
 
@@ -41,8 +41,8 @@ export type HataWhatsNewRelease = {
 export type HataWhatsNew = {
 	/** package.jsonと同じ完全な版を表示済み判定に使う。 */
 	version: string;
-	/** 最新版から修正版を新しい順に並べ、同じ系列のメイン版も残す。 */
-	releases: [HataWhatsNewRelease, HataWhatsNewRelease, HataWhatsNewRelease, HataWhatsNewRelease];
+	/** 今回紹介する版を並べる。1版だけの場合は切り替え欄を表示しない。 */
+	releases: [HataWhatsNewRelease, ...HataWhatsNewRelease[]];
 	footer: {
 		text: string;
 		linkLabel?: string;
@@ -56,128 +56,34 @@ export function getHataWhatsNewDisplayVersion(version: string): string {
 }
 
 export const HATA_WHATS_NEW: HataWhatsNew = {
-	version: '2026.9.0-hata.12.5.4',
+	version: '2026.9.0-hata.12.6',
 	releases: [
 		{
 			id: 'latestRelease',
-			version: '2026.9.0-hata.12.5.4',
+			version: '2026.9.0-hata.12.6',
 			headline: copy.latestHeadline,
 			items: [
 				{
-					icon: 'ti ti-photo-video',
-					preview: 'dailyPolish',
-					title: copy.upstreamUpdateTitle,
-					text: copy.upstreamUpdateText,
+					icon: 'ti ti-flower',
+					preview: 'hataskGarden',
+					title: copy.flowerTitle,
+					text: copy.flowerText,
+					to: '/hatask',
+					linkLabel: copy.hataskLink,
 				},
-			],
-		},
-		{
-			id: 'currentRelease',
-			version: '2026.7.0-hata.12.5.3',
-			headline: copy.currentHeadline,
-			items: [
 				{
 					icon: 'ti ti-sunrise',
 					preview: 'hataskPlanner',
-					title: copy.hataskAkatsukiTitle,
-					text: copy.hataskAkatsukiText,
+					title: copy.hataskHomeTitle,
+					text: copy.hataskHomeText,
 					to: '/hatask',
 					linkLabel: copy.hataskLink,
 				},
 				{
-					icon: 'ti ti-calendar-event',
-					preview: 'hataskGarden',
-					title: copy.hataskDetailsTitle,
-					text: copy.hataskDetailsText,
-					to: '/hatask',
-					linkLabel: copy.hataskLink,
-				},
-				{
-					icon: 'ti ti-adjustments',
-					preview: 'dailyPolish',
-					title: copy.hataskPolishTitle,
-					text: copy.hataskPolishText,
-				},
-			],
-		},
-		{
-			id: 'previousRelease',
-			version: '2026.7.0-hata.12.5.2',
-			headline: copy.previousHeadline,
-			items: [
-				{
-					icon: 'ti ti-trophy',
-					preview: 'utageAchievements',
-					title: copy.utageAchievementsTitle,
-					text: copy.utageAchievementsText,
-				},
-				{
-					icon: 'ti ti-arrows-sort',
-					preview: 'externalSidebar',
-					title: copy.externalSidebarTitle,
-					text: copy.externalSidebarText,
-				},
-				{
-					icon: 'ti ti-messages',
+					icon: 'ti ti-bell',
 					preview: 'externalTimeline',
-					title: copy.externalTimelineTitle,
-					text: copy.externalTimelineText,
-				},
-				{
-					icon: 'ti ti-layout-dashboard',
-					preview: 'timelineCollapse',
-					title: copy.timelineCollapseTitle,
-					text: copy.timelineCollapseText,
-				},
-			],
-		},
-		{
-			id: 'mainRelease',
-			version: '2026.7.0-hata.12.5',
-			headline: copy.mainHeadline,
-			items: [
-				{
-					icon: 'ti ti-calendar-check',
-					preview: 'hataskPlanner',
-					title: copy.hataskPlannerTitle,
-					text: copy.hataskPlannerText,
-					to: '/hatask',
-					linkLabel: copy.hataskLink,
-				},
-				{
-					icon: 'ti ti-flower',
-					preview: 'hataskGarden',
-					title: copy.hataskGardenTitle,
-					text: copy.hataskGardenText,
-					to: '/hatask',
-					linkLabel: copy.hataskLink,
-				},
-				{
-					icon: 'ti ti-plug-connected',
-					preview: 'externalAccount',
-					previewLabel: 'xiapopisland.top',
-					title: copy.externalBearBearTitle,
-					text: copy.externalBearBearText,
-					to: '/settings/external-account',
-					linkLabel: copy.externalLink,
-				},
-				{
-					icon: 'ti ti-door-enter',
-					preview: 'welcomeRenewal',
-					title: copy.welcomeRenewalTitle,
-					text: copy.welcomeRenewalText,
-				},
-				{
-					icon: 'ti ti-world',
-					preview: 'serverChoice',
-					title: copy.serverChoiceTitle,
-					text: copy.serverChoiceText,
-				},
-				{
-					icon: 'ti ti-flower',
-					preview: 'gameFarewell',
-					title: copy.gameFarewellTitle,
-					text: copy.gameFarewellText,
+					title: copy.notificationsTitle,
+					text: copy.notificationsText,
 				},
 				{
 					icon: 'ti ti-checks',

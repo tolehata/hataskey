@@ -187,11 +187,12 @@ describe('Hata update presentation', () => {
 		expect(whatsNewSource).toContain('@wheel.passive="carouselTarget = null"');
 	});
 
-	test('項目一覧の前に4世代の切替を置き、PC4列・狭い画面2列で省略せず表示する', () => {
+	test('複数版がある場合の切替は項目一覧の前で、PC4列・狭い画面2列の操作性を保つ', () => {
 		const scopeIndex = whatsNewSource.indexOf(':class="$style.releaseScope"');
 		const itemsIndex = whatsNewSource.indexOf('ref="itemsViewport"');
 		expect(scopeIndex).toBeGreaterThan(0);
 		expect(scopeIndex).toBeLessThan(itemsIndex);
+		expect(whatsNewSource).toContain('v-if="whatsNew.releases.length > 1" :class="$style.releaseScope"');
 		expect(whatsNewSource).toContain('role="group" :aria-label="copy.releaseScope"');
 		expect(whatsNewSource).toContain(':aria-pressed="activeRelease.id === release.id"');
 		expect(whatsNewSource).toContain('{{ releaseLabels[release.id] }}');
@@ -269,7 +270,7 @@ describe('Hata update presentation', () => {
 	});
 });
 
-describe('更新内容の4リリース切替（実SFC）', () => {
+describe('hata-12.6だけの更新内容（実SFC）', () => {
 	const mounted: Array<{ app: App<Element>; container: HTMLDivElement }> = [];
 	const observers: Array<{ callback: IntersectionObserverCallback; targets: Element[]; disconnect: ReturnType<typeof vi.fn> }> = [];
 	let reducedMotion = false;
@@ -309,20 +310,11 @@ describe('更新内容の4リリース切替（実SFC）', () => {
 		app.mount(container);
 		mounted.push({ app, container });
 		await nextTick();
-		const buttons = [...container.querySelectorAll<HTMLButtonElement>('[role="group"] > button')];
 		const viewport = container.querySelector('[data-preview]')?.parentElement?.parentElement;
 		if (!viewport) throw new Error('Release item viewport did not mount');
 		const scrollTo = vi.fn();
 		Object.defineProperty(viewport, 'scrollTo', { configurable: true, value: scrollTo });
-		return { container, buttons, viewport, scrollTo };
-	}
-
-	async function select(buttons: HTMLButtonElement[], index: number) {
-		const button = buttons.at(index);
-		if (!button) throw new Error(`Missing release button ${index}`);
-		button.click();
-		await nextTick();
-		await nextTick();
+		return { container, viewport, scrollTo };
 	}
 
 	function showActivePreviews() {
@@ -331,66 +323,108 @@ describe('更新内容の4リリース切替（実SFC）', () => {
 		observer.callback(observer.targets.map(target => ({ target, isIntersecting: true, intersectionRatio: 1 }) as IntersectionObserverEntry), {} as IntersectionObserver);
 	}
 
-	test('4タブの版番号・選択状態と各リリースの全項目を切り替えられる', async () => {
-		const { container, buttons, scrollTo } = await mountGuide();
-		expect(buttons).toHaveLength(4);
-		expect(buttons.map(button => button.querySelector('small')?.textContent)).toEqual(['hata-12.5.4', 'hata-12.5.3', 'hata-12.5.2', 'hata-12.5']);
-		expect(buttons.map(button => button.getAttribute('aria-pressed'))).toEqual(['true', 'false', 'false', 'false']);
-		for (const button of buttons) expect(button.querySelector('span')?.textContent.trim()).toBeTruthy();
-		for (const index of [2, 1, 3, 0]) {
-			await select(buttons, index);
-			const release = HATA_WHATS_NEW.releases[index];
-			expect(buttons.filter(button => button.getAttribute('aria-pressed') === 'true')).toEqual([buttons[index]]);
-			expect(buttons[index].textContent).toContain(getHataWhatsNewDisplayVersion(release.version));
-			expect(container.textContent).toContain(release.headline);
-			expect([...container.querySelectorAll<HTMLElement>('[data-preview]')].map(preview => preview.dataset.previewKey)).toEqual(release.items.map(item => `${release.id}:${item.preview}`));
-			for (const item of release.items) {
-				expect(container.textContent).toContain(item.title);
-				expect(container.textContent).toContain(item.text);
-			}
-			expect(scrollTo).toHaveBeenLastCalledWith({ left: 0, behavior: 'auto' });
+	test('hata-12.6の1版と4項目だけを表示し、版の切替欄を出さない', async () => {
+		const { container } = await mountGuide();
+		expect(HATA_WHATS_NEW.version).toBe('2026.9.0-hata.12.6');
+		expect(HATA_WHATS_NEW.releases).toHaveLength(1);
+		const release = HATA_WHATS_NEW.releases[0];
+		expect(release.id).toBe('latestRelease');
+		expect(release.version).toBe(HATA_WHATS_NEW.version);
+		expect(release.items.map(item => item.preview)).toEqual(['hataskGarden', 'hataskPlanner', 'externalTimeline', 'dailyPolish']);
+		expect(container.querySelector('[role="group"]')).toBeNull();
+		expect(container.querySelector('[aria-pressed]')).toBeNull();
+		expect(container.textContent).toContain(getHataWhatsNewDisplayVersion(release.version));
+		expect(container.textContent).toContain(release.headline);
+		expect([...container.querySelectorAll<HTMLElement>('[data-preview]')].map(preview => preview.dataset.previewKey)).toEqual(release.items.map(item => `${release.id}:${item.preview}`));
+		for (const item of release.items) {
+			expect(container.textContent).toContain(item.title);
+			expect(container.textContent).toContain(item.text);
 		}
-		// Selecting the already-open release must not restart the carousel or observer.
-		const count = observers.length;
-		scrollTo.mockClear();
-		await select(buttons, 0);
-		expect(scrollTo).not.toHaveBeenCalled();
-		expect(observers).toHaveLength(count);
+		expect(container.querySelector('[role="dialog"]')?.getAttribute('aria-labelledby')).toBe('hata-whats-new-title');
+		expect(container.querySelector('#hata-whats-new-title')?.textContent.trim()).toBeTruthy();
 	});
 
-	test('復元したリリースでもカルーセルを先頭へ戻し、同じプレビューを世代別に一度だけ動かす', async () => {
-		const { container, buttons, viewport } = await mountGuide();
-		await select(buttons, 1);
+	test('4項目を矢印・ドットで移動し、スワイプ位置と端の無効状態を同期する', async () => {
+		const { container, viewport, scrollTo } = await mountGuide();
 		for (const [index, item] of [...viewport.children].entries()) Object.defineProperty(item, 'offsetLeft', { configurable: true, value: index * 320 });
+		const previous = container.querySelector<HTMLButtonElement>('nav > button:first-child');
 		const next = container.querySelector<HTMLButtonElement>('nav > button:last-child');
-		if (!next) throw new Error('Carousel next button did not mount');
+		const dots = [...container.querySelectorAll<HTMLButtonElement>('nav > div > button')];
+		if (!previous || !next) throw new Error('Carousel arrow buttons did not mount');
+		expect(dots).toHaveLength(4);
+		expect(container.querySelector('nav > span')?.textContent).toBe('1 / 4');
+		expect(previous.disabled).toBe(true);
+		expect(next.disabled).toBe(false);
+		expect(dots[0].getAttribute('aria-current')).toBe('true');
+		for (const button of [previous, next, ...dots]) expect(button.getAttribute('aria-label')?.trim()).toBeTruthy();
+		// Consecutive clicks keep the requested target while smooth scrolling is pending.
+		next.click();
 		next.click();
 		await nextTick();
-		expect(container.querySelector('nav > span')?.textContent).toBe('2 / 3');
-		showActivePreviews();
+		expect(container.querySelector('nav > span')?.textContent).toBe('3 / 4');
+		expect(scrollTo).toHaveBeenLastCalledWith({ left: 640, behavior: 'smooth' });
+		dots[3].click();
 		await nextTick();
-		expect(container.querySelector<HTMLElement>('[data-preview-key="currentRelease:hataskPlanner"]')?.dataset.previewState).toBe('running');
-		await select(buttons, 3);
-		expect(container.querySelector('nav > span')?.textContent).toBe('1 / 7');
-		expect(container.querySelector<HTMLElement>('[data-preview-key="mainRelease:hataskPlanner"]')?.dataset.previewState).toBe('ready');
-		showActivePreviews();
+		expect(container.querySelector('nav > span')?.textContent).toBe('4 / 4');
+		expect(scrollTo).toHaveBeenLastCalledWith({ left: 960, behavior: 'smooth' });
+		expect(next.disabled).toBe(true);
+		expect(dots.map(dot => dot.getAttribute('aria-current'))).toEqual([null, null, null, 'true']);
+		previous.click();
 		await nextTick();
-		expect(container.querySelector<HTMLElement>('[data-preview-key="mainRelease:hataskPlanner"]')?.dataset.previewState).toBe('running');
-		await select(buttons, 1);
-		expect(container.querySelector<HTMLElement>('[data-preview-key="currentRelease:hataskPlanner"]')?.dataset.previewState).toBe('complete');
-		await select(buttons, 3);
-		showActivePreviews();
+		expect(container.querySelector('nav > span')?.textContent).toBe('3 / 4');
+		viewport.dispatchEvent(new Event('pointerdown'));
+		viewport.scrollLeft = 320;
+		viewport.dispatchEvent(new Event('scroll'));
 		await nextTick();
-		expect(container.querySelector<HTMLElement>('[data-preview-key="mainRelease:hataskPlanner"]')?.dataset.previewState).toBe('complete');
+		expect(container.querySelector('nav > span')?.textContent).toBe('2 / 4');
+		expect(dots[1].getAttribute('aria-current')).toBe('true');
+		previous.click();
+		await nextTick();
+		expect(container.querySelector('nav > span')?.textContent).toBe('1 / 4');
+		expect(previous.disabled).toBe(true);
+		expect(scrollTo).toHaveBeenLastCalledWith({ left: 0, behavior: 'smooth' });
 	});
 
-	test('動きを減らす設定では復元したリリースも最初から完成形で表示する', async () => {
+	test('可視率を満たした見本だけを開始し、子の終了や再表示で完了状態を巻き戻さない', async () => {
+		const { container } = await mountGuide();
+		const previews = [...container.querySelectorAll<HTMLElement>('[data-preview]')];
+		const preview = previews[0];
+		const observer = observers.at(-1);
+		if (!observer || !preview.firstElementChild) throw new Error('Release preview did not mount');
+		const visibility = (ratio: number) => observer.callback([{ target: preview, isIntersecting: ratio > 0, intersectionRatio: ratio } as IntersectionObserverEntry], {} as IntersectionObserver);
+		expect(previews.map(item => item.dataset.previewState)).toEqual(['ready', 'ready', 'ready', 'ready']);
+		visibility(0.59);
+		await nextTick();
+		expect(preview.dataset.previewState).toBe('ready');
+		visibility(1);
+		await nextTick();
+		expect(previews.map(item => item.dataset.previewState)).toEqual(['running', 'ready', 'ready', 'ready']);
+		preview.firstElementChild.dispatchEvent(new Event('animationend', { bubbles: true }));
+		await nextTick();
+		expect(preview.dataset.previewState).toBe('running');
+		preview.dispatchEvent(new Event('animationend'));
+		await nextTick();
+		expect(preview.dataset.previewState).toBe('complete');
+		visibility(0);
+		await nextTick();
+		expect(preview.dataset.previewVisible).toBe('false');
+		visibility(1);
+		await nextTick();
+		expect(preview.dataset.previewVisible).toBe('true');
+		expect(previews.map(item => item.dataset.previewState)).toEqual(['complete', 'ready', 'ready', 'ready']);
+	});
+
+	test('動きを減らす設定では全4項目を完成形で表示し、カルーセルも即座に移動する', async () => {
 		reducedMotion = true;
-		const { container, buttons } = await mountGuide();
-		await select(buttons, 2);
+		const { container, viewport, scrollTo } = await mountGuide();
+		for (const [index, item] of [...viewport.children].entries()) Object.defineProperty(item, 'offsetLeft', { configurable: true, value: index * 320 });
 		showActivePreviews();
 		await nextTick();
 		expect(container.querySelector('[data-motion]')?.getAttribute('data-motion')).toBe('static');
 		expect([...container.querySelectorAll<HTMLElement>('[data-preview]')].map(preview => preview.dataset.previewState)).toEqual(['complete', 'complete', 'complete', 'complete']);
+		container.querySelector<HTMLButtonElement>('nav > button:last-child')?.click();
+		await nextTick();
+		expect(container.querySelector('nav > span')?.textContent).toBe('2 / 4');
+		expect(scrollTo).toHaveBeenLastCalledWith({ left: 320, behavior: 'auto' });
 	});
 });
