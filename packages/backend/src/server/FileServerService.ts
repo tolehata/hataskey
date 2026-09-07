@@ -177,7 +177,7 @@ export class FileServerService {
 						const parts = range.replace(/bytes=/, '').split('-');
 						const start = parseInt(parts[0], 10);
 						let end = parts[1] ? parseInt(parts[1], 10) : file.file.size - 1;
-						if (end > file.file.size) {
+						if (end >= file.file.size) {
 							end = file.file.size - 1;
 						}
 						const chunksize = end - start + 1;
@@ -196,6 +196,8 @@ export class FileServerService {
 						reply.header('Content-Length', chunksize);
 						reply.code(206);
 					} else {
+						// Only full, unconverted responses have the source file's length.
+						reply.header('Content-Length', file.file.size);
 						image = {
 							data: fs.createReadStream(file.path),
 							ext: file.ext,
@@ -214,7 +216,6 @@ export class FileServerService {
 				}
 
 				reply.header('Content-Type', FILE_TYPE_BROWSERSAFE.includes(image.type) ? image.type : 'application/octet-stream');
-				reply.header('Content-Length', file.file.size);
 				reply.header('Cache-Control', 'max-age=31536000, immutable');
 				reply.header('Content-Disposition',
 					contentDisposition(
