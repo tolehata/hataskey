@@ -5,6 +5,7 @@
 		tag="div" :class="$style.stack" :data-integrated="integrated" :data-mobile="context.mobile.value" :css="motion"
 		:enterActiveClass="$style.enterActive" :leaveActiveClass="$style.leaveActive" :enterFromClass="$style.enterFrom" :leaveToClass="$style.leaveTo" :moveClass="$style.move"
 		aria-live="polite" aria-relevant="additions" :aria-label="i18n.ts.notifications"
+		@leave="onLeave" @afterLeave="clearLeaveTimer" @leaveCancelled="clearLeaveTimer"
 	>
 		<MkHataskeyNotificationToast
 			v-for="item in context.items.value" :key="item.id" :item="item" :integrated="integrated" :motion="motion"
@@ -23,7 +24,6 @@ import MkHataskeyNotificationToast from '@/components/MkHataskeyNotificationToas
 import MkNotificationToastRing from '@/components/MkNotificationToastRing.vue';
 import { notificationToastsSuppressed } from '@/utility/notification-toast-suppression.js';
 import { prefer } from '@/preferences.js';
-import { popups } from '@/os.js';
 import { i18n } from '@/i18n.js';
 
 const props = defineProps<{ context: HataskeyNotificationToasts }>();
@@ -36,6 +36,39 @@ const motion = computed(() => prefer.r.animation.value && !reducedMotion.value);
 const paused = new Set<number>();
 const heights = new Map<number, number>();
 let frame = 0;
+let clockTimer: number | undefined;
+const leaveTimers = new Map<Element, number>();
+
+function clearLeaveTimer(el: Element) {
+	window.clearTimeout(leaveTimers.get(el));
+	leaveTimers.delete(el);
+}
+
+function onLeave(el: Element, done: () => void) {
+	clearLeaveTimer(el);
+	// Vue's CSS leave completion starts after two rAF callbacks. Bound removal
+	// independently so suspending a PWA cannot strand an outgoing notification.
+	if (!motion.value) { done(); return; }
+	leaveTimers.set(el, window.setTimeout(done, 350));
+}
+
+function stopClock() {
+	cancelAnimationFrame(frame);
+	window.clearTimeout(clockTimer);
+	frame = 0;
+	clockTimer = undefined;
+}
+
+function scheduleTick() {
+	if (window.document.hidden || !context.items.value.length) { stopClock(); return; }
+	if (!frame) frame = requestAnimationFrame(tick);
+	// The timer keeps expiry independent of animation frames while visible.
+	clockTimer ??= window.setTimeout(() => {
+		clockTimer = undefined;
+		if (!window.document.hidden) context.tick(performance.now(), paused);
+		scheduleTick();
+	}, 250);
+}
 
 function pause(id: number, value: boolean) {
 	if (value) paused.add(id);
@@ -47,19 +80,19 @@ function resize(id: number, height: number) {
 	if (id === active.value?.id) context.height.value = height;
 }
 
-function tick(now: number) {
+function tick() {
 	frame = 0;
-	const allPaused = window.document.hidden || popups.value.length > 0;
-	context.tick(now, allPaused ? new Set(context.items.value.map(item => item.id)) : paused);
-	if (context.items.value.length) frame = requestAnimationFrame(tick);
+	if (window.document.hidden) return;
+	context.tick(performance.now(), paused);
+	scheduleTick();
 }
 
 watch(context.items, (items) => {
 	for (const id of paused) if (!items.some(item => item.id === id)) paused.delete(id);
 	for (const id of heights.keys()) if (!items.some(item => item.id === id)) heights.delete(id);
 	context.height.value = items.length ? (heights.get(items[0].id) ?? context.height.value) : 0;
-	if (items.length && !frame) frame = requestAnimationFrame(tick);
-});
+	scheduleTick();
+}, { immediate: true });
 watch(integrated, value => {
 	if (value && context.items.value.length > 1) context.items.value = context.items.value.slice(0, 1);
 });
@@ -69,9 +102,11 @@ watch(() => prefer.r['external.disableNotificationToast'].value, value => {
 });
 
 function onVisibilityChange() {
-	// Browsers suspend rAF in background tabs: discard that elapsed wall time.
+	// Discard background time and replace any frame request interrupted by suspension.
+	stopClock();
 	const now = performance.now();
 	for (const item of context.items.value) item.updatedAt = now;
+	scheduleTick();
 }
 
 function onReducedMotion(event: MediaQueryListEvent) { reducedMotion.value = event.matches; }
@@ -88,7 +123,8 @@ onMounted(() => {
 	reducedMotionQuery.addEventListener('change', onReducedMotion);
 });
 onUnmounted(() => {
-	cancelAnimationFrame(frame);
+	stopClock();
+	for (const el of leaveTimers.keys()) clearLeaveTimer(el);
 	context.clear();
 	context.height.value = 0;
 	window.removeEventListener('external-notification', onExternalNotification);

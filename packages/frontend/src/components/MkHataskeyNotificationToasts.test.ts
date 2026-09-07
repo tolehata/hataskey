@@ -35,9 +35,14 @@ let frameCallback: FrameRequestCallback | undefined;
 const note = (id: string): entities.Notification => ({ id, type: 'test', createdAt: '2026-09-07T00:00:00Z' });
 
 beforeEach(() => {
+	frameCallback = undefined;
+	prefer.r.animation.value = false;
 	vi.useFakeTimers();
 	vi.spyOn(performance, 'now').mockReturnValue(0);
-	vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => { frameCallback = callback; return 1; });
+	vi.stubGlobal('requestAnimationFrame', vi.fn((callback: FrameRequestCallback) => {
+		frameCallback = now => { vi.mocked(performance.now).mockReturnValue(now); callback(now); };
+		return 1;
+	}));
 	vi.stubGlobal('cancelAnimationFrame', vi.fn());
 	vi.spyOn(window.document, 'hidden', 'get').mockReturnValue(false);
 	vi.stubGlobal('ResizeObserver', class {
@@ -58,13 +63,14 @@ afterEach(() => {
 	vi.useRealTimers();
 });
 
-function mount(mobile = false, navbar = true, withNewNotes = false) {
+function mount(mobile = false, navbar = true, withNewNotes = false, preloaded = false) {
 	const visible = ref(navbar);
 	const newNotes = createHataskeyTimelineNewNotes(() => 'home');
 	const owner = Symbol('home');
 	const showNewNotes = vi.fn(() => newNotes.update(owner, undefined, null));
 	const updateNewNotes = (count: number) => newNotes.update(owner, 'home', { text: `${count}個の新しいノートがあります`, icon: 'ti ti-arrow-up', show: showNewNotes });
 	const context = createHataskeyNotificationToasts(computed(() => mobile), computed(() => visible.value || newNotes.notice.value != null));
+	if (preloaded) context.enqueue(note('preloaded'), 'local', 0);
 	const bar = window.document.createElement('nav');
 	const target = window.document.createElement('div');
 	bar.append(target);
@@ -113,6 +119,147 @@ function mount(mobile = false, navbar = true, withNewNotes = false) {
 }
 
 describe('Hataskey notification host', () => {
+	it.each([true, false])('expires at five seconds even without animation frames (mobile=%s)', async (mobile) => {
+		prefer.r.animation.value = true;
+		const start = Date.now();
+		vi.mocked(performance.now).mockImplementation(() => Date.now() - start);
+		const { context, bar } = mount(mobile);
+		context.enqueue(note('no-frames'), 'local');
+		await nextTick();
+		await vi.advanceTimersByTimeAsync(2000);
+		expect(bar.querySelector('path')?.getAttribute('stroke-dashoffset')).toBe('0.6');
+		await vi.advanceTimersByTimeAsync(2999);
+		expect(context.items.value).toHaveLength(1);
+		await vi.advanceTimersByTimeAsync(1);
+		expect(context.items.value).toHaveLength(0);
+		await vi.advanceTimersByTimeAsync(350);
+		expect(bar.querySelector('article')).toBeNull();
+	});
+
+	it('cleans up pending close and clock timers when the host unmounts', async () => {
+		prefer.r.animation.value = true;
+		const { context, bar } = mount(true);
+		context.enqueue(note('leaving'), 'local', 0);
+		await nextTick();
+		context.clear();
+		await nextTick();
+		app?.unmount();
+		app = undefined;
+		await vi.advanceTimersByTimeAsync(6000);
+		expect(bar.querySelector('article')).toBeNull();
+		expect(context.items.value).toHaveLength(0);
+		expect(vi.getTimerCount()).toBe(0);
+	});
+
+	it('starts the timer for a notification received before the host mounts', async () => {
+		const { context } = mount(true, true, false, true);
+		expect(requestAnimationFrame).toHaveBeenCalled();
+		frameCallback?.(5000);
+		await nextTick();
+		expect(context.items.value).toHaveLength(0);
+	});
+
+	it('does not freeze the countdown or outline behind an unrelated popup', async () => {
+		const { context, bar } = mount(true);
+		popups.value = [{ id: 1, component: {}, props: {}, events: {} }];
+		context.enqueue(note('local'), 'local', 0);
+		await nextTick();
+		frameCallback?.(2000);
+		await nextTick();
+		expect(bar.querySelector('path')?.getAttribute('stroke-dashoffset')).toBe('0.6');
+		frameCallback?.(5000);
+		await nextTick();
+		expect(context.items.value).toHaveLength(0);
+		expect(bar.querySelector('article')).toBeNull();
+	});
+
+	it('does not keep touch hover or touch focus paused after tapping a notification', async () => {
+		const { context, target } = mount(true);
+		context.enqueue(note('touch'), 'local', 0);
+		await nextTick();
+		const card = target.querySelector('article');
+		const button = card?.querySelector('button');
+		if (!card || !button) throw new Error('Missing toast');
+		vi.spyOn(button, 'matches').mockReturnValue(false); // Pointer focus has no keyboard focus ring.
+		card.dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'touch' }));
+		button.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+		await nextTick();
+		frameCallback?.(5000);
+		await nextTick();
+		expect(context.items.value).toHaveLength(0);
+	});
+
+	it('restarts an interrupted frame request when a PWA returns to the foreground', async () => {
+		const { context } = mount(true);
+		const frames = new Map<number, FrameRequestCallback>();
+		let sequence = 0;
+		vi.stubGlobal('requestAnimationFrame', vi.fn((callback: FrameRequestCallback) => {
+			frames.set(++sequence, callback);
+			return sequence;
+		}));
+		vi.stubGlobal('cancelAnimationFrame', (id: number) => frames.delete(id));
+		context.enqueue(note('resume'), 'local', 0);
+		await nextTick();
+		vi.spyOn(window.document, 'hidden', 'get').mockReturnValue(true);
+		window.document.dispatchEvent(new Event('visibilitychange'));
+		frames.clear(); // Simulate the old frame not being delivered after suspension.
+		vi.mocked(performance.now).mockReturnValue(60000);
+		vi.spyOn(window.document, 'hidden', 'get').mockReturnValue(false);
+		window.document.dispatchEvent(new Event('visibilitychange'));
+		expect(frames.size).toBe(1);
+		const callback = frames.values().next().value;
+		if (!callback) throw new Error('Missing resumed frame');
+		frames.clear();
+		vi.mocked(performance.now).mockReturnValue(65000);
+		callback(65000);
+		await nextTick();
+		expect(context.items.value).toHaveLength(0);
+	});
+
+	it.each([true, false])('finishes close without waiting forever for animation frames (mobile=%s)', async (mobile) => {
+		prefer.r.animation.value = true;
+		const { context, updateNewNotes, bar } = mount(mobile, true, true);
+		updateNewNotes(2);
+		context.enqueue(note('first'), 'local', 0);
+		await nextTick();
+		context.enqueue(note('second'), 'local', 100);
+		await nextTick();
+		const button = bar.querySelector<HTMLButtonElement>(`article[data-toast-id="${context.items.value[0].id}"] > button`);
+		if (!button) throw new Error('Missing current close button');
+		button.click();
+		await nextTick();
+		expect(context.items.value).toHaveLength(0);
+		// No rAF or transitionend is delivered, even for the outgoing replaced card.
+		await vi.advanceTimersByTimeAsync(500);
+		expect(bar.querySelector('article')).toBeNull();
+		expect(bar.querySelector('svg')).toBeNull();
+		expect(bar.querySelector('.new-notes-button')?.textContent).toContain('2個');
+	});
+
+	it.each([true, false])('removes animated notifications on timeout and close (navbar=%s)', async (navbar) => {
+		prefer.r.animation.value = true;
+		const start = Date.now();
+		vi.mocked(performance.now).mockImplementation(() => Date.now() - start);
+		vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => window.setTimeout(() => callback(performance.now()), 16));
+		vi.stubGlobal('cancelAnimationFrame', (id: number) => window.clearTimeout(id));
+		const { context } = mount(false, navbar);
+		context.enqueue(note('expires'), 'local');
+		await nextTick();
+		expect(window.document.querySelector('article')).not.toBeNull();
+		await vi.advanceTimersByTimeAsync(6000);
+		expect(context.items.value).toHaveLength(0);
+		expect(window.document.querySelector('article')).toBeNull();
+		context.enqueue(note('close'), 'local');
+		await nextTick();
+		const closeButton = window.document.querySelector<HTMLButtonElement>('article > button');
+		if (!closeButton) throw new Error('Missing notification close button');
+		closeButton.click();
+		await nextTick();
+		expect(context.items.value).toHaveLength(0);
+		await vi.advanceTimersByTimeAsync(1000);
+		expect(window.document.querySelector('article')).toBeNull();
+	});
+
 	it.each([true, false])('keeps new notes after a simultaneous toast expires without restarting its timer (mobile=%s)', async (mobile) => {
 		const { context, bar, target, updateNewNotes } = mount(mobile, true, true);
 		updateNewNotes(3);
@@ -188,11 +335,12 @@ describe('Hataskey notification host', () => {
 		context.enqueue(note('local'), 'local', 0);
 		await nextTick();
 		const card = target.querySelector('article')!;
-		card.dispatchEvent(new Event('pointerenter'));
+		card.dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'mouse' }));
 		await nextTick();
 		frameCallback?.(4000);
 		expect(context.items.value[0].elapsed).toBe(0);
 		card.dispatchEvent(new Event('pointerleave'));
+		vi.spyOn(card, 'matches').mockReturnValue(true); // Keyboard focus.
 		card.dispatchEvent(new FocusEvent('focusin'));
 		await nextTick();
 		frameCallback?.(7000);
@@ -219,7 +367,7 @@ describe('Hataskey notification host', () => {
 		expect(context.items.value).toHaveLength(0);
 	});
 
-	it('discards suspended background time and pauses while a popup is open', async () => {
+	it('discards suspended background time', async () => {
 		const { context } = mount();
 		context.enqueue(note('local'), 'local', 0);
 		await nextTick();
@@ -232,11 +380,7 @@ describe('Hataskey notification host', () => {
 		window.document.dispatchEvent(new Event('visibilitychange'));
 		frameCallback?.(21000);
 		expect(context.items.value[0].elapsed).toBe(3000);
-		popups.value = [{ id: 1, component: {}, props: {}, events: {} }];
-		frameCallback?.(24000);
-		expect(context.items.value[0].elapsed).toBe(3000);
-		popups.value = [];
-		frameCallback?.(26000);
+		frameCallback?.(23000);
 		expect(context.items.value).toHaveLength(0);
 	});
 

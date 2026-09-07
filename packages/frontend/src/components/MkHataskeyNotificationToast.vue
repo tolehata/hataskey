@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-only -->
 <template>
-<article ref="root" :class="$style.card" :data-integrated="integrated" :data-toast-id="item.id" :data-blur="prefer.r.useBlurEffect.value" @pointerenter="hovered = true" @pointerleave="hovered = false" @focusin="focused = true" @focusout="onFocusOut">
+<article ref="root" :class="$style.card" :data-integrated="integrated" :data-toast-id="item.id" :data-blur="prefer.r.useBlurEffect.value" @pointerenter="onPointerEnter" @pointerleave="hovered = false" @pointercancel="hovered = false" @focusin="onFocusIn" @focusout="onFocusOut">
 	<MkExternalNotificationToast v-if="item.source === 'external'" :notification="item.notification" :sourceHost="item.host" embedded @close="emit('close')"/>
 	<MkNotification v-else :notification="item.notification" :contentVisibilityAuto="false" toast/>
 	<button class="_button" :class="$style.close" :aria-label="i18n.ts.close" @click="emit('close')"><i class="ti ti-x" aria-hidden="true"></i></button>
@@ -24,8 +24,21 @@ const hovered = ref(false);
 const focused = ref(false);
 watch(() => hovered.value || focused.value, paused => emit('pause', paused));
 
+function onPointerEnter(event: PointerEvent) {
+	// Touch generates pointerenter too, but must never hold the countdown open.
+	hovered.value = event.pointerType === 'mouse';
+}
+
+function onFocusIn(event: FocusEvent) {
+	focused.value = event.target instanceof Element && event.target.matches(':focus-visible');
+}
+
 function onFocusOut(event: FocusEvent) {
-	focused.value = event.relatedTarget instanceof Node && !!root.value?.contains(event.relatedTarget);
+	focused.value = event.relatedTarget instanceof Element && !!root.value?.contains(event.relatedTarget) && event.relatedTarget.matches(':focus-visible');
+}
+
+function onVisibilityChange() {
+	if (window.document.hidden) { hovered.value = false; focused.value = false; }
 }
 
 const observer = new ResizeObserver(() => {
@@ -33,8 +46,12 @@ const observer = new ResizeObserver(() => {
 });
 onMounted(() => {
 	if (root.value) observer.observe(root.value);
+	window.document.addEventListener('visibilitychange', onVisibilityChange);
 });
-onUnmounted(() => observer.disconnect());
+onUnmounted(() => {
+	observer.disconnect();
+	window.document.removeEventListener('visibilitychange', onVisibilityChange);
+});
 </script>
 
 <style module lang="scss">
