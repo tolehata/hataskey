@@ -5,7 +5,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { IsNull } from 'typeorm';
+import { IsNull, Raw } from 'typeorm';
 import { Inject, Injectable } from '@nestjs/common';
 import type { MiMeta, RegistrationApplicationsRepository, UsedUsernamesRepository, UsersRepository } from '@/models/_.js';
 import { Endpoint } from '@/server/api/endpoint-base.js';
@@ -66,10 +66,11 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 			// 旗鯖fork: 登録申請中の username もチェック対象
 			// - pending: まだ未処理の申請中ID
 			// - rejected: 通常は reject 時に null になるが、旧仕様未クリーンアップで残ってるレコードを検出
+			const applicationUsername = Raw(alias => `LOWER(${alias}) = :usernameLower`, { usernameLower: ps.username.toLowerCase() });
 			const exist3 = await this.registrationApplicationsRepository.count({
 				where: [
-					{ username: ps.username.toLowerCase(), status: 'pending' },
-					{ username: ps.username.toLowerCase(), status: 'rejected' },
+					{ username: applicationUsername, status: 'pending' },
+					{ username: applicationUsername, status: 'rejected' },
 				],
 			});
 

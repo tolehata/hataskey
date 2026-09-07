@@ -7,7 +7,7 @@
 
 import { Inject, Injectable } from '@nestjs/common';
 import bcrypt from 'bcryptjs';
-import { IsNull } from 'typeorm';
+import { IsNull, Raw } from 'typeorm';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import { IdService } from '@/core/IdService.js';
 import { CaptchaService } from '@/core/CaptchaService.js';
@@ -236,10 +236,12 @@ export default class extends Endpoint<typeof meta, typeof paramDef> {
 			//   ただし、旧仕様 (今回のプライバシー保護改修前) で reject されて未クリーンアップ
 			//   なレコードには username が残ってるため、それを重複扱いする (一括クリーンアップ完了まで)
 			// 結果として、新仕様で reject された ID は他人 (本人含む) が即座に再利用できる
+			// Preserve the requested spelling, but reserve the ID without case distinctions.
+			const applicationUsername = Raw(alias => `LOWER(${alias}) = :usernameLower`, { usernameLower: ps.username.toLowerCase() });
 			if (await this.registrationApplicationsRepository.exists({
 				where: [
-					{ username: ps.username.toLowerCase(), status: 'pending' },
-					{ username: ps.username.toLowerCase(), status: 'rejected' },
+					{ username: applicationUsername, status: 'pending' },
+					{ username: applicationUsername, status: 'rejected' },
 				],
 			})) {
 				throw new ApiError(meta.errors.usernameAlreadyExists);
@@ -269,7 +271,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> {
 			try {
 				await this.registrationApplicationsRepository.insert({
 					id: this.idService.gen(),
-					username: ps.username.toLowerCase(),
+					username: ps.username,
 					hashedPassword,
 					reason: ps.reason.trim(),
 					email: emailTrimmed,

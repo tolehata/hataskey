@@ -3,8 +3,9 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 import bcrypt from 'bcryptjs';
+import { DataSource, EntitySchema } from 'typeorm';
 import ApplyEndpoint, { meta as applyMeta } from '@/server/api/endpoints/registration/apply.js';
 import ListEndpoint from '@/server/api/endpoints/admin/registration-applications.js';
 import ApproveEndpoint from '@/server/api/endpoints/admin/approve-registration.js';
@@ -12,6 +13,9 @@ import RejectEndpoint from '@/server/api/endpoints/admin/reject-registration.js'
 import CleanupEndpoint from '@/server/api/endpoints/admin/cleanup-legacy-rejected-registrations.js';
 import { SignupService } from '@/core/SignupService.js';
 import { MiUser } from '@/models/User.js';
+import { MiUsedUsername } from '@/models/UsedUsername.js';
+import AvailableEndpoint from '@/server/api/endpoints/username/available.js';
+import { PreserveRegistrationUsernameCase1788700000000 } from '../../migration/1788700000000-preserve-registration-username-case.js';
 
 vi.mock('bcryptjs', () => ({ default: { genSalt: vi.fn(), hash: vi.fn() } }));
 vi.mock('node:crypto', async importOriginal => ({
@@ -21,6 +25,17 @@ vi.mock('node:crypto', async importOriginal => ({
 
 const disabled = { code: 'REGISTRATION_APPLICATIONS_DISABLED' };
 const applicant = { username: 'Applicant', password: 'password123', reason: '参加したいです', email: 'applicant@example.test' };
+
+// Generate real PostgreSQL predicates without connecting to a database.
+class QueryOnlyDataSource extends DataSource {
+	async prepareMetadata(): Promise<void> { await this.buildMetadatas(); }
+}
+const applicationSchema = new EntitySchema({
+	name: 'RegistrationApplicationQuery', tableName: 'registration_application',
+	columns: { id: { type: String, primary: true }, username: { type: String, nullable: true }, status: { type: String } },
+});
+const queryDb = new QueryOnlyDataSource({ type: 'postgres', entities: [applicationSchema] });
+beforeAll(() => queryDb.prepareMetadata());
 
 function fixture(enabled: unknown = true) {
 	const serverMeta = { disableRegistration: enabled, preservedUsernames: [], rootUserId: 'admin', name: 'test', prohibitedWordsForNameOfUser: [] };
@@ -84,6 +99,56 @@ beforeEach(() => {
 afterEach(() => { vi.unstubAllEnvs(); vi.clearAllMocks(); });
 
 describe('registration application mode', () => {
+	test.each(['pending', 'rejected'])('case-insensitive reservation blocks a %s application using a literal ID', async status => {
+		const f = fixture();
+		f.repository.exists.mockResolvedValueOnce(true);
+		await expect(f.apply.exec({ ...applicant, username: 'HaTa_Test' }, null, null, null)).rejects.toMatchObject({ code: 'USERNAME_ALREADY_EXISTS' });
+		const { where } = f.repository.exists.mock.calls[0][0];
+		const condition = where.find(item => item.status === status);
+		expect(condition).toBeDefined();
+		const [sql, params] = queryDb.getRepository(applicationSchema).createQueryBuilder('application').where(condition).getQueryAndParameters();
+		expect(sql).toContain('LOWER("application"."username") = $1');
+		expect(params).toEqual(['hata_test', status]);
+		expect(f.repository.insert).not.toHaveBeenCalled();
+	});
+
+	test.each([0, 1])('availability uses the same case-insensitive reservation predicate (matches=%s)', async matches => {
+		const f = fixture();
+		f.repository.count.mockResolvedValue(matches);
+		const users = { countBy: vi.fn().mockResolvedValue(0) };
+		const used = { countBy: vi.fn().mockResolvedValue(0) };
+		const endpoint = new AvailableEndpoint(f.serverMeta as never, users as never, used as never, f.repository as never);
+		await expect(endpoint.exec({ username: 'HaTa_Test' }, null, null, null)).resolves.toEqual({ available: matches === 0 });
+		const { where } = f.repository.count.mock.calls[0][0];
+		for (const status of ['pending', 'rejected']) {
+			const condition = where.find(item => item.status === status);
+			expect(condition).toBeDefined();
+			const [sql, params] = queryDb.getRepository(applicationSchema).createQueryBuilder('application').where(condition).getQueryAndParameters();
+			expect(sql).toContain('LOWER("application"."username") = $1');
+			expect(params).toEqual(['hata_test', status]);
+		}
+		expect(users.countBy).toHaveBeenCalledWith(expect.objectContaining({ usernameLower: 'hata_test' }));
+		expect(used.countBy).toHaveBeenCalledWith({ username: 'hata_test' });
+	});
+
+	test.each(['existing', 'used', 'preserved'])('mixed-case application still rejects a %s ID', async kind => {
+		const f = fixture();
+		if (kind === 'existing') f.users.exists.mockResolvedValue(true);
+		if (kind === 'used') f.usedNames.exists.mockResolvedValue(true);
+		if (kind === 'preserved') Object.assign(f.serverMeta, { preservedUsernames: ['aPpLiCaNt'] });
+		await expect(f.apply.exec({ ...applicant }, null, null, null)).rejects.toMatchObject({ code: 'USERNAME_ALREADY_EXISTS' });
+		expect(f.repository.insert).not.toHaveBeenCalled();
+	});
+
+	test('migration replaces the reservation index with a case-insensitive unique index before dropping the old one', async () => {
+		const query = vi.fn().mockResolvedValue(undefined);
+		await new PreserveRegistrationUsernameCase1788700000000().up({ query });
+		expect(query.mock.calls.map(call => call[0])).toEqual([
+			'CREATE UNIQUE INDEX "IDX_reg_app_username_lower_pending" ON "registration_application" (LOWER("username")) WHERE "status" = \'pending\'',
+			'DROP INDEX "IDX_reg_app_username_pending"',
+		]);
+	});
+
 	test.each([false, undefined, null, 'true'])('apply fails closed for %s before captcha, hashing or repository access', async enabled => {
 		const f = fixture(enabled);
 		// fixture default is deliberately overwritten for the missing-value case.
@@ -102,7 +167,7 @@ describe('registration application mode', () => {
 		const f = fixture();
 		await expect(f.apply.exec({ ...applicant }, null, null, null)).resolves.toEqual({ success: true });
 		expect(bcrypt.hash).toHaveBeenCalledWith(applicant.password, 'salt');
-		expect(f.repository.insert).toHaveBeenCalledWith(expect.objectContaining({ username: 'applicant', hashedPassword: 'hash', status: 'pending', email: applicant.email }));
+		expect(f.repository.insert).toHaveBeenCalledWith(expect.objectContaining({ username: 'Applicant', hashedPassword: 'hash', status: 'pending', email: applicant.email }));
 		expect(applyMeta.limit).toEqual({ duration: 3600000, max: 2 });
 	});
 
@@ -239,6 +304,17 @@ describe('registration application mode', () => {
 });
 
 describe('SignupService application-only guard', () => {
+	test('application approval preserves requested spelling and reserves the lowercase ID', async () => {
+		const f = signupFixture(true);
+		await f.apply.exec({ ...applicant, username: 'HaTa_Test' }, null, null, null);
+		const saved = f.repository.insert.mock.calls[0][0];
+		Object.assign(f.application, saved);
+		const { account } = await f.service.signup({ registrationApplicationId: f.application.id });
+		expect(account).toMatchObject({ username: 'HaTa_Test', usernameLower: 'hata_test' });
+		expect(f.persisted.find(entity => entity instanceof MiUsedUsername)).toMatchObject({ username: 'hata_test' });
+		expect(f.transaction.findOneBy).toHaveBeenCalledWith(MiUser, expect.objectContaining({ usernameLower: 'hata_test' }));
+	});
+
 	test('direct application signup is blocked in OFF mode before account work', async () => {
 		const f = signupFixture(false);
 		await expect(f.service.signup({ registrationApplicationId: 'app1' })).rejects.toMatchObject(disabled);

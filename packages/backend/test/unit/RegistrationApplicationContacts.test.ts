@@ -213,15 +213,16 @@ describe('review-only additional contacts', () => {
 		expect(result[0].additionalContacts).toBeNull();
 	});
 
-	test('nullable non-default column and terminal-state check are present in entity and the next migration', () => {
+	test('nullable non-default column and terminal-state check are present in entity and the corresponding migration', () => {
 		const column = getMetadataArgsStorage().columns.find(item => item.target === MiRegistrationApplication && item.propertyName === 'additionalContacts');
 		expect(column?.options).toMatchObject({ nullable: true, length: 1024, select: false });
 		const expression = `"status" = 'pending' OR "additionalContacts" IS NULL`;
 		expect(getMetadataArgsStorage().checks.find(item => item.target === MiRegistrationApplication)?.expression).toBe(expression);
 		const migrationDir = resolve(process.cwd(), 'migration');
 		const currentNumber = 1788500000000;
-		const previous = readdirSync(migrationDir).map(name => Number(name.match(/^\d+/)?.[0])).filter(Number.isFinite).filter(value => value !== currentNumber);
-		expect(currentNumber).toBeGreaterThan(Math.max(...previous));
+		// Later migrations are valid; only a collision with this migration's number is invalid.
+		const sameNumber = readdirSync(migrationDir).filter(name => Number(name.match(/^\d+/)?.[0]) === currentNumber);
+		expect(sameNumber).toHaveLength(1);
 		const source = readFileSync(resolve(migrationDir, '1788500000000-add-registration-additional-contacts.js'), 'utf8');
 		expect(source).toContain('ADD "additionalContacts" varchar(1024) NULL');
 		expect(source).toContain(`CHECK (${expression})`);

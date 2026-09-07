@@ -21,9 +21,11 @@ export class MiRegistrationApplication {
 	public reason: string;
 
 	/**
+	 * 入力時の大文字・小文字を保持する。ID の重複は大小文字を区別せず判定する。
 	 * 旗鯖fork: 申請が拒否された場合、reject 時点で null にセットされる
 	 * (利用者の ID/パスワード情報を即時削除するため)
 	 */
+	@Index('IDX_reg_app_username_lower_pending', { synchronize: false })
 	@Column('varchar', {
 		length: 128,
 		nullable: true,
