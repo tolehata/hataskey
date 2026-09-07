@@ -52,7 +52,7 @@ function requiredElement<T extends HTMLElement>(value: T | null | undefined): T 
 
 // happy-dom has no layout engine. Explicit widths and clocks verify the scroll
 // controller; native momentum, CSS geometry and rendered avatars need browser QA.
-async function mountStream(options: Partial<StreamProps> = {}, initialWidth = 600, initiallyReduced = false, ancestorScale = 1) {
+async function mountStream(options: Partial<StreamProps> = {}, initialWidth = 600, initiallyReduced = false, ancestorScale = 1, roundScroll: (position: number) => number = position => position) {
 	let width = initialWidth;
 	let now = 0;
 	let nextId = 1;
@@ -72,7 +72,7 @@ async function mountStream(options: Partial<StreamProps> = {}, initialWidth = 60
 	vi.spyOn(window, 'setTimeout').mockImplementation((callback, delay = 0) => {
 		const id = nextId++;
 		timers.set(id, { callback: () => { if (typeof callback === 'function') callback(); }, at: now + delay });
-		return id;
+		return id as unknown as ReturnType<typeof window.setTimeout>;
 	});
 	vi.spyOn(window, 'clearTimeout').mockImplementation(id => { timers.delete(Number(id)); });
 	vi.stubGlobal('ResizeObserver', class {
@@ -96,7 +96,7 @@ async function mountStream(options: Partial<StreamProps> = {}, initialWidth = 60
 		configurable: true,
 		get(this: HTMLElement) { return positions.get(this) ?? 0; },
 		set(this: HTMLElement, value: number) {
-			const next = Math.max(0, Math.min(value, Math.max(0, this.scrollWidth - this.clientWidth)));
+			const next = Math.max(0, Math.min(roundScroll(value), Math.max(0, this.scrollWidth - this.clientWidth)));
 			if (next !== this.scrollLeft) { positions.set(this, next); pendingScroll.add(this); }
 		},
 	});
@@ -170,6 +170,37 @@ afterEach(() => {
 });
 
 describe('HataskFlowerStream', () => {
+	test.each([60, 120])('%i Hz・整数pxに丸められる表示でも小数の移動量を蓄積して両段を流す', async fps => {
+		const f = await mountStream({}, 600, false, 1, Math.round);
+		const start = [f.lane().scrollLeft, f.lane(1).scrollLeft];
+		await f.advance(0);
+		for (let frame = 0; frame < fps; frame++) await f.advance(1000 / fps);
+		for (let row = 0; row < 2; row++) expect(f.lane(row).scrollLeft - start[row]).toBeCloseTo(14, 0);
+		expect(f.frames.size).toBe(1);
+	});
+
+	test('小数pxが切り捨てられる表示でも自動移動を手動スクロールと誤判定しない', async () => {
+		const f = await mountStream({ activity: true }, 600, false, 1, Math.floor);
+		const start = f.lane().scrollLeft;
+		await f.advance(0);
+		for (let frame = 0; frame < 120; frame++) await f.advance(1000 / 60);
+		expect(f.lane().scrollLeft - start).toBeGreaterThanOrEqual(27);
+		expect(f.lane().scrollLeft - start).toBeLessThanOrEqual(28);
+		expect(f.timers.size).toBe(0);
+		expect(f.frames.size).toBe(1);
+	});
+
+	test('整数pxの手動移動後は移動先から再開し、継ぎ目を越えて流れる', async () => {
+		const f = await mountStream({}, 600, false, 1, Math.round);
+		f.lane().scrollLeft = f.cycle(f.lane()) * 2 - 1;
+		await f.settle();
+		expect(f.frames.size).toBe(0);
+		await f.advance(551);
+		for (let frame = 0; frame < 60; frame++) await f.advance(1000 / 60);
+		expect(f.lane().scrollLeft - f.cycle(f.lane())).toBeCloseTo(13, 0);
+		expect(f.frames.size).toBe(1);
+	});
+
 	test('12輪を交互の2段へ配置し、既存アバター部品の装飾と安全なクリック設定を渡す', async () => {
 		const f = await mountStream();
 		expect(f.root().dataset.rows).toBe('2');

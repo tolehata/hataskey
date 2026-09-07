@@ -94,6 +94,7 @@ type Lane = {
 	items: readonly HataskFlowerView[];
 	cycle: number;
 	offsets: number[];
+	position: number;
 	expectedScroll: number;
 	drag: { id: number; x: number; startScroll: number; moved: boolean } | null;
 	suppressClickUntil: number;
@@ -166,8 +167,10 @@ function syncMotion(): void {
 
 function assignScroll(lane: Lane, value: number): void {
 	const next = lane.cycle > 0 ? lane.cycle + modulo(value - lane.cycle, lane.cycle) : 0;
-	lane.expectedScroll = next;
+	// Keep fractional progress even when the browser rounds the rendered position.
+	lane.position = next;
 	lane.element.scrollLeft = next;
+	lane.expectedScroll = lane.element.scrollLeft;
 }
 
 function tick(time: number): void {
@@ -175,7 +178,7 @@ function tick(time: number): void {
 	if (!allowed()) { stop(); return; }
 	const delta = lastTime === null ? 0 : Math.min(64, Math.max(0, time - lastTime));
 	lastTime = time;
-	for (const lane of lanes) if (lane.cycle > 0) assignScroll(lane, lane.element.scrollLeft + SPEED * delta / 1000);
+	for (const lane of lanes) if (lane.cycle > 0) assignScroll(lane, lane.position + SPEED * delta / 1000);
 	syncMotion();
 }
 
@@ -220,7 +223,7 @@ async function layout(saved: (Position | null)[], focusedId?: string): Promise<v
 		// Layout coordinates stay stable while Hatask animates an ancestor's scale/rotation.
 		const start = buttons[0].offsetLeft;
 		const cycle = row.items.length > 1 ? buttons[row.items.length].offsetLeft - start : 0;
-		const lane: Lane = { index: row.index, element, items: row.items, cycle: Math.max(0, cycle), offsets: [], expectedScroll: 0, drag: null, suppressClickUntil: 0 };
+		const lane: Lane = { index: row.index, element, items: row.items, cycle: Math.max(0, cycle), offsets: [], position: 0, expectedScroll: 0, drag: null, suppressClickUntil: 0 };
 		lane.offsets = row.items.map((_, index) => buttons[index].offsetLeft - start);
 		nextCopies[row.index] = cycle > 0 ? Math.max(4, Math.ceil(element.clientWidth / cycle) + 3) : 4;
 		nextLanes.push(lane);
@@ -251,7 +254,11 @@ function onScroll(index: number): void {
 	const lane = lanes.find(row => row.index === index);
 	if (!active || layingOut || !lane || !(lane.cycle > 0)) return;
 	const actual = lane.element.scrollLeft;
-	if (Math.abs(actual - lane.expectedScroll) > .75) pauseBriefly();
+	// Programmatic scroll events must not erase the unrendered fractional remainder.
+	if (Math.abs(actual - lane.expectedScroll) <= .75) return;
+	lane.position = actual;
+	lane.expectedScroll = actual;
+	pauseBriefly();
 	if (actual < lane.cycle || actual >= lane.cycle * 2) assignScroll(lane, actual);
 }
 
