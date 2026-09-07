@@ -3247,6 +3247,7 @@ _notification:
     test: "Notification test"
     app: "Notifications from linked apps"
     hataFeed: "HataFeed notifications"
+    hataskFlowerReady: "Hatask flowers"
     # Hata fork: cherrypick-js notificationTypes includes 'earthquake' but the label was missing,
     # causing the settings UI to show a blank entry.
     earthquake: "Earthquake / Tsunami info"
@@ -3964,7 +3965,16 @@ _deliveryTargetControl:
 
 # Hataskey-specific features. Hanaawase and earthquake/tsunami features are intentionally excluded.
 _hata:
+  _notificationToast:
+    position: "Notification popup position"
+    stack: "Notification popup order"
+    automatic: "Automatic in Hataskey UI"
+    placement: "In the standard Hataskey UI, desktop notifications appear below the top navigation and mobile notifications above it. Outside timelines on mobile, only the notification appears at the top with an opaque background; the navigation stays hidden. On desktop, notifications appear at the bottom right when the top navigation is hidden, including Deck view. Notifications close after 5 seconds."
+    sequence: "At the top of the screen, new notifications replace the previous one, which slides down and fades out. At the bottom right on desktop, up to three notifications stack vertically."
+    otherUi: "Position and stacking choices apply to UIs other than Hataskey UI. Hataskey UI places both local and external notifications automatically."
+    external: "External notification"
   _customNotifications:
+    flowerReady: "Your flower is in full bloom. Open Flowers in Hatask to harvest it."
     newNotice: "New notification"
   _games:
     _common:
@@ -6418,6 +6428,16 @@ _hata:
       flowerVisibilityPrivate: "Only me"
       communityFlowerGallery: "Everyone's flowers"
       communityFlowerActivity: "Everyone's flower activity"
+      communityGarden: "Everyone’s garden"
+      flowerCount: "{count} flowers"
+      flowerHarvestedAt: "Harvested"
+      flowerOwner: "Grown by"
+      pauseFlowerScroll: "Pause automatic scrolling"
+      resumeFlowerScroll: "Resume automatic scrolling"
+      flowerSeasonSpring: "Spring flowers are in season"
+      flowerSeasonSummer: "Summer flowers are in season"
+      flowerSeasonAutumn: "Autumn flowers are in season"
+      flowerSeasonWinter: "Winter flowers are in season"
       flowerGalleryLoading: "Loading everyone's flowers"
       flowerGalleryLoadFailed: "Could not load everyone's flowers"
       flowerGalleryEmpty: "No flowers have been shared yet"
@@ -6481,9 +6501,10 @@ _hata:
       accept: "Acknowledge"
       howToGrowFlowers: "How to grow flowers"
       flowerInfoGrowth: "Your flower grows as you use this server."
-      flowerInfoTime: "It continues to grow with elapsed time even while the app is in the background or closed (about 8–32 hours)."
+      flowerInfoTime: "Flowers keep growing while the app is closed. Regular flowers bloom in about 8–32 hours; newly planted rare flowers take about 48–96 hours. The remaining time of flowers already growing stays the same."
       flowerInfoNaming: "When growth is complete, you can name it. You can rename harvested flowers from the gallery at any time."
-      flowerInfoVariety: "There are more than 125 kinds of flowers and curious items, including rare ones!"
+      flowerInfoVariety: "Seasonal varieties appear more often in their season, but can also appear at other times. Rare flowers are harder to find and have a shimmering gallery frame. Seasons follow Japan Standard Time."
+      rareFlower: "Rare flower"
       chooseAppearance: "Choose an appearance first"
       changeAppearanceLater: "You can change it anytime from Hatask settings"
       light: "Light"
@@ -6565,7 +6586,7 @@ _hata:
       tutorialMoodReminder: "Use reminder notifications to avoid missing a record"
       tutorialMoodDisclaimer: "This is a self-care tool, not a medical tool"
       tutorialGardenBody: "Your flower grows as you use the server. There are more than 125 varieties!"
-      tutorialGardenBloom: "Flowers bloom in about 8-32 hours. Rare items may appear too."
+      tutorialGardenBloom: "Regular flowers bloom in about 8–32 hours; rare flowers take about 48–96 hours"
       tutorialGardenHarvest: "Name a bloomed flower and harvest it into your gallery"
       tutorialGardenCollection: "Collect flower meanings too!"
       tutorialEyeBody: "Another Hatask eye that watches over how you use it."

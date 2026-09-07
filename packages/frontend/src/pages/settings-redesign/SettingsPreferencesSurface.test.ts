@@ -32,6 +32,16 @@ const oldContainers = unique([...legacySource.matchAll(/<MkPreferenceContainer\s
 const oldModels = unique([...legacySource.matchAll(/prefer\.model\(\s*['"]([^'"]+)['"]/gu)].map(match => match[1]));
 
 describe('redesigned preferences inventory', () => {
+	it('explains automatic Hataskey placement while retaining other UIs saved options', () => {
+		const byKey = new Map(preferenceControls.map(control => [control.key, control]));
+		expect(byKey.get('notificationPosition')?.label).toBe('通知ポップアップの位置');
+		expect(byKey.get('notificationPosition')?.caption.join(' ')).toMatch(/PC.*下.*モバイル.*上.*右下.*5秒/);
+		expect(byKey.get('notificationPosition')?.caption.join(' ')).toMatch(/タイムライン以外.*ナビバーを表示せず.*不透明/);
+		expect(byKey.get('notificationStackAxis')?.caption.join(' ')).toMatch(/入れ替わり.*下へ.*3件.*縦/);
+		expect(byKey.get('notificationPosition')?.options).toEqual(['leftTop', 'rightTop', 'leftBottom', 'rightBottom']);
+		expect(byKey.get('notificationStackAxis')?.options).toEqual(['vertical', 'horizontal']);
+	});
+
 	it('keeps the exact old 100-container inventory, with animation de-duplicated', () => {
 		expect(oldContainers).toHaveLength(100);
 		expect(preferenceContainerKeys).toHaveLength(100);

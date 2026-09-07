@@ -4,7 +4,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 
 <template>
-<div :class="$style.root" :data-content-visibility-auto="contentVisibilityAuto">
+<div :class="$style.root" :data-content-visibility-auto="contentVisibilityAuto" :data-toast="toast">
 	<div :class="$style.head">
 		<MkAvatar v-if="['pollEnded', 'note'].includes(notification.type) && 'note' in notification" :class="$style.icon" :user="notification.note.user" link preview/>
 		<MkAvatar v-else-if="['roleAssigned', 'achievementEarned', 'exportCompleted', 'login', 'createToken', 'scheduledNotePosted', 'scheduledNotePostFailed'].includes(notification.type)" :class="$style.icon" :user="$i" link preview/>
@@ -24,11 +24,13 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<div v-else-if="notification.type === 'hataFeed' || (notification.type === 'app' && !notification.icon && notification.header === 'HataFeed')" :class="[$style.icon, $style.icon_hatafeed]"><i class="ti ti-message-report"></i></div>
 		<!-- 旗鯖fork: 地震・津波情報の通知アイコン -->
 		<div v-else-if="notification.type === 'earthquake'" :class="[$style.icon, $style.icon_earthquake]"><i class="ti ti-activity"></i></div>
+		<div v-else-if="notification.type === 'hataskFlowerReady'" :class="[$style.icon, $style.icon_hataskFlower]"><i class="ti ti-flower"></i></div>
 		<!-- 旗鯖fork: プライベートチャンネル メンバー追加/除外の通知アイコン -->
 		<div v-else-if="notification.type === 'addedToPrivateChannel'" :class="[$style.icon, $style.icon_channelJoin]"><i class="ti ti-lock-square"></i></div>
 		<div v-else-if="notification.type === 'removedFromPrivateChannel'" :class="[$style.icon, $style.icon_channelLeave]"><i class="ti ti-door-exit"></i></div>
 		<img v-else-if="'icon' in notification && notification.icon != null" :class="[$style.icon, $style.icon_app]" :src="notification.icon" alt=""/>
 		<div
+			v-if="!toast || notification.type !== 'reaction'"
 			:class="[$style.subIcon, {
 				[$style.t_follow]: notification.type === 'follow',
 				[$style.t_followRequestAccepted]: notification.type === 'followRequestAccepted',
@@ -81,60 +83,67 @@ SPDX-License-Identifier: AGPL-3.0-only
 	</div>
 	<div :class="$style.tail">
 		<header :class="$style.header">
-			<span v-if="notification.type === 'pollEnded'" :class="$style.headerText">{{ i18n.ts._notification.pollEnded }}</span>
-			<span v-else-if="notification.type === 'scheduledNotePosted'" :class="$style.headerText">{{ i18n.ts._notification.scheduledNotePosted }}</span>
-			<span v-else-if="notification.type === 'scheduledNotePostFailed'" :class="$style.headerText">{{ i18n.ts._notification.scheduledNotePostFailed }}</span>
-			<span v-else-if="notification.type === 'note'" :class="$style.headerText">{{ i18n.ts._notification.newNote }}: <MkUserName :user="notification.note.user"/></span>
-			<span v-else-if="notification.type === 'roleAssigned'" :class="$style.headerText">{{ i18n.ts._notification.roleAssigned }}</span>
-			<span v-else-if="notification.type === 'chatRoomInvitationReceived'" :class="$style.headerText">{{ i18n.ts._notification.chatRoomInvitationReceived }}</span>
-			<span v-else-if="notification.type === 'achievementEarned'" :class="$style.headerText">{{ i18n.ts._notification.achievementEarned }}</span>
-			<span v-else-if="notification.type === 'login'" :class="$style.headerText">{{ i18n.ts._notification.login }}</span>
-			<span v-else-if="notification.type === 'createToken'" :class="$style.headerText">{{ i18n.ts._notification.createToken }}</span>
-			<span v-else-if="notification.type === 'test'" :class="$style.headerText">{{ i18n.ts._notification.testNotification }}</span>
-			<span v-else-if="notification.type === 'exportCompleted'" :class="$style.headerText">{{ i18n.tsx._notification.exportOfXCompleted({ x: exportEntityName[notification.exportedEntity] }) }}</span>
-			<MkA v-else-if="notification.type === 'follow' || notification.type === 'mention' || notification.type === 'reply' || notification.type === 'renote' || notification.type === 'quote' || notification.type === 'reaction' || notification.type === 'receiveFollowRequest' || notification.type === 'followRequestAccepted'" v-user-preview="notification.user.id" :class="$style.headerName" :to="userPage(notification.user)"><MkUserName :user="notification.user"/></MkA>
-			<span v-else-if="notification.type === 'groupInvited'" :class="$style.headerText">{{ i18n.tsx._notification.youWereInvitedToGroup({ userName: notification.user.name ?? notification.user.username }) }}</span>
-			<span v-else-if="notification.type === 'reaction:grouped' && notification.note.reactionAcceptance === 'likeOnly'" :class="$style.headerText">{{ i18n.tsx._notification.likedBySomeUsers({ n: getActualReactedUsersCount(notification) }) }}</span>
-			<span v-else-if="notification.type === 'reaction:grouped'" :class="$style.headerText">{{ i18n.tsx._notification.reactedBySomeUsers({ n: getActualReactedUsersCount(notification) }) }}</span>
+			<span v-if="notification.type === 'pollEnded'" :class="$style.headerText"><MkNotificationText :text="i18n.ts._notification.pollEnded" :wrap="toast"/></span>
+			<span v-else-if="notification.type === 'scheduledNotePosted'" :class="$style.headerText"><MkNotificationText :text="i18n.ts._notification.scheduledNotePosted" :wrap="toast"/></span>
+			<span v-else-if="notification.type === 'scheduledNotePostFailed'" :class="$style.headerText"><MkNotificationText :text="i18n.ts._notification.scheduledNotePostFailed" :wrap="toast"/></span>
+			<span v-else-if="notification.type === 'note'" :class="$style.headerText"><MkNotificationText :text="i18n.ts._notification.newNote" :wrap="toast"/>: <MkUserName :nowrap="!toast" :user="notification.note.user"/></span>
+			<span v-else-if="notification.type === 'roleAssigned'" :class="$style.headerText"><MkNotificationText :text="i18n.ts._notification.roleAssigned" :wrap="toast"/></span>
+			<span v-else-if="notification.type === 'chatRoomInvitationReceived'" :class="$style.headerText"><MkNotificationText :text="i18n.ts._notification.chatRoomInvitationReceived" :wrap="toast"/></span>
+			<span v-else-if="notification.type === 'achievementEarned'" :class="$style.headerText"><MkNotificationText :text="i18n.ts._notification.achievementEarned" :wrap="toast"/></span>
+			<span v-else-if="notification.type === 'login'" :class="$style.headerText"><MkNotificationText :text="i18n.ts._notification.login" :wrap="toast"/></span>
+			<span v-else-if="notification.type === 'createToken'" :class="$style.headerText"><MkNotificationText :text="i18n.ts._notification.createToken" :wrap="toast"/></span>
+			<span v-else-if="notification.type === 'test'" :class="$style.headerText"><MkNotificationText :text="i18n.ts._notification.testNotification" :wrap="toast"/></span>
+			<span v-else-if="notification.type === 'exportCompleted'" :class="$style.headerText"><MkNotificationText :text="i18n.tsx._notification.exportOfXCompleted({ x: exportEntityName[notification.exportedEntity] })" :wrap="toast"/></span>
+			<MkA v-else-if="notification.type === 'follow' || notification.type === 'mention' || notification.type === 'reply' || notification.type === 'renote' || notification.type === 'quote' || notification.type === 'reaction' || notification.type === 'receiveFollowRequest' || notification.type === 'followRequestAccepted'" v-user-preview="notification.user.id" :class="$style.headerName" :to="userPage(notification.user)"><MkUserName :nowrap="!toast" :user="notification.user"/></MkA>
+			<I18n v-else-if="notification.type === 'groupInvited'" :class="$style.headerText" :src="i18n.ts._notification.youWereInvitedToGroup" textTag="span"><template #userName><MkUserName :nowrap="!toast" :user="notification.user"/></template></I18n>
+			<span v-else-if="notification.type === 'reaction:grouped' && notification.note.reactionAcceptance === 'likeOnly'" :class="$style.headerText"><MkNotificationText :text="i18n.tsx._notification.likedBySomeUsers({ n: getActualReactedUsersCount(notification) })" :wrap="toast"/></span>
+			<span v-else-if="notification.type === 'reaction:grouped'" :class="$style.headerText"><MkNotificationText :text="i18n.tsx._notification.reactedBySomeUsers({ n: getActualReactedUsersCount(notification) })" :wrap="toast"/></span>
 			<!-- 旗鯖fork: 同じユーザーが複数ノートにリアクションしたグループ -->
-			<MkA v-else-if="notification.type === 'reaction:groupedByUser'" v-user-preview="notification.user.id" :class="$style.headerName" :to="userPage(notification.user)"><MkUserName :user="notification.user"/></MkA>
-			<span v-if="notification.type === 'reaction:groupedByUser'" :class="$style.headerText">{{ i18n.tsx._notification.reactedToMultipleNotes({ n: notification.reactions.length }) }}</span>
-			<span v-else-if="notification.type === 'renote:grouped'" :class="$style.headerText">{{ i18n.tsx._notification.renotedBySomeUsers({ n: notification.users.length }) }}</span>
-			<span v-else-if="notification.type === 'note:grouped'" :class="$style.headerText">{{ i18n.tsx._notification.notedBySomeUsers({ n: notification.noteIds.length }) }}</span>
-			<span v-else-if="notification.type === 'app' || notification.type === 'hataFeed' || notification.type === 'earthquake' || notification.type === 'addedToPrivateChannel' || notification.type === 'removedFromPrivateChannel'" :class="$style.headerText">{{ customNotificationHeader(notification) }}</span>
+			<MkA v-else-if="notification.type === 'reaction:groupedByUser'" v-user-preview="notification.user.id" :class="$style.headerName" :to="userPage(notification.user)"><MkUserName :nowrap="!toast" :user="notification.user"/></MkA>
+			<span v-if="notification.type === 'reaction:groupedByUser'" :class="$style.headerText"><MkNotificationText :text="i18n.tsx._notification.reactedToMultipleNotes({ n: notification.reactions.length })" :wrap="toast"/></span>
+			<span v-else-if="notification.type === 'renote:grouped'" :class="$style.headerText"><MkNotificationText :text="i18n.tsx._notification.renotedBySomeUsers({ n: notification.users.length })" :wrap="toast"/></span>
+			<span v-else-if="notification.type === 'note:grouped'" :class="$style.headerText"><MkNotificationText :text="i18n.tsx._notification.notedBySomeUsers({ n: notification.noteIds.length })" :wrap="toast"/></span>
+			<span v-else-if="notification.type === 'app' || notification.type === 'hataFeed' || notification.type === 'hataskFlowerReady' || notification.type === 'earthquake' || notification.type === 'addedToPrivateChannel' || notification.type === 'removedFromPrivateChannel'" :class="$style.headerText"><MkNotificationText :text="customNotificationHeader(notification)" :wrap="toast"/></span>
 			<MkTime v-if="withTime" :time="notification.createdAt" :class="$style.headerTime" :mode="prefer.s.enableAbsoluteTime ? 'absolute' : 'relative'"/>
 		</header>
-		<div>
+		<div :data-reaction-content="toast && notification.type === 'reaction'">
+			<span v-if="toast && notification.type === 'reaction'" :class="$style.toastReaction" data-reaction-chip>
+				<MkReactionIcon
+					:reaction="notification.reaction.replace(/^:(\w+):$/, ':$1@.:')"
+					:emojiUrl="notification.note.reactionEmojis?.[notification.reaction.slice(1, -1)]"
+					:withTooltip="true"
+				/>
+			</span>
 			<MkA v-if="notification.type === 'reaction' || notification.type === 'reaction:grouped'" :class="$style.text" :to="notePage(notification.note)" :title="getNoteSummary(notification.note)">
 				<i class="ti ti-quote" :class="$style.quote"></i>
-				<Mfm :text="getNoteSummary(notification.note)" :plain="true" :nowrap="true" :author="notification.note.user"/>
+				<Mfm :punctuationWrap="toast" :text="getNoteSummary(notification.note)" :plain="true" :nowrap="!toast" :author="notification.note.user" :emojiUrls="notification.note.emojis"/>
 				<i class="ti ti-quote" :class="$style.quote"></i>
 			</MkA>
 			<MkA v-else-if="notification.type === 'renote' || notification.type === 'renote:grouped'" :class="$style.text" :to="notePage(notification.note)" :title="getNoteSummary(notification.note.renote)">
 				<i class="ti ti-quote" :class="$style.quote"></i>
-				<Mfm :text="getNoteSummary(notification.note.renote)" :plain="true" :nowrap="true" :author="notification.note.renote?.user"/>
+				<Mfm :punctuationWrap="toast" :text="getNoteSummary(notification.note.renote)" :plain="true" :nowrap="!toast" :author="notification.note.renote?.user" :emojiUrls="notification.note.renote?.emojis"/>
 				<i class="ti ti-quote" :class="$style.quote"></i>
 			</MkA>
 			<MkA v-else-if="notification.type === 'reply'" :class="$style.text" :to="notePage(notification.note)" :title="getNoteSummary(notification.note)">
-				<Mfm :text="getNoteSummary(notification.note)" :plain="true" :nowrap="true" :author="notification.note.user"/>
+				<Mfm :punctuationWrap="toast" :text="getNoteSummary(notification.note)" :plain="true" :nowrap="!toast" :author="notification.note.user" :emojiUrls="notification.note.emojis"/>
 			</MkA>
 			<MkA v-else-if="notification.type === 'mention'" :class="$style.text" :to="notePage(notification.note)" :title="getNoteSummary(notification.note)">
-				<Mfm :text="getNoteSummary(notification.note)" :plain="true" :nowrap="true" :author="notification.note.user"/>
+				<Mfm :punctuationWrap="toast" :text="getNoteSummary(notification.note)" :plain="true" :nowrap="!toast" :author="notification.note.user" :emojiUrls="notification.note.emojis"/>
 			</MkA>
 			<MkA v-else-if="notification.type === 'quote'" :class="$style.text" :to="notePage(notification.note)" :title="getNoteSummary(notification.note)">
-				<Mfm :text="getNoteSummary(notification.note)" :plain="true" :nowrap="true" :author="notification.note.user"/>
+				<Mfm :punctuationWrap="toast" :text="getNoteSummary(notification.note)" :plain="true" :nowrap="!toast" :author="notification.note.user" :emojiUrls="notification.note.emojis"/>
 			</MkA>
 			<MkA v-else-if="notification.type === 'note'" :class="$style.text" :to="notePage(notification.note)" :title="getNoteSummary(notification.note)">
-				<Mfm :text="getNoteSummary(notification.note)" :plain="true" :nowrap="true" :author="notification.note.user"/>
+				<Mfm :punctuationWrap="toast" :text="getNoteSummary(notification.note)" :plain="true" :nowrap="!toast" :author="notification.note.user" :emojiUrls="notification.note.emojis"/>
 			</MkA>
 			<MkA v-else-if="notification.type === 'pollEnded'" :class="$style.text" :to="notePage(notification.note)" :title="getNoteSummary(notification.note)">
 				<i class="ti ti-quote" :class="$style.quote"></i>
-				<Mfm :text="getNoteSummary(notification.note)" :plain="true" :nowrap="true" :author="notification.note.user"/>
+				<Mfm :punctuationWrap="toast" :text="getNoteSummary(notification.note)" :plain="true" :nowrap="!toast" :author="notification.note.user" :emojiUrls="notification.note.emojis"/>
 				<i class="ti ti-quote" :class="$style.quote"></i>
 			</MkA>
 			<MkA v-else-if="notification.type === 'scheduledNotePosted'" :class="$style.text" :to="notePage(notification.note)" :title="getNoteSummary(notification.note)">
 				<i class="ti ti-quote" :class="$style.quote"></i>
-				<Mfm :text="getNoteSummary(notification.note)" :plain="true" :nowrap="true" :author="notification.note.user"/>
+				<Mfm :punctuationWrap="toast" :text="getNoteSummary(notification.note)" :plain="true" :nowrap="!toast" :author="notification.note.user" :emojiUrls="notification.note.emojis"/>
 				<i class="ti ti-quote" :class="$style.quote"></i>
 			</MkA>
 			<div v-else-if="notification.type === 'roleAssigned'" :class="$style.text">
@@ -144,64 +153,64 @@ SPDX-License-Identifier: AGPL-3.0-only
 				{{ notification.invitation.room.name }}
 			</div>
 			<MkA v-else-if="notification.type === 'achievementEarned'" :class="$style.text" to="/my/achievements">
-				{{ i18n.ts._achievements._types['_' + notification.achievement].title }}
+				<MkNotificationText :text="i18n.ts._achievements._types['_' + notification.achievement].title" :wrap="toast"/>
 			</MkA>
 			<MkA v-else-if="notification.type === 'exportCompleted'" :class="$style.text" :to="`/my/drive/file/${notification.fileId}`">
-				{{ i18n.ts.showFile }}
+				<MkNotificationText :text="i18n.ts.showFile" :wrap="toast"/>
 			</MkA>
 			<MkA v-else-if="notification.type === 'login'" :class="$style.text" to="/settings/security">
-				<Mfm :text="i18n.tsx._notification.loginDescription({ ip: notification.ip, text: i18n.ts.regenerateLoginToken })"/>
+				<Mfm :punctuationWrap="toast" :text="i18n.tsx._notification.loginDescription({ ip: notification.ip, text: i18n.ts.regenerateLoginToken })"/>
 			</MkA>
 			<MkA v-else-if="notification.type === 'createToken'" :class="$style.text" to="/settings/apps">
-				<Mfm :text="i18n.tsx._notification.createTokenDescription({ text: i18n.ts.manageAccessTokens })"/>
+				<Mfm :punctuationWrap="toast" :text="i18n.tsx._notification.createTokenDescription({ text: i18n.ts.manageAccessTokens })"/>
 			</MkA>
 			<template v-else-if="notification.type === 'follow'">
-				<span :class="$style.text" style="opacity: 0.6;">{{ i18n.ts.youGotNewFollower }}</span>
+				<span :class="$style.text" style="opacity: 0.6;"><MkNotificationText :text="i18n.ts.youGotNewFollower" :wrap="toast"/></span>
 				<div v-if="full"><MkFollowButton :user="notification.user" :full="true" :disableIfFollowing="prefer.r.showFollowingMessageInsteadOfButtonEnabled.value"/></div>
 			</template>
 			<template v-else-if="notification.type === 'followRequestAccepted'">
-				<div :class="$style.text" style="opacity: 0.6;">{{ i18n.ts.followRequestAccepted }}</div>
+				<div :class="$style.text" style="opacity: 0.6;"><MkNotificationText :text="i18n.ts.followRequestAccepted" :wrap="toast"/></div>
 				<div v-if="notification.message" :class="$style.text" style="opacity: 0.6; font-style: oblique;">
 					<i class="ti ti-quote" :class="$style.quote"></i>
-					<span>{{ notification.message }}</span>
+					<span><MkNotificationText :text="notification.message" :wrap="toast"/></span>
 					<i class="ti ti-quote" :class="$style.quote"></i>
 				</div>
 			</template>
 			<template v-else-if="notification.type === 'receiveFollowRequest'">
-				<span :class="$style.text" style="opacity: 0.6;">{{ i18n.ts.receiveFollowRequest }}</span>
+				<span :class="$style.text" style="opacity: 0.6;"><MkNotificationText :text="i18n.ts.receiveFollowRequest" :wrap="toast"/></span>
 				<div v-if="full && !followRequestDone" :class="$style.followRequestCommands">
-					<MkButton :class="$style.followRequestCommandButton" rounded primary @click="acceptFollowRequest()"><i class="ti ti-check"/> {{ i18n.ts.accept }}</MkButton>
-					<MkButton :class="$style.followRequestCommandButton" rounded danger @click="rejectFollowRequest()"><i class="ti ti-x"/> {{ i18n.ts.reject }}</MkButton>
+					<MkButton :class="$style.followRequestCommandButton" rounded primary @click="acceptFollowRequest()"><i class="ti ti-check"/> <MkNotificationText :text="i18n.ts.accept" :wrap="toast"/></MkButton>
+					<MkButton :class="$style.followRequestCommandButton" rounded danger @click="rejectFollowRequest()"><i class="ti ti-x"/> <MkNotificationText :text="i18n.ts.reject" :wrap="toast"/></MkButton>
 				</div>
 			</template>
 			<template v-else-if="notification.type === 'groupInvited'">
 				<span style="font-weight: bold;">{{ notification.invitation.group.name }}</span>
 				<div v-if="full && !groupInviteDone" :class="$style.followRequestCommands">
-					<MkButton :class="$style.followRequestCommandButton" rounded primary @click="acceptGroupInvitation()"><i class="ti ti-check"/> {{ i18n.ts.accept }}</MkButton>
-					<MkButton :class="$style.followRequestCommandButton" rounded danger @click="rejectGroupInvitation()"><i class="ti ti-x"/> {{ i18n.ts.reject }}</MkButton>
+					<MkButton :class="$style.followRequestCommandButton" rounded primary @click="acceptGroupInvitation()"><i class="ti ti-check"/> <MkNotificationText :text="i18n.ts.accept" :wrap="toast"/></MkButton>
+					<MkButton :class="$style.followRequestCommandButton" rounded danger @click="rejectGroupInvitation()"><i class="ti ti-x"/> <MkNotificationText :text="i18n.ts.reject" :wrap="toast"/></MkButton>
 				</div>
 			</template>
 			<template v-else-if="notification.type === 'addedToPrivateChannel' && notification.invitationId">
-				<Mfm :text="customNotificationBody(notification)" :nowrap="false"/>
+				<Mfm :punctuationWrap="toast" :text="customNotificationBody(notification)" :nowrap="false"/>
 				<div v-if="full && privateChannelInviteResult == null" :class="$style.followRequestCommands">
-					<MkButton :class="$style.followRequestCommandButton" rounded primary @click="acceptPrivateChannelInvitation(notification.invitationId)"><i class="ti ti-check"/> {{ i18n.ts._hata._privateChannels.join }}</MkButton>
-					<MkButton :class="$style.followRequestCommandButton" rounded danger @click="rejectPrivateChannelInvitation(notification.invitationId)"><i class="ti ti-x"/> {{ i18n.ts._hata._privateChannels.decline }}</MkButton>
+					<MkButton :class="$style.followRequestCommandButton" rounded primary @click="acceptPrivateChannelInvitation(notification.invitationId)"><i class="ti ti-check"/> <MkNotificationText :text="i18n.ts._hata._privateChannels.join" :wrap="toast"/></MkButton>
+					<MkButton :class="$style.followRequestCommandButton" rounded danger @click="rejectPrivateChannelInvitation(notification.invitationId)"><i class="ti ti-x"/> <MkNotificationText :text="i18n.ts._hata._privateChannels.decline" :wrap="toast"/></MkButton>
 				</div>
 				<div v-else-if="privateChannelInviteResult === 'accepted'" :class="$style.invitationResult">
-					<i class="ti ti-circle-check"></i> {{ i18n.ts._hata._privateChannels.joinedResult }}
-					<MkA v-if="acceptedPrivateChannelId" :to="`/channels/${acceptedPrivateChannelId}`">{{ i18n.ts._hata._privateChannels.openChannel }}</MkA>
+					<i class="ti ti-circle-check"></i> <MkNotificationText :text="i18n.ts._hata._privateChannels.joinedResult" :wrap="toast"/>
+					<MkA v-if="acceptedPrivateChannelId" :to="`/channels/${acceptedPrivateChannelId}`"><MkNotificationText :text="i18n.ts._hata._privateChannels.openChannel" :wrap="toast"/></MkA>
 				</div>
-				<div v-else-if="privateChannelInviteResult === 'rejected'" :class="$style.invitationResult"><i class="ti ti-circle-x"></i> {{ i18n.ts._hata._privateChannels.declinedResult }}</div>
+				<div v-else-if="privateChannelInviteResult === 'rejected'" :class="$style.invitationResult"><i class="ti ti-circle-x"></i> <MkNotificationText :text="i18n.ts._hata._privateChannels.declinedResult" :wrap="toast"/></div>
 			</template>
-			<span v-else-if="notification.type === 'test'" :class="$style.text">{{ i18n.ts._notification.notificationWillBeDisplayedLikeThis }}</span>
-			<span v-else-if="notification.type === 'app' || notification.type === 'hataFeed' || notification.type === 'earthquake' || notification.type === 'addedToPrivateChannel' || notification.type === 'removedFromPrivateChannel'" :class="$style.text">
+			<span v-else-if="notification.type === 'test'" :class="$style.text"><MkNotificationText :text="i18n.ts._notification.notificationWillBeDisplayedLikeThis" :wrap="toast"/></span>
+			<span v-else-if="notification.type === 'app' || notification.type === 'hataFeed' || notification.type === 'hataskFlowerReady' || notification.type === 'earthquake' || notification.type === 'addedToPrivateChannel' || notification.type === 'removedFromPrivateChannel'" :class="$style.text">
 				<!-- 旗鯖fork: notification.link があればクリックで該当画面に遷移 (hatask/HataFeed 等の旗鯖独自機能向け) -->
 				<MkA v-if="notification.link" :to="notification.link" :class="$style.appLink">
-					<HataFeedNotificationBody v-if="isHataFeedNotification(notification)" :text="customNotificationBody(notification)"/>
-					<Mfm v-else :text="customNotificationBody(notification)" :nowrap="false"/>
+					<HataFeedNotificationBody v-if="isHataFeedNotification(notification)" :punctuationWrap="toast" :text="customNotificationBody(notification)"/>
+					<Mfm v-else :punctuationWrap="toast" :text="customNotificationBody(notification)" :nowrap="false"/>
 				</MkA>
-				<HataFeedNotificationBody v-else-if="isHataFeedNotification(notification)" :text="customNotificationBody(notification)"/>
-				<Mfm v-else :text="customNotificationBody(notification)" :nowrap="false"/>
+				<HataFeedNotificationBody v-else-if="isHataFeedNotification(notification)" :punctuationWrap="toast" :text="customNotificationBody(notification)"/>
+				<Mfm v-else :punctuationWrap="toast" :text="customNotificationBody(notification)" :nowrap="false"/>
 			</span>
 
 			<div v-if="notification.type === 'reaction:grouped'">
@@ -229,7 +238,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 						/>
 					</div>
 					<span :class="$style.groupedByUserNoteSummary">
-						<Mfm :text="getNoteSummary(reaction.note)" :plain="true" :nowrap="true" :author="reaction.note.user"/>
+						<Mfm :punctuationWrap="toast" :text="getNoteSummary(reaction.note)" :plain="true" :nowrap="!toast" :author="reaction.note.user" :emojiUrls="reaction.note.emojis"/>
 					</span>
 				</MkA>
 			</div>
@@ -250,6 +259,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <script lang="ts" setup>
 import { ref } from 'vue';
+import MkNotificationText from '@/components/MkNotificationText.js';
 import * as Misskey from 'cherrypick-js';
 import MkReactionIcon from '@/components/MkReactionIcon.vue';
 import MkFollowButton from '@/components/MkFollowButton.vue';
@@ -273,10 +283,12 @@ const props = withDefaults(defineProps<{
 	notification: Misskey.entities.Notification;
 	withTime?: boolean;
 	full?: boolean;
+	toast?: boolean;
 	contentVisibilityAuto?: boolean;
 }>(), {
 	withTime: false,
 	full: false,
+	toast: false,
 	contentVisibilityAuto: true,
 });
 
@@ -300,11 +312,12 @@ const privateChannelInviteResult = ref<'accepted' | 'rejected' | null>(null);
 const acceptedPrivateChannelId = ref<string | null>(null);
 const japaneseCustomNotification = versatileLang.toLowerCase().startsWith('ja');
 
-type CustomBodyNotification = Extract<Misskey.entities.Notification, { type: 'app' | 'hataFeed' | 'earthquake' | 'addedToPrivateChannel' | 'removedFromPrivateChannel' }>;
+type CustomBodyNotification = Extract<Misskey.entities.Notification, { type: 'app' | 'hataFeed' | 'hataskFlowerReady' | 'earthquake' | 'addedToPrivateChannel' | 'removedFromPrivateChannel' }>;
 
 function isCustomBodyNotification(notification: Misskey.entities.Notification): notification is CustomBodyNotification {
 	return notification.type === 'app'
 		|| notification.type === 'hataFeed'
+		|| notification.type === 'hataskFlowerReady'
 		|| notification.type === 'earthquake'
 		|| notification.type === 'addedToPrivateChannel'
 		|| notification.type === 'removedFromPrivateChannel';
@@ -315,6 +328,7 @@ function isHataFeedNotification(notification: Misskey.entities.Notification): bo
 }
 
 function customNotificationHeader(notification: Misskey.entities.Notification): string {
+	if (notification.type === 'hataskFlowerReady') return i18n.ts._notification._types.hataskFlowerReady;
 	if (!isCustomBodyNotification(notification)) return '';
 	if (japaneseCustomNotification || notification.type === 'app' || notification.type === 'earthquake') return notification.header ?? '';
 	if (notification.type === 'hataFeed') return 'HataFeed';
@@ -327,6 +341,7 @@ function customNotificationHeader(notification: Misskey.entities.Notification): 
 }
 
 function customNotificationBody(notification: Misskey.entities.Notification): string {
+	if (notification.type === 'hataskFlowerReady') return i18n.ts._hata._customNotifications.flowerReady;
 	if (!isCustomBodyNotification(notification)) return '';
 	if (notification.type === 'hataFeed' || (notification.type === 'app' && notification.header === 'HataFeed')) {
 		return hataFeedNotificationDisplayBody(notification.body);
@@ -404,7 +419,7 @@ async function rejectPrivateChannelInvitation(invitationId: string) {
 /* 旗鯖fork(Hataskey UI 2): 通知カラム内の XNotification (reply/quote/mention 以外) にも
    --htk-glass-card-opacity を反映してカード面をガラス化。MkNote と同じ計算式。
    ダーク/ライトで accent tint 濃度を出し分け。 */
-:global(html.hataGlassUi) .root {
+:global(html.hataGlassUi) .root:not([data-toast='true']) {
 	background: color-mix(in srgb,
 		color-mix(in srgb, var(--MI_THEME-accent) 18%, var(--MI_THEME-panel))
 		var(--htk-glass-card-opacity, 55%),
@@ -412,13 +427,42 @@ async function rejectPrivateChannelInvitation(invitationId: string) {
 	-webkit-backdrop-filter: var(--MI-blur, blur(22px)) saturate(1.6);
 	backdrop-filter: var(--MI-blur, blur(22px)) saturate(1.6);
 }
-:global(html[data-color-scheme=light].hataGlassUi) .root {
+:global(html[data-color-scheme=light].hataGlassUi) .root:not([data-toast='true']) {
 	background: color-mix(in srgb,
 		color-mix(in srgb, var(--MI_THEME-accent) 8%, var(--MI_THEME-panel))
 		var(--htk-glass-card-opacity, 55%),
 		transparent);
 }
 
+.root[data-toast='true'] {
+	padding:0; font-size:12px; line-height:1.5; align-items:center;
+	background:transparent; backdrop-filter:none; -webkit-backdrop-filter:none;
+	contain:none; overflow:visible; word-break:keep-all; line-break:strict; overflow-wrap:anywhere;
+	.head { position:relative; top:auto; width:32px; height:32px; margin:6px 17px 6px 4px; }
+	.header, .headerName, .headerText { display:inline; white-space:normal; word-break:keep-all; overflow-wrap:anywhere; }
+	.header { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; font-weight:600; }
+	.tail > div { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; }
+	.text { display:block; opacity:.76; }
+	.appLink { margin:0; padding:0; }
+	.quote { display:none; }
+	.tail > div[data-reaction-content='true'] {
+		display:flex; flex-wrap:wrap; align-items:center; gap:6px 8px; margin-top:5px;
+		-webkit-line-clamp:unset; overflow:visible;
+		> .text {
+			flex:1 1 120px; min-width:0; width:auto; padding-left:8px;
+			border-left:2px solid var(--MI_THEME-divider);
+			display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden;
+		}
+	}
+}
+/* リアクションは本文側に置き、横長の絵文字でもアバターを覆わない。 */
+.toastReaction {
+	display:inline-flex; align-items:center; justify-content:center; flex:0 1 auto;
+	box-sizing:border-box; min-width:36px; max-width:min(108px,100%); min-height:32px; padding:4px 6px;
+	border:1px solid color-mix(in srgb,var(--MI_THEME-accent) 22%,transparent); border-radius:8px;
+	background:var(--MI_THEME-accentedBg); color:var(--MI_THEME-fg); font-size:22px; line-height:1;
+	:deep(img) { display:block; width:auto; height:24px; max-width:100%; object-fit:contain; }
+}
 .head {
 	position: sticky;
 	top: 0;
@@ -438,6 +482,7 @@ async function rejectPrivateChannelInvitation(invitationId: string) {
 .icon_reactionGroupHeart,
 .icon_renoteGroup,
 .icon_noteGroup,
+.icon_hataskFlower,
 .icon_hataskCalendar,
 .icon_hataskHeart,
 .icon_hatafeed {
@@ -494,6 +539,15 @@ async function rejectPrivateChannelInvitation(invitationId: string) {
 /* 旗鯖fork: hatask 通知の文字アイコン。
    グループ通知系の共通定義(80%サイズ)を上書きして、アバター付き通知と同じ円サイズ(100%)に揃える。
    背景円が大きくなった分、絵文字/文字も大きめに調整する。 */
+.icon_hataskFlower {
+	background: var(--MI_THEME-accent);
+	color: var(--MI_THEME-fgOnAccent);
+	width: 100%;
+	height: 100%;
+	font-size: 22px;
+	line-height: 1;
+}
+
 .icon_hataskCalendar {
 	background: var(--MI_THEME-accent);
 	width: 100%;

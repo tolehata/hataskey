@@ -19,7 +19,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			:leaveActiveClass="prefer.s.animation ? $style.transition_new_leaveActive : ''"
 		>
 			<div
-				v-if="queuedCount > 0 && ['default', 'count'].includes(prefer.s.newNoteReceivedNotificationBehavior)"
+				v-if="!newNotesInNavbar && queuedCount > 0 && ['default', 'count'].includes(prefer.s.newNoteReceivedNotificationBehavior)"
 				:class="[$style.new2, { [$style.reduceAnimation]: !prefer.s.animation }]"
 			>
 				<button class="_buttonPrimary" :class="$style.newButton2" @click="releaseQueue()">
@@ -84,6 +84,7 @@ import { preloadExternalEmojiMap, callExternalApi, getExternalAccount } from '@/
 import { rebuildExternalNotePath, resolveExternalNotePresentation } from '@/utility/external-note-presentation.js';
 import { cleanupStaleUiElements } from '@/utility/ui-cleanup.js';
 import { versatileLang } from '@/utility/intl-const.js';
+import { useHataskeyTimelineNewNotes } from '@/utility/hataskey-timeline-new-notes.js';
 
 type ExternalTimelineVisualMode = 'legacy' | 'hataskey-normal' | 'hataskey-deck';
 type ExternalTimelineNoteSpacing = 'compact' | 'moderate' | 'wide';
@@ -96,6 +97,7 @@ const props = withDefaults(defineProps<{
 	simpleUi?: boolean;
 	hataskeyUi?: boolean;
 	glassBg?: boolean;
+	newNotesNavbarKey?: string;
 }>(), {
 	sound: false,
 	simpleUi: false,
@@ -132,6 +134,16 @@ const SCROLL_TOP_THRESHOLD = 50; // px以内なら「最上部」とみなす
 
 const queuedCount = computed(() => queuedNotes.value.length);
 const displayedNotes = computed(() => notes.value);
+
+const newNotesInNavbar = useHataskeyTimelineNewNotes(() => props.newNotesNavbarKey, () => {
+	const behavior = prefer.r.newNoteReceivedNotificationBehavior.value;
+	if (queuedCount.value === 0 || fetching.value || error.value || notes.value.length === 0 || !['default', 'count'].includes(behavior)) return null;
+	return {
+		text: behavior === 'count' ? i18n.tsx.newNoteRecivedCount({ n: formatCount(queuedCount.value) }) : i18n.ts.newNoteRecived,
+		icon: 'ti ti-arrow-up',
+		show: releaseQueue,
+	};
+});
 
 let streamConnection: WebSocket | null = null;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;

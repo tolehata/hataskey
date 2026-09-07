@@ -39,7 +39,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			:leaveActiveClass="prefer.s.animation ? $style.transition_new_leaveActive : ''"
 		>
 			<div
-				v-if="paginator.queuedAheadItemsCount.value > 0 && ['default', 'count'].includes(prefer.s.newNoteReceivedNotificationBehavior)"
+				v-if="!newNotesInNavbar && paginator.queuedAheadItemsCount.value > 0 && ['default', 'count'].includes(prefer.s.newNoteReceivedNotificationBehavior)"
 				:class="[$style.new2, { [$style.showEl]: (showEl && ['hideHeaderOnly', 'hideHeaderFloatBtn', 'hide'].includes(<string>prefer.s.displayHeaderNavBarWhenScroll)) && isMobile, [$style.reduceAnimation]: !prefer.s.animation }]"
 			>
 				<button class="_buttonPrimary" :class="$style.newButton2" @click="releaseQueue()">
@@ -145,6 +145,7 @@ import type { WeatherKind } from '@/utility/weather-effect-detector.js';
 import { haptic, hapticConfirm } from '@/utility/haptic.js';
 // 旗鯖fork(Hataskey UI 2): bot 非表示のフィルタで appearNote を参照するため。
 import { getAppearNote } from '@/utility/get-appear-note.js';
+import { useHataskeyTimelineNewNotes } from '@/utility/hataskey-timeline-new-notes.js';
 
 const timelineCopy = i18n.ts._hata._timelineCustom;
 
@@ -211,6 +212,7 @@ const props = withDefaults(defineProps<{
 	glassBg?: boolean;
 	/** 未認証トップのプレビュー用。初回の一過性エラーは自動再試行し、ページ全体をエラー表示にしない。 */
 	visitorMode?: boolean;
+	newNotesNavbarKey?: string;
 }>(), {
 	withRenotes: true,
 	withReplies: false,
@@ -662,6 +664,17 @@ function releaseQueue() {
 	scrollToTop(rootEl.value!);
 	hapticConfirm();
 }
+
+const newNotesInNavbar = useHataskeyTimelineNewNotes(() => props.newNotesNavbarKey, () => {
+	const count = paginator.queuedAheadItemsCount.value;
+	const behavior = prefer.r.newNoteReceivedNotificationBehavior.value;
+	if (count === 0 || paginator.fetching.value || paginator.items.value.length === 0 || (paginator.error.value && !props.visitorMode) || !['default', 'count'].includes(behavior)) return null;
+	return {
+		text: behavior === 'count' ? i18n.tsx.newNoteRecivedCount({ n: count }) : i18n.ts.newNoteRecived,
+		icon: 'ti ti-arrow-up',
+		show: releaseQueue,
+	};
+});
 
 function prepend(note: Misskey.entities.Note & MisskeyEntity) {
 	// ランダムモードの場合、ノート追加時にアニメーション方向を更新

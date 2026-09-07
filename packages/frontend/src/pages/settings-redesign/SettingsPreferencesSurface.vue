@@ -51,7 +51,12 @@
 			<div v-if="control.key === 'fontSize'" class="fontSizePreview" :style="{ fontSize: `${Number(read(control.key) ?? 8) + 6}px` }">{{ i18n.ts._mfc.dummy }}</div>
 			<div v-if="control.key === 'emojiStyle'" class="emojiPreview"><Mfm :key="String(read(control.key))" text="🍮🍦🍭🍩🍰🍫🍬🥞🍪"/></div>
 
-			<MkSwitch v-if="control.key === 'smoothTransitionAnimations'" :modelValue="true" disabled @update:modelValue="noop">
+			<div v-if="ui === 'simple' && (control.key === 'notificationPosition' || control.key === 'notificationStackAxis')">
+				<div class="controlLabel">{{ control.label }}</div>
+				<p>{{ i18n.ts._hata._notificationToast.automatic }}</p>
+				<p v-for="caption in control.caption" :key="caption" class="captionLine">{{ caption }}</p>
+			</div>
+			<MkSwitch v-else-if="control.key === 'smoothTransitionAnimations'" :modelValue="true" disabled @update:modelValue="noop">
 				<template #label><span>{{ control.label }}</span><span class="brand">CherryPick</span></template>
 				<template #caption><span class="captionLine">{{ i18n.ts.turnOffToImprovePerformance }}</span><span class="locked"><i class="ti ti-lock" aria-hidden="true"></i> {{ i18n.ts._hata._timelineCustom.alwaysEnabled }}</span></template>
 			</MkSwitch>
@@ -74,7 +79,7 @@
 			<MkRadios v-else-if="control.kind === 'radios'" :modelValue="read(control.key)" :disabled="isDisabled(control)" @update:modelValue="write(control.key, $event)">
 				<template #label><span>{{ control.label }}</span><span v-if="control.cherry" class="brand">CherryPick</span></template>
 				<option v-for="option in control.options ?? []" :key="option" :value="option">{{ optionLabel(control.key, option) }}</option>
-				<template v-if="control.key === 'hemisphere'" #caption>{{ i18n.ts._hemisphere.caption }}</template>
+				<template v-if="control.caption.length" #caption><span v-for="caption in control.caption" :key="caption" class="captionLine">{{ caption }}</span></template>
 			</MkRadios>
 			<MkRange v-else-if="control.kind === 'range'" :modelValue="Number(read(control.key) ?? control.min ?? 1)" :min="control.min ?? 1" :max="control.max ?? 3" :step="1" :disabled="isDisabled(control)" easing :showTicks="control.key === 'pollingInterval'" :textConverter="rangeTextConverter(control.key)" @update:modelValue="write(control.key, $event)">
 				<template #label><span>{{ control.label }}</span><span v-if="control.cherry" class="brand">CherryPick</span></template>
@@ -119,7 +124,7 @@
 
 <script lang="ts" setup>
 import { computed } from 'vue';
-import { langs } from '@@/js/config.js';
+import { langs, ui } from '@@/js/config.js';
 import { canonicalSearchIdForPreferenceKey, controlsForPreferenceDestination, parsePreferenceDestination, preferenceAuxiliaryControls, preferenceGroups } from './settings-preferences-catalog.js';
 import { emojiIndexLangs, createSettingsPreferenceModels } from './settings-preferences-models.js';
 import type { PreferenceContainerKey, PreferenceControl } from './settings-preferences-catalog.js';

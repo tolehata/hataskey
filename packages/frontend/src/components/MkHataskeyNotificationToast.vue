@@ -1,0 +1,76 @@
+<!-- SPDX-License-Identifier: AGPL-3.0-only -->
+<template>
+<article ref="root" :class="$style.card" :data-integrated="integrated" :data-toast-id="item.id" :data-blur="prefer.r.useBlurEffect.value" @pointerenter="hovered = true" @pointerleave="hovered = false" @focusin="focused = true" @focusout="onFocusOut">
+	<MkExternalNotificationToast v-if="item.source === 'external'" :notification="item.notification" :sourceHost="item.host" embedded @close="emit('close')"/>
+	<MkNotification v-else :notification="item.notification" :contentVisibilityAuto="false" toast/>
+	<button class="_button" :class="$style.close" :aria-label="i18n.ts.close" @click="emit('close')"><i class="ti ti-x" aria-hidden="true"></i></button>
+	<MkNotificationToastRing v-if="!integrated" :target="root" :elapsed="item.elapsed" :integrated="false" :motion="motion"/>
+</article>
+</template>
+
+<script setup lang="ts">
+import { onMounted, onUnmounted, ref, watch } from 'vue';
+import type { HataskeyToast } from '@/utility/hataskey-notification-toast.js';
+import MkNotification from '@/components/MkNotification.vue';
+import MkExternalNotificationToast from '@/components/MkExternalNotificationToast.vue';
+import MkNotificationToastRing from '@/components/MkNotificationToastRing.vue';
+import { prefer } from '@/preferences.js';
+import { i18n } from '@/i18n.js';
+
+const props = defineProps<{ item: HataskeyToast; integrated: boolean; motion: boolean }>();
+const emit = defineEmits<{ close: []; pause: [paused: boolean]; resize: [height: number] }>();
+const root = ref<HTMLElement | null>(null);
+const hovered = ref(false);
+const focused = ref(false);
+watch(() => hovered.value || focused.value, paused => emit('pause', paused));
+
+function onFocusOut(event: FocusEvent) {
+	focused.value = event.relatedTarget instanceof Node && !!root.value?.contains(event.relatedTarget);
+}
+
+const observer = new ResizeObserver(() => {
+	if (root.value) emit('resize', root.value.getBoundingClientRect().height);
+});
+onMounted(() => {
+	if (root.value) observer.observe(root.value);
+});
+onUnmounted(() => observer.disconnect());
+</script>
+
+<style module lang="scss">
+.card {
+	position: relative;
+	box-sizing: border-box;
+	width: 100%;
+	min-width: 0;
+	padding: 10px 48px 10px 12px;
+	border-radius: 16px;
+	color: var(--hata-toast-fg, var(--MI_THEME-fg));
+	background: var(--MI_THEME-panel);
+	box-shadow: 0 8px 28px #0002, inset 0 0 0 1px var(--MI_THEME-divider);
+	word-break: keep-all;
+	line-break: strict;
+	overflow-wrap: anywhere;
+	text-wrap: pretty;
+	pointer-events: auto;
+	&[data-blur='true'][data-integrated='false'] {
+		background: color-mix(in srgb, var(--MI_THEME-panel) 88%, transparent);
+		backdrop-filter: blur(24px) saturate(1.4);
+	}
+	&[data-integrated='true'] { background: transparent; box-shadow: none; border-radius: 0; }
+}
+.close {
+	position: absolute;
+	top: 50%;
+	right: 3px;
+	transform: translateY(-50%);
+	width: 44px;
+	height: 44px;
+	display: grid;
+	place-items: center;
+	border-radius: 50%;
+	color: var(--hata-toast-muted, var(--MI_THEME-fgMuted));
+	&:hover { background: var(--MI_THEME-buttonHoverBg); }
+	&:focus-visible { outline: 2px solid var(--MI_THEME-accent); outline-offset: -3px; }
+}
+</style>

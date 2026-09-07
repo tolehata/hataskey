@@ -782,23 +782,35 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 						<SearchMarker :keywords="['position']">
 							<MkPreferenceContainer k="notificationPosition">
-								<MkRadios v-model="notificationPosition">
-									<template #label><SearchLabel>{{ i18n.ts.position }}</SearchLabel></template>
+								<div v-if="ui === 'simple'">
+									<SearchLabel>{{ i18n.ts._hata._notificationToast.position }}</SearchLabel>
+									<p>{{ i18n.ts._hata._notificationToast.automatic }}</p>
+									<SearchCaption>{{ i18n.ts._hata._notificationToast.placement }}</SearchCaption>
+								</div>
+								<MkRadios v-else v-model="notificationPosition">
+									<template #label><SearchLabel>{{ i18n.ts._hata._notificationToast.position }}</SearchLabel></template>
 									<option value="leftTop"><i class="ti ti-align-box-left-top"></i> {{ i18n.ts.leftTop }}</option>
 									<option value="rightTop"><i class="ti ti-align-box-right-top"></i> {{ i18n.ts.rightTop }}</option>
 									<option value="leftBottom"><i class="ti ti-align-box-left-bottom"></i> {{ i18n.ts.leftBottom }}</option>
 									<option value="rightBottom"><i class="ti ti-align-box-right-bottom"></i> {{ i18n.ts.rightBottom }}</option>
 								</MkRadios>
+							<SearchCaption>{{ i18n.ts._hata._notificationToast.otherUi }}</SearchCaption>
 							</MkPreferenceContainer>
 						</SearchMarker>
 
 						<SearchMarker :keywords="['stack', 'axis', 'direction']">
 							<MkPreferenceContainer k="notificationStackAxis">
-								<MkRadios v-model="notificationStackAxis">
-									<template #label><SearchLabel>{{ i18n.ts.stackAxis }}</SearchLabel></template>
+								<div v-if="ui === 'simple'">
+									<SearchLabel>{{ i18n.ts._hata._notificationToast.stack }}</SearchLabel>
+									<p>{{ i18n.ts._hata._notificationToast.automatic }}</p>
+									<SearchCaption>{{ i18n.ts._hata._notificationToast.sequence }}</SearchCaption>
+								</div>
+								<MkRadios v-else v-model="notificationStackAxis">
+									<template #label><SearchLabel>{{ i18n.ts._hata._notificationToast.stack }}</SearchLabel></template>
 									<option value="vertical"><i class="ti ti-carousel-vertical"></i> {{ i18n.ts.vertical }}</option>
 									<option value="horizontal"><i class="ti ti-carousel-horizontal"></i> {{ i18n.ts.horizontal }}</option>
 								</MkRadios>
+							<SearchCaption>{{ i18n.ts._hata._notificationToast.otherUi }}</SearchCaption>
 							</MkPreferenceContainer>
 						</SearchMarker>
 
@@ -1351,7 +1363,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <script lang="ts" setup>
 import { computed, onMounted, ref, watch } from 'vue';
-import { langs } from '@@/js/config.js';
+import { langs, ui } from '@@/js/config.js';
 import * as Misskey from 'cherrypick-js';
 import MkSwitch from '@/components/MkSwitch.vue';
 import MkSelect from '@/components/MkSelect.vue';

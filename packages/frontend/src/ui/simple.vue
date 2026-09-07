@@ -195,52 +195,69 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<button :class="$style.topNavAvatar" @click="openAccountMenu"><MkAvatar v-if="$i" :user="$i" :class="$style.topNavAvatarImg"/></button>
 			</nav>
 			<!-- Top pill navbar (timeline tabs) - scroll reactive -->
-			<div v-show="(!isPageView || isCollectionTimelinePage) && !deckActive" data-hata-collapse-group :class="[$style.topBar, footerIsDark ? $style.topBarDark : $style.topBarLight, { [$style.topBarHidden]: !showTopBar }]">
-				<button v-if="!isDesktop" :class="$style.avatarBtn" @click="openAccountMenu">
+			<div
+				v-show="nativeNavbarVisible || mobileToastVisible" data-hata-collapse-group
+				:data-toast-motion="prefer.r.animation.value" :data-hidden="!showTopBar && !mobileToastVisible && !navbarNewNotes"
+				:data-notification-only="mobileNotificationOnly"
+				:style="{ '--hata-toast-height': `${!isDesktop ? notificationToasts.height.value + (navbarNewNotes ? newNotesButtonHeight : 0) : 0}px` }"
+				:class="[$style.topBar, footerIsDark ? $style.topBarDark : $style.topBarLight]"
+			>
+				<button v-if="!isDesktop && !mobileNotificationOnly" :class="$style.avatarBtn" @click="openAccountMenu">
 					<img v-if="$i?.avatarUrl" :src="$i.avatarUrl" :class="$style.avatarImg"/>
 					<i v-else class="ti ti-user"></i>
 				</button>
 				<div ref="topNavStackEl" :class="$style.topNavStack">
-					<div :class="$style.topPill">
-						<template v-for="item in visibleTopTabs" :key="item.id">
-							<button :class="[$style.topTabBtn, { [$style.topTabActive]: !isCollectionTimelinePage && tab === item.id }]" @click="playSimpleNavMotion($event, item.id); switchTab(item.id as TabType)">
-								<i :class="item.icon"></i>
-								<span v-if="!isCollectionTimelinePage && tab === item.id" :class="$style.topTabLabel">{{ simpleMenuDisplayLabel(item.id, item.label) }}</span>
+					<div ref="notificationOutlineEl" :class="$style.topPill" :data-notification="notificationToasts.items.value.length > 0 && notificationToasts.integrated.value" :data-new-notes="!!navbarNewNotes">
+						<div ref="notificationTargetEl" :class="$style.notificationViewport" :data-mobile="!isDesktop" :style="{ height: `${notificationToasts.integrated.value ? notificationToasts.height.value : 0}px` }"></div>
+						<div v-show="!mobileNotificationOnly" :class="$style.topPillTabs">
+							<template v-for="item in visibleTopTabs" :key="item.id">
+								<button :class="[$style.topTabBtn, { [$style.topTabActive]: !isCollectionTimelinePage && tab === item.id }]" @click="playSimpleNavMotion($event, item.id); switchTab(item.id as TabType)">
+									<i :class="item.icon"></i>
+									<span v-if="!isCollectionTimelinePage && tab === item.id" :class="$style.topTabLabel">{{ simpleMenuDisplayLabel(item.id, item.label) }}</span>
+								</button>
+							</template>
+							<button v-if="showOHTL" :class="[$style.topTabBtn, $style.topTabExt, { [$style.topTabActive]: !isCollectionTimelinePage && tab === 'ohtl' }]" @click="playSimpleNavMotion($event, 'timeline:external-home'); switchTab('ohtl')">
+								<i class="ti ti-home"></i>
+								<span v-if="!isCollectionTimelinePage && tab === 'ohtl'" :class="$style.topTabLabel">{{ copy.externalHome }}</span>
 							</button>
-						</template>
-						<button v-if="showOHTL" :class="[$style.topTabBtn, $style.topTabExt, { [$style.topTabActive]: !isCollectionTimelinePage && tab === 'ohtl' }]" @click="playSimpleNavMotion($event, 'timeline:external-home'); switchTab('ohtl')">
-							<i class="ti ti-home"></i>
-							<span v-if="!isCollectionTimelinePage && tab === 'ohtl'" :class="$style.topTabLabel">{{ copy.externalHome }}</span>
-						</button>
-						<button v-if="showOLTL" :class="[$style.topTabBtn, $style.topTabExt, { [$style.topTabActive]: !isCollectionTimelinePage && tab === 'oltl' }]" @click="playSimpleNavMotion($event, 'timeline:external-local'); switchTab('oltl')">
-							<i class="ti ti-planet"></i>
-							<span v-if="!isCollectionTimelinePage && tab === 'oltl'" :class="$style.topTabLabel">{{ copy.externalLocal }}</span>
-						</button>
-						<div :class="$style.topTabDivider"></div>
-						<div :class="[$style.listTabPill, { [$style.listTabPillActive]: isListTimelinePage }]">
-							<button :class="[$style.topTabBtn, $style.listTabMain, { [$style.topTabActive]: isListTimelinePage }]" @click="playSimpleNavMotion($event, 'list'); openPreferredList()">
-								<i class="ti ti-list"></i>
-								<span v-if="isListTimelinePage" :class="$style.topTabCopy"><span :class="$style.topTabLabel">{{ copy.list }}</span><span :class="$style.topTabName">{{ activeListName }}</span></span>
+							<button v-if="showOLTL" :class="[$style.topTabBtn, $style.topTabExt, { [$style.topTabActive]: !isCollectionTimelinePage && tab === 'oltl' }]" @click="playSimpleNavMotion($event, 'timeline:external-local'); switchTab('oltl')">
+								<i class="ti ti-planet"></i>
+								<span v-if="!isCollectionTimelinePage && tab === 'oltl'" :class="$style.topTabLabel">{{ copy.externalLocal }}</span>
 							</button>
-							<button v-if="isListTimelinePage" v-tooltip="copy.switchList" :class="$style.listSelectBtn" :aria-label="copy.switchList" @click="playSimpleNavMotion($event, 'list'); toggleTimelinePicker('list')">
-								<i class="ti ti-selector"></i>
+							<div :class="$style.topTabDivider"></div>
+							<div :class="[$style.listTabPill, { [$style.listTabPillActive]: isListTimelinePage }]">
+								<button :class="[$style.topTabBtn, $style.listTabMain, { [$style.topTabActive]: isListTimelinePage }]" @click="playSimpleNavMotion($event, 'list'); openPreferredList()">
+									<i class="ti ti-list"></i>
+									<span v-if="isListTimelinePage" :class="$style.topTabCopy"><span :class="$style.topTabLabel">{{ copy.list }}</span><span :class="$style.topTabName">{{ activeListName }}</span></span>
+								</button>
+								<button v-if="isListTimelinePage" v-tooltip="copy.switchList" :class="$style.listSelectBtn" :aria-label="copy.switchList" @click="playSimpleNavMotion($event, 'list'); toggleTimelinePicker('list')">
+									<i class="ti ti-selector"></i>
+								</button>
+								<button v-if="isListTimelinePage" v-tooltip="copy.configureList" :class="$style.listSelectBtn" :aria-label="copy.configureList" @click="playSimpleNavMotion($event, 'settings'); openActiveCollectionSettings('list')"><i class="ti ti-settings"></i></button>
+							</div>
+							<button :class="[$style.topTabBtn, { [$style.topTabActive]: isChannelPage }]" @click="playSimpleNavMotion($event, 'channel'); goToChannels()">
+								<i class="ti ti-device-tv"></i>
+								<span v-if="isChannelPage" :class="$style.topTabLabel">{{ copy.channel }}</span>
 							</button>
-							<button v-if="isListTimelinePage" v-tooltip="copy.configureList" :class="$style.listSelectBtn" :aria-label="copy.configureList" @click="playSimpleNavMotion($event, 'settings'); openActiveCollectionSettings('list')"><i class="ti ti-settings"></i></button>
+							<div :class="[$style.listTabPill, { [$style.listTabPillActive]: isAntennaTimelinePage }]">
+								<button :class="[$style.topTabBtn, $style.listTabMain, { [$style.topTabActive]: isAntennaTimelinePage }]" @click="playSimpleNavMotion($event, 'antenna'); openPreferredAntenna()">
+									<i class="ti ti-antenna"></i>
+									<span v-if="isAntennaTimelinePage" :class="$style.topTabCopy"><span :class="$style.topTabLabel">{{ copy.antenna }}</span><span :class="$style.topTabName">{{ activeAntennaName }}</span></span>
+								</button>
+								<button v-if="isAntennaTimelinePage" v-tooltip="copy.switchAntenna" :class="$style.listSelectBtn" :aria-label="copy.switchAntenna" @click="playSimpleNavMotion($event, 'antenna'); toggleTimelinePicker('antenna')"><i class="ti ti-selector"></i></button>
+								<button v-if="isAntennaTimelinePage" v-tooltip="copy.configureAntenna" :class="$style.listSelectBtn" :aria-label="copy.configureAntenna" @click="playSimpleNavMotion($event, 'settings'); openActiveCollectionSettings('antenna')"><i class="ti ti-settings"></i></button>
+							</div>
 						</div>
-						<button :class="[$style.topTabBtn, { [$style.topTabActive]: isChannelPage }]" @click="playSimpleNavMotion($event, 'channel'); goToChannels()">
-							<i class="ti ti-device-tv"></i>
-							<span v-if="isChannelPage" :class="$style.topTabLabel">{{ copy.channel }}</span>
-						</button>
-						<div :class="[$style.listTabPill, { [$style.listTabPillActive]: isAntennaTimelinePage }]">
-							<button :class="[$style.topTabBtn, $style.listTabMain, { [$style.topTabActive]: isAntennaTimelinePage }]" @click="playSimpleNavMotion($event, 'antenna'); openPreferredAntenna()">
-								<i class="ti ti-antenna"></i>
-								<span v-if="isAntennaTimelinePage" :class="$style.topTabCopy"><span :class="$style.topTabLabel">{{ copy.antenna }}</span><span :class="$style.topTabName">{{ activeAntennaName }}</span></span>
-							</button>
-							<button v-if="isAntennaTimelinePage" v-tooltip="copy.switchAntenna" :class="$style.listSelectBtn" :aria-label="copy.switchAntenna" @click="playSimpleNavMotion($event, 'antenna'); toggleTimelinePicker('antenna')"><i class="ti ti-selector"></i></button>
-							<button v-if="isAntennaTimelinePage" v-tooltip="copy.configureAntenna" :class="$style.listSelectBtn" :aria-label="copy.configureAntenna" @click="playSimpleNavMotion($event, 'settings'); openActiveCollectionSettings('antenna')"><i class="ti ti-settings"></i></button>
+						<div :class="$style.newNotesViewport" :data-active="!!navbarNewNotes" :data-mobile="!isDesktop" :aria-hidden="!navbarNewNotes">
+							<div :class="$style.newNotesContent">
+								<button ref="newNotesButtonEl" class="_button" :class="$style.newNotesButton" type="button" :disabled="!navbarNewNotes" @click="showNavbarNewNotes">
+									<i :class="navbarNewNotes?.icon ?? 'ti ti-arrow-up'" aria-hidden="true"></i>
+									<span role="status" aria-atomic="true">{{ navbarNewNotes?.text }}</span>
+								</button>
+							</div>
 						</div>
 					</div>
-					<div v-if="timelinePickerKind" :class="$style.timelinePicker" :aria-label="timelinePickerKind === 'list' ? copy.selectList : copy.selectAntenna">
+					<div v-if="timelinePickerKind && !mobileNotificationOnly" :class="$style.timelinePicker" :aria-label="timelinePickerKind === 'list' ? copy.selectList : copy.selectAntenna">
 						<div v-if="timelinePickerItems.length === 0" :class="$style.timelinePickerEmpty">
 							<span>{{ timelinePickerKind === 'list' ? copy.noLists : copy.noAntennas }}</span>
 							<button :class="$style.timelinePickerOptions" @click="playSimpleNavMotion($event, 'settings'); openEmptyCollectionOptions()">
@@ -268,18 +285,18 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</div>
 			<div ref="contentEl" :class="$style.content" @scroll="onContentScroll" @wheel="onContentWheel">
 				<Transition :name="$style.tlFade" mode="out-in">
-					<div v-show="!isPageView && !deckActive" :key="tab + String(withRenotes) + String(withSensitive) + String(onlyFiles)" data-hata-collapse-items :class="$style.timelineContainer" :data-glass-bg="timelineGlassBg ? 'on' : undefined" @touchstart="onTouchStart" @touchend="onTouchEnd">
+					<div v-show="!isPageView && !deckActive" :key="tab + String(withRenotes) + String(withSensitive) + String(onlyFiles)" data-hata-collapse-items :class="$style.timelineContainer" :data-glass-bg="timelineGlassBg ? 'on' : undefined" @touchstart.passive="onTouchStart" @touchend="onTouchEnd">
 						<!-- 旗鯖fork: 「タイムライン上部に投稿フォームを表示する」設定がONのとき、外部TL以外でMkPostFormを表示 -->
 						<MkPostForm v-if="showFixedPostForm && !isExternalTab" :class="$style.fixedPostForm" class="_panel" fixed/>
 						<KeepAlive>
-							<MkStreamingNotesTimeline v-if="tab === 'mixed'" key="mixed" src="global" :withRenotes="withRenotes" :withSensitive="withSensitive" :onlyFiles="onlyFiles" :glassBg="timelineGlassBg"/>
-							<MkStreamingNotesTimeline v-else-if="tab === 'local'" key="local" src="local" :withRenotes="withRenotes" :withSensitive="withSensitive" :onlyFiles="onlyFiles" :glassBg="timelineGlassBg"/>
-							<MkStreamingNotesTimeline v-else-if="tab === 'social'" key="social" src="social" :withRenotes="withRenotes" :withSensitive="withSensitive" :onlyFiles="onlyFiles" :glassBg="timelineGlassBg"/>
-							<MkStreamingNotesTimeline v-else-if="tab === 'following'" key="following" src="home" :withRenotes="withRenotes" :withSensitive="withSensitive" :onlyFiles="onlyFiles" :glassBg="timelineGlassBg"/>
-							<MkExternalTimeline v-else-if="tab === 'ohtl' && externalHost && externalToken" key="ohtl" src="ohtl" :host="externalHost" :token="externalToken" :sound="true" :simpleUi="true" :hataskeyUi="true" :glassBg="timelineGlassBg"/>
-							<MkExternalTimeline v-else-if="tab === 'oltl' && externalHost && externalToken" key="oltl" src="oltl" :host="externalHost" :token="externalToken" :sound="true" :simpleUi="true" :hataskeyUi="true" :glassBg="timelineGlassBg"/>
+							<MkStreamingNotesTimeline v-if="tab === 'mixed'" key="mixed" newNotesNavbarKey="main:mixed" src="global" :withRenotes="withRenotes" :withSensitive="withSensitive" :onlyFiles="onlyFiles" :glassBg="timelineGlassBg"/>
+							<MkStreamingNotesTimeline v-else-if="tab === 'local'" key="local" newNotesNavbarKey="main:local" src="local" :withRenotes="withRenotes" :withSensitive="withSensitive" :onlyFiles="onlyFiles" :glassBg="timelineGlassBg"/>
+							<MkStreamingNotesTimeline v-else-if="tab === 'social'" key="social" newNotesNavbarKey="main:social" src="social" :withRenotes="withRenotes" :withSensitive="withSensitive" :onlyFiles="onlyFiles" :glassBg="timelineGlassBg"/>
+							<MkStreamingNotesTimeline v-else-if="tab === 'following'" key="following" newNotesNavbarKey="main:following" src="home" :withRenotes="withRenotes" :withSensitive="withSensitive" :onlyFiles="onlyFiles" :glassBg="timelineGlassBg"/>
+							<MkExternalTimeline v-else-if="tab === 'ohtl' && externalHost && externalToken" key="ohtl" newNotesNavbarKey="main:ohtl" src="ohtl" :host="externalHost" :token="externalToken" :sound="true" :simpleUi="true" :hataskeyUi="true" :glassBg="timelineGlassBg"/>
+							<MkExternalTimeline v-else-if="tab === 'oltl' && externalHost && externalToken" key="oltl" newNotesNavbarKey="main:oltl" src="oltl" :host="externalHost" :token="externalToken" :sound="true" :simpleUi="true" :hataskeyUi="true" :glassBg="timelineGlassBg"/>
 							<!-- 旗鯖fork: トレンドタイムライン (TTL) -->
-							<MkTrendingTimeline v-else-if="tab === 'trending'" key="trending" :glassBg="timelineGlassBg"/>
+							<MkTrendingTimeline v-else-if="tab === 'trending'" key="trending" newNotesNavbarKey="main:trending" :glassBg="timelineGlassBg"/>
 						</KeepAlive>
 					</div>
 				</Transition>
@@ -471,6 +488,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 import { ref, computed, provide, onMounted, onUnmounted, nextTick, defineAsyncComponent, watch } from 'vue';
 import { instanceName } from '@@/js/config.js';
 import XCommon from './_common_/common.vue';
+import { createHataskeyNotificationToasts, hataskeyNotificationToastsKey } from '@/utility/hataskey-notification-toast.js';
+import { createHataskeyTimelineNewNotes, hataskeyTimelineNewNotesKey } from '@/utility/hataskey-timeline-new-notes.js';
 import type { PageMetadata } from '@/page.js';
 import type { TimelineCollectionKind } from '@/utility/hatasaba-navigation.js';
 import type { HataSideButton, HataSideGroup, HataSideWidget, HataSideWidgetKind } from '@/utility/hata-side-studio.js';
@@ -1706,6 +1725,47 @@ function openActiveCollectionSettings(kind: TimelineCollectionKind) {
 }
 
 const topNavStackEl = ref<HTMLElement | null>(null);
+const nativeNavbarVisible = computed(() => (!isPageView.value || isCollectionTimelinePage.value) && !deckActive.value);
+const mobileNotificationOnly = computed(() => !isDesktop.value && !nativeNavbarVisible.value);
+const timelineNewNotes = createHataskeyTimelineNewNotes(() => {
+	if (!nativeNavbarVisible.value) return null;
+	if (isListTimelinePage.value) return activeListId.value ? `list:${activeListId.value}` : null;
+	if (isAntennaTimelinePage.value) return activeAntennaId.value ? `antenna:${activeAntennaId.value}` : null;
+	return !isPageView.value ? `main:${tab.value}` : null;
+});
+provide(hataskeyTimelineNewNotesKey, timelineNewNotes);
+const navbarNewNotes = timelineNewNotes.notice;
+
+function showNavbarNewNotes() {
+	showTopBar.value = true;
+	return navbarNewNotes.value?.show();
+}
+
+const newNotesButtonEl = ref<HTMLButtonElement | null>(null);
+const newNotesButtonHeight = ref(0);
+watch(newNotesButtonEl, (el, _, onCleanup) => {
+	if (!el) return;
+	const updateHeight = () => { newNotesButtonHeight.value = el.offsetHeight; };
+	const observer = new ResizeObserver(updateHeight);
+	observer.observe(el);
+	updateHeight();
+	onCleanup(() => observer.disconnect());
+});
+const notificationToasts = createHataskeyNotificationToasts(
+	computed(() => !isDesktop.value),
+	computed(() => nativeNavbarVisible.value && (showTopBar.value || navbarNewNotes.value != null)),
+);
+const notificationTargetEl = notificationToasts.target;
+const notificationOutlineEl = notificationToasts.outline;
+const mobileToastVisible = ref(false);
+let toastCollapseTimer: number | undefined;
+watch(() => !isDesktop.value && notificationToasts.items.value.length > 0, visible => {
+	window.clearTimeout(toastCollapseTimer);
+	if (visible) mobileToastVisible.value = true;
+	else toastCollapseTimer = window.setTimeout(() => { mobileToastVisible.value = false; }, prefer.s.animation && !window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 350 : 0);
+});
+onUnmounted(() => window.clearTimeout(toastCollapseTimer));
+provide(hataskeyNotificationToastsKey, notificationToasts);
 
 function closeTimelinePickerOnOutsidePointer(ev: PointerEvent) {
 	if (timelinePickerKind.value == null) return;
@@ -1922,8 +1982,8 @@ function openTlOptions(ev: MouseEvent | PointerEvent) {
 // ===== リアルタイムモード =====
 const isRealtimeMode = computed(() => store.r.realtimeMode.value);
 
-function toggleRealtimeMode() {
-	store.set('realtimeMode', !store.s.realtimeMode);
+async function toggleRealtimeMode() {
+	await store.set('realtimeMode', !store.s.realtimeMode);
 	window.location.reload();
 }
 
@@ -3332,7 +3392,7 @@ onUnmounted(() => {
     position:absolute;
     left:0; right:0;
 }
-.topBarHidden {
+.topBar[data-hidden='true'] {
     transform: translateY(calc(-100% - 20px));
     opacity: 0;
     transition: transform .25s cubic-bezier(.55,.06,.68,.19), opacity .2s ease;
@@ -3362,12 +3422,50 @@ onUnmounted(() => {
 .avatarImg { width:100%; height:100%; max-width:36px; max-height:36px; object-fit:cover; border-radius:9999px; }
 
 .topPill {
-    display:flex; align-items:center; gap:2px; padding:4px 6px; border-radius:9999px;
-	width:max-content; max-width:100%; min-width:0; box-sizing:border-box;
-    pointer-events:auto; transition:background .3s,box-shadow .3s;
+    position:relative; display:flex; flex-direction:column; align-items:center;
+    border-radius:24px; width:max-content; max-width:100%; min-width:0; box-sizing:border-box;
+    pointer-events:auto; transition:background .3s,box-shadow .3s; overflow:hidden;
+}
+.topPill[data-notification='true'], .topPill[data-new-notes='true'] { min-width:min(360px,100%); }
+.topPillTabs {
+    order:1; display:flex; align-items:center; gap:2px; padding:4px 6px;
+    width:max-content; max-width:100%; min-width:0; box-sizing:border-box;
     overflow-x:auto; scrollbar-width:none; -ms-overflow-style:none;
     &::-webkit-scrollbar { display:none; }
 }
+.notificationViewport {
+	order:3; position:relative; width:100%; min-width:0; overflow:hidden;
+    transition:height .35s cubic-bezier(.22,1,.36,1);
+}
+.notificationViewport[data-mobile='true'] { order:0; }
+.newNotesViewport {
+    order:2; display:grid; grid-template-rows:0fr; width:100%; min-width:0; opacity:0;
+    transition:grid-template-rows .35s cubic-bezier(.22,1,.36,1),opacity .2s ease;
+}
+.newNotesViewport[data-active='true'] { grid-template-rows:1fr; opacity:1; }
+.newNotesViewport[data-mobile='true'] { order:0; }
+.newNotesContent { min-height:0; overflow:hidden; }
+.newNotesButton {
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    width:100%; min-height:44px; box-sizing:border-box; padding:8px 14px;
+    color:var(--hata-toast-fg); font:inherit; font-size:.85em; line-height:1.5;
+    text-align:center; word-break:normal; line-break:strict; overflow-wrap:anywhere; text-wrap:pretty;
+    transition:background .15s ease;
+    > i { flex:none; color:var(--MI_THEME-accent); }
+    > span { min-width:0; }
+    &:hover:not(:disabled) { background:color-mix(in srgb,var(--MI_THEME-accent) 12%,transparent); }
+    &:active:not(:disabled) { background:color-mix(in srgb,var(--MI_THEME-accent) 20%,transparent); }
+    &:focus-visible { outline:2px solid var(--MI_THEME-accent); outline-offset:-3px; border-radius:20px; }
+}
+.topBar .avatarBtn { translate:0 var(--hata-toast-height,0px); transition:translate .35s cubic-bezier(.22,1,.36,1); }
+.topBar[data-toast-motion='false'] .notificationViewport,
+.topBar[data-toast-motion='false'] .newNotesViewport,
+.topBar[data-toast-motion='false'] .newNotesButton,
+.topBar[data-toast-motion='false'] .avatarBtn { transition:none; }
+@media (prefers-reduced-motion:reduce) {
+    .notificationViewport, .newNotesViewport, .newNotesButton, .topBar .avatarBtn { transition:none; }
+}
+
 .timelinePicker {
     position:absolute; top:calc(100% + 7px); left:0; z-index:2;
     display:flex; align-items:center; gap:7px; width:100%; max-width:100%; box-sizing:border-box;
@@ -3396,13 +3494,21 @@ onUnmounted(() => {
 }
 @keyframes timelinePickerIn { from { opacity:0; transform:translateY(-5px) scale(.98); } to { opacity:1; transform:none; } }
 .topBarDark .topPill {
+    --hata-toast-fg:rgba(255,255,255,.9); --hata-toast-muted:rgba(255,255,255,.65);
     background:rgba(30,30,30,.78); backdrop-filter:blur(24px) saturate(1.4); -webkit-backdrop-filter:blur(24px) saturate(1.4);
     box-shadow:0 4px 24px rgba(0,0,0,.15),0 0 0 .5px rgba(255,255,255,.08) inset;
 }
 .topBarLight .topPill {
+    --hata-toast-fg:rgba(0,0,0,.85); --hata-toast-muted:rgba(0,0,0,.6);
     background:rgba(245,245,245,.78); backdrop-filter:blur(24px) saturate(1.4); -webkit-backdrop-filter:blur(24px) saturate(1.4);
     box-shadow:0 4px 24px rgba(0,0,0,.06),0 0 0 .5px rgba(0,0,0,.06) inset;
 }
+.topBar[data-notification-only='true'] .topNavStack { width:min(360px,100%); max-width:100%; }
+.topBar[data-notification-only='true'] .topPill {
+    width:100%; backdrop-filter:none; -webkit-backdrop-filter:none;
+}
+.topBarDark[data-notification-only='true'] .topPill { background:rgb(30,30,30); }
+.topBarLight[data-notification-only='true'] .topPill { background:rgb(245,245,245); }
 .topTabBtn {
     min-width:40px; height:40px; border-radius:9999px; background:transparent; border:none;
     font-size:1.1em; cursor:pointer; display:flex; align-items:center; justify-content:center;

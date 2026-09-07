@@ -4,24 +4,38 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 
 <template>
-<Transition name="external-toast">
-	<div v-if="show" :class="$style.root" :data-type="notificationType" @click="onClick">
-		<!-- 旗鯖fork: アバター画像 + リアクション絵文字オーバーレイ -->
+<Transition name="external-toast" :css="!embedded">
+	<div v-if="show || embedded" :class="$style.root" :data-type="notificationType" :data-embedded="embedded" :role="embedded ? 'link' : undefined" :tabindex="embedded ? 0 : undefined" @keydown.enter.prevent="onClick" @click="onClick">
+		<!-- Hataskey UIではリアクションを本文側へ分離する。 -->
 		<div :class="$style.iconWrap">
-			<img v-if="notification?.user?.avatarUrl" :src="notification.user.avatarUrl" :class="$style.avatar" :alt="notification?.user?.username ?? ''"/>
+			<MkAvatar v-if="embedded && notificationUser?.avatarUrl" :user="author" :class="$style.avatar"/>
+			<img v-else-if="notificationUser?.avatarUrl" :src="notificationUser.avatarUrl" :class="$style.avatar" :alt="notificationUser.username ?? ''"/>
 			<i v-else :class="[$style.icon, iconClass]"></i>
-			<div v-if="notificationType === 'reaction' && notification?.reaction" :class="$style.reactionBadge">
+			<div v-if="!embedded && notificationType === 'reaction' && notification?.reaction" :class="$style.reactionBadge">
 				<MkReactionIcon :reaction="notification.reaction" :emojiUrl="reactionEmojiUrl"/>
 			</div>
 		</div>
 		<div :class="$style.body">
+			<div v-if="embedded" :class="$style.source"><i class="ti ti-world" aria-hidden="true"></i> {{ i18n.ts._hata._notificationToast.external }}<wbr/><span v-if="sourceHost"> · {{ sourceHost }}</span></div>
 			<div :class="$style.title">
-				<Mfm :text="displayName" :plain="true" :nyaize="false" :emojiUrls="emojiUrls" :author="author"/><span :class="$style.action">{{ actionLabel }}</span>
+				<Mfm :punctuationWrap="embedded" :text="displayName" :plain="true" :nyaize="false" :emojiUrls="emojiUrls" :author="author"/><wbr/><span :class="$style.action">{{ actionLabel }}</span>
 			</div>
-			<div v-if="text" :class="$style.text">{{ text }}</div>
-			<div v-if="hint" :class="$style.hint">{{ hint }}</div>
+			<div v-if="embedded && notificationType === 'reaction' && notification?.reaction" :class="$style.reactionContent" data-reaction-content="true">
+				<span :class="$style.toastReaction" data-reaction-chip>
+					<MkReactionIcon :reaction="notification.reaction" :emojiUrl="reactionEmojiUrl"/>
+				</span>
+				<div v-if="notification?.note?.text" :class="$style.reactionNote">
+					<Mfm :punctuationWrap="true" :text="text" :plain="true" :nowrap="false" :nyaize="false" :emojiUrls="noteEmojiUrls" :author="noteAuthor"/>
+				</div>
+			</div>
+			<div v-else-if="text" :class="$style.text">
+				<Mfm v-if="embedded && notification?.note?.text" :punctuationWrap="true" :text="text" :plain="true" :nowrap="false" :nyaize="false" :emojiUrls="noteEmojiUrls" :author="noteAuthor"/>
+				<MkReactionIcon v-else-if="embedded && notification?.reaction" :reaction="notification.reaction" :emojiUrl="reactionEmojiUrl"/>
+				<MkNotificationText v-else :text="text"/>
+			</div>
+			<div v-if="hint" :class="$style.hint"><MkNotificationText :text="hint" :wrap="embedded"/></div>
 		</div>
-		<button :class="$style.close" @click.stop="onClose"><i class="ti ti-x"></i></button>
+		<button v-if="!embedded" :class="$style.close" :aria-label="i18n.ts.close" @click.stop="onClose"><i class="ti ti-x"></i></button>
 	</div>
 </Transition>
 </template>
@@ -34,9 +48,12 @@ import { prefer } from '@/preferences.js';
 import { getExternalEmojiUrlMapForHost } from '@/utility/external-api.js';
 import MkReactionIcon from '@/components/MkReactionIcon.vue';
 import { i18n } from '@/i18n.js';
+import MkNotificationText from '@/components/MkNotificationText.js';
 
 const props = defineProps<{
 	notification: any;
+	embedded?: boolean;
+	sourceHost?: string;
 }>();
 
 const emit = defineEmits<{
@@ -45,9 +62,10 @@ const emit = defineEmits<{
 const notificationCopy = i18n.ts._hata._externalNotifications;
 
 const show = ref(false);
-let autoCloseTimer: ReturnType<typeof setTimeout> | null = null;
+let autoCloseTimer: number | null = null;
 
 const notificationType = computed(() => props.notification?.type ?? 'unknown');
+const notificationUser = computed(() => props.notification?.user ?? props.notification?.note?.user);
 
 const iconClass = computed(() => {
 	const t = notificationType.value;
@@ -70,8 +88,7 @@ const iconClass = computed(() => {
 
 // 旗鯖fork: 表示名 (name優先) — MFM対応のため生テキスト
 const displayName = computed(() => {
-	const n = props.notification;
-	return n?.user?.name || n?.user?.username || notificationCopy.someone;
+	return notificationUser.value?.name || notificationUser.value?.username || notificationCopy.someone;
 });
 
 // 旗鯖fork: アクション文言 (表示名の後ろに付く)
@@ -93,22 +110,37 @@ const actionLabel = computed(() => {
 	return labels[notificationType.value] ?? notificationCopy.unknownToastAction;
 });
 
-// 旗鯖fork: ユーザー名のMFMカスタム絵文字URLマップ
-const emojiUrls = computed(() => {
-	const map: Record<string, string> = {};
-	if (props.notification?.user?.emojis) Object.assign(map, props.notification.user.emojis);
-	return map;
-});
-
 // 旗鯖fork: <Mfm> に渡す author。host が null だと MkMfm が emojiUrls を
 // 参照せず外部サーバーの絵文字を解決できないため、host(外部サーバー)を補う。
 const author = computed(() => {
-	const n = props.notification;
-	const host = n?.user?.host ?? prefer.s['external.host'] ?? null;
-	// 旗鯖fork(G9): Mfmのauthor propはUserLite全体を要求するが、ここではemojiUrl解決に
-	//   使うhost/emojisしか要らない(挙動は既存のまま、型だけ橋渡し)。
-	return { host, emojis: n?.user?.emojis } as Misskey.entities.UserLite;
+	const user = notificationUser.value;
+	return { ...user, host: user?.host ?? props.sourceHost ?? prefer.s['external.host'] ?? null } as Misskey.entities.UserLite;
 });
+
+const noteAuthor = computed(() => {
+	const user = props.notification?.note?.user ?? notificationUser.value;
+	return { ...user, host: user?.host ?? props.sourceHost ?? prefer.s['external.host'] ?? null } as Misskey.entities.UserLite;
+});
+
+function emojiMap(host: string | null, ...sources: unknown[]): Record<string, string> | undefined {
+	const map: Record<string, string> = { ...(host ? getExternalEmojiUrlMapForHost(host) : null) };
+	for (const source of sources) {
+		if (Array.isArray(source)) {
+			for (const emoji of source) {
+				if (typeof emoji?.name === 'string' && typeof emoji.url === 'string') map[emoji.name] = emoji.url;
+			}
+		} else if (source != null && typeof source === 'object') {
+			for (const [name, url] of Object.entries(source)) {
+				if (typeof url === 'string') map[name] = url;
+			}
+		}
+	}
+	return Object.keys(map).length > 0 ? map : undefined;
+}
+
+// 通知した人とノート作者が違う場合も、それぞれのホスト・絵文字URLで描画する。
+const emojiUrls = computed(() => emojiMap(author.value.host, notificationUser.value?.emojis));
+const noteEmojiUrls = computed(() => emojiMap(noteAuthor.value.host, props.notification?.note?.user?.emojis, props.notification?.note?.emojis));
 
 // 旗鯖fork: リアクション絵文字URL (カスタム絵文字の場合)
 const reactionEmojiUrl = computed(() => {
@@ -118,7 +150,7 @@ const reactionEmojiUrl = computed(() => {
 	if (!m) return undefined;
 	const emojiName = m[1];
 	const pureName = emojiName.includes('@') ? emojiName.split('@')[0] : emojiName;
-	const host = prefer.s['external.host'];
+	const host = (props.sourceHost ?? prefer.s['external.host']);
 	if (n.note?.reactionEmojis) {
 		const e = n.note.reactionEmojis;
 		const found = e[emojiName] || e[pureName] || e[`${pureName}@${host}`] || e[`${pureName}@.`];
@@ -149,7 +181,7 @@ const text = computed(() => {
 	const n = props.notification;
 	if (n?.note?.text) {
 		const t = n.note.text;
-		return t.length > 60 ? t.slice(0, 60) + '…' : t;
+		return props.embedded ? t : t.length > 60 ? t.slice(0, 60) + '…' : t;
 	}
 	if (n?.reaction) return n.reaction;
 	return '';
@@ -175,26 +207,28 @@ function onClick() {
 }
 
 function onClose() {
+	if (props.embedded) { emit('close'); return; }
 	show.value = false;
 	if (autoCloseTimer) {
-		clearTimeout(autoCloseTimer);
+		window.clearTimeout(autoCloseTimer);
 		autoCloseTimer = null;
 	}
 	// 退場アニメーション後に親通知
-	setTimeout(() => emit('close'), 300);
+	window.setTimeout(() => emit('close'), 300);
 }
 
 onMounted(() => {
+	if (props.embedded) return;
 	// 次のフレームで表示開始 (transition を効かせる)
 	requestAnimationFrame(() => {
 		show.value = true;
 	});
 	// 6秒後に自動で閉じる
-	autoCloseTimer = setTimeout(() => onClose(), 6000);
+	autoCloseTimer = window.setTimeout(() => onClose(), 6000);
 });
 
 onUnmounted(() => {
-	if (autoCloseTimer) clearTimeout(autoCloseTimer);
+	if (autoCloseTimer) window.clearTimeout(autoCloseTimer);
 });
 </script>
 
@@ -217,6 +251,30 @@ onUnmounted(() => {
 .root:hover {
 	transform: translateY(-1px);
 	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+.root[data-embedded='true'] {
+	padding:0; min-width:0; max-width:none; width:100%; align-items:center; gap:9px;
+	background:transparent; border:0; box-shadow:none; transform:none; font-size:12px; line-height:1.5;
+	.iconWrap { margin:6px 8px 6px 4px; }
+	.title, .text { font-size:12px; color:inherit; }
+	.hint { font-size:10px; }
+	.title { white-space:normal; word-break:keep-all; overflow-wrap:anywhere; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; }
+	.text, .hint { white-space:normal; word-break:keep-all; overflow-wrap:anywhere; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; }
+	&:focus-visible { outline:2px solid var(--MI_THEME-accent); outline-offset:2px; border-radius:4px; }
+}
+.source { color:var(--MI_THEME-accent); font-size:10px; line-height:1.5; word-break:keep-all; overflow-wrap:anywhere; }
+.reactionContent { display:flex; flex-wrap:wrap; align-items:center; gap:6px 8px; margin-top:5px; min-width:0; }
+.toastReaction {
+	display:inline-flex; align-items:center; justify-content:center; flex:0 1 auto;
+	box-sizing:border-box; min-width:36px; max-width:min(108px,100%); min-height:32px; padding:4px 6px;
+	border:1px solid color-mix(in srgb,var(--MI_THEME-accent) 22%,transparent); border-radius:8px;
+	background:var(--MI_THEME-accentedBg); color:var(--MI_THEME-fg); font-size:22px; line-height:1;
+	:deep(img) { display:block; width:auto; height:24px; max-width:100%; object-fit:contain; }
+}
+.reactionNote {
+	flex:1 1 120px; min-width:0; padding-left:8px; border-left:2px solid var(--MI_THEME-divider);
+	font-size:12px; line-height:1.5; opacity:.85; white-space:normal; word-break:keep-all; overflow-wrap:anywhere;
+	display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden;
 }
 .icon {
 	flex-shrink: 0;

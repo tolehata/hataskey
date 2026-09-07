@@ -3332,6 +3332,7 @@ _notification:
     test: "通知のテスト"
     app: "連携アプリからの通知"
     hataFeed: "HataFeed通知"
+    hataskFlowerReady: "Hataskのお花"
     # 旗鯖fork: cherrypick-js notificationTypes に earthquake が含まれているが
     # ラベル定義が無く設定UIで空白項目になっていた問題を修正
     earthquake: "地震・津波情報"
@@ -4100,7 +4101,16 @@ _deliveryTargetControl:
 
 # 旗鯖独自機能の翻訳。地震津波機能は翻訳対象外。
 _hata:
+  _notificationToast:
+    position: "通知ポップアップの位置"
+    stack: "通知ポップアップの並び方"
+    automatic: "Hataskey UIでは自動配置"
+    placement: "Hataskey UIの通常表示では、PCは上部ナビバーの下、モバイルは上部ナビバーの上に通知を表示します。モバイルでタイムライン以外にいるときは、ナビバーを表示せず、画面上部に不透明な背景で通知だけを表示します。PCで上部ナビバーが非表示のときやデッキ表示では、右下に表示します。通知は5秒で閉じます。"
+    sequence: "上部に表示する通知は新しい通知に入れ替わり、前の通知は下へスライドして消えます。PCの右下では最大3件を縦に並べます。"
+    otherUi: "位置・並び方の選択はHataskey UI以外に適用されます。Hataskey UIは通常通知・外部通知とも自動配置です。"
+    external: "外部通知"
   _customNotifications:
+    flowerReady: "お花が満開になりました。Hataskの「おはな」で収穫できます。"
     newNotice: "新しいお知らせ"
   _games:
     _common:
@@ -6592,6 +6602,16 @@ _hata:
       flowerVisibilityPrivate: "自分だけ"
       communityFlowerGallery: "みんなのお花"
       communityFlowerActivity: "みんなのお花情報"
+      communityGarden: "みんなの花壇"
+      flowerCount: "{count}輪"
+      flowerHarvestedAt: "収穫"
+      flowerOwner: "育てた人"
+      pauseFlowerScroll: "自動スクロールを止める"
+      resumeFlowerScroll: "自動スクロールを再開"
+      flowerSeasonSpring: "春のお花が咲きやすい季節"
+      flowerSeasonSummer: "夏のお花が咲きやすい季節"
+      flowerSeasonAutumn: "秋のお花が咲きやすい季節"
+      flowerSeasonWinter: "冬のお花が咲きやすい季節"
       flowerGalleryLoading: "みんなのお花を読み込み中"
       flowerGalleryLoadFailed: "みんなのお花を読み込めませんでした"
       flowerGalleryEmpty: "まだ公開されたお花はありません"
@@ -6655,9 +6675,10 @@ _hata:
       accept: "了承する"
       howToGrowFlowers: "お花の育て方"
       flowerInfoGrowth: "このサーバーを使用していくにつれて、お花が成長していきます。"
-      flowerInfoTime: "画面を閉じたりバックグラウンドにしている間も、経過時間に応じて少しずつ成長します（約8〜32時間）。"
+      flowerInfoTime: "画面を閉じている間も成長します。通常のお花は約8〜32時間、これから育てるレア花は約48〜96時間で開花します。育成中のお花の残り時間は変わりません。"
       flowerInfoNaming: "成長が完了すると名前を付けられます。育て終わった花の名前はいつでもギャラリーから変更できます。"
-      flowerInfoVariety: "全125種類以上のお花や奇妙なアイテムが用意されています。レアアイテムも！"
+      flowerInfoVariety: "季節ごとに出やすい品種があります。季節外でも出会えます。レア花は出会いにくく、ギャラリーの枠が輝きます。季節は日本時間で切り替わります。"
+      rareFlower: "レア花"
       chooseAppearance: "まずは見た目を選びましょう"
       changeAppearanceLater: "あとで「Hatask設定」からいつでも変更できます"
       light: "ライト"
@@ -6739,7 +6760,7 @@ _hata:
       tutorialMoodReminder: "リマインド通知で記録忘れを防止"
       tutorialMoodDisclaimer: "セルフケア用ツールです（医療目的ではありません）"
       tutorialGardenBody: "サーバーを使うほどお花が育ちます。全125種類以上！"
-      tutorialGardenBloom: "約8-32時間で開花。レアアイテムも…？"
+      tutorialGardenBloom: "通常は約8〜32時間、レア花は約48〜96時間で開花"
       tutorialGardenHarvest: "咲いたら名前をつけてギャラリーに収穫"
       tutorialGardenCollection: "花言葉もコレクションしよう！"
       tutorialEyeBody: "あなたの使い方を見守る、Hataskのもうひとつの目。"

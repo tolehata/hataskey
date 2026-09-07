@@ -2932,6 +2932,7 @@ _notification:
     test: "测试通知"
     app: "关联应用的通知"
     hataFeed: "HataFeed 通知"
+    hataskFlowerReady: "Hatask 花朵"
     addedToPrivateChannel: "已添加到私人频道"
     removedFromPrivateChannel: "已从私人频道移除"
   _actions:
@@ -3539,7 +3540,16 @@ _qr:
 
 # 旗鯖独有功能。地震、海啸功能不在翻译范围内。
 _hata:
+  _notificationToast:
+    position: "通知弹窗位置"
+    stack: "通知弹窗排列方式"
+    automatic: "Hataskey UI 自动布局"
+    placement: "在 Hataskey UI 的普通视图中，桌面通知显示在顶部导航栏下方，移动端通知显示在导航栏上方。移动端在时间线以外的页面中，仅在屏幕顶部显示带有不透明背景的通知，导航栏保持隐藏。桌面导航栏隐藏时（包括 Deck 视图）通知显示在右下角。通知会在 5 秒后关闭。"
+    sequence: "屏幕顶部的新通知会替换旧通知，旧通知向下滑动并淡出。桌面右下角最多垂直排列三条通知。"
+    otherUi: "位置和排列选项适用于 Hataskey UI 以外的界面。Hataskey UI 的本地和外部通知均采用自动布局。"
+    external: "外部通知"
   _customNotifications:
+    flowerReady: "花朵已经盛开，可以在 Hatask 的“花朵”中采摘了。"
     newNotice: "新通知"
   _games:
     _common:
@@ -5993,6 +6003,16 @@ _hata:
       flowerVisibilityPrivate: "仅自己可见"
       communityFlowerGallery: "大家的花朵"
       communityFlowerActivity: "大家的花朵动态"
+      communityGarden: "大家的花坛"
+      flowerCount: "{count}朵"
+      flowerHarvestedAt: "采收"
+      flowerOwner: "培育者"
+      pauseFlowerScroll: "暂停自动滚动"
+      resumeFlowerScroll: "继续自动滚动"
+      flowerSeasonSpring: "春季花朵更容易出现"
+      flowerSeasonSummer: "夏季花朵更容易出现"
+      flowerSeasonAutumn: "秋季花朵更容易出现"
+      flowerSeasonWinter: "冬季花朵更容易出现"
       flowerGalleryLoading: "正在加载大家的花朵"
       flowerGalleryLoadFailed: "无法加载大家的花朵"
       flowerGalleryEmpty: "还没有公开的花朵"
@@ -6056,9 +6076,10 @@ _hata:
       accept: "确认"
       howToGrowFlowers: "花朵培育方法"
       flowerInfoGrowth: "随着你使用此服务器，花朵会逐渐成长。"
-      flowerInfoTime: "即使应用在后台或已关闭，也会按经过的时间继续成长（约8～32小时）。"
+      flowerInfoTime: "关闭应用后花朵也会继续成长。普通花朵约8～32小时开花，新种下的稀有花朵约需48～96小时。已经在成长的花朵，其剩余时间不会改变。"
       flowerInfoNaming: "成长完成后可以命名。已培育花朵的名称随时可以在画廊中更改。"
-      flowerInfoVariety: "准备了125种以上的花和奇妙物品，也有稀有物品！"
+      flowerInfoVariety: "当季品种更容易出现，其他季节也有机会遇见。稀有花朵较难遇见，画廊边框会闪耀。季节以日本标准时间切换。"
+      rareFlower: "稀有花朵"
       chooseAppearance: "先选择喜欢的外观吧"
       changeAppearanceLater: "之后可随时在 Hatask 设置中更改"
       light: "浅色"
@@ -6140,7 +6161,7 @@ _hata:
       tutorialMoodReminder: "通过提醒通知避免忘记记录"
       tutorialMoodDisclaimer: "这是自我关怀工具，不用于医疗目的"
       tutorialGardenBody: "使用服务器时花朵会成长，共有125种以上！"
-      tutorialGardenBloom: "约8-32小时后开花，也可能出现稀有物品。"
+      tutorialGardenBloom: "普通花朵约8～32小时开花，稀有花朵约需48～96小时"
       tutorialGardenHarvest: "开花后命名并收获到画廊"
       tutorialGardenCollection: "也来收集花语吧！"
       tutorialEyeBody: "Hatask 的另一只眼睛，守望着你的使用方式。"

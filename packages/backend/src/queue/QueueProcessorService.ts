@@ -47,6 +47,7 @@ import { ReportAbuseProcessorService } from './processors/ReportAbuseProcessorSe
 import { TickChartsProcessorService } from './processors/TickChartsProcessorService.js';
 import { ResyncChartsProcessorService } from './processors/ResyncChartsProcessorService.js';
 import { CleanChartsProcessorService } from './processors/CleanChartsProcessorService.js';
+import { CheckHataskFlowersProcessorService } from './processors/CheckHataskFlowersProcessorService.js';
 import { CheckExpiredMutingsProcessorService } from './processors/CheckExpiredMutingsProcessorService.js';
 import { BakeBufferedReactionsProcessorService } from './processors/BakeBufferedReactionsProcessorService.js';
 import { CleanProcessorService } from './processors/CleanProcessorService.js';
@@ -143,6 +144,7 @@ export class QueueProcessorService implements OnApplicationShutdown {
 		private resyncChartsProcessorService: ResyncChartsProcessorService,
 		private cleanChartsProcessorService: CleanChartsProcessorService,
 		private aggregateRetentionProcessorService: AggregateRetentionProcessorService,
+		private checkHataskFlowersProcessorService: CheckHataskFlowersProcessorService,
 		private checkExpiredMutingsProcessorService: CheckExpiredMutingsProcessorService,
 		private bakeBufferedReactionsProcessorService: BakeBufferedReactionsProcessorService,
 		private checkModeratorsActivityProcessorService: CheckModeratorsActivityProcessorService,
@@ -189,6 +191,7 @@ export class QueueProcessorService implements OnApplicationShutdown {
 					case 'resyncCharts': return this.resyncChartsProcessorService.process();
 					case 'cleanCharts': return this.cleanChartsProcessorService.process();
 					case 'aggregateRetention': return this.aggregateRetentionProcessorService.process();
+					case 'checkHataskFlowers': return this.checkHataskFlowersProcessorService.process();
 					case 'checkExpiredMutings': return this.checkExpiredMutingsProcessorService.process();
 					case 'bakeBufferedReactions': return this.bakeBufferedReactionsProcessorService.process();
 					case 'checkModeratorsActivity': return this.checkModeratorsActivityProcessorService.process();

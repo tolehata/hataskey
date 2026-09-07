@@ -210,8 +210,8 @@ const labelValues: Readonly<Record<PreferenceContainerKey, string>> = {
 	mediaListWithOneImageAppearance: i18n.ts.mediaListWithOneImageAppearance,
 	menuStyle: i18n.ts.menuStyle,
 	newNoteReceivedNotificationBehavior: i18n.ts.newNoteReceivedNotification,
-	notificationPosition: i18n.ts.position,
-	notificationStackAxis: i18n.ts.stackAxis,
+	notificationPosition: i18n.ts._hata._notificationToast.position,
+	notificationStackAxis: i18n.ts._hata._notificationToast.stack,
 	nsfw: i18n.ts.displayOfSensitiveMedia,
 	nsfwOpenBehavior: i18n.ts.nsfwOpenBehavior,
 	numberOfPageCache: i18n.ts.numberOfPageCache,
@@ -263,6 +263,9 @@ const labelValues: Readonly<Record<PreferenceContainerKey, string>> = {
 };
 
 const captionValues: Readonly<Partial<Record<PreferenceContainerKey, readonly string[]>>> = {
+	hemisphere: [i18n.ts._hemisphere.caption],
+	notificationPosition: [i18n.ts._hata._notificationToast.placement, i18n.ts._hata._notificationToast.otherUi],
+	notificationStackAxis: [i18n.ts._hata._notificationToast.sequence, i18n.ts._hata._notificationToast.otherUi],
 	pollingInterval: [i18n.ts._settings.contentsUpdateFrequency_description, i18n.ts._settings.contentsUpdateFrequency_description2],
 	filesGridLayoutInUserPage: [i18n.ts.filesGridLayoutInUserPageDescription],
 	showFixedPostFormInReplies: [i18n.ts.showFixedPostFormInRepliesDescription],

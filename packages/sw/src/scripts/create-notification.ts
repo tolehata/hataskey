@@ -296,6 +296,7 @@ async function composeNotification(data: PushNotificationDataMap[keyof PushNotif
 
 				case 'app':
 				case 'hataFeed':
+				case 'hataskFlowerReady':
 				case 'earthquake':
 				case 'addedToPrivateChannel':
 				case 'removedFromPrivateChannel': {
@@ -306,7 +307,10 @@ async function composeNotification(data: PushNotificationDataMap[keyof PushNotif
 					const rawHeader = data.body.header?.trim() ?? '';
 					let body = rawBody;
 					let header = rawHeader;
-					if (data.body.type === 'hataFeed') {
+					if (data.body.type === 'hataskFlowerReady') {
+						header = i18n.ts._notification._types.hataskFlowerReady;
+						body = i18n.ts._hata._customNotifications.flowerReady;
+					} else if (data.body.type === 'hataFeed') {
 						body = hataFeedNotificationDisplayBody(rawBody, i18n);
 					} else if (data.body.type === 'addedToPrivateChannel' || data.body.type === 'removedFromPrivateChannel') {
 						({ body, header } = privateChannelNotificationDisplayCopy(data.body.type, rawHeader, rawBody, i18n));

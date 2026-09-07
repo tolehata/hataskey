@@ -5947,6 +5947,15 @@ export type components = {
                     /** Format: misskey:id */
                     userListId: string;
                 };
+                hataskFlowerReady?: {
+                    /** @enum {string} */
+                    type: 'all' | 'following' | 'follower' | 'mutualFollow' | 'followingOrFollower' | 'never';
+                } | {
+                    /** @enum {string} */
+                    type: 'list';
+                    /** Format: misskey:id */
+                    userListId: string;
+                };
                 test?: {
                     /** @enum {string} */
                     type: 'all' | 'following' | 'follower' | 'mutualFollow' | 'followingOrFollower' | 'never';
@@ -6453,6 +6462,17 @@ export type components = {
             createdAt: string;
             /** @enum {string} */
             type: 'hataFeed';
+            body: string;
+            header: string | null;
+            icon: string | null;
+            link: string | null;
+        } | {
+            /** Format: id */
+            id: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** @enum {string} */
+            type: 'hataskFlowerReady';
             body: string;
             header: string | null;
             icon: string | null;
@@ -40034,8 +40054,8 @@ export interface operations {
                     markAsRead?: boolean;
                     /** @default false */
                     excludeBots?: boolean;
-                    includeTypes?: ('note' | 'follow' | 'mention' | 'reply' | 'renote' | 'quote' | 'reaction' | 'pollEnded' | 'scheduledNotePosted' | 'scheduledNotePostFailed' | 'receiveFollowRequest' | 'followRequestAccepted' | 'groupInvited' | 'roleAssigned' | 'chatRoomInvitationReceived' | 'achievementEarned' | 'exportCompleted' | 'login' | 'createToken' | 'app' | 'hataFeed' | 'earthquake' | 'test' | 'addedToPrivateChannel' | 'removedFromPrivateChannel' | 'pollVote')[];
-                    excludeTypes?: ('note' | 'follow' | 'mention' | 'reply' | 'renote' | 'quote' | 'reaction' | 'pollEnded' | 'scheduledNotePosted' | 'scheduledNotePostFailed' | 'receiveFollowRequest' | 'followRequestAccepted' | 'groupInvited' | 'roleAssigned' | 'chatRoomInvitationReceived' | 'achievementEarned' | 'exportCompleted' | 'login' | 'createToken' | 'app' | 'hataFeed' | 'earthquake' | 'test' | 'addedToPrivateChannel' | 'removedFromPrivateChannel' | 'pollVote')[];
+                    includeTypes?: ('note' | 'follow' | 'mention' | 'reply' | 'renote' | 'quote' | 'reaction' | 'pollEnded' | 'scheduledNotePosted' | 'scheduledNotePostFailed' | 'receiveFollowRequest' | 'followRequestAccepted' | 'groupInvited' | 'roleAssigned' | 'chatRoomInvitationReceived' | 'achievementEarned' | 'exportCompleted' | 'login' | 'createToken' | 'app' | 'hataFeed' | 'hataskFlowerReady' | 'earthquake' | 'test' | 'addedToPrivateChannel' | 'removedFromPrivateChannel' | 'pollVote')[];
+                    excludeTypes?: ('note' | 'follow' | 'mention' | 'reply' | 'renote' | 'quote' | 'reaction' | 'pollEnded' | 'scheduledNotePosted' | 'scheduledNotePostFailed' | 'receiveFollowRequest' | 'followRequestAccepted' | 'groupInvited' | 'roleAssigned' | 'chatRoomInvitationReceived' | 'achievementEarned' | 'exportCompleted' | 'login' | 'createToken' | 'app' | 'hataFeed' | 'hataskFlowerReady' | 'earthquake' | 'test' | 'addedToPrivateChannel' | 'removedFromPrivateChannel' | 'pollVote')[];
                 };
             };
         };
@@ -40121,8 +40141,8 @@ export interface operations {
                     markAsRead?: boolean;
                     /** @default false */
                     excludeBots?: boolean;
-                    includeTypes?: ('note' | 'follow' | 'mention' | 'reply' | 'renote' | 'quote' | 'reaction' | 'pollEnded' | 'scheduledNotePosted' | 'scheduledNotePostFailed' | 'receiveFollowRequest' | 'followRequestAccepted' | 'groupInvited' | 'roleAssigned' | 'chatRoomInvitationReceived' | 'achievementEarned' | 'exportCompleted' | 'login' | 'createToken' | 'app' | 'hataFeed' | 'earthquake' | 'test' | 'addedToPrivateChannel' | 'removedFromPrivateChannel' | 'pollVote')[];
-                    excludeTypes?: ('note' | 'follow' | 'mention' | 'reply' | 'renote' | 'quote' | 'reaction' | 'pollEnded' | 'scheduledNotePosted' | 'scheduledNotePostFailed' | 'receiveFollowRequest' | 'followRequestAccepted' | 'groupInvited' | 'roleAssigned' | 'chatRoomInvitationReceived' | 'achievementEarned' | 'exportCompleted' | 'login' | 'createToken' | 'app' | 'hataFeed' | 'earthquake' | 'test' | 'addedToPrivateChannel' | 'removedFromPrivateChannel' | 'pollVote')[];
+                    includeTypes?: ('note' | 'follow' | 'mention' | 'reply' | 'renote' | 'quote' | 'reaction' | 'pollEnded' | 'scheduledNotePosted' | 'scheduledNotePostFailed' | 'receiveFollowRequest' | 'followRequestAccepted' | 'groupInvited' | 'roleAssigned' | 'chatRoomInvitationReceived' | 'achievementEarned' | 'exportCompleted' | 'login' | 'createToken' | 'app' | 'hataFeed' | 'hataskFlowerReady' | 'earthquake' | 'test' | 'addedToPrivateChannel' | 'removedFromPrivateChannel' | 'pollVote')[];
+                    excludeTypes?: ('note' | 'follow' | 'mention' | 'reply' | 'renote' | 'quote' | 'reaction' | 'pollEnded' | 'scheduledNotePosted' | 'scheduledNotePostFailed' | 'receiveFollowRequest' | 'followRequestAccepted' | 'groupInvited' | 'roleAssigned' | 'chatRoomInvitationReceived' | 'achievementEarned' | 'exportCompleted' | 'login' | 'createToken' | 'app' | 'hataFeed' | 'hataskFlowerReady' | 'earthquake' | 'test' | 'addedToPrivateChannel' | 'removedFromPrivateChannel' | 'pollVote')[];
                 };
             };
         };
@@ -41538,6 +41558,15 @@ export interface operations {
                             userListId: string;
                         };
                         app?: {
+                            /** @enum {string} */
+                            type: 'all' | 'following' | 'follower' | 'mutualFollow' | 'followingOrFollower' | 'never';
+                        } | {
+                            /** @enum {string} */
+                            type: 'list';
+                            /** Format: misskey:id */
+                            userListId: string;
+                        };
+                        hataskFlowerReady?: {
                             /** @enum {string} */
                             type: 'all' | 'following' | 'follower' | 'mutualFollow' | 'followingOrFollower' | 'never';
                         } | {

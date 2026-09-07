@@ -66,23 +66,26 @@ SPDX-License-Identifier: AGPL-3.0-only
 	v-on="popup.events"
 />
 
+<MkHataskeyNotificationToasts v-if="hataskeyToasts" :context="hataskeyToasts"/>
+<template v-else>
 	<component
 		:is="prefer.s.animation ? TransitionGroup : 'div'"
 		v-if="!notificationToastsSuppressed"
-	tag="div"
-	:class="$style.notifications"
-	:data-position="prefer.s.notificationPosition"
-	:data-stack-axis="prefer.s.notificationStackAxis"
-	:moveClass="$style.transition_notification_move"
-	:enterActiveClass="$style.transition_notification_enterActive"
-	:leaveActiveClass="$style.transition_notification_leaveActive"
-	:enterFromClass="$style.transition_notification_enterFrom"
-	:leaveToClass="$style.transition_notification_leaveTo"
->
-	<div v-for="notification in notifications" :key="notification.id" :class="$style.notification">
-		<XNotification :notification="notification"/>
-	</div>
-</component>
+		tag="div"
+		:class="$style.notifications"
+		:data-position="prefer.s.notificationPosition"
+		:data-stack-axis="prefer.s.notificationStackAxis"
+		:moveClass="$style.transition_notification_move"
+		:enterActiveClass="$style.transition_notification_enterActive"
+		:leaveActiveClass="$style.transition_notification_leaveActive"
+		:enterFromClass="$style.transition_notification_enterFrom"
+		:leaveToClass="$style.transition_notification_leaveTo"
+	>
+		<div v-for="notification in notifications" :key="notification.id" :class="$style.notification">
+			<XNotification :notification="notification"/>
+		</div>
+	</component>
+</template>
 
 <XStreamIndicator/>
 
@@ -102,18 +105,20 @@ SPDX-License-Identifier: AGPL-3.0-only
 </div>
 
 <!-- 旗鯖fork: 外部通知トースト (右下スライドイン、UI被らず) -->
-<XExternalNotificationToastContainer v-if="$i" />
+<XExternalNotificationToastContainer v-if="$i && !hataskeyToasts" />
 
 <!-- 旗鯖fork: フローティングマスコット(段階C) -->
 <MkMascotFloating v-if="$i" />
 </template>
 
 <script lang="ts" setup>
-import { defineAsyncComponent, ref, TransitionGroup, watch } from 'vue';
+import { defineAsyncComponent, inject, ref, TransitionGroup, watch } from 'vue';
 import * as Misskey from 'cherrypick-js';
 import { isSafeMode } from '@@/js/config.js';
 import { swInject } from './sw-inject.js';
 import XNotification from './notification.vue';
+import MkHataskeyNotificationToasts from '@/components/MkHataskeyNotificationToasts.vue';
+import { hataskeyNotificationToastsKey } from '@/utility/hataskey-notification-toast.js';
 import { popups } from '@/os.js';
 import { unisonReload } from '@/utility/unison-reload.js';
 import { miLocalStorage } from '@/local-storage.js';
@@ -141,6 +146,7 @@ const widgetsShowing = defineModel<boolean>('widgetsShowing');
 
 const dev = _DEV_;
 
+const hataskeyToasts = inject(hataskeyNotificationToastsKey, null);
 const notifications = ref<Misskey.entities.Notification[]>([]);
 
 // HataSNSCordUIへ切り替えた時点で既に出ている通知も残さない。
@@ -163,14 +169,18 @@ function onNotification(notification: Misskey.entities.Notification, isClient = 
 
 		// 旗鯖fork: マスコットが通知を伝える設定のときは標準トーストを出さない
 		if (!shouldSuppressStandardToast() && !shouldSuppressNotificationToasts()) {
-			notifications.value.unshift(notification);
-			window.setTimeout(() => {
-				if (notifications.value.length > 3) notifications.value.pop();
-			}, 500);
+			if (hataskeyToasts) {
+				hataskeyToasts.enqueue(notification, 'local');
+			} else {
+				notifications.value.unshift(notification);
+				window.setTimeout(() => {
+					if (notifications.value.length > 3) notifications.value.pop();
+				}, 500);
 
-			window.setTimeout(() => {
-				notifications.value = notifications.value.filter(x => x.id !== notification.id);
-			}, 6000);
+				window.setTimeout(() => {
+					notifications.value = notifications.value.filter(x => x.id !== notification.id);
+				}, 6000);
+			}
 		}
 	}
 

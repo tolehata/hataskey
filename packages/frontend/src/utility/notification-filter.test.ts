@@ -3,12 +3,24 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 import { notificationTypes } from 'cherrypick-js';
 import { hasConfiguredNotificationFilter, isNotificationFromBot, migrateNotificationFilterSnapshot, resolveNotificationFilter, serializeNotificationFilter } from './notification-filter.js';
 import type * as Misskey from 'cherrypick-js';
 
+vi.mock('@/i18n.js', () => ({ i18n: {} }));
+
 describe('notification filter persistence', () => {
+	test('Hataskのお花を個別に選択でき、保存済みフィルタには勝手に追加しない', () => {
+		const oldTypes = notificationTypes.filter(type => type !== 'hataskFlowerReady');
+		expect(resolveNotificationFilter([], oldTypes).excludeTypes).toContain('hataskFlowerReady');
+		expect(resolveNotificationFilter([], []).excludeTypes).not.toContain('hataskFlowerReady');
+		const disabled = serializeNotificationFilter(['hataskFlowerReady'], [], oldTypes);
+		expect(resolveNotificationFilter(disabled.excludeTypes, disabled.knownTypes).excludeTypes).toEqual(['hataskFlowerReady']);
+		const enabled = serializeNotificationFilter([], disabled.excludeTypes, disabled.knownTypes);
+		expect(resolveNotificationFilter(enabled.excludeTypes, enabled.knownTypes).excludeTypes).not.toContain('hataskFlowerReady');
+	});
+
 	test('旧設定は現在の表示状態を勝手に変えない', () => {
 		const result = resolveNotificationFilter(['reaction'], []);
 

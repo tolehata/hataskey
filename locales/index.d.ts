@@ -12592,6 +12592,10 @@ export interface Locale extends ILocale {
              */
             "hataFeed": string;
             /**
+             * Hataskのお花
+             */
+            "hataskFlowerReady": string;
+            /**
              * 地震・津波情報
              */
             "earthquake": string;
@@ -15245,7 +15249,41 @@ export interface Locale extends ILocale {
         "hasDeliveryTargets": string;
     };
     "_hata": {
+        "_notificationToast": {
+            /**
+             * 通知ポップアップの位置
+             */
+            "position": string;
+            /**
+             * 通知ポップアップの並び方
+             */
+            "stack": string;
+            /**
+             * Hataskey UIでは自動配置
+             */
+            "automatic": string;
+            /**
+             * Hataskey UIの通常表示では、PCは上部ナビバーの下、モバイルは上部ナビバーの上に通知を表示します。モバイルでタイムライン以外にいるときは、ナビバーを表示せず、画面上部に不透明な背景で通知だけを表示します。PCで上部ナビバーが非表示のときやデッキ表示では、右下に表示します。通知は5秒で閉じます。
+             */
+            "placement": string;
+            /**
+             * 上部に表示する通知は新しい通知に入れ替わり、前の通知は下へスライドして消えます。PCの右下では最大3件を縦に並べます。
+             */
+            "sequence": string;
+            /**
+             * 位置・並び方の選択はHataskey UI以外に適用されます。Hataskey UIは通常通知・外部通知とも自動配置です。
+             */
+            "otherUi": string;
+            /**
+             * 外部通知
+             */
+            "external": string;
+        };
         "_customNotifications": {
+            /**
+             * お花が満開になりました。Hataskの「おはな」で収穫できます。
+             */
+            "flowerReady": string;
             /**
              * 新しいお知らせ
              */
@@ -25062,6 +25100,46 @@ export interface Locale extends ILocale {
                  */
                 "communityFlowerActivity": string;
                 /**
+                 * みんなの花壇
+                 */
+                "communityGarden": string;
+                /**
+                 * {count}輪
+                 */
+                "flowerCount": ParameterizedString<"count">;
+                /**
+                 * 収穫
+                 */
+                "flowerHarvestedAt": string;
+                /**
+                 * 育てた人
+                 */
+                "flowerOwner": string;
+                /**
+                 * 自動スクロールを止める
+                 */
+                "pauseFlowerScroll": string;
+                /**
+                 * 自動スクロールを再開
+                 */
+                "resumeFlowerScroll": string;
+                /**
+                 * 春のお花が咲きやすい季節
+                 */
+                "flowerSeasonSpring": string;
+                /**
+                 * 夏のお花が咲きやすい季節
+                 */
+                "flowerSeasonSummer": string;
+                /**
+                 * 秋のお花が咲きやすい季節
+                 */
+                "flowerSeasonAutumn": string;
+                /**
+                 * 冬のお花が咲きやすい季節
+                 */
+                "flowerSeasonWinter": string;
+                /**
                  * みんなのお花を読み込み中
                  */
                 "flowerGalleryLoading": string;
@@ -25318,7 +25396,7 @@ export interface Locale extends ILocale {
                  */
                 "flowerInfoGrowth": string;
                 /**
-                 * 画面を閉じたりバックグラウンドにしている間も、経過時間に応じて少しずつ成長します（約8〜32時間）。
+                 * 画面を閉じている間も成長します。通常のお花は約8〜32時間、これから育てるレア花は約48〜96時間で開花します。育成中のお花の残り時間は変わりません。
                  */
                 "flowerInfoTime": string;
                 /**
@@ -25326,9 +25404,13 @@ export interface Locale extends ILocale {
                  */
                 "flowerInfoNaming": string;
                 /**
-                 * 全125種類以上のお花や奇妙なアイテムが用意されています。レアアイテムも！
+                 * 季節ごとに出やすい品種があります。季節外でも出会えます。レア花は出会いにくく、ギャラリーの枠が輝きます。季節は日本時間で切り替わります。
                  */
                 "flowerInfoVariety": string;
+                /**
+                 * レア花
+                 */
+                "rareFlower": string;
                 /**
                  * まずは見た目を選びましょう
                  */
@@ -25654,7 +25736,7 @@ export interface Locale extends ILocale {
                  */
                 "tutorialGardenBody": string;
                 /**
-                 * 約8-32時間で開花。レアアイテムも…？
+                 * 通常は約8〜32時間、レア花は約48〜96時間で開花
                  */
                 "tutorialGardenBloom": string;
                 /**

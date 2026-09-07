@@ -11,6 +11,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				ref="tlEl" :key="listId"
 				src="list"
 				:list="listId"
+				:newNotesNavbarKey="router === mainRouter ? `list:${listId}` : undefined"
 				:sound="true"
 			/>
 		</div>
@@ -25,7 +26,7 @@ import MkStreamingNotesTimeline from '@/components/MkStreamingNotesTimeline.vue'
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { definePage } from '@/page.js';
 import { i18n } from '@/i18n.js';
-import { useRouter } from '@/router.js';
+import { mainRouter, useRouter } from '@/router.js';
 import { miLocalStorage } from '@/local-storage.js';
 
 const router = useRouter();

@@ -165,6 +165,15 @@ export type MiNotification = {
 	customIcon: string | null;
 	customLink: string | null;
 } | {
+	// Hataskの花が収穫できるようになった通知。
+	type: 'hataskFlowerReady';
+	id: string;
+	createdAt: string;
+	customBody: string;
+	customHeader: string | null;
+	customIcon: string | null;
+	customLink: string | null;
+} | {
 	// 旗鯖fork: 地震・津波情報の通知。app通知と同形だが、通知フィルタで個別ON/OFFできるよう専用タイプ。
 	type: 'earthquake';
 	id: string;

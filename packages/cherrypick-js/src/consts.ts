@@ -33,6 +33,7 @@ export const notificationTypes = [
 	'groupInvited',
 	'app',
 	'hataFeed',
+	'hataskFlowerReady',
 	'earthquake',
 	// 旗鯖fork: プライベートチャンネルのメンバー構成変更通知 (追加/削除)
 	'addedToPrivateChannel',

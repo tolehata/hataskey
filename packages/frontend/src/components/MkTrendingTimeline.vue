@@ -31,7 +31,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 <template>
 <div :class="$style.root">
 	<!-- 新規ランクイン通知バー -->
-	<div v-if="newCount > 0" :class="$style.newBanner" @click="reloadWithNewSeed">
+	<div v-if="!newNotesInNavbar && newCount > 0" :class="$style.newBanner" @click="reloadWithNewSeed">
 		<i class="ti ti-flame"></i>
 		<span>{{ i18n.tsx._trending.newNotesAvailable({ n: newCount }) }}</span>
 	</div>
@@ -67,11 +67,13 @@ import { misskeyApi } from '@/utility/misskey-api.js';
 import { Paginator } from '@/utility/paginator.js';
 import { prefer } from '@/preferences.js';
 import { miLocalStorage } from '@/local-storage.js';
+import { useHataskeyTimelineNewNotes } from '@/utility/hataskey-timeline-new-notes.js';
 
 const props = withDefaults(defineProps<{
 	// 旗鯖fork: 通常表示タイムラインの背景ぼかしが敷かれている時、simple.vue から true が渡る。
 	// MkStreamingNotesTimeline と同じ data-glass-bg を出してノートカード面を半透明化する。
 	glassBg?: boolean;
+	newNotesNavbarKey?: string;
 }>(), {
 	glassBg: false,
 });
@@ -113,6 +115,12 @@ function generateSeed(): number {
 }
 const currentSeed = ref<number>(generateSeed());
 const newCount = ref<number>(0);
+const newNotesInNavbar = useHataskeyTimelineNewNotes(() => props.newNotesNavbarKey, () => newCount.value > 0 ? {
+	text: i18n.tsx._trending.newNotesAvailable({ n: newCount.value }),
+	icon: 'ti ti-flame',
+	show: reloadWithNewSeed,
+} : null);
+
 const knownNoteIds = ref<Set<string>>(new Set());
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 

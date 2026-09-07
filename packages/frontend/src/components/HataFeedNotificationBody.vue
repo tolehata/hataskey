@@ -6,7 +6,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 更新される前でも /emoji/:name.webp を直接使い、ショートコードへ退行しないようにする。
 -->
 <template>
-<span :class="$style.root">
+<span :class="$style.root" :data-punctuation-wrap="punctuationWrap">
 	<template v-for="(segment, index) in segments" :key="index">
 		<MkCustomEmoji
 			v-if="segment.type === 'emoji'"
@@ -16,7 +16,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			:normal="true"
 			:fallbackToImage="false"
 		/>
-		<template v-else>{{ segment.text }}</template>
+		<MkNotificationText v-else :text="segment.text" :wrap="punctuationWrap"/>
 	</template>
 </span>
 </template>
@@ -25,8 +25,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 import { computed } from 'vue';
 import MkCustomEmoji from '@/components/global/MkCustomEmoji.vue';
 import { splitHataFeedNotificationBody } from '@/utility/hatafeed-notification-emoji.js';
+import MkNotificationText from '@/components/MkNotificationText.js';
 
-const props = defineProps<{ text: string }>();
+const props = defineProps<{ text: string; punctuationWrap?: boolean }>();
 
 const segments = computed(() => splitHataFeedNotificationBody(props.text));
 </script>
@@ -35,5 +36,6 @@ const segments = computed(() => splitHataFeedNotificationBody(props.text));
 .root {
 	white-space: pre-wrap;
 	word-break: break-word;
+	&[data-punctuation-wrap='true'] { word-break: keep-all; overflow-wrap: anywhere; line-break: strict; }
 }
 </style>

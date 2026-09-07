@@ -22,6 +22,7 @@ import MkGoogle from '@/components/MkGoogle.vue';
 import MkSparkle from '@/components/MkSparkle.vue';
 import MkA from '@/components/global/MkA.vue';
 import { prefer } from '@/preferences.js';
+import { notificationTextChildren } from '@/components/MkNotificationText.js';
 
 function safeParseFloat(str: unknown): number | null {
 	if (typeof str !== 'string' || str === '') return null;
@@ -43,6 +44,7 @@ type MfmProps = {
 	text: string;
 	plain?: boolean;
 	nowrap?: boolean;
+	punctuationWrap?: boolean;
 	author?: Misskey.entities.UserLite;
 	isNote?: boolean;
 	emojiUrls?: Record<string, string>;
@@ -102,12 +104,13 @@ export default function (props: MfmProps, { emit }: { emit: SetupContext<MfmEven
 					const res: (VNode | string)[] = [];
 					for (const t of text.split('\n')) {
 						res.push(h('br'));
-						res.push(t);
+						res.push(...(props.punctuationWrap ? notificationTextChildren(t) : [t]));
 					}
 					res.shift();
 					return res;
 				} else {
-					return [text.replace(/\n/g, ' ')];
+					const plainText = text.replace(/\n/g, ' ');
+					return props.punctuationWrap ? notificationTextChildren(plainText) : [plainText];
 				}
 			}
 

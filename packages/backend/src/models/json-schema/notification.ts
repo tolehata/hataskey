@@ -443,6 +443,33 @@ export const packedNotificationSchema = {
 			},
 		},
 	}, {
+		// 旗鯖fork: Hataskのお花の収穫通知(app通知と同形。通知フィルタで個別にON/OFFできるよう専用タイプ)
+		type: 'object',
+		properties: {
+			...baseSchema.properties,
+			type: {
+				type: 'string',
+				optional: false, nullable: false,
+				enum: ['hataskFlowerReady'],
+			},
+			body: {
+				type: 'string',
+				optional: false, nullable: false,
+			},
+			header: {
+				type: 'string',
+				optional: false, nullable: true,
+			},
+			icon: {
+				type: 'string',
+				optional: false, nullable: true,
+			},
+			link: {
+				type: 'string',
+				optional: false, nullable: true,
+			},
+		},
+	}, {
 		// 旗鯖fork: 地震・津波情報の通知(app通知と同形。通知フィルタで個別ON/OFF可)
 		type: 'object',
 		properties: {
