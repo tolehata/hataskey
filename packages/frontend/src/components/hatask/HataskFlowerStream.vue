@@ -91,6 +91,7 @@ type Position = { id: string; fraction: number };
 type Lane = {
 	index: number;
 	element: HTMLElement;
+	track: HTMLElement;
 	items: readonly HataskFlowerView[];
 	cycle: number;
 	offsets: number[];
@@ -171,6 +172,12 @@ function assignScroll(lane: Lane, value: number): void {
 	lane.position = next;
 	lane.element.scrollLeft = next;
 	lane.expectedScroll = lane.element.scrollLeft;
+	// Draw the fraction that native scrolling rounded away, without changing its hit targets.
+	lane.track.style.transform = `translate3d(${lane.expectedScroll - next}px, 0, 0)`;
+}
+
+function readPosition(lane: Lane): number {
+	return lane.position + (lane.element.scrollLeft - lane.expectedScroll);
 }
 
 function tick(time: number): void {
@@ -192,7 +199,7 @@ function pauseBriefly(): void {
 
 function capture(lane: Lane): Position | null {
 	if (!(lane.cycle > 0)) return null;
-	const offset = modulo(lane.element.scrollLeft - lane.cycle, lane.cycle);
+	const offset = modulo(readPosition(lane) - lane.cycle, lane.cycle);
 	let index = 0;
 	for (let i = 1; i < lane.offsets.length; i++) if (lane.offsets[i] <= offset) index = i;
 	const end = lane.offsets[index + 1] ?? lane.cycle;
@@ -218,12 +225,13 @@ async function layout(saved: (Position | null)[], focusedId?: string): Promise<v
 	const nextCopies: Record<number, number> = {};
 	for (const row of itemRows.value) {
 		const element = host.value.querySelector<HTMLElement>(`[data-row="${row.index}"]`);
-		if (!element) continue;
+		const track = element?.firstElementChild as HTMLElement | null;
+		if (!element || !track) continue;
 		const buttons = element.querySelectorAll<HTMLElement>('[data-flower-id]');
 		// Layout coordinates stay stable while Hatask animates an ancestor's scale/rotation.
 		const start = buttons[0].offsetLeft;
 		const cycle = row.items.length > 1 ? buttons[row.items.length].offsetLeft - start : 0;
-		const lane: Lane = { index: row.index, element, items: row.items, cycle: Math.max(0, cycle), offsets: [], position: 0, expectedScroll: 0, drag: null, suppressClickUntil: 0 };
+		const lane: Lane = { index: row.index, element, track, items: row.items, cycle: Math.max(0, cycle), offsets: [], position: 0, expectedScroll: 0, drag: null, suppressClickUntil: 0 };
 		lane.offsets = row.items.map((_, index) => buttons[index].offsetLeft - start);
 		nextCopies[row.index] = cycle > 0 ? Math.max(4, Math.ceil(element.clientWidth / cycle) + 3) : 4;
 		nextLanes.push(lane);
@@ -256,10 +264,10 @@ function onScroll(index: number): void {
 	const actual = lane.element.scrollLeft;
 	// Programmatic scroll events must not erase the unrendered fractional remainder.
 	if (Math.abs(actual - lane.expectedScroll) <= .75) return;
-	lane.position = actual;
+	lane.position += actual - lane.expectedScroll;
 	lane.expectedScroll = actual;
 	pauseBriefly();
-	if (actual < lane.cycle || actual >= lane.cycle * 2) assignScroll(lane, actual);
+	if (actual < lane.cycle || actual >= lane.cycle * 2) assignScroll(lane, lane.position);
 }
 
 function onPointerDown(index: number, event: PointerEvent): void {
@@ -268,7 +276,7 @@ function onPointerDown(index: number, event: PointerEvent): void {
 	stop();
 	const lane = lanes.find(row => row.index === index);
 	if (!lane || event.pointerType !== 'mouse' || event.button !== 0) return;
-	lane.drag = { id: event.pointerId, x: event.clientX, startScroll: lane.element.scrollLeft, moved: false };
+	lane.drag = { id: event.pointerId, x: event.clientX, startScroll: readPosition(lane), moved: false };
 }
 
 function onPointerMove(index: number, event: PointerEvent): void {

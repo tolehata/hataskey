@@ -103,7 +103,9 @@ async function mountStream(options: Partial<StreamProps> = {}, initialWidth = 60
 	vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
 		if (this.hasAttribute('data-flower-id') && this.parentElement?.parentElement) {
 			const index = [...this.parentElement.children].indexOf(this);
-			return new DOMRect((index * step(this) + 12 - this.parentElement.parentElement.scrollLeft) * ancestorScale, 0, (step(this) - 12) * ancestorScale, 140 * ancestorScale);
+			const translation = this.parentElement.style.transform.match(/^translate3d\(([-\d.e]+)px,/);
+			const translateX = translation ? Number(translation[1]) : 0;
+			return new DOMRect((index * step(this) + 12 + translateX - this.parentElement.parentElement.scrollLeft) * ancestorScale, 0, (step(this) - 12) * ancestorScale, 140 * ancestorScale);
 		}
 		return new DOMRect(0, 0, width, 160);
 	});
@@ -170,6 +172,108 @@ afterEach(() => {
 });
 
 describe('HataskFlowerStream', () => {
+	test.each([
+		{ fps: 60, rounding: '四捨五入', round: Math.round },
+		{ fps: 120, rounding: '四捨五入', round: Math.round },
+		{ fps: 60, rounding: '切り捨て', round: Math.floor },
+		{ fps: 120, rounding: '切り捨て', round: Math.floor },
+	])('$fps Hz・$roundingでも各フレームの表示位置が一定量ずつ進む', async ({ fps, round }) => {
+		const f = await mountStream({}, 600, false, 1, round);
+		const anchors = [0, 1].map(row => requiredElement(f.lane(row).querySelector<HTMLElement>('[data-copy="0"]')));
+		await f.advance(0);
+		// Vue Devtools can register its own timer when the first app mounts.
+		const initialTimers = f.timers.size;
+		for (let frame = 0; frame < fps; frame++) {
+			const before = anchors.map(anchor => anchor.getBoundingClientRect().left);
+			await f.advance(1000 / fps);
+			for (const [row, anchor] of anchors.entries()) {
+				expect(before[row] - anchor.getBoundingClientRect().left).toBeCloseTo(14 / fps, 5);
+			}
+		}
+		expect(f.timers.size).toBe(initialTimers);
+		expect(f.frames.size).toBe(1);
+	});
+
+	test('スマホの活動列も小数位置で停止・再開するときに表示位置を保つ', async () => {
+		const f = await mountStream({ activity: true }, 360, false, 1, Math.floor);
+		const anchor = f.originals()[0];
+		await f.advance(0); await f.advance(16);
+		for (const [stop, resume] of [
+			[() => f.update({ paused: true }), () => f.update({ paused: false })],
+			[() => f.update({ animations: false }), () => f.update({ animations: true })],
+			[() => f.setReduced(true), () => f.setReduced(false)],
+			[() => f.setHidden(true), () => f.setHidden(false)],
+			[() => f.root().dispatchEvent(new MouseEvent('mouseenter')), () => f.root().dispatchEvent(new MouseEvent('mouseleave'))],
+			[() => anchor.focus(), () => f.outside.focus()],
+		]) {
+			const before = anchor.getBoundingClientRect().left;
+			await stop(); await f.settle(); await f.advance(1000);
+			expect(anchor.getBoundingClientRect().left).toBeCloseTo(before, 5);
+			await resume(); await f.settle(); await f.advance(0); await f.advance(16);
+			expect(before - anchor.getBoundingClientRect().left).toBeCloseTo(.224, 5);
+		}
+	});
+
+	test('小数位置からのtouchスクロールと自動再開に段差が生じない', async () => {
+		const f = await mountStream({}, 360, false, 1, Math.floor);
+		const element = f.lane(), anchor = f.originals()[0];
+		await f.advance(0); await f.advance(16);
+		const before = anchor.getBoundingClientRect().left;
+		f.pointer(element, 'pointerdown', 100, 'touch');
+		element.scrollLeft += 25;
+		f.flushScroll();
+		expect(before - anchor.getBoundingClientRect().left).toBeCloseTo(25, 5);
+		f.pointer(element, 'pointerup', 75, 'touch');
+		await f.advance(551);
+		expect(before - anchor.getBoundingClientRect().left).toBeCloseTo(25, 5);
+		await f.advance(16);
+		expect(before - anchor.getBoundingClientRect().left).toBeCloseTo(25.224, 5);
+	});
+
+	test('小数位置からのmouseドラッグと自動再開に段差が生じない', async () => {
+		const f = await mountStream({}, 600, false, 1, Math.round);
+		const element = f.lane(), anchor = f.originals()[0];
+		await f.advance(0); await f.advance(16);
+		const before = anchor.getBoundingClientRect().left;
+		f.pointer(element, 'pointerdown', 100);
+		f.pointer(element, 'pointermove', 80);
+		await f.settle();
+		expect(before - anchor.getBoundingClientRect().left).toBeCloseTo(20, 5);
+		f.pointer(element, 'pointerup', 80);
+		await f.advance(551); await f.advance(16);
+		expect(before - anchor.getBoundingClientRect().left).toBeCloseTo(20.224, 5);
+	});
+
+	test('手動の逆方向折り返しと自動のループ境界でも小数位置を保つ', async () => {
+		const f = await mountStream({}, 600, false, 1, Math.floor);
+		const element = f.lane(), anchor = f.originals()[0], cycle = f.cycle(element);
+		await f.advance(0); await f.advance(16);
+		element.scrollLeft = cycle - 1;
+		const beforeWrap = anchor.getBoundingClientRect().left;
+		f.flushScroll();
+		expect(beforeWrap - anchor.getBoundingClientRect().left).toBeCloseTo(cycle, 5);
+		await f.advance(551);
+		for (let frame = 0; frame < 10; frame++) {
+			const before = anchor.getBoundingClientRect().left;
+			await f.advance(1000 / 60);
+			const distance = before - anchor.getBoundingClientRect().left;
+			expect(distance - Math.round(distance / cycle) * cycle).toBeCloseTo(14 / 60, 5);
+		}
+	});
+
+	test('拡大縮小中の再配置でも小数位置を保ち、1輪へ減ると補正をリセットする', async () => {
+		const f = await mountStream({}, 600, false, .9, Math.floor);
+		await f.advance(0); await f.advance(16);
+		const before = f.originals()[0].getBoundingClientRect().left;
+		await f.resize(600);
+		expect(f.originals()[0].getBoundingClientRect().left).toBeCloseTo(before, 5);
+		await f.resize(519);
+		expect(f.originals()[0].getBoundingClientRect().left).toBeCloseTo((12 - .224 * 114 / 130) * .9, 5);
+		await f.update({ items: [sample[0]] });
+		expect(f.originals()[0].getBoundingClientRect().left).toBeCloseTo(12 * .9, 5);
+		expect(f.frames.size).toBe(0);
+	});
+
 	test.each([60, 120])('%i Hz・整数pxに丸められる表示でも小数の移動量を蓄積して両段を流す', async fps => {
 		const f = await mountStream({}, 600, false, 1, Math.round);
 		const start = [f.lane().scrollLeft, f.lane(1).scrollLeft];
