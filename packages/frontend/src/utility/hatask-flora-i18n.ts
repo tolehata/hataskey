@@ -141,6 +141,22 @@ export const floraTranslations = [
 	{ en: { name: 'Egg nest', hanakotoba: 'Birth' }, zh: { name: '蛋巢', hanakotoba: '诞生' } },
 	{ en: { name: 'Plush flower', hanakotoba: 'Warmth' }, zh: { name: '毛绒花', hanakotoba: '温暖' } },
 	{ en: { name: 'Pumpkin flower', hanakotoba: 'Transformation' }, zh: { name: '南瓜花', hanakotoba: '变身' } },
+	{ en: { name: 'Daffodil', hanakotoba: '' }, zh: { name: '水仙', hanakotoba: '' } },
+	{ en: { name: 'Spring starflower', hanakotoba: '' }, zh: { name: '春星韭', hanakotoba: '' } },
+	{ en: { name: 'Calanthe orchid', hanakotoba: '' }, zh: { name: '虾脊兰', hanakotoba: '' } },
+	{ en: { name: 'Katakuri', hanakotoba: '' }, zh: { name: '猪牙花', hanakotoba: '' } },
+	{ en: { name: 'Agapanthus', hanakotoba: '' }, zh: { name: '百子莲', hanakotoba: '' } },
+	{ en: { name: 'Red-hot poker', hanakotoba: '' }, zh: { name: '火把莲', hanakotoba: '' } },
+	{ en: { name: 'Bee balm', hanakotoba: '' }, zh: { name: '美国薄荷', hanakotoba: '' } },
+	{ en: { name: 'Coneflower', hanakotoba: '' }, zh: { name: '紫锥花', hanakotoba: '' } },
+	{ en: { name: 'Golden lace', hanakotoba: '' }, zh: { name: '黄花败酱', hanakotoba: '' } },
+	{ en: { name: 'Thoroughwort', hanakotoba: '' }, zh: { name: '兰草', hanakotoba: '' } },
+	{ en: { name: 'Toad lily', hanakotoba: '' }, zh: { name: '短毛油点草', hanakotoba: '' } },
+	{ en: { name: 'Leopard plant', hanakotoba: '' }, zh: { name: '大吴风草', hanakotoba: '' } },
+	{ en: { name: 'Wintersweet', hanakotoba: '' }, zh: { name: '蜡梅', hanakotoba: '' } },
+	{ en: { name: 'Setsubunso', hanakotoba: '' }, zh: { name: '节分草', hanakotoba: '' } },
+	{ en: { name: 'Christmas rose', hanakotoba: '' }, zh: { name: '圣诞玫瑰', hanakotoba: '' } },
+	{ en: { name: 'Winter heath', hanakotoba: '' }, zh: { name: '冬石南', hanakotoba: '' } },
 ] as const satisfies readonly Readonly<{ en: FloraTranslation; zh: FloraTranslation }>[];
 
 export const adjectiveTranslations = [

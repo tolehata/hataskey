@@ -683,9 +683,9 @@ describe('settings control search index V2', () => {
 		expect(storageTargets('reactionAcceptance').map(descriptor => descriptor.stableId)).toHaveLength(1);
 		expect(storageTargets('realtimeMode').map(descriptor => descriptor.stableId)).toHaveLength(1);
 		const audit = collectSettingsStorageKeyAuditV2(input);
-		expect(audit.counts).toEqual({ preference: 275, pizzax: 105, local: 94 });
+		expect(audit.counts).toEqual({ preference: 275, pizzax: 105, local: 95 });
 		expect(audit.items.find(item => item.kind === 'preference' && item.key === 'enableCondensedLine')).toMatchObject({ disposition: 'deprecated', descriptorStableIds: [] });
-		expect(audit.items).toHaveLength(474);
+		expect(audit.items).toHaveLength(475);
 		expect(audit.items.every(item => item.reason.length > 0)).toBe(true);
 		expect(audit.items.every(item => item.descriptorStableIds.length > 0
 			? item.disposition === 'catalog-control' || item.disposition === 'catalog-group'
@@ -698,7 +698,7 @@ describe('settings control search index V2', () => {
 			'pizzax:catalog-control': 8, 'pizzax:catalog-group': 1, 'pizzax:runtime': 9,
 			'pizzax:migration': 3, 'pizzax:cache': 2, 'pizzax:deprecated': 78, 'pizzax:internal': 4,
 			'local:catalog-control': 14, 'local:runtime': 3, 'local:migration': 21,
-			'local:cache': 29, 'local:deprecated': 6, 'local:internal': 21,
+			'local:cache': 30, 'local:deprecated': 6, 'local:internal': 21,
 		});
 		expect(audit.items.filter(item => item.kind === 'pizzax' && item.disposition === 'catalog-control')
 			.map(item => item.key).sort()).toEqual([
@@ -744,12 +744,16 @@ describe('settings control search index V2', () => {
 	test('実Vite入力でもstorage key XOR監査を実行し、runtime evidence変更を再生成対象にする', async () => {
 		const inventory = await collectRealSettingsInventory();
 		const audit = await collectSettingsStorageKeyAuditFromRepositoryV2(process.cwd(), inventory.files, inventory.descriptors);
-		expect(audit.counts).toEqual({ preference: 275, pizzax: 105, local: 94 });
+		expect(audit.counts).toEqual({ preference: 275, pizzax: 105, local: 95 });
 		expect(audit.items.find(item => item.kind === 'preference' && item.key === 'enableCondensedLine')).toMatchObject({ disposition: 'deprecated', descriptorStableIds: [] });
 		expect(SETTINGS_STORAGE_KEY_AUDIT_EVIDENCE_FILES_V2).toContain('src/ui/universal.vue');
 		expect(SETTINGS_STORAGE_KEY_AUDIT_EVIDENCE_FILES_V2).toContain('src/preferences/def.ts');
 		expect(SETTINGS_STORAGE_KEY_AUDIT_EVIDENCE_FILES_V2).toContain('src/utility/retired-portal-migration.ts');
 		expect(SETTINGS_STORAGE_KEY_AUDIT_EVIDENCE_FILES_V2).toContain('src/utility/external-notifications-sidebar-migration.ts');
+		expect(SETTINGS_STORAGE_KEY_AUDIT_EVIDENCE_FILES_V2).toContain('src/utility/hatask-akatsuki-usage.ts');
+		expect(audit.items.find(item => item.kind === 'local' && item.key === 'hataskAkatsukiUsage:${string}')).toMatchObject({
+			disposition: 'cache', descriptorStableIds: [], reason: expect.stringContaining('[src/utility/hatask-akatsuki-usage.ts]'),
+		});
 	});
 
 	test('ポータル移行のアカウント・プロファイル別キーだけを実装証拠付きで分類し、別キーや証拠欠落は拒否する', async () => {

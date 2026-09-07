@@ -176,7 +176,7 @@ describe('HataskAkatsukiApps', () => {
 		expect(heading.nextElementSibling).toBe(firstGroup);
 	});
 
-	test('Hataskey Appの見出し線だけをPC・モバイルで外し、Hataskと分類の線を保つ', async () => {
+	test('両Appの見出し線をPC・モバイルで外し、分類の線を保つ', async () => {
 		const filename = resolve(process.cwd(), 'src/components/hatask/HataskAkatsukiApps.vue');
 		const parsed = parse(readFileSync(filename, 'utf8'), { filename });
 		expect(parsed.errors).toEqual([]);
@@ -201,9 +201,8 @@ describe('HataskAkatsukiApps', () => {
 			expect(base.container).toBe(condition);
 			const titleRule = (rule: typeof rules[number]): boolean => rule.value === 'none' && rule.selector.endsWith(` .${classes[name]}`);
 			const overrides = rules.filter(titleRule);
-			expect(overrides).toHaveLength(1);
-			const override = overrides[0];
-			expect(override.container).toBe(condition);
+			expect(overrides).toHaveLength(2);
+			for (const override of overrides) expect(override.container).toBe(condition);
 			for (const kind of ['hatask', 'tools'] as const) {
 				const fixture = window.document.createElement('section');
 				fixture.className = classes.root;
@@ -212,9 +211,10 @@ describe('HataskAkatsukiApps', () => {
 				heading.className = classes[name];
 				fixture.append(heading);
 				expect(heading.matches(base.selector)).toBe(true);
-				expect(heading.matches(override.selector)).toBe(kind === 'tools');
-				// Removing the kind restriction must be detected for Hatask as well.
-				expect(heading.matches(`.${classes.root} .${classes[name]}`)).toBe(true);
+				expect(overrides.filter(rule => heading.matches(rule.selector))).toHaveLength(1);
+				// The override is scoped to these two app lists.
+				fixture.dataset.kind = 'other';
+				expect(overrides.some(rule => heading.matches(rule.selector))).toBe(false);
 			}
 		}
 		expect(rules.find(rule => rule.selector === `.${classes.category}`)?.value).toBe('1px solid var(--rule2)');

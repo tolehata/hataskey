@@ -5,6 +5,17 @@
 
 export type HataskAkatsukiTab = 'home' | 'cal' | 'todo' | 'mood' | 'meal' | 'garden' | 'eye' | 'hataskapps' | 'apps';
 
+export type HataskAkatsukiHomeSectionId = 'tools' | 'calendar' | 'todo' | 'feedback' | 'meal';
+export interface HataskAkatsukiHomeSection {
+	id: HataskAkatsukiHomeSectionId;
+	label: string;
+	icon: string;
+	summary: string;
+	reason: string;
+	priority: number;
+	count?: number;
+}
+
 /** The layout emits intentions only; the page owns permission checks and persistence. */
 export interface HataskAkatsukiAction {
 	type: 'exit' | 'open-event' | 'create-event' | 'create-todo' | 'record-mood' | 'record-meal' | 'water-flower' | 'toggle-todo' | 'open-app' | 'open-eye' | 'snooze-event';
@@ -35,8 +46,10 @@ export interface HataskAkatsukiEvent {
 }
 
 export interface HataskAkatsukiModel {
+	home?: { sections: HataskAkatsukiHomeSection[]; recommended: HataskAkatsukiHomeSectionId; hasUsage: boolean };
 	/** True until actual account data has loaded; unknown counts must not become zero. */
 	loading?: boolean;
+	readOnly?: boolean;
 	dateLabel?: string;
 	weekdayLabel?: string;
 	dayCountLabel?: string;

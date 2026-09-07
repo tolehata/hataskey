@@ -7,6 +7,8 @@ export type HataskFlower = {
 	id: string;
 	emoji: string;
 	name: string;
+	speciesId?: string;
+	rare?: boolean;
 	progress: number;
 	totalMinutes: number;
 	targetMinutes: number;
@@ -35,12 +37,14 @@ function safeNumber(value: unknown, fallback = 0): number {
 export function normalizeGrowingFlower(value: unknown): HataskFlower {
 	if (value == null || typeof value !== 'object') return { ...FALLBACK_FLOWER };
 	const flower = value as Record<string, unknown>;
-	const targetMinutes = Math.max(480, Math.min(1920, Math.floor(safeNumber(flower.targetMinutes, 1200))));
+	const targetMinutes = Math.max(480, Math.min(flower.rare === true ? 5760 : 1920, Math.floor(safeNumber(flower.targetMinutes, 1200))));
 	const totalMinutes = Math.max(0, Math.min(targetMinutes, Math.floor(safeNumber(flower.totalMinutes))));
 	return {
 		id: 'growing',
 		emoji: safeText(flower.emoji, FALLBACK_FLOWER.emoji),
 		name: safeText(flower.name, FALLBACK_FLOWER.name),
+		...(typeof flower.speciesId === 'string' && flower.speciesId.trim() ? { speciesId: safeText(flower.speciesId, '') } : {}),
+		...(typeof flower.rare === 'boolean' ? { rare: flower.rare } : {}),
 		progress: Math.max(0, Math.min(100, Math.floor((totalMinutes / targetMinutes) * 100))),
 		totalMinutes,
 		targetMinutes,
@@ -58,8 +62,10 @@ export function normalizeFlowerGallery(value: unknown, limit: number, unnamedFlo
 		.map((item, index) => ({
 			id: safeText(item.id, `flower-${index}`),
 			emoji: safeText(item.emoji, '🌼'),
-		name: safeText(item.name, safeUnnamedFlowerName),
-		progress: 100,
+			name: safeText(item.name, safeUnnamedFlowerName),
+			...(typeof item.speciesId === 'string' && item.speciesId.trim() ? { speciesId: safeText(item.speciesId, '') } : {}),
+			...(typeof item.rare === 'boolean' ? { rare: item.rare } : {}),
+			progress: 100,
 			totalMinutes: 0,
 			targetMinutes: 1200,
 			date: typeof item.date === 'string' ? item.date.slice(0, 40) : undefined,

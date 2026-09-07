@@ -67,38 +67,76 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<div class="hak-mobile-date"><span class="hak-date hak-round">{{ dateLabel }}</span><span class="hak-dow">{{ weekdayLabel }}</span><span v-if="model.dayCountLabel" class="hak-day-count hak-num">{{ model.dayCountLabel }}</span></div>
 						<p>{{ model.loading ? '記録を読み込んでいます' : model.summary || 'きょうの予定と記録を、ここから' }}</p>
 					</div>
-					<div v-if="model.showEvents !== false" class="hak-next">
-						<p v-if="model.scheduleUnavailable && !model.loading" role="status">予定を読み込めませんでした</p>
-						<template v-if="model.next && !model.loading">
-							<h1 class="hak-round"><span class="hak-next-lead">つぎは、</span><span class="hak-next-title">{{ model.next.title }}</span></h1>
-							<p>{{ model.next.meta || model.next.timeLabel }}<template v-if="model.next.detail"><br>{{ model.next.detail }}</template></p>
-							<div class="hak-actions">
-								<template v-if="model.next.buttons?.length">
-									<button v-for="(button, index) in model.next.buttons" :key="index" class="hak-action-button" :data-primary="button.primary" type="button" :disabled="button.disabled" @click="dispatch(button.action)"><i v-if="button.icon" :class="button.icon" aria-hidden="true"></i>{{ button.label }}</button>
-								</template>
-								<button v-else class="hak-action-button" data-primary="true" type="button" @click="openEvent(model.next)"><i class="ti ti-calendar-event" aria-hidden="true"></i>予定を開く</button>
-							</div>
-						</template>
-						<template v-else-if="!model.loading && !model.scheduleUnavailable"><h1 class="hak-round"><span class="hak-next-lead">つぎの予定は、</span><span class="hak-next-title">まだありません</span></h1><div class="hak-actions"><button class="hak-action-button" data-primary="true" type="button" @click="dispatch({ type: 'create-event' })"><i class="ti ti-plus" aria-hidden="true"></i>予定を追加</button></div></template>
-					</div>
-					<div v-if="model.showEvents !== false && !model.scheduleUnavailable" class="hak-timeline" role="group" aria-label="きょうの時間帯別の予定">
-						<div v-if="activeTimelineEntry" class="hak-timeline-label" :style="{ '--hak-label-left': `${activeTimelineEntry.left}%`, '--hak-label-width': `${100 - activeTimelineEntry.left}%` }"><strong class="hak-num">{{ activeTimelineEntry.event.timeLabel }}</strong><span>{{ activeTimelineEntry.event.title }}</span></div>
-						<span class="hak-time-axis" aria-hidden="true"></span>
-						<span v-for="tick in timelineTicks" :key="tick.minute" class="hak-time-tick hak-num" :data-major="tick.major" :style="{ left: `${tick.left}%` }" aria-hidden="true">{{ tick.label }}</span>
-						<button v-for="entry in timelineEntries" :key="entry.event.id" class="hak-time-block" :data-main="entry.event.id === model.next?.id" :style="{ left: `${entry.left}%`, width: `${entry.width}%` }" type="button" :aria-label="`${entry.event.timeLabel} ${entry.event.title}`" :title="`${entry.event.timeLabel} ${entry.event.title}`" @click="openEvent(entry.event)"><span></span></button>
-						<span v-if="nowPosition !== null" class="hak-time-now" :style="{ left: `${nowPosition}%` }" role="img" :aria-label="`現在 ${clockLabel}`"></span>
-					</div>
-					<section v-if="model.showEvents !== false && !model.scheduleUnavailable" class="hak-later" aria-label="このあと">
-						<h2 class="hak-section-heading hak-round">このあと</h2>
-						<button v-for="entry in model.later ?? []" :key="entry.id" class="hak-later-row" type="button" :disabled="model.loading" @click="openEvent(entry)"><span class="hak-later-time hak-num">{{ entry.timeLabel }}</span><span class="hak-dot" :data-muted="entry.muted" aria-hidden="true"></span><span class="hak-later-title">{{ entry.title }}</span><i class="ti ti-chevron-right" aria-hidden="true"></i></button>
-						<p v-if="!model.loading && !model.later?.length" class="hak-empty">このあとの予定はありません</p>
+					<section class="hak-focus" aria-label="いま使いたいもの" @pointerenter="homeHovered = true" @pointerleave="homeHovered = false" @focusin="homeFocused = true" @focusout="onHomeFocusOut">
+						<div class="hak-focus-options" role="group" aria-label="ホームに表示する内容">
+							<button type="button" class="hak-focus-option" aria-label="おすすめ" title="おすすめ" :aria-pressed="manualHome === null" @click="selectHome(null)">
+								<i class="ti ti-sparkles" aria-hidden="true"></i><span v-if="manualHome === null">おすすめ</span>
+							</button>
+							<button v-for="section in homeSections" :key="section.id" type="button" class="hak-focus-option" :data-home-select="section.id" :aria-label="section.count ? `${section.label} ${section.count}` : section.label" :title="section.label" :aria-pressed="manualHome === section.id" @click="selectHome(section.id)">
+								<i :class="section.icon" aria-hidden="true"></i>
+								<template v-if="manualHome === section.id"><span>{{ section.label }}</span><span v-if="section.count" class="hak-focus-count hak-num">{{ section.count }}</span></template>
+							</button>
+						</div>
+						<div class="hak-focus-panel" :data-home-panel="activeHome">
+							<header class="hak-focus-head"><h2 class="hak-round"><i :class="activeHomeSection?.icon" aria-hidden="true"></i>{{ activeHomeSection?.label }}</h2><span>{{ activeHomeSection?.reason }}</span></header>
+							<p v-if="model.loading" class="hak-empty" role="status">記録を読み込んでいます</p>
+							<template v-else>
+								<div v-if="activeHome === 'calendar'" class="hak-focus-calendar">
+									<div v-if="model.showEvents !== false" class="hak-next">
+										<p v-if="model.scheduleUnavailable && !model.loading" role="status">予定を読み込めませんでした</p>
+										<template v-if="model.next && !model.loading">
+											<h1 class="hak-round"><span class="hak-next-lead">つぎは、</span><span class="hak-next-title">{{ model.next.title }}</span></h1>
+											<p>{{ model.next.meta || model.next.timeLabel }}<template v-if="model.next.detail"><br>{{ model.next.detail }}</template></p>
+											<div class="hak-actions">
+												<template v-if="model.next.buttons?.length">
+													<button v-for="(button, index) in model.next.buttons" :key="index" class="hak-action-button" :data-primary="button.primary" type="button" :disabled="button.disabled" @click="dispatch(button.action)"><i v-if="button.icon" :class="button.icon" aria-hidden="true"></i>{{ button.label }}</button>
+												</template>
+												<button v-else class="hak-action-button" data-primary="true" type="button" @click="openEvent(model.next)"><i class="ti ti-calendar-event" aria-hidden="true"></i>予定を開く</button>
+											</div>
+										</template>
+										<template v-else-if="!model.loading && !model.scheduleUnavailable"><h1 class="hak-round"><span class="hak-next-lead">つぎの予定は、</span><span class="hak-next-title">まだありません</span></h1><div class="hak-actions"><button class="hak-action-button" data-primary="true" type="button" :disabled="model.readOnly" @click="dispatch({ type: 'create-event' })"><i class="ti ti-plus" aria-hidden="true"></i>予定を追加</button></div></template>
+									</div>
+									<details v-if="model.showEvents !== false && !model.scheduleUnavailable" class="hak-schedule-details"><summary>きょうの時間帯別の予定</summary>
+										<div class="hak-timeline" role="group" aria-label="きょうの時間帯別の予定">
+											<div v-if="activeTimelineEntry" class="hak-timeline-label" :style="{ '--hak-label-left': `${activeTimelineEntry.left}%`, '--hak-label-width': `${100 - activeTimelineEntry.left}%` }"><strong class="hak-num">{{ activeTimelineEntry.event.timeLabel }}</strong><span>{{ activeTimelineEntry.event.title }}</span></div>
+											<span class="hak-time-axis" aria-hidden="true"></span>
+											<span v-for="tick in timelineTicks" :key="tick.minute" class="hak-time-tick hak-num" :data-major="tick.major" :style="{ left: `${tick.left}%` }" aria-hidden="true">{{ tick.label }}</span>
+											<button v-for="entry in timelineEntries" :key="entry.event.id" class="hak-time-block" :data-main="entry.event.id === model.next?.id" :style="{ left: `${entry.left}%`, width: `${entry.width}%` }" type="button" :aria-label="`${entry.event.timeLabel} ${entry.event.title}`" :title="`${entry.event.timeLabel} ${entry.event.title}`" @click="openEvent(entry.event)"><span></span></button>
+											<span v-if="nowPosition !== null" class="hak-time-now" :style="{ left: `${nowPosition}%` }" role="img" :aria-label="`現在 ${clockLabel}`"></span>
+										</div>
+									</details>
+									<section v-if="model.showEvents !== false && !model.scheduleUnavailable" class="hak-later" aria-label="このあと">
+										<h2 class="hak-section-heading hak-round">このあと</h2>
+										<button v-for="entry in model.later ?? []" :key="entry.id" class="hak-later-row" type="button" :disabled="model.loading" @click="openEvent(entry)"><span class="hak-later-time hak-num">{{ entry.timeLabel }}</span><span class="hak-dot" :data-muted="entry.muted" aria-hidden="true"></span><span class="hak-later-title">{{ entry.title }}</span><i class="ti ti-chevron-right" aria-hidden="true"></i></button>
+										<p v-if="!model.loading && !model.later?.length" class="hak-empty">このあとの予定はありません</p>
+									</section>
+								</div>
+								<div v-else-if="activeHome === 'tools'" class="hak-tools">
+									<button v-for="app in model.apps ?? []" :key="app.id" class="hak-tool" type="button" :data-home-tool="app.id" @click="dispatch({ type: 'open-app', id: app.id })"><i :class="app.icon" aria-hidden="true"></i><span>{{ app.label }}</span><i class="ti ti-chevron-right" aria-hidden="true"></i></button>
+									<p v-if="!model.apps?.length" class="hak-empty">Hatask Appから使いたいツールを開けます</p>
+								</div>
+								<div v-else-if="activeHome === 'todo'">
+									<p v-if="model.scheduleUnavailable" class="hak-empty" role="status">ToDoを読み込めませんでした</p>
+									<p v-else-if="!model.todos?.length" class="hak-empty">未完了のToDoはありません</p>
+									<button v-for="todo in model.todos ?? []" :key="todo.id" type="button" class="hak-todo-row" :aria-label="`${todo.title}：完了にする`" :aria-pressed="!!todo.completed" :disabled="todo.readOnly" @click="dispatch({ type: 'toggle-todo', id: todo.id, value: true })"><span class="hak-todo-box" :data-checked="todo.completed"><i v-if="todo.completed" class="ti ti-check" aria-hidden="true"></i></span><span class="hak-todo-copy"><strong>{{ todo.title }}</strong><small>{{ todo.meta }}</small></span></button>
+									<div class="hak-actions"><button type="button" class="hak-action-button" data-primary="true" :disabled="model.readOnly || model.scheduleUnavailable" @click="dispatch({ type: 'create-todo' })"><i class="ti ti-plus" aria-hidden="true"></i>ToDoを追加</button><button type="button" class="hak-action-button" @click="navigate('todo')">一覧を開く</button></div>
+								</div>
+								<div v-else-if="activeHome === 'feedback'">
+									<slot name="home-feedback"></slot>
+									<div class="hak-actions"><button type="button" class="hak-action-button" @click="dispatch({ type: 'open-app', id: 'feed' })">HataFeedを開く<i class="ti ti-arrow-right" aria-hidden="true"></i></button></div>
+								</div>
+								<div v-else-if="activeHome === 'meal'">
+									<button v-for="(meal, index) in model.meals ?? []" :key="meal.id" class="hak-rich-row" type="button" :disabled="meal.unavailable" @click="dispatch({ type: 'record-meal', id: meal.id })"><i :class="['ti', ['ti-sunrise', 'ti-sun', 'ti-moon'][index] ?? 'ti-soup']" aria-hidden="true"></i><span class="hak-rich-main"><strong>{{ meal.label }}ごはん</strong><small>{{ meal.text }}</small></span><span v-if="!meal.unavailable" class="hak-rich-status" :data-pending="!meal.recorded">{{ meal.recorded ? '記録済み' : '記録する' }}</span></button>
+									<div class="hak-actions"><button type="button" class="hak-action-button" @click="navigate('meal')">ごはんの記録を開く<i class="ti ti-arrow-right" aria-hidden="true"></i></button></div>
+								</div>
+							</template>
+						</div>
+						<div v-if="!model.loading" class="hak-suggestions" aria-label="ほかにも">
+							<button v-for="section in homeSuggestions" :key="section.id" class="hak-suggestion" type="button" :data-home-suggestion="section.id" @click="selectHome(section.id)"><i :class="section.icon" aria-hidden="true"></i><span><small>{{ section.reason }}</small><strong>{{ section.summary }}</strong></span><i class="ti ti-chevron-right" aria-hidden="true"></i></button>
+						</div>
 					</section>
 					<div v-if="model.stats?.length && !model.loading" class="hak-stats">
 						<component :is="stat.tab ? 'button' : 'div'" v-for="stat in model.stats" :key="stat.id" class="hak-stat" :type="stat.tab ? 'button' : undefined" @click="stat.tab && navigate(stat.tab)"><span class="hak-stat-label hak-round">{{ stat.label }}</span><span class="hak-stat-value"><strong class="hak-num">{{ stat.value }}</strong><span v-if="stat.unit">{{ stat.unit }}</span></span></component>
-					</div>
-					<div v-if="!model.loading && (model.meals?.length || model.flower)" class="hak-rich-grid">
-						<section v-if="model.meals?.length"><h2 class="hak-section-heading hak-round">きょうのごはん</h2><button v-for="(meal, index) in model.meals" :key="meal.id" class="hak-rich-row" type="button" :disabled="meal.unavailable" @click="dispatch({ type: 'record-meal', id: meal.id })"><i :class="['ti', ['ti-sunrise', 'ti-sun', 'ti-moon'][index] ?? 'ti-soup']" aria-hidden="true"></i><span class="hak-rich-slot">{{ meal.label }}</span><span class="hak-rich-copy">{{ meal.text }}</span><span v-if="!meal.unavailable" class="hak-rich-status" :data-pending="!meal.recorded">{{ meal.recorded ? '記録済' : '未記録' }}</span></button></section>
-						<section v-if="model.flower"><h2 class="hak-section-heading hak-round">おはなの様子</h2><template v-if="model.flower.rows?.length"><div v-for="row in model.flower.rows" :key="row.label" class="hak-rich-row"><span class="hak-rich-copy">{{ row.label }}</span><strong class="hak-num">{{ row.value }}</strong></div></template><template v-else><div class="hak-rich-row"><span class="hak-rich-copy">{{ model.flower.name }}</span><strong v-if="flowerProgress !== null" class="hak-num">{{ flowerProgress }}%</strong></div><div v-if="model.flower.watered !== undefined" class="hak-rich-row"><span class="hak-rich-copy">水やり</span><strong>{{ model.flower.watered ? '今日 済' : 'まだ' }}</strong></div><div v-if="model.flower.detail" class="hak-rich-row">{{ model.flower.detail }}</div></template></section>
 					</div>
 					<div v-if="$slots['home-extra']" class="hak-home-extra"><slot name="home-extra"/></div>
 				</section>
@@ -117,7 +155,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<div v-if="model.streakLabel" class="hak-side-row hak-streak hak-side-case"><i class="ti ti-flame" aria-hidden="true"></i><span class="hak-side-row-main">{{ model.streakLabel }}</span><span v-if="model.rankLabel" class="hak-rank hak-num">{{ model.rankLabel }}</span></div>
 					<button v-if="model.eye" class="hak-side-eye hak-round hak-side-case" type="button" @click="dispatch({ type: 'open-eye' })">{{ model.eye.text }}<small v-if="model.eye.number !== undefined" class="hak-num"> — EYE {{ model.eye.number }}</small></button>
 					<section v-if="model.todos?.length" class="hak-todo-block hak-side-case"><h3 class="hak-todo-title hak-round">ToDo</h3><button v-for="todo in model.todos" :key="todo.id" class="hak-todo-row" type="button" :aria-pressed="!!todo.completed" :aria-label="`${todo.title}：${todo.completed ? '未完了に戻す' : '完了にする'}`" :disabled="todo.readOnly" @click="dispatch({ type: 'toggle-todo', id: todo.id, value: !todo.completed })"><span class="hak-todo-box" :data-checked="todo.completed"><i v-if="todo.completed" class="ti ti-check" aria-hidden="true"></i></span><span class="hak-todo-copy"><strong :data-completed="todo.completed">{{ todo.title }}</strong><small v-if="todo.meta">{{ todo.meta }}</small></span></button></section>
-					<section v-if="model.apps?.length" class="hak-side-apps hak-side-case"><h3 class="hak-todo-title hak-brand">Apps</h3><button v-for="app in model.apps" :key="app.id" class="hak-side-row" type="button" @click="dispatch({ type: 'open-app', id: app.id })"><i :class="app.icon" aria-hidden="true"></i><span class="hak-side-row-main"><strong>{{ app.label }}</strong><small v-if="app.description">{{ app.description }}</small></span><i class="ti ti-chevron-right" aria-hidden="true"></i></button></section>
 				</template>
 			</aside>
 			<nav v-if="enabled && activeTab === 'home' && missingMobileAppTabs.length" class="hak-app-return hak-desktop-case" aria-label="下部ナビから外したアプリ">
@@ -142,7 +179,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <script setup lang="ts">
 import { computed, nextTick, onActivated, onBeforeUnmount, onDeactivated, onMounted, ref, useId, watch } from 'vue';
-import type { HataskAkatsukiAction, HataskAkatsukiEvent, HataskAkatsukiLayoutProps, HataskAkatsukiTab } from './hatask-akatsuki-types.js';
+import type { HataskAkatsukiAction, HataskAkatsukiEvent, HataskAkatsukiHomeSection, HataskAkatsukiHomeSectionId, HataskAkatsukiLayoutProps, HataskAkatsukiTab } from './hatask-akatsuki-types.js';
 import { normalizeHataskAkatsukiMobileTabs } from '@/utility/hatask-akatsuki-navigation.js';
 import { getHataskDaylightStyle } from '@/utility/hatask-daylight.js';
 import { globalEvents } from '@/events.js';
@@ -166,8 +203,42 @@ const searchResultsId = useId();
 const searchToggleEl = ref<HTMLButtonElement>();
 const fabEl = ref<HTMLButtonElement>();
 const fabSheetEl = ref<HTMLElement>();
-const railExpanded = ref<boolean | null>(null);
 const rootWidth = ref(1200);
+const isMobile = computed(() => rootWidth.value <= 599);
+const manualHome = ref<HataskAkatsukiHomeSectionId | null>(null);
+const homeHovered = ref(false);
+const homeFocused = ref(false);
+const homeSections = computed<HataskAkatsukiHomeSection[]>(() => {
+	const sections: HataskAkatsukiHomeSection[] = props.model.home?.sections ?? [
+		...(props.model.showEvents !== false ? [{ id: 'calendar' as const, label: '予定', icon: 'ti ti-calendar-event', summary: '', reason: 'このあとの予定', priority: 1 }] : []),
+		{ id: 'todo', label: 'ToDo', icon: 'ti ti-checkbox', summary: '', reason: '次に進めたいこと', priority: 0 },
+		...(props.model.meals?.length ? [{ id: 'meal' as const, label: 'ごはん', icon: 'ti ti-soup', summary: '', reason: 'きょうの食事', priority: 0 }] : []),
+		{ id: 'tools', label: 'ツール', icon: 'ti ti-apps', summary: '', reason: '使いたいツールを、ここから', priority: 0 },
+	];
+	return isMobile.value ? sections : sections.filter(section => section.id !== 'tools');
+});
+const recommendedHome = computed<HataskAkatsukiHomeSectionId>(() => homeSections.value.find(section => section.id === props.model.home?.recommended)?.id
+	?? [...homeSections.value].sort((a, b) => b.priority - a.priority)[0]?.id ?? 'calendar');
+const autoHome = ref<HataskAkatsukiHomeSectionId>(recommendedHome.value);
+const activeHome = computed(() => homeSections.value.find(section => section.id === (manualHome.value ?? autoHome.value))?.id ?? recommendedHome.value);
+const activeHomeSection = computed(() => homeSections.value.find(section => section.id === activeHome.value));
+const homeSuggestions = computed(() => homeSections.value.filter(section => section.id !== activeHome.value && section.priority > 0 && section.summary).sort((a, b) => b.priority - a.priority).slice(0, 2));
+watch([recommendedHome, () => homeSections.value.map(section => section.id).join(','), homeHovered, homeFocused, () => props.activeTab], () => {
+	if (manualHome.value && !homeSections.value.some(section => section.id === manualHome.value)) manualHome.value = null;
+	// Keep content stable while someone reads or operates it; manual choices last until Auto is selected.
+	if (!homeHovered.value && !homeFocused.value) autoHome.value = recommendedHome.value;
+}, { immediate: true });
+
+function selectHome(id: HataskAkatsukiHomeSectionId | null): void {
+	manualHome.value = id;
+	if (id === null) autoHome.value = recommendedHome.value;
+}
+
+function onHomeFocusOut(event: FocusEvent): void {
+	homeFocused.value = event.relatedTarget instanceof Node && event.currentTarget instanceof HTMLElement && event.currentTarget.contains(event.relatedTarget);
+}
+
+const railExpanded = ref<boolean | null>(null);
 const rootHeight = ref(800);
 const bodyWidth = ref(988);
 const searching = ref(false);
@@ -184,7 +255,6 @@ const layoutStyle = computed(() => props.enabled ? {
 	'--hak-app-title-size': `${rootWidth.value * .03}px`,
 } : undefined);
 const railCollapsed = computed(() => railExpanded.value === null ? rootWidth.value < 1000 : !railExpanded.value);
-const isMobile = computed(() => rootWidth.value <= 599);
 watch([isMobile, () => props.searchOpen], ([mobile, opened]) => {
 	if (mobile && opened) searching.value = true;
 });
@@ -497,7 +567,7 @@ onBeforeUnmount(disconnect);
 .htk-akatsuki-layout *, .htk-akatsuki-layout *::before, .htk-akatsuki-layout *::after { box-sizing: border-box; }
 .htk-akatsuki-layout button { margin: 0; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: start; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .htk-akatsuki-layout button:disabled { cursor: not-allowed; opacity: .55; }
-.htk-akatsuki-layout :is(button, input):focus-visible { outline: 3px solid var(--accent-ink); outline-offset: 3px; }
+.htk-akatsuki-layout :is(button, input, summary):focus-visible { outline: 3px solid var(--accent-ink); outline-offset: 3px; }
 .htk-akatsuki-layout button { touch-action: manipulation; }
 .htk-akatsuki-layout .ti { flex: 0 0 auto; font-size: 20px; line-height: 1; }
 .hak-brand { font-family: 'Righteous', 'Zen Kaku Gothic New', sans-serif; font-weight: 400; font-synthesis: none; letter-spacing: .01em; }
@@ -547,13 +617,49 @@ onBeforeUnmount(disconnect);
 .hak-clock { font-size: 15px; font-weight: 800; white-space: nowrap; }
 .hak-body { display: flex; min-width: 0; min-height: calc(100% - 82px); container: hatask-akatsuki-body / inline-size; }
 .hak-center { flex: 1; min-width: 0; padding: 26px 30px; }
-.hak-home { display: grid; grid-template-areas: 'summary' 'next' 'timeline' 'later' 'stats' 'rich' 'extra'; animation: hak-up .35s cubic-bezier(.2, 0, 0, 1) both; }
-.hak-home-extra { grid-area: extra; min-width: 0; margin-top: 30px; }
+.hak-home { display: grid; grid-template-areas: 'summary' 'focus' 'stats' 'extra'; animation: hak-up .35s cubic-bezier(.2, 0, 0, 1) both; }
+.hak-focus { grid-area: focus; min-width: 0; }
+.hak-focus-options { display: flex; align-items: center; gap: 2px; width: max-content; max-width: 100%; margin: 0 auto 12px; padding: 4px 6px; border: var(--border); border-radius: 999px; background: var(--masthead); box-shadow: var(--shadow); overflow-x: auto; scrollbar-width: none; }
+.hak-focus-options::-webkit-scrollbar { display: none; }
+.htk-akatsuki-layout .hak-focus-option { display: inline-flex; flex: 0 0 auto; align-items: center; justify-content: center; gap: 6px; min-width: 44px; min-height: 44px; padding: 7px 10px; border-radius: 999px; font-size: 13px; white-space: nowrap; color: var(--fg-2); }
+.htk-akatsuki-layout .hak-focus-option:hover { background: var(--fill); }
+.htk-akatsuki-layout .hak-focus-option[aria-pressed='true'] { background: var(--fill-2); color: var(--accent-ink); font-weight: 700; }
+.htk-akatsuki-layout .hak-focus-option:focus-visible { outline-offset: -3px; }
+.hak-focus-count { min-width: 1.4em; font-size: 11px; font-weight: 800; text-align: center; }
+.hak-focus-panel { min-width: 0; min-height: 238px; padding: 18px 20px; border: var(--card-border); border-radius: var(--card-radius); background: var(--masthead); box-shadow: var(--card-shadow); }
+.hak-focus-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 12px; margin-bottom: 16px; }
+.hak-focus-head h2 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 18px; }
+.hak-focus-head > span { color: var(--fg-2); font-size: 12px; }
+.hak-focus-panel .hak-actions { margin-top: 14px; }
+.hak-focus-panel .hak-later { margin-top: 14px; margin-bottom: 0; }
+.hak-focus-panel .hak-later-row { padding-block: 10px; }
+.hak-schedule-details { color: var(--fg-2); font-size: 12px; }
+.hak-schedule-details > summary { min-height: 44px; align-content: center; cursor: pointer; }
+.hak-schedule-details .hak-timeline { margin-block: 6px 12px; border-top: 0; }
+.hak-tools { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.htk-akatsuki-layout .hak-tool { display: flex; align-items: center; gap: 10px; min-width: 0; min-height: 52px; padding: 10px 12px; border: var(--button-border); border-radius: 16px; font-size: 13px; text-align: start; }
+.hak-tool > span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.hak-tool > .ti:first-child { color: var(--accent-ink); font-size: 19px; }
+.hak-tools > .hak-empty { grid-column: 1 / -1; }
+.hak-focus-panel .hak-rich-main { flex: 1; min-width: 0; }
+.hak-focus-panel .hak-rich-main > strong, .hak-focus-panel .hak-rich-main > small { display: block; overflow-wrap: anywhere; }
+.hak-focus-panel .hak-rich-main > small { color: var(--fg-2); font-size: 12px; }
+.hak-suggestions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 12px; }
+.htk-akatsuki-layout .hak-suggestion { display: flex; align-items: center; gap: 10px; min-width: 0; min-height: 72px; padding: 12px; border: var(--button-border); border-radius: 18px; text-align: start; }
+.hak-suggestion > span { flex: 1; min-width: 0; }
+.hak-suggestion small { display: block; margin-bottom: 4px; font-size: 11px; color: var(--fg-2); }
+.hak-suggestion strong { display: -webkit-box; overflow: hidden; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; font-size: 13px; }
+@container hatask-akatsuki-body (max-width: 480px) {
+	.hak-focus-panel { padding: 16px 14px; }
+	.hak-suggestions { grid-template-columns: minmax(0, 1fr); }
+	.hak-focus-head > span { font-size: 11px; }
+}
+.hak-home-extra { grid-area: extra; min-width: 0; margin-top: 18px; }
 .hak-app-return { align-self: stretch; margin: 22px 20px 0; padding: 12px; flex-wrap: wrap; justify-content: center; }
 .hak-home-summary { grid-area: summary; color: var(--fg-2); margin-bottom: 22px; }
 .hak-home-summary p { margin: 0; }
-.hak-next { grid-area: next; min-width: 0; max-width: 44ch; margin-bottom: 30px; }
-.hak-next h1 { margin: 0; font-size: clamp(30px, var(--hak-hero-size), 42px); font-weight: 700; line-height: 1.16; letter-spacing: -.018em; text-wrap: balance; }
+.hak-next { grid-area: next; min-width: 0; max-width: 44ch; margin-bottom: 14px; }
+.hak-next h1 { margin: 0; font-size: clamp(22px, var(--hak-hero-size), 28px); font-weight: 700; line-height: 1.16; letter-spacing: -.018em; text-wrap: balance; }
 .hak-next-lead { display: block; white-space: nowrap; }
 .hak-next-title { display: block; overflow-wrap: anywhere; word-break: normal; }
 .hak-next p { margin: 12px 0 0; color: var(--fg-2); line-height: 1.75; }
@@ -590,8 +696,6 @@ onBeforeUnmount(disconnect);
 .hak-stat-value { display: flex; align-items: baseline; flex-wrap: wrap; gap: 5px; margin-top: 5px; }
 .hak-stat-value strong { font-size: 26px; font-weight: 800; line-height: 1; }
 .hak-stat-value > span { color: var(--fg-2); font-size: 12px; font-weight: 700; }
-.hak-rich-grid { grid-area: rich; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 30px; margin-top: 30px; }
-.hak-rich-grid .hak-section-heading { padding-bottom: 10px; }
 .htk-akatsuki-layout .hak-rich-row { width: 100%; display: flex; align-items: center; gap: 12px; padding: 13px 0; border-bottom: 1px solid var(--rule); }
 .hak-rich-row > .ti { min-width: 22px; font-size: 18px; color: var(--accent-ink); }
 .hak-rich-slot { color: var(--fg-2); font-size: 12px; font-weight: 800; }
@@ -639,7 +743,6 @@ onBeforeUnmount(disconnect);
 @container hatask-akatsuki-body (max-width: 780px) {
 	.hak-center { padding: 24px 22px; }
 	.hak-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-	.hak-rich-grid { grid-template-columns: minmax(0, 1fr); gap: 24px; }
 }
 @container hatask-akatsuki (max-width: 750px) {
 	.hak-desktop-case { gap: 8px; padding-left: 16px; }
@@ -665,14 +768,14 @@ onBeforeUnmount(disconnect);
 	.hak-body { display: flex; flex-direction: column; min-height: 0; }
 	.hak-center { flex: none; width: 100%; padding: 4px 20px 0; }
 	[data-tab='apps'] .hak-center, [data-tab='hataskapps'] .hak-center { padding-inline: 14px; }
-	.hak-home { grid-template-areas: 'summary' 'timeline' 'next' 'later' 'stats' 'rich' 'extra'; }
+	.hak-home { grid-template-areas: 'summary' 'focus' 'stats' 'extra'; }
 	.hak-home-summary { margin-bottom: 16px; }
 	.hak-mobile-date { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; }
 	.hak-mobile-date .hak-dow { font-size: 12px; }
 	.hak-day-count { margin-left: auto; color: var(--fg-2); font-size: 11px; font-weight: 800; }
 	.hak-home-summary p { font-size: 13px; line-height: 1.65; }
 	.hak-next { margin-bottom: 22px; }
-	.hak-next h1 { font-size: 25px; line-height: 1.28; letter-spacing: -.01em; }
+	.hak-next h1 { font-size: 22px; line-height: 1.28; letter-spacing: -.01em; }
 	.hak-next p { margin-top: 8px; font-size: 13px; }
 	.hak-actions { gap: 8px; margin-top: 16px; }
 	.htk-akatsuki-layout .hak-action-button { font-size: 14px; }
@@ -691,15 +794,14 @@ onBeforeUnmount(disconnect);
 	.htk-akatsuki-layout .hak-later-row { gap: 11px; padding: 13px 0; }
 	.hak-later-time { min-width: 42px; font-size: 12px; font-weight: 800; }
 	.hak-later-title { font-size: 14px; }
-	.hak-stats, .hak-rich-grid { display: none; }
+	.hak-stats { display: none; }
 	.hak-side { position: static; width: 100%; padding: 0 20px 12px; }
 	.hak-side::before { display: none; }
 	.hak-side-heading { padding-bottom: 10px; margin-bottom: 0; }
-	.htk-akatsuki-layout .hak-side-apps .hak-side-row { padding: 13px 0; }
 	.hak-flower-emoji { font-size: 19px; }
 	.hak-flower-row .hak-side-row-main { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px; }
 	.htk-akatsuki-layout .hak-side-eye { font-size: 13px; line-height: 1.7; }
-	.hak-streak, .hak-todo-block, .hak-side-apps { display: none !important; }
+	.hak-streak, .hak-todo-block { display: none !important; }
 	.hak-side-row-main strong { font-size: 13px; }
 	.hak-side-row-main small { display: inline; margin-left: 6px; }
 	.hak-bottom { position: absolute; left: max(12px, env(safe-area-inset-left, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); bottom: calc(14px + env(safe-area-inset-bottom, 0px)); z-index: 7; display: flex; align-items: center; justify-content: flex-end; gap: 8px; pointer-events: none; }

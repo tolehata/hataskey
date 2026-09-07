@@ -3,8 +3,10 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import type { HataskAkatsukiEvent, HataskAkatsukiModel } from '@/components/hatask/hatask-akatsuki-types.js';
+import type { HataskAkatsukiEvent, HataskAkatsukiHomeSection, HataskAkatsukiModel } from '@/components/hatask/hatask-akatsuki-types.js';
+import type { HataskAkatsukiUsage } from '@/utility/hatask-akatsuki-usage.js';
 import { normalizeHataskAkatsukiMobileTabs } from '@/utility/hatask-akatsuki-navigation.js';
+import { akatsukiUsageScore } from '@/utility/hatask-akatsuki-usage.js';
 
 type EventRow = { id: string; title: string; date: string; dateEnd?: string; timeStart?: string; timeEnd?: string; allDay?: boolean; archivedAt?: string | null };
 type TodoRow = { id: string; text: string; done: boolean; due?: string; time?: string; archivedAt?: string | null };
@@ -26,7 +28,10 @@ export interface HataskAkatsukiSource {
 	loginRanking: number;
 	eyePhrase: string;
 	feedbackUnread: number;
-	settings: { showClock?: boolean; showEvents?: boolean; showFlower?: boolean; showMoodSummary?: boolean; showMealSummary?: boolean; showMealSection?: boolean; weekStart?: string; akatsukiMobileTabs?: unknown; akatsukiShortcut?: unknown };
+	feedback?: { allowed: boolean; known: boolean };
+	apps?: HataskAkatsukiModel['apps'];
+	usage?: HataskAkatsukiUsage;
+	settings: { showClock?: boolean; showEvents?: boolean; showFlower?: boolean; showMoodSummary?: boolean; showMealSummary?: boolean; showMealSection?: boolean; showFeedbackNotif?: boolean; weekStart?: string; akatsukiMobileTabs?: unknown; akatsukiShortcut?: unknown };
 }
 
 export function akatsukiDateKey(date: Date): string {
@@ -85,8 +90,50 @@ export function buildHataskAkatsukiModel(source: HataskAkatsukiSource): { model:
 		return end === undefined || end >= time;
 	}).sort((a, b) => `${a.date}T${a.timeStart || '00:00'}`.localeCompare(`${b.date}T${b.timeStart || '00:00'}`));
 	const moodIcons = ['ti ti-mood-cry', 'ti ti-mood-sad', 'ti ti-mood-neutral', 'ti ti-mood-smile', 'ti ti-mood-heart'];
+	const usageScore = (id: string) => akatsukiUsageScore(source.usage ?? {}, id, now.getTime());
+	const apps = [...(source.apps ?? [])].sort((a, b) => usageScore(b.id) - usageScore(a.id));
+	const hasUsage = apps.some(app => usageScore(app.id) > 0);
+	const boost = (id: string) => Math.min(12, usageScore(id) * 2);
+	const nearEvent = upcoming.find(event => {
+		const start = minute(event.timeStart);
+		return !event.allDay && event.date <= today && start !== undefined && (event.date < today || start - time <= 90);
+	});
+	const nextEvent = nearEvent ?? upcoming.at(0);
+	const overdueTodos = remainingTodos.filter(todo => todo.due && (todo.due < today || (todo.due === today && (minute(todo.time) ?? 1440) <= time)));
+	const dueToday = remainingTodos.filter(todo => todo.due === today);
+	const currentMeal = time >= 5 * 60 && time < 11 * 60 ? 'breakfast' : time >= 11 * 60 && time < 17 * 60 ? 'lunch' : time >= 17 * 60 ? 'dinner' : undefined;
+	const mealDue = known.meals && mealRows.find(meal => meal.id === currentMeal && !meal.recorded);
+	const sections: HataskAkatsukiHomeSection[] = [
+		{ id: 'tools', label: 'ツール', icon: 'ti ti-apps', summary: hasUsage ? apps[0]?.label ?? 'ツールを開く' : '使いたいツールを、ここから', reason: hasUsage ? 'よく使うツール' : 'ここから始める', priority: 40 + (hasUsage ? 12 : 0) },
+	];
+	if (settings.showEvents !== false) sections.push({
+		id: 'calendar', label: '予定', icon: 'ti ti-calendar-event', count: known.planner ? todayEvents.length : undefined,
+		summary: known.planner ? nextEvent?.title ?? 'このあとの予定はありません' : '予定を読み込めませんでした',
+		reason: nearEvent ? 'まもなく・進行中の予定' : 'このあとの予定',
+		priority: known.planner && upcoming.length ? (nearEvent ? 120 : upcoming[0].date <= today ? 60 : 30) + boost('cal') : 0,
+	});
+	sections.push({
+		id: 'todo', label: 'ToDo', icon: 'ti ti-checkbox', count: known.planner ? remainingTodos.length : undefined,
+		summary: known.planner ? remainingTodos[0]?.text ?? '未完了のToDoはありません' : 'ToDoを読み込めませんでした',
+		reason: overdueTodos.length ? '締切を迎えたToDo' : dueToday.length ? '今日のToDo' : '次に進めたいこと',
+		priority: known.planner && remainingTodos.length ? (overdueTodos.length ? 95 : dueToday.length ? 65 : 40) + boost('todo') : 0,
+	});
+	if (source.feedback?.allowed && settings.showFeedbackNotif !== false) sections.push({
+		id: 'feedback', label: 'HataFeed', icon: 'ti ti-message-report', count: source.feedback.known ? source.feedbackUnread : undefined,
+		summary: source.feedback.known ? source.feedbackUnread ? `未読の通知が ${source.feedbackUnread} 件あります` : '未読の通知はありません' : '通知を読み込めませんでした',
+		reason: '届いているお知らせ', priority: source.feedback.known && source.feedbackUnread > 0 ? 85 + boost('feed') : 0,
+	});
+	if (settings.showMealSection !== false) sections.push({
+		id: 'meal', label: 'ごはん', icon: 'ti ti-soup', summary: mealSummary,
+		reason: mealDue ? `${mealDue.label}ごはんの記録` : 'きょうの食事を振り返る',
+		priority: mealDue ? 75 + boost('meal') : 0,
+	});
+	const recommended = [...sections].sort((a, b) => b.priority - a.priority)[0].id;
 	const model: HataskAkatsukiModel = {
+		home: { sections, recommended, hasUsage },
+		apps: apps.slice(0, 6),
 		loading: source.loading,
+		readOnly: source.readOnly,
 		mobileTabs: normalizeHataskAkatsukiMobileTabs(settings.akatsukiMobileTabs, settings.akatsukiShortcut),
 		dateLabel: md.format(now),
 		weekdayLabel: weekday.format(now),
@@ -96,8 +143,8 @@ export function buildHataskAkatsukiModel(source: HataskAkatsukiSource): { model:
 		scheduleUnavailable: !known.planner,
 		dayCountLabel: `ログイン ${source.loginDays} 日`,
 		summary: source.loading ? '記録を読み込んでいます' : `${known.planner ? `予定 ${todayEvents.length} 件、ToDo 残り ${remainingTodos.length} 件` : '予定・ToDoの記録を読み込めません'}${settings.showMealSummary !== false ? ` · ${mealSummary}` : ''}`,
-		next: known.planner && settings.showEvents !== false && upcoming[0] ? eventModel(upcoming[0]) : null,
-		later: known.planner && settings.showEvents !== false ? upcoming.slice(1, 4).map(eventModel) : [],
+		next: known.planner && settings.showEvents !== false && nextEvent ? eventModel(nextEvent) : null,
+		later: known.planner && settings.showEvents !== false ? upcoming.filter(event => event !== nextEvent).slice(0, 3).map(eventModel) : [],
 		timeline: known.planner && settings.showEvents !== false ? todayEvents.map(eventModel) : [],
 		stats: [
 			{ id: 'events', label: '今週の予定', value: known.planner ? events.filter(event => event.date <= keys[6] && (event.dateEnd || event.date) >= keys[0]).length : '—', unit: '件', tab: 'cal' },

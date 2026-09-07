@@ -31,6 +31,14 @@
   <HataskSearchResults :groups="hataskSearchGroups" :emptyLabel="copy.notFound" @select="selectHataskSearchResult"/>
   <div class="htk-sch-note">{{copy.searchScopeNote}}</div>
 </template>
+<template #home-feedback>
+	<p v-if="hfState==='loading'" role="status">通知を読み込んでいます</p>
+	<p v-else-if="hfState==='error'" role="status">通知を読み込めませんでした</p>
+	<p v-else-if="!hfNotifs.length">{{copy.noNotifications}}</p>
+	<button v-for="n in akatsukiFeedbackNotifications" :key="n.id" type="button" class="htk-akatsuki-notification" :data-unread="!n.isRead" @click="openAkatsukiFeedbackNotification(n)">
+	  <i :class="['ti',hfIcon(n.type)]" aria-hidden="true"></i><HataFeedNotificationBody :text="notificationDisplayMessage(n)"/>
+	</button>
+</template>
 <template #home-extra>
   <div class="htk-akatsuki-extras">
     <div v-if="completedUndoItems.length" class="htk-planner-undo htk-complete-undo" role="status">
@@ -43,12 +51,6 @@
         <strong>{{r.title}}</strong><span>{{r.dateLabel}}</span>
         <div><button class="htk-btn htk-sm" :aria-pressed="r.myStatus==='going'" @click="setRsvp(r.eventId,'going')">{{copy.rsvpGoing}}</button><button class="htk-btn htk-sm" :aria-pressed="r.myStatus==='maybe'" @click="setRsvp(r.eventId,'maybe')">{{copy.rsvpMaybeShort}}</button><button class="htk-btn htk-sm" :aria-pressed="r.myStatus==='declined'" @click="setRsvp(r.eventId,'declined')">{{copy.rsvpDeclined}}</button></div>
       </div>
-    </section>
-    <section v-if="canAccessHataFeed && settings.showFeedbackNotif!==false && hfNotifs.length" class="htk-akatsuki-extra">
-      <h3>{{copy.hataFeedNotifications}}</h3>
-      <button v-for="n in hfNotifs" :key="n.id" class="htk-akatsuki-notification" :data-unread="!n.isRead" @click="onHfNotifClick(n)">
-        <i :class="['ti',hfIcon(n.type)]" aria-hidden="true"></i><HataFeedNotificationBody :text="notificationDisplayMessage(n)"/>
-      </button>
     </section>
     <section v-if="settings.showEarthquake!==false && rawQuakes.length" class="htk-akatsuki-extra">
       <h3>{{copy.earthquakeAndTsunami}}</h3>
@@ -690,75 +692,42 @@
 </div>
 
 <!-- ========== GARDEN ========== -->
-<div v-if="activeTab==='garden'" class="htk-tabpage htk-garden-page" :class="[isHatakyu?'hk-panels':'htk-panels',tabDir==='fwd'?'htk-tab-fwd':'htk-tab-back']">
-					<div class="htk-garden-stack" :class="isHatakyu?'hk-panels':undefined" data-garden-group="personal">
-  <!-- 旗鯖fork(ハタキュ): 育ち具合をひとこと添える紙。 -->
-  <div v-if="isHatakyu" class="hk-pin" style="--i:0;--r:1.5deg"><span class="hk-tack hk-y"></span>
-    <div class="hk-card hk-cream"><div class="hk-quote hk-center">{{flower.progress>=100?copy.hkGardenBloomed:copy.hkGardenAlmost}}</div></div>
+<div v-if="activeTab==='garden'" class="htk-tabpage htk-garden-page" :class="[isHatakyu?'hk-panels':'htk-panels',tabDir==='fwd'?'htk-tab-fwd':'htk-tab-back']" data-garden-layout="streams">
+  <section class="htk-lg htk-anim htk-growing-panel"><div class="htk-gc">
+    <header class="htk-flower-heading"><h3 class="htk-sec-title">{{copy.currentFlower}}</h3><button type="button" class="htk-flower-icon-button" :aria-label="copy.howToGrowFlowers" @click="showFlowerInfo=true"><i class="ti ti-help" aria-hidden="true"></i></button></header>
+    <div class="htk-growing-content">
+      <div class="htk-fl-ring htk-growing-ring" role="progressbar" :aria-label="copy.flowerGrowth" :aria-valuenow="flower.progress" :aria-valuemin="0" :aria-valuemax="100"><svg viewBox="0 0 160 160" aria-hidden="true"><circle class="htk-fl-track" cx="80" cy="80" r="70"/><circle class="htk-fl-bar" cx="80" cy="80" r="70" :style="{strokeDasharray:'440',strokeDashoffset:440-440*(flower.progress/100)}"/></svg><div class="htk-fl-emo"><HataskEmoji :emoji="flower.emoji"/></div></div>
+      <div class="htk-growing-copy"><div class="htk-growing-name"><strong>{{currentFlowerDisplayName}}</strong><span v-if="isRareHataskFlower(flower)" class="htk-flower-rare-label"><i class="ti ti-sparkles" aria-hidden="true"></i>{{copy.rareFlower}}</span></div><p v-if="currentFlowerHanakotoba" class="htk-growing-meaning">{{copy.flowerMeaning}}: {{currentFlowerHanakotoba}}</p><p class="htk-growing-remaining">{{flower.progress<100?copyx.flowerBloomsIn({duration:estimateRemaining}):copy.flowerBloomedTitle}}</p><p class="htk-growing-progress">{{copyx.flowerProgressTotal({progress:flower.progress.toString(),total:formatMinutes(flower.totalMinutes)})}}</p><p v-if="isHatakyu" class="htk-growing-note">{{flower.progress>=100?copy.hkGardenBloomed:copy.hkGardenAlmost}}</p></div>
+      <button v-if="flower.progress>=100" type="button" class="htk-btn htk-primary htk-growing-harvest" :disabled="!flowerDataWritable || flowerDialogOpen" @click="handleFlowerHarvest">{{copy.harvestAndName}}</button>
+    </div>
+  </div></section>
+  <div class="htk-garden-collections" :class="isHatakyu?'hk-panels':undefined">
+    <section class="htk-lg htk-anim" data-garden-group="community"><div class="htk-gc">
+      <header class="htk-flower-heading"><div><h3 class="htk-sec-title">{{copy.communityFlowerGallery}}</h3><p class="htk-flower-summary">{{copyx.flowerCount({count:communityFlowerTotal.toString()})}} · {{seasonFlowerLabel}}</p></div><button type="button" class="htk-flower-icon-button" :aria-label="flowerPauseLabel('community')" :title="flowerPauseLabel('community')" :aria-pressed="flowerStreamPaused.community" :disabled="!flowerAnimations" @click="toggleFlowerStream('community')"><i :class="flowerStreamPaused.community?'ti ti-player-play':'ti ti-player-pause'" aria-hidden="true"></i></button></header>
+      <div v-if="communityFlowersLoading" class="htk-gal-state" role="status"><i class="ti ti-loader-2" aria-hidden="true"></i>{{copy.flowerGalleryLoading}}</div>
+      <div v-else-if="communityFlowersError" class="htk-gal-state htk-gal-error" role="alert">{{copy.flowerGalleryLoadFailed}}<button type="button" class="htk-btn htk-xs" @click="loadCommunityFlowers">{{copy.retry}}</button></div>
+      <HataskFlowerStream v-else-if="communityFlowerViews.length" ref="communityFlowerStream" :items="communityFlowerViews" :label="copy.communityFlowerGallery" :rareLabel="copy.rareFlower" :harvestedLabel="copy.flowerHarvestedAt" :animations="flowerAnimations" :paused="flowerStreamPaused.community || flowerDialogOpen" @select="selection=>openFlowerDetail('community',selection)"/>
+      <div v-else class="htk-gal-state">{{copy.flowerGalleryEmpty}}</div>
+      <div class="htk-flower-footer"><label class="htk-flower-sort"><span class="htk-sr-only">{{copy.sort}}</span><select :value="communityFlowerOrder" :aria-label="copy.sort" :disabled="communityFlowersLoading" @change="setCommunityFlowerOrder(($event.target as HTMLSelectElement).value as 'newest'|'oldest')"><option value="newest">{{copy.newestFirst}}</option><option value="oldest">{{copy.oldestFirst}}</option></select></label><div v-if="communityFlowers.length && !communityFlowersLoading && !communityFlowersError" class="htk-pager htk-gal-pager"><button type="button" class="htk-btn htk-xs" :aria-label="copy.previousPage" :disabled="communityFlowerPage<=1" @click="communityFlowerPage--">‹</button><span class="htk-pager-t" aria-live="polite">{{communityFlowerPage}} / {{communityFlowerTotalPages}}</span><button type="button" class="htk-btn htk-xs" :aria-label="copy.nextPage" :disabled="communityFlowerPage>=communityFlowerTotalPages" @click="communityFlowerPage++">›</button></div></div>
+    </div></section>
+    <section class="htk-lg htk-anim" data-garden-group="personal"><div class="htk-gc">
+      <header class="htk-flower-heading"><div><h3 class="htk-sec-title">{{copy.flowerGallery}}</h3><p class="htk-flower-summary">{{copyx.flowerCount({count:gallery.length.toString()})}} · {{flowerVisibilityLabel}}</p></div><button type="button" class="htk-flower-icon-button" :aria-label="flowerPauseLabel('personal')" :title="flowerPauseLabel('personal')" :aria-pressed="flowerStreamPaused.personal" :disabled="!flowerAnimations" @click="toggleFlowerStream('personal')"><i :class="flowerStreamPaused.personal?'ti ti-player-play':'ti ti-player-pause'" aria-hidden="true"></i></button><details class="htk-flower-visibility"><summary :aria-label="copy.flowerGalleryVisibility" :title="copy.flowerGalleryVisibility"><i class="ti ti-eye" aria-hidden="true"></i></summary><div class="htk-flower-visibility-panel"><label><span>{{copy.flowerGalleryVisibility}}</span><select :value="flowerVisibility" :disabled="flowerVisibilitySaving || !dataLoaded" @change="changeFlowerVisibility"><option v-for="option in flowerVisibilityOptions" :key="option.value" :value="option.value">{{option.label}}</option></select></label><p>{{copy.flowerGalleryDescription}}</p><p>{{copy.flowerGalleryVisibilityHelp}}</p></div></details></header>
+      <HataskFlowerStream v-if="personalFlowerViews.length" ref="personalFlowerStream" :items="personalFlowerViews" :label="copy.flowerGallery" :rareLabel="copy.rareFlower" :harvestedLabel="copy.flowerHarvestedAt" :animations="flowerAnimations" :paused="flowerStreamPaused.personal || flowerDialogOpen" @select="selection=>openFlowerDetail('personal',selection)"/>
+      <div v-else class="htk-gal-state">{{copy.noFlowersYet}}</div>
+      <div class="htk-flower-footer"><label class="htk-flower-sort"><span class="htk-sr-only">{{copy.sort}}</span><select :value="galleryOrder" :aria-label="copy.sort" @change="setGalleryOrder(($event.target as HTMLSelectElement).value as 'newest'|'oldest')"><option value="newest">{{copy.newestFirst}}</option><option value="oldest">{{copy.oldestFirst}}</option></select></label><div v-if="gallery.length" class="htk-pager htk-gal-pager"><button type="button" class="htk-btn htk-xs" :aria-label="copy.previousPage" :disabled="galleryPage<=1" @click="galleryPage--">‹</button><span class="htk-pager-t" aria-live="polite">{{galleryPage}} / {{galleryTotalPages}}</span><button type="button" class="htk-btn htk-xs" :aria-label="copy.nextPage" :disabled="galleryPage>=galleryTotalPages" @click="galleryPage++">›</button></div></div>
+    </div></section>
   </div>
-  <div class="htk-lg htk-anim"><div class="htk-gc" style="text-align:center;min-height:240px">
-    <h3 class="htk-sec-title">{{copy.currentFlower}} <button class="htk-info-btn" @click="showFlowerInfo=true">?</button></h3>
-    <div class="htk-fl-ring hk-ring-lg" style="width:140px;height:140px"><svg viewBox="0 0 160 160"><circle class="htk-fl-track" cx="80" cy="80" r="70"/><circle class="htk-fl-bar" cx="80" cy="80" r="70" :style="{strokeDasharray:'440',strokeDashoffset:440-440*(flower.progress/100)}"/></svg><div class="htk-fl-emo" style="font-size:3rem"><HataskEmoji :emoji="flower.emoji"/></div></div>
-    <div style="font-weight:600;font-size:1rem">{{currentFlowerDisplayName}}</div>
-    <div v-if="currentFlowerHanakotoba" style="font-size:.72rem;color:var(--text-3);margin-top:2px;opacity:.7">{{copy.flowerMeaning}}: {{currentFlowerHanakotoba}}</div>
-    <div style="font-size:.75rem;color:var(--text-3);margin-top:4px">{{copyx.flowerProgressTotal({progress:flower.progress.toString(),total:formatMinutes(flower.totalMinutes)})}}</div>
-    <div v-if="flower.progress<100" style="font-size:.75rem;color:var(--text-3);margin-top:6px">{{copyx.flowerBloomsIn({duration:estimateRemaining})}}</div>
-    <button v-else class="htk-btn htk-primary htk-sm" style="margin-top:10px" @click="harvestFlower">{{copy.harvestAndName}}</button>
-  </div></div>
-  <div class="htk-lg htk-anim"><div class="htk-gc">
-    <h3 class="htk-sec-title">{{copy.flowerGallery}}</h3>
-    <p class="htk-gal-note">{{copy.flowerGalleryDescription}}</p>
-    <div class="htk-gal-vis-box" role="group" :aria-label="copy.flowerGalleryVisibility">
-      <div class="htk-vis-row htk-gal-vis">
-        <button v-for="option in flowerVisibilityOptions" :key="option.value" type="button" :class="['htk-vis-o', flowerVisibility === option.value && 'on']" :aria-pressed="flowerVisibility === option.value" @click="updateFlowerVisibility(option.value)"><i :class="['ti', option.icon]" aria-hidden="true"></i><span>{{option.label}}</span></button>
-      </div>
-    </div>
-    <p class="htk-gal-visibility-help">{{copy.flowerGalleryVisibilityHelp}}</p>
-    <div class="htk-gal-sort" role="group" :aria-label="copy.sort"><div class="htk-gal-sort-inner"><span class="htk-gal-sort-label"><i class="ti ti-arrows-sort" aria-hidden="true"></i><span>{{copy.sort}}</span></span><button type="button" :class="['htk-gal-sort-btn', galleryOrder === 'newest' && 'on']" :aria-pressed="galleryOrder === 'newest'" :aria-label="copy.newestFirst" :title="copy.newestFirst" @click="setGalleryOrder('newest')"><i class="ti ti-sort-descending" aria-hidden="true"></i><span>{{copy.newestFirst}}</span></button><button type="button" :class="['htk-gal-sort-btn', galleryOrder === 'oldest' && 'on']" :aria-pressed="galleryOrder === 'oldest'" :aria-label="copy.oldestFirst" :title="copy.oldestFirst" @click="setGalleryOrder('oldest')"><i class="ti ti-sort-ascending" aria-hidden="true"></i><span>{{copy.oldestFirst}}</span></button></div></div>
-    <div v-if="gallery.length" class="htk-gal-g"><button v-for="fl in pagedGallery" :key="fl.id" type="button" class="htk-gal-i" @click="renameFlower(fl)"><span class="htk-gal-e"><HataskEmoji :emoji="fl.emoji"/></span><span class="htk-gal-n">{{localizeFloraName(fl.name)}}</span><span v-if="fl.hanakotoba" class="htk-gal-hk">{{localizeHanakotoba(fl.hanakotoba)}}</span><span class="htk-gal-d">{{formatFlowerDate(fl)}}</span></button></div>
-    <div v-else class="htk-empty"><div class="htk-empI"><i class="ti ti-circle-off"></i></div><div>{{copy.noFlowersYet}}</div></div>
-    <div v-if="gallery.length" class="htk-pager htk-gal-pager"><button type="button" class="htk-btn htk-xs" :aria-label="copy.previousPage" :disabled="galleryPage <= 1" @click="galleryPage--">‹</button><span class="htk-pager-t" aria-live="polite">{{galleryPage}}</span><button type="button" class="htk-btn htk-xs" :aria-label="copy.nextPage" :disabled="galleryPage >= galleryTotalPages" @click="galleryPage++">›</button></div>
-  </div></div>
-					</div>
-					<div class="htk-garden-stack" :class="isHatakyu?'hk-panels':undefined" data-garden-group="community">
-  <div class="htk-lg htk-anim"><div class="htk-gc">
-    <h3 class="htk-sec-title">{{copy.communityFlowerGallery}}</h3>
-								<div class="htk-gal-sort" role="group" :aria-label="copy.sort"><div class="htk-gal-sort-inner">
-									<span class="htk-gal-sort-label"><i class="ti ti-arrows-sort" aria-hidden="true"></i><span>{{copy.sort}}</span></span>
-									<button type="button" :class="['htk-gal-sort-btn', communityFlowerOrder === 'newest' && 'on']" :aria-pressed="communityFlowerOrder === 'newest'" :aria-label="isAkatsuki ? `N (New)・${copy.newestFirst}` : copy.newestFirst" :title="isAkatsuki ? `N (New)・${copy.newestFirst}` : copy.newestFirst" @click="setCommunityFlowerOrder('newest')"><i v-if="!isAkatsuki" class="ti ti-sort-descending" aria-hidden="true"></i><span>{{isAkatsuki ? 'N' : copy.newestFirst}}</span></button>
-									<button type="button" :class="['htk-gal-sort-btn', communityFlowerOrder === 'oldest' && 'on']" :aria-pressed="communityFlowerOrder === 'oldest'" :aria-label="isAkatsuki ? `O (Old)・${copy.oldestFirst}` : copy.oldestFirst" :title="isAkatsuki ? `O (Old)・${copy.oldestFirst}` : copy.oldestFirst" @click="setCommunityFlowerOrder('oldest')"><i v-if="!isAkatsuki" class="ti ti-sort-ascending" aria-hidden="true"></i><span>{{isAkatsuki ? 'O' : copy.oldestFirst}}</span></button>
-								</div></div>
-    <div v-if="communityFlowersLoading" class="htk-gal-state" role="status"><i class="ti ti-loader-2" aria-hidden="true"></i> {{copy.flowerGalleryLoading}}</div>
-    <div v-else-if="communityFlowersError" class="htk-gal-state htk-gal-error" role="alert"><i class="ti ti-alert-circle" aria-hidden="true"></i> {{copy.flowerGalleryLoadFailed}} <button type="button" class="htk-btn htk-xs" @click="loadCommunityFlowers">{{copy.retry}}</button></div>
-    <div v-else-if="communityFlowers.length" class="htk-gal-g htk-gal-community-gallery">
-      <div v-for="item in communityFlowers" :key="item.id" class="htk-gal-i htk-gal-card">
-        <span class="htk-gal-e"><HataskEmoji :emoji="item.emoji"/></span>
-        <span class="htk-gal-n">{{localizeFloraName(item.name)}}</span>
-        <span v-if="item.hanakotoba" class="htk-gal-hk">{{localizeHanakotoba(item.hanakotoba)}}</span>
-        <span class="htk-gal-d"><time :datetime="item.harvestedAt">{{formatFlowerDate(item)}}</time></span>
-        <span v-if="item.user" class="htk-gal-owner"><MkAvatar :user="item.user" class="htk-gal-avatar" :forceShowDecoration="true"/><MkUserName :user="item.user"/></span>
-        <button v-if="item.user && !item.isOwner && item.user.id !== $i?.id" type="button" class="htk-gal-report" :aria-label="copy.reportFlowerName" :title="copy.reportFlowerName" @click="reportCommunityFlower(item)"><i class="ti ti-flag-3" aria-hidden="true"></i></button>
-      </div>
-    </div>
-    <div v-else class="htk-gal-state"><i class="ti ti-flower-off" aria-hidden="true"></i> {{copy.flowerGalleryEmpty}}</div>
-    <div v-if="communityFlowers.length" class="htk-pager htk-gal-pager"><button type="button" class="htk-btn htk-xs" :aria-label="copy.previousPage" :disabled="communityFlowerPage <= 1" @click="communityFlowerPage--">‹</button><span class="htk-pager-t" aria-live="polite">{{communityFlowerPage}}</span><button type="button" class="htk-btn htk-xs" :aria-label="copy.nextPage" :disabled="communityFlowerPage >= communityFlowerTotalPages" @click="communityFlowerPage++">›</button></div>
-  </div></div>
-
-  <div class="htk-lg htk-anim"><div class="htk-gc">
-    <h3 class="htk-sec-title">{{copy.communityFlowerActivity}}</h3>
-    <div v-if="communityFlowersLoading" class="htk-gal-state" role="status"><i class="ti ti-loader-2" aria-hidden="true"></i> {{copy.flowerGalleryLoading}}</div>
-    <div v-else-if="communityFlowersError" class="htk-gal-state htk-gal-error" role="alert"><i class="ti ti-alert-circle" aria-hidden="true"></i> {{copy.flowerGalleryLoadFailed}} <button type="button" class="htk-btn htk-xs" @click="loadCommunityFlowers">{{copy.retry}}</button></div>
-    <div v-else-if="communityFlowers.length" class="htk-gal-community">
-      <div v-for="item in communityFlowers" :key="item.id" class="htk-gal-community-row">
-        <MkAvatar v-if="item.user" :user="item.user" class="htk-gal-avatar" :forceShowDecoration="true"/>
-        <div class="htk-gal-community-body"><div class="htk-gal-community-text"><MkUserName v-if="item.user" :user="item.user"/><span>{{copy.flowerHarvestedBy}}</span><b>『{{localizeFloraName(item.name)}}』</b><span>{{copy.flowerHarvestedSuffix}}</span></div><div class="htk-gal-community-meta"><HataskEmoji :emoji="item.emoji"/> <time :datetime="item.harvestedAt">{{formatFlowerDate(item)}}</time></div></div>
-        <button v-if="item.user && !item.isOwner && item.user.id !== $i?.id" type="button" class="htk-gal-report" :aria-label="copy.reportFlowerName" :title="copy.reportFlowerName" @click="reportCommunityFlower(item)"><i class="ti ti-flag-3" aria-hidden="true"></i></button>
-      </div>
-    </div>
-    <div v-else class="htk-gal-state"><i class="ti ti-flower-off" aria-hidden="true"></i> {{copy.flowerGalleryEmpty}}</div>
-  </div></div>
-					</div>
+  <section class="htk-lg htk-anim htk-community-garden" data-garden-group="bed"><div class="htk-gc">
+    <header class="htk-flower-heading"><div><h3 class="htk-sec-title">{{copy.communityGarden}}</h3><p class="htk-flower-summary">{{copy.communityFlowerActivity}} · {{copyx.flowerCount({count:communityFlowerViews.length.toString()})}}</p></div><button type="button" class="htk-flower-icon-button" :aria-label="flowerPauseLabel('activity')" :title="flowerPauseLabel('activity')" :aria-pressed="flowerStreamPaused.activity" :disabled="!flowerAnimations" @click="toggleFlowerStream('activity')"><i :class="flowerStreamPaused.activity?'ti ti-player-play':'ti ti-player-pause'" aria-hidden="true"></i></button></header>
+    <div v-if="communityFlowersLoading" class="htk-gal-state" role="status">{{copy.flowerGalleryLoading}}</div>
+    <div v-else-if="communityFlowersError" class="htk-gal-state htk-gal-error" role="alert">{{copy.flowerGalleryLoadFailed}}<button type="button" class="htk-btn htk-xs" @click="loadCommunityFlowers">{{copy.retry}}</button></div>
+    <HataskCommunityGarden v-else :flowers="communityFlowerViews" :selectedId="selectedCommunityFlowerId" :label="copy.communityGarden" :theme="settings.theme || 'akatsuki'" :mode="themeMode">
+      <HataskFlowerStream v-if="communityFlowerViews.length" ref="activityFlowerStream" :items="communityFlowerViews" activity :label="copy.communityFlowerActivity" :rareLabel="copy.rareFlower" :harvestedLabel="copy.flowerHarvestedAt" :animations="flowerAnimations" :paused="flowerStreamPaused.activity || flowerDialogOpen" @select="selection=>openFlowerDetail('activity',selection)"/>
+      <p v-else class="htk-gal-state">{{copy.flowerGalleryEmpty}}</p>
+    </HataskCommunityGarden>
+  </div></section>
 </div>
+
 <!-- 旗鯖fork(ハタキュ): Eye も他タブと同じ板の上に載せるため、.htk-app の閉じは EYE の後ろへ移した。 -->
 
 <!-- ========== EYE PAGE ========== -->
@@ -829,7 +798,7 @@
     <div class="htk-fl-ring" style="width:100px;height:100px"><svg viewBox="0 0 120 120"><circle class="htk-fl-track" cx="60" cy="60" r="50"/><circle class="htk-fl-bar" cx="60" cy="60" r="50" :style="{strokeDasharray:'314',strokeDashoffset:314-314*(flower.progress/100)}"/></svg><div class="htk-fl-emo" style="font-size:2rem"><HataskEmoji :emoji="flower.emoji"/></div></div>
     <div style="font-weight:600;font-size:.9rem">{{currentFlowerDisplayName}}</div>
     <div v-if="currentFlowerHanakotoba" style="font-size:.7rem;color:var(--text-3);opacity:.7">{{copy.flowerMeaning}}: {{currentFlowerHanakotoba}}</div>
-    <div v-if="flower.progress>=100" style="margin-top:8px"><button class="htk-btn htk-primary htk-sm" @click="harvestFlower">{{copy.harvestFlower}}</button></div>
+    <div v-if="flower.progress>=100" style="margin-top:8px"><button class="htk-btn htk-primary htk-sm" :disabled="!flowerDataWritable || flowerDialogOpen" @click="handleFlowerHarvest">{{copy.harvestFlower}}</button></div>
   </div></div>
 </div>
 </HataskAkatsukiLayout>
@@ -1021,12 +990,18 @@ import { $i } from '@/i.js';
 import { useRouter } from '@/router.js';
 import { DI } from '@/di.js';
 import { useStream } from '@/stream.js';
+import { useGlobalEvent } from '@/events.js';
+import { mutedUsersRevision } from '@/utility/muted-users.js';
 import { i18n } from '@/i18n.js';
 import { prefer } from '@/preferences.js';
 import { versatileLang } from '@/utility/intl-const.js';
 import MkEarthquakeTicker from '@/components/MkEarthquakeTicker.vue';
 import HataFeedNotificationBody from '@/components/HataFeedNotificationBody.vue';
 import HataskEmoji from '@/components/HataskEmoji.vue';
+import HataskFlowerStream from '@/components/hatask/HataskFlowerStream.vue';
+import HataskCommunityGarden from '@/components/hatask/HataskCommunityGarden.vue';
+import HataskFlowerDetail from '@/components/hatask/HataskFlowerDetail.vue';
+import type { HataskFlowerView, HataskFlowerSelection } from '@/components/hatask/hatask-flower-view.js';
 import HataskCalendarPlanner from '@/components/hatask/HataskCalendarPlanner.vue';
 import { normalizeHataskTodoMobileTabs } from '@/utility/hatask-todo-tabs.js';
 import HataskEventMoveDialog from '@/components/hatask/HataskEventMoveDialog.vue';
@@ -1040,6 +1015,7 @@ import HataskAkatsukiApps from '@/components/hatask/HataskAkatsukiApps.vue';
 import HataskAkatsukiNotice from '@/components/hatask/HataskAkatsukiNotice.vue';
 import type { HataskAkatsukiAction, HataskAkatsukiTab } from '@/components/hatask/hatask-akatsuki-types.js';
 import { buildHataskAkatsukiModel } from '@/utility/hatask-akatsuki.js';
+import { readAkatsukiUsage, recordAkatsukiUsage } from '@/utility/hatask-akatsuki-usage.js';
 import HataskQuickCapture from '@/components/hatask/HataskQuickCapture.vue';
 import HataskJournal from '@/components/hatask/HataskJournal.vue';
 import { HATASK_MEAL_TEMPLATE_KEY, isJournalEntry, persistJournalChange } from '@/utility/hatask-journal.js';
@@ -1049,12 +1025,10 @@ import HataskTemplateLibrary from '@/components/hatask/HataskTemplateLibrary.vue
 import HataskSearchResults from '@/components/hatask/HataskSearchResults.vue';
 import type { HataskTemplateKindFilter, HataskTemplateLabels } from '@/components/hatask/HataskTemplateLibrary.vue';
 import type { HataskCalendarBlankTarget, HataskCalendarDay, HataskCalendarEvent, HataskCalendarLabels, HataskCalendarView, HataskCalendarWeekday, HataskPlannerFilter, HataskPlannerTheme, HataskTodoItem, HataskTodoLabels, HataskTodoMobileTab, HataskTodoSort, HataskTodoView } from '@/components/hatask/hatask-planner-types.js';
-import MkAvatar from '@/components/global/MkAvatar.vue';
-import MkUserName from '@/components/global/MkUserName.vue';
 import { hatakyuAssetUrl } from '@/utility/hatakyu-assets.js';
 import type { HatakyuAssetKey } from '@/utility/hatakyu-assets.js';
 import { getDefaultPhrase, getPhrase } from '@/utility/hatask-phrases.js';
-import { floraData, pickRandomFlora, generateFlowerName, localizeFloraName, localizeHanakotoba } from '@/utility/hatask-flora.js';
+import { findHataskFlora, getHataskFlowerSeason, isRareHataskFlower, pickRandomFlora, generateFlowerName, localizeFloraName, localizeHanakotoba } from '@/utility/hatask-flora.js';
 import { HATASK_FLOWER_GROWTH_EVENT, createHataskGrowingFlower, normalizeHataskGrowingFlower, seedHataskFlowerGrowth } from '@/utility/hatask-flower-growth.js';
 import { notificationDisplayMessage, type HataFeedNotif } from '@/utility/hatafeed.js';
 import { createHataskPlannerApiStoragePort } from '@/utility/hatask-planner-api.js';
@@ -1656,8 +1630,10 @@ const htkTouchStartPos=ref<{x:number;y:number}|null>(null);
 const htkTouchLastPos=ref<{x:number;y:number}|null>(null);
 let htkSwipeLocked=false;
 function htkTouchStart(e:TouchEvent){
+  htkTouchStartPos.value = null;
+  htkTouchLastPos.value = null;
   // 暁の特集・時間帯・各ツールの横操作を、ページ全体のタブ送りに奪わせない。
-  if (isAkatsuki.value) return;
+  if (isAkatsuki.value || (e.target instanceof Element && e.target.closest('[data-hatask-flower-stream]'))) return;
   htkTouchStartPos.value={x:e.touches[0].clientX,y:e.touches[0].clientY};
   htkTouchLastPos.value={x:e.touches[0].clientX,y:e.touches[0].clientY};
   htkSwipeLocked=false;
@@ -1670,8 +1646,8 @@ function htkTouchEnd(e:TouchEvent){
   if(!htkTouchStartPos.value||!htkTouchLastPos.value)return;
   const dx=htkTouchLastPos.value.x-htkTouchStartPos.value.x;
   const dy=htkTouchLastPos.value.y-htkTouchStartPos.value.y;
-  htkTouchStartPos.value=null;
-  htkTouchLastPos.value=null;
+  htkTouchStartPos.value = null;
+  htkTouchLastPos.value = null;
   if(htkSwipeLocked)return;
   if(Math.abs(dy)>Math.abs(dx)*1.2)return; // vertical scroll
   if(Math.abs(dx)<80)return; // too short
@@ -1683,6 +1659,7 @@ function htkTouchEnd(e:TouchEvent){
 }
 function cleanupHataskState(){
 	closeHataskIntroduction();
+  closeFlowerDetail();
   closeEventDetail();
   closeBlankCalendarActions();
   // 旗鯖fork(タスク8): Hataskを離れたらフローティング連動フラグを下げる(フローティング復活)
@@ -1713,17 +1690,17 @@ function openHatalyze(){cleanupHataskState();routeRouter.push('/hatask/emotion-a
 // 旗鯖fork(v2): ホームのアプリ一覧(3テーマ共通データ)。short=短縮ラベル。color=季/花信のアイコン地色。
 const homeApps=computed(()=>{
   const a=[
-    {label:copy.appDrawing,short:copy.appDrawingShort,icon:'ti ti-brush',color:'#7eb5b2',fn:openDrawingTool},
-		{ label: copy.appCardMaker, short: copy.appCardMakerShort, icon: 'ti ti-cards', color: '#e8a87c', fn: openHataCard },
-	{label:'HataSideStudio',short:'SideStudio',icon:'ti ti-layout-sidebar-left-expand',color:'#8b7cf6',fn:openHataSideStudio},
-	{label:copy.appWhatsNew,short:copy.appWhatsNewShort,icon:'ti ti-news',color:'#5b8fd6',fn:openHataWhatsNew},
-    {label:copy.appHataSettings,short:copy.appHataSettingsShort,icon:'ti ti-flag',color:'#f472b6',fn:openHataSettings},
-    {label:copy.appGuide,short:copy.appGuideShort,icon:'ti ti-book',color:'#60a5fa',fn:openHataDocs},
-    {label:emotionCopy.title,short:emotionCopy.title,icon:'ti ti-mood-search',color:'#f59e0b',fn:openHatalyze},
+    { id: 'drawing', label: copy.appDrawing, short: copy.appDrawingShort, icon: 'ti ti-brush', color: '#7eb5b2', fn: openDrawingTool },
+		{ id: 'card', label: copy.appCardMaker, short: copy.appCardMakerShort, icon: 'ti ti-cards', color: '#e8a87c', fn: openHataCard },
+	{ id: 'studio', label: 'HataSideStudio', short: 'SideStudio', icon: 'ti ti-layout-sidebar-left-expand', color: '#8b7cf6', fn: openHataSideStudio },
+	{ id: 'whatsnew', label: copy.appWhatsNew, short: copy.appWhatsNewShort, icon: 'ti ti-news', color: '#5b8fd6', fn: openHataWhatsNew },
+    { id: 'hatasettings', label: copy.appHataSettings, short: copy.appHataSettingsShort, icon: 'ti ti-flag', color: '#f472b6', fn: openHataSettings },
+    { id: 'guide', label: copy.appGuide, short: copy.appGuideShort, icon: 'ti ti-book', color: '#60a5fa', fn: openHataDocs },
+    { id: 'analyze', label: emotionCopy.title, short: emotionCopy.title, icon: 'ti ti-mood-search', color: '#f59e0b', fn: openHatalyze },
   ];
-  if(canAccessHataFeed.value)a.push({label:'HataFeed',short:'HataFeed',icon:'ti ti-message-report',color:'#34d399',fn:openHataFeed});
-  a.push({label:'Hatady',short:'Hatady',icon:'ti ti-book-2',color:'#e79b5e',fn:openHatady});
-  a.push({label:'地震・津波情報',short:'地震',icon:'ti ti-activity',color:'#f87171',fn:openEarthquake});
+  if (canAccessHataFeed.value)a.push({ id: 'feed', label: 'HataFeed', short: 'HataFeed', icon: 'ti ti-message-report', color: '#34d399', fn: openHataFeed });
+  a.push({ id: 'hatady', label: 'Hatady', short: 'Hatady', icon: 'ti ti-book-2', color: '#e79b5e', fn: openHatady });
+  a.push({ id: 'earthquake', label: '地震・津波情報', short: '地震', icon: 'ti ti-activity', color: '#f87171', fn: openEarthquake });
   return a;
 });
 // 旗鯖fork(v2): ホームの予定日付も Hataskey 共通言語の Intl 表示にする。
@@ -1757,15 +1734,17 @@ function openEarthquake(){cleanupHataskState();routeRouter.push('/earthquake')}
 // 旗鯖fork(#36): HataFeed通知タイル
 const hfNotifs=ref<HataFeedNotif[]>([]);
 const hfUnread=ref(0);
+const hfState = ref<'loading' | 'ready' | 'error'>('loading');
 const hfReadingNotificationIds = new Set<string>();
-let hfTimer:ReturnType<typeof setInterval>|null=null;
+let hfTimer: number | null = null;
 async function loadHfNotifs(){
   if(!canAccessHataFeed.value)return;
   try{
     const res:any=await misskeyApi('hata/feedback/notifications',{limit:5});
     hfNotifs.value=res.notifications||[];
     hfUnread.value=res.unreadCount||0;
-  }catch{}
+    hfState.value = 'ready';
+  } catch {if (hfState.value !== 'ready')hfState.value = 'error';}
 }
 function hfIcon(type:string):string{
   // hatafeedのnotifIcon相当の最低限版
@@ -3406,11 +3385,107 @@ const communityFlowers = ref<CommunityFlower[]>([]);
 const communityFlowerPage = ref(1);
 const communityFlowerOrder = ref<'newest' | 'oldest'>('newest');
 const communityFlowerTotalPages = ref(1);
+const communityFlowerTotal = ref(0);
 const communityFlowersLoading = ref(false);
 const communityFlowersError = ref(false);
+const flowerVisibilitySaving = ref(false);
+const flowerAnimations = computed(() => settings.value.animations !== false && prefer.r.animation.value && !showFlowerInfo.value);
+const flowerDataWritable = computed(() => dataLoaded.value && loadedKeys.has('flower') && loadedKeys.has('gallery'));
+const flowerVisibilityLabel = computed(() => flowerVisibilityOptions.value.find(option => option.value === flowerVisibility.value)?.label ?? '');
+const seasonFlowerLabel = computed(() => ({ spring: copy.flowerSeasonSpring, summer: copy.flowerSeasonSummer, autumn: copy.flowerSeasonAutumn, winter: copy.flowerSeasonWinter })[getHataskFlowerSeason(akatsukiNow.value)]);
+type FlowerStreamKind = 'personal' | 'community' | 'activity';
+const flowerStreamPaused = ref<Record<FlowerStreamKind, boolean>>({ personal: false, community: false, activity: false });
+const personalFlowerStream = ref<InstanceType<typeof HataskFlowerStream> | null>(null);
+const communityFlowerStream = ref<InstanceType<typeof HataskFlowerStream> | null>(null);
+const activityFlowerStream = ref<InstanceType<typeof HataskFlowerStream> | null>(null);
+const flowerDialogOpen = ref(false);
+const selectedCommunityFlowerId = ref<string | null>(null);
+let activeFlowerPopup: { showing: ReturnType<typeof ref<boolean>>; kind: FlowerStreamKind; id: string } | null = null;
+
+function flowerView(item: { id: string; emoji: string; name: string; hanakotoba?: string; speciesId?: string; harvestedAt?: string; date?: string }, isOwner: boolean, user?: Misskey.entities.UserLite): HataskFlowerView {
+	const species = findHataskFlora(item);
+	return {
+		id: item.id, emoji: item.emoji, name: localizeFloraName(item.name),
+		variety: species ? localizeFloraName(species.name) : undefined,
+		hanakotoba: item.hanakotoba ? localizeHanakotoba(item.hanakotoba) : undefined,
+		harvestedAt: stableHarvestedAt(item), dateLabel: formatFlowerDate(item),
+		rare: isRareHataskFlower(item), isOwner, user,
+	};
+}
+
+const personalFlowerViews = computed(() => pagedGallery.value.map(item => flowerView(item, true, $i ?? undefined)));
+const communityFlowerViews = computed(() => communityFlowers.value.map(item => flowerView(item, false, item.user)));
+
+function flowerPauseLabel(kind: FlowerStreamKind): string {
+	const title = kind === 'personal' ? copy.flowerGallery : kind === 'community' ? copy.communityFlowerGallery : copy.communityFlowerActivity;
+	return `${title} · ${flowerStreamPaused.value[kind] ? copy.resumeFlowerScroll : copy.pauseFlowerScroll}`;
+}
+
+function toggleFlowerStream(kind: FlowerStreamKind): void {
+	flowerStreamPaused.value[kind] = !flowerStreamPaused.value[kind];
+}
+
+function closeFlowerDetail(): void {
+	if (activeFlowerPopup) activeFlowerPopup.showing.value = false;
+	selectedCommunityFlowerId.value = null;
+}
+
+function openFlowerDetail(kind: FlowerStreamKind, selection: HataskFlowerSelection): void {
+	if (flowerDialogOpen.value || !selection.anchor.isConnected) return;
+	const view = (kind === 'personal' ? personalFlowerViews.value : communityFlowerViews.value).find(item => item.id === selection.flower.id);
+	if (!view || (kind !== 'personal' && (communityFlowersLoading.value || communityFlowersError.value))) return;
+	const owner = { showing: ref(true), kind, id: view.id };
+	activeFlowerPopup = owner;
+	flowerDialogOpen.value = true;
+	selectedCommunityFlowerId.value = kind === 'personal' ? null : view.id;
+	const { dispose } = os.popup(HataskFlowerDetail, {
+		flower: view, source: selection.anchor, returnFocusTo: selection.returnFocusTo,
+		theme: settings.value.theme || 'akatsuki', mode: themeMode.value, animations: flowerAnimations.value,
+		isOpen: owner.showing,
+		labels: { close: i18n.ts.close, meaning: copy.flowerMeaning, harvested: copy.flowerHarvestedAt, rename: copy.renameFlowerTitle, report: copy.reportFlowerName, rare: copy.rareFlower, owner: copy.flowerOwner },
+	}, {
+		closed: () => {
+			dispose();
+			if (activeFlowerPopup === owner) { activeFlowerPopup = null; flowerDialogOpen.value = false; selectedCommunityFlowerId.value = null; }
+		},
+		action: async () => {
+			if (!hataskPageActive || activeTab.value !== 'garden') return;
+			flowerDialogOpen.value = true;
+			try {
+				if (kind === 'personal') {
+					const original = gallery.value.find(item => item.id === view.id);
+					if (original && flowerDataWritable.value) await renameFlower(original);
+				} else {
+					const original = communityFlowers.value.find(item => item.id === view.id);
+					if (original && !communityFlowersLoading.value && !communityFlowersError.value) await reportCommunityFlower(original);
+				}
+			} catch (error) {
+				console.warn('Failed to update Hatask flower:', error);
+				os.toast(i18n.ts.somethingHappened);
+			} finally {
+				flowerDialogOpen.value = false;
+				await nextTick();
+				if (hataskPageActive && activeTab.value === 'garden') {
+					const stream = kind === 'personal' ? personalFlowerStream.value : kind === 'community' ? communityFlowerStream.value : activityFlowerStream.value;
+					stream?.getAnchor(view.id)?.focus({ preventScroll: true });
+				}
+			}
+		},
+	});
+}
+
+function changeFlowerVisibility(event: Event): void {
+	const select = event.target as HTMLSelectElement;
+	const value = select.value;
+	select.value = flowerVisibility.value;
+	if (value === 'public' || value === 'followers' || value === 'private') void updateFlowerVisibility(value);
+}
+
+watch([activeTab, galleryPage, galleryOrder, communityFlowerPage, communityFlowerOrder, themeMode, () => settings.value.theme], closeFlowerDetail);
+watch(communityFlowers, () => { if (activeFlowerPopup?.kind !== 'personal') closeFlowerDetail(); });
 
 watch([activeTab, communityFlowerPage, communityFlowerOrder], ([tab]) => {
-	if (tab === 'garden' && dataLoaded.value) {
+	if (tab === 'garden' && dataLoaded.value && hataskPageActive && !window.document.hidden) {
 		if (skipNextCommunityFlowerWatch) {
 			skipNextCommunityFlowerWatch = false;
 			return;
@@ -3519,7 +3594,7 @@ const todoCompletionRate=computed(()=>{if(todos.value.length===0)return 0;return
 const weeklyTaskProgress=computed(()=>{const now=new Date();const weekAgo=new Date(now.getTime()-7*86400000);const weekTodos=todos.value.filter(t=>t.createdAt&&new Date(t.createdAt)>=weekAgo);if(weekTodos.length===0)return 0;return Math.round(weekTodos.filter(t=>t.done).length/weekTodos.length*100)});
 const monthlyMoodCount=computed(()=>{const now=new Date();const ym=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;return moods.value.filter(m=>{const d=new Date(m.date||m.createdAt);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`===ym}).length});
 const monthlyMoodProgress=computed(()=>{const now=new Date();const daysInMonth=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();return Math.min(100,Math.round(monthlyMoodCount.value/daysInMonth*100))});
-const currentFlowerHanakotoba=computed(()=>{const flora=floraData.find(f=>f.emoji===flower.value.emoji);return flora?.hanakotoba?localizeHanakotoba(flora.hanakotoba) : ''});
+const currentFlowerHanakotoba=computed(()=>{const flora=findHataskFlora(flower.value);return flora?.hanakotoba?localizeHanakotoba(flora.hanakotoba) : ''});
 const galleryWithHanakotoba=computed(()=>gallery.value.filter(fl=>fl.hanakotoba).slice(0,20));
 
 // Hatask Eye phrase system
@@ -3760,10 +3835,43 @@ function mealLevelInfo(id:string){return mealLevels.value.find(l=>l.id===id)||{e
 // 免責ダイアログ: 初回必ず表示、以降は!マークから手動表示
 async function ackMealDisclaimer(){showMealDisclaimer.value=false;if(!settings.value.mealDisclaimerShown){settings.value.mealDisclaimerShown=true;await registrySet('settings',settings.value)}}
 
+// 名前の入力が閉じ終わってから、呼び出し元のレールを再開する。
+async function inputFlowerName(props: { title: string; text: string; default: string; minLength: number; maxLength: number }): Promise<{ canceled: boolean; result?: string | null }> {
+	const sourceTab = activeTab.value;
+	const isSourceTabActive = () => hataskPageActive && activeTab.value === sourceTab;
+	if (!isSourceTabActive() || (sourceTab !== 'garden' && sourceTab !== 'eye')) return { canceled: true };
+	const component = await import('@/components/MkDialog.vue').then(module => module.default);
+	if (!isSourceTabActive()) return { canceled: true };
+	return new Promise(resolve => {
+		let outcome: { canceled: boolean; result?: string | null } = { canceled: true };
+		const { dispose } = os.popup(component, {
+			title: props.title, text: props.text,
+			input: { type: 'text', default: props.default, minLength: props.minLength, maxLength: props.maxLength },
+		}, {
+			done: result => { outcome = result.canceled ? { canceled: true } : { canceled: false, result: typeof result.result === 'string' ? result.result : null }; },
+			closed: () => { dispose(); resolve(isSourceTabActive() ? outcome : { canceled: true }); },
+		});
+	});
+}
+
+async function handleFlowerHarvest(): Promise<void> {
+	if (!hataskPageActive || (activeTab.value !== 'garden' && activeTab.value !== 'eye') || !flowerDataWritable.value || flowerDialogOpen.value || flower.value.progress < 100) return;
+	flowerDialogOpen.value = true;
+	try {
+		await harvestFlower();
+	} catch (error) {
+		console.warn('Failed to harvest Hatask flower:', error);
+		os.toast(i18n.ts.somethingHappened);
+	} finally {
+		flowerDialogOpen.value = false;
+	}
+}
+
 async function harvestFlower() {
+	const sourceFlower = { ...flower.value };
 	const autoName = generateFlowerName({ emoji: flower.value.emoji, name: flower.value.name });
 	const localizedAutoName = localizeFloraName(autoName);
-	const { canceled, result } = await os.inputText({
+	const { canceled, result } = await inputFlowerName({
 		title: copy.flowerBloomedTitle,
 		text: copy.flowerNamingPrompt,
 		default: localizedAutoName,
@@ -3771,20 +3879,24 @@ async function harvestFlower() {
 		maxLength: 80,
 	});
 	const trimmedResult = typeof result === 'string' ? result.trim() : '';
-	if (canceled || !trimmedResult) return;
-	const flora = floraData.find(f => f.emoji === flower.value.emoji);
+	if (canceled || !trimmedResult || !flowerDataWritable.value
+		|| flower.value.startedAt !== sourceFlower.startedAt || flower.value.emoji !== sourceFlower.emoji
+		|| flower.value.name !== sourceFlower.name || flower.value.speciesId !== sourceFlower.speciesId
+		|| flower.value.rare !== sourceFlower.rare || flower.value.targetMinutes !== sourceFlower.targetMinutes) return;
+	const flora = findHataskFlora(flower.value);
 	const flowerId = generateId();
 	gallery.value.unshift({
 		id: flowerId,
 		clientFlowerId: flowerId,
 		emoji: flower.value.emoji,
+		...(flora?.speciesId ? { speciesId: flora.speciesId } : {}),
 		name: trimmedResult === localizedAutoName ? autoName : trimmedResult,
 		hanakotoba: flora?.hanakotoba ?? '',
 		date: new Date().toLocaleDateString('ja-JP'),
 		harvestedAt: new Date().toISOString(),
 	});
 	const nf = pickRandomFlora();
-	flower.value = createHataskGrowingFlower({ emoji: nf.emoji, name: generateFlowerName(nf) });
+	flower.value = createHataskGrowingFlower({ emoji: nf.emoji, name: generateFlowerName(nf), speciesId: nf.speciesId, rare: nf.rare });
 	await registrySet('gallery', gallery.value);
 	await registrySet('flower', flower.value);
 	await syncFlowerGallery([gallery.value[0]]);
@@ -3794,7 +3906,7 @@ async function harvestFlower() {
 async function renameFlower(fl: any) {
 	const sourceName = fl.name;
 	const localizedName = localizeFloraName(sourceName);
-	const { canceled, result } = await os.inputText({
+	const { canceled, result } = await inputFlowerName({
 		title: copy.renameFlowerTitle,
 		text: copy.newNamePrompt,
 		default: localizedName,
@@ -3803,8 +3915,9 @@ async function renameFlower(fl: any) {
 	});
 	const trimmedResult = typeof result === 'string' ? result.trim() : '';
 	if (canceled || !trimmedResult) return;
-	fl.name = trimmedResult === localizedName ? sourceName : trimmedResult;
-	await registrySet('gallery', gallery.value);
+	const renamed = { ...fl, name: trimmedResult === localizedName ? sourceName : trimmedResult };
+	await registrySet('gallery', gallery.value.map(item => item.id === fl.id ? renamed : item));
+	fl.name = renamed.name;
 	await syncFlowerGallery([fl]);
 }
 
@@ -3838,8 +3951,31 @@ async function syncFlowerGallery(items: unknown[] = gallery.value): Promise<void
 let communityFlowerRequestSequence = 0;
 let skipNextCommunityFlowerWatch = false;
 
+// 関係の変更後は古い応答や開いた詳細も破棄し、認可済みのページを取り直す。
+function invalidateCommunityFlowers(): void {
+	++communityFlowerRequestSequence;
+	if (activeFlowerPopup?.kind !== 'personal') closeFlowerDetail();
+	communityFlowers.value = [];
+	communityFlowerTotal.value = 0;
+	communityFlowerTotalPages.value = 1;
+	communityFlowersLoading.value = false;
+	communityFlowersError.value = false;
+	const shouldLoad = dataLoaded.value && hataskPageActive && activeTab.value === 'garden' && !window.document.hidden;
+	skipNextCommunityFlowerWatch = shouldLoad && communityFlowerPage.value !== 1;
+	communityFlowerPage.value = 1;
+	if (shouldLoad) void loadCommunityFlowers();
+}
+
+watch(mutedUsersRevision, invalidateCommunityFlowers);
+useGlobalEvent('userBlockingChanged', invalidateCommunityFlowers);
+const flowerMainConnection = useStream().useChannel('main');
+flowerMainConnection.on('follow', invalidateCommunityFlowers);
+flowerMainConnection.on('unfollow', invalidateCommunityFlowers);
+useStream().on('_connected_', invalidateCommunityFlowers);
+
 async function loadCommunityFlowers(): Promise<void> {
 	const requestSequence = ++communityFlowerRequestSequence;
+	if (activeFlowerPopup?.kind !== 'personal') closeFlowerDetail();
 	communityFlowersLoading.value = true;
 	communityFlowersError.value = false;
 	try {
@@ -3854,6 +3990,7 @@ async function loadCommunityFlowers(): Promise<void> {
 			return;
 		}
 		communityFlowers.value = response.items.map(item => ({ ...item, harvestedAt: stableHarvestedAt(item) }));
+		communityFlowerTotal.value = response.total;
 		communityFlowerTotalPages.value = totalPages;
 		if (response.myVisibility === 'public' || response.myVisibility === 'followers' || response.myVisibility === 'private') flowerVisibility.value = response.myVisibility;
 	} catch (error) {
@@ -3866,7 +4003,8 @@ async function loadCommunityFlowers(): Promise<void> {
 }
 
 async function updateFlowerVisibility(next: FlowerVisibility): Promise<void> {
-	if (flowerVisibility.value === next) return;
+	if (flowerVisibility.value === next || flowerVisibilitySaving.value) return;
+	flowerVisibilitySaving.value = true;
 	try {
 		const response = await misskeyApi('hatask/flowers/visibility/update', { visibility: next });
 		flowerVisibility.value = response.visibility;
@@ -3875,6 +4013,8 @@ async function updateFlowerVisibility(next: FlowerVisibility): Promise<void> {
 	} catch (error) {
 		console.warn('Failed to update Hatask flower visibility:', error);
 		os.toast(copy.flowerVisibilityUpdateFailed);
+	} finally {
+		flowerVisibilitySaving.value = false;
 	}
 }
 
@@ -3893,10 +4033,14 @@ function setGalleryOrder(order: 'newest' | 'oldest'): void {
 
 async function reportCommunityFlower(item: CommunityFlower): Promise<void> {
 	if (!item.user) return;
-	const { dispose } = await os.popupAsyncWithDialog(import('@/components/MkAbuseReportWindow.vue').then(module => module.default), {
-		user: item.user,
-		initialComment: copyx.flowerReportComment({ name: localizeFloraName(item.name), date: formatFlowerDate(item) }),
-	}, { closed: () => dispose() });
+	const component = await import('@/components/MkAbuseReportWindow.vue').then(module => module.default);
+	if (!hataskPageActive || activeTab.value !== 'garden' || !communityFlowers.value.some(flower => flower.id === item.id)) return;
+	await new Promise<void>(resolve => {
+		const { dispose } = os.popup(component, {
+			user: item.user!,
+			initialComment: copyx.flowerReportComment({ name: localizeFloraName(item.name), date: formatFlowerDate(item) }),
+		}, { closed: () => { dispose(); resolve(); } });
+	});
 }
 
 let navProtectionObserver:MutationObserver|null=null;
@@ -3904,6 +4048,31 @@ let navVisibilityTimer:ReturnType<typeof setInterval>|null=null;
 const akatsukiNow = ref(new Date());
 const akatsukiMoodJournal = ref<InstanceType<typeof HataskJournal> | null>(null);
 const akatsukiMealJournal = ref<InstanceType<typeof HataskJournal> | null>(null);
+const akatsukiUsageOwner = $i?.id;
+const akatsukiUsage = ref(readAkatsukiUsage(akatsukiUsageOwner));
+const akatsukiTools = computed(() => [
+	...tabs.value.filter(tab => tab.id !== 'home').map(tab => ({ id: tab.id, label: tab.label, icon: tab.icon })),
+	...homeApps.value.map(app => ({ id: app.id, label: app.label, icon: app.icon })),
+	{ id: 'settings', label: copy.hataskSettings, icon: 'ti ti-palette' },
+	...(canUseMascot.value ? [{ id: 'mascot', label: 'マスコット', icon: 'ti ti-mood-smile' }] : []),
+	{ id: 'games', label: 'ゲーム', icon: 'ti ti-device-gamepad-2' },
+]);
+const akatsukiFeedbackNotifications = computed(() => canAccessHataFeed.value && settings.value.showFeedbackNotif !== false
+	? [...hfNotifs.value].sort((a, b) => Number(a.isRead) - Number(b.isRead)).slice(0, 3) : []);
+
+function trackAkatsukiTool(id: string): void {
+	if (!isAkatsuki.value || !akatsukiUsageOwner || $i?.id !== akatsukiUsageOwner) return;
+	akatsukiUsage.value = recordAkatsukiUsage(akatsukiUsageOwner, id, akatsukiTools.value.map(tool => tool.id));
+}
+
+watch(activeTab, tab => { if (dataLoaded.value) trackAkatsukiTool(tab); });
+
+function openAkatsukiFeedbackNotification(notification: HataFeedNotif): void {
+	if (!canAccessHataFeed.value) return;
+	trackAkatsukiTool('feed');
+	void onHfNotifClick(notification);
+}
+
 const akatsukiSnapshot = computed(() => buildHataskAkatsukiModel({
   now: akatsukiNow.value,
   locale: versatileLang,
@@ -3924,6 +4093,9 @@ const akatsukiSnapshot = computed(() => buildHataskAkatsukiModel({
   loginRanking: loginRanking.value,
   eyePhrase: eyePhrase.value,
   feedbackUnread: hfUnread.value,
+  feedback: { allowed: canAccessHataFeed.value, known: hfState.value === 'ready' },
+  apps: akatsukiTools.value,
+  usage: akatsukiUsage.value,
   settings: settings.value,
 }));
 const akatsukiModel = computed(() => akatsukiSnapshot.value.model);
@@ -3955,7 +4127,11 @@ function openAkatsukiApp(id: string): void {
     mascot: () => { if (canUseMascot.value) goToMascotSettings(); },
     games: () => { cleanupHataskState(); routeRouter.push('/games'); },
   };
-  actions[id]?.();
+  if (actions[id]) {
+    if ((id === 'feed' && !canAccessHataFeed.value) || (id === 'mascot' && !canUseMascot.value)) return;
+    trackAkatsukiTool(id);
+    actions[id]();
+  }
 }
 
 async function handleAkatsukiAction(action: HataskAkatsukiAction): Promise<void> {
@@ -4002,6 +4178,8 @@ async function handleAkatsukiAction(action: HataskAkatsukiAction): Promise<void>
 }
 
 onMounted(async () => {
+	window.document.addEventListener('visibilitychange', invalidateCommunityFlowers);
+	window.addEventListener('focus', invalidateCommunityFlowers);
 	window.addEventListener(HATASK_FLOWER_GROWTH_EVENT, onHataskFlowerGrowth);
 // 旗鯖fork(v2 §16①): ブートは onActivated(表示されるたび)で再生する。
 //   hatask は keep-alive のため遷移復帰では onMounted が走らず、以前は初回リロード時しか出なかった。
@@ -4014,7 +4192,7 @@ loadMascot();
 if(canUseMascot.value){loadMascotDisplaySettings().then(()=>{mascotPickRandomPhrase();startMascotCardRotation();});}
 hatakMascotActive.value = true;
 // 旗鯖fork(#36): HataFeed通知タイル＋地震・津波タイルの起動
-if(canAccessHataFeed.value){loadHfNotifs();hfTimer=setInterval(loadHfNotifs,30000);}
+if (canAccessHataFeed.value) { void loadHfNotifs(); hfTimer = window.setInterval(loadHfNotifs, 30_000); }
 loadEq();eqStream=useStream();eqStream.on('earthquakeEvent',onEqEvent);eqStream.on('_connected_',onEqStreamConn);eqStream.on('_disconnected_',onEqStreamDisc);streamConnected.value=eqStream.state==='connected';
 // 旗鯖fork(perf): WS未接続のときだけ60sポーリング。接続成功で stopEqPoll、切断で startEqPoll が走る。
 if(!streamConnected.value)startEqPoll();
@@ -4138,7 +4316,7 @@ try {
 }
 
 const initFlower = pickRandomFlora();
-	const defaultFlower = createHataskGrowingFlower({ emoji: initFlower.emoji, name: generateFlowerName(initFlower) });
+	const defaultFlower = createHataskGrowingFlower({ emoji: initFlower.emoji, name: generateFlowerName(initFlower), speciesId: initFlower.speciesId, rare: initFlower.rare });
 const defaultSettings = { darkMode: false, autoTheme: true, weekStart: 'mon', showClock: true, showEvents: true, showFlower: true, showMoodSummary: true, showMealSection: true, showFeedbackNotif: true, showEarthquake: true, moodRemind: false, moodRemindTimes: ['昼 12:00', '寝る前 23:00'], openOnStart: false, showMealSummary: true, mealDisclaimerShown: false, eyeDisclaimerShown: false, theme: 'akatsuki', animations: true, v2Onboarded: false, todoSortModes: {}, todoMobileTabOrder: ['today', 'upcoming', 'all', 'completed', 'more'],
 	// 旗鯖fork(ハタキュ): 風を吹かせるか(このテーマ限定・既定ON) / 新テーマ案内を出したか(アカウントごと1回)
 	hatakyuWind: true, hatakyuNoticeShown: false, akatsukiNoticeShown: false };
@@ -4217,9 +4395,16 @@ eyeTimer = setInterval(updateEyePhrase, 10000);
 // KeepAlive対応: ページ離脱時にナビバーを非表示にする
 onDeactivated(() => {
 cleanupHataskState();
+invalidateCommunityFlowers();
 });
 onActivated(() => {
 hataskPageActive = true;
+invalidateCommunityFlowers();
+// HataFeedから戻ったときも未読とおすすめ表示を更新する。初回のタイマーとは重複させない。
+if (!hfTimer && canAccessHataFeed.value) {
+	void loadHfNotifs();
+	hfTimer = window.setInterval(loadHfNotifs, 30_000);
+}
 showHataskIntroduction();
 // 旗鯖fork(v2 §16①): hatask が表示されるたび(初回mount含む)ブートを再生。遷移復帰でも出るように。
 bootUsedActivated = true;
@@ -4270,6 +4455,7 @@ nextTick(() => {
 
 onBeforeUnmount(() => {
 cleanupHataskState();
+invalidateCommunityFlowers();
 });
 onUnmounted(() => {
 cleanupHataskState();
@@ -4278,6 +4464,10 @@ if (clockInterval) clearInterval(clockInterval);
 if (eyeTimer) clearInterval(eyeTimer);
 	if (archiveUndoTimer) window.clearTimeout(archiveUndoTimer);
 	if (completedUndoTimer) window.clearTimeout(completedUndoTimer);
+	flowerMainConnection.dispose();
+	useStream().off('_connected_', invalidateCommunityFlowers);
+	window.document.removeEventListener('visibilitychange', invalidateCommunityFlowers);
+	window.removeEventListener('focus', invalidateCommunityFlowers);
 	window.removeEventListener(HATASK_FLOWER_GROWTH_EVENT, onHataskFlowerGrowth);
 if (mediaQuery) mediaQuery.removeEventListener('change', onMediaChange);
 stopHtkThemeWatch();
@@ -5055,6 +5245,7 @@ select.htk-inp{appearance:none;cursor:pointer;padding-right:36px}
 .htk-root[data-theme="suri"] .htk-gal-vis-box,.htk-root[data-theme="suri"] .htk-gal-sort-inner{border:2.5px solid var(--ink-line);border-radius:999px;background:var(--surface)}
 .htk-root[data-theme="hatakyu"] .htk-gal-vis-box,.htk-root[data-theme="hatakyu"] .htk-gal-sort-inner{border:1.5px solid var(--field-bd);border-radius:999px;background:var(--paper2)}
 .htk-root[data-theme="kisetsu"] .htk-gal-sort,.htk-root[data-theme="kashin"] .htk-gal-sort,.htk-root[data-theme="suri"] .htk-gal-sort,.htk-root[data-theme="hatakyu"] .htk-gal-sort{margin-bottom:12px}
+.htk-root[data-theme="akatsuki"] .htk-gal-sort{margin-bottom:12px}
 .htk-root[data-theme="kisetsu"] .htk-gal-vis-box .htk-vis-o.on,.htk-root[data-theme="kisetsu"] .htk-gal-vis-box .htk-vis-o.on:hover,.htk-root[data-theme="kisetsu"] .htk-gal-sort-btn.on,.htk-root[data-theme="kisetsu"] .htk-gal-sort-btn.on:hover{background:color-mix(in srgb,var(--accent) 12%,transparent);border-color:var(--accent);color:var(--fg)}
 .htk-root[data-theme="kashin"] .htk-gal-vis-box .htk-vis-o.on,.htk-root[data-theme="kashin"] .htk-gal-vis-box .htk-vis-o.on:hover,.htk-root[data-theme="kashin"] .htk-gal-sort-btn.on,.htk-root[data-theme="kashin"] .htk-gal-sort-btn.on:hover{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
 .htk-root[data-theme="suri"] .htk-gal-vis-box .htk-vis-o.on,.htk-root[data-theme="suri"] .htk-gal-vis-box .htk-vis-o.on:hover,.htk-root[data-theme="suri"] .htk-gal-sort-btn.on,.htk-root[data-theme="suri"] .htk-gal-sort-btn.on:hover{background:var(--blue);border-color:var(--blue);color:var(--on-blue)}
@@ -5203,6 +5394,16 @@ select.htk-inp{appearance:none;cursor:pointer;padding-right:36px}
 .htk-gal-card:hover{transform:none;box-shadow:none}
 .htk-gal-e{font-size:2.2rem;display:block;margin-bottom:5px;text-shadow:none}.htk-gal-n{font-size:.76rem;font-weight:600}.htk-gal-d{font-size:.66rem;color:var(--text-3);margin-top:2px}
 .htk-gal-i{display:block;width:100%;font:inherit;color:inherit;text-align:center;appearance:none}
+/* レア品種は両ギャラリーに同じ光の枠を表示。動きを止めても枠とラベルは残す。 */
+.htk-gal-i[data-rare="true"]{position:relative;border-color:var(--accent);box-shadow:0 0 14px color-mix(in srgb,var(--accent) 24%,transparent)}
+.htk-gal-i[data-rare="true"]::before{content:"";position:absolute;inset:-2px;padding:2px;border-radius:inherit;background:linear-gradient(115deg,var(--accent),var(--surface),var(--accent),var(--fg),var(--accent));background-size:300% 100%;-webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;opacity:.85}
+.htk-gal-i[data-rare="true"][data-rare-motion="true"]::before{animation:htkRareFrameShine 5.5s ease-in-out infinite}
+.htk-gal-i:focus-visible{outline:2px solid var(--accent);outline-offset:4px}
+.htk-flower-rare-label{display:flex;align-items:center;justify-content:center;gap:4px;margin:4px 0;font-size:.72rem;font-weight:700;color:var(--fg);line-height:1.5}
+.htk-flower-rare-label i{color:var(--accent)}
+@keyframes htkRareFrameShine{0%,100%{background-position:0% 50%;opacity:.6}50%{background-position:100% 50%;opacity:1}}
+@media (prefers-reduced-motion:reduce){.htk-gal-i[data-rare="true"][data-rare-motion="true"]::before{animation:none}}
+
 .htk-gal-hk{display:block;margin-top:3px;font-size:.66rem;color:var(--text-2)}
 .htk-gal-note,.htk-gal-visibility-help{margin:0 0 10px;color:var(--text-3);font-size:.74rem;line-height:1.5}
 .htk-gal-visibility-help{margin:7px 0 12px;font-size:.68rem}
@@ -5967,6 +6168,77 @@ button.hk-row{ cursor:pointer }
   .hk-mbtns{ flex-direction:column }
 }
 
+/* 承認済みのお花ストリーム。幅は Hatask の表示領域を基準にする。 */
+.htk-garden-page[data-garden-layout='streams'] {
+  container: hatask-flower-page / inline-size;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: 18px;
+  min-width: 0;
+}
+.htk-garden-page[data-garden-layout='streams'] .htk-lg { min-width: 0; margin-bottom: 0; }
+.htk-garden-page .htk-gc { padding: 14px 18px 16px; }
+.htk-garden-page .htk-lg:hover { transform: none; }
+.htk-garden-collections { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; min-width: 0; }
+.htk-flower-heading { position: relative; display: flex; align-items: center; gap: 4px; min-height: 44px; margin-bottom: 4px; }
+.htk-flower-heading > :first-child { flex: 1; min-width: 0; }
+.htk-flower-heading .htk-sec-title { margin: 0; font-size: 1rem; line-height: 1.5; overflow-wrap: anywhere; }
+.htk-growing-panel .htk-sec-title { font-size: .82rem; color: var(--fg-2); }
+.htk-flower-summary { margin: 2px 0 0; color: var(--fg-2); font-size: .75rem; line-height: 1.5; overflow-wrap: anywhere; }
+.htk-flower-icon-button, .htk-flower-visibility > summary {
+  display: grid; place-items: center; flex: 0 0 44px; box-sizing: border-box; width: 44px; min-height: 44px;
+  padding: 0; border: 0; border-radius: var(--radius-xs); font: inherit; color: var(--fg-2); background: transparent; cursor: pointer;
+}
+.htk-flower-icon-button:hover:not(:disabled), .htk-flower-visibility > summary:hover { background: var(--hover-bg); color: var(--fg); }
+.htk-flower-icon-button[aria-pressed='true'] { color: var(--on-accent); background: var(--accent-ink, var(--accent)); }
+.htk-flower-icon-button:disabled { opacity: .45; cursor: default; }
+.htk-flower-icon-button:focus-visible, .htk-flower-visibility > summary:focus-visible, .htk-flower-sort select:focus-visible, .htk-flower-visibility select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.htk-growing-content { display: grid; grid-template-columns: 110px minmax(0, 1fr); align-items: center; gap: 8px 22px; }
+.htk-growing-ring { grid-column: 1; grid-row: 1 / span 2; width: 110px; height: 110px; margin: 0; }
+.htk-growing-copy { grid-column: 2; min-width: 0; overflow-wrap: anywhere; }
+.htk-growing-name { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 9px; }
+.htk-growing-name > strong { font-family: var(--htk-font-head); font-size: 1.3rem; line-height: 1.4; }
+.htk-growing-name .htk-flower-rare-label { margin: 0; }
+.htk-growing-meaning, .htk-growing-note { margin: 4px 0 0; color: var(--fg-2); font-size: .75rem; line-height: 1.5; }
+.htk-growing-remaining { margin: 8px 0 0; color: var(--fg); font-size: .88rem; font-weight: 700; line-height: 1.5; }
+.htk-growing-progress { margin: 2px 0 0; color: var(--fg-2); font-size: .75rem; line-height: 1.5; font-variant-numeric: tabular-nums; }
+.htk-growing-harvest { grid-column: 2; justify-self: start; min-height: 44px; max-width: 100%; white-space: normal; }
+.htk-flower-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
+.htk-flower-footer .htk-gal-pager { gap: 3px; margin: 0; }
+.htk-flower-footer .htk-pager-t { color: var(--fg-2); font-size: .75rem; }
+.htk-flower-footer .htk-gal-pager .htk-btn { border: 0; background: transparent; box-shadow: none; backdrop-filter: none; }
+.htk-flower-sort { max-width: 100%; }
+.htk-flower-sort select, .htk-flower-visibility select { box-sizing: border-box; min-height: 44px; max-width: 100%; padding: 6px 8px; border: 1px solid var(--rule); border-radius: var(--radius-xs); font: inherit; font-size: .75rem; color: var(--fg); background: var(--surface); }
+.htk-flower-sort select { border-color: transparent; background: transparent; }
+.htk-flower-sort option, .htk-flower-visibility option { background: var(--surface); color: var(--fg); }
+.htk-flower-visibility { flex: 0 0 44px; }
+.htk-flower-visibility > summary { list-style: none; }
+.htk-flower-visibility > summary::-webkit-details-marker { display: none; }
+.htk-flower-visibility[open] > summary { background: var(--hover-bg); }
+.htk-flower-visibility-panel { position: absolute; top: calc(100% + 6px); right: 0; z-index: 30; box-sizing: border-box; width: min(320px, 100%); padding: 14px; border: 1px solid var(--rule); border-radius: var(--radius-sm); background: var(--surface); color: var(--fg); box-shadow: 0 12px 32px #0002; }
+.htk-flower-visibility-panel label { display: grid; gap: 7px; font-size: .8rem; font-weight: 700; }
+.htk-flower-visibility-panel p { margin: 8px 0 0; font-size: .75rem; line-height: 1.6; color: var(--fg-2); }
+.htk-garden-page [data-garden-group='personal']:has(.htk-flower-visibility[open]) { z-index: 30; }
+.htk-community-garden > .htk-gc { padding-bottom: 10px; }
+.htk-community-garden .htk-flower-heading { padding-inline: 2px; margin-bottom: 10px; }
+.htk-flower-footer .htk-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+.htk-root[data-theme='akatsuki'] .htk-garden-page .htk-sec-title { font-family: var(--htk-font-head); }
+.htk-root[data-theme='hatakyu'] .htk-garden-page[data-garden-layout='streams'] .htk-lg:nth-child(n) { --r: 0deg; }
+@container hatask-flower-page (min-width: 1100px) {
+  .htk-garden-collections { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+}
+@container hatask-flower-page (max-width: 519px) {
+  .htk-garden-page .htk-gc { padding: 10px 10px 12px; }
+  .htk-garden-collections { gap: 12px; }
+  .htk-growing-content { grid-template-columns: 82px minmax(0, 1fr); gap: 6px 13px; }
+  .htk-growing-ring { width: 82px; height: 82px; }
+  .htk-growing-ring .htk-fl-emo { font-size: 2.3rem; }
+  .htk-growing-name > strong { font-size: 1.1rem; }
+  .htk-growing-remaining { font-size: .82rem; margin-top: 5px; }
+  .htk-growing-harvest { grid-column: 1 / -1; justify-self: stretch; }
+  .htk-flower-heading .htk-sec-title { font-size: .9rem; }
+}
 </style>
 
 <!-- グローバルスタイル: Hatask起動時にMisskeyの標準ナビバーを非表示にする -->

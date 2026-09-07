@@ -100,6 +100,7 @@ import * as Misskey from 'cherrypick-js';
 import MkHataProfileBadges from '@/components/MkHataProfileBadges.vue';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { updateMutedUserState } from '@/utility/muted-users.js';
+import { globalEvents } from '@/events.js';
 import * as os from '@/os.js';
 import { i18n } from '@/i18n.js';
 import { mainRouter } from '@/router.js';
@@ -211,21 +212,34 @@ async function toggleMute() {
 }
 
 async function toggleBlock() {
-    if (!user.value || blockLoading.value) return;
-    blockLoading.value = true;
-    try {
-        if (isBlocked.value) { await misskeyApi('blocking/delete', { userId: user.value.id }); isBlocked.value = false; }
-        else {
-            // 旗鯖fork: サーバー管理者へのブロックはモデレーション上の理由で禁止
-            if (userIsAdmin.value) {
-                os.alert({ type: 'error', text: i18n.ts.cannotBlockOrMuteAdministrator });
-                blockLoading.value = false; return;
-            }
-            const { canceled } = await os.confirm({ type: 'warning', text: copy.blockConfirm.replace('{user}', `@${user.value.username}`) });
-            if (canceled) { blockLoading.value = false; return; }
-            await misskeyApi('blocking/create', { userId: user.value.id }); isBlocked.value = true;
-        }
-    } catch { os.toast(copy.actionFailed); } finally { blockLoading.value = false; }
+	if (!user.value || blockLoading.value) return;
+	const targetUserId = user.value.id;
+	blockLoading.value = true;
+	try {
+		if (isBlocked.value) {
+			await misskeyApi('blocking/delete', { userId: targetUserId });
+			if (user.value?.id === targetUserId) isBlocked.value = false;
+		} else {
+			// 旗鯖fork: サーバー管理者へのブロックはモデレーション上の理由で禁止
+			if (userIsAdmin.value) {
+				os.alert({ type: 'error', text: i18n.ts.cannotBlockOrMuteAdministrator });
+				blockLoading.value = false;
+				return;
+			}
+			const { canceled } = await os.confirm({ type: 'warning', text: copy.blockConfirm.replace('{user}', `@${user.value.username}`) });
+			if (canceled) {
+				blockLoading.value = false;
+				return;
+			}
+			await misskeyApi('blocking/create', { userId: targetUserId });
+			if (user.value?.id === targetUserId) isBlocked.value = true;
+		}
+		globalEvents.emit('userBlockingChanged', { userId: targetUserId });
+	} catch {
+		os.toast(copy.actionFailed);
+	} finally {
+		blockLoading.value = false;
+	}
 }
 
 function goToProfile() {

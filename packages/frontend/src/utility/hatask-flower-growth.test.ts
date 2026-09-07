@@ -6,12 +6,26 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, test, vi } from 'vitest';
 import { addHataskFlowerGrowth, advanceHataskFlowerGrowth, createHataskGrowingFlower, HATASK_FLOWER_MINUTES_MAX, HATASK_FLOWER_MINUTES_MIN, HATASK_FLOWER_TOTAL_MINUTES, normalizeHataskGrowingFlower, randomHataskFlowerTargetMinutes, sameFlower } from './hatask-flower-growth.js';
+import { getReadyHataskFlower } from '../../../backend/src/misc/hatask-flower-ready.js';
 
 vi.mock('@/utility/misskey-api.js', () => ({ misskeyApi: vi.fn() }));
 
 const read = (path: string) => readFileSync(`${process.cwd()}/src/${path}`, 'utf8');
 
 describe('Hatask flower growth', () => {
+	test('サーバーの通知判定と画面の収穫可能判定が境界・旧データ・水やりで一致する', () => {
+		for (const target of [480, 1200, 1920]) {
+			const planted = createHataskGrowingFlower({ emoji: '🌷', name: 'チューリップ', now: 1000, targetMinutes: target });
+			const variants = [planted, { ...planted, lastGrowthAt: undefined }, addHataskFlowerGrowth(planted, 120, 1000 + 60_000), { startedAt: 1000, totalMinutes: 1199 }];
+			for (const value of variants) {
+				for (const elapsed of [0, target * 60_000 - 1, target * 60_000, target * 60_000 + 1]) {
+					const now = 1000 + elapsed;
+					expect(getReadyHataskFlower(value, now) != null).toBe(advanceHataskFlowerGrowth(value, now)?.progress === 100);
+				}
+			}
+		}
+	});
+
 	test('実経過分を加算して進捗を再計算し、満開を超えない', () => {
 		const startedAt = 1_000;
 		const lastGrowthAt = startedAt + 599 * 60_000;
@@ -90,26 +104,37 @@ describe('Hatask flower growth', () => {
 		expect(studioWidget).toContain('window.addEventListener(HATASK_FLOWER_GROWTH_EVENT, onFlowerGrowth)');
 	});
 
-	test('お花ギャラリーと活動情報を別セクションで表示する', () => {
+	test('共同一覧と常設花壇の活動列は同じ花を使い、自分のお花を別に表示する', () => {
 		const page = read('pages/hatask.vue');
-		expect(page).toMatch(/copy\.communityFlowerGallery/);
-		expect(page).toMatch(/copy\.communityFlowerActivity/);
-		expect(page).toMatch(/communityFlowers[\s\S]*htk-gal-card/);
-		expect(page).toMatch(/communityFlowers[\s\S]*MkAvatar[\s\S]*forceShowDecoration/);
-		expect(page).toMatch(/communityFlowers[\s\S]*MkUserName[\s\S]*HataskEmoji/);
-		expect(page).toMatch(/htk-gal-community-gallery[\s\S]*htk-gal-pager/);
-		expect(page).toMatch(/htk-gal-community-row[\s\S]*reportCommunityFlower\(item\)/);
-		expect(page).toMatch(/htk-gal-vis-box[\s\S]*htk-gal-vis[\s\S]*aria-pressed/);
-		expect(page).toMatch(/htk-gal-sort[\s\S]*htk-gal-sort-inner[\s\S]*htk-gal-sort-label[\s\S]*copy\.sort/);
-		expect(page).toMatch(/htk-gal-sort-label[\s\S]*ti-arrows-sort/);
-		expect(page).toMatch(/htk-gal-sort-btn[\s\S]*ti-sort-descending[\s\S]*ti-sort-ascending/);
-		expect(page).toMatch(/htk-gal-vis \.htk-vis-o\{[^}]*border:1px solid transparent;[^}]*border-radius:999px;[^}]*background:transparent/);
-		expect(page).toMatch(/htk-gal-vis \.htk-vis-o\{[^}]*color:var\(--fg-2\)/);
-		expect(page).toMatch(/htk-gal-vis \.htk-vis-o:hover:not\(.on\)\{[^}]*color:var\(--fg\)/);
-		expect(page).toMatch(/htk-gal-vis \.htk-vis-o:focus-visible/);
-		expect(page).not.toMatch(/htk-gal-sort \.htk-btn/);
-		expect(page).toMatch(/\.htk-root\[data-theme="kisetsu"\] \.htk-gal-sort,\.htk-root\[data-theme="kashin"\] \.htk-gal-sort,\.htk-root\[data-theme="suri"\] \.htk-gal-sort,\.htk-root\[data-theme="hatakyu"\] \.htk-gal-sort\{margin-bottom:12px\}/);
-		expect(page).toMatch(/\.htk-gal-sort\{[^}]*margin-top:12px/);
+		const streams = [...page.matchAll(/<HataskFlowerStream\b[\s\S]*?\/>/gu)].map(match => match[0]);
+		expect(streams).toHaveLength(3);
+		for (const kind of ['community', 'personal', 'activity']) {
+			const stream = streams.find(source => source.includes(`ref="${kind}FlowerStream"`));
+			expect(stream).toBeDefined();
+			expect(stream).toContain(`:items="${kind === 'personal' ? 'personal' : 'community'}FlowerViews"`);
+			expect(stream).toContain(`openFlowerDetail('${kind}',selection)`);
+			expect(stream).toContain(`:paused="flowerStreamPaused.${kind} || flowerDialogOpen"`);
+		}
+		expect(page).toMatch(/<HataskCommunityGarden\b[^>]*:flowers="communityFlowerViews"[\s\S]*ref="activityFlowerStream"[\s\S]*<\/HataskCommunityGarden>/u);
+		expect(page).toContain(':label="copy.communityFlowerGallery"');
+		expect(page).toContain(':label="copy.communityFlowerActivity"');
+	});
+
+	test('お花の詳細で改名と報告を使い、装飾アバター・名前・日時を引き継ぐ', () => {
+		const stream = read('components/hatask/HataskFlowerStream.vue');
+		const detail = read('components/hatask/HataskFlowerDetail.vue');
+		const page = read('pages/hatask.vue');
+		const avatars = [...stream.matchAll(/<MkAvatar\b[^>]*\/>/gu)].map(match => match[0]);
+		expect(avatars).toHaveLength(2);
+		for (const avatar of avatars) expect(avatar).toContain(':forceShowDecoration="true"');
+		expect(stream).toContain('<MkUserName');
+		expect(stream).toContain(':emoji="tile.flower.emoji"');
+		expect(stream).toContain(':datetime="tile.flower.harvestedAt"');
+		expect(detail).toContain('flower.isOwner ? labels.rename : labels.report');
+		expect(page).toContain('reportCommunityFlower(');
+		expect(page).toContain('renameFlower(');
+		expect(page).toContain(':value="flowerVisibility"');
+		expect(page).toContain('@change="changeFlowerVisibility"');
 	});
 
 	test('ハタキュの写真列は狭幅でも4列を維持する', () => {

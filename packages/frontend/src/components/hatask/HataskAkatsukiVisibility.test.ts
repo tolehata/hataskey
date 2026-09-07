@@ -323,64 +323,67 @@ describe('検索フォーカスとTeleport先のトグル色', () => {
 	});
 });
 
-describe('みんなのお花の暁限定 N/O 表記', () => {
-	const copy = { newestFirst: '新しい順', oldestFirst: '古い順' };
-	const community = elements(tabNode('garden').children).find(node => attribute(node, 'data-garden-group') === 'community');
-	if (!community) throw new Error('Community flower section is missing');
-	const sort = elements(community.children).find(node => attribute(node, 'class') === 'htk-gal-sort');
-	if (!sort) throw new Error('Community flower sort is missing');
-	const buttons = elements(sort.children).filter(node => node.tag === 'button');
-	const evaluate = (expression: string, theme: Theme): unknown => new Function('isAkatsuki', 'copy', `return (${expression});`)(theme === 'akatsuki', copy);
+describe('お花の並び替えはテーマ共通の選択欄から操作する', () => {
+	const groups = ['personal', 'community'] as const;
 	const binding = (node: ElementNode, name: string): string => {
 		const prop = node.props.find(candidate => candidate.type === 7 && candidate.name === 'bind' && candidate.arg?.type === 4 && candidate.arg.content === name);
 		if (prop?.type !== 7 || prop.exp?.type !== 4) throw new Error(`Missing ${name} binding`);
 		return prop.exp.content;
 	};
 
-	test.each(themes)('%s: 表示文字だけを省略し、説明・選択状態・既存ハンドラーを保つ', theme => {
-		expect(buttons).toHaveLength(2);
-		for (const [index, order] of (['newest', 'oldest'] as const).entries()) {
-			const button = buttons[index];
-			const short = index === 0 ? 'N' : 'O';
-			const full = index === 0 ? copy.newestFirst : copy.oldestFirst;
-			const span = button.children.find(child => child.type === 1 && child.tag === 'span');
-			const text = span?.type === 1 ? span.children.find(child => child.type === 5) : undefined;
-			if (text?.type !== 5 || text.content.type !== 4) throw new Error('Sort label expression is missing');
-			expect(evaluate(text.content.content, theme)).toBe(theme === 'akatsuki' ? short : full);
-			for (const name of ['aria-label', 'title']) {
-				const label = evaluate(binding(button, name), theme);
-				expect(label).toBe(theme === 'akatsuki' ? `${short} (${index === 0 ? 'New' : 'Old'})・${full}` : full);
-			}
-			expect(binding(button, 'aria-pressed')).toBe(`communityFlowerOrder === '${order}'`);
-			expect(button.loc.source).toContain(`@click="setCommunityFlowerOrder('${order}')"`);
-			const icon = button.children.find(child => child.type === 1 && child.tag === 'i');
-			const condition = icon?.type === 1 ? icon.props.find(prop => prop.type === 7 && prop.name === 'if') : undefined;
-			if (condition?.type !== 7 || condition.exp?.type !== 4) throw new Error('Icon theme condition is missing');
-			expect(evaluate(condition.exp.content, theme)).toBe(theme !== 'akatsuki');
+	test.each(groups)('%s: 並び順の値・完全なラベル・既存ハンドラーを保つ', group => {
+		const section = elements(tabNode('garden').children).find(node => attribute(node, 'data-garden-group') === group);
+		if (!section) throw new Error(`Missing flower section: ${group}`);
+		const sort = elements(section.children).find(node => attribute(node, 'class') === 'htk-flower-sort');
+		if (!sort) throw new Error(`Missing flower sort: ${group}`);
+		const select = elements(sort.children).find(node => node.tag === 'select');
+		if (!select) throw new Error(`Missing flower order select: ${group}`);
+		expect(binding(select, 'aria-label')).toBe('copy.sort');
+		expect(binding(select, 'value')).toBe(group === 'community' ? 'communityFlowerOrder' : 'galleryOrder');
+		expect(select.loc.source).toContain(group === 'community' ? '@change="setCommunityFlowerOrder(' : '@change="setGalleryOrder(');
+		if (group === 'community') expect(binding(select, 'disabled')).toBe('communityFlowersLoading');
+		const options = elements(select.children).filter(node => node.tag === 'option');
+		expect(options.map(node => attribute(node, 'value'))).toEqual(['newest', 'oldest']);
+		for (const [index, option] of options.entries()) {
+			const text = option.children.find(child => child.type === 5);
+			if (text?.type !== 5 || text.content.type !== 4) throw new Error('Order label expression is missing');
+			expect(text.content.content).toBe(index === 0 ? 'copy.newestFirst' : 'copy.oldestFirst');
 		}
 	});
 
-	test('PCの非選択ラベルを隠すCSSは自分のお花だけに適用し、N/Oの片方を消さない', () => {
-		const root = fixture('garden', 'akatsuki')[0].closest('.htk-root');
+	type SortRule = { selector: string; property: string; value: string };
+	function sortRules(): SortRule[] {
+		const rules: SortRule[] = [];
+		compiledRoot(compiled).walkRules(rule => {
+			if (!rule.selector.includes('.htk-flower-sort')) return;
+			for (const selector of rule.selectors) rule.walkDecls(declaration => {
+				if (['display', 'visibility', 'opacity'].includes(declaration.prop)) rules.push({ selector, property: declaration.prop, value: declaration.value });
+			});
+		});
+		return rules;
+	}
+	function expectSortVisible(theme: Theme, rules: SortRule[]): void {
+		const root = fixture('garden', theme)[0].closest('.htk-root');
 		if (!root) throw new Error('Garden CSS fixture is missing');
-		for (const group of ['personal', 'community']) {
-			const groupButtons = root.querySelectorAll(`[data-garden-group="${group}"] .htk-gal-sort-inner > button`);
-			expect(groupButtons).toHaveLength(2);
-			for (const button of groupButtons) {
-				button.className = 'htk-gal-sort-btn';
-				button.setAttribute('aria-pressed', 'false');
-				const span = button.querySelector('span');
-				if (!span) throw new Error('Sort label is missing');
-				const hidingRules: string[] = [];
-				compiledRoot(compiled).walkRules(rule => {
-					if (!rule.selector.includes('.htk-gal-sort-btn')) return;
-					if (!rule.selectors.some(selector => span.matches(selector))) return;
-					rule.walkDecls('display', declaration => { if (declaration.value === 'none') hidingRules.push(rule.selector); });
-				});
-				// The personal gallery is the positive control for the same selector detector.
-				expect(hidingRules.length).toBe(group === 'personal' ? 1 : 0);
-			}
+		const selects = root.querySelectorAll('.htk-flower-sort select');
+		expect(selects).toHaveLength(2);
+		for (const select of selects) {
+			const targets = [select.parentElement!, select, ...Array.from(select.children)];
+			const hiding = rules.filter(rule => targets.some(target => target.matches(rule.selector)) && (
+				(rule.property === 'display' && rule.value === 'none') ||
+				(rule.property === 'visibility' && rule.value === 'hidden') ||
+				(rule.property === 'opacity' && Number(rule.value) === 0)
+			));
+			expect(hiding).toEqual([]);
 		}
+	}
+
+	test('陽性対照: 並び替え欄を消すCSSを同じ検査で検出する', () => {
+		expect(() => expectSortVisible('akatsuki', [...sortRules(), { selector: '.htk-flower-sort select', property: 'display', value: 'none' }])).toThrow();
+	});
+
+	test.each(themes)('%s: 自分・みんなの並び替え欄と選択肢を隠さない', theme => {
+		expectSortVisible(theme, sortRules());
 	});
 });
 

@@ -902,6 +902,8 @@ function explicitStorageDispositionsV2(): ReadonlyMap<string, ExplicitStorageKey
 		'旧端末UI保存値。現行の正本または互換経路へ置換済み', ['src/local-storage.ts', 'src/pages/settings/preferences.vue']);
 	add('local', keys('hataPostDelayEnabled hataPostDelaySeconds hataSideStudio'), 'runtime',
 		'独立feature内の実行時設定で、settings catalog target外', ['src/local-storage.ts']);
+	add('local', ['hataskAkatsukiUsage:' + dynamicKey], 'cache',
+		'暁ホームの優先表示に使う端末・アカウント別のツール利用履歴で、設定項目ではない', ['src/utility/hatask-akatsuki-usage.ts']);
 	add('local', [
 		'account', 'aiscriptSecure:' + dynamicKey, 'debug', 'hataNotificationFilterPolicyNoticeShown:' + dynamicKey,
 		'hataSideStudioTutorialDone', 'hataWhatsNewShownVersion', 'hata_muted_reactions_notice_shown', 'hatafeedIntroShown',

@@ -8,12 +8,16 @@
 import { versatileLang } from '@/utility/intl-const.js';
 import { adjectiveTranslations, floraTranslations } from '@/utility/hatask-flora-i18n.js';
 
+export type HataskFlowerSeason = 'spring' | 'summer' | 'autumn' | 'winter';
+
 export interface FloraItem {
+  speciesId?: string;
   emoji: string;
   name: string;
   hanakotoba?: string; // 花言葉
   rare?: boolean;
   strange?: boolean; // 奇妙アイテム
+  seasons?: HataskFlowerSeason[];
 }
 
 export const floraData: FloraItem[] = [
@@ -145,6 +149,25 @@ export const floraData: FloraItem[] = [
   {emoji:'🪺',name:'たまご巣',hanakotoba:'誕生',strange:true},
   {emoji:'🧸',name:'ぬいぐるみ花',hanakotoba:'ぬくもり',strange:true},
   {emoji:'🎃',name:'パンプキンフラワー',hanakotoba:'変身',strange:true},
+
+  // === 季節のお花（旬に出やすく、ほかの季節にも咲く）===
+  // 抽選上の旬を代表的な開花期に合わせる。実際の開花時期は地域・品種で前後する。
+  { speciesId: 'daffodil', emoji: '🌼', name: 'スイセン', seasons: ['spring'] },
+  { speciesId: 'spring-starflower', emoji: '💮', name: 'ハナニラ', seasons: ['spring'] },
+  { speciesId: 'calanthe-orchid', emoji: '🌷', name: 'エビネ', seasons: ['spring'] },
+  { speciesId: 'katakuri', emoji: '🌸', name: 'カタクリ', seasons: ['spring'] },
+  { speciesId: 'agapanthus', emoji: '🪻', name: 'アガパンサス', seasons: ['summer'] },
+  { speciesId: 'red-hot-poker', emoji: '🌺', name: 'トリトマ', seasons: ['summer'] },
+  { speciesId: 'bee-balm', emoji: '🌹', name: 'モナルダ', seasons: ['summer'] },
+  { speciesId: 'coneflower', emoji: '🌻', name: 'エキナセア', seasons: ['summer'] },
+  { speciesId: 'golden-lace', emoji: '🌼', name: 'オミナエシ', seasons: ['autumn'] },
+  { speciesId: 'thoroughwort', emoji: '💐', name: 'フジバカマ', seasons: ['autumn'] },
+  { speciesId: 'toad-lily', emoji: '🪻', name: 'ホトトギス', seasons: ['autumn'] },
+  { speciesId: 'leopard-plant', emoji: '🌻', name: 'ツワブキ', seasons: ['autumn'] },
+  { speciesId: 'wintersweet', emoji: '🌼', name: 'ロウバイ', seasons: ['winter'] },
+  { speciesId: 'setsubunso', emoji: '💮', name: 'セツブンソウ', seasons: ['winter'] },
+  { speciesId: 'christmas-rose', emoji: '🌸', name: 'クリスマスローズ', seasons: ['winter'] },
+  { speciesId: 'winter-heath', emoji: '🪻', name: 'エリカ・カルネア', seasons: ['winter'] },
 ];
 
 // === 名前の上フレーズ（200種類）===
@@ -175,8 +198,46 @@ if (floraTranslations.length !== floraData.length || adjectiveTranslations.lengt
   throw new Error('Hatask flora translations are not aligned with the canonical Japanese data.');
 }
 
-export function pickRandomFlora(): FloraItem {
-  return floraData[Math.floor(Math.random() * floraData.length)];
+/** 日本時間の暦で季節を決め、端末のタイムゾーンによる抽選のずれを防ぐ。 */
+export function getHataskFlowerSeason(date = new Date()): HataskFlowerSeason {
+  const month = new Date(date.getTime() + 9 * 60 * 60 * 1000).getUTCMonth() + 1;
+  if (month >= 3 && month <= 5) return 'spring';
+  if (month >= 6 && month <= 8) return 'summer';
+  if (month >= 9 && month <= 11) return 'autumn';
+  return 'winter';
+}
+
+/** レア抽選の確率は固定し、通常グループ内だけで旬の花を3倍出やすくする。 */
+export function getHataskFloraWeight(item: FloraItem, season: HataskFlowerSeason): number {
+  return !item.rare && item.seasons?.includes(season) ? 3 : 1;
+}
+
+const rareFlora = floraData.filter((item) => item.rare);
+const ordinaryFlora = floraData.filter((item) => !item.rare);
+
+export function pickRandomFlora(date = new Date(), rng: () => number = Math.random): FloraItem {
+  let sample = 0;
+  try {
+    sample = Number(rng());
+  } catch {
+    sample = 0;
+  }
+  if (!Number.isFinite(sample)) sample = 0;
+  sample = Math.max(0, Math.min(1 - Number.EPSILON, sample));
+
+  // レア全体で1%。通常品種が増えてもこの確率を変えない。
+  if (sample >= 0.99) {
+    return rareFlora[Math.min(rareFlora.length - 1, Math.floor((sample - 0.99) / 0.01 * rareFlora.length))];
+  }
+
+  const season = getHataskFlowerSeason(date);
+  const totalWeight = ordinaryFlora.reduce((sum, item) => sum + getHataskFloraWeight(item, season), 0);
+  let remainingWeight = sample / 0.99 * totalWeight;
+  for (const item of ordinaryFlora) {
+    remainingWeight -= getHataskFloraWeight(item, season);
+    if (remainingWeight < 0) return item;
+  }
+  return ordinaryFlora[ordinaryFlora.length - 1];
 }
 
 export function generateFlowerName(flora: FloraItem): string {
@@ -210,6 +271,30 @@ const floraNamesByLength = [...floraData]
 const adjectivesByLength = [...nameAdjectives]
   .map((item, index) => ({ item, index }))
   .sort((a, b) => b.item.length - a.item.length);
+
+/** 改名後は品種IDを使い、旧データは絵文字と生成可能な名前の両方で照合する。 */
+export function findHataskFlora(value: { speciesId?: unknown; emoji?: unknown; name?: unknown }): FloraItem | undefined {
+  if (typeof value.speciesId === 'string') {
+    const identified = floraData.find((item) => item.speciesId === value.speciesId);
+    if (identified != null) return identified;
+  }
+  if (typeof value.emoji !== 'string') return undefined;
+
+  const candidates = floraData.filter((item) => item.emoji === value.emoji);
+  if (typeof value.name === 'string') {
+    const name = value.name;
+    const named = candidates.find((item) => name.endsWith(item.name) && splitAdjectives(name.slice(0, -item.name.length)) != null);
+    if (named != null) return named;
+  }
+
+  // 同じ絵文字を使う別品種へ、改名した花を勝手に割り当てない。
+  return candidates.length === 1 ? candidates[0] : undefined;
+}
+
+export function isRareHataskFlower(value: { speciesId?: unknown; emoji?: unknown; name?: unknown }): boolean {
+  return findHataskFlora(value)?.rare === true;
+}
+
 const hanakotobaIndex = new Map<string, number>();
 for (const [index, item] of floraData.entries()) {
   if (item.hanakotoba != null && !hanakotobaIndex.has(item.hanakotoba)) hanakotobaIndex.set(item.hanakotoba, index);

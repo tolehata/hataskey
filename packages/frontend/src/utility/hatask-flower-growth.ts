@@ -10,6 +10,8 @@ import { misskeyApi } from '@/utility/misskey-api.js';
 export const HATASK_FLOWER_GROWTH_EVENT = 'hatask-flower:growth';
 export const HATASK_FLOWER_MINUTES_MIN = 480;
 export const HATASK_FLOWER_MINUTES_MAX = 1920;
+export const HATASK_RARE_FLOWER_MINUTES_MIN = 2880;
+export const HATASK_RARE_FLOWER_MINUTES_MAX = 5760;
 /** 既存の花に targetMinutes がない場合に使う互換値。 */
 export const HATASK_FLOWER_TOTAL_MINUTES = 1200;
 
@@ -20,6 +22,8 @@ const MINUTE_MS = 60_000;
 export type HataskGrowingFlower = {
 	emoji: string;
 	name: string;
+	speciesId?: string;
+	rare?: boolean;
 	progress: number;
 	startedAt: number;
 	totalMinutes: number;
@@ -39,13 +43,22 @@ function safeNumber(value: unknown, fallback = 0): number {
 	return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
 }
 
-function clampTargetMinutes(value: unknown, fallback = HATASK_FLOWER_TOTAL_MINUTES): number {
-	const candidate = Math.floor(safeNumber(value, fallback));
-	return Math.max(HATASK_FLOWER_MINUTES_MIN, Math.min(HATASK_FLOWER_MINUTES_MAX, candidate));
+function clampTargetMinutes(value: unknown, rare: boolean): number {
+	const candidate = Math.floor(safeNumber(value, HATASK_FLOWER_TOTAL_MINUTES));
+	const maximum = rare ? HATASK_RARE_FLOWER_MINUTES_MAX : HATASK_FLOWER_MINUTES_MAX;
+	// 保存済みの短い目標も維持する。レア花の48時間下限は、新規抽選だけに適用する。
+	return Math.max(HATASK_FLOWER_MINUTES_MIN, Math.min(maximum, candidate));
+}
+
+function flowerMetadata(value: { speciesId?: unknown; rare?: unknown }): Pick<HataskGrowingFlower, 'speciesId' | 'rare'> {
+	return {
+		...(typeof value.speciesId === 'string' && value.speciesId.trim() ? { speciesId: safeText(value.speciesId, '') } : {}),
+		...(typeof value.rare === 'boolean' ? { rare: value.rare } : {}),
+	};
 }
 
 /** 新しい花に一度だけ割り当てる成長時間を選ぶ。乱数はテストから注入できる。 */
-export function randomHataskFlowerTargetMinutes(rng: () => number = Math.random): number {
+export function randomHataskFlowerTargetMinutes(rng: () => number = Math.random, rare = false): number {
 	let sample = 0;
 	try {
 		sample = Number(rng());
@@ -55,17 +68,20 @@ export function randomHataskFlowerTargetMinutes(rng: () => number = Math.random)
 	if (!Number.isFinite(sample)) sample = 0;
 	// 壊れた rng が 0〜1 の外を返しても、抽選結果は安全な範囲に留める。
 	sample = Math.max(0, Math.min(1, sample));
-	return Math.min(HATASK_FLOWER_MINUTES_MAX, HATASK_FLOWER_MINUTES_MIN + Math.floor(sample * (HATASK_FLOWER_MINUTES_MAX - HATASK_FLOWER_MINUTES_MIN + 1)));
+	const minimum = rare === true ? HATASK_RARE_FLOWER_MINUTES_MIN : HATASK_FLOWER_MINUTES_MIN;
+	const maximum = rare === true ? HATASK_RARE_FLOWER_MINUTES_MAX : HATASK_FLOWER_MINUTES_MAX;
+	return Math.min(maximum, minimum + Math.floor(sample * (maximum - minimum + 1)));
 }
 
 export function createHataskGrowingFlower(
-	input: { emoji: string; name: string; now?: number; rng?: () => number; targetMinutes?: number },
+	input: { emoji: string; name: string; speciesId?: string; rare?: boolean; now?: number; rng?: () => number; targetMinutes?: number },
 ): HataskGrowingFlower {
 	const now = Math.max(1, Math.floor(safeNumber(input.now, Date.now())));
-	const targetMinutes = input.targetMinutes == null ? randomHataskFlowerTargetMinutes(input.rng) : clampTargetMinutes(input.targetMinutes);
+	const targetMinutes = input.targetMinutes == null ? randomHataskFlowerTargetMinutes(input.rng, input.rare === true) : clampTargetMinutes(input.targetMinutes, input.rare === true);
 	return {
 		emoji: safeText(input.emoji, '🌱'),
 		name: safeText(input.name, 'わかば'),
+		...flowerMetadata(input),
 		progress: 0,
 		startedAt: now,
 		totalMinutes: 0,
@@ -82,7 +98,7 @@ export function normalizeHataskGrowingFlower(value: unknown, now = Date.now()): 
 	if (value == null || typeof value !== 'object' || Array.isArray(value)) return null;
 	const raw = value as Record<string, unknown>;
 	const startedAt = Math.max(1, Math.min(now, Math.floor(safeNumber(raw.startedAt, now))));
-	const targetMinutes = clampTargetMinutes(raw.targetMinutes);
+	const targetMinutes = clampTargetMinutes(raw.targetMinutes, raw.rare === true);
 	const totalMinutes = Math.max(0, Math.min(targetMinutes, Math.floor(safeNumber(raw.totalMinutes))));
 	// 旧データには最終計算時刻が無い。開始時刻＋既に加算済みの分数を基準にすれば、
 	// 既存の成長分を二重加算せず、これまで停止していた背景時間だけを追いつかせられる。
@@ -92,6 +108,7 @@ export function normalizeHataskGrowingFlower(value: unknown, now = Date.now()): 
 	return {
 		emoji: safeText(raw.emoji, '🌱'),
 		name: safeText(raw.name, 'わかば'),
+		...flowerMetadata(raw),
 		progress: Math.min(100, Math.floor((totalMinutes / targetMinutes) * 100)),
 		startedAt,
 		totalMinutes,
@@ -123,6 +140,8 @@ export function advanceHataskFlowerGrowth(value: unknown, now = Date.now()): Hat
 export function sameFlower(a: HataskGrowingFlower, b: HataskGrowingFlower): boolean {
 	return a.emoji === b.emoji &&
 		a.name === b.name &&
+		a.speciesId === b.speciesId &&
+		a.rare === b.rare &&
 		a.progress === b.progress &&
 		a.startedAt === b.startedAt &&
 		a.totalMinutes === b.totalMinutes &&

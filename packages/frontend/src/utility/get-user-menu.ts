@@ -23,6 +23,7 @@ import { getPluginHandlers } from '@/plugin.js';
 import { editNickname } from '@/utility/edit-nickname.js';
 import { popup } from '@/os.js';
 import { updateMutedUserState } from '@/utility/muted-users.js';
+import { globalEvents } from '@/events.js';
 
 export function getUserMenu(user: Misskey.entities.UserDetailed, router: Router = mainRouter) {
 	const meId = $i ? $i.id : null;
@@ -211,6 +212,7 @@ export function getUserMenu(user: Misskey.entities.UserDetailed, router: Router 
 			userId: user.id,
 		}).then(() => {
 			user.isBlocking = !user.isBlocking;
+			globalEvents.emit('userBlockingChanged', { userId: user.id });
 		}).catch((err) => {
 			if (err.id === '9c1f6b3e-a4d2-4f3e-b1c8-1a2b3c4d5e6f' || err.code === 'CANNOT_BLOCK_ADMINISTRATOR') {
 				os.alert({ type: 'error', text: i18n.ts.cannotBlockOrMuteAdministrator });

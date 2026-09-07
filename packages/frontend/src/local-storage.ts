@@ -98,6 +98,7 @@ export type Keys = (
 	'showPushNotificationDialog' |
 	'hatafeedIntroShown' // 旗鯖fork: HataFeed 新登場の案内吹き出しを表示済みか(端末ごと)
 	| `hataFormDrafts:${string}` // 旗鯖fork: HataFeed/Hatady 独自フォームの端末・アカウント別下書き
+	| `hataskAkatsukiUsage:${string}` // 暁ホームのツール利用頻度（端末・アカウント別）
 );
 
 // セッション毎に廃棄されるLocalStorage代替（セーフモードなどで使用できそう）

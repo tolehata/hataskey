@@ -228,9 +228,12 @@ onBeforeUnmount(() => {
 .dotTarget[aria-pressed='true'] .dot { width: 26px; opacity: 1; }
 .mobileList { display: none; }
 .desktopTitle { padding-bottom: 16px; border-bottom: 1px solid var(--rule2); font-size: clamp(26px, var(--hak-app-title-size, 34px), 34px); line-height: 1.16; letter-spacing: .01em; }
-.root[data-kind='tools'] .desktopTitle { border-bottom: none; }
+.root[data-kind='tools'] .desktopTitle { padding-bottom: 0; border-bottom: none; }
+.root[data-kind='hatask'] .desktopTitle { padding-bottom: 0; border-bottom: none; }
+.root[data-kind='hatask'] .desktopRow:first-child { margin-top: 8px; }
 .desktopTitle > span { display: block; }
 .category { display: flex; align-items: baseline; gap: 9px; margin-top: 24px !important; padding-bottom: 10px; border-bottom: 1px solid var(--rule2); font-family: 'Zen Maru Gothic', system-ui, sans-serif; font-size: 12px; font-weight: 800; letter-spacing: .08em; }
+.root[data-kind='tools'] .desktopTitle + .appGroup > .category { margin-top: 8px !important; }
 .category svg { width: 16px; height: 16px; color: var(--accent-ink); }
 .desktopRow { display: flex; align-items: flex-start; gap: 16px; margin-top: 12px; padding: 18px 20px; border: var(--border); border-radius: 22px; background: var(--masthead); box-shadow: var(--shadow); }
 .desktopRow > svg { width: 30px; height: 26px; min-width: 30px; margin-top: 2px; padding-inline: 2px; color: var(--accent-ink); }
@@ -266,10 +269,10 @@ onBeforeUnmount(() => {
 	.desktopList { display: none; }
 	.mobileTitle { margin-top: 16px !important; padding-bottom: 12px; border-bottom: 1px solid var(--rule2); font-size: 23px; }
 	.root[data-kind='tools'] .mobileTitle { border-bottom: none; }
-	.root[data-kind='hatask'] .mobileTitle { margin-top: 0 !important; padding-bottom: 14px; }
+	.root[data-kind='hatask'] .mobileTitle { margin-top: 0 !important; padding-bottom: 0; border-bottom: none; }
 	.mobileCard { display: flex; flex-direction: column; gap: 9px; margin-top: 10px; padding: 16px 18px; border: var(--border); border-radius: 18px; background: var(--surface); box-shadow: var(--shadow); }
 	.mobileTitle + .mobileCard { margin-top: 12px; }
-	.root[data-kind='hatask'] .mobileTitle + .mobileCard { margin-top: 14px; }
+	.root[data-kind='hatask'] .mobileTitle + .mobileCard { margin-top: 8px; }
 	.mobileCardHead { display: flex; align-items: center; gap: 12px; }
 	.mobileCardHead > svg { width: 26px; height: 22px; min-width: 26px; padding-inline: 2px; color: var(--accent-ink); }
 	.appName { flex: 1; min-width: 0; font-size: 15px; font-weight: 800; overflow-wrap: anywhere; }

@@ -181,6 +181,7 @@ import { userPage } from '@/filters/user.js';
 import { i18n } from '@/i18n.js';
 import { definePage } from '@/page.js';
 import { updateMutedUserState } from '@/utility/muted-users.js';
+import { globalEvents } from '@/events.js';
 import MkUserCardMini from '@/components/MkUserCardMini.vue';
 import * as os from '@/os.js';
 import { instance } from '@/instance.js';
@@ -249,6 +250,7 @@ async function unblock(user, ev) {
 		icon: 'ti ti-x',
 		action: async () => {
 			await os.apiWithDialog('blocking/delete', { userId: user.id });
+			globalEvents.emit('userBlockingChanged', { userId: user.id });
 			//role.users = role.users.filter(u => u.id !== user.id);
 		},
 	}], ev.currentTarget ?? ev.target);

@@ -29,6 +29,52 @@ function fixture(patch: Partial<HataskAkatsukiSource> = {}): HataskAkatsukiSourc
 }
 
 describe('暁の実データ表示モデル', () => {
+	test('近い予定・締切・未読・食事の時間帯の順で状況に合う内容を選ぶ', () => {
+		const source = fixture({ feedback: { allowed: true, known: true }, todos: [{ id: 'due', text: '提出', done: false, due: '2026-09-03' }] });
+		expect(buildHataskAkatsukiModel(source).model.home?.recommended).toBe('calendar');
+		source.events = [];
+		expect(buildHataskAkatsukiModel(source).model.home?.recommended).toBe('todo');
+		source.todos = [];
+		expect(buildHataskAkatsukiModel(source).model.home?.recommended).toBe('feedback');
+		source.feedbackUnread = 0;
+		expect(buildHataskAkatsukiModel(source).model.home?.recommended).toBe('meal');
+		source.meals = [...source.meals, { id: 'lunch', date: '2026-09-04', slot: 'lunch', note: '食べた' }];
+		expect(buildHataskAkatsukiModel(source).model.home?.recommended).toBe('tools');
+	});
+
+	test('午前に夕食を勧めず、記録済みの時間帯の食事も催促しない', () => {
+		const source = fixture({ now: new Date(2026, 8, 4, 8), events: [], todos: [] });
+		expect(buildHataskAkatsukiModel(source).model.home?.recommended).toBe('tools');
+		source.meals = [];
+		expect(buildHataskAkatsukiModel(source).model.home?.sections.find(section => section.id === 'meal')?.reason).toBe('朝ごはんの記録');
+	});
+
+	test('権限・非表示設定・読込失敗を優先表示でも守る', () => {
+		const source = fixture({ known: { planner: false, meals: false, moods: true, flower: true }, feedback: { allowed: false, known: true } });
+		const { home } = buildHataskAkatsukiModel(source).model;
+		expect(home?.recommended).toBe('tools');
+		expect(home?.sections.find(section => section.id === 'feedback')).toBeUndefined();
+		expect(home?.sections.find(section => section.id === 'todo')?.summary).toContain('読み込めません');
+		source.settings = { showEvents: false, showFeedbackNotif: false, showMealSection: false };
+		source.feedback = { allowed: true, known: true };
+		expect(buildHataskAkatsukiModel(source).model.home?.sections.map(section => section.id)).toEqual(['tools', 'todo']);
+	});
+
+	test('終日予定に隠れていた直近の時刻付き予定を先頭にする', () => {
+		const source = fixture();
+		source.events = [{ id: 'all', title: '記念日', date: '2026-09-04', allDay: true }, ...source.events];
+		const { model } = buildHataskAkatsukiModel(source);
+		expect(model.next?.id).toBe('next');
+		expect(model.later?.map(event => event.id)).toContain('all');
+	});
+
+	test('使ったツールを頻度と最近の利用で並べ、元の一覧を変更しない', () => {
+		const source = fixture({ apps: [{ id: 'cal', label: 'カレンダー', icon: 'ti ti-calendar' }, { id: 'drawing', label: 'お絵描き', icon: 'ti ti-brush' }], usage: { drawing: { score: 3, lastUsedAt: new Date(2026, 8, 4, 12).getTime() } } });
+		expect(buildHataskAkatsukiModel(source).model.apps?.[0].id).toBe('drawing');
+		expect(buildHataskAkatsukiModel(source).model.home?.hasUsage).toBe(true);
+		expect(source.apps?.[0].id).toBe('cal');
+	});
+
 	test('過ぎた予定をつぎの一件にしないが、今日の時間帯には残す', () => {
 		const { model, counts } = buildHataskAkatsukiModel(fixture());
 		expect(model.next?.id).toBe('next');
@@ -123,9 +169,36 @@ describe('暁の親結線', () => {
 		expect(page).toContain('v-show="activeTab===\'mood\'"');
 		expect(page).toContain('v-show="activeTab===\'meal\'"');
 		expect(page).toContain('registerCompletedUndo(await toggleTodo(action.id, true))');
-		expect(page).toMatch(/if\s*\(isAkatsuki.value\)\s*return;/u);
 		const forbiddenWrite = /(?:localStorage\.setItem|misskeyApi\(['"]i\/registry\/set)/;
 		expect(forbiddenWrite.test('localStorage.setItem(\'todos\', \'[]\')')).toBe(true);
 		expect(forbiddenWrite.test(readFileSync(resolve(process.cwd(), 'src/utility/hatask-akatsuki.ts'), 'utf8'))).toBe(false);
+	});
+	test('暁と花ストリーム内の横操作をページ送りに奪わせず、旧テーマの通常領域では送り始める', () => {
+		const body = page.match(/function htkTouchStart\(e:TouchEvent\)\{([\s\S]*?)\n\}/u)?.[1];
+		if (!body) throw new Error('Missing Hatask touch-start handler');
+		const ordinary = window.document.createElement('div');
+		const stream = window.document.createElement('div');
+		stream.dataset.hataskFlowerStream = '';
+		const flowerButton = window.document.createElement('button');
+		stream.append(flowerButton);
+		for (const [akatsuki, target, startsPageSwipe] of [
+			[true, ordinary, false],
+			[false, flowerButton, false],
+			[false, ordinary, true],
+		] as const) {
+			const state = {
+				isAkatsuki: { value: akatsuki },
+				htkTouchStartPos: { value: { x: 90, y: 80 } as { x: number; y: number } | null },
+				htkTouchLastPos: { value: { x: 70, y: 60 } as { x: number; y: number } | null },
+				htkSwipeLocked: true,
+				Element: window.Element,
+				e: { target, touches: [{ clientX: 12, clientY: 34 }] },
+			};
+			runInNewContext(`(() => {${body}})()`, state, { timeout: 100 });
+			const expected = startsPageSwipe ? { x: 12, y: 34 } : null;
+			expect(state.htkTouchStartPos.value).toEqual(expected);
+			expect(state.htkTouchLastPos.value).toEqual(expected);
+			expect(state.htkSwipeLocked).toBe(!startsPageSwipe);
+		}
 	});
 });
