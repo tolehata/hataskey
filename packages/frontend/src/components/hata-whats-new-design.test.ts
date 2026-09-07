@@ -270,7 +270,7 @@ describe('Hata update presentation', () => {
 	});
 });
 
-describe('hata-12.6だけの更新内容（実SFC）', () => {
+describe('hata-12.6.1だけの更新内容（実SFC）', () => {
 	const mounted: Array<{ app: App<Element>; container: HTMLDivElement }> = [];
 	const observers: Array<{ callback: IntersectionObserverCallback; targets: Element[]; disconnect: ReturnType<typeof vi.fn> }> = [];
 	let reducedMotion = false;
@@ -317,15 +317,28 @@ describe('hata-12.6だけの更新内容（実SFC）', () => {
 		return { container, viewport, scrollTo };
 	}
 
+	function intersectionEntry(target: Element, ratio: number): IntersectionObserverEntry {
+		const boundingClientRect = target.getBoundingClientRect();
+		return {
+			target,
+			isIntersecting: ratio > 0,
+			intersectionRatio: ratio,
+			boundingClientRect,
+			intersectionRect: boundingClientRect,
+			rootBounds: null,
+			time: performance.now(),
+		};
+	}
+
 	function showActivePreviews() {
 		const observer = observers.at(-1);
 		if (!observer) throw new Error('Release previews are not observed');
-		observer.callback(observer.targets.map(target => ({ target, isIntersecting: true, intersectionRatio: 1 }) as IntersectionObserverEntry), {} as IntersectionObserver);
+		observer.callback(observer.targets.map(target => intersectionEntry(target, 1)), {} as IntersectionObserver);
 	}
 
-	test('hata-12.6の1版と4項目だけを表示し、版の切替欄を出さない', async () => {
+	test('hata-12.6.1の1版と4項目だけを表示し、版の切替欄を出さない', async () => {
 		const { container } = await mountGuide();
-		expect(HATA_WHATS_NEW.version).toBe('2026.9.0-hata.12.6');
+		expect(HATA_WHATS_NEW.version).toBe('2026.9.0-hata.12.6.1');
 		expect(HATA_WHATS_NEW.releases).toHaveLength(1);
 		const release = HATA_WHATS_NEW.releases[0];
 		expect(release.id).toBe('latestRelease');
@@ -391,7 +404,7 @@ describe('hata-12.6だけの更新内容（実SFC）', () => {
 		const preview = previews[0];
 		const observer = observers.at(-1);
 		if (!observer || !preview.firstElementChild) throw new Error('Release preview did not mount');
-		const visibility = (ratio: number) => observer.callback([{ target: preview, isIntersecting: ratio > 0, intersectionRatio: ratio } as IntersectionObserverEntry], {} as IntersectionObserver);
+		const visibility = (ratio: number) => observer.callback([intersectionEntry(preview, ratio)], {} as IntersectionObserver);
 		expect(previews.map(item => item.dataset.previewState)).toEqual(['ready', 'ready', 'ready', 'ready']);
 		visibility(0.59);
 		await nextTick();
