@@ -49,7 +49,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<MkAvatar v-if="tile.flower.user" :user="tile.flower.user" :class="$style.activityAvatar" :forceShowDecoration="true" :link="false" :preview="false"/>
 					<span v-else :class="$style.activityAvatar" aria-hidden="true"><i class="ti ti-user"></i></span>
 					<span :class="$style.activityBody">
-						<MkUserName v-if="tile.flower.user" :user="tile.flower.user" :class="$style.activityOwner" :enableEmojiMenu="false"/>
+						<MkUserName v-if="showOwnerName && tile.flower.user" :user="tile.flower.user" :class="$style.activityOwner" :enableEmojiMenu="false"/>
 						<span :class="$style.activityName">{{ tile.flower.name }}</span>
 						<span :class="$style.date"><span>{{ harvestedLabel }} · </span><time :datetime="tile.flower.harvestedAt">{{ tile.flower.dateLabel }}</time></span>
 					</span>
@@ -60,7 +60,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<span :class="$style.name">{{ tile.flower.name }}</span>
 					<span v-if="tile.flower.user" :class="$style.owner">
 						<MkAvatar :user="tile.flower.user" :class="$style.avatar" :forceShowDecoration="true" :link="false" :preview="false"/>
-						<MkUserName :user="tile.flower.user" :class="$style.ownerName" :enableEmojiMenu="false"/>
+						<MkUserName v-if="showOwnerName" :user="tile.flower.user" :class="$style.ownerName" :enableEmojiMenu="false"/>
 					</span>
 				</template>
 			</button>
@@ -79,12 +79,13 @@ import MkUserName from '@/components/global/MkUserName.vue';
 const props = withDefaults(defineProps<{
 	items: readonly HataskFlowerView[];
 	activity?: boolean;
+	showOwnerName?: boolean;
 	animations: boolean;
 	paused: boolean;
 	label: string;
 	rareLabel: string;
 	harvestedLabel: string;
-}>(), { activity: false });
+}>(), { activity: false, showOwnerName: true });
 const emit = defineEmits<{ select: [payload: HataskFlowerSelection] }>();
 
 type Position = { id: string; fraction: number };
@@ -139,7 +140,7 @@ function getAnchor(id: string): HTMLElement | null {
 defineExpose({ getAnchor });
 
 function flowerLabel(flower: HataskFlowerView): string {
-	const ownerName = [flower.user?.name, flower.user?.username].find(name => name != null && name !== '');
+	const ownerName = props.showOwnerName ? [flower.user?.name, flower.user?.username].find(name => name != null && name !== '') : undefined;
 	return [flower.name, ownerName, `${props.harvestedLabel} ${flower.dateLabel}`, flower.rare ? props.rareLabel : null].filter(Boolean).join(' · ');
 }
 
@@ -436,7 +437,8 @@ onBeforeUnmount(deactivate);
 .thumb:hover { border-color: var(--rule, var(--MI_THEME-divider)); background: var(--surface, var(--MI_THEME-panel)); }
 .thumb:focus-visible { outline: 2px solid var(--accent, var(--MI_THEME-accent)); outline-offset: 3px; }
 .art { position: relative; display: grid; place-items: center; width: 100%; height: 57px; flex: 0 0 57px; font-size: 54px; }
-.name { display: block; width: 100%; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 600; line-height: 1.5; }
+.name, .activityName { display: -webkit-box; min-width: 0; min-height: 3em; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; white-space: normal; overflow-wrap: anywhere; line-break: strict; font-size: 12px; font-weight: 600; line-height: 1.5; }
+.name { width: 100%; }
 .owner { display: flex; align-items: center; justify-content: center; gap: 6px; max-width: 100%; min-height: 33px; padding-top: 2px; }
 .avatar { width: 28px; height: 28px; flex: 0 0 28px; }
 .ownerName { max-width: 58px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--fg-2, var(--MI_THEME-fgMuted)); font-size: 12px; }
@@ -448,8 +450,7 @@ onBeforeUnmount(deactivate);
 .thumb[data-activity="true"][data-rare="true"] { border-color: var(--accent, var(--MI_THEME-accent)); }
 .activityAvatar { display: grid; place-items: center; width: 32px; height: 32px; }
 .activityBody { display: flex; min-width: 0; flex-direction: column; gap: 2px; }
-.activityOwner, .activityName { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
-.activityName { font-weight: 600; }
+.activityOwner { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
 .date { color: var(--fg-2, var(--MI_THEME-fgMuted)); font-size: 11px; line-height: 1.4; overflow-wrap: anywhere; }
 .activityFlower { position: relative; font-size: 34px; }
 @keyframes rareLight { 0%, 100% { opacity: .35; } 50% { opacity: 1; } }

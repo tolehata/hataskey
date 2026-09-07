@@ -703,18 +703,16 @@
   </div></section>
   <div class="htk-garden-collections" :class="isHatakyu?'hk-panels':undefined">
     <section class="htk-lg htk-anim" data-garden-group="community"><div class="htk-gc">
-      <header class="htk-flower-heading"><div><h3 class="htk-sec-title">{{copy.communityFlowerGallery}}</h3><p class="htk-flower-summary">{{copyx.flowerCount({count:communityFlowerTotal.toString()})}} · {{seasonFlowerLabel}}</p></div><button type="button" class="htk-flower-icon-button" :aria-label="flowerPauseLabel('community')" :title="flowerPauseLabel('community')" :aria-pressed="flowerStreamPaused.community" :disabled="!flowerAnimations" @click="toggleFlowerStream('community')"><i :class="flowerStreamPaused.community?'ti ti-player-play':'ti ti-player-pause'" aria-hidden="true"></i></button></header>
+      <header class="htk-flower-heading"><div><h3 class="htk-sec-title">{{copy.communityFlowerGallery}}</h3><p class="htk-flower-summary">{{copyx.flowerCount({count:communityFlowerTotal.toString()})}} · {{seasonFlowerLabel}}</p></div><button type="button" class="htk-flower-icon-button" data-flower-collection-button="community" :aria-label="flowerCollectionLabel('community')" :title="flowerCollectionLabel('community')" aria-haspopup="dialog" :aria-expanded="flowerCollectionKind==='community'" @click="openFlowerCollection('community', $event)"><i class="ti ti-layout-grid" aria-hidden="true"></i></button><button type="button" class="htk-flower-icon-button" :aria-label="flowerPauseLabel('community')" :title="flowerPauseLabel('community')" :aria-pressed="flowerStreamPaused.community" :disabled="!flowerAnimations" @click="toggleFlowerStream('community')"><i :class="flowerStreamPaused.community?'ti ti-player-play':'ti ti-player-pause'" aria-hidden="true"></i></button></header>
       <div v-if="communityFlowersLoading" class="htk-gal-state" role="status"><i class="ti ti-loader-2" aria-hidden="true"></i>{{copy.flowerGalleryLoading}}</div>
       <div v-else-if="communityFlowersError" class="htk-gal-state htk-gal-error" role="alert">{{copy.flowerGalleryLoadFailed}}<button type="button" class="htk-btn htk-xs" @click="loadCommunityFlowers">{{copy.retry}}</button></div>
-      <HataskFlowerStream v-else-if="communityFlowerViews.length" ref="communityFlowerStream" :items="communityFlowerViews" :label="copy.communityFlowerGallery" :rareLabel="copy.rareFlower" :harvestedLabel="copy.flowerHarvestedAt" :animations="flowerAnimations" :paused="flowerStreamPaused.community || flowerDialogOpen" @select="selection=>openFlowerDetail('community',selection)"/>
+      <HataskFlowerStream v-else-if="communityFlowerViews.length" ref="communityFlowerStream" :items="communityFlowerViews" :label="copy.communityFlowerGallery" :rareLabel="copy.rareFlower" :harvestedLabel="copy.flowerHarvestedAt" :animations="flowerAnimations" :paused="flowerStreamPaused.community || flowerDialogOpen || flowerCollectionOpen" @select="selection=>openFlowerDetail('community',selection)"/>
       <div v-else class="htk-gal-state">{{copy.flowerGalleryEmpty}}</div>
-      <div class="htk-flower-footer"><label class="htk-flower-sort"><span class="htk-sr-only">{{copy.sort}}</span><select :value="communityFlowerOrder" :aria-label="copy.sort" :disabled="communityFlowersLoading" @change="setCommunityFlowerOrder(($event.target as HTMLSelectElement).value as 'newest'|'oldest')"><option value="newest">{{copy.newestFirst}}</option><option value="oldest">{{copy.oldestFirst}}</option></select></label><div v-if="communityFlowers.length && !communityFlowersLoading && !communityFlowersError" class="htk-pager htk-gal-pager"><button type="button" class="htk-btn htk-xs" :aria-label="copy.previousPage" :disabled="communityFlowerPage<=1" @click="communityFlowerPage--">‹</button><span class="htk-pager-t" aria-live="polite">{{communityFlowerPage}} / {{communityFlowerTotalPages}}</span><button type="button" class="htk-btn htk-xs" :aria-label="copy.nextPage" :disabled="communityFlowerPage>=communityFlowerTotalPages" @click="communityFlowerPage++">›</button></div></div>
     </div></section>
     <section class="htk-lg htk-anim" data-garden-group="personal"><div class="htk-gc">
-      <header class="htk-flower-heading"><div><h3 class="htk-sec-title">{{copy.flowerGallery}}</h3><p class="htk-flower-summary">{{copyx.flowerCount({count:gallery.length.toString()})}} · {{flowerVisibilityLabel}}</p></div><button type="button" class="htk-flower-icon-button" :aria-label="flowerPauseLabel('personal')" :title="flowerPauseLabel('personal')" :aria-pressed="flowerStreamPaused.personal" :disabled="!flowerAnimations" @click="toggleFlowerStream('personal')"><i :class="flowerStreamPaused.personal?'ti ti-player-play':'ti ti-player-pause'" aria-hidden="true"></i></button><details class="htk-flower-visibility"><summary :aria-label="copy.flowerGalleryVisibility" :title="copy.flowerGalleryVisibility"><i class="ti ti-eye" aria-hidden="true"></i></summary><div class="htk-flower-visibility-panel"><label><span>{{copy.flowerGalleryVisibility}}</span><select :value="flowerVisibility" :disabled="flowerVisibilitySaving || !dataLoaded" @change="changeFlowerVisibility"><option v-for="option in flowerVisibilityOptions" :key="option.value" :value="option.value">{{option.label}}</option></select></label><p>{{copy.flowerGalleryDescription}}</p><p>{{copy.flowerGalleryVisibilityHelp}}</p></div></details></header>
-      <HataskFlowerStream v-if="personalFlowerViews.length" ref="personalFlowerStream" :items="personalFlowerViews" :label="copy.flowerGallery" :rareLabel="copy.rareFlower" :harvestedLabel="copy.flowerHarvestedAt" :animations="flowerAnimations" :paused="flowerStreamPaused.personal || flowerDialogOpen" @select="selection=>openFlowerDetail('personal',selection)"/>
+      <header class="htk-flower-heading"><div><h3 class="htk-sec-title">{{copy.flowerGallery}}</h3><p class="htk-flower-summary">{{copyx.flowerCount({count:gallery.length.toString()})}} · {{flowerVisibilityLabel}}</p></div><button type="button" class="htk-flower-icon-button" data-flower-collection-button="personal" :aria-label="flowerCollectionLabel('personal')" :title="flowerCollectionLabel('personal')" aria-haspopup="dialog" :aria-expanded="flowerCollectionKind==='personal'" @click="openFlowerCollection('personal', $event)"><i class="ti ti-layout-grid" aria-hidden="true"></i></button><button type="button" class="htk-flower-icon-button" :aria-label="flowerPauseLabel('personal')" :title="flowerPauseLabel('personal')" :aria-pressed="flowerStreamPaused.personal" :disabled="!flowerAnimations" @click="toggleFlowerStream('personal')"><i :class="flowerStreamPaused.personal?'ti ti-player-play':'ti ti-player-pause'" aria-hidden="true"></i></button><details class="htk-flower-visibility"><summary :aria-label="copy.flowerGalleryVisibility" :title="copy.flowerGalleryVisibility"><i class="ti ti-eye" aria-hidden="true"></i></summary><div class="htk-flower-visibility-panel"><label><span>{{copy.flowerGalleryVisibility}}</span><select :value="flowerVisibility" :disabled="flowerVisibilitySaving || !dataLoaded" @change="changeFlowerVisibility"><option v-for="option in flowerVisibilityOptions" :key="option.value" :value="option.value">{{option.label}}</option></select></label><p>{{copy.flowerGalleryDescription}}</p><p>{{copy.flowerGalleryVisibilityHelp}}</p></div></details></header>
+      <HataskFlowerStream v-if="personalFlowerViews.length" ref="personalFlowerStream" :items="personalFlowerViews" :showOwnerName="false" :label="copy.flowerGallery" :rareLabel="copy.rareFlower" :harvestedLabel="copy.flowerHarvestedAt" :animations="flowerAnimations" :paused="flowerStreamPaused.personal || flowerDialogOpen || flowerCollectionOpen" @select="selection=>openFlowerDetail('personal',selection)"/>
       <div v-else class="htk-gal-state">{{copy.noFlowersYet}}</div>
-      <div class="htk-flower-footer"><label class="htk-flower-sort"><span class="htk-sr-only">{{copy.sort}}</span><select :value="galleryOrder" :aria-label="copy.sort" @change="setGalleryOrder(($event.target as HTMLSelectElement).value as 'newest'|'oldest')"><option value="newest">{{copy.newestFirst}}</option><option value="oldest">{{copy.oldestFirst}}</option></select></label><div v-if="gallery.length" class="htk-pager htk-gal-pager"><button type="button" class="htk-btn htk-xs" :aria-label="copy.previousPage" :disabled="galleryPage<=1" @click="galleryPage--">‹</button><span class="htk-pager-t" aria-live="polite">{{galleryPage}} / {{galleryTotalPages}}</span><button type="button" class="htk-btn htk-xs" :aria-label="copy.nextPage" :disabled="galleryPage>=galleryTotalPages" @click="galleryPage++">›</button></div></div>
     </div></section>
   </div>
   <section class="htk-lg htk-anim htk-community-garden" data-garden-group="bed"><div class="htk-gc">
@@ -722,7 +720,7 @@
     <div v-if="communityFlowersLoading" class="htk-gal-state" role="status">{{copy.flowerGalleryLoading}}</div>
     <div v-else-if="communityFlowersError" class="htk-gal-state htk-gal-error" role="alert">{{copy.flowerGalleryLoadFailed}}<button type="button" class="htk-btn htk-xs" @click="loadCommunityFlowers">{{copy.retry}}</button></div>
     <HataskCommunityGarden v-else :flowers="communityFlowerViews" :selectedId="selectedCommunityFlowerId" :label="copy.communityGarden" :theme="settings.theme || 'akatsuki'" :mode="themeMode">
-      <HataskFlowerStream v-if="communityFlowerViews.length" ref="activityFlowerStream" :items="communityFlowerViews" activity :label="copy.communityFlowerActivity" :rareLabel="copy.rareFlower" :harvestedLabel="copy.flowerHarvestedAt" :animations="flowerAnimations" :paused="flowerStreamPaused.activity || flowerDialogOpen" @select="selection=>openFlowerDetail('activity',selection)"/>
+      <HataskFlowerStream v-if="communityFlowerViews.length" ref="activityFlowerStream" :items="communityFlowerViews" activity :label="copy.communityFlowerActivity" :rareLabel="copy.rareFlower" :harvestedLabel="copy.flowerHarvestedAt" :animations="flowerAnimations" :paused="flowerStreamPaused.activity || flowerDialogOpen || flowerCollectionOpen" @select="selection=>openFlowerDetail('activity',selection)"/>
       <p v-else class="htk-gal-state">{{copy.flowerGalleryEmpty}}</p>
     </HataskCommunityGarden>
   </div></section>
@@ -1001,6 +999,7 @@ import HataskEmoji from '@/components/HataskEmoji.vue';
 import HataskFlowerStream from '@/components/hatask/HataskFlowerStream.vue';
 import HataskCommunityGarden from '@/components/hatask/HataskCommunityGarden.vue';
 import HataskFlowerDetail from '@/components/hatask/HataskFlowerDetail.vue';
+import HataskFlowerCollection from '@/components/hatask/HataskFlowerCollection.vue';
 import type { HataskFlowerView, HataskFlowerSelection } from '@/components/hatask/hatask-flower-view.js';
 import HataskCalendarPlanner from '@/components/hatask/HataskCalendarPlanner.vue';
 import { normalizeHataskTodoMobileTabs } from '@/utility/hatask-todo-tabs.js';
@@ -1660,6 +1659,7 @@ function htkTouchEnd(e:TouchEvent){
 function cleanupHataskState(){
 	closeHataskIntroduction();
   closeFlowerDetail();
+  closeFlowerCollection();
   closeEventDetail();
   closeBlankCalendarActions();
   // 旗鯖fork(タスク8): Hataskを離れたらフローティング連動フラグを下げる(フローティング復活)
@@ -3399,6 +3399,9 @@ const personalFlowerStream = ref<InstanceType<typeof HataskFlowerStream> | null>
 const communityFlowerStream = ref<InstanceType<typeof HataskFlowerStream> | null>(null);
 const activityFlowerStream = ref<InstanceType<typeof HataskFlowerStream> | null>(null);
 const flowerDialogOpen = ref(false);
+const flowerCollectionKind = ref<'personal' | 'community' | null>(null);
+const flowerCollectionOpen = computed(() => flowerCollectionKind.value !== null);
+let activeFlowerCollection: { showing: ReturnType<typeof ref<boolean>>; kind: 'personal' | 'community'; closed: Promise<void> } | null = null;
 const selectedCommunityFlowerId = ref<string | null>(null);
 let activeFlowerPopup: { showing: ReturnType<typeof ref<boolean>>; kind: FlowerStreamKind; id: string } | null = null;
 
@@ -3423,6 +3426,67 @@ function flowerPauseLabel(kind: FlowerStreamKind): string {
 
 function toggleFlowerStream(kind: FlowerStreamKind): void {
 	flowerStreamPaused.value[kind] = !flowerStreamPaused.value[kind];
+}
+
+function flowerCollectionLabel(kind: 'personal' | 'community'): string {
+	return `${kind === 'personal' ? copy.flowerGallery : copy.communityFlowerGallery} · ${copy.list}`;
+}
+
+function closeFlowerCollection(): Promise<void> {
+	if (!activeFlowerCollection) return Promise.resolve();
+	activeFlowerCollection.showing.value = false;
+	return activeFlowerCollection.closed;
+}
+
+function openFlowerCollection(kind: 'personal' | 'community', event: MouseEvent): void {
+	const source = event.currentTarget;
+	if (flowerDialogOpen.value || flowerCollectionOpen.value || !(source instanceof HTMLElement) || !source.isConnected) return;
+	const personal = kind === 'personal';
+	let finishClosing: () => void = () => {};
+	const closed = new Promise<void>(resolve => { finishClosing = resolve; });
+	const owner = { showing: ref(true), kind, closed };
+	activeFlowerCollection = owner;
+	flowerCollectionKind.value = kind;
+	const { dispose } = os.popup(HataskFlowerCollection, {
+		items: personal ? personalFlowerViews : communityFlowerViews,
+		title: personal ? copy.flowerGallery : copy.communityFlowerGallery,
+		summary: computed(() => copyx.flowerCount({ count: (personal ? gallery.value.length : communityFlowerTotal.value).toString() })),
+		page: personal ? galleryPage : communityFlowerPage,
+		totalPages: personal ? galleryTotalPages : communityFlowerTotalPages,
+		order: personal ? galleryOrder : communityFlowerOrder,
+		loading: personal ? false : communityFlowersLoading,
+		error: personal ? false : communityFlowersError,
+		personal, source, theme: settings.value.theme || 'akatsuki', mode: themeMode.value,
+		animations: flowerAnimations, isOpen: owner.showing,
+		labels: {
+			close: i18n.ts.close, sort: copy.sort, newest: copy.newestFirst, oldest: copy.oldestFirst,
+			previous: copy.previousPage, next: copy.nextPage, loading: copy.flowerGalleryLoading,
+			error: copy.flowerGalleryLoadFailed, retry: copy.retry, empty: personal ? copy.noFlowersYet : copy.flowerGalleryEmpty,
+			rare: copy.rareFlower, harvested: copy.flowerHarvestedAt,
+		},
+	}, {
+		closed: () => {
+			dispose();
+			if (activeFlowerCollection === owner) { activeFlowerCollection = null; flowerCollectionKind.value = null; }
+			finishClosing();
+		},
+		select: selection => {
+			if (activeFlowerCollection === owner && owner.showing.value) openFlowerDetail(kind, selection);
+		},
+		page: page => {
+			if (activeFlowerCollection !== owner || !owner.showing.value) return;
+			const pages = personal ? galleryTotalPages.value : communityFlowerTotalPages.value;
+			if (!Number.isInteger(page) || page < 1 || page > pages || (!personal && communityFlowersLoading.value)) return;
+			if (personal) galleryPage.value = page;
+			else communityFlowerPage.value = page;
+		},
+		order: order => {
+			if (activeFlowerCollection !== owner || !owner.showing.value || (!personal && communityFlowersLoading.value)) return;
+			if (personal) setGalleryOrder(order);
+			else setCommunityFlowerOrder(order);
+		},
+		retry: () => { if (!personal && activeFlowerCollection === owner && owner.showing.value) void loadCommunityFlowers(); },
+	});
 }
 
 function closeFlowerDetail(): void {
@@ -3456,6 +3520,8 @@ function openFlowerDetail(kind: FlowerStreamKind, selection: HataskFlowerSelecti
 					const original = gallery.value.find(item => item.id === view.id);
 					if (original && flowerDataWritable.value) await renameFlower(original);
 				} else {
+					// Report windows use the normal window layer, so release the collection first.
+					await closeFlowerCollection();
 					const original = communityFlowers.value.find(item => item.id === view.id);
 					if (original && !communityFlowersLoading.value && !communityFlowersError.value) await reportCommunityFlower(original);
 				}
@@ -3467,7 +3533,8 @@ function openFlowerDetail(kind: FlowerStreamKind, selection: HataskFlowerSelecti
 				await nextTick();
 				if (hataskPageActive && activeTab.value === 'garden') {
 					const stream = kind === 'personal' ? personalFlowerStream.value : kind === 'community' ? communityFlowerStream.value : activityFlowerStream.value;
-					stream?.getAnchor(view.id)?.focus({ preventScroll: true });
+					const returnTarget = selection.returnFocusTo?.isConnected ? selection.returnFocusTo : stream?.getAnchor(view.id);
+					returnTarget?.focus({ preventScroll: true });
 				}
 			}
 		},
@@ -3482,6 +3549,7 @@ function changeFlowerVisibility(event: Event): void {
 }
 
 watch([activeTab, galleryPage, galleryOrder, communityFlowerPage, communityFlowerOrder, themeMode, () => settings.value.theme], closeFlowerDetail);
+watch([activeTab, themeMode, () => settings.value.theme], closeFlowerCollection);
 watch(communityFlowers, () => { if (activeFlowerPopup?.kind !== 'personal') closeFlowerDetail(); });
 
 watch([activeTab, communityFlowerPage, communityFlowerOrder], ([tab]) => {
@@ -3954,6 +4022,7 @@ let skipNextCommunityFlowerWatch = false;
 // 関係の変更後は古い応答や開いた詳細も破棄し、認可済みのページを取り直す。
 function invalidateCommunityFlowers(): void {
 	++communityFlowerRequestSequence;
+	if (activeFlowerCollection?.kind === 'community') closeFlowerCollection();
 	if (activeFlowerPopup?.kind !== 'personal') closeFlowerDetail();
 	communityFlowers.value = [];
 	communityFlowerTotal.value = 0;
@@ -6193,7 +6262,7 @@ button.hk-row{ cursor:pointer }
 .htk-flower-icon-button:hover:not(:disabled), .htk-flower-visibility > summary:hover { background: var(--hover-bg); color: var(--fg); }
 .htk-flower-icon-button[aria-pressed='true'] { color: var(--on-accent); background: var(--accent-ink, var(--accent)); }
 .htk-flower-icon-button:disabled { opacity: .45; cursor: default; }
-.htk-flower-icon-button:focus-visible, .htk-flower-visibility > summary:focus-visible, .htk-flower-sort select:focus-visible, .htk-flower-visibility select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.htk-flower-icon-button:focus-visible, .htk-flower-visibility > summary:focus-visible, .htk-flower-visibility select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .htk-growing-content { display: grid; grid-template-columns: 110px minmax(0, 1fr); align-items: center; gap: 8px 22px; }
 .htk-growing-ring { grid-column: 1; grid-row: 1 / span 2; width: 110px; height: 110px; margin: 0; }
 .htk-growing-copy { grid-column: 2; min-width: 0; overflow-wrap: anywhere; }
@@ -6204,14 +6273,8 @@ button.hk-row{ cursor:pointer }
 .htk-growing-remaining { margin: 8px 0 0; color: var(--fg); font-size: .88rem; font-weight: 700; line-height: 1.5; }
 .htk-growing-progress { margin: 2px 0 0; color: var(--fg-2); font-size: .75rem; line-height: 1.5; font-variant-numeric: tabular-nums; }
 .htk-growing-harvest { grid-column: 2; justify-self: start; min-height: 44px; max-width: 100%; white-space: normal; }
-.htk-flower-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
-.htk-flower-footer .htk-gal-pager { gap: 3px; margin: 0; }
-.htk-flower-footer .htk-pager-t { color: var(--fg-2); font-size: .75rem; }
-.htk-flower-footer .htk-gal-pager .htk-btn { border: 0; background: transparent; box-shadow: none; backdrop-filter: none; }
-.htk-flower-sort { max-width: 100%; }
-.htk-flower-sort select, .htk-flower-visibility select { box-sizing: border-box; min-height: 44px; max-width: 100%; padding: 6px 8px; border: 1px solid var(--rule); border-radius: var(--radius-xs); font: inherit; font-size: .75rem; color: var(--fg); background: var(--surface); }
-.htk-flower-sort select { border-color: transparent; background: transparent; }
-.htk-flower-sort option, .htk-flower-visibility option { background: var(--surface); color: var(--fg); }
+.htk-flower-visibility select { box-sizing: border-box; min-height: 44px; max-width: 100%; padding: 6px 8px; border: 1px solid var(--rule); border-radius: var(--radius-xs); font: inherit; font-size: .75rem; color: var(--fg); background: var(--surface); }
+.htk-flower-visibility option { background: var(--surface); color: var(--fg); }
 .htk-flower-visibility { flex: 0 0 44px; }
 .htk-flower-visibility > summary { list-style: none; }
 .htk-flower-visibility > summary::-webkit-details-marker { display: none; }
@@ -6222,7 +6285,6 @@ button.hk-row{ cursor:pointer }
 .htk-garden-page [data-garden-group='personal']:has(.htk-flower-visibility[open]) { z-index: 30; }
 .htk-community-garden > .htk-gc { padding-bottom: 10px; }
 .htk-community-garden .htk-flower-heading { padding-inline: 2px; margin-bottom: 10px; }
-.htk-flower-footer .htk-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
 .htk-root[data-theme='akatsuki'] .htk-garden-page .htk-sec-title { font-family: var(--htk-font-head); }
 .htk-root[data-theme='hatakyu'] .htk-garden-page[data-garden-layout='streams'] .htk-lg:nth-child(n) { --r: 0deg; }
 @container hatask-flower-page (min-width: 1100px) {

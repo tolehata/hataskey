@@ -113,7 +113,7 @@ describe('Hatask flower growth', () => {
 			expect(stream).toBeDefined();
 			expect(stream).toContain(`:items="${kind === 'personal' ? 'personal' : 'community'}FlowerViews"`);
 			expect(stream).toContain(`openFlowerDetail('${kind}',selection)`);
-			expect(stream).toContain(`:paused="flowerStreamPaused.${kind} || flowerDialogOpen"`);
+			expect(stream).toContain(`:paused="flowerStreamPaused.${kind} || flowerDialogOpen || flowerCollectionOpen"`);
 		}
 		expect(page).toMatch(/<HataskCommunityGarden\b[^>]*:flowers="communityFlowerViews"[\s\S]*ref="activityFlowerStream"[\s\S]*<\/HataskCommunityGarden>/u);
 		expect(page).toContain(':label="copy.communityFlowerGallery"');

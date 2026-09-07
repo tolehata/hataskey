@@ -37,6 +37,7 @@ const sample: HataskFlowerView[] = Array.from({ length: 12 }, (_, index) => ({
 type StreamProps = {
 	items: readonly HataskFlowerView[];
 	activity: boolean;
+	showOwnerName: boolean;
 	animations: boolean;
 	paused: boolean;
 	label: string;
@@ -109,7 +110,7 @@ async function mountStream(options: Partial<StreamProps> = {}, initialWidth = 60
 		}
 		return new DOMRect(0, 0, width, 160);
 	});
-	const props = shallowRef<StreamProps>({ items: sample, activity: false, animations: true, paused: false, label: 'みんなの花壇', rareLabel: 'レア花', harvestedLabel: '収穫', ...options });
+	const props = shallowRef<StreamProps>({ items: sample, activity: false, showOwnerName: true, animations: true, paused: false, label: 'みんなの花壇', rareLabel: 'レア花', harvestedLabel: '収穫', ...options });
 	const show = ref(true);
 	const instance = ref<{ getAnchor(id: string): HTMLElement | null } | null>(null);
 	const select = vi.fn();
@@ -323,6 +324,21 @@ describe('HataskFlowerStream', () => {
 		expect(f.instance.value?.getAnchor('flower-4')?.getAttribute('aria-label')).toContain('レア花');
 	});
 
+	test('自分のギャラリーはアカウント名の表示と読み上げを省き、装飾アバターと花の情報を保つ', async () => {
+		const f = await mountStream({ items: sample.map(flower => ({ ...flower, isOwner: true })), showOwnerName: false });
+		for (const button of f.originals()) {
+			const flower = sample.find(item => item.id === button.dataset.flowerId);
+			expect(button.querySelector('[data-owner-name]')).toBeNull();
+			expect(button.querySelector<HTMLElement>('[data-avatar]')?.dataset.decoration).toBe('true');
+			expect(button.getAttribute('aria-label')).toContain(flower?.name);
+			expect(button.getAttribute('aria-label')).toContain('収穫 2026/9/8');
+			expect(button.getAttribute('aria-label')).not.toContain('育てた人');
+		}
+		await f.update({ showOwnerName: true });
+		expect(f.originals()[0].querySelector('[data-owner-name]')?.textContent).toBe('育てた人0');
+		expect(f.originals()[0].getAttribute('aria-label')).toContain('育てた人0');
+	});
+
 	test('520px境界で段数を切り替え、全品種とキーボードフォーカスを保つ', async () => {
 		const f = await mountStream();
 		f.instance.value?.getAnchor('flower-3')?.focus();
@@ -438,6 +454,22 @@ describe('HataskFlowerStream', () => {
 		expect(f.pointer(element, 'pointermove', 140, 'touch').defaultPrevented).toBe(false);
 		expect(element.scrollLeft).toBe(start);
 		f.pointer(element, 'pointerup', 140, 'touch');
+	});
+
+	test.each(['mouse', 'touch', 'pen'])('%sで花・アバター・名前をタップすると正本と複製から詳細選択を通知する', async pointerType => {
+		const f = await mountStream({}, 360);
+		for (const copy of ['0', '1']) {
+			const button = requiredElement(f.root().querySelector<HTMLButtonElement>(`[data-copy="${copy}"][data-flower-id="flower-0"]`));
+			for (const selector of ['[data-emoji]', '[data-avatar]', '[data-owner-name]']) {
+				const target = requiredElement(button.querySelector<HTMLElement>(selector));
+				f.select.mockClear();
+				f.pointer(target, 'pointerdown', 100, pointerType);
+				f.pointer(target, 'pointerup', 100, pointerType);
+				f.click(target);
+				expect(f.select).toHaveBeenCalledTimes(1);
+				expect(f.select.mock.calls[0][0]).toMatchObject({ flower: sample[0], anchor: button, returnFocusTo: f.instance.value?.getAnchor('flower-0') });
+			}
+		}
 	});
 
 	test('複製選択はクリック位置と正本の復帰先を別々に返す', async () => {
