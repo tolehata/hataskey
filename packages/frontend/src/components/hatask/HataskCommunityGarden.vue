@@ -15,6 +15,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<radialGradient :id="ids['ground-light']"><stop stop-color="#ffffe8" stop-opacity=".32"/><stop offset="1" stop-color="#ffffe8" stop-opacity="0"/></radialGradient>
 				<pattern :id="ids['dirt-grain']" width="47" height="34" patternUnits="userSpaceOnUse"><ellipse cx="4" cy="7" rx="1.5" ry=".9" fill="#d6bb90" opacity=".42"/><ellipse cx="26" cy="14" rx="2" ry="1.1" fill="#2c211b" opacity=".48"/><ellipse cx="39" cy="29" rx="1.5" ry=".9" fill="#e2c499" opacity=".26"/><ellipse cx="14" cy="26" rx="2.8" ry="1.1" fill="#292119" opacity=".24"/><path d="m31 3 4 1M1 22l4 1" stroke="#baa181" stroke-width="1" opacity=".4"/></pattern>
 				<filter :id="ids['bed-shadow']" x="-.2" y="-.8" width="1.4" height="2.6"><feGaussianBlur stdDeviation="11"/></filter>
+				<filter :id="ids['flower-shadow']" x="-.2" y="-.2" width="1.4" height="1.4" color-interpolation-filters="sRGB"><feDropShadow dx="2" dy="3" stdDeviation="1.2" flood-color="#302719" flood-opacity=".2"/></filter>
 			</defs>
 			<ellipse cx="475" cy="301" rx="460" ry="231" :fill="paint('ground-light')"/>
 			<path d="M40 426q114-81 237-38m520 78q72-34 175-26M103 258q70-26 117-21" fill="none" stroke="#5c7354" stroke-opacity=".07" stroke-width="23" stroke-linecap="round"/>
@@ -39,9 +40,22 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<ellipse :fill="paint('rare-aura')" :cx="plant.lean" :cy="plant.headY + 15" rx="47" ry="41" opacity=".65"/>
 					<path :class="$style.rareSpark" :d="`M-31 ${plant.headY + 2}l2-5 2 5 5 2-5 2-2 5-2-5-5-2ZM34 ${plant.headY + 29}l1.4-4 1.4 4 4 1.4-4 1.4-1.4 4-1.4-4-4-1.4Z`"/>
 				</template>
-				<foreignObject :x="plant.lean - 34" :y="plant.headY - 29" width="68" height="68" :transform="`rotate(${plant.lean} ${plant.lean} ${plant.headY + 10})`">
-					<div xmlns="http://www.w3.org/1999/xhtml" :class="$style.flowerArt"><HataskEmoji :emoji="plant.flower.emoji" :class="$style.emoji"/></div>
-				</foreignObject>
+				<!-- Keep the flower in SVG's coordinate system, including its shadow. -->
+				<g :transform="`rotate(${plant.lean} ${plant.lean} ${plant.headY + 10})`">
+					<image
+						v-if="plant.imageSource"
+						:key="plant.imageSource"
+						:href="plant.imageSource"
+						:x="plant.lean - 32"
+						:y="plant.headY - 27"
+						width="64"
+						height="64"
+						preserveAspectRatio="xMidYMid meet"
+						:filter="paint('flower-shadow')"
+						@error="advanceFlowerImage(plant)"
+					/>
+					<g v-else :transform="`translate(${plant.lean - 12} ${plant.headY - 7})`" data-flower-image-unavailable fill="none" stroke="var(--garden-leaf)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="3"/><path d="m2 2 20 20m-20-7 5-5 7 7m2-8h.01"/></g>
+				</g>
 				<g v-if="plant.flower.id === selectedId" transform="translate(0 13)"><ellipse rx="13" ry="4" fill="var(--accent)" opacity=".22"/><path d="m0-13 5 7H-5Z" fill="var(--accent)" stroke="var(--surface)" stroke-width="1"/></g>
 			</g>
 			<g aria-hidden="true" transform="translate(119 453) rotate(-6)"><path d="M13 8v30m56-30v30" stroke="#65513b" stroke-width="5"/><rect width="84" height="26" rx="4" fill="#c7a579" stroke="#f6dbac" stroke-width="1"/><path d="M7 5h69M4 21h73" stroke="#866b4e" opacity=".25"/><text x="42" y="18" text-anchor="middle" fill="#463623" font-size="13" font-weight="700" font-family="system-ui,sans-serif" letter-spacing="1">Hatask</text></g>
@@ -53,9 +67,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { computed, useId } from 'vue';
+import { computed, ref, useId, watch } from 'vue';
 import type { HataskFlowerView } from './hatask-flower-view.js';
-import HataskEmoji from '@/components/HataskEmoji.vue';
+import { prefer } from '@/preferences.js';
+import { hataskEmojiSources } from '@/utility/hatask-emoji.js';
 
 const props = defineProps<{
 	flowers: readonly HataskFlowerView[];
@@ -66,11 +81,16 @@ const props = defineProps<{
 }>();
 const instanceId = `hatask-garden-${useId()}`;
 const titleId = `${instanceId}-title`;
-const definitions = ['soil-gradient', 'stone-gradient', 'leaf-gradient', 'rare-aura', 'ground-light', 'dirt-grain', 'bed-shadow'] as const;
+const definitions = ['soil-gradient', 'stone-gradient', 'leaf-gradient', 'rare-aura', 'ground-light', 'dirt-grain', 'bed-shadow', 'flower-shadow'] as const;
 type Paint = typeof definitions[number];
 const ids = Object.fromEntries(definitions.map(name => [name, `${instanceId}-${name}`])) as Record<Paint, string>;
 
 function paint(name: Paint): string { return `url(#${ids[name]})`; }
+
+const imageFailures = ref(new Map<string, number>());
+watch(() => [props.flowers.map(flower => [flower.id, flower.emoji]), prefer.r.emojiStyle.value], () => {
+	imageFailures.value = new Map();
+}, { flush: 'sync' });
 
 // The caller supplies the current 12-flower page, in the same order as its stream.
 const plants = computed(() => props.flowers.slice(0, 12).map((flower, index) => {
@@ -79,12 +99,21 @@ const plants = computed(() => props.flowers.slice(0, 12).map((flower, index) => 
 	const headY = [-108, -99, -110, -118][column];
 	return {
 		flower,
+		imageSource: hataskEmojiSources(flower.emoji, prefer.r.emojiStyle.value).at(imageFailures.value.get(flower.id) ?? 0),
 		x: [326, 278, 228][row] + column * [116, 148, 180][row],
 		y: [289, 350, 410][row] + [0, 3, -2, 1][column],
 		scale: [.81, .95, 1.08][row],
 		lean: [-6, 2, -3, 5][column], headY, leafY: headY * .44,
 	};
 }));
+
+function advanceFlowerImage(failed: (typeof plants.value)[number]): void {
+	const current = plants.value.find(plant => plant.flower.id === failed.flower.id);
+	// Ignore errors from an image replaced by a fallback or a different page/style.
+	if (!current?.imageSource || current.imageSource !== failed.imageSource) return;
+	imageFailures.value.set(failed.flower.id, (imageFailures.value.get(failed.flower.id) ?? 0) + 1);
+}
+
 const grasses = Array.from({ length: 42 }, (_, index) => {
 	const x = index % 2 === 0 ? 83 + (index * 31) % 110 : 818 + (index * 37) % 115;
 	const y = 368 + (index * 17) % 99;
@@ -127,8 +156,6 @@ const grasses = Array.from({ length: 42 }, (_, index) => {
 .stemLight { stroke: var(--garden-leaf-light); stroke-width: 1.2; stroke-linecap: round; fill: none; opacity: .7; }
 .vein { fill: none; stroke: #d9e8b8; stroke-width: .7; opacity: .35; }
 .rareSpark { fill: #fff5d7; stroke: #ab7c1c; stroke-width: .5; }
-.flowerArt { display: grid; place-items: center; width: 68px; height: 68px; }
-.emoji { display: block; width: 64px; height: 64px; filter: drop-shadow(2px 3px 1.2px #30271933); }
 .activity { min-width: 0; padding-bottom: 4px; }
 .activity:empty { display: none; }
 </style>
