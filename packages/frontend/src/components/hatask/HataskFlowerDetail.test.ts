@@ -3,12 +3,13 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { createApp, defineComponent, h, nextTick, ref, shallowReactive } from 'vue';
+import { createApp, defineComponent, h, nextTick, onMounted, ref, shallowReactive } from 'vue';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import HataskFlowerDetail from './HataskFlowerDetail.vue';
 import type { App } from 'vue';
 import type { HataskFlowerDetailLabels } from './HataskFlowerDetail.vue';
 import type { HataskFlowerView } from './hatask-flower-view.js';
+import MkModal from '@/components/MkModal.vue';
 import { hotkeyDirective } from '@/directives/hotkey.js';
 import { claimZIndex } from '@/os.js';
 
@@ -58,7 +59,7 @@ function required<T extends HTMLElement = HTMLElement>(container: ParentNode, se
 	return element;
 }
 
-async function mount(overrides: Partial<HataskFlowerView> = {}) {
+async function mount(overrides: Partial<HataskFlowerView> = {}, openingShift = 0) {
 	const host = window.document.createElement('div');
 	host.setAttribute('data-hatask-flower-stream', '');
 	const opener = window.document.createElement('button');
@@ -77,11 +78,19 @@ async function mount(overrides: Partial<HataskFlowerView> = {}) {
 	const order: string[] = [];
 	const actionFocus: Element[] = [];
 	const shown = ref(true);
-	const app = createApp(defineComponent({ setup: () => () => shown.value ? h(HataskFlowerDetail, {
-		...state, ref: instance, source, returnFocusTo: opener, theme: 'akatsuki', mode: 'light', animations: false, labels,
-		onClosed: () => { order.push('closed'); shown.value = false; },
-		onAction: () => { order.push('action'); if (window.document.activeElement) actionFocus.push(window.document.activeElement); },
-	}) : null }));
+	const app = createApp(defineComponent({ setup: () => {
+		onMounted(() => {
+			if (openingShift === 0) return;
+			// The rail can finish its pending layout before MkModal aligns on nextTick.
+			anchorTop -= openingShift;
+			host.dispatchEvent(new Event('scroll'));
+		});
+		return () => shown.value ? h(HataskFlowerDetail, {
+			...state, ref: instance, source, returnFocusTo: opener, theme: 'akatsuki', mode: 'light', animations: false, labels,
+			onClosed: () => { order.push('closed'); shown.value = false; },
+			onAction: () => { order.push('action'); if (window.document.activeElement) actionFocus.push(window.document.activeElement); },
+		}) : null;
+	} }));
 	app.directive('hotkey', hotkeyDirective);
 	app.mount(container);
 	mounted.push({ app, container, host, close: () => instance.value?.close() });
@@ -133,6 +142,58 @@ describe('HataskFlowerDetail', () => {
 		second.state.isOpen = false;
 		await settle();
 		expect(second.order).toEqual(['closed']);
+	});
+
+	test.each([.25, 40])('opening layout scroll of %s px cannot dismiss the popup before positioning completes', async openingShift => {
+		const detail = await mount({}, openingShift);
+		expect(detail.order).toEqual([]);
+		expect(required(detail.container, '[role="dialog"] h2').textContent).toBe(flower.name);
+		detail.host.dispatchEvent(new Event('scroll'));
+		await settle();
+		expect(detail.order).toEqual([]);
+		detail.moveAnchor();
+		detail.host.dispatchEvent(new Event('scroll'));
+		await settle();
+		expect(detail.order).toEqual(['closed']);
+	});
+
+	test('opens above a list dialog and Escape returns focus to its flower without closing the list', async () => {
+		vi.mocked(claimZIndex).mockImplementation(priority => priority === 'high' ? 3000 : 2000);
+		const host = window.document.createElement('div');
+		const container = window.document.createElement('div');
+		window.document.body.append(host, container);
+		const list = ref<InstanceType<typeof MkModal>>();
+		const detail = ref<Instance>();
+		const selected = ref<HTMLButtonElement | null>(null);
+		const listClosed = vi.fn();
+		const app = createApp(defineComponent({ setup: () => () => [
+			h(MkModal, { ref: list, preferType: 'dialog', zPriority: 'middle', onEsc: () => list.value?.close(), onClosed: listClosed }, {
+				default: () => h('section', { 'data-test-list-panel': '' }, [h('button', {
+					type: 'button', 'data-test-list-flower': '',
+					onClick: (event: MouseEvent) => { selected.value = event.currentTarget as HTMLButtonElement; },
+				}, flower.name)]),
+			}),
+			selected.value ? h(HataskFlowerDetail, {
+				ref: detail, flower, source: selected.value, returnFocusTo: selected.value,
+				theme: 'akatsuki', mode: 'light', animations: false, labels,
+				onClosed: () => { selected.value = null; },
+			}) : null,
+		] }));
+		app.directive('hotkey', hotkeyDirective);
+		app.mount(container);
+		mounted.push({ app, container, host, close: () => { detail.value?.close(); list.value?.close(); } });
+		await settle();
+		const opener = required<HTMLButtonElement>(container, '[data-test-list-flower]');
+		opener.click();
+		await settle();
+		const closeButton = required(container, '[data-flower-detail-action="close"]');
+		expect(window.document.activeElement).toBe(closeButton);
+		expect(listClosed).not.toHaveBeenCalled();
+		closeButton.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+		await settle();
+		expect(container.querySelector('[data-flower-id]')).toBeNull();
+		expect(listClosed).not.toHaveBeenCalled();
+		expect(window.document.activeElement).toBe(opener);
 	});
 
 	test('content and stale rail scroll events stay open; anchor movement, resize, or removal closes it', async () => {

@@ -153,6 +153,13 @@ function onViewportChange(event: Event): void {
 function onOpened(): void {
 	if (closing.value || disposed) return;
 	updateArrow();
+	// MkModal aligns on nextTick. A queued rail scroll while that layout settles
+	// must not dismiss the detail before it has finished opening.
+	sourceBounds = props.source.getBoundingClientRect();
+	window.addEventListener('scroll', onViewportChange, { capture: true, passive: true });
+	window.addEventListener('resize', onViewportChange, { passive: true });
+	window.visualViewport?.addEventListener('resize', onViewportChange, { passive: true });
+	window.visualViewport?.addEventListener('scroll', onViewportChange, { passive: true });
 	closeButton.value?.focus({ preventScroll: true });
 }
 
@@ -162,11 +169,6 @@ onMounted(() => {
 		close();
 		return;
 	}
-	sourceBounds = props.source.getBoundingClientRect();
-	window.addEventListener('scroll', onViewportChange, { capture: true, passive: true });
-	window.addEventListener('resize', onViewportChange, { passive: true });
-	window.visualViewport?.addEventListener('resize', onViewportChange, { passive: true });
-	window.visualViewport?.addEventListener('scroll', onViewportChange, { passive: true });
 	resizeObserver = new ResizeObserver(() => { void nextTick(updateArrow); });
 	if (panel.value) resizeObserver.observe(panel.value);
 	// An owner can remove/rebuild the stream during loading or a page switch.
