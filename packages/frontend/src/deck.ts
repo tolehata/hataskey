@@ -3,13 +3,14 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import { i18n } from './i18n.js';
 import type { BasicTimelineType } from '@/timelines.js';
 import type { SoundStore } from '@/preferences/def.js';
 import type { MenuItem } from '@/types/menu.js';
 import { genId } from '@/utility/id.js';
 import { deepClone } from '@/utility/clone.js';
+import { deepEqual } from '@/utility/deep-equal.js';
 import { prefer } from '@/preferences.js';
 import * as os from '@/os.js';
 
@@ -76,6 +77,18 @@ const __currentProfile = _currentProfile ? deepClone(_currentProfile) : null;
 export const columns = ref(__currentProfile ? __currentProfile.columns : []);
 export const layout = ref(__currentProfile ? __currentProfile.layout : []);
 
+function reloadCurrentDeckProfile() {
+	const currentProfile = prefer.s['deck.profiles'].find(p => p.name === prefer.s['deck.profile']);
+	const nextColumns = currentProfile?.columns ?? [];
+	const nextLayout = currentProfile?.layout ?? [];
+	if (!deepEqual(columns.value, nextColumns)) columns.value = deepClone(nextColumns);
+	if (!deepEqual(layout.value, nextLayout)) layout.value = deepClone(nextLayout);
+}
+
+// 別タブ・クラウドから届いた設定を次の編集へ引き継ぐ。
+// 同期値が変わっていない場合はカラムの参照を保ち、不要な再読み込みを避ける。
+watch([prefer.r['deck.profiles'], prefer.r['deck.profile']], reloadCurrentDeckProfile, { flush: 'sync' });
+
 if (prefer.s['deck.profile'] == null) {
 	addProfile('Main');
 }
@@ -99,9 +112,7 @@ export const saveCurrentDeckProfile = () => {
 
 function switchProfile(profile: DeckProfile) {
 	prefer.commit('deck.profile', profile.name);
-	const currentProfile = deepClone(profile);
-	columns.value = currentProfile.columns;
-	layout.value = currentProfile.layout;
+	reloadCurrentDeckProfile();
 	forceSaveCurrentDeckProfile();
 }
 

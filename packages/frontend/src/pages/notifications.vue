@@ -36,6 +36,7 @@ import MkNotesTimeline from '@/components/MkNotesTimeline.vue';
 import * as os from '@/os.js';
 import { i18n } from '@/i18n.js';
 import { definePage } from '@/page.js';
+import { prefer } from '@/preferences.js';
 import { Paginator } from '@/utility/paginator.js';
 import { deviceKind } from '@/utility/device-kind.js';
 import { globalEvents } from '@/events.js';
@@ -44,11 +45,11 @@ import { markHataFeedNotificationsRead } from '@/utility/hatafeed.js';
 
 const tab = ref('all');
 const includeTypes = ref<string[] | null>(null);
-const excludeBots = ref(false);
+const excludeBots = prefer.r.notificationExcludeBots;
 const excludeTypes = computed(() => includeTypes.value ? notificationTypes.filter(t => !includeTypes.value!.includes(t)) : null);
 const showBots = computed({
 	get: () => !excludeBots.value,
-	set: value => { excludeBots.value = !value; },
+	set: value => { prefer.commit('notificationExcludeBots', !value); },
 });
 
 const props = defineProps<{
@@ -87,7 +88,7 @@ function setFilter(ev) {
 		text: i18n.ts.clear,
 		action: () => {
 			includeTypes.value = null;
-			excludeBots.value = false;
+			prefer.commit('notificationExcludeBots', false);
 		},
 	}, { type: 'divider' as const }, ...filterItems] : filterItems;
 	os.popupMenu(items, ev.currentTarget ?? ev.target);

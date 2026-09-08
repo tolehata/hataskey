@@ -330,6 +330,10 @@ export const PREF_DEF = definePreferences({
 	notificationStackAxis: {
 		default: 'vertical' as 'vertical' | 'horizontal',
 	},
+	notificationExcludeBots: {
+		accountDependent: true,
+		default: false,
+	},
 	enableCondensedLine: {
 		default: false,
 	},
@@ -982,7 +986,7 @@ export const PREF_DEF = definePreferences({
 			{ id: 'col-local', type: 'local', width: 380 },
 			{ id: 'col-home', type: 'home', width: 380 },
 			{ id: 'col-notifications', type: 'notifications', width: 340 },
-		] as { id: string; type: string; width: number; height?: number; name?: string; sourceId?: string; withRenotes?: boolean; borderColor?: string | null; fullWidth?: boolean; fullHeight?: boolean }[],
+		] as { id: string; type: string; width: number; height?: number; name?: string; sourceId?: string; withRenotes?: boolean; excludeBots?: boolean; excludeTypes?: string[]; notificationFilterKnownTypes?: string[]; borderColor?: string | null; fullWidth?: boolean; fullHeight?: boolean }[],
 	},
 	// 旗鯖fork: デッキのシート構成プロファイル(複数保存・切替)。
 	// 旧 deckColumns/deckLayout は後方互換のため残し、hatasaba-deck.vue 側で
@@ -993,7 +997,7 @@ export const PREF_DEF = definePreferences({
 			id: string;
 			name: string;
 			layout: 'row' | 'grid2' | 'grid3' | 'stack';
-			columns: { id: string; type: string; width: number; height?: number; name?: string; sourceId?: string; withRenotes?: boolean; borderColor?: string | null; fullWidth?: boolean; fullHeight?: boolean }[];
+			columns: { id: string; type: string; width: number; height?: number; name?: string; sourceId?: string; withRenotes?: boolean; excludeBots?: boolean; excludeTypes?: string[]; notificationFilterKnownTypes?: string[]; borderColor?: string | null; fullWidth?: boolean; fullHeight?: boolean }[];
 		}[],
 	},
 	'simpleUi.deckActiveProfile': {
@@ -1029,6 +1033,9 @@ export const PREF_DEF = definePreferences({
 						name?: string;
 						sourceId?: string;
 						withRenotes?: boolean;
+						excludeBots?: boolean;
+						excludeTypes?: string[];
+						notificationFilterKnownTypes?: string[];
 						tabName?: string;
 					}[];
 				}[];

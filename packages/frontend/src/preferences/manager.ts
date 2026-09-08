@@ -6,6 +6,7 @@
 import { computed, onUnmounted, ref, watch } from 'vue';
 import { host, version } from '@@/js/config.js';
 import { PREF_DEF } from './def.js';
+import { mergePreferenceRecords } from './merge.js';
 import type { Ref, WritableComputedRef } from 'vue';
 import type { MenuItem } from '@/types/menu.js';
 import { genId } from '@/utility/id.js';
@@ -34,6 +35,9 @@ type Scope = Partial<{
 
 type ValueMeta = Partial<{
 	sync: boolean;
+	// Local save generation. Also distinguishes another tab changing a value
+	// and changing it back while a cloud read is still pending.
+	updatedAt: number;
 }>;
 
 type PrefRecord<K extends keyof PREF> = [scope: Scope, value: ValueOf<K>, meta: ValueMeta];
@@ -183,6 +187,10 @@ function normalizePreferences(preferences: PossiblyNonNormalizedPreferencesProfi
 export class PreferencesManager {
 	private io: StorageProvider;
 	private currentAccount: { id: string } | null;
+	private savedProfile: PossiblyNonNormalizedPreferencesProfile;
+	private preferenceRevisions = new Map<string, number>();
+	private cloudFetchVersion = 0;
+	private cloudWrites = new Map<string, Promise<void>>();
 	public profile: PreferencesProfile;
 	public cloudReady: Promise<void>;
 
@@ -205,6 +213,7 @@ export class PreferencesManager {
 		this.currentAccount = currentAccount;
 
 		const loadedProfile = this.io.load() ?? createEmptyProfile();
+		this.savedProfile = JSON.parse(JSON.stringify(loadedProfile));
 		this.profile = {
 			...loadedProfile,
 			preferences: normalizePreferences(loadedProfile.preferences, currentAccount),
@@ -232,7 +241,6 @@ export class PreferencesManager {
 		this.r[key].value = this.s[key] = v;
 	}
 
-	// TODO: desync対策 cloudの値のfetchが正常に完了していない状態でcommitすると多分値が上書きされる
 	public commit<K extends keyof PREF>(key: K, value: ValueOf<K>): void | Promise<void> {
 		const currentAccount = this.currentAccount; // TSを黙らせるため
 		const v = JSON.parse(JSON.stringify(value)); // deep copy 兼 vueのプロキシ解除
@@ -266,13 +274,29 @@ export class PreferencesManager {
 		}
 
 		record[1] = v;
-		this.save();
+		if (!this.save()) return;
 
-		if (record[2].sync) {
+		const savedRecord = this.getMatchedRecordOf(key);
+		if (savedRecord[2].sync) {
 			// 通常の設定操作は待たなくてもよいが、移行処理は保存完了を待てるようにする。
 			// TODO: リクエストを間引く
-			return this.io.cloudSet({ key, scope: record[0], value: record[1] });
+			return this.writeCloudValue({ key, scope: savedRecord[0], value: savedRecord[1] });
 		}
+	}
+
+	private writeCloudValue<K extends keyof PREF>(context: { key: K; scope: Scope; value: ValueOf<K> }): Promise<void> {
+		const data = JSON.parse(JSON.stringify(context)) as typeof context;
+		const id = `${data.key}:${JSON.stringify(parseScope(data.scope))}`;
+		const previous = this.cloudWrites.get(id);
+		// The older request must finish before a newer value is sent. Otherwise
+		// a slow old write can become the value loaded on the next page visit.
+		const write = previous
+			? previous.catch(() => {}).then(() => this.io.cloudSet(data))
+			: this.io.cloudSet(data);
+		this.cloudWrites.set(id, write);
+		const cleanup = () => { if (this.cloudWrites.get(id) === write) this.cloudWrites.delete(id); };
+		void write.then(cleanup, cleanup);
+		return write;
 	}
 
 	/**
@@ -324,11 +348,22 @@ export class PreferencesManager {
 	}
 
 	private async fetchCloudValues() {
+		const fetchVersion = ++this.cloudFetchVersion;
+		while (this.cloudWrites.size > 0) {
+			await Promise.all(this.cloudWrites.values());
+			if (fetchVersion !== this.cloudFetchVersion) return;
+		}
+		if (fetchVersion !== this.cloudFetchVersion) return;
+		const profileId = this.profile.id;
+		const revisions = new Map(this.preferenceRevisions);
+		const requestedRecords = new Map<keyof PREF, PrefRecord<keyof PREF>>();
+		const storedAtStart = this.io.load();
 		const needs = [] as { key: keyof PREF; scope: Scope; }[];
 		for (const _key in PREF_DEF) {
 			const key = _key as keyof PREF;
 			const record = this.getMatchedRecordOf(key);
 			if (record[2].sync) {
+				requestedRecords.set(key, JSON.parse(JSON.stringify(record)));
 				needs.push({
 					key,
 					scope: record[0],
@@ -337,10 +372,21 @@ export class PreferencesManager {
 		}
 
 		const cloudValues = await this.io.cloudGetBulk({ needs });
+		if (fetchVersion !== this.cloudFetchVersion || profileId !== this.profile.id) return;
+		const storedNow = this.io.load();
 
 		for (const _key in PREF_DEF) {
 			const key = _key as keyof PREF;
 			const record = this.getMatchedRecordOf(key);
+			const requested = requestedRecords.get(key);
+			// Ignore responses made obsolete by a local edit (including changing a
+			// value and changing it back), another tab, or a newer profile fetch.
+			if (!requested || !deepEqual(record, requested)
+				|| revisions.get(key) !== this.preferenceRevisions.get(key)) continue;
+			if (storedNow != null && storedNow.id !== profileId) continue;
+			const wasStored = storedAtStart?.preferences[key]?.find(([scope]) => isSameScope(scope, requested[0]));
+			const nowStored = storedNow?.preferences[key]?.find(([scope]) => isSameScope(scope, requested[0]));
+			if (!deepEqual(wasStored, nowStored)) continue;
 			if (record[2].sync && Object.hasOwn(cloudValues, key) && cloudValues[key] !== undefined) {
 				const cloudValue = cloudValues[key];
 				if (!deepEqual(cloudValue, record[1])) {
@@ -355,10 +401,42 @@ export class PreferencesManager {
 		if (_DEV_) console.log('cloud fetch completed');
 	}
 
-	public save() {
+	public save(): boolean {
+		const latest = this.io.load();
+		if (latest != null && latest.id !== this.profile.id && this.savedProfile.id === this.profile.id) {
+			// A profile import in another tab must not be undone by this old tab.
+			this.reloadProfile();
+			return false;
+		}
+		const preferences = this.profile.preferences;
+		for (const key of Object.keys(preferences)) {
+			if (!deepEqual(preferences[key], this.savedProfile.preferences[key])) {
+				this.preferenceRevisions.set(key, (this.preferenceRevisions.get(key) ?? 0) + 1);
+				for (const record of preferences[key]) {
+					const before = this.savedProfile.preferences[key]?.find(([scope]) => isSameScope(scope, record[0]));
+					if (deepEqual(record, before)) continue;
+					const remote = latest?.preferences[key]?.find(([scope]) => isSameScope(scope, record[0]));
+					record[2].updatedAt = Math.max(Date.now(), (before?.[2]?.updatedAt ?? 0) + 1, (remote?.[2]?.updatedAt ?? 0) + 1);
+				}
+			}
+		}
+		if (latest != null && latest.id === this.profile.id && latest.id === this.savedProfile.id) {
+			const latestPreferences = normalizePreferences(latest.preferences, this.currentAccount);
+			for (const key of Object.keys(preferences)) {
+				preferences[key] = mergePreferenceRecords(key,
+					this.savedProfile.preferences[key] ?? [], preferences[key], latestPreferences[key]) as PrefRecord<keyof PREF>[];
+			}
+			if (this.profile.name === this.savedProfile.name) this.profile.name = latest.name;
+			const states = this.genStates();
+			for (const key of Object.keys(states)) {
+				if (!deepEqual(this.s[key], states[key])) this.rewriteRawState(key as keyof PREF, states[key]);
+			}
+		}
 		this.profile.modifiedAt = Date.now();
 		this.profile.version = version;
 		this.io.save({ profile: this.profile });
+		this.savedProfile = JSON.parse(JSON.stringify(this.profile));
+		return true;
 	}
 
 	public getMatchedRecordOf<K extends keyof PREF>(key: K): PrefRecord<K> {
@@ -477,20 +555,35 @@ export class PreferencesManager {
 		const record = this.getMatchedRecordOf(key);
 
 		let newValue = record[1];
+		const profileId = this.profile.id;
+		let expectedRecord = JSON.parse(JSON.stringify(record)) as typeof record;
+		let expectedRevision = this.preferenceRevisions.get(key);
+		const isCurrent = () => {
+			const latest = this.io.load();
+			const stored = latest?.preferences[key]?.find(([scope]) => isSameScope(scope, expectedRecord[0]));
+			return this.profile.id === profileId && latest?.id === profileId
+				&& this.preferenceRevisions.get(key) === expectedRevision
+				&& deepEqual(this.getMatchedRecordOf(key), expectedRecord)
+				&& deepEqual(stored, expectedRecord);
+		};
 
 		const existing = await this.io.cloudGet({ key, scope: record[0] });
+		if (!isCurrent()) return { enabled: false };
 		if (existing != null && !deepEqual(record[1], existing.value)) {
 			const resolvedValue = await resolveConflict(record[1], existing.value);
-			if (resolvedValue === undefined) return { enabled: false }; // canceled
+			if (resolvedValue === undefined || !isCurrent()) return { enabled: false };
 			newValue = resolvedValue;
 		}
 
 		this.commit(key, newValue);
+		if (this.profile.id !== profileId) return { enabled: false };
+		expectedRecord = JSON.parse(JSON.stringify(this.getMatchedRecordOf(key)));
+		expectedRevision = this.preferenceRevisions.get(key);
 
 		const done = os.waiting();
 
 		try {
-			await this.io.cloudSet({ key, scope: record[0], value: newValue });
+			await this.writeCloudValue({ key, scope: record[0], value: newValue });
 		} catch (err) {
 			done();
 
@@ -504,9 +597,14 @@ export class PreferencesManager {
 			return { enabled: false };
 		}
 
+		if (!isCurrent()) {
+			done();
+			return { enabled: false };
+		}
+
 		done({ success: true });
 
-		record[2].sync = true;
+		this.getMatchedRecordOf(key)[2].sync = true;
 		this.save();
 
 		return { enabled: true };
@@ -535,13 +633,14 @@ export class PreferencesManager {
 			...newProfile,
 			preferences: normalizePreferences(newProfile.preferences, this.currentAccount),
 		};
+		this.savedProfile = JSON.parse(JSON.stringify(newProfile));
 		const states = this.genStates();
 		for (const _key in states) {
 			const key = _key as keyof PREF;
 			this.rewriteRawState(key, states[key]);
 		}
 
-		this.fetchCloudValues();
+		this.cloudReady = this.fetchCloudValues();
 	}
 
 	public getPerPrefMenu<K extends keyof PREF>(key: K): MenuItem[] {

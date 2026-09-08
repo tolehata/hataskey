@@ -245,7 +245,7 @@ type DeckSlot = {
 type DeckProfile = { id: string; name: string; layout: DeckLayout; slots: DeckSlot[]; };
 
 // 旧形式(マイグレーション元)
-type LegacyColumn = { id: string; type: ColumnType; width: number; height?: number; name?: string; sourceId?: string; withRenotes?: boolean; borderColor?: string | null; fullWidth?: boolean; fullHeight?: boolean; };
+type LegacyColumn = { id: string; type: ColumnType; width: number; height?: number; name?: string; sourceId?: string; withRenotes?: boolean; borderColor?: string | null; fullWidth?: boolean; fullHeight?: boolean; } & Pick<DeckTab, 'excludeTypes' | 'notificationFilterKnownTypes' | 'excludeBots'>;
 type LegacyProfile = { id: string; name: string; layout: DeckLayout; columns: LegacyColumn[]; };
 
 const LAYOUTS: { id: DeckLayout; icon: string; label: string }[] = [
@@ -519,6 +519,9 @@ function legacyColumnToSlot(col: LegacyColumn): DeckSlot {
 				name: col.name,
 				sourceId: col.sourceId,
 				withRenotes: col.withRenotes,
+				excludeTypes: col.excludeTypes,
+				notificationFilterKnownTypes: col.notificationFilterKnownTypes,
+				excludeBots: col.excludeBots,
 			}],
 		}],
 	};

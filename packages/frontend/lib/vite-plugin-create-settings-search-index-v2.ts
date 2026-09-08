@@ -829,6 +829,8 @@ function explicitStorageDispositionsV2(): ReadonlyMap<string, ExplicitStorageKey
 		'ゲーム画面専用のBGM/SFX実行時設定オブジェクト', ['src/pages/drop-and-fusion.game.vue']);
 	add('preference', keys('hataPinnedAnnouncementIds'), 'runtime',
 		'お知らせ一覧で使うピン留め状態で、settings target外の操作が更新する', ['src/pages/announcements.vue']);
+	add('preference', keys('notificationExcludeBots'), 'runtime',
+		'通知画面のフィルターメニューが更新するBOT除外状態', ['src/pages/notifications.vue']);
 	add('preference', keys('showEventButtonInPostForm'), 'runtime',
 		'投稿面が参照する表示状態', ['src/components/MkPostForm.vue']);
 	add('preference', keys('simpleUi.collapseAnnounceShown simpleUi.deckAnnounceShown simpleUi.hatafeedIntroShown'), 'runtime',

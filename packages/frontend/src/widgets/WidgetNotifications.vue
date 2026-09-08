@@ -28,6 +28,8 @@ import MkStreamingNotificationsTimeline from '@/components/MkStreamingNotificati
 import * as os from '@/os.js';
 import { i18n } from '@/i18n.js';
 import { hasConfiguredNotificationFilter, migrateNotificationFilterSnapshot, resolveNotificationFilter } from '@/utility/notification-filter.js';
+import { deepClone } from '@/utility/clone.js';
+import { deepEqual } from '@/utility/deep-equal.js';
 
 const name = 'notifications';
 
@@ -85,17 +87,18 @@ onMounted(() => {
 });
 
 const configureNotification = async () => {
-	const { dispose } = await os.popupAsyncWithDialog(import('@/components/MkNotificationSelectWindow.vue').then(x => x.default), {
+	const initialFilter = deepClone({
 		excludeTypes: widgetProps.excludeTypes,
 		knownTypes: widgetProps.notificationFilterKnownTypes,
 		excludeBots: widgetProps.excludeBots,
-	}, {
+	});
+	const { dispose } = await os.popupAsyncWithDialog(import('@/components/MkNotificationSelectWindow.vue').then(x => x.default), initialFilter, {
 		done: async (res) => {
 			const { excludeTypes, knownTypes, excludeBots } = res;
-			widgetProps.excludeTypes = excludeTypes;
-			widgetProps.notificationFilterKnownTypes = knownTypes;
-			widgetProps.excludeBots = excludeBots;
-			save();
+			if (!deepEqual(excludeTypes, initialFilter.excludeTypes)) widgetProps.excludeTypes = excludeTypes;
+			if (!deepEqual(knownTypes, initialFilter.knownTypes)) widgetProps.notificationFilterKnownTypes = knownTypes;
+			if (excludeBots !== initialFilter.excludeBots) widgetProps.excludeBots = excludeBots;
+			save({ immediate: true });
 		},
 		closed: () => dispose(),
 	});
