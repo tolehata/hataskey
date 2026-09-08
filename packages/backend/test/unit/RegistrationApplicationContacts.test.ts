@@ -139,6 +139,37 @@ beforeEach(() => {
 afterEach(() => { vi.clearAllMocks(); });
 
 describe('review-only additional contacts', () => {
+	test.each(['true', 1, null])('administrator relationship must be a boolean (%s)', async hasAdminRelationship => {
+		const f = fixture();
+		await expect(f.apply.exec({ ...applicant, hasAdminRelationship, additionalContacts: contacts }, null, null, null)).rejects.toMatchObject({ code: 'INVALID_PARAM' });
+		expect(f.repository.insert).not.toHaveBeenCalled();
+	});
+
+	test.each([undefined, null, '', ' \n\t '])('administrator relationship rejects missing or blank contacts (%s)', async additionalContacts => {
+		const f = fixture();
+		await expect(f.apply.exec({ ...applicant, hasAdminRelationship: true, additionalContacts }, null, null, null)).rejects.toMatchObject({ code: 'ADDITIONAL_CONTACTS_REQUIRED' });
+		expect(f.repository.insert).not.toHaveBeenCalled();
+		expect(f.notification.notifyNewApplication).not.toHaveBeenCalled();
+	});
+
+	test.each([undefined, '', ' \n\t '])('without an administrator relationship, a reason remains required (%s)', async reason => {
+		const f = fixture();
+		await expect(f.apply.exec({ ...applicant, hasAdminRelationship: false, reason, additionalContacts: contacts }, null, null, null)).rejects.toMatchObject({ code: 'REASON_REQUIRED' });
+		expect(f.repository.insert).not.toHaveBeenCalled();
+	});
+
+	test.each([undefined, '', 'This disabled draft must not be stored'])('administrator relationship accepts contacts instead of reason (%s) and still requires review', async reason => {
+		const f = fixture();
+		await expect(f.apply.exec({ ...applicant, hasAdminRelationship: true, reason, additionalContacts: `  ${contacts}\n ` }, null, null, null)).resolves.toEqual({ success: true });
+		expect(f.repository.insert).toHaveBeenCalledWith(expect.objectContaining({
+			reason: 'サーバー管理者と関係があります（フォロワー・知り合いなど、本人申告）。',
+			additionalContacts: contacts,
+			status: 'pending',
+		}));
+		expect(f.db.transaction).not.toHaveBeenCalled();
+		expect(f.notification.notifyNewApplication).toHaveBeenCalledExactlyOnceWith();
+	});
+
 	test('saved applications return success without waiting for notification recipient discovery', async () => {
 		const f = fixture();
 		let finishDelivery!: () => void;

@@ -85,6 +85,7 @@ type ApplicationSetup = {
 	tosUrl: string | undefined;
 	privacyPolicyUrl: string | undefined;
 	reason: string;
+	hasAdminRelationship: boolean;
 	additionalContacts: string;
 	username: string;
 	usernameState: string | null;
@@ -123,13 +124,15 @@ type ModerationSetup = {
 
 const cleanups = new Set<() => void>();
 
-// Run real SFC setup/computed/watch logic with a minimal render; this is not browser layout QA.
-function mountSetup<T>(component: Component, props: Record<string, unknown> = {}) {
+// Render native form controls when requested; DOM assertions are not browser layout QA.
+function mountSetup<T>(component: Component, props: Record<string, unknown> = {}, renderTemplate = false) {
 	let setup!: T;
-	const subject = { ...component, render: (...args: unknown[]) => { setup = args[3] as T; return h('div'); } };
+	const render = (component as { render?: (...args: unknown[]) => ReturnType<typeof h> }).render;
+	const subject = { ...component, render: (...args: unknown[]) => { setup = args[3] as T; return renderTemplate && render ? render(...args) : h('div'); } };
 	const container = window.document.createElement('div');
 	window.document.body.append(container);
 	const app = createApp({ render: () => h(Suspense, null, { default: () => h(subject, props) }) });
+	app.component('MkLoading', { render: () => null });
 	app.mount(container);
 	const unmount = () => {
 		if (!cleanups.delete(unmount)) return;
@@ -137,7 +140,7 @@ function mountSetup<T>(component: Component, props: Record<string, unknown> = {}
 		container.remove();
 	};
 	cleanups.add(unmount);
-	return { get state() { return setup; }, unmount };
+	return { get state() { return setup; }, container, unmount };
 }
 
 function deferred<T>() {
@@ -236,6 +239,83 @@ describe('登録ダイアログのモード分岐', () => {
 });
 
 describe('申請フォームのサーバー設定とモード競合', () => {
+	test('関係のチェックで理由と連絡先の必須・無効状態を切り替え、入力途中の内容を保つ', async () => {
+		const item = mountSetup<ApplicationSetup>(RegistrationApplication, {}, true);
+		const checkbox = item.container.querySelector<HTMLInputElement>('input[type="checkbox"]');
+		const [reason, contact] = item.container.querySelectorAll<HTMLTextAreaElement>('textarea');
+		if (!checkbox || !reason || !contact) throw new Error('Missing registration relationship controls');
+		expect(checkbox.checked).toBe(false);
+		expect(reason.disabled).toBe(false);
+		expect(reason.required).toBe(true);
+		expect(contact.required).toBe(false);
+		validApplication(item.state);
+		item.state.additionalContacts = '@member@example.test';
+		await nextTick();
+		checkbox.click();
+		await nextTick();
+		expect(reason.disabled).toBe(true);
+		expect(reason.required).toBe(false);
+		expect(contact.required).toBe(true);
+		expect(contact.disabled).toBe(false);
+		expect(item.state.hasAdminRelationship).toBe(true);
+		expect(item.state.shouldDisableSubmitting).toBe(false);
+		checkbox.click();
+		await nextTick();
+		expect(reason.disabled).toBe(false);
+		expect(reason.required).toBe(true);
+		expect(contact.required).toBe(false);
+		expect(reason.value).toBe(' このサーバーで交流したいです ');
+		expect(contact.value).toBe('@member@example.test');
+		await item.state.onSubmit();
+		expect(mocks.api).toHaveBeenCalledWith('registration/apply', expect.objectContaining({ hasAdminRelationship: false, reason: 'このサーバーで交流したいです' }), null);
+	});
+
+	test.each(['', ' \n '])('関係を申告しない場合は理由が空（%j）なら送信しない', async reason => {
+		const item = mountSetup<ApplicationSetup>(RegistrationApplication);
+		validApplication(item.state);
+		item.state.reason = reason;
+		item.state.additionalContacts = '@member@example.test';
+		expect(item.state.shouldDisableSubmitting).toBe(true);
+		await item.state.onSubmit();
+		expect(mocks.api).not.toHaveBeenCalled();
+	});
+
+	test.each(['', ' \n '])('関係を申告する場合は連絡先が空（%j）なら送信しない', async contact => {
+		const item = mountSetup<ApplicationSetup>(RegistrationApplication);
+		validApplication(item.state);
+		item.state.hasAdminRelationship = true;
+		item.state.additionalContacts = contact;
+		expect(item.state.shouldDisableSubmitting).toBe(true);
+		await item.state.onSubmit();
+		expect(mocks.api).not.toHaveBeenCalled();
+	});
+
+	test.each(['', '入力途中の理由は送信しない'])('関係を申告すると理由（%j）を送らず、関係の申告と連絡先を送る', async reason => {
+		const item = mountSetup<ApplicationSetup>(RegistrationApplication);
+		validApplication(item.state);
+		item.state.hasAdminRelationship = true;
+		item.state.reason = reason;
+		item.state.additionalContacts = '  @member@example.test\nhttps://social.example.test/member  ';
+		expect(item.state.shouldDisableSubmitting).toBe(false);
+		await item.state.onSubmit();
+		expect(mocks.api).toHaveBeenCalledWith('registration/apply', expect.objectContaining({ hasAdminRelationship: true, reason: undefined, additionalContacts: '@member@example.test\nhttps://social.example.test/member' }), null);
+	});
+
+	test.each(['rules', 'captcha', 'closed'])('関係を申告しても%sの条件は省略しない', async condition => {
+		const item = mountSetup<ApplicationSetup>(RegistrationApplication);
+		validApplication(item.state);
+		item.state.hasAdminRelationship = true;
+		item.state.reason = '';
+		item.state.additionalContacts = '@member@example.test';
+		expect(item.state.shouldDisableSubmitting).toBe(false);
+		if (condition === 'rules') instance.serverRules = ['同意が必要なルール'];
+		if (condition === 'captcha') instance.enableTestcaptcha = true;
+		if (condition === 'closed') instance.disableRegistration = false;
+		expect(item.state.shouldDisableSubmitting).toBe(true);
+		await item.state.onSubmit();
+		expect(mocks.api).not.toHaveBeenCalled();
+	});
+
 	test.each(['', ' \n '])('任意の連絡先が空（%j）でも送信できる', async contact => {
 		const item = mountSetup<ApplicationSetup>(RegistrationApplication);
 		validApplication(item.state);
@@ -574,7 +654,7 @@ describe('登録設定のテンプレート契約', () => {
 		expect(misplacedReference.test('この欄をご確認ください')).toBe(true);
 		expect(misplacedReference.test(notice)).toBe(false);
 		expect(notice.length).toBeLessThan(80);
-		expect(locale._hata._registrationApplications._admin.contactsHandling).toBe('承認・拒否が確定すると、任意の連絡先は申請データから自動削除されます');
+		expect(locale._hata._registrationApplications._admin.contactsHandling).toBe('承認・拒否が確定すると、SNSなどの連絡先は申請データから自動削除されます');
 	});
 
 	test.each([

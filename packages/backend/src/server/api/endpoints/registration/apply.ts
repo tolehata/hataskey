@@ -62,6 +62,11 @@ export const meta = {
 			code: 'REASON_REQUIRED',
 			id: 'a0000001-0001-0001-0001-000000000004',
 		},
+		additionalContactsRequired: {
+			message: 'Contact details are required when declaring a relationship with the administrator.',
+			code: 'ADDITIONAL_CONTACTS_REQUIRED',
+			id: '7a256957-c11c-49ad-9781-762969d634d3',
+		},
 		captchaFailed: {
 			message: 'CAPTCHA verification failed.',
 			code: 'CAPTCHA_FAILED',
@@ -96,16 +101,17 @@ export const paramDef = {
 		username: { type: 'string', minLength: 1, maxLength: 20 },
 		// パスワード: bcrypt 仕様に合わせて最大 72 バイト相当 (実用上 64 文字制限)
 		password: { type: 'string', minLength: 8, maxLength: 64 },
-		reason: { type: 'string', minLength: 1, maxLength: 1024 },
+		reason: { type: 'string', maxLength: 1024, default: '', description: 'Required unless hasAdminRelationship is true.' },
+		hasAdminRelationship: { type: 'boolean', default: false, description: 'Self-reported relationship with the server administrator. Requires additionalContacts instead of reason; the application still needs review.' },
 		email: { type: 'string', minLength: 5, maxLength: 256 },
-		additionalContacts: { type: 'string', maxLength: 1024, nullable: true },
+		additionalContacts: { type: 'string', maxLength: 1024, nullable: true, description: 'Required when hasAdminRelationship is true.' },
 		'hcaptcha-response': { type: 'string', nullable: true },
 		'g-recaptcha-response': { type: 'string', nullable: true },
 		'turnstile-response': { type: 'string', nullable: true },
 		'm-captcha-response': { type: 'string', nullable: true },
 		'testcaptcha-response': { type: 'string', nullable: true },
 	},
-	required: ['username', 'password', 'reason', 'email'],
+	required: ['username', 'password', 'email'],
 } as const;
 
 @Injectable()
@@ -192,8 +198,13 @@ export default class extends Endpoint<typeof meta, typeof paramDef> {
 				throw new ApiError(meta.errors.passwordTooShort);
 			}
 
-			if (ps.reason.trim().length === 0) {
+			if (!ps.hasAdminRelationship && ps.reason.trim().length === 0) {
 				throw new ApiError(meta.errors.reasonRequired);
+			}
+			const contactsTrimmed = ps.additionalContacts?.trim() ?? '';
+			const additionalContacts = contactsTrimmed.length > 0 ? contactsTrimmed : null;
+			if (ps.hasAdminRelationship && additionalContacts === null) {
+				throw new ApiError(meta.errors.additionalContactsRequired);
 			}
 
 			// 旗鯖fork: メールアドレス形式の検証 (RFC 5322 を完全に検証するのは過剰なので、
@@ -273,9 +284,10 @@ export default class extends Endpoint<typeof meta, typeof paramDef> {
 					id: this.idService.gen(),
 					username: ps.username,
 					hashedPassword,
-					reason: ps.reason.trim(),
+					// Keep the declaration in the existing review record; never imply verified trust or approval.
+					reason: ps.hasAdminRelationship ? 'サーバー管理者と関係があります（フォロワー・知り合いなど、本人申告）。' : ps.reason.trim(),
 					email: emailTrimmed,
-					additionalContacts: ps.additionalContacts?.trim() || null,
+					additionalContacts,
 					status: 'pending',
 					createdAt: new Date(),
 				});

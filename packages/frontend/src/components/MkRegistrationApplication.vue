@@ -21,19 +21,27 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 			<!-- 1. 登録したい理由 -->
 			<div class="_gaps_s">
-				<div :class="$style.label">{{ copy.reasonLabel }} <span :class="$style.required">{{ copy.required }}</span></div>
+				<label :class="$style.checkboxLabel">
+					<input v-model="hasAdminRelationship" type="checkbox" :class="$style.checkbox" :disabled="submitting" :aria-controls="`${reasonId} ${contactsId}`" :aria-describedby="`${reasonId}-relationship-hint`"/>
+					<span>{{ copy.adminRelationshipLabel }}</span>
+				</label>
+				<div :id="`${reasonId}-relationship-hint`" :class="$style.fieldHint">{{ copy.adminRelationshipHint }}</div>
+				<label :for="reasonId" :class="$style.label">{{ copy.reasonLabel }} <span v-if="!hasAdminRelationship" :class="$style.required">{{ copy.required }}</span></label>
 				<textarea
+					:id="reasonId"
 					v-model="reason"
 					:class="$style.textarea"
 					rows="4"
 					maxlength="1024"
+					:disabled="hasAdminRelationship || submitting"
+					:required="!hasAdminRelationship"
 					:placeholder="copy.reasonPlaceholder"
 				></textarea>
-				<div :class="$style.charCount">{{ reason.length }} / 1024</div>
+				<div v-if="!hasAdminRelationship" :class="$style.charCount">{{ reason.length }} / 1024</div>
 			</div>
 
 			<div class="_gaps_s">
-				<label :for="contactsId" :class="$style.label">{{ copy.contactsLabel }} <span :class="$style.optional">({{ i18n.ts.optional }})</span></label>
+				<label :for="contactsId" :class="$style.label">{{ copy.contactsLabel }} <span v-if="hasAdminRelationship" :class="$style.required">{{ copy.required }}</span><span v-else :class="$style.optional">({{ i18n.ts.optional }})</span></label>
 				<textarea
 					:id="contactsId"
 					v-model="additionalContacts"
@@ -41,12 +49,13 @@ SPDX-License-Identifier: AGPL-3.0-only
 					rows="3"
 					maxlength="1024"
 					:disabled="submitting"
+					:required="hasAdminRelationship"
 					:spellcheck="false"
 					autocomplete="off"
 					:placeholder="copy.contactsPlaceholder"
 					:aria-describedby="`${contactsId}-hint`"
 				></textarea>
-				<div :id="`${contactsId}-hint`" :class="$style.fieldHint">{{ copy.contactsHint }}</div>
+				<div :id="`${contactsId}-hint`" :class="$style.fieldHint">{{ hasAdminRelationship ? copy.contactsRequiredHint : copy.contactsHint }}</div>
 			</div>
 
 			<!-- 2. ユーザーID -->
@@ -230,6 +239,8 @@ const testcaptcha = ref<Captcha | undefined>();
 
 // --- フォーム値 ---
 const reason = ref('');
+const reasonId = useId();
+const hasAdminRelationship = ref(false);
 const additionalContacts = ref('');
 const contactsId = useId();
 const username = ref('');
@@ -280,7 +291,8 @@ const passwordRetypeState = ref<null | 'match' | 'not-match'>(null);
 // --- 送信可否 ---
 const shouldDisableSubmitting = computed((): boolean => {
 	return !applicationsEnabled.value || submitting.value ||
-		reason.value.trim().length === 0 ||
+		(!hasAdminRelationship.value && (reason.value.trim().length === 0 || reason.value.length > 1024)) ||
+		(hasAdminRelationship.value && additionalContacts.value.trim().length === 0) ||
 		additionalContacts.value.length > 1024 ||
 		usernameState.value !== 'ok' ||
 		passwordRetypeState.value !== 'match' ||
@@ -378,7 +390,8 @@ async function onSubmit(): Promise<void> {
 		await (misskeyApi as any)('registration/apply', {
 			username: username.value,
 			password: password.value,
-			reason: reason.value.trim(),
+			reason: hasAdminRelationship.value ? undefined : reason.value.trim(),
+			hasAdminRelationship: hasAdminRelationship.value,
 			additionalContacts: additionalContacts.value.trim() || undefined,
 			email: email.value.trim(),
 			'hcaptcha-response': hCaptchaResponse.value,
@@ -404,6 +417,8 @@ async function onSubmit(): Promise<void> {
 				os.alert({ type: 'info', text: i18n.ts._hata._registrationApplications.registrationModeChanged });
 				if (refreshed) emit('back');
 			}
+		} else if (code === 'ADDITIONAL_CONTACTS_REQUIRED') {
+			os.alert({ type: 'error', text: copy.contactsRequiredHint });
 		} else if (code === 'USERNAME_ALREADY_EXISTS') {
 			usernameState.value = 'unavailable';
 			os.alert({ type: 'error', text: copy.usernameUnavailableAlert });
@@ -489,6 +504,12 @@ async function onSubmit(): Promise<void> {
 	resize: vertical;
 	box-sizing: border-box;
 	font-family: inherit;
+
+	&:disabled {
+		background: var(--MI_THEME-bg);
+		opacity: 0.6;
+		cursor: not-allowed;
+	}
 
 	&:focus {
 		border-color: var(--MI_THEME-accent);

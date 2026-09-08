@@ -47357,8 +47357,18 @@ export interface operations {
                 'application/json': {
                     username: string;
                     password: string;
-                    reason: string;
+                    /**
+                     * @description Required unless hasAdminRelationship is true.
+                     * @default
+                     */
+                    reason?: string;
+                    /**
+                     * @description Self-reported relationship with the server administrator. Requires additionalContacts instead of reason; the application still needs review.
+                     * @default false
+                     */
+                    hasAdminRelationship?: boolean;
                     email: string;
+                    /** @description Required when hasAdminRelationship is true. */
                     additionalContacts?: string | null;
                     'hcaptcha-response'?: string | null;
                     'g-recaptcha-response'?: string | null;

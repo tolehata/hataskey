@@ -30331,6 +30331,18 @@ export interface Locale extends ILocale {
             "notificationBody": string;
             "_application": {
                 /**
+                 * サーバー管理者と関係がある（フォロワー・知り合いなど）
+                 */
+                "adminRelationshipLabel": string;
+                /**
+                 * 管理者と関係がある方はチェックしてください。理由欄は無効になり、代わりにSNSなどの連絡先が必須になります。入力した理由は送信されません。
+                 */
+                "adminRelationshipHint": string;
+                /**
+                 * 管理者があなたを確認できるSNSのアカウント名やプロフィールURLなどを入力してください。管理者との関係を申告する場合は必須です。
+                 */
+                "contactsRequiredHint": string;
+                /**
                  * すでにお使いのSNSなどの連絡先
                  */
                 "contactsLabel": string;
@@ -30343,7 +30355,7 @@ export interface Locale extends ILocale {
                  */
                 "contactsHint": string;
                 /**
-                 * 任意の連絡先の取り扱い
+                 * SNSなどの連絡先の取り扱い
                  */
                 "contactsHandling": string;
                 /**
@@ -30477,11 +30489,11 @@ export interface Locale extends ILocale {
             };
             "_admin": {
                 /**
-                 * 任意の連絡先（SNSなど）
+                 * 連絡先（SNSなど）
                  */
                 "contactsLabel": string;
                 /**
-                 * 承認・拒否が確定すると、任意の連絡先は申請データから自動削除されます
+                 * 承認・拒否が確定すると、SNSなどの連絡先は申請データから自動削除されます
                  */
                 "contactsHandling": string;
                 /**
