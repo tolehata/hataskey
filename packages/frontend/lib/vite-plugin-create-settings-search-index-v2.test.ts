@@ -541,11 +541,11 @@ describe('settings control search index V2', () => {
 		// Keep the raw population separate from the smaller catalog-descriptor
 		// count so new visible buttons cannot disappear behind an old total.
 		expect(inventory.files).toHaveLength(60);
-		expect(inventory.items).toHaveLength(678);
+		expect(inventory.items).toHaveLength(679);
 		expect(Object.fromEntries(classifications.map(classification => [classification, inventory.items.filter(item => item.classification === classification).length]))).toEqual({
 			'user-facing-setting': 450,
 			'navigation-action': 142,
-			'save-cancel': 23,
+			'save-cancel': 24,
 			'disabled-display-only': 17,
 			'runtime-collection': 45,
 			destructive: 1,
@@ -555,7 +555,7 @@ describe('settings control search index V2', () => {
 			'src/components/HatasabaUi2ImmediateSettings.vue': { 'user-facing-setting': 2, 'navigation-action': 0, 'save-cancel': 0, 'disabled-display-only': 0, 'runtime-collection': 0, destructive: 0 },
 			'src/components/HatadyDisplaySettings.vue': { 'user-facing-setting': 1, 'navigation-action': 3, 'save-cancel': 2, 'disabled-display-only': 0, 'runtime-collection': 0, destructive: 0 },
 			'src/components/MkUISetup.vue': { 'user-facing-setting': 4, 'navigation-action': 2, 'save-cancel': 1, 'disabled-display-only': 0, 'runtime-collection': 0, destructive: 0 },
-			'src/pages/HataskSettings.vue': { 'user-facing-setting': 12, 'navigation-action': 8, 'save-cancel': 0, 'disabled-display-only': 1, 'runtime-collection': 1, destructive: 0 },
+			'src/pages/HataskSettings.vue': { 'user-facing-setting': 12, 'navigation-action': 8, 'save-cancel': 1, 'disabled-display-only': 1, 'runtime-collection': 1, destructive: 0 },
 			'src/pages/MkMascotSettings.vue': { 'user-facing-setting': 77, 'navigation-action': 16, 'save-cancel': 0, 'disabled-display-only': 0, 'runtime-collection': 12, destructive: 0 },
 			'src/pages/settings/hata-custom.vue': { 'user-facing-setting': 30, 'navigation-action': 13, 'save-cancel': 1, 'disabled-display-only': 0, 'runtime-collection': 1, destructive: 0 },
 		});
@@ -563,7 +563,7 @@ describe('settings control search index V2', () => {
 		expect(inventory.items.every(item => item.reason.length > 0)).toBe(true);
 		expect(inventory.items.filter(item => item.searchableControl).every(item => item.classification === 'user-facing-setting' || item.classification === 'destructive')).toBe(true);
 		expect(inventory.items.every(item => (item.descriptorStableId == null) !== (item.exclusionReason == null))).toBe(true);
-		expect(resolved).toHaveLength(678);
+		expect(resolved).toHaveLength(679);
 		expect(resolved.every(item => (item.descriptorStableId == null) !== (item.exclusionReason == null))).toBe(true);
 		const descriptorIds = new Set(controls.descriptors.filter(descriptor => descriptor.searchable).map(descriptor => descriptor.stableId));
 		expect(resolved.filter(item => item.descriptorStableId != null).every(item => descriptorIds.has(item.descriptorStableId!))).toBe(true);

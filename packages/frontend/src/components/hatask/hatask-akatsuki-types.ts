@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-export type HataskAkatsukiTab = 'home' | 'cal' | 'todo' | 'mood' | 'meal' | 'garden' | 'eye' | 'hataskapps' | 'apps';
+export type HataskAkatsukiTab = 'home' | 'cal' | 'todo' | 'mood' | 'meal' | 'garden' | 'eye' | 'ranking' | 'hataskapps' | 'apps';
 
 export type HataskAkatsukiHomeSectionId = 'tools' | 'calendar' | 'todo' | 'feedback' | 'meal';
 export interface HataskAkatsukiHomeSection {

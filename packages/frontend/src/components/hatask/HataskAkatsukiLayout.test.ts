@@ -413,6 +413,15 @@ describe('HataskAkatsukiLayout', () => {
 		expect(required(container, '.htk-akatsuki-layout').getAttribute('data-hide-aside')).toBe('false');
 	});
 
+	test('ranking uses the full content width and restores the home aside on return', async () => {
+		size = { width: 1440, height: 900 };
+		const { container, liveProps } = await mountLayout({ activeTab: 'ranking' });
+		expect(required(container, '.htk-akatsuki-layout').getAttribute('data-hide-aside')).toBe('true');
+		liveProps.activeTab = 'home';
+		await nextTick();
+		expect(required(container, '.htk-akatsuki-layout').getAttribute('data-hide-aside')).toBe('false');
+	});
+
 	test('右ペインは記録・お花・ごはん・継続・EYE・ToDoをそれぞれ一つのケースで包む', async () => {
 		const { container } = await mountLayout({ model: sideModel() });
 		const aside = required(container, '.hak-side');
@@ -517,7 +526,7 @@ describe('HataskAkatsukiLayout', () => {
 	test('railのアイコンは意味をボタン側に残し、ハンバーガーも正方形の字形枠を使う', async () => {
 		const { container } = await mountLayout();
 		const buttons = [...container.querySelectorAll<HTMLButtonElement>('.hak-rail button')];
-		expect(buttons).toHaveLength(11);
+		expect(buttons).toHaveLength(12);
 		for (const button of buttons) {
 			expect(button.getAttribute('aria-label')?.length).toBeGreaterThan(0);
 			const icons = [...button.querySelectorAll('.ti')];

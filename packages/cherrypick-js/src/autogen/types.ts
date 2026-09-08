@@ -3648,6 +3648,24 @@ export type paths = {
          */
         post: operations['hatask___planner___get'];
     };
+    '/hatask/ranking/list': {
+        /**
+         * hatask/ranking/list
+         * @description No description provided.
+         *
+         *     **Credential required**: *Yes* / **Permission**: *read:account*
+         */
+        post: operations['hatask___ranking___list'];
+    };
+    '/hatask/ranking/participation': {
+        /**
+         * hatask/ranking/participation
+         * @description No description provided.
+         *
+         *     **Credential required**: *Yes* / **Permission**: *write:account*
+         */
+        post: operations['hatask___ranking___participation'];
+    };
     '/i': {
         /**
          * i
@@ -37711,6 +37729,201 @@ export interface operations {
                 };
                 content: {
                     'application/json': Record<string, never>;
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+        };
+    };
+    hatask___ranking___list: {
+        requestBody: {
+            content: {
+                'application/json': {
+                    /**
+                     * @default month
+                     * @enum {string}
+                     */
+                    period?: 'month' | 'week' | 'day';
+                    /** @enum {string} */
+                    metric?: 'flower' | 'utage' | 'block' | 'login';
+                    /** @default 1 */
+                    page?: number;
+                    /** @default 5 */
+                    limit?: number;
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        /** @enum {string} */
+                        period: 'month' | 'week' | 'day';
+                        from: string;
+                        to: string;
+                        /** Format: date-time */
+                        generatedAt: string;
+                        /** Format: date-time */
+                        nextUpdateAt: string;
+                        /** Format: date-time */
+                        previousGeneratedAt: string | null;
+                        participating: boolean;
+                        latestAchievement: {
+                            name: string;
+                            unlockedAt: number;
+                        } | null;
+                        boards: {
+                            /** @enum {string} */
+                            metric: 'flower' | 'utage' | 'block' | 'login';
+                            total: number;
+                            totalPages: number;
+                            page: number;
+                            self: {
+                                value: number;
+                                rank: number | null;
+                                delta: number | null;
+                                eligible: boolean;
+                            };
+                            items: {
+                                rank: number;
+                                value: number;
+                                delta: number | null;
+                                user: components['schemas']['UserLite'];
+                            }[];
+                        }[];
+                    };
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+        };
+    };
+    hatask___ranking___participation: {
+        requestBody: {
+            content: {
+                'application/json': {
+                    participating: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        participating: boolean;
+                    };
                 };
             };
             /** @description Client error */

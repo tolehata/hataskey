@@ -53,7 +53,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <script setup lang="ts">
 import { computed, onActivated, onBeforeUnmount, onDeactivated, onMounted, ref, watch } from 'vue';
-import { Activity, BookOpen, BookOpenCheck, CalendarDays, ChevronLeft, ChevronRight, Contact, Eye, Flag, Flower2, Gamepad2, MessageSquareWarning, Newspaper, Paintbrush, Palette, PanelLeft, Pause, Play, ScanFace, SlidersHorizontal, Smile, Soup, SquareCheckBig, Wrench } from '@lucide/vue';
+import { Activity, BookOpen, BookOpenCheck, CalendarDays, ChevronLeft, ChevronRight, Contact, Eye, Flag, Flower2, Gamepad2, MessageSquareWarning, Newspaper, Paintbrush, Palette, PanelLeft, Pause, Play, ScanFace, SlidersHorizontal, Smile, Soup, SquareCheckBig, Trophy, Wrench } from '@lucide/vue';
 import type { Component } from 'vue';
 
 type CountKey = 'calendar' | 'todo' | 'meal' | 'feedback';
@@ -83,6 +83,7 @@ const hataskApps: readonly AppItem[] = [
 	{ id: 'meal', label: 'ごはん', icon: Soup, count: 'meal', description: '朝・昼・夜・間食の記録。そのときの様子をひとこと添えて、あとから日付や時間を指定して残せます' },
 	{ id: 'garden', label: 'おはな', icon: Flower2, description: '時間とともに育つ花。育ち具合と開花までの時間を確認し、咲いた花を収穫して名前を付けられます' },
 	{ id: 'eye', label: 'EYE', icon: Eye, brand: true, description: '記録やタスクに合わせたことばを表示。きもちの記録数やタスクの進み具合、育てた花の花言葉も眺められます' },
+	{ id: 'ranking', label: 'ランキング', icon: Trophy, description: 'お花・宴の成功・宴の阻止・ログイン日数の順位。今月・今週・今日の記録を見られ、参加するかは自分で選べます' },
 	{ id: 'settings', label: '見た目', icon: Palette, description: 'テーマ・明暗・動きなど、Hataskの見え方と使い方をまとめて調整できます' },
 ];
 const toolApps: readonly AppItem[] = [

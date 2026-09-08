@@ -99,6 +99,8 @@
      ⚠️チュートリアルのスポットライトは .htk-nav-top も探すので、セレクタ側に .hk-tabs を足してある。 -->
 <nav v-else-if="isHatakyu" class="hk-tabs"><button v-for="tab in tabs" :key="tab.id" :class="['hk-tag',activeTab===tab.id&&'on']" @click="activeTab=tab.id"><i :class="tab.icon"></i>{{tab.label}}</button></nav>
 
+<HataskRanking v-if="activeTab === 'ranking'" :theme="settings.theme || 'akatsuki'" :mode="themeMode" :showAchievementNotice="dataLoaded && loadedKeys.has('settings') && settings.showRankingAchievementNotice !== false"/>
+
 <!-- ========== HOME (v2 デザイン最終形: 季/花信/刷 固定レイアウト) ========== -->
 <div v-if="activeTab==='home' && !isAkatsuki" class="htk-tabpage htk-home" :class="[tabDir==='fwd'?'htk-tab-fwd':'htk-tab-back',homeThemeClass]">
 
@@ -1000,6 +1002,7 @@ import HataskFlowerStream from '@/components/hatask/HataskFlowerStream.vue';
 import HataskCommunityGarden from '@/components/hatask/HataskCommunityGarden.vue';
 import HataskFlowerDetail from '@/components/hatask/HataskFlowerDetail.vue';
 import HataskFlowerCollection from '@/components/hatask/HataskFlowerCollection.vue';
+import HataskRanking from '@/components/hatask/HataskRanking.vue';
 import type { HataskFlowerView, HataskFlowerSelection } from '@/components/hatask/hatask-flower-view.js';
 import HataskCalendarPlanner from '@/components/hatask/HataskCalendarPlanner.vue';
 import { normalizeHataskTodoMobileTabs } from '@/utility/hatask-todo-tabs.js';
@@ -1047,7 +1050,7 @@ const emotionCopy = (i18n.ts._hata as unknown as { _emotionAnalysis: { title: st
 const _getPhrase = (ctx?: any): string => { try { return getPhrase(ctx); } catch { return getDefaultPhrase(); } };
 definePage(()=>({title:'Hatask',icon:'ti ti-checklist'}));
 const SCOPE=['client','hatask'];
-const tabs=computed(() => [{id:'home',icon:'ti ti-home',label:copy.tabHome},{id:'cal',icon:'ti ti-calendar',label:copy.tabCalendar},{id:'todo',icon:'ti ti-checkbox',label:'ToDo'},{id:'mood',icon:'ti ti-mood-smile',label:copy.tabMood},{id:'meal',icon:'ti ti-bowl',label:copy.tabMeal},{id:'garden',icon:'ti ti-flower',label:copy.tabGarden},{id:'eye',icon:'ti ti-eye',label:'Eye'}]);
+const tabs=computed(() => [{id:'home',icon:'ti ti-home',label:copy.tabHome},{id:'cal',icon:'ti ti-calendar',label:copy.tabCalendar},{id:'todo',icon:'ti ti-checkbox',label:'ToDo'},{id:'mood',icon:'ti ti-mood-smile',label:copy.tabMood},{id:'meal',icon:'ti ti-bowl',label:copy.tabMeal},{id:'garden',icon:'ti ti-flower',label:copy.tabGarden}, { id: 'ranking', icon: 'ti ti-trophy', label: i18n.ts._hata._hatask._ranking.title },{id:'eye',icon:'ti ti-eye',label:'Eye'}]);
 // 旗鯖fork(v2 §16②): タブ切替の方向(配列上の左右関係に追従)。※watchはactiveTab宣言後に登録(下記)。
 const tabDir=ref<'fwd'|'back'>('fwd');
 const showMobileNav=ref(true);

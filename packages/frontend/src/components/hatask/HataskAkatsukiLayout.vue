@@ -259,6 +259,7 @@ watch([isMobile, () => props.searchOpen], ([mobile, opened]) => {
 	if (mobile && opened) searching.value = true;
 });
 const hideAside = computed(() => {
+	if (props.activeTab === 'ranking') return true;
 	if (isMobile.value) return props.activeTab !== 'home';
 	if (rootHeight.value > rootWidth.value && props.activeTab !== 'home') return true;
 	return (props.activeTab === 'apps' || props.activeTab === 'hataskapps') && bodyWidth.value <= 780;
@@ -272,6 +273,7 @@ const tabs: { id: HataskAkatsukiTab; label: string; icon: string }[] = [
 	{ id: 'garden', label: 'おはな', icon: 'ti ti-flower' },
 	{ id: 'hataskapps', label: 'Hatask App', icon: 'ti ti-layout-grid' },
 	{ id: 'apps', label: 'Hataskey App', icon: 'ti ti-app-window' },
+	{ id: 'ranking', label: 'ランキング', icon: 'ti ti-trophy' },
 	{ id: 'eye', label: 'EYE', icon: 'ti ti-eye' },
 ];
 const desktopTabs = tabs;

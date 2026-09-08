@@ -628,6 +628,10 @@ import type {
 	HataskPlannerCreateShadowRequest,
 	HataskPlannerCreateShadowResponse,
 	HataskPlannerGetResponse,
+	HataskRankingListRequest,
+	HataskRankingListResponse,
+	HataskRankingParticipationRequest,
+	HataskRankingParticipationResponse,
 	IResponse,
 	I2faDoneRequest,
 	I2faDoneResponse,
@@ -1341,6 +1345,8 @@ export type Endpoints = {
 	'hatask/planner/commit-batch': { req: HataskPlannerCommitBatchRequest; res: HataskPlannerCommitBatchResponse };
 	'hatask/planner/create-shadow': { req: HataskPlannerCreateShadowRequest; res: HataskPlannerCreateShadowResponse };
 	'hatask/planner/get': { req: EmptyRequest; res: HataskPlannerGetResponse };
+	'hatask/ranking/list': { req: HataskRankingListRequest; res: HataskRankingListResponse };
+	'hatask/ranking/participation': { req: HataskRankingParticipationRequest; res: HataskRankingParticipationResponse };
 	'i': { req: EmptyRequest; res: IResponse };
 	'i/2fa/done': { req: I2faDoneRequest; res: I2faDoneResponse };
 	'i/2fa/key-done': { req: I2faKeyDoneRequest; res: I2faKeyDoneResponse };

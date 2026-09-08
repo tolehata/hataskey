@@ -233,7 +233,7 @@ describe('HataskAkatsukiApps', () => {
 		const tools = mountApps({ kind: 'tools' });
 		const hataskRows = [...hatask.container.querySelectorAll('[data-app-layout="desktop"] [data-app-id]')];
 		const toolRows = [...tools.container.querySelectorAll('[data-app-layout="desktop"] [data-app-id]')];
-		expect(hataskRows).toHaveLength(7);
+		expect(hataskRows).toHaveLength(8);
 		expect(toolRows).toHaveLength(12);
 		for (const row of [...hataskRows, ...toolRows]) expect(row.className).toBe(hataskRows[0].className);
 	});
@@ -259,7 +259,7 @@ describe('HataskAkatsukiApps', () => {
 
 	test('Hataskの7入口と3特集を保ち、一覧・特集はopenだけを親へ通知する', () => {
 		const { container, open } = mountApps();
-		const ids = ['cal', 'todo', 'mood', 'meal', 'garden', 'eye', 'settings'];
+		const ids = ['cal', 'todo', 'mood', 'meal', 'garden', 'eye', 'ranking', 'settings'];
 		for (const layout of ['mobile', 'desktop'] as const) {
 			expect(appIds(container, layout)).toEqual(ids);
 			for (const id of ids) container.querySelector<HTMLButtonElement>(`[data-app-layout="${layout}"] [data-app-id="${id}"] button`)!.click();

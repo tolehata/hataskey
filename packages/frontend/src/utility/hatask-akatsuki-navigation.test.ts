@@ -14,6 +14,8 @@ describe('暁の下部ナビゲーション設定', () => {
 		expect(normalizeHataskAkatsukiShortcut('games')).toBe('todo');
 		expect(normalizeHataskAkatsukiShortcut('home')).toBe('todo');
 		expect(normalizeHataskAkatsukiShortcut('eye')).toBe('eye');
+		expect(normalizeHataskAkatsukiShortcut('ranking')).toBe('ranking');
+		expect(replaceHataskAkatsukiMobileTab(['home', 'todo', 'hataskapps', 'apps'], 1, 'ranking')).toEqual(['home', 'ranking', 'hataskapps', 'apps']);
 	});
 
 	test.each([

@@ -631,3 +631,5 @@ export * as 'hatask/planner/commit-batch' from './endpoints/hatask/planner/commi
 export * as 'hatask/flowers/sync' from './endpoints/hatask/flowers/sync.js';
 export * as 'hatask/flowers/list' from './endpoints/hatask/flowers/list.js';
 export * as 'hatask/flowers/visibility/update' from './endpoints/hatask/flowers/visibility/update.js';
+export * as 'hatask/ranking/list' from './endpoints/hatask/ranking/list.js';
+export * as 'hatask/ranking/participation' from './endpoints/hatask/ranking/participation.js';

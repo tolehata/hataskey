@@ -13,6 +13,7 @@ import { MiUser } from './User.js';
 import { MiNote } from './Note.js';
 
 @Entity('utage_session')
+@Index('IDX_utage_session_resolved_status', ['resolvedAt', 'status'])
 export class MiUtageSession {
 	@PrimaryColumn(id())
 	public id: string;

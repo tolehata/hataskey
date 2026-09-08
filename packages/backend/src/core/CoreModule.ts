@@ -54,6 +54,7 @@ import { NotificationService } from './NotificationService.js';
 import { RegistrationApplicationNotificationService } from './RegistrationApplicationNotificationService.js';
 import { PollService } from './PollService.js';
 import { UtageService } from './UtageService.js';
+import { HataskRankingService } from './HataskRankingService.js';
 import { FeedbackService } from './FeedbackService.js';
 import { HatadyService } from './HatadyService.js';
 import { HatadyMediaService } from './HatadyMediaService.js';
@@ -397,6 +398,7 @@ const $ApEventService: Provider = { provide: 'ApEventService', useExisting: ApEv
 		RegistrationApplicationNotificationService,
 		PollService,
 		UtageService,
+		HataskRankingService,
 		FeedbackService,
 		HatadyService,
 		HatadyMediaService,
@@ -739,6 +741,7 @@ const $ApEventService: Provider = { provide: 'ApEventService', useExisting: ApEv
 		RegistrationApplicationNotificationService,
 		PollService,
 		UtageService,
+		HataskRankingService,
 		FeedbackService,
 		HatadyService,
 		HatadyMediaService,

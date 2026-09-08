@@ -130,6 +130,10 @@ export class MiUserProfile {
 	})
 	public hataskFlowerVisibility: 'public' | 'followers' | 'private';
 
+	/** Hatask ranking participation, controlled by its owner through the dedicated API. */
+	@Column('boolean', { default: true })
+	public hataskRankingParticipating: boolean;
+
 	@Column('enum', {
 		enum: followingVisibilities,
 		default: 'public',

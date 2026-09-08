@@ -24298,6 +24298,172 @@ export interface Locale extends ILocale {
                  */
                 "saveFailed": string;
             };
+            "_ranking": {
+                /**
+                 * ランキング
+                 */
+                "title": string;
+                /**
+                 * お花の数・宴の成功数・宴の阻止数・ログイン日数を集計しています
+                 */
+                "description": string;
+                /**
+                 * ランキングに表示するかは自分で決められます
+                 */
+                "choice": string;
+                /**
+                 * 今月
+                 */
+                "month": string;
+                /**
+                 * 今週
+                 */
+                "week": string;
+                /**
+                 * 今日
+                 */
+                "day": string;
+                /**
+                 * 集計期間
+                 */
+                "period": string;
+                /**
+                 * お花の数
+                 */
+                "flower": string;
+                /**
+                 * 宴の成功数
+                 */
+                "utage": string;
+                /**
+                 * 宴の阻止数
+                 */
+                "block": string;
+                /**
+                 * ログイン日数
+                 */
+                "login": string;
+                /**
+                 * 輪
+                 */
+                "flowerUnit": string;
+                /**
+                 * 回
+                 */
+                "utageUnit": string;
+                /**
+                 * 回
+                 */
+                "blockUnit": string;
+                /**
+                 * 日
+                 */
+                "loginUnit": string;
+                /**
+                 * ランキングに参加中
+                 */
+                "participating": string;
+                /**
+                 * ランキングに不参加中
+                 */
+                "notParticipating": string;
+                /**
+                 * 自分の順位
+                 */
+                "myRank": string;
+                /**
+                 * 参加 {count}人
+                 */
+                "participants": ParameterizedString<"count">;
+                /**
+                 * {count}位上昇
+                 */
+                "up": ParameterizedString<"count">;
+                /**
+                 * {count}位下降
+                 */
+                "down": ParameterizedString<"count">;
+                /**
+                 * 順位変動なし
+                 */
+                "unchanged": string;
+                /**
+                 * 比較用の集計がありません
+                 */
+                "noComparison": string;
+                /**
+                 * 集計対象の記録がありません
+                 */
+                "unranked": string;
+                /**
+                 * この記録はランキングに表示されません
+                 */
+                "hidden": string;
+                /**
+                 * すべて見る
+                 */
+                "all": string;
+                /**
+                 * ランキング一覧に戻る
+                 */
+                "back": string;
+                /**
+                 * ランキングを読み込んでいます
+                 */
+                "loading": string;
+                /**
+                 * ランキングを読み込めませんでした
+                 */
+                "error": string;
+                /**
+                 * 参加設定を保存できませんでした
+                 */
+                "saveError": string;
+                /**
+                 * この期間の公開記録はまだありません
+                 */
+                "empty": string;
+                /**
+                 * 再試行
+                 */
+                "retry": string;
+                /**
+                 * 前のページ
+                 */
+                "previous": string;
+                /**
+                 * 次のページ
+                 */
+                "next": string;
+                /**
+                 * お知らせを閉じる
+                 */
+                "closeNotice": string;
+                /**
+                 * {name} を獲得しました
+                 */
+                "achievementEarned": ParameterizedString<"name">;
+                /**
+                 * 実績の獲得条件を達成しました。この画面の実績通知はHatask設定からオフにできます
+                 */
+                "achievementHelp": string;
+                /**
+                 * ランキング画面に宴の実績通知を表示
+                 */
+                "showAchievementNotice": string;
+                /**
+                 * 集計は1時間ごとに更新されます。不参加の人と、プロフィールで非表示にした記録は順位に含みません。お花は公開ギャラリー、宴は実績と同じく公開ノートが対象です。
+                 */
+                "rules": string;
+                /**
+                 * 順位差は前回の集計との比較です。同じ件数は同順位になります。日付はサーバーの時刻に従います。
+                 */
+                "comparison": string;
+                /**
+                 * プロフィールで非表示の記録と、公開していない花ギャラリーは参加中でも表示されません。
+                 */
+                "privacy": string;
+            };
             "_main": {
                 /**
                  * 戻る

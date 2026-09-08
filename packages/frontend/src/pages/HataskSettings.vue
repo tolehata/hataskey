@@ -168,6 +168,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<!-- 通知 -->
 			<div :class="$style.card">
 				<div :class="$style.label">{{ copy.notifications }}</div>
+				<div :class="$style.row"><span>{{ i18n.ts._hata._hatask._ranking.showAchievementNotice }}</span><button type="button" :class="[$style.sw, settings.showRankingAchievementNotice !== false && $style.swOn]" :disabled="settingsSaving" role="switch" :aria-label="i18n.ts._hata._hatask._ranking.showAchievementNotice" :aria-checked="settings.showRankingAchievementNotice !== false" @click="saveSettings({ showRankingAchievementNotice: settings.showRankingAchievementNotice === false })"></button></div>
 				<div :class="$style.row"><span>{{ copy.sendTestNotification }}</span><MkButton rounded small @click="sendTestNotification">{{ copy.sendTest }}</MkButton></div>
 				<div :class="$style.desc">{{ copy.pushNotificationDescription }}</div>
 			</div>
@@ -289,6 +290,7 @@ const navigationChoices: { id: HataskAkatsukiTab; label: string; shortLabel: str
 	{ id: 'meal', label: 'ごはん', shortLabel: 'ごはん', icon: 'ti ti-soup' },
 	{ id: 'garden', label: 'おはな', shortLabel: 'おはな', icon: 'ti ti-flower' },
 	{ id: 'eye', label: 'EYE', shortLabel: 'EYE', icon: 'ti ti-eye' },
+	{ id: 'ranking', label: 'ランキング', shortLabel: 'ランキング', icon: 'ti ti-trophy' },
 	{ id: 'hataskapps', label: 'Hatask App', shortLabel: 'Hatask', icon: 'ti ti-layout-grid' },
 	{ id: 'apps', label: 'Hataskey App', shortLabel: 'Apps', icon: 'ti ti-app-window' },
 ];
