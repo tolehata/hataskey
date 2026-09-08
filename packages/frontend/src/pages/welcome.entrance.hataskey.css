@@ -635,7 +635,7 @@ html:has([data-hataskey-entrance])::view-transition-new(hataskey-welcome){animat
 [data-hataskey-entrance] .hWelcome-state-73:hover{background:var(--bg) !important}
 [data-hataskey-entrance] .hWelcome-state-74:hover{transform:translateY(-3px) !important;background:rgba(234,243,244,.09) !important;border-color:rgba(234,243,244,.6) !important}
 [data-hataskey-entrance] .hWelcome-state-75:hover{transform:translateY(-3px) !important;box-shadow:0 16px 34px rgba(143,208,228,.32) !important}
-[data-hataskey-entrance]{position:relative;height:100dvh;overflow:auto!important;overscroll-behavior:contain;container:hataskey-entrance / size;isolation:isolate;font-size:max(16px,1rem);line-height:normal;--welcome-rem:max(16px,1rem);view-transition-name:hataskey-welcome}
+[data-hataskey-entrance]{position:relative;height:100dvh;overflow-x:hidden!important;overflow-y:auto!important;overscroll-behavior:contain;container:hataskey-entrance / size;isolation:isolate;font-size:max(16px,1rem);line-height:normal;--welcome-rem:max(16px,1rem);view-transition-name:hataskey-welcome}
 [data-hataskey-entrance] .site-header{position:sticky;top:0;margin-bottom:-56px}
 [data-hataskey-entrance] .federation-server{text-decoration:none;color:var(--fgSoft)}
 [data-hataskey-entrance] .hero-server-note-copy{display:block;overflow:hidden;text-overflow:ellipsis}
