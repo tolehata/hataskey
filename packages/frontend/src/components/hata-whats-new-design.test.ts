@@ -270,7 +270,7 @@ describe('Hata update presentation', () => {
 	});
 });
 
-describe('hata-12.6.1だけの更新内容（実SFC）', () => {
+describe('hata-12.6.2だけの更新内容（実SFC）', () => {
 	const mounted: Array<{ app: App<Element>; container: HTMLDivElement }> = [];
 	const observers: Array<{ callback: IntersectionObserverCallback; targets: Element[]; disconnect: ReturnType<typeof vi.fn> }> = [];
 	let reducedMotion = false;
@@ -336,14 +336,14 @@ describe('hata-12.6.1だけの更新内容（実SFC）', () => {
 		observer.callback(observer.targets.map(target => intersectionEntry(target, 1)), {} as IntersectionObserver);
 	}
 
-	test('hata-12.6.1の1版と4項目だけを表示し、版の切替欄を出さない', async () => {
+	test('hata-12.6.2の1版と4項目だけを表示し、版の切替欄を出さない', async () => {
 		const { container } = await mountGuide();
-		expect(HATA_WHATS_NEW.version).toBe('2026.9.0-hata.12.6.1');
+		expect(HATA_WHATS_NEW.version).toBe('2026.9.0-hata.12.6.2');
 		expect(HATA_WHATS_NEW.releases).toHaveLength(1);
 		const release = HATA_WHATS_NEW.releases[0];
 		expect(release.id).toBe('latestRelease');
 		expect(release.version).toBe(HATA_WHATS_NEW.version);
-		expect(release.items.map(item => item.preview)).toEqual(['hataskGarden', 'hataskPlanner', 'externalTimeline', 'dailyPolish']);
+		expect(release.items.map(item => item.preview)).toEqual(['utageAchievements', 'externalSidebar', 'dailyPolish', 'welcomeRenewal']);
 		expect(container.querySelector('[role="group"]')).toBeNull();
 		expect(container.querySelector('[aria-pressed]')).toBeNull();
 		expect(container.textContent).toContain(getHataWhatsNewDisplayVersion(release.version));

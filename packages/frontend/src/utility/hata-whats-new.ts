@@ -4,9 +4,9 @@
  *
  * 更新後に一度表示する、利用者向けの変更案内。
  * 実装用語や開発中だけの不具合は載せない。
- * hata-12.6.1だけを特集する。過去の案内はHATA-CHANGELOG.mdで参照できる。
+ * hata-12.6.2だけを特集する。過去の案内はHATA-CHANGELOG.mdで参照できる。
  * 文言は共通localeの _hata._whatsNew を使う。
- * hata-12.6.1の案内。versionはpackage.jsonと同時に更新する。
+ * hata-12.6.2の案内。versionはpackage.jsonと同時に更新する。
  * 本番への公開済み判定には使わない。表示済みの記録は窓を閉じたときに行う。
  */
 
@@ -56,38 +56,36 @@ export function getHataWhatsNewDisplayVersion(version: string): string {
 }
 
 export const HATA_WHATS_NEW: HataWhatsNew = {
-	version: '2026.9.0-hata.12.6.1',
+	version: '2026.9.0-hata.12.6.2',
 	releases: [
 		{
 			id: 'latestRelease',
-			version: '2026.9.0-hata.12.6.1',
+			version: '2026.9.0-hata.12.6.2',
 			headline: copy.latestHeadline,
 			items: [
 				{
-					icon: 'ti ti-flower',
-					preview: 'hataskGarden',
-					title: copy.flowerTitle,
-					text: copy.flowerText,
-					to: '/hatask',
-					linkLabel: copy.hataskLink,
-				},
-				{
-					icon: 'ti ti-apps',
-					preview: 'hataskPlanner',
-					title: copy.hataskHomeTitle,
-					text: copy.hataskHomeText,
+					icon: 'ti ti-trophy',
+					preview: 'utageAchievements',
+					title: copy.rankingTitle,
+					text: copy.rankingText,
 					to: '/hatask',
 					linkLabel: copy.hataskLink,
 				},
 				{
 					icon: 'ti ti-bell',
-					preview: 'externalTimeline',
+					preview: 'externalSidebar',
 					title: copy.notificationsTitle,
 					text: copy.notificationsText,
 				},
 				{
-					icon: 'ti ti-checks',
+					icon: 'ti ti-user-check',
 					preview: 'dailyPolish',
+					title: copy.registrationTitle,
+					text: copy.registrationText,
+				},
+				{
+					icon: 'ti ti-checks',
+					preview: 'welcomeRenewal',
 					title: copy.dailyPolishTitle,
 					text: copy.dailyPolishText,
 				},
