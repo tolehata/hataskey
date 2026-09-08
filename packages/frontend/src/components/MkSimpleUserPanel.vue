@@ -128,7 +128,6 @@ const userIsAdmin = computed(() => {
 	if (!user.value) return false;
 	return 'isAdmin' in user.value ? user.value.isAdmin : user.value.roles.some(role => role.isAdministrator);
 });
-const excludedFromReactionHiding = computed(() => userIsAdmin.value || user.value?.roles.some(role => role.isModerator) === true);
 
 // ドラッグ移動（ポップアップ時のみ）
 const dragPos = reactive({ x: 0, y: 0 });
@@ -206,7 +205,7 @@ async function toggleMute() {
             }
             const { canceled } = await os.confirm({ type: 'warning', text: copy.muteConfirm.replace('{user}', `@${user.value.username}`) });
             if (canceled) { muteLoading.value = false; return; }
-			await misskeyApi('mute/create', { userId: user.value.id }); isMuted.value = true; updateMutedUserState(user.value.id, true, null, excludedFromReactionHiding.value);
+			await misskeyApi('mute/create', { userId: user.value.id }); isMuted.value = true; updateMutedUserState(user.value.id, true, null, userIsAdmin.value);
         }
     } catch { os.toast(copy.actionFailed); } finally { muteLoading.value = false; }
 }

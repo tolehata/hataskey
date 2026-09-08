@@ -107,8 +107,8 @@ export async function fetchMutedUsers(force = false): Promise<void> {
 				});
 				if (res.length === 0) break;
 				for (const m of res) {
-					// サーバー管理者・モデレーターはモデレーションのためミュート対象から除外
-					if (m.mutee.roles.some(role => role.isAdministrator || role.isModerator)) continue;
+					// サーバー管理者はモデレーションのためミュート対象から除外
+					if (m.mutee.roles.some(role => role.isAdministrator)) continue;
 					const expiresAt = m.expiresAt == null ? null : new Date(m.expiresAt).getTime();
 					if (expiresAt != null && expiresAt <= Date.now()) continue;
 					if (m.muteeId) {

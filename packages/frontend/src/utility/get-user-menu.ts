@@ -28,7 +28,6 @@ import { globalEvents } from '@/events.js';
 export function getUserMenu(user: Misskey.entities.UserDetailed, router: Router = mainRouter) {
 	const meId = $i ? $i.id : null;
 	const userIsAdmin = 'isAdmin' in user ? user.isAdmin : user.roles.some(role => role.isAdministrator);
-	const excludedFromReactionHiding = userIsAdmin || user.roles.some(role => role.isModerator);
 
 	const cleanups = [] as (() => void)[];
 
@@ -169,7 +168,7 @@ export function getUserMenu(user: Misskey.entities.UserDetailed, router: Router 
 				expiresAt,
 			}).then(() => {
 				user.isMuted = true;
-				updateMutedUserState(user.id, true, expiresAt, excludedFromReactionHiding);
+				updateMutedUserState(user.id, true, expiresAt, userIsAdmin);
 			}).catch((err) => {
 				// 旗鯖fork: 管理者ミュート禁止エラーを日本語表示 (フロント事前チェックをすり抜けた場合の保険)
 				if (err.id === '9c1f6b3e-a4d2-4f3e-b1c8-2a2b3c4d5e6f' || err.code === 'CANNOT_MUTE_ADMINISTRATOR') {
