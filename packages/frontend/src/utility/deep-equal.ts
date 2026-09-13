@@ -9,7 +9,7 @@ export function deepEqual(a: JsonLike, b: JsonLike): boolean {
 	if (a === b) return true;
 	if (typeof a !== typeof b) return false;
 
-	if (a === null) return b === null;
+	if (a === null || b === null) return false;
 
 	if (a === undefined) return b === undefined;
 

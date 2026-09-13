@@ -6,6 +6,7 @@
 import { describe, expect, test, vi } from 'vitest';
 import { PreferencesManager } from './manager.js';
 import type { PreferencesProfile, StorageProvider } from './manager.js';
+import type { Theme } from '@/theme.js';
 
 vi.mock('@@/js/config.js', () => ({ host: 'example.test', version: 'test', prefersReducedMotion: false }));
 vi.mock('@@/js/intl-const.js', () => ({ hemisphere: 'N' }));
@@ -49,6 +50,33 @@ function setExcluded(preferences: PreferencesManager, value: boolean) {
 	profiles[0].columns[0].excludeBots = value;
 	return preferences.commit('deck.profiles', profiles);
 }
+
+describe('guest theme preference persistence', () => {
+	test.each(['lightTheme', 'darkTheme'] as const)('%s can be saved from null and reset without changing other preferences', async (key) => {
+		const f = await fixture();
+		const guest = new PreferencesManager(f.io, null);
+		await guest.cloudReady;
+		const untouched = copy(f.saved.preferences);
+		const theme: Theme = {
+			id: `server-${key}`, name: 'Server theme', author: 'test',
+			base: key === 'lightTheme' ? 'light' : 'dark', props: { accent: '#34a1c9' },
+		};
+
+		expect(guest.s[key]).toBeNull();
+		await guest.commit(key, theme);
+		const reload = new PreferencesManager(f.io, null);
+		await reload.cloudReady;
+		expect(reload.s[key]).toEqual(theme);
+
+		await reload.commit(key, null);
+		const reset = new PreferencesManager(f.io, null);
+		await reset.cloudReady;
+		expect(reset.s[key]).toBeNull();
+		for (const otherKey of Object.keys(untouched)) {
+			if (otherKey !== key) expect(f.saved.preferences[otherKey]).toEqual(untouched[otherKey]);
+		}
+	});
+});
 
 describe('notification preference persistence with real storage manager', () => {
 	test('an old tab saving another setting preserves the latest notification filters and unrelated preferences', async () => {
