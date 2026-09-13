@@ -270,7 +270,8 @@ describe('Hata update presentation', () => {
 	});
 });
 
-describe('hata-12.6.2だけの更新内容（実SFC）', () => {
+describe('hata-12.6.3だけの更新内容（実SFC）', () => {
+	const originalItems = [...HATA_WHATS_NEW.releases[0].items];
 	const mounted: Array<{ app: App<Element>; container: HTMLDivElement }> = [];
 	const observers: Array<{ callback: IntersectionObserverCallback; targets: Element[]; disconnect: ReturnType<typeof vi.fn> }> = [];
 	let reducedMotion = false;
@@ -299,6 +300,7 @@ describe('hata-12.6.2だけの更新内容（実SFC）', () => {
 
 	afterEach(() => {
 		for (const { app, container } of mounted.splice(0)) { app.unmount(); container.remove(); }
+		HATA_WHATS_NEW.releases[0].items = [...originalItems];
 		vi.restoreAllMocks();
 		vi.unstubAllGlobals();
 	});
@@ -315,6 +317,13 @@ describe('hata-12.6.2だけの更新内容（実SFC）', () => {
 		const scrollTo = vi.fn();
 		Object.defineProperty(viewport, 'scrollTo', { configurable: true, value: scrollTo });
 		return { container, viewport, scrollTo };
+	}
+
+	// Keep carousel behavior covered independently of the current release's item count.
+	function mountCarouselFixture() {
+		HATA_WHATS_NEW.releases[0].items = (['utageAchievements', 'externalSidebar', 'dailyPolish', 'welcomeRenewal'] as const)
+			.map(preview => ({ ...originalItems[0], preview }));
+		return mountGuide();
 	}
 
 	function intersectionEntry(target: Element, ratio: number): IntersectionObserverEntry {
@@ -336,14 +345,17 @@ describe('hata-12.6.2だけの更新内容（実SFC）', () => {
 		observer.callback(observer.targets.map(target => intersectionEntry(target, 1)), {} as IntersectionObserver);
 	}
 
-	test('hata-12.6.2の1版と4項目だけを表示し、版の切替欄を出さない', async () => {
+	test('hata-12.6.3の修正1項目だけを表示し、版の切替と項目の移動を無効にする', async () => {
 		const { container } = await mountGuide();
-		expect(HATA_WHATS_NEW.version).toBe('2026.9.0-hata.12.6.2');
+		expect(HATA_WHATS_NEW.version).toBe('2026.9.0-hata.12.6.3');
 		expect(HATA_WHATS_NEW.releases).toHaveLength(1);
 		const release = HATA_WHATS_NEW.releases[0];
 		expect(release.id).toBe('latestRelease');
 		expect(release.version).toBe(HATA_WHATS_NEW.version);
-		expect(release.items.map(item => item.preview)).toEqual(['utageAchievements', 'externalSidebar', 'dailyPolish', 'welcomeRenewal']);
+		expect(release.items.map(item => item.preview)).toEqual(['welcomeRenewal']);
+		expect(container.querySelector('nav > span')?.textContent).toBe('1 / 1');
+		expect(container.querySelector<HTMLButtonElement>('nav > button:first-child')?.disabled).toBe(true);
+		expect(container.querySelector<HTMLButtonElement>('nav > button:last-child')?.disabled).toBe(true);
 		expect(container.querySelector('[role="group"]')).toBeNull();
 		expect(container.querySelector('[aria-pressed]')).toBeNull();
 		expect(container.textContent).toContain(getHataWhatsNewDisplayVersion(release.version));
@@ -358,7 +370,7 @@ describe('hata-12.6.2だけの更新内容（実SFC）', () => {
 	});
 
 	test('4項目を矢印・ドットで移動し、スワイプ位置と端の無効状態を同期する', async () => {
-		const { container, viewport, scrollTo } = await mountGuide();
+		const { container, viewport, scrollTo } = await mountCarouselFixture();
 		for (const [index, item] of [...viewport.children].entries()) Object.defineProperty(item, 'offsetLeft', { configurable: true, value: index * 320 });
 		const previous = container.querySelector<HTMLButtonElement>('nav > button:first-child');
 		const next = container.querySelector<HTMLButtonElement>('nav > button:last-child');
@@ -405,13 +417,13 @@ describe('hata-12.6.2だけの更新内容（実SFC）', () => {
 		const observer = observers.at(-1);
 		if (!observer || !preview.firstElementChild) throw new Error('Release preview did not mount');
 		const visibility = (ratio: number) => observer.callback([intersectionEntry(preview, ratio)], {} as IntersectionObserver);
-		expect(previews.map(item => item.dataset.previewState)).toEqual(['ready', 'ready', 'ready', 'ready']);
+		expect(previews.map(item => item.dataset.previewState)).toEqual(['ready']);
 		visibility(0.59);
 		await nextTick();
 		expect(preview.dataset.previewState).toBe('ready');
 		visibility(1);
 		await nextTick();
-		expect(previews.map(item => item.dataset.previewState)).toEqual(['running', 'ready', 'ready', 'ready']);
+		expect(previews.map(item => item.dataset.previewState)).toEqual(['running']);
 		preview.firstElementChild.dispatchEvent(new Event('animationend', { bubbles: true }));
 		await nextTick();
 		expect(preview.dataset.previewState).toBe('running');
@@ -424,12 +436,12 @@ describe('hata-12.6.2だけの更新内容（実SFC）', () => {
 		visibility(1);
 		await nextTick();
 		expect(preview.dataset.previewVisible).toBe('true');
-		expect(previews.map(item => item.dataset.previewState)).toEqual(['complete', 'ready', 'ready', 'ready']);
+		expect(previews.map(item => item.dataset.previewState)).toEqual(['complete']);
 	});
 
 	test('動きを減らす設定では全4項目を完成形で表示し、カルーセルも即座に移動する', async () => {
 		reducedMotion = true;
-		const { container, viewport, scrollTo } = await mountGuide();
+		const { container, viewport, scrollTo } = await mountCarouselFixture();
 		for (const [index, item] of [...viewport.children].entries()) Object.defineProperty(item, 'offsetLeft', { configurable: true, value: index * 320 });
 		showActivePreviews();
 		await nextTick();
