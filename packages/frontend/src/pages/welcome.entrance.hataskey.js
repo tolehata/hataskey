@@ -19,7 +19,7 @@ const DARK_THEMES = {
 	hatakyu: { bg: '#261e18', surface: '#33271e', fg: '#fff1dc', fg2: '#d7c2a5', fg3: '#c3a987', rule: '#65513a', accent: '#77b4ff', head: '\'Zen Maru Gothic\',sans-serif', body: '\'Zen Kaku Gothic New\',sans-serif', anim: 'hWelcome-hkPin' },
 };
 const APPS = [
-	{ s: 'お絵かきツール', se: 'Drawing tool', i: 'ti ti-brush', c: '#7eb5b2' },
+	{ s: 'Hatadint', se: 'Hatadint', i: 'ti ti-brush', c: '#7eb5b2' },
 	{ s: 'HataCardMaker', se: 'HataCardMaker', i: 'ti ti-cards', c: '#e8a87c' },
 	{ s: 'SideStudio', se: 'SideStudio', i: 'ti ti-layout-sidebar-left-expand', c: '#8b7cf6' },
 	{ s: '更新内容', se: 'What\'s new', i: 'ti ti-news', c: '#5b8fd6' },
@@ -752,7 +752,8 @@ export class HataskeyWelcomeController {
 	/* ---------- 文字ごとの登場／退場 ---------- */
 	setupTextMotion() {
 		if (!this.root) return;
-		const targets = this.root.querySelectorAll('h2:not([data-no-split]), h1:not([data-no-split])');
+		const targets = [...this.root.querySelectorAll('h2:not([data-no-split]), h1:not([data-no-split])')]
+			.filter(heading => !heading.closest('[data-welcome-app-preview]'));
 		if (this.textObs) this.textObs.disconnect();
 		targets.forEach(h => {
 			if (h.dataset.splitdone) return;
@@ -1630,6 +1631,7 @@ export class HataskeyWelcomeController {
 	setupHataskBodyPreview() {
 		this.hataskBodyResizeObserver?.disconnect();
 		if (this.onHataskBodyResize) window.removeEventListener('resize', this.onHataskBodyResize);
+		if (!this.hatask || !this.hataskBody) return;
 		this.onHataskBodyResize = () => this.syncHataskBodyPreview();
 		if (typeof window.ResizeObserver === 'function') {
 			this.hataskBodyResizeObserver = new ResizeObserver((entries) => {

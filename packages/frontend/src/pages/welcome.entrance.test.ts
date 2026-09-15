@@ -49,14 +49,14 @@ vi.mock('@/instance.js', async () => {
 		federation: 'all', policies: { ltlAvailable: true }, clientOptions: { showTimelineForVisitor: true },
 	}) };
 });
-vi.mock('@@/js/config.js', () => ({ instanceName: 'server.test', lang: 'ja-JP', version: 'test-version', basedMisskeyVersion: 'test-base' }));
+vi.mock('@@/js/config.js', () => ({ url: 'https://server.test', instanceName: 'server.test', lang: 'ja-JP', version: 'test-version', basedMisskeyVersion: 'test-base' }));
 vi.mock('@/i18n.js', () => ({ i18n: {
 	ts: { impressum: '運営者情報', termsOfService: '利用規約', privacyPolicy: 'プライバシーポリシー', syncDeviceDarkMode: '端末と同期' },
 	tsx: { switchDarkModeManuallyWhenSyncEnabledConfirm: () => '同期を解除しますか' },
 } }));
 vi.mock('@/preferences.js', async () => {
 	const { ref } = await import('vue');
-	return { prefer: { r: { syncDeviceDarkMode: ref(false) }, commit: vi.fn() } };
+	return { prefer: { r: { syncDeviceDarkMode: ref(false), animation: ref(true) }, commit: vi.fn() } };
 });
 vi.mock('@/store.js', async () => {
 	const { ref } = await import('vue');
@@ -68,6 +68,9 @@ vi.mock('@/router.js', () => ({ mainRouter: { push: vi.fn() } }));
 vi.mock('@/os.js', () => ({ popup: vi.fn(), confirm: vi.fn() }));
 vi.mock('@/components/MkSigninDialog.vue', () => ({ default: { render: () => null } }));
 vi.mock('@/components/MkSignupBranchDialog.vue', () => ({ default: { render: () => null } }));
+vi.mock('./welcome.entrance.hatask-preview.vue', () => ({ default: { render: () => null } }));
+vi.mock('./welcome.entrance.hatady-preview.vue', () => ({ default: { render: () => null } }));
+vi.mock('./welcome.entrance.hatafeed-preview.vue', () => ({ default: { render: () => null } }));
 vi.mock('./welcome.entrance.hataskey.js', () => ({
 	HataskeyWelcomeController: class {
 		root = null;
@@ -122,7 +125,7 @@ function userFixture(overrides: Partial<entities.UserLite> = {}): entities.UserL
 
 function noteFixture(overrides: Partial<entities.Note> = {}): entities.Note {
 	return {
-		id: 'note-1', createdAt: '2026-08-31T00:00:00.000Z', text: '公開された実投稿', cw: null,
+		id: 'note1', createdAt: '2026-08-31T00:00:00.000Z', text: '公開された実投稿', cw: null,
 		userId: 'user-1', user: userFixture(), visibility: 'public', reactionAcceptance: null,
 		reactionEmojis: {}, reactions: {}, reactionCount: 0, renoteCount: 0, repliesCount: 0,
 		hasDeliveryTargets: false, ...overrides,
@@ -195,130 +198,126 @@ afterEach(() => {
 });
 
 describe('ログイン前の実投稿プレビュー', () => {
-	test('取得前は隠し、明示的なゲスト資格で取得してから表示する', async () => {
-		const pending = deferred<entities.Note[]>();
-		mocks.api.mockReturnValueOnce(pending.promise);
-		const onResize = vi.fn();
-		const item = mount(WelcomeServerNotes, { language: 'ja', onResize });
-		expect(item.container.querySelector('.hero-server-notes')).toBeNull();
-		expect(mocks.api).toHaveBeenCalledWith('notes/local-timeline', { limit: 8, withRenotes: false }, null, expect.any(AbortSignal));
-		expect(onResize).not.toHaveBeenCalled();
-		pending.resolve([noteFixture()]);
-		await flush();
-		expect(item.container.querySelector('.hero-server-notes-head')?.textContent).toBe('サーバーの投稿');
-		expect(item.container.querySelector('.hero-server-note-copy')?.textContent).toBe('公開された実投稿');
-		expect(onResize).toHaveBeenCalledOnce();
-	});
+ test('読み込み状態を表示し、明示的なゲスト資格で取得した実投稿とリアクションへ置き換える', async () => {
+  const pending = deferred<entities.Note[]>();
+  mocks.api.mockReturnValueOnce(pending.promise);
+  const onResize = vi.fn();
+  const item = mount(WelcomeServerNotes, { language: 'ja', onResize });
+  expect(item.container.querySelector('[data-status="loading"]')).not.toBeNull();
+  expect(mocks.api).toHaveBeenCalledWith('notes/local-timeline', { limit: 100, withRenotes: false }, null, expect.any(AbortSignal));
+  pending.resolve([noteFixture({ reactions: { '🌼': 3 }, reactionCount: 3 })]);
+  await flush();
+  expect(item.container.querySelector('.welcome-notes-heading h3')?.textContent).toBe('サーバーの投稿公開');
+  expect(item.container.querySelector('.welcome-note-body p')?.textContent).toBe('公開された実投稿');
+  expect(item.container.querySelector('.welcome-reaction')?.textContent).toBe('🌼3');
+  expect(onResize).toHaveBeenCalled();
+  expect(mocks.api.mock.calls.every(call => call[2] === null)).toBe(true);
+ });
 
-	test.each([[false, true], [true, false], [false, false]])('LTL=%s / ゲスト表示=%s では取得も表示もしない', async (ltl, show) => {
-		instance.policies.ltlAvailable = ltl;
-		instance.clientOptions.showTimelineForVisitor = show;
-		const item = mount(WelcomeServerNotes, { language: 'ja' });
-		await flush();
-		expect(mocks.api).not.toHaveBeenCalled();
-		expect(item.container.querySelector('.hero-server-notes')).toBeNull();
-	});
+ test.each([[false, true], [true, false], [false, false]])('LTL=%s / ゲスト表示=%s では取得も表示もしない', async (ltl, show) => {
+  instance.policies.ltlAvailable = ltl;
+  instance.clientOptions.showTimelineForVisitor = show;
+  const item = mount(WelcomeServerNotes, { language: 'ja' });
+  await flush();
+  expect(mocks.api).not.toHaveBeenCalled();
+  expect(item.container.querySelector('.hero-server-notes')).toBeNull();
+ });
 
-	test('実投稿を2コピーし、複製を読み上げ・操作から除外する', async () => {
-		mocks.api.mockResolvedValueOnce([noteFixture()]);
-		const item = mount(WelcomeServerNotes, { language: 'en' });
-		await flush();
-		const groups = item.container.querySelectorAll<HTMLElement>('.hero-server-notes-group');
-		expect(groups).toHaveLength(2);
-		expect(groups[0].hasAttribute('aria-hidden')).toBe(false);
-		expect(groups[0].inert).toBe(false);
-		expect(groups[1].getAttribute('aria-hidden')).toBe('true');
-		expect(groups[1].inert).toBe(true);
-		expect(item.container.querySelector('.hero-server-notes-head')?.textContent).toBe('SERVER NOTES');
-		expect(item.container.querySelector('.hero-server-notes-window')?.getAttribute('aria-label')).toBe('Server notes');
-		expect(item.container.querySelector('img')?.getAttribute('width')).toBe('34');
-		expect(item.container.querySelector('img')?.getAttribute('src')).toBe('https://server.test/avatar.png');
-		expect(item.container.querySelector('time')?.getAttribute('datetime')).toBe('2026-08-31T00:00:00.000Z');
-		expect(item.container.querySelector('.hero-server-note-copy a')?.getAttribute('href')).toBe('/notes/note-1');
-	});
+ test('実投稿を2コピーし、複製を読み上げ・操作から除外する', async () => {
+  mocks.api.mockResolvedValueOnce([noteFixture(), noteFixture({ id: 'note2' })]);
+  const item = mount(WelcomeServerNotes, { language: 'en' });
+  await flush();
+  const groups = item.container.querySelectorAll<HTMLElement>('.welcome-notes-group');
+  expect(groups).toHaveLength(2);
+  expect(groups[0].hasAttribute('aria-hidden')).toBe(false);
+  expect(groups[0].inert).toBe(false);
+  expect(groups[1].getAttribute('aria-hidden')).toBe('true');
+  expect(groups[1].inert).toBe(true);
+  expect(item.container.querySelector('.welcome-notes-window')?.getAttribute('aria-label')).toBe('Server notes');
+  expect(item.container.querySelector('.public-note-avatar img')?.getAttribute('src')).toBe('https://server.test/avatar.png');
+  expect(item.container.querySelector('time')?.getAttribute('datetime')).toBe('2026-08-31T00:00:00.000Z');
+  expect(item.container.querySelector('.welcome-note-meta a')?.getAttribute('href')).toBe('https://server.test/notes/note1');
+  const toggle = item.container.querySelector<HTMLButtonElement>('.welcome-notes-heading button')!;
+  toggle.click(); await flush();
+  expect(item.container.querySelectorAll('.welcome-notes-group')).toHaveLength(1);
+  expect(toggle.getAttribute('aria-pressed')).toBe('true');
+ });
 
-	test('CWがあると本文を渡さず、空のCWでも本文へフォールバックしない', async () => {
-		mocks.api.mockResolvedValueOnce([
-			noteFixture({ id: 'cw', cw: '<img src=x onerror=alert(1)>', text: '隠すべき本文' }),
-			noteFixture({ id: 'empty-cw', cw: '', text: '空CWの内部本文' }),
-		]);
-		const item = mount(WelcomeServerNotes, { language: 'ja' });
-		await flush();
-		const copies = item.container.querySelectorAll('.hero-server-note-copy');
-		expect(copies[0].textContent).toBe('<img src=x onerror=alert(1)>');
-		expect(copies[0].querySelector('img')).toBeNull();
-		expect(copies[0].querySelector('[data-mfm-plain="true"][data-mfm-nowrap="true"]')).not.toBeNull();
-		expect(copies[1].textContent).toBe('');
-		expect(item.container.textContent).not.toContain('隠すべき本文');
-		expect(item.container.textContent).not.toContain('空CWの内部本文');
-	});
+ test('CWは明示的に開くまで本文を渡さず、空のCWでも本文へフォールバックしない', async () => {
+  mocks.api.mockResolvedValueOnce([
+   noteFixture({ id: 'cw', cw: '<img src=x onerror=alert(1)>', text: '隠すべき本文' }),
+   noteFixture({ id: 'emptycw', cw: '', text: '空CWの内部本文' }),
+  ]);
+  const item = mount(WelcomeServerNotes, { language: 'ja' });
+  await flush();
+  const warnings = item.container.querySelectorAll<HTMLDetailsElement>('.public-note-warning');
+  expect(warnings[0].textContent).toBe('<img src=x onerror=alert(1)>');
+  expect(warnings[0].querySelector('img')).toBeNull();
+  expect(warnings[1].textContent).toBe('内容の注意書き');
+  expect(item.container.textContent).not.toContain('隠すべき本文');
+  expect(item.container.textContent).not.toContain('空CWの内部本文');
+  warnings[0].open = true;
+  warnings[0].dispatchEvent(new Event('toggle'));
+  await flush();
+  expect(warnings[0].textContent).toContain('隠すべき本文');
+ });
 
-	test('公開ローカル投稿以外とisHiddenを除外する', async () => {
-		mocks.api.mockResolvedValueOnce([
-			noteFixture(), noteFixture({ id: 'hidden', isHidden: true, text: 'hidden-body' }),
-			noteFixture({ id: 'home', visibility: 'home', text: 'home-body' }),
-			noteFixture({ id: 'followers', visibility: 'followers', text: 'followers-body' }),
-			noteFixture({ id: 'specified', visibility: 'specified', text: 'specified-body' }),
-			noteFixture({ id: 'remote', user: userFixture({ host: 'remote.test' }), text: 'remote-body' }),
-		]);
-		const item = mount(WelcomeServerNotes, { language: 'ja' });
-		await flush();
-		expect(Array.from(item.container.querySelectorAll('.hero-server-note-copy'), node => node.textContent)).toEqual(['公開された実投稿', '公開された実投稿']);
-	});
+ test('取得失敗・空応答を架空投稿で補完せず、局所的な状態を表示する', async () => {
+  mocks.api.mockRejectedValueOnce(new Error('unavailable'));
+  const failed = mount(WelcomeServerNotes, { language: 'ja' });
+  await flush();
+  expect(failed.container.querySelector('[data-status="error"]')).not.toBeNull();
+  expect(failed.container.querySelector('.public-note')).toBeNull();
+  const empty = mount(WelcomeServerNotes, { language: 'ja' });
+  await flush();
+  expect(empty.container.querySelector('[data-status="empty"]')).not.toBeNull();
+  expect(empty.container.querySelector('.public-note')).toBeNull();
+ });
 
-	test('取得失敗・空応答を架空投稿で補完しない', async () => {
-		mocks.api.mockRejectedValueOnce(new Error('unavailable'));
-		const failed = mount(WelcomeServerNotes, { language: 'ja' });
-		await flush();
-		expect(failed.container.querySelector('.hero-server-notes')).toBeNull();
-		const empty = mount(WelcomeServerNotes, { language: 'ja' });
-		await flush();
-		expect(empty.container.querySelector('.hero-server-notes')).toBeNull();
-	});
+ test('許可撤回でabortし、再許可後の投稿を古い応答で上書きしない', async () => {
+  const stale = deferred<entities.Note[]>(), fresh = deferred<entities.Note[]>();
+  let latestCalls = 0;
+  mocks.api.mockImplementation((endpoint, params) => endpoint === 'notes/local-timeline' && !params.withFiles ? (++latestCalls === 1 ? stale.promise : fresh.promise) : Promise.resolve([]));
+  const item = mount(WelcomeServerNotes, { language: 'ja' });
+  const signal = mocks.api.mock.calls[0][3];
+  instance.clientOptions.showTimelineForVisitor = false;
+  await flush();
+  expect(signal.aborted).toBe(true);
+  expect(item.container.querySelector('.hero-server-notes')).toBeNull();
+  instance.clientOptions.showTimelineForVisitor = true;
+  await flush();
+  expect(latestCalls).toBe(2);
+  fresh.resolve([noteFixture({ text: '新しい応答' })]);
+  await flush();
+  stale.resolve([noteFixture({ text: '古い応答' })]);
+  await flush();
+  expect(item.container.querySelector('.welcome-note-body p')?.textContent).toBe('新しい応答');
+ });
 
-	test('許可撤回でabortし、再許可後の投稿を古い応答で上書きしない', async () => {
-		const stale = deferred<entities.Note[]>();
-		const fresh = deferred<entities.Note[]>();
-		mocks.api.mockReturnValueOnce(stale.promise).mockReturnValueOnce(fresh.promise);
-		const item = mount(WelcomeServerNotes, { language: 'ja' });
-		const signal = mocks.api.mock.calls[0][3];
-		instance.clientOptions.showTimelineForVisitor = false;
-		await flush();
-		expect(signal.aborted).toBe(true);
-		expect(item.container.querySelector('.hero-server-notes')).toBeNull();
-		instance.clientOptions.showTimelineForVisitor = true;
-		await flush();
-		expect(mocks.api).toHaveBeenCalledTimes(2);
-		fresh.resolve([noteFixture({ text: '新しい応答' })]);
-		await flush();
-		stale.resolve([noteFixture({ text: '古い応答' })]);
-		await flush();
-		expect(item.container.querySelector('.hero-server-note-copy')?.textContent).toBe('新しい応答');
-	});
+ test('アンマウント後はabortしてresizeをemitしない', async () => {
+  const pending = deferred<entities.Note[]>();
+  mocks.api.mockReturnValueOnce(pending.promise);
+  const onResize = vi.fn();
+  const item = mount(WelcomeServerNotes, { language: 'ja', onResize });
+  const signal = mocks.api.mock.calls[0][3];
+  item.unmount();
+  expect(signal.aborted).toBe(true);
+  pending.resolve([noteFixture()]);
+  await flush();
+  expect(onResize).not.toHaveBeenCalled();
+ });
 
-	test('アンマウント後はabortしてresizeをemitしない', async () => {
-		const pending = deferred<entities.Note[]>();
-		mocks.api.mockReturnValueOnce(pending.promise);
-		const onResize = vi.fn();
-		const item = mount(WelcomeServerNotes, { language: 'ja', onResize });
-		const signal = mocks.api.mock.calls[0][3];
-		item.unmount();
-		expect(signal.aborted).toBe(true);
-		pending.resolve([noteFixture()]);
-		await flush();
-		expect(onResize).not.toHaveBeenCalled();
-	});
-
-	test('言語propの更新だけでは再取得せず見出しを更新する', async () => {
-		mocks.api.mockResolvedValueOnce([noteFixture()]);
-		const props = reactive({ language: 'ja' as 'ja' | 'en' });
-		const item = mount(WelcomeServerNotes, props);
-		await flush();
-		props.language = 'en';
-		await flush();
-		expect(item.container.querySelector('.hero-server-notes-head')?.textContent).toBe('SERVER NOTES');
-		expect(mocks.api).toHaveBeenCalledOnce();
-	});
+ test('言語propの更新だけでは再取得せず見出しを更新する', async () => {
+  mocks.api.mockResolvedValueOnce([noteFixture()]);
+  const props = reactive({ language: 'ja' as 'ja' | 'en' });
+  const item = mount(WelcomeServerNotes, props);
+  await flush();
+  const calls = mocks.api.mock.calls.length;
+  props.language = 'en';
+  await flush();
+  expect(item.container.querySelector('.welcome-notes-heading h3')?.textContent).toBe('Server notesPublic');
+  expect(mocks.api).toHaveBeenCalledTimes(calls);
+ });
 });
 
 describe('ログイン前の連合帯', () => {
@@ -421,6 +420,7 @@ function mountMetadata() {
 }
 
 describe('実入口SFCのサーバーメタ連携', () => {
+	beforeEach(() => { instance.policies.ltlAvailable = false; });
 	test('公開pingを一度だけ使って時計を同期し、連合設定をコントローラーへ渡す', async () => {
 		instance.federation = 'specified';
 		mocks.api.mockResolvedValueOnce({ pong: Date.now() });

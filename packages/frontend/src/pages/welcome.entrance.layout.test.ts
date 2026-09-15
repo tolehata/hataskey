@@ -9,12 +9,24 @@ import { resolve } from 'node:path';
 import { parse as parseSfc } from '@vue/compiler-sfc';
 import { parse as parseCss } from 'postcss';
 import { describe, expect, test } from 'vitest';
+import { createApp, h } from 'vue';
+import WelcomeHatadyHeading from './welcome.entrance.hatady-heading.vue';
+import WelcomeHataskHeading from './welcome.entrance.hatask-heading.vue';
+import type { Component } from 'vue';
 import type { AtRule, Document, Root, Rule } from 'postcss';
 
 // Source/DOM contracts only: these assertions do not measure rendered line boxes,
 // browser layout, pixel positions, or the visual smoothness of an animation.
 const sourcePath = resolve(process.cwd(), 'src/pages/welcome.entrance.hataskey.vue');
-const source = readFileSync(sourcePath, 'utf8');
+function headingMarkup(component: Component): string {
+	const host = window.document.createElement('div');
+	const app = createApp({ render: () => h(component) });
+	app.mount(host);
+	const markup = host.innerHTML;
+	app.unmount();
+	return markup;
+}
+const source = readFileSync(sourcePath, 'utf8').replace('<WelcomeHatadyHeading/>', headingMarkup(WelcomeHatadyHeading)).replace('<WelcomeHataskHeading/>', headingMarkup(WelcomeHataskHeading));
 const css = readFileSync(resolve(process.cwd(), 'src/pages/welcome.entrance.hataskey.css'), 'utf8');
 const scope = '[data-hataskey-entrance]';
 const geometryProperty = /^(?:position|display|float|clear|inset(?:-.+)?|top|right|bottom|left|(?:min-|max-)?(?:width|height|inline-size|block-size)|margin(?:-.+)?|padding(?:-.+)?|border(?:-.+)?|line-height|vertical-align|font(?:-.+)?|letter-spacing|white-space|grid(?:-.+)?|place(?:-.+)?|align(?:-.+)?|justify(?:-.+)?)$/;
@@ -327,13 +339,14 @@ function assertHatadyPhrases(stylesSource: string, markup = source): void {
 	const copy = template.querySelector('#hatady h2 .symbol-copy[data-symbol-lang="ja"]');
 	assert.ok(copy, 'Japanese Hatady heading must exist');
 	const phrases = Array.from(copy.querySelectorAll(':scope > .symbol-phrase'));
-	assert.deepEqual(phrases.map(phrase => phrase.textContent), ['学びも、', '本も、', 'ゲームも、', '映画も。'], 'all four Japanese phrases must keep their particles and punctuation');
+	assert.deepEqual(phrases.map(phrase => phrase.textContent), ['学びも、', '趣味も、', '日々のことも。'], 'all three Japanese phrases must keep their particles and punctuation');
 	for (const node of Array.from(copy.childNodes)) {
 		if (node.nodeName === 'BR') break;
+		if (node.nodeType === 8) continue;
 		if (node.nodeType === 3 && !node.textContent?.trim()) continue;
 		assert.ok(phrases.includes(node as Element), 'no orphaned particle may sit between the phrase wrappers');
 	}
-	assert.equal(phrases[3].querySelector('[data-symbol-last]')?.textContent, '映画', 'film animation and its trailing particle must share a wrapper');
+	assert.equal(phrases[2].querySelector('[data-symbol-last]')?.textContent, '日々', 'calendar animation and its trailing particle must share a wrapper');
 	const phraseStyle = declarations(baseRule(parseCss(stylesSource), 'symbol-phrase'));
 	assert.equal(phraseStyle.display, 'inline-block');
 	assert.equal(phraseStyle['white-space'], 'nowrap');
@@ -497,7 +510,7 @@ describe('welcome entrance source layout contracts', () => {
 		assertSymbolLayout(css);
 	});
 
-	test('Hatadyの四つの句を保ち、映画と「も。」を同じ改行不可の単位に置く', () => {
+	test('Hatadyの三つの句を保ち、日々と「のことも。」を同じ改行不可の単位に置く', () => {
 		assertHatadyPhrases(css);
 	});
 
@@ -520,8 +533,8 @@ describe('welcome entrance source layout contracts', () => {
 		expect(() => assertSymbolLayout(mutated)).toThrow();
 	});
 
-	test('陽性対照：映画の「も。」を句の外へ出すと検出する', () => {
-		const mutated = source.replace('data-symbol-last="">映画</span></span>も。</span>', 'data-symbol-last="">映画</span></span></span>も。');
+	test('陽性対照：日々の「のことも。」を句の外へ出すと検出する', () => {
+		const mutated = source.replace('日々</span></span>のことも。</span>', '日々</span></span></span>のことも。');
 		expect(mutated).not.toBe(source);
 		expect(() => assertHatadyPhrases(css, mutated)).toThrow();
 	});

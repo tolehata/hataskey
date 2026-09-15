@@ -5,7 +5,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <template>
 <PageWithHeader hideHeader>
-	<HataIntro initialPage="index" :darkMode="store.r.darkMode.value" :animation="prefer.r.animation.value"/>
+	<HataIntro :darkMode="store.r.darkMode.value" :animation="prefer.r.animation.value"/>
 </PageWithHeader>
 </template>
 
@@ -15,6 +15,5 @@ import { definePage } from '@/page.js';
 import { store } from '@/store.js';
 import { prefer } from '@/preferences.js';
 
-// Keep this public URL for existing links, including the welcome page before login.
-definePage({ title: 'HataIntro · 機能解説', icon: 'ti ti-book', needWideArea: true });
+definePage({ title: 'HataIntro', icon: 'ti ti-book', needWideArea: true });
 </script>
