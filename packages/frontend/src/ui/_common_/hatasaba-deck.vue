@@ -702,7 +702,7 @@ function buildColumnProps(tab: DeckTab): Record<string, unknown> {
 		showFilterPolicyNotice: hasConfiguredNotificationFilter(tab.excludeTypes, tab.notificationFilterKnownTypes),
 	};
 	if (tab.type === 'postForm') return { fixed: true, autofocus: false };
-	// デッキのウィジェットは編集だけを表示する。三点メニュー / タブ右クリックも維持。
+	// デッキのウィジェットは操作ボタン行を省き、三点メニュー / タブ右クリックから編集する。
 	if (tab.type === 'widgets') return { deckEmbedded: true };
 	if (tab.type === 'earthquake') return {};
 	// 旗鯖fork(新デッキ): クリップ/お気に入り。favorites は endpoint のみで clipId 不要。

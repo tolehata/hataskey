@@ -5,7 +5,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <template>
 <div :class="$style.widgetsRoot" :data-motion="prefer.r.animation.value">
-	<MkWidgetControls :editing="editMode" :collapsible="canCollapse" :collapsed="isCollapsed" :controls="widgetsId" @edit="editMode = !editMode" @toggle="emit('toggleCollapse')"/>
+	<MkWidgetControls v-if="!deckEmbedded" :editing="editMode" :collapsible="canCollapse" :collapsed="isCollapsed" :controls="widgetsId" @edit="editMode = !editMode" @toggle="emit('toggleCollapse')"/>
 
 	<Transition :name="$style.widgetFade" :css="canCollapse && prefer.r.animation.value">
 		<XWidgets v-show="!isCollapsed" :id="widgetsId" :inert="isCollapsed" :aria-hidden="isCollapsed" :edit="editMode" :widgets="widgets" @addWidget="addWidget" @removeWidget="removeWidget" @updateWidget="updateWidget" @updateWidgets="updateWidgets" @exit="editMode = false"/>
@@ -27,7 +27,7 @@ const props = withDefaults(defineProps<{
 	// left = place: leftだけを表示
 	// right = rightとnullを表示
 	place?: 'left' | null | 'right';
-	// デッキでは編集だけを表示し、右バー用の開閉は無効にする。
+	// デッキではカラムのメニューから編集するため、操作ボタン行を表示しない。
 	deckEmbedded?: boolean;
 	collapsible?: boolean;
 	collapsed?: boolean;

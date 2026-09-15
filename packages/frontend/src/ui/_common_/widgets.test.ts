@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { createApp, h, nextTick, ref } from 'vue';
 import WidgetsColumn from '../deck/widgets-column.vue';
 import Widgets from './widgets.vue';
-import type { App } from 'vue';
+import type { App, PropType } from 'vue';
 import type { Column } from '@/deck.js';
 import { prefer } from '@/preferences.js';
 import { updateColumnWidget } from '@/deck.js';
@@ -19,7 +19,13 @@ vi.mock('@/i18n.js', () => ({ i18n: { ts: { widgets: 'ウィジェット', editW
 vi.mock('@/deck.js', () => ({ addColumnWidget: vi.fn(), removeColumnWidget: vi.fn(), setColumnWidgets: vi.fn(), updateColumnWidget: vi.fn() }));
 vi.mock('../deck/column.vue', async () => {
 	const { defineComponent, h: render } = await import('vue');
-	return { default: defineComponent({ setup: (_, { slots }) => () => render('section', slots.default?.()) }) };
+	return { default: defineComponent({
+		props: { menu: { type: Array as PropType<{ text: string; action: () => void }[]>, required: true } },
+		setup: (props, { slots }) => () => render('section', [
+			...props.menu.map(item => render('button', { 'data-column-menu-item': true, onClick: item.action }, item.text)),
+			...(slots.default?.() ?? []),
+		]),
+	}) };
 });
 vi.mock('@/components/MkWidgets.vue', async () => {
 	const { defineComponent, h: render, ref: state, onUnmounted } = await import('vue');
@@ -33,6 +39,7 @@ vi.mock('@/components/MkWidgets.vue', async () => {
 			return () => render('div', { 'data-widgets': true, 'data-editing': props.edit }, [
 				render('textarea', { value: draft.value, onInput: (event: Event) => { draft.value = (event.target as HTMLTextAreaElement).value; } }),
 				render('button', { 'data-save': true, onClick: () => emit('updateWidget', { id: 'memo', data: { text: draft.value } }) }, '保存'),
+				props.edit ? render('button', { 'data-exit': true, onClick: () => emit('exit') }, '編集を終了') : null,
 			]);
 		},
 	}) };
@@ -153,14 +160,21 @@ describe('widget controls in sidebars and decks', () => {
 			expect(button.querySelector('i')?.getAttribute('aria-hidden')).toBe('true');
 		}
 	});
-	test('Hataskey deck remains expanded even if sidebar collapse props are supplied', async () => {
+	test('Hataskey deck omits the toolbar and edits through its column controller', async () => {
 		await mountRightBar({ deckEmbedded: true, collapsed: true });
 		expect(host.querySelector('[aria-expanded]')).toBeNull();
-		expect(element('[data-widgets]').style.display).toBe('');
-		element<HTMLButtonElement>('[data-cy-widget-edit]').click(); await nextTick();
-		expect(controller?.getWidgetEditMode()).toBe(true);
+		expect(host.querySelector('[data-cy-widget-edit]')).toBeNull();
+		const content = element('[data-widgets]');
+		expect(content.parentElement?.firstElementChild).toBe(content);
+		expect(content.style.display).toBe('');
 		controller?.toggleWidgetEditMode(); await nextTick();
-		expect(element('[data-widgets]').dataset.editing).toBe('false');
+		expect(controller?.getWidgetEditMode()).toBe(true);
+		expect(content.dataset.editing).toBe('true');
+		element<HTMLButtonElement>('[data-exit]').click(); await nextTick();
+		expect(controller?.getWidgetEditMode()).toBe(false);
+		controller?.setWidgetEditMode(true); await nextTick();
+		controller?.toggleWidgetEditMode(); await nextTick();
+		expect(content.dataset.editing).toBe('false');
 	});
 	test('a mobile drawer provides editing without a desktop collapse control', async () => {
 		await mountRightBar({ collapsible: false, collapsed: true });
@@ -168,15 +182,24 @@ describe('widget controls in sidebars and decks', () => {
 		expect(element('[data-widgets]').style.display).toBe('');
 		expect(element('[data-cy-widget-edit]').getAttribute('aria-label')).toBe('ウィジェットを編集');
 	});
-	test('the standard deck edits its own column and does not expose collapse', async () => {
+	test('the standard deck omits the toolbar and edits its own widgets through the column menu', async () => {
 		const column: Column = { id: 'deck-widgets', type: 'widgets', name: null, width: 350, widgets: [{ id: 'memo', name: 'memo', data: {} }] };
 		app = createApp(WidgetsColumn, { column, isStacked: false });
 		app.directive('tooltip', {}); app.config.warnHandler = warning => warnings.push(warning); app.mount(host); await nextTick();
 		expect(host.querySelector('[aria-expanded]')).toBeNull();
-		element<HTMLButtonElement>('[data-cy-widget-edit]').click(); await nextTick();
+		expect(host.querySelector('[data-cy-widget-edit]')).toBeNull();
+		const content = element('[data-widgets]');
+		expect(content.parentElement?.firstElementChild).toBe(content);
+		const editMenuItem = element<HTMLButtonElement>('[data-column-menu-item]');
+		expect(editMenuItem.textContent).toBe('ウィジェットを編集');
+		editMenuItem.click(); await nextTick();
 		expect(element('[data-widgets]').dataset.editing).toBe('true');
 		element<HTMLButtonElement>('[data-save]').click();
 		expect(updateColumnWidget).toHaveBeenCalledWith('deck-widgets', 'memo', { text: '書きかけ' });
 		expect(prefer.commit).not.toHaveBeenCalled();
+		element<HTMLButtonElement>('[data-exit]').click(); await nextTick();
+		expect(content.dataset.editing).toBe('false');
+		editMenuItem.click(); await nextTick();
+		expect(content.dataset.editing).toBe('true');
 	});
 });
