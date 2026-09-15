@@ -16065,7 +16065,7 @@ export interface Locale extends ILocale {
         };
         "_drawingTool": {
             /**
-             * お絵描きツール
+             * Hatadint
              */
             "drawingToolTitle": string;
             /**
@@ -16165,9 +16165,13 @@ export interface Locale extends ILocale {
              */
             "cancel": string;
             /**
-             * お絵描き
+             * Hatadint
              */
             "drawing": string;
+            /**
+             * 作品はドライブに保存しました。1つの投稿に添付できるファイルは16個までです。添付を減らしてから、ドライブから作品を選んでください。
+             */
+            "attachmentLimit": string;
             /**
              * ライトモード
              */
@@ -16612,11 +16616,11 @@ export interface Locale extends ILocale {
                  */
                 "hataskEyeTitle": string;
                 /**
-                 * Hataskeyの利用状況をもとに、ひとことメッセージを表示します。Hataskのホームにも置け、選ぶと詳しい画面へ移動します。
+                 * Hataskのホームに、タスクや予定、きもちの記録に合わせたひとことメッセージを表示します。
                  */
                 "hataskEyeBody": string;
                 /**
-                 * Hatask Eyeを開く
+                 * Hataskのホームを開く
                  */
                 "hataskEyeLink": string;
                 /**
@@ -16896,7 +16900,7 @@ export interface Locale extends ILocale {
                  */
                 "weatherBackgroundTip2": string;
                 /**
-                 * お絵かきツール
+                 * Hatadint
                  */
                 "drawingToolTitle": string;
                 /**
@@ -16904,7 +16908,7 @@ export interface Locale extends ILocale {
                  */
                 "drawingToolBody": string;
                 /**
-                 * 投稿フォームのお絵かきボタンから開くと、描いた絵をそのまま添付できます
+                 * 投稿フォームのHatadintボタンから開くと、描いた絵をそのまま添付できます
                  */
                 "drawingToolTip1": string;
                 /**
@@ -16944,11 +16948,11 @@ export interface Locale extends ILocale {
                  */
                 "hatalyzeTip2": string;
                 /**
-                 * 投稿フォームのお絵かきボタン
+                 * 投稿フォームのHatadintボタン
                  */
                 "drawingButtonTitle": string;
                 /**
-                 * 投稿を書く画面からお絵かきツールを開き、描いた絵をそのまま添付できます。ボタンが不要な場合はHataskey独自設定で隠せます。
+                 * 投稿を書く画面からHatadintを開き、描いた絵をそのまま添付できます。ボタンが不要な場合はHataskey独自設定で隠せます。
                  */
                 "drawingButtonBody": string;
                 /**
@@ -18446,7 +18450,7 @@ export interface Locale extends ILocale {
                  */
                 "event": string;
                 /**
-                 * お絵描き
+                 * Hatadint
                  */
                 "drawing": string;
                 /**
@@ -18846,7 +18850,7 @@ export interface Locale extends ILocale {
                  */
                 "frequentButtonsMaxTwo": string;
                 /**
-                 * お絵描きの添付に失敗しました
+                 * Hatadintの作品を添付できませんでした
                  */
                 "drawingAttachFailed": string;
                 /**
@@ -22858,64 +22862,6 @@ export interface Locale extends ILocale {
             };
         };
         "_hatask": {
-            "_akatsukiNotice": {
-                /**
-                 * 予定も、きもちも、日々の記録も。いつものHataskを、新しい暁のデザインで
-                 */
-                "description": string;
-                /**
-                 * 毎日のことを、ひと目に
-                 */
-                "overviewTitle": string;
-                /**
-                 * 予定やToDo、日々の記録を、見渡しやすいペインと角丸のケースにまとめました
-                 */
-                "overviewDescription": string;
-                /**
-                 * あなたの色で、心地よく
-                 */
-                "themeTitle": string;
-                /**
-                 * 背景は選んだテーマの色と時間帯に合わせて、なめらかに移り変わります
-                 */
-                "themeDescription": string;
-                /**
-                 * 保存済みの予定やToDoはそのまま。設定から以前のテーマにも戻せます
-                 */
-                "preserved": string;
-                /**
-                 * 暁を使ってみる
-                 */
-                "apply": string;
-                /**
-                 * このまま続ける
-                 */
-                "continue": string;
-                /**
-                 * 今のテーマを使う
-                 */
-                "later": string;
-                /**
-                 * 紹介を閉じる
-                 */
-                "close": string;
-                /**
-                 * 設定を保存しています
-                 */
-                "saving": string;
-                /**
-                 * 設定を保存できませんでした。もう一度お試しください
-                 */
-                "saveError": string;
-                /**
-                 * もう一度試す
-                 */
-                "retry": string;
-                /**
-                 * 暁に切り替えました
-                 */
-                "applied": string;
-            };
             "_journal": {
                 /**
                  * いまのきもちを、ひと息で残そう
@@ -23131,6 +23077,10 @@ export interface Locale extends ILocale {
                  * 絞り込み
                  */
                 "filters": string;
+                /**
+                 * 辞退した招待も表示
+                 */
+                "showDeclinedInvitations": string;
                 /**
                  * 読み込み中…
                  */
@@ -23650,6 +23600,42 @@ export interface Locale extends ILocale {
                  */
                 "templateNamePrompt": string;
                 /**
+                 * 指定したメンバー
+                 */
+                "memberVisibility": string;
+                /**
+                 * この予定の作成者と指定したメンバーだけが、予定・参加確認・締切のお知らせを見られます。メンバーは予定ごとに指定します。
+                 */
+                "memberVisibilityHelp": string;
+                /**
+                 * メンバーを追加
+                 */
+                "addEventMember": string;
+                /**
+                 * メンバーテンプレート
+                 */
+                "memberTemplates": string;
+                /**
+                 * テンプレートを呼び出す
+                 */
+                "chooseMemberTemplate": string;
+                /**
+                 * このメンバー構成を保存
+                 */
+                "saveMemberTemplate": string;
+                /**
+                 * メンバーを1人以上指定してください。
+                 */
+                "eventMembersRequired": string;
+                /**
+                 * テンプレートを削除しますか？ 作成済みの予定には影響しません。
+                 */
+                "deleteMemberTemplate": string;
+                /**
+                 * テンプレートを保存できませんでした。再読み込みしてからお試しください。
+                 */
+                "memberTemplateSaveFailed": string;
+                /**
                  * テンプレートに保存しました
                  */
                 "templateSaved": string;
@@ -23944,6 +23930,10 @@ export interface Locale extends ILocale {
                  */
                 "autoAppearance": string;
                 /**
+                 * 自動（本体のテーマに従う）
+                 */
+                "autoAppearanceTheme": string;
+                /**
                  * ダークモード
                  */
                 "darkMode": string;
@@ -24136,6 +24126,14 @@ export interface Locale extends ILocale {
                  */
                 "themeAkatsukiDescription": string;
                 /**
+                 * 苔
+                 */
+                "themeKoke": string;
+                /**
+                 * 苔の緑と、やわらかな光
+                 */
+                "themeKokeDescription": string;
+                /**
                  * 設定を保存できませんでした。接続を確認してもう一度選択してください
                  */
                 "saveFailure": string;
@@ -24144,7 +24142,7 @@ export interface Locale extends ILocale {
                  */
                 "themeKisetsu": string;
                 /**
-                 * エディトリアル明朝
+                 * 生成りの紙、明朝、静かな罫線
                  */
                 "themeKisetsuDescription": string;
                 /**
@@ -24152,7 +24150,7 @@ export interface Locale extends ILocale {
                  */
                 "themeKashin": string;
                 /**
-                 * ポップ・ベントー
+                 * 丸い輪郭、コーラルと黄の差し色
                  */
                 "themeKashinDescription": string;
                 /**
@@ -24160,7 +24158,7 @@ export interface Locale extends ILocale {
                  */
                 "themeSuri": string;
                 /**
-                 * リソグラフ2色
+                 * 紙とインク、青とピンク、くっきりした輪郭
                  */
                 "themeSuriDescription": string;
                 /**
@@ -24168,7 +24166,7 @@ export interface Locale extends ILocale {
                  */
                 "themeHatakyu": string;
                 /**
-                 * コルクボード
+                 * ハタキュのイラスト、コルク、クリーム色の紙
                  */
                 "themeHatakyuDescription": string;
                 /**
@@ -25598,7 +25596,7 @@ export interface Locale extends ILocale {
                  */
                 "themeKisetsu": string;
                 /**
-                 * 明朝の落ち着き。余白と罫線。
+                 * 生成りの紙、明朝、静かな罫線
                  */
                 "themeKisetsuDescription": string;
                 /**
@@ -25606,7 +25604,7 @@ export interface Locale extends ILocale {
                  */
                 "themeKashin": string;
                 /**
-                 * 丸ゴと原色。ポップに賑やか。
+                 * 丸い輪郭、コーラルと黄の差し色
                  */
                 "themeKashinDescription": string;
                 /**
@@ -25614,17 +25612,13 @@ export interface Locale extends ILocale {
                  */
                 "themeSuri": string;
                 /**
-                 * 2色印刷風。太罫で実験的。
+                 * 紙とインク、青とピンク、くっきりした輪郭
                  */
                 "themeSuriDescription": string;
                 /**
                  * このテーマではじめる
                  */
                 "startWithTheme": string;
-                /**
-                 * 選択は保存されます。設定からいつでも変更できます
-                 */
-                "themeSelectionSaved": string;
                 /**
                  * 選択は保存され、以降のチュートリアルもこの見た目で進みます
                  */
@@ -25634,13 +25628,9 @@ export interface Locale extends ILocale {
                  */
                 "themeHatakyu": string;
                 /**
-                 * コルクに留める日々。
+                 * ハタキュのイラスト、コルク、クリーム色の紙
                  */
                 "themeHatakyuDescription": string;
-                /**
-                 * テーマを設定しました
-                 */
-                "themeSet": string;
                 /**
                  * Hatask設定
                  */
@@ -25705,50 +25695,6 @@ export interface Locale extends ILocale {
                  * 花が咲きました。摘みとって名前をつけてあげましょう。
                  */
                 "hkGardenBloomed": string;
-                /**
-                 * 新テーマ「
-                 */
-                "hatakyuNoticeTitlePrefix": string;
-                /**
-                 * 」
-                 */
-                "hatakyuNoticeTitleSuffix": string;
-                /**
-                 * コルクボードに毎日を留めていく、あたらしい見た目です。
-                 */
-                "hatakyuNoticeBody1": string;
-                /**
-                 * 紙は
-                 */
-                "hatakyuNoticeBody2Prefix": string;
-                /**
-                 * 風で揺れ
-                 */
-                "hatakyuNoticeBody2Strong": string;
-                /**
-                 * 、ハタキュがあちこちで見守ります。
-                 */
-                "hatakyuNoticeBody2Suffix": string;
-                /**
-                 * いま切り替えますか？
-                 */
-                "hatakyuNoticeBody3": string;
-                /**
-                 * このデザインに切り替える
-                 */
-                "hatakyuNoticeApply": string;
-                /**
-                 * あとで
-                 */
-                "hatakyuNoticeLater": string;
-                /**
-                 * あとから「Hatask設定 › デザイン」でも切り替えできます。ダークモードは設定の明暗切替に追従します。表示設定はそのまま引き継がれます。
-                 */
-                "hatakyuNoticeNote": string;
-                /**
-                 * テーマを「ハタキュ」にしました
-                 */
-                "hatakyuNoticeApplied": string;
                 /**
                  * SNSに一工夫を
                  */
@@ -25950,11 +25896,11 @@ export interface Locale extends ILocale {
                  */
                 "tutorialCompleteWish": string;
                 /**
-                 * お絵かき
+                 * Hatadint
                  */
                 "appDrawing": string;
                 /**
-                 * お絵かき
+                 * Hatadint
                  */
                 "appDrawingShort": string;
                 /**
@@ -28231,7 +28177,19 @@ export interface Locale extends ILocale {
              */
             "title": string;
             /**
-             * 日目
+             * これまでのログイン
+             */
+            "totalLogins": string;
+            /**
+             * あと{days}日
+             */
+            "remainingDays": ParameterizedString<"days">;
+            /**
+             * すべてのログイン実績を獲得しました
+             */
+            "allAchievementsEarned": string;
+            /**
+             * 日
              */
             "dayUnit": string;
             /**
@@ -28243,11 +28201,11 @@ export interface Locale extends ILocale {
              */
             "rank": ParameterizedString<"rank">;
             /**
-             * 実績「{name}」を獲得！
+             * 新しい実績を獲得！
              */
-            "achievementEarned": ParameterizedString<"name">;
+            "newAchievement": string;
             /**
-             * 次の実績まで:
+             * 次の実績まで
              */
             "untilNextAchievement": string;
             /**
@@ -29423,7 +29381,7 @@ export interface Locale extends ILocale {
             };
             "_content": {
                 /**
-                 * hata-12.6.3 — ログイン画面の読み込みエラーを修正しました
+                 * hata-12.7 — Hatady・HataFeed・Hatadintと予定共有を更新しました
                  */
                 "latestHeadline": string;
                 /**
@@ -29435,7 +29393,7 @@ export interface Locale extends ILocale {
                  */
                 "loginText": string;
                 /**
-                 * hata-12.6.3の修正をご紹介しました。詳しい変更点と過去の履歴はリリースノートをご覧ください。
+                 * hata-12.7の更新をご紹介しました。詳しい変更点と過去の履歴はリリースノートをご覧ください。
                  */
                 "footerText": string;
                 /**
@@ -29897,6 +29855,22 @@ export interface Locale extends ILocale {
              */
             "mascotNotConsented": string;
             /**
+             * Hatadint同意済み
+             */
+            "drawingConsented": string;
+            /**
+             * Hatadint未同意
+             */
+            "drawingNotConsented": string;
+            /**
+             * 初回同意日時
+             */
+            "drawingFirstAgreedAt": string;
+            /**
+             * 同意した版
+             */
+            "drawingVersion": string;
+            /**
              * 該当ユーザー数
              */
             "matchingUsers": string;
@@ -29926,18 +29900,6 @@ export interface Locale extends ILocale {
              * わかった
              */
             "gotIt": string;
-        };
-        "_mutedReactionMigration": {
-            /**
-             * 「ミュートユーザーのリアクション非表示」が新しくなりました
-             */
-            "title": string;
-            /**
-             * これまでは「誰がリアクションしたか」の一覧から名前を隠すだけでしたが、今後はミュートしたユーザーのリアクション自体（リアクションのチップ）がノートから隠れるようになりました。
-             *
-             * また、この設定は「端末ごと」の管理になり、HataFeed の「ベータ機能を試す」に移動しました。以前から有効にしていたため、この端末では自動でオンにしています。
-             */
-            "body": string;
         };
         "_adminCommon": {
             /**
@@ -30806,18 +30768,6 @@ export interface Locale extends ILocale {
                  * オプション
                  */
                 "options": string;
-                /**
-                 * Hataskey UIにデッキ表示が追加されました！
-                 */
-                "deckAddedAnnouncement": string;
-                /**
-                 * ここでメニューを縮小・拡大できます
-                 */
-                "collapseAnnouncement": string;
-                /**
-                 * 「もっと！」から HataFeed（フィードバック）を確認できます。
-                 */
-                "hataFeedMoreAnnouncement": string;
                 /**
                  * お知らせ
                  */
@@ -34393,7 +34343,7 @@ export interface Locale extends ILocale {
                  */
                 "showHashtagButton": string;
                 /**
-                 * お絵かきボタンを表示
+                 * Hatadintボタンを表示
                  */
                 "showDrawingButton": string;
                 /**

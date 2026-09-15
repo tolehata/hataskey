@@ -1,455 +1,353 @@
-/*
- * SPDX-FileCopyrightText: Tolehata and hatasaba-project
- * SPDX-License-Identifier: AGPL-3.0-only
- */
-/* eslint-disable vue/one-component-per-file -- Fixtures replace only the surrounding modal, button and branding illustration. */
-
-import { resolve } from 'node:path';
-import { compileScript, compileStyleAsync, parse } from '@vue/compiler-sfc';
-import { createApp, defineComponent, h, nextTick } from 'vue';
+/* SPDX-License-Identifier: AGPL-3.0-only */
+/* eslint-disable vue/one-component-per-file -- Test-only modal and global display components. */
+import fs from 'node:fs';
+import path from 'node:path';
+import { compileStyleAsync } from '@vue/compiler-sfc';
+import { createApp, defineComponent, h, nextTick, computed } from 'vue';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import MkHataWhatsNew from './MkHataWhatsNew.vue';
-import whatsNewSource from './MkHataWhatsNew.vue?raw';
-import uiSetupSource from './MkUISetup.vue?raw';
-import type { App } from 'vue';
+import HataFeedHome from './HataFeedHome.vue';
+import NotificationPreview from './hata-whats-new/NotificationPreview.vue';
+import { sampleIssues, sampleRequests, sampleActivity } from './hata-whats-new/samples.js';
 import type { Locale } from '../../../../locales/index.js';
-import { getHataWhatsNewDisplayVersion, HATA_WHATS_NEW } from '@/utility/hata-whats-new.js';
+import type { App, PropType } from 'vue';
+import { prefer } from '@/preferences.js';
+import { store } from '@/store.js';
+import { misskeyApi } from '@/utility/misskey-api.js';
+import { hatadyNotice, hatadyNotify } from '@/utility/hatady-ui.js';
+import { createHataskeyNotificationToasts, getNotificationPageContext, registerNotificationPageContext } from '@/utility/hataskey-notification-toast.js';
+import { hataFeedNotify, registerHataFeedNoticeHost } from '@/utility/hatafeed-ui.js';
+import { HATA_WHATS_NEW } from '@/utility/hata-whats-new.js';
 
 vi.mock('@/i18n.js', async () => {
-	const fs = await import('node:fs');
-	const path = await import('node:path');
-	const yaml = await import('js-yaml');
 	const { I18n } = await import('@@/js/i18n.js');
-	const locale = yaml.load(fs.readFileSync(path.resolve(process.cwd(), '../../locales/ja-JP.yml'), 'utf8'));
-	return { i18n: new I18n<Locale>(locale as Locale) };
+	const yaml = await import('js-yaml');
+	return { i18n: new I18n<Locale>(yaml.load(fs.readFileSync(path.resolve(process.cwd(), '../../locales/ja-JP.yml'), 'utf8')) as Locale) };
 });
-vi.mock('@/preferences.js', () => ({ prefer: { r: { animation: { value: true } } } }));
-vi.mock('@/router.js', () => ({ mainRouter: { push: vi.fn() } }));
-vi.mock('@/utility/hatakyu-assets.js', () => ({ useHatakyuBranding: () => false }));
+vi.mock('@/preferences.js', async () => {
+	const { ref } = await import('vue');
+	return { prefer: { r: { animation: ref(false), darkMode: ref(false), useBlurEffect: ref(false), 'external.disableNotificationToast': ref(false) }, s: { animation: false }, commit: vi.fn() } };
+});
+vi.mock('@/utility/hatady-prefs.js', async () => { const { ref } = await import('vue'); return { hatadyTheme: ref('light') }; });
+vi.mock('@/store.js', async () => { const { ref } = await import('vue'); return { store: { r: { darkMode: ref(false) } } }; });
+vi.mock('@/i.js', () => ({ $i: { id: 'actual-user' }, iAmModerator: false }));
+vi.mock('@/events.js', () => ({ globalEvents: { on: vi.fn(), off: vi.fn() } }));
+vi.mock('@/os.js', () => ({ toast: vi.fn() }));
+vi.mock('@/utility/intl-const.js', () => ({ versatileLang: 'ja-JP' }));
+vi.mock('@/utility/misskey-api.js', () => ({ misskeyApi: vi.fn(() => { throw new Error('Introductions must not request real records'); }) }));
+vi.mock('@/utility/hatakyu-assets.js', () => ({ useHatakyuBranding: () => true, hatakyuAssetUrl: (key: string) => `/client-assets/hatakyu/${key}.png` }));
+vi.mock('@/components/MkHatakyuIllustration.vue', () => ({ default: { template: '<img alt="" data-mascot>' } }));
+vi.mock('@/components/HyDialog.vue', () => ({ default: { setup() { throw new Error('A decorative preview opened a live dialog'); } } }));
+vi.mock('@/components/MkHataskeyNotificationToasts.vue', () => ({ default: { setup() { throw new Error('A decorative preview started a live receiver'); } } }));
 vi.mock('@/components/MkModal.vue', async () => {
-	const { defineComponent: component, h: render } = await import('vue');
-	return { default: component({
-		setup: (_props, { slots, expose }) => {
-			expose({ ['close']: vi.fn() });
-			return () => render('div', slots.default?.());
+	const { defineComponent: createComponent, h: render, onMounted } = await import('vue');
+	return { default: createComponent({
+		emits: ['closed', 'close', 'esc', 'click', 'opened'],
+		setup(_, { slots, emit, expose }) {
+			// eslint-disable-next-line id-denylist -- Existing MkModal public method.
+			expose({ close() { emit('close'); emit('closed'); } });
+			modalOpened = () => emit('opened');
+			onMounted(() => { if (autoOpen) modalOpened(); });
+			return () => render('div', { 'data-modal': true, onKeydown: (event: KeyboardEvent) => { if (event.key === 'Escape') emit('esc'); } }, slots.default?.());
 		},
 	}) };
 });
-vi.mock('@/components/MkButton.vue', async () => {
-	const { defineComponent: component, h: render } = await import('vue');
-	return { default: component({ setup: (_props, { slots }) => () => render('button', { type: 'button' }, slots.default?.()) }) };
+
+let app: App | undefined, host: HTMLDivElement;
+let bodyHeight: number, width: number, hidden: boolean;
+let resizeCallbacks: Set<() => void>;
+let motions: Array<{ element: HTMLElement; frames: Keyframe[]; options: KeyframeAnimationOptions; cancel: () => void; finish: () => void; done: boolean }>;
+let motionListeners: Set<() => void>;
+let reduced: boolean;
+let cleanups: Array<() => void>;
+let errors: string[];
+let autoOpen: boolean;
+let modalOpened: () => void;
+
+async function flush() { for (let i = 0; i < 10; i++) await nextTick(); }
+
+async function finishMotion() { for (let i = 0; i < 5; i++) { for (const item of motions) item.finish(); await flush(); } }
+
+function globals(instance: App) {
+	instance.component('MkTime', defineComponent({ props: { time: { type: [String, Date, Number], required: true } }, setup: props => () => h('time', { datetime: String(props.time) }, 'きょう') }));
+	instance.component('MkUserName', defineComponent({ props: { user: { type: Object as PropType<{ name?: string }>, required: true } }, setup: props => () => h('span', props.user.name) }));
+	instance.component('MkAvatar', defineComponent({ props: { user: { type: Object as PropType<{ name?: string }>, required: true } }, setup: () => () => h('span', '人') }));
+	instance.config.errorHandler = error => errors.push(String(error));
+	instance.config.warnHandler = warning => errors.push(warning);
+}
+
+async function mount() { app = createApp(MkHataWhatsNew, { onClosed: () => {} }); globals(app); app.mount(host); await flush(); }
+
+function requiredElement<T extends Element = HTMLElement>(selector: string, parent: Element = host): T {
+	const element = parent.querySelector<T>(selector);
+	if (!element) throw new Error(`Missing element: ${selector}`);
+	return element;
+}
+
+async function next() { requiredElement<HTMLButtonElement>('[aria-label="次へ"]').click(); await flush(); }
+
+beforeEach(() => {
+	bodyHeight = 600; width = 870; hidden = false; reduced = false; errors = []; cleanups = [];
+	autoOpen = true;
+	resizeCallbacks = new Set(); motionListeners = new Set(); motions = [];
+	vi.clearAllMocks();
+	prefer.r.animation.value = false; store.r.darkMode.value = false; hatadyNotice.value = null;
+	vi.stubGlobal('matchMedia', () => ({ get matches() { return reduced; }, addEventListener: (_: string, cb: () => void) => motionListeners.add(cb), removeEventListener: (_: string, cb: () => void) => motionListeners.delete(cb) }));
+	vi.stubGlobal('ResizeObserver', class { constructor(private callback: () => void) {} observe() { resizeCallbacks.add(this.callback); } disconnect() { resizeCallbacks.delete(this.callback); } unobserve() {} });
+	vi.stubGlobal('IntersectionObserver', class { observe() {} disconnect() {} });
+	vi.spyOn(window.document, 'hidden', 'get').mockImplementation(() => hidden);
+	vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockImplementation(() => width);
+	vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockImplementation(function (this: HTMLElement) { return this.getAttribute('role') === 'region' ? bodyHeight : 350; });
+	vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(780);
+	vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockReturnValue(1100);
+	vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(() => new DOMRect(0, 0, width, 350));
+	vi.spyOn(HTMLElement.prototype, 'animate').mockImplementation(function (this: HTMLElement, frames, options) {
+		let resolve: () => void;
+		const finished = new Promise<void>(done => { resolve = done; });
+		const item = { element: this, frames: frames as Keyframe[], options: options as KeyframeAnimationOptions, done: false, cancel: () => { item.done = true; resolve(); }, finish: () => { item.done = true; resolve(); } };
+		motions.push(item); return { finished, cancel: item.cancel } as unknown as Animation;
+	});
+	host = window.document.createElement('div'); window.document.body.append(host);
 });
-vi.mock('@/components/MkHatakyuIllustration.vue', async () => {
-	const { defineComponent: component, h: render } = await import('vue');
-	return { default: component({ setup: () => () => render('span') }) };
-});
-
-describe('Hata update presentation', () => {
-	const previews = ['utageAchievements', 'externalSidebar', 'externalTimeline', 'timelineCollapse', 'hataskPlanner', 'hataskGarden', 'externalAccount', 'gameFarewell', 'welcomeRenewal', 'serverChoice', 'dailyPolish'];
-	const previewMarkup = whatsNewSource.slice(whatsNewSource.indexOf(':class="$style.preview"'), whatsNewSource.indexOf(':class="$style.itemBody"'));
-	const newPreviewStyles = whatsNewSource.slice(whatsNewSource.indexOf('/* ===== Eleven finite, viewport-triggered previews ===== */'));
-
-	test('更新内容を11種類の専用プレビューに揃え、PCでは3列にする', () => {
-		expect(whatsNewSource).toContain(':data-preview="item.preview"');
-		expect(whatsNewSource).toContain('@container (min-width: 940px)');
-		expect(whatsNewSource).toContain('grid-template-columns: repeat(3, minmax(0, 1fr))');
-		expect([...previewMarkup.matchAll(/item\.preview === '([^']+)'/gu)].map(match => match[1])).toEqual(previews);
-		expect(previewMarkup).not.toContain('<button');
-		expect(previewMarkup).toContain('aria-hidden="true"');
-		for (const mock of ['utageMock', 'externalSidebarMock', 'externalTimelineMock', 'collapseMock', 'plannerMock', 'gardenMock', 'bearMock', 'farewellMock', 'welcomeMock', 'serverChoiceMock', 'polishMock']) {
-			expect(previewMarkup).toContain(`$style.${mock}`);
-		}
-	});
-
-	// Source contracts detect missing CSS, not actual browser layout or animation rendering.
-	function moduleClassNames(source: string): Set<string> {
-		const start = source.indexOf('<style lang="scss" module>');
-		const block = start < 0 ? source.slice(source.indexOf('<style module>')) : source.slice(start);
-		return new Set([...block.matchAll(/^\s*\.([A-Za-z_][\w-]*)/gmu)].map(match => match[1]));
-	}
-
-	function usedModuleClassNames(source: string): Set<string> {
-		return new Set([...source.matchAll(/\$style\.([A-Za-z_][\w$]*)/gu)].map(match => match[1]));
-	}
-
-	function missingModuleClasses(source: string): string[] {
-		const defined = moduleClassNames(source);
-		return [...usedModuleClassNames(source)].filter(name => !defined.has(name)).sort();
-	}
-
-	test('実SFC・テンプレート・SCSSをコンパイルし、生成CSSモジュールへ全参照を結線する', async () => {
-		const filename = resolve(process.cwd(), 'src/components/MkHataWhatsNew.vue');
-		const parsed = parse(whatsNewSource, { filename });
-		expect(parsed.errors).toEqual([]);
-		expect(() => compileScript(parsed.descriptor, { id: 'mk-hata-whats-new', inlineTemplate: true })).not.toThrow();
-		const style = await compileStyleAsync({
-			source: parsed.descriptor.styles[0]!.content,
-			filename,
-			id: 'mk-hata-whats-new',
-			preprocessLang: 'scss',
-			modules: true,
-		});
-		expect(style.errors).toEqual([]);
-		expect(style.modules?.preview).toBeTruthy();
-		expect(style.modules?.utageMock).toBeTruthy();
-		expect(style.modules?.gardenCard).toBeTruthy();
-		const missingCompiledClasses = (template: string) => [...usedModuleClassNames(template)].filter(name => !style.modules?.[name]).sort();
-		const template = parsed.descriptor.template!.content;
-		expect(missingCompiledClasses(`${template}\n<div :class="$style.zzMissingCompiledClass"></div>`)).toEqual(['zzMissingCompiledClass']);
-		expect(missingCompiledClasses(template)).toEqual([]);
-	});
-
-	test('テンプレートが参照するCSSモジュールのクラスは、すべて定義されている', () => {
-		expect(moduleClassNames(whatsNewSource).has('gardenCard')).toBe(true);
-		expect(missingModuleClasses(`${whatsNewSource}\n<div :class="$style.zzNoSuchClass"></div>`)).toEqual(['zzNoSuchClass']);
-		expect(missingModuleClasses(whatsNewSource)).toEqual([]);
-		expect(whatsNewSource).toContain(':data-closing="closing"');
-		expect(whatsNewSource).not.toContain('$style[');
-	});
-
-	test('旧19項目の表示・専用CSS・UI強制切替を残さない', () => {
-		const oldPreviews = ['branding', 'hatadyRecord', 'hatadyVisibility', 'hatacordingFix', 'utageBadge', 'muteReaction', 'cardMaker', 'hatasabaHome', 'sideStudioFix', 'mobileFix', 'hatalyze', 'hatakyuTheme', 'hatadyExport', 'foldable', 'uiMotion', 'langFix', 'externalDdoskey', 'fontUpload', 'settingsRenewal'];
-		const oldMocks = ['brandingMock', 'recordMock', 'visibilityMock', 'cordFixMock', 'badgeMock', 'muteFixMock', 'cardMock', 'homeMock', 'studioMock', 'mobileMock', 'hatalyzeMock', 'hatakyuMock', 'exportMock', 'foldMock', 'popupMock', 'langMock', 'ddoskeyMock', 'fontUploadMock', 'settingsMock'];
-		const detectsOldPreview = (source: string) => oldPreviews.some(name => source.includes(`item.preview === '${name}'`)) || oldMocks.some(name => source.includes(`.${name}`));
-		expect(detectsOldPreview('<div v-if="item.preview === \'branding\'">')).toBe(true);
-		expect(detectsOldPreview('.ddoskeyMock { display: grid; }')).toBe(true);
-		expect(detectsOldPreview(whatsNewSource)).toBe(false);
-		expect(whatsNewSource).not.toContain('activateUi');
-		expect(whatsNewSource).not.toContain('setHatacordingUiEnabled');
-		expect(whatsNewSource).not.toContain('ensureSignin');
-		expect(whatsNewSource).toContain('if (item.to == null) return;');
-		expect(whatsNewSource).toContain('mainRouter.push(item.to);');
-	});
-
-	test('見えているプレビューだけ一度開始し、完了後は再開始しない', () => {
-		expect(whatsNewSource).toContain('new IntersectionObserver');
-		expect(whatsNewSource).toContain('root: releaseRoot.value');
-		expect(whatsNewSource).toContain('entry.isIntersecting && entry.intersectionRatio >= 0.6');
-		expect(whatsNewSource).toContain('(previewStates.value[key] ?? \'ready\') === \'ready\'');
-		expect(whatsNewSource).toContain('previewStates.value[key] = \'running\'');
-		expect(whatsNewSource).toContain('if (event.target === event.currentTarget) previewStates.value[key] = \'complete\'');
-		expect(whatsNewSource).toContain('previewObserver?.disconnect()');
-		const repeatedMotion = /\binfinite\b|\bsetInterval\s*\(/u;
-		expect(repeatedMotion.test('animation: test 1s infinite')).toBe(true);
-		expect(repeatedMotion.test(whatsNewSource)).toBe(false);
-	});
-
-	test('画面外・非表示タブ・操作中は進行を停止し、停止設定は完成形にする', () => {
-		expect(whatsNewSource).toContain('prefer.r.animation.value && !reducedMotion.value');
-		expect(whatsNewSource).toContain("if (!motionAllowed.value) completePreviews();");
-		expect(whatsNewSource).toContain("window.document.addEventListener('visibilitychange', syncDocumentVisibility)");
-		expect(whatsNewSource).toContain("window.document.removeEventListener('visibilitychange', syncDocumentVisibility)");
-		expect(whatsNewSource).toContain('pageVisible.value = !window.document.hidden');
-		for (const selector of ['.preview[data-preview-visible="false"]', '.root[data-page-visible="false"] .preview', '.item:focus-within .preview']) expect(newPreviewStyles).toContain(selector);
-		expect(newPreviewStyles).toContain('animation-play-state: paused !important');
-		expect(newPreviewStyles).toContain('.root[data-motion="static"] * { animation: none !important; transition: none !important; scroll-behavior: auto !important; }');
-		expect(newPreviewStyles).toContain('@media (prefers-reduced-motion: reduce)');
-		expect(newPreviewStyles).toContain('.root, .root * { animation: none !important; transition: none !important; scroll-behavior: auto !important; }');
-	});
-
-	test('本文と項目タイトルを出現演出で隠さず、見本だけを別々の意味で動かす', () => {
-		expect(whatsNewSource).toContain('{{ item.title }}');
-		expect(whatsNewSource).toContain('{{ item.text }}');
-		for (const name of ['item', 'itemBody', 'itemTitle', 'itemText']) {
-			const style = whatsNewSource.match(new RegExp(`\\.${name} \\{([^}]+)\\}`, 'u'))?.[1];
-			expect(style, name).toBeDefined();
-			expect(style, name).not.toMatch(/animation:|opacity:\s*0(?:[;\s])|visibility:\s*hidden/u);
-		}
-		for (const animation of ['hwnUtageMedal', 'hwnExternalSidebar', 'hwnExternalGhost', 'hwnCollapsePreview', 'hwnPlannerCalendar', 'hwnGardenBloom', 'hwnBearJoin', 'hwnFarewellClose', 'hwnWelcomeLogo', 'hwnServerFan', 'hwnPolishAlign']) {
-			expect(newPreviewStyles).toContain(`@keyframes ${animation}`);
-			expect(newPreviewStyles).toContain(`animation: ${animation} `);
-		}
-	});
-
-	test('花は中央の専用枠へ収め、ゲーム素材や旧ロゴ図形を使わない', () => {
-		expect(previewMarkup).toContain(':data-flower="n"');
-		expect(newPreviewStyles).toContain('.gardenCard > i { display: grid; place-items: center; width: 32px; height: 36px;');
-		expect(previewMarkup).toContain('$style.farewellBook');
-		expect(previewMarkup).toContain('$style.farewellBookmark');
-		expect(previewMarkup).toContain('{{ item.previewLabel }}');
-		expect(previewMarkup).not.toContain('xiapopisland.top');
-		expect(previewMarkup).not.toContain('mk-juice.dev');
-		expect(previewMarkup.match(/>Hataskey</gu)).toHaveLength(2);
-		expect(whatsNewSource).not.toMatch(/(?:from|import)\s*\(?['"][^'"]*hanaawase/u);
-		expect(previewMarkup).not.toMatch(/○[×✕△□]|ti-shapes/u);
-		expect(newPreviewStyles).not.toMatch(/#[\da-f]{3,8}\b|\brgba?\(/iu);
-	});
-
-	test('スマホではスワイプ・左右ボタン・現在位置ドットで一件ずつ確認できる', () => {
-		expect(whatsNewSource).toContain('@scroll.passive="syncCarouselPosition"');
-		expect(whatsNewSource).toContain('@click="moveCarousel(-1)"');
-		expect(whatsNewSource).toContain('@click="moveCarousel(1)"');
-		expect(whatsNewSource).toContain(':aria-current="carouselIndex === i ? \'true\' : undefined"');
-		expect(whatsNewSource).toContain('scroll-snap-type: x mandatory');
-		expect(whatsNewSource).toContain('flex: 0 0 100%');
-		expect(whatsNewSource).toContain('(carouselTarget.value ?? carouselIndex.value) + direction');
-		expect(whatsNewSource).toContain('@pointerdown="carouselTarget = null"');
-		expect(whatsNewSource).toContain('@wheel.passive="carouselTarget = null"');
-	});
-
-	test('複数版がある場合の切替は項目一覧の前で、PC4列・狭い画面2列の操作性を保つ', () => {
-		const scopeIndex = whatsNewSource.indexOf(':class="$style.releaseScope"');
-		const itemsIndex = whatsNewSource.indexOf('ref="itemsViewport"');
-		expect(scopeIndex).toBeGreaterThan(0);
-		expect(scopeIndex).toBeLessThan(itemsIndex);
-		expect(whatsNewSource).toContain('v-if="whatsNew.releases.length > 1" :class="$style.releaseScope"');
-		expect(whatsNewSource).toContain('role="group" :aria-label="copy.releaseScope"');
-		expect(whatsNewSource).toContain(':aria-pressed="activeRelease.id === release.id"');
-		expect(whatsNewSource).toContain('{{ releaseLabels[release.id] }}');
-		expect(whatsNewSource).toContain('latestRelease: copy.latestRelease');
-		expect(whatsNewSource).toContain('previousRelease: copy.previousRelease');
-		expect(whatsNewSource).toContain('const activeReleaseId = ref<HataWhatsNewReleaseId>(\'latestRelease\')');
-		expect(whatsNewSource).toContain('v-for="item in activeRelease.items"');
-		const hasFourColumns = (source: string) => /\.releaseScope \{[^}]*grid-template-columns: repeat\(4, minmax\(0, 1fr\)\);/u.test(source);
-		expect(hasFourColumns(whatsNewSource.replace('repeat(4, minmax(0, 1fr))', 'repeat(3, minmax(0, 1fr))'))).toBe(false);
-		expect(hasFourColumns(whatsNewSource)).toBe(true);
-		expect(whatsNewSource).toMatch(/@container \(max-width: 700px\) \{\s*\.releaseScope \{ grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/u);
-		expect(whatsNewSource).toMatch(/\.releaseScope button \{[^}]*min-height: 44px;/u);
-		expect(whatsNewSource).toContain('.releaseScope button:focus-visible { outline: 2px solid var(--MI_THEME-accent);');
-		expect(whatsNewSource).toMatch(/\.releaseScope span \{[^}]*max-width: 100%;[^}]*overflow-wrap: anywhere;[^}]*white-space: normal;/u);
-		expect(whatsNewSource).toMatch(/\.releaseScope small \{[^}]*max-width: 100%;[^}]*overflow-wrap: anywhere;[^}]*text-align: center;/u);
-	});
-
-	test('リリース切替時にカルーセルと見本監視を先頭から結び直す', () => {
-		const selectIndex = whatsNewSource.indexOf('async function selectRelease(releaseId: HataWhatsNewReleaseId)');
-		const settleIndex = whatsNewSource.indexOf('if (previewStates.value[key] === \'running\') previewStates.value[key] = \'complete\'', selectIndex);
-		const activateIndex = whatsNewSource.indexOf('activeReleaseId.value = releaseId', selectIndex);
-		expect(selectIndex).toBeGreaterThan(0);
-		expect(settleIndex).toBeGreaterThan(selectIndex);
-		expect(settleIndex).toBeLessThan(activateIndex);
-		expect(whatsNewSource).toContain('carouselIndex.value = 0');
-		expect(whatsNewSource).toContain('carouselTarget.value = null');
-		expect(whatsNewSource).toContain('itemsViewport.value?.scrollTo({ left: 0, behavior: \'auto\' })');
-		expect(whatsNewSource).toContain('observeActivePreviews()');
-		expect(whatsNewSource).toContain(':data-preview-key="previewKey(activeRelease.id, item.preview)"');
-	});
-
-	test('モバイルの矢印とdotの押下領域は固定し、dot列を下段へ分ける', () => {
-		expect(whatsNewSource).toContain('grid-template-columns: 44px minmax(0, 1fr) 44px');
-		expect(whatsNewSource).toMatch(/\.carouselControls > button \{[^}]*width: 44px;[^}]*height: 44px;/u);
-		expect(whatsNewSource).toMatch(/\.carouselDots button \{[^}]*width: 24px;[^}]*height: 24px;/u);
-		expect(whatsNewSource).toContain('.carouselDots { grid-column: 1 / -1; grid-row: 2;');
-		expect(whatsNewSource).toContain('button::before { content: \'\'; width: 6px; height: 6px;');
-		expect(whatsNewSource).toContain('button[aria-current="true"]::before { transform: scale(1.5);');
-		expect(whatsNewSource).not.toMatch(/button\[aria-current="true"\]\s*\{[^}]*width:/u);
-		expect(whatsNewSource).toContain('button:focus-visible { outline: 2px solid var(--MI_THEME-accent);');
-		expect(newPreviewStyles).toContain('.root[data-motion="static"] *::before,');
-		expect(newPreviewStyles).toContain('.root *::before, .root *::after { animation: none !important; transition: none !important; }');
-	});
-
-	test('装飾の文字は固有名・ドメインだけとし、説明は外の翻訳済み本文に置く', () => {
-		expect(previewMarkup).not.toMatch(/\{\{\s*copy\./);
-		expect(previewMarkup).not.toMatch(/\{\{\s*copyx\./);
-		expect(previewMarkup).not.toMatch(/>@[a-z0-9_]/iu);
-		expect(previewMarkup).not.toContain('旗茶');
-	});
-
-	test('MkUISetupの左上に装飾用の星アイコンを置かない', () => {
-		expect(uiSetupSource).not.toContain('$style.headerChip');
-		expect(uiSetupSource).not.toContain('.headerChip');
-	});
-
-	test('PC幅ではUI設定と更新内容のモーダルを中央に置く', () => {
-		expect(uiSetupSource).toContain('max-width: 720px;\n\tmargin-inline: auto;');
-		expect(whatsNewSource).toContain('max-width: 1180px;\n\tmargin-inline: auto;');
-	});
-
-	test('表示済み判定用の完全な版とは別に旗鯖の表示版を出す', () => {
-		expect(whatsNewSource).toContain('{{ releaseVersion }}');
-		expect(whatsNewSource).toContain('getHataWhatsNewDisplayVersion(whatsNew.version)');
-		expect(whatsNewSource).not.toContain('{{ whatsNew.version }}');
-		expect(whatsNewSource).toContain('@closed="emit(\'closed\')"');
-		expect(whatsNewSource).not.toContain('miLocalStorage.setItem');
-	});
-
-	test('わかったを押すと更新内容の窓だけを下へ滑らかに退場させる', () => {
-		expect(whatsNewSource).toContain('@click="dismiss"');
-		expect(whatsNewSource).toContain('animation: hata-whats-new-slide-down .26s');
-		expect(whatsNewSource).toContain('transform: translateY(56px)');
-		expect(whatsNewSource).toContain('motionAllowed.value ? 260 : 0');
-	});
+afterEach(async () => {
+	app?.unmount(); app = undefined; await flush(); host.remove(); cleanups.forEach(cleanup => cleanup());
+	expect(errors).toEqual([]);
+	expect(resizeCallbacks.size).toBe(0);
+	expect(motionListeners.size).toBe(0);
+	vi.restoreAllMocks(); vi.unstubAllGlobals();
 });
 
-describe('hata-12.6.3だけの更新内容（実SFC）', () => {
-	const originalItems = [...HATA_WHATS_NEW.releases[0].items];
-	const mounted: Array<{ app: App<Element>; container: HTMLDivElement }> = [];
-	const observers: Array<{ callback: IntersectionObserverCallback; targets: Element[]; disconnect: ReturnType<typeof vi.fn> }> = [];
-	let reducedMotion = false;
-
-	beforeEach(() => {
-		reducedMotion = false;
-		observers.splice(0);
-		vi.spyOn(window.document, 'hidden', 'get').mockReturnValue(false);
-		vi.spyOn(window, 'matchMedia').mockImplementation(query => ({
-			media: query,
-			get matches() { return reducedMotion; },
-			onchange: null,
-			addEventListener: vi.fn(),
-			removeEventListener: vi.fn(),
-			addListener: vi.fn(),
-			removeListener: vi.fn(),
-			dispatchEvent: vi.fn(() => true),
-		}));
-		vi.stubGlobal('IntersectionObserver', class {
-			constructor(callback: IntersectionObserverCallback) { observers.push({ callback, targets: this.targets, disconnect: this.disconnect }); }
-			targets: Element[] = [];
-			observe = (target: Element): void => { this.targets.push(target); };
-			disconnect = vi.fn();
-		});
+describe('production update introduction', () => {
+	test('Introduce completes before the first story mounts and does not replay while paging', async () => {
+		prefer.r.animation.value = true;
+		autoOpen = false;
+		await mount();
+		expect(motions).toEqual([]);
+		expect(host.querySelector('[data-story]')).toBeNull();
+		modalOpened(); await flush();
+		const shell = requiredElement('[data-release-opening-shell]');
+		const opening = requiredElement('[data-release-opening]');
+		expect(shell.getAttribute('data-opening')).toBe('true');
+		expect(requiredElement('[data-opening-word]').textContent).toBe('Introduce');
+		expect(opening.getAttribute('aria-hidden')).toBe('true');
+		expect(opening.hasAttribute('inert')).toBe(true);
+		expect(requiredElement('footer').hasAttribute('inert')).toBe(true);
+		expect(host.querySelector('[data-story]')).toBeNull();
+		expect(motions.some(item => item.element.tagName === 'HEADER')).toBe(false);
+		const word = motions.find(item => item.element.hasAttribute('data-opening-word'));
+		const surface = motions.find(item => item.element.hasAttribute('data-opening-surface'));
+		expect(word).toBeDefined(); expect(surface).toBeDefined();
+		expect(motions.every(item => opening.contains(item.element))).toBe(true);
+		expect(word?.frames.some(frame => Number(frame.opacity) === 1)).toBe(true);
+		expect(word?.frames.at(-1)).toMatchObject({ opacity: 0 });
+		expect(word?.options).toMatchObject({ iterations: 1, duration: 2200, easing: 'linear' });
+		expect(word?.frames[1]).toMatchObject({ offset: .18, opacity: 1, transform: 'scale(1)', letterSpacing: '-.04em', filter: 'blur(0px)' });
+		expect(word?.frames[2]).toMatchObject({ offset: .64, opacity: 1, transform: 'scale(1)', letterSpacing: '-.04em', filter: 'blur(0px)' });
+		word?.finish(); await flush();
+		expect(host.querySelector('[data-story]')).toBeNull();
+		surface?.finish(); await flush();
+		expect(requiredElement('[data-release-opening-shell]')).toBe(shell);
+		expect(shell.getAttribute('data-opening')).toBe('false');
+		expect(motions.find(item => item.element.tagName === 'HEADER')?.frames[0]).toMatchObject({ opacity: 0 });
+		expect(host.querySelector('[data-release-opening]')).toBeNull();
+		expect(requiredElement('footer').hasAttribute('inert')).toBe(false);
+		expect(host.querySelector('[data-story] h2')).not.toBeNull();
+		expect(window.document.activeElement).toBe(host.querySelector('[data-story] h2'));
+		await finishMotion();
+		await next(); await finishMotion();
+		requiredElement<HTMLButtonElement>('[aria-label="戻る"]').click(); await finishMotion();
+		expect(host.querySelector('[role="dialog"]')?.getAttribute('data-page')).toBe('1');
+		expect(motions.filter(item => item.element.hasAttribute('data-opening-word'))).toHaveLength(1);
 	});
-
-	afterEach(() => {
-		for (const { app, container } of mounted.splice(0)) { app.unmount(); container.remove(); }
-		HATA_WHATS_NEW.releases[0].items = [...originalItems];
-		vi.restoreAllMocks();
-		vi.unstubAllGlobals();
+	test.each(['programmatic close', 'Escape'])('closing via %s during Introduce never reveals a late story', async (method) => {
+		prefer.r.animation.value = true;
+		await mount();
+		expect(host.querySelector('[data-release-opening]')).not.toBeNull();
+		expect(motions.some(item => !item.done)).toBe(true);
+		if (method === 'programmatic close') requiredElement<HTMLButtonElement>('[aria-label="更新案内を閉じる"]').click();
+		else requiredElement('[data-modal]').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+		await flush();
+		expect(motions.every(item => item.done)).toBe(true);
+		const count = motions.length;
+		await finishMotion();
+		expect(host.querySelector('[data-release-opening]')).toBeNull();
+		expect(host.querySelector('[data-story]')).toBeNull();
+		expect(motions.length).toBe(count);
 	});
-
-	async function mountGuide() {
-		const container = window.document.createElement('div');
-		window.document.body.append(container);
-		const app = createApp(defineComponent({ setup: () => () => h(MkHataWhatsNew) }));
-		app.mount(container);
-		mounted.push({ app, container });
-		await nextTick();
-		const viewport = container.querySelector('[data-preview]')?.parentElement?.parentElement;
-		if (!viewport) throw new Error('Release item viewport did not mount');
-		const scrollTo = vi.fn();
-		Object.defineProperty(viewport, 'scrollTo', { configurable: true, value: scrollTo });
-		return { container, viewport, scrollTo };
-	}
-
-	// Keep carousel behavior covered independently of the current release's item count.
-	function mountCarouselFixture() {
-		HATA_WHATS_NEW.releases[0].items = (['utageAchievements', 'externalSidebar', 'dailyPolish', 'welcomeRenewal'] as const)
-			.map(preview => ({ ...originalItems[0], preview }));
-		return mountGuide();
-	}
-
-	function intersectionEntry(target: Element, ratio: number): IntersectionObserverEntry {
-		const boundingClientRect = target.getBoundingClientRect();
-		return {
-			target,
-			isIntersecting: ratio > 0,
-			intersectionRatio: ratio,
-			boundingClientRect,
-			intersectionRect: boundingClientRect,
-			rootBounds: null,
-			time: performance.now(),
+	test.each(['preference', 'reduced', 'hidden'])('%s initially skips Introduce and immediately makes the first page usable', async (setting) => {
+		prefer.r.animation.value = setting !== 'preference'; reduced = setting === 'reduced'; hidden = setting === 'hidden';
+		await mount();
+		expect(host.querySelector('[data-release-opening]')).toBeNull();
+		expect(requiredElement('[data-release-opening-shell]').getAttribute('data-opening')).toBe('false');
+		expect(requiredElement('footer').hasAttribute('inert')).toBe(false);
+		expect(requiredElement<HTMLButtonElement>('[aria-label="次へ"]').disabled).toBe(false);
+		expect(motions).toEqual([]);
+		expect(window.document.activeElement).toBe(host.querySelector('[data-story] h2'));
+	});
+	test.each(['reduced', 'hidden'])('%s during Introduce settles to readable content without replaying on return', async (setting) => {
+		prefer.r.animation.value = true;
+		await mount();
+		expect(host.querySelector('[data-release-opening]')).not.toBeNull();
+		expect(motions.some(item => !item.done)).toBe(true);
+		if (setting === 'reduced') { reduced = true; motionListeners.forEach(listener => listener()); } else { hidden = true; window.document.dispatchEvent(new Event('visibilitychange')); }
+		await flush();
+		expect(motions.every(item => item.done)).toBe(true);
+		expect(host.querySelector('[data-release-opening]')).toBeNull();
+		expect(host.querySelector('[data-story] h2')).not.toBeNull();
+		expect(requiredElement('footer').hasAttribute('inert')).toBe(false);
+		const count = motions.length;
+		reduced = false; hidden = false;
+		motionListeners.forEach(listener => listener()); window.document.dispatchEvent(new Event('visibilitychange')); await flush();
+		expect(motions.length).toBe(count);
+		expect(requiredElement<HTMLButtonElement>('[aria-label="次へ"]').disabled).toBe(false);
+	});
+	test('unmount during Introduce releases effects without starting content entrance', async () => {
+		prefer.r.animation.value = true;
+		await mount();
+		expect(motions.some(item => !item.done)).toBe(true);
+		const count = motions.length;
+		app?.unmount(); app = undefined; await flush();
+		expect(motions.every(item => item.done)).toBe(true);
+		await finishMotion();
+		expect(motions.length).toBe(count);
+		expect(host.querySelector('[data-story]')).toBeNull();
+	});
+	test('renders all approved pages with read-only real product components and stable notification ownership', async () => {
+		const context = createHataskeyNotificationToasts(computed(() => false), computed(() => false));
+		cleanups.push(registerNotificationPageContext(context, () => true));
+		const received = vi.fn(); cleanups.push(registerHataFeedNoticeHost({ active: () => true, notify: received }));
+		const save = vi.spyOn(localStorage, 'setItem');
+		await mount();
+		expect(host.querySelector('[role="dialog"]')?.getAttribute('aria-labelledby')).toBe('hata-whats-new-title');
+		expect(host.querySelector('#hata-whats-new-title')?.textContent).toBe('今回の更新内容(hata-12.7)');
+		expect(host.querySelector('header')?.textContent).not.toContain('HATASKEY RELEASE');
+		expect(host.textContent).toContain('V3.1');
+		store.r.darkMode.value = true; await flush();
+		expect(host.querySelector('[role="dialog"]')?.getAttribute('data-mode')).toBe('dark');
+		for (const id of ['akatsuki', 'koke', 'kisetsu', 'kashin', 'suri', 'hatakyu']) {
+			requiredElement<HTMLButtonElement>(`[data-theme-choice="${id}"]`).click(); await flush();
+			expect(host.querySelector(`[data-theme-choice="${id}"]`)?.getAttribute('aria-pressed')).toBe('true');
+			expect(host.querySelector('[data-theme-choice="koke"]')?.textContent).toContain('NEW');
+		}
+		hatadyNotify('実際の画面への通知');
+		const notice = hatadyNotice.value;
+		await next();
+		expect(host.textContent).toContain('V2.0');
+		expect(host.textContent).toContain('月の郵便室');
+		expect(host.querySelectorAll('[data-hy-entrance="home"]')).toHaveLength(6);
+		expect(hatadyNotice.value).toBe(notice);
+		expect(getNotificationPageContext()).toBe(context);
+		await next();
+		expect(host.textContent).toContain('V3.0');
+		expect(host.querySelectorAll('[data-hatafeed-home-panel]')).toHaveLength(4);
+		hataFeedNotify('本体での更新'); expect(received).toHaveBeenCalledWith('本体での更新');
+		expect(getNotificationPageContext()).toBe(context);
+		await next();
+		expect(host.querySelector('[data-story]')?.getAttribute('data-story')).toBe('hataintro');
+		expect(host.querySelector('[role="dialog"]')?.getAttribute('data-page')).toBe('4');
+		expect(host.textContent).toContain('使い方が、見てわかる。');
+		expect(host.querySelectorAll('[data-hataintro-panel]')).toHaveLength(3);
+		expect(requiredElement('[data-hataintro-canvas]').hasAttribute('inert')).toBe(true);
+		expect(requiredElement('.hata-intro').style.colorScheme).toBe('dark');
+		expect(requiredElement('[data-story] .hg-search-box input').getAttribute('placeholder')).toBe('例：絵文字、公開範囲、映画 記録');
+		expect(getNotificationPageContext()).toBe(context);
+		const seen: string[] = [];
+		while (host.querySelector('[aria-label="次へ"]')) { await next(); for (const card of host.querySelectorAll<HTMLElement>('[data-change-id]')) seen.push(card.getAttribute('data-change-id') ?? ''); }
+		expect(seen).toEqual(HATA_WHATS_NEW.groups.flatMap(group => group.cards.map(card => card.id)));
+		expect(host.querySelector('footer')?.textContent).toContain('12 / 12');
+		expect(misskeyApi).not.toHaveBeenCalled(); expect(save).not.toHaveBeenCalled(); expect(prefer.commit).not.toHaveBeenCalled();
+	});
+	test('short pages remain readable and resizing preserves the second topic', async () => {
+		bodyHeight = 380; width = 390;
+		await mount(); await next(); await next(); await next(); await next(); await next();
+		expect(host.querySelector('[data-summary]')?.getAttribute('data-summary')).toBe('hatask-sharing');
+		bodyHeight = 600; resizeCallbacks.forEach(callback => callback()); await flush();
+		expect(host.querySelector('[data-change-id="hatask-sharing"]')).not.toBeNull();
+		bodyHeight = 380; resizeCallbacks.forEach(callback => callback()); await flush();
+		expect(host.querySelector('[data-summary]')?.getAttribute('data-summary')).toBe('hatask-sharing');
+		expect(host.querySelector('footer')?.textContent).toContain('/ 20');
+	});
+	test('back/forward labels stay accessible while visible buttons are icons, and motion stops on close', async () => {
+		prefer.r.animation.value = true;
+		await mount(); await finishMotion();
+		expect(motions.length).toBeGreaterThan(0);
+		requiredElement<HTMLButtonElement>('[aria-label="次へ"]').click(); await finishMotion();
+		expect(host.querySelector('[aria-label="戻る"]')?.textContent.trim()).toBe('');
+		expect(host.querySelector('[aria-label="次へ"]')?.textContent.trim()).toBe('');
+		expect(window.document.activeElement).toBe(host.querySelector('[data-story] h2'));
+		requiredElement<HTMLButtonElement>('[aria-label="次へ"]').click();
+		requiredElement<HTMLButtonElement>('[aria-label="更新案内を閉じる"]').click();
+		await finishMotion();
+		expect(host.querySelector('[data-story]')).toBeNull();
+		expect(motions.every(item => item.done)).toBe(true);
+	});
+	test('reduced motion and a hidden document settle finite entrances without replay loops', async () => {
+		prefer.r.animation.value = true;
+		await mount();
+		reduced = true; motionListeners.forEach(listener => listener()); await flush();
+		expect(motions.every(item => item.done)).toBe(true);
+		const count = motions.length;
+		reduced = false; motionListeners.forEach(listener => listener()); await flush();
+		expect(motions.length).toBe(count);
+		requiredElement<HTMLButtonElement>('[aria-label="次へ"]').click(); await finishMotion();
+		hidden = true; window.document.dispatchEvent(new Event('visibilitychange')); await flush();
+		expect(motions.every(item => item.done)).toBe(true);
+		requiredElement('[data-modal]').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })); await flush();
+		expect(host.querySelector('[data-story]')).toBeNull();
+	});
+	test('the extracted live HataFeed home still routes user actions through its owner', async () => {
+		const issue = vi.fn(), navigate = vi.fn(), approve = vi.fn(), ownHistory = vi.fn();
+		app = createApp(HataFeedHome, { isStaff: true, roadmap: sampleIssues, ownEmojiRequests: sampleRequests, emojiRequests: sampleRequests, emojiQuota: null, activity: sampleActivity, issues: sampleIssues, onIssue: issue, onNavigate: navigate, onApprove: approve, onOwnHistory: ownHistory });
+		globals(app); app.mount(host); await flush();
+		const button = (text: string) => {
+			const found = [...host.querySelectorAll<HTMLButtonElement>('button')].find(item => item.textContent.includes(text));
+			if (!found) throw new Error(`Missing button: ${text}`);
+			return found;
 		};
-	}
-
-	function showActivePreviews() {
-		const observer = observers.at(-1);
-		if (!observer) throw new Error('Release previews are not observed');
-		observer.callback(observer.targets.map(target => intersectionEntry(target, 1)), {} as IntersectionObserver);
-	}
-
-	test('hata-12.6.3の修正1項目だけを表示し、版の切替と項目の移動を無効にする', async () => {
-		const { container } = await mountGuide();
-		expect(HATA_WHATS_NEW.version).toBe('2026.9.0-hata.12.6.3');
-		expect(HATA_WHATS_NEW.releases).toHaveLength(1);
-		const release = HATA_WHATS_NEW.releases[0];
-		expect(release.id).toBe('latestRelease');
-		expect(release.version).toBe(HATA_WHATS_NEW.version);
-		expect(release.items.map(item => item.preview)).toEqual(['welcomeRenewal']);
-		expect(container.querySelector('nav > span')?.textContent).toBe('1 / 1');
-		expect(container.querySelector<HTMLButtonElement>('nav > button:first-child')?.disabled).toBe(true);
-		expect(container.querySelector<HTMLButtonElement>('nav > button:last-child')?.disabled).toBe(true);
-		expect(container.querySelector('[role="group"]')).toBeNull();
-		expect(container.querySelector('[aria-pressed]')).toBeNull();
-		expect(container.textContent).toContain(getHataWhatsNewDisplayVersion(release.version));
-		expect(container.textContent).toContain(release.headline);
-		expect([...container.querySelectorAll<HTMLElement>('[data-preview]')].map(preview => preview.dataset.previewKey)).toEqual(release.items.map(item => `${release.id}:${item.preview}`));
-		for (const item of release.items) {
-			expect(container.textContent).toContain(item.title);
-			expect(container.textContent).toContain(item.text);
-		}
-		expect(container.querySelector('[role="dialog"]')?.getAttribute('aria-labelledby')).toBe('hata-whats-new-title');
-		expect(container.querySelector('#hata-whats-new-title')?.textContent.trim()).toBeTruthy();
+		button('小さな画面でも、予定を見やすく').click(); expect(issue).toHaveBeenCalledWith(sampleIssues[0].id);
+		button('すべての予定').click(); expect(navigate).toHaveBeenCalledWith('roadmap');
+		button('一覧を見る').click(); expect(navigate).toHaveBeenCalledWith('issues');
+		button('申請履歴を見る').click(); expect(ownHistory).toHaveBeenCalled();
+		const pending = [...host.querySelectorAll('section')].find(section => section.textContent.includes('確認待ちの絵文字'));
+		expect(pending).toBeDefined();
+		requiredElement<HTMLButtonElement>('button', pending).click(); expect(approve).toHaveBeenCalledWith(sampleRequests[0]);
 	});
-
-	test('4項目を矢印・ドットで移動し、スワイプ位置と端の無効状態を同期する', async () => {
-		const { container, viewport, scrollTo } = await mountCarouselFixture();
-		for (const [index, item] of [...viewport.children].entries()) Object.defineProperty(item, 'offsetLeft', { configurable: true, value: index * 320 });
-		const previous = container.querySelector<HTMLButtonElement>('nav > button:first-child');
-		const next = container.querySelector<HTMLButtonElement>('nav > button:last-child');
-		const dots = [...container.querySelectorAll<HTMLButtonElement>('nav > div > button')];
-		if (!previous || !next) throw new Error('Carousel arrow buttons did not mount');
-		expect(dots).toHaveLength(4);
-		expect(container.querySelector('nav > span')?.textContent).toBe('1 / 4');
-		expect(previous.disabled).toBe(true);
-		expect(next.disabled).toBe(false);
-		expect(dots[0].getAttribute('aria-current')).toBe('true');
-		for (const button of [previous, next, ...dots]) expect(button.getAttribute('aria-label')?.trim()).toBeTruthy();
-		// Consecutive clicks keep the requested target while smooth scrolling is pending.
-		next.click();
-		next.click();
-		await nextTick();
-		expect(container.querySelector('nav > span')?.textContent).toBe('3 / 4');
-		expect(scrollTo).toHaveBeenLastCalledWith({ left: 640, behavior: 'smooth' });
-		dots[3].click();
-		await nextTick();
-		expect(container.querySelector('nav > span')?.textContent).toBe('4 / 4');
-		expect(scrollTo).toHaveBeenLastCalledWith({ left: 960, behavior: 'smooth' });
-		expect(next.disabled).toBe(true);
-		expect(dots.map(dot => dot.getAttribute('aria-current'))).toEqual([null, null, null, 'true']);
-		previous.click();
-		await nextTick();
-		expect(container.querySelector('nav > span')?.textContent).toBe('3 / 4');
-		viewport.dispatchEvent(new Event('pointerdown'));
-		viewport.scrollLeft = 320;
-		viewport.dispatchEvent(new Event('scroll'));
-		await nextTick();
-		expect(container.querySelector('nav > span')?.textContent).toBe('2 / 4');
-		expect(dots[1].getAttribute('aria-current')).toBe('true');
-		previous.click();
-		await nextTick();
-		expect(container.querySelector('nav > span')?.textContent).toBe('1 / 4');
-		expect(previous.disabled).toBe(true);
-		expect(scrollTo).toHaveBeenLastCalledWith({ left: 0, behavior: 'smooth' });
+	test('the notification example pauses offscreen and on hover, finishes once, and releases its clock', async () => {
+		let frameId = 0, now = 0;
+		const frames = new Map<number, FrameRequestCallback>();
+		vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => { frames.set(++frameId, callback); return frameId; });
+		vi.stubGlobal('cancelAnimationFrame', (id: number) => frames.delete(id));
+		const advance = () => { now += 80; const pending = [...frames.values()]; frames.clear(); pending.forEach(callback => callback(now)); };
+		app = createApp(NotificationPreview, { motion: true }); globals(app); app.mount(host); await flush();
+		expect(frames.size).toBeGreaterThan(0); advance();
+		requiredElement('[aria-hidden="true"]').dispatchEvent(new Event('pointerenter')); await flush();
+		expect(frames.size).toBe(0);
+		requiredElement('[aria-hidden="true"]').dispatchEvent(new Event('pointerleave')); await flush();
+		expect(frames.size).toBeGreaterThan(0);
+		hidden = true; window.document.dispatchEvent(new Event('visibilitychange')); await flush();
+		expect(frames.size).toBe(0);
+		hidden = false; window.document.dispatchEvent(new Event('visibilitychange')); await flush();
+		for (let count = 0; count < 200 && frames.size; count++) { advance(); await flush(); }
+		expect(frames.size).toBe(0);
+		requiredElement('[aria-hidden="true"]').dispatchEvent(new Event('pointerleave')); await flush();
+		expect(frames.size).toBe(0);
+		app.unmount(); app = undefined;
+		window.document.dispatchEvent(new Event('visibilitychange')); await flush();
+		expect(frames.size).toBe(0);
 	});
-
-	test('可視率を満たした見本だけを開始し、子の終了や再表示で完了状態を巻き戻さない', async () => {
-		const { container } = await mountGuide();
-		const previews = [...container.querySelectorAll<HTMLElement>('[data-preview]')];
-		const preview = previews[0];
-		const observer = observers.at(-1);
-		if (!observer || !preview.firstElementChild) throw new Error('Release preview did not mount');
-		const visibility = (ratio: number) => observer.callback([intersectionEntry(preview, ratio)], {} as IntersectionObserver);
-		expect(previews.map(item => item.dataset.previewState)).toEqual(['ready']);
-		visibility(0.59);
-		await nextTick();
-		expect(preview.dataset.previewState).toBe('ready');
-		visibility(1);
-		await nextTick();
-		expect(previews.map(item => item.dataset.previewState)).toEqual(['running']);
-		preview.firstElementChild.dispatchEvent(new Event('animationend', { bubbles: true }));
-		await nextTick();
-		expect(preview.dataset.previewState).toBe('running');
-		preview.dispatchEvent(new Event('animationend'));
-		await nextTick();
-		expect(preview.dataset.previewState).toBe('complete');
-		visibility(0);
-		await nextTick();
-		expect(preview.dataset.previewVisible).toBe('false');
-		visibility(1);
-		await nextTick();
-		expect(preview.dataset.previewVisible).toBe('true');
-		expect(previews.map(item => item.dataset.previewState)).toEqual(['complete']);
-	});
-
-	test('動きを減らす設定では全4項目を完成形で表示し、カルーセルも即座に移動する', async () => {
-		reducedMotion = true;
-		const { container, viewport, scrollTo } = await mountCarouselFixture();
-		for (const [index, item] of [...viewport.children].entries()) Object.defineProperty(item, 'offsetLeft', { configurable: true, value: index * 320 });
-		showActivePreviews();
-		await nextTick();
-		expect(container.querySelector('[data-motion]')?.getAttribute('data-motion')).toBe('static');
-		expect([...container.querySelectorAll<HTMLElement>('[data-preview]')].map(preview => preview.dataset.previewState)).toEqual(['complete', 'complete', 'complete', 'complete']);
-		container.querySelector<HTMLButtonElement>('nav > button:last-child')?.click();
-		await nextTick();
-		expect(container.querySelector('nav > span')?.textContent).toBe('2 / 4');
-		expect(scrollTo).toHaveBeenLastCalledWith({ left: 320, behavior: 'auto' });
+	test('all CSS Module references resolve and the header uses balanced columns inside a centered panel', async () => {
+		const folder = path.join(process.cwd(), 'src/components');
+		const css = fs.readFileSync(path.join(folder, 'hata-whats-new/release.module.css'), 'utf8');
+		const compiled = await compileStyleAsync({ source: css, filename: 'release.module.css', id: 'release', modules: true });
+		expect(compiled.errors).toEqual([]);
+		const sources = ['MkHataWhatsNew.vue', ...['HataskShowcase.vue', 'HatadyShowcase.vue', 'HataFeedShowcase.vue', 'HataIntroShowcase.vue', 'NotificationPreview.vue'].map(name => `hata-whats-new/${name}`)].map(name => fs.readFileSync(path.join(folder, name), 'utf8')).join('\n');
+		const missing = (source: string) => [...source.matchAll(/\$style\.([\w]+)/g)].map(match => match[1]).filter(name => !compiled.modules?.[name]);
+		expect(missing(`${sources}\n$style.missingExample`)).toContain('missingExample');
+		expect(missing(sources)).toEqual([]);
+		const centered = (source: string) => /\.releaseHeader\s*\{[^}]*grid-template-columns:\s*44px minmax\(0, 1fr\) 44px/.test(source) && /\.releaseHeading\s*\{[^}]*justify-content:\s*center/.test(source) && /\.releasePanel\s*\{[^}]*margin:\s*auto/.test(source);
+		expect(centered(css.replaceAll('44px minmax(0, 1fr) 44px', '1fr auto'))).toBe(false);
+		expect(centered(css)).toBe(true);
+		expect(css).toContain('mask-image: linear-gradient(to bottom');
+		expect(css).toContain('overflow: clip; container: release-body / size');
 	});
 });
