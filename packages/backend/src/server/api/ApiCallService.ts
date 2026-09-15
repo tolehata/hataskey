@@ -18,6 +18,7 @@ import { createTemp } from '@/misc/create-temp.js';
 import { bindThis } from '@/decorators.js';
 import { RoleService } from '@/core/RoleService.js';
 import { TelemetryService } from '@/core/telemetry/TelemetryService.js';
+import { isLtlEmojiVoteApiPath } from '@/core/ltl-emoji-vote.js';
 import type { Config } from '@/config.js';
 import type { FlashToken } from '@/misc/flash-token.js';
 import { ApiError } from './error.js';
@@ -126,30 +127,37 @@ export class ApiCallService implements OnApplicationShutdown {
 			throw err;
 		} else {
 			const errId = randomUUID();
+			const ephemeral = isLtlEmojiVoteApiPath(ep.name);
+			const diagnostic = ephemeral ? new Error('Ephemeral emoji vote operation failed') : err;
+			if (ephemeral) {
+				// 例外にSQL引数などが付いていても投票の内容を診断ログ/telemetryへ持ち込まない。
+				diagnostic.name = ['Error', 'TypeError', 'RangeError', 'ReferenceError', 'SyntaxError', 'QueryFailedError'].includes(err.name) ? err.name : 'Error';
+				diagnostic.stack = `${diagnostic.name}: ${diagnostic.message}\n${err.stack?.split('\n').filter(line => /^\s+at /.test(line)).join('\n') ?? ''}`;
+			}
 			this.logger.write({
 				level: 'error',
 				eventName: 'api.endpoint.failed',
-				message: `Internal error occurred in ${ep.name}: ${err.message}`,
+				message: `Internal error occurred in ${ep.name}: ${diagnostic.message}`,
 				attributes: {
 					'api.endpoint': ep.name,
 					'error.id': errId,
-					'api.params': data,
+					...(!ephemeral ? { 'api.params': data } : {}),
 				},
-				error: err,
+				error: diagnostic,
 			});
 
 			// extraにps(生のAPIパラメータ)を含めない。logger.write()側はLogNormalizerのredactorで
 			// 秘匿化されるが、telemetryService経由(Sentry等)はredactorを経由しないため、
 			// 未加工の認証情報が外部送信されてしまう(上流2026.7.0で無くなった要素)。
-			this.telemetryService.captureMessage(`Internal error occurred in ${ep.name}: ${err.message}`, {
+			this.telemetryService.captureMessage(`Internal error occurred in ${ep.name}: ${diagnostic.message}`, {
 				level: 'error',
-				userId,
+				...(!ephemeral ? { userId } : {}),
 				extra: {
 					ep: ep.name,
 					e: {
-						message: err.message,
-						code: err.name,
-						stack: err.stack,
+						message: diagnostic.message,
+						code: diagnostic.name,
+						stack: diagnostic.stack,
 						id: errId,
 					},
 				},
@@ -157,8 +165,8 @@ export class ApiCallService implements OnApplicationShutdown {
 
 			throw new ApiError(null, {
 				e: {
-					message: err.message,
-					code: err.name,
+					message: diagnostic.message,
+					code: diagnostic.name,
 					id: errId,
 				},
 			});

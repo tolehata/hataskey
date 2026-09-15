@@ -12,6 +12,7 @@ import type { Config } from '@/config.js';
 import type { InstancesRepository, AccessTokensRepository } from '@/models/_.js';
 import { DI } from '@/di-symbols.js';
 import { UserEntityService } from '@/core/entities/UserEntityService.js';
+import { isLtlEmojiVoteApiPath } from '@/core/ltl-emoji-vote.js';
 import { bindThis } from '@/decorators.js';
 import endpoints from './endpoints.js';
 import { ApiCallService } from './ApiCallService.js';
@@ -63,7 +64,7 @@ export class ApiServerService {
 
 		// Prevent cache
 		fastify.addHook('onRequest', (request, reply, done) => {
-			reply.header('Cache-Control', 'private, max-age=0, must-revalidate');
+			reply.header('Cache-Control', isLtlEmojiVoteApiPath(request.routeOptions.url) ? 'no-store' : 'private, max-age=0, must-revalidate');
 			done();
 		});
 

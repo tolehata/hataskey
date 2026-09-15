@@ -6,7 +6,6 @@
 import { randomInt } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import { In, IsNull } from 'typeorm';
-import * as Redis from 'ioredis';
 import { DI } from '@/di-symbols.js';
 import type { EmojisRepository, MiEmoji, MiNote, NotesRepository } from '@/models/_.js';
 import type { MiLocalUser, MiUser } from '@/models/User.js';
@@ -15,11 +14,9 @@ import { QueryService } from '@/core/QueryService.js';
 import { RoleService } from '@/core/RoleService.js';
 import { IdService } from '@/core/IdService.js';
 import { NoteEntityService } from '@/core/entities/NoteEntityService.js';
+import { ltlEmojiVoteStore } from '@/core/ltl-emoji-vote-ipc.js';
 import {
-	LTL_EMOJI_VOTE_CAST_SCRIPT, LTL_EMOJI_VOTE_DURATION_MS, LTL_EMOJI_VOTE_EXIT_MS,
-	LTL_EMOJI_VOTE_FRESH_MS, LTL_EMOJI_VOTE_KEY, LTL_EMOJI_VOTE_READ_SCRIPT,
-	LTL_EMOJI_VOTE_RESULT_MS, LTL_EMOJI_VOTE_START_DELAY_MS, LTL_EMOJI_VOTE_START_SCRIPT,
-	LTL_EMOJI_VOTE_TALLY_MS, LTL_EMOJI_VOTE_TRIGGER, parseLtlEmojiVoteRead, rankLtlEmojiVotes,
+	LTL_EMOJI_VOTE_FRESH_MS, LTL_EMOJI_VOTE_START_DELAY_MS, LTL_EMOJI_VOTE_TRIGGER, rankLtlEmojiVotes,
 } from '@/core/ltl-emoji-vote.js';
 import type { LtlVoteEmoji, LtlVoteMetadata, LtlVoteResponse } from '@/core/ltl-emoji-vote.js';
 
@@ -32,7 +29,6 @@ export class LtlEmojiVoteError extends Error {
 @Injectable()
 export class LtlEmojiVoteService {
 	constructor(
-		@Inject(DI.redis) private redisClient: Redis.Redis,
 		@Inject(DI.notesRepository) private notesRepository: NotesRepository,
 		@Inject(DI.emojisRepository) private emojisRepository: EmojisRepository,
 		private queryService: QueryService,
@@ -59,8 +55,6 @@ export class LtlEmojiVoteService {
 	public async onNoteCreated(note: MiNote, user: Pick<MiUser, 'id' | 'host'>): Promise<boolean> {
 		if (user.host !== null || note.userHost !== null || note.userId !== user.id ||
 			note.visibility !== 'public' || note.channelId !== null || note.text?.trim() !== LTL_EMOJI_VOTE_TRIGGER) return false;
-		// 接続回復待ちのキューに演出開始を残さない。成立済みの投稿を遅延させない。
-		if (this.redisClient.status !== 'ready') return false;
 		const createdAt = this.idService.parse(note.id).date.getTime();
 		if (Date.now() - createdAt > LTL_EMOJI_VOTE_FRESH_MS || createdAt > Date.now() + 1000) return false;
 		const requestedAt = Date.now();
@@ -80,18 +74,13 @@ export class LtlEmojiVoteService {
 	private async startRound(noteId: string, createdAt: number, requestedAt: number): Promise<boolean> {
 		const pool = (await this.emojisRepository.find({ where: { host: IsNull(), isSensitive: false } })).filter(emoji => this.usableEmoji(emoji));
 		// DB 待機を打ち切った呼び出しが後から継続しても、開始時刻を更新して復活させない。
-		if (Date.now() - requestedAt > LTL_EMOJI_VOTE_START_DELAY_MS || this.redisClient.status !== 'ready' || pool.length === 0) return false;
+		if (Date.now() - requestedAt > LTL_EMOJI_VOTE_START_DELAY_MS || pool.length === 0) return false;
 		const count = Math.min(pool.length, 5);
 		for (let index = 0; index < count; index++) {
 			const swap = randomInt(index, pool.length);
 			[pool[index], pool[swap]] = [pool[swap], pool[index]];
 		}
-		const metadata = { id: noteId, noteId, candidates: pool.slice(0, count).map(emoji => this.packEmoji(emoji)) };
-		const claimed = await this.redisClient.eval(LTL_EMOJI_VOTE_START_SCRIPT, 2,
-			LTL_EMOJI_VOTE_KEY, `hata:ltl-emoji-vote:seen:${noteId}`,
-			JSON.stringify(metadata), createdAt, requestedAt, LTL_EMOJI_VOTE_FRESH_MS, LTL_EMOJI_VOTE_START_DELAY_MS,
-			LTL_EMOJI_VOTE_DURATION_MS, LTL_EMOJI_VOTE_TALLY_MS, LTL_EMOJI_VOTE_RESULT_MS, LTL_EMOJI_VOTE_EXIT_MS);
-		return Number(claimed) === 1;
+		return ltlEmojiVoteStore.start({ noteId, createdAt, requestedAt, candidates: pool.slice(0, count).map(emoji => this.packEmoji(emoji)) });
 	}
 
 	private async canView(noteId: string, me: MiLocalUser | null): Promise<boolean> {
@@ -125,7 +114,7 @@ export class LtlEmojiVoteService {
 	}
 
 	private async read(me: MiLocalUser | null) {
-		return parseLtlEmojiVoteRead(await this.redisClient.eval(LTL_EMOJI_VOTE_READ_SCRIPT, 1, LTL_EMOJI_VOTE_KEY, me?.id ?? ''));
+		return ltlEmojiVoteStore.read(me?.id ?? null);
 	}
 
 	@bindThis
@@ -155,11 +144,8 @@ export class LtlEmojiVoteService {
 		const { metadata } = await this.read(me);
 		if (!metadata || metadata.id !== roundId || !await this.canView(metadata.noteId, me) || !await this.candidatesStillAvailable(metadata)) throw new LtlEmojiVoteError('NO_SUCH_ROUND');
 		if (!metadata.candidates.some(emoji => emoji.id === emojiId)) throw new LtlEmojiVoteError('INVALID_EMOJI');
-		const result = await this.redisClient.eval(LTL_EMOJI_VOTE_CAST_SCRIPT, 1, LTL_EMOJI_VOTE_KEY, roundId, me.id, emojiId);
-		if (result !== 'OK') {
-			if (result === 'VOTING_CLOSED' || result === 'ALREADY_VOTED' || result === 'INVALID_EMOJI' || result === 'NO_SUCH_ROUND') throw new LtlEmojiVoteError(result);
-			throw new Error('Invalid emoji vote result');
-		}
+		const result = await ltlEmojiVoteStore.vote(roundId, me.id, emojiId);
+		if (result !== 'OK') throw new LtlEmojiVoteError(result);
 		return this.show(me, metadata.noteId);
 	}
 }

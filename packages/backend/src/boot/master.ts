@@ -17,6 +17,7 @@ import { configureLogging, shutdownLogging } from '@/logging/logging-runtime.js'
 import { initTelemetry, shutdownTelemetry } from '@/core/telemetry/telemetry-registry.js';
 import { showMachineInfo } from '@/misc/show-machine-info.js';
 import { envOption } from '@/env.js';
+import { startLtlEmojiVoteCoordinator, stopLtlEmojiVoteCoordinator } from '@/core/ltl-emoji-vote-ipc.js';
 import { initExtraThreadPool, jobQueue, server } from './common.js';
 import { installShutdownSignalHandlers } from './shutdown-handler.js';
 import type { INestApplicationContext } from '@nestjs/common';
@@ -95,6 +96,8 @@ export async function masterMain() {
 	// シャットダウン時に明示的にclose()してOnApplicationShutdown(DB/Redis切断・queue drain)を発火させる。
 	let serverApp: INestApplicationContext | undefined;
 	let queueApp: INestApplicationContext | undefined;
+	// onlyServerでもprimaryに1つだけ置き、HTTP workerはIPC経由で同じ短命な投票を扱う。
+	startLtlEmojiVoteCoordinator();
 
 	if (!envOption.disableClustering) {
 		// clusterモジュール有効時
@@ -126,6 +129,7 @@ export async function masterMain() {
 
 	installShutdownSignalHandlers({
 		shutdownTasks: [
+			async () => stopLtlEmojiVoteCoordinator(),
 			terminateWorkers,
 			async () => { if (serverApp) await serverApp.close(); },
 			async () => { if (queueApp) await queueApp.close(); },

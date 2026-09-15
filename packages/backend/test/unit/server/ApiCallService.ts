@@ -46,6 +46,31 @@ function createService() {
 }
 
 describe('ApiCallService structured error logging', () => {
+	test.each(['hata/emoji-vote/show', 'hata/emoji-vote/vote'])('keeps diagnostics but no vote content for %s', async name => {
+		const write = vi.fn<LogBackend['write']>();
+		logManager.setBackend({ write });
+		const previousQuiet = envOption.quiet;
+		envOption.quiet = false;
+		const { service, telemetryService } = createService();
+		try {
+			const secret = 'private-vote-sentinel';
+			const error = Object.assign(new Error(secret), { name: secret, parameters: [secret], query: secret });
+			const endpoint = { name, meta: {}, params: {}, exec: vi.fn().mockRejectedValue(error) };
+			const request = { method: 'POST', body: { roundId: secret, emojiId: secret }, query: {}, headers: {}, ip: '127.0.0.1' };
+			await service.handleRequest(endpoint as never, request as never, createReply() as never);
+			const record = write.mock.calls[0][0] as LogRecord;
+			expect(record).toMatchObject({ eventName: 'api.endpoint.failed', attributes: { 'api.endpoint': name }, error: { type: 'Error', message: 'Ephemeral emoji vote operation failed' } });
+			expect(record.attributes).not.toHaveProperty('api.params');
+			expect(JSON.stringify(write.mock.calls)).not.toContain(secret);
+			expect(JSON.stringify(telemetryService.captureMessage.mock.calls)).not.toContain(secret);
+			expect(telemetryService.captureMessage.mock.calls[0][1]).not.toHaveProperty('userId');
+		} finally {
+			service.dispose();
+			envOption.quiet = previousQuiet;
+			logManager.setBackend(new PrettyConsoleBackend({ output: () => undefined }));
+		}
+	});
+
 	test('removes API credentials and serializes the endpoint error', async () => {
 		const write = vi.fn<LogBackend['write']>();
 		logManager.setBackend({ write });

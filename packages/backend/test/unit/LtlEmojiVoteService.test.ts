@@ -6,16 +6,18 @@
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import { LtlEmojiVoteError, LtlEmojiVoteService } from '@/core/LtlEmojiVoteService.js';
 import {
-	LTL_EMOJI_VOTE_CAST_SCRIPT, LTL_EMOJI_VOTE_DURATION_MS,
-	LTL_EMOJI_VOTE_FRESH_MS, LTL_EMOJI_VOTE_KEY, LTL_EMOJI_VOTE_READ_SCRIPT,
-	LTL_EMOJI_VOTE_RESULT_MS, LTL_EMOJI_VOTE_START_SCRIPT, LTL_EMOJI_VOTE_TALLY_MS,
-	parseLtlEmojiVoteRead, rankLtlEmojiVotes,
+	LTL_EMOJI_VOTE_DURATION_MS, LTL_EMOJI_VOTE_FRESH_MS,
+	LTL_EMOJI_VOTE_RESULT_MS, LTL_EMOJI_VOTE_TALLY_MS, rankLtlEmojiVotes,
 } from '@/core/ltl-emoji-vote.js';
-import type { LtlVoteChoice, LtlVoteEmoji, LtlVoteMetadata } from '@/core/ltl-emoji-vote.js';
+import type { LtlVoteChoice, LtlVoteEmoji, LtlVoteMetadata, LtlVoteStart } from '@/core/ltl-emoji-vote.js';
 import ShowEndpoint, { meta as showMeta } from '@/server/api/endpoints/hata/emoji-vote/show.js';
 import VoteEndpoint, { meta as voteMeta } from '@/server/api/endpoints/hata/emoji-vote/vote.js';
 
-const { randomIntMock } = vi.hoisted(() => ({ randomIntMock: vi.fn((min: number, _max: number) => min) }));
+const { randomIntMock, storeMock } = vi.hoisted(() => ({
+	randomIntMock: vi.fn((min: number, _max: number) => min),
+	storeMock: { start: vi.fn(), read: vi.fn(), vote: vi.fn() },
+}));
+vi.mock('@/core/ltl-emoji-vote-ipc.js', () => ({ ltlEmojiVoteStore: storeMock }));
 vi.mock('node:crypto', async importOriginal => ({
 	...await importOriginal<typeof import('node:crypto')>(),
 	randomInt: randomIntMock,
@@ -45,16 +47,13 @@ function fixture() {
 	let counts = [5, 5, 1, 0, 0];
 	let castResult = 'OK';
 	const choices = new Map<string, LtlVoteChoice>();
-	const redis = {
-		status: 'ready',
-		eval: vi.fn(async (script: string, _keys: number, ...args: unknown[]) => {
-			if (script === LTL_EMOJI_VOTE_START_SCRIPT) return 1;
-			if (script === LTL_EMOJI_VOTE_CAST_SCRIPT) return castResult;
-			if (script !== LTL_EMOJI_VOTE_READ_SCRIPT) throw new Error('Unexpected Redis script');
-			if (!current || clock >= current.expiresAt) return [String(clock), ''];
-			return [String(clock), JSON.stringify(current), JSON.stringify(choices.get(String(args[1])) ?? null), ...counts.map(String)];
-		}),
-	};
+	const store = storeMock;
+	store.start.mockReset().mockResolvedValue(true);
+	store.vote.mockReset().mockImplementation(async () => castResult);
+	store.read.mockReset().mockImplementation(async (userId: string | null) => {
+		if (!current || clock >= current.expiresAt) return { serverNow: clock, metadata: null, choice: null, counts: [] };
+		return { serverNow: clock, metadata: structuredClone(current), choice: choices.get(userId ?? '') ?? null, counts: [...counts] };
+	});
 	const query = {
 		where: vi.fn().mockReturnThis(), andWhere: vi.fn().mockReturnThis(),
 		innerJoinAndSelect: vi.fn().mockReturnThis(), leftJoinAndSelect: vi.fn().mockReturnThis(),
@@ -70,9 +69,9 @@ function fixture() {
 	const filters = { generateVisibilityQuery: vi.fn(), generateBaseNoteFilteringQuery: vi.fn() };
 	const packer = { pack: vi.fn().mockResolvedValue({ ...trigger, user: { requireSigninToViewContents: false } }) };
 	const idService = { parse: vi.fn(() => ({ date: new Date(startedAt) })) };
-	const service = new LtlEmojiVoteService(redis as never, notes as never, emojis as never, filters as never, roles as never, packer as never, idService as never);
+	const service = new LtlEmojiVoteService(notes as never, emojis as never, filters as never, roles as never, packer as never, idService as never);
 	return {
-		service, redis, query, notes, emojis, roles, policies, filters, packer, idService, choices,
+		service, store, query, notes, emojis, roles, policies, filters, packer, idService, choices,
 		setNow(value: number) { clock = value; },
 		setRound(value: LtlVoteMetadata | null) { current = value; },
 		setCounts(value: number[]) { counts = value; },
@@ -80,7 +79,7 @@ function fixture() {
 	};
 }
 
-describe('LTL emoji vote rankings and stored response parsing', () => {
+describe('LTL emoji vote rankings', () => {
 	test('includes all five candidates, stable ties and zero votes with competition ranks', () => {
 		const candidates = metadata().candidates;
 		const result = rankLtlEmojiVotes(candidates, [5, 5, 1, 0, 0]);
@@ -97,36 +96,14 @@ describe('LTL emoji vote rankings and stored response parsing', () => {
 		expect(result).toHaveLength(size);
 		expect(result.map(row => row.rank)).toEqual(Array.from({ length: size }, (_, index) => index + 1));
 	});
-	test('parses Redis time, immutable deadlines, own choice and all counts', () => {
-		const round = metadata();
-		const choice = { emojiId: 'e0', votedAt: startedAt + 50 };
-		expect(parseLtlEmojiVoteRead([String(startedAt + 100), JSON.stringify(round), JSON.stringify(choice), '5', '5', '1', '0', '0'])).toEqual({ serverNow: startedAt + 100, metadata: round, choice, counts: [5, 5, 1, 0, 0] });
-	});
-	test('fails closed for corrupt timing, candidates, counts and individual votes', () => {
-		const round = metadata();
-		const good = [String(startedAt), JSON.stringify(round), '', '5', '5', '1', '0', '0'];
-		for (const damaged of [
-			[...good.slice(0, 1), '{', ...good.slice(2)],
-			[String(startedAt), JSON.stringify({ ...round, expiresAt: round.expiresAt + 1 }), ...good.slice(2)],
-			[String(startedAt), JSON.stringify({ ...round, candidates: [emoji('x'), emoji('x')] }), '', '1', '1'],
-			[String(startedAt), JSON.stringify({ ...round, candidates: [{ ...emoji('x'), isSensitive: true }] }), '', '1'],
-			[...good.slice(0, 3), '-1', ...good.slice(4)],
-			[...good.slice(0, 3), 'NaN', ...good.slice(4)],
-			[...good.slice(0, 2), JSON.stringify({ emojiId: 'e0', votedAt: round.closesAt }), ...good.slice(3)],
-			[...good.slice(0, 2), JSON.stringify({ emojiId: 'outside', votedAt: startedAt + 1 }), ...good.slice(3)],
-		]) expect(parseLtlEmojiVoteRead(damaged).metadata).toBeNull();
-		expect(() => parseLtlEmojiVoteRead(['invalid', ''])).toThrow('Invalid emoji vote clock');
-	});
 });
 
 describe('LTL emoji vote creation', () => {
 	test('passes five unique local candidates even when the random source always picks its lower bound', async () => {
 		const f = fixture();
 		await expect(f.service.onNoteCreated(trigger as never, author)).resolves.toBe(true);
-		const [script, keyCount, activeKey, seenKey, raw, created] = f.redis.eval.mock.calls[0];
-		expect([script, keyCount, activeKey, seenKey, created]).toEqual([LTL_EMOJI_VOTE_START_SCRIPT, 2, LTL_EMOJI_VOTE_KEY, 'hata:ltl-emoji-vote:seen:round1', startedAt]);
-		const proposed = JSON.parse(String(raw));
-		expect(proposed).toMatchObject({ id: 'round1', noteId: 'round1' });
+		const proposed = f.store.start.mock.calls[0][0] as LtlVoteStart;
+		expect(proposed).toMatchObject({ noteId: 'round1', createdAt: startedAt, requestedAt: startedAt });
 		expect(proposed.candidates).toHaveLength(5);
 		expect(new Set(proposed.candidates.map((value: LtlVoteEmoji) => value.id)).size).toBe(proposed.candidates.length);
 	});
@@ -140,14 +117,14 @@ describe('LTL emoji vote creation', () => {
 			{ ...dbEmoji('remote'), host: 'remote.example' } as never,
 		]);
 		await expect(f.service.onNoteCreated(trigger as never, author)).resolves.toBe(true);
-		const proposed = JSON.parse(String(f.redis.eval.mock.calls[0][4]));
+		const proposed = (f.store.start.mock.calls[0][0] as LtlVoteStart);
 		expect(proposed.candidates.map((value: LtlVoteEmoji) => value.id).sort()).toEqual(available.map(value => value.id).sort());
 	});
 	test('still draws the five candidates randomly from a larger pool without duplicates', async () => {
 		const f = fixture();
 		randomIntMock.mockImplementation((_min, max) => max - 1);
 		await expect(f.service.onNoteCreated(trigger as never, author)).resolves.toBe(true);
-		const proposed = JSON.parse(String(f.redis.eval.mock.calls[0][4]));
+		const proposed = (f.store.start.mock.calls[0][0] as LtlVoteStart);
 		const ids = proposed.candidates.map((value: LtlVoteEmoji) => value.id);
 		expect(ids).toHaveLength(5);
 		expect(new Set(ids).size).toBe(5);
@@ -158,7 +135,7 @@ describe('LTL emoji vote creation', () => {
 		const f = fixture();
 		f.emojis.find.mockResolvedValueOnce([{ ...dbEmoji('only'), localOnly: true } as never]);
 		await expect(f.service.onNoteCreated({ ...trigger, text: ' 絵文字を選ぶぞ\n' } as never, author)).resolves.toBe(true);
-		expect(JSON.parse(String(f.redis.eval.mock.calls[0][4])).candidates).toEqual([emoji('only')]);
+		expect((f.store.start.mock.calls[0][0] as LtlVoteStart).candidates).toEqual([emoji('only')]);
 	});
 	test.each([
 		['different text', { text: '絵文字を選ぶぞ！' }, author],
@@ -172,32 +149,29 @@ describe('LTL emoji vote creation', () => {
 	])('does not claim or query emoji for %s', async (_name, changes, user) => {
 		const f = fixture();
 		await expect(f.service.onNoteCreated({ ...trigger, ...changes } as never, user)).resolves.toBe(false);
-		expect(f.redis.eval).not.toHaveBeenCalled();
+		expect(f.store.start).not.toHaveBeenCalled();
 		expect(f.emojis.find).not.toHaveBeenCalled();
 	});
-	test('rejects stale replays and disconnected Redis without leaving an offline start queued', async () => {
+	test('rejects stale replays without leaving a start queued', async () => {
 		const f = fixture();
 		vi.setSystemTime(startedAt + LTL_EMOJI_VOTE_FRESH_MS + 1);
 		await expect(f.service.onNoteCreated(trigger as never, author)).resolves.toBe(false);
-		vi.setSystemTime(startedAt);
-		f.redis.status = 'reconnecting';
-		await expect(f.service.onNoteCreated(trigger as never, author)).resolves.toBe(false);
-		expect(f.redis.eval).not.toHaveBeenCalled();
+		expect(f.store.start).not.toHaveBeenCalled();
 	});
 	test('starts no round if all local candidates are sensitive or role-restricted', async () => {
 		const f = fixture();
 		f.emojis.find.mockResolvedValueOnce([{ ...dbEmoji('s'), isSensitive: true }, { ...dbEmoji('r'), roleIdsThatCanBeUsedThisEmojiAsReaction: ['special'] }, { ...dbEmoji('remote'), host: 'remote.example' } as never]);
 		await expect(f.service.onNoteCreated(trigger as never, author)).resolves.toBe(false);
-		expect(f.redis.eval).not.toHaveBeenCalled();
+		expect(f.store.start).not.toHaveBeenCalled();
 	});
 	test('does not replace a round when the atomic claim rejects an overlap', async () => {
 		const f = fixture();
-		f.redis.eval.mockResolvedValueOnce(0);
+		f.store.start.mockResolvedValueOnce(false);
 		await expect(f.service.onNoteCreated(trigger as never, author)).resolves.toBe(false);
 	});
-	test('bounds a start stalled after Redis was ready', async () => {
+	test('bounds a stalled coordinator start', async () => {
 		const f = fixture();
-		f.redis.eval.mockImplementationOnce(() => new Promise(() => {}));
+		f.store.start.mockImplementationOnce(() => new Promise(() => {}));
 		const result = f.service.onNoteCreated(trigger as never, author);
 		const assertion = expect(result).rejects.toThrow('Emoji vote start timed out');
 		await vi.advanceTimersByTimeAsync(1600);
@@ -212,13 +186,13 @@ describe('LTL emoji vote creation', () => {
 		const assertion = expect(result).rejects.toThrow('Emoji vote start timed out');
 		await vi.advanceTimersByTimeAsync(1600);
 		await assertion;
-		expect(f.redis.eval).not.toHaveBeenCalled();
+		expect(f.store.start).not.toHaveBeenCalled();
 		resolveLookup([dbEmoji('e0')]);
 		await vi.advanceTimersByTimeAsync(1000);
-		expect(f.redis.eval).not.toHaveBeenCalled();
+		expect(f.store.start).not.toHaveBeenCalled();
 		expect(vi.getTimerCount()).toBe(0);
 	});
-	test('keeps the pre-query request time when a valid delayed lookup reaches Lua', async () => {
+	test('keeps the pre-query request time when a valid delayed lookup reaches the coordinator', async () => {
 		const f = fixture();
 		f.emojis.find.mockImplementationOnce(async () => {
 			await new Promise(resolve => setTimeout(resolve, 120));
@@ -227,9 +201,9 @@ describe('LTL emoji vote creation', () => {
 		const result = f.service.onNoteCreated(trigger as never, author);
 		await vi.advanceTimersByTimeAsync(120);
 		await expect(result).resolves.toBe(true);
-		expect(f.redis.eval.mock.calls[0][6]).toBe(startedAt);
+		expect((f.store.start.mock.calls[0][0] as LtlVoteStart).requestedAt).toBe(startedAt);
 	});
-	test('rejects a lookup that consumed the start budget before sending any Lua command', async () => {
+	test('rejects a lookup that consumed the start budget before sending a coordinator request', async () => {
 		const f = fixture();
 		f.emojis.find.mockImplementationOnce(async () => {
 			await new Promise(resolve => setTimeout(resolve, 1501));
@@ -238,7 +212,7 @@ describe('LTL emoji vote creation', () => {
 		const result = f.service.onNoteCreated(trigger as never, author);
 		await vi.advanceTimersByTimeAsync(1501);
 		await expect(result).resolves.toBe(false);
-		expect(f.redis.eval).not.toHaveBeenCalled();
+		expect(f.store.start).not.toHaveBeenCalled();
 	});
 });
 
@@ -267,7 +241,7 @@ describe('LTL emoji vote read/write authorization and phase handling', () => {
 		expect(a.round).not.toHaveProperty('votes');
 		expect(a.round).not.toHaveProperty('authorId');
 	});
-	test('uses the Redis clock for all phases and removes the result exactly 20 seconds after resolution', async () => {
+	test('uses the coordinator clock for all phases and removes the result exactly 20 seconds after resolution', async () => {
 		const f = fixture();
 		vi.setSystemTime(startedAt + 99999999);
 		for (const [now, phase] of [[metadata().closesAt - 1, 'voting'], [metadata().closesAt, 'tallying'], [metadata().resolvedAt, 'result'], [metadata().expiresAt - 1, 'result']] as const) {
@@ -295,7 +269,7 @@ describe('LTL emoji vote read/write authorization and phase handling', () => {
 		if (reason === 'converted visibility') f.packer.pack.mockResolvedValue({ ...trigger, visibility: 'followers', isHidden: false });
 		expect((await f.service.show(me as never)).round).toBeNull();
 		await expect(f.service.vote(me as never, 'round1', 'e0')).rejects.toMatchObject({ code: 'NO_SUCH_ROUND' });
-		expect(f.redis.eval.mock.calls.some(call => call[0] === LTL_EMOJI_VOTE_CAST_SCRIPT)).toBe(false);
+		expect(f.store.vote.mock.calls.length > 0).toBe(false);
 	});
 	test('passes an anonymous viewer to the note packer so signin-required content stays hidden', async () => {
 		const f = fixture();
@@ -315,7 +289,7 @@ describe('LTL emoji vote read/write authorization and phase handling', () => {
 		f.emojis.findBy.mockResolvedValue(changed);
 		expect((await f.service.show(me as never)).round).toBeNull();
 		await expect(f.service.vote(me as never, 'round1', 'e0')).rejects.toMatchObject({ code: 'NO_SUCH_ROUND' });
-		expect(f.redis.eval.mock.calls.some(call => call[0] === LTL_EMOJI_VOTE_CAST_SCRIPT)).toBe(false);
+		expect(f.store.vote.mock.calls.length > 0).toBe(false);
 	});
 	test('does not use one round authorization for a replacement round during the request', async () => {
 		const f = fixture();
@@ -331,7 +305,7 @@ describe('LTL emoji vote read/write authorization and phase handling', () => {
 		await expect(f.service.vote(me as never, 'oldRound', 'e0')).rejects.toMatchObject({ code: 'NO_SUCH_ROUND' });
 		expect(f.query.getOne).not.toHaveBeenCalled();
 	});
-	test.each(['NO_SUCH_ROUND', 'VOTING_CLOSED', 'ALREADY_VOTED', 'INVALID_EMOJI'])('preserves atomic Lua rejection %s without reporting success', async (code) => {
+	test.each(['NO_SUCH_ROUND', 'VOTING_CLOSED', 'ALREADY_VOTED', 'INVALID_EMOJI'])('preserves atomic coordinator rejection %s without reporting success', async (code) => {
 		const f = fixture();
 		f.setCastResult(code);
 		await expect(f.service.vote(me as never, 'round1', 'e0')).rejects.toMatchObject({ code });
@@ -340,12 +314,13 @@ describe('LTL emoji vote read/write authorization and phase handling', () => {
 		const f = fixture();
 		await expect(f.service.vote(me as never, 'round1', 'unknown')).rejects.toMatchObject({ code: 'INVALID_EMOJI' });
 		await f.service.vote(me as never, 'round1', 'e0');
-		expect(f.redis.eval).toHaveBeenCalledWith(LTL_EMOJI_VOTE_CAST_SCRIPT, 1, LTL_EMOJI_VOTE_KEY, 'round1', me.id, 'e0');
+		expect(f.store.vote).toHaveBeenCalledWith('round1', me.id, 'e0');
 	});
 	test.each([{ ...me, isSuspended: true }, { ...me, movedToUri: 'https://remote.example/u' }, { ...me, host: 'remote.example' }])('rejects ineligible voting identity %j', async (user) => {
 		const f = fixture();
 		await expect(f.service.vote(user as never, 'round1', 'e0')).rejects.toMatchObject({ code: 'NO_SUCH_ROUND' });
-		expect(f.redis.eval).not.toHaveBeenCalled();
+		expect(f.store.read).not.toHaveBeenCalled();
+		expect(f.store.vote).not.toHaveBeenCalled();
 	});
 	test('does not substitute stale authorization if a fresh database check fails', async () => {
 		const f = fixture();
