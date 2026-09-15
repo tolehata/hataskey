@@ -9,6 +9,10 @@ import { PrimaryColumn, Entity, Index, Column, ManyToOne, JoinColumn } from 'typ
 import { id } from './util/id.js';
 import { MiUser } from './User.js';
 import { MiHatadyBook } from './HatadyBook.js';
+import { MiHatadyMediaWork } from './HatadyMediaWork.js';
+
+export const HATADY_LOG_KINDS = ['study', 'exercise', 'work'] as const;
+export type HatadyLogKind = typeof HATADY_LOG_KINDS[number];
 
 @Entity('hatady_log')
 export class MiHatadyLog {
@@ -126,4 +130,26 @@ export class MiHatadyLog {
 		comment: 'Denormalized comment count.',
 	})
 	public commentsCount: number;
+	@Column('double precision', { nullable: true })
+	public durationSeconds: number | null;
+
+	@Column('varchar', { length: 12, nullable: true })
+	public startedAt: string | null;
+
+	@Column('jsonb', { default: () => '\'[]\'::jsonb' })
+	public tags: string[];
+
+	@Column('varchar', { length: 16, default: 'study' })
+	public kind: HatadyLogKind;
+
+	@Column('jsonb', { default: () => '\'{}\'::jsonb' })
+	public details: Record<string, unknown>;
+
+	@Index()
+	@Column({ ...id(), nullable: true })
+	public mediaWorkId: MiHatadyMediaWork['id'] | null;
+
+	@ManyToOne(type => MiHatadyMediaWork, { onDelete: 'SET NULL' })
+	@JoinColumn()
+	public mediaWork: MiHatadyMediaWork | null;
 }

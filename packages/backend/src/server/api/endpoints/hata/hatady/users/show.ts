@@ -9,6 +9,8 @@ import { HATADY_RATE_LIMITS } from '@/misc/hatady-rate-limit.js';
 import { ApiError } from '@/server/api/error.js';
 import type { UsersRepository } from '@/models/_.js';
 import { HatadyService } from '@/core/HatadyService.js';
+import { HatadyActivityService } from '@/core/HatadyActivityService.js';
+import { HatadyMediaService } from '@/core/HatadyMediaService.js';
 import { HatadyEntityService } from '@/core/entities/HatadyEntityService.js';
 import { UserEntityService } from '@/core/entities/UserEntityService.js';
 import { DI } from '@/di-symbols.js';
@@ -47,26 +49,40 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		private hatadyService: HatadyService,
 		private hatadyEntityService: HatadyEntityService,
 		private userEntityService: UserEntityService,
+		private activities: HatadyActivityService,
+		private media: HatadyMediaService,
 	) {
-		super(meta, paramDef, async (ps, me) => {
+		super(meta, paramDef, async (ps, me, token) => {
 			const targetId = ps.userId ?? me.id;
+			const staffAccess = token == null && await this.hatadyService.canModerate(me.id);
 			const user = await this.usersRepository.findOneBy({ id: targetId });
-			if (user == null || await this.hatadyService.isBlockedEitherDirection(me.id, targetId)) throw new ApiError(meta.errors.noSuchUser);
+			if (user == null || (!staffAccess && await this.hatadyService.isBlockedEitherDirection(me.id, targetId))) throw new ApiError(meta.errors.noSuchUser);
 
 			const [packedUser, aggregates, books, logs] = await Promise.all([
 				this.userEntityService.pack(user, me, { schema: 'UserDetailed' }),
-				this.hatadyService.getProfileAggregates(targetId, me.id, ps.tzOffset),
-				this.hatadyService.getUserBooks(targetId, 60),
-				this.hatadyService.getUserLogs(targetId, me.id, 30),
+				this.hatadyService.getProfileAggregates(targetId, me.id, ps.tzOffset, staffAccess),
+				this.hatadyService.getUserBooks(targetId, 60, me.id, staffAccess),
+				this.hatadyService.getUserLogs(targetId, me.id, 30, staffAccess),
 			]);
 
+			const recentActivities: Record<string, unknown>[] = [];
+			const localNow = new Date(Date.now() - ps.tzOffset * 60000);
+			const sinceDate = Date.UTC(localNow.getUTCFullYear(), localNow.getUTCMonth(), localNow.getUTCDate() - 6) + ps.tzOffset * 60000;
+			let cursor: string | undefined;
+			do {
+				const page = await this.activities.list(me, { scope: staffAccess ? 'all' : targetId === me.id ? 'mine' : await this.hatadyService.isFollowing(me.id, targetId) ? 'following' : 'recent', userId: targetId, sinceDate, cursor, limit: 100 });
+				recentActivities.push(...page.items); cursor = page.nextCursor ?? undefined;
+			} while (cursor);
+			const mediaWorks = await this.media.listWorks(me.id, targetId, { limit: 60, staffAccess });
 			return {
 				user: packedUser,
 				...aggregates,
+				activities: recentActivities,
+				mediaWorks: await this.media.packWorks(mediaWorks, me.id, staffAccess),
 				// 旗鯖fork(セキュリティ): しおりの自由記述メモが他人のプロフィールから漏れないよう、
 				//   自分が所有する本にだけしおりを付ける(自分のプロフィールでは従来どおり全冊に付く)。
-				books: await this.hatadyEntityService.packBooks(books, me.id),
-				logs: await this.hatadyEntityService.packLogs(logs, me),
+				books: await this.hatadyEntityService.packBooks(books, staffAccess ? null : me.id),
+				logs: await this.hatadyEntityService.packLogs(logs, me, staffAccess),
 			};
 		});
 	}

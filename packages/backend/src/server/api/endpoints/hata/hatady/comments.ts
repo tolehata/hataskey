@@ -29,11 +29,11 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		private hatadyService: HatadyService,
 		private hatadyEntityService: HatadyEntityService,
 	) {
-		super(meta, paramDef, async (ps, me) => {
+		super(meta, paramDef, async (ps, me, token) => {
 			// 閲覧権限のないログ(非公開/フォロワー限定で未フォロー)のコメントは返さない。
 			const log = await this.hatadyService.getLog(ps.logId);
-			if (log == null || !(await this.hatadyService.canViewLog(log, me.id))) return [];
-			const comments = await this.hatadyService.getComments(ps.logId, me.id);
+			if (log == null || !(await this.hatadyService.canViewLog(log, me.id, token == null))) return [];
+			const comments = await this.hatadyService.getComments(ps.logId, me.id, token == null);
 			return await this.hatadyEntityService.packComments(comments, me);
 		});
 	}

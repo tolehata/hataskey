@@ -14,7 +14,7 @@ import ListHataskEventsEndpoint, { meta as listMeta } from '@/server/api/endpoin
 import OwnedHataskEventsEndpoint, { meta as ownedMeta, paramDef as ownedParamDef } from '@/server/api/endpoints/hatask/events/owned.js';
 import RsvpHataskEventEndpoint, { meta as rsvpMeta } from '@/server/api/endpoints/hatask/events/rsvp.js';
 import UpdateHataskEventEndpoint, { meta as updateMeta, paramDef as updateParamDef } from '@/server/api/endpoints/hatask/events/update.js';
-import { hashHataskEvent, isValidHataskEventSchedule } from '@/server/api/endpoints/hatask/events/_shared.js';
+import { hashHataskEvent, isValidHataskEventSchedule, packHataskEvent } from '@/server/api/endpoints/hatask/events/_shared.js';
 import { MiHataskRsvp } from '@/models/HataskRsvp.js';
 
 const Ajv = (_Ajv as unknown as { default: typeof _Ajv }).default ?? _Ajv;
@@ -39,6 +39,8 @@ function event(overrides: Record<string, unknown> = {}) {
 		allDay: false,
 		color: '#e27d60',
 		rsvp: true,
+		visibility: 'public',
+		visibleUserIds: [],
 		rsvpClosed: false,
 		createdAt: new Date('2026-08-20T00:00:00.000Z'),
 		...overrides,
@@ -113,7 +115,7 @@ describe('Hatask event safety endpoints', () => {
 		})).toBe(false);
 
 		const insert = vi.fn();
-		const endpoint = new CreateHataskEventEndpoint({ insert } as never, { gen: () => 'eventa' } as never);
+		const endpoint = new CreateHataskEventEndpoint({ insert } as never, { gen: () => 'eventa' } as never, {} as never);
 		await expect(endpoint.exec({ title: '予定', date: '2026-02-30' }, { id: 'ownera' } as never, null, null))
 			.rejects.toMatchObject({ code: 'INVALID_HATASK_EVENT_SCHEDULE' });
 		expect(insert).not.toHaveBeenCalled();
@@ -249,6 +251,39 @@ describe('Hatask event safety endpoints', () => {
 		expect(insert).toHaveBeenCalledOnce();
 	});
 
+	test('repeated RSVP choices keep one response per user and only move that user between totals', async () => {
+		const storedEvent = event();
+		const rows: MiHataskRsvp[] = [];
+		const repository = {
+			findOneBy: vi.fn(async ({ eventId, userId }: { eventId: string; userId: string }) => rows.find(row => row.eventId === eventId && row.userId === userId) ?? null),
+			insert: vi.fn(async (row: MiHataskRsvp) => { rows.push({ ...row }); }),
+			update: vi.fn(async (id: string, changes: Partial<MiHataskRsvp>) => {
+				const row = rows.find(row => row.id === id);
+				if (!row) throw new Error('Missing RSVP row');
+				Object.assign(row, changes);
+			}),
+			find: vi.fn(async () => rows),
+		};
+		let id = 0;
+		const endpoint = new RsvpHataskEventEndpoint(
+			eventDatabase({ findOne: vi.fn().mockResolvedValue(storedEvent) }, repository) as never,
+			{ gen: () => `response${++id}` } as never,
+		);
+		await endpoint.exec({ eventId: 'eventa', status: 'going' }, { id: 'other' } as never, null, null);
+		for (const status of ['going', 'going', 'maybe', 'maybe', 'declined', 'declined', 'going'] as const) {
+			await endpoint.exec({ eventId: 'eventa', status }, { id: 'guesta' } as never, null, null);
+			const packed = await packHataskEvent(storedEvent as never, 'ownera', repository as never, {
+				findOneBy: async ({ id: userId }: { id: string }) => ({ username: userId, name: userId }),
+			} as never);
+			expect(packed.rsvpResponses).toHaveLength(2);
+			expect(packed.rsvpResponses.filter(row => row.userId === 'guesta')).toMatchObject([{ status }]);
+			for (const choice of ['going', 'maybe', 'declined']) {
+				expect(packed.rsvpResponses.filter(row => row.status === choice)).toHaveLength(Number(choice === 'going') + Number(choice === status));
+			}
+		}
+		expect(repository.insert).toHaveBeenCalledTimes(2);
+	});
+
 	test('public list exposes the same revision contract used by update and close', async () => {
 		const storedEvent = event();
 		const find = vi.fn().mockResolvedValue([storedEvent]);
@@ -261,10 +296,11 @@ describe('Hatask event safety endpoints', () => {
 		const result = await endpoint.exec({ limit: 10, includeExpired: false }, { id: 'ownera' } as never, null, null);
 		expect(result).toMatchObject([{ id: 'eventa', revision: hashHataskEvent(storedEvent as never), isOwner: true }]);
 		expect(find).toHaveBeenCalledWith(expect.objectContaining({
-			where: [
-				{ date: expect.anything() },
-				{ dateEnd: expect.anything() },
-			],
+			where: expect.arrayContaining([
+				{ visibility: 'public', date: expect.anything() },
+				{ visibility: 'public', dateEnd: expect.anything() },
+				{ userId: 'ownera', date: expect.anything() },
+			]),
 		}));
 	});
 

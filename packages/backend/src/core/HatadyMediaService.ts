@@ -4,7 +4,7 @@
  */
 
 import { Inject, Injectable } from '@nestjs/common';
-import type { DataSource, EntityManager, QueryDeepPartialEntity } from 'typeorm';
+import { In, type DataSource, type EntityManager, type QueryDeepPartialEntity } from 'typeorm';
 import { DI } from '@/di-symbols.js';
 import type {
 	HatadyFollowingsRepository,
@@ -39,14 +39,17 @@ import { IdService } from '@/core/IdService.js';
 import { RoleService } from '@/core/RoleService.js';
 import { HatadyService } from '@/core/HatadyService.js';
 import { UserEntityService } from '@/core/entities/UserEntityService.js';
+import { HatadyEntityService } from '@/core/entities/HatadyEntityService.js';
 import { sqlLikeEscape } from '@/misc/sql-like-escape.js';
 import { bindThis } from '@/decorators.js';
+import { mergeHatadyDetails, normalizeHatadyDuration, normalizeHatadyStartedAt, normalizeHatadyTags, packHatadyDetails } from '@/core/HatadyRecordData.js';
 import type { HatadyPushNotificationBody } from '@/core/PushNotificationService.js';
 
 const MOVIE_FIELDS = ['runtimeMinutes', 'genres', 'origin', 'viewingMode', 'primaryLanguage', 'highlights', 'highlightsSpoiler'] as const;
 const GAME_FIELDS = ['platforms', 'developer', 'publisher'] as const;
 
 export type HatadyMediaWorkInput = {
+	details?: Record<string, unknown>;
 	title?: string;
 	originalTitle?: string | null;
 	creator?: string | null;
@@ -76,6 +79,9 @@ export type HatadyMediaWorkInput = {
 };
 
 export type HatadyMediaSessionInput = {
+	durationSeconds?: number | null;
+	startedAt?: string | null;
+	tags?: string[];
 	occurredAt: string;
 	durationMinutes?: number | null;
 	note?: string | null;
@@ -141,10 +147,6 @@ function hasStoredValue(value: unknown): boolean {
 	return !Array.isArray(value) || value.length > 0;
 }
 
-function visibilityRank(visibility: HatadyMediaVisibility): number {
-	return visibility === 'private' ? 0 : visibility === 'followers' ? 1 : 2;
-}
-
 /**
  * 旗鯖fork(Hatady): 記録できる成績の指標。ゲームによって存在する指標が違う(スペシャルや救助が無い作品もある)ため、
  * どれを使うかは記録ごとに利用者が選ぶ。ここはその選択肢の正本。
@@ -169,21 +171,33 @@ export function normalizeHatadyStatFields(raw: unknown): HatadyStatField[] {
  * 旗鯖fork(Hatady): 武器ごとの成績行。武器名は必須で、指標は入っているものだけを持つ。
  * 未入力の指標を 0 で埋めると「0キル」と「記録していない」が区別できなくなるため、キーごと落とす。
  */
-export function normalizeHatadyWeaponStats(raw: unknown): Record<string, unknown>[] {
+export function normalizeHatadyWeaponStats(raw: unknown, previous: unknown = []): Record<string, unknown>[] {
 	if (!Array.isArray(raw)) throw new Error('invalid weaponStats');
 	if (raw.length > 20) throw new Error('invalid weaponStats');
+	const savedRows = Array.isArray(previous) ? previous.filter(row => row && typeof row === 'object') as Record<string, unknown>[] : [];
+	const used = new Set<number>();
 	return raw.map(entry => {
+		const opaque = Object.entries(entry ?? {}).filter(([key]) => key !== 'weapon' && !HATADY_STAT_FIELDS.includes(key as HatadyStatField));
+		const matches = (row: Record<string, unknown>, index: number) => !used.has(index) && opaque.every(([key, value]) => Object.hasOwn(row, key) && JSON.stringify(row[key]) === JSON.stringify(value));
+		let match = savedRows.findIndex((row, index) => row.weapon === entry?.weapon && matches(row, index));
+		if (match < 0 && opaque.length > 0) {
+			const candidates = savedRows.flatMap((row, index) => matches(row, index) ? [index] : []);
+			if (candidates.length === 1) match = candidates[0];
+		}
+		const stored = match >= 0 ? savedRows[match] : {};
+		if (match >= 0) used.add(match);
 		if (entry == null || typeof entry !== 'object' || Array.isArray(entry)) throw new Error('invalid weaponStats');
 		const row = entry as Record<string, unknown>;
 		for (const key of Object.keys(row)) {
-			if (key !== 'weapon' && !HATADY_STAT_FIELDS.includes(key as HatadyStatField)) throw new Error(`invalid weaponStats field ${key}`);
+			if (key !== 'weapon' && !HATADY_STAT_FIELDS.includes(key as HatadyStatField) && (!Object.hasOwn(stored, key) || JSON.stringify(stored[key]) !== JSON.stringify(row[key]))) throw new Error(`invalid weaponStats field ${key}`);
 		}
 		const weapon = typeof row.weapon === 'string' ? row.weapon.trim() : '';
-		if (weapon.length === 0 || weapon.length > 256) throw new Error('invalid weaponStats weapon');
-		const normalized: Record<string, unknown> = { weapon };
+		if ((weapon.length === 0 && stored.weapon !== '') || weapon.length > 256) throw new Error('invalid weaponStats weapon');
+		const normalized: Record<string, unknown> = { ...stored, weapon };
 		for (const field of HATADY_STAT_FIELDS) {
 			const value = row[field];
-			if (value === undefined || value === null) continue;
+			if (value === undefined) continue;
+			if (value === null) { normalized[field] = null; continue; }
 			if (!Number.isInteger(value) || (value as number) < 0 || (value as number) > 1000000) throw new Error(`invalid weaponStats ${field}`);
 			normalized[field] = value;
 		}
@@ -191,10 +205,10 @@ export function normalizeHatadyWeaponStats(raw: unknown): Record<string, unknown
 	});
 }
 
-export function validateHatadyMediaSessionDetails(kind: HatadyMediaSessionKind, raw: unknown): Record<string, unknown> {
-	if (raw == null) return {};
+export function validateHatadyMediaSessionDetails(kind: HatadyMediaSessionKind, raw: unknown, previous: Record<string, unknown> = {}): Record<string, unknown> {
+	if (raw == null) return { ...previous };
 	if (typeof raw !== 'object' || Array.isArray(raw)) throw new Error('invalid session details');
-	const details = raw as Record<string, unknown>;
+	const details = { ...raw } as Record<string, unknown>;
 	const normalizedDetails: Record<string, unknown> = { ...details };
 	const allowed: Record<HatadyMediaSessionKind, ReadonlySet<string>> = {
 		movie_viewing: new Set(['theaterName', 'screeningFormat', 'companions', 'rewatch', 'viewingMode']),
@@ -204,23 +218,27 @@ export function validateHatadyMediaSessionDetails(kind: HatadyMediaSessionKind, 
 		// 旗鯖fork(Hatady): 4人以上の協力プレイ。敵の構成とウェーブを持ち、勝敗ではなく踏破結果で終わる。
 		game_pve: new Set(['result', 'reason', 'difficulty', 'mode', 'map', 'character', 'weapon', 'weaponOrder', 'rank', 'score', 'mood', 'device', 'achievements', 'teamSize', 'waves', 'enemyTypes', 'enemyCount', 'boss', 'weaponStats', 'statFields', 'kills', 'deaths', 'assists', 'specials', 'rescues']),
 	};
+	const cleared: string[] = [];
 	for (const key of Object.keys(details)) {
-		if (!allowed[kind].has(key)) throw new Error(`field ${key} is not allowed for ${kind}`);
+		if (details[key] === null && (allowed[kind].has(key) || ['viewing', 'session', 'note', 'pages', 'place'].includes(key))) { cleared.push(key); delete details[key]; delete normalizedDetails[key]; continue; }
+		if (!allowed[kind].has(key) && !['viewing', 'session', 'note', 'pages', 'place'].includes(key)) {
+			if (!Object.hasOwn(previous, key) || JSON.stringify(previous[key]) !== JSON.stringify(details[key])) throw new Error(`field ${key} is not allowed for ${kind}`);
+		}
 	}
-	const stringKeys = ['theaterName', 'screeningFormat', 'progress', 'difficulty', 'device', 'rank', 'mood', 'character', 'weapon', 'reason', 'opponent', 'score', 'mode', 'map', 'seed', 'route', 'build', 'cause', 'boss'];
+	const stringKeys = ['viewing', 'session', 'note', 'pages', 'place', 'theaterName', 'screeningFormat', 'progress', 'difficulty', 'device', 'rank', 'mood', 'character', 'weapon', 'reason', 'opponent', 'score', 'mode', 'map', 'seed', 'route', 'build', 'cause', 'boss'];
 	for (const key of stringKeys) {
-		if (details[key] !== undefined && (typeof details[key] !== 'string' || (details[key] as string).length > 512)) throw new Error(`invalid ${key}`);
+		if (details[key] !== undefined && (typeof details[key] !== 'string' || (details[key] as string).length > (key === 'note' ? 8192 : 512))) throw new Error(`invalid ${key}`);
 	}
 	for (const key of ['companions', 'achievements', 'weaponOrder', 'branches', 'enemyTypes']) {
 		if (details[key] !== undefined) normalizedDetails[key] = normalizeStringArray(details[key] as string[], 30, 256, key, false);
 	}
 	if (details.rewatch !== undefined && typeof details.rewatch !== 'boolean') throw new Error('invalid rewatch');
 	if (details.overtime !== undefined && typeof details.overtime !== 'boolean') throw new Error('invalid overtime');
-	if (details.viewingMode !== undefined) assertEnum(details.viewingMode, HATADY_MOVIE_VIEWING_MODES, 'viewingMode');
-	if (details.playMode !== undefined) assertEnum(details.playMode, ['single', 'multi'], 'playMode');
-	if (details.matchmaking !== undefined) assertEnum(details.matchmaking, ['solo', 'party', 'specific', 'random'], 'matchmaking');
-	if (details.opponentType !== undefined) assertEnum(details.opponentType, ['human', 'cpu', 'team', 'other'], 'opponentType');
-	if (details.result !== undefined) {
+	if (details.viewingMode !== undefined && details.viewingMode !== previous.viewingMode) assertEnum(details.viewingMode, HATADY_MOVIE_VIEWING_MODES, 'viewingMode');
+	if (details.playMode !== undefined && details.playMode !== previous.playMode) assertEnum(details.playMode, ['single', 'multi'], 'playMode');
+	if (details.matchmaking !== undefined && details.matchmaking !== previous.matchmaking) assertEnum(details.matchmaking, ['solo', 'party', 'specific', 'random'], 'matchmaking');
+	if (details.opponentType !== undefined && details.opponentType !== previous.opponentType) assertEnum(details.opponentType, ['human', 'cpu', 'team', 'other'], 'opponentType');
+	if (details.result !== undefined && details.result !== previous.result) {
 		const values = kind === 'game_match' ? ['win', 'loss', 'draw'] : ['cleared', 'failed', 'retired'];
 		assertEnum(details.result, values, 'result');
 	}
@@ -232,10 +250,12 @@ export function validateHatadyMediaSessionDetails(kind: HatadyMediaSessionKind, 
 		if (details[key] !== undefined && (!Number.isInteger(details[key]) || (details[key] as number) < 1 || (details[key] as number) > 100)) throw new Error(`invalid ${key}`);
 	}
 	if (details.statFields !== undefined) {
-		normalizedDetails.statFields = normalizeHatadyStatFields(details.statFields);
+		const stored = Array.isArray(previous.statFields) ? previous.statFields : [];
+		if (!Array.isArray(details.statFields) || details.statFields.some(value => typeof value !== 'string' || (!HATADY_STAT_FIELDS.includes(value as HatadyStatField) && !stored.includes(value)))) throw new Error('invalid statFields');
+		normalizedDetails.statFields = [...normalizeHatadyStatFields(details.statFields.filter(value => HATADY_STAT_FIELDS.includes(value as HatadyStatField))), ...stored.filter(value => typeof value === 'string' && !HATADY_STAT_FIELDS.includes(value as HatadyStatField))];
 	}
 	if (details.weaponStats !== undefined) {
-		normalizedDetails.weaponStats = normalizeHatadyWeaponStats(details.weaponStats);
+		normalizedDetails.weaponStats = normalizeHatadyWeaponStats(details.weaponStats, previous.weaponStats);
 	}
 	for (const key of ['rating', 'ratingBefore', 'ratingAfter']) {
 		if (details[key] !== undefined && (typeof details[key] !== 'number' || !Number.isFinite(details[key]) || Math.abs(details[key] as number) > 1000000000)) throw new Error(`invalid ${key}`);
@@ -245,7 +265,9 @@ export function validateHatadyMediaSessionDetails(kind: HatadyMediaSessionKind, 
 	}
 	const encoded = JSON.stringify(normalizedDetails);
 	if (encoded.length > 16384) throw new Error('session details are too large');
-	return JSON.parse(encoded) as Record<string, unknown>;
+	const result = { ...previous, ...JSON.parse(encoded) } as Record<string, unknown>;
+	for (const key of cleared) delete result[key];
+	return result;
 }
 
 export function validateHatadyMediaOfficialUrl(value: string | null | undefined): void {
@@ -343,11 +365,12 @@ export class HatadyMediaService {
 		private roleService: RoleService,
 		private userEntityService: UserEntityService,
 		private hatadyService: HatadyService,
+		private hatadyEntityService: HatadyEntityService,
 	) {}
 
 	@bindThis
-	public async canViewWork(work: MiHatadyMediaWork, viewerId: MiUser['id']): Promise<boolean> {
-		if (work.userId === viewerId) return true;
+	public async canViewWork(work: MiHatadyMediaWork, viewerId: MiUser['id'], staffAccess = false): Promise<boolean> {
+		if (work.userId === viewerId || (staffAccess && await this.hatadyService.canModerate(viewerId))) return true;
 		if (await this.hatadyService.isBlockedEitherDirection(viewerId, work.userId)) return false;
 		if (work.visibility === 'public') return true;
 		if (work.visibility !== 'followers') return false;
@@ -355,9 +378,9 @@ export class HatadyMediaService {
 	}
 
 	@bindThis
-	public async getVisibleWork(workId: string, viewerId: MiUser['id']): Promise<MiHatadyMediaWork> {
+	public async getVisibleWork(workId: string, viewerId: MiUser['id'], staffAccess = false): Promise<MiHatadyMediaWork> {
 		const work = await this.worksRepository.findOneBy({ id: workId });
-		if (work == null || !(await this.canViewWork(work, viewerId))) throw new Error(HatadyMediaService.ERR_NOT_FOUND);
+		if (work == null || !(await this.canViewWork(work, viewerId, staffAccess))) throw new Error(HatadyMediaService.ERR_NOT_FOUND);
 		return work;
 	}
 
@@ -368,14 +391,14 @@ export class HatadyMediaService {
 		return work;
 	}
 
-	private normalizeWork(kind: HatadyMediaWorkKind, input: HatadyMediaWorkInput, current?: MiHatadyMediaWork): Partial<MiHatadyMediaWork> {
+	private normalizeWork(kind: HatadyMediaWorkKind, input: HatadyMediaWorkInput, current?: MiHatadyMediaWork): QueryDeepPartialEntity<MiHatadyMediaWork> {
 		assertEnum(kind, HATADY_MEDIA_WORK_KINDS, 'kind');
 		const title = (input.title ?? current?.title ?? '').trim();
 		if (title.length === 0 || title.length > 512) throw new Error('invalid title');
 		const status = input.status ?? current?.status ?? 'planned';
 		const visibility = input.visibility ?? current?.visibility ?? 'private';
 		assertEnum(status, HATADY_MEDIA_WORK_STATUSES, 'status');
-		if (kind === 'movie' && status === 'mastered') throw new Error('invalid status for movie');
+		if (kind !== 'game' && status === 'mastered') throw new Error('invalid status for movie');
 		assertEnum(visibility, HATADY_MEDIA_VISIBILITIES, 'visibility');
 		if (input.releaseDate != null) {
 			if (!/^\d{4}-\d{2}-\d{2}$/.test(input.releaseDate)) throw new Error('invalid releaseDate');
@@ -407,8 +430,9 @@ export class HatadyMediaService {
 			isFavorite: input.isFavorite ?? current?.isFavorite ?? false,
 			// おすすめ表示・半星評価は映画専用。ゲームフォームの旧クライアントが 0 を送っても
 			// 作成を壊さないよう拒否ではなく安全な既定値へ正規化する。
-			isRecommended: kind === 'movie' ? (input.isRecommended ?? current?.isRecommended ?? false) : false,
-			recommendationRating: kind === 'movie' ? (input.recommendationRating === undefined ? current?.recommendationRating ?? null : input.recommendationRating) : null,
+			isRecommended: input.isRecommended ?? current?.isRecommended ?? false,
+			recommendationRating: input.recommendationRating === undefined ? current?.recommendationRating ?? null : input.recommendationRating,
+			details: mergeHatadyDetails(current?.details, input.details, 'work') as QueryDeepPartialEntity<MiHatadyMediaWork>['details'],
 			coverColorIndex: input.coverColorIndex === undefined ? current?.coverColorIndex ?? null : input.coverColorIndex,
 			synopsis: input.synopsis === undefined ? current?.synopsis ?? null : normalizeOptionalString(input.synopsis, 8192, 'synopsis'),
 			synopsisSpoiler: input.synopsisSpoiler ?? current?.synopsisSpoiler ?? false,
@@ -432,7 +456,8 @@ export class HatadyMediaService {
 	public async createWork(user: MiUser, kind: HatadyMediaWorkKind, input: HatadyMediaWorkInput): Promise<MiHatadyMediaWork> {
 		const values = this.normalizeWork(kind, input);
 		const now = new Date();
-		const entity = { id: this.idService.gen(now.getTime()), createdAt: now, updatedAt: now, userId: user.id, kind, ...values } as MiHatadyMediaWork;
+		const id = this.idService.gen(now.getTime());
+		const entity = { ...values, id, createdAt: now, updatedAt: now, userId: user.id, kind };
 		if (kind !== 'game') return this.worksRepository.insertOne(entity);
 
 		const policies = await this.roleService.getUserPolicies(user.id);
@@ -453,14 +478,6 @@ export class HatadyMediaService {
 			if (locked == null) throw new Error(HatadyMediaService.ERR_NOT_FOUND);
 			const patch = this.normalizeWork(locked.kind, { ...input, title: input.title ?? locked.title }, locked);
 			await manager.getRepository(MiHatadyMediaWork).update({ id: workId, userId }, { ...patch, updatedAt: new Date() });
-			const nextVisibility = patch.visibility ?? locked.visibility;
-			if (visibilityRank(nextVisibility) < visibilityRank(locked.visibility)) {
-				if (nextVisibility === 'private') {
-					await manager.getRepository(MiHatadyMediaSession).update({ workId }, { visibility: 'private' });
-				} else {
-					await manager.getRepository(MiHatadyMediaSession).update({ workId, visibility: 'public' }, { visibility: 'followers' });
-				}
-			}
 		});
 		return this.getOwnedWork(workId, userId);
 	}
@@ -473,6 +490,8 @@ export class HatadyMediaService {
 
 	@bindThis
 	public async listWorks(viewerId: string, targetUserId: string, options: {
+		staffAccess?: boolean;
+		scope?: 'mine' | 'recent' | 'public' | 'following' | 'all';
 		kind?: HatadyMediaWorkKind;
 		status?: HatadyMediaWorkStatus;
 		origin?: HatadyMovieOrigin;
@@ -485,12 +504,23 @@ export class HatadyMediaService {
 		untilId?: string;
 		limit: number;
 	} & HatadyMediaSessionWorkFilters): Promise<MiHatadyMediaWork[]> {
-		const qb = this.worksRepository.createQueryBuilder('work').where('work.userId = :targetUserId', { targetUserId });
-		let targetIsFollower = false;
-		if (viewerId !== targetUserId) {
-			targetIsFollower = await this.hatadyFollowingsRepository.existsBy({ followerId: viewerId, followeeId: targetUserId });
-			qb.andWhere(targetIsFollower ? "work.visibility IN ('public', 'followers')" : "work.visibility = 'public'");
+		const qb = this.worksRepository.createQueryBuilder('work');
+		const scope = options.scope;
+		const staffAccess = (scope === 'all' || options.staffAccess === true) && await this.hatadyService.canModerate(viewerId);
+		if (scope === 'all') {
+			if (!(await this.hatadyService.canModerate(viewerId))) throw new Error(HatadyMediaService.ERR_NOT_FOUND);
+			qb.where('1 = 1');
+		} else if (scope === 'recent' || scope === 'public') qb.where('work.visibility = \'public\'');
+		else if (scope === 'following') qb.where('work.visibility IN (\'public\', \'followers\') AND EXISTS (SELECT 1 FROM "hatady_following" f WHERE f."followerId" = :viewerId AND f."followeeId" = work."userId")', { viewerId });
+		else {
+			qb.where('work.userId = :targetUserId', { targetUserId: scope === 'mine' ? viewerId : targetUserId });
+			if (viewerId !== targetUserId && scope !== 'mine' && !staffAccess) qb.andWhere(await this.hatadyFollowingsRepository.existsBy({ followerId: viewerId, followeeId: targetUserId }) ? 'work.visibility IN (\'public\', \'followers\')' : 'work.visibility = \'public\'');
 		}
+		if (!staffAccess && scope !== 'mine') {
+			const excluded = [...await this.hatadyService.getTimelineExcludedUserIds(viewerId)];
+			if (excluded.length) qb.andWhere('work.userId NOT IN (:...excluded)', { excluded });
+		}
+
 		if (options.kind != null) qb.andWhere('work.kind = :kind', { kind: options.kind });
 		if (options.status != null) qb.andWhere('work.status = :status', { status: options.status });
 		if (options.origin != null) qb.andWhere('work.origin = :origin', { origin: options.origin });
@@ -503,7 +533,7 @@ export class HatadyMediaService {
 		const hasSessionFilter = options.sessionKind != null || options.result != null || options.weapon != null || options.rank != null || options.route != null || options.since != null || options.until != null;
 		// セッションの details・期間は作品所有者専用の検索面に限定する。
 		// 他人のセッションを検索条件として使うと、非表示本文やネタバレ内容の存在 oracle になり得る。
-		if (hasSessionFilter && viewerId !== targetUserId) throw new Error('invalid session filters for another user');
+		if (hasSessionFilter && (viewerId !== targetUserId || (scope != null && scope !== 'mine'))) throw new Error('invalid session filters for another user');
 		const since = options.since == null ? null : parseHatadyMediaDateTime(options.since, 'since');
 		const until = options.until == null ? null : parseHatadyMediaDateTime(options.until, 'until');
 		if (since != null && until != null && since.getTime() > until.getTime()) throw new Error('invalid session date range');
@@ -511,7 +541,7 @@ export class HatadyMediaService {
 		if (sessionFilter != null) qb.andWhere(sessionFilter.sql, sessionFilter.params);
 		if (options.query?.trim()) {
 			const query = `%${sqlLikeEscape(options.query.trim())}%`;
-			qb.andWhere(buildHatadyMediaWorkSearchCondition(viewerId === targetUserId), { query });
+			qb.andWhere(buildHatadyMediaWorkSearchCondition(viewerId === targetUserId && (scope == null || scope === 'mine')), { query });
 		}
 		const sort = options.sort ?? 'createdAt';
 		const order = (options.order ?? 'desc').toUpperCase() as 'ASC' | 'DESC';
@@ -519,7 +549,7 @@ export class HatadyMediaService {
 			// cursor は現在の user/kind/status/query/visibility 条件に含まれる作品だけを認める。
 			// 別フィルターのIDを使うと sort 値だけが流用され、正当な行を飛ばすページ欠落になる。
 			const cursor = await qb.clone().andWhere('work.id = :cursorId', { cursorId: options.untilId }).getOne();
-			if (cursor == null || !(await this.canViewWork(cursor, viewerId))) throw new Error(HatadyMediaService.ERR_NOT_FOUND);
+			if (cursor == null || !(await this.canViewWork(cursor, viewerId, staffAccess))) throw new Error(HatadyMediaService.ERR_NOT_FOUND);
 			const cursorValue = cursor[sort];
 			const condition = buildHatadyMediaWorkCursorCondition(sort, order, cursorValue, cursor.id);
 			qb.andWhere(condition.sql, condition.params);
@@ -527,13 +557,14 @@ export class HatadyMediaService {
 		qb.orderBy(`work.${sort}`, order, order === 'DESC' ? 'NULLS LAST' : 'NULLS FIRST').addOrderBy('work.id', order);
 		const rows = await qb.take(Math.min(100, Math.max(1, options.limit))).getMany();
 		// SQL 側で絞った後にも中央認可を通し、将来の visibility 追加時の漏洩を防ぐ。
-		const allowed = await Promise.all(rows.map(work => this.canViewWork(work, viewerId)));
+		const allowed = await Promise.all(rows.map(work => this.canViewWork(work, viewerId, staffAccess)));
 		return rows.filter((_, index) => allowed[index]);
 	}
 
 	@bindThis
-	public packWork(work: MiHatadyMediaWork) {
+	public packWork(work: MiHatadyMediaWork, privateAccess = false) {
 		return {
+			details: packHatadyDetails(work.details, privateAccess === true),
 			id: work.id,
 			createdAt: work.createdAt.toISOString(),
 			updatedAt: work.updatedAt.toISOString(),
@@ -568,9 +599,22 @@ export class HatadyMediaService {
 		};
 	}
 
+	public async packWorks(works: MiHatadyMediaWork[], viewerId: string, staffAccess = false) {
+		if (works.length === 0) return [];
+		const staff = staffAccess && await this.hatadyService.canModerate(viewerId);
+		const [activity, users] = await Promise.all([
+			this.hatadyService.getWorkActivities(works.filter(work => work.kind === 'work').map(work => work.id), viewerId, staff),
+			this.userEntityService.packMany([...new Set(works.map(work => work.userId))], { id: viewerId }, { schema: 'UserLite' }),
+		]);
+		const usersMap = new Map(users.map(user => [user.id, user]));
+		return works.map(work => ({ ...this.packWork(work, staff || work.userId === viewerId), user: usersMap.get(work.userId) ?? null, ...(work.kind === 'work' ? { activity: activity[work.id] } : {}) }));
+	}
+
 	@bindThis
-	public async showWork(workId: string, viewerId: string) {
-		const work = await this.getVisibleWork(workId, viewerId);
+	public async showWork(workId: string, viewerId: string, staffAccess = false) {
+		const staff = staffAccess && await this.hatadyService.canModerate(viewerId);
+		const work = await this.getVisibleWork(workId, viewerId, staffAccess);
+		const [packedWork] = await this.packWorks([work], viewerId, staffAccess);
 		const reactions = await this.reactionsRepository.createQueryBuilder('reaction')
 			.select('reaction.reaction', 'reaction')
 			.addSelect('COUNT(*)', 'count')
@@ -583,45 +627,66 @@ export class HatadyMediaService {
 			this.commentsRepository.countBy({ workId }),
 		]);
 		return {
-			...this.packWork(work),
+			...packedWork,
 			isMine: work.userId === viewerId,
+			logs: work.kind === 'work' ? await this.hatadyEntityService.packLogs(
+				await this.hatadyService.getWorkLogs(work.id, viewerId, staff), { id: viewerId }, staff,
+			) : [],
+			activity: packedWork.activity ?? null,
 			reactions: reactions.map(row => ({ reaction: row.reaction, count: Number(row.count) })),
 			myReaction: mine?.reaction ?? null,
 			commentsCount,
 		};
 	}
 
-	private normalizeSession(work: MiHatadyMediaWork, kind: HatadyMediaSessionKind, input: HatadyMediaSessionInput): QueryDeepPartialEntity<MiHatadyMediaSession> {
+	public async getSessionEngagement(sessionIds: string[], viewerId: string) {
+		const out = new Map<string, { reactions: { reaction: string; count: number }[]; myReaction: string | null; commentsCount: number }>();
+		if (sessionIds.length === 0) return out;
+		for (const id of sessionIds) out.set(id, { reactions: [], myReaction: null, commentsCount: 0 });
+		const [reactions, mine, comments] = await Promise.all([
+			this.reactionsRepository.createQueryBuilder('reaction').select('reaction.sessionId', 'sessionId').addSelect('reaction.reaction', 'reaction').addSelect('COUNT(*)', 'count').where('reaction.sessionId IN (:...sessionIds)', { sessionIds }).groupBy('reaction.sessionId').addGroupBy('reaction.reaction').getRawMany<{ sessionId: string; reaction: string; count: string }>(),
+			this.reactionsRepository.findBy({ userId: viewerId, sessionId: In(sessionIds) }),
+			this.commentsRepository.createQueryBuilder('comment').select('comment.sessionId', 'sessionId').addSelect('COUNT(*)', 'count').where('comment.sessionId IN (:...sessionIds)', { sessionIds }).groupBy('comment.sessionId').getRawMany<{ sessionId: string; count: string }>(),
+		]);
+		for (const row of reactions) out.get(row.sessionId)?.reactions.push({ reaction: row.reaction, count: Number(row.count) });
+		for (const row of mine) { const entry = row.sessionId ? out.get(row.sessionId) : null; if (entry) entry.myReaction = row.reaction; }
+		for (const row of comments) { const entry = out.get(row.sessionId); if (entry) entry.commentsCount = Number(row.count); }
+		return out;
+	}
+
+	public async showSession(sessionId: string, viewerId: string, staffAccess = false) {
+		const session = await this.getVisibleSession(sessionId, viewerId, staffAccess);
+		const work = session.workId == null ? null : await this.worksRepository.findOneBy({ id: session.workId });
+		const visibleWork = work && await this.canViewWork(work, viewerId, staffAccess) ? work : null;
+		const [reactionRows, mine, commentsCount, packedWorks] = await Promise.all([
+			this.reactionsRepository.createQueryBuilder('reaction').select('reaction.reaction', 'reaction').addSelect('COUNT(*)', 'count').where('reaction.sessionId = :sessionId', { sessionId }).groupBy('reaction.reaction').getRawMany<{ reaction: string; count: string }>(),
+			this.reactionsRepository.findOneBy({ userId: viewerId, sessionId }),
+			this.commentsRepository.countBy({ sessionId }),
+			this.packWorks(visibleWork ? [visibleWork] : [], viewerId, staffAccess),
+		]);
+		return { session: { ...this.packSession(session), workId: visibleWork ? session.workId : null, reactions: reactionRows.map(row => ({ reaction: row.reaction, count: Number(row.count) })), myReaction: mine?.reaction ?? null, commentsCount }, work: packedWorks[0] ?? null, isMine: session.userId === viewerId };
+	}
+
+	private normalizeSession(work: Pick<MiHatadyMediaWork, 'kind'>, kind: HatadyMediaSessionKind, input: HatadyMediaSessionInput, previous?: MiHatadyMediaSession): QueryDeepPartialEntity<MiHatadyMediaSession> {
 		assertEnum(kind, HATADY_MEDIA_SESSION_KINDS, 'session kind');
-		if ((work.kind === 'movie') !== (kind === 'movie_viewing')) throw new Error('session kind does not match work kind');
+		if (work.kind === 'work' || (work.kind === 'movie') !== (kind === 'movie_viewing')) throw new Error('session kind does not match work kind');
 		const occurredAt = parseHatadyMediaDateTime(input.occurredAt, 'occurredAt');
-		if (input.durationMinutes != null && (!Number.isInteger(input.durationMinutes) || input.durationMinutes < 1 || input.durationMinutes > 100000)) throw new Error('invalid durationMinutes');
+		if (input.durationMinutes != null && (!Number.isInteger(input.durationMinutes) || input.durationMinutes < 0 || input.durationMinutes > 2147483647)) throw new Error('invalid durationMinutes');
 		const visibility = input.visibility ?? 'private';
 		assertEnum(visibility, HATADY_MEDIA_VISIBILITIES, 'visibility');
-		// 旗鯖fork(Hatady次期: ゲーム/映画記録): セッション単独の公開範囲が work より広くても、
-		// canViewSession は先に canViewWork を通すため他者への漏洩は起きない。
-		// 学習ログ側にも同様の上限制約は無く、ここだけ厳しくすると保存不能になるだけなので撤廃する。
+		// 作品と記録の公開範囲は独立。閲覧時は作品の認可を別に確認してpackする。
 		return {
 			kind,
 			occurredAt,
-			durationMinutes: input.durationMinutes ?? null,
+			durationSeconds: normalizeHatadyDuration(input, previous),
+			durationMinutes: input.durationSeconds !== undefined ? (input.durationSeconds === null ? null : Math.floor(input.durationSeconds / 60)) : input.durationMinutes === undefined ? previous?.durationMinutes ?? null : input.durationMinutes,
+			startedAt: input.startedAt === undefined ? previous?.startedAt ?? null : normalizeHatadyStartedAt(input.startedAt),
+			tags: normalizeHatadyTags(input.tags, previous?.tags ?? []),
 			note: normalizeOptionalString(input.note, 8192, 'note'),
 			noteSpoiler: input.noteSpoiler ?? false,
 			visibility,
-			details: validateHatadyMediaSessionDetails(kind, input.details) as QueryDeepPartialEntity<MiHatadyMediaSession>['details'],
+			details: validateHatadyMediaSessionDetails(kind, input.details, previous?.details) as QueryDeepPartialEntity<MiHatadyMediaSession>['details'],
 		};
-	}
-
-	// 旗鯖fork(Hatady次期: ゲーム/映画記録): セッションを work より広い公開範囲で保存する時、
-	// work 側を黙って private のままにしておくと canViewWork が先に弾いてしまい、
-	// 「セッションをpublicにしたのに、みんなの活動に出てこない」という詰みが生まれる。
-	// work の公開範囲は「その work が持つセッションの中で一番広いもの」を表す値として扱い、
-	// セッション保存のたびに必要なら自動で引き上げる。
-	@bindThis
-	private async raiseWorkVisibilityIfNeeded(manager: EntityManager, work: MiHatadyMediaWork, sessionVisibility: HatadyMediaVisibility): Promise<void> {
-		if (visibilityRank(sessionVisibility) <= visibilityRank(work.visibility)) return;
-		await manager.getRepository(MiHatadyMediaWork).update({ id: work.id }, { visibility: sessionVisibility, updatedAt: new Date() });
-		work.visibility = sessionVisibility;
 	}
 
 	@bindThis
@@ -632,8 +697,8 @@ export class HatadyMediaService {
 			const work = await manager.getRepository(MiHatadyMediaWork).findOne({ where: { id: workId, userId }, lock: { mode: 'pessimistic_write' } });
 			if (work == null) throw new Error(HatadyMediaService.ERR_NOT_FOUND);
 			const values = this.normalizeSession(work, kind, input);
-			await this.raiseWorkVisibilityIfNeeded(manager, work, values.visibility as HatadyMediaVisibility);
-			await manager.getRepository(MiHatadyMediaSession).insert({ id, createdAt: now, updatedAt: now, userId, workId, ...values });
+			if (input.tags?.includes('recommend')) await manager.getRepository(MiHatadyMediaWork).update({ id: workId, userId }, { isRecommended: true });
+			await manager.getRepository(MiHatadyMediaSession).insert({ id, createdAt: now, updatedAt: now, userId, workId, ...values, workSnapshot: this.snapshotWork(work) as QueryDeepPartialEntity<MiHatadyMediaSession>['workSnapshot'] });
 			return manager.getRepository(MiHatadyMediaSession).findOneByOrFail({ id, userId });
 		});
 		// 旗鯖fork(Hatady次期: ゲーム/映画記録): 映画・ゲームの記録も連続記録に数えるため、
@@ -643,64 +708,70 @@ export class HatadyMediaService {
 	}
 
 	@bindThis
-	public async listSessions(viewerId: string, options: { workId?: string; untilId?: string; limit: number }): Promise<MiHatadyMediaSession[]> {
+	public async listSessions(viewerId: string, options: { workId?: string; untilId?: string; limit: number; staffAccess?: boolean }): Promise<MiHatadyMediaSession[]> {
+		const staffAccess = options.staffAccess === true && await this.hatadyService.canModerate(viewerId);
 		const qb = this.sessionsRepository.createQueryBuilder('session');
 		let visibleWork: MiHatadyMediaWork | null = null;
 		if (options.workId == null) {
 			// workId 無しは本人のエクスポート専用。別ユーザーを指定する入口を持たない。
 			qb.where('session.userId = :viewerId', { viewerId });
 		} else {
-			const work = await this.getVisibleWork(options.workId, viewerId);
+			const work = await this.getVisibleWork(options.workId, viewerId, staffAccess);
 			visibleWork = work;
 			qb.where('session.workId = :workId', { workId: work.id });
-			if (work.userId !== viewerId) {
+			if (work.userId !== viewerId && !staffAccess) {
 				const isFollower = await this.hatadyFollowingsRepository.existsBy({ followerId: viewerId, followeeId: work.userId });
-				qb.andWhere(isFollower ? "session.visibility IN ('public', 'followers')" : "session.visibility = 'public'");
+				qb.andWhere(isFollower ? 'session.visibility IN (\'public\', \'followers\')' : 'session.visibility = \'public\'');
 			}
 		}
 		if (options.untilId != null) {
 			const cursor = options.workId == null
 				? await this.sessionsRepository.findOneBy({ id: options.untilId, userId: viewerId })
 				: await this.sessionsRepository.findOneBy({ id: options.untilId, workId: options.workId });
-			if (cursor == null || (visibleWork != null && !(await this.canViewSession(cursor, visibleWork, viewerId)))) throw new Error(HatadyMediaService.ERR_NOT_FOUND);
+			if (cursor == null || (visibleWork != null && !(await this.canViewSession(cursor, visibleWork, viewerId, staffAccess)))) throw new Error(HatadyMediaService.ERR_NOT_FOUND);
 			qb.andWhere('session.id < :untilId', { untilId: options.untilId });
 		}
 		const sessions = await qb.orderBy('session.id', 'DESC').take(Math.min(100, Math.max(1, options.limit))).getMany();
 		if (options.workId == null) return sessions;
-		const work = visibleWork ?? await this.getVisibleWork(options.workId, viewerId);
-		const allowed = await Promise.all(sessions.map(session => this.canViewSession(session, work, viewerId)));
+		const work = visibleWork ?? await this.getVisibleWork(options.workId, viewerId, staffAccess);
+		const allowed = await Promise.all(sessions.map(session => this.canViewSession(session, work, viewerId, staffAccess)));
 		return sessions.filter((_, index) => allowed[index]);
 	}
 
 	@bindThis
-	public async canViewSession(session: MiHatadyMediaSession, work: MiHatadyMediaWork, viewerId: string): Promise<boolean> {
-		if (!(await this.canViewWork(work, viewerId))) return false;
-		if (session.userId === viewerId) return true;
+	public snapshotWork(work: MiHatadyMediaWork): Record<string, unknown> {
+		return { title: work.title, kind: work.kind, creator: work.creator, genre: typeof work.details?.genre === 'string' ? work.details.genre : work.genres?.[0] ?? '' };
+	}
+
+	public async canViewSession(session: MiHatadyMediaSession, _work: MiHatadyMediaWork | null, viewerId: string, staffAccess = false): Promise<boolean> {
+		if (session.userId === viewerId || (staffAccess && await this.hatadyService.canModerate(viewerId))) return true;
+		if (await this.hatadyService.isBlockedEitherDirection(session.userId, viewerId)) return false;
 		if (session.visibility === 'public') return true;
-		if (session.visibility !== 'followers') return false;
-		return this.hatadyFollowingsRepository.existsBy({ followerId: viewerId, followeeId: work.userId });
+		return session.visibility === 'followers' && this.hatadyFollowingsRepository.existsBy({ followerId: viewerId, followeeId: session.userId });
+	}
+
+	public async getVisibleSession(sessionId: string, viewerId: string, staffAccess = false): Promise<MiHatadyMediaSession> {
+		const session = await this.sessionsRepository.findOneBy({ id: sessionId });
+		if (session == null || !(await this.canViewSession(session, null, viewerId, staffAccess))) throw new Error(HatadyMediaService.ERR_NOT_FOUND);
+		return session;
 	}
 
 	@bindThis
 	public async updateSession(userId: string, sessionId: string, input: Partial<HatadyMediaSessionInput>): Promise<MiHatadyMediaSession> {
 		await this.db.transaction(async manager => {
-			// updateWork と同じ work -> session の順でロックし、公開範囲変更との循環待ちを避ける。
-			const sessionRef = await manager.getRepository(MiHatadyMediaSession).findOneBy({ id: sessionId, userId });
-			if (sessionRef == null) throw new Error(HatadyMediaService.ERR_NOT_FOUND);
-			const work = await manager.getRepository(MiHatadyMediaWork).findOne({ where: { id: sessionRef.workId, userId }, lock: { mode: 'pessimistic_write' } });
-			if (work == null) throw new Error(HatadyMediaService.ERR_NOT_FOUND);
-			const session = await manager.getRepository(MiHatadyMediaSession).findOne({ where: { id: sessionId, userId, workId: work.id }, lock: { mode: 'pessimistic_write' } });
+			const repo = manager.getRepository(MiHatadyMediaSession);
+			const session = await repo.findOne({ where: { id: sessionId, userId }, lock: { mode: 'pessimistic_write' } });
 			if (session == null) throw new Error(HatadyMediaService.ERR_NOT_FOUND);
-			const values = this.normalizeSession(work, session.kind, {
+			const work = session.workId == null ? null : await manager.getRepository(MiHatadyMediaWork).findOneBy({ id: session.workId, userId });
+			const values = this.normalizeSession(work ?? { kind: session.kind === 'movie_viewing' ? 'movie' : 'game' }, session.kind, {
+				...input,
 				occurredAt: input.occurredAt ?? session.occurredAt.toISOString(),
-				durationMinutes: input.durationMinutes === undefined ? session.durationMinutes : input.durationMinutes,
 				note: input.note === undefined ? session.note : input.note,
 				noteSpoiler: input.noteSpoiler ?? session.noteSpoiler,
 				visibility: input.visibility ?? session.visibility,
-				details: input.details === undefined ? session.details : input.details,
-			});
-			await this.raiseWorkVisibilityIfNeeded(manager, work, values.visibility as HatadyMediaVisibility);
-			await manager.getRepository(MiHatadyMediaSession).update({ id: sessionId, userId }, { ...values, updatedAt: new Date() });
+			}, session);
+			await repo.update({ id: sessionId, userId }, { ...values, updatedAt: new Date() });
+			if (work && input.tags?.includes('recommend')) await manager.getRepository(MiHatadyMediaWork).update({ id: work.id, userId }, { isRecommended: true });
 		});
 		return this.sessionsRepository.findOneByOrFail({ id: sessionId, userId });
 	}
@@ -723,6 +794,10 @@ export class HatadyMediaService {
 			kind: session.kind,
 			occurredAt: session.occurredAt.toISOString(),
 			durationMinutes: session.durationMinutes,
+			durationSeconds: normalizeHatadyDuration({}, session),
+			startedAt: session.startedAt ?? null,
+			tags: session.tags ?? [],
+			workSnapshot: session.workSnapshot ?? {},
 			note: session.note,
 			noteSpoiler: session.noteSpoiler,
 			visibility: session.visibility,
@@ -731,15 +806,16 @@ export class HatadyMediaService {
 	}
 
 	@bindThis
-	public async listComments(viewerId: string, workId: string, untilId: string | undefined, limit: number) {
-		await this.getVisibleWork(workId, viewerId);
-		const qb = this.commentsRepository.createQueryBuilder('comment').where('comment.workId = :workId', { workId });
+	public async listComments(viewerId: string, workId: string | undefined, untilId: string | undefined, limit: number, sessionId?: string, staffAccess = false) {
+		if (!!workId === !!sessionId) throw new Error('invalid comment target');
+		if (sessionId) await this.getVisibleSession(sessionId, viewerId, staffAccess);
+		else await this.getVisibleWork(workId!, viewerId, staffAccess);
+		const target = sessionId ? { sessionId } : { workId: workId! };
+		const qb = this.commentsRepository.createQueryBuilder('comment').where(sessionId ? 'comment.sessionId = :sessionId' : 'comment.workId = :workId', target);
 		if (untilId != null) {
-			const cursor = await this.commentsRepository.findOneBy({ id: untilId, workId });
-			if (cursor == null) throw new Error(HatadyMediaService.ERR_NOT_FOUND);
+			if (!(await this.commentsRepository.existsBy({ id: untilId, ...target }))) throw new Error(HatadyMediaService.ERR_NOT_FOUND);
 			qb.andWhere('comment.id < :untilId', { untilId });
 		}
-		// ページ境界は新しい順で切りつつ、同一レスポンス内では親→返信を組みやすい古い順に返す。
 		const comments = await qb.orderBy('comment.id', 'DESC').take(Math.min(100, Math.max(1, limit))).getMany();
 		comments.reverse();
 		const allowed = await Promise.all(comments.map(comment => this.hatadyService.canAppearInTimeline(comment.userId, viewerId)));
@@ -747,32 +823,26 @@ export class HatadyMediaService {
 	}
 
 	@bindThis
-	public async createComment(userId: string, workId: string, replyId: string | null, text: string, spoiler: boolean) {
+	public async createComment(userId: string, workId: string | null, replyId: string | null, text: string, spoiler: boolean, sessionId?: string) {
+		if (!!workId === !!sessionId) throw new Error('invalid comment target');
 		const normalized = text.trim();
 		if (normalized.length === 0 || normalized.length > 2048) throw new Error('invalid comment');
 		const now = new Date();
 		const commentId = this.idService.gen(now.getTime());
 		const pushes: { userId: string; body: HatadyPushNotificationBody }[] = [];
 		const comment = await this.db.transaction(async manager => {
-			const lockedWork = await manager.getRepository(MiHatadyMediaWork).findOne({ where: { id: workId }, lock: { mode: 'pessimistic_read' } });
-			if (lockedWork == null || !(await this.canViewWork(lockedWork, userId))) throw new Error(HatadyMediaService.ERR_NOT_FOUND);
+			const target = await this.resolveReactionTarget(manager, userId, sessionId ? 'session' : 'work', sessionId ?? workId!);
+			const where = sessionId ? { sessionId } : { workId: workId! };
 			let parent: MiHatadyMediaComment | null = null;
 			if (replyId != null) {
-				parent = await manager.getRepository(MiHatadyMediaComment).findOneBy({ id: replyId, workId });
+				parent = await manager.getRepository(MiHatadyMediaComment).findOneBy({ id: replyId, ...where });
 				if (parent == null) throw new Error(HatadyMediaService.ERR_NOT_FOUND);
 			}
-			await manager.getRepository(MiHatadyMediaComment).insert({ id: commentId, createdAt: now, updatedAt: now, workId, userId, replyId, text: normalized, spoiler, reactionsCount: 0 });
-			if (parent != null) {
-				const replyPush = await this.insertMediaNotification(manager, { notifieeId: parent.userId, notifierId: userId, type: 'mediaReply', mediaWorkId: lockedWork.id, mediaCommentId: commentId });
-				if (replyPush) pushes.push(replyPush);
-				// 返信先と作品所有者が別人なら、作品所有者にも新規コメントとして一度だけ知らせる。
-				if (parent.userId !== lockedWork.userId) {
-					const ownerPush = await this.insertMediaNotification(manager, { notifieeId: lockedWork.userId, notifierId: userId, type: 'mediaComment', mediaWorkId: lockedWork.id, mediaCommentId: commentId });
-					if (ownerPush) pushes.push(ownerPush);
-				}
-			} else {
-				const ownerPush = await this.insertMediaNotification(manager, { notifieeId: lockedWork.userId, notifierId: userId, type: 'mediaComment', mediaWorkId: lockedWork.id, mediaCommentId: commentId });
-				if (ownerPush) pushes.push(ownerPush);
+			await manager.getRepository(MiHatadyMediaComment).insert({ id: commentId, createdAt: now, updatedAt: now, workId: workId ?? null, sessionId: sessionId ?? null, userId, replyId, text: normalized, spoiler, reactionsCount: 0 });
+			const recipients = new Set([target.ownerId, ...(parent ? [parent.userId] : [])]);
+			for (const notifieeId of recipients) {
+				const push = await this.insertMediaNotification(manager, { notifieeId, notifierId: userId, type: parent?.userId === notifieeId ? 'mediaReply' : 'mediaComment', mediaWorkId: workId, mediaSessionId: sessionId, mediaCommentId: commentId });
+				if (push) pushes.push(push);
 			}
 			return manager.getRepository(MiHatadyMediaComment).findOneByOrFail({ id: commentId });
 		});
@@ -828,6 +898,7 @@ export class HatadyMediaService {
 				createdAt: comment.createdAt.toISOString(),
 				updatedAt: comment.updatedAt.toISOString(),
 				workId: comment.workId,
+				sessionId: comment.sessionId,
 				userId: comment.userId,
 				user: usersMap.get(comment.userId) ?? null,
 				replyId: comment.replyId,
@@ -840,24 +911,27 @@ export class HatadyMediaService {
 		});
 	}
 
-	private async resolveReactionTarget(manager: EntityManager, viewerId: string, targetType: 'work' | 'comment', targetId: string): Promise<{ work: MiHatadyMediaWork; workId: string | null; commentId: string | null; comment?: MiHatadyMediaComment }> {
+	private async resolveReactionTarget(manager: EntityManager, viewerId: string, targetType: 'work' | 'session' | 'comment', targetId: string): Promise<{ ownerId: string; workId: string | null; sessionId: string | null; commentId: string | null; comment?: MiHatadyMediaComment }> {
 		if (targetType === 'work') {
 			const work = await manager.getRepository(MiHatadyMediaWork).findOne({ where: { id: targetId }, lock: { mode: 'pessimistic_read' } });
 			if (work == null || !(await this.canViewWork(work, viewerId))) throw new Error(HatadyMediaService.ERR_NOT_FOUND);
-			return { work, workId: targetId, commentId: null };
+			return { ownerId: work.userId, workId: targetId, sessionId: null, commentId: null };
 		}
-		// work -> comment の固定順で取り、コメント集計を更新するため comment は最初から排他ロックする。
-		const commentRef = await manager.getRepository(MiHatadyMediaComment).findOneBy({ id: targetId });
-		if (commentRef == null) throw new Error(HatadyMediaService.ERR_NOT_FOUND);
-		const work = await manager.getRepository(MiHatadyMediaWork).findOne({ where: { id: commentRef.workId }, lock: { mode: 'pessimistic_read' } });
-		if (work == null || !(await this.canViewWork(work, viewerId))) throw new Error(HatadyMediaService.ERR_NOT_FOUND);
-		const comment = await manager.getRepository(MiHatadyMediaComment).findOne({ where: { id: targetId, workId: work.id }, lock: { mode: 'pessimistic_write' } });
+		if (targetType === 'session') {
+			const session = await manager.getRepository(MiHatadyMediaSession).findOne({ where: { id: targetId }, lock: { mode: 'pessimistic_read' } });
+			if (session == null || !(await this.canViewSession(session, null, viewerId))) throw new Error(HatadyMediaService.ERR_NOT_FOUND);
+			return { ownerId: session.userId, workId: null, sessionId: session.id, commentId: null };
+		}
+		const ref = await manager.getRepository(MiHatadyMediaComment).findOneBy({ id: targetId });
+		if (ref == null) throw new Error(HatadyMediaService.ERR_NOT_FOUND);
+		await this.resolveReactionTarget(manager, viewerId, ref.sessionId ? 'session' : 'work', ref.sessionId ?? ref.workId!);
+		const comment = await manager.getRepository(MiHatadyMediaComment).findOne({ where: { id: targetId }, lock: { mode: 'pessimistic_write' } });
 		if (comment == null) throw new Error(HatadyMediaService.ERR_NOT_FOUND);
-		return { work, workId: null, commentId: targetId, comment };
+		return { ownerId: comment.userId, workId: null, sessionId: null, commentId: comment.id, comment };
 	}
 
 	@bindThis
-	public async createReaction(userId: string, targetType: 'work' | 'comment', targetId: string, reaction: string): Promise<void> {
+	public async createReaction(userId: string, targetType: 'work' | 'session' | 'comment', targetId: string, reaction: string): Promise<void> {
 		const normalized = reaction.trim();
 		if (normalized.length === 0 || normalized.length > 260) throw new Error('invalid reaction');
 		const pushes: { userId: string; body: HatadyPushNotificationBody }[] = [];
@@ -865,17 +939,16 @@ export class HatadyMediaService {
 			await manager.query('SELECT pg_advisory_xact_lock(hashtext($1))', [`hatady-media-reaction:${userId}:${targetType}:${targetId}`]);
 			const target = await this.resolveReactionTarget(manager, userId, targetType, targetId);
 			const repo = manager.getRepository(MiHatadyMediaReaction);
-			const existing = target.workId != null
-				? await repo.findOneBy({ userId, workId: target.workId })
-				: await repo.findOneBy({ userId, commentId: target.commentId! });
+			const existing = await repo.findOneBy(target.workId ? { userId, workId: target.workId } : target.sessionId ? { userId, sessionId: target.sessionId } : { userId, commentId: target.commentId! });
 			if (existing != null) {
 				if (existing.reaction === normalized) return;
 				await repo.update(existing.id, { reaction: normalized, createdAt: new Date() });
 				const push = await this.insertMediaNotification(manager, {
-					notifieeId: target.comment?.userId ?? target.work.userId,
+					notifieeId: target.ownerId,
 					notifierId: userId,
 					type: 'mediaReaction',
-					mediaWorkId: target.work.id,
+					mediaWorkId: target.workId ?? target.comment?.workId ?? null,
+					mediaSessionId: target.sessionId ?? target.comment?.sessionId ?? null,
 					mediaCommentId: target.comment?.id ?? null,
 					reaction: normalized,
 				});
@@ -883,13 +956,14 @@ export class HatadyMediaService {
 				return;
 			}
 			const now = new Date();
-			await repo.insert({ id: this.idService.gen(now.getTime()), createdAt: now, userId, workId: target.workId, commentId: target.commentId, reaction: normalized });
+			await repo.insert({ id: this.idService.gen(now.getTime()), createdAt: now, userId, workId: target.workId, sessionId: target.sessionId, commentId: target.commentId, reaction: normalized });
 			if (target.commentId != null) await manager.increment(MiHatadyMediaComment, { id: target.commentId }, 'reactionsCount', 1);
 			const push = await this.insertMediaNotification(manager, {
-				notifieeId: target.comment?.userId ?? target.work.userId,
+				notifieeId: target.ownerId,
 				notifierId: userId,
 				type: 'mediaReaction',
-				mediaWorkId: target.work.id,
+				mediaWorkId: target.workId ?? target.comment?.workId ?? null,
+				mediaSessionId: target.sessionId ?? target.comment?.sessionId ?? null,
 				mediaCommentId: target.comment?.id ?? null,
 				reaction: normalized,
 			});
@@ -899,13 +973,13 @@ export class HatadyMediaService {
 	}
 
 	@bindThis
-	public async deleteReaction(userId: string, targetType: 'work' | 'comment', targetId: string): Promise<void> {
+	public async deleteReaction(userId: string, targetType: 'work' | 'session' | 'comment', targetId: string): Promise<void> {
 		// 非公開化・Hatadyフォロー解除後も、自分が付けたリアクションは撤回できる。
 		// 本人の行だけをキーにして冪等削除し、対象の存在や公開範囲はレスポンスへ漏らさない。
 		await this.db.transaction(async manager => {
 			await manager.query('SELECT pg_advisory_xact_lock(hashtext($1))', [`hatady-media-reaction:${userId}:${targetType}:${targetId}`]);
 			const repo = manager.getRepository(MiHatadyMediaReaction);
-			const reaction = await repo.findOneBy(targetType === 'work' ? { userId, workId: targetId } : { userId, commentId: targetId });
+			const reaction = await repo.findOneBy(targetType === 'work' ? { userId, workId: targetId } : targetType === 'session' ? { userId, sessionId: targetId } : { userId, commentId: targetId });
 			if (reaction == null) return;
 			await repo.delete(reaction.id);
 			if (reaction.commentId != null) {
@@ -918,7 +992,8 @@ export class HatadyMediaService {
 		notifieeId: string;
 		notifierId: string;
 		type: 'mediaComment' | 'mediaReply' | 'mediaReaction';
-		mediaWorkId: string;
+		mediaWorkId: string | null;
+		mediaSessionId?: string | null;
 		mediaCommentId?: string | null;
 		reaction?: string | null;
 	}): Promise<{ userId: string; body: HatadyPushNotificationBody } | null> {
@@ -934,6 +1009,7 @@ export class HatadyMediaService {
 			logId: null,
 			commentId: null,
 			mediaWorkId: params.mediaWorkId,
+			mediaSessionId: params.mediaSessionId ?? null,
 			mediaCommentId: params.mediaCommentId ?? null,
 			reaction: params.reaction ?? null,
 			value: null,

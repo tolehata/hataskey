@@ -2,11 +2,13 @@
  * 旗鯖fork(1m): Hatady の本を編集する(本人のみ)。読書の記録(進捗 currentPage・状態 status)もここで更新。
  */
 import { Injectable } from '@nestjs/common';
+import { parseHatadyMediaDateTime } from '@/core/HatadyMediaService.js';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import { HATADY_RATE_LIMITS } from '@/misc/hatady-rate-limit.js';
 import { ApiError } from '@/server/api/error.js';
 import { HatadyService } from '@/core/HatadyService.js';
 import { HatadyEntityService } from '@/core/entities/HatadyEntityService.js';
+import { BOOK_INPUT_PROPERTIES } from '../_record.js';
 
 export const meta = {
 	tags: ['hata'],
@@ -26,6 +28,7 @@ export const meta = {
 export const paramDef = {
 	type: 'object',
 	properties: {
+		...BOOK_INPUT_PROPERTIES,
 		bookId: { type: 'string', format: 'misskey:id' },
 		title: { type: 'string', minLength: 1, maxLength: 512 },
 		author: { type: 'string', maxLength: 256, nullable: true },
@@ -48,6 +51,9 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		super(meta, paramDef, async (ps, me) => {
 			try {
 				const book = await this.hatadyService.updateBook(me, ps.bookId, {
+					visibility: ps.visibility,
+					details: ps.details,
+					finishedAt: ps.finishedAt === undefined ? undefined : ps.finishedAt === null ? null : parseHatadyMediaDateTime(ps.finishedAt, 'finishedAt'),
 					title: ps.title,
 					author: ps.author,
 					totalPages: ps.totalPages,
@@ -57,7 +63,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 					isFavorite: ps.isFavorite,
 					isRecommended: ps.isRecommended,
 				});
-				return this.hatadyEntityService.packBook(book);
+				return this.hatadyEntityService.packBook(book, true);
 			} catch {
 				throw new ApiError(meta.errors.noSuchBook);
 			}

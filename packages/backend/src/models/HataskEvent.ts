@@ -54,6 +54,12 @@ export class MiHataskEvent {
 	@Column('boolean', { default: true })
 	public rsvp: boolean;
 
+	@Column('varchar', { length: 16, default: 'public' })
+	public visibility: 'public' | 'specified';
+
+	@Column('varchar', { length: 32, array: true, default: '{}' })
+	public visibleUserIds: string[];
+
 	@Column('timestamp with time zone')
 	public createdAt: Date;
 }

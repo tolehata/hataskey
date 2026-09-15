@@ -6,6 +6,7 @@
 
 import { Inject, Injectable } from '@nestjs/common';
 import { In } from 'typeorm';
+import { normalizeHatadyDuration, packHatadyDetails } from '@/core/HatadyRecordData.js';
 import { DI } from '@/di-symbols.js';
 import type { HatadyBooksRepository, HatadyLogsRepository, HatadyReactionsRepository, HatadyCommentsRepository, HatadyFollowingsRepository, HatadyBookmarksRepository, HatadyMediaWorksRepository, HatadyMediaCommentsRepository } from '@/models/_.js';
 import type { MiUser } from '@/models/User.js';
@@ -17,6 +18,8 @@ import type { MiHatadyBookmark } from '@/models/HatadyBookmark.js';
 import type { MiHatadyBookMemo } from '@/models/HatadyBookMemo.js';
 import { UserEntityService } from '@/core/entities/UserEntityService.js';
 import { bindThis } from '@/decorators.js';
+import { HatadyService } from '@/core/HatadyService.js';
+import { MiHatadyMediaSession } from '@/models/HatadyMediaSession.js';
 
 @Injectable()
 export class HatadyEntityService {
@@ -39,6 +42,7 @@ export class HatadyEntityService {
 		private hatadyMediaCommentsRepository: HatadyMediaCommentsRepository,
 
 		private userEntityService: UserEntityService,
+		@Inject(HatadyService) private hatadyService?: HatadyService,
 	) {
 	}
 
@@ -94,8 +98,10 @@ export class HatadyEntityService {
 	}
 
 	@bindThis
-	public packBook(book: MiHatadyBook): Record<string, unknown> {
+	public packBook(book: MiHatadyBook, privateAccess = false): Record<string, unknown> {
 		return {
+			visibility: book.visibility ?? 'public',
+			details: packHatadyDetails(book.details, privateAccess === true),
 			id: book.id,
 			createdAt: book.createdAt.toISOString(),
 			updatedAt: book.updatedAt.toISOString(),
@@ -116,12 +122,19 @@ export class HatadyEntityService {
 		};
 	}
 
+	public async packBookWithUser(book: MiHatadyBook, viewerId: MiUser['id'], privateAccess = false): Promise<Record<string, unknown>> {
+		const users = await this.userEntityService.packMany([book.userId], { id: viewerId }, { schema: 'UserLite' });
+		return { ...this.packBook(book, privateAccess), user: users[0] ?? null };
+	}
+
 	// 旗鯖fork(セキュリティ): しおりは自由記述メモ(bm.memo)を含む私的データのため、
 	//   閲覧者が所有する本にだけ付ける。viewerId は必須引数にして、呼び出し側に必ず判断させる。
 	//   viewerId に null を渡すと絞り込まない(モデレーター専用エンドポイント用の明示的なオプトアウト)。
 	@bindThis
 	public async packBooks(books: MiHatadyBook[], viewerId: MiUser['id'] | null): Promise<Record<string, unknown>[]> {
 		if (books.length === 0) return [];
+		const users = await this.userEntityService.packMany([...new Set(books.map(book => book.userId))], viewerId ? { id: viewerId } : null, { schema: 'UserLite' });
+		const usersMap = new Map(users.map(user => [user.id, user]));
 		// しおりを一括取得して本ごとに付与(本棚の「しおりが挟まっている」演出用)。
 		const visibleBooks = viewerId == null ? books : books.filter(b => b.userId === viewerId);
 		const bmMap = new Map<string, MiHatadyBookmark[]>();
@@ -136,7 +149,8 @@ export class HatadyEntityService {
 			}
 		}
 		return books.map(b => ({
-			...this.packBook(b),
+			...this.packBook(b, viewerId == null || b.userId === viewerId),
+			user: usersMap.get(b.userId) ?? null,
 			bookmarks: (bmMap.get(b.id) ?? []).map(bm => this.packBookmark(bm)),
 		}));
 	}
@@ -145,7 +159,7 @@ export class HatadyEntityService {
 	//   1. 投稿者ユーザーを packMany で一括取得
 	//   2. 紐づく本を In() で 1 クエリにまとめて取得
 	@bindThis
-	public async packLogs(logs: MiHatadyLog[], me?: { id: MiUser['id'] } | null): Promise<Record<string, unknown>[]> {
+	public async packLogs(logs: MiHatadyLog[], me?: { id: MiUser['id'] } | null, staffAccess = false): Promise<Record<string, unknown>[]> {
 		if (logs.length === 0) return [];
 
 		// 1. ユーザーを一括 pack。
@@ -161,11 +175,14 @@ export class HatadyEntityService {
 			for (const b of books) booksMap.set(b.id, b);
 		}
 
+		const followed = me && bookIds.length ? await this.hatadyFollowingsRepository.findBy({ followerId: me.id }) : [];
+		const follows = new Set(followed.map(row => row.followeeId));
 		// 3. リアクションを一括集計。
 		const reactionsMap = await this.aggregateReactions('log', logs.map(l => l.id), me?.id);
 
 		return logs.map(log => {
-			const book = log.bookId ? booksMap.get(log.bookId) : null;
+			const linkedBook = log.bookId ? booksMap.get(log.bookId) : null;
+			const book = linkedBook && (staffAccess || linkedBook.userId === me?.id || (linkedBook.visibility ?? 'public') === 'public' || (linkedBook.visibility === 'followers' && follows.has(linkedBook.userId))) ? linkedBook : null;
 			const rx = reactionsMap.get(log.id) ?? { reactions: {}, myReaction: null };
 			return {
 				id: log.id,
@@ -177,10 +194,16 @@ export class HatadyEntityService {
 				subject: log.subject,
 				tag: log.tag,
 				body: log.body,
-				bookId: log.bookId,
-				book: book ? this.packBook(book) : null,
+				bookId: book ? log.bookId : null,
+				book: book ? this.packBook(book, staffAccess || book.userId === me?.id) : null,
 				pageFrom: log.pageFrom,
 				pageTo: log.pageTo,
+				kind: log.kind ?? 'study',
+				tags: log.tags ?? (log.tag ? [log.tag] : []),
+				durationSeconds: normalizeHatadyDuration({}, log),
+				startedAt: log.startedAt ?? null,
+				details: log.details ?? {},
+				mediaWorkId: log.userId === me?.id || staffAccess ? log.mediaWorkId ?? null : null,
 				durationMinutes: log.durationMinutes,
 				isPublic: log.isPublic,
 				visibility: log.visibility,
@@ -209,6 +232,7 @@ export class HatadyEntityService {
 			return {
 				id: c.id,
 				createdAt: c.createdAt.toISOString(),
+				updatedAt: c.updatedAt?.toISOString() ?? null,
 				logId: c.logId,
 				userId: c.userId,
 				user: usersMap.get(c.userId) ?? null,
@@ -223,8 +247,8 @@ export class HatadyEntityService {
 	}
 
 	@bindThis
-	public async packLog(log: MiHatadyLog, me?: { id: MiUser['id'] } | null): Promise<Record<string, unknown>> {
-		const [packed] = await this.packLogs([log], me);
+	public async packLog(log: MiHatadyLog, me?: { id: MiUser['id'] } | null, staffAccess = false): Promise<Record<string, unknown>> {
+		const [packed] = await this.packLogs([log], me, staffAccess);
 		return packed;
 	}
 
@@ -274,7 +298,7 @@ export class HatadyEntityService {
 				for (const row of rows) followedIds.add(row.followeeId);
 			}
 			for (const log of logs) {
-				if (log.userId === viewerId || log.visibility === 'public' || (log.visibility === 'followers' && followedIds.has(log.userId))) {
+				if ((log.userId === viewerId || log.visibility === 'public' || (log.visibility === 'followers' && followedIds.has(log.userId))) && !(await this.hatadyService?.isBlockedEitherDirection(log.userId, viewerId))) {
 					logsMap.set(log.id, log);
 				}
 			}
@@ -301,7 +325,17 @@ export class HatadyEntityService {
 				for (const row of rows) followedIds.add(row.followeeId);
 			}
 			const visible = works.map(work => ({ work, allowed: work.userId === viewerId || work.visibility === 'public' || (work.visibility === 'followers' && followedIds.has(work.userId)) }));
-			for (const { work, allowed } of visible) if (allowed) mediaWorksMap.set(work.id, { title: work.title, kind: work.kind });
+			for (const { work, allowed } of visible) if (allowed && !(await this.hatadyService?.isBlockedEitherDirection(work.userId, viewerId))) mediaWorksMap.set(work.id, { title: work.title, kind: work.kind });
+		}
+
+		const mediaSessionIds = [...new Set(notifications.map(n => n.mediaSessionId).filter((id): id is string => id != null))];
+		const mediaSessionsMap = new Map<string, MiHatadyMediaSession>();
+		if (mediaSessionIds.length && viewerId) {
+			const sessions = await this.hatadyMediaWorksRepository.manager.getRepository(MiHatadyMediaSession).findBy({ id: In(mediaSessionIds) });
+			for (const session of sessions) {
+				const allowed = session.userId === viewerId || session.visibility === 'public' || (session.visibility === 'followers' && await this.hatadyFollowingsRepository.existsBy({ followerId: viewerId, followeeId: session.userId }));
+				if (allowed && !(await this.hatadyService?.isBlockedEitherDirection(session.userId, viewerId))) mediaSessionsMap.set(session.id, session);
+			}
 		}
 
 		const mediaCommentIds = [...new Set(notifications.map(n => n.mediaCommentId).filter((x): x is string => x != null))];
@@ -309,7 +343,7 @@ export class HatadyEntityService {
 		if (mediaCommentIds.length > 0) {
 			const comments = await this.hatadyMediaCommentsRepository.findBy({ id: In(mediaCommentIds) });
 			for (const comment of comments) {
-				if (mediaWorksMap.has(comment.workId)) mediaCommentsMap.set(comment.id, { text: comment.spoiler ? null : comment.text, spoiler: comment.spoiler });
+				if ((comment.workId != null && mediaWorksMap.has(comment.workId)) || (comment.sessionId != null && mediaSessionsMap.has(comment.sessionId))) mediaCommentsMap.set(comment.id, { text: comment.spoiler ? null : comment.text, spoiler: comment.spoiler });
 			}
 		}
 
@@ -321,6 +355,7 @@ export class HatadyEntityService {
 			// 作品が削除済み、または通知後に非公開化されて現在の受信者が閲覧できない場合は、
 			// stable ID 自体も返さない。タイトルだけを隠して ID を残すと存在確認の oracle になる。
 			const visibleMediaWorkId = n.mediaWorkId != null && mediaWorksMap.has(n.mediaWorkId) ? n.mediaWorkId : null;
+			const visibleMediaSession = n.mediaSessionId ? mediaSessionsMap.get(n.mediaSessionId) : null;
 			const visibleMediaCommentId = n.mediaCommentId != null && mediaCommentsMap.has(n.mediaCommentId) ? n.mediaCommentId : null;
 			return {
 				id: n.id,
@@ -333,8 +368,9 @@ export class HatadyEntityService {
 				commentId: visibleCommentId,
 				commentText: comment?.text ?? null,
 				mediaWorkId: visibleMediaWorkId,
-				mediaTitle: visibleMediaWorkId ? (mediaWorksMap.get(visibleMediaWorkId)?.title ?? null) : null,
-				mediaKind: visibleMediaWorkId ? (mediaWorksMap.get(visibleMediaWorkId)?.kind ?? null) : null,
+				mediaSessionId: visibleMediaSession?.id ?? null,
+				mediaTitle: visibleMediaWorkId ? (mediaWorksMap.get(visibleMediaWorkId)?.title ?? null) : visibleMediaSession?.workSnapshot?.title ?? null,
+				mediaKind: visibleMediaWorkId ? (mediaWorksMap.get(visibleMediaWorkId)?.kind ?? null) : visibleMediaSession?.workSnapshot?.kind ?? null,
 				mediaCommentId: visibleMediaCommentId,
 				mediaCommentText: visibleMediaCommentId ? (mediaCommentsMap.get(visibleMediaCommentId)?.text ?? null) : null,
 				mediaCommentSpoiler: visibleMediaCommentId ? (mediaCommentsMap.get(visibleMediaCommentId)?.spoiler ?? null) : null,

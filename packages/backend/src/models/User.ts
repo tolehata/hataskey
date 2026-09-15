@@ -9,6 +9,7 @@ import { MiDriveFile } from './DriveFile.js';
 
 @Entity('user')
 @Index(['usernameLower', 'host'], { unique: true })
+@Index('IDX_user_hatask_supporter', ['hataskSupporter', 'id'])
 export class MiUser {
 	@PrimaryColumn(id())
 	public id: string;
@@ -171,6 +172,9 @@ export class MiUser {
 		comment: 'Whether the User is suspended.',
 	})
 	public isSuspended: boolean;
+
+	@Column('boolean', { default: false })
+	public hataskSupporter: boolean;
 
 	@Column('boolean', {
 		default: false,

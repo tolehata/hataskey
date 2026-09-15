@@ -58,4 +58,6 @@ export class MiHatadyComment {
 		comment: 'Denormalized reaction count.',
 	})
 	public reactionsCount: number;
+	@Column('timestamp with time zone', { nullable: true })
+	public updatedAt: Date | null;
 }

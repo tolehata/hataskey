@@ -18,6 +18,7 @@ export const paramDef = {
 	properties: {
 		// バナー色のプリセットキー(空文字/未指定で既定に戻す)。
 		bannerColor: { type: 'string', maxLength: 32, nullable: true },
+		design: { type: 'object', additionalProperties: true },
 	},
 	required: [],
 } as const;
@@ -28,8 +29,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		private hatadyService: HatadyService,
 	) {
 		super(meta, paramDef, async (ps, me) => {
-			const color = ps.bannerColor && ps.bannerColor.length > 0 ? ps.bannerColor : null;
-			await this.hatadyService.setBannerColor(me, color);
+			await this.hatadyService.updateProfile(me, { bannerColor: ps.bannerColor === undefined ? undefined : ps.bannerColor || null, design: ps.design });
 		});
 	}
 }

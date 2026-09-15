@@ -179,12 +179,19 @@ export function assertPlannerValue(value: unknown, collection?: HataskPlannerCol
 		if (collection === 'events' && typeof item.date !== 'string') {
 			throw new TypeError(`${collection}[${index}].date must be a string.`);
 		}
-		if (collection === 'templates' && item.kind !== 'todo' && item.kind !== 'event') {
-			throw new TypeError(`${collection}[${index}].kind must be todo or event.`);
+		if (collection === 'templates' && item.kind !== 'todo' && item.kind !== 'event' && item.kind !== 'members') {
+			throw new TypeError(`${collection}[${index}].kind must be todo, event or members.`);
 		}
 		if (collection === 'templates') {
 			if (!isPlannerItem(item.payload)) {
 				throw new TypeError(`${collection}[${index}].payload must be an object.`);
+			}
+			if (item.kind === 'members') {
+				const members = item.payload.visibleUserIds;
+				if (!Array.isArray(members) || members.length === 0 || members.length > 100 || !members.every(id => typeof id === 'string' && /^[a-zA-Z0-9]+$/.test(id))) {
+					throw new TypeError('Member templates require 1 to 100 user IDs.');
+				}
+				continue;
 			}
 			const payloadTitle = item.kind === 'todo' ? item.payload.text : item.payload.title;
 			if (typeof payloadTitle !== 'string') {

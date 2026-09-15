@@ -4,9 +4,11 @@ import { PrimaryColumn, Entity, Index, Column, ManyToOne, JoinColumn } from 'typ
 import { id } from './util/id.js';
 import { MiUser } from './User.js';
 import { MiHatadyMediaWork } from './HatadyMediaWork.js';
+import { MiHatadyMediaSession } from './HatadyMediaSession.js';
 import { MiHatadyMediaComment } from './HatadyMediaComment.js';
 
 @Entity('hatady_media_reaction')
+@Index(['userId', 'sessionId'], { unique: true, where: '"sessionId" IS NOT NULL' })
 @Index(['userId', 'workId'], { unique: true, where: '"workId" IS NOT NULL' })
 @Index(['userId', 'commentId'], { unique: true, where: '"commentId" IS NOT NULL' })
 export class MiHatadyMediaReaction {
@@ -42,4 +44,11 @@ export class MiHatadyMediaReaction {
 
 	@Column('varchar', { length: 260 })
 	public reaction: string;
+	@Index()
+	@Column({ ...id(), nullable: true })
+	public sessionId: MiHatadyMediaSession['id'] | null;
+
+	@ManyToOne(type => MiHatadyMediaSession, { onDelete: 'CASCADE' })
+	@JoinColumn()
+	public session: MiHatadyMediaSession | null;
 }

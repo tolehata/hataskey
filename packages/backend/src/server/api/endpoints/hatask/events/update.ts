@@ -1,11 +1,11 @@
 import ms from 'ms';
 import { Inject, Injectable } from '@nestjs/common';
-import type { DataSource } from 'typeorm';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import { ApiError } from '@/server/api/error.js';
 import { DI } from '@/di-symbols.js';
 import { MiHataskEvent } from '@/models/HataskEvent.js';
 import type { HataskRsvpsRepository, UsersRepository } from '@/models/_.js';
+import { HATASK_EVENT_AUDIENCE_ERROR, canViewHataskEvent, hataskEventAudienceProperties, validateHataskEventAudience } from './_visibility.js';
 import {
 	HATASK_EVENT_COLOR_PATTERN,
 	HATASK_EVENT_DATE_PATTERN,
@@ -16,6 +16,7 @@ import {
 	isValidHataskEventSchedule,
 	packHataskEvent,
 } from './_shared.js';
+import type { DataSource } from 'typeorm';
 
 export const meta = {
 	tags: ['hatask'],
@@ -24,6 +25,7 @@ export const meta = {
 	limit: { duration: ms('1min'), max: 30 },
 	res: { type: 'object' },
 	errors: {
+		invalidAudience: HATASK_EVENT_AUDIENCE_ERROR,
 		noSuchEvent: {
 			message: 'No such event.',
 			code: 'NO_SUCH_EVENT',
@@ -46,6 +48,7 @@ export const meta = {
 export const paramDef = {
 	type: 'object',
 	properties: {
+		...hataskEventAudienceProperties,
 		eventId: { type: 'string', format: 'misskey:id' },
 		expectedRevision: { type: 'string', minLength: 64, maxLength: 64 },
 		title: { type: 'string', minLength: 1, maxLength: 256 },
@@ -74,7 +77,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> {
 			const updatedEvent = await this.db.transaction(async manager => {
 				const repository = manager.getRepository(MiHataskEvent);
 				const event = await repository.findOne({ where: { id: ps.eventId }, lock: { mode: 'pessimistic_write' } });
-				if (event == null) throw new ApiError(meta.errors.noSuchEvent);
+				if (event == null || !canViewHataskEvent(event, me.id)) throw new ApiError(meta.errors.noSuchEvent);
 				if (event.userId !== me.id) throw new ApiError(meta.errors.notOwner);
 				if (hashHataskEvent(event) !== ps.expectedRevision) throw new ApiError(meta.errors.conflict);
 
@@ -88,6 +91,11 @@ export default class extends Endpoint<typeof meta, typeof paramDef> {
 				if (ps.allDay !== undefined) updates.allDay = ps.allDay;
 				if (ps.color !== undefined) updates.color = ps.color;
 				if (ps.rsvp !== undefined) updates.rsvp = ps.rsvp;
+				if (ps.visibility !== undefined) updates.visibility = ps.visibility;
+				if (ps.visibleUserIds !== undefined) updates.visibleUserIds = ps.visibleUserIds;
+				if (ps.visibility !== undefined || ps.visibleUserIds !== undefined) {
+					updates.visibleUserIds = await validateHataskEventAudience({ ...event, ...updates }, this.usersRepository);
+				}
 
 				const next = { ...event, ...updates } as MiHataskEvent;
 				if (!isValidHataskEventSchedule(next)) throw new ApiError(meta.errors.invalidSchedule);

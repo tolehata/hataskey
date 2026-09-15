@@ -2,11 +2,14 @@
  * 旗鯖fork: Hatady の学習ログを編集する(本人のみ)。
  */
 import { Injectable } from '@nestjs/common';
+import { parseHatadyMediaDateTime } from '@/core/HatadyMediaService.js';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import { HATADY_RATE_LIMITS } from '@/misc/hatady-rate-limit.js';
 import { ApiError } from '@/server/api/error.js';
 import { HatadyService } from '@/core/HatadyService.js';
 import { HatadyEntityService } from '@/core/entities/HatadyEntityService.js';
+import { LOG_INPUT_PROPERTIES } from '../_record.js';
+import { HATADY_MEDIA_DATE_TIME_PATTERN } from '../media/_shared.js';
 
 export const meta = {
 	tags: ['hata'],
@@ -26,7 +29,12 @@ export const meta = {
 export const paramDef = {
 	type: 'object',
 	properties: {
+		...LOG_INPUT_PROPERTIES,
 		logId: { type: 'string', format: 'misskey:id' },
+		bookId: { type: 'string', format: 'misskey:id', nullable: true },
+		pageFrom: { type: 'integer', minimum: 0, maximum: 100000, nullable: true },
+		pageTo: { type: 'integer', minimum: 0, maximum: 100000, nullable: true },
+		studiedAt: { type: 'string', pattern: HATADY_MEDIA_DATE_TIME_PATTERN },
 		title: { type: 'string', minLength: 1, maxLength: 512 },
 		subject: { type: 'string', minLength: 1, maxLength: 64 },
 		tag: { type: 'string', enum: ['strength', 'weak', 'interest', 'movie', 'game', null], nullable: true },
@@ -47,6 +55,16 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		super(meta, paramDef, async (ps, me) => {
 			try {
 				const log = await this.hatadyService.updateLog(me, ps.logId, {
+					kind: ps.kind,
+					tags: ps.tags,
+					durationSeconds: ps.durationSeconds,
+					startedAt: ps.startedAt,
+					details: ps.details,
+					mediaWorkId: ps.mediaWorkId,
+					bookId: ps.bookId,
+					pageFrom: ps.pageFrom,
+					pageTo: ps.pageTo,
+					studiedAt: ps.studiedAt === undefined ? undefined : parseHatadyMediaDateTime(ps.studiedAt, 'studiedAt'),
 					title: ps.title,
 					subject: ps.subject,
 					tag: ps.tag,

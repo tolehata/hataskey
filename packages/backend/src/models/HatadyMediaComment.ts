@@ -4,6 +4,7 @@ import { PrimaryColumn, Entity, Index, Column, ManyToOne, JoinColumn } from 'typ
 import { id } from './util/id.js';
 import { MiUser } from './User.js';
 import { MiHatadyMediaWork } from './HatadyMediaWork.js';
+import { MiHatadyMediaSession } from './HatadyMediaSession.js';
 
 @Entity('hatady_media_comment')
 @Index(['workId', 'id'])
@@ -19,8 +20,8 @@ export class MiHatadyMediaComment {
 	public updatedAt: Date;
 
 	@Index()
-	@Column(id())
-	public workId: MiHatadyMediaWork['id'];
+	@Column({ ...id(), nullable: true })
+	public workId: MiHatadyMediaWork['id'] | null;
 
 	@ManyToOne(type => MiHatadyMediaWork, { onDelete: 'CASCADE' })
 	@JoinColumn()
@@ -50,4 +51,11 @@ export class MiHatadyMediaComment {
 
 	@Column('integer', { default: 0 })
 	public reactionsCount: number;
+	@Index()
+	@Column({ ...id(), nullable: true })
+	public sessionId: MiHatadyMediaSession['id'] | null;
+
+	@ManyToOne(type => MiHatadyMediaSession, { onDelete: 'CASCADE' })
+	@JoinColumn()
+	public session: MiHatadyMediaSession | null;
 }

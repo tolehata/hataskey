@@ -1,5 +1,6 @@
 import { ApiError } from '@/server/api/error.js';
 import { HatadyMediaService } from '@/core/HatadyMediaService.js';
+import { RECORD_INPUT_PROPERTIES } from '../_record.js';
 
 export const MEDIA_ERRORS = {
 	noSuchMedia: {
@@ -38,6 +39,7 @@ export const HATADY_MEDIA_DATE_PATTERN = '^(?:18\\d{2}|19\\d{2}|2\\d{3}|3000)-\\
 export const HATADY_MEDIA_DATE_TIME_PATTERN = '^(?:18\\d{2}|19\\d{2}|2\\d{3}|3000)-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,3})?(?:Z|[+-]\\d{2}:\\d{2})$';
 
 export const WORK_INPUT_PROPERTIES = {
+	details: { type: 'object', additionalProperties: true },
 	title: { type: 'string', minLength: 1, maxLength: 512 },
 	originalTitle: { type: 'string', maxLength: 512, nullable: true },
 	creator: { type: 'string', maxLength: 256, nullable: true },
@@ -68,6 +70,7 @@ export const WORK_INPUT_PROPERTIES = {
 } as const;
 
 export const SESSION_INPUT_PROPERTIES = {
+	...RECORD_INPUT_PROPERTIES,
 	// Endpoint の Ajv は `date-time` format を登録していないため、ISO 8601をpatternで検証する。
 	occurredAt: { type: 'string', minLength: 20, maxLength: 35, pattern: HATADY_MEDIA_DATE_TIME_PATTERN },
 	durationMinutes: { type: 'integer', minimum: 1, maximum: 100000, nullable: true },

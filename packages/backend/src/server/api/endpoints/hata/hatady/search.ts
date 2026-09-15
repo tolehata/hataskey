@@ -18,7 +18,7 @@ export const paramDef = {
 	type: 'object',
 	properties: {
 		query: { type: 'string', minLength: 2, maxLength: 128 },
-		types: { type: 'array', items: { type: 'string', enum: ['logs', 'books', 'bookMemos', 'bookmarks'] }, nullable: true },
+		types: { type: 'array', items: { type: 'string', enum: ['logs', 'books', 'bookMemos', 'bookmarks', 'mediaWorks', 'mediaSessions'] }, nullable: true },
 		limit: { type: 'integer', minimum: 1, maximum: 30, default: 15 },
 	},
 	required: ['query'],

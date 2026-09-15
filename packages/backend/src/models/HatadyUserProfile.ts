@@ -31,4 +31,6 @@ export class MiHatadyUserProfile {
 		comment: 'Profile banner color preset key.',
 	})
 	public bannerColor: string | null;
+	@Column('jsonb', { default: () => '\'{}\'::jsonb' })
+	public design: Record<string, unknown>;
 }

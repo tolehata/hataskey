@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import type { MiHataskEvent } from '@/models/HataskEvent.js';
 import type { HataskRsvpsRepository, UsersRepository } from '@/models/_.js';
+import { canViewHataskEvent } from './_visibility.js';
 
 export const HATASK_EVENT_DATE_PATTERN = '^(?:[0-9]{4})-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12][0-9]|3[01])$';
 export const HATASK_EVENT_OPTIONAL_DATE_PATTERN = '^(?:|(?:[0-9]{4})-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12][0-9]|3[01]))$';
@@ -51,12 +52,13 @@ export function isValidHataskEventSchedule(schedule: HataskEventSchedule): boole
 type HataskEventRevisionSource = Pick<MiHataskEvent,
 	'id' | 'userId' | 'title' | 'emoji' | 'date' | 'dateEnd' | 'timeStart' | 'timeEnd' |
 	'allDay' | 'color' | 'rsvp' | 'rsvpClosed' | 'createdAt'
->;
+> & Partial<Pick<MiHataskEvent, 'visibility' | 'visibleUserIds'>>;
 
 export function hashHataskEvent(event: HataskEventRevisionSource): string {
 	return createHash('sha256').update(JSON.stringify([
 		event.id, event.userId, event.title, event.emoji, event.date, event.dateEnd, event.timeStart, event.timeEnd,
 		event.allDay, event.color, event.rsvp, event.rsvpClosed, event.createdAt.toISOString(),
+		event.visibility ?? 'public', [...(event.visibleUserIds ?? [])].sort(),
 	])).digest('hex');
 }
 
@@ -66,10 +68,12 @@ export async function packHataskEvent(
 	hataskRsvpsRepository: HataskRsvpsRepository,
 	usersRepository: UsersRepository,
 ) {
+	if (!canViewHataskEvent(event, viewerId)) throw new Error('Hatask event is not visible to this viewer.');
 	const rsvpResponses = [];
 	if (event.rsvp) {
 		const rsvps = await hataskRsvpsRepository.find({ where: { eventId: event.id } });
 		for (const rsvp of rsvps) {
+			if (!canViewHataskEvent(event, rsvp.userId)) continue;
 			const user = await usersRepository.findOneBy({ id: rsvp.userId });
 			rsvpResponses.push({
 				userId: rsvp.userId,
@@ -96,6 +100,8 @@ export async function packHataskEvent(
 		allDay: event.allDay,
 		color: event.color,
 		rsvp: event.rsvp,
+		visibility: event.visibility,
+		visibleUserIds: event.userId === viewerId ? [...event.visibleUserIds] : event.visibility === 'specified' ? [viewerId] : [],
 		rsvpClosed: event.rsvpClosed,
 		createdAt: event.createdAt.toISOString(),
 		revision: hashHataskEvent(event),

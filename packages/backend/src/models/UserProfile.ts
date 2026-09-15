@@ -347,6 +347,25 @@ export class MiUserProfile {
 		comment: 'マスコット機能同意日時',
 	})
 	public hataConsentMascotDate: Date | null;
+
+	@Column('boolean', {
+		default: false,
+		comment: 'Hatadint投稿・ドライブ保存の利用規約同意フラグ',
+	})
+	public hataConsentDrawing: boolean;
+
+	@Column('timestamp with time zone', {
+		nullable: true,
+		comment: 'Hatadint初回同意日時',
+	})
+	public hataConsentDrawingDate: Date | null;
+
+	@Column('varchar', {
+		length: 32,
+		nullable: true,
+		comment: 'Hatadint初回同意時の文面版',
+	})
+	public hataConsentDrawingVersion: string | null;
 	// ======== 旗鯖同意管理ここまで ========
 
 	// 旗鯖fork: マスコット機能のデータ(キャラ/表情/文言の紐付け)。

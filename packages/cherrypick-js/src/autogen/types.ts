@@ -554,6 +554,56 @@ export type paths = {
          */
         post: operations['admin___hata___consent-list'];
     };
+    '/admin/hatask/support/register': {
+        /**
+         * admin/hatask/support/register
+         * @description No description provided.
+         *
+         *     **Internal Endpoint**: This endpoint is an API for the cherrypick mainframe and is not intended for use by third parties.
+         *     **Credential required**: *Yes* / **Permission**: *write:admin:meta*
+         */
+        post: operations['admin___hatask___support___register'];
+    };
+    '/admin/hatask/support/show': {
+        /**
+         * admin/hatask/support/show
+         * @description No description provided.
+         *
+         *     **Internal Endpoint**: This endpoint is an API for the cherrypick mainframe and is not intended for use by third parties.
+         *     **Credential required**: *Yes* / **Permission**: *read:admin:meta*
+         */
+        post: operations['admin___hatask___support___show'];
+    };
+    '/admin/hatask/support/supporters': {
+        /**
+         * admin/hatask/support/supporters
+         * @description No description provided.
+         *
+         *     **Internal Endpoint**: This endpoint is an API for the cherrypick mainframe and is not intended for use by third parties.
+         *     **Credential required**: *Yes* / **Permission**: *read:admin:meta*
+         */
+        post: operations['admin___hatask___support___supporters'];
+    };
+    '/admin/hatask/support/unregister': {
+        /**
+         * admin/hatask/support/unregister
+         * @description No description provided.
+         *
+         *     **Internal Endpoint**: This endpoint is an API for the cherrypick mainframe and is not intended for use by third parties.
+         *     **Credential required**: *Yes* / **Permission**: *write:admin:meta*
+         */
+        post: operations['admin___hatask___support___unregister'];
+    };
+    '/admin/hatask/support/update': {
+        /**
+         * admin/hatask/support/update
+         * @description No description provided.
+         *
+         *     **Internal Endpoint**: This endpoint is an API for the cherrypick mainframe and is not intended for use by third parties.
+         *     **Credential required**: *Yes* / **Permission**: *write:admin:meta*
+         */
+        post: operations['admin___hatask___support___update'];
+    };
     '/admin/invite/create': {
         /**
          * admin/invite/create
@@ -2587,6 +2637,16 @@ export type paths = {
          */
         post: operations['hashtags___users'];
     };
+    '/hata/consent/get': {
+        /**
+         * hata/consent/get
+         * @description No description provided.
+         *
+         *     **Internal Endpoint**: This endpoint is an API for the cherrypick mainframe and is not intended for use by third parties.
+         *     **Credential required**: *Yes* / **Permission**: *read:account*
+         */
+        post: operations['hata___consent___get'];
+    };
     '/hata/consent/update': {
         /**
          * hata/consent/update
@@ -2632,6 +2692,24 @@ export type paths = {
          *     **Credential required**: *Yes* / **Permission**: *read:account*
          */
         post: operations['hata___earthquake___tsunami'];
+    };
+    '/hata/emoji-vote/show': {
+        /**
+         * hata/emoji-vote/show
+         * @description No description provided.
+         *
+         *     **Credential required**: *No* / **Permission**: *read:account*
+         */
+        post: operations['hata___emoji-vote___show'];
+    };
+    '/hata/emoji-vote/vote': {
+        /**
+         * hata/emoji-vote/vote
+         * @description No description provided.
+         *
+         *     **Credential required**: *Yes* / **Permission**: *write:votes*
+         */
+        post: operations['hata___emoji-vote___vote'];
     };
     '/hata/feedback/agree': {
         /**
@@ -3037,6 +3115,15 @@ export type paths = {
          */
         post: operations['hata___hatady___comments___delete'];
     };
+    '/hata/hatady/comments/update': {
+        /**
+         * hata/hatady/comments/update
+         * @description No description provided.
+         *
+         *     **Credential required**: *Yes* / **Permission**: *write:account*
+         */
+        post: operations['hata___hatady___comments___update'];
+    };
     '/hata/hatady/followers/remove': {
         /**
          * hata/hatady/followers/remove
@@ -3235,6 +3322,15 @@ export type paths = {
          */
         post: operations['hata___hatady___media___sessions___list'];
     };
+    '/hata/hatady/media/sessions/show': {
+        /**
+         * hata/hatady/media/sessions/show
+         * @description No description provided.
+         *
+         *     **Credential required**: *Yes* / **Permission**: *read:account*
+         */
+        post: operations['hata___hatady___media___sessions___show'];
+    };
     '/hata/hatady/media/sessions/update': {
         /**
          * hata/hatady/media/sessions/update
@@ -3325,6 +3421,15 @@ export type paths = {
          */
         post: operations['hata___hatady___notifications'];
     };
+    '/hata/hatady/notifications/delete': {
+        /**
+         * hata/hatady/notifications/delete
+         * @description No description provided.
+         *
+         *     **Credential required**: *Yes* / **Permission**: *write:account*
+         */
+        post: operations['hata___hatady___notifications___delete'];
+    };
     '/hata/hatady/notifications/mark-all-read': {
         /**
          * hata/hatady/notifications/mark-all-read
@@ -3333,6 +3438,15 @@ export type paths = {
          *     **Credential required**: *Yes* / **Permission**: *write:account*
          */
         post: operations['hata___hatady___notifications___mark-all-read'];
+    };
+    '/hata/hatady/notifications/restore': {
+        /**
+         * hata/hatady/notifications/restore
+         * @description No description provided.
+         *
+         *     **Credential required**: *Yes* / **Permission**: *write:account*
+         */
+        post: operations['hata___hatady___notifications___restore'];
     };
     '/hata/hatady/notifications/unread-count': {
         /**
@@ -3665,6 +3779,24 @@ export type paths = {
          *     **Credential required**: *Yes* / **Permission**: *write:account*
          */
         post: operations['hatask___ranking___participation'];
+    };
+    '/hatask/support/show': {
+        /**
+         * hatask/support/show
+         * @description No description provided.
+         *
+         *     **Credential required**: *Yes* / **Permission**: *read:account*
+         */
+        post: operations['hatask___support___show'];
+    };
+    '/hatask/support/supporters': {
+        /**
+         * hatask/support/supporters
+         * @description No description provided.
+         *
+         *     **Credential required**: *Yes* / **Permission**: *read:account*
+         */
+        post: operations['hatask___support___supporters'];
     };
     '/i': {
         /**
@@ -11809,7 +11941,7 @@ export interface operations {
                      * @default all
                      * @enum {string}
                      */
-                    filter?: 'all' | 'externalTl' | 'customFont' | 'mascot';
+                    filter?: 'all' | 'externalTl' | 'customFont' | 'mascot' | 'drawing' | 'drawingPending';
                     /** @default null */
                     username?: string | null;
                 };
@@ -11838,6 +11970,10 @@ export interface operations {
                             hataConsentMascot: boolean;
                             /** Format: date-time */
                             hataConsentMascotDate: string | null;
+                            hataConsentDrawing: boolean;
+                            /** Format: date-time */
+                            hataConsentDrawingDate: string | null;
+                            hataConsentDrawingVersion: string | null;
                         }[];
                         total: number;
                     };
@@ -11872,6 +12008,534 @@ export interface operations {
             };
             /** @description I'm Ai */
             418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+        };
+    };
+    admin___hatask___support___register: {
+        requestBody: {
+            content: {
+                'application/json': {
+                    /** Format: misskey:id */
+                    userId: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        isSupporter: boolean;
+                    };
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+        };
+    };
+    admin___hatask___support___show: {
+        requestBody: {
+            content: {
+                'application/json': {
+                    /** Format: misskey:id */
+                    previewRoleId?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        settings: {
+                            platform: string;
+                            url: string;
+                            manageUrl: string;
+                            intro: string;
+                            bannerTitle: string;
+                            bannerMessage: string;
+                            bannerVisible: boolean;
+                            enabled: boolean;
+                            benefits: {
+                                /** @enum {string} */
+                                key: 'driveCapacityMb' | 'canMakePrivateChannel' | 'hataSideStudioProfileLimit' | 'avatarDecorationLimit' | 'hatadyBookLimit' | 'canUseHatadySync' | 'canUseMascot' | 'mascotMaxExpressions' | 'mascotMaxPhrases' | 'mascotMaxCharacters' | 'canUseHatacordingUi' | 'hatacordingUiRateLimit' | 'canBypassHatacordingUiRateLimit' | 'rateLimitFactor';
+                                title: string;
+                                description: string;
+                                /** Format: misskey:id */
+                                roleId: string | null;
+                                visible: boolean;
+                                showBaseline: boolean;
+                            }[];
+                        };
+                        benefits: {
+                            /** @enum {string} */
+                            key: 'driveCapacityMb' | 'canMakePrivateChannel' | 'hataSideStudioProfileLimit' | 'avatarDecorationLimit' | 'hatadyBookLimit' | 'canUseHatadySync' | 'canUseMascot' | 'mascotMaxExpressions' | 'mascotMaxPhrases' | 'mascotMaxCharacters' | 'canUseHatacordingUi' | 'hatacordingUiRateLimit' | 'canBypassHatacordingUiRateLimit' | 'rateLimitFactor';
+                            baseline: {
+                                value: (number | null) | boolean;
+                                available: boolean;
+                                unlimited: boolean;
+                                /** @enum {string|null} */
+                                condition: 'mascotUnavailable' | 'snsUiUnavailable' | null;
+                                rateMultiplier: number | null;
+                            };
+                            offered: {
+                                value: (number | null) | boolean;
+                                available: boolean;
+                                unlimited: boolean;
+                                /** @enum {string|null} */
+                                condition: 'mascotUnavailable' | 'snsUiUnavailable' | null;
+                                rateMultiplier: number | null;
+                            } | null;
+                        }[];
+                        roles: {
+                            id: string;
+                            name: string;
+                        }[];
+                        rolePreview: {
+                            id: string;
+                            name: string;
+                            benefits: {
+                                /** @enum {string} */
+                                key: 'driveCapacityMb' | 'canMakePrivateChannel' | 'hataSideStudioProfileLimit' | 'avatarDecorationLimit' | 'hatadyBookLimit' | 'canUseHatadySync' | 'canUseMascot' | 'mascotMaxExpressions' | 'mascotMaxPhrases' | 'mascotMaxCharacters' | 'canUseHatacordingUi' | 'hatacordingUiRateLimit' | 'canBypassHatacordingUiRateLimit' | 'rateLimitFactor';
+                                snapshot: {
+                                    value: (number | null) | boolean;
+                                    available: boolean;
+                                    unlimited: boolean;
+                                    /** @enum {string|null} */
+                                    condition: 'mascotUnavailable' | 'snsUiUnavailable' | null;
+                                    rateMultiplier: number | null;
+                                };
+                            }[];
+                        } | null;
+                    };
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+        };
+    };
+    admin___hatask___support___supporters: {
+        requestBody: {
+            content: {
+                'application/json': {
+                    /** @default 0 */
+                    offset?: number;
+                    /** @default 30 */
+                    limit?: number;
+                    /** @default  */
+                    query?: string;
+                    /** @default true */
+                    registeredOnly?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        users: {
+                            /**
+                             * Format: id
+                             * @example xxxxxxxxxx
+                             */
+                            id: string;
+                            /** @example 藍 */
+                            name: string | null;
+                            /** @example ai */
+                            username: string;
+                            /**
+                             * @description The local host is represented with `null`.
+                             * @example cherrypick.example.com
+                             */
+                            host: string | null;
+                            /** Format: url */
+                            avatarUrl: string;
+                            avatarBlurhash: string | null;
+                            avatarDecorations: {
+                                /** Format: id */
+                                id: string;
+                                angle?: number;
+                                flipH?: boolean;
+                                offsetX?: number;
+                                offsetY?: number;
+                                scale?: number;
+                                opacity?: number;
+                                /** Format: url */
+                                url: string;
+                            }[];
+                            isLocked: boolean;
+                            isBot?: boolean;
+                            isCat?: boolean;
+                            isProxy?: boolean;
+                            requireSigninToViewContents?: boolean;
+                            makeNotesFollowersOnlyBefore?: number | null;
+                            makeNotesHiddenBefore?: number | null;
+                            instance?: {
+                                name: string | null;
+                                softwareName: string | null;
+                                softwareVersion: string | null;
+                                iconUrl: string | null;
+                                faviconUrl: string | null;
+                                themeColor: string | null;
+                            };
+                            emojis: {
+                                [key: string]: string;
+                            };
+                            /** @enum {string} */
+                            onlineStatus: 'unknown' | 'online' | 'active' | 'offline';
+                            badgeRoles?: {
+                                name: string;
+                                iconUrl: string | null;
+                                displayOrder: number;
+                            }[];
+                            setFederationAvatarShape?: boolean | null;
+                            isSquareAvatars?: boolean | null;
+                            isSupporter: boolean;
+                        }[];
+                        total: number;
+                        hasMore: boolean;
+                    };
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+        };
+    };
+    admin___hatask___support___unregister: {
+        requestBody: {
+            content: {
+                'application/json': {
+                    /** Format: misskey:id */
+                    userId: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        isSupporter: boolean;
+                    };
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+        };
+    };
+    admin___hatask___support___update: {
+        requestBody: {
+            content: {
+                'application/json': {
+                    settings: {
+                        platform: string;
+                        url: string;
+                        manageUrl: string;
+                        intro: string;
+                        bannerTitle: string;
+                        bannerMessage: string;
+                        bannerVisible: boolean;
+                        enabled: boolean;
+                        benefits: {
+                            /** @enum {string} */
+                            key: 'driveCapacityMb' | 'canMakePrivateChannel' | 'hataSideStudioProfileLimit' | 'avatarDecorationLimit' | 'hatadyBookLimit' | 'canUseHatadySync' | 'canUseMascot' | 'mascotMaxExpressions' | 'mascotMaxPhrases' | 'mascotMaxCharacters' | 'canUseHatacordingUi' | 'hatacordingUiRateLimit' | 'canBypassHatacordingUiRateLimit' | 'rateLimitFactor';
+                            title: string;
+                            description: string;
+                            /** Format: misskey:id */
+                            roleId: string | null;
+                            visible: boolean;
+                            showBaseline: boolean;
+                        }[];
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        saved: boolean;
+                    };
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Too many requests */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -23113,6 +23777,8 @@ export interface operations {
                     isSensitive?: boolean;
                     /** @default false */
                     force?: boolean;
+                    /** @enum {string} */
+                    source?: 'hatadint';
                     /**
                      * Format: binary
                      * @description The file contents.
@@ -28127,12 +28793,75 @@ export interface operations {
             };
         };
     };
+    hata___consent___get: {
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        agreed: boolean;
+                        /** Format: date-time */
+                        agreedAt: string | null;
+                        version: string | null;
+                    };
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+        };
+    };
     hata___consent___update: {
         requestBody: {
             content: {
                 'application/json': {
                     /** @enum {string} */
-                    type: 'externalTl' | 'customFont' | 'mascot';
+                    type: 'externalTl' | 'customFont' | 'mascot' | 'drawing';
                     agree: boolean;
                 };
             };
@@ -28474,6 +29203,226 @@ export interface operations {
             };
             /** @description I'm Ai */
             418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+        };
+    };
+    'hata___emoji-vote___show': {
+        requestBody: {
+            content: {
+                'application/json': {
+                    /** Format: misskey:id */
+                    noteId?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        serverNow: number;
+                        round: {
+                            id: string;
+                            noteId: string;
+                            startedAt: number;
+                            closesAt: number;
+                            resolvedAt: number;
+                            expiresAt: number;
+                            /** @enum {string} */
+                            phase: 'voting' | 'tallying' | 'result';
+                            candidates: {
+                                id: string;
+                                name: string;
+                                url: string;
+                                isSensitive: boolean;
+                            }[];
+                            choice: {
+                                emojiId: string;
+                                votedAt: number;
+                            } | null;
+                            rankings: {
+                                emoji: {
+                                    id: string;
+                                    name: string;
+                                    url: string;
+                                    isSensitive: boolean;
+                                };
+                                count: number;
+                                rank: number | null;
+                                tied: boolean;
+                            }[];
+                            total: number;
+                        } | null;
+                    };
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+        };
+    };
+    'hata___emoji-vote___vote': {
+        requestBody: {
+            content: {
+                'application/json': {
+                    /** Format: misskey:id */
+                    roundId: string;
+                    /** Format: misskey:id */
+                    emojiId: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        serverNow: number;
+                        round: {
+                            id: string;
+                            noteId: string;
+                            startedAt: number;
+                            closesAt: number;
+                            resolvedAt: number;
+                            expiresAt: number;
+                            /** @enum {string} */
+                            phase: 'voting' | 'tallying' | 'result';
+                            candidates: {
+                                id: string;
+                                name: string;
+                                url: string;
+                                isSensitive: boolean;
+                            }[];
+                            choice: {
+                                emojiId: string;
+                                votedAt: number;
+                            } | null;
+                            rankings: {
+                                emoji: {
+                                    id: string;
+                                    name: string;
+                                    url: string;
+                                    isSensitive: boolean;
+                                };
+                                count: number;
+                                rank: number | null;
+                                tied: boolean;
+                            }[];
+                            total: number;
+                        } | null;
+                    };
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Too many requests */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -30798,12 +31747,14 @@ export interface operations {
         requestBody: {
             content: {
                 'application/json': {
+                    /** Format: misskey:id */
+                    userId?: string;
                     /**
                      * @default recent
                      * @enum {string}
                      */
-                    scope?: 'mine' | 'recent' | 'popular' | 'following';
-                    kinds?: ('study' | 'movie' | 'game')[];
+                    scope?: 'mine' | 'recent' | 'public' | 'popular' | 'following' | 'all';
+                    kinds?: ('study' | 'movie' | 'game' | 'exercise' | 'work')[];
                     sinceDate?: number | null;
                     untilDate?: number | null;
                     cursor?: string;
@@ -30824,7 +31775,7 @@ export interface operations {
                             /** Format: misskey:id */
                             id: string;
                             /** @enum {string} */
-                            type: 'study' | 'movie_viewing' | 'game_play' | 'game_match' | 'game_roguelike' | 'game_pve';
+                            type: 'study' | 'exercise' | 'work' | 'movie_viewing' | 'game_play' | 'game_match' | 'game_roguelike' | 'game_pve';
                             /** Format: date-time */
                             occurredAt: string;
                             /** @enum {string} */
@@ -30872,6 +31823,15 @@ export interface operations {
                                 pageFrom: number | null;
                                 pageTo: number | null;
                                 durationMinutes: number;
+                                durationSeconds: number | null;
+                                startedAt: string | null;
+                                tags: string[];
+                                /** @enum {string} */
+                                kind: 'study' | 'exercise' | 'work';
+                                details: {
+                                    [key: string]: unknown;
+                                };
+                                mediaWorkId: string | null;
                                 isPublic: boolean;
                                 /** @enum {string} */
                                 visibility: 'private' | 'followers' | 'public';
@@ -30893,9 +31853,16 @@ export interface operations {
                                     updatedAt: string;
                                     /** Format: misskey:id */
                                     userId: string;
+                                    user?: components['schemas']['UserLite'] | null;
                                     /** @enum {string} */
-                                    kind: 'movie' | 'game';
+                                    kind: 'movie' | 'game' | 'work';
                                     title: string;
+                                    activity?: {
+                                        [key: string]: unknown;
+                                    } | null;
+                                    details: {
+                                        [key: string]: unknown;
+                                    };
                                     originalTitle: string | null;
                                     creator: string | null;
                                     releaseDate: string | null;
@@ -30925,7 +31892,7 @@ export interface operations {
                                     platforms: string[];
                                     developer: string | null;
                                     publisher: string | null;
-                                };
+                                } | null;
                                 session: {
                                     /** Format: misskey:id */
                                     id: string;
@@ -30936,12 +31903,18 @@ export interface operations {
                                     /** Format: misskey:id */
                                     userId: string;
                                     /** Format: misskey:id */
-                                    workId: string;
+                                    workId: string | null;
                                     /** @enum {string} */
                                     kind: 'movie_viewing' | 'game_play' | 'game_match' | 'game_roguelike' | 'game_pve';
                                     /** Format: date-time */
                                     occurredAt: string;
                                     durationMinutes: number | null;
+                                    durationSeconds: number | null;
+                                    startedAt: string | null;
+                                    tags: string[];
+                                    workSnapshot: {
+                                        [key: string]: unknown;
+                                    };
                                     note: string | null;
                                     noteSpoiler: boolean;
                                     /** @enum {string} */
@@ -31397,8 +32370,13 @@ export interface operations {
         requestBody: {
             content: {
                 'application/json': {
+                    /**
+                     * @default mine
+                     * @enum {string}
+                     */
+                    scope?: 'mine' | 'recent' | 'public' | 'following' | 'all';
                     /** @enum {string|null} */
-                    status?: 'reading' | 'finished' | 'want' | null;
+                    status?: 'reading' | 'finished' | 'want' | 'tsundoku' | null;
                     /** @default 50 */
                     limit?: number;
                     /** Format: misskey:id */
@@ -31476,6 +32454,15 @@ export interface operations {
         requestBody: {
             content: {
                 'application/json': {
+                    /** @enum {string} */
+                    visibility?: 'public' | 'followers' | 'private';
+                    details?: {
+                        [key: string]: unknown;
+                    };
+                    currentPage?: number;
+                    isFavorite?: boolean;
+                    isRecommended?: boolean;
+                    finishedAt?: string | null;
                     title: string;
                     author?: string | null;
                     totalPages?: number | null;
@@ -31705,17 +32692,23 @@ export interface operations {
         requestBody: {
             content: {
                 'application/json': {
+                    /** @enum {string} */
+                    visibility?: 'public' | 'followers' | 'private';
+                    details?: {
+                        [key: string]: unknown;
+                    };
+                    currentPage?: number;
+                    isFavorite?: boolean;
+                    isRecommended?: boolean;
+                    finishedAt?: string | null;
                     /** Format: misskey:id */
                     bookId: string;
                     title?: string;
                     author?: string | null;
                     totalPages?: number | null;
-                    currentPage?: number;
                     /** @enum {string} */
                     status?: 'reading' | 'finished' | 'want' | 'tsundoku';
                     coverColorIndex?: number | null;
-                    isFavorite?: boolean;
-                    isRecommended?: boolean;
                 };
             };
         };
@@ -31944,6 +32937,82 @@ export interface operations {
                 'application/json': {
                     /** Format: misskey:id */
                     commentId: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': Record<string, never>;
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+        };
+    };
+    hata___hatady___comments___update: {
+        requestBody: {
+            content: {
+                'application/json': {
+                    /** Format: misskey:id */
+                    commentId: string;
+                    text: string;
                 };
             };
         };
@@ -32697,6 +33766,16 @@ export interface operations {
         requestBody: {
             content: {
                 'application/json': {
+                    durationSeconds?: number | null;
+                    startedAt?: string | null;
+                    tags?: string[];
+                    /** @enum {string} */
+                    kind?: 'study' | 'exercise' | 'work';
+                    /** Format: misskey:id */
+                    mediaWorkId?: string | null;
+                    details?: {
+                        [key: string]: unknown;
+                    };
                     title: string;
                     subject: string;
                     /** @enum {string|null} */
@@ -32932,8 +34011,23 @@ export interface operations {
         requestBody: {
             content: {
                 'application/json': {
+                    durationSeconds?: number | null;
+                    startedAt?: string | null;
+                    tags?: string[];
+                    /** @enum {string} */
+                    kind?: 'study' | 'exercise' | 'work';
+                    /** Format: misskey:id */
+                    mediaWorkId?: string | null;
+                    details?: {
+                        [key: string]: unknown;
+                    };
                     /** Format: misskey:id */
                     logId: string;
+                    /** Format: misskey:id */
+                    bookId?: string | null;
+                    pageFrom?: number | null;
+                    pageTo?: number | null;
+                    studiedAt?: string;
                     title?: string;
                     subject?: string;
                     /** @enum {string|null} */
@@ -33017,7 +34111,9 @@ export interface operations {
             content: {
                 'application/json': {
                     /** Format: misskey:id */
-                    workId: string;
+                    workId?: string;
+                    /** Format: misskey:id */
+                    sessionId?: string;
                     /** Format: misskey:id */
                     replyId?: string | null;
                     text: string;
@@ -33041,7 +34137,9 @@ export interface operations {
                         /** Format: date-time */
                         updatedAt: string;
                         /** Format: misskey:id */
-                        workId: string;
+                        workId: string | null;
+                        /** Format: misskey:id */
+                        sessionId: string | null;
                         /** Format: misskey:id */
                         userId: string;
                         user: components['schemas']['UserLite'] | null;
@@ -33191,7 +34289,9 @@ export interface operations {
             content: {
                 'application/json': {
                     /** Format: misskey:id */
-                    workId: string;
+                    workId?: string;
+                    /** Format: misskey:id */
+                    sessionId?: string;
                     /** Format: misskey:id */
                     untilId?: string;
                     /** @default 30 */
@@ -33214,7 +34314,9 @@ export interface operations {
                         /** Format: date-time */
                         updatedAt: string;
                         /** Format: misskey:id */
-                        workId: string;
+                        workId: string | null;
+                        /** Format: misskey:id */
+                        sessionId: string | null;
                         /** Format: misskey:id */
                         userId: string;
                         user: components['schemas']['UserLite'] | null;
@@ -33314,7 +34416,9 @@ export interface operations {
                         /** Format: date-time */
                         updatedAt: string;
                         /** Format: misskey:id */
-                        workId: string;
+                        workId: string | null;
+                        /** Format: misskey:id */
+                        sessionId: string | null;
                         /** Format: misskey:id */
                         userId: string;
                         user: components['schemas']['UserLite'] | null;
@@ -33392,7 +34496,7 @@ export interface operations {
             content: {
                 'application/json': {
                     /** @enum {string} */
-                    targetType: 'work' | 'comment';
+                    targetType: 'work' | 'session' | 'comment';
                     /** Format: misskey:id */
                     targetId: string;
                     reaction: string;
@@ -33467,7 +34571,7 @@ export interface operations {
             content: {
                 'application/json': {
                     /** @enum {string} */
-                    targetType: 'work' | 'comment';
+                    targetType: 'work' | 'session' | 'comment';
                     /** Format: misskey:id */
                     targetId: string;
                 };
@@ -33544,6 +34648,9 @@ export interface operations {
                     workId: string;
                     /** @enum {string} */
                     kind: 'movie_viewing' | 'game_play' | 'game_match' | 'game_roguelike' | 'game_pve';
+                    durationSeconds?: number | null;
+                    startedAt?: string | null;
+                    tags?: string[];
                     occurredAt: string;
                     durationMinutes?: number | null;
                     note?: string | null;
@@ -33573,12 +34680,18 @@ export interface operations {
                         /** Format: misskey:id */
                         userId: string;
                         /** Format: misskey:id */
-                        workId: string;
+                        workId: string | null;
                         /** @enum {string} */
                         kind: 'movie_viewing' | 'game_play' | 'game_match' | 'game_roguelike' | 'game_pve';
                         /** Format: date-time */
                         occurredAt: string;
                         durationMinutes: number | null;
+                        durationSeconds: number | null;
+                        startedAt: string | null;
+                        tags: string[];
+                        workSnapshot: {
+                            [key: string]: unknown;
+                        };
                         note: string | null;
                         noteSpoiler: boolean;
                         /** @enum {string} */
@@ -33747,12 +34860,18 @@ export interface operations {
                         /** Format: misskey:id */
                         userId: string;
                         /** Format: misskey:id */
-                        workId: string;
+                        workId: string | null;
                         /** @enum {string} */
                         kind: 'movie_viewing' | 'game_play' | 'game_match' | 'game_roguelike' | 'game_pve';
                         /** Format: date-time */
                         occurredAt: string;
                         durationMinutes: number | null;
+                        durationSeconds: number | null;
+                        startedAt: string | null;
+                        tags: string[];
+                        workSnapshot: {
+                            [key: string]: unknown;
+                        };
                         note: string | null;
                         noteSpoiler: boolean;
                         /** @enum {string} */
@@ -33819,12 +34938,90 @@ export interface operations {
             };
         };
     };
+    hata___hatady___media___sessions___show: {
+        requestBody: {
+            content: {
+                'application/json': {
+                    /** Format: misskey:id */
+                    sessionId: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': Record<string, never>;
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+        };
+    };
     hata___hatady___media___sessions___update: {
         requestBody: {
             content: {
                 'application/json': {
                     /** Format: misskey:id */
                     sessionId: string;
+                    durationSeconds?: number | null;
+                    startedAt?: string | null;
+                    tags?: string[];
                     occurredAt?: string;
                     durationMinutes?: number | null;
                     note?: string | null;
@@ -33854,12 +35051,18 @@ export interface operations {
                         /** Format: misskey:id */
                         userId: string;
                         /** Format: misskey:id */
-                        workId: string;
+                        workId: string | null;
                         /** @enum {string} */
                         kind: 'movie_viewing' | 'game_play' | 'game_match' | 'game_roguelike' | 'game_pve';
                         /** Format: date-time */
                         occurredAt: string;
                         durationMinutes: number | null;
+                        durationSeconds: number | null;
+                        startedAt: string | null;
+                        tags: string[];
+                        workSnapshot: {
+                            [key: string]: unknown;
+                        };
                         note: string | null;
                         noteSpoiler: boolean;
                         /** @enum {string} */
@@ -33931,7 +35134,10 @@ export interface operations {
             content: {
                 'application/json': {
                     /** @enum {string} */
-                    kind: 'movie' | 'game';
+                    kind: 'movie' | 'game' | 'work';
+                    details?: {
+                        [key: string]: unknown;
+                    };
                     title: string;
                     originalTitle?: string | null;
                     creator?: string | null;
@@ -33981,9 +35187,16 @@ export interface operations {
                         updatedAt: string;
                         /** Format: misskey:id */
                         userId: string;
+                        user?: components['schemas']['UserLite'] | null;
                         /** @enum {string} */
-                        kind: 'movie' | 'game';
+                        kind: 'movie' | 'game' | 'work';
                         title: string;
+                        activity?: {
+                            [key: string]: unknown;
+                        } | null;
+                        details: {
+                            [key: string]: unknown;
+                        };
                         originalTitle: string | null;
                         creator: string | null;
                         releaseDate: string | null;
@@ -34148,10 +35361,12 @@ export interface operations {
         requestBody: {
             content: {
                 'application/json': {
+                    /** @enum {string} */
+                    scope?: 'mine' | 'recent' | 'public' | 'following' | 'all';
                     /** Format: misskey:id */
                     userId?: string;
                     /** @enum {string} */
-                    kind?: 'movie' | 'game';
+                    kind?: 'movie' | 'game' | 'work';
                     /** @enum {string} */
                     status?: 'planned' | 'in_progress' | 'completed' | 'mastered' | 'on_hold' | 'dropped';
                     /** @enum {string} */
@@ -34202,9 +35417,16 @@ export interface operations {
                         updatedAt: string;
                         /** Format: misskey:id */
                         userId: string;
+                        user?: components['schemas']['UserLite'] | null;
                         /** @enum {string} */
-                        kind: 'movie' | 'game';
+                        kind: 'movie' | 'game' | 'work';
                         title: string;
+                        activity?: {
+                            [key: string]: unknown;
+                        } | null;
+                        details: {
+                            [key: string]: unknown;
+                        };
                         originalTitle: string | null;
                         creator: string | null;
                         releaseDate: string | null;
@@ -34318,9 +35540,16 @@ export interface operations {
                         updatedAt: string;
                         /** Format: misskey:id */
                         userId: string;
+                        user?: components['schemas']['UserLite'] | null;
                         /** @enum {string} */
-                        kind: 'movie' | 'game';
+                        kind: 'movie' | 'game' | 'work';
                         title: string;
+                        activity?: {
+                            [key: string]: unknown;
+                        } | null;
+                        details: {
+                            [key: string]: unknown;
+                        };
                         originalTitle: string | null;
                         creator: string | null;
                         releaseDate: string | null;
@@ -34350,6 +35579,9 @@ export interface operations {
                         platforms: string[];
                         developer: string | null;
                         publisher: string | null;
+                        logs: {
+                            [key: string]: unknown;
+                        }[];
                         isMine: boolean;
                         reactions: {
                             reaction: string;
@@ -34422,6 +35654,9 @@ export interface operations {
                 'application/json': {
                     /** Format: misskey:id */
                     workId: string;
+                    details?: {
+                        [key: string]: unknown;
+                    };
                     title?: string;
                     originalTitle?: string | null;
                     creator?: string | null;
@@ -34471,9 +35706,16 @@ export interface operations {
                         updatedAt: string;
                         /** Format: misskey:id */
                         userId: string;
+                        user?: components['schemas']['UserLite'] | null;
                         /** @enum {string} */
-                        kind: 'movie' | 'game';
+                        kind: 'movie' | 'game' | 'work';
                         title: string;
+                        activity?: {
+                            [key: string]: unknown;
+                        } | null;
+                        details: {
+                            [key: string]: unknown;
+                        };
                         originalTitle: string | null;
                         creator: string | null;
                         releaseDate: string | null;
@@ -34865,7 +36107,149 @@ export interface operations {
             };
         };
     };
+    hata___hatady___notifications___delete: {
+        requestBody: {
+            content: {
+                'application/json': {
+                    notificationIds: string[];
+                };
+            };
+        };
+        responses: {
+            /** @description OK (without any results) */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+        };
+    };
     'hata___hatady___notifications___mark-all-read': {
+        responses: {
+            /** @description OK (without any results) */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+        };
+    };
+    hata___hatady___notifications___restore: {
+        requestBody: {
+            content: {
+                'application/json': {
+                    notificationIds: string[];
+                };
+            };
+        };
         responses: {
             /** @description OK (without any results) */
             204: {
@@ -35003,6 +36387,9 @@ export interface operations {
             content: {
                 'application/json': {
                     bannerColor?: string | null;
+                    design?: {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -35223,7 +36610,7 @@ export interface operations {
             content: {
                 'application/json': {
                     query: string;
-                    types?: ('logs' | 'books' | 'bookMemos' | 'bookmarks')[] | null;
+                    types?: ('logs' | 'books' | 'bookMemos' | 'bookmarks' | 'mediaWorks' | 'mediaSessions')[] | null;
                     /** @default 15 */
                     limit?: number;
                 };
@@ -35374,6 +36761,11 @@ export interface operations {
         requestBody: {
             content: {
                 'application/json': {
+                    /**
+                     * @default all
+                     * @enum {string}
+                     */
+                    kind?: 'all' | 'study' | 'movie' | 'game' | 'exercise' | 'work';
                     /** @default 6 */
                     months?: number;
                     /** @default 0 */
@@ -35669,6 +37061,7 @@ export interface operations {
             content: {
                 'application/json': {
                     name: string;
+                    originalName?: string;
                     color?: string | null;
                 };
             };
@@ -36738,6 +38131,9 @@ export interface operations {
         requestBody: {
             content: {
                 'application/json': {
+                    /** @enum {string} */
+                    visibility?: 'public' | 'specified';
+                    visibleUserIds?: string[];
                     title: string;
                     /** @default 📅 */
                     emoji?: string;
@@ -37126,6 +38522,9 @@ export interface operations {
         requestBody: {
             content: {
                 'application/json': {
+                    /** @enum {string} */
+                    visibility?: 'public' | 'specified';
+                    visibleUserIds?: string[];
                     /** Format: misskey:id */
                     eventId: string;
                     expectedRevision: string;
@@ -37923,6 +39322,199 @@ export interface operations {
                 content: {
                     'application/json': {
                         participating: boolean;
+                    };
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+        };
+    };
+    hatask___support___show: {
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        configured: boolean;
+                        settings: {
+                            platform: string;
+                            url: string;
+                            manageUrl: string;
+                            intro: string;
+                            bannerTitle: string;
+                            bannerMessage: string;
+                            bannerVisible: boolean;
+                        } | null;
+                        isSupporter: boolean;
+                        supporterCount: number;
+                        benefits: {
+                            /** @enum {string} */
+                            key: 'driveCapacityMb' | 'canMakePrivateChannel' | 'hataSideStudioProfileLimit' | 'avatarDecorationLimit' | 'hatadyBookLimit' | 'canUseHatadySync' | 'canUseMascot' | 'mascotMaxExpressions' | 'mascotMaxPhrases' | 'mascotMaxCharacters' | 'canUseHatacordingUi' | 'hatacordingUiRateLimit' | 'canBypassHatacordingUiRateLimit' | 'rateLimitFactor';
+                            title: string;
+                            description: string;
+                            showBaseline: boolean;
+                            baseline: {
+                                value: (number | null) | boolean;
+                                available: boolean;
+                                unlimited: boolean;
+                                /** @enum {string|null} */
+                                condition: 'mascotUnavailable' | 'snsUiUnavailable' | null;
+                                rateMultiplier: number | null;
+                            } | null;
+                            offered: {
+                                value: (number | null) | boolean;
+                                available: boolean;
+                                unlimited: boolean;
+                                /** @enum {string|null} */
+                                condition: 'mascotUnavailable' | 'snsUiUnavailable' | null;
+                                rateMultiplier: number | null;
+                            } | null;
+                            current: {
+                                value: (number | null) | boolean;
+                                available: boolean;
+                                unlimited: boolean;
+                                /** @enum {string|null} */
+                                condition: 'mascotUnavailable' | 'snsUiUnavailable' | null;
+                                rateMultiplier: number | null;
+                            };
+                            reflected: boolean;
+                        }[];
+                    };
+                };
+            };
+            /** @description Client error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Authentication error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Forbidden error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description I'm Ai */
+            418: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Error'];
+                };
+            };
+        };
+    };
+    hatask___support___supporters: {
+        requestBody: {
+            content: {
+                'application/json': {
+                    /** @default 0 */
+                    offset?: number;
+                    /** @default 30 */
+                    limit?: number;
+                };
+            };
+        };
+        responses: {
+            /** @description OK (with results) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        users: components['schemas']['UserLite'][];
+                        total: number;
+                        hasMore: boolean;
                     };
                 };
             };

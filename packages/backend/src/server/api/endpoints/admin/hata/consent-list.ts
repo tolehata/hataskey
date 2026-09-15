@@ -3,7 +3,6 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { In } from 'typeorm';
 import { Inject, Injectable } from '@nestjs/common';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import { DI } from '@/di-symbols.js';
@@ -36,12 +35,16 @@ export const meta = {
 						hataConsentCustomFontDate: { type: 'string', format: 'date-time', nullable: true },
 						hataConsentMascot: { type: 'boolean' },
 						hataConsentMascotDate: { type: 'string', format: 'date-time', nullable: true },
+						hataConsentDrawing: { type: 'boolean' },
+						hataConsentDrawingDate: { type: 'string', format: 'date-time', nullable: true },
+						hataConsentDrawingVersion: { type: 'string', nullable: true },
 					},
 					required: [
 						'id', 'username', 'name', 'avatarUrl',
 						'hataConsentExternalTl', 'hataConsentExternalTlDate',
 						'hataConsentCustomFont', 'hataConsentCustomFontDate',
 						'hataConsentMascot', 'hataConsentMascotDate',
+						'hataConsentDrawing', 'hataConsentDrawingDate', 'hataConsentDrawingVersion',
 					],
 				},
 			},
@@ -58,7 +61,7 @@ export const paramDef = {
 		offset: { type: 'integer', default: 0 },
 		filter: {
 			type: 'string',
-			enum: ['all', 'externalTl', 'customFont', 'mascot'],
+			enum: ['all', 'externalTl', 'customFont', 'mascot', 'drawing', 'drawingPending'],
 			default: 'all',
 		},
 		username: { type: 'string', nullable: true, default: null },
@@ -105,6 +108,10 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				profileQuery.andWhere('profile."hataConsentCustomFont" = true');
 			} else if (ps.filter === 'mascot') {
 				profileQuery.andWhere('profile."hataConsentMascot" = true');
+			} else if (ps.filter === 'drawing') {
+				profileQuery.andWhere('profile."hataConsentDrawing" = true');
+			} else if (ps.filter === 'drawingPending') {
+				profileQuery.andWhere('profile."hataConsentDrawing" = false');
 			}
 
 			const profiles = await profileQuery.getMany();
@@ -135,6 +142,9 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 						hataConsentCustomFontDate: p?.hataConsentCustomFontDate?.toISOString() ?? null,
 						hataConsentMascot: p?.hataConsentMascot ?? false,
 						hataConsentMascotDate: p?.hataConsentMascotDate?.toISOString() ?? null,
+						hataConsentDrawing: p?.hataConsentDrawing ?? false,
+						hataConsentDrawingDate: p?.hataConsentDrawingDate?.toISOString() ?? null,
+						hataConsentDrawingVersion: p?.hataConsentDrawingVersion ?? null,
 					};
 				}),
 				total,

@@ -7,7 +7,7 @@ import { PrimaryColumn, Entity, Index, Column, ManyToOne, JoinColumn } from 'typ
 import { id } from './util/id.js';
 import { MiUser } from './User.js';
 
-export const HATADY_MEDIA_WORK_KINDS = ['movie', 'game'] as const;
+export const HATADY_MEDIA_WORK_KINDS = ['movie', 'game', 'work'] as const;
 export type HatadyMediaWorkKind = typeof HATADY_MEDIA_WORK_KINDS[number];
 export const HATADY_MEDIA_WORK_STATUSES = ['planned', 'in_progress', 'completed', 'mastered', 'on_hold', 'dropped'] as const;
 export type HatadyMediaWorkStatus = typeof HATADY_MEDIA_WORK_STATUSES[number];
@@ -95,7 +95,7 @@ export class MiHatadyMediaWork {
 	@Column('integer', { nullable: true })
 	public runtimeMinutes: number | null;
 
-	@Column('jsonb', { default: () => "'[]'::jsonb" })
+	@Column('jsonb', { default: () => '\'[]\'::jsonb' })
 	public genres: string[];
 
 	@Column('varchar', { length: 16, nullable: true })
@@ -107,14 +107,14 @@ export class MiHatadyMediaWork {
 	@Column('varchar', { length: 128, nullable: true })
 	public primaryLanguage: string | null;
 
-	@Column('jsonb', { default: () => "'[]'::jsonb" })
+	@Column('jsonb', { default: () => '\'[]\'::jsonb' })
 	public highlights: string[];
 
 	@Column('boolean', { default: false })
 	public highlightsSpoiler: boolean;
 
 	// ゲーム固有
-	@Column('jsonb', { default: () => "'[]'::jsonb" })
+	@Column('jsonb', { default: () => '\'[]\'::jsonb' })
 	public platforms: string[];
 
 	@Column('varchar', { length: 256, nullable: true })
@@ -122,4 +122,6 @@ export class MiHatadyMediaWork {
 
 	@Column('varchar', { length: 256, nullable: true })
 	public publisher: string | null;
+	@Column('jsonb', { default: () => '\'{}\'::jsonb' })
+	public details: Record<string, unknown>;
 }

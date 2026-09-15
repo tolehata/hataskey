@@ -9,8 +9,9 @@ export const meta = { tags: ['hata'], requireCredential: true, kind: 'read:accou
 export const paramDef = {
 	type: 'object',
 	properties: {
+		scope: { type: 'string', enum: ['mine', 'recent', 'public', 'following', 'all'] },
 		userId: { type: 'string', format: 'misskey:id' },
-		kind: { type: 'string', enum: ['movie', 'game'] },
+		kind: { type: 'string', enum: ['movie', 'game', 'work'] },
 		status: { type: 'string', enum: ['planned', 'in_progress', 'completed', 'mastered', 'on_hold', 'dropped'] },
 		origin: { type: 'string', enum: ['domestic', 'foreign', 'co_production', 'other'] },
 		viewingMode: { type: 'string', enum: ['dubbed', 'subtitled', 'original'] },
@@ -34,9 +35,10 @@ export const paramDef = {
 @Injectable()
 export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-disable-line import/no-default-export
 	constructor(private service: HatadyMediaService) {
-		super(meta, paramDef, async (ps, me) => {
+		super(meta, paramDef, async (ps, me, token) => {
 			try {
-				return (await this.service.listWorks(me.id, ps.userId ?? me.id, { ...ps, limit: ps.limit })).map(this.service.packWork);
+				if (ps.scope === 'all' && token != null) throw new Error(HatadyMediaService.ERR_NOT_FOUND);
+				return await this.service.packWorks(await this.service.listWorks(me.id, ps.userId ?? me.id, { ...ps, limit: ps.limit }), me.id, ps.scope === 'all');
 			} catch (e) {
 				return mapMediaError(e);
 			}

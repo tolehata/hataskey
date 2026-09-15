@@ -6,6 +6,7 @@ import { Endpoint } from '@/server/api/endpoint-base.js';
 import { HATADY_RATE_LIMITS } from '@/misc/hatady-rate-limit.js';
 import { HatadyService } from '@/core/HatadyService.js';
 import { HatadyEntityService } from '@/core/entities/HatadyEntityService.js';
+import { LOG_INPUT_PROPERTIES } from '../_record.js';
 
 export const meta = {
 	tags: ['hata'],
@@ -18,6 +19,7 @@ export const meta = {
 export const paramDef = {
 	type: 'object',
 	properties: {
+		...LOG_INPUT_PROPERTIES,
 		title: { type: 'string', minLength: 1, maxLength: 512 },
 		subject: { type: 'string', minLength: 1, maxLength: 64 },
 		tag: { type: 'string', enum: ['strength', 'weak', 'interest', 'movie', 'game', null], nullable: true },
@@ -42,6 +44,12 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		super(meta, paramDef, async (ps, me) => {
 			const studiedAt = ps.studiedAt ? new Date(ps.studiedAt) : null;
 			const log = await this.hatadyService.createLog(me, {
+				kind: ps.kind,
+				tags: ps.tags,
+				durationSeconds: ps.durationSeconds,
+				startedAt: ps.startedAt,
+				details: ps.details,
+				mediaWorkId: ps.mediaWorkId,
 				title: ps.title,
 				subject: ps.subject,
 				tag: ps.tag ?? null,

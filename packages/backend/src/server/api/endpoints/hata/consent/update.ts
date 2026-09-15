@@ -7,7 +7,10 @@ import { Inject, Injectable } from '@nestjs/common';
 import ms from 'ms';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import { DI } from '@/di-symbols.js';
+import { ApiError } from '@/server/api/error.js';
 import type { UserProfilesRepository } from '@/models/_.js';
+
+export const DRAWING_CONSENT_VERSION = '2026-09-09';
 
 export const meta = {
 	tags: ['hata'],
@@ -26,6 +29,14 @@ export const meta = {
 		minInterval: ms('1sec'),
 	},
 
+	errors: {
+		consentCannotBeRevoked: {
+			message: 'The initial Hatadint consent record cannot be revoked.',
+			code: 'CONSENT_CANNOT_BE_REVOKED',
+			id: '1db7d08d-a4c4-4bde-a4cc-4e5c5a3be989',
+		},
+	},
+
 	res: {
 		type: 'object',
 		nullable: false, optional: false,
@@ -40,7 +51,7 @@ export const paramDef = {
 	properties: {
 		type: {
 			type: 'string',
-			enum: ['externalTl', 'customFont', 'mascot'],
+			enum: ['externalTl', 'customFont', 'mascot', 'drawing'],
 		},
 		agree: { type: 'boolean' },
 	},
@@ -70,6 +81,14 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				await this.userProfilesRepository.update(me.id, {
 					hataConsentMascot: ps.agree,
 					hataConsentMascotDate: ps.agree ? now : null,
+				});
+			} else {
+				if (!ps.agree) throw new ApiError(meta.errors.consentCannotBeRevoked);
+				// 同時リクエストでも最初の記録だけを残す。版の変更は再同意の条件にしない。
+				await this.userProfilesRepository.update({ userId: me.id, hataConsentDrawing: false }, {
+					hataConsentDrawing: true,
+					hataConsentDrawingDate: now,
+					hataConsentDrawingVersion: DRAWING_CONSENT_VERSION,
 				});
 			}
 

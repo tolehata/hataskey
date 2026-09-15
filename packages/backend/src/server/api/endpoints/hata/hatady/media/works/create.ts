@@ -6,8 +6,8 @@ import { MEDIA_ERRORS, WORK_INPUT_PROPERTIES, mapMediaError } from '../_shared.j
 import { mediaWorkSchema } from '../_schemas.js';
 
 export const meta = { tags: ['hata'], requireCredential: true, kind: 'write:account', limit: HATADY_RATE_LIMITS.write, res: mediaWorkSchema, errors: MEDIA_ERRORS } as const;
-export const paramDef = { type: 'object', properties: { kind: { type: 'string', enum: ['movie', 'game'] }, ...WORK_INPUT_PROPERTIES }, required: ['kind', 'title'] } as const;
+export const paramDef = { type: 'object', properties: { kind: { type: 'string', enum: ['movie', 'game', 'work'] }, ...WORK_INPUT_PROPERTIES }, required: ['kind', 'title'] } as const;
 @Injectable()
 export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-disable-line import/no-default-export
-	constructor(private service: HatadyMediaService) { super(meta, paramDef, async (ps, me) => { try { return this.service.packWork(await this.service.createWork(me, ps.kind, ps)); } catch (e) { return mapMediaError(e); } }); }
+	constructor(private service: HatadyMediaService) { super(meta, paramDef, async (ps, me) => { try { return this.service.packWork(await this.service.createWork(me, ps.kind, ps), true); } catch (e) { return mapMediaError(e); } }); }
 }

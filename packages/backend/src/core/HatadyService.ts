@@ -5,16 +5,20 @@
  */
 
 import { Inject, Injectable } from '@nestjs/common';
-import { MoreThan } from 'typeorm';
+import { In, IsNull, MoreThanOrEqual, type QueryDeepPartialEntity } from 'typeorm';
 import { DI } from '@/di-symbols.js';
 import type { HatadyBooksRepository, HatadyLogsRepository, HatadyCommentsRepository, HatadyReactionsRepository, HatadyNotificationsRepository, HatadyFollowingsRepository, HatadyUserProfilesRepository, HatadyBookmarksRepository, HatadyBookMemosRepository, HatadySubjectsRepository, HatadyGoalsRepository, HatadyMediaSessionsRepository } from '@/models/_.js';
 import type { MiUser } from '@/models/User.js';
-import type { MiHatadyBook } from '@/models/HatadyBook.js';
-import { MiHatadyLog } from '@/models/HatadyLog.js';
+import { MiHatadySubject } from '@/models/HatadySubject.js';
+import { MiHatadyBook } from '@/models/HatadyBook.js';
+import { HATADY_LOG_KINDS, MiHatadyLog, type HatadyLogKind } from '@/models/HatadyLog.js';
+import { MiHatadyMediaWork } from '@/models/HatadyMediaWork.js';
+import { mergeHatadyDetails, normalizeHatadyDuration, normalizeHatadyStartedAt, normalizeHatadyTags } from '@/core/HatadyRecordData.js';
 import { MiHatadyComment } from '@/models/HatadyComment.js';
 import { MiHatadyNotification } from '@/models/HatadyNotification.js';
 import type { MiHatadyBookmark } from '@/models/HatadyBookmark.js';
 import type { MiHatadyBookMemo } from '@/models/HatadyBookMemo.js';
+import type { MiHatadyUserProfile } from '@/models/HatadyUserProfile.js';
 import type { MiHatadyGoal } from '@/models/HatadyGoal.js';
 import { MiHatadyReaction } from '@/models/HatadyReaction.js';
 import { IdService } from '@/core/IdService.js';
@@ -24,6 +28,8 @@ import { UserBlockingService } from '@/core/UserBlockingService.js';
 import { PushNotificationService, type HatadyPushNotificationBody } from '@/core/PushNotificationService.js';
 import { sqlLikeEscape } from '@/misc/sql-like-escape.js';
 import { bindThis } from '@/decorators.js';
+
+type HatadySummaryRecord = { id: string; kind: string; occurredAt: Date; startedAt: string | null; seconds: number | null; subject: string; tags: string[]; calories: number | null };
 
 @Injectable()
 export class HatadyService {
@@ -97,23 +103,26 @@ export class HatadyService {
 	}
 
 	// 分野の色を設定/明示登録(upsert)。color=null で自動割当に戻す(行は残す)。
-	public async saveSubject(userId: MiUser['id'], name: string, color: string | null): Promise<{ name: string; color: string | null }> {
+	public async saveSubject(userId: MiUser['id'], name: string, color: string | null, originalName?: string): Promise<{ name: string; color: string | null }> {
 		const trimmed = name.trim();
-		if (trimmed.length === 0) throw new Error('empty subject name');
+		if (trimmed.length === 0 || trimmed.length > 128) throw new Error('invalid subject name');
 		const normColor = this.normalizeSubjectColor(color);
 		const now = new Date();
-		const existing = await this.hatadySubjectsRepository.findOneBy({ userId, name: trimmed });
-		if (existing) {
-			await this.hatadySubjectsRepository.update({ id: existing.id }, { color: normColor, updatedAt: now });
-		} else {
-			await this.hatadySubjectsRepository.insertOne({
-				id: this.idService.gen(now.getTime()),
-				userId,
-				name: trimmed,
-				color: normColor,
-				createdAt: now,
-				updatedAt: now,
+		if (originalName != null && originalName.trim() !== trimmed) {
+			const from = originalName.trim();
+			if (!from) throw new Error('invalid original subject name');
+			await this.hatadySubjectsRepository.manager.transaction(async manager => {
+				const subjects = manager.getRepository(MiHatadySubject);
+				const existing = await subjects.findOne({ where: { userId, name: from }, lock: { mode: 'pessimistic_write' } });
+				if (await subjects.existsBy({ userId, name: trimmed })) throw new Error('subject name already exists');
+				if (existing) await subjects.update({ id: existing.id, userId }, { name: trimmed, color: normColor, updatedAt: now });
+				else await subjects.insert({ id: this.idService.gen(now.getTime()), userId, name: trimmed, color: normColor, createdAt: now, updatedAt: now });
+				await manager.getRepository(MiHatadyLog).update({ userId, subject: from }, { subject: trimmed });
 			});
+		} else {
+			const existing = await this.hatadySubjectsRepository.findOneBy({ userId, name: trimmed });
+			if (existing) await this.hatadySubjectsRepository.update({ id: existing.id, userId }, { color: normColor, updatedAt: now });
+			else await this.hatadySubjectsRepository.insertOne({ id: this.idService.gen(now.getTime()), userId, name: trimmed, color: normColor, createdAt: now, updatedAt: now });
 		}
 		return { name: trimmed, color: normColor };
 	}
@@ -169,7 +178,7 @@ export class HatadyService {
 	public async updateBookmark(user: MiUser, params: { bookmarkId: string; page?: number; name?: string | null; color?: string | null; memo?: string | null }): Promise<MiHatadyBookmark> {
 		const bm = await this.hatadyBookmarksRepository.findOneBy({ id: params.bookmarkId, userId: user.id });
 		if (bm == null) throw new Error('no such bookmark or access denied');
-		const patch: Partial<MiHatadyBookmark> = {};
+		const patch: Partial<Pick<MiHatadyBookmark, 'page' | 'name' | 'color' | 'memo'>> = {};
 		if (params.page !== undefined) patch.page = Math.max(0, params.page);
 		if (params.name !== undefined) patch.name = params.name;
 		if (params.color !== undefined) patch.color = params.color;
@@ -210,7 +219,7 @@ export class HatadyService {
 	public async updateMemo(user: MiUser, params: { memoId: string; text?: string; page?: number | null }): Promise<MiHatadyBookMemo> {
 		const memo = await this.hatadyBookMemosRepository.findOneBy({ id: params.memoId, userId: user.id });
 		if (memo == null) throw new Error('no such memo or access denied');
-		const patch: Partial<MiHatadyBookMemo> = { updatedAt: new Date() };
+		const patch: Partial<Pick<MiHatadyBookMemo, 'updatedAt' | 'text' | 'page'>> = { updatedAt: new Date() };
 		if (params.text !== undefined) patch.text = params.text;
 		if (params.page !== undefined) patch.page = params.page;
 		await this.hatadyBookMemosRepository.update(memo.id, patch);
@@ -274,6 +283,23 @@ export class HatadyService {
 		} else {
 			await this.hatadyUserProfilesRepository.insert({ userId: user.id, bannerColor: color, updatedAt: now });
 		}
+	}
+
+	public async canModerate(viewerId: string): Promise<boolean> {
+		return this.roleService.isModerator({ id: viewerId });
+	}
+
+	public async updateProfile(user: MiUser, patch: { bannerColor?: string | null; design?: Record<string, unknown> }): Promise<void> {
+		const previous = await this.hatadyUserProfilesRepository.findOneBy({ userId: user.id });
+		const values = { userId: user.id, updatedAt: new Date(), bannerColor: patch.bannerColor === undefined ? previous?.bannerColor ?? null : patch.bannerColor, design: mergeHatadyDetails(previous?.design, patch.design, 'profile') as QueryDeepPartialEntity<MiHatadyUserProfile>['design'] };
+		await this.hatadyUserProfilesRepository.upsert(values, ['userId']);
+	}
+
+	public async canViewBook(book: MiHatadyBook, viewerId: string, staffAccess = false): Promise<boolean> {
+		if (book.userId === viewerId || (staffAccess && await this.canModerate(viewerId))) return true;
+		if (await this.isBlockedEitherDirection(book.userId, viewerId)) return false;
+		if ((book.visibility ?? 'public') === 'public') return true;
+		return book.visibility === 'followers' && this.isFollowing(viewerId, book.userId);
 	}
 
 	// ===== フォロー(Hatady 内で完結・hataskey 本体と非連動) =====
@@ -344,23 +370,15 @@ export class HatadyService {
 	// 旗鯖fork(Hatady次期: ゲーム/映画記録): streakDays は学習ログに加え、閲覧者から見える
 	//   範囲の映画・ゲーム記録セッションも含めて数える(マイログのstreak判定と基準を揃える)。
 	@bindThis
-	public async getProfileAggregates(targetUserId: MiUser['id'], viewerId: MiUser['id'], tz = 0): Promise<{
-		totalMinutes: number;
-		streakDays: number;
-		bookCount: number;
-		logCount: number;
-		fields: { strength: string[]; weak: string[]; interest: string[] };
-		followersCount: number;
-		followingCount: number;
-		isFollowing: boolean;
-		isMe: boolean;
-		bannerColor: string | null;
-	}> {
+	public async getProfileAggregates(targetUserId: MiUser['id'], viewerId: MiUser['id'], tz = 0, staffAccess = false) {
 		const isMe = targetUserId === viewerId;
+		const staff = staffAccess && await this.canModerate(viewerId);
+		const summary = this.summarize(await this.summaryRecords(targetUserId, viewerId, staffAccess), tz);
+		const profile = await this.hatadyUserProfilesRepository.findOneBy({ userId: targetUserId });
 		const viewerFollows = isMe ? false : await this.isFollowing(viewerId, targetUserId);
 
 		const logQuery = this.hatadyLogsRepository.createQueryBuilder('log').where('log.userId = :uid', { uid: targetUserId });
-		if (!isMe) {
+		if (!isMe && !staff) {
 			if (viewerFollows) logQuery.andWhere('log.visibility IN (:...vis)', { vis: ['public', 'followers'] });
 			else logQuery.andWhere('log.isPublic = TRUE');
 		}
@@ -369,14 +387,13 @@ export class HatadyService {
 		// 映画・ゲームの記録セッションも、ログと同じ可視性規則(本人は全件・フォロワーは public+followers・
 		// それ以外は public のみ)で streak の対象にする。
 		const sessionQuery = this.hatadyMediaSessionsRepository.createQueryBuilder('session').where('session.userId = :uid', { uid: targetUserId });
-		if (!isMe) {
-			if (viewerFollows) sessionQuery.andWhere("session.visibility IN ('public', 'followers')");
-			else sessionQuery.andWhere("session.visibility = 'public'");
+		if (!isMe && !staff) {
+			if (viewerFollows) sessionQuery.andWhere('session.visibility IN (\'public\', \'followers\')');
+			else sessionQuery.andWhere('session.visibility = \'public\'');
 		}
 		const mediaSessions = await sessionQuery.getMany();
 
-		const totalMinutes = logs.reduce((a, l) => a + (l.durationMinutes || 0), 0);
-		const bookCount = await this.hatadyBooksRepository.countBy({ userId: targetUserId });
+		const bookCount = await this.hatadyBooksRepository.countBy({ userId: targetUserId, ...(isMe || staff ? {} : { visibility: In(viewerFollows ? ['public', 'followers'] : ['public']) }) });
 
 		// 連続日数(記録がある日を遡って数える)。日付はユーザーのローカル基準(マイログの表示と一致させる)。
 		const dayKey = (d: Date) => this.dayKeyTz(d, tz);
@@ -409,10 +426,12 @@ export class HatadyService {
 		]);
 
 		return {
-			totalMinutes,
+			...summary,
+			design: profile?.design ?? {},
+			totalMinutes: summary.totalSeconds / 60,
 			streakDays,
 			bookCount,
-			logCount: logs.length,
+			logCount: summary.activityKinds.reduce((sum, row) => sum + row.count, 0),
 			fields: { strength: top(buckets.strength), weak: top(buckets.weak), interest: top(buckets.interest) },
 			followersCount,
 			followingCount,
@@ -422,14 +441,50 @@ export class HatadyService {
 		};
 	}
 
+	private async summaryRecords(targetUserId: string, viewerId = targetUserId, staffAccess = false): Promise<HatadySummaryRecord[]> {
+		const staff = staffAccess && await this.canModerate(viewerId);
+		if (targetUserId !== viewerId && !staff && await this.isBlockedEitherDirection(targetUserId, viewerId)) return [];
+		const visibilities = targetUserId === viewerId || staff ? ['public', 'followers', 'private'] : await this.isFollowing(viewerId, targetUserId) ? ['public', 'followers'] : ['public'];
+		const [logs, sessions] = await Promise.all([
+			this.hatadyLogsRepository.findBy({ userId: targetUserId, visibility: In(visibilities) }),
+			this.hatadyMediaSessionsRepository.findBy({ userId: targetUserId, visibility: In(visibilities) }),
+		]);
+		return [
+			...logs.map(log => ({ id: log.id, kind: log.kind ?? 'study', occurredAt: log.studiedAt, startedAt: log.startedAt ?? null, seconds: normalizeHatadyDuration({}, log), subject: log.subject, tags: log.tags ?? (log.tag ? [log.tag] : []), calories: typeof log.details?.calories === 'number' ? log.details.calories : null })),
+			...sessions.map(session => ({ id: session.id, kind: session.kind === 'movie_viewing' ? 'movie' : 'game', occurredAt: session.occurredAt, startedAt: session.startedAt ?? null, seconds: normalizeHatadyDuration({}, session), subject: typeof session.workSnapshot?.genre === 'string' ? session.workSnapshot.genre : '', tags: session.tags ?? [], calories: null })),
+		];
+	}
+
+	private summarize(records: HatadySummaryRecord[], tz: number) {
+		const daily = new Map<string, { date: string; count: number; seconds: number; timedCount: number }>();
+		const kinds = ['study', 'movie', 'game', 'exercise', 'work'];
+		const traits = kinds.map(kind => {
+			const genres = new Map<string, Set<string>>();
+			for (const record of records.filter(row => row.kind === kind)) {
+				const tags = genres.get(record.subject) ?? new Set<string>();
+				for (const tag of record.tags) tags.add(tag);
+				genres.set(record.subject, tags);
+			}
+			return { kind, genres: [...genres].filter(([name]) => name.length > 0).map(([name, tags]) => ({ name, tags: [...tags] })) };
+		});
+		for (const record of records) {
+			const date = this.dayKeyTz(record.occurredAt, tz), row = daily.get(date) ?? { date, count: 0, seconds: 0, timedCount: 0 };
+			row.count++; row.seconds += record.seconds ?? 0; if (record.seconds != null) row.timedCount++;
+			daily.set(date, row);
+		}
+		const totals = kinds.map(kind => { const rows = records.filter(row => row.kind === kind); return { kind, count: rows.length, seconds: rows.reduce((sum, row) => sum + (row.seconds ?? 0), 0), timedCount: rows.filter(row => row.seconds != null).length }; });
+		return { totalSeconds: totals.reduce((sum, row) => sum + row.seconds, 0), recordedDays: daily.size, traits, daily: [...daily.values()].sort((a, b) => a.date.localeCompare(b.date)), activityKinds: totals };
+	}
+
 	// プロフィール本棚: 対象ユーザーの本を新しい順に取得。
 	@bindThis
-	public async getUserBooks(targetUserId: MiUser['id'], limit: number): Promise<MiHatadyBook[]> {
-		return this.hatadyBooksRepository.createQueryBuilder('b')
-			.where('b.userId = :uid', { uid: targetUserId })
-			.orderBy('b.id', 'DESC')
-			.limit(limit)
-			.getMany();
+	public async getUserBooks(targetUserId: MiUser['id'], limit: number, viewerId = targetUserId, staffAccess = false): Promise<MiHatadyBook[]> {
+		const qb = this.hatadyBooksRepository.createQueryBuilder('b').where('b.userId = :uid', { uid: targetUserId });
+		if (targetUserId !== viewerId && !(staffAccess && await this.canModerate(viewerId))) {
+			if (await this.isBlockedEitherDirection(targetUserId, viewerId)) return [];
+			qb.andWhere('b.visibility IN (:...visibilities)', { visibilities: await this.isFollowing(viewerId, targetUserId) ? ['public', 'followers'] : ['public'] });
+		}
+		return qb.orderBy('b.id', 'DESC').limit(limit).getMany();
 	}
 
 	// ===== 本の詳細 / 編集 / 削除(本人のみ) =====
@@ -440,10 +495,27 @@ export class HatadyService {
 	}
 
 	// 本に紐づくログを新しい順に取得。自分=全部 / フォロワー=公開+フォロワー限定 / それ以外=公開のみ。
+	public async getWorkLogs(workId: string, viewerId: string, staffAccess = false): Promise<MiHatadyLog[]> {
+		const logs = await this.hatadyLogsRepository.find({ where: { mediaWorkId: workId, kind: 'work' }, order: { studiedAt: 'DESC', id: 'DESC' } });
+		const allowed = await Promise.all(logs.map(log => this.canViewLog(log, viewerId, staffAccess)));
+		return logs.filter((_, index) => allowed[index]);
+	}
+
+	public async getWorkActivities(workIds: string[], viewerId: string, staffAccess = false) {
+		const logs = workIds.length ? await this.hatadyLogsRepository.find({ where: { mediaWorkId: In(workIds), kind: 'work' }, order: { studiedAt: 'DESC', id: 'DESC' } }) : [];
+		const allowed = await Promise.all(logs.map(log => this.canViewLog(log, viewerId, staffAccess)));
+		return Object.fromEntries(workIds.map(workId => {
+			const rows = logs.filter((log, index) => log.mediaWorkId === workId && allowed[index]);
+			const latest = rows[0], latestTags = latest?.tags ?? (latest?.tag ? [latest.tag] : []);
+			const tags = rows.some(row => row.tags?.includes('doneAll')) ? [...new Set(['doneAll', ...latestTags])] : latestTags;
+			return [workId, { count: rows.length, seconds: rows.reduce((sum, row) => sum + (normalizeHatadyDuration({}, row) ?? 0), 0), tags, latest: latest ? { id: latest.id, userId: latest.userId, kind: latest.kind, title: latest.title, body: latest.body, subject: latest.subject, studiedAt: latest.studiedAt.toISOString(), startedAt: latest.startedAt, durationSeconds: normalizeHatadyDuration({}, latest), tags: latestTags, visibility: latest.visibility, details: { nextStep: latest.details?.nextStep ?? null, spoiler: latest.details.spoiler === true } } : null }];
+		}));
+	}
+
 	@bindThis
-	public async getBookLogs(bookId: MiHatadyBook['id'], viewerId: MiUser['id'], ownerId: MiUser['id'], limit: number): Promise<MiHatadyLog[]> {
+	public async getBookLogs(bookId: MiHatadyBook['id'], viewerId: MiUser['id'], ownerId: MiUser['id'], limit: number, staffAccess = false): Promise<MiHatadyLog[]> {
 		const q = this.hatadyLogsRepository.createQueryBuilder('log').where('log.bookId = :bookId', { bookId });
-		if (viewerId !== ownerId) {
+		if (viewerId !== ownerId && !(staffAccess && await this.canModerate(viewerId))) {
 			const viewerFollows = await this.isFollowing(viewerId, ownerId);
 			if (viewerFollows) q.andWhere('log.visibility IN (:...vis)', { vis: ['public', 'followers'] });
 			else q.andWhere('log.isPublic = TRUE');
@@ -461,6 +533,9 @@ export class HatadyService {
 		coverColorIndex?: number | null;
 		isFavorite?: boolean;
 		isRecommended?: boolean;
+		visibility?: string;
+		finishedAt?: Date | null;
+		details?: Record<string, unknown>;
 	}): Promise<MiHatadyBook> {
 		const book = await this.hatadyBooksRepository.findOneBy({ id: bookId, userId: user.id });
 		if (book == null) throw new Error('no such book or access denied');
@@ -478,6 +553,12 @@ export class HatadyService {
 		if (patch.coverColorIndex !== undefined) set.coverColorIndex = patch.coverColorIndex;
 		if (patch.isFavorite !== undefined) set.isFavorite = patch.isFavorite;
 		if (patch.isRecommended !== undefined) set.isRecommended = patch.isRecommended;
+		if (patch.visibility !== undefined) {
+			if (!['public', 'followers', 'private'].includes(patch.visibility)) throw new Error('invalid visibility');
+			set.visibility = patch.visibility;
+		}
+		if (patch.finishedAt !== undefined) set.finishedAt = patch.finishedAt;
+		if (patch.details !== undefined) set.details = mergeHatadyDetails(book.details, patch.details, 'work');
 		await this.hatadyBooksRepository.update(book.id, set);
 		return await this.hatadyBooksRepository.findOneByOrFail({ id: book.id });
 	}
@@ -499,9 +580,9 @@ export class HatadyService {
 	// プロフィール用: 対象ユーザーのログを新しい順に取得。
 	//   自分=全ログ / フォロワー(=viewerがtargetをフォロー)=公開+フォロワー限定 / それ以外=公開のみ。
 	@bindThis
-	public async getUserLogs(targetUserId: MiUser['id'], viewerId: MiUser['id'], limit: number): Promise<MiHatadyLog[]> {
+	public async getUserLogs(targetUserId: MiUser['id'], viewerId: MiUser['id'], limit: number, staffAccess = false): Promise<MiHatadyLog[]> {
 		const q = this.hatadyLogsRepository.createQueryBuilder('log').where('log.userId = :uid', { uid: targetUserId });
-		if (targetUserId !== viewerId) {
+		if (targetUserId !== viewerId && !(staffAccess && await this.canModerate(viewerId))) {
 			const viewerFollows = await this.isFollowing(viewerId, targetUserId);
 			if (viewerFollows) q.andWhere('log.visibility IN (:...vis)', { vis: ['public', 'followers'] });
 			else q.andWhere('log.isPublic = TRUE');
@@ -545,6 +626,16 @@ export class HatadyService {
 
 	@bindThis
 	public async updateLog(user: MiUser, logId: MiHatadyLog['id'], patch: {
+		kind?: HatadyLogKind;
+		tags?: string[];
+		durationSeconds?: number | null;
+		startedAt?: string | null;
+		details?: Record<string, unknown>;
+		mediaWorkId?: string | null;
+		bookId?: string | null;
+		pageFrom?: number | null;
+		pageTo?: number | null;
+		studiedAt?: Date;
 		title?: string;
 		subject?: string;
 		tag?: string | null;
@@ -560,7 +651,28 @@ export class HatadyService {
 		if (patch.subject != null) set.subject = patch.subject;
 		if (patch.tag !== undefined) set.tag = patch.tag;
 		if (patch.body !== undefined) set.body = patch.body;
-		if (patch.durationMinutes != null) set.durationMinutes = patch.durationMinutes;
+		const kind = patch.kind ?? log.kind ?? 'study';
+		if (!HATADY_LOG_KINDS.includes(kind)) throw new Error('invalid kind');
+		set.kind = kind;
+		const seconds = normalizeHatadyDuration(patch, log);
+		if (kind === 'exercise' && (seconds == null || seconds <= 0)) throw new Error('exercise duration is required');
+		set.durationSeconds = seconds;
+		if (patch.durationSeconds !== undefined) set.durationMinutes = Math.floor((seconds ?? 0) / 60);
+		else if (patch.durationMinutes !== undefined) set.durationMinutes = patch.durationMinutes;
+		if (patch.startedAt !== undefined) set.startedAt = normalizeHatadyStartedAt(patch.startedAt);
+		set.tags = normalizeHatadyTags(patch.tags === undefined && patch.tag !== undefined ? (patch.tag == null ? [] : [patch.tag]) : patch.tags, log.tags ?? (log.tag ? [log.tag] : []));
+		if (patch.tags !== undefined) set.tag = log.tag && (set.tags as string[]).includes(log.tag) ? log.tag : (set.tags as string[]).find(tag => ['strength', 'weak', 'interest', 'movie', 'game'].includes(tag)) ?? null;
+		if (patch.details !== undefined) set.details = mergeHatadyDetails(log.details, patch.details, 'log');
+		if (patch.studiedAt !== undefined) set.studiedAt = patch.studiedAt;
+		for (const key of ['pageFrom', 'pageTo'] as const) if (patch[key] !== undefined) set[key] = patch[key];
+		if (patch.bookId !== undefined) {
+			if (patch.bookId != null && !(await this.hatadyBooksRepository.existsBy({ id: patch.bookId, userId: user.id }))) throw new Error('no such book or access denied');
+			set.bookId = patch.bookId;
+		}
+		if (patch.mediaWorkId !== undefined) {
+			if (patch.mediaWorkId != null && !(await this.hatadyLogsRepository.manager.getRepository(MiHatadyMediaWork).existsBy({ id: patch.mediaWorkId, userId: user.id, kind: 'work' }))) throw new Error('no such work or access denied');
+			set.mediaWorkId = patch.mediaWorkId;
+		}
 		// 公開範囲: visibility 優先。isPublic も同期する。
 		if (patch.visibility === 'public' || patch.visibility === 'followers' || patch.visibility === 'private') {
 			set.visibility = patch.visibility;
@@ -570,6 +682,8 @@ export class HatadyService {
 			set.visibility = patch.isPublic ? 'public' : 'private';
 		}
 		if (Object.keys(set).length > 0) await this.hatadyLogsRepository.update(log.id, set);
+		const recommendedBookId = patch.bookId === undefined ? log.bookId : patch.bookId;
+		if (recommendedBookId && patch.tags?.includes('recommend')) await this.hatadyBooksRepository.update({ id: recommendedBookId, userId: user.id }, { isRecommended: true });
 		return await this.hatadyLogsRepository.findOneByOrFail({ id: log.id });
 	}
 
@@ -626,9 +740,11 @@ export class HatadyService {
 	@bindThis
 	public async getNotifications(userId: MiUser['id'], opts: { limit: number; untilId?: string | null }): Promise<MiHatadyNotification[]> {
 		const q = this.hatadyNotificationsRepository.createQueryBuilder('n')
-			.where('n.notifieeId = :userId', { userId });
+			.where('n.notifieeId = :userId', { userId }).andWhere('n.deletedAt IS NULL');
 		if (opts.untilId) q.andWhere('n.id < :untilId', { untilId: opts.untilId });
-		const notifications = await q.orderBy('n.createdAt', 'DESC').limit(opts.limit).getMany();
+		const excluded = [...await this.getTimelineExcludedUserIds(userId)];
+		if (excluded.length > 0) q.andWhere('(n.notifierId IS NULL OR n.notifierId NOT IN (:...excluded))', { excluded });
+		const notifications = await q.orderBy('n.id', 'DESC').limit(opts.limit).getMany();
 		const allowed = await Promise.all(notifications.map(notification => notification.notifierId == null
 			? true
 			: this.canAppearInTimeline(notification.notifierId, userId)));
@@ -638,7 +754,7 @@ export class HatadyService {
 	@bindThis
 	public async getUnreadNotificationCount(userId: MiUser['id']): Promise<number> {
 		const [notifications, excluded] = await Promise.all([
-			this.hatadyNotificationsRepository.findBy({ notifieeId: userId, isRead: false }),
+			this.hatadyNotificationsRepository.findBy({ notifieeId: userId, isRead: false, deletedAt: IsNull() }),
 			this.getTimelineExcludedUserIds(userId),
 		]);
 		return notifications.filter(notification => notification.notifierId == null || !excluded.has(notification.notifierId)).length;
@@ -646,11 +762,22 @@ export class HatadyService {
 
 	@bindThis
 	public async markAllNotificationsRead(userId: MiUser['id']): Promise<void> {
-		await this.hatadyNotificationsRepository.update({ notifieeId: userId, isRead: false }, { isRead: true });
+		await this.hatadyNotificationsRepository.update({ notifieeId: userId, isRead: false, deletedAt: IsNull() }, { isRead: true });
+	}
+
+	public async setNotificationsDeleted(userId: string, ids: string[], deleted: boolean): Promise<void> {
+		if (!Array.isArray(ids) || ids.length === 0 || ids.length > 100) throw new Error('invalid notification IDs');
+		await this.hatadyNotificationsRepository.update({ notifieeId: userId, id: In([...new Set(ids)]) }, { deletedAt: deleted ? new Date() : null });
 	}
 
 	@bindThis
 	public async createBook(user: MiUser, params: {
+		visibility?: 'public' | 'followers' | 'private';
+		details?: Record<string, unknown>;
+		currentPage?: number;
+		isFavorite?: boolean;
+		isRecommended?: boolean;
+		finishedAt?: Date | null;
 		title: string;
 		author?: string | null;
 		totalPages?: number | null;
@@ -671,16 +798,26 @@ export class HatadyService {
 			title: params.title,
 			author: params.author ?? null,
 			totalPages: params.totalPages ?? null,
-			currentPage: 0,
+			currentPage: params.currentPage ?? 0,
+			visibility: params.visibility ?? 'private',
+			details: mergeHatadyDetails(undefined, params.details, 'work') as QueryDeepPartialEntity<MiHatadyBook>['details'],
+			isFavorite: params.isFavorite ?? false,
+			isRecommended: params.isRecommended ?? false,
 			status: params.status ?? 'reading',
 			coverColorIndex: params.coverColorIndex ?? null,
-			finishedAt: params.status === 'finished' ? now : null,
+			finishedAt: params.finishedAt === undefined ? (params.status === 'finished' ? now : null) : params.finishedAt,
 		});
 		return book;
 	}
 
 	@bindThis
 	public async createLog(user: MiUser, params: {
+		kind?: HatadyLogKind;
+		tags?: string[];
+		durationSeconds?: number | null;
+		startedAt?: string | null;
+		details?: Record<string, unknown>;
+		mediaWorkId?: string | null;
 		title: string;
 		subject: string;
 		tag?: string | null;
@@ -693,45 +830,68 @@ export class HatadyService {
 		isPublic?: boolean;
 		visibility?: string;
 	}): Promise<MiHatadyLog> {
+		const kind = params.kind ?? 'study';
+		if (!HATADY_LOG_KINDS.includes(kind)) throw new Error('invalid kind');
+		const seconds = normalizeHatadyDuration(params);
+		const startedAt = normalizeHatadyStartedAt(params.startedAt);
+		const tags = normalizeHatadyTags(params.tags ?? (params.tag ? [params.tag] : []));
+		const details = mergeHatadyDetails(undefined, params.details, 'log');
+		if (kind === 'exercise' && (seconds == null || seconds <= 0)) throw new Error('exercise duration is required');
+		if (params.mediaWorkId != null && !(await this.hatadyLogsRepository.manager.getRepository(MiHatadyMediaWork).existsBy({ id: params.mediaWorkId, userId: user.id, kind: 'work' }))) throw new Error('no such work or access denied');
 		const now = new Date();
 		const studiedAt = params.studiedAt ?? now;
+		if (Number.isNaN(studiedAt.getTime())) throw new Error('invalid studiedAt');
+		for (const page of [params.pageFrom, params.pageTo]) if (page != null && (!Number.isSafeInteger(page) || page < 0 || page > 100000)) throw new Error('invalid page');
 		// 公開範囲: visibility 優先。無ければ isPublic から導出(後方互換)。
 		const visibility = (params.visibility === 'public' || params.visibility === 'followers' || params.visibility === 'private')
 			? params.visibility
 			: (params.isPublic ? 'public' : 'private');
 		const isPublic = visibility === 'public';
 
-		// 本が指定されていれば所有権を確認し、進捗(currentPage)を pageTo で更新する。
-		let bookId: string | null = null;
-		if (params.bookId) {
-			const book = await this.hatadyBooksRepository.findOneBy({ id: params.bookId, userId: user.id });
-			if (book) {
-				bookId = book.id;
-				if (params.pageTo != null && params.pageTo > book.currentPage) {
-					await this.hatadyBooksRepository.update(book.id, { currentPage: params.pageTo, updatedAt: now });
+		const log = await this.hatadyLogsRepository.manager.transaction(async manager => {
+			const books = manager.getRepository(MiHatadyBook), logs = manager.getRepository(MiHatadyLog);
+			// 本の進捗と記録を同時に保存し、途中の失敗では両方を戻す。
+			let bookId: string | null = null;
+			if (params.bookId) {
+				const book = await books.findOne({ where: { id: params.bookId, userId: user.id }, lock: { mode: 'pessimistic_write' } });
+				if (book == null) throw new Error('no such book or access denied');
+				if (book) {
+					bookId = book.id;
+					if (params.pageTo != null && params.pageTo > book.currentPage) {
+						await books.update(book.id, { currentPage: params.pageTo, updatedAt: now });
+					}
 				}
 			}
-		}
 
-		const log = await this.hatadyLogsRepository.insertOne({
-			id: this.idService.gen(now.getTime()),
-			createdAt: now,
-			studiedAt,
-			userId: user.id,
-			title: params.title,
-			subject: params.subject,
-			tag: params.tag ?? null,
-			body: params.body ?? null,
-			bookId,
-			pageFrom: params.pageFrom ?? null,
-			pageTo: params.pageTo ?? null,
-			durationMinutes: params.durationMinutes ?? 0,
-			isPublic,
-			visibility,
-			reactionsCount: 0,
-			commentsCount: 0,
+			const id = this.idService.gen(now.getTime());
+			await logs.insert({
+				id,
+				createdAt: now,
+				studiedAt,
+				userId: user.id,
+				title: params.title,
+				subject: params.subject,
+				tag: params.tag ?? params.tags?.find(tag => ['strength', 'weak', 'interest', 'movie', 'game'].includes(tag)) ?? null,
+				body: params.body ?? null,
+				bookId,
+				pageFrom: params.pageFrom ?? null,
+				pageTo: params.pageTo ?? null,
+				kind,
+				durationSeconds: seconds,
+				durationMinutes: params.durationSeconds !== undefined ? Math.floor((seconds ?? 0) / 60) : params.durationMinutes ?? 0,
+				startedAt,
+				tags,
+				details: details as QueryDeepPartialEntity<MiHatadyLog>['details'],
+				mediaWorkId: params.mediaWorkId ?? null,
+				isPublic,
+				visibility,
+				reactionsCount: 0,
+				commentsCount: 0,
+			});
+
+			if (bookId && params.tags?.includes('recommend')) await books.update({ id: bookId, userId: user.id }, { isRecommended: true });
+			return logs.findOneByOrFail({ id, userId: user.id });
 		});
-
 		// 継続・達成(マイルストーン)通知の判定。
 		await this.notifyMilestoneIfReached(user.id);
 
@@ -803,25 +963,18 @@ export class HatadyService {
 	//   focusBySubject だけは学習ログの「分野」に固有の集計のため学習ログのみを対象に残す
 	//   (作品タイトルは分野ではないため、素朴に混ぜるとかえって意味を失う)。
 	@bindThis
-	public async getStats(userId: MiUser['id'], tz = 0): Promise<{
-		streakDays: number;
-		recordedToday: boolean;
-		weeklyMinutes: number;
-		weeklySessions: number;
-		totalLogs: number;
-		totalBooks: number;
-		heatmap: { date: string; minutes: number; count: number }[];
-		focusBySubject: { subject: string; minutes: number }[];
-	}> {
+	public async getStats(userId: MiUser['id'], tz = 0) {
 		const DAYS = 140;
+		const records = await this.summaryRecords(userId);
+		const summary = this.summarize(records, tz);
 		// 起点はユーザーのローカル「今日 0:00」。そこから DAYS-1 日さかのぼる。
 		const todayMs = this.localMidnightMs(new Date(), tz);
 		const sinceMs = todayMs - (DAYS - 1) * 86400000;
 		const since = new Date(sinceMs);
 
 		const [logs, mediaSessions] = await Promise.all([
-			this.hatadyLogsRepository.findBy({ userId, studiedAt: MoreThan(since) }),
-			this.hatadyMediaSessionsRepository.findBy({ userId, occurredAt: MoreThan(since) }),
+			this.hatadyLogsRepository.findBy({ userId, studiedAt: MoreThanOrEqual(since) }),
+			this.hatadyMediaSessionsRepository.findBy({ userId, occurredAt: MoreThanOrEqual(since) }),
 		]);
 
 		const [logCount, mediaSessionCount, totalBooks] = await Promise.all([
@@ -840,8 +993,8 @@ export class HatadyService {
 			cur.count += 1;
 			byDay.set(k, cur);
 		};
-		for (const log of logs) addToDay(dayKey(new Date(log.studiedAt)), log.durationMinutes);
-		for (const session of mediaSessions) addToDay(dayKey(new Date(session.occurredAt)), session.durationMinutes ?? 0);
+		for (const log of logs) addToDay(dayKey(new Date(log.studiedAt)), (normalizeHatadyDuration({}, log) ?? 0) / 60);
+		for (const session of mediaSessions) addToDay(dayKey(new Date(session.occurredAt)), (normalizeHatadyDuration({}, session) ?? 0) / 60);
 
 		// ヒートマップ(140日分、古い順)。ユーザーのローカル日で1日ずつ進める。
 		const heatmap: { date: string; minutes: number; count: number }[] = [];
@@ -864,21 +1017,11 @@ export class HatadyService {
 
 		// 今週(過去7日)の時間・セッション・分野別フォーカス。
 		const weekAgoMs = todayMs - 6 * 86400000;
-		let weeklyMinutes = 0;
-		let weeklySessions = 0;
 		const subjectMinutes = new Map<string, number>();
 		for (const log of logs) {
 			// その記録がユーザーのローカルで何日にあたるかで週内判定する。
 			if (this.localMidnightMs(new Date(log.studiedAt), tz) >= weekAgoMs) {
-				weeklyMinutes += log.durationMinutes;
-				weeklySessions += 1;
-				subjectMinutes.set(log.subject, (subjectMinutes.get(log.subject) ?? 0) + log.durationMinutes);
-			}
-		}
-		for (const session of mediaSessions) {
-			if (this.localMidnightMs(new Date(session.occurredAt), tz) >= weekAgoMs) {
-				weeklyMinutes += session.durationMinutes ?? 0;
-				weeklySessions += 1;
+				subjectMinutes.set(log.subject, (subjectMinutes.get(log.subject) ?? 0) + (normalizeHatadyDuration({}, log) ?? 0) / 60);
 			}
 		}
 		const focusBySubject = [...subjectMinutes.entries()]
@@ -886,7 +1029,9 @@ export class HatadyService {
 			.sort((a, b) => b.minutes - a.minutes)
 			.slice(0, 6);
 
-		return { streakDays, recordedToday, weeklyMinutes, weeklySessions, totalLogs, totalBooks, heatmap, focusBySubject };
+		const weekRows = records.filter(row => this.localMidnightMs(row.occurredAt, tz) >= weekAgoMs);
+		const weeklySeconds = weekRows.reduce((sum, row) => sum + (row.seconds ?? 0), 0);
+		return { streakDays, recordedToday, ...summary, weeklySeconds, weeklyMinutes: weeklySeconds / 60, weeklySessions: weekRows.length, totalLogs, totalBooks, heatmap: heatmap.map(day => ({ ...day, seconds: summary.daily.find(row => row.date === day.date)?.seconds ?? 0, timedCount: summary.daily.find(row => row.date === day.date)?.timedCount ?? 0 })), focusBySubject };
 	}
 
 	// ===== 会話(コメント) =====
@@ -898,8 +1043,8 @@ export class HatadyService {
 
 	// ログを閲覧できるか: 公開 or 本人 or (フォロワー限定 かつ 閲覧者がフォロー中)。
 	@bindThis
-	public async canViewLog(log: MiHatadyLog, viewerId: MiUser['id']): Promise<boolean> {
-		if (log.userId === viewerId) return true;
+	public async canViewLog(log: MiHatadyLog, viewerId: MiUser['id'], staffAccess = false): Promise<boolean> {
+		if (log.userId === viewerId || (staffAccess && await this.canModerate(viewerId))) return true;
 		if (await this.isBlockedEitherDirection(viewerId, log.userId)) return false;
 		if (log.visibility === 'public') return true;
 		if (log.visibility === 'followers') return this.isFollowing(viewerId, log.userId);
@@ -951,6 +1096,14 @@ export class HatadyService {
 		return comment;
 	}
 
+	public async updateComment(user: MiUser, commentId: string, text: string): Promise<MiHatadyComment> {
+		if (text.trim().length === 0 || text.length > 2048) throw new Error('invalid comment');
+		const comment = await this.hatadyCommentsRepository.findOneBy({ id: commentId, userId: user.id });
+		if (comment == null) throw new Error('no such comment');
+		await this.hatadyCommentsRepository.update({ id: commentId, userId: user.id }, { text, updatedAt: new Date() });
+		return this.hatadyCommentsRepository.findOneByOrFail({ id: commentId, userId: user.id });
+	}
+
 	@bindThis
 	public async deleteComment(user: MiUser, commentId: MiHatadyComment['id']): Promise<void> {
 		await this.hatadyCommentsRepository.manager.transaction(async manager => {
@@ -966,12 +1119,13 @@ export class HatadyService {
 	}
 
 	@bindThis
-	public async getComments(logId: MiHatadyLog['id'], viewerId: MiUser['id']): Promise<MiHatadyComment[]> {
+	public async getComments(logId: MiHatadyLog['id'], viewerId: MiUser['id'], staffAccess = false): Promise<MiHatadyComment[]> {
 		const comments = await this.hatadyCommentsRepository.createQueryBuilder('c')
 			.where('c.logId = :logId', { logId })
 			.orderBy('c.createdAt', 'ASC')
 			.limit(200)
 			.getMany();
+		if (staffAccess && await this.canModerate(viewerId)) return comments;
 		const allowed = await Promise.all(comments.map(comment => this.canAppearInTimeline(comment.userId, viewerId)));
 		return comments.filter((_, index) => allowed[index]);
 	}
@@ -1169,25 +1323,20 @@ export class HatadyService {
 	// 旗鯖fork(P4): 自分の学習データを横断検索する(ログ/本/内容メモ/しおりメモ)。
 	//   query は2文字以上想定。ILIKE の特殊文字は sqlLikeEscape で無害化する。
 	@bindThis
-	public async search(userId: MiUser['id'], query: string, types: string[] | null, limit: number): Promise<{
-		logs: MiHatadyLog[];
-		books: MiHatadyBook[];
-		bookMemos: MiHatadyBookMemo[];
-		bookmarks: MiHatadyBookmark[];
-	}> {
+	public async search(userId: MiUser['id'], query: string, types: string[] | null, limit: number) {
 		const q = `%${sqlLikeEscape(query.trim())}%`;
 		const want = (t: string) => types == null || types.length === 0 || types.includes(t);
 		const cap = Math.min(Math.max(limit, 1), 30);
 
 		const logs = want('logs') ? await this.hatadyLogsRepository.createQueryBuilder('log')
 			.where('log.userId = :uid', { uid: userId })
-			.andWhere('(log.title ILIKE :q OR log.body ILIKE :q OR log.subject ILIKE :q)', { q })
+			.andWhere('(log.title ILIKE :q OR log.body ILIKE :q OR log.subject ILIKE :q OR log.details::text ILIKE :q)', { q })
 			.orderBy('log.studiedAt', 'DESC')
 			.limit(cap).getMany() : [];
 
 		const books = want('books') ? await this.hatadyBooksRepository.createQueryBuilder('book')
 			.where('book.userId = :uid', { uid: userId })
-			.andWhere('(book.title ILIKE :q OR book.author ILIKE :q)', { q })
+			.andWhere('(book.title ILIKE :q OR book.author ILIKE :q OR book.details::text ILIKE :q)', { q })
 			.orderBy('book.updatedAt', 'DESC')
 			.limit(cap).getMany() : [];
 
@@ -1206,20 +1355,16 @@ export class HatadyService {
 			.orderBy('bm.createdAt', 'DESC')
 			.limit(cap).getMany() : [];
 
-		return { logs, books, bookMemos, bookmarks };
+		const mediaWorks = want('mediaWorks') || want('books') ? await this.hatadyLogsRepository.manager.getRepository(MiHatadyMediaWork).createQueryBuilder('work').where('work.userId = :uid', { uid: userId }).andWhere('(work.title ILIKE :q OR work.creator ILIKE :q OR work.synopsis ILIKE :q OR work.review ILIKE :q OR work.details::text ILIKE :q)', { q }).orderBy('work.id', 'DESC').take(cap).getMany() : [];
+		const mediaSessions = want('mediaSessions') || want('logs') ? await this.hatadyMediaSessionsRepository.createQueryBuilder('session').where('session.userId = :uid', { uid: userId }).andWhere('(session.note ILIKE :q OR session.details::text ILIKE :q OR session.workSnapshot::text ILIKE :q)', { q }).orderBy('session.id', 'DESC').take(cap).getMany() : [];
+		return { logs, books, bookMemos, bookmarks, mediaWorks, mediaSessions };
 	}
 
 	// 旗鯖fork(P6): 統計深掘り(月別/曜日/時間帯/分野推移/自己ベスト/月別読了)。
 	//   直近 months ヶ月分のログを1回取得して JS 集計する。
 	@bindThis
-	public async getStatsDetail(userId: MiUser['id'], months: number, tz = 0): Promise<{
-		monthlyTotals: { month: string; minutes: number; count: number }[];
-		weekdayMinutes: number[];
-		hourlyMinutes: number[];
-		subjectTrend: { subject: string; monthly: { month: string; minutes: number }[] }[];
-		bests: { longestSession: number; maxDayMinutes: number; longestStreak: number };
-		monthlyFinished: { month: string; books: number; pages: number }[];
-	}> {
+	public async getStatsDetail(userId: MiUser['id'], months: number, tz = 0, kind = 'all') {
+		if (!['all', 'study', 'movie', 'game', 'exercise', 'work'].includes(kind)) throw new Error('invalid kind');
 		const m = Math.min(Math.max(months, 1), 24);
 		// 起点はユーザーのローカルで (m-1) ヶ月前の1日 0:00。
 		const nowLocal = this.shiftToLocal(new Date(), tz);
@@ -1227,7 +1372,7 @@ export class HatadyService {
 		const sinceMs = Date.UTC(Math.floor(startIdx / 12), startIdx % 12, 1) + tz * 60000;
 		const since = new Date(sinceMs);
 
-		const logs = await this.hatadyLogsRepository.findBy({ userId, studiedAt: MoreThan(since) });
+		const logs = await this.hatadyLogsRepository.findBy({ userId, studiedAt: MoreThanOrEqual(since) });
 		const monthKey = (d: Date) => this.monthKeyTz(d, tz);
 
 		// 月の並び(古い順)。ユーザーのローカル月で列挙する。
@@ -1238,42 +1383,6 @@ export class HatadyService {
 				monthList.push(`${Math.floor(idx / 12)}-${(idx % 12 + 1).toString().padStart(2, '0')}`);
 			}
 		}
-
-		const monthMap = new Map<string, { minutes: number; count: number }>();
-		const weekdayMinutes = new Array(7).fill(0) as number[];
-		const hourlyMinutes = new Array(24).fill(0) as number[];
-		const dayMinutes = new Map<string, number>();
-		const subjMonth = new Map<string, Map<string, number>>();
-		let longestSession = 0;
-
-		for (const log of logs) {
-			const d = new Date(log.studiedAt);
-			// 曜日・時間帯・日付はユーザーの壁時計で数える(UTC のままだと時間帯が9時間ズレる)。
-			const w = this.shiftToLocal(d, tz);
-			const mk = monthKey(d);
-			const cur = monthMap.get(mk) ?? { minutes: 0, count: 0 };
-			cur.minutes += log.durationMinutes; cur.count += 1; monthMap.set(mk, cur);
-			weekdayMinutes[w.getUTCDay()] += log.durationMinutes;
-			hourlyMinutes[w.getUTCHours()] += log.durationMinutes;
-			const dk = this.dayKeyTz(d, tz);
-			dayMinutes.set(dk, (dayMinutes.get(dk) ?? 0) + log.durationMinutes);
-			if (log.durationMinutes > longestSession) longestSession = log.durationMinutes;
-			if (!subjMonth.has(log.subject)) subjMonth.set(log.subject, new Map());
-			const sm = subjMonth.get(log.subject)!;
-			sm.set(mk, (sm.get(mk) ?? 0) + log.durationMinutes);
-		}
-
-		const monthlyTotals = monthList.map(mk => ({ month: mk, ...(monthMap.get(mk) ?? { minutes: 0, count: 0 }) }));
-		const maxDayMinutes = [...dayMinutes.values()].reduce((mx, v) => Math.max(mx, v), 0);
-
-		// 上位分野(合計時間)を最大5、各月推移。
-		const subjTotals = [...subjMonth.entries()]
-			.map(([subject, mm]) => ({ subject, total: [...mm.values()].reduce((a, b) => a + b, 0), mm }))
-			.sort((a, b) => b.total - a.total).slice(0, 5);
-		const subjectTrend = subjTotals.map(({ subject, mm }) => ({
-			subject,
-			monthly: monthList.map(mk => ({ month: mk, minutes: mm.get(mk) ?? 0 })),
-		}));
 
 		// 月別読了冊数 + 読了ページ数(pageFrom/To 差分の合計。読了本に限らずログのページ実績を月別集計)。
 		const finishedBooks = await this.hatadyBooksRepository.createQueryBuilder('book')
@@ -1294,9 +1403,22 @@ export class HatadyService {
 		}
 		const monthlyFinished = monthList.map(mk => ({ month: mk, books: finishedByMonth.get(mk) ?? 0, pages: pagesByMonth.get(mk) ?? 0 }));
 
-		const streaks = await this.getStreaks(userId, tz);
-
-		return { monthlyTotals, weekdayMinutes, hourlyMinutes, subjectTrend, bests: { longestSession, maxDayMinutes, longestStreak: streaks.best }, monthlyFinished };
+		const allRecords = (await this.summaryRecords(userId)).filter(row => kind === 'all' || row.kind === kind);
+		const days = [...new Set(allRecords.map(row => this.dayKeyTz(row.occurredAt, tz)))].sort();
+		let longestStreak = 0, currentStreak = 0, previousDay = -Infinity;
+		for (const day of days) { const time = Date.parse(day); currentStreak = time - previousDay === 86400000 ? currentStreak + 1 : 1; longestStreak = Math.max(longestStreak, currentStreak); previousDay = time; }
+		const records = allRecords.filter(row => row.occurredAt.getTime() >= sinceMs);
+		const summary = this.summarize(records, tz);
+		const weekdaySeconds = new Array<number>(7).fill(0), hourlyCounts = new Array<number>(24).fill(0), exactHourlyMinutes = new Array<number>(24).fill(0);
+		for (const row of records) {
+			weekdaySeconds[this.shiftToLocal(row.occurredAt, tz).getUTCDay()] += row.seconds ?? 0;
+			if (row.startedAt != null) { const hour = Number(row.startedAt.slice(0, 2)); hourlyCounts[hour]++; exactHourlyMinutes[hour] += (row.seconds ?? 0) / 60; }
+		}
+		const exactMonthly = monthList.map(month => { const rows = records.filter(row => monthKey(row.occurredAt) === month); const seconds = rows.reduce((sum, row) => sum + (row.seconds ?? 0), 0); return { month, seconds, minutes: seconds / 60, count: rows.length, timedCount: rows.filter(row => row.seconds != null).length }; });
+		const subjects = [...new Set(records.map(row => row.subject))];
+		const exactTrend = subjects.map(subject => ({ subject, monthly: monthList.map(month => { const seconds = records.filter(row => row.subject === subject && monthKey(row.occurredAt) === month).reduce((sum, row) => sum + (row.seconds ?? 0), 0); return { month, seconds, minutes: seconds / 60 }; }) }));
+		const longestSessionSeconds = records.reduce((max, row) => Math.max(max, row.seconds ?? 0), 0), maxDaySeconds = summary.daily.reduce((max, row) => Math.max(max, row.seconds), 0);
+		return { ...summary, monthlyTotals: exactMonthly, weekdaySeconds, weekdayMinutes: weekdaySeconds.map(seconds => seconds / 60), hourlyCounts, hourlyMinutes: exactHourlyMinutes, subjectTrend: exactTrend, bests: { longestSession: longestSessionSeconds / 60, maxDayMinutes: maxDaySeconds / 60, longestStreak, longestSessionSeconds, maxDaySeconds }, monthlyFinished };
 	}
 
 	// ===== 目標(goal。本人のみ) =====

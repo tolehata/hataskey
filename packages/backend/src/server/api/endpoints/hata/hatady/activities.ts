@@ -55,6 +55,12 @@ const studySchema = {
 		pageFrom: { type: 'integer', optional: false, nullable: true },
 		pageTo: { type: 'integer', optional: false, nullable: true },
 		durationMinutes: { type: 'integer', optional: false, nullable: false, minimum: 0 },
+		durationSeconds: { type: 'number', nullable: true },
+		startedAt: { type: 'string', nullable: true },
+		tags: { type: 'array', items: { type: 'string' } },
+		kind: { type: 'string', enum: ['study', 'exercise', 'work'] },
+		details: { type: 'object', additionalProperties: true },
+		mediaWorkId: { type: 'string', nullable: true },
 		isPublic: { type: 'boolean', optional: false, nullable: false },
 		visibility: { type: 'string', enum: ['private', 'followers', 'public'], optional: false, nullable: false },
 		reactionsCount: { type: 'integer', optional: false, nullable: false, minimum: 0 },
@@ -71,7 +77,7 @@ const mediaSchema = {
 	optional: false,
 	nullable: true,
 	properties: {
-		work: mediaWorkSchema,
+		work: { ...mediaWorkSchema, nullable: true },
 		session: mediaSessionSchema,
 	},
 	required: ['work', 'session'],
@@ -83,7 +89,7 @@ const activitySchema = {
 	nullable: false,
 	properties: {
 		id: { type: 'string', format: 'misskey:id', optional: false, nullable: false },
-		type: { type: 'string', enum: ['study', 'movie_viewing', 'game_play', 'game_match', 'game_roguelike', 'game_pve'], optional: false, nullable: false },
+		type: { type: 'string', enum: ['study', 'exercise', 'work', 'movie_viewing', 'game_play', 'game_match', 'game_roguelike', 'game_pve'], optional: false, nullable: false },
 		occurredAt: { type: 'string', format: 'date-time', optional: false, nullable: false },
 		visibility: { type: 'string', enum: ['private', 'followers', 'public'], optional: false, nullable: false },
 		user: userLiteSchema,
@@ -129,8 +135,9 @@ export const meta = {
 export const paramDef = {
 	type: 'object',
 	properties: {
-		scope: { type: 'string', enum: ['mine', 'recent', 'popular', 'following'], default: 'recent' },
-		kinds: { type: 'array', minItems: 1, maxItems: 3, uniqueItems: true, items: { type: 'string', enum: ['study', 'movie', 'game'] } },
+		userId: { type: 'string', format: 'misskey:id' },
+		scope: { type: 'string', enum: ['mine', 'recent', 'public', 'popular', 'following', 'all'], default: 'recent' },
+		kinds: { type: 'array', minItems: 1, maxItems: 5, uniqueItems: true, items: { type: 'string', enum: ['study', 'movie', 'game', 'exercise', 'work'] } },
 		sinceDate: { type: 'integer', minimum: 0, maximum: 8640000000000000, nullable: true },
 		untilDate: { type: 'integer', minimum: 0, maximum: 8640000000000000, nullable: true },
 		cursor: { type: 'string', minLength: 1, maxLength: 1024 },
@@ -142,10 +149,12 @@ export const paramDef = {
 @Injectable()
 export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-disable-line import/no-default-export
 	constructor(private hatadyActivityService: HatadyActivityService) {
-		super(meta, paramDef, async (ps, me) => {
+		super(meta, paramDef, async (ps, me, token) => {
 			try {
+				if (ps.scope === 'all' && token != null) throw new Error(HATADY_ACTIVITY_INVALID_FILTER);
 				const result = await this.hatadyActivityService.list(me, {
 					scope: ps.scope,
+					userId: ps.userId,
 					kinds: ps.kinds,
 					sinceDate: ps.sinceDate,
 					untilDate: ps.untilDate,

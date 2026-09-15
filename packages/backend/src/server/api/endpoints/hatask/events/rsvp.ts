@@ -1,11 +1,12 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { DataSource } from 'typeorm';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import { DI } from '@/di-symbols.js';
 import { MiHataskEvent } from '@/models/HataskEvent.js';
 import { MiHataskRsvp } from '@/models/HataskRsvp.js';
 import { IdService } from '@/core/IdService.js';
 import { ApiError } from '../../../error.js';
+import { canViewHataskEvent } from './_visibility.js';
+import type { DataSource } from 'typeorm';
 
 export const meta = {
 	tags: ['hatask'],
@@ -51,7 +52,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> {
 				const eventRepository = manager.getRepository(MiHataskEvent);
 				const rsvpRepository = manager.getRepository(MiHataskRsvp);
 				const event = await eventRepository.findOne({ where: { id: ps.eventId }, lock: { mode: 'pessimistic_write' } });
-				if (!event) throw new ApiError(meta.errors.noSuchEvent);
+				if (!event || !canViewHataskEvent(event, me.id)) throw new ApiError(meta.errors.noSuchEvent);
 				if (!event.rsvp) throw new ApiError(meta.errors.rsvpDisabled);
 				if (event.rsvpClosed) throw new ApiError(meta.errors.eventClosed);
 

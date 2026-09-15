@@ -43,10 +43,10 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		private hatadyService: HatadyService,
 		private hatadyEntityService: HatadyEntityService,
 	) {
-		super(meta, paramDef, async (ps, me) => {
+		super(meta, paramDef, async (ps, me, token) => {
 			const log = await this.hatadyLogsRepository.findOneBy({ id: ps.logId });
-			if (log == null || !(await this.hatadyService.canViewLog(log, me.id))) throw new ApiError(meta.errors.noSuchLog);
-			return await this.hatadyEntityService.packLog(log, me);
+			if (log == null || !(await this.hatadyService.canViewLog(log, me.id, token == null))) throw new ApiError(meta.errors.noSuchLog);
+			return await this.hatadyEntityService.packLog(log, me, token == null && await this.hatadyService.canModerate(me.id));
 		});
 	}
 }

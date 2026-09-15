@@ -86,6 +86,16 @@ import type {
 	AdminGetUserIpsResponse,
 	AdminHataConsentListRequest,
 	AdminHataConsentListResponse,
+	AdminHataskSupportRegisterRequest,
+	AdminHataskSupportRegisterResponse,
+	AdminHataskSupportShowRequest,
+	AdminHataskSupportShowResponse,
+	AdminHataskSupportSupportersRequest,
+	AdminHataskSupportSupportersResponse,
+	AdminHataskSupportUnregisterRequest,
+	AdminHataskSupportUnregisterResponse,
+	AdminHataskSupportUpdateRequest,
+	AdminHataskSupportUpdateResponse,
 	AdminInviteCreateRequest,
 	AdminInviteCreateResponse,
 	AdminInviteListRequest,
@@ -439,6 +449,7 @@ import type {
 	HashtagsTrendResponse,
 	HashtagsUsersRequest,
 	HashtagsUsersResponse,
+	HataConsentGetResponse,
 	HataConsentUpdateRequest,
 	HataConsentUpdateResponse,
 	HataEarthquakeHistoryRequest,
@@ -448,6 +459,10 @@ import type {
 	HataEarthquakeNotificationSettingsUpdateResponse,
 	HataEarthquakeTsunamiRequest,
 	HataEarthquakeTsunamiResponse,
+	HataEmojiVoteShowRequest,
+	HataEmojiVoteShowResponse,
+	HataEmojiVoteVoteRequest,
+	HataEmojiVoteVoteResponse,
 	HataFeedbackAgreeRequest,
 	HataFeedbackAgreeResponse,
 	HataFeedbackAvailableResponse,
@@ -520,6 +535,8 @@ import type {
 	HataHatadyCommentsCreateResponse,
 	HataHatadyCommentsDeleteRequest,
 	HataHatadyCommentsDeleteResponse,
+	HataHatadyCommentsUpdateRequest,
+	HataHatadyCommentsUpdateResponse,
 	HataHatadyFollowersRemoveRequest,
 	HataHatadyFollowingCreateRequest,
 	HataHatadyFollowingDeleteRequest,
@@ -553,6 +570,8 @@ import type {
 	HataHatadyMediaSessionsDeleteRequest,
 	HataHatadyMediaSessionsListRequest,
 	HataHatadyMediaSessionsListResponse,
+	HataHatadyMediaSessionsShowRequest,
+	HataHatadyMediaSessionsShowResponse,
 	HataHatadyMediaSessionsUpdateRequest,
 	HataHatadyMediaSessionsUpdateResponse,
 	HataHatadyMediaWorksCreateRequest,
@@ -571,6 +590,8 @@ import type {
 	HataHatadyMemosUpdateResponse,
 	HataHatadyNotificationsRequest,
 	HataHatadyNotificationsResponse,
+	HataHatadyNotificationsDeleteRequest,
+	HataHatadyNotificationsRestoreRequest,
 	HataHatadyNotificationsUnreadCountResponse,
 	HataHatadyProfileUpdateRequest,
 	HataHatadyReactionsCreateRequest,
@@ -632,6 +653,9 @@ import type {
 	HataskRankingListResponse,
 	HataskRankingParticipationRequest,
 	HataskRankingParticipationResponse,
+	HataskSupportShowResponse,
+	HataskSupportSupportersRequest,
+	HataskSupportSupportersResponse,
 	IResponse,
 	I2faDoneRequest,
 	I2faDoneResponse,
@@ -1005,6 +1029,11 @@ export type Endpoints = {
 	'admin/get-table-stats': { req: EmptyRequest; res: AdminGetTableStatsResponse };
 	'admin/get-user-ips': { req: AdminGetUserIpsRequest; res: AdminGetUserIpsResponse };
 	'admin/hata/consent-list': { req: AdminHataConsentListRequest; res: AdminHataConsentListResponse };
+	'admin/hatask/support/register': { req: AdminHataskSupportRegisterRequest; res: AdminHataskSupportRegisterResponse };
+	'admin/hatask/support/show': { req: AdminHataskSupportShowRequest; res: AdminHataskSupportShowResponse };
+	'admin/hatask/support/supporters': { req: AdminHataskSupportSupportersRequest; res: AdminHataskSupportSupportersResponse };
+	'admin/hatask/support/unregister': { req: AdminHataskSupportUnregisterRequest; res: AdminHataskSupportUnregisterResponse };
+	'admin/hatask/support/update': { req: AdminHataskSupportUpdateRequest; res: AdminHataskSupportUpdateResponse };
 	'admin/invite/create': { req: AdminInviteCreateRequest; res: AdminInviteCreateResponse };
 	'admin/invite/list': { req: AdminInviteListRequest; res: AdminInviteListResponse };
 	'admin/invite/revoke': { req: EmptyRequest; res: EmptyResponse };
@@ -1229,11 +1258,14 @@ export type Endpoints = {
 	'hashtags/show': { req: HashtagsShowRequest; res: HashtagsShowResponse };
 	'hashtags/trend': { req: EmptyRequest; res: HashtagsTrendResponse };
 	'hashtags/users': { req: HashtagsUsersRequest; res: HashtagsUsersResponse };
+	'hata/consent/get': { req: EmptyRequest; res: HataConsentGetResponse };
 	'hata/consent/update': { req: HataConsentUpdateRequest; res: HataConsentUpdateResponse };
 	'hata/earthquake/history': { req: HataEarthquakeHistoryRequest; res: HataEarthquakeHistoryResponse };
 	'hata/earthquake/notification-settings': { req: EmptyRequest; res: HataEarthquakeNotificationSettingsResponse };
 	'hata/earthquake/notification-settings-update': { req: HataEarthquakeNotificationSettingsUpdateRequest; res: HataEarthquakeNotificationSettingsUpdateResponse };
 	'hata/earthquake/tsunami': { req: HataEarthquakeTsunamiRequest; res: HataEarthquakeTsunamiResponse };
+	'hata/emoji-vote/show': { req: HataEmojiVoteShowRequest; res: HataEmojiVoteShowResponse };
+	'hata/emoji-vote/vote': { req: HataEmojiVoteVoteRequest; res: HataEmojiVoteVoteResponse };
 	'hata/feedback/agree': { req: HataFeedbackAgreeRequest; res: HataFeedbackAgreeResponse };
 	'hata/feedback/available': { req: EmptyRequest; res: HataFeedbackAvailableResponse };
 	'hata/feedback/comments': { req: HataFeedbackCommentsRequest; res: HataFeedbackCommentsResponse };
@@ -1278,6 +1310,7 @@ export type Endpoints = {
 	'hata/hatady/comments': { req: HataHatadyCommentsRequest; res: HataHatadyCommentsResponse };
 	'hata/hatady/comments/create': { req: HataHatadyCommentsCreateRequest; res: HataHatadyCommentsCreateResponse };
 	'hata/hatady/comments/delete': { req: HataHatadyCommentsDeleteRequest; res: HataHatadyCommentsDeleteResponse };
+	'hata/hatady/comments/update': { req: HataHatadyCommentsUpdateRequest; res: HataHatadyCommentsUpdateResponse };
 	'hata/hatady/followers/remove': { req: HataHatadyFollowersRemoveRequest; res: EmptyResponse };
 	'hata/hatady/following/create': { req: HataHatadyFollowingCreateRequest; res: EmptyResponse };
 	'hata/hatady/following/delete': { req: HataHatadyFollowingDeleteRequest; res: EmptyResponse };
@@ -1300,6 +1333,7 @@ export type Endpoints = {
 	'hata/hatady/media/sessions/create': { req: HataHatadyMediaSessionsCreateRequest; res: HataHatadyMediaSessionsCreateResponse };
 	'hata/hatady/media/sessions/delete': { req: HataHatadyMediaSessionsDeleteRequest; res: EmptyResponse };
 	'hata/hatady/media/sessions/list': { req: HataHatadyMediaSessionsListRequest; res: HataHatadyMediaSessionsListResponse };
+	'hata/hatady/media/sessions/show': { req: HataHatadyMediaSessionsShowRequest; res: HataHatadyMediaSessionsShowResponse };
 	'hata/hatady/media/sessions/update': { req: HataHatadyMediaSessionsUpdateRequest; res: HataHatadyMediaSessionsUpdateResponse };
 	'hata/hatady/media/works/create': { req: HataHatadyMediaWorksCreateRequest; res: HataHatadyMediaWorksCreateResponse };
 	'hata/hatady/media/works/delete': { req: HataHatadyMediaWorksDeleteRequest; res: EmptyResponse };
@@ -1310,7 +1344,9 @@ export type Endpoints = {
 	'hata/hatady/memos/delete': { req: HataHatadyMemosDeleteRequest; res: EmptyResponse };
 	'hata/hatady/memos/update': { req: HataHatadyMemosUpdateRequest; res: HataHatadyMemosUpdateResponse };
 	'hata/hatady/notifications': { req: HataHatadyNotificationsRequest; res: HataHatadyNotificationsResponse };
+	'hata/hatady/notifications/delete': { req: HataHatadyNotificationsDeleteRequest; res: EmptyResponse };
 	'hata/hatady/notifications/mark-all-read': { req: EmptyRequest; res: EmptyResponse };
+	'hata/hatady/notifications/restore': { req: HataHatadyNotificationsRestoreRequest; res: EmptyResponse };
 	'hata/hatady/notifications/unread-count': { req: EmptyRequest; res: HataHatadyNotificationsUnreadCountResponse };
 	'hata/hatady/profile/update': { req: HataHatadyProfileUpdateRequest; res: EmptyResponse };
 	'hata/hatady/reactions/create': { req: HataHatadyReactionsCreateRequest; res: EmptyResponse };
@@ -1347,6 +1383,8 @@ export type Endpoints = {
 	'hatask/planner/get': { req: EmptyRequest; res: HataskPlannerGetResponse };
 	'hatask/ranking/list': { req: HataskRankingListRequest; res: HataskRankingListResponse };
 	'hatask/ranking/participation': { req: HataskRankingParticipationRequest; res: HataskRankingParticipationResponse };
+	'hatask/support/show': { req: EmptyRequest; res: HataskSupportShowResponse };
+	'hatask/support/supporters': { req: HataskSupportSupportersRequest; res: HataskSupportSupportersResponse };
 	'i': { req: EmptyRequest; res: IResponse };
 	'i/2fa/done': { req: I2faDoneRequest; res: I2faDoneResponse };
 	'i/2fa/key-done': { req: I2faKeyDoneRequest; res: I2faKeyDoneResponse };

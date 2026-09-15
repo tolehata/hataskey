@@ -9,5 +9,5 @@ export const meta = { tags: ['hata'], requireCredential: true, kind: 'write:acco
 export const paramDef = { type: 'object', properties: { workId: { type: 'string', format: 'misskey:id' }, ...WORK_INPUT_PROPERTIES }, required: ['workId'] } as const;
 @Injectable()
 export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-disable-line import/no-default-export
-	constructor(private service: HatadyMediaService) { super(meta, paramDef, async (ps, me) => { try { const { workId, ...input } = ps; return this.service.packWork(await this.service.updateWork(me.id, workId, input)); } catch (e) { return mapMediaError(e); } }); }
+	constructor(private service: HatadyMediaService) { super(meta, paramDef, async (ps, me) => { try { const { workId, ...input } = ps; return this.service.packWork(await this.service.updateWork(me.id, workId, input), true); } catch (e) { return mapMediaError(e); } }); }
 }

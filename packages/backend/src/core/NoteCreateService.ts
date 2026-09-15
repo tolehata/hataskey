@@ -43,6 +43,7 @@ import { HashtagService } from '@/core/HashtagService.js';
 import { AntennaService } from '@/core/AntennaService.js';
 import { QueueService } from '@/core/QueueService.js';
 import { UtageService } from '@/core/UtageService.js';
+import { LtlEmojiVoteService } from '@/core/LtlEmojiVoteService.js';
 import { TimelineCollapseService } from '@/core/TimelineCollapseService.js';
 import { NoteEntityService } from '@/core/entities/NoteEntityService.js';
 import { UserEntityService } from '@/core/entities/UserEntityService.js';
@@ -258,6 +259,7 @@ export class NoteCreateService implements OnApplicationShutdown {
 		private globalEventService: GlobalEventService,
 		private queueService: QueueService,
 		private utageService: UtageService,
+		private ltlEmojiVoteService: LtlEmojiVoteService,
 		private timelineCollapseService: TimelineCollapseService,
 		private fanoutTimelineService: FanoutTimelineService,
 		private notificationService: NotificationService,
@@ -670,6 +672,11 @@ export class NoteCreateService implements OnApplicationShutdown {
 		}
 
 		const note = await this.insertNote(user, data, tags, emojis, mentionedUsers);
+
+		if (!silent) {
+			// 投稿応答・LTLへの投入より先に候補を確定する。開始失敗でも投稿は成立させる。
+			await this.ltlEmojiVoteService.onNoteCreated(note, user).catch(() => { /* optional LTL event */ });
+		}
 
 		setImmediate('post created', { signal: this.#shutdownController.signal }).then(
 			() => this.postNoteCreated(note, user, data, silent, tags!, mentionedUsers!),

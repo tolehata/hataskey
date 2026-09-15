@@ -19,6 +19,7 @@ export const paramDef = {
 	type: 'object',
 	properties: {
 		name: { type: 'string', minLength: 1, maxLength: 128 },
+		originalName: { type: 'string', minLength: 1, maxLength: 128 },
 		color: { type: 'string', nullable: true, maxLength: 16 },
 	},
 	required: ['name'],
@@ -30,7 +31,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		private hatadyService: HatadyService,
 	) {
 		super(meta, paramDef, async (ps, me) => {
-			return this.hatadyService.saveSubject(me.id, ps.name, ps.color ?? null);
+			return this.hatadyService.saveSubject(me.id, ps.name, ps.color ?? null, ps.originalName);
 		});
 	}
 }

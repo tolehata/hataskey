@@ -44,6 +44,7 @@ function generateDummyUser(override?: Partial<MiUser>): MiUser {
 		avatarDecorations: [],
 		tags: [],
 		isSuspended: false,
+		hataskSupporter: false,
 		isLocked: false,
 		isBot: false,
 		isCat: true,

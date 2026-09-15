@@ -10,6 +10,7 @@ import { HatadyEntityService } from '@/core/entities/HatadyEntityService.js';
 import type { MiHatadyMediaWork } from '@/models/HatadyMediaWork.js';
 import HatadyMediaSessionsCreateEndpoint from '@/server/api/endpoints/hata/hatady/media/sessions/create.js';
 import HatadyMediaWorksListEndpoint from '@/server/api/endpoints/hata/hatady/media/works/list.js';
+import HatadyMediaWorksShowEndpoint from '@/server/api/endpoints/hata/hatady/media/works/show.js';
 
 function work(overrides: Partial<MiHatadyMediaWork> = {}): MiHatadyMediaWork {
 	return {
@@ -20,7 +21,7 @@ function work(overrides: Partial<MiHatadyMediaWork> = {}): MiHatadyMediaWork {
 		synopsis: null, synopsisSpoiler: false, review: null, reviewSpoiler: false,
 		officialUrl: null, runtimeMinutes: null, genres: [], origin: null, viewingMode: null,
 		primaryLanguage: null, highlights: [], highlightsSpoiler: false, platforms: [], developer: null, publisher: null,
-		user: null,
+		user: null, details: {},
 		...overrides,
 	};
 }
@@ -34,10 +35,13 @@ function service(overrides: Record<string, unknown> = {}): HatadyMediaService {
 		idService: { gen: vi.fn().mockReturnValue('generated') },
 		roleService: { getUserPolicies: vi.fn().mockResolvedValue({ hatadyGameTitleLimit: 100 }) },
 		userEntityService: {},
+		hatadyEntityService: {},
 		// 旗鯖fork(Hatady次期: ゲーム/映画記録): createSession は保存後に連続記録の節目通知判定を行う。
 		hatadyService: {
 			notifyMilestoneIfReached: vi.fn().mockResolvedValue(undefined),
 			isBlockedEitherDirection: vi.fn().mockResolvedValue(false),
+			canModerate: vi.fn().mockResolvedValue(false),
+			getTimelineExcludedUserIds: vi.fn().mockResolvedValue(new Set()),
 			canAppearInTimeline: vi.fn().mockResolvedValue(true),
 			pushHatadyNotification: vi.fn().mockResolvedValue(undefined),
 		},
@@ -54,6 +58,7 @@ function service(overrides: Record<string, unknown> = {}): HatadyMediaService {
 		defaults.roleService as never,
 		defaults.userEntityService as never,
 		defaults.hatadyService as never,
+		defaults.hatadyEntityService as never,
 	);
 }
 
@@ -313,10 +318,8 @@ describe('Hatady media centralized visibility', () => {
 		expect(mutationRepo.insert).not.toHaveBeenCalled();
 	});
 
-	test('a session more public than its parent auto-raises the parent instead of failing', async () => {
-		// 旗鯖fork(Hatady次期: ゲーム/映画記録): canViewSession は必ず canViewWork を先に通すため、
-		// work を private のままにして session だけ public にしても他人には結局見えない
-		// (「みんなの活動に出てこない」という詰み)。よって拒否ではなく work 側を自動で引き上げる。
+	test('a public session leaves its private parent unchanged', async () => {
+		// 記録と作品は独立した公開範囲を持つ。
 		const sessionRepo = { insert: vi.fn(), findOneByOrFail: vi.fn().mockResolvedValue({ id: 'generated', visibility: 'public' }) };
 		const workRepo = { findOne: vi.fn().mockResolvedValue(work()), update: vi.fn() };
 		const manager = { getRepository: vi.fn((entity: { name: string }) => entity.name === 'MiHatadyMediaWork' ? workRepo : sessionRepo) };
@@ -324,7 +327,7 @@ describe('Hatady media centralized visibility', () => {
 		const sut = service({ db });
 		await sut.createSession('owner', 'work-a', 'movie_viewing', { occurredAt: new Date().toISOString(), visibility: 'public' });
 		expect(sessionRepo.insert).toHaveBeenCalled();
-		expect(workRepo.update).toHaveBeenCalledWith({ id: 'work-a' }, expect.objectContaining({ visibility: 'public' }));
+		expect(workRepo.update).not.toHaveBeenCalled();
 	});
 
 	test('a session no more public than its parent leaves the parent visibility untouched', async () => {
@@ -393,7 +396,7 @@ describe('Hatady game title insertion serialization', () => {
 		expect(manager.getRepository().insert).not.toHaveBeenCalled();
 	});
 
-	test('game recommendation fields are normalized to movie-only defaults', async () => {
+	test('game recommendation fields retain the explicit user selection', async () => {
 		let inserted: Record<string, unknown> | null = null;
 		const repo = {
 			countBy: vi.fn().mockResolvedValue(0),
@@ -404,7 +407,7 @@ describe('Hatady game title insertion serialization', () => {
 		const db = { transaction: vi.fn(async (callback: (manager: typeof manager) => unknown) => callback(manager)) };
 		const sut = service({ db });
 		await sut.createWork({ id: 'owner' } as never, 'game', { title: 'Game', isRecommended: true, recommendationRating: 10 });
-		expect(inserted).toMatchObject({ isRecommended: false, recommendationRating: null });
+		expect(inserted).toMatchObject({ isRecommended: true, recommendationRating: 10 });
 	});
 
 	// 旗鯖fork(Hatady): 映画の作品作成。フォームが実際に送る形(未入力は null / 空配列)をそのまま通せること。
@@ -452,6 +455,80 @@ describe('Hatady media reaction notifications', () => {
 		expect(reactionRepo.insert).toHaveBeenCalledOnce();
 		expect(notificationRepo.insert).toHaveBeenCalledOnce();
 		expect(db.transaction).toHaveBeenCalledOnce();
+	});
+});
+
+describe('Hatady collection owner packing', () => {
+	test.each([
+		{ viewerId: 'viewer', moderator: false, thirdParty: false, privateAccess: false },
+		{ viewerId: 'owner', moderator: false, thirdParty: false, privateAccess: true },
+		{ viewerId: 'moderator', moderator: true, thirdParty: false, privateAccess: true },
+		{ viewerId: 'moderator', moderator: true, thirdParty: true, privateAccess: false },
+	])('work detail masks a private linked book for $viewerId (thirdParty=$thirdParty)', async ({ viewerId, moderator, thirdParty, privateAccess }) => {
+		const now = new Date();
+		const book = { id: 'privatebook', userId: 'owner', title: 'Private book', visibility: 'private', createdAt: now, updatedAt: now, details: { memo: 'private memo' } };
+		const log = { id: 'publiclog', userId: 'owner', kind: 'work', title: 'Public activity', bookId: book.id, mediaWorkId: 'worka', visibility: 'public', createdAt: now, studiedAt: now, durationMinutes: 1 };
+		const userEntityService = { packMany: vi.fn().mockResolvedValue([{ id: 'owner' }]) };
+		const logReactions = { where: vi.fn().mockReturnThis(), getMany: vi.fn().mockResolvedValue([]) };
+		const hatadyEntityService = new HatadyEntityService(
+			{ findBy: vi.fn().mockResolvedValue([book]) } as never, {} as never,
+			{ createQueryBuilder: vi.fn().mockReturnValue(logReactions) } as never, {} as never,
+			{ findBy: vi.fn().mockResolvedValue([]) } as never, {} as never, {} as never, {} as never,
+			userEntityService as never,
+		);
+		const reactionSummary = { select: vi.fn().mockReturnThis(), addSelect: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), groupBy: vi.fn().mockReturnThis(), orderBy: vi.fn().mockReturnThis(), getRawMany: vi.fn().mockResolvedValue([]) };
+		const hatadyService = {
+			canModerate: vi.fn().mockResolvedValue(moderator),
+			isBlockedEitherDirection: vi.fn().mockResolvedValue(false),
+			getWorkActivities: vi.fn().mockResolvedValue({}),
+			getWorkLogs: vi.fn().mockResolvedValue([log]),
+		};
+		const sut = service({
+			worksRepository: { findOneBy: vi.fn().mockResolvedValue(work({ id: 'worka', kind: 'work', visibility: 'public' })) },
+			commentsRepository: { countBy: vi.fn().mockResolvedValue(0) },
+			reactionsRepository: { createQueryBuilder: vi.fn().mockReturnValue(reactionSummary), findOneBy: vi.fn().mockResolvedValue(null) },
+			userEntityService, hatadyService, hatadyEntityService,
+		});
+		const endpoint = new HatadyMediaWorksShowEndpoint(sut);
+		const result = await endpoint.exec({ workId: 'worka' }, { id: viewerId } as never, thirdParty ? { permission: ['read:account'] } as never : null, null);
+		expect(result.logs).toHaveLength(1);
+		expect(result.logs[0]).toMatchObject({ id: log.id, title: log.title, bookId: privateAccess ? book.id : null });
+		if (privateAccess) expect(result.logs[0].book).toMatchObject({ id: book.id, details: { memo: 'private memo' } });
+		else expect(result.logs[0].book).toBeNull();
+		expect(hatadyService.getWorkLogs).toHaveBeenCalledWith('worka', viewerId, moderator && !thirdParty);
+	});
+
+	test('media owners are packed once as UserLite without exposing private work details', async () => {
+		const userEntityService = { packMany: vi.fn().mockResolvedValue([{ id: 'owner', name: 'Owner' }]) };
+		const sut = service({ userEntityService, hatadyService: { getWorkActivities: vi.fn().mockResolvedValue({}) } });
+		const items = [work({ visibility: 'public', details: { genre: 'genre', memo: 'private' } }), work({ id: 'work-b', visibility: 'public' })];
+		const packed = await sut.packWorks(items, 'viewer');
+		expect(userEntityService.packMany).toHaveBeenCalledExactlyOnceWith(['owner'], { id: 'viewer' }, { schema: 'UserLite' });
+		expect(packed.map(item => item.user)).toEqual([{ id: 'owner', name: 'Owner' }, { id: 'owner', name: 'Owner' }]);
+		expect(packed[0].details).toEqual({ genre: 'genre' });
+		expect((await sut.packWorks(items, 'owner'))[0].details).toEqual({ genre: 'genre', memo: 'private' });
+	});
+
+	test('a denied work detail never requests owner information', async () => {
+		const userEntityService = { packMany: vi.fn() };
+		const sut = service({ userEntityService, worksRepository: { findOneBy: vi.fn().mockResolvedValue(work()) } });
+		await expect(sut.showWork('work-a', 'viewer')).rejects.toThrow(HatadyMediaService.ERR_NOT_FOUND);
+		expect(userEntityService.packMany).not.toHaveBeenCalled();
+	});
+
+	test('book owners are included in list and detail without making private notes public', async () => {
+		const userEntityService = { packMany: vi.fn().mockResolvedValue([{ id: 'owner', name: 'Owner' }]) };
+		const bookmarksRepository = { createQueryBuilder: vi.fn() };
+		const sut = new HatadyEntityService({} as never, {} as never, {} as never, {} as never, {} as never, bookmarksRepository as never, {} as never, {} as never, userEntityService as never);
+		const book = { id: 'book-a', userId: 'owner', title: 'Book', createdAt: new Date(), updatedAt: new Date(), visibility: 'public', details: { genre: 'genre', memo: 'private' } };
+		const packed = await sut.packBooks([book as never, { ...book, id: 'book-b' } as never], 'viewer');
+		expect(userEntityService.packMany).toHaveBeenCalledExactlyOnceWith(['owner'], { id: 'viewer' }, { schema: 'UserLite' });
+		expect(packed).toHaveLength(2);
+		expect(packed[0]).toMatchObject({ user: { id: 'owner', name: 'Owner' }, details: { genre: 'genre' }, bookmarks: [] });
+		expect(packed[0].details).not.toHaveProperty('memo');
+		expect(bookmarksRepository.createQueryBuilder).not.toHaveBeenCalled();
+		expect(await sut.packBookWithUser(book as never, 'viewer')).toMatchObject({ user: { id: 'owner', name: 'Owner' }, details: { genre: 'genre' } });
+		expect((await sut.packBookWithUser(book as never, 'owner', true)).details).toEqual({ genre: 'genre', memo: 'private' });
 	});
 });
 

@@ -10,6 +10,7 @@ import { MiUser } from './User.js';
 import { MiHatadyLog } from './HatadyLog.js';
 import { MiHatadyComment } from './HatadyComment.js';
 import { MiHatadyMediaWork } from './HatadyMediaWork.js';
+import { MiHatadyMediaSession } from './HatadyMediaSession.js';
 import { MiHatadyMediaComment } from './HatadyMediaComment.js';
 
 @Entity('hatady_notification')
@@ -123,4 +124,14 @@ export class MiHatadyNotification {
 		default: false,
 	})
 	public isRead: boolean;
+	@Index()
+	@Column({ ...id(), nullable: true })
+	public mediaSessionId: MiHatadyMediaSession['id'] | null;
+
+	@ManyToOne(type => MiHatadyMediaSession, { onDelete: 'SET NULL' })
+	@JoinColumn()
+	public mediaSession: MiHatadyMediaSession | null;
+
+	@Column('timestamp with time zone', { nullable: true })
+	public deletedAt: Date | null;
 }

@@ -93,4 +93,9 @@ export class MiHatadyBook {
 		comment: 'When the book was marked as finished.',
 	})
 	public finishedAt: Date | null;
+	@Column('varchar', { length: 16, default: 'public' })
+	public visibility: 'private' | 'followers' | 'public';
+
+	@Column('jsonb', { default: () => '\'{}\'::jsonb' })
+	public details: Record<string, unknown>;
 }

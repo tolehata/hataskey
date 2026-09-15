@@ -6,7 +6,7 @@ import { MiUser } from './User.js';
 import { MiHatadyMediaWork, type HatadyMediaVisibility } from './HatadyMediaWork.js';
 
 // 旗鯖fork(Hatady): game_pve は4人以上の協力プレイ(敵の種類・数・ウェーブ)を記録する種別。
-// kind は varchar なので、種別の追加にマイグレーションは要らない。
+// 種別を追加するときは、DBのCHK_hatady_media_session_kindも更新する。
 export const HATADY_MEDIA_SESSION_KINDS = ['movie_viewing', 'game_play', 'game_match', 'game_roguelike', 'game_pve'] as const;
 export type HatadyMediaSessionKind = typeof HATADY_MEDIA_SESSION_KINDS[number];
 
@@ -33,10 +33,10 @@ export class MiHatadyMediaSession {
 	public user: MiUser | null;
 
 	@Index()
-	@Column(id())
-	public workId: MiHatadyMediaWork['id'];
+	@Column({ ...id(), nullable: true })
+	public workId: MiHatadyMediaWork['id'] | null;
 
-	@ManyToOne(type => MiHatadyMediaWork, { onDelete: 'CASCADE' })
+	@ManyToOne(type => MiHatadyMediaWork, { onDelete: 'SET NULL' })
 	@JoinColumn()
 	public work: MiHatadyMediaWork | null;
 
@@ -59,6 +59,17 @@ export class MiHatadyMediaSession {
 	@Column('varchar', { length: 16, default: 'private' })
 	public visibility: HatadyMediaVisibility;
 
-	@Column('jsonb', { default: () => "'{}'::jsonb" })
+	@Column('jsonb', { default: () => '\'{}\'::jsonb' })
 	public details: Record<string, unknown>;
+	@Column('double precision', { nullable: true })
+	public durationSeconds: number | null;
+
+	@Column('varchar', { length: 12, nullable: true })
+	public startedAt: string | null;
+
+	@Column('jsonb', { default: () => '\'[]\'::jsonb' })
+	public tags: string[];
+
+	@Column('jsonb', { default: () => '\'{}\'::jsonb' })
+	public workSnapshot: Record<string, unknown>;
 }

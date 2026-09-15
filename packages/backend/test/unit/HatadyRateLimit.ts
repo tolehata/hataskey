@@ -21,6 +21,8 @@ import { meta as bookShowMeta } from '@/server/api/endpoints/hata/hatady/books/s
 import { meta as bookUpdateMeta } from '@/server/api/endpoints/hata/hatady/books/update.js';
 import { meta as commentsMeta } from '@/server/api/endpoints/hata/hatady/comments.js';
 import { meta as commentCreateMeta } from '@/server/api/endpoints/hata/hatady/comments/create.js';
+import { meta as commentDeleteMeta } from '@/server/api/endpoints/hata/hatady/comments/delete.js';
+import { meta as commentUpdateMeta } from '@/server/api/endpoints/hata/hatady/comments/update.js';
 import { meta as followerRemoveMeta } from '@/server/api/endpoints/hata/hatady/followers/remove.js';
 import { meta as followingCreateMeta } from '@/server/api/endpoints/hata/hatady/following/create.js';
 import { meta as followingDeleteMeta } from '@/server/api/endpoints/hata/hatady/following/delete.js';
@@ -43,6 +45,7 @@ import { meta as mediaReactionDeleteMeta } from '@/server/api/endpoints/hata/hat
 import { meta as mediaSessionCreateMeta } from '@/server/api/endpoints/hata/hatady/media/sessions/create.js';
 import { meta as mediaSessionDeleteMeta } from '@/server/api/endpoints/hata/hatady/media/sessions/delete.js';
 import { meta as mediaSessionListMeta } from '@/server/api/endpoints/hata/hatady/media/sessions/list.js';
+import { meta as mediaSessionShowMeta } from '@/server/api/endpoints/hata/hatady/media/sessions/show.js';
 import { meta as mediaSessionUpdateMeta } from '@/server/api/endpoints/hata/hatady/media/sessions/update.js';
 import { meta as mediaWorkCreateMeta } from '@/server/api/endpoints/hata/hatady/media/works/create.js';
 import { meta as mediaWorkDeleteMeta } from '@/server/api/endpoints/hata/hatady/media/works/delete.js';
@@ -53,6 +56,8 @@ import { meta as memoCreateMeta } from '@/server/api/endpoints/hata/hatady/memos
 import { meta as memoDeleteMeta } from '@/server/api/endpoints/hata/hatady/memos/delete.js';
 import { meta as memoUpdateMeta } from '@/server/api/endpoints/hata/hatady/memos/update.js';
 import { meta as notificationsMeta } from '@/server/api/endpoints/hata/hatady/notifications.js';
+import { meta as notificationDeleteMeta } from '@/server/api/endpoints/hata/hatady/notifications/delete.js';
+import { meta as notificationRestoreMeta } from '@/server/api/endpoints/hata/hatady/notifications/restore.js';
 import { meta as notificationsMarkAllReadMeta } from '@/server/api/endpoints/hata/hatady/notifications/mark-all-read.js';
 import { meta as notificationsUnreadCountMeta } from '@/server/api/endpoints/hata/hatady/notifications/unread-count.js';
 import { meta as profileUpdateMeta } from '@/server/api/endpoints/hata/hatady/profile/update.js';
@@ -96,6 +101,7 @@ const endpointGroups = [
 			['作品一覧', mediaWorkListMeta],
 			['作品の詳細', mediaWorkShowMeta],
 			['記録一覧', mediaSessionListMeta],
+			['記録詳細', mediaSessionShowMeta],
 			['作品コメント一覧', mediaCommentListMeta],
 		],
 	},
@@ -123,6 +129,9 @@ const endpointGroups = [
 			['本の作成', bookCreateMeta],
 			['本の更新', bookUpdateMeta],
 			['コメント作成', commentCreateMeta],
+			['コメント更新', commentUpdateMeta],
+			['通知を非表示', notificationDeleteMeta],
+			['通知を復元', notificationRestoreMeta],
 			['フォロワー解除', followerRemoveMeta],
 			['フォロー作成', followingCreateMeta],
 			['フォロー解除', followingDeleteMeta],
@@ -150,6 +159,7 @@ const endpointGroups = [
 		profile: HATADY_RATE_LIMITS.destructive,
 		endpoints: [
 			['しおり削除', bookmarkDeleteMeta],
+			['コメント削除', commentDeleteMeta],
 			['本の削除', bookDeleteMeta],
 			['目標削除', goalDeleteMeta],
 			['学習記録削除', logDeleteMeta],
@@ -170,14 +180,14 @@ const endpointGroups = [
 ] as const;
 
 describe('Hatady API のレート制限', () => {
-	test('全59エンドポイントに用途別の基準値が設定されている', () => {
+	test('全64エンドポイントに用途別の基準値が設定されている', () => {
 		const endpoints = endpointGroups.flatMap(group => group.endpoints);
 		const endpointDirectory = resolve(process.cwd(), 'src/server/api/endpoints/hata/hatady');
 		const endpointFiles = readdirSync(endpointDirectory, { recursive: true })
-			//  で始まるのは共有スキーマ等でエンドポイントではない(_schemas.ts / _shared.ts)。
+			// _ で始まるのは共有スキーマ等でエンドポイントではない(_schemas.ts / _shared.ts)。
 			.filter(path => typeof path === 'string' && path.endsWith('.ts') && !path.split('/').pop()!.startsWith('_'));
 
-		expect(endpoints).toHaveLength(59);
+		expect(endpoints).toHaveLength(64);
 		expect(endpointFiles).toHaveLength(endpoints.length);
 		for (const group of endpointGroups) {
 			for (const [name, meta] of group.endpoints) {

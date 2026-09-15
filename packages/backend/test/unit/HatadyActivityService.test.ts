@@ -14,7 +14,7 @@ import HatadyActivitiesEndpoint from '@/server/api/endpoints/hata/hatady/activit
 
 function queryBuilder(rows: unknown[]) {
 	const qb: Record<string, ReturnType<typeof vi.fn>> = {};
-	for (const method of ['innerJoin', 'where', 'andWhere', 'orderBy', 'addOrderBy', 'take']) qb[method] = vi.fn().mockReturnValue(qb);
+	for (const method of ['innerJoin', 'leftJoin', 'where', 'andWhere', 'orderBy', 'addOrderBy', 'take']) qb[method] = vi.fn().mockReturnValue(qb);
 	qb.getMany = vi.fn().mockResolvedValue(rows);
 	return qb;
 }
@@ -26,7 +26,7 @@ function mediaWork(overrides: Partial<MiHatadyMediaWork> = {}): MiHatadyMediaWor
 		isFavorite: false, isRecommended: true, recommendationRating: 9, coverColorIndex: 2,
 		synopsis: 'あらすじ', synopsisSpoiler: true, review: '感想', reviewSpoiler: true, officialUrl: null,
 		runtimeMinutes: 120, genres: [], origin: 'domestic', viewingMode: 'original', primaryLanguage: 'ja', highlights: ['見どころ'], highlightsSpoiler: true,
-		platforms: [], developer: null, publisher: null,
+		platforms: [], developer: null, publisher: null, details: {},
 		...overrides,
 	};
 }
@@ -34,6 +34,7 @@ function mediaWork(overrides: Partial<MiHatadyMediaWork> = {}): MiHatadyMediaWor
 function mediaSession(id: string, occurredAt: string, overrides: Partial<MiHatadyMediaSession> = {}): MiHatadyMediaSession {
 	return {
 		id, createdAt: new Date(occurredAt), updatedAt: new Date(occurredAt), userId: 'owner', user: null, workId: 'work', work: null,
+		durationSeconds: 7200, startedAt: null, tags: [], workSnapshot: { title: '作品', kind: 'movie' },
 		kind: 'movie_viewing', occurredAt: new Date(occurredAt), durationMinutes: 120, note: '結末', noteSpoiler: true, visibility: 'public', details: { ending: 'secret' },
 		...overrides,
 	};
@@ -75,7 +76,7 @@ describe('Hatady activity cursor', () => {
 });
 
 describe('Hatady activity visibility and spoiler boundary', () => {
-	test('requires both public session and public parent work, uses limit+1, and redacts spoiler bodies in the feed', async () => {
+	test('reads independently public sessions, uses limit+1, and redacts spoiler bodies in the feed', async () => {
 		const sessions = [mediaSession('s3', '2026-08-03T00:00:00Z'), mediaSession('s2', '2026-08-02T00:00:00Z'), mediaSession('s1', '2026-08-01T00:00:00Z')];
 		const qb = queryBuilder(sessions);
 		const work = mediaWork();
@@ -85,7 +86,7 @@ describe('Hatady activity visibility and spoiler boundary', () => {
 			{ findBy: vi.fn().mockResolvedValue([work]) } as never,
 			{ canAppearInTimeline: vi.fn().mockResolvedValue(true), getTimelineExcludedUserIds: vi.fn().mockResolvedValue(new Set(['blocked-user'])) } as never,
 			{
-				canViewSession: vi.fn().mockResolvedValue(true),
+				getSessionEngagement: vi.fn().mockResolvedValue(new Map()), canViewSession: vi.fn().mockResolvedValue(true), canViewWork: vi.fn().mockResolvedValue(true),
 				packWork: vi.fn().mockReturnValue({ ...work, createdAt: work.createdAt.toISOString(), updatedAt: work.updatedAt.toISOString() }),
 				packSession: vi.fn((session: MiHatadyMediaSession) => ({ ...session, createdAt: session.createdAt.toISOString(), updatedAt: session.updatedAt.toISOString(), occurredAt: session.occurredAt.toISOString() })),
 			} as never,
@@ -94,8 +95,8 @@ describe('Hatady activity visibility and spoiler boundary', () => {
 		);
 		const result = await service.list({ id: 'viewer' } as never, { scope: 'recent', kinds: ['movie'], limit: 2 });
 
-		expect(qb.where).toHaveBeenCalledWith("session.visibility = 'public'");
-		expect(qb.andWhere).toHaveBeenCalledWith("activity_work.visibility = 'public'");
+		expect(qb.where).toHaveBeenCalledWith('session.visibility = \'public\'');
+		expect(qb.andWhere).not.toHaveBeenCalledWith('activity_work.visibility = \'public\'');
 		expect(qb.andWhere).toHaveBeenCalledWith('session.userId NOT IN (:...activityExcludedUserIds)', { activityExcludedUserIds: ['blocked-user'] });
 		expect(qb.take).toHaveBeenCalledWith(3);
 		expect(result).toMatchObject({ hasMore: true, nextCursor: expect.any(String) });
@@ -118,7 +119,7 @@ describe('Hatady activity visibility and spoiler boundary', () => {
 			{ createQueryBuilder: vi.fn().mockReturnValue(qb) } as never,
 			{ findBy: vi.fn().mockResolvedValue([work]) } as never,
 			{ canAppearInTimeline: vi.fn().mockResolvedValue(true), getTimelineExcludedUserIds: vi.fn().mockResolvedValue(new Set()) } as never,
-			{ canViewSession: vi.fn().mockResolvedValue(true), packWork: vi.fn().mockReturnValue(work), packSession: vi.fn().mockReturnValue(session) } as never,
+			{ getSessionEngagement: vi.fn().mockResolvedValue(new Map()), canViewSession: vi.fn().mockResolvedValue(true), canViewWork: vi.fn().mockResolvedValue(true), packWork: vi.fn().mockReturnValue(work), packSession: vi.fn().mockReturnValue(session) } as never,
 			{ packLogs: vi.fn().mockResolvedValue([]) } as never,
 			{ packMany: vi.fn().mockResolvedValue([{ id: 'owner' }]) } as never,
 		);
@@ -210,7 +211,7 @@ describe('Hatady learning reaction authorization', () => {
 		const countBy = vi.fn(async (where: Record<string, string>) => where.followerId === 'viewer' && where.followeeId === 'owner' ? 1 : 0);
 		const { service } = learningService({
 			books: { countBy: vi.fn().mockResolvedValue(0) },
-			logs: { createQueryBuilder: vi.fn().mockReturnValue(qb) },
+			logs: { createQueryBuilder: vi.fn().mockReturnValue(qb), findBy: vi.fn().mockResolvedValue([{ id: 'log', durationSeconds: 2700, studiedAt: new Date(), tags: [], subject: '映画史', kind: 'study' }]) },
 			followings: { countBy },
 			profiles: { findOneBy: vi.fn().mockResolvedValue(null) },
 		});

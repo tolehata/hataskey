@@ -6,6 +6,8 @@
 import { Entity, Column, PrimaryColumn, ManyToOne } from 'typeorm';
 import { id } from './util/id.js';
 import { MiUser } from './User.js';
+import { defaultHataskSupportSettings } from '@/core/hatask-support.js';
+import type { HataskSupportSettings } from '@/core/hatask-support.js';
 
 @Entity('meta')
 export class MiMeta {
@@ -14,6 +16,9 @@ export class MiMeta {
 		length: 32,
 	})
 	public id: string;
+
+	@Column('jsonb', { default: defaultHataskSupportSettings() })
+	public hataskSupport: HataskSupportSettings;
 
 	@Column({
 		...id(),
