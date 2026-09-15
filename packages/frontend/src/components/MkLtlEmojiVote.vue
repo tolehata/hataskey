@@ -7,6 +7,7 @@
 	:style="themeTextColors"
 	:data-phase="phase"
 	:data-motion="motion"
+	:data-navbar="navbar"
 	:aria-hidden="phase === 'leaving' ? true : undefined"
 	:inert="phase === 'leaving'"
 	aria-label="LTLで絵文字投票"
@@ -14,71 +15,84 @@
 >
 	<div :class="$style.clip">
 		<div :class="$style.card">
+			<button v-if="contentPhase === 'voting' || isResult" :class="$style.dismiss" class="_button" type="button" data-emoji-vote-dismiss :aria-label="isResult ? '結果を閉じる' : '投票を辞退する'" :disabled="!active || submitting || phase === 'leaving'" @click.stop="dismiss">
+				<i class="ti ti-x" aria-hidden="true"></i>
+			</button>
 			<div :class="$style.head">
 				<i class="ti ti-mood-smile" aria-hidden="true"></i>
 				<span>LTLで絵文字投票</span>
-				<span :class="$style.counter" :aria-label="isResult ? `残り${remaining}秒` : undefined">
+				<span v-if="contentPhase !== 'declined'" :class="$style.counter" :aria-label="isResult ? `残り${remaining}秒` : undefined">
 					<i v-if="isResult" class="ti ti-clock" aria-hidden="true"></i>
 					<span>{{ isResult ? `${remaining}秒` : phase === 'tallying' ? '投票締切' : `締切まで ${remaining}秒` }}</span>
 				</span>
 			</div>
-			<template v-if="phase === 'voting'">
-				<h2 :class="$style.title">どの絵文字にする？</h2>
-				<p :class="$style.subtitle">{{ !canVote ? 'ログインして参加できます' : submitting ? '投票しています...' : 'ひとつだけ、選んでね。' }}</p>
-				<div :class="$style.choices" role="group" aria-label="カスタム絵文字を1回選択" :aria-busy="submitting">
-					<button
-						v-for="emoji in round.candidates"
-						:key="emoji.id"
-						:class="$style.choice"
-						class="_button"
-						type="button"
-						:disabled="submitting || !canVote"
-						:aria-label="`:${emoji.name}: に投票する`"
-						:title="`:${emoji.name}:`"
-						@click.stop="vote(emoji.id)"
-					>
-						<span :class="$style.choiceImage" aria-hidden="true"><MkCustomEmoji :name="emoji.name" :url="emoji.url" :host="null"/></span>
-						<span :class="$style.emojiName">:{{ emoji.name }}:</span>
-					</button>
-				</div>
-				<p v-if="voteError" :class="$style.error" role="alert">{{ voteError }}</p>
-			</template>
-			<div v-else-if="phase === 'rain' || phase === 'waiting'" :class="$style.state">
-				<span ref="selectedImage" :class="$style.symbol" aria-hidden="true">
-					<MkCustomEmoji v-if="selectedEmoji" :name="selectedEmoji.name" :url="selectedEmoji.url" :host="null"/>
-					<i v-else class="ti ti-check"></i>
-				</span>
-				<div :class="$style.stateCopy">
-					<h2>{{ phase === 'rain' ? 'この絵文字に決めた！' : '他のユーザーの投票を待っています...' }}</h2>
-					<p>あなたの投票は受け付けました</p>
-					<span :class="$style.waitDots" aria-hidden="true"><i></i><i></i><i></i></span>
-				</div>
+			<div ref="bodyViewport" :class="$style.bodyViewport" :style="bodyHeight === null ? undefined : { height: `${bodyHeight}px` }">
+				<Transition :css="motion" :mode="motion ? 'out-in' : undefined" :enterActiveClass="$style.contentEnterActive" :leaveActiveClass="$style.contentLeaveActive" :enterFromClass="$style.contentHidden" :leaveToClass="$style.contentHidden" @beforeLeave="holdBodyHeight" @enter="measureBodyHeight" @afterEnter="releaseBodyHeight" @enterCancelled="releaseBodyHeight">
+					<div :key="contentPhase === 'declined' ? 'declined' : 'round'" :class="$style.body" :data-vote-content="contentPhase">
+						<template v-if="contentPhase === 'voting'">
+							<h2 :class="$style.title">どの絵文字にする？</h2>
+							<p :class="$style.subtitle">{{ !canVote ? 'ログインして参加できます' : submitting ? '投票しています...' : 'ひとつだけ、選んでね。' }}</p>
+							<div :class="$style.choices" role="group" aria-label="カスタム絵文字を1回選択" :aria-busy="submitting">
+								<button
+									v-for="emoji in round.candidates"
+									:key="emoji.id"
+									:class="$style.choice"
+									class="_button"
+									type="button"
+									:disabled="submitting || !canVote"
+									:aria-label="`:${emoji.name}: に投票する`"
+									:title="`:${emoji.name}:`"
+									@click.stop="vote(emoji.id)"
+								>
+									<span :class="$style.choiceImage" aria-hidden="true"><MkCustomEmoji :name="emoji.name" :url="emoji.url" :host="null"/></span>
+									<span :class="$style.emojiName">:{{ emoji.name }}:</span>
+								</button>
+							</div>
+							<p v-if="voteError" :class="$style.error" role="alert">{{ voteError }}</p>
+						</template>
+						<div v-else-if="contentPhase === 'rain' || contentPhase === 'waiting'" :class="$style.state">
+							<span v-if="contentPhase === 'rain'" ref="selectedImage" :class="$style.symbol" aria-hidden="true">
+								<MkCustomEmoji v-if="selectedEmoji" :name="selectedEmoji.name" :url="selectedEmoji.url" :host="null"/>
+								<i v-else class="ti ti-check"></i>
+							</span>
+							<div :class="$style.stateCopy">
+								<h2>{{ contentPhase === 'rain' ? 'この絵文字に決めた！' : '他のユーザーの投票を待っています...' }}</h2>
+								<p>あなたの投票は受け付けました</p>
+								<span :class="$style.waitDots" aria-hidden="true"><i></i><i></i><i></i></span>
+							</div>
+						</div>
+						<div v-else-if="contentPhase === 'tallying'" :class="$style.state">
+							<span :class="$style.symbol" aria-hidden="true"><i class="ti ti-hourglass"></i></span>
+							<div :class="$style.stateCopy">
+								<h2>集計しています...</h2>
+								<p>もうすぐ結果が出ます。</p>
+								<span :class="$style.waitDots" aria-hidden="true"><i></i><i></i><i></i></span>
+							</div>
+						</div>
+						<div v-else-if="contentPhase === 'declined'" :class="$style.state">
+							<span :class="$style.symbol" aria-hidden="true"><i class="ti ti-check"></i></span>
+							<div :class="$style.stateCopy"><h2>辞退しました</h2></div>
+						</div>
+						<template v-else-if="isResult">
+							<h2 :class="$style.title">集計が完了しました</h2>
+							<ol :class="$style.rankings" role="list" aria-label="絵文字投票の結果">
+								<li v-for="entry in round.rankings" :key="entry.emoji.id" :class="$style.ranking" :data-rank="entry.rank ?? 'none'" :value="entry.rank ?? undefined">
+									<span :class="$style.place">
+										<i v-if="entry.rank === 1" class="ti ti-trophy" aria-hidden="true"></i>
+										<span>{{ rankLabel(entry) }}</span>
+									</span>
+									<span :class="$style.rankImage" :data-winner="entry.rank === 1"><MkCustomEmoji :name="entry.emoji.name" :url="entry.emoji.url" :host="null"/></span>
+									<span :class="$style.rankDetail">
+										<span :class="$style.rankName" :title="`:${entry.emoji.name}:`">:{{ entry.emoji.name }}:</span>
+										<span :class="$style.rankCount">{{ entry.count }}票</span>
+									</span>
+								</li>
+							</ol>
+							<p :class="$style.caption">{{ round.total > 0 ? `${round.total}人が参加しました` : '今回は投票がありませんでした' }}</p>
+						</template>
+					</div>
+				</Transition>
 			</div>
-			<div v-else-if="phase === 'tallying'" :class="$style.state">
-				<span :class="$style.symbol" aria-hidden="true"><i class="ti ti-hourglass"></i></span>
-				<div :class="$style.stateCopy">
-					<h2>集計しています...</h2>
-					<p>もうすぐ結果が出ます。</p>
-					<span :class="$style.waitDots" aria-hidden="true"><i></i><i></i><i></i></span>
-				</div>
-			</div>
-			<template v-else-if="isResult">
-				<h2 :class="$style.title">集計が完了しました</h2>
-				<ol :class="$style.rankings" role="list" aria-label="絵文字投票の結果">
-					<li v-for="entry in round.rankings" :key="entry.emoji.id" :class="$style.ranking" :data-rank="entry.rank ?? 'none'" :value="entry.rank ?? undefined">
-						<span :class="$style.place">
-							<i v-if="entry.rank === 1" class="ti ti-trophy" aria-hidden="true"></i>
-							<span>{{ rankLabel(entry) }}</span>
-						</span>
-						<span :class="$style.rankImage" :data-winner="entry.rank === 1"><MkCustomEmoji :name="entry.emoji.name" :url="entry.emoji.url" :host="null"/></span>
-						<span :class="$style.rankDetail">
-							<span :class="$style.rankName" :title="`:${entry.emoji.name}:`">:{{ entry.emoji.name }}:</span>
-							<span :class="$style.rankCount">{{ entry.count }}票</span>
-						</span>
-					</li>
-				</ol>
-				<p :class="$style.caption">{{ round.total > 0 ? `${round.total}人が参加しました` : '今回は投票がありませんでした' }}</p>
-			</template>
 		</div>
 	</div>
 	<span :class="$style.announcement" role="status" aria-live="polite" aria-atomic="true">{{ active ? announcement : '' }}</span>
@@ -86,7 +100,7 @@
 		<div :class="$style.rain" :data-fading="rainFading" :data-motion="motion" aria-hidden="true">
 			<span v-for="(tile, index) in rainTiles" :key="index" :class="$style.rainTile" :style="tile"><img :src="rainImage" alt="" draggable="false" decoding="async"/></span>
 		</div>
-		<canvas ref="confettiCanvas" :class="$style.confetti" :data-motion="motion" aria-hidden="true"></canvas>
+		<canvas v-if="!navbar" ref="confettiCanvas" :class="$style.confetti" :data-motion="motion" :data-fading="phase === 'leaving'" aria-hidden="true"></canvas>
 	</Teleport>
 </section>
 </template>
@@ -94,9 +108,9 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, useTemplateRef, watch } from 'vue';
 import tinycolor from 'tinycolor2';
-import type { LtlEmojiVoteChoice, LtlEmojiVoteRanking, LtlEmojiVoteRound } from '@/utility/ltl-emoji-vote-types.js';
+import type { LtlEmojiVoteChoice, LtlEmojiVotePhase, LtlEmojiVoteRanking, LtlEmojiVoteRound } from '@/utility/ltl-emoji-vote-types.js';
 import MkCustomEmoji from '@/components/global/MkCustomEmoji.vue';
-import { LTL_EMOJI_VOTE_RAIN_MS } from '@/utility/ltl-emoji-vote-types.js';
+import { LTL_EMOJI_VOTE_EXIT_MS, LTL_EMOJI_VOTE_RAIN_MS } from '@/utility/ltl-emoji-vote-types.js';
 import { makeLtlEmojiRain, playLtlEmojiConfetti } from '@/utility/ltl-emoji-vote-effects.js';
 import { prefer } from '@/preferences.js';
 import { useGlobalEvent } from '@/events.js';
@@ -105,16 +119,20 @@ const props = withDefaults(defineProps<{
 	round: LtlEmojiVoteRound;
 	choice: LtlEmojiVoteChoice | null;
 	now: number;
-	phase: 'idle' | 'voting' | 'rain' | 'waiting' | 'tallying' | 'result' | 'leaving';
+	phase: LtlEmojiVotePhase;
 	active: boolean;
 	effectTarget: HTMLElement | null;
 	claimEffect: (kind: 'rain' | 'confetti', roundId: string) => boolean;
 	submitting?: boolean;
 	voteError?: string | null;
 	canVote?: boolean;
-}>(), { submitting: false, voteError: null, canVote: true });
-const emit = defineEmits<{ vote: [emojiId: string] }>();
+	navbar?: boolean;
+	declined?: boolean;
+}>(), { submitting: false, voteError: null, canVote: true, navbar: false, declined: false });
+const emit = defineEmits<{ vote: [emojiId: string]; dismiss: [] }>();
 const cardRoot = useTemplateRef<HTMLElement>('cardRoot');
+const bodyViewport = useTemplateRef<HTMLElement>('bodyViewport');
+const bodyHeight = ref<number | null>(null);
 const selectedImage = useTemplateRef<HTMLElement>('selectedImage');
 const confettiCanvas = useTemplateRef<HTMLCanvasElement>('confettiCanvas');
 const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -123,7 +141,14 @@ const visible = ref(!window.document.hidden);
 const hostVisible = ref(false);
 const visibleWinners = shallowRef(new Set<HTMLElement>());
 const motion = computed(() => prefer.r.animation.value && !reducedMotion.value);
-const isResult = computed(() => props.phase === 'result' || props.phase === 'leaving');
+// Keep the last visible content while either dismissal path collapses the row.
+const contentPhase = ref<LtlEmojiVotePhase>('idle');
+watch(() => [props.phase, props.declined] as const, ([phase, declined]) => {
+	if (declined) contentPhase.value = 'declined';
+	else if (phase === 'leaving' && contentPhase.value === 'idle') contentPhase.value = props.round.phase;
+	else if (phase !== 'leaving' && phase !== 'idle') contentPhase.value = phase;
+}, { immediate: true, flush: 'sync' });
+const isResult = computed(() => contentPhase.value === 'result');
 const remaining = computed(() => Math.max(0, Math.ceil(((isResult.value ? props.round.expiresAt : props.round.closesAt) - props.now) / 1000)));
 const selectedEmoji = computed(() => props.round.candidates.find(emoji => emoji.id === props.choice?.emojiId));
 const rainTiles = ref<ReturnType<typeof makeLtlEmojiRain>>([]);
@@ -132,6 +157,7 @@ const rainFading = ref(false);
 const themeTextColors = ref<Record<string, string>>({});
 let rainFadeTimer: number | undefined;
 let rainEndTimer: number | undefined;
+let effectExitTimer: number | undefined;
 let stopConfetti: (() => void) | undefined;
 let resizeObserver: ResizeObserver | undefined;
 let intersectionObserver: IntersectionObserver | undefined;
@@ -141,6 +167,20 @@ let observedSize = { width: 0, height: 0 };
 let effectGeneration = 0;
 let focusAfterVote = false;
 let unmounted = false;
+
+function holdBodyHeight(element: Element) {
+	bodyHeight.value = bodyViewport.value?.getBoundingClientRect().height ?? null;
+	// The fading choices stay in the DOM briefly; they must no longer take focus.
+	element.setAttribute('inert', '');
+	element.setAttribute('aria-hidden', 'true');
+}
+
+function measureBodyHeight(element: Element) {
+	if (bodyHeight.value !== null) bodyHeight.value = element.getBoundingClientRect().height;
+	void updateEffects();
+}
+
+function releaseBodyHeight() { bodyHeight.value = null; }
 
 function updateThemeTextColors() {
 	if (!cardRoot.value) return;
@@ -167,6 +207,7 @@ function updateThemeTextColors() {
 }
 
 useGlobalEvent('themeChanging', updateThemeTextColors);
+watch(() => props.navbar, updateThemeTextColors, { flush: 'post' });
 
 function rankLabel(entry: LtlEmojiVoteRanking) {
 	return entry.rank === null ? '順位なし' : `${entry.tied ? '同率' : ''}${entry.rank}位`;
@@ -178,6 +219,7 @@ const announcement = computed(() => {
 		case 'rain':
 		case 'waiting': return 'あなたの投票は受け付けました。他のユーザーの投票を待っています。';
 		case 'tallying': return '集計しています。';
+		case 'declined': return '辞退しました';
 		case 'result': return props.round.total > 0
 			? `集計が完了しました。${props.round.rankings.map(entry => `${rankLabel(entry)}、:${entry.emoji.name}:、${entry.count}票`).join('。')}`
 			: '集計が完了しました。今回は投票がありませんでした。';
@@ -189,6 +231,13 @@ function vote(emojiId: string) {
 	if (!props.active || !props.canVote || props.submitting || props.choice || props.phase !== 'voting') return;
 	focusAfterVote = true;
 	emit('vote', emojiId);
+}
+
+function dismiss() {
+	if (!props.active || props.submitting || (props.phase !== 'voting' && props.phase !== 'result')) return;
+	if (props.phase === 'voting' && props.choice) return;
+	cardRoot.value?.focus({ preventScroll: true });
+	emit('dismiss');
 }
 
 function clearRain() {
@@ -203,6 +252,8 @@ function clearRain() {
 
 function clearEffects() {
 	effectGeneration++;
+	window.clearTimeout(effectExitTimer);
+	effectExitTimer = undefined;
 	clearRain();
 	stopConfetti?.();
 	stopConfetti = undefined;
@@ -223,7 +274,7 @@ function syncIntersectionTargets() {
 		hostVisible.value = false;
 		if (target) intersectionObserver?.observe(target);
 	}
-	const winners = new Set(props.active && props.phase === 'result'
+	const winners = new Set(props.active && !props.navbar && props.phase === 'result'
 		? cardRoot.value?.querySelectorAll<HTMLElement>('[data-winner="true"] img') ?? []
 		: []);
 	const previous = observedWinners;
@@ -258,8 +309,14 @@ function onIntersection(entries: IntersectionObserverEntry[]) {
 
 async function updateEffects() {
 	const generation = ++effectGeneration;
+	if (props.phase === 'leaving') {
+		if (!canAnimate()) { clearEffects(); return; }
+		// Fade the existing canvas before clearing it, for manual and timed exits.
+		effectExitTimer ??= window.setTimeout(clearEffects, LTL_EMOJI_VOTE_EXIT_MS);
+		return;
+	}
 	if (props.phase !== 'rain') clearRain();
-	if (props.phase !== 'result') { stopConfetti?.(); stopConfetti = undefined; }
+	if (props.phase !== 'result' || props.navbar) { stopConfetti?.(); stopConfetti = undefined; }
 	await nextTick();
 	if (generation !== effectGeneration || unmounted) return;
 	syncIntersectionTargets();
@@ -273,7 +330,7 @@ async function updateEffects() {
 		rainTiles.value = makeLtlEmojiRain(bounds.width, bounds.height);
 		rainFadeTimer = window.setTimeout(() => { rainFading.value = true; }, 1160);
 		rainEndTimer = window.setTimeout(clearRain, LTL_EMOJI_VOTE_RAIN_MS);
-	} else if (props.phase === 'result' && confettiCanvas.value && props.round.total > 0) {
+	} else if (!props.navbar && props.phase === 'result' && confettiCanvas.value && props.round.total > 0) {
 		const origins = () => [...visibleWinners.value].filter(image => image.isConnected && observedWinners.has(image));
 		if (origins().length === 0) { stopConfetti?.(); stopConfetti = undefined; return; }
 		if (stopConfetti) return;
@@ -283,7 +340,7 @@ async function updateEffects() {
 			return rect.width > 0 && rect.height > 0 && rect.right > bounds.left && rect.left < bounds.right && rect.bottom > bounds.top && rect.top < bounds.bottom;
 		});
 		if (!hasVisibleWinner || !props.claimEffect('confetti', props.round.id)) return;
-		stopConfetti = playLtlEmojiConfetti(confettiCanvas.value, origins, () => canAnimate() && props.phase === 'result' && origins().length > 0);
+		stopConfetti = playLtlEmojiConfetti(confettiCanvas.value, origins, () => canAnimate() && !props.navbar && (props.phase === 'leaving' || (props.phase === 'result' && origins().length > 0)), () => props.phase === 'result');
 	}
 }
 
@@ -317,11 +374,12 @@ function onViewportInteraction(event: Event) {
 	// shrinking after a vote. Other deck columns remain independent.
 	if (event instanceof KeyboardEvent && !['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' '].includes(event.key)) return;
 	const target = event.target;
+	if (target instanceof Element && target.closest('[data-emoji-vote-dismiss]') && cardRoot.value?.contains(target)) return;
 	const pane = props.effectTarget?.parentElement;
 	if (target instanceof Element && pane && (target.contains(pane) || pane.contains(target))) clearEffects();
 }
 
-watch(() => [props.round.id, props.phase, props.choice?.emojiId, props.active, props.effectTarget, motion.value, visible.value, hostVisible.value, visibleWinners.value], updateEffects, { flush: 'post' });
+watch(() => [props.round.id, props.phase, props.choice?.emojiId, props.active, props.navbar, props.effectTarget, motion.value, visible.value, hostVisible.value, visibleWinners.value], updateEffects, { flush: 'post' });
 watch(() => props.effectTarget, observeTarget);
 watch(() => props.choice, async choice => {
 	if (!choice || !focusAfterVote) return;
@@ -376,6 +434,7 @@ onBeforeUnmount(() => {
 }
 .clip { overflow: hidden; min-height: 0; }
 .card {
+	position: relative;
 	min-width: 0;
 	padding: 18px;
 	border: 1px solid var(--MI_THEME-divider);
@@ -384,7 +443,22 @@ onBeforeUnmount(() => {
 	color: var(--ltl-emoji-vote-panel-fg, var(--MI_THEME-fg));
 	text-align: center;
 }
-.head { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; font-size: 12px; }
+.head { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; min-height: 32px; padding-inline: 36px; box-sizing: border-box; font-size: 12px; }
+.dismiss {
+	position: absolute; inset-block-start: 6px; inset-inline-end: 6px;
+	display: grid; place-items: center; width: 44px; height: 44px;
+	border-radius: 50%; color: inherit; font-size: 16px;
+	transition: background .15s ease, opacity .15s ease;
+	&:hover:not(:disabled) { background: var(--MI_THEME-buttonHoverBg); }
+	&:active:not(:disabled) { background: var(--MI_THEME-buttonBg); }
+	&:disabled { opacity: .5; cursor: default; }
+	&:focus-visible { outline: 2px solid var(--MI_THEME-focus); outline-offset: -3px; }
+}
+.bodyViewport { min-width: 0; overflow: hidden; transition: height .28s cubic-bezier(.22, 1, .36, 1); }
+.body { display: flow-root; min-width: 0; }
+.contentEnterActive { transition: opacity .28s ease; }
+.contentLeaveActive { transition: opacity .18s ease; }
+.contentHidden { opacity: 0; }
 .counter { display: inline-flex; align-items: center; gap: 4px; font-variant-numeric: tabular-nums; white-space: nowrap; font-size: 11px; }
 .title { font-size: 17px; margin: 9px 0 4px; line-height: 1.6; text-wrap: balance; }
 .subtitle { font-size: 12px; margin: 0; }
@@ -411,9 +485,9 @@ onBeforeUnmount(() => {
 .choiceImage :deep(img), .symbol :deep(img), .rankImage :deep(img) { display: block; width: 100%; height: 100% !important; object-fit: contain; transform: none !important; }
 .emojiName { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; color: inherit; }
 .error { margin: 10px 0 0; font-size: 12px; }
-.state { display: flex; align-items: center; justify-content: center; gap: 15px; padding: 15px 0 7px; text-align: center; }
+.state { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 15px 0 7px; text-align: center; }
 .symbol { width: 45px; height: 45px; flex: 0 0 45px; box-sizing: border-box; padding: 7px; display: grid; place-items: center; background: var(--MI_THEME-bg); color: var(--ltl-emoji-vote-bg-fg, var(--MI_THEME-fg)); border-radius: 50%; pointer-events: none; }
-.stateCopy { min-width: 0; h2 { font-size: 14px; margin: 0 0 4px; line-height: 1.6; text-wrap: balance; } p { margin: 2px 0 0; font-size: 12px; line-height: 1.6; } }
+.stateCopy { width: 100%; min-width: 0; h2 { font-size: 14px; margin: 0 0 4px; line-height: 1.6; text-wrap: balance; } p { margin: 2px 0 0; font-size: 12px; line-height: 1.6; } }
 .waitDots { display: flex; justify-content: center; gap: 4px; padding-top: 9px; i { width: 4px; height: 4px; border-radius: 50%; background: currentColor; animation: waitDot 1.2s ease-in-out infinite; } i:nth-child(2) { animation-delay: .14s; } i:nth-child(3) { animation-delay: .28s; } }
 .rankings { display: grid; gap: 6px; max-width: 430px; margin: 14px auto 10px; padding: 0; list-style: none; }
 .ranking {
@@ -439,7 +513,7 @@ onBeforeUnmount(() => {
 .announcement { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .rain, .confetti { position: absolute; inset: 0; width: 100%; height: 100%; overflow: hidden; pointer-events: none; contain: strict; }
 .rain { z-index: 1; isolation: isolate; &[data-fading='true'] { opacity: 0; transition: opacity .3s ease; } }
-.confetti { z-index: 2; }
+.confetti { z-index: 2; opacity: 1; transition: opacity .3s ease; &[data-fading='true'] { opacity: 0; } }
 .rainTile {
 	position: absolute;
 	left: var(--x);
@@ -463,5 +537,30 @@ onBeforeUnmount(() => {
 @keyframes emojiFall { from { opacity: 0; transform: translate(var(--drift), var(--from)) rotate(var(--rotate)); } 12% { opacity: 1; } to { opacity: 1; transform: translate(0, 0) rotate(0); } }
 @media (hover: hover) { .choice:hover:not(:disabled) { border-color: var(--MI_THEME-fg); transform: translateY(-3px); box-shadow: 0 5px 12px var(--MI_THEME-shadow); } }
 @container (max-width: 350px) { .card { padding: 15px; } .state { gap: 10px; } }
+.row[data-navbar='true'] {
+	width: 100%;
+	margin: 0;
+	.card { padding: 12px; border: 0; border-radius: 0; }
+	.head { gap: 6px; font-size: 11px; }
+	.title { font-size: 14px; margin-top: 6px; }
+	.subtitle { font-size: 11px; }
+	.choices { grid-template-columns: repeat(auto-fit, minmax(44px, 1fr)); gap: 8px; margin-top: 10px; padding: 2px; }
+	.choice { box-sizing: border-box; min-height: 72px; gap: 6px; padding: 7px 3px; border-radius: 9px; }
+	.choiceImage { width: 36px; height: 36px; }
+	.state { gap: 10px; padding: 10px 0 4px; }
+	.symbol { width: 36px; height: 36px; flex-basis: 36px; padding: 6px; }
+	.stateCopy h2 { font-size: 13px; }
+	.stateCopy p { font-size: 11px; }
+	.waitDots { padding-top: 6px; }
+	.rankings { max-width: none; gap: 4px; margin: 8px 0; }
+	.ranking { grid-template-columns: minmax(48px, .6fr) 36px minmax(0, 1fr); gap: 8px; padding: 5px 8px; border-radius: 8px; }
+	.place { flex-direction: row; justify-content: center; gap: 4px; font-size: 11px; }
+	.rankImage { width: 32px; height: 32px; }
+	.ranking[data-rank='1'] .rankImage { width: 36px; height: 36px; }
+	.rankDetail { flex-direction: row; justify-content: space-between; gap: 8px; }
+	.rankName { min-width: 0; }
+	.rankCount { flex: none; font-size: 12px; }
+	.caption { font-size: 11px; margin-top: 4px; }
+}
 @media (prefers-reduced-motion: reduce) { .row, .row * { animation: none !important; transition: none !important; } .rain, .confetti { display: none !important; } }
 </style>

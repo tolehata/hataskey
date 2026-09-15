@@ -32,6 +32,7 @@ export function playLtlEmojiConfetti(
 	canvas: HTMLCanvasElement,
 	getOrigins: () => HTMLElement[],
 	isActive: () => boolean,
+	canEmit: () => boolean = () => true,
 ): () => void {
 	const bounds = canvas.getBoundingClientRect();
 	const availableContext = canvas.getContext('2d');
@@ -86,7 +87,7 @@ export function playLtlEmojiConfetti(
 		const elapsed = timestamp - started;
 		if (!isActive() || !canvas.isConnected || elapsed >= 3400) { stop(); return; }
 		// Skip old bursts after a suspended frame rather than releasing all at once.
-		if (burst < 3 && elapsed >= burst * 150) {
+		if (canEmit() && burst < 3 && elapsed >= burst * 150) {
 			emit(elapsed);
 			burst = Math.min(3, Math.floor(elapsed / 150) + 1);
 		}

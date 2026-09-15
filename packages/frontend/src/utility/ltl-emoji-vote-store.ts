@@ -4,7 +4,7 @@
  */
 
 import { computed, ref, shallowRef } from 'vue';
-import { getLtlEmojiVotePhase, LTL_EMOJI_VOTE_EXIT_MS } from './ltl-emoji-vote-types.js';
+import { getLtlEmojiVotePhase, LTL_EMOJI_VOTE_DECLINED_MS, LTL_EMOJI_VOTE_EXIT_MS } from './ltl-emoji-vote-types.js';
 import type { LtlEmojiVoteEffect, LtlEmojiVoteResponse, LtlEmojiVoteRound } from './ltl-emoji-vote-types.js';
 
 type Dependencies = {
@@ -30,6 +30,8 @@ export function createLtlEmojiVoteStore(deps: Dependencies) {
 	const playedEffects = new Set<string>();
 	const rainOwner = ref<symbol | null>(null);
 	const rainStartedAt = ref(0);
+	const dismissal = shallowRef<{ kind: 'declined' | 'result'; leavingAt: number } | null>(null);
+	const declined = computed(() => dismissal.value?.kind === 'declined');
 	let clockAnchor: { server: number; monotonic: number } | null = null;
 	let retiredThrough = -Infinity;
 	let newestRoundStartedAt = -Infinity;
@@ -42,6 +44,7 @@ export function createLtlEmojiVoteStore(deps: Dependencies) {
 	let needsVoteVerification = false;
 	let clockTimer: number | null = null;
 	let pollTimer: number | null = null;
+	let expiryTimer: number | null = null;
 	let idleRetryTimer: number | null = null;
 	let idleRetryCount = 0;
 	let lastTriggerHint: string | undefined;
@@ -70,22 +73,67 @@ export function createLtlEmojiVoteStore(deps: Dependencies) {
 		triggerRetry = null;
 	}
 
+	function clearExpiryTimer() {
+		if (expiryTimer !== null) window.clearTimeout(expiryTimer);
+		expiryTimer = null;
+	}
+
 	function retireRound(preserveTrigger = false) {
 		if (round.value) retiredThrough = Math.max(retiredThrough, round.value.startedAt);
 		round.value = null;
+		// A computed ref keeps its last value until read, including after unmount.
+		void choice.value;
 		rainOwner.value = null;
+		rainStartedAt.value = 0;
+		dismissal.value = null;
+		playedEffects.clear();
 		needsVoteVerification = false;
 		submitting.value = false;
 		voteError.value = null;
 		clearTimers();
+		clearExpiryTimer();
 		if (idleRetryTimer !== null) window.clearTimeout(idleRetryTimer);
 		idleRetryTimer = null;
-		if (!preserveTrigger) clearTriggerRetry();
+		if (!preserveTrigger) {
+			clearTriggerRetry();
+			lastTriggerHint = undefined;
+			queuedRefresh = false;
+			queuedNoteId = undefined;
+			generation++;
+			showRequest?.controller.abort();
+			showRequest = null;
+			voteRequest?.controller.abort();
+			voteRequest = null;
+		}
+	}
+
+	function retirementTime() {
+		return Math.min(round.value?.expiresAt ?? Infinity, dismissal.value?.leavingAt ?? Infinity) + LTL_EMOJI_VOTE_EXIT_MS;
 	}
 
 	function tick() {
+		if (!sameAccount()) {
+			reset();
+			return;
+		}
 		if (clockAnchor) now.value = Math.max(now.value, clockAnchor.server + Math.max(0, deps.monotonicNow() - clockAnchor.monotonic));
-		if (round.value && now.value >= round.value.expiresAt + LTL_EMOJI_VOTE_EXIT_MS) retireRound();
+		if (round.value && now.value >= retirementTime()) retireRound();
+	}
+
+	function scheduleExpiry() {
+		clearExpiryTimer();
+		if (destroyed || (running && !dismissal.value) || !round.value || !clockAnchor) return;
+		// Paused or unmounted LTLs retain the current vote only until it finishes.
+		// Local dismissal also uses exact deadlines, without waiting for a 100 ms clock tick.
+		const elapsed = Math.max(0, deps.monotonicNow() - clockAnchor.monotonic);
+		const currentTime = Math.max(now.value, clockAnchor.server + elapsed);
+		const nextDeadline = dismissal.value && currentTime < dismissal.value.leavingAt ? Math.min(dismissal.value.leavingAt, retirementTime()) : retirementTime();
+		const remaining = nextDeadline - currentTime;
+		expiryTimer = window.setTimeout(() => {
+			expiryTimer = null;
+			tick();
+			scheduleExpiry();
+		}, Math.max(0, remaining));
 	}
 
 	function syncTimers() {
@@ -94,6 +142,10 @@ export function createLtlEmojiVoteStore(deps: Dependencies) {
 			return;
 		}
 		clockTimer ??= window.setInterval(tick, 100);
+		if (dismissal.value) {
+			scheduleExpiry();
+			return;
+		}
 		if (pollTimer === null && now.value < round.value.expiresAt && !showRequest && !voteRequest) {
 			pollTimer = window.setTimeout(() => {
 				pollTimer = null;
@@ -175,6 +227,10 @@ export function createLtlEmojiVoteStore(deps: Dependencies) {
 
 	async function refresh(noteId?: string): Promise<void> {
 		if (!running || !canRun()) return;
+		if (dismissal.value) {
+			tick();
+			if (dismissal.value) return;
+		}
 		if (noteId && noteId !== lastTriggerHint) {
 			clearTriggerRetry();
 			lastTriggerHint = noteId;
@@ -228,7 +284,7 @@ export function createLtlEmojiVoteStore(deps: Dependencies) {
 	async function vote(owner: symbol, emojiId: string): Promise<boolean> {
 		tick();
 		const current = round.value;
-		if (!running || !canRun() || !subscribers.get(owner) || !deps.accountId || !current || current.choice || submitting.value || now.value >= current.closesAt || !current.candidates.some(emoji => emoji.id === emojiId)) return false;
+		if (!running || !canRun() || !subscribers.get(owner) || !deps.accountId || !current || dismissal.value || current.choice || submitting.value || now.value >= current.closesAt || !current.candidates.some(emoji => emoji.id === emojiId)) return false;
 		// A show that began before this write must never replace its result.
 		showRequest?.controller.abort();
 		showRequest = null;
@@ -266,9 +322,41 @@ export function createLtlEmojiVoteStore(deps: Dependencies) {
 		return accepted;
 	}
 
+	function dismiss(owner: symbol): boolean {
+		tick();
+		const current = round.value;
+		if (!running || !canRun() || !subscribers.get(owner) || !current || dismissal.value || submitting.value) return false;
+		const phase = getLtlEmojiVotePhase(current, now.value, rainOwner.value === owner, rainStartedAt.value);
+		if (phase !== 'voting' && phase !== 'result') return false;
+		// Share the decision across LTL surfaces immediately; retain only the current
+		// card for its closing animation, never a vote or a persistent dismissal list.
+		retiredThrough = Math.max(retiredThrough, current.startedAt);
+		dismissal.value = {
+			kind: phase === 'voting' ? 'declined' : 'result',
+			leavingAt: Math.min(current.expiresAt, now.value + (phase === 'voting' ? LTL_EMOJI_VOTE_DECLINED_MS : 0)),
+		};
+		rainOwner.value = null;
+		rainStartedAt.value = 0;
+		playedEffects.clear();
+		voteError.value = null;
+		generation++;
+		showRequest?.controller.abort();
+		showRequest = null;
+		queuedRefresh = false;
+		queuedNoteId = undefined;
+		clearTriggerRetry();
+		if (idleRetryTimer !== null) window.clearTimeout(idleRetryTimer);
+		idleRetryTimer = null;
+		clearTimers();
+		syncTimers();
+		return true;
+	}
+
 	function stop() {
 		running = false;
 		rainOwner.value = null;
+		rainStartedAt.value = 0;
+		voteError.value = null;
 		generation++;
 		clearTimers();
 		if (idleRetryTimer !== null) window.clearTimeout(idleRetryTimer);
@@ -286,6 +374,7 @@ export function createLtlEmojiVoteStore(deps: Dependencies) {
 		queuedNoteId = undefined;
 		unsubscribeReconnect?.();
 		unsubscribeReconnect = null;
+		scheduleExpiry();
 	}
 
 	function syncActivity() {
@@ -299,6 +388,7 @@ export function createLtlEmojiVoteStore(deps: Dependencies) {
 		}
 		if (running) return;
 		running = true;
+		clearExpiryTimer();
 		tick();
 		unsubscribeReconnect = deps.subscribeReconnect(() => { void refresh(); });
 		syncTimers();
@@ -308,7 +398,6 @@ export function createLtlEmojiVoteStore(deps: Dependencies) {
 	function reset() {
 		stop();
 		retireRound();
-		playedEffects.clear();
 		clockAnchor = null;
 		now.value = 0;
 		retiredThrough = -Infinity;
@@ -322,10 +411,14 @@ export function createLtlEmojiVoteStore(deps: Dependencies) {
 		if (subscribers.size === 0) deps.ownerDocument.addEventListener('visibilitychange', syncActivity);
 		subscribers.set(owner, active);
 		syncActivity();
-		const phase = computed(() => getLtlEmojiVotePhase(round.value, now.value, rainOwner.value === owner, rainStartedAt.value));
+		const phase = computed(() => {
+			if (round.value && dismissal.value) return now.value < dismissal.value.leavingAt ? 'declined' : 'leaving';
+			return getLtlEmojiVotePhase(round.value, now.value, rainOwner.value === owner, rainStartedAt.value);
+		});
 		return {
-			round, choice, now, phase, submitting, voteError, refresh,
+			round, choice, now, phase, declined, submitting, voteError, refresh,
 			vote: (emojiId: string) => vote(owner, emojiId),
+			dismiss: () => dismiss(owner),
 			claimEffect(kind: LtlEmojiVoteEffect, roundId: string) {
 				if (!running || !canRun() || !subscribers.get(owner) || round.value?.id !== roundId) return false;
 				if (kind === 'rain' ? rainOwner.value !== owner || phase.value !== 'rain' : phase.value !== 'result') return false;
@@ -342,6 +435,7 @@ export function createLtlEmojiVoteStore(deps: Dependencies) {
 			},
 			release() {
 				if (!subscribers.delete(owner)) return;
+				if (rainOwner.value === owner) rainOwner.value = null;
 				if (subscribers.size === 0) deps.ownerDocument.removeEventListener('visibilitychange', syncActivity);
 				syncActivity();
 			},

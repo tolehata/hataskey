@@ -197,20 +197,22 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<!-- Top pill navbar (timeline tabs) - scroll reactive -->
 			<div
 				v-show="nativeNavbarVisible || mobileToastVisible" data-hata-collapse-group
-				:data-toast-motion="prefer.r.animation.value" :data-hidden="!showTopBar && !mobileToastVisible && !navbarNewNotes"
+				:data-toast-motion="prefer.r.animation.value" :data-hidden="!showTopBar && !mobileToastVisible && !navbarNewNotes && !emojiVoteInNavbar"
+				:data-emoji-vote="emojiVoteInNavbar"
 				:data-notification-only="mobileNotificationOnly"
 				:class="[$style.topBar, footerIsDark ? $style.topBarDark : $style.topBarLight]"
 			>
-				<div ref="topNavStackEl" :class="$style.topNavStack">
-					<div ref="notificationOutlineEl" :class="$style.topPillFrame">
-						<div :class="$style.topPill" :data-notification="notificationToasts.items.value.length > 0 && notificationToasts.integrated.value && !notificationToasts.surface.value" :data-new-notes="!!navbarNewNotes">
+				<div ref="topNavStackEl" :class="$style.topNavStack" :style="emojiVoteNavbarStackStyle">
+					<div ref="notificationOutlineEl" :class="$style.topPillFrame" :data-emoji-celebrating="emojiVoteInNavbar && emojiVoteNavbarState.celebrating" :data-emoji-leaving="emojiVoteInNavbar && emojiVoteNavbarState.leaving">
+						<MkLtlEmojiVoteOutline v-if="emojiVoteInNavbar" :target="notificationOutlineEl"/>
+						<div :class="$style.topPill" :data-notification="notificationToasts.items.value.length > 0 && notificationToasts.integrated.value && !notificationToasts.surface.value" :data-new-notes="!!navbarNewNotes" :data-emoji-vote="emojiVoteInNavbar">
 							<div ref="notificationTargetEl" :class="$style.notificationViewport" :data-mobile="!isDesktop" :style="{ height: `${notificationToasts.integrated.value && !notificationToasts.surface.value ? notificationToasts.height.value : 0}px` }"></div>
-							<div v-show="!mobileNotificationOnly" :class="$style.topPillNav">
+							<div v-show="!mobileNotificationOnly" ref="emojiVoteNavbarNav" :class="$style.topPillNav">
 								<button v-if="!isDesktop" type="button" :class="$style.avatarBtn" :aria-label="copy.account" @click="openAccountMenu">
 									<img v-if="$i?.avatarUrl" :src="$i.avatarUrl" :class="$style.avatarImg" alt=""/>
 									<i v-else class="ti ti-user" aria-hidden="true"></i>
 								</button>
-								<div :class="$style.topPillTabs">
+								<div ref="emojiVoteNavbarTabs" :class="$style.topPillTabs">
 									<template v-for="item in visibleTopTabs" :key="item.id">
 										<button :class="[$style.topTabBtn, { [$style.topTabActive]: !isCollectionTimelinePage && tab === item.id }]" @click="playSimpleNavMotion($event, item.id); switchTab(item.id as TabType)">
 											<i :class="item.icon"></i>
@@ -250,6 +252,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 									</div>
 								</div>
 							</div>
+							<div ref="ltlEmojiVoteNavbarTarget" :class="$style.emojiVoteNavbarViewport" :data-active="emojiVoteInNavbar"></div>
 							<div :class="$style.newNotesViewport" :data-active="!!navbarNewNotes" :aria-hidden="!navbarNewNotes">
 								<div :class="$style.newNotesContent">
 									<button class="_button" :class="$style.newNotesButton" type="button" :disabled="!navbarNewNotes" @click="showNavbarNewNotes">
@@ -293,7 +296,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<MkPostForm v-if="showFixedPostForm && !isExternalTab" :class="$style.fixedPostForm" class="_panel" fixed/>
 						<KeepAlive>
 							<MkStreamingNotesTimeline v-if="tab === 'mixed'" key="mixed" newNotesNavbarKey="main:mixed" src="global" :withRenotes="withRenotes" :withSensitive="withSensitive" :onlyFiles="onlyFiles" :glassBg="timelineGlassBg"/>
-							<MkStreamingNotesTimeline v-else-if="tab === 'local'" key="local" newNotesNavbarKey="main:local" src="local" :withRenotes="withRenotes" :withSensitive="withSensitive" :onlyFiles="onlyFiles" :glassBg="timelineGlassBg" :emojiVoteActive="normalLtlVoteActive" :emojiVoteEffectTarget="ltlEmojiVoteEffects"/>
+							<MkStreamingNotesTimeline v-else-if="tab === 'local'" key="local" newNotesNavbarKey="main:local" src="local" :withRenotes="withRenotes" :withSensitive="withSensitive" :onlyFiles="onlyFiles" :glassBg="timelineGlassBg" :emojiVoteActive="normalLtlVoteActive" :emojiVoteEffectTarget="ltlEmojiVoteEffects" :emojiVoteNavbar="normalLtlVoteActive && nativeNavbarVisible" :emojiVoteNavbarTarget="normalLtlVoteActive && nativeNavbarVisible ? ltlEmojiVoteNavbarTarget : null" @emojiVoteNavbarState="emojiVoteNavbarState = $event"/>
 							<MkStreamingNotesTimeline v-else-if="tab === 'social'" key="social" newNotesNavbarKey="main:social" src="social" :withRenotes="withRenotes" :withSensitive="withSensitive" :onlyFiles="onlyFiles" :glassBg="timelineGlassBg"/>
 							<MkStreamingNotesTimeline v-else-if="tab === 'following'" key="following" newNotesNavbarKey="main:following" src="home" :withRenotes="withRenotes" :withSensitive="withSensitive" :onlyFiles="onlyFiles" :glassBg="timelineGlassBg"/>
 							<MkExternalTimeline v-else-if="tab === 'ohtl' && externalHost && externalToken" key="ohtl" newNotesNavbarKey="main:ohtl" src="ohtl" :host="externalHost" :token="externalToken" :sound="true" :simpleUi="true" :hataskeyUi="true" :glassBg="timelineGlassBg"/>
@@ -478,6 +481,7 @@ import type { TimelineCollectionKind } from '@/utility/hatasaba-navigation.js';
 import type { HataSideButton, HataSideGroup, HataSideWidget, HataSideWidgetKind } from '@/utility/hata-side-studio.js';
 import { globalEvents } from '@/events.js';
 import MkStreamingNotesTimeline from '@/components/MkStreamingNotesTimeline.vue';
+import MkLtlEmojiVoteOutline from '@/components/MkLtlEmojiVoteOutline.vue';
 import { SIDEBAR_ICON_OVERRIDES } from '@/utility/sidebar-icon-overrides.js';
 import { navbarItemDef } from '@/navbar.js';
 import MkExternalTimeline from '@/components/MkExternalTimeline.vue';
@@ -1662,6 +1666,12 @@ function openActiveCollectionSettings(kind: TimelineCollectionKind) {
 
 const topNavStackEl = ref<HTMLElement | null>(null);
 const nativeNavbarVisible = computed(() => (!isPageView.value || isCollectionTimelinePage.value) && !deckActive.value);
+const ltlEmojiVoteNavbarTarget = ref<HTMLElement | null>(null);
+const emojiVoteNavbarState = ref({ visible: false, celebrating: false, leaving: false });
+const emojiVoteInNavbar = computed(() => normalLtlVoteActive.value && nativeNavbarVisible.value && emojiVoteNavbarState.value.visible);
+const emojiVoteNavbarNav = ref<HTMLElement | null>(null);
+const emojiVoteNavbarTabs = ref<HTMLElement | null>(null);
+const emojiVoteNavbarRestWidth = ref<number | null>(null);
 const mobileNotificationOnly = computed(() => !isDesktop.value && !nativeNavbarVisible.value);
 const timelineNewNotes = createHataskeyTimelineNewNotes(() => {
 	if (!nativeNavbarVisible.value) return null;
@@ -1679,10 +1689,32 @@ function showNavbarNewNotes() {
 
 const notificationToasts = createHataskeyNotificationToasts(
 	computed(() => !isDesktop.value),
-	computed(() => nativeNavbarVisible.value && (showTopBar.value || navbarNewNotes.value != null)),
+	computed(() => nativeNavbarVisible.value && (showTopBar.value || navbarNewNotes.value != null || emojiVoteInNavbar.value)),
 );
 const notificationTargetEl = notificationToasts.target;
 const notificationOutlineEl = notificationToasts.outline;
+const emojiVoteNavbarStackStyle = computed(() => {
+	if (!emojiVoteInNavbar.value) return {};
+	const hasNotice = navbarNewNotes.value != null || (notificationToasts.items.value.length > 0 && notificationToasts.integrated.value && !notificationToasts.surface.value);
+	const width = emojiVoteNavbarState.value.leaving
+		? Math.max(emojiVoteNavbarRestWidth.value ?? 440, hasNotice ? 360 : 0)
+		: 440;
+	return { width: `min(${width}px, 100%)` };
+});
+// The tab strip may be clipped by the vote width. Include its hidden scroll
+// content so the exit ends at the same intrinsic width as ordinary navigation.
+watch([emojiVoteInNavbar, emojiVoteNavbarNav, emojiVoteNavbarTabs], ([visible, nav, tabs], _previous, onCleanup) => {
+	if (!visible || !nav || !tabs) return;
+	const measure = () => {
+		const width = nav.scrollWidth + Math.max(0, tabs.scrollWidth - tabs.clientWidth);
+		if (width > 0) emojiVoteNavbarRestWidth.value = width;
+	};
+	const observer = new ResizeObserver(measure);
+	observer.observe(nav);
+	observer.observe(tabs);
+	measure();
+	onCleanup(() => observer.disconnect());
+}, { flush: 'post' });
 const mobileToastVisible = ref(false);
 let toastCollapseTimer: number | undefined;
 watch(() => !isDesktop.value && !notificationToasts.surface.value && notificationToasts.items.value.length > 0, visible => {
@@ -3310,6 +3342,21 @@ onUnmounted(() => {
     stroke-width:40; stroke-linecap:round;
     filter:blur(14px); opacity:.55;
 }
+// Reuse the notification's blurred outer SVG path; keep it mounted while the
+// vote and its width collapse so the light fades along the changing outline.
+.topPillFrame > svg[data-emoji-vote-outline='true'] {
+    opacity:0; transition:opacity .48s cubic-bezier(.22,1,.36,1);
+}
+.topPillFrame[data-emoji-celebrating='true'][data-emoji-leaving='false'] > svg[data-emoji-vote-outline='true'] { opacity:.55; }
+.topBar[data-emoji-vote='true'] .topNavStack { transition:width .48s cubic-bezier(.22,1,.36,1); }
+.topBar[data-emoji-vote='true'] .topPillFrame { width:100%; }
+.emojiVoteNavbarViewport {
+    order:2; width:100%; min-width:0; max-height:0; overflow:hidden;
+}
+.emojiVoteNavbarViewport[data-active='true'] {
+    max-height:min(420px,max(96px,calc(100dvh - var(--simple-announcements-height,0px) - env(safe-area-inset-top,0px) - 160px)));
+    overflow-y:auto; overscroll-behavior:contain; scrollbar-width:thin;
+}
 .topPill {
     position:relative; display:flex; flex-direction:column; align-items:center;
     border-radius:24px; width:max-content; max-width:100%; min-width:0; box-sizing:border-box;
@@ -3393,6 +3440,15 @@ onUnmounted(() => {
     --hata-toast-fg:rgba(0,0,0,.85); --hata-toast-muted:rgba(0,0,0,.6);
     background:rgba(245,245,245,.78); backdrop-filter:blur(24px) saturate(1.4); -webkit-backdrop-filter:blur(24px) saturate(1.4);
     box-shadow:0 4px 24px rgba(0,0,0,.06),0 0 0 .5px rgba(0,0,0,.06) inset;
+}
+.topPill[data-emoji-vote='true'] {
+    width:100%;
+}
+.topBar[data-toast-motion='false'] .topNavStack,
+.topBar[data-toast-motion='false'] .topPillFrame > svg[data-emoji-vote-outline='true'] { transition:none; }
+@media (prefers-reduced-motion:reduce) {
+    .topBar[data-emoji-vote='true'] .topNavStack,
+    .topPillFrame > svg[data-emoji-vote-outline='true'] { transition:none !important; }
 }
 .topBar[data-notification-only='true'] .topNavStack { width:min(360px,100%); max-width:100%; }
 .topBar[data-notification-only='true'] .topPillFrame { width:100%; }

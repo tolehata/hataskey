@@ -30,6 +30,8 @@ type ViewProps = {
 	submitting: boolean;
 	voteError: string | null;
 	canVote: boolean;
+	navbar?: boolean;
+	declined?: boolean;
 	effectTarget: HTMLElement | null;
 	claimEffect: (kind: LtlEmojiVoteEffect, roundId: string) => boolean;
 };
@@ -110,14 +112,15 @@ function mountView(overrides: Partial<ViewProps> = {}) {
 	const props = shallowReactive<ViewProps>({ round: roundFixture(), choice: null, now: 100000, phase: 'voting', active: true, submitting: false, voteError: null, canVote: true, effectTarget: target, claimEffect, ...overrides });
 	const show = ref(true);
 	const onVote = vi.fn(() => { props.submitting = true; });
+	const onDismiss = vi.fn(() => { props.phase = props.phase === 'result' ? 'leaving' : 'declined'; });
 	app = createApp(defineComponent({ setup: () => () => h(TransitionGroup, { tag: 'div', css: false }, { default: () => [
 		h('article', { key: 'before', 'data-note': 'before' }, '前のノート'),
-		...(show.value ? [h(MkLtlEmojiVote, { ...props, key: props.round.id, class: 'parent-row', onVote })] : []),
+		...(show.value ? [h(MkLtlEmojiVote, { ...props, key: props.round.id, class: 'parent-row', onVote, onDismiss })] : []),
 		h('article', { key: 'after', 'data-note': 'after' }, '次のノート'),
 	] }) }));
 	app.mount(mountPoint);
 	const row = () => requiredElement<HTMLElement>(mountPoint, 'section');
-	return { pane, mountPoint, target, props, row, show, onVote, claimEffect };
+	return { pane, mountPoint, target, props, row, show, onVote, onDismiss, claimEffect };
 }
 
 function stubThemeColors(colors: { fg: string; panel: string; bg: string }) {
@@ -190,7 +193,7 @@ describe('LTL emoji vote view', () => {
 	it.each([1, 2, 3, 4, 5])('renders %i local candidates in the shared order with accessible buttons', async count => {
 		const view = mountView({ round: roundFixture(count) });
 		await flush();
-		const buttons = [...view.row().querySelectorAll('button')];
+		const buttons = [...view.row().querySelectorAll<HTMLButtonElement>('[role="group"] button')];
 		expect(buttons.map(button => button.getAttribute('aria-label'))).toEqual(view.props.round.candidates.map(emoji => `:${emoji.name}: に投票する`));
 		expect(buttons.every(button => !button.disabled)).toBe(true);
 		expect(view.row().querySelector('h2')?.textContent).toBe('どの絵文字にする？');
@@ -208,13 +211,13 @@ describe('LTL emoji vote view', () => {
 
 	it('emits the chosen ID, disables pending choices, then focuses the accepted-vote status', async () => {
 		const view = mountView();
-		const button = view.row().querySelectorAll('button')[2];
+		const button = view.row().querySelectorAll<HTMLButtonElement>('[role="group"] button')[2];
 		button.focus();
 		button.click();
 		await flush();
 		button.click();
 		expect(view.onVote).toHaveBeenCalledExactlyOnceWith('emoji-2');
-		expect([...view.row().querySelectorAll('button')].every(candidate => candidate.disabled)).toBe(true);
+		expect([...view.row().querySelectorAll<HTMLButtonElement>('[role="group"] button')].every(candidate => candidate.disabled)).toBe(true);
 		view.props.choice = { emojiId: 'emoji-2', votedAt: 100000 };
 		view.props.phase = 'waiting';
 		view.props.submitting = false;
@@ -228,7 +231,7 @@ describe('LTL emoji vote view', () => {
 		const view = mountView({ voteError: '投票を送信できませんでした' });
 		await flush();
 		expect(view.row().querySelector('[role="alert"]')?.textContent).toBe('投票を送信できませんでした');
-		requiredElement<HTMLButtonElement>(view.row(), 'button').click();
+		requiredElement<HTMLButtonElement>(view.row(), '[role="group"] button').click();
 		expect(view.onVote).toHaveBeenCalledExactlyOnceWith('emoji-0');
 	});
 
@@ -236,7 +239,7 @@ describe('LTL emoji vote view', () => {
 		const view = mountView({ canVote: false });
 		await flush();
 		expect(view.row().textContent).toContain('ログインして参加できます');
-		const buttons = [...view.row().querySelectorAll('button')];
+		const buttons = [...view.row().querySelectorAll<HTMLButtonElement>('[role="group"] button')];
 		expect(buttons).toHaveLength(5);
 		expect(buttons.every(button => button.disabled)).toBe(true);
 		buttons[0].click();
@@ -301,6 +304,75 @@ describe('LTL emoji vote view', () => {
 		expect(view.target.childElementCount).toBe(0);
 		expect(view.mountPoint.querySelector('[data-note="before"]')).toBe(before);
 		expect(view.mountPoint.querySelector('[data-note="after"]')).toBe(after);
+	});
+
+	it('removes the selected emoji from waiting while retaining the rain image source', async () => {
+		const view = mountView({ phase: 'rain', choice: { emojiId: 'emoji-2', votedAt: 100000 } });
+		await flush();
+		expect(view.row().querySelector('[data-custom-emoji="local_2"]')).not.toBeNull();
+		expect(view.target.querySelectorAll('img').length).toBeGreaterThan(20);
+		view.props.phase = 'waiting';
+		await flush();
+		expect(view.row().querySelector('[data-custom-emoji]')).toBeNull();
+		expect(view.row().querySelector('.ti-check')).toBeNull();
+		expect(view.row().querySelector('h2')?.textContent).toBe('他のユーザーの投票を待っています...');
+	});
+
+	it('declines through the labelled close button without submitting a vote or showing results', async () => {
+		const view = mountView({ navbar: true });
+		await flush();
+		const button = requiredElement<HTMLButtonElement>(view.row(), '[aria-label="投票を辞退する"]');
+		const choices = requiredElement(view.row(), '[data-vote-content="voting"]');
+		button.focus();
+		button.click();
+		await flush();
+		expect(view.onDismiss).toHaveBeenCalledTimes(1);
+		expect(view.onVote).not.toHaveBeenCalled();
+		expect(choices.hasAttribute('inert')).toBe(true);
+		expect(choices.getAttribute('aria-hidden')).toBe('true');
+		expect(view.row().querySelector('[role="status"]')?.textContent).toBe('辞退しました');
+		// Exercise Vue's real CSS transition lifecycle; Happy DOM provides no visual geometry.
+		for (let step = 0; step < 4; step++) {
+			drawFrame(step * 16);
+			vi.advanceTimersByTime(300);
+			await flush();
+		}
+		expect(view.row().querySelector('h2')?.textContent).toBe('辞退しました');
+		expect(view.row().querySelector('button')).toBeNull();
+		expect(view.row().querySelector('[role="group"]')).toBeNull();
+		view.props.phase = 'leaving';
+		await flush();
+		expect(view.row().querySelector('h2')?.textContent).toBe('辞退しました');
+		expect(view.row().textContent).not.toContain('集計が完了しました');
+		expect(view.row().hasAttribute('inert')).toBe(true);
+	});
+
+	it('retains the declined acknowledgement when mounting during its exit', async () => {
+		const view = mountView({ phase: 'leaving', declined: true, navbar: true });
+		await flush();
+		expect(view.row().querySelector('h2')?.textContent).toBe('辞退しました');
+		expect(view.row().querySelector('button')).toBeNull();
+		expect(view.row().hasAttribute('inert')).toBe(true);
+	});
+
+	it.each([{ submitting: true }, { active: false }])('disables dismissal for unavailable controls: %j', async overrides => {
+		const view = mountView(overrides);
+		await flush();
+		const button = requiredElement<HTMLButtonElement>(view.row(), '[data-emoji-vote-dismiss]');
+		expect(button.disabled).toBe(true);
+		button.click();
+		expect(view.onDismiss).not.toHaveBeenCalled();
+	});
+
+	it('shows the decline acknowledgement with animation disabled', async () => {
+		prefer.r.animation.value = false;
+		const view = mountView();
+		await flush();
+		requiredElement<HTMLButtonElement>(view.row(), '[data-emoji-vote-dismiss]').click();
+		await flush();
+		expect(view.row().dataset.motion).toBe('false');
+		expect(view.row().querySelector('h2')?.textContent).toBe('辞退しました');
+		expect(view.onVote).not.toHaveBeenCalled();
 	});
 });
 
@@ -398,6 +470,24 @@ describe('LTL emoji vote theme text contrast', () => {
 		expect(theme.readProperty).not.toHaveBeenCalled();
 	});
 
+	it('rechecks inherited theme colors when changing the navbar destination', async () => {
+		const theme = stubThemeColors(apricotTheme.props);
+		const view = mountView();
+		await flush();
+		expect(view.row().style.getPropertyValue('--ltl-emoji-vote-panel-fg')).not.toBe('');
+		const row = view.row();
+		theme.setTheme(lightTheme.props);
+		view.props.navbar = true;
+		await flush();
+		expect(view.row()).toBe(row);
+		expect(view.row().style.getPropertyValue('--ltl-emoji-vote-panel-fg')).toBe('');
+		expect(view.row().style.getPropertyValue('--ltl-emoji-vote-bg-fg')).toBe('');
+		theme.setTheme(apricotTheme.props);
+		view.props.navbar = false;
+		await flush();
+		expect(view.row().style.getPropertyValue('--ltl-emoji-vote-panel-fg')).not.toBe('');
+	});
+
 	it.each([
 		['panel', 'transparent', 'bg'],
 		['bg', 'rgba(230, 229, 226, 0.5)', 'panel'],
@@ -432,6 +522,97 @@ describe('LTL emoji vote theme text contrast', () => {
 });
 
 describe('LTL-scoped effects lifecycle', () => {
+	it.each(['button', 'deadline'] as const)('fades existing confetti on %s exit without emitting another burst', async exit => {
+		const view = mountView({ round: resultFixture(), phase: 'result' });
+		await flush();
+		drawFrame(0);
+		expect(canvasContext.fillRect).toHaveBeenCalledTimes(320);
+		const canvas = requiredElement<HTMLCanvasElement>(view.target, 'canvas');
+		const clears = canvasContext.clearRect.mock.calls.length;
+		if (exit === 'button') {
+			const button = requiredElement<HTMLButtonElement>(view.row(), '[aria-label="結果を閉じる"]');
+			button.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+			expect(canvasContext.clearRect).toHaveBeenCalledTimes(clears);
+			button.click();
+			expect(view.onDismiss).toHaveBeenCalledTimes(1);
+		} else {
+			view.props.now = view.props.round.expiresAt;
+			view.props.phase = 'leaving';
+		}
+		await flush();
+		expect(canvas.dataset.fading).toBe('true');
+		expect(canvasContext.clearRect).toHaveBeenCalledTimes(clears);
+		expect(view.row().querySelectorAll('li')).toHaveLength(5);
+		expect(view.row().hasAttribute('inert')).toBe(true);
+		drawFrame(160);
+		// Only the original 320 pieces were drawn again; a fresh burst would add another 320.
+		expect(canvasContext.fillRect).toHaveBeenCalledTimes(640);
+		expect(frames.size).toBe(1);
+		vi.advanceTimersByTime(480);
+		await flush();
+		expect(frames.size).toBe(0);
+		expect(canvasContext.clearRect.mock.calls.length).toBeGreaterThan(clears);
+	});
+
+	it('keeps all five navbar choices and accepts one vote without mounting a confetti canvas', async () => {
+		const view = mountView({ navbar: true });
+		await flush();
+		expect(view.row().dataset.navbar).toBe('true');
+		const buttons = [...view.row().querySelectorAll<HTMLButtonElement>('[role="group"] button')];
+		expect(buttons.map(button => button.getAttribute('aria-label'))).toEqual(view.props.round.candidates.map(emoji => `:${emoji.name}: に投票する`));
+		buttons[4].click();
+		await flush();
+		buttons[0].click();
+		expect(view.onVote).toHaveBeenCalledExactlyOnceWith('emoji-4');
+		expect(view.target.querySelector('canvas')).toBeNull();
+	});
+
+	it('shows every navbar ranking without claiming confetti, allowing a later inline result to celebrate', async () => {
+		const view = mountView({ navbar: true, round: resultFixture(), phase: 'result' });
+		await flush();
+		expect([...view.row().querySelectorAll('li')].map(row => row.dataset.rank)).toEqual(['1', '2', '3', '4', '5']);
+		expect(view.row().textContent).toContain('local_4');
+		expect(view.row().textContent).toContain('0票');
+		expect(view.target.querySelector('canvas')).toBeNull();
+		expect(HTMLCanvasElement.prototype.getContext).not.toHaveBeenCalled();
+		expect(view.claimEffect).not.toHaveBeenCalled();
+		expect(frames.size).toBe(0);
+		view.props.navbar = false;
+		await flush();
+		expect(view.claimEffect).toHaveBeenCalledExactlyOnceWith('confetti', 'round-1');
+		drawFrame(0);
+		expect(canvasContext.fillRect).toHaveBeenCalledTimes(320);
+	});
+
+	it('stops running confetti when the same vote view moves into the navbar', async () => {
+		const view = mountView({ round: resultFixture(), phase: 'result' });
+		await flush();
+		drawFrame(0);
+		expect(canvasContext.fillRect).toHaveBeenCalledTimes(320);
+		const row = view.row();
+		view.props.navbar = true;
+		await flush();
+		expect(view.row()).toBe(row);
+		expect(view.row().querySelectorAll('li')).toHaveLength(5);
+		expect(view.target.querySelector('canvas')).toBeNull();
+		expect(frames.size).toBe(0);
+		drawFrame(450);
+		expect(canvasContext.fillRect).toHaveBeenCalledTimes(320);
+		expect(canvasContext.clearRect).toHaveBeenCalled();
+	});
+
+	it('preserves the full LTL rain in navbar mode without creating confetti', async () => {
+		const view = mountView({ navbar: true, phase: 'rain', choice: { emojiId: 'emoji-0', votedAt: 100000 } });
+		await flush();
+		expect(view.target.querySelectorAll('img').length).toBeGreaterThan(20);
+		expect(view.claimEffect).toHaveBeenCalledExactlyOnceWith('rain', 'round-1');
+		expect(view.target.querySelector('canvas')).toBeNull();
+		vi.advanceTimersByTime(1550);
+		await flush();
+		expect(view.target.querySelectorAll('img')).toHaveLength(0);
+		expect(HTMLCanvasElement.prototype.getContext).not.toHaveBeenCalled();
+	});
+
 	it('does not consume an offscreen deck column effect until both its host and winning image intersect the viewport', async () => {
 		initiallyIntersecting = false;
 		const view = mountView({ round: resultFixture(), phase: 'result' });

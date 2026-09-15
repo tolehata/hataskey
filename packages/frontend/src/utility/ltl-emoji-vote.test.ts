@@ -104,7 +104,7 @@ describe('shared LTL emoji vote state', () => {
 		first.release();
 		expect(vi.getTimerCount()).toBe(2);
 		second.release();
-		expect(vi.getTimerCount()).toBe(0);
+		expect(vi.getTimerCount()).toBe(1);
 		expect(f.reconnect.size).toBe(0);
 	});
 
@@ -364,7 +364,7 @@ describe('shared LTL emoji vote state', () => {
 		expect(vi.getTimerCount()).toBe(2);
 		expect(await first.vote(emoji.id)).toBe(false);
 		second.setActive(false);
-		expect(vi.getTimerCount()).toBe(0);
+		expect(vi.getTimerCount()).toBe(1);
 		await vi.advanceTimersByTimeAsync(5000);
 		first.setActive(true);
 		expect(first.now.value).toBe(15000);
@@ -405,6 +405,305 @@ describe('shared LTL emoji vote state', () => {
 		const next = f.store.subscribe();
 		await f.receive(makeRound({ phase: 'result', rankings }), 27000);
 		expect(next.claimEffect('confetti', 'round-a')).toBe(false);
+	});
+
+	it('declines once across surfaces, ignores in-flight shows, and closes after 1200 plus 480 ms without voting', async () => {
+		const f = fixture();
+		const first = f.store.subscribe();
+		const second = f.store.subscribe();
+		await f.receive(makeRound());
+		void first.refresh();
+		const stale = takePending(f.shows);
+		void second.refresh('queued-trigger');
+		expect(first.dismiss()).toBe(true);
+		expect(first.phase.value).toBe('declined');
+		expect(second.phase.value).toBe('declined');
+		expect(stale.signal.aborted).toBe(true);
+		expect(second.dismiss()).toBe(false);
+		expect(await second.vote(emoji.id)).toBe(false);
+		stale.resolve({ serverNow: 11000, round: makeRound() });
+		await flush();
+		expect(second.phase.value).toBe('declined');
+		for (const callback of f.reconnect) callback();
+		await first.refresh('another-trigger');
+		await vi.advanceTimersByTimeAsync(1199);
+		expect(first.phase.value).toBe('declined');
+		expect(first.dismiss()).toBe(false);
+		await vi.advanceTimersByTimeAsync(1);
+		expect(first.phase.value).toBe('leaving');
+		await vi.advanceTimersByTimeAsync(479);
+		expect(first.round.value?.id).toBe('round-a');
+		await vi.advanceTimersByTimeAsync(1);
+		expect(first.phase.value).toBe('idle');
+		expect(first.round.value).toBeNull();
+		expect(second.round.value).toBeNull();
+		expect(vi.getTimerCount()).toBe(0);
+		expect(f.show).toHaveBeenCalledTimes(2);
+		expect(f.vote).not.toHaveBeenCalled();
+	});
+
+	it('keeps a shared dismissal through remount and rejects that round after closing while allowing the next round', async () => {
+		const f = fixture();
+		const first = f.store.subscribe();
+		await f.receive(makeRound());
+		expect(first.dismiss()).toBe(true);
+		first.release();
+		await vi.advanceTimersByTimeAsync(600);
+		const next = f.store.subscribe();
+		expect(next.phase.value).toBe('declined');
+		expect(next.declined.value).toBe(true);
+		expect(next.dismiss()).toBe(false);
+		expect(f.show).toHaveBeenCalledTimes(1);
+		await vi.advanceTimersByTimeAsync(600);
+		expect(next.phase.value).toBe('leaving');
+		next.release();
+		const closing = f.store.subscribe();
+		expect(closing.phase.value).toBe('leaving');
+		expect(closing.declined.value).toBe(true);
+		expect(closing.dismiss()).toBe(false);
+		await vi.advanceTimersByTimeAsync(480);
+		expect(closing.round.value).toBeNull();
+		expect(closing.declined.value).toBe(false);
+		closing.release();
+		const resumed = f.store.subscribe();
+		await f.receive(makeRound(), 12000);
+		expect(resumed.round.value).toBeNull();
+		void resumed.refresh();
+		await f.receive(makeRound({ phase: 'result' }), 26800);
+		expect(resumed.round.value).toBeNull();
+		void resumed.refresh('note-b');
+		const fresh = makeRound({ id: 'round-b', noteId: 'note-b', startedAt: 50000, closesAt: 80000, resolvedAt: 81800, expiresAt: 101800 });
+		await f.receive(fresh, 50000);
+		expect(resumed.round.value).toBe(fresh);
+		expect(resumed.phase.value).toBe('voting');
+		const accepted = resumed.vote(otherEmoji.id);
+		await f.acceptVote({ ...fresh, choice: { emojiId: otherEmoji.id, votedAt: 50000 } }, 50000);
+		expect(await accepted).toBe(true);
+		expect(resumed.claimEffect('rain', 'round-b')).toBe(true);
+	});
+
+	it('starts closing a result immediately, preserves its content for 480 ms, and never extends a natural exit', async () => {
+		const f = fixture();
+		const member = f.store.subscribe();
+		const result = makeRound({ phase: 'result', choice: { emojiId: emoji.id, votedAt: 10000 }, rankings: [{ emoji, count: 1, rank: 1, tied: false }] });
+		// The natural closing time falls within the manual 480 ms transition.
+		await f.receive(result, 46700);
+		expect(member.dismiss()).toBe(true);
+		expect(member.phase.value).toBe('leaving');
+		expect(member.declined.value).toBe(false);
+		expect(member.round.value).toBe(result);
+		expect(member.claimEffect('confetti', 'round-a')).toBe(false);
+		await vi.advanceTimersByTimeAsync(100);
+		expect(member.dismiss()).toBe(false);
+		await vi.advanceTimersByTimeAsync(379);
+		expect(member.round.value?.rankings).toEqual(result.rankings);
+		await vi.advanceTimersByTimeAsync(1);
+		expect(member.round.value).toBeNull();
+		expect(member.choice.value).toBeNull();
+		expect(vi.getTimerCount()).toBe(0);
+		expect(f.vote).not.toHaveBeenCalled();
+		const natural = fixture();
+		const leaving = natural.store.subscribe();
+		await natural.receive(result, result.expiresAt);
+		expect(leaving.phase.value).toBe('leaving');
+		expect(leaving.dismiss()).toBe(false);
+	});
+
+	it.each(['inactive', 'hidden', 'released'] as const)('finishes a decline on its own deadline while %s without retaining the round', async suspended => {
+		const f = fixture();
+		const member = f.store.subscribe();
+		await f.receive(makeRound());
+		expect(member.dismiss()).toBe(true);
+		await vi.advanceTimersByTimeAsync(99);
+		if (suspended === 'inactive') member.setActive(false);
+		else if (suspended === 'hidden') f.setHidden(true);
+		else member.release();
+		expect(member.dismiss()).toBe(false);
+		expect(vi.getTimerCount()).toBe(1);
+		await vi.advanceTimersByTimeAsync(1101);
+		expect(member.phase.value).toBe('leaving');
+		expect(vi.getTimerCount()).toBe(1);
+		await vi.advanceTimersByTimeAsync(479);
+		expect(member.round.value?.id).toBe('round-a');
+		await vi.advanceTimersByTimeAsync(1);
+		expect(member.phase.value).toBe('idle');
+		expect(member.round.value).toBeNull();
+		expect(member.choice.value).toBeNull();
+		expect(member.voteError.value).toBeNull();
+		expect(vi.getTimerCount()).toBe(0);
+		expect(f.show).toHaveBeenCalledTimes(1);
+		expect(f.vote).not.toHaveBeenCalled();
+	});
+
+	it('finishes a result dismissal after release and ignores a later server response for that result', async () => {
+		const f = fixture();
+		const member = f.store.subscribe();
+		const result = makeRound({ phase: 'result', choice: { emojiId: emoji.id, votedAt: 10000 } });
+		await f.receive(result, 26800);
+		void member.refresh();
+		const stale = takePending(f.shows);
+		expect(member.dismiss()).toBe(true);
+		member.release();
+		expect(vi.getTimerCount()).toBe(1);
+		await vi.advanceTimersByTimeAsync(480);
+		expect(member.round.value).toBeNull();
+		expect(member.choice.value).toBeNull();
+		expect(vi.getTimerCount()).toBe(0);
+		stale.resolve({ serverNow: 27000, round: result });
+		await flush();
+		const resumed = f.store.subscribe();
+		await f.receive(result, 28000);
+		expect(resumed.round.value).toBeNull();
+		expect(resumed.claimEffect('confetti', 'round-a')).toBe(false);
+	});
+
+	it('rejects dismissal while a vote is unconfirmed, after a vote, or during tallying', async () => {
+		const f = fixture();
+		const member = f.store.subscribe();
+		expect(member.dismiss()).toBe(false);
+		await f.receive(makeRound());
+		const pending = member.vote(emoji.id);
+		expect(member.dismiss()).toBe(false);
+		takePending(f.votes).reject(new Error('reply lost'));
+		expect(await pending).toBe(false);
+		expect(member.submitting.value).toBe(true);
+		expect(member.dismiss()).toBe(false);
+		await f.receive(makeRound({ choice: { emojiId: emoji.id, votedAt: 10000 } }), 10100);
+		expect(member.phase.value).toBe('waiting');
+		expect(member.dismiss()).toBe(false);
+		void member.refresh();
+		await f.receive(makeRound({ choice: { emojiId: emoji.id, votedAt: 10000 } }), 25000);
+		expect(member.phase.value).toBe('tallying');
+		expect(member.dismiss()).toBe(false);
+		expect(f.vote).toHaveBeenCalledTimes(1);
+	});
+
+	it('rejects inactive owners and another account without dismissing an active viewer round', async () => {
+		const f = fixture();
+		const active = f.store.subscribe();
+		const inactive = f.store.subscribe(false);
+		await f.receive(makeRound());
+		expect(inactive.dismiss()).toBe(false);
+		expect(active.phase.value).toBe('voting');
+		active.release();
+		expect(active.dismiss()).toBe(false);
+		inactive.setActive(true);
+		f.setHidden(true);
+		expect(inactive.dismiss()).toBe(false);
+		f.setHidden(false);
+		f.setAccount('another-account');
+		expect(inactive.dismiss()).toBe(false);
+		expect(inactive.round.value).toBeNull();
+		expect(vi.getTimerCount()).toBe(0);
+		expect(f.vote).not.toHaveBeenCalled();
+	});
+
+	it.each(['account change', 'destroy'] as const)('discards an in-progress decline on %s and cancels its closing timer', async reason => {
+		const f = fixture();
+		const member = f.store.subscribe();
+		await f.receive(makeRound());
+		expect(member.dismiss()).toBe(true);
+		if (reason === 'account change') {
+			f.setAccount('another-account');
+			await vi.advanceTimersByTimeAsync(100);
+		} else {
+			f.store.destroy();
+		}
+		expect(member.round.value).toBeNull();
+		expect(member.phase.value).toBe('idle');
+		expect(member.voteError.value).toBeNull();
+		expect(vi.getTimerCount()).toBe(0);
+		await vi.advanceTimersByTimeAsync(2000);
+		expect(member.phase.value).toBe('idle');
+		expect(f.show).toHaveBeenCalledTimes(1);
+	});
+
+	it.each(['inactive', 'hidden', 'released'] as const)('discards expired round data while %s and can start a fresh round without restoring the old one', async suspended => {
+		const f = fixture();
+		const member = f.store.subscribe();
+		const result = makeRound({
+			phase: 'result', choice: { emojiId: emoji.id, votedAt: 10000 },
+			rankings: [{ emoji, count: 2, rank: 1, tied: false }], total: 2,
+		});
+		await f.receive(result, 26800);
+		expect(member.claimEffect('confetti', 'round-a')).toBe(true);
+		void member.refresh();
+		const stale = takePending(f.shows);
+		// Pause between clock ticks so expiry cannot depend on the frozen UI time.
+		await vi.advanceTimersByTimeAsync(99);
+		if (suspended === 'inactive') member.setActive(false);
+		else if (suspended === 'hidden') f.setHidden(true);
+		else member.release();
+		expect(stale.signal.aborted).toBe(true);
+		expect(f.reconnect.size).toBe(0);
+		expect(vi.getTimerCount()).toBe(1);
+		await vi.advanceTimersByTimeAsync(20380);
+		expect(member.round.value).toBe(result);
+		expect(member.choice.value?.emojiId).toBe(emoji.id);
+		expect(f.show).toHaveBeenCalledTimes(2);
+		await vi.advanceTimersByTimeAsync(1);
+		expect(member.round.value).toBeNull();
+		expect(member.choice.value).toBeNull();
+		expect(member.phase.value).toBe('idle');
+		expect(member.submitting.value).toBe(false);
+		expect(member.voteError.value).toBeNull();
+		expect(vi.getTimerCount()).toBe(0);
+		stale.resolve({ serverNow: 47000, round: result });
+		await flush();
+		expect(member.round.value).toBeNull();
+		const next = suspended === 'released' ? f.store.subscribe() : member;
+		if (suspended === 'inactive') member.setActive(true);
+		if (suspended === 'hidden') f.setHidden(false);
+		await f.receive(result, 47280);
+		expect(next.round.value).toBeNull();
+		void next.refresh();
+		const fresh = makeRound({
+			id: 'round-b', noteId: 'note-b', startedAt: 50000, closesAt: 65000, resolvedAt: 66800, expiresAt: 86800,
+			phase: 'result', candidates: [otherEmoji], rankings: [{ emoji: otherEmoji, count: 1, rank: 1, tied: false }], total: 1,
+		});
+		await f.receive(fresh, 66800);
+		expect(next.round.value).toBe(fresh);
+		expect(next.choice.value).toBeNull();
+		expect(next.claimEffect('confetti', 'round-b')).toBe(true);
+		expect(next.claimEffect('confetti', 'round-b')).toBe(false);
+	});
+
+	it('aborts an unresolved vote at expiry and discards its queued trigger without polling again', async () => {
+		const f = fixture();
+		const member = f.store.subscribe();
+		await f.receive(makeRound());
+		const accepted = member.vote(emoji.id);
+		const write = takePending(f.votes);
+		void member.refresh('queued-trigger');
+		await vi.advanceTimersByTimeAsync(40000);
+		expect(write.signal.aborted).toBe(true);
+		expect(member.round.value).toBeNull();
+		expect(member.submitting.value).toBe(false);
+		expect(member.voteError.value).toBeNull();
+		expect(vi.getTimerCount()).toBe(0);
+		write.resolve({ serverNow: 10000, round: makeRound({ choice: { emojiId: emoji.id, votedAt: 10000 } }) });
+		expect(await accepted).toBe(false);
+		expect(member.choice.value).toBeNull();
+		expect(f.show).toHaveBeenCalledTimes(1);
+	});
+
+	it('drops an abandoned vote error on release and its verification state at expiry', async () => {
+		const f = fixture();
+		const member = f.store.subscribe();
+		await f.receive(makeRound());
+		const accepted = member.vote(emoji.id);
+		takePending(f.votes).reject(new Error('reply lost'));
+		expect(await accepted).toBe(false);
+		expect(member.submitting.value).toBe(true);
+		expect(member.voteError.value).not.toBeNull();
+		const verification = takePending(f.shows);
+		member.release();
+		expect(verification.signal.aborted).toBe(true);
+		expect(member.voteError.value).toBeNull();
+		await vi.advanceTimersByTimeAsync(37280);
+		expect(member.round.value).toBeNull();
+		expect(member.submitting.value).toBe(false);
+		expect(vi.getTimerCount()).toBe(0);
 	});
 
 	it('leaves after 20 seconds, collapses for 480 ms, and rejects a delayed expired response', async () => {
@@ -485,6 +784,25 @@ describe('shared LTL emoji vote state', () => {
 		expect(vi.getTimerCount()).toBe(0);
 	});
 
+	it('discards the previous account data on the next clock tick without waiting for a visibility event', async () => {
+		const f = fixture();
+		const member = f.store.subscribe();
+		await f.receive(makeRound({ choice: { emojiId: emoji.id, votedAt: 10000 } }));
+		void member.refresh();
+		const stale = takePending(f.shows);
+		f.setAccount('other-account');
+		await vi.advanceTimersByTimeAsync(100);
+		expect(stale.signal.aborted).toBe(true);
+		expect(member.round.value).toBeNull();
+		expect(member.choice.value).toBeNull();
+		expect(member.now.value).toBe(0);
+		expect(f.reconnect.size).toBe(0);
+		expect(vi.getTimerCount()).toBe(0);
+		stale.resolve({ serverNow: 10100, round: makeRound() });
+		await flush();
+		expect(member.round.value).toBeNull();
+	});
+
 	it('destroy aborts both read and write requests and removes all timers and reconnect callbacks', async () => {
 		const f = fixture();
 		const member = f.store.subscribe();
@@ -544,6 +862,11 @@ describe('LTL emoji vote Vue lifecycle', () => {
 		await vi.advanceTimersByTimeAsync(5000);
 		expect(getSubscription().now.value).toBe(unmountedTime);
 		expect(wrapperDeps.api).toHaveBeenCalledTimes(2);
+		await vi.advanceTimersByTimeAsync(60000);
+		expect(getSubscription().round.value).toBeNull();
+		expect(getSubscription().choice.value).toBeNull();
+		expect(wrapperDeps.api).toHaveBeenCalledTimes(2);
+		expect(vi.getTimerCount()).toBe(0);
 	});
 });
 

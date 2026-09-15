@@ -14,6 +14,25 @@ SPDX-License-Identifier: AGPL-3.0-only
 	</div>
 
 	<div v-else ref="rootEl">
+		<Teleport v-if="props.emojiVoteNavbarTarget && emojiVoteRound && emojiVoteAnchor" :to="props.emojiVoteNavbarTarget">
+			<MkLtlEmojiVote
+				:key="`emoji-vote-navbar:${emojiVoteRound.id}`"
+				:round="emojiVoteRound"
+				:choice="emojiVoteChoice"
+				:now="emojiVoteNow"
+				:phase="emojiVotePhase"
+				:declined="emojiVoteDeclined"
+				:active="emojiVoteActive"
+				:effectTarget="props.emojiVoteEffectTarget"
+				:submitting="emojiVoteSubmitting"
+				:voteError="emojiVoteError"
+				:canVote="!!$i"
+				:claimEffect="claimEmojiVoteEffect"
+				navbar
+				@vote="voteEmoji"
+				@dismiss="dismissEmojiVote"
+			/>
+		</Teleport>
 		<!-- 旗鯖fork(#7): Hataskey UIデッキUIでは、タイムライン最上部に「最新のノート」インジケータを表示し、
 		     先頭ノートがタブバーに密着しないよう余白も兼ねる。既定はテーマカラーの横線 (シンプル)、
 		     アクセシビリティ設定 `simpleUi.deckLatestNoteText` を ON にすると従来の
@@ -100,13 +119,14 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</div>
 				<MkNote v-else :class="$style.note" :note="note" :withHardMute="true" :data-scroll-anchor="note.id"/>
 				<MkLtlEmojiVote
-					v-if="emojiVoteRound && emojiVoteAnchor === note.id"
+					v-if="!props.emojiVoteNavbar && !props.emojiVoteNavbarTarget && emojiVoteRound && emojiVoteAnchor === note.id"
 					:key="`emoji-vote:${emojiVoteRound.id}`"
 					:class="$style.emojiVoteRow"
 					:round="emojiVoteRound"
 					:choice="emojiVoteChoice"
 					:now="emojiVoteNow"
 					:phase="emojiVotePhase"
+					:declined="emojiVoteDeclined"
 					:active="emojiVoteActive"
 					:effectTarget="props.emojiVoteEffectTarget"
 					:submitting="emojiVoteSubmitting"
@@ -114,6 +134,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					:canVote="!!$i"
 					:claimEffect="claimEmojiVoteEffect"
 					@vote="voteEmoji"
+					@dismiss="dismissEmojiVote"
 				/>
 			</template>
 		</component>
@@ -126,7 +147,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { computed, watch, onUnmounted, provide, useTemplateRef, TransitionGroup, onMounted, shallowRef, ref, markRaw } from 'vue';
+import { computed, watch, onBeforeUnmount, onUnmounted, provide, useTemplateRef, TransitionGroup, onMounted, shallowRef, ref, markRaw } from 'vue';
 import * as Misskey from 'cherrypick-js';
 import { useInterval } from '@@/js/use-interval.js';
 import { useDocumentVisibility } from '@@/js/use-document-visibility.js';
@@ -235,6 +256,9 @@ const props = withDefaults(defineProps<{
 	/** Only explicit Hataskey LTL hosts enable the shared joke event. */
 	emojiVoteActive?: boolean;
 	emojiVoteEffectTarget?: HTMLElement | null;
+	/** Reserve the navbar placement before its template ref mounts. */
+	emojiVoteNavbar?: boolean;
+	emojiVoteNavbarTarget?: HTMLElement | null;
 }>(), {
 	withRenotes: true,
 	withReplies: false,
@@ -247,7 +271,13 @@ const props = withDefaults(defineProps<{
 	visitorMode: false,
 	emojiVoteActive: false,
 	emojiVoteEffectTarget: null,
+	emojiVoteNavbar: false,
+	emojiVoteNavbarTarget: null,
 });
+
+const emit = defineEmits<{
+	emojiVoteNavbarState: [state: { visible: boolean; celebrating: boolean; leaving: boolean }];
+}>();
 
 provide('inTimeline', true);
 provide('tl_withSensitive', computed(() => props.withSensitive));
@@ -517,14 +547,24 @@ const visibleItems = computed<Misskey.entities.Note[]>(() =>
 const emojiVoteActive = computed(() => isHatasaba && props.src === 'local' && props.emojiVoteActive);
 const {
 	round: emojiVoteRound, choice: emojiVoteChoice, now: emojiVoteNow, phase: emojiVotePhase,
-	submitting: emojiVoteSubmitting, voteError: emojiVoteError,
-	refresh: refreshEmojiVote, vote: voteEmoji, claimEffect: claimEmojiVoteEffect,
+	submitting: emojiVoteSubmitting, voteError: emojiVoteError, declined: emojiVoteDeclined,
+	refresh: refreshEmojiVote, vote: voteEmoji, dismiss: dismissEmojiVote, claimEffect: claimEmojiVoteEffect,
 } = useLtlEmojiVote(emojiVoteActive);
-const emojiVoteAnchor = computed(() => emojiVoteActive.value && emojiVotePhase.value !== 'idle'
+const emojiVoteAnchor = computed(() => emojiVoteActive.value && emojiVotePhase.value !== 'idle' &&
+	!paginator.fetching.value && (!paginator.error.value || props.visitorMode)
 	? getLtlEmojiVoteAnchor(visibleItems.value, emojiVoteRound.value?.noteId, $i, {
 		mutedWords: [...($i?.mutedWords ?? []), ...($i?.hardMutedWords ?? [])],
 		withSensitive: props.withSensitive,
 	}) : null);
+
+// Keep the native navbar visible only for a round anchored to a visible LTL note.
+// The navbar and inline card use the same store, including one-vote/effect claims.
+watch(() => ({
+	visible: !!props.emojiVoteNavbarTarget && !!emojiVoteAnchor.value,
+	celebrating: !!props.emojiVoteNavbarTarget && !!emojiVoteAnchor.value && !emojiVoteDeclined.value && (emojiVotePhase.value === 'result' || (emojiVotePhase.value === 'leaving' && emojiVoteRound.value?.phase === 'result')) && (emojiVoteRound.value?.total ?? 0) > 0,
+	leaving: emojiVotePhase.value === 'leaving',
+}), state => emit('emojiVoteNavbarState', state), { immediate: true });
+onBeforeUnmount(() => emit('emojiVoteNavbarState', { visible: false, celebrating: false, leaving: false }));
 
 // Also catches notes received by REST polling. The active round determines its anchor;
 // posting the trigger again during a round must not clear or replace that round.

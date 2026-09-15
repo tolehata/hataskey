@@ -4,6 +4,7 @@
  */
 
 export const LTL_EMOJI_VOTE_RAIN_MS = 1550;
+export const LTL_EMOJI_VOTE_DECLINED_MS = 1200;
 export const LTL_EMOJI_VOTE_EXIT_MS = 480;
 
 export type LtlEmojiVoteEmoji = {
@@ -37,7 +38,7 @@ export type LtlEmojiVoteRound = {
 };
 
 export type LtlEmojiVoteResponse = { serverNow: number; round: LtlEmojiVoteRound | null };
-export type LtlEmojiVotePhase = 'idle' | 'voting' | 'rain' | 'waiting' | 'tallying' | 'result' | 'leaving';
+export type LtlEmojiVotePhase = 'idle' | 'voting' | 'rain' | 'waiting' | 'tallying' | 'result' | 'declined' | 'leaving';
 export type LtlEmojiVoteEffect = 'rain' | 'confetti';
 
 /** The server decides the outcome. The local clock only controls its presentation. */
