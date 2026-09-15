@@ -1,16 +1,17 @@
 /* SPDX-License-Identifier: AGPL-3.0-only */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { computed, createApp, defineComponent, h, nextTick, ref } from 'vue';
+import { computed, createApp, defineComponent, h, nextTick, provide, ref } from 'vue';
 import * as Vue from 'vue';
 import { compileTemplate, parse } from '@vue/compiler-sfc';
 import type { App } from 'vue';
 import type { entities } from 'cherrypick-js';
-import { createHataskeyNotificationToasts } from '@/utility/hataskey-notification-toast.js';
+import { createHataskeyNotificationToasts, hataskeyNotificationToastsKey, registerNotificationPageContext } from '@/utility/hataskey-notification-toast.js';
 import { notificationToastsSuppressed } from '@/utility/notification-toast-suppression.js';
 import { prefer } from '@/preferences.js';
 import { mainRouter } from '@/router.js';
 import { popups } from '@/os.js';
 import MkHataskeyNotificationToasts from '@/components/MkHataskeyNotificationToasts.vue';
+import MkToast from '@/components/MkToast.vue';
 import { createHataskeyTimelineNewNotes } from '@/utility/hataskey-timeline-new-notes.js';
 import simpleSource from '@/ui/simple.vue?raw';
 
@@ -18,7 +19,8 @@ vi.mock('@/preferences.js', async () => {
 	const { ref } = await import('vue');
 	return { prefer: { s: { animation: false, 'external.host': 'external.test', 'external.disableNotificationToast': false }, r: { animation: ref(false), useBlurEffect: ref(true), 'external.disableNotificationToast': ref(false) } } };
 });
-vi.mock('@/os.js', async () => ({ popups: (await import('vue')).ref([]) }));
+vi.mock('@/os.js', async () => ({ popups: (await import('vue')).ref([]), claimZIndex: () => 1000 }));
+vi.mock('@/i.js', () => ({ $i: { id: 'self', username: 'self', name: '旗茶', avatarUrl: '/avatar.webp' } }));
 vi.mock('@/router.js', () => ({ mainRouter: { push: vi.fn() } }));
 vi.mock('@/utility/external-api.js', () => ({ getExternalEmojiUrlMapForHost: () => ({}) }));
 vi.mock('@/components/MkReactionIcon.vue', () => ({ default: { template: '<span>reaction</span>' } }));
@@ -119,6 +121,135 @@ function mount(mobile = false, navbar = true, withNewNotes = false, preloaded = 
 }
 
 describe('Hataskey notification host', () => {
+	it.each([true, false])('routes the boot welcome popup into the existing navbar and expires it once (mobile=%s)', async (mobile) => {
+		const { context, bar } = mount(mobile);
+		const root = window.document.createElement('div');
+		window.document.body.append(root);
+		const closed = vi.fn();
+		const message = 'おかえりなさい、旗茶さん :wave:';
+		const popupApp = createApp({
+			setup() {
+				provide(hataskeyNotificationToastsKey, context);
+				return () => h(MkToast, { message, welcome: true, onClosed: closed });
+			},
+		});
+		popupApp.component('Mfm', { props: ['text'], template: '<span>{{ text }}</span>' });
+		popupApp.component('MkAvatar', { template: '<span/>' });
+		try {
+			popupApp.mount(root);
+			await nextTick();
+			expect(closed).toHaveBeenCalledTimes(1);
+			expect(root.textContent).toBe('');
+			expect(context.items.value).toHaveLength(1);
+			expect(context.items.value[0]).toMatchObject({ source: 'status', message, welcomeUser: { id: 'self' } });
+			expect(bar.querySelector('article')?.textContent).toContain(message);
+			popupApp.unmount();
+			// Disposing the original popup must leave ownership with the shared host.
+			vi.mocked(performance.now).mockReturnValue(5000);
+			await vi.advanceTimersByTimeAsync(250);
+			await nextTick();
+			expect(context.items.value).toHaveLength(0);
+			expect(bar.querySelector('article')).toBeNull();
+		} finally {
+			if (root.hasChildNodes()) popupApp.unmount();
+		}
+	});
+	it.each([true, false])('retains the standalone popup when welcome=%s has no Hataskey host', async (welcome) => {
+		const root = window.document.createElement('div');
+		window.document.body.append(root);
+		app = createApp({ render: () => h(MkToast, { message: '表示メッセージ', welcome }) });
+		app.component('Mfm', { props: ['text'], template: '<span>{{ text }}</span>' });
+		app.component('MkAvatar', { template: '<span/>' });
+		app.mount(root);
+		await nextTick();
+		expect(root.textContent).toContain('表示メッセージ');
+	});
+	it('keeps ordinary toast messages out of the navbar queue', async () => {
+		const context = createHataskeyNotificationToasts(computed(() => false), computed(() => true));
+		const root = window.document.createElement('div');
+		window.document.body.append(root);
+		app = createApp({
+			setup() {
+				provide(hataskeyNotificationToastsKey, context);
+				return () => h(MkToast, { message: 'コピーしました', icon: 'copied' });
+			},
+		});
+		app.component('Mfm', { props: ['text'], template: '<span>{{ text }}</span>' });
+		app.component('MkAvatar', { template: '<span/>' });
+		app.mount(root);
+		await nextTick();
+		expect(root.textContent).toContain('コピーしました');
+		expect(context.items.value).toHaveLength(0);
+	});
+	it('delivers external events only to the active page renderer and restores the native receiver on release', async () => {
+		const { context: native } = mount();
+		const page = createHataskeyNotificationToasts(computed(() => true), computed(() => true));
+		const receiveExternal = ref(true);
+		const release = registerNotificationPageContext(page, () => receiveExternal.value);
+		const nativeEnqueue = vi.spyOn(native, 'enqueue');
+		const pageEnqueue = vi.spyOn(page, 'enqueue');
+		const root = window.document.createElement('div');
+		window.document.body.append(root);
+		const pageApp = createApp({ render: () => h(MkHataskeyNotificationToasts, { context: page, receiveExternal: receiveExternal.value }) });
+		pageApp.component('Mfm', { props: ['text'], template: '<span>{{ text }}</span>' });
+		pageApp.component('MkAvatar', { props: ['user'], template: '<span/>' });
+		try {
+			pageApp.mount(root);
+			window.dispatchEvent(new CustomEvent('external-notification', { detail: note('page-owned') }));
+			await nextTick();
+			expect(nativeEnqueue).not.toHaveBeenCalled();
+			expect(native.items.value).toEqual([]);
+			expect(pageEnqueue).toHaveBeenCalledExactlyOnceWith(note('page-owned'), 'external', 0, 'external.test');
+			expect(page.items.value).toHaveLength(1);
+			expect(window.document.querySelectorAll('article')).toHaveLength(1);
+
+			// An offscreen page keeps its renderer for status notices, but yields receipt.
+			receiveExternal.value = false;
+			release();
+			await nextTick();
+			window.dispatchEvent(new CustomEvent('external-notification', { detail: note('native-again') }));
+			await nextTick();
+			expect(nativeEnqueue).toHaveBeenCalledExactlyOnceWith(note('native-again'), 'external', 0, 'external.test');
+			expect(native.items.value).toHaveLength(1);
+			expect(pageEnqueue).toHaveBeenCalledTimes(1);
+			expect(page.items.value[0]).toMatchObject({ source: 'external', notification: { id: 'page-owned' } });
+		} finally {
+			release();
+			pageApp.unmount();
+			root.remove();
+		}
+	});
+
+	it('moves the same live toast into Hatask and back without restarting its clock or duplicating receipt', async () => {
+		const { context, target: nativeTarget } = mount(true);
+		context.enqueue(note('surface'), 'local', 0);
+		await nextTick();
+		const article = nativeTarget.querySelector('article');
+		expect(article).not.toBeNull();
+		context.tick(2100, new Set());
+		const pageBar = window.document.createElement('header');
+		const pageTarget = window.document.createElement('div'); pageBar.append(pageTarget); window.document.body.append(pageBar);
+		const active = ref(true);
+		const release = context.registerSurface({ active, target: ref(pageTarget), outline: ref(pageBar), animations: ref(false) });
+		await nextTick();
+		expect(pageTarget.querySelector('article')).toBe(article);
+		expect(nativeTarget.querySelector('article')).toBeNull();
+		expect(context.items.value[0].elapsed).toBe(2100);
+		active.value = false; await nextTick();
+		expect(nativeTarget.querySelector('article')).toBe(article);
+		active.value = true; await nextTick();
+		window.dispatchEvent(new CustomEvent('external-notification', { detail: note('external-surface') }));
+		await nextTick();
+		expect(context.items.value).toHaveLength(1);
+		expect(context.items.value[0].source).toBe('external');
+		expect(pageTarget.querySelectorAll('article')).toHaveLength(1);
+		release(); await nextTick();
+		expect(pageTarget.querySelector('article')).toBeNull();
+		expect(nativeTarget.querySelectorAll('article')).toHaveLength(1);
+		context.tick(5000, new Set()); await nextTick();
+		expect(nativeTarget.querySelector('article')).toBeNull();
+	});
+
 	it.each([true, false])('expires at five seconds even without animation frames (mobile=%s)', async (mobile) => {
 		prefer.r.animation.value = true;
 		const start = Date.now();

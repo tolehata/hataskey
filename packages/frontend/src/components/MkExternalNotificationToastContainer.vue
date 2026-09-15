@@ -28,6 +28,7 @@ window の 'external-notification' イベントを listen して、右下にト�
 <script lang="ts" setup>
 import { ref, onMounted, onUnmounted, watch } from 'vue';
 import MkExternalNotificationToast from '@/components/MkExternalNotificationToast.vue';
+import { getNotificationPageContext } from '@/utility/hataskey-notification-toast.js';
 import { notificationToastsSuppressed, shouldSuppressNotificationToasts } from '@/utility/notification-toast-suppression.js';
 
 interface ToastItem { id: string; notification: any; }
@@ -41,6 +42,8 @@ watch(notificationToastsSuppressed, (suppressed) => {
 
 function onExternalNotification(ev: Event) {
 	if (shouldSuppressNotificationToasts()) return;
+	// The active page's shared renderer receives this event directly.
+	if (getNotificationPageContext()) return;
 	const notification = (ev as CustomEvent).detail;
 	if (!notification) return;
 	const id = `ext-toast-${++nextId}`;

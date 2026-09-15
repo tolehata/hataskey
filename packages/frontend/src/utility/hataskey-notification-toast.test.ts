@@ -8,6 +8,24 @@ import { splitNotificationText } from './notification-text.js';
 const notification = (id: string): entities.Notification => ({ id, type: 'test', createdAt: '2026-09-07T00:00:00Z' });
 
 describe('Hataskey notification queue', () => {
+	it('chooses the latest visible mobile surface and restores the previous owner on release', () => {
+		const queue = createHataskeyNotificationToasts(computed(() => false), computed(() => false));
+		const first = { active: ref(true), target: ref(window.document.createElement('div')), outline: ref(window.document.createElement('header')), animations: ref(true) };
+		const second = { active: ref(false), target: ref<HTMLElement | null>(null), outline: ref<HTMLElement | null>(null), animations: ref(true) };
+		const releaseFirst = queue.registerSurface(first);
+		const releaseSecond = queue.registerSurface(second);
+		expect(queue.surface.value).toBe(first);
+		expect(queue.mobile.value).toBe(true);
+		second.active.value = true;
+		expect(queue.surface.value).toBe(first);
+		second.target.value = window.document.createElement('div'); second.outline.value = window.document.createElement('header');
+		expect(queue.surface.value).toBe(second);
+		releaseSecond(); releaseSecond();
+		expect(queue.surface.value).toBe(first);
+		releaseFirst();
+		expect(queue.surface.value).toBeUndefined();
+		expect(queue.integrated.value).toBe(false);
+	});
 	it('expires at five seconds of visible, unpaused time', () => {
 		const queue = createHataskeyNotificationToasts(computed(() => false), computed(() => false));
 		queue.enqueue(notification('first'), 'local', 0);
@@ -26,7 +44,7 @@ describe('Hataskey notification queue', () => {
 		expect(queue.items.value).toHaveLength(2);
 		queue.enqueue(notification('third'), 'local', 0);
 		queue.enqueue(notification('fourth'), 'local', 0);
-		expect(queue.items.value.map(item => item.notification.id)).toEqual(['fourth', 'third', 'same']);
+		expect(queue.items.value.map(item => item.source === 'status' ? null : item.notification.id)).toEqual(['fourth', 'third', 'same']);
 	});
 	it.each([true, false])('uses one shared latest notification in the navbar (mobile=%s)', (mobile) => {
 		const queue = createHataskeyNotificationToasts(computed(() => mobile), computed(() => !mobile));
@@ -34,7 +52,7 @@ describe('Hataskey notification queue', () => {
 		queue.enqueue(notification('remote'), 'external', 100);
 		expect(queue.items.value.map(item => item.source)).toEqual(['external']);
 		queue.enqueue(notification('flower'), 'local', 200);
-		expect(queue.items.value.map(item => item.notification.id)).toEqual(['flower']);
+		expect(queue.items.value.map(item => item.source === 'status' ? null : item.notification.id)).toEqual(['flower']);
 	});
 	it('preserves the active timer when the navbar disappears or the device changes', () => {
 		const mobile = ref(false);
@@ -47,6 +65,23 @@ describe('Hataskey notification queue', () => {
 		mobile.value = true;
 		expect(queue.integrated.value).toBe(true);
 		expect(queue.items.value[0].elapsed).toBe(1900);
+	});
+});
+
+describe('HataFeed navbar notices', () => {
+	it('shares standard events and local status in the latest slot and pauses during a draft prompt', () => {
+		const queue = createHataskeyNotificationToasts(computed(() => false), computed(() => false));
+		const paused = ref(false);
+		queue.registerSurface({ active: ref(true), target: ref(window.document.createElement('div')), outline: ref(window.document.createElement('header')), animations: ref(false), paused });
+		queue.enqueue(notification('reply'), 'local', 0);
+		queue.enqueueStatus('保存しました', 200);
+		expect(queue.items.value).toHaveLength(1);
+		expect(queue.items.value[0]).toMatchObject({ source: 'status', message: '保存しました' });
+		queue.tick(1200, new Set());
+		paused.value = true; queue.tick(9000, new Set());
+		expect(queue.items.value[0].elapsed).toBe(1000);
+		paused.value = false; queue.tick(13000, new Set());
+		expect(queue.items.value).toHaveLength(0);
 	});
 });
 

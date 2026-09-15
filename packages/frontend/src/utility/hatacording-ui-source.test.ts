@@ -81,8 +81,9 @@ describe('HataSNSCordUIの結線', () => {
 		expect(page).not.toContain('.visibilityButton span');
 		expect(page).toContain(":data-animation=\"animationEnabled ? 'true' : 'false'\"");
 		expect(page).toContain('const animationEnabled = computed(() => prefer.r.animation.value);');
-		// HataFeed と Hataskey UI の共有領域は今回の差し替え対象外。
-		expect(beta).toContain("from '@lucide/vue'");
+		// ベータ機能は HataFeed 本体へ移動し、HataSNSCord のアイコンを持ち込まない。
+		expect(beta).toContain('<HataFeed initialTab="beta"/>');
+		expect(beta).not.toContain("from '@/components/hatacording-icons/index.js'");
 		expect(readFrontendFile('src/components/MkUISetup.vue')).toMatch(/<section :class="\$style\.cordChoice" :data-animation=/);
 		expect(readFrontendFile('src/components/MkUISetup.vue')).not.toMatch(/<div :class="\$style\.root" :data-animation=/);
 	});
@@ -217,7 +218,6 @@ describe('HataSNSCordUIの結線', () => {
 			'src/pages/emoji-shoot.vue',
 			'src/pages/emoji-shoot.game.vue',
 			'src/pages/external-notifications.vue',
-			'src/pages/hata-docs.vue',
 			'src/pages/hatady.vue',
 			'src/pages/lookup.vue',
 			'src/pages/my-groups/group.vue',
@@ -228,6 +228,14 @@ describe('HataSNSCordUIの結線', () => {
 			'src/pages/user/index.vue',
 		].map(readFrontendFile);
 		for (const source of navigationSources) expect(source).toContain('useRouter');
+		// HataIntro now uses native MkA links instead of an imperative page router.
+		const docs = readFrontendFile('src/pages/hata-docs.vue');
+		expect(docs).toContain('<HataIntro initialPage="index"');
+		expect(docs).toContain("from '@/components/hata-intro/HataIntro.vue'");
+		const reference = readFrontendFile('src/components/hata-intro/HataIntroReference.vue');
+		expect(reference).toContain('<MkA v-if="reference.link"');
+		expect(reference).toContain(':to="reference.link"');
+		expect(readFrontendFile('src/components/global/MkA.vue')).toContain('useRouter');
 		expect(page).toContain("paneRouter.navHook = (fullPath) =>");
 		expect(page).toContain('Nirax の replaceByPath は navHook を通らない');
 		expect(page).toContain("openCenterPage('/settings', copy.settings)");

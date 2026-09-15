@@ -29,13 +29,15 @@ describe('settings brand coverage', () => {
 		expect(indexSource).toContain('settingsBrand');
 		expect(mobileSource).toContain('settingsBrandText: hasSettingsBrand(section.description)');
 		expect(mobileSource).toContain('settingsBrandText: hasSettingsBrand(activeCategory.description)');
-		expect(hataFeedSource).toContain('visualCopy.hatafeedLeaves');
-		expect(hataFeedSource).toContain('<span class="settingsBrandText">{{ visualCopy.hatafeedLeavesCaption }}</span>');
+		expect(hataFeedSource).toContain('<HataFeedDisplaySettings embedded/>');
 		expect(hataSnsSource).toContain('class="settingsBrandText"');
 		expect(hataSabaSource).toContain('settingsBrand');
 		expect(hataCordingSource).toContain(':class="[$style.note, \'settingsBrandText\']"');
 		expect(hataskSource).toContain('<span class="settingsBrandText">{{ copy.title }}</span>');
-		expect(hatadySource).toContain('<span class="settingsBrandText"><i class="ti ti-palette"></i> {{ copy.title }}</span>');
+		// Hatady の表示設定は独自のブランド書体と共通ダイアログへ移行した。
+		expect(hatadySource).toContain(':title="copy.title"');
+		expect(hatadySource).toContain('<h2 v-if="embedded" :class="$style.embeddedTitle">{{ copy.title }}</h2>');
+		expect(hatadySource).toContain("font-family: 'Hatady Brand', sans-serif;");
 		expect(previewSource).toContain('<span v-if="previewTitle.brand" class="settingsBrand">{{ previewTitle.brand }}</span>');
 		// 旗鯖fork: ⚠️モックの中には文言を置かない（訳の無い言語で空欄になるため）。
 		//   ブランド表記は窓の見出しが受け持つ。

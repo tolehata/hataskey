@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-only -->
 <template>
-<Teleport :to="integrated && context.target.value ? context.target.value : 'body'">
+<Teleport :to="integrated && target ? target : 'body'">
 	<TransitionGroup
 		tag="div" :class="$style.stack" :data-integrated="integrated" :data-mobile="context.mobile.value" :css="motion"
 		:enterActiveClass="$style.enterActive" :leaveActiveClass="$style.leaveActive" :enterFromClass="$style.enterFrom" :leaveToClass="$style.leaveTo" :moveClass="$style.move"
@@ -13,26 +13,28 @@
 		/>
 	</TransitionGroup>
 </Teleport>
-<MkNotificationToastRing v-if="integrated && active" :target="context.outline.value" :elapsed="active.elapsed" integrated :motion="motion"/>
+<MkNotificationToastRing v-if="integrated && active" :target="context.surface.value?.outline.value ?? context.outline.value" :elapsed="active.elapsed" integrated :motion="motion"/>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import type { entities } from 'cherrypick-js';
 import type { HataskeyNotificationToasts } from '@/utility/hataskey-notification-toast.js';
+import { getNotificationPageContext } from '@/utility/hataskey-notification-toast.js';
 import MkHataskeyNotificationToast from '@/components/MkHataskeyNotificationToast.vue';
 import MkNotificationToastRing from '@/components/MkNotificationToastRing.vue';
 import { notificationToastsSuppressed } from '@/utility/notification-toast-suppression.js';
 import { prefer } from '@/preferences.js';
 import { i18n } from '@/i18n.js';
 
-const props = defineProps<{ context: HataskeyNotificationToasts }>();
+const props = withDefaults(defineProps<{ context: HataskeyNotificationToasts; receiveExternal?: boolean }>(), { receiveExternal: true });
 const context = props.context;
-const integrated = computed(() => context.integrated.value && !!context.target.value);
+const target = computed(() => context.surface.value?.target.value ?? context.target.value);
+const integrated = computed(() => context.integrated.value && !!target.value);
 const active = computed(() => context.items.value[0]);
 const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
 const reducedMotion = ref(reducedMotionQuery.matches);
-const motion = computed(() => prefer.r.animation.value && !reducedMotion.value);
+const motion = computed(() => prefer.r.animation.value && !reducedMotion.value && (context.surface.value?.animations.value ?? true));
 const paused = new Set<number>();
 const heights = new Map<number, number>();
 let frame = 0;
@@ -112,7 +114,9 @@ function onVisibilityChange() {
 function onReducedMotion(event: MediaQueryListEvent) { reducedMotion.value = event.matches; }
 
 function onExternalNotification(event: Event) {
-	if (notificationToastsSuppressed.value || prefer.s['external.disableNotificationToast'] || window.document.hidden) return;
+	if (!props.receiveExternal || notificationToastsSuppressed.value || prefer.s['external.disableNotificationToast'] || window.document.hidden) return;
+	const pageContext = getNotificationPageContext();
+	if (pageContext && pageContext !== context) return;
 	const notification = (event as CustomEvent<entities.Notification>).detail;
 	if (notification) context.enqueue(notification, 'external', performance.now(), prefer.s['external.host'] ?? undefined);
 }
@@ -160,6 +164,6 @@ onUnmounted(() => {
 	.enterActive, .leaveActive { transition: opacity .28s ease, transform .3s cubic-bezier(.22, 1, .36, 1); }
 	.enterFrom { transform: translateY(-12px); }
 	.leaveActive { position: absolute; top: 0; left: 0; width: 100%; }
-	.leaveTo { transform: translateY(calc(100% + 12px)); }
+	.leaveTo { transform: translateY(var(--hata-toast-leave-offset, calc(100% + 12px))); }
 }
 </style>

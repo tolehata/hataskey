@@ -1,7 +1,14 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-only -->
 <template>
 <article ref="root" :class="$style.card" :data-integrated="integrated" :data-toast-id="item.id" :data-blur="prefer.r.useBlurEffect.value" @pointerenter="onPointerEnter" @pointerleave="hovered = false" @pointercancel="hovered = false" @focusin="onFocusIn" @focusout="onFocusOut">
-	<MkExternalNotificationToast v-if="item.source === 'external'" :notification="item.notification" :sourceHost="item.host" embedded @close="emit('close')"/>
+	<div v-if="item.source === 'status'" :class="$style.status">
+		<template v-if="item.welcomeUser">
+			<MkAvatar :class="$style.welcomeAvatar" :user="item.welcomeUser" forceOpacity isToastAvatar/>
+			<Mfm :class="$style.welcomeMessage" :text="item.message" :plain="true"/>
+		</template>
+		<template v-else><i class="ti ti-circle-check" aria-hidden="true"></i>{{ item.message }}</template>
+	</div>
+	<MkExternalNotificationToast v-else-if="item.source === 'external'" :notification="item.notification" :sourceHost="item.host" embedded @close="emit('close')"/>
 	<MkNotification v-else :notification="item.notification" :contentVisibilityAuto="false" toast/>
 	<button class="_button" :class="$style.close" :aria-label="i18n.ts.close" @click="emit('close')"><i class="ti ti-x" aria-hidden="true"></i></button>
 	<MkNotificationToastRing v-if="!integrated" :target="root" :elapsed="item.elapsed" :integrated="false" :motion="motion"/>
@@ -55,6 +62,9 @@ onUnmounted(() => {
 </script>
 
 <style module lang="scss">
+.status { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 0; min-height: 44px; }
+.welcomeAvatar { flex: none; width: 36px; height: 36px; }
+.welcomeMessage { min-width: 0; }
 .card {
 	position: relative;
 	box-sizing: border-box;

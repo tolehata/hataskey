@@ -2423,14 +2423,16 @@ function toggleEvent() {
 }
 
 function openDrawingTool() {
-	void os.popup(MkDrawingTool, {}, {
-		done: async (file: File) => {
-			try {
-				draftFiles.value.push(...await os.launchUploader([file], { multiple: false }));
-			} catch {
-				await os.alert({ type: 'error', text: copy.drawingAttachFailed });
+	const { dispose } = os.popup(MkDrawingTool, { canAttach: true }, {
+		done: (file: Misskey.entities.DriveFile) => {
+			if (draftFiles.value.some(item => item.id === file.id)) return;
+			if (draftFiles.value.length >= 16) {
+				void os.alert({ type: 'warning', text: i18n.ts._hata._drawingTool.attachmentLimit });
+				return;
 			}
+			draftFiles.value.push(file);
 		},
+		closed: () => dispose(),
 	});
 }
 

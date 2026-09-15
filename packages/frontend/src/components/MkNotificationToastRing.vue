@@ -20,7 +20,7 @@ const observer = new ResizeObserver(() => measure());
 function measure() {
 	if (!props.target) return;
 	const rect = props.target.getBoundingClientRect();
-	size.value = { width: rect.width, height: rect.height, radius: parseFloat(getComputedStyle(props.target).borderTopLeftRadius) || 24 };
+	size.value = { width: rect.width, height: rect.height, radius: parseFloat(getComputedStyle(props.target).borderTopLeftRadius) || 0 };
 }
 
 watch(() => props.target, (target) => {

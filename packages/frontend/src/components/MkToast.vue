@@ -4,7 +4,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 
 <template>
-<div>
+<div v-if="!integratedWelcome">
 	<Transition
 		:enterActiveClass="prefer.s.animation ? $style.transition_toast_enterActive : ''"
 		:leaveActiveClass="prefer.s.animation ? $style.transition_toast_leaveActive : ''"
@@ -40,12 +40,13 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { onMounted, ref } from 'vue';
+import { inject, onMounted, ref } from 'vue';
 import * as os from '@/os.js';
 import { prefer } from '@/preferences.js';
 import { $i } from '@/i.js';
+import { hataskeyNotificationToastsKey } from '@/utility/hataskey-notification-toast.js';
 
-defineProps<{
+const props = defineProps<{
 	message: string;
 	icon?: string;
 	welcome?: boolean;
@@ -56,9 +57,16 @@ const emit = defineEmits<{
 }>();
 
 const zIndex = os.claimZIndex('high');
+const hataskeyToasts = inject(hataskeyNotificationToastsKey, null);
+const integratedWelcome = props.welcome && $i != null && hataskeyToasts != null;
 const showing = ref(true);
 
 onMounted(() => {
+	if (integratedWelcome && $i) {
+		hataskeyToasts.enqueueStatus(props.message, performance.now(), $i);
+		emit('closed');
+		return;
+	}
 	window.setTimeout(() => {
 		showing.value = false;
 	}, 4000);

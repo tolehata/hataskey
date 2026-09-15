@@ -1,32 +1,52 @@
 /* SPDX-License-Identifier: AGPL-3.0-only */
 import { computed, shallowReactive, shallowRef } from 'vue';
-import type { ComputedRef, InjectionKey } from 'vue';
+import type { ComputedRef, InjectionKey, Ref } from 'vue';
 import type { entities } from 'cherrypick-js';
 
 export const NOTIFICATION_TOAST_DURATION = 5000;
 
+export type HataskeyToastSurface = {
+	active: Readonly<Ref<boolean>>;
+	target: Readonly<Ref<HTMLElement | null>>;
+	outline: Readonly<Ref<HTMLElement | null>>;
+	animations: Readonly<Ref<boolean>>;
+	paused?: Readonly<Ref<boolean>>;
+};
+
 export type HataskeyToast = {
 	id: number;
-	source: 'local' | 'external';
-	notification: entities.Notification;
 	host?: string;
 	elapsed: number;
 	updatedAt: number;
-};
+} & ({ source: 'local' | 'external'; notification: entities.Notification } | { source: 'status'; message: string; welcomeUser?: entities.UserLite });
 
 /** One queue for both accounts; changing presentation never restarts a timer. */
-export function createHataskeyNotificationToasts(mobile: ComputedRef<boolean>, navbarVisible: ComputedRef<boolean>) {
+export function createHataskeyNotificationToasts(nativeMobile: ComputedRef<boolean>, navbarVisible: ComputedRef<boolean>) {
 	const items = shallowRef<HataskeyToast[]>([]);
 	const target = shallowRef<HTMLElement | null>(null);
 	const outline = shallowRef<HTMLElement | null>(null);
 	const height = shallowRef(0);
+	const surfaces = shallowRef<HataskeyToastSurface[]>([]);
+	const surface = computed(() => surfaces.value.findLast(value => value.active.value && value.target.value && value.outline.value));
+	const mobile = computed(() => !!surface.value || nativeMobile.value);
 	const integrated = computed(() => mobile.value || navbarVisible.value);
 	let sequence = 0;
 
-	function enqueue(notification: entities.Notification, source: HataskeyToast['source'], now = performance.now(), host?: string) {
+	/** A visible mobile page borrows the existing host without duplicating receipt or timers. */
+	function registerSurface(value: HataskeyToastSurface): () => void {
+		surfaces.value = [...surfaces.value, value];
+		return () => { surfaces.value = surfaces.value.filter(entry => entry !== value); };
+	}
+
+	function enqueue(notification: entities.Notification, source: 'local' | 'external', now = performance.now(), host?: string) {
 		const item = shallowReactive({ id: ++sequence, notification, source, host, elapsed: 0, updatedAt: now });
-		const previous = items.value.filter(x => !(x.source === source && x.host === host && x.notification.id === notification.id));
+		const previous = items.value.filter(x => !(x.source !== 'status' && x.source === source && x.host === host && x.notification.id === notification.id));
 		items.value = [item, ...previous].slice(0, integrated.value ? 1 : 3);
+	}
+
+	function enqueueStatus(message: string, now = performance.now(), welcomeUser?: entities.UserLite) {
+		const item = shallowReactive<HataskeyToast>({ id: ++sequence, source: 'status', message, welcomeUser, elapsed: 0, updatedAt: now });
+		items.value = [item, ...items.value].slice(0, integrated.value ? 1 : 3);
 	}
 
 	function dismiss(id: number) {
@@ -35,7 +55,7 @@ export function createHataskeyNotificationToasts(mobile: ComputedRef<boolean>, n
 
 	function tick(now: number, paused: ReadonlySet<number>) {
 		for (const item of items.value) {
-			if (!paused.has(item.id)) item.elapsed = Math.min(NOTIFICATION_TOAST_DURATION, item.elapsed + Math.max(0, now - item.updatedAt));
+			if (!surface.value?.paused?.value && !paused.has(item.id)) item.elapsed = Math.min(NOTIFICATION_TOAST_DURATION, item.elapsed + Math.max(0, now - item.updatedAt));
 			item.updatedAt = now;
 		}
 		const expired = items.value.filter(item => item.elapsed >= NOTIFICATION_TOAST_DURATION);
@@ -46,11 +66,22 @@ export function createHataskeyNotificationToasts(mobile: ComputedRef<boolean>, n
 		items.value = [];
 	}
 
-	return { mobile, integrated, items, target, outline, height, enqueue, dismiss, tick, clear };
+	return { mobile, integrated, items, target, outline, height, surface, registerSurface, enqueue, enqueueStatus, dismiss, tick, clear };
 }
 
 export type HataskeyNotificationToasts = ReturnType<typeof createHataskeyNotificationToasts>;
 export const hataskeyNotificationToastsKey: InjectionKey<HataskeyNotificationToasts> = Symbol('hataskeyNotificationToasts');
+
+// A page in the universal/deck shell can use the same receiver and timer host.
+const pageContexts: { context: HataskeyNotificationToasts; active: () => boolean }[] = [];
+export function registerNotificationPageContext(context: HataskeyNotificationToasts, active: () => boolean): () => void {
+	const entry = { context, active };
+	pageContexts.push(entry);
+	return () => { const index = pageContexts.indexOf(entry); if (index >= 0) pageContexts.splice(index, 1); };
+}
+export function getNotificationPageContext(): HataskeyNotificationToasts | undefined {
+	return pageContexts.findLast(entry => entry.active())?.context;
+}
 
 /** Open paths meet at the bottom; floating cards start at the top-right arc. */
 export function notificationOutlinePaths(width: number, height: number, radius: number, integrated: boolean): string[] {

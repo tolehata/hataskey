@@ -557,6 +557,10 @@ export const ROUTE_DEF = [{
 		name: 'consent-manager',
 		component: page(() => import('@/pages/admin/consent-manager.vue')),
 	}, {
+		path: '/support',
+		name: 'support',
+		component: iAmAdmin ? page(() => import('@/pages/admin/support.vue')) : page(() => import('@/pages/not-found.vue')),
+	}, {
 		path: '/registration-applications',
 		name: 'registration-applications',
 		component: page(() => import('@/pages/admin/registration-applications.vue')),
@@ -734,6 +738,10 @@ export const ROUTE_DEF = [{
 		notice: 'notice',
 	},
 	component: page(() => import('@/pages/hatask.vue')),
+	loginRequired: true,
+}, {
+	path: '/hatask/intro',
+	component: page(() => import('@/pages/hata-intro.vue')),
 	loginRequired: true,
 }, {
 	path: '/hatask/card-maker',

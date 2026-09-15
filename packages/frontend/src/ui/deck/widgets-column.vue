@@ -8,6 +8,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 	<template #header><i class="ti ti-apps" style="margin-right: 8px;"></i>{{ column.name || i18n.ts._deck._columns[props.column.type] }}</template>
 
 	<div :class="$style.root">
+		<MkWidgetControls :editing="edit" @edit="func"/>
 		<div v-if="!(column.widgets && column.widgets.length > 0) && !edit" :class="$style.intro">{{ i18n.ts._deck.widgetsIntroduction }}</div>
 		<XWidgets :edit="edit" :widgets="column.widgets ?? []" @addWidget="addWidget" @removeWidget="removeWidget" @updateWidget="updateWidget" @updateWidgets="updateWidgets" @exit="edit = false"/>
 	</div>
@@ -20,6 +21,7 @@ import XColumn from './column.vue';
 import type { Column } from '@/deck.js';
 import { addColumnWidget, removeColumnWidget, setColumnWidgets, updateColumnWidget } from '@/deck.js';
 import XWidgets from '@/components/MkWidgets.vue';
+import MkWidgetControls from '@/components/MkWidgetControls.vue';
 import { i18n } from '@/i18n.js';
 
 const props = defineProps<{

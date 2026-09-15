@@ -779,10 +779,6 @@ export const PREF_DEF = definePreferences({
 	hideMutedUserReactions: {
 		default: false,
 	},
-	// 旗鯖fork(#31): ミュートリアクション非表示の「改善された」案内をユーザーごとに1回出したか。
-	'hata.mutedReactionsNoticeShown': {
-		default: false,
-	},
 	// 外部サーバー連携（旗鯖独自機能）
 	'external.enabled': {
 		default: false,
@@ -904,22 +900,9 @@ export const PREF_DEF = definePreferences({
 	'simpleUi.sidebarCollapsed': {
 		default: false,
 	},
-	// 旗鯖fork: デッキ表示が追加された旨のお知らせ吹き出しを表示済みか(端末ローカル)。
-	'simpleUi.deckAnnounceShown': {
-		default: false,
-	},
-	// 旗鯖fork: サイドメニュー縮小/拡大ボタンのお知らせ吹き出しを表示済みか(端末ローカル)。
-	'simpleUi.collapseAnnounceShown': {
-		default: false,
-	},
 	// 旗鯖fork: ユーザーページの宴成功バッジ初回アナウンス吹き出しを表示済みか
 	// (preferを使うとマルチデバイス同期されるため、媒体問わず通算1回で恒久 dismiss)。
 	'simpleUi.utageBadgeTipShown': {
-		default: false,
-	},
-	// 旗鯖fork: 「もっと!から HataFeed と地震・津波情報が確認できるようになりました」
-	// 案内吹き出しを表示済みか (prefer 同期で別端末/シークレットでも通算1回で恒久 dismiss)。
-	'simpleUi.hatafeedIntroShown': {
 		default: false,
 	},
 	// 旗鯖fork: 上部メニューモード。ONでサイドバーの代わりに画面上部へ

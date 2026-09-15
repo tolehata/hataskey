@@ -12,12 +12,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 	appear
 	@afterLeave="emit('closed')"
 >
-	<div v-if="showing" ref="rootEl" data-mk-window :class="[$style.root, { [$style.maximized]: maximized }]">
+	<div v-if="showing" ref="rootEl" data-mk-window :data-center-title="centerTitle" :data-content-height="autoHeight" :data-auto-height="autoHeight && !resized && !maximized && !minimized" :class="[$style.root, { [$style.maximized]: maximized }]">
 		<div :class="$style.body" class="_shadow" @mousedown="onBodyMousedown" @keydown="onKeydown">
-			<div :class="[$style.header, { [$style.mini]: mini }]" @contextmenu.prevent.stop="onContextmenu">
+			<div :class="[$style.header, { [$style.mini]: mini }]" :data-center-title="centerTitle" @contextmenu.prevent.stop="onContextmenu">
 				<span :class="$style.headerLeft">
 					<template v-if="!minimized">
-						<button v-for="button in buttonsLeft" v-tooltip="button.title" class="_button" :class="[$style.headerButton, { [$style.highlighted]: button.highlighted }]" @click="button.onClick"><i :class="button.icon"></i></button>
+						<button v-for="button in buttonsLeft" v-tooltip="button.title" :aria-label="button.title" class="_button" :class="[$style.headerButton, { [$style.highlighted]: button.highlighted }]" @click="button.onClick"><i :class="button.icon"></i></button>
 					</template>
 				</span>
 				<span :class="$style.headerTitle" @mousedown.prevent="onHeaderMousedown" @touchstart.prevent="onHeaderMousedown">
@@ -25,10 +25,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</span>
 				<span :class="$style.headerRight">
 					<template v-if="!minimized">
-						<button v-for="button in buttonsRight" v-tooltip="button.title" class="_button" :class="[$style.headerButton, { [$style.highlighted]: button.highlighted }]" @click="button.onClick"><i :class="button.icon"></i></button>
+						<button v-for="button in buttonsRight" v-tooltip="button.title" :aria-label="button.title" class="_button" :class="[$style.headerButton, { [$style.highlighted]: button.highlighted }]" @click="button.onClick"><i :class="button.icon"></i></button>
 					</template>
 					<button v-if="canResize && minimized" v-tooltip="i18n.ts.windowRestore" class="_button" :class="$style.headerButton" @click="unMinimize()"><i class="ti ti-maximize"></i></button>
-					<button v-else-if="canResize && !maximized" v-tooltip="i18n.ts.windowMinimize" class="_button" :class="$style.headerButton" @click="minimize()"><i class="ti ti-minimize"></i></button>
+					<button v-else-if="canResize && !maximized" v-tooltip="i18n.ts.windowMinimize" data-window-minimize class="_button" :class="$style.headerButton" @click="minimize()"><i class="ti ti-minimize"></i></button>
 					<button v-if="canResize && maximized" v-tooltip="i18n.ts.windowRestore" class="_button" :class="$style.headerButton" @click="unMaximize()"><i class="ti ti-picture-in-picture"></i></button>
 					<button v-else-if="canResize && !maximized && !minimized" v-tooltip="i18n.ts.windowMaximize" class="_button" :class="$style.headerButton" @click="maximize()"><i class="ti ti-rectangle"></i></button>
 					<button v-if="closeButton" v-tooltip="i18n.ts.close" class="_button" :class="$style.headerButton" @click="close()"><i class="ti ti-x"></i></button>
@@ -89,8 +89,10 @@ function dragClear(fn) {
 const props = withDefaults(defineProps<{
 	initialWidth: number;
 	initialHeight: number | null;
+	autoHeight?: boolean;
 	canResize?: boolean;
 	closeButton?: boolean;
+	centerTitle?: boolean;
 	mini?: boolean;
 	front?: boolean;
 	initialMaximized?: boolean;
@@ -101,8 +103,10 @@ const props = withDefaults(defineProps<{
 }>(), {
 	initialWidth: 400,
 	initialHeight: null,
+	autoHeight: false,
 	canResize: false,
 	closeButton: true,
+	centerTitle: false,
 	mini: false,
 	front: false,
 	initialMaximized: false,
@@ -123,6 +127,8 @@ const showing = ref(true);
 let beforeClickedAt = 0;
 const maximized = ref(false);
 const minimized = ref(false);
+const resized = ref(false);
+let contentObserver: ResizeObserver | undefined;
 let unResizedTop = '';
 let unResizedLeft = '';
 let unResizedWidth = '';
@@ -186,7 +192,8 @@ function minimize() {
 	unResizedWidth = rootEl.value.style.width;
 	unResizedHeight = rootEl.value.style.height;
 	rootEl.value.style.width = minWidth + 'px';
-	rootEl.value.style.height = props.mini ? '32px' : '39px';
+	const headerHeight = props.mini ? 32 : (parseFloat(window.getComputedStyle(rootEl.value).getPropertyValue('--MI-window-header-height')) || 39);
+	rootEl.value.style.height = `${headerHeight}px`;
 }
 
 function unMinimize() {
@@ -428,6 +435,7 @@ function onBottomLeftHandleMousedown(evt: MouseEvent | TouchEvent) {
 
 // 高さを適用
 function applyTransformHeight(height) {
+	resized.value = true;
 	if (height > window.innerHeight) height = window.innerHeight;
 	if (rootEl.value) rootEl.value.style.height = height + 'px';
 }
@@ -477,11 +485,16 @@ onMounted(() => {
 
 	// 旗鯖fork: 全画面で開くよう指定された場合は最大化状態で起動する(Hatady 等の全画面アプリ用)。
 	if (props.initialMaximized) maximize();
+	if (props.autoHeight && rootEl.value) {
+		contentObserver = new ResizeObserver(onBrowserResize);
+		contentObserver.observe(rootEl.value);
+	}
 
 	window.addEventListener('resize', onBrowserResize);
 });
 
 onBeforeUnmount(() => {
+	contentObserver?.disconnect();
 	window.removeEventListener('resize', onBrowserResize);
 });
 
@@ -529,7 +542,7 @@ defineExpose({
 }
 
 .header {
-	--height: 39px;
+	--height: var(--MI-window-header-height, 39px);
 
 	display: flex;
 	position: relative;
@@ -580,12 +593,33 @@ defineExpose({
 	cursor: move;
 }
 
+.header[data-center-title='true'] {
+	display: grid;
+	grid-template-columns: 132px minmax(0, 1fr) 132px;
+	> .headerLeft { margin: 0; display: flex; justify-content: flex-start; }
+	> .headerRight { display: flex; justify-content: flex-end; }
+	> .headerTitle { text-align: center; }
+	.headerButton { width: 44px; flex-shrink: 0; }
+}
+
+.root[data-center-title='true'] { container: centered-window / inline-size; }
+@container centered-window (max-width: 460px) {
+	.header[data-center-title='true'] { grid-template-columns: 88px minmax(0, 1fr) 88px; }
+	[data-window-minimize] { display: none; }
+}
+
 .content {
 	flex: 1;
 	overflow: auto;
 	background: var(--MI_THEME-panel);
 	container-type: size;
 }
+
+// Opt-in for content-sized forms. Existing fixed/resizable windows keep their
+// size container; these callers need their intrinsic content height instead.
+.root[data-content-height='true'] .content { container-type: inline-size; min-height: 0; }
+.root[data-auto-height='true'] > .body { height: auto; max-height: calc(100dvh - 32px); }
+.root[data-auto-height='true'] .content { flex: 0 1 auto; }
 
 $handleSize: 8px;
 

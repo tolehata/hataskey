@@ -99,6 +99,22 @@ SPDX-License-Identifier: AGPL-3.0-only
 					</div>
 				</div>
 				<MkNote v-else :class="$style.note" :note="note" :withHardMute="true" :data-scroll-anchor="note.id"/>
+				<MkLtlEmojiVote
+					v-if="emojiVoteRound && emojiVoteAnchor === note.id"
+					:key="`emoji-vote:${emojiVoteRound.id}`"
+					:class="$style.emojiVoteRow"
+					:round="emojiVoteRound"
+					:choice="emojiVoteChoice"
+					:now="emojiVoteNow"
+					:phase="emojiVotePhase"
+					:active="emojiVoteActive"
+					:effectTarget="props.emojiVoteEffectTarget"
+					:submitting="emojiVoteSubmitting"
+					:voteError="emojiVoteError"
+					:canVote="!!$i"
+					:claimEffect="claimEmojiVoteEffect"
+					@vote="voteEmoji"
+				/>
 			</template>
 		</component>
 		<button v-show="paginator.canFetchOlder.value" key="_more_" v-appear="prefer.s.enableInfiniteScroll ? paginator.fetchOlder : null" :disabled="paginator.fetchingOlder.value" class="_button" :class="$style.more" @click="paginator.fetchOlder">
@@ -129,6 +145,9 @@ import { misskeyApi } from '@/utility/misskey-api.js';
 import * as os from '@/os.js';
 import { store } from '@/store.js';
 import MkNote from '@/components/MkNote.vue';
+import MkLtlEmojiVote from '@/components/MkLtlEmojiVote.vue';
+import { useLtlEmojiVote } from '@/utility/ltl-emoji-vote.js';
+import { getLtlEmojiVoteAnchor } from '@/utility/ltl-emoji-vote-anchor.js';
 import MkButton from '@/components/MkButton.vue';
 import { i18n } from '@/i18n.js';
 import { globalEvents, useGlobalEvent } from '@/events.js';
@@ -213,6 +232,9 @@ const props = withDefaults(defineProps<{
 	/** 未認証トップのプレビュー用。初回の一過性エラーは自動再試行し、ページ全体をエラー表示にしない。 */
 	visitorMode?: boolean;
 	newNotesNavbarKey?: string;
+	/** Only explicit Hataskey LTL hosts enable the shared joke event. */
+	emojiVoteActive?: boolean;
+	emojiVoteEffectTarget?: HTMLElement | null;
 }>(), {
 	withRenotes: true,
 	withReplies: false,
@@ -223,6 +245,8 @@ const props = withDefaults(defineProps<{
 	customSound: null,
 	glassBg: false,
 	visitorMode: false,
+	emojiVoteActive: false,
+	emojiVoteEffectTarget: null,
 });
 
 provide('inTimeline', true);
@@ -490,6 +514,26 @@ const visibleItems = computed<Misskey.entities.Note[]>(() =>
 	paginator.items.value.filter(n => !isHiddenBot(n)),
 );
 
+const emojiVoteActive = computed(() => isHatasaba && props.src === 'local' && props.emojiVoteActive);
+const {
+	round: emojiVoteRound, choice: emojiVoteChoice, now: emojiVoteNow, phase: emojiVotePhase,
+	submitting: emojiVoteSubmitting, voteError: emojiVoteError,
+	refresh: refreshEmojiVote, vote: voteEmoji, claimEffect: claimEmojiVoteEffect,
+} = useLtlEmojiVote(emojiVoteActive);
+const emojiVoteAnchor = computed(() => emojiVoteActive.value && emojiVotePhase.value !== 'idle'
+	? getLtlEmojiVoteAnchor(visibleItems.value, emojiVoteRound.value?.noteId, $i, {
+		mutedWords: [...($i?.mutedWords ?? []), ...($i?.hardMutedWords ?? [])],
+		withSensitive: props.withSensitive,
+	}) : null);
+
+// Also catches notes received by REST polling. The active round determines its anchor;
+// posting the trigger again during a round must not clear or replace that round.
+watch(() => emojiVoteActive.value
+	? visibleItems.value.filter(note => note.text?.trim() === '絵文字を選ぶぞ').map(note => note.id).join(',')
+	: '', (ids) => {
+	if (ids) void refreshEmojiVote(ids.split(',')[0]);
+});
+
 function shouldInsertAd(note: Misskey.entities.Note): boolean {
 	return '_shouldInsertAd_' in note && note._shouldInsertAd_ === true;
 }
@@ -677,6 +721,9 @@ const newNotesInNavbar = useHataskeyTimelineNewNotes(() => props.newNotesNavbarK
 });
 
 function prepend(note: Misskey.entities.Note & MisskeyEntity) {
+	// キューに入る投稿や、投稿応答で先に表示済みの同じノートも開始の合図として扱う。
+	if (emojiVoteActive.value && note.text?.trim() === '絵文字を選ぶぞ') void refreshEmojiVote(note.id);
+
 	// ランダムモードの場合、ノート追加時にアニメーション方向を更新
 	updateAnimationDirection();
 	updateRandomDir(); // 旗鯖: ランダム方向更新
@@ -993,6 +1040,10 @@ defineExpose({
 			border-radius: var(--MI-radius);
 		}
 	}
+}
+
+.emojiVoteRow {
+	margin-inline: 12px;
 }
 
 /*

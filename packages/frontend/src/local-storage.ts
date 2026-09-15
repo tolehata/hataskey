@@ -61,16 +61,17 @@ export type Keys = (
 	'hatasabaLastAntennaId' | // 旗鯖fork: Hataskey UIで最後に開いたアンテナ(端末ごと)
 	'hatasabaDeckIgnoreWidth' | // 旗鯖fork(#6): 画面幅に関係なくデッキ表示を強制する端末ローカル設定(プロファイル非同期)
 	'hatasabaTabSwipeEnabled' | // 旗鯖fork: Hataskey UIの左右スワイプによるタブ移動(端末ローカル・既定ON)
+	'hataRightWidgetsCollapsed' | // 右ウィジェットバーの開閉。端末ローカル。
 	'hataFoldableLayout' | // 旗鯖fork: 横開き折りたたみ端末向けレイアウト(auto/on/off・端末ローカル・プロファイル非同期)
 	'hataHideMutedReactions' | // 旗鯖fork(#31): ミュートユーザーのリアクションをチップから隠す端末ローカル設定
 	'hataGlassUi' | // 旗鯖fork(ベータ): Hataskey UI 2(グラスモーフィズム刷新)を有効化する端末ローカル設定
 	'hataGlassUiBubble' | // 旗鯖fork(ベータ): Hataskey UI 2 でノートの吹き出しデザイン(枠+＜口)を表示する端末ローカル設定
+	'hatafeedTheme' | // HataFeed の表示テーマ。端末ローカル。
 	'hatadyTheme' | // 旗鯖fork(Hatady): 表示テーマ(paper/espresso/hataskey)。端末ローカル(端末ごとに好みのテーマを持てる)
 	'hatadyLang' | // 旗鯖fork(Hatady): 表示言語(ja/en/auto)。端末ローカル
 	'hataEarthquakePref' | // 旗鯖fork(#34): 地震情報のお住いの都道府県(端末ローカルのみ・サーバー非送信)
 	'hataEarthquakePollSec' | // 旗鯖fork(#34): 地震情報の取得間隔(秒・端末ローカル)
 	'hata_muted_reactions_local_migrated' | // 旗鯖fork(#31): 旧設定→端末ローカルへの移行済みフラグ
-	'hata_muted_reactions_notice_shown' | // 旗鯖fork(#31): 改善案内ダイアログを表示済みか(端末ごと1回)
 	'hataWhatsNewShownVersion' | // 旗鯖fork: 「今回の更新内容」を出した旗鯖の版(端末ごと。版が上がると再表示)
 	'hata_hask_tiles_v1_migrated' | // 旗鯖fork(#36): Haskホームの新タイル(feedbackNotif/earthquake)を既存ユーザーに追加済みか
 	'hata_sidebar_v7_migrated' | // 旗鯖fork: サイドバーへ「キャッシュをクリア」を追加済みか
@@ -95,8 +96,7 @@ export type Keys = (
 	`channelLastReadedAt:${string}` |
 	`idbfallback::${string}` |
 	'neverShowNoteEditInfo' |
-	'showPushNotificationDialog' |
-	'hatafeedIntroShown' // 旗鯖fork: HataFeed 新登場の案内吹き出しを表示済みか(端末ごと)
+	'showPushNotificationDialog'
 	| `hataFormDrafts:${string}` // 旗鯖fork: HataFeed/Hatady 独自フォームの端末・アカウント別下書き
 	| `hataskAkatsukiUsage:${string}` // 暁ホームのツール利用頻度（端末・アカウント別）
 );

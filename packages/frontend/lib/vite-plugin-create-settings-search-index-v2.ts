@@ -904,6 +904,8 @@ function explicitStorageDispositionsV2(): ReadonlyMap<string, ExplicitStorageKey
 		'旧端末UI保存値。現行の正本または互換経路へ置換済み', ['src/local-storage.ts', 'src/pages/settings/preferences.vue']);
 	add('local', keys('hataPostDelayEnabled hataPostDelaySeconds hataSideStudio'), 'runtime',
 		'独立feature内の実行時設定で、settings catalog target外', ['src/local-storage.ts']);
+	add('local', ['hataRightWidgetsCollapsed'], 'runtime',
+		'右ウィジェットバーの開閉操作が更新する端末ローカルの表示状態', ['src/utility/hatasaba-device-prefs.ts']);
 	add('local', ['hataskAkatsukiUsage:' + dynamicKey], 'cache',
 		'暁ホームの優先表示に使う端末・アカウント別のツール利用履歴で、設定項目ではない', ['src/utility/hatask-akatsuki-usage.ts']);
 	add('local', [
@@ -1224,6 +1226,10 @@ const TRANSITIVE_SETTINGS_COMPONENT_DISPOSITIONS_V2: Readonly<Record<string, Set
 		disposition: 'nonsetting',
 		reason: 'HataFeedExportWindowは書き出し範囲・形式を一回のexport実行のために選ぶworkflowで、設定値・到達先を永続化しない',
 	},
+	'src/components/HataFeedProjectSettings.vue': {
+		disposition: 'nonsetting',
+		reason: 'HataFeedProjectSettingsは実行時に選んだ共有プロジェクトの作成・編集・停止・削除と書き出しを行うデータ管理workflow。表示設定値を所有せず、検索からプロジェクトの選択や更新を開始しない',
+	},
 	'src/components/HatadyExportDialog.vue': {
 		disposition: 'nonsetting',
 		reason: 'HatadyExportDialogは書き出し対象・期間を一回のexport実行のために選ぶworkflowで、設定値・到達先を永続化しない',
@@ -1235,6 +1241,14 @@ const TRANSITIVE_SETTINGS_COMPONENT_DISPOSITIONS_V2: Readonly<Record<string, Set
 	'src/components/HatadyTutorial.vue': {
 		disposition: 'nonsetting',
 		reason: 'HatadyTutorialは初回案内を進める一時workflowであり、検索から開始・完了状態を変更しない',
+	},
+	'src/components/HataFeedTutorial.vue': {
+		disposition: 'nonsetting',
+		reason: 'HataFeedTutorialは使い方と更新内容を読む一時workflow。設定からの再表示は確認状況や実データを変更しない',
+	},
+	'src/components/HyTutorial.vue': {
+		disposition: 'parent-contained',
+		reason: 'HyTutorialはHatadyとHataFeedの案内にページ送りと終了操作を提供する共通表示。設定値や独立した保存先を持たない',
 	},
 	'src/components/MkExternalReactionPicker.vue': {
 		disposition: 'parent-contained',
@@ -1974,6 +1988,18 @@ function canonicalizeTemplate(template: string, aliases: ReadonlyMap<string, str
 	});
 }
 
+/** A source-owned conditional label has two audited, translated variants.
+ * Retain both without evaluating the selected theme or trusting arbitrary
+ * computed strings as settings-search copy. */
+function sourceControlLabelTemplateV2(sourceFile: string, node: ElementNode, template: string): string {
+	if (sourceFile === 'src/pages/HataskSettings.vue'
+		&& normalizedExpression(eventHandlerExpression(node, 'click')) === "toggle('autoTheme')"
+		&& template === '${autoAppearanceLabel}') {
+		return '${i18n.ts._hata._hatask._settings.autoAppearanceTheme} / ${i18n.ts._hata._hatask._settings.autoAppearance}';
+	}
+	return template;
+}
+
 function safeI18nKeys(template: string): string[] | null {
 	const expressions = [...template.matchAll(/\$\{([^}]+)\}/gu)].map(([, expression]) => expression.trim());
 	if (!expressions.every(expression => I18N_PROPERTY_EXPRESSION.test(expression))) return null;
@@ -2280,6 +2306,15 @@ const NON_PERSISTENT_FORM_CONTROL_EXCLUSIONS_V2: Readonly<Record<string, Readonl
  * or the exact local/profile key used by that control.
  */
 const EXPLICIT_CONTROL_STORAGE_BINDINGS_V2: Readonly<Record<string, Readonly<Record<string, ExplicitControlStorageBindingV2>>>> = {
+	'src/components/HataFeedDisplaySettings.vue': {
+		'click:choose(theme.value)': { refs: [{ kind: 'local', key: 'hatafeedTheme' }], evidence: 'choose() は setHataFeedTheme を通じて端末の hatafeedTheme を即時更新する' },
+	},
+	'src/components/HatadyDisplaySettings.vue': {
+		// The carousel keeps the same buffered theme value as the former inline
+		// editTheme assignment. Index its option row once; arrows remain alternate
+		// carousel affordances represented by the static display-settings group.
+		'click:choose(opt.value)': { refs: [{ kind: 'registry', scope: ['client', 'hatady'], key: 'display' }], evidence: 'choose() は editTheme を編集し、save() が saveHatadyDisplay で client/hatady:display へ明示保存する' },
+	},
 	'src/pages/settings/index.vue': {
 		'click:enableAutoBackup': {
 			refs: [{ kind: 'pizzax', store: 'base', key: 'enablePreferencesAutoCloudBackup', scope: 'device' }],
@@ -2672,7 +2707,7 @@ export function collectSettingsControlDescriptorsV2(
 				// label that can actually be displayed by the redesigned search UI.
 				const fallbackLabelTemplate = nonEmptyFallbackCandidates.find(value => safeI18nKeys(value) != null) ?? nonEmptyFallbackCandidates[0];
 				const inheritedLabel = !ownLabelTemplate && fallbackLabelTemplate != null;
-				const labelTemplate = canonicalizeTemplate(ownLabelTemplate || fallbackLabelTemplate || '', aliases);
+				const labelTemplate = sourceControlLabelTemplateV2(sourceFile, node, canonicalizeTemplate(ownLabelTemplate || fallbackLabelTemplate || '', aliases));
 				const captionTemplate = canonicalizeTemplate(namedSlotTemplate(node, 'caption'), aliases);
 				const label = literalPart(labelTemplate);
 				const labelI18nKeys = safeI18nKeys(labelTemplate);
@@ -2985,7 +3020,11 @@ const STATIC_REACHABILITY_GROUP_SPECS_V2: readonly StaticReachabilityGroupSpecV2
 		labelExpression: 'Hatady表示設定',
 		aliases: ['Hatady', 'テーマ', '表示設定'],
 		sourceSemanticGroupId: 'settings.semantic.feature.hatady-display-settings',
-		matches: node => isSettingsWindowRoot(node, 'MkWindow'),
+		// Native content survives both popup and embedded HyDialog rendering.
+		// A component-root attribute could otherwise land on MkModal's teleport
+		// wrapper instead of a focusable element in the settings surface.
+		matches: node => isSettingsWindowRoot(node, 'MkWindow')
+			|| (node.tag === 'div' && staticAttributeValue(node, 'data-settings-search-group-id') === 'settings.group.hatady-display-settings'),
 	},
 ];
 
@@ -3270,6 +3309,7 @@ const EXPLICIT_SOURCE_SEMANTIC_GROUPS: Readonly<Record<string, string>> = {
 	// list of named features -- it must not become a route/category catch-all.
 	'src/components/HatacordingUiSettings.vue': 'settings.semantic.feature.hatacording-ui-preferences',
 	'src/components/HatadyDisplaySettings.vue': 'settings.semantic.feature.hatady-display-settings',
+	'src/components/HataFeedDisplaySettings.vue': 'settings.semantic.feature.hatafeed-display-settings',
 	// The permanent surface is a named, user-visible feature area. Its root
 	// category landing and the three child groups are genuine peers, unlike a
 	// route-wide fallback, so it supplies relation evidence for the canonical
@@ -3461,10 +3501,15 @@ function staticGroupMetadataOverrideV2(
  * default and make the device-only filter lie.
  */
 const STATIC_GROUP_METADATA_OVERRIDES_V2: Readonly<Record<string, StaticGroupMetadataOverrideV2>> = {
-	'settings.group.hatady-display-settings': staticGroupMetadataOverrideV2(
+	'settings.group.hatafeed-theme': staticGroupMetadataOverrideV2(
 		'device', 'immediate', 'all', 'hatasaba', 'all',
-		'Hatady表示設定のテーマ・言語・同期を既存Hatady registryへ保存する popup host',
-		[{ kind: 'registry', scope: ['client', 'hatady'], key: 'display' }],
+		'HataFeedのテーマは setHataFeedTheme が miLocalStorage の hatafeedTheme へ即時保存する',
+		[{ kind: 'local', key: 'hatafeedTheme' }],
+	),
+	'settings.group.hatady-display-settings': staticGroupMetadataOverrideV2(
+		'account', 'buffered', 'all', 'hatasaba', 'all',
+		'Hatadyのテーマを明示保存する設定グループ。client/hatady:display が正本で、hatadyTheme は初期表示用の端末キャッシュ',
+		[{ kind: 'registry', scope: ['client', 'hatady'], key: 'display' }, { kind: 'local', key: 'hatadyTheme' }],
 	),
 	// This is a category landing rather than a value itself. Its children are
 	// intentionally mixed device/profile controls, so it cannot inherit one
@@ -4033,7 +4078,7 @@ export function collectSettingsSearchDescriptorsV2(
 				destructive: false,
 			} satisfies SettingsControlSearchDescriptorV2;
 		});
-	const groupByKey = new Map(relevantHosts.map((host, index) => [host.key, groups[index]! ]));
+	const groupByKey = new Map(relevantHosts.map((host, index) => [host.key, groups[index]!]));
 	for (const control of controls) {
 		const item = rawByLocation.get(`${control.sourceFile}:${control.sourceLine}`);
 		const host = item?.staticGroupKey == null ? undefined : hostsByKey.get(item.staticGroupKey);

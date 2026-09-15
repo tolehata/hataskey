@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { createApp, defineComponent, h, nextTick } from 'vue';
+import { createApp, defineComponent, h } from 'vue';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 
 const fixture = vi.hoisted(() => ({ leaves: { value: false, __v_isRef: true } }));
@@ -24,6 +24,8 @@ vi.mock('@/i18n.js', () => ({ i18n: { ts: { _hata: {
 		_visual: { hatafeedLeaves: '若葉を舞わせる', hatafeedLeavesCaption: '背景に表示します' },
 	},
 } } } }));
+
+vi.mock('@/components/HataFeedDisplaySettings.vue', () => ({ default: defineComponent({ props: { embedded: Boolean }, template: '<section data-hatafeed-display :data-embedded="embedded" />' }) }));
 
 import HataSNSCordSettingsSurface from './HataSNSCordSettingsSurface.vue';
 import HataFeedSettingsSurface from './HataFeedSettingsSurface.vue';
@@ -51,12 +53,8 @@ describe('独立Hataskey設定面', () => {
 		expect(container.querySelector('[data-hatacording-ui-settings]')?.textContent).toContain('account-1');
 	});
 
-	test('HataFeed面は既存のhatafeed.leaves preferenceを即時反映する', async () => {
+	test('HataFeed面は新しい表示設定を埋め込みモードで開く', () => {
 		const container = mount(HataFeedSettingsSurface);
-		expect(container.querySelector('.settingsBrand')?.textContent).toBe('HataFeed');
-		expect(container.textContent).toContain('若葉を舞わせる');
-		(container.querySelector('[data-leaves-switch]') as HTMLButtonElement).click();
-		await nextTick();
-		expect(fixture.leaves.value).toBe(true);
+		expect(container.querySelector('[data-hatafeed-display]')?.getAttribute('data-embedded')).toBe('true');
 	});
 });

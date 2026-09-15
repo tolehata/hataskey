@@ -47,6 +47,7 @@ import { lookupUser, lookupUserByEmail, lookupFile } from '@/utility/admin-looku
 import { definePage, provideMetadataReceiver, provideReactiveMetadata } from '@/page.js';
 import { useRouter } from '@/router.js';
 import { genSearchIndexes } from '@/utility/inapp-search.js';
+import { iAmAdmin } from '@/i.js';
 
 const searchIndex = await import('search-index:admin').then(({ searchIndexes }) => genSearchIndexes(searchIndexes));
 
@@ -271,7 +272,12 @@ const menuDef = computed<SuperMenuDef[]>(() => [{
 		text: i18n.ts._hata._adminCommon.consentManagement,
 		to: '/admin/consent-manager',
 		active: currentPage.value?.route.name === 'consent-manager',
-	}],
+	}, ...(iAmAdmin ? [{
+		icon: 'ti ti-heart-handshake',
+		text: '支援管理',
+		to: '/admin/support',
+		active: currentPage.value?.route.name === 'support',
+	}] : [])],
 }]);
 
 onMounted(() => {

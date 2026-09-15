@@ -51,7 +51,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 	<div v-if="!thin_ && !narrow && (actions && actions.length > 0) && hideTitle && ['index'].includes(<string>router.currentRoute.value.name)" :class="$style.buttonsRight"/>
 	<div v-if="(!thin_ && narrow && !hideTitle) || (actions && actions.length > 0)" :class="$style.buttonsRight">
 		<template v-for="action in actions">
-			<button v-tooltip.noDelay="action.text" class="_button" :class="[$style.button, { [$style.highlighted]: action.highlighted }]" @click.stop="action.handler" @touchstart.passive="preventDrag"><i :class="action.icon"></i></button>
+			<button :id="action.id" v-tooltip.noDelay="action.text" class="_button" :class="[$style.button, { [$style.highlighted]: action.highlighted }]" :aria-label="action.text" :aria-controls="action.controls" :aria-expanded="action.expanded" @click.stop="action.handler" @touchstart.passive="preventDrag"><i :class="action.icon" aria-hidden="true"></i></button>
 		</template>
 	</div>
 	<div v-else-if="!thin_ && !canBack && !(actions && actions.length > 0)" :class="$style.buttonsRight"/>
@@ -323,6 +323,15 @@ onUnmounted(() => {
 .buttonsLeft {
 	composes: buttons;
 	margin: 0 var(--MI-margin) 0 0;
+}
+
+.button[aria-expanded] {
+	min-width: 44px;
+	min-height: 44px;
+}
+
+.root:has(.button[aria-expanded]) {
+	min-height: 44px;
 }
 
 .buttonsRight {

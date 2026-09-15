@@ -217,7 +217,7 @@ export const navbarItemDef = reactive({
 				type: 'link',
 				text: i18n.ts._hata._common.featureGuide,
 				icon: 'ti ti-book',
-				to: '/hata-docs',
+				to: '/hatask/intro',
 			}, {
 				type: 'link',
 				text: i18n.ts._mfc.cheatSheet,

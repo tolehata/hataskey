@@ -23,6 +23,7 @@ import { computed, onMounted } from 'vue';
 import { useWidgetPropsManager } from './widget.js';
 import type { WidgetComponentEmits, WidgetComponentExpose, WidgetComponentProps } from './widget.js';
 import type { FormWithDefault, GetFormResultType } from '@/utility/form.js';
+import type { NotificationType } from '@/utility/notification-filter.js';
 import MkContainer from '@/components/MkContainer.vue';
 import MkStreamingNotificationsTimeline from '@/components/MkStreamingNotificationsTimeline.vue';
 import * as os from '@/os.js';
@@ -70,10 +71,11 @@ const { widgetProps, configure, save } = useWidgetPropsManager(name,
 	emit,
 );
 
-const resolvedExcludeTypes = computed(() => resolveNotificationFilter(
-	widgetProps.excludeTypes,
-	widgetProps.notificationFilterKnownTypes,
-).excludeTypes);
+const resolvedExcludeTypes = computed<NotificationType[]>((previous) => {
+	const resolved = resolveNotificationFilter(widgetProps.excludeTypes, widgetProps.notificationFilterKnownTypes).excludeTypes;
+	// 設定同期で同じ配列を受け取っても、一覧を再取得してスクロール位置を失わない。
+	return previous && deepEqual(previous, resolved) ? previous : resolved;
+});
 const hasConfiguredFilter = computed(() => hasConfiguredNotificationFilter(
 	widgetProps.excludeTypes,
 	widgetProps.notificationFilterKnownTypes,

@@ -118,7 +118,7 @@ import { isSafeMode } from '@@/js/config.js';
 import { swInject } from './sw-inject.js';
 import XNotification from './notification.vue';
 import MkHataskeyNotificationToasts from '@/components/MkHataskeyNotificationToasts.vue';
-import { hataskeyNotificationToastsKey } from '@/utility/hataskey-notification-toast.js';
+import { getNotificationPageContext, hataskeyNotificationToastsKey } from '@/utility/hataskey-notification-toast.js';
 import { popups } from '@/os.js';
 import { unisonReload } from '@/utility/unison-reload.js';
 import { miLocalStorage } from '@/local-storage.js';
@@ -169,8 +169,9 @@ function onNotification(notification: Misskey.entities.Notification, isClient = 
 
 		// 旗鯖fork: マスコットが通知を伝える設定のときは標準トーストを出さない
 		if (!shouldSuppressStandardToast() && !shouldSuppressNotificationToasts()) {
-			if (hataskeyToasts) {
-				hataskeyToasts.enqueue(notification, 'local');
+			const toastContext = getNotificationPageContext() ?? hataskeyToasts;
+			if (toastContext) {
+				toastContext.enqueue(notification, 'local');
 			} else {
 				notifications.value.unshift(notification);
 				window.setTimeout(() => {

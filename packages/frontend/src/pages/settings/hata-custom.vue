@@ -323,13 +323,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</MkSwitch>
 			</FormSection>
 			<FormSection>
-				<template #label>HataFeed</template>
-				<MkSwitch v-model="hatafeedLeaves">
-					<template #label>{{ visualCopy.hatafeedLeaves }}</template>
-					<template #caption>{{ visualCopy.hatafeedLeavesCaption }}</template>
-				</MkSwitch>
-			</FormSection>
-			<FormSection>
 				<template #label>{{ visualCopy.widgets }}</template>
 				<MkSwitch v-model="widgetBorder">
 					<template #label>{{ visualCopy.widgetBorder }}</template>
@@ -823,7 +816,6 @@ const foldableLayout = computed({
 
 // 旗鯖fork: 天気エフェクト(weatherEffect)
 const weatherEffectEnabled = prefer.model('weatherEffect.enabled');
-const hatafeedLeaves = prefer.model('hatafeed.leaves');
 // 旗鯖fork: 投稿範囲ごとの投稿フォーム枠色
 const pfvbEnabled = prefer.model('postFormVisibilityBorder.enabled');
 const pfvbWidth = prefer.model('postFormVisibilityBorder.width');

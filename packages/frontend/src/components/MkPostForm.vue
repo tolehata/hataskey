@@ -141,7 +141,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<!-- 旗鯖fork: 絵文字挿入ボタンを footerRight から footerLeft の末尾に移動。
 			     従来は他ボタンから離れた右端に表示されていたため、他の投稿フォームボタン群と
 			     並べて表示してほしいというユーザー要望に対応。 -->
-			<button v-tooltip="i18n.ts.emoji" class="_button" :class="$style.footerButton" @click="playHataIconMotion($event, 'emoji-pop'); insertEmoji($event)"><i class="ti ti-mood-happy"></i></button>
+			<button v-tooltip="i18n.ts.emoji" class="_button" :class="$style.footerButton" :aria-label="i18n.ts.emoji" @click="playHataIconMotion($event, 'emoji-pop'); insertEmoji($event)"><i class="ti ti-mood-happy" aria-hidden="true"></i></button>
 		</div>
 	</footer>
 	<datalist id="hashtags">
@@ -256,6 +256,7 @@ function waitForSubmitMotion(duration: number): Promise<void> {
 	if (!prefer.s.animation || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return Promise.resolve();
 	return new Promise(resolve => window.setTimeout(resolve, duration));
 }
+
 const text = ref(props.initialText ?? '');
 const files = shallowRef(props.initialFiles ?? ([] as Misskey.entities.DriveFile[]));
 const poll = ref<PollEditorModelValue | null>(null);
@@ -641,10 +642,15 @@ function chooseFileFromDrive(ev: MouseEvent) {
 }
 
 function openDrawingTool() {
-	const { dispose } = os.popup(MkDrawingTool, {}, {
-		done: async (file: File) => {
-			uploader.addFiles([file]);
-			await uploader.upload();
+	if (props.mock) return;
+	const { dispose } = os.popup(MkDrawingTool, { canAttach: true }, {
+		done: (file: Misskey.entities.DriveFile) => {
+			if (files.value.some(item => item.id === file.id)) return;
+			if (files.value.length >= 16) {
+				void os.alert({ type: 'warning', text: i18n.ts._hata._drawingTool.attachmentLimit });
+				return;
+			}
+			files.value = [...files.value, file];
 		},
 		closed: () => dispose(),
 	});
@@ -2356,18 +2362,13 @@ html[data-color-scheme=light] .preview {
 
 .footerLeft {
 	flex: 1;
+	min-width: 0;
 	display: grid;
-	grid-auto-flow: column;
-	grid-template-columns: repeat(auto-fill, minmax(42px, 1fr));
-	grid-auto-rows: 40px;
-	overflow: scroll;
-	max-width: 85%;
-	-ms-overflow-style: none;
-	scrollbar-width: none;
-
-	.scroll::-webkit-scrollbar {
-		display: none;
-	}
+	// 狭いフォームでは行を増やし、末尾の絵文字ボタンまで見える状態を保つ。
+	grid-auto-flow: row;
+	grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
+	grid-auto-rows: 44px;
+	max-width: 100%;
 }
 
 .footerRight {
@@ -2459,7 +2460,6 @@ html[data-color-scheme=light] .preview {
 	}
 
 	.footerLeft {
-		grid-template-columns: repeat(auto-fill, minmax(34px, 1fr));
 		padding-left: 2px;
 	}
 

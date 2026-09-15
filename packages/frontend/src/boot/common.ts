@@ -129,7 +129,7 @@ export async function common(createVue: () => Promise<App<Element>>) {
 	}
 
 	// 旗鯖(#31): 旧「ミュートユーザーのリアクション非表示」(prefer同期)を有効にしていた人は、
-	//   新しい端末ローカルのトグルを自動でONにし(端末ごと)、改善内容の案内をユーザーごとに1回だけ出す。
+	//   端末ローカルのトグルを自動でONにする(端末ごと)。
 	{
 		const { prefer: preferMr } = await import('@/preferences.js');
 		const hadEnabled = preferMr.s['hideMutedUserReactions'] === true;
@@ -140,19 +140,6 @@ export async function common(createVue: () => Promise<App<Element>>) {
 		}
 		if (!miLocalStorage.getItem('hata_muted_reactions_local_migrated')) {
 			miLocalStorage.setItem('hata_muted_reactions_local_migrated', '1');
-		}
-		// 案内ウィンドウ(有効だった人のみ・端末ごとに1回)。
-		//   boot時はプロファイル同期前で prefer 値が default(false) に見えて毎回出てしまうため、
-		//   端末ローカルフラグを「先に」立ててから出す(リロード毎の再表示を防ぐ)。
-		if (hadEnabled && !miLocalStorage.getItem('hata_muted_reactions_notice_shown')) {
-			miLocalStorage.setItem('hata_muted_reactions_notice_shown', '1');
-			window.setTimeout(() => {
-				import('@/os.js').then(os => os.alert({
-					type: 'info',
-					title: i18n.ts._hata._mutedReactionMigration.title,
-					text: i18n.ts._hata._mutedReactionMigration.body,
-				})).catch(() => { /* 表示失敗は致命的でない */ });
-			}, 2500);
 		}
 	}
 

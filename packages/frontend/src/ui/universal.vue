@@ -22,8 +22,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<XMobileFooterMenu v-if="isMobile" ref="navFooter" v-model:drawerMenuShowing="drawerMenuShowing" v-model:widgetsShowing="widgetsShowing"/>
 		</div>
 
-		<div v-if="isDesktop && !pageMetadata?.needWideArea && prefer.s.enableWidgetsArea" :class="$style.widgets" :data-widget-border="prefer.r['simpleUi.widgetBorder']?.value ? 'on' : 'off'">
-			<XWidgets/>
+		<div v-if="isDesktop && !pageMetadata?.needWideArea && prefer.s.enableWidgetsArea" :class="$style.widgets" :data-collapsed="rightWidgetsCollapsed" :data-motion="prefer.r.animation.value" :data-widget-border="prefer.r['simpleUi.widgetBorder']?.value ? 'on' : 'off'">
+			<div :class="$style.widgetsInner">
+				<XWidgets collapsible :collapsed="rightWidgetsCollapsed" @toggleCollapse="setRightWidgetsCollapsed(!rightWidgetsCollapsed)"/>
+			</div>
 		</div>
 
 		<XCommon v-model:drawerMenuShowing="drawerMenuShowing" v-model:widgetsShowing="widgetsShowing"/>
@@ -54,6 +56,7 @@ import { prefer } from '@/preferences.js';
 import { shouldSuggestRestoreBackup } from '@/preferences/utility.js';
 import { DI } from '@/di.js';
 import { shouldSuggestReload } from '@/utility/reload-suggest.js';
+import { rightWidgetsCollapsed, setRightWidgetsCollapsed } from '@/utility/hatasaba-device-prefs.js';
 
 const XWidgets = defineAsyncComponent(() => import('./_common_/widgets.vue'));
 const XStatusBars = defineAsyncComponent(() => import('@/ui/_common_/statusbars.vue'));
@@ -221,16 +224,44 @@ $widgets-hide-threshold: 1090px;
 }
 
 .widgets {
+	position: relative;
 	width: 350px;
+	flex-shrink: 0;
 	height: 100%;
 	box-sizing: border-box;
-	overflow: auto;
-	padding: var(--MI-margin) var(--MI-margin) calc(var(--MI-margin) + env(safe-area-inset-bottom, 0px));
+	overflow: hidden;
 	border-left: solid 0.5px var(--MI_THEME-divider);
 	background: var(--MI_THEME-bg);
+	transition: width .28s cubic-bezier(.22,1,.36,1);
+
+	&[data-collapsed='true'] {
+		width: 64px;
+		border-left: 0;
+	}
 
 	@media (max-width: $widgets-hide-threshold) {
 		display: none;
 	}
+}
+
+// 内容の幅とスクロール領域を保ったまま、外側の列幅だけを開閉する。
+.widgetsInner {
+	position: absolute;
+	top: 0;
+	right: 0;
+	width: calc(350px - .5px);
+	height: 100%;
+	box-sizing: border-box;
+	overflow: auto;
+	padding: var(--MI-margin) var(--MI-margin) calc(var(--MI-margin) + env(safe-area-inset-bottom, 0px));
+	transition: padding .28s cubic-bezier(.22,1,.36,1);
+}
+.widgets[data-collapsed='true'] .widgetsInner {
+	padding: calc(10px + env(safe-area-inset-top, 0px)) 8px 0;
+	overflow: hidden;
+}
+.widgets[data-motion='false'], .widgets[data-motion='false'] .widgetsInner { transition: none; }
+@media (prefers-reduced-motion: reduce) {
+	.widgets, .widgetsInner { transition: none; }
 }
 </style>

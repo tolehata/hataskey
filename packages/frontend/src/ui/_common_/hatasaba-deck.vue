@@ -89,8 +89,9 @@
 						<!-- 本体(アクティブタブ) -->
 						<div :class="['frameBody', $style.frameBody]" @touchstart.passive="onFrameTouchStart(frame, $event)" @touchend="onFrameTouchEnd(slot, frame, $event)">
 							<template v-for="tab in frame.tabs" :key="tab.id">
+								<div v-if="tab.type === 'local'" v-show="activeTabOf(frame).id === tab.id" :ref="el => setEmojiVoteEffectRef(tab.id, el)" :class="$style.emojiVoteEffects" aria-hidden="true"></div>
 								<div v-show="activeTabOf(frame).id === tab.id" :class="[$style.tabPane, { [$style.tabPanePostForm]: tab.type === 'postForm', [$style.tabPaneExtNotif]: tab.type === 'externalNotifications', [$style.tabPaneWidgets]: tab.type === 'widgets' }]" :data-active="activeTabOf(frame).id === tab.id ? 'true' : 'false'" :ref="el => setPaneRef(tab.id, el)">
-									<component :is="resolveColumn(tab)" v-bind="columnProps(tab)" :ref="el => setColRef(tab.id, el)"/>
+									<component :is="resolveColumn(tab)" v-bind="columnProps(tab, frame)" :ref="el => setColRef(tab.id, el)"/>
 								</div>
 							</template>
 						</div>
@@ -127,7 +128,8 @@
 						</div>
 						<div :class="['frameBody', $style.frameBody]" @touchstart.passive="onFrameTouchStart(frame, $event)" @touchend="onFrameTouchEnd(slot, frame, $event)">
 							<template v-for="tab in frame.tabs" :key="tab.id">
-								<div v-show="activeTabOf(frame).id === tab.id" :class="[$style.tabPane, { [$style.tabPanePostForm]: tab.type === 'postForm', [$style.tabPaneExtNotif]: tab.type === 'externalNotifications', [$style.tabPaneWidgets]: tab.type === 'widgets' }]" :data-active="activeTabOf(frame).id === tab.id ? 'true' : 'false'" :ref="el => setPaneRef(tab.id, el)"><component :is="resolveColumn(tab)" v-bind="columnProps(tab)" :ref="el => setColRef(tab.id, el)"/></div>
+								<div v-if="tab.type === 'local'" v-show="activeTabOf(frame).id === tab.id" :ref="el => setEmojiVoteEffectRef(tab.id, el)" :class="$style.emojiVoteEffects" aria-hidden="true"></div>
+								<div v-show="activeTabOf(frame).id === tab.id" :class="[$style.tabPane, { [$style.tabPanePostForm]: tab.type === 'postForm', [$style.tabPaneExtNotif]: tab.type === 'externalNotifications', [$style.tabPaneWidgets]: tab.type === 'widgets' }]" :data-active="activeTabOf(frame).id === tab.id ? 'true' : 'false'" :ref="el => setPaneRef(tab.id, el)"><component :is="resolveColumn(tab)" v-bind="columnProps(tab, frame)" :ref="el => setColRef(tab.id, el)"/></div>
 							</template>
 						</div>
 					</div>
@@ -158,7 +160,8 @@
 						</div>
 						<div :class="['frameBody', $style.frameBody]" @touchstart.passive="onFrameTouchStart(frame, $event)" @touchend="onFrameTouchEnd(slot, frame, $event)">
 							<template v-for="tab in frame.tabs" :key="tab.id">
-								<div v-show="activeTabOf(frame).id === tab.id" :class="[$style.tabPane, { [$style.tabPanePostForm]: tab.type === 'postForm', [$style.tabPaneExtNotif]: tab.type === 'externalNotifications', [$style.tabPaneWidgets]: tab.type === 'widgets' }]" :data-active="activeTabOf(frame).id === tab.id ? 'true' : 'false'" :ref="el => setPaneRef(tab.id, el)"><component :is="resolveColumn(tab)" v-bind="columnProps(tab)" :ref="el => setColRef(tab.id, el)"/></div>
+								<div v-if="tab.type === 'local'" v-show="activeTabOf(frame).id === tab.id" :ref="el => setEmojiVoteEffectRef(tab.id, el)" :class="$style.emojiVoteEffects" aria-hidden="true"></div>
+								<div v-show="activeTabOf(frame).id === tab.id" :class="[$style.tabPane, { [$style.tabPanePostForm]: tab.type === 'postForm', [$style.tabPaneExtNotif]: tab.type === 'externalNotifications', [$style.tabPaneWidgets]: tab.type === 'widgets' }]" :data-active="activeTabOf(frame).id === tab.id ? 'true' : 'false'" :ref="el => setPaneRef(tab.id, el)"><component :is="resolveColumn(tab)" v-bind="columnProps(tab, frame)" :ref="el => setColRef(tab.id, el)"/></div>
 							</template>
 						</div>
 					</div>
@@ -179,7 +182,7 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, ref, watch, onMounted, onUnmounted, nextTick, defineAsyncComponent, type Component } from 'vue';
+import { computed, ref, shallowReactive, watch, onMounted, onUnmounted, nextTick, defineAsyncComponent, type Component } from 'vue';
 import * as os from '@/os.js';
 import { mainRouter } from '@/router.js';
 import { misskeyApi, misskeyApiGet } from '@/utility/misskey-api.js';
@@ -699,8 +702,7 @@ function buildColumnProps(tab: DeckTab): Record<string, unknown> {
 		showFilterPolicyNotice: hasConfiguredNotificationFilter(tab.excludeTypes, tab.notificationFilterKnownTypes),
 	};
 	if (tab.type === 'postForm') return { fixed: true, autofocus: false };
-	// 旗鯖fork(新デッキ): deckEmbedded を渡し、widgets.vue 内の常時表示「ウィジェットを編集」
-	// ボタンを抑止する (編集導線は三点メニュー / タブ右クリックに集約)。
+	// デッキのウィジェットは編集だけを表示する。三点メニュー / タブ右クリックも維持。
 	if (tab.type === 'widgets') return { deckEmbedded: true };
 	if (tab.type === 'earthquake') return {};
 	// 旗鯖fork(新デッキ): クリップ/お気に入り。favorites は endpoint のみで clipId 不要。
@@ -715,7 +717,7 @@ function buildColumnProps(tab: DeckTab): Record<string, unknown> {
 // 設定変更と見なしてreloadするため、毎秒の点滅を防ぐにはpropsの安定化も必要になる。
 const columnPropsCache = new Map<string, { signature: string; value: Record<string, unknown> }>();
 
-function columnProps(tab: DeckTab): Record<string, unknown> {
+function columnProps(tab: DeckTab, frame: DeckFrame): Record<string, unknown> {
 	const signature = JSON.stringify({
 		type: tab.type,
 		sourceId: tab.sourceId,
@@ -728,10 +730,13 @@ function columnProps(tab: DeckTab): Record<string, unknown> {
 		externalToken: externalToken.value,
 	});
 	const cached = columnPropsCache.get(tab.id);
-	if (cached?.signature === signature) return cached.value;
-	const value = buildColumnProps(tab);
-	columnPropsCache.set(tab.id, { signature, value });
-	return value;
+	const value = cached?.signature === signature ? cached.value : buildColumnProps(tab);
+	if (cached?.signature !== signature) columnPropsCache.set(tab.id, { signature, value });
+	return tab.type === 'local' ? {
+		...value,
+		emojiVoteActive: activeTabOf(frame).id === tab.id,
+		emojiVoteEffectTarget: emojiVoteEffectRefs.get(tab.id) ?? null,
+	} : value;
 }
 const ColumnError = defineAsyncComponent(() => Promise.resolve({
 	props: { message: { type: String, default: '' } },
@@ -747,6 +752,12 @@ function setColRef(id: string, el: any) { if (el) colRefs.set(id, el); else colR
 
 // 旗鯖fork(#9): タブペイン(スクロール領域)の要素参照。タブクリックで最上部へ戻すのに使う。
 const paneRefs = new Map<string, HTMLElement>();
+const emojiVoteEffectRefs = shallowReactive(new Map<string, HTMLElement>());
+
+function setEmojiVoteEffectRef(id: string, el: unknown) {
+	if (el instanceof HTMLElement) emojiVoteEffectRefs.set(id, el);
+	else emojiVoteEffectRefs.delete(id);
+}
 function setPaneRef(id: string, el: any) { if (el) paneRefs.set(id, el as HTMLElement); else paneRefs.delete(id); }
 
 // 旗鯖fork(#9): スクロールして最上部へ戻せるタブ種別か(投稿フォーム・ウィジェットは対象外)。
@@ -1823,6 +1834,7 @@ function openProfileMenu(ev: MouseEvent) {
 
 /* frame本体 */
 .frameBody { flex: 1; min-height: 0; position: relative; z-index: 1; }
+.emojiVoteEffects { position: absolute; inset: 0; overflow: hidden; isolation: isolate; pointer-events: none; z-index: 5; }
 .tabPane { position: absolute; inset: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--MI_THEME-fg) 12%, transparent) transparent; }
 .deckWrap[data-animation='true'] .tabPane[data-active='true'] { animation: deckPaneIn .3s cubic-bezier(.2,.8,.2,1) both; }
 

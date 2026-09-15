@@ -6,6 +6,24 @@
 import { ref } from 'vue';
 import { miLocalStorage } from '@/local-storage.js';
 
+export const HATAFEED_THEMES = ['light', 'dark', 'paper', 'espresso'] as const;
+export type HataFeedTheme = typeof HATAFEED_THEMES[number];
+
+function readHataFeedTheme(): HataFeedTheme {
+	try {
+		const saved = miLocalStorage.getItem('hatafeedTheme');
+		return HATAFEED_THEMES.find(theme => theme === saved) ?? 'light';
+	} catch {
+		return 'light';
+	}
+}
+
+export const hataFeedTheme = ref<HataFeedTheme>(readHataFeedTheme());
+export function setHataFeedTheme(theme: HataFeedTheme): void {
+	miLocalStorage.setItem('hatafeedTheme', theme);
+	hataFeedTheme.value = theme;
+}
+
 // 旗鯖fork: 端末ローカル(プロファイル非同期)の Hataskey UI 設定。
 // prefer(プロファイル)に入れると複数端末で共有されてしまう設定を、端末ごとに保持するためのもの。
 // 共有 reactive ref としてエクスポートし、設定ページと UI(simple.vue)の双方が同じ状態を参照する。
@@ -44,6 +62,13 @@ export function setTabSwipeEnabled(v: boolean): void {
 	miLocalStorage.setItem('hatasabaTabSwipeEnabled', v ? 'true' : 'false');
 }
 
+// 右ウィジェットバーの幅は端末ごとに保ち、ウィジェットの内容やプロファイルとは分ける。
+export const rightWidgetsCollapsed = ref(miLocalStorage.getItem('hataRightWidgetsCollapsed') === 'true');
+export function setRightWidgetsCollapsed(collapsed: boolean): void {
+	rightWidgetsCollapsed.value = collapsed;
+	miLocalStorage.setItem('hataRightWidgetsCollapsed', collapsed ? 'true' : 'false');
+}
+
 // 旗鯖fork(#31): ミュートしたユーザーのリアクションを、ノートのリアクションチップ自体から隠す。
 //   端末ごと(プロファイル非同期)に管理し、リアクター一覧は共有ストアで安定化して参照する。
 export const hideMutedReactionsLocal = ref(miLocalStorage.getItem('hataHideMutedReactions') === 'true');
@@ -57,10 +82,11 @@ export function setHideMutedReactionsLocal(v: boolean): void {
 //   :global(html.hataGlassUi) 配下でグラス面/ピルタブ/リアクショングロー等に差し替える。
 //   ぼかしは既存の --MI-blur (useBlurEffect=false で none) を尊重する。
 function applyGlassUiClass(v: boolean): void {
-	if (typeof document !== 'undefined') {
-		document.documentElement.classList.toggle('hataGlassUi', v);
+	if (typeof window !== 'undefined') {
+		window.document.documentElement.classList.toggle('hataGlassUi', v);
 	}
 }
+
 // 旗鯖fork(Hataskey UI 2 デフォルトON化): 新規ユーザー・未設定端末では自動的に ON にする。
 //   判定: getItem('hataGlassUi') が 'false' の時のみ OFF (=ユーザーが明示的に OFF にした)。
 //   'true' または null (未設定) は ON。
@@ -90,10 +116,11 @@ applyGlassUiClass(glassUiLocal.value);
 //   有効時は <html> に 'hataGlassUiBubble' クラスを付与し、タイムライン側 SCSS が
 //   glass 表示のノートに吹き出し枠(＜口付き)を描画する。
 function applyGlassUiBubbleClass(v: boolean): void {
-	if (typeof document !== 'undefined') {
-		document.documentElement.classList.toggle('hataGlassUiBubble', v);
+	if (typeof window !== 'undefined') {
+		window.document.documentElement.classList.toggle('hataGlassUiBubble', v);
 	}
 }
+
 export const glassUiBubbleLocal = ref(miLocalStorage.getItem('hataGlassUiBubble') === 'true');
 export function setGlassUiBubbleLocal(v: boolean): void {
 	glassUiBubbleLocal.value = v;

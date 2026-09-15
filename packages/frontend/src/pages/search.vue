@@ -4,149 +4,160 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 
 <template>
-<PageWithHeader :actions="headerActions">
+<PageWithHeader ref="searchPage" :actions="headerActions" :class="$style.searchPage" :data-mobile="isMobileSearch">
 	<div class="_spacer" style="--MI_SPACER-w: 800px;">
 		<div class="_gaps">
-			<!-- ===== 旗鯖カプセル型 検索バー ===== -->
-			<!-- PC/タブレット: ヘッダ直下、スマホ: position fixed で下部に表示 -->
-			<div :class="[$style.capsule, { [$style.capsuleMobile]: isSmartphone }]">
-				<!-- 検索対象プルダウン -->
-				<button
-					ref="targetMenuBtn"
-					type="button"
-					:class="$style.target"
-					:aria-label="i18n.ts._search.searchTarget"
-					@click="openTargetMenu"
-				>
-					<i :class="targetIconClass"/>
-					<span :class="$style.targetLabel">{{ targetLabel }}</span>
-					<i class="ti ti-chevron-down" :class="$style.targetChevron"/>
-				</button>
+			<!-- 画面内の contain/transform に固定位置を引きずられないようにする。 -->
+			<Teleport to="body" :disabled="!isMobileSearch || !pageActive">
+				<Transition :css="false" @enter="enterSearchBar" @leave="leaveSearchBar" @enterCancelled="cancelSearchMotion" @leaveCancelled="cancelSearchMotion">
+					<div
+						v-show="searchVisible" :id="searchControlsId" ref="searchControlsEl" :class="$style.searchControls"
+						:data-mobile="isMobileSearch" :data-docked="searchDocked" :style="searchPosition"
+						:inert="!searchVisible" :aria-hidden="!searchVisible" role="search" @keydown.esc.stop.prevent="closeSearchBar"
+					>
+						<!-- ===== 旗鯖カプセル型 検索バー ===== -->
+						<!-- 入力欄と条件は開閉中も同じインスタンスを保つ。 -->
+						<div :class="$style.capsule">
+							<!-- 検索対象プルダウン -->
+							<button
+								ref="targetMenuBtn"
+								type="button"
+								:class="$style.target"
+								:aria-label="i18n.ts._search.searchTarget"
+								@click="openTargetMenu"
+							>
+								<i :class="targetIconClass"/>
+								<span :class="$style.targetLabel">{{ targetLabel }}</span>
+								<i class="ti ti-chevron-down" :class="$style.targetChevron"/>
+							</button>
 
-				<!-- 検索チップ入力 -->
-				<input
-					ref="queryInputEl"
-					v-model="searchQuery"
-					type="search"
-					:class="$style.queryInput"
-					:placeholder="queryPlaceholder"
-					:autofocus="true"
-					@keydown.enter.prevent="onEnter"
-				/>
+							<!-- 検索チップ入力 -->
+							<input
+								ref="queryInputEl"
+								v-model="searchQuery"
+								type="search"
+								:class="$style.queryInput"
+								:placeholder="queryPlaceholder"
+								:aria-label="i18n.ts.search" :autofocus="true"
+								@keydown.enter.prevent="onEnter"
+							/>
 
-				<!-- クリアボタン(クエリがあるときのみ) -->
-				<button
-					v-if="searchQuery !== ''"
-					type="button"
-					:class="$style.clearBtn"
-					tabindex="-1"
-					:aria-label="i18n.ts.clear"
-					@click="clearQuery"
-				>
-					<i class="ti ti-x"/>
-				</button>
-
-				<!-- 検索ボタン(テーマカラー) -->
-				<button
-					type="button"
-					:class="$style.searchBtn"
-					:aria-label="i18n.ts.search"
-					@click="executeSearch"
-				>
-					<i class="ti ti-search"/>
-				</button>
-
-				<!-- オプション(設定)ボタン -->
-				<button
-					ref="optionsBtn"
-					type="button"
-					:class="[$style.optionsBtn, { [$style.optionsBtnActive]: optionsOpen }]"
-					:aria-label="i18n.ts.options"
-					@click="toggleOptions"
-				>
-					<i class="ti ti-adjustments-horizontal"/>
-				</button>
-			</div>
-
-			<!-- ===== オプションパネル(展開時) ===== -->
-			<div v-if="optionsOpen" :class="$style.optionsPanel" class="_panel">
-				<!-- ノート検索オプション -->
-				<template v-if="target === 'note'">
-					<MkSelect v-model="noteScope" :items="noteScopeDef" small>
-						<template #label>{{ i18n.ts._search.searchScope }}</template>
-					</MkSelect>
-
-					<div v-if="instance.federation !== 'none' && noteScope === 'server'" :class="$style.subOption">
-						<MkInput
-							v-model="hostInput"
-							:placeholder="i18n.ts._search.serverHostPlaceholder"
-							@enter.prevent="executeSearch"
-						>
-							<template #label>{{ i18n.ts._search.pleaseEnterServerHost }}</template>
-							<template #prefix><i class="ti ti-server"/></template>
-						</MkInput>
-					</div>
-
-					<div v-if="noteScope === 'user'" :class="$style.subOption">
-						<div :class="$style.userSelectLabel">{{ i18n.ts._search.pleaseSelectUser }}</div>
-						<div v-if="user == null" :class="$style.userSelectButtons">
-							<MkButton v-if="$i != null" transparent :class="$style.userSelectButton" @click="selectSelf">
-								<div :class="$style.userSelectButtonInner">
-									<span><i class="ti ti-plus"/><i class="ti ti-user"/></span>
-									<span>{{ i18n.ts.selectSelf }}</span>
-								</div>
-							</MkButton>
-							<MkButton transparent :class="$style.userSelectButton" @click="selectUser">
-								<div :class="$style.userSelectButtonInner">
-									<span><i class="ti ti-plus"/></span>
-									<span>{{ i18n.ts.selectUser }}</span>
-								</div>
-							</MkButton>
-						</div>
-						<div v-else :class="$style.userSelected">
-							<MkUserCardMini :user="user"/>
-							<button type="button" :class="$style.userRemoveBtn" @click="removeUser">
+							<!-- クリアボタン(クエリがあるときのみ) -->
+							<button
+								v-if="searchQuery !== ''"
+								type="button"
+								:class="$style.clearBtn"
+								tabindex="-1"
+								:aria-label="i18n.ts.clear"
+								@click="clearQuery"
+							>
 								<i class="ti ti-x"/>
 							</button>
+
+							<!-- 検索ボタン(テーマカラー) -->
+							<button
+								type="button"
+								:class="$style.searchBtn"
+								:aria-label="i18n.ts.search"
+								@click="executeSearch"
+							>
+								<i class="ti ti-search"/>
+							</button>
+
+							<!-- オプション(設定)ボタン -->
+							<button
+								ref="optionsBtn"
+								type="button"
+								:class="[$style.optionsBtn, { [$style.optionsBtnActive]: optionsOpen }]"
+								:aria-label="i18n.ts.options"
+								@click="toggleOptions"
+							>
+								<i class="ti ti-adjustments-horizontal"/>
+							</button>
+						</div>
+
+						<!-- ===== オプションパネル(展開時) ===== -->
+						<div v-if="optionsOpen" :class="$style.optionsPanel" class="_panel">
+							<!-- ノート検索オプション -->
+							<template v-if="target === 'note'">
+								<MkSelect v-model="noteScope" :items="noteScopeDef" small>
+									<template #label>{{ i18n.ts._search.searchScope }}</template>
+								</MkSelect>
+
+								<div v-if="instance.federation !== 'none' && noteScope === 'server'" :class="$style.subOption">
+									<MkInput
+										v-model="hostInput"
+										:placeholder="i18n.ts._search.serverHostPlaceholder"
+										@enter.prevent="executeSearch"
+									>
+										<template #label>{{ i18n.ts._search.pleaseEnterServerHost }}</template>
+										<template #prefix><i class="ti ti-server"/></template>
+									</MkInput>
+								</div>
+
+								<div v-if="noteScope === 'user'" :class="$style.subOption">
+									<div :class="$style.userSelectLabel">{{ i18n.ts._search.pleaseSelectUser }}</div>
+									<div v-if="user == null" :class="$style.userSelectButtons">
+										<MkButton v-if="$i != null" transparent :class="$style.userSelectButton" @click="selectSelf">
+											<div :class="$style.userSelectButtonInner">
+												<span><i class="ti ti-plus"/><i class="ti ti-user"/></span>
+												<span>{{ i18n.ts.selectSelf }}</span>
+											</div>
+										</MkButton>
+										<MkButton transparent :class="$style.userSelectButton" @click="selectUser">
+											<div :class="$style.userSelectButtonInner">
+												<span><i class="ti ti-plus"/></span>
+												<span>{{ i18n.ts.selectUser }}</span>
+											</div>
+										</MkButton>
+									</div>
+									<div v-else :class="$style.userSelected">
+										<MkUserCardMini :user="user"/>
+										<button type="button" :class="$style.userRemoveBtn" @click="removeUser">
+											<i class="ti ti-x"/>
+										</button>
+									</div>
+								</div>
+
+								<!-- 旗鯖fork: 本家 2026.6.0 から取り込み: ノート検索で投稿日時の期間を条件に加えられるように (#16035) -->
+								<div :class="$style.subOption">
+									<MkInput v-model="rangeStartAt" small style="margin-top: 10px;" type="datetime-local">
+										<template #label>{{ i18n.ts._search.postFrom }}</template>
+									</MkInput>
+									<MkInput v-model="rangeEndAt" small style="margin-top: 10px;" type="datetime-local">
+										<template #label>{{ i18n.ts._search.postTo }}</template>
+									</MkInput>
+								</div>
+							</template>
+
+							<!-- ユーザー検索オプション -->
+							<template v-else-if="target === 'user'">
+								<MkSelect v-model="userOrigin" :items="userOriginDef" small @update:modelValue="executeSearch()">
+									<template #label>{{ i18n.ts._search.searchScope }}</template>
+								</MkSelect>
+							</template>
+
+							<!-- イベント検索オプション(CherryPick独自) -->
+							<template v-else-if="target === 'event'">
+								<MkSelect v-model="userOrigin" :items="userOriginDef" small @update:modelValue="executeSearch()">
+									<template #label>{{ i18n.ts._search.searchScope }}</template>
+								</MkSelect>
+								<div :class="$style.subOption">
+									<MkSelect v-model="eventSort" :items="eventSortDef" small>
+										<template #label>{{ i18n.ts.sort }}</template>
+									</MkSelect>
+									<MkInput v-model="eventStartDate" small style="margin-top: 10px;" type="date">
+										<template #label>{{ i18n.ts._event.startDate }}</template>
+									</MkInput>
+									<MkInput v-model="eventEndDate" small style="margin-top: 10px;" type="date">
+										<template #label>{{ i18n.ts._event.endDate }}</template>
+									</MkInput>
+								</div>
+							</template>
 						</div>
 					</div>
-
-					<!-- 旗鯖fork: 本家 2026.6.0 から取り込み: ノート検索で投稿日時の期間を条件に加えられるように (#16035) -->
-					<div :class="$style.subOption">
-						<MkInput v-model="rangeStartAt" small style="margin-top: 10px;" type="datetime-local">
-							<template #label>{{ i18n.ts._search.postFrom }}</template>
-						</MkInput>
-						<MkInput v-model="rangeEndAt" small style="margin-top: 10px;" type="datetime-local">
-							<template #label>{{ i18n.ts._search.postTo }}</template>
-						</MkInput>
-					</div>
-				</template>
-
-				<!-- ユーザー検索オプション -->
-				<template v-else-if="target === 'user'">
-					<MkSelect v-model="userOrigin" :items="userOriginDef" small @update:modelValue="executeSearch()">
-						<template #label>{{ i18n.ts._search.searchScope }}</template>
-					</MkSelect>
-				</template>
-
-				<!-- イベント検索オプション(CherryPick独自) -->
-				<template v-else-if="target === 'event'">
-					<MkSelect v-model="userOrigin" :items="userOriginDef" small @update:modelValue="executeSearch()">
-						<template #label>{{ i18n.ts._search.searchScope }}</template>
-					</MkSelect>
-					<div :class="$style.subOption">
-						<MkSelect v-model="eventSort" :items="eventSortDef" small>
-							<template #label>{{ i18n.ts.sort }}</template>
-						</MkSelect>
-						<MkInput v-model="eventStartDate" small style="margin-top: 10px;" type="date">
-							<template #label>{{ i18n.ts._event.startDate }}</template>
-						</MkInput>
-						<MkInput v-model="eventEndDate" small style="margin-top: 10px;" type="date">
-							<template #label>{{ i18n.ts._event.endDate }}</template>
-						</MkInput>
-					</div>
-				</template>
-			</div>
+				</Transition>
+			</Teleport>
 
 			<!-- ===== 検索結果 ===== -->
 			<!-- ノート結果 -->
@@ -178,15 +189,17 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<MkNotesTimeline :key="`searchEvents:${searchKey}`" :paginator="eventPaginator" :getDate="eventSort === 'startDate' ? note => note.event?.start : undefined"/>
 				</MkFoldableSection>
 			</div>
+			<div v-if="isMobileSearch && hasSearchResults" :class="$style.resultsClearance" aria-hidden="true"></div>
 		</div>
 	</div>
 </PageWithHeader>
 </template>
 
 <script lang="ts" setup>
-import { computed, markRaw, ref, shallowRef, toRef, useTemplateRef, watch } from 'vue';
+import { computed, inject, markRaw, nextTick, onActivated, onDeactivated, onMounted, onUnmounted, ref, shallowRef, toRef, useId, useTemplateRef, watch } from 'vue';
 import type * as Misskey from 'cherrypick-js';
 import type { MkSelectItem } from '@/components/MkSelect.vue';
+import type { PageHeaderItem } from '@/types/page-header.js';
 import MkInput from '@/components/MkInput.vue';
 import MkSelect from '@/components/MkSelect.vue';
 import MkButton from '@/components/MkButton.vue';
@@ -205,6 +218,7 @@ import { useRouter } from '@/router.js';
 import { definePage } from '@/page.js';
 import { notesSearchAvailable, usersSearchAvailable } from '@/utility/check-permissions.js';
 import { deviceKind } from '@/utility/device-kind.js';
+import { prefer } from '@/preferences.js';
 import { host as localHost } from '@@/js/config.js';
 
 const props = withDefaults(defineProps<{
@@ -269,7 +283,8 @@ function clearQuery() {
 	queryInputEl.value?.focus();
 }
 
-function onEnter() {
+function onEnter(event: KeyboardEvent) {
+	if (event.isComposing) return;
 	executeSearch();
 }
 
@@ -372,6 +387,158 @@ const notePaginator = shallowRef<Paginator<'notes/search'> | null>(null);
 const userPaginator = shallowRef<Paginator<'users/search'> | null>(null);
 const eventPaginator = shallowRef<Paginator<'notes/events/search'> | null>(null);
 
+// モバイルの検索欄は、検索後に既存ヘッダーの右端へ収納する。
+const searchPage = useTemplateRef<{ $el: HTMLElement }>('searchPage');
+const searchControlsEl = useTemplateRef('searchControlsEl');
+const searchControlsId = useId();
+const searchActionId = useId();
+const inWindow = inject<boolean>('inWindow', false);
+const compactWidth = ref(window.innerWidth <= 600);
+const isMobileSearch = computed(() => !inWindow && (deviceKind === 'smartphone' || compactWidth.value));
+const hasSearchResults = computed(() => Boolean(target.value === 'note' ? notePaginator.value : target.value === 'user' ? userPaginator.value : eventPaginator.value));
+const searchOpen = ref(true);
+const searchDocked = ref(false);
+const pageActive = ref(true);
+const searchVisible = computed(() => pageActive.value && (!isMobileSearch.value || searchOpen.value));
+const searchPosition = ref<Record<string, string>>({});
+const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+let searchMotion: Animation | null = null;
+let motionGeneration = 0;
+
+function searchActionElement() {
+	return window.document.getElementById(searchActionId);
+}
+
+function positionSearchBar() {
+	const page = searchPage.value?.$el;
+	const anchor = searchActionElement();
+	if (!page || !pageActive.value) return;
+	const bounds = page.getBoundingClientRect();
+	const button = anchor?.getBoundingClientRect();
+	searchPosition.value = {
+		...(button ? { '--search-dock-top': `${button.bottom + 8}px` } : {}),
+		'--search-dock-left': `${Math.max(0, bounds.left) + 12}px`,
+		'--search-dock-width': `${Math.max(0, Math.min(bounds.right, window.innerWidth) - Math.max(0, bounds.left) - 24)}px`,
+	};
+}
+
+function cancelSearchMotion() {
+	motionGeneration++;
+	searchMotion?.cancel();
+	searchMotion = null;
+}
+
+async function animateSearchBar(element: Element, done: () => void, opening: boolean) {
+	cancelSearchMotion();
+	const generation = motionGeneration;
+	const bar = element as HTMLElement;
+	const finish = () => {
+		if (generation !== motionGeneration) return;
+		searchMotion = null;
+		if (!opening) searchDocked.value = true;
+		done();
+	};
+	// 初回の検索ではこの更新でヘッダーのボタンが描画される。
+	await nextTick();
+	if (generation !== motionGeneration) return;
+	const anchor = searchActionElement();
+	if (!pageActive.value || !isMobileSearch.value || !prefer.r.animation.value || reducedMotion.matches || !anchor || typeof bar.animate !== 'function') {
+		finish();
+		return;
+	}
+	const bounds = bar.getBoundingClientRect();
+	const button = anchor.getBoundingClientRect();
+	if (!bounds.width || !bounds.height) {
+		finish();
+		return;
+	}
+	const stored = {
+		transform: `translate(${button.left - bounds.left}px, ${button.top - bounds.top}px) scale(${button.width / bounds.width}, ${button.height / bounds.height})`,
+		opacity: 0,
+	};
+	const expanded = { transform: 'none', opacity: 1 };
+	searchMotion = bar.animate(opening ? [stored, expanded] : [expanded, stored], {
+		duration: opening ? 300 : 240,
+		easing: 'cubic-bezier(.22, 1, .36, 1)',
+	});
+	searchMotion.finished.then(finish, finish);
+}
+
+function enterSearchBar(element: Element, done: () => void) {
+	void animateSearchBar(element, done, true);
+}
+
+function leaveSearchBar(element: Element, done: () => void) {
+	void animateSearchBar(element, done, false);
+}
+
+function focusSearchControl() {
+	if (!isMobileSearch.value) return;
+	if (searchOpen.value) {
+		if (searchControlsEl.value) searchControlsEl.value.scrollTop = 0;
+		queryInputEl.value?.focus({ preventScroll: true });
+	} else {
+		searchActionElement()?.focus({ preventScroll: true });
+	}
+}
+
+async function closeSearchBar() {
+	if (!isMobileSearch.value || (!hasSearchResults.value && !searchDocked.value)) return;
+	queryInputEl.value?.blur();
+	searchOpen.value = false;
+	await nextTick();
+	focusSearchControl();
+}
+
+async function toggleSearchBar() {
+	if (searchOpen.value) {
+		await closeSearchBar();
+		return;
+	}
+	searchDocked.value = true;
+	positionSearchBar();
+	searchOpen.value = true;
+	await nextTick();
+	focusSearchControl();
+}
+
+const resizeObserver = new ResizeObserver(entries => {
+	const width = entries[0]?.contentRect.width;
+	if (width) compactWidth.value = width <= 600;
+	positionSearchBar();
+});
+
+onMounted(() => {
+	if (searchPage.value) resizeObserver.observe(searchPage.value.$el);
+	positionSearchBar();
+	window.addEventListener('resize', positionSearchBar);
+	window.visualViewport?.addEventListener('resize', positionSearchBar);
+});
+
+onActivated(() => {
+	pageActive.value = true;
+	void nextTick(positionSearchBar);
+});
+
+onDeactivated(() => {
+	queryInputEl.value?.blur();
+	cancelSearchMotion();
+	pageActive.value = false;
+	searchOpen.value = !hasSearchResults.value;
+});
+
+onUnmounted(() => {
+	cancelSearchMotion();
+	resizeObserver.disconnect();
+	window.removeEventListener('resize', positionSearchBar);
+	window.visualViewport?.removeEventListener('resize', positionSearchBar);
+});
+
+watch(isMobileSearch, mobile => {
+	searchOpen.value = !mobile || !hasSearchResults.value;
+	searchDocked.value = mobile && hasSearchResults.value;
+});
+
 const fixHostIfLocal = (hostStr: string | null | undefined) => {
 	if (!hostStr || hostStr === localHost) return '.';
 	return hostStr;
@@ -463,6 +630,7 @@ async function executeSearch() {
 	}
 
 	searchKey.value++;
+	void closeSearchBar();
 }
 
 // 対象が変わったときに、結果はリセット(混乱回避)
@@ -470,12 +638,18 @@ watch(target, () => {
 	notePaginator.value = null;
 	userPaginator.value = null;
 	eventPaginator.value = null;
+	searchOpen.value = true;
 });
 
-// ===== レスポンシブ ===== //
-const isSmartphone = deviceKind === 'smartphone';
-
-const headerActions = computed(() => []);
+const headerActions = computed<PageHeaderItem[]>(() => isMobileSearch.value && (hasSearchResults.value || searchDocked.value) ? [{
+	id: searchActionId,
+	text: i18n.ts.search,
+	icon: 'ti ti-search',
+	controls: searchControlsId,
+	expanded: searchOpen.value,
+	highlighted: searchOpen.value,
+	handler: toggleSearchBar,
+}] : []);
 
 definePage(() => ({
 	title: i18n.ts.search,
@@ -484,6 +658,66 @@ definePage(() => ({
 </script>
 
 <style lang="scss" module>
+.searchPage[data-mobile='true'] {
+	scroll-padding-bottom: var(--MI-minBottomSpacingMobile);
+}
+
+.searchControls {
+	display: flex;
+	flex-direction: column;
+	gap: var(--MI-margin);
+	transform-origin: top left;
+}
+
+.searchControls[data-mobile='true'] {
+	position: fixed;
+	left: var(--search-dock-left, 12px);
+	width: var(--search-dock-width, calc(100% - 24px));
+	bottom: calc(env(safe-area-inset-bottom, 0px) + 88px);
+	z-index: 100;
+	max-height: calc(100dvh - 180px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+	padding: 4px;
+	box-sizing: border-box;
+	overflow-y: auto;
+	scrollbar-width: thin;
+	border-radius: 32px;
+}
+
+.searchControls[data-mobile='true'][data-docked='true'] {
+	top: var(--search-dock-top);
+	left: var(--search-dock-left);
+	width: var(--search-dock-width);
+	right: auto;
+	bottom: auto;
+	max-height: calc(100dvh - var(--search-dock-top) - var(--MI-minBottomSpacingMobile) - 16px);
+}
+
+.searchControls[data-mobile='true'] .capsule {
+	box-shadow: 0 4px 16px var(--MI_THEME-shadow);
+}
+
+.searchControls[data-mobile='true'] .targetLabel {
+	display: none;
+}
+
+.searchControls[data-mobile='true'] .queryInput {
+	font-size: 16px;
+}
+
+.searchControls[data-mobile='true'] .target,
+.searchControls[data-mobile='true'] .searchBtn,
+.searchControls[data-mobile='true'] .clearBtn,
+.searchControls[data-mobile='true'] .optionsBtn {
+	min-width: 44px;
+	min-height: 44px;
+	flex-shrink: 0;
+}
+
+.resultsClearance {
+	flex-shrink: 0;
+	height: var(--MI-minBottomSpacingMobile, calc(80px + env(safe-area-inset-bottom, 0px)));
+}
+
 /* ===== カプセル型検索バー ===== */
 .capsule {
 	display: flex;
@@ -500,17 +734,6 @@ definePage(() => ({
 .capsule:focus-within {
 	border-color: var(--MI_THEME-accent);
 	box-shadow: 0 0 0 3px color(from var(--MI_THEME-accent) srgb r g b / 0.15);
-}
-
-/* スマホでは画面下部に固定 */
-.capsuleMobile {
-	position: fixed;
-	left: 12px;
-	right: 12px;
-	bottom: calc(env(safe-area-inset-bottom, 0px) + 88px); /* mobile-footer-menu (約68px) の上に余白を確保 */
-	z-index: 100;
-	background: var(--MI_THEME-panel);
-	box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
 }
 
 /* 検索対象プルダウン */

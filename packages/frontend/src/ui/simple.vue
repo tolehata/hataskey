@@ -23,7 +23,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</div>
 				<!-- 旗鯖fork(タスク6): 拡大表示時のみ、TL設定ボタンと縮小ボタンを表示。デッキ時(強制縮小)は出さない。 -->
 				<button v-if="!sidebarCollapsed && !deckActive" v-tooltip="copy.timelineSettings" :class="$style.sbLogoAction" @click.stop="openTlOptions"><i class="ti ti-adjustments"></i></button>
-				<button v-if="!sidebarCollapsed && !deckActive" ref="collapseAnchorEl" v-tooltip="copy.collapseMenu" :class="$style.sbLogoAction" @click.stop="toggleSidebarCollapse"><i class="ti ti-chevron-left"></i></button>
+				<button v-if="!sidebarCollapsed && !deckActive" v-tooltip="copy.collapseMenu" :class="$style.sbLogoAction" @click.stop="toggleSidebarCollapse"><i class="ti ti-chevron-left"></i></button>
 			</div>
 			<!-- 旗鯖fork(タスク6): 縮小表示時、サーバーアイコンの下に拡大ボタン[＞]を表示。デッキ時は出さない。 -->
 			<button v-if="sidebarCollapsed && !deckActive" v-tooltip="copy.expandMenu" data-hata-collapse-part :class="$style.sbExpandBtn" @click.stop="toggleSidebarCollapse"><i class="ti ti-chevron-right"></i></button>
@@ -106,7 +106,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 					<!-- 設定 & リアルタイムモード -->
 					<div :class="$style.sbNav">
-						<button :ref="el => { moreAnchorEl = (el as HTMLElement | null); }" v-tooltip.right="sidebarFolded ? copy.more : null" :class="$style.sbItem" @click="openMore($event)">
+						<button v-tooltip.right="sidebarFolded ? copy.more : null" :class="$style.sbItem" @click="openMore($event)">
 							<i class="ti ti-dots" :class="$style.sbIcon"></i><span :class="$style.sbLabel">{{ copy.more }}</span>
 						</button>
 						<button v-tooltip.right="sidebarFolded ? copy.settings : null" :class="$style.sbItem" @click="goToSettings">
@@ -141,7 +141,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<i :class="studioPostButtonIcon"></i>
 				</button>
 				<!-- 旗鯖fork: デッキモード切替トグル (アカウント表示の上) -->
-				<div ref="deckAnchorEl" :class="$style.sbModeToggle">
+				<div :class="$style.sbModeToggle">
 					<button v-tooltip="copy.standardView" :class="[$style.sbModeBtn, { [$style.sbModeActive]: !deckMode }]" @click="setDeckMode(false)">
 						<i class="ti ti-device-mobile"></i>
 					</button>
@@ -202,59 +202,61 @@ SPDX-License-Identifier: AGPL-3.0-only
 				:class="[$style.topBar, footerIsDark ? $style.topBarDark : $style.topBarLight]"
 			>
 				<div ref="topNavStackEl" :class="$style.topNavStack">
-					<div ref="notificationOutlineEl" :class="$style.topPill" :data-notification="notificationToasts.items.value.length > 0 && notificationToasts.integrated.value" :data-new-notes="!!navbarNewNotes">
-						<div ref="notificationTargetEl" :class="$style.notificationViewport" :data-mobile="!isDesktop" :style="{ height: `${notificationToasts.integrated.value ? notificationToasts.height.value : 0}px` }"></div>
-						<div v-show="!mobileNotificationOnly" :class="$style.topPillNav">
-							<button v-if="!isDesktop" type="button" :class="$style.avatarBtn" :aria-label="copy.account" @click="openAccountMenu">
-								<img v-if="$i?.avatarUrl" :src="$i.avatarUrl" :class="$style.avatarImg" alt=""/>
-								<i v-else class="ti ti-user" aria-hidden="true"></i>
-							</button>
-							<div :class="$style.topPillTabs">
-								<template v-for="item in visibleTopTabs" :key="item.id">
-									<button :class="[$style.topTabBtn, { [$style.topTabActive]: !isCollectionTimelinePage && tab === item.id }]" @click="playSimpleNavMotion($event, item.id); switchTab(item.id as TabType)">
-										<i :class="item.icon"></i>
-										<span v-if="!isCollectionTimelinePage && tab === item.id" :class="$style.topTabLabel">{{ simpleMenuDisplayLabel(item.id, item.label) }}</span>
-									</button>
-								</template>
-								<button v-if="showOHTL" :class="[$style.topTabBtn, $style.topTabExt, { [$style.topTabActive]: !isCollectionTimelinePage && tab === 'ohtl' }]" @click="playSimpleNavMotion($event, 'timeline:external-home'); switchTab('ohtl')">
-									<i class="ti ti-home"></i>
-									<span v-if="!isCollectionTimelinePage && tab === 'ohtl'" :class="$style.topTabLabel">{{ copy.externalHome }}</span>
+					<div ref="notificationOutlineEl" :class="$style.topPillFrame">
+						<div :class="$style.topPill" :data-notification="notificationToasts.items.value.length > 0 && notificationToasts.integrated.value && !notificationToasts.surface.value" :data-new-notes="!!navbarNewNotes">
+							<div ref="notificationTargetEl" :class="$style.notificationViewport" :data-mobile="!isDesktop" :style="{ height: `${notificationToasts.integrated.value && !notificationToasts.surface.value ? notificationToasts.height.value : 0}px` }"></div>
+							<div v-show="!mobileNotificationOnly" :class="$style.topPillNav">
+								<button v-if="!isDesktop" type="button" :class="$style.avatarBtn" :aria-label="copy.account" @click="openAccountMenu">
+									<img v-if="$i?.avatarUrl" :src="$i.avatarUrl" :class="$style.avatarImg" alt=""/>
+									<i v-else class="ti ti-user" aria-hidden="true"></i>
 								</button>
-								<button v-if="showOLTL" :class="[$style.topTabBtn, $style.topTabExt, { [$style.topTabActive]: !isCollectionTimelinePage && tab === 'oltl' }]" @click="playSimpleNavMotion($event, 'timeline:external-local'); switchTab('oltl')">
-									<i class="ti ti-planet"></i>
-									<span v-if="!isCollectionTimelinePage && tab === 'oltl'" :class="$style.topTabLabel">{{ copy.externalLocal }}</span>
-								</button>
-								<div :class="$style.topTabDivider"></div>
-								<div :class="[$style.listTabPill, { [$style.listTabPillActive]: isListTimelinePage }]">
-									<button :class="[$style.topTabBtn, $style.listTabMain, { [$style.topTabActive]: isListTimelinePage }]" @click="playSimpleNavMotion($event, 'list'); openPreferredList()">
-										<i class="ti ti-list"></i>
-										<span v-if="isListTimelinePage" :class="$style.topTabCopy"><span :class="$style.topTabLabel">{{ copy.list }}</span><span :class="$style.topTabName">{{ activeListName }}</span></span>
+								<div :class="$style.topPillTabs">
+									<template v-for="item in visibleTopTabs" :key="item.id">
+										<button :class="[$style.topTabBtn, { [$style.topTabActive]: !isCollectionTimelinePage && tab === item.id }]" @click="playSimpleNavMotion($event, item.id); switchTab(item.id as TabType)">
+											<i :class="item.icon"></i>
+											<span v-if="!isCollectionTimelinePage && tab === item.id" :class="$style.topTabLabel">{{ simpleMenuDisplayLabel(item.id, item.label) }}</span>
+										</button>
+									</template>
+									<button v-if="showOHTL" :class="[$style.topTabBtn, $style.topTabExt, { [$style.topTabActive]: !isCollectionTimelinePage && tab === 'ohtl' }]" @click="playSimpleNavMotion($event, 'timeline:external-home'); switchTab('ohtl')">
+										<i class="ti ti-home"></i>
+										<span v-if="!isCollectionTimelinePage && tab === 'ohtl'" :class="$style.topTabLabel">{{ copy.externalHome }}</span>
 									</button>
-									<button v-if="isListTimelinePage" v-tooltip="copy.switchList" :class="$style.listSelectBtn" :aria-label="copy.switchList" @click="playSimpleNavMotion($event, 'list'); toggleTimelinePicker('list')">
-										<i class="ti ti-selector"></i>
+									<button v-if="showOLTL" :class="[$style.topTabBtn, $style.topTabExt, { [$style.topTabActive]: !isCollectionTimelinePage && tab === 'oltl' }]" @click="playSimpleNavMotion($event, 'timeline:external-local'); switchTab('oltl')">
+										<i class="ti ti-planet"></i>
+										<span v-if="!isCollectionTimelinePage && tab === 'oltl'" :class="$style.topTabLabel">{{ copy.externalLocal }}</span>
 									</button>
-									<button v-if="isListTimelinePage" v-tooltip="copy.configureList" :class="$style.listSelectBtn" :aria-label="copy.configureList" @click="playSimpleNavMotion($event, 'settings'); openActiveCollectionSettings('list')"><i class="ti ti-settings"></i></button>
-								</div>
-								<button :class="[$style.topTabBtn, { [$style.topTabActive]: isChannelPage }]" @click="playSimpleNavMotion($event, 'channel'); goToChannels()">
-									<i class="ti ti-device-tv"></i>
-									<span v-if="isChannelPage" :class="$style.topTabLabel">{{ copy.channel }}</span>
-								</button>
-								<div :class="[$style.listTabPill, { [$style.listTabPillActive]: isAntennaTimelinePage }]">
-									<button :class="[$style.topTabBtn, $style.listTabMain, { [$style.topTabActive]: isAntennaTimelinePage }]" @click="playSimpleNavMotion($event, 'antenna'); openPreferredAntenna()">
-										<i class="ti ti-antenna"></i>
-										<span v-if="isAntennaTimelinePage" :class="$style.topTabCopy"><span :class="$style.topTabLabel">{{ copy.antenna }}</span><span :class="$style.topTabName">{{ activeAntennaName }}</span></span>
+									<div :class="$style.topTabDivider"></div>
+									<div :class="[$style.listTabPill, { [$style.listTabPillActive]: isListTimelinePage }]">
+										<button :class="[$style.topTabBtn, $style.listTabMain, { [$style.topTabActive]: isListTimelinePage }]" @click="playSimpleNavMotion($event, 'list'); openPreferredList()">
+											<i class="ti ti-list"></i>
+											<span v-if="isListTimelinePage" :class="$style.topTabCopy"><span :class="$style.topTabLabel">{{ copy.list }}</span><span :class="$style.topTabName">{{ activeListName }}</span></span>
+										</button>
+										<button v-if="isListTimelinePage" v-tooltip="copy.switchList" :class="$style.listSelectBtn" :aria-label="copy.switchList" @click="playSimpleNavMotion($event, 'list'); toggleTimelinePicker('list')">
+											<i class="ti ti-selector"></i>
+										</button>
+										<button v-if="isListTimelinePage" v-tooltip="copy.configureList" :class="$style.listSelectBtn" :aria-label="copy.configureList" @click="playSimpleNavMotion($event, 'settings'); openActiveCollectionSettings('list')"><i class="ti ti-settings"></i></button>
+									</div>
+									<button :class="[$style.topTabBtn, { [$style.topTabActive]: isChannelPage }]" @click="playSimpleNavMotion($event, 'channel'); goToChannels()">
+										<i class="ti ti-device-tv"></i>
+										<span v-if="isChannelPage" :class="$style.topTabLabel">{{ copy.channel }}</span>
 									</button>
-									<button v-if="isAntennaTimelinePage" v-tooltip="copy.switchAntenna" :class="$style.listSelectBtn" :aria-label="copy.switchAntenna" @click="playSimpleNavMotion($event, 'antenna'); toggleTimelinePicker('antenna')"><i class="ti ti-selector"></i></button>
-									<button v-if="isAntennaTimelinePage" v-tooltip="copy.configureAntenna" :class="$style.listSelectBtn" :aria-label="copy.configureAntenna" @click="playSimpleNavMotion($event, 'settings'); openActiveCollectionSettings('antenna')"><i class="ti ti-settings"></i></button>
+									<div :class="[$style.listTabPill, { [$style.listTabPillActive]: isAntennaTimelinePage }]">
+										<button :class="[$style.topTabBtn, $style.listTabMain, { [$style.topTabActive]: isAntennaTimelinePage }]" @click="playSimpleNavMotion($event, 'antenna'); openPreferredAntenna()">
+											<i class="ti ti-antenna"></i>
+											<span v-if="isAntennaTimelinePage" :class="$style.topTabCopy"><span :class="$style.topTabLabel">{{ copy.antenna }}</span><span :class="$style.topTabName">{{ activeAntennaName }}</span></span>
+										</button>
+										<button v-if="isAntennaTimelinePage" v-tooltip="copy.switchAntenna" :class="$style.listSelectBtn" :aria-label="copy.switchAntenna" @click="playSimpleNavMotion($event, 'antenna'); toggleTimelinePicker('antenna')"><i class="ti ti-selector"></i></button>
+										<button v-if="isAntennaTimelinePage" v-tooltip="copy.configureAntenna" :class="$style.listSelectBtn" :aria-label="copy.configureAntenna" @click="playSimpleNavMotion($event, 'settings'); openActiveCollectionSettings('antenna')"><i class="ti ti-settings"></i></button>
+									</div>
 								</div>
 							</div>
-						</div>
-						<div :class="$style.newNotesViewport" :data-active="!!navbarNewNotes" :aria-hidden="!navbarNewNotes">
-							<div :class="$style.newNotesContent">
-								<button class="_button" :class="$style.newNotesButton" type="button" :disabled="!navbarNewNotes" @click="showNavbarNewNotes">
-									<i :class="navbarNewNotes?.icon ?? 'ti ti-arrow-up'" aria-hidden="true"></i>
-									<span role="status" aria-atomic="true">{{ navbarNewNotes?.text }}</span>
-								</button>
+							<div :class="$style.newNotesViewport" :data-active="!!navbarNewNotes" :aria-hidden="!navbarNewNotes">
+								<div :class="$style.newNotesContent">
+									<button class="_button" :class="$style.newNotesButton" type="button" :disabled="!navbarNewNotes" @click="showNavbarNewNotes">
+										<i :class="navbarNewNotes?.icon ?? 'ti ti-arrow-up'" aria-hidden="true"></i>
+										<span role="status" aria-atomic="true">{{ navbarNewNotes?.text }}</span>
+									</button>
+								</div>
 							</div>
 						</div>
 					</div>
@@ -291,7 +293,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<MkPostForm v-if="showFixedPostForm && !isExternalTab" :class="$style.fixedPostForm" class="_panel" fixed/>
 						<KeepAlive>
 							<MkStreamingNotesTimeline v-if="tab === 'mixed'" key="mixed" newNotesNavbarKey="main:mixed" src="global" :withRenotes="withRenotes" :withSensitive="withSensitive" :onlyFiles="onlyFiles" :glassBg="timelineGlassBg"/>
-							<MkStreamingNotesTimeline v-else-if="tab === 'local'" key="local" newNotesNavbarKey="main:local" src="local" :withRenotes="withRenotes" :withSensitive="withSensitive" :onlyFiles="onlyFiles" :glassBg="timelineGlassBg"/>
+							<MkStreamingNotesTimeline v-else-if="tab === 'local'" key="local" newNotesNavbarKey="main:local" src="local" :withRenotes="withRenotes" :withSensitive="withSensitive" :onlyFiles="onlyFiles" :glassBg="timelineGlassBg" :emojiVoteActive="normalLtlVoteActive" :emojiVoteEffectTarget="ltlEmojiVoteEffects"/>
 							<MkStreamingNotesTimeline v-else-if="tab === 'social'" key="social" newNotesNavbarKey="main:social" src="social" :withRenotes="withRenotes" :withSensitive="withSensitive" :onlyFiles="onlyFiles" :glassBg="timelineGlassBg"/>
 							<MkStreamingNotesTimeline v-else-if="tab === 'following'" key="following" newNotesNavbarKey="main:following" src="home" :withRenotes="withRenotes" :withSensitive="withSensitive" :onlyFiles="onlyFiles" :glassBg="timelineGlassBg"/>
 							<MkExternalTimeline v-else-if="tab === 'ohtl' && externalHost && externalToken" key="ohtl" newNotesNavbarKey="main:ohtl" src="ohtl" :host="externalHost" :token="externalToken" :sound="true" :simpleUi="true" :hataskeyUi="true" :glassBg="timelineGlassBg"/>
@@ -310,6 +312,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</div>
 				<div v-show="isPageView" data-hata-collapse-part :class="[$style.pageContainer, { [$style.collectionPageContainer]: isCollectionTimelinePage }]"><RouterView/></div>
 			</div>
+			<div v-if="normalLtlVoteActive" ref="ltlEmojiVoteEffects" :class="$style.ltlEmojiVoteEffects" :style="ltlEmojiVoteViewport" aria-hidden="true"></div>
 
 			<!-- 通常TL: ナビバー（モバイルのみ） -->
 			<div v-show="!isDesktop && !isHataskPage && !isExternalTab && !isChannelDetailPage && (!isPageView || bottomNavHasPage) && !userPanelUserId" data-htk-weather-footer data-hata-collapse-group :class="[$style.bottomBar, footerIsDark ? $style.bottomBarDark : $style.bottomBarLight, { [$style.bottomBarHidden]: !showBottomBar || widgetsShowing }]">
@@ -360,27 +363,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 	<Teleport to="body">
 		<div v-if="!isDesktop && userPanelUserId" :class="$style.userPanelMobileOverlay" @click.self="userPanelUserId = null">
 			<MkSimpleUserPanel :userId="userPanelUserId" :isMobile="true" :inline="true" @close="userPanelUserId = null"/>
-		</div>
-	</Teleport>
-
-	<!-- 旗鯖fork: お知らせ吹き出しは body 直下に Teleport し、サイドメニューの overflow/スタッキングを回避 -->
-	<Teleport to="body">
-		<div v-if="deckAnnounceVisible && deckAnnPos" :class="$style.sbAnnounce" :style="{ top: deckAnnPos.top + 'px', left: deckAnnPos.left + 'px' }">
-			<div :class="$style.sbAnnounceText">{{ copy.deckAddedAnnouncement }}</div>
-			<button :class="$style.sbAnnounceClose" @click="dismissDeckAnnounce"><i class="ti ti-x"></i></button>
-			<div :class="$style.sbAnnounceArrow"></div>
-		</div>
-		<div v-if="collapseAnnounceVisible && collapseAnnPos && !sidebarCollapsed && !deckActive" :class="$style.sbAnnounce" :style="{ top: collapseAnnPos.top + 'px', left: collapseAnnPos.left + 'px' }">
-			<div :class="$style.sbAnnounceText">{{ copy.collapseAnnouncement }}</div>
-			<button :class="$style.sbAnnounceClose" @click="dismissCollapseAnnounce"><i class="ti ti-x"></i></button>
-			<div :class="$style.sbAnnounceArrow"></div>
-		</div>
-		<!-- 旗鯖fork: HataFeed/地震・津波情報の新機能案内(「もっと」内のメニューを案内・端末ごと1回)
-             法的安全性のためクリックでは遷移しないお知らせのみ(気象業務法上の独自警報化リスク回避) -->
-		<div v-if="moreAnnounceVisible && moreAnnPos" :class="$style.sbAnnounce" :style="{ top: moreAnnPos.top + 'px', left: moreAnnPos.left + 'px' }">
-			<div :class="$style.sbAnnounceText">{{ copy.hataFeedMoreAnnouncement }} 気象庁発表の地震・津波情報も「もっと！」から確認できます</div>
-			<button :class="$style.sbAnnounceClose" @click.stop="dismissMoreAnnounce"><i class="ti ti-x"></i></button>
-			<div :class="$style.sbAnnounceArrow"></div>
 		</div>
 	</Teleport>
 
@@ -472,12 +454,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 	<!-- PC/タブレット: 右ウィジェットバー -->
 	<!-- 旗鯖fork: 折りたたみ端末の広い面でも、このバーだけPCと同じ構成・同じ表示で常時出す。
 	     ⚠️isDesktop は広げない(下部ナビ等までPC化して「モバイル表示のまま」が崩れるため)。 -->
-	<div v-if="(isDesktop || isFoldableWide) && !deckActive" data-hata-collapse-part :class="[$style.desktopWidgets, { [$style.desktopWidgetsSolid]: !glassEffect }]" :data-widget-border="showWidgetBorder ? 'on' : 'off'">
+	<div v-if="(isDesktop || isFoldableWide) && !deckActive" data-hata-collapse-part :class="[$style.desktopWidgets, { [$style.desktopWidgetsSolid]: !glassEffect }]" :data-collapsed="rightWidgetsCollapsed" :data-motion="prefer.r.animation.value" :data-widget-border="showWidgetBorder ? 'on' : 'off'">
 		<div v-if="glassEffect" :class="$style.desktopWidgetsBanner">
 			<img v-if="$i?.bannerUrl" :src="$i.bannerUrl" :class="$style.desktopWidgetsBannerImg"/>
 		</div>
 		<div :class="$style.desktopWidgetsInner">
-			<XWidgets/>
+			<XWidgets collapsible :collapsed="rightWidgetsCollapsed" @toggleCollapse="setRightWidgetsCollapsed(!rightWidgetsCollapsed)"/>
 		</div>
 	</div>
 
@@ -512,7 +494,7 @@ import * as os from '@/os.js';
 import { useStream } from '@/stream.js';
 import { $i } from '@/i.js';
 import { antennasCache, userListsCache } from '@/cache.js';
-import { deckIgnoreWidth, glassUiLocal, tabSwipeEnabled } from '@/utility/hatasaba-device-prefs.js';
+import { deckIgnoreWidth, glassUiLocal, tabSwipeEnabled, rightWidgetsCollapsed, setRightWidgetsCollapsed } from '@/utility/hatasaba-device-prefs.js';
 import { hatadyTzOffset } from '@/utility/hatady-prefs.js';
 import { prefer } from '@/preferences.js';
 import { cleanupStaleUiElements } from '@/utility/ui-cleanup.js';
@@ -639,7 +621,6 @@ const timelineGlassBg = computed(() => !isPageView.value && !deckActive.value &&
 
 function setDeckMode(v: boolean) {
 	prefer.commit('simpleUi.deckMode', v);
-	dismissDeckAnnounce();
 }
 
 // 旗鯖fork: 上部メニューモード(topNav)⇔左サイドメニューの切替。
@@ -656,24 +637,6 @@ const sidebarFolded = computed(() => deckActive.value || sidebarCollapsed.value)
 
 function toggleSidebarCollapse() {
 	prefer.commit('simpleUi.sidebarCollapsed', !sidebarCollapsed.value);
-	dismissCollapseAnnounce();
-}
-
-// 旗鯖fork(タスク3): デッキ表示が追加された旨のお知らせ吹き出し。
-// デスクトップで未表示なら出し、閉じる/切替操作で二度と出さない。
-const deckAnnounceVisible = ref(false);
-
-function dismissDeckAnnounce() {
-	deckAnnounceVisible.value = false;
-	if (!prefer.s['simpleUi.deckAnnounceShown']) prefer.commit('simpleUi.deckAnnounceShown', true);
-}
-
-// 旗鯖fork: サイドメニュー縮小/拡大ボタンのお知らせ吹き出し(デッキお知らせと同形式)。
-const collapseAnnounceVisible = ref(false);
-
-function dismissCollapseAnnounce() {
-	collapseAnnounceVisible.value = false;
-	if (!prefer.s['simpleUi.collapseAnnounceShown']) prefer.commit('simpleUi.collapseAnnounceShown', true);
 }
 
 // 旗鯖fork: トラックパッドの横スクロールでタイムラインタブを切替。
@@ -748,7 +711,7 @@ const isDesktop = computed(() => (deckIgnoreWidth.value && deckMode.value) ? tru
 
 function onResize() {
 	windowWidth.value = window.innerWidth;
-	nextTick(() => { updateSbFade(); updateAnnouncePositions(); });
+	nextTick(() => { updateSbFade(); });
 }
 
 window.addEventListener('resize', onResize);
@@ -850,53 +813,6 @@ watch(prefer.r.animation, (enabled) => {
 	if (!enabled) timelineCollapseEffect.cancel();
 });
 
-// 旗鯖fork: お知らせ吹き出しはサイドメニューの overflow:hidden / スタッキングコンテキストに
-// 囚われてタイムラインに隠れるため、Teleport で body 直下に出し、アンカー要素の座標に fixed 配置する。
-const deckAnchorEl = ref<HTMLElement | null>(null);
-const collapseAnchorEl = ref<HTMLElement | null>(null);
-const deckAnnPos = ref<{ top: number; left: number } | null>(null);
-const collapseAnnPos = ref<{ top: number; left: number } | null>(null);
-// 旗鯖fork: HataFeed 新登場の案内(「もっと」にアンカー・端末ごと1回)。
-const moreAnchorEl = ref<HTMLElement | null>(null);
-const moreAnnounceVisible = ref(false);
-const moreAnnPos = ref<{ top: number; left: number } | null>(null);
-
-function dismissMoreAnnounce() {
-	moreAnnounceVisible.value = false;
-	// 旗鯖fork: prefer 経由(マルチデバイス同期)で dismiss を保存。
-	// 既存ユーザー(端末ローカル miLocalStorage に保存済み) との互換のため両方書く。
-	prefer.commit('simpleUi.hatafeedIntroShown', true);
-	miLocalStorage.setItem('hatafeedIntroShown', 'true');
-}
-
-// 旗鯖fork: 案内吹き出しはクリック非遷移に変更したため未使用(関数は念のため残す)
-function calcAnnPos(el: HTMLElement | null): { top: number; left: number } | null {
-	if (!el) return null;
-	// 旗鯖fork: アンカー(例:「もっと」メニュー)が非表示・折りたたみだと座標が壊れて吹き出しが
-	//   画面端に飛ぶため、そうした場合は null を返して吹き出し自体を出さない。
-	//   display:none 等は offsetParent が null になる(position:fixed のときのみ例外的に null になり得る)。
-	if (el.offsetParent === null && getComputedStyle(el).position !== 'fixed') return null;
-	const r = el.getBoundingClientRect();
-	if (r.width === 0 || r.height === 0) return null;
-	// アンカーが完全にビューポート外(サイドバーのスクロールで隠れている等)なら出さない。
-	if (r.bottom <= 0 || r.top >= window.innerHeight || r.right <= 0 || r.left >= window.innerWidth) return null;
-	const center = r.top + r.height / 2;
-	// 旗鯖fork: 「もっと」はサイドバー最下部で中心が画面下端より下(=ほぼ画面外)に来ることがあり、
-	//   その位置に吹き出しを出すと崩壊するため出さない。デッキ切替トグルのように画面内に収まる
-	//   下寄りアンカー(中心が画面内)は従来どおり表示する。
-	if (center >= window.innerHeight) return null;
-	// 要素の右側・縦中央に出す(しっぽは吹き出し左辺=「く」の口)。
-	//   下寄りのアンカーでも吹き出しが画面下にはみ出さないよう軽くクランプする。
-	const top = Math.min(center, window.innerHeight - 48);
-	return { top, left: r.right + 12 };
-}
-
-function updateAnnouncePositions() {
-	if (deckAnnounceVisible.value) deckAnnPos.value = calcAnnPos(deckAnchorEl.value);
-	if (collapseAnnounceVisible.value) collapseAnnPos.value = calcAnnPos(collapseAnchorEl.value);
-	if (moreAnnounceVisible.value) moreAnnPos.value = calcAnnPos(moreAnchorEl.value);
-}
-
 // 旗鯖fork: サイドメニューのスクロールバーを隠し、続きがある時だけ上下にフェードを出す
 const sbScrollEl = ref<HTMLElement | null>(null);
 const sbFadeTop = ref(false);
@@ -913,7 +829,6 @@ function updateSbFade() {
 
 function onSbScroll() {
 	updateSbFade();
-	updateAnnouncePositions();
 	const el = sbScrollEl.value;
 	if (el) el.style.setProperty('--hss-parallax', studioProfile.value.expanded.parallax && !sidebarFolded.value ? `${Math.round(el.scrollTop * -0.035)}px` : '0px');
 }
@@ -1057,6 +972,26 @@ function getInitialTab(): TabType {
 }
 
 const tab = ref<TabType>(getInitialTab());
+
+const ltlEmojiVoteEffects = ref<HTMLElement | null>(null);
+const normalLtlVoteActive = computed(() => tab.value === 'local' && !isPageView.value && !deckActive.value);
+const ltlEmojiVoteViewport = ref({ top: '0px', left: '0px', width: '0px', height: '0px' });
+// watchは登録時にもgetterを評価するので、tab・isPageViewの初期化後に登録する。
+// 上部メニュー・お知らせの高さが変わっても、実際のLTLスクロール領域に合わせる。
+watch([normalLtlVoteActive, contentEl], ([active, content], _old, onCleanup) => {
+	if (!active || !content) return;
+	const update = () => {
+		const width = Math.min(content.clientWidth, 800);
+		ltlEmojiVoteViewport.value = {
+			top: `${content.offsetTop}px`, left: `${content.offsetLeft + (content.clientWidth - width) / 2}px`,
+			width: `${width}px`, height: `${content.clientHeight}px`,
+		};
+	};
+	const observer = new ResizeObserver(update);
+	observer.observe(content);
+	update();
+	onCleanup(() => observer.disconnect());
+}, { flush: 'post' });
 
 // ===== prefer連動: 上部タブ =====
 // 旗鯖fork: トレンドタブ (TTL) は専用トグル simpleUi.showTrendingTab で制御し、
@@ -1750,7 +1685,7 @@ const notificationTargetEl = notificationToasts.target;
 const notificationOutlineEl = notificationToasts.outline;
 const mobileToastVisible = ref(false);
 let toastCollapseTimer: number | undefined;
-watch(() => !isDesktop.value && notificationToasts.items.value.length > 0, visible => {
+watch(() => !isDesktop.value && !notificationToasts.surface.value && notificationToasts.items.value.length > 0, visible => {
 	window.clearTimeout(toastCollapseTimer);
 	if (visible) mobileToastVisible.value = true;
 	else toastCollapseTimer = window.setTimeout(() => { mobileToastVisible.value = false; }, prefer.s.animation && !window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 350 : 0);
@@ -2136,11 +2071,6 @@ function onSimpleUserPanel(ev: Event) {
 // 旗鯖fork: デッキ初表示時にチュートリアルを出す監視(全変数定義後に登録)
 watch(deckActive, (v) => { if (v) maybeShowDeckTutorial(); }, { immediate: true });
 
-// 旗鯖fork: お知らせ吹き出しの表示時に、アンカー座標を計算して fixed 配置する
-watch([deckAnnounceVisible, collapseAnnounceVisible, moreAnnounceVisible], () => {
-	nextTick(() => { updateAnnouncePositions(); });
-});
-
 onMounted(() => {
 	startAnnouncementsObserver();
 	cleanupStaleUiElements();
@@ -2151,24 +2081,6 @@ onMounted(() => {
 	// 旗鯖fork: ログインボーナス(ログイン日数)ポップアップは universal.vue でしか呼ばれておらず、
 	//   Hataskey UI(simple)では表示されなかった(他UIに切替えると出る)。ここでも呼んで設定を尊重する。
 	showLoginBonusIfNeeded();
-	// 旗鯖fork(タスク3): デスクトップで未表示なら、デッキ表示追加のお知らせ吹き出しを出す
-	if (isDesktop.value && !prefer.s['simpleUi.deckAnnounceShown']) {
-		deckAnnounceVisible.value = true;
-	}
-	// 旗鯖fork: デスクトップ通常表示(デッキでない)で未表示なら、縮小/拡大お知らせを出す
-	if (isDesktop.value && !deckActive.value && !prefer.s['simpleUi.collapseAnnounceShown']) {
-		collapseAnnounceVisible.value = true;
-	}
-	// 旗鯖fork: HataFeed を利用でき、未表示なら「もっと」に新登場の案内を出す。
-	// prefer (マルチデバイス同期) と miLocalStorage (旧来の端末ローカル) のどちらかが立っていれば skip。
-	// 端末ローカルだけで判定すると別端末/シークレットで毎回再表示される本番不具合があったため
-	// prefer 経由を優先しつつ、既存ユーザー保護のため miLocalStorage も互換チェックする。
-	if (isDesktop.value && !deckActive.value
-        && !prefer.s['simpleUi.hatafeedIntroShown']
-        && !miLocalStorage.getItem('hatafeedIntroShown')
-	        && ((($i?.policies as Record<string, unknown> | undefined)?.canAccessHataFeed) === true || $i?.isModerator || $i?.isAdmin)) {
-		moreAnnounceVisible.value = true;
-	}
 	// 旗鯖fork: 復元したタブが現在の設定で表示可能か検証し、非表示なら先頭タブにフォールバック
 	if (!tabOrder.value.includes(tab.value)) {
 		tab.value = tabOrder.value[0] ?? 'following';
@@ -3004,27 +2916,6 @@ onUnmounted(() => {
     border-radius:999px;
     background:color-mix(in srgb, var(--MI_THEME-accent) 8%, transparent);
 }
-.sbAnnounceClickable { cursor: pointer; }
-.sbAnnounce {
-    position:fixed;
-    transform:translateY(-50%);
-    width:210px;
-    display:flex;
-    align-items:flex-start;
-    gap:6px;
-    padding:10px 12px;
-    border-radius:12px;
-    background: var(--MI_THEME-accent);
-    color:#fff;
-    box-shadow:0 4px 16px rgba(0,0,0,.25);
-    z-index:3000;
-    animation: sbAnnouncePop .3s ease;
-}
-.sbAnnounceText { flex:1; font-size:.8rem; line-height:1.5; font-weight:600; }
-.sbAnnounceClose { flex:none; background:rgba(255,255,255,.2); border:none; color:#fff; border-radius:50%; width:22px; height:22px; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0; }
-.sbAnnounceClose:hover { background:rgba(255,255,255,.35); }
-.sbAnnounceArrow { position:absolute; left:-5px; top:50%; transform:translateY(-50%) rotate(45deg); width:12px; height:12px; background: var(--MI_THEME-accent); }
-@keyframes sbAnnouncePop { from { opacity:0; transform:translateY(-50%) translateX(-6px); } to { opacity:1; transform:translateY(-50%) translateX(0); } }
 .sbModeBtn {
     flex:1;
     padding:6px 0;
@@ -3291,7 +3182,8 @@ onUnmounted(() => {
     to { transform:translateX(0); }
 }
 .desktopWidgets {
-    width:350px;
+    --widget-bar-width:350px;
+    width:var(--widget-bar-width);
     flex-shrink:0;
     height:100dvh;
     box-sizing:border-box;
@@ -3299,12 +3191,14 @@ onUnmounted(() => {
     border-left:none;
     background:var(--MI_THEME-bg);
     position:relative;
+    transition:width .28s cubic-bezier(.22,1,.36,1);
 }
 .desktopWidgetsBanner {
     position:absolute;
     inset:0;
     z-index:0;
     overflow:hidden;
+    transition:opacity .18s ease;
     &::after {
         content:'';
         position:absolute;
@@ -3323,20 +3217,22 @@ onUnmounted(() => {
     transform:scale(1.1);
 }
 .desktopWidgetsInner {
-    position:relative;
+    // 内容は元の幅を保ち、バーの右端から開閉する。カードや文字を押し潰さない。
+    position:absolute;
+    top:0;
+    right:0;
+    width:var(--widget-bar-width);
     z-index:1;
     height:100%;
+    box-sizing:border-box;
     overflow-y:auto;
-    /* 旗鯖fork: 下部余白は padding-bottom ではなく末尾要素(編集ボタン)の margin-bottom で確保する。
-       Firefox は overflow コンテナ末尾の padding-bottom をスクロール可能領域に含めないため、
-       padding-bottom だと「ウィジェットを編集」ボタンが画面外に隠れてスクロールしても見えなくなる
-       (Chrome では含まれるため再現しない)。実体のある margin で確保すれば全ブラウザで見切れない。 */
     padding:16px 12px 0;
+    transition:padding .28s cubic-bezier(.22,1,.36,1);
     scrollbar-width:thin;
     scrollbar-color:color-mix(in srgb, var(--MI_THEME-fg) 12%, transparent) transparent;
 
-    /* 旗鯖fork: 末尾の「ウィジェットを編集」ボタンに下余白を持たせ、Firefoxでも見切れないようにする */
-    :deep(> div > ._textButton:last-child) {
+    /* スクロール末尾の余白を、実体のあるウィジェット領域の margin で確保する。 */
+    > div {
         margin-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
     }
 
@@ -3404,6 +3300,16 @@ onUnmounted(() => {
 .avatarBtn:active { transform:scale(.9); }
 .avatarImg { width:100%; height:100%; max-width:36px; max-height:36px; object-fit:cover; border-radius:9999px; }
 
+// ナビの内容のクリップを保ち、通知のぼかした縁取りだけを背面へ広げる。
+.topPillFrame {
+    position:relative; isolation:isolate; border-radius:24px;
+    width:max-content; max-width:100%; min-width:0;
+}
+.topPillFrame > svg[data-integrated='true'] {
+    overflow:visible; z-index:-1;
+    stroke-width:40; stroke-linecap:round;
+    filter:blur(14px); opacity:.55;
+}
 .topPill {
     position:relative; display:flex; flex-direction:column; align-items:center;
     border-radius:24px; width:max-content; max-width:100%; min-width:0; box-sizing:border-box;
@@ -3489,6 +3395,7 @@ onUnmounted(() => {
     box-shadow:0 4px 24px rgba(0,0,0,.06),0 0 0 .5px rgba(0,0,0,.06) inset;
 }
 .topBar[data-notification-only='true'] .topNavStack { width:min(360px,100%); max-width:100%; }
+.topBar[data-notification-only='true'] .topPillFrame { width:100%; }
 .topBar[data-notification-only='true'] .topPill {
     width:100%; backdrop-filter:none; -webkit-backdrop-filter:none;
 }
@@ -3557,6 +3464,13 @@ onUnmounted(() => {
 
 // ===== コンテンツ =====
 .content { flex:1; overflow-y:auto; position:relative; min-height:0; }
+.ltlEmojiVoteEffects {
+    position:absolute;
+    overflow:hidden;
+    isolation:isolate;
+    pointer-events:none;
+    z-index:50;
+}
 .timelineContainer {
     max-width:800px; margin:0 auto; min-height:100%;
     /* 旗鯖fork: 従来はタイムライン列の左右に divider の縦線を出していたが、
@@ -3724,7 +3638,7 @@ onUnmounted(() => {
 .root[data-hata-foldable='true'] .desktopWidgets {
     display: block;
     // PCの350pxは折りたたみ端末には広すぎるので詰める。⚠️実測後に見直すこと。
-    width: 300px;
+    --widget-bar-width: 300px;
 }
 
 // 折りたたみ端末では画面全幅ではなく、タイムライン列を基準にピルを中央へ置く。
@@ -3735,6 +3649,20 @@ onUnmounted(() => {
 // 右ウィジェット列の先頭を、バナー下にある左のノート列と同じ高さへ揃える。
 .root[data-hata-foldable='true'] .desktopWidgetsInner {
     padding-top: calc(56px + env(safe-area-inset-top, 0px) + var(--simple-announcements-height, 0px));
+}
+
+/* 再展開ボタンの列を本文・上部ナビと別に確保する。fixed で重ねない。 */
+.root .desktopWidgets[data-collapsed='true'] { width: 64px; }
+.desktopWidgets[data-collapsed='true'] .desktopWidgetsBanner { opacity: 0; }
+.desktopWidgets[data-collapsed='true'] .desktopWidgetsInner {
+    padding: calc(10px + env(safe-area-inset-top, 0px)) 8px 0;
+    overflow: hidden;
+}
+.desktopWidgets[data-motion='false'],
+.desktopWidgets[data-motion='false'] .desktopWidgetsInner,
+.desktopWidgets[data-motion='false'] .desktopWidgetsBanner { transition: none; }
+@media (prefers-reduced-motion: reduce) {
+    .desktopWidgets, .desktopWidgetsInner, .desktopWidgetsBanner { transition: none; }
 }
 
 .bottomBarDark {}

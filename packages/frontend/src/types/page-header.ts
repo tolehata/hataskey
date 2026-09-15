@@ -4,8 +4,11 @@
  */
 
 export type PageHeaderItem = {
+	id?: string;
 	text: string;
 	icon: string;
 	highlighted?: boolean;
+	controls?: string;
+	expanded?: boolean;
 	handler: (ev: MouseEvent) => void;
 };
