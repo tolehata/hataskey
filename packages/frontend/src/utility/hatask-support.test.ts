@@ -1,0 +1,67 @@
+/*
+ * SPDX-FileCopyrightText: Tolehata and hatasaba-project
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+import { describe, expect, test } from 'vitest';
+import { SUPPORT_POLICIES, formatSupportSnapshot, supportBenefitHeading, supportDisclosureHeights, supportHttpsUrl, supportSnapshotCondition, supportTextWidthBudget } from './hatask-support.js';
+import type { SupportSnapshot } from './hatask-support.js';
+
+const snapshot = (value: SupportSnapshot['value'], extra: Partial<SupportSnapshot> = {}): SupportSnapshot => ({ value, available: true, unlimited: false, condition: null, rateMultiplier: null, ...extra });
+
+describe('Hatask support display projections', () => {
+	test('metadata covers every approved benefit without storing production limits', () => {
+		expect(SUPPORT_POLICIES.map(item => item.key)).toEqual(['driveCapacityMb', 'canMakePrivateChannel', 'hataSideStudioProfileLimit', 'avatarDecorationLimit', 'hatadyBookLimit', 'canUseHatadySync', 'canUseMascot', 'mascotMaxExpressions', 'mascotMaxPhrases', 'mascotMaxCharacters', 'canUseHatacordingUi', 'hatacordingUiRateLimit', 'canBypassHatacordingUiRateLimit', 'rateLimitFactor']);
+		expect(SUPPORT_POLICIES.every(item => !('value' in item) && !('roleId' in item))).toBe(true);
+	});
+	test.each([
+		['driveCapacityMb', snapshot(100), '100 MB'], ['driveCapacityMb', snapshot(5120), '5 GB'],
+		['canMakePrivateChannel', snapshot(true), '作成できます'], ['canMakePrivateChannel', snapshot(false), '作成できません'],
+		['canUseHatadySync', snapshot(true), '同期できます'], ['canUseHatadySync', snapshot(false), '同期できません'],
+		['hatadyBookLimit', snapshot(1000), '1,000 冊'], ['mascotMaxExpressions', snapshot(20), '20 表情 / キャラクター'],
+		['mascotMaxPhrases', snapshot(50), '50 件 / キャラクター'], ['mascotMaxCharacters', snapshot(0), '0 体'],
+		['hatacordingUiRateLimit', snapshot(1000), '1,000 回 / 1時間'],
+		['canBypassHatacordingUiRateLimit', snapshot(false), '専用枠を適用'],
+		['hatacordingUiRateLimit', snapshot(500, { unlimited: true }), '専用の1時間枠を免除'],
+		['rateLimitFactor', snapshot(0, { unlimited: true }), '一般APIの制限を免除'],
+		['rateLimitFactor', snapshot(0.5, { rateMultiplier: 4 }), '回数上限 4倍相当'],
+		['rateLimitFactor', snapshot(2, { rateMultiplier: 1 }), '標準の制限'],
+		['rateLimitFactor', snapshot(0.5), '設定値 0.5'],
+	])('%s formats a server projection as %s', (key, value, expected) => {
+		expect(formatSupportSnapshot(key as string, value as SupportSnapshot)).toBe(expected);
+	});
+	test('invalid or missing values never become an available or unlimited claim', () => {
+		for (const value of [null, 0, -1, 1001, 1.2, NaN, Infinity]) expect(formatSupportSnapshot('hatacordingUiRateLimit', snapshot(value))).toBe('未設定');
+		expect(formatSupportSnapshot('canUseMascot', snapshot(1))).toBe('未設定');
+		expect(formatSupportSnapshot('driveCapacityMb', snapshot(true))).toBe('未設定');
+		expect(formatSupportSnapshot('driveCapacityMb', null)).toBe('未設定');
+		expect(formatSupportSnapshot('unknown', snapshot(100))).toBe('未設定');
+	});
+	test('disabled dependencies remain visible alongside counts and bypass projections', () => {
+		expect(supportSnapshotCondition(snapshot(20, { condition: 'mascotUnavailable', available: false }))).toBe('マスコット機能は利用できません');
+		expect(supportSnapshotCondition(snapshot(1000, { condition: 'snsUiUnavailable', available: false, unlimited: true }))).toBe('HataSNSCordUIは利用できません');
+		expect(supportSnapshotCondition(null)).toBeNull();
+	});
+	test.each([
+		['canMakePrivateChannel', 'プライベートチャンネル', ['プライベート', 'チャンネル']],
+		['avatarDecorationLimit', 'アバターデコレーション', ['アバター', 'デコレーション']],
+		['mascotMaxPhrases', 'マスコットの最大文言数', ['マスコットの', '最大文言数']],
+		['mascotMaxCharacters', 'マスコットの最大キャラクター数', ['マスコットの', '最大キャラクター数']],
+	])('preserves approved %s title breaks and custom title text', (key, title, lines) => {
+		expect(supportBenefitHeading(key as string, title as string)).toEqual(lines);
+		expect(supportBenefitHeading(key as string, '<img src=x>')).toEqual(['<img src=x>']);
+	});
+	test('one-line sizing uses content width and full text rather than ellipsis', () => {
+		expect(supportTextWidthBudget('同期できます')).toBeGreaterThan(6);
+		expect(supportTextWidthBudget('50 件 / キャラクター')).toBeGreaterThan(supportTextWidthBudget('10 体'));
+		expect(supportTextWidthBudget('')).toBeGreaterThan(0);
+	});
+	test('URLs are HTTPS-only and reject credentials and executable schemes', () => {
+		expect(supportHttpsUrl('https://support.example.test/path?a=b')).toBe('https://support.example.test/path?a=b');
+		for (const url of ['http://example.test', 'javascript:alert(1)', 'data:text/html,hello', 'https://name:secret@example.test/', '', 'not-a-url']) expect(supportHttpsUrl(url)).toBeNull();
+	});
+	test('disclosure includes all of card three and only a preview of the tail', () => {
+		expect(supportDisclosureHeights(4000, 1000)).toEqual({ expanded: 4032, collapsed: 1108 });
+		expect(supportDisclosureHeights(1000, 990)).toEqual({ expanded: 1032, collapsed: 1032 });
+		expect(supportDisclosureHeights(0, 0, 0)).toEqual({ expanded: 0, collapsed: 0 });
+	});
+});

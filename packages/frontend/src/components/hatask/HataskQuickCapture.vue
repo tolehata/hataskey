@@ -291,8 +291,7 @@ textarea.input { box-sizing: border-box; height: auto; min-height: 44px; max-hei
 .input:focus-visible { border-radius: 12px; outline: 2px solid var(--accent); outline-offset: -2px; }
 .chip:disabled { cursor: default; opacity: .42; }
 
-.submit,
-.tool {
+.submit, .tool {
 	width: 44px;
 	height: 44px;
 	border: 0;
@@ -323,9 +322,7 @@ textarea.input { box-sizing: border-box; height: auto; min-height: 44px; max-hei
 	padding: 2px 4px 3px;
 }
 
-.chips,
-.tools,
-.toolRow {
+.chips, .tools, .toolRow {
 	display: flex;
 	align-items: center;
 }
@@ -356,8 +353,7 @@ textarea.input { box-sizing: border-box; height: auto; min-height: 44px; max-hei
 }
 
 .chip span { overflow: hidden; text-overflow: ellipsis; }
-.chip:hover,
-.chip:focus-visible {
+.chip:hover, .chip:focus-visible {
 	border-color: color-mix(in srgb, var(--capture-chip-color, var(--accent)) 48%, var(--rule));
 	background: color-mix(in srgb, var(--capture-chip-color, var(--accent)) 15%, transparent);
 	color: var(--fg);
@@ -413,9 +409,7 @@ textarea.input { box-sizing: border-box; height: auto; min-height: 44px; max-hei
 	color: var(--fg-2);
 }
 
-.tool:hover,
-.tool:focus-visible,
-.tool[data-active="true"] {
+.tool:hover, .tool:focus-visible, .tool[data-active="true"] {
 	background: color-mix(in srgb, var(--accent) 12%, transparent);
 	color: var(--accent);
 }
@@ -457,28 +451,25 @@ textarea.input { box-sizing: border-box; height: auto; min-height: 44px; max-hei
 
 @keyframes captureSpin { to { transform: rotate(1turn); } }
 
-:global(.capture-tools-enter-active),
-:global(.capture-tools-leave-active) {
+:global(.capture-tools-enter-active), :global(.capture-tools-leave-active) {
 	transition: opacity .16s ease;
 }
-:global(.capture-tools-enter-from),
-:global(.capture-tools-leave-to) { opacity: 0; }
+:global(.capture-tools-enter-from), :global(.capture-tools-leave-to) { opacity: 0; }
 
 @media (prefers-reduced-motion: reduce) {
-	.pill,
-	.submit,
-	.tool,
-	:global(.capture-tools-enter-active),
-	:global(.capture-tools-leave-active) { transition: none !important; animation: none !important; }
+	.pill, .submit, .tool, :global(.capture-tools-enter-active), :global(.capture-tools-leave-active) { transition: none !important; animation: none !important; }
 }
-.root[data-hatask-theme='akatsuki'] { --accent: var(--accent-ink); --fg-3: var(--fg-2); }
-.root[data-hatask-theme='akatsuki'] .pill {
+.root[data-hatask-theme] { --accent: var(--accent-ink); --fg-3: var(--fg-2); }
+.root[data-hatask-theme] .pill {
 	border: 1px solid var(--rule);
 	border-radius: 24px;
 	background: var(--surface);
 	box-shadow: var(--shadow, none);
 	backdrop-filter: none;
 }
-.root[data-hatask-theme='akatsuki'] .pill:focus-within { border-color: var(--accent); }
-.root[data-hatask-theme='akatsuki'] .hint { font-size: max(11px, .7rem); }
+.root[data-hatask-theme] .pill:focus-within { border-color: var(--accent); }
+.root[data-hatask-theme] .hint { font-size: max(11px, .7rem); }
+
+:global(.htk-root:not([data-theme='akatsuki'])) .pill { border-radius: var(--card-radius); border-color: var(--rule); box-shadow: var(--shadow); }
+.root:not([data-hatask-theme='akatsuki']) { --card-radius: inherit; --card-border: inherit; --card-shadow: inherit; --on-accent: var(--htk-on-ink); }
 </style>

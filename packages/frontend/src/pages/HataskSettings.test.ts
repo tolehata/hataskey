@@ -113,19 +113,20 @@ describe('Hatask theme settings and persistence safety', () => {
 		const { container, changed } = await mountSettings();
 		expect(container.querySelector('[data-akatsuki-navigation]')).not.toBeNull();
 		await openThemes(container);
-		const names = [copy.themeAkatsuki, copy.themeKisetsu, copy.themeKashin, copy.themeSuri, copy.themeHatakyu];
-		expect(names.map(name => themeButton(container, name).getAttribute('aria-pressed'))).toEqual(['true', 'false', 'false', 'false', 'false']);
+		const names = [copy.themeAkatsuki, copy.themeKoke, copy.themeKisetsu, copy.themeKashin, copy.themeSuri, copy.themeHatakyu];
+		expect(names.map(name => themeButton(container, name).getAttribute('aria-pressed'))).toEqual(['true', 'false', 'false', 'false', 'false', 'false']);
 		expect(writes()).toHaveLength(0);
 		expect(changed).not.toHaveBeenCalled();
 	});
 
 	test.each([
+		['koke', copy.themeKoke],
 		['kisetsu', copy.themeKisetsu], ['kashin', copy.themeKashin], ['suri', copy.themeSuri], ['hatakyu', copy.themeHatakyu],
 	])('keeps the saved %s selection and unrelated settings', async (theme, name) => {
 		const saved = { theme, darkMode: true, autoTheme: false, weekStart: 'sun', custom: { keep: 'data' } };
 		readSettings = async () => saved;
 		const { container, changed } = await mountSettings();
-		expect(container.querySelector('[data-akatsuki-navigation]')).toBeNull();
+		expect(navigationOrder(container)).toHaveLength(4);
 		await openThemes(container);
 		expect(themeButton(container, name).getAttribute('aria-pressed')).toBe('true');
 		expect(writes()).toHaveLength(0);
@@ -133,6 +134,22 @@ describe('Hatask theme settings and persistence safety', () => {
 		expect(writes()).toHaveLength(1);
 		expect(writes()[0][1]).toMatchObject({ key: 'settings', scope: ['client', 'hatask'], value: { ...saved, theme: 'akatsuki' } });
 		expect(changed).toHaveBeenCalledWith(expect.objectContaining({ ...saved, theme: 'akatsuki' }));
+	});
+
+	test.each([false, true])('苔を選ぶと保存され、再表示でも選択と明暗=%sを維持する', async darkMode => {
+		const saved = { theme: 'akatsuki', darkMode, autoTheme: false, weekStart: 'sun', custom: { keep: 'data' } };
+		let stored: unknown = saved;
+		readSettings = async () => stored;
+		writeSettings = async value => { stored = value; };
+		const first = await mountSettings(); await openThemes(first.container);
+		themeButton(first.container, copy.themeKoke).click(); await flush();
+		expect(writes()).toHaveLength(1);
+		expect(stored).toMatchObject({ ...saved, theme: 'koke' });
+		expect(first.changed).toHaveBeenCalledWith(expect.objectContaining({ ...saved, theme: 'koke' }));
+		const reopened = await mountSettings(); await openThemes(reopened.container);
+		expect(themeButton(reopened.container, copy.themeKoke).getAttribute('aria-pressed')).toBe('true');
+		expect(reopened.container.querySelector('.htk-theme-preview[data-theme="koke"]')?.getAttribute('data-mode')).toBe(darkMode ? 'dark' : 'light');
+		expect(writes()).toHaveLength(1);
 	});
 
 	test.each([{ value: null }, { value: [] }, { value: 'invalid' }])('does not enable or overwrite malformed settings: $value', async ({ value }) => {
@@ -179,6 +196,85 @@ describe('Hatask theme settings and persistence safety', () => {
 		expect(writes()).toHaveLength(2);
 		expect(changed).toHaveBeenCalledTimes(1);
 		expect(themeButton(container, copy.themeAkatsuki).getAttribute('aria-pressed')).toBe('true');
+	});
+});
+
+describe('暁の自動配色案内と手動設定の保存', () => {
+	const appThemeLabel = '自動（本体のテーマに従う）';
+	const osThemeLabel = '自動（端末の設定に従う）';
+
+	function appearanceSwitch(container: HTMLElement, label: string): HTMLButtonElement {
+		const button = container.querySelector<HTMLButtonElement>(`button[role="switch"][aria-label="${label}"]`);
+		if (!button) throw new Error(`Missing appearance switch: ${label}`);
+		return button;
+	}
+
+	function assertAppearanceLabel(container: HTMLElement, label: string): HTMLButtonElement {
+		const button = appearanceSwitch(container, label);
+		expect(button.parentElement?.querySelector('span')?.textContent).toBe(label);
+		return button;
+	}
+
+	test('本体用と端末用の文言を分け、表示文字とaria-labelの不一致も検出する', () => {
+		expect(copy.autoAppearanceTheme).toBe(appThemeLabel);
+		expect(copy.autoAppearance).toBe(osThemeLabel);
+		const control = window.document.createElement('div');
+		control.innerHTML = `<div><span>${osThemeLabel}</span><button role="switch" aria-label="${appThemeLabel}"></button></div>`;
+		expect(() => assertAppearanceLabel(control, appThemeLabel)).toThrow();
+		expect(() => appearanceSwitch(control, 'missing-positive-control')).toThrow('Missing appearance switch:');
+	});
+
+	test.each([
+		{ theme: 'akatsuki', label: appThemeLabel }, { theme: undefined, label: appThemeLabel },
+		{ theme: 'koke', label: appThemeLabel },
+		{ theme: 'kisetsu', label: osThemeLabel }, { theme: 'kashin', label: osThemeLabel },
+		{ theme: 'suri', label: osThemeLabel }, { theme: 'hatakyu', label: osThemeLabel },
+	])('$themeでは正しい自動配色名を表示し、autoとmanualの保存でもほかの設定を保つ', async ({ theme, label }) => {
+		const saved = {
+			theme, autoTheme: true, darkMode: false, weekStart: 'sun', animations: false,
+			akatsukiMobileTabs: ['home', 'cal', 'todo', 'hataskapps'], custom: { keep: 'data' },
+		};
+		readSettings = async () => saved;
+		const { container, changed } = await mountSettings();
+		await openThemes(container);
+		const automatic = assertAppearanceLabel(container, label);
+		expect(automatic.getAttribute('aria-checked')).toBe('true');
+		expect(container.querySelector(`[role="switch"][aria-label="${label === appThemeLabel ? osThemeLabel : appThemeLabel}"]`)).toBeNull();
+		expect(container.querySelector(`[role="switch"][aria-label="${copy.darkMode}"]`)).toBeNull();
+		automatic.click(); await flush();
+		expect(writes()).toHaveLength(1);
+		expect(writes()[0][1]).toMatchObject({ key: 'settings', scope: ['client', 'hatask'], value: { ...saved, autoTheme: false } });
+		expect(assertAppearanceLabel(container, label).getAttribute('aria-checked')).toBe('false');
+		const manual = appearanceSwitch(container, copy.darkMode);
+		expect(manual.getAttribute('aria-checked')).toBe('false');
+		manual.click(); await flush();
+		expect(writes()).toHaveLength(2);
+		expect(writes()[1][1]).toMatchObject({ key: 'settings', scope: ['client', 'hatask'], value: { ...saved, autoTheme: false, darkMode: true } });
+		expect(appearanceSwitch(container, copy.darkMode).getAttribute('aria-checked')).toBe('true');
+		assertAppearanceLabel(container, label).click(); await flush();
+		expect(writes()).toHaveLength(3);
+		expect(writes()[2][1]).toMatchObject({ key: 'settings', scope: ['client', 'hatask'], value: { ...saved, autoTheme: true, darkMode: true } });
+		expect(changed).toHaveBeenCalledTimes(3);
+		expect(changed).toHaveBeenLastCalledWith(expect.objectContaining({ ...saved, autoTheme: true, darkMode: true }));
+		expect(container.querySelector(`[role="switch"][aria-label="${copy.darkMode}"]`)).toBeNull();
+		expect(saved.autoTheme).toBe(true);
+		expect(saved.darkMode).toBe(false);
+	});
+
+	test('暁と旧テーマを選び直すと自動配色の表示とariaが一緒に変わり、配色設定は勝手に切り替えない', async () => {
+		const saved = { theme: 'hatakyu', autoTheme: true, darkMode: true, custom: { keep: 'value' } };
+		readSettings = async () => saved;
+		const { container, changed } = await mountSettings();
+		await openThemes(container);
+		expect(assertAppearanceLabel(container, osThemeLabel).getAttribute('aria-checked')).toBe('true');
+		themeButton(container, copy.themeAkatsuki).click(); await flush();
+		expect(assertAppearanceLabel(container, appThemeLabel).getAttribute('aria-checked')).toBe('true');
+		expect(writes()[0][1]).toMatchObject({ value: { ...saved, theme: 'akatsuki' } });
+		themeButton(container, copy.themeKashin).click(); await flush();
+		expect(assertAppearanceLabel(container, osThemeLabel).getAttribute('aria-checked')).toBe('true');
+		expect(writes()).toHaveLength(2);
+		expect(writes()[1][1]).toMatchObject({ value: { ...saved, theme: 'kashin' } });
+		expect(changed).toHaveBeenLastCalledWith(expect.objectContaining({ ...saved, theme: 'kashin' }));
 	});
 });
 
@@ -239,11 +335,11 @@ describe('テーマ選択カルーセルの内容高と説明文', () => {
 			return element;
 		};
 		expect(card('akatsuki').style.transform).toBe('translateX(0%) scale(1)');
-		expect(card('kisetsu').style.transform).toBe('translateX(76%) scale(0.8)');
+		expect(card('koke').style.transform).toBe('translateX(76%) scale(0.8)');
 		expect(card('hatakyu').tabIndex).toBe(-1);
 		expect(card('hatakyu').style.pointerEvents).toBe('none');
 		container.querySelector<HTMLButtonElement>(`[aria-label="${copy.nextTheme}"]`)?.click(); await flush();
-		expect(card('kisetsu').getAttribute('aria-pressed')).toBe('true');
+		expect(card('koke').getAttribute('aria-pressed')).toBe('true');
 		expect(card('akatsuki').style.transform).toBe('translateX(-76%) scale(0.8)');
 		themeButton(container, copy.themeKashin).click(); await flush();
 		expect(card('kashin').style.transform).toBe('translateX(0%) scale(1)');
@@ -254,7 +350,7 @@ describe('テーマ選択カルーセルの内容高と説明文', () => {
 		viewport.dispatchEvent(start); viewport.dispatchEvent(end); await flush();
 		expect(card('suri').getAttribute('aria-pressed')).toBe('true');
 		expect(card('suri').style.transform).toBe('translateX(0%) scale(1)');
-		expect(writes().map(([, params]) => (params as { value: { theme: string } }).value.theme)).toEqual(['kisetsu', 'kashin', 'suri']);
+		expect(writes().map(([, params]) => (params as { value: { theme: string } }).value.theme)).toEqual(['koke', 'kashin', 'suri']);
 		expect(changed).toHaveBeenCalledTimes(3);
 	});
 });
@@ -305,10 +401,10 @@ function deferMenuClose(): () => void {
 	return () => resolveClosed();
 }
 
-describe('下部ナビバー設定は有効な暁テーマだけに表示する', () => {
+describe('下部ナビバー設定はすべてのテーマで共通に表示する', () => {
 	test.each([true, false])('embedded=%sでも本体の有効テーマと同じ条件で表示し、保存済み順序は読むだけ', async embedded => {
 		const savedOrder = ['apps', 'hataskapps', 'home', 'cal'];
-		const themes = ['akatsuki', 'kisetsu', 'kashin', 'suri', 'hatakyu', 'unknown', undefined, null, ''];
+		const themes = ['akatsuki', 'koke', 'kisetsu', 'kashin', 'suri', 'hatakyu', 'unknown', undefined, null, ''];
 		const visible: boolean[] = [];
 		for (const theme of themes) {
 			const saved = { theme, akatsukiMobileTabs: [...savedOrder], akatsukiShortcut: 'meal', custom: 'keep' };
@@ -322,9 +418,8 @@ describe('下部ナビバー設定は有効な暁テーマだけに表示する'
 			expect(saved).toEqual({ theme, akatsukiMobileTabs: savedOrder, akatsukiShortcut: 'meal', custom: 'keep' });
 			expect(changed).not.toHaveBeenCalled();
 		}
-		// Explicit 暁 is the positive control. Empty legacy values use Hatask's
-		// existing default; unknown nonempty values never activate this editor.
-		expect(visible).toEqual([true, false, false, false, false, false, true, true, true]);
+		// Saved theme values select paint, so navigation remains available in every case.
+		expect(visible).toEqual(themes.map(() => true));
 		expect(writes()).toHaveLength(0);
 	});
 
@@ -350,9 +445,9 @@ describe('下部ナビバー設定は有効な暁テーマだけに表示する'
 		await openThemes(container); themeButton(container, copy.themeAkatsuki).click(); await flush();
 		textButton(container, copy.backToSettings).click(); await flush();
 		expect(writes()).toHaveLength(1);
-		expect(container.querySelector('[data-akatsuki-navigation]')).toBeNull();
+		expect(navigationOrder(container)).toEqual(saved.akatsukiMobileTabs);
 		rejectSave(new Error('Offline')); await flush();
-		expect(container.querySelector('[data-akatsuki-navigation]')).toBeNull();
+		expect(navigationOrder(container)).toEqual(saved.akatsukiMobileTabs);
 		expect(changed).not.toHaveBeenCalled();
 		writeSettings = async () => undefined;
 		await openThemes(container); themeButton(container, copy.themeAkatsuki).click(); await flush();
@@ -365,7 +460,7 @@ describe('下部ナビバー設定は有効な暁テーマだけに表示する'
 		expect(navigationOrder(container)).toEqual(saved.akatsukiMobileTabs);
 		expect(navButton(container, '[data-ak-menu="home"]').disabled).toBe(true);
 		resolveSave(); await flush();
-		expect(container.querySelector('[data-akatsuki-navigation]')).toBeNull();
+		expect(navigationOrder(container)).toEqual(saved.akatsukiMobileTabs);
 		expect(changed).toHaveBeenLastCalledWith(expect.objectContaining({ ...saved, theme: 'hatakyu' }));
 		writeSettings = async () => undefined;
 		await openThemes(container); themeButton(container, copy.themeAkatsuki).click(); await flush();
@@ -375,21 +470,17 @@ describe('下部ナビバー設定は有効な暁テーマだけに表示する'
 		for (const [, params] of writes()) expect(params).toMatchObject({ value: { akatsukiMobileTabs: saved.akatsukiMobileTabs, akatsukiShortcut: 'meal', custom: 'keep' } });
 	});
 
-	test('暁を無効にしたあとに残ったメニュー操作では順序を書き換えない', async () => {
+	test('テーマ切替後も項目別メニューから下部タブを変更できる', async () => {
 		const saved = { theme: 'akatsuki', akatsukiMobileTabs: ['home', 'todo', 'hataskapps', 'apps'] };
 		readSettings = async () => saved;
 		const { container } = await mountSettings();
-		const anchor = navButton(container, '[data-ak-menu="todo"]');
-		const menu = openTabMenu(container, 'todo');
 		await openThemes(container); themeButton(container, copy.themeSuri).click(); await flush();
 		textButton(container, copy.backToSettings).click(); await flush();
-		expect(container.querySelector('[data-akatsuki-navigation]')).toBeNull();
-		expect(writes()).toHaveLength(1);
+		const menu = openTabMenu(container, 'todo');
 		menuAction(menu, 'カレンダー'); await flush();
-		anchor.click(); await flush();
-		expect(popupMenu).toHaveBeenCalledTimes(1);
-		expect(writes()).toHaveLength(1);
-		expect(writes()[0][1]).toMatchObject({ value: { ...saved, theme: 'suri' } });
+		expect(navigationOrder(container)).toEqual(['home', 'cal', 'hataskapps', 'apps']);
+		expect(writes()).toHaveLength(2);
+		expect(writes()[1][1]).toMatchObject({ value: { ...saved, theme: 'suri', akatsukiMobileTabs: ['home', 'cal', 'hataskapps', 'apps'] } });
 	});
 });
 
@@ -428,16 +519,28 @@ describe('暁のドラッグと項目別メニューによる4枠設定', () => 
 		expect(changed).toHaveBeenCalledWith(expect.objectContaining({ akatsukiMobileTabs: expected }));
 	});
 
-	test.each(['todo', 'apps'])('任意の%sには未使用の5機能だけを置換候補に出す', async tab => {
+	test.each(['todo', 'apps'])('任意の%sにはEYEを含まない未使用の機能だけを置換候補に出す', async tab => {
 		const { container } = await mountSettings();
 		const menu = openTabMenu(container, tab);
-		expect(menu.filter(item => item.action).map(item => item.text)).toEqual(['カレンダー', 'きもち', 'ごはん', 'おはな', 'EYE']);
+		expect(menu.filter(item => item.action).map(item => item.text)).toEqual(['カレンダー', 'きもち', 'ごはん', 'おはな', '支援情報', 'ランキング']);
 		expect(positions(menu)).toHaveLength(4);
 		menuAction(menu, 'カレンダー');
 		await flush();
 		expect(navigationOrder(container)).toEqual(['home', 'todo', 'hataskapps', 'apps'].map(id => id === tab ? 'cal' : id));
 		expect(new Set(navigationOrder(container)).size).toBe(4);
 		expect(writes()).toHaveLength(1);
+	});
+
+	test('旧EYE枠だけを補完して表示し、自動では設定を書き換えない', async () => {
+		const saved = { theme: 'akatsuki', akatsukiShortcut: 'eye', akatsukiMobileTabs: ['apps', 'eye', 'home', 'hataskapps'], custom: { keep: 'data' } };
+		const before = JSON.stringify(saved);
+		readSettings = async () => saved;
+		const { container, changed } = await mountSettings();
+		expect(navigationOrder(container)).toEqual(['apps', 'todo', 'home', 'hataskapps']);
+		expect(openTabMenu(container, 'todo').filter(item => item.action).map(item => item.text)).not.toContain('EYE');
+		expect(writes()).toHaveLength(0);
+		expect(changed).not.toHaveBeenCalled();
+		expect(JSON.stringify(saved)).toBe(before);
 	});
 
 	test('保存済みの順序・legacy shortcut・無関係な設定を保って明示した枠だけ保存する', async () => {

@@ -784,11 +784,7 @@ const CalendarEventRow = defineComponent({
 	box-shadow: var(--card-shadow, none);
 }
 
-.periodBar,
-.toolbar,
-.filters,
-.viewSwitch,
-.eventMeta {
+.periodBar, .toolbar, .filters, .viewSwitch, .eventMeta {
 	display: flex;
 	align-items: center;
 }
@@ -809,19 +805,12 @@ const CalendarEventRow = defineComponent({
 	flex: 1;
 }
 
-.todayButton,
-.viewSwitch button,
-.filterLabel,
-.filters button,
-.moreButton,
-.eventStatus {
+.todayButton, .viewSwitch button, .filterLabel, .filters button, .moreButton, .eventStatus {
 	white-space: nowrap;
 	word-break: keep-all;
 }
 
-.iconButton,
-.todayButton,
-.eventAction {
+.iconButton, .todayButton, .eventAction {
 	min-width: 44px;
 	min-height: 44px;
 	display: inline-flex;
@@ -838,9 +827,7 @@ const CalendarEventRow = defineComponent({
 	transition: transform 160ms ease, background-color 160ms ease, border-color 160ms ease;
 }
 
-.iconButton:hover,
-.todayButton:hover,
-.eventAction:hover:not(:disabled) {
+.iconButton:hover, .todayButton:hover, .eventAction:hover:not(:disabled) {
 	background: var(--btn-hover, color-mix(in srgb, var(--fg) 9%, var(--surface)));
 }
 
@@ -923,8 +910,7 @@ const CalendarEventRow = defineComponent({
 	color: var(--fg);
 }
 
-.filterDot,
-.eventMarker {
+.filterDot, .eventMarker {
 	width: 8px;
 	height: 8px;
 	border-radius: 50%;
@@ -955,8 +941,7 @@ const CalendarEventRow = defineComponent({
 		background: var(--fill-2);
 	}
 
-	.filterLabel, .filterCount, .filterDot,
-	.filters button[data-active="false"] .filterText { display: none; }
+	.filterLabel, .filterCount, .filterDot, .filters button[data-active="false"] .filterText { display: none; }
 
 	.filters button { justify-content: center; min-width: 44px; border-color: transparent; }
 	.filters button i { font-size: 1rem; }
@@ -967,8 +952,7 @@ const CalendarEventRow = defineComponent({
 	}
 }
 
-.notice,
-.state {
+.notice, .state {
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -1003,9 +987,7 @@ const CalendarEventRow = defineComponent({
 	to { transform: rotate(1turn); }
 }
 
-.month,
-.timeline,
-.agenda {
+.month, .timeline, .agenda {
 	margin-top: 14px;
 }
 
@@ -1021,8 +1003,7 @@ const CalendarEventRow = defineComponent({
 	box-shadow: var(--card-shadow, none);
 }
 
-.weekdays,
-.monthWeek {
+.weekdays, .monthWeek {
 	display: grid;
 	grid-template-columns: repeat(7, minmax(0, 1fr));
 }
@@ -1099,8 +1080,7 @@ const CalendarEventRow = defineComponent({
 	gap: 3px;
 }
 
-.monthEvent,
-.moreButton {
+.monthEvent, .moreButton {
 	width: 100%;
 	min-width: 0;
 	min-height: 24px;
@@ -1162,8 +1142,7 @@ const CalendarEventRow = defineComponent({
 	}
 }
 
-.timelineDay,
-.agendaDay {
+.timelineDay, .agendaDay {
 	min-width: 0;
 	background: var(--surface);
 	border: var(--card-border, 1px solid var(--rule));
@@ -1177,8 +1156,7 @@ const CalendarEventRow = defineComponent({
 	scroll-snap-align: start;
 }
 
-.timelineHeading button,
-.agendaHeading button {
+.timelineHeading button, .agendaHeading button {
 	width: 100%;
 	min-height: 44px;
 	border: 0;
@@ -1194,8 +1172,7 @@ const CalendarEventRow = defineComponent({
 	gap: 2px;
 }
 
-.timelineDay[data-today="true"] .timelineHeading button,
-.agendaDay[data-today="true"] .agendaHeading button {
+.timelineDay[data-today="true"] .timelineHeading button, .agendaDay[data-today="true"] .agendaHeading button {
 	color: var(--accent);
 }
 
@@ -1241,8 +1218,7 @@ const CalendarEventRow = defineComponent({
 	text-align: start;
 }
 
-.eventMain > img,
-.eventMain > i {
+.eventMain > img, .eventMain > i {
 	margin-top: 3px;
 	flex: none;
 }
@@ -1295,10 +1271,7 @@ const CalendarEventRow = defineComponent({
 	text-align: center;
 }
 
-.monthDay[data-blank-action='true'],
-.timelineDay[data-blank-action='true'],
-.agendaDay[data-blank-action='true'],
-.selectedAgenda[data-blank-action='true'] { cursor: pointer; }
+.monthDay[data-blank-action='true'], .timelineDay[data-blank-action='true'], .agendaDay[data-blank-action='true'], .selectedAgenda[data-blank-action='true'] { cursor: pointer; }
 
 .blankButton { width: 100%; min-height: 44px; border: 1px dashed var(--rule); border-radius: var(--card-radius, 12px); background: transparent; font-family: inherit; cursor: pointer; }
 .blankButton:hover { background: var(--fill); }
@@ -1341,20 +1314,10 @@ const CalendarEventRow = defineComponent({
 .viewSwitch { width: 100%; }
 .viewSwitch button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; }
 .viewText { display: inline; }
-.monthDay,
-.timelineDay,
-.agendaDay { transition: box-shadow .2s ease, background-color .2s ease, transform .2s var(--ease-smooth, ease); }
-.monthDay[data-drop-active="true"],
-.timelineDay[data-drop-active="true"],
-.agendaDay[data-drop-active="true"] { box-shadow: inset 0 0 0 3px var(--accent), 0 12px 30px -24px var(--accent); background: color-mix(in srgb, var(--accent) 9%, var(--surface)); }
-.monthEvent,
-.draggableRow,
-.allDayEvent,
-.timelineEvent { cursor: grab; }
-.monthEvent:active,
-.draggableRow:active,
-.allDayEvent:active,
-.timelineEvent:active { cursor: grabbing; }
+.monthDay, .timelineDay, .agendaDay { transition: box-shadow .2s ease, background-color .2s ease, transform .2s var(--ease-smooth, ease); }
+.monthDay[data-drop-active="true"], .timelineDay[data-drop-active="true"], .agendaDay[data-drop-active="true"] { box-shadow: inset 0 0 0 3px var(--accent), 0 12px 30px -24px var(--accent); background: color-mix(in srgb, var(--accent) 9%, var(--surface)); }
+.monthEvent, .draggableRow, .allDayEvent, .timelineEvent { cursor: grab; }
+.monthEvent:active, .draggableRow:active, .allDayEvent:active, .timelineEvent:active { cursor: grabbing; }
 .selectedAgenda { display: none; }
 .dayPaneNavigation { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .dayPaneView { min-width: 0; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; flex: 1; padding: 8px; border: 1px solid var(--rule); border-radius: max(8px, calc(var(--card-radius, 16px) * .55)); background: var(--fill); color: var(--fg); font: inherit; font-size: .78rem; font-weight: 700; cursor: pointer; transition: background-color 160ms ease; }
@@ -1383,19 +1346,12 @@ const CalendarEventRow = defineComponent({
 .timelineEvent > button:not(:first-child) { display: grid; place-items: center; padding: 0; border-inline-start: 1px solid color-mix(in srgb, var(--hatask-event-color) 24%, var(--rule)); color: var(--fg-3); }
 
 .dragDock { --dock-surface: var(--MI_THEME-panel); --dock-fg: var(--MI_THEME-fg); --dock-accent: var(--MI_THEME-accent); position: fixed; z-index: 1000002; inset-inline: 50%; bottom: max(18px, env(safe-area-inset-bottom)); transform: translateX(-50%); width: min(620px, calc(100% - 28px)); display: grid; grid-template-columns: minmax(0, 1fr) minmax(160px, .42fr); gap: 8px; padding: 7px; border: 1px solid color-mix(in srgb, var(--dock-fg) 17%, transparent); border-radius: 24px; background: color-mix(in srgb, var(--dock-surface) 92%, transparent); color: var(--dock-fg); box-shadow: 0 24px 70px -28px rgba(0, 0, 0, .8); backdrop-filter: blur(18px) saturate(1.15); }
-.dragHint,
-.trashTarget { min-height: 54px; display: flex; align-items: center; justify-content: center; gap: 8px; border-radius: 18px; font-size: .72rem; font-weight: 800; }
+.dragHint, .trashTarget { min-height: 54px; display: flex; align-items: center; justify-content: center; gap: 8px; border-radius: 18px; font-size: .72rem; font-weight: 800; }
 .dragHint { color: color-mix(in srgb, var(--dock-fg) 65%, transparent); }
 .trashTarget { border: 1px dashed color-mix(in srgb, #e25567 58%, transparent); background: color-mix(in srgb, #e25567 8%, transparent); color: #d94359; transition: transform .2s var(--ease-spring, ease), background-color .18s ease; }
 .dragDock[data-trash-active="true"] .trashTarget { transform: scale(1.035); background: #d94359; color: #fff; }
-.dragDock[data-hatask-theme="kisetsu"] { border-radius: 12px; }
-.dragDock[data-hatask-theme="kashin"] { border-width: 2px; box-shadow: 4px 4px 0 color-mix(in srgb, var(--dock-accent) 40%, transparent), 0 24px 70px -28px rgba(0, 0, 0, .8); }
-.dragDock[data-hatask-theme="suri"] { border-width: 3px; border-radius: 0; box-shadow: 5px 5px 0 var(--dock-accent); }
-.dragDock[data-hatask-theme="hatakyu"] { border-radius: 3px; box-shadow: 0 16px 26px -16px rgba(40, 24, 8, .9); }
-:global(.calendar-trash-enter-active),
-:global(.calendar-trash-leave-active) { transition: opacity .2s ease, transform .26s var(--ease-smooth, ease); }
-:global(.calendar-trash-enter-from),
-:global(.calendar-trash-leave-to) { opacity: 0; transform: translateX(-50%) translateY(18px) scale(.97); }
+:global(.calendar-trash-enter-active), :global(.calendar-trash-leave-active) { transition: opacity .2s ease, transform .26s var(--ease-smooth, ease); }
+:global(.calendar-trash-enter-from), :global(.calendar-trash-leave-to) { opacity: 0; transform: translateX(-50%) translateY(18px) scale(.97); }
 
 button:focus-visible {
 	outline: 3px solid var(--accent);
@@ -1418,9 +1374,7 @@ button:active:not(:disabled) {
 		padding: 12px;
 	}
 
-	.month,
-	.timeline,
-	.agenda {
+	.month, .timeline, .agenda {
 		margin-top: 10px;
 	}
 
@@ -1441,8 +1395,7 @@ button:active:not(:disabled) {
 		gap: 2px;
 	}
 
-	.monthEvent,
-	.moreButton {
+	.monthEvent, .moreButton {
 		min-height: 22px;
 	}
 
@@ -1469,15 +1422,12 @@ button:active:not(:disabled) {
 		margin-top: 14px;
 	}
 
-	.workspace[data-layout="split"] > .month,
-	.workspace[data-layout="split"] > .timeline,
-	.workspace[data-layout="split"] > .agenda {
+	.workspace[data-layout="split"] > .month, .workspace[data-layout="split"] > .timeline, .workspace[data-layout="split"] > .agenda {
 		min-width: 0;
 		margin-top: 0;
 	}
 
-	.workspace[data-layout="split"] .timelineDay[data-selected="true"],
-	.workspace[data-layout="split"] .agendaDay[data-selected="true"] {
+	.workspace[data-layout="split"] .timelineDay[data-selected="true"], .workspace[data-layout="split"] .agendaDay[data-selected="true"] {
 		outline: 2px solid var(--accent);
 		outline-offset: -2px;
 	}
@@ -1519,7 +1469,6 @@ button:active:not(:disabled) {
 		display: none;
 	}
 
-	// Keep the seven time columns together; detailed actions remain in the day pane.
 	.workspace[data-layout="split"][data-view="week"] { grid-template-columns: minmax(0, 1fr) 280px; }
 	.workspace[data-layout="split"] .timeline { gap: 6px; }
 	.workspace[data-layout="split"] .timeline:not([data-columns="1"]) { grid-template-columns: minmax(0, 1.35fr) repeat(6, minmax(0, 1fr)); }
@@ -1527,15 +1476,12 @@ button:active:not(:disabled) {
 	.workspace[data-layout="split"] .timelineDay:not(:first-child) .timeCanvas { margin-inline-start: 4px; }
 	.workspace[data-layout="split"] .timelineDay:not(:first-child) .hourLine { inset-inline-start: 0; }
 	.workspace[data-layout="split"] .timelineDay:not(:first-child) .hourLine span { display: none; }
-	.workspace[data-layout="split"] .timeline:not([data-columns="1"]) .timelineEvent,
-	.workspace[data-layout="split"] .timeline:not([data-columns="1"]) .allDayEvent { grid-template-columns: minmax(0, 1fr); }
-	.workspace[data-layout="split"] .timeline:not([data-columns="1"]) .timelineEvent > button:not(:first-child),
-	.workspace[data-layout="split"] .timeline:not([data-columns="1"]) .allDayEvent > button:not(:first-child) { display: none; }
+	.workspace[data-layout="split"] .timeline:not([data-columns="1"]) .timelineEvent, .workspace[data-layout="split"] .timeline:not([data-columns="1"]) .allDayEvent { grid-template-columns: minmax(0, 1fr); }
+	.workspace[data-layout="split"] .timeline:not([data-columns="1"]) .timelineEvent > button:not(:first-child), .workspace[data-layout="split"] .timeline:not([data-columns="1"]) .allDayEvent > button:not(:first-child) { display: none; }
 }
 
 @container (max-width: 720px) {
-	.header,
-	.month {
+	.header, .month {
 		padding: 12px;
 	}
 
@@ -1552,8 +1498,7 @@ button:active:not(:disabled) {
 		margin-inline-start: auto;
 	}
 
-	.viewSwitch,
-	.toolbar {
+	.viewSwitch, .toolbar {
 		width: 100%;
 	}
 
@@ -1578,9 +1523,7 @@ button:active:not(:disabled) {
 		background: var(--hatask-event-color);
 	}
 
-	.monthEvent > img,
-	.monthEventTime,
-	.monthEventTitle {
+	.monthEvent > img, .monthEventTime, .monthEventTitle {
 		display: none;
 	}
 
@@ -1625,31 +1568,23 @@ button:active:not(:disabled) {
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.root *,
-	.root *::before,
-	.root *::after {
+	.root *, .root *::before, .root *::after {
 		animation: none !important;
 		transition-duration: .01ms !important;
 	}
 }
 /* 暁では親の明暗トークンを継承し、操作色には可読性を確保した ink を使う。 */
-.root[data-hatask-theme='akatsuki'] {
+.root[data-hatask-theme] {
 	--accent: var(--accent-ink);
 	--fg-3: var(--fg-2);
 	--card-radius: 24px;
 	--card-border: 1px solid var(--rule);
 	--card-shadow: var(--shadow, none);
 }
-.root[data-hatask-theme='akatsuki'] .header { padding: 20px; }
-.root[data-hatask-theme='akatsuki'] .monthDay { background: color-mix(in srgb, var(--surface) 92%, transparent); }
-.root[data-hatask-theme='akatsuki'] .monthDay[data-selected='true'] { background: color-mix(in srgb, var(--accent) 8%, var(--surface)); }
-.root[data-hatask-theme='akatsuki'] .monthEvent,
-.root[data-hatask-theme='akatsuki'] .moreButton,
-.root[data-hatask-theme='akatsuki'] .allDayLane > span,
-.root[data-hatask-theme='akatsuki'] .hourLine span,
-.root[data-hatask-theme='akatsuki'] .timelineEvent > button strong,
-.root[data-hatask-theme='akatsuki'] .timelineEvent > button span,
-.root[data-hatask-theme='akatsuki'] .selectedAgenda > header span { font-size: max(11px, .7rem); }
+.root[data-hatask-theme] .header { padding: 20px; }
+.root[data-hatask-theme] .monthDay { background: color-mix(in srgb, var(--surface) 92%, transparent); }
+.root[data-hatask-theme] .monthDay[data-selected='true'] { background: color-mix(in srgb, var(--accent) 8%, var(--surface)); }
+.root[data-hatask-theme] .monthEvent, .root[data-hatask-theme] .moreButton, .root[data-hatask-theme] .allDayLane > span, .root[data-hatask-theme] .hourLine span, .root[data-hatask-theme] .timelineEvent > button strong, .root[data-hatask-theme] .timelineEvent > button span, .root[data-hatask-theme] .selectedAgenda > header span { font-size: max(11px, .7rem); }
 /* Teleport 先は親の CSS 変数を継承できないため、選択中の明暗を明示する。 */
 .dragDock[data-hatask-theme='akatsuki'] {
 	--dock-surface: #fff7f2;
@@ -1666,5 +1601,9 @@ button:active:not(:disabled) {
 	--dock-accent: #ff7fa3;
 	color-scheme: dark;
 }
-.dragDock[data-hatask-theme='akatsuki'] .dragHint { color: color-mix(in srgb, var(--dock-fg) 85%, var(--dock-surface)); font-size: max(11px, .72rem); }
+.dragDock[data-hatask-theme] .dragHint { color: color-mix(in srgb, var(--dock-fg) 85%, var(--dock-surface)); font-size: max(11px, .72rem); }
+
+:global(.htk-root:not([data-theme='akatsuki'])) :is(.month, .viewSwitch) { border-radius: var(--card-radius); border-color: var(--rule); box-shadow: var(--shadow); }
+.root:not([data-hatask-theme='akatsuki']) { --card-radius: inherit; --card-border: inherit; --card-shadow: inherit; --on-accent: var(--htk-on-ink); }
+.dragDock[data-hatask-theme]:not([data-hatask-theme='akatsuki']) { --dock-surface: var(--surface); --dock-fg: var(--fg); --dock-accent: var(--accent-ink); border-radius: var(--case-radius); border-color: var(--rule); background: var(--surface); box-shadow: var(--shadow); font-family: var(--htk-font-body); }
 </style>

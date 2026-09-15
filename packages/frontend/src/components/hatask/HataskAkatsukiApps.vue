@@ -53,7 +53,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <script setup lang="ts">
 import { computed, onActivated, onBeforeUnmount, onDeactivated, onMounted, ref, watch } from 'vue';
-import { Activity, BookOpen, BookOpenCheck, CalendarDays, ChevronLeft, ChevronRight, Contact, Eye, Flag, Flower2, Gamepad2, MessageSquareWarning, Newspaper, Paintbrush, Palette, PanelLeft, Pause, Play, ScanFace, SlidersHorizontal, Smile, Soup, SquareCheckBig, Trophy, Wrench } from '@lucide/vue';
+import { Activity, BookOpen, BookOpenCheck, CalendarDays, ChevronLeft, ChevronRight, Contact, Flag, Flower2, Gamepad2, MessageSquareWarning, Newspaper, Paintbrush, Palette, PanelLeft, Pause, Play, ScanFace, SlidersHorizontal, Smile, Soup, SquareCheckBig, Trophy, Wrench } from '@lucide/vue';
 import type { Component } from 'vue';
 
 type CountKey = 'calendar' | 'todo' | 'meal' | 'feedback';
@@ -82,7 +82,6 @@ const hataskApps: readonly AppItem[] = [
 	{ id: 'mood', label: 'きもち', icon: Smile, description: 'いまの気分とひとことを残す記録。日付や週ごとの並びで振り返れて、記録のリマインドも設定できます' },
 	{ id: 'meal', label: 'ごはん', icon: Soup, count: 'meal', description: '朝・昼・夜・間食の記録。そのときの様子をひとこと添えて、あとから日付や時間を指定して残せます' },
 	{ id: 'garden', label: 'おはな', icon: Flower2, description: '時間とともに育つ花。育ち具合と開花までの時間を確認し、咲いた花を収穫して名前を付けられます' },
-	{ id: 'eye', label: 'EYE', icon: Eye, brand: true, description: '記録やタスクに合わせたことばを表示。きもちの記録数やタスクの進み具合、育てた花の花言葉も眺められます' },
 	{ id: 'ranking', label: 'ランキング', icon: Trophy, description: 'お花・宴の成功・宴の阻止・ログイン日数の順位。今月・今週・今日の記録を見られ、参加するかは自分で選べます' },
 	{ id: 'settings', label: '見た目', icon: Palette, description: 'テーマ・明暗・動きなど、Hataskの見え方と使い方をまとめて調整できます' },
 ];
@@ -95,8 +94,8 @@ const toolApps: readonly AppItem[] = [
 	{ id: 'earthquake', label: '地震・津波情報', icon: Activity, description: '気象庁が発表した地震・津波情報を地図と一覧で確認。震度や津波警報の通知も設定できます（緊急地震速報は扱いません）' },
 	{ id: 'mascot', label: 'マスコット', icon: Smile, description: 'ハタキュなどのマスコットの表示やセリフを設定します。利用できるアカウントでは、同意後に設定を開けます' },
 	{ id: 'games', label: 'ゲーム', icon: Gamepad2, description: '積み上げゲーム・絵文字たたき・絵文字シュートなど、Hataskeyのミニゲームをまとめた入口' },
-	{ id: 'guide', label: 'Hataskey 機能解説', icon: BookOpenCheck, brand: true, description: 'Hataskeyの独自機能をカテゴリ別に解説するガイド。検索やヒントから使いたい機能や設定を探せます' },
-	{ id: 'drawing', label: 'お絵描きツール', icon: Paintbrush, description: 'ペンや色、レイヤーを選んで絵を描き、ドライブへ画像を保存。投稿に使うときは、投稿フォームでドライブから選んで添付します' },
+	{ id: 'intro', label: 'HataIntro', icon: BookOpenCheck, brand: true, description: '画面の見方や操作手順を、図と一緒にひとつずつ確認できるはじめてガイド' },
+	{ id: 'drawing', label: 'Hatadint', icon: Paintbrush, brand: true, description: 'ペンや色、レイヤーを選んで絵を描き、ドライブへの保存や投稿への添付ができます' },
 	{ id: 'whatsnew', label: '今回の更新内容', icon: Newspaper, description: '今回の更新で加わった機能や変更点を確認できます' },
 	{ id: 'hatasettings', label: 'Hataskey設定', icon: Flag, description: 'Hataskey独自の機能や表示に関する設定を開きます' },
 ];
@@ -107,7 +106,7 @@ const groupSpecs = [
 	{ id: 'records', label: '記録と共有', icon: MessageSquareWarning, apps: ['feed', 'hatady'] },
 	{ id: 'information', label: '防災・情報', icon: Activity, apps: ['earthquake'] },
 	{ id: 'play', label: 'あそび', icon: Gamepad2, apps: ['mascot', 'games'] },
-	{ id: 'settings', label: '設定と案内', icon: SlidersHorizontal, apps: ['studio', 'guide', 'whatsnew', 'hatasettings'] },
+	{ id: 'settings', label: '設定と案内', icon: SlidersHorizontal, apps: ['studio', 'intro', 'whatsnew', 'hatasettings'] },
 ];
 const groups = computed(() => props.kind === 'hatask'
 	? [{ id: 'hatask', label: '', icon: null, apps: hataskApps }]
@@ -116,10 +115,16 @@ const features = computed<Feature[]>(() => props.kind === 'hatask' ? [
 	{ id: 'todo', label: 'ToDo', icon: SquareCheckBig, kicker: 'きょう', lines: props.countsKnown !== false && count('todo') > 0 ? [`残り ${count('todo')} 件を、`, '先に片づける。'] : ['きょうのタスクを、', 'ひとつ書きとめる。'], tone: 'accent', brand: true },
 	{ id: 'garden', label: 'おはな', icon: Flower2, kicker: 'そろそろ', lines: ['花の育ちぐあいを、', 'そっと見に行く。'], tone: 'ink' },
 	{ id: 'mood', label: 'きもち', icon: Smile, kicker: 'ふりかえり', lines: ['いまの気分を、', 'ひとこと残そう。'], tone: 'accent2' },
+	{ id: 'cal', label: 'カレンダー', icon: CalendarDays, kicker: '予定', lines: ['この先の予定を、', 'ひと目で見渡す。'], tone: 'accent' },
+	{ id: 'meal', label: 'ごはん', icon: Soup, kicker: '日々', lines: ['きょう食べたものを、', 'ひとこと添えて。'], tone: 'ink' },
+	{ id: 'settings', label: '見た目', icon: Palette, kicker: '自分らしく', lines: ['色も、明るさも、', '心地よい見た目に。'], tone: 'accent2' },
 ] : [
 	{ id: 'analyze', label: 'HATAlyze（感情分析）', icon: ScanFace, kicker: '特集', lines: ['自分の言葉から、', '気分の波を読む。'], tone: 'accent', brand: true },
 	{ id: 'hatady', label: 'Hatady', icon: BookOpen, kicker: '定番', lines: ['映画もゲームも、', '学びもひとつに。'], tone: 'ink', brand: true },
 	{ id: 'card', label: 'HataCardMaker', icon: Contact, kicker: 'つくる', lines: ['自分の一枚を、', 'カードにする。'], tone: 'accent2', brand: true },
+	{ id: 'drawing', label: 'Hatadint', icon: Paintbrush, kicker: '描く', lines: ['浮かんだイメージを、', '一枚の絵に。'], tone: 'accent', brand: true },
+	{ id: 'studio', label: 'HataSideStudio', icon: PanelLeft, kicker: '整える', lines: ['いつもの道具を、', '使いやすい場所へ。'], tone: 'ink', brand: true },
+	{ id: 'intro', label: 'HataIntro', icon: BookOpenCheck, kicker: 'はじめる', lines: ['はじめての操作を、', '図と一緒にたどる。'], tone: 'accent2', brand: true },
 ]);
 
 const rootEl = ref<HTMLElement | null>(null);
@@ -204,7 +209,7 @@ onBeforeUnmount(() => {
 .slide[data-tone='ink'] { background: var(--fg); color: var(--bg); }
 .slide[data-tone='accent2'] { background: var(--accent2); color: var(--on-accent2); }
 /* The app and stationary controls share the last row; only narrow banners reserve a separate controls row. */
-.featureBody { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 196px; grid-template-areas: 'kicker kicker' 'title title' 'app .'; gap: 6px 16px; align-content: center; flex: 1 0 auto; min-width: 0; min-height: 160px; padding: 14px 18px; }
+.featureBody { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 240px; grid-template-areas: 'kicker kicker' 'title title' 'app .'; gap: 6px 16px; align-content: center; flex: 1 0 auto; min-width: 0; min-height: 160px; padding: 14px 18px; }
 .featureKicker { grid-area: kicker; min-width: 0; display: flex; align-items: center; gap: 10px; font: 800 11px/1.55 'Zen Maru Gothic', system-ui, sans-serif; letter-spacing: .08em; }
 .featureKicker::after { width: 34px; height: 2px; background: currentColor; opacity: .55; content: ''; }
 .slide[data-tone='accent'] .featureKicker { color: var(--feature-accent-small); }
@@ -242,7 +247,7 @@ onBeforeUnmount(() => {
 .nameLine { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
 .desktopCopy strong { font-size: 16px; font-weight: 800; }
 .desktopCopy strong.brand { font-size: 17px; font-weight: 400; }
-.desktopCopy p { max-width: 56ch; margin: 6px 0 0; color: var(--fg2); font-size: 13px; line-height: 1.75; text-wrap: pretty; }
+.desktopCopy p { max-width: 56ch; margin: 6px 0 0; color: var(--fg2); font-size: 13px; line-height: 1.75; text-wrap: pretty; word-break: auto-phrase; line-break: strict; }
 .countBadge { min-width: 20px; height: 20px; display: inline-grid; place-items: center; flex: 0 0 auto; padding: 0 6px; border-radius: 999px; background: var(--hak-badge-bg, #b02e56); color: #fff; font-family: var(--ak-font-num, Archivo), system-ui, sans-serif; font-size: 11px; font-weight: 800; font-variant-numeric: tabular-nums; }
 .root .appOpen { width: 36px; height: 36px; display: grid; place-items: center; flex: 0 0 auto; border: var(--button-border); border-radius: 999px; }
 .appOpen svg { width: 18px; height: 18px; }
@@ -281,13 +286,13 @@ onBeforeUnmount(() => {
 	.appName.brand { font-size: 16px; font-weight: 400; }
 	.root .appOpen { width: 34px; height: 34px; }
 	.appOpen svg { width: 17px; height: 17px; }
-	.mobileDescription { color: var(--fg2); font-size: 12px; line-height: 1.8; text-wrap: pretty; }
+	.mobileDescription { color: var(--fg2); font-size: 12px; line-height: 1.8; text-wrap: pretty; word-break: auto-phrase; line-break: strict; }
 }
 @container ak-feature (max-width: 270px) {
 	.root .featureApp { padding-inline: 12px; }
 	.featureApp .brand { font-size: 13px; }
 }
-@container ak-feature (max-width: 227px) {
+@container ak-feature (max-width: 260px) {
 	.featureBody { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'kicker' 'title' 'app'; padding-bottom: 86px; }
 	.root .featureApp { justify-self: start; }
 	.controls { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px 8px; padding: 0 12px 12px; }
@@ -297,4 +302,8 @@ onBeforeUnmount(() => {
 @media (prefers-reduced-motion: reduce) {
 	.track, .dot { transition: none; }
 }
+
+:global(.htk-root:not([data-theme='akatsuki'])) .root { --feature-accent-small: var(--on-accent); }
+:global(.htk-root:not([data-theme='akatsuki'])) :is(.feature, .mobileCard) { border-radius: var(--card-radius); border-color: var(--rule); box-shadow: var(--shadow); }
+:global(.htk-root:not([data-theme='akatsuki'])) .featureTitle { font-family: var(--htk-font-head); }
 </style>

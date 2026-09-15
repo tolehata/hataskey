@@ -668,11 +668,11 @@ onUnmounted(() => {
 	.insights, .mealReview, .templateGrid { grid-template-columns: minmax(0, 1fr); }
 }
 @media (prefers-reduced-motion: reduce) { .root *, .root *::before, .root *::after { animation: none !important; transition: none !important; } }
-.root[data-hatask-theme='akatsuki'] {
+.root[data-hatask-theme] {
 	--accent: var(--accent-ink);
 	--fg-3: var(--fg-2);
 }
-.root[data-hatask-theme='akatsuki'] .captureArea {
+.root[data-hatask-theme] .captureArea {
 	min-width: 0;
 	padding: 20px;
 	border: var(--card-border);
@@ -682,15 +682,21 @@ onUnmounted(() => {
 	box-shadow: var(--card-shadow);
 }
 /* Keep the translucent surface on the outer card only, including the wide layout. */
-.root[data-hatask-theme='akatsuki'] .heading { padding: 0; background: transparent; }
-.root[data-hatask-theme='akatsuki'] .board { padding: 20px; }
-.root[data-hatask-theme='akatsuki'] .record { border-radius: 18px; background: var(--fill); }
-.root[data-hatask-theme='akatsuki'] .choices button { border-radius: 16px; }
+.root[data-hatask-theme] .heading { padding: 0; background: transparent; }
+.root[data-hatask-theme] .board { padding: 20px; }
+.root[data-hatask-theme] .record { border-radius: 18px; background: var(--fill); }
+.root[data-hatask-theme] .choices button { border-radius: 16px; }
 @container (max-width:520px) {
-	.root[data-hatask-theme='akatsuki'] .captureArea,
-	.root[data-hatask-theme='akatsuki'] .board { padding: 12px; }
-	.root[data-hatask-theme='akatsuki'] .tabs { border-radius: 20px; flex-wrap: wrap; }
-	.root[data-hatask-theme='akatsuki'] .tabs button { padding-inline: 12px; }
-	.root[data-hatask-theme='akatsuki'] .tabs button:not([data-selected='true']) span { display: inline; }
+	.root[data-hatask-theme] .captureArea, .root[data-hatask-theme] .board { padding: 12px; }
+	.root[data-hatask-theme] .tabs { border-radius: 20px; flex-wrap: wrap; }
+	.root[data-hatask-theme] .tabs button { padding-inline: 12px; }
+	.root[data-hatask-theme] .tabs button:not([data-selected='true']) span { display: inline; }
 }
+
+:global(.htk-root:not([data-theme='akatsuki'])) .board { border-radius: var(--card-radius); border-color: var(--rule); box-shadow: var(--shadow); }
+:global(.htk-root:not([data-theme='akatsuki'])) :is(.tabs, .tabs button) { border-radius: var(--control-radius); }
+.root:not([data-hatask-theme='akatsuki']) { --card-radius: inherit; --card-border: inherit; --card-shadow: inherit; --on-accent: var(--htk-on-ink); }
+:global(.htk-root[data-theme='hatakyu']) .root[data-kind='mood'] .heading h2 { --hatakyu-heading: var(--hatakyu-mood); }
+:global(.htk-root[data-theme='hatakyu']) .root[data-kind='meal'] .heading h2 { --hatakyu-heading: var(--hatakyu-meal); }
+:global(.htk-root[data-theme='hatakyu']) .heading h2 { background: var(--hatakyu-heading) right center / auto 100% no-repeat; }
 </style>

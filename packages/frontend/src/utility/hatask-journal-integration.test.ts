@@ -55,7 +55,7 @@ describe('Hatask journal integration', () => {
 		expect(page).toContain('\'/hatask?notice=mood\'');
 		expect(routes).toMatch(/path: '\/hatask',[\s\S]{0,120}query: \{[\s\S]{0,80}tab: 'tab',[\s\S]{0,40}notice: 'notice'/u);
 		const routeWatcherStart = page.indexOf('const routeRouter = useRouter();');
-		const routeWatcher = page.slice(routeWatcherStart, page.indexOf('// 旗鯖fork(v2 §16②)', routeWatcherStart));
+		const routeWatcher = page.slice(routeWatcherStart, page.indexOf('const prefersDark=', routeWatcherStart));
 		expect(routeWatcher).toContain('watch([\n\t() =>');
 		expect(routeWatcher).not.toContain('watch(() => [');
 		expect(routeWatcher).toContain('routeRouter.currentRef.value.props.get(\'tab\')');
@@ -90,7 +90,7 @@ describe('Hatask journal integration', () => {
 		const style = descriptor.styles.find(item => item.scoped && item.lang === 'scss');
 		if (!style) throw new Error('Missing Hatask scoped SCSS');
 		const scope = 'data-v-hatask-journal-integration';
-		const compiled = await compileStyleAsync({ source: style.content, filename, id: scope, scoped: true, preprocessLang: 'scss' });
+		const compiled = await compileStyleAsync({ source: style.content + '\n' + readFileSync(resolve(process.cwd(), 'src/components/hatask/hatask-themes.scss'), 'utf8'), filename, id: scope, scoped: true, preprocessLang: 'scss' });
 		expect(compiled.errors).toEqual([]);
 		const stylesheet = compiled.rawResult?.root;
 		if (!stylesheet) throw new Error('Missing compiled Hatask CSS');
@@ -101,7 +101,7 @@ describe('Hatask journal integration', () => {
 			});
 			// Inspect individual selectors, independent of added Teleport consumers,
 			// comma spacing, or Sass's choice of attribute quotes.
-			const selectors = rule.selectors.map(selector => selector.replaceAll(`[${scope}]`, '').replace(/\[([\w-]+)=(["']?)([\w-]+)\2\]/gu, '[$1=$3]').trim());
+			const selectors = rule.selectors.map(selector => selector.replaceAll(`[${scope}]`, '').replace('[data-mode]', '').replace(/\[([\w-]+)=(["']?)([\w-]+)\2\]/gu, '[$1=$3]').trim());
 			themeRules.push({ selectors, tokens });
 		});
 	});
@@ -142,7 +142,7 @@ describe('Hatask journal integration', () => {
 			expect(() => expectLabelContrast(broken)).toThrow();
 		}
 	});
-	for (const theme of ['kisetsu', 'kashin', 'suri', 'hatakyu']) {
+	for (const theme of ['koke', 'kisetsu', 'kashin', 'suri', 'hatakyu']) {
 		for (const dark of [false, true]) {
 			test(`${theme} ${dark ? 'dark' : 'light'} の通常ラベルと選択ラベルのトークン比率を確認する`, () => {
 				const tokens = { 'on-accent': '#fff', ...getTokens(theme, false), ...(dark ? getTokens(theme, true) : {}) };

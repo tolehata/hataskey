@@ -3,9 +3,10 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-export type HataskAkatsukiTab = 'home' | 'cal' | 'todo' | 'mood' | 'meal' | 'garden' | 'eye' | 'ranking' | 'hataskapps' | 'apps';
+export type HataskAkatsukiTab = 'home' | 'cal' | 'todo' | 'mood' | 'meal' | 'garden' | 'support' | 'ranking' | 'hataskapps' | 'apps';
 
-export type HataskAkatsukiHomeSectionId = 'tools' | 'calendar' | 'todo' | 'feedback' | 'meal';
+export type HataskAkatsukiHomeSectionId = 'tools' | 'intro' | 'calendar' | 'todo' | 'feedback' | 'meal';
+export type HataskAkatsukiFavoriteId = 'calendar' | 'todo' | 'meal' | 'flower';
 export interface HataskAkatsukiHomeSection {
 	id: HataskAkatsukiHomeSectionId;
 	label: string;
@@ -18,7 +19,7 @@ export interface HataskAkatsukiHomeSection {
 
 /** The layout emits intentions only; the page owns permission checks and persistence. */
 export interface HataskAkatsukiAction {
-	type: 'exit' | 'open-event' | 'create-event' | 'create-todo' | 'record-mood' | 'record-meal' | 'water-flower' | 'toggle-todo' | 'open-app' | 'open-eye' | 'snooze-event';
+	type: 'exit' | 'open-event' | 'create-event' | 'create-todo' | 'record-mood' | 'record-meal' | 'water-flower' | 'toggle-todo' | 'open-app' | 'snooze-event';
 	id?: string;
 	value?: string | number | boolean;
 }
@@ -46,7 +47,7 @@ export interface HataskAkatsukiEvent {
 }
 
 export interface HataskAkatsukiModel {
-	home?: { sections: HataskAkatsukiHomeSection[]; recommended: HataskAkatsukiHomeSectionId; hasUsage: boolean };
+	home?: { sections: HataskAkatsukiHomeSection[]; recommended: HataskAkatsukiHomeSectionId; hasUsage: boolean; favorites?: HataskAkatsukiFavoriteId[] };
 	/** True until actual account data has loaded; unknown counts must not become zero. */
 	loading?: boolean;
 	readOnly?: boolean;
@@ -81,8 +82,12 @@ export interface HataskAkatsukiLayoutProps {
 	model: HataskAkatsukiModel;
 	mode?: 'light' | 'dark';
 	animations?: boolean;
+	preview?: boolean;
 	searchOpen?: boolean;
 	searchQuery?: string;
+	favoritesReady?: boolean;
+	favoritesSaving?: boolean;
+	favoritesError?: string;
 	/** Supply the page's live clock; the layout does not create a second clock timer. */
 	now?: Date;
 }

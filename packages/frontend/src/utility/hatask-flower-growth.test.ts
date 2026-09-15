@@ -137,11 +137,10 @@ describe('Hatask flower growth', () => {
 		expect(page).toContain('@change="changeFlowerVisibility"');
 	});
 
-	test('ハタキュの写真列は狭幅でも4列を維持する', () => {
+	test('ハタキュ専用の写真列を共通の花ストリームへ置き換える', () => {
 		const page = read('pages/hatask.vue');
-		expect(page).toMatch(/\.hk-hangrow\{[^}]*display:grid;[^}]*grid-template-columns:repeat\(4,minmax\(0,118px\)\)/);
-		expect(page).toMatch(/@media\(max-width:640px\)[\s\S]*\.hk-hangrow\{[^}]*grid-template-columns:repeat\(4,minmax\(0,1fr\)/);
-		expect(page).toMatch(/\.hk-hang\{[^}]*width:100%;[^}]*min-width:0/);
-		expect(page).not.toMatch(/\.hk-hangrow\{[^}]*flex-wrap/);
+		expect(page).not.toContain('hk-hangrow');
+		expect(page).not.toContain('hk-hang');
+		expect(page.match(/<HataskFlowerStream\b/gu)).toHaveLength(3);
 	});
 });

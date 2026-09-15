@@ -5,13 +5,17 @@
 
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { createApp, defineComponent, h, nextTick, onMounted, onUnmounted, reactive } from 'vue';
+import { compileStyleAsync, parse } from '@vue/compiler-sfc';
+import { computed, createApp, defineComponent, h, KeepAlive, nextTick, onMounted, onUnmounted, reactive, ref } from 'vue';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import HataskAkatsukiLayout from './HataskAkatsukiLayout.vue';
 import type { App } from 'vue';
-import type { HataskAkatsukiHomeSectionId, HataskAkatsukiLayoutProps } from './hatask-akatsuki-types.js';
+import type { HataskAkatsukiFavoriteId, HataskAkatsukiHomeSectionId, HataskAkatsukiLayoutProps } from './hatask-akatsuki-types.js';
+import type { HataskeyNotificationToasts } from '@/utility/hataskey-notification-toast.js';
+import { createHataskeyNotificationToasts, hataskeyNotificationToastsKey } from '@/utility/hataskey-notification-toast.js';
 import { getHataskDaylightStyle } from '@/utility/hatask-daylight.js';
 import { globalEvents } from '@/events.js';
+import { buildHataskAkatsukiModel } from '@/utility/hatask-akatsuki.js';
 
 const mounted: { app: App<Element>; container: HTMLDivElement }[] = [];
 let size = { width: 1200, height: 800 };
@@ -46,11 +50,12 @@ afterEach(() => {
 	vi.unstubAllGlobals();
 });
 
-async function mountLayout(options: Partial<HataskAkatsukiLayoutProps> = {}) {
+async function mountLayout(options: Partial<HataskAkatsukiLayoutProps> = {}, context?: HataskeyNotificationToasts) {
 	const liveProps = reactive<HataskAkatsukiLayoutProps>({ enabled: true, activeTab: 'home', model: {}, now: new Date(2026, 8, 5, 13, 24), searchQuery: '', searchOpen: false, ...options });
-	const handlers = { navigate: vi.fn(), settings: vi.fn(), search: vi.fn(), closeSearch: vi.fn(), action: vi.fn(), slotMounted: vi.fn(), slotUnmounted: vi.fn() };
+	const handlers = { navigate: vi.fn(), settings: vi.fn(), search: vi.fn(), closeSearch: vi.fn(), action: vi.fn(), saveFavorites: vi.fn(), slotMounted: vi.fn(), slotUnmounted: vi.fn() };
 	const Child = defineComponent({ setup() { onMounted(handlers.slotMounted); onUnmounted(handlers.slotUnmounted); return () => h('input', { 'data-draft': '', value: '' }); } });
-	const app = createApp({ render: () => h(HataskAkatsukiLayout, { ...liveProps, 'onUpdate:searchQuery': (value: string) => { liveProps.searchQuery = value; }, onCloseSearch: () => { liveProps.searchOpen = false; handlers.closeSearch(); }, onNavigate: handlers.navigate, onSettings: handlers.settings, onSearch: handlers.search, onAction: handlers.action }, { default: () => h(Child), 'home-feedback': () => h('button', { 'data-feedback-fixture': '' }, '返信が届きました'), 'home-extra': () => h('div', { 'data-home-extra': '' }, '保存済みの補足'), 'search-results': () => h('div', { 'data-search-results': '' }, liveProps.searchQuery) }) });
+	const app = createApp({ render: () => h(HataskAkatsukiLayout, { ...liveProps, 'onUpdate:searchQuery': (value: string) => { liveProps.searchQuery = value; }, onCloseSearch: () => { liveProps.searchOpen = false; handlers.closeSearch(); }, onNavigate: handlers.navigate, onSettings: handlers.settings, onSearch: handlers.search, onAction: handlers.action, onSaveFavorites: handlers.saveFavorites }, { default: () => h(Child), 'home-feedback': () => h('button', { 'data-feedback-fixture': '' }, '返信が届きました'), 'home-extra': () => h('div', { 'data-home-extra': '' }, '保存済みの補足'), 'search-results': () => h('div', { 'data-search-results': '' }, liveProps.searchQuery) }) });
+	if (context) app.provide(hataskeyNotificationToastsKey, context);
 	const container = window.document.createElement('div');
 	window.document.body.append(container);
 	app.mount(container);
@@ -94,6 +99,16 @@ function adaptiveHome(recommended: HataskAkatsukiHomeSectionId = 'tools'): NonNu
 	};
 }
 
+function introductoryHome(now: Date, createdAt: string): HataskAkatsukiLayoutProps['model'] {
+	return buildHataskAkatsukiModel({
+		now, accountCreatedAt: createdAt, locale: 'ja-JP', loading: false,
+		known: { planner: true, moods: true, meals: true, flower: true }, readOnly: false,
+		events: [], todos: [{ id: 'guide-next', text: '次の用事', done: false, due: '2026-01-01' }], moods: [], meals: [],
+		flower: { name: 'わかば', emoji: '🌱', progress: 20, remaining: '明日' },
+		loginDays: 1, loginRanking: 0, eyePhrase: '', feedbackUnread: 0, settings: {},
+	}).model;
+}
+
 function searchDisclosure(container: ParentNode, opened: boolean): HTMLElement {
 	const wrapper = required<HTMLElement>(container, '.hak-search-disclosure');
 	expect(wrapper.getAttribute('data-open')).toBe(String(opened));
@@ -114,6 +129,398 @@ function observeTabMotion(container: ParentNode) {
 }
 
 describe('HataskAkatsukiLayout', () => {
+	test.each([599, 600, 1200])('表示を選ぶは幅%sでも所定の隣接位置にあり、同じ編集画面を開く', async width => {
+		size = { width, height: 844 };
+		const { container } = await mountLayout({ model: { home: adaptiveHome('calendar') } });
+		const desktop = required<HTMLButtonElement>(container, '[data-home-display-options="desktop"]');
+		const mobile = required<HTMLButtonElement>(container, '[data-home-display-options="mobile"]');
+		expect(desktop.previousElementSibling?.classList.contains('hak-focus-options')).toBe(true);
+		expect(mobile.closest('.hak-mobile-date')?.querySelector('.hak-date')).not.toBeNull();
+		for (const button of [desktop, mobile]) {
+			expect(button.textContent?.trim()).toBe('');
+			expect(button.getAttribute('aria-label')).toBe('表示を選ぶ');
+		}
+		(width < 600 ? mobile : desktop).click(); await nextTick();
+		expect(container.querySelectorAll('.hak-favorites-editor')).toHaveLength(1);
+		expect(desktop.disabled).toBe(true);
+		expect(mobile.disabled).toBe(true);
+	});
+
+	test('初回のお気に入り編集中も、おすすめと往復した選択を保存まで保持する', async () => {
+		const { container, handlers } = await mountLayout({ model: { home: adaptiveHome('calendar') } });
+		click(container, '[data-home-display-options=desktop]'); await nextTick();
+		required<HTMLInputElement>(container, 'input[value="todo"]').click(); await nextTick();
+		click(container, '.hak-focus-option[aria-label="おすすめ"]'); await nextTick();
+		click(container, '[data-home-select="favorites"]'); await nextTick();
+		expect(required<HTMLInputElement>(container, 'input[value="todo"]').checked).toBe(true);
+		click(container, '.hak-favorites-editor [type="submit"]');
+		expect(handlers.saveFavorites).toHaveBeenCalledWith(['todo']);
+	});
+
+	test('末尾のフェードは未表示の続きがある間だけ有効で、内容や高さの変更にも追従する', async () => {
+		const { container, liveProps } = await mountLayout();
+		const scroller = required<HTMLElement>(container, '.hak-scroll');
+		let height = 900;
+		Object.defineProperties(scroller, { clientHeight: { configurable: true, get: () => 600 }, scrollHeight: { configurable: true, get: () => height } });
+		resizeCallbacks.forEach(callback => callback()); await nextTick();
+		expect(scroller.dataset.scrollMore).toBe('true');
+		scroller.scrollTop = 300; scroller.dispatchEvent(new Event('scroll')); await nextTick();
+		expect(scroller.dataset.scrollMore).toBe('false');
+		height = 1100; resizeCallbacks.forEach(callback => callback()); await nextTick();
+		expect(scroller.dataset.scrollMore).toBe('true');
+		height = 500; liveProps.model = { summary: '短い内容へ変更' }; await nextTick(); await nextTick();
+		expect(scroller.dataset.scrollMore).toBe('false');
+	});
+
+	test('モバイル通知の表示先を幅と可視状態に合わせ、検索中の入力とフォーカスを保持する', async () => {
+		size = { width: 599, height: 844 };
+		const context = createHataskeyNotificationToasts(computed(() => false), computed(() => true));
+		const nativeTarget = window.document.createElement('div');
+		context.target.value = nativeTarget;
+		const { container, liveProps } = await mountLayout({ model: { mealSummary: '昼ごはんは、これから' } }, context);
+		const viewport = required<HTMLElement>(container, '.hak-notification-viewport');
+		expect(context.surface.value?.target.value).toBe(viewport);
+		click(container, '.hak-search-toggle'); await nextTick();
+		const input = required<HTMLInputElement>(container, '.hak-mobile-search input');
+		input.value = '残しておく検索'; input.dispatchEvent(new Event('input')); input.focus();
+		context.enqueue({ id: 'actual', type: 'test', createdAt: '2026-09-14T00:00:00Z' }, 'local', 0);
+		context.height.value = 108; await nextTick();
+		expect(viewport.style.height).toBe('108px');
+		expect(window.document.activeElement).toBe(input);
+		expect(input.value).toBe('残しておく検索');
+		expect(required(container, '.hak-meal-row > .hak-side-row-main').textContent).toBe('昼ごはんは、\nこれから');
+		context.tick(2300, new Set());
+		size.width = 600; resizeCallbacks.forEach(callback => callback()); await nextTick();
+		expect(context.surface.value).toBeUndefined();
+		expect(context.target.value).toBe(nativeTarget);
+		expect(context.items.value[0].elapsed).toBe(2300);
+		expect(viewport.style.height).toBe('0px');
+		size.width = 599; resizeCallbacks.forEach(callback => callback()); await nextTick();
+		expect(context.surface.value?.target.value).toBe(viewport);
+		liveProps.enabled = false; await nextTick(); await nextTick();
+		expect(context.surface.value).toBeUndefined();
+	});
+
+	test('KeepAliveで閉じたページの通知先を解放し、再表示で同じ検索入力へ戻る', async () => {
+		size = { width: 390, height: 844 };
+		const context = createHataskeyNotificationToasts(computed(() => false), computed(() => true));
+		const shown = ref(true);
+		const Page = defineComponent({ setup: () => () => h(HataskAkatsukiLayout, { enabled: true, activeTab: 'home', model: {} }) });
+		const Other = defineComponent({ render: () => h('div', '別の画面') });
+		const app = createApp({ render: () => h(KeepAlive, {}, () => shown.value ? h(Page) : h(Other)) });
+		app.provide(hataskeyNotificationToastsKey, context);
+		const container = window.document.createElement('div'); window.document.body.append(container);
+		app.mount(container); mounted.push({ app, container }); await nextTick(); await nextTick();
+		const target = context.surface.value?.target.value;
+		expect(target).toBeInstanceOf(HTMLElement);
+		shown.value = false; await nextTick(); await nextTick();
+		expect(context.surface.value).toBeUndefined();
+		shown.value = true; await nextTick(); await nextTick();
+		expect(context.surface.value?.target.value).toBe(target);
+		app.unmount(); mounted.pop(); container.remove();
+		expect(context.surface.value).toBeUndefined();
+	});
+
+	test.each<{ favorites: HataskAkatsukiFavoriteId[] }>([{ favorites: ['calendar', 'todo'] }, { favorites: ['meal', 'flower'] }, { favorites: ['todo'] }])('保存したお気に入り $favorites をホームで開き直し、選択した既存表示だけを並べる', async ({ favorites }) => {
+		const model = { ...sideModel(), home: { ...adaptiveHome('feedback'), favorites }, next: { id: 'next', title: '打ち合わせ', timeLabel: '14:00' }, meals: [{ id: 'lunch', label: '昼', text: 'おにぎり', recorded: true }] };
+		const { container, handlers } = await mountLayout({ model });
+		expect([...container.querySelectorAll('.hak-focus-option')].slice(0, 2).map(button => button.getAttribute('aria-label'))).toEqual(['お気に入り', 'おすすめ']);
+		expect(required(container, '[data-home-select="favorites"]').getAttribute('aria-pressed')).toBe('true');
+		expect([...container.querySelectorAll('[data-home-panel]')].map(pane => pane.getAttribute('data-home-panel'))).toEqual(favorites);
+		expect(required(container, '.hak-home-panes').getAttribute('data-two-panes')).toBe(String(favorites.length === 2));
+		expect(container.querySelector('.hak-suggestions')).toBeNull();
+		expect(required(container, '[data-home-extra]').textContent).toBe('保存済みの補足');
+		if (favorites.includes('calendar')) {
+			click(container, '[data-home-panel="calendar"] .hak-action-button');
+			expect(handlers.action).toHaveBeenLastCalledWith({ type: 'open-event', id: 'next' });
+		}
+		if (favorites.includes('todo')) {
+			click(container, '[data-home-panel="todo"] .hak-todo-row');
+			expect(handlers.action).toHaveBeenLastCalledWith({ type: 'toggle-todo', id: 'todo-open', value: true });
+			expect(required<HTMLButtonElement>(container, '[data-home-panel="todo"] .hak-todo-row:last-of-type').disabled).toBe(true);
+		}
+		if (favorites.includes('meal')) {
+			expect(required(container, '[data-home-panel="meal"]').textContent).toContain('おにぎり');
+			click(container, '[data-home-panel="meal"] .hak-rich-row');
+			expect(handlers.action).toHaveBeenLastCalledWith({ type: 'record-meal', id: 'lunch' });
+		}
+		if (favorites.includes('flower')) {
+			expect(required(container, '[data-home-panel="flower"]').textContent).toContain('45%');
+			click(container, '[data-home-panel="flower"] .hak-flower-row');
+			expect(handlers.navigate).toHaveBeenLastCalledWith('garden');
+		}
+		click(container, '.hak-focus-option[aria-label="おすすめ"]');
+		await nextTick();
+		expect(required(container, '[data-home-panel]').getAttribute('data-home-panel')).toBe('feedback');
+		const reopened = await mountLayout({ model: JSON.parse(JSON.stringify(model)) });
+		expect(required(reopened.container, '[data-home-select="favorites"]').getAttribute('aria-pressed')).toBe('true');
+		expect([...reopened.container.querySelectorAll('[data-home-panel]')].map(pane => pane.getAttribute('data-home-panel'))).toEqual(favorites);
+	});
+
+	test('非同期で読んだお気に入りを初期表示し、時計更新や画面幅の変化で選択を戻さない', async () => {
+		const { container, liveProps } = await mountLayout({ model: { loading: true, home: adaptiveHome('calendar') }, favoritesReady: false });
+		liveProps.model = { ...sideModel(), home: { ...adaptiveHome(), favorites: ['todo', 'flower'] } };
+		liveProps.favoritesReady = true;
+		await nextTick();
+		expect(required(container, '[data-home-select="favorites"]').getAttribute('aria-pressed')).toBe('true');
+		const todoPane = required(container, '[data-home-panel="todo"]');
+		for (const width of [599, 600, 1200]) {
+			size = { width, height: 844 };
+			resizeCallbacks.forEach(callback => callback());
+			liveProps.now = new Date();
+			await nextTick();
+			expect(required(container, '[data-home-panel="todo"]')).toBe(todoPane);
+			expect(container.querySelectorAll('[data-home-panel]')).toHaveLength(2);
+		}
+		click(container, '[data-home-select="calendar"]');
+		await nextTick();
+		liveProps.model = JSON.parse(JSON.stringify(liveProps.model));
+		liveProps.activeTab = 'cal';
+		await nextTick();
+		liveProps.activeTab = 'home';
+		await nextTick();
+		expect(required(container, '[data-home-panel]').getAttribute('data-home-panel')).toBe('calendar');
+	});
+
+	test('お気に入りは最大2項目を選び、保存に成功するまで表示を変えず、失敗後も再試行できる', async () => {
+		const { container, liveProps, handlers } = await mountLayout({ model: { ...sideModel(), home: { ...adaptiveHome(), favorites: ['todo'] } } });
+		click(container, '[data-home-display-options=desktop]');
+		await nextTick();
+		required<HTMLInputElement>(container, 'input[value="flower"]').click();
+		await nextTick();
+		expect(required<HTMLInputElement>(container, 'input[value="calendar"]').disabled).toBe(true);
+		expect(required<HTMLInputElement>(container, 'input[value="meal"]').disabled).toBe(true);
+		click(container, '.hak-favorites-editor [type="submit"]');
+		expect(handlers.saveFavorites).toHaveBeenLastCalledWith(['todo', 'flower']);
+		expect(container.querySelectorAll('[data-home-panel]')).toHaveLength(1);
+		liveProps.favoritesSaving = true;
+		await nextTick();
+		expect(required<HTMLFieldSetElement>(container, '.hak-favorites-editor fieldset').disabled).toBe(true);
+		click(container, '.hak-favorites-editor [type="submit"]');
+		expect(handlers.saveFavorites).toHaveBeenCalledTimes(1);
+		liveProps.favoritesSaving = false;
+		liveProps.favoritesError = '保存できませんでした';
+		await nextTick();
+		expect(required(container, '[role="alert"]').textContent).toBe('保存できませんでした');
+		expect(required<HTMLInputElement>(container, 'input[value="flower"]').checked).toBe(true);
+		click(container, '.hak-favorites-editor [type="submit"]');
+		expect(handlers.saveFavorites).toHaveBeenCalledTimes(2);
+		const savedHome = liveProps.model.home;
+		if (!savedHome) throw new Error('Missing home settings');
+		savedHome.favorites = ['todo', 'flower'];
+		liveProps.favoritesError = '';
+		await nextTick();
+		expect(container.querySelector('.hak-favorites-editor')).toBeNull();
+		expect(container.querySelectorAll('[data-home-panel]')).toHaveLength(2);
+		click(container, '[data-home-display-options=desktop]');
+		await nextTick();
+		required<HTMLInputElement>(container, 'input[value="todo"]').click();
+		required<HTMLInputElement>(container, 'input[value="flower"]').click();
+		await nextTick();
+		click(container, '.hak-favorites-editor [type="submit"]');
+		expect(handlers.saveFavorites).toHaveBeenLastCalledWith([]);
+		savedHome.favorites = [];
+		await nextTick();
+		expect(required(container, '.hak-focus-option[aria-label="おすすめ"]').getAttribute('aria-pressed')).toBe('true');
+	});
+
+	test('設定未取得では保存させず、未設定の編集キャンセルでおすすめへ戻る', async () => {
+		const { container, handlers, liveProps } = await mountLayout({ favoritesReady: false });
+		click(container, '[data-home-select="favorites"]');
+		await nextTick();
+		expect(required<HTMLFieldSetElement>(container, '.hak-favorites-editor fieldset').disabled).toBe(true);
+		expect(required<HTMLButtonElement>(container, '.hak-favorites-editor [type="submit"]').disabled).toBe(true);
+		liveProps.favoritesReady = true;
+		await nextTick();
+		required<HTMLInputElement>(container, 'input[value="calendar"]').click();
+		await nextTick();
+		click(container, '.hak-favorites-editor [type="button"]');
+		await nextTick();
+		expect(handlers.saveFavorites).not.toHaveBeenCalled();
+		expect(required(container, '.hak-focus-option[aria-label="おすすめ"]').getAttribute('aria-pressed')).toBe('true');
+	});
+
+	test('お気に入りでも非表示設定や読み込み失敗を回避しない', async () => {
+		const { container, liveProps } = await mountLayout({ model: { showEvents: false, flower: null, home: { ...adaptiveHome(), favorites: ['calendar', 'flower'] } } });
+		expect(container.querySelector('.hak-next')).toBeNull();
+		expect(container.querySelector('.hak-flower-row')).toBeNull();
+		expect(required(container, '[data-home-panel="calendar"]').textContent).toContain('オフ');
+		liveProps.model = { scheduleUnavailable: true, meals: [{ id: 'lunch', label: '昼', text: '読み込めません', recorded: false, unavailable: true }], home: { ...adaptiveHome(), favorites: ['todo', 'meal'] } };
+		await nextTick();
+		expect(required<HTMLButtonElement>(container, '[data-home-panel="todo"] .hak-action-button').disabled).toBe(true);
+		expect(required<HTMLButtonElement>(container, '[data-home-panel="meal"] .hak-rich-row').disabled).toBe(true);
+	});
+
+	test('2項目はPC幅で横並び、既存のスマホ境界で縦並びにするCSSを生成する', async () => {
+		const source = readFileSync(resolve(process.cwd(), 'src/components/hatask/HataskAkatsukiLayout.vue'), 'utf8');
+		const { descriptor } = parse(source);
+		const style = descriptor.styles[0];
+		const compiled = await compileStyleAsync({ source: style.content, filename: 'HataskAkatsukiLayout.vue', id: 'data-v-favorites-test', scoped: true, preprocessLang: 'scss' });
+		expect(compiled.errors).toEqual([]);
+		if (!compiled.rawResult) throw new Error('Missing compiled CSS');
+		const rules: { selector: string; container?: string; columns: string }[] = [];
+		compiled.rawResult.root.walkRules(rule => {
+			if (!rule.selector.includes('.hak-home-panes')) return;
+			rule.walkDecls('grid-template-columns', decl => { rules.push({ selector: rule.selector, container: rule.parent?.type === 'atrule' ? rule.parent.params : undefined, columns: decl.value }); });
+		});
+		expect(rules).toEqual([
+			{ selector: '.hak-home-panes[data-v-favorites-test]', container: undefined, columns: 'minmax(0, 1fr)' },
+			{ selector: '.hak-home-panes[data-two-panes=true][data-v-favorites-test]', container: undefined, columns: 'repeat(2, minmax(0, 1fr))' },
+			{ selector: '.hak-home-panes[data-two-panes=true][data-v-favorites-test]', container: 'hatask-akatsuki (max-width: 599px)', columns: 'minmax(0, 1fr)' },
+		]);
+	});
+
+	test.each([390, 1200])('新規参加のおすすめを%s pxで小型特集として表示し、既存のHataIntro導線を使う', async width => {
+		size = { width, height: 844 };
+		const now = new Date('2026-09-10T12:00:00.000Z');
+		const model = introductoryHome(now, now.toISOString());
+		const { container, handlers } = await mountLayout({ model, now });
+		expect(required(container, '[data-home-panel]').getAttribute('data-home-panel')).toBe('intro');
+		expect(required(container, '.hak-intro-brand').textContent).toBe('HataIntro');
+		expect(required(container, '.hak-intro-description').textContent).toContain('図と一緒に');
+		expect(container.querySelector('.hak-focus-head')).toBeNull();
+		expect(required(container, '[data-home-select="intro"]').getAttribute('aria-label')).toBe('HataIntro');
+		click(container, '[data-home-intro]');
+		expect(handlers.action).toHaveBeenCalledTimes(1);
+		expect(handlers.action).toHaveBeenLastCalledWith({ type: 'open-app', id: 'intro' });
+		expect(handlers.navigate).not.toHaveBeenCalled();
+	});
+
+	test('新規参加案内より手動選択を優先し、別タブ・旧テーマから戻っても選択を保持する', async () => {
+		const now = new Date('2026-09-10T12:00:00.000Z');
+		const createdAt = now.toISOString();
+		const { container, liveProps } = await mountLayout({ model: introductoryHome(now, createdAt), now });
+		click(container, '[data-home-select="todo"]');
+		await nextTick();
+		liveProps.model = introductoryHome(new Date(now.getTime() + 30_000), createdAt);
+		liveProps.activeTab = 'cal';
+		await nextTick();
+		liveProps.enabled = false;
+		await nextTick();
+		expect(container.querySelector('[data-home-intro]')).toBeNull();
+		liveProps.enabled = true;
+		liveProps.activeTab = 'home';
+		await nextTick();
+		expect(required(container, '[data-home-panel]').getAttribute('data-home-panel')).toBe('todo');
+		click(container, '.hak-focus-option[aria-label="おすすめ"]');
+		await nextTick();
+		expect(required(container, '[data-home-panel]').getAttribute('data-home-panel')).toBe('intro');
+	});
+
+	test.each(['pointer', 'focus'])('参加日時の読込後でも%s操作中の通常おすすめを案内へ差し替えない', async interaction => {
+		const now = new Date('2026-09-10T12:00:00.000Z');
+		const { container, liveProps } = await mountLayout({ model: introductoryHome(now, '2025-01-01T00:00:00.000Z'), now });
+		const focus = required(container, '.hak-focus');
+		const control = required<HTMLButtonElement>(container, '.hak-focus-option[aria-label="おすすめ"]');
+		if (interaction === 'pointer') focus.dispatchEvent(new Event('pointerenter')); else control.focus();
+		await nextTick();
+		liveProps.model = introductoryHome(now, now.toISOString());
+		await nextTick();
+		expect(required(container, '[data-home-panel]').getAttribute('data-home-panel')).toBe('todo');
+		if (interaction === 'pointer') focus.dispatchEvent(new Event('pointerleave')); else control.blur();
+		await nextTick();
+		expect(required(container, '[data-home-panel]').getAttribute('data-home-panel')).toBe('intro');
+	});
+
+	test.each(['pointer', 'focus'])('14日を過ぎても案内の%s操作が終わるまで同じボタンを保持する', async interaction => {
+		const now = new Date('2026-09-10T12:00:00.000Z');
+		const createdAt = '2026-08-27T12:00:00.000Z';
+		const { container, liveProps } = await mountLayout({ model: introductoryHome(now, createdAt), now });
+		const focus = required(container, '.hak-focus');
+		const button = required<HTMLButtonElement>(container, '[data-home-intro]');
+		if (interaction === 'pointer') focus.dispatchEvent(new Event('pointerenter')); else button.focus();
+		await nextTick();
+		liveProps.model = introductoryHome(new Date(now.getTime() + 1), createdAt);
+		await nextTick();
+		expect(required(container, '[data-home-panel]').getAttribute('data-home-panel')).toBe('intro');
+		expect(required(container, '[data-home-intro]')).toBe(button);
+		if (interaction === 'focus') expect(window.document.activeElement).toBe(button);
+		if (interaction === 'pointer') focus.dispatchEvent(new Event('pointerleave')); else button.blur();
+		await nextTick();
+		expect(required(container, '[data-home-panel]').getAttribute('data-home-panel')).toBe('todo');
+		expect(container.querySelector('[data-home-select="intro"]')).toBeNull();
+		expect(container.querySelector('[data-home-intro]')).toBeNull();
+	});
+
+	test('対象期間の終わりは選択中の案内を通常へ戻し、手動で選んだほかの項目は維持する', async () => {
+		const now = new Date('2026-09-10T12:00:00.000Z');
+		const createdAt = '2026-08-27T12:00:00.000Z';
+		for (const selection of ['intro', 'meal']) {
+			const { container, liveProps } = await mountLayout({ model: introductoryHome(now, createdAt), now });
+			click(container, `[data-home-select="${selection}"]`);
+			await nextTick();
+			liveProps.model = introductoryHome(new Date(now.getTime() + 1), createdAt);
+			await nextTick();
+			expect(required(container, '[data-home-panel]').getAttribute('data-home-panel')).toBe(selection === 'intro' ? 'todo' : 'meal');
+			expect(container.querySelector('[data-home-select="intro"]')).toBeNull();
+		}
+	});
+
+	test.each(['theme', 'tab'])('案内にフォーカスしたまま%sを切り替えても、期限後のホームでは通常おすすめへ戻る', async target => {
+		const now = new Date('2026-09-10T12:00:00.000Z');
+		const createdAt = '2026-08-27T12:00:00.000Z';
+		const { container, liveProps } = await mountLayout({ model: introductoryHome(now, createdAt), now });
+		required<HTMLButtonElement>(container, '[data-home-intro]').focus();
+		await nextTick();
+		if (target === 'theme') liveProps.enabled = false; else liveProps.activeTab = 'cal';
+		await nextTick();
+		liveProps.model = introductoryHome(new Date(now.getTime() + 1), createdAt);
+		await nextTick();
+		if (target === 'theme') liveProps.enabled = true; else liveProps.activeTab = 'home';
+		await nextTick();
+		expect(required(container, '[data-home-panel]').getAttribute('data-home-panel')).toBe('todo');
+		expect(container.querySelector('[data-home-intro]')).toBeNull();
+	});
+
+	test('案内にフォーカスしてKeepAlive離脱しても、期限後の復帰時に保持を残さない', async () => {
+		const now = new Date('2026-09-10T12:00:00.000Z');
+		const createdAt = '2026-08-27T12:00:00.000Z';
+		const visible = ref(true);
+		const model = ref(introductoryHome(now, createdAt));
+		const app = createApp({ render: () => h(KeepAlive, null, { default: () => visible.value ? h(HataskAkatsukiLayout, { enabled: true, activeTab: 'home', model: model.value, now }) : null }) });
+		const container = window.document.createElement('div');
+		window.document.body.append(container);
+		app.mount(container);
+		mounted.push({ app, container });
+		await nextTick();
+		await nextTick();
+		required<HTMLButtonElement>(container, '[data-home-intro]').focus();
+		await nextTick();
+		visible.value = false;
+		await nextTick();
+		model.value = introductoryHome(new Date(now.getTime() + 1), createdAt);
+		await nextTick();
+		visible.value = true;
+		await nextTick();
+		await nextTick();
+		expect(required(container, '[data-home-panel]').getAttribute('data-home-panel')).toBe('todo');
+		expect(container.querySelector('[data-home-intro]')).toBeNull();
+	});
+
+	test('599から600 pxへ切り替えても案内は残り、記録の読込中にもガイドを開ける', async () => {
+		size = { width: 599, height: 844 };
+		const now = new Date('2026-09-10T12:00:00.000Z');
+		const { container, liveProps, handlers } = await mountLayout({ model: introductoryHome(now, now.toISOString()), now });
+		liveProps.model.loading = true;
+		size = { width: 600, height: 844 };
+		resizeCallbacks.forEach(callback => callback());
+		await nextTick();
+		expect(required(container, '[data-home-panel]').getAttribute('data-home-panel')).toBe('intro');
+		expect(container.querySelector('[data-home-select="tools"]')).toBeNull();
+		click(container, '[data-home-intro]');
+		expect(handlers.action).toHaveBeenCalledTimes(1);
+		expect(handlers.action).toHaveBeenLastCalledWith({ type: 'open-app', id: 'intro' });
+	});
+
+	test('案内だけ既存おすすめの固定最小高さを外し、狭幅と明暗は局所のテーマ変数で調整する', () => {
+		const source = readFileSync(resolve(process.cwd(), 'src/components/hatask/HataskAkatsukiLayout.vue'), 'utf8');
+		expect(source).toContain(".hak-focus-panel[data-home-panel='intro'] { container: hak-intro-recommendation / inline-size; min-height: 0; padding: 0;");
+		expect(source).toContain('@container hak-intro-recommendation (max-width: 520px)');
+		expect(source).toContain('font: 400 32px/1.2 Righteous');
+		expect(source).toContain('background: var(--fg); color: var(--bg)');
+		expect(source).toContain('.hak-intro-open:focus-visible');
+	});
+
 	test('おすすめ枠を手動で切り替えても入力中の下書きを保持し、自動へ戻せる', async () => {
 		const home = adaptiveHome('tools');
 		home.sections = home.sections.map(section => ({ ...section, priority: section.id === 'todo' ? 200 : section.priority }));
@@ -123,7 +530,7 @@ describe('HataskAkatsukiLayout', () => {
 		expect(container.querySelector('[data-home-select="tools"]')).toBeNull();
 		expect(container.querySelector('[data-home-suggestion="tools"]')).toBeNull();
 		expect(required(container, '[data-home-panel]').getAttribute('data-home-panel')).toBe('todo');
-		expect(required(container, '.hak-focus-option').getAttribute('aria-pressed')).toBe('true');
+		expect(required(container, '.hak-focus-option[aria-label="おすすめ"]').getAttribute('aria-pressed')).toBe('true');
 		click(container, '[data-home-select="meal"]');
 		await nextTick();
 		liveProps.model.home = adaptiveHome('todo');
@@ -133,7 +540,7 @@ describe('HataskAkatsukiLayout', () => {
 		await nextTick();
 		expect(required(container, '[data-home-panel]').getAttribute('data-home-panel')).toBe('meal');
 		expect(required(container, '[data-home-select="meal"]').getAttribute('aria-pressed')).toBe('true');
-		click(container, '.hak-focus-option');
+		click(container, '.hak-focus-option[aria-label="おすすめ"]');
 		await nextTick();
 		expect(required(container, '[data-home-panel]').getAttribute('data-home-panel')).toBe('todo');
 		expect(required(container, '[data-draft]')).toBe(draft);
@@ -145,7 +552,7 @@ describe('HataskAkatsukiLayout', () => {
 	test.each(['pointer', 'focus'])('%sで操作している間は自動で表示を入れ替えない', async interaction => {
 		const { container, liveProps } = await mountLayout({ model: { home: adaptiveHome('tools') } });
 		const focus = required(container, '.hak-focus');
-		const control = required<HTMLButtonElement>(container, '.hak-focus-option');
+		const control = required<HTMLButtonElement>(container, '.hak-focus-option[aria-label="おすすめ"]');
 		if (interaction === 'pointer') focus.dispatchEvent(new Event('pointerenter'));
 		else control.focus();
 		await nextTick();
@@ -191,7 +598,7 @@ describe('HataskAkatsukiLayout', () => {
 		rows[2].click();
 		expect(handlers.action).toHaveBeenCalledTimes(3);
 		expect(model.todos?.[0].completed).toBe(false);
-		expect([...container.querySelectorAll('[data-home-select]')]).toHaveLength(5);
+		expect([...container.querySelectorAll('[data-home-select]')]).toHaveLength(6);
 		size = { width: 599, height: 844 };
 		resizeCallbacks.forEach(callback => callback());
 		await nextTick();
@@ -204,7 +611,7 @@ describe('HataskAkatsukiLayout', () => {
 		await nextTick();
 		expect(container.querySelector('[data-home-select="tools"]')).toBeNull();
 		expect(container.querySelector('[data-home-suggestion="tools"]')).toBeNull();
-		expect(required(container, '.hak-focus-option').getAttribute('aria-pressed')).toBe('true');
+		expect(required(container, '.hak-focus-option[aria-label="おすすめ"]').getAttribute('aria-pressed')).toBe('true');
 		expect(required(container, '[data-home-panel]').getAttribute('data-home-panel')).toBe('calendar');
 	});
 
@@ -225,7 +632,7 @@ describe('HataskAkatsukiLayout', () => {
 		const { animate, animations } = observeTabMotion(container);
 		const draft = required<HTMLInputElement>(container, '[data-draft]');
 		draft.value = 'カテゴリを移っても残る入力';
-		for (const tab of ['cal', 'todo', 'garden', 'eye', 'mood', 'meal', 'hataskapps', 'apps', 'home'] as const) {
+		for (const tab of ['cal', 'todo', 'garden', 'support', 'ranking', 'mood', 'meal', 'hataskapps', 'apps', 'home'] as const) {
 			liveProps.activeTab = tab;
 			await nextTick();
 			await nextTick();
@@ -233,7 +640,7 @@ describe('HataskAkatsukiLayout', () => {
 			expect(required(container, '[data-draft]')).toBe(draft);
 			expect(draft.value).toBe('カテゴリを移っても残る入力');
 		}
-		expect(animate).toHaveBeenCalledTimes(9);
+		expect(animate).toHaveBeenCalledTimes(10);
 		for (const animation of animations.slice(0, -1)) expect(animation.cancel).toHaveBeenCalledTimes(1);
 		expect(animate).toHaveBeenLastCalledWith([{ opacity: expect.any(Number) }, { opacity: 1 }], { duration: 260, easing: 'cubic-bezier(.2, 0, 0, 1)' });
 		expect(required<HTMLElement>(container, '.hak-center').style.opacity).toBe('');
@@ -254,7 +661,7 @@ describe('HataskAkatsukiLayout', () => {
 		expect(animations[0].cancel).toHaveBeenCalledTimes(1);
 		expect(animate).toHaveBeenLastCalledWith([{ opacity: .64 }, { opacity: 1 }], expect.any(Object));
 		animations[1].onfinish?.();
-		liveProps.activeTab = 'eye';
+		liveProps.activeTab = 'mood';
 		await nextTick();
 		await nextTick();
 		expect(animations[1].cancel).not.toHaveBeenCalled();
@@ -286,7 +693,7 @@ describe('HataskAkatsukiLayout', () => {
 		expect(required(container, '.htk-akatsuki-layout').getAttribute('data-motion')).toBe('off');
 		prefersReducedMotion = false;
 		motionCallbacks.forEach(callback => callback());
-		liveProps.activeTab = 'eye';
+		liveProps.activeTab = 'mood';
 		await nextTick();
 		await nextTick();
 		mounted[0].app.unmount();
@@ -357,7 +764,7 @@ describe('HataskAkatsukiLayout', () => {
 		expect(handlers.slotMounted).toHaveBeenCalledTimes(1);
 	});
 
-	test('Akatsuki and legacy theme switches preserve the exact draft node and slot instance', async () => {
+	test('suspending and restoring the layout preserves the exact draft node and slot instance', async () => {
 		const { container, liveProps, handlers } = await mountLayout({ enabled: false, activeTab: 'mood' });
 		const draft = required<HTMLInputElement>(container, '[data-draft]');
 		draft.value = 'テーマを切り替えても残す下書き';
@@ -413,9 +820,9 @@ describe('HataskAkatsukiLayout', () => {
 		expect(required(container, '.htk-akatsuki-layout').getAttribute('data-hide-aside')).toBe('false');
 	});
 
-	test('ranking uses the full content width and restores the home aside on return', async () => {
+	test.each(['ranking', 'support'] as const)('%s uses the full content width and restores the home aside on return', async (activeTab) => {
 		size = { width: 1440, height: 900 };
-		const { container, liveProps } = await mountLayout({ activeTab: 'ranking' });
+		const { container, liveProps } = await mountLayout({ activeTab });
 		expect(required(container, '.htk-akatsuki-layout').getAttribute('data-hide-aside')).toBe('true');
 		liveProps.activeTab = 'home';
 		await nextTick();
@@ -448,18 +855,40 @@ describe('HataskAkatsukiLayout', () => {
 		click(aside, '.hak-flower-row');
 		expect(handlers.navigate.mock.calls).toEqual([...Array.from({ length: 7 }, () => ['mood']), ['garden']]);
 		click(aside, '.hak-meal-row button');
-		click(aside, '.hak-side-eye');
 		const todos = [...aside.querySelectorAll<HTMLButtonElement>('.hak-todo-row')];
 		expect(todos.map(todo => todo.getAttribute('aria-pressed'))).toEqual(['false', 'true', 'false']);
 		expect(todos.map(todo => todo.disabled)).toEqual([false, false, true]);
 		for (const todo of todos) todo.click();
 		expect(handlers.action.mock.calls).toEqual([
 			[{ type: 'record-meal' }],
-			[{ type: 'open-eye' }],
 			[{ type: 'toggle-todo', id: 'todo-open', value: true }],
 			[{ type: 'toggle-todo', id: 'todo-done', value: false }],
 		]);
 		expect(JSON.stringify(liveProps.model)).toBe(original);
+	});
+
+	test.each(['home', 'todo'] as const)('%sでもEYEの一言は表示を保ち、クリックやキー操作で遷移しない', async activeTab => {
+		const { container, liveProps, handlers } = await mountLayout({ activeTab, model: sideModel() });
+		const phrase = required<HTMLElement>(container, '.hak-side-eye');
+		expect(phrase.tagName).toBe('DIV');
+		expect(phrase.textContent).toContain('ひと息いれましょう');
+		expect(required(phrase, 'small').textContent).toBe(' — EYE 3');
+		expect(phrase.matches('button, a, [role="button"], [tabindex]')).toBe(false);
+		expect(phrase.querySelector('button, a, [role="button"], [tabindex]')).toBeNull();
+		expect(phrase.tabIndex).toBe(-1);
+		// A neighboring control proves that the mounted navigation listener is connected.
+		click(container, '.hak-flower-row');
+		expect(handlers.navigate).toHaveBeenLastCalledWith('garden');
+		handlers.navigate.mockClear();
+		phrase.click();
+		for (const key of ['Enter', ' ']) phrase.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
+		expect(handlers.navigate).not.toHaveBeenCalled();
+		expect(handlers.action).not.toHaveBeenCalled();
+		liveProps.model.eye = { text: 'きょうも、自分のペースで', number: 0 };
+		await nextTick();
+		expect(required(container, '.hak-side-eye')).toBe(phrase);
+		expect(phrase.textContent).toContain('きょうも、自分のペースで');
+		expect(required(phrase, 'small').textContent).toBe(' — EYE 0');
 	});
 
 	test('読込中は記録ケース内の案内だけを表示し、読込後に保存済みの内容を戻す', async () => {
@@ -482,11 +911,18 @@ describe('HataskAkatsukiLayout', () => {
 		expect(aside.querySelector('button')).toBeNull();
 	});
 
-	test('both app destinations are reachable from the desktop rail', async () => {
+	test('PCサイドはおはな・支援情報・ランキング・Hatask Appの順に並び、各タブの既存導線を保つ', async () => {
 		const { container, handlers } = await mountLayout();
+		expect([...container.querySelectorAll('.hak-rail-tab')].map(button => button.getAttribute('aria-label'))).toEqual([
+			'ホーム', 'カレンダー', 'ToDo', 'きもち', 'ごはん', 'おはな', '支援情報', 'ランキング', 'Hatask App', 'Hataskey App', 'Hatask を閉じる',
+		]);
+		click(container, '.hak-rail [aria-label="おはな"]');
+		click(container, '.hak-rail [aria-label="支援情報"]');
+		click(container, '.hak-rail [aria-label="ランキング"]');
 		click(container, '.hak-rail [aria-label="Hatask App"]');
 		click(container, '.hak-rail [aria-label="Hataskey App"]');
-		expect(handlers.navigate.mock.calls).toEqual([['hataskapps'], ['apps']]);
+		expect(handlers.navigate.mock.calls).toEqual([['garden'], ['support'], ['ranking'], ['hataskapps'], ['apps']]);
+		expect(container.querySelector('.hak-rail [aria-label="EYE"]')).toBeNull();
 	});
 
 	test('the desktop brand sits immediately right of the hamburger in one vertically centered row', async () => {
@@ -580,6 +1016,30 @@ describe('HataskAkatsukiLayout', () => {
 		await nextTick();
 		expect(container.querySelector('.hak-app-return')).toBeNull();
 		expect(liveProps.model.mobileTabs).toEqual(['home', 'cal', 'todo', 'hataskapps']);
+	});
+
+	test.each([
+		{ saved: ['ranking', 'home', 'garden', 'hataskapps'], labels: ['ランキング', 'ホーム', 'おはな', 'Hatask App'] },
+		{ saved: ['hataskapps', 'garden', 'home', 'ranking'], labels: ['Hatask App', 'おはな', 'ホーム', 'ランキング'] },
+	] satisfies { saved: NonNullable<HataskAkatsukiLayoutProps['model']['mobileTabs']>; labels: string[] }[])('ランキングの標準位置を変えても保存済みモバイル4枠を幅変更後まで保持する: $saved', async ({ saved, labels }) => {
+		size = { width: 390, height: 844 };
+		const original = [...saved];
+		const { container, liveProps, handlers } = await mountLayout({ activeTab: 'ranking', model: { mobileTabs: saved } });
+		const savedTabs = liveProps.model.mobileTabs;
+		for (const width of [390, 599, 600, 1200, 390]) {
+			size = { width, height: 844 };
+			resizeCallbacks.forEach(callback => callback());
+			await nextTick();
+			expect([...container.querySelectorAll('.hak-mobile-tab')].map(button => button.getAttribute('aria-label'))).toEqual(labels);
+			expect(required(container, '.hak-mobile-tab[aria-current="page"]').getAttribute('aria-label')).toBe('ランキング');
+			expect(liveProps.model.mobileTabs).toBe(savedTabs);
+			expect(liveProps.model.mobileTabs).toEqual(original);
+			expect(saved).toEqual(original);
+		}
+		for (const button of container.querySelectorAll<HTMLButtonElement>('.hak-mobile-tab')) button.click();
+		expect(handlers.navigate.mock.calls).toEqual(original.map(id => [id]));
+		expect(liveProps.model.mobileTabs).toEqual(original);
+		expect(saved).toEqual(original);
 	});
 
 	test.each([
@@ -836,7 +1296,7 @@ describe('HataskAkatsukiLayout', () => {
 		}
 	});
 
-	test('旧テーマでは暁検索結果を描画しない', async () => {
+	test('無効なレイアウトでは検索結果を描画しない', async () => {
 		const { container } = await mountLayout({ enabled: false, searchOpen: true });
 		expect(container.querySelector('.hak-search-results')).toBeNull();
 		expect(container.querySelector('.hak-search-disclosure')).toBeNull();

@@ -12,66 +12,13 @@ function frontendSource(path: string): string {
 }
 
 function gardenMarkup(source: string): HTMLElement {
-	const markup = source.match(/<!-- ========== GARDEN ========== -->([\s\S]*?)<!-- 旗鯖fork\(ハタキュ\): Eye/u)?.[1];
+	const markup = source.match(/<!-- ========== GARDEN ========== -->([\s\S]*?)<!-- ========== END TAB PAGES ========== -->/u)?.[1];
 	if (!markup) throw new Error('Hatask garden template was not found');
 	const fragment = window.document.createElement('template');
 	fragment.innerHTML = markup;
 	const garden = fragment.content.querySelector<HTMLElement>('.htk-garden-page');
 	if (!garden) throw new Error('Hatask garden layout root was not found');
 	return garden;
-}
-
-function expectGardenGroups(garden: HTMLElement): void {
-	const groups = Array.from(garden.children);
-	expect(groups.map(group => group.getAttribute('data-garden-group'))).toEqual(['personal', 'community']);
-	const [personal, community] = groups;
-	const headings = (group: Element) => Array.from(group.querySelectorAll('.htk-sec-title')).map(heading => heading.textContent.match(/\{\{copy\.(\w+)\}\}/u)?.[1]);
-	expect(headings(personal)).toEqual(['currentFlower', 'flowerGallery']);
-	expect(headings(community)).toEqual(['communityFlowerGallery', 'communityFlowerActivity']);
-	expect(personal.firstElementChild?.classList.contains('hk-pin')).toBe(true);
-	expect(personal.firstElementChild?.getAttribute('v-if')).toBe('isHatakyu');
-	for (const group of groups) {
-		expect(group.classList.contains('htk-garden-stack')).toBe(true);
-		expect(group.getAttribute(':class')).toBe('isHatakyu?\'hk-panels\':undefined');
-	}
-}
-
-function gardenDesktopSortStyle(source: string): string {
-	const style = source.match(/@container hatask-root \(min-width:600px\)\{([\s\S]*?)\n\}/u)?.[1];
-	if (!style) throw new Error('Hatask desktop garden sort style was not found');
-	return style;
-}
-
-function expectGardenSortLabels(source: string): void {
-	const style = gardenDesktopSortStyle(source);
-	const hiddenSelectors = Array.from(style.matchAll(/([^{}]+)\{[^}]*display:none(?:;[^}]*)?\}/gu), match => match[1].trim());
-	expect(hiddenSelectors).toHaveLength(1);
-	// 実テンプレートのボタンへ選択状態を反映し、抽出したCSSセレクタの適用範囲を検査する。
-	// DOM/CSSの契約検査であり、ブラウザーの計算済みスタイルや実寸の確認ではない。
-	for (const theme of ['akatsuki', 'kisetsu', 'kashin', 'suri', 'hatakyu']) {
-		const root = window.document.createElement('div');
-		root.className = 'htk-root';
-		root.dataset.theme = theme;
-		root.append(gardenMarkup(source));
-		const buttons = Array.from(root.querySelectorAll<HTMLButtonElement>('.htk-gal-sort button'));
-		expect(buttons).toHaveLength(4);
-		for (const selectedOrder of ['newest', 'oldest']) {
-			for (const button of buttons) {
-				expect(button.getAttribute(':class')).toContain("'htk-gal-sort-btn'");
-				button.className = 'htk-gal-sort-btn';
-				const selected = button.getAttribute(':aria-pressed')?.endsWith(`'${selectedOrder}'`) === true;
-				button.setAttribute('aria-pressed', String(selected));
-				const label = button.querySelector('span');
-				if (!label) throw new Error('Garden sort button label was not found');
-				const group = button.closest('.htk-garden-stack')?.getAttribute('data-garden-group');
-				expect(['personal', 'community']).toContain(group);
-				for (const width of [599, 600, 1200]) {
-					const hidden = width >= 600 && hiddenSelectors.some(selector => label.matches(selector));
-					expect(hidden, `${theme}/${width}/${group}/${selectedOrder}/${button.getAttribute(':aria-pressed')}`).toBe(theme === 'akatsuki' && group === 'personal' && width >= 600 && !selected);
-				}
-			}
-		}
-	}
 }
 
 describe('Hatask deck window layout contract', () => {
@@ -116,10 +63,10 @@ describe('Hatask deck window layout contract', () => {
 
 	test('小窓では標準ページ見出しを重ねず、Hatask自身の幅で一列化する', () => {
 		const source = frontendSource('src/pages/hatask.vue');
-		expect(source).toContain('<PageWithHeader :hideHeader="inPageWindow || isAkatsuki">');
+		expect(source).toContain('<PageWithHeader :hideHeader="true">');
 		expect(source).toContain('container-name:hatask-root');
 		expect(source).toMatch(/@container hatask-root \(max-width:900px\)\{[\s\S]*?\.htk-panels\{grid-template-columns:minmax\(0,1fr\)\}/u);
-		expect(source).toMatch(/@container hatask-root \(max-width:640px\)\{[\s\S]*?\.htk-nav\.htk-nav-top\{overflow-x:auto/u);
+		expect(frontendSource('src/components/hatask/HataskAkatsukiLayout.vue')).toContain('@container hatask-akatsuki (max-width: 599px)');
 	});
 
 	test('クイック入力の選択パネルを枠内へ収め、開閉時に縦方向へ二重移動させない', () => {
@@ -135,7 +82,7 @@ describe('Hatask deck window layout contract', () => {
 
 	test('カレンダーの詳細予定カードを隣のカレンダー高へ引き伸ばさない', () => {
 		const source = frontendSource('src/pages/hatask.vue');
-		expect(source).toContain('class="htk-tabpage htk-calendar-page"');
+		expect(source).toContain('class="htk-tabpage htk-calendar-page htk-panels"');
 		expect(source).toContain('.htk-calendar-page{align-items:start}');
 	});
 
@@ -155,130 +102,31 @@ describe('Hatask deck window layout contract', () => {
 		expect(source).toContain('.htk-event-editor-modal{width:min(92%,760px);max-width:760px;max-height:min(88dvh,780px);background:var(--surface);overscroll-behavior:contain}');
 	});
 
-	test('PCのハタキュToDoだけ入力と残件表示を横に並べる', () => {
+	test('ハタキュも共通ToDo配置を使い、旧テーマの追加パネルを残さない', () => {
 		const source = frontendSource('src/pages/hatask.vue');
 		expect(source).toContain('<div class="htk-todo-capture-row">');
-		expect(source).toContain('htk-capture-companion-desktop');
-		expect(source).toContain('htk-capture-companion-mobile');
-		expect(source).toMatch(/@container hatask-root \(min-width:901px\)\{[\s\S]*?\.htk-root\[data-theme="hatakyu"\] \.htk-todo-capture-row\{display:grid;grid-template-columns:minmax\(0,1fr\) minmax\(190px,260px\)/u);
-		expect(source).toContain('.htk-root[data-theme="hatakyu"] .htk-capture-companion-mobile{display:none}');
-		expect(source).toContain('.hk-inlinefig.htk-capture-companion-desktop{display:none}');
-		expect(source).not.toMatch(/(?:^|[}\n])\.htk-capture-companion-desktop\{display:none\}/u);
+		expect(source).not.toContain('htk-capture-companion');
+		expect(source).not.toContain('hk-panels');
 	});
 
-	test('ハタキュの狭幅きもち・ごはん見出しだけを紙面色に載せる', () => {
-		const source = frontendSource('src/pages/hatask.vue');
-		expect(source).toMatch(/@container hatask-root \(max-width:759px\)\{[\s\S]*?\.htk-root\[data-theme="hatakyu"\] \.htk-journal-page :deep\(\[data-journal-capture\] > header\)\{[^}]*background:var\(--surface\);[^}]*color:var\(--fg\);[^}]*box-shadow:var\(--card-shadow\)/u);
+	test('きもち・ごはんの紙面は余白のある外枠へ描画する', () => {
+		const journal = frontendSource('src/components/hatask/HataskJournal.vue');
+		expect(journal).toContain(":global(.htk-root:not([data-theme='akatsuki'])) .board");
+		expect(journal).not.toContain(":global(.htk-root:not([data-theme='akatsuki'])) .panel {");
 	});
 
-	test('ハタキュのお庭でも並び替えと花カードの間隔を保つ', () => {
-		const source = frontendSource('src/pages/hatask.vue');
-		expect(source).toMatch(/\.htk-root\[data-theme="hatakyu"\] \.htk-gal-sort\{margin-bottom:12px\}/u);
-	});
-
-	test('おはなの並べ替えは両ギャラリーとも操作名と選択状態、既存の切替処理を保つ', () => {
-		const garden = gardenMarkup(frontendSource('src/pages/hatask.vue'));
-		const groups = Array.from(garden.querySelectorAll('.htk-gal-sort'));
-		expect(groups).toHaveLength(2);
-		const contracts = [
-			{ group: 'personal', state: 'galleryOrder', handler: 'setGalleryOrder' },
-			{ group: 'community', state: 'communityFlowerOrder', handler: 'setCommunityFlowerOrder' },
-		];
-		groups.forEach((group, groupIndex) => {
-			const contract = contracts[groupIndex];
-			expect(group.closest('.htk-garden-stack')?.getAttribute('data-garden-group')).toBe(contract.group);
-			expect(group.getAttribute('role')).toBe('group');
-			expect(group.getAttribute(':aria-label')).toBe('copy.sort');
-			const buttons = Array.from(group.querySelectorAll('button'));
-			expect(buttons).toHaveLength(2);
-			buttons.forEach((button, index) => {
-				const order = index === 0 ? 'newest' : 'oldest';
-				const label = `copy.${order}First`;
-				const abbreviation = index === 0 ? 'N' : 'O';
-				const english = index === 0 ? 'New' : 'Old';
-				const isCommunity = contract.group === 'community';
-				const accessibleLabel = isCommunity ? `isAkatsuki ? \`${abbreviation} (${english})・\${${label}}\` : ${label}` : label;
-				const visibleLabel = isCommunity ? `isAkatsuki ? '${abbreviation}' : ${label}` : label;
-				expect(button.getAttribute('type')).toBe('button');
-				expect(button.getAttribute(':aria-label')).toBe(accessibleLabel);
-				expect(button.getAttribute(':title')).toBe(accessibleLabel);
-				expect(button.querySelector('span')?.textContent).toBe(`{{${visibleLabel}}}`);
-				expect(button.querySelector('i')?.getAttribute('aria-hidden')).toBe('true');
-				expect(button.querySelector('i')?.getAttribute('v-if')).toBe(isCommunity ? '!isAkatsuki' : null);
-				expect(button.getAttribute(':aria-pressed')).toBe(`${contract.state} === '${order}'`);
-				expect(button.getAttribute('@click')).toBe(`${contract.handler}('${order}')`);
-			});
-		});
-	});
-
-	test('暁のみみんなのお花のN/Oを両方表示し、自分のお花・スマホ・旧4テーマのラベル条件を保つ', () => {
-		expectGardenSortLabels(frontendSource('src/pages/hatask.vue'));
-	});
-
-	test('暁のPC並べ替えは外枠内で折り返せて、ラベル付きボタンを押し潰さない', () => {
-		const style = gardenDesktopSortStyle(frontendSource('src/pages/hatask.vue'));
-		expect(style).toContain('.htk-root[data-theme="akatsuki"] .htk-gal-sort-inner{box-sizing:border-box;min-width:0;flex-wrap:wrap;justify-content:center}');
-		expect(style).toContain('.htk-root[data-theme="akatsuki"] .htk-gal-sort-btn{box-sizing:border-box;flex:0 0 auto;max-width:100%}');
-		expect(style).toContain('.htk-root[data-theme="akatsuki"] .htk-gal-sort-btn > span{min-width:0;white-space:normal;overflow-wrap:anywhere}');
-		expect(style).toContain('.htk-root[data-theme="akatsuki"] .htk-gal-sort-btn[aria-pressed="false"]{width:44px;padding-inline:0}');
-	});
-
-	test('選択中の並べ替えラベルまで隠す回帰を同じ検出器の陽性対照で検出する', () => {
-		const source = frontendSource('src/pages/hatask.vue');
-		expectGardenSortLabels(source);
-		const broken = source.replace('.htk-gal-sort-btn[aria-pressed="false"] > span{display:none}', '.htk-gal-sort-btn > span{display:none}');
-		expect(broken).not.toBe(source);
-		expect(() => expectGardenSortLabels(broken)).toThrow();
-	});
-
-	test('みんなのお花の非選択N/Oまで隠す回帰を同じ検出器の陽性対照で検出する', () => {
-		const source = frontendSource('src/pages/hatask.vue');
-		expectGardenSortLabels(source);
-		const originalStyle = gardenDesktopSortStyle(source);
-		const brokenStyle = originalStyle.replace(' .htk-garden-stack:not([data-garden-group="community"])', '');
-		expect(brokenStyle).not.toBe(originalStyle);
-		const broken = source.replace(originalStyle, brokenStyle);
-		expect(() => expectGardenSortLabels(broken)).toThrow();
-	});
-
-	test('ハタキュのお庭は左右独立で積み、みんなのお花情報をギャラリー直下に置く', () => {
-		const source = frontendSource('src/pages/hatask.vue');
-		expectGardenGroups(gardenMarkup(source));
-		const stackRule = source.match(/\.htk-root\[data-theme="hatakyu"\] \.htk-garden-page > \.htk-garden-stack\{([^}]+)\}/u)?.[1];
-		expect(stackRule).toContain('display:grid');
-		expect(stackRule).toContain('grid-template-columns:minmax(0,1fr)');
-		expect(stackRule).toContain('align-content:start');
-		expect(stackRule).toContain('align-items:start');
-		expect(stackRule).toContain('min-width:0');
-		// 入れ子のhk-panelsの直下に従来のカードを残し、紙・画鋲・揺れの既存セレクタを使う。
-		expect(source).toContain('.htk-root[data-theme="hatakyu"] .hk-panels > .htk-lg::after');
-		expect(source).toContain('.htk-root[data-theme="hatakyu"][data-anim="on"] .hk-panels > .htk-lg');
-	});
-
-	test('お庭の他テーマは従来の4枚グリッドを保ち、小窓では同じ読み順の一列になる', () => {
+	test('お庭はテーマ共通の花ストリームとコレクションを使い、操作と再試行を保つ', () => {
 		const source = frontendSource('src/pages/hatask.vue');
 		const garden = gardenMarkup(source);
-		expect(garden.getAttribute(':class')).toContain('isHatakyu?\'hk-panels\':\'htk-panels\'');
-		expect(source).toContain('.htk-garden-stack{display:contents}');
-		expect(source).toMatch(/@container hatask-root \(max-width:900px\)\{[^}]*\}[\s\S]*?\.hk-panels\{ grid-template-columns:minmax\(0,1fr\) \}/u);
-		const cards = Array.from(garden.querySelectorAll('.htk-garden-stack > .htk-lg'));
-		expect(cards).toHaveLength(4);
-		expect(cards.map(card => card.querySelector('.htk-sec-title')?.textContent.match(/\{\{copy\.(\w+)\}\}/u)?.[1])).toEqual(['currentFlower', 'flowerGallery', 'communityFlowerGallery', 'communityFlowerActivity']);
-		// グループの移動だけで、取得失敗時の再試行や開花・公開範囲の操作を失わない。
-		const clickHandlers = Array.from(garden.querySelectorAll('button')).map(button => button.getAttribute('@click'));
-		expect(clickHandlers).toContain('harvestFlower');
-		expect(clickHandlers).toContain('updateFlowerVisibility(option.value)');
-		expect(clickHandlers.filter(handler => handler === 'loadCommunityFlowers')).toHaveLength(2);
-	});
-
-	test('お花情報が個人側へ混ざる回帰を陽性対照で検出する', () => {
-		const garden = gardenMarkup(frontendSource('src/pages/hatask.vue'));
-		expectGardenGroups(garden);
-		const personal = garden.querySelector('[data-garden-group="personal"]');
-		const community = garden.querySelector('[data-garden-group="community"]');
-		const activity = community?.lastElementChild;
-		if (!personal || !activity) throw new Error('Garden positive control target was not found');
-		personal.append(activity);
-		expect(() => expectGardenGroups(garden)).toThrow();
+		expect(garden.classList.contains('htk-panels')).toBe(true);
+		expect(garden.querySelectorAll('HataskFlowerStream')).toHaveLength(3);
+		expect(garden.querySelector('HataskCommunityGarden')?.getAttribute(':theme')).toBe('plannerTheme');
+		expect(garden.querySelector('[data-garden-group="community"]')).not.toBeNull();
+		expect(garden.querySelector('[data-garden-group="personal"]')).not.toBeNull();
+		const handlers = [...garden.querySelectorAll('button')].map(button => button.getAttribute('@click'));
+		expect(handlers).toContain('handleFlowerHarvest');
+		expect(handlers.filter(handler => handler === 'loadCommunityFlowers')).toHaveLength(2);
+		expect(source).toContain('os.popup(HataskFlowerCollection,');
+		expect(frontendSource('src/components/hatask/HataskFlowerCollection.vue')).toContain('data-flower-collection-action="order"');
 	});
 });

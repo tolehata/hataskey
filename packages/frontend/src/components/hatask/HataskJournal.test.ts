@@ -120,21 +120,21 @@ describe('Hatask mood and meal journals', () => {
 		const parsed = parse(readFileSync(filename, 'utf8'), { filename });
 		expect(parsed.errors).toEqual([]);
 		const stylesheet = parsed.descriptor.styles[0].content;
-		const themeRules = stylesheet.match(/\.root\[data-hatask-theme='akatsuki'\] \{([^}]+)\}/u)?.[1] ?? '';
+		const themeRules = stylesheet.match(/\.root\[data-hatask-theme\] \{([^}]+)\}/u)?.[1] ?? '';
 		const replacedThemeTokens = /--(?:surface|fg|fg-2|card-radius|card-border|card-shadow)\s*:/u;
 		// Positive control: catch a locally fixed surface before checking the real rules.
 		expect(replacedThemeTokens.test(`${themeRules}\n--surface: #fff;`)).toBe(true);
 		expect(replacedThemeTokens.test(themeRules)).toBe(false);
-		const captureRules = stylesheet.match(/\.root\[data-hatask-theme='akatsuki'\] \.captureArea \{([^}]+)\}/u)?.[1] ?? '';
+		const captureRules = stylesheet.match(/\.root\[data-hatask-theme\] \.captureArea \{([^}]+)\}/u)?.[1] ?? '';
 		for (const declaration of ['border: var(--card-border)', 'border-radius: var(--card-radius)', 'background: var(--surface)', 'color: var(--fg)', 'box-shadow: var(--card-shadow)']) {
 			expect(captureRules).toContain(declaration);
 		}
 		expect(stylesheet).toMatch(/\.heading \{[^}]*color: var\(--fg\);/u);
 		expect(stylesheet).toMatch(/\.heading p, \.reviewHeading p \{[^}]*color: var\(--fg-2\);/u);
-		expect(stylesheet).toMatch(/\.root\[data-hatask-theme='akatsuki'\] \.heading \{[^}]*background: transparent;/u);
+		expect(stylesheet).toMatch(/\.root\[data-hatask-theme\] \.heading \{[^}]*background: transparent;/u);
 	});
 
-	test.each(['akatsuki', 'kisetsu', 'kashin', 'suri', 'hatakyu'])('%sのテーマ識別子を見出し・入力へ渡し、説明と書きかけを保つ', async theme => {
+	test.each(['akatsuki', 'koke', 'kisetsu', 'kashin', 'suri', 'hatakyu'])('%sのテーマ識別子を見出し・入力へ渡し、説明と書きかけを保つ', async theme => {
 		for (const kind of ['mood', 'meal']) {
 			const f = mountJournal({ kind, theme });
 			await inputNote(f.container, '残しておく記録');

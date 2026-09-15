@@ -11,7 +11,7 @@ import { describe, expect, test } from 'vitest';
 import type { HataskPlannerTheme } from './hatask-planner-types.js';
 
 const directory = resolve(process.cwd(), 'src/components/hatask');
-const themes: HataskPlannerTheme[] = ['akatsuki', 'kisetsu', 'kashin', 'suri', 'hatakyu'];
+const themes: HataskPlannerTheme[] = ['akatsuki', 'koke', 'kisetsu', 'kashin', 'suri', 'hatakyu'];
 
 function component(name: string) { return parse(readFileSync(resolve(directory, `${name}.vue`), 'utf8')); }
 
@@ -25,19 +25,19 @@ function contrast(a: string, b: string): number {
 }
 
 describe('暁の子 UI テーマ契約', () => {
-	test('暁と保存済みの旧4テーマを同じ型で受け取る', () => {
+	test('暁・苔と既存の4テーマを同じ型で受け取る', () => {
 		const typeSource = readFileSync(resolve(directory, 'hatask-planner-types.ts'), 'utf8');
 		const themeType = typeSource.match(/export type HataskPlannerTheme = ([^;]+);/u)?.[1];
 		expect(themeType?.match(/'[^']+'/gu)?.map(value => value.slice(1, -1))).toEqual(themes);
 	});
 
-	test.each(['HataskCalendarPlanner', 'HataskTodoPlanner', 'HataskJournal', 'HataskQuickCapture', 'HataskTemplateLibrary'])('%s は暁だけに子 UI の装飾を適用する', name => {
+	test.each(['HataskCalendarPlanner', 'HataskTodoPlanner', 'HataskJournal', 'HataskQuickCapture', 'HataskTemplateLibrary'])('%s は全テーマで共通の子 UI を使う', name => {
 		const { descriptor, errors } = component(name);
 		expect(errors).toEqual([]);
 		expect(descriptor.scriptSetup?.content).toContain('theme?: HataskPlannerTheme');
 		expect(descriptor.template?.content).toContain(':data-hatask-theme="theme"');
-		const styles = descriptor.styles.map(style => style.content).join('\n');
-		expect(styles).toContain('.root[data-hatask-theme=\'akatsuki\']');
+		const styles = descriptor.styles.map(style => style.src ? readFileSync(resolve(process.cwd(), 'src/pages', style.src), 'utf8') : style.content).join('\n');
+		expect(styles).toContain('.root[data-hatask-theme]');
 		expect(styles).toContain('--accent: var(--accent-ink)');
 		expect(styles).toContain('--fg-3: var(--fg-2)');
 	});
@@ -47,10 +47,11 @@ describe('暁の子 UI テーマ契約', () => {
 		expect(errors).toEqual([]);
 		expect(descriptor.scriptSetup?.content).toContain('colorMode?: \'light\' | \'dark\'');
 		expect(descriptor.template?.content).toContain(':data-hatask-mode="colorMode"');
-		const styles = descriptor.styles.map(style => style.content).join('\n');
+		const styles = descriptor.styles.map(style => style.src ? readFileSync(resolve(process.cwd(), 'src/pages', style.src), 'utf8') : style.content).join('\n');
 		expect(styles).toContain('[data-hatask-theme=\'akatsuki\'][data-hatask-mode=\'dark\']');
 		for (const color of ['#fff7f2', '#2b1f2c', '#b02e56', '#1b1424', '#f6ecf3', '#ff7fa3']) expect(styles).toContain(color);
-		for (const theme of themes.slice(1)) expect(styles).toMatch(new RegExp(`data-hatask-theme=["']?${theme}["']?`));
+		const palettes = readFileSync(resolve(directory, 'hatask-themes.scss'), 'utf8');
+		for (const theme of themes.slice(1)) expect(palettes).toMatch(new RegExp(`data-hatask-theme=["']?${theme}["']?`));
 	});
 
 	test('きもち・ごはんの入力にもテーマを渡し、既存の入力は維持する', () => {
@@ -69,8 +70,8 @@ describe('暁の子 UI テーマ契約', () => {
 	});
 
 	test('白い通知数字には明暗共通の濃いバッジ背景を使う', () => {
-		const layout = component('HataskAkatsukiLayout').descriptor.styles.map(style => style.content).join('\n');
-		const apps = component('HataskAkatsukiApps').descriptor.styles.map(style => style.content).join('\n');
+		const layout = component('HataskAkatsukiLayout').descriptor.styles.map(style => style.src ? readFileSync(resolve(process.cwd(), 'src/pages', style.src), 'utf8') : style.content).join('\n');
+		const apps = component('HataskAkatsukiApps').descriptor.styles.map(style => style.src ? readFileSync(resolve(process.cwd(), 'src/pages', style.src), 'utf8') : style.content).join('\n');
 		const background = layout.match(/--hak-badge-bg:\s*(#[\da-f]{6});/iu)?.[1];
 		expect(background).toBeDefined();
 		if (!background) throw new Error('Missing notification badge color');
@@ -83,7 +84,7 @@ describe('暁の子 UI テーマ契約', () => {
 describe('Archivo の自己ホストと配布ライセンス', () => {
 	const assets = resolve(process.cwd(), 'assets/fonts');
 	const page = parse(readFileSync(resolve(process.cwd(), 'src/pages/hatask.vue'), 'utf8')).descriptor;
-	const globalStyles = page.styles.filter(style => !style.scoped && !style.module).map(style => style.content).join('\n');
+	const globalStyles = page.styles.filter(style => !style.scoped && !style.module).map(style => style.src ? readFileSync(resolve(process.cwd(), 'src/pages', style.src), 'utf8') : style.content).join('\n');
 	const faces = globalStyles.match(/@font-face\s*\{[^}]+\}/gu)?.filter(face => face.includes("font-family: 'Archivo'")) ?? [];
 	const originals = [
 		{ file: 'archivo-latin-wght.woff2', bytes: 34928, sha256: '8f704806dbedeaaeca334b11ec348bc3ac3a439d6431544b3afb54f534ee4967' },

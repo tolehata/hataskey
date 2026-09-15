@@ -86,7 +86,7 @@ function deferred<T>() {
 }
 
 describe('Hatask ranking view', () => {
-	test.each(['akatsuki', 'kisetsu', 'kashin', 'suri', 'hatakyu'].flatMap(theme => ['light', 'dark'].map(mode => ({ theme, mode: mode as 'light' | 'dark' }))))('$theme / $mode renders four boards with real user components and dynamic server name', async props => {
+	test.each(['akatsuki', 'koke', 'kisetsu', 'kashin', 'suri', 'hatakyu'].flatMap(theme => ['light', 'dark'].map(mode => ({ theme, mode: mode as 'light' | 'dark' }))))('$theme / $mode renders four boards with real user components and dynamic server name', async props => {
 		const { container } = mount(props);
 		await flush();
 		expect(container.querySelector('[data-hatask-ranking]')?.getAttribute('data-theme')).toBe(props.theme);
@@ -228,7 +228,9 @@ describe('Hatask ranking view', () => {
 		expect(compiled.code).toMatch(/width: 34px/);
 		expect(compiled.code).toContain(' .ti');
 		expect(compiled.modules).not.toHaveProperty('ti');
-		for (const theme of ['akatsuki', 'kisetsu', 'kashin', 'suri', 'hatakyu']) expect(compiled.code).toContain(`[data-theme=${theme}]`);
+		expect(compiled.code).toContain('[data-theme]');
+		const skins = readFileSync(resolve(process.cwd(), 'src/components/hatask/hatask-themes.scss'), 'utf8');
+		for (const theme of ['koke', 'kisetsu', 'kashin', 'suri', 'hatakyu']) expect(skins).toContain(`[data-hatask-ranking][data-theme='${theme}']`);
 		expect(compiled.code).toContain('@container hatask-ranking');
 		expect(compiled.code).toContain('prefers-reduced-motion');
 	});

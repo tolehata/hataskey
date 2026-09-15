@@ -233,7 +233,7 @@ describe('HataskAkatsukiApps', () => {
 		const tools = mountApps({ kind: 'tools' });
 		const hataskRows = [...hatask.container.querySelectorAll('[data-app-layout="desktop"] [data-app-id]')];
 		const toolRows = [...tools.container.querySelectorAll('[data-app-layout="desktop"] [data-app-id]')];
-		expect(hataskRows).toHaveLength(8);
+		expect(hataskRows).toHaveLength(7);
 		expect(toolRows).toHaveLength(12);
 		for (const row of [...hataskRows, ...toolRows]) expect(row.className).toBe(hataskRows[0].className);
 	});
@@ -257,28 +257,80 @@ describe('HataskAkatsukiApps', () => {
 		expect(source).toContain('@container ak-feature (max-width: 270px)');
 	});
 
-	test('Hataskの7入口と3特集を保ち、一覧・特集はopenだけを親へ通知する', () => {
+	test('アプリ説明だけに文節と禁則を考慮した折り返しを指定する', () => {
+		const source = readFileSync(resolve(process.cwd(), 'src/components/hatask/HataskAkatsukiApps.vue'), 'utf8');
+		const desktop = source.match(/^\.desktopCopy p\s*\{([^}]*)\}/m)?.[1];
+		const mobile = source.match(/^\s*\.mobileDescription\s*\{([^}]*)\}/m)?.[1];
+		for (const rule of [desktop, mobile]) {
+			expect(rule).toBeDefined();
+			expect(rule).toContain('text-wrap: pretty');
+			expect(rule).toContain('word-break: auto-phrase');
+			expect(rule).toContain('line-break: strict');
+		}
+	});
+
+	test('Hataskの7入口と6特集はopenだけを親へ通知する', () => {
 		const { container, open } = mountApps();
-		const ids = ['cal', 'todo', 'mood', 'meal', 'garden', 'eye', 'ranking', 'settings'];
+		const ids = ['cal', 'todo', 'mood', 'meal', 'garden', 'ranking', 'settings'];
 		for (const layout of ['mobile', 'desktop'] as const) {
 			expect(appIds(container, layout)).toEqual(ids);
 			for (const id of ids) container.querySelector<HTMLButtonElement>(`[data-app-layout="${layout}"] [data-app-id="${id}"] button`)!.click();
 		}
-		expect([...container.querySelectorAll<HTMLElement>('[data-feature-id]')].map(item => item.dataset.featureId)).toEqual(['todo', 'garden', 'mood']);
+		expect(container.querySelector('[data-app-id="eye"]')).toBeNull();
+		expect([...container.querySelectorAll<HTMLElement>('[data-feature-id]')].map(item => item.dataset.featureId)).toEqual(['todo', 'garden', 'mood', 'cal', 'meal', 'settings']);
 		container.querySelector<HTMLButtonElement>('[data-feature-open="todo"]')!.click();
 		expect(open.mock.calls.map(args => args[0])).toEqual([...ids, ...ids, 'todo']);
 	});
 
-	test('Hataskeyの10入口と旧2入口、3特集を保ち、PCの5分類へ配置する', () => {
+	test('Hataskey Appの両一覧は重複する機能解説を外し、HataIntroの書体・説明・起動通知を保つ', async () => {
+		const { container, props, open } = mountApps({ kind: 'tools' });
+		const control = window.document.createElement('div');
+		control.innerHTML = '<div data-app-layout="mobile"><article data-app-id="guide">Hataskey 機能解説</article></div><div data-app-layout="desktop"><article data-app-id="guide">Hataskey 機能解説</article></div>';
+		for (const layout of ['mobile', 'desktop'] as const) {
+			expect(appIds(control, layout)).toContain('guide');
+			expect(appIds(container, layout)).not.toContain('guide');
+			expect(container.querySelector(`[data-app-layout="${layout}"]`)?.textContent).not.toContain('Hataskey 機能解説');
+			const row = container.querySelector(`[data-app-layout="${layout}"] [data-app-id="intro"]`);
+			const nameSelector = layout === 'mobile' ? 'div > span:first-of-type' : 'strong';
+			const name = row?.querySelector(nameSelector);
+			const cardName = container.querySelector(`[data-app-layout="${layout}"] [data-app-id="card"] ${nameSelector}`);
+			expect(name?.textContent).toBe('HataIntro');
+			expect(name?.getAttribute('class')).toBe(cardName?.getAttribute('class'));
+			expect(row?.querySelector('p')?.textContent).toBe('画面の見方や操作手順を、図と一緒にひとつずつ確認できるはじめてガイド');
+			expect(row?.querySelector('button')?.getAttribute('aria-label')).toBe('HataIntroを開く');
+			row?.querySelector<HTMLButtonElement>('button')?.click();
+		}
+		expect(open.mock.calls.map(args => args[0])).toEqual(['intro', 'intro']);
+		expect(container.querySelector('[data-app-layout="desktop"] [data-app-id="intro"]')?.parentElement?.querySelector('h3')?.textContent).toBe('設定と案内');
+		expect(container.querySelector('[data-app-id="guide"]')).toBeNull();
+		props.kind = 'hatask';
+		await nextTick();
+		expect(container.querySelector('[data-app-id="intro"]')).toBeNull();
+		props.kind = 'tools';
+		await nextTick();
+		for (const layout of ['mobile', 'desktop'] as const) {
+			expect(appIds(container, layout).filter(id => id === 'intro')).toEqual(['intro']);
+			expect(appIds(container, layout)).not.toContain('guide');
+		}
+	});
+
+	test('HataIntroと既存のHataskey入口、6特集をPCの5分類へ配置する', () => {
 		const { container, open } = mountApps({ kind: 'tools' });
-		expect(appIds(container, 'mobile')).toEqual(['feed', 'hatady', 'card', 'analyze', 'studio', 'earthquake', 'mascot', 'games', 'guide', 'drawing', 'whatsnew', 'hatasettings']);
-		expect(appIds(container, 'desktop')).toEqual(['card', 'analyze', 'drawing', 'feed', 'hatady', 'earthquake', 'mascot', 'games', 'studio', 'guide', 'whatsnew', 'hatasettings']);
+		expect(appIds(container, 'mobile')).toEqual(['feed', 'hatady', 'card', 'analyze', 'studio', 'earthquake', 'mascot', 'games', 'intro', 'drawing', 'whatsnew', 'hatasettings']);
+		expect(appIds(container, 'desktop')).toEqual(['card', 'analyze', 'drawing', 'feed', 'hatady', 'earthquake', 'mascot', 'games', 'studio', 'intro', 'whatsnew', 'hatasettings']);
 		expect(container.querySelectorAll('[data-app-layout="desktop"] h3')).toHaveLength(5);
-		expect([...container.querySelectorAll<HTMLElement>('[data-feature-id]')].map(item => item.dataset.featureId)).toEqual(['analyze', 'hatady', 'card']);
+		expect([...container.querySelectorAll<HTMLElement>('[data-feature-id]')].map(item => item.dataset.featureId)).toEqual(['analyze', 'hatady', 'card', 'drawing', 'studio', 'intro']);
 		for (const button of container.querySelectorAll<HTMLButtonElement>('[data-feature-open]')) button.click();
-		expect(open.mock.calls.map(args => args[0])).toEqual(['analyze', 'hatady', 'card']);
+		expect(open.mock.calls.map(args => args[0])).toEqual(['analyze', 'hatady', 'card', 'drawing', 'studio', 'intro']);
 		expect(container.textContent).toContain('映画・ゲーム・学びの記録');
-		expect(container.textContent).toContain('ドライブから選んで添付');
+		expect(container.textContent).toContain('ドライブへの保存や投稿への添付');
+		for (const layout of ['mobile', 'desktop'] as const) {
+			const nameSelector = layout === 'mobile' ? 'div > span:first-of-type' : 'strong';
+			const drawingName = container.querySelector(`[data-app-layout="${layout}"] [data-app-id="drawing"] ${nameSelector}`);
+			const cardName = container.querySelector(`[data-app-layout="${layout}"] [data-app-id="card"] ${nameSelector}`);
+			expect(drawingName?.textContent).toBe('Hatadint');
+			expect(drawingName?.getAttribute('class')).toBe(cardName?.getAttribute('class'));
+		}
 	});
 
 	test('HataFeedとマスコットの入口は親の権限変更に追従して両一覧で隠れる', async () => {
@@ -292,10 +344,14 @@ describe('HataskAkatsukiApps', () => {
 		expect(appIds(container, 'desktop')).toHaveLength(10);
 		expect(container.querySelector('[data-app-id="feed"]')).toBeNull();
 		expect(container.querySelector('[data-app-id="mascot"]')).toBeNull();
+		expect(container.querySelectorAll('[data-app-id="intro"]')).toHaveLength(2);
+		expect(container.querySelector('[data-app-id="guide"]')).toBeNull();
 		props.canAccessHataFeed = true;
 		props.canUseMascot = true;
 		await nextTick();
 		expect(appIds(container, 'mobile')).toHaveLength(12);
+		expect(appIds(container, 'desktop')).toHaveLength(12);
+		expect(container.querySelector('[data-app-id="guide"]')).toBeNull();
 	});
 
 	test('件数は実値から表示し、読込未完了ではバッジも残件数の断定も隠す', async () => {
@@ -321,21 +377,29 @@ describe('HataskAkatsukiApps', () => {
 		expect([...container.querySelectorAll('[data-count-badge]')].map(item => item.textContent)).toEqual(['3', '3']);
 	});
 
-	test('次・前・ドットで循環し、アクティブ以外の2枚はinertになる', async () => {
+	test('次・前・末尾のドットまで循環し、アクティブ以外の5枚はinertになる', async () => {
 		const { container } = mountApps();
 		expect(activeSlide(container).dataset.featureId).toBe('todo');
 		action(container, 'prev').click();
 		await nextTick();
-		expect(activeSlide(container).dataset.featureId).toBe('mood');
+		expect(activeSlide(container).dataset.featureId).toBe('settings');
 		action(container, 'next').click();
 		await nextTick();
 		expect(activeSlide(container).dataset.featureId).toBe('todo');
 		container.querySelector<HTMLButtonElement>('[data-dot-index="1"]')!.click();
 		await nextTick();
 		expect(activeSlide(container).dataset.featureId).toBe('garden');
-		expect(container.querySelectorAll('[data-feature-id][inert]')).toHaveLength(2);
+		expect(container.querySelectorAll('[data-feature-id][inert]')).toHaveLength(5);
 		expect(activeSlide(container).hasAttribute('inert')).toBe(false);
 		expect(container.querySelector('[data-dot-index="1"]')?.getAttribute('aria-pressed')).toBe('true');
+		const lastDot = container.querySelector<HTMLButtonElement>('[data-dot-index="5"]');
+		if (!lastDot) throw new Error('Last feature dot is missing');
+		lastDot.click();
+		await nextTick();
+		expect(activeSlide(container).dataset.featureId).toBe('settings');
+		expect(activeSlide(container).getAttribute('aria-label')).toBe('6 / 6');
+		expect(container.querySelectorAll('[data-feature-id][inert]')).toHaveLength(5);
+		expect(container.querySelector('[data-dot-index="5"]')?.getAttribute('aria-pressed')).toBe('true');
 	});
 
 	test.each(['hatask', 'tools'] as const)('%sの制御は1組だけ固定し、前後・停止・ドット操作でも項目だけを動かす', async kind => {
@@ -347,7 +411,7 @@ describe('HataskAkatsukiApps', () => {
 		expect(controls.parentElement).toBe(feature);
 		expect(track.parentElement).toBe(feature);
 		expect(feature.querySelectorAll('[data-feature-controls]')).toHaveLength(1);
-		expect(buttons).toHaveLength(6);
+		expect(buttons).toHaveLength(9);
 		expect(track.contains(controls)).toBe(false);
 		expect(track.querySelector('[data-carousel-action]')).toBeNull();
 		expect(track.style.transform).toBe('translateX(-0%)');
@@ -377,7 +441,7 @@ describe('HataskAkatsukiApps', () => {
 		expect(source).toContain('grid-template-areas: \'kicker kicker\' \'title title\' \'app .\'');
 		expect(source).toMatch(/\.root \.featureApp\s*\{[^}]*grid-area:\s*app;/);
 		expect(source).toMatch(/@container ak-feature \(max-width: 500px\)\s*\{\s*\.featureBody\s*\{[^}]*grid-template-areas: 'kicker app' 'title title';[^}]*padding:\s*12px 16px 54px;/);
-		expect(source).toMatch(/@container ak-feature \(max-width: 227px\)\s*\{\s*\.featureBody\s*\{[^}]*grid-template-areas: 'kicker' 'title' 'app';[^}]*padding-bottom:\s*86px;/);
+		expect(source).toMatch(/@container ak-feature \(max-width: 260px\)\s*\{\s*\.featureBody\s*\{[^}]*grid-template-areas: 'kicker' 'title' 'app';[^}]*padding-bottom:\s*86px;/);
 	});
 
 	test('特集だけの余白と見出しを縮め、文字量が増えた場合は高さを固定しない', () => {
@@ -403,7 +467,7 @@ describe('HataskAkatsukiApps', () => {
 		const source = readFileSync(resolve(process.cwd(), 'src/components/hatask/HataskAkatsukiApps.vue'), 'utf8');
 		const compactStart = source.indexOf('@container ak-feature (max-width: 500px)');
 		const mobileStart = source.indexOf('@container hatask-akatsuki (max-width: 599px)');
-		const narrowStart = source.indexOf('@container ak-feature (max-width: 227px)');
+		const narrowStart = source.indexOf('@container ak-feature (max-width: 260px)');
 		const base = source.slice(0, compactStart);
 		const compact = source.slice(compactStart, mobileStart);
 		const mobile = source.slice(mobileStart, narrowStart);
@@ -427,13 +491,16 @@ describe('HataskAkatsukiApps', () => {
 		// CSS budget checks, not measurements from a layout-capable browser.
 		const reserveFits = (reserve: number, rows: number): boolean => reserve >= rows;
 		expect(reserveFits(20, desktopButton + 19)).toBe(false);
-		expect(rule(base, '.featureBody')).toContain('grid-template-columns: minmax(0, 1fr) 196px');
+		expect(rule(base, '.featureBody')).toContain('grid-template-columns: minmax(0, 1fr) 240px');
 		expect(rule(base, '.featureBody')).toContain('gap: 6px 16px');
 		expect(rule(base, '.featureBody')).toContain('padding: 14px 18px');
 		expect(rule(base, '.controls')).toContain('padding: 0 18px 19px');
 		expect(reserveFits(pixels(rule(base, '.root .featureApp'), 'min-height') + 14, desktopButton + 19)).toBe(true);
-		const controlsWidth = 3 * desktopButton + 3 * 8 + 2 * 10 + 26 + 2 * 5;
-		expect(controlsWidth).toBeLessThanOrEqual(196);
+		const dotsWidth = 5 * 10 + 26 + 5 * 5;
+		const controlsWidth = 3 * desktopButton + 3 * 8 + dotsWidth;
+		// Six dots exceed the old three-slide reservation.
+		expect(reserveFits(196, controlsWidth)).toBe(false);
+		expect(reserveFits(240, controlsWidth)).toBe(true);
 		// The full-width stationary overlay must not intercept the app on its left.
 		expect(rule(base, '.controls')).toContain('pointer-events: none');
 		expect(rule(base, '.controls > *')).toContain('pointer-events: auto');
@@ -445,7 +512,11 @@ describe('HataskAkatsukiApps', () => {
 		expect(rule(narrow, '.controls')).toContain('padding: 0 12px 12px');
 		expect(rule(narrow, '.dots')).toContain('grid-column: 1 / -1');
 		expect(reserveFits(pixels(rule(narrow, '.featureBody'), 'padding-bottom'), Math.max(desktopButton, mobileButton) + 4 + dotsHeight + 12)).toBe(true);
-		for (const width of [160, 200, 227]) expect((width - 24 - 16) / 3).toBeGreaterThanOrEqual(desktopButton);
+		for (const width of [160, 227, 260]) {
+			expect((width - 24 - 16) / 3).toBeGreaterThanOrEqual(desktopButton);
+			expect(reserveFits(width - 24, dotsWidth)).toBe(true);
+		}
+		expect(reserveFits(261 - 32, controlsWidth)).toBe(true);
 	});
 
 	test.each([
@@ -478,10 +549,16 @@ describe('HataskAkatsukiApps', () => {
 			{ id: 'todo', title: `残り ${Number.MAX_SAFE_INTEGER} 件を、先に片づける。`, label: 'ToDo' },
 			{ id: 'garden', title: '花の育ちぐあいを、そっと見に行く。', label: 'おはな' },
 			{ id: 'mood', title: 'いまの気分を、ひとこと残そう。', label: 'きもち' },
+			{ id: 'cal', title: 'この先の予定を、ひと目で見渡す。', label: 'カレンダー' },
+			{ id: 'meal', title: 'きょう食べたものを、ひとこと添えて。', label: 'ごはん' },
+			{ id: 'settings', title: '色も、明るさも、心地よい見た目に。', label: '見た目' },
 		] : [
 			{ id: 'analyze', title: '自分の言葉から、気分の波を読む。', label: 'HATAlyze（感情分析）' },
 			{ id: 'hatady', title: '映画もゲームも、学びもひとつに。', label: 'Hatady' },
 			{ id: 'card', title: '自分の一枚を、カードにする。', label: 'HataCardMaker' },
+			{ id: 'drawing', title: '浮かんだイメージを、一枚の絵に。', label: 'Hatadint' },
+			{ id: 'studio', title: 'いつもの道具を、使いやすい場所へ。', label: 'HataSideStudio' },
+			{ id: 'intro', title: 'はじめての操作を、図と一緒にたどる。', label: 'HataIntro' },
 		];
 		for (const item of expected) {
 			const slide = activeSlide(container);
@@ -498,6 +575,7 @@ describe('HataskAkatsukiApps', () => {
 			await nextTick();
 		}
 		expect(openApp.mock.calls.map(args => args[0])).toEqual(expected.map(item => item.id));
+		expect(activeSlide(container).dataset.featureId).toBe(expected[0].id);
 	});
 
 	test('キーボード操作後も同じ制御DOMにフォーカスを保つ', async () => {
@@ -530,8 +608,10 @@ describe('HataskAkatsukiApps', () => {
 		action(container, 'pause').click();
 		await tick();
 		expect(activeSlide(container).dataset.featureId).toBe('mood');
-		await tick();
-		expect(activeSlide(container).dataset.featureId).toBe('todo');
+		for (const id of ['cal', 'meal', 'settings', 'todo']) {
+			await tick();
+			expect(activeSlide(container).dataset.featureId).toBe(id);
+		}
 	});
 
 	test('hover中とフォーカス中は自動送りを止め、離れると再開する', async () => {
@@ -615,7 +695,7 @@ describe('HataskAkatsukiApps', () => {
 		expect(container.querySelector('section')?.dataset.motion).toBe('false');
 		setReducedMotion(false);
 		await tick();
-		expect(activeSlide(container).dataset.featureId).toBe('todo');
+		expect(activeSlide(container).dataset.featureId).toBe('cal');
 	});
 
 	test('同じインスタンスで種類を変えたら先頭特集に戻る', async () => {

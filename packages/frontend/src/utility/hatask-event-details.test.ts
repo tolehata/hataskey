@@ -9,6 +9,7 @@ import { runInNewContext } from 'node:vm';
 import { compileStyleAsync, parse } from '@vue/compiler-sfc';
 import * as ts from 'typescript';
 import { afterEach, describe, expect, test, vi } from 'vitest';
+import { isSharedHataskEvent, hataskEventVisibilityLabel } from './hatask-event-audience.js';
 import type { HataskCalendarDay, HataskCalendarEvent } from '@/components/hatask/hatask-planner-types.js';
 import type { HataskEventDetails, HataskEventRsvpStatus } from '@/components/hatask/hatask-event-details-types.js';
 import type { HataskPlannerEvent, HataskRecurrence } from '@/utility/hatask-planner-storage.js';
@@ -108,6 +109,7 @@ function fixture(options: { local?: CalendarSource[]; calendar?: CalendarSource[
 	code += `\nconst ${variable('notifyTimingLabels').getText(script)};\nconst viewingEventDetails = ${projection};\n({ get details() { return viewingEventDetails.value; }, ${functions.join(', ')} });`;
 	const compiled = ts.transpileModule(code, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } });
 	const runtime = runInNewContext(compiled.outputText, {
+		isSharedHataskEvent, hataskEventVisibilityLabel,
 		events, allCalendarEvents, sharedEvents, viewingEvent, eventViewReturnFocus, eventViewBusy, plannerReadOnly,
 		activeTab, calYear, calMonth, selectedDay, selectedDateStr, rootEl, newEvent, 'window': window, HTMLElement, HTMLButtonElement,
 		$i: options.signedIn === false ? null : { id: 'me', username: 'my-name' },
@@ -309,16 +311,20 @@ describe('Hataskの予定詳細はクリックした予定を非破壊で開く'
 		expect(navigation.pos).toBeLessThan(move.pos);
 	});
 
-	test('KeepAlive離脱は既存cleanupへ委譲し、その最初の処理で詳細を閉じる', () => {
-		const first = functionNode('cleanupHataskState').body?.statements[0];
-		if (!first) throw new Error('Missing cleanup body');
-		expect(first.getText(script)).toBe('closeEventDetail();');
+	test('KeepAlive離脱は既存cleanupへ委譲し、非同期処理より前に詳細を閉じる', () => {
+		const body = functionNode('cleanupHataskState').body;
+		if (!body) throw new Error('Missing cleanup body');
+		const statements = body.statements;
+		const closing = statements.find(statement => statement.getText(script) === 'closeEventDetail();');
+		const deferred = statements.find(statement => statement.getText(script).startsWith('nextTick('));
+		if (!closing || !deferred) throw new Error('Missing cleanup sequence');
+		expect(closing.pos).toBeLessThan(deferred.pos);
 		const hook = script.statements.find(statement => ts.isExpressionStatement(statement) && ts.isCallExpression(statement.expression) && statement.expression.expression.getText(script) === 'onDeactivated');
 		if (!hook) throw new Error('Missing deactivation lifecycle hook');
 		const cleanupHataskState = vi.fn();
 		const callbacks: Array<() => void> = [];
 		const compiled = ts.transpileModule(hook.getText(script), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } });
-		runInNewContext(compiled.outputText, { cleanupHataskState, onDeactivated: (callback: () => void) => callbacks.push(callback) }, { timeout: 1000 });
+		runInNewContext(compiled.outputText, { cleanupHataskState, invalidateCommunityFlowers: vi.fn(), sharedEventRequest: 0, sharedEvents: { value: [] }, $i: { id: 'me' }, checkClosedRsvps: vi.fn(), onDeactivated: (callback: () => void) => callbacks.push(callback) }, { timeout: 1000 });
 		expect(callbacks).toHaveLength(1); callbacks[0](); expect(cleanupHataskState).toHaveBeenCalledTimes(1);
 	});
 });
@@ -467,7 +473,7 @@ describe('予定詳細ポップアップの親テンプレート・テーマ契�
 		const fragment = window.document.createElement('template'); fragment.innerHTML = markup;
 		const dialog = fragment.content.querySelector('HataskEventDetailsDialog');
 		expect(dialog?.parentElement?.tagName.toLowerCase()).toBe('teleport'); expect(dialog?.parentElement?.getAttribute('to')).toBe('body');
-		for (const [attribute, value] of Object.entries({ ':isopen': 'viewingEvent !== null', ':event': 'viewingEventDetails', ':labels': 'eventViewLabels', ':data-theme': 'plannerTheme', ':data-mode': 'themeMode', ':readonly': 'plannerReadOnly', ':busy': 'eventViewBusy', ':returnfocusto': 'eventViewReturnFocus', ':getanchor': 'getEventDetailAnchor', ':animations': 'settings.animations !== false', '@close': 'closeEventDetail', '@edit': 'editViewedEvent', '@delete': 'deleteViewedEvent', '@rsvp': 'respondToViewedEvent', '@closersvp': 'closeViewedEventRsvp' })) expect(dialog?.getAttribute(attribute), attribute).toBe(value);
+		for (const [attribute, value] of Object.entries({ ':isopen': 'viewingEvent !== null', ':event': 'viewingEventDetails', ':labels': 'eventViewLabels', ':data-theme': 'plannerTheme', ':data-mode': 'themeMode', ':readonly': 'plannerReadOnly', ':busy': 'eventViewBusy || (viewingEventDetails !== null && isRsvpSaving(viewingEventDetails.id))', ':returnfocusto': 'eventViewReturnFocus', ':getanchor': 'getEventDetailAnchor', ':animations': 'settings.animations !== false', '@close': 'closeEventDetail', '@edit': 'editViewedEvent', '@delete': 'deleteViewedEvent', '@rsvp': 'respondToViewedEvent', '@closersvp': 'closeViewedEventRsvp' })) expect(dialog?.getAttribute(attribute), attribute).toBe(value);
 		expect(dialog?.classList.contains('htk-event-details-theme')).toBe(true);
 		const hasInlineDetail = (text: string) => /class=["'][^"']*\bhtk-evdet\b/u.test(text) || /v-for=["']ev in pagedEvents["']/u.test(text);
 		expect(hasInlineDetail(`${markup}<div class="htk-evdet" v-for="ev in pagedEvents"/>`)).toBe(true);
@@ -478,7 +484,7 @@ describe('予定詳細ポップアップの親テンプレート・テーマ契�
 		const style = parsed.descriptor.styles.find(item => item.scoped && item.lang === 'scss');
 		if (!style) throw new Error('Missing parent scoped SCSS');
 		const scope = 'data-v-hatask-event-details';
-		const compiled = await compileStyleAsync({ source: style.content, filename, id: scope, scoped: true, preprocessLang: 'scss' });
+		const compiled = await compileStyleAsync({ source: style.content + '\n' + readFileSync(resolve(process.cwd(), 'src/components/hatask/hatask-themes.scss'), 'utf8'), filename, id: scope, scoped: true, preprocessLang: 'scss' });
 		expect(compiled.errors).toEqual([]);
 		const root = compiled.rawResult?.root; if (!root) throw new Error('Missing compiled stylesheet');
 		// Compare the dialog's palette/font/card contract, not page-only sizing.
@@ -490,20 +496,20 @@ describe('予定詳細ポップアップの親テンプレート・テーマ契�
 				if (themeTokens.has(declaration.prop)) declarations[declaration.prop] = declaration.value;
 			});
 			for (const selector of rule.selectors) {
-				const normalized = selector.replaceAll(`[${scope}]`, '').replace(/\[([\w-]+)=(["']?)([\w-]+)\2\]/gu, '[$1=$3]').trim();
-				if (!/^\.(htk-root|htk-event-details-theme)\[data-theme(?:=[\w-]+)?\](?:\[data-mode=dark\])?$/u.test(normalized)) continue;
+				const normalized = selector.replaceAll(`[${scope}]`, '').replace('[data-mode]', '').replace(/\[([\w-]+)=(["']?)([\w-]+)\2\]/gu, '[$1=$3]').trim();
+				if (!/^\.(htk-root|htk-event-details-theme)\[data-theme(?:=[\w-]+)?\](?:\[data-mode=dark\])?(?::not\(\[data-theme=akatsuki\]\))?$/u.test(normalized)) continue;
 				tokens.set(normalized, { ...tokens.get(normalized), ...declarations });
 			}
 		});
-		const suffixes = ['[data-theme]', ...['akatsuki', 'kisetsu', 'kashin', 'suri', 'hatakyu'].flatMap(theme => [`[data-theme=${theme}]`, `[data-theme=${theme}][data-mode=dark]`])];
+		const suffixes = ['[data-theme]', '[data-theme]:not([data-theme=akatsuki])', ...['akatsuki', 'koke', 'kisetsu', 'kashin', 'suri', 'hatakyu'].flatMap(theme => [`[data-theme=${theme}]`, `[data-theme=${theme}][data-mode=dark]`])];
 		const mismatches = (collection: typeof tokens) => suffixes.filter(suffix => !collection.has(`.htk-event-details-theme${suffix}`) || JSON.stringify(collection.get(`.htk-root${suffix}`)) !== JSON.stringify(collection.get(`.htk-event-details-theme${suffix}`)));
 		const broken = new Map(tokens); broken.delete('.htk-event-details-theme[data-theme=akatsuki][data-mode=dark]');
 		expect(mismatches(broken)).toContain('[data-theme=akatsuki][data-mode=dark]');
 		expect(mismatches(tokens)).toEqual([]);
-		for (const theme of ['akatsuki', 'kisetsu', 'kashin', 'suri', 'hatakyu']) {
+		for (const theme of ['akatsuki', 'koke', 'kisetsu', 'kashin', 'suri', 'hatakyu']) {
 			for (const dark of [false, true]) {
 				const base = `[data-theme=${theme}]`;
-				const inherited = { ...tokens.get('.htk-event-details-theme[data-theme]'), ...tokens.get(`.htk-event-details-theme${base}`), ...(dark ? tokens.get(`.htk-event-details-theme${base}[data-mode=dark]`) : {}) };
+				const inherited = { ...tokens.get('.htk-event-details-theme[data-theme]'), ...(theme !== 'akatsuki' ? tokens.get('.htk-event-details-theme[data-theme]:not([data-theme=akatsuki])') : {}), ...tokens.get(`.htk-event-details-theme${base}`), ...(dark ? tokens.get(`.htk-event-details-theme${base}[data-mode=dark]`) : {}) };
 				for (const token of ['--bg', '--surface', '--fg', '--fg-2', '--rule', '--accent', '--on-accent', '--htk-font-body', '--htk-font-head', '--card', '--card-border', '--card-radius', '--card-shadow']) expect(inherited[token], `${theme} dark=${dark} ${token}`).toBeTruthy();
 			}
 		}

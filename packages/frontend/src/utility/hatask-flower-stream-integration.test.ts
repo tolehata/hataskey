@@ -62,7 +62,7 @@ function collectionFixture() {
 		communityFlowerPage: ref(1), communityFlowerTotalPages: ref(9), communityFlowerOrder: ref<'newest' | 'oldest'>('newest'),
 		communityFlowerTotal: ref(100), communityFlowersLoading: ref(false), communityFlowersError: ref(false),
 		personalFlowerViews: ref(response('own').items), communityFlowerViews: ref(response('shared').items),
-		flowerDialogOpen: ref(false), flowerAnimations: ref(false), settings: ref({ theme: 'akatsuki' }), themeMode: ref('dark'),
+		flowerDialogOpen: ref(false), flowerAnimations: ref(false), settings: ref({ theme: 'akatsuki' }), plannerTheme: ref('akatsuki'), themeMode: ref('dark'),
 	};
 	const popups: { props: Record<string, unknown>; events: CollectionEvents; dispose: ReturnType<typeof vi.fn> }[] = [];
 	const select = vi.fn();
@@ -371,7 +371,7 @@ describe('Hatask flower collection integration', () => {
 			ref, nextTick, hataskPageActive: true, activeTab: ref('garden'), flowerDialogOpen: ref(false),
 			personalFlowerViews: f.state.personalFlowerViews, communityFlowerViews: f.state.communityFlowerViews,
 			communityFlowersLoading: f.state.communityFlowersLoading, communityFlowersError: f.state.communityFlowersError,
-			selectedCommunityFlowerId: ref(null), settings: f.state.settings, themeMode: f.state.themeMode,
+			selectedCommunityFlowerId: ref(null), settings: f.state.settings, plannerTheme: f.state.plannerTheme, themeMode: f.state.themeMode,
 			flowerAnimations: f.state.flowerAnimations, HataskFlowerDetail: {}, copy: {}, i18n: { ts: {} },
 			closeFlowerCollection: f.close, communityFlowers: ref([item]), reportCommunityFlower: report,
 			communityFlowerStream: ref(null),

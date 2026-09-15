@@ -6,6 +6,7 @@
 import type { HataskAkatsukiEvent, HataskAkatsukiHomeSection, HataskAkatsukiModel } from '@/components/hatask/hatask-akatsuki-types.js';
 import type { HataskAkatsukiUsage } from '@/utility/hatask-akatsuki-usage.js';
 import { normalizeHataskAkatsukiMobileTabs } from '@/utility/hatask-akatsuki-navigation.js';
+import { normalizeHataskAkatsukiFavorites } from '@/utility/hatask-akatsuki-favorites.js';
 import { akatsukiUsageScore } from '@/utility/hatask-akatsuki-usage.js';
 
 type EventRow = { id: string; title: string; date: string; dateEnd?: string; timeStart?: string; timeEnd?: string; allDay?: boolean; archivedAt?: string | null };
@@ -24,6 +25,7 @@ export interface HataskAkatsukiSource {
 	moods: readonly MoodRow[];
 	meals: readonly MealRow[];
 	flower: { name: string; emoji: string; progress: number; remaining: string };
+	accountCreatedAt?: string | null;
 	loginDays: number;
 	loginRanking: number;
 	eyePhrase: string;
@@ -31,7 +33,7 @@ export interface HataskAkatsukiSource {
 	feedback?: { allowed: boolean; known: boolean };
 	apps?: HataskAkatsukiModel['apps'];
 	usage?: HataskAkatsukiUsage;
-	settings: { showClock?: boolean; showEvents?: boolean; showFlower?: boolean; showMoodSummary?: boolean; showMealSummary?: boolean; showMealSection?: boolean; showFeedbackNotif?: boolean; weekStart?: string; akatsukiMobileTabs?: unknown; akatsukiShortcut?: unknown };
+	settings: { showClock?: boolean; showEvents?: boolean; showFlower?: boolean; showMoodSummary?: boolean; showMealSummary?: boolean; showMealSection?: boolean; showFeedbackNotif?: boolean; weekStart?: string; akatsukiMobileTabs?: unknown; akatsukiShortcut?: unknown; akatsukiHomeFavorites?: unknown };
 }
 
 export function akatsukiDateKey(date: Date): string {
@@ -106,6 +108,12 @@ export function buildHataskAkatsukiModel(source: HataskAkatsukiSource): { model:
 	const sections: HataskAkatsukiHomeSection[] = [
 		{ id: 'tools', label: 'ツール', icon: 'ti ti-apps', summary: hasUsage ? apps[0]?.label ?? 'ツールを開く' : '使いたいツールを、ここから', reason: hasUsage ? 'よく使うツール' : 'ここから始める', priority: 40 + (hasUsage ? 12 : 0) },
 	];
+	const joinedAt = typeof source.accountCreatedAt === 'string' ? Date.parse(source.accountCreatedAt) : NaN;
+	const accountAge = now.getTime() - joinedAt;
+	if (Number.isFinite(accountAge) && accountAge >= 0 && accountAge <= 14 * 24 * 60 * 60 * 1000) sections.push({
+		id: 'intro', label: 'HataIntro', icon: 'ti ti-book', summary: '画面の見方・投稿・設定を、図と一緒に',
+		reason: 'はじめてのHataskeyに', priority: 200,
+	});
 	if (settings.showEvents !== false) sections.push({
 		id: 'calendar', label: '予定', icon: 'ti ti-calendar-event', count: known.planner ? todayEvents.length : undefined,
 		summary: known.planner ? nextEvent?.title ?? 'このあとの予定はありません' : '予定を読み込めませんでした',
@@ -130,7 +138,7 @@ export function buildHataskAkatsukiModel(source: HataskAkatsukiSource): { model:
 	});
 	const recommended = [...sections].sort((a, b) => b.priority - a.priority)[0].id;
 	const model: HataskAkatsukiModel = {
-		home: { sections, recommended, hasUsage },
+		home: { sections, recommended, hasUsage, favorites: normalizeHataskAkatsukiFavorites(settings.akatsukiHomeFavorites) },
 		apps: apps.slice(0, 6),
 		loading: source.loading,
 		readOnly: source.readOnly,

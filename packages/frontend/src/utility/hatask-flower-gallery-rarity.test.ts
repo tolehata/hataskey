@@ -67,10 +67,10 @@ function inputFixture(activeTab = { value: 'garden' }) {
 const nameInputProps = { title: '収穫', text: '名前', default: 'お花', minLength: 1, maxLength: 80 };
 
 describe('Hatask flower harvest and rarity integration', () => {
-	test.each(['garden', 'eye'])('%s の収穫ボタンから名前入力を開き、満開の花だけを保存する', async tab => {
+	test('おはなの収穫ボタンから名前入力を開き、満開の花だけを保存する', async () => {
 		const growing = createHataskGrowingFlower({ emoji: '☄️', name: '流星花', rare: true });
 		const f = fixture({ ...growing, progress: 100, totalMinutes: growing.targetMinutes });
-		f.activeTab.value = tab;
+		f.activeTab.value = 'garden';
 		const dialog = inputFixture(f.activeTab);
 		f.inputText.mockImplementation(dialog.input);
 		const operation = f.handleHarvest();
@@ -82,27 +82,35 @@ describe('Hatask flower harvest and rarity integration', () => {
 		expect(f.gallery.value[0]).toMatchObject({ emoji: '☄️', name: '窓辺のお花' });
 		expect(f.registrySet).toHaveBeenCalledTimes(2);
 		expect(f.flowerDialogOpen.value).toBe(false);
-		expect(page).toContain('@click="handleFlowerHarvest">{{copy.harvestFlower}}');
+		expect(page).toContain('@click="handleFlowerHarvest">{{copy.harvestAndName}}');
 	});
 
-	test.each(['home', 'todo'])('%s からは収穫用の名前入力を開かない', async tab => {
+	test.each(['home', 'todo', 'eye'])('%s からは収穫用の名前入力を開かない', async tab => {
 		const f = inputFixture({ value: tab });
 		await expect(f.input(nameInputProps)).resolves.toEqual({ canceled: true });
 		expect(f.loadInputDialog).not.toHaveBeenCalled();
 		expect(f.popup).not.toHaveBeenCalled();
 	});
 
+	test('廃止したEYEからは収穫処理や保存を始めない', async () => {
+		const f = fixture({ ...createHataskGrowingFlower({ emoji: '☄️', name: '流星花', rare: true }), progress: 100 });
+		f.activeTab.value = 'eye';
+		await f.handleHarvest();
+		expect(f.inputText).not.toHaveBeenCalled();
+		expect(f.registrySet).not.toHaveBeenCalled();
+	});
+
 	test('入力部品の読込中や名前入力中にタブが変わったら収穫を取り消す', async () => {
-		const loading = inputFixture({ value: 'eye' });
+		const loading = inputFixture({ value: 'garden' });
 		const beforeOpen = loading.input(nameInputProps);
-		loading.activeTab.value = 'garden';
+		loading.activeTab.value = 'home';
 		await expect(beforeOpen).resolves.toEqual({ canceled: true });
 		expect(loading.popup).not.toHaveBeenCalled();
-		const opened = inputFixture({ value: 'eye' });
+		const opened = inputFixture({ value: 'garden' });
 		const beforeClose = opened.input(nameInputProps);
 		await Promise.resolve();
 		expect(opened.popup).toHaveBeenCalledOnce();
-		opened.activeTab.value = 'garden';
+		opened.activeTab.value = 'home';
 		opened.finish();
 		await expect(beforeClose).resolves.toEqual({ canceled: true });
 		expect(opened.dispose).toHaveBeenCalledOnce();
@@ -119,10 +127,10 @@ describe('Hatask flower harvest and rarity integration', () => {
 		expect(f.registrySet).not.toHaveBeenCalled();
 	});
 
-	test.each(['loading', 'dialog', 'growing'] as const)('%s の間は Eye の収穫ボタンから二重操作しない', async state => {
+	test.each(['loading', 'dialog', 'growing'] as const)('%s の間はおはなの収穫ボタンから二重操作しない', async state => {
 		const growing = createHataskGrowingFlower({ emoji: '☄️', name: '流星花', rare: true });
 		const f = fixture({ ...growing, progress: state === 'growing' ? 99 : 100 });
-		f.activeTab.value = 'eye';
+		f.activeTab.value = 'garden';
 		f.flowerDataWritable.value = state !== 'loading';
 		f.flowerDialogOpen.value = state === 'dialog';
 		await f.handleHarvest();

@@ -9,6 +9,7 @@ import { runInNewContext } from 'node:vm';
 import { parse } from '@vue/compiler-sfc';
 import * as ts from 'typescript';
 import { afterEach, describe, expect, test, vi } from 'vitest';
+import { isSharedHataskEvent, hataskEventVisibilityLabel } from './hatask-event-audience.js';
 import type { HataskCalendarBlankTarget } from '@/components/hatask/hatask-planner-types.js';
 import type { HataskCalendarBlankEvent } from '@/components/hatask/HataskCalendarBlankDialog.vue';
 import type { HataskPlannerEvent } from '@/utility/hatask-planner-storage.js';
@@ -95,6 +96,7 @@ function fixture(initial = [source()], positiveControl = false) {
 	}
 	code += `\nlet blankCalendarGeneration = 0;\n${declaration('blankCalendarEvents')}\n({ ${functions.join(', ')}, get candidates() { return blankCalendarEvents.value; } });`;
 	const runtime = runInNewContext(ts.transpileModule(code, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText, {
+		isSharedHataskEvent, hataskEventVisibilityLabel,
 		events, allCalendarEvents, sharedEvents, blankCalendarTarget, blankCalendarReturnFocus, blankCalendarBusy, blankCalendarError,
 		plannerReadOnly, activeTab, newEvent, editingEvent, selectedDateStr, rootEl: { value: root },
 		showEventDetails: { value: false }, showEventTemplates: { value: false }, eventCaptureEditor: { value: null },

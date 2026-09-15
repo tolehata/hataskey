@@ -13,9 +13,30 @@ describe('暁の下部ナビゲーション設定', () => {
 		expect(normalizeHataskAkatsukiMobileTabs(undefined, 'meal')).toEqual(['home', 'meal', 'hataskapps', 'apps']);
 		expect(normalizeHataskAkatsukiShortcut('games')).toBe('todo');
 		expect(normalizeHataskAkatsukiShortcut('home')).toBe('todo');
-		expect(normalizeHataskAkatsukiShortcut('eye')).toBe('eye');
+		expect(normalizeHataskAkatsukiShortcut('eye')).toBe('todo');
 		expect(normalizeHataskAkatsukiShortcut('ranking')).toBe('ranking');
 		expect(replaceHataskAkatsukiMobileTab(['home', 'todo', 'hataskapps', 'apps'], 1, 'ranking')).toEqual(['home', 'ranking', 'hataskapps', 'apps']);
+	});
+
+	test.each([
+		{ saved: ['apps', 'eye', 'home', 'hataskapps'], shortcut: 'eye', expected: ['apps', 'todo', 'home', 'hataskapps'] },
+		{ saved: ['todo', 'hataskapps', 'eye', 'home'], shortcut: 'todo', expected: ['todo', 'hataskapps', 'cal', 'home'] },
+		{ saved: ['eye', 'mood', 'home', 'cal'], shortcut: 'mood', expected: ['hataskapps', 'mood', 'home', 'cal'] },
+		{ saved: ['home', 'eye', 'hataskapps', 'apps'], shortcut: 'meal', expected: ['home', 'meal', 'hataskapps', 'apps'] },
+	])('旧EYE枠だけを利用可能な項目へ置き換え、他の順序と保存値を保つ: $saved', ({ saved, shortcut, expected }) => {
+		const before = [...saved];
+		Object.freeze(saved);
+		const result = normalizeHataskAkatsukiMobileTabs(saved, shortcut);
+		expect(result).toEqual(expected);
+		expect(result).not.toContain('eye');
+		expect(new Set(result).size).toBe(4);
+		expect(saved).toEqual(before);
+		expect(normalizeHataskAkatsukiMobileTabs(result, shortcut)).toEqual(result);
+	});
+
+	test('EYEショートカットだけが残った設定も重複のない既定表示になる', () => {
+		expect(HATASK_AKATSUKI_SHORTCUTS).not.toContain('eye');
+		expect(normalizeHataskAkatsukiMobileTabs(undefined, 'eye')).toEqual(['home', 'todo', 'hataskapps', 'apps']);
 	});
 
 	test.each([
@@ -32,6 +53,18 @@ describe('暁の下部ナビゲーション設定', () => {
 		const result = normalizeHataskAkatsukiMobileTabs(saved, 'meal');
 		expect(result).toEqual(saved);
 		expect(result).not.toBe(saved);
+	});
+
+	test('支援情報を任意枠へ配置でき、既存の並び順や必須枠は変更しない', () => {
+		const saved = Object.freeze<HataskAkatsukiTab[]>(['apps', 'mood', 'home', 'hataskapps']);
+		expect(HATASK_AKATSUKI_SHORTCUTS.indexOf('support') + 1).toBe(HATASK_AKATSUKI_SHORTCUTS.indexOf('ranking'));
+		expect(normalizeHataskAkatsukiShortcut('support')).toBe('support');
+		expect(normalizeHataskAkatsukiMobileTabs(saved)).toEqual(saved);
+		const changed = replaceHataskAkatsukiMobileTab(saved, 1, 'support');
+		expect(changed).toEqual(['apps', 'support', 'home', 'hataskapps']);
+		expect(normalizeHataskAkatsukiMobileTabs(changed)).toEqual(changed);
+		expect(replaceHataskAkatsukiMobileTab(changed, 0, 'support')).toEqual(changed);
+		expect(replaceHataskAkatsukiMobileTab(saved, 3, 'support')).toEqual(saved);
 	});
 
 	test.each([

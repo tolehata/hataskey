@@ -23,9 +23,11 @@ export function normalizeHataskPlannerTemplates(value: unknown): HataskTemplateN
 	for (const candidate of value) {
 		if (!isRecord(candidate) ||
 			typeof candidate.id !== 'string' || candidate.id.trim().length === 0 || ids.has(candidate.id) ||
-			(candidate.kind !== 'todo' && candidate.kind !== 'event') ||
+			(candidate.kind !== 'todo' && candidate.kind !== 'event' && candidate.kind !== 'members') ||
 			typeof candidate.name !== 'string' || !isRecord(candidate.payload) ||
-			(candidate.kind === 'todo' ? typeof candidate.payload.text !== 'string' : typeof candidate.payload.title !== 'string')) {
+			(candidate.kind === 'members'
+				? !Array.isArray(candidate.payload.visibleUserIds) || candidate.payload.visibleUserIds.length === 0 || candidate.payload.visibleUserIds.length > 100 || !candidate.payload.visibleUserIds.every(id => typeof id === 'string' && id.length > 0)
+				: candidate.kind === 'todo' ? typeof candidate.payload.text !== 'string' : typeof candidate.payload.title !== 'string')) {
 			invalidCount++;
 			continue;
 		}

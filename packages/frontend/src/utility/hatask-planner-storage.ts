@@ -63,7 +63,7 @@ export type HataskPlannerFolder = UnknownFields & {
 	archivedAt: string | null;
 };
 
-export type HataskEventVisibility = 'private' | 'public';
+export type HataskEventVisibility = 'private' | 'public' | 'specified';
 export type HataskPublicSyncState = 'pending' | 'creating' | 'updating' | 'deleting' | 'deleting-local' | 'unlinked' | 'conflict' | 'sync-error';
 
 export type HataskPlannerEvent = UnknownFields & {
@@ -77,6 +77,7 @@ export type HataskPlannerEvent = UnknownFields & {
 	timeLabel?: string;
 	color?: string;
 	visibility: HataskEventVisibility;
+	visibleUserIds?: string[];
 	rsvp: boolean;
 	notify: boolean;
 	notifyTimings: string[];
@@ -95,7 +96,7 @@ export type HataskPlannerEvent = UnknownFields & {
 	importedPublicSyncState?: string;
 };
 
-export type HataskPlannerTemplateKind = 'todo' | 'event';
+export type HataskPlannerTemplateKind = 'todo' | 'event' | 'members';
 
 /**
  * Templates are an independent collection. They never share IDs or lifecycle
@@ -384,7 +385,7 @@ function normalizeEvent(
 	const title = requiredString(value, 'title', 'events', path, issues);
 	const date = requiredString(value, 'date', 'events', path, issues);
 	if (id == null || title == null || date == null) return null;
-	const visibility: HataskEventVisibility = value.visibility === 'public' ? 'public' : 'private';
+	const visibility: HataskEventVisibility = value.visibility === 'public' || value.visibility === 'specified' ? value.visibility : 'private';
 	const output: UnknownFields = {
 		...value,
 		id,
@@ -398,7 +399,14 @@ function normalizeEvent(
 		recurrence: normalizeRecurrence(value.recurrence, 'events', `${path}.recurrence`, issues),
 		archivedAt: value.archivedAt == null ? null : typeof value.archivedAt === 'string' ? value.archivedAt : null,
 	};
-	if (value.visibility != null && value.visibility !== 'private' && value.visibility !== 'public') addIssue(issues, 'events', `${path}.visibility`, 'invalid-field', 'visibility must be private or public');
+	if (value.visibility != null && !['private', 'public', 'specified'].includes(String(value.visibility))) addIssue(issues, 'events', `${path}.visibility`, 'invalid-field', 'unsupported visibility');
+	if (value.visibleUserIds != null || visibility === 'specified') {
+		if (!Array.isArray(value.visibleUserIds) || value.visibleUserIds.length > 100 || !value.visibleUserIds.every(memberId => typeof memberId === 'string' && memberId.length > 0)) {
+			addIssue(issues, 'events', `${path}.visibleUserIds`, 'invalid-field', 'visibleUserIds must be a member ID array');
+		} else {
+			output.visibleUserIds = [...new Set(value.visibleUserIds)];
+		}
+	}
 	for (const key of ['rsvp', 'notify', 'allDay'] as const) {
 		if (value[key] != null && typeof value[key] !== 'boolean') addIssue(issues, 'events', `${path}.${key}`, 'invalid-field', `${key} must be a boolean`);
 	}
@@ -419,7 +427,7 @@ function normalizeEvent(
 	}
 	if (value.pendingVisibility == null) {
 		delete output.pendingVisibility;
-	} else if (value.pendingVisibility === 'private' || value.pendingVisibility === 'public') {
+	} else if (value.pendingVisibility === 'private' || value.pendingVisibility === 'public' || value.pendingVisibility === 'specified') {
 		output.pendingVisibility = value.pendingVisibility;
 	} else {
 		delete output.pendingVisibility;

@@ -29,6 +29,65 @@ function fixture(patch: Partial<HataskAkatsukiSource> = {}): HataskAkatsukiSourc
 }
 
 describe('暁の実データ表示モデル', () => {
+	test('保存済みのお気に入りを順序どおり復元し、予定・ToDo・食事・花の記録を変更しない', () => {
+		const source = fixture({ settings: { akatsukiHomeFavorites: ['flower', 'todo', 'calendar'] } });
+		const before = JSON.stringify(source);
+		const { model } = buildHataskAkatsukiModel(source);
+		expect(model.home?.favorites).toEqual(['flower', 'todo']);
+		expect(model.flower?.name).toBe('わかば');
+		expect(model.todos?.map(todo => todo.id)).toEqual(['remaining']);
+		expect(JSON.stringify(source)).toBe(before);
+	});
+
+	test.each([0, 1, 14 * 24 * 60 * 60 * 1000])('参加から%sミリ秒ではログイン日数にかかわらずHataIntroをおすすめする', age => {
+		const source = fixture({ loginDays: 999 });
+		source.accountCreatedAt = new Date(source.now.getTime() - age).toISOString();
+		const before = JSON.stringify(source);
+		const { model } = buildHataskAkatsukiModel(source);
+		expect(model.home?.recommended).toBe('intro');
+		expect(model.home?.sections.find(section => section.id === 'intro')).toMatchObject({ label: 'HataIntro', icon: 'ti ti-book' });
+		expect(model.next?.id).toBe('next');
+		expect(JSON.stringify(source)).toBe(before);
+	});
+
+	test('14日ちょうどの1ミリ秒後に通常おすすめへ戻り、ログイン初日でも古いアカウントを対象にしない', () => {
+		const source = fixture({ loginDays: 1 });
+		source.accountCreatedAt = new Date(source.now.getTime() - 14 * 24 * 60 * 60 * 1000).toISOString();
+		expect(buildHataskAkatsukiModel(source).model.home?.recommended).toBe('intro');
+		source.now = new Date(source.now.getTime() + 1);
+		const { home } = buildHataskAkatsukiModel(source).model;
+		expect(home?.recommended).toBe('calendar');
+		expect(home?.sections.some(section => section.id === 'intro')).toBe(false);
+		source.accountCreatedAt = '2025-09-04T00:00:00.000Z';
+		expect(buildHataskAkatsukiModel(source).model.home?.recommended).toBe('calendar');
+	});
+
+	test.each([undefined, null, '', 'not-a-date', '2026-99-99T00:00:00.000Z'])('参加日時%sが分からない場合は新規参加と推測しない', accountCreatedAt => {
+		const { home } = buildHataskAkatsukiModel(fixture({ accountCreatedAt, loginDays: 0 })).model;
+		expect(home?.recommended).toBe('calendar');
+		expect(home?.sections.some(section => section.id === 'intro')).toBe(false);
+	});
+
+	test('未来の参加日時は対象外とし、タイムゾーン表記が違っても同じ参加時刻なら同じ判定をする', () => {
+		const source = fixture({ now: new Date('2026-09-10T12:00:00.000Z') });
+		source.accountCreatedAt = '2026-09-10T12:00:00.001Z';
+		expect(buildHataskAkatsukiModel(source).model.home?.sections.some(section => section.id === 'intro')).toBe(false);
+		for (const createdAt of ['2026-08-27T12:00:00.000Z', '2026-08-27T21:00:00.000+09:00']) {
+			source.accountCreatedAt = createdAt;
+			expect(buildHataskAkatsukiModel(source).model.home?.recommended).toBe('intro');
+		}
+	});
+
+	test('新規参加案内のために記録の表示設定や権限を変更しない', () => {
+		const source = fixture({ loading: true, readOnly: true, feedback: { allowed: false, known: false }, settings: { showEvents: false, showMealSection: false } });
+		source.accountCreatedAt = source.now.toISOString();
+		const { model } = buildHataskAkatsukiModel(source);
+		expect(model.home?.recommended).toBe('intro');
+		expect(model.home?.sections.map(section => section.id)).toEqual(['tools', 'intro', 'todo']);
+		expect(model.readOnly).toBe(true);
+		expect(model.showEvents).toBe(false);
+	});
+
 	test('近い予定・締切・未読・食事の時間帯の順で状況に合う内容を選ぶ', () => {
 		const source = fixture({ feedback: { allowed: true, known: true }, todos: [{ id: 'due', text: '提出', done: false, due: '2026-09-03' }] });
 		expect(buildHataskAkatsukiModel(source).model.home?.recommended).toBe('calendar');
@@ -144,10 +203,18 @@ describe('暁の実データ表示モデル', () => {
 
 describe('暁の親結線', () => {
 	const page = readFileSync(resolve(process.cwd(), 'src/pages/hatask.vue'), 'utf8');
+	test('現在のログインアカウントの参加日時と既存の時計を表示モデルへ渡す', () => {
+		const snapshot = page.match(/const akatsukiSnapshot = computed\(\(\) => buildHataskAkatsukiModel\(\{([\s\S]*?)\n\}\)\);/u)?.[1];
+		if (!snapshot) throw new Error('Missing Hatask Akatsuki model connection');
+		expect(snapshot).toContain('accountCreatedAt: $i?.createdAt');
+		expect(snapshot).toContain('now: akatsukiNow.value');
+		expect(snapshot).toContain('loginDays: loginDays.value');
+	});
+
 	test('設定の読込中やテーマ欠落時も記録カードは暁になり、保存済みの旧テーマは変えない', () => {
 		const body = page.match(/const plannerTheme=computed<HataskPlannerTheme>\(\(\)=>\{([\s\S]*?)\n\}\);/u)?.[1];
 		if (!body) throw new Error('Missing planner theme computation');
-		for (const theme of [undefined, null, '', 'akatsuki', 'kisetsu', 'kashin', 'suri', 'hatakyu']) {
+		for (const theme of [undefined, null, '', 'akatsuki', 'koke', 'kisetsu', 'kashin', 'suri', 'hatakyu']) {
 			const settings = { value: { theme } };
 			const result: unknown = runInNewContext(`(() => {${body}})()`, { settings }, { timeout: 100 });
 			expect(result).toBe(theme || 'akatsuki');
@@ -158,11 +225,12 @@ describe('暁の親結線', () => {
 		expect(runInNewContext(`(() => {${oldBody}})()`, { settings: { value: {} } }, { timeout: 100 })).toBe('kisetsu');
 	});
 
-	test('旧テーマのホームと保存済みテーマを残し、初回だけ暁を既定にする', () => {
+	test('保存済みテーマ名を保ち、全テーマで共通ホームを使う', () => {
 		expect(page).toContain('theme:\'akatsuki\'');
 		expect(page).toContain('theme: \'akatsuki\'');
-		expect(page).toContain('activeTab===\'home\' && !isAkatsuki');
+		expect(page).toContain(':enabled="true"');
 		for (const id of ['kisetsu', 'kashin', 'suri', 'hatakyu']) expect(page).toContain('id:\'' + id + '\'');
+		expect(page).toContain("{ id: 'koke', jp: i18n.ts._hata._hatask._settings.themeKoke, desc: i18n.ts._hata._hatask._settings.themeKokeDescription }");
 		expect(page).toContain('settings.value = { ...defaultSettings, ...settings.value }');
 	});
 	test('きもち・ごはんの同一インスタンスと既存保存関数を再利用する', () => {
@@ -173,32 +241,9 @@ describe('暁の親結線', () => {
 		expect(forbiddenWrite.test('localStorage.setItem(\'todos\', \'[]\')')).toBe(true);
 		expect(forbiddenWrite.test(readFileSync(resolve(process.cwd(), 'src/utility/hatask-akatsuki.ts'), 'utf8'))).toBe(false);
 	});
-	test('暁と花ストリーム内の横操作をページ送りに奪わせず、旧テーマの通常領域では送り始める', () => {
-		const body = page.match(/function htkTouchStart\(e:TouchEvent\)\{([\s\S]*?)\n\}/u)?.[1];
-		if (!body) throw new Error('Missing Hatask touch-start handler');
-		const ordinary = window.document.createElement('div');
-		const stream = window.document.createElement('div');
-		stream.dataset.hataskFlowerStream = '';
-		const flowerButton = window.document.createElement('button');
-		stream.append(flowerButton);
-		for (const [akatsuki, target, startsPageSwipe] of [
-			[true, ordinary, false],
-			[false, flowerButton, false],
-			[false, ordinary, true],
-		] as const) {
-			const state = {
-				isAkatsuki: { value: akatsuki },
-				htkTouchStartPos: { value: { x: 90, y: 80 } as { x: number; y: number } | null },
-				htkTouchLastPos: { value: { x: 70, y: 60 } as { x: number; y: number } | null },
-				htkSwipeLocked: true,
-				Element: window.Element,
-				e: { target, touches: [{ clientX: 12, clientY: 34 }] },
-			};
-			runInNewContext(`(() => {${body}})()`, state, { timeout: 100 });
-			const expected = startsPageSwipe ? { x: 12, y: 34 } : null;
-			expect(state.htkTouchStartPos.value).toEqual(expected);
-			expect(state.htkTouchLastPos.value).toEqual(expected);
-			expect(state.htkSwipeLocked).toBe(!startsPageSwipe);
-		}
+	test('共通レイアウトではページ送り用の旧スワイプ処理を撤去する', () => {
+		expect(page).not.toContain('htkTouchStart');
+		expect(page).not.toContain('@touchmove');
+		expect(page).toContain('<HataskFlowerStream');
 	});
 });

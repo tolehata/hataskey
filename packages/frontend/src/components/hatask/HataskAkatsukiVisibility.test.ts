@@ -14,8 +14,8 @@ const scopedStyle = parsed.descriptor.styles.find(style => style.scoped && style
 const layoutFilename = resolve(process.cwd(), 'src/components/hatask/HataskAkatsukiLayout.vue');
 const layoutParsed = parse(readFileSync(layoutFilename, 'utf8'), { filename: layoutFilename });
 const scopeId = 'data-v-hatask-visibility';
-const tabs = ['cal', 'todo', 'garden', 'eye'] as const;
-const themes = ['akatsuki', 'kisetsu', 'kashin', 'suri', 'hatakyu'] as const;
+const tabs = ['cal', 'todo', 'garden'] as const;
+const themes = ['akatsuki', 'koke', 'kisetsu', 'kashin', 'suri', 'hatakyu'] as const;
 type Theme = typeof themes[number];
 // Derive these from the installed SFC parser. A direct compiler-core import
 // resolves a different patch version in this workspace and has a different AST.
@@ -144,7 +144,7 @@ beforeAll(async () => {
 	expect(scopedStyle.content).toMatch(originalRule);
 	const brokenSource = scopedStyle.content.replace(originalRule, (_, prefix: string) => `${prefix}0`);
 	expect(brokenSource).not.toBe(scopedStyle.content);
-	const compile = (source: string) => compileStyleAsync({ source, filename, id: scopeId, scoped: true, preprocessLang: 'scss' });
+	const compile = (source: string) => compileStyleAsync({ source: source + '\n' + readFileSync(resolve(process.cwd(), 'src/components/hatask/hatask-themes.scss'), 'utf8'), filename, id: scopeId, scoped: true, preprocessLang: 'scss' });
 	expect(layoutParsed.errors).toEqual([]);
 	expect(layoutParsed.descriptor.styles).toHaveLength(1);
 	const layoutStyle = layoutParsed.descriptor.styles[0];
@@ -182,28 +182,10 @@ describe('暁で従来の .htk-anim 内容が透明にならない親 CSS 契約
 		}
 	});
 
-	test.each([['kisetsu', 'htkItemKi'], ['kashin', 'htkItemKa'], ['suri', 'htkItemSu']] as const)('%s: 既存の項目アニメーションと表示完了キーフレームを保つ', (theme, name) => {
-		const content = fixture('cal', theme);
-		for (const element of content) expect(winningRule(actualRules, element, 'animation')?.value).toContain(name);
-		const names: string[] = [];
-		compiledRoot(compiled).walkAtRules('keyframes', keyframes => {
-			if (!keyframes.params.startsWith(`${name}-`)) return;
-			names.push(keyframes.params);
-			let visibleEnd = false;
-			keyframes.walkRules(rule => {
-				if (!['to', '100%'].includes(rule.selector)) return;
-				rule.walkDecls('opacity', declaration => { if (declaration.value === '1') visibleEnd = true; });
-			});
-			expect(visibleEnd, `${name} の表示完了`).toBe(true);
-		});
-		expect(names).toHaveLength(1);
-	});
-
-	test('ハタキュの既存 opacity:1 上書きも残す', () => {
-		for (const element of fixture('garden', 'hatakyu')) {
-			const rule = winningRule(actualRules, element, 'opacity');
-			expect(canonicalSelector(rule?.selector ?? '')).toBe('.htk-root[data-theme=hatakyu][data-anim] .htk-anim');
-			expect(rule?.value).toBe('1');
+	test.each(themes)('%s: 旧テーマ固有の登場演出を使わず、本文を表示する', theme => {
+		for (const element of fixture('cal', theme)) {
+			expect(winningRule(actualRules, element, 'opacity')?.value).toBe('1');
+			expect(winningRule(actualRules, element, 'animation')?.value ?? '').not.toMatch(/htkItem(?:Ki|Ka|Su)/u);
 		}
 	});
 });
@@ -316,74 +298,23 @@ describe('検索フォーカスとTeleport先のトグル色', () => {
 
 	test('暁の検索結果表示時は旧入力モーダルを出さず、同じ結果部品を使う', () => {
 		const template = parsed.descriptor.template?.content ?? '';
-		expect(template).toContain('v-if="showSearch && !isAkatsuki"');
+		expect(template).not.toContain('class="htk-sch-modal"');
 		expect(template).toContain('v-model:searchQuery="searchQuery"');
-		expect(template.match(/<HataskSearchResults\b/g)).toHaveLength(2);
-		expect(template.match(/class="htk-inp htk-sch-inp"/g)).toHaveLength(1);
+		expect(template.match(/<HataskSearchResults\b/g)).toHaveLength(1);
+		expect(template).not.toContain('class="htk-inp htk-sch-inp"');
 	});
 });
 
-describe('お花の並び替えはテーマ共通の選択欄から操作する', () => {
-	const groups = ['personal', 'community'] as const;
-	const binding = (node: ElementNode, name: string): string => {
-		const prop = node.props.find(candidate => candidate.type === 7 && candidate.name === 'bind' && candidate.arg?.type === 4 && candidate.arg.content === name);
-		if (prop?.type !== 7 || prop.exp?.type !== 4) throw new Error(`Missing ${name} binding`);
-		return prop.exp.content;
-	};
-
-	test.each(groups)('%s: 並び順の値・完全なラベル・既存ハンドラーを保つ', group => {
-		const section = elements(tabNode('garden').children).find(node => attribute(node, 'data-garden-group') === group);
-		if (!section) throw new Error(`Missing flower section: ${group}`);
-		const sort = elements(section.children).find(node => attribute(node, 'class') === 'htk-flower-sort');
-		if (!sort) throw new Error(`Missing flower sort: ${group}`);
-		const select = elements(sort.children).find(node => node.tag === 'select');
-		if (!select) throw new Error(`Missing flower order select: ${group}`);
-		expect(binding(select, 'aria-label')).toBe('copy.sort');
-		expect(binding(select, 'value')).toBe(group === 'community' ? 'communityFlowerOrder' : 'galleryOrder');
-		expect(select.loc.source).toContain(group === 'community' ? '@change="setCommunityFlowerOrder(' : '@change="setGalleryOrder(');
-		if (group === 'community') expect(binding(select, 'disabled')).toBe('communityFlowersLoading');
-		const options = elements(select.children).filter(node => node.tag === 'option');
-		expect(options.map(node => attribute(node, 'value'))).toEqual(['newest', 'oldest']);
-		for (const [index, option] of options.entries()) {
-			const text = option.children.find(child => child.type === 5);
-			if (text?.type !== 5 || text.content.type !== 4) throw new Error('Order label expression is missing');
-			expect(text.content.content).toBe(index === 0 ? 'copy.newestFirst' : 'copy.oldestFirst');
-		}
-	});
-
-	type SortRule = { selector: string; property: string; value: string };
-	function sortRules(): SortRule[] {
-		const rules: SortRule[] = [];
-		compiledRoot(compiled).walkRules(rule => {
-			if (!rule.selector.includes('.htk-flower-sort')) return;
-			for (const selector of rule.selectors) rule.walkDecls(declaration => {
-				if (['display', 'visibility', 'opacity'].includes(declaration.prop)) rules.push({ selector, property: declaration.prop, value: declaration.value });
-			});
-		});
-		return rules;
-	}
-	function expectSortVisible(theme: Theme, rules: SortRule[]): void {
-		const root = fixture('garden', theme)[0].closest('.htk-root');
-		if (!root) throw new Error('Garden CSS fixture is missing');
-		const selects = root.querySelectorAll('.htk-flower-sort select');
-		expect(selects).toHaveLength(2);
-		for (const select of selects) {
-			const targets = [select.parentElement!, select, ...Array.from(select.children)];
-			const hiding = rules.filter(rule => targets.some(target => target.matches(rule.selector)) && (
-				(rule.property === 'display' && rule.value === 'none') ||
-				(rule.property === 'visibility' && rule.value === 'hidden') ||
-				(rule.property === 'opacity' && Number(rule.value) === 0)
-			));
-			expect(hiding).toEqual([]);
-		}
-	}
-
-	test('陽性対照: 並び替え欄を消すCSSを同じ検査で検出する', () => {
-		expect(() => expectSortVisible('akatsuki', [...sortRules(), { selector: '.htk-flower-sort select', property: 'display', value: 'none' }])).toThrow();
-	});
-
-	test.each(themes)('%s: 自分・みんなの並び替え欄と選択肢を隠さない', theme => {
-		expectSortVisible(theme, sortRules());
+describe('お花の並び替えは共通コレクションから操作する', () => {
+	test('一覧のネイティブ選択欄と取得済みの並び順を使う', () => {
+		const collection = parse(readFileSync(resolve(process.cwd(), 'src/components/hatask/HataskFlowerCollection.vue'), 'utf8')).descriptor;
+		const template = collection.template!.content;
+		expect(template).toContain('data-flower-collection-action="order"');
+		expect(template).toContain(':value="order"');
+		expect(template).toContain('@change="changeOrder"');
+		expect(template).toContain('<option value="newest">{{ labels.newest }}</option>');
+		expect(template).toContain('<option value="oldest">{{ labels.oldest }}</option>');
+		expect(collection.scriptSetup!.content).toContain("emit('order', order)");
 	});
 });
 

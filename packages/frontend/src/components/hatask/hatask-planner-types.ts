@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-export type HataskPlannerTheme = 'akatsuki' | 'kisetsu' | 'kashin' | 'suri' | 'hatakyu';
+export type HataskPlannerTheme = 'akatsuki' | 'koke' | 'kisetsu' | 'kashin' | 'suri' | 'hatakyu';
 
 export type HataskCalendarView = 'month' | 'week' | 'day' | 'agenda';
 

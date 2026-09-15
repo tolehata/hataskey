@@ -40,15 +40,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<button type="button" :class="$style.carArrow" :disabled="settingsSaving || themeIndex<=0" @click="slideTheme(-1)" :aria-label="copy.previousTheme"><i class="ti ti-chevron-left"></i></button>
 					<div :class="$style.carViewport" data-theme-carousel @touchstart.passive="onThemeTouchStart" @touchend.passive="onThemeTouchEnd">
 						<button v-for="(t,i) in v2Themes" :key="t.id" type="button" :class="[$style.themeCard, settings.theme===t.id && $style.themeCardOn]" :style="themeCardStyle(i)" :data-theme-card="t.id" :disabled="settingsSaving" :tabindex="Math.abs(i-themeIndex)>1 ? -1 : 0" :aria-pressed="settings.theme===t.id" @click="setV2Theme(t.id)">
-							<div :class="$style.themePrev" :style="{ background:t.bg }" aria-hidden="true">
-								<div :class="$style.themePrevLogo" :style="{ color:t.accent, fontFamily:t.id==='akatsuki' ? 'Righteous, sans-serif' : t.head }">Hatask</div>
-								<div :class="$style.themePrevCard" :style="{ background:t.card, border:t.border, borderRadius:t.radius, boxShadow:t.shadow, color:t.fg }">
-									<span :style="{ color:t.accent, fontFamily:t.head, fontWeight:800, fontSize:'1.05rem' }">21:47</span>
-								</div>
-								<div :class="$style.themePrevCard" :style="{ background:t.card, border:t.border, borderRadius:t.radius, boxShadow:t.shadow, color:t.fg }">
-									<span :style="{ fontFamily:t.head, fontWeight:700, fontSize:'.72rem' }">{{ copy.todaySchedule }}</span>
-								</div>
-							</div>
+							<HataskThemePreview :theme="t.id" :mode="previewMode"/>
 							<div :class="$style.themeName" :style="{ fontFamily:t.head }">{{ t.name }}</div>
 							<div :class="$style.themeJp" :data-theme-description="t.id">{{ t.cardDescription ?? t.description }}</div>
 							<div :class="[$style.themeCheck, settings.theme===t.id && $style.themeCheckOn]"><i :class="settings.theme===t.id ? 'ti ti-check' : 'ti ti-circle'"></i> {{ settings.theme===t.id ? copy.selected : copy.select }}</div>
@@ -62,7 +54,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<!-- 外観(ライト/ダーク) -->
 				<div :class="$style.card">
 					<div :class="$style.label">{{ copy.appearance }}</div>
-					<div :class="$style.row"><span>{{ copy.autoAppearance }}</span><button type="button" :class="[$style.sw, settings.autoTheme && $style.swOn]" :disabled="settingsSaving" role="switch" :aria-label="copy.autoAppearance" :aria-checked="settings.autoTheme" @click="toggle('autoTheme')"></button></div>
+					<div :class="$style.row"><span>{{ autoAppearanceLabel }}</span><button type="button" :class="[$style.sw, settings.autoTheme && $style.swOn]" :disabled="settingsSaving" role="switch" :aria-label="autoAppearanceLabel" :aria-checked="settings.autoTheme" @click="toggle('autoTheme')"></button></div>
 					<div v-if="!settings.autoTheme" :class="$style.row"><span>{{ copy.darkMode }}</span><button type="button" :class="[$style.sw, settings.darkMode && $style.swOn]" :disabled="settingsSaving" role="switch" :aria-label="copy.darkMode" :aria-checked="settings.darkMode" @click="toggle('darkMode')"></button></div>
 				</div>
 				<!-- アニメーション -->
@@ -70,13 +62,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<div :class="$style.label">{{ copy.animation }}</div>
 					<div :class="$style.row"><span>{{ copy.animationMotion }}</span><button type="button" :class="[$style.sw, settings.animations!==false && $style.swOn]" :disabled="settingsSaving" role="switch" :aria-label="copy.animationMotion" :aria-checked="settings.animations!==false" @click="toggle('animations')"></button></div>
 					<div :class="$style.desc">{{ copy.animationDescription }}</div>
-				</div>
-				<!-- 旗鯖fork(ハタキュ): このテーマ限定のオプション。
-				     ⚠️ハタキュを選んでいないときは出さない(他テーマでは効かない設定なので) -->
-				<div v-if="settings.theme==='hatakyu'" :class="$style.card">
-					<div :class="$style.label">{{ copy.hatakyuOptions }}</div>
-					<div :class="$style.row"><span>{{ copy.hatakyuWind }}</span><button type="button" :class="[$style.sw, settings.hatakyuWind!==false && $style.swOn]" :disabled="settingsSaving" role="switch" :aria-label="copy.hatakyuWind" :aria-checked="settings.hatakyuWind!==false" @click="toggle('hatakyuWind')"></button></div>
-					<div :class="$style.desc">{{ copy.hatakyuWindDescription }}</div>
 				</div>
 			</div>
 
@@ -95,7 +80,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				</div>
 			</div>
 
-			<section v-if="isAkatsuki" :class="[$style.card, $style.akatsukiNav]" data-akatsuki-navigation aria-label="暁のナビゲーション設定">
+			<section :class="[$style.card, $style.akatsukiNav]" data-akatsuki-navigation aria-label="Hataskのナビゲーション設定">
 				<h2 :class="$style.akNavHeading">スマホの下部タブ</h2>
 				<p :class="$style.akNavNote">左のつまみをドラッグして並べ替え、各項目の↓から表示する機能を選べます。上から順に、下部タブの左から右へ並びます</p>
 				<draggable
@@ -215,6 +200,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 import { ref, shallowRef, computed, nextTick, onMounted } from 'vue';
 import draggable from 'vuedraggable';
 import type { MenuItem } from '@/types/menu.js';
+import type { HataskPlannerTheme } from '@/components/hatask/hatask-planner-types.js';
 import SettingsEmbeddedWindow from '@/components/SettingsEmbeddedWindow.vue';
 import MkModalWindow from '@/components/MkModalWindow.vue';
 import MkButton from '@/components/MkButton.vue';
@@ -227,6 +213,8 @@ import { createHataskPlannerIntegrity, HATASK_PLANNER_SCOPE, migrateHataskPlanne
 import type { HataskPlannerCollectionKey, HataskPlannerEvent, HataskPlannerRawData, HataskPlannerTemplate } from '@/utility/hatask-planner-storage.js';
 import { normalizeHataskPlannerTemplates } from '@/utility/hatask-planner-templates.js';
 import { isHataskAkatsukiRequiredTab, moveHataskAkatsukiMobileTab, normalizeHataskAkatsukiMobileTabs, replaceHataskAkatsukiMobileTab } from '@/utility/hatask-akatsuki-navigation.js';
+import { store } from '@/store.js';
+import HataskThemePreview from '@/components/hatask/HataskThemePreview.vue';
 import type { HataskAkatsukiTab } from '@/components/hatask/hatask-akatsuki-types.js';
 
 const emit = defineEmits<{ (ev:'closed'):void; (ev:'reopenTutorial'):void; (ev:'changed', settings:any):void }>();
@@ -253,20 +241,18 @@ const defaultSettings: any = {
 	openOnStart: false,
 	theme: 'akatsuki',
 	animations: true,
-	// 旗鯖fork(ハタキュ): 風を吹かせるか(このテーマ限定・既定ON)。
-	//   ⚠️既定を true にしておかないと、初回のトグルが「ONのままON」になって効かなく見える。
-	hatakyuWind: true,
 };
 
-// 旗鯖fork(v2): デザインテーマ(季/花信/刷)。プレビュー用にライト配色・見出しフォントを持つ。
+// 共通レイアウトの配色と見出しフォントをテーマのプレビューにも使う。
 const v2Themes = computed(() => [
-	{ id: 'akatsuki', name: copy.themeAkatsuki, description: copy.themeAkatsukiDescription, cardDescription: copy.themeAkatsukiDescription.replace(/^(朝焼けのグラデーションと、)(?=軽やかな3ペイン$)/u, '$1\n'), bg: 'linear-gradient(168deg,#ffd9c0 0%,#ffeef6 46%,#eaf0ff 100%)', fg: '#2b1f2c', accent: '#b02e56', card: 'rgba(255,255,255,.82)', border: '1px solid rgba(80,50,70,.18)', radius: '12px', shadow: '0 8px 18px -12px rgba(90,50,70,.55)', head: "'Zen Maru Gothic',sans-serif" },
-	{ id:'kisetsu', name:copy.themeKisetsu, description:copy.themeKisetsuDescription, bg:'#f4f1ea', fg:'#211d18', accent:'#a8552f', card:'#ffffff', border:'1px solid #ddd7cb', radius:'5px', shadow:'none', head:"'Shippori Mincho B1','Zen Kaku Gothic New',serif" },
-	{ id:'kashin', name:copy.themeKashin, description:copy.themeKashinDescription, bg:'#fff5e6', fg:'#25201c', accent:'#ff6b4a', card:'#ffffff', border:'2.5px solid #25201c', radius:'14px', shadow:'3px 3px 0 rgba(37,32,28,.15)', head:"'Zen Maru Gothic',sans-serif" },
-	{ id:'suri', name:copy.themeSuri, description:copy.themeSuriDescription, bg:'#efe7d4', fg:'#1a1a2e', accent:'#2a52c0', card:'#ffffff', border:'2.5px solid #1a1a2e', radius:'0', shadow:'3px 3px 0 #ff4f9a', head:"'Zen Kaku Gothic Antique',sans-serif" },
+	{ id: 'akatsuki', name: copy.themeAkatsuki, description: copy.themeAkatsukiDescription, cardDescription: copy.themeAkatsukiDescription.replace(/^(朝焼けのグラデーションと、)(?=軽やかな3ペイン$)/u, '$1\n'), head: "'Zen Maru Gothic',sans-serif" },
+	{ id: 'koke', name: copy.themeKoke, description: copy.themeKokeDescription, head: "'Zen Maru Gothic',sans-serif" },
+	{ id:'kisetsu', name:copy.themeKisetsu, description:copy.themeKisetsuDescription, head:"'Shippori Mincho B1','Zen Kaku Gothic New',serif" },
+	{ id:'kashin', name:copy.themeKashin, description:copy.themeKashinDescription, head:"'Zen Maru Gothic',sans-serif" },
+	{ id:'suri', name:copy.themeSuri, description:copy.themeSuriDescription, head:"'Zen Kaku Gothic Antique',sans-serif" },
 	// 旗鯖fork(ハタキュ): プレビューの地色はコルク、紙はクリーム、アクセントは紙に載る青。
-	{ id:'hatakyu', name:copy.themeHatakyu, description:copy.themeHatakyuDescription, bg:'#c9975f', fg:'#3b2a1c', accent:'#1272ec', card:'#fdf6e6', border:'none', radius:'0', shadow:'0 8px 14px -7px rgba(40,24,8,.7)', head:"'Zen Maru Gothic',sans-serif" },
-]);
+	{ id:'hatakyu', name:copy.themeHatakyu, description:copy.themeHatakyuDescription, head:"'Zen Maru Gothic',sans-serif" },
+] satisfies { id: HataskPlannerTheme; name: string; description: string; cardDescription?: string; head: string }[]);
 const syncItems = computed(() => [
 	{ id: 'schedule', label: copy.syncSchedule },
 	{ id: 'mood', label: copy.syncMood },
@@ -282,6 +268,8 @@ const settingsError = ref('');
 const settings = ref<any>({ ...defaultSettings });
 // Match Hatask's active theme, including its display-only fallback for empty legacy values.
 const isAkatsuki = computed(() => !settings.value.theme || settings.value.theme === 'akatsuki');
+const previewMode = computed<'light' | 'dark'>(() => (settings.value.autoTheme ? store.r.darkMode.value : settings.value.darkMode) ? 'dark' : 'light');
+const autoAppearanceLabel = computed(() => isAkatsuki.value || settings.value.theme === 'koke' ? copy.autoAppearanceTheme : copy.autoAppearance);
 const navigationChoices: { id: HataskAkatsukiTab; label: string; shortLabel: string; icon: string }[] = [
 	{ id: 'home', label: 'ホーム', shortLabel: 'ホーム', icon: 'ti ti-home' },
 	{ id: 'cal', label: 'カレンダー', shortLabel: '予定', icon: 'ti ti-calendar-event' },
@@ -289,7 +277,7 @@ const navigationChoices: { id: HataskAkatsukiTab; label: string; shortLabel: str
 	{ id: 'mood', label: 'きもち', shortLabel: 'きもち', icon: 'ti ti-mood-smile' },
 	{ id: 'meal', label: 'ごはん', shortLabel: 'ごはん', icon: 'ti ti-soup' },
 	{ id: 'garden', label: 'おはな', shortLabel: 'おはな', icon: 'ti ti-flower' },
-	{ id: 'eye', label: 'EYE', shortLabel: 'EYE', icon: 'ti ti-eye' },
+	{ id: 'support', label: '支援情報', shortLabel: '支援情報', icon: 'ti ti-heart-handshake' },
 	{ id: 'ranking', label: 'ランキング', shortLabel: 'ランキング', icon: 'ti ti-trophy' },
 	{ id: 'hataskapps', label: 'Hatask App', shortLabel: 'Hatask', icon: 'ti ti-layout-grid' },
 	{ id: 'apps', label: 'Hataskey App', shortLabel: 'Apps', icon: 'ti ti-app-window' },
@@ -301,7 +289,7 @@ function akatsukiTabKey(tab: HataskAkatsukiTab): string { return tab; }
 function navigationChoice(id: HataskAkatsukiTab) { return navigationChoices.find(choice => choice.id === id) ?? navigationChoices[0]; }
 
 async function saveAkatsukiNavigation(tabs: HataskAkatsukiTab[], preview = false): Promise<void> {
-	if (!settingsLoaded.value || settingsSaving.value || !isAkatsuki.value) return;
+	if (!settingsLoaded.value || settingsSaving.value) return;
 	if (tabs.every((tab, index) => tab === akatsukiTabs.value[index])) return;
 	if (preview) pendingAkatsukiTabs.value = tabs;
 	try { await saveSettings({ akatsukiMobileTabs: tabs }); } finally { pendingAkatsukiTabs.value = null; }
@@ -312,7 +300,7 @@ function reorderAkatsukiTabs(value: unknown): void {
 	void saveAkatsukiNavigation([...value], true);
 }
 async function openAkatsukiTabMenu(tab: HataskAkatsukiTab, event: MouseEvent): Promise<void> {
-	if (!settingsLoaded.value || settingsSaving.value || !isAkatsuki.value) return;
+	if (!settingsLoaded.value || settingsSaving.value) return;
 	const anchor = event.currentTarget as HTMLElement;
 	const region = anchor.closest('[data-akatsuki-navigation]');
 	let save: Promise<void> | undefined;
@@ -647,9 +635,6 @@ defineProps<{ embedded?: boolean }>();
 .carDot::after { content:''; width:8px; height:8px; border-radius:999px; background:var(--MI_THEME-divider); transition:width .25s,background-color .25s; }
 .carDotOn::after { background:var(--MI_THEME-accent); width:22px; }
 .carDot:focus-visible, .themeCard:focus-visible { outline:3px solid var(--MI_THEME-accent); outline-offset:2px; }
-.themePrev { border-radius:9px; padding:10px 9px; display:flex; flex-direction:column; gap:6px; overflow:hidden; box-shadow:inset 0 0 0 1px rgba(0,0,0,.06); }
-.themePrevLogo { font-size:1.15rem; line-height:1; text-align:left; }
-.themePrevCard { padding:6px 8px; text-align:left; line-height:1; }
 .themeName { font-size:1.15rem; font-weight:800; margin-top:2px; }
 .themeJp { font-size:.72rem; line-height:1.6; opacity:.65; white-space:pre-line; overflow-wrap:anywhere; }
 .themeCheck { display:inline-flex; align-items:center; justify-content:center; gap:4px; font-size:.76rem; font-weight:700; opacity:.6; margin-top:2px; > i { font-size:1em; } }

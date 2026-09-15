@@ -5,7 +5,7 @@
 
 import type { HataskAkatsukiTab } from '@/components/hatask/hatask-akatsuki-types.js';
 
-export const HATASK_AKATSUKI_SHORTCUTS = ['cal', 'todo', 'mood', 'meal', 'garden', 'eye', 'ranking'] as const;
+export const HATASK_AKATSUKI_SHORTCUTS = ['cal', 'todo', 'mood', 'meal', 'garden', 'support', 'ranking'] as const;
 export type HataskAkatsukiShortcut = typeof HATASK_AKATSUKI_SHORTCUTS[number];
 const tabs: readonly HataskAkatsukiTab[] = ['home', ...HATASK_AKATSUKI_SHORTCUTS, 'hataskapps', 'apps'];
 
@@ -19,8 +19,14 @@ export function isHataskAkatsukiRequiredTab(id: HataskAkatsukiTab): boolean {
 
 /** Display-only fallback: never mutate or persist the supplied settings. */
 export function normalizeHataskAkatsukiMobileTabs(value: unknown, shortcut: unknown = 'todo'): HataskAkatsukiTab[] {
-	if (Array.isArray(value) && value.length === 4 && new Set(value).size === 4 && value.includes('home') && value.every(tab => tabs.includes(tab))) {
+	if (Array.isArray(value) && value.length === 4 && new Set(value).size === 4 && value.includes('home') && value.every(tab => tab === 'eye' || tabs.includes(tab))) {
 		const next: HataskAkatsukiTab[] = [...value];
+		// Replace the retired EYE slot only, keeping the user's other destinations and order.
+		const eyeIndex = value.indexOf('eye');
+		if (eyeIndex !== -1) {
+			next[eyeIndex] = !next.includes('hataskapps') ? 'hataskapps'
+				: [normalizeHataskAkatsukiShortcut(shortcut), 'todo' as const, ...HATASK_AKATSUKI_SHORTCUTS].find(tab => !next.includes(tab)) ?? 'todo';
+		}
 		// Preserve a valid legacy order, replacing only its final non-Home slot
 		// when the now-required Hatask App destination is missing.
 		if (!next.includes('hataskapps')) next[next[3] === 'home' ? 2 : 3] = 'hataskapps';
