@@ -81,7 +81,7 @@ export class LtlEmojiVoteService {
 		const pool = (await this.emojisRepository.find({ where: { host: IsNull(), isSensitive: false } })).filter(emoji => this.usableEmoji(emoji));
 		// DB 待機を打ち切った呼び出しが後から継続しても、開始時刻を更新して復活させない。
 		if (Date.now() - requestedAt > LTL_EMOJI_VOTE_START_DELAY_MS || this.redisClient.status !== 'ready' || pool.length === 0) return false;
-		const count = randomInt(1, Math.min(pool.length, 5) + 1);
+		const count = Math.min(pool.length, 5);
 		for (let index = 0; index < count; index++) {
 			const swap = randomInt(index, pool.length);
 			[pool[index], pool[swap]] = [pool[swap], pool[index]];

@@ -15,6 +15,12 @@ import type { LtlVoteChoice, LtlVoteEmoji, LtlVoteMetadata } from '@/core/ltl-em
 import ShowEndpoint, { meta as showMeta } from '@/server/api/endpoints/hata/emoji-vote/show.js';
 import VoteEndpoint, { meta as voteMeta } from '@/server/api/endpoints/hata/emoji-vote/vote.js';
 
+const { randomIntMock } = vi.hoisted(() => ({ randomIntMock: vi.fn((min: number, _max: number) => min) }));
+vi.mock('node:crypto', async importOriginal => ({
+	...await importOriginal<typeof import('node:crypto')>(),
+	randomInt: randomIntMock,
+}));
+
 const startedAt = 1_800_000_000_000;
 const me = { id: 'viewer', host: null, isSuspended: false, movedToUri: null };
 const trigger = { id: 'round1', userId: 'author', userHost: null, text: '絵文字を選ぶぞ', visibility: 'public', channelId: null, replyId: null, renoteId: null, cw: null };
@@ -29,7 +35,7 @@ const metadata = (count = 5): LtlVoteMetadata => ({
 	candidates: Array.from({ length: count }, (_, index) => emoji(`e${index}`)),
 });
 
-afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
+afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); randomIntMock.mockReset(); });
 
 function fixture() {
 	vi.useFakeTimers();
@@ -114,16 +120,39 @@ describe('LTL emoji vote rankings and stored response parsing', () => {
 });
 
 describe('LTL emoji vote creation', () => {
-	test('passes a fixed unique set of 1–5 local usable candidates to the atomic start', async () => {
+	test('passes five unique local candidates even when the random source always picks its lower bound', async () => {
 		const f = fixture();
 		await expect(f.service.onNoteCreated(trigger as never, author)).resolves.toBe(true);
 		const [script, keyCount, activeKey, seenKey, raw, created] = f.redis.eval.mock.calls[0];
 		expect([script, keyCount, activeKey, seenKey, created]).toEqual([LTL_EMOJI_VOTE_START_SCRIPT, 2, LTL_EMOJI_VOTE_KEY, 'hata:ltl-emoji-vote:seen:round1', startedAt]);
 		const proposed = JSON.parse(String(raw));
 		expect(proposed).toMatchObject({ id: 'round1', noteId: 'round1' });
-		expect(proposed.candidates.length).toBeGreaterThanOrEqual(1);
-		expect(proposed.candidates.length).toBeLessThanOrEqual(5);
+		expect(proposed.candidates).toHaveLength(5);
 		expect(new Set(proposed.candidates.map((value: LtlVoteEmoji) => value.id)).size).toBe(proposed.candidates.length);
+	});
+	test.each([1, 2, 3, 4, 5])('offers every usable candidate when only %i are available', async count => {
+		const f = fixture();
+		const available = Array.from({ length: count }, (_, index) => dbEmoji(`e${index}`));
+		f.emojis.find.mockResolvedValueOnce([
+			...available,
+			{ ...dbEmoji('sensitive'), isSensitive: true },
+			{ ...dbEmoji('restricted'), roleIdsThatCanBeUsedThisEmojiAsReaction: ['special'] },
+			{ ...dbEmoji('remote'), host: 'remote.example' } as never,
+		]);
+		await expect(f.service.onNoteCreated(trigger as never, author)).resolves.toBe(true);
+		const proposed = JSON.parse(String(f.redis.eval.mock.calls[0][4]));
+		expect(proposed.candidates.map((value: LtlVoteEmoji) => value.id).sort()).toEqual(available.map(value => value.id).sort());
+	});
+	test('still draws the five candidates randomly from a larger pool without duplicates', async () => {
+		const f = fixture();
+		randomIntMock.mockImplementation((_min, max) => max - 1);
+		await expect(f.service.onNoteCreated(trigger as never, author)).resolves.toBe(true);
+		const proposed = JSON.parse(String(f.redis.eval.mock.calls[0][4]));
+		const ids = proposed.candidates.map((value: LtlVoteEmoji) => value.id);
+		expect(ids).toHaveLength(5);
+		expect(new Set(ids).size).toBe(5);
+		expect(ids).toContain('e7');
+		expect(ids.every((id: string) => Array.from({ length: 8 }, (_, index) => `e${index}`).includes(id))).toBe(true);
 	});
 	test('trims the exact trigger, permits local-only media and does not treat a CDN URL as remote registration', async () => {
 		const f = fixture();
