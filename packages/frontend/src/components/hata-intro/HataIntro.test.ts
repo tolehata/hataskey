@@ -55,8 +55,9 @@ afterEach(() => {
 function mountGuides(count = 1, darkMode = false, initialPage: 'home' | 'index' = 'home') {
 	const props = reactive({ darkMode, animation: false, initialPage });
 	const navigate = vi.fn();
+	const exit = vi.fn();
 	const app = createApp(defineComponent({
-		setup: () => () => h('div', Array.from({ length: count }, (_, index) => h(HataIntro, { ...props, key: index }))),
+		setup: () => () => h('div', Array.from({ length: count }, (_, index) => h(HataIntro, { ...props, key: index, onExit: exit }))),
 	}));
 	app.config.errorHandler = error => { runtimeErrors.push(error); };
 	app.component('MkA', defineComponent({
@@ -73,7 +74,7 @@ function mountGuides(count = 1, darkMode = false, initialPage: 'home' | 'index' 
 	app.mount(container);
 	const roots = [...container.querySelectorAll<HTMLElement>('.hata-intro')];
 	expect(roots).toHaveLength(count);
-	return { app, container, roots, root: roots[0], props, navigate };
+	return { app, container, roots, root: roots[0], props, navigate, exit };
 }
 
 function element<T extends HTMLElement = HTMLElement>(root: ParentNode, selector: string): T {
@@ -220,6 +221,29 @@ describe('HataIntroの目次と承認済みガイドの章', () => {
 });
 
 describe('HataIntroの検索・IME・戻る', () => {
+	test.each(['home', 'index'] as const)('%s: 左上の矢印でガイド内を戻り、入口では終了する', async initialPage => {
+		const { root, exit } = mountGuides(1, false, initialPage);
+		const button = element<HTMLButtonElement>(root, '[data-action="back"]');
+		expect(element(root, '.hg-main').firstElementChild?.querySelector('button')).toBe(button);
+		expect(button.textContent.trim()).toBe('');
+		expect(button.getAttribute('aria-label')).toBe(initialPage === 'home' ? 'HataIntroを終了' : '目次へ');
+		expect(element(button, '.ti-arrow-left').getAttribute('aria-hidden')).toBe('true');
+		await click(root, initialPage === 'home' ? '.hg-topic-links [data-id="timeline"]' : '[data-search-result="timeline"]');
+		expect(button.getAttribute('aria-label')).toBe('前のページへ');
+		await click(root, '[data-action="back"]', true);
+		expect(root.querySelector('[data-guide-article]')).toBeNull();
+		expect(exit).not.toHaveBeenCalled();
+		if (initialPage === 'index') {
+			expect(button.getAttribute('aria-label')).toBe('目次へ');
+			await click(root, '[data-action="back"]', true);
+			expect(element(root, '[data-guide-home-content]').hidden).toBe(false);
+			expect(exit).not.toHaveBeenCalled();
+		}
+		expect(button.getAttribute('aria-label')).toBe('HataIntroを終了');
+		await click(root, '[data-action="back"]', true);
+		expect(exit).toHaveBeenCalledTimes(1);
+	});
+
 	test('IME変換中は確定済み検索を保ち、確定後だけ結果を更新する', async () => {
 		const { root } = mountGuides();
 		await search(root, '映画');

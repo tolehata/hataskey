@@ -38,6 +38,8 @@
 .hata-intro .hg-reference-diagram-note { margin: 18px 0 0; border-top: 1px solid var(--hg-line); padding-top: 14px; font-size: 14px; }
 .hata-intro .hg-topic-card > p, .hata-intro .hg-step-desc, .hata-intro .hg-reference-reading > p { text-wrap: pretty; word-break: auto-phrase; line-break: strict; overflow-wrap: break-word; }
 .hata-intro .hg-main { padding-block: clamp(16px, 2cqi, 24px); }
+.hata-intro .hg-back-button { display: inline-grid; place-items: center; flex: 0 0 auto; width: 44px; height: 44px; padding: 0; border: 1px solid var(--hg-line); border-radius: 50%; background: var(--hg-panel); color: var(--hg-fg); font-size: 20px; }
+.hata-intro .hg-back-button:hover { background: var(--hg-soft); }
 .hata-intro .hg-hero { padding-top: 0; }
 .hata-intro .hg-hero .hg-eyebrow .hg-brand { font-size: 20px; line-height: 1.4; }
 .hata-intro .hg-footer { display: block; margin-top: 24px; text-align: center; }

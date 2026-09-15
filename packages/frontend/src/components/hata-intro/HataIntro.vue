@@ -7,8 +7,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 <div class="hata-intro" lang="ja" data-theme="system" :style="{ colorScheme }" aria-label="HataIntro・Hataskey はじめてガイド">
 	<a class="hg-skip" :href="`#${instance}-main`" @click.prevent="main?.focus()">ガイド本文へ</a>
 	<main :id="`${instance}-main`" ref="main" class="hg-main" tabindex="-1">
+		<div class="hg-browse-head">
+			<button type="button" class="hg-back-button" data-action="back" :aria-label="backLabel" :title="backLabel" @click="back"><i class="ti ti-arrow-left" aria-hidden="true"></i></button>
+			<span v-if="page === 'walk'"><span v-html="brandName(course.label)"></span> · {{ step + 1 }} / {{ course.features.length }}</span>
+			<span v-else-if="page === 'reference' && reference"><span v-html="brandName(categoryLabels[reference.course])"></span> · 機能解説</span>
+		</div>
 		<template v-if="page === 'home' || page === 'index'">
-			<div v-if="page === 'index'" class="hg-browse-head"><button type="button" class="hg-link" data-action="back" @click="back"><i class="ti ti-arrow-left" aria-hidden="true"></i> {{ history.length ? '前のページへ' : '目次へ' }}</button></div>
 			<section class="hg-hero"><div><div class="hg-eyebrow"><i class="ti ti-book" aria-hidden="true"></i><span v-if="page === 'home'" class="hg-brand">HataIntro</span><span v-else>必要なときに引けるガイド</span></div><h1 data-guide-title tabindex="-1">{{ page === 'home' ? '気になる画面から、ひとつずつ' : '検索・用語から探す' }}</h1><p class="hg-intro" v-html="prose(page === 'home' ? 'ログインしたばかりの人も、操作に迷った人も。開く場所・手順・画面の見方を、必要なところだけ読めるよ' : '操作の言葉でも、アプリの名前でも検索できるよ。知らない用語はこのページの下でも調べられる')"></p></div></section>
 			<aside v-if="page === 'home'" class="hg-integration-note"><strong>はじめの操作も、使い慣れてからの疑問も</strong><p>最初は下の3つから。<br>機能の仕組みや注意点を知りたくなったら、同じページの詳しい解説へ進めるよ</p></aside>
 			<form class="hg-search-form" data-guide-search-form role="search" @submit.prevent="submitSearch">
@@ -56,7 +60,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</template>
 		</template>
 		<template v-else-if="page === 'walk'">
-			<div class="hg-browse-head"><button type="button" class="hg-link" data-action="back" @click="back"><i class="ti ti-arrow-left" aria-hidden="true"></i> {{ history.length ? '前のページへ' : '目次へ' }}</button><span><span v-html="brandName(course.label)"></span> · {{ step + 1 }} / {{ course.features.length }}</span></div>
 			<nav class="hg-step-nav" :aria-label="`${course.label}の目次`"><button v-for="(id, index) in course.features" :key="id" type="button" class="hg-step-tab" data-action="step" :data-index="index" :aria-current="step === index ? 'page' : undefined" @click="openFeature(id)"><span v-html="brandName(features[id].name)"></span></button></nav>
 			<article :key="featureId" class="hg-step-body" :data-guide-article="featureId">
 				<header><div class="hg-eyebrow" v-html="brandName(feature.name)"></div><h1 data-guide-title tabindex="-1">{{ feature.title }}</h1><p class="hg-step-desc" v-html="prose(feature.benefit)"></p></header>
@@ -75,7 +78,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</article>
 		</template>
 		<template v-else-if="reference">
-			<div class="hg-browse-head"><button type="button" class="hg-link" data-action="back" @click="back"><i class="ti ti-arrow-left" aria-hidden="true"></i> 前のページへ</button><span><span v-html="brandName(categoryLabels[reference.course])"></span> · 機能解説</span></div>
 			<HataIntroReference :key="reference.id" :reference="reference" @feature="openFeature($event, true)" @reference="openReference"/>
 		</template>
 		<footer class="hg-footer"><span>図・説明の改訂：2026年9月10日 · HataIntro</span></footer>
@@ -94,6 +96,7 @@ import { brandName, hataskGuideProse as prose, iconClass } from './prose.js';
 import { findFeatures, findReferences } from './search.js';
 
 const props = withDefaults(defineProps<{ darkMode?: boolean; animation?: boolean; initialPage?: 'home' | 'index' }>(), { darkMode: false, animation: true, initialPage: 'home' });
+const emit = defineEmits<{ exit: [] }>();
 const instance = useId();
 const main = useTemplateRef<HTMLElement>('main');
 const searchInput = useTemplateRef<HTMLInputElement>('searchInput');
@@ -110,7 +113,8 @@ const read = ref(new Set<string>());
 const status = ref('');
 const active = ref(true);
 type HistoryEntry = { page: typeof page.value; referenceId: string; courseId: string; step: number; query: string; filter: string; expanded: boolean; returnId?: string };
-const history = ref<HistoryEntry[]>([]);
+const guideHistory = ref<HistoryEntry[]>([]);
+const backLabel = computed(() => guideHistory.value.length ? '前のページへ' : page.value === 'home' ? 'HataIntroを終了' : '目次へ');
 const colorScheme = computed(() => props.darkMode ? 'dark' : 'light');
 const course = computed(() => courses.find(c => c.id === courseId.value) ?? courses[0]);
 const featureId = computed(() => course.value.features[step.value]);
@@ -131,7 +135,7 @@ let navigation = 0;
 let motion: Animation | undefined;
 
 function snapshot(returnId?: string) {
-	history.value.push({ page: page.value, referenceId: referenceId.value, courseId: courseId.value, step: step.value, query: query.value, filter: filter.value, expanded: expanded.value, returnId });
+	guideHistory.value.push({ page: page.value, referenceId: referenceId.value, courseId: courseId.value, step: step.value, query: query.value, filter: filter.value, expanded: expanded.value, returnId });
 }
 
 async function afterNavigate(selector = '[data-guide-title]') {
@@ -173,7 +177,7 @@ function openFeature(id: string, returnToFeature = false) {
 }
 
 function home() {
-	history.value = [];
+	guideHistory.value = [];
 	page.value = 'home';
 	query.value = committedQuery.value = '';
 	filter.value = 'all';
@@ -183,8 +187,11 @@ function home() {
 }
 
 function back() {
-	const previous = history.value.pop();
-	if (!previous) { home(); return; }
+	const previous = guideHistory.value.pop();
+	if (!previous) {
+		if (page.value === 'home') emit('exit'); else home();
+		return;
+	}
 	page.value = previous.page;
 	referenceId.value = previous.referenceId;
 	courseId.value = previous.courseId;
