@@ -14,10 +14,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<template #prefix><i class="ti ti-search"></i></template>
 				</MkInput>
 				<div :class="$style.filterBtns">
-					<button :class="[$style.filterBtn, filterMode === 'all' && $style.filterBtnOn]" @click="setFilter('all')">{{ copy.all }}</button>
-					<button :class="[$style.filterBtn, filterMode === 'externalTl' && $style.filterBtnOn]" @click="setFilter('externalTl')">{{ copy.externalTlConsented }}</button>
-					<button :class="[$style.filterBtn, filterMode === 'customFont' && $style.filterBtnOn]" @click="setFilter('customFont')">{{ copy.customFontConsented }}</button>
-					<button :class="[$style.filterBtn, filterMode === 'mascot' && $style.filterBtnOn]" @click="setFilter('mascot')">{{ copy.mascotConsented }}</button>
+					<button type="button" :class="$style.filterBtn" :aria-pressed="filterMode === 'all'" @click="setFilter('all')">{{ copy.all }}</button>
+					<button type="button" :class="$style.filterBtn" :aria-pressed="filterMode === 'externalTl'" @click="setFilter('externalTl')">{{ copy.externalTlConsented }}</button>
+					<button type="button" :class="$style.filterBtn" :aria-pressed="filterMode === 'customFont'" @click="setFilter('customFont')">{{ copy.customFontConsented }}</button>
+					<button type="button" :class="$style.filterBtn" :aria-pressed="filterMode === 'mascot'" @click="setFilter('mascot')">{{ copy.mascotConsented }}</button>
+					<button type="button" :class="$style.filterBtn" :aria-pressed="filterMode === 'drawing'" @click="setFilter('drawing')">{{ copy.drawingConsented }}</button>
+					<button type="button" :class="$style.filterBtn" :aria-pressed="filterMode === 'drawingPending'" @click="setFilter('drawingPending')">{{ copy.drawingNotConsented }}</button>
 				</div>
 			</div>
 
@@ -66,13 +68,21 @@ SPDX-License-Identifier: AGPL-3.0-only
 							<span v-else :class="[$style.badge, $style.badgeGray]">
 								<i class="ti ti-mood-off"></i> {{ copy.mascotNotConsented }}
 							</span>
+							<span v-if="u.hataConsentDrawing" :class="[$style.badge, $style.badgeBlue]">
+								<i class="ti ti-palette" aria-hidden="true"></i> {{ copy.drawingConsented }}
+								<time v-if="u.hataConsentDrawingDate" :datetime="u.hataConsentDrawingDate" :class="$style.badgeDate">{{ copy.drawingFirstAgreedAt }}: {{ formatDate(u.hataConsentDrawingDate, true) }}</time>
+								<span v-if="u.hataConsentDrawingVersion != null" :class="$style.badgeDate">{{ copy.drawingVersion }}: {{ u.hataConsentDrawingVersion }}</span>
+							</span>
+							<span v-else :class="[$style.badge, $style.badgeGray]">
+								<i class="ti ti-palette" aria-hidden="true"></i> {{ copy.drawingNotConsented }}
+							</span>
 						</div>
 					</div>
 				</div>
 			</div>
 
 			<div v-if="!loading && hasMore" :class="$style.loadMoreWrap">
-				<button class="_buttonPrimary" @click="loadMore" style="padding: 8px 24px;">{{ copy.loadMore }}</button>
+				<button class="_buttonPrimary" style="padding: 8px 24px;" @click="loadMore">{{ copy.loadMore }}</button>
 			</div>
 		</div>
 	</div>
@@ -80,7 +90,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import MkInput from '@/components/MkInput.vue';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { definePage } from '@/page.js';
@@ -93,7 +103,8 @@ const PAGE_SIZE = 50;
 
 const loading = ref(true);
 const searchQuery = ref('');
-const filterMode = ref<'all' | 'externalTl' | 'customFont' | 'mascot'>('all');
+type ConsentFilter = 'all' | 'externalTl' | 'customFont' | 'mascot' | 'drawing' | 'drawingPending';
+const filterMode = ref<ConsentFilter>('all');
 
 interface ConsentUser {
 	id: string;
@@ -106,20 +117,25 @@ interface ConsentUser {
 	hataConsentCustomFontDate: string | null;
 	hataConsentMascot: boolean;
 	hataConsentMascotDate: string | null;
+	hataConsentDrawing: boolean;
+	hataConsentDrawingDate: string | null;
+	hataConsentDrawingVersion: string | null;
 }
 
 const users = ref<ConsentUser[]>([]);
 const totalCount = ref(0);
 const hasMore = ref(false);
 
-let searchTimer: ReturnType<typeof setTimeout> | null = null;
+let searchTimer: number | null = null;
+let requestSequence = 0;
 
-function formatDate(iso: string | null): string {
+function formatDate(iso: string | null, withTime = false): string {
 	if (!iso) return '';
-	return new Intl.DateTimeFormat(versatileLang, { dateStyle: 'medium' }).format(new Date(iso));
+	return new Intl.DateTimeFormat(versatileLang, { dateStyle: 'medium', ...(withTime ? { timeStyle: 'short' as const } : {}) }).format(new Date(iso));
 }
 
 async function fetchUsers(reset = true) {
+	const requestId = ++requestSequence;
 	loading.value = true;
 	try {
 		const result = await misskeyApi('admin/hata/consent-list', {
@@ -128,6 +144,7 @@ async function fetchUsers(reset = true) {
 			filter: filterMode.value,
 			username: searchQuery.value || null,
 		});
+		if (requestId !== requestSequence) return;
 		if (reset) {
 			users.value = result.users;
 		} else {
@@ -138,7 +155,7 @@ async function fetchUsers(reset = true) {
 	} catch (err) {
 		console.error('Failed to load consent data:', err);
 	} finally {
-		loading.value = false;
+		if (requestId === requestSequence) loading.value = false;
 	}
 }
 
@@ -146,18 +163,23 @@ function loadMore() {
 	fetchUsers(false);
 }
 
-function setFilter(mode: 'all' | 'externalTl' | 'customFont' | 'mascot') {
+function setFilter(mode: ConsentFilter) {
 	filterMode.value = mode;
 	fetchUsers(true);
 }
 
 function onSearchChange() {
-	if (searchTimer) clearTimeout(searchTimer);
-	searchTimer = setTimeout(() => fetchUsers(true), 400);
+	if (searchTimer) window.clearTimeout(searchTimer);
+	searchTimer = window.setTimeout(() => fetchUsers(true), 400);
 }
 
 onMounted(() => {
 	fetchUsers();
+});
+
+onUnmounted(() => {
+	requestSequence++;
+	if (searchTimer) window.clearTimeout(searchTimer);
 });
 
 const headerActions = computed(() => [{
@@ -183,8 +205,8 @@ definePage({
 	background: transparent; color: var(--MI_THEME-fg); font-family: inherit; font-size: .82rem;
 	cursor: pointer; transition: all .2s;
 	&:hover { background: var(--MI_THEME-accentedBg); }
+	&[aria-pressed='true'] { background: var(--MI_THEME-accentedBg); color: var(--MI_THEME-accent); border-color: var(--MI_THEME-accent); font-weight: 600; }
 }
-.filterBtnOn { background: var(--MI_THEME-accentedBg); color: var(--MI_THEME-accent); border-color: var(--MI_THEME-accent); font-weight: 600; }
 .statsRow { display: flex; gap: 12px; flex-wrap: wrap; }
 .statCard {
 	flex: 1; min-width: 120px; padding: 16px; border-radius: 12px;
@@ -208,7 +230,7 @@ definePage({
 .userAcct { font-size: .82rem; opacity: .5; }
 .consentBadges { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
 .badge {
-	display: inline-flex; align-items: center; gap: 4px;
+	display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap;
 	padding: 2px 10px; border-radius: 12px; font-size: .75rem; font-weight: 500;
 }
 .badgeGreen { background: color-mix(in srgb, var(--MI_THEME-success) 15%, transparent); color: var(--MI_THEME-success); }
