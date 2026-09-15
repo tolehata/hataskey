@@ -4,63 +4,137 @@ SPDX-License-Identifier: AGPL-3.0-only
 Hatady の学習・映画鑑賞・ゲームプレイを同じ時系列で表示する活動カード。
 -->
 <template>
-<article :class="[$style.card, isStudy ? $style.study : $style.media]">
+<article :class="$style.card" :data-kind="activity.type">
 	<header :class="$style.head">
-		<button v-if="showAuthor && activity.user" type="button" :class="$style.author" @click="emit('openProfile', activity.user.id)">
+		<button
+			v-if="showAuthor && activity.user"
+			type="button"
+			:class="$style.author"
+			@click="emit('openProfile', activity.user.id)"
+		>
 			<MkAvatar :class="$style.avatar" :user="activity.user"/>
-			<span><MkUserName :user="activity.user"/><small>@{{ activity.user.username }}</small></span>
+			<span><MkUserName :user="activity.user"/></span>
 		</button>
-		<div v-else :class="$style.kindLead">
+		<span v-else :class="$style.kindLead">
 			<i :class="['ti', kindIcon]"></i>
-			<span>{{ kindLabel }}</span>
-		</div>
-		<time :datetime="activity.occurredAt"><i class="ti ti-clock"></i> {{ whenLabel }}</time>
-		<button v-if="isStudy || activity.isMine" type="button" :class="$style.menu" :title="homeCopy.activityMenu" @click="emit('menu', activity, $event)"><i class="ti ti-dots"></i></button>
-	</header>
-
-	<template v-if="isStudy && study">
-		<div :class="$style.topics">
-			<HySubjectBadge :subject="study.subject"/>
-			<span v-if="hyTag(study.tag)" :class="$style.tag" :style="{ background: hyTag(study.tag)?.bg, color: hyTag(study.tag)?.fg }"><i :class="['ti', hyTag(study.tag)?.icon]"></i> {{ hyTagLabel(study.tag) }}</span>
-			<span v-if="study.durationMinutes" :class="$style.duration"><i class="ti ti-hourglass"></i> {{ durationLabel(study.durationMinutes) }}</span>
+			{{ kindLabel }}
+		</span>
+		<span :class="$style.stamp">
+			<time :datetime="activity.occurredAt">{{ whenLabel }}</time>
 			<VisibilityChip :visibility="activity.visibility"/>
+		</span>
+		<div :class="$style.context">
+			<span>{{ kindLabel }}</span>
+			<span v-for="tag in recordTags" :key="tag" :class="$style.tag">
+				<i :class="['ti', tagIcon(tag)]"></i>
+				{{ tagLabel(tag) }}
+			</span>
 		</div>
-		<h3>{{ study.title }}</h3>
-		<button v-if="study.book" type="button" :class="$style.workLink" @click="emit('openBook', study.book.id)">
-			<HyBookCover :title="study.book.title" :author="study.book.author" :width="38"/>
-			<span><b>{{ study.book.title }}</b><small>{{ study.book.author }}</small></span>
+	</header>
+	<button type="button" :class="$style.titleButton" @click="openRecord">
+		<i :class="['ti', kindIcon]"></i>
+		<h3>{{ study?.title || media?.work?.title || sourceRecord.workSnapshot?.title || raw.title }}</h3>
+	</button>
+	<template v-if="study">
+		<details v-if="study.details?.spoiler" :class="$style.spoiler">
+			<summary>
+				<i class="ti ti-eye-off"></i>
+				ネタバレを含む記録
+			</summary>
+			<p v-if="study.body" :class="$style.note">{{ study.body }}</p>
+			<ActivityLogDetail v-if="detailed" :record="study"/>
+		</details>
+		<template v-else>
+			<p v-if="study.body" :class="$style.note">{{ study.body }}</p>
+			<ActivityLogDetail v-if="detailed" :record="study"/>
+		</template>
+		<div :class="$style.meta">
+			<span>{{ study.subject }}</span>
+			<span v-if="study.details?.calories != null">{{ study.details.calories }} kcal</span>
+			<span v-if="durationSeconds != null">
+				<i class="ti ti-clock"></i>
+				{{ secondsLabel(durationSeconds) }}
+			</span>
+		</div>
+		<button
+			v-if="study.mediaWork"
+			type="button"
+			:class="$style.workLink"
+			@click="emit('openMedia', study.mediaWork.id)"
+		>
+			<i class="ti ti-briefcase"></i>
+			{{ study.mediaWork.title }}
 		</button>
-		<p v-if="study.body" :class="$style.note">{{ study.body }}</p>
-		<footer :class="$style.foot">
-			<HatadyReactions :target="{ logId: study.id }" :reactions="study.reactions ?? {}" :myReaction="study.myReaction ?? null"/>
-			<button type="button" :class="$style.detailButton" @click="emit('openLog', study.id)"><i class="ti ti-message-circle-2"></i> {{ study.commentsCount ?? 0 }}</button>
-		</footer>
+		<button
+			v-if="study.book && study.title !== study.book.title"
+			type="button"
+			:class="$style.workLink"
+			@click="emit('openBook', study.book.id)"
+		>
+			<i class="ti ti-book"></i>
+			{{ study.book.title }}
+		</button>
 	</template>
-
-	<template v-else-if="media && media.work && media.session">
-		<div :class="$style.mediaLayout">
-			<button type="button" :class="$style.coverButton" @click="emit('openMedia', media.work.id)">
-				<HyMediaCover :kind="media.work.kind" :title="media.work.title" :subtitle="media.work.creator || media.work.developer" :colorIndex="media.work.coverColorIndex" :width="74"/>
-			</button>
-			<div :class="$style.mediaBody">
-				<div :class="$style.topics">
-					<span :class="$style.kindChip"><i :class="['ti', kindIcon]"></i> {{ kindLabel }}</span>
-					<span v-if="media.session.durationMinutes" :class="$style.duration"><i class="ti ti-clock"></i> {{ formatMediaMinutes(media.session.durationMinutes) }}</span>
-					<VisibilityChip :visibility="activity.visibility"/>
-				</div>
-				<button type="button" :class="$style.titleButton" @click="emit('openMedia', media.work.id)"><h3>{{ media.work.title }}</h3><span>{{ media.work.creator || media.work.developer || media.work.publisher }}</span></button>
-				<details v-if="media.session.noteSpoiler && (media.session.note || factRows.length)" :class="$style.spoiler">
-					<summary><i class="ti ti-eye-off"></i> {{ mediaCopy.detail.showSpoilerSession }}</summary>
-					<ActivityMediaDetail :session="media.session" :rows="factRows"/>
-				</details>
-				<ActivityMediaDetail v-else :session="media.session" :rows="factRows"/>
-			</div>
+	<template v-else-if="media?.session">
+		<details v-if="media.session.noteSpoiler" :class="$style.spoiler">
+			<summary>
+				<i class="ti ti-eye-off"></i>
+				{{ mediaCopy.detail.showSpoilerSession }}
+			</summary>
+			<ActivityMediaDetail :session="media.session" :rows="factRows"/>
+		</details>
+		<ActivityMediaDetail v-else :session="media.session" :rows="factRows"/>
+		<div :class="$style.meta">
+			<span>{{ media.work?.genres?.join(' · ') }}</span>
+			<span v-if="durationSeconds != null">
+				<i class="ti ti-clock"></i>
+				{{ secondsLabel(durationSeconds) }}
+			</span>
 		</div>
-		<footer :class="$style.foot">
-			<span :class="$style.mediaHint">{{ homeCopy.mediaInteractionHint }}</span>
-			<button type="button" :class="$style.detailButton" @click="emit('openMedia', media.work.id)"><i class="ti ti-arrow-up-right"></i> {{ homeCopy.openWorkDetails }}</button>
-		</footer>
 	</template>
+	<template v-else>
+		<p :class="$style.note">{{ raw.body || raw.note }}</p>
+		<div :class="$style.meta">
+			<span>{{ raw.subject || raw.genre }}</span>
+			<span v-if="durationSeconds != null">
+				<i class="ti ti-clock"></i>
+				{{ secondsLabel(durationSeconds) }}
+			</span>
+			<span v-if="raw.calories != null">{{ raw.calories }} kcal</span>
+		</div>
+	</template>
+	<footer v-if="showActions" :class="$style.foot">
+		<HatadyReactions
+			:target="study ? { logId: study.id } : { sessionId: media?.session?.id || activity.id }"
+			:reactions="recordReactions"
+			:myReaction="sourceRecord.myReaction ?? null"
+		/>
+		<div :class="$style.actions">
+			<button type="button" class="hy-icon-button" :aria-label="'記録と返信を開く'" @click="openRecord">
+				<i class="ti ti-message-circle-2"></i>
+				<span>{{ sourceRecord.commentsCount ?? 0 }}</span>
+			</button>
+			<button
+				v-if="activity.isMine"
+				type="button"
+				class="hy-icon-button"
+				aria-label="記録を編集"
+				title="記録を編集"
+				@click="emit('edit', activity)"
+			>
+				<i class="ti ti-pencil"></i>
+			</button>
+			<button
+				v-else
+				type="button"
+				class="hy-icon-button"
+				:aria-label="i18n.ts.reportAbuse"
+				@click="emit('menu', activity, $event)"
+			>
+				<i class="ti ti-flag"></i>
+			</button>
+		</div>
+	</footer>
 </article>
 </template>
 
@@ -69,52 +143,84 @@ import { computed, defineComponent, h, useCssModule } from 'vue';
 import type { HatadyActivity, HatadyMediaSession, HatadyMediaVisibility } from '@/utility/hatady-media.js';
 import { i18n } from '@/i18n.js';
 import { versatileLang } from '@/utility/intl-const.js';
-import HyBookCover from '@/components/HyBookCover.vue';
-import HyMediaCover from '@/components/HyMediaCover.vue';
-import HySubjectBadge from '@/components/HySubjectBadge.vue';
 import HatadyReactions from '@/components/HatadyReactions.vue';
-import { hyTag, hyTagLabel } from '@/utility/hatady.js';
-import { HATADY_STAT_FIELDS, formatMediaMinutes, hatadyMediaCopy, mediaSessionDisplayFacts } from '@/utility/hatady-media.js';
+import { hyTagLabel } from '@/utility/hatady.js';
+import { hatadyDuration as secondsLabel } from '@/utility/hatady-ui.js';
+import { HATADY_STAT_FIELDS, hatadyMediaCopy, mediaSessionDisplayFacts } from '@/utility/hatady-media.js';
 
-const props = withDefaults(defineProps<{ activity: HatadyActivity; showAuthor?: boolean }>(), { showAuthor: false });
+const props = withDefaults(
+	defineProps<{ activity: HatadyActivity; showAuthor?: boolean; showActions?: boolean; detailed?: boolean }>(),
+	{ showAuthor: true, showActions: true, detailed: false },
+);
 const emit = defineEmits<{
 	(ev: 'openLog', logId: string): void;
 	(ev: 'openBook', bookId: string): void;
 	(ev: 'openMedia', workId: string): void;
 	(ev: 'openProfile', userId: string): void;
+	(ev: 'edit', activity: HatadyActivity): void;
+	(ev: 'openSession', sessionId: string, workId: string): void;
 	(ev: 'menu', activity: HatadyActivity, event: MouseEvent): void;
 }>();
 
 const styles = useCssModule();
 const homeCopy = i18n.ts._hata._hatady._home;
 const homeLabels = homeCopy as unknown as Record<string, string>;
-const homeCopyx = i18n.tsx._hata._hatady._home;
 const mediaCopy = hatadyMediaCopy();
-const timeFormatter = new Intl.DateTimeFormat(versatileLang, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+const timeFormatter = new Intl.DateTimeFormat(versatileLang, { year: 'numeric', month: '2-digit', day: '2-digit' });
 const activity = computed(() => props.activity);
-const isStudy = computed(() => activity.value.type === 'study');
+const raw = computed<any>(() => activity.value);
 const study = computed<any>(() => activity.value.study ?? null);
 const media = computed(() => activity.value.media ?? null);
-const kindIcon = computed(() => activity.value.type === 'study' ? 'ti-notebook' : activity.value.type === 'movie_viewing' ? 'ti-movie' : activity.value.type === 'game_match' ? 'ti-swords' : activity.value.type === 'game_roguelike' ? 'ti-route-square' : activity.value.type === 'game_pve' ? 'ti-users' : 'ti-device-gamepad-2');
-const kindLabel = computed(() => activity.value.type === 'study' ? homeCopy.activityStudy : String(mediaCopy.session.types[activity.value.type] ?? activity.value.type));
-const whenLabel = computed(() => timeFormatter.format(new Date(activity.value.occurredAt)));
-const factRows = computed(() => media.value ? mediaSessionDisplayFacts(media.value.session).slice(0, 6).map(({ key, value }) => ({ key, label: detailLabel(key), value: detailValue(key, value) })) : []);
+const kindIcon = computed(() =>
+	activity.value.type === 'exercise'
+		? 'ti-run'
+		: activity.value.type === 'work'
+			? 'ti-briefcase'
+			: activity.value.type === 'study'
+				? 'ti-book'
+				: activity.value.type === 'movie_viewing'
+					? 'ti-movie'
+					: activity.value.type === 'game_match'
+						? 'ti-swords'
+						: activity.value.type === 'game_roguelike'
+							? 'ti-route-square'
+							: activity.value.type === 'game_pve'
+								? 'ti-users'
+								: 'ti-device-gamepad-2',
+);
+const kindLabel = computed(() =>
+	activity.value.type === 'exercise'
+		? '運動'
+		: activity.value.type === 'work'
+			? '作業'
+			: activity.value.type === 'study'
+				? homeCopy.activityStudy
+				: String(mediaCopy.session.types[activity.value.type] ?? activity.value.type),
+);
+const whenLabel = computed(
+	() =>
+		timeFormatter.format(new Date(activity.value.occurredAt)) +
+		(sourceRecord.value.startedAt ? ` ${sourceRecord.value.startedAt}` : ''),
+);
+const factRows = computed(() =>
+	media.value
+		? mediaSessionDisplayFacts(media.value.session)
+			.slice(0, props.detailed ? undefined : 6)
+			.map(({ key, value }) => ({ key, label: detailLabel(key), value: detailValue(key, value) }))
+		: [],
+);
 
-function durationLabel(minutes: number): string {
-	if (minutes < 60) return homeCopyx.durationMinutes({ minutes: minutes.toString() });
-	return homeCopyx.durationHoursMinutes({ hours: Math.floor(minutes / 60).toString(), minutes: (minutes % 60).toString() });
+function detailLabel(key: string): string {
+	return String(mediaCopy.session?.[key] ?? key);
 }
-
-function detailLabel(key: string): string { return String(mediaCopy.session?.[key] ?? key); }
 
 function formatWeaponStatRow(row: unknown): string {
 	if (row == null || typeof row !== 'object' || Array.isArray(row)) return '';
 	const entry = row as Record<string, unknown>;
 	const weapon = typeof entry.weapon === 'string' ? entry.weapon.trim() : '';
 	if (weapon.length === 0) return '';
-	const stats = HATADY_STAT_FIELDS
-		.filter(field => typeof entry[field] === 'number')
-		.map(field => `${detailLabel(field)} ${entry[field]}`)
+	const stats = HATADY_STAT_FIELDS.filter((field) => typeof entry[field] === 'number')
+		.map((field) => `${detailLabel(field)} ${entry[field]}`)
 		.join(' · ');
 	return stats.length > 0 ? `${weapon}（${stats}）` : weapon;
 }
@@ -122,71 +228,353 @@ function formatWeaponStatRow(row: unknown): string {
 function detailValue(key: string, value: unknown): string {
 	// 旗鯖fork(Hatady): 武器ごとの成績は行オブジェクトの配列。指標の組み合わせが記録ごとに変わるので、
 	// 数字だけ並べても意味が取れない。ここで指標名を添えて1行の文にする。
-	if (key === 'weaponStats' && Array.isArray(value)) return value.map(row => formatWeaponStatRow(row)).filter(Boolean).join(' / ');
+	if (key === 'weaponStats' && Array.isArray(value)) return value
+		.map((row) => formatWeaponStatRow(row))
+		.filter(Boolean)
+		.join(' / ');
 	if (Array.isArray(value)) return value.map(String).join(' · ');
 	if (typeof value === 'boolean') return value ? i18n.ts.yes : i18n.ts.no;
-	const translations: Record<string, string> = { great: 'moodGreat', good: 'moodGood', neutral: 'moodNeutral', tired: 'moodTired', frustrated: 'moodFrustrated' };
+	const translations: Record<string, string> = {
+		great: 'moodGreat',
+		good: 'moodGood',
+		neutral: 'moodNeutral',
+		tired: 'moodTired',
+		frustrated: 'moodFrustrated',
+	};
 	return String(mediaCopy.session?.[translations[String(value)] ?? String(value)] ?? value);
 }
 
+const sourceRecord = computed<any>(() => study.value || media.value?.session || raw.value);
+const recordTags = computed<string[]>(() =>
+	Array.isArray(sourceRecord.value.tags)
+		? sourceRecord.value.tags
+		: sourceRecord.value.tag
+			? [sourceRecord.value.tag]
+			: [],
+);
+const recordReactions = computed<Record<string, number>>(() => {
+	const r = sourceRecord.value.reactions;
+	return Array.isArray(r) ? Object.fromEntries(r.map((item) => [item.reaction, item.count])) : r || {};
+});
+const durationSeconds = computed<number | null>(() =>
+	Object.hasOwn(sourceRecord.value, 'durationSeconds')
+		? sourceRecord.value.durationSeconds
+		: sourceRecord.value.durationMinutes == null
+			? null
+			: sourceRecord.value.durationMinutes * 60,
+);
+const tagLabels: Record<string, string> = {
+	strength: '得意',
+	weak: '苦手',
+	interest: '興味',
+	effort: 'がんばった',
+	recommend: 'おすすめ',
+	progress: '進捗',
+	smooth: '順調',
+	blocked: '躓いている',
+	review: '見てほしい',
+	doneDay: '今日の完了',
+	doneAll: '全体の完了',
+};
+
+function tagLabel(tag: string) {
+	return tagLabels[tag] || hyTagLabel(tag);
+}
+
+function tagIcon(tag: string) {
+	return (
+		(
+			{
+				strength: 'ti-star',
+				weak: 'ti-flag',
+				interest: 'ti-bulb',
+				effort: 'ti-flame',
+				recommend: 'ti-thumb-up',
+				progress: 'ti-pencil',
+				doneDay: 'ti-check',
+				doneAll: 'ti-checks',
+				blocked: 'ti-alert-circle',
+				review: 'ti-eye',
+			} as Record<string, string>
+		)[tag] || 'ti-tag'
+	);
+}
+
+function openRecord() {
+	if (study.value) emit('openLog', study.value.id);
+	else if (media.value?.session) emit('openSession', media.value.session.id, media.value.work?.id || '');
+	else emit('openSession', sourceRecord.value.id, raw.value.workId || '');
+}
+
 const VisibilityChip = defineComponent({
-	name: 'VisibilityChip', props: { visibility: { type: String as () => HatadyMediaVisibility, required: true } },
-	setup(p) { return () => h('span', { class: styles.visibility }, [h('i', { class: `ti ${p.visibility === 'public' ? 'ti-world' : p.visibility === 'followers' ? 'ti-users' : 'ti-lock'}` }), ` ${homeLabels[p.visibility === 'public' ? 'activityPublic' : p.visibility === 'followers' ? 'activityFollowers' : 'activityPrivate']}`]); },
+	name: 'VisibilityChip',
+	props: { visibility: { type: String as () => HatadyMediaVisibility, required: true } },
+	setup(p) {
+		return () =>
+			h(
+				'span',
+				{
+					class: styles.visibility,
+					role: 'img',
+					title:
+						homeLabels[
+							p.visibility === 'public'
+								? 'activityPublic'
+								: p.visibility === 'followers'
+									? 'activityFollowers'
+									: 'activityPrivate'
+						],
+					'aria-label':
+						homeLabels[
+							p.visibility === 'public'
+								? 'activityPublic'
+								: p.visibility === 'followers'
+									? 'activityFollowers'
+									: 'activityPrivate'
+						],
+				},
+				[
+					h('i', {
+						class: `ti ${p.visibility === 'public' ? 'ti-world' : p.visibility === 'followers' ? 'ti-users' : 'ti-lock'}`,
+					}),
+				],
+			);
+	},
 });
 
+const ActivityLogDetail = defineComponent({
+	props: { record: { type: Object, required: true } },
+	setup(p) {
+		return () => {
+			const labels: Record<string, string> = {
+				place: '場所',
+				nextStep: '次にやること',
+				note: '補足',
+				startedAt: '開始時刻',
+				calories: '消費カロリー',
+				pages: '読んだページ',
+				progress: '進み具合',
+			};
+			const rows = Object.entries(p.record.details || {}).filter(
+				([key, value]) => key !== 'spoiler' && value != null && value !== '',
+			);
+			if (p.record.pageStart != null) rows.unshift(['ページ', `${p.record.pageStart} — ${p.record.pageEnd ?? p.record.pageStart}`]);
+			return rows.length
+				? h(
+					'dl',
+					{ class: styles.fullDetails },
+					rows.flatMap(([key, value]) => [
+						h('dt', labels[key] || key),
+						h('dd', typeof value === 'object' ? JSON.stringify(value) : String(value)),
+					]),
+				)
+				: null;
+		};
+	},
+});
 const ActivityMediaDetail = defineComponent({
 	name: 'ActivityMediaDetail',
-	props: { session: { type: Object as () => HatadyMediaSession, required: true }, rows: { type: Array as () => Array<{ key: string; label: string; value: string }>, required: true } },
+	props: {
+		session: { type: Object as () => HatadyMediaSession, required: true },
+		rows: { type: Array as () => Array<{ key: string; label: string; value: string }>, required: true },
+	},
 	setup(p) {
-		return () => h('div', { class: styles.mediaDetail }, [
-			p.rows.length ? h('div', { class: styles.facts }, p.rows.map(row => h('span', { key: row.key }, [h('b', row.label), ` ${row.value}`]))) : null,
-			p.session.note ? h('p', { class: styles.note }, p.session.note) : null,
-		]); 
+		return () =>
+			h('div', { class: styles.mediaDetail }, [
+				p.rows.length
+					? h(
+						'div',
+						{ class: styles.facts },
+						p.rows.map((row) => h('span', { key: row.key }, [h('b', row.label), ` ${row.value}`])),
+					)
+					: null,
+				p.session.note ? h('p', { class: styles.note }, p.session.note) : null,
+			]);
 	},
 });
 </script>
 
 <style lang="scss" module>
-.card { padding: 15px 16px; border: 1px solid var(--hy-border); border-left: 4px solid var(--hy-accent); border-radius: 14px; background: var(--hy-surface); color: var(--hy-body); box-shadow: 0 2px 12px color-mix(in srgb, var(--hy-ink) 6%, transparent); container-type: inline-size; }
-.media { border-left-color: color-mix(in srgb, var(--hy-accent) 72%, #6f78b8); }
-.head { display: flex; align-items: center; gap: 9px; min-width: 0; }
-.head time { margin-left: auto; flex: 0 0 auto; color: var(--hy-muted); font-size: 10.5px; }
-.author { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 0; border: 0; background: none; color: var(--hy-ink); text-align: left; cursor: pointer; }
-.author > span { min-width: 0; font-size: 12px; font-weight: 700; }
-.author small { display: block; overflow: hidden; color: var(--hy-muted); font-size: 9.5px; font-weight: 400; text-overflow: ellipsis; white-space: nowrap; }
-.avatar { width: 32px; height: 32px; flex: 0 0 auto; }
-.kindLead { display: inline-flex; align-items: center; gap: 6px; color: var(--hy-ink); font-family: var(--hy-heading); font-size: 12px; font-weight: 800; }
-.kindLead i { color: var(--hy-accent); }
-.menu { flex: 0 0 auto; padding: 4px; border: 0; background: none; color: var(--hy-muted); cursor: pointer; }
-.topics { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 11px; }
-.tag, .duration, .visibility, .kindChip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 999px; font-size: 10px; font-weight: 700; }
-.duration, .visibility { border: 1px solid var(--hy-border); background: var(--hy-bg); color: var(--hy-muted); }
-.kindChip { background: color-mix(in srgb, var(--hy-accent) 14%, var(--hy-bg)); color: var(--hy-accent-ink); }
-.card h3 { overflow-wrap: anywhere; margin: 9px 0 0; color: var(--hy-ink); font-family: var(--hy-serif); font-size: 15px; line-height: 1.45; }
-.note { margin: 9px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--hy-body); font-size: 12px; line-height: 1.65; }
-.workLink { display: flex; align-items: center; gap: 9px; width: 100%; margin-top: 9px; padding: 8px; border: 1px solid var(--hy-border); border-radius: 10px; background: var(--hy-bg); color: var(--hy-ink); text-align: left; cursor: pointer; }
-.workLink span { min-width: 0; }
-.workLink b, .workLink small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.workLink b { font-family: var(--hy-serif); font-size: 11.5px; }
-.workLink small { color: var(--hy-muted); font-size: 9.5px; }
-.mediaLayout { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 13px; margin-top: 10px; }
-.coverButton, .titleButton { padding: 0; border: 0; background: none; color: inherit; text-align: left; cursor: pointer; }
-.mediaBody { min-width: 0; }
-.titleButton { width: 100%; }
-.titleButton span { display: block; overflow: hidden; margin-top: 2px; color: var(--hy-muted); font-size: 10.5px; text-overflow: ellipsis; white-space: nowrap; }
-.facts { display: flex; flex-wrap: wrap; gap: 5px 10px; margin-top: 8px; color: var(--hy-body); font-size: 10.5px; }
-.facts b { color: var(--hy-ink); }
-.spoiler { margin-top: 8px; padding: 7px 9px; border: 1px solid var(--hy-border); border-radius: 9px; background: var(--hy-bg); }
-.spoiler summary { color: var(--hy-muted); font-size: 10.5px; font-weight: 700; cursor: pointer; }
-.mediaDetail { min-width: 0; }
-.foot { display: flex; align-items: center; gap: 8px; margin-top: 11px; padding-top: 9px; border-top: 1px solid var(--hy-border); }
-.detailButton { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; padding: 4px 7px; border: 0; background: none; color: var(--hy-muted); font-size: 10.5px; cursor: pointer; }
-.mediaHint { color: var(--hy-muted); font-size: 9.5px; }
-@container (max-width: 430px) {
-	.head { flex-wrap: wrap; }
-	.head time { margin-left: 0; }
-	.mediaLayout { grid-template-columns: 1fr; }
-	.coverButton { justify-self: start; }
-	.mediaHint { display: none; }
+.card {
+	padding: 22px;
+	border: 1px solid var(--hy-border);
+	border-radius: 24px;
+	background: var(--hy-surface);
+	color: var(--hy-body);
+	container-type: inline-size;
+}
+.head {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	gap: 8px 12px;
+	margin-bottom: 16px;
+}
+.author {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	border: 0;
+	background: none;
+	text-align: left;
+	color: inherit;
+	min-width: 0;
+	cursor: pointer;
+}
+.avatar {
+	width: 32px;
+	height: 32px;
+	flex: none;
+}
+.author > span {
+	overflow-wrap: anywhere;
+}
+.stamp {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	color: var(--hy-muted);
+	font-size: 12px;
+}
+.visibility {
+	display: inline-grid;
+	place-items: center;
+}
+.context {
+	grid-column: 1/-1;
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 6px;
+	font-size: 12px;
+	padding-left: 44px;
+	color: var(--hy-muted);
+}
+.tag {
+	display: inline-flex;
+	gap: 4px;
+	align-items: center;
+	padding: 4px 8px;
+	border-radius: 999px;
+	background: var(--hy-surface-2);
+	color: var(--hy-ink);
+}
+.kindLead {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+.titleButton {
+	display: flex;
+	gap: 9px;
+	align-items: center;
+	background: none;
+	border: 0;
+	color: var(--hy-ink);
+	padding: 0;
+	text-align: left;
+	cursor: pointer;
+}
+.titleButton h3 {
+	font: inherit;
+	font-size: 18px;
+	margin: 0;
+	overflow-wrap: anywhere;
+}
+.note {
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+	font-size: 14px;
+	line-height: 1.75;
+	margin: 12px 0;
+}
+.meta {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	flex-wrap: wrap;
+	font-size: 12px;
+	color: var(--hy-muted);
+	margin: 14px 0;
+}
+.meta > span {
+	display: flex;
+	align-items: center;
+	gap: 5px;
+}
+.workLink {
+	border: 0;
+	background: none;
+	color: var(--hy-accent-ink);
+	padding: 8px 0;
+	cursor: pointer;
+}
+.foot {
+	display: flex;
+	gap: 8px;
+	align-items: center;
+	justify-content: space-between;
+	flex-wrap: wrap;
+	margin-top: 12px;
+}
+.actions {
+	display: flex;
+	gap: 5px;
+	align-items: center;
+	margin-left: auto;
+}
+.actions button {
+	gap: 6px;
+}
+.facts {
+	display: flex;
+	gap: 6px 12px;
+	flex-wrap: wrap;
+	font-size: 12px;
+	color: var(--hy-muted);
+}
+.spoiler {
+	margin-top: 12px;
+}
+.spoiler summary {
+	min-height: 44px;
+	display: flex;
+	gap: 8px;
+	align-items: center;
+	cursor: pointer;
+}
+.mediaDetail {
+	min-width: 0;
+}
+.study,
+.media {
+	min-width: 0;
+}
+@container (max-width:430px) {
+	.card {
+		padding: 16px;
+	}
+	.stamp {
+		font-size: 11px;
+	}
+	.context {
+		padding-left: 0;
+	}
+	.titleButton h3 {
+		font-size: 16px;
+	}
+}
+.fullDetails {
+	display: grid;
+	grid-template-columns: minmax(90px, 1fr) minmax(0, 2fr);
+	gap: 8px;
+	font-size: 12px;
+}
+.fullDetails dt {
+	color: var(--hy-muted);
+}
+.fullDetails dd {
+	margin: 0;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
 }
 </style>

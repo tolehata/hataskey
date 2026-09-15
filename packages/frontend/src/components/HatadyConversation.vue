@@ -1,282 +1,586 @@
-<!--
-SPDX-FileCopyrightText: Tolehata and hatasaba-project
-SPDX-License-Identifier: AGPL-3.0-only
-旗鯖fork(Hatady 1g): 公開フィードの会話ページ(モーダル)。
-  ルート投稿(学習ログ) + 返信(コメント・1段ネスト) + 返信コンポーザー。
-  リアクションは hataskey 共通の絵文字ピッカー(HatadyReactions)を利用する(要件⑤)。
--->
+<!-- SPDX-FileCopyrightText: Tolehata and hatasaba-project
+SPDX-License-Identifier: AGPL-3.0-only -->
 <template>
-<MkWindow
+<HyDialog
 	ref="dialog"
-	:initialWidth="760"
-	:initialHeight="720"
-	:canResize="true"
+	:title="copy.title"
+	:inert="closePrompt"
+	:busy="sending"
+	@close="requestClose"
 	@closed="emit('closed')"
 >
-	<template #header><i class="ti ti-messages"></i> {{ copy.title }}</template>
-
-	<div class="hatady-scope" :data-hatady-theme="theme" :class="$style.body">
-		<div v-if="loading" :class="$style.loading">{{ copy.loading }}</div>
-		<template v-else-if="log">
-			<!-- ルート投稿 -->
-			<article :class="$style.root" :style="{ borderLeftColor: pal(log.subject).accent }">
-				<div :class="$style.head">
-					<MkAvatar :class="$style.avatar" :user="log.user" link/>
-					<div :class="$style.who">
-						<MkUserName :class="$style.name" :user="log.user"/>
-						<div :class="$style.acct">@{{ log.user?.username }} · {{ fmtWhen(log.studiedAt) }}</div>
+	<p v-if="loading" class="hy-empty">{{ copy.loading }}</p>
+	<p v-if="error && loading" class="hy-error" role="alert">{{ error }}</p>
+	<template v-if="!loading && activity">
+		<HatadyActivityCard
+			:activity="activity"
+			:showActions="false"
+			detailed
+			@openLog="() => {}"
+			@openMedia="openWork"
+			@openBook="openWork"
+			@openSession="() => {}"
+			@openProfile="openProfile"
+		/>
+		<div :class="$style.recordActions">
+			<HatadyReactions :target="reactionTarget" :reactions="rootReactions" :myReaction="record?.myReaction ?? null"/>
+			<span></span>
+			<button
+				v-if="activity.isMine"
+				class="hy-icon-button"
+				aria-label="記録を編集"
+				title="記録を編集"
+				@click="editRecord"
+			>
+				<i class="ti ti-pencil"></i>
+			</button>
+			<button v-if="activity.isMine" class="hy-icon-button" :aria-label="i18n.ts.delete" @click="deleteRecord">
+				<i class="ti ti-trash"></i>
+			</button>
+			<button v-else class="hy-icon-button" :aria-label="i18n.ts.reportAbuse" @click="reportRecord">
+				<i class="ti ti-flag"></i>
+			</button>
+		</div>
+		<div v-if="work || record?.book || record?.mediaWork" :class="$style.workLink">
+			<button class="hy-secondary" @click="openWork">
+				<i class="ti ti-books"></i>
+				作品の詳細へ
+			</button>
+		</div>
+		<section :class="$style.replies">
+			<h3>
+				<i class="ti ti-messages"></i>
+				{{ copyx.repliesCount({ count: comments.length.toString() }) }}
+			</h3>
+			<p v-if="!comments.length" class="hy-empty">{{ copy.noReplies }}</p>
+			<article v-for="c in comments" :key="c.id" :class="$style.reply" :data-nested="!!c.replyId">
+				<MkAvatar v-if="c.user" :class="$style.avatar" :user="c.user"/>
+				<div>
+					<div :class="$style.replyHead">
+						<MkUserName v-if="c.user" :user="c.user"/>
+						<time>{{ fmtWhen(c.createdAt) }}</time>
 					</div>
-					<HySubjectBadge :subject="log.subject"/>
-				</div>
-				<div :class="$style.title">{{ log.title }}</div>
-				<div v-if="log.body" :class="$style.text">{{ log.body }}</div>
-				<div v-if="log.book" :class="$style.bookChip">
-					<HyBookCover :title="log.book.title" :author="log.book.author" :width="32"/>
-					<div :class="$style.bookInfo">
-						<div :class="$style.bookTitle">{{ log.book.title }}</div>
-						<div :class="$style.bookMeta">{{ log.book.author }}<template v-if="log.pageTo"> · p.{{ log.pageTo }}</template><template v-if="log.book.progress != null"> / {{ log.book.progress }}%</template></div>
+					<details v-if="c.spoiler">
+						<summary>ネタバレを含む内容</summary>
+						<Mfm :text="c.text"/>
+					</details>
+					<Mfm v-else :text="c.text"/>
+					<div :class="$style.replyActions">
+						<HatadyReactions
+							:target="sessionId ? { mediaCommentId: c.id } : { commentId: c.id }"
+							:reactions="reactionMap(c.reactions)"
+							:myReaction="c.myReaction ?? null"
+						/>
+						<button class="hy-icon-button" :aria-label="copy.reply" @click="setReplyTo(c)">
+							<i class="ti ti-arrow-back-up"></i>
+						</button>
+						<button
+							v-if="c.userId === $i?.id"
+							class="hy-icon-button"
+							:aria-label="i18n.ts.delete"
+							@click="deleteComment(c)"
+						>
+							<i class="ti ti-trash"></i>
+						</button>
+						<button
+							v-else-if="c.user"
+							class="hy-icon-button"
+							:aria-label="i18n.ts.reportAbuse"
+							@click="reportComment(c)"
+						>
+							<i class="ti ti-flag"></i>
+						</button>
 					</div>
-					<span :class="$style.dur"><i class="ti ti-clock"></i> {{ fmtDuration(log.durationMinutes) }}</span>
-				</div>
-				<div :class="$style.foot">
-					<span v-if="currentTag" :class="$style.tagChip" :style="{ background: currentTag.bg, color: currentTag.fg }"><i :class="['ti', currentTag.icon]"></i> {{ currentTagLabel }}</span>
-					<HatadyReactions :class="$style.reactions" :target="{ logId: log.id }" :reactions="log.reactions ?? {}" :myReaction="log.myReaction ?? null"/>
 				</div>
 			</article>
-
-			<!-- 返信ヘッダー -->
-			<div :class="$style.repliesHead">
-				<span :class="$style.repliesTitle"><i class="ti ti-messages"></i> {{ copyx.repliesCount({ count: comments.length.toString() }) }}</span>
-				<span :class="$style.repliesLine"></span>
+			<button v-if="hasMore" class="hy-secondary" :disabled="loadingMore" @click="loadComments(true)">
+				続きを表示
+			</button>
+		</section>
+	</template>
+	<p v-else-if="!loading" class="hy-empty">{{ error || copy.notFound }}</p>
+	<template v-if="record" #actions>
+		<form :class="$style.composer" @submit.prevent="send">
+			<div :class="$style.replying">
+				<i class="ti ti-arrow-back-up"></i>
+				<span v-if="replyTo">
+					<MkUserName v-if="replyTo.user" :user="replyTo.user"/>
+					<span v-else>選択した返信</span>
+					{{ copy.replyingTo }}
+				</span>
+				<span v-else>{{ record.user?.name || record.user?.username || 'この記録' }}への返信</span>
+				<button v-if="replyTo" type="button" class="hy-icon-button" aria-label="返信先を解除" @click="replyTo = null">
+					<i class="ti ti-x"></i>
+				</button>
 			</div>
-
-			<!-- 返信リスト -->
-			<div :class="$style.replies">
-				<div v-if="comments.length === 0" :class="$style.noReplies">{{ copy.noReplies }}</div>
-				<div v-for="c in comments" :key="c.id" :class="[$style.reply, c.replyId && $style.replyNested]">
-					<MkAvatar :class="$style.replyAvatar" :user="c.user" link/>
-					<div :class="$style.bubble">
-						<div :class="$style.replyHead">
-							<MkUserName :class="$style.replyName" :user="c.user"/>
-							<span :class="$style.replyTime">{{ fmtWhen(c.createdAt) }}</span>
-						</div>
-						<div :class="$style.replyText">{{ c.text }}</div>
-						<div :class="$style.replyFoot">
-							<HatadyReactions :target="{ commentId: c.id }" :reactions="c.reactions ?? {}" :myReaction="c.myReaction ?? null"/>
-							<button :class="$style.replyBtn" @click="setReplyTo(c)"><i class="ti ti-arrow-back-up"></i> {{ copy.reply }}</button>
-							<button v-if="c.userId === $i?.id" :class="[$style.replyBtn, $style.danger]" @click="deleteComment(c)"><i class="ti ti-trash"></i> {{ i18n.ts.delete }}</button>
-							<button v-else-if="c.user" :class="$style.replyBtn" @click="reportComment(c)"><i class="ti ti-flag"></i> {{ i18n.ts.reportAbuse }}</button>
-						</div>
-					</div>
+			<div :class="$style.inputBox">
+				<textarea
+					ref="input"
+					v-model="draft"
+					:placeholder="copy.placeholder"
+					maxlength="2048"
+					rows="3"
+					@keydown="onComposerKeydown"
+				></textarea>
+				<div :class="$style.inputTools">
+					<button
+						type="button"
+						class="hy-icon-button"
+						aria-label="返信に絵文字を挿入"
+						title="絵文字"
+						@click="insertEmoji"
+					>
+						<i class="ti ti-mood-plus"></i>
+					</button>
+					<button
+						type="button"
+						class="hy-icon-button"
+						aria-label="プレビュー"
+						title="プレビュー"
+						:aria-pressed="preview"
+						@click="preview = !preview"
+					>
+						<i class="ti ti-eye"></i>
+					</button>
+					<small>{{ draft.length }} / 2048</small>
 				</div>
 			</div>
-		</template>
-		<div v-else :class="$style.loading">{{ copy.notFound }}</div>
-
-		<!-- 返信コンポーザー -->
-		<div v-if="log" :class="$style.composer">
-			<div v-if="replyTo" :class="$style.replyingTo">
-				<i class="ti ti-arrow-back-up"></i> <MkUserName :user="replyTo.user"/> {{ copy.replyingTo }}
-				<button :class="$style.cancelReply" @click="replyTo = null"><i class="ti ti-x"></i></button>
+			<div v-if="preview" :class="$style.preview"><Mfm :text="draft"/></div>
+			<p v-if="error" class="hy-error" role="alert">{{ error }}</p>
+			<div :class="$style.sendRow">
+				<button type="submit" class="hy-primary" :disabled="sending || !draft.trim() || draft.length > 2048">
+					<i class="ti ti-send"></i>
+					{{ copy.send }}
+				</button>
 			</div>
-			<div :class="$style.composerRow">
-				<MkAvatar v-if="$i" :class="$style.composerAvatar" :user="$i"/>
-				<input v-model="draft" :class="$style.composerInput" :placeholder="copy.placeholder" @keydown.enter="onComposerKeydown">
-				<button :class="$style.sendBtn" :disabled="sending || !draft.trim()" :aria-label="copy.send" :title="copy.send" @click="send"><i class="ti ti-send"></i><span :class="$style.sendLabel">{{ copy.send }}</span></button>
-			</div>
-		</div>
-	</div>
-</MkWindow>
+		</form>
+	</template>
+</HyDialog>
+<HatadyDraftPrompt
+	v-if="closePrompt"
+	title="書きかけの返信をどうする？"
+	:error="error"
+	@save="leave(true)"
+	@discard="leave(false)"
+	@return="closePrompt = false"
+/>
 </template>
-
-<script lang="ts" setup>
-import { computed, defineAsyncComponent, ref, useTemplateRef, onMounted } from 'vue';
-import MkWindow from '@/components/MkWindow.vue';
-import HySubjectBadge from '@/components/HySubjectBadge.vue';
-import HyBookCover from '@/components/HyBookCover.vue';
+<script setup lang="ts">
+import { computed, defineAsyncComponent, ref, onMounted, nextTick } from 'vue';
+import HyDialog from '@/components/HyDialog.vue';
+import HatadyDraftPrompt from '@/components/HatadyDraftPrompt.vue';
+import HatadyActivityCard from '@/components/HatadyActivityCard.vue';
 import HatadyReactions from '@/components/HatadyReactions.vue';
-import { versatileLang } from '@@/js/intl-const.js';
+import { useHataFormDraft } from '@/utility/hata-form-draft.js';
+import { emojiPicker } from '@/utility/emoji-picker.js';
+import { hatadyNotify } from '@/utility/hatady-ui.js';
+import { misskeyApi } from '@/utility/misskey-api.js';
 import { $i } from '@/i.js';
 import { i18n } from '@/i18n.js';
-import { misskeyApi } from '@/utility/misskey-api.js';
-import { hySubjectPalette, hyTag, hyTagLabel } from '@/utility/hatady.js';
-import { hatadyTheme } from '@/utility/hatady-prefs.js';
 import * as os from '@/os.js';
+const props = defineProps<{ logId?: string; initialLog?: any; sessionId?: string; workId?: string }>();
+const emit = defineEmits<{ (e: 'changed'): void; (e: 'closed'): void }>();
+const api = misskeyApi as unknown as (endpoint: string, payload: Record<string, unknown>) => Promise<any>;
+const copy = i18n.ts._hata._hatady._conversation,
+	copyx = i18n.tsx._hata._hatady._conversation;
+const dialog = ref<any>(),
+	input = ref<HTMLTextAreaElement>(),
+	record = ref<any>(props.initialLog || null),
+	work = ref<any>(null),
+	comments = ref<any[]>([]),
+	loading = ref(true),
+	loadingMore = ref(false),
+	hasMore = ref(false),
+	draft = ref(''),
+	replyTo = ref<any>(null),
+	sending = ref(false),
+	preview = ref(false),
+	error = ref(''),
+	closePrompt = ref(false);
+let pendingLeave: (() => void) | null = null;
+let closing = true;
+const drafts = useHataFormDraft({
+	id: `hatady-reply:${props.sessionId ? 'session' : 'log'}:${props.sessionId || props.logId}`,
+	autoSave: false,
+	capture: () => ({ text: draft.value, replyId: replyTo.value?.id ?? null }),
+	restore: (d: any) => {
+		draft.value = typeof d?.text === 'string' ? d.text : '';
+		if (d?.replyId) replyTo.value = { id: d.replyId };
+	},
+	isMeaningful: (d) => !!d.text.trim(),
+});
+const activity = computed<any>(() =>
+	!record.value
+		? null
+		: {
+			id: record.value.id,
+			type: props.sessionId ? record.value.kind : record.value.kind || 'study',
+			occurredAt: record.value.occurredAt || record.value.studiedAt,
+			user: record.value.user || work.value?.user,
+			visibility: record.value.visibility || (record.value.isPublic ? 'public' : 'private'),
+			isMine: record.value.isMine || record.value.userId === $i?.id || work.value?.userId === $i?.id,
+			...(props.sessionId ? { media: { work: work.value, session: record.value } } : { study: record.value }),
+		},
+);
+const reactionTarget = computed(() => (props.sessionId ? { sessionId: props.sessionId } : { logId: props.logId }));
 
-const props = defineProps<{ logId: string; initialLog?: any }>();
-const emit = defineEmits<{ (ev: 'changed'): void; (ev: 'closed'): void }>();
-const dialog = useTemplateRef('dialog');
-const theme = hatadyTheme;
-const copy = i18n.ts._hata._hatady._conversation;
-const copyx = i18n.tsx._hata._hatady._conversation;
-const shortDateFormatter = new Intl.DateTimeFormat(versatileLang, { month: 'short', day: 'numeric' });
-
-const log = ref<any>(props.initialLog ?? null);
-const comments = ref<any[]>([]);
-const loading = ref(true);
-const draft = ref('');
-const sending = ref(false);
-const replyTo = ref<any>(null);
-const currentTag = computed(() => log.value ? hyTag(log.value.tag) : null);
-const currentTagLabel = computed(() => hyTagLabel(log.value?.tag));
-
-function pal(s: string) { return hySubjectPalette(s); }
-
-function fmtDuration(min: number): string {
-	if (min < 60) return copyx.durationMinutes({ minutes: min.toString() });
-	const h = Math.floor(min / 60); const m = min % 60;
-	return copyx.durationHoursMinutes({ hours: h.toString(), minutes: m.toString() });
+function reactionMap(r: any): Record<string, number> {
+	return Array.isArray(r) ? Object.fromEntries(r.map((x) => [x.reaction, x.count])) : r || {};
 }
 
-function fmtWhen(iso: string): string {
-	const d = new Date(iso);
-	const diffMin = Math.round((Date.now() - d.getTime()) / 60000);
-	if (diffMin < 1) return copy.now;
-	if (diffMin < 60) return copyx.minutesAgo({ count: diffMin.toString() });
-	const diffH = Math.floor(diffMin / 60);
-	if (diffH < 24) return copyx.hoursAgo({ count: diffH.toString() });
-	const diffD = Math.floor(diffH / 24);
-	if (diffD < 7) return copyx.daysAgo({ count: diffD.toString() });
-	return shortDateFormatter.format(d);
+const rootReactions = computed(() => reactionMap(record.value?.reactions));
+
+function fmtWhen(value: string) {
+	return new Date(value).toLocaleString(undefined, {
+		month: 'short',
+		day: 'numeric',
+		hour: '2-digit',
+		minute: '2-digit',
+	});
+}
+
+async function loadComments(append = false) {
+	loadingMore.value = true;
+	try {
+		const payload = {
+			...(props.sessionId ? { sessionId: props.sessionId } : { logId: props.logId }),
+			limit: 100,
+			...(append && comments.value.length ? { untilId: comments.value[0].id } : {}),
+		};
+		const response = await api(props.sessionId ? 'hata/hatady/media/comments/list' : 'hata/hatady/comments', payload);
+		const page = Array.isArray(response) ? response : response?.items || [];
+		const added = page.filter((r: any) => !comments.value.some((c) => c.id === r.id));
+		comments.value = append ? [...added, ...comments.value] : page;
+		hasMore.value = !!props.sessionId && page.length === 100 && (!append || added.length > 0);
+		const target = comments.value.find((c) => c.id === replyTo.value?.id);
+		if (target) replyTo.value = target;
+	} catch {
+		error.value = '返信を読み込めませんでした';
+	} finally {
+		loadingMore.value = false;
+	}
 }
 
 async function reload() {
 	loading.value = true;
 	try {
-		const [l, cs] = await Promise.all([
-			misskeyApi('hata/hatady/logs/show', { logId: props.logId }).catch(() => null),
-			misskeyApi('hata/hatady/comments', { logId: props.logId }).catch(() => []),
-		]);
-		if (l) log.value = l;
-		comments.value = cs as any[];
+		if (props.sessionId) {
+			const result = await api('hata/hatady/media/sessions/show', { sessionId: props.sessionId });
+			record.value = { ...result.session, isMine: result.isMine };
+			work.value = result.work;
+		} else record.value = await api('hata/hatady/logs/show', { logId: props.logId });
+		await loadComments();
+	} catch {
+		error.value = '記録を読み込めませんでした';
 	} finally {
 		loading.value = false;
 	}
 }
 
-function setReplyTo(c: any) { replyTo.value = c; }
+function setReplyTo(c: any) {
+	replyTo.value = c;
+	input.value?.focus();
+}
 
-function onComposerKeydown(ev: KeyboardEvent) {
-	if (ev.isComposing) return;
+function onComposerKeydown(e: KeyboardEvent) {
+	if (e.key !== 'Enter' || e.shiftKey || e.isComposing || e.keyCode === 229) return;
+	e.preventDefault();
 	void send();
 }
 
+function insertEmoji(e: MouseEvent) {
+	let start = input.value?.selectionStart ?? draft.value.length,
+		end = input.value?.selectionEnd ?? start;
+	emojiPicker.show(
+		e.currentTarget as HTMLElement,
+		(emoji) => {
+			draft.value = draft.value.slice(0, start) + emoji + draft.value.slice(end);
+			start += emoji.length;
+			end = start;
+		},
+		() => {
+			void nextTick(() => {
+				input.value?.focus();
+				input.value?.setSelectionRange(start, end);
+			});
+		},
+	);
+}
+
 async function send() {
-	if (!draft.value.trim() || sending.value) return;
+	if (sending.value || !draft.value.trim() || draft.value.length > 2048) return;
 	sending.value = true;
+	error.value = '';
 	try {
-		const payload = {
-			logId: props.logId,
+		const result = await api(props.sessionId ? 'hata/hatady/media/comments/create' : 'hata/hatady/comments/create', {
+			...(props.sessionId ? { sessionId: props.sessionId } : { logId: props.logId }),
 			text: draft.value.trim(),
-			replyId: replyTo.value?.id ?? undefined,
-		};
-		const c = await misskeyApi('hata/hatady/comments/create', payload);
-		comments.value.push(c);
-		if (log.value) log.value.commentsCount = (log.value.commentsCount ?? 0) + 1;
+			...(replyTo.value?.id ? { replyId: replyTo.value.id } : {}),
+		});
+		comments.value.push(result);
 		draft.value = '';
 		replyTo.value = null;
+		if (!drafts.clearDraft({ resume: true })) hatadyNotify('返信しましたが、端末の下書きを削除できませんでした');
+		else hatadyNotify('返信しました');
 		emit('changed');
+		await nextTick();
+		input.value?.focus();
+	} catch {
+		error.value = '返信できませんでした。入力は残っています。';
 	} finally {
 		sending.value = false;
 	}
 }
 
-async function deleteComment(comment: any) {
-	const { canceled } = await os.confirm({ type: 'warning', text: copy.deleteCommentConfirm });
-	if (canceled) return;
-	await misskeyApi('hata/hatady/comments/delete', { commentId: comment.id });
-	await reload();
-	emit('changed');
+function requestClose(next?: () => void) {
+	if (sending.value) return;
+	closing = typeof next !== 'function';
+	pendingLeave = typeof next === 'function' ? next : () => dialog.value?.close();
+	if (drafts.hasChanges() || drafts.restored.value) closePrompt.value = true;
+	else pendingLeave();
 }
 
-function reportComment(comment: any) {
-	const { dispose } = os.popup(defineAsyncComponent(() => import('@/components/MkAbuseReportWindow.vue')), {
-		user: comment.user,
-		initialComment: `hatady:comment:${comment.id}\n${comment.text}`,
-	}, { closed: () => dispose() });
+function leave(save: boolean) {
+	if (!(save ? drafts.saveDraft() : drafts.clearDraft({ resume: !closing }))) {
+		error.value = '下書きを保存・削除できませんでした';
+		return;
+	}
+	closePrompt.value = false;
+	if (save) hatadyNotify('下書きを保存しました');
+	else if (!closing) {
+		draft.value = '';
+		replyTo.value = null;
+		drafts.resetBaseline();
+	}
+	pendingLeave?.();
+}
+
+async function deleteComment(c: any) {
+	const { canceled } = await os.confirm({ type: 'warning', text: copy.deleteCommentConfirm });
+	if (canceled) return;
+	try {
+		await api(props.sessionId ? 'hata/hatady/media/comments/delete' : 'hata/hatady/comments/delete', {
+			commentId: c.id,
+		});
+		if (replyTo.value?.id === c.id) replyTo.value = null;
+		await loadComments();
+		emit('changed');
+	} catch {
+		hatadyNotify('返信を削除できませんでした');
+	}
+}
+
+function reportComment(c: any) {
+	const { dispose } = os.popup(
+		defineAsyncComponent(() => import('@/components/HatadyReport.vue')),
+		{ user: c.user, initialComment: `hatady:${props.sessionId ? 'media:comment' : 'comment'}:${c.id}\n${c.text}` },
+		{ closed: () => dispose() },
+	);
+}
+
+function reportRecord() {
+	const { dispose } = os.popup(
+		defineAsyncComponent(() => import('@/components/HatadyReport.vue')),
+		{
+			user: activity.value.user,
+			initialComment: `hatady:${props.sessionId ? 'media:session' : 'log'}:${record.value.id}`,
+		},
+		{ closed: () => dispose() },
+	);
+}
+
+async function editRecord() {
+	requestClose(async () => {
+		const component = props.sessionId
+			? (await import('@/components/HatadyMediaSessionForm.vue')).default
+			: (await import('@/components/HatadyComposer.vue')).default;
+		const { dispose } = os.popup(
+			component as any,
+			props.sessionId ? { work: work.value, editSession: record.value } : { editLog: record.value },
+			{
+				done: () => {
+					void reload();
+					emit('changed');
+				},
+				closed: () => dispose(),
+			},
+		);
+	});
+}
+
+async function deleteRecord() {
+	if (sending.value) return;
+	const { canceled } = await os.confirm({
+		type: 'warning',
+		text: 'この記録と、その返信・リアクションを削除します。作品は残ります。',
+	});
+	if (canceled) return;
+	sending.value = true;
+	try {
+		await api(
+			props.sessionId ? 'hata/hatady/media/sessions/delete' : 'hata/hatady/logs/delete',
+			props.sessionId ? { sessionId: props.sessionId } : { logId: props.logId },
+		);
+		emit('changed');
+		dialog.value?.close();
+	} catch {
+		hatadyNotify('記録を削除できませんでした');
+	} finally {
+		sending.value = false;
+	}
+}
+
+function openWork() {
+	requestClose(async () => {
+		const id = props.sessionId ? work.value?.id : record.value?.book?.id || record.value?.mediaWork?.id;
+		if (!id) return;
+		const media = props.sessionId || record.value?.mediaWork;
+		const component = media
+			? (await import('@/components/HatadyMediaWorkDetail.vue')).default
+			: (await import('@/components/HatadyBookDetail.vue')).default;
+		const { dispose } = os.popup(component as any, media ? { workId: id } : { bookId: id }, {
+			changed: () => {
+				void reload();
+				emit('changed');
+			},
+			closed: () => dispose(),
+		});
+	});
+}
+
+function openProfile(userId: string) {
+	requestClose(async () => {
+		const { dispose } = os.popup(
+			(await import('@/components/HatadyProfile.vue')).default,
+			{ userId },
+			{ closed: () => dispose() },
+		);
+	});
 }
 
 onMounted(reload);
 </script>
-
 <style lang="scss" module>
-.body {
-	padding: 20px 22px;
-	background: var(--hy-bg);
-	color: var(--hy-body);
-	font-family: 'Noto Sans JP', 'Hiragino Sans', system-ui, sans-serif;
-	min-height: 100%;
-	box-sizing: border-box;
+.recordActions {
 	display: flex;
-	flex-direction: column;
+	align-items: center;
+	gap: 6px;
+	margin-top: 12px;
 }
-.loading { opacity: .6; padding: 30px 0; text-align: center; }
-
-/* ルート投稿 */
-.root { background: var(--hy-surface); border: 1px solid var(--hy-border); border-left: 4px solid; border-radius: 12px; padding: 17px 18px; box-shadow: 0 1px 3px rgba(96,70,35,.06); margin-bottom: 18px; }
-.head { display: flex; align-items: center; gap: 10px; margin-bottom: 11px; }
-.avatar { width: 40px; height: 40px; flex-shrink: 0; }
-.who { min-width: 0; flex: 1; }
-.name { font-family: var(--hy-heading); font-weight: 700; font-size: 14.5px; color: var(--hy-ink); }
-.acct { font-size: 11.5px; color: var(--hy-body); opacity: .8; }
-.title { font-size: 16px; font-weight: 700; color: var(--hy-ink); line-height: 1.5; margin-bottom: 10px; }
-.text { font-size: 13.5px; line-height: 1.8; color: var(--hy-body); margin-bottom: 13px; word-break: break-word; white-space: pre-wrap; }
-.bookChip { display: flex; gap: 11px; align-items: center; background: var(--hy-surface-2); border-radius: 10px; padding: 9px 11px; margin-bottom: 13px; }
-.bookInfo { flex: 1; min-width: 0; }
-.bookTitle { font-family: var(--hy-serif); font-weight: 600; font-size: 13px; color: var(--hy-ink); }
-.bookMeta { font-size: 11px; color: var(--hy-muted); }
-.dur { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--hy-body); opacity: .85; }
-.foot { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.tagChip { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; padding: 2px 10px; border-radius: 999px; }
-.reactions { margin-left: auto; }
-
-/* 返信 */
-.repliesHead { display: flex; align-items: center; gap: 9px; margin-bottom: 13px; }
-.repliesTitle { font-family: var(--hy-heading); font-weight: 700; font-size: 13px; color: var(--hy-body); }
-.repliesTitle i { color: var(--hy-accent); }
-.repliesLine { flex: 1; height: 1px; background: var(--hy-border); }
-.replies { display: flex; flex-direction: column; gap: 12px; }
-.noReplies { font-size: 12.5px; color: var(--hy-muted); padding: 8px 0; }
-.reply { display: flex; gap: 11px; }
-.replyNested { margin-left: 44px; }
-.replyAvatar { width: 34px; height: 34px; flex-shrink: 0; }
-.bubble { flex: 1; min-width: 0; background: var(--hy-surface); border: 1px solid var(--hy-border); border-radius: 12px; padding: 12px 14px; }
-.replyHead { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; }
-.replyName { font-family: var(--hy-heading); font-weight: 700; font-size: 13px; color: var(--hy-ink); }
-.replyTime { font-size: 11px; color: var(--hy-muted); }
-.replyText { font-size: 13px; line-height: 1.7; color: var(--hy-body); word-break: break-word; white-space: pre-wrap; }
-.replyFoot { display: flex; align-items: center; gap: 12px; margin-top: 9px; }
-.replyBtn { display: inline-flex; align-items: center; gap: 4px; background: none; border: none; color: var(--hy-muted); font-size: 11.5px; cursor: pointer; }
-.replyBtn:hover { color: var(--hy-accent); }
-.danger { color: var(--MI_THEME-error); }
-
-/* コンポーザー */
-.composer { margin-top: auto; padding-top: 14px; }
-.replyingTo { display: flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--hy-muted); margin-bottom: 8px; }
-.cancelReply { background: none; border: none; color: var(--hy-muted); cursor: pointer; margin-left: 4px; }
-.composerRow { display: flex; gap: 11px; align-items: center; }
-.composerAvatar { width: 34px; height: 34px; flex-shrink: 0; }
-.composerInput {
-	flex: 1; background: var(--hy-surface); border: 1px solid var(--hy-border); border-radius: 999px;
-	padding: 10px 16px; font-size: 13px; color: var(--hy-ink); font-family: inherit; outline: none;
+.recordActions > span {
+	flex: 1;
 }
-.composerInput:focus { border-color: var(--hy-accent); }
-.composerInput::placeholder { color: var(--hy-muted); }
-.sendBtn {
-	display: inline-flex; align-items: center; gap: 5px;
-	background: linear-gradient(90deg, #e0955a, #d9824a); color: #fff; border: none; border-radius: 999px;
-	padding: 9px 18px; font-size: 13px; font-weight: 700; font-family: var(--hy-heading); cursor: pointer;
-	box-shadow: 0 3px 9px rgba(217,130,74,.4);
-	flex-shrink: 0;
+.workLink {
+	display: flex;
+	justify-content: center;
+	margin: 20px 0;
 }
-.sendBtn:disabled { opacity: .45; cursor: not-allowed; }
-.sendLabel { white-space: nowrap; }
-
-/* 旗鯖fork: モバイル(狭幅)では送信ボタンを丸いアイコンのみにして、
-   「送信」テキストが縦に折れて崩れるのを防ぐ。 */
-@media (max-width: 500px) {
-	.sendBtn { gap: 0; width: 42px; height: 42px; padding: 0; justify-content: center; }
-	.sendBtn > i { font-size: 17px; }
-	.sendLabel { display: none; }
+.replies {
+	margin-top: 24px;
+	border-top: 1px solid var(--hy-border);
+	padding-top: 20px;
+}
+.replies h3 {
+	display: flex;
+	gap: 8px;
+	font-size: 16px;
+}
+.reply {
+	display: flex;
+	align-items: flex-start;
+	gap: 12px;
+	padding: 16px 0;
+	min-width: 0;
+}
+.reply[data-nested='true'] {
+	padding-left: 20px;
+}
+.avatar {
+	width: 32px;
+	height: 32px;
+	flex: none;
+}
+.reply > div {
+	min-width: 0;
+	flex: 1;
+	overflow-wrap: anywhere;
+}
+.replyHead {
+	display: flex;
+	justify-content: space-between;
+	gap: 8px;
+	font-size: 13px;
+	margin-bottom: 8px;
+}
+.replyHead time {
+	color: var(--hy-muted);
+	font-size: 11px;
+}
+.replyActions {
+	display: flex;
+	gap: 4px;
+	align-items: center;
+	flex-wrap: wrap;
+	margin-top: 10px;
+}
+.composer {
+	width: 100%;
+	display: grid;
+	gap: 10px;
+}
+.replying {
+	display: flex;
+	gap: 8px;
+	align-items: center;
+	font-size: 13px;
+	font-weight: 700;
+}
+.inputBox {
+	border: 1px solid var(--hy-border);
+	border-radius: 20px;
+	overflow: hidden;
+	background: var(--hy-surface);
+}
+.inputBox:focus-within {
+	outline: 2px solid var(--hy-accent);
+	outline-offset: 2px;
+}
+.inputBox textarea {
+	display: block;
+	width: 100%;
+	box-sizing: border-box;
+	resize: vertical;
+	min-height: 74px;
+	max-height: 25dvh;
+	border: 0;
+	background: none;
+	padding: 13px;
+	font: inherit;
+	font-size: 14px;
+	color: inherit;
+	outline: none;
+}
+.inputTools {
+	display: flex;
+	align-items: center;
+	gap: 2px;
+	padding: 0 6px;
+}
+.inputTools small {
+	margin-left: auto;
+	color: var(--hy-muted);
+	font-size: 11px;
+	padding-right: 8px;
+}
+.preview {
+	padding: 12px;
+	border: 1px solid var(--hy-border);
+	border-radius: 16px;
+	max-height: 20dvh;
+	overflow: auto;
+}
+.sendRow {
+	display: flex;
+	justify-content: center;
 }
 </style>

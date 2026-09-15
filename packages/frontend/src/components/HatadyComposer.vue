@@ -1,377 +1,89 @@
-<!--
-SPDX-FileCopyrightText: Tolehata and hatasaba-project
-SPDX-License-Identifier: AGPL-3.0-only
-旗鯖fork(Hatady 1b): 学習を記録するコンポーザー。
-  何を学んだか + 分野 + 任意の本(ページ進捗) + 学習時間 + 開始時刻 + メモ +
-  この分野の得意/苦手/興味 + 公開範囲。保存で hata/hatady/logs/create に記録する。
-  Hatady のテーマ(hatady-scope)で themed。
--->
+<!-- SPDX-License-Identifier: AGPL-3.0-only -->
 <template>
-<MkWindow
-	ref="dialog"
-	:initialWidth="640"
-	:initialHeight="720"
-	:canResize="true"
-	@closed="emit('closed')"
->
-	<template #header><i class="ti ti-pencil-plus"></i> {{ isEdit ? t('editTitle') : t('record') }}</template>
-
-	<div class="hatady-scope" :data-hatady-theme="theme" :class="$style.body">
-		<!-- 何を学んだ -->
-		<div :class="$style.field">
-			<label :class="$style.label">{{ t('whatLabel') }} <span :class="$style.req">*</span></label>
-			<input v-model="title" :class="$style.input" :placeholder="t('whatPh')">
-		</div>
-
-		<!-- 分野 -->
-		<div :class="$style.field">
-			<label :class="$style.label">{{ t('subjectLabel') }} <span :class="$style.req">*</span></label>
-			<div :class="$style.chipRow">
-				<button v-for="s in subjectChoices" :key="s" :class="[$style.subjectChip, subject === s && $style.subjectChipOn]" :style="subject === s ? { background: pal(s).bg, color: pal(s).fg, borderColor: pal(s).accent } : undefined" @click="subject = s">{{ subjectDisplayName(s) }}</button>
-				<button :class="[$style.subjectChip, $style.subjectAdd]" @click="addSubject"><i class="ti ti-plus"></i> {{ t('add') }}</button>
-				<button :class="[$style.subjectChip, $style.subjectManage]" @click="openSubjectManager"><i class="ti ti-settings"></i> {{ t('manage') }}</button>
-			</div>
-		</div>
-
-		<!-- 本(任意) -->
-		<div :class="$style.field">
-			<label :class="$style.label">{{ t('bookLabel') }} <span :class="$style.optional">({{ t('optional') }})</span></label>
-			<div v-if="selectedBook" :class="$style.bookChip">
-				<HyBookCover :title="selectedBook.title" :author="selectedBook.author" :width="32"/>
-				<div :class="$style.bookInfo"><div :class="$style.bookTitle">{{ selectedBook.title }}</div><div :class="$style.bookAuthor">{{ selectedBook.author }}</div></div>
-				<div :class="$style.pageBox">p. <input v-model.number="pageFrom" type="number" :class="$style.pageInput"> <i class="ti ti-arrow-right"></i> <input v-model.number="pageTo" type="number" :class="$style.pageInput"></div>
-				<button :class="$style.bookClear" @click="clearBook"><i class="ti ti-x"></i></button>
-			</div>
-			<button v-else :class="$style.bookPick" @click="chooseBookAction($event)"><i class="ti ti-books"></i> {{ t('bookPick') }}</button>
-		</div>
-
-		<!-- 時間 -->
-		<div :class="$style.row">
-			<div :class="$style.field">
-				<label :class="$style.label">{{ t('durationLabel') }}</label>
-				<div :class="$style.inlineInput"><i class="ti ti-clock"></i> <input v-model.number="durationMinutes" type="number" min="0" :class="$style.numInput"> {{ t('min') }}</div>
-			</div>
-			<div :class="$style.field">
-				<label :class="$style.label">{{ t('startLabel') }}</label>
-				<input v-model="studiedAtLocal" type="datetime-local" :class="$style.input">
-			</div>
-		</div>
-
-		<!-- メモ -->
-		<div :class="$style.field">
-			<label :class="$style.label">{{ t('memoLabel') }}</label>
-			<textarea v-model="body" :class="$style.textarea" :placeholder="t('memoPh')" rows="3"></textarea>
-		</div>
-
-		<!-- タグ + 公開範囲 -->
-		<div :class="$style.tagRow">
-			<span :class="$style.tagLead">{{ t('tagLead') }}</span>
-			<button v-for="tg in HY_TAGS" :key="tg.key" :class="[$style.tagChip, tag === tg.key && $style.tagChipOn]" :style="tag === tg.key ? { background: tg.bg, color: tg.fg, borderColor: tg.fg } : undefined" @click="tag = tag === tg.key ? null : tg.key">
-				<i :class="['ti', tg.icon]"></i> {{ hyTagLabel(tg.key) }}
-			</button>
-			<button :class="[$style.visChip, visibility !== 'private' && $style.visChipOn]" :title="t('visHint')" @click="cycleVis">
-				<i :class="visibility === 'public' ? 'ti ti-world' : (visibility === 'followers' ? 'ti ti-users' : 'ti ti-lock')"></i>
-				{{ visibility === 'public' ? t('public') : (visibility === 'followers' ? t('followersOnly') : t('private')) }}
-			</button>
-		</div>
-
-		<!-- フッター -->
-		<div :class="$style.footer">
-			<button :class="[$style.btn, $style.btnGhost]" :disabled="saving" @click="dialog?.close()">{{ t('cancel') }}</button>
-			<button :class="[$style.btn, $style.btnPrimary]" :disabled="saving || !title.trim() || !subject.trim()" @click="submit"><i class="ti ti-check"></i> {{ isEdit ? t('updateBtn') : t('submit') }}</button>
-		</div>
-	</div>
-</MkWindow>
+<HatadyFormWizard ref="wizard" v-model="values" :title="isEdit ? '記録を編集' : '今日の記録'" :label="type.label" :icon="type.icon" :pages="pages" :draftId="draftId" :embedded="embedded" :restore="restoreDraft" :save="save" :saveLabel="isEdit ? '変更を保存' : '記録を保存'" @done="emit('done', $event)" @closed="emit('closed')" @back="emit('back')"/>
 </template>
-
-<script lang="ts" setup>
-import { ref, computed, useTemplateRef, onMounted } from 'vue';
-import MkWindow from '@/components/MkWindow.vue';
-import HyBookCover from '@/components/HyBookCover.vue';
-import * as os from '@/os.js';
-import { i18n } from '@/i18n.js';
+<script setup lang="ts">
+import { computed, onMounted, ref, useTemplateRef, watch } from 'vue';
+import type { HatadyFormPage, HatadyFormValues } from '@/utility/hatady-form.js';
+import type { HatadyMediaWork } from '@/utility/hatady-media.js';
+import HatadyFormWizard from '@/components/HatadyFormWizard.vue';
 import { misskeyApi } from '@/utility/misskey-api.js';
-import { hySubjectPalette, HY_TAGS, hyTagLabel } from '@/utility/hatady.js';
-import type { HyTag } from '@/utility/hatady.js';
+import { HATADY_ACTIVITY_CHOICES, HATADY_RECORD_TAGS, hatadySeconds } from '@/utility/hatady-ui.js';
+import { formField as f, formTimestamp, localDateTime, optionalPages, restoreLegacyTime } from '@/utility/hatady-form.js';
 import { hySubjects, loadHySubjects, saveHySubject } from '@/utility/hatady-subjects.js';
-import { hatadyTheme } from '@/utility/hatady-prefs.js';
-import { useHataFormDraft } from '@/utility/hata-form-draft.js';
-
-const props = defineProps<{ editLog?: any }>();
-const emit = defineEmits<{ (ev: 'done', v: any): void; (ev: 'closed'): void }>();
-const dialog = useTemplateRef('dialog');
-const theme = hatadyTheme;
-const copy = i18n.ts._hata._hatady._composer;
-
-const isEdit = props.editLog != null;
-const editLog = props.editLog;
-
-const title = ref(editLog?.title ?? '');
-const subject = ref(editLog?.subject ?? '');
-// 分野候補: レジストリ/ログ由来の分野(頻度順) ∪ 既定分野 ∪ 編集中の分野。
-const DEFAULT_SUBJECTS = ['プログラミング', '数学', '英語', '読書', '歴史'];
-const DEFAULT_SUBJECT_LABELS: Record<string, () => string> = {
-	プログラミング: () => copy.defaultSubjectProgramming,
-	数学: () => copy.defaultSubjectMathematics,
-	英語: () => copy.defaultSubjectEnglish,
-	読書: () => copy.defaultSubjectReading,
-	歴史: () => copy.defaultSubjectHistory,
-};
-
-function subjectDisplayName(name: string): string {
-	return DEFAULT_SUBJECT_LABELS[name]?.() ?? name;
-}
-
-const subjectChoices = computed<string[]>(() => {
-	const names: string[] = [];
-	const seen = new Set<string>();
-	const cur = subject.value?.trim();
-	if (cur) { seen.add(cur); names.push(cur); }
-	for (const s of hySubjects.value) { if (!seen.has(s.name)) { seen.add(s.name); names.push(s.name); } }
-	for (const d of DEFAULT_SUBJECTS) { if (!seen.has(d)) { seen.add(d); names.push(d); } }
-	return names;
+import * as os from '@/os.js';
+const props = withDefaults(defineProps<{ editLog?: any; kind?: 'study' | 'exercise' | 'work'; work?: HatadyMediaWork | null; embedded?: boolean }>(), { embedded: false, work: null });
+const emit = defineEmits<{ (event: 'done', value: any): void; (event: 'closed'): void; (event: 'back'): void }>();
+const wizard = useTemplateRef('wizard'), source = props.editLog, isEdit = source != null, kind = props.kind ?? source?.kind ?? 'study';
+const type = HATADY_ACTIVITY_CHOICES.find(choice => choice.value === kind) ?? HATADY_ACTIVITY_CHOICES[0];
+const draftId = isEdit ? `hatady:log:edit:${source.id}` : kind === 'study' ? 'hatady:log:create' : `hatady:log:${kind}:create`;
+const books = ref<any[]>([]), works = ref<HatadyMediaWork[]>([]);
+const values = ref<HatadyFormValues>({
+	title: source?.title ?? props.work?.title ?? '', subject: source?.subject ?? props.work?.details?.genre ?? '', bookId: source?.bookId ?? source?.book?.id ?? '', selectedBook: source?.book ?? null,
+	mediaWorkId: source?.mediaWorkId ?? props.work?.id ?? '', pageFrom: source?.pageFrom ?? '', pageTo: source?.pageTo ?? '',
+	durationSeconds: source ? hatadySeconds(source) : null, date: localDateTime(source?.studiedAt).slice(0, 10), startedAt: source && Object.hasOwn(source, 'startedAt') ? source.startedAt ?? '' : source?.studiedAt ? localDateTime(source.studiedAt).slice(11) : '',
+	body: source?.body ?? '', tags: Array.isArray(source?.tags) ? [...source.tags] : source?.tag ? [source.tag] : [], visibility: source?.visibility ?? (source?.isPublic === false ? 'private' : 'public'),
+	calories: source?.details?.calories ?? '', place: source?.details?.place ?? '', nextStep: source?.details?.nextStep ?? '', note: source?.details?.note ?? '', pages: source?.details?.pages ?? '', spoiler: source?.details?.spoiler ?? false,
 });
-const selectedBook = ref<any>(editLog?.book ?? null);
-const pageFrom = ref<number | null>(editLog?.pageFrom ?? null);
-const pageTo = ref<number | null>(editLog?.pageTo ?? null);
-const durationMinutes = ref<number>(editLog?.durationMinutes ?? 30);
-const body = ref(editLog?.body ?? '');
-const tag = ref<HyTag | null>(editLog?.tag ?? null);
-// 公開範囲: public=全体 / followers=フォロワー限定 / private=自分のみ。
-type Vis = 'public' | 'followers' | 'private';
-const VIS_ORDER: Vis[] = ['public', 'followers', 'private'];
-const initVis: Vis = (editLog?.visibility === 'public' || editLog?.visibility === 'followers' || editLog?.visibility === 'private')
-	? editLog.visibility
-	: (editLog ? (editLog.isPublic ? 'public' : 'private') : 'public');
-const visibility = ref<Vis>(initVis);
+const subjects = computed(() => [...new Set([values.value.subject, ...hySubjects.value.map(item => item.name), 'プログラミング', '数学', '英語', '読書', '歴史'])].filter(Boolean));
+const pages = computed<HatadyFormPage[]>(() => [
+	{ id: 'basics', title: kind === 'exercise' ? 'どんな運動をした？' : kind === 'work' ? 'どの作業を進めた？' : '今日は、何を学んだ？', fields: [
+		...(kind === 'work' ? [f('mediaWorkId', '作業', { type: 'select', options: [{ value: '', label: '作業を選ぶ' }, ...works.value.map(work => ({ value: work.id, label: work.title }))], action: { label: '作業を登録', run: addWork } })] : []),
+		f('title', kind === 'exercise' ? '運動の種類' : kind === 'work' ? '今日取り組んだこと' : '学んだこと・読んだ本', { required: true, maxlength: 512, placeholder: kind === 'exercise' ? '例：ウォーキング' : kind === 'work' ? '例：トップページを整えた' : '例：気になった一節をノートに' }),
+		...(kind !== 'exercise' ? [f('subject', '分野', { required: kind === 'study', maxlength: 64, suggestions: subjects.value, action: kind === 'study' ? { label: '分野を管理', run: manageSubjects } : undefined })] : []),
+	] },
+	...(kind === 'study' ? [{ id: 'book', title: '本と一緒に残す？', fields: [f('bookId', '本', { type: 'select', options: [{ value: '', label: '本を選ばずに記録' }, ...books.value.map(book => ({ value: book.id, label: book.title }))], action: { label: '本を登録', run: addBook } }), f('pageFrom', '読み始めたページ', { type: 'number', min: 0, max: 100000, when: data => !!data.bookId }), f('pageTo', '読み終えたページ', { type: 'number', min: 0, max: 100000, when: data => !!data.bookId })] }] : []),
+	{ id: 'body', title: 'ひとこと、残そう', fields: [f('body', '内容・感想', { type: 'textarea', placeholder: '感じたことを、ひとこと。' }), f('spoiler', 'ネタバレを含む', { type: 'checkbox' })] },
+	{ id: 'time', title: 'どのくらい取り組んだ？', fields: [f('durationSeconds', kind === 'exercise' ? '運動時間' : kind === 'work' ? '作業時間' : '取り組んだ時間', { type: 'duration', min: 0, step: 1, presets: kind === 'exercise' ? [5, 15, 30, 60] : [15, 30, 60, 120] }), f('startedAt', '開始時刻', { type: 'time', step: '0.001' }), ...(kind === 'exercise' ? [f('calories', '消費カロリー（kcal）', { type: 'number', min: 0, max: 1000000, step: 1 })] : [])] },
+	...(kind === 'work' ? [{ id: 'progress', title: '進み具合と次の一歩', fields: [f('tags', '作業の状態', { type: 'tags', options: HATADY_RECORD_TAGS.filter(tag => ['progress', 'smooth', 'blocked', 'review', 'doneDay', 'doneAll'].includes(tag.value)) }), f('nextStep', '次にやること', { maxlength: 240 })] }] : []),
+	{ id: 'tags', title: 'どんな記録になった？', fields: [f('tags', 'この記録につけるタグ', { type: 'tags', options: HATADY_RECORD_TAGS.filter(tag => ['strength', 'weak', 'interest', 'effort', 'recommend', ...(kind === 'study' ? ['movie', 'game'] : [])].includes(tag.value)) })] },
+	{ id: 'details', title: '詳しく残すことを選ぼう', choices: true, fields: [] },
+	...optionalPages('context', '場所と補足', [f('place', '場所', { maxlength: 120 }), ...(kind === 'study' ? [f('pages', '読んだページの補足', { maxlength: 60 })] : []), f('note', '補足', { type: 'textarea', maxlength: 8192 })], 'ti ti-map-pin'),
+	{ id: 'sharing', title: '記録日と公開範囲', fields: [f('date', '記録日', { type: 'date', required: true }), f('visibility', '記録の公開範囲', { type: 'visibility' })], description: '「自分のみ」の記録も、モデレーターは閲覧できます。' },
+	{ id: 'review', title: 'この内容で残す', summary: true, fields: [] },
+]);
 
-function cycleVis() { visibility.value = VIS_ORDER[(VIS_ORDER.indexOf(visibility.value) + 1) % VIS_ORDER.length]; }
-
-const saving = ref(false);
-const myBooks = ref<any[]>([]);
-
-// datetime-local 用のローカル文字列(既定=今 / 編集時は元の学習時刻)。
-function nowLocal(): string {
-	const d = new Date();
-	d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-	return d.toISOString().slice(0, 16);
+function restoreDraft(draft: HatadyFormValues) {
+	const restored = restoreLegacyTime(draft);
+	if (!Object.hasOwn(restored, 'bookId') && Object.hasOwn(restored, 'selectedBook')) restored.bookId = restored.selectedBook?.id ?? '';
+	return restored;
 }
 
-function toLocal(iso: string): string {
-	const d = new Date(iso);
-	d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-	return d.toISOString().slice(0, 16);
-}
-
-const studiedAtLocal = ref(editLog?.studiedAt ? toLocal(editLog.studiedAt) : nowLocal());
-
-type ComposerDraft = { title: string; subject: string; selectedBook: any | null; pageFrom: number | null; pageTo: number | null; durationMinutes: number; body: string; tag: HyTag | null; visibility: Vis; studiedAtLocal: string };
-const { clearDraft } = useHataFormDraft<ComposerDraft>({
-	id: `hatady:log:${isEdit ? `edit:${editLog.id}` : 'create'}`,
-	capture: () => ({ title: title.value, subject: subject.value, selectedBook: selectedBook.value, pageFrom: pageFrom.value, pageTo: pageTo.value, durationMinutes: durationMinutes.value, body: body.value, tag: tag.value, visibility: visibility.value, studiedAtLocal: studiedAtLocal.value }),
-	restore: draft => {
-		title.value = typeof draft.title === 'string' ? draft.title : '';
-		subject.value = typeof draft.subject === 'string' ? draft.subject : '';
-		selectedBook.value = draft.selectedBook && typeof draft.selectedBook === 'object' ? draft.selectedBook : null;
-		pageFrom.value = typeof draft.pageFrom === 'number' ? draft.pageFrom : null;
-		pageTo.value = typeof draft.pageTo === 'number' ? draft.pageTo : null;
-		durationMinutes.value = typeof draft.durationMinutes === 'number' ? draft.durationMinutes : 30;
-		body.value = typeof draft.body === 'string' ? draft.body : '';
-		tag.value = draft.tag === 'strength' || draft.tag === 'weak' || draft.tag === 'interest' ? draft.tag : null;
-		visibility.value = draft.visibility === 'followers' || draft.visibility === 'private' ? draft.visibility : 'public';
-		studiedAtLocal.value = typeof draft.studiedAtLocal === 'string' ? draft.studiedAtLocal : nowLocal();
-	},
-	isMeaningful: draft => draft.title.trim().length > 0 || draft.subject.trim().length > 0 || draft.body.trim().length > 0 || draft.selectedBook != null,
-});
-
-function t(key: string): string { return (copy as unknown as Record<string, string>)[key] ?? key; }
-
-function pal(s: string) { return hySubjectPalette(s); }
-
+watch(() => values.value.bookId, (id, previous) => { const book = books.value.find(item => item.id === id); if (book) values.value.selectedBook = book; if (id !== previous && book && values.value.pageFrom === '') values.value.pageFrom = book.currentPage ?? ''; });
+watch(() => values.value.mediaWorkId, id => { const work = works.value.find(item => item.id === id); if (work && !values.value.title) values.value.title = work.title; });
 onMounted(async () => {
-	myBooks.value = await misskeyApi('hata/hatady/books', { limit: 50 }).catch(() => []);
-	// 分野候補(レジストリ/ログ由来)と色設定を読み込む。
-	loadHySubjects().catch(() => {});
+	if (kind === 'study') {
+		loadHySubjects().catch(() => {});
+		books.value = await (misskeyApi as any)('hata/hatady/books', { limit: 100 }).catch(() => []);
+		if (source?.book && !books.value.some(book => book.id === source.book.id)) books.value.unshift(source.book);
+		if (values.value.selectedBook?.id && !books.value.some(book => book.id === values.value.selectedBook.id)) books.value.unshift(values.value.selectedBook);
+	}
+	if (kind === 'work') {
+		const response = await (misskeyApi as any)('hata/hatady/media/works/list', { kind: 'work', limit: 100 }).catch(() => []);
+		works.value = Array.isArray(response) ? response : response.items ?? [];
+		if (props.work && !works.value.some(work => work.id === props.work!.id)) works.value.unshift(props.work);
+	}
 });
 
-async function addSubject() {
-	const { canceled, result } = await os.inputText({ title: t('subjectLabel'), placeholder: t('subjectExample') });
-	if (canceled || !result?.trim()) return;
-	const s = result.trim();
-	subject.value = s;
-	// レジストリに登録して次回以降も候補・管理対象にする(色は自動)。
-	saveHySubject(s, null).catch(() => {});
+async function manageSubjects() { const { dispose } = os.popup((await import('@/components/HatadySubjectManager.vue')).default, {}, { changed: () => loadHySubjects().catch(() => {}), closed: () => dispose() }); }
+
+async function addBook() { const { dispose } = os.popup((await import('@/components/HatadyBookForm.vue')).default, {}, { done: (book: any) => { books.value.unshift(book); values.value.selectedBook = book; values.value.bookId = book.id; }, closed: () => dispose() }); }
+
+async function addWork() { const { dispose } = os.popup((await import('@/components/HatadyMediaWorkForm.vue')).default, { kind: 'work' }, { done: (work: HatadyMediaWork) => { works.value.unshift(work); values.value.mediaWorkId = work.id; if (!values.value.title) values.value.title = work.title; }, closed: () => dispose() }); }
+
+async function save(data: HatadyFormValues) {
+	const tags = [...new Set<string>(data.tags)], legacyTag = tags.find(tag => ['strength', 'weak', 'interest', 'movie', 'game'].includes(tag)) ?? null;
+	const payload = {
+		...(isEdit ? { logId: source.id } : {}), kind, title: data.title.trim(), subject: (kind === 'exercise' ? source?.subject || '運動' : data.subject).trim() || '作業',
+		tags, tag: legacyTag, body: data.body.trim() || null, visibility: data.visibility, durationSeconds: data.durationSeconds, startedAt: data.startedAt || null,
+		studiedAt: formTimestamp(data.date, source?.studiedAt), bookId: kind === 'study' && data.bookId ? data.bookId : null, mediaWorkId: kind === 'work' && data.mediaWorkId ? data.mediaWorkId : null,
+		pageFrom: data.bookId && data.pageFrom !== '' && data.pageFrom != null ? Number(data.pageFrom) : null, pageTo: data.bookId && data.pageTo !== '' && data.pageTo != null ? Number(data.pageTo) : null,
+		details: { ...source?.details, place: data.place, note: data.note, spoiler: data.spoiler, ...(kind === 'exercise' ? { calories: data.calories === '' || data.calories == null ? null : Number(data.calories) } : kind === 'work' ? { nextStep: data.nextStep } : { pages: data.pages }) },
+	};
+	const result = await (misskeyApi as any)(isEdit ? 'hata/hatady/logs/update' : 'hata/hatady/logs/create', payload);
+	if (kind === 'study') saveHySubject(data.subject.trim(), null).catch(() => {});
+	return result;
 }
 
-// 分野の管理(色指定・削除・付け替え)モーダルを開く。
-async function openSubjectManager() {
-	const { dispose } = os.popup((await import('@/components/HatadySubjectManager.vue')).default, {}, {
-		changed: () => { loadHySubjects().catch(() => {}); },
-		closed: () => dispose(),
-	});
-}
-
-// まず「本を選ぶ / 本を追加」を選択させ、それぞれのフローへ分岐する(メニューはボタンにアンカー)。
-function chooseBookAction(ev: MouseEvent) {
-	const anchor = (ev.currentTarget ?? ev.target) as HTMLElement;
-	const items: any[] = [];
-	if (myBooks.value.length > 0) {
-		items.push({ text: copy.pickBook, icon: 'ti ti-books', action: () => pickExistingBook(anchor) });
-	}
-	items.push({ text: copy.addBook, icon: 'ti ti-plus', action: () => addBook() });
-	os.popupMenu(items, anchor);
-}
-
-// 既存の本から選ぶ(メニューはボタンにアンカー)。
-function pickExistingBook(anchor: HTMLElement) {
-	const items: any[] = myBooks.value.map(b => ({
-		text: b.title + (b.author ? ` / ${b.author}` : ''),
-		action: () => { selectedBook.value = b; pageFrom.value = b.currentPage || null; },
-	}));
-	os.popupMenu(items, anchor);
-}
-
-async function addBook() {
-	// デザイン案 1i の専用モーダル(表紙プレビュー+色選択)で本を追加する。
-	const { dispose } = os.popup((await import('@/components/HatadyBookForm.vue')).default, {}, {
-		done: (book: any) => {
-			myBooks.value.unshift(book);
-			selectedBook.value = book;
-			pageFrom.value = book.currentPage || null;
-		},
-		closed: () => dispose(),
-	});
-}
-
-function clearBook() { selectedBook.value = null; pageFrom.value = null; pageTo.value = null; }
-
-async function submit() {
-	if (!title.value.trim() || !subject.value.trim()) return;
-	saving.value = true;
-	try {
-		if (isEdit) {
-			// 編集: 対応フィールド(タイトル/分野/タグ/メモ/時間/公開範囲)を更新する。
-			const payload = {
-				logId: editLog.id,
-				title: title.value.trim(),
-				subject: subject.value.trim(),
-				durationMinutes: Number(durationMinutes.value) || 0,
-				visibility: visibility.value,
-				tag: tag.value ?? null,
-				body: body.value.trim() || null,
-			};
-			const log = await misskeyApi('hata/hatady/logs/update', payload);
-			clearDraft();
-			os.success();
-			emit('done', log);
-			dialog.value?.close();
-			return;
-		}
-		// バックエンドの ajv は nullable を解さず null を弾くため、任意項目は null を送らず「省略」する。
-		//   数値入力は v-model.number が空時に "" を返すので Number 化して不正値を防ぐ。
-		const payload = {
-			title: title.value.trim(),
-			subject: subject.value.trim(),
-			durationMinutes: Number(durationMinutes.value) || 0,
-			visibility: visibility.value,
-			tag: tag.value ?? undefined,
-			body: body.value.trim() || undefined,
-			bookId: selectedBook.value?.id ?? undefined,
-			pageFrom: pageFrom.value != null && (pageFrom.value as unknown) !== '' ? Number(pageFrom.value) : undefined,
-			pageTo: pageTo.value != null && (pageTo.value as unknown) !== '' ? Number(pageTo.value) : undefined,
-			studiedAt: undefined as string | undefined,
-		};
-		if (studiedAtLocal.value) {
-			const d = new Date(studiedAtLocal.value);
-			if (!isNaN(d.getTime())) payload.studiedAt = d.toISOString();
-		}
-		const log = await misskeyApi('hata/hatady/logs/create', payload);
-		clearDraft();
-		os.success();
-		emit('done', log);
-		dialog.value?.close();
-	} finally {
-		saving.value = false;
-	}
-}
+defineExpose({ requestClose: () => wizard.value?.requestClose() });
 </script>
-
-<style lang="scss" module>
-.body {
-	padding: 20px;
-	display: flex;
-	flex-direction: column;
-	gap: 16px;
-	background: var(--hy-bg);
-	color: var(--hy-body);
-	font-family: 'Noto Sans JP', 'Hiragino Sans', system-ui, sans-serif;
-	min-height: 100%;
-	box-sizing: border-box;
-}
-.field { display: flex; flex-direction: column; }
-.row { display: flex; gap: 14px; }
-.row .field { flex: 1; }
-.label { font-family: var(--hy-heading); font-size: 12px; font-weight: 700; color: var(--hy-ink); margin-bottom: 7px; }
-.req { color: #d9534f; }
-.optional { font-weight: 500; color: var(--hy-muted); }
-.input, .textarea, .inlineInput, .numInput {
-	background: var(--hy-surface); border: 1px solid var(--hy-border); border-radius: 10px;
-	padding: 11px 13px; font-size: 14px; color: var(--hy-ink); font-family: inherit; outline: none;
-}
-.input:focus, .textarea:focus { border-color: var(--hy-accent); }
-.textarea { resize: vertical; line-height: 1.7; }
-.inlineInput { display: flex; align-items: center; gap: 8px; font-weight: 700; }
-.inlineInput i { color: var(--hy-accent); }
-.numInput { width: 80px; padding: 4px 8px; text-align: right; }
-
-.chipRow { display: flex; flex-wrap: wrap; gap: 7px; }
-.subjectChip { font-size: 12px; font-weight: 700; padding: 5px 13px; border-radius: 999px; background: var(--hy-chip-bg); color: var(--hy-muted); border: 1.5px solid transparent; cursor: pointer; }
-.subjectChipOn { }
-.subjectAdd { border-style: dashed; border-color: var(--hy-border); color: var(--hy-muted); }
-.subjectManage { border-style: dashed; border-color: var(--hy-border); color: var(--hy-muted); }
-.subjectManage:hover { border-color: var(--hy-accent); color: var(--hy-accent); }
-
-.bookChip { display: flex; align-items: center; gap: 11px; background: var(--hy-chip-bg); border: 1px solid var(--hy-border); border-radius: 10px; padding: 10px 12px; }
-.bookInfo { flex: 1; min-width: 0; }
-.bookTitle { font-family: var(--hy-serif); font-weight: 600; font-size: 13px; color: var(--hy-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.bookAuthor { font-size: 11px; color: var(--hy-muted); }
-.pageBox { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--hy-ink); background: var(--hy-surface); border: 1px solid var(--hy-border); border-radius: 8px; padding: 4px 9px; }
-.pageInput { width: 46px; background: none; border: none; color: var(--hy-ink); text-align: center; font-weight: 700; outline: none; }
-.bookClear { background: none; border: none; color: var(--hy-muted); cursor: pointer; }
-.bookPick { display: inline-flex; align-items: center; gap: 7px; background: var(--hy-chip-bg); border: 1px dashed var(--hy-border); border-radius: 10px; padding: 11px 14px; color: var(--hy-muted); cursor: pointer; font-size: 13px; align-self: flex-start; }
-.bookPick:hover { border-color: var(--hy-accent); color: var(--hy-accent); }
-
-.tagRow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.tagLead { font-family: var(--hy-heading); font-size: 12px; font-weight: 700; color: var(--hy-ink); }
-.tagChip { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; font-weight: 700; padding: 4px 11px; border-radius: 999px; background: var(--hy-chip-bg); color: var(--hy-muted); border: 1.5px solid transparent; cursor: pointer; }
-.tagChipOn { }
-.visChip { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 600; padding: 5px 12px; border-radius: 999px; background: var(--hy-chip-bg); border: 1px solid var(--hy-border); color: var(--hy-body); cursor: pointer; }
-.visChipOn { color: #4e7d4a; }
-
-.footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: auto; padding-top: 6px; }
-.btn {
-	display: inline-flex; align-items: center; gap: 6px;
-	border-radius: 999px; padding: 9px 22px;
-	font-weight: 700; font-family: var(--hy-heading); font-size: 14px;
-	cursor: pointer; border: 1.5px solid transparent; transition: filter .15s, opacity .15s;
-}
-.btn:disabled { opacity: .45; cursor: not-allowed; }
-.btnGhost { background: var(--hy-surface); color: var(--hy-ink); border-color: var(--hy-border); }
-.btnGhost:not(:disabled):hover { filter: brightness(0.96); }
-.btnPrimary { background: linear-gradient(90deg, #e0955a, #d9824a); color: #fff; box-shadow: 0 2px 8px rgba(217,130,74,.35); }
-.btnPrimary:not(:disabled):hover { filter: brightness(1.05); }
-
-/* 旗鯖fork: モバイル(狭幅)対応。「学習時間 / 開始時刻」の2カラムや本チップが
-   はみ出さないよう縦積み・折り返しにし、datetime-local 等の最小幅による横溢れを防ぐ。 */
-@media (max-width: 560px) {
-	.body { padding: 16px; gap: 14px; }
-	/* 2カラム(学習時間/開始時刻)を縦積みに */
-	.row { flex-direction: column; gap: 14px; }
-	/* 入力は親幅に収める(datetime-local の内在幅で溢れないように) */
-	.input, .textarea { width: 100%; min-width: 0; box-sizing: border-box; }
-	.field { min-width: 0; }
-	/* 本チップは折り返し可に。ページ入力ボックスは次行へ回す */
-	.bookChip { flex-wrap: wrap; }
-	.pageBox { order: 3; margin-left: 44px; }
-}
-</style>

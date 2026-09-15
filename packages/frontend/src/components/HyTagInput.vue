@@ -16,7 +16,10 @@ ordered を付けると順番を番号で示す(武器・装備の順序のよ�
 	</div>
 	<div :class="$style.entry">
 		<input
+			:id="inputId"
 			v-model="draft"
+			:aria-label="inputLabel"
+			:name="inputName"
 			type="text"
 			:class="$style.input"
 			:placeholder="placeholder"
@@ -34,12 +37,15 @@ ordered を付けると順番を番号で示す(武器・装備の順序のよ�
 </template>
 
 <script lang="ts" setup>
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 
 const items = defineModel<string[]>({ required: true });
 
 const props = withDefaults(defineProps<{
 	placeholder?: string;
+	inputId?: string;
+	inputLabel?: string;
+	inputName?: string;
 	addLabel: string;
 	removeLabel: string;
 	ordered?: boolean;
@@ -57,7 +63,7 @@ const props = withDefaults(defineProps<{
 // ⚠️<script setup> は実体ごとに評価されるので、モジュール変数の連番ではなく毎回別の値を引く。
 const listId = `hy-tag-input-${Math.random().toString(36).slice(2, 10)}`;
 
-const draft = ref('');
+const draft = defineModel<string>('pending', { default: '' });
 
 // すでに追加した項目は候補から外す(重複は commitDraft 側で弾くので、出しても選べない)。
 const unusedSuggestions = computed(() => props.suggestions.filter(value => !items.value.includes(value)));
@@ -83,12 +89,12 @@ function removeAt(index: number) {
 .chip { display: inline-flex; align-items: center; gap: 5px; max-width: 100%; padding: 4px 4px 4px 9px; border: 1px solid var(--hy-border); border-radius: 999px; background: var(--hy-surface-2); color: var(--hy-ink); font-size: 11.5px; }
 .chipIndex { display: inline-grid; flex: 0 0 auto; place-items: center; width: 16px; height: 16px; border-radius: 999px; background: color-mix(in srgb, var(--hy-accent) 18%, transparent); color: var(--hy-accent-ink); font-size: 9.5px; font-weight: 800; }
 .chipText { overflow-wrap: anywhere; min-width: 0; }
-.chipRemove { display: inline-grid; flex: 0 0 auto; place-items: center; width: 18px; height: 18px; padding: 0; border: 0; border-radius: 999px; background: transparent; color: var(--hy-muted); font-size: 12px; cursor: pointer; }
+.chipRemove { display: inline-grid; flex: 0 0 auto; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 999px; background: transparent; color: var(--hy-muted); font-size: 12px; cursor: pointer; }
 .chipRemove:hover { background: color-mix(in srgb, var(--hy-ink) 10%, transparent); color: var(--hy-ink); }
 .entry { display: flex; gap: 6px; min-width: 0; }
 .input { flex: 1; min-width: 0; box-sizing: border-box; padding: 9px 11px; border: 1px solid var(--hy-border); border-radius: 9px; outline: none; background: var(--hy-surface); color: var(--hy-ink); font: inherit; }
 .input:focus { border-color: var(--hy-accent); }
-.add { display: grid; flex: 0 0 auto; place-items: center; width: 38px; border: 1px solid var(--hy-border); border-radius: 9px; background: var(--hy-surface); color: var(--hy-ink); font-size: 15px; cursor: pointer; }
+.add { display: grid; flex: 0 0 auto; place-items: center; width: 44px; min-height: 44px; border: 1px solid var(--hy-border); border-radius: 9px; background: var(--hy-surface); color: var(--hy-ink); font-size: 15px; cursor: pointer; }
 .add:hover:not(:disabled) { border-color: var(--hy-accent); color: var(--hy-accent-ink); }
 .add:disabled { opacity: .42; cursor: default; }
 </style>

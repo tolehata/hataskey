@@ -8,7 +8,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 <template>
 <span :class="$style.root">
 	<button
-		v-for="(count, emoji) in reactionsLocal" :key="emoji"
+		v-for="(count, emoji) in reactionsLocal"
+		:key="emoji"
+		:disabled="busy"
+		:aria-pressed="myReactionLocal === emoji"
 		:class="[$style.pill, myReactionLocal === emoji && $style.pillOn]"
 		:title="myReactionLocal === emoji ? copy.remove : copy.add"
 		:aria-label="myReactionLocal === emoji ? copy.remove : copy.add"
@@ -17,26 +20,43 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<MkReactionIcon :class="$style.icon" :reaction="String(emoji)"/>
 		<span :class="$style.count">{{ count }}</span>
 	</button>
-	<button ref="addEl" :class="$style.add" :title="copy.add" :aria-label="copy.add" @click="openPicker"><i class="ti ti-mood-plus"></i></button>
+	<button
+		ref="addEl"
+		:disabled="busy"
+		:class="$style.add"
+		:title="copy.add"
+		:aria-label="copy.add"
+		@click="openPicker"
+	>
+		<i class="ti ti-mood-plus"></i>
+	</button>
 </span>
 </template>
 
 <script lang="ts" setup>
-import { ref, useTemplateRef } from 'vue';
+import { ref, watch, useTemplateRef } from 'vue';
 import MkReactionIcon from '@/components/MkReactionIcon.vue';
 import { i18n } from '@/i18n.js';
 import { reactionPicker } from '@/utility/reaction-picker.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
+import { hatadyNotify } from '@/utility/hatady-ui.js';
 
 const copy = i18n.ts._hata._hatady._reactions;
 
 const props = defineProps<{
-	target: { logId?: string | null; commentId?: string | null };
+	target: {
+		logId?: string | null;
+		commentId?: string | null;
+		sessionId?: string | null;
+		mediaCommentId?: string | null;
+	};
 	reactions: Record<string, number>;
 	myReaction: string | null;
 }>();
 
-const emit = defineEmits<{ (ev: 'changed', v: { reactions: Record<string, number>; myReaction: string | null }): void }>();
+const emit = defineEmits<{
+	(ev: 'changed', v: { reactions: Record<string, number>; myReaction: string | null }): void;
+}>();
 
 // 楽観的更新用のローカル状態。
 const reactionsLocal = ref<Record<string, number>>({ ...props.reactions });
@@ -58,6 +78,7 @@ function localApplyReact(emoji: string) {
 	r[emoji] = (r[emoji] ?? 0) + 1;
 	apply(r, emoji);
 }
+
 function localApplyUnreact() {
 	const r = { ...reactionsLocal.value };
 	const prev = myReactionLocal.value;
@@ -65,20 +86,46 @@ function localApplyUnreact() {
 	apply(r, null);
 }
 
+const busy = ref(false);
+watch(
+	() => [props.reactions, props.myReaction],
+	() => {
+		if (!busy.value) {
+			reactionsLocal.value = { ...props.reactions };
+			myReactionLocal.value = props.myReaction;
+		}
+	},
+	{ deep: true },
+);
+
 async function toggle(emoji: string) {
-	if (myReactionLocal.value === emoji) {
-		localApplyUnreact();
-		await misskeyApi('hata/hatady/reactions/delete', { ...cleanTarget() }).catch(() => {});
-	} else {
-		localApplyReact(emoji);
-		await misskeyApi('hata/hatady/reactions/create', { ...cleanTarget(), reaction: emoji }).catch(() => {});
+	if (busy.value) return;
+	busy.value = true;
+	const remove = myReactionLocal.value === emoji;
+	try {
+		const media = !!(props.target.sessionId || props.target.mediaCommentId);
+		const payload = media
+			? {
+				targetType: props.target.mediaCommentId ? 'comment' : 'session',
+				targetId: props.target.mediaCommentId || props.target.sessionId,
+			}
+			: cleanTarget();
+		await (misskeyApi as any)(`hata/hatady/${media ? 'media/' : ''}reactions/${remove ? 'delete' : 'create'}`, {
+			...payload,
+			...(!remove ? { reaction: emoji } : {}),
+		});
+		if (remove) localApplyUnreact();
+		else localApplyReact(emoji);
+	} catch {
+		hatadyNotify('リアクションを変更できませんでした');
+	} finally {
+		busy.value = false;
 	}
 }
 
 function openPicker() {
-	reactionPicker.show(addEl.value ?? null, null, async (reaction) => {
-		localApplyReact(reaction);
-		await misskeyApi('hata/hatady/reactions/create', { ...cleanTarget(), reaction }).catch(() => {});
+	if (!busy.value) reactionPicker.show(addEl.value ?? null, null, (reaction) => {
+		void toggle(reaction);
 	});
 }
 
@@ -92,23 +139,57 @@ function cleanTarget(): Record<string, string> {
 </script>
 
 <style lang="scss" module>
-.root { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.root {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	flex-wrap: wrap;
+}
 .pill {
-	display: inline-flex; align-items: center; gap: 4px;
-	padding: 2px 9px; border-radius: 999px;
-	background: var(--hy-chip-bg); border: 1.5px solid transparent;
-	font-size: 12px; font-weight: 700; color: var(--hy-body); cursor: pointer;
-	transition: all .12s;
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	min-height: 44px;
+	padding: 5px 12px;
+	border-radius: 999px;
+	background: var(--hy-chip-bg);
+	border: 1.5px solid transparent;
+	font-size: 12px;
+	font-weight: 700;
+	color: var(--hy-body);
+	cursor: pointer;
+	transition: all 0.12s;
 }
-.pill:hover { border-color: var(--hy-border); }
-.pillOn { background: color-mix(in srgb, var(--hy-accent) 18%, transparent); border-color: var(--hy-accent); color: var(--hy-accent-ink); }
-.icon { height: 1.3em; }
-.count { line-height: 1; }
+.pill:hover {
+	border-color: var(--hy-border);
+}
+.pillOn {
+	background: color-mix(in srgb, var(--hy-accent) 18%, transparent);
+	border-color: var(--hy-accent);
+	color: var(--hy-accent-ink);
+}
+.icon {
+	height: 1.3em;
+}
+.count {
+	line-height: 1;
+}
 .add {
-	display: inline-flex; align-items: center; justify-content: center;
-	width: 26px; height: 24px; border-radius: 999px;
-	background: var(--hy-chip-bg); border: 1px solid var(--hy-border); color: var(--hy-body);
-	cursor: pointer; transition: all .12s;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 44px;
+	height: 44px;
+	border-radius: 999px;
+	background: var(--hy-chip-bg);
+	border: 1px solid var(--hy-border);
+	color: var(--hy-body);
+	cursor: pointer;
+	transition: all 0.12s;
 }
-.add:hover { background: var(--hy-accent); color: #fff; border-color: transparent; }
+.add:hover {
+	background: var(--hy-accent);
+	color: #fff;
+	border-color: transparent;
+}
 </style>

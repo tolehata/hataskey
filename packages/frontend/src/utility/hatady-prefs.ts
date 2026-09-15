@@ -15,27 +15,41 @@ import { ref } from 'vue';
 import { miLocalStorage } from '@/local-storage.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 
-export type HatadyTheme = 'paper' | 'espresso' | 'hataskey';
+export type HatadyTheme = 'light' | 'dark' | 'paper' | 'espresso' | 'hataskey';
 export type HatadyLang = 'ja' | 'en' | 'auto';
 
 const REG_SCOPE = ['client', 'hatady'];
 const REG_KEY = 'display';
 
-function isTheme(v: unknown): v is HatadyTheme { return v === 'paper' || v === 'espresso' || v === 'hataskey'; }
+function isTheme(v: unknown): v is HatadyTheme { return v === 'light' || v === 'dark' || v === 'paper' || v === 'espresso' || v === 'hataskey'; }
+
 function isLang(v: unknown): v is HatadyLang { return v === 'ja' || v === 'en' || v === 'auto'; }
 
 function readThemeCache(): HatadyTheme {
-	const v = miLocalStorage.getItem('hatadyTheme');
-	return isTheme(v) ? v : 'paper';
+	try {
+		const v = miLocalStorage.getItem('hatadyTheme');
+		return isTheme(v) ? v : 'light';
+	} catch {
+		return 'light';
+	}
 }
+
 function readLangCache(): HatadyLang | undefined {
-	const v = miLocalStorage.getItem('hatadyLang');
-	return isLang(v) ? v : undefined;
+	try {
+		const v = miLocalStorage.getItem('hatadyLang');
+		return isLang(v) ? v : undefined;
+	} catch {
+		return undefined;
+	}
 }
 
 // 初期値は端末ローカルキャッシュから(初回描画のちらつき防止)。サーバー値が来たら上書きする。
 export const hatadyTheme = ref<HatadyTheme>(readThemeCache());
 const legacyHatadyLang = ref<HatadyLang | undefined>(readLangCache());
+let displayGeneration = 0;
+let latestLoad = 0;
+let pendingSaves = 0;
+let saveQueue: Promise<void> = Promise.resolve();
 
 // 旗鯖fork: 統計系エンドポイントへ渡すタイムゾーンオフセット(分)。
 //   サーバーは UTC で動くため、これを渡さないと集計がユーザーの体感日付とズレる
@@ -46,18 +60,32 @@ export function hatadyTzOffset(): number {
 }
 
 function writeCache(): void {
-	miLocalStorage.setItem('hatadyTheme', hatadyTheme.value);
+	try {
+		miLocalStorage.setItem('hatadyTheme', hatadyTheme.value);
+	} catch {
+		// キャッシュを書けなくても、サーバーへ保存済みの設定は有効。
+	}
 	// 旧値は利用者設定を破壊しないため保存するが、表示には使わない。
-	if (legacyHatadyLang.value !== undefined) miLocalStorage.setItem('hatadyLang', legacyHatadyLang.value);
+	try {
+		if (legacyHatadyLang.value !== undefined) miLocalStorage.setItem('hatadyLang', legacyHatadyLang.value);
+	} catch {
+		// テーマと独立して、利用できるキャッシュだけを更新する。
+	}
 }
 
 // サーバー(アカウントレジストリ)から読み込んで反映する(端末間同期のプル)。
 export async function loadHatadyDisplay(): Promise<void> {
+	// 保存中の読み取りは古いサーバー値を返しうるため、反映しない。
+	if (pendingSaves > 0) return;
+	const generation = displayGeneration;
+	const request = ++latestLoad;
 	try {
-		const v = await misskeyApi('i/registry/get', { scope: REG_SCOPE, key: REG_KEY }) as any;
-		if (v && typeof v === 'object') {
-			if (isTheme(v.theme)) hatadyTheme.value = v.theme;
-			if (isLang(v.lang)) legacyHatadyLang.value = v.lang;
+		const v = await misskeyApi('i/registry/get', { scope: REG_SCOPE, key: REG_KEY }) as unknown;
+		if (generation !== displayGeneration || request !== latestLoad) return;
+		if (v && typeof v === 'object' && !Array.isArray(v)) {
+			const value = v as Record<string, unknown>;
+			if (isTheme(value.theme)) hatadyTheme.value = value.theme;
+			if (isLang(value.lang)) legacyHatadyLang.value = value.lang;
 			writeCache();
 		}
 	} catch {
@@ -67,14 +95,25 @@ export async function loadHatadyDisplay(): Promise<void> {
 
 // サーバーに保存して全端末で同期する。ローカル状態とキャッシュも即反映。
 // 第2引数は旧呼び出し元のソース互換用。表示言語も保存値も変更しない。
-export async function saveHatadyDisplay(theme: HatadyTheme, _legacyLang?: HatadyLang): Promise<void> {
-	hatadyTheme.value = theme;
-	writeCache();
+export function saveHatadyDisplay(theme: HatadyTheme, _legacyLang?: HatadyLang): Promise<void> {
+	displayGeneration++;
+	pendingSaves++;
+	// 読み取り・マージ・書き込みを順番に行い、前の保存や未知項目を後から巻き戻さない。
+	const operation = saveQueue.then(() => persistHatadyDisplay(theme)).finally(() => {
+		pendingSaves--;
+	});
+	// 1 回の失敗で、その後の明示的な保存まで止めない。
+	saveQueue = operation.catch(() => {});
+	return operation;
+}
+
+async function persistHatadyDisplay(theme: HatadyTheme): Promise<void> {
 	let current: unknown;
 	try {
 		current = await misskeyApi('i/registry/get', { scope: REG_SCOPE, key: REG_KEY }) as unknown;
-	} catch {
-		current = undefined;
+	} catch (error) {
+		// Only an absent key is safe to create. A failed read must not replace unknown settings.
+		if (!(error && typeof error === 'object' && 'code' in error && error.code === 'NO_SUCH_KEY')) throw error;
 	}
 	const value: Record<string, unknown> = {
 		...(current && typeof current === 'object' && !Array.isArray(current) ? current : {}),
@@ -83,6 +122,9 @@ export async function saveHatadyDisplay(theme: HatadyTheme, _legacyLang?: Hatady
 	// 旧サーバー値を取得できない場合も、端末に残る旧言語設定だけは失わない。
 	if (!Object.hasOwn(value, 'lang') && legacyHatadyLang.value !== undefined) value.lang = legacyHatadyLang.value;
 	await misskeyApi('i/registry/set', { scope: REG_SCOPE, key: REG_KEY, value });
+	hatadyTheme.value = theme;
+	if (isLang(value.lang)) legacyHatadyLang.value = value.lang;
+	writeCache();
 }
 
 // 旗鯖fork(1j): 初回チュートリアルの完了フラグ(アカウントごと・レジストリ保存)。

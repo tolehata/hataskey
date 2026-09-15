@@ -1,296 +1,513 @@
-<!--
-SPDX-FileCopyrightText: Tolehata and hatasaba-project
-SPDX-License-Identifier: AGPL-3.0-only
-旗鯖fork(Hatady P6): 統計深掘り(モーダル)。
-  月別学習時間 / 曜日別 / 時間帯別 / 分野推移 / 自己ベスト / 月別読了 を可視化する。
-  データは hata/hatady/stats-detail から取得(months 指定・既定6ヶ月)。
-  依存ライブラリを増やさず、素の CSS/インライン SVG バーで描画する。
--->
+<!-- SPDX-FileCopyrightText: Tolehata and hatasaba-project
+SPDX-License-Identifier: AGPL-3.0-only -->
 <template>
-<MkWindow
-	ref="dialog"
-	:initialWidth="600"
-	:initialHeight="720"
-	:canResize="true"
-	@closed="emit('closed')"
->
-	<template #header><i class="ti ti-chart-histogram"></i> {{ copy.title }}</template>
-
-	<div class="hatady-scope" :data-hatady-theme="theme" :data-animation="prefer.s.animation ? 'true' : 'false'" :class="$style.body">
-		<!-- 期間セレクタ -->
-		<div :class="$style.rangeRow">
-			<button
-				v-for="m in RANGES" :key="m"
-				:class="[$style.rangeChip, months === m && $style.rangeChipOn]"
-				@click="setMonths(m)"
-			>{{ i18n.tsx._hata._hatady._statsDetail.rangeMonths({ months: m.toString() }) }}</button>
-		</div>
-
-		<div v-if="loading" :class="$style.loading">{{ copy.loading }}</div>
-		<template v-else-if="data">
-			<!-- 自己ベスト -->
-			<div :class="$style.bests">
-				<div :class="$style.bestCard"><div :class="$style.bestNum">{{ fmtDur(data.bests.longestSession) }}</div><div :class="$style.bestLbl"><i class="ti ti-clock-play"></i> {{ copy.longestSession }}</div></div>
-				<div :class="$style.bestCard"><div :class="$style.bestNum">{{ fmtDur(data.bests.maxDayMinutes) }}</div><div :class="$style.bestLbl"><i class="ti ti-calendar-star"></i> {{ copy.maxDay }}</div></div>
-				<div :class="$style.bestCard"><div :class="$style.bestNum">{{ data.bests.longestStreak }}<span :class="$style.bestUnit">{{ copy.dayUnit }}</span></div><div :class="$style.bestLbl"><i class="ti ti-flame"></i> {{ copy.longestStreak }}</div></div>
-			</div>
-
-			<!-- 月別学習時間 -->
-			<section :class="$style.section">
-				<div :class="$style.secHead"><i class="ti ti-chart-bar"></i> {{ copy.monthly }}</div>
-				<div v-if="monthlyMax === 0" :class="$style.noData">{{ copy.noData }}</div>
-				<div v-else :class="$style.barChart">
-					<div v-for="(mo, i) in data.monthlyTotals" :key="mo.month" :class="$style.barCol">
-						<span :class="$style.barVal">{{ mo.minutes > 0 ? fmtDurShort(mo.minutes) : '' }}</span>
-						<span :class="$style.barTrack">
-							<span :class="$style.barFill" :style="{ height: pct(mo.minutes, monthlyMax) + '%', animationDelay: `${i * 55}ms` }"></span>
-						</span>
-						<span :class="$style.barLbl">{{ moLabel(mo.month) }}</span>
-					</div>
-				</div>
-			</section>
-
-			<!-- 曜日別 -->
-			<section :class="$style.section">
-				<div :class="$style.secHead"><i class="ti ti-calendar-week"></i> {{ copy.weekday }}</div>
-				<div :class="$style.wdRow">
-					<div v-for="(min, i) in data.weekdayMinutes" :key="i" :class="$style.wdCol">
-						<span :class="$style.wdTrack"><span :class="$style.wdFill" :style="{ height: pct(min, weekdayMax) + '%', background: i === 0 || i === 6 ? '#d98a5a' : 'var(--hy-accent)', animationDelay: `${i * 48}ms` }"></span></span>
-						<span :class="$style.wdLbl">{{ weekdayLabels[i] }}</span>
-					</div>
-				</div>
-			</section>
-
-			<!-- 時間帯別 -->
-			<section :class="$style.section">
-				<div :class="$style.secHead"><i class="ti ti-clock-hour-4"></i> {{ copy.hourly }}</div>
-				<div :class="$style.hourRow">
-					<span
-						v-for="(min, h) in data.hourlyMinutes" :key="h"
-						:class="$style.hourCell"
-						:style="{ background: heatColor(min, hourlyMax), animationDelay: `${h * 22}ms` }"
-						:title="`${h}:00 — ${fmtDur(min)}`"
-					>{{ h % 6 === 0 ? h : '' }}</span>
-				</div>
-				<div :class="$style.hourLegend"><span>0</span><span>6</span><span>12</span><span>18</span><span>23</span></div>
-			</section>
-
-			<!-- 分野推移 -->
-			<section v-if="data.subjectTrend.length" :class="$style.section">
-				<div :class="$style.secHead"><i class="ti ti-chart-dots"></i> {{ copy.subjectTrend }}</div>
-				<div v-for="(s, si) in data.subjectTrend" :key="s.subject" :class="$style.trendRow">
-					<div :class="$style.trendHead">
-						<span :class="$style.trendDot" :style="{ background: subjColor(si) }"></span>
-						<span :class="$style.trendName">{{ s.subject }}</span>
-						<span :class="$style.trendTotal">{{ fmtDur(subjTotal(s)) }}</span>
-					</div>
-					<div :class="$style.spark">
-						<span
-							v-for="(mm, mi) in s.monthly" :key="mi"
-							:class="$style.sparkBar"
-							:style="{ height: pct(mm.minutes, subjectMax) + '%', background: subjColor(si), opacity: mm.minutes > 0 ? 1 : 0.15, animationDelay: `${si * 60 + mi * 35}ms` }"
-							:title="`${moLabel(mm.month)} — ${fmtDur(mm.minutes)}`"
-						></span>
-					</div>
-				</div>
-			</section>
-
-			<!-- 月別読了 -->
-			<section :class="$style.section">
-				<div :class="$style.secHead"><i class="ti ti-book-upload"></i> {{ copy.finished }}</div>
-				<div v-if="finishedMax === 0 && pagesMax === 0" :class="$style.noData">{{ copy.noData }}</div>
-				<div v-else :class="$style.finRow">
-					<div v-for="(mo, i) in data.monthlyFinished" :key="mo.month" :class="$style.finCol">
-						<span :class="$style.finBooks">{{ mo.books > 0 ? mo.books : '' }}</span>
-						<span :class="$style.finTrack"><span :class="$style.finFill" :style="{ height: pct(mo.books, Math.max(1, finishedMax)) + '%', animationDelay: `${i * 55}ms` }"></span></span>
-						<span :class="$style.finLbl">{{ moLabel(mo.month) }}</span>
-					</div>
-				</div>
-				<div v-if="pagesMax > 0" :class="$style.pagesNote"><i class="ti ti-file-text"></i> {{ i18n.tsx._hata._hatady._statsDetail.totalPagesValue({ label: copy.totalPages, count: numberFormatter.format(totalPages) }) }}</div>
-			</section>
-		</template>
-		<div v-else :class="$style.loading">{{ copy.noData }}</div>
+<HyDialog ref="dialog" title="統計とカレンダー" @close="close" @closed="emit('closed')">
+	<div :class="$style.controls">
+		<HyCapsule v-model="kind" :options="kinds" label="集計する活動" @update:modelValue="load"/>
+		<HyCapsule v-model="months" :options="ranges" label="集計期間" @update:modelValue="load"/>
 	</div>
-</MkWindow>
+	<p v-if="error" class="hy-error" role="alert">{{ error }}</p>
+	<p v-if="loading" class="hy-empty">読み込み中</p>
+	<template v-else>
+		<section :class="$style.summary">
+			<small>{{ startDate }} — {{ today }}</small>
+			<div>
+				<span>
+					<small>記録</small>
+					<strong>
+						{{ rows.length }}
+						<small>件</small>
+					</strong>
+				</span>
+				<span>
+					<small>記録した時間</small>
+					<strong>{{ duration(totalSeconds) }}</strong>
+					<small v-if="untimed">時間未入力 {{ untimed }}件</small>
+				</span>
+				<span>
+					<small>最長の連続記録</small>
+					<strong>
+						{{ longest }}
+						<small>日</small>
+					</strong>
+				</span>
+			</div>
+		</section>
+		<section :class="$style.calendar">
+			<header>
+				<h3>{{ calendarMonth.replace('-', '年') }}月</h3>
+				<div>
+					<button class="hy-icon-button" :disabled="monthIndex === 0" aria-label="前の月" @click="moveMonth(-1)">
+						<i class="ti ti-chevron-left"></i>
+					</button>
+					<button
+						class="hy-icon-button"
+						:disabled="monthIndex === monthKeys.length - 1"
+						aria-label="次の月"
+						@click="moveMonth(1)"
+					>
+						<i class="ti ti-chevron-right"></i>
+					</button>
+				</div>
+			</header>
+			<div :class="$style.calendarGrid">
+				<small v-for="d in weekdays" :key="d">{{ d }}</small>
+				<template v-for="(cell, index) in cells" :key="index">
+					<button
+						v-if="cell"
+						:ref="(el) => (dayButtons[cell.date] = el)"
+						:class="$style.day"
+						:disabled="cell.date > today"
+						:aria-current="cell.date === today ? 'date' : undefined"
+						:aria-pressed="selectedDay === cell.date"
+						:aria-label="`${cell.date} ${cell.count}件の記録`"
+						@click="selectDay(cell.date)"
+					>
+						<span>{{ cell.day }}</span>
+						<i v-if="cell.count" :style="{ opacity: Math.min(1, 0.3 + cell.count * 0.15) }"></i>
+					</button>
+					<span v-else></span>
+				</template>
+			</div>
+			<section v-if="selectedDay" :class="$style.dayPreview">
+				<header>
+					<h4 ref="dayTitle" tabindex="-1">{{ selectedDay }}の記録</h4>
+					<button class="hy-icon-button" aria-label="簡易記録ビューを閉じる" @click="closeDay">
+						<i class="ti ti-x"></i>
+					</button>
+				</header>
+				<details v-for="a in dayRows" :key="a.id">
+					<summary>
+						<i :class="kindIcon(a)"></i>
+						<span>
+							{{ record(a).title || a.media?.work?.title || record(a).workSnapshot?.title }}
+							<small>{{ duration(seconds(a)) }}</small>
+						</span>
+					</summary>
+					<HatadyActivityCard
+						:activity="a"
+						:showActions="false"
+						detailed
+						@openLog="() => {}"
+						@openBook="() => {}"
+						@openMedia="() => {}"
+						@openSession="() => {}"
+					/>
+				</details>
+				<p v-if="!dayRows.length" class="hy-empty">この日の記録はありません</p>
+			</section>
+		</section>
+		<details :class="$style.detail">
+			<summary>
+				<i class="ti ti-clock"></i>
+				時間の傾向
+			</summary>
+			<HyCapsule v-model="timeView" :options="timeChoices" label="時間の表示"/>
+			<HyStatsChart
+				:title="
+					timeView === 'hour' ? '開始時刻ごとの記録' : timeView === 'weekday' ? '曜日ごとの時間' : '月ごとの時間'
+				"
+				:rows="timeRows"
+				:unit="timeView === 'hour' ? '件' : 'seconds'"
+			/>
+			<p v-if="timeView === 'hour'" class="hy-muted">開始時刻を入力した記録のみ</p>
+		</details>
+		<details :class="$style.detail">
+			<summary>
+				<i class="ti ti-palette"></i>
+				分野の移り変わり
+			</summary>
+			<HyCapsule v-model="subjectView" :options="subjectChoices" label="分野の表示"/>
+			<select v-if="subjectView === 'month'" v-model="subject" class="hy-input" aria-label="月別で見る分野">
+				<option value="">すべての分野</option>
+				<option v-for="s in subjects" :key="s">{{ s }}</option>
+			</select>
+			<HyStatsChart :title="subjectView === 'month' ? '分野の月別時間' : '分野別の時間'" :rows="subjectRows"/>
+		</details>
+		<details :class="$style.detail">
+			<summary>
+				<i class="ti ti-flag"></i>
+				自己ベスト{{ kind === 'all' || kind === 'study' ? 'と読了' : '' }}
+			</summary>
+			<div :class="$style.bests">
+				<span>
+					<small>1回の記録</small>
+					<strong>{{ duration(bestSession) }}</strong>
+				</span>
+				<span>
+					<small>1日の合計</small>
+					<strong>{{ duration(bestDay) }}</strong>
+				</span>
+			</div>
+			<HyStatsChart v-if="kind === 'all' || kind === 'study'" title="月ごとの読了" :rows="finishedRows" unit="冊"/>
+			<p v-if="legacyPages && (kind === 'all' || kind === 'study')">{{ legacyPages }}ページ</p>
+		</details>
+	</template>
+</HyDialog>
 </template>
-
-<script lang="ts" setup>
-import { ref, computed, onMounted } from 'vue';
-import MkWindow from '@/components/MkWindow.vue';
-import { i18n } from '@/i18n.js';
-import { hatadyTheme, hatadyTzOffset } from '@/utility/hatady-prefs.js';
-import { versatileLang } from '@/utility/intl-const.js';
+<script setup lang="ts">
+import { computed, ref, onMounted, nextTick } from 'vue';
+import HyDialog from '@/components/HyDialog.vue';
+import HyCapsule from '@/components/HyCapsule.vue';
+import HyStatsChart from '@/components/HyStatsChart.vue';
+import HatadyActivityCard from '@/components/HatadyActivityCard.vue';
 import { misskeyApi } from '@/utility/misskey-api.js';
-import { prefer } from '@/preferences.js';
+import { hatadyTzOffset } from '@/utility/hatady-prefs.js';
+import { requireHatadyActivityPage } from '@/utility/hatady-media.js';
+import { collectActivityPages, localDateKey, activityKind } from '@/utility/hatady-home.js';
+import { HATADY_ACTIVITY_CHOICES, hatadyDuration as duration, hatadySeconds } from '@/utility/hatady-ui.js';
+const props = defineProps<{ initialKind?: string }>();
+const emit = defineEmits<{ (e: 'closed'): void }>();
+const dialog = ref<any>(),
+	dayTitle = ref<HTMLElement>(),
+	rows = ref<any[]>([]),
+	legacy = ref<any>(null),
+	kind = ref(props.initialKind || 'all'),
+	months = ref('3'),
+	loading = ref(false),
+	error = ref(''),
+	calendarMonth = ref(''),
+	selectedDay = ref<string | null>(null),
+	timeView = ref('month'),
+	subjectView = ref('total'),
+	subject = ref('');
+const dayButtons: Record<string, any> = {};
+let previousScroll = 0,
+	request = 0;
+const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
+const kinds = [{ value: 'all', label: 'すべて', icon: 'ti ti-chart-bar' }, ...HATADY_ACTIVITY_CHOICES];
+const ranges = [3, 6, 12].map((n) => ({ value: String(n), label: `${n}か月`, icon: 'ti ti-calendar' }));
+const timeChoices = [
+	{ value: 'month', label: '月別', icon: 'ti ti-calendar' },
+	{ value: 'weekday', label: '曜日別', icon: 'ti ti-calendar-week' },
+	{ value: 'hour', label: '時間帯', icon: 'ti ti-clock' },
+];
+const subjectChoices = [
+	{ value: 'total', label: '内訳', icon: 'ti ti-chart-pie' },
+	{ value: 'month', label: '月別', icon: 'ti ti-chart-bar' },
+];
+const today = localDateKey(new Date()),
+	monthKeys = computed(() =>
+		Array.from({ length: Number(months.value) }, (_, i) => {
+			const now = new Date();
+			return localDateKey(new Date(now.getFullYear(), now.getMonth() - Number(months.value) + 1 + i, 1)).slice(0, 7);
+		}),
+	),
+	startDate = computed(() => `${monthKeys.value[0]}-01`),
+	monthIndex = computed(() => monthKeys.value.indexOf(calendarMonth.value));
 
-const emit = defineEmits<{ (ev: 'closed'): void }>();
-const dialog = ref<any>(null);
-const theme = hatadyTheme;
-const copy = i18n.ts._hata._hatady._statsDetail;
-const monthFormatter = new Intl.DateTimeFormat(versatileLang, { month: 'short' });
-const weekdayFormatter = new Intl.DateTimeFormat(versatileLang, { weekday: 'narrow' });
-const numberFormatter = new Intl.NumberFormat(versatileLang);
-const weekdayLabels = Array.from({ length: 7 }, (_, i) => weekdayFormatter.format(new Date(2024, 0, 7 + i)));
+function record(a: any): any {
+	return a.study || a.media?.session || {};
+}
 
-type Data = {
-	monthlyTotals: { month: string; minutes: number; count: number }[];
-	weekdayMinutes: number[];
-	hourlyMinutes: number[];
-	subjectTrend: { subject: string; monthly: { month: string; minutes: number }[] }[];
-	bests: { longestSession: number; maxDayMinutes: number; longestStreak: number };
-	monthlyFinished: { month: string; books: number; pages: number }[];
-};
-const RANGES = [3, 6, 12] as const;
-const months = ref(6);
-const loading = ref(true);
-const data = ref<Data | null>(null);
+function seconds(a: any) {
+	return hatadySeconds(record(a));
+}
 
-const SUBJ_COLORS = ['#d9824a', '#5a9a8a', '#c9a55a', '#8a7ab3', '#c96a7a'];
+function sum(list: any[]): number | null {
+	return list.some((a) => seconds(a) != null) ? list.reduce((n, a) => n + (seconds(a) || 0), 0) : null;
+}
+
+function date(a: any) {
+	return localDateKey(new Date(a.occurredAt));
+}
+
+function genre(a: any) {
+	return record(a).subject || a.media?.work?.genres?.[0] || record(a).details?.genre || '未設定';
+}
+
+const totalSeconds = computed(() => sum(rows.value)),
+	untimed = computed(() => rows.value.filter((a) => seconds(a) == null).length),
+	days = computed(() => [...new Set(rows.value.map(date))].sort()),
+	longest = computed(() => {
+		let n = 0,
+			best = 0,
+			last = '';
+		for (const d of days.value) {
+			n = last && Date.parse(`${d}T12:00:00Z`) - Date.parse(`${last}T12:00:00Z`) === 86400000 ? n + 1 : 1;
+			best = Math.max(best, n);
+			last = d;
+		}
+		return best;
+	}),
+	bestSession = computed(() =>
+		rows.value.some((a) => seconds(a) != null) ? Math.max(...rows.value.map((a) => seconds(a) || 0)) : null,
+	),
+	bestDay = computed(() =>
+		rows.value.some((a) => seconds(a) != null)
+			? Math.max(...days.value.map((d) => sum(rows.value.filter((a) => date(a) === d)) || 0))
+			: null,
+	);
+const cells = computed(() => {
+	const [y, m] = calendarMonth.value.split('-').map(Number);
+	if (!y || !m) return [];
+	const first = new Date(y, m - 1, 1).getDay(),
+		count = new Date(y, m, 0).getDate();
+	return Array.from({ length: Math.ceil((first + count) / 7) * 7 }, (_, i) => {
+		const day = i - first + 1;
+		if (day < 1 || day > count) return null;
+		const key = `${calendarMonth.value}-${String(day).padStart(2, '0')}`;
+		return { date: key, day, count: rows.value.filter((a) => date(a) === key).length };
+	});
+});
+const dayRows = computed(() => rows.value.filter((a) => date(a) === selectedDay.value));
+const timeRows = computed(() =>
+	timeView.value === 'month'
+		? monthKeys.value.map((m) => ({
+			label: m,
+			short: `${Number(m.slice(5))}月`,
+			value: sum(rows.value.filter((a) => date(a).startsWith(m))),
+		}))
+		: timeView.value === 'weekday'
+			? weekdays.map((d, i) => ({
+				label: `${d}曜日`,
+				short: d,
+				value: sum(rows.value.filter((a) => new Date(a.occurredAt).getDay() === i)),
+			}))
+			: Array.from({ length: 24 }, (_, h) => ({
+				label: `${h}時台`,
+				short: String(h),
+				value: rows.value.filter((a) => {
+					const start = record(a).startedAt || record(a).details?.startedAt;
+					return typeof start === 'string' && /^\d{2}:\d{2}/.test(start) && Number(start.slice(0, 2)) === h;
+				}).length,
+			})),
+);
+const subjects = computed(() => [...new Set(rows.value.map(genre))] as string[]),
+	subjectRows = computed(() =>
+		subjectView.value === 'month'
+			? monthKeys.value.map((m) => ({
+				label: m,
+				short: `${Number(m.slice(5))}月`,
+				value: sum(rows.value.filter((a) => date(a).startsWith(m) && (!subject.value || genre(a) === subject.value))),
+			}))
+			: subjects.value.map((s) => ({ label: s, value: sum(rows.value.filter((a) => genre(a) === s)) })),
+	),
+	finishedRows = computed(() =>
+		monthKeys.value.map((m) => ({
+			label: m,
+			short: `${Number(m.slice(5))}月`,
+			value: legacy.value?.monthlyFinished?.find((r: any) => r.month === m)?.books || 0,
+		})),
+	),
+	legacyPages = computed(
+		() => legacy.value?.monthlyFinished?.reduce((n: number, r: any) => n + (r.pages || 0), 0) || 0,
+	);
 
 async function load() {
+	const seq = ++request;
 	loading.value = true;
+	error.value = '';
+	selectedDay.value = null;
+	const from = new Date(`${startDate.value}T00:00:00`).getTime(),
+		to = Date.now();
 	try {
-		data.value = await misskeyApi('hata/hatady/stats-detail', { months: months.value, tzOffset: hatadyTzOffset() });
-	} catch { data.value = null; } finally { loading.value = false; }
-}
-function setMonths(m: number) { if (months.value === m) return; months.value = m; load(); }
-onMounted(load);
-
-const monthlyMax = computed(() => Math.max(0, ...(data.value?.monthlyTotals.map(m => m.minutes) ?? [0])));
-const weekdayMax = computed(() => Math.max(1, ...(data.value?.weekdayMinutes ?? [0])));
-const hourlyMax = computed(() => Math.max(1, ...(data.value?.hourlyMinutes ?? [0])));
-const subjectMax = computed(() => {
-	let mx = 0;
-	for (const s of data.value?.subjectTrend ?? []) for (const mm of s.monthly) mx = Math.max(mx, mm.minutes);
-	return Math.max(1, mx);
-});
-const finishedMax = computed(() => Math.max(0, ...(data.value?.monthlyFinished.map(m => m.books) ?? [0])));
-const pagesMax = computed(() => Math.max(0, ...(data.value?.monthlyFinished.map(m => m.pages) ?? [0])));
-const totalPages = computed(() => (data.value?.monthlyFinished.reduce((a, b) => a + b.pages, 0) ?? 0));
-
-function subjTotal(s: Data['subjectTrend'][number]): number { return s.monthly.reduce((a, b) => a + b.minutes, 0); }
-function subjColor(i: number): string { return SUBJ_COLORS[i % SUBJ_COLORS.length]; }
-function pct(v: number, max: number): number { return max <= 0 ? 0 : Math.max(v > 0 ? 4 : 0, Math.round((v / max) * 100)); }
-function heatColor(v: number, max: number): string {
-	if (v <= 0) return 'var(--hy-border)';
-	const r = Math.min(1, v / max);
-	// 薄い→濃いアクセント。
-	const a = 0.18 + r * 0.82;
-	return `rgba(217,130,74,${a.toFixed(2)})`;
-}
-function moLabel(mk: string): string {
-	const [y, m] = mk.split('-').map(Number);
-	return monthFormatter.format(new Date(y, m - 1, 1));
-}
-function fmtDur(min: number): string {
-	if (min <= 0) return i18n.tsx._hata._hatady._statsDetail.durationMinutes({ minutes: '0' });
-	const h = Math.floor(min / 60); const m = min % 60;
-	if (h > 0 && m > 0) return i18n.tsx._hata._hatady._statsDetail.durationHoursMinutes({ hours: h.toString(), minutes: m.toString() });
-	if (h > 0) return i18n.tsx._hata._hatady._statsDetail.durationHours({ hours: h.toString() });
-	return i18n.tsx._hata._hatady._statsDetail.durationMinutes({ minutes: m.toString() });
-}
-function fmtDurShort(min: number): string {
-	const h = Math.floor(min / 60);
-	if (h >= 1) return i18n.tsx._hata._hatady._statsDetail.durationHoursShort({ hours: h.toString() });
-	return i18n.tsx._hata._hatady._statsDetail.durationMinutesShort({ minutes: min.toString() });
-}
-</script>
-
-<style lang="scss" module>
-.body {
-	padding: 18px 20px 24px;
-	background: var(--hy-bg); color: var(--hy-body);
-	font-family: 'Noto Sans JP', 'Hiragino Sans', system-ui, sans-serif;
-	min-height: 100%; box-sizing: border-box;
-}
-.loading { text-align: center; color: var(--hy-muted); padding: 40px 0; font-size: 13px; }
-.noData { text-align: center; color: var(--hy-muted); padding: 18px 0; font-size: 12px; }
-
-/* 期間 */
-.rangeRow { display: flex; justify-content: center; gap: 7px; margin-bottom: 18px; }
-.rangeChip { background: var(--hy-surface); border: 1px solid var(--hy-border); border-radius: 999px; padding: 5px 14px; font-size: 12px; font-weight: 700; color: var(--hy-muted); cursor: pointer; font-family: var(--hy-heading); }
-.rangeChip:hover { border-color: var(--hy-accent); }
-.rangeChipOn { background: var(--hy-accent); border-color: var(--hy-accent); color: #fff; }
-
-/* 自己ベスト */
-.bests { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
-.bestCard { text-align: center; background: var(--hy-surface); border: 1px solid var(--hy-border); border-radius: 13px; padding: 14px 8px; }
-.body[data-animation='true'] .bestCard { animation: cardIn .42s cubic-bezier(.2,.8,.2,1) both; }
-.body[data-animation='true'] .bestCard:nth-child(2) { animation-delay: 70ms; }
-.body[data-animation='true'] .bestCard:nth-child(3) { animation-delay: 140ms; }
-.bestNum { font-family: var(--hy-heading); font-weight: 900; font-size: 22px; color: var(--hy-accent-ink); }
-.bestUnit { font-size: 13px; margin-left: 2px; }
-.bestLbl { display: flex; align-items: center; justify-content: center; gap: 4px; font-size: 10.5px; color: var(--hy-muted); margin-top: 3px; }
-.bestLbl i { color: var(--hy-accent); }
-
-/* セクション */
-.section { margin-bottom: 22px; }
-.secHead { display: flex; align-items: center; gap: 7px; font-family: var(--hy-heading); font-weight: 800; font-size: 13px; color: var(--hy-ink); margin-bottom: 12px; }
-.secHead i { color: var(--hy-accent); }
-
-/* 月別バー */
-.barChart { display: flex; align-items: flex-end; gap: 6px; height: 130px; }
-.barCol { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; min-width: 0; }
-.barVal { font-size: 9.5px; color: var(--hy-muted); height: 14px; }
-.barTrack { width: 100%; max-width: 34px; flex: 1; display: flex; align-items: flex-end; background: linear-gradient(var(--hy-surface), var(--hy-surface)); border-radius: 6px 6px 0 0; }
-.barFill { width: 100%; background: linear-gradient(180deg, #f0b46a, #d9824a); border-radius: 6px 6px 0 0; transition: height .4s cubic-bezier(.34,1.2,.64,1); min-height: 0; }
-.body[data-animation='true'] .barFill { transform-origin: center bottom; animation: barRise .54s cubic-bezier(.2,.9,.2,1) both; }
-.barLbl { font-size: 10px; color: var(--hy-muted); margin-top: 5px; white-space: nowrap; }
-
-/* 曜日 */
-.wdRow { display: flex; gap: 8px; height: 90px; }
-.wdCol { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; }
-.wdTrack { width: 60%; max-width: 26px; flex: 1; display: flex; align-items: flex-end; }
-.wdFill { width: 100%; border-radius: 5px 5px 0 0; transition: height .4s; }
-.body[data-animation='true'] .wdFill { transform-origin: center bottom; animation: barRise .5s cubic-bezier(.2,.9,.2,1) both; }
-.wdLbl { font-size: 11px; color: var(--hy-muted); margin-top: 5px; }
-
-/* 時間帯 */
-.hourRow { display: grid; grid-template-columns: repeat(24, 1fr); gap: 3px; }
-.hourCell { aspect-ratio: 1; border-radius: 3px; display: flex; align-items: center; justify-content: center; font-size: 8px; color: var(--hy-muted); }
-.body[data-animation='true'] .hourCell { animation: heatReveal .34s cubic-bezier(.2,.9,.2,1) both; }
-.hourLegend { display: flex; justify-content: space-between; font-size: 9px; color: var(--hy-muted); margin-top: 4px; padding: 0 2px; }
-
-/* 分野推移 */
-.trendRow { margin-bottom: 12px; }
-.trendHead { display: flex; align-items: center; gap: 7px; font-size: 12px; margin-bottom: 5px; }
-.trendDot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
-.trendName { font-weight: 700; color: var(--hy-ink); flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.trendTotal { font-size: 11px; color: var(--hy-muted); }
-.spark { display: flex; align-items: flex-end; gap: 3px; height: 34px; }
-.sparkBar { flex: 1; border-radius: 3px 3px 0 0; min-height: 2px; transition: height .4s; }
-.body[data-animation='true'] .sparkBar { transform-origin: center bottom; animation: barRise .46s cubic-bezier(.2,.9,.2,1) both; }
-
-/* 読了 */
-.finRow { display: flex; align-items: flex-end; gap: 6px; height: 96px; }
-.finCol { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; }
-.finBooks { font-size: 11px; font-weight: 800; color: var(--hy-accent-ink); height: 15px; }
-.finTrack { width: 100%; max-width: 30px; flex: 1; display: flex; align-items: flex-end; }
-.finFill { width: 100%; background: linear-gradient(180deg, #8ab38a, #5a9a5a); border-radius: 5px 5px 0 0; transition: height .4s; }
-.body[data-animation='true'] .finFill { transform-origin: center bottom; animation: barRise .5s cubic-bezier(.2,.9,.2,1) both; }
-.finLbl { font-size: 10px; color: var(--hy-muted); margin-top: 5px; }
-.pagesNote { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--hy-muted); margin-top: 10px; }
-.pagesNote i { color: var(--hy-accent); }
-
-@keyframes barRise {
-	from { opacity: .18; transform: scaleY(.08); }
-	to { opacity: 1; transform: scaleY(1); }
-}
-
-@keyframes heatReveal {
-	from { opacity: 0; transform: translateY(5px) scale(.65); }
-	to { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-@keyframes cardIn {
-	from { opacity: 0; transform: translateY(8px) scale(.98); }
-	to { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-	.body :is(.bestCard, .barFill, .wdFill, .hourCell, .sparkBar, .finFill) {
-		animation: none !important;
-		transition: none !important;
+		const [activities, stats] = await Promise.all([
+			collectActivityPages(async (cursor) =>
+				requireHatadyActivityPage(
+					await (misskeyApi as any)('hata/hatady/activities', {
+						scope: 'mine',
+						limit: 100,
+						sinceDate: from,
+						untilDate: to,
+						...(kind.value === 'all' ? {} : { kinds: [kind.value] }),
+						...(cursor ? { cursor } : {}),
+					}),
+				),
+			),
+			misskeyApi('hata/hatady/stats-detail', { months: Number(months.value), tzOffset: hatadyTzOffset() }),
+		]);
+		if (seq !== request) return;
+		rows.value = activities;
+		legacy.value = stats;
+		if (!monthKeys.value.includes(calendarMonth.value)) calendarMonth.value = monthKeys.value.at(-1)!;
+	} catch {
+		if (seq === request) error.value = '統計を読み込めませんでした';
+	} finally {
+		if (seq === request) loading.value = false;
 	}
+}
+
+function moveMonth(delta: number) {
+	calendarMonth.value = monthKeys.value[monthIndex.value + delta];
+	selectedDay.value = null;
+}
+
+async function selectDay(key: string) {
+	if (!selectedDay.value) previousScroll = dialog.value?.bodyEl?.scrollTop || 0;
+	selectedDay.value = key;
+	await nextTick();
+	dayTitle.value?.focus({ preventScroll: true });
+	dayTitle.value?.scrollIntoView({ block: 'nearest' });
+}
+
+async function closeDay() {
+	const day = selectedDay.value;
+	selectedDay.value = null;
+	await nextTick();
+	if (day) dayButtons[day]?.focus({ preventScroll: true });
+	if (dialog.value?.bodyEl) dialog.value.bodyEl.scrollTop = previousScroll;
+}
+
+function close() {
+	if (selectedDay.value) void closeDay();
+	else dialog.value?.close();
+}
+
+function kindIcon(a: any) {
+	return HATADY_ACTIVITY_CHOICES.find((k) => k.value === activityKind(a))?.icon || 'ti ti-notebook';
+}
+
+onMounted(load);
+</script>
+<style module lang="scss">
+.controls {
+	display: flex;
+	gap: 12px;
+	flex-direction: column;
+	align-items: center;
+	margin-bottom: 24px;
+}
+.summary > small {
+	display: block;
+	color: var(--hy-muted);
+	font-size: 12px;
+	margin-bottom: 12px;
+}
+.summary > div {
+	display: grid;
+	grid-template-columns: 1fr 1.6fr 1fr;
+	gap: 12px;
+	align-items: center;
+}
+.summary span,
+.bests span {
+	display: flex;
+	align-items: center;
+	flex-direction: column;
+	gap: 8px;
+}
+.summary strong {
+	font-size: 26px;
+	font-weight: 400;
+}
+.summary strong small {
+	font-size: 13px;
+	margin-left: 4px;
+}
+.summary small,
+.bests small {
+	font-size: 12px;
+	color: var(--hy-muted);
+}
+.calendar {
+	border: 1px solid var(--hy-border);
+	border-radius: 22px;
+	padding: 18px;
+	margin: 24px 0;
+}
+.calendar header,
+.dayPreview header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+.calendar h3 {
+	font-size: 18px;
+}
+.calendarGrid {
+	display: grid;
+	grid-template-columns: repeat(7, minmax(0, 1fr));
+	gap: 6px;
+}
+.calendarGrid > small {
+	text-align: center;
+	color: var(--hy-muted);
+	padding: 10px 0;
+}
+.day {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-direction: column;
+	gap: 5px;
+	border: 1px solid transparent;
+	border-radius: 12px;
+	background: none;
+	color: var(--hy-body);
+	min-height: 48px;
+	cursor: pointer;
+}
+.day[aria-pressed='true'] {
+	background: var(--hy-surface-2);
+	border-color: var(--hy-accent);
+}
+.day[aria-current='date'] {
+	color: var(--hy-accent-ink);
+	font-weight: 700;
+}
+.day i {
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+	background: var(--hy-accent);
+}
+.dayPreview {
+	border-top: 1px solid var(--hy-border);
+	margin-top: 16px;
+	padding-top: 12px;
+}
+.dayPreview details > summary {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	min-height: 60px;
+	cursor: pointer;
+}
+.dayPreview summary > span {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	gap: 5px;
+	font-size: 14px;
+}
+.dayPreview summary small {
+	font-size: 12px;
+	color: var(--hy-muted);
+}
+.dayPreview dl {
+	display: grid;
+	grid-template-columns: 1fr 2fr;
+	gap: 8px;
+	font-size: 12px;
+	overflow-wrap: anywhere;
+}
+.dayPreview dd {
+	margin: 0;
+}
+.detail {
+	border-top: 1px solid var(--hy-border);
+	padding: 6px 0;
+}
+.detail > summary {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	min-height: 60px;
+	cursor: pointer;
+	font-weight: 700;
+}
+.detail > nav {
+	justify-content: center;
+}
+.bests {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 20px;
+	padding: 20px;
+}
+.bests strong {
+	font-size: 24px;
+	color: var(--hy-accent-ink);
 }
 </style>

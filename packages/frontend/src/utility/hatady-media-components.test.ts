@@ -1,93 +1,94 @@
-/*
- * SPDX-FileCopyrightText: Tolehata and hatasaba-project
- * SPDX-License-Identifier: AGPL-3.0-only
- */
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-import { describe, expect, test } from 'vitest';
-import { MEDIA_SESSION_DETAIL_KEYS } from './hatady-media.js';
+/* SPDX-License-Identifier: AGPL-3.0-only */
+import { afterEach, describe, expect, test, vi } from 'vitest';
+import { createApp, h, nextTick } from 'vue';
+import { HATADY_STAT_FIELDS, MEDIA_SESSION_DETAIL_KEYS, mediaDashboardSessions } from './hatady-media.js';
+import type { Component } from 'vue';
+import type { HatadyFormPage, HatadyFormValues } from './hatady-form.js';
+import type { HatadyMediaSessionKind } from './hatady-media.js';
+const fixture = vi.hoisted(() => ({ wizard: null as any, api: vi.fn(async (endpoint: string, payload: any) => endpoint.endsWith('/list') ? [] : { id: 'saved', ...payload }) }));
+vi.mock('@/utility/misskey-api.js', () => ({ misskeyApi: fixture.api }));
+// Isolate locale loading so the actual form schemas and API payloads can run without fetching assets.
+vi.mock('@/i18n.js', () => ({ i18n: { ts: { _hata: { _hatady: { _media: { status: {
+	planned: '予定', movie_in_progress: '鑑賞中', movie_completed: '鑑賞済み', game_in_progress: 'プレイ中', game_completed: 'クリア', mastered: 'やり込み完了', on_hold: '休止中', dropped: '中断',
+} } } } } } }));
+vi.mock('@/components/HatadyFormWizard.vue', async () => {
+	const { defineComponent, h } = await import('vue');
+	return { default: defineComponent({ props: ['modelValue', 'title', 'label', 'icon', 'pages', 'draftId', 'embedded', 'save', 'saveLabel', 'restore', 'summaryTitle'], emits: ['update:modelValue', 'done', 'closed', 'back'], setup(props) { fixture.wizard = props; return () => h('div'); } }) };
+});
+import HatadyMediaSessionForm from '@/components/HatadyMediaSessionForm.vue';
+import HatadyMediaWorkForm from '@/components/HatadyMediaWorkForm.vue';
+const cleanup: Array<() => void> = [];
 
-function source(name: string): string {
-	return readFileSync(resolve(process.cwd(), 'src/components', name), 'utf8');
+async function mountForm(component: Component, props: Record<string, unknown>) {
+	const target = window.document.createElement('div'); window.document.body.append(target);
+	const app = createApp({ render: () => h(component, props) }); app.mount(target);
+	cleanup.push(() => { app.unmount(); target.remove(); }); await nextTick(); return fixture.wizard as { modelValue: HatadyFormValues; pages: HatadyFormPage[]; save: (values: HatadyFormValues) => Promise<any> };
 }
 
-function sectionBetween(text: string, start: string, end: string): string {
-	const after = text.split(start)[1];
-	expect(after).toBeDefined();
-	const section = after!.split(end)[0];
-	expect(section).toBeDefined();
-	return section!;
+const work = (kind = 'game') => ({ id: 'work', kind, title: '作品', visibility: 'private', status: 'planned' });
+
+function reachableKeys(pages: HatadyFormPage[], values: HatadyFormValues) {
+	const keys = new Set(pages.filter(page => !page.when || page.when(values)).flatMap(page => page.fields.map(field => field.key)));
+	if (keys.has('weaponStats')) for (const key of ['statFields', ...HATADY_STAT_FIELDS]) keys.add(key);
+	return keys;
 }
 
-describe('Hatady media component boundaries', () => {
-	test('movie work form does not render game-only controls', () => {
-		const movieSection = sectionBetween(source('HatadyMediaWorkForm.vue'), '<section v-if="kind === \'movie\'"', '<section v-else');
-		expect(movieSection).not.toMatch(/weapon|mood|matchmaking|game_match|gameDashboard/);
+afterEach(() => { cleanup.splice(0).forEach(fn => fn()); fixture.api.mockClear(); });
+
+describe('production media forms', () => {
+	test('movie and game work forms mount their own controls and save their own payload fields', async () => {
+		const movie = await mountForm(HatadyMediaWorkForm, { kind: 'movie' });
+		const movieKeys = reachableKeys(movie.pages, movie.modelValue);
+		expect(movieKeys.has('genres')).toBe(true); expect(movieKeys.has('platforms')).toBe(false); expect(movieKeys.has('weaponStats')).toBe(false);
+		movie.modelValue.title = '映画'; movie.modelValue.genres = ['Action, Adventure', 'Drama']; movie.modelValue.recommendationRating = 3.5;
+		await movie.save(movie.modelValue);
+		expect(fixture.api.mock.calls.at(-1)).toEqual(['hata/hatady/media/works/create', expect.objectContaining({ kind: 'movie', recommendationRating: 7, genres: ['Action, Adventure', 'Drama'] })]);
+		expect(fixture.api.mock.calls.at(-1)?.[1]).not.toHaveProperty('platforms');
+		const game = await mountForm(HatadyMediaWorkForm, { kind: 'game' });
+		const gameKeys = reachableKeys(game.pages, game.modelValue);
+		expect(gameKeys.has('platforms')).toBe(true); expect(gameKeys.has('genres')).toBe(false); expect(gameKeys.has('viewingMode')).toBe(false);
 	});
-
-	test('movie session form does not render game-only controls', () => {
-		const movieSection = sectionBetween(source('HatadyMediaSessionForm.vue'), '<template v-if="work.kind === \'movie\'">', '<template v-else>');
-		expect(movieSection).not.toMatch(/weapon|mood|matchmaking|game_match|game_roguelike/);
+	test('updates cannot change the immutable media kind and preserve unknown details', async () => {
+		const editor = await mountForm(HatadyMediaWorkForm, { kind: 'game', editWork: { ...work(), details: { future: { value: 7 }, memo: 'メモ' }, isRecommended: true } });
+		editor.modelValue.title = '変更した作品';
+		await editor.save(editor.modelValue);
+		const [endpoint, payload] = fixture.api.mock.calls.at(-1)!;
+		expect(endpoint).toBe('hata/hatady/media/works/update'); expect(payload.workId).toBe('work'); expect(payload).not.toHaveProperty('kind');
+		expect(payload.details).toMatchObject({ future: { value: 7 }, memo: 'メモ' }); expect(payload.isRecommended).toBe(true);
 	});
-
-	test('game dashboard is conditionally absent for movies and spoiler details stay folded', () => {
-		const detail = source('HatadyMediaWorkDetail.vue');
-		expect(detail).toContain('v-if="work.kind === \'game\'"');
-		expect(detail).toContain('data-media-dashboard="game"');
-		expect(detail).toContain('<details v-if="session.noteSpoiler"');
-		expect(detail).toContain('mediaDashboardSessions(dashboardPeriodSessions.value, isMine.value)');
-		expect(detail).toContain('mediaSessionDisplayFacts(session)');
-	});
-
-	test('update requests keep immutable work and session kinds out of payloads', () => {
-		const workForm = source('HatadyMediaWorkForm.vue');
-		const sessionForm = source('HatadyMediaSessionForm.vue');
-		expect(workForm).toContain('...(!isEdit ? { kind } : {})');
-		expect(sessionForm).toContain('...(isEdit ? { sessionId: source!.id } : { workId: work.id, kind: sessionKind.value })');
-	});
-
-	// 旗鯖fork(Hatady): ゲーム記録フォームは項目を2層(結果/詳しく記録する)に畳んで作り替えた。
-	// この手の作り替えで一番起きやすい事故が「並べ替えのついでに項目が消える」なので、
-	// 保存キーの正本(MEDIA_SESSION_DETAIL_KEYS)と、フォーム上の入力・保存経路を突き合わせて守る。
-	describe('game session form keeps every saved field reachable', () => {
-		// details のキー名と、フォーム側で束ねている ref 名の対応(名前が違うものだけずれる)。
-		// 成績の合計(キル等)は武器ごとの行から自動計算するので直接の入力欄を持たない。
-		// 入力経路は成績表なので、成績表の束縛が生きていることをもって「編集できる」と見なす。
-		const BINDING_NAMES: Record<string, string> = {
-			mode: 'matchMode', map: 'mapName',
-			kills: 'weaponStats', deaths: 'weaponStats', assists: 'weaponStats',
-			specials: 'weaponStats', rescues: 'weaponStats',
-		};
-		const gameKinds = ['game_play', 'game_match', 'game_roguelike', 'game_pve'] as const;
-		const gameKeys = [...new Set(gameKinds.flatMap(kind => [...MEDIA_SESSION_DETAIL_KEYS[kind]]))];
-
-		test('every game detail key has an input bound in the game branch', () => {
-			// ゲーム分岐の中に種別ごとの <template> が入れ子になっているので、
-			// 終端は最初の </template> ではなく、映画と共通のメモ欄の直前で切る。
-			const gameSection = sectionBetween(source('HatadyMediaSessionForm.vue'), '<template v-else>', '<label :class="$style.noteField">');
-			expect(gameKeys.length).toBeGreaterThan(20);
-			for (const key of gameKeys) {
-				const name = BINDING_NAMES[key] ?? key;
-				// v-model(引数付きを含む)で束ねる入力か、ボタン列で選ぶ項目(結果・気分)のどちらかで触れること。
-				const bound = new RegExp(`v-model(?::[a-zA-Z]+)?(?:\\.number)?="${name}"|${name} = option\\.value|${name} === option\\.value`);
-				expect(bound.test(gameSection), `${key} is not editable in the game session form`).toBe(true);
-			}
+	for (const kind of Object.keys(MEDIA_SESSION_DETAIL_KEYS) as HatadyMediaSessionKind[]) {
+		test(`${kind}: all saved details remain reachable through the actual form schema`, async () => {
+			const editor = await mountForm(HatadyMediaSessionForm, { work: work(kind === 'movie_viewing' ? 'movie' : 'game') });
+			editor.modelValue.sessionKind = kind; await nextTick();
+			const keys = reachableKeys(editor.pages, editor.modelValue);
+			for (const key of MEDIA_SESSION_DETAIL_KEYS[kind]) expect(keys.has(key), `${kind}.${key} has no input`).toBe(true);
+			if (kind === 'movie_viewing') { expect(keys.has('weaponStats')).toBe(false); expect(keys.has('matchmaking')).toBe(false); } else expect(keys.has('theaterName')).toBe(false);
+			// Positive control: removing an actual input must be detected by the same coverage check.
+			const first = MEDIA_SESSION_DETAIL_KEYS[kind].find(key => !HATADY_STAT_FIELDS.includes(key as any) && key !== 'statFields')!;
+			const broken = editor.pages.map(page => ({ ...page, fields: page.fields.filter(field => field.key !== first) }));
+			expect(reachableKeys(broken, editor.modelValue).has(first)).toBe(false);
 		});
-
-		test('every game detail key is still written into the save payload', () => {
-			const sessionForm = source('HatadyMediaSessionForm.vue');
-			const payload = sectionBetween(sessionForm, 'const detailValues: Record<string, unknown> = {', '\t\t};');
-			for (const key of gameKeys) {
-				expect(payload, `${key} is missing from detailValues`).toMatch(new RegExp(`(^|\\s)${key}:`));
-			}
-		});
+	}
+	test('a deleted work remains editable by session ID with its original kind and timestamp', async () => {
+		const occurredAt = '2026-09-10T02:03:04.567Z';
+		const editor = await mountForm(HatadyMediaSessionForm, { work: null, editSession: { id: 'session', workId: null, kind: 'game_match', occurredAt, visibility: 'followers', durationSeconds: 125, startedAt: '11:03:04.567', workSnapshot: { title: '削除された作品', kind: 'game' }, details: { result: 'win', rank: 'A', future: ['keep'] } } });
+		expect(editor.pages.flatMap(page => page.fields).find(field => field.key === 'sessionKind')?.disabled).toBe(true);
+		editor.modelValue.note = 'メモを追記'; editor.modelValue.sessionKind = 'movie_viewing';
+		await editor.save(editor.modelValue);
+		const [endpoint, payload] = fixture.api.mock.calls.at(-1)!;
+		expect(endpoint).toBe('hata/hatady/media/sessions/update'); expect(payload.sessionId).toBe('session'); expect(payload).not.toHaveProperty('kind'); expect(payload).not.toHaveProperty('workId');
+		expect(payload).toMatchObject({ occurredAt, durationSeconds: 125, startedAt: '11:03:04.567', visibility: 'followers', details: { rank: 'A', future: ['keep'] } });
 	});
-
-	test('movie detail renders canonical movie metadata and keeps game analytics conditional', () => {
-		const detail = source('HatadyMediaWorkDetail.vue');
-		for (const field of ['work.origin', 'work.viewingMode', 'work.primaryLanguage', 'work.recommendationRating', 'safeOfficialUrl']) {
-			expect(detail).toContain(field);
-		}
-		expect(detail).toContain('<section v-if="work.kind === \'game\'"');
+	test('switching a new game subtype keeps its outcome when returning', async () => {
+		const editor = await mountForm(HatadyMediaSessionForm, { work: work() });
+		editor.modelValue.sessionKind = 'game_match'; await nextTick(); editor.modelValue.result = 'win';
+		editor.modelValue.sessionKind = 'game_pve'; await nextTick(); editor.modelValue.result = 'cleared';
+		editor.modelValue.sessionKind = 'game_match'; await nextTick(); expect(editor.modelValue.result).toBe('win');
+		editor.modelValue.sessionKind = 'game_pve'; await nextTick(); expect(editor.modelValue.result).toBe('cleared');
+	});
+	test('spoiler sessions stay outside another viewer’s game aggregates', () => {
+		const visible = { id: 'plain', noteSpoiler: false } as any, spoiler = { id: 'spoiler', noteSpoiler: true } as any;
+		expect(mediaDashboardSessions([visible, spoiler], false)).toEqual([visible]);
+		expect(mediaDashboardSessions([visible, spoiler], true)).toEqual([visible, spoiler]);
 	});
 });

@@ -1,266 +1,555 @@
-<!--
-SPDX-FileCopyrightText: Tolehata and hatasaba-project
-SPDX-License-Identifier: AGPL-3.0-only
-旗鯖fork(Hatady 1l): 表示設定ウィンドウ。テーマ(やわらかい紙/夜の書斎/Hataskey準拠)を選ぶ。
-  表示言語は Hataskey 本体の共通言語設定をそのまま使い、Hatady 独自の言語選択は持たない。
-  変更はウィンドウ内でライブプレビューし、「保存」でサーバー(アカウントレジストリ)へ確定保存して
-  全端末で同期する(要件③)。1k の端末間同期の状態(ロールポリシー)も併せて表示する。
--->
+<!-- SPDX-License-Identifier: AGPL-3.0-only -->
 <template>
-<!-- 旗鯖fork: 設定画面の右ペインへ埋め込むときは、窓そのものを枠なしへ差し替える。
-     ⚠️窓は position: fixed の重ね表示なので、CSSでペインの中へは収められない。
-     ⚠️受け口(#header / 本体 / close())は同じ形なので、中身には手を触れない。 -->
-<component :is="embedded ? SettingsEmbeddedWindow : MkWindow"
+<HyDialog
 	ref="dialog"
-	:initialWidth="440"
-	:initialHeight="640"
-	:canResize="true"
-	:beforeClose="confirmClose"
+	:class="$style.dialog"
+	:title="copy.title"
+	centerTitle
+	:embedded="embedded"
+	:bare="embedded"
+	:busy="saving"
+	:inert="prompt"
+	@close="requestClose"
 	@closed="emit('closed')"
 >
-	<template #header><span class="settingsBrandText"><i class="ti ti-palette"></i> {{ copy.title }}</span></template>
-
-	<div class="hatady-scope" :data-hatady-theme="editTheme" :class="$style.body">
-		<!-- テーマ -->
-		<div :class="$style.section">
-			<div :class="$style.label"><i class="ti ti-brush"></i> {{ copy.theme }}</div>
-			<div :class="$style.themeGrid">
-				<button v-for="opt in themeOptions" :key="opt.value" :class="[$style.themeCard, editTheme === opt.value && $style.themeCardOn]" @click="editTheme = opt.value">
-					<span :class="$style.themeSwatchWrap" :style="{ background: opt.preview }"><span :class="$style.themeSwatch" :style="{ background: opt.swatch }"></span></span>
-					<span :class="$style.themeName">{{ opt.label }} <i v-if="editTheme === opt.value" class="ti ti-check" :class="$style.themeCheck"></i></span>
+	<h2 v-if="embedded" :class="$style.embeddedTitle">{{ copy.title }}</h2>
+	<div :class="$style.settings" data-settings-search-group-id="settings.group.hatady-display-settings">
+		<section>
+			<h3>{{ copy.theme }}</h3>
+			<div :class="$style.carousel" aria-label="見た目を選ぶ">
+				<button type="button" :class="[$style.arrow, 'hy-icon-button']" aria-label="前のテーマ" :disabled="saving || themeIndex === 0" @click="move(-1)">
+					<i class="ti ti-chevron-left" aria-hidden="true"></i>
 				</button>
-			</div>
-			<div :class="$style.hint">{{ copy.themeHint }}</div>
-		</div>
-
-		<!-- 旗鯖fork: 管理(分野の管理・チュートリアル再実行・記録の書き出し)。端末間同期セクションの上に配置。 -->
-		<div :class="$style.section">
-			<div :class="$style.label"><i class="ti ti-adjustments"></i> {{ copy.manage }}</div>
-			<div :class="$style.manageList">
-				<button :class="$style.manageBtn" @click="openSubjectManager">
-					<i class="ti ti-palette" :class="$style.manageIcon"></i>
-					<span :class="$style.manageName">{{ copy.manageSubjects }}</span>
-					<i class="ti ti-chevron-right" :class="$style.manageArrow"></i>
-				</button>
-				<button :class="$style.manageBtn" @click="rerunTutorial">
-					<i class="ti ti-player-play" :class="$style.manageIcon"></i>
-					<span :class="$style.manageName">{{ copy.rerunTutorial }}</span>
-					<i class="ti ti-chevron-right" :class="$style.manageArrow"></i>
-				</button>
-				<button :class="$style.manageBtn" @click="doExportAll">
-					<i class="ti ti-file-download" :class="$style.manageIcon"></i>
-					<span :class="$style.manageName">{{ copy.exportAll }}</span>
-					<i class="ti ti-chevron-right" :class="$style.manageArrow"></i>
-				</button>
-			</div>
-		</div>
-
-		<!-- 端末間の同期(1k・ロールポリシーで可否) -->
-		<div :class="$style.section">
-			<div :class="$style.label">
-				<i :class="canSync ? 'ti ti-refresh' : 'ti ti-refresh-off'"></i> {{ copy.sync }}
-				<span :class="[$style.syncBadge, canSync ? $style.syncBadgeOn : $style.syncBadgeOff]">
-					<i :class="canSync ? 'ti ti-cloud-check' : 'ti ti-refresh-off'"></i> {{ canSync ? copy.syncEnabled : copy.syncDisabled }}
-				</span>
-			</div>
-			<template v-if="canSync">
-				<div :class="$style.syncMaster">
-					<i class="ti ti-cloud" :class="$style.syncMasterIcon"></i>
-					<div :class="$style.syncMasterText">
-						<div :class="$style.syncMasterTitle">{{ copy.syncThisDevice }}</div>
-						<div :class="$style.syncMasterSub">{{ copy.syncShareAll }}</div>
-					</div>
-					<i class="ti ti-circle-check-filled" :class="$style.syncMasterState"></i>
+				<div ref="viewport" :class="$style.viewport" @touchstart.passive="onTouchStart" @touchend.passive="onTouchEnd" @touchcancel="touchStart = null" @click.capture="guardSwipeClick">
+					<button
+						v-for="opt in themeOptions"
+						:key="opt.value"
+						type="button"
+						:data-theme="opt.value"
+						:class="$style.themeCard"
+						:style="{ '--hy-theme-offset': themeOffset(opt.value), '--hy-theme-scale': themeOffset(opt.value) === 0 ? 1 : 0.8, zIndex: themeOffset(opt.value) === 0 ? 3 : 2 }"
+						:aria-label="opt.label"
+						:aria-pressed="editTheme === opt.value"
+						:aria-hidden="Math.abs(themeOffset(opt.value)) > 1"
+						:tabindex="Math.abs(themeOffset(opt.value)) > 1 ? -1 : 0"
+						:disabled="saving"
+						@click="choose(opt.value)"
+					>
+						<span :class="$style.preview" :data-theme-preview="opt.value" aria-hidden="true">
+							<b>Hatady</b>
+							<span><i :class="opt.icon"></i><strong>今日のひとつ。</strong></span>
+							<span><i></i><i></i><i></i></span>
+						</span>
+						<strong>{{ opt.label }}</strong>
+						<small>{{ opt.description }}</small>
+						<span :class="$style.selection">
+							<i :class="editTheme === opt.value ? 'ti ti-check' : 'ti ti-circle-check'" aria-hidden="true"></i>
+							{{ editTheme === opt.value ? '選択中' : '選ぶ' }}
+						</span>
+					</button>
 				</div>
-				<div :class="$style.syncItems">
-					<div v-for="it in syncItems" :key="it.key" :class="$style.syncItem">
-						<i :class="['ti', it.icon]" :style="{ color: it.color }"></i>
-						<span :class="$style.syncItemName">{{ it.label }}</span>
-						<i class="ti ti-cloud-check" :class="$style.syncItemCheck"></i>
-					</div>
+				<button type="button" :class="[$style.arrow, 'hy-icon-button']" aria-label="次のテーマ" :disabled="saving || themeIndex === themeOptions.length - 1" @click="move(1)">
+					<i class="ti ti-chevron-right" aria-hidden="true"></i>
+				</button>
+			</div>
+			<div :class="$style.dots" role="group" aria-label="テーマの一覧">
+				<button v-for="(opt, index) in themeOptions" :key="opt.value" type="button" class="hy-icon-button" :aria-label="opt.label" :aria-pressed="editTheme === opt.value" :disabled="saving" @click="move(index - themeIndex)">
+					<i aria-hidden="true"></i>
+				</button>
+			</div>
+			<p class="hy-muted">{{ copy.themeHint }}</p>
+		</section>
+		<section>
+			<h3>{{ copy.manage }}</h3>
+			<div :class="$style.menu">
+				<button @click="openSubjectManager">
+					<i class="ti ti-palette"></i>
+					<span>{{ copy.manageSubjects }}</span>
+					<i class="ti ti-chevron-right"></i>
+				</button>
+				<button @click="rerunTutorial($event)">
+					<i class="ti ti-book"></i>
+					<span>{{ copy.rerunTutorial }}</span>
+					<i class="ti ti-chevron-right"></i>
+				</button>
+				<button @click="rerunTutorial($event, 'update')">
+					<i class="ti ti-sparkles"></i>
+					<span>Hatady V2の変更点</span>
+					<i class="ti ti-chevron-right"></i>
+				</button>
+				<button @click="doExportAll">
+					<i class="ti ti-file-download"></i>
+					<span>{{ copy.exportAll }}</span>
+					<i class="ti ti-chevron-right"></i>
+				</button>
+			</div>
+		</section>
+		<section>
+			<h3>
+				<i class="ti ti-refresh"></i>
+				{{ copy.sync }}
+				<small>{{ canSync ? copy.syncEnabled : copy.syncDisabled }}</small>
+			</h3>
+			<template v-if="canSync">
+				<p class="hy-muted">{{ copy.syncShareAll }}</p>
+				<div :class="$style.sync">
+					<span v-for="it in syncItems" :key="it.key">
+						<i :class="['ti', it.icon]"></i>
+						{{ it.label }}
+						<i class="ti ti-cloud-check"></i>
+					</span>
 				</div>
 			</template>
-			<div v-else :class="$style.syncBlocked">
-				<i class="ti ti-shield-lock" :class="$style.syncBlockedIcon"></i>
-				<div>
-					<b>{{ copy.syncBlockedTitle }}</b>
-					<div :class="$style.syncBlockedSub">{{ copy.syncBlockedSub }}</div>
-				</div>
-			</div>
-		</div>
-
-		<!-- フッター(保存/キャンセル)。MkWindow には footer slot が無いため body 末尾に置く。 -->
-		<div :class="$style.footer">
-			<button :class="[$style.btn, $style.btnGhost]" :disabled="saving" @click="dialog?.close()">{{ copy.cancel }}</button>
-			<button :class="[$style.btn, $style.btnPrimary]" :disabled="saving || !dirty" @click="save"><i class="ti ti-device-floppy"></i> {{ copy.save }}</button>
-		</div>
+			<p v-else class="hy-muted">
+				{{ copy.syncBlockedTitle }}
+				<br/>
+				{{ copy.syncBlockedSub }}
+			</p>
+		</section>
+		<p v-if="error" class="hy-error" role="alert">{{ error }}</p>
 	</div>
-</component>
+	<template #actions>
+		<button v-if="!embedded" class="hy-secondary" :disabled="saving" @click="requestClose">{{ copy.cancel }}</button>
+		<button class="hy-primary" :disabled="saving || !dirty" @click="save">
+			<i class="ti ti-check"></i>
+			{{ copy.save }}
+		</button>
+	</template>
+</HyDialog>
+<HatadyDraftPrompt
+	v-if="prompt"
+	title="表示設定の編集をどうする？"
+	description="選んだテーマを、端末に下書きとして残せます。"
+	:error="draftError"
+	@save="leave(true)"
+	@discard="leave(false)"
+	@return="prompt = false"
+/>
 </template>
-
-<script lang="ts" setup>
-import { computed, ref, useTemplateRef } from 'vue';
-import SettingsEmbeddedWindow from '@/components/SettingsEmbeddedWindow.vue';
-import MkWindow from '@/components/MkWindow.vue';
+<script setup lang="ts">
+import { computed, ref, nextTick, onUnmounted } from 'vue';
+import { showHatadyTutorial } from '@/utility/hatady-tutorial-launcher.js';
+import type { HatadyTutorialKind } from '@/utility/hatady-tutorial.js';
+import type { HatadyTheme } from '@/utility/hatady-prefs.js';
+import HyDialog from '@/components/HyDialog.vue';
+import HatadyDraftPrompt from '@/components/HatadyDraftPrompt.vue';
 import { i18n } from '@/i18n.js';
 import * as os from '@/os.js';
-import { hatadyTheme, saveHatadyDisplay, type HatadyTheme } from '@/utility/hatady-prefs.js';
+import { hatadyTheme, saveHatadyDisplay } from '@/utility/hatady-prefs.js';
+import { hatadyNotify } from '@/utility/hatady-ui.js';
+import { useHataFormDraft } from '@/utility/hata-form-draft.js';
 import { $i } from '@/i.js';
-
+defineProps<{ embedded?: boolean }>();
 const emit = defineEmits<{ (ev: 'closed'): void }>();
-const dialog = useTemplateRef('dialog');
+const dialog = ref<any>(),
+	viewport = ref<HTMLElement>(),
+	editTheme = ref<HatadyTheme>(hatadyTheme.value),
+	saving = ref(false),
+	prompt = ref(false),
+	error = ref(''),
+	draftError = ref('');
 const copy = i18n.ts._hata._hatady._displaySettings;
-
-// 未保存の変更があるまま閉じようとしたら確認する(保存は下部の保存ボタン)。
-async function confirmClose(): Promise<boolean> {
-	if (!dirty.value) return true;
-	const { canceled } = await os.confirm({
-		type: 'warning',
-		title: copy.unsavedTitle,
-		text: copy.unsavedText,
-	});
-	return !canceled; // OK=閉じる(変更破棄) / キャンセル=閉じない
-}
-
-// 分野の管理(色指定・削除・付け替え)モーダルを開く。
-async function openSubjectManager() {
-	const { dispose } = os.popup((await import('@/components/HatadySubjectManager.vue')).default, {}, {
-		changed: () => { /* 反映は各画面のリロードで行う */ },
-		closed: () => dispose(),
-	});
-}
-
-// チュートリアルを再度実行する(初回フラグに関係なく表示・実績は付与しない)。
-//   旗鯖fork: 起動アニメ →(はじめる)→ チュートリアル の順で、初回と同じ紹介を再生する。
-//   (テーマ選択はこの表示設定ウィンドウ内で変更できるため、再生フローには挟まない)
-async function rerunTutorial() {
-	const { dispose } = os.popup((await import('@/components/HatadyStartupAnime.vue')).default, {}, {
-		start: () => { dispose(); rerunTutorialOnly(); },
-		closed: () => dispose(),
-	});
-}
-async function rerunTutorialOnly() {
-	const { dispose } = os.popup((await import('@/components/HatadyTutorial.vue')).default, {}, {
-		done: () => dispose(),
-		closed: () => dispose(),
-	});
-}
-
-// 旗鯖fork: 学習記録(.txt)と映画・ゲーム記録(.json)の書き出し。
-//   学習記録を選んだ場合だけ、期間(すべて/今月/先月/過去30日/指定)を続けて選ぶ。
-async function doExportAll() {
-	const { dispose } = os.popup((await import('@/components/HatadyExportDialog.vue')).default, {}, {
-		closed: () => dispose(),
-	});
-}
-
-// バッファ編集: ウィンドウ内はプレビューのみ。保存でサーバーへ確定 → 全端末同期。
-const editTheme = ref<HatadyTheme>(hatadyTheme.value);
-const saving = ref(false);
-const dirty = computed(() => editTheme.value !== hatadyTheme.value);
-
-// 端末間同期の可否はロールポリシー(canUseHatadySync)で制御(要件③)。既定は許可。
-const canSync = computed<boolean>(() => ($i as any)?.policies?.canUseHatadySync !== false);
+const dirty = computed(() => editTheme.value !== hatadyTheme.value),
+	canSync = computed(() => ($i as any)?.policies?.canUseHatadySync !== false);
+const themes = [
+	{ value: 'light' as const, label: 'ライト', icon: 'ti ti-sun', description: '明るく、すっきり' },
+	{ value: 'dark' as const, label: 'ダーク', icon: 'ti ti-moon', description: '静かな深緑' },
+	{ value: 'paper' as const, label: copy.themePaper, icon: 'ti ti-book', description: '紙のような温もり' },
+	{ value: 'espresso' as const, label: copy.themeEspresso, icon: 'ti ti-coffee', description: '落ち着いた茶色' },
+];
+// Keep an existing shared-theme choice visible without rewriting its saved key.
+const legacyTheme = ref(editTheme.value === 'hataskey');
+const themeOptions = computed(() => legacyTheme.value ? [
+	...themes,
+	{ value: 'hataskey' as const, label: copy.themeHataskey, icon: 'ti ti-palette', description: 'Hataskeyと同じ見た目' },
+] : themes);
+const themeIndex = computed(() => themeOptions.value.findIndex(opt => opt.value === editTheme.value));
 const syncItems = [
-	{ key: 'syncItemTimeline', label: copy.syncItemTimeline, icon: 'ti-timeline-event', color: '#517f4f' },
-	{ key: 'syncItemShelf', label: copy.syncItemShelf, icon: 'ti-books', color: '#8a5a2e' },
-	{ key: 'syncItemProfile', label: copy.syncItemProfile, icon: 'ti-user', color: '#45688f' },
-	{ key: 'syncItemDisplay', label: copy.syncItemDisplay, icon: 'ti-palette', color: '#8a5a91' },
+	{ key: 'timeline', label: copy.syncItemTimeline, icon: 'ti-notebook' },
+	{ key: 'shelf', label: copy.syncItemShelf, icon: 'ti-books' },
+	{ key: 'profile', label: copy.syncItemProfile, icon: 'ti-user' },
+	{ key: 'display', label: copy.syncItemDisplay, icon: 'ti-palette' },
 ];
+const draft = useHataFormDraft({
+	id: 'hatady-display',
+	autoSave: false,
+	capture: () => ({ theme: editTheme.value }),
+	restore: (d) => {
+		if (d.theme === 'hataskey') legacyTheme.value = true;
+		if (themeOptions.value.some((t) => t.value === d.theme)) editTheme.value = d.theme;
+	},
+	isMeaningful: () => true,
+});
+let touchStart: { x: number; y: number } | null = null;
+let swipeUntil = 0;
 
-const themeOptions = [
-	{ value: 'paper' as const, label: copy.themePaper, preview: 'linear-gradient(135deg,#f4ecdd,#e7dcc7)', swatch: '#d9824a' },
-	{ value: 'espresso' as const, label: copy.themeEspresso, preview: 'linear-gradient(135deg,#2b2119,#3a2e23)', swatch: '#f0a94e' },
-	{ value: 'hataskey' as const, label: copy.themeHataskey, preview: 'linear-gradient(135deg,#eef2f4,#dfe6ea)', swatch: '#34a1c9' },
-];
+async function choose(value: HatadyTheme) {
+	if (saving.value) return;
+	editTheme.value = value;
+	await nextTick();
+	const focused = window.document.activeElement;
+	if (focused instanceof HTMLButtonElement && (focused.disabled || focused.getAttribute('aria-hidden') === 'true')) {
+		viewport.value?.querySelector<HTMLButtonElement>(`[data-theme="${value}"]`)?.focus({ preventScroll: true });
+	}
+}
+
+function themeOffset(value: HatadyTheme) {
+	return themeOptions.value.findIndex(opt => opt.value === value) - themeIndex.value;
+}
+
+function move(delta: number) {
+	const next = themeOptions.value[themeIndex.value + delta];
+	if (next) void choose(next.value);
+}
+
+function onTouchStart(event: TouchEvent) {
+	const touch = event.touches[0];
+	touchStart = event.touches.length === 1 && touch ? { x: touch.clientX, y: touch.clientY } : null;
+}
+
+function onTouchEnd(event: TouchEvent) {
+	const start = touchStart, touch = event.changedTouches[0];
+	touchStart = null;
+	if (!start || !touch) return;
+	const dx = touch.clientX - start.x, dy = touch.clientY - start.y;
+	if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) {
+		swipeUntil = performance.now() + 400;
+		move(dx < 0 ? 1 : -1);
+	}
+}
+
+function guardSwipeClick(event: MouseEvent) {
+	if (performance.now() >= swipeUntil) return;
+	event.preventDefault();
+	event.stopPropagation();
+}
+
+function requestClose() {
+	if (saving.value) return;
+	if (draft.hasChanges()) {
+		prompt.value = true;
+		draftError.value = '';
+	} else dialog.value?.close();
+}
+
+function leave(save: boolean) {
+	if (!(save ? draft.saveDraft() : draft.clearDraft())) {
+		draftError.value = '端末の下書きを更新できませんでした';
+		return;
+	}
+	prompt.value = false;
+	if (save) hatadyNotify('下書きを保存しました');
+	dialog.value?.close();
+}
 
 async function save() {
 	saving.value = true;
 	try {
 		await saveHatadyDisplay(editTheme.value);
-		os.success();
+		if (!draft.clearDraft()) hatadyNotify('表示設定を保存しましたが、端末の下書きを削除できませんでした');
+		else hatadyNotify('表示設定を保存しました');
 		dialog.value?.close();
 	} catch {
-		os.alert({ type: 'error', text: copy.saveFailed });
+		error.value = copy.saveFailed;
 	} finally {
 		saving.value = false;
 	}
 }
 
-/** 旗鯖fork: true なら窓の枠を持たず、設定画面の右ペインの中身として描く。 */
-defineProps<{ embedded?: boolean }>();
-</script>
+async function openSubjectManager() {
+	const { dispose } = os.popup(
+		(await import('@/components/HatadySubjectManager.vue')).default,
+		{},
+		{ closed: () => dispose() },
+	);
+}
 
-<style lang="scss" module>
-.body {
-	padding: 20px;
+async function doExportAll() {
+	const { dispose } = os.popup(
+		(await import('@/components/HatadyExportDialog.vue')).default,
+		{},
+		{ closed: () => dispose() },
+	);
+}
+
+let tutorialActive = true;
+let stopTutorial: (() => void) | undefined;
+
+async function rerunTutorial(event: MouseEvent, kind: HatadyTutorialKind = 'initial') {
+	const stop = await showHatadyTutorial({
+		kind, replay: true, isActive: () => tutorialActive,
+		anchorElement: event.currentTarget as HTMLElement,
+	});
+	if (!stop) return;
+	if (tutorialActive) stopTutorial = stop;
+	else stop();
+}
+
+onUnmounted(() => { tutorialActive = false; stopTutorial?.(); });
+
+</script>
+<style module lang="scss">
+.dialog [data-hatady-theme][data-embedded='true'][data-bare='true'] {
+	background: var(--hy-surface);
+}
+.embeddedTitle {
+	margin: 0 0 24px;
+	font-size: 18px;
+	line-height: 1.5;
+	text-align: center;
+}
+.settings {
 	display: flex;
 	flex-direction: column;
-	gap: 20px;
-	background: var(--hy-bg);
-	color: var(--hy-body);
-	font-family: 'Noto Sans JP', 'Hiragino Sans', system-ui, sans-serif;
-	min-height: 100%;
-	box-sizing: border-box;
+	gap: 28px;
 }
-.section { }
-.label { display: flex; align-items: center; gap: 6px; font-family: var(--hy-heading); font-size: 12.5px; font-weight: 700; color: var(--hy-ink); margin-bottom: 10px; }
-.label i { color: var(--hy-accent); }
-.hint { font-size: 10.5px; color: var(--hy-muted); margin-top: 8px; line-height: 1.6; }
-
-/* テーマカード */
-.themeGrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-.themeCard { background: var(--hy-surface); border: 2px solid transparent; border-radius: 11px; padding: 4px; cursor: pointer; color: inherit; }
-.themeCardOn { border-color: var(--hy-accent); }
-.themeSwatchWrap { display: flex; align-items: center; justify-content: center; height: 52px; border-radius: 8px; border: 1px solid var(--hy-border); }
-.themeSwatch { width: 22px; height: 22px; border-radius: 6px; }
-.themeName { display: block; font-size: 11px; font-weight: 700; color: var(--hy-ink); text-align: center; margin-top: 5px; }
-.themeCheck { color: var(--hy-accent); }
-
-/* 端末間の同期 */
-.syncBadge { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; font-size: 10.5px; font-weight: 700; border-radius: 999px; padding: 3px 10px; }
-.syncBadgeOn { color: #4e7d4a; background: #dcecd5; }
-.syncBadgeOff { color: var(--hy-muted); background: var(--hy-chip-bg); }
-.syncMaster { display: flex; align-items: center; gap: 12px; background: var(--hy-surface); border: 1px solid var(--hy-border); border-radius: 11px; padding: 13px 15px; margin-bottom: 12px; }
-.syncMasterIcon { font-size: 22px; color: var(--hy-accent); }
-.syncMasterText { flex: 1; min-width: 0; }
-.syncMasterTitle { font-family: var(--hy-heading); font-weight: 700; font-size: 14px; color: var(--hy-ink); }
-.syncMasterSub { font-size: 11.5px; color: var(--hy-muted); }
-.syncMasterState { font-size: 22px; color: var(--hy-accent); flex-shrink: 0; }
-.syncItems { background: var(--hy-surface); border: 1px solid var(--hy-border); border-radius: 11px; overflow: hidden; }
-.syncItem { display: flex; align-items: center; gap: 11px; padding: 11px 15px; border-bottom: 1px solid var(--hy-border); }
-.syncItem:last-child { border-bottom: none; }
-.syncItem i:first-child { font-size: 17px; }
-.syncItemName { flex: 1; font-size: 12.5px; color: var(--hy-ink); }
-.syncItemCheck { font-size: 16px; color: #4e7d4a; }
-.syncBlocked { display: flex; gap: 11px; align-items: flex-start; background: #f7ecd6; border: 1px solid #e2c79a; border-radius: 11px; padding: 13px 15px; }
-.syncBlockedIcon { font-size: 20px; color: #b58a3c; flex-shrink: 0; margin-top: 1px; }
-.syncBlocked b { font-size: 12.5px; line-height: 1.6; color: #8a6a2e; }
-.syncBlockedSub { font-size: 11.5px; color: var(--hy-muted); margin-top: 3px; }
-
-/* 管理 */
-.manageList { display: flex; flex-direction: column; background: var(--hy-surface); border: 1px solid var(--hy-border); border-radius: 11px; overflow: hidden; }
-.manageBtn { display: flex; align-items: center; gap: 11px; background: transparent; border: none; border-bottom: 1px solid var(--hy-border); padding: 12px 15px; font-size: 13px; font-weight: 700; color: var(--hy-ink); cursor: pointer; font-family: var(--hy-heading); text-align: left; }
-.manageBtn:last-child { border-bottom: none; }
-.manageBtn:hover { background: rgba(217,130,74,.07); }
-.manageBtn:disabled { opacity: .55; cursor: progress; }
-.manageIcon { font-size: 17px; color: var(--hy-accent); flex-shrink: 0; }
-.manageName { flex: 1; }
-.manageArrow { font-size: 15px; color: var(--hy-muted); }
-.spin { animation: hy-ds-spin .8s linear infinite; }
-@keyframes hy-ds-spin { to { transform: rotate(360deg); } }
-
-/* フッター */
-.footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: auto; padding-top: 6px; }
-.btn {
-	display: inline-flex; align-items: center; gap: 6px;
-	border-radius: 999px; padding: 9px 22px;
-	font-weight: 700; font-family: var(--hy-heading); font-size: 14px;
-	cursor: pointer; border: 1.5px solid transparent; transition: filter .15s, opacity .15s;
+.settings h3 {
+	font-size: 14px;
+	display: flex;
+	gap: 8px;
+	align-items: center;
+	margin: 0 0 16px;
 }
-.btn:disabled { opacity: .45; cursor: not-allowed; }
-.btnGhost { background: var(--hy-surface); color: var(--hy-ink); border-color: var(--hy-border); }
-.btnGhost:not(:disabled):hover { filter: brightness(0.96); }
-.btnPrimary { background: linear-gradient(90deg, #e0955a, #d9824a); color: #fff; box-shadow: 0 2px 8px rgba(217,130,74,.35); }
-.btnPrimary:not(:disabled):hover { filter: brightness(1.05); }
+.settings h3 small {
+	margin-left: auto;
+	color: var(--hy-muted);
+	font-size: 11px;
+}
+.carousel {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	min-width: 0;
+}
+.arrow {
+	flex: 0 0 44px;
+	border: 1px solid var(--hy-border);
+}
+.viewport {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
+	justify-items: center;
+	align-items: start;
+	min-width: 0;
+	flex: 1;
+	overflow: hidden;
+	padding: 8px;
+	touch-action: pan-y;
+}
+.themeCard {
+	grid-area: 1 / 1;
+	display: flex;
+	flex-direction: column;
+	align-items: stretch;
+	gap: 8px;
+	position: relative;
+	width: min(218px, 100%);
+	min-width: 0;
+	padding: 12px;
+	border: 2px solid var(--hy-border);
+	border-radius: 20px;
+	background: var(--hy-surface);
+	color: var(--hy-ink);
+	text-align: center;
+	cursor: pointer;
+	transform: translateX(calc(var(--hy-theme-offset, 0) * 76%)) scale(var(--hy-theme-scale, 1));
+	transition: transform 0.38s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s, border-color 0.2s;
+	opacity: 0.45;
+}
+.themeCard[aria-pressed='true'] {
+	border-color: var(--hy-accent);
+	box-shadow: 0 0 0 3px var(--hy-soft);
+	opacity: 1;
+}
+.themeCard[aria-hidden='true'] {
+	visibility: hidden;
+	pointer-events: none;
+}
+.themeCard > strong {
+	font-size: 17px;
+	margin-top: 4px;
+}
+.themeCard > small {
+	font-size: 12px;
+}
+.selection {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 4px;
+	font-size: 12px;
+	min-height: 20px;
+	color: var(--hy-muted);
+}
+.selection > i {
+	font-size: 16px;
+}
+.themeCard[aria-pressed='true'] .selection {
+	color: var(--hy-accent);
+	font-weight: 700;
+}
+.preview {
+	--hy-theme-bg: var(--MI_THEME-bg);
+	--hy-theme-panel: var(--MI_THEME-panel);
+	--hy-theme-fg: var(--MI_THEME-accent);
+	display: flex;
+	flex-direction: column;
+	gap: 9px;
+	width: 100%;
+	height: 132px;
+	padding: 14px 12px;
+	border-radius: 12px;
+	background: var(--hy-theme-bg);
+	color: var(--hy-theme-fg);
+}
+.preview > b {
+	font-family: 'Hatady Brand', sans-serif;
+	text-align: left;
+	font-size: 19px;
+	line-height: 1.1;
+}
+.preview > span {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	background: var(--hy-theme-panel);
+	border-radius: 8px;
+	padding: 9px;
+	text-align: left;
+	font-size: 12px;
+}
+.preview > span:first-of-type > i {
+	font-size: 17px;
+}
+.preview strong {
+	font-size: 11px;
+}
+.preview > span:last-child {
+	gap: 5px;
+	align-items: flex-end;
+	padding: 0;
+	background: none;
+	flex: 1;
+}
+.preview > span:last-child i {
+	display: block;
+	width: 20%;
+	height: 70%;
+	background: currentColor;
+	opacity: 0.3;
+	border-radius: 3px;
+}
+.preview > span:last-child i:nth-child(2) {
+	height: 100%;
+}
+.preview > span:last-child i:nth-child(3) {
+	height: 85%;
+}
+.preview[data-theme-preview='light'] {
+	--hy-theme-bg: #eef2f3;
+	--hy-theme-panel: #fff;
+	--hy-theme-fg: #357359;
+}
+.preview[data-theme-preview='dark'] {
+	--hy-theme-bg: #192321;
+	--hy-theme-panel: #25312d;
+	--hy-theme-fg: #a9d8bd;
+}
+.preview[data-theme-preview='paper'] {
+	--hy-theme-bg: #f1ebdf;
+	--hy-theme-panel: #fffcf7;
+	--hy-theme-fg: #855333;
+}
+.preview[data-theme-preview='espresso'] {
+	--hy-theme-bg: #241f1b;
+	--hy-theme-panel: #332b25;
+	--hy-theme-fg: #edbb88;
+}
+.dots {
+	display: flex;
+	justify-content: center;
+	gap: 0;
+	margin-bottom: 8px;
+}
+.dots i {
+	width: 7px;
+	height: 7px;
+	border-radius: 999px;
+	background: var(--hy-muted);
+	transition: width 0.25s, background 0.25s;
+}
+.dots [aria-pressed='true'] i {
+	width: 22px;
+	background: var(--hy-accent);
+}
+.menu {
+	display: flex;
+	flex-direction: column;
+}
+.menu > button,
+.menu > a {
+	display: flex;
+	align-items: center;
+	gap: 14px;
+	min-height: 62px;
+	border: 0;
+	border-bottom: 1px solid var(--hy-border);
+	background: none;
+	color: var(--hy-ink);
+	text-align: left;
+	padding: 10px 4px;
+	cursor: pointer;
+	font-size: 13px;
+}
+.menu span {
+	flex: 1;
+}
+.menu small {
+	display: block;
+	font-size: 11px;
+	color: var(--hy-muted);
+	margin-top: 4px;
+}
+.sync {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 12px;
+}
+.sync > span {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 12px;
+	padding: 12px;
+	border-radius: 16px;
+	background: var(--hy-surface-2);
+}
+.sync > span > i:last-child {
+	margin-left: auto;
+	color: var(--hy-accent-ink);
+}
+@container hy-dialog (max-width: 420px) {
+	.themeCard {
+		width: min(200px, 100%);
+		padding: 10px;
+	}
+	.themeCard > strong {
+		font-size: 15px;
+	}
+	.themeCard > small {
+		font-size: 11px;
+	}
+	.preview {
+		height: 125px;
+	}
+	.sync {
+		grid-template-columns: 1fr;
+	}
+}
+@media (prefers-reduced-motion: reduce) {
+	.themeCard,
+	.dots i {
+		transition: none;
+	}
+}
 </style>

@@ -1,114 +1,85 @@
-/*
- * SPDX-FileCopyrightText: Tolehata and hatasaba-project
- * SPDX-License-Identifier: AGPL-3.0-only
- */
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-import { describe, expect, test } from 'vitest';
+/* SPDX-License-Identifier: AGPL-3.0-only */
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { createApp, h, nextTick } from 'vue';
+const fixture = vi.hoisted(() => ({ api: vi.fn(), closes: 0, mounts: 0 }));
+vi.mock('@/utility/misskey-api.js', () => ({ misskeyApi: fixture.api }));
+// The browser locale loader fetches at module initialization; these control-flow tests need no network.
+vi.mock('@/i18n.js', () => ({ i18n: { ts: { _hata: { _hatady: { _media: { status: {} } } } } } }));
+vi.mock('@/components/HyDialog.vue', async () => {
+	const { defineComponent, h } = await import('vue');
+	return { default: defineComponent({ props: { bare: Boolean, back: Boolean, title: String }, emits: ['close', 'back', 'closed'], setup(props, { slots, emit, expose }) {
+		fixture.mounts++; expose({ close: () => { fixture.closes++; emit('closed'); } });
+		return () => h('section', { 'data-dialog': '' }, [h('button', { 'data-action': 'dialog-close', onClick: () => emit('close') }, '閉じる'), props.back ? h('button', { 'data-action': 'dialog-back', onClick: () => emit('back') }, '戻る') : null, !props.bare ? h('h2', props.title) : null, slots.default?.()]);
+	} }) };
+});
+vi.mock('@/components/HyMediaCover.vue', async () => { const { defineComponent, h } = await import('vue'); return { default: defineComponent({ setup: () => () => h('span', '表紙') }) }; });
+vi.mock('@/components/HatadyComposer.vue', async () => {
+	const { defineComponent, h } = await import('vue');
+	return { default: defineComponent({ props: { kind: String, embedded: Boolean }, emits: ['done', 'back', 'closed'], setup(props, { emit, expose }) { expose({ requestClose: () => emit('closed') }); return () => h('div', { 'data-form': 'composer', 'data-kind': props.kind, 'data-embedded': props.embedded }, [h('button', { 'data-action': 'composer-back', onClick: () => emit('back') }, '戻る'), h('button', { 'data-action': 'composer-done', onClick: () => { emit('done', { id: 'log' }); emit('closed'); } }, '保存')]); } }) };
+});
+vi.mock('@/components/HatadyMediaSessionForm.vue', async () => {
+	const { defineComponent, h } = await import('vue');
+	return { default: defineComponent({ props: { work: { type: Object, required: true }, embedded: Boolean }, emits: ['done', 'back', 'closed'], setup(props, { emit, expose }) { expose({ requestClose: () => emit('closed') }); return () => h('div', { 'data-form': 'session', 'data-work': props.work.id, 'data-embedded': props.embedded }, [h('button', { 'data-action': 'session-back', onClick: () => emit('back') }, '戻る'), h('button', { 'data-action': 'session-done', onClick: () => { emit('done', { id: 'session' }); emit('closed'); } }, '保存')]); } }) };
+});
+vi.mock('@/components/HatadyMediaWorkForm.vue', async () => {
+	const { defineComponent, h } = await import('vue');
+	return { default: defineComponent({ props: { kind: String, embedded: Boolean }, emits: ['done', 'back', 'closed'], setup(props, { emit, expose }) { expose({ requestClose: () => emit('closed') }); return () => h('div', { 'data-form': 'work', 'data-kind': props.kind }, [h('button', { 'data-action': 'work-back', onClick: () => emit('back') }, '戻る'), h('button', { 'data-action': 'work-done', onClick: () => { emit('done', { id: 'new-work', title: '新作', kind: props.kind }); emit('closed'); } }, '保存')]); } }) };
+});
+import HatadyActivityRecordChooser from '@/components/HatadyActivityRecordChooser.vue';
+const cleanups: Array<() => void> = [];
 
-function componentSource(name: string): string {
-	return readFileSync(resolve(process.cwd(), 'src/components', name), 'utf8');
+async function settle() { await nextTick(); await Promise.resolve(); await nextTick(); }
+
+function mountChooser() {
+	const done = vi.fn(), closed = vi.fn(), target = window.document.createElement('div'); window.document.body.append(target);
+	const app = createApp({ render: () => h(HatadyActivityRecordChooser, { onDone: done, onClosed: closed }) }); app.mount(target);
+	cleanups.push(() => { app.unmount(); target.remove(); });
+	return { target, done, closed, host: target.querySelector('[data-dialog]')! };
 }
 
-function frontendSource(path: string): string {
-	return readFileSync(resolve(process.cwd(), 'src', path), 'utf8');
+async function clickText(target: HTMLElement, text: string) {
+	const button = Array.from(target.querySelectorAll('button')).find(button => button.textContent?.includes(text)); expect(button, `button ${text}`).toBeTruthy(); button!.click(); await settle();
 }
 
-function sectionBetween(text: string, start: string, end: string): string {
-	const after = text.split(start)[1];
-	expect(after).toBeDefined();
-	const section = after!.split(end)[0];
-	expect(section).toBeDefined();
-	return section!;
-}
+async function action(target: HTMLElement, name: string) { const button = target.querySelector<HTMLButtonElement>(`[data-action="${name}"]`); expect(button, name).toBeTruthy(); button!.click(); await settle(); }
 
-describe('Hatady unified activity UI contracts', () => {
-	test('study, movie and game activities keep distinct entry points and presentation branches', () => {
-		const card = componentSource('HatadyActivityCard.vue');
-		const chooser = componentSource('HatadyActivityRecordChooser.vue');
+beforeEach(() => { fixture.closes = 0; fixture.mounts = 0; fixture.api.mockReset(); fixture.api.mockImplementation(async (_endpoint: string, payload: any) => [{ id: `${payload.kind}-work`, title: `${payload.kind} の作品`, kind: payload.kind }]); });
+afterEach(() => { cleanups.splice(0).forEach(fn => fn()); });
 
-		expect(card).toContain('<template v-if="isStudy && study">');
-		expect(card).toContain('<template v-else-if="media && media.work && media.session">');
-		expect(card).toContain("activity.value.type === 'movie_viewing' ? 'ti-movie'");
-		expect(card).toContain("activity.value.type === 'game_match' ? 'ti-swords'");
-		expect(card).toContain("activity.value.type === 'game_roguelike' ? 'ti-route-square'");
-		expect(chooser).toContain("@click=\"emit('study')\"");
-		expect(chooser).toContain("@click=\"selectKind('movie')\"");
-		expect(chooser).toContain("@click=\"selectKind('game')\"");
+describe('one persistent activity entry dialog', () => {
+	test.each([['勉強・読書', 'study'], ['運動', 'exercise'], ['作業', 'work']])('%s opens its embedded composer without replacing the outer modal', async (label, kind) => {
+		const { target, host, done, closed } = mountChooser();
+		await clickText(target, label);
+		expect(target.querySelector('[data-dialog]')).toBe(host); expect(fixture.mounts).toBe(1); expect(fixture.closes).toBe(0);
+		expect(target.querySelector('[data-form="composer"]')?.getAttribute('data-kind')).toBe(kind);
+		expect(target.querySelector('[data-form="composer"]')?.getAttribute('data-embedded')).toBe('true');
+		await action(target, 'composer-back'); expect(target.querySelectorAll('[data-form]').length).toBe(0); expect(target.querySelector('[data-dialog]')).toBe(host);
+		await clickText(target, label); await action(target, 'composer-done'); expect(done).toHaveBeenCalledWith({ id: 'log' }); expect(closed).toHaveBeenCalledOnce();
 	});
-
-	test('record chooser connects existing work and session forms without duplicating composers', () => {
-		const chooser = componentSource('HatadyActivityRecordChooser.vue');
-		const page = frontendSource('pages/hatady.vue');
-
-		expect(chooser).toContain("@click=\"emit('session', work)\"");
-		expect(chooser).toContain("@click=\"emit('createWork', selectedKind)\"");
-		expect(page).toContain("study: () => { dispose(); openStudyComposer(); }");
-		expect(page).toContain("session: (work: HatadyMediaWork) => { dispose(); openMediaSessionComposer(work); }");
-		expect(page).toContain("createWork: (kind: HatadyMediaKind) => { dispose(); createMediaWorkAndRecord(kind); }");
-		expect(page).toContain("import('@/components/HatadyMediaSessionForm.vue')");
-		expect(page).toContain("import('@/components/HatadyMediaWorkForm.vue')");
-		expect(page).toContain('openMediaSessionComposer(work);');
+	test.each([['映画', 'movie'], ['ゲーム', 'game']])('%s chooses a work and opens its session within the same modal', async (label, kind) => {
+		const { target, host } = mountChooser(); await clickText(target, label);
+		expect(fixture.api).toHaveBeenCalledWith('hata/hatady/media/works/list', expect.objectContaining({ kind }));
+		await clickText(target, `${kind} の作品`);
+		expect(target.querySelector('[data-form="session"]')?.getAttribute('data-work')).toBe(`${kind}-work`); expect(target.querySelector('[data-dialog]')).toBe(host); expect(fixture.closes).toBe(0);
+		await action(target, 'session-back'); expect(target.textContent).toContain(`${kind} の作品`); expect(target.querySelector('[data-dialog]')).toBe(host);
 	});
-
-	test('media cards open work details while study cards retain conversation and reactions', () => {
-		const card = componentSource('HatadyActivityCard.vue');
-		const study = sectionBetween(card, '<template v-if="isStudy && study">', '<template v-else-if="media && media.work && media.session">');
-		const media = sectionBetween(card, '<template v-else-if="media && media.work && media.session">', '</article>');
-
-		expect(study).toContain('<HatadyReactions');
-		expect(study).toContain("emit('openLog', study.id)");
-		expect(study).not.toContain("emit('openMedia'");
-		expect(media).toContain("emit('openMedia', media.work.id)");
-		expect(media).not.toContain('<HatadyReactions');
-		expect(media).not.toContain("emit('openLog'");
+	test('creating a work continues into its session instead of closing the recording flow', async () => {
+		const { target, host, done } = mountChooser(); await clickText(target, '映画'); await clickText(target, '作品を登録');
+		await action(target, 'work-done');
+		expect(fixture.closes).toBe(0); expect(done).not.toHaveBeenCalled(); expect(target.querySelector('[data-dialog]')).toBe(host); expect(target.querySelector('[data-form="session"]')?.getAttribute('data-work')).toBe('new-work');
+		await action(target, 'session-done'); expect(done).toHaveBeenCalledWith({ id: 'session' }); expect(fixture.closes).toBe(1);
 	});
-
-	test('movie activity details use the canonical movie-only field allowlist', () => {
-		const card = componentSource('HatadyActivityCard.vue');
-		const chooser = componentSource('HatadyActivityRecordChooser.vue');
-		const mediaUtility = frontendSource('utility/hatady-media.ts');
-		const movieChooser = sectionBetween(chooser, "@click=\"selectKind('movie')\"", "@click=\"selectKind('game')\"");
-		const movieFields = sectionBetween(mediaUtility, "movie_viewing: [", "game_play: [");
-
-		expect(card).toContain('mediaSessionDisplayFacts(media.value.session)');
-		expect(chooser).toContain('const kind = selectedKind.value;');
-		expect(chooser).toContain('kind,');
-		expect(movieChooser).not.toMatch(/weapon|mood|matchmaking|game_match|game_roguelike/);
-		expect(movieFields).toContain("'theaterName'");
-		expect(movieFields).toContain("'viewingMode'");
-		expect(movieFields).not.toMatch(/weapon|mood|matchmaking|roundResults|game_/);
+	test('an older request cannot overwrite a later category selection', async () => {
+		const requests: Array<(value: unknown) => void> = [];
+		fixture.api.mockImplementation(() => new Promise(resolve => requests.push(resolve)));
+		const { target } = mountChooser(); await clickText(target, '映画'); await action(target, 'dialog-back'); await clickText(target, 'ゲーム');
+		expect(requests).toHaveLength(2);
+		requests[1]([{ id: 'game', kind: 'game', title: '最新のゲーム' }]); await settle(); requests[0]([{ id: 'movie', kind: 'movie', title: '古い映画' }]); await settle();
+		expect(target.textContent).toContain('最新のゲーム'); expect(target.textContent).not.toContain('古い映画');
 	});
-
-	test('my activity and everyone activity both read the unified activities endpoint', () => {
-		const page = frontendSource('pages/hatady.vue');
-		const unifiedCalls = page.match(/misskeyApi\('hata\/hatady\/activities'/g) ?? [];
-
-		expect(unifiedCalls).toHaveLength(2);
-		expect(page).toContain("scope: 'mine'");
-		expect(page).toContain('const scope = discoverType.value;');
-		expect(page).toContain('scope,');
-		expect(page).toContain('scope !== discoverType.value');
-		expect(page).toContain('normalizeHatadyActivityPage(await misskeyApi');
-		expect(page).not.toContain("misskeyApi('hata/hatady/timeline'");
-	});
-
-	test('switching type or search invalidates an older in-flight work request', () => {
-		const chooser = componentSource('HatadyActivityRecordChooser.vue');
-
-		expect(chooser).toContain('if (!selectedKind.value || (append && loading.value)) return;');
-		expect(chooser).toContain('const currentRequest = ++requestId;');
-		expect(chooser).toContain('const kind = selectedKind.value;');
-		expect(chooser).toContain('if (currentRequest !== requestId) return;');
-	});
-
-	test('media activity deletion reports an API failure instead of showing success', () => {
-		const page = frontendSource('pages/hatady.vue');
-		const deleteMedia = sectionBetween(page, 'async function deleteMediaActivity', '// 投稿(学習ログ)のメニュー');
-
-		expect(deleteMedia).toContain("await misskeyApi('hata/hatady/media/sessions/delete'");
-		expect(deleteMedia).toContain('os.success();');
-		expect(deleteMedia).toContain("await os.alert({ type: 'error', text: i18n.ts.somethingHappened });");
-		expect(deleteMedia.indexOf('os.success();')).toBeLessThan(deleteMedia.indexOf('} catch {'));
+	test('work loading failure keeps retry available without changing the modal', async () => {
+		fixture.api.mockRejectedValueOnce(new Error('offline'));
+		const { target, host } = mountChooser(); await clickText(target, '映画'); expect(target.textContent).toContain('読み込めませんでした');
+		await clickText(target, '再読み込み'); expect(target.textContent).toContain('movie の作品'); expect(target.querySelector('[data-dialog]')).toBe(host);
 	});
 });

@@ -1,232 +1,71 @@
-<!--
-SPDX-FileCopyrightText: Tolehata and hatasaba-project
-SPDX-License-Identifier: AGPL-3.0-only
-旗鯖fork(Hatady 1i): 本を追加 — 手入力。表紙はタイトルから自動生成し、色は手動で選べる。
-  デザイン案 1i に準拠(左:表紙ライブプレビュー+色選択 / 右:タイトル・著者・総ページ・状態)。
-  保存で hata/hatady/books/create に登録し、作成した本を done で返す。
--->
+<!-- SPDX-License-Identifier: AGPL-3.0-only -->
 <template>
-<MkWindow
-	ref="dialog"
-	:initialWidth="640"
-	:initialHeight="520"
-	:canResize="false"
-	@closed="emit('closed')"
->
-	<template #header><i class="ti ti-books"></i> {{ isEdit ? t('editBook') : t('addBook') }}</template>
-
-	<div class="hatady-scope" :data-hatady-theme="theme" :class="$style.body">
-		<div :class="$style.grid">
-			<!-- 左: 表紙(自動生成 + 色選択) -->
-			<div :class="$style.coverCol">
-				<label :class="$style.label">{{ t('coverLabel') }} <span :class="$style.auto">{{ t('auto') }}</span></label>
-				<div :class="$style.coverWrap">
-					<HyBookCover :title="title || t('untitled')" :author="author || null" :width="103" :colorIndex="colorIndex" showTitle/>
-				</div>
-				<div :class="$style.coverHint">{{ t('coverHint') }}</div>
-				<div :class="$style.swatches">
-					<button
-						v-for="(c, i) in swatchColors" :key="i"
-						:class="[$style.swatch, colorIndex === i && $style.swatchOn]"
-						:style="{ background: c }"
-						@click="colorIndex = colorIndex === i ? null : i"
-					></button>
-				</div>
-			</div>
-
-			<!-- 右: フォーム -->
-			<div :class="$style.formCol">
-				<div :class="$style.field">
-					<label :class="$style.label">{{ t('titleLabel') }}</label>
-					<input v-model="title" :class="[$style.input, $style.serif]" :placeholder="t('titlePh')" autofocus>
-				</div>
-				<div :class="$style.field">
-					<label :class="$style.label">{{ t('authorLabel') }} <span :class="$style.optional">({{ t('optional') }})</span></label>
-					<input v-model="author" :class="$style.input" :placeholder="t('authorPh')">
-				</div>
-				<div :class="$style.row">
-					<div :class="$style.field">
-						<label :class="$style.label">{{ t('pagesLabel') }} <span :class="$style.optional">({{ t('optional') }})</span></label>
-						<input v-model.number="totalPages" type="number" min="1" :class="$style.input" placeholder="260">
-					</div>
-					<!-- 状態は本の詳細モーダル側で指定するため、編集モードでは重複を避けて非表示。 -->
-					<div v-if="!isEdit" :class="$style.field">
-						<label :class="$style.label">{{ t('statusLabel') }}</label>
-						<div :class="$style.selectWrap">
-							<select v-model="status" :class="$style.select">
-								<option value="reading">{{ t('status_reading') }}</option>
-								<option value="finished">{{ t('status_finished') }}</option>
-								<option value="tsundoku">{{ t('status_tsundoku') }}</option>
-								<option value="want">{{ t('status_want') }}</option>
-							</select>
-							<i class="ti ti-chevron-down" :class="$style.selectIcon"></i>
-						</div>
-					</div>
-				</div>
-				<div :class="$style.genHint"><i class="ti ti-sparkles"></i> {{ t('genHint') }}</div>
-			</div>
-		</div>
-
-		<div :class="$style.footer">
-			<button :class="[$style.btn, $style.btnGhost]" :disabled="saving" @click="dialog?.close()">{{ t('cancel') }}</button>
-			<button :class="[$style.btn, $style.btnPrimary]" :disabled="saving || !title.trim()" @click="submit"><i class="ti ti-check"></i> {{ isEdit ? t('updateBtn') : t('submit') }}</button>
-		</div>
-	</div>
-</MkWindow>
+<HatadyFormWizard ref="wizard" v-model="values" :title="isEdit ? '本の情報を編集' : '本を加える'" label="本" icon="ti ti-book" :pages="pages" :draftId="`hatady:book:${isEdit ? `edit:${source.id}` : 'create'}`" :embedded="embedded" :restore="restoreDraft" :save="save" :saveLabel="isEdit ? '変更を保存' : 'コレクションに加える'" @done="emit('done', $event)" @closed="emit('closed')" @back="emit('back')"/>
 </template>
-
-<script lang="ts" setup>
-import { ref, useTemplateRef } from 'vue';
-import MkWindow from '@/components/MkWindow.vue';
-import HyBookCover from '@/components/HyBookCover.vue';
-import * as os from '@/os.js';
-import { i18n } from '@/i18n.js';
+<script setup lang="ts">
+import { nextTick, onMounted, ref, useTemplateRef } from 'vue';
+import type { HatadyFormPage, HatadyFormValues } from '@/utility/hatady-form.js';
+import HatadyFormWizard from '@/components/HatadyFormWizard.vue';
 import { misskeyApi } from '@/utility/misskey-api.js';
-import { HY_COVER_SETS } from '@/utility/hatady.js';
-import { hatadyTheme } from '@/utility/hatady-prefs.js';
-import { useHataFormDraft } from '@/utility/hata-form-draft.js';
+import { formField as f, formTimestamp, localDateTime, optionalPages, saveBookNotes } from '@/utility/hatady-form.js';
+const props = withDefaults(defineProps<{ editBook?: any; embedded?: boolean }>(), { embedded: false });
+const emit = defineEmits<{ (event: 'done', value: any): void; (event: 'closed'): void; (event: 'back'): void }>();
+const wizard = useTemplateRef('wizard'), source = props.editBook, isEdit = source != null;
+const api = misskeyApi as unknown as (endpoint: string, payload: Record<string, unknown>) => Promise<any>;
+const clone = (value: any) => JSON.parse(JSON.stringify(value));
+let notesReady = !isEdit || Array.isArray(source?.bookmarks) && Array.isArray(source?.memos), draftHasNotes = false;
+const values = ref<HatadyFormValues>({
+	title: source?.title ?? '', author: source?.author ?? '', genre: source?.details?.genre ?? '', totalPages: source?.totalPages ?? '', currentPage: source?.currentPage ?? 0,
+	status: source?.status ?? 'want', colorIndex: source?.coverColorIndex ?? null, isFavorite: source?.isFavorite ?? false, isRecommended: source?.isRecommended ?? false,
+	visibility: source?.visibility ?? (isEdit ? 'public' : 'private'), description: source?.details?.description ?? '', memo: source?.details?.memo ?? '', finishedAt: source?.finishedAt ? localDateTime(source.finishedAt).slice(0, 10) : '',
+	bookmarks: clone(source?.bookmarks ?? []), memos: clone(source?.memos ?? []), _bookmarksBaseline: clone(source?.bookmarks ?? []), _memosBaseline: clone(source?.memos ?? []),
+});
+const pages: HatadyFormPage[] = [
+	{ id: 'basics', title: '気になるひとつを、残そう', fields: [f('title', '本のタイトル', { required: true, maxlength: 512, placeholder: '例：夜を編む庭' }), f('genre', 'ジャンル', { maxlength: 64 }), f('author', '著者', { maxlength: 256 })] },
+	{ id: 'status', title: '今、どんな一冊？', fields: [f('status', '今の状態', { type: 'choice', options: [{ value: 'want', label: '読みたい', icon: 'ti ti-bookmark' }, { value: 'reading', label: '読書中', icon: 'ti ti-book' }, { value: 'finished', label: '読了', icon: 'ti ti-check' }, { value: 'tsundoku', label: '積読', icon: 'ti ti-books' }] }), f('isFavorite', 'お気に入り', { type: 'checkbox' }), f('isRecommended', 'おすすめ', { type: 'checkbox' })] },
+	{ id: 'details', title: '残したい情報を選ぶ', choices: true, fields: [] },
+	...optionalPages('progress', '読書の進み具合', [f('currentPage', '読んだページ', { type: 'number', min: 0, max: 100000 }), f('totalPages', '総ページ数', { type: 'number', min: 1, max: 100000 }), f('finishedAt', '読了日', { type: 'date' })], 'ti ti-book'),
+	...optionalPages('bookmarks', 'しおり', [f('bookmarks', 'しおり', { type: 'bookmarks' })], 'ti ti-bookmark'),
+	...optionalPages('memos', 'ページのメモ', [f('memos', 'ページのメモ', { type: 'memos' })], 'ti ti-pencil'),
+	...optionalPages('description', '作品の紹介', [f('description', '説明', { type: 'textarea', maxlength: 8192 })]),
+	...optionalPages('memo', '自分だけのメモ', [f('memo', '自分だけのメモ', { type: 'textarea', maxlength: 8192 })], 'ti ti-lock'),
+	...optionalPages('cover', '表紙の色', [f('colorIndex', '表紙の色', { type: 'color' })], 'ti ti-palette'),
+	{ id: 'sharing', title: '誰に見せる？', summary: true, fields: [f('visibility', '本の公開範囲', { type: 'visibility' })] },
+];
 
-const props = defineProps<{ editBook?: any }>();
-const emit = defineEmits<{ (ev: 'done', v: any): void; (ev: 'closed'): void }>();
-const dialog = useTemplateRef('dialog');
-const theme = hatadyTheme;
-const copy = i18n.ts._hata._hatady._bookForm;
+function restoreDraft(draft: HatadyFormValues) {
+	draftHasNotes = Array.isArray(draft.bookmarks) || Array.isArray(draft.memos);
+	if (draft.savedBookId) notesReady = true;
+	return { ...draft, colorIndex: Object.hasOwn(draft, 'colorIndex') ? draft.colorIndex : Object.hasOwn(draft, 'coverColorIndex') ? draft.coverColorIndex : values.value.colorIndex };
+}
 
-const isEdit = props.editBook != null;
-const eb = props.editBook;
-
-const title = ref(eb?.title ?? '');
-const author = ref(eb?.author ?? '');
-const totalPages = ref<number | null>(eb?.totalPages ?? null);
-const status = ref<'reading' | 'finished' | 'want' | 'tsundoku'>(eb?.status ?? 'reading');
-const colorIndex = ref<number | null>(eb?.coverColorIndex ?? null);
-const saving = ref(false);
-type BookDraft = { title: string; author: string; totalPages: number | null; status: 'reading' | 'finished' | 'want' | 'tsundoku'; colorIndex: number | null };
-const { clearDraft } = useHataFormDraft<BookDraft>({
-	id: `hatady:book:${isEdit ? `edit:${eb.id}` : 'create'}`,
-	capture: () => ({ title: title.value, author: author.value, totalPages: totalPages.value, status: status.value, colorIndex: colorIndex.value }),
-	restore: draft => {
-		title.value = typeof draft.title === 'string' ? draft.title : '';
-		author.value = typeof draft.author === 'string' ? draft.author : '';
-		totalPages.value = typeof draft.totalPages === 'number' ? draft.totalPages : null;
-		if (draft.status === 'reading' || draft.status === 'finished' || draft.status === 'want' || draft.status === 'tsundoku') status.value = draft.status;
-		colorIndex.value = typeof draft.colorIndex === 'number' ? draft.colorIndex : null;
-	},
-	isMeaningful: draft => draft.title.trim().length > 0 || draft.author.trim().length > 0 || draft.totalPages != null || draft.colorIndex != null,
+onMounted(async () => {
+	if (notesReady) return;
+	try {
+		const response = await api('hata/hatady/books/show', { bookId: source.id });
+		const untouched = !wizard.value?.hasChanges();
+		if (!draftHasNotes) { values.value.bookmarks = clone(response.bookmarks ?? []); values.value.memos = clone(response.memos ?? []); }
+		if (!draftHasNotes || !values.value._bookmarksBaseline?.length) values.value._bookmarksBaseline = clone(response.bookmarks ?? []);
+		if (!draftHasNotes || !values.value._memosBaseline?.length) values.value._memosBaseline = clone(response.memos ?? []);
+		notesReady = true;
+		await nextTick(); if (untouched && !wizard.value?.restored) wizard.value?.resetBaseline();
+	} catch { /* Saving remains guarded; unread notes can never become an empty replacement. */ }
 });
 
-// 色見本は表紙グラデーションの濃色側を使う。
-const swatchColors = HY_COVER_SETS.map(s => s[1]);
-
-function t(key: string): string { return (copy as unknown as Record<string, string>)[key] ?? key; }
-
-async function submit() {
-	if (!title.value.trim()) return;
-	saving.value = true;
-	try {
-		if (isEdit) {
-			// 編集: 未指定でも null を明示送信して消せるように(update は nullable を扱う)。
-			const payload = {
-				bookId: eb.id,
-				title: title.value.trim(),
-				status: status.value,
-				author: author.value.trim() || null,
-				totalPages: (totalPages.value != null && (totalPages.value as unknown) !== '') ? Number(totalPages.value) : null,
-				coverColorIndex: colorIndex.value,
-			};
-			const book = await misskeyApi('hata/hatady/books/update', payload);
-			clearDraft();
-			os.success();
-			emit('done', book);
-			dialog.value?.close();
-			return;
-		}
-		// 任意項目は null を送らず省略(バックエンドの ajv が null を弾くため)。
-		const payload = {
-			title: title.value.trim(),
-			status: status.value,
-			author: author.value.trim() || undefined,
-			totalPages: totalPages.value != null && (totalPages.value as unknown) !== '' ? Number(totalPages.value) : undefined,
-			coverColorIndex: colorIndex.value ?? undefined,
-		};
-		const book = await misskeyApi('hata/hatady/books/create', payload);
-		clearDraft();
-		os.success();
-		emit('done', book);
-		dialog.value?.close();
-	} finally {
-		saving.value = false;
-	}
+async function save(data: HatadyFormValues) {
+	if (!notesReady) throw new Error('一部のしおり・メモを読み込めませんでした。画面を開き直してください');
+	const bookId = data.savedBookId || source?.id;
+	const payload = {
+		title: data.title.trim(), author: data.author.trim() || null, totalPages: data.totalPages === '' || data.totalPages == null ? null : Number(data.totalPages), currentPage: Number(data.currentPage) || 0,
+		status: data.status, coverColorIndex: data.colorIndex, isFavorite: data.isFavorite, isRecommended: data.isRecommended, visibility: data.visibility,
+		finishedAt: data.finishedAt ? formTimestamp(data.finishedAt, source?.finishedAt) : null,
+		details: { ...source?.details, genre: data.genre, description: data.description, memo: data.memo },
+	};
+	const book = await api(bookId ? 'hata/hatady/books/update' : 'hata/hatady/books/create', { ...payload, ...(bookId ? { bookId } : {}) });
+	data.savedBookId = book.id;
+	try { await saveBookNotes(data, book.id, api); } catch { throw new Error('一部のしおり・メモを保存できませんでした。入力と保存済みの内容を保ったまま、もう一度保存できます'); }
+	return { ...book, bookmarks: data.bookmarks, memos: data.memos };
 }
+
+defineExpose({ requestClose: () => wizard.value?.requestClose() });
 </script>
-
-<style lang="scss" module>
-.body {
-	padding: 0;
-	display: flex;
-	flex-direction: column;
-	background: var(--hy-bg);
-	color: var(--hy-body);
-	font-family: 'Noto Sans JP', 'Hiragino Sans', system-ui, sans-serif;
-	min-height: 100%;
-	box-sizing: border-box;
-}
-.grid {
-	flex: 1;
-	display: grid;
-	grid-template-columns: 128px 1fr;
-	gap: 20px;
-	padding: 20px;
-}
-.label { display: block; font-family: var(--hy-heading); font-size: 12px; font-weight: 700; color: var(--hy-ink); margin-bottom: 7px; }
-.auto { font-weight: 600; color: var(--hy-accent-ink); font-size: 11px; }
-.optional { font-weight: 500; color: var(--hy-muted); font-size: 11px; }
-
-/* 左: 表紙 */
-.coverCol { display: flex; flex-direction: column; }
-.coverWrap { display: flex; justify-content: center; }
-.coverHint { font-size: 10.5px; color: var(--hy-muted); text-align: center; line-height: 1.5; margin-top: 8px; }
-.swatches { display: flex; gap: 6px; justify-content: center; margin-top: 9px; flex-wrap: wrap; }
-.swatch { width: 18px; height: 18px; border-radius: 4px; border: 2px solid var(--hy-surface); cursor: pointer; padding: 0; box-shadow: 0 0 0 1px var(--hy-border); }
-.swatchOn { box-shadow: 0 0 0 2px var(--hy-accent); }
-
-/* 右: フォーム */
-.formCol { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
-.field { display: flex; flex-direction: column; min-width: 0; }
-.row { display: flex; gap: 14px; }
-.row .field { flex: 1; }
-.input {
-	background: var(--hy-surface); border: 1px solid var(--hy-border); border-radius: 9px;
-	padding: 10px 12px; font-size: 14px; color: var(--hy-ink); font-family: inherit; outline: none; width: 100%; box-sizing: border-box;
-}
-.input:focus { border-color: var(--hy-accent); }
-.input::placeholder { color: var(--hy-muted); }
-.serif { font-family: var(--hy-serif); font-weight: 600; }
-.selectWrap { position: relative; }
-.select {
-	appearance: none; -webkit-appearance: none;
-	background: var(--hy-surface); border: 1px solid var(--hy-border); border-radius: 9px;
-	padding: 10px 32px 10px 12px; font-size: 13.5px; color: var(--hy-ink); font-family: inherit; outline: none; width: 100%; box-sizing: border-box; cursor: pointer;
-}
-.select:focus { border-color: var(--hy-accent); }
-.selectIcon { position: absolute; right: 11px; top: 50%; transform: translateY(-50%); font-size: 14px; color: var(--hy-muted); pointer-events: none; }
-.genHint { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--hy-muted); line-height: 1.6; }
-.genHint i { color: var(--hy-accent); }
-
-/* フッター */
-.footer {
-	display: flex; align-items: center; gap: 10px;
-	padding: 14px 20px; border-top: 1px solid var(--hy-border); background: var(--hy-surface-2);
-}
-.btn {
-	display: inline-flex; align-items: center; gap: 6px;
-	border-radius: 999px; padding: 9px 22px;
-	font-weight: 700; font-family: var(--hy-heading); font-size: 14px;
-	cursor: pointer; border: 1.5px solid transparent; transition: filter .15s, opacity .15s;
-}
-.btn:disabled { opacity: .45; cursor: not-allowed; }
-.btnGhost { margin-left: auto; background: transparent; color: var(--hy-body); border-color: transparent; }
-.btnGhost:not(:disabled):hover { color: var(--hy-ink); }
-.btnPrimary { background: linear-gradient(90deg, #e0955a, #d9824a); color: #fff; box-shadow: 0 3px 9px rgba(217,130,74,.4); }
-.btnPrimary:not(:disabled):hover { filter: brightness(1.05); }
-</style>

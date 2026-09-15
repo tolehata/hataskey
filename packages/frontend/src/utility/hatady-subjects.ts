@@ -22,9 +22,13 @@ export const hySubjectsLoaded = ref(false);
 
 // 分野一覧を読み込み、色の上書きマップへ反映する。
 export async function loadHySubjects(): Promise<HySubjectRow[]> {
-	// 新規エンドポイントのため cherrypick-js の autogen 型にはまだ無い。実行時は問題ないためキャストする。
-	const list = await (misskeyApi as any)('hata/hatady/subjects', {}).catch(() => []) as HySubjectRow[];
-	hySubjects.value = Array.isArray(list) ? list : [];
+	const list: unknown = await misskeyApi('hata/hatady/subjects', {});
+	// A failed or malformed read must not erase the previously loaded palette.
+	if (
+		!Array.isArray(list) ||
+		list.some((row) => !row || typeof row.name !== 'string' || (row.color !== null && typeof row.color !== 'string'))
+	) throw new Error('HATADY_SUBJECTS_INVALID_RESPONSE');
+	hySubjects.value = list as HySubjectRow[];
 	const overrides: Record<string, string> = {};
 	for (const s of hySubjects.value) {
 		if (s.color) overrides[s.name] = s.color;
@@ -42,7 +46,9 @@ export async function saveHySubject(name: string, color: string | null): Promise
 
 // 分野を削除(reassignTo 指定時はログを付け替え)。
 export async function deleteHySubject(name: string, reassignTo: string | null): Promise<{ reassigned: number }> {
-	const res = await (misskeyApi as any)('hata/hatady/subjects/delete', { name, reassignTo }) as { reassigned: number };
+	const res = (await (misskeyApi as any)('hata/hatady/subjects/delete', { name, reassignTo })) as {
+		reassigned: number;
+	};
 	await loadHySubjects();
 	return res ?? { reassigned: 0 };
 }

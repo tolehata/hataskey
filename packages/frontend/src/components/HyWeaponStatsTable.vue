@@ -9,8 +9,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 <div :class="$style.root">
 	<div :class="$style.fieldPicker" role="group" :aria-label="copy.statFieldsLabel">
 		<span :class="$style.pickerLead">{{ copy.statFieldsLabel }}</span>
-		<label v-for="field in allFields" :key="field" :class="[$style.pickerChip, activeFields.includes(field) && $style.pickerChipOn]">
-			<input type="checkbox" :checked="activeFields.includes(field)" @change="toggleField(field)">
+		<label v-for="field in allFields" :key="field" :class="$style.pickerChip" :data-active="activeFields.includes(field)">
+			<input type="checkbox" :name="`stat-${field}`" :checked="activeFields.includes(field)" @change="toggleField(field)">
 			{{ copy.fieldLabels[field] }}
 		</label>
 	</div>
@@ -27,11 +27,11 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<div v-for="(row, index) in rows" :key="index" :class="$style.row" :style="gridStyle">
 				<label :class="$style.cell">
 					<span :class="$style.cellLabel">{{ copy.weaponLabel }}</span>
-					<input :value="row.weapon" type="text" :class="$style.input" maxlength="256" :placeholder="copy.weaponPlaceholder" :list="weaponSuggestions.length > 0 ? listId : undefined" @input="setWeapon(index, $event)">
+					<input :value="row.weapon" :name="`weapon-${index}`" type="text" :class="$style.input" maxlength="256" :placeholder="copy.weaponPlaceholder" :list="weaponSuggestions.length > 0 ? listId : undefined" @input="setWeapon(index, $event)">
 				</label>
 				<label v-for="field in activeFields" :key="field" :class="$style.cell">
 					<span :class="$style.cellLabel">{{ copy.fieldLabels[field] }}</span>
-					<input :value="row[field] ?? ''" type="number" min="0" max="1000000" :class="$style.input" @input="setStat(index, field, $event)">
+					<input :value="row[field] ?? ''" :name="`weapon-${index}-${field}`" type="number" min="0" max="1000000" :class="$style.input" @input="setStat(index, field, $event)">
 				</label>
 				<button type="button" :class="$style.removeRow" :title="copy.removeRow" :aria-label="`${copy.removeRow}: ${row.weapon || index + 1}`" @click="removeRow(index)"><i class="ti ti-x"></i></button>
 			</div>
@@ -128,9 +128,9 @@ function setStat(index: number, field: HatadyStatField, event: Event) {
 .root { display: flex; flex-direction: column; gap: 11px; min-width: 0; }
 .fieldPicker { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .pickerLead { margin-right: 3px; color: var(--hy-muted); font-family: var(--hy-heading); font-size: 10.5px; font-weight: 700; }
-.pickerChip { display: inline-flex; align-items: center; gap: 5px; padding: 5px 11px; border: 1px solid var(--hy-border); border-radius: 999px; background: var(--hy-surface); color: var(--hy-body); font-size: 11px; font-weight: 700; cursor: pointer; }
+.pickerChip { min-height: 44px; box-sizing: border-box; display: inline-flex; align-items: center; gap: 5px; padding: 5px 11px; border: 1px solid var(--hy-border); border-radius: 999px; background: var(--hy-surface); color: var(--hy-body); font-size: 11px; font-weight: 700; cursor: pointer; }
 .pickerChip input { accent-color: var(--hy-accent); }
-.pickerChipOn { border-color: var(--hy-accent); background: color-mix(in srgb, var(--hy-accent) 14%, var(--hy-surface)); color: var(--hy-accent-ink); }
+.pickerChip[data-active="true"] { border-color: var(--hy-accent); background: color-mix(in srgb, var(--hy-accent) 14%, var(--hy-surface)); color: var(--hy-accent-ink); }
 .empty { margin: 0; color: var(--hy-muted); font-size: 11px; }
 .rows { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .headRow, .row { display: grid; gap: 8px; align-items: end; min-width: 0; }
@@ -139,12 +139,12 @@ function setStat(index: number, field: HatadyStatField, event: Event) {
 .cell { display: flex; flex-direction: column; min-width: 0; gap: 4px; }
 /* 広い幅では見出し行があるので、各セルの見出しは折り返し時だけ出す。 */
 .cellLabel { display: none; color: var(--hy-muted); font-size: 10px; font-weight: 700; }
-.input { width: 100%; min-width: 0; box-sizing: border-box; padding: 8px 10px; border: 1px solid var(--hy-border); border-radius: 9px; outline: none; background: var(--hy-surface); color: var(--hy-ink); font: inherit; }
+.input { min-height: 44px; width: 100%; min-width: 0; box-sizing: border-box; padding: 8px 10px; border: 1px solid var(--hy-border); border-radius: 9px; outline: none; background: var(--hy-surface); color: var(--hy-ink); font: inherit; }
 .input:focus { border-color: var(--hy-accent); }
-.removeRow { display: grid; place-items: center; width: 32px; height: 34px; padding: 0; border: 1px solid var(--hy-border); border-radius: 9px; background: var(--hy-surface); color: var(--hy-muted); cursor: pointer; }
+.removeRow { display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 1px solid var(--hy-border); border-radius: 9px; background: var(--hy-surface); color: var(--hy-muted); cursor: pointer; }
 .removeRow:hover { border-color: var(--hy-accent); color: var(--hy-ink); }
 .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; }
-.addRow { display: inline-flex; align-items: center; gap: 5px; padding: 7px 14px; border: 1px dashed var(--hy-border); border-radius: 999px; background: transparent; color: var(--hy-body); font-family: var(--hy-heading); font-size: 11.5px; font-weight: 700; cursor: pointer; }
+.addRow { min-height: 44px; display: inline-flex; align-items: center; gap: 5px; padding: 7px 14px; border: 1px dashed var(--hy-border); border-radius: 999px; background: transparent; color: var(--hy-body); font-family: var(--hy-heading); font-size: 11.5px; font-weight: 700; cursor: pointer; }
 .addRow:hover { border-color: var(--hy-accent); color: var(--hy-accent-ink); }
 .totals { display: inline-flex; align-items: center; gap: 5px; margin-left: auto; color: var(--hy-muted); font-size: 11px; font-weight: 700; }
 

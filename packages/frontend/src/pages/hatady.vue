@@ -1,1987 +1,1850 @@
-<!--
-SPDX-FileCopyrightText: Tolehata and hatasaba-project
-SPDX-License-Identifier: AGPL-3.0-only
-旗鯖fork: Hatady(学習・読書・映画・ゲーム記録ツール)メインページ。
-  hataskey 内蔵だが独立したデザイン言語(暖色クラフト紙 / Zen Maru Gothic 見出し)。
-  読んでいる本・学んだトピック・映画鑑賞・ゲームプレイを時系列で記録し、マイログの縦タイムラインで
-  振り返り、公開された記録を「みんなの活動」で確認できる多機能ツール。
-  - テーマ(紙ライト/エスプレッソダーク)は独立して選べ、言語は Hataskey 本体の設定に従う。
-  - フォロー関係は hataskey 本体と非連動、Hatady 内で完結。
-  - リアクション/絵文字/アイコンデコは hataskey 共通基盤を利用。
-  本ファイルは Phase1(基盤): ページシェル(ヘッダ+タブ+テーマ+i18n土台)。各タブ本体は順次実装。
--->
+<!-- SPDX-FileCopyrightText: Tolehata and hatasaba-project
+SPDX-License-Identifier: AGPL-3.0-only -->
 <template>
 <MkStickyContainer>
-	<div :class="[$style.root, 'hatady-scope']" :data-hatady-theme="theme" :data-hatady-lang="versatileLang" :data-deck-ui="isHatasabaDeckUi ? 'on' : undefined">
-		<!-- Hatady 独自ヘッダー -->
+	<div :class="[$style.root, 'hatady-scope']" :data-hatady-theme="hatadyTheme" :data-hatady-lang="versatileLang">
 		<header :class="$style.header">
-			<button v-if="!isHatasabaDeckUi" type="button" :class="$style.backBtn" :title="t('back')" :aria-label="t('back')" @click="goBack"><i class="ti ti-chevron-left"></i></button>
-			<button :class="$style.brand" :title="t('mylog')" @click="setTab('mylog')">
-				<span :class="$style.logoMark"><i class="ti ti-book-2"></i></span>
-				<span :class="$style.logo">Hatady</span>
+			<button :class="$style.brand" @click="setTab('home')">Hatady</button>
+			<button :class="[$style.mobileExit, 'hy-icon-button']" type="button" aria-label="Hatadyを終了" title="Hatadyを終了" @click="exitHatady">
+				<i class="ti ti-logout-2" aria-hidden="true"></i>
 			</button>
-			<span :class="$style.headDivider"></span>
-			<nav :class="$style.tabs">
-				<button :class="[$style.tab, activeTab === 'mylog' && $style.tabOn]" @click="setTab('mylog')">{{ t('mylog') }}</button>
-				<button :class="[$style.tab, activeTab === 'discover' && $style.tabOn]" @click="setTab('discover')">{{ t('discover') }}</button>
-				<button :class="[$style.tab, activeTab === 'shelf' && $style.tabOn]" :title="mediaCopy.collection" @click="setTab('shelf')">{{ mediaCopy.collection }}</button>
-			</nav>
-			<div :class="$style.headRight">
-				<button :class="$style.iconBtn" :title="t('searchAll')" @click="openFullSearch('')"><i class="ti ti-search"></i></button>
-				<button :class="$style.iconBtn" :title="t('settings')" @click="openSettings"><i class="ti ti-settings"></i></button>
-				<button :class="$style.recordBtn" @click="openActivityComposer"><i class="ti ti-pencil-plus"></i> <span :class="$style.recordText">{{ t('recordActivity') }}</span></button>
-				<button :class="$style.iconBtn" :title="t('notifications')" @click="openNotifications">
-					<i class="ti ti-bell"></i>
-					<span v-if="unread > 0" :class="$style.bellBadge">{{ unread > 99 ? '99+' : unread }}</span>
+			<HyNav :class="$style.nav" :modelValue="activeTab" :options="tabs" @update:modelValue="setTab($event, true)"/>
+			<div :class="$style.headerActions">
+				<button class="hy-primary" :aria-label="copy.recordActivity" @click="openActivityComposer">
+					<i class="ti ti-plus" aria-hidden="true"></i>
 				</button>
-				<button :class="$style.avatarBtn" @click="openProfile()"><MkAvatar v-if="$i" :class="$style.avatar" :user="$i"/></button>
+				<button class="hy-icon-button" :aria-label="copy.searchAll" @click="openFullSearch('')">
+					<i class="ti ti-search" aria-hidden="true"></i>
+				</button>
+				<button ref="bell" class="hy-icon-button" :aria-label="copy.notifications" @click="openNotifications">
+					<i class="ti ti-bell" aria-hidden="true"></i>
+					<span v-if="unread" :class="$style.badge">{{ unread > 99 ? '99+' : unread }}</span>
+				</button>
+				<button class="hy-icon-button" :aria-label="copy.settings" @click="openSettings">
+					<i class="ti ti-settings" aria-hidden="true"></i>
+				</button>
 			</div>
+			<button ref="menu" :class="[$style.mobileMenu, 'hy-secondary']" :aria-label="copy.settings" @click="openMenu">
+				<i class="ti ti-dots" aria-hidden="true"></i>
+			</button>
 		</header>
-
-		<!-- 本体(タブ別) -->
-		<div :class="$style.body">
-			<!-- ===== マイログ(1a + t2 ヒートマップ) ===== -->
-			<div v-if="activeTab === 'mylog'" :class="$style.mylog" :data-anim="prefer.s.animation ? '1' : '0'">
-				<!-- 今日の記録状況バナー(未記録 / 連続途切れ / 記録済み) -->
-				<div v-if="todayState === 'broken' && showInfoBanner" :class="[$style.todayBanner, $style.bannerBroken]">
-					<span :class="$style.bannerIcon"><i class="ti ti-flame-off"></i></span>
-					<div :class="$style.bannerText">
-						<b>{{ t('streakBrokenTitle') }}</b>
-						<!-- 旗鯖fork: モバイルでは「。」の後で改行して2行に収める -->
-						<div><template v-for="(part, i) in streakBrokenSubParts" :key="i">{{ part }}<br v-if="i < streakBrokenSubParts.length - 1" :class="$style.subBrMobile"></template></div>
-					</div>
-					<button :class="$style.bannerCta" @click="openActivityComposer"><i class="ti ti-pencil-plus"></i> {{ t('recordActivity') }}</button>
-					<button :class="$style.bannerClose" :title="t('dismiss')" @click="dismissInfoBanner"><i class="ti ti-x"></i></button>
-				</div>
-				<div v-else-if="todayState === 'notYet'" :class="[$style.todayBanner, $style.bannerNotYet]">
-					<span :class="$style.bannerIcon"><i class="ti ti-calendar-exclamation"></i></span>
-					<div :class="$style.bannerText">
-						<b>{{ t('notYetTitle') }}</b>
-						<div>{{ (stats?.streakDays ?? 0) > 0 ? notYetKeepStreakLabel(stats?.streakDays ?? 0) : t('notYetSub') }}</div>
-					</div>
-					<button :class="$style.bannerCta" @click="openActivityComposer"><i class="ti ti-pencil-plus"></i> {{ t('recordActivity') }}</button>
-				</div>
-				<div v-else-if="todayState === 'done' && showInfoBanner" :class="[$style.todayBanner, $style.bannerDone]">
-					<span :class="$style.bannerIcon"><i class="ti ti-circle-check"></i></span>
-					<div :class="$style.bannerText"><b>{{ t('doneTitle') }}</b></div>
-					<button :class="$style.bannerClose" :title="t('dismiss')" @click="dismissInfoBanner"><i class="ti ti-x"></i></button>
-				</div>
-
-				<!-- hero: 統計 + 学習ヒートマップ -->
-				<section :class="$style.hero">
-					<div :class="$style.heroStats">
-						<button :class="[$style.heroStat, $style.heroStatBtn]" :title="t('viewStreak')" @click="openStreaks"><div :class="[$style.heroNum, $style.heroFlame]">🔥 {{ stats?.streakDays ?? 0 }}</div><div :class="$style.heroLbl">{{ t('streak') }}</div></button>
-						<div :class="$style.heroStat"><div :class="$style.heroNum">{{ fmtDuration(stats?.weeklyMinutes ?? 0) }}</div><div :class="$style.heroLbl">{{ t('thisWeek') }}</div></div>
-						<div :class="$style.heroStat"><div :class="$style.heroNum">{{ stats?.totalLogs ?? 0 }}</div><div :class="$style.heroLbl">{{ t('logs') }}</div></div>
-						<button :class="[$style.heroStat, $style.heroStatBtn]" :title="t('viewShelf')" @click="setTab('shelf')"><div :class="$style.heroNum">{{ stats?.totalBooks ?? 0 }}</div><div :class="$style.heroLbl">{{ t('books') }}</div></button>
-					</div>
-					<div :class="$style.heatmap">
-						<div :class="$style.heatHead">{{ t('heatTitle') }}</div>
-						<div :class="$style.heatGrid">
-							<div v-for="(col, ci) in heatColumns" :key="ci" :class="$style.heatCol">
-								<span
-									v-for="(cell, ri) in col" :key="ri"
-									:class="[$style.heatCell, $style.heatCellClickable]"
-									:style="{ background: heatColor(cell.minutes), animationDelay: heatDelay(ci, ri) }"
-									:title="t('jumpTo')"
-									@mouseenter="showHeatPop(cell, $event)"
-									@mouseleave="hideHeatPop"
-									@touchstart.passive="showHeatPop(cell, $event)"
-									@touchend.passive="hideHeatPop"
-									@click="jumpToHeatCell(cell.date)"
-								></span>
-							</div>
-						</div>
-						<!-- 日別の学習状況ポップアップ(ホバー/長押し)。
-						     position:fixed だが、祖先に transform/animation があるとそこが含みブロックになり
-						     ビューポート基準の座標がズレるため、body へ Teleport して確実に画面基準で置く。
-						     body 直下ではテーマ変数が効かないので hatady-scope を自前で付ける。 -->
-						<Teleport to="body">
-							<div v-if="heatPop" :class="[$style.heatPop, 'hatady-scope']" :data-hatady-theme="theme" :style="{ left: heatPop.left + 'px', top: heatPop.top + 'px' }">
-								<div :class="$style.heatPopDate">{{ heatPop.dateLabel }}</div>
-								<div v-if="heatPop.minutes > 0" :class="$style.heatPopStat"><i class="ti ti-hourglass"></i> {{ heatPopupSummary(heatPop.minutes, heatPop.count) }}</div>
-								<div v-else :class="$style.heatPopEmpty">{{ t('noStudy') }}</div>
-								<div v-if="heatPop.subjects.length" :class="$style.heatPopSubjects">
-									<span v-for="s in heatPop.subjects" :key="s.subject" :class="$style.heatPopSubject">
-										<span :class="$style.heatPopDot" :style="{ background: pal(s.subject).accent }"></span>
-										{{ s.subject }} <span :class="$style.heatPopMin">{{ fmtDuration(s.minutes) }}</span>
-									</span>
-								</div>
-								<div v-else-if="heatPop.minutes > 0" :class="$style.heatPopHint">{{ t('detailsInTimeline') }}</div>
-							</div>
-						</Teleport>
-					</div>
-				</section>
-
-				<!-- grid: タイムライン + サイドバー -->
-				<div :class="$style.grid">
-					<!-- 左: タイムライン -->
-					<div ref="timelineColRef" :class="$style.timelineCol">
-						<div :class="$style.tlHeadRow">
-							<h2 :class="$style.tlTitle">{{ t('activityTimeline') }}</h2>
-							<button :class="[$style.periodToggle, (periodOpen || filterActive) && $style.periodToggleOn]" @click="periodOpen = !periodOpen">
-								<i class="ti ti-calendar-search"></i> {{ t('period') }}
-								<span v-if="filterActive" :class="$style.periodDot"></span>
-							</button>
-						</div>
-						<!-- 旗鯖fork(Hatady): 学習/映画/ゲームの表示切替。絞り込みはサーバー側で行うので、
-						     「読み込んだ50件のうち3件しか出ない」といった継ぎ足し読み込みの破綻が起きない。 -->
-						<div :class="$style.logKinds" role="group" :aria-label="t('logKindsLabel')">
-							<span :class="$style.logKindsLead">{{ t('logKindsLabel') }}</span>
-							<button
-								v-for="item in logKindChoices" :key="item.kind"
-								type="button"
-								:class="[$style.logKindChip, logKinds.includes(item.kind) && $style.logKindChipOn]"
-								:aria-pressed="logKinds.includes(item.kind)"
-								@click="toggleLogKind(item.kind)"
-							>
-								<i :class="['ti', item.icon]"></i> {{ item.label }}
-							</button>
-						</div>
-						<!-- 期間フィルタ / 日付ジャンプ (旗鯖fork: 2ブロックに整理して洗練) -->
-						<div v-if="periodOpen || filterActive" :class="$style.periodPanel">
-							<!-- 期間で絞り込む -->
-							<div :class="$style.periodGroup">
-								<div :class="$style.periodGroupLabel"><i class="ti ti-arrows-horizontal"></i> {{ t('periodRange') }}</div>
-								<div :class="$style.periodRangeField">
-									<input v-model="sinceInput" type="date" :class="$style.periodDate" :aria-label="t('periodRange')">
-									<span :class="$style.periodTilde">〜</span>
-									<input v-model="untilInput" type="date" :class="$style.periodDate" :aria-label="t('periodRange')">
-									<button :class="$style.periodApply" @click="applyPeriod">{{ t('apply') }}</button>
-								</div>
-								<div :class="$style.periodPresets">
-									<button :class="$style.periodChip" @click="presetThisMonth">{{ t('thisMonth') }}</button>
-									<button :class="$style.periodChip" @click="presetLastMonth">{{ t('lastMonth') }}</button>
-									<button :class="$style.periodChip" @click="presetLast30">{{ t('last30') }}</button>
-									<button v-if="filterActive" :class="[$style.periodChip, $style.periodClear]" @click="clearPeriod"><i class="ti ti-x"></i> {{ t('clearPeriod') }}</button>
-								</div>
-							</div>
-							<div :class="$style.periodDivider"></div>
-							<!-- 日付へジャンプ -->
-							<div :class="$style.periodGroup">
-								<div :class="$style.periodGroupLabel"><i class="ti ti-calendar-event"></i> {{ t('jumpTo') }}</div>
-								<div :class="$style.periodJumpField">
-									<input v-model="jumpInput" type="date" :class="$style.periodDate" :aria-label="t('jumpTo')">
-									<button :class="$style.periodApply" :disabled="!jumpInput" @click="jumpToDate">{{ t('jump') }}</button>
-								</div>
-							</div>
-						</div>
-						<div v-if="filterActive && !activitiesLoading" :class="$style.filterNotice">
-							<i class="ti ti-filter"></i> {{ filteredNoticeLabel(activityGroups.length) }}
-							<button :class="$style.filterNoticeClear" @click="clearPeriod">{{ t('showAll') }}</button>
-						</div>
-						<div v-if="logKinds.length === 0" :class="$style.emptyTl">
-							<i class="ti ti-eye-off" :class="$style.emptyIcon"></i>
-							<div>{{ t('logKindsEmpty') }}</div>
-							<button :class="$style.emptyCta" @click="resetLogKinds"><i class="ti ti-eye"></i> {{ t('showAllKinds') }}</button>
-						</div>
-						<div v-else-if="activitiesLoading" :class="$style.loading">{{ t('loading') }}</div>
-						<div v-else-if="activityGroups.length === 0 && filterActive" :class="$style.emptyTl">
-							<i class="ti ti-calendar-off" :class="$style.emptyIcon"></i>
-							<div>{{ t('emptyFiltered') }}</div>
-							<button :class="$style.emptyCta" @click="clearPeriod"><i class="ti ti-x"></i> {{ t('showAll') }}</button>
-						</div>
-						<div v-else-if="activityGroups.length === 0" :class="$style.emptyTl">
-							<i class="ti ti-notebook" :class="$style.emptyIcon"></i>
-							<div>{{ t('emptyLog') }}</div>
-							<button :class="$style.emptyCta" @click="openActivityComposer"><i class="ti ti-pencil-plus"></i> {{ t('recordActivity') }}</button>
-						</div>
-						<template v-else>
-							<div v-for="g in activityGroups" :key="g.key" :data-date-key="g.key" :class="$style.dateGroup">
-								<div :class="$style.dateHead">
-									<span :class="$style.datePill"><i class="ti ti-calendar-event"></i> {{ g.label }}</span>
-									<span :class="$style.dateSub">{{ g.sub }}</span>
-									<span :class="$style.dateLine"></span>
-								</div>
-								<div :class="$style.rail">
-									<span :class="$style.railLine"></span>
-									<div v-for="activity in g.activities" :key="activity.id" :class="$style.entry">
-										<span :class="$style.entryDot" :data-activity-kind="activity.type === 'study' ? 'study' : 'media'"></span>
-										<HatadyActivityCard :activity="activity" @openLog="openConversation" @openBook="openBookDetail" @openMedia="openMediaDetailById" @openProfile="openProfile" @menu="openActivityMenu"/>
-									</div>
-								</div>
-							</div>
-							<button v-if="activitiesHasMore" :class="$style.activityMore" :disabled="activitiesLoadingMore" @click="loadMoreActivities"><i class="ti ti-chevron-down"></i> {{ mediaCopy.loadMore }}</button>
-						</template>
-					</div>
-
-					<!-- 右: サイドバー -->
-					<aside :class="$style.side">
-						<div :class="$style.sideCard">
-							<button :class="$style.profileMini" @click="openProfile()">
-								<MkAvatar v-if="$i" :class="$style.profileAvatar" :user="$i"/>
-								<div><MkUserName v-if="$i" :class="$style.profileName" :user="$i"/><div :class="$style.profileAcct">@{{ $i?.username }}</div></div>
-							</button>
-							<button :class="$style.streakBox" :title="t('viewStreak')" @click="openStreaks">
-								<i class="ti ti-flame-filled" :class="$style.streakIcon"></i>
-								<div><div :class="$style.streakNum">{{ stats?.streakDays ?? 0 }}<span :class="$style.streakUnit"> {{ t('daysStreak') }}</span></div><div :class="$style.streakSub">{{ t('keepGoing') }}</div></div>
-								<i class="ti ti-chevron-right" :class="$style.streakArrow"></i>
-							</button>
-						</div>
-
-						<!-- 旗鯖fork: 学習ツール導線(目標/統計/連続履歴/検索) -->
-						<div :class="$style.sideCard">
-							<div :class="$style.sideTitle"><i class="ti ti-tools"></i> {{ t('toolsTitle') }}</div>
-							<div :class="$style.toolGrid">
-								<button :class="$style.toolBtn" @click="openGoals"><i class="ti ti-target"></i> {{ t('toolGoals') }}</button>
-								<button :class="$style.toolBtn" @click="openStatsDetail"><i class="ti ti-chart-histogram"></i> {{ t('toolStats') }}</button>
-								<button :class="$style.toolBtn" @click="openStreaks"><i class="ti ti-flame"></i> {{ t('toolStreaks') }}</button>
-								<button :class="$style.toolBtn" @click="openFullSearch('')"><i class="ti ti-zoom-scan"></i> {{ t('toolSearch') }}</button>
-							</div>
-						</div>
-
-						<div v-if="stats?.focusBySubject?.length" :class="$style.sideCard">
-							<div :class="$style.sideTitle"><i class="ti ti-chart-bar"></i> {{ t('focusTitle') }}</div>
-							<div v-for="f in stats.focusBySubject" :key="f.subject" :class="$style.focusRow">
-								<div :class="$style.focusHead"><span>{{ f.subject }}</span><span :class="$style.focusMin">{{ fmtDuration(f.minutes) }}</span></div>
-								<span :class="$style.focusBar"><span :class="$style.focusFill" :style="{ width: focusPct(f.minutes) + '%', background: pal(f.subject).accent }"></span></span>
-							</div>
-						</div>
-
-						<div :class="$style.sideCard">
-							<div :class="$style.sideTitle"><i class="ti ti-books"></i> {{ t('reading') }}</div>
-							<div v-if="readingBooks.length === 0" :class="$style.sideEmpty">{{ t('noBooks') }}</div>
-							<button v-for="b in readingBooks" :key="b.id" :class="$style.readingRow" :title="b.title" @click="openBookDetail(b.id)">
-								<HyBookCover :title="b.title" :author="b.author" :width="30"/>
-								<div :class="$style.readingInfo">
-									<div :class="$style.readingTitle">{{ b.title }}</div>
-									<span :class="$style.progressBar"><span :class="$style.progressFill" :style="{ width: (b.progress ?? 0) + '%' }"></span></span>
-								</div>
-							</button>
-						</div>
-					</aside>
-				</div>
-			</div>
-
-			<!-- ===== みんなの活動(公開フィード) ===== -->
-			<div v-else-if="activeTab === 'discover'" :class="$style.discover">
-				<h2 :class="$style.tlTitle">{{ t('discoverTitle') }}</h2>
-				<div :class="$style.discoverTabs">
-					<button v-for="dt in discoverTypes" :key="dt.key" :class="[$style.discoverTab, discoverType === dt.key && $style.discoverTabOn]" @click="setDiscoverType(dt.key)">
-						<i :class="['ti', dt.icon]"></i> {{ t(dt.label) }}
-					</button>
-				</div>
-				<div v-if="discoverLoading" :class="$style.loading">{{ t('loading') }}</div>
-				<template v-else>
-					<div v-if="discoverFiltered.length === 0" :class="$style.emptyTl">
-						<i class="ti ti-world" :class="$style.emptyIcon"></i>
-						<div>{{ searchQuery ? (discoverHasMore ? t('searchMore') : t('noResults')) : (discoverType === 'following' ? t('emptyFollowing') : t('emptyDiscover')) }}</div>
-					</div>
-					<div v-else :class="$style.feed">
-						<HatadyActivityCard v-for="activity in discoverFiltered" :key="activity.id" :activity="activity" showAuthor @openLog="openConversation" @openBook="openBookDetail" @openMedia="openMediaDetailById" @openProfile="openProfile" @menu="openActivityMenu"/>
-					</div>
-					<!-- 読み込み済みのページに検索一致がなくても、後続ページへ進めるよう空表示の外へ置く。 -->
-					<button v-if="discoverHasMore" :class="$style.activityMore" :disabled="discoverLoadingMore" @click="loadMoreDiscover"><i class="ti ti-chevron-down"></i> {{ mediaCopy.loadMore }}</button>
-				</template>
-			</div>
-
-			<!-- ===== コレクション（本棚 / 映画 / ゲーム） ===== -->
-			<div v-else-if="activeTab === 'shelf'" :class="$style.shelf">
-				<div :class="$style.collectionTop">
-					<div><div :class="$style.collectionEyebrow">Hatady</div><h2 :class="$style.collectionTitle">{{ mediaCopy.collection }}</h2></div>
-					<nav :class="$style.collectionPills" :aria-label="mediaCopy.collection">
-						<button v-for="item in collectionKinds" :key="item.kind" :class="[$style.collectionPill, collectionKind === item.kind && $style.collectionPillOn]" @click="setCollectionKind(item.kind)"><i :class="['ti', item.icon]"></i> {{ item.label }}</button>
-					</nav>
-				</div>
-				<div v-if="collectionKind === 'books'" :class="$style.shelfHead">
-					<h2 :class="$style.tlTitle">{{ t('shelfTitle') }}</h2>
-					<div :class="$style.shelfFilters">
-						<button v-for="f in shelfFilters" :key="f.key" :class="[$style.shelfFilter, (!adminAll && shelfFilter === f.key) && $style.shelfFilterOn]" @click="setAdminAll(false); shelfFilter = f.key;">{{ t(f.label) }}</button>
-						<button v-if="isModerator" :class="[$style.shelfFilter, $style.adminFilter, adminAll && $style.shelfFilterOn]" @click="setAdminAll(true)"><i class="ti ti-shield"></i> {{ t('allBooks') }}</button>
-					</div>
-					<div :class="$style.shelfSort">
-						<select v-model="sortKey" :class="$style.sortSelect">
-							<option value="added">{{ t('sortAdded') }}</option>
-							<option value="name">{{ t('sortName') }}</option>
-							<option value="finished">{{ t('sortFinished') }}</option>
-						</select>
-						<button :class="$style.sortDir" :title="t('sortDir')" @click="sortAsc = !sortAsc"><i :class="sortAsc ? 'ti ti-sort-ascending' : 'ti ti-sort-descending'"></i></button>
-					</div>
-					<button :class="$style.shelfAddBtn" @click="addBookFromShelf"><i class="ti ti-plus"></i> {{ t('addBook') }}</button>
-				</div>
-				<!-- 旗鯖fork: 読み込み表示は初回(まだ1冊も無い)だけ。しおり追加などの再取得で
-				     ここに切り替わると本棚が丸ごと再マウントされ、全部の本が再アニメしてしまうため。
-				     再取得中は既存の棚を出したままにして、増えたしおりだけが自然にアニメする。 -->
-				<div v-if="collectionKind === 'books' && booksLoading && shelfBooks.length === 0" :class="$style.loading">{{ t('loading') }}</div>
-				<div v-else-if="collectionKind === 'books' && shelfBooks.length === 0" :class="$style.emptyTl">
-					<i class="ti ti-books" :class="$style.emptyIcon"></i>
-					<div>{{ t('emptyShelf') }}</div>
-					<button :class="$style.emptyCta" @click="addBookFromShelf"><i class="ti ti-plus"></i> {{ t('addBook') }}</button>
-				</div>
-				<div v-else-if="collectionKind === 'books'" :class="$style.shelfGrid" :data-anim="prefer.s.animation ? '1' : '0'">
-					<button v-for="(b, bi) in shelfBooks" :key="b.id" :class="$style.shelfItem" :style="{ animationDelay: shelfDelay(bi) }" @click="openBookDetail(b.id)">
-						<div :class="$style.shelfCoverWrap">
-							<!-- しおり演出: しおりの数だけ本の上端から帯が飛び出す -->
-							<span
-								v-for="(bm, i) in (b.bookmarks || []).slice(0, 6)" :key="bm.id"
-								:class="$style.ribbon"
-								:style="{ background: bmColor(bm.color), left: (16 + (i as number) * 15) + 'px', animationDelay: ribbonDelay(bi, (i as number)) }"
-								:title="(bm.name || '') + ' p.' + bm.page"
-							></span>
-							<HyBookCover :title="b.title" :author="b.author" :colorIndex="b.coverColorIndex" :width="118" showTitle/>
-							<span v-if="b.isFavorite" :class="$style.favStar"><i class="ti ti-star-filled"></i></span>
-						</div>
-						<div :class="$style.shelfMeta">
-							<div v-if="adminAll && b.user" :class="$style.shelfOwner"><i class="ti ti-user"></i> @{{ b.user.username }}</div>
-							<div :class="$style.shelfTitle">{{ b.title }}</div>
-							<div v-if="b.author" :class="$style.shelfAuthor">{{ b.author }}</div>
-							<div :class="$style.shelfStatusRow">
-								<span :class="$style.shelfStatus" :style="statusStyle(b.status)">{{ t('status_' + b.status) }}</span>
-								<span v-if="b.totalPages" :class="$style.shelfPages">{{ b.currentPage }}/{{ b.totalPages }}p</span>
-							</div>
-							<div v-if="b.progress != null" :class="$style.progressWrap">
-								<span :class="$style.progressBar"><span :class="$style.progressFill" :style="{ width: b.progress + '%' }"></span></span>
-								<span :class="$style.progressText">{{ b.progress }}%</span>
-							</div>
-						</div>
-					</button>
-				</div>
-
-				<section v-else :class="$style.mediaCollection" :data-media-kind="collectionKind">
-					<div :class="$style.mediaToolbar">
-						<label :class="$style.mediaSearch"><i class="ti ti-search"></i><input v-model="mediaQueryDraft" :placeholder="mediaCopy.searchPlaceholder" @keydown.enter="applyMediaQuery"></label>
-						<button :class="$style.sortDir" :title="mediaCopy.search" @click="applyMediaQuery"><i class="ti ti-search"></i></button>
-						<select v-model="mediaStatus" :class="$style.mediaSelect" @change="loadMediaWorks()"><option value="">{{ mediaCopy.all }}</option><option v-for="status in mediaStatuses" :key="status" :value="status">{{ mediaStatusLabel(status) }}</option></select>
-						<select v-model="mediaSort" :class="$style.mediaSelect" @change="loadMediaWorks()"><option value="updatedAt">{{ mediaCopy.sortUpdated }}</option><option value="title">{{ mediaCopy.sortTitle }}</option><option value="releaseDate">{{ mediaCopy.sortRelease }}</option><option v-if="collectionKind === 'movies'" value="recommendationRating">{{ mediaCopy.sortRecommendation }}</option><option value="status">{{ mediaCopy.statusLabel }}</option></select>
-						<button :class="$style.sortDir" :title="t('sortDir')" @click="mediaOrder = mediaOrder === 'asc' ? 'desc' : 'asc'; loadMediaWorks()"><i :class="mediaOrder === 'asc' ? 'ti ti-sort-ascending' : 'ti ti-sort-descending'"></i></button>
-						<button :class="$style.shelfAddBtn" @click="openMediaForm"><i class="ti ti-plus"></i> {{ collectionKind === 'movies' ? mediaCopy.addMovie : mediaCopy.addGame }}</button>
-					</div>
-					<details :class="$style.mediaAdvanced">
-						<summary><i class="ti ti-adjustments-horizontal"></i> {{ mediaCopy.advancedFilters }}</summary>
-						<div :class="$style.mediaFilterGrid">
-							<template v-if="collectionKind === 'movies'">
-								<label :class="$style.mediaFilterField"><span>{{ mediaCopy.form.movieOrigin }}</span><select v-model="mediaFiltersDraft.origin" :class="$style.mediaSelect"><option value="">{{ mediaCopy.all }}</option><option value="domestic">{{ mediaCopy.form.domestic }}</option><option value="foreign">{{ mediaCopy.form.foreign }}</option><option value="co_production">{{ mediaCopy.form.coProduction }}</option><option value="other">{{ mediaCopy.form.otherOrigin }}</option></select></label>
-								<label :class="$style.mediaFilterField"><span>{{ mediaCopy.form.viewingMode }}</span><select v-model="mediaFiltersDraft.viewingMode" :class="$style.mediaSelect"><option value="">{{ mediaCopy.all }}</option><option value="original">{{ mediaCopy.form.original }}</option><option value="subtitled">{{ mediaCopy.form.subtitled }}</option><option value="dubbed">{{ mediaCopy.form.dubbed }}</option></select></label>
-								<label :class="$style.mediaFilterField"><span>{{ mediaCopy.form.recommend }}</span><select v-model="mediaFiltersDraft.isRecommended" :class="$style.mediaSelect"><option :value="null">{{ mediaCopy.all }}</option><option :value="true">{{ mediaCopy.recommendedOnly }}</option><option :value="false">{{ mediaCopy.notRecommended }}</option></select></label>
-								<label :class="$style.mediaFilterField"><span>{{ mediaCopy.minimumRecommendation }}</span><select v-model="mediaFiltersDraft.minRecommendation" :class="$style.mediaSelect"><option :value="null">{{ mediaCopy.all }}</option><option v-for="score in 10" :key="score" :value="score">{{ (score / 2).toFixed(1) }} / 5</option></select></label>
-							</template>
-							<template v-else>
-								<label :class="$style.mediaFilterField"><span>{{ mediaCopy.sessionType }}</span><select v-model="mediaFiltersDraft.sessionKind" :class="$style.mediaSelect"><option value="">{{ mediaCopy.all }}</option><option v-for="type in mediaGameSessionTypes" :key="type" :value="type">{{ mediaCopy.session.types[type] }}</option></select></label>
-								<label :class="$style.mediaFilterField"><span>{{ mediaCopy.session.result }}</span><select v-model="mediaFiltersDraft.result" :class="$style.mediaSelect"><option value="">{{ mediaCopy.all }}</option><option value="win">{{ mediaCopy.session.win }}</option><option value="loss">{{ mediaCopy.session.loss }}</option><option value="draw">{{ mediaCopy.session.draw }}</option><option value="cleared">{{ mediaCopy.session.cleared }}</option><option value="failed">{{ mediaCopy.session.failed }}</option><option value="retired">{{ mediaCopy.session.retired }}</option></select></label>
-								<label :class="$style.mediaFilterField"><span>{{ mediaCopy.session.weapon }}</span><input v-model="mediaFiltersDraft.weapon" :class="$style.mediaFilterInput" maxlength="512"></label>
-								<label :class="$style.mediaFilterField"><span>{{ mediaCopy.session.rank }}</span><input v-model="mediaFiltersDraft.rank" :class="$style.mediaFilterInput" maxlength="512"></label>
-								<label :class="$style.mediaFilterField"><span>{{ mediaCopy.session.route }}</span><input v-model="mediaFiltersDraft.route" :class="$style.mediaFilterInput" maxlength="512"></label>
-								<label :class="$style.mediaFilterField"><span>{{ mediaCopy.sinceDate }}</span><input v-model="mediaFiltersDraft.since" type="date" :class="$style.mediaFilterInput"></label>
-								<label :class="$style.mediaFilterField"><span>{{ mediaCopy.untilDate }}</span><input v-model="mediaFiltersDraft.until" type="date" :class="$style.mediaFilterInput"></label>
-							</template>
-						</div>
-						<div :class="$style.mediaFilterActions"><button :class="$style.actionGhost" @click="resetMediaFilters"><i class="ti ti-restore"></i> {{ mediaCopy.resetFilters }}</button><button :class="$style.shelfAddBtn" @click="applyMediaFilters"><i class="ti ti-check"></i> {{ mediaCopy.applyFilters }}</button></div>
-					</details>
-					<div v-if="mediaLoading" :class="$style.loading">{{ t('loading') }}</div>
-					<div v-else-if="mediaWorks.length === 0" :class="$style.emptyTl"><i :class="['ti', collectionKind === 'movies' ? 'ti-movie-off' : 'ti-device-gamepad-off', $style.emptyIcon]"></i><div>{{ collectionKind === 'movies' ? mediaCopy.emptyMovie : mediaCopy.emptyGame }}</div><button :class="$style.emptyCta" @click="openMediaForm"><i class="ti ti-plus"></i> {{ collectionKind === 'movies' ? mediaCopy.addMovie : mediaCopy.addGame }}</button></div>
-					<div v-else :class="$style.mediaGrid" :data-anim="prefer.s.animation ? '1' : '0'" :data-media-kind="collectionKind">
-						<button v-for="(item, mi) in mediaWorks" :key="item.id" :class="$style.mediaCard" :style="{ animationDelay: shelfDelay(mi) }" @click="openMediaDetail(item)">
-							<HyMediaCover :kind="item.kind" :title="item.title" :subtitle="item.kind === 'movie' ? item.creator : item.developer || item.creator" :width="item.kind === 'movie' ? 100 : 126" :colorIndex="item.coverColorIndex" showTitle/>
-							<div :class="$style.mediaCardBody"><div :class="$style.mediaCardTop"><span :class="$style.mediaStatus">{{ mediaStatusLabel(item.status) }}</span><i v-if="item.isFavorite" class="ti ti-star-filled" :class="$style.mediaFavorite"></i></div><div :class="$style.mediaTitle">{{ item.title }}</div><div v-if="item.originalTitle" :class="$style.mediaOriginal">{{ item.originalTitle }}</div><div :class="$style.mediaCreator">{{ item.kind === 'movie' ? item.creator : item.developer || item.publisher || item.creator }}</div><div :class="$style.mediaFacts"><span v-if="item.releaseDate || item.releaseYear"><i class="ti ti-calendar"></i> {{ item.releaseDate ? formatMediaDate(item.releaseDate) : item.releaseYear }}</span><span v-if="item.kind === 'movie' && item.recommendationRating != null"><i class="ti ti-star"></i> {{ (item.recommendationRating / 2).toFixed(1) }}</span><span v-if="item.kind === 'game' && item.platforms?.length">{{ item.platforms.slice(0, 2).join(' · ') }}</span></div></div>
+		<main ref="mainEl" :class="$style.main" @scroll.passive="onPageScroll">
+			<HatadyHome
+				v-if="activeTab === 'home'"
+				:revision="revision"
+				:stats="stats"
+				@record="openActivityComposer"
+				@records="showRecords"
+				@work="openWork"
+				@activity="openActivity"
+				@collection="showCollection"
+				@community="showCommunity"
+				@profile="openProfile"
+				@stats="openStatsDetail"
+				@goals="openGoals"
+				@streaks="openStreaks"
+				@ready="playListEntrance()"
+			>
+				<template #greetingActions>
+					<div :class="$style.mobileRecord" data-hatady-home-actions>
+						<button class="hy-icon-button" :aria-label="copy.notifications" @click="openNotifications">
+							<i class="ti ti-bell" aria-hidden="true"></i>
+							<span v-if="unread" :class="$style.badge">{{ unread > 99 ? '99+' : unread }}</span>
+						</button>
+						<button class="hy-primary" :aria-label="copy.recordActivity" @click="openActivityComposer">
+							<i class="ti ti-plus" aria-hidden="true"></i>
 						</button>
 					</div>
-					<button v-if="mediaHasMore && !mediaLoading" :class="$style.mediaMore" @click="loadMoreMediaWorks"><i class="ti ti-chevron-down"></i> {{ mediaCopy.loadMore }}</button>
-				</section>
-			</div>
-		</div>
+				</template>
+			</HatadyHome>
+			<section v-else-if="activeTab === 'records'" :class="$style.page">
+				<div :class="$style.pageTitle">
+					<h1>日々の記録</h1>
+					<button
+						:class="[$style.compactRecord, 'hy-primary']"
+						:aria-label="copy.recordActivity"
+						@click="openActivityComposer"
+					>
+						<i class="ti ti-plus" aria-hidden="true"></i>
+					</button>
+				</div>
+				<div data-hy-page-controls>
+					<div :class="$style.recordControls">
+						<HyCapsule
+							:modelValue="recordScope"
+							:options="scopeOptions"
+							label="記録の範囲"
+							@update:modelValue="setRecordScope"
+						/>
+						<div :class="$style.toolbar">
+							<HyCapsule
+								:modelValue="recordKind"
+								:options="recordKinds"
+								label="活動の種類"
+								@update:modelValue="setRecordKind"
+							/>
+							<button
+								type="button"
+								class="hy-icon-button"
+								:aria-label="copy.period"
+								:aria-expanded="periodOpen"
+								:data-active="periodActive"
+								@click="periodOpen = !periodOpen"
+							>
+								<i class="ti ti-calendar" aria-hidden="true"></i>
+							</button>
+						</div>
+					</div>
+					<form v-if="periodOpen" :class="$style.periodTools" aria-label="記録の日付" @submit.prevent="applyPeriod">
+						<div :class="$style.periodRange" role="group" aria-label="表示する期間">
+							<label :class="$style.dateField">
+								<span>開始</span>
+								<input v-model="sinceDraft" type="date" aria-label="開始日"/>
+							</label>
+							<span aria-hidden="true">〜</span>
+							<label :class="$style.dateField">
+								<span>終了</span>
+								<input v-model="untilDraft" type="date" aria-label="終了日"/>
+							</label>
+						</div>
+						<div :class="$style.periodActions">
+							<select :class="$style.periodPreset" aria-label="期間の候補" @change="selectPeriodPreset">
+								<option value="">期間を選ぶ</option>
+								<option value="month">{{ copy.thisMonth }}</option>
+								<option value="lastMonth">{{ copy.lastMonth }}</option>
+								<option value="30days">{{ copy.last30 }}</option>
+							</select>
+							<button type="submit" class="hy-primary">{{ copy.apply }}</button>
+							<button type="button" class="hy-icon-button" :aria-label="copy.clearPeriod" :title="copy.clearPeriod" @click="clearPeriod">
+								<i class="ti ti-x" aria-hidden="true"></i>
+							</button>
+						</div>
+						<label :class="[$style.dateField, $style.dateJump]">
+							<i class="ti ti-calendar-search" aria-hidden="true"></i>
+							<span>日付へ</span>
+							<input v-model="jumpDraft" type="date" :aria-label="copy.jumpTo" @change="jumpToDate"/>
+						</label>
+					</form>
+					<p v-if="periodActive && !periodOpen" :class="$style.periodLabel">
+						{{ since || '…' }} 〜 {{ until || '…' }}
+						<button class="hy-icon-button" :aria-label="copy.clearPeriod" @click="clearPeriod">
+							<i class="ti ti-x" aria-hidden="true"></i>
+						</button>
+					</p>
+				</div>
+				<div v-if="recordsError" class="hy-error" role="alert">
+					{{ recordsError }}
+					<button class="hy-secondary" @click="loadRecords()">再読み込み</button>
+				</div>
+				<p v-if="recordsLoading && !activities.length" class="hy-empty" role="status">{{ copy.loading }}</p>
+				<div v-else :class="$style.entries" :aria-busy="recordsLoading">
+					<HatadyActivityCard
+						v-for="activity in activities"
+						:key="activity.id"
+						:activity="activity"
+						:data-hy-entrance="activityKind(activity)"
+						@openLog="openConversation"
+						@openBook="openBookDetail"
+						@openMedia="openMediaDetailById"
+						@openSession="openSession"
+						@openProfile="openProfile"
+						@edit="editActivity"
+						@menu="openActivityMenu"
+					/>
+					<p v-if="!activities.length && !recordsError" class="hy-empty">
+						{{ periodActive ? copy.emptyFiltered : copy.emptyLog }}
+					</p>
+					<button v-if="hasMore" class="hy-secondary" :disabled="recordsLoading" @click="loadRecords(true)">
+						{{ mediaCopy.loadMore }}
+					</button>
+				</div>
+			</section>
+			<section v-else-if="activeTab === 'collection'" :class="$style.page">
+				<div :class="$style.pageTitle"><h1>コレクション</h1></div>
+				<div :class="$style.collectionTabs" data-hy-page-controls>
+					<HyCapsule
+						:modelValue="collectionScope"
+						:options="scopeOptions"
+						label="コレクションの範囲"
+						@update:modelValue="setCollectionScope"
+					/>
+					<HyCapsule
+						:modelValue="collectionKind"
+						:options="collectionKinds"
+						label="作品の種類"
+						@update:modelValue="setCollectionKind"
+					/>
+				</div>
+				<div :class="$style.collectionTools">
+					<button
+						class="hy-secondary"
+						:aria-expanded="collectionFiltersOpen"
+						@click="collectionFiltersOpen = !collectionFiltersOpen"
+					>
+						<i class="ti ti-filter" aria-hidden="true"></i>
+						<span v-if="!collectionLoading">{{ filteredWorks.length }}件</span>
+					</button>
+					<button v-if="collectionScope === 'mine'" class="hy-primary" @click="addCollectionWork">
+						<i class="ti ti-plus" aria-hidden="true"></i>
+						{{ collectionKind === 'work' ? '作業を登録' : '作品を登録' }}
+					</button>
+				</div>
+				<div v-if="collectionFiltersOpen" :class="[$style.filterPanel, 'hy-form']">
+					<label class="hy-field">
+						{{ mediaCopy.search }}
+						<input
+							v-model="collectionQuery"
+							class="hy-input"
+							type="search"
+							:placeholder="mediaCopy.searchPlaceholder"
+						/>
+					</label>
+					<div class="hy-form-pair">
+						<label class="hy-field">
+							{{ mediaCopy.statusLabel }}
+							<select v-model="collectionStatus" class="hy-input">
+								<option value="">{{ mediaCopy.all }}</option>
+								<option v-for="status in collectionStatuses" :key="status.value" :value="status.value">
+									{{ status.label }}
+								</option>
+							</select>
+						</label>
+						<label class="hy-field">
+							並び順
+							<select v-model="collectionSort" class="hy-input">
+								<option value="updatedAt">{{ mediaCopy.sortUpdated }}</option>
+								<option value="title">{{ mediaCopy.sortTitle }}</option>
+								<option v-if="collectionKind === 'book'" value="finishedAt">{{ copy.sortFinished }}</option>
+								<option v-else value="releaseDate">{{ mediaCopy.sortRelease }}</option>
+								<option v-if="collectionKind === 'movie'" value="recommendationRating">
+									{{ mediaCopy.sortRecommendation }}
+								</option>
+								<option value="status">{{ mediaCopy.statusLabel }}</option>
+							</select>
+						</label>
+					</div>
+					<div class="hy-actions">
+						<label>
+							<input v-model="favoritesOnly" type="checkbox"/>
+							お気に入り
+						</label>
+						<label>
+							<input v-model="recommendedOnly" type="checkbox"/>
+							おすすめ
+						</label>
+						<button class="hy-secondary" @click="sortAsc = !sortAsc">
+							<i :class="sortAsc ? 'ti ti-sort-ascending' : 'ti ti-sort-descending'" aria-hidden="true"></i>
+							{{ sortAsc ? '昇順' : '降順' }}
+						</button>
+					</div>
+					<details v-if="collectionKind === 'movie' || collectionKind === 'game'" :class="$style.mediaAdvanced">
+						<summary>
+							<i class="ti ti-adjustments-horizontal"></i>
+							{{ mediaCopy.advancedFilters }}
+						</summary>
+						<div :class="$style.mediaFilterGrid">
+							<template v-if="collectionKind === 'movie'">
+								<label :class="$style.mediaFilterField">
+									<span>{{ mediaCopy.form.movieOrigin }}</span>
+									<select v-model="mediaFiltersDraft.origin" :class="$style.mediaSelect">
+										<option value="">{{ mediaCopy.all }}</option>
+										<option value="domestic">{{ mediaCopy.form.domestic }}</option>
+										<option value="foreign">{{ mediaCopy.form.foreign }}</option>
+										<option value="co_production">{{ mediaCopy.form.coProduction }}</option>
+										<option value="other">{{ mediaCopy.form.otherOrigin }}</option>
+									</select>
+								</label>
+								<label :class="$style.mediaFilterField">
+									<span>{{ mediaCopy.form.viewingMode }}</span>
+									<select v-model="mediaFiltersDraft.viewingMode" :class="$style.mediaSelect">
+										<option value="">{{ mediaCopy.all }}</option>
+										<option value="original">{{ mediaCopy.form.original }}</option>
+										<option value="subtitled">{{ mediaCopy.form.subtitled }}</option>
+										<option value="dubbed">{{ mediaCopy.form.dubbed }}</option>
+									</select>
+								</label>
+								<label :class="$style.mediaFilterField">
+									<span>{{ mediaCopy.form.recommend }}</span>
+									<select v-model="mediaFiltersDraft.isRecommended" :class="$style.mediaSelect">
+										<option :value="null">{{ mediaCopy.all }}</option>
+										<option :value="true">{{ mediaCopy.recommendedOnly }}</option>
+										<option :value="false">{{ mediaCopy.notRecommended }}</option>
+									</select>
+								</label>
+								<label :class="$style.mediaFilterField">
+									<span>{{ mediaCopy.minimumRecommendation }}</span>
+									<select v-model="mediaFiltersDraft.minRecommendation" :class="$style.mediaSelect">
+										<option :value="null">{{ mediaCopy.all }}</option>
+										<option v-for="score in 10" :key="score" :value="score">{{ (score / 2).toFixed(1) }} / 5</option>
+									</select>
+								</label>
+							</template>
+							<template v-else-if="collectionKind === 'game'">
+								<label :class="$style.mediaFilterField">
+									<span>{{ mediaCopy.sessionType }}</span>
+									<select v-model="mediaFiltersDraft.sessionKind" :class="$style.mediaSelect">
+										<option value="">{{ mediaCopy.all }}</option>
+										<option v-for="type in mediaGameSessionTypes" :key="type" :value="type">
+											{{ mediaCopy.session.types[type] }}
+										</option>
+									</select>
+								</label>
+								<label :class="$style.mediaFilterField">
+									<span>{{ mediaCopy.session.result }}</span>
+									<select v-model="mediaFiltersDraft.result" :class="$style.mediaSelect">
+										<option value="">{{ mediaCopy.all }}</option>
+										<option value="win">{{ mediaCopy.session.win }}</option>
+										<option value="loss">{{ mediaCopy.session.loss }}</option>
+										<option value="draw">{{ mediaCopy.session.draw }}</option>
+										<option value="cleared">{{ mediaCopy.session.cleared }}</option>
+										<option value="failed">{{ mediaCopy.session.failed }}</option>
+										<option value="retired">{{ mediaCopy.session.retired }}</option>
+									</select>
+								</label>
+								<label :class="$style.mediaFilterField">
+									<span>{{ mediaCopy.session.weapon }}</span>
+									<input v-model="mediaFiltersDraft.weapon" :class="$style.mediaFilterInput" maxlength="512"/>
+								</label>
+								<label :class="$style.mediaFilterField">
+									<span>{{ mediaCopy.session.rank }}</span>
+									<input v-model="mediaFiltersDraft.rank" :class="$style.mediaFilterInput" maxlength="512"/>
+								</label>
+								<label :class="$style.mediaFilterField">
+									<span>{{ mediaCopy.session.route }}</span>
+									<input v-model="mediaFiltersDraft.route" :class="$style.mediaFilterInput" maxlength="512"/>
+								</label>
+								<label :class="$style.mediaFilterField">
+									<span>{{ mediaCopy.sinceDate }}</span>
+									<input v-model="mediaFiltersDraft.since" type="date" :class="$style.mediaFilterInput"/>
+								</label>
+								<label :class="$style.mediaFilterField">
+									<span>{{ mediaCopy.untilDate }}</span>
+									<input v-model="mediaFiltersDraft.until" type="date" :class="$style.mediaFilterInput"/>
+								</label>
+							</template>
+						</div>
+						<div :class="$style.mediaFilterActions">
+							<button :class="$style.actionGhost" @click="resetMediaFilters">
+								<i class="ti ti-restore"></i>
+								{{ mediaCopy.resetFilters }}
+							</button>
+							<button :class="$style.shelfAddBtn" @click="applyMediaFilters">
+								<i class="ti ti-check"></i>
+								{{ mediaCopy.applyFilters }}
+							</button>
+						</div>
+					</details>
+				</div>
+				<div v-if="collectionError" class="hy-error" role="alert">
+					{{ collectionError }}
+					<button class="hy-secondary" @click="loadCollection">再読み込み</button>
+				</div>
+				<p v-if="collectionLoading && !collectionWorks.length" class="hy-empty" role="status">{{ copy.loading }}</p>
+				<div v-else :class="$style.gallery" :data-kind="collectionKind" :aria-busy="collectionLoading">
+					<button
+						v-for="work in filteredWorks"
+						:key="work.id"
+						:class="$style.workCard"
+						:data-kind="work.kind"
+						:data-hy-entrance="work.kind"
+						@click="openWork(work)"
+					>
+						<template v-if="work.kind === 'work'">
+							<small>
+								{{ ownerName(work.raw) }} ·
+								<i :class="visibilityIcon(work.raw.visibility)" aria-hidden="true"></i>
+								<span class="_srOnly">{{ visibilityLabel(work.raw.visibility) }}</span>
+							</small>
+							<h2>
+								<i class="ti ti-briefcase" aria-hidden="true"></i>
+								{{ work.title }}
+							</h2>
+							<p>{{ work.description }}</p>
+							<div :class="$style.workTags"><span v-for="tag in (work.raw.activity?.tags?.length ? work.raw.activity.tags : [work.status === 'completed' ? 'doneAll' : 'progress'])" :key="tag" class="hy-tag"><i :class="HATADY_RECORD_TAGS.find(item => item.value === tag)?.icon" aria-hidden="true"></i>{{ HATADY_RECORD_TAGS.find(item => item.value === tag)?.label || tag }}</span></div>
+							<p
+								v-if="work.raw.activity?.latest?.body && !work.raw.activity.latest.details?.spoiler"
+								:class="$style.excerpt"
+							>
+								{{ work.raw.activity.latest.body }}
+							</p>
+							<div :class="$style.workFoot">
+								<small v-if="work.raw.activity?.count != null">{{ work.raw.activity?.count }}件の記録 · {{ hatadyDuration(work.raw.activity.seconds) }}</small>
+								<i class="ti ti-arrow-right" aria-hidden="true"></i>
+							</div>
+						</template>
+						<template v-else>
+							<div :class="$style.coverWrap">
+								<span
+									v-for="(bookmark, index) in (work.raw.bookmarks || []).slice(0, 6)"
+									:key="bookmark.id"
+									:class="$style.bookmark"
+									:title="bookmark.name || `p.${bookmark.page}`"
+									:style="{ background: hyBookmarkColor(bookmark.color), left: `${16 + Number(index) * 13}px` }"
+								></span>
+								<HyBookCover
+									v-if="work.kind === 'book'"
+									:title="work.title"
+									:author="work.creator"
+									:colorIndex="work.colorIndex"
+									:width="118"
+									showTitle
+								/>
+								<HyMediaCover
+									v-else
+									:kind="work.kind"
+									:title="work.title"
+									:subtitle="work.creator"
+									:colorIndex="work.colorIndex"
+									:width="118"
+								/>
+								<i
+									v-if="work.raw.isFavorite"
+									:class="[$style.favorite, 'ti ti-star-filled']"
+									aria-label="お気に入り"
+								></i>
+							</div>
+							<div :class="$style.workMeta">
+								<small>
+									{{ work.genre }}
+									<template v-if="collectionScope !== 'mine'">· {{ ownerName(work.raw) }}</template>
+								</small>
+								<h2>{{ work.title }}</h2>
+								<p>{{ work.creator }}</p>
+								<div :class="$style.workState">
+									<span>{{ statusLabel(work.status) }}</span>
+									<span v-if="work.kind === 'book' && work.raw.totalPages">
+										{{ work.raw.currentPage }}/{{ work.raw.totalPages }}p
+									</span>
+									<span v-if="work.kind === 'movie' && work.raw.recommendationRating != null">
+										★ {{ (work.raw.recommendationRating / 2).toFixed(1) }}
+									</span>
+								</div>
+								<progress
+									v-if="work.kind === 'book' && work.raw.progress != null"
+									max="100"
+									:value="work.raw.progress"
+									:aria-label="`${work.raw.progress}%`"
+								></progress>
+								<span v-if="work.recommended" class="hy-tag">
+									<i class="ti ti-thumb-up" aria-hidden="true"></i>
+									おすすめ
+								</span>
+							</div>
+						</template>
+					</button>
+				</div>
+				<p v-if="!filteredWorks.length && !collectionLoading && !collectionError" class="hy-empty">
+					{{
+						collectionKind === 'book'
+							? copy.emptyShelf
+							: collectionKind === 'movie'
+								? mediaCopy.emptyMovie
+								: collectionKind === 'game'
+									? mediaCopy.emptyGame
+									: 'まだ作業がありません'
+					}}
+				</p>
+			</section>
+			<HatadyProfile
+				v-else
+				:key="revision"
+				inline
+				@changed="refresh"
+				@openLog="openConversation"
+				@openBook="openBookDetail"
+				@openMedia="openMediaDetailById"
+				@openProfile="openProfile"
+			/>
+		</main>
 	</div>
 </MkStickyContainer>
 </template>
 
-<script lang="ts" setup>
-import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
-import type { HatadyActivity, HatadyLogKind, HatadyMediaAdvancedFilters, HatadyMediaKind, HatadyMediaSession, HatadyMediaSort, HatadyMediaStatus, HatadyMediaWork } from '@/utility/hatady-media.js';
+<script setup lang="ts">
+import { computed, nextTick, onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue';
+import type { HatadyActivity, HatadyMediaAdvancedFilters, HatadyMediaKind } from '@/utility/hatady-media.js';
+import type { HatadyHomeWork } from '@/utility/hatady-home.js';
 import { $i } from '@/i.js';
-import { mainRouter, useRouter } from '@/router.js';
+import { useRouter } from '@/router.js';
 import { definePage } from '@/page.js';
 import * as os from '@/os.js';
 import { i18n } from '@/i18n.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { versatileLang } from '@/utility/intl-const.js';
-import { prefer } from '@/preferences.js';
+import { captureHatadyPageTurn } from '@/utility/hatady-motion.js';
+import { createHatadyListEntrance } from '@/utility/hatady-list-motion.js';
+import HyNav from '@/components/HyNav.vue';
+import HyCapsule from '@/components/HyCapsule.vue';
 import HyBookCover from '@/components/HyBookCover.vue';
 import HyMediaCover from '@/components/HyMediaCover.vue';
+import HatadyHome from '@/components/HatadyHome.vue';
 import HatadyActivityCard from '@/components/HatadyActivityCard.vue';
-import { hySubjectPalette, hyBookmarkColor } from '@/utility/hatady.js';
+import HatadyProfile from '@/components/HatadyProfile.vue';
+import { hyBookmarkColor } from '@/utility/hatady.js';
 import { loadHySubjects } from '@/utility/hatady-subjects.js';
-import { hatadyTheme, hatadyTzOffset, loadHatadyDisplay, loadTutorialDone, setTutorialDone } from '@/utility/hatady-prefs.js';
-import { claimAchievement } from '@/utility/achievements.js';
-import { miLocalStorage } from '@/local-storage.js';
-import { HATADY_LOG_KINDS, hatadyMediaCopy, hatadyViewingEventPayload, mediaAdvancedFilterPayload, mediaSessionTypes, mediaStatusCopyKey, mediaStatusOptions, normalizeHatadyActivityPage, normalizeHatadyLogKinds, normalizeMediaSortForKind, normalizeMediaWorks } from '@/utility/hatady-media.js';
+import {
+	hatadyTheme,
+	hatadyTzOffset,
+	loadHatadyDisplay,
+} from '@/utility/hatady-prefs.js';
+import { showHatadyTutorial } from '@/utility/hatady-tutorial-launcher.js';
+import {
+	hatadyMediaCopy,
+	mediaAdvancedFilterPayload,
+	mediaSessionTypes,
+	mediaStatusCopyKey,
+	mediaStatusOptions,
+	requireHatadyActivityPage,
+	normalizeHatadyLogKinds,
+} from '@/utility/hatady-media.js';
+import { activityData, activityKind, collectWorkPages, homeWork, localDateKey } from '@/utility/hatady-home.js';
+import { HATADY_ACTIVITY_CHOICES, HATADY_RECORD_TAGS, hatadyDialogSurfaces, hatadyDuration, hatadyNotify } from '@/utility/hatady-ui.js';
+import '@/components/hatady-ui.css';
 
-const isHatasabaDeckUi = computed(() => miLocalStorage.getItem('ui') === 'simple' && prefer.r['simpleUi.deckMode'].value === true);
-const router = useRouter();
-
-// 旗鯖fork: Hatady の表示言語は Hataskey 本体の共通 locale に統一する。
-// テーマだけは従来どおり端末ローカルに保持し、表示設定から即時反映する。
-const copy = i18n.ts._hata._hatady._home;
-const copyx = i18n.tsx._hata._hatady._home;
-const theme = hatadyTheme;
-const shortDateFormat = new Intl.DateTimeFormat(versatileLang, { month: 'short', day: 'numeric' });
-const heatDateFormat = new Intl.DateTimeFormat(versatileLang, { month: 'short', day: 'numeric', weekday: 'short' });
-const bookTitleCollator = new Intl.Collator(versatileLang, { usage: 'sort', sensitivity: 'base' });
-const mediaCopy = hatadyMediaCopy();
-
-function t(key: string): string {
-	return (copy as unknown as Record<string, string>)[key] ?? key;
-}
-
-// 言語ごとの文を2キーに分け、句読点を解析せず同じ2行構造を保つ。
-const streakBrokenSubParts = computed<string[]>(() => [copy.streakBrokenSubLine1, copy.streakBrokenSubLine2].filter(Boolean));
-
-function notYetKeepStreakLabel(streakDays: number): string {
-	return copyx.notYetKeepStreak({ streakDays: streakDays.toString() });
-}
-
-function filteredNoticeLabel(days: number): string {
-	return copyx.filteredNotice({ days: days.toString() });
-}
-
-function heatPopupSummary(minutes: number, sessions: number): string {
-	return copyx.heatPopupSummary({ duration: fmtDuration(minutes), sessions: sessions.toString() });
-}
-
-// 旗鯖fork: 開いていたタブはリロードしても維持する(端末ローカル)。
-type HatadyTab = 'mylog' | 'discover' | 'shelf';
-const TAB_KEY = 'hatadyActiveTab';
-
-function readSavedTab(): HatadyTab {
-	try {
-		const v = localStorage.getItem(TAB_KEY);
-		if (v === 'mylog' || v === 'discover' || v === 'shelf') return v;
-	} catch { /* noop */ }
-	return 'mylog';
-}
-
-const activeTab = ref<HatadyTab>(readSavedTab());
-
-// ヘッダー検索: 表示中タブの活動をキーワードで絞り込む。
-//   NFKC 正規化 + 小文字化で、大文字小文字・全角半角(Ａ↔A / ａ↔a / ０↔0)を区別せず一致させる。
-const searchQuery = ref('');
-
-function norm(s: string): string { return s.normalize('NFKC').toLowerCase(); }
-
-function matchLog(log: any): boolean {
-	const q = norm(searchQuery.value.trim());
-	if (!q) return true;
-	return [log.title, log.subject, log.body, log.book?.title, log.book?.author, log.user?.name, log.user?.username]
-		.some(v => typeof v === 'string' && norm(v).includes(q));
-}
-
-function matchActivity(activity: HatadyActivity): boolean {
-	const q = norm(searchQuery.value.trim());
-	if (!q) return true;
-	if (activity.type === 'study') return matchLog(activity.study);
-	const work = activity.media?.work;
-	const session = activity.media?.session;
-	return [work?.title, work?.originalTitle, work?.creator, work?.developer, work?.publisher, session?.note, activity.user?.name, activity.user?.username]
-		.some(value => typeof value === 'string' && norm(value).includes(q));
-}
-
-function matchBook(b: any): boolean {
-	const q = norm(searchQuery.value.trim());
-	if (!q) return true;
-	return [b.title, b.author].some(v => typeof v === 'string' && norm(v).includes(q));
-}
-
-const unread = ref(0);
-
-async function loadUnread() {
-	const r = await misskeyApi('hata/hatady/notifications/unread-count', {}).catch(() => null) as any;
-	unread.value = r?.count ?? 0;
-}
-
-// タブ切替時に、そのタブのデータを(未取得なら)遅延ロードする。
-function setTab(tab: HatadyTab) {
-	activeTab.value = tab;
-	try { localStorage.setItem(TAB_KEY, tab); } catch { /* noop */ }
-	if (tab === 'discover' && discoverActivities.value.length === 0) loadDiscover();
-	if (tab === 'shelf' && collectionKind.value !== 'books' && mediaWorks.value.length === 0) loadMediaWorks();
-}
-
-// ===== マイログ(1a): 学習・映画鑑賞・ゲームプレイの活動 =====
-const activities = ref<HatadyActivity[]>([]);
-const logs = computed<any[]>(() => activities.value
-	.filter(activity => activity.type === 'study' && activity.study != null)
-	.map(activity => activity.study));
-const stats = ref<any>(null);
-const books = ref<any[]>([]);
-const activitiesLoading = ref(true);
-const activitiesLoadingMore = ref(false);
-const activitiesCursor = ref<string | null>(null);
-const activitiesHasMore = ref(false);
-let activitiesRequest = 0;
-
-// 旗鯖fork(Hatady): マイログに出す記録の種類。端末ごとに覚える(他の端末の見え方は変えない)。
-type LogKind = HatadyLogKind;
-const LOG_KINDS = HATADY_LOG_KINDS;
-const LOG_KINDS_KEY = 'hatadyLogKinds';
-
-function readLogKinds(): LogKind[] {
-	try { return normalizeHatadyLogKinds(localStorage.getItem(LOG_KINDS_KEY)); } catch { return [...LOG_KINDS]; }
-}
-
-const logKinds = ref<LogKind[]>(readLogKinds());
-const logKindChoices = computed(() => [
-	{ kind: 'study' as const, label: t('activityStudy'), icon: 'ti-notebook' },
-	{ kind: 'movie' as const, label: String(mediaCopy.movies), icon: 'ti-movie' },
-	{ kind: 'game' as const, label: String(mediaCopy.games), icon: 'ti-device-gamepad-2' },
-]);
-
-function persistLogKinds() {
-	try { localStorage.setItem(LOG_KINDS_KEY, JSON.stringify(logKinds.value)); } catch { /* noop */ }
-}
-
-function toggleLogKind(kind: LogKind) {
-	const next = logKinds.value.includes(kind) ? logKinds.value.filter(item => item !== kind) : [...logKinds.value, kind];
-	logKinds.value = LOG_KINDS.filter(item => next.includes(item));
-	persistLogKinds();
-	activitiesCursor.value = null;
-	loadActivities();
-}
-
-function resetLogKinds() {
-	logKinds.value = [...LOG_KINDS];
-	persistLogKinds();
-	activitiesCursor.value = null;
-	loadActivities();
-}
-
-// 旗鯖fork: マイログの期間指定ジャンプ。studiedAt の範囲(エポックms)で絞り込む。
-//   filterSince/filterUntil が両方 null なら通常の直近表示。期間指定時は多めに読み込む。
-const filterSince = ref<number | null>(null);
-const filterUntil = ref<number | null>(null);
-const filterActive = computed(() => filterSince.value != null || filterUntil.value != null);
-
-async function loadActivities(options: { append?: boolean } = {}) {
-	if (options.append && (activitiesLoading.value || activitiesLoadingMore.value)) return;
-	// 何も選ばれていない = 何も出さない。空配列はAPIが「全件」と解釈するため、そもそも問い合わせない。
-	if (logKinds.value.length === 0) {
-		activities.value = [];
-		activitiesCursor.value = null;
-		activitiesHasMore.value = false;
-		activitiesLoading.value = false;
-		return;
-	}
-	const currentRequest = ++activitiesRequest;
-	if (options.append) activitiesLoadingMore.value = true;
-	else activitiesLoading.value = true;
-	try {
-		const params: Record<string, unknown> = { scope: 'mine', limit: filterActive.value ? 100 : 50 };
-		// 全種類が選ばれているときは kinds を送らない(APIの既定が全件のため、余計な条件を増やさない)。
-		if (logKinds.value.length < LOG_KINDS.length) params.kinds = [...logKinds.value];
-		if (filterSince.value != null) params.sinceDate = filterSince.value;
-		if (filterUntil.value != null) params.untilDate = filterUntil.value;
-		if (options.append && activitiesCursor.value) params.cursor = activitiesCursor.value;
-		const page = normalizeHatadyActivityPage(await misskeyApi('hata/hatady/activities' as never, params as never).catch(() => null));
-		if (currentRequest !== activitiesRequest) return;
-		const previous = options.append ? activities.value : [];
-		const seen = new Set(previous.map(activity => activity.id));
-		activities.value = [...previous, ...page.items.filter(activity => !seen.has(activity.id))];
-		activitiesCursor.value = page.nextCursor;
-		activitiesHasMore.value = page.hasMore && page.nextCursor != null;
-	} finally {
-		if (currentRequest === activitiesRequest) {
-			activitiesLoading.value = false;
-			activitiesLoadingMore.value = false;
-		}
-	}
-}
-
-function loadMoreActivities() { if (!activitiesLoadingMore.value && activitiesHasMore.value) loadActivities({ append: true }); }
-
-async function loadStats() { stats.value = await misskeyApi('hata/hatady/stats', { tzOffset: hatadyTzOffset() }).catch(() => null); }
-
-async function loadBooks() { books.value = await misskeyApi('hata/hatady/books', { limit: 20 }).catch(() => []); }
-
-function reloadMylog() { loadActivities(); loadStats(); loadBooks(); }
-
-// ===== 期間フィルタ / 日付ジャンプ (旗鯖fork) =====
-const timelineColRef = ref<HTMLElement | null>(null);
-const periodOpen = ref(false);
-const sinceInput = ref(''); // <input type="date"> の値 (YYYY-MM-DD)
-const untilInput = ref('');
-const jumpInput = ref('');
-
-// YYYY-MM-DD → その日の 00:00:00 / 23:59:59.999 のエポックms。
-function dayStartMs(v: string): number | null { if (!v) return null; const [y, m, d] = v.split('-').map(Number); if (!y || !m || !d) return null; return new Date(y, m - 1, d, 0, 0, 0, 0).getTime(); }
-
-function dayEndMs(v: string): number | null { if (!v) return null; const [y, m, d] = v.split('-').map(Number); if (!y || !m || !d) return null; return new Date(y, m - 1, d, 23, 59, 59, 999).getTime(); }
-
-// activityGroups のキー形式(非ゼロ埋め)に合わせる。
-function groupKeyFromDate(dt: Date): string { return `${dt.getFullYear()}-${dt.getMonth() + 1}-${dt.getDate()}`; }
-
-function groupKeyFromInput(v: string): string | null { if (!v) return null; const [y, m, d] = v.split('-').map(Number); if (!y || !m || !d) return null; return `${y}-${m}-${d}`; }
-
-async function scrollToGroup(key: string): Promise<boolean> {
-	await nextTick();
-	const el = timelineColRef.value?.querySelector(`[data-date-key="${key}"]`) as HTMLElement | null;
-	if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); return true; }
-	return false;
-}
-
-// 期間を適用(開始・終了の日付から)。
-async function applyPeriod() {
-	filterSince.value = dayStartMs(sinceInput.value);
-	filterUntil.value = dayEndMs(untilInput.value);
-	if (filterSince.value == null && filterUntil.value == null) return;
-	await loadActivities();
-	await nextTick();
-	timelineColRef.value?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
-
-function clearPeriod() {
-	filterSince.value = null; filterUntil.value = null;
-	sinceInput.value = ''; untilInput.value = '';
-	loadActivities();
-}
-
-// プリセット: 今月 / 先月 / 過去30日。
-function pad(n: number): string { return n.toString().padStart(2, '0'); }
-
-function toInput(dt: Date): string { return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`; }
-
-function presetThisMonth() { const now = new Date(); sinceInput.value = toInput(new Date(now.getFullYear(), now.getMonth(), 1)); untilInput.value = toInput(new Date(now.getFullYear(), now.getMonth() + 1, 0)); applyPeriod(); }
-
-function presetLastMonth() { const now = new Date(); sinceInput.value = toInput(new Date(now.getFullYear(), now.getMonth() - 1, 1)); untilInput.value = toInput(new Date(now.getFullYear(), now.getMonth(), 0)); applyPeriod(); }
-
-function presetLast30() { const now = new Date(); const s = new Date(now); s.setDate(s.getDate() - 29); sinceInput.value = toInput(s); untilInput.value = toInput(now); applyPeriod(); }
-
-// 単一日ジャンプ: まず読み込み済みなら該当日へスクロール。無ければその日以前を読み直して先頭へ。
-async function jumpToDate() {
-	const key = groupKeyFromInput(jumpInput.value);
-	if (!key) return;
-	if (!filterActive.value && await scrollToGroup(key)) return;
-	// 読み込み済みに無い(=より古い)ので、その日を最新にして読み直す。
-	filterSince.value = null;
-	filterUntil.value = dayEndMs(jumpInput.value);
-	untilInput.value = jumpInput.value; sinceInput.value = '';
-	await loadActivities();
-	if (!await scrollToGroup(key)) {
-		await nextTick();
-		timelineColRef.value?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-	}
-}
-
-// ヒートマップのセル(YYYY-MM-DD ゼロ埋め)クリックで、その日付へジャンプ。
-async function jumpToHeatCell(dateKey: string) {
-	jumpInput.value = dateKey;
-	await jumpToDate();
-}
-
-// 日付区切りのタイムライン: 全活動の occurredAt をローカル日付でグループ化する。
-const activityGroups = computed(() => {
-	const map = new Map<string, { key: string; label: string; sub: string; activities: HatadyActivity[] }>();
-	for (const activity of activities.value) {
-		if (!matchActivity(activity)) continue;
-		const d = new Date(activity.occurredAt);
-		const key = `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
-		if (!map.has(key)) map.set(key, { key, label: formatDay(d), sub: '', activities: [] });
-		map.get(key)!.activities.push(activity);
-	}
-	// 各グループのサブ(活動数・合計時間)。
-	for (const g of map.values()) {
-		const total = g.activities.reduce((sum, activity) => sum + Number(activity.type === 'study' ? activity.study?.durationMinutes ?? 0 : activity.media?.session.durationMinutes ?? 0), 0);
-		g.sub = copyx.activitySummary({ activities: g.activities.length.toString(), duration: fmtDuration(total) });
-	}
-	return [...map.values()];
-});
-
-const readingBooks = computed(() => books.value.filter(b => b.status === 'reading').slice(0, 5));
-
-// 今日の記録状況: done=今日記録済み / notYet=今日未記録(連続は生きている) / broken=連続途切れ / null=新規/読込中
-const todayState = computed<'done' | 'notYet' | 'broken' | null>(() => {
-	const s = stats.value;
-	if (!s) return null;
-	if (s.recordedToday) return 'done';
-	// 今日未記録。過去に記録があり、連続が0(=昨日も記録なし)なら「途切れた」。
-	if ((s.totalLogs ?? 0) > 0 && (s.streakDays ?? 0) === 0) return 'broken';
-	// 今日まだ記録していない(初回含む)。
-	return 'notYet';
-});
-
-// done/broken の情報バナーは1日1回で十分(上部圧迫回避)。×で今日は非表示にする(端末ローカル)。
-function todayKey(): string { const d = new Date(); return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; }
-
-const infoBannerDismissed = ref<string>('');
-
-function dismissInfoBanner() { infoBannerDismissed.value = todayKey(); try { localStorage.setItem('hatadyInfoBannerDismissed', infoBannerDismissed.value); } catch { /* noop */ } }
-
-// notYet(記録を促す)は常時表示、done/broken(情報)は未dismissの日のみ表示。
-const showInfoBanner = computed(() => infoBannerDismissed.value !== todayKey());
-
-// ===== みんなの活動(公開フィード) =====
-const discoverActivities = ref<HatadyActivity[]>([]);
-const discoverFiltered = computed(() => discoverActivities.value.filter(matchActivity));
-const discoverLoading = ref(false);
-const discoverLoadingMore = ref(false);
-const discoverCursor = ref<string | null>(null);
-const discoverHasMore = ref(false);
-const discoverType = ref<'recent' | 'popular' | 'following'>('recent');
-let discoverRequest = 0;
-const discoverTypes = [
-	{ key: 'recent' as const, label: 'tabRecent', icon: 'ti-clock' },
-	{ key: 'popular' as const, label: 'tabPopular', icon: 'ti-flame' },
-	{ key: 'following' as const, label: 'tabFollowing', icon: 'ti-user-check' },
+const copy = i18n.ts._hata._hatady._home,
+	mediaCopy = hatadyMediaCopy();
+const router = useRouter(),
+	mainEl = useTemplateRef('mainEl'),
+	bell = useTemplateRef('bell'),
+	menu = useTemplateRef('menu');
+const tabs = [
+	{ value: 'home', label: 'ホーム', icon: 'ti ti-home' },
+	{ value: 'records', label: '記録', icon: 'ti ti-notebook' },
+	{ value: 'collection', label: 'コレクション', icon: 'ti ti-books' },
+	{ value: 'profile', label: 'プロフィール', icon: 'ti ti-user' },
 ];
 
-async function loadDiscover(options: { append?: boolean } = {}) {
-	if (options.append && (discoverLoading.value || discoverLoadingMore.value)) return;
-	const currentRequest = ++discoverRequest;
-	const scope = discoverType.value;
-	if (options.append) discoverLoadingMore.value = true;
-	else discoverLoading.value = true;
+function saved(key: string): string | null {
 	try {
-		const page = normalizeHatadyActivityPage(await misskeyApi('hata/hatady/activities' as never, {
-			scope,
-			limit: 40,
-			...(options.append && discoverCursor.value ? { cursor: discoverCursor.value } : {}),
-		} as never).catch(() => null));
-		if (currentRequest !== discoverRequest || scope !== discoverType.value) return;
-		const previous = options.append ? discoverActivities.value : [];
-		const seen = new Set(previous.map(activity => activity.id));
-		discoverActivities.value = [...previous, ...page.items.filter(activity => !seen.has(activity.id))];
-		discoverCursor.value = page.nextCursor;
-		discoverHasMore.value = page.hasMore && page.nextCursor != null;
-	} finally {
-		if (currentRequest === discoverRequest) {
-			discoverLoading.value = false;
-			discoverLoadingMore.value = false;
-		}
+		return localStorage.getItem(key);
+	} catch {
+		return null;
 	}
 }
 
-function loadMoreDiscover() { if (!discoverLoadingMore.value && discoverHasMore.value) loadDiscover({ append: true }); }
-
-function setDiscoverType(type: 'recent' | 'popular' | 'following') {
-	if (discoverType.value === type) return;
-	discoverType.value = type;
-	discoverActivities.value = [];
-	discoverCursor.value = null;
-	loadDiscover();
-}
-
-// ===== 本棚 =====
-type CollectionKind = 'books' | 'movies' | 'games';
-const COLLECTION_KEY = 'hatadyCollectionKind';
-
-function readCollectionKind(): CollectionKind {
+function remember(key: string, value: string): void {
 	try {
-		const value = localStorage.getItem(COLLECTION_KEY);
-		if (value === 'books' || value === 'movies' || value === 'games') return value;
-	} catch { /* noop */ }
-	return 'books';
+		localStorage.setItem(key, value);
+	} catch {
+		/* View preferences never block recording. */
+	}
 }
 
-const collectionKind = ref<CollectionKind>(readCollectionKind());
-const collectionKinds = computed(() => [
-	{ kind: 'books' as const, label: mediaCopy.books, icon: 'ti-books' },
-	{ kind: 'movies' as const, label: mediaCopy.movies, icon: 'ti-movie' },
-	{ kind: 'games' as const, label: mediaCopy.games, icon: 'ti-device-gamepad-2' },
+function initialTab(): string {
+	const old = saved('hatadyActiveTab');
+	return old === 'shelf'
+		? 'collection'
+		: old === 'mylog' || old === 'discover'
+			? 'records'
+			: tabs.some((tab) => tab.value === old)
+				? old!
+				: 'home';
+}
+
+const activeTab = ref(initialTab()),
+	revision = ref(0),
+	stats = ref<any>(null),
+	unread = ref(0);
+const recordScope = ref(saved('hatadyActiveTab') === 'discover' ? 'recent' : 'mine');
+const previousKinds = normalizeHatadyLogKinds(saved('hatadyLogKinds'));
+const recordKind = ref(
+	previousKinds.length === 1
+		? previousKinds[0]
+		: previousKinds.length === HATADY_ACTIVITY_CHOICES.length
+			? 'all'
+			: 'saved',
+);
+const recordKinds = computed(() => [
+	{ value: 'all', label: 'すべて', icon: 'ti ti-notebook' },
+	...HATADY_ACTIVITY_CHOICES,
+	...(recordKind.value === 'saved' ? [{ value: 'saved', label: '保存した絞り込み', icon: 'ti ti-filter' }] : []),
 ]);
-const mediaWorks = ref<HatadyMediaWork[]>([]);
-const mediaLoading = ref(false);
-const mediaQueryDraft = ref('');
-const mediaQuery = ref('');
-const mediaStatus = ref<HatadyMediaStatus | ''>('');
-const mediaSort = ref<HatadyMediaSort>('updatedAt');
-const mediaOrder = ref<'asc' | 'desc'>('desc');
-const mediaHasMore = ref(false);
-const mediaStatuses = computed(() => mediaStatusOptions(collectionKind.value === 'movies' ? 'movie' : 'game'));
+const scopeOptions = computed(() => [
+	{ value: 'mine', label: '自分の記録', icon: 'ti ti-user' },
+	{ value: 'recent', label: 'みんな', icon: 'ti ti-users' },
+	{ value: 'following', label: 'フォロー中', icon: 'ti ti-user-check' },
+	...(($i as any)?.isModerator || ($i as any)?.isAdmin ? [{ value: 'all', label: '管理', icon: 'ti ti-shield' }] : []),
+]);
+const activities = ref<HatadyActivity[]>([]),
+	recordsLoading = ref(false),
+	recordsError = ref(''),
+	cursor = ref<string | null>(null),
+	hasMore = ref(false);
+const periodOpen = ref(false),
+	since = ref(''),
+	until = ref(''),
+	sinceDraft = ref(''),
+	untilDraft = ref(''),
+	jumpDraft = ref('');
+const periodActive = computed(() => !!(since.value || until.value));
+let recordsRequest = 0,
+	collectionRequest = 0,
+	motionFrame = 0,
+	motionPending = false,
+	motionRevision = 0,
+	recordsQuery = '',
+	collectionRequestQuery = '',
+	activeMotion: ReturnType<typeof captureHatadyPageTurn> | undefined,
+	listEntrance: ReturnType<typeof createHatadyListEntrance> | undefined;
+const scrollPositions = new Map<string, number>();
+
+function resetListEntrance(): void {
+	listEntrance?.cancel();
+	listEntrance = mainEl.value ? createHatadyListEntrance(mainEl.value) : undefined;
+}
+
+function playListEntrance(startTime?: CSSNumberish | null): void {
+	if (!motionPending && !hatadyDialogSurfaces.value.length) listEntrance?.play(startTime);
+}
+
+function cancelPageMotion(): void {
+	motionRevision++;
+	cancelAnimationFrame(motionFrame);
+	motionFrame = 0;
+	motionPending = false;
+	activeMotion?.cancel();
+	activeMotion = undefined;
+	listEntrance?.finish();
+}
+
+function preparePageMotion(direction = 1): void {
+	cancelPageMotion();
+	const current = captureHatadyPageTurn(mainEl.value, direction),
+		revision = motionRevision;
+	motionPending = true;
+	// Restore the destination's scroll position before mounting the decorative leaf.
+	nextTick(() => {
+		if (motionRevision !== revision) {
+			current.cancel();
+			return;
+		}
+		motionFrame = requestAnimationFrame(() => {
+			motionFrame = 0;
+			if (motionRevision !== revision) {
+				current.cancel();
+				return;
+			}
+			motionPending = false;
+			activeMotion = current;
+			const start = window.document.timeline.currentTime;
+			current.play(start);
+			playListEntrance(start);
+		});
+	});
+}
+
+function onPageScroll(): void {
+	if (activeMotion) cancelPageMotion();
+}
+
+async function setTab(value: string, animate = false): Promise<void> {
+	if (!tabs.some((tab) => tab.value === value) || activeTab.value === value) return;
+	if (mainEl.value) scrollPositions.set(activeTab.value, mainEl.value.scrollTop);
+	const before = tabs.findIndex((tab) => tab.value === activeTab.value),
+		after = tabs.findIndex((tab) => tab.value === value);
+	if (animate) preparePageMotion(after > before ? 1 : -1);
+	else cancelPageMotion();
+	activeTab.value = value;
+	remember('hatadyActiveTab', value);
+	if (value === 'records') loadRecords();
+	if (value === 'collection') loadCollection();
+	await nextTick();
+	if (mainEl.value) mainEl.value.scrollTop = scrollPositions.get(value) || 0;
+}
+
+function setRecordScope(value: string): void {
+	if (value === recordScope.value) return;
+	preparePageMotion(scopeOptions.value.findIndex(option => option.value === value) > scopeOptions.value.findIndex(option => option.value === recordScope.value) ? 1 : -1);
+	recordScope.value = value;
+	loadRecords();
+}
+
+function setRecordKind(value: string): void {
+	if (value === recordKind.value) return;
+	preparePageMotion(recordKinds.value.findIndex(option => option.value === value) > recordKinds.value.findIndex(option => option.value === recordKind.value) ? 1 : -1);
+	recordKind.value = value;
+	remember(
+		'hatadyLogKinds',
+		JSON.stringify(value === 'all' ? HATADY_ACTIVITY_CHOICES.map((item) => item.value) : [value]),
+	);
+	loadRecords();
+}
+
+function epoch(value: string, end = false): number | undefined {
+	return value ? new Date(`${value}T${end ? '23:59:59.999' : '00:00:00.000'}`).getTime() : undefined;
+}
+
+async function loadRecords(append = false): Promise<void> {
+	if (append && recordsLoading.value) return;
+	const query = JSON.stringify([recordScope.value, recordKind.value, since.value, until.value]);
+	if (recordsQuery !== query) {
+		activities.value = [];
+		cursor.value = null;
+		hasMore.value = false;
+		recordsQuery = query;
+	}
+	const request = ++recordsRequest;
+	recordsLoading.value = true;
+	recordsError.value = '';
+	if (recordKind.value === 'saved' && previousKinds.length === 0) {
+		recordsLoading.value = false;
+		return;
+	}
+	try {
+		const page = requireHatadyActivityPage(
+			await misskeyApi(
+				'hata/hatady/activities' as never,
+				{
+					scope: recordScope.value,
+					limit: 50,
+					...(recordKind.value === 'all'
+						? {}
+						: { kinds: recordKind.value === 'saved' ? previousKinds : [recordKind.value] }),
+					...(since.value ? { sinceDate: epoch(since.value) } : {}),
+					...(until.value ? { untilDate: epoch(until.value, true) } : {}),
+					...(append && cursor.value ? { cursor: cursor.value } : {}),
+				} as never,
+			),
+		);
+		if (request !== recordsRequest) return;
+		const previous = append ? activities.value : [];
+		activities.value = [...new Map([...previous, ...page.items].map((row) => [row.id, row])).values()];
+		cursor.value = page.nextCursor;
+		hasMore.value = page.hasMore && !!page.nextCursor;
+	} catch {
+		if (request === recordsRequest) recordsError.value = '記録を読み込めませんでした';
+	} finally {
+		if (request === recordsRequest) recordsLoading.value = false;
+	}
+}
+
+function applyPeriod(): void {
+	if (sinceDraft.value && untilDraft.value && sinceDraft.value > untilDraft.value) {
+		recordsError.value = '終了日は開始日以降にしてください';
+		return;
+	}
+	since.value = sinceDraft.value;
+	until.value = untilDraft.value;
+	loadRecords();
+}
+
+function clearPeriod(): void {
+	since.value = '';
+	until.value = '';
+	sinceDraft.value = '';
+	untilDraft.value = '';
+	jumpDraft.value = '';
+	loadRecords();
+}
+
+function presetPeriod(value: string): void {
+	const today = new Date(),
+		start = new Date(today),
+		end = new Date(today);
+	if (value === 'month') {
+		start.setDate(1);
+		end.setMonth(end.getMonth() + 1, 0);
+	} else if (value === 'lastMonth') {
+		start.setDate(1);
+		start.setMonth(start.getMonth() - 1);
+		end.setDate(0);
+	} else start.setDate(start.getDate() - 29);
+	sinceDraft.value = localDateKey(start);
+	untilDraft.value = localDateKey(end);
+	applyPeriod();
+}
+
+function selectPeriodPreset(event: Event): void {
+	const select = event.target as HTMLSelectElement;
+	if (select.value) presetPeriod(select.value);
+	select.value = '';
+}
+
+function jumpToDate(): void {
+	if (!jumpDraft.value) return;
+	sinceDraft.value = jumpDraft.value;
+	untilDraft.value = jumpDraft.value;
+	applyPeriod();
+}
+
+function showRecords(kind = 'all'): void {
+	recordScope.value = 'mine';
+	recordKind.value = kind;
+	if (activeTab.value === 'records') loadRecords();
+	else setTab('records');
+}
+
+function showCommunity(): void {
+	recordScope.value = 'recent';
+	recordKind.value = 'all';
+	since.value = '';
+	until.value = '';
+	if (activeTab.value === 'records') loadRecords();
+	else setTab('records');
+}
+
+const collectionKinds = [
+	{ value: 'book', label: '本', icon: 'ti ti-books' },
+	{ value: 'movie', label: '映画', icon: 'ti ti-movie' },
+	{ value: 'game', label: 'ゲーム', icon: 'ti ti-device-gamepad-2' },
+	{ value: 'work', label: '作業', icon: 'ti ti-briefcase' },
+];
+const collectionKind = ref(
+	({ books: 'book', movies: 'movie', games: 'game' } as Record<string, string>)[saved('hatadyCollectionKind') || ''] ||
+		(collectionKinds.some((kind) => kind.value === saved('hatadyCollectionKind'))
+			? saved('hatadyCollectionKind')!
+			: 'book'),
+);
+const collectionScope = ref('mine'),
+	collectionWorks = ref<HatadyHomeWork[]>([]),
+	collectionLoading = ref(false),
+	collectionError = ref('');
+const collectionFiltersOpen = ref(false),
+	collectionQuery = ref(''),
+	collectionStatus = ref(''),
+	collectionSort = ref('updatedAt'),
+	favoritesOnly = ref(false),
+	recommendedOnly = ref(false),
+	sortAsc = ref(false);
+const collectionStatuses = computed(() =>
+	collectionKind.value === 'book'
+		? ['want', 'reading', 'finished', 'tsundoku'].map((status) => ({
+			value: status,
+			label: String((copy as any)[`status_${status}`]),
+		}))
+		: mediaStatusOptions(collectionKind.value as HatadyMediaKind).map((status) => ({
+			value: status,
+			label: statusLabel(status),
+		})),
+);
+
+function statusLabel(status: string): string {
+	if (collectionKind.value === 'book') return String((copy as any)[`status_${status}`] || status);
+	if (collectionKind.value === 'work') return ({ in_progress: '進行中', completed: '完了', on_hold: '保留' } as Record<string, string>)[status] || status;
+	return String(
+		mediaCopy.status?.[mediaStatusCopyKey(collectionKind.value as HatadyMediaKind, status as any)] ?? status,
+	);
+}
+
+function ownerName(raw: Record<string, any>): string {
+	return raw.user?.name || raw.user?.username || (raw.userId === $i?.id ? $i?.name || $i?.username : '') || '';
+}
+
+function visibilityIcon(value: string): string {
+	return value === 'private' ? 'ti ti-lock' : value === 'followers' ? 'ti ti-users' : 'ti ti-world';
+}
+
+function visibilityLabel(value: string): string {
+	return value === 'private' ? '自分のみ' : value === 'followers' ? 'フォロワーのみ' : '公開';
+}
+
+const collator = new Intl.Collator(versatileLang, { usage: 'sort', sensitivity: 'base' });
+const filteredWorks = computed(() => {
+	const query = collectionQuery.value.normalize('NFKC').toLowerCase(),
+		dir = sortAsc.value ? 1 : -1;
+	return collectionWorks.value
+		.filter(
+			(work) =>
+				(!collectionStatus.value || work.status === collectionStatus.value) &&
+				(!favoritesOnly.value || work.raw.isFavorite) &&
+				(!recommendedOnly.value || work.recommended) &&
+				(!query ||
+					[work.title, work.creator, work.genre].some((value) =>
+						value.normalize('NFKC').toLowerCase().includes(query),
+					)),
+		)
+		.sort((a, b) => {
+			if (!!a.raw.isFavorite !== !!b.raw.isFavorite) return a.raw.isFavorite ? -1 : 1;
+			const av = a.raw[collectionSort.value],
+				bv = b.raw[collectionSort.value];
+			if (av == null || av === '' || bv == null || bv === '') return av == null || av === '' ? (bv == null || bv === '' ? 0 : 1) : -1;
+			return (
+				dir * (typeof av === 'number' && typeof bv === 'number' ? av - bv : collator.compare(String(av), String(bv))) ||
+				a.id.localeCompare(b.id)
+			);
+		});
+});
 const mediaGameSessionTypes = mediaSessionTypes('game');
 
 function emptyMediaFilters(): HatadyMediaAdvancedFilters {
-	return { origin: '', viewingMode: '', isRecommended: null, minRecommendation: null, sessionKind: '', result: '', weapon: '', rank: '', route: '', since: '', until: '' };
+	return {
+		origin: '',
+		viewingMode: '',
+		isRecommended: null,
+		minRecommendation: null,
+		sessionKind: '',
+		result: '',
+		weapon: '',
+		rank: '',
+		route: '',
+		since: '',
+		until: '',
+	};
 }
 
-const mediaFiltersDraft = ref<HatadyMediaAdvancedFilters>(emptyMediaFilters());
-const mediaFiltersApplied = ref<HatadyMediaAdvancedFilters>(emptyMediaFilters());
-let mediaRequest = 0;
+const mediaFiltersDraft = ref(emptyMediaFilters()),
+	mediaFiltersApplied = ref(emptyMediaFilters());
 
-function setCollectionKind(kind: CollectionKind) {
-	collectionKind.value = kind;
-	mediaStatus.value = '';
-	mediaSort.value = normalizeMediaSortForKind(kind === 'movies' ? 'movie' : 'game', mediaSort.value);
-	mediaFiltersDraft.value = emptyMediaFilters();
-	mediaFiltersApplied.value = emptyMediaFilters();
-	try { localStorage.setItem(COLLECTION_KEY, kind); } catch { /* noop */ }
-	if (kind !== 'books') loadMediaWorks();
-}
-
-function applyMediaQuery() {
-	mediaQuery.value = mediaQueryDraft.value.trim();
-	loadMediaWorks();
-}
-
-function applyMediaFilters() {
+function applyMediaFilters(): void {
 	mediaFiltersApplied.value = { ...mediaFiltersDraft.value };
-	loadMediaWorks();
+	loadCollection();
 }
 
-function resetMediaFilters() {
+function resetMediaFilters(): void {
 	mediaFiltersDraft.value = emptyMediaFilters();
 	mediaFiltersApplied.value = emptyMediaFilters();
-	loadMediaWorks();
+	loadCollection();
 }
 
-function mediaFilterDate(value: string | undefined, end: boolean): string | undefined {
-	if (!value) return undefined;
-	const date = new Date(`${value}T${end ? '23:59:59.999' : '00:00:00.000'}`);
-	return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
+function setCollectionKind(value: string): void {
+	if (value === collectionKind.value) return;
+	preparePageMotion(collectionKinds.findIndex(option => option.value === value) > collectionKinds.findIndex(option => option.value === collectionKind.value) ? 1 : -1);
+	collectionKind.value = value;
+	remember('hatadyCollectionKind', value);
+	collectionStatus.value = '';
+	collectionSort.value = 'updatedAt';
+	mediaFiltersDraft.value = emptyMediaFilters();
+	mediaFiltersApplied.value = emptyMediaFilters();
+	loadCollection();
 }
 
-function mediaStatusLabel(status: HatadyMediaStatus): string {
-	const kind: HatadyMediaKind = collectionKind.value === 'movies' ? 'movie' : 'game';
-	return String(mediaCopy.status?.[mediaStatusCopyKey(kind, status)] ?? status);
+function setCollectionScope(value: string): void {
+	if (value === collectionScope.value) return;
+	preparePageMotion(scopeOptions.value.findIndex(option => option.value === value) > scopeOptions.value.findIndex(option => option.value === collectionScope.value) ? 1 : -1);
+	collectionScope.value = value;
+	loadCollection();
 }
 
-async function loadMediaWorks(options: { append?: boolean } = {}) {
-	if (collectionKind.value === 'books') return;
-	const request = ++mediaRequest;
-	mediaLoading.value = true;
-	const kind: HatadyMediaKind = collectionKind.value === 'movies' ? 'movie' : 'game';
-	const previous = options.append ? mediaWorks.value : [];
-	const untilId = options.append ? previous.at(-1)?.id : undefined;
+function showCollection(kind: string): void {
+	collectionKind.value = collectionKinds.some((item) => item.value === kind) ? kind : 'book';
+	collectionScope.value = 'mine';
+	collectionStatus.value = '';
+	if (activeTab.value === 'collection') loadCollection();
+	else setTab('collection');
+}
+
+async function loadCollection(): Promise<void> {
+	const request = ++collectionRequest,
+		kind = collectionKind.value,
+		query = JSON.stringify([kind, collectionScope.value, kind === 'book' ? null : mediaFiltersApplied.value]);
+	if (query !== collectionRequestQuery) {
+		collectionRequestQuery = query;
+		collectionWorks.value = [];
+	}
+	collectionLoading.value = true;
+	collectionError.value = '';
 	try {
-		const result = await misskeyApi('hata/hatady/media/works/list' as never, {
-			kind,
-			...(mediaStatus.value ? { status: mediaStatus.value } : {}),
-			...(mediaQuery.value.trim() ? { query: mediaQuery.value.trim() } : {}),
-			...mediaAdvancedFilterPayload(kind, {
-				...mediaFiltersApplied.value,
-				since: mediaFilterDate(mediaFiltersApplied.value.since, false),
-				until: mediaFilterDate(mediaFiltersApplied.value.until, true),
-			}),
-			sort: mediaSort.value,
-			order: mediaOrder.value,
+		const filter = mediaFiltersApplied.value;
+		const params = {
+			scope: collectionScope.value,
 			limit: 100,
-			...(untilId ? { untilId } : {}),
-		} as never);
-		if (request === mediaRequest) {
-			const page = normalizeMediaWorks(result);
-			const seen = new Set(previous.map(item => item.id));
-			mediaWorks.value = [...previous, ...page.filter(item => !seen.has(item.id))];
-			mediaHasMore.value = page.length === 100;
-		}
+			...(kind !== 'book'
+				? {
+					kind,
+					...mediaAdvancedFilterPayload(kind as HatadyMediaKind, {
+						...filter,
+						since: filter.since ? new Date(`${filter.since}T00:00:00`).toISOString() : undefined,
+						until: filter.until ? new Date(`${filter.until}T23:59:59.999`).toISOString() : undefined,
+					}),
+				}
+				: {}),
+		};
+		const list = await collectWorkPages<Record<string, any> & { id: string }>(
+			async (untilId) =>
+				(await misskeyApi(
+					(kind === 'book' ? 'hata/hatady/books' : 'hata/hatady/media/works/list') as never,
+					{ ...params, ...(untilId ? { untilId } : {}) } as never,
+				)) as any,
+		);
+		if (request === collectionRequest) collectionWorks.value = list.map((work) =>
+			homeWork(work, work.userId === $i?.id, kind as HatadyHomeWork['kind']),
+		);
 	} catch {
-		if (request === mediaRequest && !options.append) mediaWorks.value = [];
-		os.alert({ type: 'error', text: String(mediaCopy.loadFailed) });
+		if (request === collectionRequest) collectionError.value = String(mediaCopy.loadFailed);
 	} finally {
-		if (request === mediaRequest) mediaLoading.value = false;
+		if (request === collectionRequest) collectionLoading.value = false;
 	}
 }
 
-function loadMoreMediaWorks() { return loadMediaWorks({ append: true }); }
-
-function formatMediaDate(value: string): string {
-	const date = new Date(value);
-	return Number.isNaN(date.getTime()) ? value : shortDateFormat.format(date);
+async function refresh(): Promise<void> {
+	revision.value++;
+	loadStats();
+	loadUnread();
+	if (activeTab.value === 'records') loadRecords();
+	if (activeTab.value === 'collection') loadCollection();
 }
 
-async function openMediaForm() {
-	if (collectionKind.value === 'books') return;
-	const kind: HatadyMediaKind = collectionKind.value === 'movies' ? 'movie' : 'game';
-	const { dispose } = os.popup((await import('@/components/HatadyMediaWorkForm.vue')).default, { kind }, {
-		done: () => loadMediaWorks(),
-		closed: () => dispose(),
-	});
+async function loadStats(): Promise<void> {
+	try {
+		stats.value = await misskeyApi('hata/hatady/stats', { tzOffset: hatadyTzOffset() });
+	} catch {
+		/* Home has its own explicit retry state. */
+	}
 }
 
-async function openMediaDetail(item: HatadyMediaWork) {
-	return openMediaDetailById(item.id, item.kind);
+async function loadUnread(): Promise<void> {
+	try {
+		const result = (await misskeyApi('hata/hatady/notifications/unread-count', {})) as any;
+		unread.value = result.count;
+	} catch {
+		/* A failed refresh cannot mark notifications read. */
+	}
 }
 
-async function openMediaDetailById(workId: string, kind?: HatadyMediaKind) {
-	const { dispose } = os.popup((await import('@/components/HatadyMediaWorkDetail.vue')).default, { workId, kind }, {
-		changed: () => refreshMediaActivityViews(),
-		deleted: () => refreshMediaActivityViews(),
-		scheduleViewing: (work: HatadyMediaWork) => scheduleMediaViewing(work),
-		closed: () => dispose(),
-	});
+async function openActivityComposer(_kind?: unknown): Promise<void> {
+	const { dispose } = os.popup(
+		(await import('@/components/HatadyActivityRecordChooser.vue')).default,
+		{},
+		{ done: refresh, closed: () => dispose() },
+	);
 }
 
-function refreshMediaActivityViews() {
-	loadMediaWorks();
-	reloadMylog();
-	if (activeTab.value === 'discover') loadDiscover();
+async function addCollectionWork(): Promise<void> {
+	if (collectionKind.value === 'book') {
+		const { dispose } = os.popup(
+			(await import('@/components/HatadyBookForm.vue')).default,
+			{},
+			{ done: refresh, closed: () => dispose() },
+		);
+	} else {
+		const { dispose } = os.popup(
+			(await import('@/components/HatadyMediaWorkForm.vue')).default,
+			{ kind: collectionKind.value as HatadyMediaKind },
+			{ done: refresh, closed: () => dispose() },
+		);
+	}
 }
 
-async function scheduleMediaViewing(work: HatadyMediaWork) {
-	const now = new Date();
-	const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-	const { canceled, result } = await os.form(String(mediaCopy.detail.scheduleViewing), {
-		date: { type: 'string', label: String(mediaCopy.form.eventDate), default: date },
-		timeStart: { type: 'string', label: String(mediaCopy.form.eventTime), default: '20:00' },
-	});
+function openWork(work: HatadyHomeWork): void {
+	if (work.kind === 'book') openBookDetail(work.id);
+	else openMediaDetailById(work.id, work.kind);
+}
+
+function openActivity(activity: HatadyActivity): void {
+	if (activity.study) openConversation(activity.study.id);
+	else if (activity.media) openSession(activity.media.session.id, activity.media.session.workId || undefined);
+}
+
+async function editActivity(activity: HatadyActivity): Promise<void> {
+	if (!activity.isMine) return;
+	if (activity.study) {
+		const { dispose } = os.popup(
+			(await import('@/components/HatadyComposer.vue')).default,
+			{ editLog: activity.study },
+			{ done: refresh, closed: () => dispose() },
+		);
+	} else if (activity.media) {
+		const { dispose } = os.popup(
+			(await import('@/components/HatadyMediaSessionForm.vue')).default,
+			{ work: activity.media.work, editSession: activity.media.session },
+			{ done: refresh, closed: () => dispose() },
+		);
+	}
+}
+
+function openActivityMenu(activity: HatadyActivity, event: MouseEvent): void {
+	const items: any[] = [];
+	if (activity.isMine) items.push(
+		{ text: copy.edit, icon: 'ti ti-pencil', action: () => editActivity(activity) },
+		{ text: copy.delete, icon: 'ti ti-trash', danger: true, action: () => deleteActivity(activity) },
+	);
+	else if (activity.user) items.push({ text: copy.report, icon: 'ti ti-flag', action: () => reportActivity(activity) });
+	if (items.length) os.popupMenu(items, (event.currentTarget || event.target) as HTMLElement);
+}
+
+async function deleteActivity(activity: HatadyActivity): Promise<void> {
+	const { canceled } = await os.confirm({ type: 'warning', text: copy.deleteConfirm });
 	if (canceled) return;
-	const eventDate = String(result.date ?? '');
-	const eventTime = String(result.timeStart ?? '');
-	if (!/^\d{4}-\d{2}-\d{2}$/.test(eventDate) || !/^\d{2}:\d{2}$/.test(eventTime)) {
-		await os.alert({ type: 'error', text: String(mediaCopy.form.invalidDateTime) });
+	try {
+		if (activity.study) await misskeyApi('hata/hatady/logs/delete', { logId: activity.study.id });
+		else if (activity.media) await misskeyApi('hata/hatady/media/sessions/delete' as never, { sessionId: activity.media.session.id } as never);
+		hatadyNotify('記録を削除しました');
+		refresh();
+	} catch {
+		await os.alert({ type: 'error', text: i18n.ts.somethingHappened });
+	}
+}
+
+async function reportActivity(activity: HatadyActivity): Promise<void> {
+	if (!activity.user) return;
+	const data = activityData(activity);
+	const reference = activity.study
+		? `hatady:log:${activity.study.id}`
+		: activity.media ? `hatady:media:session:${activity.media.session.id}` : null;
+	if (!reference) return;
+	const { dispose } = await os.popupAsyncWithDialog(
+		import('@/components/HatadyReport.vue').then((module) => module.default),
+		{ user: activity.user, initialComment: `${reference}\n${data.title}\n${data.body}` },
+		{ closed: () => dispose() },
+	);
+}
+
+async function openConversation(value: any): Promise<void> {
+	const { dispose } = os.popup(
+		(await import('@/components/HatadyConversation.vue')).default,
+		{ logId: typeof value === 'string' ? value : value.id },
+		{ changed: refresh, closed: () => dispose() },
+	);
+}
+
+async function openSession(sessionId: string, workId?: string): Promise<void> {
+	const { dispose } = os.popup(
+		(await import('@/components/HatadyConversation.vue')).default,
+		{ sessionId, workId },
+		{ changed: refresh, closed: () => dispose() },
+	);
+}
+
+async function openBookDetail(bookId: string): Promise<void> {
+	const { dispose } = os.popup(
+		(await import('@/components/HatadyBookDetail.vue')).default,
+		{ bookId },
+		{ changed: refresh, openLog: openConversation, closed: () => dispose() },
+	);
+}
+
+async function openMediaDetailById(workId: string, kind?: HatadyMediaKind): Promise<void> {
+	const { dispose } = os.popup(
+		(await import('@/components/HatadyMediaWorkDetail.vue')).default,
+		{ workId, kind },
+		{ changed: refresh, deleted: refresh, closed: () => dispose() },
+	);
+}
+
+async function openProfile(userId?: string | null): Promise<void> {
+	if (!userId || userId === $i?.id) {
+		setTab('profile');
 		return;
 	}
-	await misskeyApi('hatask/events/create', hatadyViewingEventPayload(String(mediaCopy.detail.viewingEventTitle), work.title, eventDate, eventTime) as never);
-	os.success();
+	const { dispose } = os.popup(
+		(await import('@/components/HatadyProfile.vue')).default,
+		{ userId },
+		{
+			changed: refresh,
+			openLog: openConversation,
+			openProfile,
+			openBook: openBookDetail,
+			openMedia: openMediaDetailById,
+			closed: () => dispose(),
+		},
+	);
 }
 
-const booksLoading = computed(() => activitiesLoading.value); // 本は reloadMylog で同時ロードされる。
-const shelfFilter = ref<'all' | 'reading' | 'finished' | 'tsundoku' | 'want'>('all');
-const shelfFilters = [
-	{ key: 'all' as const, label: 'filterAll' },
-	{ key: 'reading' as const, label: 'status_reading' },
-	{ key: 'finished' as const, label: 'status_finished' },
-	{ key: 'tsundoku' as const, label: 'status_tsundoku' },
-	{ key: 'want' as const, label: 'status_want' },
-];
-// 管理者/モデレーター: 全ユーザーの本を確認できる「すべての本」表示。
-const isModerator = computed(() => !!(($i as any)?.isModerator || ($i as any)?.isAdmin));
-const adminAll = ref(false);
-const allBooks = ref<any[]>([]);
-
-async function loadAllBooks() {
-	allBooks.value = await misskeyApi('hata/hatady/admin/books', { limit: 100 }).catch(() => []);
+async function openNotifications(event?: MouseEvent): Promise<void> {
+	const anchorElement = (event?.currentTarget as HTMLElement | null) || bell.value || menu.value;
+	const { dispose } = os.popup(
+		(await import('@/components/HatadyNotifications.vue')).default,
+		{ anchorElement },
+		{
+			read: loadUnread,
+			openLog: openConversation,
+			openProfile,
+			openMedia: openMediaDetailById,
+			openSession,
+			closed: () => {
+				loadUnread();
+				dispose();
+			},
+		},
+	);
 }
 
-function setAdminAll(v: boolean) {
-	adminAll.value = v;
-	if (v && allBooks.value.length === 0) loadAllBooks();
+async function openFullSearch(initialQuery = ''): Promise<void> {
+	const { dispose } = os.popup(
+		(await import('@/components/HatadySearch.vue')).default,
+		{ initialQuery },
+		{
+			jumpLog: (date: string) => {
+				recordScope.value = 'mine';
+				recordKind.value = 'all';
+				since.value = localDateKey(new Date(date));
+				until.value = since.value;
+				sinceDraft.value = since.value;
+				untilDraft.value = until.value;
+				if (activeTab.value === 'records') loadRecords();
+				else setTab('records');
+			},
+			closed: () => dispose(),
+		},
+	);
 }
 
-// 本棚のソート: 追加日(createdAt) / 名前 / 読了日。お気に入りは常に上位。
-const sortKey = ref<'added' | 'name' | 'finished'>('added');
-const sortAsc = ref(false);
-const shelfBooks = computed(() => {
-	// 依存を明示的に読む(computed の依存追跡を確実にする)。
-	const key = sortKey.value;
-	const dir = sortAsc.value ? 1 : -1;
-	const filter = shelfFilter.value;
-	const q = searchQuery.value;
-	void q;
-	const source = adminAll.value ? allBooks.value : books.value;
-	const base = (adminAll.value || filter === 'all' ? source : source.filter(b => b.status === filter)).filter(matchBook);
-	const cmp = (a: any, b: any): number => {
-		// お気に入り優先(方向に関係なく上位)。
-		if (!!a.isFavorite !== !!b.isFavorite) return a.isFavorite ? -1 : 1;
-		if (key === 'name') return dir * bookTitleCollator.compare(String(a.title ?? ''), String(b.title ?? ''));
-		if (key === 'finished') {
-			const av = a.finishedAt ? Date.parse(a.finishedAt) : -Infinity;
-			const bv = b.finishedAt ? Date.parse(b.finishedAt) : -Infinity;
-			return dir * (av - bv);
-		}
-		// 追加日: createdAt(記録済み)。無ければ id で代替(id も時系列)。
-		const av = a.createdAt ? Date.parse(a.createdAt) : 0;
-		const bv = b.createdAt ? Date.parse(b.createdAt) : 0;
-		if (av !== bv) return dir * (av - bv);
-		return dir * String(a.id ?? '').localeCompare(String(b.id ?? ''));
-	};
-	return [...base].sort(cmp);
-});
-
-// 旗鯖fork: 本棚の入場アニメ(起動アニメと同じ「本が1冊ずつ立ち上がる」演出)の stagger 遅延。
-//   冊数が多いと最後まで待たされるため上限を設けて頭打ちにする。
-function shelfDelaySec(i: number): number {
-	return Math.min(i, 12) * 0.045;
+async function openStatsDetail(): Promise<void> {
+	const { dispose } = os.popup(
+		(await import('@/components/HatadyStatsDetail.vue')).default,
+		{},
+		{ closed: () => dispose() },
+	);
 }
 
-function shelfDelay(i: number): string {
-	return shelfDelaySec(i).toFixed(3) + 's';
+async function openGoals(): Promise<void> {
+	const { dispose } = os.popup(
+		(await import('@/components/HatadyGoals.vue')).default,
+		{},
+		{ changed: loadStats, closed: () => dispose() },
+	);
 }
 
-// しおりは本が立ち上がった後に垂れてくる(起動アニメの hyRibbon と同じ)。同じ本の複数しおりは順に。
-function ribbonDelay(bookIdx: number, ribbonIdx: number): string {
-	return (shelfDelaySec(bookIdx) + 0.24 + ribbonIdx * 0.06).toFixed(3) + 's';
+async function openStreaks(): Promise<void> {
+	const { dispose } = os.popup(
+		(await import('@/components/HatadyStreaks.vue')).default,
+		{},
+		{ closed: () => dispose() },
+	);
 }
 
-// 旗鯖fork: ヒートマップの波状点灯(起動アニメと同じ演出)。左上から右下へ対角線状に広がる。
-//   列+行 が同じセルは同時に点く。全体が長引かないよう上限で頭打ちにする。
-function heatDelay(col: number, row: number): string {
-	return (0.12 + Math.min(col + row, 26) * 0.022).toFixed(3) + 's';
+async function openSettings(): Promise<void> {
+	const { dispose } = os.popup(
+		(await import('@/components/HatadyDisplaySettings.vue')).default,
+		{},
+		{ closed: () => dispose() },
+	);
 }
 
-// 本のステータス色(CSS Modules の動的クラスは解決されないためインラインで付与)。
-const STATUS_COLORS: Record<string, { background: string; color: string }> = {
-	reading: { background: 'rgba(217,130,74,.16)', color: '#b45f27' },
-	finished: { background: 'rgba(107,142,90,.18)', color: '#4d6b3c' },
-	tsundoku: { background: 'rgba(150,110,180,.18)', color: '#7a5a9a' },
-	want: { background: 'rgba(120,120,120,.16)', color: '#6b6b6b' },
-};
-
-function statusStyle(status: string) { return STATUS_COLORS[status] ?? STATUS_COLORS.reading; }
-
-// 本棚から本を直接追加する(デザイン案 1i の専用モーダルを開く)。
-async function addBookFromShelf() {
-	const { dispose } = os.popup((await import('@/components/HatadyBookForm.vue')).default, {}, {
-		done: () => { loadBooks(); },
-		closed: () => dispose(),
-	});
+function exitHatady(): void {
+	router.push('/');
 }
 
-function formatDay(d: Date): string {
-	const today = new Date(); today.setHours(0, 0, 0, 0);
-	const dd = new Date(d); dd.setHours(0, 0, 0, 0);
-	const diff = Math.round((today.getTime() - dd.getTime()) / 86400000);
-	if (diff === 0) return copy.today;
-	if (diff === 1) return copy.yesterday;
-	return shortDateFormat.format(d);
+function openMenu(event: MouseEvent): void {
+	os.popupMenu(
+		[
+			{ text: copy.recordActivity, icon: 'ti ti-plus', action: openActivityComposer },
+			{ text: copy.searchAll, icon: 'ti ti-search', action: () => openFullSearch('') },
+			{ text: copy.settings, icon: 'ti ti-settings', action: openSettings },
+			{ text: copy.toolStats, icon: 'ti ti-chart-bar', action: openStatsDetail },
+			{ text: copy.toolGoals, icon: 'ti ti-target', action: openGoals },
+			{ text: 'Hatadyを終了', icon: 'ti ti-logout-2', action: exitHatady },
+		],
+		event.currentTarget as HTMLElement,
+	);
 }
 
-function fmtDuration(min: number): string {
-	if (min < 60) return copyx.durationMinutes({ minutes: min.toString() });
-	const h = Math.floor(min / 60); const m = min % 60;
-	return copyx.durationHoursMinutes({ hours: h.toString(), minutes: m.toString() });
+let tutorialActive = true;
+let stopTutorial: (() => void) | undefined;
+
+async function maybeShowTutorial(): Promise<void> {
+	const stop = await showHatadyTutorial({ isActive: () => tutorialActive });
+	if (!stop) return;
+	if (tutorialActive) stopTutorial = stop;
+	else stop();
 }
 
-// ヒートマップの濃さ(0-4)。分数を段階化。
-function heatLevel(minutes: number): number {
-	if (minutes <= 0) return 0;
-	if (minutes < 20) return 1;
-	if (minutes < 45) return 2;
-	if (minutes < 90) return 3;
-	return 4;
+let unreadTimer: number | undefined, resize: ResizeObserver | undefined;
+
+watch([activeTab, recordScope, recordKind, collectionScope, collectionKind], resetListEntrance, { flush: 'sync' });
+// API results can arrive after the paper finishes. Animate the newly rendered
+// cards then, while preserving cards already shown during this tab visit.
+watch([activities, filteredWorks], () => playListEntrance(), { flush: 'post' });
+watch(hatadyDialogSurfaces, () => {
+	if (hatadyDialogSurfaces.value.length) cancelPageMotion();
+	else playListEntrance();
+}, { flush: 'post' });
+
+function onFocus(): void {
+	if (!window.document.hidden) loadUnread();
+	else cancelPageMotion();
 }
-
-// ヒートマップを7行×週の列にする(縦=曜日)。
-type HeatCell = { minutes: number; date: string; count: number };
-const heatColumns = computed<HeatCell[][]>(() => {
-	const hm: HeatCell[] = stats.value?.heatmap ?? [];
-	const cols: HeatCell[][] = [];
-	for (let i = 0; i < hm.length; i += 7) cols.push(hm.slice(i, i + 7).map(x => ({ minutes: x.minutes, date: x.date, count: x.count ?? 0 })));
-	return cols;
-});
-
-// 読み込み済みログ(直近)を日付キー(YYYY-MM-DD, ゼロ埋め=ヒートマップと同形式)で索引化。
-//   ホバー時に「その日に何を勉強したか(分野別内訳)」を補完表示するのに使う。
-const logsByDay = computed<Map<string, { subject: string; minutes: number }[]>>(() => {
-	const map = new Map<string, Map<string, number>>();
-	for (const log of logs.value) {
-		const d = new Date(log.studiedAt);
-		const k = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getDate().toString().padStart(2, '0')}`;
-		if (!map.has(k)) map.set(k, new Map());
-		const sm = map.get(k)!;
-		sm.set(log.subject, (sm.get(log.subject) ?? 0) + (log.durationMinutes || 0));
-	}
-	const out = new Map<string, { subject: string; minutes: number }[]>();
-	for (const [k, sm] of map) out.set(k, [...sm.entries()].map(([subject, minutes]) => ({ subject, minutes })).sort((a, b) => b.minutes - a.minutes));
-	return out;
-});
-
-// ヒートマップ日別ポップアップ。位置は fixed(クリップ回避)。
-const heatPop = ref<{ dateLabel: string; minutes: number; count: number; subjects: { subject: string; minutes: number }[]; left: number; top: number } | null>(null);
-
-function heatDateLabel(dateKey: string): string {
-	const [y, m, d] = dateKey.split('-').map(Number);
-	const dt = new Date(y, m - 1, d);
-	return heatDateFormat.format(dt);
-}
-
-function showHeatPop(cell: HeatCell, ev: MouseEvent | TouchEvent) {
-	const el = ev.currentTarget as HTMLElement;
-	const r = el.getBoundingClientRect();
-	heatPop.value = {
-		dateLabel: heatDateLabel(cell.date),
-		minutes: cell.minutes,
-		count: cell.count,
-		subjects: logsByDay.value.get(cell.date) ?? [],
-		left: Math.min(Math.max(8, r.left + r.width / 2 - 90), window.innerWidth - 188),
-		top: r.bottom + 8,
-	};
-}
-
-function hideHeatPop() { heatPop.value = null; }
-
-// 旗鯖fork: Hatady 固有の表示テーマを取得して反映する（言語は Hataskey 本体の共通 locale）。
-// 未読通知の近リアルタイム更新: 30秒ごとにポーリング + タブ復帰/フォーカス時に即更新。
-//   (完全なリアルタイムは Misskey ストリーミングへの Hatady チャンネル追加が必要なため別途)
-let unreadTimer: number | null = null;
-
-function onFocus() { loadUnread(); }
 
 onMounted(() => {
-	try { infoBannerDismissed.value = localStorage.getItem('hatadyInfoBannerDismissed') ?? ''; } catch { /* noop */ }
+	resetListEntrance();
 	loadHatadyDisplay();
-	loadHySubjects().catch(() => {}); // 分野の色指定を読み込み、各所の pal() に反映
-	reloadMylog();
-	// 復元したタブが「みんなの活動」なら、その分のデータも読み込む(通常は setTab で遅延ロード)。
-	if (activeTab.value === 'discover') loadDiscover();
-	if (activeTab.value === 'shelf' && collectionKind.value !== 'books') loadMediaWorks();
+	loadHySubjects().catch(() => {});
+	loadStats();
 	loadUnread();
-	unreadTimer = window.setInterval(loadUnread, 30000);
+	if (activeTab.value === 'records') loadRecords();
+	if (activeTab.value === 'collection') loadCollection();
+	unreadTimer = window.setInterval(() => {
+		if (!window.document.hidden) loadUnread();
+	}, 30000);
 	window.addEventListener('focus', onFocus);
 	window.document.addEventListener('visibilitychange', onFocus);
+	let lastSize: { width: number; height: number } | undefined;
+	resize = new ResizeObserver(entries => {
+		const size = entries[0]?.contentRect;
+		if (!size) return;
+		// The observer's initial delivery is not a resize or a user interruption.
+		if (lastSize && (lastSize.width !== size.width || lastSize.height !== size.height)) cancelPageMotion();
+		lastSize = { width: size.width, height: size.height };
+	});
+	if (mainEl.value) resize.observe(mainEl.value);
 	maybeShowTutorial();
 });
-
-// 初回のみ、起動アニメ → テーマ選択 → チュートリアル の順で案内する。
-//   完了で tutorialDone を保存し、実績を解除する。二度目以降は何も出さない。
-async function maybeShowTutorial() {
-	const done = await loadTutorialDone();
-	if (done) return;
-	openStartupAnime();
-}
-
-// ① 起動紹介アニメ(スキップ無し)。「はじめる」で ② テーマ選択へ。
-async function openStartupAnime() {
-	const { dispose } = os.popup((await import('@/components/HatadyStartupAnime.vue')).default, {}, {
-		start: () => { dispose(); openFirstRunTheme(); },
-		closed: () => dispose(),
-	});
-}
-
-// ② 初回テーマ＋言語選択。確定で ③ チュートリアルへ。
-async function openFirstRunTheme() {
-	const { dispose } = os.popup((await import('@/components/HatadyThemeSelect.vue')).default, {}, {
-		done: () => { dispose(); openTutorial(true); },
-		closed: () => dispose(),
-	});
-}
-
-async function openTutorial(firstTime = false) {
-	const { dispose } = os.popup((await import('@/components/HatadyTutorial.vue')).default, {}, {
-		done: () => {
-			setTutorialDone(true);
-			// 初回起動(チュートリアル終了後)に実績「Hatadyへようこそ」を解除。
-			if (firstTime) claimAchievement('welcomeToHatady');
-			dispose();
-		},
-		closed: () => dispose(),
-	});
-}
-
 onUnmounted(() => {
-	if (unreadTimer) window.clearInterval(unreadTimer);
+	tutorialActive = false;
+	stopTutorial?.();
+	recordsRequest++;
+	collectionRequest++;
+	window.clearInterval(unreadTimer);
+	resize?.disconnect();
+	cancelPageMotion();
+	listEntrance?.cancel();
+	listEntrance = undefined;
 	window.removeEventListener('focus', onFocus);
 	window.document.removeEventListener('visibilitychange', onFocus);
 });
-
-async function openStudyComposer() {
-	const { dispose } = os.popup((await import('@/components/HatadyComposer.vue')).default, {}, {
-		done: () => { reloadMylog(); },
-		closed: () => dispose(),
-	});
-}
-
-async function openActivityComposer() {
-	const { dispose } = os.popup((await import('@/components/HatadyActivityRecordChooser.vue')).default, {}, {
-		study: () => { dispose(); openStudyComposer(); },
-		session: (work: HatadyMediaWork) => { dispose(); openMediaSessionComposer(work); },
-		createWork: (kind: HatadyMediaKind) => { dispose(); createMediaWorkAndRecord(kind); },
-		closed: () => dispose(),
-	});
-}
-
-async function openMediaSessionComposer(work: HatadyMediaWork, editSession?: HatadyMediaSession | null) {
-	const { dispose } = os.popup((await import('@/components/HatadyMediaSessionForm.vue')).default, { work, editSession: editSession ?? null }, {
-		done: () => refreshMediaActivityViews(),
-		closed: () => dispose(),
-	});
-}
-
-async function createMediaWorkAndRecord(kind: HatadyMediaKind) {
-	const { dispose } = os.popup((await import('@/components/HatadyMediaWorkForm.vue')).default, { kind }, {
-		done: (work: HatadyMediaWork) => {
-			dispose();
-			loadMediaWorks();
-			openMediaSessionComposer(work);
-		},
-		closed: () => dispose(),
-	});
-}
-
-function openActivityMenu(activity: HatadyActivity, ev: MouseEvent) {
-	if (activity.type === 'study' && activity.study) {
-		openLogMenu(activity.study, ev);
-		return;
-	}
-	if (!activity.isMine || !activity.media) return;
-	const items = [
-		{ text: String(mediaCopy.session.editSession), icon: 'ti ti-pencil', action: () => openMediaSessionComposer(activity.media!.work, activity.media!.session) },
-		{ text: t('delete'), icon: 'ti ti-trash', danger: true, action: () => deleteMediaActivity(activity) },
-	];
-	os.popupMenu(items, (ev.currentTarget ?? ev.target) as HTMLElement);
-}
-
-async function deleteMediaActivity(activity: HatadyActivity) {
-	const session = activity.media?.session;
-	if (!session) return;
-	const { canceled } = await os.confirm({ type: 'warning', text: String(mediaCopy.detail.deleteSessionConfirm) });
-	if (canceled) return;
-	try {
-		await misskeyApi('hata/hatady/media/sessions/delete' as never, { sessionId: session.id } as never);
-		os.success();
-		refreshMediaActivityViews();
-	} catch {
-		await os.alert({ type: 'error', text: i18n.ts.somethingHappened });
-	}
-}
-
-// 投稿(学習ログ)のメニュー: 自分の投稿は編集/削除、他人の投稿は通報。
-function openLogMenu(log: any, ev: MouseEvent) {
-	const items: any[] = [];
-	if (log.isMine) {
-		items.push({ text: t('edit'), icon: 'ti ti-pencil', action: () => editLog(log) });
-		items.push({ text: t('delete'), icon: 'ti ti-trash', danger: true, action: () => deleteLog(log) });
-	} else if (log.user) {
-		items.push({ text: t('report'), icon: 'ti ti-exclamation-circle', action: () => reportLog(log) });
-	}
-	if (items.length) os.popupMenu(items, (ev.currentTarget ?? ev.target) as HTMLElement);
-}
-
-async function editLog(log: any) {
-	const { dispose } = os.popup((await import('@/components/HatadyComposer.vue')).default, {
-		editLog: log,
-	}, {
-		done: () => { if (activeTab.value === 'discover') loadDiscover(); else reloadMylog(); },
-		closed: () => dispose(),
-	});
-}
-
-async function deleteLog(log: any) {
-	const { canceled } = await os.confirm({ type: 'warning', text: t('deleteConfirm') });
-	if (canceled) return;
-	try {
-		await misskeyApi('hata/hatady/logs/delete', { logId: log.id });
-		os.success();
-		if (activeTab.value === 'discover') loadDiscover(); else reloadMylog();
-	} catch {
-		await os.alert({ type: 'error', text: i18n.ts.somethingHappened });
-	}
-}
-
-async function reportLog(log: any) {
-	const { dispose } = await os.popupAsyncWithDialog(import('@/components/MkAbuseReportWindow.vue').then(x => x.default), {
-		user: log.user,
-		initialComment: `[Hatady] ${log.title}\n${log.body ?? ''}\n-----\n`,
-	}, {
-		closed: () => dispose(),
-	});
-}
-
-// 会話ページ(1g)をモーダルで開く。閉じたらマイログ/フィードを再取得して件数を反映。
-async function openConversation(logOrId: any) {
-	const logId = typeof logOrId === 'string' ? logOrId : logOrId.id;
-	const initialLog = typeof logOrId === 'string' ? undefined : logOrId;
-	const { dispose } = os.popup((await import('@/components/HatadyConversation.vue')).default, {
-		logId,
-		initialLog,
-	}, {
-		changed: () => { if (activeTab.value === 'discover') loadDiscover(); else reloadMylog(); },
-		closed: () => dispose(),
-	});
-}
-
-// Hatady を離れて元の画面へ戻る(主にモバイルの全画面表示用)。
-function goBack() {
-	if (router !== mainRouter) {
-		router.push('/');
-		return;
-	}
-	if (window.history.length > 1) window.history.back();
-	else router.push('/');
-}
-
-// 旗鯖fork: 連続記録(現在/自己ベスト・マイルストーン進捗・過去の連続期間)をモーダルで開く。
-//   以前は「マイルストーン」と「連続学習の履歴」で別モーダルだったが1つに統合した。
-async function openStreaks() {
-	const { dispose } = os.popup((await import('@/components/HatadyStreaks.vue')).default, {}, {
-		closed: () => dispose(),
-	});
-}
-
-// 旗鯖fork(P4): 横断検索。ログ結果タップでその日のマイログへジャンプ。
-async function openFullSearch(initialQuery = '') {
-	const { dispose } = os.popup((await import('@/components/HatadySearch.vue')).default, { initialQuery }, {
-		jumpLog: (studiedAt: string) => {
-			const d = new Date(studiedAt);
-			setTab('mylog');
-			clearPeriod();
-			nextTick(() => scrollToGroup(groupKeyFromDate(d)));
-		},
-		closed: () => dispose(),
-	});
-}
-
-// 旗鯖fork(P6): 統計の深掘り。
-async function openStatsDetail() {
-	const { dispose } = os.popup((await import('@/components/HatadyStatsDetail.vue')).default, {}, {
-		closed: () => dispose(),
-	});
-}
-
-// 旗鯖fork(P7): 学習目標(短期/長期)。変更で統計を再取得。
-async function openGoals() {
-	const { dispose } = os.popup((await import('@/components/HatadyGoals.vue')).default, {}, {
-		changed: () => loadStats(),
-		closed: () => dispose(),
-	});
-}
-
-// 本の詳細(1c/1m)をモーダルで開く。編集/削除/進捗更新で本棚を再取得。
-async function openBookDetail(bookId: string) {
-	const { dispose } = os.popup((await import('@/components/HatadyBookDetail.vue')).default, {
-		bookId,
-	}, {
-		changed: () => { loadBooks(); reloadMylog(); if (adminAll.value) loadAllBooks(); },
-		openLog: (logId: string) => openConversation(logId),
-		closed: () => dispose(),
-	});
-}
-
-// プロフィール(1c)をモーダルで開く。userId 省略で自分のプロフィール。
-async function openProfile(userId?: string | null) {
-	const { dispose } = os.popup((await import('@/components/HatadyProfile.vue')).default, {
-		userId: userId ?? null,
-	}, {
-		changed: () => { if (activeTab.value === 'discover') loadDiscover(); },
-		openLog: (logId: string) => openConversation(logId),
-		openProfile: (uid: string) => openProfile(uid),
-		openBook: (bookId: string) => openBookDetail(bookId),
-		openMedia: (workId: string) => openMediaDetailById(workId),
-		closed: () => dispose(),
-	});
-}
-
-// 通知ページ(1h)をモーダルで開く。既読で未読バッジを更新、通知タップで会話へ。
-async function openNotifications() {
-	const { dispose } = os.popup((await import('@/components/HatadyNotifications.vue')).default, {}, {
-		read: () => loadUnread(),
-		openLog: (logId: string) => openConversation(logId),
-		openProfile: (uid: string) => openProfile(uid),
-		openMedia: (workId: string) => openMediaDetailById(workId),
-		closed: () => { loadUnread(); dispose(); },
-	});
-}
-
-// ヒートマップの色(段階0-4)。テーマ非依存の暖色スケール。
-const HEAT_COLORS = ['var(--hy-border)', '#eddcc4', '#eaca9d', '#e0a465', '#d9824a'];
-
-function heatColor(minutes: number): string { return HEAT_COLORS[heatLevel(minutes)]; }
-
-function pal(s: string) { return hySubjectPalette(s); }
-
-function bmColor(key: string | null): string { return hyBookmarkColor(key); }
-
-// 分野別フォーカスバーの割合(最大分野を100%に)。
-function focusPct(minutes: number): number {
-	const max = Math.max(1, ...(stats.value?.focusBySubject ?? []).map((f: any) => f.minutes));
-	return Math.round((minutes / max) * 100);
-}
-
-// 表示設定(1l): テーマ(やわらかい紙/夜の書斎/hataskey準拠) と言語(日本語/English/端末に合わせる)を
-//   ちゃんとしたモーダルで切替。テーマと言語は独立(要件④)。
-async function openSettings() {
-	const { dispose } = os.popup((await import('@/components/HatadyDisplaySettings.vue')).default, {}, {
-		closed: () => dispose(),
-	});
-}
-
-definePage(() => ({
-	title: 'Hatady',
-	icon: 'ti ti-book-2',
-}));
+definePage(() => ({ title: 'Hatady', icon: 'ti ti-book-2' }));
 </script>
 
 <style lang="scss" module>
-/* 旗鯖fork: Hatady ロゴ用フォント(Righteous・同梱)。見出しの Zen Maru Gothic /
-   本タイトルの Noto Serif JP は未バンドルのためフォールバック指定(後日バンドル)。 */
-@font-face {
-	font-family: 'Righteous';
-	font-style: normal;
-	font-weight: 400;
-	font-display: swap;
-	src: url('/client-assets/Righteous-Regular.woff2') format('woff2');
-}
-
-/* ===== ページ骨格。テーマトークンは非module のグローバル .hatady-scope 側で定義し、
-   body 直下に描画されるモーダル(HatadyDisplaySettings)でも同じトークンを使えるようにする。 */
 .root {
+	--hy-header-height: 72px;
 	display: flex;
+	position: relative;
 	flex-direction: column;
-	container-type: inline-size;
-	/* 旗鯖fork: コンテンツが短くても暖色背景が画面下まで埋まるように viewport 高で伸ばす。
-	   下に地の背景(hataskey テーマ色)が覗く問題への対応。 */
-	min-height: 100dvh;
-	font-family: 'Noto Sans JP', 'Hiragino Sans', system-ui, sans-serif;
-	color: var(--hy-body);
+	height: calc(100dvh - var(--MI-stickyTop, 0px));
+	min-height: 0;
 	background: var(--hy-bg);
+	overflow: hidden;
+	container: hatady / inline-size;
 }
-
-/* ===== ヘッダー ===== */
 .header {
+	display: grid;
+	grid-template-columns: minmax(90px, 1fr) auto minmax(180px, 1fr);
+	align-items: start;
+	position: relative;
+	flex: none;
+	gap: 16px;
+	padding: 10px 24px 8px;
+	z-index: 5;
+}
+.brand {
+	justify-self: start;
+	margin-top: 5px;
+	min-height: 44px;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	color: var(--hy-ink);
+	font-family: 'Hatady Brand', sans-serif !important;
+	font-size: 29px !important;
+	cursor: pointer;
+}
+.nav {
+	grid-column: 2;
+}
+.headerActions {
+	display: flex;
+	justify-content: flex-end;
+	align-items: center;
+	gap: 6px;
+	padding-top: 6px;
+}
+.headerActions > button {
+	position: relative;
+}
+.headerActions > :first-child {
+	padding: 0;
+	width: 44px;
+	margin-right: 4px;
+	font-size: 23px;
+}
+.badge {
+	position: absolute;
+	right: 0;
+	top: -3px;
+	min-width: 18px;
+	border-radius: 999px;
+	padding: 0 4px;
+	font-size: 11px;
+	background: var(--hy-accent);
+	color: var(--hy-on-accent);
+}
+.root .mobileMenu,
+.mobileRecord,
+.root .mobileExit,
+.compactRecord {
+	display: none;
+}
+.main {
+	position: relative;
+	flex: 1;
+	min-height: 0;
+	overflow: auto;
+	padding: 0 24px 24px;
+	scrollbar-width: none;
+	overscroll-behavior: contain;
+	scroll-padding-top: 12px;
+}
+.main::-webkit-scrollbar {
+	display: none;
+}
+.main > :not([data-hy-page-leaf]) {
+	max-width: 1280px;
+	margin-inline: auto;
+}
+.page {
+	min-height: 100%;
+}
+.pageTitle {
 	display: flex;
 	align-items: center;
-	gap: 14px;
-	padding: 13px 22px;
-	background: var(--hy-header-bg);
-	border-bottom: 1px solid var(--hy-border);
+	justify-content: space-between;
+	min-height: 62px;
+}
+.pageTitle h1 {
+	margin: 7px 0 18px;
+	font-size: 25px;
+	letter-spacing: 0.1em;
+}
+.recordControls {
+	display: flex;
 	flex-wrap: wrap;
+	align-items: center;
+	justify-content: center;
+	gap: 12px;
+	margin: 8px 0 18px;
 }
-.backBtn {
-	display: inline-flex; align-items: center; justify-content: center;
-	width: 34px; height: 34px; border-radius: 999px; flex-shrink: 0;
-	background: var(--hy-chip-bg); border: 1px solid var(--hy-border); color: var(--hy-body);
-	cursor: pointer; font-size: 18px;
+.recordControls > :first-child {
+	flex: 0 0 auto;
 }
-.backBtn:hover { border-color: var(--hy-accent); color: var(--hy-accent); }
-.brand { display: flex; align-items: center; gap: 9px; background: none; border: none; padding: 0; cursor: pointer; }
-.avatarBtn { background: none; border: none; padding: 0; cursor: pointer; display: inline-flex; border-radius: 999px; }
-.logoMark {
-	display: inline-flex; align-items: center; justify-content: center;
-	width: 30px; height: 30px; border-radius: 9px;
-	background: linear-gradient(135deg, #e79b5e, #d9824a); color: #fff;
-	box-shadow: 0 2px 6px rgba(217, 130, 74, .35); font-size: 17px;
+.toolbar {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	min-width: 0;
+	max-width: 100%;
 }
-.logo { font-family: 'Righteous', cursive; font-size: 21px; color: var(--hy-accent); letter-spacing: .03em; }
-.headDivider { width: 1px; height: 22px; background: var(--hy-border); }
-.tabs { display: flex; align-items: center; gap: 2px; }
-.tab {
-	background: none; border: none; cursor: pointer;
-	padding: 7px 13px; font-size: 13.5px; font-weight: 500;
-	color: var(--hy-muted); font-family: var(--hy-heading);
-	border-bottom: 2.5px solid transparent; transition: color .12s;
+.toolbar > :first-child {
+	min-width: 0;
 }
-.tab:hover { color: var(--hy-ink); }
-.tabOn { color: var(--hy-ink); font-weight: 700; border-bottom-color: var(--hy-accent); }
-.headRight { margin-left: auto; display: flex; align-items: center; gap: 12px; }
-.iconBtn {
+.toolbar > button {
+	flex: none;
+}
+.toolbar > button[data-active='true'] {
+	background: var(--hy-soft);
+	color: var(--hy-accent);
+}
+.entries {
+	display: grid;
+	gap: 14px;
+}
+.entries > :last-child:is(button) {
+	justify-self: center;
+}
+.filterPanel {
+	padding: 22px;
+	margin: 14px 0;
+	border: 1px solid var(--hy-border);
+	background: var(--hy-surface);
+	border-radius: 22px;
+}
+.periodTools {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: center;
+	gap: 10px;
+	margin: 0 0 16px;
+	padding: 12px;
+	border: 1px solid var(--hy-border);
+	border-radius: 20px;
+	background: var(--hy-surface);
+}
+.periodRange {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	min-width: 0;
+	flex: 1 1 340px;
+	color: var(--hy-muted);
+}
+.dateField {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	min-width: 0;
+	min-height: 44px;
+	padding: 0 10px;
+	border: 1px solid var(--hy-border);
+	border-radius: 12px;
+	background: var(--hy-bg);
+}
+.periodRange > .dateField {
+	flex: 1;
+}
+.dateField > span {
+	font-size: 12px;
+	white-space: nowrap;
+	color: var(--hy-muted);
+}
+.dateField input {
+	width: 100%;
+	min-width: 0;
+	min-height: 42px;
+	padding: 0;
+	border: 0;
+	border-radius: 8px;
+	background: transparent;
+	color: var(--hy-ink);
+	font: inherit;
+	font-size: 13px;
+}
+.periodActions {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+.periodActions > button[type='submit'] {
+	padding-inline: 16px;
+}
+.periodPreset {
+	width: auto;
+	min-width: 0;
+	min-height: 44px;
+	padding: 0 10px;
+	border: 1px solid var(--hy-border);
+	border-radius: 12px;
+	background: var(--hy-bg);
+	color: var(--hy-ink);
+	font: inherit;
+	font-size: 13px;
+}
+.dateJump {
+	flex: 0 1 228px;
+}
+.periodLabel {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	margin: 4px;
+	font-size: 13px;
+	color: var(--hy-muted);
+}
+.collectionTabs {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 14px;
+	margin: 8px 0 20px;
+}
+.collectionTools {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 12px;
+	margin-bottom: 18px;
+}
+.collectionTools > :first-child {
+	padding: 0 12px;
+}
+.gallery {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(185px, 1fr));
+	align-items: stretch;
+	gap: 16px;
+}
+.workCard {
+	min-width: 0;
 	position: relative;
-	display: inline-flex; align-items: center; justify-content: center;
-	width: 34px; height: 34px; border-radius: 999px;
-	background: var(--hy-chip-bg); border: 1px solid var(--hy-border); color: var(--hy-body);
-	cursor: pointer; font-size: 18px; transition: border-color .12s;
+	display: flex;
+	flex-direction: column;
+	padding: 24px 20px;
+	border: 1px solid var(--hy-border);
+	border-radius: 24px;
+	background: var(--hy-surface);
+	color: var(--hy-ink);
+	text-align: left;
+	cursor: pointer;
 }
-.iconBtn:hover { border-color: var(--hy-accent); color: var(--hy-accent); }
-.bellBadge {
-	position: absolute; top: -2px; right: -2px;
-	min-width: 16px; height: 16px; padding: 0 4px; border-radius: 999px;
-	background: var(--hy-accent); color: #fff; font-size: 10px; font-weight: 800;
-	display: inline-flex; align-items: center; justify-content: center; line-height: 1;
-	border: 2px solid var(--hy-header-bg);
+.workCard:hover {
+	box-shadow: var(--hy-shadow);
+	border-color: color-mix(in srgb, var(--hy-accent) 40%, var(--hy-border));
 }
-.recordBtn {
-	display: inline-flex; align-items: center; gap: 6px;
-	background: linear-gradient(90deg, #e0955a, #d9824a); color: #fff; border: none;
-	border-radius: 999px; padding: 8px 16px; font-size: 13px; font-weight: 700;
-	font-family: var(--hy-heading); box-shadow: 0 3px 9px rgba(217, 130, 74, .4); cursor: pointer;
+.coverWrap {
+	position: relative;
+	display: flex;
+	justify-content: center;
+	padding: 10px 0 18px;
 }
-.recordBtn:hover { opacity: .95; }
-.avatar { width: 34px; height: 34px; }
-
-/* ===== 本体(プレースホルダ) ===== */
-.body { flex: 1; padding: 22px; }
-.placeholder {
-	display: flex; flex-direction: column; align-items: center; justify-content: center;
-	gap: 12px; padding: 60px 20px; text-align: center;
-	background: var(--hy-surface); border: 1px solid var(--hy-border); border-radius: 14px;
-	max-width: 520px; margin: 40px auto; box-shadow: 0 1px 3px rgba(96, 70, 35, .06);
+.bookmark {
+	position: absolute;
+	top: 2px;
+	z-index: 1;
+	width: 9px;
+	height: 33px;
+	clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 84%, 0 100%);
 }
-.phMark {
-	display: inline-flex; align-items: center; justify-content: center;
-	width: 56px; height: 56px; border-radius: 16px;
-	background: linear-gradient(135deg, #e79b5e, #d9824a); color: #fff; font-size: 28px;
-	box-shadow: 0 4px 12px rgba(217, 130, 74, .35);
+.favorite {
+	position: absolute;
+	right: 2px;
+	top: 0;
+	color: var(--hy-accent);
 }
-.phTitle { font-family: var(--hy-heading); font-weight: 900; font-size: 20px; color: var(--hy-ink); }
-.phText { font-size: 13px; color: var(--hy-muted); }
-
-/* ===== マイログ ===== */
-.mylog { max-width: 1180px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; container-type: inline-size; }
-
-/* 今日の記録状況バナー */
-.todayBanner { display: flex; align-items: center; gap: 13px; border-radius: 14px; padding: 14px 18px; margin-bottom: 18px; border: 1px solid var(--hy-border); }
-.bannerIcon { font-size: 26px; flex-shrink: 0; display: inline-flex; }
-.bannerText { flex: 1; min-width: 0; font-size: 12.5px; line-height: 1.5; color: var(--hy-body); }
-.bannerText b { font-family: var(--hy-heading); font-size: 14px; color: var(--hy-ink); }
-/* 旗鯖fork: 補足文の途中改行はモバイルのみ表示(PCでは1行のまま) */
-.subBrMobile { display: none; }
-.bannerCta { flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px; background: linear-gradient(90deg,#e0955a,#d9824a); color: #fff; border: none; border-radius: 999px; padding: 9px 18px; font-weight: 700; font-family: var(--hy-heading); font-size: 13px; cursor: pointer; box-shadow: 0 2px 8px rgba(217,130,74,.3); }
-.bannerCta:hover { filter: brightness(1.05); }
-.bannerClose { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 999px; background: none; border: none; color: var(--hy-muted); cursor: pointer; font-size: 16px; }
-.bannerClose:hover { background: var(--hy-chip-bg); color: var(--hy-ink); }
-.bannerNotYet { background: color-mix(in srgb, var(--hy-accent) 10%, var(--hy-surface)); border-color: color-mix(in srgb, var(--hy-accent) 40%, transparent); }
-.bannerNotYet .bannerIcon { color: var(--hy-accent); }
-.bannerBroken { background: color-mix(in srgb, #c0563a 10%, var(--hy-surface)); border-color: color-mix(in srgb, #c0563a 40%, transparent); }
-.bannerBroken .bannerIcon { color: #c0563a; }
-.bannerDone { background: color-mix(in srgb, #5a9a5a 10%, var(--hy-surface)); border-color: color-mix(in srgb, #5a9a5a 35%, transparent); }
-.bannerDone .bannerIcon { color: #5a9a5a; }
-
-/* 旗鯖fork: モバイル(狭幅)ではバナーが1行に詰まってタイトルが文字単位で折り返し崩れるため、
-   「アイコン＋本文＋×」を1行目、「記録ボタン」を2行目(全幅)へ折り返す。 */
-@container (max-width: 560px) {
-	.todayBanner { flex-wrap: wrap; align-items: center; gap: 10px 11px; padding: 13px 14px; }
-	.bannerText { flex: 1 1 0; }
-	.subBrMobile { display: inline; }
-	.bannerClose { order: 2; }
-	.bannerCta { order: 3; flex: 1 1 100%; justify-content: center; padding: 11px 18px; }
+.workMeta {
+	min-width: 0;
 }
-
-/* hero: 統計 + ヒートマップ。
-   旗鯖fork: 4つの統計は常に 2×2(田) グリッド。狭幅では「統計(上) → ヒートマップ(下)」の縦積み、
-   PC等の広い幅(コンテンツ幅が足りるとき)では flex-wrap で「ヒートマップ(左) + 統計2×2(右)」に並べ、
-   ヒートマップ右側の余白を統計が埋めてスッキリさせる。 */
-.hero { display: flex; flex-direction: column; gap: 16px; }
-.heroStats { display: grid; grid-template-columns: repeat(2, 1fr); grid-auto-rows: 1fr; gap: 12px; }
-.heroStat { min-width: 0; display: flex; flex-direction: column; justify-content: center; background: var(--hy-surface); border: 1px solid var(--hy-border); border-radius: 12px; padding: 12px 16px; text-align: center; box-shadow: 0 1px 3px rgba(96,70,35,.06); }
-.heroStatBtn { cursor: pointer; font: inherit; transition: border-color .12s; }
-.heroStatBtn:hover { border-color: var(--hy-accent); }
-.heroNum { font-family: var(--hy-heading); font-weight: 900; font-size: 20px; color: var(--hy-ink); }
-.heroFlame { color: var(--hy-accent); }
-.heroLbl { font-size: 10.5px; color: var(--hy-muted); margin-top: 2px; }
-.heatmap { background: var(--hy-surface); border: 1px solid var(--hy-border); border-radius: 14px; padding: 16px 18px; box-shadow: 0 1px 3px rgba(96,70,35,.06); }
-.heatHead { font-size: 12.5px; font-weight: 700; color: var(--hy-ink); margin-bottom: 12px; }
-.heatGrid { display: flex; gap: 4px; overflow-x: auto; }
-.heatCol { display: flex; flex-direction: column; gap: 4px; }
-.heatCell { width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0; cursor: pointer; transition: outline .1s; animation: hyHeatIn .42s cubic-bezier(.34, 1.56, .64, 1) both; }
-
-/* 旗鯖fork: マイログの入場演出。要素が左上→右下へ順に現れ、ヒートマップは対角線状に点灯する
-   (起動アニメの hyCell / hyFadeUp と同じ質感)。遅延はセルのみ :style で個別に付与。 */
-@keyframes hyHeatIn {
-	from { opacity: 0; transform: scale(.3); }
-	to { opacity: 1; transform: none; }
+.workMeta small,
+.workMeta p,
+.workCard > small {
+	font-size: 12px;
+	color: var(--hy-muted);
 }
-@keyframes hyBlockIn {
-	from { opacity: 0; transform: translateY(14px); }
-	to { opacity: 1; transform: none; }
+.workMeta h2 {
+	margin: 6px 0 3px;
+	font-size: 18px;
+	overflow-wrap: anywhere;
 }
-.heroStat { animation: hyBlockIn .45s cubic-bezier(.22, .9, .3, 1) both; }
-.heroStats > *:nth-child(1) { animation-delay: 0s; }
-.heroStats > *:nth-child(2) { animation-delay: .05s; }
-.heroStats > *:nth-child(3) { animation-delay: .1s; }
-.heroStats > *:nth-child(4) { animation-delay: .15s; }
-.heatmap { animation: hyBlockIn .5s cubic-bezier(.22, .9, .3, 1) .05s both; }
-.timelineCol { animation: hyBlockIn .5s cubic-bezier(.22, .9, .3, 1) .18s both; }
-.side { animation: hyBlockIn .5s cubic-bezier(.22, .9, .3, 1) .26s both; }
-/* 動きに敏感な人向け / アプリのアニメOFF設定: 最終状態で静止させる。 */
-.mylog[data-anim="0"] .heatCell,
-.mylog[data-anim="0"] .heroStat,
-.mylog[data-anim="0"] .heatmap,
-.mylog[data-anim="0"] .timelineCol,
-.mylog[data-anim="0"] .side { animation: none; }
-@media (prefers-reduced-motion: reduce) {
-	.heatCell, .heroStat, .heatmap, .timelineCol, .side { animation: none; }
+.workMeta p {
+	margin: 0 0 12px;
 }
-.heatCell:hover { outline: 2px solid var(--hy-accent); outline-offset: 1px; }
-
-/* 旗鯖fork: 広い幅では「ヒートマップ左 + 統計2×2右」の田レイアウト。
-   ヒートマップは格子が固定幅のため伸ばすとカード内に大きな余白ができる。中身の幅に留め、
-   空いた右側を統計タイルが埋めるようにして無駄な空白を無くす。
-   コンテンツ幅が足りない場合は flex-wrap で自動的に縦積み(ヒートマップ上→統計下)へ退避する。 */
-@container (min-width: 850px) {
-	.hero { flex-flow: row wrap; align-items: stretch; }
-	.heatmap { order: -1; flex: 0 1 auto; min-width: 0; }
-	.heroStats { flex: 1 1 236px; max-width: none; }
-	.heroNum { white-space: nowrap; }
+.workState {
+	display: flex;
+	justify-content: space-between;
+	gap: 8px;
+	font-size: 12px;
 }
-
-/* 旗鯖fork: スマホではカードを本文幅の内側に保ったまま、
-   20週分の列をカードの利用可能な横幅いっぱいへ均等配置する。 */
-@container (max-width: 556px) {
-	.heatGrid {
+.workMeta progress {
+	width: 100%;
+	height: 4px;
+	margin-top: 10px;
+	accent-color: var(--hy-accent);
+}
+.workMeta > :last-child:is(span) {
+	margin-top: 12px;
+}
+.gallery[data-kind='work'] {
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.workCard[data-kind='work'] {
+	padding: 24px;
+	min-height: 275px;
+}
+.workCard[data-kind='work'] > h2 {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	margin: 20px 0 0;
+	font-size: 22px;
+}
+.workCard[data-kind='work'] > p {
+	line-height: 1.8;
+}
+.workCard[data-kind='work'] > .excerpt {
+	border-top: 1px solid var(--hy-border);
+	padding-top: 14px;
+	font-size: 14px;
+}
+.workCard[data-kind='work'] > span {
+	align-self: flex-start;
+}
+.workTags { display: flex; flex-wrap: wrap; gap: 6px; }
+.workFoot {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 12px;
+	margin-top: auto;
+	padding-top: 20px;
+}
+.workFoot small {
+	color: var(--hy-muted);
+	font-size: 12px;
+}
+.mediaAdvanced {
+	border-top: 1px solid var(--hy-border);
+	padding-top: 18px;
+}
+.mediaAdvanced > summary {
+	cursor: pointer;
+	min-height: 44px;
+	font-weight: 700;
+}
+.mediaFilterGrid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 16px;
+	margin: 12px 0;
+}
+.mediaFilterField {
+	display: grid;
+	gap: 8px;
+	min-width: 0;
+	font-size: 14px;
+}
+.mediaSelect,
+.mediaFilterInput {
+	width: 100%;
+	min-width: 0;
+	min-height: 48px;
+	padding: 11px;
+	border: 1px solid var(--hy-border);
+	background: var(--hy-bg);
+	color: var(--hy-ink);
+	border-radius: 12px;
+}
+.mediaFilterActions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 10px;
+}
+.actionGhost,
+.shelfAddBtn {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	min-height: 44px;
+	border: 0;
+	border-radius: 999px;
+	padding: 10px 18px;
+	background: var(--hy-soft);
+	color: var(--hy-ink);
+}
+.shelfAddBtn {
+	background: var(--hy-accent);
+	color: var(--hy-on-accent);
+}
+@container hatady (max-width: 800px) {
+	.header {
+		grid-template-columns: minmax(0, 1fr) 44px auto minmax(44px, 1fr);
+		gap: 10px;
+		padding: 6px 14px 8px;
+	}
+	.headerActions {
+		display: none;
+	}
+	.brand {
+		grid-column: 1;
+		grid-row: 1;
+		font-size: 23px !important;
+	}
+	.nav {
+		grid-column: 3;
+		grid-row: 1;
+	}
+	.root .mobileMenu {
+		grid-column: 4;
+		grid-row: 1;
 		display: grid;
-		grid-template-columns: repeat(20, minmax(0, 14px));
-		justify-content: space-between;
-		gap: 0;
+		position: relative;
+		place-items: center;
+		justify-self: end;
+		width: 44px;
+		padding: 0;
+		margin-top: 6px;
+		background: var(--hy-surface);
+		border: 1px solid var(--hy-border);
+	}
+	.root .mobileExit {
+		display: inline-grid;
+		grid-column: 2;
+		grid-row: 1;
+		width: 44px;
+		padding: 0;
+		margin-top: 6px;
+		background: var(--hy-surface);
+		border: 1px solid var(--hy-border);
+	}
+	.main {
+		padding: 0 14px 20px;
+	}
+	.mobileRecord {
+		display: flex;
+		gap: 6px;
+	}
+	.mobileRecord > button {
+		position: relative;
+		width: 44px;
+		padding: 0;
+		background: var(--hy-surface);
+		border: 1px solid var(--hy-border);
+	}
+	.mobileRecord > button:last-child {
+		background: var(--hy-accent);
+		color: var(--hy-on-accent);
+		font-size: 23px;
+	}
+	.compactRecord {
+		display: inline-grid;
+		place-items: center;
+		width: 44px;
+		padding: 0;
+	}
+	.pageTitle h1 {
+		font-size: 22px;
+	}
+	.gallery {
+		grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+		gap: 12px;
+	}
+}
+@container hatady (max-width: 600px) {
+	.header {
+		grid-template-columns: 44px minmax(0, 1fr) 44px;
+		gap: 4px 8px;
+	}
+	.brand {
+		grid-column: 1 / -2;
+		grid-row: 1;
+		margin-top: 0;
+	}
+	.root .mobileMenu {
+		grid-column: 3;
+		grid-row: 1;
+		margin-top: 0;
+	}
+	.nav {
+		grid-column: 2 / -1;
+		grid-row: 2;
 		width: 100%;
 		min-width: 0;
-		box-sizing: border-box;
-		overflow-x: hidden;
 	}
-	.heatCol { min-width: 0; }
-	.heatCell {
-		width: 100%;
-		height: auto;
-		aspect-ratio: 1;
+	.root .mobileExit {
+		grid-column: 1;
+		grid-row: 2;
+		margin-top: 5px;
 	}
 }
-
-/* 日別ポップアップ(position:fixed で画面基準に浮かせる) */
-.heatPop {
-	position: fixed; z-index: 10000; width: 180px;
-	background: var(--hy-surface); border: 1px solid var(--hy-border); border-radius: 11px;
-	padding: 11px 13px; box-shadow: 0 8px 28px rgba(0,0,0,.28);
-	pointer-events: none;
+@container hatady (max-width: 380px) {
+	.header {
+		padding-inline: 10px;
+		column-gap: 6px;
+	}
 }
-.heatPopDate { font-family: var(--hy-heading); font-weight: 700; font-size: 12.5px; color: var(--hy-ink); margin-bottom: 5px; }
-.heatPopStat { display: flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 700; color: var(--hy-accent-ink); }
-.heatPopEmpty { font-size: 12px; color: var(--hy-muted); }
-.heatPopSubjects { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
-.heatPopSubject { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--hy-body); }
-.heatPopDot { width: 8px; height: 8px; border-radius: 999px; flex-shrink: 0; }
-.heatPopMin { margin-left: auto; color: var(--hy-muted); font-weight: 700; }
-.heatPopHint { font-size: 10.5px; color: var(--hy-muted); margin-top: 6px; }
-
-/* grid */
-.grid { display: grid; grid-template-columns: 1fr 312px; gap: 22px; align-items: start; }
-.grid > * { min-width: 0; }
-
-/* タイムライン */
-.timelineCol { min-width: 0; scroll-margin-top: 12px; }
-.tlHeadRow { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; min-height: 34px; }
-.tlTitle { margin: 0; font-family: var(--hy-heading); font-weight: 900; font-size: 18px; line-height: 1; color: var(--hy-ink); display: inline-flex; align-items: center; }
-.periodToggle { position: relative; display: inline-flex; align-items: center; gap: 5px; background: var(--hy-surface); border: 1px solid var(--hy-border); border-radius: 999px; padding: 6px 14px; font-size: 12px; line-height: 1; font-weight: 700; color: var(--hy-body); cursor: pointer; font-family: var(--hy-heading); }
-.periodToggle:hover { border-color: var(--hy-accent); }
-.periodToggleOn { border-color: var(--hy-accent); color: var(--hy-accent-ink); }
-.periodDot { position: absolute; top: 4px; right: 6px; width: 7px; height: 7px; border-radius: 999px; background: var(--hy-accent); }
-.periodPanel { display: flex; flex-direction: column; gap: 14px; background: var(--hy-surface); border: 1px solid var(--hy-border); border-radius: 14px; padding: 15px 16px; margin-bottom: 14px; }
-/* 旗鯖fork: 「期間で絞り込む」「日付へジャンプ」を独立ブロックに整理。 */
-.periodGroup { display: flex; flex-direction: column; gap: 10px; }
-.periodGroupLabel { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; letter-spacing: .03em; color: var(--hy-body); font-family: var(--hy-heading); }
-.periodGroupLabel i { color: var(--hy-accent); font-size: 14px; }
-.periodDivider { height: 1px; background: var(--hy-border); }
-/* 期間レンジ: 2つの日付+〜を1つのまとまりに見せ、適用ボタンを添える */
-.periodRangeField { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.periodJumpField { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.periodDate { flex: 1 1 130px; min-width: 116px; background: var(--hy-bg); border: 1px solid var(--hy-border); border-radius: 9px; padding: 8px 11px; color: var(--hy-ink); font-size: 13px; outline: none; font-family: inherit; transition: border-color .12s; }
-.periodDate:hover { border-color: color-mix(in srgb, var(--hy-accent) 45%, var(--hy-border)); }
-.periodDate:focus { border-color: var(--hy-accent); }
-.periodTilde { flex: 0 0 auto; color: var(--hy-muted); font-weight: 700; }
-.periodApply { flex: 0 0 auto; background: var(--hy-accent); color: #fff; border: none; border-radius: 999px; padding: 8px 18px; font-size: 12.5px; font-weight: 700; cursor: pointer; font-family: var(--hy-heading); transition: filter .12s; }
-.periodApply:not(:disabled):hover { filter: brightness(1.05); }
-.periodApply:disabled { opacity: .5; cursor: not-allowed; }
-.periodPresets { display: flex; flex-wrap: wrap; gap: 6px; }
-.periodChip { display: inline-flex; align-items: center; gap: 4px; background: var(--hy-bg); border: 1px solid var(--hy-border); border-radius: 999px; padding: 5px 12px; font-size: 11.5px; font-weight: 700; color: var(--hy-body); cursor: pointer; font-family: var(--hy-heading); }
-.periodChip:hover { border-color: var(--hy-accent); }
-.periodClear { color: #c0563a; }
-.periodClear:hover { border-color: #c0563a; }
-.filterNotice { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--hy-accent-ink); background: rgba(217,130,74,.1); border: 1px solid var(--hy-border); border-radius: 10px; padding: 8px 12px; margin-bottom: 14px; }
-.filterNotice > i { color: var(--hy-accent); }
-.filterNoticeClear { margin-left: auto; background: none; border: none; color: var(--hy-accent-ink); font-weight: 700; cursor: pointer; text-decoration: underline; font-size: 12px; }
-.heatCellClickable { cursor: pointer; }
-.loading { opacity: .6; padding: 30px 0; text-align: center; }
-.emptyTl { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 48px 20px; text-align: center; background: var(--hy-surface); border: 1px solid var(--hy-border); border-radius: 14px; }
-.emptyIcon { font-size: 2.4rem; color: var(--hy-accent); opacity: .6; }
-.emptyCta { display: inline-flex; align-items: center; gap: 6px; background: linear-gradient(90deg,#e0955a,#d9824a); color: #fff; border: none; border-radius: 999px; padding: 9px 20px; font-weight: 700; font-family: var(--hy-heading); cursor: pointer; }
-
-.dateGroup { margin-bottom: 22px; }
-.dateHead { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
-.datePill { display: inline-flex; align-items: center; gap: 6px; background: var(--hy-ink); color: var(--hy-bg); border-radius: 999px; padding: 4px 13px; font-size: 12px; font-weight: 700; font-family: var(--hy-heading); }
-.dateSub { font-size: 11.5px; color: var(--hy-muted); }
-.dateLine { flex: 1; height: 1px; background: var(--hy-border); }
-
-.rail { position: relative; padding-left: 34px; }
-.railLine { position: absolute; left: 11px; top: 6px; bottom: 6px; width: 2px; background: var(--hy-border); }
-.entry { position: relative; margin-bottom: 16px; }
-.entry:last-child { margin-bottom: 0; }
-.entryDot { position: absolute; left: -30px; top: 6px; width: 16px; height: 16px; border-radius: 999px; border: 2.5px solid; }
-.entryDot[data-activity-kind="study"] { border-color: var(--hy-accent); background: var(--hy-surface); }
-.entryDot[data-activity-kind="media"] { border-color: color-mix(in srgb, var(--hy-accent) 62%, #6f78b8); background: var(--hy-surface); }
-.activityMore { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; margin-top: 14px; padding: 9px 14px; border: 1px solid var(--hy-border); border-radius: 999px; background: var(--hy-surface); color: var(--hy-ink); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
-.activityMore:disabled { cursor: wait; opacity: .55; }
-.card { background: var(--hy-surface); border: 1px solid var(--hy-border); border-left: 4px solid; border-radius: 12px; padding: 14px 16px; box-shadow: 0 1px 3px rgba(96,70,35,.06); }
-.cardTop { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-.privateChip { color: var(--hy-muted); font-size: 11px; }
-.cardTime { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--hy-body); opacity: .85; }
-.menuBtn { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 999px; background: none; border: none; color: var(--hy-muted); cursor: pointer; font-size: 16px; }
-.menuBtn:hover { background: var(--hy-chip-bg); color: var(--hy-ink); }
-.cardTitle { font-size: 14.5px; font-weight: 700; color: var(--hy-ink); line-height: 1.5; margin-bottom: 9px; }
-.bookChip { display: flex; gap: 11px; align-items: center; background: var(--hy-surface-2); border-radius: 10px; padding: 9px 11px; margin-bottom: 10px; }
-.bookInfo { flex: 1; min-width: 0; }
-.bookTitle { font-family: var(--hy-serif); font-weight: 600; font-size: 13px; color: var(--hy-ink); line-height: 1.4; }
-.bookAuthor { font-size: 11px; color: var(--hy-muted); margin: 1px 0 6px; }
-.progressWrap { display: flex; align-items: center; gap: 8px; }
-.progressBar { flex: 1; height: 5px; border-radius: 999px; background: var(--hy-border); overflow: hidden; display: block; }
-.progressFill { display: block; height: 100%; border-radius: 999px; background: var(--hy-accent); }
-.progressText { font-size: 10.5px; font-weight: 700; white-space: nowrap; }
-.cardBody { font-size: 12.5px; line-height: 1.7; color: var(--hy-body); margin-bottom: 11px; word-break: break-word; }
-.cardFoot { display: flex; align-items: center; gap: 7px; }
-.tagChip { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; padding: 2px 10px; border-radius: 999px; }
-.footRight { margin-left: auto; display: flex; align-items: center; gap: 10px; color: var(--hy-body); font-size: 12px; }
-.commentBtn { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; background: none; border: none; color: var(--hy-body); font-size: 12px; font-weight: 700; cursor: pointer; padding: 4px 6px; border-radius: 8px; transition: all .12s; }
-.commentBtn:hover { background: var(--hy-chip-bg); color: var(--hy-accent-ink); }
-
-/* サイドバー */
-.side { display: flex; flex-direction: column; gap: 16px; }
-.sideCard { background: var(--hy-surface); border: 1px solid var(--hy-border); border-radius: 14px; padding: 16px; box-shadow: 0 1px 3px rgba(96,70,35,.06); }
-.profileMini { display: flex; align-items: center; gap: 11px; margin-bottom: 14px; width: 100%; background: none; border: none; padding: 4px; margin-left: -4px; border-radius: 10px; cursor: pointer; text-align: left; transition: background .12s; }
-.profileMini:hover { background: var(--hy-chip-bg); }
-.profileAvatar { width: 46px; height: 46px; }
-.profileName { font-family: var(--hy-heading); font-weight: 700; font-size: 15px; color: var(--hy-ink); }
-.profileAcct { font-size: 11.5px; color: var(--hy-muted); }
-.streakBox { display: flex; align-items: center; gap: 9px; background: var(--hy-surface-2); border: 1px solid transparent; border-radius: 11px; padding: 10px 13px; width: 100%; cursor: pointer; text-align: left; font: inherit; color: inherit; transition: border-color .12s; }
-.streakBox:hover { border-color: var(--hy-accent); }
-.streakArrow { margin-left: auto; color: var(--hy-muted); font-size: 16px; }
-.streakIcon { font-size: 24px; color: var(--hy-accent); }
-.streakNum { font-family: var(--hy-heading); font-weight: 900; font-size: 19px; color: var(--hy-accent-ink); line-height: 1; }
-.streakUnit { font-size: 12px; font-weight: 700; }
-.streakSub { font-size: 11px; color: var(--hy-muted); }
-.sideTitle { font-family: var(--hy-heading); font-weight: 700; font-size: 13px; color: var(--hy-ink); margin-bottom: 12px; }
-.sideTitle i { color: var(--hy-accent); margin-right: 4px; }
-.toolGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.toolBtn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; background: var(--hy-bg); border: 1px solid var(--hy-border); border-radius: 11px; padding: 12px 6px; font-size: 11.5px; font-weight: 700; color: var(--hy-body); cursor: pointer; font-family: var(--hy-heading); }
-.toolBtn:hover { border-color: var(--hy-accent); color: var(--hy-accent-ink); }
-.toolBtn i { font-size: 19px; color: var(--hy-accent); }
-.focusRow { margin-bottom: 9px; }
-.focusHead { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--hy-body); margin-bottom: 3px; }
-.focusMin { color: var(--hy-muted); }
-.focusBar { display: block; height: 6px; border-radius: 999px; background: var(--hy-border); overflow: hidden; }
-.focusFill { display: block; height: 100%; border-radius: 999px; }
-/* 本の詳細へ飛ぶボタン。ボタン既定の見た目は消して、行としての体裁を保つ。 */
-.readingRow { display: flex; gap: 10px; margin-bottom: 12px; width: 100%; background: none; border: none; padding: 4px; margin-left: -4px; margin-right: -4px; border-radius: 8px; text-align: left; font: inherit; color: inherit; cursor: pointer; transition: background .12s; }
-.readingRow:hover { background: var(--hy-chip-bg); }
-.readingRow:last-child { margin-bottom: 0; }
-.readingInfo { flex: 1; min-width: 0; }
-.readingTitle { font-family: var(--hy-serif); font-weight: 600; font-size: 12px; color: var(--hy-ink); line-height: 1.35; margin-bottom: 6px; }
-.sideEmpty { font-size: 12px; color: var(--hy-muted); }
-
-/* ===== みんなの活動(公開フィード) ===== */
-.discover { max-width: 660px; margin: 0 auto; container-type: inline-size; }
-.discoverTabs { display: flex; gap: 6px; margin-bottom: 16px; }
-.discoverTab { display: inline-flex; align-items: center; gap: 5px; padding: 5px 14px; font-size: 12px; font-weight: 700; color: var(--hy-body); background: var(--hy-surface); border: 1px solid var(--hy-border); border-radius: 999px; cursor: pointer; font-family: var(--hy-heading); }
-.discoverTab:hover { border-color: var(--hy-accent); }
-.discoverTabOn { color: #fff; background: var(--hy-accent); border-color: transparent; }
-.feed { display: flex; flex-direction: column; gap: 14px; }
-.feedCard { background: var(--hy-surface); border: 1px solid var(--hy-border); border-left: 4px solid; border-radius: 14px; padding: 15px 17px; box-shadow: 0 1px 3px rgba(96,70,35,.06); }
-.feedHead { display: flex; align-items: center; gap: 10px; margin-bottom: 11px; }
-.feedAuthor { display: flex; align-items: center; gap: 10px; background: none; border: none; padding: 2px 4px 2px 2px; margin: -2px; border-radius: 999px; cursor: pointer; min-width: 0; transition: background .12s; }
-.feedAuthor:hover { background: var(--hy-chip-bg); }
-.feedAvatar { width: 40px; height: 40px; flex-shrink: 0; }
-.feedWho { min-width: 0; }
-.feedName { font-family: var(--hy-heading); font-weight: 700; font-size: 14px; color: var(--hy-ink); }
-.feedAcct { font-size: 11.5px; color: var(--hy-body); opacity: .8; }
-.feedTopics { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; margin-bottom: 9px; }
-.feedDuration { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; color: var(--hy-body); opacity: .85; }
-.feedTitle { font-size: 15px; font-weight: 700; color: var(--hy-ink); line-height: 1.55; margin-bottom: 10px; }
-
-/* ===== 本棚 ===== */
-.shelf { max-width: 1060px; margin: 0 auto; container-type: inline-size; }
-.collectionTop { display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; margin-bottom: 20px; }
-.collectionEyebrow { margin-bottom: 3px; color: var(--hy-muted); font: 700 10.5px/1 var(--hy-heading); letter-spacing: .1em; text-transform: uppercase; }
-.collectionTitle { margin: 0; color: var(--hy-ink); font: 900 23px/1.2 var(--hy-heading); }
-.collectionPills { display: inline-flex; gap: 3px; padding: 4px; border: 1px solid var(--hy-border); border-radius: 999px; background: var(--hy-surface); }
-.collectionPill { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 33px; padding: 5px 16px; border: 0; border-radius: 999px; background: transparent; color: var(--hy-muted); font: 700 12px/1 var(--hy-heading); cursor: pointer; }
-.collectionPillOn { background: var(--hy-ink); color: var(--hy-bg); box-shadow: 0 2px 8px color-mix(in srgb, var(--hy-ink) 16%, transparent); }
-.mediaCollection { min-width: 0; }
-.mediaToolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 17px; }
-.mediaSearch { flex: 1; min-width: 150px; display: flex; align-items: center; gap: 7px; padding: 0 11px; border: 1px solid var(--hy-border); border-radius: 999px; background: var(--hy-surface); color: var(--hy-muted); }
-.mediaSearch:focus-within { border-color: var(--hy-accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--hy-accent) 14%, transparent); }
-.mediaSearch input { width: 100%; min-width: 0; padding: 8px 0; border: 0; outline: 0; background: transparent; color: var(--hy-ink); font: inherit; }
-.mediaSelect { min-width: 110px; padding: 8px 27px 8px 11px; border: 1px solid var(--hy-border); border-radius: 999px; background: var(--hy-surface); color: var(--hy-ink); font: 700 11.5px var(--hy-heading); }
-.mediaAdvanced { margin: -7px 0 16px; padding: 10px 12px; border: 1px solid var(--hy-border); border-radius: 13px; background: var(--hy-surface); }
-.mediaAdvanced > summary { display: flex; align-items: center; gap: 6px; color: var(--hy-ink); font: 700 11.5px var(--hy-heading); cursor: pointer; }
-.mediaFilterGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-top: 12px; }
-.mediaFilterField { display: flex; flex-direction: column; min-width: 0; gap: 5px; color: var(--hy-muted); font: 700 10.5px var(--hy-heading); }
-.mediaFilterInput { width: 100%; min-width: 0; box-sizing: border-box; padding: 8px 10px; border: 1px solid var(--hy-border); border-radius: 9px; outline: none; background: var(--hy-bg); color: var(--hy-ink); font: inherit; }
-.mediaFilterField .mediaSelect { width: 100%; min-width: 0; border-radius: 9px; background: var(--hy-bg); }
-.mediaFilterActions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
-.actionGhost { display: inline-flex; align-items: center; gap: 5px; padding: 7px 12px; border: 1px solid var(--hy-border); border-radius: 999px; background: var(--hy-bg); color: var(--hy-body); font: 700 11.5px var(--hy-heading); cursor: pointer; }
-.mediaGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 11px; }
-
-/* =====================================================================
-   旗鯖fork(Hatady): コレクションの入場演出。本棚の「本が立ち上がる」に相当するものを
-   映画・ゲームにもそれぞれの質感で用意する。
-   - 映画: 映写機のゲートから絵が現れるように、上下から開いて光が一度走る
-   - ゲーム: 実体化するようにポンと出て、縁が一瞬光る
-   ⚠️どちらも一度きり。ホバーや再描画のたびに光らせると目に痛いため。
-   ⚠️アプリのアニメOFF設定 / prefers-reduced-motion では最終状態で静止させる。
-   ===================================================================== */
-.mediaGrid[data-media-kind='movies'] .mediaCard { animation: hyFilmIn .62s cubic-bezier(.22, .9, .3, 1) both; }
-.mediaGrid[data-media-kind='games'] .mediaCard { animation: hyGameIn .55s cubic-bezier(.34, 1.56, .64, 1) both; }
-
-/* 光の走り。カード本体とは別レイヤーにして、中身のレイアウトに一切触れないようにする。 */
-.mediaGrid[data-anim='1'] .mediaCard::after {
-	content: '';
-	position: absolute;
-	inset: 0;
-	z-index: 2;
-	border-radius: inherit;
-	pointer-events: none;
-	opacity: 0;
-}
-.mediaGrid[data-anim='1'][data-media-kind='movies'] .mediaCard::after {
-	background: linear-gradient(105deg, transparent 38%, rgba(255, 255, 255, .55) 50%, transparent 62%);
-	animation: hySheen .95s ease-out both;
-	animation-delay: inherit;
-}
-.mediaGrid[data-anim='1'][data-media-kind='games'] .mediaCard::after {
-	background: radial-gradient(120% 90% at 50% 50%, transparent 55%, color-mix(in srgb, var(--hy-accent) 60%, transparent) 100%);
-	animation: hySpark .8s ease-out both;
-	animation-delay: inherit;
-}
-/* ::after を敷くため、カード自身を位置の基準にする(既に overflow: hidden 済み)。 */
-.mediaCard { position: relative; }
-
-@keyframes hyFilmIn {
-	0% { opacity: 0; transform: translateY(10px) scaleY(.82); }
-	55% { opacity: 1; }
-	100% { opacity: 1; transform: none; }
-}
-@keyframes hyGameIn {
-	0% { opacity: 0; transform: scale(.86) translateY(8px); }
-	60% { opacity: 1; }
-	100% { opacity: 1; transform: none; }
-}
-@keyframes hySheen {
-	0% { opacity: 0; transform: translateX(-115%); }
-	28% { opacity: 1; }
-	100% { opacity: 0; transform: translateX(115%); }
-}
-@keyframes hySpark {
-	0% { opacity: 0; }
-	35% { opacity: .85; }
-	100% { opacity: 0; }
-}
-.mediaGrid[data-anim='0'] .mediaCard { animation: none; }
-.mediaGrid[data-anim='0'] .mediaCard::after { content: none; }
-@media (prefers-reduced-motion: reduce) {
-	.mediaGrid .mediaCard { animation: none; }
-	.mediaGrid .mediaCard::after { content: none; }
-}
-.mediaCard { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 15px; min-width: 0; padding: 12px; border: 1px solid var(--hy-border); border-radius: 15px; background: var(--hy-surface); color: var(--hy-body); text-align: left; font: inherit; cursor: pointer; transition: border-color .14s, transform .14s, box-shadow .14s; overflow: hidden; }
-.mediaCard:hover { border-color: color-mix(in srgb, var(--hy-accent) 60%, var(--hy-border)); transform: translateY(-1px); box-shadow: 0 7px 20px color-mix(in srgb, var(--hy-ink) 9%, transparent); }
-.mediaCardBody { min-width: 0; }
-.mediaCardTop { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
-.mediaStatus { padding: 2px 8px; border-radius: 999px; background: color-mix(in srgb, var(--hy-accent) 13%, var(--hy-bg)); color: var(--hy-accent-ink); font: 700 10px var(--hy-heading); }
-.mediaFavorite { margin-left: auto; color: #d9a441; }
-.mediaTitle { overflow: hidden; color: var(--hy-ink); font: 700 14px/1.4 var(--hy-serif); text-overflow: ellipsis; white-space: nowrap; }
-.mediaOriginal, .mediaCreator { overflow: hidden; margin-top: 2px; color: var(--hy-muted); font-size: 10.5px; text-overflow: ellipsis; white-space: nowrap; }
-.mediaFacts { display: flex; flex-wrap: wrap; gap: 5px 10px; margin-top: 9px; color: var(--hy-body); font-size: 10.5px; }
-.mediaFacts span { display: inline-flex; align-items: center; gap: 3px; }
-.mediaMore { display: flex; align-items: center; justify-content: center; gap: 5px; margin: 16px auto 0; padding: 7px 17px; border: 1px solid var(--hy-border); border-radius: 999px; background: var(--hy-surface); color: var(--hy-body); font: 700 11.5px var(--hy-heading); cursor: pointer; }
-.mediaMore:hover { border-color: var(--hy-accent); color: var(--hy-accent-ink); }
-.shelfHead { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 18px; }
-.shelfHead .tlTitle { margin: 0; }
-.shelfFilters { display: flex; gap: 8px; margin-left: auto; flex-wrap: wrap; }
-.shelfSort { display: flex; align-items: center; gap: 6px; }
-.sortSelect { background: var(--hy-surface); border: 1px solid var(--hy-border); border-radius: 999px; padding: 6px 12px; font-size: 12.5px; color: var(--hy-ink); font-family: inherit; cursor: pointer; outline: none; }
-.sortSelect:focus { border-color: var(--hy-accent); }
-.sortDir { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 999px; background: var(--hy-surface); border: 1px solid var(--hy-border); color: var(--hy-body); cursor: pointer; font-size: 16px; }
-.sortDir:hover { border-color: var(--hy-accent); color: var(--hy-accent); }
-.shelfCoverWrap { position: relative; align-self: center; }
-.favStar { position: absolute; top: -6px; right: -6px; z-index: 3; width: 24px; height: 24px; border-radius: 999px; background: #f6c453; color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 13px; box-shadow: 0 2px 6px rgba(0,0,0,.25); }
-/* しおり: 本の上端から飛び出す帯(下端がしおりの尾のように尖る) */
-.ribbon { position: absolute; top: -9px; width: 9px; height: 28px; z-index: 2; border-radius: 2px 2px 0 0; box-shadow: 0 1px 2px rgba(0,0,0,.25); clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 80%, 0 100%); animation: hyRibbonDrop .6s cubic-bezier(.34, 1.5, .6, 1) both; }
-/* 起動アニメの hyRibbon と同じ「しおりが上から垂れる」入場。遅延は :style で本ごと/しおりごとにずらす。 */
-@keyframes hyRibbonDrop {
-	0% { opacity: 0; transform: translateY(-32px); }
-	55% { opacity: 1; transform: translateY(3px); }
-	100% { opacity: 1; transform: none; }
-}
-.shelfAddBtn { display: inline-flex; align-items: center; gap: 6px; background: linear-gradient(90deg,#e0955a,#d9824a); color: #fff; border: none; border-radius: 999px; padding: 8px 16px; font-weight: 700; font-family: var(--hy-heading); font-size: 13px; cursor: pointer; box-shadow: 0 2px 8px rgba(217,130,74,.3); }
-.shelfAddBtn:hover { filter: brightness(1.05); }
-.shelfFilter { border: 1.5px solid var(--hy-border); background: var(--hy-surface); color: var(--hy-body); border-radius: 999px; padding: 6px 15px; font-size: 12.5px; font-weight: 700; cursor: pointer; transition: all .15s; }
-.shelfFilter:hover { border-color: var(--hy-accent); }
-.shelfFilterOn { background: var(--hy-ink); color: var(--hy-bg); border-color: var(--hy-ink); }
-/* 旗鯖fork(Hatady): マイログに出す種類の切替。 */
-.logKinds { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin-bottom: 14px; }
-.logKindsLead { margin-right: 2px; color: var(--hy-muted); font-family: var(--hy-heading); font-size: 10.5px; font-weight: 700; }
-.logKindChip { display: inline-flex; align-items: center; gap: 5px; padding: 6px 13px; border: 1.5px solid var(--hy-border); border-radius: 999px; background: var(--hy-surface); color: var(--hy-muted); font-family: var(--hy-heading); font-size: 12px; font-weight: 700; cursor: pointer; transition: all .15s; }
-.logKindChip:hover { border-color: var(--hy-accent); }
-/* ⚠️オフは「枠線＋淡色」で表す。色だけでなく塗りの有無でも差が出るようにする。 */
-.logKindChipOn { border-color: transparent; background: var(--hy-accent); color: #fff; }
-
-.shelfGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: 20px; }
-.shelfItem { display: flex; flex-direction: column; gap: 10px; background: none; border: none; padding: 6px; margin: -6px; border-radius: 10px; cursor: pointer; text-align: left; transition: background .12s; font: inherit; transform-origin: bottom center; animation: hyShelfIn .5s cubic-bezier(.34, 1.5, .6, 1) both; }
-/* 起動アニメの hyBook と同じ「本が立ち上がる」入場。遅延は :style で 1冊ずつずらす。 */
-@keyframes hyShelfIn {
-	0% { opacity: 0; transform: translateY(24px) rotate(-16deg); }
-	60% { opacity: 1; }
-	100% { opacity: 1; transform: none; }
-}
-/* 動きに敏感な人向け / アプリのアニメOFF設定: アニメを止めて最終状態で表示する。 */
-.shelfGrid[data-anim="0"] .shelfItem,
-.shelfGrid[data-anim="0"] .ribbon { animation: none; }
-@media (prefers-reduced-motion: reduce) {
-	.shelfItem, .ribbon { animation: none; }
-}
-.shelfItem:hover { background: var(--hy-chip-bg); }
-.shelfItem > :first-child { align-self: center; box-shadow: 0 3px 12px rgba(96,70,35,.18); border-radius: 4px; }
-.shelfMeta { min-width: 0; }
-.shelfTitle { font-family: var(--hy-serif); font-weight: 600; font-size: 13.5px; color: var(--hy-ink); line-height: 1.4; }
-.shelfAuthor { font-size: 11.5px; color: var(--hy-muted); margin-top: 2px; }
-.shelfOwner { display: inline-flex; align-items: center; gap: 3px; font-size: 10.5px; font-weight: 700; color: var(--hy-accent-ink); margin-bottom: 2px; }
-.adminFilter { border-color: var(--hy-accent) !important; }
-.shelfStatusRow { display: flex; align-items: center; gap: 8px; margin: 7px 0 5px; }
-.shelfStatus { font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 999px; }
-.shelfPages { font-size: 11px; color: var(--hy-muted); }
-
-@container (max-width: 690px) {
-	.collectionTop { align-items: stretch; flex-direction: column; }
-	.collectionPills { align-self: stretch; }
-	.collectionPill { flex: 1; min-width: 0; padding-inline: 8px; }
-	.mediaToolbar { align-items: stretch; flex-wrap: wrap; }
-	.mediaSearch { flex: 1 1 100%; }
-	.mediaSelect { flex: 1 1 125px; min-width: 0; }
-	.mediaToolbar .shelfAddBtn { flex: 1 1 auto; justify-content: center; }
-}
-
-@container (max-width: 430px) {
-	.collectionTitle { font-size: 20px; }
-	.collectionPill { gap: 4px; font-size: 11px; }
-	.mediaGrid { grid-template-columns: 1fr; }
-	.mediaCard { grid-template-columns: 72px minmax(0, 1fr); gap: 11px; padding: 10px; }
-	.mediaCard > :first-child { width: 72px !important; max-width: 72px; }
-}
-
-@container (max-width: 920px) {
-	.grid { grid-template-columns: 1fr; }
-	/* 旗鯖fork: 縦積み時はサイドバー(ツール・連続記録など)を先頭、学習タイムラインを最下部に。
-	   長いタイムラインの下までスクロールしなくてもツールへ届くように。 */
-	.side { order: 1; flex-direction: row; flex-wrap: wrap; }
-	.timelineCol { order: 2; }
-	.sideCard { flex: 1; min-width: 220px; }
-	/* 縦積み時は サイドバーが上・タイムラインが下。入場順も見た目の上→下に合わせる。 */
-	.side { animation-delay: .18s; }
-	.timelineCol { animation-delay: .26s; }
-}
-
-/* モバイル */
-@container (max-width: 600px) {
-	.header { padding: 10px 14px; gap: 10px; }
-	.logo { display: none; }
-	.headDivider { display: none; }
-	.recordText { display: none; }
-	.recordBtn { padding: 8px 12px; }
-	.heroStat { min-width: 70px; padding: 10px; }
-	.side { flex-direction: column; }
-}
-</style>
-
-<style lang="scss">
-/* ===== Hatady テーマトークン(グローバル) =====
-   テーマと言語は独立(要件④)。.hatady-scope + data-hatady-theme を付けた要素配下に効く。
-   ページ本体だけでなく、body 直下に描画される Hatady のモーダル/ポップアップにも同じトークンを
-   使わせるため、あえて module ではなくグローバルの属性セレクタで定義する。 */
-.hatady-scope {
-	--hy-heading: 'Zen Maru Gothic', 'Hiragino Maru Gothic ProN', system-ui, sans-serif;
-	--hy-serif: 'Noto Serif JP', 'Hiragino Mincho ProN', serif;
-}
-/* やわらかい紙(ライト) */
-.hatady-scope[data-hatady-theme="paper"] {
-	--hy-bg: #f4ecdd;
-	--hy-surface: #fffdf8;
-	--hy-surface-2: #f7efdf;
-	--hy-ink: #443a2c;
-	--hy-body: #5d4f3d;
-	--hy-muted: #a2937c;
-	--hy-accent: #d9824a;
-	--hy-accent-ink: #b8632f;
-	--hy-border: rgba(96, 70, 35, .13);
-	--hy-header-bg: #fffdf8;
-	--hy-chip-bg: #f4ecdd;
-}
-/* 夜の書斎(エスプレッソダーク) */
-.hatady-scope[data-hatady-theme="espresso"] {
-	--hy-bg: #211a14;
-	/* カード面は半透明だと下地と合成されて中間グレーになり文字が沈むため単色にする。 */
-	--hy-surface: #2f251c;
-	--hy-surface-2: #271f17;
-	--hy-ink: #fbf3e8;
-	--hy-body: #ecdcc6;
-	/* 暗背景では控えめな muted でも十分な明度が要る(@acct・時刻・ボタン類の視認性)。 */
-	--hy-muted: #cbb79a;
-	--hy-accent: #f0a94e;
-	--hy-accent-ink: #f4bd72;
-	--hy-border: rgba(255, 255, 255, .12);
-	--hy-header-bg: #2b2119;
-	--hy-chip-bg: rgba(255, 255, 255, .07);
-}
-/* hataskey 準拠(本体テーマ変数にマップ・ダーク/ライト追従) */
-.hatady-scope[data-hatady-theme="hataskey"] {
-	--hy-bg: var(--MI_THEME-bg);
-	--hy-surface: var(--MI_THEME-panel);
-	--hy-surface-2: var(--MI_THEME-bg);
-	--hy-ink: var(--MI_THEME-fg);
-	--hy-body: var(--MI_THEME-fg);
-	/* fgTransparentWeak は淡すぎて暗テーマで沈むため、fg を 60% 混色して可読性を確保。 */
-	--hy-muted: color-mix(in srgb, var(--MI_THEME-fg) 60%, transparent);
-	--hy-accent: var(--MI_THEME-accent);
-	--hy-accent-ink: var(--MI_THEME-accent);
-	--hy-border: var(--MI_THEME-divider);
-	--hy-header-bg: var(--MI_THEME-panel);
-	--hy-chip-bg: var(--MI_THEME-buttonBg, var(--MI_THEME-bg));
+@container hatady (max-width: 480px) {
+	.gallery[data-kind='work'] {
+		grid-template-columns: 1fr;
+	}
+	.collectionTabs {
+		flex-direction: column;
+		gap: 14px;
+	}
+	.filterPanel {
+		padding: 18px;
+	}
+	.mediaFilterGrid {
+		grid-template-columns: 1fr;
+	}
+	.pageTitle {
+		min-height: 56px;
+	}
+	.workCard {
+		padding: 20px 14px;
+	}
+	.recordControls {
+		gap: 10px;
+	}
+	.toolbar {
+		gap: 4px;
+	}
+	.periodTools {
+		gap: 8px;
+		padding: 10px;
+	}
+	.periodRange {
+		flex-basis: 100%;
+	}
+	.periodRange > .dateField {
+		display: grid;
+		gap: 0;
+		padding: 5px 8px 0;
+	}
+	.dateJump {
+		flex: 1 1 100%;
+	}
+	.toolbar > :first-child {
+		flex-shrink: 1;
+	}
 }
 </style>

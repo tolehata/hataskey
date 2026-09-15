@@ -23,27 +23,29 @@ function storageKey(): `hataFormDrafts:${string}` {
 	return `hataFormDrafts:${$i?.id ?? 'anonymous'}`;
 }
 
-function readStore(): DraftStore {
+function readStore(key: `hataFormDrafts:${string}`): DraftStore | null {
 	try {
-		const parsed = miLocalStorage.getItemAsJson(storageKey());
-		if (parsed == null || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+		const parsed = miLocalStorage.getItemAsJson(key);
+		if (parsed == null) return {};
+		if (typeof parsed !== 'object' || Array.isArray(parsed)) return null;
 		const now = Date.now();
 		return Object.fromEntries(Object.entries(parsed as DraftStore).filter(([, draft]) => (
 			draft?.version === 1 && typeof draft.updatedAt === 'number' && now - draft.updatedAt <= DRAFT_TTL
 		)));
 	} catch {
-		return {};
+		return null;
 	}
 }
 
-function writeStore(store: DraftStore): void {
+function writeStore(key: `hataFormDrafts:${string}`, store: DraftStore): boolean {
 	try {
 		const entries = Object.entries(store)
 			.sort((a, b) => b[1].updatedAt - a[1].updatedAt)
 			.slice(0, MAX_DRAFTS);
-		miLocalStorage.setItemAsJson(storageKey(), Object.fromEntries(entries));
+		miLocalStorage.setItemAsJson(key, Object.fromEntries(entries));
+		return true;
 	} catch {
-		// localStorage が無効・容量超過でもフォーム本体は止めない。
+		return false;
 	}
 }
 
@@ -53,12 +55,20 @@ export function useHataFormDraft<T>(options: {
 	restore: (data: T) => void;
 	isMeaningful: (data: T) => boolean;
 	delay?: number;
+	/** Hatady の明示保存。既存のフォームは従来の自動保存を維持する。 */
+	autoSave?: boolean;
 }): {
-	restored: Ref<boolean>;
-	clearDraft: () => void;
-	flushDraft: () => void;
-} {
+		restored: Ref<boolean>;
+		hasChanges: () => boolean;
+		clearDraft: (options?: { resume?: boolean }) => boolean;
+		saveDraft: () => boolean;
+		flushDraft: () => boolean;
+		/** Rebase after loading unchanged server data, without deleting a stored draft. */
+		resetBaseline: () => void;
+	} {
 	const restored = ref(false);
+	// アカウント切替後のアンマウントでも元のアカウントへだけ保存する。
+	const key = storageKey();
 	let completed = false;
 	let initialSnapshot = '';
 	let timer: number | null = null;
@@ -72,49 +82,53 @@ export function useHataFormDraft<T>(options: {
 		try { return JSON.stringify(data); } catch { return ''; }
 	};
 	const hasUnsavedChanges = (data: T): boolean => options.isMeaningful(data) && snapshot(data) !== initialSnapshot;
+	const hasChanges = () => !completed && hasUnsavedChanges(options.capture());
 
 	const flushDraft = () => {
 		cancelTimer();
-		if (completed) return;
-		const store = readStore();
+		if (completed) return true;
+		const store = readStore(key);
+		if (store == null) return false;
 		const data = options.capture();
 		if (hasUnsavedChanges(data)) {
 			store[options.id] = { version: 1, updatedAt: Date.now(), data };
 		} else {
 			delete store[options.id];
 		}
-		writeStore(store);
+		return writeStore(key, store);
 	};
 
-	const clearDraft = () => {
-		completed = true;
+	const clearDraft = (clearOptions?: { resume?: boolean }) => {
 		cancelTimer();
-		const store = readStore();
+		const store = readStore(key);
+		if (store == null) return false;
 		delete store[options.id];
-		writeStore(store);
+		if (!writeStore(key, store)) return false;
+		completed = !clearOptions?.resume;
+		if (clearOptions?.resume) initialSnapshot = snapshot(options.capture());
+		restored.value = false;
+		return true;
 	};
 
 	const beforeUnload = (event: BeforeUnloadEvent) => {
 		if (completed || !hasUnsavedChanges(options.capture())) return;
-		flushDraft();
+		if (options.autoSave !== false) flushDraft();
 		event.preventDefault();
 		event.returnValue = '';
 	};
 
 	onMounted(() => {
 		initialSnapshot = snapshot(options.capture());
-		const draft = readStore()[options.id];
+		const draft = readStore(key)?.[options.id];
 		if (draft != null) {
 			try {
 				options.restore(draft.data as T);
 				restored.value = true;
 			} catch {
-				const store = readStore();
-				delete store[options.id];
-				writeStore(store);
+				// 読み取れない旧形式もここでは消さず、明示破棄まで残す。
 			}
 		}
-		stopWatch = watch(options.capture, () => {
+		if (options.autoSave !== false) stopWatch = watch(options.capture, () => {
 			cancelTimer();
 			timer = window.setTimeout(flushDraft, options.delay ?? 600);
 		}, { deep: true });
@@ -124,8 +138,8 @@ export function useHataFormDraft<T>(options: {
 	onBeforeUnmount(() => {
 		stopWatch?.();
 		window.removeEventListener('beforeunload', beforeUnload);
-		flushDraft();
+		if (options.autoSave !== false) flushDraft();
 	});
 
-	return { restored, clearDraft, flushDraft };
+	return { restored, hasChanges, clearDraft, saveDraft: flushDraft, flushDraft, resetBaseline: () => { initialSnapshot = snapshot(options.capture()); } };
 }

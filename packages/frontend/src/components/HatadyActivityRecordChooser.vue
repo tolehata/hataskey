@@ -1,181 +1,97 @@
-<!--
-SPDX-FileCopyrightText: Tolehata and hatasaba-project
-SPDX-License-Identifier: AGPL-3.0-only
-Hatady の活動記録入口。学習・映画鑑賞・ゲームプレイを選び、媒体記録では対象作品を選ぶ。
--->
+<!-- SPDX-License-Identifier: AGPL-3.0-only -->
 <template>
-<MkWindow :initialWidth="680" :initialHeight="680" :canResize="true" @closed="emit('closed')">
-	<template #header><i class="ti ti-pencil-plus"></i> {{ copy.recordActivity }}</template>
-	<div class="hatady-scope" :data-hatady-theme="theme" :class="$style.body">
-		<header :class="$style.intro">
-			<h2>{{ copy.chooseRecordType }}</h2>
-			<p>{{ copy.chooseRecordTypeDescription }}</p>
-		</header>
-
-		<div :class="$style.typeGrid">
-			<button type="button" :class="[$style.typeCard, $style.studyCard]" @click="emit('study')">
-				<span :class="$style.typeIcon"><i class="ti ti-notebook"></i></span>
-				<span><b>{{ copy.recordStudy }}</b><small>{{ copy.recordStudyDescription }}</small></span>
-				<i class="ti ti-chevron-right" :class="$style.chevron"></i>
-			</button>
-			<button type="button" :class="[$style.typeCard, selectedKind === 'movie' && $style.typeCardOn]" @click="selectKind('movie')">
-				<span :class="$style.typeIcon"><i class="ti ti-movie"></i></span>
-				<span><b>{{ copy.recordMovie }}</b><small>{{ copy.recordMovieDescription }}</small></span>
-				<i class="ti ti-chevron-right" :class="$style.chevron"></i>
-			</button>
-			<button type="button" :class="[$style.typeCard, selectedKind === 'game' && $style.typeCardOn]" @click="selectKind('game')">
-				<span :class="$style.typeIcon"><i class="ti ti-device-gamepad-2"></i></span>
-				<span><b>{{ copy.recordGame }}</b><small>{{ copy.recordGameDescription }}</small></span>
-				<i class="ti ti-chevron-right" :class="$style.chevron"></i>
-			</button>
-		</div>
-
-		<section v-if="selectedKind" :class="$style.workSection">
-			<div :class="$style.sectionHead">
-				<div><h3>{{ selectedKind === 'movie' ? copy.selectMovie : copy.selectGame }}</h3><p>{{ copy.selectWorkDescription }}</p></div>
-				<button type="button" :class="$style.addButton" @click="emit('createWork', selectedKind)"><i class="ti ti-plus"></i> {{ selectedKind === 'movie' ? mediaCopy.addMovie : mediaCopy.addGame }}</button>
-			</div>
-			<form :class="$style.searchRow" @submit.prevent="applySearch">
-				<i class="ti ti-search"></i>
-				<input v-model="queryDraft" :placeholder="mediaCopy.searchPlaceholder" maxlength="256">
-				<button type="submit">{{ mediaCopy.search }}</button>
-			</form>
-			<div v-if="loading" :class="$style.state">{{ copy.loading }}</div>
-			<div v-else-if="works.length === 0" :class="$style.empty">
-				<i :class="['ti', selectedKind === 'movie' ? 'ti-movie-off' : 'ti-device-gamepad-off']"></i>
-				<b>{{ copy.noMatchingWorks }}</b>
-				<span>{{ copy.createWorkFirst }}</span>
-			</div>
-			<div v-else :class="$style.workGrid">
-				<button v-for="work in works" :key="work.id" type="button" :class="$style.workCard" @click="emit('session', work)">
-					<HyMediaCover :kind="work.kind" :title="work.title" :subtitle="work.creator || work.developer" :colorIndex="work.coverColorIndex" :width="64"/>
-					<span :class="$style.workBody"><b>{{ work.title }}</b><small>{{ work.creator || work.developer || work.publisher || copy.creatorUnknown }}</small><em>{{ statusLabel(work) }}</em></span>
-					<i class="ti ti-chevron-right" :class="$style.chevron"></i>
-				</button>
-			</div>
-			<button v-if="hasMore && !loading" type="button" :class="$style.more" @click="loadWorks(true)"><i class="ti ti-chevron-down"></i> {{ mediaCopy.loadMore }}</button>
-		</section>
+<HyDialog ref="dialog" title="今日は、何をした？" :bare="hasForm" :back="stage === 'works'" @close="requestClose" @back="back" @closed="emit('closed')">
+	<div v-if="stage === 'categories'" :class="$style.types" :data-direction="direction">
+		<button v-for="option in HATADY_ACTIVITY_CHOICES" :key="option.value" type="button" :class="$style.type" @click="selectKind(option.value)"><i :class="option.icon" aria-hidden="true"></i><span><strong>{{ option.label }}</strong><small>{{ descriptions[option.value] }}</small></span></button>
 	</div>
-</MkWindow>
+	<section v-else-if="stage === 'works'" :class="$style.works" :data-direction="direction">
+		<h3>{{ selectedKind === 'movie' ? 'どの映画を観た？' : 'どのゲームで遊んだ？' }}</h3>
+		<form :class="$style.search" @submit.prevent="applySearch"><label :class="$style.searchInput"><i class="ti ti-search" aria-hidden="true"></i><input v-model="queryDraft" name="work-search" aria-label="作品を検索" placeholder="作品を探す" maxlength="256"></label><button type="submit" class="hy-secondary">検索</button></form>
+		<button type="button" class="hy-secondary" @click="stage = 'create'"><i class="ti ti-plus" aria-hidden="true"></i>作品を登録</button>
+		<p v-if="loading" :class="$style.state" role="status">読み込み中</p>
+		<p v-else-if="error" :class="$style.state" role="alert">{{ error }}<button type="button" class="hy-secondary" @click="loadWorks()">再読み込み</button></p>
+		<p v-else-if="!works.length" :class="$style.state">{{ query ? '条件に合う作品はありません' : '作品を登録して、今日の記録を残そう' }}</p>
+		<div :class="$style.workList"><button v-for="work in works" :key="work.id" type="button" :class="$style.work" @click="selectWork(work)"><HyMediaCover :kind="work.kind" :title="work.title" :subtitle="work.creator || work.developer" :colorIndex="work.coverColorIndex" :width="48"/><span><strong>{{ work.title }}</strong><small>{{ work.creator || work.developer || work.publisher }}</small></span><i class="ti ti-chevron-right" aria-hidden="true"></i></button></div>
+		<button v-if="hasMore && !loading" type="button" class="hy-secondary" @click="loadWorks(true)">さらに表示</button>
+	</section>
+	<HatadyComposer v-else-if="stage === 'composer'" ref="composer" :kind="composerKind" embedded @done="emit('done', $event)" @back="back" @closed="dialog?.close()"/>
+	<HatadyMediaSessionForm v-else-if="stage === 'session' && selectedWork" ref="session" :work="selectedWork" embedded @done="emit('done', $event)" @back="back" @closed="dialog?.close()"/>
+	<HatadyMediaWorkForm v-else-if="stage === 'create'" ref="workForm" :kind="mediaKind" embedded @done="createdWork = $event" @back="back" @closed="finishWorkCreation"/>
+</HyDialog>
 </template>
-
-<script lang="ts" setup>
-import { ref } from 'vue';
-import MkWindow from '@/components/MkWindow.vue';
+<script setup lang="ts">
+import { computed, onBeforeUnmount, ref, useTemplateRef } from 'vue';
+import type { HatadyMediaWork } from '@/utility/hatady-media.js';
+import HyDialog from '@/components/HyDialog.vue';
 import HyMediaCover from '@/components/HyMediaCover.vue';
-import { i18n } from '@/i18n.js';
+import HatadyComposer from '@/components/HatadyComposer.vue';
+import HatadyMediaSessionForm from '@/components/HatadyMediaSessionForm.vue';
+import HatadyMediaWorkForm from '@/components/HatadyMediaWorkForm.vue';
+import { HATADY_ACTIVITY_CHOICES } from '@/utility/hatady-ui.js';
+import { normalizeMediaWorks } from '@/utility/hatady-media.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
-import { hatadyTheme } from '@/utility/hatady-prefs.js';
-import { hatadyMediaCopy, mediaStatusCopyKey, normalizeMediaWorks } from '@/utility/hatady-media.js';
-import type { HatadyMediaKind, HatadyMediaWork } from '@/utility/hatady-media.js';
-
-const emit = defineEmits<{
-	(ev: 'study'): void;
-	(ev: 'session', work: HatadyMediaWork): void;
-	(ev: 'createWork', kind: HatadyMediaKind): void;
-	(ev: 'closed'): void;
-}>();
-
-const theme = hatadyTheme;
-const copy = i18n.ts._hata._hatady._home;
-const mediaCopy = hatadyMediaCopy();
-const selectedKind = ref<HatadyMediaKind | null>(null);
-const works = ref<HatadyMediaWork[]>([]);
-const queryDraft = ref('');
-const query = ref('');
-const loading = ref(false);
-const hasMore = ref(false);
+const emit = defineEmits<{ (event: 'done', value: any): void; (event: 'closed'): void }>();
+const dialog = useTemplateRef('dialog'), composer = useTemplateRef('composer'), session = useTemplateRef('session'), workForm = useTemplateRef('workForm');
+const stage = ref<'categories' | 'works' | 'composer' | 'session' | 'create'>('categories'), selectedKind = ref('study'), selectedWork = ref<HatadyMediaWork | null>(null), createdWork = ref<HatadyMediaWork | null>(null);
+const direction = ref(1), works = ref<HatadyMediaWork[]>([]), queryDraft = ref(''), query = ref(''), loading = ref(false), hasMore = ref(false), error = ref('');
 let requestId = 0;
+const hasForm = computed(() => ['composer', 'session', 'create'].includes(stage.value));
+const composerKind = computed(() => selectedKind.value === 'exercise' ? 'exercise' : selectedKind.value === 'work' ? 'work' : 'study');
+const mediaKind = computed(() => selectedKind.value === 'movie' ? 'movie' : 'game');
+const descriptions: Record<string, string> = { study: '学んだこと、読んだ本', movie: '観た作品と感想', game: '遊んだ時間やできごと', exercise: '運動の種類と時間', work: '同じ作業に、日々の記録を' };
 
-function selectKind(kind: HatadyMediaKind) {
-	if (selectedKind.value === kind) return;
-	selectedKind.value = kind;
-	works.value = [];
-	queryDraft.value = '';
-	query.value = '';
-	loadWorks();
-}
+function selectKind(kind: string) { selectedKind.value = kind; direction.value = 1; if (kind === 'movie' || kind === 'game') { stage.value = 'works'; works.value = []; query.value = ''; queryDraft.value = ''; loadWorks(); } else stage.value = 'composer'; }
 
-function applySearch() {
-	query.value = queryDraft.value.trim();
-	loadWorks();
-}
+function selectWork(work: HatadyMediaWork) { selectedWork.value = work; direction.value = 1; stage.value = 'session'; }
+
+function applySearch() { query.value = queryDraft.value.trim(); loadWorks(); }
 
 async function loadWorks(append = false) {
-	if (!selectedKind.value || (append && loading.value)) return;
-	const currentRequest = ++requestId;
-	const kind = selectedKind.value;
-	loading.value = true;
+	if (append && loading.value) return;
+	const current = ++requestId, previous = append ? works.value : [], untilId = previous.at(-1)?.id;
+	loading.value = true; error.value = '';
 	try {
-		const previous = append ? works.value : [];
-		const untilId = append ? previous.at(-1)?.id : undefined;
-		const page = normalizeMediaWorks(await misskeyApi('hata/hatady/media/works/list' as never, {
-			kind,
-			sort: 'updatedAt',
-			order: 'desc',
-			limit: 100,
-			...(query.value ? { query: query.value } : {}),
-			...(untilId ? { untilId } : {}),
-		} as never));
-		if (currentRequest !== requestId) return;
-		const seen = new Set(previous.map(work => work.id));
-		const added = page.filter(work => !seen.has(work.id));
-		works.value = append ? [...previous, ...added] : page;
-		hasMore.value = page.length === 100 && added.length > 0;
-	} catch {
-		if (currentRequest === requestId) {
-			if (!append) works.value = [];
-			hasMore.value = false;
-		}
-	} finally {
-		if (currentRequest === requestId) loading.value = false;
-	}
+		const page = normalizeMediaWorks(await (misskeyApi as any)('hata/hatady/media/works/list', { kind: mediaKind.value, sort: 'updatedAt', order: 'desc', limit: 100, ...(query.value ? { query: query.value } : {}), ...(untilId ? { untilId } : {}) }));
+		if (current !== requestId) return;
+		const seen = new Set(previous.map(work => work.id)), added = page.filter(work => !seen.has(work.id));
+		works.value = [...previous, ...added]; hasMore.value = page.length === 100 && added.length > 0;
+	} catch { if (current === requestId) error.value = '作品を読み込めませんでした'; } finally { if (current === requestId) loading.value = false; }
 }
 
-function statusLabel(work: HatadyMediaWork): string {
-	return String(mediaCopy.status?.[mediaStatusCopyKey(work.kind, work.status)] ?? work.status);
-}
+function back() { direction.value = -1; if (stage.value === 'session' || stage.value === 'create') stage.value = 'works'; else stage.value = 'categories'; }
+
+function requestClose() { if (stage.value === 'composer') composer.value?.requestClose(); else if (stage.value === 'session') session.value?.requestClose(); else if (stage.value === 'create') workForm.value?.requestClose(); else dialog.value?.close(); }
+
+function finishWorkCreation() { if (createdWork.value) { works.value.unshift(createdWork.value); selectWork(createdWork.value); createdWork.value = null; } else dialog.value?.close(); }
+
+onBeforeUnmount(() => { requestId++; });
 </script>
-
 <style lang="scss" module>
-.body { min-height: 100%; box-sizing: border-box; padding: 22px; container-type: inline-size; background: var(--hy-bg); color: var(--hy-body); font-family: 'Noto Sans JP', 'Hiragino Sans', system-ui, sans-serif; }
-.intro h2, .sectionHead h3 { margin: 0; color: var(--hy-ink); font-family: var(--hy-heading); }
-.intro h2 { font-size: 18px; }
-.intro p, .sectionHead p { margin: 5px 0 0; color: var(--hy-muted); font-size: 12px; line-height: 1.6; }
-.typeGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 18px; }
-.typeCard { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; min-width: 0; padding: 14px; border: 1px solid var(--hy-border); border-radius: 14px; background: var(--hy-surface); color: var(--hy-ink); text-align: left; cursor: pointer; }
-.typeCard:hover, .typeCardOn { border-color: var(--hy-accent); background: color-mix(in srgb, var(--hy-accent) 9%, var(--hy-surface)); }
-.typeIcon { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 11px; background: color-mix(in srgb, var(--hy-accent) 14%, var(--hy-surface)); color: var(--hy-accent-ink); font-size: 18px; }
-.typeCard b, .typeCard small { display: block; min-width: 0; }
-.typeCard b { font-family: var(--hy-heading); font-size: 13px; }
-.typeCard small { margin-top: 4px; color: var(--hy-muted); font-size: 10.5px; line-height: 1.45; }
-.chevron { color: var(--hy-muted); }
-.workSection { margin-top: 22px; padding-top: 19px; border-top: 1px solid var(--hy-border); }
-.sectionHead { display: flex; justify-content: space-between; align-items: center; gap: 14px; }
-.sectionHead h3 { font-size: 15px; }
-.addButton, .searchRow button, .more { display: inline-flex; align-items: center; justify-content: center; gap: 5px; border: 0; border-radius: 999px; background: var(--hy-accent); color: #fff; font-weight: 700; cursor: pointer; }
-.addButton { flex: 0 0 auto; padding: 8px 13px; }
-.searchRow { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 8px; margin-top: 14px; padding: 6px 7px 6px 11px; border: 1px solid var(--hy-border); border-radius: 12px; background: var(--hy-surface); }
-.searchRow i { color: var(--hy-muted); }
-.searchRow input { min-width: 0; padding: 6px 0; border: 0; outline: none; background: transparent; color: var(--hy-ink); font: inherit; }
-.searchRow button { padding: 7px 13px; }
-.state, .empty { padding: 30px 12px; text-align: center; color: var(--hy-muted); }
-.empty { display: flex; flex-direction: column; align-items: center; gap: 6px; }
-.empty > i { font-size: 28px; }
-.empty b { color: var(--hy-ink); }
-.empty span { font-size: 11px; }
-.workGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 13px; }
-.workCard { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; min-width: 0; padding: 10px; border: 1px solid var(--hy-border); border-radius: 12px; background: var(--hy-surface); color: var(--hy-ink); text-align: left; cursor: pointer; }
-.workCard:hover { border-color: var(--hy-accent); }
-.workBody { min-width: 0; }
-.workBody b, .workBody small, .workBody em { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.workBody b { font-family: var(--hy-serif); font-size: 12.5px; }
-.workBody small { margin-top: 3px; color: var(--hy-muted); font-size: 10.5px; }
-.workBody em { margin-top: 5px; color: var(--hy-accent-ink); font-size: 9.5px; font-style: normal; font-weight: 700; }
-.more { width: 100%; margin-top: 12px; padding: 9px; background: var(--hy-surface); color: var(--hy-ink); border: 1px solid var(--hy-border); }
-@container (max-width: 580px) {
-	.typeGrid { grid-template-columns: 1fr; }
-	.workGrid { grid-template-columns: 1fr; }
-	.sectionHead { align-items: flex-start; flex-direction: column; }
-}
+.types { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; animation: enter .2s ease-out; }
+.type { display: flex; align-items: center; gap: 14px; min-width: 0; min-height: 94px; padding: 16px; border: 1px solid var(--hy-border); border-radius: 20px; background: var(--hy-surface); color: var(--hy-ink); text-align: left; cursor: pointer; }
+.type:last-child { grid-column: 1 / -1; }
+.type > i { flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 14px; background: var(--hy-soft); color: var(--hy-accent); font-size: 23px; }
+.type > span { display: grid; gap: 5px; }
+.type strong { font-size: 16px; }
+.type small { color: var(--hy-muted); font-size: 12px; line-height: 1.5; }
+.type:hover, .work:hover { background: var(--hy-soft); border-color: var(--hy-accent); }
+.type:focus-visible, .work:focus-visible { outline: 3px solid var(--hy-accent); outline-offset: 3px; }
+.works { display: grid; gap: 18px; animation: enter .2s ease-out; }
+.works h3 { margin: 0; font-size: 20px; }
+.works > button { justify-self: center; }
+.search { display: flex; gap: 8px; min-width: 0; }
+.searchInput { display: flex; align-items: center; flex: 1; gap: 8px; min-width: 0; padding: 0 14px; border: 1px solid var(--hy-border); border-radius: 16px; background: var(--hy-surface-2); }
+.searchInput:focus-within { outline: 2px solid var(--hy-accent); }
+.searchInput input { flex: 1; min-width: 0; width: 100%; min-height: 46px; border: 0; outline: 0; background: transparent; color: var(--hy-ink); font: inherit; }
+.workList { display: grid; gap: 10px; }
+.work { display: flex; align-items: center; gap: 14px; min-width: 0; padding: 14px; border: 1px solid var(--hy-border); border-radius: 18px; background: var(--hy-surface); color: var(--hy-ink); text-align: left; cursor: pointer; }
+.work > span { display: grid; gap: 5px; flex: 1; min-width: 0; }
+.work strong { font-size: 15px; overflow-wrap: anywhere; }
+.work small { font-size: 12px; color: var(--hy-muted); }
+.state { display: grid; justify-items: center; gap: 12px; text-align: center; color: var(--hy-muted); font-size: 14px; }
+.types[data-direction="-1"], .works[data-direction="-1"] { animation-name: leave; }
+@keyframes enter { from { opacity: .4; transform: translateX(12px); } }
+@keyframes leave { from { opacity: .4; transform: translateX(-12px); } }
+@container hy-dialog (max-width: 400px) { .type { gap: 9px; padding: 12px; } .type strong { font-size: 14px; } .type > i { width: 36px; height: 40px; } }
+@media (prefers-reduced-motion: reduce) { .types, .works { animation: none; } }
 </style>
