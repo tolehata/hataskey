@@ -4,6 +4,7 @@
  */
 
 import { afterEach, describe, expect, test, vi } from 'vitest';
+vi.mock('@/i18n.js', () => ({ i18n: { ts: { _hata: { _hatafeed: { _exportRange: { numberAtLeastOne: '番号は1以上', numberOrder: '番号の範囲', dateOrder: '日付の範囲' } } } } } }));
 import { downloadHataFeedJson, localDayEndIso, localDayStartIso, validateHataFeedExportRange } from './hatafeed-export.js';
 
 afterEach(() => {

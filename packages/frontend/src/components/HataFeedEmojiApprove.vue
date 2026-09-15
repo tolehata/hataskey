@@ -8,24 +8,29 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 <template>
 <MkWindow
-	ref="dialog"
-	:initialWidth="860"
-	:initialHeight="720"
+	ref="dialog" class="hatady-scope hatafeed-scope"
+	data-hatafeed-window
+	:data-hatady-theme="hataFeedTheme"
+	centerTitle
+	autoHeight
+	:initialWidth="820"
+	:initialHeight="null"
 	:canResize="true"
+	:beforeClose="beforeClose"
+	:inert="prompt"
 	@closed="emit('closed')"
 >
 	<template #header><i class="ti ti-mood-check"></i> {{ initialTotal > 1 ? copy.headerMultiple : copy.headerSingle }}</template>
 
 	<div :class="$style.reviewShell">
+		<p v-if="error" role="alert">{{ error }}</p>
+		<div v-if="hasDraft" class="hf-draft-offer"><span>端末に保存した下書きがあります</span><button type="button" @click="resumeDraft">続きから編集</button></div>
 		<template v-if="currentReq">
 			<div v-if="initialTotal > 1" :class="$style.queuePanel">
 				<div :class="$style.queueHead">
 					<div>
 						<div :class="$style.queueTitle">{{ copy.pendingRequests }}</div>
 						<div :class="$style.queueMeta">{{ copyx.queueMeta({ current: (currentIndex + 1).toString(), total: queue.length.toString(), resolved: processedCount.toString() }) }}</div>
-					</div>
-					<div :class="$style.queueProgress" role="progressbar" :aria-valuemin="0" :aria-valuemax="initialTotal" :aria-valuenow="processedCount">
-						<span :style="{ width: `${progressPercent}%` }"></span>
 					</div>
 				</div>
 				<div :class="$style.queueStrip" :aria-label="copy.pendingRequestList">
@@ -35,7 +40,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 						type="button"
 						:class="[$style.queueItem, index === currentIndex && $style.queueItemCurrent]"
 						:title="copyx.reviewRequest({ name: `:${item.name}:` })"
-						@click="currentIndex = index"
+						:disabled="busy" @click="selectRequest(index)"
 					>
 						<img v-if="item.imageUrl" :src="item.imageUrl" :alt="item.name">
 						<i v-else class="ti ti-photo-off"></i>
@@ -49,7 +54,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<button type="button" :aria-label="copy.nextRequest" @click="showNext"><i class="ti ti-chevron-right"></i></button>
 			</div>
 
-			<Transition :name="slideDirection === 'next' ? 'hfEmojiNext' : 'hfEmojiPrev'" mode="out-in">
+			<Transition :css="prefer.r.animation.value" :name="slideDirection === 'next' ? 'hfEmojiNext' : 'hfEmojiPrev'" :mode="prefer.r.animation.value ? 'out-in' : undefined">
 				<div :key="currentReq.id" :class="$style.reviewGrid">
 					<section :class="$style.previewColumn">
 						<div :class="$style.sectionLabel">{{ copy.appearanceAndSource }}</div>
@@ -79,14 +84,14 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 					<section :class="$style.formColumn">
 						<div :class="$style.sectionLabel">{{ copy.registrationDetails }}</div>
-						<MkInfo>{{ copy.reviewHint }}</MkInfo>
+						<MkInfo :class="$style.fullField">{{ copy.reviewHint }}</MkInfo>
 
-						<MkInput v-model="name">
+						<MkInput v-model="name" :class="$style.fullField">
 							<template #label>{{ copy.name }} <span :class="$style.req">{{ copy.required }}</span></template>
 							<template #prefix>:</template>
 							<template #suffix>:</template>
 						</MkInput>
-						<MkInput v-model="license">
+						<MkInput v-model="license" :class="$style.fullField">
 							<template #label>{{ copy.license }}</template>
 							<template #caption>{{ currentReq.sourceType === 'remote' ? copy.remoteLicenseHint : copy.ownLicenseHint }}</template>
 						</MkInput>
@@ -94,8 +99,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<MkInput v-model="tagsRaw">
 							<template #label>{{ copy.tags }}</template>
 						</MkInput>
-						<MkSwitch v-model="localOnly">{{ copy.localOnly }}</MkSwitch>
-						<MkSwitch v-model="isSensitive">{{ copy.sensitive }}</MkSwitch>
+						<MkSwitch v-model="localOnly" compact>{{ copy.localOnly }}</MkSwitch>
+						<MkSwitch v-model="isSensitive" compact>{{ copy.sensitive }}</MkSwitch>
 					</section>
 				</div>
 			</Transition>
@@ -123,12 +128,17 @@ SPDX-License-Identifier: AGPL-3.0-only
 import { computed, onMounted, ref, useTemplateRef, watch } from 'vue';
 import type { HataFeedEmojiRequest } from '@/utility/hatafeed.js';
 import MkWindow from '@/components/MkWindow.vue';
+import { useHataFeedDraft } from '@/utility/hatafeed-draft.js';
+import { hataFeedTheme } from '@/utility/hatasaba-device-prefs.js';
+import { hataFeedNotify } from '@/utility/hatafeed-ui.js';
+import '@/components/hatafeed-ui.css';
 import MkButton from '@/components/MkButton.vue';
 import MkInput from '@/components/MkInput.vue';
 import MkSwitch from '@/components/MkSwitch.vue';
 import MkInfo from '@/components/MkInfo.vue';
 import HataFeedCategorySelect from '@/components/HataFeedCategorySelect.vue';
 import { i18n } from '@/i18n.js';
+import { prefer } from '@/preferences.js';
 import * as os from '@/os.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 
@@ -146,7 +156,6 @@ const heldCount = ref(0);
 const approvedCount = ref(0);
 const rejectedCount = ref(0);
 const processedCount = computed(() => Math.max(0, initialTotal.value - queue.value.length));
-const progressPercent = computed(() => initialTotal.value === 0 ? 100 : Math.round((processedCount.value / initialTotal.value) * 100));
 const slideDirection = ref<'next' | 'prev'>('next');
 
 let initialized = false;
@@ -167,6 +176,7 @@ const localOnly = ref(false);
 const isSensitive = ref(false);
 const categories = ref<string[]>([]);
 const busy = ref(false);
+const error = ref('');
 
 const safeOriginalUrl = computed(() => {
 	const u = currentReq.value?.originalUrl;
@@ -179,14 +189,51 @@ const safeOriginalUrl = computed(() => {
 	}
 });
 
-watch(currentReq, req => {
-	name.value = req?.name ?? '';
-	license.value = req?.license ?? '';
-	category.value = req?.category ?? '';
-	tagsRaw.value = (req?.aliases ?? []).join(' ');
-	localOnly.value = req?.localOnly ?? false;
-	isSensitive.value = req?.isSensitive ?? false;
-}, { immediate: true });
+type ReviewFields = { name: string; license: string; category: string | null; tagsRaw: string; localOnly: boolean; isSensitive: boolean };
+const edits = new Map<string, ReviewFields>();
+let restoring = false;
+const originalFields = (req: HataFeedEmojiRequest): ReviewFields => ({ name: req.name, license: req.license ?? '', category: req.category ?? '', tagsRaw: req.aliases.join(' '), localOnly: req.localOnly, isSensitive: req.isSensitive });
+const currentFields = (): ReviewFields => ({ name: name.value, license: license.value, category: category.value, tagsRaw: tagsRaw.value, localOnly: localOnly.value, isSensitive: isSensitive.value });
+
+function loadFields(req: HataFeedEmojiRequest | null) {
+	if (!req) return;
+	const fields = edits.get(req.id) ?? originalFields(req);
+	name.value = fields.name; license.value = fields.license; category.value = fields.category;
+	tagsRaw.value = fields.tagsRaw; localOnly.value = fields.localOnly; isSensitive.value = fields.isSensitive;
+}
+
+watch(currentReq, (req, previous) => {
+	if (!restoring && previous && queue.value.some(item => item.id === previous.id)) edits.set(previous.id, currentFields());
+	loadFields(req);
+}, { immediate: true, flush: 'sync' });
+type ReviewDraft = { changes: Record<string, ReviewFields>; selectedId?: string };
+const { beforeClose, finishSubmission, prompt, hasDraft, resumeDraft } = useHataFeedDraft<ReviewDraft>({
+	id: 'hatafeed:emoji-review',
+	busy: () => busy.value,
+	capture: () => {
+		const changes: Record<string, ReviewFields> = {};
+		for (const req of queue.value) {
+			const fields = req.id === currentReq.value?.id ? currentFields() : edits.get(req.id);
+			if (fields && JSON.stringify(fields) !== JSON.stringify(originalFields(req))) changes[req.id] = fields;
+		}
+		return { changes, selectedId: currentReq.value?.id };
+	},
+	restore: draft => {
+		restoring = true;
+		for (const req of queue.value) {
+			const fields = draft.changes?.[req.id];
+			if (!fields || typeof fields.name !== 'string' || typeof fields.license !== 'string' || typeof fields.tagsRaw !== 'string') continue;
+			edits.set(req.id, { name: fields.name, license: fields.license, tagsRaw: fields.tagsRaw, category: typeof fields.category === 'string' ? fields.category : null, localOnly: fields.localOnly === true, isSensitive: fields.isSensitive === true });
+		}
+		const index = queue.value.findIndex(req => req.id === draft.selectedId);
+		if (index >= 0) currentIndex.value = index;
+		loadFields(currentReq.value);
+		restoring = false;
+	},
+	isMeaningful: draft => Object.keys(draft.changes).length > 0,
+});
+
+function selectRequest(index: number) { if (!busy.value) currentIndex.value = index; }
 
 onMounted(async () => {
 	categories.value = await misskeyApi('hata/feedback/emoji-categories', {}).catch(() => []);
@@ -194,18 +241,21 @@ onMounted(async () => {
 
 function removeCurrent(): void {
 	if (currentReq.value == null) return;
+	edits.delete(currentReq.value.id);
 	queue.value.splice(currentIndex.value, 1);
 	if (currentIndex.value >= queue.value.length) currentIndex.value = Math.max(0, queue.value.length - 1);
+	if (!queue.value.length) finishSubmission();
 }
 
 // 旗鯖fork: 保留。⚠️従来はここで次の申請へ送るだけで、管理者が直した入力値は保存していなかった。
 //   保留は「あとで続きから見る」ための状態なので、入力値をサーバーへ保存してから離れる。
 async function holdAndNext(): Promise<void> {
 	const req = currentReq.value;
-	if (req == null) return;
+	if (busy.value || req == null) return;
 	const { canceled, result } = await os.inputText({ title: copy.holdReason, default: '' });
 	if (canceled) return;
 	busy.value = true;
+	error.value = '';
 	try {
 		if (!await ensureStillPending(req.id)) return;
 		await misskeyApi('hata/feedback/emoji-requests/hold', {
@@ -222,19 +272,21 @@ async function holdAndNext(): Promise<void> {
 		slideDirection.value = 'next';
 		removeCurrent();
 		emit('done');
+	} catch {
+		error.value = '処理できませんでした。入力内容を残しています';
 	} finally {
 		busy.value = false;
 	}
 }
 
 function showNext(): void {
-	if (queue.value.length <= 1) return;
+	if (busy.value || queue.value.length <= 1) return;
 	slideDirection.value = 'next';
 	currentIndex.value = (currentIndex.value + 1) % queue.value.length;
 }
 
 function showPrevious(): void {
-	if (queue.value.length <= 1) return;
+	if (busy.value || queue.value.length <= 1) return;
 	slideDirection.value = 'prev';
 	currentIndex.value = (currentIndex.value - 1 + queue.value.length) % queue.value.length;
 }
@@ -244,7 +296,7 @@ async function ensureStillPending(requestId: string): Promise<boolean> {
 	// ⚠️保留中(held)も引き続き処理できる。ここを pending だけにすると保留した申請が
 	//   「もう処理済みです」と誤判定され、二度と承認・却下できなくなる。
 	if (latest[0]?.status === 'pending' || latest[0]?.status === 'held') return true;
-	os.toast(copy.alreadyProcessed);
+	hataFeedNotify(copy.alreadyProcessed);
 	removeCurrent();
 	emit('done');
 	return false;
@@ -252,8 +304,9 @@ async function ensureStillPending(requestId: string): Promise<boolean> {
 
 async function approve(): Promise<void> {
 	const req = currentReq.value;
-	if (req == null || !name.value.trim()) return;
+	if (busy.value || req == null || !name.value.trim()) return;
 	busy.value = true;
+	error.value = '';
 	try {
 		if (!await ensureStillPending(req.id)) return;
 		await misskeyApi('hata/feedback/emoji-requests/approve', {
@@ -268,7 +321,9 @@ async function approve(): Promise<void> {
 		approvedCount.value++;
 		removeCurrent();
 		emit('done');
-		os.success();
+		hataFeedNotify('保存しました');
+	} catch {
+		error.value = '処理できませんでした。入力内容を残しています';
 	} finally {
 		busy.value = false;
 	}
@@ -276,16 +331,19 @@ async function approve(): Promise<void> {
 
 async function reject(): Promise<void> {
 	const req = currentReq.value;
-	if (req == null) return;
+	if (busy.value || req == null) return;
 	const { canceled, result } = await os.inputText({ title: copy.rejectReason, default: '' });
 	if (canceled) return;
 	busy.value = true;
+	error.value = '';
 	try {
 		if (!await ensureStillPending(req.id)) return;
 		await misskeyApi('hata/feedback/emoji-requests/reject', { requestId: req.id, comment: result.trim() === '' ? null : result });
 		rejectedCount.value++;
 		removeCurrent();
 		emit('done');
+	} catch {
+		error.value = '処理できませんでした。入力内容を残しています';
 	} finally {
 		busy.value = false;
 	}
@@ -297,23 +355,24 @@ function closeWindow(): void {
 </script>
 
 <style lang="scss" module>
-.reviewShell { container-type: inline-size; padding: 20px; min-width: 0; }
-.queuePanel { margin-bottom: 18px; padding: 12px 14px; border: 1px solid var(--MI_THEME-divider); border-radius: 14px; background: var(--MI_THEME-bg); }
-.queueHead { display: grid; grid-template-columns: minmax(0, 1fr) 180px; align-items: center; gap: 14px; margin-bottom: 10px; }
+.reviewShell { container-type: inline-size; text-align: center; padding: 20px; min-width: 0; }
+.queuePanel { margin-bottom: 18px; padding: 0; }
+.queueHead { display: grid; grid-template-columns: minmax(0, 1fr); text-align: center; align-items: center; gap: 14px; margin-bottom: 10px; }
 .queueTitle { font-weight: 800; }
 .queueMeta { margin-top: 2px; font-size: .76em; opacity: .65; }
-.queueProgress { height: 7px; overflow: hidden; border-radius: 999px; background: var(--MI_THEME-divider); }
-.queueProgress span { display: block; height: 100%; border-radius: inherit; background: var(--MI_THEME-accent); transition: width .2s ease; }
-.queueStrip { display: flex; gap: 8px; overflow-x: auto; padding: 2px; }
+.queueStrip { display: flex; justify-content: safe center; gap: 8px; overflow-x: auto; padding: 2px; }
 .queueItem { width: 46px; height: 46px; flex: 0 0 46px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--MI_THEME-divider); border-radius: 10px; background: var(--MI_THEME-panel); color: inherit; cursor: pointer; }
 .queueItem img { max-width: 34px; max-height: 34px; object-fit: contain; }
 .queueItemCurrent { border-color: var(--MI_THEME-accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--MI_THEME-accent) 24%, transparent); }
-.mobileNav { display: none; }
+.mobileNav button { width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--MI_THEME-divider); border-radius: 50%; background: var(--MI_THEME-panel); color: inherit; cursor: pointer; }
+.mobileNav { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 16px; }
 
-.reviewGrid { display: grid; grid-template-columns: minmax(260px, .85fr) minmax(300px, 1.15fr); gap: 20px; align-items: start; }
+.reviewGrid { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 20px; align-items: start; }
 .previewColumn, .formColumn { min-width: 0; }
-.formColumn { display: flex; flex-direction: column; gap: 14px; }
-.sectionLabel { margin-bottom: 10px; font-size: .78em; font-weight: 800; opacity: .65; letter-spacing: .04em; }
+.formColumn { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.formColumn > * { min-width: 0; }
+.fullField, .sectionLabel { grid-column: 1 / -1; }
+.sectionLabel { margin-bottom: 6px; font-size: .78em; font-weight: 800; opacity: .65; letter-spacing: .04em; }
 .req { color: var(--MI_THEME-error); font-size: .72em; margin-left: 4px; }
 
 .previewWrap { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -334,14 +393,14 @@ function closeWindow(): void {
 .pill { background: var(--MI_THEME-accentedBg); color: var(--MI_THEME-accent); border-radius: 999px; padding: 3px 12px; font-size: .78em; }
 .srcLink { font-size: .8em; color: var(--MI_THEME-accent); text-decoration: none; overflow-wrap: anywhere; }
 
-.actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--MI_THEME-divider); }
-.resolveActions { display: flex; justify-content: flex-end; gap: 10px; margin-left: auto; }
-.complete { min-height: 360px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; }
+.actions { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--MI_THEME-divider); }
+.resolveActions { display: flex; justify-content: center; gap: 10px; }
+.complete { padding: 24px 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; }
 .complete > i { color: var(--MI_THEME-accent); font-size: 3rem; }
 .completeTitle { font-size: 1.15em; font-weight: 800; }
 .completeText { opacity: .65; }
 
-@container (max-width: 700px) {
+@container (max-width: 500px) {
 	.reviewGrid { grid-template-columns: 1fr; }
 	.queueHead { grid-template-columns: 1fr; }
 	.queueStrip { display: none; }

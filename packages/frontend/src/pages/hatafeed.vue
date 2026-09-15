@@ -1,346 +1,164 @@
-<!--
-SPDX-FileCopyrightText: Tolehata and hatasaba-project
-SPDX-License-Identifier: AGPL-3.0-only
-旗鯖fork: HataFeed(フィードバックセンター)メインページ。
-  - ロールポリシー canAccessHataFeed で利用可否を判定(未許可は「現在解放されていません」)。
-  - デザイン改修(§4 2a/3a): Gitホスティング級の情報密度のリスト型リポジトリUI。
-    上部ツールバー(サーバー切替 + 検索 + 新規イシュー) → タブバー → 本体グリッド(1fr 296px)。
-    ベル/アバター等のグローバル chrome は Misskey フレーム(MkPageHeader)に委ね、二重化しない。
-  - <600px ではコンテナクエリで縦積み(3a): ティッカー + 集計チップ + 予定 + フィルタ + リスト。
-  - /hatafeed/:issueId で Issue 詳細(会話・賛同・スタッフ操作)を表示。
-  - ロゴフォントは Hataskey と同じ Righteous(同梱)。背景右下に若葉のアニメーション。
--->
+<!-- SPDX-FileCopyrightText: Tolehata and hatasaba-project
+SPDX-License-Identifier: AGPL-3.0-only -->
 <template>
-<MkStickyContainer>
-	<template #header><MkPageHeader :title="'HataFeed'" :icon="'ti ti-message-report'"/></template>
-	<MkSpacer :contentMax="1120">
-		<div v-if="loading" :class="$style.center">{{ copy.loading }}</div>
-
-		<!-- ロール未許可 -->
-		<div v-else-if="!canAccess" :class="$style.empty">
-			<i class="ti ti-lock" :class="$style.emptyIcon"></i>
-			<div :class="$style.emptyText">{{ copy.unavailable }}</div>
-		</div>
-
-		<!-- 詳細ビュー -->
-		<HataFeedIssue
-			v-else-if="issueId"
-			:issueId="issueId"
-			:isStaff="isStaff"
-			@back="goList"
+<div class="hatady-scope hatafeed-scope" :class="$style.root" :data-hatady-theme="hataFeedTheme">
+	<HataFeedLeaves v-if="leavesEnabled"/>
+	<div :class="$style.page">
+		<HataFeedHeader
+			v-if="canAccess" :tab="issueId ? 'issues' : activeTab" :projectName="currentProject?.name ?? 'Hataskey'" :staff="isStaff" :unread="unreadCount" :refreshing="refreshing"
+			@navigate="navigateTab" @create="handleCreate" @project="openProjectSwitch" @notifications="openNotifications" @refresh="refreshAll" @settings="openDisplaySettings" @exit="exitHataFeed"
 		/>
-
-		<!-- ダッシュボード(2a/3a) -->
-		<div v-else :class="$style.repo" :data-smartphone="isSmartphone ? 'on' : undefined">
-			<HataFeedLeaves v-if="leavesEnabled"/>
-			<div :class="$style.repoInner">
-
-				<!-- ツールバー: サーバー(プロジェクト)切替 + 検索 + 補助操作 -->
-				<div :class="$style.toolbar">
-					<div :class="$style.brand">
-						<span :class="$style.logo">HataFeed</span>
+		<p v-if="loading" class="hf-empty" role="status">読み込んでいます</p>
+		<div v-else-if="error" class="hf-empty" role="alert">{{ error }}<button type="button" class="hy-secondary" @click="error = ''; init()">再読み込み</button></div>
+		<p v-else-if="!canAccess" class="hf-empty">HataFeed を利用できません</p>
+		<HataFeedIssue v-else-if="issueId" :key="issueId" ref="issueView" :issueId="issueId" :isStaff="isStaff" @back="goList"/>
+		<main v-else :class="$style.main">
+			<HataFeedHome
+				v-if="activeTab === 'home'" :isStaff="isStaff" :roadmap="roadmap" :ownEmojiRequests="ownEmojiRequests" :emojiRequests="emojiRequests" :emojiQuota="emojiQuota" :activity="activity" :issues="issues" :issuesHasNext="issuesHasNext" :loading="issuePageLoading"
+				@issue="openIssue" @navigate="navigateTab" @approve="openApprove" @addRoadmap="addRoadmap" @ownHistory="openOwnHistory" @reviewQueue="openReviewQueue"
+			/>
+			<HataFeedBeta v-if="activeTab === 'beta'" @createIssue="createIssue"/>
+			<div v-if="activeTab === 'emoji' && isStaff" class="hf-panel" :class="$style.emojiAdmin">
+				<div :class="$style.eaTop">
+					<div :class="$style.eaFilters">
+						<button v-for="f in emojiAdminFilters" :key="String(f.value)" :class="$style.eaFilter" :aria-pressed="emojiAdminStatus === f.value" @click="setEmojiAdminStatus(f.value)">{{ f.label }}</button>
 					</div>
-					<div :class="$style.toolDivider"></div>
-					<button :class="$style.serverBtn" @click="openProjectSwitch">
-						<i class="ti ti-flag-2" :class="$style.serverIcon" :style="currentProject?.color ? { color: currentProject.color } : undefined"></i>
-						<span :class="$style.serverName">{{ currentProject?.name ?? 'Hataskey' }}</span>
-						<i class="ti ti-selector" :class="$style.serverCaret"></i>
-					</button>
-					<div :class="$style.search">
-						<i class="ti ti-search" :class="$style.searchIcon"></i>
-						<input v-model="searchQuery" :class="$style.searchInput" type="search" :placeholder="copy.searchPlaceholder" @keydown.enter="reloadIssues" @search="reloadIssues">
-						<button v-if="searchQuery" :class="$style.searchClear" @click="searchQuery = ''; reloadIssues()"><i class="ti ti-x"></i></button>
-					</div>
-					<button v-if="activeTab === 'roadmap' && isStaff" :class="[$style.newBtn]" @click="addRoadmap"><i class="ti ti-route"></i><span>{{ copy.addPlan }}</span></button>
-					<button ref="bellEl" :class="$style.iconBtn" :title="copy.notifications" @click="openNotifications">
-						<i class="ti ti-bell"></i>
-						<span v-if="unreadCount > 0" :class="$style.bellBadge">{{ unreadCount > 99 ? '99+' : unreadCount }}</span>
-					</button>
-					<button :class="$style.iconBtn" :title="copy.refresh" @click="refreshAll"><i class="ti ti-refresh"></i></button>
-					<button v-if="canExportCurrent" :class="[$style.iconBtn, $style.iconBtnHideMobile]" :title="copy.export" @click="openExportWindow"><i class="ti ti-file-export"></i></button>
-					<button v-if="isStaff && currentProjectId != null" :class="[$style.iconBtn, $style.iconBtnHideMobile]" :title="copy.manageProject" @click="manageCurrentProject"><i class="ti ti-settings"></i></button>
-				</div>
-
-				<!-- タブバー(下線式) -->
-				<nav :class="$style.tabs">
-					<button :class="[$style.tab, activeTab === 'issues' && $style.tabOn]" @click="goIssuesTab"><i class="ti ti-clipboard-list"></i> {{ copy.issues }}</button>
-					<button :class="[$style.tab, activeTab === 'roadmap' && $style.tabOn]" @click="goRoadmapTab"><i class="ti ti-route"></i> {{ copy.roadmap }}</button>
-					<button v-if="isStaff" :class="[$style.tab, activeTab === 'emoji' && $style.tabOn]" @click="goEmojiAdminTab"><i class="ti ti-mood-cog"></i> {{ copy.requestManagement }}<span v-if="emojiRequests.length" :class="$style.tabCount">{{ emojiRequests.length }}</span></button>
-					<button :class="$style.tab" @click="openBeta"><i class="ti ti-flask"></i> {{ copy.beta }}<span v-if="hataBetaTotal" :class="$style.tabCount">{{ hataBetaTotal }}</span></button>
-				</nav>
-
-				<!-- 旗鯖fork: 利用者の主要操作を本文上部へ固定。左が絵文字申請、右が新規イシュー。 -->
-				<div v-if="activeTab === 'issues'" :class="$style.topActions">
-					<button type="button" :class="[$style.topAction, $style.topActionEmoji]" @click="requestEmoji">
-						<i class="ti ti-mood-plus"></i>
-						<span>{{ copy.emojiRequest }}</span>
-					</button>
-					<button type="button" :class="[$style.topAction, $style.topActionEmoji]" @click="createIssue">
-						<i class="ti ti-pencil-plus"></i>
-						<span>{{ copy.newIssue }}</span>
-					</button>
-				</div>
-
-				<!-- 絵文字申請管理(スタッフのみ・2g相当): 申請一覧を状態別に絞り、各行の「確認」から承認/リジェクト -->
-				<div v-if="activeTab === 'emoji' && isStaff" :class="$style.emojiAdmin">
-					<div :class="$style.eaTop">
-						<div :class="$style.eaFilters">
-							<button v-for="f in emojiAdminFilters" :key="String(f.value)" :class="[$style.eaFilter, emojiAdminStatus === f.value && $style.eaFilterOn]" @click="setEmojiAdminStatus(f.value)">{{ f.label }}</button>
-						</div>
-						<div :class="$style.eaTopActions">
-							<button type="button" :class="$style.eaRequestOwn" @click="requestEmoji"><i class="ti ti-mood-plus"></i> {{ copy.requestEmojiForSelf }}</button>
-							<button v-if="emojiAdminStatus === 'pending' && emojiAdminList.length" type="button" :class="$style.eaBatch" @click="openReviewQueue"><i class="ti ti-player-track-next"></i> {{ copy.reviewPendingSequentially }}</button>
-						</div>
-					</div>
-					<div v-if="emojiAdminList.length === 0" :class="$style.emptyBlock">
-						<i class="ti ti-mood-empty" :class="$style.emptyBlockIcon"></i>
-						<div>{{ emojiAdminStatus === 'pending' ? copy.noPendingRequests : copy.noMatchingRequests }}</div>
-					</div>
-					<div v-else :class="$style.eaList">
-						<div v-for="r in emojiAdminList" :key="r.id" :class="$style.eaRow">
-							<span :class="$style.eaTile"><img v-if="r.imageUrl" :src="r.imageUrl" :class="$style.eaImg" :alt="r.name"/></span>
-							<div :class="$style.eaInfo">
-								<div :class="$style.eaName">:{{ r.name }}:</div>
-								<div :class="$style.eaMeta">
-									<HfAvatar v-if="r.requestedBy" :user="r.requestedBy" :size="16"/>
-									<span>{{ r.requestedBy?.name ?? r.requestedBy?.username }}</span>
-									・ <MkTime :time="r.createdAt" mode="relative"/>
-									・ {{ r.sourceType === 'remote' ? (r.remoteHost ? copyx.remoteSource({ host: r.remoteHost }) : copy.remote) : copy.ownSource }}
-								</div>
-								<div v-if="r.resolvedComment" :class="$style.eaResolution"><i class="ti ti-message-circle"></i><span><strong>{{ copy.resolutionReason }}</strong> {{ r.resolvedComment }}</span></div>
-							</div>
-							<div :class="$style.eaAction">
-								<button v-if="r.status === 'pending' || r.status === 'held'" :class="$style.eaReview" @click="openApprove(r)"><i class="ti ti-eye"></i> {{ copy.review }}</button>
-								<span v-else :class="['ti', emojiStatusIcon[r.status] ?? '', 'hfEstIcon']" :data-est="r.status" :title="emojiStatusLabel[r.status]"></span>
-							</div>
-						</div>
-					</div>
-					<div v-if="emojiAdminPage > 0 || emojiAdminHasNext" :class="$style.pager">
-						<button :class="$style.pagerArrow" :disabled="emojiAdminPage === 0" @click="prevEmojiAdminPage"><i class="ti ti-chevron-left"></i> {{ copy.previous }}</button>
-						<span :class="$style.pagerPage">{{ emojiAdminPage + 1 }}</span>
-						<button :class="$style.pagerArrow" :disabled="!emojiAdminHasNext" @click="nextEmojiAdminPage">{{ copy.next }} <i class="ti ti-chevron-right"></i></button>
+					<div :class="$style.eaTopActions">
+						<button type="button" :class="$style.eaRequestOwn" @click="requestEmoji"><i class="ti ti-mood-plus"></i> {{ copy.requestEmojiForSelf }}</button>
+						<button v-if="emojiAdminStatus === 'pending' && emojiAdminList.length" type="button" :class="$style.eaBatch" @click="openReviewQueue"><i class="ti ti-player-track-next"></i> {{ copy.reviewPendingSequentially }}</button>
 					</div>
 				</div>
-
-				<!-- 3a(モバイル)専用: ライブティッカー + 集計チップ + 予定横スクロール -->
-				<div v-if="activeTab !== 'emoji'" :class="$style.mobileExtras">
-					<div v-if="activity.length" :class="$style.ticker">
-						<span :class="$style.tickerDot"></span>
-						<span :class="$style.tickerText"><b>{{ activity[0].user ? (activity[0].user.name ?? activity[0].user.username) : copy.someone }}</b>{{ activity[0].verb }}{{ copyx.activityObject({ label: activity[0].label }) }}</span>
-						<MkTime :class="$style.tickerTime" :time="activity[0].time" mode="relative"/>
-					</div>
-					<div :class="$style.statChips">
-						<button :class="$style.statChip" @click="applyStatus('open')"><div :class="[$style.statNum, $style.statOpen]">{{ counts.open }}</div><div :class="$style.statLabel">{{ statusLabel.open }}</div></button>
-						<button :class="$style.statChip" @click="applyStatus('inProgress')"><div :class="[$style.statNum, $style.statDoing]">{{ counts.inProgress }}</div><div :class="$style.statLabel">{{ statusLabel.inProgress }}</div></button>
-						<button :class="$style.statChip" @click="applyStatus('resolved')"><div :class="[$style.statNum, $style.statResolved]">{{ counts.resolved }}</div><div :class="$style.statLabel">{{ statusLabel.resolved }}</div></button>
-						<button :class="$style.statChip" @click="isStaff ? goEmojiAdminTab() : requestEmoji()"><div :class="[$style.statNum, $style.statEmoji]">{{ emojiRequests.length }}</div><div :class="$style.statLabel">{{ isStaff ? copy.reviewRequests : copy.requestEmoji }}</div></button>
-					</div>
-					<!-- 旗鯖fork: スマホでは右サイドバーを畳むため、絵文字申請カラムだけ本文側へ再配置する。 -->
-					<section :class="$style.mobileEmojiCard">
-						<div :class="$style.mobileEmojiHead">
-							<div>
-								<div :class="$style.mobileEmojiTitle"><i class="ti ti-mood-smile"></i> {{ copy.emojiRequest }} <span v-if="emojiRequests.length">{{ emojiRequests.length }}</span></div>
-								<div :class="$style.mobileEmojiLead">{{ isStaff ? copy.pendingReviewLead : copy.requestLead }}</div>
+				<div v-if="emojiAdminList.length === 0" :class="$style.emptyBlock">
+					<i class="ti ti-mood-empty" :class="$style.emptyBlockIcon"></i>
+					<div>{{ emojiAdminStatus === 'pending' ? copy.noPendingRequests : copy.noMatchingRequests }}</div>
+				</div>
+				<div v-else :class="$style.eaList">
+					<div v-for="r in emojiAdminList" :key="r.id" :class="$style.eaRow">
+						<span :class="$style.eaTile"><img v-if="r.imageUrl" :src="r.imageUrl" :class="$style.eaImg" :alt="r.name"/></span>
+						<div :class="$style.eaInfo">
+							<div :class="$style.eaName">:{{ r.name }}:</div>
+							<div :class="$style.eaMeta">
+								<HfAvatar v-if="r.requestedBy" :user="r.requestedBy" :size="16"/>
+								<span>{{ r.requestedBy?.name ?? r.requestedBy?.username }}</span>
+								・ <MkTime :time="r.createdAt" mode="relative"/>
+								・ {{ r.sourceType === 'remote' ? (r.remoteHost ? copyx.remoteSource({ host: r.remoteHost }) : copy.remote) : copy.ownSource }}
 							</div>
-							<button type="button" :class="$style.mobileEmojiPrimary" @click="isStaff ? openReviewQueue() : requestEmoji()">
-								<i :class="isStaff ? 'ti ti-player-track-next' : 'ti ti-plus'"></i> {{ isStaff ? copy.reviewTogether : copy.submitRequest }}
-							</button>
+							<div v-if="r.resolvedComment" :class="$style.eaResolution"><i class="ti ti-message-circle"></i><span><strong>{{ copy.resolutionReason }}</strong> {{ r.resolvedComment }}</span></div>
 						</div>
-						<div v-if="emojiRequests.length === 0" :class="$style.emptyMini">{{ isStaff ? copy.noPendingRequests : copy.noRequestsYet }}</div>
-						<div v-else :class="$style.mobileEmojiList">
-							<button v-for="r in emojiRequests.slice(0, 5)" :key="r.id" type="button" :class="$style.mobileEmojiRow" @click="isStaff && r.status === 'pending' ? openApprove(r) : null">
-								<span :class="$style.emojiTile"><img v-if="r.imageUrl" :src="r.imageUrl" :class="$style.emojiImg" :alt="r.name"></span>
-								<span :class="$style.emojiCode">:{{ r.name }}:</span>
-								<i :class="['ti', emojiStatusIcon[r.status] ?? 'ti-clock-hour-4', 'hfEstIcon']" :data-est="r.status" :title="emojiStatusLabel[r.status]"></i>
-							</button>
-						</div>
-						<div v-if="emojiQuota && !isStaff" :class="$style.quotaWrap"><HfQuotaMeter :remaining="emojiQuota.remaining" :limit="emojiQuota.limit"/></div>
-					</section>
-					<div v-if="roadmap.length" :class="$style.roadScroll">
-						<div :class="$style.roadScrollHead"><i class="ti ti-route"></i> {{ copy.upcomingPlans }}</div>
-						<div :class="$style.roadScrollList">
-							<button v-for="r in roadmap.slice(0, 6)" :key="r.id" :class="$style.roadScrollCard" @click="openIssue(r.id)">
-								<div :class="$style.roadScrollTitle">{{ r.title }}</div>
-								<HfStatusPill :status="r.status" variant="pill"/>
-							</button>
+						<div :class="$style.eaAction">
+							<button v-if="r.status === 'pending' || r.status === 'held'" :class="$style.eaReview" @click="openApprove(r)"><i class="ti ti-eye"></i> {{ copy.review }}</button>
+							<span v-else :class="['ti', emojiStatusIcon[r.status] ?? '', 'hfEstIcon']" :data-est="r.status" :title="emojiStatusLabel[r.status]"></span>
 						</div>
 					</div>
 				</div>
-
-				<!-- 本体グリッド(イシュー/ロードマップ) -->
-				<div v-if="activeTab !== 'emoji'" :class="$style.gridCt">
-				<div :class="$style.grid">
-					<!-- 左: フィルタ + イシューリスト -->
-					<section :class="$style.listCol">
-						<div :class="$style.filterRow">
-							<button :class="[$style.filterToggle, !includeClosed && $style.filterToggleOn]" @click="setClosed(false)"><i class="ti ti-circle-dot"></i> {{ statusLabel.open }}</button>
-							<button :class="[$style.filterToggle, includeClosed && $style.filterToggleOn]" @click="setClosed(true)"><i class="ti ti-circle-check"></i> {{ statusLabel.resolved }}</button>
-							<div :class="$style.filterDropdowns">
-								<button :class="[$style.dropBtn, filterCategory && $style.dropBtnOn]" @click="openCategoryMenu">{{ filterCategory ? categoryLabel[filterCategory] : copy.category }} <i class="ti ti-chevron-down"></i></button>
-								<button :class="[$style.dropBtn, filterStatus && $style.dropBtnOn]" @click="openStatusMenu">{{ filterStatus ? statusLabel[filterStatus] : copy.status }} <i class="ti ti-chevron-down"></i></button>
-								<button :class="[$style.dropBtn, authorFilter && $style.dropBtnOn]" @click="openAuthorMenu">{{ authorFilter ? (authorFilter.name ?? authorFilter.username) : copy.author }} <i class="ti ti-chevron-down"></i></button>
-							</div>
-						</div>
-
-						<div v-if="visibleIssues.length === 0" :class="$style.emptyBlock">
-							<template v-if="activeTab === 'roadmap'">
-								<i class="ti ti-route" :class="$style.emptyBlockIcon"></i>
-								<div>{{ copy.roadmapEmptyLine1 }}<br>{{ copy.roadmapEmptyLine2 }}</div>
-								<button v-if="isStaff" :class="$style.emptyCta" @click="addRoadmap"><i class="ti ti-route"></i> {{ copy.planRoadmap }}</button>
-							</template>
-							<template v-else>
-								<i class="ti ti-mail-opened" :class="$style.emptyBlockIcon"></i>
-								<div>{{ copy.issueEmptyLine1 }}<br>{{ copy.issueEmptyLine2 }}</div>
-								<button :class="$style.emptyCta" @click="createIssue"><i class="ti ti-pencil-plus"></i> {{ copy.createIssue }}</button>
-							</template>
-						</div>
-						<div v-else ref="issueListEl" :class="$style.listCard">
-							<button
-								v-for="issue in visibleIssues"
-								:key="issue.id"
-								:class="[$style.issueRow, issue.pinned && $style.issueRowPinned, issue.closed && $style.issueRowClosed]"
-								@click="openIssue(issue.id)"
-							>
-								<i v-if="issue.pinned" class="ti ti-pin" :class="$style.rowPin"></i>
-								<HfStatusPill v-else :status="issue.status" variant="text" iconOnly :class="$style.rowStatusIcon"/>
-								<div :class="$style.rowMain">
-									<div :class="$style.rowTitleLine">
-										<span :class="$style.rowTitle">{{ issue.title }}</span>
-										<HfCategoryBadge :category="issue.category"/>
-									</div>
-									<div :class="$style.rowMeta">
-										<span :class="$style.rowNo">#{{ issue.number }}</span>
-										<template v-if="issue.createdBy">・ <MkUserName :class="$style.rowAuthor" :user="issue.createdBy"/>{{ copy.createdAtBefore }}<MkTime :time="issue.createdAt" mode="relative"/>{{ copy.createdAtAfter }}</template>
-										・ <HfStatusPill :status="issue.status" variant="text" :showIcon="false" :class="$style.rowStatusText"/>
-										<template v-if="issue.assignees && issue.assignees.length"> ・ <i class="ti ti-shield-check" :class="$style.rowAssigneeIcon"></i> <MkUserName :class="$style.rowAuthor" :user="issue.assignees[0]"/>{{ copy.assigneeSuffix }}</template>
-									</div>
-								</div>
-								<div :class="$style.rowSide">
-									<span :class="$style.rowStat"><i class="ti ti-message-2"></i> {{ issue.commentsCount }}</span>
-									<span :class="$style.rowStat"><i class="ti ti-heart"></i> {{ issue.agreementsCount }}</span>
-									<HfAvatar v-if="issue.createdBy" :user="issue.createdBy" :size="22"/>
-								</div>
-							</button>
-						</div>
-
-						<!-- ページ式ナビ -->
-						<div v-if="visibleIssues.length > 0 || issuePage > 0" :class="$style.pager">
-								<button :class="$style.pagerArrow" :disabled="issuePageLoading || issuePage === 0" @click="prevIssuePage"><i class="ti ti-chevron-left"></i> {{ copy.previous }}</button>
-							<span :class="$style.pagerPage">{{ issuePage + 1 }}</span>
-								<button :class="$style.pagerArrow" :disabled="issuePageLoading || !issuesHasNext" @click="nextIssuePage">{{ copy.next }} <i class="ti ti-chevron-right"></i></button>
-							<label :class="$style.pagerSize">
-								<select v-model.number="issuePageSize" :class="$style.pagerSelect" @change="reloadIssues">
-									<option :value="10">{{ copyx.itemCount({ count: '10' }) }}</option>
-									<option :value="50">{{ copyx.itemCount({ count: '50' }) }}</option>
-									<option :value="100">{{ copyx.itemCount({ count: '100' }) }}</option>
-								</select>
-							</label>
-						</div>
-					</section>
-
-					<!-- 右: サイドバー3カード -->
-					<aside :class="$style.sideCol">
-						<!-- ①近々の修正・改善予定 -->
-						<section v-if="roadmap.length || isStaff" :class="$style.sideCard">
-							<div :class="$style.sideHead">
-								<span :class="$style.sideTitle"><i class="ti ti-route"></i> {{ copy.upcomingPlans }}</span>
-								<button v-if="isStaff" :class="$style.sideAdd" @click="addRoadmap"><i class="ti ti-plus"></i></button>
-							</div>
-							<div v-if="roadmap.length === 0" :class="$style.emptyMini">{{ copy.noPublishedPlans }}</div>
-							<div v-else :class="$style.roadList">
-								<button v-for="r in roadmap.slice(0, 5)" :key="r.id" :class="$style.roadItem" @click="openIssue(r.id)">
-									<span :class="$style.roadDot" :data-status="r.status"></span>
-									<span :class="$style.roadTitle">{{ r.title }}</span>
-									<HfStatusPill :status="r.status" variant="pill"/>
-								</button>
-							</div>
-						</section>
-
-						<!-- ②絵文字申請 -->
-						<section :class="$style.sideCard">
-							<div :class="$style.sideHead">
-								<span :class="$style.sideTitle"><i class="ti ti-mood-smile"></i> {{ copy.emojiRequest }}<span v-if="emojiRequests.length" :class="$style.sideCount">{{ emojiRequests.length }}</span></span>
-								<div :class="$style.sideHeadActions">
-									<button v-if="isStaff && emojiRequests.length > 1" type="button" :class="$style.sideReviewQueue" :title="copy.reviewPendingTogetherTitle" @click="openReviewQueue"><i class="ti ti-player-track-next"></i> {{ copy.reviewTogether }}</button>
-									<button type="button" :class="$style.sideAddText" @click="requestEmoji"><i class="ti ti-plus"></i> {{ isStaff ? copy.submitForSelf : copy.submitRequest }}</button>
-								</div>
-							</div>
-							<div v-if="emojiRequests.length === 0" :class="$style.emptyMini">{{ isStaff ? copy.noPendingRequests : copy.noRequestsYet }}</div>
-							<div v-else :class="$style.emojiList">
-								<button v-for="r in emojiRequests" :key="r.id" :class="$style.emojiRow" @click="isStaff && r.status === 'pending' ? openApprove(r) : null">
-									<span :class="$style.emojiTile"><img v-if="r.imageUrl" :src="r.imageUrl" :class="$style.emojiImg" :alt="r.name"/></span>
-									<span :class="$style.emojiCode">:{{ r.name }}:</span>
-									<i :class="['ti', emojiStatusIcon[r.status] ?? 'ti-clock-hour-4', 'hfEstIcon']" :data-est="r.status" :title="emojiStatusLabel[r.status]"></i>
-								</button>
-							</div>
-							<div v-if="emojiQuota && !isStaff" :class="$style.quotaWrap">
-								<HfQuotaMeter :remaining="emojiQuota.remaining" :limit="emojiQuota.limit"/>
-							</div>
-						</section>
-
-						<!-- ③みんなの動き -->
-						<section :class="$style.sideCard">
-							<div :class="$style.sideHead">
-								<span :class="$style.sideTitle"><span :class="$style.liveDot"></span> {{ copy.communityActivity }}</span>
-							</div>
-							<div v-if="activity.length === 0" :class="$style.emptyMini">{{ copy.noActivityYet }}</div>
-							<TransitionGroup v-else tag="div" :class="$style.actList" name="hfAct">
-								<div v-for="a in activity.slice(0, 3)" :key="a.key" :class="$style.actRow">
-									<HfAvatar v-if="a.user" :user="a.user" :size="20"/>
-									<span v-else :class="[$style.actAvatarLock]"><i :class="a.type === 'issueClosed' ? 'ti ti-lock' : 'ti ti-help'"></i></span>
-									<div :class="$style.actBody">
-										<MkUserName v-if="a.user" :class="$style.actName" :user="a.user"/><span v-else :class="$style.actName">{{ copy.someone }}</span>
-										<span :class="$style.actVerb">{{ a.verb }}</span>
-										<span :class="$style.actObj">{{ a.label }}</span>
-									</div>
-									<MkTime :class="$style.actTime" :time="a.time" mode="relative"/>
-								</div>
-							</TransitionGroup>
-						</section>
-					</aside>
+				<div v-if="emojiAdminPage > 0 || emojiAdminHasNext" :class="$style.pager">
+					<button :class="$style.pagerArrow" :disabled="emojiAdminPage === 0" @click="prevEmojiAdminPage"><i class="ti ti-chevron-left"></i> {{ copy.previous }}</button>
+					<span :class="$style.pagerPage">{{ emojiAdminPage + 1 }}</span>
+					<button :class="$style.pagerArrow" :disabled="!emojiAdminHasNext" @click="nextEmojiAdminPage">{{ copy.next }} <i class="ti ti-chevron-right"></i></button>
 				</div>
-				</div>
-
-				<!-- モバイル: ロードマップ管理だけは本文の主導線と用途が異なるためFABを残す。 -->
-				<button v-if="activeTab === 'roadmap' && isStaff" :class="$style.fab" @click="addRoadmap">
-					<i class="ti ti-route"></i>
-				</button>
 			</div>
-		</div>
-	</MkSpacer>
-</MkStickyContainer>
+			<section v-if="activeTab === 'issues' || activeTab === 'roadmap'" class="hf-panel" :class="$style.statusBar" aria-label="対応状況">
+				<h2>対応状況<small>このページの {{ issues.length }} 件</small></h2>
+				<button v-for="status in ['open', 'inProgress', 'resolved']" :key="status" type="button" :class="$style.stat" @click="applyStatus(status)"><b>{{ counts[status] }}</b><span>{{ statusLabel[status] }}</span></button>
+			</section>
+			<section v-if="activeTab === 'issues' || activeTab === 'roadmap'" class="hf-panel" :class="$style.listPanel" :aria-busy="issuePageLoading">
+				<header :class="$style.listHead">
+					<h2>{{ activeTab === 'roadmap' ? 'ロードマップ' : 'イシュー' }}<small :title="'読み込み済みの件数'">{{ issues.length }}{{ issuesHasNext ? '+' : '' }}</small></h2>
+					<form :class="$style.search" role="search" @submit.prevent="reloadIssues"><i class="ti ti-search" aria-hidden="true"></i><input v-model="searchQuery" type="search" aria-label="イシュー・会話を検索" placeholder="イシュー・会話を検索"><button type="submit" class="hf-icon" aria-label="検索"><i class="ti ti-arrow-right" aria-hidden="true"></i></button></form>
+				</header>
+				<div :class="$style.filters"><div :class="$style.segment"><button type="button" :aria-pressed="!includeClosed" @click="setClosed(false)">受付中</button><button type="button" :aria-pressed="includeClosed" @click="setClosed(true)">終了分も含む</button></div><div :class="$style.dropdowns"><button type="button" @click="openCategoryMenu">{{ filterCategory ? categoryLabel[filterCategory] : copy.category }}<i class="ti ti-chevron-down"></i></button><button type="button" @click="openStatusMenu">{{ filterStatus ? statusLabel[filterStatus] : copy.status }}<i class="ti ti-chevron-down"></i></button><button type="button" @click="openAuthorMenu">{{ authorFilter ? (authorFilter.name ?? authorFilter.username) : copy.author }}<i class="ti ti-chevron-down"></i></button></div></div>
+				<div v-if="!visibleIssues.length" class="hf-empty"><p>{{ activeTab === 'roadmap' ? copy.noPublishedPlans : 'イシューがありません' }}</p><button v-if="activeTab === 'roadmap' && isStaff" type="button" class="hy-secondary" @click="addRoadmap">改善予定を追加</button></div>
+				<div v-else ref="issueListEl" :class="$style.listCard">
+					<button
+						v-for="issue in visibleIssues"
+						:key="issue.id"
+						:class="$style.issueRow" :data-pinned="issue.pinned" :data-closed="issue.closed"
+						@click="openIssue(issue.id)"
+					>
+						<i v-if="issue.pinned" class="ti ti-pin" :class="$style.rowPin"></i>
+						<HfStatusPill v-else :status="issue.status" variant="text" iconOnly :class="$style.rowStatusIcon"/>
+						<div :class="$style.rowMain">
+							<div :class="$style.rowTitleLine">
+								<span :class="$style.rowTitle">{{ issue.title }}</span>
+								<HfCategoryBadge :category="issue.category"/>
+							</div>
+							<div :class="$style.rowMeta">
+								<span :class="$style.rowNo">#{{ issue.number }}</span>
+								<template v-if="issue.createdBy">・ <MkUserName :class="$style.rowAuthor" :user="issue.createdBy"/>{{ copy.createdAtBefore }}<MkTime :time="issue.createdAt" mode="relative"/>{{ copy.createdAtAfter }}</template>
+								・ <HfStatusPill :status="issue.status" variant="text" :showIcon="false" :class="$style.rowStatusText"/>
+								<template v-if="issue.assignees && issue.assignees.length"> ・ <i class="ti ti-shield-check" :class="$style.rowAssigneeIcon"></i> <MkUserName :class="$style.rowAuthor" :user="issue.assignees[0]"/>{{ copy.assigneeSuffix }}</template>
+							</div>
+						</div>
+						<div :class="$style.rowSide">
+							<span :class="$style.rowStat"><i class="ti ti-message-2"></i> {{ issue.commentsCount }}</span>
+							<span :class="$style.rowStat"><i class="ti ti-heart"></i> {{ issue.agreementsCount }}</span>
+							<HfAvatar v-if="issue.createdBy" :user="issue.createdBy" :size="22"/>
+						</div>
+					</button>
+				</div>
+
+				<!-- ページ式ナビ -->
+				<div v-if="visibleIssues.length > 0 || issuePage > 0" :class="$style.pager">
+					<button :class="$style.pagerArrow" :disabled="issuePageLoading || issuePage === 0" @click="prevIssuePage"><i class="ti ti-chevron-left"></i> {{ copy.previous }}</button>
+					<span :class="$style.pagerPage">{{ issuePage + 1 }}</span>
+					<button :class="$style.pagerArrow" :disabled="issuePageLoading || !issuesHasNext" @click="nextIssuePage">{{ copy.next }} <i class="ti ti-chevron-right"></i></button>
+					<label :class="$style.pagerSize">
+						<select v-model.number="issuePageSize" :class="$style.pagerSelect" @change="reloadIssues">
+							<option :value="10">{{ copyx.itemCount({ count: '10' }) }}</option>
+							<option :value="50">{{ copyx.itemCount({ count: '50' }) }}</option>
+							<option :value="100">{{ copyx.itemCount({ count: '100' }) }}</option>
+						</select>
+					</label>
+				</div>
+			</section>
+		</main>
+	</div>
+</div>
 </template>
 
 <script lang="ts" setup>
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, inject, onActivated, onDeactivated, onMounted, onUnmounted, ref, watch } from 'vue';
 import type { HataFeedEmojiRequest } from '@/utility/hatafeed.js';
-import { deviceKind } from '@/utility/device-kind.js';
+import type { HataFeedTab } from '@/utility/hatafeed-ui.js';
+import HataFeedHeader from '@/components/HataFeedHeader.vue';
+import HataFeedBeta from '@/components/HataFeedBeta.vue';
+import { hataFeedTheme } from '@/utility/hatasaba-device-prefs.js';
+import { hataFeedNotify, hataFeedProjectId, hataFeedTab } from '@/utility/hatafeed-ui.js';
+import '@/components/hatafeed-ui.css';
 import HataFeedIssue from '@/components/HataFeedIssue.vue';
 import HataFeedLeaves from '@/components/HataFeedLeaves.vue';
 import HfStatusPill from '@/components/HfStatusPill.vue';
 import HfCategoryBadge from '@/components/HfCategoryBadge.vue';
 import HfAvatar from '@/components/HfAvatar.vue';
-import HfQuotaMeter from '@/components/HfQuotaMeter.vue';
+import HataFeedHome from '@/components/HataFeedHome.vue';
 import * as os from '@/os.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { fetchHataFeedIssuePage } from '@/utility/hatafeed-issue-page.js';
+import { showHataFeedTutorial } from '@/utility/hatafeed-tutorial-launcher.js';
 import { definePage } from '@/page.js';
 import { useRouter } from '@/router.js';
+import { DI } from '@/di.js';
 import { prefer } from '@/preferences.js';
 import {
-	categoryLabel, categoryKeys, staffOnlyCategoryKeys, statusLabel, statusKeys, emojiStatusLabel, emojiStatusIcon, hataBetaTotal,
+	categoryLabel, categoryKeys, staffOnlyCategoryKeys, statusLabel, statusKeys, emojiStatusLabel, emojiStatusIcon,
 	hataFeedUnreadCount,
 } from '@/utility/hatafeed.js';
-import { iAmModerator, $i } from '@/i.js';
+import { $i, iAmModerator } from '@/i.js';
 import { i18n } from '@/i18n.js';
 
-const props = defineProps<{ issueId?: string; number?: string }>();
+const props = defineProps<{ issueId?: string; number?: string; initialTab?: HataFeedTab }>();
 const copy = i18n.ts._hata._hatafeed._home;
 const copyx = i18n.tsx._hata._hatafeed._home;
 
 // 旗鯖fork: スタッフ専用カテゴリ(security等)は一般ユーザーの絞り込みから隠す。
 const filterCategoryKeys = computed(() => categoryKeys.filter(c => iAmModerator || !staffOnlyCategoryKeys.some(staffOnly => staffOnly === c)));
 const router = useRouter();
+const closePageWindow = inject(DI.pageWindowClose, null);
+
+function exitHataFeed() {
+	if (closePageWindow) closePageWindow();
+	else router.push('/');
+}
 
 // 旗鯖fork: 「#番号」リンク(/hatafeed/n/:number)から来た場合、番号→idを解決して該当イシューへ。
 async function resolveNumber() {
@@ -355,9 +173,10 @@ async function resolveNumber() {
 const loading = ref(true);
 const canAccess = ref(false);
 const isStaff = ref(false);
+const refreshing = ref(false);
 
 const projects = ref<any[]>([]);
-const currentProjectId = ref<string | null>(null);
+const currentProjectId = hataFeedProjectId;
 
 const issues = ref<any[]>([]);
 // 旗鯖fork: ページ式ページネーション(最大表示数 10/50/100・最下部の＜＞で前後ページ)。
@@ -368,12 +187,7 @@ const issuesHasNext = ref(false);
 const issuePageLoading = ref(false);
 let issuePageRequestId = 0;
 const issueListEl = ref<HTMLElement | null>(null);
-// 旗鯖fork(2a): 通知パネルをアンカーするツールバーのベル要素。
-const bellEl = ref<HTMLElement | null>(null);
-// 旗鯖fork(2a/3a): 実機がスマホか。作成ボタンの形態(スマホ=右下FAB / それ以外=右上ボタン)を
-// 幅ではなくデバイス種別で分岐する。狭いデスクトップウィンドウでは FAB を出さず、
-// ツールバー右上の作成ボタンを使う(FAB がイシュー情報に被る問題への対応)。
-const isSmartphone = deviceKind === 'smartphone';
+const issueView = ref<InstanceType<typeof HataFeedIssue> | null>(null);
 const roadmap = ref<any[]>([]);
 const filterCategory = ref<string | null>(null);
 const filterStatus = ref<string | null>(null);
@@ -381,7 +195,6 @@ const filterStatus = ref<string | null>(null);
 const authorFilter = ref<any>(null);
 const includeClosed = ref(false);
 const searchQuery = ref('');
-const exportWindowOpen = ref(false);
 
 // 旗鯖fork: バッジは共有の状態を見る(標準通知から既読にしたときも消えるように)。
 const unreadCount = hataFeedUnreadCount;
@@ -390,12 +203,22 @@ const emojiQuota = ref<{ limit: number; remaining: number } | null>(null);
 
 const issueId = computed(() => props.issueId ?? null);
 const ownProjects = computed(() => projects.value.filter(p => !p.isOfficial));
-// 旗鯖fork: 現在選択中のプロジェクト(公式=null時はnull)。
-const currentProject = computed(() => currentProjectId.value == null ? null : (projects.value.find(p => p.id === currentProjectId.value) ?? null));
+// 公式は API の projectId=null に対応するレコードの表示情報を使う。
+const currentProject = computed(() => projects.value.find(p => currentProjectId.value == null ? p.isOfficial : p.id === currentProjectId.value) ?? null);
 
 // 旗鯖fork(2a/3a): アクティブなタブ。'issues'/'roadmap' はイシュー一覧のフィルタ違い、
 // 'emoji' はスタッフ専用の絵文字申請管理ビュー(本体を差し替える)。
-const activeTab = ref<'issues' | 'roadmap' | 'emoji'>('issues');
+const activeTab = ref<HataFeedTab>(props.initialTab ?? hataFeedTab.value);
+watch(activeTab, tab => { if (tab !== 'beta') hataFeedTab.value = tab; }, { flush: 'sync' });
+// RouterView caches both URLs. A cached beta page may have last navigated away
+// through the admin tab; restore the tab belonging to the activated URL.
+onActivated(() => {
+	tutorialActive = true;
+	const tab = props.initialTab === 'beta' ? 'beta' : hataFeedTab.value;
+	if (activeTab.value !== tab) selectTab(tab);
+	if (canAccess.value && !loading.value) refreshProjects();
+	maybeShowTutorial();
+});
 
 // 旗鯖fork(3a): モバイルの集計チップ。現在読み込み済みページ内の件数を状態別に数える
 // (総件数の集計APIは持たないため、表示中ページのローカル集計)。
@@ -407,39 +230,29 @@ const counts = computed(() => {
 	return c;
 });
 
-// 旗鯖fork: 現在のプロジェクトのイシューをエクスポートできるか(鯖缶 or プロジェクト作成者)。
-const canExportCurrent = computed(() => {
-	if (isStaff.value) return true;
-	if (currentProjectId.value == null) return false;
-	const p = ownProjects.value.find(x => x.id === currentProjectId.value);
-	return p != null && p.ownerId === $i?.id;
-});
+// 旗鯖fork: 若葉アニメの表示可否(アクセシビリティ設定・既定OFF)。
+const leavesEnabled = computed(() => prefer.r['hatafeed.leaves'].value && prefer.r.animation.value);
 
-// 旗鯖fork: 全件一括ダウンロードではなく、範囲・内容を選ぶ非モーダル画面を開く。
-async function openExportWindow() {
-	if (exportWindowOpen.value) return;
-	exportWindowOpen.value = true;
-	try {
-		const { dispose } = os.popup((await import('@/components/HataFeedExportWindow.vue')).default, {
-			projectId: currentProjectId.value,
-			projectName: currentProject.value?.name ?? 'Hataskey',
-		}, {
-			closed: () => { exportWindowOpen.value = false; dispose(); },
-		});
-	} catch (error) {
-		exportWindowOpen.value = false;
-		console.error(error);
-		os.alert({ type: 'error', title: copy.exportOpenFailedTitle, text: copy.exportOpenFailedText });
-	}
+const visibleIssues = computed(() => activeTab.value === 'home' ? issues.value.slice(0, 3) : issues.value);
+const ownEmojiRequests = ref<HataFeedEmojiRequest[]>([]);
+const error = ref('');
+
+let tutorialActive = true;
+let stopTutorial: (() => void) | undefined;
+
+async function maybeShowTutorial() {
+	if (!tutorialActive || loading.value || !canAccess.value || error.value || issueId.value || props.number) return;
+	const hasExistingActivity = ownEmojiRequests.value.length > 0 || issues.value.some(issue => issue.createdBy?.id === $i?.id) || projects.value.some(project => project.ownerId === $i?.id);
+	const stop = await showHataFeedTutorial({ isActive: () => tutorialActive && !issueId.value, isStaff: isStaff.value, hasExistingActivity });
+	if (!stop) return;
+	if (tutorialActive) stopTutorial = stop;
+	else stop?.();
 }
 
-// 旗鯖fork: 若葉アニメの表示可否(アクセシビリティ設定・既定OFF)。
-const leavesEnabled = computed(() => prefer.r['hatafeed.leaves'].value);
+function stopOwnedTutorial() { tutorialActive = false; stopTutorial?.(); }
 
-// 改善予定(improvement)はロードマップ枠に出すので、明示的に絞り込んでいない限りメイン一覧からは除く。
-const visibleIssues = computed(() => filterCategory.value === 'improvement'
-	? issues.value
-	: issues.value.filter(i => i.category !== 'improvement'));
+onDeactivated(stopOwnedTutorial);
+onUnmounted(stopOwnedTutorial);
 
 // ライブアクティビティ: 直近のイシュー・絵文字申請を時系列でマージ。
 const activity = computed(() => {
@@ -447,15 +260,15 @@ const activity = computed(() => {
 	for (const i of issues.value) {
 		if (!i.closed) {
 			if (!i.createdBy) continue;
-			items.push({ key: 'i' + i.id, type: 'issue', user: i.createdBy, time: i.createdAt, verb: copy.activityCreatedIssue, label: i.title });
+			items.push({ key: 'i' + i.id, type: 'issue', issueId: i.id, user: i.createdBy, time: i.createdAt, verb: copy.activityCreatedIssue, label: i.title });
 		} else {
 			// クローズ済みは「立てました」ではなく「クローズしました」として、どのイシューが閉じたかを明記する。
-			items.push({ key: 'c' + i.id, type: 'issueClosed', user: i.closedBy ?? null, time: i.closedAt ?? i.createdAt, verb: copy.activityClosedIssue, label: i.title });
+			items.push({ key: 'c' + i.id, type: 'issueClosed', issueId: i.id, user: i.closedBy ?? null, time: i.closedAt ?? i.createdAt, verb: copy.activityClosedIssue, label: i.title });
 		}
 	}
 	for (const r of emojiRequests.value) {
 		if (!r.requestedBy) continue;
-		items.push({ key: 'e' + r.id, type: 'emoji', user: r.requestedBy, time: r.createdAt, verb: copy.activityRequestedEmoji, label: ':' + r.name + ':', image: r.imageUrl });
+		items.push({ key: 'e' + r.id, type: 'emoji', request: r, user: r.requestedBy, time: r.createdAt, verb: copy.activityRequestedEmoji, label: ':' + r.name + ':', image: r.imageUrl });
 	}
 	return items.sort((a, b) => (a.time < b.time ? 1 : -1)).slice(0, 10);
 });
@@ -467,14 +280,30 @@ async function init() {
 		canAccess.value = av.available;
 		isStaff.value = av.isStaff;
 		if (!canAccess.value) return;
-		await Promise.all([loadProjects(), reloadIssues(), loadRoadmap(), loadNotifications(), loadEmojiRequests()]);
+		await loadProjects();
+		if (currentProjectId.value && !projects.value.some(project => project.id === currentProjectId.value)) currentProjectId.value = null;
+		if (activeTab.value === 'emoji' && !isStaff.value) activeTab.value = 'home';
+		if (activeTab.value === 'roadmap') filterCategory.value = 'improvement';
+		await Promise.all([reloadIssues(), loadRoadmap(), loadNotifications(), loadEmojiRequests(), ...(activeTab.value === 'emoji' ? [reloadEmojiAdmin()] : [])]);
+	} catch {
+		error.value = '読み込めませんでした';
 	} finally {
 		loading.value = false;
 	}
+	maybeShowTutorial();
 }
 
 async function loadProjects() {
 	projects.value = await misskeyApi('hata/feedback/projects', {});
+}
+
+async function refreshProjects() {
+	try {
+		await loadProjects();
+		if (currentProjectId.value && !projects.value.some(project => project.id === currentProjectId.value)) selectProject(null);
+	} catch {
+		hataFeedNotify('プロジェクトを読み込めませんでした');
+	}
 }
 
 // 旗鯖fork: 指定カーソル(untilId)から1ページ分取得する。
@@ -512,9 +341,10 @@ async function fetchIssuePage(untilId: string | undefined) {
 
 // フィルタ変更・表示数変更時は1ページ目から取り直す。
 async function reloadIssues() {
-	if (!await fetchIssuePage(undefined)) return;
+	if (!await fetchIssuePage(undefined)) return false;
 	issuePage.value = 0;
 	issueCursors.value = [undefined];
+	return true;
 }
 
 async function nextIssuePage() {
@@ -546,7 +376,7 @@ async function loadRoadmap() {
 // 旗鯖fork(2a/3a): ツールバー/フィルタのメニュー・トグル群。
 function openProjectSwitch(ev: MouseEvent) {
 	const items: any[] = [
-		{ text: 'Hataskey', icon: 'ti ti-flag-2', active: currentProjectId.value == null, action: () => selectProject(null) },
+		{ text: projects.value.find(p => p.isOfficial)?.name ?? 'Hataskey', icon: 'ti ti-flag-2', active: currentProjectId.value == null, action: () => selectProject(null) },
 		...ownProjects.value.map(p => ({
 			text: p.name + (p.suspended ? copy.suspendedSuffix : ''),
 			icon: p.suspended ? 'ti ti-player-pause' : 'ti ti-cube',
@@ -554,8 +384,7 @@ function openProjectSwitch(ev: MouseEvent) {
 			action: () => selectProject(p.id),
 		})),
 	];
-	if (currentProject.value) items.push(null, { text: copy.overview, icon: 'ti ti-info-circle', action: () => showProjectOverview(currentProject.value) });
-	if (isStaff.value) items.push({ text: copy.addProject, icon: 'ti ti-plus', action: createProject });
+	items.push(null, { text: copy.overview, icon: 'ti ti-info-circle', action: () => showProjectOverview(currentProject.value ?? { name: 'Hataskey' }) });
 	os.popupMenu(items, (ev.currentTarget ?? ev.target) as HTMLElement);
 }
 
@@ -687,9 +516,11 @@ async function loadNotifications() {
 // ツールバーのベル: 通知パネル(種類フィルタ + 前後ページ送り付き)を開く。
 //   PC/タブレットではベルにアンカーした吹き出し(popup)、スマホでは全画面寄りの
 //   ドロワー(drawer)に MkModal 側が自動で切り替える(anchorElement を渡すのが肝)。
-async function openNotifications() {
+async function openNotifications(event: MouseEvent) {
+	// currentTarget is cleared as soon as dispatch ends, before the import resolves.
+	const anchorElement = event.currentTarget as HTMLElement;
 	const { dispose } = os.popup((await import('@/components/HataFeedNotifications.vue')).default, {
-		anchorElement: bellEl.value,
+		anchorElement,
 	}, {
 		read: (count: number) => { unreadCount.value = count; },
 		closed: () => { loadNotifications(); dispose(); },
@@ -697,12 +528,18 @@ async function openNotifications() {
 }
 
 async function loadEmojiRequests() {
-	emojiRequests.value = await misskeyApi('hata/feedback/emoji-requests', isStaff.value ? { status: 'pending', limit: 20 } : { mine: true, limit: 20 }) as unknown as HataFeedEmojiRequest[];
+	const [own, pending] = await Promise.all([
+		misskeyApi('hata/feedback/emoji-requests', { mine: true, limit: 20 }),
+		isStaff.value ? misskeyApi('hata/feedback/emoji-requests', { status: 'pending', limit: 20 }) : Promise.resolve([]),
+	]);
+	ownEmojiRequests.value = own as unknown as HataFeedEmojiRequest[];
+	emojiRequests.value = isStaff.value ? pending as unknown as HataFeedEmojiRequest[] : ownEmojiRequests.value;
 	emojiQuota.value = await misskeyApi('hata/feedback/emoji-quota', {}).catch(() => null);
 }
 
 function selectProject(id: string | null) {
 	currentProjectId.value = id;
+	if (issueId.value) { activeTab.value = 'home'; router.push('/hatafeed'); }
 	reloadIssues();
 }
 
@@ -711,12 +548,11 @@ function openIssue(id: string) {
 }
 
 function openBeta() {
-	router.push('/hatafeed/beta');
+	activeTab.value = 'beta';
+	if (props.initialTab !== 'beta') router.push('/hatafeed/beta');
 }
 
-function goList() {
-	router.push('/hatafeed');
-}
+function goList() { navigateTab('issues'); }
 
 async function createIssue() {
 	const { dispose } = os.popup((await import('@/components/HataFeedIssueWizard.vue')).default, {
@@ -747,7 +583,7 @@ async function openApprove(r: any) {
 async function openReviewQueue() {
 	const pending = await misskeyApi('hata/feedback/emoji-requests', { status: 'pending', limit: 100 }) as unknown as HataFeedEmojiRequest[];
 	if (pending.length === 0) {
-		os.toast(copy.noPendingRequests);
+		hataFeedNotify(copy.noPendingRequests);
 		await loadEmojiRequests();
 		if (activeTab.value === 'emoji') await reloadEmojiAdmin();
 		return;
@@ -756,58 +592,6 @@ async function openReviewQueue() {
 		done: () => { loadEmojiRequests(); if (activeTab.value === 'emoji') reloadEmojiAdmin(); },
 		closed: () => { loadEmojiRequests(); if (activeTab.value === 'emoji') reloadEmojiAdmin(); dispose(); },
 	});
-}
-
-// 旗鯖fork: プロジェクトのテーマカラー候補。
-const PROJECT_COLOR_OPTIONS = [
-	{ value: '', label: copy.colorDefault },
-	{ value: '#3b9eff', label: copy.colorBlue },
-	{ value: '#41b883', label: copy.colorGreen },
-	{ value: '#e6a23c', label: copy.colorOrange },
-	{ value: '#f56c6c', label: copy.colorRed },
-	{ value: '#9b6cf5', label: copy.colorPurple },
-	{ value: '#ff8fc3', label: copy.colorPink },
-	{ value: '#36c5d1', label: copy.colorCyan },
-];
-
-async function createProject() {
-	const { canceled, result } = await os.form(copy.addProject, {
-		name: { type: 'string', label: copy.name, required: true },
-		genre: { type: 'string', label: copy.genreExample },
-		description: { type: 'string', label: copy.description, multiline: true },
-		url: { type: 'string', label: copy.repositoryUrl },
-		color: { type: 'enum', label: copy.themeColor, enum: PROJECT_COLOR_OPTIONS, default: '' },
-	});
-	if (canceled) return;
-	await misskeyApi('hata/feedback/projects/create', {
-		name: result.name,
-		genre: result.genre || null,
-		description: result.description ?? '',
-		url: result.url || null,
-		color: result.color || null,
-	});
-	await loadProjects();
-}
-
-// 旗鯖fork: プロジェクトの編集(スタッフのみ)。
-async function editProject(project: any) {
-	const { canceled, result } = await os.form(copy.editProject, {
-		name: { type: 'string', label: copy.name, required: true, default: project.name },
-		genre: { type: 'string', label: copy.genreExample, default: project.genre ?? '' },
-		description: { type: 'string', label: copy.description, multiline: true, default: project.description ?? '' },
-		url: { type: 'string', label: copy.repositoryUrl, default: project.url ?? '' },
-		color: { type: 'enum', label: copy.themeColor, enum: PROJECT_COLOR_OPTIONS, default: project.color ?? '' },
-	});
-	if (canceled) return;
-	await os.apiWithDialog('hata/feedback/projects/update', {
-		projectId: project.id,
-		name: result.name,
-		genre: result.genre || null,
-		description: result.description ?? '',
-		url: result.url || null,
-		color: result.color || null,
-	});
-	await loadProjects();
 }
 
 // 旗鯖fork: プロジェクトの概要(タイトル/ジャンル/説明/リポジトリURL)を表示する。
@@ -824,49 +608,6 @@ function showProjectOverview(project: any) {
 	});
 }
 
-// 旗鯖fork: プロジェクトの削除(スタッフのみ)。紐づくイシューもすべて削除される。
-async function removeProject(project: any) {
-	const { canceled } = await os.confirm({
-		type: 'warning',
-		title: copy.deleteProjectTitle,
-		text: copyx.deleteProjectText({ name: project.name }),
-	});
-	if (canceled) return;
-	await os.apiWithDialog('hata/feedback/projects/delete', { projectId: project.id });
-	if (currentProjectId.value === project.id) selectProject(null);
-	await loadProjects();
-}
-
-// 旗鯖fork: プロジェクトのサスペンド切替。サスペンド中は owner/鯖缶以外に非表示。
-async function toggleSuspendProject(project: any) {
-	const toSuspend = !project.suspended;
-	if (toSuspend) {
-		const { canceled } = await os.confirm({
-			type: 'warning',
-			title: copy.suspendProjectTitle,
-			text: copyx.suspendProjectText({ name: project.name }),
-		});
-		if (canceled) return;
-	}
-	await os.apiWithDialog('hata/feedback/projects/update', { projectId: project.id, suspended: toSuspend });
-	await loadProjects();
-}
-
-// 旗鯖fork: 現在のプロジェクトの管理メニュー(編集/サスペンド/削除)を開く。
-function manageCurrentProject(ev: MouseEvent) {
-	const project = ownProjects.value.find(p => p.id === currentProjectId.value);
-	if (project == null) return;
-	os.popupMenu([
-		{ text: copy.edit, icon: 'ti ti-pencil', action: () => editProject(project) },
-		{
-			text: project.suspended ? copy.resumeProject : copy.suspendProject,
-			icon: project.suspended ? 'ti ti-player-play' : 'ti ti-player-pause',
-			action: () => toggleSuspendProject(project),
-		},
-		{ text: copy.delete, icon: 'ti ti-trash', danger: true, action: () => removeProject(project) },
-	], (ev.currentTarget ?? ev.target) as HTMLElement);
-}
-
 // スタッフ: 近々の修正・改善予定を掲示する。ロードマップ専用の作成画面(ウィザード)を開く。
 async function addRoadmap() {
 	const { dispose } = os.popup((await import('@/components/HataFeedRoadmapWizard.vue')).default, {}, {
@@ -876,7 +617,7 @@ async function addRoadmap() {
 }
 
 watch(() => props.issueId, (v, old) => {
-	if (old != null && v == null) { reloadIssues(); loadRoadmap(); loadNotifications(); }
+	if (old != null && v == null) { reloadIssues(); loadRoadmap(); loadNotifications(); maybeShowTutorial(); }
 });
 
 onMounted(() => {
@@ -886,363 +627,66 @@ onMounted(() => {
 
 // 旗鯖fork(2a): 更新はツールバーの更新アイコンから。MkPageHeader の actions 帯は
 // リポジトリUIのツールバーと機能が重複し、下の UI に覆いかぶさって邪魔なため廃止した。
-function refreshAll() {
-	reloadIssues();
-	loadRoadmap();
-	loadNotifications();
-	loadEmojiRequests();
+async function refreshAll() {
+	if (refreshing.value) return;
+	refreshing.value = true;
+	const results = await Promise.allSettled([reloadIssues(), loadRoadmap(), loadNotifications(), loadEmojiRequests(),
+																																											...(activeTab.value === 'emoji' && isStaff.value ? [reloadEmojiAdmin()] : []),
+																																											...(issueView.value ? [issueView.value.reload()] : []),
+	]);
+	if (results.some(result => result.status === 'rejected') || (results[0].status === 'fulfilled' && results[0].value === false)) hataFeedNotify('更新できない項目がありました');
+	else hataFeedNotify('更新しました');
+	refreshing.value = false;
 }
 
 definePage(() => ({
 	title: 'HataFeed',
 	icon: 'ti ti-message-report',
 }));
+
+function navigateTab(tab: HataFeedTab) {
+	if (tab === 'emoji' && !isStaff.value) return;
+	if (tab === 'beta') { openBeta(); return; }
+	selectTab(tab);
+	if (issueId.value || props.initialTab === 'beta') router.push('/hatafeed');
+}
+
+function selectTab(tab: HataFeedTab) {
+	if (tab === 'beta') { activeTab.value = 'beta'; return; }
+	if (tab === 'issues') goIssuesTab();
+	else if (tab === 'roadmap') goRoadmapTab();
+	else if (tab === 'emoji') goEmojiAdminTab();
+	else {
+		activeTab.value = 'home';
+		filterCategory.value = null;
+		filterStatus.value = null;
+		authorFilter.value = null;
+		searchQuery.value = '';
+		includeClosed.value = false;
+		reloadIssues();
+	}
+}
+
+function handleCreate(kind: 'emoji' | 'issue') {
+	if (kind === 'emoji') requestEmoji();
+	else createIssue();
+}
+
+async function openDisplaySettings() {
+	const { dispose } = os.popup((await import('@/components/HataFeedDisplaySettings.vue')).default, {}, { projectsChanged: refreshProjects, closed: () => dispose() });
+}
+
+async function openOwnHistory() {
+	const { dispose } = os.popup((await import('@/components/HataFeedEmojiHistory.vue')).default, {}, { closed: () => { loadEmojiRequests(); dispose(); } });
+}
+
 </script>
 
-<style lang="scss" module>
-/* 旗鯖fork: HataFeed ロゴ用フォント(Hataskeyと同じ Righteous・同梱)。 */
-@font-face {
-	font-family: 'Righteous';
-	font-style: normal;
-	font-weight: 400;
-	font-display: swap;
-	src: url('/client-assets/Righteous-Regular.woff2') format('woff2');
-}
+<style module src="../components/hatafeed-page.module.css"></style>
 
-.center { text-align: center; padding: 40px 0; opacity: .6; }
-.empty { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 64px 0; }
-.emptyIcon { font-size: 3rem; opacity: .4; }
-.emptyText { opacity: .7; }
-.emptyMini { opacity: .55; font-size: .84em; padding: 8px 2px; }
-
-.repo { position: relative; container-type: inline-size; container-name: hatafeed; }
-.repoInner { position: relative; z-index: 1; }
-
-/* ===== ツールバー ===== */
-.toolbar {
-	display: flex; align-items: center; gap: 10px;
-	/* 上パディングでベルの未読バッジ(top:-5px)が上部バーにクリップされないよう余白を確保 */
-	padding: 8px 4px 12px;
-	flex-wrap: wrap;
-}
-.brand { display: flex; align-items: center; }
-.logo { font-family: 'Righteous', system-ui, sans-serif; font-size: 1.5rem; letter-spacing: .3px; color: var(--MI_THEME-accent); }
-.toolDivider { width: 1px; height: 20px; background: var(--MI_THEME-divider); }
-.serverBtn {
-	display: inline-flex; align-items: center; gap: 7px;
-	background: var(--MI_THEME-panel); border: 1px solid var(--MI_THEME-divider); color: inherit;
-	border-radius: 8px; padding: 6px 12px; font-size: .86em; font-weight: 700; cursor: pointer;
-	transition: border-color .12s;
-}
-.serverBtn:hover { border-color: var(--MI_THEME-accent); }
-.serverIcon { color: var(--MI_THEME-accent); }
-.serverName { max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.serverCaret { opacity: .5; font-size: .9em; }
-.search {
-	flex: 1; min-width: 160px; max-width: 360px; margin-left: auto;
-	display: flex; align-items: center; gap: 8px;
-	background: var(--MI_THEME-panel); border: 1px solid var(--MI_THEME-divider);
-	border-radius: 8px; padding: 6px 12px;
-}
-.searchIcon { opacity: .5; }
-.searchInput { flex: 1; min-width: 0; background: none; border: none; outline: none; color: inherit; font-size: .86em; }
-.searchClear { background: none; border: none; color: inherit; opacity: .5; cursor: pointer; }
-.searchClear:hover { opacity: 1; }
-.newBtn {
-	display: inline-flex; align-items: center; gap: 6px;
-	background: var(--MI_THEME-accent); border: none; color: #fff;
-	border-radius: 8px; padding: 7px 14px; font-size: .86em; font-weight: 700; cursor: pointer;
-	transition: opacity .12s;
-}
-.newBtn:hover { opacity: .9; }
-.iconBtn {
-	position: relative;
-	display: inline-flex; align-items: center; justify-content: center;
-	width: 34px; height: 34px; border-radius: 8px;
-	background: var(--MI_THEME-panel); border: 1px solid var(--MI_THEME-divider); color: inherit; cursor: pointer;
-	transition: border-color .12s;
-}
-.iconBtn:hover { border-color: var(--MI_THEME-accent); color: var(--MI_THEME-accent); }
-.bellBadge { position: absolute; top: -5px; right: -5px; background: var(--MI_THEME-accent); color: #fff; border-radius: 999px; font-size: .62em; font-weight: 800; line-height: 1.3; padding: 1px 5px; }
-
-/* ===== トップの主要操作 ===== */
-.topActions { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; margin: -2px 0 18px; }
-.topAction {
-	display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-	min-height: 46px; padding: 9px 16px; border-radius: 12px;
-	font-size: .92em; font-weight: 800; cursor: pointer;
-	transition: border-color .12s, background-color .12s, opacity .12s;
-}
-.topActionEmoji { border: 2px solid var(--MI_THEME-accent); background: var(--MI_THEME-panel); color: var(--MI_THEME-accent); }
-.topActionEmoji:hover { background: var(--MI_THEME-accentedBg); }
-/* ===== タブバー ===== */
-.tabs {
-	display: flex; align-items: center; gap: 2px;
-	border-bottom: 1px solid var(--MI_THEME-divider);
-	margin-bottom: 18px;
-	overflow-x: auto;
-	scrollbar-width: none;
-}
-.tabs::-webkit-scrollbar { display: none; }
-.tab {
-	display: inline-flex; align-items: center; gap: 7px;
-	background: none; border: none; color: var(--MI_THEME-fg); opacity: .65;
-	padding: 11px 12px; font-size: .9em; font-weight: 600; cursor: pointer; white-space: nowrap;
-	border-bottom: 2px solid transparent; margin-bottom: -1px;
-	transition: opacity .12s, color .12s;
-}
-.tab:hover { opacity: 1; }
-.tab i { font-size: 1.05em; }
-.tabOn { opacity: 1; font-weight: 700; color: var(--MI_THEME-accent); border-bottom-color: var(--MI_THEME-accent); }
-.tabOn i { color: var(--MI_THEME-accent); }
-.tabCount { background: var(--MI_THEME-buttonBg, rgba(0,0,0,.07)); border-radius: 999px; padding: 1px 7px; font-size: .78em; font-weight: 700; }
-
-/* ===== 本体グリッド ===== */
-.gridCt { }
-.grid { display: grid; grid-template-columns: 1fr 296px; gap: 20px; align-items: start; min-width: 0; }
-.grid > * { min-width: 0; }
-
-/* ===== 左カラム ===== */
-.listCol { min-width: 0; }
-.filterRow { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
-.filterToggle {
-	display: inline-flex; align-items: center; gap: 6px;
-	background: none; border: none; color: var(--MI_THEME-fg); opacity: .6;
-	font-size: .9em; font-weight: 700; cursor: pointer; padding: 4px 2px;
-	transition: opacity .12s;
-}
-.filterToggle:hover { opacity: .9; }
-.filterToggleOn { opacity: 1; color: var(--MI_THEME-accent); }
-.filterToggleOn i { color: var(--MI_THEME-accent); }
-.filterDropdowns { margin-left: auto; display: flex; gap: 2px; flex-wrap: wrap; }
-.dropBtn {
-	display: inline-flex; align-items: center; gap: 4px;
-	background: none; border: none; color: var(--MI_THEME-fg); opacity: .7;
-	font-size: .84em; padding: 5px 10px; cursor: pointer; border-radius: 6px;
-	transition: background .12s, opacity .12s;
-}
-.dropBtn:hover { opacity: 1; background: var(--MI_THEME-buttonHoverBg, rgba(0,0,0,.04)); }
-.dropBtn i { font-size: .85em; }
-.dropBtnOn { opacity: 1; color: var(--MI_THEME-accent); font-weight: 700; }
-
-/* リストカード */
-.listCard {
-	background: var(--MI_THEME-panel);
-	border: 1px solid var(--MI_THEME-divider);
-	border-radius: 10px;
-	overflow: hidden;
-}
-.issueRow {
-	display: flex; gap: 11px; align-items: flex-start;
-	width: 100%; text-align: left; color: inherit; background: none; border: none;
-	padding: 11px 16px; cursor: pointer;
-	border-top: 1px solid var(--MI_THEME-divider);
-	transition: background .12s;
-}
-.issueRow:first-child { border-top: none; }
-.issueRow:hover { background: var(--MI_THEME-bg); }
-.issueRowPinned { background: color-mix(in srgb, var(--MI_THEME-accent) 6%, transparent); }
-.issueRowPinned:hover { background: color-mix(in srgb, var(--MI_THEME-accent) 10%, transparent); }
-.issueRowClosed { opacity: .72; }
-.rowPin { color: var(--MI_THEME-accent); font-size: 16px; margin-top: 2px; flex-shrink: 0; }
-.rowStatusIcon { font-size: 16px; margin-top: 2px; flex-shrink: 0; }
-.rowMain { flex: 1; min-width: 0; }
-.rowTitleLine { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.rowTitle { font-size: 1em; font-weight: 700; color: var(--MI_THEME-fg); overflow-wrap: anywhere; }
-.rowMeta { font-size: .8em; opacity: .7; margin-top: 3px; }
-.rowNo { font-family: ui-monospace, Menlo, monospace; }
-.rowAuthor { font-weight: 700; }
-.rowStatusText { font-size: 1em; }
-.rowAssigneeIcon { color: var(--MI_THEME-accent); }
-.rowSide { display: flex; align-items: center; gap: 12px; font-size: .82em; opacity: .8; padding-top: 3px; flex-shrink: 0; }
-.rowStat { display: inline-flex; align-items: center; gap: 4px; }
-
-/* ページャ */
-.pager { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 16px; font-size: .88em; flex-wrap: wrap; }
-.pagerArrow {
-	display: inline-flex; align-items: center; gap: 4px;
-	background: none; border: none; color: var(--MI_THEME-accent); cursor: pointer; padding: 6px 10px;
-}
-.pagerArrow:disabled { color: var(--MI_THEME-fg); opacity: .3; cursor: default; }
-.pagerPage { min-width: 2em; text-align: center; font-weight: 700; background: var(--MI_THEME-accent); color: #fff; border-radius: 6px; padding: 4px 11px; }
-.pagerSize { margin-left: 10px; }
-.pagerSelect { background: var(--MI_THEME-panel); border: 1px solid var(--MI_THEME-divider); border-radius: 6px; padding: 5px 8px; font-size: .9em; color: inherit; cursor: pointer; }
-
-.emptyBlock { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 42px 0; text-align: center; opacity: .85; }
-.emptyBlockIcon { font-size: 2.4rem; opacity: .35; }
-.emptyCta { display: inline-flex; align-items: center; gap: 6px; background: var(--MI_THEME-accent); border: none; color: #fff; border-radius: 8px; padding: 8px 18px; font-weight: 700; font-size: .88em; cursor: pointer; }
-
-/* ===== 右サイドバー ===== */
-.sideCol { display: flex; flex-direction: column; gap: 16px; }
-.sideCard { background: var(--MI_THEME-panel); border: 1px solid var(--MI_THEME-divider); border-radius: 10px; padding: 14px 16px; }
-.sideHead { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-.sideHeadActions { display: inline-flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 6px; }
-.sideTitle { display: inline-flex; align-items: center; gap: 6px; font-size: .88em; font-weight: 800; color: var(--MI_THEME-fg); }
-.sideTitle i { color: var(--MI_THEME-accent); }
-.sideCount { background: var(--MI_THEME-buttonBg, rgba(0,0,0,.07)); border-radius: 999px; padding: 0 7px; font-size: .82em; }
-.sideAdd { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 6px; background: none; border: 1px solid var(--MI_THEME-divider); color: inherit; cursor: pointer; }
-.sideAdd:hover { border-color: var(--MI_THEME-accent); color: var(--MI_THEME-accent); }
-.sideAddText { display: inline-flex; align-items: center; gap: 4px; background: none; border: 1px solid var(--MI_THEME-divider); border-radius: 6px; color: inherit; font-size: .78em; font-weight: 700; padding: 3px 9px; cursor: pointer; }
-.sideAddText:hover { border-color: var(--MI_THEME-accent); color: var(--MI_THEME-accent); }
-.sideReviewQueue { display: inline-flex; align-items: center; gap: 4px; border: 1px solid color-mix(in srgb, var(--MI_THEME-accent) 45%, var(--MI_THEME-divider)); border-radius: 999px; background: color-mix(in srgb, var(--MI_THEME-accent) 10%, transparent); color: var(--MI_THEME-accent); font-size: .76em; font-weight: 800; padding: 4px 9px; cursor: pointer; }
-.sideReviewQueue:hover { background: color-mix(in srgb, var(--MI_THEME-accent) 18%, transparent); }
-
-/* 予定リスト */
-.roadList { display: flex; flex-direction: column; gap: 9px; }
-.roadItem { display: flex; align-items: center; gap: 8px; background: none; border: none; color: inherit; cursor: pointer; text-align: left; padding: 0; }
-.roadDot { width: 8px; height: 8px; border-radius: 999px; flex-shrink: 0; }
-.roadTitle { flex: 1; min-width: 0; font-size: .84em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-/* 絵文字 */
-.emojiList { display: flex; flex-direction: column; gap: 8px; }
-.emojiRow { display: flex; align-items: center; gap: 9px; background: none; border: none; color: inherit; cursor: pointer; text-align: left; padding: 0; }
-.emojiTile { width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; background: var(--MI_THEME-bg); border: 1px solid var(--MI_THEME-divider); border-radius: 6px; flex-shrink: 0; overflow: hidden; }
-.emojiImg { max-width: 100%; max-height: 100%; object-fit: contain; }
-.emojiCode { flex: 1; min-width: 0; font-family: ui-monospace, Menlo, monospace; font-size: .78em; opacity: .85; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.quotaWrap { margin-top: 12px; }
-
-/* ===== 絵文字申請管理(2g) ===== */
-.emojiAdmin { min-width: 0; }
-.eaTop { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
-.eaFilters { display: flex; gap: 8px; flex-wrap: wrap; }
-.eaTopActions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.eaFilter {
-	background: var(--MI_THEME-panel); border: 1px solid var(--MI_THEME-divider); color: inherit;
-	border-radius: 999px; padding: 6px 15px; font-size: .84em; font-weight: 700; cursor: pointer;
-	transition: all .12s;
-}
-.eaFilter:hover { border-color: var(--MI_THEME-accent); }
-.eaFilterOn { background: var(--MI_THEME-accent); color: #fff; border-color: var(--MI_THEME-accent); }
-.eaRequestOwn, .eaBatch { display: inline-flex; align-items: center; gap: 6px; border-radius: 8px; padding: 7px 12px; font-size: .82em; font-weight: 800; cursor: pointer; }
-.eaRequestOwn { background: var(--MI_THEME-panel); border: 1px solid var(--MI_THEME-divider); color: inherit; }
-.eaRequestOwn:hover { border-color: var(--MI_THEME-accent); color: var(--MI_THEME-accent); }
-.eaBatch { background: var(--MI_THEME-accent); border: 1px solid var(--MI_THEME-accent); color: #fff; }
-.eaBatch:hover { opacity: .9; }
-.eaList { display: flex; flex-direction: column; gap: 8px; }
-.eaRow {
-	display: flex; align-items: center; gap: 12px;
-	background: var(--MI_THEME-panel); border: 1px solid var(--MI_THEME-divider);
-	border-radius: 12px; padding: 10px 14px;
-}
-.eaTile {
-	width: 40px; height: 40px; flex-shrink: 0;
-	display: inline-flex; align-items: center; justify-content: center;
-	background: var(--MI_THEME-bg); border: 1px solid var(--MI_THEME-divider); border-radius: 8px; overflow: hidden;
-}
-.eaImg { max-width: 100%; max-height: 100%; object-fit: contain; }
-.eaInfo { flex: 1; min-width: 0; }
-.eaName { font-family: ui-monospace, Menlo, monospace; font-weight: 700; font-size: .92em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.eaMeta { display: flex; align-items: center; gap: 5px; font-size: .76em; opacity: .7; margin-top: 3px; flex-wrap: wrap; }
-.eaResolution { display: flex; align-items: flex-start; gap: 5px; margin-top: 6px; color: var(--MI_THEME-warn); font-size: .78em; line-height: 1.45; overflow-wrap: anywhere; }
-.eaResolution i { flex: 0 0 auto; margin-top: .15em; }
-.eaAction { flex-shrink: 0; }
-.eaReview {
-	display: inline-flex; align-items: center; gap: 5px;
-	background: var(--MI_THEME-accent); border: none; color: #fff;
-	border-radius: 999px; padding: 6px 14px; font-size: .82em; font-weight: 700; cursor: pointer;
-	transition: opacity .12s;
-}
-.eaReview:hover { opacity: .9; }
-
-/* みんなの動き */
-.liveDot { width: 8px; height: 8px; border-radius: 999px; background: #e0506a; animation: hfPulse 1.8s infinite; }
-@keyframes hfPulse { 0% { box-shadow: 0 0 0 0 rgba(224,80,106,.5); } 70% { box-shadow: 0 0 0 7px rgba(224,80,106,0); } 100% { box-shadow: 0 0 0 0 rgba(224,80,106,0); } }
-.actList { display: flex; flex-direction: column; gap: 9px; }
-.actRow { display: flex; gap: 8px; align-items: flex-start; font-size: .82em; }
-.actAvatarLock { width: 20px; height: 20px; border-radius: 999px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; background: var(--MI_THEME-bg); border: 1px solid var(--MI_THEME-divider); font-size: .85em; opacity: .8; }
-.actBody { flex: 1; min-width: 0; line-height: 1.5; }
-.actName { font-weight: 700; }
-.actVerb { opacity: .75; }
-.actObj { display: block; opacity: .6; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.actTime { font-size: .82em; opacity: .5; flex-shrink: 0; }
-
-/* ===== 3a(モバイル)専用パーツ: 既定は非表示、<600px で表示 ===== */
-.mobileExtras { display: none; }
-.ticker { display: flex; align-items: center; gap: 8px; padding: 7px 12px; background: var(--MI_THEME-panel); border: 1px solid var(--MI_THEME-divider); border-radius: 10px; font-size: .82em; overflow: hidden; margin-bottom: 10px; }
-.tickerDot { width: 7px; height: 7px; border-radius: 999px; background: #e0506a; animation: hfPulse 1.8s infinite; flex-shrink: 0; }
-.tickerText { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: .85; }
-.tickerTime { margin-left: auto; font-size: .85em; opacity: .5; flex-shrink: 0; }
-.statChips { display: flex; gap: 8px; margin-bottom: 12px; }
-.statChip { flex: 1; background: var(--MI_THEME-panel); border: 1px solid var(--MI_THEME-divider); border-radius: 10px; padding: 8px 6px; text-align: center; cursor: pointer; color: inherit; }
-.statNum { font-size: 1.15em; font-weight: 800; }
-.statLabel { font-size: .68em; font-weight: 700; opacity: .6; margin-top: 2px; }
-.statOpen { color: #2b6fc0; }
-.statDoing { color: #b6791f; }
-.statResolved { color: #1f8a5b; }
-.statEmoji { color: #c9971f; }
-.mobileEmojiCard { margin-bottom: 12px; padding: 14px; border: 1px solid var(--MI_THEME-divider); border-radius: 12px; background: var(--MI_THEME-panel); }
-.mobileEmojiHead { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-.mobileEmojiTitle { display: flex; align-items: center; gap: 6px; font-size: .9em; font-weight: 800; }
-.mobileEmojiTitle i { color: var(--MI_THEME-accent); }
-.mobileEmojiTitle span { padding: 1px 7px; border-radius: 999px; background: var(--MI_THEME-buttonBg, rgba(0,0,0,.07)); font-size: .8em; }
-.mobileEmojiLead { margin-top: 3px; font-size: .72em; line-height: 1.5; opacity: .62; }
-.mobileEmojiPrimary { flex-shrink: 0; display: inline-flex; align-items: center; gap: 5px; border: none; border-radius: 8px; padding: 7px 11px; background: var(--MI_THEME-accent); color: #fff; font-size: .76em; font-weight: 800; cursor: pointer; }
-.mobileEmojiList { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--MI_THEME-divider); }
-.mobileEmojiRow { display: flex; align-items: center; gap: 9px; width: 100%; padding: 0; border: none; background: none; color: inherit; text-align: left; cursor: pointer; }
-.roadScroll { margin-bottom: 12px; }
-.roadScrollHead { display: flex; align-items: center; gap: 5px; font-size: .74em; font-weight: 800; opacity: .6; margin-bottom: 7px; }
-.roadScrollHead i { color: var(--MI_THEME-accent); }
-.roadScrollList { display: flex; gap: 8px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
-.roadScrollList::-webkit-scrollbar { display: none; }
-/* 旗鯖fork(3a): モバイルでは全体幅のカルーセル(1枚=画面幅)。複数あればスワイプで送る。 */
-.roadScrollCard { flex: 0 0 100%; box-sizing: border-box; scroll-snap-align: start; background: var(--MI_THEME-panel); border: 1px solid var(--MI_THEME-divider); border-radius: 10px; padding: 11px 14px; text-align: left; color: inherit; cursor: pointer; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
-.roadScrollTitle { font-size: .8em; font-weight: 700; line-height: 1.4; }
-
-/* FAB(モバイルのみ) */
-.fab { display: none; position: fixed; right: 20px; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); width: 52px; height: 52px; border-radius: 999px; background: var(--MI_THEME-accent); border: none; color: #fff; font-size: 1.4rem; box-shadow: 0 6px 16px rgba(52,161,201,.45); cursor: pointer; z-index: 10; }
-
-/* ===== レスポンシブ ===== */
-/* 1024px 未満: 右サイドバーを下に畳む */
-@container hatafeed (max-width: 1023px) {
-	.grid { grid-template-columns: 1fr; }
-	.sideCol { flex-direction: row; flex-wrap: wrap; }
-	.sideCard { flex: 1; min-width: 220px; }
-}
-/* 600px 未満(3a レイアウト): 幅ベースの折り返し。ツールバーは検索を独立行に落とし、
-	 集計チップ等のモバイルパーツを出す。主要な作成操作は本文上部の2ボタンを維持する。 */
-@container hatafeed (max-width: 599px) {
-	.toolDivider { display: none; }
-	.iconBtnHideMobile { display: none; }
-	.serverName { max-width: 100px; }
-	.search { order: 10; flex-basis: 100%; max-width: none; margin-left: 0; }
-	.topActions { gap: 8px; }
-	.topAction { min-height: 44px; padding: 8px 10px; font-size: .84em; }
-	.mobileExtras { display: block; }
-	.sideCol { display: none; }
-	.listCard { margin-bottom: 8px; }
-}
-
-/* 旗鯖fork(2a/3a): ロードマップ管理の追加操作だけ、スマホでは右下FABへ移す。
-	 イシュー作成はトップ本文のボタンへ一本化し、右上・FABには重複させない。 */
-.repo[data-smartphone="on"] .newBtn { display: none; }
-.repo[data-smartphone="on"] .fab { display: inline-flex; align-items: center; justify-content: center; }
-</style>
-
-<style lang="scss" scoped>
-/* 動的な値(ステータス)で色が変わる小要素は data 属性で当てる(module の動的キーはビルドで解決されないため)。 */
-.roadDot[data-status="open"] { background: #2b6fc0; }
-.roadDot[data-status="planned"] { background: #d6a82b; }
-.roadDot[data-status="inProgress"] { background: #e08a1f; }
-.roadDot[data-status="resolved"] { background: #1f8a5b; }
-.roadDot[data-status="wontfix"] { background: #999; }
-.roadDot[data-status="unknown"] { background: #bbb; }
-.roadDot[data-status="closed"] { background: #8a7aa6; }
-
-/* 絵文字申請の状態アイコン(承認=緑✓ / 審査中=黄時計 / 却下=赤🚫) */
-.hfEstIcon { font-size: 1.05rem; flex-shrink: 0; opacity: .9; }
-.hfEstIcon[data-est="approved"] { color: #1f8a5b; }
-.hfEstIcon[data-est="pending"] { color: #c9971f; }
-.hfEstIcon[data-est="held"] { color: #6f6fd0; }
-.hfEstIcon[data-est="rejected"] { color: #c0392b; }
-
-/* みんなの動きの入場/並べ替えアニメーション(TransitionGroup name=hfAct はグローバルクラス) */
-.hfAct-enter-active { transition: opacity .35s ease, transform .35s ease; }
-.hfAct-enter-from { opacity: 0; transform: translateY(-8px); }
-.hfAct-leave-active { transition: opacity .25s ease; position: absolute; }
-.hfAct-leave-to { opacity: 0; }
-.hfAct-move { transition: transform .35s ease; }
-
-@media (prefers-reduced-motion: reduce) {
-	.hfAct-enter-active, .hfAct-leave-active, .hfAct-move { transition: none; }
-}
+<style scoped>
+.hfEstIcon[data-est="pending"] { color: var(--hy-accent); }
+.hfEstIcon[data-est="held"] { color: #a36a24; }
+.hfEstIcon[data-est="approved"] { color: var(--hy-accent); }
+.hfEstIcon[data-est="rejected"] { color: var(--MI_THEME-error); }
 </style>

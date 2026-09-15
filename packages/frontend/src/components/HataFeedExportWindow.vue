@@ -5,7 +5,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 <template>
 <MkWindow
-	ref="dialog"
+	ref="dialog" class="hatady-scope hatafeed-scope"
+	data-hatafeed-window
+	:data-hatady-theme="hataFeedTheme"
+	centerTitle
 	:initialWidth="640"
 	:initialHeight="720"
 	:canResize="true"
@@ -111,6 +114,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 <script lang="ts" setup>
 import { computed, ref, useTemplateRef } from 'vue';
 import MkWindow from '@/components/MkWindow.vue';
+import { hataFeedTheme } from '@/utility/hatasaba-device-prefs.js';
+import { hataFeedNotify } from '@/utility/hatafeed-ui.js';
+import '@/components/hatafeed-ui.css';
 import MkButton from '@/components/MkButton.vue';
 import MkInput from '@/components/MkInput.vue';
 import MkSelect from '@/components/MkSelect.vue';
@@ -220,7 +226,7 @@ async function runExport() {
 			: exportData;
 		const date = new Date().toISOString().slice(0, 10);
 		downloadHataFeedJson(localizedData, `hatafeed-issues-${props.projectId ?? 'official'}-${date}.json`);
-		os.toast(copy.exportStarted);
+		hataFeedNotify(copy.exportStarted);
 		succeeded = true;
 	} catch (error) {
 		console.error(error);
@@ -233,7 +239,7 @@ async function runExport() {
 </script>
 
 <style lang="scss" module>
-.form {
+.form { text-align: center;
 	display: flex;
 	flex-direction: column;
 	gap: 16px;
@@ -337,7 +343,7 @@ async function runExport() {
 	position: sticky;
 	bottom: 0;
 	display: flex;
-	justify-content: flex-end;
+	justify-content: center;
 	gap: 10px;
 	padding: 12px 0 2px;
 	background: var(--MI_THEME-bg);

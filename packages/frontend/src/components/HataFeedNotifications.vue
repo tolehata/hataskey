@@ -19,24 +19,24 @@ SPDX-License-Identifier: AGPL-3.0-only
 	:transparentBg="true"
 	:disableBgBlur="true"
 	@click="modal?.close()"
-	@esc="modal?.close()"
+	@esc="onEscape"
 	@closed="emit('closed')"
 >
 	<div
 		data-hatacording-hatafeed-notifications
-		class="_popup _shadow"
-		:class="[$style.panel, { [$style.drawer]: type === 'drawer' }]"
+		class="_popup _shadow hatady-scope hatafeed-scope"
+		:data-hatady-theme="hataFeedTheme"
+		:class="$style.panel" :data-type="type"
 		:style="{ maxHeight: maxHeight ? maxHeight + 'px' : undefined, width: type === 'drawer' ? undefined : '360px' }"
 	>
 		<div :class="$style.header">
 			<span :class="$style.title"><i class="ti ti-bell"></i> {{ copy.title }}</span>
-			<button v-if="unreadCount > 0" :class="$style.readBtn" @click="markAllRead"><i class="ti ti-checks"></i> {{ copy.markRead }}</button>
-			<button :class="$style.closeBtn" @click="modal?.close()"><i class="ti ti-x"></i></button>
+			<button type="button" class="hf-icon" :aria-label="copy.markRead" :title="copy.markRead" :disabled="!unreadCount || markingAll" @click="markAllRead"><i class="ti ti-checks" aria-hidden="true"></i></button>
+			<button ref="filterButton" type="button" class="hf-icon" :aria-label="filter ? `通知の種類：${notifTypeLabel[filter] ?? filter}` : '通知を絞り込む'" title="通知を絞り込む" :data-active="!!filter" :aria-expanded="filterOpen" :aria-controls="filterId" @click="filterOpen = !filterOpen"><i class="ti ti-filter" aria-hidden="true"></i></button>
+			<button type="button" class="hf-icon" :class="$style.closeBtn" aria-label="通知を閉じる" @click="modal?.close()"><i class="ti ti-x" aria-hidden="true"></i></button>
 		</div>
-
-		<div :class="$style.bar">
-			<button :class="[$style.filterBtn, filter && $style.filterBtnOn]" @click="openFilter"><i class="ti ti-filter"></i> {{ filter ? (notifTypeLabel[filter] ?? filter) : copy.all }} <i class="ti ti-chevron-down" :class="$style.filterCaret"></i></button>
-		</div>
+		<label v-if="filterOpen" :id="filterId" :class="$style.bar"><span>通知の種類</span><select :value="filter ?? ''" @change="chooseFilter"><option value="">{{ copy.all }}</option><option v-for="(label, value) in notifTypeLabel" :key="value" :value="value">{{ label }}</option></select></label>
+		<p v-if="error" :class="$style.state" role="alert">{{ error }}<button type="button" class="hy-secondary" @click="reload">再読み込み</button></p>
 
 		<div v-if="loading" :class="$style.state">{{ copy.loading }}</div>
 		<div v-else-if="items.length === 0" :class="$style.state">
@@ -92,16 +92,19 @@ SPDX-License-Identifier: AGPL-3.0-only
 		</div>
 
 		<div v-if="page > 0 || hasNext" :class="$style.pager">
-			<button :class="$style.pagerBtn" :disabled="page === 0" @click="prevPage"><i class="ti ti-chevron-left"></i></button>
+			<button :class="$style.pagerBtn" :disabled="loading || page === 0" aria-label="前のページ" @click="prevPage"><i class="ti ti-chevron-left"></i></button>
 			<span :class="$style.pagerPage">{{ page + 1 }}</span>
-			<button :class="$style.pagerBtn" :disabled="!hasNext" @click="nextPage"><i class="ti ti-chevron-right"></i></button>
+			<button :class="$style.pagerBtn" :disabled="loading || !hasNext" aria-label="次のページ" @click="nextPage"><i class="ti ti-chevron-right"></i></button>
 		</div>
 	</div>
 </MkModal>
 </template>
 
 <script lang="ts" setup>
-import { ref, computed, useTemplateRef, onMounted } from 'vue';
+import { ref, computed, useId, useTemplateRef, onMounted, onUnmounted } from 'vue';
+import { hataFeedTheme } from '@/utility/hatasaba-device-prefs.js';
+import { hataFeedNotify } from '@/utility/hatafeed-ui.js';
+import '@/components/hatafeed-ui.css';
 import type { HataFeedEmojiRequest, HataFeedNotif } from '@/utility/hatafeed.js';
 import MkModal from '@/components/MkModal.vue';
 import HfAvatar from '@/components/HfAvatar.vue';
@@ -109,10 +112,10 @@ import HataFeedNotificationBody from '@/components/HataFeedNotificationBody.vue'
 import * as os from '@/os.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { useRouter } from '@/router.js';
-import { markHataFeedNotificationsRead, notifIcon, notifTypeLabel, groupHataFeedNotifications, groupSummary, notificationDisplayMessage } from '@/utility/hatafeed.js';
+import { markHataFeedNotificationsRead, hataFeedUnreadCount, notifIcon, notifTypeLabel, groupHataFeedNotifications, groupSummary, notificationDisplayMessage } from '@/utility/hatafeed.js';
 import { i18n } from '@/i18n.js';
 
-const props = defineProps<{ anchorElement?: HTMLElement | null }>();
+defineProps<{ anchorElement?: HTMLElement | null }>();
 const emit = defineEmits<{ (ev: 'closed'): void; (ev: 'read', unreadCount: number): void }>();
 const modal = useTemplateRef('modal');
 const router = useRouter();
@@ -123,10 +126,18 @@ const PAGE_SIZE = 8;
 const items = ref<HataFeedNotif[]>([]);
 const unreadCount = ref(0);
 const loading = ref(true);
+const markingAll = ref(false);
 const filter = ref<string | null>(null);
 const page = ref(0);
 const cursors = ref<(string | undefined)[]>([undefined]); // cursors[i] = page i を取得する untilId
 const hasNext = ref(false);
+const nextCursor = ref<string>();
+const filterOpen = ref(false);
+const filterButton = useTemplateRef('filterButton');
+const filterId = useId();
+const error = ref('');
+let generation = 0;
+onUnmounted(() => { generation++; });
 
 // 旗鯖fork(通知グルーピング): 取得済みの通知を同種・同一対象でまとめた表示単位。
 const groups = computed(() => groupHataFeedNotifications(items.value));
@@ -140,67 +151,72 @@ function toggle(key: string) {
 	expanded.value = next;
 }
 
-// 旗鯖fork: 指定カーソルから1ページ分取得。通知APIに type 絞りが無いため、フィルタ時は
-//   多めに取得してクライアント側で type 一致を抽出する簡易実装。
-async function fetchPage(untilId: string | undefined) {
+// A filtered page keeps a cursor into the original stream even when it has no matches.
+async function fetchPage(targetPage: number, untilId: string | undefined) {
+	const request = ++generation;
+	const selectedType = filter.value;
 	loading.value = true;
 	try {
-		const limit = (filter.value ? PAGE_SIZE * 4 : PAGE_SIZE) + 1;
-		const res = await misskeyApi('hata/feedback/notifications', { limit, untilId });
-		// ⚠️表示した時点でバッジを消す。ただし「どれが新しいか」は消さないので、
-		//   この一覧の未読表示は取得時の状態のまま残る。
-		unreadCount.value = res.unreadCount;
-		if (res.unreadCount > 0) {
-			void markHataFeedNotificationsRead();
-			emit('read', 0);
+		const limit = selectedType ? 33 : PAGE_SIZE + 1;
+		const result = await misskeyApi('hata/feedback/notifications', { limit, untilId });
+		if (request !== generation) return;
+		const raw = result.notifications as unknown as HataFeedNotif[];
+		const matches = selectedType ? raw.filter(item => item.type === selectedType) : raw;
+		items.value = matches.slice(0, PAGE_SIZE);
+		hasNext.value = matches.length > PAGE_SIZE || raw.length === limit;
+		nextCursor.value = matches.length > PAGE_SIZE ? items.value.at(-1)?.id : raw.at(-1)?.id;
+		page.value = targetPage;
+		cursors.value[targetPage] = untilId;
+		unreadCount.value = result.unreadCount;
+		hataFeedUnreadCount.value = result.unreadCount;
+		expanded.value = new Set();
+		error.value = '';
+		if (result.unreadCount > 0) {
+			await markHataFeedNotificationsRead();
+			emit('read', hataFeedUnreadCount.value);
 		}
-		let list = res.notifications as unknown as HataFeedNotif[];
-		if (filter.value) list = list.filter(n => n.type === filter.value);
-		hasNext.value = list.length > PAGE_SIZE;
-		items.value = list.slice(0, PAGE_SIZE);
-		expanded.value = new Set(); // 旗鯖fork: ページ切替時は展開状態をリセット(key が別ページと混ざらないように)。
-	} finally {
-		loading.value = false;
-	}
+	} catch { if (request === generation) error.value = '通知を読み込めませんでした'; } finally { if (request === generation) loading.value = false; }
 }
 
-async function reload() {
-	page.value = 0;
-	cursors.value = [undefined];
-	await fetchPage(undefined);
-}
+async function reload() { await fetchPage(0, undefined); }
 
 async function nextPage() {
-	if (!hasNext.value) return;
-	const lastId = items.value[items.value.length - 1]?.id;
-	page.value += 1;
-	cursors.value[page.value] = lastId;
-	await fetchPage(lastId);
+	if (loading.value || !hasNext.value || !nextCursor.value) return;
+	await fetchPage(page.value + 1, nextCursor.value);
 }
 
 async function prevPage() {
-	if (page.value === 0) return;
-	page.value -= 1;
-	await fetchPage(cursors.value[page.value]);
+	if (loading.value || page.value === 0) return;
+	await fetchPage(page.value - 1, cursors.value[page.value - 1]);
 }
 
-function openFilter(ev: MouseEvent) {
-	const present = [...new Set(items.value.map(n => n.type))];
-	os.popupMenu([
-		{ text: copy.all, active: filter.value === null, action: () => { filter.value = null; reload(); } },
-		...present.map(t => ({
-			text: notifTypeLabel[t] ?? t,
-			active: filter.value === t,
-			action: () => { filter.value = t; reload(); },
-		})),
-	], (ev.currentTarget ?? ev.target) as HTMLElement);
+function chooseFilter(event: Event) {
+	filter.value = (event.target as HTMLSelectElement).value || null;
+	filterOpen.value = false;
+	filterButton.value?.focus();
+	reload();
+}
+
+function onEscape(event: KeyboardEvent) {
+	event.stopPropagation();
+	if (filterOpen.value) { filterOpen.value = false; filterButton.value?.focus(); } else modal.value?.close();
 }
 
 async function markAllRead() {
-	await misskeyApi('hata/feedback/notifications/read', {});
-	unreadCount.value = 0;
-	items.value = items.value.map(n => ({ ...n, isRead: true }));
-	emit('read', 0);
+	if (markingAll.value) return;
+	markingAll.value = true;
+	try {
+		await misskeyApi('hata/feedback/notifications/read', {});
+		unreadCount.value = 0;
+		hataFeedUnreadCount.value = 0;
+		items.value = items.value.map(n => ({ ...n, isRead: true }));
+		emit('read', 0);
+		hataFeedNotify('すべて既読にしました');
+	} catch {
+		error.value = '既読にできませんでした';
+	} finally {
+		markingAll.value = false;
+	}
 }
 
 const readingNotificationIds = new Set<string>();
@@ -212,6 +228,7 @@ async function markRead(n: HataFeedNotif) {
 		await misskeyApi('hata/feedback/notifications/read', { notificationId: n.id });
 		items.value = items.value.map(item => item.id === n.id ? { ...item, isRead: true } : item);
 		unreadCount.value = Math.max(0, unreadCount.value - 1);
+		hataFeedUnreadCount.value = unreadCount.value;
 		emit('read', unreadCount.value);
 	} finally {
 		readingNotificationIds.delete(n.id);
@@ -253,53 +270,18 @@ onMounted(reload);
 </script>
 
 <style lang="scss" module>
-.panel {
-	display: flex;
-	flex-direction: column;
-	overflow: hidden;
-	background: var(--MI_THEME-panel);
-	border-radius: 12px;
-	box-sizing: border-box;
-}
-/* スマホ: 画面下からのドロワー(全画面寄り)。横幅いっぱい・上端だけ角丸。 */
-.drawer {
-	width: 100%;
-	border-radius: 24px 24px 0 0;
-}
-
-.header { display: flex; align-items: center; gap: 8px; padding: 12px 14px 8px; }
-.title { display: inline-flex; align-items: center; gap: 6px; font-weight: 800; font-size: .95em; }
-.title i { color: var(--MI_THEME-accent); }
-.readBtn {
-	margin-left: auto;
-	display: inline-flex; align-items: center; gap: 5px;
-	background: none; border: 1px solid var(--MI_THEME-divider); color: inherit;
-	border-radius: 999px; padding: 4px 11px; font-size: .78em; font-weight: 700; cursor: pointer;
-}
-.readBtn:hover { border-color: var(--MI_THEME-accent); color: var(--MI_THEME-accent); }
-.closeBtn {
-	display: inline-flex; align-items: center; justify-content: center;
-	width: 28px; height: 28px; border-radius: 999px;
-	background: none; border: none; color: inherit; opacity: .6; cursor: pointer;
-}
-.closeBtn:hover { opacity: 1; background: var(--MI_THEME-bg); }
-/* header に readBtn が無い時も close は右端に */
-.header .closeBtn:first-of-type:not(:first-child) { }
-
-.bar { padding: 0 14px 8px; }
-.filterBtn {
-	display: inline-flex; align-items: center; gap: 5px;
-	background: var(--MI_THEME-bg); border: 1px solid var(--MI_THEME-divider); color: inherit;
-	border-radius: 999px; padding: 5px 12px; font-size: .8em; font-weight: 600; cursor: pointer;
-}
-.filterBtn:hover { border-color: var(--MI_THEME-accent); }
-.filterBtnOn { background: var(--MI_THEME-accent); color: #fff; border-color: var(--MI_THEME-accent); }
-.filterCaret { font-size: .85em; opacity: .7; }
-
+.panel { display: flex; flex-direction: column; max-width: calc(100dvw - 24px); overflow: hidden; background: var(--hy-surface); border: 1px solid var(--hy-border); border-radius: 24px; box-sizing: border-box; }
+.panel[data-type='dialog'] { margin: auto; max-width: 100%; max-height: 100%; }
+.panel[data-type='drawer'] { width: 100%; max-width: 100%; border-radius: 24px 24px 0 0; }
+.header { display: flex; align-items: center; gap: 2px; padding: 14px 12px 10px; }
+.title { display: inline-flex; align-items: center; gap: 8px; padding-left: 4px; font-weight: 700; }
+.closeBtn { margin-left: auto; }
+.bar { display: grid; gap: 6px; padding: 0 16px 12px; font-size: 12px; }
+.bar select { min-height: 44px; padding: 10px 12px; border: 1px solid var(--hy-border); border-radius: 14px; color: inherit; background: var(--hy-surface); }
 .state { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 36px 0; opacity: .6; text-align: center; }
 .stateIcon { font-size: 2rem; opacity: .5; }
 
-.list { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; padding: 0 10px 6px; }
+.list { flex: 0 1 auto; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; padding: 0 10px 6px; }
 .row {
 	display: flex; gap: 10px; align-items: flex-start;
 	width: 100%; text-align: left; color: inherit; background: none; border: none;

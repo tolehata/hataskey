@@ -13,7 +13,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 <div :class="$style.root">
 	<!-- パンくず -->
 	<div :class="$style.crumbs">
-		<button :class="$style.crumbLink" @click="$emit('back')">{{ copy.issues }}</button>
+		<button type="button" :class="$style.crumbLink" :aria-label="copy.backToList" @click="$emit('back')"><i class="ti ti-arrow-left" aria-hidden="true"></i>{{ copy.issues }}</button>
 		<span :class="$style.crumbSep">/</span>
 		<span :class="$style.crumbNo">#{{ issue?.number ?? '' }}</span>
 	</div>
@@ -29,7 +29,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<!-- タイトル + 番号コピー -->
 		<div :class="$style.titleRow">
 			<h1 :class="$style.title">{{ issue.title }} <span :class="$style.titleNo">#{{ issue.number }}</span></h1>
-			<button :class="$style.copyBtn" v-tooltip="copy.copyTitle" @click="copyText(issue.title, copy.title)"><i class="ti ti-copy"></i></button>
+			<button v-tooltip="copy.copyTitle" :class="$style.copyBtn" @click="copyText(issue.title, copy.title)"><i class="ti ti-copy"></i></button>
 		</div>
 
 		<!-- メタ行 -->
@@ -45,162 +45,162 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 		<!-- 本体グリッド -->
 		<div :class="$style.gridCt">
-		<div :class="$style.grid">
-			<!-- 左: タイムライン -->
-			<div :class="$style.timeline">
-				<div :class="$style.tlLine"></div>
+			<div :class="$style.grid">
+				<!-- 左: タイムライン -->
+				<div :class="$style.timeline">
+					<div :class="$style.tlLine"></div>
 
-				<!-- 最初のカード = 原文(作成者の投稿) -->
-				<div :class="$style.tlRow">
-					<HfAvatar :user="issue.createdBy" :size="36" :class="$style.tlAvatar"/>
-					<div :class="$style.card">
-						<div :class="[$style.cardHead, $style.cardHeadAuthor]">
-							<MkUserName v-if="issue.createdBy" :class="$style.cardName" :user="issue.createdBy"/>
-							<MkTime :class="$style.cardTime" :time="issue.createdAt" mode="relative"/>
-							<span :class="[$style.roleBadge, $style.roleAuthor]">{{ copy.author }}</span>
-							<button :class="$style.copyMini" v-tooltip="copy.copyDescription" @click="copyText(issue.description, copy.description)"><i class="ti ti-copy"></i></button>
-						</div>
-						<div v-if="issue.description" :class="$style.cardText"><Mfm :text="linkifyRefs(issue.description)"/></div>
-						<MkMediaList v-if="issue.files && issue.files.length" :class="$style.cardMedia" :mediaList="issue.files"/>
-						<div v-if="issue.code" :class="$style.codeBlock">
-							<div :class="$style.codeHead">
-								<span><i class="ti ti-code"></i> {{ copy.submittedCode }}</span>
-								<button :class="$style.codeCopyBtn" v-tooltip="copy.copyCode" @click="copyText(issue.code, copy.code)"><i class="ti ti-copy"></i> {{ copy.copy }}</button>
+					<!-- 最初のカード = 原文(作成者の投稿) -->
+					<div :class="$style.tlRow">
+						<HfAvatar :user="issue.createdBy" :size="36" :class="$style.tlAvatar"/>
+						<div :class="$style.card">
+							<div :class="[$style.cardHead, $style.cardHeadAuthor]">
+								<MkUserName v-if="issue.createdBy" :class="$style.cardName" :user="issue.createdBy"/>
+								<MkTime :class="$style.cardTime" :time="issue.createdAt" mode="relative"/>
+								<span :class="[$style.roleBadge, $style.roleAuthor]">{{ copy.author }}</span>
+								<button v-tooltip="copy.copyDescription" :class="$style.copyMini" @click="copyText(issue.description, copy.description)"><i class="ti ti-copy"></i></button>
 							</div>
-							<pre :class="$style.codePre"><code>{{ issue.code }}</code></pre>
+							<div v-if="issue.description" :class="$style.cardText"><Mfm :text="linkifyRefs(issue.description)"/></div>
+							<MkMediaList v-if="issue.files && issue.files.length" :class="$style.cardMedia" :mediaList="issue.files"/>
+							<div v-if="issue.code" :class="$style.codeBlock">
+								<div :class="$style.codeHead">
+									<span><i class="ti ti-code"></i> {{ copy.submittedCode }}</span>
+									<button v-tooltip="copy.copyCode" :class="$style.codeCopyBtn" @click="copyText(issue.code, copy.code)"><i class="ti ti-copy"></i> {{ copy.copy }}</button>
+								</div>
+								<pre :class="$style.codePre"><code>{{ issue.code }}</code></pre>
+							</div>
 						</div>
 					</div>
-				</div>
 
-				<!-- コメント -->
-				<div v-for="c in comments" :key="c.id" :ref="el => setCommentRef(c.id, el)" :class="$style.tlRow">
-					<HfAvatar :user="c.user" :size="36" :class="$style.tlAvatar"/>
-					<div :class="[$style.card, c.mark === 'important' && $style.cardImportant, flashCommentId === c.id && $style.cardFlash]">
-						<div :class="$style.cardHead">
-							<MkUserName :class="$style.cardName" :user="c.user"/>
-							<MkTime :class="$style.cardTime" :time="c.createdAt" mode="relative"/>
-							<span v-if="issue.createdBy && c.user?.id === issue.createdBy.id" :class="[$style.roleBadge, $style.roleAuthor]">{{ copy.author }}</span>
-							<span v-else-if="isModeratorUser(c.user?.id)" :class="[$style.roleBadge, $style.roleStaff]"><i class="ti ti-shield-check"></i> {{ copy.assignee }}</span>
-							<span v-if="c.mark === 'important'" :class="[$style.roleBadge, $style.roleImportant]"><i class="ti ti-alert-triangle-filled"></i> {{ copy.important }}</span>
-							<span v-if="c.mark === 'question'" :class="[$style.roleBadge, $style.roleQuestion]"><i class="ti ti-help-circle-filled"></i> ?</span>
-							<button :class="$style.cardMenu" @click="openCommentMenu(c, $event)"><i class="ti ti-dots"></i></button>
-						</div>
-						<button v-if="c.replyTo" :class="$style.replyRef" @click="scrollToComment(c.replyTo.id)">
-							<i class="ti ti-arrow-back-up"></i>
-							<MkUserName :class="$style.replyRefUser" :user="c.replyTo.user"/>
-							<span :class="$style.replyRefText">{{ c.replyTo.text }}</span>
-						</button>
-						<div :class="$style.cardText"><Mfm :text="linkifyRefs(c.text)" :author="c.user"/></div>
-						<MkMediaList v-if="c.files && c.files.length" :class="$style.cardMedia" :mediaList="c.files"/>
-						<div :class="$style.reactions">
-							<button
-								v-for="(count, emoji) in c.reactions"
-								:key="emoji"
-								:class="[$style.reaction, c.myReaction === String(emoji) && $style.reactionMine]"
-								@click="react(c, String(emoji))"
-							>
-								<MkReactionIcon :reaction="String(emoji)"/> <span>{{ count }}</span>
+					<!-- コメント -->
+					<div v-for="c in comments" :key="c.id" :ref="el => setCommentRef(c.id, el)" :class="$style.tlRow">
+						<HfAvatar :user="c.user" :size="36" :class="$style.tlAvatar"/>
+						<div :class="[$style.card, c.mark === 'important' && $style.cardImportant, flashCommentId === c.id && $style.cardFlash]">
+							<div :class="$style.cardHead">
+								<MkUserName :class="$style.cardName" :user="c.user"/>
+								<MkTime :class="$style.cardTime" :time="c.createdAt" mode="relative"/>
+								<span v-if="issue.createdBy && c.user?.id === issue.createdBy.id" :class="[$style.roleBadge, $style.roleAuthor]">{{ copy.author }}</span>
+								<span v-else-if="isModeratorUser(c.user?.id)" :class="[$style.roleBadge, $style.roleStaff]"><i class="ti ti-shield-check"></i> {{ copy.assignee }}</span>
+								<span v-if="c.mark === 'important'" :class="[$style.roleBadge, $style.roleImportant]"><i class="ti ti-alert-triangle-filled"></i> {{ copy.important }}</span>
+								<span v-if="c.mark === 'question'" :class="[$style.roleBadge, $style.roleQuestion]"><i class="ti ti-help-circle-filled"></i> ?</span>
+								<button :class="$style.cardMenu" @click="openCommentMenu(c, $event)"><i class="ti ti-dots"></i></button>
+							</div>
+							<button v-if="c.replyTo" :class="$style.replyRef" @click="scrollToComment(c.replyTo.id)">
+								<i class="ti ti-arrow-back-up"></i>
+								<MkUserName :class="$style.replyRefUser" :user="c.replyTo.user"/>
+								<span :class="$style.replyRefText">{{ c.replyTo.text }}</span>
 							</button>
-							<button :class="$style.reactionAdd" @click="openReactionPicker($event, c)"><i class="ti ti-mood-plus"></i></button>
+							<div :class="$style.cardText"><Mfm :text="linkifyRefs(c.text)" :author="c.user"/></div>
+							<MkMediaList v-if="c.files && c.files.length" :class="$style.cardMedia" :mediaList="c.files"/>
+							<div :class="$style.reactions">
+								<button
+									v-for="(count, emoji) in c.reactions"
+									:key="emoji"
+									:class="[$style.reaction, c.myReaction === String(emoji) && $style.reactionMine]"
+									@click="react(c, String(emoji))"
+								>
+									<MkReactionIcon :reaction="String(emoji)"/> <span>{{ count }}</span>
+								</button>
+								<button :class="$style.reactionAdd" @click="openReactionPicker($event, c)"><i class="ti ti-mood-plus"></i></button>
+							</div>
+						</div>
+					</div>
+
+					<!-- コメント投稿(タイムライン末尾) -->
+					<div v-if="issue.closed" :class="$style.closedNotice"><i class="ti ti-lock"></i> {{ copy.closedNotice }}</div>
+					<div v-else :class="$style.tlRow">
+						<HfAvatar :user="me" :size="36" :class="$style.tlAvatar"/>
+						<div :class="[$style.card, $style.composerCard]">
+							<div v-if="replyTarget" :class="$style.replyBar">
+								<i class="ti ti-arrow-back-up"></i>
+								<span>{{ copy.replyTo }}</span><MkUserName :user="replyTarget.user"/>
+								<span :class="$style.replyBarText">{{ (replyTarget.text ?? '').slice(0, 40) }}</span>
+								<button :class="$style.replyBarCancel" @click="replyTarget = null"><i class="ti ti-x"></i></button>
+							</div>
+							<div v-if="commentFiles.length" :class="$style.cFileGrid">
+								<div v-for="f in commentFiles" :key="f.id" :class="$style.cFileThumb">
+									<img :src="f.thumbnailUrl ?? f.url" :alt="f.name"/>
+									<button :class="$style.cFileDel" @click="commentFiles = commentFiles.filter(x => x.id !== f.id)"><i class="ti ti-x"></i></button>
+								</div>
+							</div>
+							<div :class="$style.composerRow">
+								<div :class="$style.inputPill">
+									<textarea ref="commentTextarea" v-model="newComment" :class="$style.pillInput" :placeholder="replyTarget ? copy.replyPlaceholder : copy.commentPlaceholder" rows="1" @keydown="onCommentKeydown"></textarea>
+									<button :class="$style.pillIcon" :title="copy.insertEmoji" @click="insertCommentEmoji"><i class="ti ti-mood-happy"></i></button>
+									<button :class="$style.pillIcon" :title="copy.attachImage" @click="attachCommentFiles"><i class="ti ti-photo-plus"></i></button>
+								</div>
+								<MkButton :class="$style.sendBtn" rounded primary :disabled="!newComment.trim() || sending" @click="sendComment">{{ copy.send }}</MkButton>
+							</div>
 						</div>
 					</div>
 				</div>
 
-				<!-- コメント投稿(タイムライン末尾) -->
-				<div v-if="issue.closed" :class="$style.closedNotice"><i class="ti ti-lock"></i> {{ copy.closedNotice }}</div>
-				<div v-else :class="$style.tlRow">
-					<HfAvatar :user="me" :size="36" :class="$style.tlAvatar"/>
-					<div :class="[$style.card, $style.composerCard]">
-						<div v-if="replyTarget" :class="$style.replyBar">
-							<i class="ti ti-arrow-back-up"></i>
-							<span>{{ copy.replyTo }}</span><MkUserName :user="replyTarget.user"/>
-							<span :class="$style.replyBarText">{{ (replyTarget.text ?? '').slice(0, 40) }}</span>
-							<button :class="$style.replyBarCancel" @click="replyTarget = null"><i class="ti ti-x"></i></button>
-						</div>
-						<div v-if="commentFiles.length" :class="$style.cFileGrid">
-							<div v-for="f in commentFiles" :key="f.id" :class="$style.cFileThumb">
-								<img :src="f.thumbnailUrl ?? f.url" :alt="f.name"/>
-								<button :class="$style.cFileDel" @click="commentFiles = commentFiles.filter(x => x.id !== f.id)"><i class="ti ti-x"></i></button>
-							</div>
-						</div>
-						<div :class="$style.composerRow">
-							<div :class="$style.inputPill">
-								<textarea ref="commentTextarea" v-model="newComment" :class="$style.pillInput" :placeholder="replyTarget ? copy.replyPlaceholder : copy.commentPlaceholder" rows="1" @keydown.enter.exact.prevent="sendComment"></textarea>
-								<button :class="$style.pillIcon" :title="copy.insertEmoji" @click="insertCommentEmoji"><i class="ti ti-mood-happy"></i></button>
-								<button :class="$style.pillIcon" :title="copy.attachImage" @click="attachCommentFiles"><i class="ti ti-photo-plus"></i></button>
-							</div>
-							<MkButton :class="$style.sendBtn" rounded primary :disabled="!newComment.trim() || sending" @click="sendComment">{{ copy.send }}</MkButton>
+				<!-- 右: メタサイドバー -->
+				<aside :class="$style.side">
+					<!-- ステータス -->
+					<div :class="$style.sideSec">
+						<div :class="$style.sideLabel">{{ copy.status }}</div>
+						<button :class="[$style.statusSelect, !canManage && $style.statusStatic]" :disabled="!canManage" @click="openStatusSelect">
+							<HfStatusPill :status="issue.status" variant="text"/>
+							<i v-if="canManage" class="ti ti-selector" :class="$style.statusCaret"></i>
+						</button>
+					</div>
+
+					<!-- カテゴリ / 優先度 -->
+					<div :class="$style.sideSec">
+						<div :class="$style.sideLabel">{{ copy.categoryAndPriority }}</div>
+						<div :class="$style.sideBadges">
+							<HfCategoryBadge :category="issue.category"/>
+							<button :class="$style.prioBadge" :data-prio="issue.priority ?? 'normal'" :disabled="!canManage" @click="openPrioritySelect">{{ copy.priorityPrefix }} {{ priorityLabel[issue.priority ?? 'normal'] }}</button>
 						</div>
 					</div>
-				</div>
+
+					<!-- 対処担当 -->
+					<div :class="$style.sideSec">
+						<div :class="$style.sideLabelRow">
+							<span class="ti ti-shield-check" :class="$style.sideLabelIcon"></span>
+							<span :class="$style.sideLabel">{{ copy.assignee }}</span>
+							<button v-if="isAdmin" v-tooltip="copy.grantAssignee" :class="$style.sideGear" @click="grantModerator"><i class="ti ti-settings"></i></button>
+						</div>
+						<div v-if="moderators.length === 0" :class="$style.sideMuted">{{ copy.unassigned }}</div>
+						<div v-else :class="$style.modList">
+							<div v-for="m in moderators" :key="m.id" :class="$style.modItem">
+								<HfAvatar :user="m" :size="22"/><MkUserName :user="m"/><i class="ti ti-shield-check" :class="$style.modShield"></i>
+							</div>
+						</div>
+					</div>
+
+					<!-- 参加者 -->
+					<div :class="$style.sideSec">
+						<div :class="$style.sideLabel">{{ copyx.participantCount({ count: participants.length.toString() }) }}</div>
+						<div v-if="participants.length" :class="$style.partStack">
+							<HfAvatar v-for="p in participants" :key="p.id" :user="p" :size="26" stack/>
+						</div>
+						<div v-else :class="$style.sideMuted">{{ copy.noParticipants }}</div>
+					</div>
+
+					<!-- 賛同 -->
+					<div :class="$style.sideSec">
+						<button :class="[$style.agreeBtn, issue.isAgreed && $style.agreeBtnOn]" @click="toggleAgree">
+							<i :class="issue.isAgreed ? 'ti ti-heart-filled' : 'ti ti-heart'"></i> {{ copyx.agreeCount({ count: issue.agreementsCount.toString() }) }}
+						</button>
+					</div>
+
+					<!-- スタッフ操作 -->
+					<div v-if="canManage" :class="[$style.sideSec, $style.sideSecLast]">
+						<div :class="$style.sideLabelRow">
+							<span class="ti ti-shield" :class="$style.sideLabelIcon"></span>
+							<span :class="$style.sideLabel">{{ copy.staffActions }}</span>
+						</div>
+						<div :class="$style.staffActions">
+							<button :class="$style.staffAction" @click="togglePin"><i class="ti ti-pin"></i> {{ issue.pinned ? copy.unpin : copy.pin }}</button>
+							<button v-if="isAdmin" :class="$style.staffAction" @click="grantModerator"><i class="ti ti-user-plus"></i> {{ copy.grantAssignee }}</button>
+							<button :class="$style.staffAction" @click="toggleClose"><i :class="issue.closed ? 'ti ti-lock-open' : 'ti ti-lock'"></i> {{ issue.closed ? copy.reopen : copy.closeIssue }}</button>
+							<button v-if="isStaff" :class="[$style.staffAction, $style.staffDanger]" @click="removeIssue"><i class="ti ti-trash"></i> {{ copy.deleteIssue }}</button>
+						</div>
+					</div>
+				</aside>
 			</div>
-
-			<!-- 右: メタサイドバー -->
-			<aside :class="$style.side">
-				<!-- ステータス -->
-				<div :class="$style.sideSec">
-					<div :class="$style.sideLabel">{{ copy.status }}</div>
-					<button :class="[$style.statusSelect, !canManage && $style.statusStatic]" :disabled="!canManage" @click="openStatusSelect">
-						<HfStatusPill :status="issue.status" variant="text"/>
-						<i v-if="canManage" class="ti ti-selector" :class="$style.statusCaret"></i>
-					</button>
-				</div>
-
-				<!-- カテゴリ / 優先度 -->
-				<div :class="$style.sideSec">
-					<div :class="$style.sideLabel">{{ copy.categoryAndPriority }}</div>
-					<div :class="$style.sideBadges">
-						<HfCategoryBadge :category="issue.category"/>
-						<button :class="$style.prioBadge" :data-prio="issue.priority ?? 'normal'" :disabled="!canManage" @click="openPrioritySelect">{{ copy.priorityPrefix }} {{ priorityLabel[issue.priority ?? 'normal'] }}</button>
-					</div>
-				</div>
-
-				<!-- 対処担当 -->
-				<div :class="$style.sideSec">
-					<div :class="$style.sideLabelRow">
-						<span class="ti ti-shield-check" :class="$style.sideLabelIcon"></span>
-						<span :class="$style.sideLabel">{{ copy.assignee }}</span>
-						<button v-if="isAdmin" :class="$style.sideGear" v-tooltip="copy.grantAssignee" @click="grantModerator"><i class="ti ti-settings"></i></button>
-					</div>
-					<div v-if="moderators.length === 0" :class="$style.sideMuted">{{ copy.unassigned }}</div>
-					<div v-else :class="$style.modList">
-						<div v-for="m in moderators" :key="m.id" :class="$style.modItem">
-							<HfAvatar :user="m" :size="22"/><MkUserName :user="m"/><i class="ti ti-shield-check" :class="$style.modShield"></i>
-						</div>
-					</div>
-				</div>
-
-				<!-- 参加者 -->
-				<div :class="$style.sideSec">
-					<div :class="$style.sideLabel">{{ copyx.participantCount({ count: participants.length.toString() }) }}</div>
-					<div v-if="participants.length" :class="$style.partStack">
-						<HfAvatar v-for="p in participants" :key="p.id" :user="p" :size="26" stack/>
-					</div>
-					<div v-else :class="$style.sideMuted">{{ copy.noParticipants }}</div>
-				</div>
-
-				<!-- 賛同 -->
-				<div :class="$style.sideSec">
-					<button :class="[$style.agreeBtn, issue.isAgreed && $style.agreeBtnOn]" @click="toggleAgree">
-						<i :class="issue.isAgreed ? 'ti ti-heart-filled' : 'ti ti-heart'"></i> {{ copyx.agreeCount({ count: issue.agreementsCount.toString() }) }}
-					</button>
-				</div>
-
-				<!-- スタッフ操作 -->
-				<div v-if="canManage" :class="[$style.sideSec, $style.sideSecLast]">
-					<div :class="$style.sideLabelRow">
-						<span class="ti ti-shield" :class="$style.sideLabelIcon"></span>
-						<span :class="$style.sideLabel">{{ copy.staffActions }}</span>
-					</div>
-					<div :class="$style.staffActions">
-						<button :class="$style.staffAction" @click="togglePin"><i class="ti ti-pin"></i> {{ issue.pinned ? copy.unpin : copy.pin }}</button>
-						<button v-if="isAdmin" :class="$style.staffAction" @click="grantModerator"><i class="ti ti-user-plus"></i> {{ copy.grantAssignee }}</button>
-						<button :class="$style.staffAction" @click="toggleClose"><i :class="issue.closed ? 'ti ti-lock-open' : 'ti ti-lock'"></i> {{ issue.closed ? copy.reopen : copy.closeIssue }}</button>
-						<button v-if="isStaff" :class="[$style.staffAction, $style.staffDanger]" @click="removeIssue"><i class="ti ti-trash"></i> {{ copy.deleteIssue }}</button>
-					</div>
-				</div>
-			</aside>
-		</div>
 		</div>
 	</template>
 </div>
@@ -209,6 +209,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 <script lang="ts" setup>
 import { ref, onMounted } from 'vue';
 import { url } from '@@/js/config.js';
+import type { HataFeedEditableStatus, HataFeedPriority } from '@/utility/hatafeed.js';
 import MkButton from '@/components/MkButton.vue';
 import MkMediaList from '@/components/MkMediaList.vue';
 import MkReactionIcon from '@/components/MkReactionIcon.vue';
@@ -217,13 +218,13 @@ import HfCategoryBadge from '@/components/HfCategoryBadge.vue';
 import HfAvatar from '@/components/HfAvatar.vue';
 import { i18n } from '@/i18n.js';
 import * as os from '@/os.js';
+import { hataFeedNotify } from '@/utility/hatafeed-ui.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { chooseDriveFile } from '@/utility/drive.js';
 import { $i } from '@/i.js';
 import { reactionPicker } from '@/utility/reaction-picker.js';
 import { emojiPicker } from '@/utility/emoji-picker.js';
 import { statusLabel, editableStatusKeys, priorityLabel } from '@/utility/hatafeed.js';
-import type { HataFeedEditableStatus, HataFeedPriority } from '@/utility/hatafeed.js';
 import { copyToClipboard } from '@/utility/copy-to-clipboard.js';
 
 const props = defineProps<{ issueId: string; isStaff: boolean }>();
@@ -243,6 +244,7 @@ const comments = ref<any[]>([]);
 const newComment = ref('');
 // 旗鯖fork(2e): コメント欄の絵文字挿入用(カーソル位置に :shortcode: / Unicode を差し込む)。
 const commentTextarea = ref<HTMLTextAreaElement | null>(null);
+
 function insertCommentEmoji(ev: MouseEvent) {
 	const target = (ev.currentTarget ?? ev.target) as HTMLElement | null;
 	if (!target) return;
@@ -257,13 +259,16 @@ function insertCommentEmoji(ev: MouseEvent) {
 		posEnd += emoji.length;
 	}, () => {});
 }
+
 const commentFiles = ref<any[]>([]);
 const sending = ref(false);
 // 旗鯖fork: 会話の返信先・スクロール用。
 const replyTarget = ref<any>(null);
 const flashCommentId = ref<string | null>(null);
 const commentRefs = new Map<string, HTMLElement>();
+
 function setCommentRef(id: string, el: any) { if (el) commentRefs.set(id, el as HTMLElement); else commentRefs.delete(id); }
+
 const editStatus = ref<HataFeedEditableStatus>('open');
 const editPriority = ref<HataFeedPriority>('normal');
 
@@ -318,7 +323,7 @@ function copyText(text: string | null | undefined, label: string) {
 		return;
 	}
 	copyToClipboard(text);
-	os.toast(copyx.copied({ label }), 'ti ti-copy-check');
+	hataFeedNotify(copyx.copied({ label }));
 }
 
 async function toggleAgree() {
@@ -327,8 +332,14 @@ async function toggleAgree() {
 	issue.value.agreementsCount += res.isAgreed ? 1 : -1;
 }
 
+function onCommentKeydown(event: KeyboardEvent) {
+	if (event.key !== 'Enter' || event.isComposing || event.keyCode === 229 || event.shiftKey || event.ctrlKey || event.altKey || event.metaKey) return;
+	event.preventDefault();
+	sendComment();
+}
+
 async function sendComment() {
-	if (!newComment.value.trim()) return;
+	if (sending.value || !newComment.value.trim()) return;
 	sending.value = true;
 	try {
 		const c = await misskeyApi('hata/feedback/comments/create', { issueId: props.issueId, text: newComment.value.trim(), fileIds: commentFiles.value.map(f => f.id), replyToId: replyTarget.value?.id ?? null });
@@ -376,7 +387,7 @@ async function removeComment(c: any) {
 
 function copyComment(c: any) {
 	navigator.clipboard?.writeText(c.text ?? '');
-	os.success();
+	hataFeedNotify('保存しました');
 }
 
 function openCommentMenu(c: any, ev: MouseEvent) {
@@ -467,7 +478,7 @@ async function grantModerator() {
 	const user = await os.selectUser({ includeSelf: false });
 	if (!user) return;
 	await misskeyApi('hata/feedback/moderators/grant', { issueId: props.issueId, userId: user.id });
-	os.success();
+	hataFeedNotify('保存しました');
 	// 付与後、対処担当リストを最新化。
 	load();
 }
@@ -476,11 +487,12 @@ async function removeIssue() {
 	const { canceled } = await os.confirm({ type: 'warning', text: copy.deleteIssueConfirm });
 	if (canceled) return;
 	await misskeyApi('hata/feedback/issues/delete', { issueId: props.issueId });
-	os.success();
+	hataFeedNotify('保存しました');
 	emit('back');
 }
 
 onMounted(load);
+defineExpose({ reload: load });
 </script>
 
 <style lang="scss" module>
@@ -493,9 +505,11 @@ onMounted(load);
 .errorSub { font-size: .85em; opacity: .7; margin-bottom: 6px; max-width: 360px; }
 
 /* パンくず */
-.crumbs { display: flex; align-items: center; gap: 6px; font-size: .82em; opacity: .7; margin-bottom: 10px; }
-.crumbLink { background: none; border: none; color: var(--MI_THEME-accent); cursor: pointer; padding: 0; font-size: 1em; }
-.crumbLink:hover { text-decoration: underline; }
+.crumbs { display: flex; align-items: center; gap: 6px; font-size: .85em; margin-bottom: 10px; }
+.crumbLink { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 14px; border: 1px solid var(--MI_THEME-divider); border-radius: 999px; background: var(--MI_THEME-panel); color: var(--MI_THEME-accent); cursor: pointer; font: inherit; }
+.crumbLink > i { font-size: 20px; }
+.crumbLink:hover { background: var(--MI_THEME-accentedBg); }
+.crumbLink:focus-visible { outline: 2px solid var(--MI_THEME-accent); outline-offset: 2px; }
 .crumbSep { opacity: .5; }
 .crumbNo { font-family: ui-monospace, Menlo, monospace; }
 
@@ -503,7 +517,7 @@ onMounted(load);
 .titleRow { display: flex; align-items: flex-start; gap: 12px; }
 .title { margin: 0; font-size: 1.4rem; font-weight: 800; line-height: 1.4; color: var(--MI_THEME-fg); flex: 1; min-width: 0; word-break: break-word; }
 .titleNo { color: var(--MI_THEME-fgTransparentWeak, #95a7a8); font-weight: 400; font-family: ui-monospace, Menlo, monospace; font-size: .85em; }
-.copyBtn { flex-shrink: 0; width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--MI_THEME-divider); border-radius: 8px; background: var(--MI_THEME-panel); color: var(--MI_THEME-fgTransparentWeak, var(--MI_THEME-fg)); cursor: pointer; transition: border-color .12s, color .12s; }
+.copyBtn { flex-shrink: 0; width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--MI_THEME-divider); border-radius: 8px; background: var(--MI_THEME-panel); color: var(--MI_THEME-fgTransparentWeak, var(--MI_THEME-fg)); cursor: pointer; transition: border-color .12s, color .12s; }
 .copyBtn:hover { border-color: var(--MI_THEME-accent); color: var(--MI_THEME-accent); }
 
 /* メタ行 */
@@ -523,7 +537,7 @@ onMounted(load);
 .tlRow { position: relative; display: flex; gap: 12px; margin-bottom: 16px; }
 .tlRow:last-child { margin-bottom: 0; }
 .tlAvatar { border: 2px solid var(--MI_THEME-bg); z-index: 1; }
-.card { flex: 1; min-width: 0; background: var(--MI_THEME-panel); border: 1px solid var(--MI_THEME-divider); border-radius: 10px; overflow: hidden; transition: background .4s; }
+.card { flex: 1; min-width: 0; background: var(--MI_THEME-panel); border: 1px solid var(--MI_THEME-divider); border-radius: 24px; box-shadow: var(--hy-shadow); overflow: hidden; transition: background .4s; }
 .cardImportant { border-color: color-mix(in srgb, var(--MI_THEME-warn) 55%, var(--MI_THEME-divider)); }
 .cardFlash { background: color-mix(in srgb, var(--MI_THEME-accent) 14%, var(--MI_THEME-panel)); }
 .cardHead { display: flex; align-items: center; gap: 8px; padding: 8px 14px; border-bottom: 1px solid var(--MI_THEME-divider); font-size: .84em; }
@@ -538,8 +552,8 @@ onMounted(load);
 /* ロールバッジ */
 .roleBadge { display: inline-flex; align-items: center; gap: 3px; font-size: .82em; font-weight: 700; padding: 1px 8px; border-radius: 999px; white-space: nowrap; }
 .roleAuthor { border: 1px solid var(--MI_THEME-divider); color: var(--MI_THEME-fgTransparentWeak, var(--MI_THEME-fg)); }
-.roleStaff { background: var(--MI_THEME-accent); color: #fff; }
-.roleImportant { background: #ecb637; color: #fff; }
+.roleStaff { background: var(--MI_THEME-accent); color: var(--hy-on-accent); }
+.roleImportant { background: #ecb637; color: #352900; }
 .roleQuestion { background: var(--MI_THEME-accentedBg); color: var(--MI_THEME-accent); }
 
 .cardText { padding: 12px 14px; line-height: 1.75; word-break: break-word; }
@@ -571,10 +585,11 @@ onMounted(load);
 .replyBarCancel { background: none; border: none; color: inherit; opacity: .6; cursor: pointer; }
 .composerRow { display: flex; align-items: flex-end; gap: 8px; }
 .inputPill { flex: 1; min-width: 0; display: flex; align-items: flex-end; gap: 2px; background: var(--MI_THEME-bg); border: 1px solid var(--MI_THEME-divider); border-radius: 20px; padding: 4px 6px 4px 14px; transition: border-color .12s; }
-.inputPill:focus-within { border-color: var(--MI_THEME-accent); }
+.inputPill:focus-within { outline: 2px solid var(--MI_THEME-accent); outline-offset: 2px; }
+.pillInput:focus-visible { outline: none; }
 .pillInput { flex: 1; min-width: 0; background: none; border: none; outline: none; color: inherit; resize: none; font-family: inherit; font-size: .88em; line-height: 1.6; padding: 6px 0; max-height: 120px; overflow-y: auto; }
 .pillInput::placeholder { opacity: .5; }
-.pillIcon { flex-shrink: 0; width: 32px; height: 32px; border-radius: 999px; border: none; background: none; color: inherit; opacity: .6; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-size: 1.05rem; transition: all .12s; }
+.pillIcon { flex-shrink: 0; width: 44px; height: 44px; border-radius: 999px; border: none; background: none; color: inherit; opacity: .6; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-size: 1.05rem; transition: all .12s; }
 .pillIcon:hover { opacity: 1; color: var(--MI_THEME-accent); background: var(--MI_THEME-panel); }
 .sendBtn { flex-shrink: 0; min-width: 0; }
 .cFileGrid { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
@@ -585,7 +600,7 @@ onMounted(load);
 .closedNotice { display: flex; align-items: center; gap: 6px; margin-top: 4px; padding: 12px 14px; border-radius: 10px; background: var(--MI_THEME-panel); border: 1px solid var(--MI_THEME-divider); opacity: .75; font-size: .88em; }
 
 /* ===== メタサイドバー ===== */
-.side { display: flex; flex-direction: column; }
+.side { display: flex; flex-direction: column; padding: 20px; background: var(--MI_THEME-panel); border: 1px solid var(--MI_THEME-divider); border-radius: 24px; box-shadow: var(--hy-shadow); }
 .sideSec { padding: 14px 0; border-bottom: 1px solid var(--MI_THEME-divider); }
 .sideSec:first-child { padding-top: 0; }
 .sideSecLast { border-bottom: none; }
@@ -627,7 +642,7 @@ onMounted(load);
 /* ===== レスポンシブ: サイドバーを上に畳む ===== */
 @container hfIssue (max-width: 720px) {
 	.grid { grid-template-columns: 1fr; }
-	.side { order: -1; flex-direction: row; flex-wrap: wrap; gap: 8px 20px; padding: 12px 14px; background: var(--MI_THEME-panel); border: 1px solid var(--MI_THEME-divider); border-radius: 12px; margin-bottom: 4px; }
+	.side { order: -1; flex-direction: row; flex-wrap: wrap; gap: 8px 20px; padding: 12px 14px; background: var(--MI_THEME-panel); border: 1px solid var(--MI_THEME-divider); border-radius: 24px; margin-bottom: 4px; }
 	.sideSec { padding: 4px 0; border-bottom: none; flex: 1; min-width: 130px; }
 	.sideSecLast { flex-basis: 100%; }
 }

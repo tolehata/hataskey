@@ -10,18 +10,25 @@ SPDX-License-Identifier: AGPL-3.0-only
      項目数が多く全て覚えるのが困難というユーザー要望(特にデッキUI使用者)に対応。
      MkWindow は移動・リサイズ可能で裏のページがそのまま操作できる。 -->
 <MkWindow
-	ref="dialog"
-	:initialWidth="560"
-	:initialHeight="620"
+	ref="dialog" class="hatady-scope hatafeed-scope"
+	data-hatafeed-window
+	:data-hatady-theme="hataFeedTheme"
+	centerTitle
+	:initialWidth="650"
+	:initialHeight="690"
 	:canResize="true"
+	:beforeClose="beforeClose"
+	:buttonsLeft="backButtons"
+	:inert="prompt"
 	@closed="emit('closed')"
 >
-	<template #header>{{ copyx.header({ step: step.toString() }) }}</template>
+	<template #header>新規イシュー</template>
 
 	<div class="_spacer" style="--MI_SPACER-min: 20px; --MI_SPACER-max: 28px;">
+		<div v-if="hasDraft" class="hf-draft-offer"><span>端末に保存した下書きがあります</span><button type="button" @click="resumeDraft"><i class="ti ti-pencil-plus" aria-hidden="true"></i>続きから編集</button></div>
 		<!-- Step1: カテゴリ -->
-		<div v-if="step === 1" :class="$style.gaps">
-			<div :class="$style.lead">{{ copy.chooseCategory }}</div>
+		<ol class="hf-stepper"><li v-for="(label, index) in ['種類', '内容', '確認']" :key="label" :aria-current="step === index + 1 ? 'step' : undefined"><b>{{ index + 1 }}</b>{{ label }}</li></ol>
+		<div v-if="step === 1" :class="$style.categories">
 			<button
 				v-for="c in availableCategoryKeys"
 				:key="c"
@@ -60,19 +67,18 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 			<!-- 旗鯖fork: コード提出（任意） -->
 			<div>
-					<MkSwitch v-model="codeEnabled">
-						<template #label><i class="ti ti-code"></i> {{ copy.submitCode }}</template>
-						<template #caption>{{ copy.submitCodeHint }}</template>
-					</MkSwitch>
-					<MkTextarea v-if="codeEnabled" v-model="code" :class="$style.codeArea" :placeholder="copy.codePlaceholder">
-						<template #label>{{ copy.code }}</template>
-					</MkTextarea>
-				</div>
+				<MkSwitch v-model="codeEnabled">
+					<template #label><i class="ti ti-code"></i> {{ copy.submitCode }}</template>
+					<template #caption>{{ copy.submitCodeHint }}</template>
+				</MkSwitch>
+				<MkTextarea v-if="codeEnabled" v-model="code" :class="$style.codeArea" :placeholder="copy.codePlaceholder">
+					<template #label>{{ copy.code }}</template>
+				</MkTextarea>
+			</div>
 
-				<div :class="$style.navRow">
-					<MkButton rounded @click="step = 1"><i class="ti ti-arrow-left"></i> {{ copy.back }}</MkButton>
-					<MkButton rounded primary :disabled="!title.trim()" @click="step = 3">{{ copy.next }} <i class="ti ti-arrow-right"></i></MkButton>
-				</div>
+			<div :class="$style.navRow">
+				<MkButton rounded primary :disabled="!title.trim()" @click="step = 3">{{ copy.next }} <i class="ti ti-arrow-right"></i></MkButton>
+			</div>
 		</div>
 
 		<!-- Step3: 確認 -->
@@ -89,7 +95,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</div>
 
 			<div :class="$style.navRow">
-				<MkButton rounded @click="step = 2"><i class="ti ti-arrow-left"></i> {{ copy.back }}</MkButton>
 				<MkButton rounded primary gradate :disabled="submitting" @click="submit"><i class="ti ti-send"></i> {{ copy.send }}</MkButton>
 			</div>
 		</div>
@@ -100,6 +105,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 <script lang="ts" setup>
 import { computed, ref, useTemplateRef } from 'vue';
 import MkWindow from '@/components/MkWindow.vue';
+import { hataFeedTheme } from '@/utility/hatasaba-device-prefs.js';
+import { hataFeedNotify } from '@/utility/hatafeed-ui.js';
+import '@/components/hatafeed-ui.css';
 import MkButton from '@/components/MkButton.vue';
 import MkInput from '@/components/MkInput.vue';
 import MkTextarea from '@/components/MkTextarea.vue';
@@ -112,16 +120,16 @@ import { chooseDriveFile } from '@/utility/drive.js';
 import { iAmModerator } from '@/i.js';
 import { categoryLabel, creatableCategoryKeys, staffOnlyCategoryKeys, categoryDesc, categoryIcon } from '@/utility/hatafeed.js';
 import type { HataFeedCategory, HataFeedPriority } from '@/utility/hatafeed.js';
-import { useHataFormDraft } from '@/utility/hata-form-draft.js';
+import { useHataFeedDraft } from '@/utility/hatafeed-draft.js';
 
 const props = defineProps<{ projectId: string | null; projects: any[] }>();
 const emit = defineEmits<{ (ev: 'done', v: any): void; (ev: 'closed'): void }>();
 
 const dialog = useTemplateRef('dialog');
 const copy = i18n.ts._hata._hatafeed._issueWizard;
-const copyx = i18n.tsx._hata._hatafeed._issueWizard;
 
 const step = ref(1);
+const backButtons = computed(() => step.value > 1 ? [{ title: copy.back, icon: 'ti ti-arrow-left', onClick: () => { step.value--; } }] : []);
 const category = ref<HataFeedCategory>('bug');
 const title = ref('');
 const description = ref('');
@@ -147,8 +155,9 @@ type IssueDraft = {
 	codeEnabled: boolean;
 	code: string;
 };
-const { clearDraft } = useHataFormDraft<IssueDraft>({
+const { finishSubmission, beforeClose, prompt, hasDraft, resumeDraft } = useHataFeedDraft<IssueDraft>({
 	id: `hatafeed:issue:${props.projectId ?? 'general'}`,
+	busy: () => submitting.value,
 	capture: () => ({ step: step.value, category: category.value, title: title.value, description: description.value, priority: priority.value, files: files.value, codeEnabled: codeEnabled.value, code: code.value }),
 	restore: draft => {
 		step.value = Math.min(3, Math.max(1, Number(draft.step) || 1));
@@ -195,7 +204,7 @@ async function addFiles() {
 }
 
 async function submit() {
-	if (!title.value.trim()) return;
+	if (submitting.value || !title.value.trim()) return;
 	submitting.value = true;
 	try {
 		const issue = await misskeyApi('hata/feedback/issues/create', {
@@ -205,10 +214,10 @@ async function submit() {
 			priority: priority.value,
 			projectId: props.projectId,
 			fileIds: files.value.map(f => f.id),
-				code: (codeEnabled.value && code.value.trim().length > 0) ? code.value : null,
+			code: (codeEnabled.value && code.value.trim().length > 0) ? code.value : null,
 		});
-		clearDraft();
-		os.success();
+		hataFeedNotify('イシューを作成しました');
+		finishSubmission();
 		emit('done', issue);
 		dialog.value?.close();
 	} finally {
@@ -218,15 +227,17 @@ async function submit() {
 </script>
 
 <style lang="scss" module>
-.gaps { display: flex; flex-direction: column; gap: 14px; }
+.categories { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+@container (max-width: 420px) { .categories { grid-template-columns: minmax(0, 1fr); } }
+.gaps { display: flex; flex-direction: column; gap: 18px; text-align: center; }
 .lead { opacity: .8; font-size: .92em; }
-.tag { background: var(--MI_THEME-accent); color: #fff; border-radius: 999px; padding: 2px 10px; font-size: .82em; }
+.tag { background: var(--MI_THEME-accent); color: var(--hy-on-accent); border-radius: 999px; padding: 2px 10px; font-size: .82em; }
 .req { color: var(--MI_THEME-error); font-size: .72em; margin-left: 4px; }
 
 .catCard {
 	display: flex; align-items: center; gap: 12px;
 	background: var(--MI_THEME-bg); border: 1px solid var(--MI_THEME-divider);
-	border-radius: 14px; padding: 12px 14px; cursor: pointer; text-align: left; color: inherit;
+	border-radius: 20px; padding: 20px 16px; min-height: 100px; cursor: pointer; text-align: center; color: inherit;
 	transition: all .15s;
 }
 .catCard:hover { border-color: var(--MI_THEME-accent); transform: translateY(-1px); }
@@ -237,12 +248,12 @@ async function submit() {
 .catDesc { font-size: .8em; opacity: .65; margin-top: 2px; }
 .catArrow { opacity: .4; }
 
-.navRow { display: flex; justify-content: space-between; margin-top: 6px; }
+.navRow { display: flex; justify-content: center; margin-top: 6px; }
 .fieldLabel { font-size: .85em; opacity: .8; margin-bottom: 6px; }
 .fileGrid { display: flex; gap: 8px; flex-wrap: wrap; }
 .fileThumb { position: relative; width: 72px; height: 72px; border-radius: 10px; overflow: hidden; border: 1px solid var(--MI_THEME-divider); }
 .fileThumb img { width: 100%; height: 100%; object-fit: cover; }
-.fileDel { position: absolute; top: 2px; right: 2px; background: rgba(0,0,0,.5); color: #fff; border: none; border-radius: 999px; width: 20px; height: 20px; cursor: pointer; }
+.fileDel { position: absolute; top: 2px; right: 2px; background: rgba(0,0,0,.5); color: var(--hy-on-accent); border: none; border-radius: 999px; width: 20px; height: 20px; cursor: pointer; }
 .fileAdd { width: 72px; height: 72px; border-radius: 10px; border: 1px dashed var(--MI_THEME-divider); background: var(--MI_THEME-bg); cursor: pointer; color: inherit; font-size: 1.2rem; }
 .summary { background: var(--MI_THEME-bg); border-radius: 12px; padding: 12px 14px; font-size: .88em; display: flex; flex-direction: column; gap: 4px; }
 .codeArea { margin-top: 8px; }

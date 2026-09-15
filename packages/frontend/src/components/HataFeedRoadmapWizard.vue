@@ -8,15 +8,21 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 <template>
 <MkWindow
-	ref="dialog"
+	ref="dialog" class="hatady-scope hatafeed-scope"
+	data-hatafeed-window
+	:data-hatady-theme="hataFeedTheme"
+	centerTitle
 	:initialWidth="520"
 	:initialHeight="560"
 	:canResize="true"
+	:beforeClose="beforeClose"
+	:inert="prompt"
 	@closed="emit('closed')"
 >
 	<template #header><i class="ti ti-route"></i> {{ copy.header }}</template>
 
 	<div class="_spacer" style="--MI_SPACER-min: 20px; --MI_SPACER-max: 28px;">
+		<div v-if="hasDraft" class="hf-draft-offer"><span>端末に保存した下書きがあります</span><button type="button" @click="resumeDraft"><i class="ti ti-pencil-plus" aria-hidden="true"></i>続きから編集</button></div>
 		<div :class="$style.gaps">
 			<div :class="$style.lead">{{ copy.lead }}</div>
 
@@ -66,6 +72,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 <script lang="ts" setup>
 import { ref, useTemplateRef } from 'vue';
 import MkWindow from '@/components/MkWindow.vue';
+import { hataFeedTheme } from '@/utility/hatasaba-device-prefs.js';
+import { hataFeedNotify } from '@/utility/hatafeed-ui.js';
+import '@/components/hatafeed-ui.css';
 import MkButton from '@/components/MkButton.vue';
 import MkInput from '@/components/MkInput.vue';
 import MkTextarea from '@/components/MkTextarea.vue';
@@ -74,7 +83,7 @@ import * as os from '@/os.js';
 import { misskeyApi } from '@/utility/misskey-api.js';
 import { chooseDriveFile } from '@/utility/drive.js';
 import type { HataFeedEditableStatus } from '@/utility/hatafeed.js';
-import { useHataFormDraft } from '@/utility/hata-form-draft.js';
+import { useHataFeedDraft } from '@/utility/hatafeed-draft.js';
 
 const emit = defineEmits<{ (ev: 'done', v: any): void; (ev: 'closed'): void }>();
 
@@ -87,8 +96,9 @@ const status = ref<Extract<HataFeedEditableStatus, 'planned' | 'inProgress'>>('p
 const files = ref<any[]>([]);
 const submitting = ref(false);
 type RoadmapDraft = { title: string; description: string; status: 'planned' | 'inProgress'; files: any[] };
-const { clearDraft } = useHataFormDraft<RoadmapDraft>({
+const { finishSubmission, beforeClose, prompt, hasDraft, resumeDraft } = useHataFeedDraft<RoadmapDraft>({
 	id: 'hatafeed:roadmap',
+	busy: () => submitting.value,
 	capture: () => ({ title: title.value, description: description.value, status: status.value, files: files.value }),
 	restore: draft => {
 		title.value = typeof draft.title === 'string' ? draft.title : '';
@@ -113,7 +123,7 @@ async function addFiles() {
 }
 
 async function submit() {
-	if (!title.value.trim()) return;
+	if (submitting.value || !title.value.trim()) return;
 	submitting.value = true;
 	try {
 		// ロードマップ = 公式(projectId:null)の improvement カテゴリのイシュー。
@@ -126,8 +136,8 @@ async function submit() {
 		});
 		// 作成直後は open のため、選んだ掲示状態(planned/inProgress)へ更新する。
 		await misskeyApi('hata/feedback/issues/update', { issueId: issue.id, status: status.value }).catch(() => {});
-		clearDraft();
-		os.success();
+		hataFeedNotify('保存しました');
+		finishSubmission();
 		emit('done', issue);
 		dialog.value?.close();
 	} finally {
@@ -137,7 +147,7 @@ async function submit() {
 </script>
 
 <style lang="scss" module>
-.gaps { display: flex; flex-direction: column; gap: 14px; }
+.gaps { display: flex; flex-direction: column; gap: 18px; text-align: center; }
 .lead { opacity: .8; font-size: .92em; }
 .req { color: var(--MI_THEME-error); font-size: .72em; margin-left: 4px; }
 .fieldLabel { font-size: .85em; opacity: .8; margin-bottom: 6px; }
@@ -150,13 +160,13 @@ async function submit() {
 	transition: all .12s;
 }
 .statusChip:hover { border-color: var(--MI_THEME-accent); }
-.statusChipOn { background: var(--MI_THEME-accent); color: #fff; border-color: var(--MI_THEME-accent); }
+.statusChipOn { background: var(--MI_THEME-accent); color: var(--hy-on-accent); border-color: var(--MI_THEME-accent); }
 
 .fileGrid { display: flex; gap: 8px; flex-wrap: wrap; }
 .fileThumb { position: relative; width: 72px; height: 72px; border-radius: 10px; overflow: hidden; border: 1px solid var(--MI_THEME-divider); }
 .fileThumb img { width: 100%; height: 100%; object-fit: cover; }
-.fileDel { position: absolute; top: 2px; right: 2px; background: rgba(0,0,0,.5); color: #fff; border: none; border-radius: 999px; width: 20px; height: 20px; cursor: pointer; }
+.fileDel { position: absolute; top: 2px; right: 2px; background: rgba(0,0,0,.5); color: var(--hy-on-accent); border: none; border-radius: 999px; width: 20px; height: 20px; cursor: pointer; }
 .fileAdd { width: 72px; height: 72px; border-radius: 10px; border: 1px dashed var(--MI_THEME-divider); background: var(--MI_THEME-bg); cursor: pointer; color: inherit; font-size: 1.2rem; }
 
-.navRow { display: flex; justify-content: space-between; margin-top: 6px; }
+.navRow { display: flex; justify-content: center; margin-top: 6px; }
 </style>

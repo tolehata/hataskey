@@ -30,7 +30,7 @@ const initial = props.modelValue ?? '';
 // 既存カテゴリ一覧(現在値が含まれていなければ補う)。
 const allCategories = computed(() => {
 	const set = new Set(props.categories);
-	if (initial !== '') set.add(initial);
+	if (props.modelValue) set.add(props.modelValue);
 	return [...set];
 });
 
@@ -43,6 +43,13 @@ const items = computed(() => [
 
 const sel = ref<string>(initial);
 const newCat = ref<string>('');
+
+watch(() => props.modelValue, value => {
+	const selected = sel.value === '__new__' ? newCat.value.trim() || null : sel.value || null;
+	if (value === selected) return;
+	sel.value = value ?? '';
+	newCat.value = '';
+});
 
 watch([sel, newCat], () => {
 	const v = sel.value === '__new__' ? (newCat.value.trim() || null) : (sel.value || null);
