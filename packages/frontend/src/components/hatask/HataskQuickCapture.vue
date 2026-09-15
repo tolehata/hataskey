@@ -288,7 +288,8 @@ defineExpose({ focus });
 
 .input::placeholder { color: var(--fg-3); font-weight: 560; }
 textarea.input { box-sizing: border-box; height: auto; min-height: 44px; max-height: 180px; field-sizing: content; padding-block: 12px; resize: vertical; line-height: 1.5; }
-.input:focus-visible { border-radius: 12px; outline: 2px solid var(--accent); outline-offset: -2px; }
+// Keep the inset ring ahead of the layout's scoped focus rule.
+.root .inputRow .input:focus-visible { border-radius: 12px; outline: 2px solid var(--accent); outline-offset: -2px; }
 .chip:disabled { cursor: default; opacity: .42; }
 
 .submit, .tool {
