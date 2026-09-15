@@ -12,7 +12,8 @@ import { normalizeHataskPlannerData } from './hatask-planner-storage.js';
 import { normalizeHataskPlannerTemplates } from './hatask-planner-templates.js';
 
 const filename = `${process.cwd()}/src/pages/hatask.vue`;
-const setup = parse(readFileSync(filename, 'utf8')).descriptor.scriptSetup;
+const page = readFileSync(filename, 'utf8');
+const setup = parse(page).descriptor.scriptSetup;
 if (!setup) throw new Error('Missing Hatask script');
 const source = setup.content;
 const ast = ts.createSourceFile('hatask.ts', source, ts.ScriptTarget.Latest, true);
@@ -32,6 +33,65 @@ function event(visibility = 'specified') {
 }
 
 describe('selected event data and notifications', () => {
+	test.each(['handleEventCaptureChip', 'handleEventCaptureTool'])('%sは公開範囲メニューを押したボタンに結び付け、指定メンバーへ切り替えられる', async handler => {
+		const anchor = window.document.createElement('button');
+		const newEvent = { value: event('private') };
+		const popupMenu = vi.fn().mockResolvedValue(undefined);
+		const runtime = execute(['handleEventCaptureChip', 'handleEventCaptureTool', 'toggleEventCaptureVisibility', 'setEventVisibility'], {
+			newEvent, os: { popupMenu }, copy: { private: '自分のみ', public: '公開' }, plannerCopy: { memberVisibility: '指定したメンバー' },
+		});
+		await runtime[handler]('visibility', anchor);
+		expect(popupMenu).toHaveBeenCalledOnce();
+		expect(popupMenu.mock.calls[0][1]).toBe(anchor);
+		const items = popupMenu.mock.calls[0][0];
+		expect(items.map((item: { text: string }) => item.text)).toEqual(['自分のみ', '公開', '指定したメンバー']);
+		const before = structuredClone(newEvent.value);
+		items[2].action();
+		expect(newEvent.value).toEqual({ ...before, visibility: 'specified', recurrence: { ...before.recurrence, frequency: 'none' } });
+		items[0].action();
+		expect(newEvent.value.visibility).toBe('private');
+		expect(newEvent.value.rsvp).toBe(false);
+		expect(newEvent.value.visibleUserIds).toEqual(['member']);
+		items[1].action();
+		expect(newEvent.value.visibility).toBe('public');
+		expect(newEvent.value.visibleUserIds).toEqual(['member']);
+	});
+
+	test('詳細フォームより後から開くメンバー選択を前面にし、再表示時も重なり順を更新する', () => {
+		const osScript = ts.createSourceFile('os.ts', readFileSync(`${process.cwd()}/src/os.ts`, 'utf8'), ts.ScriptTarget.Latest, true);
+		const stackSource = osScript.statements.filter(statement =>
+			(ts.isVariableStatement(statement) && statement.declarationList.declarations.some(declaration => ts.isIdentifier(declaration.name) && declaration.name.text === 'zIndexes')) ||
+			(ts.isFunctionDeclaration(statement) && statement.name?.text === 'claimZIndex'),
+		).map(statement => statement.getText(osScript).replace(/^export /, '')).join('\n');
+		const { claimZIndex } = runInNewContext(ts.transpileModule(`${stackSource}\n({claimZIndex})`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText) as { claimZIndex: (priority: 'low') => number };
+		const eventDetailsZIndex = { value: 0 };
+		const showEventDetails = { value: false };
+		const newEvent = { value: event() };
+		const before = structuredClone(newEvent.value);
+		const pageWindowZIndex = claimZIndex('low');
+		const runtime = execute(['openEventDetailsModal', 'closeEventDetailsModal'], {
+			'window': window, HTMLElement, newEvent, eventDetailsZIndex, showEventDetails, showEventTemplates: { value: true }, eventCaptureEditor: { value: 'date' },
+			eventDetailsTitleRef: { value: null }, eventDetailsCloseRef: { value: null }, eventCaptureRef: { value: null },
+			nextTick: (callback: () => void) => callback(), os: { claimZIndex },
+		}, 'let eventDetailsReturnFocus = null;');
+		let previousLayer = pageWindowZIndex;
+		for (let attempt = 0; attempt < 2; attempt++) {
+			runtime.openEventDetailsModal();
+			expect(showEventDetails.value).toBe(true);
+			expect(eventDetailsZIndex.value).toBeGreaterThan(previousLayer);
+			const memberPickerZIndex = claimZIndex('low');
+			// The old fixed editor layer covered the real low-priority user picker.
+			expect(memberPickerZIndex).toBeLessThan(3200000);
+			expect(memberPickerZIndex).toBeGreaterThan(eventDetailsZIndex.value);
+			previousLayer = memberPickerZIndex;
+			runtime.closeEventDetailsModal();
+			expect(showEventDetails.value).toBe(false);
+			expect(newEvent.value).toEqual(before);
+		}
+		const overlay = page.match(/<div\s+v-if="showEventDetails"[^>]*>/)?.[0];
+		expect(overlay).toContain(':style="{ zIndex: eventDetailsZIndex }"');
+	});
+
 	test('normalization preserves selected recipients, old events and old templates', () => {
 		const raw = { todos: [], folders: [], events: [event(), { ...event('private'), id: 'private' }, { ...event('public'), id: 'public' }] };
 		const before = JSON.stringify(raw);

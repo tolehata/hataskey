@@ -85,9 +85,9 @@ describe('HataskQuickCapture', () => {
 		(container.querySelector('[aria-label="日付を変更"]') as HTMLButtonElement).click();
 		(container.querySelector('[aria-label="優先を外す"]') as HTMLButtonElement).click();
 		(container.querySelector('[aria-label="詳細設定"]') as HTMLButtonElement).click();
-		expect(handlers.chip).toHaveBeenCalledWith('date');
+		expect(handlers.chip).toHaveBeenCalledWith('date', container.querySelector('[aria-label="日付を変更"]'));
 		expect(handlers.removeChip).toHaveBeenCalledWith('priority');
-		expect(handlers.tool).toHaveBeenCalledWith('details');
+		expect(handlers.tool).toHaveBeenCalledWith('details', container.querySelector('[aria-label="詳細設定"]'));
 
 		const outside = window.document.createElement('button');
 		window.document.body.append(outside);
@@ -101,6 +101,23 @@ describe('HataskQuickCapture', () => {
 		await nextTick();
 		expect(root?.dataset.open).toBe('false');
 		expect(handlers.collapse).toHaveBeenCalledTimes(1);
+	});
+
+	test.each([
+		{ label: '日付を変更', handler: 'chip', id: 'date' },
+		{ label: '詳細設定', handler: 'tool', id: 'details' },
+	] as const)('$handlerはアイコンを押してもボタン本体をメニューの基準として渡す', async ({ label, handler, id }) => {
+		const { container, handlers } = mountCapture();
+		container.querySelector<HTMLInputElement>('input')?.focus();
+		await nextTick();
+		const button = container.querySelector<HTMLButtonElement>(`[aria-label="${label}"]`);
+		const icon = button?.querySelector('i');
+		if (!button || !icon) throw new Error('Capture action was not rendered');
+		icon.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await nextTick();
+		expect(handlers[handler]).toHaveBeenCalledWith(id, button);
+		expect(handlers[handler].mock.calls[0][1]).not.toBe(icon);
+		expect(handlers[handler].mock.calls[0][1].isConnected).toBe(true);
 	});
 
 	test.each(['event', 'todo', 'meal'])('%sのテンプレートは空欄・折りたたみ中も1つのアイコンから呼び出せる', async mode => {

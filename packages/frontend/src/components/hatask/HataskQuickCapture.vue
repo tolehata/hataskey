@@ -70,7 +70,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 						:style="chip.color ? { '--capture-chip-color': chip.color } : undefined"
 						:aria-label="chip.actionLabel ?? chipRemoveLabel(chip.label)"
 						:title="chip.actionLabel ?? chipRemoveLabel(chip.label)"
-						@click="activateChip(chip)"
+						@click="activateChip(chip, $event)"
 					>
 						<i v-if="chip.icon" :class="chip.icon" aria-hidden="true"></i>
 						<span>{{ chip.label }}</span>
@@ -92,7 +92,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 							:aria-label="tool.label"
 							:title="tool.label"
 							:aria-pressed="tool.active == null ? undefined : tool.active"
-							@click="emit('tool', tool.id)"
+							@click="emit('tool', tool.id, $event.currentTarget as HTMLElement)"
 						>
 							<i :class="tool.icon" aria-hidden="true"></i>
 							<span v-if="tool.showLabel">{{ tool.label }}</span>
@@ -173,9 +173,9 @@ const props = withDefaults(defineProps<{
 const emit = defineEmits<{
 	(ev: 'update:modelValue', value: string): void;
 	(ev: 'submit'): void;
-	(ev: 'tool', toolId: string): void;
+	(ev: 'tool', toolId: string, anchor: HTMLElement): void;
 	(ev: 'template', event: MouseEvent): void;
-	(ev: 'chip', chipId: string): void;
+	(ev: 'chip', chipId: string, anchor: HTMLElement): void;
 	(ev: 'remove-chip', chipId: string): void;
 	(ev: 'collapse'): void;
 }>();
@@ -203,8 +203,8 @@ function onInputKeydown(event: KeyboardEvent): void {
 	if (canSubmit.value) emit('submit');
 }
 
-function activateChip(chip: HataskCaptureChip): void {
-	if (chip.actionLabel != null) emit('chip', chip.id);
+function activateChip(chip: HataskCaptureChip, event: MouseEvent): void {
+	if (chip.actionLabel != null) emit('chip', chip.id, event.currentTarget as HTMLElement);
 	else emit('remove-chip', chip.id);
 }
 

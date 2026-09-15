@@ -220,6 +220,7 @@
 						<div
 							v-if="showEventDetails"
 							class="htk-modal-ov"
+								:style="{ zIndex: eventDetailsZIndex }"
 							:data-theme="plannerTheme"
 							:data-mode="themeMode"
 							@click.self="closeEventDetailsModal"
@@ -1923,10 +1924,13 @@ const showEventTemplates=ref(false);
 const eventCaptureEditor=ref<'date'|'time'|null>(null);
 const eventDetailsCloseRef = ref<HTMLButtonElement | null>(null);
 const eventDetailsTitleRef = ref<HTMLInputElement | null>(null);
+const eventDetailsZIndex = ref<number>();
 let eventDetailsReturnFocus: HTMLElement | null = null;
 
 function openEventDetailsModal(focusTitle = false): void {
 	eventDetailsReturnFocus = window.document.activeElement instanceof HTMLElement ? window.document.activeElement : null;
+	// Share the modal stack so member pickers and template dialogs can open above this editor.
+	eventDetailsZIndex.value = os.claimZIndex('low');
 	showEventDetails.value = true;
 	showEventTemplates.value = false;
 	eventCaptureEditor.value = null;
@@ -1999,12 +2003,12 @@ function setEventVisibility(visibility:'private' | 'public' | 'specified'):void 
 	if (visibility === 'private')newEvent.value.rsvp = false; else newEvent.value.recurrence.frequency = 'none';
 }
 
-function toggleEventCaptureVisibility():void{
+function toggleEventCaptureVisibility(anchor?:HTMLElement):void{
 	void os.popupMenu([
 		{ text: copy.private, icon: 'ti ti-lock', action: () => setEventVisibility('private') },
 		{ text: copy.public, icon: 'ti ti-world', action: () => setEventVisibility('public') },
 		{ text: plannerCopy.memberVisibility, icon: 'ti ti-users', action: () => setEventVisibility('specified') },
-	]);
+	], anchor);
 }
 
 async function saveEventMemberTemplate(name:string, ids:string[]):Promise<void> {
@@ -2016,13 +2020,13 @@ async function saveEventMemberTemplate(name:string, ids:string[]):Promise<void> 
 async function removeEventMemberTemplate(id:string):Promise<void> {
 	await savePlannerTemplates(plannerTemplates.value.map(template => template.id === id && template.kind === 'members' ? { ...template, archivedAt: new Date().toISOString() } : template));
 }
-async function handleEventCaptureChip(id:string):Promise<void>{
+async function handleEventCaptureChip(id:string, anchor?:HTMLElement):Promise<void>{
 	if(id==='date'){eventCaptureEditor.value=eventCaptureEditor.value==='date'?null:'date';showEventDetails.value=false;showEventTemplates.value=false;return}
 	if(id==='time'||id==='allDay'){eventCaptureEditor.value=eventCaptureEditor.value==='time'?null:'time';showEventDetails.value=false;showEventTemplates.value=false;return}
-	if(id==='visibility'){toggleEventCaptureVisibility();return}
+	if(id==='visibility'){toggleEventCaptureVisibility(anchor);return}
 	if(id==='recurrence')await handleEventCaptureTool('repeat');
 }
-async function handleEventCaptureTool(id:string):Promise<void>{
+async function handleEventCaptureTool(id:string, anchor?:HTMLElement):Promise<void>{
 	if (id === 'details') {
 		if (showEventDetails.value) closeEventDetailsModal();
 		else openEventDetailsModal();
@@ -2030,7 +2034,7 @@ async function handleEventCaptureTool(id:string):Promise<void>{
 	}
 	if(id==='date'){eventCaptureEditor.value=eventCaptureEditor.value==='date'?null:'date';showEventDetails.value=false;showEventTemplates.value=false;return}
 	if(id==='all-day'){eventCaptureEditor.value=eventCaptureEditor.value==='time'?null:'time';showEventDetails.value=false;showEventTemplates.value=false;return}
-	if(id==='visibility'){toggleEventCaptureVisibility();return}
+	if(id==='visibility'){toggleEventCaptureVisibility(anchor);return}
 	if(id==='repeat'&&newEvent.value.visibility==='private'){const frequencies:HataskRecurrenceFrequency[]=['none','daily','weekly','monthly','yearly'];newEvent.value.recurrence.frequency=frequencies[(frequencies.indexOf(newEvent.value.recurrence.frequency)+1)%frequencies.length]}
 }
 async function saveEventCaptureAsTemplate():Promise<void>{
